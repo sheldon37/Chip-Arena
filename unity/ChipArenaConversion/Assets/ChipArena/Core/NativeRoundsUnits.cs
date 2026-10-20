@@ -8,8 +8,9 @@ namespace ChipArena.UnityConversion
     /// <summary>A homing (or last-round) shot this frame: replicated id and firer, its look, drawn position and velocity, birth.</summary>
     public struct RoundsShotInput{public int Id,Owner,Look;public bool Homing,LastRound;public Vector3 P,V;public float Born;}
     /// <summary>A Drone Nest minion this frame: replicated id, owner seat, presented capsule centre, velocity, yaw (rad), last
-    /// attack and last hit (authority s), health share, the owner's accent (linear).</summary>
-    public struct RoundsDroneInput{public int Id,Owner;public Vector3 At,Velocity;public float Yaw,LastAttack,LastHit,Health;public Vector3 Accent;}
+    /// attack and last hit (authority s), health share, the owner's accent (linear), and its replicated expiry (the minion frame's
+    /// until, authority s; 0 or infinite when the frame carries none: an old host).</summary>
+    public struct RoundsDroneInput{public int Id,Owner;public Vector3 At,Velocity;public float Yaw,LastAttack,LastHit,Health;public Vector3 Accent;public float Until;}
     /// <summary>A minion shot beam this frame (the toy's AbilityFx record: from its muzzle to its target).</summary>
     public struct RoundsBeamInput{public Vector3 From,To;public float Until;}
     /// <summary>What a drone drew this frame (checks).</summary>
@@ -27,9 +28,11 @@ namespace ChipArena.UnityConversion
     /// <item>Drone Nest's combat toys: a quad-rotor drone in the holder's accent at the toy's replicated position and yaw: a
     /// holographic summon-in (from its Summon event, else its first sight), a hover bob, banking into its motion, spinning rotors,
     /// the attack's windup (the optic and barrel charging over the authority's .45 s from its replicated last attack) and its
-    /// laser bolt along the toy's own shot beam, a jolt and sparks when hit, a red blink in its last second (its 6 s life from the
-    /// summon), a power-down when it expires or is replaced (it leaves without a death record), and a breakup (blast, sparks,
-    /// tumbling parts) when it is killed (its death record).</item>
+    /// laser bolt along the toy's own shot beam, a jolt and sparks when hit, a red blink in its last .9 s and a power-down from its
+    /// expiry (the minion frame's replicated until, so a late joiner or a killcam started mid-life blinks it too; from an old host
+    /// without one, the 6 s life from its Summon event), a power-down from its last sight when it leaves early (replaced: no
+    /// death record), and a breakup (blast, an EMP ring in the owner's accent, sparks, tumbling parts) when it is killed: its
+    /// death record, whose owner ties it to a Drone Nest holder even when this client never saw it alive.</item>
     /// </list>
     /// Pure functions of replicated ids, times and positions on the presentation clock. Allocation free.
     /// </summary>
@@ -152,7 +155,7 @@ namespace ChipArena.UnityConversion
         // ---- drones ----
         private struct Drone
         {
-            public int Id,Owner;public bool Known;public float Spawn,Seen,Gone,Dead;public Vector3 At,Velocity,Accent,DeadAt;public float Yaw,LastAttack,LastHit,Health,DeadYaw;
+            public int Id,Owner;public bool Known;public float Spawn,Seen,Gone,Dead,Until;public Vector3 At,Velocity,Accent,DeadAt;public float Yaw,LastAttack,LastHit,Health,DeadYaw;
             public Vector3 Bolt,BoltTo;public float BoltAt;
         }
         public const int MaxDrones=32;
@@ -162,6 +165,10 @@ namespace ChipArena.UnityConversion
         public const byte Summoning=1,Hovering=2,Attacking=3,Expiring=4,PoweringDown=5,Destroyed=6;
         /// <summary>The summon-in, power-down and breakup durations (s).</summary>
         public const float SummonIn=.45f,PowerDown=.42f,Breakup=1.6f,DeathMemory=6;
+        /// <summary>The expiry blink's lead (s before the expiry), and how close to its replicated expiry a drone may drop off the
+        /// list and still count as expiring (a guest's list runs a little ahead of its presentation clock; earlier, it was replaced).</summary>
+        public const float BlinkLead=.9f,ExpiryGrace=.35f;
+        private static bool Valid(float until)=>until>0&&!float.IsInfinity(until)&&!float.IsNaN(until);
         private int Find(int id){for(int i=0;i<drones.Length;i++)if(drones[i].Id==id)return i;return -1;}
         /// <summary>Whether minion `id` is a remembered drone (the toy soldier's death presentation then stands aside).</summary>
         public bool Known(int id)=>id>=0&&Find(id)>=0;
@@ -170,7 +177,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A Summon event for minion `id` at authority time `at` (its spawn: the summon-in and the 6 s life count from it).</summary>
         public void Summoned(int id,int owner,float at,Vector3 where)
         {
-            int i=Find(id);if(i<0){i=Free();if(i<0)return;drones[i]=new Drone{Id=id,Owner=owner,Known=true,Spawn=at,Seen=float.NaN,Gone=float.NaN,Dead=float.NaN,At=where+new Vector3(0,.6f,0),Yaw=0,LastAttack=-100,LastHit=-100,Health=1,BoltAt=-100};}
+            int i=Find(id);if(i<0){i=Free();if(i<0)return;drones[i]=new Drone{Id=id,Owner=owner,Known=true,Spawn=at,Seen=float.NaN,Gone=float.NaN,Dead=float.NaN,Until=float.NaN,At=where+new Vector3(0,.6f,0),Yaw=0,LastAttack=-100,LastHit=-100,Health=1,BoltAt=-100};}
             else if(!drones[i].Known||at<drones[i].Spawn){drones[i].Spawn=at;drones[i].Known=true;}
         }
         private int Free(){for(int i=0;i<drones.Length;i++)if(drones[i].Id<0)return i;int best=0;float old=float.MaxValue;for(int i=0;i<drones.Length;i++){float t=float.IsNaN(drones[i].Seen)?-1e9f:drones[i].Seen;if(t<old){old=t;best=i;}}return best;}
@@ -178,16 +185,34 @@ namespace ChipArena.UnityConversion
         public void Observe(in RoundsDroneInput d,float clock)
         {
             int i=Find(d.Id);
-            // First seen without its Summon event (a late join): no summon-in and no expiry blink (its life's start is unknown).
-            if(i<0){i=Free();if(i<0)return;drones[i]=new Drone{Id=d.Id,Known=false,Spawn=clock-SummonIn,Gone=float.NaN,Dead=float.NaN,LastAttack=-100,LastHit=-100,BoltAt=-100};}
+            // First seen without its Summon event (a late join): no summon-in; its expiry blink from the replicated until (none from an
+            // old host, whose frames carry no expiry: its life's start is unknown).
+            if(i<0){i=Free();if(i<0)return;drones[i]=new Drone{Id=d.Id,Known=false,Spawn=clock-SummonIn,Gone=float.NaN,Dead=float.NaN,Until=float.NaN,LastAttack=-100,LastHit=-100,BoltAt=-100};}
             ref var r=ref drones[i];r.Owner=d.Owner;r.Seen=clock;r.At=d.At;r.Velocity=d.Velocity;r.Yaw=d.Yaw;r.LastHit=d.LastHit;r.Health=d.Health;r.Accent=d.Accent;r.Gone=float.NaN;
+            if(Valid(d.Until))r.Until=d.Until;
             if(d.LastAttack>r.LastAttack+.01f){r.LastAttack=d.LastAttack;r.BoltAt=-100;}
         }
-        /// <summary>A death record for minion `id` (it was killed): its breakup from `at`.</summary>
-        public void Died(int id,float at,Vector3 where,float yaw)
-        {int i=Find(id);if(i<0)return;ref var r=ref drones[i];if(!float.IsNaN(r.Dead))return;r.Dead=at;r.DeadAt=where;r.DeadYaw=yaw;}
+        /// <summary>A death record for minion `id` (it was killed): its breakup from `at`. `owner` (the record's summoner seat, given
+        /// when that pilot holds Drone Nest; 0 unknown) and its `accent` make it a drone's breakup even when this client never saw
+        /// the drone alive (a late join, a killcam that starts after its summon).</summary>
+        public void Died(int id,float at,Vector3 where,float yaw,int owner=0,Vector3 accent=default)
+        {
+            int i=Find(id);
+            if(i<0){if(owner==0||id<0)return;i=Free();if(i<0)return;drones[i]=new Drone{Id=id,Owner=owner,Known=false,Spawn=at-SummonIn,Seen=at,Gone=float.NaN,Dead=float.NaN,Until=float.NaN,At=where,Accent=accent,LastAttack=-100,LastHit=-100,Health=0,BoltAt=-100};}
+            ref var r=ref drones[i];if(!float.IsNaN(r.Dead))return;r.Dead=at;r.DeadAt=where;r.DeadYaw=yaw;if(owner!=0)r.Owner=owner;
+        }
+        // When a drone powers down (the clock it starts from), NaN while it is not: from its replicated expiry once the clock passes
+        // it, or when it left the list within ExpiryGrace of it; from its last sight when it left earlier (replaced); without a
+        // replicated expiry (an old host), from its last sight as before.
+        private static float DownAt(in Drone r,float clock)
+        {
+            if(!float.IsNaN(r.Dead))return float.NaN;
+            if(float.IsNaN(r.Until))return r.Gone;
+            if(!float.IsNaN(r.Gone)&&r.Until-r.Gone>ExpiryGrace)return r.Gone;
+            return clock>=r.Until?r.Until:float.NaN;
+        }
         /// <summary>Ends a frame of observations: a remembered live drone not seen at `clock` (and with no death record) left without
-        /// dying: it expired or was replaced, and powers down from its last sight.</summary>
+        /// dying: it expired (it powers down from its replicated expiry) or was replaced (from its last sight).</summary>
         public void EndDrones(float clock)
         {
             for(int i=0;i<drones.Length;i++)
@@ -195,7 +220,7 @@ namespace ChipArena.UnityConversion
                 ref var r=ref drones[i];if(r.Id<0)continue;
                 if(float.IsNaN(r.Seen)){if(clock-r.Spawn>.5f&&float.IsNaN(r.Dead))r.Id=-1;continue;}
                 if(float.IsNaN(r.Dead)&&float.IsNaN(r.Gone)&&r.Seen<clock-1e-4f)r.Gone=r.Seen;
-                if(!float.IsNaN(r.Gone)&&clock-r.Gone>PowerDown+.5f&&float.IsNaN(r.Dead))r.Id=-1;
+                float down=DownAt(r,clock);if(!float.IsNaN(down)&&clock-down>PowerDown+.5f)r.Id=-1;
                 // A destroyed drone is remembered while its death record can still be in the replicated list (five seconds), so the
                 // toy soldier's death presentation never takes it over.
                 if(!float.IsNaN(r.Dead)&&clock-r.Dead>DeathMemory)r.Id=-1;
@@ -223,13 +248,16 @@ namespace ChipArena.UnityConversion
                 {
                     float age=clock-r.Spawn,scale=1;byte phase=Hovering;Vector3 flash=Vector3.Zero;float glow=1,bob=(float)Math.Sin(clock*9.5f+r.Id)*.035f;
                     if(age<SummonIn){phase=Summoning;float u=Math.Max(0,age/SummonIn);scale=.55f+.45f*BossMath.Smoother(u);glow=1+3*(1-u);}
-                    bool expiring=r.Known&&age>NativeRoundsLooks.DroneLife-.9f&&float.IsNaN(r.Gone);if(expiring)phase=Expiring;
-                    float gone=float.IsNaN(r.Gone)?-1:clock-r.Gone;if(gone>=0){phase=PoweringDown;float u=Math.Min(1,gone/PowerDown);scale=1-BossMath.Smooth(u);bob-=.12f*u;if(scale<.02f){Fizzle(r,gone,seed,fx);shape.Phase=phase;shape.Body=r.At;if(DroneCount<DroneShapes.Length)DroneShapes[DroneCount++]=shape;continue;}}
+                    // Its expiry: the replicated until, else (an old host) the 6 s from its Summon event; the blink keeps the life's clock.
+                    bool until=!float.IsNaN(r.Until);float end=until?r.Until:r.Known?r.Spawn+NativeRoundsLooks.DroneLife:float.NaN,life=until?clock-(r.Until-NativeRoundsLooks.DroneLife):age;
+                    float downAt=DownAt(r,clock),gone=float.IsNaN(downAt)?-1:clock-downAt;
+                    bool expiring=!float.IsNaN(end)&&(until?clock>end-BlinkLead:age>NativeRoundsLooks.DroneLife-BlinkLead)&&gone<0;if(expiring)phase=Expiring;
+                    if(gone>=0){phase=PoweringDown;float u=Math.Min(1,gone/PowerDown);scale=1-BossMath.Smooth(u);bob-=.12f*u;if(scale<.02f){Fizzle(r,gone,downAt,seed,fx);shape.Phase=phase;shape.Body=r.At;if(DroneCount<DroneShapes.Length)DroneShapes[DroneCount++]=shape;continue;}}
                     float atk=clock-r.LastAttack;bool attacking=atk>=0&&atk<NativeRoundsLooks.DroneWindup+NativeRoundsLooks.DroneRecover&&gone<0;if(attacking&&phase==Hovering)phase=Attacking;
                     float charge=attacking&&atk<NativeRoundsLooks.DroneWindup?BossMath.Smooth(atk/NativeRoundsLooks.DroneWindup):0,recoil=attacking&&atk>=NativeRoundsLooks.DroneWindup?Math.Max(0,1-(atk-NativeRoundsLooks.DroneWindup)/.2f):0;
                     float hit=clock-r.LastHit;var jolt=hit>=0&&hit<.18f?new Vector3(H(seed,(int)(clock*60))-.5f,H(seed,(int)(clock*60)+7)-.5f,H(seed,(int)(clock*60)+13)-.5f)*(.06f*(1-hit/.18f)):Vector3.Zero;
                     var body=r.At+new Vector3(0,.22f+bob,0)+jolt;shape.Body=body;
-                    DroneModel(body,r.Yaw,r.Velocity,clock,scale,glow,charge,recoil,expiring?age:-1,gone,r.Accent,seed,fx,lit,low);
+                    DroneModel(body,r.Yaw,r.Velocity,clock,scale,glow,charge,recoil,expiring?life:-1,gone,r.Accent,seed,fx,lit,low);
                     if(age<SummonIn)SummonFx(r,age,body,seed,fx);
                     if(hit>=0&&hit<.2f)fx.SparkBurst(clock,body,Vector3.UnitY,1.6f,3.2f,8,.3f,r.LastHit,.02f,seed,(int)(r.LastHit*60)&0xffff,1.1f,.014f,1.4f,true,r.At.Y-.6f);
                     // The bolt: a laser streak from the muzzle to the beam's target over .07 s, then sparks where it lands.
@@ -292,16 +320,18 @@ namespace ChipArena.UnityConversion
             fx.SparkBurst(age+r.Spawn,new Vector3(body.X,floor+.05f,body.Z),Vector3.UnitY,1.4f,2.4f,10,.4f,r.Spawn,.05f,seed,77,.8f,.012f,1.2f,true,floor);
         }
         // The power-down's last moment: a small implosion flash and a puff of sparks where it hovered.
-        private static void Fizzle(in Drone r,float gone,uint seed,NativeBossVfx fx)
+        private static void Fizzle(in Drone r,float gone,float downAt,uint seed,NativeBossVfx fx)
         {
             var at=r.At+new Vector3(0,.12f,0);float u=(gone-PowerDown)/.12f;if(u<1)fx.Glow(at,(r.Accent*2+Vector3.One)*(2*(1-Math.Max(0,u))),.35f,NativeBossVfx.Core);
-            fx.SparkBurst(gone+r.Gone,at,Vector3.UnitY,1.8f,2,8,.35f,r.Gone+PowerDown*.8f,.05f,seed,55,.8f,.012f,1.2f,true,r.At.Y-.6f);
+            fx.SparkBurst(gone+downAt,at,Vector3.UnitY,1.8f,2,8,.35f,downAt+PowerDown*.8f,.05f,seed,55,.8f,.012f,1.2f,true,r.At.Y-.6f);
         }
         // Destroyed: a flash and a small fireball, sparks, smoke, and the hull, arms and rotors as tumbling lit pieces that bounce.
         private static void Breakage(in Drone r,float a,uint seed,NativeBossVfx fx)
         {
             var at=r.DeadAt+new Vector3(0,.22f,0);float floor=r.DeadAt.Y-.6f;float t=a+r.Dead;
             if(a<.14f)fx.Glow(at,new Vector3(4,3,2.2f)*(1-a/.14f),.9f,NativeBossVfx.Core);
+            // Its power cell's EMP in the owner's accent: a ring snapping out round the burst and an accent flash.
+            if(a<.3f){float u=a/.3f,fade=1-BossMath.Smooth(u);var c=r.Accent*2.4f+new Vector3(.3f,.3f,.3f);Ring(fx,at,.12f+.9f*BossMath.Smooth(u*1.4f),c*(1.6f*fade),.03f*(1-u*.5f),fx.Low?10:18,a*3);if(a<.1f)fx.Glow(at,c*(2*(1-a/.1f)),.6f,NativeBossVfx.Core);}
             if(a<.6f)for(int i=0;i<fx.Scale(7);i++){float u=a/.6f;var d=NativeBossVfx.Cone(Vector3.UnitY,1.6f,H(seed,300+i),H(seed,310+i),H(seed,320+i));fx.Fire(at+d*(.25f*u+.05f),new Vector3(3,1.6f,.5f),.8f*(1-u),.28f+.3f*u,u,300+i,floor);}
             fx.SparkBurst(t,at,Vector3.UnitY,1.8f,6,22,.6f,r.Dead,.03f,seed,400,1.3f,.018f,.9f,true,floor);
             fx.SmokeBurst(t,at,new Vector3(0,.5f,0),.25f,.6f,6,1.4f,.25f,.9f,new Vector3(.06f,.06f,.065f),.4f,r.Dead+.05f,.2f,seed,500,glow:.3f);

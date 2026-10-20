@@ -39,11 +39,12 @@ namespace ChipArena.UnityConversion
             last=float.IsNaN(last)?clock:Math.Max(last,clock);Clock=clock;quality=double.IsNaN(effects)?1:Math.Max(0,Math.Min(1,effects));low=lowTier;
             PilotCount=BodyCount=0;Shots.Count=0;
         }
-        /// <summary>A pilot this frame: its seat, presented body centre, aim yaw (rad), alive, and the looks its seat chips give.</summary>
-        public void Pilot(int seat,Vector3 body,float aimYaw,bool alive,int satellites,RoundsProc procs,int stasis,float frozenUntil)
+        /// <summary>A pilot this frame: its seat, presented body centre, aim yaw (rad), alive, the looks its seat chips give, and its
+        /// replicated frozenUntil and shieldUntil (authority s; shieldUntil 0 when the frame carries none: an old host).</summary>
+        public void Pilot(int seat,Vector3 body,float aimYaw,bool alive,int satellites,RoundsProc procs,int stasis,float frozenUntil,float shieldUntil=0)
         {
             if(PilotCount<Pilots.Length)Pilots[PilotCount++]=new RoundsPilotInput{Seat=seat,Satellites=satellites,Body=body,AimYaw=aimYaw,Alive=alive};
-            if(BodyCount<Bodies.Length)Bodies[BodyCount++]=new RoundsBody{Seat=seat,Body=body,Alive=alive,Procs=procs,Stasis=stasis,FrozenUntil=frozenUntil};
+            if(BodyCount<Bodies.Length)Bodies[BodyCount++]=new RoundsBody{Seat=seat,Body=body,Alive=alive,Procs=procs,Stasis=stasis,FrozenUntil=frozenUntil,ShieldUntil=shieldUntil};
         }
         /// <summary>A stand-in body (the DEV preview's dummies) for the procs only.</summary>
         public void Dummy(int seat,Vector3 body){if(BodyCount<Bodies.Length)Bodies[BodyCount++]=new RoundsBody{Seat=seat,Body=body,Alive=true};}
@@ -64,7 +65,8 @@ namespace ChipArena.UnityConversion
     /// inputs for one entry on a loop round the local pilot, fed through the same NativeRoundsFx the live game uses, so it shows
     /// exactly what a match would. Entries: each field look (its authority radius and life, born every loop ahead of the pilot),
     /// each satellite look (on the pilot, firing a volley's two homing shots every .8 s), the Drone Nest cycle (three drones: one
-    /// fights, one expires at its 6 s, one is shot down), and the procs and buffs in turn. The offline renders use these too.
+    /// fights, one expires at its 6 s, one is shot down), and the procs and buffs in turn (with both swaps, and the authority's
+    /// protection ends standing in for the pilot's shieldUntil). The offline renders use these too.
     /// </summary>
     public static class NativeRoundsPreview
     {
@@ -89,7 +91,9 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>The loop length of an entry (s).</summary>
-        public static float Loop(int e){int f=NativeRoundsLooks.Looks.Length;if(e<f){FieldRule(e,out _,out float life);return life+NativeRoundsFields.Fade(NativeRoundsLooks.Looks[e].Style)+1;}e-=f;return e<4?4:e==4?8.5f:14;}
+        public static float Loop(int e){int f=NativeRoundsLooks.Looks.Length;if(e<f){FieldRule(e,out _,out float life);return life+NativeRoundsFields.Fade(NativeRoundsLooks.Looks[e].Style)+1;}e-=f;return e<4?4:e==4?8.5f:Procs*1.4f+1.2f;}
+        // The procs entry's slots, 1.4 s apart.
+        private const int Procs=12;
         private const int Base=1<<29;
         /// <summary>
         /// Feeds entry `e` at time `t` (the presentation clock) for a pilot of seat `seat` whose body is at `body`, facing `yaw`
@@ -136,19 +140,22 @@ namespace ChipArena.UnityConversion
                     int id=Base+(int)k*8+d;float spawn=t0+.3f+d*.3f,a=t-spawn;var home=body+fwd*2.2f+right*((d-1)*1.6f)+new Vector3(0,-.865f+.6f+.3f,0);
                     if(a<0)continue;if(a<.02f||t-spawn<1/30f)fx.Units.Summoned(id,seat,spawn,home-new Vector3(0,.6f,0));
                     float killAt=3.2f;bool dead=d==2&&a>=killAt,expired=d==1&&a>=NativeRoundsLooks.DroneLife;
-                    if(dead){fx.Units.Summoned(id,seat,spawn,home);fx.Units.Died(id,spawn+killAt,home,yaw);continue;}
+                    if(dead){fx.Units.Summoned(id,seat,spawn,home);fx.Units.Died(id,spawn+killAt,home,yaw,seat,accent);continue;}
                     if(expired||a>=NativeRoundsLooks.DroneLife+.6f)continue;
                     var to=dummy-home;to.Y=0;float dyaw=(float)Math.Atan2(to.X,to.Z);float wander=(float)Math.Sin(a*1.3f+d)*.4f;var at=home+right*wander;
                     float lastAttack=a<1?-100:spawn+1+(float)Math.Floor((a-1)/1.1f)*1.1f;
                     fx.Units.Summoned(id,seat,spawn,home);
-                    fx.Units.Observe(new RoundsDroneInput{Id=id,Owner=seat,At=at,Velocity=right*((float)Math.Cos(a*1.3f+d)*.52f),Yaw=dyaw,LastAttack=lastAttack,LastHit=d==2&&a>2.4f?spawn+2.4f+(float)Math.Floor((a-2.4f)/.4f)*.4f:-100,Health=1,Accent=accent},t);
+                    fx.Units.Observe(new RoundsDroneInput{Id=id,Owner=seat,At=at,Velocity=right*((float)Math.Cos(a*1.3f+d)*.52f),Yaw=dyaw,LastAttack=lastAttack,LastHit=d==2&&a>2.4f?spawn+2.4f+(float)Math.Floor((a-2.4f)/.4f)*.4f:-100,Health=1,Accent=accent,Until=spawn+NativeRoundsLooks.DroneLife},t);
                     float strike=lastAttack+NativeRoundsLooks.DroneWindup;if(t>=strike&&t<strike+.22f)fx.Units.Beam(new RoundsBeamInput{From=at+new Vector3(0,NativeRoundsLooks.DroneMuzzle,0),To=dummy+new Vector3(0,.35f,0),Until=strike+.22f},t);
                 }
                 return;
             }
-            // Procs in turn, one every 1.4 s, on the pilot and a dummy ahead of it.
+            // Procs in turn, one every 1.4 s, on the pilot and a dummy ahead of it. The preview stands in for the authority's protection
+            // (the pilot's shieldUntil: the phase's .6 s from its block, the emergency blink's 1.2 s), so its shells end as a match's do.
             var dm=body+fwd*4;fx.Dummy(Base-2,dm);var all=RoundsProc.Phase|RoundsProc.Packet|RoundsProc.Grapple|RoundsProc.Tractor|RoundsProc.Stasis|RoundsProc.Execute|RoundsProc.Reclaim|RoundsProc.Transit|RoundsProc.GuardPulse|RoundsProc.ArcFault|RoundsProc.Fragment|RoundsProc.Thorns|RoundsProc.BlockHeal|RoundsProc.Regen|RoundsProc.ReloadHeal|RoundsProc.Vent;
-            for(int s=0;s<10;s++)
+            float shield=0;if(t>=t0+.3f)shield=t0+.3f+NativeRoundsProcs.PhaseFallback;if(t>=t0+.3f+4*1.4f)shield=t0+.3f+4*1.4f+NativeRoundsProcs.ReclaimFallback;
+            for(int i=0;i<fx.BodyCount;i++)if(fx.Bodies[i].Seat==seat)fx.Bodies[i].ShieldUntil=shield;
+            for(int s=0;s<Procs;s++)
             {
                 float at=t0+.3f+s*1.4f;if(t<at)break;int id=Base+(int)k*32+s;var e2=new ArenaEvent{Id=id,Source=seat,Target=Base-2,Time=at,Position=new V3(dm.X,dm.Y+.3f,dm.Z),From=new V3(body.X,body.Y,body.Z)};
                 switch(s)
@@ -162,6 +169,9 @@ namespace ChipArena.UnityConversion
                     case 6:e2.Kind=EventKind.Explosion;e2.Detail="static";e2.Radius=3;break;
                     case 7:e2.Kind=EventKind.Explosion;e2.Detail="shrapnel";e2.Radius=1.8f;break;
                     case 8:e2.Kind=EventKind.Hit;e2.Detail="thorns";e2.Target=Base-2;e2.Amount=4;break;
+                    // The swaps (Position Exchange, then Dimensional Exchange): drawn as though the pilot and the dummy had just traded
+                    // places (the pilot's old centre is where the dummy stands).
+                    case 10:case 11:e2.Kind=EventKind.Teleport;e2.Detail="swap";e2.From=new V3(dm.X,dm.Y,dm.Z);e2.Position=new V3(body.X,body.Y,body.Z);fx.Procs.Event(e2,s==10?RoundsProc.Swap:RoundsProc.Shuffle,false,false,0,floor);continue;
                     default:e2.Kind=EventKind.Teleport;e2.From=new V3(body.X,body.Y,body.Z);e2.Position=new V3(dm.X,dm.Y,dm.Z);fx.Procs.Event(e2,RoundsProc.Transit,false,false,0,floor);continue;
                 }
                 fx.Procs.Event(e2,all&~(RoundsProc.Reclaim|RoundsProc.Transit|RoundsProc.Packet|RoundsProc.Grapple|RoundsProc.Tractor|RoundsProc.Execute),true,false,s==3?(int)k%3:0,floor);
