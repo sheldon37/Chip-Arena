@@ -22,7 +22,8 @@ namespace ChipArena.UnityConversion
     ///  - The state (Core NativeStationState) from the view Astra's replicated fields fill (<see cref="NativeStationLive"/>),
     ///    or from the DEV preview's synthetic view (NativeStationPreview, DEV panel · Camera · "Station hazards preview").
     ///  - Practical lights: the eight (four on the low tier) that matter to the camera (Core NativeExpeditionStationLights)
-    ///    through NativeLighting.PickedLights with their beams (the express's headlight, the beacons).
+    ///    through NativeLighting.PickedLights with their beams (the express's headlight, the beacons). They light the bodies
+    ///    too (NativeLighting.ActorLights: the zombies, the pilots, the station's kinds), as Ward Zero's and the Ironworks' do.
     ///  - Atmosphere and the hazards' telegraphs (Core NativeExpeditionStationFx) through one NativeFxDraw: a solid and an
     ///    effects batch, scaled by the effects quality and the low tier; the telegraphs are never thinned.
     /// Nothing here writes sim data, collides or enters the network frame. Allocation free after the one-time builds.
@@ -64,6 +65,11 @@ namespace ChipArena.UnityConversion
             if(NativeArenaDressing.Nudged.Count>0)foreach(var pair in NativeArenaDressing.Nudged)if(pair.Key!=null&&stationIndex.TryGetValue(pair.Key,out int k)){stationNudge[k]=pair.Value;stationMoved[k]=true;}
             var eye=WorldEye;StationInstances=StationDraws=0;DrawStationKit(arena,now,eye);
             if(eye!=null){var c=eye.transform.position;float dt=stationLast<0?0:Mathf.Clamp(now-stationLast,0,.1f);stationLights.Update(c.x,c.y,c.z,stationState,now,dt,LowGraphics?NativeExpeditionStationKit.LowSlots:NativeExpeditionStationKit.Slots);NativeLighting.PickedLights(stationLights.Pos,stationLights.Rgb,stationLights.Beam);}
+            // The bodies take the slots as the blocks do (ZombieLit and SourceLit add them, wrapped, only while _ArenaActorLit is
+            // on). Under the roofs and the vault's glazing the look's moon key is in shadow and its ambient is near zero, so a
+            // zombie lit by Unity's lights alone drew near-black beside a floor its lamps light (owner, 2026-10-20). Apply turns
+            // it off again for every other map; an entrance or the draft keeps it off.
+            NativeLighting.ActorLights(true);
             DrawStationFx(now,eye,view);stationLast=now;
         }
         private bool EnsureStation()
