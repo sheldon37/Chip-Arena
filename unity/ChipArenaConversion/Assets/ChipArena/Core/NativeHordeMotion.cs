@@ -174,6 +174,9 @@ namespace ChipArena.UnityConversion
             // ---- alert ----
             // (A scaled kind's rig speeds are its own over its scale: the Hulk is walking at half the speed a pilot-sized one is.)
             float v=Speed,ms=1/NativeHordeKinds.Scale[kind],moving=Sm((v-.12f*ms)/(.5f*ms));
+            // (The upright kinds' stand-to-move blend changes at most MoveSlew a second: an authority stagger stops the body dead and
+            // lets it go at full speed in one tick, and the take crossed from standing to the chase in two or three frames there.)
+            if(!heavy&&!quad){float u=Clamp01((v-.12f*ms)/(.5f*ms)),most=MoveSlew*lastDt;moveArg=stepFresh?u:moveArg+Math.Max(-most,Math.Min(most,u-moveArg));moving=Sm(moveArg);}
             float alert=0,lookYaw=0,lookPitch=0;
             if(f.HasTarget)
             {
@@ -185,7 +188,7 @@ namespace ChipArena.UnityConversion
             }
             RoamPrepare(f,moving,lookYaw,lookPitch);
             if(quad){CrawlerPose(f,p,defs[NativeHordeKinds.Crawler],v,RunBlend(NativeHordeKinds.Crawler,v),moving,alert,lookYaw,cock,swing,follow,settle,attackW,react,age);return;}
-            float run=heavy?RunBlend(kind,v):runNow,hurt=1-Clamp01(f.Health*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[NativeHordeKinds.Base(kind)];
+            float run=heavy?RunBlend(kind,v):runNow,hurt=1-Clamp01(hurtShown*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[NativeHordeKinds.Base(kind)];
             // ---- the capture: the walk and run takes at the stride's phase, the idle (the door's wake while it waits) ----
             // (A take played faster than its capture swings its trunk and arms less about its cycle's mean: NativeHordeLoco.Calm.)
             float cv=Math.Max(gaitSpeed,.8f*Speed);
@@ -234,8 +237,9 @@ namespace ChipArena.UnityConversion
             // ---- a town zombie's scream on its alert (Core/NativeHordeRoamMotion) ----
             RoamUpper(row,moving);
             // ---- the authority's stagger: a captured knockback reel over the trunk and arms ----
-            float reel=react!=null?react.Reel(t):float.NaN;
-            if(!float.IsNaN(reel)){int kc=NativeZombieMotion.Knock(seed^(uint)(id*31));NativeZombieClips.Sample(kc,Math.Min(1.15f,reel*.9f),rowA);Upper(row,rowA,Sm(reel/.12f)*(1-Sm((reel-.75f)/.45f))*.85f,.5f,.5f);}
+            // (One continuous stumble through a string of staggers, the take at its capture's own pace: NativeHordeReact.Stumble.)
+            float knockAt=0,reel=react!=null?react.Stumble(t,out knockAt):0;
+            if(reel>0){int kc=NativeZombieMotion.Knock(seed^(uint)(id*31));NativeZombieClips.Sample(kc,knockAt,rowA);Upper(row,rowA,reel*.85f,.5f,.5f);}
             ArmReach(row,.44f);NativeZombieClips.Pose(row,p,true,ShoulderInset(kind,f.Look));ApplyArmLayers(p);
             // The capture's legs (before the feet are planted): their swing lift, turn and knee direction.
             p.World();
@@ -448,7 +452,9 @@ namespace ChipArena.UnityConversion
                 Forward=Dir(Yaw);Right=new Vector2(Forward.Y,-Forward.X);
                 for(int i=0;i<4;i++){feet[i]=default;feet[i].W=Home(i,new Vector2(f.Root.X,f.Root.Z),d);feet[i].Turn=Yaw;FootWorld[i]=new Vector3(feet[i].W.X,f.Ground,feet[i].W.Y);FootAir[i]=false;if(heavy)feet[i].Cycle=-1;if(i<2){overReach[i]=false;heelLift[i]=0;}}
             }
-            time=f.Time;dt=Math.Max(0,Math.Min(MaxDt,dt));lastDt=dt;roamTake=RoamTakeOf(f);stepFresh=fresh;
+            time=f.Time;dt=Math.Max(0,Math.Min(MaxDt,dt));lastDt=dt;
+            // (The health the sag reads, eased: Core/NativeHordeLife.)
+            if(fresh)hurtEase.Reset(Clamp01(f.Health));hurtShown=Clamp01(hurtEase.Step(Clamp01(f.Health),HurtHalfLife,dt));roamTake=RoamTakeOf(f);stepFresh=fresh;
             // The facing turns quickly toward the authority's yaw (which snaps), faster while winding up an attack, so the strike faces
             // where the authority aims it.
             bool winding=!float.IsNaN(f.AttackAge)&&f.AttackAge>=0&&f.AttackAge<f.Strike;
@@ -562,10 +568,13 @@ namespace ChipArena.UnityConversion
         /// <summary>A point in the rig's source frame back in the Unity world.</summary>
         public Vector3 ToWorld(Vector3 l,Vector3 at)=>new Vector3(at.X-l.X*Right.X+l.Z*Forward.X,at.Y+l.Y,at.Z-l.X*Right.Y+l.Z*Forward.Y);
         // The Siren's twitches: a sharp head jerk at hashed times about every 2-4 s, settling back.
+        /// <summary>How long the head's crooked twitch takes to come in (s).</summary>
+        public const float TwitchRise=.14f;
         private float Twitch(float t)
         {
             float period=2.2f+1.8f*NativeHordeKinds.Hash(seed,80),k=(t+period*NativeHordeKinds.Hash(seed,81))/period;int n=(int)Math.Floor(k);float u=(k-n)*period;
-            float amp=(float)(NativeGoreRules.Hash01(seed,n,82)-.5)*.9f;return u<.06f?amp*u/.06f:u<.5f?amp*(1-Sm((u-.06f)/.44f)):0;
+            // (Eased in over .14 s: the old straight 60 ms ramp started the head at full speed, a twitch on top of the hits'.)
+            float amp=(float)(NativeGoreRules.Hash01(seed,n,82)-.5)*.9f;return u<TwitchRise?amp*Sm(u/TwitchRise):u<TwitchRise+.46f?amp*(1-Sm((u-TwitchRise)/.46f)):0;
         }
 
         // ================================================================================================================
@@ -715,6 +724,11 @@ namespace ChipArena.UnityConversion
         private readonly float[] heelLift=new float[2];private readonly Vector3[] heelRise=new Vector3[2];private readonly bool[] overReach=new bool[2];private bool setOff;
         /// <summary>The half-life (s) of the speed the cycle and the blends read, eased off the presented root's velocity.</summary>
         public const float SpeedHalfLife=.08f;private BossSpring speedEase;
+        /// <summary>The most the take's stand-to-move blend changes a second (it crosses in a third of a second at the least).</summary>
+        public const float MoveSlew=3f;private float moveArg;
+        /// <summary>The half-life (s) of the health the hurt sag reads (the head's droop, the hunch, the loose head, the dead arm and
+        /// the limp): a hit takes a pistol's quarter of a shambler's health in one frame, and the sag stepped with it.</summary>
+        public const float HurtHalfLife=.2f;private BossSpring hurtEase;private float hurtShown=1;
         /// <summary>The half-lives (s) of the hips easing down into a long stride and back up out of it.</summary>
         public const float SinkDown=.045f,SinkUp=.1f;private BossSpring sinkEase;
         /// <summary>

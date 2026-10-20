@@ -2,6 +2,8 @@
 
 2026-10-20 Astra PvP killcam mode fix (`codex/pvp-killcam-mode`, implemented): saved Expedition preferences could suppress PvP replay recording. Replay now follows the active match/session binding; 113 killcam checks pass. CI/build publication pending.
 
+2026-10-20 Claude zombies twitching toward the pilot (`claude/zombie-twitch-fix`, merged into shared; presentation only). Under pistol fire every hit staggered a shambler and restarted its knockback reel at 2x pace. Each restart also flipped the take in 2–3 frames, the hurt sag stepped, and the grid route's zig-zag swung the facing. Now the staggers play as one stumble and the blends ease; head p95 23 → 7 rad/s, max 65 → 10. run5b passes; Unity/Windows unrun. Astra: grid steering and the stagger's instant restart (DEV_LOG). Next: owner review.
+
 2026-10-20 Claude zombie wounds on the body (`claude/zombie-wound-fix`, merged into shared; presentation only): wounds were placed on joint capsules, not the drawn model (the Hulk's head capsule is 0.43 m against a 0.24 m head), and their blood runs lay across the shot, so pieces floated up to 55 cm off. They now sit where the shot enters the drawn model, fitted to it, with runs traced down the surface: worst 3.5 cm, centres on the part, all 16 kinds. Unity/Windows unrun. Next: owner review.
 
 2026-10-20 Claude zombies near-black at Central Station (`claude/zombie-black-fix`, merged into shared; presentation only): the station never turned actor lighting on, so bodies had only the shadowed moon key and an ambient of about .001 while its lamps lit only the blocks. It now does, as Ward Zero and the Ironworks do. `--zombie-light` emulates and holds it. Unity/Windows unrun. Next: owner review in the Windows build.
