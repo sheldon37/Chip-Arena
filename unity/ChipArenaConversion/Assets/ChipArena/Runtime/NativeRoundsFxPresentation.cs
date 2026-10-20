@@ -47,9 +47,10 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         // The ROUNDS adaptation packs' bespoke visuals (Core NativeRoundsFx): the pack fields' surfaces, distortion and particles,
-        // Escort Array's (and its siblings') satellites and homing shots, Drone Nest's combat drones, and the procs and buffs. Every
-        // input is replicated state (seat chips, chip fields, toy minions and their death records, events, shots, beams), so host,
-        // guests and the killcam draw the same; the DEV preview feeds stand-ins through the same frame. Queued into the shared
+        // Escort Array's (and its siblings') satellites and homing shots, Drone Nest's combat drones, the swaps, and the procs and
+        // buffs. Every input is replicated state (seat chips, chip fields, toy minions with their expiry and their death records with
+        // their owner, events including the swap event, the pilots' shieldUntil and frozenUntil, shots, beams), so host, guests,
+        // late joiners and the killcam draw the same; the DEV preview feeds stand-ins through the same frame. Queued into the shared
         // effects renderer in RenderGlow (before it submits); the field surfaces and the distortion are their own two draws.
         private NativeRoundsFx roundsFx;private NativeRoundsSurfaceDraw roundsGround,roundsWarp;private bool roundsGroundFailed,roundsWarpFailed;
         private NativeArena roundsArena;private int roundsGeneration=-1,roundsEvent;
@@ -58,7 +59,10 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,(string hex,NVector rgb)> roundsAccent=new Dictionary<int,(string,NVector)>();
         /// <summary>Whether Drone Nest draws minion `id` (the toy soldier's rig, break and hit puffs then stand aside).</summary>
         internal static bool RoundsDrone(NativeMinion m)=>m!=null&&m.Pve==null&&m.Kind=="toy"&&NativeRoundsLooks.Drone(m.Owner?.Seat.chips);
-        internal bool RoundsDroneDeath(int id)=>roundsFx!=null&&roundsFx.Units.Known(id);
+        // Whether Drone Nest draws summon death record `d`: a toy's, of a drone this client saw or whose record names a Drone Nest
+        // holder as its owner (a late joiner, a killcam that starts after the summon).
+        internal bool RoundsDroneDeath(NativeArena arena,NativeDeath d)=>d!=null&&d.model=="summon-toy"&&(roundsFx!=null&&roundsFx.Units.Known(d.id)||RoundsDroneOwner(arena,d.owner)!=null);
+        private static NativePilot RoundsDroneOwner(NativeArena arena,int seat){if(seat==0||arena==null)return null;var p=RoundsPilot(arena,seat);return p!=null&&NativeRoundsLooks.Drone(p.Seat.chips)?p:null;}
         private void ClearRoundsFx(){roundsFx?.Clear();roundsFloors.Clear();roundsEvent=0;roundsArena=null;roundsGeneration=-1;}
         private void DisposeRoundsFx(){roundsGround?.Dispose();roundsGround=null;roundsWarp?.Dispose();roundsWarp=null;}
         private float RoundsFloor(int key,Vector3 at)
@@ -117,15 +121,16 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<arena.Pilots.Count;i++)
             {
                 var p=arena.Pilots[i];if(p?.Body==null)continue;var chips=p.Seat.chips;int sat=NativeRoundsLooks.SatelliteLook(chips);var procs=NativeRoundsLooks.Procs(chips);shots|=sat>=0||(procs&RoundsProc.LastRound)!=0;
-                fx.Pilot(p.Seat.id,RoundsVec(p.Body.transform.position),p.Yaw*Mathf.Deg2Rad,p.Hp>0&&p.Seat.connected,sat,procs,NativeRoundsLooks.StasisLook(chips),p.FrozenUntil);
+                fx.Pilot(p.Seat.id,RoundsVec(p.Body.transform.position),p.Yaw*Mathf.Deg2Rad,p.Hp>0&&p.Seat.connected,sat,procs,NativeRoundsLooks.StasisLook(chips),p.FrozenUntil,p.ShieldUntil);
             }
-            // Drone Nest's toys, their death records and their shot beams.
+            // Drone Nest's toys (with their replicated expiry: a replica stores an unknown one as infinity), their death records (with
+            // their owner: 0 from an old host) and their shot beams.
             for(int i=0;i<arena.Minions.Count;i++)
             {
                 var m=arena.Minions[i];if(!RoundsDrone(m)||m.Hp<=0||m.Body==null)continue;var vel=arena.Replica?m.NetworkVelocity:m.Body.linearVelocity;
-                fx.Units.Observe(new RoundsDroneInput{Id=m.Id,Owner=m.Owner.Seat.id,At=RoundsVec(m.Body.transform.position),Velocity=RoundsVec(vel),Yaw=m.Yaw*Mathf.Deg2Rad,LastAttack=m.LastAttack,LastHit=m.LastHitAt,Health=m.MaxHp>0?m.Hp/m.MaxHp:1,Accent=RoundsAccent(m.Owner.Seat)},now);
+                fx.Units.Observe(new RoundsDroneInput{Id=m.Id,Owner=m.Owner.Seat.id,At=RoundsVec(m.Body.transform.position),Velocity=RoundsVec(vel),Yaw=m.Yaw*Mathf.Deg2Rad,LastAttack=m.LastAttack,LastHit=m.LastHitAt,Health=m.MaxHp>0?m.Hp/m.MaxHp:1,Accent=RoundsAccent(m.Owner.Seat),Until=float.IsInfinity(m.Until)?0:m.Until},now);
             }
-            for(int i=0;i<arena.MinionDeaths.Count;i++){var d=arena.MinionDeaths[i];if(d.model=="summon-toy")fx.Units.Died(d.id,d.at,RoundsVec(d.position),d.yaw*Mathf.Deg2Rad);}
+            for(int i=0;i<arena.MinionDeaths.Count;i++){var d=arena.MinionDeaths[i];if(d.model!="summon-toy")continue;var owner=RoundsDroneOwner(arena,d.owner);fx.Units.Died(d.id,d.at,RoundsVec(d.position),d.yaw*Mathf.Deg2Rad,owner?.Seat.id??0,owner!=null?RoundsAccent(owner.Seat):default);}
             for(int i=0;i<arena.AbilityEffects.Count;i++){var b=arena.AbilityEffects[i];if(b.Beam&&b.Element==0&&b.Radius<.2f)fx.Units.Beam(new RoundsBeamInput{From=RoundsVec(b.From),To=RoundsVec(b.Position),Until=b.Until},now);}
             // Shots at their drawn positions: every one for the slow-time echoes and the gravity pull; homing shots (the satellites'
             // flashes and trails) and Final Cartridge's last round (a holder's shot first seen with its magazine empty).

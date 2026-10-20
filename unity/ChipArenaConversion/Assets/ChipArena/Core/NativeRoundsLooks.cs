@@ -12,7 +12,8 @@ namespace ChipArena.UnityConversion
     public enum RoundsProc
     {
         None=0,Phase=1,Packet=2,Grapple=4,Tractor=8,Stasis=16,Execute=32,LastRound=64,Reclaim=128,Transit=256,
-        GuardPulse=512,ChargePulse=1024,ArcFault=2048,Fragment=4096,Thorns=8192,BlockHeal=16384,Regen=32768,ReloadHeal=65536,Vent=131072
+        GuardPulse=512,ChargePulse=1024,ArcFault=2048,Fragment=4096,Thorns=8192,BlockHeal=16384,Regen=32768,ReloadHeal=65536,Vent=131072,
+        Swap=262144,Shuffle=524288
     }
 
     /// <summary>One field look: its family, the pack chip it belongs to and its palette (linear: hot, core, cool, dark; and the
@@ -129,9 +130,11 @@ namespace ChipArena.UnityConversion
             ("rounds-vecs:consume",RoundsProc.BlockHeal),("rounds-arcana:the-lovers",RoundsProc.BlockHeal),("rounds-keys:crimson-potion",RoundsProc.BlockHeal),("rounds-cpc:healing-block",RoundsProc.BlockHeal),
             ("rounds-rsc:regenerator",RoundsProc.Regen),("rounds-keys:giants-gauntlet",RoundsProc.Regen),("rounds-keys:iron-heart",RoundsProc.Regen),("rounds-cpc:nano-machines",RoundsProc.Regen),("rounds-cpc:red-velvet-cake",RoundsProc.Regen),
             ("rounds-keys:mending-reload",RoundsProc.ReloadHeal),
+            // The swap-shop aliases: Position Exchange and Dimensional Exchange (their swap event, NativeRoundsProcs).
+            ("rounds-vecs:capture",RoundsProc.Swap),("rounds-wwc:dimensional-shuffle",RoundsProc.Shuffle),
         };
         // The vanilla chip a proc look's mechanic belongs to: holding it keeps the vanilla look (the aliases exclude each other).
-        private static string VanillaOf(RoundsProc p)=>p==RoundsProc.Packet?"pickpocket":p==RoundsProc.Stasis?"freezer-block":p==RoundsProc.Grapple||p==RoundsProc.Tractor?"grappling-shot":p==RoundsProc.Reclaim?"second-chance":p==RoundsProc.Transit?"wormhole":p==RoundsProc.Vent?"panic-button":null;
+        private static string VanillaOf(RoundsProc p)=>p==RoundsProc.Packet?"pickpocket":p==RoundsProc.Stasis?"freezer-block":p==RoundsProc.Grapple||p==RoundsProc.Tractor?"grappling-shot":p==RoundsProc.Reclaim?"second-chance":p==RoundsProc.Transit?"wormhole":p==RoundsProc.Vent?"panic-button":p==RoundsProc.Swap||p==RoundsProc.Shuffle?"swap-shop":null;
         /// <summary>The pack proc looks of a pilot holding `chips` (no allocation).</summary>
         public static RoundsProc Procs(IReadOnlyDictionary<string,int> chips)
         {

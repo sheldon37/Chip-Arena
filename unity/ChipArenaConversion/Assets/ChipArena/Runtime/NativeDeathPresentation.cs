@@ -214,7 +214,7 @@ namespace ChipArena.UnityConversion
             // A hazard gib (a smash or a saw's split, NativeSmashPresentation.cs) plays whatever the death's style, instead of its
             // kill effect's scene (owner 2026-10-14).
             var gib=pilot?HazardGibOf(arena,death):null;
-            if(SourceMinionDeath(death,age)||SirenDrop(arena,death,age,up)||!remains&&gib==null&&SourceDeathScene(death,age,up))return;
+            if(SourceMinionDeath(arena,death,age)||SirenDrop(arena,death,age,up)||!remains&&gib==null&&SourceDeathScene(death,age,up))return;
             // Ward Zero vent deaths are vent-fall.ts's scripted victim (NativeVentDeathPresentation.cs), not a physics corpse.
             if(VentStyle(death.style)){PresentVent(arena,death,pilot,KillClock(arena)-death.at,live);return;}
             if(!corpses.TryGetValue(death.id,out var corpse))

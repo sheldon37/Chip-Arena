@@ -52,14 +52,14 @@ namespace ChipArena.UnityConversion
             toy=false;if(id<=0)return false;
             // A Drone Nest drone takes its own sparks (NativeRoundsFxPresentation), not the toy soldier's voxel puffs.
             foreach(var m in arena.Minions)if(m.Id==id){toy=m.Kind=="toy";return m.Pve==null&&NativeSummonBreak.Summon(m.Kind)&&!RoundsDrone(m);}
-            foreach(var d in arena.MinionDeaths)if(d.id==id)return NativeSummonBreak.SummonModel(d.model,out toy)&&!RoundsDroneDeath(d.id);
+            foreach(var d in arena.MinionDeaths)if(d.id==id)return NativeSummonBreak.SummonModel(d.model,out toy)&&!RoundsDroneDeath(arena,d);
             return false;
         }
-        private bool SourceMinionDeath(NativeDeath death,float age)
+        private bool SourceMinionDeath(NativeArena arena,NativeDeath death,float age)
         {
             bool summon=NativeSummonBreak.SummonModel(death.model,out bool toy),horde=death.model?.StartsWith("horde-")==true;if(!summon&&!horde)return false;
             // A Drone Nest drone breaks up as itself (NativeRoundsFxPresentation): no toy soldier rig or voxel bursts.
-            if(summon&&toy&&RoundsDroneDeath(death.id))return true;
+            if(summon&&toy&&RoundsDroneDeath(arena,death))return true;
             // At SUMMON_LOOK.death.breakAt the rig hides and three bursts fire up the body in the gib colours, once.
             if(summon&&summonBreakups.Due(death.id,death.seed,age))for(int i=0;i<NativeSummonBreak.Bursts;i++){NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);}
             if(summon&&age>=NativeSummonBreak.BreakAt)return true;if(horde&&age>=NativeMinionFx.DeathFxSeconds)return true;
