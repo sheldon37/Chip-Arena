@@ -143,6 +143,9 @@ unbound. It looks for:
 - **Expedition:** a card over the J screen. The screen opens by itself on a new completion's award, and again when that award
   is confirmed, so the one celebration is seen. A completion already celebrated (a rejoin or a restart) stays closed. Close it
   from the card; reopen it from the footer's ACCOUNT XP button (final state).
+  - Since 2026-10-20, while the Expedition's end sequence holds the screen (victory, extraction, the run ended, a wipe), the
+    panel docks beside its summary instead (`AccountXpDocked`), and the card does not pop over it; a canvas too narrow for the
+    column keeps the card. `docs/EXPEDITION-ENDING-UI.md`.
 - **Home:** a third line under the pilot's nameplate. It shows a small XP hexagon with the level, LEVEL n, a thin bar of the
   saved progress, and PENDING while awards wait. Nothing is shown when the summary is unknown.
 - **Layout:** fits 1280×720 @1.5 to 4K and 21:9. A canvas too narrow for both panels gets a compact card at the top right,

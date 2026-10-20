@@ -60,12 +60,14 @@ namespace ChipArena.UnityConversion
         private void ExpeditionLiveSync()
         {
             var v=LiveExpedition;expeditionLiveView=v;expeditionLiveNow=Time.unscaledTime;
-            if(v==null){if(expeditionLiveRun!=null){expeditionIntents.Clear();expeditionLiveDice.Reset(null);expeditionLiveRun=null;expeditionScreenOpen=false;expeditionVictoryLoop=-1;}return;}
+            if(v==null){if(expeditionLiveRun!=null){expeditionIntents.Clear();expeditionLiveDice.Reset(null);expeditionLiveRun=null;expeditionScreenOpen=false;expeditionVictoryLoop=-1;}ExpeditionQuotaSync(null);ExpeditionEndingSync(null);return;}
             if(v.run!=expeditionLiveRun){expeditionIntents.Clear();expeditionLiveDice.Reset(v);expeditionLiveRun=v.run;expeditionVictoryLoop=v.phase==ExpeditionPhase.Victory?v.loop:-1;}
             expeditionLiveDice.Watch(v,expeditionLiveNow);
             if(v.phase==ExpeditionPhase.Victory&&expeditionVictoryLoop!=v.loop&&NativeExpeditionPresentation.Has(v.mine.account)&&!v.mine.extracted){expeditionVictoryLoop=v.loop;expeditionScreenOpen=true;}
             // A completion's account XP opens the screen on its card, once, and again when it is confirmed (NativeAccountXpUI.cs).
             AccountXpExpeditionSync();
+            // The quota module and the run's end sequence follow the view every frame (NativeExpeditionQuotaHud.cs, NativeExpeditionEndingUI.cs).
+            ExpeditionQuotaSync(v);ExpeditionEndingSync(v);
         }
         private void ExpeditionLiveSubmit(ExpeditionCommand command)
         {
@@ -80,6 +82,7 @@ namespace ChipArena.UnityConversion
             ExpeditionLiveSync();
             ExpeditionPickStep();
             if(LiveExpedition==null){expeditionScreenOpen=false;return false;}if(GUIUtility.keyboardControl!=0)return false;
+            ExpeditionEndingKeys();
             if(Input.GetKeyDown(KeyCode.J))expeditionScreenOpen=!expeditionScreenOpen;
             if(expeditionScreenOpen&&Input.GetKeyDown(KeyCode.Escape)){expeditionScreenOpen=false;return true;}
             if(Input.GetKeyDown(KeyCode.C)){bool fromJ=expeditionScreenOpen;expeditionScreenOpen=false;ExpeditionPickKey(fromJ);}
@@ -91,6 +94,8 @@ namespace ChipArena.UnityConversion
         private bool ExpeditionLiveGui(float width,float height)
         {
             ExpeditionLiveSync();var v=expeditionLiveView;if(v==null||!expeditionScreenOpen)return false;
+            // The run's end (NativeExpeditionEndingUI.cs): its sequence and summary in place of the board while it holds the screen.
+            if(ExpeditionEndingGui(v,width,height))return true;
             var controls=LiveExpeditionControls();bool reduced=prefs.reducedEffects;
             U.Fill(new Rect(0,0,width,height),C.Void(arena!=null&&!menu?.78f:.94f));
             E.Minimal(v,width);
@@ -99,6 +104,7 @@ namespace ChipArena.UnityConversion
             var foot=new Rect(24,height-48,width-48,32);NativeHudChrome.Tag(foot,C.Cyan(),1);
             U.Text(new Rect(foot.x+14,foot.y,foot.width-160,foot.height),"EXPEDITION · J OR ESC CLOSES · "+(v.ViewerIsHost()?"YOU ARE THE HOST":"GUEST · COMMANDS GO TO THE HOST"),11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
             AccountXpCardButton(new Rect(foot.xMax-266,foot.y+1,126,30),modal);
+            ExpeditionEndingButton(new Rect(foot.xMax-402,foot.y+1,126,30),modal);
             if(U.Btn(new Rect(foot.xMax-130,foot.y+1,120,30),"Close",false,!modal,1,13)&&!modal)expeditionScreenOpen=false;
             NativeExpeditionScreen.DiceOverlay(expeditionLiveDice,v,controls,width,height,Time.unscaledTime,reduced);
             AccountXpExpeditionCard(width,height);
@@ -112,12 +118,15 @@ namespace ChipArena.UnityConversion
             ExpeditionWorldLabels();
             // The last enemies of a kill quota, marked (NativeQuotaMarksPresentation.cs): under the HUD, over the world labels.
             QuotaMarksHud(v,width,height);
-            // Chips waiting: the Boss Test's CHIPS tag with its C key (ExpeditionChipsTag) in place of the minimal HUD's.
+            // Chips waiting: the Boss Test's CHIPS tag with its C key (ExpeditionChipsTag) in place of the minimal HUD's. The top centre
+            // is the quota module's while a zone quota is the objective, or the ending's strip while one holds (the objective tag steps aside).
+            bool ending=ExpeditionEndingTag(width);E.SceneQuota=ending||expeditionQuota.Shown;
             E.Minimal(v,width,1,false);
-            bool countdown=NativeExpeditionPresentation.Active(v).active;
-            if(v.transfer.stage!=ExpeditionTransferStage.None)E.TransferBanner(new Rect(width/2-220,countdown?116:58,440,46),v);
+            E.SceneQuota=false;if(!ending)ExpeditionQuotaHud(width,height);
+            bool countdown=NativeExpeditionPresentation.Active(v).active;float top=ending?58:ExpeditionTopStack;
+            if(v.transfer.stage!=ExpeditionTransferStage.None)E.TransferBanner(new Rect(width/2-220,countdown?top+58:top,440,46),v);
             // The SAFE chip, the boss plates and intro, the final gate's notice (NativeExpeditionStatesPresentation.cs).
-            ExpeditionStatesHud(v,width,height,58+(countdown?58:0)+(v.transfer.stage!=ExpeditionTransferStage.None?54:0));
+            ExpeditionStatesHud(v,width,height,top+(countdown?58:0)+(v.transfer.stage!=ExpeditionTransferStage.None?54:0));
             // The party list, the join circle panel, the deploy notes and my deploy flash (NativeExpeditionJoinPresentation.cs).
             ExpeditionJoinHud(width,height);
             var hint=new Rect(width-24-150,24,150,28);NativeHudChrome.Tag(hint,C.Cyan(),.9f);U.Text(new Rect(hint.x+12,hint.y,hint.width-12,hint.height),"J · EXPEDITION",11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);

@@ -460,7 +460,8 @@ pings); nothing reaches the authority.
   from the edges (sides .06, top .14 under the objective and LAST tags, bottom .18 over the cards, fractions of the height);
   behind the camera it leans to the bottom (turn round); arrows closer than 0.16 rad are spread apart round their mean bearing.
 - **HUD:** `LAST n · MARKED` (n the kills left) under the objective tag in the scene, and under the KILL QUOTA bar on the J
-  screen's building panel.
+  screen's building panel. Since 2026-10-20 the in-scene line is a row of the quota module (with the same words and kite), which
+  replaces the objective tag while a zone quota runs: `docs/EXPEDITION-ENDING-UI.md`.
 - **Cue:** one soft ping when the markers first turn on for a quota (run, loop, area); not on a count change, not on coming back
   to the same quota. Key `expedition.quota.mark` (like the door keys it needs registering in `NativeSoundKeys` before the bank
   can carry a clip); until then, and without LocalAssets, the built-in synthesized ping (`NativeQuotaMarks.PingSamples`).

@@ -290,7 +290,9 @@ namespace ChipArena.UnityConversion
                 if(name!="core")Check(!Regex.IsMatch(src,@"\bm\.(Hp|MaxHp|Yaw|Speed|LastAttack|StrikeAt|Pve|Body)\s*=[^=]")&&!Regex.IsMatch(src,@"\ba\.(Crawl|Hub|HubRing|SpawnAt|Stats|Target|BossSpawn)\s*=[^=]"),name+": writes no add state");
             }
             // The feature is read by its own files and the hooks only; no authority file (rules, AI, spawning, director, network) names it.
-            var allowed=new HashSet<string>{"Core/NativeQuotaMarks.cs","Runtime/NativeQuotaMarksPresentation.cs","Runtime/NativeQuotaMarkAudio.cs","Runtime/NativeExpeditionLiveUI.cs","Runtime/NativeExpeditionHud.cs","Runtime/NativeAudio.cs"};
+            // The quota module (Claude, 2026-10-20) hands off to the markers: it reads their threshold and words and draws their kite.
+            var allowed=new HashSet<string>{"Core/NativeQuotaMarks.cs","Runtime/NativeQuotaMarksPresentation.cs","Runtime/NativeQuotaMarkAudio.cs","Runtime/NativeExpeditionLiveUI.cs","Runtime/NativeExpeditionHud.cs","Runtime/NativeAudio.cs",
+                "Core/NativeExpeditionQuotaModel.cs","Runtime/NativeExpeditionQuotaHud.cs"};
             var names=new Regex(@"\b(NativeQuotaMarks|QuotaMarkSet|QuotaArrowSet|QuotaMarkCue|QuotaCandidate|QuotaMarksHud|NativeQuotaMarksHud|HordeDrawnRoot|ClearQuotaMark|QuotaMark)\b");
             foreach(var file in Directory.GetFiles(A,"*.cs",SearchOption.AllDirectories))
             {
