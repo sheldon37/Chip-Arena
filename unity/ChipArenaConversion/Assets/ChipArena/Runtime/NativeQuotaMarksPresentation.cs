@@ -124,8 +124,8 @@ namespace ChipArena.UnityConversion
             // Far to near, so the nearest kite sits on top (a farther one lined up behind it is lifted clear: Q.Declutter).
             for(int i=quotaMarks.Count-1;i>=0;i--){var mk=quotaMarkers[i];if(!mk.OnScreen||mk.Alpha<=.01f)continue;NativeQuotaMarksHud.Marker(new Vector2(mk.X*width,(1-mk.Y)*height),mk.Size,mk.Alpha,mk.Label,Q.Metres(quotaMarks.Marks[i].Distance),glow);}
             for(int i=0;i<quotaArrows.Count;i++){var ar=quotaArrows.Arrows[i];NativeQuotaMarksHud.EdgeArrow(new Vector2(ar.X*width,(1-ar.Y)*height),ar.Angle,ar.Size,ar.Alpha,Q.Metres(quotaMarks.Marks[ar.Mark].Distance));}
-            // Under the objective tag (below the transfer banner while one shows).
-            NativeQuotaMarksHud.Tag(width*.5f,v.transfer!=null&&v.transfer.stage!=ExpeditionTransferStage.None?110:54,q.Remaining,level);
+            // Under the objective tag (below the transfer banner while one shows); the quota module shows LAST n in its own row instead.
+            if(!expeditionQuota.Shown)NativeQuotaMarksHud.Tag(width*.5f,v.transfer!=null&&v.transfer.stage!=ExpeditionTransferStage.None?110:54,q.Remaining,level);
         }
     }
 
