@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-20 Claude Expedition city grown (`claude/expedition-city-bigger`, on branch, not merged; exp-layout-7): the arms 24 m further out with an outer quarter on each; slots to the join circles 81 → 112 m (x1.38), gate to circle x1.46; town 240 x 180 m; per-frame kit draw held at or under before by a size range. run5b passes; Unity/Windows unrun. Astra note in DEV_LOG. Next: owner review, then the graphics pass.
+
 2026-10-20 Claude Expedition quota and ending UI (`claude/expedition-quota-ui`, merged into shared; presentation only): the quota tag becomes a progress module (per-kill feedback, closing and LAST n emphasis handing off to the markers, a once-only QUOTA COMPLETE beat, then a compact strip); endings get a title moment and a run summary (victory, extracted, run ended, wiped, failed; party rows, rewards, docked account XP, the pause menu's actions). run5b passes; Unity/Windows/two clients unrun. Astra: ending and per-pilot stats contract (DEV_LOG). Next: owner review.
 
 2026-10-20 Astra chip-effect performance candidate (`codex/unity-chip-effect-perf`): pooled mutation-safe simulation snapshots replace eight hot array-copy sites; non-damaging fields skip enemy scans. Focused allocation/behavior checks pass (2,424,000 -> 0 warm allocated bytes for 1,000 x 300-item copies). Full regression, Unity compilation and test update publication pending; no FPS claim.

@@ -440,6 +440,13 @@ Budget, with the full rules:
 For comparison, Ward Zero's kit is 7,124 parts in 15 draws, and Cyber City's skyline is 4,570 boxes in 10 draws.
 The drive, the atmosphere, the picker and the ambience allocate nothing per frame (checked over 120 frames).
 
+### The city grown (Claude, 2026-10-20, exp-layout-7)
+
+The town is now 240 x 180 m: its east, west and south arms moved 24 m out past the city's edge, with an outer quarter in each
+band, and the three doors at x ±108 and z -108. Design, numbers, the authority-read changes and the regeneration order are in
+[EXPEDITION-HUB.md](EXPEDITION-HUB.md) "The city grown". The manifest's schema and every record's format are unchanged; the
+hub route records gain an optional `via` (turning points, presentation only).
+
 ### Open questions for the owner
 
 - **Scale.** The town is 120 × 120 m with ~2,900 m² of street. Is that right for 8 players and a

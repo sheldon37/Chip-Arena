@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
     {
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Expedition hub: "+what);count++;}
-        // The run from a gate to an instance doorway: 70 m since the hub (exp-layout-3), 100 m since the city grew (exp-layout-7: 107.6 m).
+        // The run from a gate to an instance doorway: 70 m since the hub (exp-layout-3), 100 m since the city grew (exp-layout-7: 107.0 m).
         public const double RouteMin=100;
         // A pilot-capsule grid over the map (0.25 m cells): a cell is free when no colliding block between the step and the
         // head (0.36..1.85 m) lies within the capsule's radius of its centre. Yaw-only blocks, as the generators model them.
