@@ -93,6 +93,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The minimal HUD: wallet top left (as the PvE money panel), the objective tag top centre with the running
         /// countdown under it, and a magenta tag top right while chips of yours wait to be opened or picked (`chips`; in the scene the
         /// Boss Test's CHIPS tag with its C key stands in for it).</summary>
+        /// <summary>The in-scene HUD sets this around its Minimal call while the quota module (or the ending's strip) holds the top
+        /// centre (NativeExpeditionQuotaHud.cs, NativeExpeditionEndingUI.cs): the objective tag steps aside for it. The J screen and the
+        /// DEV preview never set it.</summary>
+        public static bool SceneQuota;
         public static void Minimal(ExpeditionView v,float W,float a=1,bool chips=true)
         {
             if(P.Has(v.mine.account)&&!v.mine.extracted)
@@ -101,8 +105,11 @@ namespace ChipArena.UnityConversion
                 U.Text(new Rect(mr.x+14,mr.y+8,mr.width-28,26),P.Money(v.mine.wallet),22,C.Warn(a),TextAnchor.MiddleLeft,bold:true,mono:true,glow:C.Warn(.3f*a));
                 U.Text(new Rect(mr.x+14,mr.y+34,mr.width-28,16),v.mine.catchup>0?"YOUR WALLET · "+v.mine.catchup+" CATCH-UP":"YOUR WALLET",11,C.Muted(a),TextAnchor.MiddleLeft,mono:true,tracking:.08f);
             }
-            string objective=P.Objective(v,out var tone);float ow=U.Measure(objective,12,true,true,.14f).x+44;var or=new Rect(W/2-ow/2,20,ow,30);
-            H.Tag(or,Tone(tone),a);U.Text(new Rect(or.x+16,or.y,ow-20,30),objective,12,Tone(tone,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+            if(!SceneQuota)
+            {
+                string objective=P.Objective(v,out var tone);float ow=U.Measure(objective,12,true,true,.14f).x+44;var or=new Rect(W/2-ow/2,20,ow,30);
+                H.Tag(or,Tone(tone),a);U.Text(new Rect(or.x+16,or.y,ow-20,30),objective,12,Tone(tone,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+            }
             var cd=P.Active(v);
             if(cd.active)
             {
