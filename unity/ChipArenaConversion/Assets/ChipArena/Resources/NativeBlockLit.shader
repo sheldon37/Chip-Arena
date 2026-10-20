@@ -12,8 +12,9 @@ Shader "ChipArena/NativeBlockLit"
     // its shadow map and the SH ambient as Unity's Lambert applies them, plus, in place of an add pass (so no per-pixel
     // Unity light other than the key reaches these blocks; NativeLighting keeps the rim per-pixel on dressed maps, so it
     // never lands in the SH either), the rim light (_ArenaRim*, NativeLighting.ArenaRim), MapLooks' 8 practical lights
-    // (_ArenaLight*, its own arrays, never the entrance stage's _StageLight*) and the 3 blast flashes (_ArenaFlash*,
-    // NativeArenaDressing.Flashes); then the ground haze and fog. On Ward Zero only (NativeWardLight.cginc): the ceiling light
+    // (_ArenaLight*, its own arrays, never the entrance stage's _StageLight*), the 3 blast flashes (_ArenaFlash*,
+    // NativeArenaDressing.Flashes) and the guns' 4 muzzle lights (_MuzzleLight*, NativeMuzzleLight.cginc); then the ground
+    // haze and fog. On Ward Zero only (NativeWardLight.cginc): the ceiling light
     // field (one 3D texture, the only texture read here) and the practical slots' beacon beams.
     Properties {}
     SubShader
@@ -97,6 +98,8 @@ Shader "ChipArena/NativeBlockLit"
         float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];float4 _ArenaFlashPos[3];float4 _ArenaFlashColor[3];float4 _ArenaRimDir;float4 _ArenaRimColor;float4 _ArenaHaze;float _ArenaHazeTop;float _ArenaDust;float _ArenaDustCoat;
         // Ward Zero's ceiling light field and the slots' beacon beams (off on every other map: its globals are 0).
         #include "NativeWardLight.cginc"
+        // The guns' muzzle lights (four slots of their own on every map; off while _MuzzleLightCount is 0).
+        #include "NativeMuzzleLight.cginc"
         // The vertex lattice (NativeBlockLooks.Corner) and the instance's 180-degree mesh turns, which only pick other chipped corners.
         float3 BlockLattice(float3 a,float3 b,float3 h,float c,float flags,inout float3 n)
         {
@@ -541,7 +544,8 @@ Shader "ChipArena/NativeBlockLit"
         }
         // The rim light, MapLooks' practical lights ((1 - (d/r)^2)^2, NativeMapLooks.Attenuation; a beacon slot's beam,
         // NativeWardLight.cginc WardBeam) and the blast flashes (min(1, 5(1 - q^2)) / (1 + 25 q^2), NativeBlockLooks.FlashFalloff),
-        // each times max(0, N.L); then Ward Zero's ceiling light field (WardField; nothing elsewhere).
+        // each times max(0, N.L); then Ward Zero's ceiling light field (WardField; nothing elsewhere) and the guns' muzzle lights
+        // (NativeMuzzleLight.cginc MuzzleLights, unwrapped).
         float3 BlockLights(float3 world,float3 n)
         {
             float3 sum=_ArenaRimColor.rgb*saturate(dot(n,_ArenaRimDir.xyz))+WardField(world,n);
@@ -555,6 +559,7 @@ Shader "ChipArena/NativeBlockLit"
                 float3 d=_ArenaFlashPos[m].xyz-world;float len=max(length(d),0.0001);float q=len/max(_ArenaFlashPos[m].w,0.0001);q*=q;
                 sum+=_ArenaFlashColor[m].rgb*(saturate(5.0*(1.0-q))/(1.0+25.0*q)*saturate(dot(n,d/len)));
             }
+            sum+=MuzzleLights(world,n,0.0);
             return sum;
         }
         // Ground haze (3.10: 15% from 0 to 2.5 m): _ArenaHaze.w at the street, gone at _ArenaHazeTop, faded in from 4 to 40 m away.

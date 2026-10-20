@@ -1,3 +1,57 @@
+## 2026-10-20 — Claude: muzzle flashes that light the scene (merged into shared)
+
+- **Branch/base:** `claude/muzzle-flash`, from shared `claude/sleepy-ritchie-g8ruhv` at `ac94d72`; shared `d555363` (Astra's #292) merged in at `ece1ba1`, and `b0e0a12` (`claude/expedition-quota-ui`) at `1721ba7`. Implementation `43ccfa8`, `ee118ad` and `5ece43a`. Presentation only: no rules, timing, damage, hitbox, cooldown, movement, network or save change; the flash and light read the shot events and `Actor.LastShot` that already replicate. Merged into shared and the builder; not published.
+- **Owner request:** better muzzle flashes, still using lighting.
+- **Before:** one three-petal star for every gun, sitting 3-5 cm ahead of the muzzle face. Its light borrowed a projectile Unity point light that was free. Those lights are culled from the view layer, and `NativeBlockLit` (every dressed map) has no add pass. So the flash never lit the floor, walls, kit or first-person gun, and under machine-gun fire the bullets held all three lights.
+- **Mechanism:** a dedicated 4-slot muzzle-light block, `Resources/NativeMuzzleLight.cginc` (`_MuzzleLightPos/_MuzzleLightColor[4]`, `_MuzzleLightCount`, early out at 0). `NativeBlockLit` adds it in `BlockLights`. `NativeSourceLit`, `NativeZombieLit` and `NativeLit` add albedo × it as base-pass emission, wrapped .35 on bodies. So it lights every map, the view model and the bodies, in the base pass with no extra draws.
+  - Why not the existing slots: the actor slots are on only at three maps, and the 8 practical slots are already filled by map picks and the kit.
+  - Why not Unity lights: each costs a forward-add draw per object and light, and they skip layer 10.
+- **Light (`Core/NativeMuzzleLight.cs`):**
+  - Envelope: a 3-4 ms attack, then exp decay τ 45/65/40 ms (pistol, rifle, machine gun), gone by 6τ. Peak 2.6/3.0/2.2, range 6/7.5/6.5 m, warm white.
+  - Bursts: machine-gun and Overdrive bursts merge into one sustained, seeded 90 Hz flicker per shooter, never stacked; Fan the Hammer works the same way.
+  - Clock: the replicated shot times, so host, guest, late joiner and killcam agree.
+  - Picker: the nearest 4 shooters (ties by id), first person preferred. In first person the light softens within .5 m and is capped at .65, so the view gun never whites out.
+  - Budget: Combat glow, Reduced effects, low tier and Alarm lights set 4/2/1/0 slots and the gain. Calm gives a slow glow with no strobe.
+  - Uploader: `Runtime/NativeMuzzleLights.cs` uploads it after the weapon effects. The stage frames (Draft, Intro, Entrance, just after their pinned `WardFieldOff();EnterStage();`), the rooftop and a map look change clear it.
+  - The old pulse is removed from `NativeCombatGlow`.
+- **Flash (`Core/NativeMuzzleFlash.cs`, drawn by `NativeWeaponFxShapes.Muzzle`):**
+  - Layers: core, fireball, plume, a petal star from the muzzle device, vent jets, pods, seeded sparks and smoke wisps. Older rounds' wisps linger.
+  - Anchor: the measured crown of each gun and skin.
+  - Per weapon:
+    - Pistol: the compensator, 3 petals and 2 top-port jets, punchy, 50 ms.
+    - Rifle: the brake, 3 petals and 6 side jets (+1 top port at Full detail), larger, 80 ms.
+    - Machine gun: the hider's 4-slot X, 45 ms with flicker.
+    - Prototype skin: a plain cross with no vents.
+  - Chips: ricochet collars, the vacuum bell and boomerang vanes cover the vents they sit over, and multishot pods flash on their own. The module presentation (`MuzzleChips`) hands the flash the seat's kinds and the gun's sockets, so Core and the weapon effects never name the modules (ChipModuleChecks' rule, caught by the first run5b).
+  - Kits: Fan the Hammer and Overdrive grow the flash, and Overdrive heat whitens it.
+  - Tiers: the Low model tier drops the vents, as the models do; sparks and wisps follow quality; first person has its own lead, glow and tilt so the sights don't hide it.
+- **Files:**
+  - New: Core `NativeMuzzleFlash.cs`, `NativeMuzzleLight.cs`; Runtime `NativeMuzzleLights.cs`; Resources `NativeMuzzleLight.cginc`; Tests `MuzzleFlashChecks.cs`; their metas.
+  - Changed: Core `NativeWeaponFx.cs` (old look removed); Runtime `NativeWeaponFxDraw.cs`, `NativeWeaponFxPresentation.cs`, `NativeChipModulePresentation.cs`, `NativeCombatGlow.cs`, `NativeLighting.cs`; the four shaders; Tests `WeaponFxChecks.cs`, `Program.cs` (`--muzzle-flash`, which also runs ChipModuleChecks).
+- **Checks run:**
+  - `--muzzle-flash` PASS: 32,811 muzzle-flash checks, 479 weapon-effects checks, 16,281 Gun-kit checks and 36,257 chip-module checks.
+    - Crowns sit on the drawn faces, and vents are within 1 mm of their slots.
+    - With 8 machine guns there are at most 4/2/1/0 lights, the nearest ones; host = guest = late joiner; 0 bytes over 600 frames × 8 shooters.
+    - Central Station's darkest spot, before → peak (/255): pistol floor 6→114, wall 2→104, zombie skin 3→84, first-person hand 0→36; rifle 6→128 and 2→121; machine gun 6→107 and 2→99.
+  - `WeaponFxChecks` re-measures on purpose: flash life 60-100 → 40-90 ms; the plume replaces the side flame; core ≤ .25; the old projectile-light pin becomes "no muzzle pulse takes a projectile light".
+  - Related groups PASS: `--zombie-light --ward-lighting --station-visuals --killcam --zombie-gore --hazard-kit --weapon-sockets --bow --ironworks-visuals --rounds-visuals --cyber-ranged`. After the chip fix and the `b0e0a12` merge, `--muzzle-flash --zombie-light --station-visuals --killcam --weapon-sockets --hazard-kit` pass again.
+  - Unity compile stub: runtime and editor build OK.
+  - glslang HLSL front end (stub UnityCG): every `NativeBlockLit` pass and the three surf functions compile, linear and gamma.
+  - Offline before/after renders: SwiftShader, with the real shader blocks and draw code.
+  - run5b on `5ece43a`: rc1-rc5 all 0. That covers the Unity compile stub, the full managed suite and the relay stage (813 PASS lines, the real WebSocket relay included), 140 Python tests OK (1 skipped), the source package and the diff check.
+  - The first three run5b runs failed rc2, on contracts these changes broke, and each was fixed without touching the check:
+    - ChipModuleChecks: Core and the weapon effects named the modules.
+    - MapLookChecks: the pinned `EnterStage` body.
+    - WardLightingChecks: the pinned `WardFieldOff();EnterStage();` pair.
+- **Not run:** Unity Editor import and the platform shader compile, Windows play, two-client and killcam on real clients, GPU timing.
+- **Cost:** CPU per frame is a ≤512-event scan per gun rig, ≤16 picker offers and 3 global uniform sets, with no allocation. GPU is a uniform branch when no gun fires; otherwise 4 iterations of about 15 ALU per pixel in those base passes.
+- **Risks:**
+  - The muzzle light casts no shadows on blocks or bodies, so it can reach through thin walls within its 6-7.5 m range.
+  - On bodies the light is base-pass emission, so it goes through the surface shaders' finalcolor tone and fog; that wasn't checked in Unity.
+  - Killcam rounds can light up to 50 ms late, as their flash already does.
+  - Astra: no gameplay part.
+- **Next:** owner review in the Windows build (dark Central Station, first person under machine-gun fire).
+
 ## 2026-10-20 — Claude: Expedition quota module and end sequence (merged into shared)
 
 - **Branch/base:** `claude/expedition-quota-ui`, from shared `claude/sleepy-ritchie-g8ruhv` at `d555363` (includes Astra's #292). Implementation `1a4e07e`. Presentation only: no rule, roll, award, save, message or room field changed. Merged into shared and the builder; not published.

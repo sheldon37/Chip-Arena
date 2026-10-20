@@ -47,6 +47,8 @@ Shader "ChipArena/ZombieLit" {
  // Ward Zero's actor lights (NativeWardLight.cginc), as SourceLit's.
  float _ArenaActorLit;float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];
  #include "NativeWardLight.cginc"
+ // The guns' muzzle lights, as SourceLit's (NativeMuzzleLight.cginc): every map, the body's albedo, never its glow.
+ #include "NativeMuzzleLight.cginc"
  float3 StageRrt(float3 v){float3 a=v*(v+0.0245786)-0.000090537;float3 b=v*(0.983729*v+0.4329510)+0.238081;return a/b;}
  float3 StageAces(float3 c)
  {
@@ -185,6 +187,7 @@ Shader "ChipArena/ZombieLit" {
   o.Emission+=_Ink*float3(.5,.53,.58)*(rim*_InkRim*k.z*lerp(.35,1,ao));
   if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));
   if(_InkFill<.5&&_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ActorLights(i.worldPos,normalize(i.worldNormal));
+  if(_InkFill<.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*MuzzleLights(i.worldPos,normalize(i.worldNormal),.35);
   o.Alpha=shell.a;
  }
  ENDCG

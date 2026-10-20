@@ -14,6 +14,13 @@ namespace ChipArena.UnityConversion
         private readonly ChipModule[] chipModules=new ChipModule[NativeChipModules.MaxModules];
         /// <summary>True when `a` shows the Standard modules (WeaponDressing then skips the Prototype pieces).</summary>
         private bool StandardChips(Actor a)=>a!=null&&sourceModels!=null&&NativeChipModules.Designed(a.SourceSpec)&&WeaponSkin(a)==NativeWeaponSkins.StandardIndex;
+        /// <summary>The seat's chip kinds and the gun's module sockets for `a`'s Standard muzzle flash (Core/NativeMuzzleFlash.cs:
+        /// the vents a module covers, the multishot pods); null and no kinds without a loadout.</summary>
+        private ChipSockets MuzzleChips(Actor a,out ChipKinds chips)
+        {
+            var pilot=LoadoutPilot(a.Id);chips=default;if(pilot?.Stats==null||pilot.Seat?.chips==null)return null;
+            chips=NativeChipModules.Kinds(pilot.Seat.chips,pilot.Stats);return NativeChipModules.Sockets(a.SourceSpec);
+        }
         // The held weapon's detail tier (HeldWeaponModel's rule), so the modules thin out with it.
         private int ChipTier(CapturedAnimation.Player rig,bool first)
         {

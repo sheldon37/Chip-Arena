@@ -127,44 +127,81 @@ namespace ChipArena.UnityConversion
         public static Vector3 V(NVector3 v)=>new Vector3(v.X,v.Y,v.Z);
         private static Color Add(Color c){c.a=0;return c;}
         /// <summary>
-        /// A gun's muzzle star at `muzzle` with the barrel frame x, y (across) and z (along), `scale` the weapon's world scale
-        /// (the view model's size in first person), `age` since the shot and `dim` the rig's block-cooldown factor. Returns the
-        /// light pulse's intensity (0: none).
+        /// One shot's muzzle flash (Core/NativeMuzzleFx, owner 2026-10-20) at the drawn `crown` with the barrel frame x, y (across;
+        /// x the hand's right, the source frame's -x) and z (along), `scale` the weapon's world scale (the view model's size in
+        /// first person), `age` since the shot and `dim` the rig's block-cooldown factor: the fireball and the white-hot core, the
+        /// forward plume, the star's petals, the device's open vents' jets, the multishot pods' small flashes, the seeded sparks
+        /// and the smoke wisps. The look's module sockets place the pods; `view` (first person only, the view-model camera) holds every glow under
+        /// NativeMuzzleFx.ViewShare of its height and the flash at ViewScale and ViewGain, so the view weapon stays readable.
         /// </summary>
-        public static float Muzzle(NativeWeaponFxDraw draw,bool first,Vector3 muzzle,Vector3 x,Vector3 y,Vector3 z,float scale,in MuzzleLook look,long seed,double age,float quality,bool low,float dim)
+        public static void Muzzle(NativeWeaponFxDraw draw,bool first,Vector3 crown,Vector3 x,Vector3 y,Vector3 z,float scale,in MuzzleLook look,long seed,double age,float quality,bool low,float dim,Camera view=null)
         {
-            if(!(age>=0&&age<NativeMuzzleFx.Span))return 0;
-            if(NativeMuzzleFx.Glow(look,age,out float size,out var glow))draw.Glow(first,muzzle+z*(.05f*scale),Fx(glow)*dim,size*scale,NativeWeaponFxDraw.HotCore);
-            float petalGain=3.2f*look.Gain*dim;
-            for(int k=0;k<NativeMuzzleFx.Petals;k++)
+            if(!(age>=0&&age<NativeMuzzleFx.Span))return;
+            float size=scale*(first?NativeMuzzleFx.ViewScale:1),gain=dim*(first?NativeMuzzleFx.ViewGain:1),tanHalf=view!=null?Mathf.Tan(view.fieldOfView*.5f*Mathf.Deg2Rad):0;
+            Vector3 eye=view!=null?view.transform.position:Vector3.zero,forward=view!=null?view.transform.forward:Vector3.forward;
+            // The fireball a little ahead of the crown, the white-hot core on it; in first person the eye looks almost down the
+            // barrel, so both sit further out (NativeMuzzleFx.ViewLead) to clear the view gun's own silhouette.
+            // They are larger there too (NativeMuzzleFx.ViewGlow), under the ViewShare cap: the gun's top and sights hide a small one.
+            float lead=first?NativeMuzzleFx.ViewLead:0,glow=first?NativeMuzzleFx.ViewGlow:1;
+            if(NativeMuzzleFx.Fireball(look,seed,age,out float fireball,out var fire)){var at=crown+z*((.06f+lead)*size);draw.Glow(first,at,Fx(fire)*gain,ViewCap(view,at,fireball*size*glow,eye,forward,tanHalf),NativeWeaponFxDraw.Soft);}
+            if(NativeMuzzleFx.Core(look,seed,age,out float core,out var hot)){var at=crown+z*((.025f+lead)*size);draw.Glow(first,at,Fx(hot)*gain,ViewCap(view,at,core*size*glow,eye,forward,tanHalf),NativeWeaponFxDraw.HotCore);}
+            // The forward plume along the barrel.
+            if(NativeMuzzleFx.Plume(look,seed,age,out float plume,out float plumeWidth,out float plumeAlpha))
+            {
+                var c=Add(Color.Lerp(Lin(NativeMuzzleFx.PlumeColor),Lin(NativeMuzzleFx.EdgeColor),(float)(age/look.Life))*(2.6f*look.Gain*gain*plumeAlpha));
+                draw.Axis(first,crown,crown+z*(plume*size),c,plumeWidth*size,NativeWeaponFxDraw.FlameMode,(float)NativeWeaponFx.Hash(seed,9));
+            }
+            // The star: petals out of the muzzle plane, tilted along the barrel.
+            float petalGain=3f*look.Gain*gain,tilt=look.Tilt*(first?NativeMuzzleFx.ViewTilt:1);
+            for(int k=0;k<look.Petals;k++)
             {
                 if(!NativeMuzzleFx.Petal(look,seed,k,age,out float roll,out float length,out float width,out float alpha))continue;
-                Vector3 radial=x*Mathf.Cos(roll)+y*Mathf.Sin(roll),tangent=Vector3.Cross(z,radial);Vector3 along=(radial*Mathf.Cos(look.Tilt)+z*Mathf.Sin(look.Tilt)).normalized;
-                Vector3 pivot=muzzle+z*(.01f*scale),tip=pivot+along*(length*scale),half=tangent*(width*.5f*scale);
+                Vector3 radial=x*Mathf.Cos(roll)+y*Mathf.Sin(roll),tangent=Vector3.Cross(z,radial);Vector3 along=(radial*Mathf.Cos(tilt)+z*Mathf.Sin(tilt)).normalized;
+                Vector3 pivot=crown+z*(.008f*size),tip=pivot+along*(length*size),half=tangent*(width*.5f*size);
                 draw.Quad(first,pivot-half,tip-half,tip+half,pivot+half,new Vector2(0,-1),new Vector2(1,-1),new Vector2(1,1),new Vector2(0,1),Lin(NativeMuzzleFx.PetalColor,petalGain*alpha),NativeWeaponFxDraw.Petal,0);
             }
-            if(NativeMuzzleFx.Side(look,seed,age,out float side,out float sideWidth,out float sideAlpha))
+            // The device's open vents (the compensator's top ports, the brake's side and top ports, the hider's slots).
+            var ports=NativeMuzzleFx.Ports(look.Device);
+            for(int k=0;k<ports.Length;k++)
             {
-                var c=Add(Color.Lerp(Lin(NativeMuzzleFx.PetalColor),Lin(NativeMuzzleFx.EdgeColor),(float)(age/look.Life))*(2.8f*look.Gain*dim*sideAlpha));
-                draw.Axis(first,muzzle,muzzle+z*(side*scale),c,sideWidth*scale,NativeWeaponFxDraw.FlameMode,(float)NativeWeaponFx.Hash(seed,9));
+                if(!NativeMuzzleFx.Jet(look,seed,k,age,out var port,out float jet,out float jetWidth,out float jetAlpha))continue;
+                Vector3 from=Weapon(crown,x,y,z,size,look.Crown,port.At),dir=(x*-port.Dir.X+y*port.Dir.Y+z*port.Dir.Z).normalized;
+                var c=Add(Color.Lerp(Lin(NativeMuzzleFx.JetColor),Lin(NativeMuzzleFx.EdgeColor),(float)(age/(look.Life*.75f)))*(2.4f*look.Gain*gain*jetAlpha));
+                draw.Axis(first,from,from+dir*(jet*size),c,jetWidth*size,NativeWeaponFxDraw.FlameMode,(float)NativeWeaponFx.Hash(seed,130+k));
             }
-            int sparks=NativeMuzzleFx.SparkCount(look,quality,low);
+            // Multishot pods: a small core and plume at each pod's mouth.
+            if(look.Sockets!=null)for(int i=0;i<look.Pods;i++)
+            {
+                if(!NativeMuzzleFx.PodMouth(look.Sockets,i,out var mouth)||!NativeMuzzleFx.Pod(look,seed,i,age,out float podCore,out float podPlume,out float podAlpha))continue;
+                var at=Weapon(crown,x,y,z,size,look.Crown,mouth);
+                draw.Glow(first,at+z*(.01f*size),Lin(NativeMuzzleFx.CoreColor,2.4f*look.Gain*gain*podAlpha),ViewCap(view,at,podCore*size,eye,forward,tanHalf),NativeWeaponFxDraw.HotCore);
+                draw.Axis(first,at,at+z*(podPlume*size),Add(Lin(NativeMuzzleFx.PlumeColor,2f*look.Gain*gain*podAlpha)),look.PlumeWidth*.35f*size,NativeWeaponFxDraw.FlameMode,(float)NativeWeaponFx.Hash(seed,140+i));
+            }
+            int sparks=NativeMuzzleFx.SparkCount(look,seed,quality,low);
             for(int k=0;k<sparks;k++)
             {
                 if(!NativeMuzzleFx.Spark(seed,k,age,out var local,out var velocity,out float drop,out float alpha))continue;
-                Vector3 head=muzzle+(x*local.X+y*local.Y+z*local.Z)*scale+Vector3.down*(drop*scale),dir=x*velocity.X+y*velocity.Y+z*velocity.Z;
-                var c=Add(Color.Lerp(new Color(1,1,1,0),Lin(NativeMuzzleFx.SparkColor),(float)(age/NativeMuzzleFx.SparkLifeMax))*(2.6f*alpha*dim));
-                draw.Axis(first,head-dir*(.014f*scale)-z*(.02f*scale),head,c,.016f*scale,NativeWeaponFxDraw.StreakMode,.8f);
+                Vector3 head=crown+(x*local.X+y*local.Y+z*local.Z)*size+Vector3.down*(drop*size),dir=x*velocity.X+y*velocity.Y+z*velocity.Z;
+                var c=Add(Color.Lerp(new Color(1,1,1,0),Lin(NativeMuzzleFx.SparkColor),(float)(age/NativeMuzzleFx.SparkLifeMax))*(2.6f*alpha*gain));
+                draw.Axis(first,head-dir*(.014f*size)-z*(.02f*size),head,c,.016f*size,NativeWeaponFxDraw.StreakMode,.8f);
             }
-            int wisps=NativeMuzzleFx.WispCount(quality,low);
+            Wisps(draw,first,crown,x,y,z,scale,look,seed,age,quality,low,dim);
+        }
+        /// <summary>A shot's smoke wisps alone (an older round of a burst still smoking at the crown).</summary>
+        public static void Wisps(NativeWeaponFxDraw draw,bool first,Vector3 crown,Vector3 x,Vector3 y,Vector3 z,float scale,in MuzzleLook look,long seed,double age,float quality,bool low,float dim)
+        {
+            int wisps=NativeMuzzleFx.WispCount(look,quality,low);float size=scale*(first?NativeMuzzleFx.ViewScale:1);
             for(int k=0;k<wisps;k++)
             {
                 if(!NativeMuzzleFx.Wisp(seed,k,age,out var local,out float rise,out float wispSize,out float alpha))continue;
-                float cover=alpha*(first?.55f:1);
-                draw.Wisp(first,muzzle+(x*local.X+y*local.Y+z*local.Z)*scale+Vector3.up*(rise*scale),new Color(.62f*cover,.64f*cover,.7f*cover,cover),wispSize*scale,(float)NativeWeaponFx.Hash(seed,80+k)*10,(float)NativeWeaponFx.Hash(seed,90+k)*6.28f);
+                float cover=alpha*(first?.55f:1)*Mathf.Clamp01(dim);
+                draw.Wisp(first,crown+(x*local.X+y*local.Y+z*local.Z)*size+Vector3.up*(rise*size),new Color(.62f*cover,.64f*cover,.7f*cover,cover),wispSize*size,(float)NativeWeaponFx.Hash(seed,80+k)*10,(float)NativeWeaponFx.Hash(seed,90+k)*6.28f);
             }
-            return NativeMuzzleFx.LightIntensity*NativeMuzzleFx.Light(age)*dim;
         }
+        // A point of the source weapon frame (+x the gun's left) relative to the crown at z `crownZ`, in the world.
+        private static Vector3 Weapon(Vector3 crown,Vector3 x,Vector3 y,Vector3 z,float size,float crownZ,NVector3 local)=>crown+x*(-local.X*size)+y*(local.Y*size)+z*((local.Z-crownZ)*size);
+        // First person: a glow no wider than NativeMuzzleFx.ViewShare of the view at its depth.
+        private static float ViewCap(Camera view,Vector3 at,float size,Vector3 eye,Vector3 forward,float tanHalf)=>view==null?size:NativeMuzzleFx.ViewSize(size,Vector3.Dot(at-eye,forward),tanHalf);
         /// <summary>
         /// A slash crescent swept from a blade's samples (Core/NativeSlashTrail): the dark underlay, then the additive band from
         /// the look's inner share of the blade out to its tip, tail to head along the tip's path (the crescent shader's x), with
