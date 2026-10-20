@@ -1,3 +1,43 @@
+## 2026-10-20 — Claude: low-poly character Phase A, architecture audit and design (on the branch, not merged)
+
+- **Branch/base:** `claude/lowpoly-audit`, from shared `claude/sleepy-ritchie-g8ruhv` at `28a46ce`. Docs only; no PR, merge or publication. Phase B (male base in Blender) runs in parallel on `claude/lowpoly-base-model`.
+- **Owner request:** move player characters from voxel parts to stylized low-poly skinned characters with a modular cosmetic system (base male/female, chest core, one right-wrist chip device, independent slots), preserving every animation, death and cosmetic path; Phase A is the audit and plan.
+- **Added:** `docs/CHARACTER-LOWPOLY.md`. It covers:
+  - the audit with exact files and types (rig, pose routes, the ~25 body draw sites, cosmetics flow and DEV gates, death and gore, zombies, the asset rules);
+  - measured current cost;
+  - a reuse / adapt / replace table;
+  - the asset pipeline and runtime format;
+  - the skeleton spec and first-person handling;
+  - the cosmetic schema, hide masks, compatibility rules and legacy mapping;
+  - the chest core and wrist device states;
+  - the death path, the performance budget, Phases B–E with acceptance, the Astra contract, risks and open decisions.
+- **Key decisions (proposed):**
+  - **Skeleton:** bind to the exact 22 `CapturedRig` joints and rest offsets, so every pose route, layer and IK drives the mesh unchanged. Joint indices are authority data (wound parts).
+  - **Runtime format:** a deterministic Blender export to a Core-parsed binary mesh library plus a JSON manifest, drawn by a `SkinnedMeshRenderer` (live rig bones, or pooled puppets fed the `bone(b)` matrices `Queue` already gets). Not FBX: an FBX can only be verified by an Editor import, its exports are non-deterministic, and its `.meta`/fileID churn breaks references.
+  - **Outfits:** combined per outfit signature, with hide masks dropping covered skin.
+  - **Body skin:** a new `body:modular` entry, so old clients fall back to Standard.
+  - **Death:** per-vertex ragdoll regions, region masks, authored stump caps, detached weights; bisect by bake, cut and rebind; shader wound decals.
+- **Measured (Core, offline):**
+  - Standard Full / Reduced / Low: 48 parts, 7,782 / 4,056 / 1,584 tris (16,924 / 8,664 / 3,168 verts).
+  - Sheldon Clothes: 4,342 / 2,652 / 1,284 tris. Prototype: 2,616 tris.
+  - 48 materials per skin; one instanced draw per part, i.e. 48 draws plus 48 shadow draws per (skin, tier) in view.
+  - Zombie kinds: 21 sections, 4,662–7,132 tris at Full.
+  - Skinned estimate: 1 draw and 1 shadow draw per pilot, 4–7 k tris, about 9–14 k verts, a new per-frame skinning cost and no instancing (to be measured in Unity in Phase C).
+- **Findings for the owner:**
+  - The joints give a stocky 1.70 m figure (hips .57 m, shoulders 1.10 m), not the reference's long legs.
+  - The existing chip-select "display wrist" is the free hand (usually the left), so a right-wrist device moves it.
+  - The account backend allowlists cosmetics fields, so a new persisted field needs a Sites deploy.
+- **Astra:** proposed contract in section i of the doc:
+  - a `look` normalized map string on prefs, the account `NativeCosmetics`, `NativeSeat` and `NativeSeatFrame`, with MaxLength 512;
+  - the backend allowlist and `modular` added to `BODY_SKINS`;
+  - DEV gates and `look:<id>` grants;
+  - looks resolved by seat id for corpses and killcam;
+  - no gameplay read.
+- **Checks (actual):** `git diff --check`; secret and model-name scan of the diff; Python unittest discover in `unity/ChipArenaConversion`. The measurements come from a scratch console build of `Core/*.cs` (not committed) and a decode of `SourceModels.json`.
+- **Not run:** Unity Editor, Windows, GPU timing, two clients (docs-only change).
+- **Animation/timing/networking impact:** none in this change; the plan keeps hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
+- **Next:** owner decisions (section j: proportions, height, wrist side, default outfit); Phase B review against the section c spec; then Phase C.
+
 ## 2026-10-20 — Claude: the Expedition city in detail, a graphics pass on the grown town (merged into shared)
 
 - **Branch/base:** `claude/expedition-city-detail`, from shared `claude/sleepy-ritchie-g8ruhv` at `2a3819f` (exp-layout-7 and the muzzle flashes). Implementation `1cfcc7f`, follow-up `932f0c0` (the station door's floods past its canopy, more steam), docs `2d37727`, then the review fix on the landmark fronts `ebd8b75`. Merged into shared and the builder; not published.
