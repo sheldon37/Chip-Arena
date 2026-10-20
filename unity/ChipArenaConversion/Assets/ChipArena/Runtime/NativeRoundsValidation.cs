@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
                 foreach(var test in new[]{("smoke-grenade","time"),("hamper","frost")})
                 {Hold(test.Item1);n=ChipFields.Count;ImpactChips(p,null,null,p.Body.position,Vector3.forward,nextAttack++,0);Check(ChipFields.Count==n+1&&ChipFields.Last().Kind==test.Item2,"impact field "+test.Item1);}
                 Hold("snake-attack");ImpactChips(p,null,null,p.Body.position,Vector3.forward,nextAttack++,0);Check(Minions.Any(m=>m.Owner==p&&m.Kind=="toy"),"impact summon adaptation");
-                Hold("excalibur");n=Bullets.Count;var basis=new NativeBullet{Owner=p.Seat.id,Original=p.Seat.id,Position=p.Body.position,Velocity=Vector3.forward*30,Damage=10,Life=2,Radius=.1f,Mods=new Dictionary<string,int>(p.Seat.chips)};
+                Hold("excalibur");n=Bullets.Count;var basis=new NativeBullet{Spec="pistol",Owner=p.Seat.id,Original=p.Seat.id,Position=p.Body.position,Velocity=Vector3.forward*30,Damage=10,Life=2,Radius=.1f,Mods=new Dictionary<string,int>(p.Seat.chips)};
                 // Move to clear space so the satellite clearance casts are deterministic.
                 p.Body.position=new Vector3(1000,1000,1000);Physics.SyncTransforms();SpawnChipShots(p,new List<NativeBullet>{basis});
                 Check(Bullets.Count==n+2&&Bullets.Skip(n).All(b=>b.Homing==150&&!b.Direct&&!b.ChipImpact&&Math.Abs(b.Damage-4)<.001f),"satellite damage and recursion guard");
