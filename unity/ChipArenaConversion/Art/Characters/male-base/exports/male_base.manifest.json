@@ -16,7 +16,7 @@
  "binary": {
   "file": "male_base.bytes",
   "bytes": 517533,
-  "sha256": "cf599c12a456a1879110787e9627e5054ff83115c0e239d3a3b7b3d54314443d",
+  "sha256": "40e5257558c4a02f184b298d03dfeeaf104f540d8d766b16a205f6f7b3858206",
   "layout": [
    "header: \"CALP\", u16 version, u16 flags, u16 bones, u16 pieces, u32 vertices, u32 triangles",
    "bones: u8 name length, name, i16 parent, u8 flags (1 secondary, 2 deform), 3 f32 rest local",
@@ -1315,10 +1315,10 @@
  "springs": {
   "chains": {
    "front-l": {
-    "stiffness": 5.5,
-    "damping": 0.55,
+    "stiffness": 9.0,
+    "damping": 0.38,
     "gravity": 0.25,
-    "drag": 0.35,
+    "drag": 0.25,
     "maxAngle": 14,
     "bones": [
      "sec-hair-front-l-1",
@@ -1353,10 +1353,10 @@
     ]
    },
    "front-r": {
-    "stiffness": 5.5,
-    "damping": 0.55,
+    "stiffness": 9.0,
+    "damping": 0.38,
     "gravity": 0.25,
-    "drag": 0.35,
+    "drag": 0.25,
     "maxAngle": 14,
     "bones": [
      "sec-hair-front-r-1",
@@ -1391,10 +1391,10 @@
     ]
    },
    "side-l": {
-    "stiffness": 6.0,
-    "damping": 0.6,
+    "stiffness": 10.0,
+    "damping": 0.42,
     "gravity": 0.2,
-    "drag": 0.3,
+    "drag": 0.2,
     "maxAngle": 12,
     "bones": [
      "sec-hair-side-l-1",
@@ -1429,10 +1429,10 @@
     ]
    },
    "side-r": {
-    "stiffness": 6.0,
-    "damping": 0.6,
+    "stiffness": 10.0,
+    "damping": 0.42,
     "gravity": 0.2,
-    "drag": 0.3,
+    "drag": 0.2,
     "maxAngle": 12,
     "bones": [
      "sec-hair-side-r-1",
@@ -1467,10 +1467,10 @@
     ]
    },
    "back-l": {
-    "stiffness": 4.8,
-    "damping": 0.5,
+    "stiffness": 8.0,
+    "damping": 0.36,
     "gravity": 0.3,
-    "drag": 0.4,
+    "drag": 0.3,
     "maxAngle": 16,
     "bones": [
      "sec-hair-back-l-1",
@@ -1505,10 +1505,10 @@
     ]
    },
    "back-r": {
-    "stiffness": 4.8,
-    "damping": 0.5,
+    "stiffness": 8.0,
+    "damping": 0.36,
     "gravity": 0.3,
-    "drag": 0.4,
+    "drag": 0.3,
     "maxAngle": 16,
     "bones": [
      "sec-hair-back-r-1",
@@ -1561,7 +1561,7 @@
     1.0
    ],
    "openDegrees": 112.0,
-   "note": "rig-frame rotation about +z by -angle opens the lid outward"
+   "note": "opens outward: Unity frame, rotate about +z by +angle (source frame: -angle)"
   },
   "chip": {
    "bone": "sec-device-chip",
@@ -1576,6 +1576,7 @@
     0.006
    ],
    "approachTiltDegrees": 28.0,
+   "note": "insertion runs from the approach offset (Unity frame) and a +tilt about +z to seated",
    "size": [
     0.026,
     0.031,

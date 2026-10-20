@@ -292,9 +292,9 @@ TORSO = [
     (.694, .190, .118, .112, 2.6, 2.6, .000, {10: (-.008, 0)}),                                            # band top
     (.698, .183, .114, .107, 2.6, 2.6, .000, {10: (-.008, 0)}),                                            # skin
     (.748, .165, .114, .100, 2.5, 2.6, .000, {0: (-.010, 0), 10: (-.011, 0)}),                             # navel
-    (.800, .170, .122, .104, 2.6, 2.6, .000, {0: (-.005, 0), 10: (-.011, 0)}),
-    (.850, .182, .128, .112, 2.6, 2.6, .000, {0: (-.008, 0), 10: (-.011, 0)}),                             # ab groove
-    (.895, .198, .134, .124, 2.6, 2.6, .000, {0: (-.006, 0), 10: (-.011, 0)}),
+    (.800, .170, .122, .104, 2.6, 2.6, .000, {0: (-.004, 0), 1: (.004, 0), 2: (-.002, 0), 10: (-.011, 0)}),
+    (.850, .182, .128, .112, 2.6, 2.6, .000, {0: (-.009, 0), 1: (-.003, 0), 2: (-.005, 0), 10: (-.011, 0)}),  # ab groove
+    (.895, .198, .134, .124, 2.6, 2.6, .000, {0: (-.005, 0), 1: (.004, 0), 2: (-.002, 0), 10: (-.011, 0)}),
     (.935, .214, .140, .136, 2.6, 2.6, .000, {0: (-.008, 0), 1: (-.003, 0), 3: (0, .008), 4: (0, .016), 10: (-.012, 0)}),  # rib line
     (.958, .228, .162, .142, 3.0, 2.6, .000, {0: (-.020, -.004), 1: (0, -.003), 3: (0, .010), 4: (-.008, .022), 5: (-.012, .010), 6: (-.008, 0), 10: (-.012, 0)}),
     (1.005, .240, .178, .150, 3.0, 2.6, .000, {0: (-.020, 0), 4: (-.004, 0), 5: (-.014, 0), 6: (-.008, 0), 10: (-.010, 0)}),
@@ -862,15 +862,16 @@ CLUMPS = [
 ]
 HAIR_CHAINS = ['front-l', 'front-r', 'side-l', 'side-r', 'back-l', 'back-r']
 # Spring tuning per chain (spiky low-poly hair: stiff clumps, a small bounce and sway, never jelly). Units: stiffness and
-# damping are the angular spring's natural frequency (Hz) and damping ratio; gravity in m/s^2 scale; drag 0..1 of the
-# root's velocity the tip lags; maxAngle in degrees from rest; colliders in the head joint frame (rig source frame).
+# damping are the spring's natural frequency (Hz) and damping ratio toward the rigid-follow pose; gravity as a fraction
+# of 0.981 m/s^2; drag a linear air drag (1/s) on the tip's world velocity; maxAngle the degrees a bone may leave its
+# rigid direction; colliders in the head and neck joint frames (rig source frame).
 SPRING = {
-    'front-l': dict(stiffness=5.5, damping=.55, gravity=.25, drag=.35, maxAngle=14),
-    'front-r': dict(stiffness=5.5, damping=.55, gravity=.25, drag=.35, maxAngle=14),
-    'side-l': dict(stiffness=6.0, damping=.6, gravity=.2, drag=.3, maxAngle=12),
-    'side-r': dict(stiffness=6.0, damping=.6, gravity=.2, drag=.3, maxAngle=12),
-    'back-l': dict(stiffness=4.8, damping=.5, gravity=.3, drag=.4, maxAngle=16),
-    'back-r': dict(stiffness=4.8, damping=.5, gravity=.3, drag=.4, maxAngle=16),
+    'front-l': dict(stiffness=9.0, damping=.38, gravity=.25, drag=.25, maxAngle=14),
+    'front-r': dict(stiffness=9.0, damping=.38, gravity=.25, drag=.25, maxAngle=14),
+    'side-l': dict(stiffness=10.0, damping=.42, gravity=.2, drag=.2, maxAngle=12),
+    'side-r': dict(stiffness=10.0, damping=.42, gravity=.2, drag=.2, maxAngle=12),
+    'back-l': dict(stiffness=8.0, damping=.36, gravity=.3, drag=.3, maxAngle=16),
+    'back-r': dict(stiffness=8.0, damping=.36, gravity=.3, drag=.3, maxAngle=16),
 }
 
 
@@ -1675,6 +1676,7 @@ def main():
     identity_frames(rig)
     for name, obj in objs.items():
         print('MESH', name, mesh_stats(obj))
+    bpy.context.preferences.filepaths.save_version = 0   # no .blend1 backups
     bpy.ops.wm.save_as_mainfile(filepath=OUT_BLEND, compress=True)
     print('SAVED', OUT_BLEND)
 

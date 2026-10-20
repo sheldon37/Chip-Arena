@@ -244,8 +244,11 @@ Reasons:
 **Joints.**
 - The skinned mesh's skeleton is exactly `CapturedRig.Bones`: the same 22 names, order, parents and rest offsets, with
   identity rest rotations.
-- No extra bones in Phases B–C, because no pose writer would move them. Forearm and upper-arm twist helpers, if
-  wanted, come later as bones the adapter derives from the 22.
+- No extra bones in Phases B–C that a pose writer must move. Forearm and upper-arm twist helpers, if wanted, come
+  later as bones the adapter derives from the 22.
+- The one extension: optional secondary bones in the reserved `sec-` namespace, marked `secondary` with a fallback
+  joint. These are the hair spring chains under `head` and the device's lid and chip under `right-wrist` (section k).
+  A runtime that ignores them folds their weights onto the fallback, which gives the rest shape with no gaps.
 - Rest positions below, Unity frame, metres above the floor. Left limbs sit at −x and the right mirror them at +x.
 
 | # | Joint | Parent | Rest (x, y, z) | # | Joint | Parent | Rest (x, y, z) |
@@ -630,3 +633,37 @@ Compatibility resolution is presentation, not validation: the authority stores t
 - Ghost and afterimage looks and the spawn-in, revive and Cyber dithers need skinned or baked variants of each shader,
   which is a broad surface to verify.
 - No Unity, Windows, GPU or two-client run is possible here. Every number above that is not from Core is an estimate.
+
+## k. Secondary motion (hair and cloth)
+
+The owner asked for hair and clothing movement. It is presentation only: no authority, rule, timing, hit volume,
+collider or network field reads or writes it.
+
+**Chains.**
+- Short spring chains of optional `sec-*` bones parented to a CapturedRig joint, recorded in the manifest
+  (`springs`).
+- Each chain records its spring parameters:
+  - stiffness (Hz) and damping ratio toward the rigid-follow pose;
+  - gravity, linear air drag and the maximum angle from the rigid direction;
+  - colliders in joint frames (a head sphere, a neck capsule).
+- The male base ships six 2-bone hair chains: fringe left and right, sides and back.
+- They are tuned for spiky low-poly hair: about 8–10 Hz, damping .36–.42, 12–16°. The previews show a subtle bounce
+  and sway, not jelly: a mean swing of about 4–10° in the run, 7–11° in a melee cut and under 1° at idle.
+
+**Proposed Core solver** (Phase C or D, Claude). Deterministic and allocation-free:
+- A jiggle offset per chain joint from its rigid target, integrated in fixed sub-steps (for example 1/180 s) from the
+  presentation clock, never from the frame rate:
+  - the target's own acceleration acts as an inertial force;
+  - then the spring, drag and gravity;
+  - then the bone lengths, the max angle and the colliders.
+- Per-tier on/off: off at the Low tier and with Reduced effects.
+- A budget of 8 pilots × N chains. Beyond 15–20 m the chains freeze at rest (LOD).
+- First person never runs it.
+- Killcam, replays, spectators and corpses re-simulate from the replayed pose, so nothing is networked. A corpse's
+  chains settle, then freeze with the ragdoll's sleep.
+
+**Garments (Phase C).** Garments add their own chains on the same terms:
+- coat tails and hood (spine and chest), scarf ends and straps (neck and chest), cargo pockets and belt pouches (hips);
+- sphere and capsule colliders come from the body type's fit volumes (section c), so cloth clears the thighs and
+  torso;
+- a chain's weights fold onto its parent joint when secondary motion is off.
