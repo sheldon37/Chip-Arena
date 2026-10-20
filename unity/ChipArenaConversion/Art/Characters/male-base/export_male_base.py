@@ -232,7 +232,40 @@ def manifest(bones, pieces, binary, rig):
         attachments=dict(core=dict(joint='chest', at=[r6(c) for c in rig_to_unity(Vector((M.CORE_AT[0], M.CORE_AT[1], 0)) - M.J['chest'])]),
                          device=dict(joint='right-wrist'), hair=dict(joint='head')),
     )
+    doc['severs'] = dict(note='stump-cap attachment points (doc f): cut plane through the joint (motion-root frame, Unity axes), '
+                               'child part cross-section; the caps themselves are Phase D', points=sever_points(pieces[0]))
     return doc
+
+
+SEVER_JOINTS = (2, 5, 7, 8, 11, 12, 14, 15, 18, 19)
+CHILD = {2: 3, 5: None, 7: 8, 8: 9, 11: 12, 12: 13, 14: 15, 15: 16, 18: 19, 19: 20}
+
+
+def sever_points(body_piece):
+    """Stump-cap attachment points at the doc's sever joints (f): the cut plane through the joint along the limb axis,
+    with the child part's measured cross-section there (centroid and mean radius of its first 5 cm past the cut)."""
+    out = []
+    verts = body_piece['verts']
+    for j in SEVER_JOINTS:
+        name = M.BONE_NAMES[j]
+        at = M.J[name]
+        c = CHILD[j]
+        axis = (M.J[M.BONE_NAMES[c]] - at).normalized() if c is not None else Vector((0, 1, 0))
+        part = j if j in M.PART_ROOTS else 2
+        pts = []
+        for (pq, nq, col, w, h, d) in verts:
+            p = Vector((-pq[0] * Q, pq[1] * Q + M.ROOT_HEIGHT, pq[2] * Q))      # back to rig space
+            if d != part:
+                continue
+            if 0 <= (p - at).dot(axis) <= .05:
+                pts.append(p)
+        cen = sum(pts, Vector()) / max(1, len(pts))
+        rad = sum(((q - cen) - axis * (q - cen).dot(axis)).length for q in pts) / max(1, len(pts))
+        out.append(dict(joint=name, index=j, plane=[r6(x) for x in rig_to_unity(at - Vector((0, M.ROOT_HEIGHT, 0)))],
+                        normal=[r6(x) for x in rig_to_unity(axis)],
+                        centroid=[r6(x) for x in rig_to_unity(cen - Vector((0, M.ROOT_HEIGHT, 0)))],
+                        radius=r6(rad), samples=len(pts)))
+    return out
 
 
 def deterministic_fbx():

@@ -258,6 +258,14 @@ class LowPolyMaleBase(unittest.TestCase):
             if hide[self.m['reg'][vi][0]] in ('forearm-left', 'hand-left'):
                 self.assertEqual(self.m['col'][vi][3], 1, 'left forearm and hand are bare skin')
 
+    def test_stump_cap_points_at_the_sever_joints(self):
+        pts = {p['index']: p for p in self.doc['severs']['points']}
+        self.assertEqual(sorted(pts), [2, 5, 7, 8, 11, 12, 14, 15, 18, 19])
+        for j, p in pts.items():
+            self.assertGreater(p['samples'], 10, p['joint'])
+            self.assertTrue(.03 < p['radius'] < .2, p['joint'])
+            self.assertAlmostEqual(math.hypot(*p['normal']), 1.0, places=4)
+
     def test_builder_and_exporter_are_the_committed_sources(self):
         for f in ('build_male_base.py', 'export_male_base.py', 'male_base.blend'):
             self.assertTrue((ART / f).is_file(), f)

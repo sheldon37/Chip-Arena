@@ -1666,5 +1666,220 @@
   "hair": {
    "joint": "head"
   }
+ },
+ "severs": {
+  "note": "stump-cap attachment points (doc f): cut plane through the joint (motion-root frame, Unity axes), child part cross-section; the caps themselves are Phase D",
+  "points": [
+   {
+    "joint": "spine",
+    "index": 2,
+    "plane": [
+     -0.0,
+     -0.135,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     1.0,
+     0.0
+    ],
+    "centroid": [
+     -0.0,
+     -0.116999,
+     0.004733
+    ],
+    "radius": 0.145158,
+    "samples": 120
+   },
+   {
+    "joint": "head",
+    "index": 5,
+    "plane": [
+     -0.0,
+     0.475,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     1.0,
+     0.0
+    ],
+    "centroid": [
+     -0.0,
+     0.502653,
+     0.021273
+    ],
+    "radius": 0.094954,
+    "samples": 444
+   },
+   {
+    "joint": "left-shoulder",
+    "index": 7,
+    "plane": [
+     -0.345,
+     0.235,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     -0.369636,
+     0.203901,
+     0.017926
+    ],
+    "radius": 0.081448,
+    "samples": 54
+   },
+   {
+    "joint": "left-elbow",
+    "index": 8,
+    "plane": [
+     -0.345,
+     -0.035,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     -0.346222,
+     -0.059,
+     0.003995
+    ],
+    "radius": 0.056747,
+    "samples": 60
+   },
+   {
+    "joint": "right-shoulder",
+    "index": 11,
+    "plane": [
+     0.345,
+     0.235,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     0.369636,
+     0.203901,
+     0.017926
+    ],
+    "radius": 0.081448,
+    "samples": 54
+   },
+   {
+    "joint": "right-elbow",
+    "index": 12,
+    "plane": [
+     0.345,
+     -0.035,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     0.346222,
+     -0.059,
+     0.003995
+    ],
+    "radius": 0.056747,
+    "samples": 60
+   },
+   {
+    "joint": "left-hip",
+    "index": 14,
+    "plane": [
+     -0.13,
+     -0.295,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     -0.154809,
+     -0.313,
+     -0.004175
+    ],
+    "radius": 0.095781,
+    "samples": 54
+   },
+   {
+    "joint": "left-knee",
+    "index": 15,
+    "plane": [
+     -0.13,
+     -0.545,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     -0.131678,
+     -0.569,
+     0.009848
+    ],
+    "radius": 0.068143,
+    "samples": 70
+   },
+   {
+    "joint": "right-hip",
+    "index": 18,
+    "plane": [
+     0.13,
+     -0.295,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     0.154809,
+     -0.313,
+     -0.004175
+    ],
+    "radius": 0.095781,
+    "samples": 54
+   },
+   {
+    "joint": "right-knee",
+    "index": 19,
+    "plane": [
+     0.13,
+     -0.545,
+     0.0
+    ],
+    "normal": [
+     -0.0,
+     -1.0,
+     0.0
+    ],
+    "centroid": [
+     0.131678,
+     -0.569,
+     0.009848
+    ],
+    "radius": 0.068143,
+    "samples": 70
+   }
+  ]
  }
 }

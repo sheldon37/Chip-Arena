@@ -1,3 +1,69 @@
+## 2026-10-20 — Claude: low-poly male base, Phase B, built in Blender (on the branch, not merged)
+
+- **Branch/base:** `claude/lowpoly-base-model`, from shared `claude/sleepy-ritchie-g8ruhv` at `28a46ce`, fast-forwarded to `acc90b9` (the Phase A doc). WIP commits `5e0fed1`, `07e84c9`, `87a6b5c`, then the final one. Not merged, not published, no PR.
+- **Owner request:** the first real low-poly model, built as a Blender mesh. The style target and base sheet are visual targets only. It is a male base:
+  - bare torso and dark boxers;
+  - a natural stylized face;
+  - interchangeable spiky hair;
+  - a heart-side chest core with a changeable glow;
+  - one right-wrist chip device with closed, opening, inserted, accepted and active states.
+  - Follow-up: hair and clothing should move (secondary motion).
+- **Scope:** art sources and exports under `unity/ChipArenaConversion/Art/Characters/male-base/`. That is outside `Assets/`, so no Unity import, metas, Resources or packaging change; `.gitattributes` and `.gitignore` sit there too.
+  - The work: a static Python test, a new section k in `docs/CHARACTER-LOWPOLY.md` with a one-line amendment to its section c, and the Art README.
+  - No Core, Runtime, shader or rules change. No licensed content: the pose and scale dumps used for the renders stay in scratch.
+- **Built by script:** `build_male_base.py` rebuilds `male_base.blend` deterministically.
+  - Ring lofts with a mirror modifier make the body. A designed edge flow gives socketed shoulders, 3 loops at the elbows and knees, and a crotch split.
+  - The face is ray-projected onto the head: sclera, iris, pupil, glint, lash line, lid crease, ridged brows and lips. Ears, curled fingers and a thumb are separate islands.
+  - Flat shaded. Bone-heat weights are then cleaned by rule (axis blends at the elbows, knees, wrists and ankles; head and hands rigid). Weights are limited to 4, normalized and kept in 1/255 units.
+- **Counts:** 5,230 triangles in all (the doc's LOD0 budget is 6,000):
+  - body and head 3,796 (2,076 shared vertices, 11,150 split for flat shading);
+  - hair 950;
+  - core 210;
+  - device, lid and chip 274.
+  - Materials: 2, `CA_Body` and the emissive `CA_Glow`. No textures.
+- **Skeleton:** CapturedRig exactly (doc c): the 22 names, indices, parents and rest offsets, with identity rest frames.
+  - The game's local quaternions drive it 1:1, and every preview is posed that way through the real Core routes.
+  - Proportions are the rig's: a stocky 1.70 m figure, designed as a heroic upper body on the ±.345 m shoulders. Soles sit at 0, the head centre at 1.50 m, and the body stays inside the .42 m capsule.
+  - The FBX's `CA_Rig` and `motion-root` carry a cancelling ±90° X pair from Blender's axis conversion. Every other joint has identity rest rotation.
+- **Optional `sec-` bones (flagged secondary, with a fallback):**
+  - six 2-bone hair chains under `head`;
+  - `sec-device-lid` and `sec-device-chip` under `right-wrist`.
+  - A runtime that ignores them folds the weights onto the fallback and gets the rest shape. The device is wholly rigid on the right wrist.
+- **Materials and regions:**
+  - Vertex paint holds the default sRGB colour, with the channel in alpha (doc d channels: 1 skin, 2 hair, 4 secondary, 5 accent glow, 6 core glow).
+  - Tinting is by ratio, as the bank does, so skin, hair and glow swaps need no new mesh. The renders show 5 variants.
+  - Each vertex has a hide region (the doc's 19) and its death region (part root), with each hide region inside one part.
+  - Stump-cap attachment points at the 10 sever joints are in the manifest. The caps themselves are Phase D.
+- **Exports** (`export_male_base.py`, byte-identical across runs and independent rebuilds):
+  - `male_base.bytes`: the doc's `CALP` v1 binary, 518 KB;
+  - `male_base.manifest.json`: bones, bind poses, pieces, paints, regions, springs, device hinge and states, severs;
+  - FBX (408 KB) and GLB (951 KB) previews. The FBX writer's timestamps and hash-based ids are pinned.
+- **Secondary motion:** six chains tuned for stiff spiky clumps (8–10 Hz, damping .36–.42, 12–16°).
+  - The preview solver is a jiggle offset per joint driven by the target's acceleration, with air drag and limits.
+  - Mean swing: run 4–10°, melee cut 7–11°, roll 11–16°, idle under 1°.
+  - Doc k proposes the Core solver: deterministic and allocation-free, fixed sub-steps, per-tier, 8 pilots × N chains, a distance freeze, never in first person, nothing networked. It also covers Phase C garment chains.
+- **Checks (actual):**
+  - `Tests/test_lowpoly_male_base.py`: 10 checks, OK. It parses `Core/CapturedRig.cs` for the rig, then checks weights, regions, budgets, winding and volume, the envelope, the right-wrist-only device and file sizes. It skips without the Art folder.
+  - Two exports byte-identical; a full rebuild gives identical binary and manifest.
+  - The FBX was parsed to confirm its joint rest transforms.
+  - run5b: see below.
+- **Renders** (offline Cycles CPU, scratch `renders-lowpoly-base/`):
+  - turnaround; rig-joint overlay; face; core; the 7 device states;
+  - 8 game poses with the game's own weapons in hand: idle, run, sprint, melee cut, rifle aim, magic cast, roll, dodge turn;
+  - first-person arms; a scale shot beside the voxel pilot and a shambler; colour variants;
+  - a turntable; run, sprint, dodge-turn and melee clips with the hair springs.
+- **Not run:** Unity import or play, the runtime binding (Phase D), Windows, GPU timing, two clients.
+- **Animation, timing, networking:** no change. Hit timing, hitboxes, damage, cooldowns, movement and the wire are untouched. The skeleton is the authority's rig, and nothing reads the new files at runtime.
+- **Astra:** nothing to pick up now. The `look` field (doc i) stays the Phase D contract.
+- **Risks:**
+  - The rig's proportions (owner decision j1): long torso, short legs, very wide shoulders.
+  - The neck shows more than the voxel collar did, so big head and neck turns in the melee cuts bend it visibly.
+  - The FBX root's ±90° pair.
+  - Spring numbers come from the preview solver, not a Core one.
+  - The face is a first pass.
+  - Glow renders pale under AgX. Unity's bloom will differ.
+- **Next:** owner review of the renders: proportions (j1), face, hair, core and device. Then Phase C: two hairstyles, two tops, two pants, one mask and one pair of shoes on these joints and regions, plus the Core parser and spring solver.
+
 ## 2026-10-20 — Claude: low-poly character Phase A, architecture audit and design (merged into shared)
 
 - **Branch/base:** `claude/lowpoly-audit`, from shared `claude/sleepy-ritchie-g8ruhv` at `28a46ce`. Docs only; merged into shared and the builder; not published. Phase B (male base in Blender) runs in parallel on `claude/lowpoly-base-model`.
