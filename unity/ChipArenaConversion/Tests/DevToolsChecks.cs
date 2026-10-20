@@ -232,7 +232,7 @@ namespace ChipArena.UnityConversion
             Check(camera.Contains("t.SetPositionAndRotation(new Vector3(devFly.X,devFly.Y,devFly.Z),Quaternion.Euler(devFly.Pitch,devFly.Yaw,0));")&&!Regex.IsMatch(camera,@"arena\.|pending|yaw=|pitch=|Body|Input"),"the fly camera moves only the match camera");
             var update=Method(panel,"private void DevUpdate(bool typing)");Check(!Regex.IsMatch(update,@"arena\.[A-Za-z_][\w.]*\s*=[^=]")&&!update.Contains("pending"),"the panel's update writes no arena state or input");
             var game=R("Runtime/ConversionGame.cs");
-            Check(game.Contains("arena.Pve?.Holding!=true&&!DevHoldsPilot;")&&game.Contains("bool look=!BoardOpen&&DevLook(")&&panel.Contains("private bool DevHoldsPilot=>devFly.On||devOpen&&(devCursorFree||devTyping);"),"flying or using the panel's cursor sends the neutral input (the pilot holds still)");
+            Check(game.Contains("arena.Pve?.Holding!=true&&!DevHoldsPilot;")&&game.Contains("bool look=!BoardOpen&&!ExpeditionScreenOpen&&DevLook(")&&panel.Contains("private bool DevHoldsPilot=>devFly.On||devOpen&&(devCursorFree||devTyping);"),"flying or using the panel's cursor sends the neutral input (the pilot holds still)");
             // The fly camera is pure: its own pose, the pilot camera's look mapping, clamped pitch and speed.
             var f=new NativeDevFly();f.Place(1,2,3,90,10);f.Move(0,0,1,false,false,.1f);
             Check(Math.Abs(f.X-(1+Math.Cos(10*Math.PI/180)))<1e-3&&Math.Abs(f.Y-(2-Math.Sin(10*Math.PI/180)))<1e-3&&Math.Abs(f.Z-3)<1e-3,"forward is Unity's Euler(pitch,yaw,0) forward ("+f.X+","+f.Y+","+f.Z+")");

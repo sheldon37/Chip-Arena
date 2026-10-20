@@ -76,6 +76,8 @@ namespace ChipArena.UnityConversion
         /// it), and Escape over the tray is Choose later, as on the Boss Test's. True only for those Escapes (consumed: no pause menu).</summary>
         private bool ExpeditionLiveKeys()
         {
+            // Resolve completion/XP screen changes before Update chooses cursor ownership, not first during OnGUI.
+            ExpeditionLiveSync();
             ExpeditionPickStep();
             if(LiveExpedition==null){expeditionScreenOpen=false;return false;}if(GUIUtility.keyboardControl!=0)return false;
             if(Input.GetKeyDown(KeyCode.J))expeditionScreenOpen=!expeditionScreenOpen;
