@@ -11,12 +11,21 @@ namespace ChipArena.UnityConversion
     /// reads (0 keeps a window-look pane dark), `Drive` what animates it (<see cref="NativeExpeditionCityKit.Drive"/>, its phase
     /// in `Param`). `Role` says what the part is for (the checks hold each role to its own placement rule). `Shadow`: big parts
     /// that cast. `Fade`: hidden while it sits between the camera and the pilot. `Detail`: fine dressing the low graphics tier
-    /// and compatibility rendering leave out.
+    /// and compatibility rendering leave out. `Face`: 1 + the index of the building face it stands on in
+    /// <see cref="NativeExpeditionCityKit.FaceCulls"/> (0 none), `Back` how far it may be seen past that face's edges from behind
+    /// (its inset from the edges over how far it stands out of the face): the runtime leaves it undrawn while the building hides
+    /// it from the camera (<see cref="NativeExpeditionCityKit.Hide"/>); never set on a part that casts.
     /// </summary>
     public struct NativeCityPart
     {
-        public int Parent,Look,Flags,Color;public float X,Y,Z,Hx,Hy,Hz,Qx,Qy,Qz,Qw,Gain,Level,Param;public byte Drive,Role;public bool Shadow,Fade,Detail;
+        public int Parent,Look,Flags,Color;public float X,Y,Z,Hx,Hy,Hz,Qx,Qy,Qz,Qw,Gain,Level,Param,Back;public byte Drive,Role;public bool Shadow,Fade,Detail;public short Face;
     }
+    /// <summary>A building face the town's parts stand on, as the runtime's back-face rule reads it (world, metres): the face's
+    /// plane `Plane` across axis `Axis` (0 x, 2 z), looking out along `Sign`; the building `Depth` deep behind it; its span
+    /// `U0..U1` along the other horizontal axis and its height `Y0..Y1`, both shrunk by the blocks' chamfer
+    /// (<see cref="NativeBlockLooks.Chamfer"/>), where the drawn block is solid; `Grounded` when the building stands on the town's
+    /// floor (nothing is seen under it).</summary>
+    public struct NativeCityFaceCull {public byte Axis;public sbyte Sign;public bool Grounded;public float Plane,Depth,U0,U1,Y0,Y1;}
     /// <summary>A light or effect source of the town: world place (for a fire the burning surface under the flames), linear colour
     /// times intensity, the reach of its light (m), the size of its flames or halo, its phase and its kind
     /// (<see cref="NativeExpeditionCityKit"/> Glow* constants).</summary>
@@ -64,22 +73,53 @@ namespace ChipArena.UnityConversion
         /// <summary>How far from the camera the runtime draws a part (m; exp-layout-7, the city grown 24 m out on three arms), by its
         /// size L (its largest full extent), so the per-frame cost follows what the camera can see rather than the town's size:
         /// anything that glows (the tube look of the light bank, or any animated drive: lit windows, neon, lamps, fires, beacons)
-        /// to `far`; other parts to <see cref="PartBase"/> + <see cref="PerMetre"/> L (a 0.5 m lamp head 92 m, a 1 m window 105 m,
-        /// 4.8 m and longer to `far`); fine detail (`Detail`, which the low tier never draws) to <see cref="DetailBase"/> +
-        /// <see cref="PerMetre"/> L, at most <see cref="DetailRange"/> (a 0.2 m sill 55 m, a 1 m poster 75 m). Every range stops at
+        /// to `far`; other parts to <see cref="PartBase"/> + <see cref="PerMetre"/> L (a 0.5 m lamp head 81 m, a 1 m window 92 m,
+        /// 6 m and longer to `far`); fine detail (`Detail`, which the low tier never draws, glowing or not) to <see cref="DetailBase"/> +
+        /// <see cref="PerMetre"/> L, at most <see cref="DetailRange"/> (a 0.2 m sill 39 m, a 1 m poster 57 m). Every range stops at
         /// `far`, the look's linear fog end plus <see cref="FarMargin"/> (<see cref="FarRange"/>), where the fog covers a part and
-        /// its block alike. Below about 3-6 pixels at 1080p when it goes, under the dusk fog's first 40-60%.</summary>
-        public const float PartBase=80,DetailBase=50,PerMetre=25,DetailRange=110,FarMargin=25,FarDefault=200;
+        /// its block alike. Below about 4-6 pixels at 1080p when it goes. The city detail pass (2026-10-20) paid for its pieces
+        /// here: 80/50/25 m and 110 m became 70/35/22 m and 80 m, with the back-face rule (<see cref="Hide"/>), so a frame at the
+        /// city check's six points draws no more than exp-layout-6 did.</summary>
+        public const float PartBase=70,DetailBase=35,PerMetre=22,DetailRange=80,FarMargin=25,FarDefault=200;
         public static float FarRange(MapLook look)=>look?.fog!=null&&look.fog.mode=="linear"&&look.fog.end>0?look.fog.end+FarMargin:FarDefault;
         /// <summary>The distance (m) to which part p is drawn, with <see cref="FarRange"/> `far`.</summary>
         public static float Range(in NativeCityPart p,float far)
         {
-            if(p.Drive!=DriveSteady||p.Look==NativeCyberCityLooks.Tube&&(p.Flags&NativeCyberCityLooks.Bank)!=0)return far;
             float size=2*Math.Max(p.Hx,Math.Max(p.Hy,p.Hz));
+            // A glow to the far range, except fine detail that glows (the detail pass's puddles and candles): its own range.
+            if(p.Drive!=DriveSteady||p.Look==NativeCyberCityLooks.Tube&&(p.Flags&NativeCyberCityLooks.Bank)!=0)return p.Detail?Math.Min(Math.Min(DetailRange,far),DetailBase+PerMetre*size):far;
             return p.Detail?Math.Min(Math.Min(DetailRange,far),DetailBase+PerMetre*size):Math.Min(far,PartBase+PerMetre*size);
         }
         /// <summary>Whether part p is drawn `distanceSquared` m² from the camera (its rest spot), with <see cref="FarRange"/> `far`.</summary>
         public static bool Drawn(in NativeCityPart p,float distanceSquared,float far){float r=Range(p,far);return distanceSquared<=r*r;}
+        /// <summary>The back-face rule (Claude, 2026-10-20, the city detail pass). How far outside a building's block (grown by this
+        /// margin) the eye must stand for its parts to be left out, so no near clip plane ever opens the block (m).</summary>
+        public const float BackMargin=.5f;
+        /// <summary>The building faces parts may be hidden behind (index k is a part's `Face` k + 1).</summary>
+        public NativeCityFaceCull[] FaceCulls=Array.Empty<NativeCityFaceCull>();
+        /// <summary>
+        /// Fills `ratio` (length FaceCulls.Length + 1; [0] stays +inf) for an eye at (x, y, z): for face k + 1, when the eye stands
+        /// behind the face's plane by e and outside its building grown by <see cref="BackMargin"/>, the eye's reach past the face's
+        /// edges (its distance beyond the span or over the top; under the floor never counts) over e, else +inf. Part p on that face
+        /// is hidden when ratio[p.Face] &lt;= p.Back: then a line from the eye to any point of the part crosses the face's plane
+        /// inside the solid face (a part of the face s m in from every edge and d m out of it is seen past an edge only when the
+        /// eye's reach past that edge exceeds s e / d), so it passes through the building's block, which the eye sees from outside.
+        /// Allocation free.
+        /// </summary>
+        public void Hide(float x,float y,float z,float[] ratio)
+        {
+            var f=FaceCulls;ratio[0]=float.PositiveInfinity;
+            for(int k=0;k<f.Length;k++)
+            {
+                ref readonly var c=ref f[k];float n=c.Axis==0?x:z,u=c.Axis==0?z:x;float e=(c.Plane-n)*c.Sign;
+                float reach=Math.Max(0,Math.Max(u-c.U1,c.U0-u)),over=Math.Max(0,y-c.Y1),under=c.Grounded?0:Math.Max(0,c.Y0-y);float past=Math.Max(reach,Math.Max(over,under));
+                bool outside=past>=BackMargin||e>=c.Depth+BackMargin;
+                ratio[k+1]=e>0&&outside?past/e:float.PositiveInfinity;
+            }
+        }
+        /// <summary>The runtime's selection of part p from an eye `distanceSquared` m² away: its range, then the back-face rule
+        /// (`ratio` as <see cref="Hide"/> filled it for that eye; null skips it).</summary>
+        public static bool Drawn(in NativeCityPart p,float distanceSquared,float far,float[] ratio)=>(ratio==null||p.Face==0||ratio[p.Face]>p.Back)&&Drawn(p,distanceSquared,far);
         public NativeCityPart[] Parts=Array.Empty<NativeCityPart>();public NativeCityGlow[] Glows=Array.Empty<NativeCityGlow>();
         /// <summary>The keep-out boxes the kit honoured (world AABBs and their owner spawn, -1 none), for the checks.</summary>
         public NativeCityKeep[] Keeps=Array.Empty<NativeCityKeep>();
@@ -140,8 +180,8 @@ namespace ChipArena.UnityConversion
             if(k.byStem.Count==0)return k;
             k.Faces();k.KeepOuts();k.HubKeepOuts();k.FaceKeeps();
             for(int i=0;i<k.blocks.Length;i++){var s=Stem(k.blocks[i]?.id);if(s==null)continue;k.Dress(i,s);}
-            k.HubHeaders();k.Spawns();k.Street();k.WildsGround();k.EntranceLights();
-            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Keeps=k.keeps.ToArray();k.Lettering=k.lettering.ToArray();k.parts.Clear();k.glows.Clear();if(layers)Layers(k.Parts,k.blocks);return k;
+            k.QuarterSquares();k.HubHeaders();k.Spawns();k.Street();k.WildsGround();k.EntranceLights();k.RouteWires();k.Camp();k.Detail();
+            k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Keeps=k.keeps.ToArray();k.Lettering=k.lettering.ToArray();k.FaceCulls=k.faceCulls.ToArray();k.parts.Clear();k.glows.Clear();if(layers)Layers(k.Parts,k.blocks);k.BackRatios();return k;
         }
         private static void Layers(NativeCityPart[] parts,ContentBlock[] blocks)
         {
@@ -187,10 +227,51 @@ namespace ChipArena.UnityConversion
             if(Blocked(x,y,z,sx*.5,sy*.5,sz*.5,q)){if(groupStart>=0)groupBad=true;else Rejected++;return;}
             var pq=BlockRot(b);Rot inv=new Rot{X=-pq.X,Y=-pq.Y,Z=-pq.Z,W=pq.W};
             Rotate(inv.X,inv.Y,inv.Z,inv.W,x-b.pos.x,y-b.pos.y,z-b.pos.z,out double ox,out double oy,out double oz);var rel=Then(inv,q);
+            float back=0;short face=pen.Shadow?(short)0:BackFace(x,y,z,sx*.5,sy*.5,sz*.5,q,out back);
             parts.Add(new NativeCityPart{Parent=parent,Look=pen.Look,Flags=pen.Flags,Color=pen.Color,X=(float)ox,Y=(float)oy,Z=(float)oz,Hx=(float)(sx*.5),Hy=(float)(sy*.5),Hz=(float)(sz*.5),
-                Qx=(float)rel.X,Qy=(float)rel.Y,Qz=(float)rel.Z,Qw=(float)rel.W,Gain=pen.Gain,Level=pen.Level,Param=pen.Param,Drive=pen.Drive,Role=pen.Role,Shadow=pen.Shadow,Fade=pen.Fade,Detail=pen.Detail});
+                Qx=(float)rel.X,Qy=(float)rel.Y,Qz=(float)rel.Z,Qw=(float)rel.W,Gain=pen.Gain,Level=pen.Level,Param=pen.Param,Drive=pen.Drive,Role=pen.Role,Shadow=pen.Shadow,Fade=pen.Fade,Detail=pen.Detail,
+                Face=face,Back=back});
         }
         private void Box(int parent,double x,double y,double z,double sx,double sy,double sz,Pen pen)=>Box(parent,x,y,z,sx,sy,sz,pen,Rot.None);
+        // ---------------- the back-face rule ----------------
+        private Face onFace;private readonly List<NativeCityFaceCull> faceCulls=new List<NativeCityFaceCull>();private readonly Dictionary<int,int> faceCullOf=new Dictionary<int,int>();
+        /// <summary>Each face part's `Back` from where it ends up (after the layers' lifts move it out of its face by a few millimetres):
+        /// its inset from the solid face's edges over how far it now stands out, rounded down; a part that no longer fits loses its record.</summary>
+        private void BackRatios()
+        {
+            for(int i=0;i<Parts.Length;i++)
+            {
+                ref var p=ref Parts[i];if(p.Face==0)continue;var c=FaceCulls[p.Face-1];var b=blocks[p.Parent];
+                Extent(b.pos.x+p.X,b.pos.y+p.Y,b.pos.z+p.Z,p.Hx,p.Hy,p.Hz,p.Qx,p.Qy,p.Qz,p.Qw,out double ax0,out double ax1,out double ay0,out double ay1,out double az0,out double az1);
+                double pu0=c.Axis==0?az0:ax0,pu1=c.Axis==0?az1:ax1,pn0=c.Axis==0?ax0:az0,pn1=c.Axis==0?ax1:az1;
+                double outward=c.Sign>0?pn1-c.Plane:c.Plane-pn0,inset=Math.Min(Math.Min(pu0-c.U0,c.U1-pu1),c.Y1-ay1);if(!c.Grounded)inset=Math.Min(inset,ay0-c.Y0);
+                if(!(inset>0)||!(outward>1e-4)){p.Face=0;p.Back=0;continue;}
+                p.Back=(float)(Math.Floor(inset/outward*1000)/1000);
+            }
+        }
+        /// <summary>1 + the index of the face record that hides a part placed on <see cref="onFace"/> (world centre, half extents, turn)
+        /// from an eye behind its building, or 0, and in `back` the part's inset from the solid face's edges (the floor's edge left
+        /// out on a grounded building) over how far it stands out of the face: only on an unturned building's own face, for a part
+        /// in front of the face and inside its span and height.</summary>
+        private short BackFace(double x,double y,double z,double hx,double hy,double hz,Rot q,out float back)
+        {
+            back=0;var f=onFace;if(f==null||!f.Real)return 0;var b=blocks[f.Block];var s=Stem(b?.id);if(s==null||!IsBuilding(s))return 0;var br=BlockRot(b);if(Math.Abs(br.W)<.99999)return 0;
+            const double c=NativeBlockLooks.Chamfer;
+            double x0=b.pos.x-b.size.x/2,x1=b.pos.x+b.size.x/2,z0=b.pos.z-b.size.z/2,z1=b.pos.z+b.size.z/2,y0=b.pos.y-b.size.y/2,y1=b.pos.y+b.size.y/2;
+            double u0=(f.Axis==0?z0:x0)+c,u1=(f.Axis==0?z1:x1)-c,v0=y0+c,v1=y1-c,plane=f.Axis==0?(f.Sign>0?x1:x0):(f.Sign>0?z1:z0);bool grounded=Math.Abs(y0)<.01;
+            Extent(x,y,z,hx,hy,hz,q,out double ax0,out double ax1,out double ay0,out double ay1,out double az0,out double az1);
+            double pu0=f.Axis==0?az0:ax0,pu1=f.Axis==0?az1:ax1,pn0=f.Axis==0?ax0:az0,pn1=f.Axis==0?ax1:az1;
+            double outward=f.Sign>0?pn1-plane:plane-pn0,inset=Math.Min(Math.Min(pu0-u0,u1-pu1),v1-ay1);if(!grounded)inset=Math.Min(inset,ay0-v0);
+            if(!(inset>0)||!(outward>1e-4))return 0;
+            int key=f.Block*4+f.Index;
+            if(!faceCullOf.TryGetValue(key,out int k))
+            {
+                k=faceCulls.Count;faceCullOf[key]=k;
+                faceCulls.Add(new NativeCityFaceCull{Axis=(byte)f.Axis,Sign=(sbyte)f.Sign,Grounded=grounded,Plane=(float)plane,Depth=(float)(f.Axis==0?b.size.x:b.size.z),U0=(float)u0,U1=(float)u1,Y0=(float)v0,Y1=(float)v1});
+            }
+            // Rounded down to whole thousandths: the stored ratio never claims more than the geometry gives.
+            back=(float)(Math.Floor(inset/outward*1000)/1000);return (short)(k+1);
+        }
         private void Begin(){groupStart=parts.Count;glowStart=glows.Count;groupBad=false;}
         private bool End(){bool ok=!groupBad;if(!ok){Rejected++;parts.RemoveRange(groupStart,parts.Count-groupStart);glows.RemoveRange(glowStart,glows.Count-glowStart);}groupStart=glowStart=-1;groupBad=false;return ok;}
         private void Light(double x,double y,double z,int hex,double intensity,double range,double size,byte kind,double param=0)
@@ -228,6 +309,8 @@ namespace ChipArena.UnityConversion
                 // 0.6 m out toward the party).
                 if(d.closure!=null){var unit=Unit(d.closure);Keep(unit[0],unit[1],-1,unit[3],unit[4],unit[5],-1,2);}
                 foreach(var p in d.returns??Array.Empty<ExpeditionPoint>())Point(p,.9f,2.4f);foreach(var p in d.entries??Array.Empty<ExpeditionPoint>())Point(p,.9f,2.4f);
+                // The join circle (the city detail pass): nothing, flat paint included, in its pad grown .3 m, up to its counted height.
+                if(d.join!=null){float r=d.join.r+.3f;Keep(d.join.x-r,d.join.x+r,d.join.y-1,d.join.y+d.join.h,d.join.z-r,d.join.z+r,-1,2);}
             }
             foreach(var g in area.gates??Array.Empty<ExpeditionGateLayout>())Volume(g.closure,.8f,.6f);
             // The sanctuary's floor: nothing but flat paint below head height, away from its barricades and brazier (checked in Blocked).
@@ -267,7 +350,7 @@ namespace ChipArena.UnityConversion
         // ---------------- faces ----------------
         /// <summary>A building's side face: its block, outward normal (axis 0 x or 2 z, sign), the plane, the span along the viewer's
         /// right (`t` = (-n.z, 0, n.x)), the block's height and what the street in front is (0 enclosed, 1 alley, 2 street).</summary>
-        private sealed class Face {public int Block,Axis,Sign,Index;public double Plane,U0,U1,Top,Base;public int Front;public readonly List<double[]> Occ=new List<double[]>();public readonly List<double[]> Keep=new List<double[]>();public readonly List<double[]> Used=new List<double[]>();}
+        private sealed class Face {public int Block,Axis,Sign,Index;public bool Real;public double Plane,U0,U1,Top,Base;public int Front;public readonly List<double[]> Occ=new List<double[]>();public readonly List<double[]> Keep=new List<double[]>();public readonly List<double[]> Used=new List<double[]>();}
         private readonly List<Face> faces=new List<Face>();private readonly Dictionary<int,List<Face>> facesOf=new Dictionary<int,List<Face>>();
         private static double Tx(Face f)=>f.Axis==2?-f.Sign:0;private static double Tz(Face f)=>f.Axis==0?f.Sign:0;
         private static double Nx(Face f)=>f.Axis==0?f.Sign:0;private static double Nz(Face f)=>f.Axis==2?f.Sign:0;
@@ -287,7 +370,7 @@ namespace ChipArena.UnityConversion
         private Face MakeFace(int block,int axis,int sign)
         {
             var b=blocks[block];double x0=b.pos.x-b.size.x/2,x1=b.pos.x+b.size.x/2,z0=b.pos.z-b.size.z/2,z1=b.pos.z+b.size.z/2,y0=b.pos.y-b.size.y/2,y1=b.pos.y+b.size.y/2;
-            var f=new Face{Block=block,Axis=axis,Sign=sign,Index=(axis==0?0:2)+(sign>0?0:1),Base=y0,Top=y1};f.Plane=f.Axis==0?(f.Sign>0?x1:x0):(f.Sign>0?z1:z0);
+            var f=new Face{Block=block,Axis=axis,Sign=sign,Index=(axis==0?0:2)+(sign>0?0:1),Real=true,Base=y0,Top=y1};f.Plane=f.Axis==0?(f.Sign>0?x1:x0):(f.Sign>0?z1:z0);
             // A face beyond the bounds that looks out of the town is never seen.
             if(f.Axis==0?(f.Sign>0?f.Plane>=bx1-.1:f.Plane<=bx0+.1):(f.Sign>0?f.Plane>=bz1-.1:f.Plane<=bz0+.1))return null;
             double ua=f.Axis==0?U(f,0,z0):U(f,x0,0),ub=f.Axis==0?U(f,0,z1):U(f,x1,0);f.U0=Math.Min(ua,ub);f.U1=Math.Max(ua,ub);
@@ -339,7 +422,7 @@ namespace ChipArena.UnityConversion
         {
             At(f,u,y,d,out double x,out double z);double sx=f.Axis==0?depth:w,sz=f.Axis==0?w:depth;var q=Rot.None;
             if(roll!=0)q=AxisRot(Nx(f),0,Nz(f),roll);if(pitch!=0)q=Then(AxisRot(Tx(f),0,Tz(f),-pitch),q);
-            Box(f.Block,x,f.Base+y,z,sx,h,sz,pen,q);
+            onFace=f;Box(f.Block,x,f.Base+y,z,sx,h,sz,pen,q);onFace=null;
         }
         /// <summary>Block letters on face f: text centred at u, glyph cells `cell` m, the baseline at y, `d` out of the plane, cell depth `depth`.</summary>
         private void Text(Face f,string text,double u,double y,double d,double cell,double depth,Pen pen,double roll=0,int dead=-1,Pen deadPen=default)

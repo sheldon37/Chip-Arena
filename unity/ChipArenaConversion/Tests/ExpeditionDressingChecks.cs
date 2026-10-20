@@ -28,7 +28,10 @@ namespace ChipArena.UnityConversion
         // The hub (exp-layout-3) doubled the town's area: its wilds, fence and markers raised the kit's budget from 8000 / 5000 parts (16 to 26 instanced draws).
         // The city grown (exp-layout-7, +44% area) built 15382 parts (8955 low tier, 580 casting; were 12783 / 7711 / 462): the budget follows, while the
         // runtime's range (NativeExpeditionCityKit.Range) holds what a frame draws at or under exp-layout-6's (ExpeditionCityChecks).
-        internal const int MaxParts=16500,MaxLowParts=9500,MaxCasters=1200,MaxBackdrop=3000,MaxQuads=NativeExpeditionCityFx.Capacity;
+        // The city detail pass (2026-10-20) built 23188 parts (10762 low tier, 577 casting): the build budget follows again, while
+        // the tighter ranges and the back-face rule (NativeExpeditionCityKit.Hide) hold every frame at the city check's six points
+        // at or under exp-layout-6's parts and draws (ExpeditionCityChecks).
+        internal const int MaxParts=25000,MaxLowParts=11500,MaxCasters=1200,MaxBackdrop=3000,MaxQuads=NativeExpeditionCityFx.Capacity;
         private struct World{public double X0,X1,Y0,Y1,Z0,Z1;public double[] Cx,Cz;}
         private static World Pose(ContentBlock b,in NativeCityPart p)
         {
