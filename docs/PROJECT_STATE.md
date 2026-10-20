@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-20 Claude ROUNDS state bindings (`claude/rounds-state-bind`, on branch, not merged; presentation only): Position Exchange and Dimensional Exchange swap looks from the swap event at both ends; Drone Nest blink and power-down from the minion `until` (late joiners too) and unseen drone breakups from the death `owner`; protection shells end at `shieldUntil` (shortened, cleared). run5b passes; Unity/Windows/two-client unrun. Next: owner review of the renders, then merge.
+
 2026-10-19 Claude zombie gore (`claude/zombie-gore`, merged into shared; presentation only): the Siren lines, glow flicker, black-flame tongues and burn-away deaths are gone from the seven horde kinds (eyes, acid and boils still glow; grime and old blood added). Hits leave wounds, mist, flesh bits and blood sprays along the shot. Deaths leave corpses over spreading pools that sink after the tier's life. Blasts and heavy kills gib, rifle head kills burst the head, blades slice. Tier caps, deterministic, DEV preview. `docs/ZOMBIE-GORE.md`. Next: owner review of the renders and preview, then merge.
 
 2026-10-19 Astra ROUNDS replicated-state handoff: swap events, summon death owner/expiry, pilot protection clock implemented on `codex/rounds-state-handoff`; managed visual regression and Unity assembly compilation pass. Claude binding contract: `docs/ROUNDS-STATE-HANDOFF.md`. Native builder execution/publication pending. XP backend owner-approved and deployed successfully as Sites v67 at 22:52 UTC.

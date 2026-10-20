@@ -1,3 +1,23 @@
+## 2026-10-20 — Claude: ROUNDS replicated-state bindings (on branch, not merged)
+
+- **Branch:** `claude/rounds-state-bind`, from shared `claude/sleepy-ritchie-g8ruhv` at `eaf7382` (PR #288). Shared `f94fa98` (zombie gore) merged in before the final checks. Implementation `80b4ccf`. Presentation only. Not merged, not published.
+- **Bound to Astra's PR #288 fields (`docs/ROUNDS-STATE-HANDOFF.md`):**
+  - **Swap event:** Position Exchange and Dimensional Exchange now have a look. Both bodies phase out as wireframe holograms at `From`/`Position`. Streams and afterimages cross between the ends, and each body phases in on its live body. The swapped pilot flickers until its replicated `frozenUntil`. Dimensional Exchange (from the owner's chip) adds rifts, braided streams and glitching afterimages. Aged from the event `Time` on the presentation clock.
+  - **Summon expiry:** the Drone Nest blink (last 0.9 s) and power-down follow `NativeMinionFrame.until`, so a late joiner or a killcam blinks it too. A drone dropped from a guest's list within 0.35 s of `until` keeps blinking to it. Without `until` (0 or a replica's infinity), the old 6 s from the Summon event applies.
+  - **Death owner:** a toy death record whose `owner` holds Drone Nest breaks up as a drone even if this client never saw it alive. The breakup adds an EMP ring in the owner's accent. The toy soldier presentation stands aside for it.
+  - **Shield end:** Phase Reserve, Reclamation Core / Mulligan Reserve and Emergency Vent shells end at `shieldUntil`: extended, shortened (the shell shatters) or cleared to 0 after a known end. A newer shell on the same pilot takes over. The 0.6/1.2/2 s constants are kept only as the fallback for frames with no `shieldUntil`.
+  - The chip-blink procs (Reclamation Core, Impact Transit) no longer claim teleports that carry a detail, so a swap is never drawn as a blink.
+- **Files:** Core `NativeRoundsLooks`, `NativeRoundsProcs`, `NativeRoundsUnits`, `NativeRoundsFx` (DEV preview: both swaps, an authority-like protection end, drone `until` and death owner). Runtime `NativeRoundsFxPresentation`, `NativeSummonPresentation` and `NativeDeathPresentation` (`SourceMinionDeath` takes the arena). Tests `RoundsVisualChecks`. Docs `ROUNDS-ADAPTATIONS.md` Presentation.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. No authority, rules, network or wire file is in this diff (checked with `git diff` against shared).
+- **Checks run:** run5b on the merged tree, rc1–rc5 all 0: Unity Runtime+Editor compile, relay with 807 PASS lines, 140 Python tests (1 skipped), package, diff-check. `--rounds-visuals` passes 293,817 checks. These cover the swap at both ends (late joiner and killcam identical), drone expiry (summon seen or late, listed to `until` or just before, replaced, no `until`), the death owner, and shells (exact, extended, shortened, cleared, late joiner, old host, no grant, takeover). The late joiner now matches through the drones' expiry, there is zero allocation, and the source scan includes the new mirrors. `--zombie-gore` passes.
+- **Not run:** the Unity Editor or Windows look, two real clients, and the in-engine killcam. Offline renders only (scratchpad `renders-rounds-bind`, not in the repository).
+- **Risks:**
+  - The shatter on a cut shell depends on having seen the longer end, so a late joiner sees the exact end without the shatter.
+  - A late joiner that first sees a cleared `shieldUntil` of 0 cannot tell it from an old host and draws the fallback. This only happens if the authority clears to 0, which live rules do not do today.
+  - A Phase Reserve block inside a Vent's protection repaints the shell cyan to the same end.
+  - The swap event also triggers the existing `chip.teleport` sound (audio routing, unchanged).
+- **Next:** owner review of the renders, then merge into shared and the builder.
+
 ## 2026-10-19 — Claude: zombie gore, standard zombies instead of the Siren lines and black flames (merged into shared)
 
 - **Branch:** `claude/zombie-gore`, from shared `claude/sleepy-ritchie-g8ruhv` at `f1994f1`. Shared was merged in at `eaf7382` (PR #288, which includes `dab15f3` and `0a8e6b9`) before the final checks. Presentation only. Merged into shared and the builder; not published.
