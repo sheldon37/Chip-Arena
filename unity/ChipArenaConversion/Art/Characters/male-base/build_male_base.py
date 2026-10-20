@@ -133,6 +133,7 @@ PAINTS = [
     ('glow-core', GLOW_CYAN, 6),
     ('glow-device', GLOW_CYAN, 5),
     ('glow-chip', GLOW_CYAN, 5),
+    ('glow-core-edge', mul(GLOW_CYAN, .62), 6),
     ('screen', (0.03, 0.10, 0.13), 0),
 ]
 PID = {p[0]: i for i, p in enumerate(PAINTS)}
@@ -312,8 +313,8 @@ SOCKET_ROWS = (13, 14, 15)                       # torso rows forming the arm so
 SOCKET_COLS = (3, 4, 5, 6)
 # Arm socket loop positions (rig space, left side): bottom row (armpit, front->back), middle front/back, top row.
 SOCKET_POS = {
-    (13, 3): (.256, 1.050, .100), (13, 4): (.272, 1.030, .048), (13, 5): (.276, 1.028, -.022), (13, 6): (.262, 1.046, -.084),
-    (14, 3): (.298, 1.116, .112), (14, 6): (.304, 1.113, -.102),
+    (13, 3): (.240, 1.048, .118), (13, 4): (.272, 1.030, .048), (13, 5): (.276, 1.028, -.022), (13, 6): (.262, 1.046, -.084),
+    (14, 3): (.292, 1.116, .114), (14, 6): (.304, 1.113, -.102),
     (15, 3): (.312, 1.174, .078), (15, 4): (.336, 1.194, .030), (15, 5): (.338, 1.194, -.032), (15, 6): (.318, 1.177, -.078),
 }
 
@@ -350,12 +351,12 @@ HX = J['left-hip'].x
 LEG = [
     (.468, HX + .010, -.004, .098, .096, .086, .108),
     (.430, HX + .008, -.002, .096, .094, .080, .102),
-    (.405, HX + .006, .000, .094, .092, .076, .098),    # boxer hem (cloth)
-    (.401, HX + .006, .000, .090, .088, .072, .094),    # hem lip (skin)
+    (.405, HX + .006, .000, .091, .089, .073, .095),    # boxer hem (cloth)
+    (.401, HX + .006, .000, .088, .086, .070, .092),    # hem lip (skin)
     (.372, HX + .003, .004, .085, .086, .068, .086),
-    (.348, HX, .008, .072, .076, .062, .070),           # knee loops
-    (.322, HX, .014, .066, .073, .060, .064),
-    (.296, HX, .008, .065, .066, .060, .072),
+    (.348, HX, .008, .074, .078, .064, .072),           # knee loops
+    (.322, HX, .014, .070, .076, .062, .068),
+    (.296, HX, .008, .068, .069, .062, .074),
     (.256, HX, -.006, .072, .062, .064, .092),          # calf
     (.208, HX, -.008, .069, .058, .062, .088),
     (.162, HX, -.005, .058, .052, .053, .068),
@@ -386,9 +387,9 @@ FOOT = [
     (-.016, .112, .000, .052, .048, .002),
     (.028, .102, .000, .058, .054, .004),
     (.072, .078, .000, .064, .060, .006),
-    (.110, .055, .000, .067, .063, .008),
-    (.150, .042, .000, .064, .060, .008),
-    (.178, .031, .004, .052, .050, .006),
+    (.110, .060, .000, .067, .063, .008),
+    (.150, .050, .000, .064, .060, .008),
+    (.180, .040, .004, .053, .051, .006),
 ]
 FOOT_HOLE_ROWS = (1, 2, 3)
 
@@ -409,8 +410,8 @@ HEAD_THETA = [0, 12, 24, 36, 48, 61, 75, 90, 106, 123, 141, 160, 180]
 # Designed at a 1.72 m human scale, then fitted to the game head: chin at 1.345 m, crown 1.656 m (centre 1.50 m).
 _HEAD_DESIGN = [
     (1.496, [.058, .058, .058, .058, .059, .060, .061, .062, .063, .064, .065, .066, .066]),   # top of neck
-    (1.503, [.088, .087, .083, .076, .069, .065, .063, .063, .064, .066, .068, .069, .069]),   # under the chin
-    (1.512, [.096, .095, .091, .084, .077, .071, .067, .066, .067, .069, .071, .072, .072]),   # chin
+    (1.503, [.084, .083, .079, .072, .066, .063, .062, .062, .063, .065, .067, .068, .069]),   # under the chin
+    (1.512, [.094, .093, .088, .080, .074, .069, .066, .065, .066, .068, .070, .071, .072]),   # chin
     (1.522, [.099, .098, .094, .087, .080, .074, .071, .070, .071, .073, .075, .077, .077]),   # lower lip
     (1.5345, [.102, .100, .096, .089, .083, .078, .075, .074, .075, .077, .080, .082, .083]),  # mouth line
     (1.546, [.106, .104, .098, .091, .086, .082, .079, .078, .079, .081, .086, .090, .091]),   # nose base
@@ -426,7 +427,7 @@ _HEAD_DESIGN = [
     (1.714, [.046, .046, .046, .045, .045, .045, .044, .044, .045, .046, .048, .050, .051]),
 ]
 HEAD_Y0, HEAD_SY, HEAD_SX, HEAD_SZ = 1.350, 1.32, 1.30, 1.28
-JAW_BOOST = {0: .90, 1: 1.07, 2: 1.08, 3: 1.08, 4: 1.06, 5: 1.04, 6: 1.02}   # a squarer heroic jaw (rows, sides only)
+JAW_BOOST = {0: .90, 1: .97, 2: 1.0, 3: 1.04, 4: 1.05, 5: 1.04, 6: 1.02}   # a squarer heroic jaw (rows, sides only)
 
 
 def _fit_head(y):
@@ -589,6 +590,7 @@ def build_body():
     build_face(mb)
     build_ears(mb)
     build_fingers(mb)
+    mb.triangulate()
     return mb, {'torso': rows, 'head': hrows, 'arm': arm_rows, 'leg': leg_rows, 'foot': frows, 'palm': palm_rows}
 
 
@@ -852,6 +854,11 @@ CLUMPS = [
     ((180, 30), (180, -12), .026, .070, .025, 'back-r'),
     ((118, 24), (128, -6), .022, .064, .024, 'back-l'),
     ((-118, 24), (-128, -6), .022, .064, .024, 'back-r'),
+    ((145, 62), (150, 24), .030, .078, .027, 'back-l'),
+    ((-145, 62), (-150, 24), .030, .078, .027, 'back-r'),
+    ((180, 58), (176, 18), .032, .080, .028, 'back-l'),
+    ((112, 58), (122, 30), .026, .070, .025, 'back-l'),
+    ((-112, 58), (-122, 30), .026, .070, .025, 'back-r'),
 ]
 HAIR_CHAINS = ['front-l', 'front-r', 'side-l', 'side-r', 'back-l', 'back-r']
 # Spring tuning per chain (spiky low-poly hair: stiff clumps, a small bounce and sway, never jelly). Units: stiffness and
@@ -1014,7 +1021,7 @@ def frame_on_surface(tree, x, y):
 def shield(scale_w, scale_h):
     """The core's angular shield outline (local s left, t up), CCW seen from the front: a V notch on top, flat
     shoulders and a pointed base."""
-    half = [(0, .020), (.026, .034), (.052, .028), (.058, .008), (.042, -.022), (.020, -.046), (0, -.058)]
+    half = [(0, .030), (.024, .030), (.048, .030), (.058, .016), (.052, -.008), (.034, -.034), (.015, -.052), (0, -.060)]
     full = half + [(-x, y) for x, y in reversed(half[1:-1])]
     return ccw([(x * scale_w, y * scale_h) for x, y in full])
 
@@ -1030,18 +1037,18 @@ def build_core(body_mb):
         return c + right * s + up * t + n * h
 
     rings = []
-    spec = [(1.12, -.010, 'metal-dark'), (1.12, .007, 'metal-dark'), (1.05, .012, 'metal'), (.98, .0128, 'metal-light'),
-            (.90, .012, 'metal-dark'), (.80, .007, 'metal-dark'), (.74, .008, 'glow-core')]
+    spec = [(1.05, -.010, 'metal-dark'), (1.05, .007, 'metal-dark'), (.98, .012, 'metal'), (.92, .0128, 'metal-light'),
+            (.86, .012, 'metal'), (.74, .006, 'metal-dark'), (.68, .007, 'glow-core')]
     for sc, h, _ in spec:
         rings.append([mb.v(P(s, t, h), 'chest', w) for s, t in shield(sc, sc)])
     for i in range(len(rings) - 1):
-        mb.strip(rings[i], rings[i + 1], PID[spec[i + 1][2]], closed=True)
+        mb.strip(rings[i], rings[i + 1], PID['glow-core-edge' if spec[i + 1][2] == 'glow-core' else spec[i + 1][2]], closed=True)
     # the gem: star facets rising to a ridge
     gem = rings[-1]
     mid = [mb.v(P(s, t + .002, .013), 'chest', w) for s, t in shield(.38, .40)]
     for i in range(len(gem)):
         j = (i + 1) % len(gem)
-        mb.f((gem[i], gem[j], mid[j], mid[i]), PID['glow-core'])
+        mb.f((gem[i], gem[j], mid[j], mid[i]), PID['glow-core-edge'])
     top = mb.v(P(0, -.004, .017), 'chest', w)
     for i in range(len(mid)):
         mb.f((mid[i], mid[(i + 1) % len(mid)], top), PID['glow-core'])
@@ -1054,7 +1061,7 @@ def build_core(body_mb):
 DEV_X = J['right-wrist'].x          # -.345
 DEV_Y0, DEV_Y1 = .598, .656         # housing span along the forearm
 BAND_Y0, BAND_Y1 = .600, .650
-BAY = dict(y0=.606, y1=.642, z0=-.0155, z1=.0155, depth=.0055)
+BAY = dict(y0=.606, y1=.642, z0=-.0155, z1=.0155, depth=.0095)
 LID_HINGE_Y = .646
 LID_OPEN_DEG = 112.0
 CHIP_W, CHIP_H, CHIP_T = .026, .031, .0040
@@ -1606,6 +1613,7 @@ def make_materials():
 
 
 def piece_object(name, mb, rig, materials, region_part, glow_gain=1.0):
+    mb.triangulate()
     me = to_mesh(name, mb)
     obj = link(bpy.data.objects.new(name, me))
     colour_layer(obj)
