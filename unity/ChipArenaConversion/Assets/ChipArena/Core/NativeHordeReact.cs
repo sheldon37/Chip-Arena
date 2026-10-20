@@ -17,7 +17,8 @@ namespace ChipArena.UnityConversion
     /// <item>Stagger-back steps: the feet stay planted in the world (Core/NativeHordeMotion), so the shoved hips leave them
     /// behind and they step to catch the body; a step or heavy blow asks for its own steps (<see cref="Staggering"/>).</item>
     /// <item>The authority's own stagger (a hit of a quarter of the add's health: StaggerAt, which also cancels a wind-up) reels
-    /// the add for the content's stagger seconds: arms thrown out, trunk arched back.</item>
+    /// the add for the content's stagger seconds: arms thrown out, trunk arched back. A string of staggers (a pistol's every
+    /// hit on a shambler) is one continuous stumble at the knockback take's own pace (<see cref="Stumble"/>).</item>
     /// <item>Hit-stop: a melee blow holds the add's gait and reaction clock for a few frames (<see cref="Hold"/>; the strike of
     /// its own attack never waits), with the struck flash (NativeHitFlash) on its body.</item>
     /// </list>
@@ -63,6 +64,33 @@ namespace ChipArena.UnityConversion
         public bool Staggering(float t){for(int i=count-1;i>=0;i--){ref var h=ref At(i);float a=t-h.At;if(a<0)continue;if(a>.7f)break;if(h.Weight>=StaggerWeight.Step||h.Stagger)return true;}return false;}
         /// <summary>How far into the authority's stagger the add is (0..1 while it reels, NaN when not staggered).</summary>
         public float Reel(float t){for(int i=count-1;i>=0;i--){ref var h=ref At(i);if(!h.Stagger)continue;float a=t-h.At;if(a<0)continue;float d=Math.Max(.2f,h.StaggerFor);return a<d+.25f?a/d:float.NaN;}return float.NaN;}
+        /// <summary>The stumble's rise and let-go (s), how early before the authority's stagger ends it starts to let go, the knockback
+        /// take's furthest point (s into it, played at its own pace) and the share of the full reel a stagger from a light (flinch-weight)
+        /// or a medium (step-weight) hit plays.</summary>
+        public const float StumbleRise=.16f,StumbleRelease=.38f,StumbleEarly=.12f,StumbleHold=.42f,StumbleLight=.5f,StumbleMedium=.75f;
+        /// <summary>
+        /// The authority's staggers as one continuous stumble (owner 2026-10-20: "they look like they're 'twitching' towards the
+        /// player"): a pistol's every hit staggers a shambler or a runner (a quarter of its health), and the old reel started over
+        /// on each one: its take snapped back to its start, came in again within 50 ms and ran at twice its capture's pace. Here each
+        /// stagger is a link with its own envelope (in over <see cref="StumbleRise"/>, out over <see cref="StumbleRelease"/> from
+        /// just before the authority lets go), scaled by the hit's weight; links that overlap are one stumble. The weight is the
+        /// largest link's (so a new stagger carries the stumble on and never drops it), and `clip` is the knockback take's time,
+        /// at its own pace from the stumble's start and held at <see cref="StumbleHold"/>. 0 (and `clip` 0) when not stumbling.
+        /// A pure function of the hits and `t`: every peer and the killcam agree.
+        /// </summary>
+        public float Stumble(float t,out float clip)
+        {
+            clip=0;float w=0,start=float.NaN,until=float.NegativeInfinity;
+            for(int i=0;i<count;i++)
+            {
+                ref var h=ref At(i);if(!h.Stagger)continue;float a=t-h.At;if(a<0)break;
+                float d=Math.Max(.2f,h.StaggerFor),off=Math.Max(StumbleRise,d-StumbleEarly);
+                if(h.At>=until)start=h.At;until=Math.Max(until,h.At+off+StumbleRelease);
+                float k=h.Weight>=StaggerWeight.Heavy?1:h.Weight==StaggerWeight.Step?StumbleMedium:StumbleLight;
+                w=Math.Max(w,k*BossMath.Smoother(a/StumbleRise)*(1-BossMath.Smoother((a-off)/StumbleRelease)));
+            }
+            if(!(w>0))return 0;clip=Math.Min(StumbleHold,t-start);return w;
+        }
         /// <summary>The newest hit's time, or -inf.</summary>
         public float Newest=>count>0?At(count-1).At:float.NegativeInfinity;
         /// <summary>The newest hit's push (Unity world, horizontal unit or zero), its size (the stagger scale) and whether a headshot.</summary>
@@ -85,8 +113,10 @@ namespace ChipArena.UnityConversion
             float l=x.Length(),soft=NativeStaggerRules.MaxHip*1.3f*give,hard=NativeStaggerRules.HardHip*1.6f;if(l>soft){float k=soft+(l-soft)/(1+(l-soft)/Math.Max(1e-3f,hard-soft));if(k>hard)k=hard;x*=k/l;}
             return x;
         }
-        // An impact envelope: up fast to 1 at .07 s, back over ~.35 s.
-        private static float Envelope(float tau,float rise=.07f){if(tau<0)return 0;float u=tau/rise;return u*(float)Math.Exp(1-u);}
+        // An impact envelope: up fast to 1 at .07 s, back over ~.35 s. (It rises from rest, u^1.5 e^(1.5(1-u)), and meets the old
+        // fall u e^(1-u) at its peak, level: the old rise left at its steepest, so every recoil, flinch and headshot whip started
+        // the joints at full speed in one frame.)
+        private static float Envelope(float tau,float rise=.07f){if(tau<=0)return 0;float u=tau/rise;return u<1?u*(float)Math.Sqrt(u)*(float)Math.Exp(1.5f*(1-u)):u*(float)Math.Exp(1-u);}
 
         /// <summary>
         /// Layers the reaction onto the trunk of pose `p` at `t` (the gait's facing `fwd` / `right`, Unity world): the hips'
@@ -106,7 +136,8 @@ namespace ChipArena.UnityConversion
                 float lz=h.Dir==Vector2.Zero?-1:Vector2.Dot(h.Dir,fwd),lx=h.Dir==Vector2.Zero?0:-Vector2.Dot(h.Dir,right);
                 pitch+=lz*e;roll+=-lx*e*.8f;yaw+=lx*e*.6f;snap+=lz*late;headRoll+=-lx*late*.7f;
             }
-            float reel=Reel(t),r=float.IsNaN(reel)?0:Sm(reel/.2f)*(1-Sm((reel-.7f)/.5f));
+            // (The authority's stagger: the stumble's weight, one continuous reel through a string of staggers.)
+            float r=Stumble(t,out _);
             pitch-=.35f*r*give;snap-=.25f*r*give;
             Bend(p,CapturedRig.Spine,pitch*.45f,yaw*.4f,roll*.45f);Bend(p,CapturedRig.Chest,pitch*.55f,yaw*.6f,roll*.55f);
             Bend(p,CapturedRig.Neck,snap*.4f,0,headRoll*.4f);Bend(p,CapturedRig.Head,snap*.6f,0,headRoll*.6f);
@@ -119,7 +150,7 @@ namespace ChipArena.UnityConversion
         {
             if(count==0)return;float c=Clock(t),fling=0,flinch=0;
             for(int i=0;i<count;i++){ref var h=ref At(i);float tau=c-h.At;if(tau<0||tau>1)continue;float e=Envelope(tau,.08f)*give;if(h.Weight==StaggerWeight.Heavy)fling+=e;else flinch+=e*(h.Weight==StaggerWeight.Step?.7f:.4f);}
-            float reel=Reel(t);if(!float.IsNaN(reel))fling+=Sm(reel/.15f)*(1-Sm((reel-.65f)/.5f))*.8f*give;
+            fling+=Stumble(t,out _)*.8f*give;
             fling=Math.Min(1,fling);flinch=Math.Min(1,flinch);if(fling+flinch<=0)return;
             for(int i=0;i<2;i++)
             {

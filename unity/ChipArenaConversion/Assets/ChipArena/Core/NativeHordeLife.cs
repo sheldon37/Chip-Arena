@@ -16,8 +16,8 @@ namespace ChipArena.UnityConversion
     /// <item>Dangling arms: each hand trails the body's acceleration like a weight on a cord (the arm turned about its shoulder so
     /// the hand moves by the lag), swings out on turns, bounces on footfalls; the shoulders drop and recover with each step.</item>
     /// <item>Per add (its seed): how loose the head is, a hunch, a dead arm that hangs and drags, a limp that dips one side, tics
-    /// (a sharp shoulder, head or arm jerk at hashed moments, the same on every peer). Hurt, it sags: more hunch, a drooping head,
-    /// heavier arms, a worse limp.</item>
+    /// (a quick shoulder, head or arm jerk at hashed moments, eased in, the same on every peer). Hurt, it sags (on a health eased
+    /// over <see cref="HurtHalfLife"/>): more hunch, a drooping head, heavier arms, a worse limp.</item>
     /// <item>The hinged jaws (the spitter's, the Hulk's) flap with the steps and the head's motion (<see cref="JawFlap"/>).</item>
     /// </list>
     /// By crowd tier (HordeMotionInput.Tier): Full all of it; Reduced the lean, head, trunk and arm lag (no shoulders, tics, jaw or
@@ -32,6 +32,15 @@ namespace ChipArena.UnityConversion
         private BossSecondOrder3 handL,handR;
         /// <summary>The half-life (s) of the limp's weight coming onto and off the bad leg.</summary>
         public const float LimpEase=.06f;private BossSpring limpEase;
+        /// <summary>The time constant (s) a hit's snap is fed into the head, chest, hands and jaw over (the same impulse, eased in
+        /// instead of landing in one frame, where it read as one more twitch: the head started at up to 30 rad/s).</summary>
+        public const float HitSpread=.035f;
+        private float hitPitch,hitRoll,hitYaw,hitChest,hitJaw;private Vector3 hitHands;
+        /// <summary>The body's acceleration the head, chest and hands lag is eased over this time (s) and held within this much
+        /// (m/s^2). The authority starts and stops an add, and knocks it back, in one tick: the presented root still turns round
+        /// at 80 to 170 m/s^2 there, and the old 9 m/s^2 cap swung the loose head's lag by up to .9 rad in a frame, at every hit and
+        /// every restart.</summary>
+        public const float LifeAccelEase=.06f,LifeAccelMost=5f;private Vector2 lifeAcc;
         private Vector2 lifeVel;private float lifeYaw,lifeYawRate,lifeContactAge=float.NaN,lifeHitNewest=float.NegativeInfinity;private bool lifeReady;private int lifeTier;
         /// <summary>The jaw's flap this frame (rad of extra opening, a hinged jaw's), for the runtime to add to its opening.</summary>
         public float JawFlap{get;private set;}
@@ -57,18 +66,19 @@ namespace ChipArena.UnityConversion
             clavL.Configure(3.1f*hz,.32f,0);clavR.Configure(3.1f*hz,.32f,0);jaw.Configure(4.6f,.18f,0);dip.Configure(3.4f*hz,.45f,0);
             handL.Configure(lifeArmHz*(lifeDead>0&&lifeDeadSide>0?.7f:1),.28f,0);handR.Configure(lifeArmHz*(lifeDead>0&&lifeDeadSide<0?.7f:1),.28f,0);
             headPitch.Reset(0);headYaw.Reset(0);headRoll.Reset(0);chestPitch.Reset(0);chestYaw.Reset(0);chestRoll.Reset(0);clavL.Reset(0);clavR.Reset(0);jaw.Reset(0);dip.Reset(0);handL.Reset(Vector3.Zero);handR.Reset(Vector3.Zero);
-            limpEase.Reset(0);lifeVel=velocity;lifeYaw=Yaw;lifeYawRate=0;lifeContactAge=float.NaN;lifeHitNewest=float.NegativeInfinity;JawFlap=0;LifeAccel=Vector3.Zero;lifeReady=true;
+            limpEase.Reset(0);hitPitch=hitRoll=hitYaw=hitChest=hitJaw=0;hitHands=Vector3.Zero;lifeAcc=Vector2.Zero;lifeVel=velocity;lifeYaw=Yaw;lifeYawRate=0;lifeContactAge=float.NaN;lifeHitNewest=float.NegativeInfinity;JawFlap=0;LifeAccel=Vector3.Zero;lifeReady=true;
         }
         /// <summary>Steps the dynamics after the gait's step (its footfalls, the presented root's motion, the hits and the blow).</summary>
         private void LifeStep(in HordeMotionInput f,NativeHordeReact react,bool fresh)
         {
             lifeTier=f.Tier;if(fresh||!lifeReady)LifeReset();float dt=lastDt;if(!(dt>0)){lifeVel=velocity;lifeYaw=Yaw;return;}
-            if(lifeTier>=NativeHordeModels.Impostor){lifeVel=velocity;lifeYaw=Yaw;JawFlap=0;return;}
+            if(lifeTier>=NativeHordeModels.Impostor){lifeVel=velocity;lifeYaw=Yaw;JawFlap=0;hitPitch=hitRoll=hitYaw=hitChest=hitJaw=0;hitHands=Vector3.Zero;return;}
             // The root's acceleration in the rig's frame (source axes: x its left, z forward) and the turn rate.
             var a=(velocity-lifeVel)/dt;lifeVel=velocity;float al=-Vector2.Dot(a,Right),af=Vector2.Dot(a,Forward);
-            float ax=Math.Max(-9,Math.Min(9,al)),az=Math.Max(-9,Math.Min(9,af));
+            {float ka=1-(float)Math.Exp(-dt/LifeAccelEase);lifeAcc+=(new Vector2(Math.Max(-9,Math.Min(9,al)),Math.Max(-9,Math.Min(9,af)))-lifeAcc)*ka;}
+            float ax=Math.Max(-LifeAccelMost,Math.Min(LifeAccelMost,lifeAcc.X)),az=Math.Max(-LifeAccelMost,Math.Min(LifeAccelMost,lifeAcc.Y));
             float rate=f.Flow?f.YawRate:Wrap(Yaw-lifeYaw)*BossMath.Deg/dt;lifeYaw=Yaw;lifeYawRate+=(rate-lifeYawRate)*(1-(float)Math.Exp(-dt/.05f));
-            float w=lifeYawRate,v=Speed,cent=Math.Max(-6,Math.Min(6,v*w)),mass=Heavy(kind),loose=lifeLoll*(1+.8f*(1-Clamp01(f.Health)));
+            float w=lifeYawRate,v=Speed,cent=Math.Max(-6,Math.Min(6,v*w)),mass=Heavy(kind),loose=lifeLoll*(1+.8f*(1-hurtShown));
             LifeAccel=new Vector3(ax,0,az);
             // ---- the head: lags the turn and the speed change, rolls out of the turn ----
             headPitch.Step(-.045f*az*loose,dt);headYaw.Step(Math.Max(-.45f,Math.Min(.45f,.16f*w*loose)),dt);headRoll.Step(-.05f*cent*loose,dt);
@@ -98,9 +108,14 @@ namespace ChipArena.UnityConversion
                 {
                     // The push in the rig's frame (source: x its left, z forward): a blow from the front pushes it back.
                     float lz=Vector2.Dot(push,Forward),lx=-Vector2.Dot(push,Right),s=Math.Min(1.6f,size)*(head?2.2f:1)/mass;
-                    headPitch.Kick(-5f*lz*s-(head?3f*s:0));headRoll.Kick(-4f*lx*s);headYaw.Kick(2.5f*lx*s);chestPitch.Kick(-2f*lz*s/mass);
-                    var fly=new Vector3(lx,.35f,lz)*(.9f*s);handL.Kick(fly);handR.Kick(fly);if(full)jaw.Kick(4f*s);
+                    // (Fed in over HitSpread below, not kicked in one frame.)
+                    hitPitch+=-5f*lz*s-(head?3f*s:0);hitRoll+=-4f*lx*s;hitYaw+=2.5f*lx*s;hitChest+=-2f*lz*s/mass;hitHands+=new Vector3(lx,.35f,lz)*(.9f*s);if(full)hitJaw+=4f*s;
                 }
+            }
+            {
+                float k=1-(float)Math.Exp(-dt/HitSpread);
+                headPitch.Kick(hitPitch*k);headRoll.Kick(hitRoll*k);headYaw.Kick(hitYaw*k);chestPitch.Kick(hitChest*k);handL.Kick(hitHands*k);handR.Kick(hitHands*k);if(full)jaw.Kick(hitJaw*k);
+                float left=1-k;hitPitch*=left;hitRoll*=left;hitYaw*=left;hitChest*=left;hitHands*=left;hitJaw*=left;
             }
             // ---- its own blow's contact (LastAttack + the authority's strike): the trunk and head jolt through the impact ----
             float age=f.AttackAge;
@@ -113,18 +128,20 @@ namespace ChipArena.UnityConversion
             lifeContactAge=age;
             JawFlap=full?Math.Max(0,Math.Min(.35f,jaw.Value)):0;
         }
-        // A tic: a sharp pulse (rise .04 s, settle .3 s) at hashed moments (about every 1/rate s), on the clock: every peer twitches alike.
+        // A tic: a pulse (eased in over TicRise, settled over .32 s) at hashed moments (about every 1/rate s), on the clock: every peer
+        // twitches alike. (It came in over 40 ms, a snap that read as one more twitch toward the pilot.)
+        public const float TicRise=.1f;
         private float Tic(float t,int channel,out float side)
         {
             side=1;if(lifeTicRate<=0)return 0;float period=1/lifeTicRate,k=(t+period*NativeHordeKinds.Hash(seed,230+channel))/period;int n=(int)Math.Floor(k);float u=(k-n)*period;
             if(NativeGoreRules.Hash01(seed,n,240+channel)>.55)return 0;side=NativeGoreRules.Hash01(seed,n,250+channel)<.5?-1:1;
-            float amp=lifeTicAmp*(.6f+.4f*(float)NativeGoreRules.Hash01(seed,n,260+channel));return u<.04f?amp*Sm(u/.04f):u<.34f?amp*(1-Sm((u-.04f)/.3f)):0;
+            float amp=lifeTicAmp*(.6f+.4f*(float)NativeGoreRules.Hash01(seed,n,260+channel));return u<TicRise?amp*Sm(u/TicRise):u<TicRise+.32f?amp*(1-Sm((u-TicRise)/.32f)):0;
         }
         /// <summary>The body and trunk layer: the lean over the planted feet, hunch and hurt sag, the chest's lag and stance sway, the
         /// limp's dip, the footfall dip. Before the head's bends and the balance.</summary>
         private void LifeTrunk(CapturedRig.Pose p,in HordeMotionInput f,float moving)
         {
-            float hurt=1-Clamp01(f.Health);
+            float hurt=1-hurtShown;
             // The lean (the presented root's bank and pitch): the whole body tilts over its feet (source frame: +z rotation tilts to its right).
             if(f.Flow&&(f.Bank!=0||f.Pitch!=0))p.Rotation[CapturedRig.Body]=CapturedRig.Euler(f.Pitch*(heavy?.5f:1),0,f.Bank*(heavy?.6f:1))*p.Rotation[CapturedRig.Body];
             if(lifeTier>=NativeHordeModels.Impostor||!lifeReady)return;
@@ -150,7 +167,7 @@ namespace ChipArena.UnityConversion
         {
             // (The Hulk holds its head steady against its plod, and still through a keyed move.)
             if(lifeTier>=NativeHordeModels.Impostor||!lifeReady||heavy&&(Replaces||f.Charging))return;
-            float hurt=1-Clamp01(f.Health),t=f.Time,calm=(1-.6f*alert)*(heavy?.5f:1);
+            float hurt=1-hurtShown,t=f.Time,calm=(1-.6f*alert)*(heavy?.5f:1);
             float lp=.09f*lifeLoll*BossMath.Noise(seed^0x1f3u,t*.45f)*calm,lr=.13f*lifeLoll*BossMath.Noise(seed^0x2e7u,t*.38f)*calm;
             float pitch=headPitch.Value+lp+.22f*hurt,yaw=headYaw.Value,roll=headRoll.Value+lr+.1f*hurt*(limpSide<0?1:-1);
             if(lifeTier==NativeHordeModels.Full){float tic=Tic(t,0,out float ts);yaw+=.32f*tic*ts;roll+=.22f*tic*ts;pitch+=.12f*tic;}
@@ -162,7 +179,7 @@ namespace ChipArena.UnityConversion
         {
             // (The Ironworks kinds carry their tools in both fists: their arms are the tool's.)
             if(lifeTier>=NativeHordeModels.Impostor||!lifeReady||NativeIronworksKinds.Is(f.Kind)||heavy&&(Replaces||f.Charging))return;
-            float hurt=1-Clamp01(f.Health),free=1-.75f*Clamp01(attackW),t=f.Time;bool full=lifeTier==NativeHordeModels.Full;
+            float hurt=1-hurtShown,free=1-.75f*Clamp01(attackW),t=f.Time;bool full=lifeTier==NativeHordeModels.Full;
             if(full)
             {
                 // The shoulders: the step's drop, a tic's shrug (+z on the left clavicle lifts it).

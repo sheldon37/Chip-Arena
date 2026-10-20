@@ -241,3 +241,109 @@ Existing checks changed on purpose:
   not run.
 - The Rigger's chain hang poses (`NativeIronworksMotion.RiggerHang`) keep the rig's clavicles; the gap shows only in
   those poses.
+
+## Twitching under fire (2026-10-20)
+
+Owner report (2026-10-20): "their movement still seems too fast (Not talking about their movement speed, rather their
+animations, they look like they're 'twitching' towards the player)". The recording shows Central Station, a pilot firing a
+pistol at shamblers that run at them. Branch `claude/zombie-twitch-fix`; presentation only.
+
+### What was measured
+
+An offline lab (scratch, not in the repository) emulates the authority at 60 Hz from `StepPveHordeCore`, `HitPveAdd` and
+`StructureNavMoveCore` on the real `expedition-transit` nav graph. It presents the add through the real Core code as
+`NativeHordeKindPresentation` does: Unity's interpolated transform and the visual clock on the host, 20 Hz snapshots on a
+guest. Each add enters 10 m from the pilot and is shot with the pistol every .42 s. Every pistol hit staggers a shambler or a
+runner: 23 damage is a quarter of its health. The table gives head and chest world turn rates while it chases, in rad/s, ranked
+by what removing each cause did at the base (shambler, host, 144 fps):
+
+| cause | what it did | measured effect |
+| --- | --- | --- |
+| 1. The stagger's reel started over on every hit | The knockback take snapped back to its start, came in again within 54 ms and ran at twice its capture's pace | head p95 23.2 → 14.9 and p50 8.2 → 4.2, chest 10.2 → 5.2 without it |
+| 2. The stand-to-move take blend at a restart | The stagger ends with an instant 3.4 m/s restart, and the take crossed from standing to the chase in two or three frames | head max 55 → 22 once rate-limited |
+| 3. The hurt sag stepped with health | A hit takes a quarter of the health in one frame: the head's droop, the hunch and the loose head's gain stepped with it | head max 22 → 12 once eased |
+| 4. The grid route's zig-zag | The station's nav is a 1 m grid with four links a node, and the empty hazard list keeps the authority off the straight line, so its facing snaps up to 59 degrees two to four times a second | facing p95 3.0 rad/s against 0 on a straight chase; head p95 6.0 against 3.9 |
+| 5. Smaller onsets | Hit envelopes rose at full speed, the head snap landed in one frame, the root's acceleration fed the head's lag at up to 9 m/s², and the twitch and tics ramped in 40 to 60 ms | a few rad/s of peak each |
+
+Not offenders:
+
+- **The cadence.** 3.8 steps/s for the shambler's run and 4.5 to 4.7 for the runner. That fits Froude scaling for the rig's 0.5 m
+  legs, and it is unchanged.
+- **The host's interpolated transform.** It is fed in as if it were the body (a 60 Hz sawtooth of one tick). The drawn root
+  differed by 2 mm: 11.6 against 11.4 cm p95 from the body.
+- **More root smoothing.** It was tried and rejected. A 0.2 s half-life cuts the root's acceleration by a third but takes the
+  drawn body 18 cm from the hit volume.
+- **Reading a backward slide as stagger steps.** It was tried and rejected: head p95 got worse, 10.9 → 12.3.
+
+The root itself stays the authority's (see the note for Astra below).
+
+### What changed
+
+- **One continuous stumble** (`NativeHordeReact.Stumble`).
+  - Each authority stagger is a link. It eases in over .16 s, scaled by the hit's weight: a pistol's flinch weight plays .5 of
+    the reel, a step weight .75, a heavy blow 1. It lets go over .38 s from .12 s before the authority does.
+  - Overlapping links are one stumble with the largest link's weight. The knockback take plays at its own pace from the
+    stumble's start and holds at .42 s.
+  - It is a pure function of the replicated hits and the clock. The gait's reel take, the trunk's arch and the arms' fling read it.
+- **The stand-to-move blend** changes at most `MoveSlew` (3) a second for the upright kinds.
+- **The health the sag reads** is eased (`HurtHalfLife` .2 s).
+- **The body's acceleration** that the head, chest and hands lag behind is eased over .06 s and held within 5 m/s²
+  (`LifeAccelEase`, `LifeAccelMost`).
+- **A hit's snap** feeds the same impulse in over .035 s (`HitSpread`).
+- **The hit envelope** rises from rest (`u^1.5 e^(1.5(1-u))`) to the same peak and then falls as before.
+- **The head's twitch** eases in over .14 s and its tics over .1 s.
+- **The facing's goal** is the authority's facing eased over .26 s while the add travels (`HordeFlow.HeadingTau`, through
+  `BossRootFollow.HeadingTau`, which is off for every boss). It is off through a wind-up, so a blow still faces the aim.
+
+### Results (lab, shambler at the base → now; host 144 fps unless stated)
+
+| scene | head p50 / p95 / max | chest p95 | upper joints p95 | facing p95 | one-frame joint turn near a hit |
+| --- | --- | --- | --- | --- | --- |
+| under pistol fire | 8.2 / 23.2 / 64.8 → 3.0 / 6.8 / 10.3 | 10.2 → 3.5 | 12.0 → 3.2 | 0.64 → 0.34 | 0.43 → 0.12 rad |
+| runner under fire | 8.4 / 24.5 / 59.8 → 3.3 / 7.4 / 13.8 | 11.2 → 3.6 | 13.2 → 3.8 | 0.94 → 0.41 | 0.43 → 0.35 (a wrist, see the limits) |
+| 20 Hz guest under fire | 7.7 / 23.1 / 43.0 → 2.7 / 6.8 / 12.2 | 10.1 → 4.0 | 11.7 → 3.2 | 0.70 → 0.40 | 0.43 → 0.11 |
+| 30 fps under fire | 6.9 / 19.2 / 33.6 → 2.6 / 6.2 / 10.8 | 8.3 → 3.1 | 8.0 → 3.1 | 0.83 → 0.38 | 0.20 → 0.11 |
+| chasing, no fire | 2.3 / 6.0 / 11.0 → 2.2 / 4.7 / 8.0 | 2.7 → 2.3 | 2.3 → 2.3 | 2.99 → 1.64 | - |
+| runner chasing, no fire | 4.2 / 10.0 / 15.2 → 3.8 / 7.7 / 12.2 | 5.9 → 5.2 | 4.7 → 4.6 | 3.89 → 1.99 | - |
+
+Unchanged:
+
+- The drawn root's acceleration under fire: 84 m/s² p95, 169 max for the shambler. It is the authority's knock-back and restart.
+- Its distance from the body: 11.6 cm p95.
+- The step rate under fire: 3.1 steps/s.
+- The cadence chasing.
+
+`Tests/ZombieTwitchChecks` (`--zombie-twitch`) holds these through its own scene, with the base's numbers from the same scene.
+
+### Animation impacts
+
+None on hit timing, hitboxes, damage, cooldowns, movement speed or networking:
+
+- The contact frame still lands within one frame of `LastAttack + strike`, including a blow that starts as a stumble lets go.
+- The posed bodies stay inside their hit volumes (`HordeKindChecks`).
+- No authority, rules or wire file changed.
+- The drawn facing now trails the authority's by up to about 6 degrees on a grid route. The effects keep the authority's facing.
+- Host, guests and the killcam derive everything from the replicated hits, the clock and the presented root, as before.
+
+### For Astra (rules and AI, not changed here)
+
+- **The steering.** The Unity maps' `hazards` is an empty array, so `StructureNavMoveCore` never takes its straight-line
+  shortcut (`Map.hazards==null`). The station's nav is a 4-connected 1 m grid: 28,634 of its 28,642 links are 1 m. A slanted
+  approach therefore snaps the heading up to about 59 degrees two to four times a second. The presentation now eases the
+  facing, but the root's sideways wobble remains: 31 m/s² p95 against 4.9 straight. Possible fixes:
+  - treat an empty hazard list as none;
+  - string-pull the route;
+  - add diagonal links.
+- **The pistol's stagger.** Each hit stops a charging shambler dead for .45 s and knocks it back at 2.2 m/s: a 5.6 m/s velocity
+  reversal in one tick. The stagger then ends with an instant 3.4 m/s restart. To stay on the body, the drawn root has to turn
+  round at 84 m/s² p95. Possible fixes: ramp the restart over .2 to .3 s, spread the knock-back over a few ticks, or give light
+  weapons a lighter stagger.
+
+### Known limits
+
+- The root's jolt under fire and its sideways wobble on a grid route are the authority's (above).
+- In 60 s under fire, a runner's left wrist turned .38 rad in one frame once (its sprint take). That is under the pop killer's
+  .42 rad limit.
+- The owner's recording repeats 18 of its 131 frames, so the game or the recorder ran under 30 fps. Frame pacing is not
+  addressed here.
+- The Unity Editor, Windows and two-client play were not run.

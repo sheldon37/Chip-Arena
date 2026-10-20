@@ -139,6 +139,12 @@ double want=Math.Max(-MaxSkew,Math.Min(MaxSkew,(target-Time)*CatchUp)),step=Skew
         /// <summary>Bank per radian of the turn's lean angle (atan(v w / g)), its cap; pitch per radian of the speed change's lean,
         /// plus a lean per m/s of ground speed, and their cap; the lean's dynamics (Hz, damping).</summary>
         public float BankScale=1,MaxBank=.2f,PitchScale=.8f,SpeedPitch=.012f,MaxPitch=.16f,LeanFrequency=1.4f,LeanDamping=.6f;
+        /// <summary>Optional heading smoothing (the horde's; 0, every boss's, leaves it off): the goal facing's direction eased over
+        /// <see cref="HeadingTau"/> s while the root travels at <see cref="HeadingMoving"/> m/s or more, over <see cref="HeadingStill"/>
+        /// s standing, before the limited turn. A goal that zig-zags while the body travels (an authority steering from one grid
+        /// waypoint to the next) then turns the body along its average heading instead of swinging it from side to side.</summary>
+        public float HeadingTau,HeadingStill=.06f,HeadingMoving=.9f;
+        private float headingX,headingZ;
         // ---- output ----
         public Vector3 Position,Velocity,Target,TargetVelocity;public float Yaw,YawRate,Bank,Pitch;public double RenderTime;
         public BossSampleKind Kind;public bool Jumped,Started;
@@ -161,6 +167,18 @@ double want=Math.Max(-MaxSkew,Math.Min(MaxSkew,(target-Time)*CatchUp)),step=Skew
             if(Kind==BossSampleKind.Empty)return;bool jump=!double.IsNaN(jumpAt)&&jumpAt!=lastJump;if(jump)lastJump=jumpAt;
             Follow(p,v,y,dt,jump);
         }
+        /// <summary>The goal facing after the optional heading smoothing (its direction eased on a first-order lag, so the goal never
+        /// jumps; off, it tracks the goal exactly).</summary>
+        private float Heading(float yaw,float speed,float dt)
+        {
+            float sx=(float)Math.Sin(yaw),sz=(float)Math.Cos(yaw);
+            if(!(HeadingTau>0)){headingX=sx;headingZ=sz;return yaw;}
+            float move=BossMath.Smooth((speed-.3f*HeadingMoving)/(.7f*HeadingMoving)),tau=HeadingStill+(Math.Max(HeadingStill,HeadingTau)-HeadingStill)*move,k=1-(float)Math.Exp(-dt/tau);
+            headingX+=(sx-headingX)*k;headingZ+=(sz-headingZ)*k;
+            // (A goal that turned right round passes the lag's middle: hold the last heading there rather than read a vanishing vector.)
+            float l=headingX*headingX+headingZ*headingZ;if(l<1e-4f){headingX=sx*.01f;headingZ=sz*.01f;return yaw;}
+            return turn.Yaw+BossMath.WrapPi((float)Math.Atan2(headingX,headingZ)-turn.Yaw);
+        }
         /// <summary>Follows a target given directly (already continuous: an offline drive, the gallery, the host's interpolated
         /// root): `velocity` its velocity, `snap` to jump to it.</summary>
         public void Follow(Vector3 target,Vector3 velocity,float yaw,float dt,bool snap=false)
@@ -170,9 +188,11 @@ double want=Math.Max(-MaxSkew,Math.Min(MaxSkew,(target-Time)*CatchUp)),step=Skew
             if(!Started||snap)
             {
                 spring.Reset(target);spring.Velocity=velocity;smooth.Reset(target);smooth.Velocity=velocity;turn.Reset(Started?turn.Yaw+BossMath.WrapPi(yaw-turn.Yaw):yaw);bank.Reset(0);pitch.Reset(0);
+                headingX=(float)Math.Sin(yaw);headingZ=(float)Math.Cos(yaw);
                 Position=target;Velocity=velocity;lastVelocity=velocity;Yaw=turn.Yaw;YawRate=0;Bank=Pitch=0;Jumped=Started;Started=true;return;
             }
             if(!(dt>0))return;
+            yaw=Heading(yaw,BossMath.FlatLength(velocity),dt);
             // Two goal-velocity springs in a row: no steady lag (each tracks its goal's velocity), but the velocity reaching the
             // body is smoothed twice, so the noise and the kinks of the snapshot curve never reach it as acceleration spikes.
             // (A goal-velocity spring takes its goal as of the step's start: the frame's target, carried back by its velocity.)

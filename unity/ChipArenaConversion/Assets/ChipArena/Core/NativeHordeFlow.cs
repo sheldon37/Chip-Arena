@@ -60,7 +60,8 @@ namespace ChipArena.UnityConversion
     /// <item>The host (or a guest before an add's first snapshot): the body as the 60 Hz simulation left it, carried forward by its
     /// velocity to the horde clock (at most one fixed step), through the same springs, so it moves every rendered frame.</item>
     /// <item>The facing: the shortest arc on the rate- and acceleration-limited turn (<see cref="BossTurn"/>; faster while winding
-    /// up an attack, so the blow faces where the authority aims it), never the authority's snap.</item>
+    /// up an attack, so the blow faces where the authority aims it), never the authority's snap; travelling, its goal is the
+    /// authority's facing eased over <see cref="HeadingTau"/>, so a grid route's zig-zag no longer swings the body.</item>
     /// <item>The lean: banked into a turn and pitched into speeding up and braking on second-order dynamics.</item>
     /// <item>Speed: from the smoothed root (<see cref="Velocity"/>), not differentiated from the drawn rig.</item>
     /// </list>
@@ -90,19 +91,24 @@ namespace ChipArena.UnityConversion
         public static Tune TuneOf(int kind)=>tunes[Math.Max(0,Math.Min(tunes.Length-1,NativeHordeKinds.Base(NativeHordeKinds.Index(kind))))];
         /// <summary>How much faster it turns while winding up an attack (rate, acceleration).</summary>
         public const float WindTurn=1.8f,WindAccel=2.2f;
+        /// <summary>The heading's lag (s) while it travels (BossRootFollow.HeadingTau; off through a wind-up, so the blow still faces
+        /// where the authority aims it). The Central Station's authority steers along a 1 m grid route (four links a node), so on a
+        /// slant its facing snaps up to about 60 degrees between waypoints two to four times a second; this turns the body along the
+        /// route's average heading instead of swinging it from side to side as it comes at the pilot.</summary>
+        public const float HeadingTau=.26f;
         public void Reset(){Follow.Reset();kind=-1;hostKnown=false;Jumped=false;}
         /// <summary>Takes a kind's tuning (once per kind; a preview swap re-tunes).</summary>
         public void Configure(int kind)
         {
             if(kind==this.kind)return;this.kind=kind;var t=TuneOf(kind);var f=Follow;
             f.PositionHalfLife=t.HalfLife;f.MaxExtrapolate=.3f;f.TurnHalfLife=.09f;turnRate=t.Turn;turnAccel=t.Accel;f.MaxTurnRate=t.Turn;f.MaxTurnAccel=t.Accel;
-            f.BankScale=1;f.MaxBank=t.Bank;f.PitchScale=t.PitchScale;f.SpeedPitch=t.SpeedPitch;f.MaxPitch=.12f;f.LeanFrequency=t.Hz;f.LeanDamping=t.Damping;
+            f.HeadingTau=winding?0:HeadingTau;f.BankScale=1;f.MaxBank=t.Bank;f.PitchScale=t.PitchScale;f.SpeedPitch=t.SpeedPitch;f.MaxPitch=.12f;f.LeanFrequency=t.Hz;f.LeanDamping=t.Damping;
         }
         /// <summary>A replicated snapshot of the add (guest): the frame's authority time, the body's position, the yaw (degrees).</summary>
         public void Observe(double time,Vector3 position,float yawDegrees)=>Follow.Observe(time,time,position,yawDegrees*BossMath.Deg);
         private void Turning(bool fast)
         {
-            if(fast==winding)return;winding=fast;Follow.MaxTurnRate=turnRate*(fast?WindTurn:1);Follow.MaxTurnAccel=turnAccel*(fast?WindAccel:1);
+            if(fast==winding)return;winding=fast;Follow.MaxTurnRate=turnRate*(fast?WindTurn:1);Follow.MaxTurnAccel=turnAccel*(fast?WindAccel:1);Follow.HeadingTau=fast?0:HeadingTau;
         }
         /// <summary>A guest frame: the snapshots at `clock` (the horde clock), `dt` real seconds after the last.</summary>
         public void Replica(double clock,float dt,bool fast){Turning(fast);Follow.StepAt(clock,dt);Out();}
