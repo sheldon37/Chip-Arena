@@ -1,3 +1,17 @@
+## 2026-10-20 — Claude: allocation checks read bytes a background GC added (CI fix, merged into shared)
+
+- **Branch:** `claude/alloc-check-bgc`, from shared `claude/sleepy-ritchie-g8ruhv` at `f94fa98`. Test project only; no game, Runtime or Core change. Merged into shared and the builder; not published.
+- **Failure:** PR #62 `native-source` at `f94fa98` failed `SpawnInChecks.Allocation`: "12000 frames ... allocate nothing (8088 bytes)". The same run passes locally, and the code allocates nothing. Earlier one-off reds of the same kind include `ChipSelectChecks` 1856 bytes (boss-vfx merge check, 2026-10-19) and the 680/5328/5024 bytes noted in `CoreTests.csproj` (2026-10-15).
+- **Root cause (.NET 8 `gc.cpp`):** at the end of a background (concurrent) gen2 collection's mark phase, `background_mark_phase` calls `repair_allocation_contexts(FALSE)`, which runs `void_allocation`. That zeroes every thread's `alloc_ptr`/`alloc_limit` without taking the unused tail off `alloc_bytes`. `GC.GetAllocatedBytesForCurrentThread()` is `alloc_bytes - (alloc_limit - alloc_ptr)`, so it jumps by the tail, up to one 8 KB quantum the thread never allocated. Blocking collections retire contexts through `fix_allocation_context(..., for_gc_p=TRUE)`, which subtracts the tail. The checks' own buffers (the spawn-in sink is 3.3 MB of large-object arrays) can start a background gen2 just before a measured loop; its mark phase then ends inside the loop.
+- **Evidence:** a probe ran `SpawnInChecks.Allocation` 1500 times with tiering off (as CI), with a thread churning gen0/gen1 garbage.
+  - Concurrent GC on: 6/1500 failures (8088 ×5, 3056), each with a gen2 collection inside the run.
+  - `DOTNET_gcConcurrent=0`: 0/1500.
+  - Without the noise thread: 0/1500 either way.
+  - A plain 2M-iteration loop under gen0-only noise: 0/200. A copy of the loop instrumented around each call never failed.
+- **Fix:** `Tests/CoreTests.csproj` sets `<ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>` (runtimeconfig `System.GC.Concurrent: false`), with the cause in a comment next to `TieredCompilation`. All 189 measurement sites keep their exact `== 0` checks; none is relaxed, retried or skipped. The game is unaffected (Unity runs its own GC).
+- **Checks (actual):** see the merge entry's run on the combined tree.
+- **Risk:** gen2 collections in the test process now pause the test thread. The only wall-clock assertions are the bisect splits (< 400 ms); their times are in the run's log.
+
 ## 2026-10-19 — Claude: zombie gore, standard zombies instead of the Siren lines and black flames (merged into shared)
 
 - **Branch:** `claude/zombie-gore`, from shared `claude/sleepy-ritchie-g8ruhv` at `f1994f1`. Shared was merged in at `eaf7382` (PR #288, which includes `dab15f3` and `0a8e6b9`) before the final checks. Presentation only. Merged into shared and the builder; not published.
