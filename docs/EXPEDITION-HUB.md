@@ -113,7 +113,7 @@ block, collider, navigation, spawn, layout record, door, gate or join field chan
 | Where | What |
 | --- | --- |
 | The Exchange (east) | an ashlar temple front over a rusticated base, six engaged columns, STOCK EXCHANGE in gilt on the frieze, a pediment over the roof line with a stopped clock, a stepped copper dome on a windowed drum with its lantern, beacon and a torn flag, bronze figures on the attic, MARKET CLOSED on a dead ticker over the great door, bronze lanterns |
-| The Union Hall (west) | brick piers and a corbel table, a stepped gable to 22 m with stone copings and a rose window, a slate roof behind it with a louvred bell turret, tall arched windows, the arched entrance under UNION HALL / LOCAL 9, red banners, a painted sign on the lane |
+| The Union Hall (west) | brick piers and a corbel table, a stepped gable to 22 m with stone copings and a rose window, a slate roof behind it with a louvred bell turret, tall arched windows, the arched entrance (LOCAL 9 on a plaque in its arch) under UNION HALL on a stone band, red banners, a painted sign on the lane |
 | The Tram Depot (south) | four arched bays (plank doors with braces, one open on a tram's nose in red and cream with its route board, one round the spawn's wicket door), CITY TRAMWAYS on the frieze, the depot clock, overhead-line brackets, gooseneck lamps, a sawtooth north-light roof, rails and setts out across the cross street |
 | The main lanes | the Roxy (a marquee lit by bulbs with its title board, poster cases, ROXY in neon down a blade sign, a letter out), the Hotel Argo's blade, a bar and a pawnbroker's |
 | The squares | a market stall on the crates (posts, a striped canopy above a Hulk, produce, a hung lamp); on the landmark's back a kiosk (NEWS, TOBACCO, TICKETS) and a makeshift memorial (photographs, notes, candles, flowers, WE REMEMBER) |
@@ -134,7 +134,13 @@ rest point now puts that noise in one lattice cell (24, 0) whose four values lie
 panel: green open, red sealed, amber moving, wherever a door stands. Only the rest point moves; the state pieces' digest
 (`ExpeditionLaserDoorChecks`) is unchanged.
 
-**Per-frame cost.** The kit grew to 23,194 parts (15,382; low tier 10,768, was 8,955; casting 577, was 580; light sources 133,
+**The fronts kept clear.** Nothing on a landmark's front crosses its name or its main door: the Union Hall's middle pier
+starts over the UNION HALL band, its plinth stops either side of the doors, its entrance arch has no keystone under the band,
+and its ground-floor windows keep 3 m off the axis (clear of the arch and the lanterns); every piece of the Exchange's six
+columns stays within .48 m of the face, so the two beside the forecourt's brute drop (kept 2.8 m clear, to .5 m off the face)
+stand too; the Tram Depot's frieze stands in front of its middle pier.
+
+**Per-frame cost.** The kit grew to 23,186 parts (15,382; low tier 10,761, was 8,955; casting 577, was 580; light sources 133,
 were 91; atmosphere at most 785 quads, 662). Two levers hold the frame:
 - the size ranges (`PartBase`/`DetailBase`/`PerMetre`/`DetailRange`) tighten from 80/50/25/110 to 70/35/22/80 m (a 1 m window
   92 m, a 0.2 m sill 39 m, a 1 m poster 57 m; glowing fine detail now takes the detail range);
@@ -143,16 +149,16 @@ were 91; atmosphere at most 785 quads, 662). Two levers hold the frame:
   eye's depth behind the face). Each frame the runtime works one ratio per face (143 faces) and leaves out every part whose
   `Back` (s / d, worked after the layers' lifts) is no smaller; casting parts are never left out, and the eye must stand half a
   metre outside the block. `ExpeditionCityChecks` proves it: from 159 eyes every hidden part has all eight corners behind its
-  block's solid core (855,080 hidden part views).
+  block's solid core (854,736 hidden part views).
 
 | From | parts before → after | draws | low tier |
 | --- | --- | --- | --- |
-| the east gate | 12,524 → 12,232 | 26 → 26 | 8,159 → 7,864 |
-| 25% along the Ward Zero route | 11,850 → 11,065 | 25 → 23 | 8,102 → 7,189 |
-| 50% | 10,367 → 9,137 | 22 → 20 | 7,390 → 6,104 |
-| 75% | 8,327 → 7,459 | 18 → 16 | 6,092 → 4,911 |
-| the Ward Zero circle | 6,888 → 6,298 | 15 → 13 | 5,133 → 4,247 |
-| the sanctuary | 12,519 → 12,384 | 26 → 26 | 8,120 → 7,860 |
+| the east gate | 12,524 → 12,224 | 26 → 26 | 8,159 → 7,857 |
+| 25% along the Ward Zero route | 11,850 → 11,075 | 25 → 24 | 8,102 → 7,195 |
+| 50% | 10,367 → 9,136 | 22 → 20 | 7,390 → 6,103 |
+| 75% | 8,327 → 7,457 | 18 → 16 | 6,092 → 4,909 |
+| the Ward Zero circle | 6,888 → 6,296 | 15 → 13 | 5,133 → 4,245 |
+| the sanctuary | 12,519 → 12,376 | 26 → 26 | 8,120 → 7,853 |
 
 At most 2.67 M vertices a frame (2.71 M before; exp-layout-6 2.76 M). The CPU side adds 143 face ratios and one compare per part.
 

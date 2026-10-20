@@ -62,14 +62,15 @@ namespace ChipArena.UnityConversion
                 for(int c=0;c<7;c++)FBox(f,(run[0]+run[1])/2,.32+c*.6,.035,run[1]-run[0],.5,.022,With(stone,detail:c%2==1));
             }
             foreach(var run in Runs(f,4.2,h-.05,u0+.05,u1-.05,.04))FBox(f,(run[0]+run[1])/2,(4.2+h-.05)/2,.012,run[1]-run[0],h-4.25,.024,stone);
-            // Six engaged columns on a plinth course: base, shaft (two flutes), capital, abacus.
+            // Six engaged columns on a plinth course: base, shaft (two flutes), capital, abacus. Every piece stays within .48 m of the
+            // face, so the pair beside the forecourt's brute drop (its column kept 2.8 m clear, to .5 m off the face) stands too.
             var col=With(P(NativeBlockLooks.Terracotta,0xC4BCAC,RoleLandmark),fade:false);
             for(int k=0;k<6;k++)
             {
                 double u=u0+w/12+k*w/6;Begin();
-                FBox(f,u,4.45,.27,1.3,.5,.5,col);FBox(f,u,9.15,.24,.9,8.9,.44,col);
-                FBox(f,u-.18,9.15,.465,.07,8.4,.012,With(P(NativeBlockLooks.Plain,0x8A8274,RoleLandmark),detail:true));FBox(f,u+.18,9.15,.465,.07,8.4,.012,With(P(NativeBlockLooks.Plain,0x8A8274,RoleLandmark),detail:true));
-                FBox(f,u,13.9,.27,1.3,.6,.5,col);FBox(f,u,14.28,.29,1.5,.16,.54,col);
+                FBox(f,u,4.45,.24,1.3,.5,.44,col);FBox(f,u,9.15,.22,.9,8.9,.4,col);
+                FBox(f,u-.18,9.15,.425,.07,8.4,.012,With(P(NativeBlockLooks.Plain,0x8A8274,RoleLandmark),detail:true));FBox(f,u+.18,9.15,.425,.07,8.4,.012,With(P(NativeBlockLooks.Plain,0x8A8274,RoleLandmark),detail:true));
+                FBox(f,u,13.9,.24,1.3,.6,.44,col);FBox(f,u,14.28,.25,1.5,.16,.46,col);
                 End();
             }
             // The entablature: architrave, the gilt STOCK EXCHANGE on the frieze, the cornice (casting), the attic.
@@ -152,28 +153,32 @@ namespace ChipArena.UnityConversion
                 return;
             }
             double u0=f.U0,u1=f.U1,uc=(u0+u1)/2,w=u1-u0,gh=7.5;
-            // Brick piers every bay, a stone plinth course and a corbel table under the eaves.
+            // Brick piers every bay, a stone plinth course and a corbel table under the eaves. The pier on the axis starts over the
+            // name band and the plinth stops either side of the doors, so nothing crosses the entrance or UNION HALL.
             int bays=6;double bay=w/bays;
-            for(int k=0;k<=bays;k++){double u=u0+k*bay;u=Math.Max(u0+.35,Math.Min(u1-.35,u));foreach(var run in Runs(f,.05,h-.6,u-.3,u+.3,.02))FBox(f,(run[0]+run[1])/2,(.05+h-.6)/2,.1,.6,h-.65,.2,pier);}
-            foreach(var run in Runs(f,.0,.55,u0+.05,u1-.05,.04))FBox(f,(run[0]+run[1])/2,.28,.13,run[1]-run[0],.55,.24,stone);
+            for(int k=0;k<=bays;k++){double u=u0+k*bay;u=Math.Max(u0+.35,Math.Min(u1-.35,u));double py=Math.Abs(u-uc)<.5?6.15:.05;foreach(var run in Runs(f,py,h-.6,u-.3,u+.3,.02))FBox(f,(run[0]+run[1])/2,(py+h-.6)/2,.1,.6,h-.6-py,.2,pier);}
+            foreach(var (pa,pb) in new[]{(u0+.05,uc-1.45),(uc+1.45,u1-.05)})foreach(var run in Runs(f,.0,.55,pa,pb,.04))FBox(f,(run[0]+run[1])/2,.28,.13,run[1]-run[0],.55,.24,stone);
             for(double u=u0+.4;u<u1-.3;u+=.6)if(Math.Abs(u-uc)>gh+.3)FBox(f,u,h-.75,.14,.3,.3,.28,With(pier,detail:true));
-            // Tall arched windows between the piers (upper floor) and lower windows (ground floor), the middle bays left to the gable.
+            // Tall arched windows between the piers (upper floor) and lower windows (ground floor), the middle bays left to the gable;
+            // the ground-floor ones keep 3 m off the axis, clear of the entrance's arch and its lanterns.
             for(int k=0;k<bays;k++)
             {
                 double u=u0+bay*(k+.5);
                 if(Open(f,u-1.1,u+1.1,6.0,12.6,.02,false)){Window(f,u,6.2,1.8,4.6,true,2,k,false,.02);Arch(f,u,10.8,.9,.24,.06,.12,stone,7);FBox(f,u,10.8,.05,1.7,.08,.02,With(P(NativeBlockLooks.Plain,FrameHex,RoleLandmark),detail:true));}
-                if(Math.Abs(u-uc)>1.8&&Open(f,u-.9,u+.9,1.2,4.3,.02,false)){Window(f,u,1.3,1.4,2.4,true,0,k,false,.02);Arch(f,u,3.7,.7,.2,.06,.1,stone,6,false);}
+                if(Math.Abs(u-uc)>3.0&&Open(f,u-.9,u+.9,1.2,4.3,.02,false)){Window(f,u,1.3,1.4,2.4,true,0,k,false,.02);Arch(f,u,3.7,.7,.2,.06,.1,stone,6,false);}
             }
-            // The entrance on the axis: double timber doors under a brick arch; UNION HALL on a stone band; LOCAL 9; two lanterns.
+            // The entrance on the axis: double timber doors under a brick arch (no keystone, so nothing reaches the name band over it),
+            // LOCAL 9 on a stone plaque in the arch, UNION HALL on a stone band, two lanterns.
             if(Open(f,uc-1.6,uc+1.6,0,4.8,.02,false))
             {
                 Begin();FBox(f,uc,1.85,.04,2.6,3.7,.03,P(NativeBlockLooks.Timber,0x4A2E1E,RoleLandmark));FBox(f,uc,1.85,.06,.06,3.7,.012,P(NativeBlockLooks.Plain,FrameHex,RoleLandmark));
                 FBox(f,uc-.75,1.1,.06,.5,.5,.012,With(P(NativeBlockLooks.SteelGreen,0x8A7A40,RoleLandmark),detail:true));FBox(f,uc+.75,1.1,.06,.5,.5,.012,With(P(NativeBlockLooks.SteelGreen,0x8A7A40,RoleLandmark),detail:true));End();
-                Arch(f,uc,3.7,1.35,.32,.08,.14,P(NativeBlockLooks.BrickRed,0x6A3628,RoleLandmark),9);
+                Arch(f,uc,3.7,1.35,.32,.08,.14,P(NativeBlockLooks.BrickRed,0x6A3628,RoleLandmark),9,false);
+                Begin();FBox(f,uc,4.42,.1,1.6,.42,.12,stone);Text(f,"LOCAL 9",uc,4.3,.17,.05,.012,P(NativeBlockLooks.Plain,0x3A2A20,RoleSign));End();
                 foreach(double s in new[]{-1.0,1.0}){Begin();FBox(f,uc+s*2.2,3.75,.12,.1,.3,.24,P(NativeBlockLooks.SteelGreen,0x2A2A28,RoleLandmark));FBox(f,uc+s*2.2,3.36,.2,.3,.45,.3,s<0?Glow(WarmHex,1.0f,RoleLandmark,DriveFlicker,.45f):P(NativeBlockLooks.Plain,0x2A2622,RoleLandmark));End();}
                 At(f,uc-2.2,0,.6,out double lx,out double lz);Light(lx,f.Base+3.3,lz,WarmHex,.7,8,.9,GlowLampFlicker,.45);
             }
-            Begin();FBox(f,uc,5.7,.1,7.6,.8,.14,stone);Text(f,"UNION HALL",uc,5.38,.17,.13,.02,P(NativeBlockLooks.Plain,0x3A2A20,RoleSign));Text(f,"LOCAL 9",uc,4.92,.17,.05,.012,P(NativeBlockLooks.Plain,0x3A2A20,RoleSign));End();
+            Begin();FBox(f,uc,5.7,.1,7.6,.8,.14,stone);Text(f,"UNION HALL",uc,5.38,.17,.13,.02,P(NativeBlockLooks.Plain,0x3A2A20,RoleSign));End();
             // The stepped gable over the middle bays (to 22 m, above the roof line), its copings, the rose window, red banners.
             {
                 double baseY=h;int steps=5;double rise=1.5;
