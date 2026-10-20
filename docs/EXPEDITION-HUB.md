@@ -99,6 +99,76 @@ and `expedition_ironworks.py --fixtures`.
 Checks: `CoreTests --expedition-city` (`Tests/ExpeditionCityChecks.cs`), with the re-measured pins in the layout, join,
 station, ironworks, hub, laser-door and dressing checks (DEV_LOG lists them).
 
+## The city in detail (Claude, 2026-10-20)
+
+Branch `claude/expedition-city-detail` (base shared `2a3819f`, exp-layout-7); on the branch, not merged. Owner (verbatim): "lets
+begin improving the design quality of the city 🙂 the city/hub essentially just need "graphic" improvements with more detail."
+Presentation only: the town kit (`Core/NativeExpeditionCityKit*.cs`), its atmosphere (`NativeExpeditionCityFx.cs`), the doors'
+status panels (`NativeExpeditionStateScene.cs`) and the runtime's selection (`Runtime/NativeExpeditionCityPresentation.cs`). No
+block, collider, navigation, spawn, layout record, door, gate or join field changes; `UnityMaps.json`, `ExpeditionLayout.json` and
+`MapLooks.json` are byte for byte the base's. Same voxel language, same dusk look.
+
+**What is new.**
+
+| Where | What |
+| --- | --- |
+| The Exchange (east) | an ashlar temple front over a rusticated base, six engaged columns, STOCK EXCHANGE in gilt on the frieze, a pediment over the roof line with a stopped clock, a stepped copper dome on a windowed drum with its lantern, beacon and a torn flag, bronze figures on the attic, MARKET CLOSED on a dead ticker over the great door, bronze lanterns |
+| The Union Hall (west) | brick piers and a corbel table, a stepped gable to 22 m with stone copings and a rose window, a slate roof behind it with a louvred bell turret, tall arched windows, the arched entrance under UNION HALL / LOCAL 9, red banners, a painted sign on the lane |
+| The Tram Depot (south) | four arched bays (plank doors with braces, one open on a tram's nose in red and cream with its route board, one round the spawn's wicket door), CITY TRAMWAYS on the frieze, the depot clock, overhead-line brackets, gooseneck lamps, a sawtooth north-light roof, rails and setts out across the cross street |
+| The main lanes | the Roxy (a marquee lit by bulbs with its title board, poster cases, ROXY in neon down a blade sign, a letter out), the Hotel Argo's blade, a bar and a pawnbroker's |
+| The squares | a market stall on the crates (posts, a striped canopy above a Hulk, produce, a hung lamp); on the landmark's back a kiosk (NEWS, TOBACCO, TICKETS) and a makeshift memorial (photographs, notes, candles, flowers, WE REMEMBER) |
+| The routes | over the start of each straight stretch down a street, a sign on a span wire (the zone's name and the metres left, its lit edge in the zone's accent), then a lamp hung from a span wire every 6.5 m |
+| Windows | painted frames, transoms, shutters (a leaf gone, one off its hinge), stacks of concrete balconies with their clutter, air conditioners with rust drips, rain stains |
+| Walls | drainpipes with hoppers and shoes, grime and damp at the foot (the wall's own courses, darker), moss and weeds, meter boxes, cabinets, pay phones, bins, benches, poster walls, rubble |
+| Streets | pavements of slabs with kerbs, gutters and drains along every street (not the alleys or the wilds), manholes (some steaming), cracks with weeds, potholes, puddles that catch the dusk, oil, litter and newspaper out in the quarters |
+| Overhead and roofs | cables across the streets and alleys, lamps hung from some, washing on the alley lines; water tanks on legs, chimney stacks, aerials, stair huts |
+| The sanctuary | supplies at the walls, jerrycans, a MISSING board, a medic cabinet, a radio and its aerial, painted signs, lanterns, tarps pitched over bedding, a lookout with a searchlight and a green-cross flag on two roofs |
+| The gates, street side | floodlights on the posts, sandbags along the fence's outer foot, a HOLSTER board |
+| The join circles | work floods either side of each door's airlock, lighting the circle |
+| Atmosphere | steam breathing out of manholes, a shaft of lamp light in the haze under each working lamp near the eye, lower and denser fog in the alleys |
+| Door status panels | the holo look's hue band pinned (below) |
+
+**The door panels.** `NativeBlockLit`'s holo look turns a screen's colour toward its `.gbr` by a noise band read in rest space, so
+the status panels' colour followed where their door stood: Ward Zero's read amber after exp-layout-7 moved it 24 m. Each panel's
+rest point now puts that noise in one lattice cell (24, 0) whose four values lie under .22, so the band is 0 on every face of every
+panel: green open, red sealed, amber moving, wherever a door stands. Only the rest point moves; the state pieces' digest
+(`ExpeditionLaserDoorChecks`) is unchanged.
+
+**Per-frame cost.** The kit grew to 23,194 parts (15,382; low tier 10,768, was 8,955; casting 577, was 580; light sources 133,
+were 91; atmosphere at most 785 quads, 662). Two levers hold the frame:
+- the size ranges (`PartBase`/`DetailBase`/`PerMetre`/`DetailRange`) tighten from 80/50/25/110 to 70/35/22/80 m (a 1 m window
+  92 m, a 0.2 m sill 39 m, a 1 m poster 57 m; glowing fine detail now takes the detail range);
+- a back-face rule (`NativeExpeditionCityKit.Hide`): a part on a building's face, `s` m in from its edges and `d` m out of it, can
+  be seen from behind that face only past an edge, and only when the eye reaches past that edge by more than `s e / d` (e the
+  eye's depth behind the face). Each frame the runtime works one ratio per face (143 faces) and leaves out every part whose
+  `Back` (s / d, worked after the layers' lifts) is no smaller; casting parts are never left out, and the eye must stand half a
+  metre outside the block. `ExpeditionCityChecks` proves it: from 159 eyes every hidden part has all eight corners behind its
+  block's solid core (855,080 hidden part views).
+
+| From | parts before → after | draws | low tier |
+| --- | --- | --- | --- |
+| the east gate | 12,524 → 12,232 | 26 → 26 | 8,159 → 7,864 |
+| 25% along the Ward Zero route | 11,850 → 11,065 | 25 → 23 | 8,102 → 7,189 |
+| 50% | 10,367 → 9,137 | 22 → 20 | 7,390 → 6,104 |
+| 75% | 8,327 → 7,459 | 18 → 16 | 6,092 → 4,911 |
+| the Ward Zero circle | 6,888 → 6,298 | 15 → 13 | 5,133 → 4,247 |
+| the sanctuary | 12,519 → 12,384 | 26 → 26 | 8,120 → 7,860 |
+
+At most 2.67 M vertices a frame (2.71 M before; exp-layout-6 2.76 M). The CPU side adds 143 face ratios and one compare per part.
+
+**Checks** (`CoreTests --expedition-city`, `ExpeditionCityChecks` "the city in detail"): the town map's entry in `UnityMaps.json`
+and the whole `ExpeditionLayout.json` hash to the base's SHA-256 (`3890d697...`, `8a6229e0...`); no part below 2.2 m other than
+flat paint comes within .15 m of the column over any navigation node; nothing but flat paint below 3.2 m within 1 m of a route's
+centre line; nothing at all in a join circle grown .3 m up to its counted height (the kit now keeps the circles as it keeps the
+door volumes); the back-face rule's proof; the panels' band 0 for every door and state; the landmarks' silhouettes (the Exchange's
+dome and flag to 11.4 m over its roof, the Union Hall's gable and turret to 11.4 m, the depot's teeth 2.7 m) and names; the per-frame parts and draws at the six points; the coplanar
+audit over the whole town (0 clashes) and the dressing rules (`--expedition-dressing`, budgets re-measured: 25,000 parts,
+11,500 low tier).
+
+**Seams.** The ranges are tighter: small dressing now goes at 40-60 m, under the fog's first fifth, so a still view down a long
+street shows less sill and poster detail at the far end than before. The holo band is pinned on the doors' panels only; other
+holo screens (Ward Zero's) keep theirs.
+
 ## The plan in numbers
 
 | | exp-layout-2 (before) | exp-layout-3 (this branch) |
