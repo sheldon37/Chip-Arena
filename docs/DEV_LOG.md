@@ -1,6 +1,6 @@
 ## 2026-10-20 — Claude: low-poly male base, Phase B, built in Blender (on the branch, not merged)
 
-- **Branch/base:** `claude/lowpoly-base-model`, from shared `claude/sleepy-ritchie-g8ruhv` at `28a46ce`, fast-forwarded to `acc90b9` (the Phase A doc). WIP commits `5e0fed1`, `07e84c9`, `87a6b5c`, then the final one. Not merged, not published, no PR.
+- **Branch/base:** `claude/lowpoly-base-model`, from shared `claude/sleepy-ritchie-g8ruhv` at `28a46ce`, fast-forwarded to `acc90b9` (the Phase A doc). Commits `5e0fed1`, `07e84c9`, `87a6b5c`, `bd51c56` and `bf893ca`, plus this log line. Not merged, not published, no PR.
 - **Owner request:** the first real low-poly model, built as a Blender mesh. The style target and base sheet are visual targets only. It is a male base:
   - bare torso and dark boxers;
   - a natural stylized face;
@@ -47,7 +47,9 @@
   - `Tests/test_lowpoly_male_base.py`: 10 checks, OK. It parses `Core/CapturedRig.cs` for the rig, then checks weights, regions, budgets, winding and volume, the envelope, the right-wrist-only device and file sizes. It skips without the Art folder.
   - Two exports byte-identical; a full rebuild gives identical binary and manifest.
   - The FBX was parsed to confirm its joint rest transforms.
-  - run5b: see below.
+  - run5b on `bd51c56` failed rc2. `ZombieMotionChecks` rejects any `.fbx` in the Unity project, so the preview FBX moved to the ignored `.cache/` (`bf893ca`).
+  - run5b on `bf893ca`: rc1–rc5 all 0. That covers the Unity compile stub, relay and the full CoreTests run (814 PASS lines), 151 Python tests OK (1 skipped; the new 11 included), the source package (2,616 files) and the diff check.
+  - The GLB and FBX re-import in Blender: 6 skinned meshes, 36 bones (22 + 14 secondary), 5,230 triangles, 0–1.75 m.
 - **Renders** (offline Cycles CPU, scratch `renders-lowpoly-base/`):
   - turnaround; rig-joint overlay; face; core; the 7 device states;
   - 8 game poses with the game's own weapons in hand: idle, run, sprint, melee cut, rifle aim, magic cast, roll, dodge turn;
