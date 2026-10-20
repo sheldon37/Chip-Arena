@@ -13,6 +13,8 @@ namespace ChipArena.UnityConversion
         private NativeArena replayArena;private Scene replayScene;private NativeGameFrame replaySource;private readonly Dictionary<Renderer,bool> liveVisibility=new Dictionary<Renderer,bool>();
         private readonly List<Renderer> replayLiveRenderers=new List<Renderer>(1024);private bool replayWarmAttempt;private int replaySceneSerial;
         private bool ReplayActive=>replayRunning;
+        // Replay eligibility follows this match's bound session, never the saved lobby mode from a previous run.
+        private bool ExpeditionReplay=>match?.Cooperative==true&&(arena?.Expedition!=null||ExpeditionView!=null);
         private NativePilot Spectator=>arena?.Local?.Hp<=0?arena.Pilots.FirstOrDefault(p=>p.Seat.id==spectatorId&&p.Hp>0&&p.Seat.connected):null;
         private void ObserveReplay()
         {
@@ -24,7 +26,7 @@ namespace ChipArena.UnityConversion
                 catch(Exception e){ReleaseReplayArena();Debug.LogWarning("Replay warm-up deferred: "+e.Message);}
                 finally{hitchReplayPrepare+=HitchMs(at);}
             }
-            if(prefs.expedition)
+            if(ExpeditionReplay)
             {
                 // Expedition deaths go directly to the live party, never a combat replay.
                 EndReplay();if(arena.Local.Hp>0)spectatorId=0;return;
@@ -66,7 +68,7 @@ namespace ChipArena.UnityConversion
         {
             if(FinalSkipKey())return;
             if(arena?.Local==null||arena.Local.Hp>0||menu||BoardOpen||ExpeditionScreenOpen)return;if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape))EndReplay();
-            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!prefs.expedition||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0){spectatorId=0;return;}
+            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!ExpeditionReplay||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0){spectatorId=0;return;}
             int at=Array.FindIndex(candidates,p=>p.Seat.id==spectatorId);if(at<0)at=0;else if(Input.GetKeyDown(KeyCode.RightArrow))at=(at+1)%candidates.Length;else if(Input.GetKeyDown(KeyCode.LeftArrow))at=(at+candidates.Length-1)%candidates.Length;spectatorId=candidates[at].Seat.id;
             if(!replayRunning){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity;pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity,-70,70);}
         }
@@ -197,7 +199,7 @@ namespace ChipArena.UnityConversion
         }
         private void CycleSpectator(int step)
         {
-            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!prefs.expedition||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0)return;
+            var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!ExpeditionReplay||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0)return;
             int at=Math.Max(0,Array.FindIndex(candidates,p=>p.Seat.id==spectatorId));spectatorId=candidates[(at+step+candidates.Length)%candidates.Length].Seat.id;
         }
     }
