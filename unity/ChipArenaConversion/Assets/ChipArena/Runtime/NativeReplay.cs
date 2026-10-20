@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         private void SpectatorControls()
         {
             if(FinalSkipKey())return;
-            if(arena?.Local==null||arena.Local.Hp>0||menu||BoardOpen)return;if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape))EndReplay();
+            if(arena?.Local==null||arena.Local.Hp>0||menu||BoardOpen||ExpeditionScreenOpen)return;if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape))EndReplay();
             var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!prefs.expedition||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0){spectatorId=0;return;}
             int at=Array.FindIndex(candidates,p=>p.Seat.id==spectatorId);if(at<0)at=0;else if(Input.GetKeyDown(KeyCode.RightArrow))at=(at+1)%candidates.Length;else if(Input.GetKeyDown(KeyCode.LeftArrow))at=(at+candidates.Length-1)%candidates.Length;spectatorId=candidates[at].Seat.id;
             if(!replayRunning){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity;pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity,-70,70);}

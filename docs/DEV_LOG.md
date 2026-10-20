@@ -39,6 +39,14 @@
   - `Tests/Program.cs` gains a group line, which may conflict trivially with a parallel branch.
 - **Next:** owner review in the Windows build at Central Station. Then merge into shared and publish with the next game update.
 
+## 2026-10-20 — Astra: Expedition death screen cursor ownership
+
+- **Branch/base:** `codex/expedition-death-input`, shared `f930684` (includes Claude's gore bindings).
+- **Cause:** Update's dead-pilot spectator branch ignored `ExpeditionScreenOpen`, locking/hiding the cursor over the automatically opened XP/progress screen. SpectatorControls also consumed mouse movement behind it. ESC released the screen, masking the issue.
+- **Fix:** the open Expedition screen excludes both cursor capture and spectator controls. Resolve the existing completion/XP screen sync before Update input routing, so an automatic opening owns the pointer immediately. Results/XP rendering, rewards, death, revive and simulation rules are unchanged.
+- **Validation:** Player/Runtime/Editor Unity semantic compilation passes. Evaluated the actual cursor expression across 256 boolean combinations: screen, board and pick-pointer states always release the mouse; checked spectator guard and sync-before-input ordering. Hosted regression gates pending at commit. Unity interactive death/XP close, Windows and two-client play not run locally.
+- **Next:** merge after CI and sync the builder. Verify dying with the progress/XP screen open permits hover and Close, closing it restores normal spectating when a teammate lives, and J reopens it. This is input routing only; no visual redesign.
+
 ## 2026-10-20 — Claude: zombie gore bound to the authority hit metadata (merged into shared)
 
 - **Branch/base:** `claude/zombie-gore-bind`, from shared `claude/sleepy-ritchie-g8ruhv` at `8740ceb` (Astra's PR #289 `codex/zombie-gore-state` merged). Presentation only. Implementation commit `da3f812`. Merged into shared and the builder; not published.
