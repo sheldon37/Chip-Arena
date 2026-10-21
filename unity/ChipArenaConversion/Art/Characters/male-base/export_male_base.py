@@ -6,9 +6,11 @@
 
 Writes, deterministically (two runs are byte-identical):
   male_base.bytes          the runtime mesh library proposed in docs/CHARACTER-LOWPOLY.md (b): little-endian "CALP" v1,
-                           Unity frame, motion-root origin, flat-shaded split vertices, <= 4 weights in 1/255,
+                           Unity frame, motion-root origin, split vertices with corner normals (smooth planes, sharp
+                           creases), <= 4 weights in 1/255,
                            hide and death regions, paint channel per vertex; layout in male_base.manifest.json
-  male_base.manifest.json  bones (the 22 CapturedRig joints + optional secondary bones), bind poses, pieces, paints,
+  male_base.manifest.json  bones (the 22 CapturedRig joint names with the visual skeleton's rest offsets, the game's
+                           authoritative offsets recorded beside them, + optional secondary bones), bind poses, pieces, paints,
                            channels, regions, counts, hair springs, device hinge and states, attachment points
   male_base.fbx            preview/owner FBX (-Z forward, Y up, metres, transforms applied), written to the git-ignored
                            <repo>/.cache/characters/male-base/ (never inside the Unity project; see FBX_OUT)
@@ -67,13 +69,16 @@ def bone_table(rig):
         par = b.parent.name if b.parent else None
         ph = M.rig_pos(b.parent.head_local) if b.parent else Vector((0, 0, 0))
         local = head - ph
-        if n in M.JOINT_INDEX:                         # the spec's offsets exactly (CapturedRig.Bones)
+        if n in M.JOINT_INDEX:                         # the visual skeleton's offsets exactly (VIS_OFFSETS)
             local = Vector(M.OFFSET[n])
         entry = dict(index=i, name=n, parent=names.index(par) if par else -1,
                      restLocal=[r6(c) for c in rig_to_unity(local)],
                      restWorld=[r6(c) for c in rig_to_unity((head - Vector((0, M.ROOT_HEIGHT, 0))))],
                      restRotation=[0.0, 0.0, 0.0, 1.0], deform=bool(b.use_deform),
                      game=n in M.JOINT_INDEX)
+        if n in M.JOINT_INDEX:                         # the authoritative rig (CapturedRig.Bones), for the adapter
+            entry['gameRestLocal'] = [r6(c) for c in rig_to_unity(Vector(M.GAME_OFFSET[n]))]
+            entry['gameRestWorld'] = [r6(c) for c in rig_to_unity(M.JG[n] - Vector((0, M.GAME_ROOT_HEIGHT, 0)))]
         if n not in M.JOINT_INDEX:
             entry['secondary'] = True
             entry['kind'] = b.get('ca_kind', '')
@@ -103,12 +108,13 @@ def piece_data(obj, names):
     for poly in me.polygons:
         if len(poly.vertices) != 3:
             raise RuntimeError('%s: face %d is not a triangle' % (obj.name, poly.index))
-        n = to_unity(poly.normal)
-        nq = tuple(int(round(max(-1, min(1, c)) * 32767)) for c in n)
         name, rgb, ch = M.PAINTS[paint[poly.index]]
         col = tuple(int(round(c * 255)) for c in rgb) + (ch,)
         tri = []
-        for vi in poly.vertices:
+        for li in poly.loop_indices:
+            vi = me.loops[li].vertex_index
+            n = to_unity(me.corner_normals[li].vector)
+            nq = tuple(int(round(max(-1, min(1, c)) * 32767)) for c in n)
             p = to_unity(me.vertices[vi].co)
             pq = (int(round(p[0] / Q)), int(round((p[1] - M.ROOT_HEIGHT) / Q)), int(round(p[2] / Q)))
             key = (pq, nq, col, tuple(vw[vi]), hide[vi], death[vi])
@@ -174,8 +180,9 @@ def manifest(bones, pieces, binary, rig):
     for c in M.HAIR_CHAINS:
         sp = dict(M.SPRING[c])
         sp['bones'] = ['sec-hair-%s-1' % c, 'sec-hair-%s-2' % c]
-        sp['colliders'] = [dict(kind='sphere', joint='head', centre=[0.0, .16, -.005], radius=.118),
-                           dict(kind='capsule', joint='neck', a=[0.0, 0.0, 0.0], b=[0.0, .1, 0.0], radius=.07)]
+        hc = M.HC - M.J['head']
+        sp['colliders'] = [dict(kind='sphere', joint='head', centre=[r6(c) for c in rig_to_unity(hc)], radius=.105),
+                           dict(kind='capsule', joint='neck', a=[0.0, 0.0, 0.0], b=[0.0, .1, 0.0], radius=.06)]
         springs[c] = sp
     lid = rig.data.bones['sec-device-lid']
     hinge = M.rig_pos(lid.head_local) - M.J['right-wrist']
@@ -196,7 +203,8 @@ def manifest(bones, pieces, binary, rig):
         notes='Phase B proof of concept (docs/CHARACTER-LOWPOLY.md). Not imported by Unity yet.',
         frame=dict(units='metres', axes='Unity: x = -rig x (a left limb sits at -x), y up, z forward',
                    origin='motion-root at rest; the floor is y = %.3f' % -M.ROOT_HEIGHT,
-                   winding='cross(b - a, c - a) faces out', normals='flat, one per triangle'),
+                   winding='cross(b - a, c - a) faces out',
+                   normals='corner normals: smooth within planes, split at sharp creases and paint borders'),
         blender=bpy.app.version_string,
         binary=dict(file=os.path.basename(binary), bytes=os.path.getsize(binary), sha256=sha(binary),
                     layout=['header: "CALP", u16 version, u16 flags, u16 bones, u16 pieces, u32 vertices, u32 triangles',
@@ -207,9 +215,24 @@ def manifest(bones, pieces, binary, rig):
                             'skin: 4 u8 bone indices then 4 u8 weights (sum 255) per vertex',
                             'regions: u8 hide region, u8 death region (part root joint) per vertex',
                             'triangles: 3 u16 per triangle (global vertex indices)', 'slots: u8 material slot per triangle']),
-        skeleton=dict(matchesCapturedRig=True, joints=len(M.BONE_NAMES), bones=bones,
-                      bindPose='bind(b) = inverse(translation(restWorld(b))); rest rotations are identity'),
-        materials=[dict(slot=0, name='CA_Body', shading='flat, vertex colour x channel tint'),
+        skeleton=dict(matchesCapturedRig='names, order, parents and identity rest frames; offsets are the visual skeleton',
+                      joints=len(M.BONE_NAMES), bones=bones,
+                      bindPose='bind(b) = inverse(translation(restWorld(b))); rest rotations are identity',
+                      visual=dict(rootHeight=r6(M.ROOT_HEIGHT), height=r6(M.CHIN_Y + M.HEAD_H), headHeight=M.HEAD_H,
+                                  headCentre=[r6(c) for c in rig_to_unity(M.HC - Vector((0, M.ROOT_HEIGHT, 0)))],
+                                  note='restLocal/restWorld: the visual skeleton (docs/CHARACTER-LOWPOLY.md c)'),
+                      authoritative=dict(source='Assets/ChipArena/Core/CapturedRig.cs', rootHeight=M.GAME_ROOT_HEIGHT,
+                                         note='gameRestLocal/gameRestWorld: CapturedRig.Bones, unchanged; gameplay, hit '
+                                              'volumes and weapon frames use these'),
+                      adapter=dict(presentationOnly=True, legRatio=r6(M.LEG_RATIO),
+                                   rules=['local joint rotations from the game pose apply 1:1',
+                                          'motion-root: visual rest height + game root translation x legRatio',
+                                          'feet: IK to the game rig\'s ankle positions while planted (two-bone, knee '
+                                          'toward the game knee plane)',
+                                          'weapon: rides the visual right hand at the game socket; two-handed: the left '
+                                          'hand IKs to the game hand-to-hand offset on the visual weapon',
+                                          'authority unchanged: the capsule, head box, shot origin and weapon frames'])),
+        materials=[dict(slot=0, name='CA_Body', shading='corner normals, vertex colour x channel tint'),
                    dict(slot=1, name='CA_Glow', shading='emissive: vertex colour x glow tint x gain', emissive=True)],
         paints=[dict(index=i, name=n, srgb='#%02x%02x%02x' % tuple(int(round(c * 255)) for c in rgb), channel=ch,
                      slot=1 if ch in M.GLOW_CHANNELS else 0) for i, (n, rgb, ch) in enumerate(M.PAINTS)],
@@ -308,7 +331,7 @@ def export_fbx(path):
     bpy.ops.export_scene.fbx(
         filepath=path, use_selection=True, object_types={'ARMATURE', 'MESH'}, axis_forward='-Z', axis_up='Y',
         apply_unit_scale=True, apply_scale_options='FBX_SCALE_ALL', global_scale=1.0, bake_space_transform=True,
-        use_mesh_modifiers=False, mesh_smooth_type='FACE', use_triangles=True, use_custom_props=False,
+        use_mesh_modifiers=False, mesh_smooth_type='EDGE', use_triangles=True, use_custom_props=False,
         add_leaf_bones=False, primary_bone_axis='Y', secondary_bone_axis='X', use_armature_deform_only=False,
         armature_nodetype='NULL', bake_anim=False, path_mode='AUTO', embed_textures=False, colors_type='SRGB')
 

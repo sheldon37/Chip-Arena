@@ -239,82 +239,118 @@ Reasons:
   (`NativeBodySkinModels.BodyMesh`, `SourceModels` decode). No Animator or Avatar is needed; our poses drive the bones.
 - **Cost:** a small binary parser, plus our own LOD and bounds handling, which we already do for the voxel tiers.
 
-## c. Skeleton spec and animation adapter
+## c. Authoritative rig vs visual skeleton and adapter
 
-**Joints.**
-- The skinned mesh's skeleton is exactly `CapturedRig.Bones`: the same 22 names, order, parents and rest offsets, with
-  identity rest rotations.
-- No extra bones in Phases B–C that a pose writer must move. Forearm and upper-arm twist helpers, if wanted, come
-  later as bones the adapter derives from the 22.
-- The one extension: optional secondary bones in the reserved `sec-` namespace, marked `secondary` with a fallback
-  joint. These are the hair spring chains under `head` and the device's lid and chip under `right-wrist` (section k).
-  A runtime that ignores them folds their weights onto the fallback, which gives the rest shape with no gaps.
-- Rest positions below, Unity frame, metres above the floor. Left limbs sit at −x and the right mirror them at +x.
+Owner decision (2026-10-20, Option B in principle): human proportions for the visual body, on a presentation-only
+skeleton driven by the game's poses. Nothing below changes gameplay, collision, hit volumes, weapon frames or the
+replicated animation state. Status: the visual skeleton and the model are on `claude/lowpoly-base-model` (not merged);
+the adapter is specified here and prototyped only in offline preview tooling; nothing is wired into the runtime.
 
-| # | Joint | Parent | Rest (x, y, z) | # | Joint | Parent | Rest (x, y, z) |
-|---|---|---|---|---|---|---|---|
-| 0 | motion-root | – | 0, .865, 0 | 11 | right-shoulder | 10 | .345, 1.10, 0 |
-| 1 | pelvis | 0 | 0, .625, 0 | 12 | right-elbow | 11 | .345, .83, 0 |
-| 2 | spine | 1 | 0, .73, 0 | 13 | right-wrist | 12 | .345, .58, 0 |
-| 3 | chest | 2 | 0, .92, 0 | 14 | left-hip | 1 | −.13, .57, 0 |
-| 4 | neck | 3 | 0, 1.24, 0 | 15 | left-knee | 14 | −.13, .32, 0 |
-| 5 | head | 4 | 0, 1.34, 0 | 16 | left-ankle | 15 | −.13, .07, 0 |
-| 6 | left-clavicle | 3 | −.275, 1.10, 0 | 17 | left-toe | 16 | −.13, .05, .09 |
-| 7 | left-shoulder | 6 | −.345, 1.10, 0 | 18–21 | right-hip … right-toe | 1, 18, 19, 20 | mirrored at +x |
-| 8 | left-elbow | 7 | −.345, .83, 0 | | | | |
-| 9 | left-wrist | 8 | −.345, .58, 0 | | | | |
-| 10 | right-clavicle | 3 | .275, 1.10, 0 | | | | |
+**Two skeletons, one topology.**
+- **Authoritative:** `CapturedRig.Bones`, unchanged: 22 joints, identity rest frames, motion-root at feet + .865 m. The
+  game's poses, IK lengths (`Arm` .27/.25, `Leg` .25/.25) and every system below keep using it.
+- **Visual:** the same 22 names, order, parents and identity rest frames, with human rest offsets: a 1.74 m figure of
+  7.5 heads (head .232 m), legs about half the height. The mesh is skinned to it; the manifest records both offset
+  sets (`restLocal` visual, `gameRestLocal` authoritative).
+
+| Joint | Authoritative rest (y; x) | Visual rest (y; x) | Visual offset from parent |
+|---|---|---|---|
+| motion-root | .865 | 1.182 | (root) |
+| pelvis / spine / chest | .625 / .73 / .92 | .942 / 1.047 / 1.247 | −.24 / .105 / .20 |
+| neck / head (pivot) | 1.24 / 1.34 | 1.467 / 1.567 | .22 / .10 |
+| clavicle / shoulder | 1.10; ±.275 / ±.345 | 1.402; ±.115 / ±.185 | (±.115, .155) / (±.07, 0) |
+| elbow / wrist | .83 / .58 | 1.097 / .847 | −.305 / −.25 |
+| hip / knee / ankle | .57 / .32 / .07; ±.13 | .887 / .467 / .067; ±.09 | (±.09, −.055) / −.42 / −.40 |
+| toe | .05, z .09 | .025, z .135 | (0, −.042, .135) |
+| head centre | voxel head box 1.505 | 1.624 (chin 1.508, crown 1.74) | – |
+
+**Who reads joint positions (audit of `Core` and `Runtime`, 2026-10-21).**
+- **Authoritative (unchanged by the visual skeleton; none read joint positions):**
+  - the pilot capsule (`NativeLocomotionRules` radius .42, half height .85);
+  - the headshot box (`NativeCombatRules.Headshot`: body + .64 m, ±.17 m, yaw-aligned) and, in the Core test world,
+    `GunRules.SegmentActor` (spheres at .35/.7/1.05 m, head sphere 1.51 m);
+  - the melee sector (`NativeDevVolumes`: origin + .15 m, ±1.6 m tall);
+  - the shot origin (`NativeProjectiles.Fire`: body + .3 m up, .2 m right, .48 m ahead; `GunRules.Muzzle`);
+  - the aim origin (`NativeAbilityRules.EyeHeight` .52 over the body).
+- **Presentation that reads the rig's joint frames today (these would follow the visual skeleton):**
+  - weapons on `RHand`/`LHand` (`GunPresentation`, `NativeGunKitPresentation`, bow, magic, chips) at
+    `NativeKillBoxes.RightHandSocket` (0, −.065, .055);
+  - muzzle flashes and the drawn rounds' start (`NativeWeaponFxPresentation.MuzzleFx`/`MuzzleRecord`): the hand frame
+    times `MuzzleZ`; `NativeShotLaunch` then joins each drawn round to the simulated path within 4.5 m;
+  - footfalls (`NativeFootfallPresentation`: the foot joints), the cinematic camera's head, chest-anchored glows,
+    the interaction grab claw (`NativeInteractionPresentation`, checked by `NativeInteractionValidation`);
+  - corpses and gibs (`NativeDeathPresentation`, `NativeBisectCorpse`, `NativeCollapsePresentation`: colliders from
+    `CapturedRig.Boxes` per bone), wounds (`NativeBodyDamage.Part` height bands, `NativeWoundGeometry`), arrow
+    depth and band/armour/hat anchors (`NativeArmorLight.RestLocal`, `NativeStatusVisuals.BandBones`);
+  - blade clearance (`MeleeClearance`, presentation only, sized to the voxel shoulders and head);
+  - the first-person view rig (`NativeViewPresentation`): elbows and hands only (`NativeAbilityRules.ViewModelBone`).
+
+**Adapter (presentation only; prototype in offline tooling, Unity wiring is Phase D).**
+1. Copy the game pose's local rotations 1:1 onto the visual joints.
+2. Motion-root: visual rest height plus the game root translation × `legRatio` (1.64, visual hip-to-ankle .82 over
+   the game's .50), so crouches and bobs keep the game's knee angles.
+3. Feet: while a game foot is planted (within about .03 m of the floor), two-bone IK puts the visual ankle on the
+   game ankle's ground point (the knee toward the game knee's plane), blending out as the foot lifts; a roll or a
+   tuck keeps the game's `Lowest()` floor fit, evaluated on the visual joints.
+4. Weapons ride the visual right hand at the same socket. Two-handed holds: the left hand IKs to the game's
+   right-to-left hand offset carried onto the visual weapon. One-handed weapons, empty hands and casts keep their FK.
+5. Authority stays as it is: capsule, head box, melee sector, shot origin, weapon frames and the network pose.
+
+**Drift with rotations 1:1 (before IK), the game's own Core poses (`lpb-pose`, 31–61 frames per clip), metres, mean /
+max.** "Box" is the authoritative head box centre (1.49 m over the floor); "grip" the weapon socket; "support IK" how far
+the left hand must move to keep a two-handed grip; reach is the fraction of the visual arm or leg length used.
+
+| Clip (weapon) | Head vs box: visual | Head vs box: game rig | Right grip vs game | Support IK | Left reach | Ankle vs game | Leg reach | Grip to shot origin: game / visual |
+|---|---|---|---|---|---|---|---|---|
+| idle (rifle) | .08 / .08 | .09 / .09 | .33 / .33 | .34 | .81 | .05 / .05 | .90 | .12 / .24 |
+| idle (pistol) | .08 / .08 | .03 / .03 | .33 / .33 | .35 | .68 | .03 / .04 | .92 | .18 / .40 |
+| run (rifle) | .21 / .22 | .16 / .18 | .28 / .29 | .34 | .66 | .16 / .20 | .90 | .49 / .29 |
+| sprint (rifle) | .29 / .30 | .28 / .29 | .27 / .28 | .34 | .64 | .17 / .24 | .87 | .47 / .38 |
+| rifle aim | .08 / .08 | .09 / .09 | .33 / .33 | .34 | .81 | .05 / .05 | .90 | .13 / .26 |
+| melee swing (sword) | .39 / .48 | .42 / .50 | .20 / .25 | n/a | – | .07 / .14 | .64 | .87 / .72 |
+| magic cast | .17 / .39 | .11 / .31 | .29 / .31 | n/a | – | .05 / .12 | .92 | .39 / .38 |
+| roll (rifle) | .38 / 1.37 | .39 / 1.35 | .26 / .32 | .33 | .90 | .16 / .28 | .92 | .51 / .39 |
+| dodge turn (rifle) | .28 / .31 | .27 / .30 | .27 / .29 | .34 | .64 | .16 / .27 | .90 | .46 / .38 |
+| melee run swing | .46 / .70 | .46 / .69 | .24 / .29 | n/a | – | .18 / .29 | .92 | .78 / .58 |
+
+Reading it:
+- The visual head sits about as close to the authoritative head box as the voxel head does (within .01–.06 m in
+  every clip); in motion both lean away from the fixed box by the same amounts. No head-volume change is needed.
+- The weapon on the visual hand sits .20–.33 m from the game rig's weapon frame (narrower shoulders, higher chest).
+  The visual muzzle ends up .24–.40 m from the simulation's shot origin at idle and aim (the voxel's is .12–.18 m) and
+  closer than the voxel's while running (.29–.38 m against .47–.49 m). Tracers would start at the visual muzzle and
+  join the simulated path within `NativeShotLaunch.Converge` (4.5 m), as they do today; hits are unaffected.
+- Two-handed grips need the left hand moved about .34 m (twice the shoulder narrowing); every two-handed pose stays
+  within 90 % of the visual arm's reach. Planted feet need up to .29 m of IK and stay within 92 % of the leg's reach: no
+  hyperextension.
+- The per-frame numbers through the full adapter (with IK) come with the animation tests, after the owner's go-ahead.
+
+**PROPOSALS for the owner and Astra (none applied).**
+- P1 (Claude, presentation): adapter as above, weapon on the visual hand. Cost: weapon and muzzle drift of
+  .2–.33 m from today's drawn frame; no authority change.
+- P2 (Claude, presentation; alternative to P1): the right hand IKs to the game's weapon frame (as an offset from the
+  chest, scaled) so the drawn weapon and muzzle stay where the game draws them today; the arms bend to reach.
+- P3 (Astra, authority; only if the owner wants hits to match the taller body): the head box and shot origin could be
+  raised to the visual head and chest (+.13 m and +.25 m). The drift table shows no need for the head box today.
+- P4 (Astra/Claude, presentation): the systems listed above that read `CapturedRig.Boxes` or voxel sizes (corpse
+  colliders, wound bands, blade clearance, hat fits, the interaction claw) take per-part fit volumes from the model's
+  manifest in Phase D instead.
+- First person needs no change: the view rig shows forearms and hands, and both skeletons' forearms are .25 m long.
 
 **Binding.**
-- Vertices are in the motion-root frame, Unity axes, front +z.
-- Soles at 0 m when standing (root −.865), so `Pose.Lowest`'s floor fit holds.
-- Head centre at 1.50 ± .03 m.
-- Body and garments within the capsule radius (.42 m, plus .03 m tolerance) at rest. Headwear and back pieces may
-  exceed it by at most .25 m.
-- Bind pose of joint *b* = inverse(matrix of *b* relative to motion-root in the modelling pose). The modelling pose is the rest pose, or
-  an A-pose with an exact recorded rotation on joints 7 and 11 (for example ±40° about z), which the exporter applies
-  through the hierarchy.
-- Vertex groups are named exactly as the joints. No weight on joint 0.
-- The wrist cuff and the device are weighted wholly to the wrist joint. Hands and fingers ride the wrist joint, as the
-  voxel hand does.
+- Vertices are in the visual motion-root frame (feet + 1.182 m), Unity axes, front +z; the soles at 0 m.
+- The visual head is centred at 1.624 m (crown 1.74 m). The body and garments stay within the capsule radius (.42 m,
+  plus .03 m) at rest; headwear and back pieces may exceed it by at most .25 m.
+- Bind pose of joint *b* = inverse(translation(visual rest world of *b*)), identity rotations. The mesh is modelled in
+  the rest pose (arms down); the bone-heat pass runs on a copy with the arms spread 40°, then the weights carry back.
+- Vertex groups are named exactly as the joints. No weight on joint 0. The cuff, hands, fingers and the device ride
+  the wrist joint.
 
-**Adapter.**
-- Live rigs: the renderer's `bones` are the rig's 22 Transforms, so every route, layer and IK drives the mesh with no
-  new pose code.
-- Matrix-driven draws (corpses, portraits, rooftop, ghosts): a pooled puppet of 22 flat Transforms is set from the
-  `bone(b)` matrices that `Queue` already receives.
-- Joint lengths stay .27/.25 for the arms and .25/.25 for the legs. Weapons still ride the wrist frames: the grip at
-  `NativeKillBoxes.RightHandSocket` (0, −.065, .055), source frame.
-
-**First person.**
-- The view rig (`NativeViewPresentation`) uses a second puppet on layer 10 with `ViewCamera` and no shadows.
-- The region mask shows only the forearm-and-hand regions (death regions 8 and 12), so sleeves, gloves and the wrist
-  device show in first person and match the outfit.
-- `NativeFirstPersonPose` and its tuning stay as they are.
-
-**Attachment points and fit volumes.**
-- Recorded in the manifest per body type, in joint frames:
-  - the chest core and the wrist device (permanent);
-  - the hat fit (offset and scale for the reused `hat-<id>` models: today's hats fit a .34 m cube head);
-  - a back socket;
-  - the body-chip anchors (chest pips around the core, arm plates, boot plates);
-  - the four team-band sockets;
-  - the Cyber Lord's joint anchors.
-- One fit volume (an OBB) per ragdoll part root, used for corpse colliders, arrow depth, wound placement and repair
-  cells. The legacy bodies keep `CapturedRig.Boxes`.
-
-**Proportions (measured; an owner decision, section j).**
-- These joints give a 1.70 m figure with:
-  - hips at .57 m (34 % of height; a human is about 50 %);
-  - shoulders at 1.10 m (a human is about 1.40 m);
-  - a .24 m gap from the shoulder joints to the head joint.
-- The voxel pilot hides this with a .34 m head cube and a tall collar block. A body with the reference sheet's long
-  legs cannot sit on these joints.
-- The plan keeps the joints and designs a stocky stylized figure for them: a larger head and hair volume, high collar,
-  hood and trapezius shapes, and chunky boots.
-- A remap to human proportions would need a display skeleton with IK fix-up. It would move hands, weapons and muzzle
-  flashes away from the authoritative frames and would mean re-tuning every weapon pose. It is not recommended, but it
-  can be costed if the owner rejects the Phase B look.
+**First person, attachment points and fit volumes.**
+- The view rig (`NativeViewPresentation`) uses a second puppet on layer 10 with `ViewCamera` and no shadows, showing
+  only the forearm-and-hand regions (death regions 8 and 12).
+- The manifest records the chest core, the wrist device and the hair joint; hat fits, the back socket, body-chip
+  anchors, team-band sockets, Cyber Lord anchors and one fit volume per ragdoll part are Phase C/D, on the visual body.
 
 ## d. Cosmetic schema
 
@@ -520,9 +556,10 @@ baked-animation skinning, which is a separate decision.
   gloves, boots or mask.
 - Built on section c exactly. Deterministic export, and a manifest.
 - Accepted when:
-  - the skeleton is equal to `CapturedRig`;
+  - the skeleton has `CapturedRig`'s names, order and parents, with the visual offsets and the authoritative ones
+    recorded (section c);
   - the weights are valid;
-  - soles at 0 ± 1 cm, head centre 1.50 ± .03 m, within the capsule;
+  - soles at 0 ± 1 cm, the visual head centre ± .03 m, within the capsule;
   - every vertex carries a hide region and a death region;
   - faces face out;
   - LOD0 ≤ 6,000 triangles;
@@ -610,11 +647,10 @@ Compatibility resolution is presentation, not validation: the authority stores t
 ## j. Risks and open owner decisions
 
 **Open decisions.**
-1. **Proportions.** The authoritative joints give a stocky 1.70 m figure (hips .57 m, shoulders 1.10 m), not the
-   reference's long legs. Options:
-   - keep the joints and design for them (recommended);
-   - fund a display-skeleton remap, with the weapon and muzzle re-tuning it implies.
-2. **Height.** 1.70 m (hit volumes, head sphere 1.51 m) versus the sheet's ~1.8 m. Recommended: 1.70 m.
+1. **Proportions.** Decided by the owner (2026-10-20): human proportions on a presentation-only visual skeleton
+   (section c). Open: the weapon-hand choice (P1 or P2) and whether any authoritative volume should follow (P3).
+2. **Height.** The visual figure is 1.74 m (7.5 heads); the authoritative capsule (1.70 m) and head box (1.49 m) are
+   unchanged. The drift table in section c measures the difference.
 3. **Wrist side.** Confirm the right wrist for every class, which moves the chip-select display wrist off the free hand
    (section e).
 4. **Default outfit.** A new pilot wears the bare base or the Arena Pilot set.

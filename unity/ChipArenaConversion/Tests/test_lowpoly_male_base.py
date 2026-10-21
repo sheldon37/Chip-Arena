@@ -1,12 +1,13 @@
 """The low-poly male base export (Art/Characters/male-base, Phase B of docs/CHARACTER-LOWPOLY.md): the binary mesh
-library parses and matches its manifest and hash; its first 22 bones are CapturedRig.Bones exactly (names, order, parents
-and rest offsets, read from Core/CapturedRig.cs; identity rest rotations), and every other bone is an optional,
-secondary, `sec-` bone with a fallback joint; weights have at most 4 influences summing to 1 (1/255 units) and never use
-motion-root; every vertex carries a hide region and its ragdoll death region (each hide region inside one part); the
-triangle budgets hold; faces face out (stored normals agree with the winding, the body's signed volume is positive); the
-soles sit on the floor, the head centre is near 1.50 m and the body stays inside the movement capsule; and the wrist
-device rides the right wrist only. Static file checks only: no Unity import, no Blender run. Skips in a packaged source
-tree, which has no Art folder."""
+library parses and matches its manifest and hash; its first 22 bones carry CapturedRig.Bones' names, order and parents
+(read from Core/CapturedRig.cs) with identity rest rotations, the manifest records the game's authoritative rest offsets
+beside the visual skeleton's (docs/CHARACTER-LOWPOLY.md c), and the visual skeleton has human proportions; every other
+bone is an optional, secondary, `sec-` bone with a fallback joint; weights have at most 4 influences summing to 1 (1/255
+units) and never use motion-root; every vertex carries a hide region and its ragdoll death region (each hide region
+inside one part); the triangle budgets hold; faces face out (stored normals lie on the winding's side, the body's signed
+volume is positive); the soles sit on the floor, the head is the visual skeleton's and the body stays inside the movement
+capsule; and the wrist device rides the right wrist only. Static file checks only: no Unity import, no Blender run.
+Skips in a packaged source tree, which has no Art folder."""
 import hashlib
 import json
 import math
@@ -141,6 +142,8 @@ class LowPolyMaleBase(unittest.TestCase):
         self.assertEqual(list(ART.rglob('*.fbx')), [])
 
     def test_first_22_bones_are_captured_rig(self):
+        """Names, order and parents are CapturedRig's; the authoritative offsets are recorded unchanged beside the visual
+        skeleton's own (the binary's rest offsets)."""
         rig = captured_rig_bones()
         self.assertEqual(len(rig), 22)
         bones = self.m['bones']
@@ -149,11 +152,31 @@ class LowPolyMaleBase(unittest.TestCase):
             self.assertEqual(bones[i]['name'], name)
             self.assertEqual(bones[i]['parent'], parent, name)
             want = (-off[0], off[1], off[2])           # Unity frame: source x mirrored
-            for a, b in zip(bones[i]['rest'], want):
+            for a, b in zip(man[i]['gameRestLocal'], want):
+                self.assertAlmostEqual(a, b, places=5, msg=name)
+            for a, b in zip(bones[i]['rest'], man[i]['restLocal']):
                 self.assertAlmostEqual(a, b, places=5, msg=name)
             self.assertEqual(man[i]['restRotation'], [0.0, 0.0, 0.0, 1.0], name)
             self.assertTrue(man[i]['game'], name)
         self.assertFalse(bones[0]['flags'] & 2, 'motion-root does not deform')
+        self.assertTrue(self.doc['skeleton']['adapter']['presentationOnly'])
+        self.assertEqual(self.doc['skeleton']['authoritative']['rootHeight'], .865)
+
+    def test_visual_skeleton_has_human_proportions(self):
+        """7 to 8 heads tall, the hip joints near half the height, the shoulders above four fifths of it."""
+        sk = self.doc['skeleton']
+        root = sk['visual']['rootHeight']
+        world = {b['name']: (b['restWorld'][0], b['restWorld'][1] + root, b['restWorld'][2]) for b in sk['bones'][:22]}
+        height, head = sk['visual']['height'], sk['visual']['headHeight']
+        self.assertTrue(7.0 <= height / head <= 8.0, height / head)
+        self.assertTrue(.47 <= world['left-hip'][1] / height <= .53, world['left-hip'][1] / height)
+        self.assertTrue(.78 <= world['left-shoulder'][1] / height <= .83, world['left-shoulder'][1] / height)
+        self.assertAlmostEqual(world['left-hip'][0], -world['right-hip'][0], places=6)
+        upper = world['left-shoulder'][1] - world['left-elbow'][1]
+        fore = world['left-elbow'][1] - world['left-wrist'][1]
+        thigh = world['left-hip'][1] - world['left-knee'][1]
+        shin = world['left-knee'][1] - world['left-ankle'][1]
+        self.assertTrue(1.1 <= upper / fore <= 1.35 and .95 <= thigh / shin <= 1.15, (upper, fore, thigh, shin))
 
     def test_extra_bones_are_optional_secondary_bones(self):
         bones = self.m['bones']
@@ -203,7 +226,7 @@ class LowPolyMaleBase(unittest.TestCase):
     def test_triangle_budgets(self):
         tri = {p['name']: p['tn'] for p in self.m['pieces']}
         self.assertLessEqual(sum(tri.values()), 6000, 'LOD0 budget (doc h)')
-        self.assertTrue(3500 <= tri['body'] <= 7000, tri['body'])
+        self.assertTrue(3000 <= tri['body'] <= 7000, tri['body'])
         self.assertLessEqual(tri['hair'], 1500)
         self.assertLessEqual(tri['core'], 300)
         self.assertLessEqual(tri['device'] + tri['device-lid'] + tri['device-chip'], 600)
@@ -218,23 +241,28 @@ class LowPolyMaleBase(unittest.TestCase):
                 L = math.sqrt(dot(n, n))
                 if L < 1e-12:
                     continue
-                s = tuple(x / 32767 for x in self.m['nrm'][a])
-                if dot(n, s) / L < .99:
-                    bad += 1
+                for k in (a, b, c):         # corner normals: smooth within planes, never past the face's own side
+                    s = tuple(x / 32767 for x in self.m['nrm'][k])
+                    if dot(n, s) / L < .2:
+                        bad += 1
                 vol += dot(P[a], cross(P[b], P[c])) / 6
             self.assertEqual(bad, 0, '%s: normals disagree with the winding' % p['name'])
             if p['name'] == 'body':
                 self.assertGreater(vol, .05, 'the body encloses a positive volume (outward faces)')
 
     def test_fits_the_game_envelope(self):
-        P = [(x * 1e-5, y * 1e-5 + .865, z * 1e-5) for x, y, z in self.m['pos']]
+        root = self.doc['skeleton']['visual']['rootHeight']
+        P = [(x * 1e-5, y * 1e-5 + root, z * 1e-5) for x, y, z in self.m['pos']]
         body = self.m['pieces'][0]
         hide = self.doc['regions']['hide']
         bp = P[body['v0']:body['v0'] + body['vn']]
         self.assertAlmostEqual(min(p[1] for p in bp), 0.0, delta=.01, msg='soles on the floor')
         head = [P[body['v0'] + i] for i in range(body['vn']) if hide[self.m['reg'][body['v0'] + i][0]] in ('scalp', 'face')]
         centre = (min(p[1] for p in head) + max(p[1] for p in head)) / 2
-        self.assertAlmostEqual(centre, 1.50, delta=.03, msg='head centre (hit sphere at 1.51 m)')
+        want = self.doc['skeleton']['visual']['headCentre'][1] + root
+        self.assertAlmostEqual(centre, want, delta=.03, msg='head centre (the visual head; the authoritative head box '
+                                                             'stays at 1.49 m, see the drift table in the doc)')
+        self.assertLessEqual(max(p[1] for p in bp), 1.76, 'skull top')
         for p in self.m['pieces']:
             reach = .42 + (.25 if p['name'] == 'hair' else .03)
             for q in P[p['v0']:p['v0'] + p['vn']]:
@@ -252,7 +280,7 @@ class LowPolyMaleBase(unittest.TestCase):
                     if c:
                         self.assertIn(names[i], ('right-wrist', 'sec-device-lid', 'sec-device-chip'))
                 x, y, z = (c * 1e-5 for c in self.m['pos'][vi])
-                self.assertGreater(x, .25, 'Unity +x is the right side')
+                self.assertGreater(x, .12, 'Unity +x is the right side')
                 self.assertLess(math.dist((x, y, z), wrist), .12)
         # and no device-like geometry on the left wrist: the body's left forearm and hand carry skin only
         hide = self.doc['regions']['hide']

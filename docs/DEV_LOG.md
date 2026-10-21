@@ -1,3 +1,23 @@
+## 2026-10-21 — Claude: low-poly male base, proportion and face redesign, anatomy checkpoint (on the branch, not merged)
+
+- **Branch/base:** `claude/lowpoly-base-model` (shared `acc90b9` already contained; not merged, no PR, not published). WIP `e374e18` and this checkpoint commit. Shared will be merged in before the final push.
+- **Owner direction (2026-10-20/21):** Option B, human proportions on a presentation-only visual skeleton; a facial anatomy correction (a believable young man, features in geometry, no eyeliner or lip outline); hair sitting on the scalp; redesign toward `ref2-body-*` and `ref2-face-*`; neutral anatomy sheets first, then wait for a go-ahead before the animation tests.
+- **Visual skeleton** (doc c, rewritten as "Authoritative rig vs visual skeleton and adapter"): CapturedRig's 22 names, order, parents and identity frames with human offsets. A 1.74 m figure of 7.5 heads: hips .887, shoulders 1.402 at ±.185, head centre 1.624 m; root at feet + 1.182, leg ratio 1.64. The manifest records the authoritative offsets beside the visual ones (`gameRestLocal`). Authority, hit volumes, weapon frames and the network pose are unchanged.
+- **Position-consumer audit and drift:** nothing authoritative reads joint positions (capsule, head box, melee sector, shot and aim origins are fixed body offsets). Weapons, muzzle flashes, drawn-round starts, footfalls, corpse colliders, wounds, blade clearance and attachments read the rig's frames (presentation). With rotations 1:1 on the game's own Core poses: the visual head sits as close to the head box as the voxel head (within .06 m); the weapon on the visual hand sits .20–.33 m from today's drawn frame; two-handed grips need about .34 m of support-hand IK (within 90 % of reach); planted feet need up to .29 m of foot IK (within 92 % of leg reach). Proposals P1–P4 in doc c, none applied.
+- **Model:** rebuilt on the visual skeleton.
+  - Body: a lean athletic torso from measured cross-sections (CC0 MakeHuman form reference, provenance in the README; no MakeHuman geometry), round deltoids, tapered arms, relaxed hands with four fingers and a thumb, natural feet, boxer-briefs to mid-thigh with a low cyan waistband accent and cyan side piping.
+  - Head: a designed low-poly layout on a measured head field (CC0 MakeHuman head with male face modifiers), placed by facial-third and eye-width rules and triangulated in a conformal chart: eyeballs in sockets under lid margins, lid creases, brow strips, nose bridge, tip, alae and nostrils, modest lip borders and a mouth line, jaw and chin planes, ears between brow and nose base.
+  - Hair: the scalp inside a real hairline (temples, sideburns, nape) on the hair channel, a thin cap and 19 swept faceted clumps with the 6 spring chains.
+  - Shading: smooth planes with sharp creases; exports carry corner normals.
+  - Core on the sternum (scaled .84); the device and its states unchanged, moved to the new right wrist.
+- **Counts:** 4,516 triangles (body 3,378, hair 654, core 210, device 274); 2 materials.
+- **Checks (actual):** `Tests/test_lowpoly_male_base.py` 12 OK (new: the visual skeleton's proportions; the authoritative offsets recorded unchanged). Two exports of one `.blend` byte-identical (bytes, manifest, GLB, FBX). Two builds give identical mesh, weight and edge content; the `.blend` container's pointer ids differ between runs. run5b not yet run on this commit.
+- **Renders** (scratch `renders-lowpoly-base/`, offline Cycles): `anatomy-neutral`, `anatomy-apose`, `anatomy-silhouette` (heads ruler, joint markers), `head-sheet` and `head-sheet-guide` (front, three-quarter, side). v1 renders kept as `*-v1`.
+- **Not run:** the adapter with IK on clips (waiting for the go-ahead), a jump clip, Unity, Windows, run5b.
+- **Animation, timing, networking:** no change to hit timing, hitboxes, damage, cooldowns, movement or the wire.
+- **Risks:** weapon drift (P1 vs P2 is an owner/Astra call); the head's triangulated layout is irregular in wireframe; presentation systems tuned to voxel boxes need fit volumes in Phase D.
+- **Next:** owner review of the anatomy sheets; on a go-ahead, the adapter through run, sprint, aim, melee, jump and roll with per-frame drift, then merge shared, run5b and push.
+
 ## 2026-10-20 — Claude: low-poly male base, Phase B, built in Blender (on the branch, not merged)
 
 - **Branch/base:** `claude/lowpoly-base-model`, from shared `claude/sleepy-ritchie-g8ruhv` at `28a46ce`, fast-forwarded to `acc90b9` (the Phase A doc). Commits `5e0fed1`, `07e84c9`, `87a6b5c`, `bd51c56` and `bf893ca`, plus this log line. Not merged, not published, no PR.

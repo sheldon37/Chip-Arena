@@ -8,15 +8,15 @@
  "frame": {
   "units": "metres",
   "axes": "Unity: x = -rig x (a left limb sits at -x), y up, z forward",
-  "origin": "motion-root at rest; the floor is y = -0.865",
+  "origin": "motion-root at rest; the floor is y = -1.182",
   "winding": "cross(b - a, c - a) faces out",
-  "normals": "flat, one per triangle"
+  "normals": "corner normals: smooth within planes, split at sharp creases and paint borders"
  },
  "blender": "4.2.23 LTS",
  "binary": {
   "file": "male_base.bytes",
-  "bytes": 517533,
-  "sha256": "40e5257558c4a02f184b298d03dfeeaf104f540d8d766b16a205f6f7b3858206",
+  "bytes": 236343,
+  "sha256": "a5c9935dd60545d2178d74cd2706c8acf6f51c9f0322a4f32fbe45c6300f187d",
   "layout": [
    "header: \"CALP\", u16 version, u16 flags, u16 bones, u16 pieces, u32 vertices, u32 triangles",
    "bones: u8 name length, name, i16 parent, u8 flags (1 secondary, 2 deform), 3 f32 rest local",
@@ -31,7 +31,7 @@
   ]
  },
  "skeleton": {
-  "matchesCapturedRig": true,
+  "matchesCapturedRig": "names, order, parents and identity rest frames; offsets are the visual skeleton",
   "joints": 22,
   "bones": [
    {
@@ -55,7 +55,17 @@
      1.0
     ],
     "deform": false,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     0.0,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.0,
+     0.0,
+     0.0
+    ]
    },
    {
     "index": 1,
@@ -78,7 +88,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.24,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.0,
+     -0.24,
+     0.0
+    ]
    },
    {
     "index": 2,
@@ -101,7 +121,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     0.105,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.0,
+     -0.135,
+     0.0
+    ]
    },
    {
     "index": 3,
@@ -109,12 +139,12 @@
     "parent": 2,
     "restLocal": [
      -0.0,
-     0.19,
+     0.2,
      0.0
     ],
     "restWorld": [
      -0.0,
-     0.055,
+     0.065,
      0.0
     ],
     "restRotation": [
@@ -124,7 +154,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     0.19,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.0,
+     0.055,
+     0.0
+    ]
    },
    {
     "index": 4,
@@ -132,12 +172,12 @@
     "parent": 3,
     "restLocal": [
      -0.0,
-     0.32,
+     0.22,
      0.0
     ],
     "restWorld": [
      -0.0,
-     0.375,
+     0.285,
      0.0
     ],
     "restRotation": [
@@ -147,7 +187,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     0.32,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.0,
+     0.375,
+     0.0
+    ]
    },
    {
     "index": 5,
@@ -160,7 +210,7 @@
     ],
     "restWorld": [
      -0.0,
-     0.475,
+     0.385,
      0.0
     ],
     "restRotation": [
@@ -170,20 +220,30 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     0.1,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.0,
+     0.475,
+     0.0
+    ]
    },
    {
     "index": 6,
     "name": "left-clavicle",
     "parent": 3,
     "restLocal": [
-     -0.275,
-     0.18,
+     -0.115,
+     0.155,
      0.0
     ],
     "restWorld": [
-     -0.275,
-     0.235,
+     -0.115,
+     0.22,
      0.0
     ],
     "restRotation": [
@@ -193,7 +253,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.275,
+     0.18,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.275,
+     0.235,
+     0.0
+    ]
    },
    {
     "index": 7,
@@ -205,8 +275,8 @@
      0.0
     ],
     "restWorld": [
-     -0.345,
-     0.235,
+     -0.185,
+     0.22,
      0.0
     ],
     "restRotation": [
@@ -216,7 +286,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.07,
+     0.0,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.345,
+     0.235,
+     0.0
+    ]
    },
    {
     "index": 8,
@@ -224,12 +304,12 @@
     "parent": 7,
     "restLocal": [
      -0.0,
-     -0.27,
+     -0.305,
      0.0
     ],
     "restWorld": [
-     -0.345,
-     -0.035,
+     -0.185,
+     -0.085,
      0.0
     ],
     "restRotation": [
@@ -239,7 +319,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.27,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.345,
+     -0.035,
+     0.0
+    ]
    },
    {
     "index": 9,
@@ -251,8 +341,8 @@
      0.0
     ],
     "restWorld": [
-     -0.345,
-     -0.285,
+     -0.185,
+     -0.335,
      0.0
     ],
     "restRotation": [
@@ -262,20 +352,30 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.25,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.345,
+     -0.285,
+     0.0
+    ]
    },
    {
     "index": 10,
     "name": "right-clavicle",
     "parent": 3,
     "restLocal": [
-     0.275,
-     0.18,
+     0.115,
+     0.155,
      0.0
     ],
     "restWorld": [
-     0.275,
-     0.235,
+     0.115,
+     0.22,
      0.0
     ],
     "restRotation": [
@@ -285,7 +385,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     0.275,
+     0.18,
+     0.0
+    ],
+    "gameRestWorld": [
+     0.275,
+     0.235,
+     0.0
+    ]
    },
    {
     "index": 11,
@@ -297,8 +407,8 @@
      0.0
     ],
     "restWorld": [
-     0.345,
-     0.235,
+     0.185,
+     0.22,
      0.0
     ],
     "restRotation": [
@@ -308,7 +418,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     0.07,
+     0.0,
+     0.0
+    ],
+    "gameRestWorld": [
+     0.345,
+     0.235,
+     0.0
+    ]
    },
    {
     "index": 12,
@@ -316,12 +436,12 @@
     "parent": 11,
     "restLocal": [
      -0.0,
-     -0.27,
+     -0.305,
      0.0
     ],
     "restWorld": [
-     0.345,
-     -0.035,
+     0.185,
+     -0.085,
      0.0
     ],
     "restRotation": [
@@ -331,7 +451,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.27,
+     0.0
+    ],
+    "gameRestWorld": [
+     0.345,
+     -0.035,
+     0.0
+    ]
    },
    {
     "index": 13,
@@ -343,8 +473,8 @@
      0.0
     ],
     "restWorld": [
-     0.345,
-     -0.285,
+     0.185,
+     -0.335,
      0.0
     ],
     "restRotation": [
@@ -354,19 +484,29 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.25,
+     0.0
+    ],
+    "gameRestWorld": [
+     0.345,
+     -0.285,
+     0.0
+    ]
    },
    {
     "index": 14,
     "name": "left-hip",
     "parent": 1,
     "restLocal": [
-     -0.13,
+     -0.09,
      -0.055,
      0.0
     ],
     "restWorld": [
-     -0.13,
+     -0.09,
      -0.295,
      0.0
     ],
@@ -377,7 +517,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.13,
+     -0.055,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.13,
+     -0.295,
+     0.0
+    ]
    },
    {
     "index": 15,
@@ -385,12 +535,12 @@
     "parent": 14,
     "restLocal": [
      -0.0,
-     -0.25,
+     -0.42,
      0.0
     ],
     "restWorld": [
-     -0.13,
-     -0.545,
+     -0.09,
+     -0.715,
      0.0
     ],
     "restRotation": [
@@ -400,7 +550,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.25,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.13,
+     -0.545,
+     0.0
+    ]
    },
    {
     "index": 16,
@@ -408,12 +568,12 @@
     "parent": 15,
     "restLocal": [
      -0.0,
-     -0.25,
+     -0.4,
      0.0
     ],
     "restWorld": [
-     -0.13,
-     -0.795,
+     -0.09,
+     -1.115,
      0.0
     ],
     "restRotation": [
@@ -423,7 +583,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.25,
+     0.0
+    ],
+    "gameRestWorld": [
+     -0.13,
+     -0.795,
+     0.0
+    ]
    },
    {
     "index": 17,
@@ -431,13 +601,13 @@
     "parent": 16,
     "restLocal": [
      -0.0,
-     -0.02,
-     0.09
+     -0.042,
+     0.135
     ],
     "restWorld": [
-     -0.13,
-     -0.815,
-     0.09
+     -0.09,
+     -1.157,
+     0.135
     ],
     "restRotation": [
      0.0,
@@ -446,19 +616,29 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.02,
+     0.09
+    ],
+    "gameRestWorld": [
+     -0.13,
+     -0.815,
+     0.09
+    ]
    },
    {
     "index": 18,
     "name": "right-hip",
     "parent": 1,
     "restLocal": [
-     0.13,
+     0.09,
      -0.055,
      0.0
     ],
     "restWorld": [
-     0.13,
+     0.09,
      -0.295,
      0.0
     ],
@@ -469,7 +649,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     0.13,
+     -0.055,
+     0.0
+    ],
+    "gameRestWorld": [
+     0.13,
+     -0.295,
+     0.0
+    ]
    },
    {
     "index": 19,
@@ -477,12 +667,12 @@
     "parent": 18,
     "restLocal": [
      -0.0,
-     -0.25,
+     -0.42,
      0.0
     ],
     "restWorld": [
-     0.13,
-     -0.545,
+     0.09,
+     -0.715,
      0.0
     ],
     "restRotation": [
@@ -492,7 +682,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.25,
+     0.0
+    ],
+    "gameRestWorld": [
+     0.13,
+     -0.545,
+     0.0
+    ]
    },
    {
     "index": 20,
@@ -500,12 +700,12 @@
     "parent": 19,
     "restLocal": [
      -0.0,
-     -0.25,
+     -0.4,
      0.0
     ],
     "restWorld": [
-     0.13,
-     -0.795,
+     0.09,
+     -1.115,
      0.0
     ],
     "restRotation": [
@@ -515,7 +715,17 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.25,
+     0.0
+    ],
+    "gameRestWorld": [
+     0.13,
+     -0.795,
+     0.0
+    ]
    },
    {
     "index": 21,
@@ -523,13 +733,13 @@
     "parent": 20,
     "restLocal": [
      -0.0,
-     -0.02,
-     0.09
+     -0.042,
+     0.135
     ],
     "restWorld": [
-     0.13,
-     -0.815,
-     0.09
+     0.09,
+     -1.157,
+     0.135
     ],
     "restRotation": [
      0.0,
@@ -538,20 +748,30 @@
      1.0
     ],
     "deform": true,
-    "game": true
+    "game": true,
+    "gameRestLocal": [
+     -0.0,
+     -0.02,
+     0.09
+    ],
+    "gameRestWorld": [
+     0.13,
+     -0.815,
+     0.09
+    ]
    },
    {
     "index": 22,
     "name": "sec-device-chip",
     "parent": 13,
     "restLocal": [
-     0.0554,
+     0.040931,
      0.044,
      0.0
     ],
     "restWorld": [
-     0.4004,
-     -0.241,
+     0.225931,
+     -0.291,
      0.0
     ],
     "restRotation": [
@@ -571,13 +791,13 @@
     "name": "sec-device-lid",
     "parent": 13,
     "restLocal": [
-     0.0637,
+     0.049231,
      0.066,
      0.0
     ],
     "restWorld": [
-     0.4087,
-     -0.219,
+     0.234231,
+     -0.269,
      0.0
     ],
     "restRotation": [
@@ -597,14 +817,14 @@
     "name": "sec-hair-back-l-1",
     "parent": 5,
     "restLocal": [
-     -0.048123,
-     0.287901,
-     -0.064336
+     -0.031761,
+     0.159078,
+     0.012938
     ],
     "restWorld": [
-     -0.048123,
-     0.762901,
-     -0.064336
+     -0.031761,
+     0.544078,
+     0.012938
     ],
     "restRotation": [
      0.0,
@@ -624,14 +844,14 @@
     "name": "sec-hair-back-l-2",
     "parent": 24,
     "restLocal": [
-     -0.006502,
-     -0.016107,
-     -0.01824
+     -0.004153,
+     -0.020581,
+     -0.021814
     ],
     "restWorld": [
-     -0.054625,
-     0.746794,
-     -0.082576
+     -0.035913,
+     0.523497,
+     -0.008876
     ],
     "restRotation": [
      0.0,
@@ -651,14 +871,14 @@
     "name": "sec-hair-back-r-1",
     "parent": 5,
     "restLocal": [
-     0.054513,
-     0.278021,
-     -0.069404
+     0.039604,
+     0.153519,
+     0.005728
     ],
     "restWorld": [
-     0.054513,
-     0.753021,
-     -0.069404
+     0.039604,
+     0.538519,
+     0.005728
     ],
     "restRotation": [
      0.0,
@@ -678,14 +898,14 @@
     "name": "sec-hair-back-r-2",
     "parent": 26,
     "restLocal": [
-     0.005683,
-     -0.024067,
-     -0.019675
+     0.004761,
+     -0.024977,
+     -0.016339
     ],
     "restWorld": [
-     0.060196,
-     0.728954,
-     -0.08908
+     0.044365,
+     0.513542,
+     -0.010611
     ],
     "restRotation": [
      0.0,
@@ -705,14 +925,14 @@
     "name": "sec-hair-front-l-1",
     "parent": 5,
     "restLocal": [
-     -0.030611,
-     0.301829,
-     0.062333
+     -0.026162,
+     0.147039,
+     0.116973
     ],
     "restWorld": [
-     -0.030611,
-     0.776829,
-     0.062333
+     -0.026162,
+     0.532039,
+     0.116973
     ],
     "restRotation": [
      0.0,
@@ -732,14 +952,14 @@
     "name": "sec-hair-front-l-2",
     "parent": 28,
     "restLocal": [
-     0.001067,
-     -0.025518,
-     0.018353
+     0.011081,
+     0.025707,
+     -0.018584
     ],
     "restWorld": [
-     -0.029544,
-     0.751311,
-     0.080686
+     -0.015081,
+     0.557746,
+     0.098389
     ],
     "restRotation": [
      0.0,
@@ -759,14 +979,14 @@
     "name": "sec-hair-front-r-1",
     "parent": 5,
     "restLocal": [
-     0.042828,
-     0.296462,
-     0.060192
+     0.029614,
+     0.146846,
+     0.114938
     ],
     "restWorld": [
-     0.042828,
-     0.771462,
-     0.060192
+     0.029614,
+     0.531846,
+     0.114938
     ],
     "restRotation": [
      0.0,
@@ -786,14 +1006,14 @@
     "name": "sec-hair-front-r-2",
     "parent": 30,
     "restLocal": [
-     0.017579,
-     -0.020983,
-     0.004414
+     -0.002415,
+     0.023939,
+     -0.018603
     ],
     "restWorld": [
-     0.060407,
-     0.750478,
-     0.064606
+     0.027198,
+     0.555785,
+     0.096335
     ],
     "restRotation": [
      0.0,
@@ -813,14 +1033,14 @@
     "name": "sec-hair-side-l-1",
     "parent": 5,
     "restLocal": [
-     -0.089852,
-     0.280422,
-     0.015146
+     -0.048826,
+     0.155933,
+     0.079752
     ],
     "restWorld": [
-     -0.089852,
-     0.755422,
-     0.015146
+     -0.048826,
+     0.540933,
+     0.079752
     ],
     "restRotation": [
      0.0,
@@ -840,14 +1060,14 @@
     "name": "sec-hair-side-l-2",
     "parent": 32,
     "restLocal": [
-     -0.01053,
-     -0.012447,
-     -0.023308
+     0.001748,
+     0.003107,
+     -0.019423
     ],
     "restWorld": [
-     -0.100383,
-     0.742976,
-     -0.008162
+     -0.047079,
+     0.54404,
+     0.060328
     ],
     "restRotation": [
      0.0,
@@ -867,14 +1087,14 @@
     "name": "sec-hair-side-r-1",
     "parent": 5,
     "restLocal": [
-     0.089852,
-     0.280422,
-     0.015146
+     0.04939,
+     0.155901,
+     0.079152
     ],
     "restWorld": [
-     0.089852,
-     0.755422,
-     0.015146
+     0.04939,
+     0.540901,
+     0.079152
     ],
     "restRotation": [
      0.0,
@@ -894,14 +1114,14 @@
     "name": "sec-hair-side-r-2",
     "parent": 34,
     "restLocal": [
-     0.010489,
-     -0.012775,
-     -0.023425
+     -0.002348,
+     0.0028,
+     -0.019257
     ],
     "restWorld": [
-     0.100342,
-     0.742647,
-     -0.008279
+     0.047042,
+     0.5437,
+     0.059894
     ],
     "restRotation": [
      0.0,
@@ -917,13 +1137,40 @@
     "chain": "side-r"
    }
   ],
-  "bindPose": "bind(b) = inverse(translation(restWorld(b))); rest rotations are identity"
+  "bindPose": "bind(b) = inverse(translation(restWorld(b))); rest rotations are identity",
+  "visual": {
+   "rootHeight": 1.182,
+   "height": 1.74,
+   "headHeight": 0.232,
+   "headCentre": [
+    -0.0,
+    0.442,
+    0.05
+   ],
+   "note": "restLocal/restWorld: the visual skeleton (docs/CHARACTER-LOWPOLY.md c)"
+  },
+  "authoritative": {
+   "source": "Assets/ChipArena/Core/CapturedRig.cs",
+   "rootHeight": 0.865,
+   "note": "gameRestLocal/gameRestWorld: CapturedRig.Bones, unchanged; gameplay, hit volumes and weapon frames use these"
+  },
+  "adapter": {
+   "presentationOnly": true,
+   "legRatio": 1.64,
+   "rules": [
+    "local joint rotations from the game pose apply 1:1",
+    "motion-root: visual rest height + game root translation x legRatio",
+    "feet: IK to the game rig's ankle positions while planted (two-bone, knee toward the game knee plane)",
+    "weapon: rides the visual right hand at the game socket; two-handed: the left hand IKs to the game hand-to-hand offset on the visual weapon",
+    "authority unchanged: the capsule, head box, shot origin and weapon frames"
+   ]
+  }
  },
  "materials": [
   {
    "slot": 0,
    "name": "CA_Body",
-   "shading": "flat, vertex colour x channel tint"
+   "shading": "corner normals, vertex colour x channel tint"
   },
   {
    "slot": 1,
@@ -950,14 +1197,14 @@
   {
    "index": 2,
    "name": "lip-upper",
-   "srgb": "#ab5c46",
+   "srgb": "#c1785c",
    "channel": 1,
    "slot": 0
   },
   {
    "index": 3,
    "name": "lip-lower",
-   "srgb": "#c1684d",
+   "srgb": "#cb8263",
    "channel": 1,
    "slot": 0
   },
@@ -985,7 +1232,7 @@
   {
    "index": 7,
    "name": "iris",
-   "srgb": "#21364f",
+   "srgb": "#2b1c12",
    "channel": 0,
    "slot": 0
   },
@@ -1135,6 +1382,13 @@
    "srgb": "#081a21",
    "channel": 0,
    "slot": 0
+  },
+  {
+   "index": 29,
+   "name": "scalp",
+   "srgb": "#202029",
+   "channel": 2,
+   "slot": 0
   }
  ],
  "channels": {
@@ -1219,8 +1473,8 @@
   {
    "name": "body",
    "object": "CA_Body",
-   "triangles": 3796,
-   "vertices": 11150,
+   "triangles": 3378,
+   "vertices": 4520,
    "joint": "skinned",
    "permanent": true,
    "visibleByDefault": true
@@ -1228,8 +1482,8 @@
   {
    "name": "hair",
    "object": "CA_Hair",
-   "triangles": 950,
-   "vertices": 2810,
+   "triangles": 654,
+   "vertices": 701,
    "joint": "head",
    "permanent": false,
    "visibleByDefault": true
@@ -1238,7 +1492,7 @@
    "name": "core",
    "object": "CA_Core",
    "triangles": 210,
-   "vertices": 436,
+   "vertices": 515,
    "joint": "chest",
    "permanent": true,
    "visibleByDefault": true
@@ -1247,7 +1501,7 @@
    "name": "device",
    "object": "CA_WristDevice",
    "triangles": 180,
-   "vertices": 372,
+   "vertices": 397,
    "joint": "right-wrist",
    "permanent": true,
    "visibleByDefault": true
@@ -1265,7 +1519,7 @@
    "name": "device-chip",
    "object": "CA_WristChip",
    "triangles": 60,
-   "vertices": 144,
+   "vertices": 148,
    "joint": "right-wrist",
    "permanent": true,
    "visibleByDefault": false
@@ -1273,7 +1527,7 @@
  ],
  "counts": {
   "total": {
-   "triangles": 5230
+   "triangles": 4516
   },
   "budgets": {
    "lod0": 6000,
@@ -1287,20 +1541,20 @@
   },
   "pieces": {
    "body": {
-    "triangles": 3796,
-    "vertices": 11150
+    "triangles": 3378,
+    "vertices": 4520
    },
    "hair": {
-    "triangles": 950,
-    "vertices": 2810
+    "triangles": 654,
+    "vertices": 701
    },
    "core": {
     "triangles": 210,
-    "vertices": 436
+    "vertices": 515
    },
    "device": {
     "triangles": 180,
-    "vertices": 372
+    "vertices": 397
    },
    "device-lid": {
     "triangles": 34,
@@ -1308,7 +1562,7 @@
    },
    "device-chip": {
     "triangles": 60,
-    "vertices": 144
+    "vertices": 148
    }
   }
  },
@@ -1329,11 +1583,11 @@
       "kind": "sphere",
       "joint": "head",
       "centre": [
-       0.0,
-       0.16,
-       -0.005
+       -0.0,
+       0.057,
+       0.05
       ],
-      "radius": 0.118
+      "radius": 0.105
      },
      {
       "kind": "capsule",
@@ -1348,7 +1602,7 @@
        0.1,
        0.0
       ],
-      "radius": 0.07
+      "radius": 0.06
      }
     ]
    },
@@ -1367,11 +1621,11 @@
       "kind": "sphere",
       "joint": "head",
       "centre": [
-       0.0,
-       0.16,
-       -0.005
+       -0.0,
+       0.057,
+       0.05
       ],
-      "radius": 0.118
+      "radius": 0.105
      },
      {
       "kind": "capsule",
@@ -1386,7 +1640,7 @@
        0.1,
        0.0
       ],
-      "radius": 0.07
+      "radius": 0.06
      }
     ]
    },
@@ -1405,11 +1659,11 @@
       "kind": "sphere",
       "joint": "head",
       "centre": [
-       0.0,
-       0.16,
-       -0.005
+       -0.0,
+       0.057,
+       0.05
       ],
-      "radius": 0.118
+      "radius": 0.105
      },
      {
       "kind": "capsule",
@@ -1424,7 +1678,7 @@
        0.1,
        0.0
       ],
-      "radius": 0.07
+      "radius": 0.06
      }
     ]
    },
@@ -1443,11 +1697,11 @@
       "kind": "sphere",
       "joint": "head",
       "centre": [
-       0.0,
-       0.16,
-       -0.005
+       -0.0,
+       0.057,
+       0.05
       ],
-      "radius": 0.118
+      "radius": 0.105
      },
      {
       "kind": "capsule",
@@ -1462,7 +1716,7 @@
        0.1,
        0.0
       ],
-      "radius": 0.07
+      "radius": 0.06
      }
     ]
    },
@@ -1481,11 +1735,11 @@
       "kind": "sphere",
       "joint": "head",
       "centre": [
-       0.0,
-       0.16,
-       -0.005
+       -0.0,
+       0.057,
+       0.05
       ],
-      "radius": 0.118
+      "radius": 0.105
      },
      {
       "kind": "capsule",
@@ -1500,7 +1754,7 @@
        0.1,
        0.0
       ],
-      "radius": 0.07
+      "radius": 0.06
      }
     ]
    },
@@ -1519,11 +1773,11 @@
       "kind": "sphere",
       "joint": "head",
       "centre": [
-       0.0,
-       0.16,
-       -0.005
+       -0.0,
+       0.057,
+       0.05
       ],
-      "radius": 0.118
+      "radius": 0.105
      },
      {
       "kind": "capsule",
@@ -1538,7 +1792,7 @@
        0.1,
        0.0
       ],
-      "radius": 0.07
+      "radius": 0.06
      }
     ]
    }
@@ -1551,7 +1805,7 @@
   "lid": {
    "bone": "sec-device-lid",
    "pivot": [
-    0.0637,
+    0.049231,
     0.066,
     0.0
    ],
@@ -1566,7 +1820,7 @@
   "chip": {
    "bone": "sec-device-chip",
    "seated": [
-    0.0554,
+    0.040931,
     0.044,
     0.0
    ],
@@ -1655,8 +1909,8 @@
   "core": {
    "joint": "chest",
    "at": [
-    -0.05,
-    0.12,
+    -0.012,
+    0.038,
     0.0
    ]
   },
@@ -1685,18 +1939,18 @@
     ],
     "centroid": [
      -0.0,
-     -0.116999,
-     0.004733
+     -0.097001,
+     -0.021456
     ],
-    "radius": 0.145158,
-    "samples": 120
+    "radius": 0.100637,
+    "samples": 39
    },
    {
     "joint": "head",
     "index": 5,
     "plane": [
      -0.0,
-     0.475,
+     0.385,
      0.0
     ],
     "normal": [
@@ -1706,18 +1960,18 @@
     ],
     "centroid": [
      -0.0,
-     0.502653,
-     0.021273
+     0.411899,
+     0.063349
     ],
-    "radius": 0.094954,
-    "samples": 444
+    "radius": 0.080399,
+    "samples": 313
    },
    {
     "joint": "left-shoulder",
     "index": 7,
     "plane": [
-     -0.345,
-     0.235,
+     -0.185,
+     0.22,
      0.0
     ],
     "normal": [
@@ -1726,19 +1980,19 @@
      0.0
     ],
     "centroid": [
-     -0.369636,
-     0.203901,
-     0.017926
+     -0.183439,
+     0.19458,
+     -0.00774
     ],
-    "radius": 0.081448,
-    "samples": 54
+    "radius": 0.051176,
+    "samples": 61
    },
    {
     "joint": "left-elbow",
     "index": 8,
     "plane": [
-     -0.345,
-     -0.035,
+     -0.185,
+     -0.085,
      0.0
     ],
     "normal": [
@@ -1747,19 +2001,19 @@
      0.0
     ],
     "centroid": [
-     -0.346222,
-     -0.059,
-     0.003995
+     -0.183686,
+     -0.112,
+     0.005335
     ],
-    "radius": 0.056747,
-    "samples": 60
+    "radius": 0.038381,
+    "samples": 16
    },
    {
     "joint": "right-shoulder",
     "index": 11,
     "plane": [
-     0.345,
-     0.235,
+     0.185,
+     0.22,
      0.0
     ],
     "normal": [
@@ -1768,19 +2022,19 @@
      0.0
     ],
     "centroid": [
-     0.369636,
-     0.203901,
-     0.017926
+     0.183439,
+     0.19458,
+     -0.00774
     ],
-    "radius": 0.081448,
-    "samples": 54
+    "radius": 0.051176,
+    "samples": 61
    },
    {
     "joint": "right-elbow",
     "index": 12,
     "plane": [
-     0.345,
-     -0.035,
+     0.185,
+     -0.085,
      0.0
     ],
     "normal": [
@@ -1789,18 +2043,18 @@
      0.0
     ],
     "centroid": [
-     0.346222,
-     -0.059,
-     0.003995
+     0.183686,
+     -0.112,
+     0.005335
     ],
-    "radius": 0.056747,
-    "samples": 60
+    "radius": 0.038381,
+    "samples": 16
    },
    {
     "joint": "left-hip",
     "index": 14,
     "plane": [
-     -0.13,
+     -0.09,
      -0.295,
      0.0
     ],
@@ -1810,19 +2064,19 @@
      0.0
     ],
     "centroid": [
-     -0.154809,
-     -0.313,
-     -0.004175
+     -0.104753,
+     -0.328003,
+     -0.021229
     ],
-    "radius": 0.095781,
-    "samples": 54
+    "radius": 0.081013,
+    "samples": 50
    },
    {
     "joint": "left-knee",
     "index": 15,
     "plane": [
-     -0.13,
-     -0.545,
+     -0.09,
+     -0.715,
      0.0
     ],
     "normal": [
@@ -1831,18 +2085,18 @@
      0.0
     ],
     "centroid": [
-     -0.131678,
-     -0.569,
-     0.009848
+     -0.081196,
+     -0.735323,
+     0.011228
     ],
-    "radius": 0.068143,
-    "samples": 70
+    "radius": 0.053275,
+    "samples": 62
    },
    {
     "joint": "right-hip",
     "index": 18,
     "plane": [
-     0.13,
+     0.09,
      -0.295,
      0.0
     ],
@@ -1852,19 +2106,19 @@
      0.0
     ],
     "centroid": [
-     0.154809,
-     -0.313,
-     -0.004175
+     0.104753,
+     -0.328003,
+     -0.021229
     ],
-    "radius": 0.095781,
-    "samples": 54
+    "radius": 0.081013,
+    "samples": 50
    },
    {
     "joint": "right-knee",
     "index": 19,
     "plane": [
-     0.13,
-     -0.545,
+     0.09,
+     -0.715,
      0.0
     ],
     "normal": [
@@ -1873,12 +2127,12 @@
      0.0
     ],
     "centroid": [
-     0.131678,
-     -0.569,
-     0.009848
+     0.081196,
+     -0.735323,
+     0.011228
     ],
-    "radius": 0.068143,
-    "samples": 70
+    "radius": 0.053275,
+    "samples": 62
    }
   ]
  }

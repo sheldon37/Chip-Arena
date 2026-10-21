@@ -1,7 +1,8 @@
 # Low-poly male base (Phase B)
 
-The first skinned low-poly pilot body for `docs/CHARACTER-LOWPOLY.md`: male base, natural stylized face, `spiky-01`
-hair, dark boxers, the chest core and the right-wrist chip device. Original geometry, built by script. Nothing here
+The first skinned low-poly pilot body for `docs/CHARACTER-LOWPOLY.md`: a lean young man of human proportions (1.74 m,
+7.5 heads), a natural stylized face, short swept `spiky-01` hair, dark boxer-briefs with cyan trim, the chest core and
+the right-wrist chip device. Original geometry, built by script. Nothing here
 is imported by Unity, and nothing is wired into the runtime: Phase D copies the binary and manifest into
 `Assets/Conversion/Resources/Characters/`.
 
@@ -25,8 +26,10 @@ blender -b --factory-startup unity/ChipArenaConversion/Art/Characters/male-base/
     --python unity/ChipArenaConversion/Art/Characters/male-base/export_male_base.py
 ```
 
-`Tests/test_lowpoly_male_base.py` checks the exports statically: the rig against `Core/CapturedRig.cs`, weights,
-regions, budgets, winding, envelope and the right-wrist device.
+`Tests/test_lowpoly_male_base.py` checks the exports statically: the rig's names and parents and the recorded
+authoritative offsets against `Core/CapturedRig.cs`, the visual skeleton's proportions, weights, regions, budgets,
+winding, envelope and the right-wrist device. Two exports of one `.blend` are byte-identical; two builds give the same
+content (the `.blend` container's internal pointer ids differ between runs).
 
 ## Form references (provenance)
 
@@ -55,14 +58,19 @@ blender -b --factory-startup --python sample_head_reference.py -- base.obj \
 
 ## Skeleton
 
-The skeleton is exactly `CapturedRig.Bones`: the same 22 names, indices, parents and rest offsets, with identity rest
-frames (arms hanging straight down, palms in, thumbs forward). The game's local joint quaternions and offsets drive it
-unchanged, and that is how every preview render is posed.
-- **Root:** motion-root sits at feet + .865 m, as `NativeMeleeSlice.RootHeight`. It carries no weight.
+The skeleton is the visual skeleton of `docs/CHARACTER-LOWPOLY.md` section c: `CapturedRig.Bones`' 22 names, indices,
+parents and identity rest frames (arms hanging straight down, palms in, thumbs forward) with human rest offsets
+(`VIS_OFFSETS` in the builder). The game's authoritative offsets (`GAME_OFFSET`) are recorded beside them in the
+manifest (`gameRestLocal`, `gameRestWorld`) for the presentation adapter, which applies the game's local rotations
+1:1, scales the root's translation by `legRatio` and fixes the feet and the support hand by IK. Gameplay, hit volumes
+and weapon frames keep the authoritative rig.
+- **Root:** the visual motion-root sits at feet + 1.182 m (the game's at feet + .865). It carries no weight.
 - **Blender:** bones point up (rig +y) with roll 0, so a pose bone's rotation is the game's local quaternion, in
   source axes.
-- **FBX:** every joint has a zero rest rotation and its CapturedRig offset. The only exception is Blender's axis
+- **FBX:** every joint has a zero rest rotation and its visual offset. The only exception is Blender's axis
   conversion, which leaves -90° X on the `CA_Rig` node and +90° X on `motion-root`. The two cancel.
+- **Weights:** the mesh is modelled in the rest pose; the bone-heat pass runs on a copy with the arms spread 40°
+  (they hang against the lats at rest) and rule-based blends place the limb weights relative to the visual joints.
 - **Optional secondary bones:** marked `secondary` in the manifest, each with a `fallback` joint. A runtime that
   ignores them folds their weights onto the fallback, which gives the rest shape with no gaps.
   - `sec-hair-{front,side,back}-{l,r}-{1,2}`: six 2-bone hair chains under `head`, with spring parameters in
@@ -70,9 +78,17 @@ unchanged, and that is how every preview render is posed.
   - `sec-device-lid` and `sec-device-chip`: under `right-wrist`. Their hinge, insertion path and states are in
     `device`.
 
-Proportions are the rig's: a stocky 1.70 m figure (doc section c, owner decision j1). The design answer is a
-heroic upper body (broad deltoids and trapezius at the ±.345 m shoulders, a V taper to the waist), a large head
-centred at 1.50 m, and short, sturdy legs.
+## Head, face and hair
+
+- The head is a designed low-poly layout (`FACE_LAYOUT`: the lid margins round each eyeball, the iris, lid creases,
+  the brow strip, the nose's bridge, dorsum, alae and nostrils, the lip borders and mouth line, the chin and jaw lines,
+  the hairline with its temples, sideburns and nape) placed on the measured head form, triangulated with constrained
+  Delaunay in a conformal chart of the head (`build_head`). Facial thirds and eye widths follow the usual proportion
+  rules; every feature is geometry, and paint only colours what the geometry shapes (no eyeliner, outlines or decals).
+- The scalp inside the hairline is painted on the hair channel. The `spiky-01` hair is a separate object: a thin cap
+  over the scalp and swept, faceted clumps lying on it, with the six spring chains.
+- Shading: planes are smooth inside and break at creases over 21° (30° on the head), at paint borders and along the
+  design creases; the exports carry corner normals.
 
 ## Paint and materials
 

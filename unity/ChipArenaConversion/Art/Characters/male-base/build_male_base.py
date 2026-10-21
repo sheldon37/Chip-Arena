@@ -4,14 +4,16 @@ Run headless with Blender 4.2 LTS (from the repository root):
     blender -b --factory-startup --python-exit-code 1 \
         --python unity/ChipArenaConversion/Art/Characters/male-base/build_male_base.py -- [--out path.blend]
 
-Deterministic: fixed tables and a fixed-seed LCG only, no timestamps, factory settings. This script is the editable source;
-male_base.blend is its output, and export_male_base.py writes the FBX, GLB, binary mesh and JSON manifest from that file.
+Deterministic: fixed tables, two measured form references (form_reference.json, head_reference.json; see the README) and a
+fixed-seed LCG only, no timestamps, factory settings. This script is the editable source; male_base.blend is its output,
+and export_male_base.py writes the FBX, GLB, binary mesh and JSON manifest from that file.
 
 Modelling space ("rig space") is the game's CapturedRig source frame: +x the character's left, +y up, +z forward, metres,
 origin on the floor under the motion root. Blender space is rig space turned so the character faces Blender -Y:
 blender(x, y, z) = (x, -z_rig, y_rig). Unity's frame is rig space with x mirrored (docs/CHARACTER-LOWPOLY.md, b and c).
-The skeleton is exactly CapturedRig.Bones (22 joints, same names, order, parents and rest offsets, identity rest frames),
-plus optional secondary hair chains (sec-hair-*) parented to `head`, which a runtime may ignore.
+The skeleton is the visual skeleton (docs/CHARACTER-LOWPOLY.md c): CapturedRig.Bones' 22 joints (same names, order,
+parents, identity rest frames) with human rest offsets (VIS_OFFSETS; the game's GAME_OFFSET is kept beside them), plus
+optional secondary bones (sec-hair-* under `head`, the device's lid and chip under `right-wrist`) a runtime may ignore.
 """
 import bisect
 import json
@@ -55,23 +57,26 @@ PARENT = {n: p for n, p, _ in GAME_BONES}
 BONE_NAMES = [n for n, _, _ in GAME_BONES]
 JOINT_INDEX = {n: i for i, n in enumerate(BONE_NAMES)}
 
-# The VISUAL skeleton (docs/CHARACTER-LOWPOLY.md c): CapturedRig's 22 names, order, parents and identity rest frames, with
-# human rest offsets: a 1.70 m skull (about 7.25 heads), hips at .855 m (legs about 50 % of the height, the crotch at
-# 47 %), shoulders at 1.36 m, the head centre about 1.58 m. The game's local rotations drive it 1:1 through the
-# presentation adapter (root and pelvis height scaled by LEG_RATIO, foot and support-hand IK); the authoritative rig,
-# hit volumes and weapon frames stay CapturedRig's.
-LEG_RATIO = 1.5                       # visual hip height / game hip height (.855 / .57)
-ROOT_HEIGHT = GAME_ROOT_HEIGHT * LEG_RATIO
+# The VISUAL skeleton (docs/CHARACTER-LOWPOLY.md c): CapturedRig's 22 names, order, parents and identity rest frames
+# with human rest offsets: a 1.74 m figure of 7.5 heads, the hip joints at .887 m (the legs about half the height, the
+# crotch at .815 m), the shoulder joints at 1.402 m and +-.18 m, the head pivot at 1.567 m under a head centred at
+# 1.624 m. The game's local joint rotations drive it 1:1 through a presentation adapter (root height scaled by
+# LEG_RATIO, foot IK to the game's ground contacts, the support hand to the weapon's grip). The authoritative rig, the
+# hit volumes and the weapon frames stay CapturedRig's (GAME_OFFSET, GAME_ROOT_HEIGHT), unchanged.
+ROOT_HEIGHT = 1.182                   # the visual motion-root: feet + 1.182 (pelvis offset -.24 as the game's)
 VIS_OFFSETS = {
-    'motion-root': (0, 0, 0), 'pelvis': (0, .91 - ROOT_HEIGHT, 0), 'spine': (0, .105, 0), 'chest': (0, .19, 0),
-    'neck': (0, .225, 0), 'head': (0, .10, 0),
-    'left-clavicle': (.13, .155, 0), 'left-shoulder': (.07, 0, 0), 'left-elbow': (0, -.30, 0), 'left-wrist': (0, -.25, 0),
-    'left-hip': (.09, -.055, 0), 'left-knee': (0, -.40, 0), 'left-ankle': (0, -.38, 0), 'left-toe': (0, -.05, .13),
+    'motion-root': (0, 0, 0), 'pelvis': (0, -.24, 0), 'spine': (0, .105, 0), 'chest': (0, .20, 0),
+    'neck': (0, .22, 0), 'head': (0, .10, 0),
+    'left-clavicle': (.115, .155, 0), 'left-shoulder': (.07, 0, 0), 'left-elbow': (0, -.305, 0), 'left-wrist': (0, -.25, 0),
+    'left-hip': (.09, -.055, 0), 'left-knee': (0, -.42, 0), 'left-ankle': (0, -.40, 0), 'left-toe': (0, -.042, .135),
 }
 for _n in list(VIS_OFFSETS):
     if _n.startswith('left-'):
         _o = VIS_OFFSETS[_n]
         VIS_OFFSETS['right-' + _n[5:]] = (-_o[0], _o[1], _o[2])
+# Leg length ratio, visual / game (hip to ankle: .82 / .50): the adapter scales the game's motion-root translation by it.
+LEG_RATIO = (VIS_OFFSETS['left-knee'][1] + VIS_OFFSETS['left-ankle'][1]) / (GAME_OFFSET['left-knee'][1] +
+                                                                             GAME_OFFSET['left-ankle'][1])
 OFFSET = VIS_OFFSETS
 
 
@@ -130,12 +135,12 @@ def mul(c, f):
 PAINTS = [
     ('skin', SKIN, 1),
     ('skin-shade', mul(SKIN, (.80, .74, .74)), 1),
-    ('lip-upper', mul(SKIN, (.80, .58, .56)), 1),
-    ('lip-lower', mul(SKIN, (.90, .66, .62)), 1),
+    ('lip-upper', mul(SKIN, (.90, .76, .74)), 1),
+    ('lip-lower', mul(SKIN, (.95, .82, .79)), 1),
     ('mouth-line', mul(SKIN, (.36, .22, .22)), 1),
     ('nostril', mul(SKIN, (.90, .84, .82)), 1),
     ('eye-white', (0.93, 0.92, 0.90), 0),
-    ('iris', (0.13, 0.21, 0.31), 0),
+    ('iris', (0.17, 0.11, 0.07), 0),
     ('pupil', (0.035, 0.035, 0.045), 0),
     ('eye-glint', (1.0, 1.0, 1.0), 0),
     ('lash', (0.06, 0.055, 0.065), 0),
@@ -157,6 +162,7 @@ PAINTS = [
     ('glow-chip', GLOW_CYAN, 5),
     ('glow-core-edge', mul(GLOW_CYAN, .62), 6),
     ('screen', (0.03, 0.10, 0.13), 0),
+    ('scalp', mul(HAIR, 1.2), 2),
 ]
 PID = {p[0]: i for i, p in enumerate(PAINTS)}
 GLOW_CHANNELS = (5, 6)
@@ -299,16 +305,17 @@ def interp_table(table, key):
 
 
 # ----------------------------------------------------------------------------------------------------------------- body
-# Form reference: normalized cross-section shapes measured from the CC0 MakeHuman base mesh (sample_form_reference.py,
-# form_reference.json). They give the torso and limb sections anatomical shapes (pecs, lats, spine groove, glutes,
-# biceps, the forearm swell, the calf behind the shin); every size below (half-widths, depths, radii) is this model's
-# own stylized design on the CapturedRig joints. No MakeHuman geometry is used.
+# A lean, athletic young man on the visual skeleton (1.74 m, 7.5 heads, legs about half the height, shoulders about two
+# head heights across, a narrow waist and pelvis). Form reference: normalized cross-section shapes measured from the
+# CC0 MakeHuman base mesh (sample_form_reference.py, form_reference.json, see the README) give the torso and limb
+# sections anatomical shapes (pecs, lats, spine groove, glutes, biceps, the forearm swell, the calf behind the shin);
+# every size below (half-widths, depths, radii) is this model's own design. No MakeHuman geometry is used.
 with open(os.path.join(HERE, 'form_reference.json')) as _f:
     FORM = json.load(_f)
 TORSO_THETA = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180]
-# The reference's torso landmarks mapped to this body's heights on the CapturedRig joints.
-OUR_MARKS = {'crotch': .470, 'hip': .570, 'pelvis': .625, 'navel': .745, 'ribs': .905, 'chest': .985,
-             'shoulder': 1.10, 'neck': 1.25}
+# The reference's torso landmarks mapped to this body's heights on the visual skeleton.
+OUR_MARKS = {'crotch': .815, 'hip': .887, 'pelvis': .942, 'navel': 1.047, 'ribs': 1.180, 'chest': 1.270,
+             'shoulder': 1.402, 'neck': 1.467}
 
 
 def _lerp_list(a, b, t):
@@ -355,79 +362,96 @@ def form_limb(part, t, n, soften=1.0):
 
 
 # Torso rows, crotch to neck base: y, half-width W, front depth F, back depth B, centre z, tweaks {column: (dr, dy)}.
-# Column 0 is the front centre line, 8 the back centre line (TORSO_THETA). A V taper: lats .245 to a .150 waist.
+# Column 0 is the front centre line, 8 the back centre line (TORSO_THETA). Lats .174 to a .134 waist; the boxer-briefs'
+# waistband sits low on the hips (rows 3 and 4).
 TORSO = [
-    (.490, .188, .098, .104, .000, {0: (0, -.004), 8: (-.012, 0)}),                       # leg split
-    (.545, .198, .106, .132, .000, {8: (-.020, 0)}),                                      # glutes
-    (.600, .193, .110, .122, .000, {8: (-.014, 0)}),
-    (.640, .185, .113, .112, .000, {8: (-.008, 0)}),                                      # band bottom
-    (.672, .177, .113, .105, .000, {8: (-.006, 0)}),                                      # band top
-    (.676, .171, .109, .101, .000, {8: (-.006, 0)}),                                      # skin
-    (.745, .150, .106, .094, .000, {0: (-.010, 0), 8: (-.010, 0)}),                       # navel, waist
-    (.792, .155, .113, .097, .000, {0: (-.004, 0), 1: (.004, 0), 8: (-.010, 0)}),         # lower ab block
-    (.835, .163, .114, .102, .000, {0: (-.010, 0), 1: (-.004, 0), 2: (-.006, 0), 8: (-.010, 0)}),  # ab groove
-    (.877, .178, .121, .110, .000, {0: (-.004, 0), 1: (.004, 0), 8: (-.011, 0)}),         # upper ab block
-    (.926, .204, .125, .124, .000, {0: (-.008, 0), 1: (-.004, 0), 2: (0, .010), 3: (0, .016), 8: (-.012, 0)}),  # rib line
-    (.952, .220, .150, .130, .000, {0: (-.018, -.004), 2: (0, .006), 3: (-.006, .020), 4: (-.010, .010), 8: (-.012, 0)}),  # pec edge
-    (1.006, .240, .160, .140, .000, {0: (-.018, 0), 3: (-.004, 0), 4: (-.012, 0), 8: (-.010, 0)}),  # pecs, lats
-    (1.050, .245, .156, .144, .000, {0: (-.014, 0), 8: (-.010, 0)}),                      # socket bottom
-    (1.112, .240, .138, .140, .000, {0: (-.008, 0), 8: (-.012, 0)}),                      # socket middle
-    (1.168, .220, .108, .124, .000, {0: (-.006, -.004), 8: (-.008, .006)}),               # socket top
-    (1.215, .182, .086, .104, -.006, {0: (-.004, -.030), 1: (0, -.022), 2: (0, -.006), 3: (0, .016), 4: (0, .030),
-                                      5: (0, .030), 6: (0, .020), 7: (0, .006), 8: (-.002, -.002)}),          # trapezius
-    (1.268, .066, .060, .064, -.008, {0: (0, -.044), 1: (0, -.036), 2: (0, -.012), 3: (0, .014), 4: (0, .026),
-                                      5: (0, .026), 6: (0, .018), 7: (0, .006), 8: (0, .0)}),                # neck base
+    (.838, .148, .088, .098, .000, {0: (0, -.004), 8: (-.012, 0)}),                       # leg split
+    (.880, .154, .095, .118, .000, {8: (-.018, 0)}),                                      # glutes
+    (.922, .151, .098, .110, .000, {8: (-.012, 0)}),                                      # hips
+    (.952, .146, .099, .102, .000, {8: (-.008, 0)}),                                      # band bottom
+    (.980, .141, .099, .096, .000, {8: (-.006, 0)}),                                      # band top
+    (.984, .138, .097, .093, .000, {8: (-.006, 0)}),                                      # skin
+    (1.045, .132, .096, .086, .000, {0: (-.008, 0), 8: (-.010, 0)}),                      # navel, waist
+    (1.085, .137, .102, .088, .000, {0: (-.004, 0), 1: (.004, 0), 8: (-.010, 0)}),        # lower ab block
+    (1.118, .141, .103, .090, .000, {0: (-.009, 0), 1: (-.003, 0), 2: (-.005, 0), 8: (-.010, 0)}),  # ab groove
+    (1.150, .148, .108, .094, .000, {0: (-.004, 0), 1: (.004, 0), 8: (-.011, 0)}),        # upper ab block
+    (1.183, .156, .116, .100, .000, {0: (-.008, 0), 1: (-.003, 0), 2: (0, .008), 3: (0, .012), 8: (-.012, 0)}),  # ribs
+    (1.208, .168, .123, .104, .000, {0: (-.016, -.003), 2: (0, .005), 3: (-.005, .015), 4: (-.008, .008),
+                                     8: (-.012, 0)}),                                     # pec edge
+    (1.262, .178, .130, .108, .000, {0: (-.015, 0), 3: (-.003, 0), 4: (-.008, 0), 8: (-.010, 0)}),  # pecs, lats
+    (1.330, .178, .128, .110, .000, {0: (-.012, 0), 8: (-.010, 0)}),                      # socket bottom (armpit)
+    (1.392, .168, .112, .106, .000, {0: (-.007, 0), 8: (-.011, 0)}),                      # socket middle
+    (1.440, .150, .085, .094, -.004, {0: (-.004, -.010), 8: (-.006, .004)}),              # socket top (shoulder line)
+    (1.468, .110, .066, .078, -.006, {0: (-.003, -.032), 1: (0, -.026), 2: (0, -.010), 3: (0, .004), 4: (0, .010),
+                                      5: (0, .012), 6: (0, .010), 7: (0, .004), 8: (-.002, -.002)}),  # trapezius
+    (1.490, .058, .055, .060, -.006, {0: (0, -.058), 1: (0, -.048), 2: (0, -.026), 3: (0, -.006), 4: (0, .002),
+                                      5: (0, .004), 6: (0, .004), 7: (0, .002), 8: (0, 0)}),         # neck base
 ]
 WAIST_LOW, WAIST_TOP = 3, 4
 SOCKET_ROWS = (13, 14, 15)
 SOCKET_COLS = (2, 3, 4, 5)
-SOCKET_POS = {
-    (13, 2): (.232, 1.050, .118), (13, 3): (.262, 1.030, .066), (13, 4): (.272, 1.026, -.006), (13, 5): (.258, 1.042, -.080),
-    (14, 2): (.290, 1.114, .100), (14, 5): (.298, 1.112, -.094),
-    (15, 2): (.300, 1.170, .068), (15, 3): (.330, 1.186, .030), (15, 4): (.334, 1.188, -.028), (15, 5): (.310, 1.174, -.070),
-}
+# The arm socket: an ellipse round the arm's root on the side of the chest (rig y, z centre and radii), its points'
+# angles (0 front, 90 top, 180 back) and lateral x (the armpit lowest and widest).
+SOCK_C, SOCK_R = (1.388, -.004), (.054, .074)
+SOCK_ANG = {(13, 2): -60, (13, 3): -82, (13, 4): -104, (13, 5): -124, (14, 5): 180, (15, 5): 124, (15, 4): 102,
+            (15, 3): 80, (15, 2): 58, (14, 2): 0}
+
+
+def _socket_pos(a):
+    r = math.radians(a)
+    s, c = math.sin(r), math.cos(r)
+    x = .150 + .015 * max(0.0, -s) - .007 * max(0.0, s) - .004 * c * c
+    return (x, SOCK_C[0] + SOCK_R[0] * s, SOCK_C[1] + SOCK_R[1] * c)
+
+
+SOCKET_POS = {k: _socket_pos(a) for k, a in SOCK_ANG.items()}
 
 # Arm rings (left arm, hanging from the shoulder joint): y, centre x, centre z, mean radius, reference part and t, ring
-# vertices, extra (out, front, in, back) scale. Taper: round deltoid, biceps belly, elbow plane, forearm swell, slim wrist.
+# vertices, extra (out, front, in, back) scale. Taper: a round deltoid, the biceps, the elbow plane, the forearm swell,
+# a slim wrist.
 SX = J['left-shoulder'].x
 ARM = [
-    (1.062, SX + .008, .000, .070, ('upperarm', .35), 10, (1.10, 1.0, .85, 1.0)),   # deltoid cap
-    (1.004, SX + .004, .004, .060, ('upperarm', .48), 10, (1.06, 1.0, .92, 1.0)),   # deltoid insertion
-    (.944, SX + .002, .006, .055, ('upperarm', .65), 10, (1.0, 1.06, 1.0, 1.0)),    # biceps
-    (.884, SX, .005, .049, ('upperarm', .80), 10, (1.0, 1.0, 1.0, 1.0)),
-    (.852, SX, .003, .045, ('upperarm', .92), 10, (1.0, .96, 1.0, 1.04)),           # elbow loops
-    (.830, SX, .000, .044, ('upperarm', .92), 10, (1.0, .92, 1.0, 1.12)),           # elbow: the olecranon plane behind
-    (.808, SX, .004, .046, ('forearm', .10), 8, (1.0, 1.0, 1.0, 1.04)),
-    (.768, SX, .008, .050, ('forearm', .25), 8, (1.06, 1.0, 1.0, 1.0)),             # forearm swell
-    (.712, SX, .006, .043, ('forearm', .45), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.655, SX, .003, .035, ('forearm', .68), 8, (.95, 1.05, .95, 1.05)),           # cuff zone (wholly wrist-weighted)
-    (.606, SX, .000, .030, ('forearm', .88), 8, (.80, 1.22, .80, 1.18)),           # wrist: flat, wider front to back
-    (.582, SX, .000, .030, ('forearm', .97), 8, (.80, 1.22, .80, 1.18)),
+    (1.380, SX + .008, .000, .054, ('upperarm', .35), 10, (1.04, 1.0, .88, 1.0)),   # deltoid cap
+    (1.325, SX + .002, .003, .047, ('upperarm', .48), 10, (.90, 1.0, .92, 1.0)),    # deltoid insertion
+    (1.258, SX, .005, .044, ('upperarm', .65), 10, (.88, 1.06, 1.0, 1.0)),          # biceps
+    (1.195, SX, .004, .040, ('upperarm', .80), 10, (.92, 1.0, 1.0, 1.0)),
+    (1.135, SX, .002, .037, ('upperarm', .92), 10, (1.0, .96, 1.0, 1.04)),          # elbow loops
+    (1.102, SX, .000, .036, ('upperarm', .92), 10, (1.0, .92, 1.0, 1.12)),          # elbow: the olecranon plane behind
+    (1.070, SX, .003, .038, ('forearm', .10), 8, (1.0, 1.0, 1.0, 1.04)),
+    (1.025, SX, .006, .040, ('forearm', .25), 8, (1.06, 1.0, 1.0, 1.0)),            # forearm swell
+    (.965, SX, .005, .034, ('forearm', .45), 8, (1.0, 1.0, 1.0, 1.0)),
+    (.910, SX, .003, .029, ('forearm', .68), 8, (.95, 1.05, .95, 1.05)),           # cuff zone (wholly wrist-weighted)
+    (.866, SX, .000, .025, ('forearm', .88), 8, (.80, 1.22, .80, 1.18)),           # wrist: flat, wider front to back
+    (.850, SX, .000, .025, ('forearm', .97), 8, (.80, 1.22, .80, 1.18)),
 ]
 ARM_ELBOW_ROWS = (4, 5, 6)
+DELTOID_R = .056
 ARM_CUFF_ROW = 9
 ARM_N = 10
-PALM_TIP_Y = .468
+# The palm (8-sided, continuing the wrist): y, z shift, out, front, in, back radii. The back of the hand faces out (+x on
+# the left), the thumb side forward (+z).
+PALM = [(.835, .004, .015, .036, .013, .034), (.800, .004, .015, .041, .013, .039), (.768, .003, .013, .042, .012, .040)]
+PALM_TIP_Y = .754
 
 # Leg rings (left leg, straight down from the hip joint): y, centre x, centre z, mean radius, reference part and t,
-# ring vertices, (out, front, in, back) scale. The boxer-briefs end at LEG_HEM (raised to .425 m).
+# ring vertices, (out, front, in, back) scale. The boxer-briefs end at LEG_HEM, mid-thigh.
 HX = J['left-hip'].x
 LEG = [
-    (.455, HX + .010, -.004, .090, ('thigh', .25), 10, (1.0, 1.0, .95, 1.0)),
-    (.425, HX + .008, -.002, .087, ('thigh', .35), 10, (1.0, 1.0, .95, 1.0)),     # boxer hem (cloth)
-    (.421, HX + .008, -.002, .084, ('thigh', .36), 10, (1.0, 1.0, .95, 1.0)),     # hem lip (skin)
-    (.380, HX + .004, .004, .077, ('thigh', .58), 10, (1.0, 1.04, 1.0, 1.0)),
-    (.348, HX + .001, .008, .069, ('thigh', .80), 10, (1.0, 1.04, 1.0, 1.0)),     # knee loops
-    (.322, HX, .012, .065, ('thigh', .95), 10, (1.0, 1.10, 1.0, .92)),           # knee: the kneecap plane
-    (.296, HX, .008, .061, ('shin', .08), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.252, HX, -.006, .064, ('shin', .28), 8, (1.0, 1.0, 1.0, 1.0)),             # calf
-    (.198, HX, -.004, .057, ('shin', .50), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.145, HX, -.002, .045, ('shin', .70), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.104, HX, .002, .038, ('shin', .88), 8, (1.08, 1.0, 1.12, 1.0)),            # ankle: the malleoli
+    (.795, HX + .010, -.004, .084, ('thigh', .25), 10, (1.0, 1.0, .95, 1.0)),
+    (.690, HX + .007, -.002, .078, ('thigh', .38), 10, (1.0, 1.0, .95, 1.0)),     # boxer hem (cloth)
+    (.686, HX + .007, -.002, .075, ('thigh', .39), 10, (1.0, 1.0, .95, 1.0)),     # hem lip (skin)
+    (.610, HX + .004, .004, .068, ('thigh', .58), 10, (1.0, 1.04, 1.0, 1.0)),
+    (.530, HX + .001, .008, .059, ('thigh', .80), 10, (1.0, 1.04, 1.0, 1.0)),     # knee loops
+    (.467, HX, .012, .054, ('thigh', .95), 10, (1.0, 1.10, 1.0, .92)),           # knee: the kneecap plane
+    (.425, HX, .008, .051, ('shin', .08), 8, (1.0, 1.0, 1.0, 1.0)),
+    (.350, HX, -.008, .056, ('shin', .28), 8, (1.0, 1.0, 1.0, 1.0)),             # calf
+    (.265, HX, -.005, .047, ('shin', .50), 8, (1.0, 1.0, 1.0, 1.0)),
+    (.180, HX, -.002, .037, ('shin', .72), 8, (1.0, 1.0, 1.0, 1.0)),
+    (.112, HX, .002, .032, ('shin', .88), 8, (1.08, 1.0, 1.12, 1.0)),            # ankle: the malleoli
 ]
 LEG_HEM = 1
 LEG_KNEE_ROWS = (4, 5, 6)
-CROTCH = (0, .470, -.006)
+CROTCH = (0, .815, -.006)
 FORM_SOFTEN = {'thigh': .8, 'shin': .7, 'upperarm': .8, 'forearm': .8}
 
 
@@ -476,14 +500,14 @@ def limb_radius(table, y, phi):
 # Ring order (8): top-inner, top-mid, top-outer, outer, bottom-outer, bottom-mid, bottom-inner, inner. A rounded heel,
 # a raised inner arch, the instep and the ball; the toes are their own block (build_toes).
 FOOT = [
-    (-.082, .052, .016, .022, .020, .000, .000),
-    (-.068, .082, .004, .036, .032, .000, .000),     # heel
-    (-.040, .100, .000, .043, .039, .000, .000),
-    (-.004, .110, .000, .048, .043, .002, .010),     # ankle front / arch
-    (.036, .100, .000, .054, .049, .004, .016),      # instep / arch
-    (.074, .080, .000, .060, .056, .006, .010),
-    (.108, .058, .000, .064, .060, .008, .000),      # ball
-    (.132, .046, .002, .062, .058, .008, .000),
+    (-.076, .050, .016, .019, .017, .000, .000),
+    (-.062, .078, .004, .030, .027, .000, .000),     # heel
+    (-.037, .096, .000, .036, .032, .000, .000),
+    (-.004, .106, .000, .039, .035, .002, .010),     # ankle front / arch
+    (.034, .094, .000, .043, .039, .004, .016),      # instep / arch
+    (.070, .074, .000, .048, .045, .006, .010),
+    (.104, .055, .000, .051, .048, .008, .000),      # ball
+    (.128, .044, .002, .050, .046, .008, .000),
 ]
 FOOT_HOLE_ROWS = (1, 2, 3)
 
@@ -502,57 +526,10 @@ def foot_ring(z, ty, by, wt, wb, sx, arch):
 def build_toes(mb):
     """The toe block on the left foot: a big toe and a block of four smaller toes, rigid on the toe joint."""
     tj = J['left-toe']
-    # big toe (inner, -x) and the small toes, each a capped 6-sided tube from the ball forward
-    finger(mb, [Vector((tj.x - .034, .030, .118)), Vector((tj.x - .037, .028, .152)), Vector((tj.x - .038, .023, .178))],
-           [.020, .018, .015], region='foot', up=Vector((0, 1, 0)), aspect=.72)
-    finger(mb, [Vector((tj.x + .014, .027, .118)), Vector((tj.x + .012, .025, .148)), Vector((tj.x + .008, .019, .168))],
-           [.033, .029, .022], region='foot', up=Vector((0, 1, 0)), aspect=.50)
-
-
-HEAD_THETA = [0, 12, 24, 36, 48, 61, 75, 90, 106, 123, 141, 160, 180]
-# Neck and head rings: y and the radius from the head axis (x = 0, z = 0) at each HEAD_THETA. Feature lines sit on rows.
-# Designed at a 1.72 m human scale, then fitted to the game head: chin at 1.35 m, crown 1.64 m (centre 1.50 m).
-_HEAD_DESIGN = [
-    (1.496, [.058, .058, .058, .058, .059, .060, .061, .062, .063, .064, .065, .066, .066]),   # top of neck
-    (1.503, [.080, .079, .075, .069, .064, .062, .062, .062, .063, .065, .067, .068, .069]),   # under the chin
-    (1.512, [.094, .092, .085, .076, .071, .068, .066, .065, .066, .068, .070, .071, .072]),   # chin
-    (1.522, [.099, .097, .091, .083, .077, .073, .070, .069, .070, .072, .075, .077, .077]),   # jaw line, lower lip
-    (1.5345, [.102, .100, .095, .088, .082, .078, .075, .074, .075, .077, .080, .082, .083]),  # mouth line
-    (1.546, [.106, .104, .098, .091, .086, .082, .079, .078, .079, .081, .086, .090, .091]),   # nose base
-    (1.559, [.113, .102, .097, .093, .089, .086, .082, .081, .082, .085, .092, .097, .098]),   # nose tip
-    (1.574, [.111, .101, .097, .096, .095, .092, .086, .083, .084, .088, .097, .103, .104]),   # nose mid, cheekbones
-    (1.590, [.108, .100, .094, .095, .096, .094, .088, .084, .086, .091, .101, .107, .108]),   # lower lid, cheekbones
-    (1.604, [.105, .097, .089, .089, .091, .090, .087, .083, .087, .093, .103, .109, .110]),   # eye line
-    (1.619, [.103, .097, .092, .092, .092, .090, .088, .084, .088, .094, .104, .110, .111]),   # upper lid
-    (1.635, [.102, .101, .099, .097, .094, .091, .089, .085, .089, .095, .104, .110, .111]),   # brow ridge
-    (1.657, [.095, .094, .093, .092, .091, .089, .088, .085, .088, .093, .101, .106, .107]),   # forehead
-    (1.681, [.086, .086, .085, .084, .084, .083, .082, .080, .082, .085, .091, .095, .096]),
-    (1.701, [.069, .069, .068, .068, .068, .067, .066, .066, .067, .069, .073, .076, .077]),
-    (1.714, [.046, .046, .046, .045, .045, .045, .044, .044, .045, .046, .048, .050, .051]),
-]
-HEAD_Y0, HEAD_SY, HEAD_SX, HEAD_SZ = 1.350, 1.32, 1.30, 1.28
-# A defined jaw angle and a narrower chin: rows widened only at the jaw angle (61-123 degrees); the neck row slimmed.
-JAW_BOOST = {0: .80, 1: .96, 2: 1.02, 3: 1.07, 4: 1.06, 5: 1.04, 6: 1.02}
-
-
-def _fit_head(y):
-    return HEAD_Y0 + (y - 1.4995) * HEAD_SY
-
-
-HEAD = [(_fit_head(y), list(radii)) for y, radii in _HEAD_DESIGN]
-CROWN = (0, _fit_head(1.722), -.004 * HEAD_SZ)
-HEAD_ROW = {'neck': 0, 'chin_under': 1, 'chin': 2, 'lip_low': 3, 'mouth': 4, 'nose_base': 5, 'nose_tip': 6,
-            'nose_mid': 7, 'lid_low': 8, 'eye': 9, 'lid_up': 10, 'brow': 11}
-
-
-def head_point(row, k):
-    y, radii = HEAD[row]
-    th = math.radians(HEAD_THETA[k])
-    r = radii[k]
-    if row == 0 or 61 <= HEAD_THETA[k] <= 123:
-        r *= JAW_BOOST.get(row, 1.0)
-    x = 0.0 if k in (0, len(HEAD_THETA) - 1) else r * math.sin(th) * HEAD_SX
-    return (x, y, r * math.cos(th) * HEAD_SZ)
+    finger(mb, [Vector((tj.x - .027, .028, .114)), Vector((tj.x - .030, .026, .144)), Vector((tj.x - .031, .021, .168))],
+           [.017, .015, .0125], region='foot', up=Vector((0, 1, 0)), aspect=.72)
+    finger(mb, [Vector((tj.x + .011, .025, .114)), Vector((tj.x + .009, .023, .140)), Vector((tj.x + .005, .018, .158))],
+           [.027, .023, .018], region='foot', up=Vector((0, 1, 0)), aspect=.50)
 
 
 def torso_point(row, k):
@@ -566,6 +543,31 @@ def torso_point(row, k):
         x += dr * x / L
         z += dr * (z - zc) / L
     return (x, y + dy, z)
+
+
+# The boxer-briefs' cyan side trim: a slim piping strip down the outer seam, waistband to hem (rig y), lifted off the
+# cloth; its vertices take the weights of the skin under them.
+TRIM_Y = (.950, .694)
+TRIM_W, TRIM_LIFT = .0055, .0012
+
+
+def build_trim(mb):
+    faces = [f for f, _ in mb.F if all(mb.R[i] in ('torso', 'leg') for i in f)]
+    tree = BVHTree.FromPolygons([tuple(v) for v in mb.V], faces)
+    rows = []
+    n = 12
+    for i in range(n + 1):
+        y = TRIM_Y[0] + (TRIM_Y[1] - TRIM_Y[0]) * i / n
+        row = []
+        for dz in (-TRIM_W / 2, TRIM_W / 2):
+            hit = tree.ray_cast(Vector((.4, y, dz - .002)), Vector((-1, 0, 0)), .5)
+            if hit[0] is None:
+                raise RuntimeError('trim missed the body at %r' % y)
+            nrm = hit[1] if hit[1].x > 0 else -hit[1]
+            row.append(mb.v(hit[0] + nrm * TRIM_LIFT, 'trim'))
+        rows.append(row)
+    for a, b in zip(rows, rows[1:]):
+        mb.f((a[0], a[1], b[1], b[0]), PID['cloth-stripe'])
 
 
 def build_body():
@@ -591,20 +593,20 @@ def build_body():
             elif ri in (WAIST_LOW, WAIST_TOP):
                 paint = PID['cloth-band']
             mb.f((rows[ri][k], rows[ri][k + 1], rows[ri + 1][k + 1], rows[ri + 1][k]), paint)
-    # the band's thin cyan accent line: the band's middle faces on the front and sides
-    # (a separate row would add a loop; the accent is a dye strip set into the band's lower row instead)
     r0, r1, r2 = SOCKET_ROWS
     c0, c1, c2, c3 = SOCKET_COLS
     socket = [rows[r0][c0], rows[r0][c1], rows[r0][c2], rows[r0][c3], rows[r1][c3],
               rows[r2][c3], rows[r2][c2], rows[r2][c1], rows[r2][c0], rows[r1][c0]]
     arm_rows = [[V(p, 'arm') for p in limb_ring2(*row)] for row in ARM]
     sj = J['left-shoulder']
-    a1 = align_loop(mb, socket, arm_rows[0])
+    # the socket's top meets the arm ring's outer side, so the deltoid wraps over the shoulder (socket angle a, ring
+    # angle phi: phi = 90 - a, i.e. socket vertex i takes ring vertex 4 + i)
+    a1 = [arm_rows[0][(4 + i) % ARM_N] for i in range(ARM_N)]
     cap_ring = []
+    ball = Vector((SX + .006, 1.386, 0.0))          # the deltoid's round cap over the shoulder joint
     for i in range(ARM_N):
         p = (mb.V[socket[i]] + mb.V[a1[i]]) * .5
-        d = p - Vector((sj.x - .03, sj.y - .015, sj.z))
-        cap_ring.append(V(p + d.normalized() * .016, 'arm'))
+        cap_ring.append(V(ball + (p - ball).normalized() * DELTOID_R, 'arm'))
     mb.strip(socket, cap_ring, PID['skin'], closed=True)
     mb.strip(cap_ring, a1, PID['skin'], closed=True)
     arm_rows[0] = a1
@@ -614,10 +616,7 @@ def build_body():
         mb.strip(prev, r, PID['skin'], closed=True)
         arm_rows[ai] = r
         prev = r
-    # palm (continuing the 8-sided wrist): a believable hand, back of hand outward (+x), thumb side forward (+z)
-    wrist = prev
-    palm = [(.552, .004, .020, .050, .022, .046), (.516, .004, .019, .052, .020, .048), (.486, .003, .018, .052, .019, .047)]
-    for (y, dz, ro, rf, ri_, rb) in palm:
+    for (y, dz, ro, rf, ri_, rb) in PALM:
         r = [V(p, 'hand') for p in limb_ring(8, y, SX - .002, dz, ro, rf, ri_, rb)]
         r = align_closed(mb, prev, r)
         mb.strip(prev, r, PID['skin'], closed=True)
@@ -656,188 +655,437 @@ def build_body():
     fz1 = FOOT[-1]
     mb.cap(list(reversed(frows[-1])), (HX + fz1[5], (fz1[1] + fz1[2]) / 2 - .004, fz1[0] + .010), 'foot', PID['skin'])
 
-    # neck and head half rings
-    hrows = [[V(head_point(hi, k), 'head') for k in range(len(HEAD_THETA))] for hi in range(len(HEAD))]
-    mb.strip(rows[-1], hrows[0], PID['skin'])
-    for hi in range(len(hrows) - 1):
-        mb.strip(hrows[hi], hrows[hi + 1], PID['skin'])
-    crown = V(CROWN, 'head')
-    mb.fan_open(hrows[-1], crown, PID['skin'])
+    # neck: the torso's top row, a mid ring, the head's lower edge
+    edge, head_names = build_head(mb)
+    mid = []
+    for a, b in zip(rows[-1], edge):
+        p = (mb.V[a] + mb.V[b]) * .5
+        axis = Vector((0, p.y, .004))
+        q = axis + (p - axis) * .96
+        if abs(mb.V[a].x) < 1e-9:
+            q.x = 0.0
+        mid.append(V(q, 'torso'))
+    mb.strip(rows[-1], mid, PID['skin'])
+    mb.strip(mid, edge, PID['skin'])
+    for i in edge:
+        mb.R[i] = 'neck'
     mb.crease(rows[11][:5])                 # the pecs' lower edge
     mb.crease(rows[8][:3])                  # ab groove
     mb.crease(rows[6][:3])                  # ab groove at the navel
     mb.crease(rows[0][:3])                  # boxer leg line at the front
-    mb.crease(hrows[2][1:9])                # jaw line
-    mb.crease(hrows[HEAD_ROW['brow']][1:7])  # brow ridge
     mb.triangulate()
-    nose = set(hrows[HEAD_ROW['nose_base']][:2] + hrows[HEAD_ROW['nose_tip']][:2])
-    mb.F = [(f, PID['nostril'] if set(f) <= nose else p) for f, p in mb.F]
     # the waistband's cyan accent: the band's lower row, front and side columns
     band = set(rows[WAIST_LOW][:6] + rows[WAIST_TOP][:6])
     lowband = set(rows[WAIST_LOW])
     mb.F = [(f, PID['cloth-stripe'] if p == PID['cloth-band'] and set(f) <= band and len(set(f) & lowband) == 2 and
              all(mb.V[i].y < TORSO[WAIST_LOW][0] + .012 for i in f) else p) for f, p in mb.F]
-    build_face(mb)
+    build_trim(mb)
     build_ears(mb)
     build_fingers(mb)
     build_toes(mb)
     mb.triangulate()
-    return mb, {'torso': rows, 'head': hrows, 'arm': arm_rows, 'leg': leg_rows, 'foot': frows}
+    return mb, {'torso': rows, 'head': head_names, 'arm': arm_rows, 'leg': leg_rows, 'foot': frows}
 
 
-# ----------------------------------------------------------------------------------------------------------------- face
-def poly_area(P):
-    return sum(P[i][0] * P[(i + 1) % len(P)][1] - P[(i + 1) % len(P)][0] * P[i][1] for i in range(len(P))) / 2
+# ----------------------------------------------------------------------------------------------------------------- head
+# The head and face are a designed low-poly layout placed on a measured head form (head_reference.json: a radial distance
+# field from a centre inside the skull, measured from the CC0 MakeHuman head, see the README). The layout follows
+# established facial proportions at a 7.5-head figure: the eyes on the head's half line, one eye width between them, the
+# brow, nose base and chin at the facial thirds, the mouth a third of the way from the nose base to the chin, the ears
+# between the brow and the nose base. Every feature is geometry (lids round the eyeballs, a nose bridge, tip, alae and
+# nostrils, lip borders and a mouth line, the jaw and chin planes); paint only colours what the geometry already shapes.
+with open(os.path.join(HERE, 'head_reference.json')) as _f:
+    HEADREF = json.load(_f)
+HEAD_H = .232                 # chin to crown (1.74 m / 7.5)
+CHIN_Y = 1.508                # the gnathion
+HEAD_CZ = .050                # the head form's centre sits .05 m ahead of the neck and head joints
+HC = Vector((0.0, CHIN_Y + HEADREF['centre_over_chin'] * HEAD_H, HEAD_CZ))
+_HT, _HP, _HR = HEADREF['theta'], HEADREF['phi'], HEADREF['radius']
 
 
-def ccw(P):
-    return list(P) if poly_area(P) >= 0 else list(reversed(P))
+def head_dir(th, ph):
+    t, p = math.radians(th), math.radians(ph)
+    return Vector((math.sin(t) * math.cos(p), math.sin(p), math.cos(t) * math.cos(p)))
 
 
-def clip_convex(subject, clipper):
-    """Sutherland-Hodgman: subject polygon clipped by a convex CCW clipper (2D)."""
-    out = list(subject)
-    for i in range(len(clipper)):
-        a, b = clipper[i], clipper[(i + 1) % len(clipper)]
-        inp, out = out, []
-        if not inp:
+def _bump(th, ph, th0, ph0, sth, sph):
+    return math.exp(-((th - th0) / sth) ** 2 - ((ph - ph0) / sph) ** 2)
+
+
+def _blurred(R, sigma_cells):
+    """The field blurred along theta and phi (a separable Gaussian; theta mirrors at the centre lines)."""
+    k = [math.exp(-.5 * (d / sigma_cells) ** 2) for d in range(-3 * int(sigma_cells) - 1, 3 * int(sigma_cells) + 2)]
+    h = len(k) // 2
+    n_p, n_t = len(R), len(R[0])
+
+    def at_t(row, j):
+        if j < 0:
+            j = -j
+        if j >= n_t:
+            j = 2 * (n_t - 1) - j
+        return row[j]
+
+    A = [[sum(k[q] * at_t(R[i], j + q - h) for q in range(len(k))) / sum(k) for j in range(n_t)] for i in range(n_p)]
+    return [[sum(k[q] * A[min(max(i + q - h, 0), n_p - 1)][j] for q in range(len(k))) / sum(k) for j in range(n_t)]
+            for i in range(n_p)]
+
+
+_HRS = _blurred(_HR, 3.0)
+
+
+def _skull_weight(th, ph):
+    """Where the cranium's measured form gives way to its rounded (blurred) form: the back, top and upper sides."""
+    return max(smooth(-25, 5, ph) * smooth(70, 110, th), smooth(40, 62, ph))
+
+
+def head_style(th, ph):
+    """Stylization on the measured form (head heights): a firmer jaw corner."""
+    return .010 * _bump(th, ph, 74, -50, 14, 10)
+
+
+def _grid(R, th, ph):
+    th = min(max(th, _HT[0]), _HT[-1])
+    ph = min(max(ph, _HP[0]), _HP[-1])
+    a, b = (ph - _HP[0]) / 2.5, th / 2.5
+    i, j = min(int(a), len(_HP) - 2), min(int(b), len(_HT) - 2)
+    u, v = a - i, b - j
+    return R[i][j] * (1 - u) * (1 - v) + R[i][j + 1] * (1 - u) * v + R[i + 1][j] * u * (1 - v) + R[i + 1][j + 1] * u * v
+
+
+def head_r(th, ph):
+    w = _skull_weight(th, ph)
+    return _grid(_HR, th, ph) * (1 - w) + _grid(_HRS, th, ph) * w + head_style(th, ph)
+
+
+def head_surface(th, ph):
+    p = HC + head_dir(th, ph) * (head_r(th, ph) * HEAD_H)
+    if th <= 0 or th >= 180:
+        p.x = 0.0
+    return p
+
+
+def head_polar(p):
+    d = p - HC
+    return (math.degrees(math.atan2(abs(d.x), d.z)), math.degrees(math.asin(max(-1.0, min(1.0, d.y / d.length)))))
+
+
+def _solve(target, axes, th, ph, fix_theta=False):
+    """(theta, phi) where the head surface's coordinates `axes` (two of x 0, y 1, z 2) equal `target` (metres)."""
+    for _ in range(60):
+        p = head_surface(th, ph)
+        e0, e1 = p[axes[0]] - target[0], p[axes[1]] - target[1]
+        if abs(e0) + abs(e1) < 2e-7:
             break
-
-        def inside(p):
-            return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]) >= 0
-
-        def cross(p, q):
-            dx1, dy1 = q[0] - p[0], q[1] - p[1]
-            dx2, dy2 = b[0] - a[0], b[1] - a[1]
-            den = dx1 * dy2 - dy1 * dx2
-            t = ((a[0] - p[0]) * dy2 - (a[1] - p[1]) * dx2) / den if abs(den) > 1e-15 else 0
-            return (p[0] + dx1 * t, p[1] + dy1 * t)
-
-        for k in range(len(inp)):
-            p, q = inp[k], inp[(k + 1) % len(inp)]
-            if inside(q):
-                if not inside(p):
-                    out.append(cross(p, q))
-                out.append(q)
-            elif inside(p):
-                out.append(cross(p, q))
-    return out
-
-
-def circle(c, r, n, rot=0.0):
-    return [(c[0] + r * math.cos(rot + 2 * math.pi * k / n), c[1] + r * math.sin(rot + 2 * math.pi * k / n)) for k in range(n)]
+        h = .01
+        pp = head_surface(th, ph + h)
+        if fix_theta:
+            d = (pp[axes[1]] - p[axes[1]]) / h
+            ph = min(max(ph - e1 / d, -80.0), 89.0) if abs(d) > 1e-12 else ph
+            continue
+        pt = head_surface(th + h, ph)
+        a, b = (pt[axes[0]] - p[axes[0]]) / h, (pp[axes[0]] - p[axes[0]]) / h
+        c, d = (pt[axes[1]] - p[axes[1]]) / h, (pp[axes[1]] - p[axes[1]]) / h
+        det = a * d - b * c
+        if abs(det) < 1e-14:
+            break
+        dth, dph = (d * e0 - b * e1) / det, (a * e1 - c * e0) / det
+        m = max(abs(dth), abs(dph))
+        s = 6.0 / m if m > 6.0 else 1.0
+        th = min(max(th - dth * s, 0.0), 180.0)
+        ph = min(max(ph - dph * s, -80.0), 89.0)
+    p = head_surface(th, ph)
+    if abs(p[axes[0]] - target[0]) + abs(p[axes[1]] - target[1]) > 2e-4:
+        raise RuntimeError('head point did not solve: %r %r' % (axes, target))
+    return th, ph
 
 
-class Projector:
-    """Places 2D face-plane points (rig x, y) on the head surface, lifted along the surface normal."""
-
-    def __init__(self, mb):
-        self.tree = mb.bvh()
-
-    def front(self, x, y, lift):
-        hit = self.tree.ray_cast(Vector((x, y, .5)), Vector((0, 0, -1)))
-        if hit[0] is None:
-            raise RuntimeError('face point missed the head: %r' % ((x, y),))
-        n = hit[1] if hit[1].z > 0 else -hit[1]
-        return hit[0] + n * lift
+_SEED = []
 
 
-def add_flat(mb, proj, P, lift, paint, region='face', centre=None):
-    """A flat overlay polygon (CCW seen from the front) projected on the face, as a fan round its centroid."""
-    P = ccw(P)
-    if len(P) < 3:
-        return
-    cx = centre if centre is not None else (sum(p[0] for p in P) / len(P), sum(p[1] for p in P) / len(P))
-    c = mb.v(proj.front(cx[0], cx[1], lift), region)
-    ring = [mb.v(proj.front(p[0], p[1], lift), region) for p in P]
-    for i in range(len(ring)):
-        mb.f((ring[i], ring[(i + 1) % len(ring)], c), paint)
+def _seed(target, axes, facing):
+    """A starting (theta, phi) for _solve: the nearest grid point, the one facing `facing` (2 = front, 0 = side)."""
+    if not _SEED:
+        for i in range(0, 145):
+            for j in range(0, 136):
+                th, ph = i * 1.25, -80 + j * 1.25
+                _SEED.append((th, ph, head_surface(th, ph)))
+    best = None
+    for th, ph, p in _SEED:
+        e = abs(p[axes[0]] - target[0]) + abs(p[axes[1]] - target[1])
+        key = (0 if e < .004 else 1, -p[facing] if e < .004 else e)
+        if best is None or key < best[0]:
+            best = (key, th, ph)
+    return best[1], best[2]
 
 
-def add_band(mb, proj, lower, upper, lift_lo, lift_hi, paint, region='face', lift_mid=None):
-    """A strip between two polylines (left to right), optionally with a raised middle row (lift_mid)."""
-    lo = [mb.v(proj.front(p[0], p[1], lift_lo), region) for p in lower]
-    hi = [mb.v(proj.front(p[0], p[1], lift_hi), region) for p in upper]
-    if lift_mid is not None:
-        mid = [mb.v(proj.front((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, lift_mid), region) for a, b in zip(lower, upper)]
-        mb.strip(lo, mid, paint)
-        mb.strip(mid, hi, paint)
-    else:
-        mb.strip(lo, hi, paint)
+def face_angles(xn, yn):
+    """The head surface point seen at (x, y) = (xn, yn) head heights from the head centre, from the front."""
+    t = (xn * HEAD_H, HC.y + yn * HEAD_H)
+    th, ph = _seed(t, (0, 1), 2)
+    return _solve(t, (0, 1), 0.0 if xn == 0 else th, ph, xn == 0)
 
 
-# Feature placement on the fitted head (rig space, left side; the mirror makes the right).
-EYE_C = (.0430, 1.4885)
-EYE_ALMOND = [(-.0195, -.0012), (-.0135, .0070), (-.0045, .0095), (.0065, .0090), (.0158, .0060), (.0224, .0016),
-              (.0160, -.0044), (.0055, -.0066), (-.0062, -.0060), (-.0142, -.0037)]
+def side_angles(zn, yn):
+    """The head surface point seen at (z, y) = (zn, yn) head heights from the head centre, from the left side."""
+    t = (HC.z + zn * HEAD_H, HC.y + yn * HEAD_H)
+    th, ph = _seed(t, (2, 1), 0)
+    return _solve(t, (2, 1), th, ph)
 
 
-def build_face(mb):
-    proj = Projector(mb)
-    ex, ey = EYE_C
-    almond = [(ex + u, ey + v) for u, v in EYE_ALMOND]
-    almond_ccw = ccw(almond)
-    # sclera, iris, pupil, glint
-    add_flat(mb, proj, almond, .0010, PID['eye-white'])
-    iris = clip_convex(circle((ex + .0012, ey + .0008), .0080, 10), almond_ccw)
-    add_flat(mb, proj, iris, .0016, PID['iris'], centre=(ex + .0012, ey + .0008))
-    pupil = clip_convex(circle((ex + .0012, ey + .0010), .0038, 8), almond_ccw)
-    add_flat(mb, proj, pupil, .0021, PID['pupil'], centre=(ex + .0012, ey + .0010))
-    add_flat(mb, proj, circle((ex - .0016, ey + .0042), .0016, 4, math.pi / 4), .0026, PID['eye-glint'])
-    # upper lash line: along the upper lid, thickening outwards, with a flick past the outer corner
-    up = [almond[0]] + almond[1:6]
-    up = up + [(ex + .0262, ey + .0046)]
-    thick = [.0010, .0016, .0021, .0026, .0031, .0034, .0012]
-    lash_lo = [(p[0], p[1] - .0003) for p in up]
-    lash_hi = [(p[0] + (.0004 if i else 0), p[1] + t) for i, (p, t) in enumerate(zip(up, thick))]
-    add_band(mb, proj, lash_lo, lash_hi, .0024, .0024, PID['lash'])
-    # lower lash on the outer half, and the lid crease above
-    low = [almond[6], almond[5]]
-    add_band(mb, proj, [(p[0], p[1] - .0010) for p in [almond[7], almond[6], almond[5]]],
-             [(p[0], p[1]) for p in [almond[7], almond[6], almond[5]]], .0018, .0018, PID['lash'])
-    crease = [(ex - .012, ey + .0118), (ex - .003, ey + .0146), (ex + .008, ey + .0142), (ex + .018, ey + .0110)]
-    add_band(mb, proj, crease, [(p[0], p[1] + .0013) for p in crease], .0008, .0008, PID['skin-shade'])
-    # brow: a tapered, ridged strip
-    brow_lo = [(.0140, 1.5218), (.0260, 1.5248), (.0390, 1.5270), (.0510, 1.5272), (.0620, 1.5250), (.0700, 1.5218)]
-    th = [.0078, .0080, .0072, .0060, .0042, .0024]
-    brow_hi = [(x + .0010 * i / 5, y + t) for i, ((x, y), t) in enumerate(zip(brow_lo, th))]
-    add_band(mb, proj, brow_lo, brow_hi, .0012, .0012, PID['brow'], lift_mid=.0030)
-    # lips: the left half from the centre line (x = 0) to the corner; the mirror closes them
-    my = HEAD[HEAD_ROW['mouth']][0] + .0010
-    xs = [0, .0058, .0124, .0190, .0246, .0282]
-    line = [(x, my + (.0005 if x == 0 else 0) - .0008 * (x / .028) ** 2) for x in xs]
-    upper = [(.0, my + .0062), (.0058, my + .0078), (.0124, my + .0070), (.0190, my + .0050), (.0246, my + .0024), (.0282, my + .0004)]
-    lower = [(.0, my - .0100), (.0058, my - .0097), (.0124, my - .0084), (.0190, my - .0060), (.0246, my - .0030), (.0282, my - .0008)]
-    add_band(mb, proj, [(x, y + .0007) for x, y in line], upper, .0012, .0006, PID['lip-upper'], lift_mid=.0030)
-    add_band(mb, proj, lower, [(x, y - .0007) for x, y in line], .0006, .0012, PID['lip-lower'], lift_mid=.0036)
-    add_band(mb, proj, [(x, y - .0009) for x, y in line], [(x, y + .0009) for x, y in line], .0016, .0016, PID['mouth-line'])
-    return proj
+# The eyeball (measured): centre and radius in head heights, as (theta, phi, r, radius).
+_EB = HEADREF['landmarks']['eyeball']
+EYEBALL_C = HC + head_dir(_EB[0], _EB[1]) * (_EB[2] * HEAD_H)
+EYEBALL_R = _EB[3] * HEAD_H
+LID = .0013                   # the lid margin's thickness over the eyeball
+
+
+def on_eyeball(xn, yn, lift=0.0):
+    x, y = xn * HEAD_H, HC.y + yn * HEAD_H
+    dx, dy = x - EYEBALL_C.x, y - EYEBALL_C.y
+    dz = math.sqrt(max(0.0, EYEBALL_R ** 2 - dx * dx - dy * dy))
+    return Vector((x, y, EYEBALL_C.z + dz + lift))
+
+
+# The layout (left half). Kinds: F = front-projected (xn, yn), S = side-projected (zn, yn), A = angles (theta, phi),
+# M = lid margin (front-projected, held just over the eyeball), E = on the eyeball (front-projected). The last field is
+# a radial push in metres (+ into the head, - outward) that sets lines into the form: the mouth line, the lid creases.
+FACE_LAYOUT = [
+    # centre line, hairline to chin
+    ('c_hair', 'F', 0, .335, 0), ('c_fh2', 'F', 0, .230, 0), ('c_fh1', 'F', 0, .140, 0), ('c_glab', 'F', 0, .078, 0),
+    ('c_nas', 'F', 0, .030, 0), ('c_br1', 'F', 0, -.040, 0), ('c_br2', 'F', 0, -.105, 0), ('c_tip', 'F', 0, -.163, 0),
+    ('c_col', 'F', 0, -.200, 0), ('c_sn', 'F', 0, -.223, .0006), ('c_phil', 'F', 0, -.242, .0004),
+    ('c_lipt', 'F', 0, -.262, 0), ('c_seam', 'F', 0, -.292, .0016), ('c_lipb', 'F', 0, -.334, 0),
+    ('c_ment', 'F', 0, -.362, .0010), ('c_chin', 'F', 0, -.425, 0), ('c_gn', 'F', 0, -.488, 0),
+    # eye: lid margin, iris, upper crease, lower lid line
+    ('e0', 'M', .074, -.010, 0), ('e1', 'M', .097, .011, 0), ('e2', 'M', .131, .020, 0), ('e3', 'M', .166, .016, 0),
+    ('e4', 'M', .196, .004, 0), ('e5', 'M', .168, -.015, 0), ('e6', 'M', .133, -.022, 0), ('e7', 'M', .098, -.019, 0),
+    ('ic', 'E', .133, -.001, 0), ('i0', 'E', .1435, .0133, 0), ('i1', 'E', .154, -.001, 0), ('i2', 'E', .1435, -.0153, 0),
+    ('i3', 'E', .1225, -.0153, 0), ('i4', 'E', .112, -.001, 0), ('i5', 'E', .1225, .0133, 0),
+    ('u0', 'F', .070, .017, .0006), ('u1', 'F', .098, .037, .0009), ('u2', 'F', .133, .046, .0009),
+    ('u3', 'F', .170, .041, .0009), ('u4', 'F', .205, .020, .0006),
+    ('l0', 'F', .088, -.038, .0003), ('l1', 'F', .133, -.046, .0004), ('l2', 'F', .176, -.038, .0003),
+    ('l3', 'F', .214, -.014, 0),
+    # brow (a raised strip on the brow ridge) and forehead
+    ('b0', 'F', .056, .068, -.0006), ('b1', 'F', .108, .080, -.0012), ('b2', 'F', .160, .084, -.0012),
+    ('b3', 'F', .212, .076, -.0010), ('b4', 'F', .250, .055, -.0004),
+    ('b5', 'F', .226, .092, -.0008), ('b6', 'F', .168, .109, -.0010), ('b7', 'F', .112, .107, -.0010),
+    ('b8', 'F', .060, .095, -.0006),
+    ('f0', 'F', .080, .155, 0), ('f1', 'F', .160, .160, 0), ('f2', 'F', .228, .140, 0), ('f3', 'F', .078, .250, 0),
+    ('f4', 'F', .158, .245, 0), ('f5', 'F', .226, .210, 0),
+    # hairline: forehead, temple recess and corner, sideburn, round the ear, nape
+    ('h1', 'F', .078, .333, 0), ('h2', 'F', .148, .320, 0), ('h3', 'F', .198, .294, 0), ('h4', 'F', .222, .262, 0),
+    ('h5', 'F', .258, .254, 0), ('h6', 'S', .200, .175, 0), ('h7', 'S', .150, .035, 0), ('h8', 'S', .085, -.020, 0),
+    ('h9', 'S', .040, .070, 0), ('h10', 'S', -.050, .110, 0), ('h11', 'S', -.150, .060, 0),
+    ('h12', 'S', -.200, -.080, 0), ('h13', 'S', -.260, -.200, 0), ('h14', 'A', 180, -30, 0),
+    # temple and outer orbit
+    ('t0', 'S', .300, .110, 0), ('t1', 'S', .290, .020, 0), ('t2', 'S', .255, -.050, 0),
+    # nose: dorsum edge, side wall, ala, nostril
+    ('d0', 'F', .030, .034, 0), ('d1', 'F', .023, -.040, 0), ('d2', 'F', .025, -.105, 0), ('d3', 'F', .038, -.152, 0),
+    ('s0', 'F', .052, -.008, 0), ('s1', 'F', .057, -.070, 0), ('s2', 'F', .066, -.128, 0),
+    ('a0', 'F', .072, -.156, .0004), ('a1', 'F', .081, -.188, 0), ('a2', 'F', .064, -.211, .0005),
+    ('a3', 'F', .040, -.207, .0010), ('a4', 'F', .016, -.214, .0006), ('n0', 'F', .028, -.192, .0010),
+    # cheeks and the nasolabial fold
+    ('k0', 'F', .110, -.075, 0), ('k1', 'F', .176, -.080, 0), ('k2', 'F', .232, -.064, 0), ('k3', 'F', .114, -.140, 0),
+    ('k4', 'F', .180, -.150, 0), ('k5', 'S', .200, -.150, 0), ('k6', 'F', .180, -.240, 0), ('k7', 'S', .160, -.270, 0),
+    ('g0', 'F', .093, -.200, .0005), ('g1', 'F', .113, -.246, .0006), ('g2', 'F', .134, -.290, .0004),
+    # mouth: upper lip border, mouth line, lower lip border, philtrum column, the chin crease
+    ('v1', 'F', .024, -.256, 0), ('v2', 'F', .058, -.266, 0), ('v3', 'F', .090, -.283, .0004),
+    ('m1', 'F', .042, -.291, .0016), ('m2', 'F', .080, -.294, .0018), ('m3', 'F', .108, -.300, .0022),
+    ('w1', 'F', .045, -.329, 0), ('w2', 'F', .085, -.316, .0004), ('p1', 'F', .022, -.236, 0),
+    ('x0', 'F', .052, -.360, .0008), ('x1', 'F', .105, -.342, .0004),
+    # chin and jaw: the chin's front plane and corners, the jaw line to the angle, the ramus up to the ear lobe
+    ('q1', 'F', .052, -.425, 0), ('q2', 'F', .094, -.432, 0), ('q3', 'F', .052, -.486, 0), ('q4', 'F', .098, -.474, 0),
+    ('j0', 'F', .150, -.442, 0), ('j1', 'F', .200, -.392, 0), ('j2', 'S', .150, -.380, 0), ('j3', 'S', .050, -.330, 0),
+    ('j4', 'S', .030, -.215, 0),
+    # under the jaw
+    ('y0', 'A', 0, -66, 0), ('y1', 'A', 24, -62, 0), ('y2', 'A', 48, -56, 0),
+]
+# The head's lower edge (the neck joins here): theta 0 .. 180 in TORSO_THETA steps, under the chin to the nape.
+HEAD_EDGE_PHI = [-74, -71, -65, -60, -56, -48, -40, -35, -33]
+# Polylines the triangulation must keep (open, or closed when the last name repeats the first).
+FACE_LINES = [
+    ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e0'], ['i0', 'i1', 'i2', 'i3', 'i4', 'i5', 'i0'],
+    ['e0', 'u0', 'u1', 'u2', 'u3', 'u4', 'e4'], ['e0', 'l0', 'l1', 'l2', 'l3', 'e4'],
+    ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b0'],
+    ['c_hair', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9', 'h10', 'h11', 'h12', 'h13', 'h14'],
+    ['c_nas', 'd0'], ['d0', 'd1', 'd2', 'd3', 'c_tip'], ['d0', 's0', 's1', 's2', 'a0'],
+    ['a0', 'a1', 'a2', 'a3', 'a4', 'c_col'], ['a3', 'n0', 'a4'], ['d3', 'a0'],
+    ['c_lipt', 'v1', 'v2', 'v3', 'm3'], ['c_seam', 'm1', 'm2', 'm3'], ['c_lipb', 'w1', 'w2', 'm3'],
+    ['a1', 'g0', 'g1', 'g2', 'x1'], ['c_gn', 'q3', 'q4', 'j0', 'j1', 'j2', 'j3', 'j4'], ['q1', 'q2', 'q4'],
+    ['c_sn', 'p1', 'v1'],
+]
+# Paint regions, first match wins: (paint, closed polygon of layout names in the chart).
+FACE_PAINT = [
+    ('iris', ['i0', 'i1', 'i2', 'i3', 'i4', 'i5']),
+    ('eye-white', ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7']),
+    ('nostril', ['a3', 'n0', 'a4']),
+    ('brow', ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8']),
+    ('lip-upper', ['c_lipt', 'v1', 'v2', 'v3', 'm3', 'm2', 'm1', 'c_seam']),
+    ('lip-lower', ['c_seam', 'm1', 'm2', 'm3', 'w2', 'w1', 'c_lipb']),
+]
+# The cranium and the back of the head: an angle grid, thinned where it meets the designed points.
+HEAD_GRID_PHI = [-36, -24, -12, 0, 12, 24, 36, 48, 59, 70, 80]
+HEAD_GRID_STEP = 13.0         # degrees of arc between grid points along a row
+SCALP_MIN_DIST = 6.5          # degrees: grid points closer than this to a designed point are dropped
+
+
+def _chart(th, ph):
+    """The layout chart: a stereographic (conformal) map of the left half of the head's directions, centred on the
+    left side (+x). The centre plane (front and back centre lines, the crown) is its unit circle."""
+    d = head_dir(th, ph)
+    return Vector((-d.z / (1 + d.x), d.y / (1 + d.x)))
+
+
+def _polar_of(c):
+    """(theta, phi) of a chart point (the inverse of _chart)."""
+    u, v = c.x, c.y
+    q = u * u + v * v
+    dx, dy, dz = (1 - q) / (1 + q), 2 * v / (1 + q), -2 * u / (1 + q)
+    return (math.degrees(math.atan2(dx, dz)), math.degrees(math.asin(max(-1.0, min(1.0, dy)))))
+
+
+def _circle_arc(a, b, n):
+    """Points on the chart's unit circle from angle a to b (degrees)."""
+    return [Vector((math.cos(math.radians(a + (b - a) * k / n)), math.sin(math.radians(a + (b - a) * k / n))))
+            for k in range(n + 1)]
+
+
+def _angle(c):
+    return math.degrees(math.atan2(c.y, c.x))
+
+
+def _inside(pt, poly):
+    x, y = pt
+    c = False
+    n = len(poly)
+    for i in range(n):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % n]
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            c = not c
+    return c
+
+
+def head_layout():
+    """[(name, 3D point, chart point)] for the left half of the head, and the lower edge's names."""
+    pts = []
+    for name, kind, a, b, push in FACE_LAYOUT:
+        if kind in ('F', 'M', 'E'):
+            th, ph = face_angles(a, b)
+        elif kind == 'S':
+            th, ph = side_angles(a, b)
+        else:
+            th, ph = float(a), float(b)
+        p = head_surface(th, ph)
+        if kind == 'M':
+            q = on_eyeball(a, b, LID)
+            p = Vector((p.x, p.y, q.z))
+        elif kind == 'E':
+            p = on_eyeball(a, b)
+        if push:
+            p = p - (p - HC).normalized() * push
+        pts.append((name, p, _chart(th, ph)))
+    edge = []
+    for k, ph in enumerate(HEAD_EDGE_PHI):
+        th = 22.5 * k
+        name = 'edge%d' % k
+        pts.append((name, head_surface(th, ph), _chart(th, ph)))
+        edge.append(name)
+    designed = [head_dir(*_polar_of(c)) for _, _, c in pts]
+
+    def below_edge(th, ph, pad):
+        k = min(int(th / 22.5), 7)
+        u = th / 22.5 - k
+        return ph < HEAD_EDGE_PHI[k] * (1 - u) + HEAD_EDGE_PHI[k + 1] * u + pad
+
+    for ph in HEAD_GRID_PHI:
+        n = max(2, int(round(180 * math.cos(math.radians(ph)) / HEAD_GRID_STEP)))
+        for k in range(n + 1):
+            th = 180.0 * k / n
+            d = head_dir(th, ph)
+            if below_edge(th, ph, 5) or min(math.degrees(d.angle(q, 0)) for q in designed) < SCALP_MIN_DIST:
+                continue
+            pts.append(('g%d_%d' % (round(th), ph), head_surface(th, ph), _chart(th, ph)))
+    pts.append(('crown', head_surface(0, 90), _chart(0, 90)))
+    return pts, edge
+
+
+def build_head(mb):
+    """The head's left half into mb: returns its lower edge (9 vertices, front to back) for the neck."""
+    from mathutils.geometry import delaunay_2d_cdt
+    pts, edge = head_layout()
+    index = {n: i for i, (n, _, _) in enumerate(pts)}
+    coords = [c for _, _, c in pts]
+    cons = []
+    for line in FACE_LINES + [edge]:
+        for a, b in zip(line, line[1:]):
+            cons.append((index[a], index[b]))
+    verts, edges, faces, orig_v, orig_e, orig_f = delaunay_2d_cdt(coords, cons, [], 0, 1e-6)
+    out_to_in = []
+    for ov in orig_v:
+        if not ov:
+            raise RuntimeError('the head layout has crossing lines (a new vertex appeared)')
+        out_to_in.append(ov[0])
+    vid = [mb.v(p, 'head') for _, p, _ in pts]
+    polys = [(PID[paint], [coords[index[n]] for n in poly]) for paint, poly in FACE_PAINT]
+    hairline = [coords[index[n]] for n in FACE_LINES[5]]
+    # the scalp: inside the hairline, round over the crown along the centre plane (the chart's circle)
+    scalp = hairline + _circle_arc(_angle(hairline[-1]), _angle(hairline[0]) + 360 * (_angle(hairline[0]) <
+                                                                                          _angle(hairline[-1])), 24)
+    edge_c = [coords[index[n]] for n in edge]
+    below = edge_c + _circle_arc(_angle(edge_c[-1]), _angle(edge_c[0]) - 360 * (_angle(edge_c[0]) >
+                                                                                 _angle(edge_c[-1])), 24)
+    for f in faces:
+        ids = [out_to_in[i] for i in f]
+        cen = sum((coords[i] for i in ids), Vector((0, 0))) / 3
+        if _inside(cen, below):
+            continue
+        paint = PID['skin']
+        for pnt, poly in polys:
+            if _inside(cen, poly):
+                paint = pnt
+                break
+        else:
+            if _inside(cen, scalp):
+                paint = PID['scalp']
+        a2, b2, c2 = (coords[i] for i in ids)
+        if (b2 - a2).cross(c2 - a2) < 0:
+            ids = [ids[0], ids[2], ids[1]]
+        mb.f([vid[i] for i in ids], paint)
+    for line in (['c_lipt', 'v1', 'v2', 'v3', 'm3'], ['c_seam', 'm1', 'm2', 'm3'], ['c_gn', 'q3', 'q4', 'j0', 'j1', 'j2', 'j3'],
+                 ['b0', 'b1', 'b2', 'b3', 'b4'], ['e0', 'u0', 'u1', 'u2', 'u3', 'u4', 'e4'], ['d0', 'd1', 'd2', 'd3']):
+        mb.crease([vid[index[n]] for n in line])
+    return [vid[index[n]] for n in edge], {n: vid[index[n]] for n in index}
+
+# ---------------------------------------------------------------------------------------------------------- ears, hands
+# The ear (left): a C-shaped rim round a recessed bowl, its front edge sunk into the skull, the back of the rim standing
+# off it. It sits between the brow and the nose base, behind the jaw's ramus, tilted back like the nose's bridge.
+EAR_AT = (-.072, -.072)       # (zn, yn) of the ear's centre on the side of the head, head heights from the head centre
+EAR_TILT = 14.0
 
 
 def build_ears(mb):
-    """An ear on the left side of the head: a C-shaped rim round a recessed bowl, its back sunk into the skull."""
-    cy, cz = 1.457, -.016
-    yb = 1.457
-    # the head's half-width at the ear (from the eye-line row at 90-106 degrees)
-    hx = max(head_point(HEAD_ROW['eye'], 7)[0], head_point(HEAD_ROW['nose_mid'], 7)[0])
-    tilt = math.radians(14)
+    th, ph = side_angles(*EAR_AT)
+    skull = head_surface(th, ph)
+    cy, cz, hx = skull.y, skull.z, skull.x
+    tilt = math.radians(EAR_TILT)
+    k = .96                   # the outline below is in metres for a 1.0 scale
     outline = [(.000, .036), (-.012, .032), (-.019, .020), (-.020, .004), (-.016, -.012), (-.009, -.026), (.001, -.034),
                (.008, -.028), (.010, -.012), (.011, .006), (.010, .022), (.007, .032)]
     inner = [(-.003, .022), (-.010, .015), (-.011, .002), (-.008, -.010), (-.002, -.016), (.003, -.006), (.004, .010)]
 
     def place(u, v, out):
-        # u: along -z (back), v: up; rotated back by tilt; out: lateral offset from the skull
+        u, v = u * k, v * k
         uu = u * math.cos(tilt) - v * math.sin(tilt)
         vv = u * math.sin(tilt) + v * math.cos(tilt)
-        return (hx - .010 + out, cy + vv, cz + uu)
+        return (hx - .006 + out, cy + vv, cz + uu)
 
     back = [mb.v(place(u, v, 0.0), 'ear') for u, v in outline]
-    rim = [mb.v(place(u, v, .020 - .004 * abs(v) / .036), 'ear') for u, v in outline]
-    bowl = [mb.v(place(u, v, .013), 'ear') for u, v in inner]
+    rim = [mb.v(place(u, v, .006 + .40 * max(0.0, .010 - u) - .003 * abs(v) / .036), 'ear') for u, v in outline]
+    bowl = [mb.v(place(u, v, .004 + .30 * max(0.0, .008 - u)), 'ear') for u, v in inner]
     mb.strip(back, rim, PID['skin'], closed=True)
-    # rim top surface to the bowl (zipper), bowl floor fan
     mb.strip(rim, bowl, PID['skin-shade'], closed=True)
-    c = mb.v(place(-.004, .002, .011), 'ear')
+    c = mb.v(place(-.004, .002, .006), 'ear')
     for i in range(len(bowl)):
         mb.f((bowl[i], bowl[(i + 1) % len(bowl)], c), PID['skin-shade'])
 
@@ -867,39 +1115,34 @@ def finger(mb, pts, radii, n=6, region='finger', paint=None, up=Vector((1, 0, 0)
     mb.cap(rings[-1], Vector(pts[-1]) + d1 * radii[-1] * .7, region, paint)
 
 
+# Fingers (left hand, relaxed): knuckle z, (proximal, middle, distal) lengths, radius. The palm faces -x (the body), the
+# thumb side is +z; the fingers hang together with a gentle curl toward the palm. Everything rides the wrist (no finger
+# bones in the rig).
+FINGERS = [(.028, (.040, .024, .019), .0092), (.009, (.044, .027, .020), .0095), (-.010, (.041, .025, .019), .0090),
+           (-.027, (.032, .019, .016), .0080)]
+FINGER_CURL = (Vector((-.16, -1, 0)), Vector((-.42, -1, 0)), Vector((-.72, -1, 0)))
+
+
 def build_fingers(mb):
-    """Left hand: four finger blocks curled into a fist round the weapon grip, and a separated thumb lying over them.
-    The palm faces -x (toward the body), the thumb side is +z. Everything rides the wrist (no finger bones in the rig)."""
-    x0 = SX - .006
-    base_y = PALM_TIP_Y + .012
-    # z of each finger at the knuckles, lengths (proximal, middle, distal), radius
-    specs = [(.036, (.034, .024, .019), .0118), (.012, (.037, .026, .020), .0122), (-.012, (.035, .025, .019), .0118),
-             (-.034, (.029, .020, .016), .0104)]
-    # the fist: down past the knuckles, then back under toward the palm (-x), the tips tucked up
-    dirs = (Vector((-.25, -1, 0)), Vector((-1, -.15, 0)), Vector((-.55, .85, 0)))
-    for z, lengths, r in specs:
-        p = Vector((x0 + .004, base_y, z))
+    x0 = SX - .004
+    base_y = PALM_TIP_Y + .010
+    for z, lengths, r in FINGERS:
+        p = Vector((x0, base_y, z))
         pts = [p.copy()]
-        for L, d in zip(lengths, dirs):
+        for L, d in zip(lengths, FINGER_CURL):
             p = p + d.normalized() * L
             pts.append(p.copy())
-        finger(mb, pts, [r * 1.05, r, r * .94, r * .86], n=6, up=Vector((0, 0, 1)), aspect=.92)
-    # thumb: from the palm's front edge near the wrist, forward and down, over the curled index finger
-    t0 = Vector((SX - .014, .548, .040))
-    t1 = t0 + Vector((-.22, -.62, .75)).normalized() * .036
-    t2 = t1 + Vector((-.60, -.70, .38)).normalized() * .030
-    t3 = t2 + Vector((-.85, -.45, .10)).normalized() * .020
-    finger(mb, [t0, t1, t2, t3], [.0158, .0142, .0128, .0112], n=6, up=Vector((1, 0, 0)), aspect=.9)
-    # the knuckle ridge: a slim bar across the top of the fingers' bases (reads as the fist's knuckles)
-    finger(mb, [Vector((x0 + .012, base_y - .004, .048)), Vector((x0 + .012, base_y - .004, -.044))], [.0095, .0095], n=6,
-           up=Vector((0, 1, 0)), aspect=.85)
+        finger(mb, pts, [r * 1.08, r, r * .93, r * .84], n=6, up=Vector((0, 0, 1)), aspect=.92)
+    # thumb: from the palm's front edge near the wrist, forward and down, resting by the index finger
+    t0 = Vector((SX - .010, .815, .030))
+    t1 = t0 + Vector((-.30, -.55, .75)).normalized() * .034
+    t2 = t1 + Vector((-.40, -.80, .40)).normalized() * .028
+    t3 = t2 + Vector((-.45, -.85, .20)).normalized() * .022
+    finger(mb, [t0, t1, t2, t3], [.0125, .0115, .0105, .0094], n=6, up=Vector((1, 0, 0)), aspect=.9)
 
 
 # ----------------------------------------------------------------------------------------------------------------- hair
 HAIR_ID = 'spiky-01'
-HAIR_CENTRE = Vector((0, 1.500, -.006))
-# Hairline per head column (HEAD_THETA index k, both sides): the first head row the cap covers.
-HAIRLINE = [13, 13, 13, 13, 13, 12, 11, 9, 9, 8, 6, 5, 5]
 
 
 class Rand:
@@ -916,48 +1159,35 @@ class Rand:
         return (self() * 2 - 1) * a
 
 
-# Hair clumps: root (azimuth, elevation) and tip (azimuth, elevation) on the cap in degrees (+azimuth to the left,
-# elevation past 90 runs over the top to the back), tip lift off the cap (m), width, thickness, chain name or None.
-# A clump hugs the cap from root to tip and lifts away towards its point.
+# Hair clumps on the scalp: root and tip as (signed theta, phi) head angles (+theta the character's left, phi past 90
+# runs over the crown to the back), the tip's lift off the cap (m), width, ridge height, spring chain or None. Short dark
+# hair in swept clumps that lie on the head like shingles: up and back over the top with a swept quiff at the front,
+# shorter and flatter down the sides and the back. Each clump is a faceted leaf, its edges on the cap, its ridge raised,
+# its point lifting off.
 CLUMPS = [
-    # fringe: pointed bangs over the forehead, swept to the character's right
-    ((25, 60), (12, 16), .022, .076, .026, 'front-l'),
-    ((5, 64), (-6, 12), .024, .082, .028, 'front-l'),
-    ((-15, 62), (-25, 15), .022, .078, .027, 'front-r'),
-    ((-36, 56), (-46, 20), .020, .070, .025, 'front-r'),
-    ((44, 52), (38, 22), .020, .066, .024, 'front-l'),
-    ((-55, 47), (-64, 22), .018, .062, .022, 'front-r'),
-    # up and out from the top
-    ((12, 70), (20, 90), .075, .078, .030, 'front-l'),
-    ((-12, 70), (-22, 90), .075, .078, .030, 'front-r'),
-    ((0, 84), (-6, 106), .080, .086, .031, None),
-    ((32, 76), (42, 98), .078, .080, .030, None),
-    ((-32, 76), (-44, 98), .078, .080, .030, None),
-    ((60, 64), (80, 76), .068, .076, .028, 'side-l'),
-    ((-60, 64), (-80, 76), .068, .076, .028, 'side-r'),
-    ((100, 68), (116, 80), .064, .076, .028, 'back-l'),
-    ((-100, 68), (-116, 80), .064, .076, .028, 'back-r'),
-    ((148, 72), (158, 86), .060, .076, .028, 'back-l'),
-    ((-148, 72), (-158, 86), .060, .076, .028, 'back-r'),
-    ((180, 68), (180, 84), .056, .078, .028, 'back-l'),
-    # sides: down and back over the tops of the ears
-    ((70, 42), (96, 12), .024, .066, .024, 'side-l'),
-    ((96, 46), (120, 16), .024, .066, .024, 'side-l'),
-    ((-70, 42), (-96, 12), .024, .066, .024, 'side-r'),
-    ((-96, 46), (-120, 16), .024, .066, .024, 'side-r'),
+    # front quiff: up from the hairline, swept back and to the character's right; the points lift clear of the scalp
+    ((10, 52), (-6, 80), .022, .074, .011, 'front-l'),
+    ((-12, 53), (-30, 79), .020, .070, .011, 'front-r'),
+    ((32, 51), (20, 77), .018, .066, .010, 'front-l'),
+    ((-36, 50), (-50, 72), .016, .062, .010, 'front-r'),
+    # top: back over the crown
+    ((14, 74), (22, 108), .024, .078, .012, None),
+    ((-16, 74), (-26, 106), .022, .076, .012, None),
+    ((46, 68), (74, 92), .018, .068, .011, 'side-l'),
+    ((-48, 68), (-78, 92), .018, .068, .011, 'side-r'),
+    ((2, 94), (2, 128), .020, .074, .012, 'back-l'),
+    ((120, 80), (148, 60), .014, .070, .011, 'back-l'),
+    ((-120, 80), (-148, 60), .014, .070, .011, 'back-r'),
+    # sides: short, back over the temples and above the ears
+    ((66, 52), (104, 40), .007, .056, .009, 'side-l'),
+    ((-66, 52), (-104, 40), .007, .056, .009, 'side-r'),
     # back: down to the nape
-    ((130, 46), (140, 6), .028, .072, .026, 'back-l'),
-    ((160, 48), (166, 2), .030, .074, .026, 'back-l'),
-    ((-160, 48), (-166, 2), .030, .074, .026, 'back-r'),
-    ((-130, 46), (-140, 6), .028, .072, .026, 'back-r'),
-    ((180, 30), (180, -12), .026, .070, .025, 'back-r'),
-    ((118, 24), (128, -6), .022, .064, .024, 'back-l'),
-    ((-118, 24), (-128, -6), .022, .064, .024, 'back-r'),
-    ((145, 62), (150, 24), .030, .078, .027, 'back-l'),
-    ((-145, 62), (-150, 24), .030, .078, .027, 'back-r'),
-    ((180, 58), (176, 18), .032, .080, .028, 'back-l'),
-    ((112, 58), (122, 30), .026, .070, .025, 'back-l'),
-    ((-112, 58), (-122, 30), .026, .070, .025, 'back-r'),
+    ((138, 56), (146, 20), .008, .062, .009, 'back-l'),
+    ((-138, 56), (-146, 20), .008, .062, .009, 'back-r'),
+    ((166, 50), (170, 10), .008, .060, .009, 'back-l'),
+    ((-166, 50), (-170, 10), .008, .060, .009, 'back-r'),
+    ((118, 40), (126, 8), .006, .052, .008, 'back-l'),
+    ((-118, 40), (-126, 8), .006, .052, .008, 'back-r'),
 ]
 HAIR_CHAINS = ['front-l', 'front-r', 'side-l', 'side-r', 'back-l', 'back-r']
 # Spring tuning per chain (spiky low-poly hair: stiff clumps, a small bounce and sway, never jelly). Units: stiffness and
@@ -972,86 +1202,81 @@ SPRING = {
     'back-l': dict(stiffness=8.0, damping=.36, gravity=.3, drag=.3, maxAngle=16),
     'back-r': dict(stiffness=8.0, damping=.36, gravity=.3, drag=.3, maxAngle=16),
 }
+HAIR_CAP = (.0006, .009)      # the cap's thickness at the hairline and on top of the head (m)
 
 
-def hair_cols():
-    """Full ring of head columns: (k, side) from the front round the left, the back, then the right."""
-    n = len(HEAD_THETA)
-    return [(k, 1) for k in range(n)] + [(k, -1) for k in range(n - 2, 0, -1)]
+def _cap_thickness(p):
+    return HAIR_CAP[0] + (HAIR_CAP[1] - HAIR_CAP[0]) * smooth(HC.y + .10 * HEAD_H, HC.y + .42 * HEAD_H, p.y)
+
+
+def hair_angles_point(th, ph):
+    """The scalp point and its outward direction at signed head angles (phi over 90 continues over the crown)."""
+    if ph > 90:
+        ph = 180 - ph
+        th = (180 - abs(th)) * (1 if th >= 0 else -1)
+    p = head_surface(abs(th), ph)
+    if th < 0:
+        p = Vector((-p.x, p.y, p.z))
+    e = .2
+    a = head_surface(min(abs(th) + e, 180), ph) - head_surface(max(abs(th) - e, 0), ph)
+    b = head_surface(abs(th), min(ph + e, 89.9)) - head_surface(abs(th), ph - e)
+    n = a.cross(b).normalized()
+    if n.dot(head_surface(abs(th), ph) - HC) < 0:
+        n = -n
+    if th < 0:
+        n = Vector((-n.x, n.y, n.z))
+    return p, n
 
 
 def build_hair(body_mb):
-    """The spiky-01 hairstyle: a cap shell over the scalp plus faceted spike clumps; separate object, own weights."""
+    """The spiky-01 hairstyle: a cap over the head's scalp (its scalp faces, both sides, raised off the skin) and faceted
+    spike clumps on it; a separate object with its own weights (head and the sec-hair chains)."""
     mb = MB()
     rigid = {'head': 1.0}
-    cols = hair_cols()
-    nrows = len(HEAD)
+    scalp = [f for f, p in body_mb.F if p == PID['scalp']]
+    used = sorted({i for f in scalp for i in f})
+    # vertex normals of the scalp (left half, mirrored on the centre plane) and its hairline (boundary) vertices
+    acc = {i: Vector() for i in used}
+    edges = {}
+    for f in scalp:
+        n = face_normal(body_mb, f)
+        for i in f:
+            acc[i] += n
+        for a, b in zip(f, f[1:] + f[:1]):
+            edges[frozenset((a, b))] = edges.get(frozenset((a, b)), 0) + 1
+    rim = {i for e, c in edges.items() if c == 1 for i in e
+           if not all(abs(body_mb.V[j].x) < 1e-7 for j in e)}
+    idx = {}
+    for side in (1, -1):
+        for i in used:
+            p = body_mb.V[i]
+            if side < 0 and abs(p.x) < 1e-7:
+                idx[(i, -1)] = idx[(i, 1)]
+                continue
+            n = acc[i]
+            if abs(p.x) < 1e-7:
+                n = Vector((0.0, n.y, n.z))
+            n.normalize()
+            t = HAIR_CAP[0] if i in rim else _cap_thickness(p)
+            q = p + n * t
+            idx[(i, side)] = mb.v(Vector((q.x * side, q.y, q.z)), 'hair', rigid)
+    for f in scalp:
+        mb.f([idx[(i, 1)] for i in f], PID['hair'])
+        mb.f([idx[(i, -1)] for i in reversed(f)], PID['hair'])
+    rnd = Rand(0x5eed02)
 
-    def cap_point(row, k, side, t):
-        if row >= nrows:
-            p = Vector(CROWN)
-        else:
-            x, y, z = head_point(row, k)
-            p = Vector((x * side, y, z))
-        d = (p - HAIR_CENTRE)
-        d.normalize()
-        return p + d * t
-
-    def thick(row):
-        return .007 + .020 * smooth(9, 15, row)
-
-    grid = {}
-    for ci, (k, side) in enumerate(cols):
-        for row in range(min(HAIRLINE[k], nrows - 1), nrows):
-            grid[(ci, row)] = mb.v(cap_point(row, k, side, thick(row)), 'hair', rigid)
-    crown = mb.v(Vector(CROWN) + Vector((0, .018, 0)), 'hair', rigid)
-    nc = len(cols)
-    for ci in range(nc):
-        cj = (ci + 1) % nc
-        for row in range(nrows - 1):
-            a, b, c, d = grid.get((ci, row)), grid.get((cj, row)), grid.get((cj, row + 1)), grid.get((ci, row + 1))
-            q = [i for i in (a, b, c, d) if i is not None]
-            if len(q) >= 3:
-                mb.f(q, PID['hair'])
-        mb.f((grid[(ci, nrows - 1)], grid[(cj, nrows - 1)], crown), PID['hair'])
-    # skirt: the cap's lower edge tucks into the scalp
-    for ci, (k, side) in enumerate(cols):
-        cj = (ci + 1) % nc
-        r0, r1 = min(HAIRLINE[k], nrows - 1), min(HAIRLINE[cols[cj][0]], nrows - 1)
-        a, b = grid[(ci, r0)], grid[(cj, r1)]
-        a2 = mb.v(cap_point(r0, k, side, -.002), 'hair', rigid)
-        b2 = mb.v(cap_point(r1, cols[cj][0], cols[cj][1], -.002), 'hair', rigid)
-        mb.f((a2, b2, b, a), PID['hair-deep'])
-    mb.triangulate()
-    tree = mb.bvh()
-    body_tree = body_mb.bvh()
-    rnd = Rand(0x5eed01)
-
-    def on_cap(az, el, lift):
-        a, e = math.radians(az), math.radians(el)
-        n = Vector((math.sin(a) * math.cos(e), math.sin(e), math.cos(a) * math.cos(e)))
-        hit = tree.ray_cast(HAIR_CENTRE + n * .5, -n, .5)
-        if hit[0] is None:
-            # below the hairline: the head itself (the body builder holds the left half; mirror for the right)
-            m = -1 if n.x < 0 else 1
-            nm = Vector((n.x * m, n.y, n.z))
-            o = HAIR_CENTRE + nm * .5
-            hit = body_tree.ray_cast(Vector((o.x, o.y, o.z)), -nm, .5)
-            if hit[0] is None:
-                raise RuntimeError('clump point missed the head: %r' % ((az, el),))
-            hit = (Vector((hit[0].x * m, hit[0].y, hit[0].z)), Vector((hit[1].x * m, hit[1].y, hit[1].z)))
-        nn = hit[1] if hit[1].dot(n) > 0 else -hit[1]
-        return hit[0] + nn * lift, nn
+    def on_cap(th, ph, lift):
+        p, n = hair_angles_point(th, ph)
+        return p + n * (_cap_thickness(p) + lift), n
 
     clumps = []
     for (r0, r1, lift, W, T, chain) in CLUMPS:
         lift *= 1 + rnd.sym(.08)
         path = []
         for sgm in (0.0, .40, .75, 1.0):
-            az = r0[0] + (r1[0] - r0[0]) * sgm
-            el = r0[1] + (r1[1] - r0[1]) * sgm
-            p, nn = on_cap(az, el, -.010 if sgm == 0 else lift * sgm ** 1.6 + .004)
-            path.append((p, nn))
+            th = r0[0] + (r1[0] - r0[0]) * sgm
+            ph = r0[1] + (r1[1] - r0[1]) * sgm
+            path.append(on_cap(th, ph, -.001 if sgm == 0 else lift * sgm ** 1.6 + .002))
         clumps.append((path, W, T, chain))
     groups = {c: [] for c in HAIR_CHAINS}
     for path, W, T, chain in clumps:
@@ -1064,31 +1289,29 @@ def build_hair(body_mb):
         tip = sum((b for _, b in g), Vector()) / len(g)
         chain_bones.append((c, root, (tip - root).normalized(), (tip - root).length * .5))
     bone_of = {c: ('sec-hair-%s-1' % c, 'sec-hair-%s-2' % c) for c in HAIR_CHAINS}
-    sizes = [(1.0, 1.0, 5), (.80, .85, 4), (.45, .60, 3)]
     for path, W, T, chain in clumps:
         if chain:
             b1, b2 = bone_of[chain]
             wts = [rigid, {'head': .30, b1: .70}, {b1: .50, b2: .50}, {b2: .80, b1: .20}]
         else:
             wts = [rigid] * 4
+        # a leaf: rings of 4 (left edge, ridge, right edge, underside) along the path, then the point
         rings = []
-        for k, (sw, st, nv) in enumerate(sizes):
+        for k, (sw, sh) in enumerate(((1.0, .55), (.86, 1.0), (.48, .8))):
             c, nn = path[k]
             t = (path[k + 1][0] - c).normalized()
-            lat = t.cross(nn)
-            lat.normalize()
-            nrm = lat.cross(t).normalized()
-            ring = []
-            for q in range(nv):
-                ph = 2 * math.pi * q / nv + (.4 if nv == 4 else 0)
-                ring.append(mb.v(c + nrm * math.cos(ph) * T * st * .5 + lat * math.sin(ph) * W * sw * .5, 'hair', wts[k]))
-            rings.append(ring)
+            lat = t.cross(nn).normalized()
+            up = lat.cross(t).normalized()
+            hw = W * sw * .5
+            ring = [c + lat * hw - up * .002, c + up * T * sh, c - lat * hw - up * .002, c - up * (T * sh * .35 + .002)]
+            rings.append([mb.v(q, 'hair', wts[k]) for q in ring])
         for k in range(len(rings) - 1):
-            mb.strip(rings[k], align_closed(mb, rings[k], rings[k + 1]), PID['hair'], closed=True)
+            mb.strip(rings[k], rings[k + 1], PID['hair'], closed=True)
         tip = mb.v(path[-1][0], 'hair', wts[3])
         last = rings[-1]
-        for q in range(len(last)):
-            mb.f((last[q], last[(q + 1) % len(last)], tip), PID['hair'])
+        for q in range(4):
+            mb.f((last[q], last[(q + 1) % 4], tip), PID['hair'])
+        mb.f(list(reversed(rings[0])), PID['hair'])
     return mb, chain_bones, bone_of
 
 
@@ -1106,7 +1329,8 @@ def align_closed(mb, A, Bl):
 
 
 # ------------------------------------------------------------------------------------------------------- core and device
-CORE_AT = (.050, 1.040)   # rig x, y on the chest surface: the chest joint + (.05, .12), near the heart (doc e)
+CORE_AT = (.012, 1.285)   # rig x, y on the chest surface: on the sternum between the pecs, over the heart (doc e)
+CORE_SCALE = .84          # the shield's size on the leaner chest
 
 
 def frame_on_surface(tree, x, y):
@@ -1118,12 +1342,20 @@ def frame_on_surface(tree, x, y):
     return hit[0], n, up, right
 
 
+def poly_area(P):
+    return sum(P[i][0] * P[(i + 1) % len(P)][1] - P[(i + 1) % len(P)][0] * P[i][1] for i in range(len(P))) / 2
+
+
+def ccw(P):
+    return list(P) if poly_area(P) >= 0 else list(reversed(P))
+
+
 def shield(scale_w, scale_h):
     """The core's angular shield outline (local s left, t up), CCW seen from the front: a V notch on top, flat
     shoulders and a pointed base."""
     half = [(0, .030), (.024, .030), (.048, .030), (.058, .016), (.052, -.008), (.034, -.034), (.015, -.052), (0, -.060)]
     full = half + [(-x, y) for x, y in reversed(half[1:-1])]
-    return ccw([(x * scale_w, y * scale_h) for x, y in full])
+    return ccw([(x * scale_w * CORE_SCALE, y * scale_h * CORE_SCALE) for x, y in full])
 
 
 def build_core(body_mb):
@@ -1158,11 +1390,12 @@ def build_core(body_mb):
 # Right wrist device (doc e): on the dorsal side of the right forearm just above the wrist (the palm faces +x on the
 # right hand, so its back faces -x). Everything is rigid on `right-wrist`; the lid and the chip ride the two optional
 # presentation bones `sec-device-lid` and `sec-device-chip` (children of right-wrist).
-DEV_X = J['right-wrist'].x          # -.345
-DEV_Y0, DEV_Y1 = .598, .656         # housing span along the forearm
-BAND_Y0, BAND_Y1 = .600, .650
-BAY = dict(y0=.606, y1=.642, z0=-.0155, z1=.0155, depth=.0095)
-LID_HINGE_Y = .646
+DEV_X = J['right-wrist'].x          # -.18
+_WY = J['right-wrist'].y            # .847
+DEV_Y0, DEV_Y1 = _WY + .018, _WY + .076   # housing span along the forearm
+BAND_Y0, BAND_Y1 = _WY + .020, _WY + .070
+BAY = dict(y0=_WY + .026, y1=_WY + .062, z0=-.0155, z1=.0155, depth=.0095)
+LID_HINGE_Y = _WY + .066
 LID_OPEN_DEG = 112.0
 CHIP_W, CHIP_H, CHIP_T = .026, .031, .0040
 CHIP_APPROACH = (Vector((-.040, .012, .006)), 28.0)   # chip offset (rig) and tilt (deg) before it seats
@@ -1171,6 +1404,11 @@ CHIP_APPROACH = (Vector((-.040, .012, .006)), 28.0)   # chip offset (rig) and ti
 def forearm_radius(y, phi):
     """Right forearm skin radius at height y, angle phi (0 = outward -x, 90 = front +z): the arm table, mirrored."""
     return limb_radius(ARM, y, phi)
+
+
+# The housing's lateral offsets were designed on a .034 m forearm; DEV_IN moves them in onto this slimmer one.
+DEV_IN = .034 - forearm_radius((DEV_Y0 + DEV_Y1) / 2, 0.0)
+DEV_XO = DEV_X - .0605 + DEV_IN     # the housing's outer face
 
 
 def build_device():
@@ -1198,8 +1436,8 @@ def build_device():
     dev.strip(rows[3], inner1, PID['metal-dark'], closed=True)
     # accent glow ring round the band's middle (front and back only, leaving the housing side)
     # housing: a chamfered block on the dorsal side (-x)
-    xb = DEV_X - .040          # embedded in the band
-    xo = DEV_X - .0605         # outer face
+    xb = DEV_X - .040 + DEV_IN # embedded in the band
+    xo = DEV_XO                # outer face
     zc, hz = 0.0, .029
     ch = .004
 
@@ -1231,8 +1469,8 @@ def build_device():
         if zs < 0:
             q.reverse()
         dev.f([dev.v(p, 'hand-right', w) for p in q], PID['glow-device'])
-    scr = [Vector((DEV_X - .050, .604, .0352)), Vector((DEV_X - .050, .650, .0352)), Vector((DEV_X - .041, .650, .0425)),
-           Vector((DEV_X - .041, .604, .0425))]
+    scr = [Vector((DEV_X - .050 + DEV_IN, _WY + .024, .0352)), Vector((DEV_X - .050 + DEV_IN, _WY + .070, .0352)),
+           Vector((DEV_X - .041 + DEV_IN, _WY + .070, .0425)), Vector((DEV_X - .041 + DEV_IN, _WY + .024, .0425))]
     dev.f([dev.v(p, 'hand-right', w) for p in reversed(scr)], PID['screen'])
     # lid: a plate over the bay with a hex lens, hinged at its proximal edge (rest = closed)
     lz, ly0, ly1, lt = .0185, BAY['y0'] - .003, LID_HINGE_Y, .0032
@@ -1278,7 +1516,7 @@ def build_device():
 
 
 # --------------------------------------------------------------------------------------------------------- blender glue
-PART_CODES = ['torso', 'head', 'arm', 'hand', 'leg', 'foot', 'face', 'ear', 'finger', 'hair', 'piece']
+PART_CODES = ['torso', 'head', 'arm', 'hand', 'leg', 'foot', 'face', 'ear', 'finger', 'hair', 'piece', 'neck', 'trim']
 
 
 def reset_scene():
@@ -1293,6 +1531,7 @@ def reset_scene():
 # Shading: big planes shade smooth inside and break crisply at their edges. Edges are sharp where the faces meet at more
 # than SHARP_DEG, at paint borders, along the design creases and on flat pieces; features on the face stay flat.
 SHARP_DEG = {'body': 21.0, 'hair': 34.0, 'piece': 0.0}
+HEAD_SHARP_DEG = 30.0         # the head's smaller planes: only the design creases and paint borders break them
 FLAT_PARTS = {'face', 'ear'}
 
 
@@ -1315,7 +1554,8 @@ def sharp_pairs(mb, kind, mirror_x=False):
             out.add(e)
         elif len(fs) == 2:
             f0, f1 = fs
-            if normals[f0].angle(normals[f1], 0) > thr or mb.F[f0][1] != mb.F[f1][1]:
+            t = math.radians(HEAD_SHARP_DEG) if kind == 'body' and all(mb.R[i] == 'head' for i in e) else thr
+            if normals[f0].angle(normals[f1], 0) > t or mb.F[f0][1] != mb.F[f1][1]:
                 out.add(e)
         elif len(fs) == 1 and mirror_x and all(abs(mb.V[i].x) < 1e-6 for i in e):
             n = normals[fs[0]]
@@ -1417,11 +1657,11 @@ def mesh_stats(obj):
 
 # ----------------------------------------------------------------------------------------------------- armature/weights
 NATURAL_TAIL = {
-    'motion-root': (0, ROOT_HEIGHT + .12, 0), 'pelvis': (0, .50, 0), 'spine': J['chest'], 'chest': J['neck'],
-    'neck': J['head'], 'head': (0, 1.62, 0),
+    'motion-root': (0, ROOT_HEIGHT + .12, 0), 'pelvis': (0, J['pelvis'].y - .14, 0), 'spine': J['chest'],
+    'chest': J['neck'], 'neck': J['head'], 'head': (0, HC.y + .10, 0),
     'left-clavicle': J['left-shoulder'], 'left-shoulder': J['left-elbow'], 'left-elbow': J['left-wrist'],
-    'left-wrist': (J['left-wrist'].x, .45, 0), 'left-hip': J['left-knee'], 'left-knee': J['left-ankle'],
-    'left-ankle': J['left-toe'], 'left-toe': (J['left-toe'].x, .03, .17),
+    'left-wrist': (J['left-wrist'].x, J['left-wrist'].y - .13, 0), 'left-hip': J['left-knee'], 'left-knee': J['left-ankle'],
+    'left-ankle': J['left-toe'], 'left-toe': (J['left-toe'].x, .03, .20),
 }
 for _n in list(NATURAL_TAIL):
     if _n.startswith('left-'):
@@ -1436,7 +1676,7 @@ def secondary_bones(chain_bones, seat):
         b1, b2 = 'sec-hair-%s-1' % c, 'sec-hair-%s-2' % c
         out.append((b1, 'head', root, root + dirn * L, dict(kind='spring', chain=c)))
         out.append((b2, b1, root + dirn * L, root + dirn * 2 * L, dict(kind='spring', chain=c)))
-    hinge = Vector((DEV_X - .0605 - .0032, LID_HINGE_Y, 0))
+    hinge = Vector((DEV_XO - .0032, LID_HINGE_Y, 0))
     out.append(('sec-device-lid', 'right-wrist', hinge, hinge + Vector((0, 0, .03)), dict(kind='device', part='lid')))
     out.append(('sec-device-chip', 'right-wrist', seat, seat + Vector((-.02, 0, 0)), dict(kind='device', part='chip')))
     return out
@@ -1495,39 +1735,42 @@ def side_name(name, x):
 
 
 def weights_rule(part, p, auto):
-    """The cleaned weights for one body vertex: rig-space position p, its part tag and its automatic weights."""
+    """The cleaned weights for one body vertex: rig-space position p, its part tag and its automatic weights. Limb
+    blends are placed relative to the visual joints."""
     x, y, z = p
     s = 'left-' if x >= 0 else 'right-'
-    if part in ('face', 'ear'):
+    w_y, e_y, s_y = J['left-wrist'].y, J['left-elbow'].y, J['left-shoulder'].y
+    a_y, k_y, h_y = J['left-ankle'].y, J['left-knee'].y, J['left-hip'].y
+    if part in ('face', 'ear', 'head'):
         return {'head': 1.0}
-    if part == 'head':
-        return {'head': .45, 'neck': .55} if y < HEAD[0][0] + .002 else {'head': 1.0}
+    if part == 'neck':
+        return {'head': .5, 'neck': .5}
     if part in ('hand', 'finger'):
         return {s + 'wrist': 1.0}
     if part == 'arm':
         if y <= ARM[ARM_CUFF_ROW][0] + .001:
             return {s + 'wrist': 1.0}
-        if y < .80:
-            t = smooth(.66, .76, y)
+        if y < e_y - .03:
+            t = smooth(w_y + .08, w_y + .18, y)
             return {s + 'wrist': 1 - t, s + 'elbow': t}
-        if y < .866:
-            t = smooth(.80, .866, y)
+        if y < e_y + .036:
+            t = smooth(e_y - .03, e_y + .036, y)
             return {s + 'elbow': 1 - t, s + 'shoulder': t}
-        if y < 1.0:
+        if y < s_y - .10:
             return {s + 'shoulder': 1.0}
     if part == 'leg':
-        if y < .13:
-            t = smooth(.08, .13, y)
+        if y < a_y + .08:
+            t = smooth(a_y + .015, a_y + .08, y)
             return {s + 'ankle': 1 - t, s + 'knee': t}
-        if y < .29:
+        if y < k_y - .03:
             return {s + 'knee': 1.0}
-        if y < .352:
-            t = smooth(.29, .352, y)
+        if y < k_y + .032:
+            t = smooth(k_y - .03, k_y + .032, y)
             return {s + 'knee': 1 - t, s + 'hip': t}
-        if y < .43:
+        if y < h_y - .14:
             return {s + 'hip': 1.0}
     if part == 'foot':
-        t = smooth(.072, .112, z)
+        t = smooth(.100, .140, z)
         w = {s + 'ankle': 1 - t, s + 'toe': t}
         if y > .095 and z < .03:
             u = smooth(.095, .112, y) * .3
@@ -1562,14 +1805,28 @@ def limit_normalize(w, n=4, quantum=1 / 255):
     return {k: c / 255 for k, c in q}
 
 
+HEAT_ARM_SPREAD = 40.0       # degrees: the arms are spread into an A-pose for the bone-heat pass only
+
+
 def auto_weights(body, rig):
-    """Bone-heat weights on a copy of the body's main closed shell (overlays, ears and fingers left out)."""
-    keep = {PART_CODES.index(p) for p in ('torso', 'head', 'arm', 'hand', 'leg', 'foot')}
+    """Bone-heat weights on a copy of the body's main closed shell (overlays, ears and fingers left out). The arms hang
+    against the lats at rest, so the pass runs on an A-posed copy (the arm vertices and the arm bones turned out about
+    the shoulder joints by HEAT_ARM_SPREAD); the weights carry back unchanged, vertex for vertex."""
+    keep = {PART_CODES.index(p) for p in ('torso', 'head', 'arm', 'hand', 'leg', 'foot', 'neck')}
+    arm_parts = {PART_CODES.index(p) for p in ('arm', 'hand')}
     tmp = body.copy()
     tmp.data = body.data.copy()
     tmp.name = 'CA_HeatTmp'
     link(tmp)
     parts = [d.value for d in tmp.data.attributes['ca_part'].data]
+    spread = {}
+    for side, sign in (('left-', 1), ('right-', -1)):
+        spread[sign] = (Matrix.Translation(B(J[side + 'shoulder'])) @
+                        Matrix.Rotation(math.radians(HEAT_ARM_SPREAD) * sign, 4, Vector((0, -1, 0))) @
+                        Matrix.Translation(-B(J[side + 'shoulder'])))
+    for v in tmp.data.vertices:
+        if parts[v.index] in arm_parts:
+            v.co = spread[1 if v.co.x >= 0 else -1] @ v.co
     bm = bmesh.new()
     bm.from_mesh(tmp.data)
     vid = bm.verts.layers.int.new('ca_vid')
@@ -1578,12 +1835,24 @@ def auto_weights(body, rig):
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if parts[v.index] not in keep], context='VERTS')
     bm.to_mesh(tmp.data)
     bm.free()
+    trig = rig.copy()
+    trig.data = rig.data.copy()
+    trig.name = 'CA_HeatRig'
+    link(trig)
     view = bpy.context.view_layer
+    view.objects.active = trig
+    bpy.ops.object.mode_set(mode='EDIT')
+    for side, sign in (('left-', 1), ('right-', -1)):
+        for n in ('shoulder', 'elbow', 'wrist'):
+            eb = trig.data.edit_bones[side + n]
+            eb.head = spread[sign] @ eb.head
+            eb.tail = spread[sign] @ eb.tail
+    bpy.ops.object.mode_set(mode='OBJECT')
     for o in view.objects:
         o.select_set(False)
     tmp.select_set(True)
-    rig.select_set(True)
-    view.objects.active = rig
+    trig.select_set(True)
+    view.objects.active = trig
     bpy.ops.object.parent_set(type='ARMATURE_AUTO')
     ids = [d.value for d in tmp.data.attributes['ca_vid'].data]
     groups = {g.index: g.name for g in tmp.vertex_groups}
@@ -1591,6 +1860,7 @@ def auto_weights(body, rig):
     for v in tmp.data.vertices:
         out[ids[v.index]] = {groups[g.group]: g.weight for g in v.groups if g.weight > 0}
     bpy.data.objects.remove(tmp)
+    bpy.data.objects.remove(trig)
     return out
 
 
@@ -1629,7 +1899,7 @@ def hide_region(part, p, w):
     if part == 'ear':
         return 'scalp'
     if d == 'head' or d.startswith('sec-hair'):
-        front = z > -.02 and y < 1.565 and abs(x) < .105
+        front = z > HC.z - .025 and y < HC.y + .30 * HEAD_H and part != 'ear'
         return 'face' if front else 'scalp'
     if d == 'neck':
         return 'neck'
@@ -1791,8 +2061,14 @@ def main():
     auto = auto_weights(body, rig)
     codes = [d.value for d in body.data.attributes['ca_part'].data]
     parts = [PART_CODES[c] for c in codes]
-    weights = [limit_normalize(weights_rule(part, rig_pos(v.co), auto.get(v.index, {})))
+    weights = [None if part == 'trim' else limit_normalize(weights_rule(part, rig_pos(v.co), auto.get(v.index, {})))
                for v, part in zip(body.data.vertices, parts)]
+    skin = [i for i, part in enumerate(parts) if part in ('torso', 'leg')]
+    for i, part in enumerate(parts):
+        if part == 'trim':      # the piping takes the weights of the nearest cloth vertex under it
+            co = body.data.vertices[i].co
+            j = min(skin, key=lambda k: ((body.data.vertices[k].co - co).length_squared, k))
+            weights[i] = weights[j]
     set_weights(body, rig, weights)
     body_mat, glow_mat = make_materials()
     colour_layer(body)
