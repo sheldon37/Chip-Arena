@@ -28,6 +28,31 @@ blender -b --factory-startup unity/ChipArenaConversion/Art/Characters/male-base/
 `Tests/test_lowpoly_male_base.py` checks the exports statically: the rig against `Core/CapturedRig.cs`, weights,
 regions, budgets, winding, envelope and the right-wrist device.
 
+## Form references (provenance)
+
+Two small JSON tables give the body and head their anatomical shapes. They are this project's own measurements, not
+third-party assets: no vertex, face or texture of another model is stored in them or used by the builder.
+
+| File | Made by | What it holds |
+|---|---|---|
+| `form_reference.json` | `sample_form_reference.py` | Normalized torso cross-sections (half-ring shapes divided by their own width and depth) at landmark-normalized heights, and normalized limb ring radii (mean 1) for the thigh, shin, upper arm and forearm. |
+| `head_reference.json` | `sample_head_reference.py` | A radial distance field of the head (a 2.5° theta/phi grid, divided by the head height), which grid cells see the eyeball, and a few landmarks: the eyeball, lid joints, nose tip, chin, a centre-line profile and the ear's angular bounds. |
+
+Both were measured, with Blender 4.2, from the MakeHuman 1.1 base mesh (`makehuman/data/3dobjs/base.obj`), the macro
+target `universal-male-young-maxmuscle-averageweight.target` and, for the head only, the face modifier targets listed
+in `MODS` in `sample_head_reference.py`. They come from github.com/makehumancommunity/makehuman and are released under
+CC0 1.0 Universal: see that repository's `LICENSE.md` section C and `LICENSE.ASSETS.md`, and each target file's header,
+which says "explicitly released as CC0 in september 2020". CC0 asks for no attribution, but it is recorded here
+anyway. None of those source files is committed. The builder scales the normalized shapes to its own stylized
+dimensions on its own skeleton and places its own low-poly vertex layout on them.
+
+To re-measure, download those files and run, for example:
+
+```
+blender -b --factory-startup --python sample_head_reference.py -- base.obj \
+    universal-male-young-maxmuscle-averageweight.target <dir with the modifier targets> head_reference.json
+```
+
 ## Skeleton
 
 The skeleton is exactly `CapturedRig.Bones`: the same 22 names, indices, parents and rest offsets, with identity rest
