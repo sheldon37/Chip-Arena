@@ -1,3 +1,31 @@
+## 2026-10-21 — Claude: low-poly male base, target-figure pass: facets, heroic proportions, stance, briefs (on the branch, not merged)
+
+- **Branch/base:** `claude/lowpoly-base-model` after `3107443`. Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.
+- **Owner feedback (via the coordinator):** v4 still read as a corrected mannequin; push hard toward the BASE BODY figure of `ref2-body-target-sheet` (8 heads, crisp faceted planes, heroic V-taper, thick arms, strong legs, a wide stance, longer briefs with diagonal cyan piping and a hem band). Keep one right-wrist device and the human face. Neutral only; no animation until the go-ahead.
+- **Objective check:** the target figure thresholded into a silhouette (Blender's Python and numpy; the visor, dark hair and briefs filled by hand, documented in the scratch tool) and overlaid on the model's front silhouette in the same stance at the same standing height. Overlap (IoU) .73 for v4 in the same stance, .82 now (target-only area 99k to 59k px); the remaining difference is mostly the target's hair, hands and feet. Front widths, target / model (v4): outer deltoids .561 / .557 (.522) m, waist .265 / .264 (.47 / .47 of the shoulders), hips .422 / .411 (.75 / .74; v4 .62), feet span 1.42 / 1.37 shoulder widths.
+- **What changed, and how it moves toward the target:**
+  - Facets: the skin is flat-shaded in designed planes (`FACETS`, `TUBE_BANDS`). Lattices of rings gather quads into 2 x 2 blocks, split into two big triangles along the diagonal that best fits the surface, or into panels; bands follow the forms (the ribs under the pecs, the rib arch, elbow, knee, hem). This replaces the soft single smooth group, the main cause of the mannequin read. The briefs stay soft cloth; the head, ears, fingers and toes keep their designed smooth planes. Exports carry the facet normals.
+  - Proportions: 8 heads (head .232 to .218 m, chin up to 1.522 so the crown stays at 1.74). Shoulders out and up: clavicle (±.122, .155) to (±.128, .175), with a bigger deltoid cap (.058 to .067 m). Hips ±.09 to ±.10, with a fuller pelvis and glutes. The waist stays narrow, so the V-taper matches the target's.
+  - Torso: the trapezius rises high into the neck. Square pec plates with a strong lower edge rising to the armpit and a sternum gap, raised about 5 cm to the target's chest height (the core moves up with them to 1.345 m, still on the sternum). The rib arch, ab blocks with tendinous lines, the navel, obliques over the crest, serratus fingers, and lats flaring under the armpits.
+  - Arms: about 25 % thicker upper arms (biceps, triceps); the forearm flares just below the elbow (about 35 %) and tapers to a sturdy wrist. Hands about 12 % bigger, open, with the fingers slightly spread and a longer thumb.
+  - Legs: a fuller thigh (vastus lateralis sweep, a deeper teardrop, adductors, hamstrings), the kneecap and its tendon, and a high diamond calf (inner head higher). Slim ankles; feet 10 % longer, with the big toe, second toe and three smaller toes.
+  - Briefs: the crotch is raised to .80 m, so the legs are longer below it, and the waistband to the target's 0.98–1.01 m. The cyan tab is gone (the target's band is dark). Diagonal cyan piping (`PIPE`) runs from each waistband front corner to the outer hem, and a cyan band (`HEM_BAND`) follows the outer half of the hem.
+  - Stance (render pose only, not in the exports): legs in an A (hips abducted 14°, knees in 4°, feet turned out 24°); arms 18° off the torso with a slight elbow bend and the palms turned toward the thighs.
+- **Joints (visual skeleton only; authority unchanged):** shoulders 1.402 / ±.192 to 1.422 / ±.198; elbows and wrists up .02; hips ±.10; toe z .150; head centre 1.631. Doc c's skeleton table and drift table are re-measured. The weapon hand now sits .21–.34 m from the game's frame (was .20–.33). Support IK is .31–.33 m, within 87 % of reach. Feet are unchanged.
+- **Stiffness attribution:**
+  - Mesh: the facets read best in this rest silhouette. They will bend with the rings at elbows and knees (no extra loops), which is untested until the animation tests.
+  - Rig: no twist bone, so the palm turn in the stance twists the forearm from the elbow. No finger bones.
+  - Pose: the stance is symmetric and still; the game's idle and the adapter's foot IK set the real angles.
+- **Counts:** 5,292 triangles (body 4,062, hair 746, core 210, device 274); binary 293 KB, GLB 527 KB.
+- **Checks (actual):** `Tests/test_lowpoly_male_base.py` 12 OK (a first run caught facet normals folded against their faces on the palm; the palm now uses single-quad facets, and a sliver that folds against its facet stays flat); rebuild and export twice give byte-identical exports; FK drift re-measured (doc c updated). run5b on this content: rc1–rc5 all 0 (Unity runtime and editor compile; relay 814 PASS lines, 35 managed-core checks; 152 Python tests OK, 1 skipped; package 2,616 files; diff check). Unity Editor, rendering in Unity and animation not run.
+- **Renders:** scratch `renders-lowpoly-base/` `anatomy-neutral` (front, three-quarter, side and back in the new stance), `anatomy-apose`, `anatomy-silhouette`, `silhouette-overlay` (target, model, overlay), `silhouette-before-after` (v4 and this pass on the target), `head-sheet`, `head-sheet-guide`, `hair-top-back`; the previous sheets are `*-v4`.
+- **Risks:**
+  - Flat facets show their lattice in close-ups.
+  - No nipples (the target has them); omitted on the faceted chest.
+  - The target's hair is taller and spikier than ours; the hair was not part of this pass.
+  - Weapon drift (P1/P2) is slightly larger with the wider shoulders.
+- **Next:** owner review; then, on a go-ahead, the adapter animation tests.
+
 ## 2026-10-21 — Claude: low-poly male base, second neutral pass: limbs, briefs, shoulders, stance, hair (on the branch, not merged)
 
 - **Branch/base:** `claude/lowpoly-base-model` after `7a8f4e4`. Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.

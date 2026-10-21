@@ -249,8 +249,9 @@ the adapter is specified here and prototyped only in offline preview tooling; no
 **Two skeletons, one topology.**
 - **Authoritative:** `CapturedRig.Bones`, unchanged: 22 joints, identity rest frames, motion-root at feet + .865 m. The
   game's poses, IK lengths (`Arm` .27/.25, `Leg` .25/.25) and every system below keep using it.
-- **Visual:** the same 22 names, order, parents and identity rest frames, with human rest offsets: a 1.74 m figure of
-  7.5 heads (head .232 m), legs about half the height. The mesh is skinned to it; the manifest records both offset
+- **Visual:** the same 22 names, order, parents and identity rest frames, with heroic human rest offsets: a 1.74 m
+  figure of 8 heads (head .218 m), legs about half the height, broad high shoulders and wider hips (2026-10-21, to the
+  owner's target figure). The mesh is skinned to it; the manifest records both offset
   sets (`restLocal` visual, `gameRestLocal` authoritative).
 
 | Joint | Authoritative rest (y; x) | Visual rest (y; x) | Visual offset from parent |
@@ -258,11 +259,11 @@ the adapter is specified here and prototyped only in offline preview tooling; no
 | motion-root | .865 | 1.182 | (root) |
 | pelvis / spine / chest | .625 / .73 / .92 | .942 / 1.047 / 1.247 | −.24 / .105 / .20 |
 | neck / head (pivot) | 1.24 / 1.34 | 1.467 / 1.567 | .22 / .10 |
-| clavicle / shoulder | 1.10; ±.275 / ±.345 | 1.402; ±.122 / ±.192 | (±.122, .155) / (±.07, 0) |
-| elbow / wrist | .83 / .58 | 1.097 / .847 | −.305 / −.25 |
-| hip / knee / ankle | .57 / .32 / .07; ±.13 | .887 / .467 / .067; ±.09 | (±.09, −.055) / −.42 / −.40 |
-| toe | .05, z .09 | .025, z .135 | (0, −.042, .135) |
-| head centre | voxel head box 1.505 | 1.624 (chin 1.508, crown 1.74) | – |
+| clavicle / shoulder | 1.10; ±.275 / ±.345 | 1.422; ±.128 / ±.198 | (±.128, .175) / (±.07, 0) |
+| elbow / wrist | .83 / .58 | 1.117 / .867 | −.305 / −.25 |
+| hip / knee / ankle | .57 / .32 / .07; ±.13 | .887 / .467 / .067; ±.10 | (±.10, −.055) / −.42 / −.40 |
+| toe | .05, z .09 | .025, z .150 | (0, −.042, .150) |
+| head centre | voxel head box 1.505 | 1.631 (chin 1.522, crown 1.74) | – |
 
 **Who reads joint positions (audit of `Core` and `Runtime`, 2026-10-21).**
 - **Authoritative (unchanged by the visual skeleton; none read joint positions):**
@@ -297,38 +298,38 @@ the adapter is specified here and prototyped only in offline preview tooling; no
 5. Authority stays as it is: capsule, head box, melee sector, shot origin, weapon frames and the network pose.
 
 **Drift with rotations 1:1 (before IK), the game's own Core poses (`lpb-pose`, 31–61 frames per clip), metres, mean /
-max, on the visual skeleton above (shoulders at ±.192 since the 2026-10-21 body redesign).** "Box" is the authoritative
-head box centre (1.49 m over the floor); "grip" the weapon socket; "support IK" how far the left hand must move to keep
-a two-handed grip; reach is the fraction of the visual arm or leg length used.
+max, on the visual skeleton above (shoulders at 1.422 m and ±.198, hips at ±.10 since the 2026-10-21 target
+pass).** "Box" is the authoritative head box centre (1.49 m over the floor); "grip" the weapon socket; "support IK" how
+far the left hand must move to keep a two-handed grip; reach is the fraction of the visual arm or leg length used.
 
 | Clip (weapon) | Head vs box: visual | Head vs box: game rig | Right grip vs game | Support IK | Left reach | Ankle vs game | Leg reach | Grip to shot origin: game / visual |
 |---|---|---|---|---|---|---|---|---|
-| idle (rifle) | .08 / .08 | .09 / .09 | .32 / .33 | .33 | .80 | .05 / .05 | .90 | .12 / .24 |
-| idle (pistol) | .08 / .08 | .03 / .03 | .32 / .33 | .34 | .68 | .03 / .04 | .92 | .18 / .39 |
-| run (rifle) | .21 / .22 | .16 / .18 | .27 / .28 | .32 | .67 | .16 / .20 | .90 | .49 / .29 |
-| sprint (rifle) | .29 / .30 | .28 / .29 | .26 / .28 | .33 | .64 | .17 / .24 | .87 | .47 / .38 |
-| rifle aim | .08 / .08 | .09 / .09 | .33 / .33 | .33 | .80 | .05 / .05 | .90 | .13 / .26 |
-| melee swing (sword) | .39 / .48 | .42 / .50 | .20 / .24 | n/a | – | .07 / .14 | .64 | .87 / .72 |
-| magic cast | .17 / .39 | .11 / .31 | .28 / .31 | n/a | – | .05 / .12 | .92 | .39 / .38 |
-| roll (rifle) | .38 / 1.37 | .39 / 1.35 | .25 / .32 | .33 | .89 | .16 / .28 | .92 | .51 / .39 |
-| dodge turn (rifle) | .28 / .31 | .27 / .30 | .27 / .29 | .33 | .64 | .16 / .27 | .90 | .46 / .37 |
-| melee run swing | .46 / .70 | .46 / .69 | .23 / .29 | n/a | – | .18 / .29 | .92 | .78 / .59 |
+| idle (rifle) | .09 / .09 | .09 / .09 | .34 / .34 | .32 | .79 | .04 / .05 | .90 | .12 / .26 |
+| idle (pistol) | .09 / .09 | .03 / .03 | .34 / .34 | .33 | .68 | .03 / .03 | .92 | .18 / .40 |
+| run (rifle) | .21 / .22 | .16 / .18 | .29 / .30 | .31 | .67 | .15 / .20 | .90 | .49 / .27 |
+| sprint (rifle) | .29 / .30 | .28 / .29 | .28 / .29 | .31 | .65 | .17 / .24 | .87 | .47 / .36 |
+| rifle aim | .08 / .09 | .09 / .09 | .34 / .34 | .32 | .79 | .04 / .05 | .90 | .13 / .27 |
+| melee swing (sword) | .39 / .48 | .42 / .50 | .21 / .25 | n/a | – | .06 / .14 | .64 | .87 / .71 |
+| magic cast | .17 / .39 | .11 / .31 | .30 / .32 | n/a | – | .04 / .11 | .92 | .39 / .39 |
+| roll (rifle) | .38 / 1.37 | .39 / 1.35 | .26 / .33 | .31 | .87 | .16 / .28 | .92 | .51 / .38 |
+| dodge turn (rifle) | .28 / .31 | .27 / .30 | .28 / .30 | .31 | .65 | .16 / .27 | .90 | .46 / .36 |
+| melee run swing | .46 / .69 | .46 / .69 | .24 / .30 | n/a | – | .17 / .29 | .92 | .78 / .57 |
 
 Reading it:
 - The visual head sits about as close to the authoritative head box as the voxel head does (within .01–.06 m in
   every clip); in motion both lean away from the fixed box by the same amounts. No head-volume change is needed.
-- The weapon on the visual hand sits .20–.33 m from the game rig's weapon frame (narrower shoulders, higher chest).
-  The visual muzzle ends up .24–.39 m from the simulation's shot origin at idle and aim (the voxel's is .12–.18 m) and
-  closer than the voxel's while running (.29–.38 m against .46–.49 m). Tracers would start at the visual muzzle and
-  join the simulated path within `NativeShotLaunch.Converge` (4.5 m), as they do today; hits are unaffected.
-- Two-handed grips need the left hand moved about .33 m (twice the shoulder narrowing); every two-handed pose stays
-  within 89 % of the visual arm's reach. Planted feet need up to .29 m of IK and stay within 92 % of the leg's reach: no
-  hyperextension.
+- The weapon on the visual hand sits .21–.34 m from the game rig's weapon frame (narrower shoulders, higher chest).
+  The visual muzzle ends up .26–.40 m from the simulation's shot origin at idle and aim (the voxel's is .12–.18 m)
+  and closer than the voxel's while running (.27–.36 m against .46–.49 m). Tracers would start at the visual muzzle
+  and join the simulated path within `NativeShotLaunch.Converge` (4.5 m), as they do today; hits are unaffected.
+- Two-handed grips need the left hand moved about .31–.33 m (twice the shoulder narrowing); every two-handed pose
+  stays within 87 % of the visual arm's reach. Planted feet need up to .29 m of IK and stay within 92 % of the leg's
+  reach: no hyperextension.
 - The per-frame numbers through the full adapter (with IK) come with the animation tests, after the owner's go-ahead.
 
 **PROPOSALS for the owner and Astra (none applied).**
 - P1 (Claude, presentation): adapter as above, weapon on the visual hand. Cost: weapon and muzzle drift of
-  .2–.33 m from today's drawn frame; no authority change.
+  .21–.34 m from today's drawn frame; no authority change.
 - P2 (Claude, presentation; alternative to P1): the right hand IKs to the game's weapon frame (as an offset from the
   chest, scaled) so the drawn weapon and muzzle stay where the game draws them today; the arms bend to reach.
 - P3 (Astra, authority; only if the owner wants hits to match the taller body): the head box and shot origin could be
@@ -340,7 +341,7 @@ Reading it:
 
 **Binding.**
 - Vertices are in the visual motion-root frame (feet + 1.182 m), Unity axes, front +z; the soles at 0 m.
-- The visual head is centred at 1.624 m (crown 1.74 m). The body and garments stay within the capsule radius (.42 m,
+- The visual head is centred at 1.631 m (crown 1.74 m). The body and garments stay within the capsule radius (.42 m,
   plus .03 m) at rest; headwear and back pieces may exceed it by at most .25 m.
 - Bind pose of joint *b* = inverse(translation(visual rest world of *b*)), identity rotations. The mesh is modelled in
   the rest pose (arms down); the bone-heat pass runs on a copy with the arms spread 40°, then the weights carry back.
@@ -650,7 +651,7 @@ Compatibility resolution is presentation, not validation: the authority stores t
 **Open decisions.**
 1. **Proportions.** Decided by the owner (2026-10-20): human proportions on a presentation-only visual skeleton
    (section c). Open: the weapon-hand choice (P1 or P2) and whether any authoritative volume should follow (P3).
-2. **Height.** The visual figure is 1.74 m (7.5 heads); the authoritative capsule (1.70 m) and head box (1.49 m) are
+2. **Height.** The visual figure is 1.74 m (8 heads); the authoritative capsule (1.70 m) and head box (1.49 m) are
    unchanged. The drift table in section c measures the difference.
 3. **Wrist side.** Confirm the right wrist for every class, which moves the chip-select display wrist off the free hand
    (section e).

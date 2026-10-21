@@ -6,8 +6,8 @@
 
 Writes, deterministically (two runs are byte-identical):
   male_base.bytes          the runtime mesh library proposed in docs/CHARACTER-LOWPOLY.md (b): little-endian "CALP" v1,
-                           Unity frame, motion-root origin, split vertices with corner normals (smooth planes, sharp
-                           creases), <= 4 weights in 1/255,
+                           Unity frame, motion-root origin, split vertices with corner normals (flat body facets;
+                           smooth planes and sharp creases on the head and small parts), <= 4 weights in 1/255,
                            hide and death regions, paint channel per vertex; layout in male_base.manifest.json
   male_base.manifest.json  bones (the 22 CapturedRig joint names with the visual skeleton's rest offsets, the game's
                            authoritative offsets recorded beside them, + optional secondary bones), bind poses, pieces, paints,
@@ -204,7 +204,8 @@ def manifest(bones, pieces, binary, rig):
         frame=dict(units='metres', axes='Unity: x = -rig x (a left limb sits at -x), y up, z forward',
                    origin='motion-root at rest; the floor is y = %.3f' % -M.ROOT_HEIGHT,
                    winding='cross(b - a, c - a) faces out',
-                   normals='corner normals: smooth within planes, split at sharp creases and paint borders'),
+                   normals='corner normals: the body in flat facets; the head and small parts smooth within '
+                           'planes, split at sharp creases and paint borders'),
         blender=bpy.app.version_string,
         binary=dict(file=os.path.basename(binary), bytes=os.path.getsize(binary), sha256=sha(binary),
                     layout=['header: "CALP", u16 version, u16 flags, u16 bones, u16 pieces, u32 vertices, u32 triangles',

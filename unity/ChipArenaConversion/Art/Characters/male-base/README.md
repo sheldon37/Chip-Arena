@@ -1,8 +1,8 @@
 # Low-poly male base (Phase B)
 
-The first skinned low-poly pilot body for `docs/CHARACTER-LOWPOLY.md`: a lean young man of human proportions (1.74 m,
-7.5 heads), a natural stylized face, short swept `spiky-01` hair, dark boxer-briefs with cyan trim, the chest core and
-the right-wrist chip device. Original geometry, built by script. Nothing here
+The first skinned low-poly pilot body for `docs/CHARACTER-LOWPOLY.md`: a heroic, athletic young man (1.74 m, 8 heads)
+in flat-shaded designed facets, a natural stylized face, short swept `spiky-01` hair, dark boxer-briefs with cyan
+piping and hem bands, the chest core and the right-wrist chip device. Original geometry, built by script. Nothing here
 is imported by Unity, and nothing is wired into the runtime: Phase D copies the binary and manifest into
 `Assets/Conversion/Resources/Characters/`.
 
@@ -81,23 +81,36 @@ and weapon frames keep the authoritative rig.
 
 ## Body
 
+- Target: the owner's base-body figure (`ref2-body-target-sheet`), matched on its front silhouette in the presentation
+  stance (outer deltoids about .56 m, the waist about .47 of that, the hips about .74, scaled to the same height); the
+  head about 8 to the height. The comparison overlay is a scratch render (not committed).
 - The torso is designed rather than measured: front, side and back profile curves per row (`TORSO`), rounded
   cross-sections whose roundness changes from the pelvis through the waist to the ribcage (`TORSO_ROUND`), and broad
-  muscle forms laid over them (`TORSO_FORMS`: pectorals, sternum, abdominals, obliques over the iliac crests, lats,
-  scapulae, spine, glutes). Rows follow the muscle flow (the pecs' lower edge rises into the armpit, the waistband dips
-  into a V along the crests); 13 columns per half ring.
-- The deltoid is a round cap on a sphere over the shoulder joint (two rings between the chest's socket and the arm),
-  and the trapezius falls into it without a step.
+  muscle forms laid over them (`TORSO_FORMS`: square pectoral plates with a strong lower edge rising to the armpit and
+  a gap at the sternum, the rib arch, the abdominal blocks between their tendinous lines, the navel, obliques over the
+  iliac crests, serratus fingers, lats flaring under the armpits, scapulae, spine, glutes). Rows follow the muscle flow
+  (the pecs' lower edge, the rib arch, the waistband's V along the crests); 13 columns per half ring.
+- The deltoid is a big round cap on a sphere over the shoulder joint (two rings between the chest's socket and the
+  arm); the trapezius rises high into the neck and falls into the cap without a step.
 - The limbs are lofted rings on the measured cross-sections (`form_reference.json`) with designed, asymmetric muscle
   forms over them (`LIMB_FORMS`, keyed by the angle round the limb and the height): the deltoid's insertion V, the
-  biceps forward and in, the triceps' horseshoe behind and higher outside, the olecranon's flat plane, the
-  brachioradialis high on the thumb side; the vastus lateralis' sweep, the vastus medialis' teardrop, the hamstrings,
-  the gastrocnemius higher and larger inside, the shin's flat face, the Achilles taper and the ankle bones (the inner
-  one higher). `LIMB_TILTS` tilt rings: the elbow's outer side lower, the briefs' leg openings rising to the crotch.
+  biceps forward and in, the triceps' horseshoe behind and higher outside, the olecranon's flat plane, the forearm's
+  flare just below the elbow (brachioradialis and extensors) tapering to a sturdy wrist; the vastus lateralis' sweep,
+  the vastus medialis' teardrop, the hamstrings, the kneecap and its tendon, the diamond calf (the gastrocnemius higher
+  and larger inside), the shin's flat face, the Achilles taper to a slim ankle and the ankle bones (the inner one
+  higher). `LIMB_TILTS` tilt rings: the elbow's outer side lower, the briefs' leg openings rising to the crotch.
 - The briefs have a gusset: centre-line points in front of and behind the crotch (`GUSSET`), with the thigh's first
-  ring taken at the leg opening's own angles, so the cloth runs under the body between the legs without a V-notch.
-- Feet: a round heel pad, the arch, a sole widest at the ball, a toe block with the big toe set apart. Hands: a
-  defined thumb, knuckle planes, the fingers grouped and curled a little more at rest.
+  ring taken at the leg opening's own angles, so the cloth runs under the body between the legs without a V-notch. The
+  dark waistband sits at the target's height; cyan piping (`PIPE`) runs from each front corner of the waistband down
+  and round to the outer hem, and a cyan band (`HEM_BAND`) follows the hem's outer half. Both are lifted overlays that
+  take the cloth's weights.
+- Feet: long, with a round heel pad, the arch, a sole widest at the ball, the big toe, the second toe and a block of
+  three smaller toes. Hands: large and open, a defined thumb, knuckle planes, the fingers slightly spread and curled.
+- Facets (`FACETS`, `TUBE_BANDS`): the skin is flat-shaded in designed planes (the briefs' cloth stays soft). Each run
+  of equal rings is a lattice whose quads gather into blocks by bands of one or two strips and pairs of quads; a full
+  2 x 2 block becomes two big triangles split along the diagonal that best fits the surface under it, any other block
+  one panel. Bands keep to the forms (the ribs under the pecs, the rib arch, the elbow, the knee and the hem stand
+  alone), so the plane breaks fall on the muscle forms, not on an arbitrary triangulation.
 
 ## Head, face and hair
 
@@ -111,9 +124,10 @@ and weapon frames keep the authoritative rig.
   the scalp (thicker on top for volume) and faceted clumps lying on it (`CLUMPS`), with the six spring chains. The top
   and fringe clumps run from a whorl behind the top of the head forward over it, arch off the hairline and fall onto
   the forehead, swept to the character's right in uneven lengths; the sides and back lie tight, down to the nape.
-- Shading: one smooth group over the body, broken at creases over 32° (30° on the head, 21° on the feet), at paint
-  borders and along the design creases (the pecs' lower edge, the abdominal lines, the linea alba); the exports carry
-  corner normals.
+- Shading: the skin's facets are flat (each facet's corners carry its area-weighted mean normal, each half on its own,
+  so the centre line creases). The briefs, head, ears, fingers, toes and the trim keep smooth planes broken at creases
+  over 30° on the head (32° elsewhere, 21° on the feet), at paint borders and along the face's design lines. The
+  exports carry corner normals.
 
 ## Paint and materials
 
