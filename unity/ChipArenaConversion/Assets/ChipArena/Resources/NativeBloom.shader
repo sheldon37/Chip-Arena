@@ -29,6 +29,9 @@ Shader "Hidden/ChipArena/NativeBloom" {
  sampler2D _BloomTex;float4 _BloomTex_TexelSize;
  float4 _BloomCurve;   // threshold, knee, firefly clamp, unused
  float4 _BloomParams;  // intensity (Reduced effects already applied), unused, unused, unused
+ // The anime map style's grade (Core NativeMapStyle; NativeLighting writes it per map look): x saturation, y contrast, w on (0:
+ // the composite is exactly the one above); the split tints for the shadows and the lights (linear multipliers).
+ float4 _ArenaGrade;float4 _ArenaGradeShadow;float4 _ArenaGradeLight;
  float3 SourceTap(float2 uv){return tex2Dlod(_MainTex,float4(uv,0.0,0.0)).rgb;}
  float3 BloomTexTap(float2 uv){return tex2Dlod(_BloomTex,float4(uv,0.0,0.0)).rgb;}
 // SHARED BEGIN
@@ -110,6 +113,15 @@ float3 BloomShoulder(float3 c)
  float3 t=lerp(c*(d/max(m,0.0001)),float3(d,d,d),w);
  return m>0.9?t:c;
 }
+// The anime map style's light grade, after the shoulder: saturation about the pixel's luminance, contrast in log space about
+// mid grey (0.18 x (c / 0.18)^contrast), then the shadow tint blended into the light tint over luminance 0 to 0.5.
+float3 BloomGrade(float3 c,float4 g,float3 shadowTint,float3 lightTint)
+{
+ float l=dot(c,float3(0.2126,0.7152,0.0722));
+ c=max(lerp(float3(l,l,l),c,g.x),float3(0.0,0.0,0.0));
+ c=0.18*pow(c/0.18,float3(g.y,g.y,g.y));
+ return c*lerp(shadowTint,lightTint,smoothstep(0.0,0.5,l));
+}
 // The frame plus the bloom times the intensity, through the display shoulder.
 float3 BloomComposite(float3 scene,float2 bloomUv,float2 d,float intensity){return BloomShoulder(scene+BloomTent(bloomUv,d)*intensity);}
 // SHARED END
@@ -127,6 +139,7 @@ float3 BloomComposite(float3 scene,float2 bloomUv,float2 d,float intensity){retu
  float4 FragComposite(v2f_img i):SV_Target
  {
   float4 scene=tex2Dlod(_MainTex,float4(i.uv,0.0,0.0));
+  if(_ArenaGrade.w>0.5)return float4(BloomGrade(BloomComposite(scene.rgb,BloomUv(i.uv),_BloomTex_TexelSize.xy,_BloomParams.x),_ArenaGrade,_ArenaGradeShadow.rgb,_ArenaGradeLight.rgb),scene.a);
   return float4(BloomComposite(scene.rgb,BloomUv(i.uv),_BloomTex_TexelSize.xy,_BloomParams.x),scene.a);
  }
  ENDCG

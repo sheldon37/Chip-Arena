@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             public int Count;public MaterialPropertyBlock Block;
         }
         private readonly List<Batch> batches=new List<Batch>();private int used;
-        private Material material;private Mesh mesh;private NativeFxDraw fx;private MaterialPropertyBlock one;
+        private Material material;private Mesh mesh,toonMesh;private NativeFxDraw fx;private MaterialPropertyBlock one;
         private NativeExpeditionStatesDraw(){}
         /// <summary>Null when the block shader is missing or unsupported (the HUD door holograms still stand in).</summary>
         public static NativeExpeditionStatesDraw Create()
@@ -51,10 +51,10 @@ namespace ChipArena.UnityConversion
                 if(instancing)
                 {
                     b.Block??=new MaterialPropertyBlock();b.Block.Clear();b.Block.SetVectorArray(SizeId,b.Size);b.Block.SetVectorArray(RestId,b.Rest);b.Block.SetVectorArray(ColorId,b.Color);b.Block.SetVectorArray(LookId,b.Look);
-                    Graphics.DrawMeshInstanced(mesh,0,material,b.M,b.Count,b.Block,ShadowCastingMode.On,true,0,null);continue;
+                    Graphics.DrawMeshInstanced(Shape,0,material,b.M,b.Count,b.Block,ShadowCastingMode.On,true,0,null);continue;
                 }
                 // Compatibility rendering: one by one with a reused block.
-                for(int k=0;k<b.Count;k++){one.Clear();one.SetVector(SizeId,b.Size[k]);one.SetVector(RestId,b.Rest[k]);one.SetVector(ColorId,b.Color[k]);one.SetVector(LookId,b.Look[k]);Graphics.DrawMesh(mesh,b.M[k],material,0,null,0,one,ShadowCastingMode.On,true);}
+                for(int k=0;k<b.Count;k++){one.Clear();one.SetVector(SizeId,b.Size[k]);one.SetVector(RestId,b.Rest[k]);one.SetVector(ColorId,b.Color[k]);one.SetVector(LookId,b.Look[k]);Graphics.DrawMesh(Shape,b.M[k],material,0,null,0,one,ShadowCastingMode.On,true);}
             }
             var q=scene.Quads;fx.Clear();var layer=fx.Effects;
             for(int i=0;i<q.Count;i++)
@@ -74,7 +74,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++){v[i]=new Vector3(s.Preview[i*3],s.Preview[i*3+1],s.Preview[i*3+2]);normals[i]=new Vector3(s.Normal[i*3],s.Normal[i*3+1],s.Normal[i*3+2]);colors[i]=new Color(s.Shade[i*4],s.Shade[i*4+1],s.Shade[i*4+2],s.Shade[i*4+3]);a.Add(new Vector4(s.Lattice[i*4],s.Lattice[i*4+1],s.Lattice[i*4+2],0));b.Add(new Vector4(s.Inset[i*4],s.Inset[i*4+1],s.Inset[i*4+2],0));}
             var mesh=new Mesh{name="Expedition state kit block"};mesh.vertices=v;mesh.normals=normals;mesh.colors=colors;mesh.SetUVs(0,a);mesh.SetUVs(1,b);mesh.triangles=s.Triangles;mesh.bounds=new Bounds(Vector3.zero,Vector3.one*2000);mesh.UploadMeshData(true);return mesh;
         }
-        public void Dispose(){if(mesh!=null)CapturedAnimation.Release(mesh);if(material!=null)CapturedAnimation.Release(material);fx?.Dispose();mesh=null;material=null;fx=null;batches.Clear();}
+        // The anime map style draws its rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh Shape=>NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;
+        public void Dispose(){if(mesh!=null)CapturedAnimation.Release(mesh);if(toonMesh!=null)CapturedAnimation.Release(toonMesh);toonMesh=null;if(material!=null)CapturedAnimation.Release(material);fx?.Dispose();mesh=null;material=null;fx=null;batches.Clear();}
     }
 
     public sealed partial class ConversionGame

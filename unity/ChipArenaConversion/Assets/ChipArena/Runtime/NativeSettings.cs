@@ -86,6 +86,8 @@ namespace ChipArena.UnityConversion
             if(nativeAudio!=null){nativeAudio.Effects=prefs.audio;nativeAudio.Music=prefs.music;nativeAudio.Menu=prefs.menuMusic;}if(presentation!=null){presentation.TrailsEnabled=prefs.trails;presentation.LowGraphics=low;}
             // The match camera's bloom: off on the low tier, x.6 with Reduced effects (NativeBloom.Quality).
             if(bloom!=null)bloom.Quality(low,prefs.reducedEffects);
+            // The anime map style's outline: off on the low tier (NativeToonOutline.Quality).
+            if(outline!=null)outline.Quality(low);
         }
     }
 }

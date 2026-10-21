@@ -413,9 +413,9 @@ namespace ChipArena.UnityConversion
             var b=blocks[i];double top=b.pos.y+b.size.y/2,bot=b.pos.y-b.size.y/2;
             if(s.EndsWith("-tank",StringComparison.Ordinal))
             {
-                // A water tank: hoops, a stepped lid, legs under the overhang.
+                // A water tank: hoops, a stepped lid (each step tapered under the anime map style: NativeMapStyle.Taper), legs under the overhang.
                 for(int k=0;k<3;k++)Box(i,b.pos.x,bot+.6+k*.8,b.pos.z,b.size.x+.08,.08,b.size.z+.08,With(P(NativeBlockLooks.SteelGreen,0x2A2C2A,RoleRoof),detail:true));
-                Box(i,b.pos.x,top+.2,b.pos.z,b.size.x*.7,.4,b.size.z*.7,P(NativeBlockLooks.Timber,0x5A4A38,RoleRoof));Box(i,b.pos.x,top+.5,b.pos.z,b.size.x*.35,.2,b.size.z*.35,P(NativeBlockLooks.Timber,0x5A4A38,RoleRoof));
+                Box(i,b.pos.x,top+.2,b.pos.z,b.size.x*.7,.4,b.size.z*.7,P(NativeBlockLooks.Timber,0x5A4A38,RoleRoof,NativeMapStyle.Taper));Box(i,b.pos.x,top+.5,b.pos.z,b.size.x*.35,.2,b.size.z*.35,P(NativeBlockLooks.Timber,0x5A4A38,RoleRoof,NativeMapStyle.Taper));
             }
             else if(s.EndsWith("-stair",StringComparison.Ordinal))
             {

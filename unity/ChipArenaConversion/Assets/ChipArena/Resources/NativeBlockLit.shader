@@ -56,6 +56,8 @@ Shader "ChipArena/NativeBlockLit"
         #define FLAG_SPIN_Z 64u
         // Cyber City's bank (Core NativeCyberCityLooks.Bank): with this flag the look id names a slot of BkCyber's bank.
         #define FLAG_CYBER 128u
+        // The anime style's taper (Core NativeMapStyle.Taper): with the style on, the part narrows toward its top by TOON_TAPER.
+        #define FLAG_TAPER 256u
         #define CY_TILE 0.0
         #define CY_PANEL 4.0
         #define CY_METAL 5.0
@@ -100,6 +102,8 @@ Shader "ChipArena/NativeBlockLit"
         #include "NativeWardLight.cginc"
         // The guns' muzzle lights (four slots of their own on every map; off while _MuzzleLightCount is 0).
         #include "NativeMuzzleLight.cginc"
+        // The anime map style's switch, ramp and helpers (_ArenaToon*; 0 everywhere but a map whose look turns it on).
+        #include "NativeToon.cginc"
         // The vertex lattice (NativeBlockLooks.Corner) and the instance's 180-degree mesh turns, which only pick other chipped corners.
         float3 BlockLattice(float3 a,float3 b,float3 h,float c,float flags,inout float3 n)
         {
@@ -107,6 +111,32 @@ Shader "ChipArena/NativeBlockLit"
             uint fl=uint(flags+0.5);
             if((fl&FLAG_SPIN_Y)!=0u){p.xz=-p.xz;n.xz=-n.xz;}
             if((fl&FLAG_SPIN_Z)!=0u){p.xy=-p.xy;n.xy=-n.xy;}
+            return p;
+        }
+        // The anime style's shapes (Core NativeMapStyle.Chamfer and Shape): a rod (its two thinner half extents both at most
+        // TOON_ROD and within TOON_ROD_SQUARE of each other, its longest TOON_ROD_LONG times the thicker) rounds its section at
+        // the lattice's clamp; any other block up to TOON_MID_HALF thick grows its chamfer with its thinnest half extent
+        // (TOON_CHAMFER_GROW per metre, at most TOON_CHAMFER_MAX); bigger blocks keep theirs.
+        #define TOON_ROD 0.15
+        #define TOON_ROD_SQUARE 0.6
+        #define TOON_ROD_LONG 3.0
+        #define TOON_MID_HALF 1.0
+        #define TOON_CHAMFER_GROW 0.16
+        #define TOON_CHAMFER_MAX 0.08
+        #define TOON_TAPER 0.3
+        float ToonChamfer(float3 h,float c)
+        {
+            float lo=min(h.x,min(h.y,h.z));float hi=max(h.x,max(h.y,h.z));float mid=h.x+h.y+h.z-lo-hi;
+            if(mid<=TOON_ROD&&lo>=TOON_ROD_SQUARE*mid&&hi>=TOON_ROD_LONG*mid)return 0.42*lo;
+            if(lo<=TOON_MID_HALF)return clamp(TOON_CHAMFER_GROW*lo,c,TOON_CHAMFER_MAX);
+            return c;
+        }
+        // The lattice with the style's chamfer and taper (the shader's vertex stage and the shadow caster); off: BlockLattice as is.
+        float3 ToonLattice(float3 a,float3 b,float3 h,float c,float flags,inout float3 n)
+        {
+            if(_ArenaToon.x<0.5)return BlockLattice(a,b,h,c,flags,n);
+            float3 p=BlockLattice(a,b,h,ToonChamfer(h,c),flags,n);
+            if((uint(flags+0.5)&FLAG_TAPER)!=0u)p.xz*=1.0-TOON_TAPER*saturate(p.y/max(h.y,0.0001)*0.5+0.5);
             return p;
         }
         // A flat normal from screen derivatives, turned to face along the interpolated preview normal (the derivatives' sign
@@ -344,6 +374,8 @@ Shader "ChipArena/NativeBlockLit"
             float across=sideX?obj.z*sign(nO.x):-obj.x*sign(nO.z);float halfAcross=sideX?hs.z:hs.x;float yb=obj.y+hs.y;
             float edge=top?min(hs.x-abs(obj.x),hs.z-abs(obj.z)):(sideX?min(hs.y-abs(obj.y),hs.z-abs(obj.z)):min(hs.x-abs(obj.x),hs.y-abs(obj.y)));
             float detail=saturate(1.0-fwm/0.06);
+            // The anime style keeps only part of each look's fine variation (per-brick tones, grain, speckle, edge wear).
+            bool toon=_ArenaToon.x>0.5;if(toon)detail*=_ArenaToonPaint.x;
             float3 alb=base;float3 emit=float3(0.0,0.0,0.0);float2 id=float2(0.0,0.0);float j=0.0;
             bool cyber=(fl&FLAG_CYBER)!=0u;
             if(cyber)BkCyber(look,uv,fw,fwm,top,base,seed,edge,detail,win,alb,emit,j);
@@ -472,6 +504,16 @@ Shader "ChipArena/NativeBlockLit"
             {
                 alb=base*(1.0+0.06*(BkNoise(uv*3.0+seed*5.0)-0.5)*detail);
             }
+            // The anime style's paint under the telegraphs: walls lighter toward the sky over the first 18 m (the rest frame's height,
+            // so stacked blocks run on), and a broad soft wash in place of fine noise.
+            if(toon)
+            {
+                // The material looks (brick to cobble, corrugated) lean toward their flat base colour: the pattern stays legible
+                // but reads as painted, not as noise (screens, glass, neon, the bank's looks and the hazard paint keep theirs).
+                if(!cyber&&look>0.5&&(look<9.5||BkIs(look,LOOK_CORRUGATED)))alb=lerp(base*0.85,alb,0.4+0.6*_ArenaToonPaint.x);
+                if(!top)alb*=lerp(1.0-_ArenaToonPaint.y,1.0+0.5*_ArenaToonPaint.y,smoothstep(0.0,18.0,pat.y));
+                alb*=1.0+_ArenaToonPaint.z*(BkFbm(uv*float2(0.22,0.6)+seed*3.0)-0.5);
+            }
             // The 2.3 load-bearing band: chevrons between black rules where BkBand fits them, the DANGER tag and the band lamp,
             // each only with its own flag (never on a stub, whose member is gone).
             float inBand=0.0;float plate=0.0;float lamp=0.0;
@@ -501,6 +543,8 @@ Shader "ChipArena/NativeBlockLit"
                 }
             }
             // Vertex shade (NativeBlockLooks: bevels +18%, corners -22%, stored x .8), then fresh breaks on chips, stubs and fragments.
+            // The anime style drops the baked bevel and corner shade (its rounded normal lights the edges instead).
+            if(toon)shade.rgb=float3(0.8,0.8,0.8);
             alb*=shade.rgb*1.25;
             float masonry=look<4.5?1.0:0.0;
             float3 fresh=masonry>0.5?(look>0.5&&look<3.5?BK_FRESH_BRICK:BK_FRESH_CONCRETE):(BkIs(look,LOOK_TIMBER)?base*1.5:float3(0.42,0.42,0.43));
@@ -525,7 +569,8 @@ Shader "ChipArena/NativeBlockLit"
             // Edge wear: chipped paint and arrises lighter within 7 cm of a face's edge.
             float wear=(1.0-smoothstep(0.0,0.07,edge))*step(0.5,BkNoise(uv*9.0+seed*2.0))*detail;
             alb=lerp(alb,alb*1.22+float3(0.012,0.012,0.012),wear*0.6);
-            if(!top)
+            if(!top&&toon)alb*=1.0-_ArenaToonPaint.w*(1.0-smoothstep(0.0,1.6,yb));
+            else if(!top)
             {
                 float g=1.0-smoothstep(1.2,1.8,yb);float splash=1.0-smoothstep(0.0,0.3,yb);
                 alb*=1.0-(BK_GRIME+0.04*(BkNoise(uv*float2(2.0,6.0))-0.5))*g-0.06*splash;
@@ -562,6 +607,15 @@ Shader "ChipArena/NativeBlockLit"
             sum+=MuzzleLights(world,n,0.0);
             return sum;
         }
+        // The anime style's light for a block (NativeToon.cginc): the rounded normal nT takes the key through the ramp, the
+        // flattened ambient and the point lights in stairs (the practical slots, flashes, muzzle lights and the ward field, all
+        // of BlockLights); the facet nW says how far the edge has turned for the edge light. v: toward the eye.
+        float3 ToonBlockLit(float3 albedo,float3 emit,float3 world,float3 nT,float3 nW,float3 v,float3 keyDir,float3 key,float atten,float3 shN,float3 shUp,float3 shDown)
+        {
+            float edge=saturate((1.0-dot(nT,nW))*TOON_EDGE_GAIN);
+            float3 light=ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y),key,dot(nT,keyDir),atten)+ToonPoints(BlockLights(world,nT));
+            return albedo*(light+ToonEdge(nT,v,keyDir,key,atten,edge))+ToonSheen(nT,v,shUp)+emit;
+        }
         // Ground haze (3.10: 15% from 0 to 2.5 m): _ArenaHaze.w at the street, gone at _ArenaHazeTop, faded in from 4 to 40 m away.
         float3 BlockHaze(float3 col,float3 world,float dist)
         {
@@ -572,12 +626,14 @@ Shader "ChipArena/NativeBlockLit"
         void BlockVertex(inout appdata_block v)
         {
             float4 size=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockSize);float flags=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook).w;
-            float3 n=v.normal;v.vertex=float4(BlockLattice(v.texcoord.xyz,v.texcoord1.xyz,size.xyz,size.w,flags,n),1.0);v.normal=n;
+            float3 n=v.normal;v.vertex=float4(ToonLattice(v.texcoord.xyz,v.texcoord1.xyz,size.xyz,size.w,flags,n),1.0);v.normal=n;
         }
         ENDCG
         Pass
         {
             Tags { "LightMode"="ForwardBase" }
+            // The environment's mark for the anime style's outline pass (Resources/NativeToonEdge.shader tests bit 16).
+            Stencil { Ref 16 WriteMask 16 Comp Always Pass Replace }
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -588,7 +644,7 @@ Shader "ChipArena/NativeBlockLit"
             #pragma instancing_options assumeuniformscaling
             #include "AutoLight.cginc"
             #include "UnityLightingCommon.cginc"
-            struct v2f {float4 pos:SV_POSITION;float4 world:TEXCOORD0;float4 obj:TEXCOORD1;float4 pat:TEXCOORD2;float4 size:TEXCOORD3;float4 col:TEXCOORD4;float4 shade:TEXCOORD5;float3 nO:TEXCOORD6;float3 nW:TEXCOORD7;UNITY_SHADOW_COORDS(8) UNITY_FOG_COORDS(9)};
+            struct v2f {float4 pos:SV_POSITION;float4 world:TEXCOORD0;float4 obj:TEXCOORD1;float4 pat:TEXCOORD2;float4 size:TEXCOORD3;float4 col:TEXCOORD4;float4 shade:TEXCOORD5;float3 nO:TEXCOORD6;float3 nW:TEXCOORD7;UNITY_SHADOW_COORDS(8) UNITY_FOG_COORDS(9) float4 ax:TEXCOORD10;float4 ay:TEXCOORD11;};
             v2f vert(appdata_block v)
             {
                 v2f o;UNITY_SETUP_INSTANCE_ID(v);UNITY_INITIALIZE_OUTPUT(v2f,o);
@@ -596,6 +652,8 @@ Shader "ChipArena/NativeBlockLit"
                 BlockVertex(v);o.pos=UnityObjectToClipPos(v.vertex);o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,col.w);
                 o.obj=float4(v.vertex.xyz,rest.w);o.pat=float4(v.vertex.xyz+rest.xyz,look.x+16.0*look.w);o.size=float4(size.xyz,look.y);o.col=float4(col.rgb,look.z);o.shade=v.color;
                 o.nO=v.normal;o.nW=UnityObjectToWorldNormal(v.normal);
+                // The anime style: the instance's x and y axes in the world (its rounded normal's frame) and the chamfer drawn.
+                o.ax=float4(UnityObjectToWorldDir(float3(1.0,0.0,0.0)),_ArenaToon.x>0.5?ToonChamfer(size.xyz,size.w):size.w);o.ay=float4(UnityObjectToWorldDir(float3(0.0,1.0,0.0)),0.0);
                 UNITY_TRANSFER_SHADOW(o,float2(0.0,0.0));UNITY_TRANSFER_FOG(o,o.pos);return o;
             }
             fixed4 frag(v2f i):SV_Target
@@ -604,8 +662,20 @@ Shader "ChipArena/NativeBlockLit"
                 float3 nO=BlockOrient(cross(ddx(i.obj.xyz),ddy(i.obj.xyz)),i.nO);float3 nW=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),i.nW);
                 BlockSurf s=BlockSurface(i.obj.xyz,i.pat.xyz,fwP,nO,i.size.xyz,i.pat.w,i.size.w,i.col.rgb,i.col.w,i.shade,i.obj.w,i.world.w);
                 UNITY_LIGHT_ATTENUATION(atten,i,i.world.xyz);
-                float3 light=ShadeSH9(float4(nW,1.0))+_LightColor0.rgb*(saturate(dot(nW,_WorldSpaceLightPos0.xyz))*atten)+BlockLights(i.world.xyz,nW);
-                fixed4 c=fixed4(BlockHaze(s.albedo*light+s.emit,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
+                float3 col;
+                // The anime style (NativeToon.cginc; Core NativeMapStyle): the rounded normal in the instance's frame, then the ramp.
+                if(_ArenaToon.x>0.5)
+                {
+                    float3 nR=ToonRoundNormal(i.obj.xyz,i.size.xyz,ToonRadius(i.size.xyz,i.ax.w),nO);
+                    float3 nT=normalize(i.ax.xyz*nR.x+i.ay.xyz*nR.y+cross(i.ax.xyz,i.ay.xyz)*nR.z);
+                    col=ToonBlockLit(s.albedo,s.emit,i.world.xyz,nT,nW,normalize(_WorldSpaceCameraPos-i.world.xyz),_WorldSpaceLightPos0.xyz,_LightColor0.rgb,atten,ShadeSH9(float4(nT,1.0)),ShadeSH9(float4(0.0,1.0,0.0,1.0)),ShadeSH9(float4(0.0,-1.0,0.0,1.0)));
+                }
+                else
+                {
+                    float3 light=ShadeSH9(float4(nW,1.0))+_LightColor0.rgb*(saturate(dot(nW,_WorldSpaceLightPos0.xyz))*atten)+BlockLights(i.world.xyz,nW);
+                    col=s.albedo*light+s.emit;
+                }
+                fixed4 c=fixed4(BlockHaze(col,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
                 UNITY_APPLY_FOG(i.fogCoord,c);return c;
             }
             ENDCG

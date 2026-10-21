@@ -303,11 +303,11 @@ namespace ChipArena.UnityConversion
                     double px=x0+2+(x1-x0-4)*Hash(id,k,1202),pz=z0+2+(z1-z0-4)*Hash(id,k,1203),t=Hash(id,k,1204);if(Overlapping(px,top+1.5,pz,1.6,1.5,1.6,i))continue;
                     if(t<.3&&(kind==Residential||kind==Shops||kind==Civic||kind==Hotel)&&top>=9)
                     {
-                        // A water tank: four legs, a deck, the staved tank, its cone, the finial.
+                        // A water tank: four legs, a deck, the staved tank, its cone (a true taper under the anime map style), the finial.
                         double r=1.0+.3*Hash(id,k,1205);Begin();var leg=P(NativeBlockLooks.SteelGreen,0x2A2622,RoleRoof);var stave=P(NativeBlockLooks.Timber,Pick(new[]{0x5A4632,0x4A3A2C,0x6A5440},Hash(id,k,1206)),RoleRoof);
                         foreach(var (sx,sz) in new[]{(-1,-1),(1,-1),(1,1),(-1,1)})Box(i,px+sx*(r-.25),top+1.1,pz+sz*(r-.25),.12,2.2,.12,With(leg,detail:true));
                         Box(i,px,top+2.25,pz,2*r+.2,.12,2*r+.2,With(P(NativeBlockLooks.Timber,0x3A2E22,RoleRoof),detail:true));Round(i,px,top+2.3,pz,r*.92,2.3,stave);
-                        Round(i,px,top+4.6,pz,r*.98,.35,P(NativeBlockLooks.Tar,0x2A2624,RoleRoof));Box(i,px,top+5.15,pz,r*.9,.5,r*.9,P(NativeBlockLooks.Tar,0x2A2624,RoleRoof),AxisRot(0,1,0,45));
+                        Round(i,px,top+4.6,pz,r*.98,.35,P(NativeBlockLooks.Tar,0x2A2624,RoleRoof));Box(i,px,top+5.15,pz,r*.9,.5,r*.9,P(NativeBlockLooks.Tar,0x2A2624,RoleRoof,NativeMapStyle.Taper),AxisRot(0,1,0,45));
                         Box(i,px,top+5.6,pz,.08,.5,.08,With(leg,detail:true));
                         foreach(double hy in new[]{2.9,4.0})Box(i,px,top+hy,pz,2*r*.94,.05,2*r*.94,With(P(NativeBlockLooks.SteelGreen,0x2A2622,RoleRoof),detail:true),AxisRot(0,1,0,11.25));
                         End();

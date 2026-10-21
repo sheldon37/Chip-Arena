@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         // An entrance or the draft takes the screen: it keeps the fog it found for EndIntro (all of it, the density included).
         // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin),
         // and the guns' muzzle lights (no arena flash lights a stage).
-        private static void EnterStage(){if(introActive)return;introActive=true;stageFog=ReadFog();}
+        private static void EnterStage(){StyleOff();if(introActive)return;introActive=true;stageFog=ReadFog();}
         private static MapFogState ReadFog(){var c=RenderSettings.fogColor;return new MapFogState{On=RenderSettings.fog,Mode=(MapFogMode)(int)RenderSettings.fogMode,WritesDensity=true,Density=RenderSettings.fogDensity,Color=new MapLookColor{r=c.r,g=c.g,b=c.b,a=c.a},Start=RenderSettings.fogStartDistance,End=RenderSettings.fogEndDistance};}
         private static void WriteFog(in MapFogState f){RenderSettings.fog=f.On;RenderSettings.fogMode=(FogMode)(int)f.Mode;if(f.WritesDensity)RenderSettings.fogDensity=f.Density;RenderSettings.fogColor=C(f.Color);RenderSettings.fogStartDistance=f.Start;RenderSettings.fogEndDistance=f.End;}
         // The stages' shadows (NativeMapLooks.StageCascades and StageShadowDistance: every old map's own), written only on a change.
@@ -193,7 +193,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Rooftop(Camera camera,Material skybox)
         {
-            WardFieldOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
+            WardFieldOff();StyleOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=new Color(.03f,.02f,.07f);RenderSettings.fogStartDistance=45;RenderSettings.fogEndDistance=700;
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.10f,.11f,.24f);RenderSettings.ambientEquatorColor=new Color(.09f,.05f,.13f);RenderSettings.ambientGroundColor=new Color(.10f,.03f,.09f);
             // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
@@ -209,7 +209,40 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The map's look: the entry its `look` names (UnityMaps maps carry one), else its id's entry, else today's look worked
         /// out from the map (NativeMapLooks.Fallback). The old maps name none, so they resolve by id as before.</summary>
-        public static MapLook Look(ContentMap map)=>(string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent);
+        public static MapLook Look(ContentMap map)=>Styled((string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent));
+        // ---- the anime map style (Core NativeMapStyle, Resources/NativeToon.cginc; docs/MAP-STYLE-ANIME.md) ----
+        /// <summary>The legacy switch: `--ca-map-style legacy` on the command line draws every map in its legacy look.</summary>
+        public static readonly bool LegacyStyle=NativeMapStyle.LegacyArgument(Environment.GetCommandLineArgs());
+        // The styled copy of each look, made once (Look runs every frame on some maps; a look without the style is itself).
+        private static readonly Dictionary<MapLook,MapLook> styled=new Dictionary<MapLook,MapLook>();
+        private static MapLook Styled(MapLook raw){if(raw?.toon==null||!raw.toon.on||LegacyStyle)return raw;if(!styled.TryGetValue(raw,out var s)){s=NativeMapStyle.Styled(raw,LegacyStyle);styled[raw]=s;}return s;}
+        /// <summary>The current look's style values (all 0 while it is off, a stage owns the screen or the rooftop shows).</summary>
+        public static readonly MapStyleState Style=new MapStyleState();
+        /// <summary>Whether the style is drawing now (the kits pick their rounded mesh by it; NativeToonOutline adds its pass by it).</summary>
+        public static bool StyleActive{get;private set;}
+        private static bool styleWritten;
+        private static readonly int ToonId=Shader.PropertyToID("_ArenaToon"),ToonBandId=Shader.PropertyToID("_ArenaToonBand"),ToonShadeId=Shader.PropertyToID("_ArenaToonShade"),ToonLitId=Shader.PropertyToID("_ArenaToonLit"),
+            ToonRimId=Shader.PropertyToID("_ArenaToonRim"),ToonPaintId=Shader.PropertyToID("_ArenaToonPaint"),EdgeId=Shader.PropertyToID("_ArenaEdge"),EdgeColorId=Shader.PropertyToID("_ArenaEdgeColor"),
+            GradeId=Shader.PropertyToID("_ArenaGrade"),GradeShadowId=Shader.PropertyToID("_ArenaGradeShadow"),GradeLightId=Shader.PropertyToID("_ArenaGradeLight"),
+            SkyToonId=Shader.PropertyToID("_SkyToon"),SkyToonLitId=Shader.PropertyToID("_SkyToonLit"),SkyToonShadeId=Shader.PropertyToID("_SkyToonShade"),SkyToonBandId=Shader.PropertyToID("_SkyToonBand");
+        private static Vector4 V(float[] a)=>new Vector4(a[0],a[1],a[2],a[3]);
+        // A linear colour vector for the active colour space (w kept).
+        private static Vector4 VC(float[] a){if(QualitySettings.activeColorSpace==ColorSpace.Linear)return V(a);var c=new Color(a[0],a[1],a[2]).gamma;return new Vector4(c.r,c.g,c.b,a[3]);}
+        // Writes the style's globals for `look` (Apply) and the sky's style values.
+        private static void StyleGlobals(MapLook look)
+        {
+            NativeMapStyle.State(look,LegacyStyle,true,Style);StyleActive=Style.On;styleWritten=true;
+            Shader.SetGlobalVector(ToonId,V(Style.Toon));Shader.SetGlobalVector(ToonBandId,V(Style.Band));Shader.SetGlobalVector(ToonShadeId,V(Style.Shade));Shader.SetGlobalVector(ToonLitId,V(Style.Lit));
+            Shader.SetGlobalVector(ToonRimId,VC(Style.Rim));Shader.SetGlobalVector(ToonPaintId,V(Style.Paint));Shader.SetGlobalVector(EdgeId,V(Style.Edge));Shader.SetGlobalVector(EdgeColorId,VC(Style.EdgeColor));
+            Shader.SetGlobalVector(GradeId,V(Style.GradeParams));Shader.SetGlobalVector(GradeShadowId,V(Style.GradeShadow));Shader.SetGlobalVector(GradeLightId,V(Style.GradeLight));
+            if(sky!=null){sky.SetVector(SkyToonId,V(Style.SkyToon));sky.SetVector(SkyToonLitId,VC(Style.CloudLit));sky.SetVector(SkyToonShadeId,VC(Style.CloudShade));sky.SetVector(SkyToonBandId,VC(Style.SkyBand));}
+        }
+        /// <summary>Turns the style off (an entrance, the draft or the rooftop owns the screen); Apply turns the map's back on.</summary>
+        public static void StyleOff()
+        {
+            if(!styleWritten&&!StyleActive)return;StyleActive=false;styleWritten=false;Style.Clear();
+            Shader.SetGlobalVector(ToonId,Vector4.zero);Shader.SetGlobalVector(EdgeId,Vector4.zero);Shader.SetGlobalVector(GradeId,new Vector4(1,1,0,0));if(sky!=null)sky.SetVector(SkyToonId,Vector4.zero);
+        }
         private static readonly int ArenaRimDirId=Shader.PropertyToID("_ArenaRimDir"),ArenaRimColorId=Shader.PropertyToID("_ArenaRimColor");
         /// <summary>
         /// NativeBlockLit's rim (it has no add pass, and Apply keeps the rim per-pixel on dressed maps, so Unity's second
@@ -234,7 +267,7 @@ namespace ChipArena.UnityConversion
             var look=Look(map);current=look;currentMap=map;arenaPicked=false;WardFieldOff();zoneHouse=1;var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
             camera.farClipPlane=s.FarClip;camera.backgroundColor=C(s.Background);camera.clearFlags=s.Skybox?CameraClearFlags.Skybox:CameraClearFlags.SolidColor;
             WriteFog(s.Fog);if(introActive)stageFog=ReadFog();
-            Sky(s);RenderSettings.skybox=s.Skybox?sky:null;Shadows();
+            Sky(s);RenderSettings.skybox=s.Skybox?sky:null;Shadows();StyleGlobals(look);
             if(moon!=null){moon.color=C(s.KeyColor);Aim(moon,s.KeyAim);moon.shadows=LightShadowsOf(s.KeyShadows);moon.shadowStrength=s.KeyStrength;}
             // On a dressed map the rim is always a pixel light: an Auto rim that pixel lights crowd out (3 slots on the low tier
             // against the forced combat, blast and seeker lights) lands in the SH, which NativeBlockLit adds on top of its own rim

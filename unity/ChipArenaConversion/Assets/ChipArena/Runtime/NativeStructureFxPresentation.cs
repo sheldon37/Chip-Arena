@@ -212,14 +212,20 @@ namespace ChipArena.UnityConversion
 
         // ---------- mesh ----------
         // Baked Lambert in the scene's light (NativeLit's albedo x (trilight ambient + sun N·L)), kept as an ambient cube in
-        // display values so a rotated face blends the six axis lights by its normal's squares.
+        // display values so a rotated face blends the six axis lights by its normal's squares. With the anime map style on
+        // (NativeLighting.Style), each face takes the style's ramp instead (Core NativeMapStyle.Diffuse: the flattened ambient
+        // in the shade tint, the key in the lit tint), as NativeLit lights the blocks the debris came from.
         private void Lights()
         {
             var sun=RenderSettings.sun;Vector3 l=sun!=null?-sun.transform.forward:new Vector3(.35f,.85f,.55f).normalized;Color key=sun!=null&&sun.isActiveAndEnabled?sun.color.linear*sun.intensity:Color.white*.8f;
             bool tri=RenderSettings.ambientMode==UnityEngine.Rendering.AmbientMode.Trilight;Color sky=(tri?RenderSettings.ambientSkyColor:RenderSettings.ambientLight).linear,mid=(tri?RenderSettings.ambientEquatorColor:RenderSettings.ambientLight).linear,low=(tri?RenderSettings.ambientGroundColor:RenderSettings.ambientLight).linear;
-            for(int f=0;f<6;f++){var n=Normals[f];Color amb=n.y>0?Color.Lerp(mid,sky,n.y):n.y<0?Color.Lerp(mid,low,-n.y):mid;Color c=amb+key*Mathf.Max(0,Vector3.Dot(n,l));faceLight[f]=new Color(Mathf.LinearToGammaSpace(c.r),Mathf.LinearToGammaSpace(c.g),Mathf.LinearToGammaSpace(c.b),1);}
+            bool toon=NativeLighting.StyleActive;var st=NativeLighting.Style;
+            for(int f=0;f<6;f++){var n=Normals[f];Color amb=n.y>0?Color.Lerp(mid,sky,n.y):n.y<0?Color.Lerp(mid,low,-n.y):mid;Color c=amb+key*Mathf.Max(0,Vector3.Dot(n,l));
+                if(toon){amb=Color.Lerp(amb,Color.Lerp(low,sky,.55f+.3f*n.y),st.Toon[3]);float ndl=Vector3.Dot(n,l);
+                    c=new Color(Toon(amb.r,key.r,ndl,st,0),Toon(amb.g,key.g,ndl,st,1),Toon(amb.b,key.b,ndl,st,2));}faceLight[f]=new Color(Mathf.LinearToGammaSpace(c.r),Mathf.LinearToGammaSpace(c.g),Mathf.LinearToGammaSpace(c.b),1);}
             Color side=(faceLight[0]+faceLight[1]+faceLight[4]+faceLight[5])*.25f;topLight=faceLight[2]*.55f+side*.45f;bottomLight=side*.6f+faceLight[3]*.4f;
         }
+        private static float Toon(float ambient,float key,float ndl,MapStyleState s,int k)=>NativeMapStyle.Diffuse(ambient,key,ndl,1,s.Shade[k],s.Shade[3],s.Lit[k],s.Band[0],s.Band[1],s.Band[2],s.Toon[1]);
         private Color Light(Vector3 n){Vector3 s=Vector3.Scale(n,n);return faceLight[n.x>=0?0:1]*s.x+faceLight[n.y>=0?2:3]*s.y+faceLight[n.z>=0?4:5]*s.z;}
         private static Vector4 Uv(float u,float v,float mode,float flags)=>new Vector4(u,v,mode,flags);
         private void Fill(Camera camera)
