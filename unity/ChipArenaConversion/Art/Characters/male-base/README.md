@@ -78,17 +78,31 @@ and weapon frames keep the authoritative rig.
   - `sec-device-lid` and `sec-device-chip`: under `right-wrist`. Their hinge, insertion path and states are in
     `device`.
 
+## Body
+
+- The torso is designed rather than measured: front, side and back profile curves per row (`TORSO`), rounded
+  cross-sections whose roundness changes from the pelvis through the waist to the ribcage (`TORSO_ROUND`), and broad
+  muscle forms laid over them (`TORSO_FORMS`: pectorals, sternum, abdominals, obliques over the iliac crests, lats,
+  scapulae, spine, glutes). Rows follow the muscle flow (the pecs' lower edge rises into the armpit, the waistband dips
+  into a V along the crests); 13 columns per half ring.
+- The deltoid is a round cap on a sphere over the shoulder joint (two rings between the chest's socket and the arm);
+  the limbs are lofted rings with per-ring shaping for the biceps and triceps, the forearm full near the elbow and flat
+  at the wrist, the quadriceps' sweep, the knee's patella plane, and a calf high on the inside.
+- The limbs' cross-sections still come from the measured form reference (`form_reference.json`).
+
 ## Head, face and hair
 
-- The head is a designed low-poly layout (`FACE_LAYOUT`: the lid margins round each eyeball, the iris, lid creases,
-  the brow strip, the nose's bridge, dorsum, alae and nostrils, the lip borders and mouth line, the chin and jaw lines,
-  the hairline with its temples, sideburns and nape) placed on the measured head form, triangulated with constrained
-  Delaunay in a conformal chart of the head (`build_head`). Facial thirds and eye widths follow the usual proportion
-  rules; every feature is geometry, and paint only colours what the geometry shapes (no eyeliner, outlines or decals).
+- The head is a designed low-poly layout (`FACE_LAYOUT`: the lid margins round each eyeball, the iris and pupil, lid
+  creases, the brow strip, the nose's bridge, dorsum, alae and nostrils, the lip borders and mouth line, the chin and
+  jaw lines, the hairline with its temples, sideburns and nape) placed on the measured head form, triangulated with
+  constrained Delaunay in a conformal chart of the head (`build_head`). Facial thirds and eye widths follow the usual
+  proportion rules; every feature is geometry, and paint only colours what the geometry shapes (no eyeliner, outlines
+  or decals; the upper lid's plane is a shade darker so the eyes sit in their sockets).
 - The scalp inside the hairline is painted on the hair channel. The `spiky-01` hair is a separate object: a thin cap
   over the scalp and swept, faceted clumps lying on it, with the six spring chains.
-- Shading: planes are smooth inside and break at creases over 21° (30° on the head), at paint borders and along the
-  design creases; the exports carry corner normals.
+- Shading: one smooth group over the body, broken at creases over 32° (30° on the head, 21° on the feet), at paint
+  borders and along the design creases (the pecs' lower edge, the abdominal lines, the linea alba); the exports carry
+  corner normals.
 
 ## Paint and materials
 

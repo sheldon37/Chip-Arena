@@ -1,3 +1,22 @@
+## 2026-10-21 — Claude: low-poly male base, neutral body redesign, eyes, hair and neck (on the branch, not merged)
+
+- **Branch/base:** `claude/lowpoly-base-model` after `80130ff` (the anatomy checkpoint). Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.
+- **Owner/coordinator brief:** neutral only, no animation until the go-ahead. A redesign of the body for silhouette and appeal, lean-athletic (Reference B = `ref2-body-crop-base` until the owner's image arrives); eyes not beady; tight hair sides with volume on top; a fuller neck.
+- **What changed (mesh only; the 22 joints keep their names and topology):**
+  - Torso: designed front, side and back profiles with rounded cross-sections (pelvis to waist to ribcage) and broad muscle forms (pecs up to the clavicles, sternum, abdominals, obliques over the iliac crests, lats, scapulae, spine, glutes); rows that follow the muscle flow (the pecs' lower edge rising into the armpit, a waistband V along the crests); 13 columns per half ring instead of 9; one smooth group with creases only at the pecs' lower edge, short abdominal lines and the linea alba.
+  - Shoulders: the clavicle offset goes from ±.115 to ±.122 (shoulder joints at ±.192, the only joint change; the drift table in doc c is re-measured). The deltoid is a round cap over the joint, the trapezius rises into the neck.
+  - Arms: a fuller deltoid and upper arm (biceps in front, triceps behind); the forearm is full near the elbow and flat at a stronger wrist; hands about 8 % bigger.
+  - Legs: quadriceps' sweep, inner thigh and hamstrings; a wider knee with a patella plane; the calf higher on the inside.
+  - Eyes: a dark-brown iris disc about half the eye's width with a pupil, tucked under the upper lid (less sclera), and a slightly darker upper-lid plane.
+  - Hair: spikes rise from the hairline, up and back with a lean to the right, over the top; short tight sides and back; clump roots sunk into the cap.
+  - Neck: wider, with sternocleidomastoid planes into the clavicles.
+  - Presentation: the neutral sheet uses a relaxed stance (shoulders down, arms a little out and forward, soft elbows and knees, feet about hip-width, toes slightly out); the A-pose sheet stays.
+- **Counts:** 5,136 triangles (body 3,954, hair 698, core 210, device 274).
+- **Checks (actual):** `Tests/test_lowpoly_male_base.py` 12 OK; a foot-fold shading fix (corner normals crossing a 90° fold at the ankle front) came out of it. Drift re-measured. run5b not re-run for this commit (art, test and docs only since the `f0db5f8` run).
+- **Renders:** scratch `renders-lowpoly-base/` `anatomy-neutral`, `anatomy-apose`, `anatomy-silhouette`, `head-sheet`, `head-sheet-guide`; the previous ones are `*-v2`.
+- **Risks:** the limbs are still lofted rings (round in section, clean but simple); the head keeps an irregular triangulation; weapon drift (P1/P2) is unchanged by this pass.
+- **Next:** owner review; then, on a go-ahead, the adapter animation tests.
+
 ## 2026-10-21 — Claude: low-poly male base, proportion and face redesign, anatomy checkpoint (on the branch, not merged)
 
 - **Branch/base:** `claude/lowpoly-base-model` (shared `acc90b9` contained; shared has since moved to `e0f904c` and will be merged in before the final push; not merged, no PR, not published). Commits: WIP `e374e18`, checkpoint `f0db5f8`, and this log update.

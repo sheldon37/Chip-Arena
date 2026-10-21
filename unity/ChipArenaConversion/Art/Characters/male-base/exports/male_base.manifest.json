@@ -15,8 +15,8 @@
  "blender": "4.2.23 LTS",
  "binary": {
   "file": "male_base.bytes",
-  "bytes": 236343,
-  "sha256": "a5c9935dd60545d2178d74cd2706c8acf6f51c9f0322a4f32fbe45c6300f187d",
+  "bytes": 233195,
+  "sha256": "ccf8e68009e080e8d31f07096cf45fe1c680f97cb39fc05a684d2c93b9f4864f",
   "layout": [
    "header: \"CALP\", u16 version, u16 flags, u16 bones, u16 pieces, u32 vertices, u32 triangles",
    "bones: u8 name length, name, i16 parent, u8 flags (1 secondary, 2 deform), 3 f32 rest local",
@@ -237,12 +237,12 @@
     "name": "left-clavicle",
     "parent": 3,
     "restLocal": [
-     -0.115,
+     -0.122,
      0.155,
      0.0
     ],
     "restWorld": [
-     -0.115,
+     -0.122,
      0.22,
      0.0
     ],
@@ -275,7 +275,7 @@
      0.0
     ],
     "restWorld": [
-     -0.185,
+     -0.192,
      0.22,
      0.0
     ],
@@ -308,7 +308,7 @@
      0.0
     ],
     "restWorld": [
-     -0.185,
+     -0.192,
      -0.085,
      0.0
     ],
@@ -341,7 +341,7 @@
      0.0
     ],
     "restWorld": [
-     -0.185,
+     -0.192,
      -0.335,
      0.0
     ],
@@ -369,12 +369,12 @@
     "name": "right-clavicle",
     "parent": 3,
     "restLocal": [
-     0.115,
+     0.122,
      0.155,
      0.0
     ],
     "restWorld": [
-     0.115,
+     0.122,
      0.22,
      0.0
     ],
@@ -407,7 +407,7 @@
      0.0
     ],
     "restWorld": [
-     0.185,
+     0.192,
      0.22,
      0.0
     ],
@@ -440,7 +440,7 @@
      0.0
     ],
     "restWorld": [
-     0.185,
+     0.192,
      -0.085,
      0.0
     ],
@@ -473,7 +473,7 @@
      0.0
     ],
     "restWorld": [
-     0.185,
+     0.192,
      -0.335,
      0.0
     ],
@@ -765,12 +765,12 @@
     "name": "sec-device-chip",
     "parent": 13,
     "restLocal": [
-     0.040931,
+     0.042559,
      0.044,
      0.0
     ],
     "restWorld": [
-     0.225931,
+     0.234559,
      -0.291,
      0.0
     ],
@@ -791,12 +791,12 @@
     "name": "sec-device-lid",
     "parent": 13,
     "restLocal": [
-     0.049231,
+     0.050859,
      0.066,
      0.0
     ],
     "restWorld": [
-     0.234231,
+     0.242859,
      -0.269,
      0.0
     ],
@@ -817,14 +817,14 @@
     "name": "sec-hair-back-l-1",
     "parent": 5,
     "restLocal": [
-     -0.031761,
-     0.159078,
-     0.012938
+     -0.025524,
+     0.164505,
+     0.019962
     ],
     "restWorld": [
-     -0.031761,
-     0.544078,
-     0.012938
+     -0.025524,
+     0.549505,
+     0.019962
     ],
     "restRotation": [
      0.0,
@@ -844,14 +844,14 @@
     "name": "sec-hair-back-l-2",
     "parent": 24,
     "restLocal": [
-     -0.004153,
-     -0.020581,
-     -0.021814
+     -0.007317,
+     -0.019935,
+     -0.02215
     ],
     "restWorld": [
-     -0.035913,
-     0.523497,
-     -0.008876
+     -0.032841,
+     0.52957,
+     -0.002188
     ],
     "restRotation": [
      0.0,
@@ -871,14 +871,14 @@
     "name": "sec-hair-back-r-1",
     "parent": 5,
     "restLocal": [
-     0.039604,
-     0.153519,
-     0.005728
+     0.025723,
+     0.164497,
+     0.01991
     ],
     "restWorld": [
-     0.039604,
-     0.538519,
-     0.005728
+     0.025723,
+     0.549497,
+     0.01991
     ],
     "restRotation": [
      0.0,
@@ -898,14 +898,14 @@
     "name": "sec-hair-back-r-2",
     "parent": 26,
     "restLocal": [
-     0.004761,
-     -0.024977,
-     -0.016339
+     0.008723,
+     -0.020208,
+     -0.02075
     ],
     "restWorld": [
-     0.044365,
-     0.513542,
-     -0.010611
+     0.034446,
+     0.529289,
+     -0.00084
     ],
     "restRotation": [
      0.0,
@@ -925,14 +925,14 @@
     "name": "sec-hair-front-l-1",
     "parent": 5,
     "restLocal": [
-     -0.026162,
-     0.147039,
-     0.116973
+     -0.030356,
+     0.151043,
+     0.108728
     ],
     "restWorld": [
-     -0.026162,
-     0.532039,
-     0.116973
+     -0.030356,
+     0.536043,
+     0.108728
     ],
     "restRotation": [
      0.0,
@@ -952,14 +952,14 @@
     "name": "sec-hair-front-l-2",
     "parent": 28,
     "restLocal": [
-     0.011081,
-     0.025707,
-     -0.018584
+     0.008083,
+     0.025913,
+     -0.00699
     ],
     "restWorld": [
-     -0.015081,
-     0.557746,
-     0.098389
+     -0.022273,
+     0.561957,
+     0.101738
     ],
     "restRotation": [
      0.0,
@@ -979,14 +979,14 @@
     "name": "sec-hair-front-r-1",
     "parent": 5,
     "restLocal": [
-     0.029614,
-     0.146846,
-     0.114938
+     0.021591,
+     0.15204,
+     0.109694
     ],
     "restWorld": [
-     0.029614,
-     0.531846,
-     0.114938
+     0.021591,
+     0.53704,
+     0.109694
     ],
     "restRotation": [
      0.0,
@@ -1006,14 +1006,14 @@
     "name": "sec-hair-front-r-2",
     "parent": 30,
     "restLocal": [
-     -0.002415,
-     0.023939,
-     -0.018603
+     0.000695,
+     0.025664,
+     -0.010525
     ],
     "restWorld": [
-     0.027198,
-     0.555785,
-     0.096335
+     0.022287,
+     0.562704,
+     0.099169
     ],
     "restRotation": [
      0.0,
@@ -1033,14 +1033,14 @@
     "name": "sec-hair-side-l-1",
     "parent": 5,
     "restLocal": [
-     -0.048826,
-     0.155933,
-     0.079752
+     -0.046425,
+     0.161244,
+     0.062446
     ],
     "restWorld": [
-     -0.048826,
-     0.540933,
-     0.079752
+     -0.046425,
+     0.546244,
+     0.062446
     ],
     "restRotation": [
      0.0,
@@ -1060,14 +1060,14 @@
     "name": "sec-hair-side-l-2",
     "parent": 32,
     "restLocal": [
-     0.001748,
-     0.003107,
-     -0.019423
+     -0.00223,
+     -0.001853,
+     -0.013913
     ],
     "restWorld": [
-     -0.047079,
-     0.54404,
-     0.060328
+     -0.048655,
+     0.544391,
+     0.048533
     ],
     "restRotation": [
      0.0,
@@ -1087,14 +1087,14 @@
     "name": "sec-hair-side-r-1",
     "parent": 5,
     "restLocal": [
-     0.04939,
-     0.155901,
-     0.079152
+     0.046833,
+     0.16122,
+     0.062033
     ],
     "restWorld": [
-     0.04939,
-     0.540901,
-     0.079152
+     0.046833,
+     0.54622,
+     0.062033
     ],
     "restRotation": [
      0.0,
@@ -1114,14 +1114,14 @@
     "name": "sec-hair-side-r-2",
     "parent": 34,
     "restLocal": [
-     -0.002348,
-     0.0028,
-     -0.019257
+     0.002018,
+     -0.001592,
+     -0.0137
     ],
     "restWorld": [
-     0.047042,
-     0.5437,
-     0.059894
+     0.048851,
+     0.544629,
+     0.048333
     ],
     "restRotation": [
      0.0,
@@ -1389,6 +1389,13 @@
    "srgb": "#202029",
    "channel": 2,
    "slot": 0
+  },
+  {
+   "index": 30,
+   "name": "lid-shade",
+   "srgb": "#b87e64",
+   "channel": 1,
+   "slot": 0
   }
  ],
  "channels": {
@@ -1473,8 +1480,8 @@
   {
    "name": "body",
    "object": "CA_Body",
-   "triangles": 3378,
-   "vertices": 4520,
+   "triangles": 3954,
+   "vertices": 4222,
    "joint": "skinned",
    "permanent": true,
    "visibleByDefault": true
@@ -1482,8 +1489,8 @@
   {
    "name": "hair",
    "object": "CA_Hair",
-   "triangles": 654,
-   "vertices": 701,
+   "triangles": 698,
+   "vertices": 779,
    "joint": "head",
    "permanent": false,
    "visibleByDefault": true
@@ -1492,7 +1499,7 @@
    "name": "core",
    "object": "CA_Core",
    "triangles": 210,
-   "vertices": 515,
+   "vertices": 491,
    "joint": "chest",
    "permanent": true,
    "visibleByDefault": true
@@ -1501,7 +1508,7 @@
    "name": "device",
    "object": "CA_WristDevice",
    "triangles": 180,
-   "vertices": 397,
+   "vertices": 409,
    "joint": "right-wrist",
    "permanent": true,
    "visibleByDefault": true
@@ -1519,7 +1526,7 @@
    "name": "device-chip",
    "object": "CA_WristChip",
    "triangles": 60,
-   "vertices": 148,
+   "vertices": 146,
    "joint": "right-wrist",
    "permanent": true,
    "visibleByDefault": false
@@ -1527,7 +1534,7 @@
  ],
  "counts": {
   "total": {
-   "triangles": 4516
+   "triangles": 5136
   },
   "budgets": {
    "lod0": 6000,
@@ -1541,20 +1548,20 @@
   },
   "pieces": {
    "body": {
-    "triangles": 3378,
-    "vertices": 4520
+    "triangles": 3954,
+    "vertices": 4222
    },
    "hair": {
-    "triangles": 654,
-    "vertices": 701
+    "triangles": 698,
+    "vertices": 779
    },
    "core": {
     "triangles": 210,
-    "vertices": 515
+    "vertices": 491
    },
    "device": {
     "triangles": 180,
-    "vertices": 397
+    "vertices": 409
    },
    "device-lid": {
     "triangles": 34,
@@ -1562,7 +1569,7 @@
    },
    "device-chip": {
     "triangles": 60,
-    "vertices": 148
+    "vertices": 146
    }
   }
  },
@@ -1805,7 +1812,7 @@
   "lid": {
    "bone": "sec-device-lid",
    "pivot": [
-    0.049231,
+    0.050859,
     0.066,
     0.0
    ],
@@ -1820,7 +1827,7 @@
   "chip": {
    "bone": "sec-device-chip",
    "seated": [
-    0.040931,
+    0.042559,
     0.044,
     0.0
    ],
@@ -1939,11 +1946,11 @@
     ],
     "centroid": [
      -0.0,
-     -0.097001,
-     -0.021456
+     -0.097,
+     0.014809
     ],
-    "radius": 0.100637,
-    "samples": 39
+    "radius": 0.114809,
+    "samples": 25
    },
    {
     "joint": "head",
@@ -1960,17 +1967,17 @@
     ],
     "centroid": [
      -0.0,
-     0.411899,
-     0.063349
+     0.411909,
+     0.063079
     ],
-    "radius": 0.080399,
+    "radius": 0.080113,
     "samples": 313
    },
    {
     "joint": "left-shoulder",
     "index": 7,
     "plane": [
-     -0.185,
+     -0.192,
      0.22,
      0.0
     ],
@@ -1980,18 +1987,18 @@
      0.0
     ],
     "centroid": [
-     -0.183439,
-     0.19458,
-     -0.00774
+     -0.182583,
+     0.197354,
+     -0.004107
     ],
-    "radius": 0.051176,
-    "samples": 61
+    "radius": 0.054962,
+    "samples": 78
    },
    {
     "joint": "left-elbow",
     "index": 8,
     "plane": [
-     -0.185,
+     -0.192,
      -0.085,
      0.0
     ],
@@ -2001,18 +2008,18 @@
      0.0
     ],
     "centroid": [
-     -0.183686,
-     -0.112,
-     0.005335
+     -0.191677,
+     -0.114,
+     0.006409
     ],
-    "radius": 0.038381,
-    "samples": 16
+    "radius": 0.045997,
+    "samples": 22
    },
    {
     "joint": "right-shoulder",
     "index": 11,
     "plane": [
-     0.185,
+     0.192,
      0.22,
      0.0
     ],
@@ -2022,18 +2029,18 @@
      0.0
     ],
     "centroid": [
-     0.183439,
-     0.19458,
-     -0.00774
+     0.182583,
+     0.197354,
+     -0.004107
     ],
-    "radius": 0.051176,
-    "samples": 61
+    "radius": 0.054962,
+    "samples": 78
    },
    {
     "joint": "right-elbow",
     "index": 12,
     "plane": [
-     0.185,
+     0.192,
      -0.085,
      0.0
     ],
@@ -2043,12 +2050,12 @@
      0.0
     ],
     "centroid": [
-     0.183686,
-     -0.112,
-     0.005335
+     0.191677,
+     -0.114,
+     0.006409
     ],
-    "radius": 0.038381,
-    "samples": 16
+    "radius": 0.045997,
+    "samples": 22
    },
    {
     "joint": "left-hip",
@@ -2064,12 +2071,12 @@
      0.0
     ],
     "centroid": [
-     -0.104753,
-     -0.328003,
-     -0.021229
+     -0.123094,
+     -0.326374,
+     -0.022349
     ],
-    "radius": 0.081013,
-    "samples": 50
+    "radius": 0.065884,
+    "samples": 40
    },
    {
     "joint": "left-knee",
@@ -2085,12 +2092,12 @@
      0.0
     ],
     "centroid": [
-     -0.081196,
-     -0.735323,
-     0.011228
+     -0.083685,
+     -0.728,
+     0.010499
     ],
-    "radius": 0.053275,
-    "samples": 62
+    "radius": 0.059525,
+    "samples": 13
    },
    {
     "joint": "right-hip",
@@ -2106,12 +2113,12 @@
      0.0
     ],
     "centroid": [
-     0.104753,
-     -0.328003,
-     -0.021229
+     0.123094,
+     -0.326374,
+     -0.022349
     ],
-    "radius": 0.081013,
-    "samples": 50
+    "radius": 0.065884,
+    "samples": 40
    },
    {
     "joint": "right-knee",
@@ -2127,12 +2134,12 @@
      0.0
     ],
     "centroid": [
-     0.081196,
-     -0.735323,
-     0.011228
+     0.083685,
+     -0.728,
+     0.010499
     ],
-    "radius": 0.053275,
-    "samples": 62
+    "radius": 0.059525,
+    "samples": 13
    }
   ]
  }

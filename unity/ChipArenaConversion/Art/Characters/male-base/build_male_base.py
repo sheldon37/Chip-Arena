@@ -67,7 +67,7 @@ ROOT_HEIGHT = 1.182                   # the visual motion-root: feet + 1.182 (pe
 VIS_OFFSETS = {
     'motion-root': (0, 0, 0), 'pelvis': (0, -.24, 0), 'spine': (0, .105, 0), 'chest': (0, .20, 0),
     'neck': (0, .22, 0), 'head': (0, .10, 0),
-    'left-clavicle': (.115, .155, 0), 'left-shoulder': (.07, 0, 0), 'left-elbow': (0, -.305, 0), 'left-wrist': (0, -.25, 0),
+    'left-clavicle': (.122, .155, 0), 'left-shoulder': (.07, 0, 0), 'left-elbow': (0, -.305, 0), 'left-wrist': (0, -.25, 0),
     'left-hip': (.09, -.055, 0), 'left-knee': (0, -.42, 0), 'left-ankle': (0, -.40, 0), 'left-toe': (0, -.042, .135),
 }
 for _n in list(VIS_OFFSETS):
@@ -163,6 +163,7 @@ PAINTS = [
     ('glow-core-edge', mul(GLOW_CYAN, .62), 6),
     ('screen', (0.03, 0.10, 0.13), 0),
     ('scalp', mul(HAIR, 1.2), 2),
+    ('lid-shade', mul(SKIN, (.86, .80, .80)), 1),
 ]
 PID = {p[0]: i for i, p in enumerate(PAINTS)}
 GLOW_CHANNELS = (5, 6)
@@ -312,33 +313,9 @@ def interp_table(table, key):
 # every size below (half-widths, depths, radii) is this model's own design. No MakeHuman geometry is used.
 with open(os.path.join(HERE, 'form_reference.json')) as _f:
     FORM = json.load(_f)
-TORSO_THETA = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180]
-# The reference's torso landmarks mapped to this body's heights on the visual skeleton.
-OUR_MARKS = {'crotch': .815, 'hip': .887, 'pelvis': .942, 'navel': 1.047, 'ribs': 1.180, 'chest': 1.270,
-             'shoulder': 1.402, 'neck': 1.467}
-
-
+TORSO_THETA = [15.0 * k for k in range(13)]
 def _lerp_list(a, b, t):
     return [x + (y - x) * t for x, y in zip(a, b)]
-
-
-def form_torso(y):
-    """Normalized half-ring shape [(x/W, z/F|B)] at this body's height y (landmark-mapped into the reference)."""
-    names = FORM['order']
-    ours = [OUR_MARKS[n] for n in names]
-    if y <= ours[0]:
-        a = 0.0
-    elif y >= ours[-1]:
-        a = float(len(ours) - 1)
-    else:
-        i = bisect.bisect_right(ours, y) - 1
-        a = i + (y - ours[i]) / (ours[i + 1] - ours[i])
-    rows = FORM['torso']
-    keys = [r['at'] for r in rows]
-    a = min(max(a, keys[0]), keys[-1])
-    i = max(0, min(len(rows) - 2, bisect.bisect_right(keys, a) - 1))
-    t = (a - keys[i]) / ((keys[i + 1] - keys[i]) or 1)
-    return [_lerp_list(p, q, t) for p, q in zip(rows[i]['shape'], rows[i + 1]['shape'])]
 
 
 def form_limb(part, t, n, soften=1.0):
@@ -361,46 +338,68 @@ def form_limb(part, t, n, soften=1.0):
     return [v / mean for v in out]
 
 
-# Torso rows, crotch to neck base: y, half-width W, front depth F, back depth B, centre z, tweaks {column: (dr, dy)}.
-# Column 0 is the front centre line, 8 the back centre line (TORSO_THETA). Lats .174 to a .134 waist; the boxer-briefs'
-# waistband sits low on the hips (rows 3 and 4).
+# The torso is designed, not measured: front, side and back profile curves (half-width W, front depth F and back depth B
+# per row), rounded cross-sections (a superellipse whose roundness changes from the pelvis through the waist to the
+# ribcage) and broad muscle forms laid over them (TORSO_FORMS). Rows follow the muscle flow rather than running level:
+# the pecs' lower edge rises into the armpit and the deltoid, the waistband dips into a V along the iliac crests.
+# Row: y, W, F, B, centre z, {theta: dy} (degrees round the half ring, 0 the front centre line, 180 the back; dy is
+# interpolated between the anchors).
+BAND_V = {0: -.014, 22.5: -.012, 45: -.006, 67.5: 0, 90: .004, 112.5: .004, 135: 0, 157.5: -.002, 180: -.004}
 TORSO = [
-    (.838, .148, .088, .098, .000, {0: (0, -.004), 8: (-.012, 0)}),                       # leg split
-    (.880, .154, .095, .118, .000, {8: (-.018, 0)}),                                      # glutes
-    (.922, .151, .098, .110, .000, {8: (-.012, 0)}),                                      # hips
-    (.952, .146, .099, .102, .000, {8: (-.008, 0)}),                                      # band bottom
-    (.980, .141, .099, .096, .000, {8: (-.006, 0)}),                                      # band top
-    (.984, .138, .097, .093, .000, {8: (-.006, 0)}),                                      # skin
-    (1.045, .132, .096, .086, .000, {0: (-.008, 0), 8: (-.010, 0)}),                      # navel, waist
-    (1.085, .137, .102, .088, .000, {0: (-.004, 0), 1: (.004, 0), 8: (-.010, 0)}),        # lower ab block
-    (1.118, .141, .103, .090, .000, {0: (-.009, 0), 1: (-.003, 0), 2: (-.005, 0), 8: (-.010, 0)}),  # ab groove
-    (1.150, .148, .108, .094, .000, {0: (-.004, 0), 1: (.004, 0), 8: (-.011, 0)}),        # upper ab block
-    (1.183, .156, .116, .100, .000, {0: (-.008, 0), 1: (-.003, 0), 2: (0, .008), 3: (0, .012), 8: (-.012, 0)}),  # ribs
-    (1.208, .168, .123, .104, .000, {0: (-.016, -.003), 2: (0, .005), 3: (-.005, .015), 4: (-.008, .008),
-                                     8: (-.012, 0)}),                                     # pec edge
-    (1.262, .178, .130, .108, .000, {0: (-.015, 0), 3: (-.003, 0), 4: (-.008, 0), 8: (-.010, 0)}),  # pecs, lats
-    (1.330, .178, .128, .110, .000, {0: (-.012, 0), 8: (-.010, 0)}),                      # socket bottom (armpit)
-    (1.392, .168, .112, .106, .000, {0: (-.007, 0), 8: (-.011, 0)}),                      # socket middle
-    (1.440, .150, .085, .094, -.004, {0: (-.004, -.010), 8: (-.006, .004)}),              # socket top (shoulder line)
-    (1.468, .110, .066, .078, -.006, {0: (-.003, -.032), 1: (0, -.026), 2: (0, -.010), 3: (0, .004), 4: (0, .010),
-                                      5: (0, .012), 6: (0, .010), 7: (0, .004), 8: (-.002, -.002)}),  # trapezius
-    (1.490, .058, .055, .060, -.006, {0: (0, -.058), 1: (0, -.048), 2: (0, -.026), 3: (0, -.006), 4: (0, .002),
-                                      5: (0, .004), 6: (0, .004), 7: (0, .002), 8: (0, 0)}),         # neck base
+    (.838, .150, .086, .098, .000, {0: -.004, 22.5: 0, 180: 0}),                       # leg split
+    (.880, .160, .094, .118, .000, {}),                                                # glutes, hip
+    (.922, .158, .098, .112, .002, {}),
+    (.952, .152, .099, .101, .003, BAND_V),                                            # band (the V along the crests)
+    (.980, .146, .098, .094, .004, BAND_V),                                            # band top
+    (.984, .144, .097, .092, .004, BAND_V),                                            # skin
+    (1.045, .133, .097, .084, .006, {}),                                               # waist
+    (1.085, .137, .100, .086, .006, {}),
+    (1.118, .143, .104, .090, .006, {}),
+    (1.150, .151, .109, .095, .006, {}),
+    (1.183, .160, .118, .100, .006, {22.5: 0, 45: .006, 67.5: .012, 90: .014, 112.5: 0}),             # lower ribs
+    (1.208, .170, .128, .104, .006, {0: 0, 22.5: .004, 45: .014, 67.5: .026, 90: .030, 112.5: .018, 135: .008,
+                                     157.5: 0}),                                       # the pecs' lower edge
+    (1.262, .186, .140, .112, .004, {22.5: 0, 45: .010, 67.5: .020, 90: .024, 112.5: .016, 135: 0}),  # pecs, lats
+    (1.330, .188, .134, .116, .002, {}),                                               # socket bottom (armpit)
+    (1.392, .178, .116, .108, .000, {}),                                               # socket middle
+    (1.440, .160, .088, .096, -.004, {0: -.010, 22.5: 0, 157.5: 0, 180: .004}),        # socket top (shoulder line)
+    (1.468, .126, .070, .086, -.006, {0: -.032, 22.5: -.026, 45: -.010, 67.5: .010, 90: .018, 112.5: .020, 135: .016,
+                                      157.5: .006, 180: -.002}),                       # trapezius
+    (1.490, .066, .060, .066, -.006, {0: -.058, 22.5: -.048, 45: -.026, 67.5: -.006, 90: .002, 112.5: .004, 135: .004,
+                                      157.5: .002, 180: 0}),                           # neck base
+]
+# Cross-section roundness (superellipse exponent) by height: a broad pelvis, an oval waist, a round ribcage.
+TORSO_ROUND = [(.838, 2.35), (.95, 2.3), (1.045, 2.05), (1.18, 1.95), (1.26, 2.15), (1.44, 2.2), (1.49, 2.0)]
+# Muscle forms: (radial amplitude m, theta centre, theta sigma, y centre, y sigma); negative amplitudes are grooves.
+TORSO_FORMS = [
+    (.020, 30, 18, 1.265, .055),     # pectorals, up to the clavicles
+    (-.012, 0, 8, 1.240, .070),      # sternum
+    (.008, 16, 12, 1.100, .060),     # rectus abdominis
+    (-.008, 0, 7, 1.100, .080),      # linea alba
+    (-.005, 15, 12, 1.118, .012),    # its tendinous lines, faint
+    (-.004, 15, 12, 1.045, .012),
+    (-.004, 45, 8, 1.120, .060),     # the abdominals' outer edge
+    (.009, 80, 18, .990, .030),      # obliques over the iliac crest
+    (.016, 112, 18, 1.250, .070),    # latissimus
+    (.010, 145, 16, 1.340, .050),    # scapulae
+    (-.012, 180, 10, 1.150, .250),   # spine
+    (.020, 150, 25, .875, .035),     # glutes
 ]
 WAIST_LOW, WAIST_TOP = 3, 4
 SOCKET_ROWS = (13, 14, 15)
-SOCKET_COLS = (2, 3, 4, 5)
-# The arm socket: an ellipse round the arm's root on the side of the chest (rig y, z centre and radii), its points'
-# angles (0 front, 90 top, 180 back) and lateral x (the armpit lowest and widest).
+SOCKET_COLS = (3, 4, 5, 6, 7, 8)
+# The arm socket: an ellipse round the arm's root on the side of the chest (rig y, z centre and radii). Its 14 points run
+# from the front middle down, round the bottom to the back, and over the top, evenly spaced (angle 0 front, 90 top).
 SOCK_C, SOCK_R = (1.388, -.004), (.054, .074)
-SOCK_ANG = {(13, 2): -60, (13, 3): -82, (13, 4): -104, (13, 5): -124, (14, 5): 180, (15, 5): 124, (15, 4): 102,
-            (15, 3): 80, (15, 2): 58, (14, 2): 0}
+SOCKET_LOOP = ([(14, SOCKET_COLS[0])] + [(13, c) for c in SOCKET_COLS] + [(14, SOCKET_COLS[-1])] +
+               [(15, c) for c in reversed(SOCKET_COLS)])
+SOCK_ANG = {cell: -360.0 * i / len(SOCKET_LOOP) for i, cell in enumerate(SOCKET_LOOP)}
 
 
 def _socket_pos(a):
     r = math.radians(a)
     s, c = math.sin(r), math.cos(r)
-    x = .150 + .015 * max(0.0, -s) - .007 * max(0.0, s) - .004 * c * c
+    x = .160 + .015 * max(0.0, -s) - .007 * max(0.0, s) - .004 * c * c
     return (x, SOCK_C[0] + SOCK_R[0] * s, SOCK_C[1] + SOCK_R[1] * c)
 
 
@@ -411,58 +410,60 @@ SOCKET_POS = {k: _socket_pos(a) for k, a in SOCK_ANG.items()}
 # a slim wrist.
 SX = J['left-shoulder'].x
 ARM = [
-    (1.380, SX + .008, .000, .054, ('upperarm', .35), 10, (1.04, 1.0, .88, 1.0)),   # deltoid cap
-    (1.325, SX + .002, .003, .047, ('upperarm', .48), 10, (.90, 1.0, .92, 1.0)),    # deltoid insertion
-    (1.258, SX, .005, .044, ('upperarm', .65), 10, (.88, 1.06, 1.0, 1.0)),          # biceps
-    (1.195, SX, .004, .040, ('upperarm', .80), 10, (.92, 1.0, 1.0, 1.0)),
-    (1.135, SX, .002, .037, ('upperarm', .92), 10, (1.0, .96, 1.0, 1.04)),          # elbow loops
-    (1.102, SX, .000, .036, ('upperarm', .92), 10, (1.0, .92, 1.0, 1.12)),          # elbow: the olecranon plane behind
-    (1.070, SX, .003, .038, ('forearm', .10), 8, (1.0, 1.0, 1.0, 1.04)),
-    (1.025, SX, .006, .040, ('forearm', .25), 8, (1.06, 1.0, 1.0, 1.0)),            # forearm swell
-    (.965, SX, .005, .034, ('forearm', .45), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.910, SX, .003, .029, ('forearm', .68), 8, (.95, 1.05, .95, 1.05)),           # cuff zone (wholly wrist-weighted)
-    (.866, SX, .000, .025, ('forearm', .88), 8, (.80, 1.22, .80, 1.18)),           # wrist: flat, wider front to back
-    (.850, SX, .000, .025, ('forearm', .97), 8, (.80, 1.22, .80, 1.18)),
+    (1.380, SX + .006, .000, .060, ('upperarm', .35), 14, (.86, 1.02, .88, 1.0)),   # deltoid cap
+    (1.312, SX + .004, .004, .047, ('upperarm', .48), 12, (.90, 1.0, .92, 1.0)),    # deltoid insertion
+    (1.250, SX + .001, .006, .050, ('upperarm', .65), 12, (.90, 1.12, .98, 1.06)),  # biceps in front, triceps behind
+    (1.185, SX, .004, .044, ('upperarm', .80), 12, (.94, 1.04, 1.0, 1.08)),
+    (1.135, SX, .002, .040, ('upperarm', .92), 10, (1.0, .96, 1.0, 1.04)),          # elbow loops
+    (1.102, SX, .000, .040, ('upperarm', .92), 10, (1.04, .92, 1.0, 1.12)),         # elbow: the olecranon plane behind
+    (1.068, SX, .004, .044, ('forearm', .10), 8, (1.10, 1.02, 1.0, 1.04)),          # the forearm full near the elbow
+    (1.022, SX, .006, .046, ('forearm', .25), 8, (1.12, 1.0, 1.04, 1.0)),
+    (.965, SX, .005, .038, ('forearm', .45), 8, (1.0, 1.04, .98, 1.04)),
+    (.910, SX, .003, .032, ('forearm', .68), 8, (.92, 1.10, .92, 1.08)),           # cuff zone (wholly wrist-weighted)
+    (.866, SX, .000, .028, ('forearm', .88), 8, (.80, 1.22, .80, 1.18)),           # wrist: flat, wider front to back
+    (.850, SX, .000, .028, ('forearm', .97), 8, (.80, 1.22, .80, 1.18)),
 ]
 ARM_ELBOW_ROWS = (4, 5, 6)
-DELTOID_R = .056
+DELTOID_R = .058
 ARM_CUFF_ROW = 9
-ARM_N = 10
+ARM_N = len(SOCKET_LOOP)            # 14: the socket, the deltoid cap rings and the arm's first ring
 # The palm (8-sided, continuing the wrist): y, z shift, out, front, in, back radii. The back of the hand faces out (+x on
 # the left), the thumb side forward (+z).
-PALM = [(.835, .004, .015, .036, .013, .034), (.800, .004, .015, .041, .013, .039), (.768, .003, .013, .042, .012, .040)]
-PALM_TIP_Y = .754
+PALM = [(.834, .004, .016, .039, .014, .037), (.797, .004, .016, .045, .014, .043), (.762, .003, .014, .046, .013, .044)]
+PALM_TIP_Y = .747
 
 # Leg rings (left leg, straight down from the hip joint): y, centre x, centre z, mean radius, reference part and t,
 # ring vertices, (out, front, in, back) scale. The boxer-briefs end at LEG_HEM, mid-thigh.
 HX = J['left-hip'].x
 LEG = [
-    (.795, HX + .010, -.004, .084, ('thigh', .25), 10, (1.0, 1.0, .95, 1.0)),
-    (.690, HX + .007, -.002, .078, ('thigh', .38), 10, (1.0, 1.0, .95, 1.0)),     # boxer hem (cloth)
-    (.686, HX + .007, -.002, .075, ('thigh', .39), 10, (1.0, 1.0, .95, 1.0)),     # hem lip (skin)
-    (.610, HX + .004, .004, .068, ('thigh', .58), 10, (1.0, 1.04, 1.0, 1.0)),
-    (.530, HX + .001, .008, .059, ('thigh', .80), 10, (1.0, 1.04, 1.0, 1.0)),     # knee loops
-    (.467, HX, .012, .054, ('thigh', .95), 10, (1.0, 1.10, 1.0, .92)),           # knee: the kneecap plane
-    (.425, HX, .008, .051, ('shin', .08), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.350, HX, -.008, .056, ('shin', .28), 8, (1.0, 1.0, 1.0, 1.0)),             # calf
-    (.265, HX, -.005, .047, ('shin', .50), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.180, HX, -.002, .037, ('shin', .72), 8, (1.0, 1.0, 1.0, 1.0)),
-    (.112, HX, .002, .032, ('shin', .88), 8, (1.08, 1.0, 1.12, 1.0)),            # ankle: the malleoli
+    (.795, HX + .010, -.004, .090, ('thigh', .25), 14, (1.02, 1.04, .90, 1.02)),
+    (.690, HX + .010, -.002, .085, ('thigh', .38), 12, (1.06, 1.08, .92, 1.02)),    # boxer hem (cloth)
+    (.686, HX + .010, -.002, .082, ('thigh', .39), 12, (1.06, 1.08, .92, 1.02)),    # hem lip (skin)
+    (.610, HX + .006, .004, .075, ('thigh', .58), 12, (1.06, 1.10, .96, 1.04)),     # quadriceps sweep, hamstrings
+    (.540, HX + .002, .010, .064, ('thigh', .78), 12, (.98, 1.06, 1.06, .98)),      # the inner teardrop above the knee
+    (.484, HX, .014, .058, ('thigh', .92), 10, (1.0, 1.04, 1.02, .94)),
+    (.454, HX, .012, .057, ('thigh', .97), 10, (1.04, 1.10, 1.04, .92)),           # knee: the patella plane, its width
+    (.415, HX, .006, .054, ('shin', .08), 8, (1.0, 1.0, 1.0, 1.0)),
+    (.372, HX, -.010, .062, ('shin', .22), 8, (1.0, 1.0, 1.10, 1.12)),             # calf: high on the inside
+    (.320, HX, -.010, .059, ('shin', .36), 8, (1.06, 1.0, 1.0, 1.10)),             # and lower on the outside
+    (.250, HX, -.005, .048, ('shin', .52), 8, (1.0, 1.0, 1.0, 1.04)),
+    (.170, HX, -.002, .038, ('shin', .74), 8, (1.0, 1.0, 1.0, 1.0)),
+    (.112, HX, .002, .034, ('shin', .88), 8, (1.08, 1.0, 1.12, 1.0)),            # ankle: the malleoli
 ]
 LEG_HEM = 1
-LEG_KNEE_ROWS = (4, 5, 6)
+LEG_KNEE_ROWS = (5, 6, 7)
 CROTCH = (0, .815, -.006)
 FORM_SOFTEN = {'thigh': .8, 'shin': .7, 'upperarm': .8, 'forearm': .8}
 
 
-def limb_ring2(y, cx, cz, r, form, n, scale, mirror=1):
+def limb_ring2(y, cx, cz, r, form, n, scale, mirror=1, phase=0.0):
     """A limb ring from the reference's normalized radii: phi 0 = outward (+x on the left), 90 = front (+z)."""
     part, t = form
     shape = form_limb(part, t, n, FORM_SOFTEN[part])
     so, sf, si, sb = scale
     pts = []
     for k in range(n):
-        ph = 2 * math.pi * k / n
+        ph = 2 * math.pi * (k + phase) / n
         c, s = math.cos(ph), math.sin(ph)
         k2 = so * max(c, 0) ** 2 + si * max(-c, 0) ** 2 + sf * max(s, 0) ** 2 + sb * max(-s, 0) ** 2
         rr = r * shape[k] * k2
@@ -533,15 +534,23 @@ def build_toes(mb):
 
 
 def torso_point(row, k):
-    y, W, F, Bk, zc, tw = TORSO[row]
-    xn, zn = form_torso(y)[k]
-    x = 0.0 if k in (0, len(TORSO_THETA) - 1) else W * xn
-    z = zc + (F if zn >= 0 else Bk) * zn
-    dr, dy = tw.get(k, (0, 0))
-    if dr:
-        L = math.hypot(x, z - zc) or 1
-        x += dr * x / L
-        z += dr * (z - zc) / L
+    y, W, F, Bk, zc, curve = TORSO[row]
+    n = interp_table(TORSO_ROUND, y)[0]
+    t = math.radians(TORSO_THETA[k])
+    sn, cs = math.sin(t), math.cos(t)
+    x = 0.0 if k in (0, len(TORSO_THETA) - 1) else W * abs(sn) ** (2 / n)
+    z = zc + (F if cs >= 0 else Bk) * math.copysign(abs(cs) ** (2 / n), cs)
+    th = TORSO_THETA[k]
+    bump = sum(a * math.exp(-((th - t0) / st) ** 2 - ((y - y0) / sy) ** 2) for a, t0, st, y0, sy in TORSO_FORMS)
+    L = math.hypot(x, z - zc) or 1
+    x += bump * x / L
+    z += bump * (z - zc) / L
+    dy = 0.0
+    if curve:
+        keys = sorted(curve)
+        i = max(0, min(len(keys) - 2, bisect.bisect_right(keys, th) - 1))
+        u = (th - keys[i]) / ((keys[i + 1] - keys[i]) or 1)
+        dy = curve[keys[i]] + (curve[keys[i + 1]] - curve[keys[i]]) * min(max(u, 0.0), 1.0)
     return (x, y + dy, z)
 
 
@@ -593,22 +602,20 @@ def build_body():
             elif ri in (WAIST_LOW, WAIST_TOP):
                 paint = PID['cloth-band']
             mb.f((rows[ri][k], rows[ri][k + 1], rows[ri + 1][k + 1], rows[ri + 1][k]), paint)
-    r0, r1, r2 = SOCKET_ROWS
-    c0, c1, c2, c3 = SOCKET_COLS
-    socket = [rows[r0][c0], rows[r0][c1], rows[r0][c2], rows[r0][c3], rows[r1][c3],
-              rows[r2][c3], rows[r2][c2], rows[r2][c1], rows[r2][c0], rows[r1][c0]]
-    arm_rows = [[V(p, 'arm') for p in limb_ring2(*row)] for row in ARM]
+    socket = [rows[r][c] for r, c in SOCKET_LOOP]
+    arm_rows = [[V(p, 'arm') for p in limb_ring2(*row, phase=.5 if i == 0 else 0.0)] for i, row in enumerate(ARM)]
     sj = J['left-shoulder']
-    # the socket's top meets the arm ring's outer side, so the deltoid wraps over the shoulder (socket angle a, ring
-    # angle phi: phi = 90 - a, i.e. socket vertex i takes ring vertex 4 + i)
-    a1 = [arm_rows[0][(4 + i) % ARM_N] for i in range(ARM_N)]
-    cap_ring = []
-    ball = Vector((SX + .006, 1.386, 0.0))          # the deltoid's round cap over the shoulder joint
-    for i in range(ARM_N):
-        p = (mb.V[socket[i]] + mb.V[a1[i]]) * .5
-        cap_ring.append(V(ball + (p - ball).normalized() * DELTOID_R, 'arm'))
-    mb.strip(socket, cap_ring, PID['skin'], closed=True)
-    mb.strip(cap_ring, a1, PID['skin'], closed=True)
+    # the socket's top meets the arm ring's outer side, so the deltoid wraps over the shoulder: socket point i sits at
+    # angle a = -360 i / N, the first arm ring's vertex k at phi = 360 (k + .5) / N, and phi = 90 - a pairs i with 3 + i
+    a1 = [arm_rows[0][(3 + i) % ARM_N] for i in range(ARM_N)]
+    ball = Vector((SX + .006, 1.372, 0.0))          # the deltoid's round cap over the shoulder joint: two rings
+    caps = []                                       # between the socket and the arm, on a sphere round the joint
+    for t in (.36, .72):
+        caps.append([V(ball + (mb.V[socket[i]].lerp(mb.V[a1[i]], t) - ball).normalized() * DELTOID_R, 'arm')
+                     for i in range(ARM_N)])
+    mb.strip(socket, caps[0], PID['skin'], closed=True)
+    mb.strip(caps[0], caps[1], PID['skin'], closed=True)
+    mb.strip(caps[1], a1, PID['skin'], closed=True)
     arm_rows[0] = a1
     prev = a1
     for ai in range(1, len(arm_rows)):
@@ -661,7 +668,10 @@ def build_body():
     for a, b in zip(rows[-1], edge):
         p = (mb.V[a] + mb.V[b]) * .5
         axis = Vector((0, p.y, .004))
-        q = axis + (p - axis) * .96
+        q = axis + (p - axis) * 1.02
+        k = len(mid)
+        if k in (1, 2):         # the sternocleidomastoids' planes, from behind the ears down to the clavicles
+            q += (q - axis).normalized() * .006
         if abs(mb.V[a].x) < 1e-9:
             q.x = 0.0
         mid.append(V(q, 'torso'))
@@ -669,16 +679,14 @@ def build_body():
     mb.strip(mid, edge, PID['skin'])
     for i in edge:
         mb.R[i] = 'neck'
-    mb.crease(rows[11][:5])                 # the pecs' lower edge
-    mb.crease(rows[8][:3])                  # ab groove
-    mb.crease(rows[6][:3])                  # ab groove at the navel
-    mb.crease(rows[0][:3])                  # boxer leg line at the front
+    mb.crease(rows[11][:6])                 # the pecs' lower edge, rising into the armpit
+    mb.crease(rows[8][:3])                  # the abdominals' lines, across the rectus only
+    mb.crease(rows[6][:3])
+    mb.crease([rows[r][0] for r in range(6, 12)])   # the linea alba up to the sternum
     mb.triangulate()
-    # the waistband's cyan accent: the band's lower row, front and side columns
-    band = set(rows[WAIST_LOW][:6] + rows[WAIST_TOP][:6])
-    lowband = set(rows[WAIST_LOW])
-    mb.F = [(f, PID['cloth-stripe'] if p == PID['cloth-band'] and set(f) <= band and len(set(f) & lowband) == 2 and
-             all(mb.V[i].y < TORSO[WAIST_LOW][0] + .012 for i in f) else p) for f, p in mb.F]
+    # the waistband's cyan accent: a tab at the front centre of the band
+    tab = set(rows[WAIST_LOW][:3] + rows[WAIST_TOP][:3])
+    mb.F = [(f, PID['cloth-stripe'] if p == PID['cloth-band'] and set(f) <= tab else p) for f, p in mb.F]
     build_trim(mb)
     build_ears(mb)
     build_fingers(mb)
@@ -859,8 +867,12 @@ FACE_LAYOUT = [
     # eye: lid margin, iris, upper crease, lower lid line
     ('e0', 'M', .074, -.010, 0), ('e1', 'M', .097, .011, 0), ('e2', 'M', .131, .020, 0), ('e3', 'M', .166, .016, 0),
     ('e4', 'M', .196, .004, 0), ('e5', 'M', .168, -.015, 0), ('e6', 'M', .133, -.022, 0), ('e7', 'M', .098, -.019, 0),
-    ('ic', 'E', .133, -.001, 0), ('i0', 'E', .1435, .0133, 0), ('i1', 'E', .154, -.001, 0), ('i2', 'E', .1435, -.0153, 0),
-    ('i3', 'E', .1225, -.0153, 0), ('i4', 'E', .112, -.001, 0), ('i5', 'E', .1225, .0133, 0),
+    ('ic', 'E', .133, -.0015, 0),
+    ('i0', 'E', .161, -.002, 0), ('i1', 'E', .153, .0155, 0), ('i2', 'E', .133, .0175, 0), ('i3', 'E', .115, .0135, 0),
+    ('i4', 'E', .105, -.002, 0), ('i5', 'E', .113, -.0175, 0), ('i6', 'E', .133, -.0195, 0),
+    ('i7', 'E', .153, -.0165, 0),
+    ('pu0', 'E', .1435, -.0015, 0), ('pu1', 'E', .138, .0075, 0), ('pu2', 'E', .128, .0075, 0),
+    ('pu3', 'E', .1225, -.0015, 0), ('pu4', 'E', .128, -.0105, 0), ('pu5', 'E', .138, -.0105, 0),
     ('u0', 'F', .070, .017, .0006), ('u1', 'F', .098, .037, .0009), ('u2', 'F', .133, .046, .0009),
     ('u3', 'F', .170, .041, .0009), ('u4', 'F', .205, .020, .0006),
     ('l0', 'F', .088, -.038, .0003), ('l1', 'F', .133, -.046, .0004), ('l2', 'F', .176, -.038, .0003),
@@ -904,7 +916,8 @@ FACE_LAYOUT = [
 HEAD_EDGE_PHI = [-74, -71, -65, -60, -56, -48, -40, -35, -33]
 # Polylines the triangulation must keep (open, or closed when the last name repeats the first).
 FACE_LINES = [
-    ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e0'], ['i0', 'i1', 'i2', 'i3', 'i4', 'i5', 'i0'],
+    ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e0'], ['i0', 'i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7', 'i0'],
+    ['pu0', 'pu1', 'pu2', 'pu3', 'pu4', 'pu5', 'pu0'],
     ['e0', 'u0', 'u1', 'u2', 'u3', 'u4', 'e4'], ['e0', 'l0', 'l1', 'l2', 'l3', 'e4'],
     ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b0'],
     ['c_hair', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9', 'h10', 'h11', 'h12', 'h13', 'h14'],
@@ -914,10 +927,13 @@ FACE_LINES = [
     ['a1', 'g0', 'g1', 'g2', 'x1'], ['c_gn', 'q3', 'q4', 'j0', 'j1', 'j2', 'j3', 'j4'], ['q1', 'q2', 'q4'],
     ['c_sn', 'p1', 'v1'],
 ]
+HAIRLINE_NAMES = next(line for line in FACE_LINES if line[0] == 'c_hair')
 # Paint regions, first match wins: (paint, closed polygon of layout names in the chart).
 FACE_PAINT = [
-    ('iris', ['i0', 'i1', 'i2', 'i3', 'i4', 'i5']),
+    ('pupil', ['pu0', 'pu1', 'pu2', 'pu3', 'pu4', 'pu5']),
+    ('iris', ['i0', 'i1', 'i2', 'i3', 'i4', 'i5', 'i6', 'i7']),
     ('eye-white', ['e0', 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7']),
+    ('lid-shade', ['e0', 'e1', 'e2', 'e3', 'e4', 'u4', 'u3', 'u2', 'u1', 'u0']),
     ('nostril', ['a3', 'n0', 'a4']),
     ('brow', ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8']),
     ('lip-upper', ['c_lipt', 'v1', 'v2', 'v3', 'm3', 'm2', 'm1', 'c_seam']),
@@ -986,8 +1002,10 @@ def head_layout():
             p = p - (p - HC).normalized() * push
         pts.append((name, p, _chart(th, ph)))
     edge = []
-    for k, ph in enumerate(HEAD_EDGE_PHI):
-        th = 22.5 * k
+    for k, th in enumerate(TORSO_THETA):          # the neck's columns
+        j = min(int(th / 22.5), 7)
+        u = th / 22.5 - j
+        ph = HEAD_EDGE_PHI[j] * (1 - u) + HEAD_EDGE_PHI[j + 1] * u
         name = 'edge%d' % k
         pts.append((name, head_surface(th, ph), _chart(th, ph)))
         edge.append(name)
@@ -1028,7 +1046,7 @@ def build_head(mb):
         out_to_in.append(ov[0])
     vid = [mb.v(p, 'head') for _, p, _ in pts]
     polys = [(PID[paint], [coords[index[n]] for n in poly]) for paint, poly in FACE_PAINT]
-    hairline = [coords[index[n]] for n in FACE_LINES[5]]
+    hairline = [coords[index[n]] for n in HAIRLINE_NAMES]
     # the scalp: inside the hairline, round over the crown along the centre plane (the chart's circle)
     scalp = hairline + _circle_arc(_angle(hairline[-1]), _angle(hairline[0]) + 360 * (_angle(hairline[0]) <
                                                                                           _angle(hairline[-1])), 24)
@@ -1118,8 +1136,8 @@ def finger(mb, pts, radii, n=6, region='finger', paint=None, up=Vector((1, 0, 0)
 # Fingers (left hand, relaxed): knuckle z, (proximal, middle, distal) lengths, radius. The palm faces -x (the body), the
 # thumb side is +z; the fingers hang together with a gentle curl toward the palm. Everything rides the wrist (no finger
 # bones in the rig).
-FINGERS = [(.028, (.040, .024, .019), .0092), (.009, (.044, .027, .020), .0095), (-.010, (.041, .025, .019), .0090),
-           (-.027, (.032, .019, .016), .0080)]
+FINGERS = [(.031, (.043, .026, .020), .0098), (.010, (.047, .029, .021), .0101), (-.011, (.044, .027, .020), .0096),
+           (-.030, (.035, .021, .017), .0086)]
 FINGER_CURL = (Vector((-.16, -1, 0)), Vector((-.42, -1, 0)), Vector((-.72, -1, 0)))
 
 
@@ -1134,11 +1152,11 @@ def build_fingers(mb):
             pts.append(p.copy())
         finger(mb, pts, [r * 1.08, r, r * .93, r * .84], n=6, up=Vector((0, 0, 1)), aspect=.92)
     # thumb: from the palm's front edge near the wrist, forward and down, resting by the index finger
-    t0 = Vector((SX - .010, .815, .030))
-    t1 = t0 + Vector((-.30, -.55, .75)).normalized() * .034
-    t2 = t1 + Vector((-.40, -.80, .40)).normalized() * .028
-    t3 = t2 + Vector((-.45, -.85, .20)).normalized() * .022
-    finger(mb, [t0, t1, t2, t3], [.0125, .0115, .0105, .0094], n=6, up=Vector((1, 0, 0)), aspect=.9)
+    t0 = Vector((SX - .010, .812, .033))
+    t1 = t0 + Vector((-.30, -.55, .75)).normalized() * .037
+    t2 = t1 + Vector((-.40, -.80, .40)).normalized() * .030
+    t3 = t2 + Vector((-.45, -.85, .20)).normalized() * .024
+    finger(mb, [t0, t1, t2, t3], [.0134, .0124, .0112, .0100], n=6, up=Vector((1, 0, 0)), aspect=.9)
 
 
 # ----------------------------------------------------------------------------------------------------------------- hair
@@ -1165,29 +1183,32 @@ class Rand:
 # shorter and flatter down the sides and the back. Each clump is a faceted leaf, its edges on the cap, its ridge raised,
 # its point lifting off.
 CLUMPS = [
-    # front quiff: up from the hairline, swept back and to the character's right; the points lift clear of the scalp
-    ((10, 52), (-6, 80), .022, .074, .011, 'front-l'),
-    ((-12, 53), (-30, 79), .020, .070, .011, 'front-r'),
-    ((32, 51), (20, 77), .018, .066, .010, 'front-l'),
-    ((-36, 50), (-50, 72), .016, .062, .010, 'front-r'),
-    # top: back over the crown
-    ((14, 74), (22, 108), .024, .078, .012, None),
-    ((-16, 74), (-26, 106), .022, .076, .012, None),
-    ((46, 68), (74, 92), .018, .068, .011, 'side-l'),
-    ((-48, 68), (-78, 92), .018, .068, .011, 'side-r'),
-    ((2, 94), (2, 128), .020, .074, .012, 'back-l'),
-    ((120, 80), (148, 60), .014, .070, .011, 'back-l'),
-    ((-120, 80), (-148, 60), .014, .070, .011, 'back-r'),
-    # sides: short, back over the temples and above the ears
-    ((66, 52), (104, 40), .007, .056, .009, 'side-l'),
-    ((-66, 52), (-104, 40), .007, .056, .009, 'side-r'),
-    # back: down to the nape
-    ((138, 56), (146, 20), .008, .062, .009, 'back-l'),
-    ((-138, 56), (-146, 20), .008, .062, .009, 'back-r'),
-    ((166, 50), (170, 10), .008, .060, .009, 'back-l'),
-    ((-166, 50), (-170, 10), .008, .060, .009, 'back-r'),
-    ((118, 40), (126, 8), .006, .052, .008, 'back-l'),
-    ((-118, 40), (-126, 8), .006, .052, .008, 'back-r'),
+    # front: spikes rising from the hairline, up and back, leaning to the character's right
+    ((0, 57), (-8, 76), .034, .062, .012, 'front-r'),
+    ((18, 56), (8, 75), .032, .060, .012, 'front-l'),
+    ((-20, 56), (-30, 74), .032, .060, .012, 'front-r'),
+    ((36, 54), (26, 71), .026, .056, .011, 'front-l'),
+    ((-38, 54), (-48, 70), .024, .054, .011, 'front-r'),
+    # top: up and over
+    ((10, 70), (4, 94), .028, .066, .012, None),
+    ((-14, 70), (-22, 93), .026, .064, .012, None),
+    ((44, 66), (52, 88), .020, .060, .011, 'side-l'),
+    ((-46, 66), (-56, 88), .020, .060, .011, 'side-r'),
+    # crown: back
+    ((6, 88), (10, 112), .018, .064, .011, 'back-l'),
+    ((-20, 88), (-26, 110), .016, .062, .011, 'back-r'),
+    # sides: short, tapered and tight to the skull, down and back
+    ((78, 60), (100, 44), .003, .050, .008, 'side-l'),
+    ((-78, 60), (-100, 44), .003, .050, .008, 'side-r'),
+    ((102, 66), (122, 48), .003, .050, .008, 'side-l'),
+    ((-102, 66), (-122, 48), .003, .050, .008, 'side-r'),
+    # back: tight, down to the nape
+    ((140, 72), (146, 36), .005, .060, .009, 'back-l'),
+    ((-140, 72), (-146, 36), .005, .060, .009, 'back-r'),
+    ((168, 64), (170, 22), .005, .060, .009, 'back-l'),
+    ((-168, 64), (-170, 22), .005, .060, .009, 'back-r'),
+    ((124, 46), (128, 14), .004, .050, .008, 'back-l'),
+    ((-124, 46), (-128, 14), .004, .050, .008, 'back-r'),
 ]
 HAIR_CHAINS = ['front-l', 'front-r', 'side-l', 'side-r', 'back-l', 'back-r']
 # Spring tuning per chain (spiky low-poly hair: stiff clumps, a small bounce and sway, never jelly). Units: stiffness and
@@ -1276,7 +1297,7 @@ def build_hair(body_mb):
         for sgm in (0.0, .40, .75, 1.0):
             th = r0[0] + (r1[0] - r0[0]) * sgm
             ph = r0[1] + (r1[1] - r0[1]) * sgm
-            path.append(on_cap(th, ph, -.001 if sgm == 0 else lift * sgm ** 1.6 + .002))
+            path.append(on_cap(th, ph, -.003 if sgm == 0 else lift * sgm ** 1.6 + .0015))
         clumps.append((path, W, T, chain))
     groups = {c: [] for c in HAIR_CHAINS}
     for path, W, T, chain in clumps:
@@ -1530,8 +1551,9 @@ def reset_scene():
 
 # Shading: big planes shade smooth inside and break crisply at their edges. Edges are sharp where the faces meet at more
 # than SHARP_DEG, at paint borders, along the design creases and on flat pieces; features on the face stay flat.
-SHARP_DEG = {'body': 21.0, 'hair': 34.0, 'piece': 0.0}
+SHARP_DEG = {'body': 32.0, 'hair': 34.0, 'piece': 0.0}
 HEAD_SHARP_DEG = 30.0         # the head's smaller planes: only the design creases and paint borders break them
+FOOT_SHARP_DEG = 21.0         # the feet's tight folds (heel, ankle front, toe block) stay crisp
 FLAT_PARTS = {'face', 'ear'}
 
 
@@ -1554,7 +1576,11 @@ def sharp_pairs(mb, kind, mirror_x=False):
             out.add(e)
         elif len(fs) == 2:
             f0, f1 = fs
-            t = math.radians(HEAD_SHARP_DEG) if kind == 'body' and all(mb.R[i] == 'head' for i in e) else thr
+            t = thr
+            if kind == 'body' and all(mb.R[i] == 'head' for i in e):
+                t = math.radians(HEAD_SHARP_DEG)
+            elif kind == 'body' and any(mb.R[i] == 'foot' for i in e):
+                t = math.radians(FOOT_SHARP_DEG)
             if normals[f0].angle(normals[f1], 0) > t or mb.F[f0][1] != mb.F[f1][1]:
                 out.add(e)
         elif len(fs) == 1 and mirror_x and all(abs(mb.V[i].x) < 1e-6 for i in e):
