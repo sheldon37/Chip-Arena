@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
             DrawTownFx(now,eye);ExpeditionHubFrame(eye,now);townLast=now;
         }
         // The anime map style draws its rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
-        private Mesh TownMesh=>NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;
+        private Mesh TownMesh=>NativeLighting.StyleWrap?(townWrap??=MetroMeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;private Mesh townWrap;
         private bool EnsureExpeditionCity()
         {
             if(townMaterial!=null)return true;if(townFailed)return false;
@@ -161,7 +161,7 @@ namespace ChipArena.UnityConversion
         }
         private void DisposeExpeditionCity()
         {
-            CapturedAnimation.Release(townMesh);if(townToon!=null)CapturedAnimation.Release(townToon);townToon=null;CapturedAnimation.Release(townMaterial);townMesh=null;townMaterial=null;townDraw?.Dispose();townDraw=null;
+            CapturedAnimation.Release(townMesh);if(townToon!=null)CapturedAnimation.Release(townToon);townToon=null;if(townWrap!=null)CapturedAnimation.Release(townWrap);townWrap=null;CapturedAnimation.Release(townMaterial);townMesh=null;townMaterial=null;townDraw?.Dispose();townDraw=null;
             townBack.Clear();townCast.Clear();townTrim.Clear();townMap=null;townKit=null;townScene=null;townLights=null;townArena=null;townGeneration=-1;townLast=-1;DisposeExpeditionHub();
         }
     }

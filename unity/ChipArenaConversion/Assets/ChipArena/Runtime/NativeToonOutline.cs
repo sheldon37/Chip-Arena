@@ -10,20 +10,21 @@ namespace ChipArena.UnityConversion
     ///  - When: a map whose look turns the style on with a line strength (NativeLighting.StyleActive and Style.Outline), on the
     ///    normal graphics tiers. The low tier (graphics=performance, or auto on a low-end GPU) and every other map, stage, draft
     ///    and the rooftop take the buffer off the camera, so nothing runs.
-    ///  - Cost: one full-screen pass of five depth taps per pixel, no geometry and no extra draw of the scene: it reads the
+    ///  - Cost: one full-screen pass of nine depth taps per pixel, no geometry and no extra draw of the scene: it reads the
     ///    camera's depth texture, which the normal tiers already render (the shadowed key light and the soft particles ask for
     ///    it); this asks for it too while it runs and gives back only a request it made. The inverted-hull alternative would
     ///    draw every block batch twice (the city's 26 draws become 52, its 2.7 M vertices 5.4 M) and split at the blocks'
     ///    hard edges, so it is not used for the environment.
     ///  - Characters: the stencil bit the environment's shaders set and the characters' shaders clear (NativeToonEdge.shader).
-    ///  - Width: one pixel per 1080 lines of the screen (rounded), set only when the screen height changes.
+    ///  - Width: one pixel per 1080 lines of the screen (rounded), and the pixel's footprint per metre of depth (the creases'
+    ///    fade, NativeMapStyle.Foot), set only when the screen height or the field of view changes (aiming zooms it).
     /// Allocation free after the one-time setup (the buffer, material and triangle are made once and kept).
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class NativeToonOutline:MonoBehaviour
     {
-        private static readonly int WidthId=Shader.PropertyToID("_EdgeWidth");
-        private Camera view;private CommandBuffer buffer;private Material material;private Mesh triangle;private bool attached,missing,ownsDepth;private int height=-1;
+        private static readonly int WidthId=Shader.PropertyToID("_EdgeWidth"),FootId=Shader.PropertyToID("_EdgeFoot");
+        private Camera view;private CommandBuffer buffer;private Material material;private Mesh triangle;private bool attached,missing,ownsDepth;private int height=-1;private float fov=-1;
         /// <summary>The low graphics tier (NativeSettings.ApplySettings): no outline.</summary>
         public bool LowGraphics{get;private set;}
         /// <summary>Whether the pass is on the camera now.</summary>
@@ -52,7 +53,8 @@ namespace ChipArena.UnityConversion
             if(view==null)view=GetComponent<Camera>();
             bool want=view!=null&&NativeLighting.StyleActive&&NativeLighting.Style.Outline&&!LowGraphics&&Ready();
             if(want!=attached){if(want)On();else Off();}
-            if(want&&Screen.height!=height){height=Screen.height;material.SetFloat(WidthId,Mathf.Max(1,Mathf.Round(height/1080f)));}
+            if(want&&(Screen.height!=height||view.fieldOfView!=fov))
+            {height=Screen.height;fov=view.fieldOfView;material.SetFloat(WidthId,Mathf.Max(1,Mathf.Round(height/1080f)));material.SetFloat(FootId,NativeMapStyle.Foot(fov,Mathf.Max(1,view.pixelHeight)));}
         }
         private void On()
         {

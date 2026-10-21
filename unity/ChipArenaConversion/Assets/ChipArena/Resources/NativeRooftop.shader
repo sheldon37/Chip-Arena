@@ -17,12 +17,17 @@ Shader "ChipArena/NativeRooftop"
         Pass
         {
             Tags { "LightMode"="Always" }
+            // The anime map style's environment mark (Resources/NativeToonEdge.shader; nothing reads it while the style is off).
+            Stencil { Ref 16 WriteMask 16 Comp Always Pass Replace }
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.5
             #include "UnityCG.cginc"
             #include "NativeRooftopCommon.cginc"
+            // The anime map style's switch and stairs (NativeToon.cginc). NativeLighting.Rooftop turns the style off, so the
+            // home screen draws exactly as before; a stage-2 rooftop look turns it on (docs/MAP-STYLE-ANIME.md).
+            #include "NativeToon.cginc"
             struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;float4 uv0:TEXCOORD0;float4 uv1:TEXCOORD1;};
             struct v2f {float4 pos:SV_POSITION;float4 uv0:TEXCOORD0;float4 uv1:TEXCOORD1;float3 world:TEXCOORD2;float3 normal:TEXCOORD3;};
             v2f vert(appdata v){v2f o;o.pos=UnityObjectToClipPos(v.vertex);o.uv0=v.uv0;o.uv1=v.uv1;o.world=mul(unity_ObjectToWorld,v.vertex).xyz;o.normal=UnityObjectToWorldNormal(v.normal);return o;}
@@ -55,7 +60,7 @@ Shader "ChipArena/NativeRooftop"
                     float3 ls=_RoofSignPos.xyz-i.world;float ds=length(ls);float3 sign=_RoofSignColor.rgb*max(0.0,dot(n,ls/ds))*4.0/(ds*ds+4.0);
                     float3 lc=_RoofCyanPos.xyz-i.world;float dc=length(lc);float3 cy=float3(.2,1.2,1.5)*max(0.0,dot(n,lc/dc))*1.2/(dc*dc+3.0);
                     float wet=n.y>.5?1.0:0.0;float3 r=reflect(-v,n);float3 refl=RoofSkyBase(normalize(float3(r.x,abs(r.y),r.z)))*1.2;float fres=pow(1.0-max(0.0,dot(n,v)),4.0);
-                    c=alb*(1.0+amb*2.0)+alb*(sign+cy)*3.0+refl*fres*wet*.16;
+                    c=alb*(1.0+amb*2.0)+alb*ToonPoints(sign+cy)*3.0+refl*fres*wet*.16;
                 }
                 else if(mode<2.5)c=i.uv1.rgb;
                 else if(mode<3.5)

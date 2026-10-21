@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         // An entrance or the draft takes the screen: it keeps the fog it found for EndIntro (all of it, the density included).
         // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin),
         // and the guns' muzzle lights (no arena flash lights a stage).
-        private static void EnterStage(){StyleOff();if(introActive)return;introActive=true;stageFog=ReadFog();}
+        private static void EnterStage(){if(introActive)return;introActive=true;stageFog=ReadFog();}
         private static MapFogState ReadFog(){var c=RenderSettings.fogColor;return new MapFogState{On=RenderSettings.fog,Mode=(MapFogMode)(int)RenderSettings.fogMode,WritesDensity=true,Density=RenderSettings.fogDensity,Color=new MapLookColor{r=c.r,g=c.g,b=c.b,a=c.a},Start=RenderSettings.fogStartDistance,End=RenderSettings.fogEndDistance};}
         private static void WriteFog(in MapFogState f){RenderSettings.fog=f.On;RenderSettings.fogMode=(FogMode)(int)f.Mode;if(f.WritesDensity)RenderSettings.fogDensity=f.Density;RenderSettings.fogColor=C(f.Color);RenderSettings.fogStartDistance=f.Start;RenderSettings.fogEndDistance=f.End;}
         // The stages' shadows (NativeMapLooks.StageCascades and StageShadowDistance: every old map's own), written only on a change.
@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
         // (Brickfall's linear fog, 4 cascades, .85 key) never reaches it; on every old map those are the values it had, but for
         // the fog colour, which was the map's and now is the draft's backdrop (nothing the draft draws lies beyond the 30 m start).
         public static void Draft(Camera camera,Color tint,float flash=0)
-        {WardFieldOff();EnterStage();NativeMuzzleLights.Off();foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
+        {WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
         private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
         // An entrance stage from the scene bank (NativeSceneMotion): three's linear backdrop, fog and lights. Colours go to sRGB
         // (Unity linearises them in Linear space); directional lights become Unity lights through NativeEntranceLight, so the
@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         // from NativeSirenIntroLight at the song time `age` in place of the bank's 30 Hz samples of its bulb, fill and ambient.
         public static void Intro(NativeSceneClip clip,float age,Camera camera,double[] siren=null)
         {
-            WardFieldOff();EnterStage();NativeMuzzleLights.Off();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;int f=Math.Min(clip.frames-1,(int)(Mathf.Clamp01(age/clip.duration)*(clip.frames-1))),e=f*8;var env=clip.environment;camera.backgroundColor=new Color(env[e],env[e+1],env[e+2]).gamma;var fog=new Color(env[e+3],env[e+4],env[e+5]).gamma;WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),env[e+6],env[e+7]));StageShadows();RenderSettings.skybox=null;
+            WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;int f=Math.Min(clip.frames-1,(int)(Mathf.Clamp01(age/clip.duration)*(clip.frames-1))),e=f*8;var env=clip.environment;camera.backgroundColor=new Color(env[e],env[e+1],env[e+2]).gamma;var fog=new Color(env[e+3],env[e+4],env[e+5]).gamma;WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),env[e+6],env[e+7]));StageShadows();RenderSettings.skybox=null;
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;float skyR=0,skyG=0,skyB=0,groundR=0,groundG=0,groundB=0;int count=0,stage=0;
             foreach(var track in clip.lights)
             {
@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Entrance(NativeEntranceLights l,Camera camera)
         {
-            WardFieldOff();EnterStage();NativeMuzzleLights.Off();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
+            WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
             camera.backgroundColor=new Color(l.Background.X,l.Background.Y,l.Background.Z).gamma;var fog=new Color(l.Fog.X,l.Fog.Y,l.Fog.Z).gamma;
             WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),l.FogNear,l.FogFar));StageShadows();RenderSettings.skybox=null;
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;int count=0;
@@ -193,36 +193,43 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Rooftop(Camera camera,Material skybox)
         {
-            WardFieldOff();StyleOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
+            WardFieldOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=new Color(.03f,.02f,.07f);RenderSettings.fogStartDistance=45;RenderSettings.fogEndDistance=700;
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.10f,.11f,.24f);RenderSettings.ambientEquatorColor=new Color(.09f,.05f,.13f);RenderSettings.ambientGroundColor=new Color(.10f,.03f,.09f);
             // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
             if(moon!=null){moon.color=new Color(.85f,.25f,.75f);moon.intensity=.55f;moon.shadows=LightShadows.None;moon.transform.rotation=Quaternion.LookRotation(new Vector3(.3f,-.4f,.85f));}
             if(rim!=null){rim.color=new Color(.25f,.85f,1f);rim.intensity=.6f;rim.shadows=LightShadows.None;rim.transform.rotation=Quaternion.LookRotation(new Vector3(-.5f,-.2f,.84f));}
-            NativeMuzzleLights.Off();
+            NativeMuzzleLights.Off();StyleOff();
         }
         /// <summary>Resources/MapLooks.json, loaded and validated once.</summary>
         public static MapLookSet LookSet()
         {
-            if(looks==null){var asset=Resources.Load<TextAsset>("MapLooks");if(asset==null)throw new InvalidOperationException("MapLooks.json is missing");var set=JsonUtility.FromJson<MapLookSet>(asset.text);NativeMapLooks.Validate(set);looks=set;}
+            if(looks==null)
+            {
+                var asset=Resources.Load<TextAsset>("MapLooks");if(asset==null)throw new InvalidOperationException("MapLooks.json is missing");var set=JsonUtility.FromJson<MapLookSet>(asset.text);NativeMapLooks.Validate(set);
+                // The anime map style (Core NativeMapStyle.Styled): a look that turns it on is held styled, once, so every reader
+                // (Apply, the kits, the dressing) sees the same look; the legacy command line keeps every look as written.
+                for(int i=0;i<set.maps.Length;i++)set.maps[i]=NativeMapStyle.Styled(set.maps[i],LegacyStyle);
+                looks=set;
+            }
             return looks;
         }
         /// <summary>The map's look: the entry its `look` names (UnityMaps maps carry one), else its id's entry, else today's look worked
         /// out from the map (NativeMapLooks.Fallback). The old maps name none, so they resolve by id as before.</summary>
-        public static MapLook Look(ContentMap map)=>Styled((string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent));
+        public static MapLook Look(ContentMap map)=>(string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(LookSet(),map.id,map.theme,map.sky,map.accent);
         // ---- the anime map style (Core NativeMapStyle, Resources/NativeToon.cginc; docs/MAP-STYLE-ANIME.md) ----
         /// <summary>The legacy switch: `--ca-map-style legacy` on the command line draws every map in its legacy look.</summary>
         public static readonly bool LegacyStyle=NativeMapStyle.LegacyArgument(Environment.GetCommandLineArgs());
-        // The styled copy of each look, made once (Look runs every frame on some maps; a look without the style is itself).
-        private static readonly Dictionary<MapLook,MapLook> styled=new Dictionary<MapLook,MapLook>();
-        private static MapLook Styled(MapLook raw){if(raw?.toon==null||!raw.toon.on||LegacyStyle)return raw;if(!styled.TryGetValue(raw,out var s)){s=NativeMapStyle.Styled(raw,LegacyStyle);styled[raw]=s;}return s;}
         /// <summary>The current look's style values (all 0 while it is off, a stage owns the screen or the rooftop shows).</summary>
         public static readonly MapStyleState Style=new MapStyleState();
         /// <summary>Whether the style is drawing now (the kits pick their rounded mesh by it; NativeToonOutline adds its pass by it).</summary>
         public static bool StyleActive{get;private set;}
+        /// <summary>Whether the kits draw the style's wrap mesh (NativeToonMesh.Wrap: plinths, copings, posts, broken corners): the
+        /// style on the normal tiers; the low tier keeps the lighter rounded box (NativeToonMesh.Build). Same draws either way.</summary>
+        public static bool StyleWrap=>StyleActive&&!lowShadows;
         private static bool styleWritten;
         private static readonly int ToonId=Shader.PropertyToID("_ArenaToon"),ToonBandId=Shader.PropertyToID("_ArenaToonBand"),ToonShadeId=Shader.PropertyToID("_ArenaToonShade"),ToonLitId=Shader.PropertyToID("_ArenaToonLit"),
-            ToonRimId=Shader.PropertyToID("_ArenaToonRim"),ToonPaintId=Shader.PropertyToID("_ArenaToonPaint"),EdgeId=Shader.PropertyToID("_ArenaEdge"),EdgeColorId=Shader.PropertyToID("_ArenaEdgeColor"),
+            ToonRimId=Shader.PropertyToID("_ArenaToonRim"),ToonPaintId=Shader.PropertyToID("_ArenaToonPaint"),ToonWrapId=Shader.PropertyToID("_ArenaToonWrap"),ToonFxId=Shader.PropertyToID("_ArenaToonFx"),EdgeId=Shader.PropertyToID("_ArenaEdge"),EdgeColorId=Shader.PropertyToID("_ArenaEdgeColor"),
             GradeId=Shader.PropertyToID("_ArenaGrade"),GradeShadowId=Shader.PropertyToID("_ArenaGradeShadow"),GradeLightId=Shader.PropertyToID("_ArenaGradeLight"),
             SkyToonId=Shader.PropertyToID("_SkyToon"),SkyToonLitId=Shader.PropertyToID("_SkyToonLit"),SkyToonShadeId=Shader.PropertyToID("_SkyToonShade"),SkyToonBandId=Shader.PropertyToID("_SkyToonBand");
         private static Vector4 V(float[] a)=>new Vector4(a[0],a[1],a[2],a[3]);
@@ -233,7 +240,7 @@ namespace ChipArena.UnityConversion
         {
             NativeMapStyle.State(look,LegacyStyle,true,Style);StyleActive=Style.On;styleWritten=true;
             Shader.SetGlobalVector(ToonId,V(Style.Toon));Shader.SetGlobalVector(ToonBandId,V(Style.Band));Shader.SetGlobalVector(ToonShadeId,V(Style.Shade));Shader.SetGlobalVector(ToonLitId,V(Style.Lit));
-            Shader.SetGlobalVector(ToonRimId,VC(Style.Rim));Shader.SetGlobalVector(ToonPaintId,V(Style.Paint));Shader.SetGlobalVector(EdgeId,V(Style.Edge));Shader.SetGlobalVector(EdgeColorId,VC(Style.EdgeColor));
+            Shader.SetGlobalVector(ToonRimId,VC(Style.Rim));Shader.SetGlobalVector(ToonPaintId,V(Style.Paint));Shader.SetGlobalVector(ToonWrapId,V(Style.Wrap));Shader.SetGlobalVector(ToonFxId,V(Style.Fx));Shader.SetGlobalVector(EdgeId,V(Style.Edge));Shader.SetGlobalVector(EdgeColorId,VC(Style.EdgeColor));
             Shader.SetGlobalVector(GradeId,V(Style.GradeParams));Shader.SetGlobalVector(GradeShadowId,V(Style.GradeShadow));Shader.SetGlobalVector(GradeLightId,V(Style.GradeLight));
             if(sky!=null){sky.SetVector(SkyToonId,V(Style.SkyToon));sky.SetVector(SkyToonLitId,VC(Style.CloudLit));sky.SetVector(SkyToonShadeId,VC(Style.CloudShade));sky.SetVector(SkyToonBandId,VC(Style.SkyBand));}
         }

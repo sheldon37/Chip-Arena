@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
             }
             NativeLighting.ArenaRim();var k=look?.blocks;Color haze=k!=null?Linear(NativeArena.ColorOf(k.hazeColor)):Color.black;
             Shader.SetGlobalVector(HazeId,new Vector4(haze.r,haze.g,haze.b,k!=null?k.haze:0));Shader.SetGlobalFloat(HazeTopId,k!=null&&k.hazeTop>0?k.hazeTop:1);Shader.SetGlobalFloat(DustId,k!=null?k.dust:0);
-            for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(s==0&&NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build(),0)):meshes[s],batches[s][i],n);Draws++;Instances+=n;}
+            for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(s==0&&NativeLighting.StyleActive?ToonStage:meshes[s],batches[s][i],n);Draws++;Instances+=n;}
         }
         private void Rebind(NativeArena arena,NativeDustCoat coat)
         {
@@ -216,15 +216,17 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++)
             {
                 v[i]=new Vector3(s.Preview[i*3],s.Preview[i*3+1],s.Preview[i*3+2]);normals[i]=new Vector3(s.Normal[i*3],s.Normal[i*3+1],s.Normal[i*3+2]);colors[i]=new Color(s.Shade[i*4],s.Shade[i*4+1],s.Shade[i*4+2],s.Shade[i*4+3]);
-                a.Add(new Vector4(s.Lattice[i*4],s.Lattice[i*4+1],s.Lattice[i*4+2],0));b.Add(new Vector4(s.Inset[i*4],s.Inset[i*4+1],s.Inset[i*4+2],0));
+                a.Add(new Vector4(s.Lattice[i*4],s.Lattice[i*4+1],s.Lattice[i*4+2],s.Lattice[i*4+3]));b.Add(new Vector4(s.Inset[i*4],s.Inset[i*4+1],s.Inset[i*4+2],s.Inset[i*4+3]));
             }
             var mesh=new Mesh{name="Arena block mesh "+stage};mesh.vertices=v;mesh.normals=normals;mesh.colors=colors;mesh.SetUVs(0,a);mesh.SetUVs(1,b);mesh.triangles=s.Triangles;
             mesh.bounds=new Bounds(Vector3.zero,Vector3.one*BoundsSize);mesh.UploadMeshData(true);return mesh;
         }
         private static Color Linear(Color c)=>QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c;
-        // The anime map style's intact-stage mesh (Core NativeToonMesh: rounded edges), made on first use; the other stages keep theirs.
-        private Mesh toonMesh;
-        private void OnDestroy(){if(meshes!=null)foreach(var m in meshes)if(m!=null)CapturedAnimation.Release(m);if(toonMesh!=null)CapturedAnimation.Release(toonMesh);toonMesh=null;if(material!=null)CapturedAnimation.Release(material);meshes=null;material=null;}
+        // The anime map style's intact-stage mesh, made on first use (the other stages keep theirs): the wrap (Core
+        // NativeToonMesh.Wrap) on the normal tiers, the rounded box (NativeToonMesh.Build) on the low tier.
+        private Mesh toonMesh,wrapMesh;
+        private Mesh ToonStage=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap(),0)):(toonMesh??=MeshOf(NativeToonMesh.Build(),0));
+        private void OnDestroy(){if(meshes!=null)foreach(var m in meshes)if(m!=null)CapturedAnimation.Release(m);if(toonMesh!=null)CapturedAnimation.Release(toonMesh);toonMesh=null;if(wrapMesh!=null)CapturedAnimation.Release(wrapMesh);wrapMesh=null;if(material!=null)CapturedAnimation.Release(material);meshes=null;material=null;}
     }
     public sealed partial class ArenaPresentation
     {

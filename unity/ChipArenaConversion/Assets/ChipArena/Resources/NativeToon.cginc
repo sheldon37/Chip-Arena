@@ -14,8 +14,12 @@
 //  _ArenaToonRim:    rgb the rim and edge light (linear), w the edge highlight (the key on a rounded edge, 0..1)
 //  _ArenaToonPaint:  x the fine variation kept (0..1 of a look's per-brick, per-plank and grain noise), y the wall's value
 //                    gradient (darker low, lighter high), z the painted wash (broad soft mottling), w the base shadow (soft AO)
+//  _ArenaToonWrap:   the wrap the sim blocks' mesh draws (NativeBlockLit ToonWrap): x plinths and bases, y copings and
+//                    capitals, z broken corners on old masonry, w crate and container posts and rails (each 0 or 1)
+//  _ArenaToonFx:     x the specular band's strength on rounded forms, y its threshold (N.H), z the occlusion band's depth
+//                    (0..1: the third, darkest band at wall feet and under ledges), w the occlusion band's height (m)
 // ---- TOON SHARED BEGIN (HLSL and GLSL: float literals only; Core NativeMapStyle mirrors it) ----
-float4 _ArenaToon;float4 _ArenaToonBand;float4 _ArenaToonShade;float4 _ArenaToonLit;float4 _ArenaToonRim;float4 _ArenaToonPaint;
+float4 _ArenaToon;float4 _ArenaToonBand;float4 _ArenaToonShade;float4 _ArenaToonLit;float4 _ArenaToonRim;float4 _ArenaToonPaint;float4 _ArenaToonWrap;float4 _ArenaToonFx;
 // Point lights in stairs of their light's square root (NativeMapStyle.PointSteps: 3 steps from 0 to 1, a soft edge of .18).
 #define TOON_POINT_STEPS 3.0
 #define TOON_STAIR 0.18
@@ -44,13 +48,18 @@ float3 ToonPoints(float3 c)
     float q=ToonStairs(sqrt(l)*TOON_POINT_STEPS)/TOON_POINT_STEPS;
     return c*lerp(1.0,q*q/l,_ArenaToonLit.w);
 }
+// The key's shadow (1 lit) for the ramp: kept apart from N.L and eased, so a cast shadow's edge is crisp but slightly soft
+// (the shadow map's own filter, narrowed) and a grazing face's shadow-map noise never flips whole bands.
+#define TOON_SHADOW_LO 0.15
+#define TOON_SHADOW_HI 0.85
+float ToonShadow(float atten){return smoothstep(TOON_SHADOW_LO,TOON_SHADOW_HI,atten);}
 // The ambient: Unity's SH at the normal flattened toward one sky-to-ground blend (anime backgrounds fill shade flat).
 float3 ToonAmbient(float3 shN,float3 shUp,float3 shDown,float ny){return lerp(shN,lerp(shDown,shUp,0.55+0.3*ny),_ArenaToon.w);}
 // The key and ambient through the ramp: shade is the ambient in the shade tint plus the lift, lit adds the key in the lit
 // tint; `atten` is the key's shadow (1 lit), so a cast shadow takes the same flat shade as a face turned away.
 float3 ToonDiffuse(float3 amb,float3 key,float ndl,float atten)
 {
-    float r=ToonRamp(saturate(ndl)*atten);
+    float r=ToonRamp(saturate(ndl))*ToonShadow(atten);
     float3 shade=(amb+key*_ArenaToonShade.w)*_ArenaToonShade.rgb;
     return lerp(shade,amb+key*_ArenaToonLit.rgb,r);
 }
@@ -70,14 +79,18 @@ float ToonRadius(float3 h,float c)
     float lo=min(h.x,min(h.y,h.z));
     return min(0.9*lo,clamp(_ArenaToonBand.w*lo,c,TOON_RADIUS_MAX));
 }
-// The edge light: on a rounded edge (`edge` 0 on the flat, 1 on a full turn) the key through the ramp (_ArenaToonRim.w) and
-// the rim colour where the edge turns from the eye (a thin back light on silhouettes and corners).
+// The edge light: on a rounded edge (`edge` 0 on the flat, 1 on a full turn) the key through the ramp (_ArenaToonRim.w), the
+// rim colour where the edge turns from the eye (a thin back light on silhouettes and corners) and a crisp specular band where
+// the rounded normal meets the half vector (_ArenaToonFx.x over the threshold .y), the painted highlight of an anime edge.
 float3 ToonEdge(float3 n,float3 v,float3 keyDir,float3 key,float atten,float edge)
 {
-    float lit=ToonRamp(saturate(dot(n,keyDir))*atten);
+    float lit=ToonRamp(saturate(dot(n,keyDir)))*ToonShadow(atten);
     float back=pow(1.0-saturate(dot(n,v)),2.0);
-    return edge*(key*(lit*_ArenaToonRim.w)+_ArenaToonRim.rgb*(back*_ArenaToon.z));
+    float spec=smoothstep(_ArenaToonFx.y,_ArenaToonFx.y+0.012,dot(n,normalize(keyDir+v)))*ToonShadow(atten);
+    return edge*(key*(lit*_ArenaToonRim.w+spec*_ArenaToonFx.x)+_ArenaToonRim.rgb*(back*_ArenaToon.z));
 }
+// The occlusion band (the third, darkest band): the light at wall feet and under ledges, the shade tint deepened.
+float3 ToonOcclude(float3 light,float occ){return light*lerp(float3(1.0,1.0,1.0),_ArenaToonShade.rgb*(1.0-_ArenaToonFx.z),saturate(occ));}
 // The sky's sheen on an upward face seen at a grazing angle (n, v toward the eye), in the sky ambient's colour.
 float3 ToonSheen(float3 n,float3 v,float3 sky){return sky*(smoothstep(0.7,0.95,n.y)*pow(1.0-saturate(dot(n,v)),4.0)*TOON_SHEEN);}
 // ---- TOON SHARED END ----

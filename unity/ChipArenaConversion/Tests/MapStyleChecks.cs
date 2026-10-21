@@ -38,7 +38,8 @@ namespace ChipArena.UnityConversion
             Switch(set);Console.WriteLine("PASS map style: the switch (only expedition-city and brickfall turn it on; legacy and every other map write 0) and the styled look keeps the fog end, lights, block and kit looks and dressing the budgets read ("+count+" checks)");
             Shaders(root,R);Console.WriteLine("PASS map style: the shaders' toon constants and formulas are the Core's, every legacy path is kept behind the one uniform branch, the outline marks and tests stencil bit 16 ("+count+" checks)");
             Ramp();Console.WriteLine("PASS map style: the ramp (three bands, monotonic, a cast shadow takes the turned-away shade), the soft stairs, the stepped point lights and the rounded normal ("+count+" checks)");
-            Mesh();Console.WriteLine("PASS map style: the rounded box is closed and outward at every size, inside the block, on the legacy faces, deterministic and under the legacy S0 mesh's vertices and triangles; stages 1-4 keep the legacy meshes ("+count+" checks)");
+            Mesh();var lg=NativeBlockLooks.Build(0);Console.WriteLine("PASS map style: the rounded box is closed and outward at every size, inside the block, on the legacy faces, deterministic and under the legacy S0 mesh ("+NativeToonMesh.VertexCount+" vertices and "+NativeToonMesh.TriangleCount+" triangles against "+lg.Vertices+" and "+lg.Triangles.Length/3+"); stages 1-4 keep the legacy meshes ("+count+" checks)");
+            Wrap();Console.WriteLine("PASS map style: the wrap ("+NativeToonMesh.WrapVertexCount+" vertices, "+NativeToonMesh.WrapTriangleCount+" triangles) is closed and outward for every class and size, never above or below the block nor more than "+NativeMapStyle.WrapOut+" m proud of it, deterministic; walls, columns, crates and containers take their classes, the legacy meshes never take its path ("+count+" checks)");
             Shapes();Console.WriteLine("PASS map style: rods round at the lattice clamp, mid blocks grow their chamfer to 8 cm, big blocks keep theirs, a taper narrows the top 30% ("+count+" checks)");
             Edges();Console.WriteLine("PASS map style: the outline lines silhouettes on the nearer pixel only, creases where 1/depth bends, never a plane, and fades out with distance ("+count+" checks)");
             Allocation(set);Console.WriteLine("PASS map style: the ramp, stairs, point gain, diffuse, radius, round normal, chamfer, lattice, edge and the style state allocate nothing per frame ("+count+" checks)");
@@ -75,11 +76,14 @@ namespace ChipArena.UnityConversion
         {
             string res="Assets/ChipArena/Resources/";string toon=R(res+"NativeToon.cginc"),block=R(res+"NativeBlockLit.shader"),edge=R(res+"NativeToonEdge.shader"),surf=R(res+"NativeToonSurface.cginc");
             string lit=R(res+"NativeLit.shader"),src=R(res+"NativeSourceLit.shader"),zombie=R(res+"NativeZombieLit.shader"),sky=R(res+"NativeNightSky.shader"),bloom=R(res+"NativeBloom.shader");
+            Check(Define(toon,"TOON_SHADOW_LO")==NativeMapStyle.ShadowLo&&Define(toon,"TOON_SHADOW_HI")==NativeMapStyle.ShadowHi,"the shadow's ease is NativeMapStyle's");
             Check(Define(toon,"TOON_POINT_STEPS")==NativeMapStyle.PointSteps&&Define(toon,"TOON_STAIR")==NativeMapStyle.Stair&&Define(toon,"TOON_RADIUS_MAX")==NativeMapStyle.RadiusMax&&Define(toon,"TOON_EDGE_GAIN")==NativeMapStyle.EdgeGain,"NativeToon.cginc's constants are NativeMapStyle's");
             string shared=toon.Substring(toon.IndexOf("TOON SHARED BEGIN",StringComparison.Ordinal),toon.IndexOf("TOON SHARED END",StringComparison.Ordinal)-toon.IndexOf("TOON SHARED BEGIN",StringComparison.Ordinal));
             foreach(var f in new[]{"return _ArenaToonBand.z*ToonStep(x,_ArenaToonBand.x,s)+(1.0-_ArenaToonBand.z)*ToonStep(x,_ArenaToonBand.y,s);","float ToonStairs(float x){float f=floor(x);return f+smoothstep(0.5-TOON_STAIR,0.5+TOON_STAIR,x-f);}",
-                "if(_ArenaToon.x<0.5)return c;","float q=ToonStairs(sqrt(l)*TOON_POINT_STEPS)/TOON_POINT_STEPS;","return c*lerp(1.0,q*q/l,_ArenaToonLit.w);","float r=ToonRamp(saturate(ndl)*atten);","float3 shade=(amb+key*_ArenaToonShade.w)*_ArenaToonShade.rgb;",
-                "return lerp(shade,amb+key*_ArenaToonLit.rgb,r);","float3 core=max(h-float3(r,r,r),float3(0.0,0.0,0.0));float3 q=obj-clamp(obj,-core,core);","return dot(n,facet)>0.5?n:facet;","return min(0.9*lo,clamp(_ArenaToonBand.w*lo,c,TOON_RADIUS_MAX));"})
+                "if(_ArenaToon.x<0.5)return c;","float q=ToonStairs(sqrt(l)*TOON_POINT_STEPS)/TOON_POINT_STEPS;","return c*lerp(1.0,q*q/l,_ArenaToonLit.w);","float r=ToonRamp(saturate(ndl))*ToonShadow(atten);","float ToonShadow(float atten){return smoothstep(TOON_SHADOW_LO,TOON_SHADOW_HI,atten);}","float3 shade=(amb+key*_ArenaToonShade.w)*_ArenaToonShade.rgb;",
+                "return lerp(shade,amb+key*_ArenaToonLit.rgb,r);","float3 core=max(h-float3(r,r,r),float3(0.0,0.0,0.0));float3 q=obj-clamp(obj,-core,core);","return dot(n,facet)>0.5?n:facet;","return min(0.9*lo,clamp(_ArenaToonBand.w*lo,c,TOON_RADIUS_MAX));",
+                "float spec=smoothstep(_ArenaToonFx.y,_ArenaToonFx.y+0.012,dot(n,normalize(keyDir+v)))*ToonShadow(atten);","return edge*(key*(lit*_ArenaToonRim.w+spec*_ArenaToonFx.x)+_ArenaToonRim.rgb*(back*_ArenaToon.z));",
+                "float3 ToonOcclude(float3 light,float occ){return light*lerp(float3(1.0,1.0,1.0),_ArenaToonShade.rgb*(1.0-_ArenaToonFx.z),saturate(occ));}"})
                 Check(shared.Contains(f),"NativeToon.cginc shared: "+f);
             Check(!Regex.IsMatch(Code(shared),@"(?<![\w.])\d+(?![\w.u])")&&!Regex.IsMatch(Code(shared),@"\btex2D|sampler|static\b"),"the toon block is GLSL-compatible (float literals, no textures)");
             // NativeBlockLit: the shapes, the switch, the legacy path kept.
@@ -90,11 +94,22 @@ namespace ChipArena.UnityConversion
             Check(chamfer.Contains("if(mid<=TOON_ROD&&lo>=TOON_ROD_SQUARE*mid&&hi>=TOON_ROD_LONG*mid)return 0.42*lo;")&&chamfer.Contains("if(lo<=TOON_MID_HALF)return clamp(TOON_CHAMFER_GROW*lo,c,TOON_CHAMFER_MAX);")&&chamfer.Contains("return c;"),"ToonChamfer is NativeMapStyle.Chamfer");
             var lattice=Body(block,"float3 ToonLattice(");
             Check(lattice.Contains("if(_ArenaToon.x<0.5)return BlockLattice(a,b,h,c,flags,n);")&&lattice.Contains("p.xz*=1.0-TOON_TAPER*saturate(p.y/max(h.y,0.0001)*0.5+0.5);"),"ToonLattice: the legacy lattice exactly while off, the taper on the style");
+            // The wrap: its constants, class rules and shape lines are NativeMapStyle's; the vertex stage takes it only for uv0.w 1.
+            Check(Define(block,"WRAP_OUT")==NativeMapStyle.WrapOut&&Define(block,"WRAP_BEVEL")==NativeMapStyle.WrapBevel&&Define(block,"WRAP_CHIP")==NativeMapStyle.WrapChip&&Define(block,"WRAP_CHIP_SHARE")==NativeMapStyle.WrapChipShare&&Define(block,"WRAP_PILASTER")==NativeMapStyle.WrapPilaster&&Define(block,"WRAP_PILASTER_OUT")==NativeMapStyle.WrapPilasterOut
+                &&Define(block,"WRAP_WALL")==NativeMapStyle.WrapWall&&Define(block,"WRAP_COLUMN")==NativeMapStyle.WrapColumn&&Define(block,"WRAP_CRATE")==NativeMapStyle.WrapCrate&&Define(block,"WRAP_CONTAINER")==NativeMapStyle.WrapContainer,"NativeBlockLit's wrap constants are NativeMapStyle's");
+            var wclass=Body(block,"float ToonWrapClass(");var wshape=Body(block,"void ToonWrapShape(");var wplace=Body(block,"float3 ToonWrap(float4 a");
+            foreach(var f in new[]{"if(masonry&&h.y>=0.6&&lo>=0.08&&lo>=0.5*hi&&hi<=0.8&&h.y>=1.8*hi)return WRAP_COLUMN;","if(masonry&&h.y>=0.3&&lo>=0.1&&hi>=0.3)return WRAP_WALL;","if(BkIs(look,LOOK_TIMBER)&&h.y>=0.2&&h.y<=1.2&&lo>=0.2&&hi<=1.5)return WRAP_CRATE;","if(BkIs(look,LOOK_CORRUGATED)&&h.y>=0.4&&lo>=0.3)return WRAP_CONTAINER;"})Check(wclass.Contains(f),"ToonWrapClass: "+f);
+            foreach(var f in new[]{"pb=min(0.32,0.09*H)*w.x;op=min(0.035,0.25*lo)*w.x;ct=min(0.26,0.07*H)*w.y;oc=min(0.05,0.3*lo)*w.y;","chip=w.z*step(0.7,frac(seed*7.31))*(1.0+floor(frac(seed*13.7)*3.999));d=chip>0.5?WRAP_CHIP:0.0;","if(hi>=2.0&&h.y>=2.0&&w.x>0.5){d=WRAP_PILASTER;po=WRAP_PILASTER_OUT;}",
+                "rs=max(c,0.25*lo);rt=min(0.04,0.42*min(lo,h.y));","pb=min(0.3,0.12*H)*w.x;op=min(0.07,0.25*lo)*w.x;ct=min(0.28,0.12*H)*w.y;oc=min(0.08,0.3*lo)*w.y;","d=min(0.11,0.3*lo)*w.w;po=0.032*w.w;","d=min(0.12,0.3*lo)*w.w;po=0.035*w.w;","rb=pb>0.0?0.0:rt;pb=min(pb,0.25*H);ct=min(max(ct,rt+oc),0.3*H);"})Check(wshape.Contains(f),"ToonWrapShape: "+f);
+            foreach(var f in new[]{"else if(row<4.5){y=h.y-ct+min(oc,0.5*(ct-rt));o=oc;}","{y=max(y-min(WRAP_CHIP,ct+0.1)*(row-3.0)*0.25,h.y-ct+0.002*(row-3.0));o=min(o,0.0)-0.04;}","p.xz+=sn*o;p.y=y;"})Check(wplace.Contains(f),"ToonWrap: "+f);
+            Check(Body(block,"void BlockVertex(").Contains("if(v.texcoord.w>0.5){float4 look=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook);v.vertex=float4(ToonWrap(v.texcoord,v.texcoord1,size.xyz,ToonChamfer(size.xyz,size.w),look.x,look.w,look.z),1.0);}")&&!Regex.IsMatch(wclass+wshape+wplace,@"\b(ddx|ddy|fwidth)\b"),"the vertex stage and the shadow caster place the wrap (uv0.w 1) without derivatives");
             Check(Body(block,"void BlockVertex(").Contains("ToonLattice(v.texcoord.xyz,v.texcoord1.xyz,size.xyz,size.w,flags,n)")&&!Regex.IsMatch(Body(block,"float3 ToonLattice(")+Body(block,"float ToonChamfer("),@"\b(ddx|ddy|fwidth)\b"),"the vertex stage and the shadow caster place the style's lattice, without derivatives");
             string frag=Body(block,"fixed4 frag(");
             Check(frag.Contains("if(_ArenaToon.x>0.5)")&&frag.Contains("float3 light=ShadeSH9(float4(nW,1.0))+_LightColor0.rgb*(saturate(dot(nW,_WorldSpaceLightPos0.xyz))*atten)+BlockLights(i.world.xyz,nW);")&&frag.Contains("col=s.albedo*light+s.emit;")
                 &&frag.Contains("fixed4 c=fixed4(BlockHaze(col,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);"),"the fragment's legacy light is today's, behind the one branch");
             var surface=Body(block,"BlockSurf BlockSurface(");
+            Check(Body(block,"float3 ToonBlockLit(").Contains("float3 light=ToonOcclude(ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y),key,dot(nT,keyDir),atten),occ)+ToonPoints(BlockLights(world,nT));")&&frag.Contains("float rad=ToonRadius(i.size.xyz,i.ax.w);float keep=smoothstep(1.0,3.0,rad/max(fpx,0.00001));")&&frag.Contains("float3 nR=normalize(lerp(nO,ToonRoundNormal(i.obj.xyz,i.size.xyz,rad,nO),keep)+s.bump);"),"the occlusion band and the surface's normal turns are the style's only");
+            Check(surface.Contains("if(toon)s.occ=max(")&&surface.Contains("BlockSurf s;s.albedo=lerp(alb,BK_COAT,coat);s.emit=emit*(1.0-0.5*coat);s.occ=0.0;")&&surface.Contains("float3 bump=float3(0.0,0.0,0.0);")&&surface.Contains("s.bump=bump;")&&surface.Contains("if(toon)bump=(top?")&&surface.Contains("else if(toon)occLook=")&&Regex.Matches(surface,@"\bbump=").Count==4,"the occlusion and normal turns are written only behind the switch (the legacy look never reads them)");
             Check(surface.Contains("bool toon=_ArenaToon.x>0.5;if(toon)detail*=_ArenaToonPaint.x;")&&surface.Contains("if(toon)shade.rgb=float3(0.8,0.8,0.8);")&&surface.Contains("alb*=shade.rgb*1.25;")&&surface.Contains("if(!top&&toon)alb*=1.0-_ArenaToonPaint.w*(1.0-smoothstep(0.0,1.6,yb));"),"the paint's toon steps are each behind the switch");
             int band=surface.IndexOf("// The 2.3 load-bearing band",StringComparison.Ordinal),paint=surface.IndexOf("if(toon)\n",StringComparison.Ordinal);
             Check(band>0&&paint>0&&paint<band,"the paint comes before the telegraphs (the band, the DANGER tag and the lamp keep their colours)");
@@ -108,9 +123,10 @@ namespace ChipArena.UnityConversion
                 &&src.Contains("o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,normalize(i.worldNormal)));")&&src.Contains("o.Emission+=o.Albedo*ToonPoints(MuzzleLights(i.worldPos,normalize(i.worldNormal),.35));"),"SourceLit: the toon model, characters unmarked by default, actor and muzzle lights in stairs");
             Check(zombie.Contains("Stencil { Ref 0 WriteMask 16 Comp Always Pass Replace }"),"ZombieLit clears the environment mark");
             // The outline.
-            Check(Define(edge,"EDGE_GAP_MIN")==NativeMapStyle.GapMin&&Define(edge,"EDGE_GAP_SHARE")==NativeMapStyle.GapShare&&Define(edge,"EDGE_CREASE")==NativeMapStyle.CreaseWeight,"NativeToonEdge's constants are NativeMapStyle's");
-            var line=Body(edge,"float EdgeLine(float2 uv,float2 px)");
-            Check(line.Contains("float gap=EDGE_GAP_MIN+EDGE_GAP_SHARE*c;float sil=step(gap,max(l+r,d+u)-2.0*c);")&&line.Contains("float ic=1.0/c;float bend=max(abs(1.0/l+1.0/r-2.0*ic),abs(1.0/d+1.0/u-2.0*ic))/ic;")&&line.Contains("float crease=smoothstep(_ArenaEdge.w,_ArenaEdge.w*2.0,bend)*step(c-min(min(l,r),min(d,u)),gap);")
+            Check(Define(edge,"EDGE_GAP_MIN")==NativeMapStyle.GapMin&&Define(edge,"EDGE_GAP_SHARE")==NativeMapStyle.GapShare&&Define(edge,"EDGE_CREASE")==NativeMapStyle.CreaseWeight&&Define(edge,"EDGE_WIDE_GAP")==NativeMapStyle.WideGap&&Define(edge,"EDGE_CREASE_FOOT0")==NativeMapStyle.CreaseFoot0&&Define(edge,"EDGE_CREASE_FOOT1")==NativeMapStyle.CreaseFoot1,"NativeToonEdge's constants are NativeMapStyle's");
+            var line=Body(edge,"float EdgeLine(float2 uv,float2 px,float foot)");
+            Check(line.Contains("float L=EdgeDepth(uv-float2(2.0*px.x,0.0));float R=EdgeDepth(uv+float2(2.0*px.x,0.0));float D=EdgeDepth(uv-float2(0.0,2.0*px.y));float U=EdgeDepth(uv+float2(0.0,2.0*px.y));")
+                &&line.Contains("float gap=EDGE_GAP_MIN+EDGE_GAP_SHARE*c;float sil=max(step(gap,max(l+r,d+u)-2.0*c),step(EDGE_WIDE_GAP*gap,max(L+R,D+U)-2.0*c));")&&line.Contains("float ic=1.0/c;float bend=max(abs(1.0/l+1.0/r-2.0*ic),abs(1.0/d+1.0/u-2.0*ic))/ic;")&&line.Contains("float crease=smoothstep(_ArenaEdge.w,_ArenaEdge.w*2.0,bend)*step(c-min(min(l,r),min(d,u)),gap)*(1.0-smoothstep(EDGE_CREASE_FOOT0,EDGE_CREASE_FOOT1,c*foot));")
                 &&line.Contains("return saturate(max(sil,crease*EDGE_CREASE))*(1.0-smoothstep(_ArenaEdge.y,_ArenaEdge.z,c))*_ArenaEdge.x;"),"EdgeLine is NativeMapStyle.Edge");
             Check(edge.Contains("Stencil { Ref 16 ReadMask 16 Comp Equal }")&&edge.Contains("Blend DstColor Zero")&&edge.Contains("Cull Off ZWrite Off ZTest Always")&&edge.Contains("Shader \"Hidden/ChipArena/NativeToonEdge\"")&&Regex.Matches(edge,"CGPROGRAM").Count==1,"the outline: one hidden pass over the environment mark, multiplying the scene");
             Check(!Regex.IsMatch(Code(edge),@"\btex2D\("),"the outline reads only the depth texture (no other sampler)");
@@ -174,6 +190,50 @@ namespace ChipArena.UnityConversion
             for(int v=0;v<m.Vertices;v++)for(int k=0;k<3;k++)if(Math.Abs(m.Lattice[v*4+k])==1&&m.Inset[v*4+k]==0&&m.Normal[v*3+k]!=0&&Math.Abs(m.Normal[v*3+k])==1)
             {for(int j=0;j<3;j++)if(j!=k)Check(Math.Abs(m.Inset[v*4+j])==1&&Math.Sign(m.Inset[v*4+j])==-Math.Sign(m.Lattice[v*4+j]),"a face corner sits a chamfer in from the edges, as the legacy face's");}
         }
+        // ---- the wrap ----
+        private static void Wrap()
+        {
+            var m=NativeToonMesh.Wrap();int n=m.Vertices;
+            Check(n==NativeToonMesh.WrapVertexCount&&m.Triangles.Length==NativeToonMesh.WrapTriangleCount*3&&m.Lattice.Length==n*4&&m.Inset.Length==n*4&&m.Normal.Length==n*3&&m.Shade.Length==n*4,"exact counts");
+            Check(Enumerable.Range(0,n).All(v=>m.Lattice[v*4+3]==1)&&Enumerable.Range(0,NativeBlockLooks.Meshes).All(s=>{var l=NativeBlockLooks.Build(s);return Enumerable.Range(0,l.Vertices).All(v=>l.Lattice[v*4+3]==0);})&&Enumerable.Range(0,NativeToonMesh.VertexCount).All(v=>NativeToonMesh.Build().Lattice[v*4+3]==0),"only the wrap takes the shader's wrap path (TEXCOORD0.w 1; 0 on the legacy and rounded meshes)");
+            var again=NativeToonMesh.Wrap();Check(m.Lattice.SequenceEqual(again.Lattice)&&m.Inset.SequenceEqual(again.Inset)&&m.Triangles.SequenceEqual(again.Triangles)&&m.Normal.SequenceEqual(again.Normal),"deterministic");
+            // The classes (Brickfall's own blocks among them).
+            Check(NativeMapStyle.WrapClass(.6f,1.8f,.6f,NativeBlockLooks.BrickRed,0)==NativeMapStyle.WrapColumn,"a 1.2 x 3.6 m brick pier is a column");
+            Check(NativeMapStyle.WrapClass(.7f,1.68f,.15f,NativeBlockLooks.BrickBuff,0)==NativeMapStyle.WrapWall&&NativeMapStyle.WrapClass(2.5f,7,1,NativeBlockLooks.ConcreteBoard,0)==NativeMapStyle.WrapWall,"facade panels and frontage walls are walls");
+            Check(NativeMapStyle.WrapClass(1.2f,.55f,.6f,NativeBlockLooks.Timber,0)==NativeMapStyle.WrapCrate&&NativeMapStyle.WrapClass(3.05f,1.3f,1.2f,NativeBlockLooks.Corrugated,0)==NativeMapStyle.WrapContainer,"cover crates are crates, containers and trucks containers");
+            Check(NativeMapStyle.WrapClass(2.8f,.12f,3,NativeBlockLooks.ConcreteBoard,0)==NativeMapStyle.WrapNone&&NativeMapStyle.WrapClass(.6f,1.8f,.6f,NativeBlockLooks.BrickRed,NativeCyberCityLooks.Bank)==NativeMapStyle.WrapNone&&NativeMapStyle.WrapClass(.9f,.55f,.5f,NativeBlockLooks.Plain,0)==NativeMapStyle.WrapNone&&NativeMapStyle.WrapClass(.05f,1.6f,.05f,NativeBlockLooks.SteelGreen,0)==NativeMapStyle.WrapNone,"slabs, the bank looks, sandbags and rails take no class (a rounded box)");
+            // Every class at sizes from a rail to a frontage: closed, outward, inside the block's height, at most WrapOut proud.
+            var cases=new List<(float,float,float,int,float)>{(.5f,.5f,.5f,NativeBlockLooks.Plain,.3f),(.05f,1.5f,.05f,NativeBlockLooks.SteelGreen,.1f),(2.8f,.12f,3,NativeBlockLooks.ConcreteBoard,.2f),(.7f,1.68f,.15f,NativeBlockLooks.BrickBuff,.75f),(.2f,1.68f,.15f,NativeBlockLooks.BrickRed,.8f),
+                (2.5f,7,1,NativeBlockLooks.BrickRed,.9f),(7.5f,7,1,NativeBlockLooks.BrickRed,.71f),(1,28,1,NativeBlockLooks.BrickRed,.72f),(.6f,1.8f,.6f,NativeBlockLooks.BrickRed,.1f),(.15f,4.1f,.5f,NativeBlockLooks.ConcreteBoard,.3f),(1.2f,.55f,.6f,NativeBlockLooks.Timber,.4f),(.75f,.7f,.75f,NativeBlockLooks.Timber,.5f),(3.05f,1.3f,1.2f,NativeBlockLooks.Corrugated,.6f),(1,.4f,1,NativeBlockLooks.BrickRed,.95f)};
+            foreach(var (hx,hy,hz,look,seed) in cases)foreach(var flags in new[]{0,NativeMapStyle.Taper})
+            {
+                var p=new double[n*3];
+                for(int v=0;v<n;v++){NativeMapStyle.WrapPoint(m.Lattice[v*4],m.Lattice[v*4+1],m.Lattice[v*4+2],m.Inset[v*4],m.Inset[v*4+1],m.Inset[v*4+2],m.Inset[v*4+3],hx,hy,hz,NativeBlockLooks.Chamfer,look,flags,seed,out float x,out float y,out float z);p[v*3]=x;p[v*3+1]=y;p[v*3+2]=z;}
+                string at=hx+","+hy+","+hz+" look "+look+(flags!=0?" tapered":"");
+                Check(Enumerable.Range(0,n).All(v=>Math.Abs(p[v*3+1])<=hy+1e-5&&Math.Abs(p[v*3])<=hx+NativeMapStyle.WrapOut+1e-5&&Math.Abs(p[v*3+2])<=hz+NativeMapStyle.WrapOut+1e-5),"never above or below the block, at most WrapOut proud: "+at);
+                double vol=0;var edges=new Dictionary<(int,int),int>();
+                // Positions that coincide are one point (a feature at 0 folds rows together); edges are counted between points.
+                var key=new Dictionary<string,int>();int Id(int v){string k=string.Join(",",Enumerable.Range(0,3).Select(c=>Math.Round(p[v*3+c],5).ToString(CultureInfo.InvariantCulture)));if(!key.TryGetValue(k,out int id)){id=key.Count;key[k]=id;}return id;}
+                for(int t=0;t<m.Triangles.Length;t+=3)
+                {
+                    int a=m.Triangles[t],b=m.Triangles[t+1],c=m.Triangles[t+2];
+                    vol+=p[a*3]*(p[b*3+1]*p[c*3+2]-p[b*3+2]*p[c*3+1])-p[a*3+1]*(p[b*3]*p[c*3+2]-p[b*3+2]*p[c*3])+p[a*3+2]*(p[b*3]*p[c*3+1]-p[b*3+1]*p[c*3]);
+                    int ia=Id(a),ib=Id(b),ic=Id(c);if(ia==ib||ib==ic||ia==ic)continue;
+                    foreach(var (u,w) in new[]{(ia,ib),(ib,ic),(ic,ia)})edges[(u,w)]=edges.TryGetValue((u,w),out int e)?e+1:1;
+                }
+                int open=edges.Count(e=>!edges.TryGetValue((e.Key.Item2,e.Key.Item1),out int back)||back!=e.Value);
+                Check(open==0,"closed: "+at+" ("+open+" unmatched edges)");
+                double box=8.0*(hx+NativeMapStyle.WrapOut)*hy*(hz+NativeMapStyle.WrapOut);Check(vol/6>.5*8*hx*hy*hz*(flags!=0?.5:1)&&vol/6<=box+1e-6,"wound outward, the volume about the block's: "+at+" ("+vol/6+" against "+8*hx*hy*hz+")");
+            }
+            // The features: a wall's coping and plinth stand proud, its top is rounded; a crate's posts stand out of its planks.
+            NativeMapStyle.WrapPoint(1,4,-1,0,0,-1,0,.7f,1.68f,.15f,NativeBlockLooks.Chamfer,NativeBlockLooks.BrickBuff,0,.1f,out float cx,out float cy,out float cz);Check(cx>.7f+.01f&&cy<1.68f-.1f,"a wall's coping stands proud below its top");
+            NativeMapStyle.WrapPoint(1,0,-1,0,0,-1,0,.7f,1.68f,.15f,NativeBlockLooks.Chamfer,NativeBlockLooks.BrickBuff,0,.1f,out cx,out cy,out cz);Check(cx>.7f+.01f&&Near(cy,-1.68f),"its plinth stands proud at its foot");
+            NativeMapStyle.WrapPoint(1,0,-1,0,0,-1,0,.7f,1.68f,.15f,NativeBlockLooks.Chamfer,NativeBlockLooks.BrickBuff,0,.1f,out cx,out cy,out cz,plinths:0);Check(Near(cx,.7f)||cx<.7f,"plinths off (the city): the foot is flush");
+            NativeMapStyle.WrapPoint(1,3,-1,0,2,-1,-2,1.2f,.55f,.6f,NativeBlockLooks.Chamfer,NativeBlockLooks.Timber,0,.1f,out float px,out float py,out float pz);NativeMapStyle.WrapPoint(1,3,-1,0,0,-1,-2,1.2f,.55f,.6f,NativeBlockLooks.Chamfer,NativeBlockLooks.Timber,0,.1f,out float qx,out float qy,out float qz);
+            Check(px-qx>.02f&&Near(pz,qz)&&Near(py,qy),"a crate's corner post stands out of its face");
+            int chipped=0;for(int i=0;i<200;i++)if(NativeMapStyle.WrapShape(NativeMapStyle.WrapWall,.7f,1.68f,.15f,.05f,i/200f,1,1,1,1).Chip>.5f)chipped++;Check(chipped>30&&chipped<90,"a broken corner on some old masonry ("+chipped+" of 200)");
+            Check(NativeMapStyle.WrapShape(NativeMapStyle.WrapWall,7.5f,7,1,.05f,.1f,1,1,1,1).PostOut==NativeMapStyle.WrapPilasterOut&&NativeMapStyle.WrapShape(NativeMapStyle.WrapWall,7.5f,7,1,.05f,.1f,0,1,1,1).PostOut==0&&NativeMapStyle.WrapShape(NativeMapStyle.WrapWall,.7f,1.68f,.15f,.05f,.1f,1,1,1,1).PostOut==0,"big walls stand pilasters (with the plinths), panels do not");
+        }
         // ---- the shapes ----
         private static void Shapes()
         {
@@ -201,6 +261,13 @@ namespace ChipArena.UnityConversion
             Check(NativeMapStyle.Edge(10,10,10.1f,10,10,s,fs,fe,cr)<1e-3f,"a 10 cm step at 10 m is neither a silhouette nor a crease");
             // A crease: a wall meeting the floor (1/depth bends).
             float ic=1/10f;Check(NativeMapStyle.Edge(10,1/(ic-.004f),1/(ic-.004f*.2f),10,10,s,fs,fe,cr)>.5f,"a crease is lined");
+            // A crease fades with the pixel's footprint (the same crease at 10 m: lined at 1080p, gone at 360p; a silhouette stays).
+            float cl=1/(ic-.004f),cr2=1/(ic-.004f*.2f);
+            Check(Near(NativeMapStyle.Foot(60,1080),2*Math.Tan(Math.PI/6)/1080,1e-7)&&NativeMapStyle.Edge(10,cl,cr2,10,10,cl,cr2,10,10,s,fs,fe,cr,NativeMapStyle.Foot(60,1080))>.5f&&NativeMapStyle.Edge(10,cl,cr2,10,10,cl,cr2,10,10,s,fs,fe,cr,NativeMapStyle.Foot(60,360))<.1f
+                &&NativeMapStyle.Edge(10,10,30,10,10,10,30,10,10,s,fs,fe,cr,NativeMapStyle.Foot(60,360))>.99f,"interior creases fade out with the pixel's footprint (no moire at range or low resolution); silhouettes stay");
+            // Two widths: a deep step two pixels away lines this pixel too (a silhouette two widths wide); a shallow one does not.
+            Check(NativeMapStyle.Edge(10,10,10,10,10,10,30,10,10,s,fs,fe,cr,0)>.99f&&NativeMapStyle.Edge(10,10,10,10,10,10,11,10,10,s,fs,fe,cr,0)<1e-3f&&NativeMapStyle.Edge(10,10,11,10,10,10,11,10,10,s,fs,fe,cr,0)>.99f,"silhouettes draw two widths where the step is deep, one where it is shallow");
+            for(int i=0;i<60;i++){float b=.01f+.03f*(i%7),a=b*(.001f+i*.0017f);float D(float u)=>1/(b+a*u);Check(NativeMapStyle.Edge(D(0),D(-1),D(1),D(-1),D(1),D(-2),D(2),D(-2),D(2),s,fs,fe,cr,0)<1e-3f,"a plane draws no line at either width ("+D(-2)+" to "+D(2)+" m)");}
             Check(NativeMapStyle.Edge(fe+1,fe+1,fe+40,fe+1,fe+1,s,fs,fe,cr)==0&&NativeMapStyle.Edge(10,10,30,10,10,0,fs,fe,cr)==0,"faded out past the fade end, nothing at strength 0");
         }
         // ---- nothing allocated per frame ----
@@ -212,7 +279,8 @@ namespace ChipArena.UnityConversion
             {
                 float x=i/2000f;sum+=NativeMapStyle.Ramp(x,.06f,.42f,.5f,.035f)+NativeMapStyle.Stairs(x*3)+NativeMapStyle.PointGain(x,.7f)+NativeMapStyle.Diffuse(.1f,.9f,x,1,.8f,.06f,1.1f,.06f,.42f,.5f,.035f)+NativeMapStyle.Radius(x,1,2,.05f,.1f);
                 NativeMapStyle.RoundNormal(x,1,0,1,1,1,.2f,0,1,0,out float nx,out float ny,out float nz);sum+=nx+ny+nz+NativeMapStyle.Chamfer(x,2,.1f,.05f);
-                NativeMapStyle.Lattice(1,1,-1,-1,0,1,x+.1f,1,1,.05f,NativeMapStyle.Taper,out float px,out float py,out float pz);sum+=px+py+pz+NativeMapStyle.Edge(10+x,10,30,10,10,1,40,110,.02f);
+                NativeMapStyle.Lattice(1,1,-1,-1,0,1,x+.1f,1,1,.05f,NativeMapStyle.Taper,out float px,out float py,out float pz);sum+=px+py+pz+NativeMapStyle.Edge(10+x,10,30,10,10,10,30,10,10,1,40,110,.02f,.001f)+NativeMapStyle.Foot(60,1080+i)+NativeMapStyle.Shadow(x);
+                NativeMapStyle.WrapPoint(1,i%8,-1,-.3f,2,0,0,x+.5f,1.7f,.15f,.05f,NativeBlockLooks.BrickRed,0,x,out px,out py,out pz);sum+=px+py+pz;
             }
             NativeMapStyle.State(look,false,true,state);return sum+state.Toon[0];
         }
@@ -227,15 +295,21 @@ namespace ChipArena.UnityConversion
         {
             string rt="Assets/ChipArena/Runtime/";string lighting=Code(R(rt+"NativeLighting.cs")),outline=Code(R(rt+"NativeToonOutline.cs")),game=Code(R(rt+"ConversionGame.cs")),settings=Code(R(rt+"NativeSettings.cs"));
             Check(lighting.Contains("Sky(s);RenderSettings.skybox=s.Skybox?sky:null;Shadows();StyleGlobals(look);")&&lighting.Contains("NativeMapStyle.State(look,LegacyStyle,true,Style);")&&lighting.Contains("public static readonly bool LegacyStyle=NativeMapStyle.LegacyArgument(Environment.GetCommandLineArgs());"),"Apply writes the style's globals from NativeMapStyle (the legacy command line honoured)");
-            Check(lighting.Contains("private static void EnterStage(){StyleOff();")&&Body(lighting,"public static void Rooftop(Camera camera,Material skybox)").Contains("StyleOff();"),"the entrance stages, the draft and the rooftop turn the style off (Apply turns the map's back on)");
+            Check(Regex.Matches(lighting,@"WardFieldOff\(\);EnterStage\(\);NativeMuzzleLights\.Off\(\);StyleOff\(\);").Count==3&&Body(lighting,"public static void Rooftop(Camera camera,Material skybox)").Contains("NativeMuzzleLights.Off();StyleOff();"),"every entrance, intro and draft frame and the rooftop turn the style off (Apply turns the map's back on)");
             Check(Body(lighting,"public static void StyleOff()").Contains("Shader.SetGlobalVector(ToonId,Vector4.zero);")&&Body(lighting,"public static void StyleOff()").Contains("Shader.SetGlobalVector(EdgeId,Vector4.zero);"),"off: _ArenaToon and _ArenaEdge to 0");
-            Check(lighting.Contains("Styled((string.IsNullOrEmpty(map.look)?null:NativeMapLooks.ByLook(LookSet(),map.look))??NativeMapLooks.Resolve(")&&Body(lighting,"private static MapLook Styled(MapLook raw)").Contains("styled.TryGetValue(raw,out var s)"),"Look gives the styled look, made once per look (no per-frame copy)");
+            Check(Body(lighting,"public static MapLookSet LookSet()").Contains("for(int i=0;i<set.maps.Length;i++)set.maps[i]=NativeMapStyle.Styled(set.maps[i],LegacyStyle);"),"the look set holds each look styled, made once at load (no per-frame copy; every reader sees the same look)");
             Check(outline.Contains("view.AddCommandBuffer(CameraEvent.BeforeForwardAlpha,buffer);")&&outline.Contains("NativeLighting.StyleActive&&NativeLighting.Style.Outline&&!LowGraphics")&&outline.Contains("buffer.DrawMesh(triangle,Matrix4x4.identity,material,0,0);"),"the outline: one draw from a command buffer before the transparent queue, only while the style draws it and not on the low tier");
             Check(!Regex.IsMatch(Body(outline,"private void LateUpdate()"),@"\bnew\b"),"the outline's frame allocates nothing");
+            Check(outline.Contains("material.SetFloat(FootId,NativeMapStyle.Foot(fov,Mathf.Max(1,view.pixelHeight)));")&&Code(R("Assets/ChipArena/Resources/NativeToonEdge.shader")).Contains("EdgeLine(i.pos.xy*texel,texel*_EdgeWidth,_EdgeFoot)"),"the outline's creases fade by the camera's own pixel footprint (resolution and zoom)");
             Check(game.Contains("outline=NativeToonOutline.Attach(cameraView);")&&game.IndexOf("bloom=NativeBloom.Attach(cameraView);",StringComparison.Ordinal)<game.IndexOf("outline=NativeToonOutline.Attach(cameraView);",StringComparison.Ordinal)&&settings.Contains("if(outline!=null)outline.Quality(low);"),"on the match camera after the bloom, off on the low tier");
-            foreach(var (file,pick) in new[]{("NativeArenaDressing.cs","s==0&&NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build(),0)):meshes[s]"),("NativeExpeditionCityPresentation.cs","private Mesh TownMesh=>NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;"),
-                ("NativeExpeditionHubPresentation.cs","private Mesh Shape=>NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;"),("NativeExpeditionStatesPresentation.cs","private Mesh Shape=>NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;")})
-                Check(Code(R(rt+file)).Contains(pick),file+" draws the rounded box only while the style is on (made once)");
+            Check(lighting.Contains("public static bool StyleWrap=>StyleActive&&!lowShadows;")&&lighting.Contains("Shader.SetGlobalVector(ToonWrapId,V(Style.Wrap));Shader.SetGlobalVector(ToonFxId,V(Style.Fx));"),"the wrap on the normal tiers (the low tier keeps the rounded box); its and the highlights' globals written");
+            foreach(var (file,pick) in new[]{("NativeArenaDressing.cs","s==0&&NativeLighting.StyleActive?ToonStage:meshes[s]"),("NativeArenaDressing.cs","private Mesh ToonStage=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap(),0)):(toonMesh??=MeshOf(NativeToonMesh.Build(),0));"),
+                ("NativeExpeditionCityPresentation.cs","private Mesh TownMesh=>NativeLighting.StyleWrap?(townWrap??=MetroMeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;"),
+                ("NativeExpeditionHubPresentation.cs","private Mesh Shape=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;"),
+                ("NativeExpeditionStatesPresentation.cs","private Mesh Shape=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;")})
+                Check(Code(R(rt+file)).Contains(pick),file+" draws the wrap (normal tiers) or the rounded box (low tier) only while the style is on (made once)");
+            foreach(var file in new[]{"NativeArenaDressing.cs","NativeExpeditionCityPresentation.cs","NativeExpeditionHubPresentation.cs","NativeExpeditionStatesPresentation.cs","NativeCyberCityPresentation.cs"})
+            {var code=Code(R(rt+file));Check(!code.Contains("s.Lattice[i*4+2],0)")&&!code.Contains("s.Inset[i*4+2],0)"),file+" passes the mesh's TEXCOORD w through (the wrap's flag; 0 on every legacy mesh)");}
             Check(Code(R(rt+"NativeBrickfallPresentation.cs")).Contains("brickfallLit.SetFloat(\"_ToonEdgeRef\",16);"),"Brickfall's skyline is marked for the outline");
             var fx=Code(R(rt+"NativeStructureFxPresentation.cs"));Check(fx.Contains("bool toon=NativeLighting.StyleActive;")&&fx.Contains("NativeMapStyle.Diffuse(ambient,key,ndl,1,s.Shade[k],s.Shade[3],s.Lit[k],s.Band[0],s.Band[1],s.Band[2],s.Toon[1])"),"the debris takes the style's ramp (the destruction holds the look)");
         }
@@ -247,8 +321,10 @@ namespace ChipArena.UnityConversion
                 var t=NativeMapLooks.Find(set,id).toon;NativeMapStyle.Validate(id,t);
                 Check(t.line>0&&t.lineFadeEnd<=NativeMapLooks.Find(set,id).fog.end&&t.skyToon==1&&t.saturation>=1&&t.saturation<=1.2f&&t.detail<1,id+": outline faded within the fog, anime sky, a light grade, simplified detail");
                 Check(t.shade.z>t.shade.x&&t.lit.x>=t.lit.z,id+": cool shade, warm light");
+                Check(t.copings==1&&t.chips==1&&t.posts==1&&t.specular>0&&t.occlusion>0&&t.occlusionHeight>0&&t.halfTone<.2f,id+": copings, broken corners, posts, the highlight and the occlusion band on; two main bands");
+                Check(id=="brickfall"?t.plinths==1:t.plinths==0,id+": plinths and pilasters on Brickfall, off in the city (its kit doors and shop fronts meet the street)");
                 MapLookToon Copy()=>(MapLookToon)typeof(MapLookToon).GetMethod("MemberwiseClone",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(t,null);
-                foreach(var (what,breakIt) in new (string,Action<MapLookToon>)[]{("softness 0",x=>x.softness=0),("edges crossed",x=>x.lightEdge=x.shadeEdge),("tint 0",x=>x.shade=new V3(0,1,1)),("a line without a fade",x=>x.lineFadeEnd=x.lineFadeStart),("a band as high as the sky",x=>x.bandWidth=1),("a colour out of range",x=>x.cloudLit=0x1000000),("a negative fog start",x=>x.fogStart=-1),("NaN",x=>x.wash=float.NaN)})
+                foreach(var (what,breakIt) in new (string,Action<MapLookToon>)[]{("softness 0",x=>x.softness=0),("edges crossed",x=>x.lightEdge=x.shadeEdge),("tint 0",x=>x.shade=new V3(0,1,1)),("a line without a fade",x=>x.lineFadeEnd=x.lineFadeStart),("a band as high as the sky",x=>x.bandWidth=1),("a colour out of range",x=>x.cloudLit=0x1000000),("a negative fog start",x=>x.fogStart=-1),("NaN",x=>x.wash=float.NaN),("a shape switch past 1",x=>x.chips=2),("a highlight past every angle",x=>{x.specular=.5f;x.specularEdge=.5f;}),("an occlusion band 2 m high",x=>x.occlusionHeight=2),("occlusion NaN",x=>x.occlusion=float.NaN)})
                 {var b=Copy();breakIt(b);bool threw=false;try{NativeMapStyle.Validate(id,b);}catch(InvalidOperationException){threw=true;}Check(threw,id+": refused: "+what);}
             }
             var off=new MapLookToon{on=false,softness=float.NaN};NativeMapStyle.Validate("x",off);Check(true,"a look with the style off is never read");

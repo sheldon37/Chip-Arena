@@ -15,6 +15,11 @@ namespace ChipArena.UnityConversion
     /// on a rounded edge.</item>
     /// <item>Paint: `detail` keeps that share of a look's fine variation, `gradient` darkens walls low and lightens them high,
     /// `wash` a broad soft mottling, `baseShadow` a soft shadow up the first 1.6 m of every wall.</item>
+    /// <item>Shapes (the wrap mesh, NativeToonMesh.Wrap; each 0 or 1): `plinths` (walls' plinths, columns' bases), `copings`
+    /// (walls' copings, columns' capitals), `chips` (a broken top corner on some old masonry), `posts` (crate and container
+    /// posts and rails).</item>
+    /// <item>Highlights and occlusion: `specular` the stylised highlight band on rounded edges past `specularEdge` (N.H),
+    /// `occlusion` the depth of the third, darkest band at wall feet (`occlusionHeight` m) and under ledges.</item>
     /// <item>Outline (Resources/NativeToonEdge.shader, one full-screen pass on the normal tiers): `line` its strength, `lineColor`
     /// the tint it multiplies the scene by, faded out from `lineFadeStart` to `lineFadeEnd` m, `crease` the crease threshold.</item>
     /// <item>Grade (Resources/NativeBloom.shader's composite, the normal tiers): `saturation`, `contrast`, the split tints.</item>
@@ -31,6 +36,7 @@ namespace ChipArena.UnityConversion
         public bool on;
         public float softness,shadeEdge,lightEdge,halfTone,round,flatten,lift,points,rimIntensity,edgeLight;public V3 shade,lit;public int rimColor;
         public float detail,gradient,wash,baseShadow;
+        public float plinths,copings,chips,posts,specular,specularEdge,occlusion,occlusionHeight;
         public float line,lineFadeStart,lineFadeEnd,crease;public int lineColor;
         public float saturation,contrast;public V3 gradeShadow,gradeLight;
         public float skyToon,clouds,cloudScale,bandWidth;public int cloudLit,cloudShade,horizonBand;
@@ -41,12 +47,12 @@ namespace ChipArena.UnityConversion
     public sealed class MapStyleState
     {
         public bool On,Outline,Grade,Sky;
-        public float[] Toon=new float[4],Band=new float[4],Shade=new float[4],Lit=new float[4],Rim=new float[4],Paint=new float[4];
+        public float[] Toon=new float[4],Band=new float[4],Shade=new float[4],Lit=new float[4],Rim=new float[4],Paint=new float[4],Wrap=new float[4],Fx=new float[4];
         public float[] Edge=new float[4],EdgeColor=new float[4],GradeParams=new float[4],GradeShadow=new float[4],GradeLight=new float[4];
         public float[] SkyToon=new float[4],CloudLit=new float[4],CloudShade=new float[4],SkyBand=new float[4];
         public void Clear()
         {
-            On=Outline=Grade=Sky=false;Array.Clear(Toon,0,4);Array.Clear(Band,0,4);Array.Clear(Shade,0,4);Array.Clear(Lit,0,4);Array.Clear(Rim,0,4);Array.Clear(Paint,0,4);Array.Clear(Edge,0,4);Array.Clear(EdgeColor,0,4);
+            On=Outline=Grade=Sky=false;Array.Clear(Toon,0,4);Array.Clear(Band,0,4);Array.Clear(Shade,0,4);Array.Clear(Lit,0,4);Array.Clear(Rim,0,4);Array.Clear(Paint,0,4);Array.Clear(Wrap,0,4);Array.Clear(Fx,0,4);Array.Clear(Edge,0,4);Array.Clear(EdgeColor,0,4);
             Array.Clear(GradeParams,0,4);Array.Clear(GradeShadow,0,4);Array.Clear(GradeLight,0,4);Array.Clear(SkyToon,0,4);Array.Clear(CloudLit,0,4);Array.Clear(CloudShade,0,4);Array.Clear(SkyBand,0,4);
         }
     }
@@ -104,6 +110,7 @@ namespace ChipArena.UnityConversion
             Set(into.Toon,1,t.softness,t.rimIntensity,t.flatten);Set(into.Band,t.shadeEdge,t.lightEdge,t.halfTone,t.round);
             Set(into.Shade,t.shade.x,t.shade.y,t.shade.z,t.lift);Set(into.Lit,t.lit.x,t.lit.y,t.lit.z,t.points);
             Lin(into.Rim,t.rimColor);into.Rim[3]=t.edgeLight;Set(into.Paint,t.detail,t.gradient,t.wash,t.baseShadow);
+            Set(into.Wrap,t.plinths,t.copings,t.chips,t.posts);Set(into.Fx,t.specular,t.specularEdge,t.occlusion,t.occlusionHeight);
             into.Outline=outline&&t.line>0;Set(into.Edge,into.Outline?t.line:0,t.lineFadeStart,t.lineFadeEnd,t.crease);Lin(into.EdgeColor,t.lineColor);into.EdgeColor[3]=1;
             into.Grade=t.saturation>0&&t.contrast>0;Set(into.GradeParams,into.Grade?t.saturation:1,into.Grade?t.contrast:1,0,into.Grade?1:0);
             Set(into.GradeShadow,Or1(t.gradeShadow.x),Or1(t.gradeShadow.y),Or1(t.gradeShadow.z),0);Set(into.GradeLight,Or1(t.gradeLight.x),Or1(t.gradeLight.y),Or1(t.gradeLight.z),0);
@@ -125,6 +132,8 @@ namespace ChipArena.UnityConversion
             if(!(t.softness>0&&t.softness<=.25f)||!(t.shadeEdge>=0&&t.lightEdge>t.shadeEdge&&t.lightEdge<=1)||!Unit(t.halfTone)||!Unit(t.flatten)||!Unit(t.lift)||!Unit(t.points)||t.round<0||t.round>1||t.rimIntensity<0||!Unit(t.edgeLight))Fail("ramp ranges");
             foreach(var v in new[]{t.shade,t.lit})if(!(v.x>0&&v.y>0&&v.z>0&&v.x<=2&&v.y<=2&&v.z<=2))Fail("tints (0..2, linear multipliers)");
             if(!Finite(t.detail,t.gradient,t.wash,t.baseShadow)||!Unit(t.detail)||!(t.gradient>=0&&t.gradient<=.5f)||!(t.wash>=0&&t.wash<=.5f)||!(t.baseShadow>=0&&t.baseShadow<=.6f))Fail("paint");
+            if(!Finite(t.plinths,t.copings,t.chips,t.posts)||!Unit(t.plinths)||!Unit(t.copings)||!Unit(t.chips)||!Unit(t.posts))Fail("shapes (0..1)");
+            if(!Finite(t.specular,t.specularEdge,t.occlusion,t.occlusionHeight)||!Unit(t.specular)||t.specular>0&&!(t.specularEdge>=.8f&&t.specularEdge<1)||!Unit(t.occlusion)||!(t.occlusionHeight>=0&&t.occlusionHeight<=1))Fail("highlights and occlusion");
             if(!Finite(t.line,t.lineFadeStart,t.lineFadeEnd,t.crease)||!Unit(t.line)||t.line>0&&!(t.lineFadeStart>=0&&t.lineFadeEnd>t.lineFadeStart&&t.crease>0))Fail("outline");
             if(!Finite(t.saturation,t.contrast,t.gradeShadow.x,t.gradeShadow.y,t.gradeShadow.z,t.gradeLight.x,t.gradeLight.y,t.gradeLight.z)||t.saturation<0||t.saturation>2||t.contrast<0||t.contrast>2)Fail("grade");
             if(!Finite(t.skyToon,t.clouds,t.cloudScale,t.bandWidth)||!Unit(t.skyToon)||!Unit(t.clouds)||t.skyToon>0&&!(t.cloudScale>0&&t.bandWidth>0&&t.bandWidth<1))Fail("sky");
@@ -147,7 +156,10 @@ namespace ChipArena.UnityConversion
         /// <summary>ToonDiffuse for one channel: the shade (ambient plus the lift in the shade tint) to the lit (ambient plus the
         /// key in the lit tint) through the ramp of N.L x shadow.</summary>
         public static float Diffuse(float ambient,float key,float ndl,float atten,float shadeTint,float lift,float litTint,float shadeEdge,float lightEdge,float half,float soft)
-        {float r=Ramp(Sat(ndl)*atten,shadeEdge,lightEdge,half,soft);float shade=(ambient+key*lift)*shadeTint;return shade+(ambient+key*litTint-shade)*r;}
+        {float r=Ramp(Sat(ndl),shadeEdge,lightEdge,half,soft)*Shadow(atten);float shade=(ambient+key*lift)*shadeTint;return shade+(ambient+key*litTint-shade)*r;}
+        /// <summary>ToonShadow: the key's shadow eased between ShadowLo and ShadowHi (kept apart from N.L).</summary>
+        public const float ShadowLo=.15f,ShadowHi=.85f;
+        public static float Shadow(float atten)=>Smooth(ShadowLo,ShadowHi,atten);
         /// <summary>ToonRadius: the soft-edge radius for half extents h and drawn chamfer c with share `round`.</summary>
         public static float Radius(float hx,float hy,float hz,float c,float round){float lo=Math.Min(hx,Math.Min(hy,hz));return Math.Min(.9f*lo,Math.Min(RadiusMax,Math.Max(c,round*lo)));}
         /// <summary>ToonRoundNormal (object space) into n: the direction out of the box shrunk by r, or the facet past 60 degrees.</summary>
@@ -181,10 +193,83 @@ namespace ChipArena.UnityConversion
             if((flags&Taper)!=0){float k=1-TaperShare*Sat(y/Math.Max(hy,.0001f)*.5f+.5f);x*=k;z*=k;}
         }
 
+        // ---------------- NativeBlockLit's wrap (NativeToonMesh.Wrap) ----------------
+        /// <summary>The wrap's classes (NativeBlockLit WRAP_*), its outset cap (m: no band or post stands farther from a face), the
+        /// walls' bevel cap, the broken corner's drop and the post line's slide share of a half extent.</summary>
+        public const int WrapNone=0,WrapWall=1,WrapColumn=2,WrapCrate=3,WrapContainer=4;
+        public const float WrapOut=.11f,WrapBevel=.07f,WrapChip=.22f,WrapChipShare=.3f,WrapPilaster=.35f,WrapPilasterOut=.05f;
+        /// <summary>A wrap's shape for one block (ToonWrapShape's outputs, m).</summary>
+        public struct WrapForm {public float Section,Plinth,PlinthOut,Coping,CopingOut,Top,Bottom,Slide,PostOut,Chip;}
+        /// <summary>The wrap class for half extents h, a look id and the instance flags (NativeBlockLit ToonWrapClass).</summary>
+        public static int WrapClass(float hx,float hy,float hz,int look,int flags)
+        {
+            if((flags&NativeCyberCityLooks.Bank)!=0)return WrapNone;
+            float lo=Math.Min(hx,hz),hi=Math.Max(hx,hz);bool masonry=look>=1&&look<=4||look==NativeBlockLooks.Cobble;
+            if(masonry&&hy>=.6f&&lo>=.08f&&lo>=.5f*hi&&hi<=.8f&&hy>=1.8f*hi)return WrapColumn;
+            if(masonry&&hy>=.3f&&lo>=.1f&&hi>=.3f)return WrapWall;
+            if(look==NativeBlockLooks.Timber&&hy>=.2f&&hy<=1.2f&&lo>=.2f&&hi<=1.5f)return WrapCrate;
+            if(look==NativeBlockLooks.Corrugated&&hy>=.4f&&lo>=.3f)return WrapContainer;
+            return WrapNone;
+        }
+        private static float Frac(float v)=>v-(float)Math.Floor(v);
+        /// <summary>The wrap's shape for a class (ToonWrapShape): `c` the style's chamfer, `wrap` _ArenaToonWrap, `seed` the block's.</summary>
+        public static WrapForm WrapShape(int cls,float hx,float hy,float hz,float c,float seed,float plinths,float copings,float chips,float posts)
+        {
+            float H=2*hy,lo=Math.Min(hx,hz);var f=new WrapForm{Section=c,Top=Math.Min(c,ClampShare*Math.Min(lo,hy))};
+            if(cls==WrapWall)
+            {
+                f.Section=Math.Max(c,Math.Min(WrapBevel,.4f*lo));f.Top=Math.Min(WrapBevel,ClampShare*Math.Min(lo,hy));
+                f.Plinth=Math.Min(.32f,.09f*H)*plinths;f.PlinthOut=Math.Min(.035f,.25f*lo)*plinths;f.Coping=Math.Min(.26f,.07f*H)*copings;f.CopingOut=Math.Min(.05f,.3f*lo)*copings;
+                f.Chip=chips*(Frac(seed*7.31f)>=.7f?1:0)*(1+(float)Math.Floor(Frac(seed*13.7f)*3.999f));f.Slide=f.Chip>.5f?WrapChip:0;
+                if(Math.Max(hx,hz)>=2&&hy>=2&&plinths>.5f){f.Slide=WrapPilaster;f.PostOut=WrapPilasterOut;}
+            }
+            else if(cls==WrapColumn)
+            {
+                f.Section=Math.Max(c,.25f*lo);f.Top=Math.Min(.04f,ClampShare*Math.Min(lo,hy));
+                f.Plinth=Math.Min(.3f,.12f*H)*plinths;f.PlinthOut=Math.Min(.07f,.25f*lo)*plinths;f.Coping=Math.Min(.28f,.12f*H)*copings;f.CopingOut=Math.Min(.08f,.3f*lo)*copings;
+            }
+            else if(cls==WrapCrate){f.Plinth=.1f*posts;f.PlinthOut=.015f*posts;f.Coping=.1f*posts;f.CopingOut=.015f*posts;f.Slide=Math.Min(.11f,.3f*lo)*posts;f.PostOut=.032f*posts;}
+            else if(cls==WrapContainer){f.Plinth=.12f*posts;f.PlinthOut=.018f*posts;f.Coping=.12f*posts;f.CopingOut=.018f*posts;f.Slide=Math.Min(.12f,.3f*lo)*posts;f.PostOut=.035f*posts;}
+            f.Bottom=f.Plinth>0?0:f.Top;f.Plinth=Math.Min(f.Plinth,.25f*H);f.Coping=Math.Min(Math.Max(f.Coping,f.Top+f.CopingOut),.3f*H);
+            return f;
+        }
+        private const float ClampShare=NativeBlockLooks.ClampShare;
+        /// <summary>A wrap vertex for its section point (ax, row, az; bx, zone, bz, slide), half extents h and shape `f` (ToonWrap
+        /// before the taper); `flags` only for the taper.</summary>
+        public static void WrapPlace(float ax,float row,float az,float bx,float zone,float bz,float slide,float hx,float hy,float hz,WrapForm f,int flags,out float x,out float y,out float z)
+        {
+            float rs=f.Section;x=NativeBlockLooks.Corner(ax,bx,hx,rs);z=NativeBlockLooks.Corner(az,bz,hz,rs);
+            if(Math.Abs(slide)>.5f){bool alongX=Math.Abs(slide)<1.5f;float sl=Math.Sign(slide)*Math.Min(f.Slide,WrapChipShare*(alongX?hx:hz));if(alongX)x+=sl;else z+=sl;}
+            float snx=Math.Sign(ax)*(1-Math.Abs(bx)),snz=Math.Sign(az)*(1-Math.Abs(bz));
+            float pb=f.Plinth,op=f.PlinthOut,ct=f.Coping,oc=f.CopingOut,rt=f.Top,rb=f.Bottom;float o;
+            if(row<.5f){y=-hy;o=pb>0?op:-rb;}
+            else if(row<1.5f){y=pb>0?-hy+pb-Math.Min(op,.5f*pb):-hy+.2929f*rb;o=pb>0?op:-.2929f*rb;}
+            else if(row<2.5f){y=-hy+Math.Max(pb,rb);o=0;}
+            else if(row<3.5f){y=hy-ct;o=0;}
+            else if(row<4.5f){y=hy-ct+Math.Min(oc,.5f*(ct-rt));o=oc;}
+            else if(row<5.5f){y=hy-rt;o=oc;}
+            else if(row<6.5f){y=hy-.2929f*rt;o=oc-.2929f*rt;}
+            else{y=hy;o=oc-rt;}
+            if(zone>1.5f)o+=f.PostOut;
+            if(f.Chip>.5f&&row>3.5f&&zone>1.5f&&Math.Abs((ax>0?1:0)+(az>0?2:0)-(f.Chip-1))<.5f){y=Math.Max(y-Math.Min(WrapChip,ct+.1f)*(row-3)*.25f,hy-ct+.002f*(row-3));o=Math.Min(o,0)-.04f;}
+            x+=snx*o;z+=snz*o;
+            if((flags&Taper)!=0){float k=1-TaperShare*Sat(y/Math.Max(hy,.0001f)*.5f+.5f);x*=k;z*=k;}
+        }
+        /// <summary>A wrap vertex as NativeBlockLit's vertex stage places it: the class and shape for the block, then the place.
+        /// `c` the instance's chamfer (the style's is taken here), `wrap` the map's features (plinths, copings, chips, posts).</summary>
+        public static void WrapPoint(float ax,float row,float az,float bx,float zone,float bz,float slide,float hx,float hy,float hz,float c,int look,int flags,float seed,out float x,out float y,out float z,
+            float plinths=1,float copings=1,float chips=1,float posts=1)
+        {
+            var f=WrapShape(WrapClass(hx,hy,hz,look,flags),hx,hy,hz,Chamfer(hx,hy,hz,c),seed,plinths,copings,chips,posts);
+            WrapPlace(ax,row,az,bx,zone,bz,slide,hx,hy,hz,f,flags,out x,out y,out z);
+        }
+
         // ---------------- NativeToonEdge's line ----------------
         /// <summary>NativeToonEdge's constants: a silhouette needs a neighbour farther by at least GapMin + GapShare x depth (m);
         /// the crease term's weight against the silhouette.</summary>
-        public const float GapMin=.25f,GapShare=.04f,CreaseWeight=.85f;
+        public const float GapMin=.25f,GapShare=.04f,CreaseWeight=.85f,WideGap=2,CreaseFoot0=.015f,CreaseFoot1=.035f;
+        /// <summary>A camera's pixel footprint per metre of eye depth (m): 2 tan(fov / 2) over the pixel height.</summary>
+        public static float Foot(float fovDegrees,float pixelHeight)=>(float)(2*Math.Tan(fovDegrees*Math.PI/360)/Math.Max(1,pixelHeight));
         /// <summary>
         /// EdgeLine for a pixel of eye depth c (m) with neighbours l, r, d, u (left, right, down, up): a silhouette where a
         /// neighbour lies farther than the other side's slope carries on by the gap (l + r - 2c: a plane never; the line sits on
@@ -193,10 +278,14 @@ namespace ChipArena.UnityConversion
         /// neighbour is nearer by the gap (the far side of a silhouette is never lined), faded out
         /// from `fadeStart` to `fadeEnd` m, times `strength`.
         /// </summary>
-        public static float Edge(float c,float l,float r,float d,float u,float strength,float fadeStart,float fadeEnd,float crease)
+        public static float Edge(float c,float l,float r,float d,float u,float strength,float fadeStart,float fadeEnd,float crease)=>Edge(c,l,r,d,u,l,r,d,u,strength,fadeStart,fadeEnd,crease,0);
+        /// <summary>EdgeLine with its second ring of taps two widths away (L, R, D, U): a silhouette there needs WideGap x the gap,
+        /// so a deep step lines two widths wide and a shallow one (interior detail) one.</summary>
+        /// `foot` the camera's footprint per metre of depth (Foot): a crease fades out from CreaseFoot0 to CreaseFoot1 m per pixel.
+        public static float Edge(float c,float l,float r,float d,float u,float L,float R,float D,float U,float strength,float fadeStart,float fadeEnd,float crease,float foot)
         {
-            float gap=GapMin+GapShare*c;float far=Math.Max(l+r,d+u)-2*c;float sil=far>=gap?1:0;
-            float ic=1/c,cx=Math.Abs(1/l+1/r-2*ic),cy=Math.Abs(1/d+1/u-2*ic);float near=c-Math.Min(Math.Min(l,r),Math.Min(d,u));float bend=near<=gap?Smooth(crease,crease*2,Math.Max(cx,cy)/ic):0;
+            float gap=GapMin+GapShare*c;float far=Math.Max(l+r,d+u)-2*c,wide=Math.Max(L+R,D+U)-2*c;float sil=far>=gap||wide>=WideGap*gap?1:0;
+            float ic=1/c,cx=Math.Abs(1/l+1/r-2*ic),cy=Math.Abs(1/d+1/u-2*ic);float near=c-Math.Min(Math.Min(l,r),Math.Min(d,u));float bend=near<=gap?Smooth(crease,crease*2,Math.Max(cx,cy)/ic)*(1-Smooth(CreaseFoot0,CreaseFoot1,c*foot)):0;
             float fade=1-Smooth(fadeStart,fadeEnd,c);return Sat(Math.Max(sil,bend*CreaseWeight))*fade*strength;
         }
     }

@@ -81,5 +81,69 @@ namespace ChipArena.UnityConversion
             if(nv!=VertexCount||nt!=TriangleCount*3)throw new InvalidOperationException("NativeToonMesh: built "+nv+" vertices and "+nt/3+" triangles");
             return new NativeBlockLooks.StageMesh{Preview=pos,Normal=nrm,Lattice=lat,Inset=ins,Shade=shade,Triangles=tris};
         }
+
+        /// <summary>The wrap's section points (seven per corner: two post points on each face, three on the corner circle), its
+        /// rows and its vertex and triangle counts.</summary>
+        public const int WrapPoints=28,WrapRows=8,WrapVertexCount=WrapPoints*WrapRows,WrapTriangleCount=WrapPoints*(WrapRows-1)*2+2*(4*5+6);
+        /// <summary>The rows' vertical hint (the orientation hint's y before normalising: the foot leans down, the top up).</summary>
+        private static readonly float[] RowHint={-.6f,0,0,0,0,.3f,.7f,2};
+        /// <summary>
+        /// The anime style's wrap for the intact stage (docs/MAP-STYLE-ANIME.md "Shapes"; NativeBlockLit ToonWrap places it, and
+        /// <see cref="NativeMapStyle.WrapPoint"/> is the CPU copy): a lathe of a rounded section through <see cref="WrapRows"/>
+        /// rows. The section runs counter-clockwise from +x toward +z; each corner has its circle in three points and, on either
+        /// face, a post line in two points at the same place (the inner one flat with the face, the outer one with the corner, so
+        /// a post or a broken corner steps out of the face). The rows are the foot, the plinth's top, the body's foot and top,
+        /// the coping's foot, its top and the top's rounding (45 degrees and the top). The caps are a fan per corner and one fan
+        /// over the inner post points, so a broken corner slopes only within its corner. Vertex data: TEXCOORD0 (A.x, row, A.z,
+        /// 1: the shader's wrap path), TEXCOORD1 (B.x, zone: 2 the corner's points, B.z, slide: 1 along x, 2 along z, its sign
+        /// toward the face's middle); normals are orientation hints (the style shades by its own normal). Deterministic; a
+        /// load-time call. Only drawn while the style is on (the legacy look never sees it).
+        /// </summary>
+        public static NativeBlockLooks.StageMesh Wrap()
+        {
+            int n=WrapVertexCount;var lat=new float[n*4];var ins=new float[n*4];var nrm=new float[n*3];var pos=new float[n*3];var shade=new float[n*4];var tris=new int[WrapTriangleCount*3];
+            // The section: A.x, B.x, A.z, B.z, zone, slide and the hint's x and z, per point in order round the block.
+            var sec=new float[WrapPoints,8];int k=0;
+            void Point(float ax,float bx,float az,float bz,float zone,float slide,float hx,float hz){sec[k,0]=ax;sec[k,1]=bx;sec[k,2]=az;sec[k,3]=bz;sec[k,4]=zone;sec[k,5]=slide;sec[k,6]=hx;sec[k,7]=hz;k++;}
+            foreach(var (sx,sz) in new[]{(1,1),(-1,1),(-1,-1),(1,-1)})
+            {
+                // Seven points from the x face to the z face (the arc's theta from 0 on the x face to 90 degrees on the z face).
+                var c=new float[7,8];int m=0;
+                void C(float ax,float bx,float az,float bz,float zone,float slide,float hx,float hz){c[m,0]=ax;c[m,1]=bx;c[m,2]=az;c[m,3]=bz;c[m,4]=zone;c[m,5]=slide;c[m,6]=hx;c[m,7]=hz;m++;}
+                C(sx,0,sz,-sz,0,-2*sz,sx,-.6f*sz);C(sx,0,sz,-sz,2,-2*sz,sx,-.6f*sz);
+                for(int i=0;i<=2;i++){double th=Math.PI/4*i;float si=i==2?1:(float)Math.Sin(th),co=i==2?0:(float)Math.Cos(th);C(sx,-sx*(1-co),sz,-sz*(1-si),2,0,sx*co,sz*si);}
+                C(sx,-sx,sz,0,2,-sx,-.6f*sx,sz);C(sx,-sx,sz,0,0,-sx,-.6f*sx,sz);
+                // Counter-clockwise passes a corner from its x face first where sx and sz agree, else from its z face.
+                for(int i=0;i<7;i++){int j=sx*sz>0?i:6-i;Point(c[j,0],c[j,1],c[j,2],c[j,3],c[j,4],c[j,5],c[j,6],c[j,7]);}
+            }
+            for(int r=0;r<WrapRows;r++)for(int p=0;p<WrapPoints;p++)
+            {
+                int i=r*WrapPoints+p;lat[i*4]=sec[p,0];lat[i*4+1]=r;lat[i*4+2]=sec[p,2];lat[i*4+3]=1;ins[i*4]=sec[p,1];ins[i*4+1]=sec[p,4];ins[i*4+2]=sec[p,3];ins[i*4+3]=sec[p,5];
+                float hx=sec[p,6],hy=RowHint[r],hz=sec[p,7],l=(float)Math.Sqrt(hx*hx+hy*hy+hz*hz);nrm[i*3]=hx/l;nrm[i*3+1]=hy/l;nrm[i*3+2]=hz/l;
+                NativeMapStyle.WrapPoint(lat[i*4],lat[i*4+1],lat[i*4+2],ins[i*4],ins[i*4+1],ins[i*4+2],ins[i*4+3],.5f,.5f,.5f,NativeBlockLooks.Chamfer,0,0,0,out pos[i*3],out pos[i*3+1],out pos[i*3+2]);
+                shade[i*4]=shade[i*4+1]=shade[i*4+2]=NativeBlockLooks.ShadeStore;shade[i*4+3]=0;
+            }
+            // Winding: outward (cross(b - a, c - a) along the vertices' mean hint), judged on a nominal shape with every feature
+            // (no point coincides there).
+            var test=new float[n*3];var shape=new NativeMapStyle.WrapForm{Section=.4f,Plinth=.5f,PlinthOut=.1f,Coping=.6f,CopingOut=.12f,Top=.2f,Bottom=0,Slide=.3f,PostOut=.06f,Chip=0};
+            for(int i=0;i<n;i++)NativeMapStyle.WrapPlace(lat[i*4],lat[i*4+1],lat[i*4+2],ins[i*4],ins[i*4+1],ins[i*4+2],ins[i*4+3],2,2,2,shape,0,out test[i*3],out test[i*3+1],out test[i*3+2]);
+            int nt=0;
+            void Tri(int a,int b,int c)
+            {
+                float ux=test[b*3]-test[a*3],uy=test[b*3+1]-test[a*3+1],uz=test[b*3+2]-test[a*3+2],vx=test[c*3]-test[a*3],vy=test[c*3+1]-test[a*3+1],vz=test[c*3+2]-test[a*3+2];
+                float cx=uy*vz-uz*vy,cy=uz*vx-ux*vz,cz=ux*vy-uy*vx;float ox=nrm[a*3]+nrm[b*3]+nrm[c*3],oy=nrm[a*3+1]+nrm[b*3+1]+nrm[c*3+1],oz=nrm[a*3+2]+nrm[b*3+2]+nrm[c*3+2];
+                if(cx*ox+cy*oy+cz*oz>=0){tris[nt++]=a;tris[nt++]=b;tris[nt++]=c;}else{tris[nt++]=a;tris[nt++]=c;tris[nt++]=b;}
+            }
+            int V(int r,int p)=>r*WrapPoints+(p%WrapPoints);
+            for(int r=0;r<WrapRows-1;r++)for(int p=0;p<WrapPoints;p++){Tri(V(r,p),V(r,p+1),V(r+1,p+1));Tri(V(r,p),V(r+1,p+1),V(r+1,p));}
+            // The caps: per corner a fan from its first (inner) point, then the inner points' polygon.
+            foreach(int r in new[]{0,WrapRows-1})
+            {
+                for(int q=0;q<4;q++)for(int j=1;j<6;j++)Tri(V(r,q*7),V(r,q*7+j),V(r,q*7+j+1));
+                int[] inner={0,6,7,13,14,20,21,27};for(int j=1;j<7;j++)Tri(V(r,inner[0]),V(r,inner[j]),V(r,inner[j+1]));
+            }
+            if(nt!=WrapTriangleCount*3)throw new InvalidOperationException("NativeToonMesh: wrapped "+nt/3+" triangles");
+            return new NativeBlockLooks.StageMesh{Preview=pos,Normal=nrm,Lattice=lat,Inset=ins,Shade=shade,Triangles=tris};
+        }
     }
 }
