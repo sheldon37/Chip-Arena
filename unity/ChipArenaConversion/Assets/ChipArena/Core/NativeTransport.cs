@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         {
             try
             {
-                var clock=System.Diagnostics.Stopwatch.StartNew();long nextWrite=0;
+                var clock=System.Diagnostics.Stopwatch.StartNew();long windowStart=0;int writes=0;
                 while(!Closed)
                 {
                     await ready.WaitAsync(stop.Token).ConfigureAwait(false);
@@ -76,8 +76,13 @@ namespace ChipArena.UnityConversion
                         else data=Interlocked.Exchange(ref latest,null);
                         if(data==null)break;
                         // Drain a recovered backlog below the peer's 180 packets/second guard.
-                        long delay=nextWrite-clock.ElapsedMilliseconds;
-                        if(delay>0)await Task.Delay((int)delay,stop.Token).ConfigureAwait(false);
+                        // Small bursts avoid adding a timer delay to normal 60 Hz input on Windows.
+                        if(writes==16)
+                        {
+                            long delay=125-(clock.ElapsedMilliseconds-windowStart);
+                            if(delay>0)await Task.Delay((int)delay,stop.Token).ConfigureAwait(false);
+                            windowStart=clock.ElapsedMilliseconds;writes=0;
+                        }
                         int n=data.Length;var wire=System.Buffers.ArrayPool<byte>.Shared.Rent(n+8);
                         try
                         {
@@ -88,7 +93,7 @@ namespace ChipArena.UnityConversion
                             await stream.WriteAsync(wire,0,n+8,stop.Token).ConfigureAwait(false);
                         }
                         finally{System.Buffers.ArrayPool<byte>.Shared.Return(wire);}
-                        nextWrite=clock.ElapsedMilliseconds+8;
+                        writes++;
                     }while(!Closed);
                 }
             }
