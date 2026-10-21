@@ -637,6 +637,22 @@ def draft():
 # THE LOOK (MapLooks.json entry `expedition-city`): dusk over a dead city. A low orange sun in the west-north-west under an
 # indigo zenith, long soft shadows, mauve haze in the streets, the first stars; practical lights for the sanctuary's
 # brazier and lamps, the Meridian frontage's cold light, the final gate's warning lamp and a burning wreck.
+# The anime map style (docs/MAP-STYLE-ANIME.md, Core NativeMapStyle.MapLookToon): the city's `toon` block, written after
+# `blocks` in key groups (MapLooks.json keeps it readable); presentation only.
+TOON_GROUPS = [('on', 'softness', 'shadeEdge', 'lightEdge', 'halfTone', 'round', 'flatten', 'lift', 'points', 'rimIntensity', 'edgeLight', 'shade', 'lit', 'rimColor'), ('detail', 'gradient', 'wash', 'baseShadow'), ('plinths', 'copings', 'chips', 'posts', 'specular', 'specularEdge', 'occlusion', 'occlusionHeight'), ('line', 'lineFadeStart', 'lineFadeEnd', 'crease', 'lineColor'), ('saturation', 'contrast', 'gradeShadow', 'gradeLight'), ('skyToon', 'clouds', 'cloudScale', 'bandWidth', 'cloudLit', 'cloudShade', 'horizonBand'), ('key',), ('rim',), ('ambient',), ('sky',), ('fogColor', 'fogStart', 'background', 'hazeColor')]
+TOON = {
+    'on': True, 'softness': 0.025, 'shadeEdge': 0.03, 'lightEdge': 0.12, 'halfTone': 0.0, 'round': 0.1, 'flatten': 0.35, 'lift': 0.3, 'points': 0.7, 'rimIntensity': 0.6, 'edgeLight': 0.5, 'shade': dict(x=0.66, y=0.78, z=1.36), 'lit': dict(x=1.1, y=1.0, z=0.9), 'rimColor': 0x9db8ff,
+    'detail': 0.3, 'gradient': 0.14, 'wash': 0.06, 'baseShadow': 0.0,
+    'plinths': 0, 'copings': 1, 'chips': 1, 'posts': 1, 'specular': 0.55, 'specularEdge': 0.965, 'occlusion': 0.4, 'occlusionHeight': 0.22,
+    'line': 1.0, 'lineFadeStart': 40, 'lineFadeEnd': 110, 'crease': 0.02, 'lineColor': 0x2a1e40,
+    'saturation': 1.16, 'contrast': 1.07, 'gradeShadow': dict(x=0.94, y=0.96, z=1.08), 'gradeLight': dict(x=1.05, y=1.0, z=0.95),
+    'skyToon': 1, 'clouds': 0.62, 'cloudScale': 1.0, 'bandWidth': 0.14, 'cloudLit': 0xffb89a, 'cloudShade': 0x7a70b0, 'horizonBand': 0xffc48a,
+    'key': dict(color=16756354, intensity=0.95, elevation=9, bearing=288, **{'from': dict(x=0, y=0, z=0)}, shadows='soft', shadowStrength=0.85),
+    'rim': dict(color=8366335, intensity=0.45, elevation=26, bearing=108, **{'from': dict(x=0, y=0, z=0)}, shadows='none', shadowStrength=1),
+    'ambient': dict(sky=5926840, skyScale=0.85, equator=7236250, equatorScale=0.6, ground=2761792, groundScale=0.4),
+    'sky': dict(variant='dusk', horizon=15901306, zenith=1977946, glow=16756872, disc=16769200, cloud=15771792, discSize=0.05, halo=0.3, stars=0.25, crater=0, cloudSpeed=0.25, elevation=9, bearing=288, dir=dict(x=0, y=0, z=0)),
+    'fogColor': 0x7c6e9e, 'fogStart': 12, 'background': 0x2a2240, 'hazeColor': 0x6a6488,
+}
 def look():
     L = lambda id, x, y, z, color, intensity, rng, flicker='', rate=0, period=0, length=0, depth=0, phase=0: dict(
         id=id, flicker=flicker, pos=dict(x=x, y=y, z=z), color=color, intensity=intensity, range=rng, rate=rate, period=period, length=length, depth=depth, phase=phase)
@@ -697,7 +713,7 @@ def look():
                            BL('material:brick', 'brick-red', 0x7A4A3E, 'tenements, shops and corners'), BL('material:stone', 'concrete-board', 0x8A8478, 'towers and civic blocks'),
                            BL('material:metal', 'corrugated', 0x5A6062, 'depots'), BL('material:wood', 'timber', 0, 'anything else wood')],
             'kitLooks': [], 'dressing': MAP, 'backdrop': MAP, 'atmosphere': MAP, 'ambience': MAP,
-            'blocks': dict(dressed=True, dust=0.06, haze=0.3, hazeTop=3.2, hazeColor=0x5E4A62)}
+            'blocks': dict(dressed=True, dust=0.06, haze=0.3, hazeTop=3.2, hazeColor=0x5E4A62), 'toon': TOON}
 
 MAPLOOKS = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'unity', 'ChipArenaConversion', 'Assets', 'Conversion', 'Resources', 'MapLooks.json'))
 def look_text():
@@ -710,7 +726,9 @@ def look_text():
     rows.append('   "blockLooks":['); rows += ['    ' + j(x) + (',' if i < len(L['blockLooks']) - 1 else '') for i, x in enumerate(L['blockLooks'])]; rows.append('   ],')
     rows.append(f'   "kitLooks":{j(L["kitLooks"])},')
     rows.append('   ' + ','.join(f'{j(k)}:{j(L[k])}' for k in ('dressing', 'backdrop', 'atmosphere', 'ambience')) + ',')
-    rows.append(f'   "blocks":{j(L["blocks"])}}}')
+    rows.append(f'   "blocks":{j(L["blocks"])},')
+    groups = [','.join(f'{j(k)}:{j(L["toon"][k])}' for k in g) for g in TOON_GROUPS]
+    rows.append('   "toon":{' + groups[0] + ','); rows += ['     ' + g + ',' for g in groups[1:-1]]; rows.append('     ' + groups[-1] + '}}')
     return '\n'.join(rows)
 def write_maplooks(path=MAPLOOKS):
     """Replace this map's entry in MapLooks.json's maps where it stands (the zone looks follow it since their activation), or
