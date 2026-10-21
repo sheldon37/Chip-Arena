@@ -363,7 +363,7 @@ TORSO = [
     (1.330, .188, .134, .116, .002, {}),                                               # socket bottom (armpit)
     (1.392, .178, .116, .108, .000, {}),                                               # socket middle
     (1.440, .160, .088, .096, -.004, {0: -.010, 22.5: 0, 157.5: 0, 180: .004}),        # socket top (shoulder line)
-    (1.468, .126, .070, .086, -.006, {0: -.032, 22.5: -.026, 45: -.010, 67.5: .010, 90: .018, 112.5: .020, 135: .016,
+    (1.468, .114, .070, .086, -.006, {0: -.032, 22.5: -.026, 45: -.012, 67.5: .002, 90: .006, 112.5: .010, 135: .012,
                                       157.5: .006, 180: -.002}),                       # trapezius
     (1.490, .066, .060, .066, -.006, {0: -.058, 22.5: -.048, 45: -.026, 67.5: -.006, 90: .002, 112.5: .004, 135: .004,
                                       157.5: .002, 180: 0}),                           # neck base
@@ -383,7 +383,7 @@ TORSO_FORMS = [
     (.016, 112, 18, 1.250, .070),    # latissimus
     (.010, 145, 16, 1.340, .050),    # scapulae
     (-.012, 180, 10, 1.150, .250),   # spine
-    (.020, 150, 25, .875, .035),     # glutes
+    (.014, 150, 30, .875, .045),     # glutes
 ]
 WAIST_LOW, WAIST_TOP = 3, 4
 SOCKET_ROWS = (13, 14, 15)
@@ -416,8 +416,8 @@ ARM = [
     (1.185, SX, .004, .044, ('upperarm', .80), 12, (.94, 1.04, 1.0, 1.08)),
     (1.135, SX, .002, .040, ('upperarm', .92), 10, (1.0, .96, 1.0, 1.04)),          # elbow loops
     (1.102, SX, .000, .040, ('upperarm', .92), 10, (1.04, .92, 1.0, 1.12)),         # elbow: the olecranon plane behind
-    (1.068, SX, .004, .044, ('forearm', .10), 8, (1.10, 1.02, 1.0, 1.04)),          # the forearm full near the elbow
-    (1.022, SX, .006, .046, ('forearm', .25), 8, (1.12, 1.0, 1.04, 1.0)),
+    (1.068, SX, .004, .044, ('forearm', .10), 8, (1.12, .96, 1.08, .98)),           # the forearm full near the elbow
+    (1.022, SX, .006, .045, ('forearm', .25), 8, (1.10, .98, 1.06, .98)),
     (.965, SX, .005, .038, ('forearm', .45), 8, (1.0, 1.04, .98, 1.04)),
     (.910, SX, .003, .032, ('forearm', .68), 8, (.92, 1.10, .92, 1.08)),           # cuff zone (wholly wrist-weighted)
     (.866, SX, .000, .028, ('forearm', .88), 8, (.80, 1.22, .80, 1.18)),           # wrist: flat, wider front to back
@@ -436,9 +436,9 @@ PALM_TIP_Y = .747
 # ring vertices, (out, front, in, back) scale. The boxer-briefs end at LEG_HEM, mid-thigh.
 HX = J['left-hip'].x
 LEG = [
-    (.795, HX + .010, -.004, .090, ('thigh', .25), 14, (1.02, 1.04, .90, 1.02)),
-    (.690, HX + .010, -.002, .085, ('thigh', .38), 12, (1.06, 1.08, .92, 1.02)),    # boxer hem (cloth)
-    (.686, HX + .010, -.002, .082, ('thigh', .39), 12, (1.06, 1.08, .92, 1.02)),    # hem lip (skin)
+    (.768, HX + .008, -.004, .089, ('thigh', .28), 16, (1.02, 1.04, .96, 1.02)),
+    (.690, HX + .009, -.002, .084, ('thigh', .38), 12, (1.06, 1.08, .94, 1.02)),    # boxer hem (cloth)
+    (.686, HX + .009, -.002, .081, ('thigh', .39), 12, (1.06, 1.08, .94, 1.02)),    # hem lip (skin)
     (.610, HX + .006, .004, .075, ('thigh', .58), 12, (1.06, 1.10, .96, 1.04)),     # quadriceps sweep, hamstrings
     (.540, HX + .002, .010, .064, ('thigh', .78), 12, (.98, 1.06, 1.06, .98)),      # the inner teardrop above the knee
     (.484, HX, .014, .058, ('thigh', .92), 10, (1.0, 1.04, 1.02, .94)),
@@ -452,22 +452,71 @@ LEG = [
 ]
 LEG_HEM = 1
 LEG_KNEE_ROWS = (5, 6, 7)
-CROTCH = (0, .815, -.006)
+CROTCH = (0, .770, .000)
+# The briefs' gusset: centre-line points in front of and behind the crotch, so the cloth runs smoothly under the body
+# between the legs instead of folding into a V.
+GUSSET = ((0, .792, .082), (0, .792, -.070))
 FORM_SOFTEN = {'thigh': .8, 'shin': .7, 'upperarm': .8, 'forearm': .8}
 
 
-def limb_ring2(y, cx, cz, r, form, n, scale, mirror=1, phase=0.0):
-    """A limb ring from the reference's normalized radii: phi 0 = outward (+x on the left), 90 = front (+z)."""
+# Designed muscle forms on the limbs (left side; phi 0 outward, 90 front, 180 inward, 270 back): (radial amplitude m,
+# phi centre, phi sigma, y centre, y sigma); negative amplitudes are grooves or planes.
+LIMB_FORMS = {
+    'arm': [
+        (.006, 0, 30, 1.335, .030),      # the deltoid's outer head
+        (-.004, 0, 22, 1.292, .016),     # its insertion, a V into the outer arm
+        (.011, 112, 34, 1.222, .048),    # biceps: the peak forward and a little inward
+        (.009, 305, 34, 1.268, .045),    # triceps: the horseshoe behind, higher on the outside
+        (.005, 228, 30, 1.172, .040),    # and its inner head, lower
+        (-.004, 270, 26, 1.100, .022),   # the olecranon's flat plane behind the elbow
+        (.011, 58, 34, 1.036, .045),     # brachioradialis: high on the thumb side
+        (.005, 200, 34, 1.010, .050),    # the flexors on the inside
+    ],
+    'leg': [
+        (.012, 18, 36, .620, .080),      # vastus lateralis: the outer sweep
+        (.006, 92, 30, .640, .100),      # rectus femoris
+        (.010, 140, 28, .522, .034),     # vastus medialis: the teardrop above the knee, inside
+        (.008, 182, 34, .742, .060),     # adductors
+        (.010, 262, 40, .640, .090),     # hamstrings
+        (-.005, 270, 22, .462, .024),    # behind the knee
+        (.012, 222, 30, .372, .050),     # gastrocnemius: the inner head, higher and larger
+        (.008, 318, 30, .338, .045),     # the outer head
+        (-.004, 118, 26, .280, .110),    # the shin's flat inner face
+        (-.006, 270, 30, .150, .050),    # the Achilles taper
+        (.005, 180, 26, .110, .016),     # the inner ankle bone (higher)
+        (.003, 0, 26, .096, .014),       # the outer ankle bone (lower)
+    ],
+}
+# Ring tilts (dy = amplitude x cos(phi), weighted by a Gaussian in y): the elbow's outer side sits lower than its inner,
+# the briefs' leg openings rise toward the crotch.
+LIMB_TILTS = {'arm': [(-.010, 1.102, .030)], 'leg': [(-.012, .688, .006)]}
+
+
+def limb_ring2(y, cx, cz, r, form, n, scale, mirror=1, phase=0.0, phis=None):
+    """A limb ring from the reference's normalized radii and the designed muscle forms: phi 0 = outward (+x on the
+    left), 90 = front (+z). phis: explicit vertex angles (radians) instead of n even ones."""
     part, t = form
-    shape = form_limb(part, t, n, FORM_SOFTEN[part])
+    limb = 'arm' if part in ('upperarm', 'forearm') else 'leg'
+    if phis is not None:
+        dense = form_limb(part, t, 64, FORM_SOFTEN[part])
+        shape = [dense[int(round((ph % (2 * math.pi)) / (2 * math.pi) * 64)) % 64] for ph in phis]
+        n = len(phis)
+    else:
+        shape = form_limb(part, t, n, FORM_SOFTEN[part])
     so, sf, si, sb = scale
+    tilt = sum(a * math.exp(-((y - y0) / sy) ** 2) for a, y0, sy in LIMB_TILTS[limb])
     pts = []
     for k in range(n):
-        ph = 2 * math.pi * (k + phase) / n
+        ph = phis[k] if phis is not None else 2 * math.pi * (k + phase) / n
         c, s = math.cos(ph), math.sin(ph)
         k2 = so * max(c, 0) ** 2 + si * max(-c, 0) ** 2 + sf * max(s, 0) ** 2 + sb * max(-s, 0) ** 2
-        rr = r * shape[k] * k2
-        pts.append((mirror * (cx + rr * c), y, cz + rr * s))
+        deg = math.degrees(ph) % 360
+        bump = 0.0
+        for a, p0, sp, y0, sy in LIMB_FORMS[limb]:
+            d = (deg - p0 + 180) % 360 - 180
+            bump += a * math.exp(-(d / sp) ** 2 - ((y - y0) / sy) ** 2)
+        rr = r * shape[k] * k2 + bump
+        pts.append((mirror * (cx + rr * c), y + tilt * c, cz + rr * s))
     return pts
 
 
@@ -501,14 +550,14 @@ def limb_radius(table, y, phi):
 # Ring order (8): top-inner, top-mid, top-outer, outer, bottom-outer, bottom-mid, bottom-inner, inner. A rounded heel,
 # a raised inner arch, the instep and the ball; the toes are their own block (build_toes).
 FOOT = [
-    (-.076, .050, .016, .019, .017, .000, .000),
-    (-.062, .078, .004, .030, .027, .000, .000),     # heel
-    (-.037, .096, .000, .036, .032, .000, .000),
-    (-.004, .106, .000, .039, .035, .002, .010),     # ankle front / arch
-    (.034, .094, .000, .043, .039, .004, .016),      # instep / arch
-    (.070, .074, .000, .048, .045, .006, .010),
-    (.104, .055, .000, .051, .048, .008, .000),      # ball
-    (.128, .044, .002, .050, .046, .008, .000),
+    (-.076, .048, .016, .018, .019, .000, .000),
+    (-.062, .078, .003, .030, .031, .000, .000),     # heel pad: round, as wide below as above
+    (-.037, .096, .000, .036, .033, .000, .004),
+    (-.004, .106, .000, .039, .034, .002, .014),     # ankle front / arch
+    (.034, .094, .000, .043, .039, .004, .020),      # instep / arch
+    (.070, .074, .000, .048, .047, .006, .012),
+    (.104, .055, .000, .050, .053, .008, .000),      # ball: the sole widest here
+    (.128, .044, .002, .049, .050, .008, .000),
 ]
 FOOT_HOLE_ROWS = (1, 2, 3)
 
@@ -527,10 +576,10 @@ def foot_ring(z, ty, by, wt, wb, sx, arch):
 def build_toes(mb):
     """The toe block on the left foot: a big toe and a block of four smaller toes, rigid on the toe joint."""
     tj = J['left-toe']
-    finger(mb, [Vector((tj.x - .027, .028, .114)), Vector((tj.x - .030, .026, .144)), Vector((tj.x - .031, .021, .168))],
+    finger(mb, [Vector((tj.x - .028, .028, .114)), Vector((tj.x - .032, .026, .145)), Vector((tj.x - .033, .021, .170))],
            [.017, .015, .0125], region='foot', up=Vector((0, 1, 0)), aspect=.72)
-    finger(mb, [Vector((tj.x + .011, .025, .114)), Vector((tj.x + .009, .023, .140)), Vector((tj.x + .005, .018, .158))],
-           [.027, .023, .018], region='foot', up=Vector((0, 1, 0)), aspect=.50)
+    finger(mb, [Vector((tj.x + .015, .025, .114)), Vector((tj.x + .014, .023, .139)), Vector((tj.x + .010, .018, .156))],
+           [.024, .021, .016], region='foot', up=Vector((0, 1, 0)), aspect=.50)
 
 
 def torso_point(row, k):
@@ -634,11 +683,15 @@ def build_body():
 
     # legs: the loop is the torso's bottom half ring plus the crotch point (10 vertices)
     crotch = V(CROTCH, 'torso')
-    leg_loop = list(rows[0]) + [crotch]
-    leg_rows = [[V(p, 'leg') for p in limb_ring2(*row)] for row in LEG]
-    first = align_loop(mb, leg_loop, leg_rows[0])
+    gusset_front, gusset_back = (V(p, 'torso') for p in GUSSET)
+    leg_loop = list(rows[0]) + [gusset_back, crotch, gusset_front]
+    # the thigh's first ring takes its vertices at the leg loop's own angles round the leg, so the strip between them
+    # runs straight down without folding
+    _, cx0, cz0 = LEG[0][:3]
+    phis = [math.atan2(mb.V[i].z - cz0, mb.V[i].x - cx0) for i in leg_loop]
+    first = [V(p, 'leg') for p in limb_ring2(*LEG[0], phis=phis)]
+    leg_rows = [first] + [[V(p, 'leg') for p in limb_ring2(*row)] for row in LEG[1:]]
     mb.strip(leg_loop, first, PID['cloth'], closed=True)
-    leg_rows[0] = first
     prev = first
     for li in range(1, len(leg_rows)):
         r = align_closed(mb, prev, leg_rows[li])
@@ -1136,9 +1189,9 @@ def finger(mb, pts, radii, n=6, region='finger', paint=None, up=Vector((1, 0, 0)
 # Fingers (left hand, relaxed): knuckle z, (proximal, middle, distal) lengths, radius. The palm faces -x (the body), the
 # thumb side is +z; the fingers hang together with a gentle curl toward the palm. Everything rides the wrist (no finger
 # bones in the rig).
-FINGERS = [(.031, (.043, .026, .020), .0098), (.010, (.047, .029, .021), .0101), (-.011, (.044, .027, .020), .0096),
-           (-.030, (.035, .021, .017), .0086)]
-FINGER_CURL = (Vector((-.16, -1, 0)), Vector((-.42, -1, 0)), Vector((-.72, -1, 0)))
+FINGERS = [(.027, (.043, .026, .020), .0108), (.009, (.047, .029, .021), .0110), (-.009, (.044, .027, .020), .0105),
+           (-.026, (.035, .021, .017), .0094)]
+FINGER_CURL = (Vector((-.20, -1, 0)), Vector((-.52, -1, 0)), Vector((-.85, -1, 0)))
 
 
 def build_fingers(mb):
@@ -1153,10 +1206,10 @@ def build_fingers(mb):
         finger(mb, pts, [r * 1.08, r, r * .93, r * .84], n=6, up=Vector((0, 0, 1)), aspect=.92)
     # thumb: from the palm's front edge near the wrist, forward and down, resting by the index finger
     t0 = Vector((SX - .010, .812, .033))
-    t1 = t0 + Vector((-.30, -.55, .75)).normalized() * .037
+    t1 = t0 + Vector((-.24, -.50, .83)).normalized() * .039
     t2 = t1 + Vector((-.40, -.80, .40)).normalized() * .030
     t3 = t2 + Vector((-.45, -.85, .20)).normalized() * .024
-    finger(mb, [t0, t1, t2, t3], [.0134, .0124, .0112, .0100], n=6, up=Vector((1, 0, 0)), aspect=.9)
+    finger(mb, [t0, t1, t2, t3], [.0150, .0138, .0122, .0106], n=6, up=Vector((1, 0, 0)), aspect=.9)
 
 
 # ----------------------------------------------------------------------------------------------------------------- hair
@@ -1178,38 +1231,38 @@ class Rand:
 
 
 # Hair clumps on the scalp: root and tip as (signed theta, phi) head angles (+theta the character's left, phi past 90
-# runs over the crown to the back), the tip's lift off the cap (m), width, ridge height, spring chain or None. Short dark
-# hair in swept clumps that lie on the head like shingles: up and back over the top with a swept quiff at the front,
-# shorter and flatter down the sides and the back. Each clump is a faceted leaf, its edges on the cap, its ridge raised,
-# its point lifting off.
+# runs over the crown to the back), the tip's lift off the cap (m), width, ridge height, spring chain or None, and an
+# optional arch (m: the middle of the clump lifting off the cap, so a fringe clump rises off the hairline and its point
+# falls back onto the forehead). Short dark hair in swept clumps that lie on the head like shingles: volume on top
+# brushed forward, a fringe falling over the forehead and swept to the character's right, shorter and flatter down the
+# sides and the back. Each clump is a faceted leaf, its edges on the cap, its ridge raised, its point lifting off.
 CLUMPS = [
-    # front: spikes rising from the hairline, up and back, leaning to the character's right
-    ((0, 57), (-8, 76), .034, .062, .012, 'front-r'),
-    ((18, 56), (8, 75), .032, .060, .012, 'front-l'),
-    ((-20, 56), (-30, 74), .032, .060, .012, 'front-r'),
-    ((36, 54), (26, 71), .026, .056, .011, 'front-l'),
-    ((-38, 54), (-48, 70), .024, .054, .011, 'front-r'),
-    # top: up and over
-    ((10, 70), (4, 94), .028, .066, .012, None),
-    ((-14, 70), (-22, 93), .026, .064, .012, None),
-    ((44, 66), (52, 88), .020, .060, .011, 'side-l'),
-    ((-46, 66), (-56, 88), .020, .060, .011, 'side-r'),
-    # crown: back
-    ((6, 88), (10, 112), .018, .064, .011, 'back-l'),
-    ((-20, 88), (-26, 110), .016, .062, .011, 'back-r'),
-    # sides: short, tapered and tight to the skull, down and back
-    ((78, 60), (100, 44), .003, .050, .008, 'side-l'),
-    ((-78, 60), (-100, 44), .003, .050, .008, 'side-r'),
-    ((102, 66), (122, 48), .003, .050, .008, 'side-l'),
-    ((-102, 66), (-122, 48), .003, .050, .008, 'side-r'),
-    # back: tight, down to the nape
-    ((140, 72), (146, 36), .005, .060, .009, 'back-l'),
-    ((-140, 72), (-146, 36), .005, .060, .009, 'back-r'),
-    ((168, 64), (170, 22), .005, .060, .009, 'back-l'),
-    ((-168, 64), (-170, 22), .005, .060, .009, 'back-r'),
-    ((124, 46), (128, 14), .004, .050, .008, 'back-l'),
-    ((-124, 46), (-128, 14), .004, .050, .008, 'back-r'),
+    # top and fringe: long clumps from the whorl behind the top of the head, brushed forward over the top, rising off the
+    # hairline and falling onto the forehead, swept to the character's right; different lengths (longest just right of
+    # centre, short at the left temple) so the fringe is uneven and leans to one side
+    ((26, 104), (-6, 38), .004, .076, .010, 'front-r', .014),
+    ((6, 106), (-32, 42), .004, .070, .010, 'front-r', .012),
+    ((44, 102), (18, 46), .004, .068, .010, 'front-l', .012),
+    ((-14, 104), (-54, 50), .003, .062, .009, 'front-r', .010),
+    ((60, 96), (46, 54), .003, .056, .009, 'front-l', .008),
+    # crown: from the whorl down the back of the top
+    ((16, 100), (22, 130), .006, .064, .010, 'back-l'),
+    ((-14, 102), (-20, 128), .005, .060, .010, 'back-r'),
+    # sides: from the top down and back to above the ears, tight to the skull
+    ((72, 84), (100, 46), .003, .060, .009, 'side-l'),
+    ((-70, 84), (-100, 46), .003, .060, .009, 'side-r'),
+    ((100, 86), (124, 46), .003, .058, .009, 'side-l'),
+    ((-100, 86), (-124, 46), .003, .058, .009, 'side-r'),
+    # back: down to the nape
+    ((140, 80), (146, 34), .005, .062, .009, 'back-l'),
+    ((-140, 80), (-146, 34), .005, .062, .009, 'back-r'),
+    ((166, 76), (170, 22), .005, .062, .009, 'back-l'),
+    ((-166, 76), (-170, 22), .005, .062, .009, 'back-r'),
+    ((122, 66), (128, 16), .004, .052, .008, 'back-l'),
+    ((-122, 66), (-128, 16), .004, .052, .008, 'back-r'),
 ]
+LEAF_S = (0.0, .25, .50, .75, 1.0)                                  # the path samples along a clump
+LEAF_RINGS = ((1.0, .55), (.94, 1.0), (.78, .95), (.44, .75))      # (width, ridge) at each sample before the point
 HAIR_CHAINS = ['front-l', 'front-r', 'side-l', 'side-r', 'back-l', 'back-r']
 # Spring tuning per chain (spiky low-poly hair: stiff clumps, a small bounce and sway, never jelly). Units: stiffness and
 # damping are the spring's natural frequency (Hz) and damping ratio toward the rigid-follow pose; gravity as a fraction
@@ -1223,7 +1276,7 @@ SPRING = {
     'back-l': dict(stiffness=8.0, damping=.36, gravity=.3, drag=.3, maxAngle=16),
     'back-r': dict(stiffness=8.0, damping=.36, gravity=.3, drag=.3, maxAngle=16),
 }
-HAIR_CAP = (.0006, .009)      # the cap's thickness at the hairline and on top of the head (m)
+HAIR_CAP = (.0006, .013)      # the cap's thickness at the hairline and on top of the head (m)
 
 
 def _cap_thickness(p):
@@ -1291,18 +1344,20 @@ def build_hair(body_mb):
         return p + n * (_cap_thickness(p) + lift), n
 
     clumps = []
-    for (r0, r1, lift, W, T, chain) in CLUMPS:
+    for (r0, r1, lift, W, T, chain, *arch) in CLUMPS:
         lift *= 1 + rnd.sym(.08)
+        arch = arch[0] if arch else 0.0
         path = []
-        for sgm in (0.0, .40, .75, 1.0):
+        for sgm in LEAF_S:
             th = r0[0] + (r1[0] - r0[0]) * sgm
             ph = r0[1] + (r1[1] - r0[1]) * sgm
-            path.append(on_cap(th, ph, -.003 if sgm == 0 else lift * sgm ** 1.6 + .0015))
+            path.append(on_cap(th, ph, -.006 if sgm == 0 else
+                               lift * sgm ** 1.6 + arch * 4 * sgm * (1 - sgm) + .0015))
         clumps.append((path, W, T, chain))
     groups = {c: [] for c in HAIR_CHAINS}
     for path, W, T, chain in clumps:
         if chain:
-            groups[chain].append((path[0][0], path[-1][0]))
+            groups[chain].append((path[1][0], path[-1][0]))
     chain_bones = []
     for c in HAIR_CHAINS:
         g = groups[c]
@@ -1313,12 +1368,12 @@ def build_hair(body_mb):
     for path, W, T, chain in clumps:
         if chain:
             b1, b2 = bone_of[chain]
-            wts = [rigid, {'head': .30, b1: .70}, {b1: .50, b2: .50}, {b2: .80, b1: .20}]
+            wts = [rigid, {'head': .60, b1: .40}, {'head': .15, b1: .85}, {b1: .45, b2: .55}, {b2: .85, b1: .15}]
         else:
-            wts = [rigid] * 4
+            wts = [rigid] * len(LEAF_S)
         # a leaf: rings of 4 (left edge, ridge, right edge, underside) along the path, then the point
         rings = []
-        for k, (sw, sh) in enumerate(((1.0, .55), (.86, 1.0), (.48, .8))):
+        for k, (sw, sh) in enumerate(LEAF_RINGS):
             c, nn = path[k]
             t = (path[k + 1][0] - c).normalized()
             lat = t.cross(nn).normalized()
@@ -1328,7 +1383,7 @@ def build_hair(body_mb):
             rings.append([mb.v(q, 'hair', wts[k]) for q in ring])
         for k in range(len(rings) - 1):
             mb.strip(rings[k], rings[k + 1], PID['hair'], closed=True)
-        tip = mb.v(path[-1][0], 'hair', wts[3])
+        tip = mb.v(path[-1][0], 'hair', wts[-1])
         last = rings[-1]
         for q in range(4):
             mb.f((last[q], last[(q + 1) % 4], tip), PID['hair'])

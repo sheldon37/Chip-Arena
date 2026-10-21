@@ -74,7 +74,8 @@ and weapon frames keep the authoritative rig.
 - **Optional secondary bones:** marked `secondary` in the manifest, each with a `fallback` joint. A runtime that
   ignores them folds their weights onto the fallback, which gives the rest shape with no gaps.
   - `sec-hair-{front,side,back}-{l,r}-{1,2}`: six 2-bone hair chains under `head`, with spring parameters in
-    `springs`.
+    `springs`. Each chain starts a quarter of the way along its clumps, so the roots stay on the head and only the
+    free part of a clump swings.
   - `sec-device-lid` and `sec-device-chip`: under `right-wrist`. Their hinge, insertion path and states are in
     `device`.
 
@@ -85,10 +86,18 @@ and weapon frames keep the authoritative rig.
   muscle forms laid over them (`TORSO_FORMS`: pectorals, sternum, abdominals, obliques over the iliac crests, lats,
   scapulae, spine, glutes). Rows follow the muscle flow (the pecs' lower edge rises into the armpit, the waistband dips
   into a V along the crests); 13 columns per half ring.
-- The deltoid is a round cap on a sphere over the shoulder joint (two rings between the chest's socket and the arm);
-  the limbs are lofted rings with per-ring shaping for the biceps and triceps, the forearm full near the elbow and flat
-  at the wrist, the quadriceps' sweep, the knee's patella plane, and a calf high on the inside.
-- The limbs' cross-sections still come from the measured form reference (`form_reference.json`).
+- The deltoid is a round cap on a sphere over the shoulder joint (two rings between the chest's socket and the arm),
+  and the trapezius falls into it without a step.
+- The limbs are lofted rings on the measured cross-sections (`form_reference.json`) with designed, asymmetric muscle
+  forms over them (`LIMB_FORMS`, keyed by the angle round the limb and the height): the deltoid's insertion V, the
+  biceps forward and in, the triceps' horseshoe behind and higher outside, the olecranon's flat plane, the
+  brachioradialis high on the thumb side; the vastus lateralis' sweep, the vastus medialis' teardrop, the hamstrings,
+  the gastrocnemius higher and larger inside, the shin's flat face, the Achilles taper and the ankle bones (the inner
+  one higher). `LIMB_TILTS` tilt rings: the elbow's outer side lower, the briefs' leg openings rising to the crotch.
+- The briefs have a gusset: centre-line points in front of and behind the crotch (`GUSSET`), with the thigh's first
+  ring taken at the leg opening's own angles, so the cloth runs under the body between the legs without a V-notch.
+- Feet: a round heel pad, the arch, a sole widest at the ball, a toe block with the big toe set apart. Hands: a
+  defined thumb, knuckle planes, the fingers grouped and curled a little more at rest.
 
 ## Head, face and hair
 
@@ -98,8 +107,10 @@ and weapon frames keep the authoritative rig.
   constrained Delaunay in a conformal chart of the head (`build_head`). Facial thirds and eye widths follow the usual
   proportion rules; every feature is geometry, and paint only colours what the geometry shapes (no eyeliner, outlines
   or decals; the upper lid's plane is a shade darker so the eyes sit in their sockets).
-- The scalp inside the hairline is painted on the hair channel. The `spiky-01` hair is a separate object: a thin cap
-  over the scalp and swept, faceted clumps lying on it, with the six spring chains.
+- The scalp inside the hairline is painted on the hair channel. The `spiky-01` hair is a separate object: a cap over
+  the scalp (thicker on top for volume) and faceted clumps lying on it (`CLUMPS`), with the six spring chains. The top
+  and fringe clumps run from a whorl behind the top of the head forward over it, arch off the hairline and fall onto
+  the forehead, swept to the character's right in uneven lengths; the sides and back lie tight, down to the nape.
 - Shading: one smooth group over the body, broken at creases over 32° (30° on the head, 21° on the feet), at paint
   borders and along the design creases (the pecs' lower edge, the abdominal lines, the linea alba); the exports carry
   corner normals.

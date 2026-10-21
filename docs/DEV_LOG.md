@@ -1,3 +1,21 @@
+## 2026-10-21 — Claude: low-poly male base, second neutral pass: limbs, briefs, shoulders, stance, hair (on the branch, not merged)
+
+- **Branch/base:** `claude/lowpoly-base-model` after `7a8f4e4`. Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.
+- **Coordinator brief:** neutral only, no animation until the go-ahead. Limbs designed like the torso with asymmetric muscle forms; briefs with a gusset (no V-notch); a round shoulder in front view; a more relaxed stance; an asymmetric swept fringe instead of an even mohawk fan.
+- **What changed (mesh and presentation only; the joints, their names and topology, the body's weight rules and the exports' structure are unchanged; the drift table is identical):**
+  - Limbs: designed muscle forms over the measured sections (`LIMB_FORMS`, by angle round the limb and height): the deltoid's insertion V, biceps forward and in, the triceps' horseshoe behind and higher outside, the olecranon's flat plane, the brachioradialis high on the thumb side with the forearm wider than deep near the elbow and flattening to the wrist; the vastus lateralis' sweep, the vastus medialis' teardrop, adductors and hamstrings, the gastrocnemius higher and larger inside, the shin's flat face, the Achilles taper, the ankle bones (inner higher). `LIMB_TILTS`: the elbow's outer side lower.
+  - Feet and hands: a round heel pad, a higher arch, the sole widest at the ball, the big toe set apart; a thicker, longer thumb, fingers closer together and curled a little more.
+  - Briefs: a gusset (centre points in front of and behind a lower crotch) with the thigh's first ring at the leg opening's own angles, so the cloth runs under the body; leg openings rise toward the crotch.
+  - Shoulders: the trapezius row narrower with less rise at its outer end, so it falls into the deltoid cap without a step.
+  - Hair: long clumps from a whorl behind the top, brushed forward, arching off the hairline and falling onto the forehead, swept to the character's right in uneven lengths (`CLUMPS` arch, 5 samples per clump); a thicker cap on top; tight sides and back. The hair chains now start a quarter of the way along their clumps.
+  - Presentation (render pose only, not in the exports): elbows bent 22° and pronated 10° so the palms face the thighs, arms a little forward.
+- **Stiffness attribution:** mesh — limbs are still 8–16-sided rings, and elbows and knees have no extra bend loops (deformation under a deep bend is untested until the animation tests). Rig — 22 joints only: no forearm twist bone (pronation turns the whole forearm from the elbow), no finger bones (a fixed curl), and the spine bends in only three segments. Pose — the stance is a still, symmetric presentation pose with no weight shift; the game's own idle and the adapter's foot IK will set the real angles.
+- **Counts:** 5,196 triangles (body 3,966, hair 746, core 210, device 274).
+- **Checks (actual):** `Tests/test_lowpoly_male_base.py` 12 OK; rebuild and export twice give byte-identical exports; FK drift re-run, identical to the previous table. run5b on this content: rc1–rc5 all 0 (Unity runtime and editor compile; relay 814 PASS lines, 35 managed-core checks; 152 Python tests OK, 1 skipped; package 2,616 files; diff check). Unity Editor, rendering in Unity and animation not run.
+- **Renders:** scratch `renders-lowpoly-base/` `anatomy-neutral`, `anatomy-apose`, `anatomy-silhouette`, `head-sheet`, `head-sheet-guide`, `hair-top-back`; the previous ones are `*-v3`.
+- **Risks:** the hair's fringe is faceted leaves (it reads as swept clumps, not strands); limb forms are bumps on rings, so they flatten under strong bends; weapon drift (P1/P2) is unchanged.
+- **Next:** owner review; then, on a go-ahead, the adapter animation tests.
+
 ## 2026-10-21 — Claude: low-poly male base, neutral body redesign, eyes, hair and neck (on the branch, not merged)
 
 - **Branch/base:** `claude/lowpoly-base-model` after `80130ff` (the anatomy checkpoint); checkpoint `ea1926e` plus this log update. Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.
