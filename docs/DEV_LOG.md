@@ -1,3 +1,24 @@
+## 2026-10-21 — Claude: low-poly male base, designed planes pass (on the branch, not merged)
+
+- **Branch/base:** `claude/lowpoly-base-model` after `d695dac`. Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.
+- **Owner/coordinator brief:** the owner's main target is now `ref4-body-main-target` (the same BASE BODY figure, sharper): a stylized, lean-athletic, heroic, clean, appealing game base, with defined but not exaggerated muscles. It must not read as bodybuilding, blocky shoulders, a soft torso, stiffness, awkward hands or feet, or voxel chunkiness, and it keeps a proper human face. Steers during the pass: limbs at 6–8 unequal planes (not 4); abs as six compact blocks with a centre groove, not full-width bars.
+- **What changed (shading and small mesh changes; joints and silhouette unchanged, overlap .82 on the new target):**
+  - Facets are clean planes that follow the forms (`FACETS`, `TUBE_BANDS`): bands gather quads by explicit groups (torso) or angle sectors (limbs, deltoid). Each facet leans 20 % toward the smooth surface (`FACET_HARDNESS`), so it reads crisp without the blocky steps.
+  - Abs: three crest rows added (21 torso rows; the socket rows move to 16–18) make six blocks. They sit either side of a real linea alba groove; each splits into a darker lower-inner facet and a lit upper-outer one, and the lines form a V toward the navel. The obliques, flanks and back are two tall planes per side, so no shading band spans the full width.
+  - Pecs are big triangles over a deeper shadow strip, which makes the lower edge clean. The deltoid is a round cap of four big planes, with the trapezius flowing in.
+  - Limbs have 6–7 planes of unequal size: a broad biceps plane, the forearm flare as two planes meeting at a ridge, a broad front thigh plane with narrower sides and the inner teardrop, a flat shin.
+  - Knees are slim: rings narrower by about 10 %, a flat kneecap plane, the tendon below, the teardrop above, no bulge.
+  - Head: the jaw, cheekbones and temples are wider (`HEAD_WIDEN`: +6 %, +8.5 %, +3 %) while the eyes and brow keep their width. The head stays at 8 heads.
+  - Hands are bigger and relaxed: the palm about 8 % longer and wider, the curl increasing toward the little finger, the thumb curling in toward the fingers.
+- **Counts:** 5,436 triangles (body 4,206, hair 746, core 210, device 274); binary 290 KB, GLB 521 KB.
+- **Checks (actual):** `Tests/test_lowpoly_male_base.py` 12 OK; rebuild and export twice give byte-identical exports; FK drift unchanged (no joint moved). run5b on this content: rc1–rc5 all 0 (Unity runtime and editor compile; relay 814 PASS lines; 152 Python tests OK, 1 skipped; package 2,616 files; diff check). Unity Editor, rendering in Unity and animation not run.
+- **Renders:** scratch `renders-lowpoly-base/` `anatomy-neutral` (front, three-quarter, side, back), `anatomy-apose`, `anatomy-silhouette`, `silhouette-overlay` (on `ref4`), `head-sheet`, `head-sheet-guide`, `hair-top-back`; progress snapshots `progress/01`–`10`; the previous sheets are `*-v5`.
+- **Risks:**
+  - The planes are shading on a ring mesh: deep bends will stretch them, which is untested until the animation tests.
+  - The hands are still rigid on the wrist (no finger bones).
+  - The target's hair is taller.
+- **Next:** owner review; then, on a go-ahead, the adapter animation tests.
+
 ## 2026-10-21 — Claude: low-poly male base, target-figure pass: facets, heroic proportions, stance, briefs (on the branch, not merged)
 
 - **Branch/base:** `claude/lowpoly-base-model` after `3107443`. Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.

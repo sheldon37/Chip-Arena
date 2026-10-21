@@ -261,9 +261,9 @@ class MB:
         return lambda i: ('lat', name, s, i)
 
     def resolve_facets(self):
-        """Turn lattice tags into facets (FACETS): quads gather into blocks of up to 2 x 2 by the lattice's bands of
-        strips and pairs of quads; a full 2 x 2 block becomes two big triangles split along the diagonal that fits its
-        surface best (the plane breakup follows the forms), any other block one panel."""
+        """Turn lattice tags into facets (FACETS): each band of strips gathers its quads into groups round the ring (pairs
+        by default, explicit quad groups, or angle sectors round the limb); a group of 2 x 2 quads in a 'tri' band
+        becomes two big triangles split along the diagonal that fits its surface best, any other group one panel."""
         at = {}
         for fi, g in enumerate(self.G):
             if g and g[0] == 'lat':
@@ -271,18 +271,45 @@ class MB:
         for name, (rings, closed, bands) in self.lattices.items():
             nq = len(rings[0]) if closed else len(rings[0]) - 1
             pairs = [(c, c + 1) for c in range(0, nq - 1, 2)] + ([(nq - 1,)] if nq % 2 else [])
+            ring0 = [self.V[i] for i in rings[0]]
+            cx = sum(v.x for v in ring0) / len(ring0)
+            cz = sum(v.z for v in ring0) / len(ring0)
             for bi, band in enumerate(bands):
-                cols = pairs
-                if band and isinstance(band[0], tuple):         # (strips, single quads at the start of the ring)
-                    band, singles = band
-                    singles = min(singles, nq)
-                    cols = [(c,) for c in range(singles)] + [(c, c + 1) for c in range(singles, nq - 1, 2)] + \
-                        ([(nq - 1,)] if (nq - singles) % 2 else [])
+                spec = band if isinstance(band, dict) else (
+                    dict(s=band[0], c=('singles', band[1])) if band and isinstance(band[0], tuple) else
+                    dict(s=band, m='tri'))
+                strips, groups, mode = spec['s'], spec.get('c', 'pairs'), spec.get('m', 'panel')
+                if groups == 'pairs':
+                    cols = pairs
+                elif groups[0] == 'singles':
+                    k = min(groups[1], nq)
+                    cols = [(c,) for c in range(k)] + [(c, c + 1) for c in range(k, nq - 1, 2)] + \
+                        ([(nq - 1,)] if (nq - k) % 2 else [])
+                elif groups[0] == 'sectors':     # angle round the ring's centre: 0 outward (+x), 90 front (+z)
+                    def ang(i):
+                        fi = at.get((name, strips[0], i))
+                        if fi is None:
+                            return None
+                        q = sum((self.V[k] for k in self.F[fi][0]), Vector()) / len(self.F[fi][0])
+                        if 'centre' in spec:
+                            cxx, czz = spec['centre']
+                        else:
+                            cxx, czz = cx, cz
+                        return math.degrees(math.atan2(q.z - czz, q.x - cxx)) % 360
+                    cols = []
+                    for a0, a1 in groups[1]:
+                        col = tuple(i for i in range(nq) if ang(i) is not None and
+                                    (a0 <= ang(i) < a1 or a0 <= ang(i) + 360 < a1))
+                        if col:
+                            cols.append(col)
+                else:
+                    cols = groups
                 for ci, col in enumerate(cols):
-                    cells = [(s, i) for s in band for i in col if (name, s, i) in at]
+                    cells = [(s, i) for s in strips for i in col if (name, s, i) in at]
                     key = (name, bi, ci)
-                    if len(cells) == 4:
-                        s0, i0 = band[0], col[0]
+                    square = len(col) == 2 and len(strips) == 2 and col[1] == col[0] + 1
+                    if mode == 'tri' and len(cells) == 4 and square:
+                        s0, i0 = strips[0], col[0]
                         n = len(rings[0])
                         P = lambda s, i: self.V[rings[s][i % n]]
                         best = None
@@ -301,11 +328,16 @@ class MB:
                                         err += nn.length * (1 - nn.normalized().dot(n1 if side == 'U' else n2))
                             if best is None or err < best[0] - 1e-12:
                                 best = (err, diag)
+                        if spec.get('diag'):        # a designed split: e.g. an ab block's lower-inner / upper-outer
+                            best = (0.0, spec['diag'])
                         for s, i in cells:
                             self.G[at[(name, s, i)]] = ('blk', key, s - s0, i - i0, best[1])
                     else:
                         for s, i in cells:
                             self.G[at[(name, s, i)]] = ('pan', key)
+        for fi, g in enumerate(self.G):     # any quad no band took: a panel of its own
+            if g and g[0] == 'lat':
+                self.G[fi] = ('pan', ('solo', fi))
 
     def _split(self, fi, how):
         """The two triangles of quad fi for block placement (di, dj, diagonal), each with its side of the diagonal."""
@@ -447,9 +479,12 @@ TORSO = [
     (1.005, .172, .100, .099, .004, BAND_V),                                           # band top
     (1.009, .170, .099, .097, .004, BAND_V),                                           # skin
     (1.050, .156, .099, .090, .006, {}),                                               # lower abdomen, obliques
-    (1.088, .140, .101, .089, .006, {}),                                               # the navel
-    (1.140, .135, .106, .093, .006, {}),                                               # the waist; first ab line
-    (1.185, .151, .115, .099, .006, {}),                                               # second ab line
+    (1.088, .140, .101, .089, .006, {0: -.002, 22.5: .003, 45: .004, 90: 0}),           # the navel
+    (1.114, .137, .104, .091, .006, {}),                                               # the first block's crest
+    (1.140, .135, .106, .093, .006, {0: -.009, 22.5: .004, 45: .008, 67.5: .004, 90: 0}),  # the waist; first ab line
+    (1.1625, .142, .111, .096, .006, {}),                                              # the second block's crest
+    (1.185, .151, .115, .099, .006, {0: -.008, 22.5: .004, 45: .008, 67.5: .003, 90: 0}),  # second ab line
+    (1.2035, .158, .121, .102, .006, {0: .004, 22.5: .001, 45: -.005, 67.5: -.004, 90: .002}),  # the top block's crest
     (1.222, .166, .127, .105, .006, {0: .008, 22.5: .002, 45: -.010, 67.5: -.008, 90: .004, 112.5: 0}),  # the rib arch
     (1.262, .176, .142, .110, .006, {0: .002, 22.5: -.004, 45: .006, 67.5: .020, 90: .026, 112.5: .016, 135: .006,
                                      157.5: 0}),                                       # the pecs' lower edge
@@ -468,17 +503,17 @@ TORSO_ROUND = [(.858, 2.35), (.97, 2.3), (1.05, 2.05), (1.20, 1.95), (1.31, 2.15
 # amplitudes are grooves. The exponent (2 by default) squares a form off: 4 gives a plateau with a crisp edge (the pecs,
 # the abdominal blocks); the slope (m per degree) tilts the form, its outer side higher (the pecs rising to the armpit).
 TORSO_FORMS = [
-    (.026, 34, 20, 1.334, .056, 4, .0008),  # pectorals: square plates up to the clavicles, a strong lower edge
+    (.029, 34, 20, 1.334, .056, 4, .0008),  # pectorals: square plates up to the clavicles, a strong lower edge
                                             # rising toward the armpit
-    (-.007, 34, 24, 1.262, .010, 2, .0008),  # the shadow line under the pecs' lower edge
+    (-.011, 34, 24, 1.262, .010, 2, .0008),  # the shadow line under the pecs' lower edge
     (-.015, 0, 7, 1.320, .080),      # sternum: the gap between the pecs
     (.014, 15, 11, 1.150, .085, 4),  # rectus abdominis: the six-pack's plates
-    (-.011, 0, 6, 1.120, .100),      # linea alba
-    (-.008, 15, 13, 1.140, .010),    # the tendinous lines between the blocks
-    (-.008, 15, 13, 1.185, .010),
+    (-.020, 0, 5, 1.130, .100),      # linea alba: a real groove down the centre
+    (-.011, 15, 13, 1.140, .010),    # the tendinous lines between the blocks
+    (-.011, 15, 13, 1.185, .010),
     (-.006, 15, 13, 1.088, .010),    # (at the navel)
     (-.010, 0, 5, 1.088, .010),      # the navel
-    (-.006, 47, 8, 1.150, .070),     # the abdominals' outer edge
+    (-.007, 32, 7, 1.150, .075),     # the abdominals' outer edge
     (.012, 76, 18, 1.035, .030),     # obliques over the iliac crest
     (.006, 70, 9, 1.236, .012),      # serratus: fingers under the pec, stepping forward as they go down
     (.006, 80, 9, 1.272, .012),
@@ -488,13 +523,14 @@ TORSO_FORMS = [
     (.016, 150, 30, .895, .045),     # glutes
 ]
 WAIST_LOW, WAIST_TOP = 3, 4
-SOCKET_ROWS = (13, 14, 15)
+SOCKET_ROWS = (16, 17, 18)
 SOCKET_COLS = (3, 4, 5, 6, 7, 8)
 # The arm socket: an ellipse round the arm's root on the side of the chest (rig y, z centre and radii). Its 14 points run
 # from the front middle down, round the bottom to the back, and over the top, evenly spaced (angle 0 front, 90 top).
 SOCK_C, SOCK_R = (1.408, -.004), (.058, .080)
-SOCKET_LOOP = ([(14, SOCKET_COLS[0])] + [(13, c) for c in SOCKET_COLS] + [(14, SOCKET_COLS[-1])] +
-               [(15, c) for c in reversed(SOCKET_COLS)])
+_SB, _SM, _ST = SOCKET_ROWS
+SOCKET_LOOP = ([(_SM, SOCKET_COLS[0])] + [(_SB, c) for c in SOCKET_COLS] + [(_SM, SOCKET_COLS[-1])] +
+               [(_ST, c) for c in reversed(SOCKET_COLS)])
 SOCK_ANG = {cell: -360.0 * i / len(SOCKET_LOOP) for i, cell in enumerate(SOCKET_LOOP)}
 
 
@@ -530,8 +566,8 @@ ARM_CUFF_ROW = 9
 ARM_N = len(SOCKET_LOOP)            # 14: the socket, the deltoid cap rings and the arm's first ring
 # The palm (8-sided, continuing the wrist): y, z shift, out, front, in, back radii. The back of the hand faces out (+x on
 # the left), the thumb side forward (+z).
-PALM = [(.850, .004, .018, .045, .016, .042), (.805, .004, .018, .053, .016, .050), (.763, .003, .016, .054, .015, .051)]
-PALM_TIP_Y = .745
+PALM = [(.847, .004, .019, .047, .017, .044), (.798, .004, .019, .056, .017, .053), (.753, .003, .017, .057, .016, .054)]
+PALM_TIP_Y = .733
 
 # Leg rings (left leg, straight down from the hip joint): y, centre x, centre z, mean radius, reference part and t,
 # ring vertices, (out, front, in, back) scale. The boxer-briefs end at LEG_HEM, mid-thigh.
@@ -542,9 +578,9 @@ LEG = [
     (.686, HX + .010, -.002, .087, ('thigh', .39), 12, (1.08, 1.08, .94, 1.02)),    # hem lip (skin)
     (.615, HX + .007, .004, .082, ('thigh', .58), 12, (1.10, 1.10, .96, 1.04)),     # quadriceps sweep, hamstrings
     (.548, HX + .002, .010, .069, ('thigh', .78), 12, (.98, 1.06, 1.08, .98)),      # the inner teardrop above the knee
-    (.490, HX, .014, .061, ('thigh', .92), 10, (1.0, 1.04, 1.02, .94)),
-    (.458, HX, .012, .060, ('thigh', .97), 10, (1.06, 1.12, 1.06, .92)),           # knee: the patella plane, its width
-    (.418, HX, .004, .060, ('shin', .08), 8, (1.0, 1.0, 1.04, 1.06)),
+    (.490, HX, .014, .057, ('thigh', .92), 10, (1.0, 1.02, 1.04, .94)),
+    (.458, HX, .012, .053, ('thigh', .97), 10, (1.02, 1.06, 1.0, .92)),            # knee: a slim kneecap plane
+    (.418, HX, .004, .054, ('shin', .08), 8, (1.0, .98, 1.02, 1.08)),
     (.385, HX, -.012, .072, ('shin', .20), 8, (1.0, 1.0, 1.14, 1.14)),             # calf: high and full on the inside
     (.330, HX, -.012, .066, ('shin', .35), 8, (1.10, 1.0, 1.0, 1.12)),             # and lower on the outside
     (.255, HX, -.005, .049, ('shin', .52), 8, (1.0, 1.0, 1.0, 1.04)),
@@ -580,7 +616,7 @@ LIMB_FORMS = {
         (.010, 182, 34, .750, .060),     # adductors
         (.013, 262, 40, .640, .090),     # hamstrings
         (-.006, 270, 22, .462, .024),    # behind the knee
-        (.006, 90, 26, .462, .016),      # the kneecap
+        (.003, 90, 26, .462, .016),      # the kneecap
         (-.004, 90, 20, .425, .014),     # its tendon, a flat below it
         (.016, 222, 30, .392, .045),     # gastrocnemius: the inner head, higher and larger
         (.010, 318, 30, .348, .040),     # the outer head
@@ -775,27 +811,53 @@ def build_trim(mb):
         mb.f((a[0], a[1], b[1], b[0]), PID['cloth-stripe'])
 
 
-# Facets: the skin is flat-shaded in designed planes (cloth stays soft). Each lattice (a run of rings with equal vertex counts) gathers its
-# quads into blocks: bands of one or two strips (ring to ring) by pairs of quads round the ring. A full 2 x 2 block is
-# two big triangles split along its better-fitting diagonal; any other block is one panel; zipper strips between rings
-# of different counts are facets per triangle. Bands keep to the forms: pairs where a form is broad, single strips at
-# its edges (the pecs' lower edge, the abdominal lines, the elbow and knee, the briefs' hem and band).
+# Facets: the skin is flat-shaded in clean, designed planes that follow the forms (cloth stays soft). Each lattice (a
+# run of rings with equal vertex counts) gathers its quads into planes: bands of strips (ring to ring) by groups of quads
+# round the ring, named here by quad index (the torso: quad k spans 15k to 15k + 15 degrees from the front centre line)
+# or by angle sectors round a limb (0 outward, 90 front, 180 inward, 270 back). Each plane is one panel; a 'tri' band
+# would split a 2 x 2 group into two triangles. Zipper strips between rings of different counts are facets per
+# triangle; any quad left out is a panel of its own.
+def _band(strips, groups='pairs', mode='panel', **kw):
+    return dict(s=strips, c=groups, m=mode, **kw)
+
+
+_RECTUS = [(0, 1)]                                             # an ab block (the centre line is the mirror seam)
+_RIBS = [(0, 1), (2, 3), (4, 5), (6, 7, 8), (9, 10, 11)]       # ribs under the pecs, serratus, lats, back
+_SIDES = [(2, 3, 4), (5, 6, 7), (8, 9), (10, 11)]               # obliques, flank, back, lower back
+_DELT = ('sectors', [(-45, 45), (45, 135), (135, 225), (225, 315)])     # the cap: outer, front, top, back
 FACETS = {
-    # torso strips: 0-1 hips, 2 above, 3 band, 4 band lip, 5-6 lower abdomen, 7-8 the navel and second ab blocks, 9 the
-    # top block under the rib arch, 10 the ribs under the pecs, 11-12 the pecs, 13-14 round the arm socket, 15-16
-    # trapezius (an entry (strips, n) would keep the first n quads from the front centre single)
-    'torso': [(0, 1), (2,), (3,), (4,), (5, 6), (7, 8), (9,), (10,), (11, 12), (13, 14), (15, 16)],
-    'deltoid': [(0, 1), ((2,), 99)],
-    'neck': [(0, 1)],
+    # torso skin strips: 5-6 lower abdomen; the three ab blocks (7-8, 9-10, 11-12), each split from its upper-inner to
+    # its lower-outer corner into a darker lower-inner facet (falling into the linea alba and the tendinous line) and a
+    # lit upper-outer one, with the obliques, flanks and back as two tall planes beside them (5-8 over the iliac
+    # crest, 9-12 up the ribs); 13 the ribs under the pecs; 14-15 the pecs (big triangles: inner and outer planes split
+    # along the form); 16-17 round the arm socket; 18-19 trapezius
+    'torso': [_band((5, 6), _RECTUS)] + [_band((k, k + 1), _RECTUS, 'tri', diag='anti') for k in (7, 9, 11)] +
+             [_band((5, 6, 7, 8), _SIDES), _band((9, 10, 11, 12), _SIDES), _band((13,), _RIBS),
+              _band((14, 15), 'pairs', 'tri'), _band((16, 17), [(0, 1, 2), (8, 9, 10, 11)]),
+              _band((18, 19), [(0, 1), (2, 3, 4), (5, 6, 7), (8, 9, 10, 11)])],
+    # the deltoid: a round cap in four big planes (outer, front, the top toward the trapezius, back), then its lower
+    # ring into the arm in the same four
+    'deltoid': [_band((0, 1), _DELT, centre=(SX + .006, 0.0)), _band((2,), _DELT, centre=(SX + .006, 0.0))],
+    'neck': [_band((0, 1), [(0, 1), (2, 3), (4, 5, 6), (7, 8, 9), (10, 11)])],
 }
+# Limb planes: six or seven round each limb, of unequal sizes that follow the muscles (angle sectors: 0 outward, 90
+# front, 180 inward, 270 back; edges on the ring's vertex angles), so the silhouette turns in gentle angles.
+_UPPERARM = ('sectors', [(-30, 30), (30, 60), (60, 150), (150, 210), (210, 270), (270, 330)])   # biceps the broad one
+_ELBOW = ('sectors', [(-54, 18), (18, 54), (54, 126), (126, 198), (198, 270), (270, 306)])
+_FOREARM = ('sectors', [(-90, 0), (0, 45), (45, 90), (90, 180), (180, 270)])   # the flare: two planes at a ridge (45)
+_THIGH = ('sectors', [(-30, 30), (30, 120), (120, 180), (180, 240), (240, 300), (300, 330)])   # a broad front plane
+_KNEE = ('sectors', [(-54, 18), (18, 54), (54, 126), (126, 198), (198, 306)])   # a slim kneecap plane in front
+_SHIN = ('sectors', [(-45, 0), (0, 45), (45, 135), (135, 180), (180, 225), (225, 270), (270, 315)])  # the flat shin
 # Tube runs (strip index from the tube's first ring): bands per run start, by tube; unlisted runs pair their strips.
 TUBE_BANDS = {
     # arm rings: 0 the deltoid's last ring (14), 1-3 upper arm (12), 4-5 elbow (10), 6-10 forearm and wrist (8), then
-    # the palm (8, in single quads round its flat sides): bands end at the elbow and the wrist
-    'arm': {1: [(0, 1)], 4: [(0,)], 6: [(0, 1), (2, 3), (4,), ((5, 6), 99)]},
-    # leg rings: 0 the leg opening (16), 1 the thigh's first ring (16), 2-5 hem, lip, quads (12), 6-7 knee (10), 8-13
-    # shin and calf (8): the hem and the knee stand alone; the leg opening's strip (round the hip) in single quads
-    'leg': {0: [((0,), 99)], 2: [(0,), (1, 2)], 6: [(0,)], 8: [(0, 1), (2, 3), (4,)]},
+    # the palm (8, single quads round its flat sides)
+    'arm': {1: [_band((0, 1), _UPPERARM)], 4: [_band((0,), _ELBOW)],
+            6: [_band((0, 1), _FOREARM), _band((2, 3), _FOREARM), _band((4,), ('singles', 99)),
+                _band((5, 6), ('singles', 99))]},
+    # leg rings: 2-5 hem, lip and thigh (12), 6-7 knee (10), 8-13 shin and calf (8)
+    'leg': {2: [_band((0,)), _band((1, 2), _THIGH)], 6: [_band((0,), _KNEE)],
+            8: [_band((0, 1), _SHIN), _band((2, 3), _SHIN), _band((4,), ('singles', 99))]},
 }
 
 
@@ -1005,8 +1067,19 @@ def head_r(th, ph):
     return _grid(_HR, th, ph) * (1 - w) + _grid(_HRS, th, ph) * w + head_style(th, ph)
 
 
+# The face's frame on the heroic body: the cheekbones, the jaw and the temples a little wider than the measured form
+# (the eyes and brow keep their widths): (amplitude, height in head heights from the head centre, sigma).
+HEAD_WIDEN = [(.06, -.10, .08), (.085, -.30, .10), (.03, .24, .10)]
+
+
+def head_widen(y):
+    yn = (y - HC.y) / HEAD_H
+    return 1.0 + sum(a * math.exp(-((yn - y0) / sy) ** 2) for a, y0, sy in HEAD_WIDEN)
+
+
 def head_surface(th, ph):
     p = HC + head_dir(th, ph) * (head_r(th, ph) * HEAD_H)
+    p.x *= head_widen(p.y)
     if th <= 0 or th >= 180:
         p.x = 0.0
     return p
@@ -1373,30 +1446,30 @@ def finger(mb, pts, radii, n=6, region='finger', paint=None, up=Vector((1, 0, 0)
     mb.cap(rings[-1], Vector(pts[-1]) + d1 * radii[-1] * .7, region, paint)
 
 
-# Fingers (left hand, relaxed): knuckle z, (proximal, middle, distal) lengths, radius. The palm faces -x (the body), the
-# thumb side is +z; the fingers hang together with a gentle curl toward the palm. Everything rides the wrist (no finger
-# bones in the rig).
-FINGERS = [(.031, (.051, .031, .023), .0118, .14), (.010, (.057, .034, .024), .0121, .04),
-           (-.010, (.053, .032, .023), .0116, -.05), (-.030, (.042, .026, .020), .0104, -.15)]
-FINGER_CURL = (Vector((-.10, -1, 0)), Vector((-.30, -1, 0)), Vector((-.55, -1, 0)))
+# Fingers (left hand, relaxed and open): knuckle z, (proximal, middle, distal) lengths, radius, spread (toward +z), curl
+# (the outer fingers curl more). The palm faces -x (the body), the thumb side is +z. Everything rides the wrist (no
+# finger bones in the rig).
+FINGERS = [(.033, (.051, .031, .023), .0126, .12, .85), (.011, (.057, .034, .024), .0129, .03, 1.0),
+           (-.011, (.053, .032, .023), .0124, -.05, 1.15), (-.032, (.043, .026, .020), .0111, -.14, 1.3)]
+FINGER_CURL = (Vector((-.18, -1, 0)), Vector((-.50, -1, 0)), Vector((-.90, -1, 0)))
 
 
 def build_fingers(mb):
     x0 = SX - .004
     base_y = PALM_TIP_Y + .010
-    for z, lengths, r, spread in FINGERS:
+    for z, lengths, r, spread, curl in FINGERS:
         p = Vector((x0, base_y, z))
         pts = [p.copy()]
         for L, d in zip(lengths, FINGER_CURL):
-            p = p + (d + Vector((0, 0, spread))).normalized() * L
+            p = p + (Vector((d.x * curl, d.y, spread))).normalized() * L
             pts.append(p.copy())
         finger(mb, pts, [r * 1.08, r, r * .93, r * .84], n=6, up=Vector((0, 0, 1)), aspect=.92)
     # thumb: from the palm's front edge near the wrist, forward and down, resting by the index finger
-    t0 = Vector((SX - .010, .828, .037))
-    t1 = t0 + Vector((-.24, -.84, .48)).normalized() * .046
-    t2 = t1 + Vector((-.28, -.92, .28)).normalized() * .035
-    t3 = t2 + Vector((-.30, -.94, .14)).normalized() * .028
-    finger(mb, [t0, t1, t2, t3], [.0166, .0152, .0134, .0116], n=6, up=Vector((1, 0, 0)), aspect=.9)
+    t0 = Vector((SX - .012, .826, .038))
+    t1 = t0 + Vector((-.30, -.70, .65)).normalized() * .047
+    t2 = t1 + Vector((-.52, -.78, .34)).normalized() * .035
+    t3 = t2 + Vector((-.68, -.72, .10)).normalized() * .028
+    finger(mb, [t0, t1, t2, t3], [.0182, .0166, .0146, .0126], n=6, up=Vector((1, 0, 0)), aspect=.9)
 
 
 # ----------------------------------------------------------------------------------------------------------------- hair
@@ -1882,6 +1955,9 @@ def apply_modifiers(obj):
         bpy.ops.object.modifier_apply(modifier=m.name)
 
 
+FACET_HARDNESS = .80    # 1 = hard flat facets; lower lets each facet's corners lean toward the smooth surface
+
+
 def facet_normals(obj):
     """Flat facets: every corner takes its facet's normal (the area-weighted mean of the facet's faces, each half of the
     mirrored body on its own); faces outside any facet (the head, ears, fingers, toes, trim) keep their smooth planes
@@ -1894,6 +1970,10 @@ def facet_normals(obj):
         if k >= 0:
             key = (k, poly.center.x > 0)
             acc[key] = acc.get(key, Vector()) + poly.normal * poly.area
+    vn = [Vector() for _ in me.vertices]        # smooth vertex normals, to soften the facets' edges a little
+    for poly in me.polygons:
+        for v in poly.vertices:
+            vn[v] += poly.normal * poly.area
     loops = [None] * len(me.loops)
     for poly, k in zip(me.polygons, fac):
         if k < 0:
@@ -1904,8 +1984,9 @@ def facet_normals(obj):
         n = acc[(k, poly.center.x > 0)].normalized()
         if n.length < .5 or n.dot(poly.normal) < .35:      # a sliver folded against its facet stays flat on its own
             n = poly.normal
-        for li in poly.loop_indices:
-            loops[li] = n.copy()
+        for li, v in zip(poly.loop_indices, poly.vertices):
+            m = (n * FACET_HARDNESS + vn[v].normalized() * (1 - FACET_HARDNESS)).normalized()
+            loops[li] = m if m.dot(poly.normal) > .3 else n.copy()
         poly.use_smooth = True
     for e in me.edges:
         e.use_edge_sharp = False

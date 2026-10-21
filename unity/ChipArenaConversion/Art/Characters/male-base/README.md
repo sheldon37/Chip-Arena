@@ -81,9 +81,10 @@ and weapon frames keep the authoritative rig.
 
 ## Body
 
-- Target: the owner's base-body figure (`ref2-body-target-sheet`), matched on its front silhouette in the presentation
-  stance (outer deltoids about .56 m, the waist about .47 of that, the hips about .74, scaled to the same height); the
-  head about 8 to the height. The comparison overlay is a scratch render (not committed).
+- Target: the owner's base-body figure (`ref4-body-main-target`, the BASE BODY of `ref2-body-target-sheet`), matched
+  on its front silhouette in the presentation stance (outer deltoids about .56 m, the waist about .47 of that, the hips
+  about .74, scaled to the same height); the head about 8 to the height, its jaw, cheekbones and temples a little wider
+  than the measured head form (`HEAD_WIDEN`). The comparison overlay is a scratch render (not committed).
 - The torso is designed rather than measured: front, side and back profile curves per row (`TORSO`), rounded
   cross-sections whose roundness changes from the pelvis through the waist to the ribcage (`TORSO_ROUND`), and broad
   muscle forms laid over them (`TORSO_FORMS`: square pectoral plates with a strong lower edge rising to the armpit and
@@ -105,12 +106,15 @@ and weapon frames keep the authoritative rig.
   and round to the outer hem, and a cyan band (`HEM_BAND`) follows the hem's outer half. Both are lifted overlays that
   take the cloth's weights.
 - Feet: long, with a round heel pad, the arch, a sole widest at the ball, the big toe, the second toe and a block of
-  three smaller toes. Hands: large and open, a defined thumb, knuckle planes, the fingers slightly spread and curled.
-- Facets (`FACETS`, `TUBE_BANDS`): the skin is flat-shaded in designed planes (the briefs' cloth stays soft). Each run
-  of equal rings is a lattice whose quads gather into blocks by bands of one or two strips and pairs of quads; a full
-  2 x 2 block becomes two big triangles split along the diagonal that best fits the surface under it, any other block
-  one panel. Bands keep to the forms (the ribs under the pecs, the rib arch, the elbow, the knee and the hem stand
-  alone), so the plane breaks fall on the muscle forms, not on an arbitrary triangulation.
+  three smaller toes. Hands: large, open and relaxed, the fingers slightly spread and curled more toward the little
+  finger, the thumb curling in toward them. Knees: slim, a kneecap plane with its tendon below and the teardrop above.
+- Facets (`FACETS`, `TUBE_BANDS`): the skin is shaded in clean, designed planes that follow the forms (the briefs'
+  cloth stays soft). Each run of equal rings is a lattice; its bands of strips gather quads into planes, named by quad
+  index on the torso or by angle sectors round a limb. The six ab blocks are paired quads either side of a linea alba
+  groove, each split into a darker lower-inner and a lit upper-outer facet, with the obliques, flanks and back as tall
+  planes beside them; the pecs are big triangles over a shadow strip; the deltoid is a cap of four big planes; each
+  limb has six or seven planes of unequal size (a broad front plane on the thigh, a broad biceps plane, the forearm's
+  flare as two planes meeting at a ridge, a slim kneecap plane, the flat shin).
 
 ## Head, face and hair
 
@@ -124,10 +128,10 @@ and weapon frames keep the authoritative rig.
   the scalp (thicker on top for volume) and faceted clumps lying on it (`CLUMPS`), with the six spring chains. The top
   and fringe clumps run from a whorl behind the top of the head forward over it, arch off the hairline and fall onto
   the forehead, swept to the character's right in uneven lengths; the sides and back lie tight, down to the nape.
-- Shading: the skin's facets are flat (each facet's corners carry its area-weighted mean normal, each half on its own,
-  so the centre line creases). The briefs, head, ears, fingers, toes and the trim keep smooth planes broken at creases
-  over 30° on the head (32° elsewhere, 21° on the feet), at paint borders and along the face's design lines. The
-  exports carry corner normals.
+- Shading: each skin facet's corners carry its area-weighted mean normal (each half on its own, so the centre line
+  creases), leaning 20 % toward the smooth surface (`FACET_HARDNESS`) so the planes read crisp but not blocky. The
+  briefs, head, ears, fingers, toes and the trim keep smooth planes broken at creases over 30° on the head (32°
+  elsewhere, 21° on the feet), at paint borders and along the face's design lines. The exports carry corner normals.
 
 ## Paint and materials
 
