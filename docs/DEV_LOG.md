@@ -1,3 +1,11 @@
+## 2026-10-20 — Astra: bounded recovery from reliable send stalls
+
+- Branch `codex/network-queue-recovery`, shared base `acc90b9`. Owner supplied guest screenshots of reliable queue overflow, abrupt WebSocket close and invalid host state during hosted matches.
+- The 32-packet reliable send cap covered only about half a second of 60 Hz input. Raise to 128 packets with an independent 8 MiB encoded-byte cap; retain every input edge/control message in FIFO order. Drain at most about 125 packets/s so recovery stays below the existing 180/s receiver guard. Sustained overload still disconnects deliberately.
+- Combine header and payload into one pooled transport write (one WebSocket message), retaining protocol 7 framing and latest-only host snapshots. No changes to damage, animation, input schema or host authority.
+- Add specific frame/seat/bundle error context to the earlier ArgumentException path. Its underlying cause is NOT established by the screenshot and is not claimed fixed.
+- Checks: managed C# warnings-as-errors compilation; blocked-stream regression (100 ordered commands, atomic packets, newest snapshot, count/byte limits), real TCP 240-command recovery all pass. Full managed suite and pinned Unity semantic compilation running. Windows gameplay and native build/publication remain unverified. See PR for final gate results.
+
 ## 2026-10-20 — Claude: low-poly character Phase A, architecture audit and design (merged into shared)
 
 - **Branch/base:** `claude/lowpoly-audit`, from shared `claude/sleepy-ritchie-g8ruhv` at `28a46ce`. Docs only; merged into shared and the builder; not published. Phase B (male base in Blender) runs in parallel on `claude/lowpoly-base-model`.

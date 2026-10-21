@@ -16,13 +16,15 @@ namespace ChipArena.UnityConversion
     {
         public const byte Protocol=7;
         public const int MaxFrame=2*1024*1024;
+        // Two seconds of 60 Hz input plus control traffic; retain every command in order.
+        public const int MaxReliablePackets=128,MaxReliableBytes=8*1024*1024;
         private static readonly UTF8Encoding Utf8=new UTF8Encoding(false,true);
         private readonly TcpClient client;private readonly Stream stream;private readonly CancellationTokenSource stop=new CancellationTokenSource();
         private readonly ConcurrentQueue<byte[]> reliable=new ConcurrentQueue<byte[]>();private readonly SemaphoreSlim ready=new SemaphoreSlim(0,1);private byte[] latest;private string receivedState;
         // Only host-to-guest state is replaceable; commands and replies remain ordered.
         private static readonly Regex StateEnvelope=new Regex(@"^\{""version"":7,""epoch"":-?[0-9]+,""type"":""(?:frame|expedition-state)"",",RegexOptions.CultureInvariant);
         public readonly NativeConnectionMetrics Metrics=new NativeConnectionMetrics();public readonly ConcurrentQueue<string> Received=new ConcurrentQueue<string>();public string Error{get;private set;}public bool Closed=>stop.IsCancellationRequested;public DateTime LastReceived{get;private set;}=DateTime.UtcNow;
-        private readonly int receiveLimit;private int reliableCount,receivedCount;private readonly Task reader,writer;
+        private readonly int receiveLimit;private int reliableCount,receivedCount,reliableBytes;private readonly Task reader,writer;
         public NativeConnection(TcpClient socket,int inboundLimit=MaxFrame)
         {client=socket;client.NoDelay=true;receiveLimit=inboundLimit;stream=client.GetStream();reader=Task.Run(ReadLoop);writer=Task.Run(WriteLoop);}
         public NativeConnection(Stream transport,int inboundLimit=MaxFrame){stream=transport;receiveLimit=inboundLimit;reader=Task.Run(ReadLoop);writer=Task.Run(WriteLoop);}
@@ -48,7 +50,7 @@ namespace ChipArena.UnityConversion
         public void Reject(string json){Send(json);_=Task.Run(async()=>{await Task.Delay(100).ConfigureAwait(false);Dispose();});}
         public void ClearSnapshot()=>Interlocked.Exchange(ref latest,null);
         public void SendEncoded(byte[] packet,bool snapshot=false)
-        {if(Closed)return;if(packet==null||packet.Length<2||packet.Length>MaxFrame+1)throw new InvalidDataException("Invalid encoded packet");if(snapshot)Interlocked.Exchange(ref latest,packet);else{if(Interlocked.Increment(ref reliableCount)>32){Fail("Reliable queue overflow");return;}reliable.Enqueue(packet);}if(ready.CurrentCount==0)try{ready.Release();}catch(SemaphoreFullException){}catch(ObjectDisposedException){}}
+        {if(Closed)return;if(packet==null||packet.Length<2||packet.Length>MaxFrame+1)throw new InvalidDataException("Invalid encoded packet");if(snapshot)Interlocked.Exchange(ref latest,packet);else{int count=Interlocked.Increment(ref reliableCount);int bytes=Interlocked.Add(ref reliableBytes,packet.Length);if(count>MaxReliablePackets||bytes>MaxReliableBytes){Interlocked.Decrement(ref reliableCount);Interlocked.Add(ref reliableBytes,-packet.Length);Fail("Reliable queue overflow (send backlog exceeded bounded budget)");return;}reliable.Enqueue(packet);}if(ready.CurrentCount==0)try{ready.Release();}catch(SemaphoreFullException){}catch(ObjectDisposedException){}}
         public bool TryReceive(out string json){if(Received.TryDequeue(out json)){Interlocked.Decrement(ref receivedCount);return true;}json=Interlocked.Exchange(ref receivedState,null);return json!=null;}
         private async Task Exact(byte[] buffer,int count)
         {int at=0;while(at<count){int n=await stream.ReadAsync(buffer,at,count-at,stop.Token).ConfigureAwait(false);if(n==0)throw new EndOfStreamException();at+=n;}}
@@ -61,7 +63,35 @@ namespace ChipArena.UnityConversion
         }
         private async Task WriteLoop()
         {
-            try{while(!Closed){await ready.WaitAsync(stop.Token).ConfigureAwait(false);do{byte[] data;if(reliable.TryDequeue(out data))Interlocked.Decrement(ref reliableCount);else data=Interlocked.Exchange(ref latest,null);if(data==null)break;int n=data.Length;byte[] header={67,65,85,Protocol,(byte)(n>>24),(byte)(n>>16),(byte)(n>>8),(byte)n};await stream.WriteAsync(header,0,header.Length,stop.Token).ConfigureAwait(false);await stream.WriteAsync(data,0,n,stop.Token).ConfigureAwait(false);}while(!Closed);}}
+            try
+            {
+                var clock=System.Diagnostics.Stopwatch.StartNew();long nextWrite=0;
+                while(!Closed)
+                {
+                    await ready.WaitAsync(stop.Token).ConfigureAwait(false);
+                    do
+                    {
+                        byte[] data;
+                        if(reliable.TryDequeue(out data)){Interlocked.Decrement(ref reliableCount);Interlocked.Add(ref reliableBytes,-data.Length);}
+                        else data=Interlocked.Exchange(ref latest,null);
+                        if(data==null)break;
+                        // Drain a recovered backlog below the peer's 180 packets/second guard.
+                        long delay=nextWrite-clock.ElapsedMilliseconds;
+                        if(delay>0)await Task.Delay((int)delay,stop.Token).ConfigureAwait(false);
+                        int n=data.Length;var wire=System.Buffers.ArrayPool<byte>.Shared.Rent(n+8);
+                        try
+                        {
+                            wire[0]=67;wire[1]=65;wire[2]=85;wire[3]=Protocol;
+                            wire[4]=(byte)(n>>24);wire[5]=(byte)(n>>16);wire[6]=(byte)(n>>8);wire[7]=(byte)n;
+                            Buffer.BlockCopy(data,0,wire,8,n);
+                            // One WebSocket message per framed packet, rather than separate header/body messages.
+                            await stream.WriteAsync(wire,0,n+8,stop.Token).ConfigureAwait(false);
+                        }
+                        finally{System.Buffers.ArrayPool<byte>.Shared.Return(wire);}
+                        nextWrite=clock.ElapsedMilliseconds+8;
+                    }while(!Closed);
+                }
+            }
             catch(Exception e)when(e is WebSocketException||e is InvalidDataException||e is IOException||e is SocketException||e is OperationCanceledException||e is ObjectDisposedException){if(!Closed)Fail(e.Message);}
         }
         private void Fail(string error){Error=error;Dispose();}
