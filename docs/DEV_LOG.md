@@ -1,6 +1,6 @@
 ## 2026-10-21 — Claude: low-poly male base, neutral body redesign, eyes, hair and neck (on the branch, not merged)
 
-- **Branch/base:** `claude/lowpoly-base-model` after `80130ff` (the anatomy checkpoint). Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.
+- **Branch/base:** `claude/lowpoly-base-model` after `80130ff` (the anatomy checkpoint); checkpoint `ea1926e` plus this log update. Not merged, no PR, not published. Shared (`e0f904c`) is merged in before the final push.
 - **Owner/coordinator brief:** neutral only, no animation until the go-ahead. A redesign of the body for silhouette and appeal, lean-athletic (Reference B = `ref2-body-crop-base` until the owner's image arrives); eyes not beady; tight hair sides with volume on top; a fuller neck.
 - **What changed (mesh only; the 22 joints keep their names and topology):**
   - Torso: designed front, side and back profiles with rounded cross-sections (pelvis to waist to ribcage) and broad muscle forms (pecs up to the clavicles, sternum, abdominals, obliques over the iliac crests, lats, scapulae, spine, glutes); rows that follow the muscle flow (the pecs' lower edge rising into the armpit, a waistband V along the crests); 13 columns per half ring instead of 9; one smooth group with creases only at the pecs' lower edge, short abdominal lines and the linea alba.
@@ -12,7 +12,7 @@
   - Neck: wider, with sternocleidomastoid planes into the clavicles.
   - Presentation: the neutral sheet uses a relaxed stance (shoulders down, arms a little out and forward, soft elbows and knees, feet about hip-width, toes slightly out); the A-pose sheet stays.
 - **Counts:** 5,136 triangles (body 3,954, hair 698, core 210, device 274).
-- **Checks (actual):** `Tests/test_lowpoly_male_base.py` 12 OK; a foot-fold shading fix (corner normals crossing a 90° fold at the ankle front) came out of it. Drift re-measured. run5b not re-run for this commit (art, test and docs only since the `f0db5f8` run).
+- **Checks (actual):** `Tests/test_lowpoly_male_base.py` 12 OK; a foot-fold shading fix (corner normals crossing a 90° fold at the ankle front) came out of it. Drift re-measured. run5b on the `ea1926e` content: rc1–rc5 all 0 (relay 814 PASS lines; 152 Python tests OK, 1 skipped; package 2,616 files; diff check).
 - **Renders:** scratch `renders-lowpoly-base/` `anatomy-neutral`, `anatomy-apose`, `anatomy-silhouette`, `head-sheet`, `head-sheet-guide`; the previous ones are `*-v2`.
 - **Risks:** the limbs are still lofted rings (round in section, clean but simple); the head keeps an irregular triangulation; weapon drift (P1/P2) is unchanged by this pass.
 - **Next:** owner review; then, on a go-ahead, the adapter animation tests.
