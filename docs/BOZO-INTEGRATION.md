@@ -2,7 +2,8 @@
 
 Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (`claude/bozo-inventory`, docs only, merged into shared
 after the owner's review): both packs imported, moved under `Assets/LocalAssets/`, and inventoried below; the owner's
-decisions follow the inventory. No runtime code. Next: step 3 (rig adapter, `claude/bozo-rig-adapter`). Owner decision: player characters come from the **BoZo: Stylized Modular
+decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; it is not wired
+into the live body path yet; its drift on BoZo is measured in Unity (step 3 below). Next: step 4 (first character). Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
@@ -409,6 +410,126 @@ Renders (preview scene, Gamma Editor; local scratch only, never committed):
   recompile therefore runs the old code. Its per-part width pass (the same measurement as the FBX widths above) is in the
   file for the next focused run.
 
+## Step 3: rig adapter (`claude/bozo-rig-adapter`)
+
+Presentation only. Nothing here reads or writes authority:
+- the capsule, head box, melee sector, shot and aim origins, weapon frames, the network pose and every wire field stay on the
+  22 `CapturedRig` joints;
+- hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
+
+The adapter is not wired into the live body path yet; that is step 4.
+
+**Files.**
+- `Core/NativeVisualRig.cs`: the adapter. Pure System.Numerics in the source frame and the `Pose`'s body space (floor −.865).
+  It allocates nothing per frame.
+- `Runtime/NativeVisualRigBinding.cs`: binds it to a Unity bone hierarchy. It reads the rest pose once, mirrored into the
+  source frame, and writes local turns plus the pelvis position each frame. It uses Unity types only and names no pack
+  types, so it compiles on machines without the packs.
+- `Tests/VisualRigChecks.cs` (`CoreTests --visual-rig`): checks the adapter against a synthetic Unreal-mannequin skeleton
+  built from our own numbers, with no pack data.
+
+**Bind (once per skeleton).**
+- **Mapping:** bones are mapped by name (`NativeVisualRig.Mannequin`) using the table in step 2:
+  - pelvis;
+  - `spine_01`–`02` share the spine's turn half and half; `spine_03`–`05` share the chest's 34/33/33; `neck_01`–`02` share
+    the neck's;
+  - head, clavicles, upper arms, forearms, hands, thighs, calves, feet and balls one to one;
+  - everything else rides its parent.
+- **Rest alignment:** upper arms, forearms, thighs and calves are turned so they point down the game's rest directions
+  (arms and legs straight down). BoZo's A-pose then lines up with the game's arms-down rest. Hands and fingers follow their
+  forearm. Pelvis, spine, neck, head and clavicles keep BoZo's authored posture. Feet keep their flat world rest.
+- **Leg ratio:** the visual hip-to-ankle over the game's .50 m (BoZo: see the measurements below).
+
+**Per frame** (`NativeVisualRig.Pose`):
+1. **Joint turns:** each bone's world turn is the game joint's world turn (identity rest frames, so the turn since rest)
+   applied to its aligned rest. Split chains slerp the joint's local turn by their share. Arm and leg directions therefore
+   equal the game's exactly. Hands, feet and head carry the game joint's turn.
+2. **Twist helpers:**
+   - forearm helpers take the hand's roll, and calf helpers the foot's, by their place along the bone;
+   - upper-arm and thigh helpers counter the limb's own roll: all of it at the root (`shoulder_twist`), none at the far end.
+3. **Root:** the pelvis moves by the game pelvis's offset from rest × the leg ratio, so crouches and bobs keep the game's
+   knee angles.
+4. **Planted feet:** two-bone IK puts a planted foot's ankle on the game ankle's ground point, with the knee toward the
+   game knee's side. A foot counts as planted while the game ankle is within .03 m of its rest height, blending out by
+   .10 m. Turn this off for rolls and airborne takes.
+5. **Support grip:** on a weapon that may be held two-handed, the left hand keeps the game's right-to-left wrist offset,
+   carried onto the visual right wrist. It solves two-bone IK and keeps the game wrist turn.
+   - It engages only while the game's own wrists hold together (within .18 m, released by .30 m;
+     `NativeVisualRig.HandsTogether`). A pistol run or a roll that swings the left hand free stays FK.
+6. **Weapon (P1):** weapons draw at `WeaponFrame`: the visual right wrist's position with the game wrist's turn. Today's
+   weapons draw at the game wrist matrix with the grip baked into their geometry, so the drawn weapon moves with the visual
+   hand while its aim stays the game's.
+7. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
+   (capped at .12 m). It only ever lifts, like `Pose.Lowest()`.
+
+**Checked** (`CoreTests --visual-rig`, 43,217 checks), over:
+- every captured clip in the four melee sets (8 samples each);
+- the gun gait: pistol, rifle and machine gun in idle, aimed, run, sprint and roll, 647 poses in all.
+
+On the synthetic skeleton (leg ratio 1.703):
+- **Bind:** the limbs point straight down at the game's rest, keep their lengths, and the trunk, head and feet keep their
+  authored turns.
+- **Per pose:**
+  - every limb's direction equals the game's (within 0.11°), and split chains end on the game joint's turn;
+  - hands, feet and head carry the game turn, and the root moves by the leg ratio;
+  - twist helpers take exactly their share of the roll;
+  - all 524 planted feet reach the ground point, with the knee to the game knee's side;
+  - all 351 two-handed grips with the hands together reach, at up to 93 % of the arm;
+  - the support hand keeps the game wrist turn, and the grip is the game socket on the visual wrist;
+  - the locals rebuild the pose.
+- **Roll:** the floor fit keeps every bone over the floor.
+- **Runtime:** no allocation over 1,000 frames, bit-for-bit repeats, and the binding mirrors at the boundary and names no
+  pack types.
+
+The synthetic skeleton's visual grip sits 0.37 m (mean) from the game's. That is the expected P1 cost, because its shoulders
+are narrower and higher than the voxel rig's.
+
+**Measured on BoZo in Unity (2026-10-22, owner's PC; local tool, renders in local scratch).**
+
+BoZo's skeleton, dressed in outfit A, was posed through this adapter and binding on 15 gun and melee poses.
+- **Mapping:** all 22 joints map. Twist shares: forearm .61/.26, shoulder −1.0, upper arm −.66/−.39, thigh −.56/−.23,
+  calf .45/.78.
+- **Leg ratio:** 1.707 (thigh .425, shin .428; arm .263/.224). The binding covers 148 transforms, the rig plus hair chains.
+- **Reference points** (metres, Unity frame, floor 0):
+  - head box centre 1.49, the voxel head centre being the game head joint + .165;
+  - shot origin (.2 right, 1.15 up, .48 ahead).
+
+| Pose | Head to box: BoZo / voxel | BoZo wrist to game wrist | Muzzle to shot origin: BoZo / game | Support reach | Planted feet (reach) | Shoe soles |
+|---|---|---|---|---|---|---|
+| Rifle idle | .11 / .09 | .36 | 1.24 / 1.05 | .94 | .90, .90 | −.030 |
+| Rifle aim | .11 / .09 | .36 | 1.24 / 1.05 | .94 | .90, .90 | −.030 |
+| Rifle run | .21 / .14 | .38 | 1.13 / 1.21 | .61 | – | .075 |
+| Rifle sprint | .26 / .24 | .36 | 1.11 / 1.23 | .61 | .88 | −.019 |
+| Pistol aim | .12 / .03 | .35 | .58 / .40 | .68 | .92, .93 | −.030 |
+| Pistol run | .21 / .14 | .38 | .42 / .67 | hands apart | – | .075 |
+| Machine gun aim | .10 / .10 | .35 | .94 / .75 | .94 | .88, .88 | −.030 |
+| Machine gun run | .21 / .14 | .38 | .83 / .92 | .61 | – | .075 |
+| Sword idle | .38 / .42 | .38 | – | – | .81 | −.010 |
+| Sword run | .43 / .45 | .36 | – | – | – | .031 |
+| Sword cut A | .28 / .17 | .45 | – | – | – | .195 |
+| Greatsword cut A | .26 / .26 | .41 | – | .51 | – | .149 |
+| Shield block | .41 / .45 | .35 | – | – | .76, .76 | −.028 |
+| Daggers run | .43 / .45 | .36 | – | – | – | .031 |
+
+Reading it:
+- **Head:** BoZo's head stays as close to the head box as the voxel head does, within −.04 to +.11 m of it in every pose
+  (the game's crouched sword and shield stances lower both). No head-volume change is needed (P3 not needed).
+- **Weapon (P1):** the drawn weapon sits .34–.45 m from today's (mean .37), because BoZo's shoulders are narrower and
+  higher. The muzzle is about .19 m farther from the shot origin when aiming, and nearer while running. Tracers already
+  converge on the simulated path within 4.5 m (`NativeShotLaunch`), and hits are unaffected.
+- **IK reach:** every two-handed grip reaches (at most 94 % of the arm), and the pistol run lets go as the game's hands do.
+  Planted feet use 76–93 % of the leg, so nothing hyperextends.
+- **Renders:** run, sprint and the cuts read as the game's own takes, and the arms swing and hold as the game's do.
+
+**Found by the renders, for step 4:**
+- **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. The
+  binding needs a per-outfit sole offset.
+- **Fingers:** they stay in BoZo's open rest; weapons need grip poses.
+- **Multiple renders per frame:** Unity skins a mesh once per frame unless `SkinnedMeshRenderer.forceMatrixRecalculationPerRender`
+  is set. Any path that draws one character in several poses in a frame (pooled puppets, portraits) must set it.
+- **Roll:** the gun "roll" sample landed after the roll ended (it reads as idle), so a roll is not measured here. The Core
+  checks cover the roll's floor fit.
+
 ## Decisions and design carried from the stopped Phase B branch
 
 From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there, sections c, j and k), adapted to BoZo.
@@ -501,7 +622,15 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
     not the mesh style.
 
 ### Default outfit: concept against BoZo
-Proposal; candidate renders queued in the local tool. The base pieces come from BoZo, and the tech pieces and glow are
+**Owner choice (2026-10-22): candidate A**:
+- `HairFront_Messy` + `HairBack_PineappleCut`;
+- `Top_OpenHoodie`;
+- `Bottom_BeltedPants`;
+- `Feet_AthleticMidTop`;
+- `Gloves_FingerlessGloves`.
+
+It was rendered against candidate B (hard jacket, baggy pants, Wild Locks) in the concept's black, grey and cyan, with the
+covered body parts hidden. A draws about 20 k triangles. The base pieces come from BoZo, and the tech pieces and glow are
 ours to author.
 
 | Concept element | From BoZo | To author |
@@ -525,7 +654,6 @@ ours to author.
 ## Open owner decisions
 - **DEV-only pieces:** which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe and the "Sheldon
   Head" hood).
-- **Default outfit pieces:** confirm the BoZo base pieces from the candidate renders.
 - **From Phase A section j, still open:**
   - right wrist for every class;
   - a skin-tone palette or free colours, and whether faces and hair need entitlements;

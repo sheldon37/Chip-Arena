@@ -1,3 +1,49 @@
+## 2026-10-22 — Claude: BoZo step 3, the visual rig adapter (merged into shared)
+
+- **Branch/base:** `claude/bozo-rig-adapter` in the owner's PC worktree, from shared `05b5768` (the merge of `claude/bozo-inventory`, steps 1–2). Implementation `4a9aac3`, then docs and the BoZo measurement (`17b9878`). No PR (none asked). Merged into shared and the builder on 2026-10-22 at the owner's request; not published.
+- **Owner decisions recorded (2026-10-22):** the default outfit is candidate A: `HairFront_Messy`, `HairBack_PineappleCut`, `Top_OpenHoodie`, `Bottom_BeltedPants`, `Feet_AthleticMidTop`, `Gloves_FingerlessGloves`, in the concept's techwear palette. The tech pieces and glow are ours to author. The earlier decisions (P1, cloth on every applicable piece, BoZo as authored, no triangle cap) are in the steps 1–2 entry.
+- **Change (presentation only; not wired into any draw path yet, so no runtime behaviour changes):**
+  - `Core/NativeVisualRig.cs`:
+    - poses a skeleton with its own proportions and bone frames (Unreal-mannequin names) from the 22-joint `CapturedRig` pose;
+    - at bind, the limbs are rest-aligned to the game's arms-down rest, while the spine, head and feet keep their authored posture;
+    - split spine and neck chains share the joint's turn, and twist helpers take a share of the roll;
+    - the root height scales by the leg ratio;
+    - planted feet and two-handed support grips take two-bone IK; the grip engages while the game's own wrists hold together;
+    - the weapon frame is the visual wrist with the game wrist's turn (P1); there is an optional floor fit;
+    - it allocates nothing per frame.
+  - `Runtime/NativeVisualRigBinding.cs`: reads a Unity bone hierarchy (mirrored into the source frame) and writes local turns plus the pelvis position. It uses Unity types only and names no pack types.
+  - `Tests/VisualRigChecks.cs` and `--visual-rig` in `Program.cs` (also in the full run).
+  - `docs/BOZO-INTEGRATION.md` step 3.
+- **Animation, timing, networking:** the adapter only reads the game pose. Hit timing, hitboxes, damage, cooldowns, movement, the capsule, head box, shot origin, weapon frames and the wire are unchanged. With P1 the drawn weapon moves with the visual hand while its aim stays the game's.
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 43,217 checks pass over 647 poses (every captured melee clip, plus the gun gait for pistol, rifle and machine gun in idle, aimed, run, sprint and roll) on a synthetic skeleton.
+    - All planted feet and all two-handed grips (with the hands together) reach.
+    - No allocation per frame; bit-for-bit repeats.
+  - Unity semantic compile against the local 6000.3.24f1 assemblies (`tools/check_unity_compile.py --unity-root`): ChipArena.Player, Assembly-CSharp and Assembly-CSharp-Editor pass.
+  - Full CoreTests on an LF checkout of `4a9aac3`: rc 0, 830 PASS lines, including `--visual-rig`. One scratch-only fix to `ExpeditionEndingChecks`' Windows path comparison (not committed) was needed to get past it.
+  - Python unittest discover with `PYTHONUTF8=1` on the same checkout: 140 tests, 1 failure (the Windows updater wrapper, pre-existing), 2 skipped.
+  - `package_source.py` passes.
+- **Windows test-environment findings (pre-existing, not this change; for Astra):**
+  - A `core.autocrlf=true` checkout breaks source-text checks (`QuotaMarkChecks` fails on CRLF; passes on an LF checkout).
+  - `ExpeditionEndingChecks` compares `/` paths with `GetFiles`' `\` paths, so on Windows `NativeExpeditionEnding.cs.meta` "shares" its own GUID.
+  - Python's default code page here is cp932 (3 unittest decode errors without `PYTHONUTF8=1`).
+  - `test_native_updater`'s Windows wrapper test.
+  - `package_source.py`'s `SourceModels.json` receipt fails under autocrlf.
+- **Local only, not committed:** the inventory tool now poses BoZo's skeleton (outfit A) through the adapter on 13 gun and melee poses, measures head, wrist and muzzle drift against authority, and renders them. It also self-refreshes: a version-stamped request makes the loaded tool refresh and recompile Unity, so no Editor click is needed once it is loaded.
+- **BoZo measured in Unity** (15 poses with outfit A; table in the plan):
+  - all 22 joints map, leg ratio 1.707;
+  - BoZo's head stays as close to the head box as the voxel head (−.04 to +.11 m of it), so P3 is not needed;
+  - the drawn weapon sits .34–.45 m from today's (mean .37), and the muzzle is about .19 m farther from the shot origin when aiming;
+  - every two-handed grip reaches (at most 94 % of the arm), and planted feet use 76–93 % of the leg;
+  - the renders follow the game's takes.
+  - Found for step 4: shoe soles 1–3 cm under the floor (a per-outfit sole offset); fingers in BoZo's open rest (grip poses); `forceMatrixRecalculationPerRender` is needed wherever one character renders several poses in a frame (the first renders showed every pose with the first pose's skinning).
+- **Risks:**
+  - The twist shares are a heuristic against BoZo's weights (unverified until the posed renders).
+  - The synthetic skeleton's visual wrist sits 0.37 m (mean) from the game's, so muzzle flashes and tracer starts move with it (tracers converge within 4.5 m).
+  - The planted-foot thresholds (.03/.10 m) and the hands-together thresholds (.18/.30 m) are first values.
+  - First person is untouched (the view rig keeps the game rig).
+- **Next:** step 4: wire the adapter into the body path for one character (with the sole offset and finger grips), the toon port with glow, and the chest core and wrist device.
+
 ## 2026-10-22 — Claude: BoZo + Magica Cloth 2 import and inventory, steps 1–2 (merged into shared)
 
 - **Branch/base:** `claude/bozo-inventory` in the owner's PC worktree `Chip-Arena-Unity`, from shared `claude/sleepy-ritchie-g8ruhv` at `c4c4672`. Docs and one `.gitignore` guard only; no PR (by request). Merged into shared and the builder on 2026-10-22 after the owner's review and decisions; not published.
