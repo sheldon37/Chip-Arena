@@ -80,12 +80,12 @@ Shader "ChipArena/NativeDraftBackdrop"
             #define BACK_TOON_LINE 1.0
             #define BACK_TOON_BANDS 4.0
             #define BACK_TOON_RISER 0.15
-            #define BACK_TOON_PANEL_A 2.2
-            #define BACK_TOON_PANEL_B 3.1
-            #define BACK_TOON_FLOOR 1.7
-            #define BACK_TOON_LIGHT 1.6
+            #define BACK_TOON_PANEL_A 1.5
+            #define BACK_TOON_PANEL_B 2.1
+            #define BACK_TOON_FLOOR 1.3
+            #define BACK_TOON_LIGHT 1.4
             #define BACK_TOON_SKY 0.9
-            #define BACK_TOON_GLOW 0.16
+            #define BACK_TOON_GLOW 0.24
             #define BACK_TOON_INK float3(0.18,0.2,0.42)
             // Soft stairs: x (0..1) in `n` flat bands with a riser BACK_TOON_RISER wide either side of each step.
             float BackBands(float x,float n){float k=saturate(x)*n;float f=floor(k);return min(1.0,(f+smoothstep(.5-BACK_TOON_RISER,.5+BACK_TOON_RISER,k-f))/n);}

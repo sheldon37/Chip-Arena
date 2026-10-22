@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
             Shapes();Console.WriteLine("PASS map style: rods round at the lattice clamp, mid blocks grow their chamfer to 8 cm, big blocks keep theirs, a taper narrows the top 30% ("+count+" checks)");
             Edges();Console.WriteLine("PASS map style: the outline lines silhouettes on the nearer pixel only, creases where 1/depth bends, never a plane, and fades out with distance ("+count+" checks)");
             Allocation(set);Console.WriteLine("PASS map style: the ramp, stairs, point gain, diffuse, radius, round normal, chamfer, lattice, edge and the style state allocate nothing per frame ("+count+" checks)");
-            Runtime(root,R);Console.WriteLine("PASS map style: NativeLighting writes the globals and turns them off on stages and the rooftop, the outline pass is a command buffer at BeforeForwardAlpha off on the low tier, the kits draw the rounded box only while the style is on, the debris takes the ramp ("+count+" checks)");
+            Runtime(root,R);Console.WriteLine("PASS map style: NativeLighting writes the globals and turns them off on stages (the rooftop writes its own look), the outline pass is a command buffer at BeforeForwardAlpha off on the low tier, the kits draw the rounded box only while the style is on, the debris takes the ramp ("+count+" checks)");
             Data(set);Console.WriteLine("PASS map style: the pilot looks' values validate, broken ones are refused, the old maps' looks are untouched ("+count+" checks)");
         }
         // ---- the switch and the styled look ----
