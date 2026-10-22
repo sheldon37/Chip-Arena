@@ -24,28 +24,30 @@ namespace ChipArena.UnityConversion
             // The world Siren animates its look (claws, palm orbs, halos, eyes, grin, tongues, wisps: NativeSirenLookPresentation.cs).
             var look=a.SourceSpec=="siren"&&!first?SirenLook(rig,a,time):null;
             // Arena and first-person rigs wear their Chips and block state (NativeBodyChipPresentation.cs); entrance and viewer rigs stay bare.
-            bool dressed=!Viewer&&rig!=introRig;Func<int,Color> tint;if(dressed)tint=RigTint(a,time,first);else{ClearRigTint();tint=first?null:SirenCharTint(a.Id);}
+            bool dressed=!Viewer&&rig!=introRig;
+            // A pilot with a visual body (NativeVisualBodyPresentation.cs) draws it instead of the voxel body, hat and dressing.
+            bool visual=!first&&dressed&&VisualBodyDrawn(rig);Func<int,Color> tint;if(dressed)tint=RigTint(a,time,first);else{ClearRigTint();tint=first?null:SirenCharTint(a.Id);}
             tint=SpawnTinted(spawn,tint);
             // The hit flash (NativeHitFlash, weapons milestone) on a struck arena rig's body and hat; not the first-person arms.
             float flash=dressed&&!first?HitFlashCode(a.Id,time):1;
             // The DEV Cyber Lord's Data Dash and fork bomb dither its body (NativeCyberLordPresentation.cs).
             reveal=CyberReveal(a,time,reveal);
-            sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),BodyAccent(bodySkin,a.AccentColor,a.Hat,a.HatColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);
-            if(!first)SpawnHologram(rig,spawn,bodySkin,layer,camera);
+            if(!visual)sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),BodyAccent(bodySkin,a.AccentColor,a.Hat,a.HatColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);
+            if(!first&&!visual)SpawnHologram(rig,spawn,bodySkin,layer,camera);
             if(look!=null)SirenLookFx(rig,look,layer,camera,time);
-            if(!first)LivingWounds(rig,a,time);
+            if(!first&&!visual)LivingWounds(rig,a,time);
             // The hat rides the head (hidden on the first-person view model); the Auditor halo animates (NativeAuditorHaloPresentation.cs),
             // the Sheldon Head's face and ring too (NativeHatPresentation.cs); a picked hat colour tints the hat (NativeHatLooks).
             bool headShown=reveal==null||reveal(CapturedRig.Head)>.5f;
-            if(headShown)if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera,color:a.HatColor)&&!SheldonHead(a,rig.Root.transform.localToWorldMatrix,Bone,float.IsNaN(halo)?time:halo,layer,camera,dressed?tint:null,flash))sourceModels.Queue(HatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,body:HatBody(a.Hat,a.HatColor),partTint:dressed?tint:null,hitFlash:flash);
-            if(dressed&&SpawnShows(CapturedRig.Chest))BodyDressing(rig,a,time,first,layer,camera);
+            if(headShown&&!visual)if(!first&&!string.IsNullOrEmpty(a.Hat)&&a.SourceSpec!="siren"&&!AuditorHalo(a.Hat,rig.Bones[CapturedRig.Head].localToWorldMatrix,float.IsNaN(halo)?time:halo,1,HaloReduced,layer,camera,color:a.HatColor)&&!SheldonHead(a,rig.Root.transform.localToWorldMatrix,Bone,float.IsNaN(halo)?time:halo,layer,camera,dressed?tint:null,flash))sourceModels.Queue(HatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,Bone,null,layer,camera,body:HatBody(a.Hat,a.HatColor),partTint:dressed?tint:null,hitFlash:flash);
+            if(dressed&&!visual&&SpawnShows(CapturedRig.Chest))BodyDressing(rig,a,time,first,layer,camera);
             // The DEV Cyber Lord's hardlight look on its joints (NativeCyberLordPresentation.cs), once its hands have formed.
-            if(SpawnShows(CapturedRig.RHand))CyberLordBody(rig,a,time,first,layer,camera);
+            if(!visual&&SpawnShows(CapturedRig.RHand))CyberLordBody(rig,a,time,first,layer,camera);
             bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!NativeSirenVictimPose.Active(a,time)&&SpawnShows(CapturedRig.RHand);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             // The bow draws its live parts (Runtime/NativeBowPresentation.cs: the flexed limbs, the string to the nock, the arrows).
             if(armed&&BowHeld(rig,a,time,first,layer,camera,tint,flash))armed=false;
             if(armed){string held=HeldWeaponModel(rig,a,first);sourceModels.Queue(held,rig.Root.transform.localToWorldMatrix,WeaponBone,b=>!a.MainWeaponAway||a.SourceSpec!="daggers"||b!=CapturedRig.RHand,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:StandardModel(held)?flash:1,partTint:tint,glow:HeldGlow);WeaponDressing(rig,a,time,first,layer,camera,reach);}
-            if(dressed&&rigFlash>0)ParryFlash(rig,a,layer,camera,Bone,Visible,armed?WeaponBone:(Func<int,Matrix4x4>)null,first);
+            if(dressed&&!visual&&rigFlash>0)ParryFlash(rig,a,layer,camera,Bone,Visible,armed?WeaponBone:(Func<int,Matrix4x4>)null,first);
             spawnNow=null;ClearRigTint();return true;
         }
         private void SourceWorld(NativeArena arena)

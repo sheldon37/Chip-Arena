@@ -1,3 +1,37 @@
+## 2026-10-22 — Claude: BoZo step 4, first character wired into the arena (merged into shared)
+
+- **Branch/base:** `claude/bozo-body` from shared `249d6978`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** start step 4, wiring BoZo into the game body for one character.
+- **Body path, as found:** pilots have no body GameObjects. Each actor's `CapturedAnimation.Player` is 22 empty bone transforms, and `SourceCharacter` draws the voxel body and weapon with instanced draws from those bones.
+- **Changes (presentation only):**
+  - **New `Runtime/NativeVisualBodyPresentation.cs`:**
+    - when the locally baked `Resources/ChipArenaVisualBody` exists, every arena pilot except the Siren gets that body under its rig root;
+    - it is posed from the rig's game pose through `NativeVisualRig`, with the pilot's weapon grasp (Standard guns and melee sets);
+    - the rig's hand bones move onto the visual weapon frames and are restored before the next pose, so the drawn weapon and its effects follow the visual hands;
+    - pilot accent colours go into the outfit's accent channels.
+  - **Voxel body skipped:** `SourceCharacter` skips the voxel body, hat and dressing for those pilots.
+  - **Pose access:** `CapturedAnimation.Player.Pose` exposes the rig's pose.
+  - **Fallback:** without the bake (CI, the cloud builder, any machine without the packs), and with `--ca-voxel-bodies`, nothing changes.
+  - **Local tool (git-ignored):**
+    - bakes outfit A into that prefab (Unity types only; Animator and pack scripts removed; soles lifted 2.8 cm to the floor; renderers named by slot);
+    - plays matches in the Editor and captures views inside the game frame.
+- **Checks (actual):**
+  - Unity semantic compile (player, runtime, editor) passes;
+  - `CoreTests --visual-rig`: 129,260 checks pass (no Core change);
+  - three Play-mode matches with three bots (local rifle, greatsword, daggers) captured on BoZo. Rifles shouldered, the machine gun two-handed, the greatsword upright, daggers in both hands, shields braced, staffs held, a thrown shield's hands open, pilot accents.
+  - no exceptions from the new code.
+- **Seen during the runs, probably not caused by this change:** `NativeCorpse` threw "Scene ... already exists" twice; a corpse is rebuilt for the same death while its old physics scene unloads asynchronously. A voxel control run didn't hit it, so it isn't proven pre-existing.
+- **Not run:** a Windows build with the bake; the Phase C performance pass. The Editor showed about 105 fps with visual bodies against 116 voxel in one run each, which is not a benchmark.
+- **Affected:** `Runtime/NativeVisualBodyPresentation.cs` (new), `Runtime/ArenaPresentation.cs`, `Runtime/NativeSourcePresentation.cs`, `Runtime/CapturedAnimation.cs`, `docs/BOZO-INTEGRATION.md`.
+- **Timing and animation impact:** authority unchanged. Drawn weapons and their effects sit at the visual hands (P1, as measured in step 3).
+- **Remaining step 4 work:**
+  - the toon shader port to our lights (also clears stencil bit 16 for the map outline);
+  - the chest core and wrist device, mask, visor and glow;
+  - hats, the hit flash and the spawn-in build-up;
+  - first-person arms, intros, portraits, the draft and death (voxel today);
+  - the turnaround capture;
+  - Phase C.
+
 ## 2026-10-22 — Claude: BoZo adapter, greatsword raise clear of the face (merged into shared)
 
 - **Branch/base:** `claude/bozo-raised` from shared `3c303dfd`. No PR; merged into shared and the builder (standing merge authorization); not published.
