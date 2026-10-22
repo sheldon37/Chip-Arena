@@ -29,13 +29,20 @@
   - Python's default code page here is cp932 (3 unittest decode errors without `PYTHONUTF8=1`).
   - `test_native_updater`'s Windows wrapper test.
   - `package_source.py`'s `SourceModels.json` receipt fails under autocrlf.
-- **Local only, not committed:** the inventory tool now poses BoZo's skeleton (outfit A) through the adapter on 13 gun and melee poses, measures head, wrist and muzzle drift against authority, and renders them. Queued; it runs on the next Editor focus.
+- **Local only, not committed:** the inventory tool now poses BoZo's skeleton (outfit A) through the adapter on 13 gun and melee poses, measures head, wrist and muzzle drift against authority, and renders them. It also self-refreshes: a version-stamped request makes the loaded tool refresh and recompile Unity, so no Editor click is needed once it is loaded.
+- **BoZo measured in Unity** (15 poses with outfit A; table in the plan):
+  - all 22 joints map, leg ratio 1.707;
+  - BoZo's head stays as close to the head box as the voxel head (−.04 to +.11 m of it), so P3 is not needed;
+  - the drawn weapon sits .34–.45 m from today's (mean .37), and the muzzle is about .19 m farther from the shot origin when aiming;
+  - every two-handed grip reaches (at most 94 % of the arm), and planted feet use 76–93 % of the leg;
+  - the renders follow the game's takes.
+  - Found for step 4: shoe soles 1–3 cm under the floor (a per-outfit sole offset); fingers in BoZo's open rest (grip poses); `forceMatrixRecalculationPerRender` is needed wherever one character renders several poses in a frame (the first renders showed every pose with the first pose's skinning).
 - **Risks:**
   - The twist shares are a heuristic against BoZo's weights (unverified until the posed renders).
   - The synthetic skeleton's visual wrist sits 0.37 m (mean) from the game's, so muzzle flashes and tracer starts move with it (tracers converge within 4.5 m).
   - The planted-foot thresholds (.03/.10 m) and the hands-together thresholds (.18/.30 m) are first values.
   - First person is untouched (the view rig keeps the game rig).
-- **Next:** the BoZo drift measurement in Unity, then step 4: wire the adapter into the body path for one character, the toon port with glow, and the chest core and wrist device.
+- **Next:** step 4: wire the adapter into the body path for one character (with the sole offset and finger grips), the toon port with glow, and the chest core and wrist device.
 
 ## 2026-10-22 — Claude: BoZo + Magica Cloth 2 import and inventory, steps 1–2 (merged into shared)
 

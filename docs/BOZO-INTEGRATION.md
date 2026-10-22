@@ -3,7 +3,7 @@
 Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (`claude/bozo-inventory`, docs only, merged into shared
 after the owner's review): both packs imported, moved under `Assets/LocalAssets/`, and inventoried below; the owner's
 decisions follow the inventory. Step 3 (rig adapter): implemented on `claude/bozo-rig-adapter`, not merged; it is not wired
-into the live body path yet. Next: the BoZo drift measurement in Unity, then step 4 (first character). Owner decision: player characters come from the **BoZo: Stylized Modular
+into the live body path yet; its drift on BoZo is measured in Unity (step 3 below). Next: step 4 (first character). Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
@@ -484,8 +484,51 @@ On the synthetic skeleton (leg ratio 1.703):
 The synthetic skeleton's visual grip sits 0.37 m (mean) from the game's. That is the expected P1 cost, because its shoulders
 are narrower and higher than the voxel rig's.
 
-**Measured on BoZo in Unity:** pending the next Editor refresh. The local tool poses BoZo's skeleton with outfit A through
-this adapter on 13 gun and melee poses, measures the drift of the head, wrist and muzzle against authority, and renders them.
+**Measured on BoZo in Unity (2026-10-22, owner's PC; local tool, renders in local scratch).**
+
+BoZo's skeleton, dressed in outfit A, was posed through this adapter and binding on 15 gun and melee poses.
+- **Mapping:** all 22 joints map. Twist shares: forearm .61/.26, shoulder −1.0, upper arm −.66/−.39, thigh −.56/−.23,
+  calf .45/.78.
+- **Leg ratio:** 1.707 (thigh .425, shin .428; arm .263/.224). The binding covers 148 transforms, the rig plus hair chains.
+- **Reference points** (metres, Unity frame, floor 0):
+  - head box centre 1.49, the voxel head centre being the game head joint + .165;
+  - shot origin (.2 right, 1.15 up, .48 ahead).
+
+| Pose | Head to box: BoZo / voxel | BoZo wrist to game wrist | Muzzle to shot origin: BoZo / game | Support reach | Planted feet (reach) | Shoe soles |
+|---|---|---|---|---|---|---|
+| Rifle idle | .11 / .09 | .36 | 1.24 / 1.05 | .94 | .90, .90 | −.030 |
+| Rifle aim | .11 / .09 | .36 | 1.24 / 1.05 | .94 | .90, .90 | −.030 |
+| Rifle run | .21 / .14 | .38 | 1.13 / 1.21 | .61 | – | .075 |
+| Rifle sprint | .26 / .24 | .36 | 1.11 / 1.23 | .61 | .88 | −.019 |
+| Pistol aim | .12 / .03 | .35 | .58 / .40 | .68 | .92, .93 | −.030 |
+| Pistol run | .21 / .14 | .38 | .42 / .67 | hands apart | – | .075 |
+| Machine gun aim | .10 / .10 | .35 | .94 / .75 | .94 | .88, .88 | −.030 |
+| Machine gun run | .21 / .14 | .38 | .83 / .92 | .61 | – | .075 |
+| Sword idle | .38 / .42 | .38 | – | – | .81 | −.010 |
+| Sword run | .43 / .45 | .36 | – | – | – | .031 |
+| Sword cut A | .28 / .17 | .45 | – | – | – | .195 |
+| Greatsword cut A | .26 / .26 | .41 | – | .51 | – | .149 |
+| Shield block | .41 / .45 | .35 | – | – | .76, .76 | −.028 |
+| Daggers run | .43 / .45 | .36 | – | – | – | .031 |
+
+Reading it:
+- **Head:** BoZo's head stays as close to the head box as the voxel head does, within −.04 to +.11 m of it in every pose
+  (the game's crouched sword and shield stances lower both). No head-volume change is needed (P3 not needed).
+- **Weapon (P1):** the drawn weapon sits .34–.45 m from today's (mean .37), because BoZo's shoulders are narrower and
+  higher. The muzzle is about .19 m farther from the shot origin when aiming, and nearer while running. Tracers already
+  converge on the simulated path within 4.5 m (`NativeShotLaunch`), and hits are unaffected.
+- **IK reach:** every two-handed grip reaches (at most 94 % of the arm), and the pistol run lets go as the game's hands do.
+  Planted feet use 76–93 % of the leg, so nothing hyperextends.
+- **Renders:** run, sprint and the cuts read as the game's own takes, and the arms swing and hold as the game's do.
+
+**Found by the renders, for step 4:**
+- **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. The
+  binding needs a per-outfit sole offset.
+- **Fingers:** they stay in BoZo's open rest; weapons need grip poses.
+- **Multiple renders per frame:** Unity skins a mesh once per frame unless `SkinnedMeshRenderer.forceMatrixRecalculationPerRender`
+  is set. Any path that draws one character in several poses in a frame (pooled puppets, portraits) must set it.
+- **Roll:** the gun "roll" sample landed after the roll ended (it reads as idle), so a roll is not measured here. The Core
+  checks cover the roll's floor fit.
 
 ## Decisions and design carried from the stopped Phase B branch
 
