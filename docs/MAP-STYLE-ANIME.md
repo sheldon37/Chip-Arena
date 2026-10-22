@@ -190,7 +190,8 @@ anime style. Entrances, the draft, the rooftop and every map without the style w
   face's edges and foot, flat paint between, broad joints in a dark tone of the brick, a few bricks lit. Brick resolves to
   flat paint only from 2 to 4.5 cm a pixel (a big wall at combat range keeps its bricks) and the material-look rule below
   does not flatten it again. The patches show in shade too, and the shade carries a sky-bounce value gradient (the ambient about 0.93 at a wall's foot to 1.14 from
-  12 m up, with `gradient` 0.14), so a big wall in shade never reads as one flat colour.
+  12 m up, with `gradient` 0.14), so a big wall in shade reads less as one flat colour
+  (not solved everywhere: section 7).
 - Timber paints 22 cm boards whose edges turn the normal (a lit top edge, a dark under edge); corrugation ribs turn it
   too, so the ramp draws them as bands. A window's head shades the pane below it (the frame's depth).
 - Past a few centimetres a pixel every pattern, the suggested bricks, the brace, the window shade and the normal turns
@@ -499,6 +500,8 @@ Match the environment's `lineColor` and width to BoZo's outline settings when th
 - **Triangles.** 444 a part on the wrap (x2.4 the legacy); the town draws its small parts on the rounded box (section 4).
 - **First hit.** Stage 2 keeps the bands through S1 and S2 (the wrap variants); the stub still loses its coping at S3.
   The low tier keeps the legacy chipped meshes.
+- **Big brick walls in deep shade** still read mostly as one flat maroon at combat range where the brick patches thin
+  out (Brickfall's crate view). The next levers are a stronger broad wash on Brickfall or a light falloff across a face.
 - **Toothed ends** are found from the blocks as placed at load. A wall freed later by a neighbour's destruction keeps a
   clean end (no re-scan per frame).
 - **Outline noise.** Very grazing floors near the fade start can draw stray crease lines. The plane test, the footprint fade
