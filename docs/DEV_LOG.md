@@ -1,3 +1,56 @@
+## 2026-10-22 — Claude: BoZo adapter, final visual pass (merged into shared)
+
+- **Branch/base:** `claude/bozo-pass` from shared `62f4e049`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner review:** improvements seen but not validated. The owner asked for a final visual pass:
+  - rifle and machine-gun elbows, wrists and intersections;
+  - the shield arm behind the shield, on its handle;
+  - dagger intersections;
+  - greatsword hands through whole swings;
+  - both hands on every weapon.
+
+  Validation was to use full-body renders (front, side, three-quarter; start, middle and end of each attack; transitions), with remaining defects named rather than called done because fists reach their grips.
+- **Method:** a local Unity validation pass on BoZo (outfit A, the real Standard weapon models):
+  - every melee set's cut A, cut B, run and block crossfaded from and back to idle, rendered at 11 timestamps;
+  - pistol, rifle and machine gun through idle, run, aim, fire, run, aim and idle, at 16 timestamps;
+  - every third frame measured against BoZo's meshes (weapon and hand into head and torso, sleeve into torso, hand or forearm past the shield's back face), plus each arm's bend, wrist bend and rolls;
+  - the merged adapter as the baseline, at identical timestamps.
+- **Causes found and fixed (presentation only, BoZo adapter only):**
+  - **Shield:** the game's forearm runs along the shield's back 15 cm behind the grip bar. Moving the shield onto BoZo's fist put the forearm inside it, out through the face, on every frame (up to 24 cm). Now the shield is braced: it keeps the game's place on the wrist and the fist reaches the bar (`Hold.Braced`).
+  - **Greatsword and blades in the head:** nothing kept fists or weapons out of BoZo's body. The game clears blades only off its own voxel body, and the crossguard reaches ±24 cm. New `Clear` step:
+    - fists (8 cm from the head, 5 cm from the torso) and weapon lines (`Hold.Tail`–`Tip`, crossguard, half-widths) move out of a head ellipsoid and torso cylinder fitted to outfit A (`Rig.HeadCenter`, `HeadRadii`, `TorsoHalfWidth`, `TorsoHalfDepth`);
+    - pushes are averaged by depth, the arm reaches with its elbow on the animation's side, and the move is limited to 3 cm a frame.
+  - **Long guns:** the support fist closed along the barrel bent the wrist 91°; the handguard is now cradled 40° across the palm (`Hold.Lay`). The stock pocket was 8 cm inside the chest and now sits on the body's front (`Rig.ShoulderFront`).
+  - **Dagger elbow in the belly (9 cm):** the elbow's frame-to-frame limit was measured from last frame's elbow, so a fast cut's elbow trailed the animation's by 68°. Now only the correction off the animation's side is held and limited, while that side is sure. Torso sinking also costs steeply more (`Sink`).
+  - **Ruled out on the way (Core transition checks caught each):**
+    - a single deepest contact point (flips between frames);
+    - reaching with elbow history inside `Clear` (5–7 cm elbow rocking);
+    - clearing long blades' outer parts (13 cm hand jerks);
+    - an angle blend of the elbow reference (a support elbow circling 20° a frame).
+- **Results on BoZo, before → after:**
+  - shield past its back face: every frame → 8 of 43 frames of the cut A bash, ≤4 cm, behind the face;
+  - greatsword weapon in head: idle, block, cut B and run up to 7 cm → only 30 % of cut A (3 cm);
+  - rifle and machine-gun weapon in chest: every frame (7.5 cm) → 20–27 of 123 (≤5 cm);
+  - support wrist (90th percentile) 93° → 46°;
+  - dagger cut A left elbow from spine 5 → 19 cm, and its right wrist and roll worst 126°, 174° → 40°, 80°;
+  - sword cut B wrist (90th percentile) 114° → 64°;
+  - pistol rolls 141°, 165° → 50°, 57°.
+- **Remaining defects (open):**
+  - greatsword cut A at about 30 %: hands and pommel graze the face (≤6 cm) for 2–3 frames. The head drop maps raised hands down to BoZo's head height; next, keep raised hands over the head;
+  - greatsword support elbow 2–3 cm into the hoodie front (idle, block, run), now on the animation's side instead of 90–180° off it with a twisted arm;
+  - shield cut A bash forearm grazes the back face (≤4 cm);
+  - rifle and machine-gun run carry touches the chest (≤5 cm);
+  - some cuts still roll the hand 170–180° on the forearm (the game's wrist animation, kept by design);
+  - blades' outer parts are not cleared from the head;
+  - the rifle stance's elbow stays raised level with the shoulder (the game's own).
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 124,276 checks pass, including the 2,492 transition frames at 60 Hz with no snap, new clearance and braced-shield checks, and about 34 µs a pose;
+  - Unity semantic compile (player, runtime, editor) passes;
+  - the BoZo pass: 19 sequences, 1,346 renders and measures.
+- **Not run:** BoZo in motion in the game (step 4 is not wired); Windows build; Unity Play mode.
+- **Affected:** `Core/NativeVisualRig.cs`, `Tests/VisualRigChecks.cs`, `docs/BOZO-INTEGRATION.md`.
+- **Timing and animation impact:** hit timing, hitboxes, damage, cooldowns, movement, networking, weapon frames for authority and shot origins are unchanged. The drawn shield now sits 15 cm further out (at the game's place), and drawn weapons move with any cleared fist (at most about 16 cm).
+- **Next:** owner review of the full-body sheets; the raised-hands head drop; then step 4 (wire one character; callers pass `Melee(spec)` and `PistolGrip` holds and may set the body from the outfit's meshes).
+
 ## 2026-10-22 — Claude: BoZo adapter, anatomical arms and weapon holds (merged into shared)
 
 - **Branch/base:** `claude/bozo-arms` from shared `6470906c`. No PR; merged into shared and the builder (standing merge authorization); not published.

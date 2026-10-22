@@ -464,7 +464,7 @@ The adapter is not wired into the live body path yet; that is step 4.
 2. **Twist helpers:**
    - forearm helpers take the hand's roll, and calf helpers the foot's, by their place along the bone;
    - upper-arm and thigh helpers counter the limb's own roll: all of it at the root (`shoulder_twist`), none at the far end;
-   - arm helpers take these from the final pose, after the hands and IK (step 6).
+   - arm helpers take these from the final pose, after the hands and IK (step 7).
 3. **Root:** the pelvis moves by the game pelvis's offset from rest × the leg ratio, so crouches and bobs keep the game's
    knee angles.
 4. **Hands inside the shoulder line** (`NativeVisualRig.Inside`; owner reviews 2026-10-22: the elbows looked inverted,
@@ -489,10 +489,35 @@ The adapter is not wired into the live body path yet; that is step 4.
        against the game's 99 %).
      - Two-bone IK in place of the swing: it re-solved the elbow plane and turned the greatsword's weapon forearm up to
        91° off the game's.
-5. **Planted feet:** two-bone IK puts a planted foot's ankle on the game ankle's ground point. The knee bends toward
+5. **Fists and weapons out of the body** (`NativeVisualRig.Clear`; owner review 2026-10-22: the greatsword's fists and
+   hilt in the face, long-gun stocks in the chest). The game keeps its blades off its own blocky body (`MeleeClearance`),
+   not off BoZo's. A different head and chest, and hands moved inside the shoulder line, ran fists and weapons into them.
+   - **The body:** the head is an ellipsoid and the torso an elliptic cylinder from the pelvis up to the shoulders
+     (`Rig.HeadCenter`, `HeadRadii`, `TorsoHalfWidth`, `TorsoHalfDepth`). They are set from the skeleton by the proportions
+     measured on outfit A, and a caller with the meshes may set its own:
+     - head .22 × .27 × .23 m round a point .08 m over the head bone, which rises .148 m over the shoulder joints;
+     - hooded top .30 × .22 m round the spine.
+   - **What keeps out:**
+     - each fist, turned as it will ride its handle: 8 cm from the head, which keeps the back of a closed hand out, and
+       5 cm from the torso, where a hand may rest;
+     - the held weapon's lines (`Hold.Tail` to `Tip`, `CrossA` to `CrossB`, each with its half-width): a blade from its
+       pommel to 20 cm past its guard plus the crossguard bar; a gun from its back to its muzzle; a shield's height and
+       breadth.
+   - **How it moves:** fist and weapon move as one, straight out by the inside points' pushes averaged by depth. The arm
+     reaches the wrist there, hinged, with the elbow on the animation's side, and the hand keeps its turn. Only that arm
+     moves: the weapon rides its fist and a support hand follows the weapon.
+   - **Limits:** the move changes by at most 3 cm a frame. A cut's hands can cross the head's volume in three frames, and
+     following at once jerked the greatsword's hands 16 cm and its support hand 40 cm in a frame, so a fast pass may graze
+     (below).
+   - **Ruled out:**
+     - a single deepest point: it flipped between two near-equal contacts frame to frame;
+     - reaching with the elbow history: it was measured from a different elbow than the hold's reach after it, and rocked
+       the elbows 5–7 cm a frame;
+     - clearing a long blade's outer part: it sweeps past the head within a frame or two and jerked the hands 13 cm.
+6. **Planted feet:** two-bone IK puts a planted foot's ankle on the game ankle's ground point. The knee bends toward
    where it is in the visual pose before IK, falling back to the game knee's side when that is degenerate. A foot counts as planted while the game ankle is within .03 m of its rest height, blending out by
    .10 m. Turn this off for rolls and airborne takes.
-6. **Arms, kept anatomical** (`NativeVisualRig.Reach`; owner review 2026-10-22: arms and wrists still unnatural, hands
+7. **Arms, kept anatomical** (`NativeVisualRig.Reach`; owner review 2026-10-22: arms and wrists still unnatural, hands
    not held through animations). Every arm the hands move (weapons, support grips, give-way) is posed here. Measured on
    the merged adapter, two causes were in the solve, not the animations or Unity:
    - **Inverted elbows:** the IK turned each bone the shortest way, so the upper arm's crease drifted off the fold, up to
@@ -506,11 +531,22 @@ The adapter is not wired into the live body path yet; that is step 4.
      shoulder-wrist line only to spare the wrist a bend past 60°, the forearm a roll past 90°, the humerus a roll past 110°
      and the torso an elbow or forearm inside it. The swing is a soft minimum over the circle (at most ±90°). The
      greatsword's cuts need it: the game's own arm there rolls the upper arm 153-169° in the shoulder, past any human's.
-   - **Frame to frame:** the swing is measured from last frame's elbow and changes by at most 4° a frame. A riding hand
-     rolls about its handle by at most 8° a frame. Two-handed and shouldered weights move by at most .08 a frame. The game
-     can drop a two-handed grip, or a cut can whip the forearm across the handle's line, within a frame; these keep hands
-     and elbows from snapping. `State.Forget()` clears the history: the game body calls it on a cut, respawn or weapon swap.
-7. **Support grip:** on a weapon that may be held two-handed, the left fist closes on its `SupportHold` (without one, the
+   - **Torso:** an elbow or forearm resting against the torso line costs little (2 cm, as a 24° swing), sinking in steeply
+     more (5 cm, as a 97° swing: the depth squared plus its fourth power). With the square alone a dagger cut's elbow sank
+     9 cm into the belly.
+   - **Frame to frame:**
+     - The elbow moves with the animation's own elbow, keeping its correction (the swing off the animation's side), and only
+       the correction is held and changes by at most 4° a frame. Measured from last frame's elbow alone, a fast dagger cut's
+       elbow trailed the animation's by 68°, into the torso.
+     - It follows only while the animation's side is sure and has moved under 45° since last frame; otherwise it stays with
+       last frame's elbow. A straight arm names no side, and blending the two set a greatsword's support elbow circling 20°
+       a frame.
+     - A riding hand rolls about its handle by at most 8° a frame. Two-handed and shouldered weights move by at most .08 a
+       frame.
+     - The game can drop a two-handed grip, or a cut can whip the forearm across the handle's line, within a frame; these
+       keep hands and elbows from snapping.
+     - `State.Forget()` clears the history: the game body calls it on a cut, respawn or weapon swap.
+8. **Support grip:** on a weapon that may be held two-handed, the left fist closes on its `SupportHold` (without one, the
    left hand keeps the game's right-to-left wrist offset, carried onto the visual right wrist).
    - It engages while the game's own wrists hold together (within .18 m, released by .30 m; `HandsTogether`), eased.
    - **Reaching a far grip:**
@@ -519,13 +555,16 @@ The adapter is not wired into the live body path yet; that is step 4.
      - only what is still out of reach makes the weapon give way toward the left shoulder, with the right fist staying on it.
    - **The fist's turn** is set by the weapon where it has one (`Hold.Ahead`, rolling up to `Hold.Spread` toward the
      straightest wrist: a long gun's palm-up cup ±60°, a pistol grip ±25°), else by the straightest wrist.
+   - **A long gun's handguard is cradled** (owner review 2026-10-22: rifle and machine-gun wrists): the palm lays it across
+     the hand, the fist's axis turned 40° toward the gun's left (`Hold.Lay`; `Cradle`). A fist closed along the barrel
+     bent BoZo's support wrist 91° as the arm reached along it; cradled, 46°. The fist still slides along the barrel.
      - It is aimed from the animation's forearm, the arm reaches, then four passes re-aim it halfway for the forearm the
        reach made.
      - Hand and forearm can't always agree: the fist sits ~9 cm off the wrist, so turning it swings the forearm, and some
        greatsword cuts have no turn straightest for the forearm it causes. A fixed number of smooth steps stays continuous
        frame to frame.
      - The last pass places the wrist so the fist sits on its grip exactly.
-8. **Fists on handles** (`NativeVisualRig.HoldWeapon`; owner review 2026-10-22: the hands weren't holding the weapons).
+9. **Fists on handles** (`NativeVisualRig.HoldWeapon`; owner review 2026-10-22: the hands weren't holding the weapons).
    The game's wrist frame is the voxel fist's and the weapon's: a gun's raked pistol grip hangs 13-18 cm under the wrist,
    and a melee grip runs along the blade through the wrist. A voxel fist is a box over that spot.
    - **The fist, measured at bind** (`Rig.Fists`): each finger at its closed curl wraps the handle, so the handle runs
@@ -535,22 +574,28 @@ The adapter is not wired into the live body path yet; that is step 4.
      along the handle with the straightest wrist the handle allows, and the weapon frame is placed so its grip sits in
      that fist. (Moving the hand to a weapon left at the old wrist bent the aiming arm to 81° against the animation's 28°.)
    - **Shouldered long guns:** while the game holds a rifle or machine gun up (its stock butt within .30 m of the game
-     shoulder, fading by .45 m), the stock butt sits at the visual shoulder pocket, just inside and under the shoulder
-     joint, along the game's aim. The right fist reaches for its pistol grip (knuckles toward the muzzle, ±25°).
+     shoulder, fading by .45 m), the stock butt sits at the visual shoulder pocket, along the game's aim. The pocket is just
+     inside and under the shoulder joint, on the body's front: `Rig.ShoulderFront`, measured .13 m ahead of BoZo's joint
+     with the hood, less 2 cm where the butt presses in. At .05 m ahead the stock sat 8 cm inside the chest. The right fist
+     reaches for its pistol grip (knuckles toward the muzzle, ±25°).
+   - **The shield is braced** (owner review 2026-10-22: the arm through the shield). The game's forearm runs along the
+     shield's back 15 cm behind its grip bar, so a shield moved onto BoZo's fist put the forearm inside it, out through
+     the face. The shield now keeps the game's place on the wrist (its frame at the fist the animation gives), and the fist
+     reaches back to the bar (`Hold.Braced`).
    - **Daggers** are held in a reverse grip (the blade out of the little-finger side): fresh solves chose it for 92 % of
      their poses, the only way round their forearms roll naturally. A fixed grip cannot flip mid-cut (the earlier
      either-way choice flipped a hand 176° in a frame).
-   - **The handles** (`Blade`, `GreatswordSupport`, `ShieldBar`, `PistolGrip`, `GunSupport`, `Stock`) follow
-     `NativeWeaponModels`. Melee holds take `NativeSpecialPose.HeldRotation` (identity outside special moves). The shield
+   - **The handles** (`Blade`, `GreatswordSupport`, `ShieldBar`, `PistolGrip`, `GunSupport`, `Stock`; `Melee(spec)` adds
+     a melee weapon's extent) follow `NativeWeaponModels`. Melee holds take `NativeSpecialPose.HeldRotation` (identity outside special moves). The shield
      draws on the right hand (its clips are mirrored); its fist holds the grip bar.
    - Callers pass a `Grasp` (finger curls, both hands' holds, the two-handed weight, support hold and stock). The older
      `Pose` form seats nothing.
    - Weapons draw at `WeaponFrame` (the off-hand's at `LeftWeaponFrame`): the frame placed in the fist, with the game
      wrist's turn, so the drawn weapon follows the visual hand while its aim stays the game's.
-9. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
+10. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
    (capped at .12 m). It only ever lifts, like `Pose.Lowest()`.
 
-**Checked** (`CoreTests --visual-rig`, 123,188 checks since the anatomical arms; 43,217 at first), over:
+**Checked** (`CoreTests --visual-rig`, 124,276 checks since the final visual pass; 43,217 at first), over:
 - every captured clip in the four melee sets (8 samples each);
 - the gun gait: pistol, rifle and machine gun in idle, aimed, run, sprint and roll, 647 poses in all;
 - 2,492 transition frames at 60 Hz: every melee set from idle crossfading into each cut and the block, through it and back
@@ -575,13 +620,15 @@ On the synthetic skeleton (leg ratio 1.703):
   - with each weapon's handles (1,078 seated fists): every fist closes on its handle's grip point (after any slide) with
     its axis along the handle, and its fingers turn with it. A riding fist keeps the animation's wrist and the straightest
     wrist the handle allows (within 3°); a reaching fist points as its weapon sets it, within its spread. A shouldered
-    stock butt sits at the shoulder pocket;
+    stock butt sits at the shoulder pocket, and a braced shield stays on the fist the animation gives;
+  - every fist ends 8 cm outside the head and 5 cm outside the torso (within 1 cm, where its arm is not at full stretch);
+    226 grasps moved a fist and weapon out, at most .16 m;
   - transitions: frame to frame, each hand turns at most three times the game's own hand plus 20° and moves at most three
     times its move plus 5 cm (6 cm for an elbow); the snaps this caught flipped a hand 37-177° in a frame;
   - without handles the support hand keeps the game wrist turn, and the grip is the game socket on the weapon frame;
   - the locals rebuild the pose.
 - **Roll:** the floor fit keeps every bone over the floor.
-- **Runtime:** no allocation over 1,000 frames, bit-for-bit repeats (a fresh state each), about 33 µs a pose on the
+- **Runtime:** no allocation over 1,000 frames, bit-for-bit repeats (a fresh state each), about 34 µs a pose on the
   owner's PC (46-bone synthetic rig; BoZo has 148 transforms), and the binding mirrors at the boundary and names no pack
   types.
 
@@ -640,6 +687,52 @@ Reading it:
   arm and the support hand under the barrel; sword, greatsword and dagger fists wrap their hilts through every attack
   frame; the shield block holds the shield before the forearm. The greatsword and sword cuts keep their trajectories.
 
+**Final visual pass (2026-10-22, owner review: full-body validation, not hand close-ups).**
+
+*Method.* BoZo in outfit A held the real Standard weapon models, posed through the adapter and binding in Unity (local
+tool, renders in local scratch):
+- **Melee:** every set's cut A, cut B, run and block: idle, a .15 s crossfade, the action, a .2 s crossfade, then idle.
+  Front, three-quarter and side renders, body-framed, at idle, the action's start, every 15 % of it, its end, recovery and
+  back at idle (11 timestamps).
+- **Guns:** pistol, rifle and machine gun through idle, run, aim, firing, run, aim and idle (16 timestamps).
+- **Measures:** every third frame and every rendered one, against BoZo's own meshes: weapon into head and torso, sleeve
+  into torso and head, hand into head, and, for the shield, hand or forearm past its back face. Also the arm's elbow bend,
+  wrist bend, hand and upper-arm roll and elbow-to-spine distance.
+- **Baseline:** the merged adapter (`62f4e049`), at identical timestamps.
+
+*Results, merged adapter → this pass* (depths in cm, frames affected out of those measured):
+
+| Check | Before | After |
+|---|---|---|
+| Shield: hand or forearm past the back face | every frame of all four shield sequences, through the front face, up to 24 | 8 of 43 frames of the cut A bash, at most 4, behind the face |
+| Greatsword: weapon into head | idle, block, cut B and run, up to 7 | none, but for 30 % of cut A (3) |
+| Greatsword: hand into head | cut A 30 % (6) | cut A 30 % (6), the fast pass below |
+| Rifle and machine gun: weapon into chest | every frame, up to 7.5 | 20 and 27 of 123, at most 5 (run carry) |
+| Rifle and machine gun: support wrist bend (90th percentile) | 93° | 46° |
+| Daggers cut A: left elbow to spine, at least | 5 (9 into the belly) | 19 |
+| Daggers cut A: right wrist bend and hand roll, worst | 126°, 174° | 40°, 80° |
+| Daggers cut B: left wrist bend and hand roll, worst | 89°, 179° | 31°, 73° |
+| Sword cut B: right wrist bend (90th percentile) | 114° | 64° |
+| Pistol: right hand and upper-arm roll, worst | 141°, 165° | 50°, 57° |
+| Greatsword block: support wrist bend (90th percentile) and upper-arm roll, worst | 80°, 179° | 44°, 77° |
+
+*Remaining defects.* These are not hidden by grip seating:
+- **Greatsword cut A at about 30 %:** the hands and pommel graze the face (up to 6 cm) for two or three frames, as the
+  overhead swing carries them through the head's volume faster than the clearance follows (3 cm a frame). The cause is
+  upstream: `Inside`'s head drop maps the game's raised hands down to BoZo's head height. Next: keep raised hands over the
+  head there.
+- **Greatsword support elbow:** in idle, block and run it now rests 2-3 cm into the hoodie's front (25 of 56 block
+  frames). It sits on the animation's side; before, it was 90-180° off it, with the wrist bent 80° and the upper arm
+  rolled 179°.
+- **Shield cut A bash (44-60 %):** the forearm grazes the shield's back face, at most 4 cm.
+- **Rifle and machine-gun run carry:** the gun's body touches the chest, at most 5 cm.
+- **Forearm roll:** some cuts still roll the hand 170-180° on the forearm: sword cuts A and B, the greatsword cuts, and the
+  shield cut A swing. This roll is the game's own wrist animation, kept by design, and the twist bones share it.
+- **A long blade's outer part** (beyond 20 cm past the guard) is not kept out of the head.
+- **Rifle stance:** the weapon arm's elbow is raised level with the shoulder, as the game's own arm is. Not changed.
+- **Transitions:** checked frame by frame on the synthetic skeleton at 60 Hz (2,492 frames), and rendered and measured on
+  BoZo at the timestamps above. Still not watched in motion in the game (step 4).
+
 **Found by the renders, for step 4:**
 - **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. The
   binding needs a per-outfit sole offset.
@@ -647,8 +740,12 @@ Reading it:
   had floated beside its grip or hilt. A step 4 caller passes each weapon's `Grasp` (handles above, `Stock` for long
   guns), draws the weapons at `WeaponFrame` / `LeftWeaponFrame`, and calls `State.Forget()` on a cut, respawn or weapon
   swap.
-- **Transitions in Unity:** frame-to-frame continuity is checked in Core on the synthetic rig; on BoZo only single
-  frames were rendered. Watch the first wired character in motion (step 4).
+- **Transitions in Unity:** frame-to-frame continuity is checked in Core on the synthetic rig. On BoZo, the final visual
+  pass rendered and measured idle, movement, aim, fire, attack and recovery sequences (above). Watch the first wired
+  character in motion (step 4).
+- **Body for the clearance:** a step 4 caller sets `Rig.HeadCenter`, `HeadRadii`, `TorsoHalfWidth`, `TorsoHalfDepth` and
+  `ShoulderFront` from the outfit's head and top meshes when they differ from outfit A's, and passes `Melee(spec)` holds
+  (with the weapon's extent) and `PistolGrip`.
 - **Fingers:** fixed. They stayed in BoZo's open rest, and the first renders also showed drooping wrists, hands buried at
   rest, and the leap cut's elbow. The grips, the eased wrist, the hanging spread and the IK bend side above fix all four,
   confirmed in Unity renders. Finger poses per weapon (trigger finger, two-handed overlap) can be tuned later.
