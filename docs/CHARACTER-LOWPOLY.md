@@ -471,7 +471,8 @@ combination: it picks a variant or hides a sub-part.
 
 ## g. Performance plan and budget
 
-**Mesh budget.**
+**Mesh budget.** These caps were for our own low-poly body. For BoZo characters the owner set no triangle cap and keeps
+BoZo's design as authored (2026-10-22; `docs/BOZO-INTEGRATION.md`); the pass criteria below still apply.
 - Triangles per pilot, whole outfit: LOD0 ≤ 7,000, LOD1 ≤ 3,500, LOD2 ≤ 1,400.
 - 22 bones, at most 4 influences (target 2).
 - 1 submesh and 1 material.
