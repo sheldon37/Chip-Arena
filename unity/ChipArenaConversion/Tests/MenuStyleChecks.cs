@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             string R(string p)=>File.ReadAllText(Path.Combine(root,p));
             Switch();Console.WriteLine("PASS menu style: the switch (the rooftop's own look validates and turns the toon, outline, grade and sky on; the draft, the portraits and the 2D covers follow it; the legacy command line turns every one off) ("+count+" checks)");
             Rooftop(R);Console.WriteLine("PASS menu style: the rooftop's shaders draw the toon sky, haze, facades, props and puddles behind the one switch with the Core's constants, keep every legacy path, mark the outline and cast into the depth texture ("+count+" checks)");
-            Draft(R);Console.WriteLine("PASS menu style: the draft corridor's back wall, flat panels, cel bands and ink sit behind _BackToon with the Core's constants; the text-safe bands and the cap apply after them ("+count+" checks)");
+            Draft(R);Console.WriteLine("PASS menu style: the draft corridor's flat panels (lit low, navy by eye height), cel bands easing into smooth gradients and ink sit behind _BackToon, with no back wall, with the Core's constants; the text-safe bands and the cap apply after them ("+count+" checks)");
             Portraits(R);Console.WriteLine("PASS menu style: the portraits' toon podium and the resolve's outline and gradient (the backdrop's tint) behind the switch; the line rule and the gradient's bands ("+count+" checks)");
             Maths();Console.WriteLine("PASS menu style: the bands, the haze's planes and the portrait line and gradient (monotonic, flat plateaus, no line across flat coverage) ("+count+" checks)");
             Runtime(R);Console.WriteLine("PASS menu style: NativeLighting.Rooftop writes the rooftop's values, the presentations set theirs once, the outline stays the match camera's, the 2D covers take the night palette, metas ("+count+" checks)");
@@ -88,13 +88,21 @@ namespace ChipArena.UnityConversion
         private static void Draft(Func<string,string> R)
         {
             string shader=R("Assets/ChipArena/Resources/NativeDraftBackdrop.shader");
-            Check(Define(shader,"BACK_TOON_WALL")==NativeMenuStyle.DraftWall&&Define(shader,"BACK_TOON_BANDS")==NativeMenuStyle.DraftBandCount&&Define(shader,"BACK_TOON_RISER")==NativeMenuStyle.DraftRiser&&Define(shader,"BACK_TOON_PANEL_A")==NativeMenuStyle.DraftPanelA
+            Check(Define(shader,"BACK_TOON_REACH")==NativeMenuStyle.DraftReach&&Define(shader,"BACK_TOON_BANDS")==NativeMenuStyle.DraftBandCount&&Define(shader,"BACK_TOON_RISER")==NativeMenuStyle.DraftRiser&&Define(shader,"BACK_TOON_PANEL_A")==NativeMenuStyle.DraftPanelA
                 &&Define(shader,"BACK_TOON_PANEL_B")==NativeMenuStyle.DraftPanelB&&Define(shader,"BACK_TOON_FLOOR")==NativeMenuStyle.DraftFloor&&Define(shader,"BACK_TOON_LIGHT")==NativeMenuStyle.DraftLight&&Near(Define3(shader,"BACK_TOON_INK"),NativeMenuStyle.DraftInk),"the corridor's toon constants are NativeMenuStyle's");
-            Check(Define(shader,"BACK_TOON_WALL_HIGH")==NativeMenuStyle.DraftWallHigh&&Define(shader,"BACK_TOON_PANEL_HIGH")==NativeMenuStyle.DraftPanelHigh&&Define(shader,"BACK_TOON_LINE")==NativeMenuStyle.DraftLine&&Define(shader,"BACK_TOON_SKY")==NativeMenuStyle.DraftSky&&Define(shader,"BACK_TOON_GLOW")==NativeMenuStyle.DraftGlow,"the back wall's and the ink's constants are NativeMenuStyle's");
+            Check(Define(shader,"BACK_TOON_PANEL_HIGH")==NativeMenuStyle.DraftPanelHigh&&Define(shader,"BACK_TOON_LINE")==NativeMenuStyle.DraftLine&&Define(shader,"BACK_TOON_SOFT_NEAR")==NativeMenuStyle.DraftSoftNear&&Define(shader,"BACK_TOON_SOFT_FAR")==NativeMenuStyle.DraftSoftFar
+                &&Define(shader,"BACK_TOON_FADE_LOW")==NativeMenuStyle.DraftFadeLow&&Define(shader,"BACK_TOON_FADE_HIGH")==NativeMenuStyle.DraftFadeHigh,"the soft bands', the fade's and the ink's constants are NativeMenuStyle's");
             Check(shader.Contains("float BackBands(float x,float n){float k=saturate(x)*n;float f=floor(k);return min(1.0,(f+smoothstep(.5-BACK_TOON_RISER,.5+BACK_TOON_RISER,k-f))/n);}"),"BackBands is NativeMenuStyle.Bands");
             var names=Regex.Match(shader,@"float4 (_Back[^;]*);").Groups[1].Value.Split(',').Select(x=>x.Trim()).ToArray();Check(names.Length==16&&!names.Contains("_BackToon")&&shader.Contains("            float4 _BackToon;\n"),"the 16 frame uniforms unchanged, the switch declared apart");
             int a=shader.IndexOf("// ---- DRAFT BACKDROP SHARED BEGIN",StringComparison.Ordinal),z=shader.IndexOf("// ---- DRAFT BACKDROP SHARED END",StringComparison.Ordinal);string shared=shader.Substring(a,z-a);
-            Check(Regex.Matches(shared,@"if\(toon>0\.5\)").Count==3&&shared.Contains("float toon=_BackToon.x;"),"every toon term behind the one switch");
+            Check(Regex.Matches(shared,@"if\(toon>0\.5\)").Count==2&&shared.Contains("float toon=_BackToon.x;"),"every toon term behind the one switch");
+            // The owner's review (2026-10-22): no back wall (it read as a lit rectangle behind the pilot's head); the far end is the
+            // legacy haze, the bands ease into smooth gradients down the corridor and the flat tones fade to navy by eye height.
+            Check(!Regex.IsMatch(shared,@"\b(onBack|BACK_TOON_WALL\w*|BACK_TOON_SKY|BACK_TOON_GLOW)\b")&&!shared.Contains("(-BACK_TOON_REACH-eye.z)"),"no back wall: nothing closes the corridor behind the pilot");
+            Check(shared.Contains("float soft=smoothstep(BACK_TOON_SOFT_NEAR,BACK_TOON_SOFT_FAR,fog);float reach=saturate(depth/BACK_TOON_REACH);")&&shared.Contains("float lightB=lerp(BackBands(reach,BACK_TOON_BANDS),reach,soft);")
+                &&shared.Contains("fog=lerp(BackBands(fog,BACK_TOON_BANDS),fog,soft);")&&shared.IndexOf("float soft=",StringComparison.Ordinal)<shared.IndexOf("fog=lerp(BackBands(fog",StringComparison.Ordinal),"the light and the haze ease from bands into smooth gradients by the fog (NativeMenuStyle.SoftBands), the ease read before the fog is banded");
+            Check(shared.Contains("nearC=lerp(toned,nearC,smoothstep(BACK_TOON_FADE_LOW,BACK_TOON_FADE_HIGH,pw.y)*(1.0-onFloor));")&&shared.Contains("float3 haze=_BackDeep.rgb*(1.0+1.6*axis)+A*(.004+.03*axis)*pulseW;")&&!shared.Contains("haze=lerp(")&&!shared.Contains("haze+="),
+                "the flat tones fade to the legacy navy by eye height (NativeMenuStyle.DraftFade); the far haze is the legacy one, untouched");
             Check(!Regex.IsMatch(shared,@"\b(fmod|atan2|mul|static|ddx|ddy|rsqrt)\b"),"the shared block stays GLSL-portable");
             int toonAt=shared.IndexOf("if(toon>0.5)\n",StringComparison.Ordinal),fogAt=shared.IndexOf("float3 c=lerp(nearC,haze,fog);detail*=1.0-fog*.85;",StringComparison.Ordinal),capAt=shared.IndexOf("float peak=max(c.r,max(c.g,c.b));return c*min(1.0,cap/max(peak,1e-6));",StringComparison.Ordinal),safeAt=shared.IndexOf("float safe=lerp(_BackSafe.z,1.0,hs)*lerp(_BackSafe.w,1.0,tb)",StringComparison.Ordinal);
             Check(toonAt>0&&fogAt>toonAt&&safeAt>fogAt&&capAt>safeAt,"the toon terms come before the haze mix; the text-safe bands and the cap apply after them, as before");
@@ -122,6 +130,14 @@ namespace ChipArena.UnityConversion
                 Check(NativeMenuStyle.Bands(0,n)==0&&Math.Abs(NativeMenuStyle.Bands(1,n)-1)<1e-6f,"Bands keeps 0 and 1");
                 for(int k=0;k<n;k++){float mid=(k+.05f)/n,mid2=(k+.25f)/n;Check(Math.Abs(NativeMenuStyle.Bands(mid,n)-NativeMenuStyle.Bands(mid2,n))<1e-6f,"a flat plateau in band "+k);}
             }
+            // the draft corridor down its length (fog as the shader's, 1-exp(-0.032 t)): never dipping more than a quarter of an
+            // 8-bit step (0.001) below what nearer points reached (the ease from bands to smooth dips by at most 0.0006), bands near
+            // the pilot, exactly smooth past the ease; the fade lit low and navy by eye height
+            {float pl=-1,pf=-1;for(int i=0;i<=4000;i++){float t=i/10f,fog=1-(float)Math.Exp(-.032*t),l=NativeMenuStyle.SoftBands(t/NativeMenuStyle.DraftReach,NativeMenuStyle.DraftBandCount,fog),f=NativeMenuStyle.SoftBands(fog,NativeMenuStyle.DraftBandCount,fog);
+                Check(l>=pl-1e-3f&&f>=pf-1e-3f&&l>=0&&l<=1&&f>=0&&f<=1,"the corridor's light and haze grow down its length");pl=Math.Max(pl,l);pf=Math.Max(pf,f);
+                if(fog>=NativeMenuStyle.DraftSoftFar)Check(Math.Abs(f-fog)<1e-6f&&Math.Abs(l-Math.Min(1,t/NativeMenuStyle.DraftReach))<1e-6f,"past the ease, smooth: no band edge behind the pilot's head");}}
+            Check(Math.Abs(NativeMenuStyle.SoftBands(.05f/4,4,0)-NativeMenuStyle.SoftBands(.25f/4,4,0))<1e-6f,"near the pilot, still flat bands");
+            Check(NativeMenuStyle.DraftFade(0)==0&&NativeMenuStyle.DraftFade(NativeMenuStyle.DraftFadeLow)==0&&NativeMenuStyle.DraftFade(1.555f)==1&&NativeMenuStyle.DraftFadeHigh<1.555f,"the flat tones lit at the floor, the legacy navy by the draft camera's eye height (1.555 m: the text-safe band's rows)");
             {float prev=-1;for(int i=0;i<=400;i++){float b=NativeMenuStyle.Planes(i/400f);Check(b>=prev-1e-6f,"the haze's planes are monotonic");prev=b;}}
             {float prev=-1;for(int z=0;z<=3000;z+=25){float h=NativeMenuStyle.Haze(z,200,NativeMenuStyle.RoofFog);Check(h>=prev-1e-5f&&h<=.95f,"the haze grows with distance and is capped");prev=h;}}
             Check(NativeMenuStyle.Haze(10,200,NativeMenuStyle.RoofFog)<.05f&&NativeMenuStyle.Haze(1500,200,NativeMenuStyle.RoofFog)>.5f,"near props clear, the far city hazed");
@@ -156,7 +172,7 @@ namespace ChipArena.UnityConversion
         {
             var s=new MapStyleState();float sink=0;
             void Frame(){NativeMapStyle.State(NativeMenuStyle.Rooftop,false,true,s);NativeMenuStyle.RooftopSky(s,out var a,out var b,out var c);sink+=a.X+b.Y+c.Z+NativeMenuStyle.DraftToon(false).X;
-                for(int i=0;i<64;i++){float x=i/63f;sink+=NativeMenuStyle.Bands(x,4)+NativeMenuStyle.Planes(x)+NativeMenuStyle.Haze(x*900,50,NativeMenuStyle.RoofFog)+NativeMenuStyle.PortraitEdge(x,x*.5f,0)+NativeMenuStyle.PortraitGradientAt(x,.2f,.6f);}}
+                for(int i=0;i<64;i++){float x=i/63f;sink+=NativeMenuStyle.Bands(x,4)+NativeMenuStyle.SoftBands(x,4,x)+NativeMenuStyle.DraftFade(x*2)+NativeMenuStyle.Planes(x)+NativeMenuStyle.Haze(x*900,50,NativeMenuStyle.RoofFog)+NativeMenuStyle.PortraitEdge(x,x*.5f,0)+NativeMenuStyle.PortraitGradientAt(x,.2f,.6f);}}
             Frame();long before=GC.GetAllocatedBytesForCurrentThread();Frame();long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
             Check(bytes==0&&!float.IsNaN(sink),"the per-frame helpers allocate nothing ("+bytes+" bytes)");
         }

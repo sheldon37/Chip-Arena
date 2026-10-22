@@ -334,12 +334,16 @@ item).
   - The low tier: no outline, no bloom and so no grade (as on the maps); the rest of the style draws.
 - **Chip selection, the draft backdrop.** `NativeDraftBackdrop.shader`, behind its own switch `_BackToon` (set once with
   the material by `NativeDraftBackdropPresentation` from `NativeMenuStyle.DraftToon`):
-  - a painted back wall closes the corridor 52 m behind the pilot: the stage tint's glow low, navy high, in soft bands,
-    rings of light behind the head;
   - flat-toned panels (two tones stepping with height, a third on the floor) lit by the far glow in cel bands down the
-    corridor; the haze and both glows in soft bands;
-  - ink from the corridor's own distance field: the floor-wall crease, the back wall's edge (by the hit distances and
-    their screen derivatives) and the panel seams and ribs, which turn from cyan light to ink;
+    corridor, in a soft vertical gradient: lit low, easing into the legacy navy by eye height (0.7 to 1.5 m), so the
+    text-safe band's brightness cap never cuts a shape out of them;
+  - the light's bands and the haze's soft bands ease into smooth gradients down the corridor (from fog 0.3 to 0.6, about
+    11 to 29 m), so no contour closes behind the pilot's head; the far end is the legacy haze; the pilot's glow in soft
+    bands;
+  - no back wall: a painted wall 52 m behind the pilot read as a lit rectangle behind the head (owner review, 2026-10-22)
+    and was removed;
+  - ink from the corridor's own distance field: the floor-wall crease (by the hit distances and their screen derivatives)
+    and the panel seams and ribs, which turn from cyan light to ink;
   - every neon element (trims, rails, packets, gates, glyph streams, motes) keeps its light; the text-safe bands and the
     brightness cap apply after the toon terms, as before.
 - **PvE chip select in the arena.** `NativeChipSelect.shader` hologram: unchanged (it reads as an effect).

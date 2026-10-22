@@ -66,14 +66,21 @@ namespace ChipArena.UnityConversion
         // ---------------- the chip draft's corridor (Resources/NativeDraftBackdrop.shader) ----------------
         /// <summary>The draft backdrop's switch (_BackToon: x 1 the anime style, 0 its legacy look), set once with its material.</summary>
         public static Vector4 DraftToon(bool legacy)=>new Vector4(legacy?0:1,0,0,0);
-        /// <summary>The shader's BACK_TOON_* constants: the painted back wall's distance behind the pilot and the height its gradient
-        /// spans (m); the height the panels' tones step over (m); the ink's half width (pixels); the soft bands' count and riser;
-        /// the panels' two flat tones and the floor's (times the navy); how far the far glow's banded light lifts them; the back
-        /// wall's navy top (times the navy) and its tint glow; the ink's tint (linear).</summary>
-        public const float DraftWall=52,DraftWallHigh=9,DraftPanelHigh=3.2f,DraftLine=1,DraftBandCount=4,DraftRiser=.15f,DraftPanelA=1.5f,DraftPanelB=2.1f,DraftFloor=1.3f,DraftLight=1.4f,DraftSky=.9f,DraftGlow=.24f;
+        /// <summary>The shader's BACK_TOON_* constants: the depth the panels' cel bands of light span (m); the height the panels'
+        /// tones step over (m); the ink's half width (pixels); the soft bands' count and riser; the fog where the bands start and
+        /// finish easing into smooth gradients (no contour closes behind the pilot's head; there is no back wall); the panels' two
+        /// flat tones and the floor's (times the navy); how far the banded light lifts them; the wall heights (m) over which the
+        /// flat tones ease into the legacy navy (lit low, navy by eye height, so the text-safe band's cap never cuts a shape out of
+        /// them); the ink's tint (linear).</summary>
+        public const float DraftReach=52,DraftPanelHigh=3.2f,DraftLine=1,DraftBandCount=4,DraftRiser=.15f,DraftSoftNear=.3f,DraftSoftFar=.6f,DraftPanelA=1.5f,DraftPanelB=2.1f,DraftFloor=1.3f,DraftLight=1.4f,DraftFadeLow=.7f,DraftFadeHigh=1.5f;
         public static readonly Vector3 DraftInk=new Vector3(.18f,.2f,.42f);
         /// <summary>BackBands: x (0..1) in n flat bands with soft risers; 0 maps to 0 and 1 to 1, never decreasing.</summary>
         public static float Bands(float x,float n){float k=Math.Max(0,Math.Min(1,x))*n;float f=(float)Math.Floor(k);return Math.Min(1,(f+Smooth(.5f-DraftRiser,.5f+DraftRiser,k-f))/n);}
+        /// <summary>The corridor's bands down its length: Bands near the pilot, easing into x itself as the fog thickens
+        /// (BACK_TOON_SOFT_*), as the shader's lerp(BackBands(x,n),x,soft).</summary>
+        public static float SoftBands(float x,float n,float fog){float s=Smooth(DraftSoftNear,DraftSoftFar,fog);return Bands(x,n)*(1-s)+Math.Max(0,Math.Min(1,x))*s;}
+        /// <summary>How far a wall point at this height has eased from the flat tones into the legacy navy (0 lit, 1 navy).</summary>
+        public static float DraftFade(float height)=>Smooth(DraftFadeLow,DraftFadeHigh,height);
 
         // ---------------- the menu portraits (Resources/NativePortrait.shader, NativePortraitResolve.shader) ----------------
         /// <summary>Whether the portraits draw the anime style (the toon podium, the resolve's outline and gradient).</summary>
