@@ -18,7 +18,7 @@
   - Content and triangles:
     - 36 slots and 166 outfit prefabs; the body is 14 part meshes hidden by tags.
     - No LODs.
-    - 17–26 k triangles drawn per dressed preset (Phase A LOD0 budget: 7,000); about 70–90 bones.
+    - 17–26 k triangles drawn per dressed preset (Phase A LOD0 budget: 7,000; the owner later dropped the cap for BoZo); about 85–93 bones.
   - Shader and outlines:
     - The anime toon shader is hand-written and reads only Unity's main light and SH; its multi-light pass is broken. Port, don't bridge.
     - It sets stencil bit 16, so our map edge pass would line over characters. This corrects MAP-STYLE-ANIME section 6.
@@ -62,6 +62,9 @@
     - Shoulders .462 m, chest .300 m, waist .241 m, hips .350 m (shoulder ÷ waist 1.92).
     - The shoulders and V-taper are close to the target.
   - **Owner decision (2026-10-22): keep BoZo's normal head size** (about 6.6 heads). It supersedes the 7.5–8-head target from the 2026-10-20/21 brief, so no head scaling. If revisited, a head bone scale of about .87 gives 7.5 heads and about .80 gives 8.
+  - **Owner decisions (2026-10-22), recorded in the plan and in a pointer in CHARACTER-LOWPOLY section g:**
+    - Keep BoZo's design exactly as it is: body, head, face and eyes, with the presets' own shapes and bone modifiers, and no extra shaping.
+    - No triangle cap for BoZo characters ("as much as you need"). Phase A's triangle, LOD and bone caps don't apply. The Phase C frame-time and GC criteria are unchanged.
   - Renders in a preview scene confirm that our binder must hide body parts by tag and run a colour bake. They stay in local scratch and are never committed.
 - **Not run:** BoZo's creator scene, relay and CoreTests (docs-only change), Unity compile check, a Windows build, two clients.
 - **Animation, timing, networking:** none changed. For the record: the adapter keeps hit timing, hitboxes, damage, cooldowns, movement and the wire unchanged. Cloth is per client.
@@ -75,8 +78,8 @@
   - The texture memory of BoZo's own merge (about 80 MB per character).
   - MeshCloth's per-frame full-mesh upload.
   - Magica's non-deterministic stepping in killcams.
-  - BoZo's young anime face and large eyes against the owner's "natural eyes".
-- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: the face, the chest shaping, P1/P2, the budget, the cloth scope), then step 3 (rig adapter).
+  - Uncapped triangles (up to about 26 k per pilot, about 210 k for 8) against the Phase C frame-time criteria; the benchmark decides whether LODs are needed.
+- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: P1/P2, the default outfit and DEV-only pieces, the cloth scope), then step 3 (rig adapter).
 
 ## 2026-10-21 — Claude: anime map style, stage 1 (foundation and two pilots; merged into shared)
 

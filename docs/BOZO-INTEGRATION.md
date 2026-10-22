@@ -7,7 +7,8 @@ Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2**
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
 characters. `docs/CHARACTER-LOWPOLY.md` (Phase A) still holds for the rig adapter, cosmetic schema, death compatibility,
-performance budget and the Astra contract; this file records what changes for an asset-pack body. Map restyle to match:
+the performance pass criteria and the Astra contract. Its triangle, LOD and bone caps do not apply to BoZo (owner,
+2026-10-22). This file records what changes for an asset-pack body. Map restyle to match:
 `docs/MAP-STYLE-ANIME.md` (branch `claude/anime-map-style`).
 
 ## Rules
@@ -173,8 +174,8 @@ Unmapped and held: `ik_*`, `center_of_mass`, `interaction`, fingers, face, hair 
   Bottom).
 - **Rigid pieces:** every outfit is skinned (`AttachPoint` is empty on all 166).
 - **Heads:** `Head_AnimeYoung` (presets) and `Head_BasicHead`. The face is a mesh with eyes, iris, pupil, shine, lashes,
-  brows and teeth as separate pieces. It is a human face (not a mask), but the anime style has large eyes, which goes against
-  the owner's "natural eyes" note. The owner should review this.
+  brows and teeth as separate pieces. It is a human face (not a mask) in the anime style, with large eyes. The owner keeps
+  it as authored (2026-10-22).
 - **LODs:** none. No LODGroup and no reduced meshes in the pack.
 
 **Triangles** (static FBX count; Unity triangulates the same way). Body 9,600 (hands 2,976, feet 1,894, the other 12 parts
@@ -191,7 +192,7 @@ Unmapped and held: `ik_*`, `center_of_mass`, `interaction`, fingers, face, hair 
 | Default_Girl / Jayda / Hana | | 16,722 / 21,412 / 24,614 | | 16,722 / 16,892 / 22,520 |
 
 So a dressed character draws about 17–26 k triangles: the store's "about 19 k" holds, and it is 2.4–3.7 × the Phase A LOD0
-budget of 7,000.
+budget of 7,000. That budget is dropped for BoZo: the owner set no triangle cap (2026-10-22).
 
 **Bones and weights** (Unity):
 - Up to 38 weighted bones per mesh piece (hands, tops, gloves 26–38).
@@ -247,7 +248,8 @@ the shoes.
 
 Reading it:
 - BoZo's male is not narrow: about 46 cm across the shoulders over a 24 cm waist is a strong V-taper. The torso is shallow
-  and narrow at the chest (30 cm). BodyType toward 100 plus some Muscle broadens the chest without much waist.
+  and narrow at the chest (30 cm). BodyType toward 100 plus some Muscle would broaden it, but the owner keeps BoZo's
+  shapes as its presets set them (2026-10-22).
 - **Head: keep BoZo's normal size (owner decision, 2026-10-22).** The figure stays about 6.6 heads tall, which supersedes
   the earlier 7.5–8 target. The anime "young" head is .27 m tall, against .22–.23 m for an adult.
   - If this is revisited, a scale through BoZo's `head` bone modifier changes it: about .87 gives 7.5 heads (crown about
@@ -381,12 +383,14 @@ Renders (preview scene, Gamma Editor; local scratch only, never committed):
   - Don't use `MAGICACLOTH2` as the guard: it is written into the tracked ProjectSettings.
   - Candidate: a git-ignored `Assets/csc.rsp` with `-define:CHIPARENA_LOCAL_BOZO`, written by a local install step.
   - Still to verify in the Editor: that `defineConstraints` sees `csc.rsp` defines.
-- **Budget (proposal, owner and Phase C benchmark to decide).** LOD0 at most 20 k drawn triangles after part hides
-  (today's dressed males are 17–23 k, Glover 26 k), with LOD1 at about 50 % and LOD2 at about 20 %. Those LODs must be made,
-  since the pack has none; one candidate is the Editor's mesh LOD generation, not verified on 6000.3. Up to about 90 bones
-  with 4 influences. One submesh and one material per character where the bake allows. Texture memory: one baked albedo per
-  outfit signature at 1024², not five 2048² RenderTextures. The pass criteria stay +0.5 ms CPU and +5 % GPU over voxel at
-  8 pilots, and 0 B GC per frame.
+- **Budget (owner, 2026-10-22: "as much as you need").** BoZo characters draw as authored, with no triangle cap; Phase A's
+  caps (LOD0 7,000, 22 bones, 1 submesh) do not apply.
+  - Today's dressed presets draw 17–26 k triangles, with about 90 bones and 4 influences.
+  - LODs are optional, made only if the Phase C benchmark calls for them. The pack has none; the Editor's mesh LOD
+    generation is one candidate, not verified on 6000.3.
+  - Texture memory: one bake per outfit signature at BoZo's 2048², not five live 2048² RenderTextures per character, so the
+    look is unchanged.
+  - The Phase C pass criteria are unchanged: +0.5 ms CPU and +5 % GPU over voxel at 8 pilots, and 0 B GC per frame.
 - **Shader:** port (above). Then match the map `lineColor` and width to the port's outline.
 - **First person:** the view rig needs the lower arms, wrists, hands, and the sleeves and gloves weighted to `lowerarm`/`hand`.
   Hands are 2,976 triangles. Cloth is off.
@@ -448,6 +452,8 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
   - Face: a human face, not a mask; natural eyes without eyeliner; hair sits on the scalp.
   - Silhouette: clean stylization, not blocky or over-carved.
   - Maps: anime/toon with a cool, saturated shade palette (`MAP-STYLE-ANIME.md`).
+  - **BoZo as authored (owner, 2026-10-22):** keep BoZo's design exactly as it is: body, head, face and eyes, with the
+    shapes and bone modifiers its presets set. Where the brief above differs (head size, "natural eyes"), BoZo's design wins.
 - **Pack choice:** BoZo over P09 Modular Humanoid Lite (2026-10-21).
   - Asset Store claims now checked:
     - about 104 items: the pack has 166 outfit prefabs, many of them texture layers;
@@ -467,15 +473,16 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
 - **PC setup used:** `git worktree add -b claude/bozo-inventory ../Chip-Arena-unity origin/claude/sleepy-ritchie-g8ruhv`,
   opened in Unity Hub with 6000.3.24f1. The original checkout stays on `main`.
 
+## Owner decisions after the inventory (2026-10-22)
+- **Design:** keep BoZo's design exactly as it is: body, head (normal size, about 6.6 heads), face and eyes, with the
+  presets' own shapes and bone modifiers. No head scale, no extra body shaping.
+- **Budget:** no triangle cap for BoZo characters ("as much as you need"). The Phase C frame-time and GC criteria still apply.
+
 ## Open owner decisions
 - **Weapon placement:** P1 (the weapon rides the visual hand; recommended) or P2 (the hand pulled to today's weapon frame).
   P3 and P4 are as above.
 - **Default outfit** for a new pilot, and which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe
   and the "Sheldon Head" hood).
-- **The male body:** the head stays at BoZo's normal size (decided 2026-10-22). The shoulders and V-taper are already close.
-  - Approve some BodyType and Muscle for the chest.
-  - Are BoZo's young anime face and large eyes acceptable, or should we try `Head_BasicHead` and plainer irises first?
-- **Budget:** accept about 20 k triangles at LOD0 with generated LODs (above), or ask for lighter outfits?
 - **Cloth scope:** BoneCloth for hair and capes only (recommended first), or MeshCloth skirts too (Full tier only)?
 - **From Phase A section j, still open:**
   - right wrist for every class;
