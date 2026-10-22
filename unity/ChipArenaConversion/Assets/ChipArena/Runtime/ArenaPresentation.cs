@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
         {
             ClearSourceActors();ClearSpawnIn();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);ClearBlood(!keepWorldMarks);if(!keepWorldMarks)killBlows.Clear();if(!keepWorldMarks)hazardGibs.Clear();fieldTelegraphs?.Clear();ClearRoundsFx();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();ClearCyberLord();ClearMagicFx();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
-            foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
+            ClearVisualBodies();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
             ClearWeaponPresentation();
@@ -152,7 +152,7 @@ namespace ChipArena.UnityConversion
                 p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);
                 visualPositions[a.Id]=p;
                 bool posed=a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
-                if(posed){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{PrepareCapturedPose(a,p,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
+                if(posed){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{VisualBodyRestore(a.Id);PrepareCapturedPose(a,p,renderTime);VisualBodyPose(a,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
                 // Its footfalls from the gait just posed (NativeFootfallPresentation.cs).
                 PilotFootfall(a,p,renderTime,posed);
             }
@@ -168,6 +168,7 @@ namespace ChipArena.UnityConversion
                 if(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon)) CapturedPose(a,p,renderTime,color);
                 else Pose(a,p,renderTime,color);
             }
+            VisualBodiesShown();
             animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
             RenderMeleeTrails(renderTime);
             // Native arenas draw their projectiles with NativeShotPresentation (source models); only the prototype draws these.

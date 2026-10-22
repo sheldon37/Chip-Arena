@@ -2,8 +2,9 @@
 
 Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (`claude/bozo-inventory`, docs only, merged into shared
 after the owner's review): both packs imported, moved under `Assets/LocalAssets/`, and inventoried below; the owner's
-decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; it is not wired
-into the live body path yet; its drift on BoZo is measured in Unity (step 3 below). Next: step 4 (first character). Owner decision: player characters come from the **BoZo: Stylized Modular
+decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; its drift on BoZo is
+measured in Unity (step 3 below). Step 4 (first character): outfit A is wired into the arena's pilot bodies
+(`claude/bozo-body`, below); its shader port, chest core and wrist device, hats and the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
@@ -555,7 +556,9 @@ The adapter is not wired into the live body path yet; that is step 4.
        frame.
      - The game can drop a two-handed grip, or a cut can whip the forearm across the handle's line, within a frame; these
        keep hands and elbows from snapping.
-     - `State.Forget()` clears the history: the game body calls it on a cut, respawn or weapon swap.
+     - `State.Forget()` clears the history. The game body calls it after a gap in posing (death, first person, a hidden
+       frame), a teleport or a weapon change. It does not call it on a cut: the transition checks cross cuts smoothly
+       without it.
 8. **Support grip:** on a weapon that may be held two-handed, the left fist closes on its `SupportHold` (without one, the
    left hand keeps the game's right-to-left wrist offset, carried onto the visual right wrist).
    - It engages while the game's own wrists hold together (within .18 m, released by .30 m; `HandsTogether`), eased.
@@ -751,8 +754,8 @@ tool, renders in local scratch):
   BoZo at the timestamps above. Still not watched in motion in the game (step 4).
 
 **Found by the renders, for step 4:**
-- **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. The
-  binding needs a per-outfit sole offset.
+- **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. Done
+  in step 4: the bake lifts the dressed body by its rest sole gap (outfit A: 2.8 cm).
 - **Hands on weapons:** fixed by the seated fists. With the real weapon models drawn at the frames, every closed fist
   had floated beside its grip or hilt. A step 4 caller passes each weapon's `Grasp` (handles above, `Stock` for long
   guns), draws the weapons at `WeaponFrame` / `LeftWeaponFrame`, and calls `State.Forget()` on a cut, respawn or weapon
@@ -767,12 +770,85 @@ tool, renders in local scratch):
   rest, and the leap cut's elbow. The grips, the eased wrist, the hanging spread and the IK bend side above fix all four,
   confirmed in Unity renders. Finger poses per weapon (trigger finger, two-handed overlap) can be tuned later.
 - **Animator on the rig:** BoZo's `BodyRig` carries an enabled Animator with the humanoid `BodyRigAvatar` and no
-  controller. It does nothing today. The game body must keep it controller-less or disable it, so that nothing but the
-  binding writes the bones.
+  controller. The step 4 bake removes it, so nothing but the binding writes the bones.
 - **Multiple renders per frame:** Unity skins a mesh once per frame unless `SkinnedMeshRenderer.forceMatrixRecalculationPerRender`
   is set. Any path that draws one character in several poses in a frame (pooled puppets, portraits) must set it.
 - **Roll:** the gun "roll" sample landed after the roll ended (it reads as idle), so a roll is not measured here. The Core
   checks cover the roll's floor fit.
+
+## Step 4: first character (`claude/bozo-body`)
+
+Outfit A (candidate A above, the techwear palette) draws in place of the voxel pilot body in arena matches on the owner's
+PC. Presentation only: the 22-joint rig still poses every frame, and authority reads neither body. Hit volumes, shot
+origins, the weapon frames authority uses and the wire are unchanged.
+
+**The bake (local, git-ignored).**
+- `Tools > Chip Arena (local) > Bake visual body (outfit A)`, or a `Temp/bozo-bake.request` (an output folder, then the
+  outfit ids), runs in the local tool. It dresses BoZo's `BodyRig` as the step 3 renders did: the pack's anime toon
+  material per part, outfit A's palette, and the covered body parts dropped.
+- It removes BoZo's scripts and the rig's Animator, and lifts the body so the shoe soles meet the floor.
+- It names each renderer by slot (`Top.Top_OpenHoodie`) and the skeleton root `VisualSkeleton`.
+- It saves `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualBody.prefab`, with its materials beside it, in Unity
+  types only.
+- Outfit A: 16 renderers, 20,031 triangles, 148 bone transforms, 15 materials.
+- Nothing from the bake is committed. A machine without it (CI, the cloud builder, any checkout without the packs) draws
+  voxel pilots exactly as before.
+
+**The wiring** (`Runtime/NativeVisualBodyPresentation.cs`, part of `ArenaPresentation`).
+- **Switch:** when `Resources/ChipArenaVisualBody` exists, every arena pilot (players and bots; not the Siren) gets a
+  visual body. `--ca-voxel-bodies` keeps the voxel bodies.
+- **Lifetime:** the body is instantiated under the pilot rig's root, at the floor point (.865 m under it), so it is
+  destroyed with the rig.
+- **Posing:** after the rig poses (`PrepareCapturedPose`), the body takes the same game pose through `NativeVisualRig` and
+  the binding. Feet plant while grounded and not rolling or juggled; rolls and juggles fit the floor. History is cleared
+  after a gap, a teleport or a weapon change.
+- **Grasp:** guns hold `PistolGrip`, `GunSupport` and `Stock`. The melee sets hold `Melee(spec, held)`, with
+  `NativeSpecialPose.HeldRotation` and the greatsword's support. Daggers hold both hands. A thrown shield or dagger opens
+  the hand. Other kits (staffs, the bow, the DEV fighters) close the hand without a seat.
+- **Hands:** the rig's hand bones are moved onto the visual weapon frames after posing, and put back before the rig poses
+  again, so its own blends never read them. The drawn weapon, its modules, muzzle flash, blade sweeps and wrist effects
+  therefore follow the visual hands with no change to the weapon code.
+- **Colour:** each pilot's accent colour fills the outfit's accent channels (`_Color_3`, `_6`, `_9`) through a property
+  block.
+- **What is skipped:** `SourceCharacter` skips the voxel body, the spawn hologram, the living wounds, the hat or halo, the
+  body dressing, the DEV Cyber Lord's look and the parry flash for a pilot with a visual body. The local pilot's body is
+  hidden in first person.
+
+**Verified in Unity (Play mode on the owner's PC; local tool, captures in local scratch).**
+- **How:** the tool enters Play mode, starts a match with three bots through the game's own `StartMatch`, and renders the
+  match camera and front, three-quarter and side views of each pilot. The shots render inside the game frame, so its
+  instanced weapons and effects appear in them. The Editor's preference file is restored afterwards.
+- **Matches:** three, with the local pilot on the rifle, the greatsword and the daggers. Every pilot drew outfit A in its
+  own accent colour. The bots carried a machine gun, fire and darkness staffs, rifles, swords and shields.
+- **Holds:**
+  - the rifle shouldered with the scope at the eye and the support hand under the handguard;
+  - the machine gun held two-handed;
+  - the greatsword upright in both hands;
+  - daggers in reverse grip in both hands;
+  - shields braced before the body;
+  - staffs in the right hand;
+  - a thrown shield leaving the hands open, as the game's `WeaponAway` says.
+- **Errors:** none from the new code.
+- **Seen during the runs, probably not caused by this change:** twice, `NativeCorpse` threw "Scene with name 'Cosmetic body
+  1 n' already exists". Corpses are keyed by death id and their physics scenes unload asynchronously, so a presentation
+  reset while a death is shown can rebuild the same corpse. A voxel control run did not die the same way, so this is not
+  proven pre-existing.
+- **Frame rate:** in the Editor with the window in the background, one matched run each: about 105 fps with visual bodies,
+  116 with voxel. Not a benchmark; the Phase C measurement is still to do.
+
+**Not yet (step 4 continues):**
+- **The shader port.** BoZo's toon shader reads only the key directional light and ambient: the map's practical lights,
+  actor lights and muzzle lights don't reach the characters. It also sets stencil bit 16, where the anime map style's
+  outline pass draws.
+- **Owner's concept pieces:** the chest core and the right-wrist device, the mask and visor, and the glow (emission in the
+  player colour).
+- **Hats** (owner decision open), the hit flash and the spawn-in build-up.
+- **Other rigs still draw voxel:** first-person arms, intros, portraits, the draft, the death broadcast, corpses and kill
+  effects (step 6 for death).
+- **Captures:** the neutral turnaround.
+- **The performance pass** (Phase C).
+- **Builds:** a build made on the owner's PC includes the bake (it is in a Resources folder); the cloud builder's do not.
+  Extending the LocalAssets install to builds is Astra's tooling.
 
 ## Decisions and design carried from the stopped Phase B branch
 
