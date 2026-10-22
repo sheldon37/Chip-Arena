@@ -7,6 +7,28 @@
 - **Gap for the BoZo work (not fixed here, presentation):** `NativeVisualBodyPresentation` does not read the spawn-in reveal, so a pilot drawn by the BoZo body appears whole at match start instead of building in like the voxel body; its hat, dressing, living wounds, parry flash and Cyber Lord pieces are also skipped (`!visual`). The voxel path (CI, machines without the packs) is unchanged. Next: the local BoZo session adds the spawn reveal (and the skipped pieces as step 6 plans) to the visual body.
 - **Animation, timing, networking:** none.
 
+## 2026-10-22 — Claude: BoZo step 4, the character shader on our lighting (merged into shared)
+
+- **Branch/base:** `claude/bozo-toon` from shared `85e8b0f5`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** port the BoZo toon shader to our lighting (practical, actor and muzzle lights) and the map outline stencil.
+- **Cause:** the pack's toon shader reads only the key directional light and ambient, so the map's practical slots, actor lights and muzzle lights never reached a BoZo pilot. It also sets stencil bit 16, the anime map style's outline mark.
+- **Change (presentation only):** new `Resources/NativeVisualBodyToon.shader` (`ChipArena/VisualBodyToon`), our own code reading the pack's material inputs.
+  - BoZo's nine-colour scheme and alpha cut-out.
+  - Light as `ChipArena/SourceLit` lights the voxel pilots: the `ArenaToon` model (Lambert off the anime style), actor lights while a map turns them on, muzzle lights on every map.
+  - BoZo's inverted-hull outline in the fog.
+  - Stencil bit 16 cleared on every pass.
+  - The local bake converts outfit A's 15 materials onto it (git-ignored, as before).
+- **Checks (actual):**
+  - Unity semantic compile (player, runtime, editor) passes; the shader imports without errors in the Editor.
+  - Full CoreTests: 839 PASS, exit 0, in an LF checkout of this commit (this Windows CRLF checkout stops at a quota-HUD check that pins a source line with a bare newline, and an expedition-ending GUID check compares forward-slash paths to Windows listings; that path comparison was patched only in the throwaway worktree to run the rest).
+  - **Stencil test** (local editor render: a wall marked as scenery behind the body, then the outline pass's stencil test at its own camera event): body pixels left marked, 36,649 of 36,649 with the pack's shader, 0 of 36,649 with ours.
+  - **Lights:** in Play mode on Moonlit and Ward Zero, a muzzle light and a practical light were set beside the local pilot through the game's own globals for one camera. The pack's shader ignored both; ours takes both. Matches ran normally on both maps.
+- **Look change:** a pilot's shaded side now takes the map's ambient, as the voxel pilots' does, where BoZo's own ramp kept it at about .89 of the lit side. On moonlit maps a face turned from the key reads darker and cooler than in BoZo's previews; the anime-style maps lift their shade.
+- **Not run:** a Windows build; Phase C.
+- **Affected:** `Resources/NativeVisualBodyToon.shader` (new), `docs/BOZO-INTEGRATION.md`.
+- **Timing and animation impact:** none.
+- **Next:** owner review of the shaded side (keep, or a softer character shade). Also outline colour and width matched to the map lines, the hit flash and spawn-in reveal on the BoZo body, and the chest core and device.
+
 ## 2026-10-22 — Claude: BoZo step 4, first character wired into the arena (merged into shared)
 
 - **Branch/base:** `claude/bozo-body` from shared `249d6978`. No PR; merged into shared and the builder (standing merge authorization); not published.
