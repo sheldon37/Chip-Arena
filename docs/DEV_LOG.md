@@ -1,3 +1,12 @@
+## 2026-10-22 — Claude: PR #62 CI fix after the BoZo character shader (meta whitespace; merged into shared)
+
+- **Branch/base:** `claude/ci-meta-whitespace` from shared `a55b40c` (BoZo step 4 shader). Merged into shared and the builder; no PR of its own, not published.
+- **Failure:** the `scope` job's `git diff --check` on `a55b40c` found trailing spaces on lines 7-9 of `Resources/NativeVisualBodyToon.shader.meta` (`userData: `, `assetBundleName: `, `assetBundleVariant: ` as the Unity Editor wrote them), so `Required checks` failed and `verify` was skipped.
+- **Fix:** strip the three trailing spaces; the meta now matches `NativeToonEdge.shader.meta`. GUID `663b481e1f8bbde479b7e97024d79271` unchanged, so the shader's references are unaffected.
+- **Checks (actual):** `git diff --check 6235a82 HEAD` clean; Python 140 OK, 1 skipped; source package OK. Unity compile and relay/CoreTests were not re-run locally: the change is whitespace in one meta, and `native-source` already passed on `a55b40c`; CI re-runs them on the merge.
+- **For the local session:** Unity writes these trailing spaces in new metas. Run `git diff --check origin/claude/sleepy-ritchie-g8ruhv` (or strip them) before merging into shared.
+- **Animation, timing, networking:** none.
+
 ## 2026-10-22 — Claude: PR #62 CI fix after BoZo step 4 (spawn-in source checks; merged into shared)
 
 - **Branch/base:** `claude/ci-spawn-check-fix` from shared `9fe05ab` (BoZo step 4). Merged into shared and the builder; no PR of its own, not published.
