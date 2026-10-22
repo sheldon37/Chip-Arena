@@ -1,3 +1,47 @@
+## 2026-10-22 — Claude: BoZo adapter, arms inside the shoulder line (merged into shared)
+
+- **Branch/base:** `claude/bozo-elbows` from shared `a28b974`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner reviews:**
+  - "I think essentially its inverted" (the elbows).
+  - On an uncommitted first fix: greatsword arms folded inward, the pistol arm retracted toward the chest, rifle arms collapsed toward the chest and face. Asked to find the cause, compare the arm rotations, check the rig setup, and fix the root cause rather than per animation. That version never merged; shared kept the committed adapter throughout.
+- **Cause (measured):**
+  - The adapter copied the game's arm directions onto BoZo's shoulder joints, .13 m from the spine against the voxel's .35 m.
+  - Whenever the game brought a hand in, BoZo's forearms crossed: on the pistol aim the right hand ended .16 m past the middle. The support arm then folded back out to its grip; on the greatsword its forearm pointed 115–177° off the game's.
+  - The first fix moved the hands sideways only, which shortened the arms' reach (rifle 99 % → 67 % extended).
+  - Ruled out, with renders and measurements:
+    - the upper-arm counter-twist (full, a third and none looked alike);
+    - the bone mapping (all 22 joints);
+    - the rest alignment;
+    - Unity's humanoid retargeting (outfits import Generic; `BodyRig`'s Animator has no controller).
+- **Changes (presentation only, BoZo adapter only; voxel bodies unchanged):** `NativeVisualRig.Inside` and the support grip. The game's angles stay for arms outside the shoulder line.
+  - **Sideways:** inside the game's shoulder line, a hand keeps its place from the chest's middle, scaled by the shoulder widths.
+  - **Height:** between the shoulder and the head, the hand's rise scales by the head rise (voxel .24 m, BoZo .15 m). The drop is gone by twice the head height, so raised swings stay raised.
+  - **Reach:** the hand keeps the game arm's extension. The whole arm swings at the shoulder by the shortest turn, so the elbow keeps the game's bend exactly and the hand its turn.
+  - **Far support grips:** the left clavicle turns toward the grip, up to 25°. Only the remainder makes the weapon hand give way, at most 3.9 cm (rifle and machine-gun holds).
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 60,195 checks pass. New:
+    - every inside hand reaches its chest-relative place by the shortest shoulder swing, at the game's extension and elbow bend;
+    - the head drop's shape;
+    - the shoulder reach ≤ 25° and give-way only past it;
+    - all 351 support grips reach.
+  - Unity semantic compile (player, runtime, editor) passes.
+  - BoZo rendered in Unity, 46 poses in front, three-quarter and side views:
+    - every melee set's idle, run, block and both cuts at 30/50/70 % of the swing, the gun gait, and rest;
+    - gun and blade proxies on the weapon frame;
+    - "before" is the committed `a28b974` adapter, swapped back in and compiled, so both use the same tool and camera.
+  - Measured against before:
+    - 40 of 92 arm poses change, all with hands inside the shoulder line;
+    - wrist turns unchanged;
+    - sword, shield, daggers, the runs and rest unchanged apart from small inside swings;
+    - aimed muzzles .09–.13 m from the shot origin's game distance (was .19);
+    - the drawn weapon .25–.46 m from today's (was .34–.45).
+  - Full CoreTests on an LF checkout: see the merge note below.
+- **Animation, timing, networking:** none. Only the drawn BoZo arms move; hit timing, hitboxes, weapon frames, shot origins and the wire are unchanged. Timing follows the game pose frame by frame.
+- **Next:**
+  - Owner review of the before/after sheets.
+  - Step 4: wire the adapter into the body path for one character, keeping `BodyRig`'s Animator controller-less or disabled.
+  - The rifle still sits at chin height on BoZo (its shoulders sit high under a large head). A lower hold would be a pose choice for the owner.
+
 ## 2026-10-22 — Claude: BoZo adapter, finger grips, hanging arms, IK bend side (merged into shared)
 
 - **Branch/base:** `claude/bozo-grips` from shared `86679cb`. No PR; merged into shared and the builder (standing merge authorization); not published.

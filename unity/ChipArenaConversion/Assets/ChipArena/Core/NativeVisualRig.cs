@@ -9,8 +9,10 @@ namespace ChipArena.UnityConversion
     // reads it: the capsule, head box, shot origin and weapon frames stay on the 22 joints; the drawn body follows them.
     // Per frame: every bone's world turn is the game joint's turn since its rest (a split chain shares it; wrists ease the
     // fist's deep bend, see Wrist), applied to the bone's rest aligned once at bind (limbs straightened to the game's
-    // arms-down, legs-down rest; spine, head and feet keep their authored posture). Then the root height scales by the leg ratio, planted feet and two-handed support grips
-    // take two-bone IK, twist bones take a share of their limb's roll, and the weapon rides the visual right hand (P1).
+    // arms-down, legs-down rest; spine, head and feet keep their authored posture). Then the root height scales by the leg ratio, hands
+    // inside the game's shoulder line swing to their chest-relative place (Inside), planted feet and two-handed support grips take
+    // two-bone IK (a far grip's shoulder reaches first), twist bones take a share of their limb's roll, and the weapon rides the
+    // visual right hand (P1).
     public static class NativeVisualRig
     {
         public const float Floor=-.865f, PlantedHeight=.03f, LiftedHeight=.10f;
@@ -46,7 +48,7 @@ namespace ChipArena.UnityConversion
             public readonly Vector3[] RestPosition, AlignedPosition, LimbRest; // LimbRest: an aligned limb's rest direction
             public readonly Quaternion[] RestRotation, AlignedWorld;
             public readonly int[] Of=new int[CapturedRig.Bones.Length]; // the last visual bone of each joint's chain, -1 when unmapped
-            public readonly float LegRatio, ArmUpper, ArmLower, LegUpper, LegLower;
+            public readonly float LegRatio, ArmUpper, ArmLower, LegUpper, LegLower, HeadRise;
             public readonly Vector3 PelvisRest, GamePelvisRest;
 
             public Rig(BoneSpec[] bones)
@@ -94,6 +96,8 @@ namespace ChipArena.UnityConversion
                 PelvisRest=pelvis<0?Vector3.Zero:AlignedPosition[pelvis];
                 GamePelvisRest=CapturedRig.Bones[CapturedRig.Body].Position+CapturedRig.Bones[CapturedRig.Pelvis].Position;
                 ArmUpper=Segment(CapturedRig.RArm,CapturedRig.RElbow); ArmLower=Segment(CapturedRig.RElbow,CapturedRig.RHand);
+                int head=Of[CapturedRig.Head],arm=Of[CapturedRig.RArm];
+                HeadRise=head<0||arm<0?GameHeadRise:AlignedPosition[head].Y-AlignedPosition[arm].Y;
                 LegUpper=Segment(CapturedRig.RHip,CapturedRig.RKnee); LegLower=Segment(CapturedRig.RKnee,CapturedRig.RFoot);
                 int hip=Of[CapturedRig.RHip],foot=Of[CapturedRig.RFoot];
                 LegRatio=hip<0||foot<0?1:(AlignedPosition[hip].Y-AlignedPosition[foot].Y)/(CapturedRig.Bones[CapturedRig.RKnee].Position.Length()+CapturedRig.Bones[CapturedRig.RFoot].Position.Length());
@@ -151,7 +155,7 @@ namespace ChipArena.UnityConversion
             public readonly Rig Rig;
             public readonly Quaternion[] Turn, World, Local;
             public readonly Vector3[] Position, LocalPosition;
-            public float LeftFootWeight, RightFootWeight, SupportWeight, LeftArmReach, LeftLegReach, RightLegReach, LeftGrip, RightGrip;
+            public float LeftFootWeight, RightFootWeight, SupportWeight, LeftArmReach, LeftLegReach, RightLegReach, LeftGrip, RightGrip, LeftInside, RightInside, ShoulderTurn, GiveWay;
             public State(Rig rig)
             {
                 Rig=rig; int n=rig.Count;
@@ -190,7 +194,8 @@ namespace ChipArena.UnityConversion
                 s.World[v]=Quaternion.Normalize(s.Turn[v]*r.AlignedWorld[v]);
             }
             Positions(s,pose);
-            s.LeftFootWeight=s.RightFootWeight=s.SupportWeight=0; s.LeftArmReach=s.LeftLegReach=s.RightLegReach=0;
+            s.LeftFootWeight=s.RightFootWeight=s.SupportWeight=0; s.LeftArmReach=s.LeftLegReach=s.RightLegReach=s.ShoulderTurn=s.GiveWay=0;
+            s.LeftInside=Inside(s,pose,true); s.RightInside=Inside(s,pose,false);
             if(plantFeet)
             {
                 s.LeftFootWeight=Foot(s,pose,true); s.RightFootWeight=Foot(s,pose,false);
@@ -199,7 +204,7 @@ namespace ChipArena.UnityConversion
             {
                 s.SupportWeight=support; SupportGrip(s,pose,support);
             }
-            if(plantFeet||support>0) Positions(s,pose);
+            if(plantFeet||support>0||s.LeftInside>0||s.RightInside>0) Positions(s,pose);
             if(fitFloor)
             {
                 float low=float.MaxValue;
@@ -312,17 +317,97 @@ namespace ChipArena.UnityConversion
             return b[CapturedRig.Body].Position.Y+b[CapturedRig.Pelvis].Position.Y+b[hip].Position.Y+b[hip+1].Position.Y+b[hip+2].Position.Y;
         }
 
-        // Two-handed holds: the left hand keeps the game's right-to-left wrist offset, carried onto the visual right hand.
+        // Hands inside the shoulder line. The game's shoulders sit .35 m out from its spine; a body with narrower shoulders that
+        // copies the arm directions crosses its forearms whenever the game brings a hand in (two-handed holds, guards, the rifle
+        // carry), and a support arm then folds back out to its grip: elbows that read as bent the wrong way. Inside the line a
+        // visual hand keeps its sideways place from the chest's middle, scaled from the game's shoulder width to the visual one.
+        // Its height does the same between the shoulder and the head: the game's head joint rises GameHeadRise over its
+        // shoulders and a short-necked body's far less, so a hold at the voxel's chest (a rifle .34 m under the head box) put
+        // the visual hands at the mouth. That drop peaks at the head's height and is gone by twice it, so raised swings stay
+        // raised. The hand keeps the copied arm's extension (how straight the arm is: a shift alone drew aimed hands back to the
+        // chest), taking up the change in depth. The whole arm swings at the shoulder by the shortest turn that brings the hand
+        // there, so the elbow keeps the game's bend exactly and the hand its turn. The shift fades in over InsideBand, so a hand
+        // at or outside the shoulder line keeps the copied arm. Returns the weight.
+        public const float InsideBand=.10f, GameArm=.52f;
+        public static readonly float GameHeadRise=CapturedRig.Bones[CapturedRig.Neck].Position.Y+CapturedRig.Bones[CapturedRig.Head].Position.Y
+            -CapturedRig.Bones[CapturedRig.RClav].Position.Y-CapturedRig.Bones[CapturedRig.RArm].Position.Y;
+        // How far the visual hand drops for a game hand rising `gameRise` over its shoulder (the tent described above).
+        public static float HeadDrop(Rig r,float gameRise)
+        {
+            float tent=CapturedClip.Clamp(Math.Min(gameRise,2*GameHeadRise-gameRise),0,GameHeadRise);
+            return tent*Math.Max(0,1-r.HeadRise/GameHeadRise)*(r.ArmUpper+r.ArmLower)/GameArm;
+        }
+        private static float Inside(State s,CapturedRig.Pose pose,bool left)
+        {
+            var r=s.Rig;
+            int ga=left?CapturedRig.LArm:CapturedRig.RArm,ge=ga+1,gh=ga+2;
+            int va=r.Of[ga],ve=r.Of[ge],vh=r.Of[gh],lc=r.Of[CapturedRig.LClav],rc=r.Of[CapturedRig.RClav];
+            if(va<0||ve<0||vh<0||lc<0||rc<0) return 0;
+            Vector3 side=Vector3.Transform(left?CapturedRig.X:-CapturedRig.X,pose.WorldRotation[CapturedRig.Chest]);
+            Vector3 gameMiddle=(pose.WorldPosition[CapturedRig.LClav]+pose.WorldPosition[CapturedRig.RClav])*.5f,middle=(s.Position[lc]+s.Position[rc])*.5f;
+            float gameShoulder=Vector3.Dot(pose.WorldPosition[ga]-gameMiddle,side),shoulder=Vector3.Dot(s.Position[va]-middle,side);
+            float gameHand=Vector3.Dot(pose.WorldPosition[gh]-gameMiddle,side),hand=Vector3.Dot(s.Position[vh]-middle,side);
+            if(gameShoulder<.05f) return 0;
+            float w=CapturedClip.Ease((gameShoulder-gameHand)/InsideBand);
+            if(w<=0) return 0;
+            Vector3 copied=s.Position[vh]-s.Position[va];
+            Vector3 up=Vector3.Transform(CapturedRig.Y,pose.WorldRotation[CapturedRig.Chest]),ahead=Vector3.Transform(CapturedRig.Z,pose.WorldRotation[CapturedRig.Chest]);
+            float across=hand-shoulder+(gameHand*shoulder/gameShoulder-hand)*w;
+            float rise=Vector3.Dot(copied,up)-HeadDrop(r,Vector3.Dot(pose.WorldPosition[gh]-pose.WorldPosition[ga],up))*w;
+            float depth=Vector3.Dot(copied,ahead),keep=copied.LengthSquared()-across*across-rise*rise;
+            if(keep>0) depth=(depth<0?-1:1)*(float)Math.Sqrt(keep);
+            Quaternion swing=CapturedRig.FromTo(CapturedRig.Unit(copied,-CapturedRig.Y),CapturedRig.Unit(side*across+up*rise+ahead*depth,-CapturedRig.Y));
+            Rotate(s,va,ve,swing); Rotate(s,ve,vh,swing);
+            return w;
+        }
+
+        // Two-handed holds: the left hand keeps the game's right-to-left wrist offset, carried onto the visual right hand. Where
+        // that grip lies past SupportReach of the left arm (narrower shoulders gain less reach from the game's torso turn, and the
+        // weapon hand keeps the game's extension), the left shoulder reaches first, as a body does: the clavicle turns its
+        // shoulder end toward the grip, up to ShoulderReach (ShoulderTurn). Only what is still out of reach makes the weapon
+        // hand give way toward the left shoulder (GiveWay, metres), so both hands stay on the weapon.
+        public const float SupportReach=.97f, ShoulderReach=25*(float)Math.PI/180;
         private static void SupportGrip(State s,CapturedRig.Pose pose,float weight)
         {
             var r=s.Rig;
             int va=r.Of[CapturedRig.LArm],ve=r.Of[CapturedRig.LElbow],vh=r.Of[CapturedRig.LHand],right=r.Of[CapturedRig.RHand];
             if(va<0||ve<0||vh<0||right<0) return;
             Positions(s,pose);
-            Vector3 target=s.Position[right]+pose.WorldPosition[CapturedRig.LHand]-pose.WorldPosition[CapturedRig.RHand];
+            Vector3 offset=pose.WorldPosition[CapturedRig.LHand]-pose.WorldPosition[CapturedRig.RHand],target=s.Position[right]+offset;
+            Vector3 grip=target-s.Position[va]; float far=grip.Length(),most=(r.ArmUpper+r.ArmLower)*SupportReach;
+            int ra=r.Of[CapturedRig.RArm],re=r.Of[CapturedRig.RElbow],lc=r.Of[CapturedRig.LClav];
+            float left=far; // the grip's distance once the shoulder has reached in full
+            if(far>most&&lc>=0)
+            {
+                // Turn the clavicle in the plane of its shoulder end and the grip, by the angle that brings the shoulder to
+                // SupportReach of the grip (the law of cosines), capped.
+                Vector3 pivot=s.Position[lc],end=s.Position[va]-pivot,to=target-pivot,axis=Vector3.Cross(end,to);
+                float a=end.Length(),d=to.Length();
+                if(a>1e-4f&&d>1e-4f&&axis.LengthSquared()>1e-12f)
+                {
+                    float between=(float)Math.Acos(CapturedClip.Clamp(Vector3.Dot(end,to)/(a*d),-1,1));
+                    float need=between-(float)Math.Acos(CapturedClip.Clamp((a*a+d*d-most*most)/(2*a*d),-1,1));
+                    float turn=CapturedClip.Clamp(need,0,ShoulderReach);
+                    left=(float)Math.Sqrt(Math.Max(0,a*a+d*d-2*a*d*Math.Cos(between-turn)));
+                    s.ShoulderTurn=turn*weight;
+                    Rotate(s,lc,va,CapturedRig.Rot(Vector3.Normalize(axis),s.ShoulderTurn));
+                    Positions(s,pose);
+                    grip=target-s.Position[va]; far=grip.Length();
+                }
+            }
+            if(left>most+1e-5f&&ra>=0&&re>=0)
+            {
+                Vector3 hand=s.Position[right]-grip*((left-most)/far*weight);
+                Vector3 bend=s.Position[re]-(s.Position[ra]+hand)*.5f;
+                Vector3 gameBend=pose.WorldPosition[CapturedRig.RElbow]-(pose.WorldPosition[CapturedRig.RArm]+pose.WorldPosition[CapturedRig.RHand])*.5f;
+                s.GiveWay=(left-most)*weight;
+                TwoBone(s,ra,re,right,hand,bend,gameBend,r.ArmUpper,r.ArmLower);
+                Positions(s,pose);
+                target=s.Position[right]+offset;
+            }
             target=Vector3.Lerp(s.Position[vh],target,weight);
-            // Bend toward the visual elbow's own place (the game's arm direction on the visual shoulder); the game's elbow side is
-            // the fallback. The game's wider shoulders can put its elbow on another side of the visual shoulder-to-hand line.
+            // Bend toward the visual elbow's own place (the copied arm's, swung by Inside); the game's elbow side is the fallback.
+            // The game's wider shoulders can put its elbow on another side of the visual shoulder-to-hand line.
             Vector3 pole=s.Position[ve]-(s.Position[va]+target)*.5f;
             Vector3 fallback=pose.WorldPosition[CapturedRig.LElbow]-(pose.WorldPosition[CapturedRig.LArm]+pose.WorldPosition[CapturedRig.LHand])*.5f;
             s.LeftArmReach=TwoBone(s,va,ve,vh,target,pole,fallback,r.ArmUpper,r.ArmLower);
