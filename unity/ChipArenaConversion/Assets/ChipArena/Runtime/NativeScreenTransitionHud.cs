@@ -12,7 +12,9 @@ namespace ChipArena.UnityConversion
     /// chevron (NativeHudChrome corners, crisp at any resolution) and lit by a bright cyan scan edge with a white core; the
     /// destination's eyebrow and title on the middle band (they slide with it), a chromatic glitch at the swap (cyan and
     /// magenta seam slices and the title's split copies) and a scan line down the closed screen. Reduced effects: a fade
-    /// through the void with the title, no motion. Repaint only; every string is a constant, nothing is allocated.
+    /// through the void with the title, no motion. Repaint only; every string is a constant, nothing is allocated. The anime
+    /// style's palette: the bands' body is the night navy (NativeCyberTheme.Night) and their wash the dusk (Dusk), the cool
+    /// shade family of the maps and the rooftop; Void and Navy under the legacy command line.
     /// </summary>
     public static class NativeScreenTransitionHud
     {
@@ -38,7 +40,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The reduced variant: the void at <paramref name="alpha"/>, the title faded in place.</summary>
         public static void Faded(float W,float Hh,float alpha,float titleAlpha,string eyebrow,string title)
         {
-            if(alpha<=0)return;U.Fill(new Rect(0,0,W,Hh),C.Void(alpha));
+            if(alpha<=0)return;U.Fill(new Rect(0,0,W,Hh),C.Night(alpha));
             if(titleAlpha>0)Title(new Rect(0,0,W,Hh),W,Hh,0,eyebrow,title,titleAlpha*alpha,-1,true);
         }
 
@@ -51,14 +53,14 @@ namespace ChipArena.UnityConversion
         public static void Shutter(Rect r,int index,bool leadLeft,float cut,float alpha,float shift,float W,float detail=1,float motion=0)
         {
             if(alpha<=0||r.width<=0)return;var set=leadLeft?H.Corners.TL|H.Corners.BL:H.Corners.TR|H.Corners.BR;float px=H.Px;
-            H.Cut(r,C.Void(alpha),cut,set);
+            H.Cut(r,C.Night(alpha),cut,set);
             // depth: a navy wash toward the lead, scanlines, the seam
             float wash=Mathf.Min(r.width,W*.42f);var wr=leadLeft?new Rect(r.x,r.y,wash,r.height):new Rect(r.xMax-wash,r.y,wash,r.height);
             U.BeginBand(new Rect(r.x+(leadLeft?cut:0),r.y,r.width-cut,r.height));
-            U.HGradient(wr,leadLeft?C.Navy(.9f*alpha):Color.clear,leadLeft?Color.clear:C.Navy(.9f*alpha));
+            U.HGradient(wr,leadLeft?C.Dusk(.9f*alpha):Color.clear,leadLeft?Color.clear:C.Dusk(.9f*alpha));
             U.EndBand();
             // the chevron's own wash, so the tip reads as the band's lit edge and not a darker wedge
-            U.BeginBand(new Rect(leadLeft?r.x:r.xMax-cut,r.y,cut,r.height));H.Cut(r,C.Navy(.9f*alpha),cut,set);U.EndBand();
+            U.BeginBand(new Rect(leadLeft?r.x:r.xMax-cut,r.y,cut,r.height));H.Cut(r,C.Dusk(.9f*alpha),cut,set);U.EndBand();
             H.Scan(r,C.Cyan(.035f*alpha),cut,set);
             U.Fill(new Rect(r.x+(leadLeft?cut:0),r.y,r.width-cut,px),C.Edge(.85f*alpha*detail));
             Trace(r,index,cut,alpha*detail,shift,W,leadLeft);

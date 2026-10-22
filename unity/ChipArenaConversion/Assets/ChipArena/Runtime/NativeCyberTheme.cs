@@ -9,6 +9,11 @@ namespace ChipArena.UnityConversion
         public const int CyanHex=0x22e6ff,CyanSoftHex=0x7ff3ff,CyanDeepHex=0x0a8fb3,MagentaHex=0xff3dcf,VioletHex=0x8b5cff;
         public const int VoidHex=0x05070f,NavyHex=0x0a1024,IndigoHex=0x131a3d,PanelHex=0x0d1430,EdgeHex=0x2a3a6b;
         public const int InkHex=0xe8fbff,MutedHex=0x8aa6c4,DimHex=0x4f6687,DangerHex=0xff4d6d,WarnHex=0xffc24d,GoodHex=0x4dffa6;
+        // The anime style's night (docs/MAP-STYLE-ANIME.md section 6; Core NativeMenuStyle.NightHex, DuskHex): the full-screen
+        // covers (the transition shutters, the loading screen's base, the Expeditions screen's veil) in the cool shade family of
+        // the maps and the rooftop instead of near-black; Void and Navy again under the `--ca-map-style legacy` command line.
+        public static Color Night(float a=1)=>NativeUi.Hex(NativeLighting.LegacyStyle?VoidHex:NativeMenuStyle.NightHex,a);
+        public static Color Dusk(float a=1)=>NativeUi.Hex(NativeLighting.LegacyStyle?NavyHex:NativeMenuStyle.DuskHex,a);
         public static Color Cyan(float a=1)=>NativeUi.Hex(CyanHex,a);
         public static Color CyanSoft(float a=1)=>NativeUi.Hex(CyanSoftHex,a);
         public static Color CyanDeep(float a=1)=>NativeUi.Hex(CyanDeepHex,a);
