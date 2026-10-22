@@ -1,3 +1,12 @@
+## 2026-10-22 — Claude: PR #62 CI fix after BoZo step 4 (spawn-in source checks; merged into shared)
+
+- **Branch/base:** `claude/ci-spawn-check-fix` from shared `9fe05ab` (BoZo step 4). Merged into shared and the builder; no PR of its own, not published.
+- **Failure:** `native-source` on `9fe05ab` stopped in `SpawnInChecks.Wiring`: "the replicated flag is restored after posing". Step 4 added `VisualBodyRestore(a.Id)` and `VisualBodyPose(a,renderTime)` inside the pinned `try{...}` in `ArenaPresentation.Render`, and `!visual` gates on `SourceCharacter`'s spawn hologram, body dressing and Cyber Lord body; the checks pinned those lines as exact text. Behaviour unchanged: the grounded flag is still overridden only around posing and restored in `finally`; the voxel body's draws are still spawn-gated.
+- **Fix (Tests only, no game code):** `Tests/SpawnInChecks.cs` matches the structure instead of the exact text: the flag set before the pose block and restored in its `finally`, other posing steps allowed inside; the three `SourceCharacter` hooks accept the `!visual` gate and still require `SpawnShows`.
+- **Checks (actual):** run5b on the fix: rc1-rc5 all 0 (Unity runtime and editor compile OK; relay and full CoreTests 840 PASS; Python 140 OK, 1 skipped; source package OK; diff check clean). A first run with only the first fix stopped at the next pinned hook (`SpawnHologram`), which is how the second was found; a search of Tests and tools for every line step 4 changed found no other pins.
+- **Gap for the BoZo work (not fixed here, presentation):** `NativeVisualBodyPresentation` does not read the spawn-in reveal, so a pilot drawn by the BoZo body appears whole at match start instead of building in like the voxel body; its hat, dressing, living wounds, parry flash and Cyber Lord pieces are also skipped (`!visual`). The voxel path (CI, machines without the packs) is unchanged. Next: the local BoZo session adds the spawn reveal (and the skipped pieces as step 6 plans) to the visual body.
+- **Animation, timing, networking:** none.
+
 ## 2026-10-22 — Claude: BoZo step 4, first character wired into the arena (merged into shared)
 
 - **Branch/base:** `claude/bozo-body` from shared `249d6978`. No PR; merged into shared and the builder (standing merge authorization); not published.

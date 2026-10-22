@@ -337,11 +337,15 @@ namespace ChipArena.UnityConversion
             // Render: lift before storing the presented position; the contact flag overridden only around posing and restored.
             var render=Body(arena,"public void Render(Snapshot s,");
             Check(render.Contains("SpawnBegin();")&&render.IndexOf("p=SpawnPlace(a,p,renderTime);",StringComparison.Ordinal)<render.IndexOf("visualPositions[a.Id]=p;",StringComparison.Ordinal),"Render lifts the feet before storing them");
-            Check(render.Contains("bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{PrepareCapturedPose(a,p,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);"),"the replicated flag is restored after posing");
+            // The pose block may also hold other posing steps (the BoZo visual body's restore and pose); the flag is set just before it and restored in its finally.
+            Check(Regex.IsMatch(render,@"bool ground=a\.Grounded;a\.Grounded=SpawnContact\(a\.Id,ground\);try\{[^{}]*PrepareCapturedPose\(a,p,renderTime\);[^{}]*\}finally\{a\.Grounded=ground;\}SpawnBones\(a\);"),"the replicated flag is restored after posing");
             Check(arena.Contains("ClearSourceActors();ClearSpawnIn();")&&arena.Contains("DisposeSpawnIn();")&&Regex.IsMatch(arena,@"BloodFx\(arena,camera,fields\);SpawnInFx\(arena,camera\);"),"cleared with the presentation, disposed, drawn in RenderGlow");
             var character=Body(source,"private bool SourceCharacter(");
-            foreach(var hook in new[]{"var spawn=SpawnFor(rig,a,first);spawnNow=spawn;reveal=SpawnReveal(spawn,reveal);","tint=SpawnTinted(spawn,tint);","if(!first)SpawnHologram(rig,spawn,bodySkin,layer,camera);","if(dressed&&SpawnShows(CapturedRig.Chest))BodyDressing(","if(SpawnShows(CapturedRig.RHand))CyberLordBody(","&&SpawnShows(CapturedRig.RHand);","spawnNow=null;ClearRigTint();return true;"})
+            foreach(var hook in new[]{"var spawn=SpawnFor(rig,a,first);spawnNow=spawn;reveal=SpawnReveal(spawn,reveal);","tint=SpawnTinted(spawn,tint);","&&SpawnShows(CapturedRig.RHand);","spawnNow=null;ClearRigTint();return true;"})
                 Check(character.Contains(hook),"SourceCharacter: "+hook);
+            // The voxel body's spawn-gated draws; a pilot drawn by the BoZo visual body (NativeVisualBodyPresentation.cs) skips them (!visual).
+            foreach(var hook in new[]{@"if\(!first(&&!visual)?\)SpawnHologram\(rig,spawn,bodySkin,layer,camera\);",@"if\(dressed(&&!visual)?&&SpawnShows\(CapturedRig\.Chest\)\)BodyDressing\(",@"if\((!visual&&)?SpawnShows\(CapturedRig\.RHand\)\)CyberLordBody\("})
+                Check(Regex.IsMatch(character,hook),"SourceCharacter: "+hook);
             Check(character.IndexOf("reveal=SpawnReveal(",StringComparison.Ordinal)<character.IndexOf("reveal=CyberReveal(",StringComparison.Ordinal)&&character.Contains("bool headShown=reveal==null||reveal(CapturedRig.Head)>.5f;"),"the hat waits for the head");
             Check(status.Contains("SpawnShowsFor(p.Seat.id,CapturedRig.Chest))Bands(")&&glow.Contains("Shown?.Invoke(pilot.Seat.id,bone)")&&glow.Contains("public Func<int,int,float> Shown;")&&arena.Contains("combatGlow.Shown=spawnJoint??=SpawnJointOf;"),"team bands and armour halos wait for their parts");
             Check(hud.Contains("||presentation.SpawnHidesHud(p.Seat.id))continue;"),"the overhead bar waits for the body");
