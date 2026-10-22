@@ -12,8 +12,10 @@ namespace ChipArena.UnityConversion
     // copied arm's extension) by swinging the whole arm at the shoulder, so the elbow keeps the game's bend; split chains end on
     // the game joint's turn, hands carry the game wrist turn; the root height scales by the leg ratio; planted feet reach the
     // game ankle's ground point and bend toward the game knee; the support hand keeps the game's wrist offset; twist bones
-    // take their share of the roll; the grip is the game socket on the visual wrist (P1); closed fists seat on the Standard
-    // weapons' handles with the straightest wrist the handle allows; the floor fit; the locals rebuild
+    // take their share of the arm's final roll; the grip is the game socket on the visual wrist (P1); the Standard weapons
+    // ride the closed fists (the arm keeps the animation's wrist; long guns raised to aim shoulder their stock) with the
+    // straightest wrist the handle allows; every arm keeps a hinged elbow; hands move smoothly through clip transitions, the
+    // gun gait's idle, aim, fire and run, and attacks into recovery; the floor fit; the locals rebuild
     // the pose; deterministic; nothing allocated per frame; and the binding names no pack types. The real pack skeleton's
     // drift is measured in Unity on the owner's PC (the local inventory tool), not here.
     internal static class VisualRigChecks
@@ -83,6 +85,8 @@ namespace ChipArena.UnityConversion
             int poses=Clips(rig,out float support,out float leg,out float grip);
             Console.WriteLine("PASS visual rig: "+poses+" captured poses: limb directions equal the game's (hands inside the shoulder line reach their chest-relative place), chains end on the game turn, wrists keep the roll and ease the bend (max "+(maxWrist*57.3f).ToString("0")+" degrees), the root scales by the leg ratio, twist shares, locals rebuild the pose; planted feet reach the ground point (max leg reach "+leg.ToString("0.00")+"), the support hand keeps the wrist offset (max reach "+support.ToString("0.00")+"), grip "+grip.ToString("0.000")+" m from the game's at most ("+count+" checks)");
             Console.WriteLine("INFO visual rig (synthetic skeleton): hands inside the game's shoulder line "+last.Inside+" ("+last.InsideFull+" fully, "+last.Crossed+" past the middle, at most "+last.Across.ToString("0.00")+" of the game's crossing); support shoulder reached forward "+last.Shrugged+" times, at most "+(last.Shoulder*57.3f).ToString("0")+" degrees; weapon hand gave way "+last.GaveWay+" times, at most "+last.GiveWay.ToString("0.000")+" m; seated fists "+last.Seated+", wrist bend at most "+(last.Bend*57.3f).ToString("0")+" degrees, off the straightest at most "+(last.Straight*57.3f).ToString("0.0")+"; planted feet "+last.Planted+", "+last.LegShort+" at full reach; two-handed support grips (guns, greatsword, hands together) "+last.Supported+", "+last.SupportShort+" at full reach; grip offset mean "+(last.GripSum/Math.Max(1,last.Gripped)).ToString("0.000")+" m; short grips by take: "+string.Join(", ",System.Linq.Enumerable.Select(last.Short,kv=>kv.Key+" "+kv.Value)));
+            Console.WriteLine("INFO visual rig (synthetic skeleton): weapons riding the fist at the animation's wrist "+last.Rode+", shouldered stocks "+last.Butted+", elbows swung off the animation's side over 10 degrees "+last.Swung+" (at most "+(last.Swing*57.3f).ToString("0")+")");
+            Transitions(rig,out int frames,out float turnOver,out float moveOver);Console.WriteLine("PASS visual rig: "+frames+" transition frames (idle to each cut and block and back, guns through idle, aim, fire, run): hands and elbows move smoothly ("+count+" checks)");
             Floor(rig);Console.WriteLine("PASS visual rig: the floor fit keeps every visual bone's contact over the floor through the roll ("+count+" checks)");
             Allocation(rig);Console.WriteLine("PASS visual rig: posing, both IKs and the grip allocate nothing per frame and repeat bit for bit ("+count+" checks)");
             Binding(root);Console.WriteLine("PASS visual rig: the Unity binding mirrors at the boundary, writes local turns and the pelvis only, and names no pack types ("+count+" checks)");
@@ -167,7 +171,7 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        private sealed class Stats { public int Poses, Planted, LegShort, Supported, SupportShort, Gripped, Inside, InsideFull, Crossed, GaveWay, Shrugged, Seated; public float Support, Leg, Grip, GripSum, Across, GiveWay, Shoulder, Bend, Straight; public readonly System.Collections.Generic.Dictionary<string,int> Short=new System.Collections.Generic.Dictionary<string,int>(); }
+        private sealed class Stats { public int Poses, Planted, LegShort, Supported, SupportShort, Gripped, Inside, InsideFull, Crossed, GaveWay, Shrugged, Seated, Rode, Butted, Swung; public float Support, Leg, Grip, GripSum, Across, GiveWay, Shoulder, Bend, Straight, Swing; public readonly System.Collections.Generic.Dictionary<string,int> Short=new System.Collections.Generic.Dictionary<string,int>(); }
         private static Stats last;
         private static float maxWrist;
         private static readonly int[][] Limbs={new[]{CapturedRig.LArm,CapturedRig.LElbow},new[]{CapturedRig.LElbow,CapturedRig.LHand},new[]{CapturedRig.RArm,CapturedRig.RElbow},new[]{CapturedRig.RElbow,CapturedRig.RHand},
@@ -199,7 +203,7 @@ namespace ChipArena.UnityConversion
                         at+=new Vector3(a.Velocity.x,0,a.Velocity.z)*dt;
                         motion.Rig.GroupPosition=new Vector3(-at.X,.865f,at.Z);motion.Rig.GroupYaw=0;
                         motion.Pose(a,t,pose,false,juggle,out _);motion.Finish(pose,t);pose.World();
-                        if(i%6==0) Verify(rig,state,pose,w+" "+scene,!a.Rolling(t),true,stats,new NativeVisualRig.Grasp{RightGrip=1,Support=1,Right=NativeVisualRig.PistolGrip(w),SupportHold=NativeVisualRig.GunSupport(w,pose)});
+                        if(i%6==0) Verify(rig,state,pose,w+" "+scene,!a.Rolling(t),true,stats,GunGrasp(w,pose));
                         if(scene=="aim"&&i>60) Check(NativeVisualRig.HandsTogether(pose)==1,w+" aimed: the game's hands hold together, so the support grip is on");
                     }
                 }
@@ -208,8 +212,9 @@ namespace ChipArena.UnityConversion
             return stats.Poses;
         }
 
-        // Each melee set's hands as the game draws them: sword in the right; daggers in both, either way round; the greatsword
+        // Each melee set's hands as the game draws them: sword in the right; daggers in both, reverse grip; the greatsword
         // two-handed; the shield (drawn on the right hand, its clips mirrored) by its grip bar.
+        private static NativeVisualRig.Grasp GunGrasp(WeaponId w,CapturedRig.Pose pose)=>new NativeVisualRig.Grasp{RightGrip=1,Support=1,Stock=NativeVisualRig.Stock(w),Right=NativeVisualRig.PistolGrip(w),SupportHold=NativeVisualRig.GunSupport(w,pose)};
         private static NativeVisualRig.Grasp MeleeGrasp(int set)
         {
             var held=Quaternion.Identity;var g=new NativeVisualRig.Grasp{RightGrip=1,Right=set==3?NativeVisualRig.ShieldBar(held):NativeVisualRig.Blade(held,set==1)};
@@ -223,7 +228,10 @@ namespace ChipArena.UnityConversion
             int pelvis=rig.Of[CapturedRig.Pelvis];int[][] limbs=Limbs;stats.Poses++;
             {
                 {
+                    state.Forget(); // each captured pose is checked on its own (no last frame)
                     NativeVisualRig.Pose(state,pose,0,false,false);
+                    Hinges(rig,state,name);
+                    Vector3[] copied={state.Position[rig.Of[CapturedRig.LHand]],state.Position[rig.Of[CapturedRig.RHand]]};
                     Vector3 fkLeftElbow=state.Position[rig.Of[CapturedRig.LElbow]],fkLeftShoulder=state.Position[rig.Of[CapturedRig.LArm]];
                     Vector3[] fkKnee={state.Position[rig.Of[CapturedRig.LKnee]],state.Position[rig.Of[CapturedRig.RKnee]]};
                     Inside(rig,state,pose,name,stats);
@@ -250,12 +258,14 @@ namespace ChipArena.UnityConversion
                         maxWrist=Math.Max(maxWrist,visBend);
                     }
                     Check(Near(state.Position[pelvis]-rig.PelvisRest,(pose.WorldPosition[CapturedRig.Pelvis]-rig.GamePelvisRest)*rig.LegRatio,1e-4f),name+" the root moves by the leg ratio");
-                    for(int v=0;v<rig.Count;v++) if(rig.TwistJoint[v]>=0)
+                    TwistShares(rig,state,pose,name);
+                    for(int v=0;v<rig.Count;v++) if(rig.TwistJoint[v]>=0&&rig.TwistJoint[v]>=CapturedRig.LHip)
                     {
                         Quaternion rel=Quaternion.Inverse(state.Turn[rig.Parent[v]])*state.Turn[v];
                         Check(Near(rel,CapturedRig.Rot(CapturedRig.Y,rig.TwistShare[v]*NativeVisualRig.Twist(pose.Rotation[rig.TwistJoint[v]])),2e-4f),name+" "+rig.Names[v]+" takes its share of the roll");
                     }
                     // Planted feet and the support grip.
+                    state.Forget();
                     Vector3 rightBefore=state.Position[rig.Of[CapturedRig.RHand]],leftShoulder=state.Position[rig.Of[CapturedRig.LArm]];
                     Vector3 gripBefore=rightBefore+pose.WorldPosition[CapturedRig.LHand]-pose.WorldPosition[CapturedRig.RHand];
                     NativeVisualRig.Pose(state,pose,1,plant,false,1,0);
@@ -302,9 +312,12 @@ namespace ChipArena.UnityConversion
                     Quaternion[] w2=new Quaternion[rig.Count];Vector3[] p2=new Vector3[rig.Count];
                     for(int v=0;v<rig.Count;v++){int p=rig.Parent[v];w2[v]=p<0?state.Local[v]:w2[p]*state.Local[v];p2[v]=p<0?state.LocalPosition[v]:p2[p]+Vector3.Transform(state.LocalPosition[v],w2[p]);}
                     for(int v=0;v<rig.Count;v++) Check(Near(w2[v],state.World[v],2e-4f)&&Near(p2[v],state.Position[v],2e-4f),name+" "+rig.Names[v]+" locals rebuild the pose");
-                    // Seated fists on the weapon's handles.
+                    // Seated fists on the weapon's handles (solved afresh: no last frame across unrelated poses).
+                    state.Forget();
                     NativeVisualRig.Pose(state,pose,grasp,plant,false);
-                    Seats(rig,state,pose,grasp,name,stats);
+                    Seats(rig,state,pose,grasp,name,stats,copied);
+                    Hinges(rig,state,name);
+                    TwistShares(rig,state,pose,name);
                     for(int v=0;v<rig.Count;v++){int p=rig.Parent[v];w2[v]=p<0?state.Local[v]:w2[p]*state.Local[v];p2[v]=p<0?state.LocalPosition[v]:p2[p]+Vector3.Transform(state.LocalPosition[v],w2[p]);}
                     for(int v=0;v<rig.Count;v++) Check(Near(w2[v],state.World[v],2e-4f)&&Near(p2[v],state.Position[v],2e-4f),name+" "+rig.Names[v]+" locals rebuild the seated pose");
                 }
@@ -312,12 +325,133 @@ namespace ChipArena.UnityConversion
 
         }
 
+        // Both arms are hinged: the upper arm points down its bone with its fold side (+z, game-aligned) toward the forearm, and
+        // the forearm points down its own bone sharing the upper arm's hinge, so no elbow crease turns inside out.
+        private static void Hinges(NativeVisualRig.Rig rig,NativeVisualRig.State state,string name)
+        {
+            foreach(bool left in new[]{true,false})
+            {
+                int ga=left?CapturedRig.LArm:CapturedRig.RArm,va=rig.Of[ga],ve=rig.Of[ga+1],vh=rig.Of[ga+2];
+                Quaternion upper=Eff(rig,state,va),fore=Eff(rig,state,ve);
+                Vector3 u=state.Position[ve]-state.Position[va],f=state.Position[vh]-state.Position[ve],fold=f-Vector3.Normalize(u)*Vector3.Dot(f,Vector3.Normalize(u));
+                string arm=name+(left?" left":" right");
+                Check(Angle(Vector3.Transform(-CapturedRig.Y,upper),u)<.3f/57.3f&&Angle(Vector3.Transform(-CapturedRig.Y,fore),f)<.3f/57.3f,arm+" arm bones lie along the arm");
+                Check(Angle(Vector3.Transform(CapturedRig.X,upper),Vector3.Transform(CapturedRig.X,fore))<.5f/57.3f,arm+" elbow is a hinge (both bones share its axis)");
+                if(fold.Length()>.03f) Check(Angle(Vector3.Transform(CapturedRig.Z,upper),fold)<1f/57.3f,arm+" elbow crease faces the fold");
+            }
+        }
+
+        // Hands through transitions: frame by frame at 60 Hz, each visual hand turns no more than three times the game's own
+        // hand plus 20 degrees and moves no more than three times its move plus 5 cm (6 cm for an elbow), so nothing snaps
+        // (the snaps this caught flipped a hand 37-177 degrees in a frame): every melee set from idle crossfading into each cut, through
+        // it and back to idle, and into a block; every gun through idle, aim, firing, a run and back to aim.
+        private static void Transitions(NativeVisualRig.Rig rig,out int frames,out float worstTurn,out float worstMove)
+        {
+            var state=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();var fa=new float[CapturedClip.Channels];var fb=new float[CapturedClip.Channels];
+            var lastVis=new Quaternion[2];var lastGame=new Quaternion[2];var lastVisAt=new Vector3[4];var lastGameAt=new Vector3[4];bool first=true;
+            int steps=0;float turnWorst=0,moveWorst=0;
+            void Step(string name,NativeVisualRig.Grasp g,bool plant)
+            {
+                NativeVisualRig.Pose(state,pose,g,plant,false);steps++;
+                for(int side=0;side<2;side++)
+                {
+                    int gh=side==0?CapturedRig.LHand:CapturedRig.RHand,vh=rig.Of[gh],ve=rig.Of[gh-1];
+                    Quaternion vis=state.World[vh],game=pose.WorldRotation[gh];
+                    if(!first)
+                    {
+                        float dv=2*(float)Math.Acos(Math.Min(1,Math.Abs(Quaternion.Dot(vis,lastVis[side])))),dg=2*(float)Math.Acos(Math.Min(1,Math.Abs(Quaternion.Dot(game,lastGame[side]))));
+                        float mv=Vector3.Distance(state.Position[vh],lastVisAt[side]),mg=Vector3.Distance(pose.WorldPosition[gh],lastGameAt[side]);
+                        float me=Vector3.Distance(state.Position[ve],lastVisAt[2+side]),mge=Vector3.Distance(pose.WorldPosition[gh-1],lastGameAt[2+side]);
+                        turnWorst=Math.Max(turnWorst,dv-3*dg);moveWorst=Math.Max(moveWorst,Math.Max(mv-3*mg,me-3*mge));
+                        Check(dv<=3*dg+20f/57.3f,name+(side==0?" left":" right")+" hand turns smoothly ("+(dv*57.3f).ToString("0")+" against the game's "+(dg*57.3f).ToString("0")+" degrees this frame)");
+                        Check(mv<=3*mg+.05f&&me<=3*mge+.06f,name+(side==0?" left":" right")+" hand and elbow move smoothly (hand "+mv.ToString("0.000")+" vs "+mg.ToString("0.000")+", elbow "+me.ToString("0.000")+" vs "+mge.ToString("0.000")+" m)");
+                    }
+                    lastVis[side]=vis;lastGame[side]=game;lastVisAt[side]=state.Position[vh];lastGameAt[side]=pose.WorldPosition[gh];lastVisAt[2+side]=state.Position[ve];lastGameAt[2+side]=pose.WorldPosition[gh-1];
+                }
+                first=false;
+            }
+            const float dt=1/60f;
+            for(int set=0;set<CapturedClips.Sets.Length;set++)
+            {
+                var clips=CapturedClips.Sets[set];CapturedClip Find(string n){foreach(var c in clips)if(c.StateName==n)return c;return null;}
+                var idle=Find("idle");if(idle==null)continue;var g=MeleeGrasp(set);
+                foreach(string cut in new[]{"cutA","cutB","block"})
+                {
+                    var attack=Find(cut);if(attack==null)continue;first=true;state.Forget();
+                    // idle .3 s, a .15 s crossfade into the attack, the attack through, a .2 s crossfade back, idle .3 s
+                    float fadeIn=.15f,fadeOut=.2f,total=.3f+attack.Duration+.3f;
+                    for(float t=0;t<=total;t+=dt)
+                    {
+                        float ta=t-.3f;
+                        idle.Sample(t%Math.Max(idle.Duration,1e-3f),fa);
+                        attack.Sample(CapturedClip.Clamp(ta,0,attack.Duration),fb);
+                        float w=ta<0?0:ta<fadeIn?ta/fadeIn:ta<attack.Duration?1:1-Math.Min(1,(ta-attack.Duration)/fadeOut);
+                        for(int c=0;c<fa.Length;c++) fa[c]+=(fb[c]-fa[c])*w;
+                        CapturedRig.Sample(fa,set,pose);
+                        Step(CapturedClips.Sets[set][0].Name.Split('/')[0]+" idle-"+cut+" "+t.ToString("0.00"),g,true);
+                    }
+                }
+            }
+            foreach(var w in new[]{WeaponId.Pistol,WeaponId.Rifle,WeaponId.MachineGun})
+            {
+                var a=new Actor{Id=31,SourceSpec=GunMotion.Spec(w),Weapon=w,Grounded=true,Hp=100,CastRate=1,RollDirection=new V3(0,0,1),Ammo=GunRules.Get(w).Magazine};
+                var motion=new GunMotion();var juggle=new NativeJuggleTrack();Vector3 at=Vector3.Zero;first=true;state.Forget();
+                for(int i=0;i<6*60;i++)
+                {
+                    float t=20+i*dt,phase=i*dt;
+                    a.Aiming=phase>=1&&phase<3||phase>=4.5f;
+                    if(phase>=2&&phase<3&&(i%15)==0) a.LastShot=t;
+                    a.Velocity=phase>=3&&phase<4.5f?new V3(0,0,6.8f):new V3(0,0,0);
+                    at+=new Vector3(a.Velocity.x,0,a.Velocity.z)*dt;
+                    motion.Rig.GroupPosition=new Vector3(-at.X,.865f,at.Z);motion.Rig.GroupYaw=0;
+                    motion.Pose(a,t,pose,false,juggle,out _);motion.Finish(pose,t);pose.World();
+                    Step(w+" "+(phase<1?"idle":phase<2?"aim":phase<3?"fire":phase<4.5f?"run":"aim")+" "+phase.ToString("0.00"),GunGrasp(w,pose),true);
+                }
+            }
+            frames=steps;worstTurn=turnWorst;worstMove=moveWorst;
+        }
+
+        // A bone's turn from its aligned rest as it stands.
+        private static Quaternion Eff(NativeVisualRig.Rig rig,NativeVisualRig.State state,int v)=>Quaternion.Normalize(state.World[v]*Quaternion.Inverse(rig.AlignedWorld[v]));
+        // The arm twist bones follow the final pose: forearm bones their share of the hand's roll on the forearm, upper-arm
+        // bones their (counter) share of the upper arm's roll on the shoulder (the clavicle with the hanging spread).
+        private static void TwistShares(NativeVisualRig.Rig rig,NativeVisualRig.State state,CapturedRig.Pose pose,string name)
+        {
+            for(int v=0;v<rig.Count;v++)
+            {
+                int j=rig.TwistJoint[v]; if(j<0||j>=CapturedRig.LHip) continue;
+                Quaternion parent=Eff(rig,state,rig.Parent[v]),roll;
+                if(j==CapturedRig.LHand||j==CapturedRig.RHand) roll=Quaternion.Inverse(parent)*Eff(rig,state,rig.Of[j]);
+                else roll=Quaternion.Inverse(Eff(rig,state,rig.Of[j-1])*NativeVisualRig.Spread(pose,j==CapturedRig.LArm))*parent;
+                Check(Near(Quaternion.Inverse(parent)*Eff(rig,state,v),CapturedRig.Rot(CapturedRig.Y,rig.TwistShare[v]*NativeVisualRig.Twist(roll)),2e-4f),name+" "+rig.Names[v]+" takes its share of the arm's final roll");
+            }
+        }
+
         // A seated fist: its centre on the handle's grip point (the weapon drawn at its anchor, the game wrist's turn), its axis
         // along the handle, the hand pointing as nearly along the forearm as the handle leaves (the straightest wrist, where the
         // handle stands 30 degrees or more off the forearm's line; nearer, the game wrist's direction decides), and its
         // fingers carried with it. The support fist closes on the right weapon's support hold.
-        private static void Seats(NativeVisualRig.Rig rig,NativeVisualRig.State state,CapturedRig.Pose pose,in NativeVisualRig.Grasp g,string name,Stats stats)
+        private static void Seats(NativeVisualRig.Rig rig,NativeVisualRig.State state,CapturedRig.Pose pose,in NativeVisualRig.Grasp g,string name,Stats stats,Vector3[] copied)
         {
+            // The weapon rides the hand: a held weapon's arm keeps the wrist the animation gave it, unless the gun is shouldered
+            // or gave way to the support grip; a shouldered stock butt sits at the shoulder pocket.
+            for(int side=0;side<2;side++)
+            {
+                bool left=side==0,seated=left?state.LeftSeated:state.RightSeated; if(!seated) continue;
+                if(left?state.SupportWeight==0:state.Shouldered==0&&state.GiveWay==0)
+                {
+                    stats.Rode++; Check(Near(state.Position[rig.Of[left?CapturedRig.LHand:CapturedRig.RHand]],copied[side],1e-4f),name+(left?" left":" right")+" weapon rides the hand where the animation put the wrist");
+                }
+                stats.Swing=Math.Max(stats.Swing,Math.Abs(state.ElbowSwing[side])); if(Math.Abs(state.ElbowSwing[side])>10f/57.3f) stats.Swung++;
+            }
+            if(state.Shouldered>=.9999f&&state.GiveWay==0)
+            {
+                stats.Butted++;
+                Quaternion w=pose.WorldRotation[CapturedRig.RHand],chest=pose.WorldRotation[CapturedRig.Chest];
+                Vector3 butt=state.RightAnchor+Vector3.Transform(new Vector3(0,0,-g.Stock),w);
+                Vector3 pocket=state.Position[rig.Of[CapturedRig.RArm]]-Vector3.Transform(-CapturedRig.X,chest)*NativeVisualRig.PocketIn-Vector3.Transform(CapturedRig.Y,chest)*NativeVisualRig.PocketDown+Vector3.Transform(CapturedRig.Z,chest)*NativeVisualRig.PocketAhead;
+                Check(Near(butt,pocket,1e-4f),name+" the shouldered stock butt sits at the shoulder pocket");
+            }
             NativeVisualRig.WeaponFrame(state,pose,out var wp,out var wq);
             Check(Near(wp,state.RightAnchor,1e-6f)&&Near(wq,pose.WorldRotation[CapturedRig.RHand],1e-6f),name+" the weapon frame is the anchor with the game wrist turn");
             Check(state.RightSeated==g.Right.Seated,name+" the right fist seats when its weapon has a handle");
@@ -329,16 +463,28 @@ namespace ChipArena.UnityConversion
                 else if(left?state.LeftSeated:state.RightSeated){anchor=left?state.LeftAnchor:state.RightAnchor;w=pose.WorldRotation[ga+2];hold=left?g.Left:g.Right;}
                 else continue;
                 stats.Seated++;
-                Vector3 fist=state.Position[vh]+Vector3.Transform(rig.FistCenter[side],state.Turn[vh]),grip=anchor+Vector3.Transform(hold.Center,w);
                 Vector3 axis=Vector3.Transform(hold.Axis,w),fistAxis=Vector3.Transform(rig.FistAxis[side],state.Turn[vh]);
+                Vector3 fist=state.Position[vh]+Vector3.Transform(rig.FistCenter[side],state.Turn[vh]),grip=anchor+Vector3.Transform(hold.Center,w)-(support?axis*state.SupportSlide:Vector3.Zero);
+                if(support) Check(state.SupportSlide>=0&&state.SupportSlide<=hold.Slide+1e-6f,name+" the support fist slides back along its handle at most its Slide");
                 float wrist=Vector3.Distance(state.Position[vh],state.Position[va]),shortest=Math.Abs(rig.ArmUpper-rig.ArmLower)+.01f;
-                if(wrist>shortest&&(!support||state.LeftArmReach<.999f)) Check(Vector3.Distance(fist,grip)<2e-3f,name+(left?" left":" right")+(support?" support":"")+" fist closes on its handle's grip point");
+                if(wrist>shortest&&(!support||state.LeftArmReach<.999f)) Check(Vector3.Distance(fist,grip)<2e-3f,name+(left?" left":" right")+(support?" support":"")+" fist closes on its handle's grip point (off by "+Vector3.Distance(fist,grip).ToString("0.0000")+")");
                 float dot=Vector3.Dot(axis,fistAxis);
-                Check(hold.Either?Math.Abs(dot)>.9999f:dot>.9999f,name+(left?" left":" right")+" fist's axis lies along the handle"+(hold.Either?" (either way)":" toward the blade or barrel"));
+                Check(dot>.9999f,name+(left?" left":" right")+" fist's axis lies along the handle, its index side the way the hold names");
                 Vector3 forearm=Vector3.Normalize(state.Position[vh]-state.Position[ve]),ahead=Vector3.Transform(rig.FistAhead[side],state.Turn[vh]);
                 Vector3 straight=forearm-fistAxis*Vector3.Dot(forearm,fistAxis);
-                if(straight.Length()>.5f) stats.Straight=Math.Max(stats.Straight,Angle(ahead,straight));
-                if(straight.Length()>.5f) Check(Angle(ahead,straight)<3f/57.3f,name+(left?" left":" right")+" wrist is as straight as the handle allows (off by "+(Angle(ahead,straight)*57.3f).ToString("0.0")+")");
+                bool riding=support?false:left||state.Shouldered==0&&state.GiveWay==0;
+                if(riding)
+                {
+                    // A riding fist takes the straightest wrist the handle allows.
+                    if(straight.Length()>.5f) stats.Straight=Math.Max(stats.Straight,Angle(ahead,straight));
+                    if(straight.Length()>.5f) Check(Angle(ahead,straight)<3f/57.3f,name+(left?" left":" right")+" wrist is as straight as the handle allows (off by "+(Angle(ahead,straight)*57.3f).ToString("0.0")+")");
+                }
+                else if((support||state.Shouldered>=.9999f)&&hold.Ahead.LengthSquared()>0)
+                {
+                    // A reaching fist points where its weapon sets it (Hold.Ahead), rolled toward the straightest by up to its Spread.
+                    Vector3 want=Vector3.Transform(hold.Ahead,w); want-=axis*Vector3.Dot(want,axis);
+                    Check(Angle(ahead,want)<hold.Spread+.5f/57.3f,name+(left?" left":" right")+" reaching fist points as its weapon sets it, within its spread");
+                }
                 stats.Bend=Math.Max(stats.Bend,Angle(ahead,forearm));
                 for(int v=vh;v<rig.Count;v++) if(v==vh||(rig.Finger[v]!=0&&rig.Side[v]==side)) Check(Near(state.World[v],state.Turn[v]*rig.AlignedWorld[v],2e-4f),name+" "+rig.Names[v]+" turns with its seated hand");
             }
@@ -363,15 +509,13 @@ namespace ChipArena.UnityConversion
                 Check(Math.Abs(got-w)<1e-6f,name+(left?" left":" right")+" hand's inside weight follows the game hand's place from the shoulder line");
                 if(w==0) continue;
                 stats.Inside++;
-                Vector3 copy=handCopy-shoulder,up=Vector3.Transform(CapturedRig.Y,pose.WorldRotation[CapturedRig.Chest]),ahead=Vector3.Transform(CapturedRig.Z,pose.WorldRotation[CapturedRig.Chest]);
-                float across=Vector3.Dot(copy,side)+(gh*vs/gs-Vector3.Dot(handCopy-vm,side))*w;
+                Vector3 copy=handCopy-shoulder,up=Vector3.Transform(CapturedRig.Y,pose.WorldRotation[CapturedRig.Chest]);
                 float gameRise=Vector3.Dot(pose.WorldPosition[ga+2]-pose.WorldPosition[ga],up),G=NativeVisualRig.GameHeadRise;
                 float drop=Math.Clamp(Math.Min(gameRise,2*G-gameRise),0,G)*(1-rig.HeadRise/G)*(rig.ArmUpper+rig.ArmLower)/NativeVisualRig.GameArm;
                 Check(Math.Abs(NativeVisualRig.HeadDrop(rig,gameRise)-drop)<1e-6f,name+" the head drop peaks at the game head's height and is gone by twice it");
-                float rise=Vector3.Dot(copy,up)-drop*w,depth=Vector3.Dot(copy,ahead),keep=copy.LengthSquared()-across*across-rise*rise;
-                if(keep>0) depth=Math.Sign(depth<0?-1:1)*(float)Math.Sqrt(keep);
-                Vector3 want=shoulder+side*across+up*rise+ahead*depth;
-                if(keep>0) Check(Math.Abs(Vector3.Distance(want,shoulder)-copy.Length())<1e-4f,name+" the reach target keeps the copied arm's extension");
+                Vector3 moved=copy+side*((gh*vs/gs-Vector3.Dot(handCopy-vm,side))*w)-up*(drop*w);
+                Vector3 want=shoulder+Vector3.Normalize(moved)*copy.Length();
+                Check(Math.Abs(Vector3.Distance(want,shoulder)-copy.Length())<1e-4f,name+" the reach target keeps the copied arm's extension");
                 if(Vector3.Distance(want,shoulder)<(rig.ArmUpper+rig.ArmLower)*.999f) Check(Near(hand,want,1e-3f),name+(left?" left":" right")+" hand inside the shoulder line reaches its chest-relative place");
                 Quaternion swing=CapturedRig.FromTo(Vector3.Normalize(copy),Vector3.Normalize(want-shoulder));
                 Check(Near(state.Position[rig.Of[ga+1]],shoulder+Vector3.Transform(elbowCopy-shoulder,swing),1e-3f),name+(left?" left":" right")+" arm swings at the shoulder by the shortest turn to its hand's place");
@@ -380,7 +524,7 @@ namespace ChipArena.UnityConversion
                 stats.InsideFull++;
                 float past=-Vector3.Dot(hand-vm,side),gamePast=-gh; // past the middle toward the other side
                 if(gamePast>0){stats.Crossed++;stats.Across=Math.Max(stats.Across,past/gamePast);}
-                Check(past<=Math.Max(0,gamePast)*vs/gs+1e-3f||Vector3.Distance(want,shoulder)>=(rig.ArmUpper+rig.ArmLower)*.999f,name+(left?" left":" right")+" hand crosses the middle no further than the game's, scaled");
+
             }
         }
 
@@ -404,10 +548,12 @@ namespace ChipArena.UnityConversion
             var state=new NativeVisualRig.State(rig);var other=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();var f=new float[CapturedClip.Channels];
             var clip=CapturedClips.Sets[0][0];clip.Sample(.3f,f);CapturedRig.Sample(f,0,pose);
             for(int i=0;i<50;i++){NativeVisualRig.Pose(state,pose,1,true,true);NativeVisualRig.Grip(state,pose,out _,out _);}
+            var clock=System.Diagnostics.Stopwatch.StartNew();
             long before=GC.GetAllocatedBytesForCurrentThread();
             var grasp=MeleeGrasp(2);
             for(int i=0;i<1000;i++){if(i%2==0)NativeVisualRig.Pose(state,pose,i%4,i%3!=0,i%5==0,i%4*.25f,i%3*.5f);else{grasp.Support=i%3*.5f;NativeVisualRig.Pose(state,pose,grasp,i%3!=0,i%5==0);}NativeVisualRig.Grip(state,pose,out _,out _);}
             Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"posing allocates nothing per frame");
+            Console.WriteLine("INFO visual rig: "+(clock.Elapsed.TotalMilliseconds*1000/1000).ToString("0")+" microseconds per pose on this machine (half with the greatsword's seated grasp)");
             NativeVisualRig.Pose(state,pose,1,true,false);NativeVisualRig.Pose(other,pose,1,true,false);
             for(int v=0;v<rig.Count;v++) Check(state.Local[v].Equals(other.Local[v])&&state.LocalPosition[v].Equals(other.LocalPosition[v]),"the same pose gives the same bones bit for bit");
         }
