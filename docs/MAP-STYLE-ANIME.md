@@ -89,7 +89,9 @@ anime style. Entrances, the draft, the rooftop and every map without the style w
 - The ambient is Unity's trilight SH, flattened 35% toward one sky-to-ground fill.
 - Point lights (the practical slots, flashes, muzzle and actor lights, the ward field) are summed and stepped on the
   square root of their luminance into soft stairs (3 per unit). Lamp pools read as two or three flat rings
-  (`points` 0.7 blends them).
+  (`points` 0.7 blends them). `pointCool` (stage 2, 0 by default; `_ArenaToonCool`) then turns the dim rings toward the
+  shade tint's hue at their own luminance (fully as the light fades out, not at all from the stepped luminance
+  `pointCoolLevel` up): a furnace's light warm near the heat and steel blue away from it (the Ironworks: 1, from 0.35).
 - A stylised highlight: on rounded edges a crisp band where N.H passes `specularEdge` (0.965), `specular` (0.55) of the
   key, in the key's shadow.
 
@@ -202,7 +204,10 @@ anime style. Entrances, the draft, the rooftop and every map without the style w
 - The sky's sheen lies on floors and roofs at grazing angles: the painted wet-street gradient.
 - Glass, screens, neon, the bank looks, the hazard paint and every telegraph keep their own painting.
 - `shadeFloor` (stage 2, 0 by default; `_ArenaToonFloor`): an albedo floor in the style, tinted by the shade tint, for a
-  night map whose near-black paint loses its form (Cyber City 0.05). Cyber City's glass
+  night map whose near-black paint loses its form (Cyber City 0.05).
+- `brickCourses` (stage 2, 0 by default; `_ArenaToonFloor.y`): the share of every brick face drawn in the toon courses
+  (stage 1 draws them in patches along the edges and the foot), for a map whose brick walls are its subject (the
+  Ironworks' furnace walls, 1). The same dark joints and footprint fade. Cyber City's glass
   curtain walls, holo screens and tubes take neither the height gradient nor the wash: they only lose fine noise.
 
 **Sky and grade.**
@@ -273,12 +278,13 @@ HDR for the bloom. Use neon as accents (cyan and magenta signs, red warnings), n
   - lines #14122A, 30 to 100 m; the station kit draws the rounded box. The boss (THE 6:47) is a SourceLit model: it takes
     the ArenaToon lighting and, as an actor, no environment outline.
 - **ironworks** (Expedition City Ironworks, stage 2). Sealed, the furnaces lit:
-  - no sky, the look's fog #221A16 from 14 m and its dim key;
-  - shade tint (0.62, 0.76, 1.3), lift 0.3, a cool ambient (sky #4A6AA0 x .16, equator #4E5468 x .1) to cool the shade
-    against the furnaces; the furnace light comes through the point lights untinted, so the shade keeps the heat glow
-    (in the renders the warm points dominate: see the risks); lit (1.1, 1.0, 0.88); points 0.6 (softer stairs on the
-    furnace light);
-  - black iron at 0.4 detail; the molten metal stays `NativeMolten` (HDR, unstepped); the heat haze stays;
+  - no sky, a cool fog #182028 from 14 m (the look's is #221A16), the look's dim key;
+  - warm furnace light against steel-blue shade: the furnace field and the lamps step into stairs (points 0.6) and their
+    dim rings turn to the shade tint's hue (`pointCool` 1 from 0.35), so the light is warm near the heat and cool away
+    from it; shade tint (0.62, 0.76, 1.3), lift 0.3, a cool fill (sky #4A6AA0 x .3, equator #4E5468 x .18); lit (1.1,
+    1.0, 0.88); grade saturation 1.12, contrast 1.0 (no darkening: the hall is no darker than the legacy);
+  - the furnace walls' brick in courses over the whole face (`brickCourses` 1); black iron and the ingot moulds at 0.4
+    detail; the molten metal stays `NativeMolten` (HDR, unstepped); the heat haze stays;
   - lines #1E1418, 25 to 90 m; the Ironworks kit draws the rounded box.
 - All: highlight 0.55 (0.5 on the stage 2 interiors) past N.H 0.965; occlusion 0.4 (0.45) over 0.22 m.
 - The raw looks (golden-demolition's pinned preset, the city's dusk) are untouched underneath. The style's `key`, `rim`,
@@ -533,10 +539,11 @@ Match the environment's `lineColor` and width to BoZo's outline settings when th
 - **The Exchange's cupola** is four turned boxes per tier (the city kit's `Round`), so its crown reads as a stepped star
   behind the pediment. A true dome needs a round mesh (a new draw) or new kit geometry (the legacy look and the city's
   part budgets); left as is.
-- **The Ironworks still reads warm.** It is lit almost only by the furnace points under a warm fog, so the cool shade
-  barely shows (a trial at lift 0.45 with a brighter cool ambient changed nothing visible), and the rust on the ingot
-  moulds flattens away at 0.4 detail, so the hall reads a little darker than the legacy. A cooler fog is the next lever,
-  at the cost of the furnace mood.
+- **The Ironworks' cool shade comes from its point lights.** The hall is lit almost only by the furnace field and the
+  lamps, so a cool ambient alone never showed; the dim rings of those lights turn steel blue instead (`pointCool`). The
+  furnace deck stays warm (it is next to the heat) and reads about a tenth darker than the legacy there (the toon
+  courses' dark joints against the legacy's light mortar); the hero view is as bright as the legacy. The ingot moulds'
+  rust flattens at play distance (0.4 detail, kept on purpose).
 - **Ward Zero's look is shared.** The quarantine look styles both the Ward Zero arena (`siren`) and the Expedition
   instance. Its troffers' colour comes from the ward light field (Core, by mood), not from the style.
 - **Toothed ends** are found from the blocks as placed at load. A wall freed later by a neighbour's destruction keeps a
