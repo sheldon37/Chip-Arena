@@ -457,7 +457,7 @@
       "rim":{"color":16732376,"intensity":0.45,"elevation":18,"bearing":135,"from":{"x":0,"y":0,"z":0},"shadows":"none","shadowStrength":1},
       "ambient":{"sky":3821212,"skyScale":0.86,"equator":4868228,"equatorScale":0.6,"ground":2239048,"groundScale":0.5},
       "sky":{"variant":"night","horizon":3811952,"zenith":659504,"glow":5913254,"disc":10861023,"cloud":6040696,"discSize":0.018,"halo":0.12,"stars":0.06,"crater":0.2,"cloudSpeed":0.55,"elevation":0,"bearing":0,"dir":{"x":-0.45,"y":0.34,"z":0.82}},
-      "fogColor":2765920,"fogStart":18,"background":1317432,"hazeColor":2765920}},
+      "fogColor":2765920,"fogStart":18,"shadeFloor":0.05,"background":1317432,"hazeColor":2765920}},
  {"id":"siren-quarantine","look":"quarantine","farClip":220,"background":132356,
    "key":{"color":10467528,"intensity":0.06,"elevation":78,"bearing":200,"from":{"x":0,"y":0,"z":0},"shadows":"none","shadowStrength":1},
    "rim":{"color":15328498,"intensity":0.2,"elevation":14,"bearing":45,"from":{"x":0,"y":0,"z":0},"shadows":"none","shadowStrength":1},

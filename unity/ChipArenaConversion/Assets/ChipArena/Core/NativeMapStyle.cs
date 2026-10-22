@@ -43,6 +43,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Stage 2: how far the anime sky's horizon blends into the fog colour (0 none: the stage 1 looks), so a fogged
         /// skyline never meets a bright horizon band in a hard line.</summary>
         public float skyFog;
+        /// <summary>Stage 2: the albedo floor in the style (linear, tinted by the shade tint; 0 none), so a near-black surface on
+        /// a night map still holds its form (Cyber City's vans and booths).</summary>
+        public float shadeFloor;
         public MapLookLight key,rim;public MapLookAmbient ambient;public MapLookSky sky;public int fogColor,background,hazeColor;public float fogStart;
     }
     /// <summary>The shader values of a look's style (linear), as NativeLighting writes them: the NativeToon.cginc globals, the
@@ -55,10 +58,12 @@ namespace ChipArena.UnityConversion
         public float[] SkyToon=new float[4],CloudLit=new float[4],CloudShade=new float[4],SkyBand=new float[4];
         /// <summary>The fog colour (linear) and the share of the horizon blended into it (_SkyToonFog).</summary>
         public float[] SkyFog=new float[4];
+        /// <summary>_ArenaToonFloor: x the albedo floor (shadeFloor).</summary>
+        public float[] Floor=new float[4];
         public void Clear()
         {
             On=Outline=Grade=Sky=false;Array.Clear(Toon,0,4);Array.Clear(Band,0,4);Array.Clear(Shade,0,4);Array.Clear(Lit,0,4);Array.Clear(Rim,0,4);Array.Clear(Paint,0,4);Array.Clear(Wrap,0,4);Array.Clear(Fx,0,4);Array.Clear(Edge,0,4);Array.Clear(EdgeColor,0,4);
-            Array.Clear(GradeParams,0,4);Array.Clear(GradeShadow,0,4);Array.Clear(GradeLight,0,4);Array.Clear(SkyToon,0,4);Array.Clear(CloudLit,0,4);Array.Clear(CloudShade,0,4);Array.Clear(SkyBand,0,4);Array.Clear(SkyFog,0,4);
+            Array.Clear(GradeParams,0,4);Array.Clear(GradeShadow,0,4);Array.Clear(GradeLight,0,4);Array.Clear(SkyToon,0,4);Array.Clear(CloudLit,0,4);Array.Clear(CloudShade,0,4);Array.Clear(SkyBand,0,4);Array.Clear(SkyFog,0,4);Array.Clear(Floor,0,4);
         }
     }
 
@@ -120,7 +125,7 @@ namespace ChipArena.UnityConversion
             into.Grade=t.saturation>0&&t.contrast>0;Set(into.GradeParams,into.Grade?t.saturation:1,into.Grade?t.contrast:1,0,into.Grade?1:0);
             Set(into.GradeShadow,Or1(t.gradeShadow.x),Or1(t.gradeShadow.y),Or1(t.gradeShadow.z),0);Set(into.GradeLight,Or1(t.gradeLight.x),Or1(t.gradeLight.y),Or1(t.gradeLight.z),0);
             into.Sky=t.skyToon>0;Set(into.SkyToon,t.skyToon,t.clouds,t.cloudScale,t.bandWidth);Lin(into.CloudLit,t.cloudLit);Lin(into.CloudShade,t.cloudShade);Lin(into.SkyBand,t.horizonBand);
-            Lin(into.SkyFog,look.fog?.color??0);into.SkyFog[3]=t.skyFog;
+            Lin(into.SkyFog,look.fog?.color??0);into.SkyFog[3]=t.skyFog;Set(into.Floor,t.shadeFloor,0,0,0);
         }
         private static float Or1(float v)=>v>0?v:1;
         private static void Set(float[] a,float x,float y,float z,float w){a[0]=x;a[1]=y;a[2]=z;a[3]=w;}
@@ -144,6 +149,7 @@ namespace ChipArena.UnityConversion
             if(!Finite(t.saturation,t.contrast,t.gradeShadow.x,t.gradeShadow.y,t.gradeShadow.z,t.gradeLight.x,t.gradeLight.y,t.gradeLight.z)||t.saturation<0||t.saturation>2||t.contrast<0||t.contrast>2)Fail("grade");
             if(!Finite(t.skyToon,t.clouds,t.cloudScale,t.bandWidth,t.skyFog)||!Unit(t.skyToon)||!Unit(t.clouds)||!Unit(t.skyFog)||t.skyToon>0&&!(t.cloudScale>0&&t.bandWidth>0&&t.bandWidth<1))Fail("sky");
             if(!Finite(t.fogStart)||t.fogStart<0)Fail("fog start");
+            if(!Finite(t.shadeFloor)||t.shadeFloor<0||t.shadeFloor>.2f)Fail("shade floor (0 to 0.2, a linear albedo)");
             if(!Rgb(t.rimColor)||!Rgb(t.lineColor)||!Rgb(t.cloudLit)||!Rgb(t.cloudShade)||!Rgb(t.horizonBand)||!Rgb(t.fogColor)||!Rgb(t.background)||!Rgb(t.hazeColor))Fail("colours");
         }
 

@@ -71,6 +71,8 @@ Shader "ChipArena/NativeBlockLit"
         #define TOON_RAKE_SLOPE 0.33
         #define TOON_AWNING_ARCH 0.12
         #define TOON_FRAME 0.07
+        // The style's albedo floor (Core MapStyleState.Floor; x the floor, tinted by the shade tint; 0 none).
+        float4 _ArenaToonFloor;
         #define CY_TILE 0.0
         #define CY_PANEL 4.0
         #define CY_METAL 5.0
@@ -693,6 +695,8 @@ Shader "ChipArena/NativeBlockLit"
                 bool painted=cyber&&(BkIs(look,CY_GLASS)||BkIs(look,CY_HOLO)||BkIs(look,CY_TUBE));
                 if(!top&&!painted)alb*=lerp(1.0-_ArenaToonPaint.y,1.0+0.5*_ArenaToonPaint.y,smoothstep(0.0,18.0,pat.y));
                 if(!painted)alb*=1.0+_ArenaToonPaint.z*(BkFbm(uv*float2(0.22,0.6)+seed*3.0)-0.5);
+                // A floor under near-black paint (a night map's dark vans and booths hold their form), cool like the shade.
+                alb=max(alb,_ArenaToonFloor.x*_ArenaToonShade.rgb/max(max(_ArenaToonShade.r,_ArenaToonShade.g),max(_ArenaToonShade.b,0.0001)));
             }
             // The 2.3 load-bearing band: chevrons between black rules where BkBand fits them, the DANGER tag and the band lamp,
             // each only with its own flag (never on a stub, whose member is gone).
