@@ -1,3 +1,42 @@
+## 2026-10-22 — Claude: BoZo adapter, fists seated on the weapons (merged into shared)
+
+- **Branch/base:** `claude/bozo-holds` from shared `5a905328`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner review:** "The hand placement seems to be incorrect for the weapons, they aren't actually holding them".
+- **Cause:** the game's wrist frame is the voxel fist's and the weapon's.
+  - A gun's raked pistol grip hangs 13–18 cm under the wrist, and a melee grip runs along the blade through it (in game; the lobby uses a hand socket).
+  - A voxel fist is a box over that spot. BoZo's hand started at the wrist with the eased bend, so its closed fingers ended beside every handle.
+  - The earlier renders hid this: they drew grey rods from the wrist, not the weapons.
+- **Changes (presentation only, BoZo adapter only; voxel bodies unchanged):**
+  - **The fist, measured at bind** (`Rig.Fists`): the closed fingers' joint circles give the handle line through the fist (centre, axis toward the thumb, hand forward), from bone positions only.
+  - **Seat** (`Pose(.., in Grasp, ..)`): each held weapon names its handle in the game wrist's frame (`Hold`).
+    - The fist's axis lies along the handle and its centre on the grip point.
+    - The hand turns about the handle for the straightest wrist the handle allows; within 30° of the forearm's line, the game wrist's direction takes over.
+    - The arm reaches by two-bone IK; six damped passes settle the forearm.
+    - A grip out of reach pulls the weapon toward the shoulder.
+  - **Support fists:**
+    - the greatsword's closes on its lower grip;
+    - a gun's closes where the game's own free fist is that frame, along the bore or round the pistol grip. Holding the long guns' handguard pulled them 20 cm into the face.
+  - **Handles from `NativeWeaponModels`:** `Blade` (with `HeldRotation`), `GreatswordSupport`, `ShieldBar` (the shield draws on the right hand), `PistolGrip`, `GunSupport`.
+  - **Weapon frames:** `WeaponFrame` is now the anchor where the arm put the wrist before the seat; `LeftWeaponFrame` is added for daggers. The binding gains the `Grasp` overload.
+  - The old `Pose` form seats nothing and is unchanged.
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 101,956 checks pass, all earlier ones unchanged. New:
+    - the fist measurement;
+    - 1,078 seated fists over every captured clip and the gun gait, each on its grip point with its axis along the handle, within 0.4° of the straightest wrist, fingers carried;
+    - the weapon frame;
+    - no allocation with grasps.
+  - Unity semantic compile (player, runtime, editor) passes.
+  - BoZo rendered in Unity, 46 poses in three views plus hand close-ups, holding the real Standard weapon models at the adapter's weapon frames. Seats off against on:
+    - all 70 fists sit on their handles (0.000 m), where before they floated beside them;
+    - rifle give-way 5.3 cm;
+    - wrist bends median 44°, up to 100° in the greatsword's raised cuts.
+  - Full CoreTests not rerun: only the adapter's binding and its tests use `NativeVisualRig`.
+- **Animation, timing, networking:** none. Weapon aim, hit volumes, shot origins and the wire are unchanged. Only the drawn BoZo hands and arms move, with the drawn weapon at the arm's anchor.
+- **Next:**
+  - Owner review.
+  - Step 4 passes each weapon's `Grasp` and draws weapons at `WeaponFrame` / `LeftWeaponFrame`.
+  - Per-weapon finger tuning (trigger finger) later.
+
 ## 2026-10-22 — Claude: BoZo adapter, arms inside the shoulder line (merged into shared)
 
 - **Branch/base:** `claude/bozo-elbows` from shared `a28b974`. No PR; merged into shared and the builder (standing merge authorization); not published.
