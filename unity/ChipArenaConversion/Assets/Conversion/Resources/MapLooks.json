@@ -259,7 +259,7 @@
       "plinths":1,"copings":1,"chips":0,"posts":1,"specular":0.55,"specularEdge":0.965,"occlusion":0.4,"occlusionHeight":0.22,
       "line":1.0,"lineFadeStart":40,"lineFadeEnd":110,"crease":0.02,"lineColor":2760256,
       "saturation":1.14,"contrast":1.06,"gradeShadow":{"x":0.9,"y":1.02,"z":1.0},"gradeLight":{"x":1.05,"y":0.99,"z":0.93},
-      "skyToon":1,"clouds":0.55,"cloudScale":1.0,"bandWidth":0.12,"cloudLit":16757886,"cloudShade":6192790,"horizonBand":16756848,"skyFog":0.85,
+      "skyToon":1,"clouds":0.55,"cloudScale":1.0,"bandWidth":0.12,"cloudLit":16757886,"cloudShade":6192790,"horizonBand":16756848,"skyFog":1.0,
       "key":{"color":16751712,"intensity":1.05,"elevation":36,"bearing":150,"from":{"x":0,"y":0,"z":0},"shadows":"soft","shadowStrength":0.82},
       "rim":{"color":7128268,"intensity":0.34,"elevation":18,"bearing":330,"from":{"x":0,"y":0,"z":0},"shadows":"none","shadowStrength":1},
       "ambient":{"sky":5810342,"skyScale":0.62,"equator":7244938,"equatorScale":0.36,"ground":3028024,"groundScale":0.4},
