@@ -13,6 +13,9 @@ namespace ChipArena.UnityConversion
     public struct PortraitLook
     {
         public string Spec,Pose,Hat,HatColor;public int Body,Accent;public float Yaw;
+        /// <summary>The card's backdrop tint (0xRRGGBB; the accent unless HasBack), which the anime style's podium rim and gradient
+        /// take (NativeMenuStyle). Like Yaw, a render input outside Same(): a new backdrop colour re-renders the same slot.</summary>
+        public int Back;public bool HasBack;
         /// <summary>The weapon's skin key (Core/NativeWeaponSkins.cs; null or unknown: Standard).</summary>
         public string Skin;
         /// <summary>The body skin key (Core/NativeBodySkins.cs; null or unknown: Standard).</summary>
@@ -39,7 +42,7 @@ namespace ChipArena.UnityConversion
         public const int Layer=30,Slots=12,TextureCap=1280;
         private sealed class Slot
         {
-            public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
+            public int Key=int.MinValue,W,H,Frame=-10,TopPose=-1,Back;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public bool Ready;public RenderTexture Texture;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();
             // Derived once per look (no per-frame strings or colour maths): model ids, the idle clip and the colour tints.
             public string Spec="pistol",Hat="none",WeaponModel,HatModel,HatColor="",IdleClip,BodyModel=NativeBodySkins.PrototypeModel;public Vector4 BodyTint,AccentTint,EdgeTint,FlexTint,HatTint;
@@ -65,6 +68,11 @@ namespace ChipArena.UnityConversion
         private bool failed;private float clock;private int screenW,screenH;
         private static readonly int ColorId=Shader.PropertyToID("_Color"),ModeId=Shader.PropertyToID("_Mode"),MainTexId=Shader.PropertyToID("_MainTex"),MainStId=Shader.PropertyToID("_MainTex_ST"),
             BodyId=Shader.PropertyToID("_BodyTint"),AccentId=Shader.PropertyToID("_AccentTint"),SceneId=Shader.PropertyToID("_SceneTint"),GlowId=Shader.PropertyToID("_GlowTint"),InkId=Shader.PropertyToID("_Ink");
+        // The anime style (Core NativeMenuStyle; docs/MAP-STYLE-ANIME.md section 6): the toon podium (the portrait shader's mode 3)
+        // and the resolve pass's outline and gradient; off under the `--ca-map-style legacy` command line.
+        private static readonly int PortraitToonId=Shader.PropertyToID("_PortraitToon"),PortraitLineId=Shader.PropertyToID("_PortraitLine"),PortraitBackId=Shader.PropertyToID("_PortraitBack");
+        private static readonly bool Toon=NativeMenuStyle.PortraitToon(NativeLighting.LegacyStyle);
+        private static readonly Vector4 LineTint=V4(NativeMenuStyle.PortraitLine,1);
         public bool Reduced;
         // Whether portraits can render here (a graphics device, render textures, the shaders and the source models).
         public bool Supported=>!failed&&presentation!=null&&presentation.PortraitModels!=null&&SystemInfo.graphicsDeviceType!=GraphicsDeviceType.Null&&SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGB32);
@@ -84,7 +92,7 @@ namespace ChipArena.UnityConversion
             foreach(var s in slots){if(s.Key==key){slot=s;break;}if(free==null&&(s.Key==int.MinValue||now-s.Seen>.5f))free=s;}
             if(slot==null){if(free==null)return null;slot=free;Clear(slot);slot.Key=key;slot.Derive(look);}
             else if(!slot.Look.Same(look))slot.Derive(look);
-            slot.W=w;slot.H=h;slot.Aspect=width/height;slot.Yaw=look.Yaw;slot.Frame=Time.frameCount;slot.Seen=now;
+            slot.W=w;slot.H=h;slot.Aspect=width/height;slot.Yaw=look.Yaw;slot.Back=look.HasBack?look.Back:look.Accent;slot.Frame=Time.frameCount;slot.Seen=now;
             if(!slot.Ready||slot.Texture==null)return null;top=slot.Top;return slot.Texture;
         }
         private static void Clear(Slot s){if(s.Texture!=null)RenderTexture.ReleaseTemporary(s.Texture);s.Texture=null;s.Ready=false;s.Key=int.MinValue;s.TopPose=-1;s.Frame=-10;}
@@ -186,7 +194,9 @@ namespace ChipArena.UnityConversion
             for(int b=0;b<22;b++)bones[b]=spin*Matrix4x4.TRS(root+CapturedAnimation.Vec(CapturedRig.Mirror(s.Pose.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(s.Pose.WorldRotation[b])),Vector3.one);
             var rootMatrix=spin*Matrix4x4.Translate(root);view.transform.SetPositionAndRotation(origin+CapturedAnimation.Vec(CapturedRig.Mirror(frame.Position)),turn);
             // Scene: the podium, the chair when sitting, the pilot, its hat or halo, the held weapons.
-            Basic(podium,spin*Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,Vector3.one),NativePortraitRules.PodiumColor,0,opaque);
+            var backTint=V4(NativePortraitRules.Linear(s.Back));
+            if(Toon)Podium(spin*Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,Vector3.one),backTint);
+            else Basic(podium,spin*Matrix4x4.TRS(origin+Vector3.up*NativePortraitRules.PodiumY,Quaternion.identity,Vector3.one),NativePortraitRules.PodiumColor,0,opaque);
             if(pose==NativeLobbyPoses.Chair)foreach(var piece in NativePortraitRules.Chair)Basic(box,spin*Matrix4x4.TRS(origin+CapturedAnimation.Vec(CapturedRig.Mirror(piece.Position)),Quaternion.identity,CapturedAnimation.Vec(piece.Size)),piece.Color,0,opaque);
             var bodyParts=siren?Parts("siren"):Parts(s.BodyModel);if(!siren&&bodyParts.Length==0)bodyParts=Parts(NativeBodySkins.PrototypeModel);
             foreach(var p in bodyParts)
@@ -213,6 +223,16 @@ namespace ChipArena.UnityConversion
                 view.transform.SetPositionAndRotation(origin+CapturedAnimation.Vec(CapturedRig.Mirror(frame.Position)),turn);
                 view.Render();
                 if(s.Texture==null||s.Texture.width!=s.W||s.Texture.height!=s.H){if(s.Texture!=null)RenderTexture.ReleaseTemporary(s.Texture);s.Texture=RenderTexture.GetTemporary(s.W,s.H,0,RenderTextureFormat.ARGB32,RenderTextureReadWrite.Default,1);s.Texture.filterMode=FilterMode.Bilinear;s.Texture.wrapMode=TextureWrapMode.Clamp;}
+                // The anime style's resolve: the line one pixel per 1080 screen lines (the maps' width), the gradient from the
+                // podium's row up to NativeMenuStyle.PortraitGradientRise metres over it, in the backdrop's tint.
+                if(Toon)
+                {
+                    var podiumTop=origin+Vector3.up*(NativePortraitRules.PodiumY+NativePortraitRules.PodiumHeight*.5f);
+                    float row=view.WorldToViewportPoint(podiumTop).y,top=view.WorldToViewportPoint(podiumTop+Vector3.up*NativeMenuStyle.PortraitGradientRise).y;
+                    resolve.SetVector(PortraitToonId,new Vector4(1,Mathf.Max(1,Mathf.Round(Screen.height/1080f)),NativeMenuStyle.PortraitGradient,row));resolve.SetVector(PortraitLineId,LineTint);
+                    resolve.SetVector(PortraitBackId,new Vector4(backTint.x,backTint.y,backTint.z,top));
+                }
+                else resolve.SetVector(PortraitToonId,Vector4.zero);
                 Graphics.Blit(target,s.Texture,resolve);s.Ready=true;
             }
             finally{view.targetTexture=null;RenderTexture.ReleaseTemporary(target);}
@@ -230,6 +250,12 @@ namespace ChipArena.UnityConversion
         {
             block.Clear();block.SetVector(ColorId,Linear(hex,alpha));block.SetFloat(ModeId,mode);block.SetTexture(MainTexId,Texture2D.whiteTexture);block.SetVector(MainStId,new Vector4(1,1,0,0));
             block.SetVector(BodyId,Vector4.one);block.SetVector(AccentId,Vector4.one);block.SetVector(SceneId,Vector4.one);block.SetVector(GlowId,Vector4.one);block.SetFloat(InkId,0);Draw(mesh,m,material);
+        }
+        // The anime style's podium (the portrait shader's mode 3: flat display tones, its rim in the backdrop's tint).
+        private void Podium(Matrix4x4 m,Vector4 tint)
+        {
+            block.Clear();block.SetVector(ColorId,Linear(NativePortraitRules.PodiumColor));block.SetFloat(ModeId,3);block.SetTexture(MainTexId,Texture2D.whiteTexture);block.SetVector(MainStId,new Vector4(1,1,0,0));
+            block.SetVector(BodyId,Vector4.one);block.SetVector(AccentId,tint);block.SetVector(SceneId,Vector4.one);block.SetVector(GlowId,Vector4.one);block.SetFloat(InkId,0);Draw(podium,m,opaque);
         }
         private void Model(in Part p,Matrix4x4 m,Vector4 body,Vector4 accent,Vector4 scene,Vector4 glow)
         {

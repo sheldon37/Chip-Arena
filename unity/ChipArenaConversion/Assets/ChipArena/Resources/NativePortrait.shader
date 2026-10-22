@@ -5,6 +5,10 @@
 // their tag (emission.w: 1 body, 2 accent) and emission like ChipArena/SourceLit; unlit MeshBasic parts (emission equal
 // to the colour) show their colour. _Mode 1 is MeshBasic (tone mapped), 2 MeshBasic without tone mapping (the halo).
 // _UseAlpha: 0 opaque (alpha 1), 1 the part's opacity, 2 additive glow (premultiplied, see frag).
+// _Mode 3 is the anime style's podium (NativePortraits while the style is on; Core NativeMenuStyle, docs/MAP-STYLE-ANIME.md
+// section 6): flat display tones, not tone mapped: a painted top (the cap, by its height: the frustum's side leans 39 degrees)
+// lit in two bands on the key, a crisp lit band round its rim in the backdrop's tint (_AccentTint), the side in shade over a
+// darker foot band. The pilot's own shading is unchanged.
 Shader "Hidden/ChipArena/Portrait" {
  Properties {
   _MainTex("Texture",2D)="white"{} _Color("Colour (linear)",Vector)=(1,1,1,1)
@@ -27,11 +31,29 @@ Shader "Hidden/ChipArena/Portrait" {
    float4 _Color,_BodyTint,_AccentTint,_SceneTint,_GlowTint,_HemiSky,_HemiGround,_KeyDir,_KeyColor,_RimDir,_RimColor;
    float _Ink,_Mode,_UseAlpha,_DoubleSide,_Exposure;
    struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;float4 color:COLOR;float2 uv:TEXCOORD0;float4 emission:TEXCOORD1;};
-   struct v2f {float4 pos:SV_POSITION;float4 color:COLOR;float2 uv:TEXCOORD0;float4 emission:TEXCOORD1;float3 normal:TEXCOORD2;float3 world:TEXCOORD3;};
+   struct v2f {float4 pos:SV_POSITION;float4 color:COLOR;float2 uv:TEXCOORD0;float4 emission:TEXCOORD1;float3 normal:TEXCOORD2;float3 world:TEXCOORD3;float3 obj:TEXCOORD4;};
    v2f vert(appdata v)
    {
     v2f o;o.pos=UnityObjectToClipPos(v.vertex);o.color=v.color*_Color;o.uv=TRANSFORM_TEX(v.uv,_MainTex);o.emission=v.emission;
-    o.normal=UnityObjectToWorldNormal(v.normal);o.world=mul(unity_ObjectToWorld,v.vertex).xyz;return o;
+    o.normal=UnityObjectToWorldNormal(v.normal);o.world=mul(unity_ObjectToWorld,v.vertex).xyz;o.obj=v.vertex.xyz;return o;
+   }
+   // The anime podium's tones (display colours; Core NativeMenuStyle mirrors them): the top lit and in shade, the side, its
+   // foot, the key's band edge on N.L, the rim band's inner edge (a share of the top's radius), its lift toward white and level.
+   #define PODIUM_TOP_LIT float3(0.062,0.074,0.15)
+   #define PODIUM_TOP_SHADE float3(0.04,0.048,0.105)
+   #define PODIUM_SIDE float3(0.026,0.03,0.066)
+   #define PODIUM_FOOT float3(0.012,0.014,0.032)
+   #define PODIUM_EDGE 0.22
+   #define PODIUM_RIM 0.955
+   #define PODIUM_RIM_WHITE 0.15
+   #define PODIUM_RIM_LEVEL 0.85
+   float3 ToonPodium(float3 obj,float3 n)
+   {
+    float top=step(0.03,obj.y);float lit=smoothstep(PODIUM_EDGE-0.03,PODIUM_EDGE+0.03,saturate(dot(n,_KeyDir.xyz)));
+    float r=length(obj.xz)/0.96;float rim=smoothstep(PODIUM_RIM-0.006,PODIUM_RIM+0.006,r)*top;
+    float3 face=lerp(PODIUM_TOP_SHADE,PODIUM_TOP_LIT,lit)*lerp(1.06,0.94,smoothstep(0.0,PODIUM_RIM,r));
+    float3 side=lerp(PODIUM_FOOT,PODIUM_SIDE,step(0.0,obj.y));
+    return lerp(lerp(side,face,top),lerp(_AccentTint.rgb,float3(1.0,1.0,1.0),PODIUM_RIM_WHITE)*PODIUM_RIM_LEVEL,rim);
    }
    // three r180 ACESFilmicToneMapping (exposure / 0.6, the RRT/ODT fit, clamp).
    float3 RRTAndODTFit(float3 v){float3 a=v*(v+0.0245786)-0.000090537;float3 b=v*(0.983729*v+0.4329510)+0.238081;return a/b;}
@@ -55,7 +77,8 @@ Shader "Hidden/ChipArena/Portrait" {
     // emission is switched off (the portrait mannequin), which would otherwise turn black.
     bool basic=_Mode>.5||(dot(_GlowTint.rgb,float3(1,1,1))>0&&dot(i.emission.rgb,float3(1,1,1))>0&&all(abs(i.emission.rgb-i.color.rgb)<.002));
     float3 color;
-    if(basic)color=_Mode>.5?albedo:emission;
+    if(_Mode>2.5)color=ToonPodium(i.obj,normalize(i.normal));
+    else if(basic)color=_Mode>.5?albedo:emission;
     else
     {
      // Toward the camera: the view matrix's third row (orthographic: one direction for the whole portrait). Double-sided

@@ -21,6 +21,10 @@ namespace ChipArena.UnityConversion
     ///  - the flying cars: one dynamic mesh rebuilt each frame from the lanes (periods dividing the 48 s loop);
     ///  - the sprinkle: static sprite meshes the shader animates (mist, glows, steam, motes, rain) and one small dynamic
     ///    layer for car lights and trails, the faulty sign's sparks, the duel's tracers and deflection sparks, the beacon blink.
+    /// The anime style (docs/MAP-STYLE-ANIME.md section 6; Core NativeMenuStyle): the rooftop's own toon values, which
+    /// NativeLighting.Rooftop writes (the pilots' ramp, the outline and the grade), its sky material's cumulus (set once here)
+    /// and its haze's depth planes (_RoofToonFog, each frame with the scene's other globals); the shaders draw it while
+    /// _ArenaToon.x is on and their legacy look under `--ca-map-style legacy`.
     /// </summary>
     public sealed class NativeRooftopScene:IDisposable
     {
@@ -37,6 +41,8 @@ namespace ChipArena.UnityConversion
         private static readonly Bounds Everywhere=new Bounds(Vector3.zero,Vector3.one*8000);
         private static readonly int TimeId=Shader.PropertyToID("_RoofTime"),SignPosId=Shader.PropertyToID("_RoofSignPos"),SignColorId=Shader.PropertyToID("_RoofSignColor"),CyanPosId=Shader.PropertyToID("_RoofCyanPos");
         private static readonly int MainTexId=Shader.PropertyToID("_MainTex"),GainId=Shader.PropertyToID("_Gain"),UvRectId=Shader.PropertyToID("_UvRect"),CalmId=Shader.PropertyToID("_Calm");
+        private static readonly int RoofToonFogId=Shader.PropertyToID("_RoofToonFog"),RoofSkyToonId=Shader.PropertyToID("_RoofSkyToon"),RoofSkyLitId=Shader.PropertyToID("_RoofSkyLit"),RoofSkyShadeId=Shader.PropertyToID("_RoofSkyShade");
+        private static readonly Vector4 roofToonFog=V4(NativeMenuStyle.RoofFog);
         private static readonly string[] ShaderNames={"NativeRooftop","NativeRooftopSky","NativeRooftopScreen","NativeRooftopSprite"};
         private static int supported=-1;
         /// <summary>Whether the four rooftop shaders load and run on this device (asked once); otherwise the menu keeps the map orbit.</summary>
@@ -55,6 +61,9 @@ namespace ChipArena.UnityConversion
         {
             Quality=quality;World=NativeRooftopCity.Build(quality);
             worldMaterial=Make(ShaderNames[0]);skyMaterial=Make(ShaderNames[1]);screenMaterial=Make(ShaderNames[2]);
+            // The anime sky's cumulus (NativeMenuStyle.Rooftop's sky values, linear; the shader reads them only while the style is on).
+            var style=new MapStyleState();NativeMapStyle.State(NativeMenuStyle.Rooftop,false,true,style);NativeMenuStyle.RooftopSky(style,out var skyToon,out var skyLit,out var skyShade);
+            skyMaterial.SetVector(RoofSkyToonId,V4(skyToon));skyMaterial.SetVector(RoofSkyLitId,Lin(V4(skyLit)));skyMaterial.SetVector(RoofSkyShadeId,Lin(V4(skyShade)));
             for(int i=0;i<layers.Length;i++){var m=Make(ShaderNames[3]);bool additive=i!=0&&i!=2;m.SetFloat("_SrcBlend",(float)(additive?BlendMode.One:BlendMode.SrcAlpha));m.SetFloat("_DstBlend",(float)(additive?BlendMode.One:BlendMode.OneMinusSrcAlpha));m.SetFloat("_Additive",additive?1:0);m.renderQueue=3000+i;layers[i]=m;}
             worldMesh=WorldMesh(World.Quads);quad=Quad();
             // Back to front: mist, glows, steam, motes, rain (the dynamic layer draws last).
@@ -72,6 +81,8 @@ namespace ChipArena.UnityConversion
             }
         }
         private static Material Make(string shader)=>new Material(Resources.Load<Shader>(shader)){hideFlags=HideFlags.HideAndDontSave};
+        // A linear colour vector for the active colour space (the style's values are linear; a gamma project's shaders read gamma), w kept.
+        private static Vector4 Lin(Vector4 v){if(QualitySettings.activeColorSpace==ColorSpace.Linear)return v;var c=new Color(v.x,v.y,v.z).gamma;return new Vector4(c.r,c.g,c.b,v.w);}
         // Static quads: corners A B C D (counter-clockwise about the normal in the source frame) take the face coordinates
         // (u0,v0) (u1,v0) (u1,v1) (u0,v1); mirrored, each is wound A C B, A D C.
         private static Mesh WorldMesh(List<RooftopQuad> quads)
@@ -124,7 +135,7 @@ namespace ChipArena.UnityConversion
             NativeRooftopCity.Camera(time,out var eye,out var forward,reduced?.5f:1);
             camera.transform.SetPositionAndRotation(U(eye),Quaternion.LookRotation(U(forward),Vector3.up));camera.fieldOfView=NativeRooftopCity.FovDegrees;camera.nearClipPlane=.5f;
             NativeLighting.Rooftop(camera,skyMaterial);
-            Shader.SetGlobalFloat(TimeId,time);var sign=U(World.SignLight);var cyan=U(World.CyanLight);Shader.SetGlobalVector(SignPosId,new Vector4(sign.x,sign.y,sign.z,1));Shader.SetGlobalVector(SignColorId,new Vector4(2.4f,.25f,1.9f,1));Shader.SetGlobalVector(CyanPosId,new Vector4(cyan.x,cyan.y,cyan.z,1));
+            Shader.SetGlobalFloat(TimeId,time);Shader.SetGlobalVector(RoofToonFogId,roofToonFog);var sign=U(World.SignLight);var cyan=U(World.CyanLight);Shader.SetGlobalVector(SignPosId,new Vector4(sign.x,sign.y,sign.z,1));Shader.SetGlobalVector(SignColorId,new Vector4(2.4f,.25f,1.9f,1));Shader.SetGlobalVector(CyanPosId,new Vector4(cyan.x,cyan.y,cyan.z,1));
             Graphics.DrawMesh(worldMesh,Matrix4x4.identity,worldMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
             for(int i=0;i<screens.Length;i++)
             {

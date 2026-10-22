@@ -88,6 +88,43 @@
   - Uncapped triangles (up to about 26 k per pilot, about 210 k for 8) against the Phase C frame-time criteria; the benchmark decides whether LODs are needed.
 - **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: confirm the default outfit's BoZo base pieces from the renders, the DEV-only pieces), then step 3 (rig adapter).
 
+## 2026-10-22 — Claude: anime style on the menus and 3D backdrops, stage 2 (merged into shared)
+
+- **Branch/base:** `claude/anime-menu-backdrops`, from shared `claude/sleepy-ritchie-g8ruhv` at `c4c4672` (stage 1 merged). Code `d59c24c`, tuning and docs in the following commit. Merged into shared `claude/sleepy-ritchie-g8ruhv` and the builder on 2026-10-22 after the owner reviewed the sheets and approved the merge with the draft back-wall fix ("Yes"); no PR, not published.
+- **Owner request:** stage 2 of `docs/MAP-STYLE-ANIME.md` section 6 for the main menu and the 3D backdrops, with the cool saturated shade palette everywhere ("keep it cool"). Details and values: that section, "Main menu and 3D backdrops".
+- **Presentation only, behind the same switch.** `--ca-map-style legacy` draws all of it in the legacy look. Offline, the after tree with the switch off renders pixel-identical to the base (max diff 0) for the rooftop, the draft and the portraits. No authority, layout, MapLooks or wire data changed. The parallel agent's files (`NativeToon.cginc`, `NativeMapStyle.cs`, `MapLooks.json`, block shaders) are untouched; the shared logic is in new files, Core `NativeMenuStyle.cs` (values and the CPU copy of every new formula) and `Resources/NativeRooftopToon.cginc`.
+- **Main menu (Pilot's Rooftop):** its own look (`NativeMenuStyle.Rooftop`, toon block only). The toon sky, haze and fog are behind `_ArenaToon` in `NativeRooftopCommon`. Painted two-tone facades, windows in runs, flattened props and crisp puddles are in `NativeRooftop.shader` (`RoofToonSurface`), with a depth-only shadow caster pass so the outline sees the city. The cumulus night sky is in `NativeRooftopSky`, and the screens and sprites get crisp edges. The outline runs on the menu camera, fading out from 60 to 320 m. Animation, camera loop, cast and UI are untouched.
+- **Chip selection draft:** `_BackToon` (set once by `NativeDraftBackdropPresentation`) gives flat-toned panels, cel bands on the ray-cast light and fog, and ink from the corridor's distance field (back wall removed after review; see the fix line below). The text-safe bands and the cap still apply after these. The PvE chip-select hologram (`NativeChipSelect.shader`) is unchanged.
+- **Portraits** (cards, lobby, Locker, Expeditions party strip): a toon podium (`NativePortrait.shader` mode 3). The resolve (`_PortraitToon`) draws the maps' line from coverage alpha, then a banded backdrop gradient under the pilot. The backdrop colour picker still works: `PortraitLook.Back` (the picked colour, the accent on Auto; outside `Same()`) tints the rim and the gradient.
+- **2D:** colour only. The transition shutters, the loading screen and its reduced cover, and the Expeditions veil and two card bodies use `NativeCyberTheme.Night` (#0E1430) and `Dusk` (#1C2654); they go back to Void and Navy under the legacy switch.
+- **Entrance stages:** ACES against a toon tone rendered for hero-landing, grid-rez, orbital-drop and overclock. The toon tone is not clearly better on the voxel bodies, so nothing is implemented. Recommendation: keep ACES, and revisit with BoZo.
+- **Voxel pilots:** `NativeBodyModels` and SourceLit are unchanged. On the rooftop the pilots now take the ArenaToon ramp because `_ArenaToon` is on there, as on the anime maps.
+- **For Astra and the `claude/anime-map-style-2` agent:**
+  - In `NativeLighting.Rooftop`, the one change is that `StyleOff()` is now `if(NativeMenuStyle.RooftopOn(LegacyStyle))StyleGlobals(NativeMenuStyle.Rooftop);else StyleOff();`, plus its doc comment.
+  - `MapStyleChecks` re-pins that body (the Runtime check) and corrects its PASS line. Keep both sides on a merge.
+  - No rule, authority record or wire field changed.
+- **Performance:**
+  - Draw counts unchanged. While the style is on, the rooftop gains the outline's full-screen pass and the camera depth texture, which means a depth pre-pass of the opaque city, about 90 k triangles plus the pilots.
+  - The draft costs a few extra ALU per pixel; the portrait resolve takes 8 extra taps per portrait.
+  - On the low tier: no outline and no grade.
+  - Nothing is allocated per frame (checked). GPU time not measured.
+- **Checks (actual):**
+  - `MenuStyleChecks` (`--menu-style`, also in the full run): 1,651 checks (switch, rooftop, draft, portraits, maths against the Core, runtime hooks, zero allocation). `--map-style` 3,048.
+  - glslang HLSL front end on the final tree: NativeRooftop (both passes), NativeRooftopSky, NativeRooftopScreen, NativeRooftopSprite, NativeDraftBackdrop, NativePortrait and NativePortraitResolve all compile.
+  - run5b on `d59c24c`: rc1–rc5 all 0 (Unity runtime+editor compile OK; relay suite 833 PASS, 0 FAIL; Python 140 OK, 1 skipped; source package 2,634 files; diff check clean). run5b on `1eec246` (the final code and docs; after a container restart cut off the first try): rc1–rc5 all 0, the same counts (833 PASS, 0 FAIL; 140 OK, 1 skipped; 2,634 files).
+- **Renders (scratch, not committed):** before/after sheets at 1280×720 for the rooftop (also 3440×1440), draft (pvp, ward, siren, amber, low tier, legacy), portraits, transitions, and the entrance tone comparison. They go through each tree's own shaders in WebGL with stand-in pilots, a CPU bloom/grade stand-in and no MSAA.
+- **Not run:** Unity Editor import or play, FXC, a Windows build, GPU timing, MSAA, two clients.
+- **Animation, timing, networking:** none. No hit timing, hitbox, damage, cooldown, movement or wire change.
+- **Risks:**
+  - Unity never drew the rooftop city into the depth texture through the new caster pass.
+  - Stencil and depth at BeforeForwardAlpha under MSAA (as on the maps).
+  - The portrait gradient row against the resolve uv on D3D.
+  - The pilots' ramp under the rooftop's magenta key.
+  - The far window field is still busy.
+  - The draft loses some of its glowing depth.
+- **Draft fix after owner review (2026-10-22):** the painted back wall read as a lit rectangle behind the pilot's head, so it is gone. The flat panels now fade to the legacy navy by eye height (so the text-safe band's cap cuts no shape), the bands ease into smooth gradients down the corridor, and the far end is the legacy haze. Checks: unity-check, `--menu-style`, `--map-style`, Python tests, diff check, HLSL front end; legacy path still pixel-identical. Full run5b left to the merge into shared.
+- **Next:** the entrance tone with the BoZo characters; Unity Editor check of the rooftop depth pass and outline on the owner's PC.
+
 ## 2026-10-21 — Claude: anime map style, stage 1 (foundation and two pilots; merged into shared)
 
 - **Branch/base:** `claude/anime-map-style`, from shared Unity head `claude/sleepy-ritchie-g8ruhv` at `e0f904c`. Merged into shared `claude/sleepy-ritchie-g8ruhv` and the builder on 2026-10-22 after the owner reviewed the renders ("keep it cool, merge it and start phase 2"); not published (no PR by request).

@@ -10,7 +10,9 @@ palette and cool ground stay the style for every map; stage 1 is merged into sha
 
 Stage 1 (Claude, `claude/anime-map-style`): this document's audit and rules, the shared style foundation, and two pilot
 maps, the Expedition city hub and Brickfall. Stage 2 (other agents): the remaining maps and the menu backdrops on the same
-foundation (section 6).
+foundation (section 6). Stage 2 for the menus and 3D backdrops (Claude, `claude/anime-menu-backdrops`, merged into
+shared 2026-10-22): the rooftop, the draft corridor, the portraits and the 2D covers' palette (section 6, "Main menu and 3D
+backdrops").
 
 Presentation only. No collision, navigation, spawn, block layout, authority or resource data the game logic reads changes:
 `UnityMaps.json` and `ExpeditionLayout.json` are byte for byte the base's (`ExpeditionCityChecks` pins both), and only the
@@ -297,31 +299,75 @@ Shared work for every map:
 
 ### Main menu and 3D backdrops
 
-The voxel pilot figures in these scenes become BoZo characters later. They are listed in the last item.
+Stage 2 for the menus (Claude, `claude/anime-menu-backdrops`, merged into shared 2026-10-22). Presentation only, behind the
+same switch: `--ca-map-style legacy` draws every piece below in its legacy look exactly (offline, the after tree with
+the switch off renders pixel-identical to the base). Core `NativeMenuStyle.cs` holds every value and the CPU copy of
+every new formula; `Tests/MenuStyleChecks.cs` (`--menu-style`, in the full run) holds the shaders to it. The voxel pilot
+figures in these scenes stay as they are (NativeBodyModels, SourceLit): they become BoZo characters later (the last
+item).
 
-- **Main menu, the Pilot's Rooftop ("Pilot's Overlook").** `Runtime/NativeRooftopPresentation.cs`; `NativeRooftop`,
-  `NativeRooftopSky`, `NativeRooftopScreen` and `NativeRooftopSprite` shaders. It is already a dark blue cyber city.
-  - `NativeRooftop.shader` now includes the toon switch: its spill lights step under it and it marks the outline stencil.
-    `NativeLighting.Rooftop` keeps the style off, so it draws exactly as before.
-  - Stage 2: give the rooftop its own toon values (written by its presentation), add the cumulus sky to
-    `NativeRooftopSky`, and attach the outline to the menu camera.
-  - Its seated pilot and runners (`NativeRooftopActors`) are voxel bodies through SourceLit.
-- **Chip selection, the draft backdrop.** `Runtime/NativeDraftBackdropPresentation.cs` and `NativeDraftBackdrop.shader`, a
-  ray-cast cyber corridor.
-  - Stage 2: flat-toned panels, cel bands on its ray-cast lighting, a painted gradient back wall, and lines from its own
-    distance field.
-  - The draft's pilot and held chip (NativeDraftPresentation) are voxel.
-- **PvE chip select in the arena.** `NativeChipSelect.shader` hologram. Keep it as hardlight. It already reads as an
-  effect.
-- **Lobby and pilot-card portraits, the Locker turntable, the Expeditions screen's party strip.**
-  `Runtime/NativePortraits.cs`, `NativePortrait.shader` and `NativePortraitResolve.shader`.
-  - Stage 2: a toon podium and backdrop gradient in the portrait shader, and a matching outline in its resolve pass
-    (portraits render to their own target, so they need their own pass).
-  - The voxel pilot in each portrait is the BoZo swap's.
-- **Expeditions screen and stage loading.** The screen is 2D apart from the portraits. The loading screens and transitions
-  are 2D IMGUI shutters (`NativeScreenTransitionHud`). They only need colour harmonisation with the new palette.
-- **Entrance stages** (SceneMotion intros, `_StageLit` SourceLit). The style is off on stages. Stage 2 decides whether
-  intros take a toon tone instead of ACES.
+- **Main menu, the Pilot's Rooftop ("Pilot's Overlook").** A dark blue anime cyber city at night with neon accents.
+  - Its own toon values (`NativeMenuStyle.Rooftop`, a look with only a `toon` block): `NativeLighting.Rooftop` writes
+    them through `StyleGlobals` each frame it shows, as `Apply` writes a map's, instead of `StyleOff`. So the seated
+    pilot and the crowd take the ramp as pilots do on the anime maps (the night's magenta key through the ramp, its cyan
+    rim in stairs), the grade is the menu's (saturation 1.12, contrast 1.05) and `NativeToonOutline` (already on
+    `cameraView`, the menu camera) draws its pass from 60 to 320 m. The look overrides no light, ambient, sky or fog:
+    the rooftop's night stays its own.
+  - `Resources/NativeRooftopToon.cginc` (new, included by `NativeRooftopCommon`): `RoofSkyBase`, `RoofHaze` and
+    `RoofFog` branch to it while `_ArenaToon.x` is on. A painted night gradient (zenith #070C24 to a blue horizon) with
+    a crisp band of city glow swinging magenta to cyan round the horizon; the haze in four soft depth planes
+    (`_RoofToonFog`); the street's violet glow low down.
+  - `NativeRooftop.shader` (`RoofToonSurface`, modes 0, 1 and 4): towers in two flat tones of the cool shade (faces
+    turned to a cool key and the rest) and a third on roofs, a painted glow up from the street; windows lit in runs of
+    six along whole floors with two brightness levels (painted strips, not per-window noise; far, the bay average as
+    before; the tower seed is rounded so an interpolated constant cannot speckle a window); props lifted out of
+    near-black and compressed into a few flat values under two ambient bands, the spill in the style's stairs, a crisp
+    wet sheen; puddles a crisp mirror band of the toon sky with crisp rings. Neon, cars and the screens' ads keep their
+    light. A second, depth-only shadow caster pass puts the city into the camera depth texture the outline reads
+    (nothing casts a shadow: no light on the rooftop does).
+  - `NativeRooftopSky.shader`: crisp stars and three cumulus layers lit from below by the city (violet undersides, navy
+    tops, a bright underside rim), drifting slowly, in place of the fbm deck; the two searchlights sweep in both looks.
+    Values from the look's sky fields, set once on the rooftop's sky material by `NativeRooftopScene`.
+  - `NativeRooftopScreen`: flatter scanlines and a crisp edge (the roll and glitch kept). `NativeRooftopSprite`: the
+    mist and steam take crisp, flat-toned edges; every motion kept. The animation, the camera loop, the cast and the UI
+    are untouched.
+  - The low tier: no outline, no bloom and so no grade (as on the maps); the rest of the style draws.
+- **Chip selection, the draft backdrop.** `NativeDraftBackdrop.shader`, behind its own switch `_BackToon` (set once with
+  the material by `NativeDraftBackdropPresentation` from `NativeMenuStyle.DraftToon`):
+  - flat-toned panels (two tones stepping with height, a third on the floor) lit by the far glow in cel bands down the
+    corridor, in a soft vertical gradient: lit low, easing into the legacy navy by eye height (0.7 to 1.5 m), so the
+    text-safe band's brightness cap never cuts a shape out of them;
+  - the light's bands and the haze's soft bands ease into smooth gradients down the corridor (from fog 0.3 to 0.6, about
+    11 to 29 m), so no contour closes behind the pilot's head; the far end is the legacy haze; the pilot's glow in soft
+    bands;
+  - no back wall: a painted wall 52 m behind the pilot read as a lit rectangle behind the head (owner review, 2026-10-22)
+    and was removed;
+  - ink from the corridor's own distance field: the floor-wall crease (by the hit distances and their screen derivatives)
+    and the panel seams and ribs, which turn from cyan light to ink;
+  - every neon element (trims, rails, packets, gates, glyph streams, motes) keeps its light; the text-safe bands and the
+    brightness cap apply after the toon terms, as before.
+- **PvE chip select in the arena.** `NativeChipSelect.shader` hologram: unchanged (it reads as an effect).
+- **Lobby and pilot-card portraits, the Locker turntable, the Expeditions screen's party strip.** `NativePortraits.cs`:
+  - a toon podium (`NativePortrait.shader` mode 3, display tones, not tone mapped): a dark navy top in two bands on the
+    key, a crisp rim band in the backdrop's tint, the side over a darker foot;
+  - the resolve pass (`NativePortraitResolve.shader`, `_PortraitToon`) draws the maps' line (#2A1E40, one pixel per 1080
+    screen lines) from the portrait's own coverage, then composites a translucent, banded gradient under the pilot from
+    the podium's row up 1.1 m, the cool shade #2A3460 taking the backdrop's tint toward its foot;
+  - the backdrop colour picker keeps working: the card still draws the picked backdrop under the portrait, and its tint
+    (`PortraitLook.Back`, a render input outside `Same()`, the accent on Auto) colours the podium's rim and the
+    gradient.
+- **Expeditions screen, loading screens and transitions.** Colour harmonisation only: the full-screen covers take the
+  night navy #0E1430 and the dusk #1C2654 (`NativeCyberTheme.Night`, `Dusk`) instead of the void #05070F and navy
+  #0A1024: the transition shutters' body and wash (and so the loading screen's base), the reduced loading cover, the
+  Expeditions screen's veil and two card bodies. Cyan edges, magenta ticks and text unchanged; Void and Navy again under
+  the legacy switch.
+- **Entrance stages** (SceneMotion intros, `_StageLit` SourceLit). Rendered offline: hero-landing, grid-rez,
+  orbital-drop and overclock, ACES (today's StageTone) against a candidate toon tone (the same exposure, a hue-keeping
+  shoulder, luminance in three soft stairs, the cool shade tint low down). The candidate keeps the accents and a
+  coloured key more saturated, but on the voxel bodies the stairs barely read (their faces are already flat) and nothing
+  is clearly better; the tone lives in SourceLit, which stage 2 leaves alone. Recommendation: keep ACES on the voxel
+  bodies; revisit with the BoZo characters, whose own material sets their tone (a hue-keeping tone suits them), behind a
+  switch then.
 - **Where the voxel pilots are:**
   - the rooftop crowd and seated pilot;
   - portraits (cards, Locker, lobby, Expeditions party strip);
@@ -332,7 +378,13 @@ The voxel pilot figures in these scenes become BoZo characters later. They are l
   - all arena pilots.
 
   All of them go through `NativeBodyModels` and SourceLit, so the BoZo swap replaces them in one place
-  (docs/CHARACTER-LOWPOLY.md).
+  (docs/CHARACTER-LOWPOLY.md). On the rooftop they take the style's ramp (as on the anime maps); in the portraits and
+  the draft their shading is unchanged.
+- **Menu risks (Unity untested):** the rooftop city in the camera depth texture through its new shadow caster pass
+  (Unity draws the depth texture with that pass; the renderer's cast-shadows flag is Off); the stencil and depth texture
+  at BeforeForwardAlpha under MSAA, as on the maps; the portrait gradient's row against the resolve's uv on D3D (both
+  are bottom-up for a render texture); the pilots' ramp under the rooftop's magenta key; FXC on the new branches (the
+  HLSL front end compiles every changed shader).
 
 ### Character outlines with BoZo
 

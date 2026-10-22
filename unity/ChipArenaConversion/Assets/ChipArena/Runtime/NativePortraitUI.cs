@@ -68,7 +68,9 @@ namespace ChipArena.UnityConversion
         // it. The emblem until ready. `backColor` (0xRRGGBB, -1 Auto: the accent) tints the backdrop (NativeHatLooks.Back).
         private void PortraitStage(Rect stage,int key,in PortraitLook look,string back,int backColor,Color accent,Color body,string icon,Color tone,float e,float t,float phase,Vector2 emblemCentre,float emblemRing,int ticks,bool clipped)
         {
-            var texture=Portrait(key,look,stage,out float top);if(texture==null){PilotEmblem(emblemCentre,emblemRing,accent,body,icon,tone,e,t,phase,ticks);return;}
+            // The backdrop's tint also colours the anime style's podium rim and gradient (NativePortraits).
+            var lit=look;lit.Back=backColor<0?HexOf(accent):backColor;lit.HasBack=true;
+            var texture=Portrait(key,lit,stage,out float top);if(texture==null){PilotEmblem(emblemCentre,emblemRing,accent,body,icon,tone,e,t,phase,ticks);return;}
             if(Event.current.type!=EventType.Repaint)return;
             int pose=NativeLobbyPoses.Effective(look.Spec,look.Pose);bool sleep=pose==NativeLobbyPoses.Sleep;var frame=NativePortraitRules.Frame(pose,stage.width/stage.height,top);
             // The ring's centre and radius in the stage: a world height and radius through the orthographic framing.

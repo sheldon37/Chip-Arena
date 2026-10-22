@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             if(Event.current.type!=EventType.Repaint||!load.Visible)return;bool reduced=load.Reduced;
             // ---- the base: shutters (or the reduced fade) ----
             float a=ContentAlpha(load);
-            if(reduced)U.Fill(new Rect(0,0,W,Hh),C.Void(load.Coverage));
+            if(reduced)U.Fill(new Rect(0,0,W,Hh),C.Night(load.Coverage));
             else
             {
                 bool revealing=load.Phase==StageLoadPhase.Reveal;float phase=load.Phase==StageLoadPhase.Cover?load.CoverProgress:revealing?Mathf.Clamp01((load.RevealProgress-ContentOut)/(1-ContentOut)):1;

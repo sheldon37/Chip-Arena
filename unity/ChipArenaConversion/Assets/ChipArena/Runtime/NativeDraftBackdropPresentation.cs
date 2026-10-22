@@ -13,7 +13,9 @@ namespace ChipArena.UnityConversion
         // material (no allocation), then draws the quad for the draft camera alone, first in the frame (Background queue, no
         // depth write), so the pilot, the held chip and the plant pulse draw over it. Nothing here touches the fog, the lights,
         // the ambient or the shadows: NativeLighting.Draft keeps owning (and EndIntro restoring) the stage's lighting state.
-        // Without the shader (or on a device that cannot run it) the draft keeps its plain dark clear colour.
+        // Without the shader (or on a device that cannot run it) the draft keeps its plain dark clear colour. The anime style
+        // (Core NativeMenuStyle.DraftToon, docs/MAP-STYLE-ANIME.md section 6) is a switch set once on the material: on unless
+        // the `--ca-map-style legacy` command line asks for the legacy look.
         /// <summary>Set by ConversionGame.DraftFrame before RenderDraft: the heading's bottom row (a fraction of the screen
         /// height; NativeDraftScreen.DraftHeader), whether this is the PvE / Siren personal pick and whether it is the rainbow pick.</summary>
         public float DraftHeadLine=-1;public bool DraftWard,DraftPrism;
@@ -22,6 +24,7 @@ namespace ChipArena.UnityConversion
         private static readonly int BackCamId=Shader.PropertyToID("_BackCam"),BackClockId=Shader.PropertyToID("_BackClock"),BackFwdId=Shader.PropertyToID("_BackFwd"),BackUpId=Shader.PropertyToID("_BackUp"),BackRightId=Shader.PropertyToID("_BackRight");
         private static readonly int BackAccentId=Shader.PropertyToID("_BackAccent"),BackFrameId=Shader.PropertyToID("_BackFrame"),BackCounterId=Shader.PropertyToID("_BackCounter"),BackDeepId=Shader.PropertyToID("_BackDeep"),BackVoidId=Shader.PropertyToID("_BackVoid");
         private static readonly int BackPulseId=Shader.PropertyToID("_BackPulse"),BackStyleId=Shader.PropertyToID("_BackStyle"),BackFxId=Shader.PropertyToID("_BackFx"),BackSafeId=Shader.PropertyToID("_BackSafe"),BackCapId=Shader.PropertyToID("_BackCap"),BackGlowId=Shader.PropertyToID("_BackGlow");
+        private static readonly int BackToonId=Shader.PropertyToID("_BackToon");
         private const string BackLowKeyword="DRAFT_BACKDROP_LOW";
         // The backdrop for this draft frame: `tint` the stage tint (sRGB), `age` the smoothed pick age, `pulse` the plant pulse
         // (-1 outside it and with Reduced effects), `trayLine` the tray's top row (negative before the layout), `dt` the stage's step.
@@ -33,6 +36,7 @@ namespace ChipArena.UnityConversion
                 var shader=Resources.Load<Shader>("NativeDraftBackdrop");
                 if(shader==null||!shader.isSupported){draftBackFailed=true;Debug.LogWarning("The chip draft's backdrop needs shader NativeDraftBackdrop; the draft keeps its plain backdrop.");return;}
                 draftBackMaterial=new Material(shader){name="Native draft backdrop",hideFlags=HideFlags.HideAndDontSave};materials.Add(draftBackMaterial);draftBackLow=!LowGraphics;
+                draftBackMaterial.SetVector(BackToonId,BackV(NativeMenuStyle.DraftToon(NativeLighting.LegacyStyle)));
             }
             if(draftBackQuad==null)draftBackQuad=BackdropQuad();
             // The low graphics tier's cheaper pass (no motes or streams), switched only when the tier changes.

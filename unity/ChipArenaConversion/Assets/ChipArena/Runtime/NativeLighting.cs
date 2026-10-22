@@ -189,7 +189,10 @@ namespace ChipArena.UnityConversion
         /// shaders draw their own haze), night trilight, and the key and rim recoloured as the city's magenta and cyan neon from
         /// ahead of the pilot (NativeSourceLit pilots are lit by Unity lights). The lights stay enabled and nothing enters the
         /// stage state, so Apply (the menu backdrop's map look, a match's start, a preview) writes every one of these back
-        /// (the camera's field of view and near plane are given back by ConversionGame.RooftopLeave).
+        /// (the camera's field of view and near plane are given back by ConversionGame.RooftopLeave). The anime style: the
+        /// rooftop's own toon values (Core NativeMenuStyle.Rooftop through StyleGlobals, as Apply writes a map's: the shaders'
+        /// toon globals, so the pilots' ramp and NativeToonOutline's pass on the menu camera, and the grade), every frame it
+        /// shows; the legacy command line turns the style off here as on every map.
         /// </summary>
         public static void Rooftop(Camera camera,Material skybox)
         {
@@ -199,7 +202,7 @@ namespace ChipArena.UnityConversion
             // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
             if(moon!=null){moon.color=new Color(.85f,.25f,.75f);moon.intensity=.55f;moon.shadows=LightShadows.None;moon.transform.rotation=Quaternion.LookRotation(new Vector3(.3f,-.4f,.85f));}
             if(rim!=null){rim.color=new Color(.25f,.85f,1f);rim.intensity=.6f;rim.shadows=LightShadows.None;rim.transform.rotation=Quaternion.LookRotation(new Vector3(-.5f,-.2f,.84f));}
-            NativeMuzzleLights.Off();StyleOff();
+            NativeMuzzleLights.Off();if(NativeMenuStyle.RooftopOn(LegacyStyle))StyleGlobals(NativeMenuStyle.Rooftop);else StyleOff();
         }
         /// <summary>Resources/MapLooks.json, loaded and validated once.</summary>
         public static MapLookSet LookSet()
