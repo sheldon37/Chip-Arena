@@ -4,7 +4,8 @@ Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (`claude/bozo-in
 after the owner's review): both packs imported, moved under `Assets/LocalAssets/`, and inventoried below; the owner's
 decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; its drift on BoZo is
 measured in Unity (step 3 below). Step 4 (first character): outfit A is wired into the arena's pilot bodies
-(`claude/bozo-body`, below); its shader port, chest core and wrist device, hats and the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
+(`claude/bozo-body`, below) and drawn on our own lighting (`claude/bozo-toon`); its chest core and wrist device, hats and
+the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
@@ -394,7 +395,8 @@ Renders (preview scene, Gamma Editor; local scratch only, never committed):
   - Texture memory: one bake per outfit signature at BoZo's 2048², not five live 2048² RenderTextures per character, so the
     look is unchanged.
   - The Phase C pass criteria are unchanged: +0.5 ms CPU and +5 % GPU over voxel at 8 pilots, and 0 B GC per frame.
-- **Shader:** port (above). Then match the map `lineColor` and width to the port's outline.
+- **Shader:** ported in step 4 (`ChipArena/VisualBodyToon`). Matching the map `lineColor` and width to its outline is
+  still to do.
 - **First person:** the view rig needs the lower arms, wrists, hands, and the sleeves and gloves weighted to `lowerarm`/`hand`.
   Hands are 2,976 triangles. Cloth is off.
 
@@ -836,13 +838,40 @@ origins, the weapon frames authority uses and the wire are unchanged.
 - **Frame rate:** in the Editor with the window in the background, one matched run each: about 105 fps with visual bodies,
   116 with voxel. Not a benchmark; the Phase C measurement is still to do.
 
+**The shader port (`claude/bozo-toon`).** `Resources/NativeVisualBodyToon.shader` (`ChipArena/VisualBodyToon`), our own
+shader reading the pack's material inputs. The bake converts each part's material onto it (`shader=pack` keeps the
+pack's for comparisons).
+- **Colour, as BoZo's:** a part's texture weights three colours in its rgb, and the vertex colour's rgb picks among three
+  such layers (nine colours: the outfit's palette; the third of each is the accent the pilot's colour fills). Alpha cuts
+  out lashes and hair tips. Outfit A uses no pattern or decal overlays, so they are not ported yet.
+- **Light, as `ChipArena/SourceLit`'s (the voxel pilots'):**
+  - the anime map style's model for the key and every pixel light (`ArenaToon`: Lambert while the style is off);
+  - the actor lights while a map turns them on (the practical slots and the ceiling field: Ward Zero's revamp, the
+    expedition zones);
+  - the guns' muzzle lights on every map, wrapped and stepped as `SourceLit` adds them.
+- **Outline:** BoZo's inverted hull, its width from the vertex alpha (outfit A: 2 mm), drawn in the fog.
+- **Stencil:** every pass writes 0 to bit 16, as characters do, so the anime style's outline pass never lines a pilot.
+- **Checked in Unity:**
+  - **Stencil:** a wall marked as scenery behind the baked body, then the outline pass's stencil test at its own camera
+    event (local editor render).
+    - With the pack's shader, 36,649 of the body's 36,649 pixels stayed marked, so the map's lines
+      would cross the character.
+    - With ours, 0 of 36,649 (the wall's 157,751 marked pixels round it).
+  - **Lights:** in Play mode on Moonlit and Ward Zero, one muzzle light and one practical light set beside the local
+    pilot through the game's own light globals, for that camera only.
+    - The pack's shader ignored both: only the drawn rifle took them.
+    - Ours takes both: warm on the hoodie, pockets, face and hair from the muzzle light, blue from the practical light.
+  - Matches on both maps drew normally, with the bots' own shots.
+- **Look:** BoZo's own ramp kept a shaded side at about .89 of the lit one. On our lighting a pilot's shaded side takes the
+  map's ambient, as the voxel pilots' does. On the moonlit maps a face turned from the key reads darker and cooler than in
+  BoZo's previews. The anime-style maps lift their shade (`_ArenaToonShade`).
+
 **Not yet (step 4 continues):**
-- **The shader port.** BoZo's toon shader reads only the key directional light and ambient: the map's practical lights,
-  actor lights and muzzle lights don't reach the characters. It also sets stencil bit 16, where the anime map style's
-  outline pass draws.
 - **Owner's concept pieces:** the chest core and the right-wrist device, the mask and visor, and the glow (emission in the
   player colour).
-- **Hats** (owner decision open), the hit flash and the spawn-in build-up.
+- **Hats** (owner decision open), the hit flash and the spawn-in build-up (the voxel body's dither reveal).
+- **Outline colour and width** matched to the map's lines (`lineColor`); pattern and decal overlays for other outfits;
+  normal maps.
 - **Other rigs still draw voxel:** first-person arms, intros, portraits, the draft, the death broadcast, corpses and kill
   effects (step 6 for death).
 - **Captures:** the neutral turnaround.
