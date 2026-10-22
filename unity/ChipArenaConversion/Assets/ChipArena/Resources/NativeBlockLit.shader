@@ -539,9 +539,9 @@ Shader "ChipArena/NativeBlockLit"
                 if(toon)
                 {
                     float2 tid;float tj=BkBond(uv,0.12,0.36,0.024,fw,tid);
-                    float show=max(smoothstep(0.44,0.52,BkFbm(uv*0.42+seed*9.0)),1.0-smoothstep(0.3,0.75,min(edge,yb)))*(1.0-smoothstep(0.02,0.045,fwm));
+                    float show=max(smoothstep(0.4,0.48,BkFbm(uv*0.42+seed*9.0)),1.0-smoothstep(0.3,0.75,min(edge,yb)))*(1.0-smoothstep(0.02,0.045,fwm));
                     float3 tone=base*mean;float3 face=tone*(1.0+0.16*step(0.82,BkHash2(tid+seed*13.0))*show);
-                    alb=lerp(face,tone*0.55,tj*show);
+                    alb=lerp(face,tone*0.5,tj*show);
                 }
             }
             else if(BkIs(look,LOOK_TERRACOTTA))

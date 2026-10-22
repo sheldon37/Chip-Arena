@@ -186,7 +186,7 @@ anime style. Entrances, the draft, the rooftop and every map without the style w
 - Each look keeps `detail` (0.3 to 0.35) of its per-unit tones, grain and wear noise.
 - The material looks (terracotta to cobble, corrugated; brick paints its own) lean 40 to 70% toward their flat base. The pattern stays legible but
   reads as painted.
-- Brick is suggested the way a painted background does it: bricks drawn in patches (about half the face) and along the
+- Brick is suggested the way a painted background does it: bricks drawn in patches (about 60% of the face) and along the
   face's edges and foot, flat paint between, broad joints in a dark tone of the brick, a few bricks lit. Brick resolves to
   flat paint only from 2 to 4.5 cm a pixel (a big wall at combat range keeps its bricks) and the material-look rule below
   does not flatten it again. The patches show in shade too, and the shade carries a sky-bounce value gradient (the ambient about 0.93 at a wall's foot to 1.14 from
