@@ -1,6 +1,6 @@
-## 2026-10-22 — Claude: BoZo + Magica Cloth 2 import and inventory, steps 1–2 (on the branch, not merged)
+## 2026-10-22 — Claude: BoZo + Magica Cloth 2 import and inventory, steps 1–2 (merged into shared)
 
-- **Branch/base:** `claude/bozo-inventory` in the owner's PC worktree `Chip-Arena-Unity`, from shared `claude/sleepy-ritchie-g8ruhv` at `c4c4672`. Docs and one `.gitignore` guard only; no PR (by request); not published.
+- **Branch/base:** `claude/bozo-inventory` in the owner's PC worktree `Chip-Arena-Unity`, from shared `claude/sleepy-ritchie-g8ruhv` at `c4c4672`. Docs and one `.gitignore` guard only; no PR (by request). Merged into shared and the builder on 2026-10-22 after the owner's review and decisions; not published.
 - **Step 1 (owner's PC, Unity 6000.3.24f1, Built-in):**
   - The owner imported BoZo 2.6.4 and Magica Cloth 2 2.18.4 into the Asset Store default folders. I moved both, with their `.meta` files, under the git-ignored `Assets/LocalAssets/` (GUIDs kept).
   - I installed BoZo's bundled Built-in versions of its three hand-written shaders (the default versions are URP and fail on Built-in).

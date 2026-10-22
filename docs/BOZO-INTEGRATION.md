@@ -1,8 +1,8 @@
 # BoZo characters + Magica Cloth 2: integration plan
 
-Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (branch `claude/bozo-inventory`, docs only, not merged):
-both packs imported, moved under `Assets/LocalAssets/`, and inventoried below. No runtime code. Next: owner review, the open
-decisions at the end, then step 3. Owner decision: player characters come from the **BoZo: Stylized Modular
+Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (`claude/bozo-inventory`, docs only, merged into shared
+after the owner's review): both packs imported, moved under `Assets/LocalAssets/`, and inventoried below; the owner's
+decisions follow the inventory. No runtime code. Next: step 3 (rig adapter, `claude/bozo-rig-adapter`). Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
