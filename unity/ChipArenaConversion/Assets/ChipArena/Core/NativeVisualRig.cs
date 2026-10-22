@@ -7,9 +7,9 @@ namespace ChipArena.UnityConversion
     // A presentation-only skeleton with its own proportions, posed from CapturedRig poses (docs/BOZO-INTEGRATION.md step 3).
     // Source frame (+x = left) and the Pose's body space: motion-root rest at the origin, floor at -.865. Authority never
     // reads it: the capsule, head box, shot origin and weapon frames stay on the 22 joints; the drawn body follows them.
-    // Per frame: every bone's world turn is the game joint's turn since its rest (a split chain shares it), applied to the
-    // bone's rest aligned once at bind (limbs straightened to the game's arms-down, legs-down rest; spine, head and feet
-    // keep their authored posture). Then the root height scales by the leg ratio, planted feet and two-handed support grips
+    // Per frame: every bone's world turn is the game joint's turn since its rest (a split chain shares it; wrists ease the
+    // fist's deep bend, see Wrist), applied to the bone's rest aligned once at bind (limbs straightened to the game's
+    // arms-down, legs-down rest; spine, head and feet keep their authored posture). Then the root height scales by the leg ratio, planted feet and two-handed support grips
     // take two-bone IK, twist bones take a share of their limb's roll, and the weapon rides the visual right hand (P1).
     public static class NativeVisualRig
     {
@@ -127,6 +127,7 @@ namespace ChipArena.UnityConversion
                     int gp=CapturedRig.Bones[j].Parent;
                     Quaternion start=r.ChainStart[v]?(gp<0?Quaternion.Identity:pose.WorldRotation[gp]):parentTurn;
                     Quaternion local=gp<0?pose.WorldRotation[j]:Quaternion.Inverse(pose.WorldRotation[gp])*pose.WorldRotation[j];
+                    if(j==CapturedRig.LHand||j==CapturedRig.RHand) local=Wrist(local);
                     s.Turn[v]=Quaternion.Normalize(start*(r.Share[v]>=.9999f?local:Quaternion.Slerp(Quaternion.Identity,local,r.Share[v])));
                 }
                 else if(r.TwistJoint[v]>=0) s.Turn[v]=Quaternion.Normalize(parentTurn*CapturedRig.Rot(CapturedRig.Y,r.TwistShare[v]*Twist(pose.Rotation[r.TwistJoint[v]])));
@@ -174,6 +175,24 @@ namespace ChipArena.UnityConversion
             var socket=NativeKillBoxes.RightHandSocket; WeaponFrame(s,pose,out var wrist,out rotation);
             position=wrist+Vector3.Transform(new Vector3(socket[0],socket[1],socket[2]),rotation);
         }
+
+        // The visual wrist. The game's wrist frame is the voxel fist's and the weapon's (the grip is baked into the weapon at
+        // the wrist), so holds bend it 90-150 degrees off the forearm; an open human hand there points at the floor. The
+        // visual hand keeps the game wrist's roll and its bend up to WristKnee, and a WristExcess share of any bend beyond
+        // (107 degrees on a rifle hold -> 45). The weapon frame keeps the game wrist turn (WeaponFrame), so aim is unchanged.
+        public const float WristKnee=25*(float)Math.PI/180, WristExcess=.25f;
+        public static Quaternion Wrist(Quaternion local)
+        {
+            Quaternion twist=CapturedRig.Rot(CapturedRig.Y,Twist(local));
+            Quaternion swing=Quaternion.Normalize(local*Quaternion.Inverse(twist));
+            if(swing.W<0) swing=new Quaternion(-swing.X,-swing.Y,-swing.Z,-swing.W);
+            float angle=2*(float)Math.Acos(Math.Min(1f,swing.W));
+            if(angle<=WristKnee) return local;
+            Vector3 axis=new Vector3(swing.X,swing.Y,swing.Z);
+            if(axis.LengthSquared()<1e-12f) return local;
+            return Quaternion.Normalize(CapturedRig.Rot(Vector3.Normalize(axis),WristBend(angle))*twist);
+        }
+        public static float WristBend(float game)=>game<=WristKnee?game:WristKnee+(game-WristKnee)*WristExcess;
 
         // Twist about the bone's own axis (+y in the game's joint frames): the swing-twist split of a local turn.
         public static float Twist(Quaternion q)

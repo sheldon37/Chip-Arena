@@ -1,3 +1,16 @@
+## 2026-10-22 — Claude: BoZo adapter, eased wrists after the owner's review (merged into shared)
+
+- **Branch/base:** `claude/bozo-wrists` from shared `65f7c17` (map style stage 2 merged). No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner review:** "the hands are bent down". In the posed BoZo renders the open hands pointed at the floor in every weapon hold.
+- **Cause (measured):** the game's wrist frame is the voxel fist's and the weapon's (the grip is baked into the weapon at the wrist). Holds bend it 90–150° off the forearm: rifle 107°, pistol 112°, greatsword idle 152°. A fist hides that; an open hand does not.
+- **Change (presentation only, BoZo adapter only; voxel bodies unchanged):** `Core/NativeVisualRig.Wrist`. The visual hand keeps the game wrist's roll in full and its bend up to 25°; beyond that it takes a quarter of the bend (rifle 107° becomes 45°, the deepest captured bend 60°). `WeaponFrame` still uses the game wrist turn, so aim, weapon frames and authority are unchanged. Docs: plan step 3, plus the owner's direction that animations may be fitted to the model (holds and poses: Claude; authority sizing: Astra, by owner decision).
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 45,809 checks pass. Every hand takes the eased wrist, its bend equals the eased curve of the game's, and its roll equals the game's; unit checks cover rest, a pure roll, a small bend and the 107° rifle bend (45.5°).
+  - BoZo re-rendered in Unity through the self-refreshing local tool: before and after on rifle, pistol and machine-gun aim, rifle run, greatsword cut and shield block. The hands now continue along the forearm.
+  - Merge-time checks are in the merge commit.
+- **Animation, timing, networking:** none. Only the drawn BoZo hand turns differently; hit timing, hitboxes, weapon frames and the wire are unchanged.
+- **Next:** finger grip poses per weapon (fingers stay in BoZo's open rest), then step 4.
+
 ## 2026-10-22 — Claude: BoZo step 3, the visual rig adapter (merged into shared)
 
 - **Branch/base:** `claude/bozo-rig-adapter` in the owner's PC worktree, from shared `05b5768` (the merge of `claude/bozo-inventory`, steps 1–2). Implementation `4a9aac3`, then docs and the BoZo measurement (`17b9878`). No PR (none asked). Merged into shared and the builder on 2026-10-22 at the owner's request; not published.
