@@ -1,6 +1,8 @@
 // Shared by the rooftop scene's shaders (NativeRooftop, NativeRooftopSky, NativeRooftopScreen, NativeRooftopSprite): the
 // home screen's cyber-city night sky, its haze and the city fog. Globals set each frame by NativeRooftopPresentation: the
-// scene clock (_RoofTime, wrapped by the presentation), the sign and cyan spill lights (Unity frame).
+// scene clock (_RoofTime, wrapped by the presentation), the sign and cyan spill lights (Unity frame). The anime style's
+// sky, haze and fog (NativeRooftopToon.cginc) replace them while _ArenaToon.x is on (NativeLighting.Rooftop); off, every
+// function here is its legacy code exactly.
 #ifndef NATIVE_ROOFTOP_INCLUDED
 #define NATIVE_ROOFTOP_INCLUDED
 float _RoofTime;float4 _RoofSignPos,_RoofSignColor,_RoofCyanPos;
@@ -15,10 +17,13 @@ float RoofNoise(float3 p)
     return lerp(a,b,f.z);
 }
 float RoofFbm(float3 p){return RoofNoise(p)*.5+RoofNoise(p*2.03)*.25+RoofNoise(p*4.07)*.125+RoofNoise(p*8.1)*.0625;}
+#include "NativeToon.cginc"
+#include "NativeRooftopToon.cginc"
 // Navy above; a light-polluted horizon swinging between magenta and cyan around the city (Unity frame: the azimuth's x is
 // the mirror of the source's, so the swing is mirrored with it).
 float3 RoofSkyBase(float3 d)
 {
+    if(_ArenaToon.x>0.5)return RoofToonSkyBase(d);
     float h=d.y;float3 zen=float3(.002,.003,.012),mid=float3(.010,.010,.034),hor=float3(.085,.018,.080);
     float az=atan2(-d.x,-d.z);float3 horC=lerp(hor,float3(.012,.060,.085),.5+.5*sin(az*1.3+.8));
     float3 c=lerp(horC,mid,smoothstep(-.02,.16,h));c=lerp(c,zen,smoothstep(.12,.7,h));
@@ -27,12 +32,14 @@ float3 RoofSkyBase(float3 d)
 }
 float3 RoofHaze(float3 d,float y)
 {
+    if(_ArenaToon.x>0.5)return RoofToonHaze(d,y);
     float3 c=RoofSkyBase(normalize(float3(d.x,max(d.y,0.0)*.3+.02,d.z)));float low=exp(-max(0.0,y-(ROOF_STREET+20.0))/55.0);
     return lerp(c*.8,float3(.09,.02,.08),low*.55);
 }
 // Distance haze into the night plus the glowing street-level fog.
 float3 RoofFog(float3 c,float3 w)
 {
+    if(_ArenaToon.x>0.5)return RoofToonFog(c,w);
     float3 v=w-_WorldSpaceCameraPos;float z=length(v);float3 d=v/max(z,1e-4);float aerial=1.0-exp(-z*0.0013);
     float low=exp(-max(0.0,w.y-ROOF_STREET)/40.0)*(1.0-exp(-z/90.0));
     return lerp(c,RoofHaze(d,w.y),saturate(min(.96,aerial+low*.55)));

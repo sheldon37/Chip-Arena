@@ -19,6 +19,12 @@
 // Colours are linear (gamma-space builds encode at the end). No fog, lighting or shadows: nothing here reads or changes the
 // stage's lighting state. The block between the SHARED markers is plain enough to compile as GLSL too (the offline draft
 // renders): float literals, no fmod / atan2 / mul / static constants, and derivatives outside any varying branch.
+// The anime style (_BackToon.x on: NativeDraftBackdropPresentation sets it from Core NativeMenuStyle.DraftToon, off under the
+// `--ca-map-style legacy` command line; docs/MAP-STYLE-ANIME.md section 6): the corridor closes on a painted gradient back
+// wall BACK_TOON_WALL m behind the pilot, its server panels (the ward's hexes) take flat tones lit in cel bands by the far
+// glow, the haze and both glows step into soft bands, and ink lines come from the corridor's own distance field (the
+// floor-wall crease, the back wall's edge, the panel seams). Every neon element (trims, rails, packets, gates, streams,
+// motes) keeps its light, and the text-safe bands and the cap apply as before. Off, every term is the legacy code exactly.
 Shader "ChipArena/NativeDraftBackdrop"
 {
     SubShader
@@ -38,6 +44,8 @@ Shader "ChipArena/NativeDraftBackdrop"
             // [unroll] for the derivatives in the motes' loop (the offline GLSL build defines BACK_UNROLL empty).
             #define BACK_UNROLL [unroll]
             float4 _BackCam,_BackClock,_BackFwd,_BackUp,_BackRight,_BackAccent,_BackFrame,_BackCounter,_BackDeep,_BackVoid,_BackPulse,_BackStyle,_BackFx,_BackSafe,_BackCap,_BackGlow;
+            // The anime style's switch (x 1 on, 0 the legacy look), set once with the material.
+            float4 _BackToon;
             // ---- DRAFT BACKDROP SHARED BEGIN
             #define BACK_FLOOR 0.0
             #define BACK_HALF 4.6
@@ -62,6 +70,25 @@ Shader "ChipArena/NativeDraftBackdrop"
             // A packet travelling along u (0..1 per lane period, the head at the top): a short bright head with a fading tail.
             float BackPacket(float u){return smoothstep(.80,.985,u)*(1.0-smoothstep(.985,1.0,u));}
             float3 BackHue(float h){return saturate(abs(frac(h+float3(0.0,.6666667,.3333333))*6.0-3.0)-1.0);}
+            // The anime style's constants (Core NativeMenuStyle mirrors them): the back wall's distance (m) and the height its
+            // painted gradient spans, the height the panels' tones step over, the ink's half width (pixels), the soft bands' count
+            // and riser, the panels' two flat tones and the floor's (times the navy), how much the far glow's banded light lifts
+            // them, the back wall's navy top (times the navy) and its tint glow, the ink's tint.
+            #define BACK_TOON_WALL 52.0
+            #define BACK_TOON_WALL_HIGH 9.0
+            #define BACK_TOON_PANEL_HIGH 3.2
+            #define BACK_TOON_LINE 1.0
+            #define BACK_TOON_BANDS 4.0
+            #define BACK_TOON_RISER 0.15
+            #define BACK_TOON_PANEL_A 2.2
+            #define BACK_TOON_PANEL_B 3.1
+            #define BACK_TOON_FLOOR 1.7
+            #define BACK_TOON_LIGHT 1.6
+            #define BACK_TOON_SKY 0.9
+            #define BACK_TOON_GLOW 0.16
+            #define BACK_TOON_INK float3(0.18,0.2,0.42)
+            // Soft stairs: x (0..1) in `n` flat bands with a riser BACK_TOON_RISER wide either side of each step.
+            float BackBands(float x,float n){float k=saturate(x)*n;float f=floor(k);return min(1.0,(f+smoothstep(.5-BACK_TOON_RISER,.5+BACK_TOON_RISER,k-f))/n);}
             float3 BackShade(float3 ray)
             {
                 float3 d=normalize(ray);float3 eye=_BackCam.xyz;float t=_BackCam.w,f=_BackClock.x;
@@ -71,6 +98,9 @@ Shader "ChipArena/NativeDraftBackdrop"
                 float sx=d.x>=0.0?1.0:-1.0;float tf=(BACK_FLOOR-eye.y)/min(d.y,-1e-4),ts=(sx*BACK_HALF-eye.x)/(sx*max(abs(d.x),1e-4));
                 float onFloor=step(tf,ts);float th=min(min(tf,ts),BACK_FAR);float3 pf=eye+d*min(tf,BACK_FAR);float3 pw=eye+d*min(ts,BACK_FAR);
                 float depth=-lerp(pw.z,pf.z,onFloor);
+                // The anime style's back wall: met first beyond BACK_TOON_WALL m, it closes the corridor.
+                float toon=_BackToon.x;float tw=(-BACK_TOON_WALL-eye.z)/min(d.z,-1e-4);float onBack=0.0;
+                if(toon>0.5){onBack=step(tw,min(tf,ts));th=lerp(th,min(tw,BACK_FAR),onBack);depth=lerp(depth,BACK_TOON_WALL,onBack);}
                 // The rainbow pick: the accent turns slowly through the hues down the corridor.
                 float3 prism=lerp(BackHue(frac(depth*.03+t*.02)),float3(1.0,1.0,1.0),.2);A=lerp(A,prism,_BackStyle.y);S=lerp(S,prism,_BackStyle.y*.6);float3 hot=lerp(lerp(A,float3(1.0,1.0,1.0),.4),B,ink*.6);
                 float pulseW=1.0-_BackDeep.w*(.5-.5*sin(t*.55-depth*.32));
@@ -107,7 +137,26 @@ Shader "ChipArena/NativeDraftBackdrop"
                 // ---- haze: the corridor fades into a navy haze that brightens toward its far end, behind the pilot's head.
                 float fog=1.0-exp(-th*.032);float axis=exp(-(d.x*d.x+BackSq(d.y+.01))/.004);
                 float3 haze=_BackDeep.rgb*(1.0+1.6*axis)+A*(.004+.03*axis)*pulseW;
-                float3 nearC=lerp(_BackVoid.rgb,_BackDeep.rgb,.35);float3 c=lerp(nearC,haze,fog);detail*=1.0-fog*.85;
+                float3 nearC=lerp(_BackVoid.rgb,_BackDeep.rgb,.35);
+                if(toon>0.5)
+                {
+                    // Flat-toned panels (two tones by panel, a third on the floor) lit by the far glow in cel bands down the corridor;
+                    // the haze and the far glow in soft bands; the back wall a painted gradient (the stage tint's glow low, navy up
+                    // high, in bands) with rings of light behind the pilot's head; ink where the corridor's distance field folds.
+                    float lightB=BackBands(depth/BACK_TOON_WALL,BACK_TOON_BANDS);float panel=lerp(BACK_TOON_PANEL_A,BACK_TOON_PANEL_B,BackBands(v.y/BACK_TOON_PANEL_HIGH,3.0))*(.92+.16*step(.5,hp));
+                    nearC=_BackDeep.rgb*lerp(panel,BACK_TOON_FLOOR,onFloor)*(1.0+BACK_TOON_LIGHT*lightB)+A*.004*lightB;
+                    float axisB=BackBands(axis,3.0);fog=lerp(BackBands(fog,BACK_TOON_BANDS),fog,onBack)*(1.0-.55*onBack);
+                    float3 pb=eye+d*tw;float rise=BackBands(1.0-saturate((pb.y-BACK_FLOOR)/BACK_TOON_WALL_HIGH),3.0);
+                    float3 paint=lerp(_BackDeep.rgb*BACK_TOON_SKY,_BackDeep.rgb*BACK_TOON_PANEL_A+A*BACK_TOON_GLOW,rise)+A*BACK_TOON_GLOW*axisB*pulseW;
+                    haze=lerp(_BackDeep.rgb*(1.0+1.6*axisB)+A*(.004+.03*axisB)*pulseW,paint,onBack);
+                    float df=tf-ts,db=min(tf,ts)-tw;float crease=(1.0-smoothstep(BACK_TOON_LINE-.4,BACK_TOON_LINE+.4,abs(df)/max(fwidth(df),1e-5)))*(1.0-onBack);
+                    float edge=1.0-smoothstep(BACK_TOON_LINE-.4,BACK_TOON_LINE+.4,abs(db)/max(fwidth(db),1e-5));
+                    float ink=max(max(crease,edge),max(seam,rib)*.85*(1.0-onFloor)*(1.0-onBack))*(1.0-fog*.6);
+                    nearC*=lerp(float3(1.0,1.0,1.0),BACK_TOON_INK,ink);haze*=lerp(float3(1.0,1.0,1.0),BACK_TOON_INK,edge*(1.0-onBack));
+                    // the seams and ribs are ink now, not light; the back wall keeps only a trace of the corridor's detail
+                    detail=max(detail-S*(seam*.022*pulseW+rib*.022)*(1.0-onFloor)*boot,0.0);detail*=1.0-onBack*.85;
+                }
+                float3 c=lerp(nearC,haze,fog);detail*=1.0-fog*.85;
                 #ifndef DRAFT_BACKDROP_LOW
                 // ---- the air: binary motes on two planes between the pilot and the far corridor, drifting up and twinkling.
                 BACK_UNROLL for(int m=0;m<2;m++)
@@ -119,7 +168,7 @@ Shader "ChipArena/NativeDraftBackdrop"
                 }
                 #endif
                 // ---- the glow behind the pilot's chest and head, so the silhouette reads.
-                float2 gd=float2((col-_BackGlow.x)*_BackUp.w/_BackGlow.z,(row-_BackGlow.y)/_BackGlow.w);detail+=A*_BackStyle.w*exp(-dot(gd,gd))*(.85+.15*pulseW);
+                float2 gd=float2((col-_BackGlow.x)*_BackUp.w/_BackGlow.z,(row-_BackGlow.y)/_BackGlow.w);float halo=exp(-dot(gd,gd));if(toon>0.5)halo=BackBands(halo,3.0);detail+=A*_BackStyle.w*halo*(.85+.15*pulseW);
                 // ---- presence, the plant's flash and the text-safe bands (NativeDraftBackdrop.SafeAt / CapAt)
                 detail*=_BackStyle.z*_BackRight.w*(1.0+_BackPulse.z);
                 float hb=BackSq((col-.5)*_BackUp.w/max(_BackCap.w,1e-3));float hs=max(smoothstep(_BackSafe.x-.01,_BackSafe.x+.07,row),exp(-hb*hb)),tb=1.0-smoothstep(_BackSafe.y-.06,_BackSafe.y,row);

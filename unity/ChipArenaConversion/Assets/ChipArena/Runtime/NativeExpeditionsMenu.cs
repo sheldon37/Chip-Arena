@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion
         private bool ExpScreenShown=>menuScreen==MenuScreen.Boss||menuScreen==MenuScreen.Lobby&&prefs.pve&&InRoom;
         private void ExpBackdrop(float e,float now)
         {
-            float W=U.W,Hh=U.H;U.Fill(new Rect(0,0,W,Hh),C.Void(.5f*e));U.Fade(new Rect(0,0,W,Hh*.4f),C.Void(.45f*e));U.Fade(new Rect(0,Hh*.62f,W,Hh*.38f),C.Void(.5f*e),false);
+            float W=U.W,Hh=U.H;U.Fill(new Rect(0,0,W,Hh),C.Night(.5f*e));U.Fade(new Rect(0,0,W,Hh*.4f),C.Night(.45f*e));U.Fade(new Rect(0,Hh*.62f,W,Hh*.38f),C.Night(.5f*e),false);
             float r=Mathf.Max(W,Hh)*.62f;U.RadialStops(new Rect(W*.36f-r,Hh*.66f-r,2*r,2*r),U.Hex(0x3a2166,.34f*e),ExpPoolAt,ExpPoolA);
             float c=r*.7f;U.RadialStops(new Rect(W*.86f-c,Hh*.18f-c,2*c,2*c),C.Cyan(.06f*e),ExpPoolAt,ExpPoolA);
             if(!prefs.reducedEffects){float y=Mathf.Repeat(now*34,Hh+240)-120;U.Fade(new Rect(0,y-70,W,70),C.Cyan(.022f*e),false);U.Fill(new Rect(0,y,W,1),C.Cyan(.05f*e));}
@@ -344,7 +344,7 @@ namespace ChipArena.UnityConversion
         private void ExpArt(Rect r,K.Expedition x,float a,float now,bool compact)
         {
             Color acc=U.Hex(x.Accent);bool calm=prefs.reducedEffects;
-            H.Cut(r,C.Void(.92f*a),10,H.Corners.TL);U.RadialStops(r,U.A(U.Mix(acc,U.Hex(0x3a2166),.5f),.42f*a),ExpPoolAt,ExpPoolA);
+            H.Cut(r,C.Night(.92f*a),10,H.Corners.TL);U.RadialStops(r,U.A(U.Mix(acc,U.Hex(0x3a2166),.5f),.42f*a),ExpPoolAt,ExpPoolA);
             if(x.Locked){ExpSilhouette(r,x,a,now,calm,compact);H.Outline(r,U.A(acc,.3f*a),10,H.Corners.TL);H.Brackets(r,U.A(acc,.55f*a),12,H.Corners.TL);return;}
             int ai=ExpPreviewArea(x);var area=ai>=0?x.Areas[ai]:null;bool hub=area==null||area.Map==null;var map=ExpMapOf(hub?x.HubMap:area.Map);var scan=map!=null?NativeStageSchematic.For(map):null;
             float top=compact?24:30,bottom=compact?22:28;var plan=new Rect(r.x+12,r.y+top,r.width-24,r.height-top-bottom);
@@ -408,7 +408,7 @@ namespace ChipArena.UnityConversion
             float hr=compact?14:22,cy=r.y+r.height*(compact?.58f:.62f);var hex=new Rect(r.center.x-hr*48/22f/2,cy-hr*48/22f/2,hr*48/22f,hr*48/22f);
             U.Glow(new Rect(r.center.x-hr,cy-hr,2*hr,2*hr),U.A(acc,.18f*a),16);NativeIcons.DrawMarkup(hex,"hex-fill",HexFill,48,new Color(1,1,1,.92f*a));NativeIcons.DrawMarkup(hex,"hex-edge",HexEdge,48,U.A(acc,.8f*a));ExpLock(new Rect(r.center.x-hr*.5f,cy-hr*.5f,hr,hr),U.A(U.Mix(acc,Color.white,.4f),a));
             U.Text(new Rect(r.x,cy+hr+8,r.width,16),"SIGNAL LOST",10,U.A(U.Mix(acc,Color.white,.4f),.9f*a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.32f);
-            var band=new Rect(r.x,r.yMax-(compact?30:38),r.width,compact?20:24);U.Fill(band,C.Void(.82f*a));U.Fill(new Rect(band.x,band.y,band.width,H.Px),U.A(acc,.6f*a));U.Fill(new Rect(band.x,band.yMax-H.Px,band.width,H.Px),U.A(acc,.6f*a));
+            var band=new Rect(r.x,r.yMax-(compact?30:38),r.width,compact?20:24);U.Fill(band,C.Night(.82f*a));U.Fill(new Rect(band.x,band.y,band.width,H.Px),U.A(acc,.6f*a));U.Fill(new Rect(band.x,band.yMax-H.Px,band.width,H.Px),U.A(acc,.6f*a));
             U.Text(band,K.ComingSoon,compact?10:11,U.A(U.Mix(acc,Color.white,.55f),a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.4f);
         }
 

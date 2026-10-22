@@ -5,6 +5,8 @@ Shader "ChipArena/NativeRooftopSprite"
     // Kinds: 0 glow, 1 flat mist, 2 square mote (twinkles), 3 steam puff, 4 rain streak, 5 falling spark. Looping sprites rise
     // (or fall) along their drift over each period and fade in and out, so the sprinkle needs no CPU work once built.
     // _SrcBlend/_DstBlend: additive (One One) for light, alpha (SrcAlpha OneMinusSrcAlpha) for mist and steam.
+    // The anime style (_ArenaToon.x on, NativeLighting.Rooftop): the mist and steam take crisp, flat-toned edges (painted
+    // layers of fog and puffs instead of soft noise); every motion and every other kind is kept.
     Properties { [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend("Src",Float)=1 [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend("Dst",Float)=1 _Additive("Additive",Float)=1 }
     SubShader
     {
@@ -41,7 +43,7 @@ Shader "ChipArena/NativeRooftopSprite"
             {
                 float2 q=i.q;float r=length(q);float kind=i.prm.x,a;
                 if(kind<.5||kind>4.5)a=exp(-r*r*5.0);
-                else if(kind<1.5||(kind>2.5&&kind<3.5)){float n=RoofFbm(float3(q*1.4+i.prm.y*13.0,_RoofTime*.06+i.prm.y));a=smoothstep(1.0,.2,r+.5*(n-.5))*smoothstep(.15,.55,n+.25*(1.0-r));}
+                else if(kind<1.5||(kind>2.5&&kind<3.5)){float n=RoofFbm(float3(q*1.4+i.prm.y*13.0,_RoofTime*.06+i.prm.y));a=smoothstep(1.0,.2,r+.5*(n-.5))*smoothstep(.15,.55,n+.25*(1.0-r));if(_ArenaToon.x>0.5)a=smoothstep(.3,.36,a)*.72;}
                 else if(kind<2.5)a=step(max(abs(q.x),abs(q.y)),.7);
                 else a=smoothstep(1.0,0.0,abs(q.x))*smoothstep(1.0,.3,abs(q.y));
                 float z=length(i.world-_WorldSpaceCameraPos);float fog=exp(-z*.0012);
