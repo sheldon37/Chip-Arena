@@ -1,3 +1,34 @@
+## 2026-10-22 — Claude: BoZo adapter, greatsword raise clear of the face (merged into shared)
+
+- **Branch/base:** `claude/bozo-raised` from shared `3c303dfd`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** fix the greatsword cut A raised-hands face graze, the first remaining defect of the final visual pass.
+- **Cause (measured on BoZo's skeleton offline, frame by frame):** not the head drop. There the game's hands rise only 60 % of the way to its head, and the drop is 5 cm.
+  - BoZo's head sits low on a short neck, so the voxel's hands, which sweep under its chin, come at BoZo's jaw.
+  - The clearance (`Clear`) could change its push by only 3 cm a frame while the game's hands moved 7–10 cm a frame.
+  - So the raise's fists reached the head's middle, the straight-out push flipped, and they crossed the face.
+  - The clearance also estimated the riding fist without last frame's steadying.
+- **Changes (presentation only, BoZo adapter only):**
+  - `Clear`'s push may change by 3 cm a frame plus the game hand's own move, so the hands go over the head (push at most 12 cm);
+  - the fist estimate is steadied as the hold steadies it;
+  - a two-handed weapon's support fist is kept out at its handle.
+- **Ruled out on the way:**
+  - pushing the way the game's hand lies from its own head: it went under the chin, but moved the hands down by up to 30 cm;
+  - keeping the wrist off the head as well: the support hand jumped 36 cm in a frame, caught by the transition checks.
+- **Results on BoZo:**
+  - every frame of the raise (0.58–0.75 s at 60 fps): the face crossing is gone. It had been 246 and 204 hand points 5.9 and 5.7 cm deep, plus the weapon 3.3, 1.9 and 2.9 cm;
+  - left over: one frame (0.683 s) where the back of the right wrist brushes the cranium's side, 2.4 cm;
+  - greatsword run weapon-in-chest: 4 frames (5.9 cm) → 1 (2.4 cm);
+  - cut A's worst right-wrist bend: 118° → 67°;
+  - nothing else changed beyond a centimetre or a few degrees.
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 129,260 checks pass. They include a new transition check that no fist centre enters the head; it passes on the synthetic skeleton with or without the fix, so it guards regressions only.
+  - Unity semantic compile (player, runtime, editor) passes.
+  - BoZo pass: 19 sequences plus the raise rendered every frame, before and after.
+- **Not run:** BoZo in motion in the game (step 4 not wired); Windows build; Play mode.
+- **Affected:** `Core/NativeVisualRig.cs`, `Tests/VisualRigChecks.cs`, `docs/BOZO-INTEGRATION.md`.
+- **Timing and animation impact:** authority unchanged (hit timing, hitboxes, damage, cooldowns, movement, networking, shot origins, authoritative weapon frames). The drawn greatsword and hands pass over the head during the raise, up to 12 cm from the animation's path.
+- **Next:** owner review; the other remaining defects in BOZO-INTEGRATION; step 4.
+
 ## 2026-10-22 — Claude: BoZo adapter, final visual pass (merged into shared)
 
 - **Branch/base:** `claude/bozo-pass` from shared `62f4e049`. No PR; merged into shared and the builder (standing merge authorization); not published.

@@ -368,7 +368,7 @@ namespace ChipArena.UnityConversion
             stats.SeatClearLeft=Math.Max(stats.SeatClearLeft,deep);
         }
         // How deep a point is inside the head ellipsoid grown by `margin` or the torso cylinder (pelvis to shoulders) grown by
-        // `torso`, metres along its scaled radius.
+        // `torso` (negative: the head only), metres along its scaled radius.
         private static float Depth(NativeVisualRig.Rig rig,NativeVisualRig.State state,Vector3 p,float margin,float torso)
         {
             float deep=0;int head=rig.Of[CapturedRig.Head],pelvis=rig.Of[CapturedRig.Pelvis],neck=rig.Of[CapturedRig.Neck],chest=rig.Of[CapturedRig.Chest];
@@ -376,7 +376,7 @@ namespace ChipArena.UnityConversion
             float k=(l/(rig.HeadRadii+new Vector3(margin))).Length();if(k<1) deep=Math.Max(deep,l.Length()*(1/Math.Max(k,1e-4f)-1));
             Vector3 low=state.Position[pelvis],line=state.Position[neck]-low,mid=(state.Position[rig.Of[CapturedRig.LArm]]+state.Position[rig.Of[CapturedRig.RArm]])*.5f;
             float t=Vector3.Dot(p-low,line)/line.LengthSquared(),top=Vector3.Dot(mid-low,line)/line.LengthSquared();
-            if(t>=0&&t<=top)
+            if(torso>=0&&t>=0&&t<=top)
             {
                 Quaternion cq=Eff(rig,state,chest);Vector3 d=p-low-line*t;float rx=Vector3.Dot(d,Vector3.Transform(CapturedRig.X,cq)),rz=Vector3.Dot(d,Vector3.Transform(CapturedRig.Z,cq));
                 float ux=rx/(rig.TorsoHalfWidth+torso),uz=rz/(rig.TorsoHalfDepth+torso),kt=(float)Math.Sqrt(ux*ux+uz*uz);
@@ -409,7 +409,7 @@ namespace ChipArena.UnityConversion
         {
             var state=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();var fa=new float[CapturedClip.Channels];var fb=new float[CapturedClip.Channels];
             var lastVis=new Quaternion[2];var lastGame=new Quaternion[2];var lastVisAt=new Vector3[4];var lastGameAt=new Vector3[4];bool first=true;
-            int steps=0;float turnWorst=0,moveWorst=0;
+            int steps=0;float turnWorst=0,moveWorst=0,headWorst=0;
             void Step(string name,NativeVisualRig.Grasp g,bool plant)
             {
                 NativeVisualRig.Pose(state,pose,g,plant,false);steps++;
@@ -426,6 +426,10 @@ namespace ChipArena.UnityConversion
                         Check(dv<=3*dg+20f/57.3f,name+(side==0?" left":" right")+" hand turns smoothly ("+(dv*57.3f).ToString("0")+" against the game's "+(dg*57.3f).ToString("0")+" degrees this frame)");
                         Check(mv<=3*mg+.05f&&me<=3*mge+.06f,name+(side==0?" left":" right")+" hand and elbow move smoothly (hand "+mv.ToString("0.000")+" vs "+mg.ToString("0.000")+", elbow "+me.ToString("0.000")+" vs "+mge.ToString("0.000")+" m)");
                     }
+                    // No fist centre inside the head, however fast the hands sweep past it (a greatsword's raise once crossed the face).
+                    float inHead=Depth(rig,state,state.Position[vh]+Vector3.Transform(rig.FistCenter[side],Eff(rig,state,vh)),0,-1);
+                    headWorst=Math.Max(headWorst,inHead);
+                    Check(inHead==0,name+(side==0?" left":" right")+" fist stays out of the head (inside by "+inHead.ToString("0.000")+" m)");
                     lastVis[side]=vis;lastGame[side]=game;lastVisAt[side]=state.Position[vh];lastGameAt[side]=pose.WorldPosition[gh];lastVisAt[2+side]=state.Position[ve];lastGameAt[2+side]=pose.WorldPosition[gh-1];
                 }
                 first=false;
