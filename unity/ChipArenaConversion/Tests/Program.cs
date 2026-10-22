@@ -30,6 +30,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-hub"){ExpeditionHubChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-city"){ExpeditionCityChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--map-style"){MapStyleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-join-view"){ExpeditionJoinPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-visuals"){ExpeditionStationVisualChecks.Run(ProjectRoot());ZombieLightChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-light"){ZombieLightChecks.Run(ProjectRoot());return 0;}
@@ -169,6 +170,7 @@ internal static class Program
             MagicFxChecks.Run(root);
             GunKitChecks.Run(root,data);
             BloomChecks.Run(root);
+            MapStyleChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             MuzzleFlashChecks.Run(root);
             WeaponSkinChecks.Run(root,data);

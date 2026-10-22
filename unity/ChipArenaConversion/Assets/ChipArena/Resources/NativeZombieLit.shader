@@ -19,6 +19,9 @@ Shader "ChipArena/ZombieLit" {
  //    blood (ZombieStain) by the same seed.
  // Nothing allocates; one material per kind as before, so the instanced batches are unchanged.
  SubShader { Tags { "RenderType"="Opaque" } Cull [_Cull]
+ // Characters clear the anime style's outline mark (Resources/NativeToonEdge.shader tests bit 16), so the environment's
+ // outline pass never lines a zombie, whichever was drawn first.
+ Stencil { Ref 0 WriteMask 16 Comp Always Pass Replace }
  CGPROGRAM
  #pragma surface surfZombie Zombie fullforwardshadows addshadow vertex:vert finalcolor:ZombieTone
  #pragma target 3.5

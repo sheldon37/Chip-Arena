@@ -1,8 +1,12 @@
 Shader "ChipArena/SourceLit" {
- Properties { _SceneTint("Scene tint",Color)=(1,1,1,1) _MainTex("Texture",2D)="white"{} _BodyTint("Body tint",Color)=(1,1,1,1) _AccentTint("Accent tint",Color)=(1,1,1,1) _GlowTint("Emission tint (linear)",Vector)=(1,1,1,1) _Ink("Siren ink",Float)=0 _InkRim("Ink rim",Float)=.3 _InkFlow("Ink flow",Float)=.025 _InkFill("Ink fill",Float)=0 _InkColor("Ink colour",Color)=(.039,.031,.055,1) _Cull("Cull",Float)=2 _MinionGlow("Siren minion glow",Float)=0 }
+ Properties { _SceneTint("Scene tint",Color)=(1,1,1,1) _MainTex("Texture",2D)="white"{} _BodyTint("Body tint",Color)=(1,1,1,1) _AccentTint("Accent tint",Color)=(1,1,1,1) _GlowTint("Emission tint (linear)",Vector)=(1,1,1,1) _Ink("Siren ink",Float)=0 _InkRim("Ink rim",Float)=.3 _InkFlow("Ink flow",Float)=.025 _InkFill("Ink fill",Float)=0 _InkColor("Ink colour",Color)=(.039,.031,.055,1) _Cull("Cull",Float)=2 _MinionGlow("Siren minion glow",Float)=0 _ToonEdgeRef("Anime outline mark (16: scenery the outline pass lines, 0: characters)",Float)=0 }
  SubShader { Tags { "RenderType"="Opaque" } Cull [_Cull]
+ // The anime style's outline mark (Resources/NativeToonEdge.shader tests bit 16): scenery materials set 16, characters keep 0,
+ // which also clears the mark of whatever environment they cover.
+ Stencil { Ref [_ToonEdgeRef] WriteMask 16 Comp Always Pass Replace }
  CGPROGRAM
- #pragma surface surfArmor Lambert fullforwardshadows addshadow vertex:vert finalcolor:StageTone
+ // ArenaToon (NativeToonSurface.cginc): Unity's Lambert exactly while the anime map style is off.
+ #pragma surface surfArmor ArenaToon fullforwardshadows addshadow vertex:vert finalcolor:StageTone
  #pragma target 3.5
  #pragma multi_compile_instancing
  sampler2D _MainTex;float _Ink,_InkRim,_InkFlow,_InkFill,_MinionGlow,_MinionClock;float4 _InkColor;
@@ -40,6 +44,8 @@ Shader "ChipArena/SourceLit" {
  // The guns' muzzle lights (NativeMuzzleLight.cginc): on every map, a lit part takes them as emission (wrapped like the
  // actor lights), never on an entrance stage, an unlit part or the ink; nothing while no muzzle light is live.
  #include "NativeMuzzleLight.cginc"
+ // The anime map style (NativeToon.cginc via NativeToonSurface.cginc): the actor and muzzle lights go on in its stairs.
+ #include "NativeToonSurface.cginc"
  // StageTone (finalcolor, before fog as three tone-maps before fog): renderer.ts's ACES filmic tone mapping at exposure .92
  // (three r180 ACESFilmicToneMapping) on an entrance's lit parts, as the source tone-maps every lit material; unlit parts
  // (glows, toneMapped false in the source) stay raw. Skipped in additive light passes, which only directional key lights add.
@@ -114,8 +120,8 @@ Shader "ChipArena/SourceLit" {
  void surfArmor(Input i,inout SurfaceOutput o)
  {
   surf(i,o);if(_InkFill>.5)return;
-  if(_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ActorLights(i.worldPos,normalize(i.worldNormal));
-  if(_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*MuzzleLights(i.worldPos,normalize(i.worldNormal),.35);
+  if(_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,normalize(i.worldNormal)));
+  if(_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ToonPoints(MuzzleLights(i.worldPos,normalize(i.worldNormal),.35));
   float3 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint).rgb;float4 glow=UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint);
   ArmorLight(o,i.emission.w,i.worldPos,i.worldNormal,i.viewDir,accent,_ArmorExportEmber.rgb*accent*UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb*glow.rgb,glow.w,_StageLit);
  }

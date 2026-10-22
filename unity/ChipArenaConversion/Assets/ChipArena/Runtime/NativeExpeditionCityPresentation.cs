@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class ArenaPresentation
     {
-        private Material townMaterial;private Mesh townMesh;private bool townFailed;private NativeFxDraw townDraw;private NativeExpeditionCityFx townFx;
+        private Material townMaterial;private Mesh townMesh,townToon;private bool townFailed;private NativeFxDraw townDraw;private NativeExpeditionCityFx townFx;
         private NativeCityBackdropBox[] townBackdrop;private NativeCityBackdropFire[] townFires;private readonly List<MetroBatch> townBack=new List<MetroBatch>(),townCast=new List<MetroBatch>(),townTrim=new List<MetroBatch>();private int townCastUsed,townTrimUsed;
         private ContentMap townMap;private NativeExpeditionCityKit townKit;private NativeCityFxScene townScene;private NativeExpeditionCityLights townLights;private ExpeditionAreaLayout townArea;private bool townAreaRead;private float[] townReach=Array.Empty<float>(),townBehind=Array.Empty<float>();
         private NativePropBody[] townParents=Array.Empty<NativePropBody>();private bool[] townOut=Array.Empty<bool>();private Vector3[] townNudge=Array.Empty<Vector3>();private float[] townSeeds=Array.Empty<float>();
@@ -62,6 +62,8 @@ namespace ChipArena.UnityConversion
             if(eye!=null){var c=eye.transform.position;float dt=townLast<0?0:Mathf.Clamp(now-townLast,0,.1f);townLights.Update(c.x,c.y,c.z,now,dt);NativeLighting.PickedLights(townLights.Pos,townLights.Rgb);}
             DrawTownFx(now,eye);ExpeditionHubFrame(eye,now);townLast=now;
         }
+        // The anime map style draws its rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh TownMesh=>NativeLighting.StyleWrap?(townWrap??=MetroMeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;private Mesh townWrap;
         private bool EnsureExpeditionCity()
         {
             if(townMaterial!=null)return true;if(townFailed)return false;
@@ -131,16 +133,16 @@ namespace ChipArena.UnityConversion
         private void TownDraw(MetroBatch b,ShadowCastingMode shadows)
         {
             if(b.Count==0)return;MetroUpload(b);TownInstances+=b.Count;
-            if(UsesInstancing){Graphics.DrawMeshInstanced(townMesh,0,townMaterial,b.M,b.Count,b.Block,shadows,true,0,null);TownDraws++;return;}
+            if(UsesInstancing){Graphics.DrawMeshInstanced(TownMesh,0,townMaterial,b.M,b.Count,b.Block,shadows,true,0,null);TownDraws++;return;}
             // Compatibility rendering: one by one (detail parts already left out), reusing one block made on this main-thread path.
             var one=townOne??=new MaterialPropertyBlock();
-            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(townMesh,b.M[i],townMaterial,0,null,0,one,shadows,true);TownDraws++;}
+            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(TownMesh,b.M[i],townMaterial,0,null,0,one,shadows,true);TownDraws++;}
         }
         // The skyline: static batches (uploaded once) on the backdrop layer; compatibility rendering leaves it out.
         private void DrawTownBackdrop()
         {
             if(!UsesInstancing)return;const int layer=NativeSceneryBuilder.BackdropLayer;
-            foreach(var bt in townBack){Graphics.DrawMeshInstanced(townMesh,0,townMaterial,bt.M,bt.Count,bt.Block,ShadowCastingMode.Off,true,layer,null);TownDraws++;TownInstances+=bt.Count;}
+            foreach(var bt in townBack){Graphics.DrawMeshInstanced(TownMesh,0,townMaterial,bt.M,bt.Count,bt.Block,ShadowCastingMode.Off,true,layer,null);TownDraws++;TownInstances+=bt.Count;}
         }
         private void DrawTownFx(float time,Camera camera)
         {
@@ -159,7 +161,7 @@ namespace ChipArena.UnityConversion
         }
         private void DisposeExpeditionCity()
         {
-            CapturedAnimation.Release(townMesh);CapturedAnimation.Release(townMaterial);townMesh=null;townMaterial=null;townDraw?.Dispose();townDraw=null;
+            CapturedAnimation.Release(townMesh);if(townToon!=null)CapturedAnimation.Release(townToon);townToon=null;if(townWrap!=null)CapturedAnimation.Release(townWrap);townWrap=null;CapturedAnimation.Release(townMaterial);townMesh=null;townMaterial=null;townDraw?.Dispose();townDraw=null;
             townBack.Clear();townCast.Clear();townTrim.Clear();townMap=null;townKit=null;townScene=null;townLights=null;townArena=null;townGeneration=-1;townLast=-1;DisposeExpeditionHub();
         }
     }

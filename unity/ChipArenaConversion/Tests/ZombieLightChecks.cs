@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             var bl=Between(block,"float3 BlockLights(float3 world,float3 n)","// Ground haze");
             Check(bl!=null&&bl.Contains("float3 sum=_ArenaRimColor.rgb*saturate(dot(n,_ArenaRimDir.xyz))+WardField(world,n);")&&bl.Contains("sum+=_ArenaLightColor[k].rgb*(a*a*saturate(dot(n,d/len)))*WardBeam(d,_ArenaLightColor[k].w);")&&
                 block.Contains("float3 light=ShadeSH9(float4(nW,1.0))+_LightColor0.rgb*(saturate(dot(nW,_WorldSpaceLightPos0.xyz))*atten)+BlockLights(i.world.xyz,nW);"),"the floor's light as emulated: SH, the shadowed key, the rim and the slots");
-            Check(R("Assets/ChipArena/Resources/NativeSourceLit.shader").Contains("if(_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ActorLights(i.worldPos,normalize(i.worldNormal));"),"the pilots (SourceLit) take the same slots by the same switch");
+            Check(R("Assets/ChipArena/Resources/NativeSourceLit.shader").Contains("if(_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,normalize(i.worldNormal)));"),"the pilots (SourceLit) take the same slots by the same switch (through the anime map style's ToonPoints, unchanged while it is off)");
             // The switch, and who throws it.
             var lit=R("Assets/ChipArena/Runtime/NativeLighting.cs");
             Check(lit.Contains("public static void ActorLights(bool on){Shader.SetGlobalVector(WardFieldColorId,Vector4.zero);Shader.SetGlobalFloat(ActorLitId,on&&!introActive?1:0);}")&&lit.Contains("ActorLitId=Shader.PropertyToID(\"_ArenaActorLit\")"),

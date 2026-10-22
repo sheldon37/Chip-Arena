@@ -238,6 +238,8 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var name in new[]{"NativeCeilingField","NativePickupGlow"}){var shader=Resources.Load<Shader>(name);if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: "+name);}
             // The match camera's bloom (NativeBloom.cs): its four passes must compile.
             {var shader=Resources.Load<Shader>("NativeBloom");if(shader==null||ShaderUtil.ShaderHasError(shader)||shader.passCount!=4)throw new Exception("Native source shader failed: NativeBloom");}
+            // The anime map style's outline (NativeToonOutline.cs): its one pass must compile.
+            {var shader=Resources.Load<Shader>("NativeToonEdge");if(shader==null||ShaderUtil.ShaderHasError(shader)||shader.passCount!=1)throw new Exception("Native source shader failed: NativeToonEdge");}
             // The Siren possession grin's quad (NativeMinionFxPresentation.cs).
             {var shader=Resources.Load<Shader>("NativeMinionGrin");if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeMinionGrin");}
             // The chip draft's animated cyber backdrop (NativeDraftBackdropPresentation.cs).

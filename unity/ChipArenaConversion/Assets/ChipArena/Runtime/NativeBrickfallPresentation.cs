@@ -94,6 +94,8 @@ namespace ChipArena.UnityConversion
             {
                 var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("NativeSourceLit shader is missing");
                 brickfallLit=new Material(shader){name="Brickfall scenery",enableInstancing=true};brickfallLit.SetFloat("_StageLit",0);
+                // The skyline is scenery: the anime map style's outline pass lines it (NativeSourceLit's stencil mark).
+                brickfallLit.SetFloat("_ToonEdgeRef",16);
                 var built=NativeBrickfallScenery.Build();sectors=new Mesh[built.Length];for(int i=0;i<built.Length;i++)sectors[i]=BrickfallMesh(built[i],"Brickfall scenery "+i);
                 brickfallTrain=BrickfallMesh(NativeBrickfallScenery.BuildTrain(),"Brickfall train");brickfallJib=BrickfallMesh(NativeBrickfallScenery.BuildJib(),"Brickfall crane jib");brickfallPlate=BrickfallMesh(NativeBrickfallScenery.BuildMenuPlate(),"Brickfall menu plate");
                 brickfallDraw=new NativeFxDraw();brickfallFx=new NativeBrickfallFx();brickfallLight=new NativeFxLight();brickfallMemory=new NativeBrickfallMemory();brickfallSectors=sectors;return true;
