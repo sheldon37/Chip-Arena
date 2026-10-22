@@ -71,7 +71,8 @@ Shader "ChipArena/NativeBlockLit"
         #define TOON_RAKE_SLOPE 0.33
         #define TOON_AWNING_ARCH 0.12
         #define TOON_FRAME 0.07
-        // The style's albedo floor (Core MapStyleState.Floor; x the floor, tinted by the shade tint; 0 none).
+        // The style's paint extras (Core MapStyleState.Floor; 0 none): x the albedo floor, tinted by the shade tint; y the share
+        // of a brick face drawn in courses (the rest in stage 1's patches).
         float4 _ArenaToonFloor;
         #define CY_TILE 0.0
         #define CY_PANEL 4.0
@@ -537,11 +538,12 @@ Shader "ChipArena/NativeBlockLit"
                 brick*=1.0+0.05*(BkNoise(uv*float2(9.0,22.0))-0.5)*detail;
                 alb=lerp(brick,BK_MORTAR*0.9,j);
                 // The anime style suggests the brickwork the way a painted background does: bricks drawn in patches and along the
-                // face's edges and foot, flat paint between; broad joints in a dark tone of the brick, a few bricks lit.
+                // face's edges and foot, flat paint between; broad joints in a dark tone of the brick, a few bricks lit. A look's
+                // brickCourses (_ArenaToonFloor.y, stage 2) draws the courses over that share of the whole face (the furnace walls).
                 if(toon)
                 {
                     float2 tid;float tj=BkBond(uv,0.12,0.36,0.024,fw,tid);
-                    float show=max(smoothstep(0.4,0.48,BkFbm(uv*0.42+seed*9.0)),1.0-smoothstep(0.3,0.75,min(edge,yb)))*(1.0-smoothstep(0.02,0.045,fwm));
+                    float show=max(max(smoothstep(0.4,0.48,BkFbm(uv*0.42+seed*9.0)),1.0-smoothstep(0.3,0.75,min(edge,yb))),_ArenaToonFloor.y)*(1.0-smoothstep(0.02,0.045,fwm));
                     float3 tone=base*mean;float3 face=tone*(1.0+0.16*step(0.82,BkHash2(tid+seed*13.0))*show);
                     alb=lerp(face,tone*0.5,tj*show);
                 }

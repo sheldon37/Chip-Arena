@@ -18,8 +18,11 @@
 //                    capitals, z broken corners on old masonry, w crate and container posts and rails (each 0 or 1)
 //  _ArenaToonFx:     x the specular band's strength on rounded forms, y its threshold (N.H), z the occlusion band's depth
 //                    (0..1: the third, darkest band at wall feet and under ledges), w the occlusion band's height (m)
+//  _ArenaToonCool:   stage 2 (0 on every look that leaves it out: as is): x how far a dim point light turns to the shade
+//                    tint's hue (at its own luminance), y the stepped luminance from which it keeps its own colour, so a
+//                    furnace's light reads warm near the heat and cool away from it
 // ---- TOON SHARED BEGIN (HLSL and GLSL: float literals only; Core NativeMapStyle mirrors it) ----
-float4 _ArenaToon;float4 _ArenaToonBand;float4 _ArenaToonShade;float4 _ArenaToonLit;float4 _ArenaToonRim;float4 _ArenaToonPaint;float4 _ArenaToonWrap;float4 _ArenaToonFx;
+float4 _ArenaToon;float4 _ArenaToonBand;float4 _ArenaToonShade;float4 _ArenaToonLit;float4 _ArenaToonRim;float4 _ArenaToonPaint;float4 _ArenaToonWrap;float4 _ArenaToonFx;float4 _ArenaToonCool;
 // Point lights in stairs of their light's square root (NativeMapStyle.PointSteps: 3 steps from 0 to 1, a soft edge of .18).
 #define TOON_POINT_STEPS 3.0
 #define TOON_STAIR 0.18
@@ -41,12 +44,15 @@ float ToonRamp(float x)
 float ToonStairs(float x){float f=floor(x);return f+smoothstep(0.5-TOON_STAIR,0.5+TOON_STAIR,x-f);}
 // Point-light sums (the practical slots, the flashes, the muzzle lights, the actor lights, the ward field): stepped on the
 // square root of their luminance, so a lamp's pool reads as two or three flat rings, blended by _ArenaToonLit.w. Off: as is.
+// Then the dim rings turn toward the shade tint's hue at their own luminance by _ArenaToonCool (0: as is).
 float3 ToonPoints(float3 c)
 {
     if(_ArenaToon.x<0.5)return c;
     float l=dot(c,float3(0.2126,0.7152,0.0722));if(l<0.000001)return c;
     float q=ToonStairs(sqrt(l)*TOON_POINT_STEPS)/TOON_POINT_STEPS;
-    return c*lerp(1.0,q*q/l,_ArenaToonLit.w);
+    float3 p=c*lerp(1.0,q*q/l,_ArenaToonLit.w);float lp=dot(p,float3(0.2126,0.7152,0.0722));
+    float cool=_ArenaToonCool.x*(1.0-smoothstep(0.0,max(_ArenaToonCool.y,0.0001),lp));
+    return lerp(p,_ArenaToonShade.rgb*(lp/max(dot(_ArenaToonShade.rgb,float3(0.2126,0.7152,0.0722)),0.0001)),cool);
 }
 // The key's shadow (1 lit) for the ramp: kept apart from N.L and eased, so a cast shadow's edge is crisp but slightly soft
 // (the shadow map's own filter, narrowed) and a grazing face's shadow-map noise never flips whole bands.

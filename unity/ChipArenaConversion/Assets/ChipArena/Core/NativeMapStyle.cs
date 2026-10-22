@@ -46,6 +46,12 @@ namespace ChipArena.UnityConversion
         /// <summary>Stage 2: the albedo floor in the style (linear, tinted by the shade tint; 0 none), so a near-black surface on
         /// a night map still holds its form (Cyber City's vans and booths).</summary>
         public float shadeFloor;
+        /// <summary>Stage 2: the share of every brick face drawn in courses (0: stage 1's patches along the edges and foot; 1: the
+        /// whole face), for a map whose brick walls are its subject (the Ironworks' furnace walls).</summary>
+        public float brickCourses;
+        /// <summary>Stage 2: how far a dim point light turns to the shade tint's hue at its own luminance (0 none), and the stepped
+        /// luminance (linear) from which it keeps its own colour: a furnace's light warm near the heat and cool away from it.</summary>
+        public float pointCool,pointCoolLevel;
         public MapLookLight key,rim;public MapLookAmbient ambient;public MapLookSky sky;public int fogColor,background,hazeColor;public float fogStart;
     }
     /// <summary>The shader values of a look's style (linear), as NativeLighting writes them: the NativeToon.cginc globals, the
@@ -58,12 +64,14 @@ namespace ChipArena.UnityConversion
         public float[] SkyToon=new float[4],CloudLit=new float[4],CloudShade=new float[4],SkyBand=new float[4];
         /// <summary>The fog colour (linear) and the share of the horizon blended into it (_SkyToonFog).</summary>
         public float[] SkyFog=new float[4];
-        /// <summary>_ArenaToonFloor: x the albedo floor (shadeFloor).</summary>
+        /// <summary>_ArenaToonFloor: x the albedo floor (shadeFloor), y the share of a brick face in courses (brickCourses).</summary>
         public float[] Floor=new float[4];
+        /// <summary>_ArenaToonCool: x pointCool, y pointCoolLevel.</summary>
+        public float[] Cool=new float[4];
         public void Clear()
         {
             On=Outline=Grade=Sky=false;Array.Clear(Toon,0,4);Array.Clear(Band,0,4);Array.Clear(Shade,0,4);Array.Clear(Lit,0,4);Array.Clear(Rim,0,4);Array.Clear(Paint,0,4);Array.Clear(Wrap,0,4);Array.Clear(Fx,0,4);Array.Clear(Edge,0,4);Array.Clear(EdgeColor,0,4);
-            Array.Clear(GradeParams,0,4);Array.Clear(GradeShadow,0,4);Array.Clear(GradeLight,0,4);Array.Clear(SkyToon,0,4);Array.Clear(CloudLit,0,4);Array.Clear(CloudShade,0,4);Array.Clear(SkyBand,0,4);Array.Clear(SkyFog,0,4);Array.Clear(Floor,0,4);
+            Array.Clear(GradeParams,0,4);Array.Clear(GradeShadow,0,4);Array.Clear(GradeLight,0,4);Array.Clear(SkyToon,0,4);Array.Clear(CloudLit,0,4);Array.Clear(CloudShade,0,4);Array.Clear(SkyBand,0,4);Array.Clear(SkyFog,0,4);Array.Clear(Floor,0,4);Array.Clear(Cool,0,4);
         }
     }
 
@@ -125,7 +133,7 @@ namespace ChipArena.UnityConversion
             into.Grade=t.saturation>0&&t.contrast>0;Set(into.GradeParams,into.Grade?t.saturation:1,into.Grade?t.contrast:1,0,into.Grade?1:0);
             Set(into.GradeShadow,Or1(t.gradeShadow.x),Or1(t.gradeShadow.y),Or1(t.gradeShadow.z),0);Set(into.GradeLight,Or1(t.gradeLight.x),Or1(t.gradeLight.y),Or1(t.gradeLight.z),0);
             into.Sky=t.skyToon>0;Set(into.SkyToon,t.skyToon,t.clouds,t.cloudScale,t.bandWidth);Lin(into.CloudLit,t.cloudLit);Lin(into.CloudShade,t.cloudShade);Lin(into.SkyBand,t.horizonBand);
-            Lin(into.SkyFog,look.fog?.color??0);into.SkyFog[3]=t.skyFog;Set(into.Floor,t.shadeFloor,0,0,0);
+            Lin(into.SkyFog,look.fog?.color??0);into.SkyFog[3]=t.skyFog;Set(into.Floor,t.shadeFloor,t.brickCourses,0,0);Set(into.Cool,t.pointCool,t.pointCoolLevel,0,0);
         }
         private static float Or1(float v)=>v>0?v:1;
         private static void Set(float[] a,float x,float y,float z,float w){a[0]=x;a[1]=y;a[2]=z;a[3]=w;}
@@ -150,6 +158,8 @@ namespace ChipArena.UnityConversion
             if(!Finite(t.skyToon,t.clouds,t.cloudScale,t.bandWidth,t.skyFog)||!Unit(t.skyToon)||!Unit(t.clouds)||!Unit(t.skyFog)||t.skyToon>0&&!(t.cloudScale>0&&t.bandWidth>0&&t.bandWidth<1))Fail("sky");
             if(!Finite(t.fogStart)||t.fogStart<0)Fail("fog start");
             if(!Finite(t.shadeFloor)||t.shadeFloor<0||t.shadeFloor>.2f)Fail("shade floor (0 to 0.2, a linear albedo)");
+            if(!Finite(t.brickCourses)||!Unit(t.brickCourses))Fail("brick courses (0..1)");
+            if(!Finite(t.pointCool,t.pointCoolLevel)||!Unit(t.pointCool)||t.pointCoolLevel<0||t.pointCoolLevel>4||t.pointCool>0&&!(t.pointCoolLevel>0))Fail("point cool (0..1, a level above 0 and up to 4)");
             if(!Rgb(t.rimColor)||!Rgb(t.lineColor)||!Rgb(t.cloudLit)||!Rgb(t.cloudShade)||!Rgb(t.horizonBand)||!Rgb(t.fogColor)||!Rgb(t.background)||!Rgb(t.hazeColor))Fail("colours");
         }
 
@@ -165,6 +175,8 @@ namespace ChipArena.UnityConversion
         public static float Stairs(float x){float f=(float)Math.Floor(x);return f+Smooth(.5f-Stair,.5f+Stair,x-f);}
         /// <summary>ToonPoints' gain on a point-light sum of luminance `l` with blend `points` (1 when the sum is 0).</summary>
         public static float PointGain(float l,float points){if(l<.000001f)return 1;float q=Stairs((float)Math.Sqrt(l)*PointSteps)/PointSteps;return 1+(q*q/l-1)*points;}
+        /// <summary>ToonPoints' share of a stepped point light of luminance `lp` turned to the shade tint's hue (_ArenaToonCool).</summary>
+        public static float PointCool(float lp,float cool,float level)=>cool*(1-Smooth(0,Math.Max(level,.0001f),lp));
         /// <summary>ToonDiffuse for one channel: the shade (ambient plus the lift in the shade tint) to the lit (ambient plus the
         /// key in the lit tint) through the ramp of N.L x shadow.</summary>
         public static float Diffuse(float ambient,float key,float ndl,float atten,float shadeTint,float lift,float litTint,float shadeEdge,float lightEdge,float half,float soft)

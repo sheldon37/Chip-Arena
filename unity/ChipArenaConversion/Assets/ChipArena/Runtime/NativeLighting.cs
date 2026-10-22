@@ -232,7 +232,7 @@ namespace ChipArena.UnityConversion
         public static bool StyleWrap=>StyleActive&&!lowShadows;
         private static bool styleWritten;
         private static readonly int ToonId=Shader.PropertyToID("_ArenaToon"),ToonBandId=Shader.PropertyToID("_ArenaToonBand"),ToonShadeId=Shader.PropertyToID("_ArenaToonShade"),ToonLitId=Shader.PropertyToID("_ArenaToonLit"),
-            ToonRimId=Shader.PropertyToID("_ArenaToonRim"),ToonPaintId=Shader.PropertyToID("_ArenaToonPaint"),ToonWrapId=Shader.PropertyToID("_ArenaToonWrap"),ToonFxId=Shader.PropertyToID("_ArenaToonFx"),ToonFloorId=Shader.PropertyToID("_ArenaToonFloor"),EdgeId=Shader.PropertyToID("_ArenaEdge"),EdgeColorId=Shader.PropertyToID("_ArenaEdgeColor"),
+            ToonRimId=Shader.PropertyToID("_ArenaToonRim"),ToonPaintId=Shader.PropertyToID("_ArenaToonPaint"),ToonWrapId=Shader.PropertyToID("_ArenaToonWrap"),ToonFxId=Shader.PropertyToID("_ArenaToonFx"),ToonFloorId=Shader.PropertyToID("_ArenaToonFloor"),ToonCoolId=Shader.PropertyToID("_ArenaToonCool"),EdgeId=Shader.PropertyToID("_ArenaEdge"),EdgeColorId=Shader.PropertyToID("_ArenaEdgeColor"),
             GradeId=Shader.PropertyToID("_ArenaGrade"),GradeShadowId=Shader.PropertyToID("_ArenaGradeShadow"),GradeLightId=Shader.PropertyToID("_ArenaGradeLight"),
             SkyToonId=Shader.PropertyToID("_SkyToon"),SkyToonLitId=Shader.PropertyToID("_SkyToonLit"),SkyToonShadeId=Shader.PropertyToID("_SkyToonShade"),SkyToonBandId=Shader.PropertyToID("_SkyToonBand"),SkyToonFogId=Shader.PropertyToID("_SkyToonFog");
         private static Vector4 V(float[] a)=>new Vector4(a[0],a[1],a[2],a[3]);
@@ -243,7 +243,7 @@ namespace ChipArena.UnityConversion
         {
             NativeMapStyle.State(look,LegacyStyle,true,Style);StyleActive=Style.On;styleWritten=true;
             Shader.SetGlobalVector(ToonId,V(Style.Toon));Shader.SetGlobalVector(ToonBandId,V(Style.Band));Shader.SetGlobalVector(ToonShadeId,V(Style.Shade));Shader.SetGlobalVector(ToonLitId,V(Style.Lit));
-            Shader.SetGlobalVector(ToonRimId,VC(Style.Rim));Shader.SetGlobalVector(ToonPaintId,V(Style.Paint));Shader.SetGlobalVector(ToonWrapId,V(Style.Wrap));Shader.SetGlobalVector(ToonFxId,V(Style.Fx));Shader.SetGlobalVector(ToonFloorId,V(Style.Floor));Shader.SetGlobalVector(EdgeId,V(Style.Edge));Shader.SetGlobalVector(EdgeColorId,VC(Style.EdgeColor));
+            Shader.SetGlobalVector(ToonRimId,VC(Style.Rim));Shader.SetGlobalVector(ToonPaintId,V(Style.Paint));Shader.SetGlobalVector(ToonWrapId,V(Style.Wrap));Shader.SetGlobalVector(ToonFxId,V(Style.Fx));Shader.SetGlobalVector(ToonFloorId,V(Style.Floor));Shader.SetGlobalVector(ToonCoolId,V(Style.Cool));Shader.SetGlobalVector(EdgeId,V(Style.Edge));Shader.SetGlobalVector(EdgeColorId,VC(Style.EdgeColor));
             Shader.SetGlobalVector(GradeId,V(Style.GradeParams));Shader.SetGlobalVector(GradeShadowId,V(Style.GradeShadow));Shader.SetGlobalVector(GradeLightId,V(Style.GradeLight));
             if(sky!=null){sky.SetVector(SkyToonId,V(Style.SkyToon));sky.SetVector(SkyToonLitId,VC(Style.CloudLit));sky.SetVector(SkyToonShadeId,VC(Style.CloudShade));sky.SetVector(SkyToonBandId,VC(Style.SkyBand));sky.SetVector(SkyToonFogId,VC(Style.SkyFog));}
         }
