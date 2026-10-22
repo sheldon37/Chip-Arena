@@ -684,7 +684,7 @@ Shader "ChipArena/NativeBlockLit"
             // so stacked blocks run on), and a broad soft wash in place of fine noise.
             if(toon)
             {
-                // The material looks (brick to cobble, corrugated) lean toward their flat base colour: the pattern stays legible
+                // The material looks (terracotta to cobble, corrugated; brick paints its own) lean toward their flat base colour: the pattern stays legible
                 // but reads as painted, not as noise (screens, glass, neon, the bank's looks and the hazard paint keep theirs).
                 // Past a few centimetres a pixel every pattern resolves to that flat paint (no moire on courses, boards or ribs).
                 // (Brick paints its own suggested courses above and keeps them.)
