@@ -1,3 +1,72 @@
+## 2026-10-22 — Claude: BoZo + Magica Cloth 2 import and inventory, steps 1–2 (on the branch, not merged)
+
+- **Branch/base:** `claude/bozo-inventory` in the owner's PC worktree `Chip-Arena-Unity`, from shared `claude/sleepy-ritchie-g8ruhv` at `c4c4672`. Docs and one `.gitignore` guard only; no PR (by request); not published.
+- **Step 1 (owner's PC, Unity 6000.3.24f1, Built-in):**
+  - The owner imported BoZo 2.6.4 and Magica Cloth 2 2.18.4 into the Asset Store default folders. I moved both, with their `.meta` files, under the git-ignored `Assets/LocalAssets/` (GUIDs kept).
+  - I installed BoZo's bundled Built-in versions of its three hand-written shaders (the default versions are URP and fail on Built-in).
+  - I moved Magica's example folder, which failed to compile (it needs the Wind module), out of `Assets` to the git-ignored `LocalAssets/MagicaCloth2-Example/`. The Editor then compiled with no script errors.
+- **Not committed (Astra):**
+  - `Packages/manifest.json` gained `com.unity.shadergraph` 17.3.0. Burst, Collections and Mathematics resolve only through it.
+  - The packager catalog rejects that line, so on this PC `package_source.py` and `test_source_packages` fail while the line is present.
+  - Magica writes `MAGICACLOTH2` into the tracked ProjectSettings on every domain reload.
+  - The Editor rewrites the minimal `ProjectSettings.asset` and re-serialises `InputManager.asset`.
+- **Step 2 inventory** (in `docs/BOZO-INTEGRATION.md`; from the packs' files, a static FBX reader over all 140 FBX, and their runtime code, read but not run):
+  - Skeleton and mapping:
+    - Unreal-mannequin humanoid, 107 transforms, with twist bones.
+    - The rest is a T-pose with non-identity frames, so the adapter needs a per-joint rest alignment (not a 1:1 rotation copy). `legRatio` is about 1.70.
+    - A proposed table maps BoZo onto the 22 `CapturedRig` joints.
+  - Content and triangles:
+    - 36 slots and 166 outfit prefabs; the body is 14 part meshes hidden by tags.
+    - No LODs.
+    - 17–26 k triangles drawn per dressed preset (Phase A LOD0 budget: 7,000); about 70–90 bones.
+  - Shader and outlines:
+    - The anime toon shader is hand-written and reads only Unity's main light and SH; its multi-light pass is broken. Port, don't bridge.
+    - It sets stencil bit 16, so our map edge pass would line over characters. This corrects MAP-STYLE-ANIME section 6.
+    - Its outline is a world-space inverted hull.
+  - BoZo's runtime:
+    - Merge, colour bake into five 2048² RenderTextures, and saves; it allocates on every change.
+    - Recommendation: use the assets, not its MonoBehaviours.
+  - Magica Cloth 2:
+    - BoneCloth fits the hair chains. MeshCloth is costly.
+    - It steps from Unity time; no manual or presentation-clock stepping; not deterministic.
+  - Optional compile:
+    - BoZo has no asmdef, and neither does any of our code.
+    - Proposed: Unity-type-only runtime, an Editor or load-time baker, and a Magica bridge asmdef on a git-ignored `csc.rsp` define.
+- **Carried into shared docs** from the unmerged `claude/lowpoly-base-model` (`5c3d6ae`):
+  - the visual-skeleton decision and the adapter steps;
+  - the Blender-base drift numbers, P1–P4 and the secondary-motion rules;
+  - the owner's art direction;
+  - the pack claims, now checked.
+- **`.gitignore`:** I added the packs' default import folders, so a re-import or update cannot be committed by accident.
+- **Local only, not committed:**
+  - `Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.cs`. It assembles each preset by bone name in a preview scene, measures it and renders it. It runs when `Temp/bozo-inventory.request` exists. It compiled clean against the 6000.3 assemblies outside Unity; the Editor had not refreshed to run it when this was written.
+  - The scratch FBX reader.
+- **Checks (actual):**
+  - `git diff --check` is clean, and `git status` shows nothing from LocalAssets.
+  - Python unittest discover: 135 tests, 1 failure and 4 errors on this PC, all from the environment or local state, not this change:
+    - 3 × `UnicodeDecodeError` (Python's default code page here is cp932; rerun with `PYTHONUTF8=1`);
+    - `test_source_packages` (the uncommitted Shader Graph manifest line);
+    - `test_native_updater` Windows wrapper (`Publish-Native.cmd` not found from the test's cwd).
+  - The same suite with `PYTHONUTF8=1` on a clean detached checkout of this commit (committed manifest, no packs): 140 tests, 1 failure, 2 skipped.
+    - The failure is the `test_native_updater` Windows wrapper test.
+    - `package_source.py` fails there on the `SourceModels.json` receipt: `core.autocrlf=true` adds a CR (6,606,480 bytes against the receipt's 6,606,479).
+    - Both fail the same way on the base `c4c4672`, so they are pre-existing on this Windows checkout. The cloud run5b passes both.
+- **Not run:** BoZo's creator scene, the in-Editor inventory measurements and renders (pending an Editor refresh), relay and CoreTests (docs-only change), Unity compile check, a Windows build, two clients.
+- **Animation, timing, networking:** none changed. For the record: the adapter keeps hit timing, hitboxes, damage, cooldowns, movement and the wire unchanged. Cloth is per client.
+- **Astra:**
+  - the manifest and catalog change;
+  - packaging guards for the packs' default folders;
+  - builds with `Assets/LocalAssets` content;
+  - the Editor's Gamma vs builds' Linear;
+  - later, the `look` ids (BoZo ids are `"<Type>/<prefab>"` names).
+- **Risks:**
+  - The texture memory of BoZo's own merge (about 80 MB per character).
+  - MeshCloth's per-frame full-mesh upload.
+  - Magica's non-deterministic stepping in killcams.
+  - BoZo's anime eyes against the owner's "natural eyes".
+  - The slim default male against the V-taper target.
+- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`), the Editor-measured proportions and renders, then step 3 (rig adapter).
+
 ## 2026-10-21 — Claude: anime map style, stage 1 (foundation and two pilots; merged into shared)
 
 - **Branch/base:** `claude/anime-map-style`, from shared Unity head `claude/sleepy-ritchie-g8ruhv` at `e0f904c`. Merged into shared `claude/sleepy-ritchie-g8ruhv` and the builder on 2026-10-22 after the owner reviewed the renders ("keep it cool, merge it and start phase 2"); not published (no PR by request).

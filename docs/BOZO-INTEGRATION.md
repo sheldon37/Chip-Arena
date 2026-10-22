@@ -1,8 +1,10 @@
 # BoZo characters + Magica Cloth 2: integration plan
 
-Status (2026-10-22, Claude): plan only. Owner decision: player characters come from the **BoZo: Stylized Modular
-Characters – Anime Pack** (Unity Asset Store, v2.6.x), with **Magica Cloth 2** for hair and cloth motion. Both are bought by
-the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
+Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (branch `claude/bozo-inventory`, docs only, not merged):
+both packs imported, moved under `Assets/LocalAssets/`, and inventoried below. No runtime code. Next: owner review, the open
+decisions at the end, then step 3. Owner decision: player characters come from the **BoZo: Stylized Modular
+Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
+bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
 characters. `docs/CHARACTER-LOWPOLY.md` (Phase A) still holds for the rig adapter, cosmetic schema, death compatibility,
 performance budget and the Astra contract; this file records what changes for an asset-pack body. Map restyle to match:
@@ -48,6 +50,361 @@ agents run in the cloud session. Both push to GitHub branches.
    dismemberment on skinned BoZo meshes (regions from bone weights); legacy voxel fallback kept until parity; performance vs
    the voxel renderer (draws, skinning, cloth) on the owner's PC.
 
+## Step 1 result: import and verify (2026-10-22, owner's PC)
+
+Unity 6000.3.24f1, Built-in pipeline, worktree `Chip-Arena-Unity` on `claude/bozo-inventory` from shared `c4c4672`.
+
+- **Versions** (Asset Store package headers in `%APPDATA%/Unity/Asset Store-5.x/`): BoZo 2.6.4 (product 323550, published
+  16 Oct 2026, authored on 2022.3.62f1); Magica Cloth 2 2.18.4 (product 242307, 4 Oct 2026, authored on 2022.3.0f1).
+- **Location.** Both imported to the Asset Store default (`Assets/BoZo_StylizedModularCharacters`, `Assets/MagicaCloth2`),
+  where git does not ignore them and `tools/package_source.py` would package them. Moved with their `.meta` files to
+  `Assets/LocalAssets/` (GUIDs kept; the Editor registered 1,695 moved assets). `Assets/LocalAssets.meta` uses the GUID
+  `tools/install_local_assets.py` writes. `git status` shows nothing from either pack. An Asset Store re-import or update
+  lands in the default folders again: move it, or re-import into the moved folders (GUIDs match).
+- **Built-in shaders.** BoZo's three hand-written shaders (`BMAC_Toon`, `BoZo_LayerTextureShader` = `Hidden/TextureLayerer`,
+  `BoZo_Decal`) arrive as URP versions; they fail on Built-in ("Couldn't open include file
+  .../universal/ShaderLibrary/Core.hlsl"). The pack ships the Built-in versions in `STYLIZED_Built-In_Shaders.unitypackage`
+  (same GUIDs); installed them. The URP originals are kept in the git-ignored `unity/ChipArenaConversion/LocalAssets/BoZo-URP-shaders/`.
+  Its Shader Graphs carry both Built-in and Universal targets.
+- **Compile.** Magica's `Example (Can be deleted)` (145 MB, own asmdef) failed: `WindDemo.cs` needs `WindZone` from the Wind
+  module, which this project's manifest leaves out. Moved to the git-ignored `unity/ChipArenaConversion/LocalAssets/MagicaCloth2-Example/`
+  (outside `Assets`, not compiled) rather than adding a module. The Editor then compiled with no script errors.
+- **Import warnings left (pack content):** `BSMC_Head.fbx` (an old head no preset uses): "Avatar creation failed:
+  Transform 'Hips' not found"; `BSMC_Head_02.fbx`: no smoothing groups for blendshape normals. Three brow materials,
+  `BSMC_BakeMat` and `UnderUpper_SimpleUnderShirt_Mat` reference shaders that are not in the pack (pink if drawn as they are).
+- **Not done:** opening `Scenes/StylizedCharacterCreator.unity`, which would replace the owner's open scene. The local
+  inventory tool (below) renders the presets in a preview scene instead.
+
+**Package manifest (not committed; Astra's call).** The imports added one line, `"com.unity.shadergraph": "17.3.0"`, and an
+untracked `Packages/packages-lock.json`. Burst 1.8.30, Collections 2.6.8 and Mathematics 1.3.3 resolve only as Shader Graph's
+dependencies (through `com.unity.render-pipelines.core` 17.3.0, with searcher 4.9.5, ugui 2.0.0, test-framework 1.6.0,
+test-framework.performance 3.5.0, nuget.mono-cecil 1.11.6 and ext.nunit 2.0.5). Magica's asmdef compiles only while those
+three resolve (`versionDefines` `MC2_BURST`/`MC2_COLLECTIONS`); without them its importer asmdefs `Client.Add` them into the
+manifest on load. Committing it needs:
+- the three listed explicitly;
+- `tools/builtin-packages-6000.3.24f1.json` (the packager's catalog) extended: today `package_source.py` and
+  `test_source_packages` reject `com.unity.shadergraph@17.3.0` on this PC.
+
+**Tracked and shared settings the Editor and packs write (none committed).**
+- Opening the project rewrites the minimal tracked `ProjectSettings/ProjectSettings.asset` (+691 lines) and re-serialises
+  `InputManager.asset`; it creates 20 untracked `ProjectSettings/*.asset`. The stub's `m_ColorSpace: 1` is not a Unity
+  key: the Editor runs Gamma. Builds still force Linear (`Editor/PrototypeBuild.cs:59`), so in-Editor looks differ from builds.
+- Magica: `MagicaManager` `[InitializeOnLoadMethod]` adds `MAGICACLOTH2` to the selected target's Scripting Define Symbols on
+  every domain reload (`Scripts/Core/Manager/MagicaManager.cs:151-170`). It lands in `ProjectSettings.asset` when the Editor
+  saves. If that is ever committed, CI gets the define without the assembly.
+- BoZo: `BoZo_AutoIncludeShaders` adds five shaders to Always Included in `GraphicsSettings.asset` (untracked) on every load.
+
+## Step 2: inventory
+
+Sources: the packs' files and code (static, file:line from the packs), a static FBX reader over all 140 BoZo FBX, and a
+local Editor tool (`Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.cs`, git-ignored with the packs).
+
+### Skeleton
+- `Outfits/Common/Body/BodyRig.fbx`: one Humanoid avatar (Mixamo-style mapping), Unreal-mannequin names, 107 transforms:
+  `root` → `pelvis` → `spine_01`…`spine_05` → `neck_01`, `neck_02` → `head`; `clavicle`/`upperarm`/`lowerarm`/`hand` with
+  metacarpals and 3-joint fingers; `thigh`/`calf`/`foot`/`ball`. There are also IK helpers (`ik_foot_*`, `ik_hand_gun`/`_l`/`_r`),
+  `center_of_mass`, `interaction`, `breast_l/r`, and face bones (`brow`, `cheek`, `jaw`, `chin`, `mouth`, `nose`, `nosebridge`).
+  Heads add `eyeRoot`/`IrisRoot` bones and hair adds chains (`additionalBones`, below).
+- **Twist bones exist**: `upperarm_twist_01/02`, `shoulder_twist`, `lowerarm_twist_01/02`, `thigh_twist_01` (+`01_l1`) and
+  `calf_twist_01` (+`01_l1`) per side. So the 22-joint candy-wrapper risk is solvable by deriving twist, not by cuffs.
+- **Rest pose:** a T-pose with non-identity bone frames (the upper arm about 2° below horizontal; local x runs down the
+  chain). The game's `CapturedRig` rests arms-down with identity frames, so "copy local rotations 1:1" (section c of the
+  Phase B design) does not apply as is. The adapter needs a per-joint rest alignment computed once at bind:
+  BoZo world = game world delta × BoZo rest world, where the delta is relative to each rig's own rest.
+- Rest joint heights (FK from the avatar's T-pose, metres): pelvis .987, spine_02 1.075, spine_05 1.395, neck_01 1.491,
+  head 1.573, chin 1.546, brow 1.676; upper arms ±.133 (1.425 high), elbows ±.395, wrists ±.619; hips ±.093 at .961, knees
+  .536, ankles .110, balls .013 (z +.116). Segments: upper arm .263, forearm .224, thigh .425, shin .428.
+  Leg (hip to ankle) .85 m against the game's .50 m, so `legRatio` ≈ 1.70 (the Blender base's was 1.64).
+
+**Mapping onto the 22 `CapturedRig` joints** (proposal for step 3; derived bones are presentation only):
+
+| CapturedRig | BoZo | Notes |
+|---|---|---|
+| motion-root (0) | `root` + height offset | BoZo `root` is at the soles; the game's root is feet + .865 m |
+| pelvis (1) | `pelvis` | |
+| spine (2) | `spine_01`, `spine_02` | rotation shared between the two |
+| chest (3) | `spine_03`, `spine_04`, `spine_05` | shared; `breast_l/r` held |
+| neck (4) | `neck_01`, `neck_02` | shared |
+| head (5) | `head` | face bones, `eyeRoot`, `IrisRoot` ride it |
+| clavicle (6, 10) | `clavicle_l/r` | |
+| shoulder (7, 11) | `upperarm_l/r` | `shoulder_twist`, `upperarm_twist_01/02` derived from the upper arm's roll |
+| elbow (8, 12) | `lowerarm_l/r` | `lowerarm_twist_01/02` derived from the wrist's roll |
+| wrist (9, 13) | `hand_l/r` | fingers held in a grip pose per weapon (none today) |
+| hip (14, 18) | `thigh_l/r` | `thigh_twist_01*` derived |
+| knee (15, 19) | `calf_l/r` | `calf_twist_01*` derived |
+| ankle (16, 20) | `foot_l/r` | |
+| toe (17, 21) | `ball_l/r` | |
+
+Unmapped and held: `ik_*`, `center_of_mass`, `interaction`, fingers, face, hair chains (Magica).
+
+### Bodies, slots and outfits
+- **Slots:** 36 `OutfitType` assets, empty ScriptableObjects used only as name keys. Six have no outfits (Ears, HeadDetail,
+  Iris, Overall, Shoulders, Waist). One outfit per slot; equipping replaces.
+- **166 outfit prefabs** (each an `Outfit` component plus a nested FBX with its own skeleton copy). By slot: Top 24, HairBack 19,
+  Bottom 16, Feet 13, HairFront 11, Hat 9, Gloves 8, Pupil 8, EyeBrows 6, Socks 6, FaceDetails 5, UpperFace 5, EyeLashes 4,
+  HeadAcc 4, LowerFace 3, UnderLower 3, UnderUpper 3, and 1–2 each for Body, Head, Eyes, EyeShine, Teeth, MakeUp (×3),
+  Neck, Leggings and FaceTexture. Underwear, socks, leggings, pupils, shine, make-up and face details are texture-only
+  layers (0 triangles). `Top_ThickHenslay` has no Type and throws when equipped (pack bug).
+- **Body:** `Body_AnimeBasic` / `Body_BasicBody` are 14 part meshes (ankles, back, chest, feet, hands, hips, lower arms,
+  lower legs, neck, shoulders, upper arms, upper legs, waist, wrists). Outfit `tags` (CoverChest, CoverHips, CoverUpperArms…)
+  switch the covered parts off (`OutfitHideByTag`) and set `Tag_*` blendshapes. Only four tops use `HideTypes` (they hide
+  Bottom).
+- **Rigid pieces:** every outfit is skinned (`AttachPoint` is empty on all 166).
+- **Heads:** `Head_AnimeYoung` (presets) and `Head_BasicHead`. The face is a mesh with eyes, iris, pupil, shine, lashes,
+  brows and teeth as separate pieces. It is a human face (not a mask), but the anime style has large eyes, which goes against
+  the owner's "natural eyes" note. The owner should review this.
+- **LODs:** none. No LODGroup and no reduced meshes in the pack.
+
+**Triangles** (static FBX count; Unity triangulates the same way). Body 9,600 (hands 2,976, feet 1,894, the other 12 parts
+4,730); head 3,136; eyes 424; hair 546–2,585 per piece; tops 3,016–5,130; bottoms 878–2,742; feet 816–3,900; gloves
+682–1,884. Per preset, as drawn after the body-part hides:
+
+| Preset | Look | Sum | Body parts hidden | Drawn |
+|---|---|---|---|---|
+| Default_Boy | boxers | 16,536 | none | 16,536 |
+| Zell | baggy pants, arm bands | 19,280 | hips, legs (1,900) | 17,380 |
+| Kenji | suit, khakis, loafers | 22,828 | 5,888 | 16,940 |
+| Jackal | jacket, capris, boots, gloves | 28,110 | 4,904 | 23,206 |
+| Glover | cardigan, shorts, flats, gloves, cap | 30,221 | 4,520 | 25,701 |
+| Default_Girl / Jayda / Hana | | 16,722 / 21,412 / 24,614 | | 16,722 / 16,892 / 22,520 |
+
+So a dressed character draws about 17–26 k triangles: the store's "about 19 k" holds, and it is 2.4–3.7 × the Phase A LOD0
+budget of 7,000.
+
+**Bones and weights.** Up to 38 skin clusters per mesh piece (hands, tops, gloves 26–38); at most 4 influences (importer
+`maxBonesPerVertex: 4`). A merged character uses about 70–90 bones: 52 humanoid, the twist bones, face and eye bones, and
+1–6 hair-chain roots per hair piece. That is far over Phase A's 22. Vertex colours are on 136 of 139 meshes; one UV set.
+
+### Blendshapes and body shaping
+- **Body** (9 per part, and the same 9 on tops, bottoms, gloves and some shoes, so clothes follow): `Shape_BodyType`
+  (male ↔ female), `Chest`, `Weight`, `Belly`, `Muscle`, `Curvy`, `NeckThickness`, `WaistSize`, `ButtSize`.
+- **Head_AnimeYoung** (53): face shapes (`BodyType`, `EarLength`, `EyeRoundness`, `Maturity`, `MouthWidth`, `Muscle`,
+  `NeckThickness`, `Roundness`, `Sharpness`, `Weight`) plus about 43 `Expression_*` driven by animation clips only.
+- `Tag_*` shapes (hair under hats and hoods, `Tag_HighKnee`, `Tag_ArmCover`) are set by outfit tags.
+- **Bone modifiers.** `BodyShapeModifier` writes per-bone scale, position and rotation offsets by bone name, mirroring `_l`
+  to `_r`. `Default_Boy` uses 16 of them, for example root ×1.025, spine_04 ×1.018, clavicle ×1.068 and the twist bones ×1.098.
+  These are presentation-only offsets, many of them on bones outside the 22 joints.
+- **Male/female:** `Shape_BodyType` plus an Animator float `Stance` (idle and walk trees). Default_Boy: BodyType 45, Weight 15,
+  NeckThickness 27, stance .25. BoZo's male default has slim anime proportions (upper-arm joints ±.133 m against the Blender
+  base's ±.198), short of the owner's broad-shouldered, V-taper target. Reaching that target takes the Muscle shape plus
+  clavicle and spine bone scales; the owner should judge from renders.
+
+### Shaders, lighting and outlines
+- **Materials:** 164 of the pack's 180 materials (157 outfit materials) use `BSMC_ClothesCustom.shadergraph` (Built-in Lit
+  target, PBR-ish). The anime look
+  is a different material: `Materials/BSMC_AnimeShader.mat` on `Bozo/Bozo_Toon` (the Built-in `BMAC_Toon`), applied to the
+  merged character through the `BSMC_AnimeShader` MaterialPackage. Every preset uses it.
+- **`Bozo/Bozo_Toon`** is a hand-written `.shader`, not a Shader Graph:
+  - Passes: ForwardBase, ForwardAdd, an inverted-hull outline pass (no LightMode tag) and ShadowCaster.
+  - Properties: `_Texture2D`, `_NormalMap`, `_IDMap`, `_Color_1`…`_Color_9`, outline (`_UseOutline`, `_OutlineColor`,
+    `_OutlineDistance`), `_LightHeightDirectionStrength`, `_Brightness`, rim light (power, sharpness, colour, overlay),
+    shadow colour, edge colour, edge and sharpness, `_RecieveShadows`, ambient, multi-light, decal and pattern maps with
+    3 colours each.
+- **How it reads light:** only Unity's main directional light (`_WorldSpaceLightPos0`, `_LightColor0`, shadow attenuation)
+  through a smoothstep ramp with an edge-colour band, plus `ShadeSH9` ambient, rim light and fog. The ForwardAdd pass is
+  broken:
+  - its keyword `_USEMILTIPLELIGHTS` is misspelt, and the `[ToggleUI]` property never sets it;
+  - it treats point-light positions as directions;
+  - it swizzles colour `.rbg`.
+  `_USEAMBIANT` is also a keyword behind a `[ToggleUI]`.
+  None of our lights (picked practical lights, actor lights, muzzle lights, `ToonPoints`) reach it. **Recommendation for
+  step 4: a port, not a bridge.** Our own skinned toon shader in the `ArenaToon`/SourceLit family, reading BoZo's inputs: the
+  albedo or ID map, 9 colours with vertex-colour layer select, and the outline from vertex alpha.
+- **Colour channels:** in the shader, texture RGB weights 3 colours inside a layer and vertex-colour RGB picks the layer
+  (1–3, 4–6, 7–9). BoZo's runtime bakes colours into textures instead (below), where the `_IDMap` picks the layer.
+  Only 29 of 162 outfit materials have an ID map.
+- **Outline:** an inverted hull. Normals are pushed out by `_OutlineDistance` × 1 mm × vertex alpha in object space,
+  drawn in `_OutlineColor`, and clipped where vertex alpha < .5. Its width is in metres, so it thins with distance, unlike
+  our 1–2 px screen-space map lines.
+- **Stencil:** every pass writes `Ref 221, WriteMask 221` (bits 1, 4, 8, 16, 64, 128), so it **sets** bit 16. Our edge pass
+  draws where bit 16 is set (`NativeToonEdge` `Ref 16 ReadMask 16 Comp Equal`), so map lines would cross BoZo characters.
+  This corrects `MAP-STYLE-ANIME.md` section 6: the shader is not a Shader Graph, and the fix is the port, which writes 0
+  to bit 16 like SourceLit and NativeZombieLit.
+
+### BoZo's runtime systems (`OutfitSystem`, `BoZo_CharacterOptimizer`, `BMAC_SaveSystem`)
+- **Equip API:** `AttachOutfit`, `RemoveOutfit`, `LoadFromObject`/`LoadFromID`/`LoadCharacter`, `SetShape`, `SetStance`,
+  `UpdateMaterial` and `MergeCharacter`. The caller instantiates outfits.
+  - Bones are bound by name. Each outfit's renderer bones are remapped onto the body's bones, and `additionalBones` (hair
+    chains, head eye bones) are reparented by parent name.
+  - Loading is `async void` and Task-based (`Task.Yield`, `Resources.LoadAsync`), not coroutines.
+- **Merge, runtime, on every equip, remove and load:**
+  - Every active outfit is combined into one new mesh on the body renderer. Bone weights are remapped by name with the legacy
+    4-influence `BoneWeight`; bind poses are recomputed. Blendshapes merge by name with frames collapsed. Only UV0 is kept.
+  - Colours are not atlased: each outfit's 2048² textures share one UV space and are layered through `Hidden/TextureLayerer`
+    into **five 2048² RenderTextures per character** (about 80 MB of GPU memory, so about 640 MB for 8 pilots).
+  - Every colour change re-blits all of them, then rebinds and replays the Animator.
+  - Outfits with `mergeTexture` off keep their own submesh and material.
+  - The atlas code in the optimizer is never called and needs a shader that is not in the pack.
+- **Allocation:** every equip instantiates, builds LINQ lists, dictionaries and bone arrays, and uses `DestroyImmediate`.
+  This cannot meet Phase A's "0 B GC per frame once warm" or the presentation clock, so **use BoZo's assets, not its
+  MonoBehaviours**. Recommendation: our own combine, once per outfit signature (Phase A section g). It covers name
+  binding, part hides from tags, `Shape_`/`Tag_` weights, bone-modifier offsets, additional bones, and colours through
+  our shader or a once-only bake.
+- **Death and dismemberment:** the merged and source meshes keep normal 4-influence weights on named bones. Regions from
+  dominant bones map cleanly onto the 11 Phase A regions, and the 14 body parts already split at the elbows, wrists, knees
+  and ankles. Stump caps still have to be generated.
+- **Saves:** `JsonUtility` `CharacterData` (`versionID` 4): body and face shape ids and values, bone modifiers, outfit ids
+  (`"<Type>/<prefab>"` Resources paths), colours, decals, patterns, part visibility, stance and material package name. Files go
+  to `persistentDataPath/BoZo_StylizedModularCharacters/CustomCharacters`. Ids are names, never GUIDs, which suits Astra's
+  `look` map (CHARACTER-LOWPOLY section i) if we keep BoZo's ids.
+- **Animation:** six Humanoid clips (idle and walk, male and female, a dizzy clip), expression clips on
+  `blendShape.Expression_*`, and `HeeledFeet`. No Animator is required. Our poses drive the bones, and expressions could be
+  driven by us.
+- **Builds:** BoZo's `Resources` folders ship whole (about 174 outfits, 287 textures at 2048²), and Always Included adds
+  its shaders. A build with the packs grows accordingly unless our own bake writes only what we use. That is
+  Astra's build tooling.
+- **Assemblies:** BoZo has no asmdef, so it compiles into Assembly-CSharp, as all our game code does (this project has no
+  asmdefs). Any direct reference to BoZo types from tracked code breaks CI. At runtime we need Unity types only (meshes,
+  materials, textures); an Editor-side baker can read BoZo data through `SerializedObject`.
+- **Editor tools broken by the move (we don't need them):**
+  - TextureBaker would write into a recreated `Assets/BoZo_StylizedModularCharacters/CustomOutfits/Resources`;
+  - IconCapture's path rewrite breaks on `LocalAssets`;
+  - the legacy CharacterObject upgrade fails;
+  - one inspector banner is missing.
+  The `Resources` loads and saved ids are unaffected.
+
+### Magica Cloth 2
+- **Cloth types:**
+  - BoneCloth (Transform chains under root bones): the fit for BoZo hair, which brings its own chains (`Hair_Front`,
+    `Hair_Back`…), and for `Cloth_Cape`.
+  - BoneSpring: no gravity, a spring back to the pose; for stiff accessories.
+  - MeshCloth (a reduced proxy of a readable skinned mesh): needed only for the 7 skirts and dresses that ship a paint map
+    (`MC2Map`). It clones the mesh, uploads all vertices every frame and swaps the original back when culled; its build is
+    asynchronous over several frames and allocates heavily. Not measured; it is the main cost risk.
+- **Runtime build:**
+  1. `AddComponent<MagicaCloth>()`, `Initialize()`, `DisableAutoBuild()`.
+  2. Set `SerializeData` (cloth type, root bones or source renderers, paint, reduction, colliders).
+  3. Load presets with `ImportJson` (parameters only).
+  4. `ReplaceTransform` for name remaps, then `BuildAndRun()`. It runs once; a rebuild means a new component.
+  Other calls: `SetParameterChange`, `ResetCloth(keepPose)`, `SetTimeScale(0–1)`, `SetSkipWriting`, `AddForce`; a
+  disable mode of Reset or Keep.
+- **Colliders:** sphere, capsule and infinite plane. Collision mode is Point or Edge; there is no per-cloth limit, but each
+  particle checks every collider. Keep self-collision off (it is expensive). BoZo's base prefab adds 13 capsules to body
+  bones.
+- **Culling:**
+  - Camera culling: Off, Reset, Keep, or follow the Animator (the default). It uses `Renderer.isVisible`, which includes
+    shadow cameras and lags a frame, so first-person cloth must be switched off explicitly.
+  - Distance culling: off by default; up to 100 m, from `Camera.main` by default, with a reset on crossing.
+  - No LOD tiers. The levers are frequency, step cap, reduction, blend weight, time scale and disabling.
+- **Time:** 90 Hz by default (30–150), at most 3 steps per frame. It hooks the PlayerLoop around LateUpdate and steps from
+  `UnityEngine.Time` (scaled, unscaled or fixed); **manual stepping from our presentation clock is not possible without
+  changing its source.** It is not deterministic: step counts follow frame time and build timing varies. Killcams, corpses
+  and intros re-simulate locally (presentation only, nothing networked), but a replay's cloth will not match the live one
+  exactly. Use `ResetCloth` on respawns and cuts, and Keep or `SetSkipWriting` to freeze corpses.
+- **Burst jobs:** steady-state managed allocation looked absent in the hot paths read (not profiled).
+- **Platforms:** the readme says every platform except WebGL; there are no shader or SRP dependencies.
+- **BoZo's integration** (`ThirdParty/MagicaCloth`, `#if MAGICACLOTH2`): four cloths on `BSMC_CharacterBase` — Cape
+  (Bone, Skirt preset), FrontHair and BackHair (Bone, ShortHair preset; BackHair off under a hood), and one MeshCloth (Skirt
+  preset, the outfit's `MC2Map`). It destroys and rebuilds them after every merge. Use it as a reference only.
+
+### What this changes in the plan
+- **Optional compile.** Prefer no compile-time dependency at runtime: render BoZo data with Unity types; let an Editor or
+  load-time baker turn it into our combined meshes in `LocalAssets`; fall back to voxel when the bake is absent. Only cloth
+  needs Magica types at runtime. Put that bridge in its own asmdef referencing `MagicaClothV2`, with `defineConstraints` on
+  a local define. Our Assembly-CSharp code reaches it through a registration hook, never by type.
+  - Don't use `MAGICACLOTH2` as the guard: it is written into the tracked ProjectSettings.
+  - Candidate: a git-ignored `Assets/csc.rsp` with `-define:CHIPARENA_LOCAL_BOZO`, written by a local install step.
+  - Still to verify in the Editor: that `defineConstraints` sees `csc.rsp` defines.
+- **Budget (proposal, owner and Phase C benchmark to decide).** LOD0 at most 20 k drawn triangles after part hides
+  (today's dressed males are 17–23 k, Glover 26 k), with LOD1 at about 50 % and LOD2 at about 20 %. Those LODs must be made,
+  since the pack has none; one candidate is the Editor's mesh LOD generation, not verified on 6000.3. Up to about 90 bones
+  with 4 influences. One submesh and one material per character where the bake allows. Texture memory: one baked albedo per
+  outfit signature at 1024², not five 2048² RenderTextures. The pass criteria stay +0.5 ms CPU and +5 % GPU over voxel at
+  8 pilots, and 0 B GC per frame.
+- **Shader:** port (above). Then match the map `lineColor` and width to the port's outline.
+- **First person:** the view rig needs the lower arms, wrists, hands, and the sleeves and gloves weighted to `lowerarm`/`hand`.
+  Hands are 2,976 triangles. Cloth is off.
+
+### Measured in Unity (local inventory tool)
+Pending: the tool is installed but the Editor had not refreshed when this was written (it runs on Editor focus).
+It will report the following:
+- per-mesh and per-preset bones, weights, influences, blendshapes and bounds;
+- stature, head height and heads tall, and shoulder, chest, waist and hip widths of the assembled presets (rest, and with
+  their shapes);
+- whether each shader compiles in Built-in;
+- front, side, back and three-quarter renders (lit and toon approximation).
+
+## Decisions and design carried from the stopped Phase B branch
+
+From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there, sections c, j and k), adapted to BoZo.
+
+- **Proportions (owner, 2026-10-20, "Option B in principle").** The visual body has human proportions on a presentation-only
+  visual skeleton driven by the game's poses. With BoZo, its skeleton is the visual skeleton. The authoritative rig is
+  unchanged: `CapturedRig`, 22 joints, motion-root at feet + .865 m, a stocky 1.70 m layout, the capsule (radius .42, half
+  height .85), the head box, melee sector, shot origin, aim origin, weapon frames and the network pose.
+- **Adapter steps** (Phase B design; step 1 now needs the rest alignment above):
+  1. Carry the game pose's joint rotations onto the visual joints.
+  2. Visual root height = rest height + the game root translation × `legRatio` (1.64 for the Blender base, about 1.70 for
+     BoZo), so crouches and bobs keep the game's knee angles.
+  3. Planted feet (within about .03 m of the floor) use two-bone IK onto the game ankle's ground point, with the knee toward
+     the game knee's plane, blending out as the foot lifts. The `Lowest()` floor fit is evaluated on the visual joints.
+  4. Weapons ride the visual right hand at the same socket (P1). Two-handed holds IK the left hand to the game's
+     right-to-left hand offset. One-handed weapons, empty hands and casts stay FK.
+  5. Authority stays as it is.
+- **Drift, measured for the Blender base** (1.74 m, 8 heads; to be re-measured for BoZo in Unity):
+  - The visual head stays as close to the authoritative head box as the voxel head does (within .01–.06 m in every clip).
+  - The weapon on the visual hand sits .21–.34 m from today's drawn frame. The visual muzzle is .26–.40 m from the shot
+    origin at idle and aim (voxel .12–.18 m). Tracers already converge within 4.5 m (`NativeShotLaunch`), and hits are
+    unaffected.
+  - Support-hand IK needs .31–.33 m, within 87 % of reach. Foot IK needs up to .29 m, within 92 % of reach.
+- **Proposals (none applied; owner and Astra decide):**
+  - **P1** (Claude, recommended): the weapon on the visual hand.
+  - **P2** (Claude): the visual right hand IKs to today's weapon frame.
+  - **P3** (Astra, authority, only if the owner wants hits to match the taller body): raise the head box and shot origin.
+  - **P4**: corpse, wound, clearance, hat and claw code take fit volumes from the model instead of voxel box sizes.
+- **Who reads joint positions today:**
+  - Authoritative, unchanged: the capsule, the headshot box, the melee sector, the shot and aim origins.
+  - Presentation that follows the visual skeleton: weapon sockets (`NativeKillBoxes.RightHandSocket`), muzzle FX,
+    footfalls, the cinematic head, chest glows, the grab claw, corpses and gibs (`CapturedRig.Boxes`), wounds, arrows,
+    band/armour/hat anchors, blade clearance, and the first-person view rig (elbows and hands).
+- **Secondary motion (Phase B section k).** Nothing networked; never in first person. Off on the Low tier and with Reduced
+  effects. Frozen beyond 15–20 m. A budget for 8 pilots. Killcams, replays, spectators and corpses re-simulate locally, and a
+  corpse's chains settle then freeze with the ragdoll's sleep. Garment chains use the body's fit volumes as colliders.
+  Magica Cloth 2 replaces the proposed custom spring solver. Its fixed sub-steps come from Unity time, not our presentation
+  clock (above).
+- **Owner's art direction (2026-10-20/21; the reference images are the owner's, not in the repo):**
+  - Body: lean athletic, broad shoulders, V-taper, not overly muscular, about 7.5–8 heads tall.
+  - Face: a human face, not a mask; natural eyes without eyeliner; hair sits on the scalp.
+  - Silhouette: clean stylization, not blocky or over-carved.
+  - Maps: anime/toon with a cool, saturated shade palette (`MAP-STYLE-ANIME.md`).
+- **Pack choice:** BoZo over P09 Modular Humanoid Lite (2026-10-21).
+  - Asset Store claims now checked:
+    - about 104 items: the pack has 166 outfit prefabs, many of them texture layers;
+    - male/female blend: yes, `Shape_BodyType` plus stance;
+    - Mixamo-compatible humanoid: yes, with hair on its own chains;
+    - toon shader with 9 colours and an outline: yes, but hand-written, and the URP version is the default;
+    - merge to one mesh: yes, at runtime, with layered RenderTextures rather than an atlas;
+    - JSON/ScriptableObject save: yes;
+    - Built-in and URP: yes, with the bundled Built-in shader package;
+    - Magica support: yes;
+    - about 19 k triangles: 17–26 k drawn per dressed preset.
+- **Kept from the stopped base:** the chest core and right-wrist device (closed / opening / insert / accepted / active).
+  Their geometry is in `build_male_base.py` on that branch and can be exported as attachments on BoZo's `spine_04`/`spine_05`
+  and `hand_r`/`lowerarm_twist_01_r`.
+- **Builds with BoZo** are made on the owner's PC (with `Assets/LocalAssets/` populated). Cloud and CI builds show the voxel
+  fallback. Extending the LocalAssets install for builds is Astra's tooling.
+- **PC setup used:** `git worktree add -b claude/bozo-inventory ../Chip-Arena-unity origin/claude/sleepy-ritchie-g8ruhv`,
+  opened in Unity Hub with 6000.3.24f1. The original checkout stays on `main`.
+
 ## Open owner decisions
-- Default outfit for a new pilot; which BoZo pieces are DEV-only (Sheldon adaptation).
-- Weapon placement P1 (weapon rides the visual hand, recommended) or P2 (hand pulled to today's weapon frame).
+- **Weapon placement:** P1 (the weapon rides the visual hand; recommended) or P2 (the hand pulled to today's weapon frame).
+  P3 and P4 are as above.
+- **Default outfit** for a new pilot, and which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe
+  and the "Sheldon Head" hood).
+- **The male body:** BoZo's default male is slimmer than the target. Approve shaping it with Muscle, BodyType and clavicle
+  and spine bone scales from renders. Are BoZo's large anime eyes acceptable, or only the plainer pupils and irises?
+- **Budget:** accept about 20 k triangles at LOD0 with generated LODs (above), or ask for lighter outfits?
+- **Cloth scope:** BoneCloth for hair and capes only (recommended first), or MeshCloth skirts too (Full tier only)?
+- **From Phase A section j, still open:**
+  - right wrist for every class;
+  - a skin-tone palette or free colours, and whether faces and hair need entitlements;
+  - today's hats on BoZo heads;
+  - team identity (bands or a paint channel);
+  - whether zombies stay voxel (recommended);
+  - the backend allowlist deploy (a Sites deploy with owner approval).
+- **Female body:** BoZo blends with `Shape_BodyType`. When it follows the male is undecided.
+- **For Astra:**
+  - the manifest and catalog change;
+  - packaging guards against the packs' default import folders;
+  - builds that need `Assets/LocalAssets` content;
+  - the Editor running Gamma while builds force Linear.
