@@ -28,6 +28,15 @@
 - **Risks:** stencil and depth texture at BeforeForwardAlpha under MSAA unverified in Unity; the wrap's triangle count on mid GPUs; bands vanish at a block's first damage stage; the crisp ramp shows shadow-map acne more than Lambert; BoZo's shader will not clear the stencil bit (stage 2 plan in the doc).
 - **Next:** owner review of the pilot renders; stage 2 per `docs/MAP-STYLE-ANIME.md` section 6.
 
+## 2026-10-22 — Claude: BoZo characters + Magica Cloth 2 integration plan (merged into shared)
+
+- **Branch/base:** `claude/bozo-integration-plan` from shared `e0f904c`. Docs only; merged into shared and the builder; not published.
+- **Owner decisions:** player characters come from the BoZo Stylized Modular Characters Anime Pack, with Magica Cloth 2 for hair and cloth (both bought by the owner). The custom Blender base is stopped (`claude/lowpoly-base-model`, checkpoint `5c3d6ae`, not merged); its chest core and right-wrist device carry over as attachments.
+- **Change:** new `docs/BOZO-INTEGRATION.md`: licensing (both packs under the git-ignored `Assets/LocalAssets/`, never committed), an optional compile-time module so CI and machines without the packs fall back to today's characters, presentation-only rules, which steps run on the owner's PC (Unity) vs the cloud, and steps 1–6 (import, inventory, rig adapter, first character, cloth, wider integration). `docs/CHARACTER-LOWPOLY.md` (Phase A) still holds for the adapter, schema, death and the Astra contract.
+- **Astra:** Shader Graph (BoZo) and Burst/Collections/Mathematics (Magica Cloth 2) will touch `Packages/manifest.json`; that is a build-tooling change to coordinate before it is committed.
+- **Checks:** python unittest; diff check. No code change.
+- **Next:** step 1–2 in a Claude Code session on the owner's PC (import, move under LocalAssets, inventory).
+
 ## 2026-10-20 — Astra: bounded recovery from reliable send stalls
 
 - Branch `codex/network-queue-recovery`, shared base `acc90b9`. Owner supplied guest screenshots of reliable queue overflow, abrupt WebSocket close and invalid host state during hosted matches.
