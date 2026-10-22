@@ -65,6 +65,13 @@
   - **Owner decisions (2026-10-22), recorded in the plan and in a pointer in CHARACTER-LOWPOLY section g:**
     - Keep BoZo's design exactly as it is: body, head, face and eyes, with the presets' own shapes and bone modifiers, and no extra shaping.
     - No triangle cap for BoZo characters ("as much as you need"). Phase A's triangle, LOD and bone caps don't apply. The Phase C frame-time and GC criteria are unchanged.
+    - Weapon placement P1: the weapon rides BoZo's visual hand.
+    - Cloth on every applicable piece: hair, clothes, skirts and the rest. The tier, distance and first-person rules are unchanged.
+    - Default outfit in the style of the owner's "Player model concept" sheet (image not in the repo):
+      - black techwear, a glowing tech mask and visor, guards and glow strips in the player colour;
+      - the plan maps it to BoZo base pieces (`Top_OpenHoodie`, `Bottom_BeltedPants`, `Feet_AthleticMidTop`, `Gloves_FingerlessGloves`, `HairFront_Messy`, `HairBack_PineappleCut`);
+      - our own pieces to author: the mask and visor, guards, knee plates, emblem and glow masks, plus an emission channel in the ported shader.
+      - Candidate renders are queued in the local tool.
   - Renders in a preview scene confirm that our binder must hide body parts by tag and run a colour bake. They stay in local scratch and are never committed.
 - **Not run:** BoZo's creator scene, relay and CoreTests (docs-only change), Unity compile check, a Windows build, two clients.
 - **Animation, timing, networking:** none changed. For the record: the adapter keeps hit timing, hitboxes, damage, cooldowns, movement and the wire unchanged. Cloth is per client.
@@ -79,7 +86,7 @@
   - MeshCloth's per-frame full-mesh upload.
   - Magica's non-deterministic stepping in killcams.
   - Uncapped triangles (up to about 26 k per pilot, about 210 k for 8) against the Phase C frame-time criteria; the benchmark decides whether LODs are needed.
-- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: P1/P2, the default outfit and DEV-only pieces, the cloth scope), then step 3 (rig adapter).
+- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: confirm the default outfit's BoZo base pieces from the renders, the DEV-only pieces), then step 3 (rig adapter).
 
 ## 2026-10-21 — Claude: anime map style, stage 1 (foundation and two pilots; merged into shared)
 

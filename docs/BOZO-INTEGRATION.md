@@ -39,13 +39,13 @@ agents run in the cloud session. Both push to GitHub branches.
    colliders, culling and LOD.
 3. **Rig adapter.** Map BoZo's humanoid bones onto the 22 `CapturedRig` joints (CHARACTER-LOWPOLY section c). Extra bones
    (spine segments, twist, fingers) are derived or held. BoZo's proportions are the visual skeleton; foot IK to the authority
-   contacts and support-hand IK as designed; weapon on the visual hand (proposal P1) unless the owner picks P2. Drift table vs
-   the authority volumes, measured in Unity.
+   contacts and support-hand IK as designed; weapon on the visual hand (P1, owner 2026-10-22). Drift table vs the authority
+   volumes, measured in Unity.
 4. **First character.** A male preset (body blend, a hair, a default outfit) plus the chest core and the right-wrist device,
    player colours through BoZo's colour channels, and our lighting (picked lights, actor lights, muzzle lights) reaching its
    shader (bridge or port). Neutral turnaround and gameplay poses captured in Unity.
-5. **Magica Cloth.** BoneCloth on BoZo's hair bones and cloth on outfit pieces that need it (coats, hoods, scarves, straps):
-   presets, body colliders including the core and device, distance and quality culling, a budget for 8 pilots, off in first
+5. **Magica Cloth.** BoneCloth on BoZo's hair bones and cloth on every applicable outfit piece (owner 2026-10-22: hair,
+   clothes, skirts, coats, hoods, scarves, straps): presets, body colliders including the core and device, distance and quality culling, a budget for 8 pilots, off in first
    person; killcams, corpses and intros re-simulate locally.
 6. **Wider integration.** Cosmetic slots mapped to BoZo categories; Astra's look-map contract updated with BoZo ids; death and
    dismemberment on skinned BoZo meshes (regions from bone weights); legacy voxel fallback kept until parity; performance vs
@@ -346,8 +346,9 @@ Renders (preview scene, Gamma Editor; local scratch only, never committed):
   - BoneCloth (Transform chains under root bones): the fit for BoZo hair, which brings its own chains (`Hair_Front`,
     `Hair_Back`…), and for `Cloth_Cape`.
   - BoneSpring: no gravity, a spring back to the pose; for stiff accessories.
-  - MeshCloth (a reduced proxy of a readable skinned mesh): needed only for the 7 skirts and dresses that ship a paint map
-    (`MC2Map`). It clones the mesh, uploads all vertices every frame and swaps the original back when culled; its build is
+  - MeshCloth (a reduced proxy of a readable skinned mesh): for skirts, dresses and other loose garments. Only 7 skirts and
+    dresses ship a paint map (`MC2Map`); since the owner wants cloth on every applicable piece, the others need maps
+    painted on BoZo's UVs, which stay local with the pack. It clones the mesh, uploads all vertices every frame and swaps the original back when culled; its build is
     asynchronous over several frames and allocates heavily. Not measured; it is the main cost risk.
 - **Runtime build:**
   1. `AddComponent<MagicaCloth>()`, `Initialize()`, `DisableAutoBuild()`.
@@ -431,8 +432,8 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
     origin at idle and aim (voxel .12–.18 m). Tracers already converge within 4.5 m (`NativeShotLaunch`), and hits are
     unaffected.
   - Support-hand IK needs .31–.33 m, within 87 % of reach. Foot IK needs up to .29 m, within 92 % of reach.
-- **Proposals (none applied; owner and Astra decide):**
-  - **P1** (Claude, recommended): the weapon on the visual hand.
+- **Proposals (owner chose P1 on 2026-10-22):**
+  - **P1** (Claude, chosen): the weapon on the visual hand.
   - **P2** (Claude): the visual right hand IKs to today's weapon frame.
   - **P3** (Astra, authority, only if the owner wants hits to match the taller body): raise the head box and shot origin.
   - **P4**: corpse, wound, clearance, hat and claw code take fit volumes from the model instead of voxel box sizes.
@@ -477,13 +478,54 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
 - **Design:** keep BoZo's design exactly as it is: body, head (normal size, about 6.6 heads), face and eyes, with the
   presets' own shapes and bone modifiers. No head scale, no extra body shaping.
 - **Budget:** no triangle cap for BoZo characters ("as much as you need"). The Phase C frame-time and GC criteria still apply.
+- **Weapon placement: P1.** The weapon rides BoZo's visual right hand. P3 (authority) is not requested. P4 (fit volumes)
+  stays a step 6 task.
+- **Cloth: on every applicable piece.** Hair chains, capes, skirts, dresses, coats, hoods and other loose clothing. The
+  standing rules still hold: off in first person, never networked, a budget for 8 pilots, tier and distance culling.
+- **Default outfit: the owner's "Player model concept" sheet** (an image the owner shared on 2026-10-22, not in the repo).
+  It describes:
+  - short spiky dark hair;
+  - a lower-face tech mask with a glowing visor band over the eyes;
+  - a black jacket over a black tee, with a light-grey hood and trims and a glowing chevron on the chest;
+  - a glowing emblem on the back (a smiley with X eyes);
+  - forearm guards and armoured fingerless gloves, with glow strips;
+  - black cargo joggers with straps, pouches on the belt, and knee plates with glow;
+  - chunky black-and-white high-top sneakers with glowing strips.
+
+  The sheet sets the rest of the look too:
+  - **Glow colour:** the glow is the player's colour (cyan, red, purple, green, orange, yellow, pink or white).
+  - **Same base for every class:** ranged, melee and magic.
+  - **Customisation examples:** hood up, cap, headphones, mask variants, an antenna or tech piece.
+  - **Scale:** about 1.8 m beside a zombie, which matches BoZo's 1.79 m.
+  - **Style:** the sheet says "low poly", but BoZo's design stays as authored; the sheet sets the outfit, palette and glow,
+    not the mesh style.
+
+### Default outfit: concept against BoZo
+Proposal; candidate renders queued in the local tool. The base pieces come from BoZo, and the tech pieces and glow are
+ours to author.
+
+| Concept element | From BoZo | To author |
+|---|---|---|
+| Short spiky dark hair | `HairFront_Messy` + `HairBack_PineappleCut` (or `HairBack_WildLocks`) | colour only |
+| Jacket over a tee, light hood | `Top_OpenHoodie` (or `Top_HardJacket` for the high collar) | glow strips, the chest chevron |
+| Back emblem | BoZo's decal system can place it | the emblem texture (our own art) |
+| Cargo joggers with straps | `Bottom_BeltedPants` (or `Bottom_BaggyPants`) | knee plates, belt pouches, glow strips |
+| High-top sneakers | `Feet_AthleticMidTop` | glow strips |
+| Fingerless gloves | `Gloves_FingerlessGloves` | forearm guards with glow |
+| Tech mask with glowing visor | none | mask (LowerFace) and visor (UpperFace), with variants |
+| Glow in the player colour | none: BoZo's toon shader has no emission | an emission mask and player colour in our ported shader (step 4) |
+| Hood up, cap, headphones, antenna | `Hat_BallCap`; `HeadAcc_AlienAttena` is a cartoon antenna | hood-up, headphones, tech antenna |
+| Chest core, right-wrist device | none | kept from the stopped base |
+
+**Where the pieces live.**
+- Our own meshes (mask, visor, guards, plates, headphones) skinned to BoZo's bone names, and our own emblem art, contain no
+  licensed content.
+- Glow masks painted on BoZo's UV layouts, and BoZo-derived recolours, stay local with the pack.
 
 ## Open owner decisions
-- **Weapon placement:** P1 (the weapon rides the visual hand; recommended) or P2 (the hand pulled to today's weapon frame).
-  P3 and P4 are as above.
-- **Default outfit** for a new pilot, and which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe
-  and the "Sheldon Head" hood).
-- **Cloth scope:** BoneCloth for hair and capes only (recommended first), or MeshCloth skirts too (Full tier only)?
+- **DEV-only pieces:** which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe and the "Sheldon
+  Head" hood).
+- **Default outfit pieces:** confirm the BoZo base pieces from the candidate renders.
 - **From Phase A section j, still open:**
   - right wrist for every class;
   - a skin-tone palette or free colours, and whether faces and hair need entitlements;
