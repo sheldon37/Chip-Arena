@@ -1,6 +1,6 @@
-## 2026-10-22 — Claude: BoZo step 3, the visual rig adapter (on the branch, not merged)
+## 2026-10-22 — Claude: BoZo step 3, the visual rig adapter (merged into shared)
 
-- **Branch/base:** `claude/bozo-rig-adapter` in the owner's PC worktree, from shared `05b5768` (the merge of `claude/bozo-inventory`, steps 1–2). Implementation `4a9aac3`, then docs. No PR (none asked); not merged; not published.
+- **Branch/base:** `claude/bozo-rig-adapter` in the owner's PC worktree, from shared `05b5768` (the merge of `claude/bozo-inventory`, steps 1–2). Implementation `4a9aac3`, then docs and the BoZo measurement (`17b9878`). No PR (none asked). Merged into shared and the builder on 2026-10-22 at the owner's request; not published.
 - **Owner decisions recorded (2026-10-22):** the default outfit is candidate A: `HairFront_Messy`, `HairBack_PineappleCut`, `Top_OpenHoodie`, `Bottom_BeltedPants`, `Feet_AthleticMidTop`, `Gloves_FingerlessGloves`, in the concept's techwear palette. The tech pieces and glow are ours to author. The earlier decisions (P1, cloth on every applicable piece, BoZo as authored, no triangle cap) are in the steps 1–2 entry.
 - **Change (presentation only; not wired into any draw path yet, so no runtime behaviour changes):**
   - `Core/NativeVisualRig.cs`:
