@@ -70,10 +70,13 @@ Unity 6000.3.24f1, Built-in pipeline, worktree `Chip-Arena-Unity` on `claude/boz
   module, which this project's manifest leaves out. Moved to the git-ignored `unity/ChipArenaConversion/LocalAssets/MagicaCloth2-Example/`
   (outside `Assets`, not compiled) rather than adding a module. The Editor then compiled with no script errors.
 - **Import warnings left (pack content):** `BSMC_Head.fbx` (an old head no preset uses): "Avatar creation failed:
-  Transform 'Hips' not found"; `BSMC_Head_02.fbx`: no smoothing groups for blendshape normals. Three brow materials,
-  `BSMC_BakeMat` and `UnderUpper_SimpleUnderShirt_Mat` reference shaders that are not in the pack (pink if drawn as they are).
+  Transform 'Hips' not found"; `BSMC_Head_02.fbx`: no smoothing groups for blendshape normals.
+- **Shaders compile on Built-in:** all ten in the pack compile with no errors in the Editor: `Bozo/Bozo_Toon`, the six Shader
+  Graphs, `Hidden/TextureLayerer`, `Hidden/BoZo_Decal` and the demo graph.
+- **Broken materials (pack content):** 7 of 204 point at missing shaders and draw pink: three brow materials, `BSMC_BakeMat`,
+  `UnderUpper_SimpleUnderShirt_Mat`, and two TextMeshPro font materials for the creator UI.
 - **Not done:** opening `Scenes/StylizedCharacterCreator.unity`, which would replace the owner's open scene. The local
-  inventory tool (below) renders the presets in a preview scene instead.
+  inventory tool (below) renders all nine presets in a preview scene instead; none draw pink.
 
 **Package manifest (not committed; Astra's call).** The imports added one line, `"com.unity.shadergraph": "17.3.0"`, and an
 untracked `Packages/packages-lock.json`. Burst 1.8.30, Collections 2.6.8 and Mathematics 1.3.3 resolve only as Shader Graph's
@@ -107,14 +110,33 @@ local Editor tool (`Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.
   Heads add `eyeRoot`/`IrisRoot` bones and hair adds chains (`additionalBones`, below).
 - **Twist bones exist**: `upperarm_twist_01/02`, `shoulder_twist`, `lowerarm_twist_01/02`, `thigh_twist_01` (+`01_l1`) and
   `calf_twist_01` (+`01_l1`) per side. So the 22-joint candy-wrapper risk is solvable by deriving twist, not by cuffs.
-- **Rest pose:** a T-pose with non-identity bone frames (the upper arm about 2° below horizontal; local x runs down the
-  chain). The game's `CapturedRig` rests arms-down with identity frames, so "copy local rotations 1:1" (section c of the
-  Phase B design) does not apply as is. The adapter needs a per-joint rest alignment computed once at bind:
-  BoZo world = game world delta × BoZo rest world, where the delta is relative to each rig's own rest.
-- Rest joint heights (FK from the avatar's T-pose, metres): pelvis .987, spine_02 1.075, spine_05 1.395, neck_01 1.491,
-  head 1.573, chin 1.546, brow 1.676; upper arms ±.133 (1.425 high), elbows ±.395, wrists ±.619; hips ±.093 at .961, knees
-  .536, ankles .110, balls .013 (z +.116). Segments: upper arm .263, forearm .224, thigh .425, shin .428.
-  Leg (hip to ankle) .85 m against the game's .50 m, so `legRatio` ≈ 1.70 (the Blender base's was 1.64).
+- **Rest pose:**
+  - The model's default and bind pose is an **A-pose**, measured in Unity: upper arms 53° below horizontal, hands at 1.06 m.
+  - The avatar's Humanoid configuration stores a separate T-pose; only Mecanim uses it.
+  - Bone frames are non-identity (local x runs down each chain). The game's `CapturedRig` rests arms-down with identity
+    frames, so "copy local rotations 1:1" (section c of the Phase B design) does not apply as is.
+  - The adapter needs a per-joint rest alignment computed once at bind: BoZo world = game world delta × BoZo rest world,
+    where the delta is relative to each rig's own rest.
+- **Rest joint positions** (Unity, metres; left is −x, front +z):
+
+  | Joint | Position |
+  |---|---|
+  | pelvis | .987 |
+  | spine_02 | 1.075 |
+  | spine_05 | 1.395 |
+  | neck_01 | 1.491 |
+  | head | 1.573 |
+  | chin bone | 1.546 |
+  | upper arms | ±.133 at 1.425 |
+  | elbows | ±.291 at 1.215 |
+  | wrists | ±.427 at 1.060 |
+  | hips | ±.093 at .961 |
+  | knees | .536 |
+  | ankles | .110 |
+  | balls | .013 (z +.116) |
+
+  Segments: upper arm .263, forearm .224, thigh .425, shin .428. Leg (hip to ankle) .852 m against the game's .50 m, so
+  `legRatio` ≈ 1.70 (the Blender base's was 1.64).
 
 **Mapping onto the 22 `CapturedRig` joints** (proposal for step 3; derived bones are presentation only):
 
@@ -171,9 +193,15 @@ Unmapped and held: `ik_*`, `center_of_mass`, `interaction`, fingers, face, hair 
 So a dressed character draws about 17–26 k triangles: the store's "about 19 k" holds, and it is 2.4–3.7 × the Phase A LOD0
 budget of 7,000.
 
-**Bones and weights.** Up to 38 skin clusters per mesh piece (hands, tops, gloves 26–38); at most 4 influences (importer
-`maxBonesPerVertex: 4`). A merged character uses about 70–90 bones: 52 humanoid, the twist bones, face and eye bones, and
-1–6 hair-chain roots per hair piece. That is far over Phase A's 22. Vertex colours are on 136 of 139 meshes; one UV set.
+**Bones and weights** (Unity):
+- Up to 38 weighted bones per mesh piece (hands, tops, gloves 26–38).
+- 4 influences per vertex everywhere except the legacy `Body_BasicBody.fbx` parts (back and shoulders 6; chest, neck and
+  upper arms 5).
+- An assembled preset weights 85–93 distinct bones and references 107–117. These come from the humanoid set, twist,
+  `breast`, the face, `eyeRoot`/`eyeSocket`/`IrisSize` and the hair chains. That is far over Phase A's 22.
+- Heads, eyes and lashes bring a `headAnime` parent for their eye bones. It is not in `BodyRig`, so a binder has to add
+  it under `head` (BoZo does this through `additionalBones`).
+- Vertex colours are on 136 of 139 meshes; one UV set.
 
 ### Blendshapes and body shaping
 - **Body** (9 per part, and the same 9 on tops, bottoms, gloves and some shoes, so clothes follow): `Shape_BodyType`
@@ -184,14 +212,62 @@ budget of 7,000.
 - **Bone modifiers.** `BodyShapeModifier` writes per-bone scale, position and rotation offsets by bone name, mirroring `_l`
   to `_r`. `Default_Boy` uses 16 of them, for example root ×1.025, spine_04 ×1.018, clavicle ×1.068 and the twist bones ×1.098.
   These are presentation-only offsets, many of them on bones outside the 22 joints.
-- **Male/female:** `Shape_BodyType` plus an Animator float `Stance` (idle and walk trees). Default_Boy: BodyType 45, Weight 15,
-  NeckThickness 27, stance .25. BoZo's male default has slim anime proportions (upper-arm joints ±.133 m against the Blender
-  base's ±.198), short of the owner's broad-shouldered, V-taper target. Reaching that target takes the Muscle shape plus
-  clavicle and spine bone scales; the owner should judge from renders.
+- **Male/female:** `Shape_BodyType` plus an Animator float `Stance` (idle and walk trees). The base mesh (BodyType 0) is the
+  female or neutral body; the male presets sit at 26–67 (Zell 26, Kenji 30, Default_Boy 45, Jackal 67) and the female ones at
+  −15 to 0. Default_Boy: BodyType 45, Weight 15, NeckThickness 27, stance .25.
+
+### Measured proportions
+Stature and head come from the Unity inventory, with the presets assembled by bone name and their blendshapes applied.
+Widths are read from the body FBX in bind pose under the same blendshape weights, because the hanging A-pose arms spoil a
+width slice taken in Unity (see the note on the tool below). BoZo's bone modifiers (for example Default_Boy's root ×1.025)
+are not applied.
+
+| | BoZo male (Default_Boy) | Owner's target | Stopped Blender base | Authority (unchanged) |
+|---|---|---|---|---|
+| Stature, soles to crown | 1.787 m (1.83 m with its root ×1.025) | | 1.74 m | capsule 1.70 m |
+| Head, chin to crown | .270 m (width .216, depth .235) | | .218 m | |
+| Heads tall | **6.6** | 7.5–8 | 8 | |
+| Head centre | 1.651 m | | 1.631 m | head box 1.49 m |
+| Hair top | 1.81–1.83 m | | | |
+| Shoulders, bideltoid | .462 m | broad | | voxel joints ±.345 |
+| Chest (torso width) | .300 m | | | |
+| Waist, narrowest | .241 m | | | |
+| Hips | .350 m | | | |
+| Shoulder ÷ waist / ÷ hip | 1.92 / 1.32 | V-taper | | |
+
+How the shapes move the widths (bind pose, metres; shoulders / chest / waist / hips):
+- BodyType 0 (the neutral base): .445 / .281 / .204 / .344.
+- BodyType 100: .469 / .317 / .242 / .339.
+- BodyType 100 with Muscle 100: .498 / .353 / .266 / .339.
+- Jackal (BodyType 67, Muscle 26): .468 / .313 / .238 / .341.
+
+All the presets have the same head (Head_AnimeYoung) and skeleton. Every one measures 6.5–6.8 heads tall, at 1.787–1.821 m
+stature. Shoes put the soles 1–3.5 cm below the floor (BoZo raises the root only for heels), so the floor fit has to read
+the shoes.
+
+Reading it:
+- BoZo's male is not narrow: about 46 cm across the shoulders over a 24 cm waist is a strong V-taper. The torso is shallow
+  and narrow at the chest (30 cm). BodyType toward 100 plus some Muscle broadens the chest without much waist.
+- The real gap to the owner's target is the **head: 6.6 heads against 7.5–8**. The anime "young" head is .27 m tall,
+  against .22–.23 m for an adult.
+  - Head scale ≈ .87 through BoZo's `head` bone modifier gives about 7.5 heads (crown about 1.76 m).
+  - Head scale ≈ .80 gives about 8 heads.
+  - Both need checking for the face and eyes. Hair and hats scale with the head bone.
+- Drift against authority, to re-measure through the adapter in step 3:
+  - The visual head centre sits .16 m above the head box at rest (the Blender base .14 m; the voxel head .015 m).
+  - The visual hands hang .43 m out to the side in the A-pose. That only matters before the adapter poses them.
+
+Renders (preview scene, Gamma Editor; local scratch only, never committed):
+- All nine presets were rendered front, side, back and three-quarter, both on their own lit Shader Graph materials and with
+  a per-renderer approximation of the anime toon material.
+- They show what our binder must add:
+  - **body-part hiding**: skin pokes through the sleeves and trousers at the elbows and knees without it;
+  - **BoZo's colour bake**: every hair is the material's default purple and the texture-only underwear is missing without it.
+- The faces read as young anime faces with large eyes.
 
 ### Shaders, lighting and outlines
-- **Materials:** 164 of the pack's 180 materials (157 outfit materials) use `BSMC_ClothesCustom.shadergraph` (Built-in Lit
-  target, PBR-ish). The anime look
+- **Materials:** 165 of the pack's 204 materials (Unity count; 157 of them outfit materials) use
+  `BSMC_ClothesCustom.shadergraph` (Built-in Lit target, PBR-ish). The anime look
   is a different material: `Materials/BSMC_AnimeShader.mat` on `Bozo/Bozo_Toon` (the Built-in `BMAC_Toon`), applied to the
   merged character through the `BSMC_AnimeShader` MaterialPackage. Every preset uses it.
 - **`Bozo/Bozo_Toon`** is a hand-written `.shader`, not a Shader Graph:
@@ -315,14 +391,18 @@ budget of 7,000.
 - **First person:** the view rig needs the lower arms, wrists, hands, and the sleeves and gloves weighted to `lowerarm`/`hand`.
   Hands are 2,976 triangles. Cloth is off.
 
-### Measured in Unity (local inventory tool)
-Pending: the tool is installed but the Editor had not refreshed when this was written (it runs on Editor focus).
-It will report the following:
-- per-mesh and per-preset bones, weights, influences, blendshapes and bounds;
-- stature, head height and heads tall, and shoulder, chest, waist and hip widths of the assembled presets (rest, and with
-  their shapes);
-- whether each shader compiles in Built-in;
-- front, side, back and three-quarter renders (lit and toon approximation).
+### The local inventory tool
+`Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.cs` is git-ignored with the packs.
+- **How it runs:** when `Temp/bozo-inventory.request` exists (its text names an output folder), or from Tools > Chip Arena
+  (local).
+- **What it does:** it builds each preset in a preview scene. It binds the outfits to `BodyRig` by bone name, after
+  removing BoZo's own scripts before activation. Then it measures the result, reports shaders, materials, models and outfits,
+  and renders the views.
+- **Run on 2026-10-22:** Editor 6000.3.24f1, Built-in, Gamma. The standalone defines read `MAGICACLOTH2`, which Magica
+  had added. Every section ran without errors.
+- **Edits only compile on Editor focus,** but its request poll also runs in the background. A request written before the
+  recompile therefore runs the old code. Its per-part width pass (the same measurement as the FBX widths above) is in the
+  file for the next focused run.
 
 ## Decisions and design carried from the stopped Phase B branch
 
@@ -391,8 +471,10 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
   P3 and P4 are as above.
 - **Default outfit** for a new pilot, and which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe
   and the "Sheldon Head" hood).
-- **The male body:** BoZo's default male is slimmer than the target. Approve shaping it with Muscle, BodyType and clavicle
-  and spine bone scales from renders. Are BoZo's large anime eyes acceptable, or only the plainer pupils and irises?
+- **The male body:** BoZo's male is 6.6 heads tall (target 7.5–8). Its shoulders and V-taper are already close.
+  - Approve a smaller head through the `head` bone modifier: about .87 for 7.5 heads, or .80 for 8.
+  - Approve some BodyType and Muscle for the chest.
+  - Are BoZo's young anime face and large eyes acceptable, or should we try `Head_BasicHead` and plainer irises first?
 - **Budget:** accept about 20 k triangles at LOD0 with generated LODs (above), or ask for lighter outfits?
 - **Cloth scope:** BoneCloth for hair and capes only (recommended first), or MeshCloth skirts too (Full tier only)?
 - **From Phase A section j, still open:**

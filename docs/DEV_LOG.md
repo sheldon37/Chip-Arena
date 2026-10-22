@@ -13,7 +13,7 @@
 - **Step 2 inventory** (in `docs/BOZO-INTEGRATION.md`; from the packs' files, a static FBX reader over all 140 FBX, and their runtime code, read but not run):
   - Skeleton and mapping:
     - Unreal-mannequin humanoid, 107 transforms, with twist bones.
-    - The rest is a T-pose with non-identity frames, so the adapter needs a per-joint rest alignment (not a 1:1 rotation copy). `legRatio` is about 1.70.
+    - The bind pose is an A-pose with non-identity frames, so the adapter needs a per-joint rest alignment (not a 1:1 rotation copy). `legRatio` is about 1.70.
     - A proposed table maps BoZo onto the 22 `CapturedRig` joints.
   - Content and triangles:
     - 36 slots and 166 outfit prefabs; the body is 14 part meshes hidden by tags.
@@ -39,7 +39,7 @@
   - the pack claims, now checked.
 - **`.gitignore`:** I added the packs' default import folders, so a re-import or update cannot be committed by accident.
 - **Local only, not committed:**
-  - `Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.cs`. It assembles each preset by bone name in a preview scene, measures it and renders it. It runs when `Temp/bozo-inventory.request` exists. It compiled clean against the 6000.3 assemblies outside Unity; the Editor had not refreshed to run it when this was written.
+  - `Assets/LocalAssets/ChipArenaLocalTools/Editor/BozoInventory.cs`. It assembles each preset by bone name in a preview scene, measures it and renders it. It runs when `Temp/bozo-inventory.request` exists. It compiled clean against the 6000.3 assemblies outside Unity, then ran in the Editor once the owner focused it (follow-up commit). Every section ran without errors, and all nine presets were rendered in four views, lit and toon, with none pink.
   - The scratch FBX reader.
 - **Checks (actual):**
   - `git diff --check` is clean, and `git status` shows nothing from LocalAssets.
@@ -51,7 +51,18 @@
     - The failure is the `test_native_updater` Windows wrapper test.
     - `package_source.py` fails there on the `SourceModels.json` receipt: `core.autocrlf=true` adds a CR (6,606,480 bytes against the receipt's 6,606,479).
     - Both fail the same way on the base `c4c4672`, so they are pre-existing on this Windows checkout. The cloud run5b passes both.
-- **Not run:** BoZo's creator scene, the in-Editor inventory measurements and renders (pending an Editor refresh), relay and CoreTests (docs-only change), Unity compile check, a Windows build, two clients.
+- **Measured proportions (follow-up, in the doc):**
+  - Unity inventory:
+    - All 10 pack shaders compile on Built-in.
+    - 7 of 204 materials point at missing shaders (pack content).
+    - The bind pose is an A-pose: upper arms 53° down, hands at 1.06 m. The avatar's T-pose is separate.
+    - Default_Boy is 1.787 m from soles to crown, with a .270 m head, which makes **6.6 heads tall** (all presets 6.5–6.8). The owner's target is 7.5–8.
+    - Each preset weights 85–93 bones.
+  - Bind-pose widths from the body FBX under the preset blendshapes. Unity's slices caught the A-pose hands, so the tool now measures each part for its next focused run.
+    - Shoulders .462 m, chest .300 m, waist .241 m, hips .350 m (shoulder ÷ waist 1.92).
+    - The shoulders and V-taper are close to the target; the gap is the anime head. A head bone scale of about .87 gives 7.5 heads, and about .80 gives 8.
+  - Renders in a preview scene confirm that our binder must hide body parts by tag and run a colour bake. They stay in local scratch and are never committed.
+- **Not run:** BoZo's creator scene, relay and CoreTests (docs-only change), Unity compile check, a Windows build, two clients.
 - **Animation, timing, networking:** none changed. For the record: the adapter keeps hit timing, hitboxes, damage, cooldowns, movement and the wire unchanged. Cloth is per client.
 - **Astra:**
   - the manifest and catalog change;
@@ -63,9 +74,9 @@
   - The texture memory of BoZo's own merge (about 80 MB per character).
   - MeshCloth's per-frame full-mesh upload.
   - Magica's non-deterministic stepping in killcams.
-  - BoZo's anime eyes against the owner's "natural eyes".
-  - The slim default male against the V-taper target.
-- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`), the Editor-measured proportions and renders, then step 3 (rig adapter).
+  - BoZo's young anime face and large eyes against the owner's "natural eyes".
+  - The 6.6-head anime proportion against the 7.5–8 target. A head scale fixes the count but has to be checked against the face.
+- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: the head scale, the face, P1/P2, the budget, the cloth scope), then step 3 (rig adapter).
 
 ## 2026-10-21 — Claude: anime map style, stage 1 (foundation and two pilots; merged into shared)
 
