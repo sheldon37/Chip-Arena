@@ -10,12 +10,13 @@ namespace ChipArena.UnityConversion
 {
     // The anime map style (docs/MAP-STYLE-ANIME.md; Core/NativeMapStyle.cs, Core/NativeToonMesh.cs, Resources/NativeToon.cginc,
     // NativeToonSurface.cginc, NativeToonEdge.shader, the toon paths of NativeBlockLit, NativeLit, NativeSourceLit, NativeNightSky
-    // and NativeBloom, Runtime/NativeToonOutline.cs and NativeLighting's switch). Checked: the switch (only the two pilot looks
-    // turn it on, the legacy command line and every other map leave every global at 0, the styled look keeps every field the
+    // and NativeBloom, Runtime/NativeToonOutline.cs and NativeLighting's switch). Checked: the switch (only the styled looks
+    // turn it on: stage 1's pilots, stage 2's Factory and Cyber City; the legacy command line and every other map leave every global at 0, the styled look keeps every field the
     // kits' budgets read), the shaders' constants and formulas against the Core copy, the legacy paths kept exactly (each toon
     // path behind the one uniform branch, Lambert and the bloom composite untouched while it is off), the ramp maths, the
     // rounded mesh (closed, outward, never past the block, exact legacy faces, deterministic, under the legacy mesh's budget),
-    // the shape rules, the outline's line rule on synthetic depth, nothing allocated per frame, the runtime hooks and the data.
+    // the shape rules, the outline's line rule on synthetic depth, nothing allocated per frame, the runtime hooks and the data;
+    // stage 2: the damaged and toothed wraps, toothed ends, the bevelled debris, the kit shapes and the town's wrap/rounded split.
     // Rendering itself (D3D11, the look) is not run here: the offline renders are, the Windows build is the owner's.
     internal static class MapStyleChecks
     {
@@ -43,9 +44,9 @@ namespace ChipArena.UnityConversion
             Stage2(root,R);Console.WriteLine("PASS map style: stage 2 - the damaged wraps (S1, S2 with and without the waist, the stub) and the toothed end are closed and outward and keep their coping and plinth through S2, toothed ends only at free ends of big brick walls, the debris's bevelled cube is closed and outward, the kit shapes (rake, awning, cornice, frame) and the town's wrap/rounded split match the shader ("+count+" checks)");
             Shapes();Console.WriteLine("PASS map style: rods round at the lattice clamp, mid blocks grow their chamfer to 8 cm, big blocks keep theirs, a taper narrows the top 30% ("+count+" checks)");
             Edges();Console.WriteLine("PASS map style: the outline lines silhouettes on the nearer pixel only, creases where 1/depth bends, never a plane, and fades out with distance ("+count+" checks)");
-            Allocation(set);Console.WriteLine("PASS map style: the ramp, stairs, point gain, diffuse, radius, round normal, chamfer, lattice, edge and the style state allocate nothing per frame ("+count+" checks)");
+            Allocation(set);Console.WriteLine("PASS map style: the ramp, stairs, point gain, diffuse, radius, round normal, chamfer, lattice, edge, the damaged and toothed wrap, the bevelled debris facet, the kit shapes and the style state allocate nothing per frame ("+count+" checks)");
             Runtime(root,R);Console.WriteLine("PASS map style: NativeLighting writes the globals and turns them off on stages and the rooftop, the outline pass is a command buffer at BeforeForwardAlpha off on the low tier, the kits draw the rounded box only while the style is on, the debris takes the ramp ("+count+" checks)");
-            Data(set);Console.WriteLine("PASS map style: the pilot looks' values validate, broken ones are refused, the old maps' looks are untouched ("+count+" checks)");
+            Data(set);Console.WriteLine("PASS map style: the styled looks' values validate (the pilots, the Factory and Cyber City), broken ones are refused, the old maps' looks are untouched ("+count+" checks)");
         }
         // ---- the switch and the styled look ----
         private static void Switch(MapLookSet set)
@@ -385,6 +386,7 @@ namespace ChipArena.UnityConversion
             Check(NativeMapStyle.Edge(fe+1,fe+1,fe+40,fe+1,fe+1,s,fs,fe,cr)==0&&NativeMapStyle.Edge(10,10,30,10,10,0,fs,fe,cr)==0,"faded out past the fade end, nothing at strength 0");
         }
         // ---- nothing allocated per frame ----
+        private static readonly float[] Corners=new float[12];
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static float Frame(MapLook look,MapStyleState state)
         {
@@ -395,6 +397,9 @@ namespace ChipArena.UnityConversion
                 NativeMapStyle.RoundNormal(x,1,0,1,1,1,.2f,0,1,0,out float nx,out float ny,out float nz);sum+=nx+ny+nz+NativeMapStyle.Chamfer(x,2,.1f,.05f);
                 NativeMapStyle.Lattice(1,1,-1,-1,0,1,x+.1f,1,1,.05f,NativeMapStyle.Taper,out float px,out float py,out float pz);sum+=px+py+pz+NativeMapStyle.Edge(10+x,10,30,10,10,10,30,10,10,1,40,110,.02f,.001f)+NativeMapStyle.Foot(60,1080+i)+NativeMapStyle.Shadow(x);
                 NativeMapStyle.WrapPoint(1,i%8,-1,-.3f,2,0,0,x+.5f,1.7f,.15f,.05f,NativeBlockLooks.BrickRed,0,x,out px,out py,out pz);sum+=px+py+pz;
+                NativeMapStyle.WrapPoint(1,10+i%24,-1,-.3f,2,0,0,3,2,.3f,.05f,NativeBlockLooks.BrickRed,NativeMapStyle.ToothPos,x,out px,out py,out pz,stageW:1+i%4,dropShare:x,inShare:x);sum+=px+py+pz;
+                sum+=NativeMapStyle.BevelFacet(i%NativeMapStyle.BevelFacets,.2f+x,.3f,.1f,.03f,Corners,out float bx,out float by,out float bz)+bx+by+bz;
+                float kx=x,ky=.28f,kz=0;NativeMapStyle.KitShape(ref kx,ref ky,ref kz,2,.28f,.17f,NativeMapStyle.Rake|NativeMapStyle.Awning);sum+=kx+ky+(NativeMapStyle.NeedsWrap(x,.2f,1,0,NativeMapStyle.Cornice)?1:0);
             }
             NativeMapStyle.State(look,false,true,state);return sum+state.Toon[0];
         }
@@ -417,7 +422,7 @@ namespace ChipArena.UnityConversion
             Check(outline.Contains("material.SetFloat(FootId,NativeMapStyle.Foot(fov,Mathf.Max(1,view.pixelHeight)));")&&Code(R("Assets/ChipArena/Resources/NativeToonEdge.shader")).Contains("EdgeLine(i.pos.xy*texel,texel*_EdgeWidth,_EdgeFoot)"),"the outline's creases fade by the camera's own pixel footprint (resolution and zoom)");
             Check(game.Contains("outline=NativeToonOutline.Attach(cameraView);")&&game.IndexOf("bloom=NativeBloom.Attach(cameraView);",StringComparison.Ordinal)<game.IndexOf("outline=NativeToonOutline.Attach(cameraView);",StringComparison.Ordinal)&&settings.Contains("if(outline!=null)outline.Quality(low);"),"on the match camera after the bloom, off on the low tier");
             Check(lighting.Contains("public static bool StyleWrap=>StyleActive&&!lowShadows;")&&lighting.Contains("Shader.SetGlobalVector(ToonWrapId,V(Style.Wrap));Shader.SetGlobalVector(ToonFxId,V(Style.Fx));"),"the wrap on the normal tiers (the low tier keeps the rounded box); its and the highlights' globals written");
-            foreach(var (file,pick) in new[]{("NativeArenaDressing.cs","s==0&&NativeLighting.StyleActive?ToonStage:meshes[s]"),("NativeArenaDressing.cs","private Mesh ToonStage=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap(),0)):(toonMesh??=MeshOf(NativeToonMesh.Build(),0));"),
+            foreach(var (file,pick) in new[]{("NativeArenaDressing.cs","Draw(NativeLighting.StyleActive?ToonStage(s):meshes[s],batches[s][i],n);"),("NativeArenaDressing.cs","private Mesh ToonStage(int s)=>NativeLighting.StyleWrap?(wrapMeshes[s]??=MeshOf(NativeToonMesh.WrapMesh(s),s)):s==0?(toonMesh??=MeshOf(NativeToonMesh.Build(),0)):meshes[Math.Min(s,meshes.Length-1)];"),
                 ("NativeExpeditionCityPresentation.cs","private Mesh TownMesh=>NativeLighting.StyleWrap?(townWrap??=MetroMeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;"),
                 ("NativeExpeditionHubPresentation.cs","private Mesh Shape=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;"),
                 ("NativeExpeditionStatesPresentation.cs","private Mesh Shape=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(toonMesh??=MeshOf(NativeToonMesh.Build())):mesh;")})
@@ -425,24 +430,39 @@ namespace ChipArena.UnityConversion
             foreach(var file in new[]{"NativeArenaDressing.cs","NativeExpeditionCityPresentation.cs","NativeExpeditionHubPresentation.cs","NativeExpeditionStatesPresentation.cs","NativeCyberCityPresentation.cs"})
             {var code=Code(R(rt+file));Check(!code.Contains("s.Lattice[i*4+2],0)")&&!code.Contains("s.Inset[i*4+2],0)"),file+" passes the mesh's TEXCOORD w through (the wrap's flag; 0 on every legacy mesh)");}
             Check(Code(R(rt+"NativeBrickfallPresentation.cs")).Contains("brickfallLit.SetFloat(\"_ToonEdgeRef\",16);"),"Brickfall's skyline is marked for the outline");
+            // Stage 2: the damaged stages and toothed ends on the wrap, the town's split, the Factory's and Cyber City's rounded box.
+            var dressing=Code(R(rt+"NativeArenaDressing.cs"));
+            Check(dressing.Contains("int mesh=NativeBlockLooks.MeshFor(stage,size.y);if(mesh==0&&e.Tooth!=0&&NativeLighting.StyleWrap){mesh=NativeToonMesh.ToothedMesh;flags=(flags&~NativeBlockLooks.SpinY)|e.Tooth;}")
+                &&dressing.Contains("tooth=NativeMapStyle.On(look,NativeLighting.LegacyStyle)?NativeMapStyle.ToothEnds(source,ToothCandidate):Array.Empty<int>();")&&dressing.Contains("counts=new int[NativeToonMesh.WrapMeshes]"),"the dressing draws the damaged wraps and a free brick end's toothed wrap (ends found once per styled map; one batch list more)");
+            var town=Code(R(rt+"NativeExpeditionCityPresentation.cs"));
+            Check(town.Contains("private Mesh TownSmall=>NativeLighting.StyleWrap?(townToon??=MetroMeshOf(NativeToonMesh.Build())):TownMesh;")&&town.Contains("townOrder=new int[townKit.Parts.Length];int w=0;for(int i=0;i<townOrder.Length;i++)if(TownNeedsWrap(i))townOrder[w++]=i;townWrapParts=w;for(int i=0;i<townOrder.Length;i++)if(!TownNeedsWrap(i))townOrder[w++]=i;")
+                &&town.Contains("int i=townOrder[k];var part=parts[i];")&&town.Contains("if(k<townWrapParts){if(part.Shadow)townCastWrap=used;else townTrimWrap=used;}")&&town.Contains("TownDraw(townCast[i],ShadowCastingMode.On,i<townCastWrap?TownMesh:TownSmall);")&&town.Contains("TownDraw(townTrim[i],ShadowCastingMode.Off,i<townTrimWrap?TownMesh:TownSmall);"),"the town draws its parts that need the wrap first: the batches holding them take the wrap, the rest the rounded box (the same batches)");
+            foreach(var (file,pick) in new[]{("NativeFactoryPresentation.cs","private Mesh Block=>NativeLighting.StyleActive?(blockToon??=MeshOf(NativeToonMesh.Build())):block;"),("NativeHazardKitPresentation.cs","private Mesh KitShape=>NativeLighting.StyleActive?(kitToon??=MetroMeshOf(NativeToonMesh.Build())):kitMesh;"),("NativeCyberCityPresentation.cs","private Mesh MetroShape=>NativeLighting.StyleActive?(metroToon??=MetroMeshOf(NativeToonMesh.Build())):metroMesh;")})
+                Check(Code(R(rt+file)).Contains(pick)&&!Regex.IsMatch(Code(R(rt+file)),@"Graphics\.DrawMesh(Instanced)?\((block|kitMesh|metroMesh),"),file+" draws the rounded box only while the style is on (made once), the legacy mesh otherwise");
+            Check(Code(R(rt+"NativeFactoryPresentation.cs")).Contains("sceneryLit.SetFloat(\"_ToonEdgeRef\",16);"),"the Factory's scenery is marked for the outline");
+            Check(Code(R(rt+"NativeBrickfallPresentation.cs")).Contains("NativeBrickfallScenery.Build(NativeMapStyle.On(NativeMapLooks.Find(NativeLighting.LookSet(),\"brickfall\"),NativeLighting.LegacyStyle))"),"Brickfall's skyline takes its rounder tanks and stacks only with the style");
             var fx=Code(R(rt+"NativeStructureFxPresentation.cs"));Check(fx.Contains("bool toon=NativeLighting.StyleActive;")&&fx.Contains("NativeMapStyle.Diffuse(ambient,key,ndl,1,s.Shade[k],s.Shade[3],s.Lit[k],s.Band[0],s.Band[1],s.Band[2],s.Toon[1])"),"the debris takes the style's ramp (the destruction holds the look)");
+            Check(fx.Contains("private readonly float[] bevelCorners=new float[12];")&&fx.Contains("int k=NativeMapStyle.BevelFacet(f,hx,hy,hz,bev,bevelCorners,out float nx,out float ny,out float nz);"),"the style's debris is the bevelled cube, made without allocating");
         }
         // ---- the data ----
         private static void Data(MapLookSet set)
         {
-            foreach(var id in new[]{"expedition-city","brickfall"})
+            foreach(var id in new[]{"expedition-city","brickfall","factory","cybercity"})
             {
                 var t=NativeMapLooks.Find(set,id).toon;NativeMapStyle.Validate(id,t);
                 Check(t.line>0&&t.lineFadeEnd<=NativeMapLooks.Find(set,id).fog.end&&t.skyToon==1&&t.saturation>=1&&t.saturation<=1.2f&&t.detail<1,id+": outline faded within the fog, anime sky, a light grade, simplified detail");
-                Check(t.shade.z>t.shade.x&&t.lit.x>=t.lit.z,id+": cool shade, warm light");
-                Check(t.copings==1&&t.chips==1&&t.posts==1&&t.specular>0&&t.occlusion>0&&t.occlusionHeight>0&&t.halfTone<.2f,id+": copings, broken corners, posts, the highlight and the occlusion band on; two main bands");
-                Check(id=="brickfall"?t.plinths==1:t.plinths==0,id+": plinths and pilasters on Brickfall, off in the city (its kit doors and shop fronts meet the street)");
+                Check(t.shade.z>t.shade.x&&(t.sky.variant=="night"||t.lit.x>=t.lit.z),id+": cool shade, warm light (a night map keeps its moonlight)");
+                Check(t.copings==1&&t.chips==(id=="factory"||id=="cybercity"?0:1)&&t.posts==1&&t.specular>0&&t.occlusion>0&&t.occlusionHeight>0&&t.halfTone<.2f,id+": copings, posts, the highlight and the occlusion band on (broken corners on the old masonry maps only); two main bands");
+                Check(id=="brickfall"||id=="factory"?t.plinths==1:t.plinths==0,id+": plinths and pilasters on Brickfall and the Factory, off in the cities (their kit doors and shop fronts meet the street)");
+                var raw=NativeMapLooks.Find(set,id);Check(t.key.bearing==raw.key.bearing&&t.key.elevation==raw.key.elevation&&t.sky.variant==raw.sky.variant,id+": the map keeps its own key light's direction and its sky (time of day)");
+                if(id=="factory")Check(t.detail>=.5f&&t.shade.y>t.shade.x&&t.shade.z>t.shade.x&&(t.key.color>>16&255)>(t.key.color&255)+60,"factory: the grating and corrugation keep their pattern at 0.5 detail, a rusty orange key against teal shade");
+                if(id=="cybercity")Check(t.lineFadeStart==30&&t.lineFadeEnd==90&&raw.fog.end>=t.lineFadeEnd&&t.fogColor==0x2A3460&&t.sky.variant=="night","cybercity: lines fade 30 to 90 m in the rain, the dark blue #2A3460 shade fog, night");
                 MapLookToon Copy()=>(MapLookToon)typeof(MapLookToon).GetMethod("MemberwiseClone",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).Invoke(t,null);
                 foreach(var (what,breakIt) in new (string,Action<MapLookToon>)[]{("softness 0",x=>x.softness=0),("edges crossed",x=>x.lightEdge=x.shadeEdge),("tint 0",x=>x.shade=new V3(0,1,1)),("a line without a fade",x=>x.lineFadeEnd=x.lineFadeStart),("a band as high as the sky",x=>x.bandWidth=1),("a colour out of range",x=>x.cloudLit=0x1000000),("a negative fog start",x=>x.fogStart=-1),("NaN",x=>x.wash=float.NaN),("a shape switch past 1",x=>x.chips=2),("a highlight past every angle",x=>{x.specular=.5f;x.specularEdge=.5f;}),("an occlusion band 2 m high",x=>x.occlusionHeight=2),("occlusion NaN",x=>x.occlusion=float.NaN)})
                 {var b=Copy();breakIt(b);bool threw=false;try{NativeMapStyle.Validate(id,b);}catch(InvalidOperationException){threw=true;}Check(threw,id+": refused: "+what);}
             }
             var off=new MapLookToon{on=false,softness=float.NaN};NativeMapStyle.Validate("x",off);Check(true,"a look with the style off is never read");
-            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==2,"two looks carry the style (stage 1)");
+            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==4,"four looks carry the style (stage 1's pilots, stage 2's Factory and Cyber City)");
         }
     }
 }
