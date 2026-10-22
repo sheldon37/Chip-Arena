@@ -21,7 +21,7 @@
 - **Checks (actual):**
   - `MenuStyleChecks` (`--menu-style`, also in the full run): 1,651 checks (switch, rooftop, draft, portraits, maths against the Core, runtime hooks, zero allocation). `--map-style` 3,048.
   - glslang HLSL front end on the final tree: NativeRooftop (both passes), NativeRooftopSky, NativeRooftopScreen, NativeRooftopSprite, NativeDraftBackdrop, NativePortrait and NativePortraitResolve all compile.
-  - run5b on `d59c24c`: rc1–rc5 all 0 (Unity runtime+editor compile OK; relay suite 833 PASS, 0 FAIL; Python 140 OK, 1 skipped; source package 2,634 files; diff check clean). Final commit: next line.
+  - run5b on `d59c24c`: rc1–rc5 all 0 (Unity runtime+editor compile OK; relay suite 833 PASS, 0 FAIL; Python 140 OK, 1 skipped; source package 2,634 files; diff check clean). run5b on `1eec246` (the final code and docs; after a container restart cut off the first try): rc1–rc5 all 0, the same counts (833 PASS, 0 FAIL; 140 OK, 1 skipped; 2,634 files).
 - **Renders (scratch, not committed):** before/after sheets at 1280×720 for the rooftop (also 3440×1440), draft (pvp, ward, siren, amber, low tier, legacy), portraits, transitions, and the entrance tone comparison. They go through each tree's own shaders in WebGL with stand-in pilots, a CPU bloom/grade stand-in and no MSAA.
 - **Not run:** Unity Editor import or play, FXC, a Windows build, GPU timing, MSAA, two clients.
 - **Animation, timing, networking:** none. No hit timing, hitbox, damage, cooldown, movement or wire change.
