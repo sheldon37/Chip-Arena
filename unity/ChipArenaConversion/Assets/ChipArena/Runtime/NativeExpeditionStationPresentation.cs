@@ -30,7 +30,10 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class ArenaPresentation
     {
-        private Material stationMaterial;private Mesh stationMesh;private bool stationFailed;private NativeFxDraw stationDraw;private NativeExpeditionStationFx stationFx;
+        private Material stationMaterial;private Mesh stationMesh,stationToon;
+        // The anime map style draws the rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh StationShape=>NativeLighting.StyleActive?(stationToon??=MetroMeshOf(NativeToonMesh.Build())):stationMesh;
+        private bool stationFailed;private NativeFxDraw stationDraw;private NativeExpeditionStationFx stationFx;
         private ContentMap stationMap;private NativeExpeditionStationKit stationKit;private NativeStationFxScene stationScene;private NativeExpeditionStationLights stationLights;
         private ExpeditionAreaLayout stationArea;private bool stationAreaRead;
         private NativePropBody[] stationParents=Array.Empty<NativePropBody>();private bool[] stationOut=Array.Empty<bool>(),stationMoved=Array.Empty<bool>();private Vector3[] stationNudge=Array.Empty<Vector3>();private float[] stationSeeds=Array.Empty<float>();
@@ -154,10 +157,10 @@ namespace ChipArena.UnityConversion
         private void StationDraw(MetroBatch b,ShadowCastingMode shadows)
         {
             if(b.Count==0)return;MetroUpload(b);StationInstances+=b.Count;
-            if(UsesInstancing){Graphics.DrawMeshInstanced(stationMesh,0,stationMaterial,b.M,b.Count,b.Block,shadows,true,0,null);StationDraws++;return;}
+            if(UsesInstancing){Graphics.DrawMeshInstanced(StationShape,0,stationMaterial,b.M,b.Count,b.Block,shadows,true,0,null);StationDraws++;return;}
             // Compatibility rendering: one by one (detail parts already left out), reusing one block made on this main-thread path.
             var one=stationOne??=new MaterialPropertyBlock();
-            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(stationMesh,b.M[i],stationMaterial,0,null,0,one,shadows,true);StationDraws++;}
+            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(StationShape,b.M[i],stationMaterial,0,null,0,one,shadows,true);StationDraws++;}
         }
         private void DrawStationFx(float time,Camera camera,NativeStationView view)
         {
@@ -176,7 +179,7 @@ namespace ChipArena.UnityConversion
         }
         private void DisposeStation()
         {
-            if(stationMesh!=null)CapturedAnimation.Release(stationMesh);if(stationMaterial!=null)CapturedAnimation.Release(stationMaterial);stationMesh=null;stationMaterial=null;stationDraw?.Dispose();stationDraw=null;
+            if(stationMesh!=null)CapturedAnimation.Release(stationMesh);if(stationToon!=null)CapturedAnimation.Release(stationToon);stationToon=null;if(stationMaterial!=null)CapturedAnimation.Release(stationMaterial);stationMesh=null;stationMaterial=null;stationDraw?.Dispose();stationDraw=null;
             stationCast.Clear();stationTrim.Clear();stationMap=null;stationKit=null;stationScene=null;stationLights=null;stationArena=null;stationGeneration=-1;stationLast=-1;
         }
     }
