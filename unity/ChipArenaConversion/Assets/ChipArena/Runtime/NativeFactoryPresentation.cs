@@ -25,6 +25,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeFactoryStage : MonoBehaviour
     {
         private sealed class Batch {public readonly Matrix4x4[] M=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];public int Count;public bool Shadow;}
+        // The anime map style draws the rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh Block=>NativeLighting.StyleActive?(blockToon??=MeshOf(NativeToonMesh.Build())):block;private Mesh blockToon;
         private Mesh block;private Material lit;private MaterialPropertyBlock props;private bool failed;
         private Batch[] kit=Array.Empty<Batch>();private readonly Batch[] rig={new Batch{Shadow=true},new Batch{Shadow=true},new Batch{Shadow=true},new Batch(),new Batch()};
         private ContentMap kitMap;private static FactoryHazard[] hazards;private static bool hazardsRead;private static string hazardsMap;private NativeFactoryKit.Looks looks;private NativeFactoryRig rigBuilder;
@@ -48,7 +50,7 @@ namespace ChipArena.UnityConversion
             {
                 var shader=Resources.Load<Shader>("NativeBlockLit");var source=Resources.Load<Shader>("NativeSourceLit");if(shader==null||source==null)throw new InvalidOperationException("NativeBlockLit or NativeSourceLit is missing");
                 lit=new Material(shader){name="Factory kit",enableInstancing=true};props=new MaterialPropertyBlock();block=MeshOf(NativeBlockLooks.Build(0));
-                sceneryLit=new Material(source){name="Factory scenery",enableInstancing=true};sceneryLit.SetFloat("_StageLit",0);
+                sceneryLit=new Material(source){name="Factory scenery",enableInstancing=true};sceneryLit.SetFloat("_StageLit",0);sceneryLit.SetFloat("_ToonEdgeRef",16);
                 var built=NativeFactoryScenery.Build();sectors=new Mesh[built.Length];for(int i=0;i<built.Length;i++)sectors[i]=SceneryMesh(built[i],"Factory scenery "+i);
                 trolley=SceneryMesh(NativeFactoryScenery.BuildTrolley(),"Factory goliath trolley");plate=SceneryMesh(NativeFactoryScenery.BuildMenuPlate(),"Factory menu plate");fxDraw=new NativeFxDraw();return true;
             }
@@ -136,9 +138,9 @@ namespace ChipArena.UnityConversion
             if(instancing)
             {
                 props.Clear();props.SetVectorArray(SizeId,b.Size);props.SetVectorArray(RestId,b.Rest);props.SetVectorArray(ColorId,b.Color);props.SetVectorArray(LookId,b.Look);
-                try{Graphics.DrawMeshInstanced(block,0,lit,b.M,b.Count,props,shadow,true,0,null);return;}catch(InvalidOperationException){}catch(ArgumentException){}
+                try{Graphics.DrawMeshInstanced(Block,0,lit,b.M,b.Count,props,shadow,true,0,null);return;}catch(InvalidOperationException){}catch(ArgumentException){}
             }
-            for(int i=0;i<b.Count;i++){props.Clear();props.SetVector(SizeId,b.Size[i]);props.SetVector(RestId,b.Rest[i]);props.SetVector(ColorId,b.Color[i]);props.SetVector(LookId,b.Look[i]);Graphics.DrawMesh(block,b.M[i],lit,0,null,0,props,shadow,true);}
+            for(int i=0;i<b.Count;i++){props.Clear();props.SetVector(SizeId,b.Size[i]);props.SetVector(RestId,b.Rest[i]);props.SetVector(ColorId,b.Color[i]);props.SetVector(LookId,b.Look[i]);Graphics.DrawMesh(Block,b.M[i],lit,0,null,0,props,shadow,true);}
         }
         private static Mesh MeshOf(NativeBlockLooks.StageMesh s)
         {
@@ -157,7 +159,7 @@ namespace ChipArena.UnityConversion
         private void Release()
         {
             if(sectors!=null)foreach(var m in sectors)if(m!=null)CapturedAnimation.Release(m);sectors=null;
-            foreach(var o in new UnityEngine.Object[]{trolley,plate,block,lit,sceneryLit})if(o!=null)CapturedAnimation.Release(o);trolley=plate=block=null;lit=sceneryLit=null;fxDraw?.Dispose();fxDraw=null;
+            foreach(var o in new UnityEngine.Object[]{trolley,plate,block,blockToon,lit,sceneryLit})if(o!=null)CapturedAnimation.Release(o);trolley=plate=block=blockToon=null;lit=sceneryLit=null;fxDraw?.Dispose();fxDraw=null;
         }
         private void OnDestroy()=>Release();
     }

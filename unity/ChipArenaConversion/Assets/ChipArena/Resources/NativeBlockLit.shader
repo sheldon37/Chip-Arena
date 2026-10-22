@@ -58,6 +58,19 @@ Shader "ChipArena/NativeBlockLit"
         #define FLAG_CYBER 128u
         // The anime style's taper (Core NativeMapStyle.Taper): with the style on, the part narrows toward its top by TOON_TAPER.
         #define FLAG_TAPER 256u
+        // The anime style's toothed ends (NativeMapStyle.ToothEnds: a big brick wall's free end along its longer axis, + and -).
+        #define FLAG_TOOTH_POS 512u
+        #define FLAG_TOOTH_NEG 1024u
+        // The anime style's kit shapes (each an opt-in a kit part carries; Core NativeMapStyle.Frame and its neighbours): a
+        // window pane painted inside a frame with depth, a cornice with a moulded underside, a pediment slab raked to the
+        // pediment's slope, an awning strip arched like a canvas barrel.
+        #define FLAG_FRAME 2048u
+        #define FLAG_CORNICE 4096u
+        #define FLAG_RAKE 8192u
+        #define FLAG_AWNING 16384u
+        #define TOON_RAKE_SLOPE 0.33
+        #define TOON_AWNING_ARCH 0.12
+        #define TOON_FRAME 0.07
         #define CY_TILE 0.0
         #define CY_PANEL 4.0
         #define CY_METAL 5.0
@@ -131,13 +144,23 @@ Shader "ChipArena/NativeBlockLit"
             if(lo<=TOON_MID_HALF)return clamp(TOON_CHAMFER_GROW*lo,c,TOON_CHAMFER_MAX);
             return c;
         }
+        // The kit shapes on a placed point (the wrap and the style's lattice): a pediment slab's ends raked in toward its top
+        // along its longer axis; an awning strip arched up toward its middle along its longer axis.
+        float3 ToonKitShape(float3 p,float3 h,uint fl)
+        {
+            bool alongX=h.x>=h.z;float hl=alongX?h.x:h.z;float t=alongX?p.x:p.z;
+            if((fl&FLAG_RAKE)!=0u){float r=saturate((p.y+h.y)/max(2.0*h.y,0.0001))*2.0*h.y/TOON_RAKE_SLOPE;t*=max(hl-r,0.0)/max(hl,0.0001);}
+            if((fl&FLAG_AWNING)!=0u){float u=t/max(hl,0.0001);p.y+=min(TOON_AWNING_ARCH,0.25*hl)*(1.0-u*u);}
+            if(alongX)p.x=t;else p.z=t;
+            return p;
+        }
         // The lattice with the style's chamfer and taper (the shader's vertex stage and the shadow caster); off: BlockLattice as is.
         float3 ToonLattice(float3 a,float3 b,float3 h,float c,float flags,inout float3 n)
         {
             if(_ArenaToon.x<0.5)return BlockLattice(a,b,h,c,flags,n);
             float3 p=BlockLattice(a,b,h,ToonChamfer(h,c),flags,n);
             if((uint(flags+0.5)&FLAG_TAPER)!=0u)p.xz*=1.0-TOON_TAPER*saturate(p.y/max(h.y,0.0001)*0.5+0.5);
-            return p;
+            return ToonKitShape(p,h,uint(flags+0.5));
         }
         // A flat normal from screen derivatives, turned to face along the interpolated preview normal (the derivatives' sign
         // depends on the API and render target); the hint stands in for a sub-pixel facet.
@@ -179,6 +202,16 @@ Shader "ChipArena/NativeBlockLit"
         #define WRAP_CHIP_SHARE 0.3
         #define WRAP_PILASTER 0.35
         #define WRAP_PILASTER_OUT 0.05
+        // The damaged wraps (stages S1-S3, NativeToonMesh.WrapMesh): a break's largest drop and inset (m), the stub's ragged top,
+        // the S2 waist; the toothed end's bands (count, course height cap, recess cap).
+        #define WRAP_DMG_DROP 0.35
+        #define WRAP_DMG_IN 0.1
+        #define WRAP_STUB_RAG 0.12
+        #define WRAP_WAIST 0.08
+        #define WRAP_TEETH 12.0
+        #define WRAP_TOOTH_COURSE 0.36
+        #define WRAP_TOOTH_DEPTH 0.18
+        #define WRAP_TOOTH_SEAM 0.003
         float ToonWrapClass(float3 h,float look,float flags)
         {
             if((uint(flags+0.5)&FLAG_CYBER)!=0u)return WRAP_NONE;
@@ -192,7 +225,7 @@ Shader "ChipArena/NativeBlockLit"
         // The class's shape (m): the section's corner radius rs, the plinth's height pb and outset op, the coping's height ct
         // and outset oc, the top's and the bottom's rounding rt and rb, the post line's slide d and the posts' outset po, and
         // the broken corner (0 none, else 1 + the corner: x+ 1, z+ 2).
-        void ToonWrapShape(float cls,float3 h,float c,float seed,out float rs,out float pb,out float op,out float ct,out float oc,out float rt,out float rb,out float d,out float po,out float chip)
+        void ToonWrapShape(float cls,float3 h,float c,float seed,float flags,out float rs,out float pb,out float op,out float ct,out float oc,out float rt,out float rb,out float d,out float po,out float chip)
         {
             float H=2.0*h.y;float lo=min(h.x,h.z);float hi=max(h.x,h.z);float4 w=_ArenaToonWrap;
             rs=c;pb=0.0;op=0.0;ct=0.0;oc=0.0;d=0.0;po=0.0;chip=0.0;rt=min(c,0.42*min(lo,h.y));
@@ -211,18 +244,41 @@ Shader "ChipArena/NativeBlockLit"
             }
             else if(cls>2.5&&cls<3.5){pb=0.1*w.w;op=0.015*w.w;ct=0.1*w.w;oc=0.015*w.w;d=min(0.11,0.3*lo)*w.w;po=0.032*w.w;}
             else if(cls>3.5){pb=0.12*w.w;op=0.018*w.w;ct=0.12*w.w;oc=0.018*w.w;d=min(0.12,0.3*lo)*w.w;po=0.035*w.w;}
-            rb=pb>0.0?0.0:rt;pb=min(pb,0.25*H);ct=min(max(ct,rt+oc),0.3*H);
+            rb=pb>0.0?0.0:rt;
+            // A cornice: a deep round under it (a moulding), a crisp top. An awning strip: its post lines spread for the arch.
+            uint kf=uint(flags+0.5);if((kf&FLAG_CORNICE)!=0u){rb=min(0.6*h.y,0.6*lo);rt=min(rt,0.02);}if((kf&FLAG_AWNING)!=0u)d=hi;
+            pb=min(pb,0.25*H);ct=min(max(ct,rt+oc),0.3*H);
         }
-        float3 ToonWrap(float4 a,float4 b,float3 h,float c,float look,float flags,float seed)
+        // uv0.w: 1 + the stage the mesh draws (1 intact, 2 S1, 3 S2, 4 the S3 stub). dmg: the damaged meshes' per-vertex break
+        // (the vertex colour: r its drop, g its inset, a a fresh break), 0 on the intact wrap. Rows 8 and 9 are the S2 waist,
+        // rows from 10 the toothed end's band edges (two rows each, below and above). n: the orientation hint, turned with the
+        // instance's 180-degree spin (FLAG_SPIN_Y only: the wrap never turns over).
+        float3 ToonWrap(float4 a,float4 b,float3 h,float c,float look,float flags,float seed,float4 dmg,inout float3 n)
         {
-            float rs,pb,op,ct,oc,rt,rb,d,po,chip;ToonWrapShape(ToonWrapClass(h,look,flags),h,c,seed,rs,pb,op,ct,oc,rt,rb,d,po,chip);
+            float rs,pb,op,ct,oc,rt,rb,d,po,chip;ToonWrapShape(ToonWrapClass(h,look,flags),h,c,seed,flags,rs,pb,op,ct,oc,rt,rb,d,po,chip);
+            float stage=a.w-1.0;float lo=min(h.x,h.z);uint fl=uint(flags+0.5);
+            // A damaged wrap: the break's slide for every class and no seeded corner; the stub loses its coping.
+            if(stage>0.5){d=max(d,min(WRAP_CHIP,WRAP_CHIP_SHARE*lo));chip=0.0;}
+            if(stage>2.5){oc=0.0;ct=rt;}
             float row=a.y;float3 p;
             p.x=a.x*h.x+sign(b.x)*min(abs(b.x)*rs,0.42*abs(a.x)*h.x);p.z=a.z*h.z+sign(b.z)*min(abs(b.z)*rs,0.42*abs(a.z)*h.z);
             if(abs(b.w)>0.5){bool alongX=abs(b.w)<1.5;float sl=sign(b.w)*min(d,WRAP_CHIP_SHARE*(alongX?h.x:h.z));if(alongX)p.x+=sl;else p.z+=sl;}
             // The point's outward direction in the section (a face's normal, or the corner circle's).
             float2 sn=float2(sign(a.x)*(1.0-abs(b.x)),sign(a.z)*(1.0-abs(b.z)));
             float y;float o;
-            if(row<0.5){y=-h.y;o=pb>0.0?op:-rb;}
+            if(row>9.5)
+            {
+                // A toothed end: band edges down from the body's top, odd bands recessed at a free end of the longer axis.
+                float t=row-10.0;float j=floor(t*0.5)+1.0;float bh=min(WRAP_TOOTH_COURSE,(2.0*h.y-pb-ct)/(WRAP_TEETH+1.0));
+                // The two rows of an edge sit WRAP_TOOTH_SEAM apart, so the faces between them never meet in a T (no pinholes).
+                float side=t-2.0*(j-1.0);y=h.y-ct-j*bh+(side<0.5?-WRAP_TOOTH_SEAM:WRAP_TOOTH_SEAM);o=0.0;float band=side<0.5?j:j-1.0;
+                bool alongX=h.x>=h.z;float end=alongX?sign(a.x):sign(a.z);
+                if(band<WRAP_TEETH-0.5&&frac(band*0.5)>0.25&&(end>0.0&&(fl&FLAG_TOOTH_POS)!=0u||end<0.0&&(fl&FLAG_TOOTH_NEG)!=0u))
+                {float td=min(WRAP_TOOTH_DEPTH,0.25*(alongX?h.x:h.z));if(alongX)p.x-=end*td;else p.z-=end*td;}
+            }
+            else if(row>8.5){y=h.y/3.0;o=-min(WRAP_WAIST,0.3*lo);}
+            else if(row>7.5){y=-h.y/3.0;o=-min(WRAP_WAIST,0.3*lo);}
+            else if(row<0.5){y=-h.y;o=pb>0.0?op:-rb;}
             else if(row<1.5){y=pb>0.0?-h.y+pb-min(op,0.5*pb):-h.y+0.2929*rb;o=pb>0.0?op:-0.2929*rb;}
             else if(row<2.5){y=-h.y+max(pb,rb);o=0.0;}
             else if(row<3.5){y=h.y-ct;o=0.0;}
@@ -232,10 +288,14 @@ Shader "ChipArena/NativeBlockLit"
             else{y=h.y;o=oc-rt;}
             if(b.y>1.5)o+=po;
             // The broken corner: its corner points above the coping's foot drop and step in (the top fan slopes into it).
-            if(chip>0.5&&row>3.5&&b.y>1.5&&abs((a.x>0.0?1.0:0.0)+(a.z>0.0?2.0:0.0)-(chip-1.0))<0.5)
+            if(chip>0.5&&row>3.5&&row<7.5&&b.y>1.5&&abs((a.x>0.0?1.0:0.0)+(a.z>0.0?2.0:0.0)-(chip-1.0))<0.5)
             {y=max(y-min(WRAP_CHIP,ct+0.1)*(row-3.0)*0.25,h.y-ct+0.002*(row-3.0));o=min(o,0.0)-0.04;}
+            // A damaged mesh's break: its corners drop and step in (S1, S2), the stub's top is ragged (S3).
+            if(stage>0.5){y-=dmg.r*(stage>2.5?min(WRAP_STUB_RAG,0.6*h.y):min(WRAP_DMG_DROP,0.6*h.y));o-=dmg.g*min(WRAP_DMG_IN,0.35*lo);}
             p.xz+=sn*o;p.y=y;
-            if((uint(flags+0.5)&FLAG_TAPER)!=0u)p.xz*=1.0-TOON_TAPER*saturate(p.y/max(h.y,0.0001)*0.5+0.5);
+            p=ToonKitShape(p,h,fl);
+            if((fl&FLAG_SPIN_Y)!=0u){p.xz=-p.xz;n.xz=-n.xz;}
+            if((fl&FLAG_TAPER)!=0u)p.xz*=1.0-TOON_TAPER*saturate(p.y/max(h.y,0.0001)*0.5+0.5);
             return p;
         }
 
@@ -479,9 +539,9 @@ Shader "ChipArena/NativeBlockLit"
                 if(toon)
                 {
                     float2 tid;float tj=BkBond(uv,0.12,0.36,0.024,fw,tid);
-                    float show=max(smoothstep(0.5,0.58,BkFbm(uv*0.42+seed*9.0)),1.0-smoothstep(0.3,0.75,min(edge,yb)))*(1.0-smoothstep(0.012,0.03,fwm));
+                    float show=max(smoothstep(0.44,0.52,BkFbm(uv*0.42+seed*9.0)),1.0-smoothstep(0.3,0.75,min(edge,yb)))*(1.0-smoothstep(0.02,0.045,fwm));
                     float3 tone=base*mean;float3 face=tone*(1.0+0.16*step(0.82,BkHash2(tid+seed*13.0))*show);
-                    alb=lerp(face,tone*0.62,tj*show);
+                    alb=lerp(face,tone*0.55,tj*show);
                 }
             }
             else if(BkIs(look,LOOK_TERRACOTTA))
@@ -627,9 +687,12 @@ Shader "ChipArena/NativeBlockLit"
                 // The material looks (brick to cobble, corrugated) lean toward their flat base colour: the pattern stays legible
                 // but reads as painted, not as noise (screens, glass, neon, the bank's looks and the hazard paint keep theirs).
                 // Past a few centimetres a pixel every pattern resolves to that flat paint (no moire on courses, boards or ribs).
-                if(!cyber&&look>0.5&&(look<9.5||BkIs(look,LOOK_CORRUGATED)))alb=lerp(base*0.85,alb,(0.4+0.6*_ArenaToonPaint.x)*(1.0-smoothstep(0.02,0.06,fwm)));
-                if(!top)alb*=lerp(1.0-_ArenaToonPaint.y,1.0+0.5*_ArenaToonPaint.y,smoothstep(0.0,18.0,pat.y));
-                alb*=1.0+_ArenaToonPaint.z*(BkFbm(uv*float2(0.22,0.6)+seed*3.0)-0.5);
+                // (Brick paints its own suggested courses above and keeps them.)
+                if(!cyber&&look>2.5&&(look<9.5||BkIs(look,LOOK_CORRUGATED)))alb=lerp(base*0.85,alb,(0.4+0.6*_ArenaToonPaint.x)*(1.0-smoothstep(0.02,0.06,fwm)));
+                // Cyber City's glass curtain walls, holo screens and tubes keep their own painting (they only lose fine noise).
+                bool painted=cyber&&(BkIs(look,CY_GLASS)||BkIs(look,CY_HOLO)||BkIs(look,CY_TUBE));
+                if(!top&&!painted)alb*=lerp(1.0-_ArenaToonPaint.y,1.0+0.5*_ArenaToonPaint.y,smoothstep(0.0,18.0,pat.y));
+                if(!painted)alb*=1.0+_ArenaToonPaint.z*(BkFbm(uv*float2(0.22,0.6)+seed*3.0)-0.5);
             }
             // The 2.3 load-bearing band: chevrons between black rules where BkBand fits them, the DANGER tag and the band lamp,
             // each only with its own flag (never on a stub, whose member is gone).
@@ -706,7 +769,16 @@ Shader "ChipArena/NativeBlockLit"
             // The anime style's occlusion band: a crisp band up a wall's foot (_ArenaToonFx.w m) and every downward face (the
             // underside of a coping, a ledge, a balcony).
             s.bump=bump;
+            // The anime style: a kit window pane inside a frame with depth: a dark frame round the pane, its head's shade on the
+            // pane below it (the pane reads set back); emission only inside the frame. Faded to the plain pane by footprint.
+            if(toon&&(fl&FLAG_FRAME)!=0u&&!top)
+            {
+                float fk=1.0-smoothstep(0.02,0.05,fwm);float frm=(1.0-smoothstep(TOON_FRAME-fwm,TOON_FRAME+fwm,edge))*fk;
+                s.albedo=lerp(s.albedo,base*0.18+float3(0.02,0.018,0.016),frm);s.emit*=1.0-frm;
+                occLook=max(occLook,(1.0-smoothstep(0.0,0.1+fwm,hs.y-obj.y-TOON_FRAME))*(1.0-frm)*fk);
+            }
             if(toon)s.occ=max(max(top?0.0:1.0-smoothstep(_ArenaToonFx.w-0.04,_ArenaToonFx.w+0.04,yb),step(0.5,-nO.y)),occLook);
+
             return s;
         }
         // The rim light, MapLooks' practical lights ((1 - (d/r)^2)^2, NativeMapLooks.Attenuation; a beacon slot's beam,
@@ -735,7 +807,9 @@ Shader "ChipArena/NativeBlockLit"
         float3 ToonBlockLit(float3 albedo,float3 emit,float occ,float3 world,float3 nT,float3 nW,float3 v,float3 keyDir,float3 key,float atten,float3 shN,float3 shUp,float3 shDown)
         {
             float edge=saturate((1.0-dot(nT,nW))*TOON_EDGE_GAIN);
-            float3 light=ToonOcclude(ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y),key,dot(nT,keyDir),atten),occ)+ToonPoints(BlockLights(world,nT));
+            // The shade side's sky bounce: the ambient a little lighter up a wall than at its foot (a painted gradient in shade).
+            float bounce=1.0+_ArenaToonPaint.y*(saturate(world.y/12.0)-0.35)*1.5;
+            float3 light=ToonOcclude(ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y)*bounce,key,dot(nT,keyDir),atten),occ)+ToonPoints(BlockLights(world,nT));
             return albedo*(light+ToonEdge(nT,v,keyDir,key,atten,edge))+ToonSheen(nT,v,shUp)+emit;
         }
         // Ground haze (3.10: 15% from 0 to 2.5 m): _ArenaHaze.w at the street, gone at _ArenaHazeTop, faded in from 4 to 40 m away.
@@ -750,7 +824,7 @@ Shader "ChipArena/NativeBlockLit"
             float4 size=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockSize);float flags=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook).w;
             float3 n=v.normal;
             // The anime style's wrap mesh (uv0.w 1; only drawn while the style is on) or every other stage mesh.
-            if(v.texcoord.w>0.5){float4 look=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook);v.vertex=float4(ToonWrap(v.texcoord,v.texcoord1,size.xyz,ToonChamfer(size.xyz,size.w),look.x,look.w,look.z),1.0);}
+            if(v.texcoord.w>0.5){float4 look=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook);v.vertex=float4(ToonWrap(v.texcoord,v.texcoord1,size.xyz,ToonChamfer(size.xyz,size.w),look.x,look.w,look.z,v.color,n),1.0);}
             else v.vertex=float4(ToonLattice(v.texcoord.xyz,v.texcoord1.xyz,size.xyz,size.w,flags,n),1.0);
             v.normal=n;
         }

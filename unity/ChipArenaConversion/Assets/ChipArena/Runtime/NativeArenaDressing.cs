@@ -58,14 +58,17 @@ namespace ChipArena.UnityConversion
         /// collider never move); empty until then, cleared with Hidden.</summary>
         public static readonly Dictionary<string,Matrix4x4> Posed=new Dictionary<string,Matrix4x4>();
         private const float BoundsSize=200;
-        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public bool Pending,Machine;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;}
+        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public int Tooth;public bool Pending,Machine;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
         private struct Gone {public Vector3 Position;public float Reach;public int Look,Color,Flags,Frame;public Vector4 Linear;}
         private struct Kept {public int Look,Color,Flags;}
         private readonly Dictionary<NativePropBody,Entry> entries=new Dictionary<NativePropBody,Entry>();private readonly Stack<Entry> spare=new Stack<Entry>();
         private readonly List<NativePropBody> removed=new List<NativePropBody>();private readonly List<Renderer> renderers=new List<Renderer>();
         private readonly Dictionary<string,ContentMaterial> materials=new Dictionary<string,ContentMaterial>();
-        private readonly List<Batch>[] batches={new List<Batch>(),new List<Batch>(),new List<Batch>(),new List<Batch>(),new List<Batch>()};private readonly int[] counts=new int[NativeBlockLooks.Meshes];
+        // One batch list per stage mesh, and the anime style's toothed wrap (NativeToonMesh.ToothedMesh; only while the wrap draws).
+        private readonly List<Batch>[] batches={new List<Batch>(),new List<Batch>(),new List<Batch>(),new List<Batch>(),new List<Batch>(),new List<Batch>()};private readonly int[] counts=new int[NativeToonMesh.WrapMeshes];
+        // The anime style's toothed ends per map block (NativeMapStyle.ToothEnds over the resolved looks), made once per map.
+        private int[] tooth=Array.Empty<int>();private ContentBlock[] toothBlocks;
         private readonly Gone[] gone=new Gone[32];private int goneNext;
         // Fragment looks inherited this round, by fragment id (live and killcam arenas share the ids); cleared with the dust coat.
         private readonly Dictionary<string,Kept> kept=new Dictionary<string,Kept>();
@@ -130,11 +133,13 @@ namespace ChipArena.UnityConversion
                 }
                 int flags=e.Flags|NativeBlockLooks.Spin(e.Hash,stage);if((e.Flags&NativeBlockLooks.Band)!=0)flags|=NativeBlockLooks.Lamp(stage,stressed,locked,redOn);
                 rest.w=coat.Local(pos.x,pos.z);var color=e.Linear;color.w=window;
-                Add(NativeBlockLooks.MeshFor(stage,size.y),Matrix4x4.TRS(pos+rot*e.Offset,rot,Vector3.one),size,rest,color,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,flags));
+                // The anime style's wrap draws a big brick wall's free end toothed while intact (its ends unturned).
+                int mesh=NativeBlockLooks.MeshFor(stage,size.y);if(mesh==0&&e.Tooth!=0&&NativeLighting.StyleWrap){mesh=NativeToonMesh.ToothedMesh;flags=(flags&~NativeBlockLooks.SpinY)|e.Tooth;}
+                Add(mesh,Matrix4x4.TRS(pos+rot*e.Offset,rot,Vector3.one),size,rest,color,new Vector4(e.Look,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,flags));
             }
             NativeLighting.ArenaRim();var k=look?.blocks;Color haze=k!=null?Linear(NativeArena.ColorOf(k.hazeColor)):Color.black;
             Shader.SetGlobalVector(HazeId,new Vector4(haze.r,haze.g,haze.b,k!=null?k.haze:0));Shader.SetGlobalFloat(HazeTopId,k!=null&&k.hazeTop>0?k.hazeTop:1);Shader.SetGlobalFloat(DustId,k!=null?k.dust:0);
-            for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(s==0&&NativeLighting.StyleActive?ToonStage:meshes[s],batches[s][i],n);Draws++;Instances+=n;}
+            for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(NativeLighting.StyleActive?ToonStage(s):meshes[s],batches[s][i],n);Draws++;Instances+=n;}
         }
         private void Rebind(NativeArena arena,NativeDustCoat coat)
         {
@@ -142,6 +147,7 @@ namespace ChipArena.UnityConversion
             var map=arena.Content.Map(mapId);look=NativeLighting.Look(map);preview=NativeLighting.LookSet().preview;dressed=NativeBlockLooks.Dressed(look,Preview);floor=map.floor;
             var source=map.blocks;if(dressed&&!ReferenceEquals(source,liftBlocks)){liftBlocks=source;lifts=NativeSurfaceLayers.Blocks(source);liftIndex.Clear();if(source!=null)for(int i=0;i<source.Length;i++)if(source[i]?.id!=null&&!liftIndex.ContainsKey(source[i].id))liftIndex[source[i].id]=i;}
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
+            if(dressed&&!ReferenceEquals(source,toothBlocks)){toothBlocks=source;tooth=NativeMapStyle.On(look,NativeLighting.LegacyStyle)?NativeMapStyle.ToothEnds(source,ToothCandidate):Array.Empty<int>();}
             // The killcam's replay arena (in its own scene) shares the live round's dust coat and fragment looks; a new round or arena
             // starts clean ones.
             if(!arena.ReplicaScene.IsValid()&&(!ReferenceEquals(arena,liveArena)||arena.Generation!=liveGeneration)){liveArena=arena;liveGeneration=arena.Generation;lastEvent=0;coat.Clear();kept.Clear();Hidden.Clear();Nudged.Clear();Posed.Clear();for(int i=0;i<gone.Length;i++)gone[i].Frame=-1;}
@@ -156,6 +162,7 @@ namespace ChipArena.UnityConversion
             // A loose fragment never carries the band or tag; one whose look this round already knows takes it back.
             e.Look=c.Look;e.Color=c.Color;e.Flags=prop.Fragment?c.Flags&~(NativeBlockLooks.Band|NativeBlockLooks.Tag)|NativeBlockLooks.Fragment:c.Flags;e.Pending=prop.Fragment&&parent==null;
             if(prop.Fragment&&kept.TryGetValue(b.id??"",out var k)){e.Look=k.Look;e.Color=k.Color;e.Flags=k.Flags;e.Pending=false;}
+            e.Tooth=!prop.Fragment&&b.id!=null&&liftIndex.TryGetValue(b.id,out int toothAt)&&toothAt<tooth.Length?tooth[toothAt]:0;
             e.Hash=NativeBlockLooks.Hash(b.id);e.Seed=NativeBlockLooks.Seed(b.id);e.Max=NativeBlockLooks.StageMax(b,m,out e.S1,out e.S2);e.Seen=0;
             e.Size=new Vector4(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,NativeBlockLooks.Chamfer);e.Rest=new Vector4(b.pos.x,b.pos.y,b.pos.z,0);e.Offset=Vector3.zero;
             // A map block's lifted faces: the centre moves half the lift along its own axes, the half extent grows by half and the rest
@@ -222,11 +229,19 @@ namespace ChipArena.UnityConversion
             mesh.bounds=new Bounds(Vector3.zero,Vector3.one*BoundsSize);mesh.UploadMeshData(true);return mesh;
         }
         private static Color Linear(Color c)=>QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c;
-        // The anime map style's intact-stage mesh, made on first use (the other stages keep theirs): the wrap (Core
-        // NativeToonMesh.Wrap) on the normal tiers, the rounded box (NativeToonMesh.Build) on the low tier.
-        private Mesh toonMesh,wrapMesh;
-        private Mesh ToonStage=>NativeLighting.StyleWrap?(wrapMesh??=MeshOf(NativeToonMesh.Wrap(),0)):(toonMesh??=MeshOf(NativeToonMesh.Build(),0));
-        private void OnDestroy(){if(meshes!=null)foreach(var m in meshes)if(m!=null)CapturedAnimation.Release(m);if(toonMesh!=null)CapturedAnimation.Release(toonMesh);toonMesh=null;if(wrapMesh!=null)CapturedAnimation.Release(wrapMesh);wrapMesh=null;if(material!=null)CapturedAnimation.Release(material);meshes=null;material=null;}
+        // The anime map style's stage meshes, each made on first use: the wraps (Core NativeToonMesh.WrapMesh: intact, S1, S2,
+        // the stub, S2 unwaisted, the toothed intact wrap) on the normal tiers; the rounded box (NativeToonMesh.Build) for the
+        // intact stage and the legacy meshes for the others on the low tier.
+        private Mesh toonMesh;private readonly Mesh[] wrapMeshes=new Mesh[NativeToonMesh.WrapMeshes];
+        private Mesh ToonStage(int s)=>NativeLighting.StyleWrap?(wrapMeshes[s]??=MeshOf(NativeToonMesh.WrapMesh(s),s)):s==0?(toonMesh??=MeshOf(NativeToonMesh.Build(),0)):meshes[Math.Min(s,meshes.Length-1)];
+        // A map block that draws a toothed end where it is free: a brick wall by its resolved look (NativeMapStyle.ToothCandidate).
+        private bool ToothCandidate(int i)
+        {
+            var b=toothBlocks[i];if(b?.id==null)return false;materials.TryGetValue(b.material??"",out var m);int content=b.material=="foundation"?floor:m!=null?m.color:0xffffff;
+            var c=NativeBlockLooks.Resolve(look?.blockLooks,Preview?preview:null,b.id,b.material,content);
+            return (c.Flags&NativeCyberCityLooks.Bank)==0&&NativeMapStyle.ToothCandidate(b.size.x*.5f,b.size.y*.5f,b.size.z*.5f,c.Look);
+        }
+        private void OnDestroy(){if(meshes!=null)foreach(var m in meshes)if(m!=null)CapturedAnimation.Release(m);if(toonMesh!=null)CapturedAnimation.Release(toonMesh);toonMesh=null;for(int w=0;w<wrapMeshes.Length;w++){if(wrapMeshes[w]!=null)CapturedAnimation.Release(wrapMeshes[w]);wrapMeshes[w]=null;}if(material!=null)CapturedAnimation.Release(material);meshes=null;material=null;}
     }
     public sealed partial class ArenaPresentation
     {

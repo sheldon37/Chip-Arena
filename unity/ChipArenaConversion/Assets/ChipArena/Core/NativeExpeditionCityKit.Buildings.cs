@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
                 if(stone&&kind!=Kiosk)foreach(var run in Runs(f,y0-.95,y0-.6,f.U0,f.U1,.02))FBox(f,(run[0]+run[1])/2,y0-.75,.06,run[1]-run[0],.16,.12,With(P(NativeBlockLooks.ConcreteBoard,0xA49C8E,RoleFacade),detail:true));
             }
             // The cornice and parapet line along the top, and a band over the ground floor.
-            foreach(var run in Runs(f,h-.5,h,f.U0,f.U1,.02,false))FBox(f,(run[0]+run[1])/2,h-.28,.11,run[1]-run[0],.32,.22,With(P(brick?NativeBlockLooks.ConcreteBoard:NativeBlockLooks.ConcreteBoard,brick?0x7A7064:0x9A9286,RoleHigh),shadow:true));
+            foreach(var run in Runs(f,h-.5,h,f.U0,f.U1,.02,false))FBox(f,(run[0]+run[1])/2,h-.28,.11,run[1]-run[0],.32,.22,With(P(brick?NativeBlockLooks.ConcreteBoard:NativeBlockLooks.ConcreteBoard,brick?0x7A7064:0x9A9286,RoleHigh,NativeMapStyle.Cornice),shadow:true));
             if(kind!=Kiosk)foreach(var run in Runs(f,ground-.45,ground-.1,f.U0,f.U1,.02))FBox(f,(run[0]+run[1])/2,ground-.28,.08,run[1]-run[0],.24,.16,With(P(NativeBlockLooks.ConcreteBoard,brick?0x6E665C:0x8C8478,RoleFacade),detail:true));
             // The ground floor by kind.
             foreach(var run in Runs(f,.2,ground-.6,f.U0+.3,f.U1-.3))
@@ -132,27 +132,29 @@ namespace ChipArena.UnityConversion
             // Burning: one window of the top storey on three blocks, by hash.
             if(burning&&Hash(id,f.Index,row*131+col)<.22)
             {
-                FBox(f,u,yc,.02+lift,w,h,.04,Glow(FireHex,1.7f,RoleFacade,DriveFire,(float)s));Soot(f,u,y1,w,1.3,lift);
+                FBox(f,u,yc,.02+lift,w,h,.04,Framed(Glow(FireHex,1.7f,RoleFacade,DriveFire,(float)s)));Soot(f,u,y1,w,1.3,lift);
                 At(f,u,0,.35,out double gx,out double gz);Light(gx,f.Base+y0+.05,gz,FireHex,1.4,8,w*.9,GlowWindowFire,s);End();return;
             }
-            if(s<.07){FBox(f,u,yc,.02+lift,w,h,.04,Glow(Pick(new[]{WarmHex,0xFFC890,0xFF9A50},s*97),.55f+.4f*(float)(s*10),RoleFacade));FBox(f,u,y1-h*.18,.035+lift,w,h*.36,.02,With(P(NativeBlockLooks.Plain,0x3A2A1E,RoleFacade),detail:true));}
-            else if(s<.1)FBox(f,u,yc,.02+lift,w,h,.04,Glow(TvHex,.4f,RoleFacade,DriveTv,(float)s*13));
+            if(s<.07){FBox(f,u,yc,.02+lift,w,h,.04,Framed(Glow(Pick(new[]{WarmHex,0xFFC890,0xFF9A50},s*97),.55f+.4f*(float)(s*10),RoleFacade)));FBox(f,u,y1-h*.18,.035+lift,w,h*.36,.02,With(P(NativeBlockLooks.Plain,0x3A2A1E,RoleFacade),detail:true));}
+            else if(s<.1)FBox(f,u,yc,.02+lift,w,h,.04,Framed(Glow(TvHex,.4f,RoleFacade,DriveTv,(float)s*13)));
             else if(s<.25){FBox(f,u,yc,.04+lift,w+.12,h+.1,.06,P(NativeBlockLooks.Timber,BoardHex,RoleFacade));FBox(f,u,yc+h*.1,.08+lift,w+.3,.16,.04,With(P(NativeBlockLooks.Timber,0x7A5A38,RoleFacade),detail:true),roll:(s-.175)*300);}
             else if(s<.42)
             {
-                FBox(f,u,yc,.02+lift,w,h,.04,P(NativeBlockLooks.Plain,BlackHex,RoleFacade));
+                FBox(f,u,yc,.02+lift,w,h,.04,Framed(P(NativeBlockLooks.Plain,BlackHex,RoleFacade)));
                 FBox(f,u+(s<.33?-1:1)*w*.38,y1-h*.2,.035+lift,w*.16,h*.36,.02,With(P(NativeBlockLooks.Plain,0x3A4652,RoleFacade),detail:true),roll:(s<.33?-1:1)*14);
                 if(s<.3)Soot(f,u,y1,w,.9,lift);
             }
             else
             {
                 // Dark glass catching the dusk sky (a faint violet sheen, stronger on the upper floors), a mullion on a third.
-                FBox(f,u,yc,.02+lift,w,h,.04,Glow(s<.7?GlassSkyHex:GlassDuskHex,(float)(.1+.05*Math.Min(3,row)+.06*Hash(id,row,col+500)),RoleFacade));
+                FBox(f,u,yc,.02+lift,w,h,.04,Framed(Glow(s<.7?GlassSkyHex:GlassDuskHex,(float)(.1+.05*Math.Min(3,row)+.06*Hash(id,row,col+500)),RoleFacade)));
                 if(s>.86)FBox(f,u,yc,.045+lift,.06,h,.02,With(P(NativeBlockLooks.Plain,FrameHex,RoleFacade),detail:true));
             }
             // The city detail pass frames, shutters and balconies the windows that stand (NativeExpeditionCityKit.Detail.cs).
             if(End())windowRecs.Add(new WindowRec{F=f,U=u,Y0=y0,W=w,H=h,S=s,Row=row,Col=col,Lift=lift,Used=f.Used.Count-1});
         }
+        /// <summary>A window pane that the anime map style paints inside a frame with depth (NativeMapStyle.Frame; ignored by the legacy look).</summary>
+        private static Pen Framed(Pen p){p.Flags|=NativeMapStyle.Frame;return p;}
         private void Soot(Face f,double u,double y,double w,double reach,double lift=0)=>FBox(f,u,y+reach*.4,.012+lift,w*.9,reach*.8,.02,With(P(NativeBlockLooks.Plain,SootHex,RoleFacade),detail:true));
         private static int Pick(int[] list,double h)=>list[Math.Min(list.Length-1,(int)(Math.Abs(h)%1*list.Length))];
         private static string PickName(string[] list,double h)=>list[Math.Min(list.Length-1,(int)(Math.Abs(h)%1*list.Length))];
@@ -204,7 +206,7 @@ namespace ChipArena.UnityConversion
                 {
                     var st=AwningStripes[(int)(Hash(id,k,31)*AwningStripes.Length)%AwningStripes.Length];double aw=w-.5,depth=1.05,pitch=12;int strips=Math.Max(3,(int)(aw/.8));double sw=aw/strips;bool torn=Hash(id,k,32)<.35;
                     for(int t=0;t<strips;t++){double su=u-aw/2+sw*(t+.5);double reach=torn&&t>=strips-2?depth*.55:depth;
-                        FBox(f,su,AwningTop-Math.Sin(pitch*Math.PI/180)*reach/2,Math.Cos(pitch*Math.PI/180)*reach/2,sw,.04,reach,With(P(NativeBlockLooks.Plain,st[t%2],RoleHigh),shadow:true,fade:true),0,pitch);}
+                        FBox(f,su,AwningTop-Math.Sin(pitch*Math.PI/180)*reach/2,Math.Cos(pitch*Math.PI/180)*reach/2,sw,.04,reach,With(P(NativeBlockLooks.Plain,st[t%2],RoleHigh,NativeMapStyle.Awning),shadow:true,fade:true),0,pitch);}
                     FBox(f,u,AwningTop-Math.Sin(pitch*Math.PI/180)*depth-.08,Math.Cos(pitch*Math.PI/180)*depth+.01,aw,.14,.03,With(P(NativeBlockLooks.Plain,st[0],RoleHigh),fade:true,detail:true));
                 }
                 End();

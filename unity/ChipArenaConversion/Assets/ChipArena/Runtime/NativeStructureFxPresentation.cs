@@ -252,9 +252,24 @@ namespace ChipArena.UnityConversion
             for(int pass=0;pass<2;pass++)for(int i=0;i<fx.LineCount;i++){var l=fx.Lines[i];if(l.Additive!=(pass==1))continue;Ribbon(layer,U(l.From),U(l.To),l.Width,new Color(l.R,l.G,l.B,l.Alpha),eye,l.Additive?Glowing:Authored);}
             for(int i=0;i<fx.GlowCount;i++){var g=fx.Glows[i];draw.Sprite(layer,U(g.Center),right,up,g.Size,new Color(g.R,g.G,g.B,g.Alpha),Glowing);}
         }
+        private readonly float[] bevelCorners=new float[12];
         private void ShadedCube(NativeFxDraw.Layer layer,in NativeStructureCube c)
         {
             var q=new Quaternion(c.Qx,c.Qy,c.Qz,c.Qw);Vector3 o=U(c.Center),ax=q*new Vector3(c.Size.x*.5f,0,0),ay=q*new Vector3(0,c.Size.y*.5f,0),az=q*new Vector3(0,0,c.Size.z*.5f);Vector4 uv=Uv(0,0,NativeFxDraw.Flat,Authored);
+            // The anime map style: a bevelled chunk (Core NativeMapStyle.BevelFacet: faces, edge strips and corner facets, each lit
+            // by its own normal), so the rubble never reads as voxels; the same records, colours and light.
+            if(NativeLighting.StyleActive)
+            {
+                float hx=c.Size.x*.5f,hy=c.Size.y*.5f,hz=c.Size.z*.5f,bev=NativeMapStyle.DebrisBevel(hx,hy,hz);Vector3 ux=q*Vector3.right,uy=q*Vector3.up,uz=q*Vector3.forward;
+                for(int f=0;f<NativeMapStyle.BevelFacets;f++)
+                {
+                    int k=NativeMapStyle.BevelFacet(f,hx,hy,hz,bev,bevelCorners,out float nx,out float ny,out float nz);
+                    Vector3 nl=ux*nx+uy*ny+uz*nz;Color lt=Light(nl.normalized),col=new Color(c.R*lt.r,c.G*lt.g,c.B*lt.b,1);int s0=layer.Count;
+                    for(int i=0;i<k;i++)layer.Vertex(o+ux*bevelCorners[i*3]+uy*bevelCorners[i*3+1]+uz*bevelCorners[i*3+2],nl,col,uv,Vector4.zero,Vector4.zero);
+                    layer.Triangle(s0,s0+1,s0+2);if(k==4)layer.Triangle(s0,s0+2,s0+3);
+                }
+                return;
+            }
             for(int f=0;f<6;f++)
             {
                 Vector3 n=f<2?ax:f<4?ay:az,a=f<2?ay:f<4?az:ax,b=f<2?az:f<4?ax:ay;if(f%2==1)n=-n;Color light=Light(n.normalized),col=new Color(c.R*light.r,c.G*light.g,c.B*light.b,1);int s=layer.Count;Vector3 m=o+n;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ChipArena.UnityConversion
 {
@@ -95,13 +96,50 @@ namespace ChipArena.UnityConversion
         /// a post or a broken corner steps out of the face). The rows are the foot, the plinth's top, the body's foot and top,
         /// the coping's foot, its top and the top's rounding (45 degrees and the top). The caps are a fan per corner and one fan
         /// over the inner post points, so a broken corner slopes only within its corner. Vertex data: TEXCOORD0 (A.x, row, A.z,
-        /// 1: the shader's wrap path), TEXCOORD1 (B.x, zone: 2 the corner's points, B.z, slide: 1 along x, 2 along z, its sign
-        /// toward the face's middle); normals are orientation hints (the style shades by its own normal). Deterministic; a
-        /// load-time call. Only drawn while the style is on (the legacy look never sees it).
+        /// 1 + the stage drawn: the shader's wrap path), TEXCOORD1 (B.x, zone: 2 the corner's points, B.z, slide: 1 along x, 2
+        /// along z, its sign toward the face's middle), COLOR (the damaged meshes' break: r drop, g inset, a fresh); normals are
+        /// orientation hints (the style shades by its own normal). Deterministic; a load-time call. Only drawn while the style is
+        /// on (the legacy look never sees it).
         /// </summary>
-        public static NativeBlockLooks.StageMesh Wrap()
+        public static NativeBlockLooks.StageMesh Wrap()=>WrapMesh(0);
+        /// <summary>The wraps by NativeBlockLooks mesh index (0 intact, 1 S1, 2 S2 with its waist, 3 the S3 stub, 4 S2 without
+        /// the waist) and <see cref="ToothedMesh"/> (the intact wrap with a toothed end's band rows).</summary>
+        public const int ToothedMesh=5,WrapMeshes=6;
+        /// <summary>The rows of each wrap mesh, bottom to top (ids as ToonWrap reads them: 8 and 9 the waist, 10 on the teeth).</summary>
+        public static int[] WrapRowsOf(int mesh)
         {
-            int n=WrapVertexCount;var lat=new float[n*4];var ins=new float[n*4];var nrm=new float[n*3];var pos=new float[n*3];var shade=new float[n*4];var tris=new int[WrapTriangleCount*3];
+            if(mesh==2)return new[]{0,1,2,8,9,3,4,5,6,7};
+            if(mesh==ToothedMesh){var r=new List<int>{0,1,2};for(int j=(int)NativeMapStyle.WrapTeeth;j>=1;j--){r.Add(10+2*(j-1));r.Add(10+2*(j-1)+1);}r.AddRange(new[]{3,4,5,6,7});return r.ToArray();}
+            return new[]{0,1,2,3,4,5,6,7};
+        }
+        /// <summary>The stage a wrap mesh draws (its TEXCOORD0.w less 1).</summary>
+        public static int WrapStage(int mesh)=>mesh==ToothedMesh?0:mesh==4?2:mesh;
+        public static int WrapVertices(int mesh)=>WrapPoints*WrapRowsOf(mesh).Length;
+        public static int WrapTriangles(int mesh)=>WrapPoints*(WrapRowsOf(mesh).Length-1)*2+2*(4*5+6);
+        /// <summary>
+        /// The break a damaged wrap bakes per corner and row group (corner q of (+x,+z), (-x,+z), (-x,-z), (+x,-z); its corner
+        /// points only): S1 breaks two top corners and one plinth corner, S2 all four top corners deeper and two plinth corners
+        /// (the waist a fresh band), the stub a ragged top over the cut. Drop and inset are shares of ToonWrap's caps.
+        /// </summary>
+        private static void Damage(int mesh,int corner,bool zone2,int row,int point,out float drop,out float inset,out float fresh)
+        {
+            drop=inset=fresh=0;int stage=WrapStage(mesh);if(stage==0)return;
+            bool top=row>=3&&row<=7,foot=row<=2;
+            if(stage==3){if(row>=3&&row<=7){drop=StubRag[point];fresh=row==3?0:1;}return;}
+            if(row==8||row==9){fresh=.35f;return;}
+            if(!zone2)return;
+            float[] tops=stage==1?new[]{1f,0,.7f,0}:new[]{1f,.8f,1f,.6f},topsIn=stage==1?new[]{1f,0,.8f,0}:new[]{1f,.9f,1f,.8f},feet=stage==1?new[]{0,0,0,1f}:new[]{0,1f,0,.8f};
+            // Fresh only on the break's own rows (the coping and top, the plinth), so it never fades up a whole body face.
+            if(top&&tops[corner]>0){drop=tops[corner];inset=topsIn[corner];fresh=row>=4?1:0;}
+            else if(foot&&feet[corner]>0){inset=feet[corner];fresh=row<=1?1:0;}
+        }
+        /// <summary>The stub's ragged top per section point (shares of the stub's ragged cap; the corners deepest).</summary>
+        private static readonly float[] StubRag={.3f,.6f,.9f,1f,.8f,.5f,.2f,.4f,.7f,.5f,.8f,.9f,.6f,.3f,.2f,.5f,.9f,1f,.7f,.4f,.1f,.3f,.5f,.8f,1f,.6f,.4f,.2f};
+        public static NativeBlockLooks.StageMesh WrapMesh(int mesh)
+        {
+            if(mesh<0||mesh>=WrapMeshes)throw new ArgumentOutOfRangeException(nameof(mesh));
+            int[] rows=WrapRowsOf(mesh);int nr=rows.Length,n=WrapPoints*nr,stageW=1+WrapStage(mesh);
+            var lat=new float[n*4];var ins=new float[n*4];var nrm=new float[n*3];var pos=new float[n*3];var shade=new float[n*4];var tris=new int[WrapTriangles(mesh)*3];
             // The section: A.x, B.x, A.z, B.z, zone, slide and the hint's x and z, per point in order round the block.
             var sec=new float[WrapPoints,8];int k=0;
             void Point(float ax,float bx,float az,float bz,float zone,float slide,float hx,float hz){sec[k,0]=ax;sec[k,1]=bx;sec[k,2]=az;sec[k,3]=bz;sec[k,4]=zone;sec[k,5]=slide;sec[k,6]=hx;sec[k,7]=hz;k++;}
@@ -116,17 +154,23 @@ namespace ChipArena.UnityConversion
                 // Counter-clockwise passes a corner from its x face first where sx and sz agree, else from its z face.
                 for(int i=0;i<7;i++){int j=sx*sz>0?i:6-i;Point(c[j,0],c[j,1],c[j,2],c[j,3],c[j,4],c[j,5],c[j,6],c[j,7]);}
             }
-            for(int r=0;r<WrapRows;r++)for(int p=0;p<WrapPoints;p++)
+            for(int r=0;r<nr;r++)for(int p=0;p<WrapPoints;p++)
             {
-                int i=r*WrapPoints+p;lat[i*4]=sec[p,0];lat[i*4+1]=r;lat[i*4+2]=sec[p,2];lat[i*4+3]=1;ins[i*4]=sec[p,1];ins[i*4+1]=sec[p,4];ins[i*4+2]=sec[p,3];ins[i*4+3]=sec[p,5];
-                float hx=sec[p,6],hy=RowHint[r],hz=sec[p,7],l=(float)Math.Sqrt(hx*hx+hy*hy+hz*hz);nrm[i*3]=hx/l;nrm[i*3+1]=hy/l;nrm[i*3+2]=hz/l;
-                NativeMapStyle.WrapPoint(lat[i*4],lat[i*4+1],lat[i*4+2],ins[i*4],ins[i*4+1],ins[i*4+2],ins[i*4+3],.5f,.5f,.5f,NativeBlockLooks.Chamfer,0,0,0,out pos[i*3],out pos[i*3+1],out pos[i*3+2]);
-                shade[i*4]=shade[i*4+1]=shade[i*4+2]=NativeBlockLooks.ShadeStore;shade[i*4+3]=0;
+                int i=r*WrapPoints+p,row=rows[r];lat[i*4]=sec[p,0];lat[i*4+1]=row;lat[i*4+2]=sec[p,2];lat[i*4+3]=stageW;ins[i*4]=sec[p,1];ins[i*4+1]=sec[p,4];ins[i*4+2]=sec[p,3];ins[i*4+3]=sec[p,5];
+                // The hint's y: the foot leans down, the top up; a tooth band edge's step faces up where the band above is
+                // recessed (even edges), down where the band below is.
+                float hy=row>=10?((row-10)/2%2==1?.6f:-.6f):row>=8?0:RowHint[row];
+                float hx=sec[p,6],hz=sec[p,7],l=(float)Math.Sqrt(hx*hx+hy*hy+hz*hz);nrm[i*3]=hx/l;nrm[i*3+1]=hy/l;nrm[i*3+2]=hz/l;
+                Damage(mesh,p/7,sec[p,4]>1.5f,row,p,out float drop,out float inset,out float fresh);
+                NativeMapStyle.WrapPoint(lat[i*4],lat[i*4+1],lat[i*4+2],ins[i*4],ins[i*4+1],ins[i*4+2],ins[i*4+3],.5f,.5f,.5f,NativeBlockLooks.Chamfer,0,0,0,out pos[i*3],out pos[i*3+1],out pos[i*3+2],stageW:stageW,dropShare:drop,inShare:inset);
+                shade[i*4]=drop;shade[i*4+1]=inset;shade[i*4+2]=NativeBlockLooks.ShadeStore;shade[i*4+3]=fresh;
             }
-            // Winding: outward (cross(b - a, c - a) along the vertices' mean hint), judged on a nominal shape with every feature
-            // (no point coincides there).
+            // Winding: outward (cross(b - a, c - a) along the vertices' mean hint), judged on a nominal intact shape with every
+            // feature and no end recessed (no point coincides there): a tooth edge's two rows then make a seam-high strip facing
+            // its face, and the same winding turns that strip into the right step where an end is recessed (up on the end face
+            // and its corners, down under a recessed pilaster's overhang).
             var test=new float[n*3];var shape=new NativeMapStyle.WrapForm{Section=.4f,Plinth=.5f,PlinthOut=.1f,Coping=.6f,CopingOut=.12f,Top=.2f,Bottom=0,Slide=.3f,PostOut=.06f,Chip=0};
-            for(int i=0;i<n;i++)NativeMapStyle.WrapPlace(lat[i*4],lat[i*4+1],lat[i*4+2],ins[i*4],ins[i*4+1],ins[i*4+2],ins[i*4+3],2,2,2,shape,0,out test[i*3],out test[i*3+1],out test[i*3+2]);
+            for(int i=0;i<n;i++)NativeMapStyle.WrapPlace(lat[i*4],lat[i*4+1],lat[i*4+2],ins[i*4],ins[i*4+1],ins[i*4+2],ins[i*4+3],1,mesh==ToothedMesh?4:2,mesh==ToothedMesh?6:2,2,shape,0,0,0,out test[i*3],out test[i*3+1],out test[i*3+2]);
             int nt=0;
             void Tri(int a,int b,int c)
             {
@@ -135,14 +179,14 @@ namespace ChipArena.UnityConversion
                 if(cx*ox+cy*oy+cz*oz>=0){tris[nt++]=a;tris[nt++]=b;tris[nt++]=c;}else{tris[nt++]=a;tris[nt++]=c;tris[nt++]=b;}
             }
             int V(int r,int p)=>r*WrapPoints+(p%WrapPoints);
-            for(int r=0;r<WrapRows-1;r++)for(int p=0;p<WrapPoints;p++){Tri(V(r,p),V(r,p+1),V(r+1,p+1));Tri(V(r,p),V(r+1,p+1),V(r+1,p));}
+            for(int r=0;r<nr-1;r++)for(int p=0;p<WrapPoints;p++){Tri(V(r,p),V(r,p+1),V(r+1,p+1));Tri(V(r,p),V(r+1,p+1),V(r+1,p));}
             // The caps: per corner a fan from its first (inner) point, then the inner points' polygon.
-            foreach(int r in new[]{0,WrapRows-1})
+            foreach(int r in new[]{0,nr-1})
             {
                 for(int q=0;q<4;q++)for(int j=1;j<6;j++)Tri(V(r,q*7),V(r,q*7+j),V(r,q*7+j+1));
                 int[] inner={0,6,7,13,14,20,21,27};for(int j=1;j<7;j++)Tri(V(r,inner[0]),V(r,inner[j]),V(r,inner[j+1]));
             }
-            if(nt!=WrapTriangleCount*3)throw new InvalidOperationException("NativeToonMesh: wrapped "+nt/3+" triangles");
+            if(nt!=tris.Length)throw new InvalidOperationException("NativeToonMesh: wrapped "+nt/3+" triangles");
             return new NativeBlockLooks.StageMesh{Preview=pos,Normal=nrm,Lattice=lat,Inset=ins,Shade=shade,Triangles=tris};
         }
     }

@@ -108,7 +108,8 @@ namespace ChipArena.UnityConversion
             }
             // The pediment over the roof line on the four middle bays: stepped tympanum, raking cornices, a stopped clock.
             {
-                double half=w/3+.6,top=17.0;var ped=With(stone,shadow:false);
+                // The anime map style rakes each step to the pediment's slope (NativeMapStyle.Rake; the legacy look ignores the flag).
+                double half=w/3+.6,top=17.0;var ped=With(stone,shadow:false);ped.Flags|=NativeMapStyle.Rake;
                 for(int k=0;k<6;k++){double hw=half*(1-k/6.0)-.1;FBox(f,uc,top+.28+k*.55,.18,2*hw,.56,.34,ped);}
                 double rise=3.3,ang=Math.Atan2(rise,half)*180/Math.PI,len=Math.Sqrt(half*half+rise*rise)+.4;
                 FBox(f,uc-half/2,top+rise/2+.15,.22,len,.34,.44,With(stone,shadow:true),-ang);FBox(f,uc+half/2,top+rise/2+.15,.22,len,.34,.44,With(stone,shadow:true),ang);
@@ -352,7 +353,7 @@ namespace ChipArena.UnityConversion
             }
             int strips=6;double w=x1-x0+.7,d=z1-z0+.7;bool alongX=w>=d;var st=AwningStripes[(int)(Hash(id,0,31)*AwningStripes.Length)%AwningStripes.Length];
             for(int t=0;t<strips;t++){double a=-(alongX?d:w)/2+(alongX?d:w)/strips*(t+.5);double sx=alongX?w:(w/strips),sz=alongX?(d/strips):d;
-                Box(owner0,cx+(alongX?0:a),3.78-.03*(t-2.5),cz+(alongX?a:0),sx,.04,sz,With(P(NativeBlockLooks.Plain,st[t%2],RoleHigh),fade:true),alongX?AxisRot(1,0,0,4):AxisRot(0,0,1,-4));}
+                Box(owner0,cx+(alongX?0:a),3.78-.03*(t-2.5),cz+(alongX?a:0),sx,.04,sz,With(P(NativeBlockLooks.Plain,st[t%2],RoleHigh,NativeMapStyle.Awning),fade:true),alongX?AxisRot(1,0,0,4):AxisRot(0,0,1,-4));}
             Box(owner0,cx,3.5,cz,.04,.36,.04,With(P(NativeBlockLooks.Plain,0x1A1A1A,RoleHigh),detail:true));Box(owner0,cx,3.25,cz,.24,.14,.24,P(NativeBlockLooks.SteelGreen,0x1E2220,RoleHigh));Box(owner0,cx,3.16,cz,.16,.04,.16,Glow(0xFFC88A,1.6f,RoleHigh,DriveFlicker,.8f));
             if(End())Light(cx,2.9,cz,0xFFC88A,.8,7,.8,GlowLampFlicker,.8);
         }
