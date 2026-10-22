@@ -11,8 +11,8 @@ namespace ChipArena.UnityConversion
     // fist's deep bend, see Wrist), applied to the bone's rest aligned once at bind (limbs straightened to the game's
     // arms-down, legs-down rest; spine, head and feet keep their authored posture). Then the root height scales by the leg ratio, hands
     // inside the game's shoulder line swing to their chest-relative place (Inside), planted feet and two-handed support grips take
-    // two-bone IK (a far grip's shoulder reaches first), twist bones take a share of their limb's roll, and the weapon rides the
-    // visual right hand (P1).
+    // two-bone IK (a far grip's shoulder reaches first), closed fists seat on their weapons' handles (Seat), twist bones take
+    // a share of their limb's roll, and the weapon rides the visual right hand (P1).
     public static class NativeVisualRig
     {
         public const float Floor=-.865f, PlantedHeight=.03f, LiftedHeight=.10f;
@@ -50,6 +50,10 @@ namespace ChipArena.UnityConversion
             public readonly int[] Of=new int[CapturedRig.Bones.Length]; // the last visual bone of each joint's chain, -1 when unmapped
             public readonly float LegRatio, ArmUpper, ArmLower, LegUpper, LegLower, HeadRise;
             public readonly Vector3 PelvisRest, GamePelvisRest;
+            // The closed fist per side (0 left, 1 right; Fists): where a handle runs through it, from the hand bone (FistCenter),
+            // its direction toward the index side (FistAxis) and the hand's forward square to it (FistAhead), in the aligned rest.
+            public readonly Vector3[] FistCenter=new Vector3[2], FistAxis=new Vector3[2], FistAhead=new Vector3[2];
+            public readonly bool[] HasFist=new bool[2];
 
             public Rig(BoneSpec[] bones)
             {
@@ -90,6 +94,7 @@ namespace ChipArena.UnityConversion
                     AlignedPosition[v]=p<0?restPos[v]:AlignedPosition[p]+Vector3.Transform(RestPosition[v],AlignedWorld[p]);
                 }
                 FingerAxes();
+                Fists();
                 // Floor-fit radii: a bone's rest height over the floor, capped (soles and toes touch at rest, the rest clear it).
                 for(int v=0;v<Count;v++) Contact[v]=Math.Max(0,Math.Min(.12f,AlignedPosition[v].Y-Floor));
                 int pelvis=Of[CapturedRig.Pelvis];
@@ -131,6 +136,40 @@ namespace ChipArena.UnityConversion
                 }
             }
             private int Next(int v) { for(int c=v+1;c<Count;c++) if(Parent[c]==v&&Finger[c]==Finger[v]+1) return c; return -1; }
+
+            // The closed fist (each finger at its Closed curl, the hand at the aligned rest). A curled finger's three joints wrap
+            // the handle, so the handle runs through the centres of their circles: the fist's centre is their mean and its axis
+            // the fingers' mean curl axis, turned to the thumb's side. Needs at least one finger with three joints.
+            private void Fists()
+            {
+                for(int side=0;side<2;side++)
+                {
+                    int hand=Of[side==0?CapturedRig.LHand:CapturedRig.RHand]; if(hand<0) continue;
+                    Vector3 centres=Vector3.Zero,axis=Vector3.Zero,knuckles=Vector3.Zero,thumb=Vector3.Zero; int fingers=0; bool hasThumb=false;
+                    for(int v=0;v<Count;v++)
+                    {
+                        if(Side[v]!=side) continue;
+                        if(Finger[v]==11) { thumb=AlignedPosition[v]; hasThumb=true; }
+                        if(Finger[v]!=1) continue;
+                        int b=Next(v),c=b<0?-1:Next(b); if(c<0) continue;
+                        Quaternion first=CapturedRig.Rot(FingerAxis[v],Curl(1,1)),second=first*CapturedRig.Rot(FingerAxis[b],Curl(2,1));
+                        Vector3 p1=AlignedPosition[v],p2=p1+Vector3.Transform(RestPosition[b],first*AlignedWorld[v]),p3=p2+Vector3.Transform(RestPosition[c],second*AlignedWorld[b]);
+                        centres+=Circumcentre(p1,p2,p3); axis+=FingerAxis[v]; knuckles+=p1; fingers++;
+                    }
+                    if(fingers==0||axis.LengthSquared()<1e-10f) continue;
+                    centres/=fingers; knuckles/=fingers; axis=Vector3.Normalize(axis);
+                    if(hasThumb&&Vector3.Dot(axis,thumb-knuckles)<0) axis=-axis;
+                    Vector3 ahead=knuckles-AlignedPosition[hand]; ahead-=axis*Vector3.Dot(ahead,axis);
+                    if(ahead.LengthSquared()<1e-10f) continue;
+                    FistCenter[side]=centres-AlignedPosition[hand]; FistAxis[side]=axis; FistAhead[side]=Vector3.Normalize(ahead); HasFist[side]=true;
+                }
+            }
+            private static Vector3 Circumcentre(Vector3 a,Vector3 b,Vector3 c)
+            {
+                Vector3 ab=b-a,ac=c-a,n=Vector3.Cross(ab,ac); float d=2*n.LengthSquared();
+                if(d<1e-14f) return (a+b+c)/3;
+                return a+(Vector3.Cross(n,ab)*ac.LengthSquared()+Vector3.Cross(ac,n)*ab.LengthSquared())/d;
+            }
             private int Root(int v) { while(Finger[v]!=1&&Finger[v]!=11&&Parent[v]>=0&&Finger[Parent[v]]!=0) v=Parent[v]; return v; }
 
             private float Segment(int from,int to)
@@ -156,22 +195,72 @@ namespace ChipArena.UnityConversion
             public readonly Quaternion[] Turn, World, Local;
             public readonly Vector3[] Position, LocalPosition;
             public float LeftFootWeight, RightFootWeight, SupportWeight, LeftArmReach, LeftLegReach, RightLegReach, LeftGrip, RightGrip, LeftInside, RightInside, ShoulderTurn, GiveWay;
+            // Where each hand's weapon is drawn (P1; WeaponFrame), and whether its fist is seated on a handle this frame.
+            public Vector3 LeftAnchor, RightAnchor; public bool LeftSeated, RightSeated;
+            internal readonly bool[] Under;
             public State(Rig rig)
             {
                 Rig=rig; int n=rig.Count;
-                Turn=new Quaternion[n]; World=new Quaternion[n]; Local=new Quaternion[n]; Position=new Vector3[n]; LocalPosition=new Vector3[n];
+                Turn=new Quaternion[n]; World=new Quaternion[n]; Local=new Quaternion[n]; Position=new Vector3[n]; LocalPosition=new Vector3[n]; Under=new bool[n];
             }
         }
+
+        // A held thing's handle in its game wrist's frame (the hand bone its model is drawn on): Center, where the fist closes on
+        // it; Axis, the handle's direction toward the blade, barrel or top (the fist's index side; zero: nothing to seat); Either,
+        // the fist may close on it either way round (a dagger held point down), whichever keeps nearer the game wrist's turn.
+        public struct Hold
+        {
+            public Vector3 Center, Axis; public bool Either;
+            public Hold(Vector3 center,Vector3 axis,bool either=false) { Center=center; Axis=Vector3.Normalize(axis); Either=either; }
+            public bool Seated=>Axis.LengthSquared()>.25f;
+        }
+
+        // What the hands hold this frame. RightGrip, LeftGrip: finger curl 0..1 (open hands relax). Right, Left: each hand's own
+        // weapon. Support: 0..1, whether the right hand's weapon may be held two-handed (HandsTogether gates it); SupportHold:
+        // where the left fist closes on that weapon, in the right wrist's frame (none: the left keeps the game's wrist offset).
+        public struct Grasp { public float RightGrip, LeftGrip, Support; public Hold Right, Left, SupportHold; }
+
+        // The Standard weapons' handles (NativeWeaponModels). The sword family draws at the hand turned by
+        // NativeSpecialPose.HeldRotation (`held`) with its grip along +z through the wrist; the shield's grip bar stands up behind
+        // its face. Guns draw at the hand: the fist closes on the raked pistol grip under the bore, its index finger under the
+        // grip's top. A gun's support fist closes where the game's own free fist is this frame (the pose puts it there; the
+        // voxel fist's grip point, NativeKillBoxes.LeftHandSocket, on the game's left wrist), along the bore, or round the
+        // pistol's grip. (The long guns' handguard is out of a short visual arm's reach: holding it pulled them into the face.)
+        public static Hold Blade(Quaternion held,bool either=false)=>new Hold(Vector3.Transform(new Vector3(0,0,.01f),held),Vector3.Transform(CapturedRig.Z,held),either);
+        public static Hold GreatswordSupport(Quaternion held)=>new Hold(Vector3.Transform(new Vector3(0,0,-.10f),held),Vector3.Transform(CapturedRig.Z,held));
+        public static Hold ShieldBar(Quaternion held)=>new Hold(Vector3.Transform(new Vector3(0,.09f,.15f),held),Vector3.Transform(CapturedRig.Y,held));
+        public static Hold PistolGrip(WeaponId w)
+        {
+            // NativeWeaponModels.Guns' PistolGrip(centre, rake, length): its axis runs down (0,-cos rake,-sin rake).
+            Vector3 centre=w==WeaponId.Pistol?new Vector3(0,-.15f,-.05f):w==WeaponId.MachineGun?new Vector3(0,-.18f,-.045f):new Vector3(0,-.135f,-.04f);
+            float rake=w==WeaponId.Pistol?.22f:.2f,length=w==WeaponId.Pistol?.215f:w==WeaponId.MachineGun?.16f:.2f;
+            var up=new Vector3(0,(float)Math.Cos(rake),(float)Math.Sin(rake));
+            return new Hold(centre+up*(length*.5f-.045f),up);
+        }
+        public static Hold GunSupport(WeaponId w,CapturedRig.Pose pose)
+        {
+            var socket=NativeKillBoxes.LeftHandSocket;
+            Vector3 fist=pose.WorldPosition[CapturedRig.LHand]+Vector3.Transform(new Vector3(socket[0],socket[1],socket[2]),pose.WorldRotation[CapturedRig.LHand]);
+            Vector3 local=Vector3.Transform(fist-pose.WorldPosition[CapturedRig.RHand],Quaternion.Inverse(pose.WorldRotation[CapturedRig.RHand]));
+            return new Hold(local,w==WeaponId.Pistol?PistolGrip(w).Axis:CapturedRig.Z);
+        }
+
 
         // Poses the visual skeleton from a game pose (pose.World() already run). support: 0..1, whether the weapon in hand may
         // be held two-handed (the grip then follows the game's own hands, HandsTogether); plantFeet: off for rolls and airborne
         // takes; fitFloor: the roll's and tuck's Lowest() fit. rightGrip, leftGrip: 0..1, a hand closed on what it holds (the
         // weapon, a shield, an off-hand blade); the left also closes while it supports a two-handed grip; open hands relax.
+        // This form seats no fists; the Grasp form adds each weapon's handles.
         public static void Pose(State s,CapturedRig.Pose pose,float support,bool plantFeet,bool fitFloor,float rightGrip=0,float leftGrip=0)
         {
+            var grasp=new Grasp{RightGrip=rightGrip,LeftGrip=leftGrip,Support=support};
+            Pose(s,pose,grasp,plantFeet,fitFloor);
+        }
+        public static void Pose(State s,CapturedRig.Pose pose,in Grasp grasp,bool plantFeet,bool fitFloor)
+        {
             var r=s.Rig; int n=r.Count;
-            support=Math.Min(1,support)*HandsTogether(pose);
-            s.RightGrip=CapturedClip.Clamp(rightGrip,0,1); s.LeftGrip=Math.Max(CapturedClip.Clamp(leftGrip,0,1),support);
+            float support=Math.Min(1,grasp.Support)*HandsTogether(pose);
+            s.RightGrip=CapturedClip.Clamp(grasp.RightGrip,0,1); s.LeftGrip=Math.Max(CapturedClip.Clamp(grasp.LeftGrip,0,1),support);
             for(int v=0;v<n;v++)
             {
                 int p=r.Parent[v]; Quaternion parentTurn=p<0?Quaternion.Identity:s.Turn[p];
@@ -200,11 +289,18 @@ namespace ChipArena.UnityConversion
             {
                 s.LeftFootWeight=Foot(s,pose,true); s.RightFootWeight=Foot(s,pose,false);
             }
+            // The weapons draw where the arms put the wrists (P1); a seated fist then closes on its weapon's handle.
+            Positions(s,pose);
+            int lh=r.Of[CapturedRig.LHand],rh=r.Of[CapturedRig.RHand];
+            s.LeftAnchor=lh<0?Vector3.Zero:s.Position[lh]; s.RightAnchor=rh<0?Vector3.Zero:s.Position[rh];
+            s.RightSeated=grasp.Right.Seated&&r.HasFist[1]&&rh>=0; s.LeftSeated=grasp.Left.Seated&&r.HasFist[0]&&lh>=0&&support<1;
+            if(s.RightSeated) s.RightAnchor+=Seat(s,pose,false,s.RightAnchor,grasp.Right);
+            if(s.LeftSeated) s.LeftAnchor+=Seat(s,pose,true,s.LeftAnchor,grasp.Left);
             if(support>0)
             {
-                s.SupportWeight=support; SupportGrip(s,pose,support);
+                s.SupportWeight=support; SupportGrip(s,pose,support,grasp);
             }
-            if(plantFeet||support>0||s.LeftInside>0||s.RightInside>0) Positions(s,pose);
+            Positions(s,pose);
             if(fitFloor)
             {
                 float low=float.MaxValue;
@@ -221,11 +317,78 @@ namespace ChipArena.UnityConversion
             }
         }
 
-        // The weapon frame on the visual right hand (P1): the game's wrist turn at the visual wrist. Weapons draw at the wrist
-        // frame with the grip baked into their geometry, so this frame replaces the game wrist's for the drawn weapon.
+        // The weapon frame on the visual right hand (P1): the game's wrist turn where the visual arm put the wrist (RightAnchor;
+        // a seated fist then closes on the handle there). Weapons draw at the wrist frame with the grip baked into their
+        // geometry, so this frame replaces the game wrist's for the drawn weapon. LeftWeaponFrame: the off-hand's (daggers, shield).
         public static void WeaponFrame(State s,CapturedRig.Pose pose,out Vector3 position,out Quaternion rotation)
         {
-            rotation=pose.WorldRotation[CapturedRig.RHand]; position=s.Position[s.Rig.Of[CapturedRig.RHand]];
+            rotation=pose.WorldRotation[CapturedRig.RHand]; position=s.RightAnchor;
+        }
+        public static void LeftWeaponFrame(State s,CapturedRig.Pose pose,out Vector3 position,out Quaternion rotation)
+        {
+            rotation=pose.WorldRotation[CapturedRig.LHand]; position=s.LeftAnchor;
+        }
+
+        // A closed fist on a handle. The game's wrist frame is the voxel fist's and the weapon's; a jointed hand closes round
+        // the handle instead: its fist's axis lies along the handle and its centre on the handle's grip point, the hand turned
+        // about the handle so it points as nearly along the forearm as the handle allows (the straightest wrist), and the arm
+        // reaches the wrist there by two-bone IK, bending to the elbow's own side. SeatPasses settle the forearm: each turns the hand halfway to what the last
+        // reach left (the fist's offset from the wrist would otherwise swing the wrist past it and back). A grip past
+        // SupportReach of the arm pulls the weapon back toward the shoulder by the excess (returned: the anchor's move).
+        public const int SeatPasses=6;
+        private static Vector3 Seat(State s,CapturedRig.Pose pose,bool left,Vector3 anchor,in Hold hold)
+        {
+            var r=s.Rig; int side=left?0:1,ga=left?CapturedRig.LArm:CapturedRig.RArm;
+            int va=r.Of[ga],ve=r.Of[ga+1],vh=r.Of[ga+2]; if(va<0||ve<0||vh<0) return Vector3.Zero;
+            Quaternion wrist=pose.WorldRotation[ga+2];
+            Vector3 grip=anchor+Vector3.Transform(hold.Center,wrist),axis=Vector3.Transform(hold.Axis,wrist),moved=Vector3.Zero;
+            Vector3 gameBend=pose.WorldPosition[ga+1]-(pose.WorldPosition[ga]+pose.WorldPosition[ga+2])*.5f;
+            float most=(r.ArmUpper+r.ArmLower)*SupportReach; Quaternion game=s.Turn[vh],turn=game;
+            for(int pass=0;pass<SeatPasses;pass++)
+            {
+                Positions(s,pose);
+                Quaternion want=FistTurn(r,side,axis,hold.Either,s.Position[vh]-s.Position[ve],game);
+                turn=pass==0?want:Quaternion.Normalize(Quaternion.Slerp(turn,want,.5f));
+                Vector3 target=grip+moved-Vector3.Transform(r.FistCenter[side],turn),reach=target-s.Position[va];
+                float far=reach.Length();
+                if(far>most) { Vector3 back=reach*((far-most)/far); moved-=back; target-=back; }
+                TwoBone(s,va,ve,vh,target,s.Position[ve]-(s.Position[va]+target)*.5f,gameBend,r.ArmUpper,r.ArmLower);
+                TurnHand(s,vh,turn);
+            }
+            return moved;
+        }
+
+        // The hand turn (from the aligned rest) that lays the fist's axis along `axis` (or against it when either way is allowed
+        // and that keeps nearer `current`, the game wrist's) and points the hand as nearly along `forearm` as that leaves. A
+        // handle within 30 degrees of the forearm's line leaves no clear straightest way: there the game wrist's own direction
+        // takes over, all of it on the line.
+        public static Quaternion FistTurn(Rig r,int side,Vector3 axis,bool either,Vector3 forearm,Quaternion current)
+        {
+            Quaternion turn=FistTurn(r,side,axis,forearm,current);
+            if(!either) return turn;
+            Quaternion other=FistTurn(r,side,-axis,forearm,current);
+            return Math.Abs(Quaternion.Dot(other,current))>Math.Abs(Quaternion.Dot(turn,current))?other:turn;
+        }
+        private static Quaternion FistTurn(Rig r,int side,Vector3 axis,Vector3 forearm,Quaternion current)
+        {
+            Vector3 k=r.FistAxis[side],d=r.FistAhead[side];
+            forearm=CapturedRig.Unit(forearm,-CapturedRig.Y);
+            Vector3 ahead=forearm-axis*Vector3.Dot(forearm,axis),game=Vector3.Transform(d,current);game-=axis*Vector3.Dot(game,axis);
+            ahead+=CapturedRig.Unit(game,Vector3.Zero)*Math.Max(0,.5f-ahead.Length());
+            ahead=CapturedRig.Unit(ahead,Vector3.Normalize(Vector3.Cross(axis,Math.Abs(axis.Y)<.9f?CapturedRig.Y:CapturedRig.X)));
+            return Quaternion.Normalize(CapturedRig.Basis(axis,ahead,Vector3.Cross(axis,ahead))*Quaternion.Inverse(CapturedRig.Basis(k,d,Vector3.Cross(k,d))));
+        }
+
+        // Sets a hand's turn, carrying its fingers (every non-joint bone below it).
+        private static void TurnHand(State s,int hand,Quaternion turn)
+        {
+            var r=s.Rig; Quaternion delta=Quaternion.Normalize(turn*Quaternion.Inverse(s.Turn[hand]));
+            s.Turn[hand]=turn; s.World[hand]=Quaternion.Normalize(turn*r.AlignedWorld[hand]);
+            for(int v=hand+1;v<r.Count;v++)
+            {
+                int p=r.Parent[v]; bool under=r.Joint[v]<0&&(p==hand||(p>hand&&s.Under[p])); s.Under[v]=under;
+                if(under) { s.Turn[v]=Quaternion.Normalize(delta*s.Turn[v]); s.World[v]=Quaternion.Normalize(delta*s.World[v]); }
+            }
         }
 
         // The grip point in that frame (NativeKillBoxes.RightHandSocket), for drift measures.
@@ -365,15 +528,23 @@ namespace ChipArena.UnityConversion
         // that grip lies past SupportReach of the left arm (narrower shoulders gain less reach from the game's torso turn, and the
         // weapon hand keeps the game's extension), the left shoulder reaches first, as a body does: the clavicle turns its
         // shoulder end toward the grip, up to ShoulderReach (ShoulderTurn). Only what is still out of reach makes the weapon
-        // hand give way toward the left shoulder (GiveWay, metres), so both hands stay on the weapon.
+        // hand give way toward the left shoulder (GiveWay, metres), so both hands stay on the weapon. With a SupportHold the
+        // left fist closes on the weapon there (as Seat does) instead of keeping the game's wrist offset.
         public const float SupportReach=.97f, ShoulderReach=25*(float)Math.PI/180;
-        private static void SupportGrip(State s,CapturedRig.Pose pose,float weight)
+        private static void SupportGrip(State s,CapturedRig.Pose pose,float weight,in Grasp grasp)
         {
             var r=s.Rig;
             int va=r.Of[CapturedRig.LArm],ve=r.Of[CapturedRig.LElbow],vh=r.Of[CapturedRig.LHand],right=r.Of[CapturedRig.RHand];
             if(va<0||ve<0||vh<0||right<0) return;
             Positions(s,pose);
+            bool seated=grasp.SupportHold.Seated&&r.HasFist[0];
             Vector3 offset=pose.WorldPosition[CapturedRig.LHand]-pose.WorldPosition[CapturedRig.RHand],target=s.Position[right]+offset;
+            Quaternion fist=s.Turn[vh],weapon=pose.WorldRotation[CapturedRig.RHand];
+            if(seated)
+            {
+                fist=FistTurn(r,0,Vector3.Transform(grasp.SupportHold.Axis,weapon),grasp.SupportHold.Either,s.Position[vh]-s.Position[ve],s.Turn[vh]);
+                target=s.RightAnchor+Vector3.Transform(grasp.SupportHold.Center,weapon)-Vector3.Transform(r.FistCenter[0],fist);
+            }
             Vector3 grip=target-s.Position[va]; float far=grip.Length(),most=(r.ArmUpper+r.ArmLower)*SupportReach;
             int ra=r.Of[CapturedRig.RArm],re=r.Of[CapturedRig.RElbow],lc=r.Of[CapturedRig.LClav];
             float left=far; // the grip's distance once the shoulder has reached in full
@@ -397,13 +568,16 @@ namespace ChipArena.UnityConversion
             }
             if(left>most+1e-5f&&ra>=0&&re>=0)
             {
-                Vector3 hand=s.Position[right]-grip*((left-most)/far*weight);
-                Vector3 bend=s.Position[re]-(s.Position[ra]+hand)*.5f;
-                Vector3 gameBend=pose.WorldPosition[CapturedRig.RElbow]-(pose.WorldPosition[CapturedRig.RArm]+pose.WorldPosition[CapturedRig.RHand])*.5f;
-                s.GiveWay=(left-most)*weight;
-                TwoBone(s,ra,re,right,hand,bend,gameBend,r.ArmUpper,r.ArmLower);
+                Vector3 shift=-grip*((left-most)/far*weight);
+                s.GiveWay=(left-most)*weight; s.RightAnchor+=shift; target+=shift;
+                if(s.RightSeated) { Vector3 pulled=Seat(s,pose,false,s.RightAnchor,grasp.Right); s.RightAnchor+=pulled; target+=pulled; }
+                else
+                {
+                    Vector3 hand=s.Position[right]+shift;
+                    Vector3 gameBend=pose.WorldPosition[CapturedRig.RElbow]-(pose.WorldPosition[CapturedRig.RArm]+pose.WorldPosition[CapturedRig.RHand])*.5f;
+                    TwoBone(s,ra,re,right,hand,s.Position[re]-(s.Position[ra]+hand)*.5f,gameBend,r.ArmUpper,r.ArmLower);
+                }
                 Positions(s,pose);
-                target=s.Position[right]+offset;
             }
             target=Vector3.Lerp(s.Position[vh],target,weight);
             // Bend toward the visual elbow's own place (the copied arm's, swung by Inside); the game's elbow side is the fallback.
@@ -411,6 +585,20 @@ namespace ChipArena.UnityConversion
             Vector3 pole=s.Position[ve]-(s.Position[va]+target)*.5f;
             Vector3 fallback=pose.WorldPosition[CapturedRig.LElbow]-(pose.WorldPosition[CapturedRig.LArm]+pose.WorldPosition[CapturedRig.LHand])*.5f;
             s.LeftArmReach=TwoBone(s,va,ve,vh,target,pole,fallback,r.ArmUpper,r.ArmLower);
+            if(!seated) return;
+            Quaternion game=s.Turn[vh];
+            TurnHand(s,vh,Quaternion.Normalize(Quaternion.Slerp(game,fist,weight)));
+            if(weight<.9999f) return;
+            // A full grip settles like Seat: the fist re-turned to the forearm the reach left, the wrist re-placed on the handle.
+            Vector3 handle=s.RightAnchor+Vector3.Transform(grasp.SupportHold.Center,weapon),along=Vector3.Transform(grasp.SupportHold.Axis,weapon);
+            for(int pass=1;pass<SeatPasses;pass++)
+            {
+                Positions(s,pose);
+                fist=Quaternion.Normalize(Quaternion.Slerp(fist,FistTurn(r,0,along,grasp.SupportHold.Either,s.Position[vh]-s.Position[ve],game),.5f));
+                target=handle-Vector3.Transform(r.FistCenter[0],fist);
+                s.LeftArmReach=TwoBone(s,va,ve,vh,target,s.Position[ve]-(s.Position[va]+target)*.5f,fallback,r.ArmUpper,r.ArmLower);
+                TurnHand(s,vh,fist);
+            }
         }
 
         // Analytic two-bone IK in world space: turns the upper and lower bones (and the twist bones that follow them) so the

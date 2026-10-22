@@ -505,13 +505,36 @@ The adapter is not wired into the live body path yet; that is step 4.
        straight weapon arm and bent support arm.
    - It engages only while the game's own wrists hold together (within .18 m, released by .30 m;
      `NativeVisualRig.HandsTogether`). A pistol run or a roll that swings the left hand free stays FK.
-7. **Weapon (P1):** weapons draw at `WeaponFrame`: the visual right wrist's position with the game wrist's turn. Today's
-   weapons draw at the game wrist matrix with the grip baked into their geometry, so the drawn weapon moves with the visual
-   hand while its aim stays the game's.
-8. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
+7. **Fists on handles** (`NativeVisualRig.Seat`, owner review 2026-10-22: the hands weren't holding the weapons). The
+   game's wrist frame is the voxel fist's and the weapon's: a gun's raked pistol grip hangs 13–18 cm under the wrist, a
+   melee grip runs along the blade through the wrist. A voxel fist is a box over that spot. BoZo's hand started at the wrist
+   with an eased bend, so its closed fingers ended beside the handle.
+   - **The fist, measured at bind** (`Rig.Fists`): each finger at its closed curl wraps the handle, so the handle runs
+     through the centres of the circles its three joints draw. That gives the fist's centre, its axis (toward the thumb)
+     and the hand's forward, from bone positions only.
+   - **Each frame:** a held weapon names its handle in the game wrist's frame (`Hold`: grip point, direction toward the
+     blade or barrel, either way round for daggers).
+     - The fist's axis lies along the handle and its centre on the grip point.
+     - The hand turns about the handle to point as nearly along the forearm as the handle allows (the straightest wrist).
+       Within 30° of the forearm's line, the game wrist's own direction takes over.
+     - The arm reaches the wrist there by two-bone IK. Six damped passes settle the forearm: within 0.4° of the straightest
+       wrist on the synthetic rig.
+     - A grip out of reach pulls the weapon back toward the shoulder.
+   - **Support fists:** the greatsword's on its lower grip. A gun's support fist closes where the game's own free fist is
+     that frame, along the bore or round the pistol's grip. Holding the long guns' handguard pulled them 20 cm into the face:
+     BoZo's arms are too short for it.
+   - **The handles** (`NativeVisualRig.Blade`, `GreatswordSupport`, `ShieldBar`, `PistolGrip`, `GunSupport`) follow
+     `NativeWeaponModels`. Melee holds take `NativeSpecialPose.HeldRotation` (identity outside special moves). The shield
+     draws on the right hand (its clips are mirrored); its fist holds the grip bar.
+   - Callers pass a `Grasp` (finger curls, both hands' holds, the two-handed weight and support hold). The older `Pose`
+     form seats nothing.
+8. **Weapon (P1):** weapons draw at `WeaponFrame` (the off-hand's at `LeftWeaponFrame`): where the visual arm put the wrist
+   before the fist seats (the anchor), with the game wrist's turn. Today's weapons draw at the game wrist matrix with the
+   grip baked into their geometry, so the drawn weapon moves with the visual arm while its aim stays the game's.
+9. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
    (capped at .12 m). It only ever lifts, like `Pose.Lowest()`.
 
-**Checked** (`CoreTests --visual-rig`, 60,195 checks since the inside reach; 43,217 at first), over:
+**Checked** (`CoreTests --visual-rig`, 101,956 checks since the seated fists; 43,217 at first), over:
 - every captured clip in the four melee sets (8 samples each);
 - the gun gait: pistol, rifle and machine gun in idle, aimed, run, sprint and roll, 647 poses in all.
 
@@ -529,7 +552,10 @@ On the synthetic skeleton (leg ratio 1.703):
   - twist helpers take exactly their share of the roll;
   - all 524 planted feet reach the ground point, with the knee to the game knee's side;
   - all 351 two-handed grips with the hands together reach, at up to 97 % of the arm;
-  - the support hand keeps the game wrist turn, and the grip is the game socket on the visual wrist;
+  - with each weapon's handles (1,078 seated fists): every fist closes on its handle's grip point with its axis along
+    the handle, as straight at the wrist as the handle allows (within 0.4°), its fingers turned with it; the weapon frame
+    is the anchor with the game wrist turn;
+  - without handles the support hand keeps the game wrist turn, and the grip is the game socket on the weapon frame;
   - the locals rebuild the pose.
 - **Roll:** the floor fit keeps every bone over the floor.
 - **Runtime:** no allocation over 1,000 frames, bit-for-bit repeats, and the binding mirrors at the boundary and names no
@@ -541,8 +567,8 @@ are narrower and higher than the voxel rig's.
 **Measured on BoZo in Unity (2026-10-22, owner's PC; local tool, renders in local scratch).**
 
 BoZo's skeleton, dressed in outfit A, was posed through this adapter and binding on 15 gun and melee poses (re-measured
-after the inside reach; 46 poses rendered in all, with every melee set's idle, run, block and cuts at three points in the
-swing).
+with the seated fists; 46 poses rendered in all, with every melee set's idle, run, block and cuts at three points in the
+swing, holding the real Standard weapon models at the adapter's weapon frames).
 - **Mapping:** all 22 joints map. Twist shares: forearm .61/.26, shoulder −1.0, upper arm −.66/−.39, thigh −.56/−.23,
   calf .45/.78.
 - **Leg ratio:** 1.707 (thigh .425, shin .428; arm .263/.224). The binding covers 148 transforms, the rig plus hair chains.
@@ -550,20 +576,20 @@ swing).
   - head box centre 1.49, the voxel head centre being the game head joint + .165;
   - shot origin (.2 right, 1.15 up, .48 ahead).
 
-| Pose | Head to box: BoZo / voxel | BoZo wrist to game wrist | Muzzle to shot origin: BoZo / game | Support reach | Planted feet (reach) | Shoe soles |
+| Pose | Head to box: BoZo / voxel | BoZo weapon frame to game wrist | Muzzle to shot origin: BoZo / game | Support reach | Planted feet (reach) | Shoe soles |
 |---|---|---|---|---|---|---|
-| Rifle idle | .11 / .09 | .27 | 1.15 / 1.05 | .97 | .90, .90 | −.030 |
-| Rifle aim | .11 / .09 | .27 | 1.15 / 1.05 | .97 | .90, .90 | −.030 |
-| Rifle run | .21 / .14 | .34 | 1.11 / 1.21 | .64 | – | .075 |
-| Rifle sprint | .26 / .24 | .33 | 1.09 / 1.23 | .64 | .88 | −.019 |
-| Pistol aim | .12 / .03 | .25 | .53 / .40 | .88 | .92, .93 | −.030 |
+| Rifle idle | .11 / .09 | .28 | 1.13 / 1.05 | .95 | .90, .90 | −.030 |
+| Rifle aim | .11 / .09 | .28 | 1.13 / 1.05 | .95 | .90, .90 | −.030 |
+| Rifle run | .21 / .14 | .34 | 1.11 / 1.21 | .73 | – | .075 |
+| Rifle sprint | .26 / .24 | .33 | 1.09 / 1.23 | .72 | .88 | −.019 |
+| Pistol aim | .12 / .03 | .25 | .53 / .40 | .82 | .92, .93 | −.030 |
 | Pistol run | .21 / .14 | .38 | .41 / .67 | hands apart | – | .075 |
-| Machine gun aim | .10 / .10 | .26 | .84 / .75 | .97 | .88, .88 | −.030 |
-| Machine gun run | .21 / .14 | .34 | .80 / .92 | .64 | – | .075 |
+| Machine gun aim | .10 / .10 | .27 | .83 / .75 | .95 | .88, .88 | −.030 |
+| Machine gun run | .21 / .14 | .34 | .80 / .92 | .73 | – | .075 |
 | Sword idle | .38 / .42 | .37 | – | – | .81 | −.010 |
 | Sword run | .43 / .45 | .35 | – | – | – | .031 |
 | Sword cut A | .28 / .17 | .46 | – | – | – | .195 |
-| Greatsword cut A | .26 / .26 | .34 | – | .64 | – | .149 |
+| Greatsword cut A | .26 / .26 | .34 | – | .74 | – | .149 |
 | Shield block | .41 / .45 | .35 | – | – | .76, .76 | −.028 |
 | Daggers run | .43 / .45 | .35 | – | – | – | .031 |
 
@@ -574,8 +600,11 @@ Reading it:
   shoulders are narrower and higher. When aiming, the muzzle is .09–.13 m farther from the shot origin (it was .19), and
   nearer while running. Tracers already converge on the simulated path within 4.5 m (`NativeShotLaunch`), and hits are
   unaffected.
-- **IK reach:** every two-handed grip reaches (at most 97 % of the arm). Rifle and machine-gun holds take the left
-  shoulder's full 25° and a 3.9 cm give-way. The pistol run lets go as the game's hands do.
+- **IK reach:** every two-handed grip reaches (at most 95 % of the arm). Rifle and machine-gun holds take the left
+  shoulder's full 25° and a 5.3 cm give-way. The pistol run lets go as the game's hands do.
+- **Fists:** all 70 seated fists in the 46 poses sit on their handles (0.000 m) with their axes along them. Wrist bends
+  median 44°. The greatsword's raised and follow-through cuts reach 97–100°, where the game swings the blade nearly along
+  the forearm; the renders read as a hard bent-wrist grip.
   Planted feet use 76–93 % of the leg, so nothing hyperextends.
 - **Renders:** run, sprint and the cuts read as the game's own takes, and the arms swing and hold as the game's do.
 - **Arms against the committed adapter** (front, three-quarter and side, with gun and blade proxies on the weapon frame):
@@ -587,6 +616,9 @@ Reading it:
 **Found by the renders, for step 4:**
 - **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. The
   binding needs a per-outfit sole offset.
+- **Hands on weapons:** fixed by the seated fists. With the real weapon models drawn at the frames, every closed fist
+  had floated beside its grip or hilt. A step 4 caller passes each weapon's `Grasp` (handles above) and draws the weapons
+  at `WeaponFrame` / `LeftWeaponFrame`.
 - **Fingers:** fixed. They stayed in BoZo's open rest, and the first renders also showed drooping wrists, hands buried at
   rest, and the leap cut's elbow. The grips, the eased wrist, the hanging spread and the IK bend side above fix all four,
   confirmed in Unity renders. Finger poses per weapon (trigger finger, two-handed overlap) can be tuned later.

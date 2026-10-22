@@ -37,10 +37,20 @@ namespace ChipArena.UnityConversion
             pelvis=Rig.Of[CapturedRig.Pelvis];
         }
 
-        // Poses the bones from a game pose (pose.World() already run). See NativeVisualRig.Pose for the flags.
+        // Poses the bones from a game pose (pose.World() already run). See NativeVisualRig.Pose for the flags; the Grasp form
+        // also seats the fists on the weapons' handles.
         public void Apply(CapturedRig.Pose pose,float support,bool plantFeet,bool fitFloor,float rightGrip=0,float leftGrip=0)
         {
             NativeVisualRig.Pose(State,pose,support,plantFeet,fitFloor,rightGrip,leftGrip);
+            Write();
+        }
+        public void Apply(CapturedRig.Pose pose,in NativeVisualRig.Grasp grasp,bool plantFeet,bool fitFloor)
+        {
+            NativeVisualRig.Pose(State,pose,grasp,plantFeet,fitFloor);
+            Write();
+        }
+        private void Write()
+        {
             for(int v=1;v<Bones.Length;v++)
             {
                 if(Rig.Parent[v]<0) continue;
@@ -58,7 +68,15 @@ namespace ChipArena.UnityConversion
         // this frame in place of the game wrist's; the grip offset is in their geometry.
         public void WeaponFrame(CapturedRig.Pose pose,out Vector3 position,out Quaternion rotation)
         {
-            NativeVisualRig.WeaponFrame(State,pose,out var p,out var q);
+            NativeVisualRig.WeaponFrame(State,pose,out var p,out var q); ToUnity(p,q,out position,out rotation);
+        }
+        // The off-hand weapon's frame (daggers), likewise.
+        public void LeftWeaponFrame(CapturedRig.Pose pose,out Vector3 position,out Quaternion rotation)
+        {
+            NativeVisualRig.LeftWeaponFrame(State,pose,out var p,out var q); ToUnity(p,q,out position,out rotation);
+        }
+        private static void ToUnity(N.Vector3 p,N.Quaternion q,out Vector3 position,out Quaternion rotation)
+        {
             p=CapturedRig.Mirror(p); q=CapturedRig.Mirror(q);
             position=new Vector3(p.X,p.Y-NativeVisualRig.Floor,p.Z); rotation=new Quaternion(q.X,q.Y,q.Z,q.W);
         }
