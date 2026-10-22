@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
             var rig=Synthetic(out var restWorld);
             Bind(rig,restWorld);Console.WriteLine("PASS visual rig: the bind maps 21 joints (spine 2, chest 3, neck 2 bones), straightens arms and legs to the game's rest, keeps spine, head and feet as authored; leg ratio "+rig.LegRatio.ToString("0.000")+" ("+count+" checks)");
             int poses=Clips(rig,out float support,out float leg,out float grip);
-            Console.WriteLine("PASS visual rig: "+poses+" captured poses: limb directions equal the game's, chains end on the game turn, hands carry the wrist turn, the root scales by the leg ratio, twist shares, locals rebuild the pose; planted feet reach the ground point (max leg reach "+leg.ToString("0.00")+"), the support hand keeps the wrist offset (max reach "+support.ToString("0.00")+"), grip "+grip.ToString("0.000")+" m from the game's at most ("+count+" checks)");
+            Console.WriteLine("PASS visual rig: "+poses+" captured poses: limb directions equal the game's, chains end on the game turn, wrists keep the roll and ease the bend (max "+(maxWrist*57.3f).ToString("0")+" degrees), the root scales by the leg ratio, twist shares, locals rebuild the pose; planted feet reach the ground point (max leg reach "+leg.ToString("0.00")+"), the support hand keeps the wrist offset (max reach "+support.ToString("0.00")+"), grip "+grip.ToString("0.000")+" m from the game's at most ("+count+" checks)");
             Console.WriteLine("INFO visual rig (synthetic skeleton): planted feet "+last.Planted+", "+last.LegShort+" at full reach; two-handed support grips (guns, greatsword, hands together) "+last.Supported+", "+last.SupportShort+" at full reach; grip offset mean "+(last.GripSum/Math.Max(1,last.Gripped)).ToString("0.000")+" m; short grips by take: "+string.Join(", ",System.Linq.Enumerable.Select(last.Short,kv=>kv.Key+" "+kv.Value)));
             Floor(rig);Console.WriteLine("PASS visual rig: the floor fit keeps every visual bone's contact over the floor through the roll ("+count+" checks)");
             Allocation(rig);Console.WriteLine("PASS visual rig: posing, both IKs and the grip allocate nothing per frame and repeat bit for bit ("+count+" checks)");
@@ -108,12 +108,19 @@ namespace ChipArena.UnityConversion
             Check(rig.TwistJoint[lt]==CapturedRig.LHand&&Math.Abs(rig.TwistShare[lt]-.14f/.23f)<1e-3f,"forearm helpers take the hand's roll by their place along the forearm");
             Check(rig.TwistJoint[ct]==CapturedRig.LFoot&&rig.TwistShare[ct]>0&&rig.TwistJoint[tt]==CapturedRig.LHip&&rig.TwistShare[tt]<0,"calf helpers take the foot's roll, thigh helpers counter the hip's");
             Check(rig.Joint[rig.Find("index_01_l")]<0&&rig.TwistJoint[rig.Find("index_01_l")]<0&&rig.Joint[rig.Find("ik_hand_gun")]<0,"fingers and helpers ride their parents");
+            // The eased wrist: rest and small bends unchanged, a pure roll kept exactly, deep bends eased past the knee.
+            Check(Near(NativeVisualRig.Wrist(Quaternion.Identity),Quaternion.Identity,1e-7f),"the wrist at rest is unchanged");
+            var roll=CapturedRig.Rot(CapturedRig.Y,1.3f);Check(Near(NativeVisualRig.Wrist(roll),roll,1e-6f),"a pure wrist roll is kept");
+            var small=CapturedRig.Rot(CapturedRig.X,.3f)*roll;Check(Near(NativeVisualRig.Wrist(small),small,1e-6f),"a bend under the knee is kept");
+            var deep=CapturedRig.Rot(CapturedRig.X,107*(float)Math.PI/180);float eased=Angle(-CapturedRig.Y,Vector3.Transform(-CapturedRig.Y,NativeVisualRig.Wrist(deep)));
+            Check(Math.Abs(eased-(25+.25f*82)*(float)Math.PI/180)<1e-3f,"a 107 degree rifle-hold bend eases to 45.5 degrees");
             bool threw=false;try{var bad=NativeVisualRig.Mannequin(new[]{"pelvis","root"},new[]{1,-1},new Vector3[2],new[]{Quaternion.Identity,Quaternion.Identity});new NativeVisualRig.Rig(bad);}catch(ArgumentException){threw=true;}
             Check(threw,"a bone before its parent is refused");
         }
 
         private sealed class Stats { public int Poses, Planted, LegShort, Supported, SupportShort, Gripped; public float Support, Leg, Grip, GripSum; public readonly System.Collections.Generic.Dictionary<string,int> Short=new System.Collections.Generic.Dictionary<string,int>(); }
         private static Stats last;
+        private static float maxWrist;
         private static readonly int[][] Limbs={new[]{CapturedRig.LArm,CapturedRig.LElbow},new[]{CapturedRig.LElbow,CapturedRig.LHand},new[]{CapturedRig.RArm,CapturedRig.RElbow},new[]{CapturedRig.RElbow,CapturedRig.RHand},
             new[]{CapturedRig.LHip,CapturedRig.LKnee},new[]{CapturedRig.LKnee,CapturedRig.LFoot},new[]{CapturedRig.RHip,CapturedRig.RKnee},new[]{CapturedRig.RKnee,CapturedRig.RFoot}};
 
@@ -163,8 +170,19 @@ namespace ChipArena.UnityConversion
                         Vector3 game=pose.WorldPosition[l[1]]-pose.WorldPosition[l[0]],vis=state.Position[rig.Of[l[1]]]-state.Position[rig.Of[l[0]]];
                         Check(Angle(game,vis)<2e-3f,name+" "+CapturedRig.Bones[l[0]].Name+" follows the game's bone direction");
                     }
-                    foreach(int j in new[]{CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LHand,CapturedRig.RHand,CapturedRig.LFoot,CapturedRig.RFoot})
+                    foreach(int j in new[]{CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LFoot,CapturedRig.RFoot})
                         Check(Near(state.Turn[rig.Of[j]],pose.WorldRotation[j],2e-4f),name+" "+CapturedRig.Bones[j].Name+" carries the game joint's turn");
+                    foreach(int h in new[]{CapturedRig.LHand,CapturedRig.RHand})
+                    {
+                        // The visual wrist: the game's roll in full, the bend eased past the knee (NativeVisualRig.Wrist).
+                        Quaternion want=pose.WorldRotation[h-1]*NativeVisualRig.Wrist(pose.Rotation[h]);
+                        Check(Near(state.Turn[rig.Of[h]],want,2e-4f),name+" "+CapturedRig.Bones[h].Name+" takes the eased wrist");
+                        float gameBend=Angle(Vector3.Transform(-CapturedRig.Y,pose.WorldRotation[h-1]),Vector3.Transform(-CapturedRig.Y,pose.WorldRotation[h]));
+                        float visBend=Angle(Vector3.Transform(-CapturedRig.Y,state.Turn[rig.Of[h-1]]),Vector3.Transform(-CapturedRig.Y,state.Turn[rig.Of[h]]));
+                        Check(Math.Abs(visBend-NativeVisualRig.WristBend(gameBend))<1e-2f,name+" "+CapturedRig.Bones[h].Name+" bends "+(visBend*57.3f).ToString("0")+" for the game's "+(gameBend*57.3f).ToString("0"));
+                        Check(Math.Abs(NativeVisualRig.Twist(Quaternion.Inverse(state.Turn[rig.Of[h-1]])*state.Turn[rig.Of[h]])-NativeVisualRig.Twist(pose.Rotation[h]))<2e-3f,name+" "+CapturedRig.Bones[h].Name+" keeps the game wrist's roll");
+                        maxWrist=Math.Max(maxWrist,visBend);
+                    }
                     Check(Near(state.Position[pelvis]-rig.PelvisRest,(pose.WorldPosition[CapturedRig.Pelvis]-rig.GamePelvisRest)*rig.LegRatio,1e-4f),name+" the root moves by the leg ratio");
                     for(int v=0;v<rig.Count;v++) if(rig.TwistJoint[v]>=0)
                     {
@@ -192,7 +210,7 @@ namespace ChipArena.UnityConversion
                     if(twoHanded&&state.SupportWeight>0){stats.Support=Math.Max(stats.Support,state.LeftArmReach); stats.Supported++; if(state.LeftArmReach>=.999f){stats.SupportShort++;string key=name.StartsWith("Pistol")||name.StartsWith("Rifle")||name.StartsWith("MachineGun")?name:"greatsword";stats.Short[key]=(stats.Short.TryGetValue(key,out int c)?c:0)+1;}}
                     Vector3 hand=state.Position[rig.Of[CapturedRig.LHand]],right=state.Position[rig.Of[CapturedRig.RHand]];
                     if(state.SupportWeight>=.9999f&&state.LeftArmReach<.999f) Check(Near(hand,right+pose.WorldPosition[CapturedRig.LHand]-pose.WorldPosition[CapturedRig.RHand],1e-3f),name+" the support hand keeps the game's wrist offset");
-                    Check(Near(state.World[rig.Of[CapturedRig.LHand]],pose.WorldRotation[CapturedRig.LHand]*rig.AlignedWorld[rig.Of[CapturedRig.LHand]],2e-4f),name+" the support hand keeps the game wrist turn");
+                    Check(Near(state.World[rig.Of[CapturedRig.LHand]],state.Turn[rig.Of[CapturedRig.LHand]]*rig.AlignedWorld[rig.Of[CapturedRig.LHand]],2e-4f),name+" the support hand keeps the game wrist turn");
                     NativeVisualRig.Grip(state,pose,out var gp,out var gq);
                     var socket=NativeKillBoxes.RightHandSocket;Vector3 offset=Vector3.Transform(new Vector3(socket[0],socket[1],socket[2]),pose.WorldRotation[CapturedRig.RHand]);
                     Check(Near(gp,right+offset,1e-5f)&&Near(gq,pose.WorldRotation[CapturedRig.RHand],1e-6f),name+" the grip is the game socket on the visual wrist");

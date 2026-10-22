@@ -443,7 +443,13 @@ The adapter is not wired into the live body path yet; that is step 4.
 **Per frame** (`NativeVisualRig.Pose`):
 1. **Joint turns:** each bone's world turn is the game joint's world turn (identity rest frames, so the turn since rest)
    applied to its aligned rest. Split chains slerp the joint's local turn by their share. Arm and leg directions therefore
-   equal the game's exactly. Hands, feet and head carry the game joint's turn.
+   equal the game's exactly. Feet and head carry the game joint's turn.
+   - **Hands** (`NativeVisualRig.Wrist`, owner review 2026-10-22): the game's wrist frame is the voxel fist's and the
+     weapon's, so holds bend it 90–150° off the forearm (rifle 107°, pistol 112°, greatsword idle 152°). An open BoZo hand
+     there pointed at the floor.
+   - The visual hand keeps the game wrist's roll in full and its bend up to 25°. Beyond that it takes a quarter of the
+     bend: a rifle hold becomes 45°, and the deepest captured bend is now 60°.
+   - The weapon frame keeps the game wrist turn, so aim and the drawn weapon are unchanged.
 2. **Twist helpers:**
    - forearm helpers take the hand's roll, and calf helpers the foot's, by their place along the bone;
    - upper-arm and thigh helpers counter the limb's own roll: all of it at the root (`shoulder_twist`), none at the far end.
@@ -524,7 +530,8 @@ Reading it:
 **Found by the renders, for step 4:**
 - **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. The
   binding needs a per-outfit sole offset.
-- **Fingers:** they stay in BoZo's open rest; weapons need grip poses.
+- **Fingers:** they stay in BoZo's open rest; weapons need grip poses. (The drooping wrists in the first renders are
+  fixed by the eased wrist above.)
 - **Multiple renders per frame:** Unity skins a mesh once per frame unless `SkinnedMeshRenderer.forceMatrixRecalculationPerRender`
   is set. Any path that draws one character in several poses in a frame (pooled puppets, portraits) must set it.
 - **Roll:** the gun "roll" sample landed after the roll ended (it reads as idle), so a roll is not measured here. The Core
@@ -603,6 +610,10 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
   stays a step 6 task.
 - **Cloth: on every applicable piece.** Hair chains, capes, skirts, dresses, coats, hoods and other loose clothing. The
   standing rules still hold: off in first person, never networked, a budget for 8 pilots, tier and distance culling.
+- **Animations may be fitted to the model** ("sizing and everything").
+  - Claude's part: holds, grips, wrist angles and pose tuning for the BoZo body. They stay BoZo-only while the voxel
+    bodies remain, through the adapter or a BoZo pose layer.
+  - Astra's part: any change to authority sizing (capsule, head box, shot origin, weapon frames), decided by the owner.
 - **Default outfit: the owner's "Player model concept" sheet** (an image the owner shared on 2026-10-22, not in the repo).
   It describes:
   - short spiky dark hair;
