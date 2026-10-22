@@ -23,12 +23,12 @@ namespace ChipArena.UnityConversion
 
         // ---- the synthetic skeleton: world rest positions (Pose body space, floor at -.865) and bone frames off identity ----
         private static readonly string[] Names={"root","pelvis","spine_01","spine_02","spine_03","spine_04","spine_05","neck_01","neck_02","head",
-            "clavicle_l","upperarm_l","shoulder_twist_l","upperarm_twist_01_l","lowerarm_l","lowerarm_twist_01_l","hand_l","index_01_l",
-            "clavicle_r","upperarm_r","upperarm_twist_01_r","lowerarm_r","lowerarm_twist_01_r","hand_r",
+            "clavicle_l","upperarm_l","shoulder_twist_l","upperarm_twist_01_l","lowerarm_l","lowerarm_twist_01_l","hand_l","index_01_l","index_02_l","index_03_l","thumb_01_l","thumb_02_l","thumb_03_l",
+            "clavicle_r","upperarm_r","upperarm_twist_01_r","lowerarm_r","lowerarm_twist_01_r","hand_r","index_01_r","index_02_r","index_03_r","thumb_01_r","thumb_02_r","thumb_03_r",
             "thigh_l","thigh_twist_01_l","calf_l","calf_twist_01_l","foot_l","ball_l","thigh_r","calf_r","foot_r","ball_r","ik_hand_gun"};
         private static readonly string[] Parents={"","root","pelvis","spine_01","spine_02","spine_03","spine_04","spine_05","neck_01","neck_02",
-            "spine_05","clavicle_l","upperarm_l","upperarm_l","upperarm_l","lowerarm_l","lowerarm_l","hand_l",
-            "spine_05","clavicle_r","upperarm_r","upperarm_r","lowerarm_r","lowerarm_r",
+            "spine_05","clavicle_l","upperarm_l","upperarm_l","upperarm_l","lowerarm_l","lowerarm_l","hand_l","index_01_l","index_02_l","hand_l","thumb_01_l","thumb_02_l",
+            "spine_05","clavicle_r","upperarm_r","upperarm_r","lowerarm_r","lowerarm_r","hand_r","index_01_r","index_02_r","hand_r","thumb_01_r","thumb_02_r",
             "pelvis","thigh_l","thigh_l","calf_l","calf_l","foot_l","pelvis","thigh_r","calf_r","foot_r","root"};
         public static NativeVisualRig.Rig Synthetic(out Vector3[] world)
         {
@@ -48,7 +48,12 @@ namespace ChipArena.UnityConversion
                 At("clavicle"+side,P(x*.01f,1.45f,-.02f)); At("upperarm"+side,shoulder); At("lowerarm"+side,shoulder+arm*.26f);
                 At("hand"+side,shoulder+arm*.49f); At("upperarm_twist_01"+side,shoulder+arm*.09f); At("lowerarm_twist_01"+side,shoulder+arm*(.26f+.14f));
                 At("thigh"+side,P(x*.09f,.96f,.035f)); At("calf"+side,P(x*.10f,.535f,.03f)); At("foot"+side,P(x*.115f,.11f,0)); At("ball"+side,P(x*.115f,.014f,.115f));
-                if(left) { At("shoulder_twist_l",shoulder); At("index_01_l",shoulder+arm*.58f); At("thigh_twist_01_l",P(.095f,.75f,.033f)); At("calf_twist_01_l",P(.105f,.32f,.015f)); }
+                if(left) { At("shoulder_twist_l",shoulder); At("thigh_twist_01_l",P(.095f,.75f,.033f)); At("calf_twist_01_l",P(.105f,.32f,.015f)); }
+                // Fingers curl toward the palm (+z here) a few degrees at rest, as exported hands do.
+                Vector3 hand=shoulder+arm*.49f,palm=new Vector3(0,0,1),i0=hand+arm*.09f,i1=i0+Vector3.Normalize(arm+palm*.09f)*.035f;
+                At("index_01"+side,i0); At("index_02"+side,i1); At("index_03"+side,i1+Vector3.Normalize(arm+palm*.18f)*.025f);
+                Vector3 t0=hand+arm*.03f+palm*.02f,td=Vector3.Normalize(arm+palm*.5f),t1=t0+td*.03f;
+                At("thumb_01"+side,t0); At("thumb_02"+side,t1); At("thumb_03"+side,t1+Vector3.Normalize(td+palm*.12f)*.025f);
             }
             // Bone frames: +x down each bone toward its first child (as exported humanoids do), rolled by a per-bone amount.
             var rot=new Quaternion[n];
@@ -93,7 +98,9 @@ namespace ChipArena.UnityConversion
             {
                 int v=rig.Find(limb),child=-1;
                 for(int k=v+1;k<rig.Count;k++) if(rig.Parent[k]==v&&rig.Joint[k]>=0&&rig.Joint[k]!=rig.Joint[v]) { child=k; break; }
-                Check(Angle(state.Position[child]-state.Position[v],-CapturedRig.Y)<1e-4f,limb+" points straight down at the game's rest");
+                bool arm=limb.Contains("arm");float outward=limb.EndsWith("_l")?1:-1;
+                Vector3 rest=arm?new Vector3(outward*(float)Math.Sin(NativeVisualRig.ArmSpread),-(float)Math.Cos(NativeVisualRig.ArmSpread),0):-CapturedRig.Y;
+                Check(Angle(state.Position[child]-state.Position[v],rest)<1e-4f,limb+(arm?" hangs 15 degrees out from the body":" points straight down")+" at the game's rest");
                 Check(Math.Abs(Vector3.Distance(state.Position[child],state.Position[v])-Vector3.Distance(restWorld[child],restWorld[v]))<1e-5f,limb+" keeps its length");
             }
             foreach(string kept in new[]{"pelvis","spine_01","spine_03","spine_05","neck_02","head","clavicle_l","foot_l","foot_r","ball_l"})
@@ -102,6 +109,7 @@ namespace ChipArena.UnityConversion
                 for(int k=v;k>=0;k=rig.Parent[k]) rest=rig.RestRotation[k]*rest;
                 Check(Near(state.World[v],rest,1e-5f),kept+" keeps its authored world turn at rest");
             }
+            Check(Math.Abs(state.Position[rig.Find("hand_l")].X)>.26f&&Math.Abs(state.Position[rig.Find("hand_r")].X)>.26f,"hanging hands clear the hips (shoulders .14 out)");
             Check(Near(state.Position[rig.Find("pelvis")],restWorld[rig.Find("pelvis")],1e-5f)&&Near(state.Position[rig.Find("head")],restWorld[rig.Find("head")],1e-5f),"the trunk and head stay where authored at rest");
             int t=rig.Find("upperarm_twist_01_l"),st=rig.Find("shoulder_twist_l"),lt=rig.Find("lowerarm_twist_01_l"),ct=rig.Find("calf_twist_01_l"),tt=rig.Find("thigh_twist_01_l");
             Check(rig.TwistJoint[t]==CapturedRig.LArm&&Math.Abs(rig.TwistShare[t]+(1-.09f/.26f))<1e-3f&&Math.Abs(rig.TwistShare[st]+1)<1e-4f,"upper-arm helpers counter the arm's roll, fully at the shoulder");
@@ -114,8 +122,36 @@ namespace ChipArena.UnityConversion
             var small=CapturedRig.Rot(CapturedRig.X,.3f)*roll;Check(Near(NativeVisualRig.Wrist(small),small,1e-6f),"a bend under the knee is kept");
             var deep=CapturedRig.Rot(CapturedRig.X,107*(float)Math.PI/180);float eased=Angle(-CapturedRig.Y,Vector3.Transform(-CapturedRig.Y,NativeVisualRig.Wrist(deep)));
             Check(Math.Abs(eased-(25+.25f*82)*(float)Math.PI/180)<1e-3f,"a 107 degree rifle-hold bend eases to 45.5 degrees");
+            Fingers(rig);
             bool threw=false;try{var bad=NativeVisualRig.Mannequin(new[]{"pelvis","root"},new[]{1,-1},new Vector3[2],new[]{Quaternion.Identity,Quaternion.Identity});new NativeVisualRig.Rig(bad);}catch(ArgumentException){threw=true;}
             Check(threw,"a bone before its parent is refused");
+        }
+
+        // Finger grips: each chain curls the way its rest curls, by the relaxed or closed angles, joint by joint.
+        private static void Fingers(NativeVisualRig.Rig rig)
+        {
+            foreach(string side in new[]{"_l","_r"})
+            {
+                int hand=rig.Find("hand"+side),i0=rig.Find("index_01"+side),i1=rig.Find("index_02"+side),i2=rig.Find("index_03"+side),t0=rig.Find("thumb_01"+side),t1=rig.Find("thumb_02"+side),t2=rig.Find("thumb_03"+side);
+                Check(rig.Finger[i0]==1&&rig.Finger[i1]==2&&rig.Finger[i2]==3&&rig.Finger[t0]==11&&rig.Finger[t2]==13&&rig.Side[i0]==(side=="_l"?0:1),"finger roles"+side);
+                Check(Math.Abs(Vector3.Dot(rig.FingerAxis[i0],rig.FingerAxis[i2])-1)<1e-5f&&rig.FingerAxis[i0].LengthSquared()>.99f,"one curl axis per finger chain"+side);
+                var state=new NativeVisualRig.State(rig);var pose=new CapturedRig.Pose();pose.World();
+                float RestAngle(int a,int b,int c)=>Angle(rig.AlignedPosition[b]-rig.AlignedPosition[a],rig.AlignedPosition[c]-rig.AlignedPosition[b]);
+                float Bent(int a,int b,int c)=>Angle(state.Position[b]-state.Position[a],state.Position[c]-state.Position[b]);
+                float rest0=RestAngle(hand,i0,i1),rest1=RestAngle(i0,i1,i2),restT=RestAngle(t0,t1,t2);
+                float[] grips={0,1,.5f};
+                float tipOpen=0;
+                foreach(float g in grips)
+                {
+                    NativeVisualRig.Pose(state,pose,0,false,false,side=="_r"?g:0,side=="_l"?g:0);
+                    Check(Math.Abs(Bent(hand,i0,i1)-(rest0+NativeVisualRig.Curl(1,g)))<2e-3f,"index base curls by "+NativeVisualRig.Curl(1,g)+" past its rest"+side);
+                    Check(Math.Abs(Bent(i0,i1,i2)-(rest1+NativeVisualRig.Curl(2,g)))<2e-3f,"index middle joint curls"+side);
+                    Check(Math.Abs(Bent(t0,t1,t2)-(restT+NativeVisualRig.Curl(12,g)))<2e-3f,"thumb middle joint curls"+side);
+                    float tip=Vector3.Distance(state.Position[i2],state.Position[hand]);
+                    if(g==0) tipOpen=tip; else if(g==1) Check(tip<tipOpen-.005f,"a closed hand draws the fingertip in"+side);
+                }
+            }
+            Check(NativeVisualRig.Curl(1,0)==NativeVisualRig.Relaxed[0]&&NativeVisualRig.Curl(13,1)==NativeVisualRig.Closed[5]&&NativeVisualRig.Curl(0,1)==0,"the curl table");
         }
 
         private sealed class Stats { public int Poses, Planted, LegShort, Supported, SupportShort, Gripped; public float Support, Leg, Grip, GripSum; public readonly System.Collections.Generic.Dictionary<string,int> Short=new System.Collections.Generic.Dictionary<string,int>(); }
@@ -165,9 +201,14 @@ namespace ChipArena.UnityConversion
             {
                 {
                     NativeVisualRig.Pose(state,pose,0,false,false);
+                    Vector3 fkLeftElbow=state.Position[rig.Of[CapturedRig.LElbow]],fkLeftShoulder=state.Position[rig.Of[CapturedRig.LArm]];
+                    Vector3[] fkKnee={state.Position[rig.Of[CapturedRig.LKnee]],state.Position[rig.Of[CapturedRig.RKnee]]};
                     foreach(var l in limbs)
                     {
                         Vector3 game=pose.WorldPosition[l[1]]-pose.WorldPosition[l[0]],vis=state.Position[rig.Of[l[1]]]-state.Position[rig.Of[l[0]]];
+                        int clav=l[0]<=CapturedRig.LHand?CapturedRig.LClav:CapturedRig.RClav;
+                        if(l[0]>=CapturedRig.LArm&&l[0]<=CapturedRig.RHand) // arms: the game's direction, turned by the hanging spread at the shoulder
+                            game=Vector3.Transform(game,pose.WorldRotation[clav]*NativeVisualRig.Spread(pose,clav==CapturedRig.LClav)*Quaternion.Inverse(pose.WorldRotation[clav]));
                         Check(Angle(game,vis)<2e-3f,name+" "+CapturedRig.Bones[l[0]].Name+" follows the game's bone direction");
                     }
                     foreach(int j in new[]{CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LFoot,CapturedRig.RFoot})
@@ -175,7 +216,7 @@ namespace ChipArena.UnityConversion
                     foreach(int h in new[]{CapturedRig.LHand,CapturedRig.RHand})
                     {
                         // The visual wrist: the game's roll in full, the bend eased past the knee (NativeVisualRig.Wrist).
-                        Quaternion want=pose.WorldRotation[h-1]*NativeVisualRig.Wrist(pose.Rotation[h]);
+                        Quaternion want=state.Turn[rig.Of[h-1]]*NativeVisualRig.Wrist(pose.Rotation[h]); // on the visual forearm (which carries the spread)
                         Check(Near(state.Turn[rig.Of[h]],want,2e-4f),name+" "+CapturedRig.Bones[h].Name+" takes the eased wrist");
                         float gameBend=Angle(Vector3.Transform(-CapturedRig.Y,pose.WorldRotation[h-1]),Vector3.Transform(-CapturedRig.Y,pose.WorldRotation[h]));
                         float visBend=Angle(Vector3.Transform(-CapturedRig.Y,state.Turn[rig.Of[h-1]]),Vector3.Transform(-CapturedRig.Y,state.Turn[rig.Of[h]]));
@@ -190,7 +231,8 @@ namespace ChipArena.UnityConversion
                         Check(Near(rel,CapturedRig.Rot(CapturedRig.Y,rig.TwistShare[v]*NativeVisualRig.Twist(pose.Rotation[rig.TwistJoint[v]])),2e-4f),name+" "+rig.Names[v]+" takes its share of the roll");
                     }
                     // Planted feet and the support grip.
-                    NativeVisualRig.Pose(state,pose,1,plant,false);
+                    NativeVisualRig.Pose(state,pose,1,plant,false,1,0);
+                    Check(state.RightGrip==1&&state.LeftGrip>=state.SupportWeight,name+" the weapon hand closes, and the left closes while it supports");
                     foreach(bool left in new[]{true,false})
                     {
                         int hip=left?CapturedRig.LHip:CapturedRig.RHip; float w=left?state.LeftFootWeight:state.RightFootWeight;
@@ -204,10 +246,14 @@ namespace ChipArena.UnityConversion
                             Vector3 vh=state.Position[rig.Of[hip]],vk=state.Position[rig.Of[hip+1]],va=state.Position[rig.Of[hip+2]];
                             Vector3 gh=pose.WorldPosition[hip],gk=pose.WorldPosition[hip+1],ga=pose.WorldPosition[hip+2];
                             Vector3 gb=gk-(gh+ga)*.5f,vb=vk-(vh+va)*.5f;
-                            if(gb.Length()>.02f) Check(Vector3.Dot(gb,vb)>0,name+" the knee bends to the game knee's side");
+                            Vector3 fb=fkKnee[left?0:1]-(vh+va)*.5f,line=Vector3.Normalize(va-vh);fb-=line*Vector3.Dot(fb,line);
+                            if(fb.Length()>.02f) Check(Vector3.Dot(fb,vb)>0,name+" the knee bends to its unadjusted side");
                         }
                     }
-                    if(twoHanded&&state.SupportWeight>0){stats.Support=Math.Max(stats.Support,state.LeftArmReach); stats.Supported++; if(state.LeftArmReach>=.999f){stats.SupportShort++;string key=name.StartsWith("Pistol")||name.StartsWith("Rifle")||name.StartsWith("MachineGun")?name:"greatsword";stats.Short[key]=(stats.Short.TryGetValue(key,out int c)?c:0)+1;}}
+                    if(twoHanded&&state.SupportWeight>0){stats.Support=Math.Max(stats.Support,state.LeftArmReach); stats.Supported++;
+                    {Vector3 ve=state.Position[rig.Of[CapturedRig.LElbow]],vs=state.Position[rig.Of[CapturedRig.LArm]],vt=state.Position[rig.Of[CapturedRig.LHand]],ln=Vector3.Normalize(vt-vs);
+                     Vector3 fe=fkLeftElbow-(vs+vt)*.5f;fe-=ln*Vector3.Dot(fe,ln);Vector3 ie=ve-(vs+vt)*.5f;
+                     if(fe.Length()>.02f) Check(Vector3.Dot(fe,ie)>0,name+" the support elbow bends to its unadjusted side");} if(state.LeftArmReach>=.999f){stats.SupportShort++;string key=name.StartsWith("Pistol")||name.StartsWith("Rifle")||name.StartsWith("MachineGun")?name:"greatsword";stats.Short[key]=(stats.Short.TryGetValue(key,out int c)?c:0)+1;}}
                     Vector3 hand=state.Position[rig.Of[CapturedRig.LHand]],right=state.Position[rig.Of[CapturedRig.RHand]];
                     if(state.SupportWeight>=.9999f&&state.LeftArmReach<.999f) Check(Near(hand,right+pose.WorldPosition[CapturedRig.LHand]-pose.WorldPosition[CapturedRig.RHand],1e-3f),name+" the support hand keeps the game's wrist offset");
                     Check(Near(state.World[rig.Of[CapturedRig.LHand]],state.Turn[rig.Of[CapturedRig.LHand]]*rig.AlignedWorld[rig.Of[CapturedRig.LHand]],2e-4f),name+" the support hand keeps the game wrist turn");
@@ -245,7 +291,7 @@ namespace ChipArena.UnityConversion
             var clip=CapturedClips.Sets[0][0];clip.Sample(.3f,f);CapturedRig.Sample(f,0,pose);
             for(int i=0;i<50;i++){NativeVisualRig.Pose(state,pose,1,true,true);NativeVisualRig.Grip(state,pose,out _,out _);}
             long before=GC.GetAllocatedBytesForCurrentThread();
-            for(int i=0;i<1000;i++){NativeVisualRig.Pose(state,pose,i%2,i%3!=0,i%5==0);NativeVisualRig.Grip(state,pose,out _,out _);}
+            for(int i=0;i<1000;i++){NativeVisualRig.Pose(state,pose,i%2,i%3!=0,i%5==0,i%4*.25f,i%3*.5f);NativeVisualRig.Grip(state,pose,out _,out _);}
             Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"posing allocates nothing per frame");
             NativeVisualRig.Pose(state,pose,1,true,false);NativeVisualRig.Pose(other,pose,1,true,false);
             for(int v=0;v<rig.Count;v++) Check(state.Local[v].Equals(other.Local[v])&&state.LocalPosition[v].Equals(other.LocalPosition[v]),"the same pose gives the same bones bit for bit");

@@ -450,16 +450,31 @@ The adapter is not wired into the live body path yet; that is step 4.
    - The visual hand keeps the game wrist's roll in full and its bend up to 25°. Beyond that it takes a quarter of the
      bend: a rifle hold becomes 45°, and the deepest captured bend is now 60°.
    - The weapon frame keeps the game wrist turn, so aim and the drawn weapon are unchanged.
+   - **Hanging arms** (`NativeVisualRig.Spread`, owner review 2026-10-22): the game hangs its arms straight down from voxel
+     shoulders .35 m out. From BoZo's shoulder joints (.13 m out) the same arms buried the forearms and hands in the hips.
+     - While a game upper arm hangs, the visual shoulder turns it 15° out, in the clavicle's frame so the arm's own roll is
+       kept.
+     - The turn fades out as the arm rises past 60° from down, so raised arms and weapon holds stay exactly the game's.
+     - It carries down the limb, because limb chains hang from their visual parent.
+   - **Fingers** (`NativeVisualRig.Curl`): each finger and the thumb curl by joint.
+     - The curl axis comes from the chain's own slight rest curl, so no pack bone axes are assumed.
+     - Angles: relaxed 15° / 25° / 15° (thumb 5° / 10° / 10°); closed round a grip 55° / 75° / 45° (thumb 20° / 30° / 30°).
+     - The caller passes `rightGrip` (the weapon) and `leftGrip` (a shield, an off-hand blade). The left also closes while
+       it supports a two-handed grip. Open hands relax.
 2. **Twist helpers:**
    - forearm helpers take the hand's roll, and calf helpers the foot's, by their place along the bone;
    - upper-arm and thigh helpers counter the limb's own roll: all of it at the root (`shoulder_twist`), none at the far end.
 3. **Root:** the pelvis moves by the game pelvis's offset from rest × the leg ratio, so crouches and bobs keep the game's
    knee angles.
-4. **Planted feet:** two-bone IK puts a planted foot's ankle on the game ankle's ground point, with the knee toward the
-   game knee's side. A foot counts as planted while the game ankle is within .03 m of its rest height, blending out by
+4. **Planted feet:** two-bone IK puts a planted foot's ankle on the game ankle's ground point. The knee bends toward
+   where it is in the visual pose before IK, falling back to the game knee's side when that is degenerate. A foot counts as planted while the game ankle is within .03 m of its rest height, blending out by
    .10 m. Turn this off for rolls and airborne takes.
 5. **Support grip:** on a weapon that may be held two-handed, the left hand keeps the game's right-to-left wrist offset,
-   carried onto the visual right wrist. It solves two-bone IK and keeps the game wrist turn.
+   carried onto the visual right wrist. It solves two-bone IK and keeps the hand's turn.
+   - The elbow bends toward where it sits in the visual pose before IK (the game's arm directions on the visual shoulder),
+     falling back to the game elbow's side.
+   - In the greatsword leap cut, the game's wider shoulders put its elbow almost on the visual shoulder-to-hand line, and
+     the old game-side bend sent the elbow up and back (owner review 2026-10-22).
    - It engages only while the game's own wrists hold together (within .18 m, released by .30 m;
      `NativeVisualRig.HandsTogether`). A pistol run or a roll that swings the left hand free stays FK.
 6. **Weapon (P1):** weapons draw at `WeaponFrame`: the visual right wrist's position with the game wrist's turn. Today's
@@ -468,7 +483,7 @@ The adapter is not wired into the live body path yet; that is step 4.
 7. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
    (capped at .12 m). It only ever lifts, like `Pose.Lowest()`.
 
-**Checked** (`CoreTests --visual-rig`, 43,217 checks), over:
+**Checked** (`CoreTests --visual-rig`, 53,961 checks since the grips; 43,217 at first), over:
 - every captured clip in the four melee sets (8 samples each);
 - the gun gait: pistol, rifle and machine gun in idle, aimed, run, sprint and roll, 647 poses in all.
 
@@ -530,8 +545,9 @@ Reading it:
 **Found by the renders, for step 4:**
 - **Shoes:** they put the soles 1–3 cm under the floor on planted feet, because BoZo raises the root only for heels. The
   binding needs a per-outfit sole offset.
-- **Fingers:** they stay in BoZo's open rest; weapons need grip poses. (The drooping wrists in the first renders are
-  fixed by the eased wrist above.)
+- **Fingers:** fixed. They stayed in BoZo's open rest, and the first renders also showed drooping wrists, hands buried at
+  rest, and the leap cut's elbow. The grips, the eased wrist, the hanging spread and the IK bend side above fix all four,
+  confirmed in Unity renders. Finger poses per weapon (trigger finger, two-handed overlap) can be tuned later.
 - **Multiple renders per frame:** Unity skins a mesh once per frame unless `SkinnedMeshRenderer.forceMatrixRecalculationPerRender`
   is set. Any path that draws one character in several poses in a frame (pooled puppets, portraits) must set it.
 - **Roll:** the gun "roll" sample landed after the roll ended (it reads as idle), so a roll is not measured here. The Core
