@@ -38,9 +38,9 @@ namespace ChipArena.UnityConversion
         }
 
         // Poses the bones from a game pose (pose.World() already run). See NativeVisualRig.Pose for the flags.
-        public void Apply(CapturedRig.Pose pose,float support,bool plantFeet,bool fitFloor)
+        public void Apply(CapturedRig.Pose pose,float support,bool plantFeet,bool fitFloor,float rightGrip=0,float leftGrip=0)
         {
-            NativeVisualRig.Pose(State,pose,support,plantFeet,fitFloor);
+            NativeVisualRig.Pose(State,pose,support,plantFeet,fitFloor,rightGrip,leftGrip);
             for(int v=1;v<Bones.Length;v++)
             {
                 if(Rig.Parent[v]<0) continue;

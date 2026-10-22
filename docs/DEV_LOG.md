@@ -1,3 +1,28 @@
+## 2026-10-22 — Claude: BoZo adapter, finger grips, hanging arms, IK bend side (merged into shared)
+
+- **Branch/base:** `claude/bozo-grips` from shared `86679cb`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner requests:**
+  - "add finger grip poses: the right hand closed on the weapon, the left on two-handed holds, and a relaxed curl when empty";
+  - "the jump pose also looks wrong with the arm bends" (the greatsword leap cut).
+- **Changes (presentation only, BoZo adapter only; voxel bodies unchanged):**
+  - **Fingers:** `NativeVisualRig.Curl`. Each finger and the thumb curl by joint about an axis taken from the chain's own slight rest curl, so no pack bone axes are assumed.
+    - Angles: relaxed 15/25/15° (thumb 5/10/10°); closed round a grip 55/75/45° (thumb 20/30/30°).
+    - `Pose(...)` and `NativeVisualRigBinding.Apply(...)` take `rightGrip` and `leftGrip`. The left also closes while it supports a two-handed grip; open hands relax.
+  - **IK bend side:** support-hand and planted-foot IK now bend toward the elbow or knee's place in the visual pose before IK, with the game's side as the fallback.
+    - The leap cut's support elbow had pointed up and back: the game's wider shoulders put its elbow almost on the visual shoulder-to-hand line.
+  - **Hanging arms:** `NativeVisualRig.Spread`.
+    - At rest, BoZo's arms hung straight down from shoulder joints .13 m out and buried the forearms and hands in the hips (the game's voxel shoulders are .35 m out).
+    - While a game upper arm hangs, the visual shoulder turns it 15° out in the clavicle's frame (the roll is kept). The turn fades out as the arm rises past 60°, so holds stay the game's.
+    - Limb chains now hang from their visual parent, so the turn carries down the arm.
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 53,961 checks pass.
+    - New: finger roles and one axis per chain; relaxed, closed and half curl angles on both hands; the fingertip drawn in when closed; the weapon hand closed and the left closed while it supports.
+    - New: the IK elbow and knee on their unadjusted side; arms 15° out at rest with the hands clear of the hips; arm directions equal to the game's turned by the hanging spread.
+  - Unity semantic compile (player, runtime, editor) passes.
+  - BoZo re-rendered in Unity through the self-refreshing tool: 15 poses plus hand close-ups. Fists close on the rifle, pistol, machine gun, sword and shield; the rest pose's hands clear the body with a relaxed curl; the leap cut's support elbow bends down and out.
+- **Animation, timing, networking:** none. Only the drawn BoZo arms, hands and fingers change; hit timing, hitboxes, weapon frames and the wire are unchanged.
+- **Next:** step 4 (wire the adapter into the body path for one character, the toon port with glow, the chest core and wrist device, a sole offset per outfit); per-weapon finger tuning later.
+
 ## 2026-10-22 — Claude: BoZo adapter, eased wrists after the owner's review (merged into shared)
 
 - **Branch/base:** `claude/bozo-wrists` from shared `65f7c17` (map style stage 2 merged). No PR; merged into shared and the builder (standing merge authorization); not published.
