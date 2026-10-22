@@ -219,7 +219,7 @@ namespace ChipArena.UnityConversion
             internal float LastSupport, LastShouldered; // last frame's two-handed and shouldered weights (WeightStep)
             internal readonly Vector3[] LastElbow=new Vector3[2]; internal readonly Quaternion[] LastHand=new Quaternion[2]; internal bool HasLast; // last frame's elbows and hands (Reach, FistTurn)
             internal readonly float[] LastSwing=new float[2]; // last frame's elbow swings off the animation's side (Reach)
-            internal readonly Vector3[] LastClear=new Vector3[2]; // last frame's moves out of the body (Clear)
+            internal readonly Vector3[] LastClear=new Vector3[2], LastGameHand=new Vector3[2]; // last frame's moves out of the body and game hands (Clear)
             internal readonly bool[] Under;
             // Drops last frame's elbows and hands (a cut, a respawn, a weapon swap): the next pose is solved afresh.
             public void Forget() { HasLast=false; }
@@ -361,7 +361,7 @@ namespace ChipArena.UnityConversion
             s.ElbowSwing[0]=s.ElbowSwing[1]=0;
             s.LeftInside=Inside(s,pose,true); s.RightInside=Inside(s,pose,false);
             Positions(s,pose);
-            s.LeftClear=Clear(s,pose,true,grasp.Left); s.RightClear=Clear(s,pose,false,grasp.Right);
+            s.LeftClear=Clear(s,pose,true,grasp.Left,default); s.RightClear=Clear(s,pose,false,grasp.Right,support>0?grasp.SupportHold:default);
             if(plantFeet)
             {
                 s.LeftFootWeight=Foot(s,pose,true); s.RightFootWeight=Foot(s,pose,false);
@@ -822,15 +822,18 @@ namespace ChipArena.UnityConversion
         // closed hand out, FistClear against the torso, where a hand may rest) and its weapon's lines (Hold: Tail to Tip, CrossA
         // to CrossB, Half and CrossHalf round them) are tested against the head ellipsoid and the torso cylinder (Rig.HeadCenter,
         // HeadRadii, TorsoHalfWidth, TorsoHalfDepth). Fist and weapon move as one, straight out by the inside points' pushes
-        // averaged by depth (a single deepest point flips between two near-equal contacts frame to frame), and the arm reaches
+        // averaged by depth (a single deepest point flips between two near-equal contacts frame to frame). The arm reaches
         // the wrist there (Reach, hinged, its elbow on the animation's side: no frame history here, which would be measured
         // from a different elbow than the hold's reach after it and set the two rocking frame to frame, 5-7 cm an elbow), the
         // hand keeping its turn. Only that arm moves: the weapon rides its fist (a braced one, the fist the animation gives)
-        // and a support hand follows the weapon. Three passes, each continuous in the pose. The move changes by at most
-        // ClearStep a frame: a cut's hands can cross the head's volume in three frames, and following at once jerked a
-        // greatsword's hands 16 cm and its support hand 40 cm in a frame; so a fast pass may graze. Returns the distance moved.
+        // and a support hand follows the weapon (its fist kept out with the weapon's, at its handle). Three passes, each
+        // continuous in the pose. The fist is turned as it will ride (steadied from last frame's hand, as HoldWeapon turns it).
+        // The move changes by at most ClearStep a frame more than the game's hand moves, so it keeps up with a cut that brings
+        // the hands in (a greatsword's overhead raise passes them over the head) and no more: all at once, a greatsword's hands
+        // jerked 16 cm and its support hand 40 cm in a frame; held to 3 cm a frame, the raise's fists reached the head's
+        // middle, the push flipped and they crossed the face. Returns the distance moved.
         public const float FistClear=.05f, FistHeadClear=.08f, ClearStep=.03f; private const int ClearPasses=3, ClearSamples=48;
-        private static float Clear(State s,CapturedRig.Pose pose,bool left,in Hold hold)
+        private static float Clear(State s,CapturedRig.Pose pose,bool left,in Hold hold,in Hold supportHold)
         {
             var r=s.Rig; int side=left?0:1,ga=left?CapturedRig.LArm:CapturedRig.RArm,ve=r.Of[ga+1],vh=r.Of[ga+2];
             if(ve<0||vh<0) return 0;
@@ -839,7 +842,7 @@ namespace ChipArena.UnityConversion
             float moved=0;
             // The fist as it will ride its handle from the copied wrist, carried rigidly with the wrist through the passes.
             Quaternion turn=Eff(s,vh);
-            if(seated) turn=FistTurn(r,side,Vector3.Transform(hold.FistAxis,wrist),s.Position[vh]-s.Position[ve],turn);
+            if(seated) turn=FistTurn(r,side,Vector3.Transform(hold.FistAxis,wrist),s.Position[vh]-s.Position[ve],s.HasLast?s.LastHand[side]:turn,s.HasLast);
             Vector3 centre=Vector3.Transform(r.FistCenter[side],turn),total=Vector3.Zero;
             for(int pass=0;pass<ClearPasses;pass++)
             {
@@ -850,13 +853,19 @@ namespace ChipArena.UnityConversion
                     Vector3 origin=hold.Braced?fist:fist-Vector3.Transform(hold.Center,wrist);
                     Line(s,origin+Vector3.Transform(hold.Tail,wrist),origin+Vector3.Transform(hold.Tip,wrist),hold.Half,ref sum,ref weight);
                     if(hold.Crosses) Line(s,origin+Vector3.Transform(hold.CrossA,wrist),origin+Vector3.Transform(hold.CrossB,wrist),hold.CrossHalf,ref sum,ref weight);
+                    // A two-handed weapon's support fist closes there and moves with it: kept out as a fist, not a blade.
+                    if(supportHold.Seated) Gather(Out(s,origin+Vector3.Transform(supportHold.Center,wrist),FistHeadClear,FistClear),ref sum,ref weight);
                 }
                 if(weight<1e-12f) break;
                 Vector3 push=sum/weight; if(push.LengthSquared()<1e-8f) break;
                 total+=push;
             }
-            if(s.HasLast) { Vector3 change=total-s.LastClear[side]; float most=change.Length(); if(most>ClearStep) total=s.LastClear[side]+change*(ClearStep/most); }
-            s.LastClear[side]=total;
+            if(s.HasLast)
+            {
+                float step=ClearStep+Vector3.Distance(pose.WorldPosition[ga+2],s.LastGameHand[side]);
+                Vector3 change=total-s.LastClear[side]; float most=change.Length(); if(most>step) total=s.LastClear[side]+change*(step/most);
+            }
+            s.LastClear[side]=total; s.LastGameHand[side]=pose.WorldPosition[ga+2];
             if(total.LengthSquared()<1e-8f) return 0;
             s.RefElbow[side]=s.Position[ve];
             Reach(s,pose,left,s.Position[vh]+total,Vector3.Zero,Eff(s,vh),false,out _,0);

@@ -502,18 +502,28 @@ The adapter is not wired into the live body path yet; that is step 4.
        5 cm from the torso, where a hand may rest;
      - the held weapon's lines (`Hold.Tail` to `Tip`, `CrossA` to `CrossB`, each with its half-width): a blade from its
        pommel to 20 cm past its guard plus the crossguard bar; a gun from its back to its muzzle; a shield's height and
-       breadth.
+       breadth;
+     - a two-handed weapon's support fist, at its handle, with the weapon hand's margins.
    - **How it moves:** fist and weapon move as one, straight out by the inside points' pushes averaged by depth. The arm
      reaches the wrist there, hinged, with the elbow on the animation's side, and the hand keeps its turn. Only that arm
-     moves: the weapon rides its fist and a support hand follows the weapon.
-   - **Limits:** the move changes by at most 3 cm a frame. A cut's hands can cross the head's volume in three frames, and
-     following at once jerked the greatsword's hands 16 cm and its support hand 40 cm in a frame, so a fast pass may graze
-     (below).
+     moves: the weapon rides its fist and a support hand follows the weapon. The fist is estimated as it will ride (its turn
+     steadied from last frame's hand, as the hold turns it).
+   - **Limits:** the move changes each frame by at most 3 cm more than the game's own hand moved. It keeps up with a cut
+     that brings the hands to the head, and the greatsword's overhead raise passes them over it.
+     - All at once, it jerked the greatsword's hands 16 cm and its support hand 40 cm in a frame.
+     - Held to 3 cm a frame (owner review 2026-10-22: "greatsword cut A raised-hands face graze"), the raise's fists
+       reached the head's middle while the game's hands moved 7–10 cm a frame. The push then flipped and the fists crossed
+       the face (6 cm deep for two frames).
+     - The game's head drop was not the cause: there the game's hands rise only 60 % of the way to its head.
+     - BoZo's head sits low on a short neck, so the voxel's hands, which sweep under its chin, come at BoZo's jaw.
    - **Ruled out:**
      - a single deepest point: it flipped between two near-equal contacts frame to frame;
      - reaching with the elbow history: it was measured from a different elbow than the hold's reach after it, and rocked
        the elbows 5–7 cm a frame;
-     - clearing a long blade's outer part: it sweeps past the head within a frame or two and jerked the hands 13 cm.
+     - clearing a long blade's outer part: it sweeps past the head within a frame or two and jerked the hands 13 cm;
+     - pushing the way the game's hand lies from its own head (under the chin, as the voxel's go): it held clear, but moved
+       the raise's hands down by up to 30 cm, where the straight-out push moves them over the head by at most 12 cm;
+     - keeping the wrist off the head too: it made the support hand jump 36 cm in a frame on the synthetic skeleton.
 6. **Planted feet:** two-bone IK puts a planted foot's ankle on the game ankle's ground point. The knee bends toward
    where it is in the visual pose before IK, falling back to the game knee's side when that is degenerate. A foot counts as planted while the game ankle is within .03 m of its rest height, blending out by
    .10 m. Turn this off for rolls and airborne takes.
@@ -595,7 +605,7 @@ The adapter is not wired into the live body path yet; that is step 4.
 10. **Floor fit:** optional. For rolls and tucks, it lifts the body until every bone clears the floor by its rest height
    (capped at .12 m). It only ever lifts, like `Pose.Lowest()`.
 
-**Checked** (`CoreTests --visual-rig`, 124,276 checks since the final visual pass; 43,217 at first), over:
+**Checked** (`CoreTests --visual-rig`, 129,260 checks since the raised-hands fix; 43,217 at first), over:
 - every captured clip in the four melee sets (8 samples each);
 - the gun gait: pistol, rifle and machine gun in idle, aimed, run, sprint and roll, 647 poses in all;
 - 2,492 transition frames at 60 Hz: every melee set from idle crossfading into each cut and the block, through it and back
@@ -624,7 +634,9 @@ On the synthetic skeleton (leg ratio 1.703):
   - every fist ends 8 cm outside the head and 5 cm outside the torso (within 1 cm, where its arm is not at full stretch);
     226 grasps moved a fist and weapon out, at most .16 m;
   - transitions: frame to frame, each hand turns at most three times the game's own hand plus 20° and moves at most three
-    times its move plus 5 cm (6 cm for an elbow); the snaps this caught flipped a hand 37-177° in a frame;
+    times its move plus 5 cm (6 cm for an elbow); the snaps this caught flipped a hand 37-177° in a frame. No fist centre
+    enters the head in any transition frame. On the synthetic skeleton the greatsword raise never reaches the head, so
+    this guards regressions only; the BoZo renders below are the evidence;
   - without handles the support hand keeps the game wrist turn, and the grip is the game socket on the weapon frame;
   - the locals rebuild the pose.
 - **Roll:** the floor fit keeps every bone over the floor.
@@ -705,8 +717,8 @@ tool, renders in local scratch):
 | Check | Before | After |
 |---|---|---|
 | Shield: hand or forearm past the back face | every frame of all four shield sequences, through the front face, up to 24 | 8 of 43 frames of the cut A bash, at most 4, behind the face |
-| Greatsword: weapon into head | idle, block, cut B and run, up to 7 | none, but for 30 % of cut A (3) |
-| Greatsword: hand into head | cut A 30 % (6) | cut A 30 % (6), the fast pass below |
+| Greatsword: weapon into head | idle, block, cut B and run, up to 7 | none (cut A's 30 % since the raised-hands fix) |
+| Greatsword: hand into head | cut A 30 % (6) | none at the marked frames; every frame of the raise: one, 2.4, the wrist's back (below) |
 | Rifle and machine gun: weapon into chest | every frame, up to 7.5 | 20 and 27 of 123, at most 5 (run carry) |
 | Rifle and machine gun: support wrist bend (90th percentile) | 93° | 46° |
 | Daggers cut A: left elbow to spine, at least | 5 (9 into the belly) | 19 |
@@ -716,11 +728,16 @@ tool, renders in local scratch):
 | Pistol: right hand and upper-arm roll, worst | 141°, 165° | 50°, 57° |
 | Greatsword block: support wrist bend (90th percentile) and upper-arm roll, worst | 80°, 179° | 44°, 77° |
 
+*Greatsword raise, every frame* (raised-hands fix, against shared `3c303dfd`):
+- **0.58–0.75 s at 60 fps:** the hands and pommel no longer cross the face. Before, at 0.667 s and 0.683 s, 246 and 204
+  hand points sat 5.9 and 5.7 cm deep and the weapon 3.3 and 1.9 cm; at 0.733 s the weapon was 2.9 cm deep.
+- **Path:** the hands now pass over the head, the push at most 12 cm.
+- **Elsewhere:** the greatsword run's weapon-in-chest fell from 4 frames (5.9 cm) to one (2.4 cm), and cut A's worst right
+  wrist bend from 118° to 67°. Nothing else changed beyond a centimetre or a few degrees.
+
 *Remaining defects.* These are not hidden by grip seating:
-- **Greatsword cut A at about 30 %:** the hands and pommel graze the face (up to 6 cm) for two or three frames, as the
-  overhead swing carries them through the head's volume faster than the clearance follows (3 cm a frame). The cause is
-  upstream: `Inside`'s head drop maps the game's raised hands down to BoZo's head height. Next: keep raised hands over the
-  head there.
+- **Greatsword cut A raise:** for one frame (0.683 s) the back of the right wrist, 12 cm off the grip, brushes the cranium's
+  side (2.4 cm). Keeping the wrist out too made the support hand jump (above).
 - **Greatsword support elbow:** in idle, block and run it now rests 2-3 cm into the hoodie's front (25 of 56 block
   frames). It sits on the animation's side; before, it was 90-180° off it, with the wrist bent 80° and the upper arm
   rolled 179°.
