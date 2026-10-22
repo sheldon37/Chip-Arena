@@ -1,3 +1,54 @@
+## 2026-10-22 — Claude: BoZo adapter, anatomical arms and weapon holds (merged into shared)
+
+- **Branch/base:** `claude/bozo-arms` from shared `6470906c`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner review:** grips improved, but arms, wrists and holds were still unnatural across weapons. The owner asked to find the underlying causes (retargeting, bone rotations, grip targets, IK, procedural overrides), fix them generally, keep the hand contact, validate transitions and every weapon in three views with hand close-ups, and compare at identical timestamps.
+- **Causes found (measured on BoZo in Unity against `6470906c`):**
+  - **IK broke the elbow hinge.** Each bone turned the shortest way, so the upper arm's crease drifted off the fold: up to 175° on rifle and machine-gun weapon arms (inverted elbows), 40–60° on pistol and shield arms. Arms the animation drives directly measured 0°.
+  - **Twist bones ignored the re-turned hand.** Forearm twist bones kept the game's wrist roll after the hand was turned onto a handle: up to 147° off (shield), 120° (greatsword).
+  - **The hand moved to the weapon, not the weapon with the hand.** The pistol's aiming arm bent to 81° against the animation's 28°.
+  - **Unshouldered long guns:** stocks floated 23 cm in front of the shoulder.
+  - **Not the cause:** retargeting and the Avatar. Outfits import Generic, and `BodyRig`'s humanoid Animator has no controller. The bone mapping, rest offsets and coordinate conversions were checked earlier.
+  - **The animations themselves:** the greatsword cuts' game arm rolls the upper arm 153–169° in the shoulder, past any human's.
+- **Changes (presentation only, BoZo adapter only; voxel bodies unchanged):**
+  - **`Reach`, an anatomical arm solve used by every moved arm:**
+    - hinged elbows (`HingeTurns`);
+    - the elbow on the animation's side, swinging about the shoulder-wrist line only to spare the wrist (past 60°), the forearm roll (past 90°), the humerus roll (past 110°) and the torso (soft minimum, at most ±90°);
+    - the swing is measured from last frame's elbow and changes by at most 4° a frame.
+  - **`ArmTwists`:** arm twist bones follow the final pose.
+  - **The weapon rides the hand:** the weapon hand stays where the animation put the wrist, and the weapon frame is placed so its grip sits in the fist.
+  - **Shouldered long guns:** stock butt at the shoulder pocket while the game holds them up (`Grasp.Stock`), the fist reaching the pistol grip.
+  - **Support fists:** aimed from the animation's forearm, then four half-way re-aims for the forearm the reach made. Weapon-set orientations (`Hold.Ahead`, `Hold.Spread`: a long gun's palm-up cup ±60°, a pistol grip ±25°). Long guns hold the handguard, sliding back toward the receiver as needed (`Hold.Slide`), then the shoulder reach, then give-way.
+  - **Daggers:** a fixed reverse grip (fresh solves chose it 92 % of the time; the either-way choice flipped hands mid-cut).
+  - **Inside reach:** now drawn back out to the arm's extension along its own direction (solving the depth alone made a raised greatsword hand jump 0.4 m in a frame).
+  - **Steadiness:** a riding hand rolls about its handle by at most 8° a frame; two-handed and shouldered weights move by at most .08 a frame. `State.Forget()` clears history (callers: cuts, respawns, weapon swaps).
+  - The older `Pose` form without handles is unchanged.
+- **Checks (actual):**
+  - `CoreTests --visual-rig`: 123,188 checks pass.
+  - New Core checks:
+    - every arm hinged (bones along the arm, a shared elbow axis, the crease on the fold, within 1°);
+    - twist bones on the final roll;
+    - riding fists at the animation's wrist with the straightest wrist;
+    - reaching fists as their weapon sets them;
+    - shouldered butts at the pocket;
+    - slides within their limit;
+    - 2,492 transition frames at 60 Hz (each melee set crossfading idle into each cut and the block and back; each gun through idle, aim, fire, run, aim) with no hand or elbow snap;
+    - about 33 µs a pose.
+  - Unity semantic compile (player, runtime, editor) passes.
+  - BoZo rendered in Unity: 62 poses in front, three-quarter and side views plus hand close-ups, holding the real Standard weapons. Every attack at 10/30/50/70/90 % of its swing. Before is the merged adapter swapped back in, so timestamps are identical.
+  - Measured on BoZo:
+    - crease off the fold, worst 175° → 0°;
+    - hand roll against its twist bones, worst 147° → 0°;
+    - wrist bend median 35° → 29° (worst 100° → 98°; the long-gun support hands sit near 92°, a straight arm reaching a palm-up cup);
+    - no new torso intrusion;
+    - long-gun stocks 23 cm → 8 cm from the shoulder;
+    - every fist on its grip.
+  - Full CoreTests not rerun: only the adapter's binding and its tests use `NativeVisualRig`.
+- **Animation, timing, networking:** none. Clip timing, weapon aim, hit volumes, shot origins and the wire are unchanged. Only the drawn BoZo arms, hands and weapon placement move.
+- **Risks / next:**
+  - Transitions were checked in Core on the synthetic rig; on BoZo only single frames were rendered. Watch the first wired character in motion (step 4).
+  - Step 4 must pass `Grasp` (with `Stock`), draw weapons at the adapter frames, and call `Forget()` on cuts.
+  - Daggers' reverse grip is a style change from the voxel look: owner review.
+
 ## 2026-10-22 — Claude: BoZo adapter, fists seated on the weapons (merged into shared)
 
 - **Branch/base:** `claude/bozo-holds` from shared `5a905328`. No PR; merged into shared and the builder (standing merge authorization); not published.
