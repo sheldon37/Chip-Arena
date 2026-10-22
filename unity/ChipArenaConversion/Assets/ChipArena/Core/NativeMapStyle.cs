@@ -40,6 +40,9 @@ namespace ChipArena.UnityConversion
         public float line,lineFadeStart,lineFadeEnd,crease;public int lineColor;
         public float saturation,contrast;public V3 gradeShadow,gradeLight;
         public float skyToon,clouds,cloudScale,bandWidth;public int cloudLit,cloudShade,horizonBand;
+        /// <summary>Stage 2: how far the anime sky's horizon blends into the fog colour (0 none: the stage 1 looks), so a fogged
+        /// skyline never meets a bright horizon band in a hard line.</summary>
+        public float skyFog;
         public MapLookLight key,rim;public MapLookAmbient ambient;public MapLookSky sky;public int fogColor,background,hazeColor;public float fogStart;
     }
     /// <summary>The shader values of a look's style (linear), as NativeLighting writes them: the NativeToon.cginc globals, the
@@ -50,10 +53,12 @@ namespace ChipArena.UnityConversion
         public float[] Toon=new float[4],Band=new float[4],Shade=new float[4],Lit=new float[4],Rim=new float[4],Paint=new float[4],Wrap=new float[4],Fx=new float[4];
         public float[] Edge=new float[4],EdgeColor=new float[4],GradeParams=new float[4],GradeShadow=new float[4],GradeLight=new float[4];
         public float[] SkyToon=new float[4],CloudLit=new float[4],CloudShade=new float[4],SkyBand=new float[4];
+        /// <summary>The fog colour (linear) and the share of the horizon blended into it (_SkyToonFog).</summary>
+        public float[] SkyFog=new float[4];
         public void Clear()
         {
             On=Outline=Grade=Sky=false;Array.Clear(Toon,0,4);Array.Clear(Band,0,4);Array.Clear(Shade,0,4);Array.Clear(Lit,0,4);Array.Clear(Rim,0,4);Array.Clear(Paint,0,4);Array.Clear(Wrap,0,4);Array.Clear(Fx,0,4);Array.Clear(Edge,0,4);Array.Clear(EdgeColor,0,4);
-            Array.Clear(GradeParams,0,4);Array.Clear(GradeShadow,0,4);Array.Clear(GradeLight,0,4);Array.Clear(SkyToon,0,4);Array.Clear(CloudLit,0,4);Array.Clear(CloudShade,0,4);Array.Clear(SkyBand,0,4);
+            Array.Clear(GradeParams,0,4);Array.Clear(GradeShadow,0,4);Array.Clear(GradeLight,0,4);Array.Clear(SkyToon,0,4);Array.Clear(CloudLit,0,4);Array.Clear(CloudShade,0,4);Array.Clear(SkyBand,0,4);Array.Clear(SkyFog,0,4);
         }
     }
 
@@ -115,6 +120,7 @@ namespace ChipArena.UnityConversion
             into.Grade=t.saturation>0&&t.contrast>0;Set(into.GradeParams,into.Grade?t.saturation:1,into.Grade?t.contrast:1,0,into.Grade?1:0);
             Set(into.GradeShadow,Or1(t.gradeShadow.x),Or1(t.gradeShadow.y),Or1(t.gradeShadow.z),0);Set(into.GradeLight,Or1(t.gradeLight.x),Or1(t.gradeLight.y),Or1(t.gradeLight.z),0);
             into.Sky=t.skyToon>0;Set(into.SkyToon,t.skyToon,t.clouds,t.cloudScale,t.bandWidth);Lin(into.CloudLit,t.cloudLit);Lin(into.CloudShade,t.cloudShade);Lin(into.SkyBand,t.horizonBand);
+            Lin(into.SkyFog,look.fog?.color??0);into.SkyFog[3]=t.skyFog;
         }
         private static float Or1(float v)=>v>0?v:1;
         private static void Set(float[] a,float x,float y,float z,float w){a[0]=x;a[1]=y;a[2]=z;a[3]=w;}
@@ -136,7 +142,7 @@ namespace ChipArena.UnityConversion
             if(!Finite(t.specular,t.specularEdge,t.occlusion,t.occlusionHeight)||!Unit(t.specular)||t.specular>0&&!(t.specularEdge>=.8f&&t.specularEdge<1)||!Unit(t.occlusion)||!(t.occlusionHeight>=0&&t.occlusionHeight<=1))Fail("highlights and occlusion");
             if(!Finite(t.line,t.lineFadeStart,t.lineFadeEnd,t.crease)||!Unit(t.line)||t.line>0&&!(t.lineFadeStart>=0&&t.lineFadeEnd>t.lineFadeStart&&t.crease>0))Fail("outline");
             if(!Finite(t.saturation,t.contrast,t.gradeShadow.x,t.gradeShadow.y,t.gradeShadow.z,t.gradeLight.x,t.gradeLight.y,t.gradeLight.z)||t.saturation<0||t.saturation>2||t.contrast<0||t.contrast>2)Fail("grade");
-            if(!Finite(t.skyToon,t.clouds,t.cloudScale,t.bandWidth)||!Unit(t.skyToon)||!Unit(t.clouds)||t.skyToon>0&&!(t.cloudScale>0&&t.bandWidth>0&&t.bandWidth<1))Fail("sky");
+            if(!Finite(t.skyToon,t.clouds,t.cloudScale,t.bandWidth,t.skyFog)||!Unit(t.skyToon)||!Unit(t.clouds)||!Unit(t.skyFog)||t.skyToon>0&&!(t.cloudScale>0&&t.bandWidth>0&&t.bandWidth<1))Fail("sky");
             if(!Finite(t.fogStart)||t.fogStart<0)Fail("fog start");
             if(!Rgb(t.rimColor)||!Rgb(t.lineColor)||!Rgb(t.cloudLit)||!Rgb(t.cloudShade)||!Rgb(t.horizonBand)||!Rgb(t.fogColor)||!Rgb(t.background)||!Rgb(t.hazeColor))Fail("colours");
         }

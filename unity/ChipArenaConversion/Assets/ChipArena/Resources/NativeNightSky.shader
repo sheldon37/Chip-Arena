@@ -7,7 +7,8 @@ Properties { _Horizon("Horizon",Color)=(.04,.06,.12,1) _Zenith("Zenith",Color)=(
  _HaloColor("Halo colour (linear)",Vector)=(.16,.21,.3,0) _HaloFalloff("Halo falloff",Float)=12 _Stars("Star amount",Float)=1
  _CloudTint("Lit cloud tint (linear)",Vector)=(.24,.29,.40,0) _CloudSpeed("Cloud drift speed",Float)=1
  _SkyToon("Anime sky: on, cloud cover, cloud scale, horizon band height",Vector)=(0,0,0,0) _SkyToonLit("Anime cloud light (linear)",Vector)=(0,0,0,0)
- _SkyToonShade("Anime cloud shade (linear)",Vector)=(0,0,0,0) _SkyToonBand("Anime horizon band (linear)",Vector)=(0,0,0,0) }
+ _SkyToonShade("Anime cloud shade (linear)",Vector)=(0,0,0,0) _SkyToonBand("Anime horizon band (linear)",Vector)=(0,0,0,0)
+ _SkyToonFog("Anime sky: fog colour (linear) and how far the horizon blends into it",Vector)=(0,0,0,0) }
 SubShader { Tags { "Queue"="Background" "RenderType"="Background" "PreviewType"="Skybox" } Cull Off ZWrite Off
 Pass { CGPROGRAM
 #pragma vertex vert
@@ -17,7 +18,7 @@ struct appdata { float4 vertex:POSITION; };struct v2f { float4 pos:SV_POSITION;f
 float4 _Horizon,_Zenith,_SunDir,_DiscColor,_DiscShade,_HaloColor,_CloudTint;float _SceneTime;float _MoonSize,_HaloFalloff,_Stars,_CloudSpeed;
 // The anime map style's sky (Core NativeMapStyle; MapLooks.json toon.skyToon): _SkyToon x on (0 draws the sky above unchanged),
 // y the cloud cover, z the cloud scale, w the horizon band's height (of the sky's up); colours linear.
-float4 _SkyToon,_SkyToonLit,_SkyToonShade,_SkyToonBand;
+float4 _SkyToon,_SkyToonLit,_SkyToonShade,_SkyToonBand,_SkyToonFog;
 v2f vert(appdata v){v2f o;o.pos=UnityObjectToClipPos(v.vertex);o.dir=v.vertex.xyz;return o;}
 float hash(float3 p){return frac(sin(dot(p,float3(127.1,311.7,74.7)))*43758.5453);}
 float noise(float3 p){float3 i=floor(p),f=frac(p);f=f*f*(3-2*f);float z0=lerp(lerp(hash(i),hash(i+float3(1,0,0)),f.x),lerp(hash(i+float3(0,1,0)),hash(i+float3(1,1,0)),f.x),f.y);float z1=lerp(lerp(hash(i+float3(0,0,1)),hash(i+float3(1,0,1)),f.x),lerp(hash(i+float3(0,1,1)),hash(i+float3(1,1,1)),f.x),f.y);return lerp(z0,z1,f.z);}
@@ -72,7 +73,8 @@ float sunAz=SkyAz(float2(md.x,md.z)),sunEl=asin(clamp(md.y,-1,1));float cover=_S
 float4 c=SkyCumulus(az,el,px,9,.1,size,1,cover*1.1,sunAz,sunEl);
 float4 m=SkyCumulus(az+.9,el,px,15,.055,size*.62,2,cover,sunAz,sunEl);m.rgb=lerp(m.rgb,_SkyToonBand.rgb*m.a,.2);c.rgb+=(1-c.a)*m.rgb;c.a+=(1-c.a)*m.a;
 float4 f=SkyCumulus(az+2.1,el,px,26,.025,size*.36,3,cover*.9,sunAz,sunEl);f.rgb=lerp(f.rgb,_SkyToonBand.rgb*f.a,.45);c.rgb+=(1-c.a)*f.rgb;c.a+=(1-c.a)*f.a;
-return col*(1-c.a)+c.rgb;
+// The horizon into the fog colour (_SkyToonFog.w; 0 on the stage 1 looks), over twice the band's height and below it.
+return lerp(col*(1-c.a)+c.rgb,_SkyToonFog.rgb,_SkyToonFog.w*(1-smoothstep(0,2*_SkyToon.w,up)));
 }
 float4 frag(v2f i):SV_Target {float3 d=normalize(i.dir);if(_SkyToon.x>0.5)return float4(AnimeSky(d),1);float up=max(0,d.y);float3 col=lerp(_Horizon.rgb,_Zenith.rgb,smoothstep(0,.85,up));col=lerp(col,_Horizon.rgb*.45,smoothstep(0,.45,-d.y));float3 md=normalize(_SunDir.xyz);float distance=length(d-md),halo=exp(-distance*_HaloFalloff);col+=_HaloColor.rgb*halo;float disc=1-smoothstep(_MoonSize*.96,_MoonSize,distance);col=lerp(col,_DiscColor.rgb*(_DiscShade.x+_DiscShade.y*fbm(d*170)),disc);float3 stars=d*230,cell=floor(stars);float star=step(.996,hash(cell))*pow(max(0,1-length(frac(stars)-.5)*2),8)*smoothstep(.08,.3,d.y)*_Stars;col+=float3(.62,.72,.9)*star*(.8+.2*sin(_SceneTime*.4+hash(cell)*30));float drift=_SceneTime*_CloudSpeed;float3 cloud=float3(d.x/(abs(d.y)+.28)*2+drift*.008,.35,d.z/(abs(d.y)+.28)*2+drift*.004);float density=smoothstep(.40,.72,fbm(cloud))*smoothstep(-.04,.22,d.y);col=lerp(col,lerp(_Horizon.rgb*.85,_CloudTint.rgb,halo),density*.76);return float4(col,1);}
 ENDCG } } Fallback Off }
