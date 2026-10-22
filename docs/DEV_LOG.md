@@ -35,7 +35,7 @@
     - sword, shield, daggers, the runs and rest unchanged apart from small inside swings;
     - aimed muzzles .09–.13 m from the shot origin's game distance (was .19);
     - the drawn weapon .25–.46 m from today's (was .34–.45).
-  - Full CoreTests on an LF checkout: see the merge note below.
+  - Full CoreTests not rerun: only the adapter's binding and its tests use `NativeVisualRig`. The last full LF run was at `4a9aac3`.
 - **Animation, timing, networking:** none. Only the drawn BoZo arms move; hit timing, hitboxes, weapon frames, shot origins and the wire are unchanged. Timing follows the game pose frame by frame.
 - **Next:**
   - Owner review of the before/after sheets.
