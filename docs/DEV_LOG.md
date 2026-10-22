@@ -56,11 +56,12 @@
     - All 10 pack shaders compile on Built-in.
     - 7 of 204 materials point at missing shaders (pack content).
     - The bind pose is an A-pose: upper arms 53° down, hands at 1.06 m. The avatar's T-pose is separate.
-    - Default_Boy is 1.787 m from soles to crown, with a .270 m head, which makes **6.6 heads tall** (all presets 6.5–6.8). The owner's target is 7.5–8.
+    - Default_Boy is 1.787 m from soles to crown, with a .270 m head, which makes **6.6 heads tall** (all presets 6.5–6.8).
     - Each preset weights 85–93 bones.
   - Bind-pose widths from the body FBX under the preset blendshapes. Unity's slices caught the A-pose hands, so the tool now measures each part for its next focused run.
     - Shoulders .462 m, chest .300 m, waist .241 m, hips .350 m (shoulder ÷ waist 1.92).
-    - The shoulders and V-taper are close to the target; the gap is the anime head. A head bone scale of about .87 gives 7.5 heads, and about .80 gives 8.
+    - The shoulders and V-taper are close to the target.
+  - **Owner decision (2026-10-22): keep BoZo's normal head size** (about 6.6 heads). It supersedes the 7.5–8-head target from the 2026-10-20/21 brief, so no head scaling. If revisited, a head bone scale of about .87 gives 7.5 heads and about .80 gives 8.
   - Renders in a preview scene confirm that our binder must hide body parts by tag and run a colour bake. They stay in local scratch and are never committed.
 - **Not run:** BoZo's creator scene, relay and CoreTests (docs-only change), Unity compile check, a Windows build, two clients.
 - **Animation, timing, networking:** none changed. For the record: the adapter keeps hit timing, hitboxes, damage, cooldowns, movement and the wire unchanged. Cloth is per client.
@@ -75,8 +76,7 @@
   - MeshCloth's per-frame full-mesh upload.
   - Magica's non-deterministic stepping in killcams.
   - BoZo's young anime face and large eyes against the owner's "natural eyes".
-  - The 6.6-head anime proportion against the 7.5–8 target. A head scale fixes the count but has to be checked against the face.
-- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: the head scale, the face, P1/P2, the budget, the cloth scope), then step 3 (rig adapter).
+- **Next:** owner decisions (end of `docs/BOZO-INTEGRATION.md`: the face, the chest shaping, P1/P2, the budget, the cloth scope), then step 3 (rig adapter).
 
 ## 2026-10-21 — Claude: anime map style, stage 1 (foundation and two pilots; merged into shared)
 

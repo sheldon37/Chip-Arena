@@ -226,7 +226,7 @@ are not applied.
 |---|---|---|---|---|
 | Stature, soles to crown | 1.787 m (1.83 m with its root ×1.025) | | 1.74 m | capsule 1.70 m |
 | Head, chin to crown | .270 m (width .216, depth .235) | | .218 m | |
-| Heads tall | **6.6** | 7.5–8 | 8 | |
+| Heads tall | **6.6** | 7.5–8, superseded: BoZo's normal head (2026-10-22) | 8 | |
 | Head centre | 1.651 m | | 1.631 m | head box 1.49 m |
 | Hair top | 1.81–1.83 m | | | |
 | Shoulders, bideltoid | .462 m | broad | | voxel joints ±.345 |
@@ -248,11 +248,11 @@ the shoes.
 Reading it:
 - BoZo's male is not narrow: about 46 cm across the shoulders over a 24 cm waist is a strong V-taper. The torso is shallow
   and narrow at the chest (30 cm). BodyType toward 100 plus some Muscle broadens the chest without much waist.
-- The real gap to the owner's target is the **head: 6.6 heads against 7.5–8**. The anime "young" head is .27 m tall,
-  against .22–.23 m for an adult.
-  - Head scale ≈ .87 through BoZo's `head` bone modifier gives about 7.5 heads (crown about 1.76 m).
-  - Head scale ≈ .80 gives about 8 heads.
-  - Both need checking for the face and eyes. Hair and hats scale with the head bone.
+- **Head: keep BoZo's normal size (owner decision, 2026-10-22).** The figure stays about 6.6 heads tall, which supersedes
+  the earlier 7.5–8 target. The anime "young" head is .27 m tall, against .22–.23 m for an adult.
+  - If this is revisited, a scale through BoZo's `head` bone modifier changes it: about .87 gives 7.5 heads (crown about
+    1.76 m), and about .80 gives 8.
+  - Hair and hats scale with the head bone.
 - Drift against authority, to re-measure through the adapter in step 3:
   - The visual head centre sits .16 m above the head box at rest (the Blender base .14 m; the voxel head .015 m).
   - The visual hands hang .43 m out to the side in the A-pose. That only matters before the adapter poses them.
@@ -443,7 +443,8 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
   Magica Cloth 2 replaces the proposed custom spring solver. Its fixed sub-steps come from Unity time, not our presentation
   clock (above).
 - **Owner's art direction (2026-10-20/21; the reference images are the owner's, not in the repo):**
-  - Body: lean athletic, broad shoulders, V-taper, not overly muscular, about 7.5–8 heads tall.
+  - Body: lean athletic, broad shoulders, V-taper, not overly muscular. The brief's "about 7.5–8 heads tall" is superseded
+    for BoZo: on 2026-10-22 the owner chose BoZo's normal, unscaled head, which puts the figure at about 6.6 heads.
   - Face: a human face, not a mask; natural eyes without eyeliner; hair sits on the scalp.
   - Silhouette: clean stylization, not blocky or over-carved.
   - Maps: anime/toon with a cool, saturated shade palette (`MAP-STYLE-ANIME.md`).
@@ -471,8 +472,7 @@ From `claude/lowpoly-base-model` (`5c3d6ae`, not merged; CHARACTER-LOWPOLY there
   P3 and P4 are as above.
 - **Default outfit** for a new pilot, and which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe
   and the "Sheldon Head" hood).
-- **The male body:** BoZo's male is 6.6 heads tall (target 7.5–8). Its shoulders and V-taper are already close.
-  - Approve a smaller head through the `head` bone modifier: about .87 for 7.5 heads, or .80 for 8.
+- **The male body:** the head stays at BoZo's normal size (decided 2026-10-22). The shoulders and V-taper are already close.
   - Approve some BodyType and Muscle for the chest.
   - Are BoZo's young anime face and large eyes acceptable, or should we try `Head_BasicHead` and plainer irises first?
 - **Budget:** accept about 20 k triangles at LOD0 with generated LODs (above), or ask for lighter outfits?
