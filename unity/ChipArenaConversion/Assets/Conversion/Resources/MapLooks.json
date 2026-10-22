@@ -360,7 +360,7 @@
    "dressing":"","backdrop":"","atmosphere":"","ambience":"",
    "blocks":{"dressed":true,"dust":0.04,"haze":0.15,"hazeTop":2.5,"hazeColor":13605492},
    "toon":{"on":true,"softness":0.025,"shadeEdge":0.04,"lightEdge":0.3,"halfTone":0.0,"round":0.1,"flatten":0.35,"lift":0.2,"points":0.7,"rimIntensity":0.5,"edgeLight":0.5,"shade":{"x":0.6,"y":0.72,"z":1.3},"lit":{"x":1.04,"y":1.0,"z":0.9},"rimColor":10336511,
-     "detail":0.35,"gradient":0.14,"wash":0.06,"baseShadow":0.0,
+     "detail":0.35,"gradient":0.14,"wash":0.16,"baseShadow":0.0,
      "plinths":1,"copings":1,"chips":1,"posts":1,"specular":0.55,"specularEdge":0.965,"occlusion":0.4,"occlusionHeight":0.22,
      "line":1.0,"lineFadeStart":40,"lineFadeEnd":110,"crease":0.02,"lineColor":2760256,
      "saturation":1.14,"contrast":1.06,"gradeShadow":{"x":0.95,"y":0.97,"z":1.07},"gradeLight":{"x":1.04,"y":1.0,"z":0.95},
