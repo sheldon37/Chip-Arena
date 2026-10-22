@@ -200,7 +200,9 @@ anime style. Entrances, the draft, the rooftop and every map without the style w
 - A broad soft wash replaces the fine noise (`wash`). The occlusion band replaces the old grime band (`baseShadow` 0).
 - The baked bevel and corner shade are dropped (the rounded normal lights the edges).
 - The sky's sheen lies on floors and roofs at grazing angles: the painted wet-street gradient.
-- Glass, screens, neon, the bank looks, the hazard paint and every telegraph keep their own painting. Cyber City's glass
+- Glass, screens, neon, the bank looks, the hazard paint and every telegraph keep their own painting.
+- `shadeFloor` (stage 2, 0 by default; `_ArenaToonFloor`): an albedo floor in the style, tinted by the shade tint, for a
+  night map whose near-black paint loses its form (Cyber City 0.05). Cyber City's glass
   curtain walls, holo screens and tubes take neither the height gradient nor the wash: they only lose fine noise.
 
 **Sky and grade.**
@@ -211,7 +213,8 @@ anime style. Entrances, the draft, the rooftop and every map without the style w
   soft, two tones turned by the puff's own round normal to the sun (`cloudLit`, `cloudShade`), a soft gradient up from a
   darker base, and a warm rim on the sun's side.
 - Atmospheric perspective: the style's `fogColor` and a nearer `fogStart` (the fog's end, which sets the kits' draw range,
-  never changes).
+  never changes). `skyFog` (stage 2, 0 by default) blends the anime sky's horizon into the fog colour over twice the
+  band's height (`_SkyToonFog`), so a fogged skyline never meets a bright horizon band in a hard line (the Factory, 1).
 - The grade: `NativeBloom`'s composite, after the shoulder. Saturation, log contrast about mid grey, and a split tint. It
   adds no pass. The low tier has no bloom and therefore no grade.
 
@@ -237,9 +240,10 @@ HDR for the bloom. Use neon as accents (cyan and magenta signs, red warnings), n
 - **factory** (factory-first-shift, stage 2). Dusk through the bays and the skylights, a rusty orange key against teal
   shade:
   - key #FF9C60 at 1.05 from 36 degrees, bearing 150 (the map's own); terminator at N.L 0.3;
-  - shade tint (0.56, 0.84, 1.2), lift 0.25; lit (1.12, 0.98, 0.84); rim #6CC4CC; ambient sky #5E9AA8 x .62, equator
-    #7C8A98 x .36;
-  - sky: horizon #F2A272, zenith #2C5670, band #FFB070, clouds lit #FFB47E, shade #5E7E96, cover 0.55;
+  - shade tint (0.5, 0.95, 0.95) (teal: green as strong as blue), lift 0.25; lit (1.12, 0.98, 0.84); rim #6CC4CC;
+    ambient sky #58A8A6 x .62, equator #6E8C8A x .36; shadow grade (0.9, 1.02, 1.0);
+  - sky: horizon #F2A272, zenith #2C5670, band #FFB070, clouds lit #FFB47E, shade #5E7E96, cover 0.55; the horizon
+    blends into the fog (`skyFog` 1);
   - fog #7E96A0 from 30 m; haze #8FA2A6;
   - detail 0.5 (the grating and corrugation keep their pattern); the hazard paint and stripes keep theirs;
   - wrap: plinths, copings, posts; no broken corners (a working factory);
@@ -247,13 +251,36 @@ HDR for the bloom. Use neon as accents (cyan and magenta signs, red warnings), n
     chamfer rule; the kit, the rigs and the hazard kit draw the rounded box; the scenery is marked for the outline.
 - **cybercity** (neon-rain, stage 2). Night, the closest map to the reference: a dark blue city with neon accents:
   - key: the moon, #8EA4FF at 0.6 from 54 degrees, bearing 315 (the map's own); rim #FF50D8 at 0.45;
-  - shade tint (0.56, 0.7, 1.4), lift 0.25; lit (1.0, 1.0, 1.04); ambient sky #3A4E9C x .72, equator #4A4884 x .5;
+  - shade tint (0.56, 0.7, 1.4), lift 0.35; lit (1.0, 1.0, 1.04); edge light 0.6; ambient sky #3A4E9C x .86, equator
+    #4A4884 x .6; an albedo floor (`shadeFloor` 0.05, tinted by the shade tint) so the near-black vans and booths hold
+    their form;
   - sky (night): horizon #3A2A70, zenith #0A1030, band #8A4AB0, clouds lit #7A62C0, shade #262C58, cover 0.5;
   - fog #2A3460 (the reference's shade) from 18 m; background #141A38;
   - lines #1A1438, fading 30 to 90 m in the rain; grade saturation 1.16, contrast 1.08;
   - the wet streets take the sky's sheen; the bank's looks keep their painting; the metro dressing, its backdrop and the
     train draw the rounded box; copings and posts, no plinths or broken corners.
-- All: highlight 0.55 past N.H 0.965; occlusion 0.4 over 0.22 m.
+- **quarantine** (Ward Zero: the arena and the Expedition instance share the look; stage 2). Sealed, clinical:
+  - no sky (the anime sky off), fog #04080A from 6 m (the look's), the look's dim key and rim;
+  - shade tint (0.62, 0.8, 1.3), lift 0.3; lit (1.08, 1.0, 0.88); a cool ambient floor (sky #6A8CB0 x .09, equator
+    #4E6A82 x .07); the ceiling light field and the practicals step into stairs through `ToonPoints` (points 0.75);
+  - tiles at 0.4 detail; the specimen tanks stay emissive; lines #1E1A2E, 25 to 70 m indoors;
+  - the Ward kit draws the rounded box.
+- **central-station** (Expedition Central Station, stage 2). Night under the broken glass roof:
+  - the moon key #8FAEDC at 0.5 from 62 degrees (the map's own); the anime night sky (horizon #1A2A48, zenith #050818,
+    clouds lit #4A5A8C, shade #161C34, band #34406E, cover 0.45);
+  - shade tint (0.58, 0.72, 1.36), lift 0.25; lit (1.0, 1.0, 1.04); ambient sky #2A3E78 x .12; fog #0E1A24 from 12 m;
+  - terrazzo and the cream tile flattened (flatten 0.4, detail 0.35); the sodium pools step into stairs (points 0.75);
+  - lines #14122A, 30 to 100 m; the station kit draws the rounded box. The boss (THE 6:47) is a SourceLit model: it takes
+    the ArenaToon lighting and, as an actor, no environment outline.
+- **ironworks** (Expedition City Ironworks, stage 2). Sealed, the furnaces lit:
+  - no sky, the look's fog #221A16 from 14 m and its dim key;
+  - shade tint (0.62, 0.76, 1.3), lift 0.3, a cool ambient (sky #4A6AA0 x .16, equator #4E5468 x .1) to cool the shade
+    against the furnaces; the furnace light comes through the point lights untinted, so the shade keeps the heat glow
+    (in the renders the warm points dominate: see the risks); lit (1.1, 1.0, 0.88); points 0.6 (softer stairs on the
+    furnace light);
+  - black iron at 0.4 detail; the molten metal stays `NativeMolten` (HDR, unstepped); the heat haze stays;
+  - lines #1E1418, 25 to 90 m; the Ironworks kit draws the rounded box.
+- All: highlight 0.55 (0.5 on the stage 2 interiors) past N.H 0.965; occlusion 0.4 (0.45) over 0.22 m.
 - The raw looks (golden-demolition's pinned preset, the city's dusk) are untouched underneath. The style's `key`, `rim`,
   `ambient` and `sky` replace them only while it is on.
 
@@ -339,8 +366,8 @@ HDR for the bloom. Use neon as accents (cyan and magenta signs, red warnings), n
 
 ## 6. Stage 2 plan
 
-Status: milestone 1 (the shared work, the Factory and Cyber City) is implemented on `claude/anime-map-style-2`, not merged.
-Ward Zero, Central Station and the Ironworks are milestone 2.
+Status: milestone 1 (the shared work, the Factory and Cyber City) and milestone 2 (Ward Zero, Central Station, the
+Ironworks, and the milestone 1 review's polish) are implemented on `claude/anime-map-style-2`, not merged.
 
 ### Maps
 
@@ -500,8 +527,18 @@ Match the environment's `lineColor` and width to BoZo's outline settings when th
 - **Triangles.** 444 a part on the wrap (x2.4 the legacy); the town draws its small parts on the rounded box (section 4).
 - **First hit.** Stage 2 keeps the bands through S1 and S2 (the wrap variants); the stub still loses its coping at S3.
   The low tier keeps the legacy chipped meshes.
-- **Big brick walls in deep shade** still read mostly as one flat maroon at combat range where the brick patches thin
-  out (Brickfall's crate view). The next levers are a stronger broad wash on Brickfall or a light falloff across a face.
+- **Big brick walls in deep shade** read mostly as one maroon at combat range where the brick patches thin out
+  (Brickfall's crate view). Milestone 2 raised Brickfall's broad wash (0.16); a light falloff across a face is the next
+  lever if it is still too flat.
+- **The Exchange's cupola** is four turned boxes per tier (the city kit's `Round`), so its crown reads as a stepped star
+  behind the pediment. A true dome needs a round mesh (a new draw) or new kit geometry (the legacy look and the city's
+  part budgets); left as is.
+- **The Ironworks still reads warm.** It is lit almost only by the furnace points under a warm fog, so the cool shade
+  barely shows (a trial at lift 0.45 with a brighter cool ambient changed nothing visible), and the rust on the ingot
+  moulds flattens away at 0.4 detail, so the hall reads a little darker than the legacy. A cooler fog is the next lever,
+  at the cost of the furnace mood.
+- **Ward Zero's look is shared.** The quarantine look styles both the Ward Zero arena (`siren`) and the Expedition
+  instance. Its troffers' colour comes from the ward light field (Core, by mood), not from the style.
 - **Toothed ends** are found from the blocks as placed at load. A wall freed later by a neighbour's destruction keeps a
   clean end (no re-scan per frame).
 - **Outline noise.** Very grazing floors near the fade start can draw stray crease lines. The plane test, the footprint fade
