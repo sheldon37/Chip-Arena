@@ -62,7 +62,10 @@ namespace ChipArena.UnityConversion
         }
         private static readonly int MoltenSizeId=Shader.PropertyToID("_MoltenSize"),MoltenFlowId=Shader.PropertyToID("_MoltenFlow"),MoltenHeatId=Shader.PropertyToID("_MoltenHeat"),MoltenStyleId=Shader.PropertyToID("_MoltenStyle"),
             MoltenClockId=Shader.PropertyToID("_MoltenClock"),HeatClockId=Shader.PropertyToID("_HeatClock");
-        private Material iwMaterial,iwMolten,iwHaze;private Mesh iwMesh,iwCube,iwHazeMesh;private bool iwFailed;private NativeFxDraw iwDraw;private readonly NativeIronworksSceneFx iwFx=new NativeIronworksSceneFx();
+        private Material iwMaterial,iwMolten,iwHaze;private Mesh iwMesh,iwCube,iwHazeMesh,iwToon;
+        // The anime map style draws the rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh IronShape=>NativeLighting.StyleActive?(iwToon??=MetroMeshOf(NativeToonMesh.Build())):iwMesh;
+        private bool iwFailed;private NativeFxDraw iwDraw;private readonly NativeIronworksSceneFx iwFx=new NativeIronworksSceneFx();
         private ContentMap iwMap;private NativeIronworksKit iwKit;private NativeIronFxScene iwScene;private NativeIronworksLights iwLights;private ExpeditionAreaLayout iwArea;private bool iwAreaRead;
         private readonly IronworksHazardView[] iwViews=new IronworksHazardView[NativeIronworksHazards.Count];
         private readonly List<MetroBatch> iwBatches=new List<MetroBatch>();private int iwUsed;private readonly List<IronMoltenBatch> iwMelt=new List<IronMoltenBatch>();private int iwMeltUsed;
@@ -173,9 +176,9 @@ namespace ChipArena.UnityConversion
         private void IronDraw(MetroBatch b)
         {
             if(b.Count==0)return;MetroUpload(b);IronworksInstances+=b.Count;
-            if(UsesInstancing){Graphics.DrawMeshInstanced(iwMesh,0,iwMaterial,b.M,b.Count,b.Block,ShadowCastingMode.Off,true,0,null);IronworksDraws++;return;}
+            if(UsesInstancing){Graphics.DrawMeshInstanced(IronShape,0,iwMaterial,b.M,b.Count,b.Block,ShadowCastingMode.Off,true,0,null);IronworksDraws++;return;}
             var one=iwOne??=new MaterialPropertyBlock();
-            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(iwMesh,b.M[i],iwMaterial,0,null,0,one,ShadowCastingMode.Off,true);IronworksDraws++;}
+            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(IronShape,b.M[i],iwMaterial,0,null,0,one,ShadowCastingMode.Off,true);IronworksDraws++;}
         }
         private void DrawIronMolten(float now)
         {
@@ -258,7 +261,7 @@ namespace ChipArena.UnityConversion
         private void DisposeIronworks()
         {
             if(iwFieldTex!=null)NativeLighting.WardFieldOff();ReleaseIronField();
-            if(iwMesh!=null)CapturedAnimation.Release(iwMesh);if(iwCube!=null)CapturedAnimation.Release(iwCube);if(iwHazeMesh!=null)CapturedAnimation.Release(iwHazeMesh);
+            if(iwMesh!=null)CapturedAnimation.Release(iwMesh);if(iwToon!=null)CapturedAnimation.Release(iwToon);iwToon=null;if(iwCube!=null)CapturedAnimation.Release(iwCube);if(iwHazeMesh!=null)CapturedAnimation.Release(iwHazeMesh);
             if(iwMaterial!=null)CapturedAnimation.Release(iwMaterial);if(iwMolten!=null)CapturedAnimation.Release(iwMolten);if(iwHaze!=null)CapturedAnimation.Release(iwHaze);
             iwMesh=iwCube=iwHazeMesh=null;iwMaterial=iwMolten=iwHaze=null;iwDraw?.Dispose();iwDraw=null;iwBatches.Clear();iwMelt.Clear();iwHazeV.Clear();iwHazeC.Clear();iwHazeUv.Clear();
             iwMap=null;iwKit=null;iwScene=null;iwLights=null;iwArena=null;iwGeneration=-1;iwLast=-1;

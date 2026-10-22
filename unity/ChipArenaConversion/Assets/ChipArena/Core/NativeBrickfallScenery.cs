@@ -197,6 +197,14 @@ namespace ChipArena.UnityConversion
             Bar(b,x-1.1,y+.3,z-1.1,x+1.1,y+leg-.3,z-1.1,.06,.06,Iron);Bar(b,x+1.1,y+.3,z+1.1,x-1.1,y+leg-.3,z+1.1,.06,.06,Iron);
             Bar(b,x-1.1,y+.3,z+1.1,x-1.1,y+leg-.3,z-1.1,.06,.06,Iron);Bar(b,x+1.1,y+.3,z-1.1,x+1.1,y+leg-.3,z+1.1,.06,.06,Iron);
             b.Box(x,y+leg+.06,z,3,.12,3,Iron);double h=3.2,t=y+leg+.12;
+            if(b.Anime)
+            {
+                // The anime style: a round tank (four turned boxes, a 16-sided barrel), round hoops and a smooth cone in six steps.
+                for(int k=0;k<4;k++)b.Box(x,t+h/2,z,2.7,h,2.7,wood,yaw:22.5*k,shade:.95-.02*k);
+                for(int r=0;r<3;r++){double hy=t+.4+r*1.15;for(int k=0;k<4;k++)b.Box(x,hy,z,2.78,.07,2.78,Iron,yaw:22.5*k);}
+                for(int r=0;r<6;r++){double s=2.6-r*.42,cy=t+h+.09+r*.18;for(int k=0;k<2;k++)b.Box(x,cy,z,s,.18,s,Tar,yaw:45*k+22.5*(r%2));}
+                b.Box(x,t+h+1.22,z,.12,.4,.12,Iron);return;
+            }
             b.Box(x,t+h/2,z,2.7,h,2.7,wood,shade:.95);b.Box(x,t+h/2,z,2.7,h,2.7,wood,yaw:45,shade:.9);
             for(int r=0;r<3;r++){double hy=t+.4+r*1.15;b.Box(x,hy,z,2.78,.07,2.78,Iron);b.Box(x,hy,z,2.78,.07,2.78,Iron,yaw:45);}
             for(int r=0;r<3;r++){double s=2.3-r*.7,cy=t+h+.17+r*.34;b.Box(x,cy,z,s,.34,s,Tar);b.Box(x,cy,z,s,.34,s,Tar,yaw:45);}
@@ -208,7 +216,9 @@ namespace ChipArena.UnityConversion
             b.Box((x0+x1)/2,y+.03,(z0+z1)/2,x1-x0-.7,.06,z1-z0-.7,Tar);
             double w=x1-x0,d=z1-z0;
             if(Hash(seed,20)<.7){double bx=x0+w*Range(.2,.8,seed,21),bz=z0+d*Range(.3,.7,seed,22);b.Box(bx,y+1.4,bz,2.8,2.8,2.4,Pick(Bricks,seed,23),shade:.85);b.Box(bx,y+2.86,bz,3,.12,2.6,Concrete);}
-            int stacks=1+(int)(Hash(seed,24)*3);for(int i=0;i<stacks;i++){double cx=x0+.8+(w-1.6)*Hash(seed,25,i),cz=z0+.8+(d-1.6)*Hash(seed,26,i),h=Range(1.2,2.6,seed,27,i);b.Box(cx,y+h/2,cz,.8,h,.8,BrickDark,grime:.3);b.Box(cx,y+h+.06,cz,.95,.12,.95,Concrete);}
+            int stacks=1+(int)(Hash(seed,24)*3);for(int i=0;i<stacks;i++){double cx=x0+.8+(w-1.6)*Hash(seed,25,i),cz=z0+.8+(d-1.6)*Hash(seed,26,i),h=Range(1.2,2.6,seed,27,i);b.Box(cx,y+h/2,cz,.8,h,.8,BrickDark,grime:.3);b.Box(cx,y+h+.06,cz,.95,.12,.95,Concrete);
+                // The anime style: octagonal stacks with a round pot.
+                if(b.Anime){b.Box(cx,y+h/2,cz,.8,h,.8,BrickDark,yaw:45,grime:.3);b.Box(cx,y+h+.06,cz,.95,.12,.95,Concrete,yaw:45);b.Box(cx,y+h+.3,cz,.3,.36,.3,BrickDark,yaw:22.5);b.Box(cx,y+h+.3,cz,.3,.36,.3,BrickDark,yaw:67.5);}}
             if(tower&&w>7&&d>7)WaterTower(b,x0+w*Range(.25,.75,seed,28),y,z0+d*Range(.3,.7,seed,29),seed);
         }
         /// <summary>A ghost sign: a faded painted advertisement on a side wall (background and two letter bars).</summary>
@@ -685,9 +695,10 @@ namespace ChipArena.UnityConversion
 
         // ---------------- the whole backdrop ----------------
         /// <summary>Builds the five static sector meshes (Near, North, East, South, West).</summary>
-        public static NativeSceneryMesh[] Build()
+        /// <summary>The five sector meshes; `anime` builds the anime map style's rounder tanks and stacks (NativeSceneryBuilder.Anime).</summary>
+        public static NativeSceneryMesh[] Build(bool anime=false)
         {
-            var b=new NativeSceneryBuilder(Sectors){ExcludeX=InnerX,ExcludeZ=InnerZ};
+            var b=new NativeSceneryBuilder(Sectors){ExcludeX=InnerX,ExcludeZ=InnerZ,Anime=anime};
             b.Current=Near;Streets(b);Viaduct(b);MercerLot(b);
             // East: the E row around the Mercer lot (z -22..6), whose neighbours show party-wall ghosts, and the far rows.
             b.Current=East;

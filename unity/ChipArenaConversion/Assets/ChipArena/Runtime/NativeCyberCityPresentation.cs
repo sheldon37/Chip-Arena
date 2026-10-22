@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private sealed class MetroBatch{public readonly Matrix4x4[] M=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];public int Count;public readonly MaterialPropertyBlock Block=new MaterialPropertyBlock();}
-        private Material metroMaterial;private Mesh metroMesh;private bool metroFailed;private NativeFxDraw metroDraw;private NativeCyberCityFx metroFx;private readonly NativeFxLight metroLight=new NativeFxLight();
+        private Material metroMaterial;private Mesh metroMesh,metroToon;private bool metroFailed;private NativeFxDraw metroDraw;private NativeCyberCityFx metroFx;private readonly NativeFxLight metroLight=new NativeFxLight();
         private NativeCyberBox[] metroBackdrop;private readonly List<MetroBatch> metroBack=new List<MetroBatch>(),metroCast=new List<MetroBatch>(),metroTrim=new List<MetroBatch>();private int metroCastUsed,metroTrimUsed;
         private NativeCyberCityKit metroKit;private NativeCyberFxScene metroScene;private MapHazard[] metroHazards;private NativeHazardState[] metroStates=Array.Empty<NativeHazardState>();
         private NativePropBody[] metroParents=Array.Empty<NativePropBody>();private float[] metroSeeds=Array.Empty<float>();private MaterialPropertyBlock metroOne;private readonly Dictionary<string,int> metroIndex=new Dictionary<string,int>();
@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
             if(metroPlateBlock==null){metroPlateBlock=new MaterialPropertyBlock();var lin=MetroLinear(0x22232A);metroPlateBlock.SetVector(MetroSizeId,new Vector4(40,.25f,32,NativeBlockLooks.Chamfer));metroPlateBlock.SetVector(MetroRestId,Vector4.zero);metroPlateBlock.SetVector(MetroColorId,new Vector4(lin.r,lin.g,lin.b,1));metroPlateBlock.SetVector(MetroLookId,new Vector4(NativeCyberCityLooks.Road,1,.5f,NativeCyberCityLooks.Bank));}
             var look=NativeMapLooks.Find(NativeLighting.LookSet(),NativeCyberCityLooks.MapId)?.blocks;
             if(look!=null){var h=MetroLinear(look.hazeColor);Shader.SetGlobalVector(MetroHazeId,new Vector4(h.r,h.g,h.b,look.haze));Shader.SetGlobalFloat(MetroHazeTopId,look.hazeTop>0?look.hazeTop:1);Shader.SetGlobalFloat(MetroDustId,look.dust);}
-            Graphics.DrawMesh(metroPlate,metroPlateMatrix,metroMaterial,layer,null,0,metroPlateBlock,ShadowCastingMode.Off,true);
+            Graphics.DrawMesh(NativeLighting.StyleActive?MetroShape:metroPlate,metroPlateMatrix,metroMaterial,layer,null,0,metroPlateBlock,ShadowCastingMode.Off,true);
         }
         private MaterialPropertyBlock metroPlateBlock;
         private static readonly int MetroHazeId=Shader.PropertyToID("_ArenaHaze"),MetroHazeTopId=Shader.PropertyToID("_ArenaHazeTop"),MetroDustId=Shader.PropertyToID("_ArenaDust");
@@ -195,15 +195,17 @@ namespace ChipArena.UnityConversion
             if(b.Count==0)return;
             // Static backdrop batches keep the arrays they were uploaded with; kit batches upload this frame's.
             if(layer==0)MetroUpload(b);
-            if(UsesInstancing){Graphics.DrawMeshInstanced(metroMesh,0,metroMaterial,b.M,b.Count,b.Block,shadows,true,layer,null);return;}
+            if(UsesInstancing){Graphics.DrawMeshInstanced(MetroShape,0,metroMaterial,b.M,b.Count,b.Block,shadows,true,layer,null);return;}
             // Compatibility rendering: the kit one by one; the backdrop (thousands of boxes) is left out.
             // Unity native allocations are forbidden in MonoBehaviour field initializers.
             // Reuse one block, created only on the main-thread compatibility draw path.
             if(layer!=0)return;var one=metroOne??=new MaterialPropertyBlock();
-            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(metroMesh,b.M[i],metroMaterial,0,null,0,one,shadows,true);}
+            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(MetroShape,b.M[i],metroMaterial,0,null,0,one,shadows,true);}
         }
         // The stage-0 block mesh as NativeArenaDressing builds it: the preview cube in POSITION, the lattice in TEXCOORD0/1, the
         // baked shade in COLOR; bounds that cover any block (the shader moves the vertices out to the instance's size).
+        // The anime map style draws the rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh MetroShape=>NativeLighting.StyleActive?(metroToon??=MetroMeshOf(NativeToonMesh.Build())):metroMesh;
         private static Mesh MetroMeshOf(NativeBlockLooks.StageMesh s)
         {
             int n=s.Vertices;var v=new Vector3[n];var normals=new Vector3[n];var colors=new Color[n];var a=new List<Vector4>(n);var b=new List<Vector4>(n);
@@ -212,7 +214,7 @@ namespace ChipArena.UnityConversion
         }
         private void DisposeCyberCity()
         {
-            CapturedAnimation.Release(metroMesh);CapturedAnimation.Release(metroMaterial);metroMesh=null;metroMaterial=null;metroPlate=null;metroDraw?.Dispose();metroDraw=null;
+            CapturedAnimation.Release(metroMesh);if(metroToon!=null)CapturedAnimation.Release(metroToon);metroToon=null;CapturedAnimation.Release(metroMaterial);metroMesh=null;metroMaterial=null;metroPlate=null;metroDraw?.Dispose();metroDraw=null;
             metroBack.Clear();metroCast.Clear();metroTrim.Clear();metroKit=null;metroScene=null;metroArena=null;metroGeneration=-1;metroHazards=null;metroPlateBlock=null;metroExits=null;metroExitsMap=null;
         }
     }

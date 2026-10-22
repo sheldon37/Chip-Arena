@@ -37,6 +37,9 @@ namespace ChipArena.UnityConversion
         private sealed class Group {public readonly List<float> P=new List<float>(),N=new List<float>(),C=new List<float>(),E=new List<float>();public readonly List<int> T=new List<int>();public int Boxes;}
         private readonly Group[] groups;
         public int Current;public double ExcludeX=double.NaN,ExcludeZ=double.NaN;
+        /// <summary>The anime map style's scenery (docs/MAP-STYLE-ANIME.md): round things built rounder (more turned boxes).
+        /// Off: every builder draws exactly its legacy boxes.</summary>
+        public bool Anime;
         public NativeSceneryBuilder(int count){groups=new Group[count];for(int i=0;i<count;i++)groups[i]=new Group();}
         public int Count(int group)=>groups[group].Boxes;
         /// <summary>sRGB channel to linear (the exact piecewise curve, as Unity's Color.linear).</summary>

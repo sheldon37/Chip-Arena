@@ -35,7 +35,10 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed partial class ArenaPresentation
     {
-        private Material wzMaterial;private Mesh wzMesh;private bool wzFailed;private NativeFxDraw wzDraw;private NativeWardZeroFx wzFx;
+        private Material wzMaterial;private Mesh wzMesh,wzToon;
+        // The anime map style draws the rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh WardShape=>NativeLighting.StyleActive?(wzToon??=MetroMeshOf(NativeToonMesh.Build())):wzMesh;
+        private bool wzFailed;private NativeFxDraw wzDraw;private NativeWardZeroFx wzFx;
         private readonly List<MetroBatch> wzBatches=new List<MetroBatch>();private int wzUsed;private MaterialPropertyBlock wzOne,wzPit;private Material wzPitMaterial;
         private ContentMap wzMap;private NativeWardZeroKit wzKit;private NativeWardFxScene wzScene;private NativeWardZeroLights wzLights;private MapHazard[] wzHazards=Array.Empty<MapHazard>();private NativeHazardState[] wzStates=Array.Empty<NativeHazardState>();
         private NativeWardEntry[] wzEntries;private float[] wzOpen=Array.Empty<float>();private bool[] wzBreached=Array.Empty<bool>();private readonly bool[] wzSongOn=new bool[2];private readonly float[] wzSongWarn=new float[2];
@@ -213,10 +216,10 @@ namespace ChipArena.UnityConversion
         {
             if(b.Count==0)return;MetroUpload(b);
             // Indoors the look's key light casts no shadows, so the dressing casts none either (it still receives).
-            if(UsesInstancing){Graphics.DrawMeshInstanced(wzMesh,0,wzMaterial,b.M,b.Count,b.Block,ShadowCastingMode.Off,true,0,null);return;}
+            if(UsesInstancing){Graphics.DrawMeshInstanced(WardShape,0,wzMaterial,b.M,b.Count,b.Block,ShadowCastingMode.Off,true,0,null);return;}
             // Compatibility rendering: one by one, reusing one block made on this main-thread draw path (never a field initializer).
             var one=wzOne??=new MaterialPropertyBlock();
-            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(wzMesh,b.M[i],wzMaterial,0,null,0,one,ShadowCastingMode.Off,true);}
+            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(WardShape,b.M[i],wzMaterial,0,null,0,one,ShadowCastingMode.Off,true);}
         }
         private void DrawWardFx(float time,Camera camera)
         {
@@ -260,7 +263,7 @@ namespace ChipArena.UnityConversion
         private void DisposeWardZero()
         {
             ReleaseWardField();NativeLighting.WardFieldOff();
-            CapturedAnimation.Release(wzMesh);CapturedAnimation.Release(wzMaterial);if(wzPitMaterial!=null)CapturedAnimation.Release(wzPitMaterial);wzMesh=null;wzMaterial=null;wzPitMaterial=null;wzDraw?.Dispose();wzDraw=null;
+            CapturedAnimation.Release(wzMesh);if(wzToon!=null)CapturedAnimation.Release(wzToon);wzToon=null;CapturedAnimation.Release(wzMaterial);if(wzPitMaterial!=null)CapturedAnimation.Release(wzPitMaterial);wzMesh=null;wzMaterial=null;wzPitMaterial=null;wzDraw?.Dispose();wzDraw=null;
             wzBatches.Clear();wzMap=null;wzKit=null;wzScene=null;wzLights=null;wzArena=null;wzGeneration=-1;wzMoodSet=false;wzLast=-1;
         }
     }

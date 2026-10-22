@@ -25,7 +25,9 @@ namespace ChipArena.UnityConversion
         public bool HazardKitGallery,HazardKitMusic;
         /// <summary>How hard kit lamps flash (ConversionGame from Settings · Alarm lights and Reduced effects).</summary>
         public NativeKitFlash KitFlash=NativeKitFlash.Full;
-        private Material kitMaterial;private Mesh kitMesh;private bool kitFailed;private NativeFxDraw kitDraw;private NativeWeaponFxDraw kitWeapon;private MaterialPropertyBlock kitOne;
+        private Material kitMaterial;private Mesh kitMesh,kitToon;private bool kitFailed;private NativeFxDraw kitDraw;private NativeWeaponFxDraw kitWeapon;private MaterialPropertyBlock kitOne;
+        // The anime map style draws the rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
+        private Mesh KitShape=>NativeLighting.StyleActive?(kitToon??=MetroMeshOf(NativeToonMesh.Build())):kitMesh;
         private readonly List<MetroBatch> kitBatches=new List<MetroBatch>();private int kitUsed;private readonly NativeKitLightPool kitLights=new NativeKitLightPool();private bool kitLightsSent;private float kitLast=-1;
 
         // SourceWorld: the arena or the killcam replay arena.
@@ -73,9 +75,9 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<kitUsed;i++)
             {
                 var b=kitBatches[i];if(b.Count==0)continue;MetroUpload(b);
-                if(UsesInstancing){Graphics.DrawMeshInstanced(kitMesh,0,kitMaterial,b.M,b.Count,b.Block,ShadowCastingMode.Off,true,0,null);continue;}
+                if(UsesInstancing){Graphics.DrawMeshInstanced(KitShape,0,kitMaterial,b.M,b.Count,b.Block,ShadowCastingMode.Off,true,0,null);continue;}
                 var one=kitOne??=new MaterialPropertyBlock();
-                for(int k=0;k<b.Count;k++){one.Clear();one.SetVector(MetroSizeId,b.Size[k]);one.SetVector(MetroRestId,b.Rest[k]);one.SetVector(MetroColorId,b.Color[k]);one.SetVector(MetroLookId,b.Look[k]);Graphics.DrawMesh(kitMesh,b.M[k],kitMaterial,0,null,0,one,ShadowCastingMode.Off,true);}
+                for(int k=0;k<b.Count;k++){one.Clear();one.SetVector(MetroSizeId,b.Size[k]);one.SetVector(MetroRestId,b.Rest[k]);one.SetVector(MetroColorId,b.Color[k]);one.SetVector(MetroLookId,b.Look[k]);Graphics.DrawMesh(KitShape,b.M[k],kitMaterial,0,null,0,one,ShadowCastingMode.Off,true);}
             }
         }
         private void DrawKitFx(NativeKitScene scene,float time,Camera camera)
@@ -109,7 +111,7 @@ namespace ChipArena.UnityConversion
         }
         private void DisposeHazardKit()
         {
-            CapturedAnimation.Release(kitMesh);CapturedAnimation.Release(kitMaterial);kitMesh=null;kitMaterial=null;kitDraw?.Dispose();kitDraw=null;kitWeapon?.Dispose();kitWeapon=null;kitBatches.Clear();kitLights.Clear();kitLast=-1;
+            CapturedAnimation.Release(kitMesh);if(kitToon!=null)CapturedAnimation.Release(kitToon);kitToon=null;CapturedAnimation.Release(kitMaterial);kitMesh=null;kitMaterial=null;kitDraw?.Dispose();kitDraw=null;kitWeapon?.Dispose();kitWeapon=null;kitBatches.Clear();kitLights.Clear();kitLast=-1;
             if(kitLightsSent){NativeLighting.KitLights(null,null,0,Vector3.zero);kitLightsSent=false;}
         }
     }

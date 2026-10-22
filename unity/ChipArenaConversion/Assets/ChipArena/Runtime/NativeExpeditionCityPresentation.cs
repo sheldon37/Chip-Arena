@@ -34,6 +34,9 @@ namespace ChipArena.UnityConversion
     {
         private Material townMaterial;private Mesh townMesh,townToon;private bool townFailed;private NativeFxDraw townDraw;private NativeExpeditionCityFx townFx;
         private NativeCityBackdropBox[] townBackdrop;private NativeCityBackdropFire[] townFires;private readonly List<MetroBatch> townBack=new List<MetroBatch>(),townCast=new List<MetroBatch>(),townTrim=new List<MetroBatch>();private int townCastUsed,townTrimUsed;
+        // The anime style's wrap goes to the parts that need it (Core NativeMapStyle.NeedsWrap), drawn first: the batches holding any
+        // of them take the wrap, the rest the rounded box (the same count of batches; a third fewer kit vertices, a quarter of its triangles).
+        private int[] townOrder=Array.Empty<int>();private int townWrapParts,townCastWrap,townTrimWrap;
         private ContentMap townMap;private NativeExpeditionCityKit townKit;private NativeCityFxScene townScene;private NativeExpeditionCityLights townLights;private ExpeditionAreaLayout townArea;private bool townAreaRead;private float[] townReach=Array.Empty<float>(),townBehind=Array.Empty<float>();
         private NativePropBody[] townParents=Array.Empty<NativePropBody>();private bool[] townOut=Array.Empty<bool>();private Vector3[] townNudge=Array.Empty<Vector3>();private float[] townSeeds=Array.Empty<float>();
         private readonly Dictionary<string,int> townIndex=new Dictionary<string,int>();private MaterialPropertyBlock townOne;private float townLast=-1;private NativeArena townArena;private int townGeneration=-1;
@@ -64,6 +67,7 @@ namespace ChipArena.UnityConversion
         }
         // The anime map style draws its rounded box (Core NativeToonMesh) in place of the legacy S0 mesh, made once on first use.
         private Mesh TownMesh=>NativeLighting.StyleWrap?(townWrap??=MetroMeshOf(NativeToonMesh.Wrap())):NativeLighting.StyleActive?(townToon??=MetroMeshOf(NativeToonMesh.Build())):townMesh;private Mesh townWrap;
+        private Mesh TownSmall=>NativeLighting.StyleWrap?(townToon??=MetroMeshOf(NativeToonMesh.Build())):TownMesh;
         private bool EnsureExpeditionCity()
         {
             if(townMaterial!=null)return true;if(townFailed)return false;
@@ -97,6 +101,7 @@ namespace ChipArena.UnityConversion
             townScene=NativeCityFxScene.Build(blocks,townKit,townFires,look,townHub);townLights=NativeExpeditionCityLights.Build(townKit,look);HubWardSegments(map);
             townParents=new NativePropBody[blocks.Length];townOut=new bool[blocks.Length];townNudge=new Vector3[blocks.Length];townIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)townIndex[blocks[i].id]=i;
             townSeeds=new float[townKit.Parts.Length];for(int i=0;i<townSeeds.Length;i++)townSeeds[i]=NativeBlockLooks.Seed(blocks[townKit.Parts[i].Parent].id+"#"+i);
+            townOrder=new int[townKit.Parts.Length];int w=0;for(int i=0;i<townOrder.Length;i++)if(TownNeedsWrap(i))townOrder[w++]=i;townWrapParts=w;for(int i=0;i<townOrder.Length;i++)if(!TownNeedsWrap(i))townOrder[w++]=i;
             float far=NativeExpeditionCityKit.FarRange(look);townReach=new float[townKit.Parts.Length];for(int i=0;i<townReach.Length;i++){float r=NativeExpeditionCityKit.Range(townKit.Parts[i],far);townReach[i]=r*r;}
             townBehind=new float[townKit.FaceCulls.Length+1];
             townMoved=new bool[blocks.Length];var parts=townKit.Parts;townRestMatrix=new Matrix4x4[parts.Length];townRestSpot=new Vector4[parts.Length];townRestColor=new Vector4[parts.Length];
@@ -113,13 +118,14 @@ namespace ChipArena.UnityConversion
             townColorLinear=QualitySettings.activeColorSpace==ColorSpace.Linear;var parts=townKit?.Parts;if(parts==null)return;
             for(int i=0;i<parts.Length;i++){NativeExpeditionCityKit.Drive(parts[i],0,out float r,out float g,out float bl,out float level);townRestColor[i]=MetroColor(r,g,bl,level);}
         }
+        private bool TownNeedsWrap(int i){var p=townKit.Parts[i];return NativeMapStyle.NeedsWrap(p.Hx,p.Hy,p.Hz,p.Look,p.Flags);}
         private void DrawTownKit(NativeArena arena,float now,Camera eye)
         {
-            townCastUsed=townTrimUsed=0;Vector3 from=eye!=null?eye.transform.position:Vector3.zero,to=from;bool fade=eye!=null&&!FirstPerson&&arena.ViewPilot?.Body!=null;if(fade)to=arena.ViewPilot.Body.position+Vector3.up*.9f;
+            townCastUsed=townTrimUsed=townCastWrap=townTrimWrap=0;Vector3 from=eye!=null?eye.transform.position:Vector3.zero,to=from;bool fade=eye!=null&&!FirstPerson&&arena.ViewPilot?.Body!=null;if(fade)to=arena.ViewPilot.Body.position+Vector3.up*.9f;
             var parts=townKit.Parts;bool lean=LowGraphics||!UsesInstancing,near=eye!=null;Vector3 at=from;if(near)townKit.Hide(at.x,at.y,at.z,townBehind);
-            for(int i=0;i<parts.Length;i++)
+            for(int k=0;k<parts.Length;k++)
             {
-                var part=parts[i];if(part.Detail&&lean)continue;var prop=townParents[part.Parent];if(prop==null||townOut[part.Parent])continue;
+                int i=townOrder[k];var part=parts[i];if(part.Detail&&lean)continue;var prop=townParents[part.Parent];if(prop==null||townOut[part.Parent])continue;
                 if(near){var spot=townRestSpot[i];float sx=spot.x-at.x,sy=spot.y-at.y,sz=spot.z-at.z;if(sx*sx+sy*sy+sz*sz>townReach[i]||part.Face!=0&&townBehind[part.Face]<=part.Back)continue;}
                 Matrix4x4 m;if(townMoved[part.Parent]){var t=prop.transform;Quaternion q=t.rotation;m=Matrix4x4.TRS(t.position+townNudge[part.Parent]+q*new Vector3(part.X,part.Y,part.Z),q*new Quaternion(part.Qx,part.Qy,part.Qz,part.Qw),Vector3.one);}else m=townRestMatrix[i];
                 if(fade&&part.Fade&&MetroBetween(from,to,new Vector3(m.m03,m.m13,m.m23),new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
@@ -127,16 +133,17 @@ namespace ChipArena.UnityConversion
                 var list=part.Shadow?townCast:townTrim;ref int used=ref part.Shadow?ref townCastUsed:ref townTrimUsed;
                 if(used==0||list[used-1].Count==NativeBlockLooks.Chunk){if(used==list.Count)list.Add(new MetroBatch());list[used].Count=0;used++;}
                 Put(list[used-1],m,new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),townRestSpot[i],color,new Vector4(part.Look,1,townSeeds[i],part.Flags));
+                if(k<townWrapParts){if(part.Shadow)townCastWrap=used;else townTrimWrap=used;}
             }
-            for(int i=0;i<townCastUsed;i++)TownDraw(townCast[i],ShadowCastingMode.On);for(int i=0;i<townTrimUsed;i++)TownDraw(townTrim[i],ShadowCastingMode.Off);
+            for(int i=0;i<townCastUsed;i++)TownDraw(townCast[i],ShadowCastingMode.On,i<townCastWrap?TownMesh:TownSmall);for(int i=0;i<townTrimUsed;i++)TownDraw(townTrim[i],ShadowCastingMode.Off,i<townTrimWrap?TownMesh:TownSmall);
         }
-        private void TownDraw(MetroBatch b,ShadowCastingMode shadows)
+        private void TownDraw(MetroBatch b,ShadowCastingMode shadows,Mesh mesh)
         {
             if(b.Count==0)return;MetroUpload(b);TownInstances+=b.Count;
-            if(UsesInstancing){Graphics.DrawMeshInstanced(TownMesh,0,townMaterial,b.M,b.Count,b.Block,shadows,true,0,null);TownDraws++;return;}
+            if(UsesInstancing){Graphics.DrawMeshInstanced(mesh,0,townMaterial,b.M,b.Count,b.Block,shadows,true,0,null);TownDraws++;return;}
             // Compatibility rendering: one by one (detail parts already left out), reusing one block made on this main-thread path.
             var one=townOne??=new MaterialPropertyBlock();
-            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(TownMesh,b.M[i],townMaterial,0,null,0,one,shadows,true);TownDraws++;}
+            for(int i=0;i<b.Count;i++){one.Clear();one.SetVector(MetroSizeId,b.Size[i]);one.SetVector(MetroRestId,b.Rest[i]);one.SetVector(MetroColorId,b.Color[i]);one.SetVector(MetroLookId,b.Look[i]);Graphics.DrawMesh(mesh,b.M[i],townMaterial,0,null,0,one,shadows,true);TownDraws++;}
         }
         // The skyline: static batches (uploaded once) on the backdrop layer; compatibility rendering leaves it out.
         private void DrawTownBackdrop()
