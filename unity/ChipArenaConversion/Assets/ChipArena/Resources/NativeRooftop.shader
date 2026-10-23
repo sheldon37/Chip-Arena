@@ -44,7 +44,7 @@ Shader "ChipArena/NativeRooftop"
             // into a few flat values, two ambient bands (sky-facing and the rest), the sign's and the cyan spill in the style's
             // stairs, the toon sky's sheen on the wet roof in a crisp fresnel band. Puddles: the toon sky in a crisp mirror band
             // with the sign's magenta streak and crisp rain rings.
-            float3 RoofToonSurface(float4 uv0,float4 uv1,float3 world,float3 n)
+            float3 RoofToonSurface(float4 uv0,float4 uv1,float3 world,float3 n,float2 fw)
             {
                 float3 c;float mode=uv0.z;
                 if(mode<.5)
@@ -56,7 +56,7 @@ Shader "ChipArena/NativeRooftop"
                     c=roof||n.y>0.5?ROOF_TOON_ROOF:lerp(ROOF_TOON_FACADE_SHADE,ROOF_TOON_FACADE_LIT,smoothstep(-0.04,0.04,key));
                     c*=0.88+0.24*RoofHash1(float3(seed,seed,seed));
                     c+=ROOF_TOON_STREET*0.5*exp(-max(0.0,world.y-ROOF_STREET)/60.0);
-                    float2 g=uv0.xy/float2(1.5,2.4);float2 fw=fwidth(g);
+                    float2 g=uv0.xy/float2(1.5,2.4);
                     if(!roof&&tier<8.5)
                     {
                         float2 id=floor(g),f=frac(g);float run=floor(id.x/ROOF_TOON_RUN);
@@ -84,7 +84,7 @@ Shader "ChipArena/NativeRooftop"
                     float2 q=uv0.xy*2.0-1.0;float shape=smoothstep(1.0,.75,length(q)+.25*(RoofNoise(float3(uv0.xy*4.0,1.0))-.5));clip(shape-.5);
                     float3 v=normalize(_WorldSpaceCameraPos-world);float3 r=reflect(-v,float3(0.0,1.0,0.0));float fres=lerp(.35,1.0,smoothstep(.72,.78,1.0-max(0.0,v.y)));
                     float ring=0.0;
-                    for(int k=0;k<4;k++)
+                    [unroll] for(int k=0;k<4;k++)
                     {
                         float fk=float(k);float cyc=_RoofTime*1.3+fk*.37;float2 cc=float2(RoofHash2(float2(fk,floor(cyc))),RoofHash2(float2(fk+7.0,floor(cyc))))*1.6-.8;
                         float age=frac(cyc);float d=length(q-cc);ring+=smoothstep(.014,0.0,abs(d-age*.32))*(1.0-age);
@@ -97,13 +97,16 @@ Shader "ChipArena/NativeRooftop"
             float4 frag(v2f i):SV_Target
             {
                 float3 n=normalize(i.normal);float mode=i.uv0.z;float3 c;
-                if(_ArenaToon.x>0.5&&(mode<1.5||mode>3.5))c=RoofToonSurface(i.uv0,i.uv1,i.world,n);
+                // the window grid's pixel footprint, taken before any branch on the mode (a derivative inside per-pixel flow
+                // control is undefined across a quad, and the Windows shader compiler then has to flatten the branches)
+                float2 fw=fwidth(i.uv0.xy/float2(1.5,2.4));
+                if(_ArenaToon.x>0.5&&(mode<1.5||mode>3.5))c=RoofToonSurface(i.uv0,i.uv1,i.world,n,fw);
                 else if(mode<.5)
                 {
                     float seed=i.uv1.x,tier=i.uv1.y,hue=i.uv1.z;bool roof=i.uv1.w>.5;
                     c=float3(.006,.008,.020)+float3(.004,.003,.008)*RoofHash1(float3(seed,seed,seed));
                     c+=(float3(.03,.025,.07)*max(0.0,n.y)+float3(.05,.012,.045)*max(0.0,-n.y))*.6;
-                    float2 g=i.uv0.xy/float2(1.5,2.4);float2 fw=fwidth(g);
+                    float2 g=i.uv0.xy/float2(1.5,2.4);
                     if(!roof&&tier<8.5)
                     {
                         float2 id=floor(g),f=frac(g);float lit=step(.58+.22*RoofHash1(float3(seed,1.0,1.0)),RoofHash2(id+seed*.37));
