@@ -1,3 +1,24 @@
+## 2026-10-23 — Claude: Settings · Player model, New body or Classic voxel (merged into shared)
+
+- **Branch/base:** `claude/player-model-setting` from shared `e37a7e7f`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** a separate player model selection "just in case" while testing in game; the owner chose a Settings switch.
+- **Changes (presentation and a local preference):**
+  - `ConversionPreferences.playerModel`: "New" by default, saved with the other preferences. An old preferences file reads as New.
+  - Settings shows "Player model: New body / Classic voxel" only where the visual body is installed (`ArenaPresentation.VisualBodyInstalled`). The pause menu reaches the same screen.
+  - The game sets `presentation.ClassicBodies` from the preference every frame, before the arena renders. `VisualBodyPose` skips a classic frame, so the body hides and every pilot draws voxel from the next frame; switching back poses it again.
+  - Only how this PC draws; nothing on the wire, the account or any save.
+- **Checks (actual):**
+  - Full CoreTests: 841 PASS, 0 FAIL, exit 0, in an LF checkout of `9b51f482` (the expedition-ending GUID check's Windows paths normalised there only, as before).
+  - `--visual-rig`: a new wiring check (the default, the per-frame switch before the render, the installed-only choice, no pose on a classic frame, the hands still restored).
+  - Unity semantic compile passes.
+  - Play mode on Moonlit (local tool):
+    - switching to Classic mid-match hid both visual bodies and drew the voxel pilots;
+    - switching back to New drew the new bodies again;
+    - the pause menu's Settings showed the Player model row with New body selected.
+- **Not run:** a Windows build; a real multiplayer match.
+- **Animation impact:** none (the voxel and visual bodies draw from the same game pose).
+- **Next:** the owner's in-game test.
+
 ## 2026-10-23 — Claude: chip-select display wrist raised to mid-chest (merged into shared)
 
 - **Branch/base:** `claude/chip-wrist-chest` from shared `7ffe2d81`. No PR; merged into shared and the builder (standing merge authorization); not published.

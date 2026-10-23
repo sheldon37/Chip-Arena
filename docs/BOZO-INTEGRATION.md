@@ -800,6 +800,10 @@ origins, the weapon frames authority uses and the wire are unchanged.
 **The wiring** (`Runtime/NativeVisualBodyPresentation.cs`, part of `ArenaPresentation`).
 - **Switch:** when `Resources/ChipArenaVisualBody` exists, every arena pilot (players and bots; not the Siren) gets a
   visual body. `--ca-voxel-bodies` keeps the voxel bodies.
+- **Settings · Player model** (owner, 2026-10-23, a fallback while the body is tested in game): New body (the default) or
+  Classic voxel, saved with the preferences, shown only where the bake is installed. Classic applies at once, mid-match
+  too (the pause menu's Settings): the visual bodies are not posed, so they hide and every pilot draws voxel. It changes
+  only how this PC draws; nothing is sent to other players (`ClassicBodies`, `VisualBodyInstalled`).
 - **Lifetime:** the body is instantiated under the pilot rig's root, at the floor point (.865 m under it), so it is
   destroyed with the rig.
 - **Posing:** after the rig poses (`PrepareCapturedPose`), the body takes the same game pose through `NativeVisualRig` and
