@@ -106,10 +106,10 @@ rig's maths frame (+x is the rig's left); "Unity frame" is that frame mirrored o
   where it pulses in the chip colour.
 - Drivers, all read-only: the replicated PvE row `open`, the Expedition `members[].choosing`, Install events and the
   draft timeline.
-- Today the display wrist is the **free hand**: the left, or the right when the weapon rides the left hand (staffs,
-  L33t H4x, bow).
-- On the PvP draft stage (`Core/NativeDraftStage.cs`) the reaching hand follows the card's side (`Left = card.X >= 0`),
-  and the plant goes into the other wrist, so either wrist can take the chip.
+- Since 2026-10-22 the display wrist is the **right** for every class (section e). Before, it was the free hand: the
+  left, or the right when the weapon rode the left hand (staffs, L33t H4x, bow).
+- On the PvP draft stage (`Core/NativeDraftStage.cs`) a pilot's left hand now takes every card and the plant goes into
+  the right wrist. Before, the reaching hand followed the card's side. The Siren's hands still follow the card's side.
 
 **Binary assets.**
 - **What exists:** no FBX, Blender files, prefabs or `.mat` files are tracked. Every mesh is code-built or a JSON
@@ -406,7 +406,8 @@ combination: it picks a variant or hides a sub-part.
 - Chip authority, offers, inventories, rules, timing and multiplayer stay untouched. The presentation writes nothing
   back.
 - **Change required** (presentation, Claude): the display wrist moves from the free hand to the right wrist for every
-  class.
+  class. Done on `claude/chip-wrist-right` (2026-10-22), except the chip size cap (the last item); see
+  `docs/PVE-CHIP-SELECT.md`.
   - For right-hand weapons, the carried weapon points down (the plant already supports this) and the left hand taps or
     inserts.
   - Staff, L33t H4x and bow pilots already have the right hand free.

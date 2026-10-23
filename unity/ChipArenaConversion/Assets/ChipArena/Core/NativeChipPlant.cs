@@ -11,11 +11,11 @@ namespace ChipArena.UnityConversion
     // (NativeDraftPlant: the catch at Contact, the carry, the seat and the install cue at SoundAt, the sink by PlantEnd, the pulse,
     // the return by ReturnEnd), laid over the wrist-hologram pose (NativeChipSelectPose) that is already up:
     //  - The chosen card lifts off the panel toward the wearer, the other cards fade and the panel folds away behind it.
-    //  - A hand that already reaches the panel (empty hands, the gauntlets, a pistol or a dagger; third person only) takes the card
-    //    at the contact (it is the chip from then on: a lit cartridge in its rarity colour), carries it over a small
-    //    arc to the cuff on the back of the display wrist and presses it in (palm down, or a carried weapon kept pointing down).
-    //  - A long weapon stays lowered (and first person, every class): the chip drops down the projection cone into the cuff and the
-    //    display wrist rises a little to take it, then gives as it seats.
+    //  - The left hand, when it already reaches the panel (empty, its gauntlet or its dagger; third person only), takes the card at
+    //    the contact (it is the chip from then on: a lit cartridge in its rarity colour), carries it over a small arc to the cuff on
+    //    the back of the right display wrist and presses it in (palm down, or a dagger kept pointing down).
+    //  - A left hand that keeps its hold (the shield, the staffs, the bow; and first person, every class): the chip drops down the projection cone into
+    //    the cuff and the display wrist rises a little to take it, then gives as it seats.
     //  - The cuff pulses in the chip's colour from the seat; then both arms return: to the route's pose, or, when another pick
     //    follows (Stay), back to the hologram pose with the panel unfolding again.
     // Presentation only: nothing here reads or writes the run, the hold, the input or the network. Allocation-free.

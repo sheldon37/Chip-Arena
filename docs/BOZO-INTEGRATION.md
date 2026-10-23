@@ -956,7 +956,7 @@ frame (`VisualBodyLook`), which writes them per renderer only while a spawn-in r
 **The chest core and the right-wrist chip device (`claude/bozo-core`).** Our own pieces, kept from the stopped base
 (docs/CHARACTER-LOWPOLY.md section e), built in code (`Core/NativePilotGear.cs`, SourceLit sections; models
 `Runtime/NativePilotGearModels.cs`) and drawn on the visual body (`VisualGear`). Owner decision (2026-10-22): the device
-sits on the right wrist for every class, and the chip-select display moves there too (not yet done: below).
+sits on the right wrist for every class, and the chip-select display moves there too (done: below).
 - **Placement:** the local bake measures two anchors on the baked outfit and saves them in the prefab, so the runtime holds
   no outfit numbers.
   - **Core:** on the outfit's front surface over the heart, 5.8 cm left of the midline at the sternum's height, facing
@@ -986,13 +986,34 @@ sits on the right wrist for every class, and the chip-select display moves there
     and the render) walked the device through rest, open, the chip seated in its legendary orange, the pulse, the lid
     shutting and the lens fading. The core showed on the chest throughout.
 - **Remaining:**
-  - Until the display moves, the device opens on the right while the panel still rises over the left wrist.
   - At full body the right forearm sits behind a held rifle's grip, so the device mostly shows in close views.
   - The sleeve's folds can cover the band's edge.
 
+**The chip-select display on the right wrist (`claude/chip-wrist-right`).** Owner (2026-10-22): "Keep the weapon in the
+right hand pointing down", short weapons from the wrist raised at chest height, the rifles and the greatsword from a lower
+wrist beside the leg, and "the left hand taps and inserts the chip". The pose is the game rig's, so voxel pilots change
+too (contract: `docs/PVE-CHIP-SELECT.md`).
+- **Every pilot:** the right wrist comes up and its weapon hangs pointing down. The left hand taps, swipes and takes the
+  chip in the Expedition plant and on the draft stage. The shield, the staffs and the bow keep their left-hand hold, and the
+  chip drops down the cone. First person puts a long weapon away while the look is up.
+- **Visual body:**
+  - The hologram, the Expedition screen and the plant's chip move from the game wrist to the device's bay
+    (`VisualEmitter`). The two wrists sit 0.2 to 0.4 m apart, because the rigs' proportions differ.
+  - The support grip lets go while the look is up.
+- **Checks:**
+  - `--chip-select`: per class, the weapon hangs, its tip stays off the floor, the head and panel stay clear and the eyes'
+    line to the panel is open.
+  - `--draft-stage` (new flag), `--chooser-camera` and `--chip-screen` pass.
+  - In Play mode on Moonlit, a staged pick and plant was captured for the pistol, rifle and sword pilots and a voxel
+    pistol pilot. The screen's emitter and the planted chip landed on the device bay, and the left hand carried the chip
+    to it.
+- **Remaining:**
+  - The visual body's left hand follows the game rig's hand proportionally. It ends 10 to 15 cm (its hand bone) from the
+    chip it carries, which reads as the fingers holding it but is not pinned.
+  - Captures show a red and yellow wedge between the Expedition screen and the pilot, on voxel pilots too and before the
+    emitter move. Not traced yet: the demo has a bot firing, and a hit turns the screen's edge red.
+
 **Not yet (step 4 continues):**
-- **The chip-select display on the right wrist** for every class (owner 2026-10-22): the pose, the plant and the draft
-  stage (docs/CHARACTER-LOWPOLY.md section e).
 - **Owner's concept pieces:** the mask and visor, and the glow (emission in the player colour).
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
   visual body.

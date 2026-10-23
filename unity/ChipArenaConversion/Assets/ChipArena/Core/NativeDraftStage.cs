@@ -78,8 +78,12 @@ namespace ChipArena.UnityConversion
         // palm (draft-stage.ts CONSIDER, a soft elbow), kept Beside its own side of the body, the path arching Arc above the
         // straight line. The catch: the reaching wrist rises in front of the chest on the card's side, palm up, CatchUp above the
         // resting plexus and CatchOut in front of it, out from the midline by CatchSpread of the card's sideways offset (between
-        // Beside and CatchWide), at most ArmReach from the shoulder.
-        public const float ArmReach=.5f,ConsiderReach=.85f,ConsiderSlide=.06f,ConsiderTurn=.3f,Beside=.16f,Arc=.08f,CatchUp=.12f,CatchOut=.26f,CatchSpread=.35f,CatchWide=.3f;
+        // Beside and CatchWide), at most ArmReach from the shoulder. A pilot's left hand takes every card (the chip goes into the
+        // right wrist's device): for a card on the right it reaches across to CrossBeside from the midline, just short of it.
+        public const float ArmReach=.5f,ConsiderReach=.85f,ConsiderSlide=.06f,ConsiderTurn=.3f,Beside=.16f,Arc=.08f,CatchUp=.12f,CatchOut=.26f,CatchSpread=.35f,CatchWide=.3f,CrossBeside=.04f,CrossBlend=.12f;
+        /// <summary>How far a hand's card is on its own side, 0..1 (1 on its side, 0 across the body), blended over CrossBlend of the
+        /// card's sideways offset either side of the middle, so a highlight crossing the middle never jumps the hand.</summary>
+        public static float Own(bool left,Vector3 aim)=>MathUtil.Smooth(((left?aim.X:-aim.X)+CrossBlend)/(2*CrossBlend));
         // Considering (draft-stage.ts): the arm on the local picker's highlighted card's side lifts toward it (weight spring
         // LiftOmega) while the other lowers a little quicker (LowerOmega), so a switch of sides never holds both arms up; each
         // arm's aim point follows the card (AimOmega). The arm that was lifting keeps lifting through the pick, and the pick's
@@ -230,7 +234,7 @@ namespace ChipArena.UnityConversion
         // The catch (root frame): the reaching wrist in front of the chest on its card's side (`aim` the card's display point).
         public Vector3 Catch(bool left,Vector3 aim,Vector3 shoulder)
         {
-            float x=MathUtil.Clamp(Math.Abs(aim.X)*CatchSpread,Beside,CatchWide);var at=new Vector3(left?x:-x,RestPlexus.Y+CatchUp,RestPlexus.Z+CatchOut);
+            float x=CrossBeside+(MathUtil.Clamp(Math.Abs(aim.X)*CatchSpread,Beside,CatchWide)-CrossBeside)*Own(left,aim);var at=new Vector3(left?x:-x,RestPlexus.Y+CatchUp,RestPlexus.Z+CatchOut);
             var d=at-shoulder;float len=d.Length();return len>ArmReach?shoulder+d*(ArmReach/len):at;
         }
 
@@ -246,13 +250,14 @@ namespace ChipArena.UnityConversion
             if(siren)p.Position[CapturedRig.Body].Y-=SirenSink;else p.Rotation[CapturedRig.Spine]=p.Rotation[CapturedRig.Spine]*CapturedRig.Euler(Lean);p.World();
             lookNear=LookZ;for(int i=0;i<count;i++)lookNear=Math.Max(lookNear,EyeZ+Math.Abs(OnPlane(cards[i].X,cards[i].Y,LookZ).X)/OuterTurn);
             var rest=OnDisplay(.5f,TrayLine+RestLook);var card=focus>=0?OnDisplay(cards[focus].X,cards[focus].Y):rest;
-            // The reaching hand is the one on the chosen card's side, chosen once per pick; if that arm was already lifting
-            // toward a card it keeps lifting (no dip before the pick's catch takes over).
-            if(age<0)picked=false;else if(!picked){picked=true;Left=card.X>=0;carry=armGoal[Left?0:1]>0;}
+            // The reaching hand is the left for a pilot (owner 2026-10-22: the chip goes into the device on the right wrist), the
+            // one on the chosen card's side for the Siren drafter, chosen once per pick; if that arm was already lifting toward a
+            // card it keeps lifting (no dip before the pick's catch takes over).
+            if(age<0)picked=false;else if(!picked){picked=true;Left=!siren||card.X>=0;carry=armGoal[Left?0:1]>0;}
             bool planting=age>=0&&!siren,caught=false;float contact=NativeDraftPlant.Contact,lower=siren&&age>=0?NativeDraftPlant.Return(age):0;
-            // The arms' considering springs: before the pick the side of the local picker's highlighted card (never the Siren
-            // drafter's), from the pick the reaching side.
-            int lifting=age>=0?(Left?0:1):!siren&&consider&&focus>=0?(card.X>=0?0:1):-1;
+            // The arms' considering springs: before the pick the left arm toward the local picker's highlighted card (never the
+            // Siren drafter's), from the pick the reaching side.
+            int lifting=age>=0?(Left?0:1):!siren&&consider&&focus>=0?0:-1;
             for(int i=0;i<2;i++)
             {
                 bool mine=i==lifting;float goal=mine&&(age<0||carry)?1:0;armGoal[i]=goal;
@@ -290,7 +295,7 @@ namespace ChipArena.UnityConversion
                 {
                     var full=Catch(left,armAim[s],p.WorldPosition[a]);
                     var slide=armAim[s]-restHand;slide.Y=0;slide=slide.LengthSquared()>1e-6f?Vector3.Normalize(slide)*ConsiderSlide:Vector3.Zero;
-                    var hover=Vector3.Lerp(restHand,full,ConsiderReach)+slide;hover.X=left?Math.Max(Beside,hover.X):Math.Min(-Beside,hover.X);var aimAt=reaching?Vector3.Lerp(hover,full,reach):hover;
+                    float inner=CrossBeside+(Beside-CrossBeside)*Own(left,armAim[s]);var hover=Vector3.Lerp(restHand,full,ConsiderReach)+slide;hover.X=left?Math.Max(inner,hover.X):Math.Min(-inner,hover.X);var aimAt=reaching?Vector3.Lerp(hover,full,reach):hover;
                     // The palm at the contact: the wrist on the catch, turned palm up (NativeDraftPlant.ContactWrist in the chest frame).
                     if(reaching){plantLocal=Vector3.Transform(full-chest,chestInv);CatchPalm=full+Vector3.Transform(NativeDraftPlant.PalmLocal,p.WorldRotation[CapturedRig.Chest]*NativeDraftPlant.ContactWrist);caught=true;}
                     if(!planting||age<contact)

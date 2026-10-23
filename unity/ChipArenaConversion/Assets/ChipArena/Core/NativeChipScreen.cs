@@ -105,10 +105,11 @@ namespace ChipArena.UnityConversion
         /// <summary>Unfold: the width opens over the first part, the height over the rest (Electron's grow from a line).</summary>
         public const float WidthFirst=.55f;
 
-        /// <summary>The side the screen floats on: the display wrist's (NativeChipSelect.DisplayLeft), except where the class holds that
-        /// wrist across the body in both hands (the rifle, the machine gun, the greatsword): there it floats on the side the wrist is
-        /// held, so the beam does not cross the chest.</summary>
-        public static bool OnLeft(string spec)=>NativeChipSelect.DisplayLeft(spec)&&spec!="rifle"&&spec!="machinegun"&&spec!="greatsword";
+        /// <summary>The side the screen floats on: the side the display wrist is held on, so the beam does not cross the chest. That is
+        /// the right wrist's (NativeChipSelect.DisplayLeft: the right for every class since 2026-10-22; the rifles and the greatsword
+        /// hold it low on that side), except the shield set, whose stance turns the chest so far that the raised right wrist sits left
+        /// of the body's middle.</summary>
+        public static bool OnLeft(string spec)=>spec=="shield"||NativeChipSelect.DisplayLeft(spec)&&spec!="rifle"&&spec!="machinegun"&&spec!="greatsword";
         /// <summary>The open screen of a pilot whose body centre is `body`, facing `facing` (Unity yaw), on the left or the right (OnLeft).</summary>
         public static ChipScreenPlace Place(Vector3 body,float facing,bool left,float scale)
         {

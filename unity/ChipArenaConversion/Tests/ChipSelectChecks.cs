@@ -142,16 +142,37 @@ internal static class ChipSelectChecks
     }
     private static void Copy(CapturedRig.Pose from,CapturedRig.Pose to){for(int b=0;b<CapturedRig.Bones.Length;b++){to.Position[b]=from.Position[b];to.Rotation[b]=from.Rotation[b];}to.World();}
     private static float Angle(Quaternion a,Quaternion b){float d=Math.Abs(Quaternion.Dot(Quaternion.Normalize(a),Quaternion.Normalize(b)));return 2*(float)Math.Acos(Math.Min(1,d));}
+    // The distance from a point to a segment.
+    private static float Segment(Vector3 point,Vector3 a,Vector3 b){var d=b-a;float t=d.LengthSquared()>1e-12f?Math.Clamp(Vector3.Dot(point-a,d)/d.LengthSquared(),0,1):0;return (point-(a+d*t)).Length();}
+    // Whether a segment passes through a panel (its plane within its half extents, with a margin).
+    private static bool Crosses(Vector3 a,Vector3 b,Vector3 centre,Vector3 normal,Vector3 right,Vector3 up,float halfW,float halfH,float margin)
+    {
+        float da=Vector3.Dot(a-centre,normal),db=Vector3.Dot(b-centre,normal);if(da*db>0)return false;
+        float t=Math.Abs(da-db)>1e-9f?da/(da-db):0;var hit=a+(b-a)*t-centre;return Math.Abs(Vector3.Dot(hit,right))<halfW+margin&&Math.Abs(Vector3.Dot(hit,up))<halfH+margin;
+    }
+    // The least distance from a segment to the sight line from the eye to a point (sampled along the sight line).
+    private static float Sight(Vector3 eye,Vector3 at,Vector3 a,Vector3 b){float d=99;for(int i=1;i<20;i++)d=Math.Min(d,Segment(Vector3.Lerp(eye,at,i/20f),a,b));return d;}
+    // How far the class's right-hand weapon reaches behind the grip (a stock, a pommel; m, its model's rear), 0 where the display hand
+    // holds none of its own model.
+    private static float Rear(string spec,int hand)
+    {
+        var design=NativeWeaponModels.Get(spec);if(design==null||design.Bone!=hand)return 0;float z=0;
+        foreach(var s in NativeWeaponModels.Build(spec,0).Sections)foreach(var v in s.Positions)z=Math.Min(z,v.Z);return -z;
+    }
     private static IEnumerable<string> Poses(string[] specs)
     {
-        float fastest=0,worstWrist=0,worstFloor=99,worstTap=0,worstSlide=0,minPitch=99,maxPitch=0,spin=0;long allocated=0;string fastestAt="",spinAt="";int frames=0,presses=0,slides=0;
+        float fastest=0,worstWrist=0,worstFloor=99,worstTap=0,worstSlide=0,minPitch=99,maxPitch=0,spin=0,worstHead=99,worstPanel=99;long allocated=0;string fastestAt="",spinAt="",headAt="",panelAt="",wristAt="";int frames=0,presses=0,slides=0,held=0;
         var layer=new NativeChipSelectPose();var shown=new CapturedRig.Pose();
         foreach(var spec in specs)foreach(int hz in new[]{30,60,144,240})
         {
             var pilot=new Pilot(spec);var track=new NativeChipSelectTrack();float dt=1f/hz;int seed=NativeChipSelect.Seed(4,9);var carry=NativeChipSelect.Carry(spec);bool left=NativeChipSelect.DisplayLeft(spec);
             int hand=left?CapturedRig.LHand:CapturedRig.RHand,other=left?CapturedRig.RHand:CapturedRig.LHand;var design=NativeWeaponModels.Get(spec);
-            // Grip kept: the display never takes the weapon's own hand (a pair rides both: the dagger and gauntlet stay in it).
-            if(design!=null&&!design.Dual)Check(design.Bone!=hand,spec+": the display wrist is the weapon's hand");
+            // The display is the right wrist for every class (owner 2026-10-22). A weapon riding that hand is held in it (hung down); a
+            // left-hand weapon (a staff, L33t H4x, the bow) leaves it empty.
+            var hold=NativeChipSelect.Held(spec);bool low=NativeChipSelect.Low(hold);float rear=Rear(spec,hand);
+            Check(!left,spec+": the display is the right wrist");
+            if(design!=null&&!design.Dual&&design.Bone!=hand)Check(!NativeChipSelect.Armed(hold),spec+": a left-hand weapon leaves the display hand empty");
+            if(design!=null&&design.Bone==hand&&!design.Dual&&spec!="shield")Check(NativeChipSelect.Armed(hold),spec+": the display hand holds the class's weapon");
             var prev=new Vector3[CapturedRig.Bones.Length];var turned=new Quaternion[2];bool first=true;
             for(int f=0;f<=(int)(8.6f*hz);f++)
             {
@@ -178,11 +199,23 @@ internal static class ChipSelectChecks
                 foreach(int k in new[]{CapturedRig.LHand,CapturedRig.RHand})worstFloor=Math.Min(worstFloor,shown.WorldPosition[k].Y+.865f);
                 if(w>=.999f)
                 {
-                    var wrist=Vector3.Transform(shown.WorldPosition[hand]-chest,ci);var goal=NativeChipSelectPose.Raised;if(!left)goal.X=-goal.X;worstWrist=Math.Max(worstWrist,(wrist-goal).Length());
+                    var wrist=Vector3.Transform(shown.WorldPosition[hand]-chest,ci);var goal=low?NativeChipSelectPose.LowRaised:NativeChipSelectPose.Raised;if(!left)goal.X=-goal.X;if((wrist-goal).Length()>worstWrist){worstWrist=(wrist-goal).Length();wristAt=spec+" "+hz+" Hz t "+t.ToString("0.00")+" wrist "+wrist+" goal "+goal;}
                     var panel=Vector3.Transform(layer.PanelCentre-chest,ci);var eye=Vector3.Transform(layer.Eye-chest,ci);
-                    Check(panel.Z>.2f&&panel.Y>0&&panel.Y<eye.Y-.12f,spec+": the panel floats in front of the chest, under the eyes ("+panel+")");
-                    Check(Vector3.Dot(layer.PanelNormal,Vector3.Normalize(layer.Eye-layer.PanelCentre))>.7f,spec+": the panel faces its wearer");
-                    Check(Vector3.Dot(layer.PanelNormal,Vector3.Transform(Vector3.UnitY,shown.WorldRotation[CapturedRig.Chest]))<=NativeChipSelectPose.PanelSteep+1e-3f,spec+": the panel stands up for the pilots round it");
+                    Check(panel.Z>.2f&&panel.Y>(low?-.4f:0)&&panel.Y<eye.Y-.12f,spec+": the panel floats in front of the "+(low?"body":"chest")+", under the eyes ("+panel+")");
+                    // The weapon in the display hand hangs pointing down (lower for the long ones), its tip off the floor, its whole
+                    // length (rear to tip) clear of the head and of the panel.
+                    if(NativeChipSelect.Armed(hold))
+                    {
+                        var q=shown.WorldRotation[hand];var axis=Vector3.Transform(Vector3.UnitZ,q);held++;
+                        var hipsLeft=Vector3.Normalize(shown.WorldPosition[CapturedRig.LHip]-shown.WorldPosition[CapturedRig.RHip]);
+                        Check(low?axis.Y<-.15f&&Vector3.Dot(axis,hipsLeft)<.05f:axis.Y<-.2f,spec+": the display hand's "+hold+" hangs pointing down"+(low?", beside the right leg (never across the body)":"")+" ("+axis+")");
+                        var tip=shown.WorldPosition[hand]+axis*NativeChipSelectPose.CarryLength(hold,spec,1);var butt=shown.WorldPosition[hand]-axis*rear;worstFloor=Math.Min(worstFloor,tip.Y+.865f);
+                        float head=Segment(shown.WorldPosition[CapturedRig.Head],butt,tip),clear=Sight(layer.Eye,layer.PanelCentre,butt,tip);
+                        Check(!Crosses(butt,tip,layer.PanelCentre,layer.PanelNormal,layer.PanelRight,layer.PanelUp,NativeChipSelectPose.PanelWidth*.5f,NativeChipSelectPose.PanelHeight*.5f,.02f),spec+" "+hz+" Hz t "+t.ToString("0.00")+": the held "+hold+" passes through the panel (butt "+Vector3.Transform(butt-chest,ci)+", tip "+Vector3.Transform(tip-chest,ci)+" from the chest)");
+                        if(head<worstHead){worstHead=head;headAt=spec+" "+hz+" Hz t "+t.ToString("0.00");}if(clear<worstPanel){worstPanel=clear;panelAt=spec+" "+hz+" Hz t "+t.ToString("0.00");}
+                    }
+                    Check(Vector3.Dot(layer.PanelNormal,Vector3.Normalize(layer.Eye-layer.PanelCentre))>.7f,spec+": the panel faces its wearer ("+Vector3.Dot(layer.PanelNormal,Vector3.Normalize(layer.Eye-layer.PanelCentre))+", panel "+panel+", eye "+eye+", wrist "+wrist+", normal "+Vector3.Transform(layer.PanelNormal,ci)+")");
+                    Check(Vector3.Dot(layer.PanelNormal,Vector3.Transform(Vector3.UnitY,shown.WorldRotation[CapturedRig.Chest]))<=(low?NativeChipSelectPose.LowSteep:NativeChipSelectPose.PanelSteep)+1e-3f,spec+": the panel stands up for the pilots round it");
                     var face=Vector3.Transform(Vector3.Transform(Vector3.UnitZ,shown.WorldRotation[CapturedRig.Head]),ci);float pitch=(float)Math.Asin(Math.Clamp(-face.Y,-1,1));minPitch=Math.Min(minPitch,pitch);maxPitch=Math.Max(maxPitch,pitch);
                     // The weapon kept: a staff or bow hand keeps its idle hold exactly; a lowered weapon's tip stays off the floor.
                     if(NativeChipSelect.KeepsIdle(carry))for(int k=other-3;k<=other;k++)Check(shown.Rotation[k]==b.Rotation[k],spec+": the "+carry+" hand keeps its idle hold");
@@ -201,11 +234,12 @@ internal static class ChipSelectChecks
         }
         Check(fastest<7f,"the layer moves a hand or the head "+fastest.ToString("0.00")+" m/s off the route between frames (a pop) at "+fastestAt);
         Check(spin<2000,"the layer turns a hand "+spin.ToString("0")+" deg/s off the route between frames (a flip) at "+spinAt);
-        Check(worstWrist<.03f,"the display wrist misses its place by "+worstWrist+" m");Check(worstFloor>.06f,"a hand or a lowered weapon reaches "+worstFloor+" m (the floor)");
+        Check(held>0&&worstHead>.15f,"a held weapon passes "+worstHead+" m from the head ("+headAt+")");Check(worstPanel>.03f,"a held weapon comes "+worstPanel+" m from the wearer's sight line to the panel ("+panelAt+")");
+        Check(worstWrist<.03f,"the display wrist misses its place by "+worstWrist+" m ("+wristAt+")");Check(worstFloor>.06f,"a hand or a lowered weapon reaches "+worstFloor+" m (the floor)");
         Check(presses>0&&worstTap<1.6f,"a press misses the panel or its card ("+worstTap+" cm / tenths, "+presses+" presses)");Check(slides>0&&worstSlide<2.2f,"a swipe leaves the panel ("+worstSlide+" cm)");
         Check(minPitch>.25f&&maxPitch<.95f,"the head looks down "+minPitch+".."+maxPitch+" rad");Check(allocated==0,"the layer allocated "+allocated+" bytes");
         yield return "Pose over the Core route of all "+specs.Length+" classes at 30/60/144/240 Hz ("+frames+" frames): legs, pelvis and body untouched (feet planted), the route's pose exactly when closed, the layer moves a hand or the head at most "+fastest.ToString("0.00")+" m/s off the route (no pops), a hand turns at most "+spin.ToString("0")+" deg/s off it (no flips), the display wrist within "+(worstWrist*100).ToString("0.0")+" cm of its place, the head down "+(minPitch/D2R).ToString("0")+"-"+(maxPitch/D2R).ToString("0")+" deg, 0 bytes per frame";
-        yield return "Grip kept: the display never takes the weapon's hand, the staff and bow hands keep their idle hold exactly, a swiping pistol or dagger points down, hands and lowered tips stay "+(worstFloor*100).ToString("0")+" cm or more off the floor; "+presses+" presses land within "+worstTap.ToString("0.0")+" (cm / tenths of a card) and "+slides+" swipe frames within "+worstSlide.ToString("0.0")+" cm of the panel";
+        yield return "Grip kept: the right wrist wears the display, a right-hand weapon hangs down in it (the rifles and the greatsword from the low hold) at least "+(worstHead*100).ToString("0")+" cm from the head, never through the panel and at least "+(worstPanel*100).ToString("0")+" cm off the wearer's sight line to it, the shield, staff and bow hands keep their idle hold exactly, a swiping dagger points down, hands and tips stay "+(worstFloor*100).ToString("0")+" cm or more off the floor; "+presses+" presses land within "+worstTap.ToString("0.0")+" (cm / tenths of a card) and "+slides+" swipe frames within "+worstSlide.ToString("0.0")+" cm of the panel";
     }
 
     // ---- first person on every view base ----
@@ -237,9 +271,13 @@ internal static class ChipSelectChecks
             var weapon=Cam(p.WorldPosition[other]);var carry=NativeChipSelect.Carry(spec);
             if(carry!=ChipSelectCarry.Free&&carry!=ChipSelectCarry.Fist){lowest=Math.Min(lowest,-weapon.Y/Math.Max(.05f,weapon.Z));Check(weapon.Z<.05f||weapon.Y/weapon.Z<-.55f,spec+": the weapon hand leaves the view ("+weapon+")");}
             Check(layer.Gesture.Kind!=ChipSelectGestureKind.Swipe||NativeChipSelect.Hands(carry)==ChipSelectHands.Taps,spec+": an armed hand does not reach into the view");n++;
+            // The display hand's weapon: a short one points away from the camera, out of the eye's way; a long one is put away.
+            var hold=NativeChipSelect.Held(spec);
+            if(NativeChipSelect.Armed(hold)&&!NativeChipSelect.Stows(spec)){var d=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[hand]);var ax=new Vector3(-d.X,d.Y,d.Z);Check(ax.Z>.2f,spec+": the held "+hold+" points away from the camera ("+ax+")");}
+            Check(NativeChipSelect.Stows(spec)==(hold==ChipSelectCarry.LongGun||hold==ChipSelectCarry.Greatsword),spec+": only a long held weapon is put away in first person");
         }
         Check(worst<.06f,"the view's display wrist misses its place by "+worst+" m ("+worstAt+")");
-        return "First person on every view base ("+n+" classes): the display wrist within "+(worst*100).ToString("0.0")+" cm of its place low in view (left, right for a right display; as far as the arm reaches), the panel low in view facing the camera, at most "+(2*Math.Atan(widest/2)/D2R).ToString("0")+" deg wide, a weapon hand down out of view, an armed hand never reaching into it";
+        return "First person on every view base ("+n+" classes): the display wrist within "+(worst*100).ToString("0.0")+" cm of its place low right in view (as far as the arm reaches), a short held weapon pointing away from the camera, a long one put away, the panel low in view facing the camera, at most "+(2*Math.Atan(widest/2)/D2R).ToString("0")+" deg wide, a weapon hand down out of view, an armed hand never reaching into it";
     }
 
     // ---- first person beside an Expedition chip tray: the wrist out from under the cards ----
@@ -261,10 +299,10 @@ internal static class ChipSelectChecks
             var goal=NativeChipSelectPose.TrayWrist(spec,tanH,tanV);
             layer.Apply(p,new ChipSelectInput{Weight=1,Clock=1.5f,Time=2,Reach=1,Spec=spec,Seed=3,Cards=3,FirstPerson=true,ViewWrist=Local(goal),ViewEye=Local(Vector3.Zero)});p.World();
             int hand=NativeChipSelect.DisplayLeft(spec)?CapturedRig.LHand:CapturedRig.RHand;var wrist=Cam(p.WorldPosition[hand]);var shoulder=Cam(p.WorldPosition[hand-2]);float reach=.515f*scale;
-            float miss=(goal-shoulder).Length()<=reach?(wrist-goal).Length():Math.Abs((wrist-shoulder).Length()-reach)+Vector3.Distance(Vector3.Normalize(wrist-shoulder),Vector3.Normalize(goal-shoulder))*.1f;if(miss>worst){worst=miss;worstAt=spec;}
+            float miss=(goal-shoulder).Length()<=reach?(wrist-goal).Length():Math.Abs((wrist-shoulder).Length()-reach)+Vector3.Distance(Vector3.Normalize(wrist-shoulder),Vector3.Normalize(goal-shoulder))*.1f;if(miss>worst){worst=miss;worstAt=spec+" wrist "+wrist+" goal "+goal+" shoulder "+shoulder;}
             var panel=Cam(layer.PanelCentre);float side=NativeChipSelect.DisplayLeft(spec)?1:-1,half=NativeChipSelectPose.ViewWidth*layer.PanelScale*scale*.5f;
             float inner=-side*(panel.X+side*half)/panel.Z;minInner=Math.Min(minInner,inner/bandEdge);
-            Check(panel.Z>.12f&&inner>bandEdge*.8f&&Math.Abs(panel.X)/panel.Z<tanH,spec+": beside the tray, the view's panel is (mostly) clear of the cards' band and its centre on screen ("+panel+")");
+            Check(panel.Z>.12f&&inner>bandEdge*.8f&&Math.Abs(panel.X)/panel.Z<tanH,spec+": beside the tray, the view's panel is (mostly) clear of the cards' band and its centre on screen ("+panel+"; wrist "+wrist+", goal "+goal+", shoulder "+shoulder+", reach "+reach+")");
             Check(panel.Y/panel.Z<tanV*.5f&&panel.Y/panel.Z>-tanV,spec+": the panel sits in the lower half beside the tray ("+panel+")");n++;
         }
         Check(worst<.06f,"beside the tray the view's display wrist misses its place by "+worst+" m ("+worstAt+")");

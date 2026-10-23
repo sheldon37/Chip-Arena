@@ -35,6 +35,9 @@ namespace ChipArena.UnityConversion
             // took, the chip's colour, whether another pick follows (latched over the return) and, after a plant that did not stay, until
             // when the look waits before it rises again.
             public readonly NativeChipPlantPose Plant=new NativeChipPlantPose();public bool Planting,PlantStay;public int PlantKey=int.MinValue,PlantChosen=-1,PlantRgb=NativeChipSelectHolo.Cyan;public float PlantAge=-1,SettleUntil=float.NegativeInfinity;
+            // A pilot drawn with a visual body: the world offset from the game wrist's emitter to its chip device's bay this frame
+            // (NativeVisualBodyPresentation.cs VisualEmitter), carried by the third-person hologram, its screen and its plant; zero else.
+            public Vector3 Shift;
         }
         private readonly Dictionary<int,ChipSelectSlot> chipSelect=new Dictionary<int,ChipSelectSlot>();private readonly ChipSelectSlot chipView=new ChipSelectSlot();
         private Func<CapturedRig.Pose,bool> chipSelectLayer;private ChipSelectSlot chipLayerSlot;private ChipSelectInput chipLayerInput;private ChipPlantInput chipLayerPlant;private bool chipLayerPlanting;
@@ -119,6 +122,14 @@ namespace ChipArena.UnityConversion
             chipSelectLayer??=ChipLayer;rig.Overlay(chipSelectLayer);
             slot.Frame=Time.frameCount;slot.Root=rig.Root.transform.localToWorldMatrix;slot.Weight=look;slot.Time=time;slot.Age=slot.Track.Age(time);slot.Redeal=slot.Track.SinceChange(time);slot.Gesture=slot.Pose.Gesture;slot.Scale=slot.RootScale=1;slot.ScreenLeft=NativeChipScreen.OnLeft(a.SourceSpec);
         }
+        /// <summary>SourceCharacter: first person, a long weapon in the display hand (NativeChipSelect.Stows: the rifles, the greatsword)
+        /// is put away while pilot `id`'s look is up past StowFrom (its stock or hilt would fill the view under the raised right
+        /// wrist); it comes back as the look lowers. Third person it hangs from the low hold instead.</summary>
+        private bool ChipStowed(Actor a,bool first)=>first&&NativeChipSelect.Stows(a.SourceSpec)&&ChipLookOf(a.Id)>StowFrom;
+        /// <summary>Pilot `id`'s chip-select look weight this frame (0 when it is not posed): the visual body's grasp lets the support
+        /// hand go by it (NativeVisualBodyPresentation.cs), and the first-person put-away reads it.</summary>
+        private float ChipLookOf(int id)=>chipSelect.TryGetValue(id,out var slot)&&slot.Frame==Time.frameCount?slot.Weight:0;
+        private const float StowFrom=.15f;
         /// <summary>The visual body's wrist device (NativeVisualBodyPresentation.cs VisualGear, Core NativePilotGear.Device): pilot
         /// `id`'s chip-select look this frame (its weight; 0 when it is not posed), its wrist plant's age (-1: none), the planted
         /// chip's colour (sRGB hex) and the plant's key (a new one per plant). Reads the slot ChipSelectPose posed; writes nothing.</summary>
@@ -146,7 +157,7 @@ namespace ChipArena.UnityConversion
         {
             world=default;viewModel=false;ChipSelectSlot slot;
             if(FirstPerson&&id==LocalId&&chipView.Frame==Time.frameCount){slot=chipView;viewModel=true;}else if(!chipSelect.TryGetValue(id,out slot)||slot.Frame!=Time.frameCount)return false;
-            var v=slot.Planting?slot.Plant.Chip:slot.Pose.PanelCentre;world=slot.Root.MultiplyPoint3x4(new Vector3(-v.X,v.Y,v.Z));return true;
+            var v=slot.Planting?slot.Plant.Chip:slot.Pose.PanelCentre;world=slot.Root.MultiplyPoint3x4(new Vector3(-v.X,v.Y,v.Z))+(viewModel?Vector3.zero:slot.Shift);return true;
         }
         // RenderFirstPerson, once the view rig is placed (and swayed): the local pilot's raised wrist and its hologram in view.
         private void ChipSelectView(CapturedAnimation.Player view,Actor a,float time)
@@ -175,7 +186,9 @@ namespace ChipArena.UnityConversion
             if(Viewer||chipSelect.Count==0)return;chipWorldSink.Clear();chipScreenSink.Clear();int built=0;
             foreach(var pair in chipSelect)
             {
-                var slot=pair.Value;if(slot.Frame!=Time.frameCount||FirstPerson&&pair.Key==LocalId||!ReviveVisible(pair.Key,slot.Time))continue;
+                var slot=pair.Value;if(slot.Frame!=Time.frameCount)continue;bool mineFirst=FirstPerson&&pair.Key==LocalId;
+                var e=slot.Pose.Emitter;slot.Shift=!mineFirst&&VisualEmitter(pair.Key,out var device)?device-slot.Root.MultiplyPoint3x4(new Vector3(-e.X,e.Y,e.Z)):Vector3.zero;
+                if(mineFirst||!ReviveVisible(pair.Key,slot.Time))continue;
                 built+=BuildChipHolo(chipWorldSink,slot,false,s,pair.Key);
             }
             if(built>0)DrawChipHolo(chipWorldSink,ref chipWorldMesh,null,0);
@@ -185,7 +198,7 @@ namespace ChipArena.UnityConversion
         private int BuildChipHolo(ChipHoloSink sink,ChipSelectSlot slot,bool first,Snapshot s,int id)
         {
             if(first)sink.Clear();var pose=slot.Pose;var m=slot.Root;
-            NVector P(NVector v){var w=m.MultiplyPoint3x4(new Vector3(-v.X,v.Y,v.Z));return new NVector(w.x,w.y,w.z);}
+            var shift=first?Vector3.zero:slot.Shift;NVector P(NVector v){var w=m.MultiplyPoint3x4(new Vector3(-v.X,v.Y,v.Z))+shift;return new NVector(w.x,w.y,w.z);}
             NVector D(NVector v){var w=m.MultiplyVector(new Vector3(-v.X,v.Y,v.Z)).normalized;return new NVector(w.x,w.y,w.z);}
             var frame=new ChipHoloFrame{Emitter=P(pose.Emitter),Centre=P(pose.PanelCentre),Right=D(pose.PanelRight),Up=D(pose.PanelUp),Normal=D(pose.PanelNormal),
                 Width=(first?NativeChipSelectPose.ViewWidth:NativeChipSelectPose.PanelWidth)*slot.Scale,Height=(first?NativeChipSelectPose.ViewHeight:NativeChipSelectPose.PanelHeight)*slot.Scale};
