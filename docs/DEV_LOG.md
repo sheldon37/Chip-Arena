@@ -1,3 +1,21 @@
+## 2026-10-23 — Claude: the builder installs the visual body (merged into shared)
+
+- **Branch/base:** `claude/visual-body-install` from shared `aa573e71`. No PR; merged into shared and the builder (standing merge authorization). The builder's agent publishes its build to the test channel.
+- **Owner request:** "Can you send the latest localassets.zip?" after the Player model setting did not show in the test build. That build had no bake, because the builder's zip (Oct 16) held only the effects audio and its installer copied only that. The owner chose the new zip plus an installer change.
+- **For Astra (build tooling, your area; done here on the owner's request):**
+  - `tools/install_local_assets.py`: an optional visual-body section (`visual-body.json` at the content root), checked and installed. It copies over `Assets/LocalAssets` and deletes nothing. `--remove` still takes the audio only, and output and exit codes are unchanged otherwise. The rejection header now reads "Licensed assets rejected".
+  - New `tools/pack_visual_body.py` writes that section from the local bake, deterministically, beside the base zip's members.
+  - New `Tests/test_visual_body_assets.py` (6 tests: packing, install beside the audio without deleting, no-section fallback, ten rejections, budget, no bake).
+  - The Drive zip was replaced: 21.6 MB, 1,430 audio members unchanged plus 176 body files, 14.9 MB. The Oct 16 zip is kept as `LocalAssets-2026-10-16.zip`. The builder's assets digest changes, so its next run rebuilds.
+- **Checks (actual):**
+  - Python: 146 tests in a clean LF checkout under UTF-8 mode, all pass except `test_windows_wrapper_runs_from_path_with_spaces_and_reports_missing_build`, which cannot run the `.cmd` wrapper from this Git Bash shell (environment; unchanged code).
+  - In this checkout without UTF-8 mode, three tests also fail on the system's cp932 file encoding, and one on the uncommitted local Shader Graph manifest entry; none is related.
+  - The new zip: the installer's `--check` passes, and it installs into an empty project.
+  - Full CoreTests: 841 PASS, 0 FAIL, exit 0, in an LF checkout of `2c7f5835`.
+- **Not run yet:** the builder's build with the new zip (it runs after this merge reaches the builder branch); in-game check of the published build.
+- **Animation impact:** none.
+- **Next:** confirm the builder's build installs the body, then the owner's in-game test.
+
 ## 2026-10-23 — Claude: Settings · Player model, New body or Classic voxel (merged into shared)
 
 - **Branch/base:** `claude/player-model-setting` from shared `e37a7e7f`. No PR; merged into shared and the builder (standing merge authorization); not published.

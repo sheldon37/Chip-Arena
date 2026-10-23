@@ -1028,8 +1028,20 @@ too (contract: `docs/PVE-CHIP-SELECT.md`).
   effects (step 6 for death).
 - **Captures:** the neutral turnaround.
 - **The performance pass** (Phase C).
-- **Builds:** a build made on the owner's PC includes the bake (it is in a Resources folder); the cloud builder's do not.
-  Extending the LocalAssets install to builds is Astra's tooling.
+- **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets
+  zip it already reads (`G:\My Drive\Chip Arena Build Logs\LocalAssets.zip`), so test builds draw the new body and show
+  Settings · Player model.
+  - `tools/pack_visual_body.py BASE_ZIP OUTPUT_ZIP` adds the bake to a copy of that zip. It follows the bake prefab's GUID
+    references through the text assets and every `.meta`. Outfit A comes to 176 files and 14.9 MB: the meshes, materials and
+    textures it uses, their metas and the folder metas. A `visual-body.json` lists each file with its SHA-256. Shaders, shader
+    graphs and scripts stay out (the body uses our tracked toon shader); the pack's own outfit materials are kept as text.
+  - `tools/install_local_assets.py` checks that section and copies the files over `Assets/LocalAssets`, deleting nothing. The
+    checks cover paths, kinds, hashes, metas, unique GUIDs, a 40 MB budget and the prefab in a Resources folder. A full local
+    pack is never trimmed, and a zip without the section installs the audio as before.
+  - After a new bake, run the packer on the Drive zip and replace it (keep the old one). The 2026-10-16 zip is kept beside it
+    as `LocalAssets-2026-10-16.zip`.
+  - Only the bake's dependencies ship, not the pack's own Resources folders, so builds grow by about the outfit's textures
+    and meshes.
 
 ## Decisions and design carried from the stopped Phase B branch
 

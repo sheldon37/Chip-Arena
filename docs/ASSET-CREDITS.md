@@ -68,7 +68,9 @@ public.** Not even transcoded clips may be published: the Asset Store licence co
 a built game, not redistributing them as files. They live in the owner's private licensed-assets
 repository, whose `LICENSES.md` names the source pack and file of every clip. At build time they are copied
 into the git-ignored `unity/ChipArenaConversion/Assets/LocalAssets/Resources/EffectsAudio` with
-`unity/ChipArenaConversion/tools/install_local_assets.py`, from a folder or a zip.
+`unity/ChipArenaConversion/tools/install_local_assets.py`, from a folder or a zip. The same zip can carry the baked
+visual body (meshes, materials and textures from the owner's licensed character pack, `docs/BOZO-INTEGRATION.md`), which
+the installer copies into `Assets/LocalAssets` for builds only; it is never committed or published as files either.
 `tools/package_source.py` skips that folder. Builds without it play the original synthesized sounds:
 CI, cloud builds, other checkouts and the public source zips.
 
