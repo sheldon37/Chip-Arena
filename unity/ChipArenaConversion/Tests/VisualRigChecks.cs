@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
             Floor(rig);Console.WriteLine("PASS visual rig: the floor fit keeps every visual bone's contact over the floor through the roll ("+count+" checks)");
             Allocation(rig);Console.WriteLine("PASS visual rig: posing, both IKs and the grip allocate nothing per frame and repeat bit for bit ("+count+" checks)");
             Binding(root);Console.WriteLine("PASS visual rig: the Unity binding mirrors at the boundary, writes local turns and the pelvis only, and names no pack types ("+count+" checks)");
-            BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter ("+count+" checks)");
+            BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter; the pilot gear faces out, clears its chip and follows health and chip select ("+count+" checks)");
         }
 
         private static void Bind(NativeVisualRig.Rig rig,Vector3[] restWorld)
@@ -676,16 +676,79 @@ namespace ChipArena.UnityConversion
             Check(Bare(fx).Contains("floatk=saturate(_SpawnTint.w*(0.35+0.65*SpawnHeat(y)))*0.8;")&&Bare(fx).Contains("returnc*lerp(t,float3(2.2,2.3,2.5),_SpawnGlitch.x*0.7);")&&Bare(spawn).Contains("floatheat=v.Heat[b>=0&&b<v.Heat.Length?b:0],k=Mathf.Clamp01(v.Frame.Tint*(.35f+.65f*heat))*.8f,flash=v.Frame.Flash*.7f;")&&spawn.Contains("t=Color.Lerp(t,new Color(2.2f,2.3f,2.5f,1),flash);"),"the hardlight tint and flash are SpawnTintOf's");
             // The runtime: one hook in SourceCharacter; Core's values written per renderer; the hologram never on the low tier.
             var character=Between(source,"private bool SourceCharacter(","private void SourceWorld(");
-            Check(character!=null&&character.Contains("float flash=dressed&&!first?HitFlashCode(a.Id,time):1;\n")&&character.IndexOf("if(visual)VisualBodyLook(rig,spawn,flash);",StringComparison.Ordinal)>character.IndexOf("float flash=",StringComparison.Ordinal),"SourceCharacter hands a visual body its flash and spawn-in");
+            Check(character!=null&&character.Contains("float flash=dressed&&!first?HitFlashCode(a.Id,time):1;\n")&&character.IndexOf("if(visual)VisualBodyLook(rig,a,time,spawn,flash,reveal,tint);",StringComparison.Ordinal)>character.IndexOf("float flash=",StringComparison.Ordinal),"SourceCharacter hands a visual body its flash and spawn-in, and the reveal and tint for its gear");
             var look=Between(spawn,"private bool SpawnVisualLook(","/// <summary>SourceCharacter (arena rigs)");
             Check(look!=null&&look.Contains("NativeSpawnIn.SolidLag,NativeSpawnIn.Band,NativeSpawnIn.HeatSpan,NativeSpawnIn.SolidLag+NativeSpawnIn.GhostLead")&&look.Contains("v.Built?1e5f:feet+f.Front-NativeSpawnIn.SolidLag")&&look.Contains("bool holo=!LowGraphics;")&&look.Contains("NativeSpawnIn.GhostOpacity")&&look.Contains("WeaponEffectsQuality>=.5f?f.Split:0")&&look.Contains("NativeSpawnIn.FeetOffset"),"the front over the presented feet, Core's constants, the hologram off on the low tier and the split off in Reduced");
-            var write=Between(body,"private void VisualBodyLook(","// Each renderer's materials");
+            var write=Between(body,"private void VisualBodyLook(","// The pilot gear on the visual body");
             Check(write!=null&&write.Contains("if(!on&&!body.SpawnOn&&flash==body.Flash)return;")&&write.Contains("if(!on)look=VisualSpawnLook.Off;")&&write.Contains("body.Block.SetFloat(HitFlashId,flash);"),"the values are written while a spawn-in runs or the flash changes, and reset after");
             int news=0;for(int i=write?.IndexOf("new ",StringComparison.Ordinal)??-1;i>=0;i=write.IndexOf("new ",i+1,StringComparison.Ordinal))news++;
             Check(news==1&&write.Contains("var look=new VisualSpawnLook();"),"VisualBodyLook builds only a value per frame (the hologram's slots are made once)");
+            Gear(body,Read("Runtime/NativeChipSelectPresentation.cs"),Read("Runtime/NativePilotGearModels.cs"));
             Check(!body.Contains("NativeSpawnIn")&&!body.Contains("SpawnInFrame"),"the visual body reads the spawn-in only through SpawnVisualLook (the spawn-in's presentation files)");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC"})
                 Check(!body.Contains(pack)&&!fx.Contains(pack)&&!toon.Contains(pack)&&!ghost.Contains(pack),"no pack types or names in the visual body's code: "+pack);
+        }
+
+        // The pilot gear (Core NativePilotGear; Runtime NativePilotGearModels and VisualGear): its sections face outward where
+        // they are seen, the lid clears the seated chip, and its states follow the pilot's health and chip select as designed.
+        private static void Gear(string body,string chip,string models)
+        {
+            // Every triangle of a section: its centroid and face normal (source frame, as built).
+            static System.Collections.Generic.List<(Vector3 c,Vector3 n)> Faces(WeaponMesh mesh)
+            {
+                var list=new System.Collections.Generic.List<(Vector3,Vector3)>();
+                foreach(var s in mesh.Sections)for(int i=0;i+2<s.Indices.Count;i+=3)
+                {
+                    Vector3 a=s.Positions[s.Indices[i]],b=s.Positions[s.Indices[i+1]],d=s.Positions[s.Indices[i+2]];var n=Vector3.Cross(b-a,d-a);
+                    if(n.LengthSquared()>1e-18f)list.Add(((a+b+d)/3,Vector3.Normalize(n)));
+                }
+                return list;
+            }
+            // The core: its front faces toward +z (off the chest), its back cap (sunk into the chest) toward -z, nothing else back.
+            var core=Faces(NativePilotGear.Core());int coreBack=0;
+            foreach(var (c,n) in core){if(c.Z<-.0095f){Check(n.Z<-.9f,"the core's back cap faces into the chest");coreBack++;}else Check(n.Z>-.05f,"the core's rim and gem face off the chest");}
+            Check(core.Count>100&&coreBack>0,"the core is built ("+core.Count+" faces)");
+            float width=0;foreach(var v in NativePilotGear.Shield(1.05f,0))width=Math.Max(width,Math.Abs(v.X)*2);Check(width>.07f&&width<.1f,"the core is 7 to 10 cm across ("+width+")");
+            // The device on a 4.7 cm sleeve: the band's outer face faces away from the forearm, its housing's top away from the back
+            // of the forearm, the bay's walls into the bay; the lid's lens and the chip's crystal outward; the lid clears the chip.
+            const float r=.047f;var device=Faces(NativePilotGear.Device(r));int band=0;
+            foreach(var (c,n) in device)
+            {
+                float radial=(float)Math.Sqrt(c.X*c.X+c.Z*c.Z);
+                if(Math.Abs(c.Y)<.019f&&radial>r+.0062f&&radial<r+.0075f&&c.X>-.005f){var out_=new Vector3(c.X,0,c.Z)/radial;Check(Vector3.Dot(n,out_)>.9f,"the band's face faces off the forearm");band++;}
+                if(c.X<-(r+NativePilotGear.HousingTop-.0002f)&&c.X>-(r+NativePilotGear.HousingTop+.0002f)&&Math.Abs(c.Z)<.02f&&c.Y>-.02f&&c.Y<.024f)Check(Math.Abs(n.X)>.9f,"the housing's top lies flat (facing off the back of the forearm; the frame bars' undersides on it face in, hidden)");
+            }
+            Check(band>=12,"the band's outer face is built ("+band+")");
+            var bayMid=new Vector3(-(r+NativePilotGear.HousingTop),(NativePilotGear.BayNear+NativePilotGear.BayFar)*.5f,0);
+            foreach(var (c,n) in Faces(NativePilotGear.Bay(r)))if(Math.Abs(n.X)<.5f)Check(Vector3.Dot(n,new Vector3(0,bayMid.Y-c.Y,bayMid.Z-c.Z))>0,"the bay's walls face into the bay");else Check(n.X<-.9f,"the bay's floor faces up out of the housing");
+            foreach(var (c,n) in Faces(NativePilotGear.Lid()))if(c.X<-NativePilotGear.LidThick-.0003f)Check(n.X<-.3f,"the lid's lens faces out");
+            var chipMesh=NativePilotGear.Chip();float chipTop=0;foreach(var s in chipMesh.Sections)foreach(var v in s.Positions)chipTop=Math.Min(chipTop,v.X);
+            foreach(var (c,n) in Faces(chipMesh))if(c.X<-NativePilotGear.ChipThick-.0001f)Check(n.X<-.3f,"the chip's crystal faces out");
+            float seatX=NativePilotGear.Seat(r).X,hingeX=NativePilotGear.Hinge(r).X;
+            Check(seatX+chipTop-.0003f>hingeX,"the shut lid clears the seated chip ("+(seatX+chipTop)+" over "+hingeX+")");
+            // States: the core pulses gently, flares as the body appears and settles, flickers only at low health.
+            float lo=9,hi=0;for(float t=0;t<6;t+=.01f){float g=NativePilotGear.CoreGlow(t,1,-1,7);lo=Math.Min(lo,g);hi=Math.Max(hi,g);}
+            Check(lo>=1-NativePilotGear.PulseDepth-1e-4f&&hi<=1+1e-4f&&hi-lo>.1f,"the healthy core pulses within its depth");
+            Check(NativePilotGear.CoreGlow(1,1,0,7)<.01f&&NativePilotGear.CoreGlow(1,1,NativePilotGear.IgniteRise,7)>1.5f&&Math.Abs(NativePilotGear.CoreGlow(1,1,3,7)/NativePilotGear.CoreGlow(1,1,-1,7)-1)<.01f,"the core flares as the body appears and settles");
+            int dips=0;for(float t=0;t<10;t+=NativePilotGear.FlickerSlot){if(NativePilotGear.CoreGlow(t,1,-1,3)<1-NativePilotGear.PulseDepth-.01f)dips=-1000;if(NativePilotGear.CoreGlow(t,.05f,-1,3)<.6f)dips++;}
+            Check(dips>10,"the core flickers at low health only ("+dips+")");
+            Check(NativePilotGear.CoreGlow(2.5f,.1f,-1,9)==NativePilotGear.CoreGlow(2.5f,.1f,-1,9),"the core's glow is a pure function");
+            // The device: shut at rest, open with the look; the chip from its carry's end while the lid is open; the bay in the chip's
+            // colour while accepted; the lens keeping it after the lid has shut, back to rest after ActiveSeconds.
+            var rest=NativePilotGear.Device(0,-1,float.NaN,1);Check(rest.Lid==0&&!rest.Chip&&rest.Bay==0&&!rest.LensChip,"the device rests shut");
+            Check(NativePilotGear.Device(1,-1,float.NaN,1).Lid>.99f,"the lid opens with the look");
+            Check(!NativePilotGear.Device(1,NativeDraftPlant.CarryEnd-.05f,float.NaN,1).Chip&&NativePilotGear.Device(1,NativeDraftPlant.CarryEnd+.05f,.05f,1).Chip,"the chip shows from the carry's end");
+            var accepted=NativePilotGear.Device(1,(NativeDraftPlant.PulseStart+NativeDraftPlant.PulseEnd)*.5f,.3f,1);Check(accepted.BayChip&&accepted.Bay>1.2f&&accepted.LensChip,"the bay and lens take the chip's colour as it is accepted");
+            float after=NativeDraftPlant.PulseEnd-NativeDraftPlant.CarryEnd;
+            Check(NativePilotGear.Device(0,-1,after+.5f,1).LensChip&&!NativePilotGear.Device(0,-1,after+NativePilotGear.ActiveSeconds+.01f,1).LensChip,"the lens keeps the chip's colour for ActiveSeconds after the lid has shut");
+            // The runtime: the anchors by name, the device's look read from the chip-select slot, the models on one SourceLit material,
+            // and VisualGear building only values.
+            Check(body.Contains("t.name==\"VisualGearCore\"")&&body.Contains("t.name==\"VisualGearDevice\"")&&body.Contains("t.name==\"VisualGearDeviceRim\""),"the gear's anchors by the bake's names");
+            Check(chip.Contains("private void ChipDeviceLook(int id,out float look,out float plant,out int rgb,out int key)")&&chip.Contains("slot.Frame!=Time.frameCount)return;"),"the device reads the chip-select slot posed this frame");
+            Check(models.Contains("Resources.Load<Shader>(\"NativeSourceLit\")")&&models.Contains("enableInstancing=true")&&models.Contains("WeaponMeshOf(s,id)"),"the gear's models on one instanced SourceLit material, mirrored as the weapons are");
+            int gearAt=body.IndexOf("private void VisualGear(",StringComparison.Ordinal),gearEnd=body.IndexOf("private Func<int,Matrix4x4> gearBone;",StringComparison.Ordinal);var gear=gearAt>=0&&gearEnd>gearAt?body.Substring(gearAt,gearEnd-gearAt):"";
+            foreach(System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(gear,@"\bnew\s+([A-Z]\w*)"))Check(m.Groups[1].Value=="Vector4"||m.Groups[1].Value=="Vector3"||m.Groups[1].Value=="Color","VisualGear builds only values ("+m.Value+")");
+            Check(gear.Length>0&&!gear.Contains("=>")&&!gear.Contains(".Where(")&&!gear.Contains(".Select("),"VisualGear: no lambdas or LINQ per frame");
         }
     }
 }

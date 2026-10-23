@@ -9,8 +9,9 @@ namespace ChipArena.UnityConversion
     // every frame, authority reads neither, and the voxel body draws wherever the bake is absent or with --ca-voxel-bodies.
     // The rig's hand bones are moved onto the visual weapon frames after posing (and back before the next pose), so the
     // drawn weapon, its muzzle, blade sweeps and wrist effects follow the visual hands. It takes the hit flash and the
-    // match-start spawn-in in its own shader (VisualBodyLook). Still voxel: first-person arms, intros, portraits, the draft,
-    // corpses and kill effects; hats are not drawn on it yet.
+    // match-start spawn-in in its own shader (VisualBodyLook), and wears the pilot gear (VisualGear: the chest core and the
+    // right-wrist chip device, Core NativePilotGear) at anchors its bake measured. Still voxel: first-person arms, intros,
+    // portraits, the draft, corpses and kill effects; hats are not drawn on it yet.
     public sealed partial class ArenaPresentation
     {
         private sealed class VisualBody
@@ -18,6 +19,11 @@ namespace ChipArena.UnityConversion
             public GameObject Root; public NativeVisualRigBinding Binding; public Renderer[] Cloth, All; public MaterialPropertyBlock Block;
             public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted; public Vector3 At; public float Flash=1;
             public Material[][] Plain, Spawning;
+            // The gear's anchors (the bake's VisualGearCore and VisualGearDevice, the band's radius from VisualGearDeviceRim), when
+            // the body last appeared or finished forming (the core's flare), the last seated chip (its plant's key, when, colour)
+            // and the pilot's accent (linear, the bay's and lens's rest colour).
+            public Transform GearCore, GearDevice; public float GearRadius, LitAt=float.NaN, SeatAt=float.NaN; public int SeatKey=int.MinValue; public bool Building;
+            public Color ChipColor=Color.cyan, AccentLinear=Color.cyan;
             public readonly Vector3[] HandPosition=new Vector3[2]; public readonly Quaternion[] HandRotation=new Quaternion[2];
         }
         public const string VisualBodyResource="ChipArenaVisualBody", VoxelBodiesArgument="--ca-voxel-bodies";
@@ -97,6 +103,12 @@ namespace ChipArena.UnityConversion
             if(skeleton==null){Destroy(root);visualBodyState=-1;Debug.LogWarning("Visual body: "+VisualBodyResource+" has no VisualSkeleton; pilots draw voxel.");return null;}
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock()};
             body.All=root.GetComponentsInChildren<Renderer>(true);body.Plain=new Material[body.All.Length][];
+            foreach(var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if(t.name=="VisualGearCore")body.GearCore=t;else if(t.name=="VisualGearDevice")body.GearDevice=t;
+                else if(t.name=="VisualGearDeviceRim")body.GearRadius=t.localPosition.magnitude;
+            }
+            if(body.GearDevice!=null&&!(body.GearRadius>.01f))body.GearDevice=null;
             for(int k=0;k<body.All.Length;k++)
             {
                 var r=body.All[k];body.Plain[k]=r.sharedMaterials;var m=r.sharedMaterial;if(m==null||!m.HasProperty(TextureId))continue;
@@ -136,6 +148,7 @@ namespace ChipArena.UnityConversion
         {
             body.Accent=accent;
             if(!ColorUtility.TryParseHtmlString(accent??"#70e1d0",out var color))return;
+            body.AccentLinear=color.linear;
             foreach(var r in body.Cloth)
             {
                 if(r==null)continue;
@@ -146,10 +159,11 @@ namespace ChipArena.UnityConversion
         // While drawing it (SourceCharacter): the pilot's hit flash code and match-start spawn-in on the visual body's shader,
         // per renderer, and the hologram's slots while the spawn-in shows one (none on the low graphics tier). Writes only
         // while a spawn-in runs or the flash changes; allocates only the first time a body shows the hologram.
-        private void VisualBodyLook(CapturedAnimation.Player rig,SpawnView spawn,float flash)
+        private void VisualBodyLook(CapturedAnimation.Player rig,Actor a,float time,SpawnView spawn,float flash,Func<int,float> reveal,Func<int,Color> tint)
         {
             if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null)return;
-            var look=new VisualSpawnLook();bool on=SpawnVisualLook(spawn,rig,ref look);
+            var look=new VisualSpawnLook();bool on=SpawnVisualLook(spawn,rig,ref look);body.Building=on&&look.Front.x<1e4f;
+            VisualGear(body,a,time,reveal,tint,flash);
             bool ghost=on&&look.Ghost&&VisualGhosts()!=null;
             if(ghost!=body.Ghosted)
             {
@@ -167,6 +181,46 @@ namespace ChipArena.UnityConversion
             }
             body.SpawnOn=on;body.Flash=flash;
         }
+        // The pilot gear on the visual body (Core NativePilotGear; the models NativePilotGearModels.cs), each frame it draws: the
+        // core at the chest anchor, glowing as CoreGlow gives it (its flare restarts when the body reappears or finishes forming);
+        // the device at the forearm anchor, its lid on the hinge and the chip in the bay as Device gives them from the pilot's
+        // chip-select look and wrist plant (ChipDeviceLook). The body's reveal, tint and hit flash reach them as they reach the
+        // voxel parts at those joints. Allocation-free.
+        private void VisualGear(VisualBody body,Actor a,float time,Func<int,float> reveal,Func<int,Color> tint,float flash)
+        {
+            if(body.GearCore==null&&body.GearDevice==null||!sourceModels.PilotGear(body.GearRadius>.01f?body.GearRadius:.04f))return;
+            if(!body.Root.activeSelf||body.Building||float.IsNaN(body.LitAt))body.LitAt=time;
+            var accent=AccentTint(a.AccentColor);gearBone??=GearBoneOf;
+            if(body.GearCore!=null)
+            {
+                var p=LoadoutPilot(a.Id);float max=p?.Stats!=null?(float)p.Stats["hp"]:100;float health=max>0?(p!=null?p.Hp:a.Hp)/max:1;
+                float g=NativePilotGear.CoreGlow(time,health,time-body.LitAt,a.Id);gearMatrix=body.GearCore.localToWorldMatrix;
+                sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,0,null,Color.white,accent,1,reveal,tint,new Vector4(g,g,g,1),null,flash);
+            }
+            if(body.GearDevice==null)return;
+            ChipDeviceLook(a.Id,out float look,out float plant,out int rgb,out int key);
+            if(plant>=NativeDraftPlant.CarryEnd&&key!=body.SeatKey)
+            {
+                body.SeatKey=key;body.SeatAt=time-(plant-NativeDraftPlant.CarryEnd);
+                body.ChipColor=new Color(((rgb>>16)&255)/255f,((rgb>>8)&255)/255f,(rgb&255)/255f).linear;
+            }
+            var dev=NativePilotGear.Device(look,plant,float.IsNaN(body.SeatAt)?float.NaN:time-body.SeatAt,time);
+            var m=body.GearDevice.localToWorldMatrix;float r=Mathf.Round(Mathf.Clamp(body.GearRadius,.02f,.08f)*1000)/1000;
+            gearMatrix=m;sourceModels.Queue(NativeSourceModels.GearDevice,m,gearBone,null,0,null,Color.white,accent,1,reveal,tint,new Vector4(dev.Strips,dev.Strips,dev.Strips,1),null,flash);
+            // The bay shows only while the lid is up; the gear's source frame mirrors into Unity's (x toward the back of the forearm).
+            if(dev.Lid>.02f){var bay=(dev.BayChip?body.ChipColor:body.AccentLinear)*dev.Bay;sourceModels.Queue(NativeSourceModels.GearBay,m,gearBone,null,0,null,Color.white,accent,1,reveal,tint,new Vector4(bay.r,bay.g,bay.b,1),null,flash);}
+            var h=NativePilotGear.Hinge(r);var lens=(dev.LensChip?body.ChipColor:body.AccentLinear)*dev.Lens;
+            gearMatrix=m*Matrix4x4.TRS(new Vector3(-h.X,h.Y,h.Z),Quaternion.AngleAxis(dev.Lid*NativePilotGear.LidOpenDegrees,Vector3.forward),Vector3.one);
+            sourceModels.Queue(NativeSourceModels.GearLid,gearMatrix,gearBone,null,0,null,Color.white,accent,1,reveal,tint,new Vector4(lens.r,lens.g,lens.b,1),null,flash);
+            if(dev.Chip)
+            {
+                var s=NativePilotGear.Seat(r);var chip=body.ChipColor*1.6f;gearMatrix=m*Matrix4x4.Translate(new Vector3(-s.X,s.Y,s.Z));
+                sourceModels.Queue(NativeSourceModels.GearChip,gearMatrix,gearBone,null,0,null,Color.white,accent,1,reveal,tint,new Vector4(chip.r,chip.g,chip.b,1),null,flash);
+            }
+        }
+        private Func<int,Matrix4x4> gearBone;private Matrix4x4 gearMatrix;
+        private Matrix4x4 GearBoneOf(int bone)=>gearMatrix;
+
         // Each renderer's materials with the hologram's after them (extra slots draw the mesh again).
         private Material[][] VisualSpawnSlots(VisualBody body)
         {

@@ -119,6 +119,15 @@ namespace ChipArena.UnityConversion
             chipSelectLayer??=ChipLayer;rig.Overlay(chipSelectLayer);
             slot.Frame=Time.frameCount;slot.Root=rig.Root.transform.localToWorldMatrix;slot.Weight=look;slot.Time=time;slot.Age=slot.Track.Age(time);slot.Redeal=slot.Track.SinceChange(time);slot.Gesture=slot.Pose.Gesture;slot.Scale=slot.RootScale=1;slot.ScreenLeft=NativeChipScreen.OnLeft(a.SourceSpec);
         }
+        /// <summary>The visual body's wrist device (NativeVisualBodyPresentation.cs VisualGear, Core NativePilotGear.Device): pilot
+        /// `id`'s chip-select look this frame (its weight; 0 when it is not posed), its wrist plant's age (-1: none), the planted
+        /// chip's colour (sRGB hex) and the plant's key (a new one per plant). Reads the slot ChipSelectPose posed; writes nothing.</summary>
+        private void ChipDeviceLook(int id,out float look,out float plant,out int rgb,out int key)
+        {
+            look=0;plant=-1;rgb=NativeChipSelectHolo.Cyan;key=int.MinValue;
+            if(!chipSelect.TryGetValue(id,out var slot)||slot.Frame!=Time.frameCount)return;
+            look=slot.Weight;if(slot.Planting){plant=slot.PlantAge;rgb=slot.PlantRgb;key=slot.PlantKey;}
+        }
         // The overlay (cached once: no closure per frame): the hologram pose, then the wrist plant over it.
         private bool ChipLayer(CapturedRig.Pose pose)
         {
