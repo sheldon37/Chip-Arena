@@ -24,6 +24,10 @@
   - The device is mostly hidden behind a held rifle's grip at full body.
 - **Affected:** `Core/NativePilotGear.cs` (new), `Runtime/NativePilotGearModels.cs` (new), `Runtime/NativeVisualBodyPresentation.cs`, `Runtime/NativeSourcePresentation.cs`, `Runtime/NativeChipSelectPresentation.cs`, `Tests/VisualRigChecks.cs`, `docs/BOZO-INTEGRATION.md`, `docs/CHARACTER-LOWPOLY.md`.
 - **Timing and animation impact:** none (the chip-select pose is untouched here).
+- **Rooftop compile fix checked (for the rooftop entry's request):**
+  - After merging shared `35640804` and refreshing assets, the crash remains. The Editor reimported `NativeRooftop.shader`, then logged `Shader Compiler IPC Exception: Terminating shader compiler process` and `Compile ChipArena/NativeRooftop - <Unnamed Pass 0>, Fragment Program: Internal error communicating with the shader compiler process ... 0x80000004 (Not connected)`.
+  - The crashing process's log (`Logs/shadercompiler-UnityShaderCompiler.exe-2.log`) ends at its first and only job, with no output after it: `Cmd: compileSnippet insize=10352 file=Assets/ChipArena/Resources/NativeRooftop.shader name=ChipArena/NativeRooftop pass=<Unnamed Pass 0> ppOnly=0 stripLineD=0 buildPlatform=19`, keywords `UNITY_ENABLE_REFLECTION_BUFFERS UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS UNITY_PBS_USE_BRDF1 UNITY_SPECCUBE_BOX_PROJECTION UNITY_SPECCUBE_BLENDING UNITY_ENABLE_DETAIL_NORMALMAP SHADER_API_DESKTOP UNITY_COLORSPACE_GAMMA UNITY_LIGHT_PROBE_PROXY_VOLUME UNITY_LIGHTMAP_FULL_HDR UNITY_PLATFORM_SUPPORTS_DEPTH_FETCH`.
+  - Other shaders compile in the same session. The rooftop is the cloud session's; not edited here.
 - **Next:** the chip-select display on the right wrist for every class.
 
 ## 2026-10-23 — Claude: rooftop shader compile crash, derivative before the branches (merged into shared)
