@@ -5,7 +5,8 @@ after the owner's review): both packs imported, moved under `Assets/LocalAssets/
 decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; its drift on BoZo is
 measured in Unity (step 3 below). Step 4 (first character): outfit A is wired into the arena's pilot bodies
 (`claude/bozo-body`, below), drawn on our own lighting (`claude/bozo-toon`) with its outline matched to the map's lines
-(`claude/bozo-outline`); its chest core and wrist device, hats and the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
+(`claude/bozo-outline`), with the hit flash and the spawn-in (`claude/bozo-flash`); its chest core and wrist device, hats
+and the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
@@ -913,10 +914,49 @@ the world and flat black: about 1.2 px at 2.5 m, under a pixel past 4 m.
   - The Editor shots have no MSAA: stair-stepped edges, as the map lines'.
   - Weapons, drawn by `ChipArena/SourceLit`, have no outline, as before.
 
+**The hit flash and the spawn-in (`claude/bozo-flash`).** The visual body takes the voxel pilot's struck flash and
+match-start spawn-in in its own shaders, from the same values the voxel parts read. `Resources/NativeVisualBodyFx.cginc`
+is shared by the body, its outline and the hologram. `SourceCharacter` hands a visual body its flash code and spawn-in
+frame (`VisualBodyLook`), which writes them per renderer only while a spawn-in runs or the flash changes.
+- **Hit flash:** SourceLit's shared block (its colour and blend, the code `NativeHitFlash` writes: a hit, a headshot).
+  - It applies after the light and before the fog, more on the silhouette, not in the add passes.
+  - The outline is the darker version of the flash.
+- **Spawn-in, per pixel** where the voxel body works per part:
+  - Core `NativeSpawnIn`'s solid, heat and slice at each pixel's height over the presented feet, from the same build front
+    (the spawn-in presentation's `SpawnVisualLook` hands the constants over, so the shader holds none of its own).
+  - The body, its outline and its cast shadow form from the feet up in the voxel parts' world-cell dither, in the
+    hardlight tint (hottest where just formed) and the completion flash, then cool.
+- **The hologram** (`Resources/NativeVisualBodyGhost.shader`): the voxel pilot's look (rim, scanlines on world height, the
+  clock), on three extra material slots of each renderer, only while a spawn-in shows one. None on the low graphics tier
+  (as `SpawnHologram`), and the split only on Full effects.
+  - The slice leading the solid front, in the pilot's hologram colour.
+  - The completion's flash silhouette over the whole body.
+  - The RGB split: magenta and cyan copies moved along the camera's right, at the completion and the countdown's two blips.
+- **Checks:**
+  - `VisualRigChecks`: the flash block equals SourceLit's; the shader's solid, heat and slice equal Core's per-part
+    functions at the same height (worst 1e-5 over a grid); the tint and flash are `SpawnTintOf`'s; the wiring; no
+    spawn-in names in the visual body file (the spawn-in's own presentation-only rule); no pack names.
+  - In Play mode on Brickfall, the property blocks read back after each shot:
+    - the front climbs from 0.6 m under the floor to 2.16 m over it through the build, then turns formed;
+    - the hologram slots are on while building, at the completion and at the two blips, and off after;
+    - the tint fades from 1 to 0 over half a second;
+    - the completion frame had flash .47 and a 3.4 cm split;
+    - a hit and a headshot set through the game's own hit record drew codes 1.52–1.66 and 3.52–3.72, and the body
+      flashed white through red, headshots brighter.
+- **Fixed on the way:** at world-sized arguments the dither hash resolves to about 1/256, so cells hashing to exactly 0
+  drew dark specks over the unformed body (SourceLit skips an unformed part whole). The hash is now floored above 0.
+- **Remaining:**
+  - The hologram has no depth pre-pass (the voxel one's single layer), so overlapping cloth layers can stack slightly
+    brighter in the slice.
+  - The dither cells are world-fixed, as the voxel body's, so a floating body's dither crawls as it bobs.
+  - Still skipped on a visual body (`!visual`): Body Chips dressing, living wounds, the parry flash, the Cyber Lord's
+    hardlight pieces, hats.
+
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the chest core and the right-wrist device, the mask and visor, and the glow (emission in the
   player colour).
-- **Hats** (owner decision open), the hit flash and the spawn-in build-up (the voxel body's dither reveal).
+- **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
+  visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
 - **Other rigs still draw voxel:** first-person arms, intros, portraits, the draft, the death broadcast, corpses and kill
   effects (step 6 for death).
