@@ -614,7 +614,7 @@ Compatibility resolution is presentation, not validation: the authority stores t
    - fund a display-skeleton remap, with the weapon and muzzle re-tuning it implies.
 2. **Height.** 1.70 m (hit volumes, head sphere 1.51 m) versus the sheet's ~1.8 m. Recommended: 1.70 m.
 3. **Wrist side.** Confirm the right wrist for every class, which moves the chip-select display wrist off the free hand
-   (section e).
+   (section e). Decided (owner, 2026-10-22): the right wrist for every class.
 4. **Default outfit.** A new pilot wears the bare base or the Arena Pilot set.
 5. **Skin tones.** A palette or free colours. Do faces and hair need entitlements?
 6. **Hats.** Keep today's hats on the modular head (with fit transforms) until low-poly versions exist?

@@ -30,8 +30,8 @@ namespace ChipArena.UnityConversion
             tint=SpawnTinted(spawn,tint);
             // The hit flash (NativeHitFlash, weapons milestone) on a struck arena rig's body and hat; not the first-person arms.
             float flash=dressed&&!first?HitFlashCode(a.Id,time):1;
-            // A visual body takes the flash and the spawn-in in its own shader (NativeVisualBodyPresentation.cs).
-            if(visual)VisualBodyLook(rig,spawn,flash);
+            // A visual body takes the flash and the spawn-in in its own shader, and wears the pilot gear (NativeVisualBodyPresentation.cs).
+            if(visual)VisualBodyLook(rig,a,time,spawn,flash,reveal,tint);
             // The DEV Cyber Lord's Data Dash and fork bomb dither its body (NativeCyberLordPresentation.cs).
             reveal=CyberReveal(a,time,reveal);
             if(!visual)sourceModels.Queue(model,rig.Root.transform.localToWorldMatrix,Bone,Visible,layer,camera,BodyTint(a.BodyColor),BodyAccent(bodySkin,a.AccentColor,a.Hat,a.HatColor),partOpacity:reveal,partTint:tint,look:look,hitFlash:flash);

@@ -1,3 +1,35 @@
+## 2026-10-22 — Claude: BoZo step 4, the chest core and right-wrist chip device (merged into shared)
+
+- **Branch/base:** `claude/bozo-core` from shared `1dbf351f`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request and decision:**
+  - The chest core and wrist device on the BoZo body.
+  - The owner settled the open wrist side: the right wrist for every class, with the chip-select display moving there too (that pose change is the next task).
+- **Changes (presentation only):**
+  - New `Core/NativePilotGear.cs`: the core and the device's body, bay, lid and chip as SourceLit sections, plus their states as pure functions (`CoreGlow`; `Device`: lid, chip, bay, lens).
+  - New `Runtime/NativePilotGearModels.cs`: one instanced SourceLit material, mirrored as the weapons are.
+  - `NativeVisualBodyPresentation.VisualGear`: draws them at the bake's anchors (`VisualGearCore`, `VisualGearDevice`, `VisualGearDeviceRim`), reads the pilot's health and the chip-select slot, and passes the body's reveal, tint and hit flash.
+  - `NativeChipSelectPresentation.ChipDeviceLook`: read-only.
+  - `SourceCharacter`'s visual-body hook now passes the actor, time, reveal and tint.
+  - The local bake (git-ignored) measures the anchors.
+- **Checks (actual):**
+  - Full CoreTests: 840 PASS, 0 FAIL, exit 0, in an LF checkout of the code commit (the expedition-ending GUID check's Windows paths normalised in that throwaway worktree only, as before).
+  - `VisualRigChecks`: about 300 new checks (facing, lid clearance, states, wiring).
+  - Unity semantic compile passes (player, runtime, editor); `git diff --check` clean.
+  - Play mode on Brickfall:
+    - the core showed on the chest;
+    - a staged Expedition pick and plant (the local tool re-set the game's own hooks each frame) walked the device through open, the legendary chip seated, the pulse, the lid shutting and the lens fading.
+- **Not run:** a Windows build; a real Expedition run; Phase C.
+- **Remaining:**
+  - The display still rises over the left wrist (next task).
+  - The device is mostly hidden behind a held rifle's grip at full body.
+- **Affected:** `Core/NativePilotGear.cs` (new), `Runtime/NativePilotGearModels.cs` (new), `Runtime/NativeVisualBodyPresentation.cs`, `Runtime/NativeSourcePresentation.cs`, `Runtime/NativeChipSelectPresentation.cs`, `Tests/VisualRigChecks.cs`, `docs/BOZO-INTEGRATION.md`, `docs/CHARACTER-LOWPOLY.md`.
+- **Timing and animation impact:** none (the chip-select pose is untouched here).
+- **Rooftop compile fix checked (for the rooftop entry's request):**
+  - After merging shared `35640804` and refreshing assets, the crash remains. The Editor reimported `NativeRooftop.shader`, then logged `Shader Compiler IPC Exception: Terminating shader compiler process` and `Compile ChipArena/NativeRooftop - <Unnamed Pass 0>, Fragment Program: Internal error communicating with the shader compiler process ... 0x80000004 (Not connected)`.
+  - The crashing process's log (`Logs/shadercompiler-UnityShaderCompiler.exe-2.log`) ends at its first and only job, with no output after it: `Cmd: compileSnippet insize=10352 file=Assets/ChipArena/Resources/NativeRooftop.shader name=ChipArena/NativeRooftop pass=<Unnamed Pass 0> ppOnly=0 stripLineD=0 buildPlatform=19`, keywords `UNITY_ENABLE_REFLECTION_BUFFERS UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS UNITY_PBS_USE_BRDF1 UNITY_SPECCUBE_BOX_PROJECTION UNITY_SPECCUBE_BLENDING UNITY_ENABLE_DETAIL_NORMALMAP SHADER_API_DESKTOP UNITY_COLORSPACE_GAMMA UNITY_LIGHT_PROBE_PROXY_VOLUME UNITY_LIGHTMAP_FULL_HDR UNITY_PLATFORM_SUPPORTS_DEPTH_FETCH`.
+  - Other shaders compile in the same session. The rooftop is the cloud session's; not edited here.
+- **Next:** the chip-select display on the right wrist for every class.
+
 ## 2026-10-23 — Claude: rooftop shader compile crash, derivative before the branches (merged into shared)
 
 - **Branch/base:** `claude/rooftop-shader-compile` from shared `3467111`. Merged into shared and the builder; no PR of its own, not published.
