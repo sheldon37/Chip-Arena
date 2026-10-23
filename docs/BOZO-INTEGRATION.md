@@ -5,8 +5,9 @@ after the owner's review): both packs imported, moved under `Assets/LocalAssets/
 decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; its drift on BoZo is
 measured in Unity (step 3 below). Step 4 (first character): outfit A is wired into the arena's pilot bodies
 (`claude/bozo-body`, below), drawn on our own lighting (`claude/bozo-toon`) with its outline matched to the map's lines
-(`claude/bozo-outline`), with the hit flash and the spawn-in (`claude/bozo-flash`); its chest core and wrist device, hats
-and the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
+(`claude/bozo-outline`), with the hit flash and the spawn-in (`claude/bozo-flash`), the chest core and the right-wrist
+chip device (`claude/bozo-core`); the chip-select display's move to the right wrist, hats and the other rigs are still to
+do. Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
@@ -952,9 +953,47 @@ frame (`VisualBodyLook`), which writes them per renderer only while a spawn-in r
   - Still skipped on a visual body (`!visual`): Body Chips dressing, living wounds, the parry flash, the Cyber Lord's
     hardlight pieces, hats.
 
+**The chest core and the right-wrist chip device (`claude/bozo-core`).** Our own pieces, kept from the stopped base
+(docs/CHARACTER-LOWPOLY.md section e), built in code (`Core/NativePilotGear.cs`, SourceLit sections; models
+`Runtime/NativePilotGearModels.cs`) and drawn on the visual body (`VisualGear`). Owner decision (2026-10-22): the device
+sits on the right wrist for every class, and the chip-select display moves there too (not yet done: below).
+- **Placement:** the local bake measures two anchors on the baked outfit and saves them in the prefab, so the runtime holds
+  no outfit numbers.
+  - **Core:** on the outfit's front surface over the heart, 5.8 cm left of the midline at the sternum's height, facing
+    along the surface. Outfit A's open jacket leaves only 3 cm of shirt between its flaps, so the core sits on the jacket
+    as a housing (the plan's "core: housing" case).
+  - **Device:** on the right forearm's axis 4.5 cm up from the wrist (the forearm twist bone), its housing on the back of
+    the forearm (away from the palm), its band fitted to the sleeve's 95th-percentile radius there (4.7 cm on outfit A).
+- **Pieces:**
+  - **Core:** a faceted shield housing (7.6 cm across) with a bevelled rim and a gem glowing in the pilot's accent.
+  - **Device:** a band with an accent strip, a housing with accent side strips and a screen, a raised frame round the
+    chip bay, a lid hinged at the elbow end with a lens, and the game's chip cartridge seated in the bay.
+- **States** (pure functions of what the pilot already presents; nothing written back):
+  - **Core:** a slow pulse; a flicker under 30 % health; a flare as the body appears (a respawn, a revive, the end of the
+    spawn-in build). It takes the body's hit flash and spawn-in reveal.
+  - **Device, from the chip-select slot:**
+    - the lid opens with the look's weight;
+    - the bay glows ready in the accent;
+    - from the plant's carry end the chip shows in the bay;
+    - the bay pulses in the chip's rarity colour through the accepted pulse;
+    - after the lid shuts, the lens keeps that colour, fading over 1.5 s.
+- **Checks:**
+  - `VisualRigChecks`:
+    - every section faces out where it is seen; the shut lid clears the seated chip;
+    - the states follow health and the plant's timeline;
+    - the wiring; no pack names; values only per frame.
+  - In Play mode on Brickfall, a staged pick and plant (the local tool sets the game's own Expedition hooks between Update
+    and the render) walked the device through rest, open, the chip seated in its legendary orange, the pulse, the lid
+    shutting and the lens fading. The core showed on the chest throughout.
+- **Remaining:**
+  - Until the display moves, the device opens on the right while the panel still rises over the left wrist.
+  - At full body the right forearm sits behind a held rifle's grip, so the device mostly shows in close views.
+  - The sleeve's folds can cover the band's edge.
+
 **Not yet (step 4 continues):**
-- **Owner's concept pieces:** the chest core and the right-wrist device, the mask and visor, and the glow (emission in the
-  player colour).
+- **The chip-select display on the right wrist** for every class (owner 2026-10-22): the pose, the plant and the draft
+  stage (docs/CHARACTER-LOWPOLY.md section e).
+- **Owner's concept pieces:** the mask and visor, and the glow (emission in the player colour).
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
   visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
@@ -1094,7 +1133,7 @@ ours to author.
 - **DEV-only pieces:** which BoZo pieces are DEV-only (the Sheldon adaptation of the "Sheldon Clothes" robe and the "Sheldon
   Head" hood).
 - **From Phase A section j, still open:**
-  - right wrist for every class;
+  - (decided 2026-10-22: the right wrist for every class);
   - a skin-tone palette or free colours, and whether faces and hair need entitlements;
   - today's hats on BoZo heads;
   - team identity (bands or a paint channel);
