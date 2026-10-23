@@ -1,3 +1,26 @@
+## 2026-10-23 — Claude: chip-select display wrist raised to mid-chest (merged into shared)
+
+- **Branch/base:** `claude/chip-wrist-chest` from shared `7ffe2d81`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** "Raise the short-weapon display wrist to mid-chest height, keeping the panel under the eyes." It answers the open item in the right-wrist entry below.
+- **Changes (presentation only):**
+  - `NativeChipSelectPose.Raised`: 12 cm above the chest joint, not 4 (the voxel chest box's middle is 10 cm up). Every class without the low hold uses it, the empty hands too.
+  - The armed panel moves 17 cm along the forearm (13 before) and lifts 3 cm (5 before): clear of the sword's hilt and still at least 12 cm under the eyes.
+  - A weapon hung from the raised wrist leans at least `HangLean` (.45) forward along the hips' heading.
+  - `KeepOffFloor` lifts any remainder its blend leaves under the floor along the blend's lean. The raise exposed the blend: a near-plumb sword in a deep crouch reached 0.44 m under the floor, and the swiping left dagger 2 cm.
+  - `NativeChipPlant.Turn`: where the cuff faces the left shoulder (the raised right wrist), the press goes fingertips first with the palm down. Before, its palm and fallback directions both lined up with the fingers and the hand flipped 46° in a frame.
+- **Checks (actual):**
+  - Full CoreTests: 840 PASS, 0 FAIL, exit 0, in an LF checkout of the code commit.
+  - `--chip-select`: the display wrist within 1.3 cm of its place; the head down 24–41°; pops at most 5.7 m/s and turns at most 1754°/s (limits 7 m/s, 2000°/s); held weapons at least 29 cm from the head and 22 cm off the sight line; hands and tips 8 cm or more off the floor.
+  - `--draft-stage` passes except the known CRLF backdrop pin; `--chooser-camera`, `--chip-screen` and `--visual-rig` pass; Unity semantic compile passes.
+  - Play mode on Moonlit, a staged pick and plant with BoZo pistol, sword and dagger pilots:
+    - the pistol pilot's hand is 1.26 m up, 10 cm under `spine_05` (18–20 before);
+    - the left hand inserts the chip at chest height;
+    - the sword and dagger stances crouch with the chest pitched forward, so there the wrist reads lower on the body, but it sits at the same place relative to the chest.
+- **Not run:** a Windows build; a real Expedition run; two clients.
+- **Animation impact:** the chip-select pose for every pilot, voxel too: a higher right wrist, its panel and the plant's left-hand press. Hit volumes, damage, cooldowns, movement, timing and networking are unchanged.
+- **Remaining:** the red and yellow wedge beside the Expedition screen (entry below) is still untraced.
+- **Next:** hats, the other rigs and the remaining visual-body effects.
+
 ## 2026-10-22 — Claude: chip select on the right wrist for every class (merged into shared)
 
 - **Branch/base:** `claude/chip-wrist-right` from shared `53b91615` (shared's DEV_LOG note `003b4c01` merged in). No PR; merged into shared and the builder (standing merge authorization); not published.

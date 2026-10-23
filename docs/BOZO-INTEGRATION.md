@@ -993,7 +993,9 @@ sits on the right wrist for every class, and the chip-select display moves there
 right hand pointing down", short weapons from the wrist raised at chest height, the rifles and the greatsword from a lower
 wrist beside the leg, and "the left hand taps and inserts the chip". The pose is the game rig's, so voxel pilots change
 too (contract: `docs/PVE-CHIP-SELECT.md`).
-- **Every pilot:** the right wrist comes up and its weapon hangs pointing down. The left hand taps, swipes and takes the
+- **Every pilot:** the right wrist comes up and its weapon hangs pointing down. The owner raised the short-weapon wrist to
+  mid-chest on 2026-10-23 (`claude/chip-wrist-chest`). On the BoZo pistol pilot the hand now sits 1.26 m up, 10 cm under
+  `spine_05` and between it and `spine_04`; it sat 18–20 cm under before. The left hand taps, swipes and takes the
   chip in the Expedition plant and on the draft stage. The shield, the staffs and the bow keep their left-hand hold, and the
   chip drops down the cone. First person puts a long weapon away while the look is up.
 - **Visual body:**

@@ -260,10 +260,11 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeChipSelectPose
     {
-        // The display (chest frame, authored for the left wrist, mirrored for the right): in front of the upper chest just past
-        // the midline, the elbow down and out. The eye before the head turns (chest frame) aims the wrist; the emitter sits on
-        // the back of the wrist cuff (hand frame: the hand's +z is the palm side, its -y the fingers).
-        public static readonly Vector3 Raised=new Vector3(.06f,.04f,.33f),RaisedPole=new Vector3(1,-.75f,-.2f),RestPole=new Vector3(1,-.8f,-.25f),EyeChest=new Vector3(0,.6f,.13f);
+        // The display (chest frame, authored for the left wrist, mirrored for the right): in front of the middle of the chest just
+        // past the midline (owner 2026-10-22: raised to mid-chest; .04 above the chest joint before), the elbow down and out. The
+        // eye before the head turns (chest frame) aims the wrist; the emitter sits on the back of the wrist cuff (hand frame: the
+        // hand's +z is the palm side, its -y the fingers).
+        public static readonly Vector3 Raised=new Vector3(.06f,.12f,.33f),RaisedPole=new Vector3(1,-.75f,-.2f),RestPole=new Vector3(1,-.8f,-.25f),EyeChest=new Vector3(0,.6f,.13f);
         // The low hold for a long weapon in the display hand (chest frame, authored for the left as Raised is): the wrist in front
         // of the hip, the elbow out and back, so the weapon hangs beside the leg. With a weapon in the display hand the panel moves
         // along the forearm clear of the stock, hilt or handle rising from the hand: raised, past the hand toward the middle
@@ -276,10 +277,14 @@ namespace ChipArena.UnityConversion
         /// leg, the greatsword trailing back as its lowered carry does. The hand turns to it (its fingers along the forearm as far as
         /// the axis allows) instead of turning the back of the wrist to the eyes.</summary>
         public static Vector3 HangAxis(ChipSelectCarry held)=>held==ChipSelectCarry.Greatsword?new Vector3(-.28f,-.42f,-.86f):new Vector3(-.22f,-.72f,-.66f);
-        public const float PanelAlong=-.06f,PanelAlongShort=.13f,PanelLiftArmed=.05f,PanelLiftLow=.12f,PanelOutLow=.08f;
+        public const float PanelAlong=-.06f,PanelAlongShort=.17f,PanelLiftArmed=.03f,PanelLiftLow=.12f,PanelOutLow=.08f;
         /// <summary>The low hold's panel may tilt further up to its wearer (who looks down on it from higher above): its normal at most
         /// LowSteep up (PanelSteep otherwise).</summary>
         public const float LowSteep=.78f;
+        /// <summary>A weapon hung from the raised wrist leans forward (where the legs stand) at least this much (the sine of its tilt
+        /// from plumb), so it is never near plumb: KeepOffFloor then lifts it in a deep crouch along that lean, exactly and the same
+        /// way every frame (near plumb its lift has no lean to follow).</summary>
+        public const float HangLean=.45f;
         public static readonly Vector3 EmitterLocal=new Vector3(0,.02f,-.1f),TipLocal=new Vector3(0,-.13f,.03f);
         public const float Arch=.05f,PanelLift=.03f,PanelRise=.085f,PanelForward=.03f,ViewLift=.085f,HeadShare=.6f,HeadMax=.72f,YawShare=.35f,ChestBow=.06f,ChestTurn=.06f,SpineBow=.04f,FlickRoll=.32f,PanelSteep=.5f;
         /// <summary>The panel (third person / first person), metres: its width and height (cards inside it).</summary>
@@ -363,6 +368,14 @@ namespace ChipArena.UnityConversion
             // The back of the wrist to the eye, the fingers along the forearm.
             var fore=CapturedRig.Unit(Vector3.Transform(p.WorldPosition[hand]-p.WorldPosition[hand-1],chestInv),Mirror(-Vector3.UnitX,!Left));
             var y=-fore;var back=CapturedRig.Unit(eye-travel,Vector3.UnitY);back=CapturedRig.Unit(back-y*Vector3.Dot(back,y),Vector3.UnitY);var z=-back;
+            // A weapon hung from the raised wrist leans at least HangLean forward where the legs stand (the hips' heading), whatever
+            // the chest's pitch.
+            if(!first&&!Low&&NativeChipSelect.Armed(Held))
+            {
+                var hips=Vector3.Cross(p.WorldPosition[CapturedRig.LHip]-p.WorldPosition[CapturedRig.RHip],Vector3.UnitY);var ahead=CapturedRig.Unit(new Vector3(hips.X,0,hips.Z),Vector3.UnitZ);
+                var hung=Vector3.Transform(z,p.WorldRotation[CapturedRig.Chest]);float lack=HangLean-Vector3.Dot(hung,ahead);
+                if(lack>0){z=CapturedRig.Unit(Vector3.Transform(hung+ahead*lack,chestInv),z);z=CapturedRig.Unit(z-y*Vector3.Dot(z,y),z);}
+            }
             var watch=CapturedRig.Basis(Vector3.Cross(y,z),y,z);
             // The low hold: the weapon on its hang axis (upright frame into the chest's), the fingers along the forearm about it.
             if(Low)
@@ -457,6 +470,10 @@ namespace ChipArena.UnityConversion
                     float phi=(float)Math.Atan2(B,A),c=(float)Math.Acos(MathUtil.Clamp(want/R,-1,1)),t1=Wrap(phi-c),t2=Wrap(phi+c);
                     float turn=t1>=0&&(t2<0||t1<=t2)?t1:t2>=0?t2:Math.Abs(t1)<Math.Abs(t2)?t1:t2;
                     world=Quaternion.Slerp(world,CapturedRig.Rot(a,turn)*rot,plumb);
+                    // The two lifts can swing the tip different ways, and their blend can leave it lower than either: lift what is
+                    // left along the blend's own lean (it leans clearly there).
+                    var blended=Vector3.Transform(Vector3.UnitZ,world);var across=Vector3.Cross(blended,Vector3.UnitY);float lean=across.Length();
+                    if(blended.Y<want-1e-4f&&lean>1e-6f)world=CapturedRig.Rot(across/lean,(float)(Math.Asin(want)-Math.Asin(MathUtil.Clamp(blended.Y,-1,1))))*world;
                 }
             }
             p.Rotation[h]=Quaternion.Inverse(p.WorldRotation[CapturedRig.Bones[h].Parent])*world;

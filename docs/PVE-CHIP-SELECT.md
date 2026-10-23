@@ -49,19 +49,28 @@ The legs, pelvis and body root are untouched, so the feet stay planted and the g
 
 - **Display wrist.** The right wrist comes up for every class (owner, 2026-10-22: the pilot's chip device rides it, see
   `docs/CHARACTER-LOWPOLY.md` section e). Before that the left came up, or the right for the staffs, L33t H4x and the bow.
-  The forearm crosses in front of the chest and the back of the wrist turns to the eyes. The rifle, the machine gun and the
+  The forearm crosses in front of the middle of the chest and the back of the wrist turns to the eyes. The owner raised it
+  to mid-chest on 2026-10-23 (`Raised`, 12 cm above the chest joint; 4 cm before). The rifle, the machine gun and the
   greatsword hold it lower, in front of the hip (`LowRaised`), so the weapon can hang beside the leg.
-- **Head and torso.** The head looks down at the display (about 35–38 degrees) and the chest bows a little toward it.
+- **Head and torso.** The head looks down at the display (24–41 degrees across the holds, the low hold furthest) and the
+  chest bows a little toward it.
 - **Weapons.** The weapon stays in its own hand:
   - A weapon in the right (display) hand hangs pointing down (owner, 2026-10-22). The pistol, the sword and a dagger hang
-    from the raised wrist at chest height, turned away from the eyes. The rifle, the machine gun and the greatsword hang
-    from the low wrist beside the right leg, never across the body (`HangAxis`, turned with the hips). The floor guard keeps
-    every tip above the floor, and the checks keep the whole weapon clear of the head, the panel and the eyes' line to it.
+    from the raised wrist at mid-chest, turned away from the eyes and leaning at least `HangLean` forward where the legs
+    stand, whatever the chest's pitch. The rifle, the machine gun and the greatsword hang from the low wrist beside the right
+    leg, never across the body (`HangAxis`, turned with the hips). The floor guard keeps every tip above the floor, and the
+    checks keep the whole weapon clear of the head, the panel and the eyes' line to it.
+  - The panel sits 17 cm along the forearm past an armed hand and 3 cm higher, clear of the hilt and at least 12 cm under the
+    eyes.
   - A two-handed weapon's support hand lets go while the look is up.
   - Before 2026-10-22 the daggers trailed low and back (2026-10-15). Carried forward, the right dagger's raise swung its long blade through
     plumb, and the floor guard's lift axis is undefined there, so the hand spun about 22° in one frame at 240 Hz. The guard
     (`KeepOffFloor`) now lifts a near-plumb blade about the hand's level across-axis, always the same way round; away from
     plumb it matches `CapturedRig.BladeFloor` exactly.
+  - Its blend between those two lifts could leave the tip lower than either. Found when the raised wrist rose (2026-10-23):
+    a sword hung near plumb in a deep crouch reached 0.44 m under the floor, and a swiping left dagger reached 2 cm. The
+    guard now lifts any remainder along the blend's own lean, and the hang's forward lean keeps the held weapon out of that
+    blend.
   - The shield, the staffs and the bow keep their idle hold exactly (in the left hand).
   - Carry axes are upright (in the rig root's frame), so a crouched melee stance does not tip them.
 - **The other hand (the left):**
@@ -131,7 +140,8 @@ The authority's final hold has the same span: `NativeChipPlant.Span` = `NativeDr
 
 - **Hand plant.** In third person the left hand takes the card at the contact when it is empty, wears a gauntlet or
   carries a dagger. It carries the chip over a small arc and presses it into the right wrist's cuff, palm down or with the
-  dagger kept pointing down.
+  dagger kept pointing down. At mid-chest the cuff faces the left shoulder, so an empty hand presses it fingertips first,
+  palm down (`Turn`'s head-on case in `NativeChipPlant`).
 - **Wrist plant.** Where the left hand keeps its hold (the shield, the staffs, the bow), the chip drops down the projection
   cone, and the display wrist rises 2 cm to take it, then gives as it seats. First person always uses this, for every class,
   because a hand crossing the view hid the chip.
