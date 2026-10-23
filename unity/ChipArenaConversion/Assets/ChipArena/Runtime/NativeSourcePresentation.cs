@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
             if(dressed&&!visual&&SpawnShows(CapturedRig.Chest))BodyDressing(rig,a,time,first,layer,camera);
             // The DEV Cyber Lord's hardlight look on its joints (NativeCyberLordPresentation.cs), once its hands have formed.
             if(!visual&&SpawnShows(CapturedRig.RHand))CyberLordBody(rig,a,time,first,layer,camera);
-            bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!NativeSirenVictimPose.Active(a,time)&&SpawnShows(CapturedRig.RHand);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
+            bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!ChipStowed(a,first)&&!NativeSirenVictimPose.Active(a,time)&&SpawnShows(CapturedRig.RHand);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             // The bow draws its live parts (Runtime/NativeBowPresentation.cs: the flexed limbs, the string to the nock, the arrows).
             if(armed&&BowHeld(rig,a,time,first,layer,camera,tint,flash))armed=false;
             if(armed){string held=HeldWeaponModel(rig,a,first);sourceModels.Queue(held,rig.Root.transform.localToWorldMatrix,WeaponBone,b=>!a.MainWeaponAway||a.SourceSpec!="daggers"||b!=CapturedRig.RHand,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:StandardModel(held)?flash:1,partTint:tint,glow:HeldGlow);WeaponDressing(rig,a,time,first,layer,camera,reach);}

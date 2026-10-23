@@ -19,14 +19,16 @@ namespace ChipArena.UnityConversion
     //    not during a hold, a cinematic or the end. No open timestamp is replicated, so each client eases in from the frame it
     //    first sees the pick open (a late joiner too); the gestures run on the pick's replicated grant time, so every client
     //    taps on the same beat. docs/PVE-CHIP-SELECT.md is the contract.
-    //  - Pose (NativeChipSelectPose): the display wrist (the hand that does not hold the weapon: the left, or the right for the
-    //    staffs, L33t H4x and the bow) comes up in front of the chest with the back of the wrist turned to the eyes, the head
-    //    and a little of the chest bow to it. The weapon stays in its own hand: lowered (the greatsword trailing low behind, its
-    //    tip off the floor), or kept where its idle carries it (the staff, the bow). An empty other hand (unarmed, the fighters'
-    //    gauntlets) taps and swipes at the display now and then, a pistol or dagger hand swipes along its lower edge with the
-    //    weapon kept pointing down, and the display wrist flicks for the long weapons. Legs and pelvis are never touched, so the
-    //    feet stay planted and the gait walks under it. First person (NativeChipSelectPresentation's view model) the wrist sits
-    //    low in view with a small panel and the weapon goes down out of view.
+    //  - Pose (NativeChipSelectPose): the display wrist is the right for every class (owner 2026-10-22: the pilot's chip device
+    //    rides it, docs/CHARACTER-LOWPOLY.md section e). It comes up in front of the chest with the back of the wrist turned to
+    //    the eyes, the head and a little of the chest bow to it. A weapon in that hand stays in it, hanging pointing down from
+    //    the raised wrist (the watch turns it away from the eyes; its tip kept off the floor); the rifles and the greatsword are
+    //    held lower, the wrist in front of the hip, so the weapon hangs beside the leg (owner 2026-10-22). The left hand taps and
+    //    swipes at the display now and then and takes the chip to it (empty, or with the fighters' gauntlet); a left dagger
+    //    swipes along its lower edge pointing down; the shield, the staff and the bow keep their idle hold, and the display wrist
+    //    flicks. Legs and pelvis are never touched, so the feet stay planted and the gait walks under it. First person
+    //    (NativeChipSelectPresentation's view model) the wrist sits low right in view with a small panel; a left weapon goes down
+    //    out of view, and a long weapon in the display hand is put away while the look is up (NativeChipSelect.Stows).
     //  - Hologram (NativeChipSelectHolo): a hardlight panel rising over the forearm with the offered chips as three small cards
     //    in their rarity colours, the lit one following the gestures, scanlines, flicker and a projection cone; danger red,
     //    blinking, while the pilot is being hit.
@@ -58,28 +60,49 @@ namespace ChipArena.UnityConversion
 
         // ---- the hold: which wrist wears the display and what the other hand does ----
         public static bool Staff(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";
-        /// <summary>The display wrist is the left, except where the weapon rides the left hand (the staffs, L33t H4x, the bow).</summary>
-        public static bool DisplayLeft(string spec)=>!(Staff(spec)||spec=="bow");
+        /// <summary>The display wrist is the right for every class (owner 2026-10-22: the chip device rides it); never the left.</summary>
+        public static bool DisplayLeft(string spec)=>false;
+        /// <summary>What the other (left) hand holds while the right wears the display: nothing where the class's weapon rides the
+        /// right hand (it taps, swipes and takes the chip), the left dagger, the shield, the gauntlet, the staff or the bow.</summary>
         public static ChipSelectCarry Carry(string spec)
         {
             switch(spec)
             {
-                case "pistol":return ChipSelectCarry.Pistol;
-                case "rifle":case "machinegun":return ChipSelectCarry.LongGun;
-                case "sword":return ChipSelectCarry.Blade;
                 case "daggers":return ChipSelectCarry.Daggers;
-                case "greatsword":return ChipSelectCarry.Greatsword;
                 case "shield":return ChipSelectCarry.Shield;
                 case "bow":return ChipSelectCarry.Bow;
                 case "emperor":case "ansatsuken":return ChipSelectCarry.Fist;
                 default:return Staff(spec)?ChipSelectCarry.Staff:ChipSelectCarry.Free;
             }
         }
+        /// <summary>What the display (right) hand holds: the class's right-hand weapon (the shield set's sword), hung pointing down from
+        /// the raised wrist; the fighters' gauntlet; nothing for the staffs, the bow and the unarmed.</summary>
+        public static ChipSelectCarry Held(string spec)
+        {
+            switch(spec)
+            {
+                case "pistol":return ChipSelectCarry.Pistol;
+                case "rifle":case "machinegun":return ChipSelectCarry.LongGun;
+                case "sword":case "shield":return ChipSelectCarry.Blade;
+                case "daggers":return ChipSelectCarry.Daggers;
+                case "greatsword":return ChipSelectCarry.Greatsword;
+                case "emperor":case "ansatsuken":return ChipSelectCarry.Fist;
+                default:return ChipSelectCarry.Free;
+            }
+        }
+        /// <summary>A weapon in the display hand: a carried one, not an empty hand or a gauntlet.</summary>
+        public static bool Armed(ChipSelectCarry held)=>held!=ChipSelectCarry.Free&&held!=ChipSelectCarry.Fist;
+        /// <summary>A long weapon in the display hand (the rifles, the greatsword): the wrist is held low in front of the hip so the
+        /// weapon hangs beside the leg.</summary>
+        public static bool Low(ChipSelectCarry held)=>held==ChipSelectCarry.LongGun||held==ChipSelectCarry.Greatsword;
+        /// <summary>First person, a long weapon in the display hand is put away while the look is up (its stock or hilt would fill the
+        /// view under the raised wrist).</summary>
+        public static bool Stows(string spec)=>Low(Held(spec));
         public static ChipSelectHands Hands(ChipSelectCarry c)=>c==ChipSelectCarry.Free||c==ChipSelectCarry.Fist?ChipSelectHands.Taps:c==ChipSelectCarry.Pistol||c==ChipSelectCarry.Daggers?ChipSelectHands.Swipes:ChipSelectHands.Flicks;
         /// <summary>The other hand reaches the display (it taps or swipes; else the display wrist flicks).</summary>
         public static bool Taps(ChipSelectCarry c)=>Hands(c)!=ChipSelectHands.Flicks;
-        /// <summary>The other hand keeps its idle hold (its weapon is carried low there already): the staffs and the bow.</summary>
-        public static bool KeepsIdle(ChipSelectCarry c)=>c==ChipSelectCarry.Staff||c==ChipSelectCarry.Bow;
+        /// <summary>The other hand keeps its idle hold (its weapon is carried there already): the staffs, the bow and the shield.</summary>
+        public static bool KeepsIdle(ChipSelectCarry c)=>c==ChipSelectCarry.Staff||c==ChipSelectCarry.Bow||c==ChipSelectCarry.Shield;
 
         // ---- timings ----
         /// <summary>The look eases in over BlendIn and out over BlendOut (s); a death drops it at once.</summary>
@@ -240,6 +263,22 @@ namespace ChipArena.UnityConversion
         // the midline, the elbow down and out. The eye before the head turns (chest frame) aims the wrist; the emitter sits on
         // the back of the wrist cuff (hand frame: the hand's +z is the palm side, its -y the fingers).
         public static readonly Vector3 Raised=new Vector3(.06f,.04f,.33f),RaisedPole=new Vector3(1,-.75f,-.2f),RestPole=new Vector3(1,-.8f,-.25f),EyeChest=new Vector3(0,.6f,.13f);
+        // The low hold for a long weapon in the display hand (chest frame, authored for the left as Raised is): the wrist in front
+        // of the hip, the elbow out and back, so the weapon hangs beside the leg. With a weapon in the display hand the panel moves
+        // along the forearm clear of the stock, hilt or handle rising from the hand: raised, past the hand toward the middle
+        // (PanelAlongShort; the handle rises toward the eyes); held low, back toward the elbow over the outside of the arm
+        // (PanelAlong negative; the stock or pommel rises forward and in). It also rises (PanelLiftArmed raised, PanelLiftLow held
+        // low) so its lower edge clears the grip and the pommel; held low it also stands PanelOutLow further out from the body.
+        public static readonly Vector3 LowRaised=new Vector3(.17f,-.24f,.23f),LowPole=new Vector3(1,-.45f,-.6f);
+        /// <summary>The low hold's weapon axis (the hand's +z, authored for the right hand; upright, turned with the hips' heading, where
+        /// the legs stand, so a stance that turns the chest, the greatsword's or a gun's, still hangs it beside the right leg): a long gun down, back and a little out beside the
+        /// leg, the greatsword trailing back as its lowered carry does. The hand turns to it (its fingers along the forearm as far as
+        /// the axis allows) instead of turning the back of the wrist to the eyes.</summary>
+        public static Vector3 HangAxis(ChipSelectCarry held)=>held==ChipSelectCarry.Greatsword?new Vector3(-.28f,-.42f,-.86f):new Vector3(-.22f,-.72f,-.66f);
+        public const float PanelAlong=-.06f,PanelAlongShort=.13f,PanelLiftArmed=.05f,PanelLiftLow=.12f,PanelOutLow=.08f;
+        /// <summary>The low hold's panel may tilt further up to its wearer (who looks down on it from higher above): its normal at most
+        /// LowSteep up (PanelSteep otherwise).</summary>
+        public const float LowSteep=.78f;
         public static readonly Vector3 EmitterLocal=new Vector3(0,.02f,-.1f),TipLocal=new Vector3(0,-.13f,.03f);
         public const float Arch=.05f,PanelLift=.03f,PanelRise=.085f,PanelForward=.03f,ViewLift=.085f,HeadShare=.6f,HeadMax=.72f,YawShare=.35f,ChestBow=.06f,ChestTurn=.06f,SpineBow=.04f,FlickRoll=.32f,PanelSteep=.5f;
         /// <summary>The panel (third person / first person), metres: its width and height (cards inside it).</summary>
@@ -258,14 +297,16 @@ namespace ChipArena.UnityConversion
         public static Vector3 TrayWrist(string spec,float tanHalfWidth,float tanHalfHeight)
         {
             if(!Beside(spec))return ViewWrist(spec);bool left=NativeChipSelect.DisplayLeft(spec);
-            float x=-(left?TrayAcross:TrayAcrossRight)*tanHalfWidth*TrayDepth,y=-TrayDown*tanHalfHeight*TrayDepth;
-            return new Vector3(left?x:-x,y,TrayDepth);
+            float depth=left?TrayDepth:TrayDepthRight,x=-(left?TrayAcross:TrayAcrossRight)*tanHalfWidth*depth,y=-TrayDown*tanHalfHeight*depth;
+            return new Vector3(left?x:-x,y,depth);
         }
         public static bool Beside(string spec)=>spec!="bow"&&spec!="greatsword";
-        public const float TrayAcross=.74f,TrayAcrossRight=.44f,TrayDown=.32f,TrayDepth=.4f;
+        public const float TrayAcross=.74f,TrayAcrossRight=.56f,TrayDown=.32f,TrayDepth=.4f,TrayDepthRight=.58f;
         // Outputs (rig root frame, source axes).
         public Vector3 Emitter,Normal=Vector3.UnitY,Forearm=Vector3.UnitX,Eye,PanelCentre,PanelNormal=Vector3.UnitZ,PanelRight=Vector3.UnitX,PanelUp=Vector3.UnitY,Tip;
         public bool Left;public ChipSelectCarry Carry;public ChipSelectGesture Gesture;
+        /// <summary>What the display hand holds (NativeChipSelect.Held) and whether it is held low (a long weapon, third person).</summary>
+        public ChipSelectCarry Held;public bool Low;
         /// <summary>The panel's size factor: 1 third person; first person it shrinks with its distance to the eye (ViewDistance at
         /// full size), so a view base whose arm cannot reach as far (the bow's) shows it at about the same angle.</summary>
         public float PanelScale=1;
@@ -285,6 +326,7 @@ namespace ChipArena.UnityConversion
         public void Apply(CapturedRig.Pose p,in ChipSelectInput input)
         {
             float w=MathUtil.Clamp(MathUtil.Finite(input.Weight)?input.Weight:0,0,1);Carry=NativeChipSelect.Carry(input.Spec);Left=NativeChipSelect.DisplayLeft(input.Spec);
+            Held=NativeChipSelect.Held(input.Spec);Low=NativeChipSelect.Low(Held)&&!input.FirstPerson;
             // A hit yields part of the look to the route's pose (the hit reaction under it), briefly.
             w*=1-NativeChipSelect.HitYield*MathUtil.Clamp(MathUtil.Finite(input.Flinch)?input.Flinch:0,0,1);
             bool taps=NativeChipSelect.Taps(Carry),first=input.FirstPerson;int cards=Math.Max(1,Math.Min(3,input.Cards));
@@ -309,11 +351,11 @@ namespace ChipArena.UnityConversion
             if(first){goal=Vector3.Transform(input.ViewWrist-chest,chestInv);eye=Vector3.Transform(input.ViewEye-chest,chestInv);}
             else
             {
-                goal=Mirror(Raised,!Left);eye=EyeChest;
+                goal=Mirror(Low?LowRaised:Raised,!Left);eye=EyeChest;
                 // Breathing in the hold (not with Reduced effects).
                 if(!input.Reduced)goal+=new Vector3(0,.004f*(float)Math.Sin(input.Time*2.2f),.003f*(float)Math.Sin(input.Time*1.3f+.7f));
             }
-            var pole=Vector3.Lerp(Mirror(RestPole,!Left),Mirror(RaisedPole,!Left),w);
+            var pole=Vector3.Lerp(Mirror(RestPole,!Left),Mirror(Low?LowPole:RaisedPole,!Left),w);
             var travel=Vector3.Lerp(restAt,goal,w)+Vector3.UnitY*(Arch*(float)Math.Sin(Math.PI*w));
             if(Gesture.Kind==ChipSelectGestureKind.Tap)travel+=Vector3.UnitY*(-.012f*Gesture.Contact*ready);
             CapturedRig.Arm(p,Left,travel,restTurn,pole);p.World();
@@ -321,10 +363,19 @@ namespace ChipArena.UnityConversion
             var fore=CapturedRig.Unit(Vector3.Transform(p.WorldPosition[hand]-p.WorldPosition[hand-1],chestInv),Mirror(-Vector3.UnitX,!Left));
             var y=-fore;var back=CapturedRig.Unit(eye-travel,Vector3.UnitY);back=CapturedRig.Unit(back-y*Vector3.Dot(back,y),Vector3.UnitY);var z=-back;
             var watch=CapturedRig.Basis(Vector3.Cross(y,z),y,z);
+            // The low hold: the weapon on its hang axis (upright frame into the chest's), the fingers along the forearm about it.
+            if(Low)
+            {
+                var hips=Vector3.Cross(p.WorldPosition[CapturedRig.LHip]-p.WorldPosition[CapturedRig.RHip],Vector3.UnitY);var heading=Quaternion.CreateFromAxisAngle(Vector3.UnitY,(float)Math.Atan2(hips.X,hips.Z));
+                var hang=CapturedRig.Unit(Vector3.Transform(Vector3.Transform(Mirror(HangAxis(Held),Left),heading),chestInv),-Vector3.UnitY);var hy=CapturedRig.Unit(-fore-hang*Vector3.Dot(-fore,hang),Vector3.UnitY);watch=CapturedRig.Basis(Vector3.Cross(hy,hang),hy,hang);
+            }
             // The flick: the display wrist rolls about the forearm and back.
             if(Gesture.Kind==ChipSelectGestureKind.Flick)watch=Quaternion.CreateFromAxisAngle(fore,(Left?-1:1)*FlickRoll*Gesture.Reach*ready)*watch;
             CapturedRig.Arm(p,Left,travel,raise.Blend(restTurn,watch,w),pole);
-            Ease(p,arm,w);p.World();
+            Ease(p,arm,w);
+            // A weapon in the display hand hangs where the watch turns it (away from the eyes, down) with its tip off the floor.
+            if(!first&&NativeChipSelect.Armed(Held))KeepOffFloor(p,Left,CarryLength(Held,input.Spec,input.Reach));
+            p.World();
             Outputs(p,first,input);
             // ---- the head (third person): the gaze down to the panel, following a tapping hand a little ----
             if(!first)
@@ -378,9 +429,8 @@ namespace ChipArena.UnityConversion
             }
             CapturedRig.Arm(p,left,at,turn,pole);
             Ease(p,arm,w);
-            // The floor guard for a lowered blade or barrel (its stretched length), and for a dagger left in the display hand.
+            // The floor guard for a lowered blade (its stretched length; the display hand's weapon has its own in Apply).
             if(!first&&Carry!=ChipSelectCarry.Free&&Carry!=ChipSelectCarry.Fist)KeepOffFloor(p,left,CarryLength(Carry,input.Spec,input.Reach));
-            if(!first&&Carry==ChipSelectCarry.Daggers)KeepOffFloor(p,Left,CarryLength(Carry,input.Spec,input.Reach));
         }
         /// <summary>
         /// CapturedRig.BladeFloor's guard (a lowered blade's or barrel's tip kept over the floor) with a steady turn as the blade hangs
@@ -461,11 +511,12 @@ namespace ChipArena.UnityConversion
             var forward=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[CapturedRig.Chest]);
             // Third person it rises above the forearm (not toward the eyes, where the arms would hide it from everyone else).
             // First person it sits just over the wrist toward the top of the view (the camera's up is the eye's).
-            PanelCentre=first?Emitter+Normal*.02f+CapturedRig.Unit(Vector3.Cross(Vector3.Cross(Eye-Emitter,up),Eye-Emitter),up)*ViewLift:Emitter+Normal*PanelLift+up*PanelRise+forward*PanelForward;PanelNormal=CapturedRig.Unit(Eye-PanelCentre,Normal);
+            PanelCentre=first?Emitter+Normal*.02f+CapturedRig.Unit(Vector3.Cross(Vector3.Cross(Eye-Emitter,up),Eye-Emitter),up)*ViewLift:Emitter+Normal*PanelLift+up*PanelRise+forward*PanelForward;
+            if(!first&&NativeChipSelect.Armed(Held))PanelCentre+=Forearm*(Low?PanelAlong:PanelAlongShort)+up*(Low?PanelLiftLow:PanelLiftArmed)+forward*(Low?PanelOutLow:0);PanelNormal=CapturedRig.Unit(Eye-PanelCentre,Normal);
             PanelScale=first?MathUtil.Clamp((Eye-PanelCentre).Length()/ViewDistance,.35f,1):1;
             // Third person the panel stands at least a little upright (its normal at most PanelSteep up), so the pilots round it
             // see its face, not its edge; the wearer reads it a little from above, as one reads a hologram.
-            if(!first){float v=Vector3.Dot(PanelNormal,up);if(v>PanelSteep){var left=Vector3.Transform(Vector3.UnitX,p.WorldRotation[CapturedRig.Chest]);var flat=CapturedRig.Unit(-forward+left*(2*Vector3.Dot(Eye-PanelCentre,left)),-forward);PanelNormal=CapturedRig.Unit(flat*(float)Math.Sqrt(1-PanelSteep*PanelSteep)+up*PanelSteep,Normal);}}
+            if(!first){float steep=Low?LowSteep:PanelSteep,v=Vector3.Dot(PanelNormal,up);if(v>steep){var left=Vector3.Transform(Vector3.UnitX,p.WorldRotation[CapturedRig.Chest]);var flat=CapturedRig.Unit(-forward+left*(2*Vector3.Dot(Eye-PanelCentre,left)),-forward);PanelNormal=CapturedRig.Unit(flat*(float)Math.Sqrt(1-steep*steep)+up*steep,Normal);}}
             // The wearer's right is -x in the source frame: a left display's forearm points to it, a right display's away.
             var across=Left?Forearm:-Forearm;
             PanelRight=CapturedRig.Unit(across-PanelNormal*Vector3.Dot(across,PanelNormal),-Vector3.UnitX);

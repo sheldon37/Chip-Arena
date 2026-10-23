@@ -244,7 +244,8 @@ internal static class DraftStageChecks
                     if(age>=NativeDraftStage.FlyStart&&age<=NativeDraftPlant.Contact){var c=s.Project(s.CatchPalm);if(!flying){firstCatch=c;flying=true;}float drift=Math.Max(Math.Abs(c.X-firstCatch.X)*sc.Scale,Math.Abs(c.Y-firstCatch.Y));worstDrift=Math.Max(worstDrift,drift);Check(drift<.03f,what+": the catch the card flies to drifts "+drift+" of the screen at "+age.ToString("0.00"));}
                     if(age>=0&&Math.Abs(age-NativeDraftPlant.Contact)<.5f*dt+.001f)
                     {
-                        var palm=s.Project(s.Palm);bool side=(s.Palm.X>=0)==(cards[chosen].X>=.5f);float chestZ=s.Pose.WorldPosition[CapturedRig.Chest].Z;picks++;
+                        // A pilot's left palm takes every card (just across the middle for one on the right); the Siren's on its side.
+                        var palm=s.Project(s.Palm);bool side=siren?(s.Palm.X>=0)==(cards[chosen].X>=.5f):s.Left&&s.Palm.X>=NativeDraftStage.CrossBeside-.03f;float chestZ=s.Pose.WorldPosition[CapturedRig.Chest].Z;picks++;
                         Check(OnScreen(palm,.02f),what+": the catch off the screen ("+palm+")");Check(side,what+": the catch on the wrong side ("+s.Palm.X+")");Check(s.Palm.Z>chestZ+.2f,what+": the catch not in front of the chest ("+s.Palm+")");
                         float meet=(s.Palm-s.CatchPalm).Length();worstMeet=Math.Max(worstMeet,meet);Check(meet<.02f,what+": the palm meets the card "+meet+" m from the catch it flew to");
                         if(oneRow){Check(palm.Y<trayTop-.03f,what+": the catch behind the cards ("+palm.Y+" against "+trayTop+")");worstCatch=Math.Min(worstCatch,trayTop-palm.Y);}
@@ -258,7 +259,7 @@ internal static class DraftStageChecks
                     }
                 }
             }
-            yield return "Draft pick in frame on "+Screens.Length+" screens (PvP, Siren pick and Siren drafter, outer cards both sides, local and spectated; "+picks+" picks): the catching palm in front of the chest on the card's side, on screen (>= "+(worstSide*100).ToString("0")+"% from a side) and at least "+(worstCatch*100).ToString("0.0")+"% above a one-row tray; the card flies to the solved catch (still within "+(worstDrift*100).ToString("0.0")+"% of the screen through the flight, met by the palm within "+(worstMeet*1000).ToString("0")+" mm); the wrist plant above the solar plexus and at least "+(worstPlantRow*100).ToString("0.0")+"% above a one-row tray; the Siren drafter's catch held in frame to the return";
+            yield return "Draft pick in frame on "+Screens.Length+" screens (PvP, Siren pick and Siren drafter, outer cards both sides, local and spectated; "+picks+" picks): the catching palm in front of the chest (a pilot's left palm, just across the middle for a card on the right; the Siren's on the card's side), on screen (>= "+(worstSide*100).ToString("0")+"% from a side) and at least "+(worstCatch*100).ToString("0.0")+"% above a one-row tray; the card flies to the solved catch (still within "+(worstDrift*100).ToString("0.0")+"% of the screen through the flight, met by the palm within "+(worstMeet*1000).ToString("0")+" mm); the wrist plant above the solar plexus and at least "+(worstPlantRow*100).ToString("0.0")+"% above a one-row tray; the Siren drafter's catch held in frame to the return";
         }
 
         // Settling: a step across the whole display and a step to a neighbour settle without overshoot (95% in .45 s, 1% in 1.1 s).
@@ -298,7 +299,7 @@ internal static class DraftStageChecks
                 {
                     double tt=Math.Max(0,(double)(f-1)/hz);int hover=tt<1.2?a:tt<1.2+gap-1e-6?-1:b;float since=(float)(since0+tt);
                     int focus;bool consider;if(held)focus=Considered(hold,-1,hover,since,5,dt,out consider);else{focus=NativeDraftStage.Focus(-1,hover,since,5,false);consider=hover>=0;}
-                    Frame(s,dt,-1,focus,cards,sc.Scale,trayTop,trayBottom,false,consider);float y=HeadYaw(s.Pose);if(f==0)sideA=s.OnDisplay(cards[a].X,cards[a].Y).X>=0;
+                    Frame(s,dt,-1,focus,cards,sc.Scale,trayTop,trayBottom,false,consider);float y=HeadYaw(s.Pose);if(f==0)sideA=true;
                     if(tt<1.2){yawA=y;wA=s.Weight(sideA);}else yaws.Add(y);
                     if(held&&tt>=1.2&&tt<1.2+gap-1e-6){if(gap<NativeDraftHover.HoldReach)worstDip=Math.Max(worstDip,wA-s.Weight(sideA));if(gap>1&&tt>1.2+NativeDraftHover.HoldReach+.5)longGap=Math.Max(longGap,s.Weight(sideA));}
                 }
@@ -319,7 +320,8 @@ internal static class DraftStageChecks
             foreach(int hz in new[]{30,60,144,240})for(int i=0;i<6;i++)foreach(bool siren in new[]{false,true})
             {
                 var s=new NativeDraftStage();float dt=1f/hz;for(int f=0;f<(int)(1.2f*hz);f++)Frame(s,dt,-1,i,cards,sc.Scale,trayTop,trayBottom,siren,true);
-                var goal=s.OnDisplay(cards[i].X,cards[i].Y);bool left=goal.X>=0;
+                // A pilot's left hand considers every card (it takes the chip to the right wrist).
+                var goal=s.OnDisplay(cards[i].X,cards[i].Y);const bool left=true;
                 if(siren){Check(s.Weight(true)==0&&s.Weight(false)==0,"the Siren drafter reaches for card "+i);continue;}
                 worstUp=Math.Min(worstUp,s.Weight(left));worstDown=Math.Max(worstDown,s.Weight(!left));
                 var p=s.Pose;var restHand=NativeDraftStage.RestHand(left);var hand=p.WorldPosition[left?CapturedRig.LHand:CapturedRig.RHand];var other=p.WorldPosition[left?CapturedRig.RHand:CapturedRig.LHand];
@@ -331,14 +333,14 @@ internal static class DraftStageChecks
                 if(pve!=(n==8))continue;var r2=Tray(n,sc2.W,sc2.H,pve,out float top2,out float bottom2);var c2=Centres(r2,sc2.W,sc2.H);float tray2=top2/sc2.H;bool oneRow=r2[n-1].Y<=r2[0].Y+1;
                 foreach(int i in new[]{0,n/2,n-1})
                 {
-                    var s=new NativeDraftStage();for(int f=0;f<72;f++)Frame(s,1/60f,-1,i,c2,sc2.Scale,tray2,bottom2/sc2.H,false,true);bool left=s.OnDisplay(c2[i].X,c2[i].Y).X>=0;
+                    var s=new NativeDraftStage();for(int f=0;f<72;f++)Frame(s,1/60f,-1,i,c2,sc2.Scale,tray2,bottom2/sc2.H,false,true);const bool left=true;
                     float wrist=s.Project(s.Pose.WorldPosition[left?CapturedRig.LHand:CapturedRig.RHand]).Y,line=s.ShadeLine(tray2),edge=oneRow?Math.Min(tray2,line):line;worstShow=Math.Min(worstShow,edge-wrist);
                     Check(wrist<edge-.01f,sc2.Name+" "+n+" cards: the considering wrist for card "+i+" at "+wrist+" hides behind the cards or the shade (line "+edge+")");
                 }
             }
             Check(worstUp>.97f&&worstDown<.03f,"considering arm at "+worstUp+", the other at "+worstDown);Check(worstToward<.6f,"the considering hand moves "+worstToward+" rad away from its card");
             Check(leastLift>.05f,"the considering hand lifts only "+leastLift+" m out of the lap");Check(worstRest<.01f,"the other hand leaves the lap by "+worstRest+" m");
-            yield return "Considering: the hand on the highlighted card's side lifts "+(leastLift*100).ToString("0")+"+ cm out of the lap and moves toward it (within "+(worstToward*57.3f).ToString("0")+" deg) while the other rests (within "+(worstRest*1000).ToString("0")+" mm) on all 6 cards of a 3440x1440 tray at 30-240 Hz, and on every screen the lifted wrist shows at least "+(worstShow*100).ToString("0.0")+"% above the tray's top line and the lower shade's; the Siren drafter's claws stay resting";
+            yield return "Considering: a pilot's left hand (it takes the chip to the right wrist) lifts "+(leastLift*100).ToString("0")+"+ cm out of the lap and moves toward it (within "+(worstToward*57.3f).ToString("0")+" deg) while the other rests (within "+(worstRest*1000).ToString("0")+" mm) on all 6 cards of a 3440x1440 tray at 30-240 Hz, and on every screen the lifted wrist shows at least "+(worstShow*100).ToString("0.0")+"% above the tray's top line and the lower shade's; the Siren drafter's claws stay resting";
         }
 
         // Motion at 30/60/144/240 Hz through the boot scan, quick hover changes (far and near, switching sides), the pick on the

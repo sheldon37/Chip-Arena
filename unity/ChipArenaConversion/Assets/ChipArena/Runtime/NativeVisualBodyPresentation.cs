@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             if(body.PosedFrame<Time.frameCount-1||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4)body.Binding.State.Forget();
             body.PosedFrame=Time.frameCount;body.Spec=a.SourceSpec;body.At=at;
             bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
-            body.Binding.Apply(pose,VisualGrasp(a,pose,time),a.Grounded&&!roll&&!juggle,roll||juggle);
+            body.Binding.Apply(pose,VisualGrasp(a,pose,time,ChipLookOf(a.Id)),a.Grounded&&!roll&&!juggle,roll||juggle);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
             var origin=body.Root.transform;
@@ -123,8 +123,13 @@ namespace ChipArena.UnityConversion
         }
 
         // What the visual hands hold: the Standard weapons' handles (NativeVisualRig), with the special moves' held turn; other
-        // kits close the weapon hand on nothing seated (their weapon draws at the visual wrist).
-        private static NativeVisualRig.Grasp VisualGrasp(Actor a,CapturedRig.Pose pose,float time)
+        // kits close the weapon hand on nothing seated (their weapon draws at the visual wrist). While the chip-select look is up
+        // (`chip`, its weight) the support hand lets go and the stock leaves the shoulder: the left hand taps and inserts the chip.
+        private static NativeVisualRig.Grasp VisualGrasp(Actor a,CapturedRig.Pose pose,float time,float chip)
+        {
+            var g=VisualHold(a,pose,time);float keep=1-Mathf.Clamp01(chip);g.Support*=keep;g.Stock*=keep;return g;
+        }
+        private static NativeVisualRig.Grasp VisualHold(Actor a,CapturedRig.Pose pose,float time)
         {
             var g=new NativeVisualRig.Grasp();
             if(a.WeaponAway)return g;
@@ -219,6 +224,15 @@ namespace ChipArena.UnityConversion
             }
         }
         private Func<int,Matrix4x4> gearBone;private Matrix4x4 gearMatrix;
+        // The chip bay's top on pilot `id`'s visual body this frame (world): its chip-select hologram is projected from there (the
+        // game rig's wrist, which the hologram is posed on, sits elsewhere on a body of other proportions). False without a body
+        // drawn this frame with the device.
+        private bool VisualEmitter(int id,out Vector3 world)
+        {
+            world=default;if(!rigs.TryGetValue(id,out var rig)||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.GearDevice==null||body.PosedFrame!=Time.frameCount)return false;
+            float r=Mathf.Clamp(body.GearRadius,.02f,.08f);
+            world=body.GearDevice.TransformPoint(new Vector3(r+NativePilotGear.HousingTop+NativePilotGear.FrameHeight,(NativePilotGear.BayNear+NativePilotGear.BayFar)*.5f,0));return true;
+        }
         private Matrix4x4 GearBoneOf(int bone)=>gearMatrix;
 
         // Each renderer's materials with the hologram's after them (extra slots draw the mesh again).

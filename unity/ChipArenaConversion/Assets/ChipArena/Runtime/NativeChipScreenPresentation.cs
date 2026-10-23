@@ -79,10 +79,10 @@ namespace ChipArena.UnityConversion
         public bool ChipScreen(int id,out ChipScreenState state)
         {
             state=default;if(ExpeditionChoosing==null||!chipSelect.TryGetValue(id,out var slot)||slot.Frame<Time.frameCount-1||slot.Frame<0)return false;
-            var open=ScreenPlace(slot);var m=slot.Root;var e=slot.Pose.Emitter;var emitter=m.MultiplyPoint3x4(new Vector3(-e.X,e.Y,e.Z));var c=slot.Plant.Chip;
+            var open=ScreenPlace(slot);var m=slot.Root;var e=slot.Pose.Emitter;var emitter=m.MultiplyPoint3x4(new Vector3(-e.X,e.Y,e.Z))+slot.Shift;var c=slot.Plant.Chip;
             float unfold=NativeChipSelectHolo.Unfold(slot.Weight)*(slot.Planting?slot.Plant.Fold:1);
             state=new ChipScreenState{Open=open,Shown=NativeChipScreen.Shown(open,new NVector(emitter.x,emitter.y,emitter.z),unfold),Unfold=unfold,Emitter=emitter,Planting=slot.Planting,PlantAge=slot.PlantAge,
-                Catch=m.MultiplyPoint3x4(new Vector3(-c.X,c.Y,c.Z)),CatchSize=slot.Plant.ChipSize*slot.RootScale,Chosen=slot.PlantChosen,Count=slot.Count};
+                Catch=m.MultiplyPoint3x4(new Vector3(-c.X,c.Y,c.Z))+slot.Shift,CatchSize=slot.Plant.ChipSize*slot.RootScale,Chosen=slot.PlantChosen,Count=slot.Count};
             return true;
         }
         /// <summary>Pilot `id`'s display wrist (the screen's emitter, world) and the screen's side as last posed, for the chooser camera;
@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
         internal bool ChipSelectWrist(int id,out Vector3 world,out bool screenLeft)
         {
             world=default;screenLeft=false;if(!chipSelect.TryGetValue(id,out var slot)||slot.Frame<Time.frameCount-2||slot.Weight<=.05f)return false;
-            var v=slot.Pose.Emitter;world=slot.Root.MultiplyPoint3x4(new Vector3(-v.X,v.Y,v.Z));screenLeft=slot.ScreenLeft;return true;
+            var v=slot.Pose.Emitter;world=slot.Root.MultiplyPoint3x4(new Vector3(-v.X,v.Y,v.Z))+slot.Shift;screenLeft=slot.ScreenLeft;return true;
         }
     }
 }

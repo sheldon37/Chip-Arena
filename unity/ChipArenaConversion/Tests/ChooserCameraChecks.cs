@@ -114,7 +114,7 @@ internal static class ChooserCameraChecks
             // it is held on (NativeChipScreen.OnLeft): the emitter's offset across the body (Unity x, + the pilot's right: the rig frame
             // is mirrored) is on the screen's side or near the middle, so the beam never crosses the chest.
             bool left=NativeChipScreen.OnLeft(spec);Check(poseLeft==NativeChipSelect.DisplayLeft(spec),spec+": the pose's display wrist is the class's");
-            Check(left==poseLeft||spec=="rifle"||spec=="machinegun"||spec=="greatsword",spec+": the screen on the display wrist's side but for the two-handed holds");
+            Check(left==poseLeft||spec=="shield",spec+": the screen on the display wrist's side but for the shield set (its turned stance carries the wrist across)");
             Check(Math.Sign(x)==(left?-1:1)||Math.Abs(x)<.1f,spec+": the beam leaves the wrist on the screen's side or near the middle ("+x.ToString("0.00")+" m)");
             var h=new Held(All[0]){ScreenLeft=left};for(int f=0;f<90;f++)h.Step(true,0,1/60f);var screen=NativeChipScreen.Place(h.Body,0,left,1);float around=Around(h,0);
             Check(Math.Sign(screen.Centre.X)==(left?-1:1)&&screen.Centre.Z>.5f,spec+": the screen floats ahead on its side");
