@@ -12,9 +12,10 @@
   - In this checkout without UTF-8 mode, three tests also fail on the system's cp932 file encoding, and one on the uncommitted local Shader Graph manifest entry; none is related.
   - The new zip: the installer's `--check` passes, and it installs into an empty project.
   - Full CoreTests: 841 PASS, 0 FAIL, exit 0, in an LF checkout of `2c7f5835`.
-- **Not run yet:** the builder's build with the new zip (it runs after this merge reaches the builder branch); in-game check of the published build.
+- **Builder (actual):** the owner's builder built the code merge `db83dc18` with the new zip. It installed the body, and Unity's build report lists the prefab and 40 of its textures and meshes. Build and package validation passed. It published native build `37955ecd057f` to the test channel (channel commit `184bcd8d`). The player zip is 160.2 MB (155 before).
+- **Not run:** an in-game check of the published build (the owner's test).
 - **Animation impact:** none.
-- **Next:** confirm the builder's build installs the body, then the owner's in-game test.
+- **Next:** the owner's in-game test (Update Game, then Settings · Player model).
 
 ## 2026-10-23 — Claude: Settings · Player model, New body or Classic voxel (merged into shared)
 
