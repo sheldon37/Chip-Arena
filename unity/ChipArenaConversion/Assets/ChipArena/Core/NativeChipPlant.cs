@@ -165,13 +165,16 @@ namespace ChipArena.UnityConversion
         }
         // A hand's turn with its fingers from `shoulder` toward `target` and its +z (the palm, or a carried weapon's axis) along `face`;
         // as `face` comes into line with the fingers, `second` (toward the surface touched) takes over smoothly, so the turn never flips.
+        // Where `second` is in line with them too (a cuff facing the hand's own shoulder, as the raised right wrist's faces the left:
+        // the fingertips press it head-on), the palm turns down, again smoothly.
         private static Quaternion Turn(Vector3 target,Vector3 shoulder,Vector3 face,Vector3 second)
         {
             var f=CapturedRig.Unit(target-shoulder,Vector3.UnitZ);var y=-f;var z=face-y*Vector3.Dot(face,y);float across=z.Length();
             if(across<Aligned){var alt=second-y*Vector3.Dot(second,y);z+=alt*((Aligned-across)/Aligned);}
+            float still=z.Length();if(still<HeadOn){var down=-Vector3.UnitY-y*Vector3.Dot(-Vector3.UnitY,y);z+=down*((HeadOn-still)/HeadOn);}
             z=CapturedRig.Unit(z,Vector3.UnitZ);return CapturedRig.Basis(Vector3.Cross(y,z),y,z);
         }
-        private const float Aligned=.5f;
+        private const float Aligned=.5f,HeadOn=.25f;
         private static Vector3 Mirror(Vector3 v,bool flip)=>flip?new Vector3(-v.X,v.Y,v.Z):v;
     }
 }
