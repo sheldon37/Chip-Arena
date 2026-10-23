@@ -514,7 +514,8 @@ drawn first. Two options:
   draw per character);
 - setting the stencil on BoZo's materials if its generated shader exposes it.
 
-Match the environment's `lineColor` and width to BoZo's outline settings when the pack is imported.
+Done in BoZo step 4: the character shader clears the bit (`claude/bozo-toon`), and its outline takes the map's width and
+`lineColor` rule (`claude/bozo-outline`; docs/BOZO-INTEGRATION.md).
 
 ## 7. Risks
 

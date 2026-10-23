@@ -1,3 +1,32 @@
+## 2026-10-22 — Claude: BoZo step 4, the character outline matched to the map lines (merged into shared)
+
+- **Branch/base:** `claude/bozo-outline` from shared `2270d6a3`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** keep the darker shaded side (owner decision), then the next step 4 item: the BoZo outline's colour and width matched to the map's lines.
+- **Cause:** the anime map style's lines are 1–2 px on screen at any distance and darken what they belong to toward the map's tint. BoZo's hull was 2 mm in the world and flat black: about 1.2 px at 2.5 m, under a pixel past 4 m.
+- **Change (presentation only), `Resources/NativeVisualBodyToon.shader`'s outline pass:**
+  - Width: the map's silhouette width on screen, two lines of one pixel per 1080 screen lines, times the vertex alpha.
+  - Colour: the pilot's own lit colour multiplied toward `_ArenaEdgeColor` by `_ArenaEdge.x`, faded over the map's distances. The hull is lit with its normal turned across the view.
+  - No map line (style off): the style's own line, #2A1E40, faded 40 to 110 m.
+  - Depth: the hull sits back along the view ray by 2 cm and four times its push, so clothing layers don't speck through each other and small steps fade with distance.
+  - `_OutlineColor` and `_OutlineDistance` are no longer read.
+- **Checks (actual):**
+  - Full CoreTests: 839 PASS, exit 0, in an LF checkout of the shader commit (on this Windows checkout the expedition-ending GUID check's forward-slash paths were normalised in that throwaway worktree only, as before).
+  - `git diff --check` against shared: clean.
+  - The shader imports and draws in the Unity Editor without errors.
+  - **Width** (local editor render, fov 40, 1080 lines): 2.03–2.14 px from 2.5 to 60 m. BoZo's measured 1.24, .62, .32, .16 and .04 px at 2.5, 5, 10, 20 and 60 m.
+  - **Colour:** line over body (.077, .062, .176) with Cyber City's #1A1438, (.133, .090, .200) with no line globals: about .75–.8 of each tint.
+  - **Stencil:** 0 of 39,710 pixels marked.
+  - **Matches:** Play mode on Brickfall (map lines drawn on the shot cameras too) and Moonlit, the pilot at 4, 8 and 12 m at 1920 × 1080: the line traces the silhouette at the map lines' weight. Matches ran normally.
+- **Seen, not caused by this:** the Editor's shader compiler process crashes compiling `ChipArena/NativeRooftop`'s fragment program on each asset refresh ("Internal error communicating with the shader compiler process"), and restarts. It is in this Editor session's log before this branch's first import. The rooftop is the cloud session's; not touched.
+- **Not run:** a Windows build; Phase C.
+- **Remaining:**
+  - A black outfit hides most of its own line.
+  - Where the head's vertex alpha turns the line off (jaw, neck), a short line can dot at mid range.
+  - Weapons have no outline, as before.
+- **Affected:** `Resources/NativeVisualBodyToon.shader`, `docs/BOZO-INTEGRATION.md`, `docs/MAP-STYLE-ANIME.md` (character outline note).
+- **Timing and animation impact:** none.
+- **Next:** the hit flash and spawn-in reveal on the BoZo body, then the chest core and device.
+
 ## 2026-10-22 — Claude: PR #62 CI fix after the BoZo character shader (meta whitespace; merged into shared)
 
 - **Branch/base:** `claude/ci-meta-whitespace` from shared `a55b40c` (BoZo step 4 shader). Merged into shared and the builder; no PR of its own, not published.

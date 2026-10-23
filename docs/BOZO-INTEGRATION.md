@@ -4,8 +4,8 @@ Status (2026-10-22, Claude): steps 1–2 done on the owner's PC (`claude/bozo-in
 after the owner's review): both packs imported, moved under `Assets/LocalAssets/`, and inventoried below; the owner's
 decisions follow the inventory. Step 3 (rig adapter): `claude/bozo-rig-adapter`, merged into shared; its drift on BoZo is
 measured in Unity (step 3 below). Step 4 (first character): outfit A is wired into the arena's pilot bodies
-(`claude/bozo-body`, below) and drawn on our own lighting (`claude/bozo-toon`); its chest core and wrist device, hats and
-the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
+(`claude/bozo-body`, below), drawn on our own lighting (`claude/bozo-toon`) with its outline matched to the map's lines
+(`claude/bozo-outline`); its chest core and wrist device, hats and the other rigs are still to do. Owner decision: player characters come from the **BoZo: Stylized Modular
 Characters – Anime Pack** (Unity Asset Store, v2.6.4), with **Magica Cloth 2** (v2.18.4) for hair and cloth motion. Both are
 bought by the owner. The custom Blender base (`claude/lowpoly-base-model`, last checkpoint `5c3d6ae`, not merged) is stopped; its chest
 core and right-wrist device (with the closed / opening / insert / accepted / active states) are kept as attachments for BoZo
@@ -395,8 +395,7 @@ Renders (preview scene, Gamma Editor; local scratch only, never committed):
   - Texture memory: one bake per outfit signature at BoZo's 2048², not five live 2048² RenderTextures per character, so the
     look is unchanged.
   - The Phase C pass criteria are unchanged: +0.5 ms CPU and +5 % GPU over voxel at 8 pilots, and 0 B GC per frame.
-- **Shader:** ported in step 4 (`ChipArena/VisualBodyToon`). Matching the map `lineColor` and width to its outline is
-  still to do.
+- **Shader:** ported in step 4 (`ChipArena/VisualBodyToon`), its outline matched to the map's `lineColor` and width.
 - **First person:** the view rig needs the lower arms, wrists, hands, and the sleeves and gloves weighted to `lowerarm`/`hand`.
   Hands are 2,976 triangles. Cloth is off.
 
@@ -849,7 +848,8 @@ pack's for comparisons).
   - the actor lights while a map turns them on (the practical slots and the ceiling field: Ward Zero's revamp, the
     expedition zones);
   - the guns' muzzle lights on every map, wrapped and stepped as `SourceLit` adds them.
-- **Outline:** BoZo's inverted hull, its width from the vertex alpha (outfit A: 2 mm), drawn in the fog.
+- **Outline:** BoZo's inverted hull, its width from the vertex alpha (outfit A: 2 mm), drawn in the fog; matched to the
+  map's lines since (below).
 - **Stencil:** every pass writes 0 to bit 16, as characters do, so the anime style's outline pass never lines a pilot.
 - **Checked in Unity:**
   - **Stencil:** a wall marked as scenery behind the baked body, then the outline pass's stencil test at its own camera
@@ -864,14 +864,60 @@ pack's for comparisons).
   - Matches on both maps drew normally, with the bots' own shots.
 - **Look:** BoZo's own ramp kept a shaded side at about .89 of the lit one. On our lighting a pilot's shaded side takes the
   map's ambient, as the voxel pilots' does. On the moonlit maps a face turned from the key reads darker and cooler than in
-  BoZo's previews. The anime-style maps lift their shade (`_ArenaToonShade`).
+  BoZo's previews. The anime-style maps lift their shade (`_ArenaToonShade`). Owner decision (2026-10-22): keep it.
+
+**The outline matched to the map's lines (`claude/bozo-outline`).** The anime map style's lines (`NativeToonEdge`) are
+1–2 px on screen at any distance and darken the surface they belong to toward the map's tint. BoZo's hull was 2 mm in
+the world and flat black: about 1.2 px at 2.5 m, under a pixel past 4 m.
+- **Width:** the hull is pushed out by the map's silhouette width: two lines of one pixel per 1080 screen lines
+  (`max(1, round(height / 1080))`, as `NativeToonOutline` sets the map's), times the vertex alpha (none under .5, as
+  BoZo's).
+- **Colour:** the map's rule.
+  - The pilot's own lit colour (key, ambient, actor and muzzle lights as the body takes them), multiplied toward
+    `_ArenaEdgeColor` by the line strength `_ArenaEdge.x`, faded out from `_ArenaEdge.y` to `.z` m.
+  - The hull is lit with its normal turned across the view, so a line takes the light of the edge it borders, not the
+    far side's.
+  - A map without the style writes no line globals. The pilot then keeps the style's own line: #2A1E40 (the menus' and
+    most maps' tint), full strength, faded 40 to 110 m. The low tier is the same, with the map's tint and distances.
+- **Depth:** the hull sits back along the view ray (the same pixel on screen) by 2 cm and four times its push.
+  - Clothing layers don't speck through each other (a shoe's opening on the sock).
+  - Small steps (a chin over the neck, hair strands) stop being lined as pixels grow, as the map's creases fade out
+    with their footprint.
+  - Limbs in front of the body keep their lines.
+- **Material inputs:** `_OutlineColor` and `_OutlineDistance` are no longer read (the bake stops copying them);
+  `_UseOutline` and the vertex alpha still choose where a line is drawn.
+- **Checked in Unity:**
+  - **Width and colour** (local editor render of the baked body, fov 40, 1080 lines; the area the line adds over the
+    bare silhouette's perimeter):
+
+    | Distance | Before: BoZo's 2 mm black | After: matched to the map |
+    | --- | --- | --- |
+    | 2.5 m | 1.24 px | 2.05 px |
+    | 5 m | 0.62 px | 2.03 px |
+    | 10 m | 0.32 px | 2.03 px |
+    | 20 m | 0.16 px | 2.05 px |
+    | 60 m | 0.04 px | 2.14 px |
+
+    Line over body colour (median, per channel):
+    - with Cyber City's line (#1A1438): (.077, .062, .176);
+    - with no line globals: (.133, .090, .200), the fallback #2A1E40.
+
+    That is about .75–.8 of each tint, so a line reads as a darker version of the pilot, as a map line does of a wall.
+  - **Stencil:** 0 of 39,710 body-and-line pixels marked; the hull clears bit 16 too.
+  - **Matches:** in Play mode on Brickfall (the style on; the map's own lines drawn on the shot cameras too) and Moonlit
+    (no style), the local pilot at 4, 8 and 12 m at the match camera's field of view, 1920 × 1080: the line traces the
+    silhouette at the map lines' weight. Matches ran normally.
+- **Remaining:**
+  - A black outfit hides most of its own line (black darkened is black), as on BoZo's previews.
+  - Where outfit A's head turns its vertex alpha off (the jaw and neck), a short line can break into dots at mid range.
+  - The Editor shots have no MSAA: stair-stepped edges, as the map lines'.
+  - Weapons, drawn by `ChipArena/SourceLit`, have no outline, as before.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the chest core and the right-wrist device, the mask and visor, and the glow (emission in the
   player colour).
 - **Hats** (owner decision open), the hit flash and the spawn-in build-up (the voxel body's dither reveal).
-- **Outline colour and width** matched to the map's lines (`lineColor`); pattern and decal overlays for other outfits;
-  normal maps.
+- **Pattern and decal overlays** for other outfits; normal maps.
 - **Other rigs still draw voxel:** first-person arms, intros, portraits, the draft, the death broadcast, corpses and kill
   effects (step 6 for death).
 - **Captures:** the neutral turnaround.
