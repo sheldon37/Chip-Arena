@@ -151,6 +151,25 @@ namespace ChipArena.UnityConversion
             float heat=v.Heat[b>=0&&b<v.Heat.Length?b:0],k=Mathf.Clamp01(v.Frame.Tint*(.35f+.65f*heat))*.8f,flash=v.Frame.Flash*.7f;
             var t=Color.Lerp(Color.white,v.Tint,k);t=Color.Lerp(t,new Color(2.2f,2.3f,2.5f,1),flash);return new Color(c.r*t.r,c.g*t.g,c.b*t.b,c.a);
         }
+        /// <summary>
+        /// SourceCharacter, for a pilot its visual body draws (NativeVisualBodyPresentation.cs VisualBodyLook): this frame's
+        /// spawn-in for its shader to apply per pixel (Resources/NativeVisualBodyFx.cginc) as the voxel parts take it per part.
+        /// The solid front's world height over the presented feet, with the band, heat span and slice lead; the hardlight tint
+        /// and its share; the completion flash, the RGB split (Full effects) and its copies' opacity, the scan clock; the
+        /// hologram's colour and slice opacity, and whether the hologram draws (never on the low graphics tier, as
+        /// SpawnHologram). False when no spawn-in shows.
+        /// </summary>
+        private bool SpawnVisualLook(SpawnView v,CapturedAnimation.Player rig,ref VisualSpawnLook look)
+        {
+            if(v==null||rig?.Root==null)return false;var f=v.Frame;var root=rig.Root.transform;
+            float feet=root.position.y-NativeSpawnIn.FeetOffset*root.localScale.y;bool holo=!LowGraphics;float split=holo&&WeaponEffectsQuality>=.5f?f.Split:0;
+            look.Front=new Vector4(v.Built?1e5f:feet+f.Front-NativeSpawnIn.SolidLag,NativeSpawnIn.Band,NativeSpawnIn.HeatSpan,NativeSpawnIn.SolidLag+NativeSpawnIn.GhostLead);
+            look.Tint=new Vector4(v.Tint.r,v.Tint.g,v.Tint.b,f.Tint);
+            look.Glitch=new Vector4(f.Flash,split,split>1e-4f?.42f*Mathf.Clamp01(f.Split/NativeSpawnIn.SplitMax+.4f):0,f.Age);
+            look.Holo=new Vector4(v.Holo.r,v.Holo.g,v.Holo.b,holo&&!v.Built?NativeSpawnIn.GhostOpacity:0);
+            look.Ghost=holo&&(!v.Built||f.Flash>.01f||split>1e-4f);
+            return true;
+        }
         /// <summary>SourceCharacter (arena rigs): the hologram slice leading the solid body, the completion's flash silhouette and
         /// the RGB split, in the pilot's own body skin at its tier (the ghost shader; none on the low graphics tier).</summary>
         private void SpawnHologram(CapturedAnimation.Player rig,SpawnView v,int skin,int layer,Camera camera)

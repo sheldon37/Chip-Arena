@@ -91,6 +91,7 @@ namespace ChipArena.UnityConversion
             Floor(rig);Console.WriteLine("PASS visual rig: the floor fit keeps every visual bone's contact over the floor through the roll ("+count+" checks)");
             Allocation(rig);Console.WriteLine("PASS visual rig: posing, both IKs and the grip allocate nothing per frame and repeat bit for bit ("+count+" checks)");
             Binding(root);Console.WriteLine("PASS visual rig: the Unity binding mirrors at the boundary, writes local turns and the pelvis only, and names no pack types ("+count+" checks)");
+            BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter ("+count+" checks)");
         }
 
         private static void Bind(NativeVisualRig.Rig rig,Vector3[] restWorld)
@@ -639,6 +640,52 @@ namespace ChipArena.UnityConversion
             Check(code.Contains("Bones[v].localRotation=")&&code.Contains("if(v==pelvis)")&&!code.Contains(".position=")&&!code.Contains("localScale"),"the binding writes local turns and the pelvis position only");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC"})
                 Check(!code.Contains(pack)&&!core.Contains(pack),"no pack types or names in the adapter: "+pack);
+        }
+
+        // The visual body's hit flash and match-start spawn-in (Resources/NativeVisualBodyFx.cginc in its toon and hologram;
+        // Runtime NativeVisualBodyPresentation VisualBodyLook and NativeSpawnInPresentation SpawnVisualLook).
+        private static void BodyFx(string root)
+        {
+            string Read(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
+            string fx=Read("Resources/NativeVisualBodyFx.cginc"),toon=Read("Resources/NativeVisualBodyToon.shader"),ghost=Read("Resources/NativeVisualBodyGhost.shader"),lit=Read("Resources/NativeSourceLit.shader");
+            string body=Read("Runtime/NativeVisualBodyPresentation.cs"),source=Read("Runtime/NativeSourcePresentation.cs"),spawn=Read("Runtime/NativeSpawnInPresentation.cs");
+            static string Between(string t,string a,string b){int i=t.IndexOf(a,StringComparison.Ordinal),j=i<0?-1:t.IndexOf(b,i,StringComparison.Ordinal);return j<0?null:t.Substring(i,j-i);}
+            static string Bare(string t){var s=new System.Text.StringBuilder();if(t!=null)foreach(char c in t)if(!char.IsWhiteSpace(c))s.Append(c);return s.ToString();}
+            // The flash: SourceLit's shared block (indentation aside), after the light, not in the add passes, on the line too.
+            var flash=Between(fx,"// ---- HIT FLASH SHARED BEGIN","// ---- HIT FLASH SHARED END");
+            Check(flash!=null&&Bare(flash)==Bare(Between(lit,"// ---- HIT FLASH SHARED BEGIN","// ---- HIT FLASH SHARED END")),"the hit flash colour and blend are SourceLit's");
+            Check(toon.Contains("finalcolor:VisualFinal")&&Bare(Between(toon,"void VisualFinal(","ENDCG")).Contains("#ifndefUNITY_PASS_FORWARDADDcolor.rgb=VisualHitFlash(color.rgb,"),"the body flashes after the light, not in the add passes");
+            Check(toon.Contains("VisualHitFlash(albedo*light,1)"),"the outline is the darker version of the flash");
+            Check(Bare(fx).Contains("if(_HitFlash<1.001)returnc;floathead=_HitFlash>2.5?1.0:0.0;floatk=saturate(_HitFlash-(head>0.5?3.0:1.0));"),"the flash code reads as SourceLit's accent w (1 none, 1 + k, 3 + k a headshot)");
+            // The spawn-in: the body and its outline clip in the front's dither and take its tint; the hologram is the slice's.
+            int includes=0;for(int i=toon.IndexOf("#include \"NativeVisualBodyFx.cginc\"",StringComparison.Ordinal);i>=0;i=toon.IndexOf("#include \"NativeVisualBodyFx.cginc\"",i+1,StringComparison.Ordinal))includes++;
+            Check(includes==2&&ghost.Contains("#include \"NativeVisualBodyFx.cginc\""),"the body, its outline and the hologram share the include");
+            Check(toon.Contains("SpawnClip(i.worldPos);")&&toon.Contains("o.Albedo=SpawnTinted(")&&toon.Contains("SpawnClip(i.world);")&&toon.Contains("float3 albedo=SpawnTinted("),"the body and its outline form in the front and take its tint (the cast shadow runs the body's surf)");
+            Check(toon.Contains("addshadow")&&toon.Contains("_SpawnFront(\"Spawn-in: solid front (world y), band, heat span, slice lead\",Vector)=(100000,")&&toon.Contains("_HitFlash(\"Hit flash code (1 none; the arena sets it per renderer)\",Float)=1"),"unset, the body is formed and unflashed");
+            Check(ghost.Contains("Blend SrcAlpha OneMinusSrcAlpha")&&ghost.Contains("ZWrite Off")&&!ghost.Contains("ShadowCaster")&&ghost.Contains("SpawnSlice(i.world.y)*_SpawnHolo.w")&&ghost.Contains("_SpawnGlitch.x*0.55")&&ghost.Contains("UNITY_MATRIX_V[0].xyz*(_GhostSide*_SpawnGlitch.y)"),"the hologram: the slice, the flash silhouette and the split copies, see-through, no shadow");
+            // The per-pixel functions as written, and their mapping (x the solid front, w the slice lead) equals Core's per part.
+            Check(Bare(fx).Contains("floatSpawnSolid(floaty){floatt=saturate((_SpawnFront.x-y)/_SpawnFront.y);returnt*t*(3.0-2.0*t);}")&&Bare(fx).Contains("floatSpawnHeat(floaty){return1.0-saturate((_SpawnFront.x-_SpawnFront.y-y)/_SpawnFront.z);}")&&Bare(fx).Contains("floatSpawnSlice(floaty){returnsaturate((_SpawnFront.x+_SpawnFront.w-y)/_SpawnFront.y)*(1.0-SpawnSolid(y));}"),"the shader's solid, heat and slice");
+            static float Sat(float v)=>v<0?0:v>1?1:v;
+            float x0=NativeSpawnIn.SolidLag,band=NativeSpawnIn.Band,span=NativeSpawnIn.HeatSpan,lead=NativeSpawnIn.SolidLag+NativeSpawnIn.GhostLead;float worst=0;
+            for(float front=-.6f;front<=2.5f;front+=.037f)for(float h=-.2f;h<=2.2f;h+=.029f)
+            {
+                float x=front-x0,t=Sat((x-h)/band),solid=t*t*(3-2*t),heat=1-Sat((x-band-h)/span),slice=Sat((x+lead-h)/band)*(1-solid);
+                worst=Math.Max(worst,Math.Max(Math.Abs(solid-NativeSpawnIn.Solid(front,h)),Math.Max(Math.Abs(heat-NativeSpawnIn.Heat(front,h)),Math.Abs(slice-NativeSpawnIn.Ghost(front,h)))));
+            }
+            Check(worst<1e-5f,"per pixel the voxel parts' solid, heat and slice at the same height (worst "+worst+")");
+            Check(Bare(fx).Contains("floatk=saturate(_SpawnTint.w*(0.35+0.65*SpawnHeat(y)))*0.8;")&&Bare(fx).Contains("returnc*lerp(t,float3(2.2,2.3,2.5),_SpawnGlitch.x*0.7);")&&Bare(spawn).Contains("floatheat=v.Heat[b>=0&&b<v.Heat.Length?b:0],k=Mathf.Clamp01(v.Frame.Tint*(.35f+.65f*heat))*.8f,flash=v.Frame.Flash*.7f;")&&spawn.Contains("t=Color.Lerp(t,new Color(2.2f,2.3f,2.5f,1),flash);"),"the hardlight tint and flash are SpawnTintOf's");
+            // The runtime: one hook in SourceCharacter; Core's values written per renderer; the hologram never on the low tier.
+            var character=Between(source,"private bool SourceCharacter(","private void SourceWorld(");
+            Check(character!=null&&character.Contains("float flash=dressed&&!first?HitFlashCode(a.Id,time):1;\n")&&character.IndexOf("if(visual)VisualBodyLook(rig,spawn,flash);",StringComparison.Ordinal)>character.IndexOf("float flash=",StringComparison.Ordinal),"SourceCharacter hands a visual body its flash and spawn-in");
+            var look=Between(spawn,"private bool SpawnVisualLook(","/// <summary>SourceCharacter (arena rigs)");
+            Check(look!=null&&look.Contains("NativeSpawnIn.SolidLag,NativeSpawnIn.Band,NativeSpawnIn.HeatSpan,NativeSpawnIn.SolidLag+NativeSpawnIn.GhostLead")&&look.Contains("v.Built?1e5f:feet+f.Front-NativeSpawnIn.SolidLag")&&look.Contains("bool holo=!LowGraphics;")&&look.Contains("NativeSpawnIn.GhostOpacity")&&look.Contains("WeaponEffectsQuality>=.5f?f.Split:0")&&look.Contains("NativeSpawnIn.FeetOffset"),"the front over the presented feet, Core's constants, the hologram off on the low tier and the split off in Reduced");
+            var write=Between(body,"private void VisualBodyLook(","// Each renderer's materials");
+            Check(write!=null&&write.Contains("if(!on&&!body.SpawnOn&&flash==body.Flash)return;")&&write.Contains("if(!on)look=VisualSpawnLook.Off;")&&write.Contains("body.Block.SetFloat(HitFlashId,flash);"),"the values are written while a spawn-in runs or the flash changes, and reset after");
+            int news=0;for(int i=write?.IndexOf("new ",StringComparison.Ordinal)??-1;i>=0;i=write.IndexOf("new ",i+1,StringComparison.Ordinal))news++;
+            Check(news==1&&write.Contains("var look=new VisualSpawnLook();"),"VisualBodyLook builds only a value per frame (the hologram's slots are made once)");
+            Check(!body.Contains("NativeSpawnIn")&&!body.Contains("SpawnInFrame"),"the visual body reads the spawn-in only through SpawnVisualLook (the spawn-in's presentation files)");
+            foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC"})
+                Check(!body.Contains(pack)&&!fx.Contains(pack)&&!toon.Contains(pack)&&!ghost.Contains(pack),"no pack types or names in the visual body's code: "+pack);
         }
     }
 }
