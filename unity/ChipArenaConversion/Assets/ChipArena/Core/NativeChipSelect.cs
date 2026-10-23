@@ -35,9 +35,10 @@ namespace ChipArena.UnityConversion
     //  - Tag (NativeChipSelectTag): "SELECTING CHIP" typed in over the head, then three pulsing dots.
     public enum ChipSelectCarry { Free, Fist, Pistol, LongGun, Blade, Daggers, Greatsword, Shield, Staff, Bow }
     public enum ChipSelectGestureKind { None, Tap, Swipe, Flick }
-    /// <summary>What the hand without the display does: an empty hand (unarmed, the gauntlets) taps and swipes; a hand carrying a
-    /// pistol or a dagger swipes along the panel's lower edge (its weapon kept pointing down, below the cards); a long weapon stays
-    /// lowered and the display wrist flicks instead.</summary>
+    /// <summary>What the hand without the display (the left) does: an empty hand (unarmed, the gauntlets, every class whose weapon
+    /// is in the right hand) taps and swipes; a hand carrying a dagger (or a pistol) swipes along the panel's lower edge (its weapon
+    /// kept pointing down, below the cards); a hand keeping its hold (the shield, the staffs, the bow) stays and the display wrist
+    /// flicks instead.</summary>
     public enum ChipSelectHands { Flicks, Swipes, Taps }
     public struct ChipSelectGesture
     {

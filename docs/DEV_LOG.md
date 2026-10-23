@@ -1,3 +1,45 @@
+## 2026-10-22 — Claude: chip select on the right wrist for every class (merged into shared)
+
+- **Branch/base:** `claude/chip-wrist-right` from shared `53b91615` (shared's DEV_LOG note `003b4c01` merged in). No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** the device's wrist for every class (owner, 2026-10-22). "Keep the weapon in the right hand pointing down: short weapons with the wrist raised at chest height, rifles, machine guns and the greatsword with a lower wrist so the weapon hangs beside the leg. The left hand taps and inserts the chip."
+- **Changes (presentation only):**
+  - `Core/NativeChipSelect.cs`:
+    - the display is the right wrist for every class (`DisplayLeft` false);
+    - a held right-hand weapon hangs pointing down (`Held`, `Armed`);
+    - the rifles and the greatsword use a low wrist (`LowRaised`, `LowPole`) with a designed hang turned with the hips (`HangAxis`), so the weapon hangs beside the right leg;
+    - the floor guard covers the held weapon; the panel shifts and lifts per hold to clear it;
+    - first person puts a long weapon away while the look is up (`Stows`; `ChipStowed` in `NativeSourcePresentation`);
+    - the tray wrist is placed for the right side.
+  - `Core/NativeDraftStage.cs`: a pilot's left hand considers and takes every card, reaching just across the middle for one on the right, with a smooth blend (`Own`). The Siren's hands still follow the card's side.
+  - `Core/NativeChipScreen.cs`: the screen opens on the right, except the shield's (its stance carries the right wrist left of the middle).
+  - `Core/NativeChipPlant.cs`: comments only. The left hand plants; the shield, staffs and bow drop the chip down the cone.
+  - Visual body:
+    - the hologram, the Expedition screen, the plant's chip and the chooser camera's wrist come from the device bay (`VisualEmitter`, `ChipSelectSlot.Shift`), not the game wrist, which sits 0.2 to 0.4 m away on BoZo's proportions;
+    - the support grip lets go while the look is up.
+- **Checks (actual):**
+  - Full CoreTests: 840 PASS, 0 FAIL, exit 0, in an LF checkout of the code commit `0f3b2a27` (the expedition-ending GUID check's Windows paths normalised in that throwaway worktree only, as before).
+  - `--chip-select`, per class:
+    - the display wrist is the right;
+    - a held weapon hangs pointing down (beside the right leg for the low hold);
+    - its tip stays off the floor, it clears the head by at least 0.15 m and the panel, and the eyes' line to the panel stays open;
+    - first person: a short weapon points away, a long one is put away.
+  - `--draft-stage` (new flag) passes except the known CRLF-only backdrop pin in this Windows checkout; `--chooser-camera` and `--chip-screen` pass.
+  - Unity semantic compile passes (player, runtime, editor); `git diff --check` clean.
+  - Play mode on Moonlit, a staged Expedition pick and plant:
+    - BoZo pistol, rifle, sword and greatsword pilots, and a voxel pistol pilot, were captured;
+    - the logged screen emitter equals the device bay, and the chip ends in the bay;
+    - the left hand carries the chip to the right wrist.
+- **Not run:** a Windows build; a real Expedition run; two clients; the Boss Test draft in Play mode.
+- **Animation impact:**
+  - The chip-select pose, the plant and the draft stage change for every pilot, voxel too: the right arm rises and the left hand reaches.
+  - Hit volumes, damage, cooldowns, movement, timing (the plant's timeline is unchanged) and networking are unchanged; nothing is written back.
+- **Remaining:**
+  - On the BoZo body, the short-weapon wrist sits at the game's existing raised height, just above the belt rather than mid-chest. Owner decision.
+  - Captures show a red and yellow wedge between the Expedition screen and the pilot, on voxel pilots too and before the emitter move. Not traced yet.
+  - The held chip's size cap still follows the voxel palm.
+- **Affected:** `Core/NativeChipSelect.cs`, `Core/NativeDraftStage.cs`, `Core/NativeChipScreen.cs`, `Core/NativeChipPlant.cs`, `Runtime/NativeChipSelectPresentation.cs`, `Runtime/NativeChipScreenPresentation.cs`, `Runtime/NativeSourcePresentation.cs`, `Runtime/NativeVisualBodyPresentation.cs`, `Tests/ChipSelectChecks.cs`, `Tests/DraftStageChecks.cs`, `Tests/ChooserCameraChecks.cs`, `Tests/Program.cs`, `docs/PVE-CHIP-SELECT.md`, `docs/BOZO-INTEGRATION.md`, `docs/CHARACTER-LOWPOLY.md`.
+- **Next:** the owner's call on the short-weapon wrist height; then hats, the other rigs and the remaining visual-body effects.
+
 ## 2026-10-23 — Claude: rooftop shader compile crash, bisect kit for the Windows Editor (merged into shared)
 
 - **Branch/base:** this note `claude/rooftop-bisect-note` from shared `53b9161`; the kit is on `claude/rooftop-bisect` (`08c855b`, from shared `3564080`), which must never be merged. Not published.

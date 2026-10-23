@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     //  - The left hand, when it already reaches the panel (empty, its gauntlet or its dagger; third person only), takes the card at
     //    the contact (it is the chip from then on: a lit cartridge in its rarity colour), carries it over a small arc to the cuff on
     //    the back of the right display wrist and presses it in (palm down, or a dagger kept pointing down).
-    //  - A left hand that keeps its hold (the shield; and first person, every class): the chip drops down the projection cone into
+    //  - A left hand that keeps its hold (the shield, the staffs, the bow; and first person, every class): the chip drops down the projection cone into
     //    the cuff and the display wrist rises a little to take it, then gives as it seats.
     //  - The cuff pulses in the chip's colour from the seat; then both arms return: to the route's pose, or, when another pick
     //    follows (Stay), back to the hologram pose with the panel unfolding again.
