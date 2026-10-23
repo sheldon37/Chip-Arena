@@ -1,4 +1,5 @@
-"""Install the owner's licensed effects audio into Assets/LocalAssets (git-ignored, never committed or packaged).
+"""Install the owner's licensed effects audio (and the visual body, when present) into Assets/LocalAssets (git-ignored, never
+committed or packaged).
 
 usage: python3 -I tools/install_local_assets.py SOURCE [--project DIR] [--check | --remove]
 
@@ -12,7 +13,15 @@ NativeSoundBank.Parse), effect keys and the intro.<style> entrance-music keys al
 within its hard length cap. Every folder needs its .meta, no unlisted file is allowed, and EffectsAudio must stay under
 the 16 MB budget. It then replaces Assets/LocalAssets/Resources/EffectsAudio with the source's copy. Unity merges every
 Resources folder, so the game loads it as Resources "EffectsAudio/...". Without it the game plays today's sounds.
---check verifies only; --remove deletes the installed EffectsAudio folder. Exit status 1 on any problem.
+
+The visual body (docs/BOZO-INTEGRATION.md) is optional: visual-body.json at the content root (never installed itself) lists
+every file the baked body needs (tools/pack_visual_body.py writes it from the owner's bake) with its SHA-256. Only meshes,
+materials, textures, prefabs and their .meta files, every folder's .meta, no scripts or shaders, nothing under the effects
+bank, within VISUAL_BODY_BUDGET; the prefab is ChipArenaVisualBody.prefab in a Resources folder, which the game loads in place
+of the voxel pilot body. They are copied over Assets/LocalAssets at their paths and nothing there is deleted, so installing
+over a full local pack only rewrites the same files. Without it the pilots draw the voxel body.
+--check verifies only; --remove deletes the installed EffectsAudio folder (the visual body stays). Exit status 1 on any
+problem.
 """
 import argparse
 import hashlib
@@ -34,6 +43,9 @@ SPACES = {'P': '3d', 'F': '2d', 'O': 'loop'}
 CLIP_NAME = re.compile(r'^[a-z0-9_-]{1,40}$')
 GUID = re.compile(r'^guid: ([0-9a-f]{32})$', re.M)
 MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 5000, 64 * 1024 * 1024, 16 * 1024 * 1024
+VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 40 * 1000 * 1000
+VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.meta'}
+SHA256 = re.compile(r'^[0-9a-f]{64}$')
 
 
 class Problem(Exception):
@@ -164,6 +176,91 @@ def verify(content):
     return len(manifest['events']), clips, total
 
 
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for block in iter(lambda: f.read(1 << 20), b''):
+            h.update(block)
+    return h.hexdigest()
+
+
+def verify_visual_body(content):
+    """Checks the optional visual body; returns {path: sha256} (empty without one) or raises Problem with every issue found."""
+    listing = content / VISUAL_BODY_MANIFEST
+    if not listing.is_file():
+        return {}
+    try:
+        manifest = json.loads(listing.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as error:
+        raise Problem(f'visual body: {error}')
+    if not isinstance(manifest, dict) or manifest.get('schema') != 1 or not isinstance(manifest.get('files'), dict) or not isinstance(manifest.get('prefab'), str):
+        raise Problem('visual body: schema must be 1 with a prefab and a files object')
+    problems = [f'visual body: unknown field {f}' for f in manifest if f not in ('schema', 'prefab', 'files', 'generated', 'note')]
+    files, prefab = manifest['files'], manifest['prefab']
+    paths = set()
+    for rel, digest in files.items():
+        parts = PurePosixPath(rel).parts if isinstance(rel, str) else ()
+        if not parts or '\\' in rel or rel.startswith('/') or ':' in rel or '..' in parts or '.' in parts:
+            problems.append(f'visual body: unsafe path {rel!r}')
+            continue
+        if parts[0] == 'Resources':
+            problems.append(f'visual body: {rel} is in the effects bank\'s Resources folder')
+            continue
+        if PurePosixPath(rel).suffix.lower() not in VISUAL_BODY_KINDS:
+            problems.append(f'visual body: {rel} is not a mesh, material, texture, prefab or .meta')
+            continue
+        if not isinstance(digest, str) or not SHA256.match(digest):
+            problems.append(f'visual body: {rel}: bad sha256')
+            continue
+        paths.add(rel)
+    if PurePosixPath(prefab).name != VISUAL_BODY_PREFAB or 'Resources' not in PurePosixPath(prefab).parts[:-1] or prefab not in paths:
+        problems.append(f'visual body: the prefab must be a listed {VISUAL_BODY_PREFAB} in a Resources folder')
+    total, guids = 0, set()
+    for rel in sorted(paths):
+        path = content.joinpath(*PurePosixPath(rel).parts)
+        if path.is_symlink() or not path.is_file():
+            problems.append(f'visual body: missing {rel}')
+            continue
+        total += path.stat().st_size
+        if sha256(path) != files[rel]:
+            problems.append(f'visual body: {rel} does not match its sha256')
+        if rel.endswith('.meta'):
+            match = GUID.search(path.read_text(encoding='utf-8', errors='replace'))
+            if not match or match[1] in guids:
+                problems.append(f'visual body: invalid or duplicate guid in {rel}')
+            else:
+                guids.add(match[1])
+        else:
+            if rel + '.meta' not in paths:
+                problems.append(f'visual body: {rel} has no listed .meta')
+        parents = PurePosixPath(rel).parents
+        for folder in list(parents)[:-1]:
+            if folder.as_posix() + '.meta' not in paths:
+                problems.append(f'visual body: folder {folder.as_posix()} has no listed .meta')
+    if total > VISUAL_BODY_BUDGET:
+        problems.append(f'visual body is {total} bytes, over the {VISUAL_BODY_BUDGET} byte budget')
+    if problems:
+        raise Problem('\n'.join(sorted(set(problems))))
+    return {rel: files[rel] for rel in paths}
+
+
+def install_visual_body(content, project, files):
+    """Copies the visual body's files over Assets/LocalAssets at their paths; deletes nothing."""
+    local = project / 'Assets/LocalAssets'
+    for rel in sorted(files):
+        source = content.joinpath(*PurePosixPath(rel).parts)
+        target = local.joinpath(*PurePosixPath(rel).parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_file() and sha256(target) == files[rel]:
+            continue
+        staged = target.with_name(target.name + '.installing')
+        shutil.copyfile(source, staged)
+        os.replace(staged, target)
+    wrong = [rel for rel in sorted(files) if sha256(local.joinpath(*PurePosixPath(rel).parts)) != files[rel]]
+    if wrong:
+        raise Problem('visual body: installed copies differ: ' + ', '.join(wrong[:5]))
+
+
 def safe_extract(archive, destination):
     """Extracts a zip member by member, refusing absolute or parent paths, links and oversized content."""
     with zipfile.ZipFile(archive) as z:
@@ -261,14 +358,21 @@ def main(argv=None):
             else:
                 raise Problem('SOURCE must be a folder or a .zip: ' + str(source))
             keys, clips, total = verify(content)
+            body = verify_visual_body(content)
+            body_bytes = sum(content.joinpath(*PurePosixPath(rel).parts).stat().st_size for rel in body)
             if not args.check:
                 install(content, project)
                 verify(project / 'Assets/LocalAssets')
+                install_visual_body(content, project, body)
         except Problem as problem:
-            print('Licensed effects audio rejected:\n' + str(problem), file=sys.stderr)
+            print('Licensed assets rejected:\n' + str(problem), file=sys.stderr)
             return 1
     action = 'Verified' if args.check else 'Installed'
     print(f'{action} {keys} keys, {clips} clips, {total / 1e6:.2f} MB of licensed effects audio' + ('' if args.check else ' into Assets/LocalAssets/Resources/EffectsAudio (git-ignored).'))
+    if body:
+        print(f'{action} the visual body: {len(body)} files, {body_bytes / 1e6:.2f} MB' + ('' if args.check else ' into Assets/LocalAssets (git-ignored).'))
+    else:
+        print('No visual body in the source; the pilots draw the voxel body.')
     return 0
 
 
