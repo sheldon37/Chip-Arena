@@ -1,3 +1,13 @@
+## 2026-10-23 — Claude: rooftop shader compile crash, derivative before the branches (merged into shared)
+
+- **Branch/base:** `claude/rooftop-shader-compile` from shared `3467111`. Merged into shared and the builder; no PR of its own, not published.
+- **Report:** the local BoZo session's Editor log shows the shader compiler process crashing on `ChipArena/NativeRooftop`'s fragment program on each asset refresh ("Internal error communicating with the shader compiler process"), then restarting (DEV_LOG 2026-10-22, BoZo outline entry).
+- **Likely cause (not reproduced here; no Windows shader compiler in this environment):** the fragment took `fwidth` inside per-pixel branches on the vertex mode, in both looks, and the anime look's puddle rings (stage 2, `d59c24c`) added a loop that was not unrolled inside a function that `clip`s. A derivative in divergent flow makes the D3D compiler flatten the branches around it, the loop included. The repo's other shaders already take every derivative before branching (`BlockLookChecks`, `BlockFxChecks`, `VfxRuntimeChecks`); the rooftop was the exception.
+- **Fix (presentation only, `Resources/NativeRooftop.shader`):** the window grid's `fwidth` is taken once at the top of `frag` and passed to `RoofToonSurface`; the anime puddle loop is `[unroll]` like the legacy one. Same values wherever a pixel quad shares one mode (every facade pixel), so both looks are unchanged.
+- **Checks (actual):** HLSL front-end check (glslang) of both passes, vertex and fragment, fog on/off, linear/gamma: OK. run5b: Unity runtime and editor compile OK; relay and full CoreTests 840 PASS (`MenuStyleChecks` rooftop group 60 checks, two new: one derivative before any branch and none inside `RoofToonSurface`; both ring loops unroll); Python 140 OK, 1 skipped; source package OK; diff check clean.
+- **Not run:** the Unity Editor's shader import (Windows D3D compiler), so the crash fix is unconfirmed. **Next (local session):** after pulling shared, refresh assets and check `Editor.log` (and `Logs/shadercompiler-*.log`) for `NativeRooftop`; if it still crashes, send that log's lines for the crash.
+- **Animation, timing, networking:** none.
+
 ## 2026-10-22 — Claude: BoZo step 4, the character outline matched to the map lines (merged into shared)
 
 - **Branch/base:** `claude/bozo-outline` from shared `2270d6a3`. No PR; merged into shared and the builder (standing merge authorization); not published.
