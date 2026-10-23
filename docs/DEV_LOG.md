@@ -1,3 +1,34 @@
+## 2026-10-22 — Claude: BoZo step 4, hit flash and spawn-in reveal on the BoZo body (merged into shared)
+
+- **Branch/base:** `claude/bozo-flash` from shared `3467111e`. No PR; merged into shared and the builder (standing merge authorization); not published.
+- **Owner request:** the hit flash and spawn-in reveal on the BoZo body (the gap the PR #62 CI-fix entry below noted).
+- **Changes (presentation only):**
+  - New `Resources/NativeVisualBodyFx.cginc`: SourceLit's hit flash block, and Core `NativeSpawnIn`'s solid, heat and slice per pixel height, with the voxel parts' world-cell dither and `SpawnTintOf`'s tint and flash.
+  - `NativeVisualBodyToon.shader`: the flash after the light (not in add passes; the outline as its darker version); the body, outline and cast shadow form in the front with the tint.
+  - New `Resources/NativeVisualBodyGhost.shader`: the hologram slice, completion flash silhouette and RGB split, on three extra material slots only while a spawn-in shows (never on the low tier; the split only on Full effects).
+  - `NativeSourcePresentation.SourceCharacter`: one new line, `if(visual)VisualBodyLook(rig,spawn,flash);`.
+  - `NativeSpawnInPresentation.SpawnVisualLook` hands over the frame with Core's constants.
+  - `NativeVisualBodyPresentation.VisualBodyLook` writes them per renderer only while a spawn-in runs or the flash changes; no per-frame allocation.
+  - `Tests/VisualRigChecks.cs` (`BodyFx`): 22 checks: the flash block equals SourceLit's, the per-pixel functions equal Core's per part (worst under 1e-5), the tint, the wiring, no spawn-in or pack names in the visual body file.
+- **Checks (actual):**
+  - Full CoreTests: 840 PASS, 0 FAIL, exit 0, in an LF checkout of the code commit (this Windows checkout's expedition-ending GUID check compares forward-slash paths to Windows listings; normalised in that throwaway worktree only, as before).
+  - Unity semantic compile (runtime, editor) passes; `git diff --check` clean (the two new metas' trailing spaces stripped).
+  - **Play mode, Brickfall** (property blocks read back after each shot):
+    - the front climbed from -0.62 m to 2.16 m over the floor, then turned formed;
+    - the hologram slots were on while building, at the completion and at the two countdown blips, and off after;
+    - the tint fell from 1 to 0;
+    - the completion frame had flash .47 and a 3.4 cm split;
+    - a hit and a headshot set through `hitFlashes` drew codes 1.52–1.66 and 3.52–3.72, and the body flashed.
+  - **Fixed in the run:** dither cells hashing to exactly 0 specked the unformed body; the hash is floored above 0.
+- **Seen, not caused by this:** the Editor's shader compiler still crashes on `ChipArena/NativeRooftop` at each refresh (noted in the outline entry).
+- **Not run:** a Windows build; the low graphics tier and Reduced effects in Unity (code-checked only); Phase C.
+- **Remaining:**
+  - The hologram has no depth pre-pass, so overlapping cloth stacks slightly brighter in the slice.
+  - Still skipped on a visual body: Body Chips dressing, living wounds, the parry flash, the Cyber Lord's pieces, hats.
+- **Affected:** `Resources/NativeVisualBodyFx.cginc` (new), `Resources/NativeVisualBodyGhost.shader` (new), `Resources/NativeVisualBodyToon.shader`, `Runtime/NativeVisualBodyPresentation.cs`, `Runtime/NativeSourcePresentation.cs`, `Runtime/NativeSpawnInPresentation.cs`, `Tests/VisualRigChecks.cs`, `docs/BOZO-INTEGRATION.md`.
+- **Timing and animation impact:** none. Hit timing, hitboxes, damage, cooldowns, movement and the network are untouched; the spawn-in's clock is the replicated fight start as before.
+- **Next:** the chest core and wrist device.
+
 ## 2026-10-22 — Claude: BoZo step 4, the character outline matched to the map lines (merged into shared)
 
 - **Branch/base:** `claude/bozo-outline` from shared `2270d6a3`. No PR; merged into shared and the builder (standing merge authorization); not published.
