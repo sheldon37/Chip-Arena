@@ -15,6 +15,9 @@ namespace ChipArena.UnityConversion
             // Settings · Camera (Core/NativeCameraModes): the two shoulders, Close action, Classic (the old camera) and first person.
             Field("Camera");NativeCameraModes.Choose(ChoiceGrid(NativeCameraModes.Choices,NativeCameraModes.Choice(prefs.cameraMode,prefs.shoulderLeft,prefs.firstPerson),NativeCameraModes.Labels),ref prefs.cameraMode,ref prefs.shoulderLeft,ref prefs.firstPerson);
             Fine("V switches to first person and back; "+NativeCameraModes.SwapKey+" swaps the shoulder during play.");
+            // Player model (NativeVisualBodyPresentation.cs): the new character body, where its local bake is installed, or the classic
+            // voxel pilot. Only how this PC draws every pilot; it applies at once, mid-match too (the pause menu's settings).
+            if(ArenaPresentation.VisualBodyInstalled){Field("Player model");prefs.playerModel=ChoiceGrid(PlayerModels,prefs.playerModel=="Classic"?"Classic":"New",PlayerModelLabels);Fine("How every pilot looks on this PC; other players keep their own choice.");}
             Field("Controls");prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);
             Field("Audio");prefs.sound=!GUILayout.Toggle(!prefs.sound,"Mute audio");SoundTestRow();prefs.menuMusic=Slider("Menu Music",prefs.menuMusic,0,1);prefs.music=Slider("Stage Music",prefs.music,0,1);prefs.audio=Slider("Sounds",prefs.audio,0,1);
             if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}
@@ -54,6 +57,7 @@ namespace ChipArena.UnityConversion
                 NativeUi.Text(new Rect(r.x+4+w+18,r.y+4,r.width-w-26,38),soundStatus,12,NativeUi.Hex(0xaac5ce),TextAnchor.MiddleLeft,mono:true);
             });
         }
+        private static readonly string[] PlayerModels={"New","Classic"},PlayerModelLabels={"New body","Classic voxel"};
         private float Slider(string name,float value,float min,float max){GUILayout.Label(name+"  "+value.ToString("0.00"),small);return GUILayout.HorizontalSlider(value,min,max);}
         // Development builds keep Player.log, but never pop the overlay before a verified DEV opts in.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]

@@ -6,7 +6,8 @@ namespace ChipArena.UnityConversion
     // The visual body (docs/BOZO-INTEGRATION.md step 4): a skinned character baked on the owner's PC from the licensed
     // character pack into Resources/ChipArenaVisualBody (git-ignored with the pack), drawn in place of the voxel pilot body
     // and posed from the pilot's own game pose through NativeVisualRig. Presentation only: the 22-joint rig still poses
-    // every frame, authority reads neither, and the voxel body draws wherever the bake is absent or with --ca-voxel-bodies.
+    // every frame, authority reads neither, and the voxel body draws wherever the bake is absent, with --ca-voxel-bodies or
+    // while Settings · Player model is Classic (ClassicBodies, live: the bodies hide the frame they are not posed).
     // The rig's hand bones are moved onto the visual weapon frames after posing (and back before the next pose), so the
     // drawn weapon, its muzzle, blade sweeps and wrist effects follow the visual hands. It takes the hit flash and the
     // match-start spawn-in in its own shader (VisualBodyLook), and wears the pilot gear (VisualGear: the chest core and the
@@ -28,6 +29,11 @@ namespace ChipArena.UnityConversion
         }
         public const string VisualBodyResource="ChipArenaVisualBody", VoxelBodiesArgument="--ca-voxel-bodies";
         private static GameObject visualBodyPrefab; private static int visualBodyState; // 0 unread, 1 drawn, -1 absent or turned off
+        /// <summary>Settings · Player model is Classic (set each frame from the preferences): every pilot draws its voxel body.</summary>
+        public bool ClassicBodies;
+        /// <summary>Whether this install draws the visual body at all (its bake found, not turned off at launch): Settings shows the
+        /// Player model choice only then.</summary>
+        public static bool VisualBodyInstalled=>VisualBodiesOn;
         private readonly Dictionary<CapturedAnimation.Player,VisualBody> visualBodies=new Dictionary<CapturedAnimation.Player,VisualBody>();
         private readonly List<CapturedAnimation.Player> visualBodiesGone=new List<CapturedAnimation.Player>();
         private static readonly string[] ClothSlots={"Top.","Bottom.","Feet.","Gloves.","Hat."};
@@ -69,7 +75,7 @@ namespace ChipArena.UnityConversion
         // After a living arena pilot's rig is posed: pose its visual body from the same game pose, with its weapon's grasp.
         private void VisualBodyPose(Actor a,float time)
         {
-            if(Viewer||sourceModels==null||a.SourceSpec=="siren"||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig)||!VisualBodiesOn)return;
+            if(Viewer||sourceModels==null||ClassicBodies||a.SourceSpec=="siren"||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig)||!VisualBodiesOn)return;
             if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null)
             {
                 body=CreateVisualBody(rig,a.Id);if(body==null)return;visualBodies[rig]=body;

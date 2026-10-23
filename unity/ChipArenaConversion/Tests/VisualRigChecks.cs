@@ -91,6 +91,7 @@ namespace ChipArena.UnityConversion
             Floor(rig);Console.WriteLine("PASS visual rig: the floor fit keeps every visual bone's contact over the floor through the roll ("+count+" checks)");
             Allocation(rig);Console.WriteLine("PASS visual rig: posing, both IKs and the grip allocate nothing per frame and repeat bit for bit ("+count+" checks)");
             Binding(root);Console.WriteLine("PASS visual rig: the Unity binding mirrors at the boundary, writes local turns and the pelvis only, and names no pack types ("+count+" checks)");
+            ModelSetting(root);Console.WriteLine("PASS visual rig: Settings · Player model (New, saved) switches every pilot to the classic voxel body and back live, shown only where the visual body is installed ("+count+" checks)");
             BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter; the pilot gear faces out, clears its chip and follows health and chip select ("+count+" checks)");
         }
 
@@ -642,6 +643,27 @@ namespace ChipArena.UnityConversion
                 Check(!code.Contains(pack)&&!core.Contains(pack),"no pack types or names in the adapter: "+pack);
         }
 
+        // Settings · Player model (owner 2026-10-23, a fallback while the new body is tested): a saved preference, New by default; the
+        // game sets the presentation's ClassicBodies from it every frame before the arena renders, and a classic frame poses no visual
+        // body, so it hides and the voxel body draws (VisualBodyDrawn reads only this frame's pose). Shown only where it is installed.
+        private static void ModelSetting(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string game=R("Runtime/ConversionGame.cs"),settings=R("Runtime/NativeSettings.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs"),source=R("Runtime/NativeSourcePresentation.cs");
+            Check(game.Contains("alarmLights=\"Full\",playerModel=\"New\";"),"the preference is saved with the others, New by default");
+            int set=game.IndexOf("presentation.ClassicBodies=prefs.playerModel==\"Classic\";",StringComparison.Ordinal),render=game.IndexOf("presentation.Render(frame,renderTime,false);",StringComparison.Ordinal);
+            Check(set>0&&render>set,"the game sets ClassicBodies from the preference every frame, before the arena renders");
+            Check(settings.Contains("if(ArenaPresentation.VisualBodyInstalled){Field(\"Player model\");prefs.playerModel=ChoiceGrid(PlayerModels,prefs.playerModel==\"Classic\"?\"Classic\":\"New\",PlayerModelLabels);"),"Settings shows the choice only where the visual body is installed, anything but Classic reading as New");
+            Check(settings.Contains("PlayerModels={\"New\",\"Classic\"}"),"the two choices");
+            Check(body.Contains("public bool ClassicBodies;")&&body.Contains("public static bool VisualBodyInstalled=>VisualBodiesOn;"),"the presentation's switch and the installed test");
+            int pose=body.IndexOf("private void VisualBodyPose(",StringComparison.Ordinal),skip=body.IndexOf("||ClassicBodies||",pose,StringComparison.Ordinal),create=body.IndexOf("CreateVisualBody(rig,a.Id)",pose,StringComparison.Ordinal);
+            Check(pose>0&&skip>pose&&create>skip,"a classic frame poses (and creates) no visual body");
+            Check(body.Contains("if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.PosedFrame!=Time.frameCount)return false;")&&body.Contains("if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);"),"an unposed body is not drawn this frame and hides (the voxel body draws)");
+            Check(source.Contains("bool visual=!first&&dressed&&VisualBodyDrawn(rig);"),"the pilot draws voxel when its visual body is not drawn");
+            int restore=body.IndexOf("private void VisualBodyRestore(",StringComparison.Ordinal);
+            Check(restore>0&&!Between2(body,"private void VisualBodyRestore(","private void VisualBodyPose(").Contains("ClassicBodies"),"switching to Classic still puts the rig's hands back (the restore does not read the switch)");
+            static string Between2(string t,string a,string b){int i=t.IndexOf(a,StringComparison.Ordinal),j=i<0?-1:t.IndexOf(b,i,StringComparison.Ordinal);return j<0?"":t.Substring(i,j-i);}
+        }
         // The visual body's hit flash and match-start spawn-in (Resources/NativeVisualBodyFx.cginc in its toon and hologram;
         // Runtime NativeVisualBodyPresentation VisualBodyLook and NativeSpawnInPresentation SpawnVisualLook).
         private static void BodyFx(string root)
