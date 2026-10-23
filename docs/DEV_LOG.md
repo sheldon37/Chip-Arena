@@ -1,3 +1,11 @@
+## 2026-10-23 — Claude: rooftop shader compile crash, bisect kit for the Windows Editor (merged into shared)
+
+- **Branch/base:** this note `claude/rooftop-bisect-note` from shared `53b9161`; the kit is on `claude/rooftop-bisect` (`08c855b`, from shared `3564080`), which must never be merged. Not published.
+- **Status:** the derivative fix (`3564080`) did not stop the crash (local session's Editor check, entry below): the compiler process dies on its first job, `compileSnippet ... NativeRooftop ... pass=<Unnamed Pass 0>`, with no output. The other rooftop shaders compile, and they call the same sky, haze and fog code, so the trigger is in pass 0's own code: `RoofToonSurface` (stage 2, `d59c24c`) or `ToonPoints` in the legacy props (stage 1, `7065af8`). Nothing in the source reads wrong (all eight variants and the real shader pass the HLSL front-end check here), and this environment cannot run the Windows compiler, so the kit bisects it in one refresh.
+- **Kit:** `unity/ChipArenaConversion/Assets/RooftopBisect/`, eight renamed copies (`ChipArena/RooftopBisect/A_Current` ... `H_NoShadowPassNoStencil`), each with one suspect changed; its README has the table and the steps (restore the folder into the working tree only, refresh, read `Editor.log`, delete it).
+- **Next (local session, when convenient):** run the kit and record which copies crash; the cloud session then fixes the real shader. Until then how the Editor draws the home screen's rooftop after the crash is unverified.
+- **Animation, timing, networking:** none.
+
 ## 2026-10-22 — Claude: BoZo step 4, the chest core and right-wrist chip device (merged into shared)
 
 - **Branch/base:** `claude/bozo-core` from shared `1dbf351f`. No PR; merged into shared and the builder (standing merge authorization); not published.
