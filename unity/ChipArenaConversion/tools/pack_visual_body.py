@@ -4,7 +4,8 @@ usage: python3 -I tools/pack_visual_body.py BASE_ZIP OUTPUT_ZIP [--project DIR]
 
 Reads Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualBody.prefab (the local bake, git-ignored) and follows its
 GUID references through the text assets and every .meta under Assets/LocalAssets: the meshes, materials and textures it
-uses, each with its .meta, and every folder's .meta. Assets outside LocalAssets (the tracked shaders) are left to the source;
+uses, each with its .meta, every folder's .meta, and the data files (.bytes, the model's motion bank) beside the prefab in its
+Resources folder, which the game loads by name. Assets outside LocalAssets (the tracked shaders) are left to the source;
 anything that is not a mesh, material, texture, prefab or animator controller (shaders, shader graphs, scripts) is left out
 and listed. It writes OUTPUT_ZIP as BASE_ZIP's members (the effects audio and the rest, unchanged) plus those files and
 visual-body.json, which lists each with its SHA-256, then checks the result as tools/install_local_assets.py does. BASE_ZIP
@@ -74,6 +75,9 @@ def dependencies(project):
                     skipped.add(target.relative_to(local).as_posix())
                     continue
                 queue.append(target)
+    # The bake's data files beside the prefab (the game loads them from Resources by name; nothing references them).
+    for data in sorted(start.parent.glob('*.bytes')):
+        seen.add(data)
     listed = set()
     for path in seen:
         rel = path.relative_to(local)

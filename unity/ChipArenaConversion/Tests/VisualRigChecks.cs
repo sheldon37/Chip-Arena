@@ -224,8 +224,23 @@ namespace ChipArena.UnityConversion
             int stride=body.IndexOf("VisualStridePose(body,rig,a,time,roll,juggle);",StringComparison.Ordinal),pose=body.IndexOf("VisualMotionPose(body,rig,a,time);",StringComparison.Ordinal),fit=body.IndexOf("VisualWeaponFit(right,held);",StringComparison.Ordinal);
             Check(stride>0&&pose>stride&&fit>pose,"the clips go on after the game pose and the stride, before the weapon fit");
             Check(motion.Contains("weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);"),"the weapon rides the drawn hand at any weight");
-            Check(motion.Contains("if(deepest<0)m.BodyHips.position-=origin.up*deepest;"),"no ankle or toe goes under the floor");
-            Check(motion.Contains("foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);")&&motion.Contains("m.Graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);"),"the motion proxy draws nothing and is evaluated only by the presentation");
+            Check(motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&pick.Locomotion)))m.BodyHips.position-=origin.up*(deepest*wgt);"),"the body's lowest point stands on the pilot's floor point (running, only kept out of it)");
+            Check(motion.Contains("foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);")&&motion.Contains("m.Handler.SetHumanPose(ref m.Pose);"),"the motion proxy draws nothing and takes the mixed pose through its avatar");
+            Check(motion.Contains("var bytes=Resources.Load<TextAsset>(VisualMotionResource);")&&motion.Contains("const string VisualMotionResource=\"ChipArenaVisualMotion\";"),"the clips come from the bake's motion bank, read once");
+            // The bank: written and read back, a frame sampled and two clips mixed.
+            int muscles=3,width=NativeVisualMotionClips.Head+muscles;
+            NativeVisualMotionClips.Clip Make(string name,float y,float m0,bool loop){var c=new NativeVisualMotionClips.Clip{Name=name,Length=1,Hit=.4f,Rate=2,SpeedX=.5f,SpeedZ=3,Loop=loop,Frames=3,Stride=width,Data=new float[3*width]};
+                for(int f=0;f<3;f++){int o=f*width;c.Data[o+1]=y+f*.1f;c.Data[o+6]=1;c.Data[o+7]=m0+f;}return c;}
+            var bank=NativeVisualMotionClips.Read(NativeVisualMotionClips.Write(muscles,new[]{Make("a",1,0,false),Make("b",2,10,true)}));
+            Check(bank.Muscles==muscles&&bank.Has("a")&&bank.Has("b")&&!bank.Has("c")&&bank.Length("a")==1&&bank.Hit("a")==.4f&&bank.Clips["b"].Loop&&bank.Clips["a"].SpeedZ==3,"the bank reads back what it wrote");
+            var mix=new float[width];NativeVisualMotionClips.Add(bank.Clips["a"],.25f,1,mix);NativeVisualMotionClips.Finish(mix,1);
+            Check(Math.Abs(mix[1]-1.05f)<1e-5f&&Math.Abs(mix[7]-.5f)<1e-5f&&Math.Abs(mix[6]-1)<1e-5f,"a clip samples between its frames");
+            Array.Clear(mix,0,width);NativeVisualMotionClips.Add(bank.Clips["a"],9,1,mix);NativeVisualMotionClips.Finish(mix,1);Check(Math.Abs(mix[7]-2)<1e-5f,"a clip that does not loop holds its last frame");
+            Array.Clear(mix,0,width);NativeVisualMotionClips.Add(bank.Clips["a"],0,1,mix);NativeVisualMotionClips.Add(bank.Clips["b"],0,3,mix);NativeVisualMotionClips.Finish(mix,4);
+            Check(Math.Abs(mix[1]-1.75f)<1e-5f&&Math.Abs(mix[7]-7.5f)<1e-5f,"clips mix by weight");
+            long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<1000;i++){NativeVisualMotionClips.Add(bank.Clips["b"],i*.01f,.5f,mix);NativeVisualMotionClips.Finish(mix,.5f);}
+            Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"mixing allocates nothing");
+            bool bad=false;try{NativeVisualMotionClips.Read(new byte[]{1,2,3,4,5,6,7,8});}catch(InvalidDataException){bad=true;}Check(bad,"a bank that is not one is refused");
             Check(motion.Contains("NativeVisualMotion.For(a.SourceSpec)!=null&&!StrideOff?VisualMotionFor(body,a.SourceSpec):null"),"--ca-no-stride keeps the game's pose");
             Check(body.Contains("if(body.Root==null){VisualStrideRelease(body);VisualMotionRelease(body);"),"each motion graph goes with its body");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC","ExplosiveLLC","RPG-Character"})Check(!motion.Contains(pack)&&!R("Core/NativeVisualMotion.cs").Contains(pack),"no pack types or names in the motion's code: "+pack);
