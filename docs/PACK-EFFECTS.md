@@ -82,8 +82,7 @@ Owner: "keep going with the next packs, starting with the sword slash arcs."
   - The local tool's `bozo-slashlook.request` drew a synthetic sweep through the game's own drawer and shader, plain and
     brushed, over a dark and a snow-bright floor.
   - Play mode showed the crescent on the AI's sword strikes.
-- **Not yet:** the pack's slash rings, claw marks and line slashes for specials and finishers. They need its dissolve
-  ported into our effects shader.
+- **Then:** the pack's slash rings, claw marks and line slashes on specials and finishers (the next section).
 
 ## A dead pilot dissolves (2026-10-24, `claude/visual-dissolve`)
 
@@ -112,6 +111,43 @@ Owner: "keep going with the next packs, starting with the sword slash arcs."
     then scattered cells.
   - A forced self-kill in Play mode ran, but the slow-motion capture missed the corpse's fade window; it was not seen in a
     match.
+
+## Slash rings, claw marks and line slashes on finishers and specials (2026-10-24, `claude/pack-slashes`)
+
+Owner: "Next, bring the slash pack's ring slashes, claw marks and line slashes onto the special moves and finishers."
+
+- **What plays** (`Core/NativePackSlashes`), tinted to the pilot's sweep colour where the pack's stroke is a colour:
+
+  | Move | Effect | Laid |
+  | --- | --- | --- |
+  | Sword third cut (the thrust) | line slashes | ahead |
+  | Daggers fourth cut | claw marks | ahead |
+  | Greatsword second cut | ring, turning the cut's way | flat round the pilot, hip height |
+  | Whirlwind, Wolf Spin | ring | flat, a little lower |
+  | Rising Dragon, sword launch | ring | stood up across the facing |
+  | Flash Step, Shadow Step, Bulwark Charge | line slashes | ahead |
+  | Dagger throw | claw marks | ahead |
+
+  Skyfall, kunai marks, the shield's throw and ricochet and Earthsplitter keep only their own effects.
+- **When:** a finisher at its strike's hit window (the replicated swing), a special or Q/E ability at its release, once;
+  late or stale ones draw nothing. Off on the low graphics tier and for my own first-person pilot.
+- **Source:** Ordoss' Magic Slashes FX: `Eff1_Left` and `Eff1_Right` (the ring and its mirror), `Eff6` (only its serial hits,
+  their ring and long cut dropped, started at once) and `Eff4` (claws).
+- **The bake** (local tool `bozo-slashfx.request`; the body bake runs it too) adds `VisualSlashFx/<kind>`:
+  - each pack prefab's particle systems without lights or scripts, placed in the pilot's frame;
+  - every pack material converted to our own `Resources/NativePackSlash.shader`;
+  - coloured strokes named `Tint ...` for the runtime tint.
+  The shader is our own: the stroke scrolled by the particle stream and wobbled by a drifting shift texture, cut by a
+  dissolve texture against the particle's alpha, and a plain mode for sparks. The local tool's `look=1` renders our
+  conversion beside the pack's own: they match.
+- **Runtime:** `NativePackSlashPresentation.PackSlashFx`, after the weapon effects each frame. It pools up to four of each
+  kind, places them on the rig root (the hips, its yaw or roll) and replays the systems not under another.
+- **Checks:**
+  - `--visual-rig`: the move table, the timing and the wiring; no pack names in our code.
+  - Play mode, the tool's new `packfx=`: each look forced on the local pilot in a match and captured from the match
+    camera.
+  - Real triggers: a bot's Flash Step and Rising Dragon, and a dagger bot's fourth cut, played theirs.
+  - Not seen live: the sword's and greatsword's finishers (the AI bots rarely chain combos).
 
 ## Candidates from the same drive (not started)
 

@@ -99,6 +99,7 @@ namespace ChipArena.UnityConversion
             Impacts(root);Console.WriteLine("PASS visual rig: a gun's plain round that hits a prop plays the bake's stone, metal or wood impact out of the surface and leaves a bullet hole that fades; specials, melee and magic draw their own; the low tier draws holes only ("+count+" checks)");
             SlashBrush(root);Console.WriteLine("PASS visual rig: the slash crescents take the baked ink brush's streaks (outside the shader's shared block, crescents only, off without a bake) ("+count+" checks)");
             Dissolve(root);Console.WriteLine("PASS visual rig: a dead pilot's visual body dissolves into the bake's noise as its corpse or death scene fades, the front in the pilot's accent (at half opacity without the noise) ("+count+" checks)");
+            PackSlashes(root);Console.WriteLine("PASS visual rig: the slash pack's line slashes, claw marks and rings play on the sword's, daggers' and greatsword's finishers and on the sword launch, Wolf Spin, Rising Dragon, Whirlwind, the steps and charge and the dagger throw, once each at its hit or release, about the pilot, off on the low tier and in my own first person ("+count+" checks)");
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
         }
 
@@ -147,6 +148,38 @@ namespace ChipArena.UnityConversion
             Check(body.Contains("if(alpha<(visualDissolve?.01f:.5f)){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}")&&body.Contains("if(visualDissolve)VisualDissolve(c.All,ref c.Dissolve,1-alpha,c.Edge);"),"a corpse dissolves as it fades (at half without the noise)");
             Check(body.Contains("if(alpha<(visualDissolve?.01f:.5f)||!visible(CapturedRig.Pelvis))")&&body.Contains("if(visualDissolve)VisualDissolve(s.All,ref s.Dissolve,1-alpha,s.Edge);"),"a death scene's body dissolves as it fades");
             Check(body.Contains("amount=Mathf.Round(Mathf.Clamp01(amount)*64)/64;if(amount==last)return;"),"the dissolve is written only when it moves");
+        }
+
+        // The slash pack on the special moves and finishers (owner 2026-10-24: "bring the slash pack's ring slashes, claw marks and
+        // line slashes onto the special moves and finishers"): Core NativePackSlashes and its wiring (Runtime
+        // NativePackSlashPresentation.cs, Resources/NativePackSlash.shader).
+        private static void PackSlashes(string root)
+        {
+            bool Fin(string spec,int index,out NativePackSlashes.Look look)=>NativePackSlashes.Finisher(spec,index,NativeMeleeRules.Reverse(new NativeMeleeSwing{Spec=spec,Index=index}),out look);
+            for(int i=1;i<=12;i++)
+            {
+                Check(Fin("sword",i,out var s)==(i%3==0)&&(i%3!=0||s.Kind==NativePackSlashes.Lines),"the sword's third cut (the thrust) is its finisher: line slashes");
+                Check(Fin("daggers",i,out var d)==(i%4==0)&&(i%4!=0||d.Kind==NativePackSlashes.Claws),"the daggers' fourth cut is theirs: claw marks");
+                Check(Fin("greatsword",i,out var g)==(i%2==0)&&(i%2!=0||g.Kind==(NativeMeleeRules.Reverse(new NativeMeleeSwing{Spec="greatsword",Index=i})?NativePackSlashes.RingReverse:NativePackSlashes.Ring)),"the greatsword's second cut is its: the ring turning its way");
+                Check(!Fin("shield",i,out _)&&!Fin("rifle",i,out _)&&!Fin(null,i,out _),"no other weapon has one");
+            }
+            Check(!Fin("sword",0,out _)&&!Fin("daggers",0,out _)&&!Fin("greatsword",0,out _),"no strike index, no finisher");
+            foreach(var k in new[]{"whirlwind","wolf-spin"})Check(NativePackSlashes.Ability(k,out var l)&&l.Kind==NativePackSlashes.Ring&&l.Lay==NativePackSlashes.Lay.Flat,"a spin lays the ring flat round the pilot: "+k);
+            foreach(var k in new[]{"rising-dragon","sword-launch"})Check(NativePackSlashes.Ability(k,out var l)&&l.Kind==NativePackSlashes.Ring&&l.Lay==NativePackSlashes.Lay.Upright,"a launch stands the ring up: "+k);
+            foreach(var k in new[]{"flash-step","shadow-step","bulwark-charge"})Check(NativePackSlashes.Ability(k,out var l)&&l.Kind==NativePackSlashes.Lines&&l.Lay==NativePackSlashes.Lay.Ahead,"a step or charge throws line slashes ahead: "+k);
+            Check(NativePackSlashes.Ability("dagger-throw",out var thrown)&&thrown.Kind==NativePackSlashes.Claws,"the dagger throw rakes claw marks ahead");
+            foreach(var k in new[]{"skyfall","kunai-mark","kunai-recast","aegis-ricochet","shield-throw","earthsplitter","",null})Check(!NativePackSlashes.Ability(k,out _),"other moves draw their own: "+k);
+            foreach(var k in new[]{"whirlwind","rising-dragon","flash-step","dagger-throw"}){NativePackSlashes.Ability(k,out var l);Check(l.Scale>.2f&&l.Scale<1&&Math.Abs(l.Height)<1&&l.Kind>=0&&l.Kind<NativePackSlashes.Kinds,"a look sized and placed about the pilot: "+k);}
+            Check(NativePackSlashes.Names.Length==NativePackSlashes.Kinds&&NativePackSlashes.PerKind>0&&NativePackSlashes.EffectLife>2,"a bake entry per kind, pooled, playing out the pack's two-second strokes");
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string pres=R("Runtime/NativePackSlashPresentation.cs"),weapon=R("Runtime/NativeWeaponPresentation.cs"),shader=R("Resources/NativePackSlash.shader"),rules=R("Core/NativePackSlashes.cs");
+            Check(weapon.Contains("WeaponFxFrame(time);\n            // The slash pack's rings, lines and claws on finishers and special moves (NativePackSlashPresentation.cs).\n            PackSlashFx(time);")&&weapon.Contains("ClearWeaponFx();ClearPackSlashes();"),"played each frame after the weapon effects, cleared with them");
+            Check(pres.Contains("if(s?.Actors==null||LowGraphics||!PackSlashBank())return;")&&pres.Contains("if(!a.Alive||FirstPerson&&a.Id==LocalId)continue;"),"off on the low tier, without a bake, and for my own first-person pilot");
+            Check(pres.Contains("if(a.SwingAt>=a.AttackAt&&time>=a.SwingAt){packSlashFinisher.Remove(a.Id);Cue(a.Id,a.SwingAt,finisher,a);}")&&pres.Contains("else if(time>a.AttackAt+1)packSlashFinisher.Remove(a.Id);"),"a finisher plays at its strike's hit window, or not at all");
+            Check(pres.Contains("packSlashRelease[a.Id]=release;")&&pres.Contains("if(time-release<NativePackSlashes.Stale&&NativePackSlashes.Ability(kind,out var look))"),"each release plays once, never late");
+            Check(pres.Contains("if(use==null&&list.Count<NativePackSlashes.PerKind)")&&pres.Contains("foreach(var ps in use.Systems){ps.Clear(true);ps.Play(true);}"),"pooled per kind, replayed from the systems not under another");
+            Check(shader.Contains("Blend SrcAlpha OneMinusSrcAlpha Cull Off ZWrite Off")&&shader.Contains("#pragma multi_compile_fog"),"the strokes blend over the scene without writing depth");
+            foreach(string pack in new[]{"Ordos","OrdosFX","Magic Slashes","Eff1","Eff4","Eff6","Slash/Blend","DistTex","DistStrength"})Check(!pres.Contains(pack)&&!shader.Contains(pack)&&!rules.Contains(pack),"no pack names in the slashes' code: "+pack);
         }
 
         // The visual body's stride (owner 2026-10-23: "I thought we have a running animation pack already? Cant we utilize that?"):
