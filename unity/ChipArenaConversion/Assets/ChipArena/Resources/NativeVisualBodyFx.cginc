@@ -50,4 +50,16 @@ float3 SpawnTinted(float3 c,float y)
  float3 t=lerp(float3(1.0,1.0,1.0),_SpawnTint.rgb,k);
  return c*lerp(t,float3(2.2,2.3,2.5),_SpawnGlitch.x*0.7);
 }
+// The dead pilot's dissolve (Runtime/NativeVisualBodyPresentation.cs VisualCorpseShown and VisualSceneShown, as the corpse
+// fades): _Dissolve 0 (whole) to 1 (gone) across the noise the bake carries (_VisualDissolveNoise, global: the owner's
+// dissolve pack), read on the part's own texture coordinates, so the cells stay on the cloth as the ragdoll moves. The
+// front's band glows _DissolveEdge (linear, the pilot's accent). At 0 nothing is read or cut. Returns the band's share.
+sampler2D _VisualDissolveNoise;float _Dissolve;float4 _DissolveEdge;
+float DissolveFront(float2 uv)
+{
+ if(_Dissolve<=0.0)return 0.0;
+ float n=tex2D(_VisualDissolveNoise,uv*3.0).r,cut=_Dissolve*1.08;
+ clip(n-cut);
+ return 1.0-saturate((n-cut)/0.07);
+}
 #endif
