@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         private sealed class VisualBody
         {
             public GameObject Root; public NativeVisualRigBinding Binding; public Renderer[] Cloth, All; public MaterialPropertyBlock Block;
-            public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted; public Vector3 At; public float Flash=1;
+            public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted; public Vector3 At; public float Flash=1, Glow=-1;
             public Material[][] Plain, Spawning;
             // The gear's anchors (the bake's VisualGearCore and VisualGearDevice, the band's radius from VisualGearDeviceRim), when
             // the body last appeared or finished forming (the core's flare), the last seated chip (its plant's key, when, colour)
@@ -38,6 +38,11 @@ namespace ChipArena.UnityConversion
         private readonly List<CapturedAnimation.Player> visualBodiesGone=new List<CapturedAnimation.Player>();
         private static readonly string[] ClothSlots={"Top.","Bottom.","Feet.","Gloves.","Hat."};
         private static readonly int[] AccentChannels={Shader.PropertyToID("_Color_3"),Shader.PropertyToID("_Color_6"),Shader.PropertyToID("_Color_9")};
+        private static readonly int AccentGlowId=Shader.PropertyToID("_AccentGlow");
+        /// <summary>The clothing's accent trims glow at this many times their colour (over the lit colour; Reduced effects .6 of
+        /// it), pulsing as the voxel armour's halos do while the block cools down (NativeGlowRules.ArmorPulse). In place of
+        /// those halos, which sit at the game rig's joints (NativeCombatGlow skips them on a visual body).</summary>
+        public const float AccentGlow=1.2f,AccentGlowReduced=.6f;
         private static readonly int HitFlashId=Shader.PropertyToID("_HitFlash"),SpawnFrontId=Shader.PropertyToID("_SpawnFront"),SpawnTintId=Shader.PropertyToID("_SpawnTint"),SpawnGlitchId=Shader.PropertyToID("_SpawnGlitch"),SpawnHoloId=Shader.PropertyToID("_SpawnHolo"),
             TextureId=Shader.PropertyToID("_Texture2D"),CutoffId=Shader.PropertyToID("_Cutoff"),GhostSideId=Shader.PropertyToID("_GhostSide"),GhostColorId=Shader.PropertyToID("_GhostColor");
         // The spawn-in hologram's slots (Resources/NativeVisualBodyGhost.shader): the slice and flash, the split's two copies.
@@ -182,6 +187,7 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<body.All.Length;k++)if(body.All[k]!=null)body.All[k].sharedMaterials=ghost?body.Spawning[k]:body.Plain[k];
                 body.Ghosted=ghost;
             }
+            VisualAccentGlow(body,a.Id,time);
             if(!on&&!body.SpawnOn&&flash==body.Flash)return;
             if(!on)look=VisualSpawnLook.Off;
             foreach(var r in body.All)
@@ -263,6 +269,24 @@ namespace ChipArena.UnityConversion
             var m=new Material(shader){name="Visual body hologram "+name,hideFlags=HideFlags.HideAndDontSave};m.SetFloat(GhostSideId,side);m.SetVector(GhostColorId,color);return m;
         }
 
+        // The accent trims' glow (AccentGlow) on the clothing renderers, written only when it changes.
+        private void VisualAccentGlow(VisualBody body,int id,float time)
+        {
+            var p=LoadoutPilot(id);float pulse=p!=null?NativeGlowRules.ArmorPulse(time,p.BlockReady-time,time<p.BlockEnd):1;
+            float glow=Mathf.Round(AccentGlow*(EffectsQuality<.5f?AccentGlowReduced:1)*pulse*200)/200;
+            if(glow==body.Glow)return;
+            body.Glow=glow;
+            foreach(var r in body.Cloth){if(r==null)continue;r.GetPropertyBlock(body.Block);body.Block.SetFloat(AccentGlowId,glow);r.SetPropertyBlock(body.Block);}
+        }
+        /// <summary>NativeCombatGlow: whether pilot `id` is drawn with its visual body this frame and, if so, where its armour light
+        /// spills from (in front of the chest core, else the game chest). The voxel armour halos sit at the game rig's joints, so
+        /// they are skipped on it; its accent trims glow instead (VisualAccentGlow).</summary>
+        private NativeCombatGlow.VisualGlow visualGlow;
+        private bool VisualGlowAt(int id,out Vector3 at)
+        {
+            at=default;if(!rigs.TryGetValue(id,out var rig)||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||!body.Root.activeSelf||body.PosedFrame!=Time.frameCount)return false;
+            at=body.GearCore!=null?body.GearCore.position+body.GearCore.forward*.14f:rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,-.05f,.16f));return true;
+        }
         // While drawing a third-person arena pilot (SourceCharacter): whether its visual body replaces the voxel one this frame.
         private bool VisualBodyDrawn(CapturedAnimation.Player rig)
         {

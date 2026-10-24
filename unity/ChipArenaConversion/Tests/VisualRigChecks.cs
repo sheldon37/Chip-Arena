@@ -91,6 +91,7 @@ namespace ChipArena.UnityConversion
             Floor(rig);Console.WriteLine("PASS visual rig: the floor fit keeps every visual bone's contact over the floor through the roll ("+count+" checks)");
             Allocation(rig);Console.WriteLine("PASS visual rig: posing, both IKs and the grip allocate nothing per frame and repeat bit for bit ("+count+" checks)");
             Binding(root);Console.WriteLine("PASS visual rig: the Unity binding mirrors at the boundary, writes local turns and the pelvis only, and names no pack types ("+count+" checks)");
+            AccentGlow(root);Console.WriteLine("PASS visual rig: on the visual body the clothing's accent trims glow (pulsing with the block cooldown as the armour halos did) and the voxel joint halos are skipped, the armour spill light coming from the chest core ("+count+" checks)");
             ModelSetting(root);Console.WriteLine("PASS visual rig: Settings · Player model (New, saved) switches every pilot to the classic voxel body and back live, shown only where the visual body is installed ("+count+" checks)");
             BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter; the pilot gear faces out, clears its chip and follows health and chip select ("+count+" checks)");
         }
@@ -643,6 +644,24 @@ namespace ChipArena.UnityConversion
                 Check(!code.Contains(pack)&&!core.Contains(pack),"no pack types or names in the adapter: "+pack);
         }
 
+        // The accent glow (owner 2026-10-23: "lights still show where old player model limbs are. I actually want to make lights
+        // accentuate the blue colors on the clothes for new model"): the shader's emission over the accent channels, written per
+        // clothing renderer with the armour pulse; NativeCombatGlow skips its joint halos (the game rig's joints) on a visual body and
+        // spills from in front of the chest core.
+        private static void AccentGlow(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string toon=R("Resources/NativeVisualBodyToon.shader"),body=R("Runtime/NativeVisualBodyPresentation.cs"),glow=R("Runtime/NativeCombatGlow.cs"),arena=R("Runtime/ArenaPresentation.cs");
+            Check(toon.Contains("_AccentGlow(\"")&&toon.Contains("float3 VisualAccentPart(float3 w,float3 layer){return lerp(lerp(_Color_3.rgb*w.z*layer.x,_Color_6.rgb*w.z,layer.y),_Color_9.rgb*w.z,layer.z);}"),"the shader's accent share mirrors VisualColours' third colours");
+            Check(toon.Contains("if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;"),"the accent glows as emission, tinted by the spawn-in");
+            Check(body.Contains("NativeGlowRules.ArmorPulse(time,p.BlockReady-time,time<p.BlockEnd)")&&body.Contains("foreach(var r in body.Cloth){if(r==null)continue;r.GetPropertyBlock(body.Block);body.Block.SetFloat(AccentGlowId,glow);r.SetPropertyBlock(body.Block);}"),"the glow pulses with the block cooldown, on the clothing renderers only");
+            Check(body.Contains("if(glow==body.Glow)return;"),"the glow is written only when it changes");
+            int look=body.IndexOf("private void VisualBodyLook(",StringComparison.Ordinal),call=body.IndexOf("VisualAccentGlow(body,a.Id,time);",look,StringComparison.Ordinal),early=body.IndexOf("if(!on&&!body.SpawnOn&&flash==body.Flash)return;",look,StringComparison.Ordinal);
+            Check(look>0&&call>look&&early>call,"VisualBodyLook updates the glow before its early return");
+            Check(glow.Contains("Vector3 core=default;bool dressed=Visual!=null&&Visual(pilot.Seat.id,out core);")&&glow.Contains("if(!dressed)")&&glow.Contains("spill.Offer(pilot.Seat.id,i,((dressed?core:rig.Bones[CapturedRig.Chest].position)-eye).magnitude);"),"a visual body's joint halos are skipped, its spill picked from the core");
+            Check(glow.Contains("var from=Visual!=null&&Visual(pilot.Seat.id,out var core)?core:rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,-.05f,.16f));"),"the spill light from in front of the core");
+            Check(arena.Contains("combatGlow.Visual=visualGlow??=VisualGlowAt;")&&body.Contains("at=body.GearCore!=null?body.GearCore.position+body.GearCore.forward*.14f:"),"the glow asks the presentation where each visual body's core is");
+        }
         // Settings · Player model (owner 2026-10-23, a fallback while the new body is tested): a saved preference, New by default; the
         // game sets the presentation's ClassicBodies from it every frame before the arena renders, and a classic frame poses no visual
         // body, so it hides and the voxel body draws (VisualBodyDrawn reads only this frame's pose). Shown only where it is installed.
