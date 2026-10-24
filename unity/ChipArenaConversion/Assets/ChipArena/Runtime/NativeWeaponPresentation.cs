@@ -132,10 +132,12 @@ namespace ChipArena.UnityConversion
             if(sourceModels==null)return;int generation=WeaponLoadout?.Generation??-1;
             if(!ReferenceEquals(sweepArena,WeaponLoadout)||generation!=sweepGeneration){meleeSweeps.Clear();sweepArena=WeaponLoadout;sweepGeneration=generation;}
             WeaponFxFrame(time);
+            // The slash pack's rings, lines and claws on finishers and special moves (NativePackSlashPresentation.cs).
+            PackSlashFx(time);
             meleeSweeps.Update(time,TrailsEnabled,WeaponEffectsQuality);
             if(meleeSweeps.Count==0)return;if(meleeRibbons==null)meleeRibbons=new NativeMeleeRibbons();meleeRibbons.Draw(meleeSweeps,time);
         }
-        private void ClearWeaponPresentation(){meleeSweeps.Clear();sweepArena=null;sweepGeneration=-1;ClearWeaponFx();}
+        private void ClearWeaponPresentation(){meleeSweeps.Clear();sweepArena=null;sweepGeneration=-1;ClearWeaponFx();ClearPackSlashes();}
         private void DisposeWeaponPresentation(){ClearWeaponPresentation();meleeRibbons?.Dispose();meleeRibbons=null;WeaponLoadout=null;DisposeWeaponFx();}
     }
     // The ribbon meshes of every live sweep in one dynamic mesh: additive, unlit, double-sided, depth-tested, no depth write,
