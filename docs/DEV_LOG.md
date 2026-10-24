@@ -1,3 +1,24 @@
+## 2026-10-24 — Claude: a dead pilot dissolves into hex cells (merged into shared)
+
+- **Branch/base:** `claude/visual-dissolve` from shared `691baee5`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request:** "keep going with the next packs" (the drive's Advanced Dissolve, `docs/PACK-EFFECTS.md` candidates).
+- **Changes (presentation only):**
+  - `NativeVisualBodyFx.cginc DissolveFront`: `_Dissolve` 0–1 cuts the global noise `_VisualDissolveNoise` on the part's own UVs, and the front band glows `_DissolveEdge`. At 0 there is no read and no cut. The toon body and its outline both use it.
+  - `NativeVisualBodyPresentation`:
+    - sets the bake's noise (`VisualDissolve/Noise`, the pack's `Cutout Map 15`, hexagons) as the global once;
+    - corpse and death-scene bodies write `_Dissolve` = 1 - opacity, with the accent ×3 at the front, across the corpse's own last 0.65 s;
+    - without the noise they vanish at half opacity as before.
+  - The pack's shaders and scripts neither ship nor enter our public shaders: the dissolve is our own.
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-slashes.zip`: 313 visual-body files, 31.98 MB, verified.
+  - The slash-brush build `691baee5bd75` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 848 PASS, exit 0 (LF checkout of `ed139ac2`).
+  - Unity compile: PASS.
+  - The local tool's `bozo-dissolve.request look=1` rendered the baked body at 0, 0.25, 0.5, 0.75 and 0.9: accent-edged hex cells, holes, scattered remains.
+- **Not run:** the dissolve in a match. A forced self-kill with the tool's new `slowmo=` missed the fade window (the pilot respawned). Also not run: a Windows build; multiplayer.
+- **Animation, timing, networking:** none; the dissolve follows the existing fade.
+- **Next:** the remaining candidates. The pack slash rings for specials need its dissolve ported; Sci-Fi Arsenal and Epic Toon FX overlap the game's own code-drawn effects.
+
 ## 2026-10-24 — Claude: the slash crescents take the slash pack's ink brush (merged into shared)
 
 - **Branch/base:** `claude/slash-brush` from shared `fb59c9e1`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
