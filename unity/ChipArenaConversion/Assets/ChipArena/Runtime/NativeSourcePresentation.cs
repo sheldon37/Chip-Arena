@@ -25,8 +25,9 @@ namespace ChipArena.UnityConversion
             var look=a.SourceSpec=="siren"&&!first?SirenLook(rig,a,time):null;
             // Arena and first-person rigs wear their Chips and block state (NativeBodyChipPresentation.cs); entrance and viewer rigs stay bare.
             bool dressed=!Viewer&&rig!=introRig;
-            // A pilot with a visual body (NativeVisualBodyPresentation.cs) draws it instead of the voxel body, hat and dressing.
-            bool visual=!first&&dressed&&VisualBodyDrawn(rig);Func<int,Color> tint;if(dressed)tint=RigTint(a,time,first);else{ClearRigTint();tint=first?null:SirenCharTint(a.Id);}
+            // A pilot with a visual body (NativeVisualBodyPresentation.cs) draws it instead of the voxel body, hat and dressing; the
+            // first-person view rig, its forearms and hands (VisualViewPose).
+            bool visual=dressed&&(first?VisualViewDrawn(rig):VisualBodyDrawn(rig));Func<int,Color> tint;if(dressed)tint=RigTint(a,time,first);else{ClearRigTint();tint=first?null:SirenCharTint(a.Id);}
             tint=SpawnTinted(spawn,tint);
             // The hit flash (NativeHitFlash, weapons milestone) on a struck arena rig's body and hat; not the first-person arms.
             float flash=dressed&&!first?HitFlashCode(a.Id,time):1;

@@ -678,7 +678,7 @@ namespace ChipArena.UnityConversion
             int pose=body.IndexOf("private void VisualBodyPose(",StringComparison.Ordinal),skip=body.IndexOf("||ClassicBodies||",pose,StringComparison.Ordinal),create=body.IndexOf("CreateVisualBody(rig,a.Id)",pose,StringComparison.Ordinal);
             Check(pose>0&&skip>pose&&create>skip,"a classic frame poses (and creates) no visual body");
             Check(body.Contains("if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.PosedFrame!=Time.frameCount)return false;")&&body.Contains("if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);"),"an unposed body is not drawn this frame and hides (the voxel body draws)");
-            Check(source.Contains("bool visual=!first&&dressed&&VisualBodyDrawn(rig);"),"the pilot draws voxel when its visual body is not drawn");
+            Check(source.Contains("bool visual=dressed&&(first?VisualViewDrawn(rig):VisualBodyDrawn(rig));"),"the pilot draws voxel when its visual body is not drawn");
             int restore=body.IndexOf("private void VisualBodyRestore(",StringComparison.Ordinal);
             Check(restore>0&&!Between2(body,"private void VisualBodyRestore(","private void VisualBodyPose(").Contains("ClassicBodies"),"switching to Classic still puts the rig's hands back (the restore does not read the switch)");
             static string Between2(string t,string a,string b){int i=t.IndexOf(a,StringComparison.Ordinal),j=i<0?-1:t.IndexOf(b,i,StringComparison.Ordinal);return j<0?"":t.Substring(i,j-i);}
