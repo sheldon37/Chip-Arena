@@ -1,3 +1,12 @@
+## 2026-10-24 — Claude: home-screen rooftop buildings back (world pass on its legacy surfaces; merged into shared)
+
+- **Branch/base:** `claude/rooftop-legacy-world` from shared `95ba71e`. Merged into shared and the builder; no PR of its own, not published.
+- **Problem:** the local session reports the home screen's rooftop buildings missing (DEV_LOG 2026-10-24, first person and death entry): `ChipArena/NativeRooftop` pass 0 crashes the Windows Editor's shader compiler (entries of 2026-10-22/23), and that pass draws every static surface. The bisect kit (`claude/rooftop-bisect`) has not been run yet.
+- **Change (presentation only, `Resources/NativeRooftop.shader`):** pass 0's fragment is back to its code from before the anime style (`a848554`, which compiled and drew the menu for weeks): `RoofToonSurface` and the props' `ToonPoints` are gone, and the direct `NativeToon.cginc` include with them. Kept: the stencil mark, the depth-only shadow caster pass, and the window grid's `fwidth` before the branches. The anime sky, haze and fog still come through `NativeRooftopCommon`, the same code `NativeRooftopScreen` compiles. With the anime style on, the towers, props and puddles draw their legacy look under the anime sky; the anime surfaces' code stays on `claude/rooftop-bisect` (`A_Current`) for when the cause is known. `MenuStyleChecks` pins the legacy surfaces in both looks; `docs/MAP-STYLE-ANIME.md` section 6 marks them held.
+- **Checks (actual):** HLSL front-end check of both passes, vertex and fragment, fog on/off, linear/gamma: OK. run5b: Unity runtime and editor compile OK; relay and full CoreTests 844 PASS (the rooftop group with the updated pins); Python 146 OK, 1 skipped; source package OK; diff check clean.
+- **Not run:** the Windows Editor import, so the buildings' return is unconfirmed. **Next (local session):** pull shared, refresh, check that the rooftop's buildings draw and `Editor.log` has no `NativeRooftop` compile crash. If it still crashes, the cause is in the shared sky/fog code or the pass layout; then the bisect kit's B, C and H copies say which.
+- **Animation, timing, networking:** none.
+
 ## 2026-10-23 — Claude: accent glow, pistol sprint, first person and death on the visual body (merged into shared)
 
 - **Branch/base:** `claude/visual-body-glow` from shared `418a7230`. No PR; merged into shared and the builder in two steps: the glow and the sprint at `0c600b31`, then first person and death. The builder's agent publishes each build to the test channel.
