@@ -1,3 +1,23 @@
+## 2026-10-24 — Claude: the slash crescents take the slash pack's ink brush (merged into shared)
+
+- **Branch/base:** `claude/slash-brush` from shared `fb59c9e1`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request:** "Yes, keep going with the next packs, starting with the sword slash arcs."
+- **Decision:** Ordoss' Magic Slashes FX prefabs are fixed rings round a demo knight, fired by its animation's event scripts on a dissolve shader. The game's crescent already follows the real blade sweep by the rules, so only the pack's brush (`WhiteScratches`) was taken, painting the existing crescent.
+- **Changes (presentation only):**
+  - `Resources/NativeWeaponFx.shader` gains `SlashBrushed`, outside the shared block, for crescents only behind `_SlashBrushOn` (off by default). The colour band takes the streaks along the swing; the dark underlay becomes mirrored ink streaks.
+  - `NativeWeaponFxDraw.SlashBrush` sets the texture.
+  - `NativeWeaponFxPresentation.WithSlashBrush` reads the bake's `VisualSlashes/Brush`: its texture, and its local position and scale as the streaks' rectangle.
+  - The local bake measures the rectangle from the PNG.
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-impacts.zip`: 306 visual-body files, 31.93 MB, verified.
+- **Checks (actual):**
+  - Full CoreTests 847 PASS, exit 0 (LF checkout of `c662d8ef`).
+  - Unity compile: PASS.
+  - The local tool's `bozo-slashlook.request` drew the sword and greatsword sweeps through the game's own drawer and shader, plain and brushed, over dark and snow floors: the streaks show, and the greatsword's ink reads on snow.
+  - Play mode: the AI's sword strikes draw the crescent (match camera).
+- **Not run:** a Windows build in game; first person (the view model's crescent uses the same drawer).
+- **Animation, timing, networking:** none.
+- **Next:** dissolving corpses on the new body with Advanced Dissolve's noise maps (our own dissolve in the toon shader; the pack's shader code cannot be committed). The pack's slash rings for specials need its dissolve ported too.
+
 ## 2026-10-24 — Claude: gun rounds kick up surface debris and leave bullet holes (merged into shared)
 
 - **Branch/base:** `claude/surface-impacts` from shared `d09f4fb7`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

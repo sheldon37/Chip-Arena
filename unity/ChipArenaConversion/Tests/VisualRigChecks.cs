@@ -97,6 +97,7 @@ namespace ChipArena.UnityConversion
             BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter; the pilot gear faces out, clears its chip and follows health and chip select ("+count+" checks)");
             Weapons(root);Console.WriteLine("PASS visual rig: a visual body draws the bake's life-size weapon in the Standard skin's place, its right hand fitted so the weapon's dressing lands on it, the grasp on its handguard and stock, all put back before the next pose ("+count+" checks)");
             Impacts(root);Console.WriteLine("PASS visual rig: a gun's plain round that hits a prop plays the bake's stone, metal or wood impact out of the surface and leaves a bullet hole that fades; specials, melee and magic draw their own; the low tier draws holes only ("+count+" checks)");
+            SlashBrush(root);Console.WriteLine("PASS visual rig: the slash crescents take the baked ink brush's streaks (outside the shader's shared block, crescents only, off without a bake) ("+count+" checks)");
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
         }
 
@@ -117,6 +118,20 @@ namespace ChipArena.UnityConversion
             Check(impacts.Contains("if(!LowGraphics)SurfaceEffect(")&&impacts.Contains("SurfaceHole(kind,"),"the low graphics tier draws the holes only");
             Check(impacts.Contains("foreach(var e in arena.Events)if(e.Id>surfaceSeen)surfaceSeen=e.Id;"),"a new arena's earlier events never play");
             foreach(string pack in new[]{"Kripto","FPS_","Bozo","BoZo"})Check(!impacts.Contains(pack),"no pack types or names in the impacts' code: "+pack);
+        }
+
+        // The slash crescents' ink brush from the owner's effect pack (owner 2026-10-24: "keep going with the next packs, starting
+        // with the sword slash arcs"): the crescent shader reads it outside the shared block, only for crescents, only when on.
+        private static void SlashBrush(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string fx=R("Resources/NativeWeaponFx.shader"),draw=R("Runtime/NativeWeaponFxDraw.cs"),pres=R("Runtime/NativeWeaponFxPresentation.cs");
+            int shared=fx.IndexOf("WEAPON FX SHARED END",StringComparison.Ordinal),brushed=fx.IndexOf("float2 SlashBrushed(",StringComparison.Ordinal);
+            Check(shared>0&&brushed>shared&&fx.Contains("_SlashBrushOn(\"Slash brush on\",Float)=0"),"the brush is read outside the shared block, off by default");
+            Check(fx.Contains("if(mode>0.5&&mode<1.5&&_SlashBrushOn>0.5)shape=SlashBrushed(shape,uv,w);\n                float4 c=FxShade(i.color,shape);"),"only crescents take the brush, after their shape");
+            Check(draw.Contains("material.SetFloat(BrushOnId,brush!=null?1:0);"),"the drawer turns the brush on only with a texture");
+            Check(pres.Contains("WeaponFxDraw=>weaponFx??=sourceModels!=null?WithSlashBrush(new NativeWeaponFxDraw()):null;")&&pres.Contains("prefab.transform.Find(\"VisualSlashes/Brush\")"),"the match's drawer takes the bake's brush when there is one");
+            foreach(string pack in new[]{"Ordos","Scratches","Kripto"})Check(!pres.Contains(pack)&&!draw.Contains(pack)&&!fx.Contains(pack),"no pack names in the brush's code: "+pack);
         }
 
         // The visual body's stride (owner 2026-10-23: "I thought we have a running animation pack already? Cant we utilize that?"):

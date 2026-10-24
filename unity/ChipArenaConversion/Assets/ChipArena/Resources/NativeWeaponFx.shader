@@ -22,7 +22,7 @@
 // triangle pointing at its head).
 Shader "ChipArena/NativeWeaponFx"
 {
-    Properties { _WeaponFxSoft("Soft particles (depth texture)",Float)=0 }
+    Properties { _WeaponFxSoft("Soft particles (depth texture)",Float)=0 _SlashBrush("Slash brush (alpha: its streaks)",2D)="white"{} _SlashBrushRect("Slash brush: its streaks' rectangle (uv min, size)",Vector)=(0,0,1,1) _SlashBrushOn("Slash brush on",Float)=0 }
     SubShader
     {
         Tags { "Queue"="Transparent+6" "RenderType"="Transparent" "IgnoreProjector"="True" "PreviewType"="Plane" }
@@ -40,6 +40,9 @@ Shader "ChipArena/NativeWeaponFx"
             #pragma target 3.5
             #include "UnityCG.cginc"
             float _WeaponFxSoft;
+            // The slash crescents' brush (NativeWeaponFxDraw.SlashBrush; the owner's effect pack through the local bake): an ink
+            // stroke's streaks in the alpha of _SlashBrushRect. Off, the crescents are the procedural shape alone.
+            sampler2D _SlashBrush;float4 _SlashBrushRect;float _SlashBrushOn;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             // ---- WEAPON FX SHARED BEGIN (HLSL and GLSL: float literals only, no matrices, no texture reads) ----
             // Each shape returns its intensity (x) and its white-hot share (y).
@@ -157,6 +160,16 @@ Shader "ChipArena/NativeWeaponFx"
                 return float4(rgb * shape.x, color.a * shape.x);
             }
             // ---- WEAPON FX SHARED END ----
+            // A crescent through the brush: its streaks run along the arc (the rectangle's width along x, tail to head; its height
+            // across, inner to outer), their ragged ends at the tail and the head. The colour band takes the streaks and keeps a
+            // faint body between them; the dark underlay reads them mirrored across, so ink and colour never line up stroke for
+            // stroke.
+            float2 SlashBrushed(float2 shape,float2 uv,float under)
+            {
+                float2 s=saturate(uv);if(under>0.5)s.y=1.0-s.y;
+                float m=tex2D(_SlashBrush,_SlashBrushRect.xy+s*_SlashBrushRect.zw).a;
+                return under>0.5?float2(shape.x*lerp(0.1,2.6,m),shape.y):float2(shape.x*lerp(0.25,1.45,m),shape.y*lerp(0.55,1.25,m));
+            }
             struct appdata
             {
                 float3 vertex:POSITION;
@@ -214,6 +227,7 @@ Shader "ChipArena/NativeWeaponFx"
                     float t=(uv.x/max(i.data.x,0.0001))*0.5+0.5;
                     shape=mode<6.5?FxFlame(t,uv.y,w):FxShard(t,uv.y);
                 }
+                if(mode>0.5&&mode<1.5&&_SlashBrushOn>0.5)shape=SlashBrushed(shape,uv,w);
                 float4 c=FxShade(i.color,shape);
                 // A select, not a blend: whatever an unrendered depth texture holds never reaches the colour.
                 float scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
