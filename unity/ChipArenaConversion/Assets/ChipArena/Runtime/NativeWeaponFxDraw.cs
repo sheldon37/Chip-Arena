@@ -72,6 +72,9 @@ namespace ChipArena.UnityConversion
             material=new Material(shader){name="Native weapon fx",renderQueue=(int)RenderQueue.Transparent+6,hideFlags=HideFlags.HideAndDontSave};
         }
         public void Begin(){world.Clear();view.Clear();}
+        private static readonly int BrushId=Shader.PropertyToID("_SlashBrush"),BrushRectId=Shader.PropertyToID("_SlashBrushRect"),BrushOnId=Shader.PropertyToID("_SlashBrushOn");
+        /// <summary>The slash crescents' brush: a texture whose alpha holds an ink stroke's streaks in `rect` (uv min, size); null: off.</summary>
+        public void SlashBrush(Texture brush,Vector4 rect){material.SetTexture(BrushId,brush);material.SetVector(BrushRectId,rect);material.SetFloat(BrushOnId,brush!=null?1:0);}
         private Layer L(bool first)=>first?view:world;
         private static void Put(Vertex[] v,int at,Vector3 p,Color c,Vector4 uv,Vector4 extra){v[at]=new Vertex{Position=p,Color=c,Uv=uv,Extra=extra};}
         /// <summary>A camera-facing glow sprite (profile: Soft, HotCore, RingProfile or Sparkle). color: linear, premultiplied (alpha 0: additive).</summary>

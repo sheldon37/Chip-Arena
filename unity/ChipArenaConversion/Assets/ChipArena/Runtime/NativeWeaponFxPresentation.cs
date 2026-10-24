@@ -59,7 +59,16 @@ namespace ChipArena.UnityConversion
         private TrailSprite[] trailSprites=new TrailSprite[512];private int trailSpriteCount;
         private readonly ImpactMark[] impactMarks=new ImpactMark[32];private int impactNext,impactEvent;private NativeArena impactArena;private int impactGeneration=-1;
         private NativeArena emitterArena;private int emitterGeneration=-1;private float emitterClock=-1;
-        private NativeWeaponFxDraw WeaponFxDraw=>weaponFx??=sourceModels!=null?new NativeWeaponFxDraw():null;
+        private NativeWeaponFxDraw WeaponFxDraw=>weaponFx??=sourceModels!=null?WithSlashBrush(new NativeWeaponFxDraw()):null;
+        // The slash crescents' ink brush from the bake (the visual body's prefab, VisualSlashes/Brush: its material's texture, the
+        // streaks' rectangle in its local position and scale), when the owner's effect pack is baked; else the shape alone.
+        private static NativeWeaponFxDraw WithSlashBrush(NativeWeaponFxDraw draw)
+        {
+            var prefab=Resources.Load<GameObject>(VisualBodyResource);var brush=prefab!=null?prefab.transform.Find("VisualSlashes/Brush"):null;
+            var r=brush!=null?brush.GetComponent<Renderer>():null;var tex=r!=null&&r.sharedMaterial!=null?r.sharedMaterial.mainTexture:null;
+            if(tex!=null)draw.SlashBrush(tex,new Vector4(brush.localPosition.x,brush.localPosition.y,brush.localScale.x,brush.localScale.y));
+            return draw;
+        }
 
         /// <summary>Called first in Render: an empty drawer queue for the frame and this frame's hit events for the flash.</summary>
         private void BeginWeaponFx(Snapshot s)
