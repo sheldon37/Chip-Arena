@@ -95,6 +95,24 @@ namespace ChipArena.UnityConversion
             AccentGlow(root);Console.WriteLine("PASS visual rig: on the visual body the clothing's accent trims glow (pulsing with the block cooldown as the armour halos did) and the voxel joint halos are skipped, the armour spill light coming from the chest core ("+count+" checks)");
             ModelSetting(root);Console.WriteLine("PASS visual rig: Settings · Player model (New, saved) switches every pilot to the classic voxel body and back live, shown only where the visual body is installed ("+count+" checks)");
             BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter; the pilot gear faces out, clears its chip and follows health and chip select ("+count+" checks)");
+            Weapons(root);Console.WriteLine("PASS visual rig: a visual body draws the bake's life-size weapon in the Standard skin's place, its right hand fitted so the weapon's dressing lands on it, the grasp on its handguard and stock, all put back before the next pose ("+count+" checks)");
+        }
+
+        // The visual body's own weapons (owner 2026-10-23: "the guns seem "comically" big"; Runtime NativeVisualWeaponPresentation.cs).
+        private static void Weapons(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string weapons=R("Runtime/NativeVisualWeaponPresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs"),source=R("Runtime/NativeSourcePresentation.cs");
+            Check(weapons.Contains("WeaponSkin(a)!=NativeWeaponSkins.StandardIndex")&&weapons.Contains("a.WeaponAway"),"only a weapon in hand on the Standard skin draws the visual body's model (the Prototype Series keeps its own)");
+            int pick=body.IndexOf("var held=body.Held=VisualWeaponFor(body,a);",StringComparison.Ordinal),apply=body.IndexOf("body.Binding.Apply(pose,grasp,",StringComparison.Ordinal),hands=body.IndexOf("bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp)",StringComparison.Ordinal),fit=body.IndexOf("var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);",StringComparison.Ordinal);
+            Check(pick>0&&apply>pick&&body.IndexOf("VisualWeaponGrasp(ref grasp,held);",pick,StringComparison.Ordinal)<apply&&hands>apply&&fit>hands,"the weapon is picked and its grasp set before the visual body poses; the right hand takes the fitted frame after the hands are placed");
+            Check(body.Contains("rig.Bones[CapturedRig.RHand].localScale=body.RightScale;body.Moved=false;"),"the hand's scale is put back with its place before the rig poses again");
+            Check(weapons.Contains("hand.position+=hand.TransformVector((1-w.Scale)*w.Centre);hand.localScale*=w.Scale;")&&weapons.Contains("frame=frame*Matrix4x4.Translate(w.Centre)*Matrix4x4.Scale(Vector3.one/w.Scale)*Matrix4x4.Translate(-w.Centre);"),"the fit scales the hand's frame about its centre, and the model draws in the frame without it");
+            Check(weapons.Contains("g.SupportHold.Center=new System.Numerics.Vector3(-w.Support.x,w.Support.y,w.Support.z);"),"the support hold enters the source frame mirrored");
+            Check(source.Contains("if(armed){if(!(visual&&VisualWeaponDrawn(rig,WeaponBone(CapturedRig.RHand)))){string held=HeldWeaponModel(rig,a,first);")&&source.Contains("glow:HeldGlow);}WeaponDressing(rig,a,time,first,layer,camera,reach);}"),"SourceCharacter draws the model in the game model's place, at the frame it would draw at; the dressing draws either way");
+            Check(body.Contains("body.Weapons=VisualWeaponsOf(root.transform);")&&weapons.Contains("model.gameObject.SetActive(false);")&&body.Contains("VisualWeaponShown(body);body.Seen=false;"),"the models start hidden and hide each frame they are not drawn");
+            foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC","Polygon","RB_","SM_"})
+                Check(!weapons.Contains(pack),"no pack types or names in the visual weapons' code: "+pack);
         }
 
         private static void Bind(NativeVisualRig.Rig rig,Vector3[] restWorld)
