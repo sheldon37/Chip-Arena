@@ -74,6 +74,11 @@ namespace ChipArena.UnityConversion
         /// <summary>How much of pilot `id`'s joint `bone` has formed (0..1; the match-start spawn-in, ArenaPresentation.SpawnJointOf):
         /// its armour halo waits for the part. Null: every joint whole.</summary>
         public Func<int,int,float> Shown;
+        /// <summary>Whether pilot `id` is drawn with its visual body this frame, and where its armour light spills from
+        /// (ArenaPresentation.VisualGlowAt): its joint halos (the game rig's, where the voxel parts are) are skipped, the body's
+        /// accent trims glowing in their place. Null: every pilot voxel.</summary>
+        public VisualGlow Visual;
+        public delegate bool VisualGlow(int id,out Vector3 at);
         private readonly NativeShotTracker own=new NativeShotTracker();
         // The two pooled armor spill lights' holders: nearest the camera, with hysteresis and a fade (Core NativeArmorSpillPicker).
         private readonly NativeArmorSpillPicker spill=new NativeArmorSpillPicker();
@@ -213,11 +218,15 @@ namespace ChipArena.UnityConversion
                     if(side!=0)a*=NativeArmorLight.HaloFacing(Vector3.Dot(t.TransformDirection(0,0,side),(eye-at).normalized));
                     if(a>.001f)world.Halo(at,right,up,NativeArmorLight.HaloPixelClamp(size*ArmorHaloScale,Vector3.Dot(at-eye,forward),fov,height),color,a);
                 }
+                Vector3 core=default;bool dressed=Visual!=null&&Visual(pilot.Seat.id,out core);
+                if(!dressed)
+                {
                 Joint(CapturedRig.Chest,new Vector3(0,.13f,.19f),.75f,1);Joint(CapturedRig.Chest,new Vector3(0,.12f,-.20f),.62f,-1);
                 Joint(CapturedRig.LClav,new Vector3(-.08f,0,0),.52f);Joint(CapturedRig.RClav,new Vector3(.08f,0,0),.52f);
                 Joint(CapturedRig.LKnee,new Vector3(0,-.06f,.15f),.38f);Joint(CapturedRig.RKnee,new Vector3(0,-.06f,.15f),.38f);
                 Joint(CapturedRig.LHand,new Vector3(0,0,.10f),.26f);Joint(CapturedRig.RHand,new Vector3(0,0,.10f),.26f);
-                spill.Offer(pilot.Seat.id,i,(rig.Bones[CapturedRig.Chest].position-eye).magnitude);
+                }
+                if(dressed)spill.Offer(pilot.Seat.id,i,(core-eye).magnitude);else spill.Offer(pilot.Seat.id,i,(rig.Bones[CapturedRig.Chest].position-eye).magnitude);
             }
             spill.Resolve(spillDt);
             if(Quality>=.5f)for(int k=0;k<NativeArmorSpillPicker.Slots;k++)
@@ -225,7 +234,8 @@ namespace ChipArena.UnityConversion
                 int i=spill.Index(k);if(i<0)continue;var pilot=arena.Pilots[i];var rig=rigs[pilot.Seat.id];
                 var hue=NativeArmorLight.SpillColor(NativePortraitRules.Ember(NativePortraitRules.Parse(pilot.Seat.accentColor,NativePortraitRules.ExportAccent)));
                 float pulse=NativeGlowRules.ArmorPulse(now,pilot.BlockReady-now,now<pilot.BlockEnd);
-                SetLight(armorLights[k],rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,-.05f,.16f)),new Color(hue.X,hue.Y,hue.Z).gamma,ArmorSpillIntensity*pulse*spill.Weight(k),ArmorSpillRange);
+                var from=Visual!=null&&Visual(pilot.Seat.id,out var core)?core:rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,-.05f,.16f));
+                SetLight(armorLights[k],from,new Color(hue.X,hue.Y,hue.Z).gamma,ArmorSpillIntensity*pulse*spill.Weight(k),ArmorSpillRange);
             }
             if(first&&viewRig!=null&&viewCamera!=null&&arena.ViewPilot.Seat.spec!="siren")
             {

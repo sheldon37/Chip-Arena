@@ -9,6 +9,7 @@ Shader "ChipArena/VisualBodyToon" {
   _UseOutline("Outline (where the vertex alpha is .5 or more)",Float)=1
   _Cull("Cull",Float)=2
   _HitFlash("Hit flash code (1 none; the arena sets it per renderer)",Float)=1
+  _AccentGlow("Accent glow: emission over the accent colours (the arena sets it per clothing renderer)",Float)=0
   _SpawnFront("Spawn-in: solid front (world y), band, heat span, slice lead",Vector)=(100000,.24,.55,.38)
   _SpawnTint("Spawn-in: hardlight tint (rgb) and its share",Vector)=(1,1,1,0)
   _SpawnGlitch("Spawn-in: flash, split (m), split opacity, clock",Vector)=(0,0,0,0)
@@ -55,10 +56,15 @@ Shader "ChipArena/VisualBodyToon" {
   float3 one=_Color_1.rgb*w.x+_Color_2.rgb*w.y+_Color_3.rgb*w.z,two=_Color_4.rgb*w.x+_Color_5.rgb*w.y+_Color_6.rgb*w.z,three=_Color_7.rgb*w.x+_Color_8.rgb*w.y+_Color_9.rgb*w.z;
   return lerp(lerp(one*layer.x,two,layer.y),three,layer.z);
  }
+ // The accent channels' share of that colour (each layer's third colour, mixed as VisualColours mixes it): the pilot's
+ // accent trims, which glow by _AccentGlow over the lit colour (emission; past 1 the bloom takes it).
+ float _AccentGlow;
+ float3 VisualAccentPart(float3 w,float3 layer){return lerp(lerp(_Color_3.rgb*w.z*layer.x,_Color_6.rgb*w.z,layer.y),_Color_9.rgb*w.z,layer.z);}
  void surf(Input i,inout SurfaceOutput o)
  {
   SpawnClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
   o.Albedo=SpawnTinted(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb,i.worldPos.y);o.Alpha=map.a;
+  if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
   float3 n=normalize(i.worldNormal);
   if(_ArenaActorLit>.5)o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,n));
   o.Emission+=o.Albedo*ToonPoints(MuzzleLights(i.worldPos,n,.35));
