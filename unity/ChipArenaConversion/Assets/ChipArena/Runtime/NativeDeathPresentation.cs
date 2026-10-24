@@ -301,9 +301,12 @@ namespace ChipArena.UnityConversion
                     // The visual body's corpse, when this pilot has one (it wears no hat or bands; NativeVisualBodyPresentation.cs).
                     dressed=VisualCorpseShown(corpse,alpha);
                     if(!dressed)sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),BodyAccent(bodySkin,death.actor?.AccentColor,death.actor?.Hat,death.actor?.HatColor),alpha);
-                    if(hat&&!dressed&&!AuditorHalo(death.actor?.Hat,corpse.PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null,color:death.actor?.HatColor))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,HatBody(death.actor?.Hat,death.actor?.HatColor),null,alpha);
+                    if(!dressed)
+                    {
+                    if(hat&&!AuditorHalo(death.actor?.Hat,corpse.PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null,color:death.actor?.HatColor))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,HatBody(death.actor?.Hat,death.actor?.HatColor),null,alpha);
                     // A thrown or crushed head takes the Sheldon Head's hood with it; its mantle and drapes stay on the body.
-                    else if(!hat&&!dressed&&corpse.HatModel!=null&&death.actor?.Hat==NativeSheldonHead.Hat)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,SheldonBody,HatBody(death.actor.Hat,death.actor.HatColor),null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
+                    else if(!hat&&corpse.HatModel!=null&&death.actor?.Hat==NativeSheldonHead.Hat)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,SheldonBody,HatBody(death.actor.Hat,death.actor.HatColor),null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
+                    }
                 }
                 // team-identity.ts bands ride in the part copies (unlit team colour; Frostbreak turns them ice, lit here). They are
                 // opaque, so a fading body drops them halfway.
