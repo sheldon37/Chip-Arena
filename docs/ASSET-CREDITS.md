@@ -74,6 +74,17 @@ the installer copies into `Assets/LocalAssets` for builds only; it is never comm
 `tools/package_source.py` skips that folder. Builds without it play the original synthesized sounds:
 CI, cloud builds, other checkouts and the public source zips.
 
+### Visual body weapons (2026-10-24, owner licence)
+
+The visual body's life-size weapons (`docs/BOZO-INTEGRATION.md`, life-size weapons) come from two packs the owner
+licensed and added to the shared asset drive. The pieces used are the pistol, assault rifle and light machine gun of the
+POLY Mega Weapons Kit (with the machine gun's bipod cut off) and the falchion and greatsword of the SciFantasy Sword Pack
+(RB), on the game's own toon material.
+
+The same rules as the visual body apply. The packs stay in the git-ignored `Assets/LocalAssets` on the owner's PC. Only
+the meshes and textures the bake uses ship in the licensed-assets zip, which the builder installs for builds. They are
+never committed or published as files.
+
 ### Hazard kit additions (2026-10-14)
 
 The hazard kit's 19 keys (`docs/HAZARD-KIT.md`) add 46 clips, all from Universal Sound FX (Imphenzia, 17256).

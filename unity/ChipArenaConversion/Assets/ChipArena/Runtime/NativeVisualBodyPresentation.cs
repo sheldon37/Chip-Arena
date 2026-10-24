@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
     // every frame, authority reads neither, and the voxel body draws wherever the bake is absent, with --ca-voxel-bodies or
     // while Settings · Player model is Classic (ClassicBodies, live: the bodies hide the frame they are not posed).
     // The rig's hand bones are moved onto the visual weapon frames after posing (and back before the next pose), so the
-    // drawn weapon, its muzzle, blade sweeps and wrist effects follow the visual hands. It takes the hit flash and the
+    // drawn weapon, its muzzle, blade sweeps and wrist effects follow the visual hands; a weapon the bake carries a life-size
+    // model of draws that model instead, with the right hand's frame fitted to it (NativeVisualWeaponPresentation.cs). It takes the hit flash and the
     // match-start spawn-in in its own shader (VisualBodyLook), and wears the pilot gear (VisualGear: the chest core and the
     // right-wrist chip device, Core NativePilotGear) at anchors its bake measured. First person wears its forearms and hands
     // (VisualViewPose). Still voxel: intros, portraits, the draft, corpses and kill effects; hats are not drawn on it yet.
@@ -26,6 +27,9 @@ namespace ChipArena.UnityConversion
             public Transform GearCore, GearDevice; public float GearRadius, LitAt=float.NaN, SeatAt=float.NaN; public int SeatKey=int.MinValue; public bool Building;
             public Color ChipColor=Color.cyan, AccentLinear=Color.cyan;
             public readonly Vector3[] HandPosition=new Vector3[2]; public readonly Quaternion[] HandRotation=new Quaternion[2];
+            // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
+            // fitted on the right hand bone, whose scale RightScale restores) and the one shown (when).
+            public Dictionary<string,VisualWeapon> Weapons; public VisualWeapon Held, Shown; public int ShownFrame=-1; public Vector3 RightScale=Vector3.one;
         }
         public const string VisualBodyResource="ChipArenaVisualBody", VoxelBodiesArgument="--ca-voxel-bodies";
         private static GameObject visualBodyPrefab; private static int visualBodyState; // 0 unread, 1 drawn, -1 absent or turned off
@@ -74,7 +78,7 @@ namespace ChipArena.UnityConversion
         {
             if(!rigs.TryGetValue(id,out var rig)||!visualBodies.TryGetValue(rig,out var body)||!body.Moved)return;
             for(int side=0;side<2;side++){var bone=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];bone.localPosition=body.HandPosition[side];bone.localRotation=body.HandRotation[side];}
-            body.Moved=false;
+            rig.Bones[CapturedRig.RHand].localScale=body.RightScale;body.Moved=false;
         }
 
         // After a living arena pilot's rig is posed: pose its visual body from the same game pose, with its weapon's grasp.
@@ -91,7 +95,9 @@ namespace ChipArena.UnityConversion
             if(body.PosedFrame<Time.frameCount-1||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4)body.Binding.State.Forget();
             body.PosedFrame=Time.frameCount;body.Spec=a.SourceSpec;body.At=at;
             bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
-            body.Binding.Apply(pose,VisualGrasp(a,pose,time,ChipLookOf(a.Id)),a.Grounded&&!roll&&!juggle,roll||juggle);
+            // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
+            var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
+            body.Binding.Apply(pose,grasp,a.Grounded&&!roll&&!juggle,roll||juggle);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
             var origin=body.Root.transform;
@@ -102,6 +108,7 @@ namespace ChipArena.UnityConversion
                 body.HandPosition[side]=bone.localPosition;body.HandRotation[side]=bone.localRotation;
                 bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp),origin.rotation*(side==0?lq:rq));
             }
+            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
         }
 
@@ -120,6 +127,7 @@ namespace ChipArena.UnityConversion
                 else if(t.name=="VisualGearDeviceRim")body.GearRadius=t.localPosition.magnitude;
             }
             if(body.GearDevice!=null&&!(body.GearRadius>.01f))body.GearDevice=null;
+            body.Weapons=VisualWeaponsOf(root.transform);
             for(int k=0;k<body.All.Length;k++)
             {
                 var r=body.All[k];body.Plain[k]=r.sharedMaterials;var m=r.sharedMaterial;if(m==null||!m.HasProperty(TextureId))continue;
@@ -492,7 +500,7 @@ namespace ChipArena.UnityConversion
                 var body=pair.Value;
                 if(body.Root==null){visualBodiesGone.Add(pair.Key);continue;}
                 if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);
-                body.Seen=false;
+                VisualWeaponShown(body);body.Seen=false;
             }
             foreach(var rig in visualBodiesGone)visualBodies.Remove(rig);
         }
