@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         // Travel speeds (m/s): the walks give way to the runs between WalkTop and RunFrom; the sprint takes over between
         // SprintFrom and SprintTop going forward (the game's run is 6.8, its sprint 1.35 times that). The legs take the clips
         // from Moving over Ramp m/s, and the rate stays within RateMin..RateMax of the clips' own.
-        public const float WalkTop=2.6f, RunFrom=4.0f, SprintFrom=7.4f, SprintTop=8.6f, SprintCone=.6f, Moving=.5f, Ramp=1.0f, RateMin=.6f, RateMax=2.0f;
+        public const float WalkTop=2.6f, RunFrom=4.0f, SprintFrom=7.4f, SprintTop=8.6f, SprintCone=.6f, Moving=.35f, Ramp=.6f, RateMin=.6f, RateMax=2.0f;
 
         // The legs' share of the clips for a body travelling at `speed` (0 below Moving, 1 from Moving+Ramp, eased).
         public static float LegWeight(float speed)

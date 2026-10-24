@@ -113,7 +113,8 @@ namespace ChipArena.UnityConversion
                 if(!s.Locked[f]&&h<StrideDown){s.Locked[f]=true;s.Lock[f]=foot.position;s.LockWeight[f]=1;}
                 else if(s.Locked[f]&&(h>StrideUp||(foot.position-s.Lock[f]).sqrMagnitude>StrideReach*StrideReach))s.Locked[f]=false;
                 if(!s.Locked[f])s.LockWeight[f]=Mathf.MoveTowards(s.LockWeight[f],0,dt/StrideEase);
-                float w=s.LockWeight[f]*s.Weight;if(w<.001f)continue;
+                // Held fully once the clips carry half the legs (a part-blended leg would otherwise drag its lock along).
+                float w=s.LockWeight[f]*Mathf.Clamp01(s.Weight*2);if(w<.001f)continue;
                 var turn=foot.rotation;StrideReachTo(hip,knee,foot,Vector3.Lerp(foot.position,s.Lock[f],w));foot.rotation=turn;
             }
             rig.Bones[CapturedRig.LHand].position+=shift;rig.Bones[CapturedRig.RHand].position+=shift;
