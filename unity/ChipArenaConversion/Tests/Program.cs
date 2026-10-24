@@ -99,6 +99,7 @@ internal static class Program
             if(args.Length>=1&&args[0]=="--surface-audit"){if(args.Length>1&&args[1]=="differ")SurfaceChecks.Differ(ProjectRoot());else if(args.Length>1&&args[1]=="dupes")SurfaceChecks.Dupes(ProjectRoot());else SurfaceChecks.Audit(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--melee-bisect"){BisectChecks.Run(ProjectRoot());MeleeBisectChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--sprint-arms"){SprintArmChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--sprint"){SprintMotionChecks.Run(ProjectRoot());SprintArmChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--greatsword-sprint"){var gsRoot=ProjectRoot();GreatswordSprintChecks.Run(gsRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(gsRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--bow"){BowChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--gib"){GibChecks.Run(ProjectRoot());BowChecks.Run(ProjectRoot());return 0;}

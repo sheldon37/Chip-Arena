@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         public const float TwitchRate=18,GlitchRate=10,GlitchCycle=1.4f,GlitchBurst=.24f;
         /// <summary>The carry each weapon sprints with (the DEV fighters and the Siren keep their own locomotion).</summary>
         public const string Ninja="blade swept low behind",Pump="daggers held low, a light pump",ShieldUp="shield up, shoulder-led",Drag="blade dragged behind, point on the floor",
-            Tucked="pistol tucked, arms pumping",HighPort="high port, leaning in",Hip="shoulder carry, lumbering",Embers="embers trailing, attacking",
+            Tucked="pistol held at the chest, free arm pumping",HighPort="high port, leaning in",Hip="shoulder carry, lumbering",Embers="embers trailing, attacking",
             Glide="flowing glide",Crackle="crackling stride",Stalk="low stalking glide",Glitch="glitch stride",Trail="hands trailing back",None="none";
         public static string CarryOf(string spec)
         {
@@ -129,7 +129,8 @@ namespace ChipArena.UnityConversion
     ///  - greatsword: the run's own drag carry leaned into a sprint (owner 2026-10-15: "Utilize the normal run animation with
     ///    sword on ground, but lean forward abit to show a natural sprint movement"): the blade trailing low from the right fist,
     ///    its point down on the floor, the run's free left guard fist swinging in step;
-    ///  - pistol: both arms pumping hard, the pistol tucked muzzle-down in the gun fist;
+    ///  - pistol: held close at the chest, muzzle down, while the free left arm pumps hard (owner 2026-10-23; until then both
+    ///    fists pumped with the pistol tucked in the gun fist, and on the taller visual body it swung through the thigh);
     ///  - rifle: a tactical high port across the chest leaning into the run, the rifle bouncing with each step;
     ///  - machine gun: heaved up onto the shoulder in both hands (its run carries it at the hip), a lumbering, dipping, rolling
     ///    stride;
@@ -297,9 +298,10 @@ namespace ChipArena.UnityConversion
             float fR=(float)Math.Cos(stride),fL=-fR,sway=(float)Math.Sin(stride),step=(float)Math.Cos(2*stride);
             if(pistol)
             {
-                // Both fists pump hard and close, elbows bent; the pistol rides the gun fist tucked muzzle-down, tipping with it.
+                // The pistol held close in front of the chest, muzzle down and in, riding the stride a little; the free left fist
+                // pumps hard and close, elbow bent (owner 2026-10-23: "Pistol at the chest").
                 p.World();Quaternion left=Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest])*p.WorldRotation[CapturedRig.LHand];
-                CapturedRig.Arm(p,false,new Vector3(-.21f,-.15f+.07f*Math.Max(0,fR),.03f+.23f*fR),CapturedRig.Euler(1.05f+.3f*fR,.2f,-.1f),new Vector3(-1,-.6f,-.45f));
+                CapturedRig.Arm(p,false,new Vector3(-.05f+.01f*sway,.10f+.015f*step,.21f),CapturedRig.Euler(1.4f,.3f,-.15f),new Vector3(-.6f,-1,-.1f));
                 CapturedRig.Arm(p,true,new Vector3(.21f,-.15f+.07f*Math.Max(0,fL),.03f+.23f*fL),left,new Vector3(1,-.6f,-.45f));
             }
             else

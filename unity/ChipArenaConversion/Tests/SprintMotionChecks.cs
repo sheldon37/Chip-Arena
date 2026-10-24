@@ -71,24 +71,24 @@ internal static class SprintMotionChecks
     private sealed class Range{public float Min=float.MaxValue,Max=float.MinValue;public void Add(float v){Min=Math.Min(Min,v);Max=Math.Max(Max,v);}public float PP=>Max-Min;}
     private static Vector3 YawPitchRoll(Quaternion q)
     {Vector3 f=Vector3.Transform(Vector3.UnitZ,q),r=Vector3.Transform(Vector3.UnitX,q);return new Vector3((float)Math.Atan2(f.X,f.Z)*Deg,(float)Math.Asin(Math.Clamp(-f.Y,-1,1))*Deg,(float)Math.Asin(Math.Clamp(r.Y,-1,1))*Deg);}
-    private struct Sprinted{public float Yaw,Roll,Nod,Sway,Feet,ZPump,TipLow,TipHigh;public Vector3 Right,Left,Tip;}
+    private struct Sprinted{public float Yaw,Roll,Nod,Sway,Feet,ZPump,LPump,TipLow,TipHigh;public Vector3 Right,Left,Tip;}
     private static readonly int[] Feet={CapturedRig.LFoot,CapturedRig.RFoot,CapturedRig.LToe,CapturedRig.RToe};
     // A steady sprint: the torso's MeleeFeelChecks measures, the hands' mean carry in chest space, and the feet against the
     // same pilot without the layer (the gait's own planted feet).
     private static Sprinted Measure(string spec,bool layer)
     {
-        var p=new Pilot(spec,layer);var twin=new Pilot(spec,false);var yaw=new Range();var roll=new Range();var nod=new Range();var sway=new Range();var pump=new Range();
+        var p=new Pilot(spec,layer);var twin=new Pilot(spec,false);var yaw=new Range();var roll=new Range();var nod=new Range();var sway=new Range();var pump=new Range();var lpump=new Range();
         Vector3 right=Vector3.Zero,left=Vector3.Zero,tip=Vector3.Zero;float feet=0,tipLow=float.MaxValue,tipHigh=float.MinValue;int n=0;
         for(int f=0;f<270;f++)
         {
             float t=1+f*Dt;p.Frame(t,SprintSpeed,true);twin.Frame(t,SprintSpeed,true);if(f<90)continue;
             var c=YawPitchRoll(p.Pose.WorldRotation[CapturedRig.Chest]);yaw.Add(c.X);nod.Add(c.Y);roll.Add(c.Z);sway.Add(p.Pose.WorldPosition[CapturedRig.Head].X*100);
-            right+=p.InChest(CapturedRig.RHand);left+=p.InChest(CapturedRig.LHand);pump.Add(p.InChest(CapturedRig.RHand).Z);n++;
+            right+=p.InChest(CapturedRig.RHand);left+=p.InChest(CapturedRig.LHand);pump.Add(p.InChest(CapturedRig.RHand).Z);lpump.Add(p.InChest(CapturedRig.LHand).Z);n++;
             var t0=p.Tip;tip+=Vector3.Transform(t0-p.Pose.WorldPosition[CapturedRig.Chest],Quaternion.Inverse(p.Pose.WorldRotation[CapturedRig.Chest]));tipLow=Math.Min(tipLow,t0.Y-MeleeClearance.FloorClear);tipHigh=Math.Max(tipHigh,t0.Y-MeleeClearance.FloorClear);
             // The planted feet (the gun and magic gaits tell which; a crouched sprint's swing foot may lift a little less).
             foreach(int b in Feet){bool lf=b==CapturedRig.LFoot||b==CapturedRig.LToe;if(!(p.Gun?.Planted(lf)??p.Magic?.Planted(lf)??true))continue;feet=Math.Max(feet,Vector3.Distance(p.World(b),twin.World(b)));}
         }
-        return new Sprinted{Yaw=yaw.PP,Roll=roll.PP,Nod=nod.PP,Sway=sway.PP,Feet=feet,Right=right/n,Left=left/n,Tip=tip/n,ZPump=pump.PP,TipLow=tipLow,TipHigh=tipHigh};
+        return new Sprinted{Yaw=yaw.PP,Roll=roll.PP,Nod=nod.PP,Sway=sway.PP,Feet=feet,Right=right/n,Left=left/n,Tip=tip/n,ZPump=pump.PP,LPump=lpump.PP,TipLow=tipLow,TipHigh=tipHigh};
     }
     private static readonly string[] Melee={"sword","daggers","shield","greatsword"},Ranged={"pistol","rifle","machinegun"},Magic={"fire","water","lightning","darkness","leet"};
     private static void Carries(List<string> log)
@@ -120,7 +120,8 @@ internal static class SprintMotionChecks
         // The greatsword drags (owner 2026-10-15: "Utilize the normal run animation with sword on ground"): the run's low right
         // fist, the free fist apart from it, the point on the floor (Tests/GreatswordSprintChecks measures the drag).
         Check(now["greatsword"].Right.Y<-.05f&&Vector3.Distance(now["greatsword"].Right,now["greatsword"].Left)>.25f&&now["greatsword"].TipLow>0&&now["greatsword"].TipHigh<.04f,"greatsword: the run's low fist, the point dragged on the floor ("+now["greatsword"].Right+", the point "+(now["greatsword"].TipLow*100).ToString("0.0")+".."+(now["greatsword"].TipHigh*100).ToString("0.0")+" cm over the floor guard's plane)");
-        Check(now["pistol"].ZPump>.3f&&now["pistol"].Right.Y<-.05f,"pistol: both fists pump hard, the gun hand low ("+now["pistol"].ZPump.ToString("0.00")+" m, "+now["pistol"].Right+")");
+        // The pistol at the chest (owner 2026-10-23): the gun hand held in front of the middle of the chest, the free fist pumping.
+        Check(now["pistol"].ZPump<.06f&&now["pistol"].Right.Y>.03f&&now["pistol"].Right.Z>.12f&&Math.Abs(now["pistol"].Right.X)<.12f&&now["pistol"].LPump>.3f,"pistol: held at the chest, the free fist pumping hard ("+now["pistol"].Right+", the gun hand "+now["pistol"].ZPump.ToString("0.00")+" m, the free fist "+now["pistol"].LPump.ToString("0.00")+" m)");
         Check(now["machinegun"].Right.Y>now["rifle"].Right.Y&&now["machinegun"].Right.X<now["rifle"].Right.X-.05f,"the machine gun heaved onto the shoulder, higher and further out than the rifle's high port ("+now["machinegun"].Right+" vs "+now["rifle"].Right+")");
         Check(now["fire"].Right.Y<-.2f&&now["fire"].ZPump>.2f&&now["fire"].Right.Z<0,"fire: both hands low, clawing hard past the hips ("+now["fire"].Right+", "+now["fire"].ZPump.ToString("0.00")+" m)");
         Check(Math.Abs(now["water"].Right.X)>.3f&&Math.Abs(now["water"].Left.X)>.3f,"water: the hands out wide to the sides ("+now["water"].Right+")");
@@ -128,7 +129,7 @@ internal static class SprintMotionChecks
         Check(now["darkness"].Right.Y<-.2f&&now["darkness"].Right.Z<-.2f&&now["darkness"].Right.Y<now["water"].Right.Y,"darkness: the hands back and low ("+now["darkness"].Right+")");
         Check(now["leet"].Right.Z<-.3f&&now["leet"].Right.Y>now["fire"].Right.Y+.1f,"L33t H4x: the arms flung straight back, higher than fire's ("+now["leet"].Right+")");
         Distinct(Magic);
-        log.Add("12 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, daggers held low with a light pump, shield up, the greatsword dragged with its point on the floor, the pistol tucked with both fists pumping, high port, the machine gun on the shoulder, fire's hands clawing low past the hips, water's out wide, lightning's tight in front, darkness back and low, L33t H4x's flung back), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
+        log.Add("12 weapons sprinting at "+SprintSpeed+" m/s: distinct carries (blade low behind, daggers held low with a light pump, shield up, the greatsword dragged with its point on the floor, the pistol at the chest with the free fist pumping, high port, the machine gun on the shoulder, fire's hands clawing low past the hips, water's out wide, lightning's tight in front, darkness back and low, L33t H4x's flung back), the feet exactly the gait's (worst "+(worstFeet*1000).ToString("0.0")+" mm), the steady torso within bounds (head sway "+torso+")");
     }
     private static void Blend(List<string> log)
     {
