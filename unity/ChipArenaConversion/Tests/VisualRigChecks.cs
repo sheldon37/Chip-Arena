@@ -96,6 +96,48 @@ namespace ChipArena.UnityConversion
             ModelSetting(root);Console.WriteLine("PASS visual rig: Settings · Player model (New, saved) switches every pilot to the classic voxel body and back live, shown only where the visual body is installed ("+count+" checks)");
             BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter; the pilot gear faces out, clears its chip and follows health and chip select ("+count+" checks)");
             Weapons(root);Console.WriteLine("PASS visual rig: a visual body draws the bake's life-size weapon in the Standard skin's place, its right hand fitted so the weapon's dressing lands on it, the grasp on its handguard and stock, all put back before the next pose ("+count+" checks)");
+            Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
+        }
+
+        // The visual body's stride (owner 2026-10-23: "I thought we have a running animation pack already? Cant we utilize that?"):
+        // Core NativeVisualStride's weights and rate against the clips' measured travel on the body (2026-10-24, the body's avatar),
+        // and its wiring (Runtime NativeVisualStridePresentation.cs).
+        private static void Stride(string root)
+        {
+            int n=NativeVisualStride.Clips;var sx=new float[n];var sz=new float[n];var w=new float[n];
+            void Clip(int i,float x,float z){sx[i]=x;sz[i]=z;}
+            Clip(0,0,4.26f);Clip(1,2.58f,2.58f);Clip(2,3.72f,0);Clip(3,2.55f,-2.54f);Clip(4,0,-3.67f);Clip(5,-2.65f,-2.59f);Clip(6,-3.73f,0);Clip(7,-2.55f,2.57f);
+            Clip(8,0,2.15f);Clip(9,1.48f,1.48f);Clip(10,1.97f,0);Clip(11,1.48f,-1.48f);Clip(12,0,-2.10f);Clip(13,-1.48f,-1.48f);Clip(14,-2.04f,0);Clip(15,-1.48f,1.48f);Clip(16,0,6.87f);
+            float Sum(){float s=0;foreach(var x in w)s+=x;return s;}
+            float Travel(float vx,float vz,float rate){float bx=0,bz=0;for(int i=0;i<n;i++){bx+=w[i]*sx[i];bz+=w[i]*sz[i];}float speed=(float)Math.Sqrt(vx*vx+vz*vz);return rate*(bx*vx+bz*vz)/speed;}
+            foreach(var (vx,vz) in new[]{(0f,6.8f),(0f,9.18f),(6.8f,0f),(-3f,-3f),(0f,2f),(0f,3.3f),(1.2f,-5f),(-6.8f,.5f),(.3f,-1.1f),(4f,8f)})
+            {
+                float rate=NativeVisualStride.Weights(vx,vz,sx,sz,w),speed=(float)Math.Sqrt(vx*vx+vz*vz);
+                Check(Math.Abs(Sum()-1)<1e-4f,"stride weights sum to one at ("+vx+", "+vz+")");
+                foreach(var x in w)Check(x>=0&&x<=1,"stride weights within 0..1");
+                if(rate>NativeVisualStride.RateMin+1e-3f&&rate<NativeVisualStride.RateMax-1e-3f)Check(Math.Abs(Travel(vx,vz,rate)-speed)<.01f*speed,"the mix travels at the body's speed at ("+vx+", "+vz+")");
+            }
+            float r=NativeVisualStride.Weights(0,6.8f,sx,sz,w);Check(w[0]>.999f&&Math.Abs(r-6.8f/4.26f)<.01f,"the game's run forward plays the forward run at 1.6 times");
+            r=NativeVisualStride.Weights(0,9.18f,sx,sz,w);Check(w[NativeVisualStride.Sprint]>.999f&&Math.Abs(r-9.18f/6.87f)<.01f,"the sprint forward plays the sprint clip");
+            NativeVisualStride.Weights(9.18f,0,sx,sz,w);Check(w[NativeVisualStride.Sprint]==0&&w[2]>.999f,"sideways at sprint speed runs to the right, no sprint");
+            NativeVisualStride.Weights(-3,-3,sx,sz,w);Check(w[5]>.999f,"back-left travel runs back-left");
+            NativeVisualStride.Weights(0,2,sx,sz,w);Check(w[NativeVisualStride.Walks]>.999f,"a slow forward walk walks forward");
+            NativeVisualStride.Weights(0,3.3f,sx,sz,w);Check(w[0]>.3f&&w[NativeVisualStride.Walks]>.3f,"between the gaits the walk and run mix");
+            NativeVisualStride.Weights(3,3,sx,sz,w);Check(w[1]>.999f,"forward-right travel runs forward-right");
+            Check(NativeVisualStride.LegWeight(0)==0&&NativeVisualStride.LegWeight(NativeVisualStride.Moving)==0&&NativeVisualStride.LegWeight(NativeVisualStride.Moving+NativeVisualStride.Ramp)==1,"the legs take the clips once moving");
+            long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<1000;i++)NativeVisualStride.Weights(i*.01f,6-i*.005f,sx,sz,w);
+            Check(GC.GetAllocatedBytesForCurrentThread()-before==0,"the stride weights allocate nothing");
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string stride=R("Runtime/NativeVisualStridePresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs");
+            int hands=body.IndexOf("bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp)",StringComparison.Ordinal),pose=body.IndexOf("VisualStridePose(body,rig,a,time,roll,juggle);",StringComparison.Ordinal),fit=body.IndexOf("VisualWeaponFit(right,held);",StringComparison.Ordinal);
+            Check(hands>0&&pose>hands&&fit>pose,"the stride takes the legs after the game pose and the hands on the weapon frames, before the weapon fit");
+            Check(stride.Contains("bool free=a.Grounded&&!roll&&!juggle&&!a.Attacking(time)&&time>=a.StunUntil&&!(time>=a.SpecialAt&&time<a.SpecialUntil)&&!(time>=a.ReactionAt&&time<a.ReactionUntil);"),"the stride is off in the air, rolling, attacking, stunned, juggled, in a special or a reaction");
+            Check(stride.Contains("rig.Bones[CapturedRig.LHand].position+=shift;rig.Bones[CapturedRig.RHand].position+=shift;"),"the weapon frames move with the hips");
+            Check(stride.Contains("foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);")&&stride.Contains("s.Graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);"),"the proxy draws nothing and its graph is evaluated only by the pose");
+            Check(body.Contains("if(body.Root==null){VisualStrideRelease(body);")&&body.Contains("{VisualStrideRelease(body);if(body.Root!=null)Destroy(body.Root);}"),"each stride graph goes with its body");
+            Check(body.Contains("if(id!=ViewBodyId)body.Stride=VisualStrideOf(root.transform,skeleton);"),"first person has no stride");
+            Check(stride.Contains("if(!s.Locked[f]&&h<StrideDown){s.Locked[f]=true;s.Lock[f]=foot.position;s.LockWeight[f]=1;}")&&stride.Contains("var turn=foot.rotation;StrideReachTo(hip,knee,foot,Vector3.Lerp(foot.position,s.Lock[f],w));foot.rotation=turn;"),"a planted foot stays where it landed, its leg reaching it, the foot keeping the clip's turn");
+            foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC"})Check(!stride.Contains(pack),"no pack types or names in the stride's code: "+pack);
         }
 
         // The visual body's own weapons (owner 2026-10-23: "the guns seem "comically" big"; Runtime NativeVisualWeaponPresentation.cs).

@@ -5,9 +5,10 @@ usage: python3 -I tools/pack_visual_body.py BASE_ZIP OUTPUT_ZIP [--project DIR]
 Reads Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaVisualBody.prefab (the local bake, git-ignored) and follows its
 GUID references through the text assets and every .meta under Assets/LocalAssets: the meshes, materials and textures it
 uses, each with its .meta, and every folder's .meta. Assets outside LocalAssets (the tracked shaders) are left to the source;
-anything that is not a mesh, material, texture or prefab (shaders, shader graphs, scripts) is left out and listed. It writes
-OUTPUT_ZIP as BASE_ZIP's members (the effects audio and the rest, unchanged) plus those files and visual-body.json, which
-lists each with its SHA-256, then checks the result as tools/install_local_assets.py does. BASE_ZIP is never modified.
+anything that is not a mesh, material, texture, prefab or animator controller (shaders, shader graphs, scripts) is left out
+and listed. It writes OUTPUT_ZIP as BASE_ZIP's members (the effects audio and the rest, unchanged) plus those files and
+visual-body.json, which lists each with its SHA-256, then checks the result as tools/install_local_assets.py does. BASE_ZIP
+is never modified.
 The zip is deterministic: the same inputs give the same bytes. Exit status 1 on any problem.
 """
 import argparse
@@ -25,7 +26,7 @@ import install_local_assets as installer  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFAB = 'ChipArenaLocal/Resources/' + installer.VISUAL_BODY_PREFAB
-TEXT_ASSETS = {'.prefab', '.mat', '.asset'}
+TEXT_ASSETS = {'.prefab', '.mat', '.asset', '.controller'}
 GUID_REF = re.compile(rb'guid: ([0-9a-f]{32})')
 STAMP = (2026, 1, 1, 0, 0, 0)
 

@@ -44,7 +44,7 @@ CLIP_NAME = re.compile(r'^[a-z0-9_-]{1,40}$')
 GUID = re.compile(r'^guid: ([0-9a-f]{32})$', re.M)
 MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 5000, 64 * 1024 * 1024, 16 * 1024 * 1024
 VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 40 * 1000 * 1000
-VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.meta'}
+VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.controller', '.meta'}
 SHA256 = re.compile(r'^[0-9a-f]{64}$')
 
 
@@ -207,7 +207,7 @@ def verify_visual_body(content):
             problems.append(f'visual body: {rel} is in the effects bank\'s Resources folder')
             continue
         if PurePosixPath(rel).suffix.lower() not in VISUAL_BODY_KINDS:
-            problems.append(f'visual body: {rel} is not a mesh, material, texture, prefab or .meta')
+            problems.append(f'visual body: {rel} is not a mesh, material, texture, prefab, animator controller or .meta')
             continue
         if not isinstance(digest, str) or not SHA256.match(digest):
             problems.append(f'visual body: {rel}: bad sha256')
