@@ -85,6 +85,12 @@ The same rules as the visual body apply. The packs stay in the git-ignored `Asse
 the meshes and textures the bake uses ship in the licensed-assets zip, which the builder installs for builds. They are
 never committed or published as files.
 
+### Visual body locomotion clips (2026-10-24, owner licence)
+
+The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, the stride) play 17 `Unarmed` locomotion
+clips of the owner's Explosive RPG Character Mecanim Animation Pack, with the pack's source character (its avatar, which the
+clips' humanoid import copies). They ship as FBX in the same licensed-assets zip, under the same rules.
+
 ### Hazard kit additions (2026-10-14)
 
 The hazard kit's 19 keys (`docs/HAZARD-KIT.md`) add 46 clips, all from Universal Sound FX (Imphenzia, 17256).

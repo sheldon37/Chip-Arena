@@ -6,6 +6,34 @@
 - **Needed to fix it (local session, one minute):** in Play mode on the main menu, pause, click one of the white props in the Scene view (or Frame Debugger, the draw that paints it) and record the object or draw name, its material and shader. If it is the `Rooftop city` mesh with `ChipArena/NativeRooftop`, also note whether `--ca-map-style legacy` changes it. A screenshot in the next entry helps. Candidates outside the world pass: a model drawn through `sourceModels` or the visual body (the crowd's weapons and props, the seated pilot's weapon on the lip) with a material that lost its shader or texture.
 - **Animation, timing, networking:** none.
 
+## 2026-10-24 — Claude: the visual body runs on the animation pack's own clips (merged into shared)
+
+- **Branch/base:** `claude/visual-stride` from shared `ed2d9174`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner requests:**
+  - 2026-10-23: "Some of these animations really dont fit the new body", "I thought we have a running animation pack already? Cant we utilize that?"
+  - 2026-10-24: "Implement whatever we have on asset packs that would work good on this project, make them fit."
+- **Changes (presentation only):**
+  - `Core/NativeVisualStride` mixes the pack's 17 `Unarmed` locomotion clips (eight runs, eight strafing walks, the sprint) by the body's travel, and picks the rate that makes the mix travel at its speed (tested).
+  - `Runtime/NativeVisualStridePresentation.cs`:
+    - a proxy skeleton plays the mix through the body's humanoid avatar (Unity retargeting);
+    - after the game pose, the legs take the proxy's turns and the hips its place;
+    - planted feet lock with a two-bone reach;
+    - footsteps sound on the drawn plants.
+    - Off in the air, rolling, attacking, stunned, juggled, in specials and reactions, and standing. `--ca-no-stride` keeps the old legs.
+  - The local bake adds a disabled Animator, with the body's avatar and a controller of the clips, to `VisualSkeleton`. `tools/pack_visual_body.py` and `install_local_assets.py` now carry `.controller` files (`test_visual_body_assets.py` covers the clip and controller).
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-weapons.zip`: 247 visual-body files, 28.04 MB, verified by `--check`.
+- **Checks (actual):**
+  - Full CoreTests 845 PASS, exit 0 (LF checkout of `a6029d2f`). `--visual-rig` adds the stride's weights, rate and allocation checks and its wiring.
+  - Python `test_visual_body_assets` 6 OK. On this PC, the full Python run also shows 5 failures that are not from this change: four fail the same way on the previous checkout (component field init, damage screen, icons, the updater's spaces wrapper), and `test_source_packages` reads this checkout's uncommitted `Packages/manifest.json`.
+  - Unity assembly compile (Player, game, editor): PASS.
+  - Play mode on Moonlit, local tool `track=`:
+    - with the clips carrying half the legs or more, a locked foot's median slip is 0.000 m/s (90th percentile under 0.04);
+    - before the lock it was 0.4–1.0 m/s;
+    - the runs show long strides with a flight phase.
+- **Not run:** a Windows build in game; multiplayer; stairs and ramps.
+- **Animation impact:** the visual body's legs and hip height while running and walking (presentation only). Hit volumes, damage, timing, movement and networking are unchanged.
+- **Next:** combat effects from the owner's new packs (bullet impacts per surface first). Then the rest of the revamp: idles, jumps, reactions and the clips' upper-body lean.
+
 ## 2026-10-24 — Claude: life-size weapons on the visual body (merged into shared)
 
 - **Branch/base:** `claude/visual-weapons` from shared `bbdd5866`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
