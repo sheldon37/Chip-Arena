@@ -437,7 +437,9 @@ item).
     `RoofFog` branch to it while `_ArenaToon.x` is on. A painted night gradient (zenith #070C24 to a blue horizon) with
     a crisp band of city glow swinging magenta to cyan round the horizon; the haze in four soft depth planes
     (`_RoofToonFog`); the street's violet glow low down.
-  - `NativeRooftop.shader` (`RoofToonSurface`, modes 0, 1 and 4): towers in two flat tones of the cool shade (faces
+  - `NativeRooftop.shader` (`RoofToonSurface`, modes 0, 1 and 4; **held since 2026-10-24**: this pass crashed the
+    Windows Editor's shader compiler, so the world draws its legacy surfaces in both looks and the code below lives on
+    `claude/rooftop-bisect` until the cause is found, DEV_LOG): towers in two flat tones of the cool shade (faces
     turned to a cool key and the rest) and a third on roofs, a painted glow up from the street; windows lit in runs of
     six along whole floors with two brightness levels (painted strips, not per-window noise; far, the bay average as
     before; the tower seed is rounded so an interpolated constant cannot speckle a window); props lifted out of
