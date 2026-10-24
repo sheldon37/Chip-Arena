@@ -1,3 +1,34 @@
+## 2026-10-24 — Claude: the greatsword's model plays the RPG pack's own clips (merged into shared)
+
+- **Branch/base:** `claude/motion-greatsword` from shared `b6b3322d`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner feedback and decisions:** recordings showed low idles, twitches, detached hands and floor clipping. The owner then chose:
+  - pack animations whole, hit timing adjusted as needed;
+  - retime the clips to the rules (proposing rule changes to Astra only where a clip cannot fit);
+  - all weapons, guns and casters, one build each, greatsword first;
+  - the model everywhere, Classic kept as a backup;
+  - slash kills sever at the joints;
+  - rifle and machine gun shouldered when aiming or firing;
+  - Claude judges realism and fixes on its own.
+- **Changes (presentation only):**
+  - `Core/NativeVisualMotion`: the greatsword set and state choice (idle, locomotion blend, combo attacks, sprint attack, air attack, jump/flip/fall/landing, roll, block, stun, hit reactions). Attack retiming puts the clip's `Hit` mid hit window. Specials, kit moves and knockdowns decline (game pose).
+  - `Core/NativeVisualMotionClips`: the motion bank format, sampler and muscle-space mix.
+  - `Runtime/NativeVisualMotionPresentation`:
+    - mix onto a proxy skeleton via HumanPoseHandler, then onto the body by an eased weight;
+    - contact guard;
+    - the weapon on the drawn hand, with the rig's weapon hand following;
+    - support-fist reach.
+  - The bake writes `Resources/ChipArenaVisualMotion.bytes` (37 clips, 0.43 MB). `tools/pack_visual_body.py` ships `.bytes` beside the prefab; `tools/install_local_assets.py` accepts `.bytes` (tooling note for Astra: no budget change).
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-packslash.zip`: 357 visual-body files, 36.04 MB.
+  - The pack-slashes build `b6b3322dc80f` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of `fa77691c`), including a new visual-rig motion group.
+  - `test_visual_body_assets.py` (6) OK; `test_effects_audio.py` OK.
+  - Unity compile: PASS.
+  - Play mode (moonlit), with the local tool's new `press=`, `hold=` and `pose=` (per-frame state, hips, lowest vertex, grip and pop log): idle, jump, fall, landing, air attack, a three-cut combo, roll and held sprint on the model. The right fist stays 0.099 m from the grip in every state; grounded lowest vertex median 0.000 m; the slash crescents follow the swings.
+- **Not run:** specials and kit moves on the pack (they keep the game's pose); a Windows build; multiplayer.
+- **Animation, timing, networking:** attack clips are retimed to the existing hit windows; hit volumes, damage, cooldowns, movement and the wire are unchanged. Weapon trails and effects now follow the drawn blade, which follows the clip.
+- **Next:** sword, daggers, shield, guns, casters; the greatsword's specials; dodge ghosts and severed kills on the model.
+
 ## 2026-10-24 — Claude: slash rings, claw marks and line slashes on finishers and specials (merged into shared)
 
 - **Branch/base:** `claude/pack-slashes` from shared `e763377f`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

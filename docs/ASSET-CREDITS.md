@@ -112,6 +112,10 @@ The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, th
 clips of the owner's Explosive RPG Character Mecanim Animation Pack, with the pack's source character (its avatar, which the
 clips' humanoid import copies). They ship as FBX in the same licensed-assets zip, under the same rules.
 
+The model's own animation (`docs/BOZO-INTEGRATION.md`) plays the same pack's `2Hand-Sword` clips for the greatsword. They
+are sampled on the body at the bake into a motion bank (`ChipArenaVisualMotion.bytes`, humanoid poses per frame). The bank
+ships in the licensed-assets zip; the pack's clip files do not.
+
 ### Hazard kit additions (2026-10-14)
 
 The hazard kit's 19 keys (`docs/HAZARD-KIT.md`) add 46 clips, all from Universal Sound FX (Imphenzia, 17256).
