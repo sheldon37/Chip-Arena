@@ -1,0 +1,129 @@
+using System;
+
+namespace ChipArena.UnityConversion
+{
+    // The visual body's own animation (owner 2026-10-24: "Pack animations whole, and adjust hit timing as needed", "Retime clips
+    // to rules"; Runtime NativeVisualMotionPresentation.cs, docs/BOZO-INTEGRATION.md): which of the animation pack's humanoid
+    // clips a pilot's model plays for its replicated state, and where in the clip. A weapon's set names its idle, its
+    // locomotion (the stride's order: runs, walks, the sprint), its combo's attacks and its other moves. An attack plays from
+    // the strike's start, its Hit (the pack's own event) on the middle of the rules' hit window, its recovery to the strike's
+    // end; a roll fills the roll; a jump, the air jump's flip, the fall and the landing follow the pilot's air state. A state the
+    // set does not cover (a special, a kit move, a knockdown, a juggle) returns false: the game's own pose shows there.
+    // Presentation only: when and where a move hits, its reach and every rule are the game's; the clips are timed to them.
+    public static class NativeVisualMotion
+    {
+        public sealed class Set
+        {
+            public string Spec, Idle, Jump, Flip, Fall, Land, Block, BlockHit, Stunned, Roll, AirAttack, SprintAttack;
+            /// <summary>The combo's clips by attack index from 1 (cycling past the end).</summary>
+            public string[] Attacks;
+            /// <summary>Hit reactions from the front, back, left and right.</summary>
+            public string[] Reactions;
+            /// <summary>Locomotion, NativeVisualStride's order: 8 runs, 8 walks (clockwise from forward), the sprint.</summary>
+            public string[] Locomotion;
+            /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
+            public string[] All;
+        }
+        /// <summary>A clip's length and the time of its Hit event (seconds; a clip without one: its middle).</summary>
+        public interface IClips { bool Has(string clip); float Length(string clip); float Hit(string clip); }
+
+        // Greatsword: the pack's two-handed sword set.
+        private static readonly Set Greatsword=Build("greatsword","2Hand-Sword-",
+            new[]{"Attack1","Attack2","Attack4","Attack3","Attack5","Attack6"},
+            new[]{"GetHit-F1","GetHit-B1","GetHit-L1","GetHit-R1"});
+        private static Set Build(string spec,string p,string[] attacks,string[] reactions)
+        {
+            var s=new Set{Spec=spec,Idle=p+"Idle",Jump=p+"Jump",Flip=p+"Jump-Flip",Fall=p+"Fall",Land=p+"Land",Block=p+"Block",BlockHit=p+"Block-GetHit1",
+                Stunned=p+"Stunned",Roll=p+"Roll-Forward",AirAttack=p+"Air-Attack1",SprintAttack=p+"Run-Forward-Attack1"};
+            s.Attacks=Array.ConvertAll(attacks,a=>p+a);s.Reactions=Array.ConvertAll(reactions,a=>p+a);
+            string[] dirs={"Forward","Forward-Right","Right","Backward-Right","Backward","Backward-Left","Left","Forward-Left"};
+            s.Locomotion=new string[NativeVisualStride.Clips];
+            for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=p+"Run-"+dirs[i];s.Locomotion[NativeVisualStride.Walks+i]=p+"Strafe-"+dirs[i];}
+            s.Locomotion[NativeVisualStride.Sprint]=p+"Run-Forward";
+            var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
+            all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
+            s.All=all.ToArray();return s;
+        }
+        /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
+        public static Set For(string spec)=>spec=="greatsword"?Greatsword:null;
+
+        /// <summary>A body's memory across frames: when it left the ground and landed, and the last strike seen.</summary>
+        public sealed class Memory
+        {
+            public bool WasGrounded=true;public float AirSince=-100,LandedAt=-100,AirAttackAt=-100;
+        }
+        /// <summary>What the model plays this frame: a clip at a time (looping or held at its end), or the locomotion blend.</summary>
+        public struct Pick { public string Clip; public float Time; public bool Locomotion; public float Fade; }
+
+        public const float FadeIn=.08f, FadeOut=.2f, LandFor=.22f, ReactionMin=.25f;
+        /// <summary>Why the last Choose declined (null when it chose): for the local checks.</summary>
+        public static string Declined;
+
+        /// <summary>The model's clip for pilot `a` at `time` (false: not covered; the game's pose shows).</summary>
+        public static bool Choose(Set set,Actor a,float time,Memory m,IClips clips,bool moving,out Pick pick)
+        {
+            pick=default;
+            if(a.Grounded!=m.WasGrounded){if(a.Grounded)m.LandedAt=time;else m.AirSince=time;m.WasGrounded=a.Grounded;}
+            Declined=null;
+            if(NativeSpecialPose.Down(a,time)){Declined="down";return false;}
+            if(NativeSpecialPose.Active(a,time)){Declined="special";return false;}
+            if(a.JuggleUntil>time){Declined="juggle";return false;}
+            if(a.MeleeKit!=null&&a.MeleeKit.At>-90&&time>=a.MeleeKit.At&&time<a.MeleeKit.Until){Declined="kit";return false;}
+            if(a.Rolling(time))return Fit(set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);
+            // The plunging air attack: its Hit on the impact (the landing), else on the clip's own.
+            if(a.AirAttack&&a.AttackAt>-90&&time>=a.AttackAt)
+            {
+                if(!clips.Has(set.AirAttack))return false;
+                float hit=clips.Hit(set.AirAttack),len=clips.Length(set.AirAttack),impact=a.ImpactAt>a.AttackAt?a.ImpactAt:a.AttackAt+hit;
+                pick=new Pick{Clip=set.AirAttack,Time=Retime(time,a.AttackAt,impact,impact+(len-hit),hit,len),Fade=FadeIn};return true;
+            }
+            if(a.Attacking(time))
+            {
+                string clip=a.SprintAttack?set.SprintAttack:set.Attacks[Math.Max(0,a.Combo)%set.Attacks.Length];if(!clips.Has(clip))return false;
+                float windup=a.VisualWindup>0?a.VisualWindup:.25f,hitAt=a.SwingAt>=a.AttackAt&&a.SwingUntil>a.SwingAt?(a.SwingAt+a.SwingUntil)*.5f:a.AttackAt+windup;
+                pick=new Pick{Clip=clip,Time=Retime(time,a.AttackAt,hitAt,Math.Max(hitAt+.05f,a.AttackUntil),clips.Hit(clip),clips.Length(clip)),Fade=FadeIn};return true;
+            }
+            if(a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin))
+            {
+                string clip=set.Reactions[Side(a.ReactionYaw)];if(!clips.Has(clip))return false;
+                return Fit(clip,time,a.ReactionAt,Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin),clips,FadeIn,out pick);
+            }
+            if(a.StunUntil>time&&clips.Has(set.Stunned)){pick=new Pick{Clip=set.Stunned,Time=time,Fade=FadeIn};return true;}
+            if(time>=a.BlockAt&&time<a.BlockUntil&&clips.Has(set.Block)){pick=new Pick{Clip=set.Block,Time=time-a.BlockAt,Fade=FadeIn};return true;}
+            if(!a.Grounded)
+            {
+                // The air jump's flip, the rise, the fall.
+                if(a.AirJumps>0&&a.AirJumpAt>-90&&time>=a.AirJumpAt&&time-a.AirJumpAt<clips.Length(set.Flip)&&clips.Has(set.Flip)){pick=new Pick{Clip=set.Flip,Time=time-a.AirJumpAt,Fade=FadeIn};return true;}
+                if(a.Velocity.y>0&&clips.Has(set.Jump)){pick=new Pick{Clip=set.Jump,Time=time-m.AirSince,Fade=FadeIn};return true;}
+                if(clips.Has(set.Fall)){pick=new Pick{Clip=set.Fall,Time=time-m.AirSince,Fade=FadeOut};return true;}
+                Declined="air";return false;
+            }
+            if(!moving&&time-m.LandedAt<LandFor&&clips.Has(set.Land)){pick=new Pick{Clip=set.Land,Time=(time-m.LandedAt)*clips.Length(set.Land)/LandFor,Fade=FadeIn};return true;}
+            if(moving){pick=new Pick{Locomotion=true,Fade=FadeOut};return true;}
+            if(!clips.Has(set.Idle))return false;
+            pick=new Pick{Clip=set.Idle,Time=time,Fade=FadeOut};return true;
+        }
+
+        /// <summary>A clip played across [start, end], its whole length.</summary>
+        private static bool Fit(string clip,float time,float start,float end,IClips clips,float fade,out Pick pick)
+        {
+            pick=default;if(!clips.Has(clip))return false;float len=clips.Length(clip);
+            pick=new Pick{Clip=clip,Time=len*Clamp01((time-start)/Math.Max(1e-3f,end-start)),Fade=fade};return true;
+        }
+        /// <summary>The clip time at `time` for a move from `start`, hitting at `hitAt`, ending at `end`: the clip's own Hit (`hit` s
+        /// in, of `length`) on hitAt, each side stretched to fit.</summary>
+        public static float Retime(float time,float start,float hitAt,float end,float hit,float length)
+        {
+            if(time<=hitAt)return hit*Clamp01((time-start)/Math.Max(1e-3f,hitAt-start));
+            return hit+(length-hit)*Clamp01((time-hitAt)/Math.Max(1e-3f,end-hitAt));
+        }
+        /// <summary>The reaction's side from its yaw (the struck pilot's facing frame, +x its left, radians): 0 front, 1 back,
+        /// 2 left, 3 right.</summary>
+        public static int Side(float yaw)
+        {
+            float y=(float)Math.IEEERemainder(yaw,2*Math.PI),deg=y*57.29578f;
+            if(Math.Abs(deg)<=45)return 0;if(Math.Abs(deg)>=135)return 1;return deg>0?2:3;
+        }
+        private static float Clamp01(float x)=>x<0?0:x>1?1:x;
+    }
+}

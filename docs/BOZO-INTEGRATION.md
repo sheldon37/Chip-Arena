@@ -1128,6 +1128,40 @@ already? Cant we utilize that?"
     - stairs and ramps (the clips' feet assume a level floor);
     - idles, jumps and reactions from the pack.
   - Hit volumes, timing, movement and the wire are unchanged.
+- **The model's own animation (2026-10-24, `claude/motion-greatsword`; owner, after reviewing recordings: "Pack animations
+  whole, and adjust hit timing as needed", "Retime clips to rules", greatsword first, then sword, daggers, shield, guns,
+  casters).** For a weapon whose set has moved over, the model plays the RPG pack's own clips whole in place of the game's
+  pose retargeted.
+  - **Greatsword set** (`Core/NativeVisualMotion`, tested), from the pack's `2Hand-Sword` clips:
+    - idle; the run, walk and sprint blend (the stride's weights and rate);
+    - six combo attacks, in the order Attack1, 2, 4, 3, 5, 6; the sprint attack; the plunging air attack;
+    - jump, air-jump flip, fall, landing, roll, block, stun, and hit reactions from front, back, left and right.
+  - **Timing:** each attack plays from the strike's start. The clip's own `Hit` event lands mid hit window, and its recovery
+    ends with the strike. The roll fills the roll; the plunge's `Hit` lands on its impact.
+  - **Kept on the game's pose for now:** specials, kit moves (Whirlwind, Earthsplitter), knockdowns and juggles. The model
+    fades to the game's pose and back over 0.15 s.
+  - **The bake** (local tool, the stride step and the body bake) writes the motion bank
+    `Resources/ChipArenaVisualMotion.bytes` (`Core/NativeVisualMotionClips`). It plays each named clip on the body through
+    Unity's own in-place playback with foot IK, and reads back the humanoid pose 30 times a second: body position and
+    rotation and every muscle. It also stores each clip's length, `Hit`, loop and travel speed. The greatsword is 37 clips in
+    0.43 MB, where the clip files would add about 18 MB.
+  - **Runtime** (`Runtime/NativeVisualMotionPresentation.cs`):
+    - the picked clip fades in and the rest fade out, mixed by weight in muscle space;
+    - the mix goes onto a renderer-less copy of the skeleton through its avatar, then onto the body, every bone;
+    - a contact guard puts the body's lowest point (feet, knees, hips, chest, head, hands) on the pilot's floor point; jumps
+      and plunges carry their own lift, which the game's height already gives; running, it only keeps the feet out of the
+      floor;
+    - the weapon rides the model's right hand at the game hold's fist-on-handle offset, and the rig's weapon hand follows it,
+      so trails, the slash pack, blood and effects stay on the drawn blade;
+    - the support fist reaches the handle 10 cm behind the right, easing in and out.
+    - `--ca-no-stride` keeps the game's pose.
+  - **Measured** (Play mode, the local tool's new `press=`, `hold=` and per-frame `pose=` log):
+    - the right fist stays 0.099 m from the weapon's grip point in every state;
+    - standing, the lowest vertex is 0.000 m over the floor (before: 2.8 cm under);
+    - landing and the plunge no longer sink 25 cm under the floor.
+  - **Packing:** the packer ships the bake's `.bytes` beside the prefab; the installer accepts them. The visual body is 357
+    files, 36.0 MB.
+  - Hit windows, reach, movement and the wire are unchanged.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.

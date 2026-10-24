@@ -44,6 +44,8 @@ class Bake:
         self.clip = self.asset('Pack/Clips/Run.fbx', 'FBX clip fake')
         self.controller = self.asset('ChipArenaLocal/Stride/Stride.controller', f'm_Motion: {{fileID: 7400000, guid: {self.clip}, type: 3}}')
         self.asset(PREFAB, f'm_Mesh: {{fileID: 4300000, guid: {self.mesh}, type: 3}}\nm_Materials:\n  - {{fileID: 2100000, guid: {self.mat}, type: 2}}\nm_Controller: {{fileID: 9100000, guid: {self.controller}, type: 2}}\n')
+        # The motion bank: a data file beside the prefab, loaded by name.
+        self.asset('ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes', 'CAMO fake')
         self.write(self.local / 'Pack/Textures/Unused.png', 'not used')
         self.write(self.local / 'Pack/Textures/Unused.png.meta', meta(self.next()))
 
@@ -105,7 +107,7 @@ class VisualBodyTests(unittest.TestCase):
             names = set(z.namelist())
             manifest = json.loads(z.read('visual-body.json'))
         self.assertEqual(manifest['prefab'], PREFAB)
-        expected = {PREFAB, 'ChipArenaLocal/Materials/Top 1.mat', 'Pack/Textures/Top_D.png', 'Pack/Meshes/Top.fbx', 'Pack/Meshes/Top.mat', 'ChipArenaLocal/Stride/Stride.controller', 'Pack/Clips/Run.fbx'}
+        expected = {PREFAB, 'ChipArenaLocal/Materials/Top 1.mat', 'Pack/Textures/Top_D.png', 'Pack/Meshes/Top.fbx', 'Pack/Meshes/Top.mat', 'ChipArenaLocal/Stride/Stride.controller', 'Pack/Clips/Run.fbx', 'ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes'}
         expected |= {p + '.meta' for p in expected} | {f + '.meta' for f in ('ChipArenaLocal', 'ChipArenaLocal/Resources', 'ChipArenaLocal/Materials', 'ChipArenaLocal/Stride', 'Pack', 'Pack/Textures', 'Pack/Meshes', 'Pack/Clips')}
         self.assertEqual(set(manifest['files']), expected)
         for rel, digest in manifest['files'].items():
@@ -130,7 +132,7 @@ class VisualBodyTests(unittest.TestCase):
         keep.write_text('a full local pack keeps its other files')
         code, text = self.install(out)
         self.assertEqual(code, 0, text)
-        self.assertIn('Installed the visual body: 22 files', text)
+        self.assertIn('Installed the visual body: 24 files', text)
         local = self.project / 'Assets/LocalAssets'
         self.assertTrue((local / PREFAB).is_file() and (local / (PREFAB + '.meta')).is_file())
         self.assertTrue((local / 'Pack/Meshes/Top.fbx').is_file())

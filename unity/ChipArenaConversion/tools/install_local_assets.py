@@ -44,7 +44,7 @@ CLIP_NAME = re.compile(r'^[a-z0-9_-]{1,40}$')
 GUID = re.compile(r'^guid: ([0-9a-f]{32})$', re.M)
 MAX_ZIP_FILES, MAX_ZIP_BYTES, MAX_FILE_BYTES = 5000, 64 * 1024 * 1024, 16 * 1024 * 1024
 VISUAL_BODY_MANIFEST, VISUAL_BODY_PREFAB, VISUAL_BODY_BUDGET = 'visual-body.json', 'ChipArenaVisualBody.prefab', 40 * 1000 * 1000
-VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.controller', '.meta'}
+VISUAL_BODY_KINDS = {'.prefab', '.mat', '.fbx', '.png', '.tga', '.jpg', '.jpeg', '.asset', '.controller', '.bytes', '.meta'}
 SHA256 = re.compile(r'^[0-9a-f]{64}$')
 
 
