@@ -1,3 +1,24 @@
+## 2026-10-24 — Claude: gun rounds kick up surface debris and leave bullet holes (merged into shared)
+
+- **Branch/base:** `claude/surface-impacts` from shared `d09f4fb7`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request:** "Implement whatever we have on asset packs that would work good on this project, make them fit." These effects come from kripto289's Impacts and Muzzle Flashes, in the owner's new Unity Powerhouse bundle on the drive.
+- **Changes (presentation only):**
+  - A gun's plain round hitting a prop plays the surface's own debris (stone dust and chips, metal sparks, wood splinters) and leaves a bullet hole fading over 9 s.
+    - Core: `NativeSurfaceImpacts` (kinds by prop material, as the impact sound; guns' plain rounds only).
+    - Runtime: `NativeSurfaceImpactPresentation.cs`, called from `WeaponFx`; pooled, 6 per kind and 48 holes; the low tier draws holes only.
+  - The local bake converts the pack's three impacts to the engine's built-in particle shaders (halved tints for the legacy ×2, textures at most 1024, scale 0.6, debris at most 1.6 s). Its decal, scripts and lights are dropped; the game draws its own hole quad. No pack shader or script ships.
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-stride.zip`: 298 visual-body files, 31.76 MB, verified.
+  - Docs: `docs/PACK-EFFECTS.md` (new: this and the next candidates), `ASSET-CREDITS.md`.
+- **Checks (actual):**
+  - Full CoreTests 846 PASS, exit 0 (LF checkout of `67bcf513`); `--visual-rig` adds the impact checks.
+  - Unity compile (Player, game, editor): PASS.
+  - Play mode on Moonlit with the local tool's new `autobot=` (the bot AI fires the local pilot's gun): machine-gun and pistol rounds play the stone impacts on the snow at the cap of 6, with 12–48 holes showing; close-up captures checked.
+  - The three converted effects were rendered in the Editor.
+- **Also on this PC:** the stride build `d09f4fb79f5c` succeeded and published (its controller installed).
+- **Not run:** a Windows build in game; multiplayer (the holes are seeded by event id, so every client places the same ones); metal and wood surfaces in a match.
+- **Animation, timing, networking:** none.
+- **Next:** more of the drive's effect packs (`docs/PACK-EFFECTS.md` candidates). Then the rest of the animation revamp.
+
 ## 2026-10-24 — Claude: rooftop white/green props, what is known (note; merged into shared)
 
 - **Branch/base:** `claude/rooftop-props-note` from shared `7bb16c3`. Docs only; shared only (the builder is not moved for a note). Not published.
