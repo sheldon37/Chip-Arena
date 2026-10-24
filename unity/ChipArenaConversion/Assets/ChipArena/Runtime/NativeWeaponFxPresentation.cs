@@ -237,6 +237,8 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void WeaponFx(NativeArena arena,Camera camera,float now)
         {
+            // Rounds that hit a surface: its debris and a bullet hole (NativeSurfaceImpactPresentation.cs).
+            SurfaceImpacts(arena,now);
             var draw=WeaponFxDraw;if(draw==null)return;draw.Low=LowGraphics;
             if(!ReferenceEquals(emitterArena,arena)||emitterGeneration!=arena.Generation||now<emitterClock-.25f){ClearEmitters();emitterArena=arena;emitterGeneration=arena.Generation;}
             emitterClock=Math.Max(emitterClock,now);
