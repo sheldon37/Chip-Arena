@@ -85,6 +85,12 @@ The same rules as the visual body apply. The packs stay in the git-ignored `Asse
 the meshes and textures the bake uses ship in the licensed-assets zip, which the builder installs for builds. They are
 never committed or published as files.
 
+### Surface impacts (2026-10-24, owner licence)
+
+Gun rounds hitting a surface (`docs/PACK-EFFECTS.md`) play converted particle effects and bullet-hole textures from
+kripto289's Impacts and Muzzle Flashes. The effects are its concrete, metal and wood impacts, and the textures, meshes and
+materials the bake uses ship in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
+
 ### Visual body locomotion clips (2026-10-24, owner licence)
 
 The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, the stride) play 17 `Unarmed` locomotion
