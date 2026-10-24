@@ -91,6 +91,12 @@ Gun rounds hitting a surface (`docs/PACK-EFFECTS.md`) play converted particle ef
 kripto289's Impacts and Muzzle Flashes. The effects are its concrete, metal and wood impacts, and the textures, meshes and
 materials the bake uses ship in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
 
+### Dissolve noise (2026-10-24, owner licence)
+
+A dead pilot's dissolve (`docs/PACK-EFFECTS.md`) reads `Cutout Map 15` of Advanced Dissolve (Amazing Assets). It ships in
+the licensed-assets zip under the visual body's rules; the pack's shaders and scripts do not ship, and the dissolve shader
+code is our own.
+
 ### Slash brush (2026-10-24, owner licence)
 
 The slash crescents' ink-brush streaks (`docs/PACK-EFFECTS.md`) read the `WhiteScratches` texture of Ordoss' Magic Slashes

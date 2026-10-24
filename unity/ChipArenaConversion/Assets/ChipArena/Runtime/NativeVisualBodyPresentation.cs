@@ -36,6 +36,12 @@ namespace ChipArena.UnityConversion
         public const string VisualBodyResource="ChipArenaVisualBody", VoxelBodiesArgument="--ca-voxel-bodies";
         private const int ViewBodyId=-999;
         private static GameObject visualBodyPrefab; private static int visualBodyState; // 0 unread, 1 drawn, -1 absent or turned off
+        // The dead pilot's dissolve: the bake's noise (VisualDissolve/Noise, from the owner's dissolve pack) set as the visual body
+        // shader's global once the bake loads; without it a dead body goes at half opacity as before.
+        private static bool visualDissolve;
+        private static readonly int DissolveId=Shader.PropertyToID("_Dissolve"),DissolveEdgeId=Shader.PropertyToID("_DissolveEdge"),DissolveNoiseId=Shader.PropertyToID("_VisualDissolveNoise");
+        /// <summary>The dissolve front glows the pilot's accent at this many times its colour (past 1 the bloom takes it).</summary>
+        public const float DissolveGlow=3f;
         /// <summary>Settings · Player model is Classic (set each frame from the preferences): every pilot draws its voxel body.</summary>
         public bool ClassicBodies;
         /// <summary>Whether this install draws the visual body at all (its bake found, not turned off at launch): Settings shows the
@@ -70,6 +76,8 @@ namespace ChipArena.UnityConversion
                     visualBodyPrefab=Array.IndexOf(Environment.GetCommandLineArgs(),VoxelBodiesArgument)>=0?null:Resources.Load<GameObject>(VisualBodyResource);
                     visualBodyState=visualBodyPrefab!=null?1:-1;
                     if(visualBodyState==1)Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"Visual body: {0} found; pilots draw it in place of the voxel body ({1} draws voxel).",VisualBodyResource,VoxelBodiesArgument);
+                    var noise=visualBodyPrefab!=null?visualBodyPrefab.transform.Find("VisualDissolve/Noise"):null;var noiseTex=noise!=null?noise.GetComponent<Renderer>()?.sharedMaterial?.mainTexture:null;
+                    if(noiseTex!=null){Shader.SetGlobalTexture(DissolveNoiseId,noiseTex);visualDissolve=true;}
                 }
                 return visualBodyState==1;
             }
@@ -387,7 +395,7 @@ namespace ChipArena.UnityConversion
         // overlay and shrink), the skeleton scaled by the parts' scale. A whole body only: a cut, crushed, smashed or bisected
         // corpse, and a swarm, soul or frost look, keep the voxel body (their effects are made of its parts). It hides while the
         // voxel body would be under half opacity and goes with its corpse.
-        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;}
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;}
         private readonly Dictionary<NativeCorpse,VisualCorpse> visualCorpses=new Dictionary<NativeCorpse,VisualCorpse>();
         private readonly List<NativeCorpse> visualCorpsesGone=new List<NativeCorpse>();
         // A death's visual body: an instance posed from the rig (in its last pose), `offset` from it, in the pilot's accent, without
@@ -418,7 +426,7 @@ namespace ChipArena.UnityConversion
         {
             if(rig==null||!VisualDeathFor(death)||corpse.Bisect!=null||corpse.Smash!=null||corpse.Severed.Count>0||corpse.CrushPart>=0)return;
             var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out var joint);if(root==null)return;
-            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length]};
+            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death)};
             for(int v=0;v<bones.Length;v++){int part=corpse.Anchor[joint[v]];if(!corpse.Parts.ContainsKey(part))part=CapturedRig.Pelvis;c.Part[v]=part;c.Bind[v]=bones[v].localToWorldMatrix;}
             visualCorpses[corpse]=c;
         }
@@ -426,7 +434,7 @@ namespace ChipArena.UnityConversion
         // death: each visual bone follows its joint's motion since then (the scene's joint matrices over the rig's at death),
         // hidden while the scene hides the pelvis or the body is under half opacity. True: the voxel victim and its hat are not
         // drawn. Kept per death until it goes undrawn for 2 s.
-        private sealed class VisualScene{public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;}
+        private sealed class VisualScene{public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;}
         private readonly Dictionary<long,VisualScene> visualScenes=new Dictionary<long,VisualScene>();private readonly List<long> visualScenesGone=new List<long>();
         private bool VisualSceneShown(NativeDeath death,Func<int,Matrix4x4> bone,Func<int,bool> visible,float alpha)
         {
@@ -435,14 +443,15 @@ namespace ChipArena.UnityConversion
             {
                 if(!rigs.TryGetValue(death.id,out var rig))return false;
                 var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joint);if(root==null)return false;
-                s=new VisualScene{Root=root,Bones=bones,Joint=joint,Bind=new Matrix4x4[bones.Length]};
+                s=new VisualScene{Root=root,Bones=bones,Joint=joint,Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death)};
                 for(int v=0;v<bones.Length;v++)s.Bind[v]=bones[v].localToWorldMatrix;
                 for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
                 visualScenes[key]=s;
             }
             s.Frame=Time.frameCount;s.Seen=Time.unscaledTime;
-            if(alpha<.5f||!visible(CapturedRig.Pelvis)){if(s.Root.activeSelf)s.Root.SetActive(false);return true;}
+            if(alpha<(visualDissolve?.01f:.5f)||!visible(CapturedRig.Pelvis)){if(s.Root.activeSelf)s.Root.SetActive(false);return true;}
             if(!s.Root.activeSelf)s.Root.SetActive(true);
+            if(visualDissolve)VisualDissolve(s.All,ref s.Dissolve,1-alpha,s.Edge);
             for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];
             for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
             return true;
@@ -453,12 +462,22 @@ namespace ChipArena.UnityConversion
         {
             if(!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null||corpse.Swarm!=null)return false;
             c.Frame=Time.frameCount;
-            if(alpha<.5f){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}
+            // With the bake's noise the body dissolves as the corpse fades (cells away, the front in the pilot's accent); without, it goes at half.
+            if(alpha<(visualDissolve?.01f:.5f)){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}
             if(!c.Root.activeSelf)c.Root.SetActive(true);
+            if(visualDissolve)VisualDissolve(c.All,ref c.Dissolve,1-alpha,c.Edge);
             c.Bones[0].localScale=Vector3.one*Mathf.Max(.001f,corpse.PartScale);
             for(int v=0;v<c.Bones.Length;v++){var m=corpse.PartFrom(c.Part[v])*c.Bind[v];c.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
             return true;
         }
+        // A dead body's dissolve (0 whole to 1 gone; NativeVisualBodyFx.cginc DissolveFront) on its renderers, written when it moves.
+        private MaterialPropertyBlock dissolveBlock;
+        private void VisualDissolve(Renderer[] all,ref float last,float amount,Color edge)
+        {
+            amount=Mathf.Round(Mathf.Clamp01(amount)*64)/64;if(amount==last)return;last=amount;dissolveBlock??=new MaterialPropertyBlock();
+            foreach(var r in all){if(r==null)continue;r.GetPropertyBlock(dissolveBlock);dissolveBlock.SetFloat(DissolveId,amount);dissolveBlock.SetColor(DissolveEdgeId,edge);r.SetPropertyBlock(dissolveBlock);}
+        }
+        private static Color DissolveEdgeOf(NativeDeath death){if(!ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var c))c=new Color(.44f,.88f,.82f);return c.linear*DissolveGlow;}
         // After the deaths are presented: hide the corpse bodies not drawn this frame; drop those whose corpse is gone.
         private void VisualCorpsesShown()
         {

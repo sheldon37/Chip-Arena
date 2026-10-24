@@ -85,10 +85,37 @@ Owner: "keep going with the next packs, starting with the sword slash arcs."
 - **Not yet:** the pack's slash rings, claw marks and line slashes for specials and finishers. They need its dissolve
   ported into our effects shader.
 
+## A dead pilot dissolves (2026-10-24, `claude/visual-dissolve`)
+
+- **What it does:** a pilot's visual body, as its corpse or authored death scene fades, now dissolves into hexagonal cells.
+  The burning front glows the pilot's accent at 3 times its colour, with bloom. Before, the body vanished at half opacity.
+- **When:** it runs across the corpse's own fade window (`NativeDeathPresentation`: the last 0.65 s of its 5 s), so no
+  timing changes. Gory deaths and voxel-effect deaths keep the voxel body as before.
+- **Source:** Advanced Dissolve (Amazing Assets), its `Cutout Map 15` (hexagons). The pack's shaders and scripts cannot
+  ship, nor be committed in our public shaders, so the dissolve is our own.
+- **Shader:** `NativeVisualBodyFx.cginc DissolveFront`:
+  - `_Dissolve` 0 to 1 cuts the noise read on each part's own texture coordinates (three tiles), so the cells stay on the
+    cloth as the ragdoll moves;
+  - a 0.07 band at the front glows `_DissolveEdge`;
+  - at 0 nothing is read or cut.
+  - Both the toon body and its outline use it.
+- **The bake** (local tool `bozo-dissolve.request`; the body bake runs it too) adds `VisualDissolve/Noise` to the prefab:
+  an inactive quad whose material carries the map, with the import set to repeat and linear.
+- **Runtime:** `NativeVisualBodyPresentation`:
+  - once the bake loads, it sets the noise as the global `_VisualDissolveNoise`;
+  - `VisualCorpseShown` and `VisualSceneShown` write `_Dissolve` = 1 - opacity and the accent front on the dead body's
+    renderers, only when the value moves;
+  - the body hides at full dissolve.
+- **Checks:**
+  - `--visual-rig` covers the wiring.
+  - The local tool's `look=1` rendered the baked body at dissolve 0, 0.25, 0.5, 0.75 and 0.9: glowing cells, then holes,
+    then scattered cells.
+  - A forced self-kill in Play mode ran, but the slow-motion capture missed the corpse's fade window; it was not seen in a
+    match.
+
 ## Candidates from the same drive (not started)
 
 - **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles, muzzle flashes, explosions and magic in the toon style.
 - **Kronnect's Trails FX:** afterimages for rolls, dashes and sprint attacks.
-- **Advanced Dissolve:** the spawn-in and deaths. It needs its dissolve inside our toon shader.
 
 Each would follow the same route: converted at the bake, drawn from events, presentation only.

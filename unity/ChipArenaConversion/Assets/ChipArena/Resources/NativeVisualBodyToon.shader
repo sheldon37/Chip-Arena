@@ -63,6 +63,7 @@ Shader "ChipArena/VisualBodyToon" {
  void surf(Input i,inout SurfaceOutput o)
  {
   SpawnClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
+  float front=DissolveFront(i.uv_Texture2D);o.Emission+=_DissolveEdge.rgb*front;
   o.Albedo=SpawnTinted(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb,i.worldPos.y);o.Alpha=map.a;
   if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
   float3 n=normalize(i.worldNormal);
@@ -141,6 +142,7 @@ Shader "ChipArena/VisualBodyToon" {
   fixed4 frag(v2f i):SV_Target
   {
    clip(i.color.a-.5);SpawnClip(i.world);float4 map=tex2D(_Texture2D,i.uv);clip(map.a-_Cutoff);
+   DissolveFront(i.uv);
    float3 albedo=SpawnTinted(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb,i.world.y);float3 n=normalize(i.normal);
    UNITY_LIGHT_ATTENUATION(atten,i,i.world);float ndl=dot(n,_WorldSpaceLightPos0.xyz);float3 sh=ShadeSH9(float4(n,1));
    // As NativeToonSurface's ArenaToon lights the body: Lambert while the style is off, the ramp over the flattened SH on.

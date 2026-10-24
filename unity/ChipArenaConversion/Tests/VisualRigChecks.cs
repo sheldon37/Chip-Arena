@@ -98,6 +98,7 @@ namespace ChipArena.UnityConversion
             Weapons(root);Console.WriteLine("PASS visual rig: a visual body draws the bake's life-size weapon in the Standard skin's place, its right hand fitted so the weapon's dressing lands on it, the grasp on its handguard and stock, all put back before the next pose ("+count+" checks)");
             Impacts(root);Console.WriteLine("PASS visual rig: a gun's plain round that hits a prop plays the bake's stone, metal or wood impact out of the surface and leaves a bullet hole that fades; specials, melee and magic draw their own; the low tier draws holes only ("+count+" checks)");
             SlashBrush(root);Console.WriteLine("PASS visual rig: the slash crescents take the baked ink brush's streaks (outside the shader's shared block, crescents only, off without a bake) ("+count+" checks)");
+            Dissolve(root);Console.WriteLine("PASS visual rig: a dead pilot's visual body dissolves into the bake's noise as its corpse or death scene fades, the front in the pilot's accent (at half opacity without the noise) ("+count+" checks)");
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
         }
 
@@ -132,6 +133,20 @@ namespace ChipArena.UnityConversion
             Check(draw.Contains("material.SetFloat(BrushOnId,brush!=null?1:0);"),"the drawer turns the brush on only with a texture");
             Check(pres.Contains("WeaponFxDraw=>weaponFx??=sourceModels!=null?WithSlashBrush(new NativeWeaponFxDraw()):null;")&&pres.Contains("prefab.transform.Find(\"VisualSlashes/Brush\")"),"the match's drawer takes the bake's brush when there is one");
             foreach(string pack in new[]{"Ordos","Scratches","Kripto"})Check(!pres.Contains(pack)&&!draw.Contains(pack)&&!fx.Contains(pack),"no pack names in the brush's code: "+pack);
+        }
+
+        // The dead pilot's dissolve (the owner's dissolve pack's noise through the bake): the visual body shader cuts by it as the
+        // corpse fades, its front glowing the pilot's accent; without the noise a dead body goes at half opacity as before.
+        private static void Dissolve(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string fx=R("Resources/NativeVisualBodyFx.cginc"),toon=R("Resources/NativeVisualBodyToon.shader"),body=R("Runtime/NativeVisualBodyPresentation.cs");
+            Check(fx.Contains("if(_Dissolve<=0.0)return 0.0;")&&fx.Contains("clip(n-cut);"),"the dissolve reads nothing and cuts nothing at 0");
+            Check(toon.Contains("float front=DissolveFront(i.uv_Texture2D);o.Emission+=_DissolveEdge.rgb*front;")&&toon.Contains("clip(map.a-_Cutoff);\n   DissolveFront(i.uv);"),"the body and its outline dissolve together, the front glowing");
+            Check(body.Contains("if(noiseTex!=null){Shader.SetGlobalTexture(DissolveNoiseId,noiseTex);visualDissolve=true;}"),"the noise comes from the bake, once");
+            Check(body.Contains("if(alpha<(visualDissolve?.01f:.5f)){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}")&&body.Contains("if(visualDissolve)VisualDissolve(c.All,ref c.Dissolve,1-alpha,c.Edge);"),"a corpse dissolves as it fades (at half without the noise)");
+            Check(body.Contains("if(alpha<(visualDissolve?.01f:.5f)||!visible(CapturedRig.Pelvis))")&&body.Contains("if(visualDissolve)VisualDissolve(s.All,ref s.Dissolve,1-alpha,s.Edge);"),"a death scene's body dissolves as it fades");
+            Check(body.Contains("amount=Mathf.Round(Mathf.Clamp01(amount)*64)/64;if(amount==last)return;"),"the dissolve is written only when it moves");
         }
 
         // The visual body's stride (owner 2026-10-23: "I thought we have a running animation pack already? Cant we utilize that?"):
