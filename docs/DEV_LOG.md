@@ -1,3 +1,21 @@
+## 2026-10-24 — Claude: the sword's model plays the RPG pack's own clips (merged into shared)
+
+- **Branch/base:** `claude/motion-sword` from shared `c6a36f8c`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request:** "Yes, move the sword over to the pack animations next."
+- **Changes (presentation only):**
+  - `Core/NativeVisualMotion`: sets now name their clips in full. The sword set uses the pack's `Armed` clips (idle, locomotion, jump, flip, fall, landing, roll, `Block-R`, stun, reactions, `Air-Attack-R1`, `Run-Attack-R1`).
+  - The combo is `Sword-Attack-R1, R3, R4, R6, R2, R4`, matched to the game's forehand, backhand and thrust by the clips' blade-tip sweeps (local tool `path=1`).
+  - The bake samples the `Armed` and `1Hand-Sword` folders: 73 clips, 0.81 MB bank.
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-gs.zip`: 357 files, 36.42 MB.
+  - The greatsword build `c6a36f8cbdf8` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of `b24ed441`).
+  - Unity compile: PASS.
+  - Play mode (moonlit): the sword idle has hips at 0.76 m, feet on the floor (lowest vertex median 0.001 m); four presses drew R1, R3, R4, R6 (the thrust drew the line-slash finisher); jump into the overhead air attack; forward roll; the right fist stays 0.099 m from the grip.
+- **Not run:** the sword's specials and kit moves (Sword Launch, Flash Step, Rising Dragon keep the game's pose); a Windows build; multiplayer.
+- **Animation, timing, networking:** clips are retimed to the existing hit windows; rules and the wire are unchanged.
+- **Next:** daggers, then shield, guns and casters; the specials; dodge ghosts and severed kills on the model.
+
 ## 2026-10-24 — Claude: the greatsword's model plays the RPG pack's own clips (merged into shared)
 
 - **Branch/base:** `claude/motion-greatsword` from shared `b6b3322d`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

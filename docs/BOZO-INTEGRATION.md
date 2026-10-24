@@ -1162,6 +1162,14 @@ already? Cant we utilize that?"
   - **Packing:** the packer ships the bake's `.bytes` beside the prefab; the installer accepts them. The visual body is 357
     files, 36.0 MB.
   - Hit windows, reach, movement and the wire are unchanged.
+  - **Sword (2026-10-24, `claude/motion-sword`):** the pack's `Armed` set (one weapon in the right hand) for idle,
+    locomotion, jump, flip, fall, landing, roll, block, stun and reactions. Its overhead `Armed-Air-Attack-R1` plays the
+    plunge and `Armed-Run-Attack-R1` the sprint attack.
+    - The combo plays the one-handed `Sword-Attack-R` cuts in the game's three: a forehand cut right to left, a backhand left
+      to right, then the thrust. The order is R1, R3, R4, then R6, R2, R4, chosen by each clip's blade-tip sweep measured on
+      the body (the local tool's `path=1`).
+    - The idle is an upright ready stance: hips 0.76 m (the game's squat had 0.69 m) with the feet on the floor.
+    - The bank holds 73 clips in 0.81 MB.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
