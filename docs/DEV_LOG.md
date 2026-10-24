@@ -1,3 +1,26 @@
+## 2026-10-23 — Claude: accent glow, pistol sprint, first person and death on the visual body (merged into shared)
+
+- **Branch/base:** `claude/visual-body-glow` from shared `418a7230`. No PR; merged into shared and the builder in two steps: the glow and the sprint at `0c600b31`, then first person and death. The builder's agent publishes each build to the test channel.
+- **Owner request:** "Need to fix sprint animation with pistol", "lights still show where old player model limbs are. I actually want to make lights accentuate the blue colors on the clothes for new model", "First person still shows voxel", "Death turns model into voxel". The owner chose "Pistol at the chest" for the sprint.
+- **Changes (presentation only):**
+  - Glow: `NativeCombatGlow` skips the voxel joint halos on a visual body and spills from its chest core. The toon shader's `_AccentGlow` adds emission on the accent trims, pulsing with the block cooldown.
+  - Pistol sprint (`NativeSprintMotion.Gun`, every pilot, voxel too): the pistol held at the chest, muzzle down, while the free left fist pumps. It used to swing through the thigh and out behind on the taller body. SprintMotionChecks measures the free fist's pump; there is a new `--sprint` flag.
+  - First person: forearms and hands of a second visual body under the view rig, cut by bone weight below the elbows and placed on the view rig's weapon hand.
+  - Death: the ragdoll and the authored death scenes pose a visual body instance (`VisualCorpseMake`/`VisualCorpseShown`, `VisualSceneShown`). Gory and voxel-effect deaths stay voxel.
+- **Checks (actual):**
+  - Full CoreTests: 842 PASS, exit 0 on the glow and sprint commit; 843 PASS, 0 FAIL, exit 0 on `9599d795` on `6e6f79bd` (LF checkout; the expedition-ending GUID check's Windows paths normalised there only).
+  - `--visual-rig` adds the glow, first-person and death wiring checks; `--sprint` passes in the LF checkout. (In this CRLF checkout one sprint hook check reads the source and fails on line endings; in LF it passes.)
+  - Unity semantic compile passes.
+  - Play mode on Moonlit (local tool, new `first=1`, `kill=T`/`killwho`, `hidden=1` and a view-model shot):
+    - glow on the trims, the halos gone;
+    - the pistol sprint at the chest (pose pass);
+    - first person with the pistol, sword and rifle;
+    - a self-kill: the new body falls as the ragdoll.
+- **Not run:** a Windows build check in game; a death with a scene or a gory kill effect in Play mode; multiplayer.
+- **Animation impact:** the pistol's sprint carry for every pilot (presentation only; sprint speed, stamina and input untouched). Hit volumes, damage, timing and networking are unchanged.
+- **Remaining:** gory deaths and the swarm, soul and frost effects use the voxel body until the region-based death (step 6). The menu rooftop's buildings are still missing (the cloud session's shader crash).
+- **Next:** the owner's in-game test.
+
 ## 2026-10-23 — Claude: the builder installs the visual body (merged into shared)
 
 - **Branch/base:** `claude/visual-body-install` from shared `aa573e71`. No PR; merged into shared and the builder (standing merge authorization). The builder's agent publishes its build to the test channel.
