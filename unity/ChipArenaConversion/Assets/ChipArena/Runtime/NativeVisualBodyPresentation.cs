@@ -32,6 +32,8 @@ namespace ChipArena.UnityConversion
             public Dictionary<string,VisualWeapon> Weapons; public VisualWeapon Held, Shown; public int ShownFrame=-1; public Vector3 RightScale=Vector3.one;
             // Its stride: the pack's locomotion clips on a proxy skeleton, for the legs (NativeVisualStridePresentation.cs).
             public VisualStride Stride;
+            // Its own animation: the pack's clips whole for a weapon whose set has moved over (NativeVisualMotionPresentation.cs).
+            public VisualMotion Motion;
         }
         public const string VisualBodyResource="ChipArenaVisualBody", VoxelBodiesArgument="--ca-voxel-bodies";
         private const int ViewBodyId=-999;
@@ -120,6 +122,7 @@ namespace ChipArena.UnityConversion
                 bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp),origin.rotation*(side==0?lq:rq));
             }
             VisualStridePose(body,rig,a,time,roll,juggle);
+            VisualMotionPose(body,rig,a,time);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
         }
@@ -522,7 +525,7 @@ namespace ChipArena.UnityConversion
             foreach(var pair in visualBodies)
             {
                 var body=pair.Value;
-                if(body.Root==null){VisualStrideRelease(body);visualBodiesGone.Add(pair.Key);continue;}
+                if(body.Root==null){VisualStrideRelease(body);VisualMotionRelease(body);visualBodiesGone.Add(pair.Key);continue;}
                 if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);
                 VisualWeaponShown(body);body.Seen=false;
             }
@@ -531,7 +534,7 @@ namespace ChipArena.UnityConversion
         // The bodies live under their rigs' roots, so disposing a rig destroys its body; this drops the records.
         private void ClearVisualBodies()
         {
-            foreach(var body in visualBodies.Values){VisualStrideRelease(body);if(body.Root!=null)Destroy(body.Root);}visualBodies.Clear();
+            foreach(var body in visualBodies.Values){VisualStrideRelease(body);VisualMotionRelease(body);if(body.Root!=null)Destroy(body.Root);}visualBodies.Clear();
             if(viewBody?.Root!=null)Destroy(viewBody.Root);viewBody=null;
             if(visualGhosts!=null)foreach(var m in visualGhosts)if(m!=null)Destroy(m);visualGhosts=null;
         }
