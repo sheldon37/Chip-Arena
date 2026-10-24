@@ -658,7 +658,7 @@ namespace ChipArena.UnityConversion
             Check(body.Contains("if(glow==body.Glow)return;"),"the glow is written only when it changes");
             int look=body.IndexOf("private void VisualBodyLook(",StringComparison.Ordinal),call=body.IndexOf("VisualAccentGlow(body,a.Id,time);",look,StringComparison.Ordinal),early=body.IndexOf("if(!on&&!body.SpawnOn&&flash==body.Flash)return;",look,StringComparison.Ordinal);
             Check(look>0&&call>look&&early>call,"VisualBodyLook updates the glow before its early return");
-            Check(glow.Contains("Vector3 core=default;bool dressed=Visual!=null&&Visual(pilot.Seat.id,out core);")&&glow.Contains("if(!dressed)")&&glow.Contains("spill.Offer(pilot.Seat.id,i,((dressed?core:rig.Bones[CapturedRig.Chest].position)-eye).magnitude);"),"a visual body's joint halos are skipped, its spill picked from the core");
+            Check(glow.Contains("Vector3 core=default;bool dressed=Visual!=null&&Visual(pilot.Seat.id,out core);")&&glow.Contains("if(!dressed)")&&glow.Contains("if(dressed)spill.Offer(pilot.Seat.id,i,(core-eye).magnitude);else spill.Offer(pilot.Seat.id,i,(rig.Bones[CapturedRig.Chest].position-eye).magnitude);"),"a visual body's joint halos are skipped, its spill picked from the core");
             Check(glow.Contains("var from=Visual!=null&&Visual(pilot.Seat.id,out var core)?core:rig.Bones[CapturedRig.Chest].TransformPoint(new Vector3(0,-.05f,.16f));"),"the spill light from in front of the core");
             Check(arena.Contains("combatGlow.Visual=visualGlow??=VisualGlowAt;")&&body.Contains("at=body.GearCore!=null?body.GearCore.position+body.GearCore.forward*.14f:"),"the glow asks the presentation where each visual body's core is");
         }

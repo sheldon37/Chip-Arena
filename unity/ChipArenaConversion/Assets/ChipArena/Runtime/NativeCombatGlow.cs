@@ -226,7 +226,7 @@ namespace ChipArena.UnityConversion
                 Joint(CapturedRig.LKnee,new Vector3(0,-.06f,.15f),.38f);Joint(CapturedRig.RKnee,new Vector3(0,-.06f,.15f),.38f);
                 Joint(CapturedRig.LHand,new Vector3(0,0,.10f),.26f);Joint(CapturedRig.RHand,new Vector3(0,0,.10f),.26f);
                 }
-                spill.Offer(pilot.Seat.id,i,((dressed?core:rig.Bones[CapturedRig.Chest].position)-eye).magnitude);
+                if(dressed)spill.Offer(pilot.Seat.id,i,(core-eye).magnitude);else spill.Offer(pilot.Seat.id,i,(rig.Bones[CapturedRig.Chest].position-eye).magnitude);
             }
             spill.Resolve(spillDt);
             if(Quality>=.5f)for(int k=0;k<NativeArmorSpillPicker.Slots;k++)
