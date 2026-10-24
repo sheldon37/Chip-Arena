@@ -1,3 +1,11 @@
+## 2026-10-24 — Claude: rooftop white/green props, what is known (note; merged into shared)
+
+- **Branch/base:** `claude/rooftop-props-note` from shared `7bb16c3`. Docs only; shared only (the builder is not moved for a note). Not published.
+- **Confirmed (local session, entry below):** after `bbdd5866` the rooftop's buildings draw and `Editor.log` has no `NativeRooftop` compile crash.
+- **Open: "several foreground props on the roof draw flat white with pure green sides".** Not reproduced here: an offline render of shared's own shaders and data with the anime style on (the dump tool built against shared's Core, legacy world surfaces, toon sky/haze/fog, grade and bloom) draws the roof's props (the AC unit, the pole, the vents, the hut) in their dark greys. Every prop the world mesh carries is mode 1 with a dark albedo (every channel 0.012–0.075 in `NativeRooftopCity`), and the legacy prop code is the one that drew the menu from 2026-10-12, so a flat white surface is not something the world pass computes from that data.
+- **Needed to fix it (local session, one minute):** in Play mode on the main menu, pause, click one of the white props in the Scene view (or Frame Debugger, the draw that paints it) and record the object or draw name, its material and shader. If it is the `Rooftop city` mesh with `ChipArena/NativeRooftop`, also note whether `--ca-map-style legacy` changes it. A screenshot in the next entry helps. Candidates outside the world pass: a model drawn through `sourceModels` or the visual body (the crowd's weapons and props, the seated pilot's weapon on the lip) with a material that lost its shader or texture.
+- **Animation, timing, networking:** none.
+
 ## 2026-10-24 — Claude: life-size weapons on the visual body (merged into shared)
 
 - **Branch/base:** `claude/visual-weapons` from shared `bbdd5866`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
