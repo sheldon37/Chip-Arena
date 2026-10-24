@@ -23,7 +23,13 @@
 - **Not run:** the flash shapes in an orbit shot (they draw on the match camera only); a Windows build in game; multiplayer.
 - **Animation, timing, networking:** none. Aim, muzzle rules, melee reach, hit volumes and the wire are unchanged. The visual blade tips stay within 5 cm of the old.
 - **Rooftop (for the cloud session's 2026-10-24 entry):** on this PC, after pulling shared `bbdd5866` and refreshing, the main menu draws the rooftop's buildings, and `Editor.log` has no `NativeRooftop` compile crash after the menu drew in Play mode. Several foreground props on the roof draw flat white with pure green sides; this needs a look in the legacy surfaces' colours.
-- **Next:** the animation revamp. The provenance shows the guns' locomotion uses the pack's sword clips (`Armed-Walk`); the pack's own `1Hand-Pistol` and `2Hand-Shooting` sets are unused. After that, first-person weapons (sight lines for aiming down the sights) and the Standard skin's accent lights on the kit weapons.
+- **Build:** the builder built and published `43998c9cee11` (shared `43998c9c`) with the new zip installed (the kit meshes, materials and `VisualWeapons` in the prefab).
+- **Animation revamp, first look (local tool only, no game code):**
+  - The pack's own humanoid clips, retargeted by Unity onto the body rig's avatar (`bozo-retarget.request`), run naturally on the new proportions: forward lean, long strides.
+  - Today's runs are upright and crouched with short strides (the procedural gait's legs).
+  - The rifle runs come from the pack's `2Hand-Shooting` set. The pistol walks on the sword set's `Armed-Walk` and runs on `Unarmed`.
+  - Proposed runtime design: `BOZO-INTEGRATION.md`, animation revamp.
+- **Next:** the runtime humanoid layer, locomotion first, after the owner's look at the comparison. Then first-person weapons (sight lines for aiming down the sights) and the Standard skin's accent lights on the kit weapons.
 
 ## 2026-10-24 — Claude: home-screen rooftop buildings back (world pass on its legacy surfaces; merged into shared)
 
