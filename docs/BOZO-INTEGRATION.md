@@ -1044,6 +1044,44 @@ clothes for new model", "First person still shows voxel", "Death turns model int
   - first person with the pistol, sword and rifle shows the sleeve, glove and device on the weapon;
   - a forced self-kill shows the new body falling as the ragdoll.
 
+**Life-size weapons (2026-10-24, `claude/visual-weapons`).** Owner (2026-10-23): "the guns seem "comically" big lol. I have
+new asset bundles im adding to my drive, can we utilize these?" The visual body draws life-size models from two of the
+owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CREDITS.md`) in place of the Standard skin's:
+- **Which:**
+  - pistol: `SM_Army_Pistol`, 19 cm long (the game's runs 60 cm from its back to its muzzle);
+  - rifle: `SM_Assault_Rifle_5,56`, .92 m (the game's 1.5 m);
+  - machine gun: `SM_Light_Machine_Gun`, .93 m (the game's 1.2 m), its deployed bipod cut off in the bake;
+  - sword: `RB_Falchion`, its tip 1.27 m from the fist (the game's 1.275 m);
+  - greatsword: `RB_Greatsword` at 1.15 times, its tip 1.64 m from the fist (the game's 1.685 m).
+  - The daggers, shield, bow, staffs and magic keep the game's models, as do the Prototype Series skin, the Classic body
+    and first person.
+- **The bake** (the local tool's weapons step; the body bake runs it too) adds `VisualWeapons` to the prefab, one entry per
+  spec:
+  - `Model`: inactive, so the first-person, corpse and scene instances never show it. The kit's meshes are on our toon with
+    the kit texture as drawn (the sword pack's 2048 texture as a 1024 copy). The model is placed in the visual weapon frame
+    with its fist point where the visual fist closes on the game's handle, the bore or blade along +z.
+  - For the guns, `Fit` is the scale about a centre that lays the Standard gun's bore, muzzle and back on the kit's
+    (pistol .313, rifle .609, machine gun .776). `Support` is where the support hand holds: the handguard, or the pistol
+    grip's left panel for the two-handed pistol. `Stock` is the butt.
+- **The runtime** (`Runtime/NativeVisualWeaponPresentation.cs`):
+  - While the model is drawn, the right hand bone takes the fitted frame. Everything drawn there therefore lands on the model
+    at its size: the muzzle flash and its light, where the rounds leave, the chip modules and the Q kit's pieces.
+  - The visual hands' grasp uses its Support and Stock. The hand's scale goes back with its place before the rig poses again.
+  - The blades need no fit: their tips stay where the game's were, so trails, blood and enchants keep their place.
+  - Presentation only: aim, muzzle rules, reach, hit volumes, timing and the wire are unchanged.
+- **Builds:** the packed bake grows to 202 files and 19.3 MB (the kit meshes, texture and the cut machine-gun mesh, the two
+  sword meshes and the sword texture's copy).
+- **Checks:** `--visual-rig` (wiring), and Play mode on Moonlit with each weapon:
+  - every grip sits in its fist; the rifle and machine gun are shouldered with the support hand on the handguard; the pistol
+    is held two-handed;
+  - the rounds leave 4–11 mm from each kit muzzle;
+  - forced shots light the face with the muzzle light.
+  - The flash's shapes draw on the match camera only, so they are not seen in the orbit shots.
+- **Not yet:**
+  - first person, which needs each model's sight line for aiming down the sights;
+  - the Standard skin's accent lights in the pilot's colour (the kit models have none);
+  - the daggers.
+
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the

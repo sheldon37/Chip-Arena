@@ -1,3 +1,30 @@
+## 2026-10-24 — Claude: life-size weapons on the visual body (merged into shared)
+
+- **Branch/base:** `claude/visual-weapons` from shared `bbdd5866`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request (2026-10-23):** "the guns seem "comically" big lol. I have new asset bundles im adding to my drive, can we utilize these?" Then "Go ahead and start doing both" (the weapons and the animation revamp).
+- **Changes (presentation only):**
+  - Two of the owner's new packs are imported on the owner's PC under the git-ignored `Assets/LocalAssets`: the POLY Mega Weapons Kit and the SciFantasy Sword Pack.
+  - The local bake adds `VisualWeapons` to the visual body prefab:
+    - pistol, rifle and machine gun from the kit (the machine gun's bipod cut off);
+    - the falchion as the sword and the greatsword at 1.15 times;
+    - each placed with its grip in the visual fist;
+    - for the guns, a fit (the scale about a centre that lays the Standard gun's bore, muzzle and back on the kit's), a support hold and the stock butt.
+  - `Runtime/NativeVisualWeaponPresentation.cs` draws the model in place of the Standard skin's model on a visual body. While it is drawn, the right hand bone takes the fitted frame, so the muzzle flash and light, the rounds' start, the chip modules and the Q kit's pieces land on it. The hands' grasp takes its support and stock.
+  - Unchanged: the Prototype Series skin, the Classic body, first person, the daggers, shield, bow, staffs and magic.
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-23.zip`: 202 visual-body files, 19.29 MB, verified by `install_local_assets.py --check`.
+  - Docs: `BOZO-INTEGRATION.md` (life-size weapons), `ASSET-CREDITS.md`.
+- **Checks (actual):**
+  - Full CoreTests 844 PASS, exit 0 (LF checkout of `94af0822`; the expedition-ending GUID check's Windows paths normalised there only). `--visual-rig` adds the weapon wiring checks.
+  - Unity assembly compile (game and editor): PASS.
+  - Play mode on Moonlit with each weapon:
+    - every grip is in its fist; the rifle and machine gun are shouldered with the support hand on the handguard; the pistol is held two-handed;
+    - rounds leave 4–11 mm from each kit muzzle (the shot tracker against the model's muzzle);
+    - forced shots light the face with the muzzle light.
+- **Not run:** the flash shapes in an orbit shot (they draw on the match camera only); a Windows build in game; multiplayer.
+- **Animation, timing, networking:** none. Aim, muzzle rules, melee reach, hit volumes and the wire are unchanged. The visual blade tips stay within 5 cm of the old.
+- **Rooftop (for the cloud session's 2026-10-24 entry):** on this PC, after pulling shared `bbdd5866` and refreshing, the main menu draws the rooftop's buildings, and `Editor.log` has no `NativeRooftop` compile crash after the menu drew in Play mode. Several foreground props on the roof draw flat white with pure green sides; this needs a look in the legacy surfaces' colours.
+- **Next:** the animation revamp. The provenance shows the guns' locomotion uses the pack's sword clips (`Armed-Walk`); the pack's own `1Hand-Pistol` and `2Hand-Shooting` sets are unused. After that, first-person weapons (sight lines for aiming down the sights) and the Standard skin's accent lights on the kit weapons.
+
 ## 2026-10-24 — Claude: home-screen rooftop buildings back (world pass on its legacy surfaces; merged into shared)
 
 - **Branch/base:** `claude/rooftop-legacy-world` from shared `95ba71e`. Merged into shared and the builder; no PR of its own, not published.
