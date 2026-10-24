@@ -39,6 +39,11 @@ namespace ChipArena.UnityConversion
         /// <summary>ragdoll.ts update(): the presented part (body pose, then the stock .35 m sink and .85 shrink, and the
         /// RagdollVfx collapse; scale is about the part's own joint, as the source scales each part group).</summary>
         internal void Present(Matrix4x4 overlay,float sink,float scale){this.overlay=overlay;this.sink=sink;partScale=scale;}
+        /// <summary>Part `part`'s presented matrix over its own at death (PartMatrix times its inverse bind): what a bone riding the
+        /// part rigidly is multiplied by (the visual body's corpse, NativeVisualBodyPresentation.cs VisualCorpseShown).</summary>
+        internal Matrix4x4 PartFrom(int part)=>PartMatrix(part)*inverse[part];
+        /// <summary>The parts' presented scale (the stock shrink, a swarm's collapse).</summary>
+        internal float PartScale=>partScale;
         internal Matrix4x4 PartMatrix(int part)=>overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*Posed(part,Parts[part].transform.localToWorldMatrix)*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
         /// <summary>The dropped weapon as its hand part is presented (ragdoll.ts keeps the held weapon's meshes in the hand
         /// part's group): the same sink, shrink and collapse, scaled about the weapon body's own origin.</summary>

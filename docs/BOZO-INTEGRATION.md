@@ -1019,13 +1019,38 @@ too (contract: `docs/PVE-CHIP-SELECT.md`).
   - Captures show a red and yellow wedge between the Expedition screen and the pilot, on voxel pilots too and before the
     emitter move. Not traced yet: the demo has a bot firing, and a hit turns the screen's edge red.
 
+**Accent glow, first person and death (2026-10-23, `claude/visual-body-glow`).** Owner, after the first in-game test:
+"lights still show where old player model limbs are. I actually want to make lights accentuate the blue colors on the
+clothes for new model", "First person still shows voxel", "Death turns model into voxel".
+- **Accent glow:**
+  - The combat glow's armour halos sit at the game rig's joints; on a visual body they are skipped.
+  - The armour spill light comes from in front of the chest core.
+  - The toon shader's `_AccentGlow` adds emission over the accent channels (the pilot's colour on the clothing trims). It is
+    1.2 (.6 with Reduced effects) and pulses with the block cooldown as the halos did.
+- **First person:**
+  - The view model wears the visual body's forearms and hands, as the voxel view shows the elbows and hands only.
+  - A second instance sits under the view rig, its skinned meshes cut once (at runtime; the meshes import readable) to the
+    triangles weighted half or more below the elbows, on layer 10 without shadows.
+  - It is moved rigidly so its right weapon frame lands on the view rig's weapon hand, so the sights, aim and muzzle stay the
+    game's. The left hand's item rides the visual left hand, and the wrist device shows.
+- **Death:**
+  - A pilot's corpse makes an instance posed from the rig at death. Each bone rides the ragdoll part of its game joint
+    (`NativeCorpse.PartFrom`), with the sink, overlay and shrink.
+  - The authored death scenes move each bone with its joint's motion since death.
+  - A cut, crushed, smashed or bisected corpse, the swarm, soul and frost looks and a cinematic's own layer keep the voxel
+    body, since their effects are made of its parts.
+- **Checks:** `--visual-rig` (wiring) and Play mode on Moonlit:
+  - the trims glow and the halos are gone;
+  - first person with the pistol, sword and rifle shows the sleeve, glove and device on the weapon;
+  - a forced self-kill shows the new body falling as the ragdoll.
+
 **Not yet (step 4 continues):**
-- **Owner's concept pieces:** the mask and visor, and the glow (emission in the player colour).
+- **Owner's concept pieces:** the mask and visor.
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
   visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
-- **Other rigs still draw voxel:** first-person arms, intros, portraits, the draft, the death broadcast, corpses and kill
-  effects (step 6 for death).
+- **Other rigs still draw voxel:** intros, portraits, the draft and the death broadcast. Gory deaths (a cut, crushed or
+  split body) and the swarm, soul and frost kill effects still use the voxel body (step 6 region-based death).
 - **Captures:** the neutral turnaround.
 - **The performance pass** (Phase C).
 - **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets

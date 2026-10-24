@@ -91,6 +91,7 @@ namespace ChipArena.UnityConversion
             Floor(rig);Console.WriteLine("PASS visual rig: the floor fit keeps every visual bone's contact over the floor through the roll ("+count+" checks)");
             Allocation(rig);Console.WriteLine("PASS visual rig: posing, both IKs and the grip allocate nothing per frame and repeat bit for bit ("+count+" checks)");
             Binding(root);Console.WriteLine("PASS visual rig: the Unity binding mirrors at the boundary, writes local turns and the pelvis only, and names no pack types ("+count+" checks)");
+            ViewAndDeath(root);Console.WriteLine("PASS visual rig: first person wears the visual body's forearms and hands (placed on the view rig's weapon hand, the device on the wrist), and a pilot's whole-body death scene and ragdoll wear the visual body ("+count+" checks)");
             AccentGlow(root);Console.WriteLine("PASS visual rig: on the visual body the clothing's accent trims glow (pulsing with the block cooldown as the armour halos did) and the voxel joint halos are skipped, the armour spill light coming from the chest core ("+count+" checks)");
             ModelSetting(root);Console.WriteLine("PASS visual rig: Settings · Player model (New, saved) switches every pilot to the classic voxel body and back live, shown only where the visual body is installed ("+count+" checks)");
             BodyFx(root);Console.WriteLine("PASS visual rig: the visual body's hit flash is SourceLit's and its per-pixel spawn-in front, heat and hologram slice are the voxel parts' (Core NativeSpawnIn), wired from SourceCharacter; the pilot gear faces out, clears its chip and follows health and chip select ("+count+" checks)");
@@ -644,6 +645,30 @@ namespace ChipArena.UnityConversion
                 Check(!code.Contains(pack)&&!core.Contains(pack),"no pack types or names in the adapter: "+pack);
         }
 
+        // First person and death on the visual body (owner 2026-10-23: "First person still shows voxel", "Death turns model into voxel").
+        private static void ViewAndDeath(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string view=R("Runtime/NativeViewPresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs"),death=R("Runtime/NativeDeathPresentation.cs"),scene=R("Runtime/NativeSceneMotion.cs"),kill=R("Runtime/NativeKillEffectPresentation.cs");
+            int restore=view.IndexOf("VisualViewRestore();",StringComparison.Ordinal),pose=view.IndexOf("viewRig.ActorPose(shown,Vector3.zero,time,true);",StringComparison.Ordinal),place=view.IndexOf("VisualViewPose(viewRig,shown,time,ScopeActive);",StringComparison.Ordinal),draw=view.IndexOf("if(!ScopeActive&&!SourceCharacter(viewRig,shown,time,true))",StringComparison.Ordinal),chip=view.IndexOf("ChipSelectView(viewRig,source,time);",StringComparison.Ordinal);
+            Check(restore>0&&pose>restore&&chip>pose&&place>chip&&draw>place,"first person: the left hand restored before the view rig poses; the view body posed after the aim, sway and chip-select layer, before the draw");
+            Check(body.Contains("foreach(int j in new[]{CapturedRig.LElbow,CapturedRig.RElbow})")&&body.Contains("keep[v]=On(w.boneIndex0,w.weight0)+On(w.boneIndex1,w.weight1)+On(w.boneIndex2,w.weight2)+On(w.boneIndex3,w.weight3)>=.5f;")&&body.Contains("if(armMeshes.TryGetValue(mesh,out var made))return made;"),"the view body keeps the triangles weighted half or more below the elbows, cut once per mesh");
+            Check(body.Contains("t.gameObject.layer=10;")&&body.Contains("r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;r.receiveShadows=false;")&&body.Contains("if(cut==null){r.enabled=false;continue;}"),"on the view model's layer, without shadows, the rest of the body off");
+            Check(body.Contains("var turn=hand.rotation*Quaternion.Inverse(rq);")&&body.Contains("root.SetPositionAndRotation(hand.position-turn*(rp*s),turn);"),"its right weapon frame lands on the view rig's weapon hand");
+            Check(body.Contains("bool on=!Viewer&&sourceModels!=null&&!ClassicBodies&&!scoped&&view!=null&&a.SourceSpec!=\"siren\"&&VisualBodiesOn;"),"Classic, a scope, the Siren and a missing bake keep the voxel arms");
+            Check(body.Contains("if(viewBody!=null&&viewBody.Root!=null&&viewBody.Root.activeSelf&&viewBody.PosedFrame<Time.frameCount-1)viewBody.Root.SetActive(false);"),"the view body hides once first person stops");
+            Check(body.Contains("int layer=first?10:0;var camera=first?ViewCamera:null;")&&body.Contains("if(body.GearCore!=null&&!first)"),"first person draws the device on the view model, not the core");
+            int made=death.IndexOf("if(pilot)VisualCorpseMake(corpse,death,rig);",StringComparison.Ordinal),dispose=death.IndexOf("if(temporary)rig.Dispose();",StringComparison.Ordinal);
+            Check(made>0&&dispose>made,"the corpse's visual body is posed from the rig before a temporary rig goes");
+            Check(death.Contains("dressed=VisualCorpseShown(corpse,alpha);")&&death.Contains("if(!dressed)sourceModels.QueueShadowless(model,")&&death.Contains("if(!dressed)\n                    {\n                    if(hat&&!AuditorHalo(")&&death.Contains("corpse.Band>=0&&alpha>.5f&&!dressed&&"),"a dressed corpse draws no voxel body, hat or bands");
+            int end=death.IndexOf("EndKillFrame();\n            VisualCorpsesShown();",StringComparison.Ordinal);Check(end>0&&death.Contains("ClearVisualCorpses();"),"undrawn corpse bodies hide each frame and go with their corpses");
+            Check(kill.Contains("internal Matrix4x4 PartFrom(int part)=>PartMatrix(part)*inverse[part];")&&body.Contains("var m=corpse.PartFrom(c.Part[v])*c.Bind[v];"),"each bone rides its ragdoll part rigidly (the part's motion, sink, overlay and shrink)");
+            int scale=body.IndexOf("c.Bones[0].localScale=Vector3.one*Mathf.Max(.001f,corpse.PartScale);",StringComparison.Ordinal),loop=body.IndexOf("var m=corpse.PartFrom(c.Part[v])*c.Bind[v];",StringComparison.Ordinal);
+            Check(scale>0&&loop>scale,"the skeleton takes the parts' scale before the bones are placed");
+            Check(body.Contains("corpse.Bisect!=null||corpse.Smash!=null||corpse.Severed.Count>0||corpse.CrushPart>=0")&&body.Contains("||corpse.Swarm!=null)return false;"),"a cut, crushed, smashed or bisected corpse and a swarm keep the voxel body");
+            Check(scene.Contains("bool dressed=layer==0&&only==null&&VisualSceneShown(death,Bone,Visible,alpha);")&&scene.Contains("if(!dressed)sourceModels.Queue((death.model??\"pilot\")==\"pilot\"")&&scene.Contains("if(!dressed&&!string.IsNullOrEmpty(death.actor?.Hat)"),"a death scene's victim plays in the visual body (not on a cinematic's own layer)");
+            Check(body.Contains("for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];")&&body.Contains("for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;"),"each scene bone follows its joint's motion since death");
+        }
         // The accent glow (owner 2026-10-23: "lights still show where old player model limbs are. I actually want to make lights
         // accentuate the blue colors on the clothes for new model"): the shader's emission over the accent channels, written per
         // clothing renderer with the armour pulse; NativeCombatGlow skips its joint halos (the game rig's joints) on a visual body and
@@ -678,7 +703,7 @@ namespace ChipArena.UnityConversion
             int pose=body.IndexOf("private void VisualBodyPose(",StringComparison.Ordinal),skip=body.IndexOf("||ClassicBodies||",pose,StringComparison.Ordinal),create=body.IndexOf("CreateVisualBody(rig,a.Id)",pose,StringComparison.Ordinal);
             Check(pose>0&&skip>pose&&create>skip,"a classic frame poses (and creates) no visual body");
             Check(body.Contains("if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null||body.PosedFrame!=Time.frameCount)return false;")&&body.Contains("if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);"),"an unposed body is not drawn this frame and hides (the voxel body draws)");
-            Check(source.Contains("bool visual=!first&&dressed&&VisualBodyDrawn(rig);"),"the pilot draws voxel when its visual body is not drawn");
+            Check(source.Contains("bool visual=dressed&&(first?VisualViewDrawn(rig):VisualBodyDrawn(rig));"),"the pilot draws voxel when its visual body is not drawn");
             int restore=body.IndexOf("private void VisualBodyRestore(",StringComparison.Ordinal);
             Check(restore>0&&!Between2(body,"private void VisualBodyRestore(","private void VisualBodyPose(").Contains("ClassicBodies"),"switching to Classic still puts the rig's hands back (the restore does not read the switch)");
             static string Between2(string t,string a,string b){int i=t.IndexOf(a,StringComparison.Ordinal),j=i<0?-1:t.IndexOf(b,i,StringComparison.Ordinal);return j<0?"":t.Substring(i,j-i);}

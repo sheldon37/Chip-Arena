@@ -167,7 +167,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Each melee death's killing blow as first seen (key: id and seed), kept across the killcam's reset and cleared
         /// with the round (MeleeSlice).</summary>
         private readonly Dictionary<long,(bool has,MeleeBlow blow)> killBlows=new Dictionary<long,(bool has,MeleeBlow blow)>();
-        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
+        private void ClearCorpses(){foreach(var c in corpses.Values)c.Dispose();corpses.Clear();ClearVisualCorpses();carriedDeaths.Clear();ClearVents();ClearSawGallery();ReleaseKillEffects();}
         // The clock kill effects are presented on (see PresentDeath): FieldClock, the continuous snapshot clock a guest renders at
         // (PresentationClock on the host and in the killcam replay).
         private float KillClock(NativeArena arena)=>FieldClock(arena);
@@ -202,6 +202,7 @@ namespace ChipArena.UnityConversion
             SyncReviveAnchors(arena);
             SawSplitPreview(arena);
             EndKillFrame();
+            VisualCorpsesShown();
         }
         private void PresentDeath(NativeArena arena,NativeDeath death,bool pilot)
         {
@@ -227,7 +228,10 @@ namespace ChipArena.UnityConversion
                 corpse=!pilot?null:slice!=null?MeleeBisect(arena,death,rig,slice):SawBisect(arena,death,rig);
                 // The train, a press ram or the crane's load smashes the body (NativeSmashPresentation.cs).
                 if(corpse==null&&gib?.Smash!=null)corpse=new NativeCorpse(death,rig,arena,null,gib.Smash);
-                if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;if(temporary)rig.Dispose();
+                if(corpse==null)corpse=new NativeCorpse(death,rig,arena,slice);corpses[death.id]=corpse;
+                // A pilot's whole body falls as its visual body (NativeVisualBodyPresentation.cs), posed from the rig before it goes.
+                if(pilot)VisualCorpseMake(corpse,death,rig);
+                if(temporary)rig.Dispose();
                 // A cut body's blood is its seam's (BisectBlood); the fatal wound still bleeds as it falls.
                 BleedDeath(death,corpse.Bisect!=null?null:slice,KillClock(arena));
                 bool counted=pilot&&!death.kept&&!remains;int budget=death.kept?NativeKillEffectRules.KeptBudget:counted?NativeKillEffectRules.MaxDeathVoxels-killUsed:NativeKillEffectRules.MaxDeathVoxels;
@@ -291,16 +295,22 @@ namespace ChipArena.UnityConversion
                         if(weapon)sourceModels.QueueRecolor(corpse.LooseModel,drop.Value,null,null,ice,glow,alpha);
                     }
                 }
+                bool dressed=false;
                 if(!recolored)
                 {
-                    sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),BodyAccent(bodySkin,death.actor?.AccentColor,death.actor?.Hat,death.actor?.HatColor),alpha);
+                    // The visual body's corpse, when this pilot has one (it wears no hat or bands; NativeVisualBodyPresentation.cs).
+                    dressed=VisualCorpseShown(corpse,alpha);
+                    if(!dressed)sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),BodyAccent(bodySkin,death.actor?.AccentColor,death.actor?.Hat,death.actor?.HatColor),alpha);
+                    if(!dressed)
+                    {
                     if(hat&&!AuditorHalo(death.actor?.Hat,corpse.PresentedBone(CapturedRig.Head),clock,alpha,HaloReduced,0,null,color:death.actor?.HatColor))sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,null,HatBody(death.actor?.Hat,death.actor?.HatColor),null,alpha);
                     // A thrown or crushed head takes the Sheldon Head's hood with it; its mantle and drapes stay on the body.
                     else if(!hat&&corpse.HatModel!=null&&death.actor?.Hat==NativeSheldonHead.Hat)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpse.PresentedBone,SheldonBody,HatBody(death.actor.Hat,death.actor.HatColor),null,alpha);if(weapon)sourceModels.QueueShadowless(corpse.LooseModel,drop.Value,null,null,null,null,alpha);
+                    }
                 }
                 // team-identity.ts bands ride in the part copies (unlit team colour; Frostbreak turns them ice, lit here). They are
                 // opaque, so a fading body drops them halfway.
-                if(corpse.Band>=0&&alpha>.5f&&StatusReady())for(int k=0;k<bandLocal.Length;k++)
+                if(corpse.Band>=0&&alpha>.5f&&!dressed&&StatusReady())for(int k=0;k<bandLocal.Length;k++)
                 {
                     int bone=NativeStatusVisuals.BandBones[k];if(!corpse.ShownBone(bone))continue;var m=corpse.PresentedBone(bone)*bandLocal[k];
                     if(recolored)sourceModels.KillCube(m,ice);else teamBands[corpse.Band].Add(m);
