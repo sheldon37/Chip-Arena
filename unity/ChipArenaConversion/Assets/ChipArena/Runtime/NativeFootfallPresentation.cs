@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
             if(Viewer)return;
             if(!a.Alive){stepTrackers.Remove(a.Id);return;}
             int contacts=posed&&rigs.TryGetValue(a.Id,out var rig)?rig.FootContacts:-1;
+            // A visual body running on the pack's clips steps when its drawn feet plant (NativeVisualStridePresentation.cs).
+            if(contacts>=0&&VisualStrideContacts(a.Id,out int drawn))contacts=drawn;
             stepTrackers.TryGetValue(a.Id,out var tracker);
             float speed=new Vector2(a.Velocity.x,a.Velocity.z).magnitude;
             int planted=tracker.Step(contacts,a.Grounded,a.Rolling(time),position.x,position.z,speed,a.Sprinting,time,out bool land,out float air);

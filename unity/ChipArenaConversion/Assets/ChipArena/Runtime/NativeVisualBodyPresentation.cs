@@ -30,8 +30,11 @@ namespace ChipArena.UnityConversion
             // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
             // fitted on the right hand bone, whose scale RightScale restores) and the one shown (when).
             public Dictionary<string,VisualWeapon> Weapons; public VisualWeapon Held, Shown; public int ShownFrame=-1; public Vector3 RightScale=Vector3.one;
+            // Its stride: the pack's locomotion clips on a proxy skeleton, for the legs (NativeVisualStridePresentation.cs).
+            public VisualStride Stride;
         }
         public const string VisualBodyResource="ChipArenaVisualBody", VoxelBodiesArgument="--ca-voxel-bodies";
+        private const int ViewBodyId=-999;
         private static GameObject visualBodyPrefab; private static int visualBodyState; // 0 unread, 1 drawn, -1 absent or turned off
         /// <summary>Settings · Player model is Classic (set each frame from the preferences): every pilot draws its voxel body.</summary>
         public bool ClassicBodies;
@@ -108,6 +111,7 @@ namespace ChipArena.UnityConversion
                 body.HandPosition[side]=bone.localPosition;body.HandRotation[side]=bone.localRotation;
                 bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp),origin.rotation*(side==0?lq:rq));
             }
+            VisualStridePose(body,rig,a,time,roll,juggle);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
         }
@@ -138,6 +142,7 @@ namespace ChipArena.UnityConversion
             var cloth=new List<Renderer>();
             foreach(var r in root.GetComponentsInChildren<Renderer>(true))foreach(var slot in ClothSlots)if(r.name.StartsWith(slot,StringComparison.Ordinal)){cloth.Add(r);break;}
             body.Cloth=cloth.ToArray();
+            if(id!=ViewBodyId)body.Stride=VisualStrideOf(root.transform,skeleton);
             return body;
         }
 
@@ -337,7 +342,7 @@ namespace ChipArena.UnityConversion
         }
         private VisualBody CreateViewBody(CapturedAnimation.Player view)
         {
-            var body=CreateVisualBody(view,-999);if(body==null)return null;
+            var body=CreateVisualBody(view,ViewBodyId);if(body==null)return null;
             body.Root.name="Visual view body";
             var arm=new HashSet<Transform>();
             foreach(int j in new[]{CapturedRig.LElbow,CapturedRig.RElbow}){int v=body.Binding.Rig.Of[j];if(v>=0)foreach(var t in body.Binding.Bones[v].GetComponentsInChildren<Transform>(true))arm.Add(t);}
@@ -498,7 +503,7 @@ namespace ChipArena.UnityConversion
             foreach(var pair in visualBodies)
             {
                 var body=pair.Value;
-                if(body.Root==null){visualBodiesGone.Add(pair.Key);continue;}
+                if(body.Root==null){VisualStrideRelease(body);visualBodiesGone.Add(pair.Key);continue;}
                 if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);
                 VisualWeaponShown(body);body.Seen=false;
             }
@@ -507,7 +512,7 @@ namespace ChipArena.UnityConversion
         // The bodies live under their rigs' roots, so disposing a rig destroys its body; this drops the records.
         private void ClearVisualBodies()
         {
-            foreach(var body in visualBodies.Values)if(body.Root!=null)Destroy(body.Root);visualBodies.Clear();
+            foreach(var body in visualBodies.Values){VisualStrideRelease(body);if(body.Root!=null)Destroy(body.Root);}visualBodies.Clear();
             if(viewBody?.Root!=null)Destroy(viewBody.Root);viewBody=null;
             if(visualGhosts!=null)foreach(var m in visualGhosts)if(m!=null)Destroy(m);visualGhosts=null;
         }

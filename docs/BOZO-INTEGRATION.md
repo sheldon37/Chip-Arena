@@ -1097,16 +1097,37 @@ already? Cant we utilize that?"
   - The runs come out as natural full-body runs on the new proportions: forward lean, long strides, pumping arms.
   - Today's runs are upright and crouched with short strides.
   - The comparison sheets are in local scratch.
-- **Proposed runtime design (presentation only):**
-  - A humanoid layer: the visual body gets an Animator with the body rig's avatar and a manually evaluated PlayableGraph. It
-    plays the pack clip the game pose comes from at the same time and weight, traced through the provenance.
-  - The game's arm holds (grip, support hand, aim, chip select), the planted feet and the code-only layers (aim, recoil,
-    leans, specials) then go over it as now.
-  - Locomotion first: runs, walks and strafes blended by direction, their rate matched to the pilot's speed so the feet do not
-    slide. Then idles, jumps and reactions.
-  - Attacks keep the game's poses until traced, since their keys are the hit timing.
-  - The clips ship in the licensed-assets zip: about 0.45 MB per FBX, so the locomotion sets need a larger budget.
-  - Hit volumes, timing and the wire are unchanged.
+- **The stride (2026-10-24, `claude/visual-stride`; owner: "Implement whatever we have on asset packs that would work good on
+  this project, make them fit").** While a pilot runs or walks on the ground, the visual body's legs and hips come from the
+  pack's own locomotion clips; everything above the hips stays the game's.
+  - **Clips:** the pack's 17 `Unarmed` locomotion clips: eight run directions, eight strafing walks and the sprint. They are
+    measured on the body at 4.2 m/s for the run, 2.1 for the walks and 6.9 for the sprint. The legs need only one set,
+    whatever the weapon.
+  - **The bake** (the local tool's stride step; the body bake runs it too): a disabled Animator on `VisualSkeleton` with the
+    body rig's avatar and `VisualStride.controller`, whose states are the clips.
+  - **Mixing** (`Core/NativeVisualStride`, tested): the two neighbouring directions by the travel's angle; walk to run
+    between 2.6 and 4.0 m/s; the sprint forward only, from 7.4 m/s. The rate makes the mix travel at the body's own speed:
+    the game's 6.8 m/s run plays the run 1.6 times as fast, its 9.2 m/s sprint the sprint 1.34 times.
+  - **Runtime** (`Runtime/NativeVisualStridePresentation.cs`):
+    - A proxy copy of the skeleton without renderers plays the mix in a manually evaluated PlayableGraph.
+    - After the game pose is on the body, each leg bone takes the proxy's turn, and the hips its place over the root (the
+      two skeletons share it). The upper body rides the hips, so the weapon frames move with them; aim, holds and arm layers
+      are the game's.
+    - A foot the clip puts down locks where it landed: a two-bone reach of its leg, the foot keeping the clip's turn. The lock
+      holds fully once the clips carry half the legs, and eases back to the clip as the foot lifts.
+    - The legs blend in from 0.35 to 0.95 m/s. They are off in the air, rolling, attacking, stunned, juggled, in a special or
+      a hit reaction, and standing (the game's stance). `--ca-no-stride` keeps the game gait's legs.
+    - Footsteps sound when the drawn feet plant, while the clips carry the legs.
+  - **Measured** (Play mode, bots at 2–9 m/s, `track=` in the local tool): a locked foot's median slip is 0.000 m/s (90th
+    percentile under 0.04 m/s) whenever the clips carry half the legs or more, as with the game gait. Without the lock it was
+    0.4–1.0 m/s, and 1–1.5 m/s with the game's hip sway.
+  - **Builds:** the clips, the controller and the pack's source character (the clips' humanoid import copies its avatar)
+    bring the packed bake to 247 files and 28.0 MB. The packer and installer now carry animator controllers.
+  - **Not yet:**
+    - the clips' forward lean, since the upper body is the game's;
+    - stairs and ramps (the clips' feet assume a level floor);
+    - idles, jumps and reactions from the pack.
+  - Hit volumes, timing, movement and the wire are unchanged.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
