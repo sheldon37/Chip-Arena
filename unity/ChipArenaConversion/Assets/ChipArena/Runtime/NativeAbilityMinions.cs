@@ -22,21 +22,21 @@ namespace ChipArena.UnityConversion
         {
             var all=new List<(NativePilot p,NativeMinion m,Vector3 at,Collider collider)>();
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&Enemy(owner,p)&&Vector3.Distance(p.Body.position,at)<=radius)all.Add((p,null,p.Body.position,p.Collider));
-            foreach(var m in Minions)if(m.Hp>0&&Enemy(owner,m.Owner)&&Vector3.Distance(m.Body.position,at)<=radius)all.Add((null,m,m.Body.position,m.Collider));
-            int hits=0;foreach(var n in all.OrderBy(n=>(n.at-at).sqrMagnitude).Take(4))if(MeleeVisible(at,n.at,owner,n.collider)){yield return(n.p,n.m,n.at);if(++hits>=limit)yield break;}
+            foreach(var m in Minions)if(m.Hp>0&&Enemy(owner,m)&&Vector3.Distance(m.Body.position,at)<=radius)all.Add((null,m,m.Body.position,m.Collider));
+            int hits=0;foreach(var n in all.OrderBy(n=>(n.at-at).sqrMagnitude).Take(4))if(!HubCross(at,n.at)&&MeleeVisible(at,n.at,owner,n.collider)){yield return(n.p,n.m,n.at);if(++hits>=limit)yield break;}
         }
         private void SlowMinion(NativeMinion m,float factor,float duration)
         {if(m.Hp<=0||duration<=0)return;if(Time>=m.SlowUntil)m.SlowFactor=1;m.SlowFactor=Math.Min(m.SlowFactor,Mathf.Clamp(factor,.4f,1));m.SlowUntil=Math.Max(m.SlowUntil,Time+duration);if(m.Pve!=null){m.Pve.SlowUntil=m.SlowUntil;m.Pve.SlowFactor=m.SlowFactor;}}
         private void BurnMinion(NativeMinion m,NativePilot owner,float dps)
-        {if(m.Hp<=0||dps<=0)return;string key=owner.Seat.id+":fire";m.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Time;m.Dots[key]=new NativeDot{Source=owner.Seat.id,Dps=Math.Max(dps,live?old.Dps:0),Next=live?old.Next:Time+.25,Until=Time+2};}
+        {if(m.Hp<=0||dps<=0||HubDamageBlocked(owner,m.Body.position))return;string key=owner.Seat.id+":fire";m.Dots.TryGetValue(key,out var old);bool live=old!=null&&old.Until>=Time;m.Dots[key]=new NativeDot{HubNoReward=HubInside(owner.Body.position),Source=owner.Seat.id,Dps=Math.Max(dps,live?old.Dps:0),Next=live?old.Next:Time+.25,Until=Time+2};}
         private float AbilityMinionHit(NativeAbilityShot shot,NativeMinion target,float damage,Vector3 at,Vector3 dir,float impulse,bool life=false)
-        {float actual=HitMinion(target,shot.Owner,damage,dir,impulse,at,"energy");AbilityOnDamage(shot.Owner,actual);if(life)Heal(shot.Owner,actual*(float)shot.Owner.Stats["lifeSteal"]);return actual;}
+        {float actual=HitMinion(target,shot.Owner,damage,dir,impulse,at,"energy",from:shot.Position);AbilityOnDamage(shot.Owner,actual);if(life)Heal(shot.Owner,actual*(float)shot.Owner.Stats["lifeSteal"]);return actual;}
         private bool AbilityMinionContact(NativeAbilityShot shot,NativeMinion target,AbilityContactHit hit)
         {
             var d=shot.Definition;var owner=shot.Owner;Vector3 at=hit.point+hit.normal*.03f;int element=owner.Pose.MagicVisual;
-            if(d.id=="frag-grenade"){AbilityBlast(owner,at,NativeAbilityRules.Radius(d,owner.Stats),shot.Damage,(float)d.impulse,element);return true;}
-            if(d.id=="rocket"){if(shot.Travel>=d.arm)AbilityBlast(owner,at,NativeAbilityRules.Radius(d,owner.Stats),shot.Damage,(float)d.impulse,element,2);else AbilityMinionHit(shot,target,shot.Damage*15/55,at,shot.Velocity.normalized,150,true);Fx(at,.3f,element);return true;}
-            if(d.id=="orbital-mark"){Vector3 pos=target.Body.position;AbilityMinionHit(shot,target,shot.Damage*10/85,at,shot.Velocity.normalized,150,true);AbilityZones.Add(new NativeAbilityZone{Owner=owner,Definition=d,AttachedMinion=target,LockAt=Time+(float)d.duration,Position=pos,Kind="bomb",Radius=NativeAbilityRules.Radius(d,owner.Stats),Damage=shot.Damage,Until=Time+(float)d.fuse});return true;}
+            if(d.id=="frag-grenade"){AbilityBlast(owner,at,NativeAbilityRules.Radius(d,owner.Stats),shot.Damage,(float)d.impulse,element,effect:d.fx??d.id);return true;}
+            if(d.id=="rocket"){if(shot.Travel>=d.arm)AbilityBlast(owner,at,NativeAbilityRules.Radius(d,owner.Stats),shot.Damage,(float)d.impulse,element,2,effect:d.fx??d.id);else AbilityMinionHit(shot,target,shot.Damage*15/55,at,shot.Velocity.normalized,150,true);Fx(at,.3f,element);return true;}
+            if(d.id=="orbital-mark"){Vector3 pos=target.Body.position;AbilityMinionHit(shot,target,shot.Damage*10/85,at,shot.Velocity.normalized,150,true);AbilityZones.Add(new NativeAbilityZone{Id=nextEvent++,Born=Time,Owner=owner,Definition=d,AttachedMinion=target,LockAt=Time+(float)d.duration,Position=pos,Kind="bomb",Radius=NativeAbilityRules.Radius(d,owner.Stats),Damage=shot.Damage,Until=Time+(float)d.fuse});return true;}
             shot.Hit.Add(target.Id);if(d.id=="ball-lightning")return false;
             Vector3 impulse=shot.Velocity.normalized*(d.id=="tidal-wave"&&Has(owner,"undertow")?-700:(float)d.impulse)+(d.id=="tidal-wave"?Vector3.up*200:Vector3.zero);
             float actual=AbilityMinionHit(shot,target,shot.Damage,at,impulse.normalized,impulse.magnitude,d.id=="flame-lance"||d.id=="shadow-shackles");

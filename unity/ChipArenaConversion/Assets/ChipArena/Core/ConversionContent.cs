@@ -13,20 +13,21 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ChipEffect { public string stat,op;public double value; }
     [Serializable] public sealed class ContentChip
-    { public string id,name,description,rarity,icon,mechanic;public string[] tags,excludes;public int max;public ChipEffect[] effects; }
+    { public string id,name,description,rarity,icon,mechanic,author,sourcePack,sourceCard;public string[] tags,excludes;public int max;public ChipEffect[] effects; }
     [Serializable] public sealed class RarityData { public string id,name,color; public double weight,leetWeight; }
     [Serializable] public sealed class ExclusionData { public string spec; public string[] ids; }
     [Serializable] public sealed class ExclusiveOdds { public string spec;public int guaranteed;public double chance; }
     [Serializable] public sealed class ContentRotation { public float x,y,z,w=1; }
     [Serializable] public sealed class ContentBlock
-    { public string id,material; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass; }
+    { public string id,material,role,parent,segment; public float hp; public float[] stages; public V3 pos,size;public ContentRotation rotation;public string[] support;public bool dynamic;public float mass; }
     [Serializable] public sealed class ContentMap
-    { public string id,name,tag,theme,music; public int sky,floor,accent;public bool rotation;public ContentBlock[] blocks; }
+    { public string id,name,tag,theme,music,ambience,look; public int sky,floor,accent;public bool rotation;[NonSerialized] public bool unity;public ContentBlock[] blocks;public MapBounds bounds;public MapSpawns spawns;public StructureDefinition[] segments;public MapNav nav;public MapPilotBlock[] pilotBlocks;public MapHazard[] hazards;public MapRamp[] ramps;public MapNavHints navHints; }
     [Serializable] public sealed class ContentMaterial
     { public string id;public int color;public float mass,durability,friction;public bool indestructible; }
+    [Serializable] public sealed class ContentAbilityBot { public float min,max,lead;public bool point,ballistic; }
     [Serializable] public sealed class ContentAbility
     {
-        public string spec,slot,id,name,@short,text,kind,fx;
+        public string spec,slot,id,name,@short,text,kind,fx;public ContentAbilityBot bot;
         public double cooldown,cost,windup,lockout,range,damage,burn,impulse,speed,gravity,shotRadius,pierce,radius,fuse,closeFuse,duration,speedFactor,slowFor,tick,force,arm;
         public bool live;
     }
@@ -34,23 +35,27 @@ namespace ChipArena.UnityConversion
     { public string spec,overlay;public double fov,spread,settle,move,sens,kick,interval,bloom; }
     [Serializable] public sealed class ConversionContent
     {
-        public int schema;public string sourceCommit;
+        public int schema;public string sourceCommit;[NonSerialized] public string contentRevision;
         public ContentWeapon[] weapons;public ContentChip[] chips;public ContentMap[] maps;
         public ContentMaterial[] materials;public ContentAbility[] abilities;public ContentAds[] ads;
         public NumberValue[] baseStats,config,weights;public RarityData[] rarities;
         public ExclusionData[] incompatibilities;public ExclusiveOdds[] exclusiveOdds;public V3[] spawns;
         public ContentWeapon Weapon(string id) => Array.Find(weapons,x=>x.id==id)??throw new ArgumentException("Unknown weapon: "+id);
         public ContentChip Chip(string id) => Array.Find(chips,x=>x.id==id)??throw new ArgumentException("Unknown chip: "+id);
-        public ContentMap Map(string id) => Array.Find(maps,x=>x.id==id)??throw new ArgumentException("Unknown map: "+id);
+        public ContentMap Map(string id) {foreach(var map in maps)if(map.id==id)return map;throw new ArgumentException("Unknown map: "+id);}
         public ContentMaterial Material(string id) => Array.Find(materials,x=>x.id==id)??throw new ArgumentException("Unknown material: "+id);
-        public double Weight(string spec) => Array.Find(weights,x=>x.name==spec).value;
+        // Older/incomplete content must still allow rolling; shipped entries are checked by Validate.
+        public double Weight(string spec) => (weights==null?null:Array.Find(weights,x=>x!=null&&x.name==spec))?.value??4;
         public ContentAbility Ability(string spec,string slot) => Array.Find(abilities,x=>x.spec==spec&&x.slot==slot);
-        public ContentAds Ads(string spec) => Array.Find(ads,x=>x.spec==spec);
+        public ContentAds Ads(string spec) => NativeRangedRules.Scope(spec)?Array.Find(ads,x=>x.spec==spec):null;
         public void Validate()
         {
             if(schema!=1||sourceCommit==null||sourceCommit.Length!=40)throw new InvalidOperationException("Invalid conversion content receipt");
             if(weapons==null||chips==null||maps==null||baseStats==null)throw new InvalidOperationException("Missing conversion content");
             if(weapons.Select(x=>x.id).Distinct().Count()!=weapons.Length||chips.Select(x=>x.id).Distinct().Count()!=chips.Length||maps.Select(x=>x.id).Distinct().Count()!=maps.Length)throw new InvalidOperationException("Duplicate content IDs");
+            foreach(var w in weapons)
+                if(weights==null||!weights.Any(x=>x!=null&&x.name==w.id&&!double.IsNaN(x.value)&&!double.IsInfinity(x.value)&&x.value>=0))
+                    throw new InvalidOperationException("Missing or invalid weapon weight: "+w.id);
             var stats=new HashSet<string>(baseStats.Select(x=>x.name));
             foreach(var c in chips)foreach(var e in c.effects)if(!stats.Contains(e.stat)||!new[]{"add","mul","set"}.Contains(e.op)||double.IsNaN(e.value)||double.IsInfinity(e.value))throw new InvalidOperationException("Invalid chip effect "+c.id);
             foreach(var map in maps)
@@ -71,6 +76,7 @@ namespace ChipArena.UnityConversion
     {
         private readonly Dictionary<string,double> values=new Dictionary<string,double>();
         public double this[string key] { get=>values[key];set=>values[key]=value; }
+        public double Get(string key,double fallback=0)=>values.TryGetValue(key,out var value)?value:fallback;
         public ChipStats(NumberValue[] defaults) { foreach(var v in defaults)values.Add(v.name,v.value); }
     }
     public static class NativeContentRules
@@ -83,8 +89,10 @@ namespace ChipArena.UnityConversion
             {
                 int count;held.TryGetValue(chip.id,out count);
                 for(int i=0;i<Math.Min(chip.max,Math.Max(0,count));i++)foreach(var e in chip.effects)
-                    s[e.stat]=e.op=="add"?s[e.stat]+e.value:e.op=="mul"?s[e.stat]*e.value:e.value;
+                    s[e.stat]=Clamp(e.op=="add"?s[e.stat]+e.value:e.op=="mul"?s[e.stat]*e.value:e.value,-1000000,1000000);
             }
+            s["playerGravity"]=Clamp(s["playerGravity"],.1,3);s["jumpPower"]=Clamp(s["jumpPower"],.1,2.5);
+            s["extraAirJumps"]=Clamp(Math.Floor(s.Get("extraAirJumps")),0,NativeJumpSimulation.MaxAirJumps);
             s["hp"]=Math.Max(15,s["hp"]);s["speed"]=Clamp(s["speed"],.25,2.5);s["attackRate"]=Clamp(s["attackRate"],.15,5);
             foreach(var pair in new[]{("extraProjectiles",11d),("extraStrikes",4d),("split",6d),("projectileSpeed",4d),("critical",.75),("lifeSteal",1d),("jumpPower",2.5),("impulse",12d),("blockForce",6d),("abilityPower",2d),("abilityCharges",2d),("qEmpower",1d),("manaSurge",1d),("abilityLeech",.6),("arcaneSurge",1d),("spellEcho",1d)})s[pair.Item1]=Math.Min(pair.Item2,s[pair.Item1]);
             s["projectileSize"]=Clamp(s["projectileSize"],.4,6);s["knockbackTaken"]=Clamp(s["knockbackTaken"],.04,3);
@@ -95,7 +103,7 @@ namespace ChipArena.UnityConversion
         {
             var weapon=data.Weapon(spec);var tags=new HashSet<string>{"all",weapon.@class};if(spec!="ansatsuken")tags.Add("roll");
             if(new[]{"leet","ansatsuken","emperor","siren"}.Contains(spec))tags.Add(spec);
-            if(weapon.@class!="melee")tags.Add("projectile");
+            if(weapon.@class!="melee")tags.Add("projectile");if(weapon.ammo>0)tags.Add("gun");
             if(!weapon.devOnly&&(weapon.@class=="ranged"||weapon.@class=="magic"))
             {tags.Add("ability");if(weapon.@class=="magic"){tags.Add("spellcraft");tags.Add("spell-"+spec);}else tags.Add("gunplay");}
             bool Has(string id)=>held.TryGetValue(id,out int n)&&n>0;

@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
-        private int inspectSeat;private Vector2 inspectScroll,draftScroll;private bool BoardOpen=>arena!=null&&!menu&&(Input.GetKey(KeyCode.G)||Input.GetKey(KeyCode.Tab)&&!LockEligible||inspectSeat!=0);
+        private int inspectSeat;private Vector2 inspectScroll;private bool BoardOpen=>arena!=null&&!menu&&(Input.GetKey(KeyCode.G)||Input.GetKey(KeyCode.Tab)&&!LockEligible||inspectSeat!=0);
         private void Inspect(float width,float height)
         {
             var seat=match.Seat(inspectSeat);if(seat==null)return;float w=Math.Min(570,width-40),x=(width-w)/2;GUI.Box(new Rect(x,100,w,height-180),"");

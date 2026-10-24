@@ -14,26 +14,80 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private readonly NativeDeathBroadcast broadcasts=new NativeDeathBroadcast();private readonly Dictionary<int,CapturedAnimation.Player> broadcastRigs=new Dictionary<int,CapturedAnimation.Player>();
+        /// <summary>One broadcast's hologram rig and what it draws, built once (no per-frame allocation).</summary>
+        private sealed class BroadcastStage
+        {
+            public CapturedAnimation.Player Rig;public Func<int,Matrix4x4> Bone;public string Pilot,Hat;public int HatRow;public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();
+            public void Dispose()=>Rig?.Dispose();
+        }
+        private readonly NativeDeathBroadcast broadcasts=new NativeDeathBroadcast();private readonly Dictionary<int,BroadcastStage> broadcastStages=new Dictionary<int,BroadcastStage>();
+        private readonly List<int> staleStages=new List<int>();private readonly List<NativePilot> broadcastDeaths=new List<NativePilot>();
+        private static readonly Comparison<NativePilot> ByDeath=(a,b)=>a.Death.at!=b.Death.at?a.Death.at.CompareTo(b.Death.at):a.Death.seed.CompareTo(b.Death.seed);
+        private static readonly Func<int,bool> PortraitBone=NativeBroadcastFx.PortraitBone;
         public IEnumerable<string> DeathMessages(float time)=>broadcasts.Items.Where(i=>time>=i.At+1.05f&&time<i.At+5.15f).Select(i=>i.Text);
+        // When the newest visible death line appeared (the source's .is-new entrance), or -1 when none is shown.
+        public float LatestDeathMessage(float time)=>broadcasts.Items.Where(i=>time>=i.At+1.05f&&time<i.At+5.15f).Select(i=>i.At+1.05f).DefaultIfEmpty(-1).Max();
+        // The death presentation's shared primitives (NativeDeathFxDraw): filled by DeathPresentation and DeathBroadcasts each
+        // frame and drawn once at the end of DeathBroadcasts. Null when the shader is unavailable.
+        private NativeDeathFxDraw deathFx;private bool deathFxFailed;
+        private NativeDeathFxDraw DeathFx(){if(deathFx==null&&!deathFxFailed){deathFx=NativeDeathFxDraw.Create();deathFxFailed=deathFx==null;}return deathFx;}
+        /// <summary>
+        /// death-announcements.ts: per death a rocket with a line trail climbs to the stage over the northern skyline
+        /// (skyBroadcastFrame, mirrored into Unity's x), bursts into point-sprite stars, and the victim's cyan hologram unfolds
+        /// with its part-box edge lines, the drifting scanlines, the corner/tick frame and the nameplate (victim, verb, killer).
+        /// The stage is fixed in the world; only the newest three launched broadcasts show.
+        /// </summary>
         private void DeathBroadcasts(NativeArena arena)
         {
-            float t=arena.Time;bool clear=arena.Match.Phase==NativePhase.Lobby||arena.Match.Phase==NativePhase.Intro;broadcasts.Tick(t,clear);if(!clear)foreach(var p in arena.Pilots.Where(p=>p.Hp<=0&&p.Death!=null).OrderBy(p=>p.Death.at).ThenBy(p=>p.Death.seed))broadcasts.Add(p.Death.seed,p.Seat.id,p.Death.owner,p.Death.at,t,p.Seat.name,arena.Match.Seat(p.Death.owner)?.name);
-            foreach(int id in broadcastRigs.Keys.Where(id=>!broadcasts.Items.Any(a=>a.Seed==id)).ToArray()){broadcastRigs[id].Dispose();broadcastRigs.Remove(id);}
-            foreach(var item in broadcasts.Items)
+            float t=arena.Time;bool clear=arena.Match.Phase==NativePhase.Lobby||arena.Match.Phase==NativePhase.Intro;broadcasts.Tick(t,clear);
+            if(!clear)
             {
-                float age=t-item.At;if(age<0)continue;Vector3 center=new Vector3(new[]{0,-43,43}[item.Slot],72,-115);float u=Mathf.Clamp01(age/1.05f),burst=age-1.05f,fade=Mathf.Clamp01((5.6f-age)/.8f);
-                if(burst<0){Vector3 at=center+new Vector3(Mathf.Sin(u*8)*.12f,-25*(1-u)*(1-u),0)*5.5f;Add(8,Matrix4x4.TRS(at,Quaternion.identity,Vector3.one*1.485f));Beam(at,at-Vector3.up*(6*(1-u*.5f)*5.5f),.16f,8);continue;}
-                if(burst<2.2f)for(int i=0;i<72;i++){float y=1-2*(i+.5f)/72,phi=i*2.39996323f,r=Mathf.Sqrt(1-y*y),distance=2+i%7*.22f;Vector3 dir=new Vector3(Mathf.Cos(phi)*r,y,Mathf.Sin(phi)*r)*distance;Add(8,Matrix4x4.TRS(center+(dir*burst-Vector3.up*burst*burst*.4f)*5.5f,Quaternion.identity,Vector3.one*.6f*(1-burst/2.2f)));}
-                if(!broadcastRigs.TryGetValue(item.Seed,out var rig)){rig=captured.Create(transform,-item.Seed);broadcastRigs[item.Seed]=rig;}
-                float q=Mathf.Clamp01(burst/.32f)-1,reveal=1+2.3f*q*q*q+1.3f*q*q,show=MathUtil.Smooth(burst/.26f);var seat=arena.Match.Seat(item.Victim);var pose=new CapturedRig.Pose();pose.Rotation[5]=CapturedRig.Euler(Mathf.Sin(age*.85f)*.018f,Mathf.Sin(age*.6f)*.045f);
-                for(int b=0;b<22;b++){rig.Bones[b].localPosition=CapturedAnimation.Vec(CapturedRig.Mirror(pose.Position[b]));rig.Bones[b].localRotation=CapturedAnimation.Quat(CapturedRig.Mirror(pose.Rotation[b]));}
-                rig.Root.transform.SetPositionAndRotation(center-Vector3.up*7,Quaternion.identity);rig.Root.transform.localScale=new Vector3(28,28*Math.Max(.01f,reveal),28);
-                bool Visible(int b)=>b==3||b==4||b==5||b==6||b==10;float alpha=.55f*fade*show*(.96f+.04f*Mathf.Sin(age*29));sourceModels.Queue(sourceModels.Hologram("pilot"),rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible,opacity:alpha);
-                if(seat?.hat!=null)sourceModels.Queue(sourceModels.Hologram("hat-"+seat.hat),rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,opacity:alpha);
-                foreach(int sx in new[]{-1,1})foreach(int sy in new[]{-1,1}){Vector3 c=center+new Vector3(sx*16.5f,sy*20+1.375f,8);Beam(c,c+Vector3.right*(-sx*3.575f),.15f*fade,8);Beam(c,c+Vector3.up*(-sy*4.95f),.15f*fade,8);}
+                broadcastDeaths.Clear();foreach(var p in arena.Pilots)if(p.Hp<=0&&p.Death!=null)broadcastDeaths.Add(p);broadcastDeaths.Sort(ByDeath);
+                foreach(var p in broadcastDeaths)if(!broadcasts.Seen(p.Death.seed))broadcasts.Add(p.Death.seed,p.Seat.id,p.Death.owner,p.Death.at,t,p.Seat.name,arena.Match.Seat(p.Death.owner)?.name,p.Death.damageKind);
             }
+            staleStages.Clear();foreach(int id in broadcastStages.Keys){bool live=false;foreach(var a in broadcasts.Items)if(a.Seed==id){live=true;break;}if(!live)staleStages.Add(id);}
+            foreach(int id in staleStages){broadcastStages[id].Dispose();broadcastStages.Remove(id);}
+            var fx=DeathFx();var items=broadcasts.Items;const float k=NativeBroadcastFx.Scale;
+            for(int index=0;index<items.Count;index++)
+            {
+                var item=items[index];if(!broadcasts.Shown(index,t))continue;float age=t-item.At;var s=NativeBroadcastFx.Sample(age);
+                NativeBroadcastFx.Frame(item.Slot,out float fx0,out float fy0,out float fz0);Vector3 center=new Vector3(-fx0,fy0,fz0);
+                // Stage-root units to Unity: x mirrored, scale 5.5; the hologram's children are also scaled (1, reveal, 1).
+                Vector3 L(float x,float y,float z)=>center+new Vector3(-x,y,z)*k;Vector3 H(float x,float y,float z)=>center+new Vector3(-x,y*s.ScaleY,z)*k;
+                if(fx!=null&&s.Rocket)
+                {
+                    fx.Sphere(Matrix4x4.TRS(L(s.RocketX,s.RocketY,0),Quaternion.identity,Vector3.one*NativeBroadcastFx.RocketRadius*k),fx.Hex(NativeBroadcastFx.RocketColor,1));
+                    fx.Line(L(s.TrailX,s.TrailY,0),L(0,s.TrailEndY,0),fx.Hex(NativeBroadcastFx.LineColor,NativeBroadcastFx.TrailOpacity));
+                }
+                if(fx!=null&&s.Stars){var star=fx.Hex(NativeBroadcastFx.StarColor,s.StarOpacity);for(int i=0;i<NativeBroadcastFx.Stars;i++){NativeBroadcastFx.Star(i,s.Burst,out float x,out float y,out float z);fx.Point(L(x,y,z),NativeBroadcastFx.StarSize*k,star);}}
+                if(!s.Holo)continue;
+                if(!broadcastStages.TryGetValue(item.Seed,out var stage))
+                {
+                    stage=new BroadcastStage{Rig=captured.Create(transform,-item.Seed)};var rig=stage.Rig;stage.Bone=b=>rig.Bones[b].localToWorldMatrix;var seat=arena.Match.Seat(item.Victim);
+                    stage.Pilot=sourceModels.Hologram(BodyModel(BodySkin(item.Victim),BodyCloseTier));stage.HatRow=NativeBroadcastEdges.HatIndex(seat?.hat);stage.Hat=stage.HatRow>0?sourceModels.Hologram("hat-"+seat.hat):null;broadcastStages[item.Seed]=stage;
+                }
+                // The portrait: head and shoulders fitted into the frame (create()), its head drifting (update()).
+                stage.Pose.Reset();stage.Pose.Rotation[CapturedRig.Head]=CapturedRig.Euler(s.HeadX,s.HeadY);NativePoseWriter.Write(stage.Rig.Bones,stage.Pose,"a death broadcast rig");
+                NativeBroadcastFx.RigFit(NativeBroadcastEdges.Hats[stage.HatRow],out float fit,out float ox,out float oy,out float oz);
+                stage.Rig.Root.transform.SetPositionAndRotation(H(ox,oy,oz),Quaternion.identity);stage.Rig.Root.transform.localScale=new Vector3(k*fit,k*fit*s.ScaleY,k*fit);
+                var root=stage.Rig.Root.transform.localToWorldMatrix;sourceModels.Queue(stage.Pilot,root,stage.Bone,PortraitBone,opacity:s.HologramAlpha);
+                if(stage.Hat!=null)sourceModels.Queue(stage.Hat,root,stage.Bone,opacity:s.HologramAlpha);
+                if(fx==null)continue;
+                // Edges of every visible portrait mesh (EdgesGeometry, 24 degrees), riding their bones.
+                var edge=fx.Hex(NativeBroadcastFx.LineColor,s.EdgeAlpha);
+                void Edges(float[] list){for(int i=0;i+6<list.Length;i+=7){var m=stage.Rig.Bones[(int)list[i]].localToWorldMatrix;fx.Line(m.MultiplyPoint3x4(new Vector3(-list[i+1],list[i+2],list[i+3])),m.MultiplyPoint3x4(new Vector3(-list[i+4],list[i+5],list[i+6])),edge);}}
+                Edges(NativeBroadcastEdges.Body);Edges(NativeBroadcastEdges.HatSegments[stage.HatRow]);
+                var scan=fx.Hex(NativeBroadcastFx.LineColor,s.ScanAlpha);foreach(float y in NativeBroadcastFx.ScanLines)fx.Line(H(-NativeBroadcastFx.ScanHalfWidth,y+s.ScanOffset,NativeBroadcastFx.ScanZ),H(NativeBroadcastFx.ScanHalfWidth,y+s.ScanOffset,NativeBroadcastFx.ScanZ),scan);
+                var frame=fx.Hex(NativeBroadcastFx.LineColor,s.FrameAlpha);var f=NativeBroadcastFx.FrameSegments;for(int i=0;i+5<f.Length;i+=6)fx.Line(H(f[i],f[i+1],f[i+2]),H(f[i+3],f[i+4],f[i+5]),frame);
+                // The nameplate canvas: one pixel across and down the plane from its top-left corner.
+                NativeBroadcastFx.NamePixel(0,0,out float nx,out float ny);NativeBroadcastFx.NamePixel(1,1,out float rx,out float dy);Vector3 origin=H(nx,ny,NativeBroadcastFx.NameZ);
+                Vector3 right=H(rx,ny,NativeBroadcastFx.NameZ)-origin,down=H(nx,dy,NativeBroadcastFx.NameZ)-origin;var ink=fx.Hex(NativeBroadcastFx.NameColor,s.NameAlpha);var font=fx.TextFont;float half=NativeBroadcastFx.CanvasWidth*.5f;
+                fx.Text(fx.Quads,font,item.Upper,32,FontStyle.Normal,NativeBroadcastFx.NameSizes[0],half,NativeBroadcastFx.NameRows[0],NativeBroadcastFx.MaxTextWidth,origin,right,down,ink);
+                fx.Text(fx.Quads,font,item.DamageKind=="collapse"?"COLLAPSE":NativeBroadcastFx.Verb(item.Killer!=null),32,FontStyle.Normal,NativeBroadcastFx.NameSizes[1],half,NativeBroadcastFx.NameRows[1],NativeBroadcastFx.MaxTextWidth,origin,right,down,ink);
+                if(item.Killer!=null)fx.Text(fx.Quads,font,item.Killer,32,FontStyle.Normal,NativeBroadcastFx.NameSizes[2],half,NativeBroadcastFx.NameRows[2],NativeBroadcastFx.MaxTextWidth,origin,right,down,ink);
+            }
+            fx?.Draw();
         }
-        private void ClearBroadcasts(){broadcasts.Tick(0,true);foreach(var rig in broadcastRigs.Values)rig.Dispose();broadcastRigs.Clear();}
+        private void ClearBroadcasts(){broadcasts.Tick(0,true);foreach(var stage in broadcastStages.Values)stage.Dispose();broadcastStages.Clear();deathFx?.Dispose();deathFx=null;deathFxFailed=false;}
     }
 }

@@ -7,6 +7,20 @@
     <DefineConstants>ARENA_TESTS</DefineConstants>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <!-- Every method compiled once, fully, on its first call: no tier-0 code, on-stack replacement or re-JIT while a
+         check runs. The 145 "allocates nothing per frame" checks read GC.GetAllocatedBytesForCurrentThread around loops;
+         with tiering on, an OSR compile of the measuring method (and the static constructors it runs) could land inside
+         that window on CI and count as the code's (BlockLookChecks 680 bytes, GunMotionChecks 5328, AuditorHaloChecks 5024
+         on 2026-10-15; each passed on rerun). -->
+    <TieredCompilation>false</TieredCompilation>
+    <!-- Blocking collections only. At the end of a background (concurrent) gen2 collection's mark phase the .NET 8 GC
+         voids every thread's allocation context (gc.cpp repair_allocation_contexts(FALSE) -> void_allocation) without
+         taking the unused tail off alloc_bytes, so GC.GetAllocatedBytesForCurrentThread jumps by up to one 8 KB quantum
+         the thread never allocated. The checks' own large buffers can start that collection just before a measured loop
+         (SpawnInChecks 8088 bytes on CI at f94fa98, 2026-10-19). Blocking collections retire contexts through
+         fix_allocation_context(for_gc_p), which does subtract the tail. Test process only; Unity runs its own GC. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
   </PropertyGroup>
   <ItemGroup><Compile Include="../Assets/ChipArena/Core/*.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../Assets/ChipArena/Editor/NativeTunnelBuild.cs" /></ItemGroup>
 </Project>

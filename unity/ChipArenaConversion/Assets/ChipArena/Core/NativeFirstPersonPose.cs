@@ -18,9 +18,10 @@ namespace ChipArena.UnityConversion
             if(Math.Abs(m13)<.9999999f)return new Vector3((float)Math.Atan2(2*(q.X*q.W-q.Y*q.Z),1-2*(q.X*q.X+q.Y*q.Y)),y,(float)Math.Atan2(2*(q.Z*q.W-q.X*q.Y),1-2*(q.Y*q.Y+q.Z*q.Z)));
             return new Vector3((float)Math.Atan2(2*(q.Y*q.Z+q.X*q.W),1-2*(q.X*q.X+q.Z*q.Z)),y,0);
         }
+        private static readonly int[] SettleBones={CapturedRig.Body,CapturedRig.Pelvis,CapturedRig.Spine};
         public static void SettleTorso(CapturedRig.Pose pose)
         {
-            foreach(int bone in new[]{CapturedRig.Body,CapturedRig.Pelvis,CapturedRig.Spine})
+            foreach(int bone in SettleBones)
             {var e=EulerXYZ(pose.Rotation[bone]);pose.Rotation[bone]=CapturedRig.Euler(e.X,e.Y*.2f,e.Z);}
             Vector3 p=pose.Position[CapturedRig.Body];pose.Position[CapturedRig.Body]=new Vector3(MathUtil.Clamp(p.X,-.03f,.03f),p.Y*.5f,MathUtil.Clamp(p.Z,-.03f,.03f));
             pose.World();

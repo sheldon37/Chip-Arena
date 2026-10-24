@@ -6,35 +6,48 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private bool PvePickOpen=>arena?.Pve!=null&&arena.Pve.Rows.TryGetValue(arena.Local.Seat.id,out var row)&&row.Open!=null;
-        private Vector2 pveCards;
+        private int pvePending;private float pvePendingAt=-10;private readonly NativeHudTrail bossTrail=new NativeHudTrail();
         private void PveHud(float width,float height)
         {
-            var v=arena.Pve;if(v==null)return;var p=arena.Local;
-            string status=v.Stage=="boss"?"THE SIREN  ·  PHASE "+v.Phase:v.Stage=="wave"?"WAVE "+v.Wave+" / 3":v.Stage.ToUpperInvariant();
-            GUI.Label(new Rect(width/2-220,22,440,50),status,heading);
-            if(v.Stage=="boss"&&!v.Hidden){float hp=v.MaxHp>0?v.Boss.Hp/v.MaxHp:0;GUI.Box(new Rect(width/2-220,74,440,24),"");var old=GUI.color;GUI.color=new Color(.85f,.12f,.26f);GUI.DrawTexture(new Rect(width/2-218,76,436*Mathf.Clamp01(hp),20),Texture2D.whiteTexture);GUI.color=old;}
+            var v=arena.Pve;if(v==null||prefs.expedition||ExpeditionView!=null||ExpeditionM1)return;var p=arena.Local;PveBanner();
+            float W=NativeUi.W,H=NativeUi.H;
+            // pve/hud.ts waveHeading and bossBar: a top-centre pill, then the Siren's bar with her phase thresholds.
+            string status=v.Stage=="boss"?"THE SIREN  ·  PHASE "+v.Phase+" / 4":v.Stage=="wave"?"WAVE "+v.Wave+" / "+(v.Content?.waves?.Length??3):v.Stage=="intermission"?"INTERMISSION  ·  WAVE "+v.Wave+" CLEARED":v.Stage=="opening"?"WARD ZERO  ·  GET READY":v.Stage.ToUpperInvariant();
+            if(v.Stage!="ended")SetTag(status,v.Stage=="boss"?NativeCyberTheme.Violet():NativeCyberTheme.Cyan(),W);
+            if(v.Stage=="boss"&&!v.Hidden&&v.Boss!=null)
+            {
+                // The Siren's bar: a holographic strip, her four phases (thresholds 75 / 50 / 25%) as segments, violet into
+                // magenta across the bar, with the damage trail (NativeHudTrail) and a phase tick over each threshold.
+                float hp=v.MaxHp>0?Mathf.Clamp01(v.Boss.Hp/v.MaxHp):0,trail=bossTrail.Step(arena.Time,hp),bw=Mathf.Min(560,W*.4f),bx=W/2-bw/2,by=58;
+                var plate=new Rect(bx-12,by-6,bw+24,44);NativeHudChrome.Panel(plate,1,NativeCyberTheme.Violet(),NativeHudCyber.TagCut);
+                NativeUi.Text(new Rect(bx,by,bw,16),"THE SIREN",12,NativeCyberTheme.Ink(),TextAnchor.MiddleLeft,bold:true,tracking:.2f,shadow:new Color(0,0,0,.8f));
+                NativeUi.Text(new Rect(bx,by,bw,16),Mathf.CeilToInt(hp*100)+"%",12,NativeCyberTheme.CyanSoft(),TextAnchor.MiddleRight,mono:true);var bar=new Rect(bx,by+20,bw,10);
+                for(int i=0;i<4;i++)
+                {
+                    NativeHudCyber.SegmentSpan(i,.25f,1,out float a,out float b);var cell=new Rect(bar.x+bar.width*a+(i>0?1.5f:0),bar.y,bar.width*(b-a)-(i>0?1.5f:0)-(i<3?1.5f:0),bar.height);NativeUi.Fill(cell,NativeCyberTheme.Void(.85f));
+                    float g=NativeHudCyber.SegmentFill(i,.25f,1,trail),f=NativeHudCyber.SegmentFill(i,.25f,1,hp);if(g>f)NativeUi.Fill(new Rect(cell.x,cell.y,cell.width*g,cell.height),NativeCyberTheme.Ink(.75f));
+                    if(f>0){var fill=new Rect(cell.x,cell.y,cell.width*f,cell.height);NativeUi.HGradient(fill,NativeUi.Mix(NativeCyberTheme.Violet(),NativeCyberTheme.Magenta(),a),NativeUi.Mix(NativeCyberTheme.Violet(),NativeCyberTheme.Magenta(),a+(b-a)*f));NativeUi.Fill(new Rect(fill.x,fill.y,fill.width,NativeHudChrome.Snap(1)),NativeCyberTheme.Ink(.35f));}
+                }
+                NativeHudChrome.Outline(new Rect(bar.x-2,bar.y-2,bar.width+4,bar.height+4),NativeCyberTheme.Violet(.55f),3,NativeHudChrome.Corners.Diagonal);
+                foreach(float k in new[]{.75f,.5f,.25f})NativeUi.Fill(new Rect(bar.x+bar.width*k-.5f,bar.y-3,1,bar.height+6),NativeCyberTheme.Ink(.55f));
+            }
             if(v.Rows.TryGetValue(p.Seat.id,out var row))
             {
-                GUI.Label(new Rect(26,295,330,70),"$"+row.Money+"  ·  "+row.Kills+" kills  ·  "+row.Picks.Count+" waiting Chips\nF · interact / collect / revive    C · Chips",small);
-                if(!string.IsNullOrEmpty(v.Notice))GUI.Label(new Rect(width/2-220,height-120,440,50),v.Notice,label);
-                if(p.Hp<=0)GUI.Label(new Rect(width/2-240,height/2+5,480,60),arena.InShaft(p)?"FALLING THROUGH THE VENT":row.SelfAt>=0?"Reviving in "+Math.Ceiling(row.SelfAt-arena.Time)+"s":"DOWNED · A teammate can revive you",label);
-                if(row.Open!=null&&!v.Holding)
-                {
-                    float w=Mathf.Min(880,width-60),h=Mathf.Min(540,height-140);GUI.Box(new Rect((width-w)/2,(height-h)/2,w,h),"");
-                    GUILayout.BeginArea(new Rect((width-w)/2+20,(height-h)/2+16,w-40,h-32));GUILayout.Label("Install a "+row.Open.Tier+" Chip",heading);GUILayout.Label("The run continues while you choose.",small);pveCards=GUILayout.BeginScrollView(pveCards);
-                    int at=0,pickId=row.Open.Id;string chosen=null;foreach(string id in row.Open.Offers.ToArray())
-                    {var c=arena.PveChip(id);if(at%2==0)GUILayout.BeginHorizontal();GUILayout.BeginVertical(GUI.skin.box,GUILayout.Width((w-70)/2));GUILayout.Label(c.name+" · "+c.rarity,label);GUILayout.Label(c.description,small);if(GUILayout.Button("Install",button))chosen=id;GUILayout.EndVertical();at++;if(at%2==0)GUILayout.EndHorizontal();}
-                    if(at%2!=0)GUILayout.EndHorizontal();if(chosen!=null)ChoosePveChip(pickId,chosen);GUILayout.EndScrollView();if(GUILayout.Button("Choose later (C)",button))PveOpen(false);GUILayout.EndArea();
-                }
+                // pve/hud.ts moneyHud (top left) and the pending chips pill above the cooldown cards, pulsing after a new pick.
+                var mr=new Rect(24,24,220,58);NativeHudChrome.Panel(mr,1,NativeCyberTheme.Warn());NativeUi.Text(new Rect(mr.x+14,mr.y+8,mr.width-28,26),"$"+row.Money,22,NativeCyberTheme.Warn(),TextAnchor.MiddleLeft,bold:true,mono:true,glow:NativeCyberTheme.Warn(.3f));
+                NativeUi.Text(new Rect(mr.x+14,mr.y+34,mr.width-28,16),row.Kills+" kills  ·  F interact / revive",11,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft);
+                if(row.Picks.Count!=pvePending){if(row.Picks.Count>pvePending)pvePendingAt=Time.unscaledTime;pvePending=row.Picks.Count;}
+                if(row.Picks.Count>0&&!PvePickOpen)PveChipsTag(W,H,row.Picks.Count,Time.unscaledTime-pvePendingAt);
+                if(p.Hp<=0)Prompt(H/2+5,arena.InShaft(p)?"FALLING THROUGH THE VENT":row.SelfAt>=0?"Self-revive in "+Math.Ceiling(row.SelfAt-arena.Time)+"s":"DOWNED  ·  A teammate can revive you",16,NativeCyberTheme.Danger());
             }
-            if(v.Holding)
-            {
-                GUI.Box(new Rect(0,0,width,100),"");GUI.Box(new Rect(0,height-100,width,100),"");
-                string title=v.Cinematic=="intro"?"SHE HAS BEEN WAITING":v.Cinematic=="victory"?"THE SIREN HAS FALLEN":v.Cinematic=="defeat"?"WARD ZERO CLAIMS ANOTHER":v.Reveal==2?"FIND THE POSSESSED":v.Reveal==3?"SHE RETURNS":v.Reveal==4?"NO RESTRAINT":"WARD ZERO";
-                GUI.Label(new Rect(width/2-300,height-85,600,60),title,heading);
-            }
-            if(v.Stage=="ended")
-            {GUI.Box(new Rect(width/2-240,height/2+70,480,140),"");int i=0;foreach(var r in v.Rows.Values.Where(r=>!r.Pilot.Seat.bot))GUI.Label(new Rect(width/2-220,height/2+82+i++*28,440,28),r.Pilot.Seat.name+" · "+r.Kills+" kills · $"+r.Earned+" earned · "+r.Revives+" revives",small);}
+        }
+        // The pending chips tag (magenta: a reward waiting) with the C key, above the cooldown cards, pulsing for 6 s after a new pick
+        // (`since` seconds ago); still with Reduced effects. The Boss Test's, also drawn for an Expedition (NativeExpeditionChipScreen.cs).
+        private void PveChipsTag(float W,float H,int count,float since)
+        {
+            float pulse=since<6&&!prefs.reducedEffects?1+.07f*(.5f-.5f*Mathf.Cos(since*2*Mathf.PI)):1;string chips="CHIPS "+count;float cw=NativeUi.Measure(chips,12,true,true,.1f).x+44;var cr=new Rect(W-24-cw,H-104-30,cw,30);
+            NativeUi.Push(cr.center,Vector2.zero,pulse);if(since<6&&pulse>1)NativeUi.Glow(cr,NativeCyberTheme.Magenta(.4f*(pulse-1)/.07f),24);NativeHudChrome.Tag(cr,NativeCyberTheme.Magenta());NativeUi.Text(new Rect(cr.x+14,cr.y,cw,cr.height),chips,12,NativeCyberTheme.Magenta(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
+            NativeHudChrome.Key(new Rect(cr.xMax-26,cr.y+6,18,18),"C");NativeUi.Pop();
         }
     }
 }

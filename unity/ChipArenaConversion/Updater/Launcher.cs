@@ -81,9 +81,8 @@ namespace ChipArena.NativeUpdater
                 {
                     if(parent.StartTime.ToUniversalTime().Ticks!=request.parentStartedUtcTicks)return;
                     string expected=LongPath(Path.Combine(root,"app",NativeUpdateRules.Executable));
-                    try
-                    {if(!string.Equals(LongPath(parent.MainModule.FileName),expected,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("The requesting process is not this native game.");}
-                    catch(InvalidOperationException){if(parent.HasExited)return;throw;}
+                    string path=ModulePath(parent);if(path==null)return;
+                    if(!string.Equals(path,expected,StringComparison.OrdinalIgnoreCase))throw new InvalidDataException("The requesting process is not this native game.");
                     if(!parent.WaitForExit(120000))throw new IOException("The game did not close; its files were left unchanged.");
                 }
             }
@@ -97,11 +96,24 @@ namespace ChipArena.NativeUpdater
             foreach(var p in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(NativeUpdateRules.Executable)))
             using(p)
             {
-                try{if(string.Equals(LongPath(p.MainModule.FileName),expected,StringComparison.OrdinalIgnoreCase))return true;}
+                try{string path=ModulePath(p);if(path!=null&&string.Equals(path,expected,StringComparison.OrdinalIgnoreCase))return true;}
                 catch(System.ComponentModel.Win32Exception){throw new IOException("Cannot verify that other native game instances have closed.");}
                 catch(InvalidOperationException){}
             }
             return false;
+        }
+        // A process's executable, or null once it has exited. Windows fails a module read with ERROR_PARTIAL_COPY (299) while the
+        // process is still starting or already tearing down (the game closing for its update); that is retried for up to two
+        // seconds, never read as a different program. Any other failure propagates as before.
+        private const int PartialCopy=299;
+        private static string ModulePath(Process p)
+        {
+            for(int attempt=0;;attempt++)
+            {
+                try{return LongPath(p.MainModule.FileName);}
+                catch(InvalidOperationException){if(p.HasExited)return null;throw;}
+                catch(System.ComponentModel.Win32Exception e){if(e.NativeErrorCode!=PartialCopy||attempt>=20)throw;if(p.WaitForExit(100))return null;}
+            }
         }
         [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]
         private static extern uint GetLongPathName(string path,StringBuilder buffer,uint length);

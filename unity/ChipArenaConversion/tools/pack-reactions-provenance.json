@@ -1,0 +1,527 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "clips": [
+  {
+   "clip": "sword/hitF",
+   "source": "Armed-GetHit-F1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.5
+   ],
+   "sha256": "8a18ee6cac7681fcfd97f46920e1675ef0a87affda84a3908d49732e920b5f20",
+   "input": "95975f53054ec7070b4ef99a92f737f9645892541e9bd998cc492335656cd8da"
+  },
+  {
+   "clip": "sword/hitF2",
+   "source": "Armed-GetHit-F2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.5
+   ],
+   "sha256": "ec6aa329c2969f94df2a35f39cb4f0a67a9aa9bf18fc0b6951581f32fcde390a",
+   "input": "857f0df45a1bca1d8d60cbd3d59e38b8c5a0588c6067457da0398516f53cfc1f"
+  },
+  {
+   "clip": "sword/hitL",
+   "source": "Armed-GetHit-L1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.3,
+    0.5
+   ],
+   "sha256": "9f7e2dcdc02b0b892908c2f5d7c9a0c56f3b256914c221a45df40767055bfbfe",
+   "input": "726db3a7d099f7fdbda325a301615ab1ebe71e8a2f11dbdc6dbb36b93c4d07c6"
+  },
+  {
+   "clip": "sword/hitR",
+   "source": "Armed-GetHit-R1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.0667,
+    0.5
+   ],
+   "sha256": "7d0de1a0ae7d209ca6341dc84f6dc2114593d9e9703bf6b5f458b153a36764de",
+   "input": "7bbf8f7028e359e0775c4facdd0db1c1a903442d3a6f5ce8396bba630b53e459"
+  },
+  {
+   "clip": "sword/stun",
+   "source": "Armed-Stunned",
+   "fps": 30,
+   "frames": 61,
+   "loop": true,
+   "marks": [],
+   "sha256": "0cc848fdf582278c0a4f6e99b847d02e2b6024664e906713f88f245b47f59297",
+   "input": "93e011a7e32380e0e92e8036589ae258009c7050da0b80606a8582159c0deff4"
+  },
+  {
+   "clip": "sword/block",
+   "source": "Armed-Block-R-GetHit1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.2667,
+    0.5
+   ],
+   "sha256": "9a80986240da34b2ec5138f14673fd0e04b6ea6648e0a2f7a3772fd0edfad9f8",
+   "input": "f81937cc3ef2eb23ed9b0be3271f36e58370ef596cc9786778ad61727af9353c"
+  },
+  {
+   "clip": "sword/block2",
+   "source": "Armed-Block-R-GetHit2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.2667,
+    0.5
+   ],
+   "sha256": "0d0ecefe110b29485dd22e756fecbf9f96396ded9c9ac274128942df2b390142",
+   "input": "6c3ccdfae527a10f28235933e04b6a804c5abb6b552127d03abff7dfde1d5400"
+  },
+  {
+   "clip": "sword/guard",
+   "source": "Armed-Idle",
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "6ce46aa2377d28f7e0719988f5de4621d459a1d61e393d7706c9264bcb3d95f9",
+   "input": "81b8baf9661038ff2e6bacfc27f47e335c7ce43bfdbe3bda3c7ac5748f8439b0"
+  },
+  {
+   "clip": "daggers/hitF",
+   "source": "Armed-GetHit-F1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.5
+   ],
+   "sha256": "a43246b45f9bd24d43a1e8bd5b80e1d7b7fdf153707b23a536efa7020e2cddcf",
+   "input": "95975f53054ec7070b4ef99a92f737f9645892541e9bd998cc492335656cd8da"
+  },
+  {
+   "clip": "daggers/hitF2",
+   "source": "Armed-GetHit-F2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.5
+   ],
+   "sha256": "5655fd75ce6b7b11b1a69629e1152a7cf44d69434414576917584f7f9eed849e",
+   "input": "857f0df45a1bca1d8d60cbd3d59e38b8c5a0588c6067457da0398516f53cfc1f"
+  },
+  {
+   "clip": "daggers/hitL",
+   "source": "Armed-GetHit-L1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.3,
+    0.5
+   ],
+   "sha256": "0e4e8bdff26b6b578699fed18aacf5257245d11df40743a01ee842cdb5437609",
+   "input": "726db3a7d099f7fdbda325a301615ab1ebe71e8a2f11dbdc6dbb36b93c4d07c6"
+  },
+  {
+   "clip": "daggers/hitR",
+   "source": "Armed-GetHit-R1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.0667,
+    0.5
+   ],
+   "sha256": "d2a12df33f76904a476a66c911348e7043f44891aa509bafda1d56fc1cc53fe5",
+   "input": "7bbf8f7028e359e0775c4facdd0db1c1a903442d3a6f5ce8396bba630b53e459"
+  },
+  {
+   "clip": "daggers/stun",
+   "source": "Armed-Stunned",
+   "fps": 30,
+   "frames": 61,
+   "loop": true,
+   "marks": [],
+   "sha256": "48ee1f826b08540288c09cdf3c7d2a034ed4bef90ff84fb392976964e93163aa",
+   "input": "93e011a7e32380e0e92e8036589ae258009c7050da0b80606a8582159c0deff4"
+  },
+  {
+   "clip": "daggers/block",
+   "source": "Armed-Block-Dual-GetHit1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.5
+   ],
+   "sha256": "b078029a5896f67974191b41a848a6b70e625f8b61af330435bc89a05e480937",
+   "input": "cbcec12c300d6b20d06d9042beda9f6048f8838435a6bdcdc33f55fc28d3b50a"
+  },
+  {
+   "clip": "daggers/block2",
+   "source": "Armed-Block-Dual-GetHit2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.5
+   ],
+   "sha256": "20c0fde5d5b1538a580dcc0b55441a642074a0e6ba330480e1931e6a42f0a009",
+   "input": "fdd7a4bdbb3fe614fe3d752d398539d1b648e70254037d4cff5625ab8561dd73"
+  },
+  {
+   "clip": "daggers/guard",
+   "source": "Armed-Idle",
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "97b187d33cb9f90b773f04fe5664c8bb542f27cacea444d8a7f98c7df2f0671f",
+   "input": "81b8baf9661038ff2e6bacfc27f47e335c7ce43bfdbe3bda3c7ac5748f8439b0"
+  },
+  {
+   "clip": "greatsword/hitF",
+   "source": "2Hand-Sword-GetHit-F1",
+   "fps": 60,
+   "frames": 41,
+   "loop": false,
+   "marks": [
+    0,
+    0.1333,
+    0.6667
+   ],
+   "sha256": "84be0f4575038aeb860201b3881ef1516ca9f71d4c4480674767b88242d57c53",
+   "input": "a9fba2f66f93721653ba336bef51eece9fbc0f1b8600abe2419463cba7b88694"
+  },
+  {
+   "clip": "greatsword/hitF2",
+   "source": "2Hand-Sword-GetHit-F2",
+   "fps": 60,
+   "frames": 41,
+   "loop": false,
+   "marks": [
+    0,
+    0.2333,
+    0.6667
+   ],
+   "sha256": "0cf4410bc80366a175ca54a243063cd60938a8d07350917e2dccf7ba08405f06",
+   "input": "19f30608c42147005b242cdf80f091568c94b8394f516d4ac6e192dbe632579a"
+  },
+  {
+   "clip": "greatsword/hitL",
+   "source": "2Hand-Sword-GetHit-L1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.3,
+    0.5
+   ],
+   "sha256": "769c39d59f54049b9de1bd5bafd3cadd5e1fe3864e647163b58f7d8f2a61af03",
+   "input": "5d60644859aeddad15b16726b740852c28639178fd3bc6e7630f9ff84f2b4cd7"
+  },
+  {
+   "clip": "greatsword/hitR",
+   "source": "2Hand-Sword-GetHit-R1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.0667,
+    0.5
+   ],
+   "sha256": "037c7f68c995db38bb0c3620cb04cf6136d8d78fe31783119eab11a7547e6f66",
+   "input": "8707e41c8453ef7b96e429f181565f792acae7f36c7719d03fe03962ebfea641"
+  },
+  {
+   "clip": "greatsword/stun",
+   "source": "2Hand-Sword-Stunned",
+   "fps": 30,
+   "frames": 61,
+   "loop": true,
+   "marks": [],
+   "sha256": "fbea733d3b38b461d7d93ca25c99aea10cecacd2db0be48070ca5eccb7fd0755",
+   "input": "0ed9c88b4c3ce73a1d08c946ad402be8eebf198e680e91091d0c47fdd6e95d45"
+  },
+  {
+   "clip": "greatsword/block",
+   "source": "2Hand-Sword-Block-GetHit1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.2333,
+    0.5
+   ],
+   "sha256": "4e0908dee2105fe0e67c310222056739d2ab7708dc600c9517ce963422282e70",
+   "input": "a14b1fe252ce2cff98cabf7bf30fca9f4c91a8c0deaaaaccb93bcba7c3db3729"
+  },
+  {
+   "clip": "greatsword/block2",
+   "source": "2Hand-Sword-Block-GetHit2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.2333,
+    0.5
+   ],
+   "sha256": "c33bf2d525d867fe562866f22423849e24b819effa1d38ca1e52523c56f9fe49",
+   "input": "890a1029f64f9b293201e80f24a7ea6ac90793f18ae6e5ade1f35e7f014f64f9"
+  },
+  {
+   "clip": "greatsword/guard",
+   "source": "2Hand-Sword-Idle",
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "2000cd8bf3139ad3a1848b68e010df6effb4b723e997bb6215bf61a05be6fb1f",
+   "input": "69af4eeab2f93345b89459800d0809af1f5b2a7ffc45ff8d7b04a4f3872126b5"
+  },
+  {
+   "clip": "shield/hitF",
+   "source": "Armed-GetHit-F1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.5
+   ],
+   "sha256": "14b35b20e75ed3f7f4b4ddafbeca9e4ec3348a785058655e7d8f18f9f436cc5a",
+   "input": "95975f53054ec7070b4ef99a92f737f9645892541e9bd998cc492335656cd8da"
+  },
+  {
+   "clip": "shield/hitF2",
+   "source": "Armed-GetHit-F2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.5
+   ],
+   "sha256": "93e29bae66087a86c2630abea9403b06df6390651352c5ba56ab29af5e041ca1",
+   "input": "857f0df45a1bca1d8d60cbd3d59e38b8c5a0588c6067457da0398516f53cfc1f"
+  },
+  {
+   "clip": "shield/hitL",
+   "source": "Armed-GetHit-L1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.3,
+    0.5
+   ],
+   "sha256": "17eec83c95edee90f95fbf8acea54ac83ac66bfb817b3c6025bb4c18b232ae3a",
+   "input": "726db3a7d099f7fdbda325a301615ab1ebe71e8a2f11dbdc6dbb36b93c4d07c6"
+  },
+  {
+   "clip": "shield/hitR",
+   "source": "Armed-GetHit-R1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.0667,
+    0.5
+   ],
+   "sha256": "f2ff11327ae2ff85190bd1f01377ad824cf741fda5ce1d9bd50d9b9bc09c6520",
+   "input": "7bbf8f7028e359e0775c4facdd0db1c1a903442d3a6f5ce8396bba630b53e459"
+  },
+  {
+   "clip": "shield/stun",
+   "source": "Armed-Stunned",
+   "fps": 30,
+   "frames": 61,
+   "loop": true,
+   "marks": [],
+   "sha256": "12a75ec768c34a214023d06861d3e0db3470ff9d31544479e66611ce8f8eeba7",
+   "input": "93e011a7e32380e0e92e8036589ae258009c7050da0b80606a8582159c0deff4"
+  },
+  {
+   "clip": "shield/block",
+   "source": "Armed-Shield-Block-GetHit1 (mirrored)",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.0667,
+    0.5
+   ],
+   "sha256": "02305d48855a86cc7f7ddd8f39c15ed6f8eab18f38fc343aee0fc4b89bdb8673",
+   "input": "8eb53e796711e8a9fe5b5a46aeaf3d59922a634285fcc2c4cc2a068fc9b27499"
+  },
+  {
+   "clip": "shield/block2",
+   "source": "Armed-Shield-Block-GetHit2 (mirrored)",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.2,
+    0.5
+   ],
+   "sha256": "0791cb813e9b493d27c6a891062733acbe2d94987a5a42aece0d41448f5d16a3",
+   "input": "f0f391ccdd86f0f6a610236ed89f04c33fc1b80151abb39949d8e5bd9080158c"
+  },
+  {
+   "clip": "shield/guard",
+   "source": "Armed-Idle",
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "8207ffb5d33551d67f89b2b205a24a439782b69483fc0b9d378b9e3344df23b3",
+   "input": "81b8baf9661038ff2e6bacfc27f47e335c7ce43bfdbe3bda3c7ac5748f8439b0"
+  },
+  {
+   "clip": "unarmed/hitF",
+   "source": "Unarmed-GetHit-F1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.5
+   ],
+   "sha256": "18648f95d3103bc4d1aea4de25a53b0d25fd7098ec2a8b8b0398471ab376b2c7",
+   "input": "a5e530958720f8613c73986e13eb43941169965458551b7026aafcd65dad0531"
+  },
+  {
+   "clip": "unarmed/hitF2",
+   "source": "Unarmed-GetHit-F2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.5
+   ],
+   "sha256": "d56f94c9a17afd1acff2608f73dc766529dd3f19c47d0e202be0aa74e8bee741",
+   "input": "e11e7df9826ebc1b614d5b5b478ff54b18241d4e816bed3a6a0762555624615d"
+  },
+  {
+   "clip": "unarmed/hitL",
+   "source": "Unarmed-GetHit-L1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.3,
+    0.5
+   ],
+   "sha256": "5ff7f7f3aa89b297453088eb34e7502c42335bd1fa5dec05aae595ae29c046f7",
+   "input": "07abd2b9f9bb393eebf7dd88d9c003ca61c3bbcdc88a3f8600a6c42344c16a09"
+  },
+  {
+   "clip": "unarmed/hitR",
+   "source": "Unarmed-GetHit-R1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.0667,
+    0.5
+   ],
+   "sha256": "68c5f109355fe467dd24aa280f8b1fb967c2f99616dc8c368860c724cf64628a",
+   "input": "80619c2225f01a4f8281bb6c704a3e26b544a1b11763049b71d52b0342e25c53"
+  },
+  {
+   "clip": "unarmed/stun",
+   "source": "Unarmed-Stunned",
+   "fps": 30,
+   "frames": 61,
+   "loop": true,
+   "marks": [],
+   "sha256": "4f077ea04dc14d17a8c30452866e07c37767c34b46e0541847da112a60480935",
+   "input": "1d2070e50821f8ab693e9731efa3f31ca1ee54896004b0a55967229d9741e5bb"
+  },
+  {
+   "clip": "unarmed/block",
+   "source": "Unarmed-Block-GetHit1",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.0667,
+    0.5
+   ],
+   "sha256": "464daa116f2cd65b18f129741b93f43dd47c31e0cd3ea598c875331ba985d5c9",
+   "input": "5c565a321509589fe8dfa999a7cf421fe4313d0188f14993636112f4d47e2038"
+  },
+  {
+   "clip": "unarmed/block2",
+   "source": "Unarmed-Block-GetHit2",
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.5
+   ],
+   "sha256": "2a690ea68b356f7c9da9e9cdef9e89d3b1749181e9c101b1d7ede3416068a858",
+   "input": "8553d23485d542e2d1512f471eda2665bd16e86f6a5df452686e3ee36f3c90d4"
+  },
+  {
+   "clip": "unarmed/guard",
+   "source": "Unarmed-Idle",
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "023d4717b3e67d5a27628c800962c3900dfe03538ba3a47d87fc35067756945d",
+   "input": "bae09780f68d8f4bba3e6f59bc3b4225212f95d7bc56fe2305719ca3358e8b20"
+  }
+ ]
+}

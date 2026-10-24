@@ -441,9 +441,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/menu-afterglow.mp3",
-      "bytes": 1237509,
-      "gitBlob": "4e13cfd7a7f468cb9cbab10f9dae6a674a0ba4ac",
-      "source": "public/music/menu-afterglow.mp3"
+      "bytes": 2898597,
+      "gitBlob": "60abe2860aa5956edd397ba99debd10b52237e72",
+      "source": "Owner upload: Midnight_Arena_Skyline_2026-10-13T230445.mp4 (2026-10-13); full audio extracted to MP3 VBR q2"
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/moonlit-wilderness.mp3",
@@ -477,9 +477,9 @@
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/restricted-zone-pulse.mp3",
-      "bytes": 2766060,
-      "gitBlob": "990ed1fea5e47c0388e09761f576806886c04cd2",
-      "source": "public/music/restricted-zone-pulse.mp3"
+      "bytes": 2897721,
+      "gitBlob": "f66291bd6f905ce881d5d7e2ab58360ca1adfc78",
+      "source": "Owner upload: Siren_Ward_2026-10-14T022254.mp3 (2026-10-14); original MP3 retained"
     },
     {
       "path": "Assets/Conversion/Resources/Audio/music/skyline-run.mp3",
@@ -501,32 +501,26 @@
     },
     {
       "path": "Assets/Conversion/Resources/SourceModels.json",
-      "bytes": 6541603,
-      "gitBlob": "47fbc51a6eba9af0d2b47479bbf001411d9191e2",
+      "bytes": 6606479,
+      "gitBlob": "32c75d6164bed73d1642bc80e9dfcc9d16124b0c",
       "source": "generated from pinned source"
     },
     {
       "path": "Assets/Conversion/Resources/SourceMotion.json",
-      "bytes": 3822883,
-      "gitBlob": "2625663acac0e94fe310a753b837e440bd050ba4",
-      "source": "pinned source export"
-    },
-    {
-      "path": "Assets/Conversion/Resources/PveContent.json",
-      "bytes": 15429,
-      "gitBlob": "f9338722f27577b48e978187a2fdfb039659abdb",
+      "bytes": 3858051,
+      "gitBlob": "b197880a7ac187ee75c39f5a02d1cf19588c86d6",
       "source": "pinned source export"
     },
     {
       "path": "Assets/Conversion/Resources/WardMotion.json",
       "source": "generated from pinned source",
-      "bytes": 3516,
-      "gitBlob": "9066f31e0571dc26dd328e1d1c8337a285c31316"
+      "bytes": 4249,
+      "gitBlob": "52080074508401c8baa3085a5774693eed1e5758"
     },
     {
       "path": "Assets/Conversion/Resources/SceneMotion.json",
-      "bytes": 13459631,
-      "gitBlob": "c47b048119ae86481f6fe00bbc838e9589f3d27f",
+      "bytes": 15251127,
+      "gitBlob": "145d79224440d2ccf0bc8107cb67b176f69650bb",
       "source": "generated from pinned source"
     },
     {
@@ -538,7 +532,19 @@
     {
       "path": "Assets/Conversion/Resources/SceneryMotion.json",
       "bytes": 74081,
-      "gitBlob": "f2357a782afac7624bff1eaa6b3e7ed27cc553e3",
+      "gitBlob": "a57fcd9e196b617520e827a9f8faa8ede334d502",
+      "source": "generated from pinned source"
+    },
+    {
+      "path": "Assets/Conversion/Resources/HazardModels.json",
+      "bytes": 42615,
+      "gitBlob": "f167f14acaf0a8c98d8fda93c1116c77fecc9fc9",
+      "source": "generated from pinned source"
+    },
+    {
+      "path": "Assets/Conversion/Resources/ChipText.json",
+      "bytes": 44631,
+      "gitBlob": "68a7bf4bc21035fd3c5098e71a5b44a46fe40786",
       "source": "generated from pinned source"
     },
     {
@@ -552,6 +558,144 @@
       "bytes": 177648,
       "gitBlob": "39813e99bae17cec879ecff572a0a06980361c44",
       "source": "public/images/l44t-slenderman.jpg"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/thud.wav",
+      "bytes": 24300,
+      "gitBlob": "b83e3b14eebdec47ab4c8102c7cf9bb949cc593f",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/crack.wav",
+      "bytes": 17684,
+      "gitBlob": "becb09d681b18143e20777500984501172e68d7d",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/gravel.wav",
+      "bytes": 35324,
+      "gitBlob": "de52b193bc3b5b1b801279beb5a861535411aa04",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/rebar.wav",
+      "bytes": 57374,
+      "gitBlob": "18fda20d5178482c7b55d2d12d4777e130b8ace2",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/groan.wav",
+      "bytes": 79424,
+      "gitBlob": "4b5b062c8f8c92d9abf34912c6ebb40274268b51",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/creak.wav",
+      "bytes": 66194,
+      "gitBlob": "1300f78ecd04563536b4666f40d31a22d414defc",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/snap.wav",
+      "bytes": 15478,
+      "gitBlob": "ad035a6366f8ad7b93dfec432531592a6df411c6",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/boom.wav",
+      "bytes": 66194,
+      "gitBlob": "35f674c29975e062a5e781a07948b723a385ebec",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/rumble.wav",
+      "bytes": 123524,
+      "gitBlob": "eda682c9f23d1eb1ed72d184c549fe873d445c33",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/glass.wav",
+      "bytes": 61784,
+      "gitBlob": "fe855a51c04710c51b25d41442c07af76ca07081",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/StructureAudio/debris.wav",
+      "bytes": 167624,
+      "gitBlob": "10b70d6bc8a268a8136cef2568acdba9081afe8e",
+      "source": "tools/synth_structure_audio.py"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/brickfall-demolition-row.mp3",
+      "bytes": 4687082,
+      "gitBlob": "a38bfefa0cab43a4423d2740054cd3e44b3bc759",
+      "source": "Owner-supplied Brickfall Run.mp3 (2026-10-11)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/factory-anvil-loop.mp3",
+      "bytes": 4739326,
+      "gitBlob": "36bb555599dc5d1b6ccfd4003809a52d7a1396d0",
+      "source": "Owner-supplied Anvil Loop Arena.mp3 (2026-10-12)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/cybercity-neon-riot.mp3",
+      "bytes": 4979661,
+      "gitBlob": "75d3bbd813daf16ba3f37cdf0f625a971a3272a2",
+      "source": "Owner-supplied Neon Riot Circuit.mp3 (2026-10-12)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/safe-hub-under-siege.mp3",
+      "bytes": 2897720,
+      "gitBlob": "8ba16db73a3cc68ee60544c864d73281a66f94d0",
+      "source": "Owner-supplied Safe Hub Under Siege.mp3 (2026-10-15)"
+    },
+    {
+      "path": "Assets/Conversion/Resources/UnityMaps.json",
+      "bytes": 13628633,
+      "gitBlob": "5fa4306da56c786ccc868d8ba3717a607d2ec2dc",
+      "source": "Generated by tools/generate_expedition.py; preserves other maps"
+    },
+    {
+      "path": "Assets/Conversion/Resources/PveContent.json",
+      "bytes": 24720,
+      "gitBlob": "8ce1f50429b876615c6027041068ce66290b01f0",
+      "source": "Generated by tools/generate_expedition.py; preserves other maps"
+    },
+    {
+      "path": "Assets/Conversion/Resources/ExpeditionLayout.json",
+      "bytes": 83221,
+      "gitBlob": "770af5deaa812ee09707d79a76ccf551d4a31632",
+      "source": "Generated by tools/generate_expedition.py; preserves other maps"
+    },
+    {
+      "path": "Assets/Conversion/Resources/MapLooks.json",
+      "bytes": 96348,
+      "gitBlob": "772852c0a4890a83d96996956848ae924ced3b2c",
+      "source": "Generated by tools/generate_expedition.py; preserves other maps"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/foundry-of-the-dead.mp3",
+      "bytes": 4062028,
+      "gitBlob": "1c736a0e45ac8307037b02378060875f6f7198f4",
+      "source": "Owner-supplied Foundry of the Dead.mp3 (2026-10-17)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/subway-arrival-chime.mp3",
+      "bytes": 3945301,
+      "gitBlob": "872025c38df6fef8808814d28338853247cfa45e",
+      "source": "Owner-supplied Subway Arrival Chime.mp3 (2026-10-17)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/central-station-boss.mp3",
+      "bytes": 1963892,
+      "gitBlob": "16e31d4c55651be7c7aadd2913950c1d1cb2dd3e",
+      "source": "Owner-supplied Station Chime of Doom.mp3 (2026-10-17, zone boss theme)"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/city-ironworks-boss.mp3",
+      "bytes": 3307827,
+      "gitBlob": "e0efb151fdbcf1620855d00db4522205ad20bf4c",
+      "source": "Owner-supplied Hydraulic Hell.mp3 (2026-10-17, zone boss theme)"
     }
   ]
 }
