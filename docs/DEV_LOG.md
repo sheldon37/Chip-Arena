@@ -1,3 +1,30 @@
+## 2026-10-24 — Claude: slash rings, claw marks and line slashes on finishers and specials (merged into shared)
+
+- **Branch/base:** `claude/pack-slashes` from shared `e763377f`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request:** "Next, bring the slash pack's ring slashes, claw marks and line slashes onto the special moves and finishers."
+- **Changes (presentation only):**
+  - `Core/NativePackSlashes`: which move plays which effect, laid how. Finishers: sword 3rd cut lines, daggers 4th claws, greatsword 2nd the ring its cut's way. Specials and abilities: Whirlwind and Wolf Spin a flat ring; Rising Dragon and the sword launch an upright ring; Flash Step, Shadow Step and Bulwark Charge lines; the dagger throw claws.
+  - `Runtime/NativePackSlashPresentation`, hooked after `WeaponFxFrame` and cleared with the weapon effects:
+    - a finisher plays at its replicated swing, a release once;
+    - pooled four per kind;
+    - placed on the rig root (hips, yaw or roll);
+    - coloured strokes tinted to the sweep colour;
+    - off on the low tier and for my first-person pilot.
+  - `Resources/NativePackSlash.shader`, our own: scrolled, wobbled and dissolve-cut strokes, plus a plain sparks mode.
+  - Bake (local tool `bozo-slashfx.request`, v115): `VisualSlashFx/{ring,ring-reverse,lines,claws}` from the pack's `Eff1_Left`, `Eff1_Right`, `Eff6` (serial hits only) and `Eff4`. Lights and scripts are stripped and the materials converted. Our renders match the pack's.
+  - The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-dissolve.zip`: 355 visual-body files, 35.61 MB, verified.
+  - The dissolve build `e763377f62f6` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 849 PASS, exit 0 (LF checkout of `8627115b`).
+  - Unity compile: PASS.
+  - Play mode (moonlit): every look was forced on the local pilot with the tool's new `packfx=` and captured from the match camera.
+  - Real triggers fired for a bot's Flash Step and Rising Dragon and a dagger bot's fourth cut.
+- **Not run:**
+  - The sword and greatsword finishers live (bots rarely chain combos).
+  - A Windows build; multiplayer.
+- **Animation, timing, networking:** none. Effects follow the replicated strike, swing and release times; hits, reach and the wire are unchanged.
+- **Next:** the remaining candidates (Sci-Fi Arsenal / Epic Toon FX, Trails FX), the rest of the animation revamp.
+
 ## 2026-10-24 — Claude: a dead pilot dissolves into hex cells (merged into shared)
 
 - **Branch/base:** `claude/visual-dissolve` from shared `691baee5`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

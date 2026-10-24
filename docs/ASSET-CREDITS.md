@@ -102,6 +102,10 @@ code is our own.
 The slash crescents' ink-brush streaks (`docs/PACK-EFFECTS.md`) read the `WhiteScratches` texture of Ordoss' Magic Slashes
 FX. It ships in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
 
+The same pack's `Eff1_Left`, `Eff1_Right`, `Eff6` and `Eff4` effects (ring slash, serial line slashes, claw marks) play on
+finishers and specials. Their particle systems, meshes and textures ship in the licensed-assets zip, on materials converted
+at the bake to our own `NativePackSlash` shader; no pack shader or script ships.
+
 ### Visual body locomotion clips (2026-10-24, owner licence)
 
 The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, the stride) play 17 `Unarmed` locomotion
