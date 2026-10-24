@@ -1082,6 +1082,32 @@ owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CRE
   - the Standard skin's accent lights in the pilot's colour (the kit models have none);
   - the daggers.
 
+**Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
+"We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack
+already? Cant we utilize that?"
+- **Where the motion comes from today:**
+  - The game's clips are the Explosive RPG Character pack's clips, captured onto the 22-joint rig (`tools/pack-*-provenance.json`
+    names each source clip and frame range).
+  - While travelling, the legs come from the procedural gait, not the clips. The visual body copies the rig's limb directions
+    (`NativeVisualRig`).
+  - The pistol's walk uses the sword set's `Armed-Walk` and its run the `Unarmed` runs; the pack's `1Hand-Pistol` set has
+    no locomotion.
+- **First look (local tool `bozo-retarget.request`):** the pack's own humanoid clips play on the body through Unity's humanoid
+  retargeting (the body rig's avatar), sampled in the Editor:
+  - The runs come out as natural full-body runs on the new proportions: forward lean, long strides, pumping arms.
+  - Today's runs are upright and crouched with short strides.
+  - The comparison sheets are in local scratch.
+- **Proposed runtime design (presentation only):**
+  - A humanoid layer: the visual body gets an Animator with the body rig's avatar and a manually evaluated PlayableGraph. It
+    plays the pack clip the game pose comes from at the same time and weight, traced through the provenance.
+  - The game's arm holds (grip, support hand, aim, chip select), the planted feet and the code-only layers (aim, recoil,
+    leans, specials) then go over it as now.
+  - Locomotion first: runs, walks and strafes blended by direction, their rate matched to the pilot's speed so the feet do not
+    slide. Then idles, jumps and reactions.
+  - Attacks keep the game's poses until traced, since their keys are the hit timing.
+  - The clips ship in the licensed-assets zip: about 0.45 MB per FBX, so the locomotion sets need a larger budget.
+  - Hit volumes, timing and the wire are unchanged.
+
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
