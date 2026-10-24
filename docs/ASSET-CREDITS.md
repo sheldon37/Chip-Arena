@@ -91,6 +91,11 @@ Gun rounds hitting a surface (`docs/PACK-EFFECTS.md`) play converted particle ef
 kripto289's Impacts and Muzzle Flashes. The effects are its concrete, metal and wood impacts, and the textures, meshes and
 materials the bake uses ship in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
 
+### Slash brush (2026-10-24, owner licence)
+
+The slash crescents' ink-brush streaks (`docs/PACK-EFFECTS.md`) read the `WhiteScratches` texture of Ordoss' Magic Slashes
+FX. It ships in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
+
 ### Visual body locomotion clips (2026-10-24, owner licence)
 
 The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, the stride) play 17 `Unarmed` locomotion

@@ -56,10 +56,38 @@ Before, a surface hit drew only the weapon-coloured spark burst (`NativeImpactCu
   - surfaces whose material is snow, dirt or glass use stone (the pack also has dirt, glass, brick, rock, plaster and water
     impacts).
 
+## The slash crescents' ink brush (2026-10-24, `claude/slash-brush`)
+
+Owner: "keep going with the next packs, starting with the sword slash arcs."
+
+- **What it does:** the sword family's slash crescent (`NativeSlashFx`: the blade's real sweep, timed by the rules,
+  coloured by the chips) now takes the pack's ink-brush look. Streaks run along the swing with ragged ends at the tail and
+  the head:
+  - the colour band is streaked, keeping a faint body between the streaks;
+  - the dark underlay becomes ink streaks, mirrored across the band so ink and colour never line up stroke for stroke.
+- **Unchanged:** the crescent's shape, arc, timing, colours and every rule.
+- **Why not the pack's own slash prefabs:** they are fixed rings around a demo knight, fired by its animation's event
+  scripts, on a dissolve shader. The game's crescent already follows the blade, so only the brush texture was taken.
+- **Source:** Ordoss' Magic Slashes FX, its `WhiteScratches` texture. The streaks fill the rectangle u 0.515–0.833,
+  v 0.070–0.908 of its alpha, measured from the PNG at the bake.
+- **The bake** (local tool `bozo-slashes.request`; the body bake runs it too) adds `VisualSlashes/Brush` to the visual
+  body's prefab: an inactive quad whose material carries the texture, its local position and scale the rectangle.
+- **Runtime:**
+  - `NativeWeaponFxPresentation.WithSlashBrush` hands the texture to the match's drawer (`NativeWeaponFxDraw.SlashBrush`).
+  - `Resources/NativeWeaponFx.shader` reads it in the fragment, outside its shared block, for crescents only and only when
+    `_SlashBrushOn`.
+  - Without the bake the crescent is the procedural shape alone.
+- **Checks:**
+  - `--visual-rig` covers the wiring; the full suite covers the shader's existing checks.
+  - The local tool's `bozo-slashlook.request` drew a synthetic sweep through the game's own drawer and shader, plain and
+    brushed, over a dark and a snow-bright floor.
+  - Play mode showed the crescent on the AI's sword strikes.
+- **Not yet:** the pack's slash rings, claw marks and line slashes for specials and finishers. They need its dissolve
+  ported into our effects shader.
+
 ## Candidates from the same drive (not started)
 
 - **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles, muzzle flashes, explosions and magic in the toon style.
-- **Ordoss' Magic Slashes FX:** slash arcs for the sword set.
 - **Kronnect's Trails FX:** afterimages for rolls, dashes and sprint attacks.
 - **Advanced Dissolve:** the spawn-in and deaths. It needs its dissolve inside our toon shader.
 
