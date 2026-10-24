@@ -28,24 +28,30 @@ namespace ChipArena.UnityConversion
         public interface IClips { bool Has(string clip); float Length(string clip); float Hit(string clip); }
 
         // Greatsword: the pack's two-handed sword set.
-        private static readonly Set Greatsword=Build("greatsword","2Hand-Sword-",
-            new[]{"Attack1","Attack2","Attack4","Attack3","Attack5","Attack6"},
-            new[]{"GetHit-F1","GetHit-B1","GetHit-L1","GetHit-R1"});
-        private static Set Build(string spec,string p,string[] attacks,string[] reactions)
+        private static readonly Set Greatsword=Build(new Set{Spec="greatsword",Idle="2Hand-Sword-Idle",Jump="2Hand-Sword-Jump",Flip="2Hand-Sword-Jump-Flip",Fall="2Hand-Sword-Fall",
+            Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
+            AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
+            Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1")},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+        // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
+        // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
+        // tips' sweeps, measured on the body at the bake).
+        private static readonly Set Sword=Build(new Set{Spec="sword",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+            Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
+            AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",
+            Attacks=Names("Sword-Attack-R","1","3","4","6","2","4"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+        private static string[] Names(string prefix,params string[] parts)=>Array.ConvertAll(parts,p=>prefix+p);
+        private static Set Build(Set s,string run,string walk,string sprint)
         {
-            var s=new Set{Spec=spec,Idle=p+"Idle",Jump=p+"Jump",Flip=p+"Jump-Flip",Fall=p+"Fall",Land=p+"Land",Block=p+"Block",BlockHit=p+"Block-GetHit1",
-                Stunned=p+"Stunned",Roll=p+"Roll-Forward",AirAttack=p+"Air-Attack1",SprintAttack=p+"Run-Forward-Attack1"};
-            s.Attacks=Array.ConvertAll(attacks,a=>p+a);s.Reactions=Array.ConvertAll(reactions,a=>p+a);
             string[] dirs={"Forward","Forward-Right","Right","Backward-Right","Backward","Backward-Left","Left","Forward-Left"};
             s.Locomotion=new string[NativeVisualStride.Clips];
-            for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=p+"Run-"+dirs[i];s.Locomotion[NativeVisualStride.Walks+i]=p+"Strafe-"+dirs[i];}
-            s.Locomotion[NativeVisualStride.Sprint]=p+"Run-Forward";
+            for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+dirs[i];s.Locomotion[NativeVisualStride.Walks+i]=walk+dirs[i];}
+            s.Locomotion[NativeVisualStride.Sprint]=sprint;
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
-        public static Set For(string spec)=>spec=="greatsword"?Greatsword:null;
+        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:null;
 
         /// <summary>A body's memory across frames: when it left the ground and landed, and the last strike seen.</summary>
         public sealed class Memory
