@@ -74,6 +74,13 @@ namespace ChipArena.UnityConversion
             hip.rotation=Quaternion.FromToRotation(b-a,dir*along+side*high)*hip.rotation;
             b=knee.position;c=foot.position;knee.rotation=Quaternion.FromToRotation(c-b,a+dir*d-b)*knee.rotation;
         }
+        // PilotFootfall: the drawn feet's plants (1 left, 2 right) while pilot `id`'s stride carries its legs this frame.
+        private bool VisualStrideContacts(int id,out int contacts)
+        {
+            contacts=0;if(!rigs.TryGetValue(id,out var rig)||!visualBodies.TryGetValue(rig,out var body)||body.PosedFrame!=Time.frameCount)return false;
+            var s=body.Stride;if(s==null||s.Weight<.5f)return false;
+            contacts=(s.Locked[0]?1:0)|(s.Locked[1]?2:0);return true;
+        }
         private static void VisualStrideRelease(VisualBody body){if(body?.Stride!=null&&body.Stride.Graph.IsValid())body.Stride.Graph.Destroy();}
 
         // VisualBodyPose, once the game pose is on the body and the rig's hands on the weapon frames: the stride's legs and hips.

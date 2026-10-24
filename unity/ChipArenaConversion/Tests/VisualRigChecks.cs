@@ -137,6 +137,7 @@ namespace ChipArena.UnityConversion
             Check(body.Contains("if(body.Root==null){VisualStrideRelease(body);")&&body.Contains("{VisualStrideRelease(body);if(body.Root!=null)Destroy(body.Root);}"),"each stride graph goes with its body");
             Check(body.Contains("if(id!=ViewBodyId)body.Stride=VisualStrideOf(root.transform,skeleton);"),"first person has no stride");
             Check(stride.Contains("if(!s.Locked[f]&&h<StrideDown){s.Locked[f]=true;s.Lock[f]=foot.position;s.LockWeight[f]=1;}")&&stride.Contains("var turn=foot.rotation;StrideReachTo(hip,knee,foot,Vector3.Lerp(foot.position,s.Lock[f],w));foot.rotation=turn;"),"a planted foot stays where it landed, its leg reaching it, the foot keeping the clip's turn");
+            Check(R("Runtime/NativeFootfallPresentation.cs").Contains("if(contacts>=0&&VisualStrideContacts(a.Id,out int drawn))contacts=drawn;")&&stride.Contains("contacts=(s.Locked[0]?1:0)|(s.Locked[1]?2:0);return true;"),"footsteps sound when the drawn feet plant while the stride carries the legs");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC"})Check(!stride.Contains(pack),"no pack types or names in the stride's code: "+pack);
         }
 
