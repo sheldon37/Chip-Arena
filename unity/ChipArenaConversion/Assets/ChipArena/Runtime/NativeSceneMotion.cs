@@ -42,8 +42,10 @@ namespace ChipArena.UnityConversion
                 // The victim wears its body skin (NativeBodySkinPresentation.cs) at the scene's distance.
                 string victimBody=BodyAt(death.id,death.position,out int bodySkin);
                 float alpha=fade*(death.style=="ghost"?Math.Max(0,.6f-age*.12f):1);Color body=BodyTint(death.actor?.BodyColor),accent=BodyAccent(bodySkin,death.actor?.AccentColor,death.actor?.Hat,death.actor?.HatColor);if(death.style=="siren-crush"){body=Color.Lerp(body,NativeArena.ColorOf(0x0c0a10),.85f);accent=Color.Lerp(accent,NativeArena.ColorOf(0x0c0a10),.85f);}
-                sourceModels.Queue((death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,victimBody):death.model,root,Bone,Visible,layer,only,body:body,accent:accent,opacity:alpha);
-                if(!string.IsNullOrEmpty(death.actor?.Hat)&&!(Visible(CapturedRig.Head)&&AuditorHalo(death.actor.Hat,Bone(CapturedRig.Head),death.at+age,alpha,HaloReduced,layer,only,color:death.actor.HatColor)))sourceModels.Queue(HatModel(death.actor.Hat,death.actor.HatColor),root,Bone,Visible,layer,only,body:HatBody(death.actor.Hat,death.actor.HatColor),opacity:alpha);
+                // A pilot with a visual body plays the scene in it (NativeVisualBodyPresentation.cs VisualSceneShown), without its hat.
+                bool dressed=layer==0&&only==null&&VisualSceneShown(death,Bone,Visible,alpha);
+                if(!dressed)sourceModels.Queue((death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,victimBody):death.model,root,Bone,Visible,layer,only,body:body,accent:accent,opacity:alpha);
+                if(!dressed&&!string.IsNullOrEmpty(death.actor?.Hat)&&!(Visible(CapturedRig.Head)&&AuditorHalo(death.actor.Hat,Bone(CapturedRig.Head),death.at+age,alpha,HaloReduced,layer,only,color:death.actor.HatColor)))sourceModels.Queue(HatModel(death.actor.Hat,death.actor.HatColor),root,Bone,Visible,layer,only,body:HatBody(death.actor.Hat,death.actor.HatColor),opacity:alpha);
                 bool weapon=death.style!="dev-bass-van"&&death.style!="dev-raging-demon"&&(death.style!="dev-clown"||age<.3f);if(weapon&&!string.IsNullOrEmpty(death.actor?.SourceSpec))sourceModels.Queue(Skinned(death.actor,"weapon-"+death.actor.SourceSpec),root,Bone,Visible,layer,only,opacity:alpha);
             }
             return true;

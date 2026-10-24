@@ -368,6 +368,111 @@ namespace ChipArena.UnityConversion
             armMeshes[mesh]=cut;return cut;
         }
 
+        // ---- Death (owner 2026-10-23: "Death turns model into voxel") ----
+        // A pilot's ragdoll wears its visual body: an instance posed from the rig at death (the corpse's bind), each bone riding
+        // the ragdoll part of the game joint at or above it rigidly (NativeCorpse.PartFrom: the part's motion, the corpse's sink,
+        // overlay and shrink), the skeleton scaled by the parts' scale. A whole body only: a cut, crushed, smashed or bisected
+        // corpse, and a swarm, soul or frost look, keep the voxel body (their effects are made of its parts). It hides while the
+        // voxel body would be under half opacity and goes with its corpse.
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;}
+        private readonly Dictionary<NativeCorpse,VisualCorpse> visualCorpses=new Dictionary<NativeCorpse,VisualCorpse>();
+        private readonly List<NativeCorpse> visualCorpsesGone=new List<NativeCorpse>();
+        // A death's visual body: an instance posed from the rig (in its last pose), `offset` from it, in the pilot's accent, without
+        // shadows (as the voxel corpse); `joint` holds, per bone, the nearest game joint mapped at or above it (the pelvis for the
+        // root). Inactive; null without a bake.
+        private GameObject VisualDeathBody(CapturedAnimation.Player rig,NativeDeath death,Vector3 offset,out Transform[] bones,out int[] joint)
+        {
+            bones=null;joint=null;var root=Instantiate(visualBodyPrefab);root.name="Visual corpse "+death.id;var skeleton=root.transform.Find("VisualSkeleton");
+            if(skeleton==null){Destroy(root);return null;}
+            var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
+            var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
+            binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
+            bones=binding.Bones;var mapped=new int[bones.Length];joint=new int[bones.Length];for(int v=0;v<bones.Length;v++)mapped[v]=-1;
+            for(int j=0;j<CapturedRig.Bones.Length;j++){int v=binding.Rig.Of[j];if(v>=0&&v<bones.Length)mapped[v]=j;}
+            for(int v=0;v<bones.Length;v++){int j=-1;for(int u=v;u>=0&&j<0;u=binding.Rig.Parent[u])j=mapped[u];joint[v]=j>=0?j:CapturedRig.Pelvis;}
+            var block=new MaterialPropertyBlock();ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var accent);
+            foreach(var r in root.GetComponentsInChildren<Renderer>(true))
+            {
+                r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;if(r is SkinnedMeshRenderer skin)skin.updateWhenOffscreen=true;
+                bool cloth=false;foreach(var slot in ClothSlots)if(r.name.StartsWith(slot,StringComparison.Ordinal))cloth=true;
+                if(!cloth)continue;r.GetPropertyBlock(block);foreach(int id in AccentChannels)block.SetColor(id,accent);r.SetPropertyBlock(block);
+            }
+            root.SetActive(false);return root;
+        }
+        private bool VisualDeathFor(NativeDeath death)=>!ClassicBodies&&VisualBodiesOn&&(death.model??"pilot")=="pilot"&&death.actor?.SourceSpec!="siren";
+        // PresentDeath, as a pilot's corpse is made from its rig (still in its last pose).
+        private void VisualCorpseMake(NativeCorpse corpse,NativeDeath death,CapturedAnimation.Player rig)
+        {
+            if(rig==null||!VisualDeathFor(death)||corpse.Bisect!=null||corpse.Smash!=null||corpse.Severed.Count>0||corpse.CrushPart>=0)return;
+            var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out var joint);if(root==null)return;
+            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length]};
+            for(int v=0;v<bones.Length;v++){int part=corpse.Anchor[joint[v]];if(!corpse.Parts.ContainsKey(part))part=CapturedRig.Pelvis;c.Part[v]=part;c.Bind[v]=bones[v].localToWorldMatrix;}
+            visualCorpses[corpse]=c;
+        }
+        // The authored death scenes (NativeSceneMotion.cs SourceDeathScene) move the victim's 22 joints from where they were at
+        // death: each visual bone follows its joint's motion since then (the scene's joint matrices over the rig's at death),
+        // hidden while the scene hides the pelvis or the body is under half opacity. True: the voxel victim and its hat are not
+        // drawn. Kept per death until it goes undrawn for 2 s.
+        private sealed class VisualScene{public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;}
+        private readonly Dictionary<long,VisualScene> visualScenes=new Dictionary<long,VisualScene>();private readonly List<long> visualScenesGone=new List<long>();
+        private bool VisualSceneShown(NativeDeath death,Func<int,Matrix4x4> bone,Func<int,bool> visible,float alpha)
+        {
+            if(!VisualDeathFor(death))return false;long key=((long)death.id<<32)^(uint)death.seed;
+            if(!visualScenes.TryGetValue(key,out var s))
+            {
+                if(!rigs.TryGetValue(death.id,out var rig))return false;
+                var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joint);if(root==null)return false;
+                s=new VisualScene{Root=root,Bones=bones,Joint=joint,Bind=new Matrix4x4[bones.Length]};
+                for(int v=0;v<bones.Length;v++)s.Bind[v]=bones[v].localToWorldMatrix;
+                for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
+                visualScenes[key]=s;
+            }
+            s.Frame=Time.frameCount;s.Seen=Time.unscaledTime;
+            if(alpha<.5f||!visible(CapturedRig.Pelvis)){if(s.Root.activeSelf)s.Root.SetActive(false);return true;}
+            if(!s.Root.activeSelf)s.Root.SetActive(true);
+            for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];
+            for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
+            return true;
+        }
+        // PresentDeath, where the body draws: pose the corpse's visual body; true when it stands in for the voxel body this frame
+        // (also while hidden for a fade under half opacity).
+        private bool VisualCorpseShown(NativeCorpse corpse,float alpha)
+        {
+            if(!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null||corpse.Swarm!=null)return false;
+            c.Frame=Time.frameCount;
+            if(alpha<.5f){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}
+            if(!c.Root.activeSelf)c.Root.SetActive(true);
+            c.Bones[0].localScale=Vector3.one*Mathf.Max(.001f,corpse.PartScale);
+            for(int v=0;v<c.Bones.Length;v++){var m=corpse.PartFrom(c.Part[v])*c.Bind[v];c.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
+            return true;
+        }
+        // After the deaths are presented: hide the corpse bodies not drawn this frame; drop those whose corpse is gone.
+        private void VisualCorpsesShown()
+        {
+            if(visualCorpses.Count==0&&visualScenes.Count==0)return;
+            visualCorpsesGone.Clear();
+            foreach(var pair in visualCorpses)
+            {
+                bool kept=false;foreach(var c in corpses.Values)if(c==pair.Key){kept=true;break;}
+                if(!kept||pair.Value.Root==null){visualCorpsesGone.Add(pair.Key);continue;}
+                if(pair.Value.Frame!=Time.frameCount&&pair.Value.Root.activeSelf)pair.Value.Root.SetActive(false);
+            }
+            foreach(var gone in visualCorpsesGone){var root=visualCorpses[gone].Root;if(root!=null)Destroy(root);visualCorpses.Remove(gone);}
+            if(visualScenes.Count==0)return;
+            visualScenesGone.Clear();
+            foreach(var pair in visualScenes)
+            {
+                var s=pair.Value;if(s.Root==null||Time.unscaledTime-s.Seen>2){visualScenesGone.Add(pair.Key);continue;}
+                if(s.Frame!=Time.frameCount&&s.Root.activeSelf)s.Root.SetActive(false);
+            }
+            foreach(var gone in visualScenesGone){var root=visualScenes[gone].Root;if(root!=null)Destroy(root);visualScenes.Remove(gone);}
+        }
+        private void ClearVisualCorpses()
+        {
+            foreach(var c in visualCorpses.Values)if(c.Root!=null)Destroy(c.Root);visualCorpses.Clear();
+            foreach(var s in visualScenes.Values)if(s.Root!=null)Destroy(s.Root);visualScenes.Clear();
+        }
+
         // While drawing a third-person arena pilot (SourceCharacter): whether its visual body replaces the voxel one this frame.
         private bool VisualBodyDrawn(CapturedAnimation.Player rig)
         {
