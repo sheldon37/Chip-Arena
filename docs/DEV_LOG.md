@@ -1,3 +1,29 @@
+## 2026-10-25 — Claude: hats, chips, spell charges, hit blood and the parry flash on the model (merged into shared)
+
+- **Branch/base:** `claude/model-dressing` from shared `7a094664`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `VisualJointsOf`/`VisualJointFrame`: each game joint's frame on its model bone, captured at the first bind.
+  - `SourceCharacter` on a model pilot now draws:
+    - the hat on the model's head (Sheldon Head excepted);
+    - `BodyDressing` (chips on model joints, the spell charge orb, hand motes);
+    - `LivingWounds` (blood from the model's hit point);
+    - the parry flash (`VisualParryFlash`, a baked silhouette).
+  - The hats were measured on every hat id. They sit on the hair at their own size; the `Tag_Hat` hair shape was tried and dropped (it leaves the head bald).
+  - Local tool:
+    - `seat=T,field,value` sets the local seat's field;
+    - `modelparts=T,id,...` logs source model parts;
+    - a `head` view;
+    - views take a third field (the light/framing mode).
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `47f87918`), with new dressing checks.
+  - Offline Unity compile (`tools/check_unity_compile.py`, against the installed 6000.3.24f1): PASS.
+  - Play mode (moonlit, `seat=`): every hat on the model in the match view (cap, beanie, top, wizard, crown, cone, antenna, halo, cowboy).
+- **Not run:**
+  - the spell charge, hit blood and parry flash in play (the Editor closed before those captures);
+  - chips with a real Body Chip loadout;
+  - the Cyber Lord's look on the model.
+- **Note:** the Unity Editor closed on its own at 19:27 (a clean shutdown); it was reopened to finish the checks.
+
 ## 2026-10-25 — Claude: the co-op revive and the fork bomb clones wear the model (merged into shared)
 
 - **Branch/base:** `claude/model-revive` from shared `1ead7454`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

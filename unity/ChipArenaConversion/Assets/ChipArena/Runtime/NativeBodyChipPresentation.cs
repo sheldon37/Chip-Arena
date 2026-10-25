@@ -84,7 +84,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++)
             {
                 var c=bodyChips[i];if(first&&!NativeBodyChips.FirstPerson(c.Bone))continue;NativeBodyChips.Animate(ref c,time,dash);
-                if(c.Visible)QueuePiece(c.Piece,rig.Bones[c.Bone].localToWorldMatrix,layer,camera);
+                // On the model's joint where the pilot wears it (NativeVisualBodyPresentation.cs VisualJointFrame).
+                if(c.Visible)QueuePiece(c.Piece,first?rig.Bones[c.Bone].localToWorldMatrix:VisualJointFrame(rig,c.Bone),layer,camera);
             }
         }
         /// <summary>spellMotes: element sparks from the casting hand (renderer.ts:128 spellBurst), at the source effects quality.</summary>
