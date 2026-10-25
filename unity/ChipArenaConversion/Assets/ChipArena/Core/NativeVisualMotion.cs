@@ -21,6 +21,10 @@ namespace ChipArena.UnityConversion
             public string[] Reactions;
             /// <summary>Locomotion, NativeVisualStride's order: 8 runs, 8 walks (clockwise from forward), the sprint.</summary>
             public string[] Locomotion;
+            /// <summary>A gun's upper-body layer: its aim poses (down, level, up: blended by the pilot's pitch, AimPitch degrees
+            /// apart), its recoil per shot (likewise; FireFromHit: the clip's Hit lands on the shot, else it starts there) and
+            /// its reload (fitted to the reload). Null for melee.</summary>
+            public string[] Aim, Fire; public string Reload; public float AimPitch=45; public bool FireFromHit;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -53,6 +57,19 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block=M("Armed-Shield-Block"),BlockHit=M("Armed-Shield-Block-GetHit1"),Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack=M("Armed-Shield-Attack1"),SprintAttack=M("Armed-Shield-Attack1"),
             Attacks=Array.ConvertAll(Names("Armed-Shield-Attack","2","3","1"),M),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Shield-Run-","Armed-Shield-Strafe-",M("Armed-Shield-Run-Forward"),true);
+        // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry by default; shouldered (its aim grid's
+        // middle column by the pitch, a recoil on each shot) while aiming or just after a shot (owner 2026-10-24: "Aiming and
+        // firing"), the reload fitted to the reload.
+        private static readonly Set Rifle=Build(new Set{Spec="rifle",Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
+            Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
+            AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
+            Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle"},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
+        // Pistol: the armed set, held low; raised to the pack's pistol stance (arm out) while aiming or just after a shot (its
+        // own firing cut throws the arm overhead: the stance holds, the game's muzzle kick is the recoil), its reload fitted.
+        private static readonly Set Pistol=Build(new Set{Spec="pistol",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+            Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
+            AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
+            Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
         private static string M(string clip)=>clip+Mirror;
@@ -67,10 +84,37 @@ namespace ChipArena.UnityConversion
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
+            foreach(var l in new[]{s.Aim,s.Fire})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);if(s.Reload!=null&&!all.Contains(s.Reload))all.Add(s.Reload);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
-        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:null;
+        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
+            spec=="rifle"||spec=="machinegun"?Rifle:spec=="pistol"?Pistol:null;
+
+        /// <summary>A gun's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and whether the layer is
+        /// up (Raised: aimed or reloading). False for melee sets.</summary>
+        public struct Upper { public string A, B; public float TimeA, TimeB, Mix; public bool Raised; }
+        /// <summary>How long after a shot the gun stays up (the game's own rule: the interval and a little).</summary>
+        public static float ShotHold(Actor a)=>GunRules.Valid(a.Weapon)&&GunRules.Get(a.Weapon)!=null?Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f):.38f;
+        public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=default;if(s.Aim==null)return false;
+            if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
+            {
+                float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
+            }
+            float age=time-a.LastShot;bool raised=a.Aiming||age<ShotHold(a);
+            // The pitch: level to up (positive) or down, between the grid's rows.
+            float p=Math.Max(-1,Math.Min(1,a.Pitch/s.AimPitch));int b=p>=0?2:0;
+            var row=s.Aim;float clipAge=0;
+            if(s.Fire!=null&&age>=0&&clips.Has(s.Fire[1]))
+            {
+                float flen=clips.Length(s.Fire[1]),start=s.FireFromHit?clips.Hit(s.Fire[1]):0;
+                if(start+age<flen){row=s.Fire;clipAge=start+age;}
+            }
+            up=new Upper{A=row[1],B=row[b],TimeA=clipAge,TimeB=clipAge,Mix=Math.Abs(p),Raised=raised};
+            return clips.Has(up.A);
+        }
 
         /// <summary>A body's memory across frames: when it left the ground and landed, and the last strike seen.</summary>
         public sealed class Memory

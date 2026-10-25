@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     {
         private sealed class VisualMotion
         {
-            public NativeVisualMotion.Set Set; public GameObject Proxy; public HumanPoseHandler Handler; public HumanPose Pose; public float[] Mix;
+            public NativeVisualMotion.Set Set; public GameObject Proxy; public Animator Animator; public HumanPoseHandler Handler; public HumanPose Pose; public float[] Mix, UpperMix; public float Upper;
             public string[] Names; public NativeVisualMotionClips.Clip[] Clips; public float[] Weights, Times; public readonly Dictionary<string,int> Index=new Dictionary<string,int>();
             public int[] Loco; public readonly float[] LocoWeights=new float[NativeVisualStride.Clips],SpeedX=new float[NativeVisualStride.Clips],SpeedZ=new float[NativeVisualStride.Clips],LocoLength=new float[NativeVisualStride.Clips];
             public float Phase, Weight, LocoShare, Time=float.NaN; public Vector3 LastAt, Velocity;
@@ -41,7 +41,10 @@ namespace ChipArena.UnityConversion
             }
         }
         // The two-handed support fist's place on the handle (the weapon frame, metres along the blade: behind the right fist).
-        private const float SupportAlong=-.10f, SupportReach=.22f, SupportLetGo=.40f, SupportEase=.12f, MotionEase=.15f;
+        private const float SupportAlong=-.10f, SupportReach=.22f, SupportLetGo=.40f, SupportEase=.12f, MotionEase=.15f, UpperEase=.12f, AimTurnLimit=35f, CarryTilt=20f;
+        // The upper body's muscles (a gun's aim, recoil and reload layer): every muscle but the legs'.
+        private static bool[] upperMuscles;
+        private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
         private static readonly HumanBodyBones[] ContactBones={HumanBodyBones.LeftFoot,HumanBodyBones.LeftToes,HumanBodyBones.RightFoot,HumanBodyBones.RightToes,
             HumanBodyBones.LeftLowerLeg,HumanBodyBones.RightLowerLeg,HumanBodyBones.Hips,HumanBodyBones.Chest,HumanBodyBones.Head,HumanBodyBones.LeftHand,HumanBodyBones.RightHand};
         private static readonly float[] ContactRadius={-1,-1,-1,-1,.06f,.06f,.10f,.12f,.12f,.05f,.05f};
@@ -62,7 +65,7 @@ namespace ChipArena.UnityConversion
             var proxy=Instantiate(skeleton.gameObject,body.Root.transform,false);proxy.name="Visual motion";
             foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);
             var animator=proxy.GetComponent<Animator>();animator.runtimeAnimatorController=null;animator.applyRootMotion=false;animator.enabled=true;
-            var m=new VisualMotion{Set=set,Proxy=proxy,Names=names.ToArray(),Handler=new HumanPoseHandler(source.avatar,proxy.transform),Mix=new float[NativeVisualMotionClips.Head+bank.Muscles]};
+            var m=new VisualMotion{Set=set,Proxy=proxy,Animator=animator,Names=names.ToArray(),Handler=new HumanPoseHandler(source.avatar,proxy.transform),Mix=new float[NativeVisualMotionClips.Head+bank.Muscles],UpperMix=new float[NativeVisualMotionClips.Head+bank.Muscles]};
             m.Pose.muscles=new float[bank.Muscles];
             m.Clips=new NativeVisualMotionClips.Clip[names.Count];m.Weights=new float[names.Count];m.Times=new float[names.Count];
             for(int i=0;i<names.Count;i++){m.Index[names[i]]=i;m.Clips[i]=bank.Clips[names[i]];}
@@ -102,6 +105,16 @@ namespace ChipArena.UnityConversion
             upper.rotation=Quaternion.FromToRotation(b-a,dir*along+side*high)*upper.rotation;
             b=lower.position;c=hand.position;lower.rotation=Quaternion.FromToRotation(c-b,a+dir*d-b)*lower.rotation;
         }
+        // The hold's turn that points the weapon's bore (+z) along the body's facing and its top (+y) up while the proxy wears
+        // `level` (its first frame); the proxy is posed again by the next mix.
+        private static void VisualMotionCalibrate(VisualMotion m,NativeVisualMotionClips.Clip level,Transform origin)
+        {
+            System.Array.Clear(m.Mix,0,m.Mix.Length);NativeVisualMotionClips.Add(level,0,1,m.Mix);NativeVisualMotionClips.Finish(m.Mix,1);
+            m.Pose.bodyPosition=new Vector3(m.Mix[0],m.Mix[1],m.Mix[2]);m.Pose.bodyRotation=new Quaternion(m.Mix[3],m.Mix[4],m.Mix[5],m.Mix[6]);
+            System.Array.Copy(m.Mix,NativeVisualMotionClips.Head,m.Pose.muscles,0,m.Pose.muscles.Length);m.Handler.SetHumanPose(ref m.Pose);
+            var hand=m.Animator!=null?m.Animator.GetBoneTransform(HumanBodyBones.RightHand):null;if(hand==null)return;
+            m.HoldRotation=Quaternion.Inverse(hand.rotation)*Quaternion.LookRotation(origin.forward,origin.up);
+        }
         private static void VisualMotionRelease(VisualBody body)
         {
             var m=body?.Motion;if(m==null)return;m.Handler?.Dispose();if(m.Proxy!=null)Destroy(m.Proxy);body.Motion=null;
@@ -126,6 +139,8 @@ namespace ChipArena.UnityConversion
                 var inv=Quaternion.Inverse(m.RightHand.rotation);m.HoldPosition=inv*(weaponHand.position-m.RightHand.position);m.HoldRotation=inv*weaponHand.rotation;
                 if(m.LeftHand!=null){inv=Quaternion.Inverse(m.LeftHand.rotation);m.LeftHoldPosition=inv*(offHand.position-m.LeftHand.position);m.LeftHoldRotation=inv*offHand.rotation;}
                 m.HasHold=true;
+                // A gun's turn in the hand from the pack's own level aim: there its barrel points straight ahead, upright.
+                if(m.Set.Aim!=null&&VisualMotionBank.Clips.TryGetValue(m.Set.Aim[1],out var level))VisualMotionCalibrate(m,level,body.Root.transform);
             }
             var local=Quaternion.Inverse(body.Root.transform.rotation)*velocity;float speed=new Vector2(local.x,local.z).magnitude;
             bool moving=a.Grounded&&speed>NativeVisualStride.Moving;
@@ -151,6 +166,16 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<m.Clips.Length;i++)NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],m.Weights[i],m.Mix);
             for(int k=0;k<m.Loco.Length;k++){int i=m.Loco[k];if(i>=0)NativeVisualMotionClips.Add(m.Clips[i],m.Phase*m.LocoLength[k],m.LocoWeights[k]*m.LocoShare,m.Mix);}
             NativeVisualMotionClips.Finish(m.Mix,sum);
+            // A gun's upper body: aimed (by the pitch), its recoil, or its reload, over the legs' motion by its eased weight.
+            var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up);
+            m.Upper=Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);
+            if(layered&&m.Upper>0&&VisualMotionBank.Clips.TryGetValue(up.A,out var ua))
+            {
+                System.Array.Clear(m.UpperMix,0,m.UpperMix.Length);NativeVisualMotionClips.Add(ua,up.TimeA,1-up.Mix,m.UpperMix);
+                if(up.B!=null&&up.Mix>0&&VisualMotionBank.Clips.TryGetValue(up.B,out var ub))NativeVisualMotionClips.Add(ub,up.TimeB,up.Mix,m.UpperMix);
+                NativeVisualMotionClips.Finish(m.UpperMix,1);var mask=UpperMuscles;
+                for(int i=0;i<mask.Length&&NativeVisualMotionClips.Head+i<m.Mix.Length;i++)if(mask[i]){int k=NativeVisualMotionClips.Head+i;m.Mix[k]+=(m.UpperMix[k]-m.Mix[k])*m.Upper;}
+            }
             m.Pose.bodyPosition=new Vector3(m.Mix[0],m.Mix[1],m.Mix[2]);m.Pose.bodyRotation=new Quaternion(m.Mix[3],m.Mix[4],m.Mix[5],m.Mix[6]);
             System.Array.Copy(m.Mix,NativeVisualMotionClips.Head,m.Pose.muscles,0,m.Pose.muscles.Length);
             m.Handler.SetHumanPose(ref m.Pose);
@@ -177,13 +202,28 @@ namespace ChipArena.UnityConversion
                 // On the hand as drawn, at any weight (a part-blended hand carries its weapon too).
                 weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);
                 if(m.LeftHand!=null&&m.Set.Spec!="greatsword")offHand.SetPositionAndRotation(m.LeftHand.position+m.LeftHand.rotation*m.LeftHoldPosition,m.LeftHand.rotation*m.LeftHoldRotation);
-                // A two-handed weapon: the support fist onto its handle, behind the right, while the clip keeps it near.
-                if(m.Set.Spec=="greatsword"&&m.LeftHand!=null&&m.LeftArm!=null&&m.LeftForearm!=null)
+                // A raised gun's barrel turned onto the aim (about its grip, a little): its rounds leave its muzzle.
+                bool reloading=time>=a.ReloadAt&&time<a.ReloadUntil;
+                if(m.Set.Aim!=null&&!reloading)
                 {
-                    Vector3 grip=weaponHand.position+weaponHand.rotation*new Vector3(0,0,SupportAlong);
+                    if(m.Upper>0)
+                    {
+                        var aim=Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward;var turn=Quaternion.FromToRotation(weaponHand.rotation*Vector3.forward,aim);
+                        turn.ToAngleAxis(out float angle,out var axis);if(angle>180)angle-=360;
+                        weaponHand.rotation=Quaternion.AngleAxis(Mathf.Clamp(angle,-AimTurnLimit,AimTurnLimit)*m.Upper*wgt,axis)*weaponHand.rotation;
+                    }
+                    // Lowered: the muzzle tipped down about the grip (the low ready carry; owner 2026-10-24).
+                    if(m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt,weaponHand.rotation*Vector3.right)*weaponHand.rotation;
+                }
+                // A two-handed weapon: the support fist onto its handle (the greatsword's behind the right fist, a long gun's
+                // handguard), while the clip keeps it near; not while reloading.
+                bool longGun=body.Held!=null&&body.Held.Supported&&(m.Set.Spec=="rifle"||m.Set.Spec=="machinegun");
+                if((m.Set.Spec=="greatsword"||longGun)&&m.LeftHand!=null&&m.LeftArm!=null&&m.LeftForearm!=null)
+                {
+                    Vector3 grip=weaponHand.position+weaponHand.rotation*(longGun?body.Held.Support:new Vector3(0,0,SupportAlong));
                     Vector3 fist=m.LeftFist!=null?Vector3.Lerp(m.LeftHand.position,m.LeftFist.position,.6f):m.LeftHand.position;
                     float far=(fist-grip).magnitude,hold=1-Mathf.Clamp01((far-SupportReach)/(SupportLetGo-SupportReach));m.SupportGap=far;
-                    m.Support=Mathf.MoveTowards(m.Support,hold,dt/SupportEase);
+                    m.Support=Mathf.MoveTowards(m.Support,reloading?0:hold,dt/SupportEase);
                     if(m.Support>0){var turnHand=m.LeftHand.rotation;var origin=body.Root.transform;ArmReachTo(m.LeftArm,m.LeftForearm,m.LeftHand,m.LeftHand.position+(grip-fist)*m.Support*wgt,-origin.up-origin.right);m.LeftHand.rotation=turnHand;}
                 }
             }
