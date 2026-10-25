@@ -62,6 +62,15 @@ namespace ChipArena.UnityConversion
             TextureId=Shader.PropertyToID("_Texture2D"),CutoffId=Shader.PropertyToID("_Cutoff"),GhostSideId=Shader.PropertyToID("_GhostSide"),GhostColorId=Shader.PropertyToID("_GhostColor");
         // The spawn-in hologram's slots (Resources/NativeVisualBodyGhost.shader): the slice and flash, the split's two copies.
         private Material[] visualGhosts; private bool visualGhostsFailed;
+        // Echoes of the visual body (owner 2026-10-24: "The dodge effect still shows the voxel model"): a roll afterimage, dash
+        // ghost or Demon Step ghost of a pilot drawn as the model snapshots its drawn renderers (the skinned ones baked into
+        // pooled meshes) and draws them through that ghost's own shader, tinted and fading as the voxel ghosts are.
+        private sealed class VisualEcho { public Mesh[] Baked=new Mesh[0], Meshes=new Mesh[0]; public Matrix4x4[] At=new Matrix4x4[0]; public int Count; }
+        private readonly Dictionary<string,Material> visualEchoMaterials=new Dictionary<string,Material>(); private MaterialPropertyBlock visualEchoBlock;
+        private static readonly int VisualEchoTint=Shader.PropertyToID("_BodyTint");
+        // The echo's share of the voxel ghost's opacity (the model's layered meshes, body under clothes, add up under the
+        // additive ghost) and its depth offset toward the eye.
+        private const float VisualEchoShare=.55f, VisualEchoOffset=-2;
         // The spawn-in as the visual body's shader reads it (Resources/NativeVisualBodyFx.cginc); the spawn-in's
         // SpawnVisualLook fills it from the frame the voxel parts read. Off: formed, untinted, no hologram.
         private struct VisualSpawnLook
@@ -530,6 +539,40 @@ namespace ChipArena.UnityConversion
                 VisualWeaponShown(body);body.Seen=false;
             }
             foreach(var rig in visualBodiesGone)visualBodies.Remove(rig);
+        }
+        // A snapshot of the model `rig` draws this frame into `echo` (made on first use, its meshes reused); false when the rig
+        // draws voxel (the caller snapshots the voxel ghost instead).
+        private bool VisualEchoSnap(CapturedAnimation.Player rig,ref VisualEcho echo)
+        {
+            if(rig==null||!visualBodies.TryGetValue(rig,out var body)||body.Root==null||!body.Root.activeInHierarchy||body.PosedFrame<Time.frameCount-1||body.All==null)return false;
+            echo??=new VisualEcho();int n=body.All.Length;
+            if(echo.Meshes.Length<n){System.Array.Resize(ref echo.Baked,n);System.Array.Resize(ref echo.Meshes,n);System.Array.Resize(ref echo.At,n);}
+            int k=0;
+            foreach(var r in body.All)
+            {
+                if(r==null||!r.enabled||!r.gameObject.activeInHierarchy)continue;
+                if(r is SkinnedMeshRenderer skin)
+                {
+                    if(echo.Baked[k]==null)echo.Baked[k]=new Mesh{name="Visual body echo"};skin.BakeMesh(echo.Baked[k],true);
+                    var t=skin.transform;echo.Meshes[k]=echo.Baked[k];echo.At[k]=Matrix4x4.TRS(t.position,t.rotation,Vector3.one);
+                }
+                else if(r.TryGetComponent<MeshFilter>(out var filter)&&filter.sharedMesh!=null){echo.Meshes[k]=filter.sharedMesh;echo.At[k]=r.transform.localToWorldMatrix;}
+                else continue;
+                k++;
+            }
+            echo.Count=k;return k>0;
+        }
+        // The snapshot drawn through `shader` (a ghost shader taking _BodyTint: linear colour, opacity).
+        private void VisualEchoDraw(VisualEcho echo,string shader,Color tint,float opacity)
+        {
+            if(echo==null||echo.Count==0||!(opacity>0))return;
+            if(!visualEchoMaterials.TryGetValue(shader,out var material))
+            {
+                var s=Resources.Load<Shader>(shader);material=s!=null&&s.isSupported?new Material(s){name="Visual body echo"}:null;
+                if(material!=null)material.SetFloat("_EchoOffset",VisualEchoOffset);visualEchoMaterials[shader]=material;
+            }
+            if(material==null)return;visualEchoBlock??=new MaterialPropertyBlock();visualEchoBlock.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));
+            for(int i=0;i<echo.Count;i++){var mesh=echo.Meshes[i];if(mesh==null)continue;for(int sub=0;sub<mesh.subMeshCount;sub++)Graphics.DrawMesh(mesh,echo.At[i],material,0,null,sub,visualEchoBlock);}
         }
         // The bodies live under their rigs' roots, so disposing a rig destroys its body; this drops the records.
         private void ClearVisualBodies()

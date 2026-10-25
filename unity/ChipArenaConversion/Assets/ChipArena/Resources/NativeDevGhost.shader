@@ -1,14 +1,16 @@
 // C12 Demon Step afterimage (client/demon-afterimages.ts ghostMesh): a MeshBasicMaterial silhouette, flat colour, transparent,
 // depthWrite false, no tone mapping, front faces, scene fog. Drawn through NativeSourceModels.Queue (instanced or one by
-// one): _BodyTint.rgb is the linear colour and .a the opacity.
+// one): _BodyTint.rgb is the linear colour and .a the opacity. _EchoOffset: a depth offset toward the eye for the visual
+// body's echoes (0 for the voxel ghosts).
 Shader "ChipArena/NativeDevGhost"
 {
-    Properties { _BodyTint("Colour (linear) and opacity",Color)=(1,1,1,1) }
+    Properties { _BodyTint("Colour (linear) and opacity",Color)=(1,1,1,1) _EchoOffset("Depth offset",Float)=0 }
     SubShader
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" "IgnoreProjector"="True" }
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
+        Offset [_EchoOffset],[_EchoOffset]
         Cull Back
         Pass
         {

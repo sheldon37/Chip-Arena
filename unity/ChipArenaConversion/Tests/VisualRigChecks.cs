@@ -102,6 +102,20 @@ namespace ChipArena.UnityConversion
             PackSlashes(root);Console.WriteLine("PASS visual rig: the slash pack's line slashes, claw marks and rings play on the sword's, daggers' and greatsword's finishers and on the sword launch, Wolf Spin, Rising Dragon, Whirlwind, the steps and charge and the dagger throw, once each at its hit or release, about the pilot, off on the low tier and in my own first person ("+count+" checks)");
             Motion(root);Console.WriteLine("PASS visual rig: every melee weapon's (the shield mirrored), gun's, bow's, caster's (the staff mirrored) and fighter's model plays the animation pack's own clips, every melee weapon's kit moves too (a gun shouldered over its legs, on the look unless sprinting, its reload fitted; a caster's cast over its legs, its start fitted to the release), retimed so each attack's Hit lands mid hit window, the roll fills the roll, the air states and landing follow the pilot, specials and kit moves keep the game's pose; the weapon rides the drawn hand and no foot goes under the floor ("+count+" checks)");
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
+            Echoes(root);Console.WriteLine("PASS visual rig: a pilot drawn as the model leaves the model's roll afterimages, dash ghosts and Demon Step ghosts (its drawn renderers baked), tinted and fading as the voxel ghosts, a little toward the eye ("+count+" checks)");
+        }
+
+        // Echoes of the visual body (owner 2026-10-24: "The dodge effect still shows the voxel model"): the roll afterimages, dash
+        // ghosts and Demon Step ghosts of a pilot drawn as the model snapshot the model (NativeVisualBodyPresentation.cs).
+        private static void Echoes(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string body=R("Runtime/NativeVisualBodyPresentation.cs"),roll=R("Runtime/NativeWeaponFxPresentation.cs"),dash=R("Runtime/NativeMeleeKitPresentation.cs"),demon=R("Runtime/NativeDevFighterEffects.cs");
+            Check(body.Contains("skin.BakeMesh(echo.Baked[k],true);")&&body.Contains("if(r==null||!r.enabled||!r.gameObject.activeInHierarchy)continue;"),"an echo bakes the model's drawn renderers");
+            Check(roll.Contains("afterimageModel[slot]=VisualEchoSnap(rig,ref afterimageEchoes[slot]);")&&roll.Contains("if(afterimageModel[k]){VisualEchoDraw(afterimageEchoes[k],\"NativeWeaponGhost\",tint,opacity);continue;}"),"the roll afterimages");
+            Check(dash.Contains("g.Model=VisualEchoSnap(rig,ref g.Echo);")&&dash.Contains("if(g.Model){VisualEchoDraw(g.Echo,\"NativeWeaponGhost\",g.Tint,opacity);continue;}"),"the dash ghosts");
+            Check(demon.Contains("demonModel[slot]=VisualEchoSnap(rig,ref demonEchoes[slot]);")&&demon.Contains("if(demonModel[s]){VisualEchoDraw(demonEchoes[s],\"NativeDevGhost\",tint,opacity);continue;}"),"the Demon Step ghosts");
+            foreach(var shader in new[]{"NativeWeaponGhost","NativeDevGhost"}){var text=R("Resources/"+shader+".shader");Check(text.Contains("_EchoOffset(\"Depth offset\",Float)=0")&&text.Contains("Offset [_EchoOffset],[_EchoOffset]"),shader+": the echoes' depth offset, 0 for the voxel ghosts");}
         }
 
         // Surface impacts from the owner's effect pack (owner 2026-10-24: "Implement whatever we have on asset packs that would work

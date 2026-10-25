@@ -3,9 +3,11 @@
 // pilot's accent colour, fading with the copy's age. Drawn through NativeSourceModels.Queue (instanced, or one by one):
 // _BodyTint.rgb is the linear colour (HDR) and .a the copy's opacity. Additive, no depth write, depth tested against the
 // opaque scene, front faces, scene fog toward black; Transparent+1 so it lands after the arena's alpha-blended parts.
+// _EchoOffset: a depth offset toward the eye for the visual body's echoes (a baked snapshot over the GPU-skinned body would
+// z-fight while they overlap); 0 for the voxel ghosts.
 Shader "ChipArena/NativeWeaponGhost"
 {
-    Properties { _BodyTint("Colour (linear) and opacity",Color)=(1,1,1,1) }
+    Properties { _BodyTint("Colour (linear) and opacity",Color)=(1,1,1,1) _EchoOffset("Depth offset",Float)=0 }
     SubShader
     {
         Tags { "Queue"="Transparent+1" "RenderType"="Transparent" "IgnoreProjector"="True" }
@@ -13,6 +15,7 @@ Shader "ChipArena/NativeWeaponGhost"
         {
             Blend One One
             ZWrite Off
+            Offset [_EchoOffset],[_EchoOffset]
             ZTest LEqual
             Cull Back
             CGPROGRAM
