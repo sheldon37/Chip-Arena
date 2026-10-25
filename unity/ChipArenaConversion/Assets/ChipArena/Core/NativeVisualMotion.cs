@@ -39,6 +39,13 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",
             Attacks=Names("Sword-Attack-R","1","3","4","6","2","4"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+        // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
+        // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
+        // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
+        private static readonly Set Daggers=Build(new Set{Spec="daggers",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+            Land="Armed-Land",Block="Armed-Block-Dual",BlockHit="Armed-Block-Dual-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
+            AirAttack="Armed-Air-Attack-L1",SprintAttack="Armed-Run-Attack-Dual",
+            Attacks=Names("Dagger-Attack-","R1","L3","R2","L2"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         private static string[] Names(string prefix,params string[] parts)=>Array.ConvertAll(parts,p=>prefix+p);
         private static Set Build(Set s,string run,string walk,string sprint)
         {
@@ -51,7 +58,7 @@ namespace ChipArena.UnityConversion
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
-        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:null;
+        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:null;
 
         /// <summary>A body's memory across frames: when it left the ground and landed, and the last strike seen.</summary>
         public sealed class Memory
