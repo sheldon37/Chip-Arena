@@ -1,3 +1,27 @@
+## 2026-10-25 — Claude: the fighters' own moves play the pack's clips (merged into shared)
+
+- **Branch/base:** `claude/motion-fighter-moves` from shared `694c263a`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - The unarmed set gains the fighters' move clips; `FighterMove` times them from the replicated action (NativeFighters' rules, the rate recovered from the move's span).
+  - Electric punch: the running punch.
+  - Wavedash and Demon Step: the dash.
+  - Tatsu: kicks alternating.
+  - Shoryuken: `Boost1`.
+  - Hadoken and shinku: the two-hand push.
+  - Charge: the gathering, then held.
+  - A move without a clip keeps the game's pose.
+  - Bank: 290 clips, 3.06 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-25-motion-kd.zip`.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `e08acf5e`), with new move checks (the old keep-the-pose checks rewritten).
+  - The knockdown build `694c263a` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode (`devweapon=`): the Emperor's Q and held E; the Ansatsuken's E tatsu, hadoken, shoryuken and Demon Step, each on its clip in order.
+- **Not run:**
+  - the shinku charge and its release;
+  - the 7-kick and 3-hit arcade variants;
+  - a Windows build; multiplayer.
+- **Next:** gun and caster abilities on the pack's clips.
+
 ## 2026-10-25 — Claude: knockdowns and juggles play the pack's clips (merged into shared)
 
 - **Branch/base:** `claude/motion-knockdown` from shared `d5d1abff`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
