@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         private readonly NativeEntranceLights entranceLights=new NativeEntranceLights();
         private readonly CapturedRig.Pose entrancePose=new CapturedRig.Pose(),entranceGhostPose=new CapturedRig.Pose();
         private readonly NativeEntranceGhost[] entranceGhosts=new NativeEntranceGhost[8];private readonly Matrix4x4[] entranceGhostBones=new Matrix4x4[22];
-        private Func<int,Matrix4x4> entranceGhostBone,entranceGhostWeapon;private Func<int,float> entranceReveal;private NativeEntranceScript entranceScript;private float entranceTime;
+        private Func<int,Matrix4x4> entranceGhostBone,entranceGhostWeapon;private readonly CapturedAnimation.Player[] entranceGhostHolders=new CapturedAnimation.Player[9];private Func<int,float> entranceReveal;private NativeEntranceScript entranceScript;private float entranceTime;
         private EntranceProps entranceProps;private EntranceFx entranceFx;
         // The entrance's own blast sim (the hit's quake, kinetic, fire, void, nova): stepped at 60 Hz from the entrance's
         // start on its presentation clock and replayed from zero on any backwards jump, so a late join, a scrub or a frame
@@ -126,7 +126,14 @@ namespace ChipArena.UnityConversion
                 var rootM=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(root+g.Offset)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),Vector3.one);
                 for(int b=0;b<22;b++)entranceGhostBones[b]=rootM*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(entranceGhostPose.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(entranceGhostPose.WorldRotation[b])),Vector3.one);
                 var tint=new Color(g.Color.X,g.Color.Y,g.Color.Z);var scan=new Color(isHolo?1:0,t,0,0);
-                sourceModels.Queue(model,rootM,entranceGhostBone,null,0,null,tint,scan,g.Opacity);
+                // The model's live ghost while the entrance's pilot wears the model (VisualIntroPose), on a holder at the ghost's root.
+                bool asModel=false;
+                if(VisualBodyPosed(introRig)&&i<entranceGhostHolders.Length)
+                {
+                    var holder=entranceGhostHolders[i]??=captured.Create(transform,-900-i);holder.Root.transform.SetPositionAndRotation(rootM.GetColumn(3),rootM.rotation);
+                    asModel=VisualLiveGhostDraw(2L<<40|(uint)i,holder,introActor,entranceGhostPose,Vector3.zero,"NativeEntranceGhost",tint,g.Opacity,new Vector4(scan.r,scan.g,0,0));
+                }
+                if(!asModel)sourceModels.Queue(model,rootM,entranceGhostBone,null,0,null,tint,scan,g.Opacity);
                 if(weaponGhost!=null&&!isHolo){introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));sourceModels.Queue(weaponGhost,rootM,entranceGhostWeapon,null,0,null,tint,scan,g.Opacity);}
             }
         }

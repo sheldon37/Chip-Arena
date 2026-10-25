@@ -689,6 +689,7 @@ namespace ChipArena.UnityConversion
                 VisualWeaponShown(body);body.Seen=false;
             }
             foreach(var rig in visualBodiesGone)visualBodies.Remove(rig);
+            VisualLiveGhostsShown();
         }
         // A snapshot of the model `rig` draws this frame into `echo` (made on first use, its meshes reused); false when the rig
         // draws voxel (the caller snapshots the voxel ghost instead).
@@ -716,13 +717,64 @@ namespace ChipArena.UnityConversion
         private void VisualEchoDraw(VisualEcho echo,string shader,Color tint,float opacity)
         {
             if(echo==null||echo.Count==0||!(opacity>0))return;
+            var material=VisualEchoMaterial(shader);if(material==null)return;visualEchoBlock??=new MaterialPropertyBlock();visualEchoBlock.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));
+            for(int i=0;i<echo.Count;i++){var mesh=echo.Meshes[i];if(mesh==null)continue;for(int sub=0;sub<mesh.subMeshCount;sub++)Graphics.DrawMesh(mesh,echo.At[i],material,0,null,sub,visualEchoBlock);}
+        }
+        // The ghost shader's material for the model's echoes and live ghosts (a little toward the eye where the shader has the
+        // offset); null where the shader is missing.
+        private Material VisualEchoMaterial(string shader)
+        {
             if(!visualEchoMaterials.TryGetValue(shader,out var material))
             {
                 var s=Resources.Load<Shader>(shader);material=s!=null&&s.isSupported?new Material(s){name="Visual body echo"}:null;
                 if(material!=null)material.SetFloat("_EchoOffset",VisualEchoOffset);visualEchoMaterials[shader]=material;
             }
-            if(material==null)return;visualEchoBlock??=new MaterialPropertyBlock();visualEchoBlock.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));
-            for(int i=0;i<echo.Count;i++){var mesh=echo.Meshes[i];if(mesh==null)continue;for(int sub=0;sub<mesh.subMeshCount;sub++)Graphics.DrawMesh(mesh,echo.At[i],material,0,null,sub,visualEchoBlock);}
+            return material;
+        }
+        // Live ghosts of the model (owner 2026-10-24: "Model everywhere"): a see-through copy of a pilot posed every frame from a
+        // pose (the Shadow Step decoy, the entrance's afterimages and hologram, the Cyber Lord's glitch copies), one visual body
+        // per key on its holder rig (moved by `shift`), through that ghost's own shader in its tint, opacity and `accent` (the
+        // entrance ghost's scanlines). Body only: the ghost weapons stay the voxel ones. It hides once a frame passes without it
+        // (VisualLiveGhostsShown) and goes with its holder. False under Classic or without a bake: the caller draws voxel.
+        private sealed class VisualLiveGhost{public VisualBody Body;public int Frame;public CapturedAnimation.Player Holder;public string Shader;}
+        private readonly Dictionary<long,VisualLiveGhost> visualLiveGhosts=new Dictionary<long,VisualLiveGhost>();private readonly List<long> visualLiveGhostsGone=new List<long>();
+        private static readonly int VisualGhostAccent=Shader.PropertyToID("_AccentTint");
+        private bool VisualLiveGhostDraw(long key,CapturedAnimation.Player holder,int id,CapturedRig.Pose pose,Vector3 shift,string shader,Color tint,float opacity,Vector4 accent=default)
+        {
+            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn||holder==null||pose==null)return false;
+            if(!visualLiveGhosts.TryGetValue(key,out var g)||g.Body?.Root==null||g.Holder!=holder||g.Shader!=shader)
+            {
+                if(g?.Body?.Root!=null)Destroy(g.Body.Root);
+                var material=VisualEchoMaterial(shader);if(material==null)return false;
+                var body=CreateVisualBody(holder,id);if(body==null)return false;body.Root.name="Visual ghost "+id;
+                foreach(var r in body.All)
+                {
+                    if(r==null)continue;var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=material;
+                    r.sharedMaterials=mats;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+                visualLiveGhosts[key]=g=new VisualLiveGhost{Body=body,Holder=holder,Shader=shader};
+            }
+            var b=g.Body;pose.World();b.Binding.Apply(pose,VisualGrasp(new Actor(),pose,0,0),false,false);
+            var root=b.Root.transform;root.localPosition=new Vector3(0,NativeVisualRig.Floor,0);if(shift!=Vector3.zero)root.position+=shift;
+            if(!b.Root.activeSelf)b.Root.SetActive(true);g.Frame=Time.frameCount;
+            foreach(var r in b.All)
+            {
+                if(r==null)continue;r.GetPropertyBlock(b.Block);b.Block.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));b.Block.SetVector(VisualGhostAccent,accent);r.SetPropertyBlock(b.Block);
+            }
+            return true;
+        }
+        // Whether `rig` drew its visual body this frame (no mark: the ghosts' test whether to follow it).
+        private bool VisualBodyPosed(CapturedAnimation.Player rig)=>rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount;
+        // VisualBodiesShown: a live ghost not drawn last frame or this one hides; one whose holder is gone is dropped.
+        private void VisualLiveGhostsShown()
+        {
+            if(visualLiveGhosts.Count==0)return;visualLiveGhostsGone.Clear();
+            foreach(var pair in visualLiveGhosts)
+            {
+                var b=pair.Value.Body;if(b?.Root==null){visualLiveGhostsGone.Add(pair.Key);continue;}
+                if(pair.Value.Frame<Time.frameCount-1&&b.Root.activeSelf)b.Root.SetActive(false);
+            }
+            foreach(long key in visualLiveGhostsGone)visualLiveGhosts.Remove(key);
         }
         // The bodies live under their rigs' roots, so disposing a rig destroys its body; this drops the records.
         private void ClearVisualBodies()
