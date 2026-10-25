@@ -30,6 +30,9 @@ namespace ChipArena.UnityConversion
             /// <summary>A caster's casts: each one's start (to the release) and end (after it), cycling; its Q/E ability's
             /// likewise. Null for the rest.</summary>
             public string[] CastStart, CastEnd; public string AbilityStart, AbilityEnd;
+            /// <summary>Per Q/E ability (by its id): its start (to the release) and end (after it; null: the start alone at its own
+            /// pace) on the upper body; AbilityRaise: the gun's abilities that only raise it onto the aim.</summary>
+            public string[] AbilityIds, AbilityStarts, AbilityEnds, AbilityRaise;
             /// <summary>An unarmed fighter: its strikes follow the replicated jab and combo (the last of Attacks ends a chain).</summary>
             public bool Fighter;
             /// <summary>A fighter's own moves (FighterMove): the Emperor's electric punch and wavedash; the Ansatsuken's tatsu kicks
@@ -95,13 +98,15 @@ namespace ChipArena.UnityConversion
         private static readonly Set Rifle=Build(new Set{Spec="rifle",Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
-            Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward"},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
+            Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
+            AbilityIds=new[]{"overdrive"},AbilityStarts=new[]{"2Hand-Shooting-Boost1"},AbilityEnds=new string[1],AbilityRaise=new[]{"orbital-mark","rocket"}},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
         // Pistol: the armed set, held low; raised to the pack's pistol stance (arm out) while aiming or just after a shot (its
         // own firing cut throws the arm overhead: the stance holds, the game's muzzle kick is the recoil), its reload fitted.
         private static readonly Set Pistol=Build(new Set{Spec="pistol",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
-            Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",
+            AbilityIds=new[]{"frag-grenade"},AbilityStarts=new[]{"Armed-Cast-L-Attack2_start"},AbilityEnds=new[]{"Armed-Cast-L-Attack2_end"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
         // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
         // cast likewise, on the upper body. Mirrored reactions swap sides.
@@ -110,7 +115,10 @@ namespace ChipArena.UnityConversion
             AirAttack=M("2Hand-Staff-Air-Attack1"),SprintAttack=M("2Hand-Staff-Run-Forward-Attack1"),Attacks=Array.ConvertAll(Names("2Hand-Staff-Attack","1","2","3"),M),
             Reactions=Array.ConvertAll(Names("2Hand-Staff-GetHit-","F1","B1","R1","L1"),M),
             CastStart=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_start","2_start","3_start"),M),CastEnd=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_end","2_end","3_end"),M),
-            AbilityStart=M("2Hand-Staff-Cast-L-AOE1_start"),AbilityEnd=M("2Hand-Staff-Cast-L-AOE1_end"),LeftShaft=true,Knockdown=M("2Hand-Staff-Knockdown1"),RollBack=M("2Hand-Staff-Roll-Backward")},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
+            AbilityStart=M("2Hand-Staff-Cast-L-AOE1_start"),AbilityEnd=M("2Hand-Staff-Cast-L-AOE1_end"),LeftShaft=true,Knockdown=M("2Hand-Staff-Knockdown1"),RollBack=M("2Hand-Staff-Roll-Backward"),
+            AbilityIds=new[]{"flame-lance","meteor-strike","tidal-wave","geyser-wall","blink-strike","ball-lightning","shadow-shackles","singularity"},
+            AbilityStarts=Array.ConvertAll(new[]{"Attack3","L-Buff1","L-AOE1","L-Summon2","L-Buff2","L-Summon1","Attack2","L-AOE2"},c=>M("2Hand-Staff-Cast-"+c+"_start")),
+            AbilityEnds=Array.ConvertAll(new[]{"Attack3","L-Buff1","L-AOE1","L-Summon2","L-Buff2","L-Summon1","Attack2","L-AOE2"},c=>M("2Hand-Staff-Cast-"+c+"_end"))},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
         // The bow: the pack's bow set (its block clip is named "Hand-Bow-Block" inside), the bow in the left fist as the game's.
         // Raised while drawing (its drawn poses by the pitch), just after a loose (its release) or while aiming; else carried
         // at rest.
@@ -143,7 +151,7 @@ namespace ChipArena.UnityConversion
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
-            foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
+            foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen,s.AbilityStarts,s.AbilityEnds})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
@@ -161,8 +169,9 @@ namespace ChipArena.UnityConversion
             up=new Upper{A=s.CastEnd[0],TimeA=clips.Has(s.CastEnd[0])?clips.Length(s.CastEnd[0]):0};
             if(a.AbilityId!=null&&a.AbilityAt>a.AttackAt&&time>=a.AbilityAt)
             {
-                float rel=a.AbilityRelease>a.AbilityAt?a.AbilityRelease:a.AbilityAt+.4f;
-                if(Phase(s.AbilityStart,s.AbilityEnd,a.AbilityAt,rel,time,clips,ref up))return true;
+                // Each ability its own cast (AbilityIds), else the area cast.
+                float rel=a.AbilityRelease>a.AbilityAt?a.AbilityRelease:a.AbilityAt+.4f;int i=s.AbilityIds!=null?Array.IndexOf(s.AbilityIds,a.AbilityId):-1;
+                if(Phase(i>=0?s.AbilityStarts[i]:s.AbilityStart,i>=0?s.AbilityEnds[i]:s.AbilityEnd,a.AbilityAt,rel,time,clips,ref up))return true;
             }
             else if(a.AttackAt>-90&&time>=a.AttackAt)
             {
@@ -192,7 +201,21 @@ namespace ChipArena.UnityConversion
             {
                 float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
             }
-            float age=time-a.LastShot;bool raised=a.Aiming||age<ShotHold(a)||ready&&s.Gun&&!a.Sprinting;
+            // A gun's Q/E: its own clip (a throw's wind-up to the release, then the throw; a flourish at its own pace), or held on
+            // the aim (AbilityRaise) for its cast and a little after.
+            bool casting=false;
+            if(a.AbilityId!=null&&a.AbilityAt>-90&&time>=a.AbilityAt)
+            {
+                float rel=Math.Max(a.AbilityRelease,a.AbilityAt);int i=s.AbilityIds!=null?Array.IndexOf(s.AbilityIds,a.AbilityId):-1;
+                if(i>=0&&clips.Has(s.AbilityStarts[i]))
+                {
+                    string end=s.AbilityEnds?[i];
+                    if(end!=null){var cast=new Upper();if(Phase(s.AbilityStarts[i],end,a.AbilityAt,Math.Max(rel,a.AbilityAt+.15f),time,clips,ref cast)&&cast.Raised){up=cast;return true;}}
+                    else if(time-a.AbilityAt<clips.Length(s.AbilityStarts[i])){up=new Upper{A=s.AbilityStarts[i],TimeA=time-a.AbilityAt,Raised=true};return true;}
+                }
+                else casting=s.AbilityRaise!=null&&Array.IndexOf(s.AbilityRaise,a.AbilityId)>=0&&time<Math.Max(rel,a.AbilityAt+.5f)+.4f;
+            }
+            float age=time-a.LastShot;bool raised=a.Aiming||casting||age<ShotHold(a)||ready&&s.Gun&&!a.Sprinting;
             // A bow: drawn (its drawn poses by the pitch) from the draw to the loose, its release after the loose or any arrow
             // (the Volley's and the Rain's stamp only the last shot; NativeBowWire's fields: the draw start, the release time).
             if(s.Pull!=null)
