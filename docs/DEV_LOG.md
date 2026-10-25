@@ -1,3 +1,15 @@
+## 2026-10-25 — Claude: the visual body's install budget is 56 MB (merged into shared)
+
+- **Branch/base:** `claude/visual-body-budget` from shared `b133773d`. No PR; merged into shared and the builder.
+- **Change (tooling, the visual-body install this agent added on `claude/visual-body-install`):** `tools/install_local_assets.py` `VISUAL_BODY_BUDGET` goes from 40 MB to 56 MB.
+  - The animation pack's motion bank had grown the body to 38.75 MB, so further clips would have failed the builder's install check.
+  - The zip's own 64 MiB cap still bounds the download; the current zip is about 30 MB.
+- **Checks (actual):**
+  - `Tests/test_visual_body_assets.py`: 6 tests OK.
+  - The Drive zip still verifies (357 files, 38.75 MB).
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of `76dc0a0f`).
+- **Owner note:** a builder-facing limit; revert the one constant if you would rather keep 40 MB.
+
 ## 2026-10-25 — Claude: hats, chips, spell charges, hit blood and the parry flash on the model (merged into shared)
 
 - **Branch/base:** `claude/model-dressing` from shared `7a094664`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

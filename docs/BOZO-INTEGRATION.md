@@ -1386,7 +1386,8 @@ already? Cant we utilize that?"
     textures it uses, their metas and the folder metas. A `visual-body.json` lists each file with its SHA-256. Shaders, shader
     graphs and scripts stay out (the body uses our tracked toon shader); the pack's own outfit materials are kept as text.
   - `tools/install_local_assets.py` checks that section and copies the files over `Assets/LocalAssets`, deleting nothing. The
-    checks cover paths, kinds, hashes, metas, unique GUIDs, a 40 MB budget and the prefab in a Resources folder. A full local
+    checks cover paths, kinds, hashes, metas, unique GUIDs, a 56 MB budget (40 MB until 2026-10-25, when the motion bank had
+    grown the body to 38.7 MB) and the prefab in a Resources folder. A full local
     pack is never trimmed, and a zip without the section installs the audio as before.
   - After a new bake, run the packer on the Drive zip and replace it (keep the old one). The 2026-10-16 zip is kept beside it
     as `LocalAssets-2026-10-16.zip`.
