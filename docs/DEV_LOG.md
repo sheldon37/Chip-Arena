@@ -1,3 +1,22 @@
+## 2026-10-24 — Claude: the daggers' models play the RPG pack's own clips (merged into shared)
+
+- **Branch/base:** `claude/motion-daggers` from shared `0e2bbc54`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner:** "No need to ask permissions, just through all you need to." Claude works through the whole model transition in order.
+- **Changes (presentation only):**
+  - Daggers set (`Armed` locomotion and states, `Block-Dual`, `Air-Attack-L1`, `Run-Attack-Dual`; combo `Dagger-Attack-R1, L3, R2, L2` by both blade tips' sweeps).
+  - The off-hand frame rides the model's left hand.
+  - The weapon hold is captured for every weapon, not only those with a bake model, so the game's daggers draw in the model's hands.
+  - Local tool: `idlebots=T` (the bots stand still, the round goes on) and the left blade tip in `path=1`.
+  - Bank: 81 clips, 0.91 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-sw.zip`: 357 files, 36.52 MB.
+  - The sword build `0e2bbc540033` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of `8791c5e1`).
+  - Unity compile: PASS.
+  - Play mode (moonlit, `idlebots=3`): idle on its feet; jump and air jump drew the pack's flip, then the fall and landing; six presses drew R1, L3, R2, L2, R1, L3 (the fourth with the claw-mark finisher); both blades stay in the model's hands.
+- **Not run:** the daggers' specials and kit moves (dagger throw, Shadow Step, Kunai Mark keep the game's pose); a Windows build; multiplayer.
+- **Animation, timing, networking:** clips are retimed to the existing hit windows; rules and the wire are unchanged.
+- **Next:** shield, guns, casters, then specials, dodge ghosts and severed kills.
+
 ## 2026-10-24 — Claude: the sword's model plays the RPG pack's own clips (merged into shared)
 
 - **Branch/base:** `claude/motion-sword` from shared `c6a36f8c`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

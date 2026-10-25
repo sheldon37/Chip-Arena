@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             SlashBrush(root);Console.WriteLine("PASS visual rig: the slash crescents take the baked ink brush's streaks (outside the shader's shared block, crescents only, off without a bake) ("+count+" checks)");
             Dissolve(root);Console.WriteLine("PASS visual rig: a dead pilot's visual body dissolves into the bake's noise as its corpse or death scene fades, the front in the pilot's accent (at half opacity without the noise) ("+count+" checks)");
             PackSlashes(root);Console.WriteLine("PASS visual rig: the slash pack's line slashes, claw marks and rings play on the sword's, daggers' and greatsword's finishers and on the sword launch, Wolf Spin, Rising Dragon, Whirlwind, the steps and charge and the dagger throw, once each at its hit or release, about the pilot, off on the low tier and in my own first person ("+count+" checks)");
-            Motion(root);Console.WriteLine("PASS visual rig: a greatsword's and a sword's model play the animation pack's own clips, retimed so each attack's Hit lands mid hit window, the roll fills the roll, the air states and landing follow the pilot, specials and kit moves keep the game's pose; the weapon rides the drawn hand and no foot goes under the floor ("+count+" checks)");
+            Motion(root);Console.WriteLine("PASS visual rig: the greatsword's, sword's and daggers' models play the animation pack's own clips, retimed so each attack's Hit lands mid hit window, the roll fills the roll, the air states and landing follow the pilot, specials and kit moves keep the game's pose; the weapon rides the drawn hand and no foot goes under the floor ("+count+" checks)");
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
         }
 
@@ -191,8 +191,9 @@ namespace ChipArena.UnityConversion
         {
             var set=NativeVisualMotion.For("greatsword");var book=new MotionBook();
             var sword=NativeVisualMotion.For("sword");
-            Check(set!=null&&sword!=null&&sword!=set&&NativeVisualMotion.For("daggers")==null&&NativeVisualMotion.For("rifle")==null&&NativeVisualMotion.For(null)==null,"the greatsword and the sword play the pack's sets; the others keep the game's pose until theirs move over");
-            foreach(var s in new[]{set,sword})Check(s.Locomotion.Length==NativeVisualStride.Clips&&s.Attacks.Length>=3&&s.Reactions.Length==4&&Array.TrueForAll(s.Locomotion,c=>Array.IndexOf(s.All,c)>=0)&&Array.TrueForAll(s.Attacks,c=>Array.IndexOf(s.All,c)>=0),"a set lists every clip it plays: "+s.Spec);
+            var daggers=NativeVisualMotion.For("daggers");
+            Check(set!=null&&sword!=null&&daggers!=null&&sword!=set&&NativeVisualMotion.For("shield")==null&&NativeVisualMotion.For("rifle")==null&&NativeVisualMotion.For(null)==null,"the greatsword, sword and daggers play the pack's sets; the others keep the game's pose until theirs move over");
+            foreach(var s in new[]{set,sword,daggers})Check(s.Locomotion.Length==NativeVisualStride.Clips&&s.Attacks.Length>=3&&s.Reactions.Length==4&&Array.TrueForAll(s.Locomotion,c=>Array.IndexOf(s.All,c)>=0)&&Array.TrueForAll(s.Attacks,c=>Array.IndexOf(s.All,c)>=0),"a set lists every clip it plays: "+s.Spec);
             Check(set.Locomotion.Length==NativeVisualStride.Clips&&Array.IndexOf(set.All,set.Idle)>=0&&Array.TrueForAll(set.Attacks,c=>Array.IndexOf(set.All,c)>=0),"the set lists its locomotion in the stride's order and every clip it plays");
             NativeVisualMotion.Pick P(Actor a,float t,bool moving=false,NativeVisualMotion.Memory m=null){Check(NativeVisualMotion.Choose(set,a,t,m??new NativeVisualMotion.Memory(),book,moving,out var p),"covered at "+t);return p;}
             Actor Ground()=>new Actor{Grounded=true};

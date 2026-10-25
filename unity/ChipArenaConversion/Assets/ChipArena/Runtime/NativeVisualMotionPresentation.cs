@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
             // over the floor (the feet's rest heights, the rest a little), and the support fist's eased weight.
             public readonly Transform[] Contacts=new Transform[ContactBones.Length]; public readonly float[] Clearance=new float[ContactBones.Length]; public float Support, SupportGap;
             public readonly NativeVisualMotion.Memory Memory=new NativeVisualMotion.Memory();
-            public bool HasHold; public Vector3 HoldPosition; public Quaternion HoldRotation=Quaternion.identity;
+            public bool HasHold; public Vector3 HoldPosition, LeftHoldPosition; public Quaternion HoldRotation=Quaternion.identity, LeftHoldRotation=Quaternion.identity;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -117,9 +117,16 @@ namespace ChipArena.UnityConversion
             Vector3 now=rig.Root.transform.position;
             if(dt>0){var v=(now-m.LastAt)/dt;if(v.sqrMagnitude>400)v=m.Velocity;m.Velocity+=(v-m.Velocity)*(1-Mathf.Exp(-dt*10));}
             m.LastAt=now;var velocity=m.Velocity;
-            // The hand-to-weapon offset of the game pose's hold (its fist on the handle), kept from its first seated frame.
-            var weaponHand=rig.Bones[CapturedRig.RHand];
-            if(!m.HasHold&&body.Held!=null){var inv=Quaternion.Inverse(m.RightHand.rotation);m.HoldPosition=inv*(weaponHand.position-m.RightHand.position);m.HoldRotation=inv*weaponHand.rotation;m.HasHold=true;}
+            // The hand-to-weapon offset of the game pose's hold (its fist on the handle; the frame the game's own model draws at
+            // where the bake has none), kept from its first frame.
+            // The off hand's likewise (its frame: the daggers' second blade, or the bare wrist).
+            var weaponHand=rig.Bones[CapturedRig.RHand];var offHand=rig.Bones[CapturedRig.LHand];
+            if(!m.HasHold)
+            {
+                var inv=Quaternion.Inverse(m.RightHand.rotation);m.HoldPosition=inv*(weaponHand.position-m.RightHand.position);m.HoldRotation=inv*weaponHand.rotation;
+                if(m.LeftHand!=null){inv=Quaternion.Inverse(m.LeftHand.rotation);m.LeftHoldPosition=inv*(offHand.position-m.LeftHand.position);m.LeftHoldRotation=inv*offHand.rotation;}
+                m.HasHold=true;
+            }
             var local=Quaternion.Inverse(body.Root.transform.rotation)*velocity;float speed=new Vector2(local.x,local.z).magnitude;
             bool moving=a.Grounded&&speed>NativeVisualStride.Moving;
             bool covered=NativeVisualMotion.Choose(m.Set,a,time,m.Memory,VisualMotionBank,moving,out var pick);
@@ -169,6 +176,7 @@ namespace ChipArena.UnityConversion
             {
                 // On the hand as drawn, at any weight (a part-blended hand carries its weapon too).
                 weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);
+                if(m.LeftHand!=null&&m.Set.Spec!="greatsword")offHand.SetPositionAndRotation(m.LeftHand.position+m.LeftHand.rotation*m.LeftHoldPosition,m.LeftHand.rotation*m.LeftHoldRotation);
                 // A two-handed weapon: the support fist onto its handle, behind the right, while the clip keeps it near.
                 if(m.Set.Spec=="greatsword"&&m.LeftHand!=null&&m.LeftArm!=null&&m.LeftForearm!=null)
                 {
