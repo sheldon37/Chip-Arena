@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
             if(actor.SourceSpec=="siren"||actor.Wounds==null||FirstPerson&&actor.Id==LocalId)return;
             foreach(var w in actor.Wounds)
             {
-                if(w.destroyed||time-w.at>.3f||time<w.at-.05f||!sprayedWounds.Add(actor.Id+":"+w.id+"@"+w.at))continue;var mark=sourceModels.WoundMark(w);if(!mark.HasValue)continue;var a=mark.Value;var bone=rig.Bones[a.bone];Vector3 origin=bone.TransformPoint(a.point),normal=bone.TransformDirection(a.normal),along=bone.TransformDirection(a.direction);bool chips=w.kind=="bruise",embers=w.kind=="scorch";
+                if(w.destroyed||time-w.at>.3f||time<w.at-.05f||!sprayedWounds.Add(actor.Id+":"+w.id+"@"+w.at))continue;var mark=sourceModels.WoundMark(w);if(!mark.HasValue)continue;var a=mark.Value;var bone=VisualJointFrame(rig,a.bone);Vector3 origin=bone.MultiplyPoint3x4(a.point),normal=bone.MultiplyVector(a.normal).normalized,along=bone.MultiplyVector(a.direction).normalized;bool chips=w.kind=="bruise",embers=w.kind=="scorch";
                 // Blood (cuts, punctures, cavities; a bruise a little) flies, lands and stays (Core/NativeBlood); the bruise's
                 // shell chips and the burn's embers keep their short-lived cubes below.
                 if(!embers)Bleed(actor.Id,w,origin,normal,along,time);if(!chips&&!embers)continue;int baseCount=chips||embers?5:7;int count=Math.Max(2,(int)Math.Round(baseCount*(.6+.6*Mathf.Clamp01(w.severity))*(ForceCompatibilityRendering?.5f:1)));uint seed=NativeWoundCarve.Seed(w.id.ToString(System.Globalization.CultureInfo.InvariantCulture));

@@ -20,6 +20,9 @@ namespace ChipArena.UnityConversion
         private sealed class VisualBody
         {
             public GameObject Root; public NativeVisualRigBinding Binding; public Renderer[] Cloth, All; public MaterialPropertyBlock Block;
+            // The game's joints on the body: per joint, the bone it maps to (or its nearest mapped ancestor's) and the joint's frame
+            // relative to that bone as first bound, so a joint's frame follows the model through the pack's clips (VisualJointFrame).
+            public int[] JointBone; public Matrix4x4[] JointFrom;
             // A broadcast bust's neck bone and its place in the body (VisualBust).
             public int BustNeck=-1; public Vector3 BustPivot=new Vector3(float.NaN,0,0);
             public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted; public Vector3 At; public float Flash=1, Glow=-1;
@@ -137,6 +140,7 @@ namespace ChipArena.UnityConversion
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
             body.Binding.Apply(pose,grasp,planted,airborne);
+            if(body.JointFrom==null)VisualJointsOf(body,rig);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
             var origin=body.Root.transform;
@@ -148,6 +152,34 @@ namespace ChipArena.UnityConversion
                 bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp),origin.rotation*(side==0?lq:rq));
             }
             return held;
+        }
+        // VisualBodyBind's first bind (the body on the rig's own pose): each joint's frame on its bone.
+        private static void VisualJointsOf(VisualBody body,CapturedAnimation.Player rig)
+        {
+            var of=body.Binding.Rig.Of;var bones=body.Binding.Bones;int n=Mathf.Min(22,rig.Bones.Length);body.JointBone=new int[n];body.JointFrom=new Matrix4x4[n];
+            for(int j=0;j<n;j++)
+            {
+                int k=j,v=-1;while(k>=0&&v<0){v=k<of.Length?of[k]:-1;if(v<0||v>=bones.Length||bones[v]==null){v=-1;k=CapturedRig.Bones[k].Parent;}}
+                body.JointBone[j]=v;body.JointFrom[j]=v>=0?bones[v].worldToLocalMatrix*rig.Bones[j].localToWorldMatrix:Matrix4x4.identity;
+            }
+        }
+        // Joint `j`'s frame where `rig` draws: on its visual body (following the model) when it wears one this frame, else the rig's.
+        private Matrix4x4 VisualJointFrame(CapturedAnimation.Player rig,int j)
+        {
+            if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.JointFrom!=null&&body.PosedFrame==Time.frameCount&&j>=0&&j<body.JointBone.Length&&body.JointBone[j]>=0)
+                return body.Binding.Bones[body.JointBone[j]].localToWorldMatrix*body.JointFrom[j];
+            return rig.Bones[j].localToWorldMatrix;
+        }
+        // A hat on the model's head (owner 2026-10-25: "Lets work on all these"): the head joint's frame on the model, where every
+        // hat sits on the hair at its own size (the pack's under-hat hair shapes left it nearly bald).
+        private Func<int,Matrix4x4> hatBone;private CapturedAnimation.Player hatRig;
+        private Func<int,Matrix4x4> VisualHatBone(CapturedAnimation.Player rig){hatRig=rig;return hatBone??=b=>VisualJointFrame(hatRig,b);}
+        // The parry flash on the model: its drawn body snapshotted each frame of the flash, tinted (VisualEchoSnap/Draw).
+        private readonly Dictionary<int,VisualEcho> parryEchoes=new Dictionary<int,VisualEcho>();
+        private void VisualParryFlash(CapturedAnimation.Player rig,Actor a,Color colour,float opacity)
+        {
+            if(!(opacity>0))return;parryEchoes.TryGetValue(a.Id,out var echo);
+            if(VisualEchoSnap(rig,ref echo)){parryEchoes[a.Id]=echo;VisualEchoDraw(echo,"NativeWeaponGhost",colour,opacity/VisualEchoShare);}
         }
         // The entrance's pilot on its visual body (owner 2026-10-24: "Model everywhere"): the intro rig's own authored pose
         // (`pose`, as the entrance wrote it) retargeted, without the pack's clips or the stride and with the feet as authored;
