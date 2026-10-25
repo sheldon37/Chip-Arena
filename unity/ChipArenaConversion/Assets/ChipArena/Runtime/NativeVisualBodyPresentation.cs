@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         private sealed class VisualBody
         {
             public GameObject Root; public NativeVisualRigBinding Binding; public Renderer[] Cloth, All; public MaterialPropertyBlock Block;
+            // A broadcast bust's neck bone and its place in the body (VisualBust).
+            public int BustNeck=-1; public Vector3 BustPivot=new Vector3(float.NaN,0,0);
             public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted; public Vector3 At; public float Flash=1, Glow=-1;
             public Material[][] Plain, Spawning;
             // The gear's anchors (the bake's VisualGearCore and VisualGearDevice, the band's radius from VisualGearDeviceRim), when
@@ -446,9 +448,7 @@ namespace ChipArena.UnityConversion
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
-            bones=binding.Bones;var mapped=new int[bones.Length];joint=new int[bones.Length];for(int v=0;v<bones.Length;v++)mapped[v]=-1;
-            for(int j=0;j<CapturedRig.Bones.Length;j++){int v=binding.Rig.Of[j];if(v>=0&&v<bones.Length)mapped[v]=j;}
-            for(int v=0;v<bones.Length;v++){int j=-1;for(int u=v;u>=0&&j<0;u=binding.Rig.Parent[u])j=mapped[u];joint[v]=j>=0?j:CapturedRig.Pelvis;}
+            bones=binding.Bones;joint=VisualJoints(binding);
             var block=new MaterialPropertyBlock();ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var accent);
             foreach(var r in root.GetComponentsInChildren<Renderer>(true))
             {
@@ -505,16 +505,64 @@ namespace ChipArena.UnityConversion
         // so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across pieces go, as
         // do the dropped piece's (a crushed part's fragments and the stumps' blood are the kill wound's; the other half of a
         // split body is its twin's). The cut meshes go with the corpse.
-        private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone)
+        private static void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone)=>VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned);
+        // Each skinned renderer of `all` on its pieces (per visual bone of `bones`: `pieceOfBone`, -1 dropped; SeverMesh), the
+        // cut meshes added to `owned` (their owner frees them).
+        private static void VisualSever(Renderer[] all,Transform[] bones,int[] pieceOfBone,ref List<Mesh> owned)
         {
-            var index=new Dictionary<Transform,int>();for(int v=0;v<c.Bones.Length;v++)if(c.Bones[v]!=null)index[c.Bones[v]]=v;
-            foreach(var r in c.All)
+            var index=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)index[bones[v]]=v;
+            foreach(var r in all)
             {
                 if(!(r is SkinnedMeshRenderer skin)||skin.sharedMesh==null)continue;
-                var bones=skin.bones;var piece=new int[bones.Length];
-                for(int i=0;i<bones.Length;i++)piece[i]=bones[i]!=null&&index.TryGetValue(bones[i],out int v)?pieceOfBone[v]:0;
-                var cut=SeverMesh(skin.sharedMesh,piece);if(cut==null)continue;skin.sharedMesh=cut;(c.Owned??=new List<Mesh>()).Add(cut);
+                var used=skin.bones;var piece=new int[used.Length];
+                for(int i=0;i<used.Length;i++)piece[i]=used[i]!=null&&index.TryGetValue(used[i],out int v)?pieceOfBone[v]:0;
+                var cut=SeverMesh(skin.sharedMesh,piece);if(cut==null)continue;skin.sharedMesh=cut;(owned??=new List<Mesh>()).Add(cut);
             }
+        }
+        // Per visual bone of `binding`, the game joint mapped at or above it (the pelvis for the root).
+        private static int[] VisualJoints(NativeVisualRigBinding binding)
+        {
+            var bones=binding.Bones;var mapped=new int[bones.Length];var joint=new int[bones.Length];for(int v=0;v<bones.Length;v++)mapped[v]=-1;
+            for(int j=0;j<CapturedRig.Bones.Length;j++){int v=binding.Rig.Of[j];if(v>=0&&v<bones.Length)mapped[v]=j;}
+            for(int v=0;v<bones.Length;v++){int j=-1;for(int u=v;u>=0&&j<0;u=binding.Rig.Parent[u])j=mapped[u];joint[v]=j>=0?j:CapturedRig.Pelvis;}
+            return joint;
+        }
+        // The sky death broadcast's portrait on the model (owner 2026-10-24: "Model everywhere"): the victim's visual body on the
+        // broadcast rig, cut to its bust (the portrait's chest, neck, head and collarbones, NativeBroadcastFx.PortraitBone, with
+        // the upper spine and arms: the model's shoulders are there), drawn through the ghost shader in the hologram's colour
+        // and scaled BustScale about its neck to fill the frame fitted to the voxel head; null without a bake or under Classic
+        // (the voxel hologram).
+        private static readonly Color BustColor=new Color(.1221f,.7157f,1);
+        private const float BustScale=1.6f;
+        private static bool BustBone(int joint)=>NativeBroadcastFx.PortraitBone(joint)||joint==CapturedRig.Spine||joint==CapturedRig.LArm||joint==CapturedRig.RArm;
+        private Material bustMaterial;
+        private VisualBody VisualBust(CapturedAnimation.Player rig,int id,ref List<Mesh> owned)
+        {
+            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn)return null;
+            if(bustMaterial==null){var shader=Resources.Load<Shader>("NativeWeaponGhost");if(shader==null||!shader.isSupported)return null;bustMaterial=new Material(shader){name="Visual body bust"};}
+            var body=CreateVisualBody(rig,id);if(body==null)return null;body.Root.name="Visual bust "+id;
+            var joint=VisualJoints(body.Binding);var piece=new int[joint.Length];for(int v=0;v<piece.Length;v++)piece[v]=BustBone(joint[v])?0:-1;
+            body.BustNeck=-1;for(int v=0;v<joint.Length&&body.BustNeck<0;v++)if(joint[v]==CapturedRig.Neck)body.BustNeck=v;
+            VisualSever(body.All,body.Binding.Bones,piece,ref owned);
+            foreach(var r in body.All)
+            {
+                if(r==null)continue;var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=bustMaterial;
+                r.sharedMaterials=mats;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            body.Root.SetActive(false);return body;
+        }
+        // The bust in the portrait's pose (its head drifting) at the hologram's opacity, shown this frame.
+        private void VisualBustPose(VisualBody body,CapturedRig.Pose pose,float alpha)
+        {
+            pose.World();body.Binding.Apply(pose,VisualGrasp(new Actor(),pose,0,0),false,false);
+            // Scaled about the neck (its place in the body, kept from the first pose).
+            if(body.BustNeck>=0)
+            {
+                var root=body.Root.transform;if(float.IsNaN(body.BustPivot.x))body.BustPivot=root.InverseTransformPoint(body.Binding.Bones[body.BustNeck].position);
+                root.localScale=Vector3.one*BustScale;root.localPosition=new Vector3(0,NativeVisualRig.Floor,0)+(1-BustScale)*body.BustPivot;
+            }
+            if(!body.Root.activeSelf)body.Root.SetActive(true);
+            foreach(var r in body.All){if(r==null)continue;r.GetPropertyBlock(body.Block);body.Block.SetVector(VisualEchoTint,new Vector4(BustColor.r,BustColor.g,BustColor.b,alpha));r.SetPropertyBlock(body.Block);}
         }
         // `mesh` with each vertex kept to its heaviest piece's bones (renormalised) and only the triangles within one piece (not
         // the crushed, -1); null when nothing is cut.
