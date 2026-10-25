@@ -1,3 +1,16 @@
+## 2026-10-25 — Claude: a revive's early corpse wears the model (merged into shared)
+
+- **Branch/base:** `claude/model-revive-corpse` from shared `4fee09a1`. No PR; merged into shared and the builder.
+- **Change (presentation only):** `NativeInteractionPresentation` rebuilds a downed pilot's corpse when a revive reads it before the death presentation has drawn it. That corpse now gets `VisualCorpseMake` like one the death presentation makes. It had stayed voxel because the death presentation skips corpses already made.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `14de0332`), with a new pin.
+  - Unity compile: PASS.
+- **Not run:** a co-op revive in play (the local tool plays PvP only).
+- **Step 7 status:**
+  - **The model now covers:** arena, intros, death broadcast, corpses (whole, severed, split, capped), dodge, dash and Demon Step echoes, and the live ghosts.
+  - **Still voxel:** the PvE revive hologram (voxel wound geometry); the Cyber Lord's fork ghost; the Siren (excluded by design).
+  - **Needs the other agents' files:** portraits and the rooftop menu (the cloud agent's), and the draft (another agent's uncommitted chip-select work in the owner's checkout).
+
 ## 2026-10-25 — Claude: the model's cut faces are capped (merged into shared)
 
 - **Branch/base:** `claude/visual-caps` from shared `e8ab143b`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

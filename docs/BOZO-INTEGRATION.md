@@ -1302,6 +1302,8 @@ already? Cant we utilize that?"
       (`NativeWeaponGhost`, or the entrance's one-layer `NativeEntranceGhost` with its scanlines), in its tint and opacity.
     - Body only: the ghost weapons stay voxel. It hides once a frame passes without it.
     - The Cyber Lord's fork ghost, the PvE revive hologram and the Siren's crush drop keep the voxel body.
+  - **A corpse a co-op revive makes first** (NativeInteractionPresentation: the revive reads the body before the death
+    presentation has drawn it) now wears its visual body too; it had stayed voxel (2026-10-25, `claude/model-revive-corpse`).
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
