@@ -113,7 +113,7 @@ clips of the owner's Explosive RPG Character Mecanim Animation Pack, with the pa
 clips' humanoid import copies). They ship as FBX in the same licensed-assets zip, under the same rules.
 
 The model's own animation (`docs/BOZO-INTEGRATION.md`) plays the same pack's `2Hand-Sword` clips for the greatsword, and its
-`Armed` and `1Hand-Sword` clips for the sword, its `1Hand-Dagger` clips for the daggers, its `Armed-Shield` clips (mirrored) for the shield, its `2Hand-Shooting` and `1Hand-Pistol` clips for the guns, its `2Hand-Staff` clips (mirrored) for the casters, and its `2Hand-Bow` clips for the bow. They
+`Armed` and `1Hand-Sword` clips for the sword, its `1Hand-Dagger` clips for the daggers, its `Armed-Shield` clips (mirrored) for the shield, its `2Hand-Shooting` and `1Hand-Pistol` clips for the guns, its `2Hand-Staff` clips (mirrored) for the casters, its `2Hand-Bow` clips for the bow, and its `Unarmed` clips for the fighters. They
 are sampled on the body at the bake into a motion bank (`ChipArenaVisualMotion.bytes`, humanoid poses per frame). The bank
 ships in the licensed-assets zip; the pack's clip files do not.
 
