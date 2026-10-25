@@ -13,7 +13,7 @@
     - `devweapon=T,spec,bot` gives the bot developer access and that weapon;
     - `killmelee=1` makes `kill=` the other side's melee blow.
 - **Checks (actual):**
-  - `--visual-rig` PASS with the corpse pins updated; full CoreTests: see the merge.
+  - Full CoreTests 851 PASS, exit 0 (LF checkout of `e9049123`), with the visual body's corpse pins and `BisectChecks`' draw pin updated to the model halves.
   - Unity compile: PASS.
   - Play mode (moonlit): a greatsword bot's lethal blow on the local pilot made two model halves. The legs stood, the upper half toppled, with the cut's blood.
 - **Not run:**
@@ -22,6 +22,7 @@
   - many simultaneous cut corpses (each copies the body's skinned meshes);
   - a Windows build; multiplayer.
 - **Known:** the cut faces are open (no caps).
+- The ghosts build `ec9b9d3a63ad` succeeded and published.
 - **Next:** model everywhere (intros, killcams, menus; Classic kept as the backup); caps for the cut faces.
 
 ## 2026-10-25 — Claude: the dodge, dash and Demon Step ghosts are the model's (merged into shared)
