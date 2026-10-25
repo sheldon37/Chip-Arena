@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 namespace ChipArena.UnityConversion
 {
@@ -404,10 +405,11 @@ namespace ChipArena.UnityConversion
         // ---- Death (owner 2026-10-23: "Death turns model into voxel") ----
         // A pilot's ragdoll wears its visual body: an instance posed from the rig at death (the corpse's bind), each bone riding
         // the ragdoll part of the game joint at or above it rigidly (NativeCorpse.PartFrom: the part's motion, the corpse's sink,
-        // overlay and shrink), the skeleton scaled by the parts' scale. A whole body only: a cut, crushed, smashed or bisected
-        // corpse, and a swarm, soul or frost look, keep the voxel body (their effects are made of its parts). It hides while the
-        // voxel body would be under half opacity and goes with its corpse.
-        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;}
+        // overlay and shrink), the skeleton scaled by the parts' scale. A cut or crushed corpse (a melee slice, a sever wound)
+        // and each half of a split one (a blade's killing blow, a saw) wear it severed at the joints (VisualCorpseSever); a
+        // smashed corpse, and a swarm, soul or frost look, keep the voxel body (their effects are made of its parts). It hides
+        // while the voxel body would be under half opacity and goes with its corpse.
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;}
         private readonly Dictionary<NativeCorpse,VisualCorpse> visualCorpses=new Dictionary<NativeCorpse,VisualCorpse>();
         private readonly List<NativeCorpse> visualCorpsesGone=new List<NativeCorpse>();
         // A death's visual body: an instance posed from the rig (in its last pose), `offset` from it, in the pilot's accent, without
@@ -436,12 +438,88 @@ namespace ChipArena.UnityConversion
         // PresentDeath, as a pilot's corpse is made from its rig (still in its last pose).
         private void VisualCorpseMake(NativeCorpse corpse,NativeDeath death,CapturedAnimation.Player rig)
         {
-            if(rig==null||!VisualDeathFor(death)||corpse.Bisect!=null||corpse.Smash!=null||corpse.Severed.Count>0||corpse.CrushPart>=0)return;
-            var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out var joint);if(root==null)return;
-            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death)};
-            for(int v=0;v<bones.Length;v++){int part=corpse.Anchor[joint[v]];if(!corpse.Parts.ContainsKey(part))part=CapturedRig.Pelvis;c.Part[v]=part;c.Bind[v]=bones[v].localToWorldMatrix;}
-            visualCorpses[corpse]=c;
+            if(rig==null||!VisualDeathFor(death)||corpse.Smash!=null)return;
+            // A split body: each half wears the model's parts on its side of the cut (whole parts: a part the cut crosses goes
+            // to the side its joint is on; owner 2026-10-24: "Sever at joints").
+            if(corpse.Bisect is BisectFx fx&&corpse.Twin!=null&&fx.Request!=null)
+            {
+                for(int h=0;h<2;h++)
+                {
+                    var half=h==0?corpse:corpse.Twin;var c=VisualCorpseFor(half,death,rig,out var joint);if(c==null)continue;
+                    var piece=new int[c.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?0:-1;
+                    VisualCorpseSever(c,piece);visualCorpses[half]=c;
+                }
+                return;
+            }
+            if(corpse.Bisect!=null)return;
+            var whole=VisualCorpseFor(corpse,death,rig,out _);if(whole==null)return;
+            if(corpse.Severed.Count>0||corpse.CrushPart>=0)
+            {
+                // A ragdoll part's piece: the nearest cut root at or above it (its index + 1), -1 under the crushed part, 0 the body.
+                int Piece(int part){for(int j=part;j>=0;j=CapturedRig.Bones[j].Parent){if(j==corpse.CrushPart)return -1;if(corpse.Severed.Contains(j))return j+1;}return 0;}
+                var piece=new int[whole.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=Piece(whole.Part[v]);
+                VisualCorpseSever(whole,piece);
+            }
+            visualCorpses[corpse]=whole;
         }
+        // The visual body of `corpse` (a whole body or one half): each bone on the ragdoll part of the game joint at or above it
+        // (the nearest such part the corpse has).
+        private VisualCorpse VisualCorpseFor(NativeCorpse corpse,NativeDeath death,CapturedAnimation.Player rig,out int[] joint)
+        {
+            var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out joint);if(root==null)return null;
+            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death)};
+            for(int v=0;v<bones.Length;v++)
+            {
+                int part=-1;for(int j=corpse.Anchor[joint[v]];j>=0&&part<0;j=CapturedRig.Bones[j].Parent)if(corpse.Parts.ContainsKey(j))part=j;
+                if(part<0)foreach(int any in corpse.Parts.Keys){part=any;break;}
+                c.Part[v]=part<0?CapturedRig.Pelvis:part;c.Bind[v]=bones[v].localToWorldMatrix;
+            }
+            return c;
+        }
+        // Slash kills on the model (owner 2026-10-24: "Sever at joints"): each skinned mesh split by piece (per visual bone:
+        // `pieceOfBone`, -1 dropped). A vertex belongs to the piece most of its weight is in and keeps only that piece's bones,
+        // so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across pieces go, as
+        // do the dropped piece's (a crushed part's fragments and the stumps' blood are the kill wound's; the other half of a
+        // split body is its twin's). The cut meshes go with the corpse.
+        private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone)
+        {
+            var index=new Dictionary<Transform,int>();for(int v=0;v<c.Bones.Length;v++)if(c.Bones[v]!=null)index[c.Bones[v]]=v;
+            foreach(var r in c.All)
+            {
+                if(!(r is SkinnedMeshRenderer skin)||skin.sharedMesh==null)continue;
+                var bones=skin.bones;var piece=new int[bones.Length];
+                for(int i=0;i<bones.Length;i++)piece[i]=bones[i]!=null&&index.TryGetValue(bones[i],out int v)?pieceOfBone[v]:0;
+                var cut=SeverMesh(skin.sharedMesh,piece);if(cut==null)continue;skin.sharedMesh=cut;(c.Owned??=new List<Mesh>()).Add(cut);
+            }
+        }
+        // `mesh` with each vertex kept to its heaviest piece's bones (renormalised) and only the triangles within one piece (not
+        // the crushed, -1); null when nothing is cut.
+        private static Mesh SeverMesh(Mesh mesh,int[] piece)
+        {
+            int n=mesh.vertexCount;var per=mesh.GetBonesPerVertex();var all=mesh.GetAllBoneWeights();if(per.Length!=n||all.Length==0)return null;
+            var of=new int[n];var counts=new byte[n];var kept=new List<BoneWeight1>(all.Length);var sum=new float[24];bool any=false;
+            for(int i=0,o=0;i<n;o+=per[i],i++)
+            {
+                int count=per[i],best=0;float most=-1;
+                for(int j=0;j<count;j++){var w=all[o+j];int p=w.boneIndex<piece.Length?piece[w.boneIndex]:0;sum[p+1]+=w.weight;}
+                for(int j=0;j<count;j++){var w=all[o+j];int p=w.boneIndex<piece.Length?piece[w.boneIndex]:0;if(sum[p+1]>most){most=sum[p+1];best=p;}}
+                for(int j=0;j<count;j++){var w=all[o+j];int p=w.boneIndex<piece.Length?piece[w.boneIndex]:0;sum[p+1]=0;}
+                of[i]=best;if(best!=0)any=true;int start=kept.Count;
+                for(int j=0;j<count;j++){var w=all[o+j];int p=w.boneIndex<piece.Length?piece[w.boneIndex]:0;if(p==best)kept.Add(new BoneWeight1{boneIndex=w.boneIndex,weight=w.weight/Mathf.Max(1e-6f,most)});}
+                counts[i]=(byte)(kept.Count-start);
+            }
+            if(!any)return null;
+            var cut=Instantiate(mesh);cut.name=mesh.name+" (severed)";
+            using(var c=new NativeArray<byte>(counts,Allocator.Temp))using(var w=new NativeArray<BoneWeight1>(kept.ToArray(),Allocator.Temp))cut.SetBoneWeights(c,w);
+            for(int s=0;s<mesh.subMeshCount;s++)
+            {
+                var tris=mesh.GetTriangles(s);var list=new List<int>(tris.Length);
+                for(int t=0;t+2<tris.Length;t+=3){int a=of[tris[t]];if(a>=0&&of[tris[t+1]]==a&&of[tris[t+2]]==a){list.Add(tris[t]);list.Add(tris[t+1]);list.Add(tris[t+2]);}}
+                cut.SetTriangles(list,s,false);
+            }
+            return cut;
+        }
+        private static void VisualCorpseFree(VisualCorpse c){if(c.Root!=null)Destroy(c.Root);if(c.Owned!=null)foreach(var m in c.Owned)if(m!=null)Destroy(m);c.Owned=null;}
         // The authored death scenes (NativeSceneMotion.cs SourceDeathScene) move the victim's 22 joints from where they were at
         // death: each visual bone follows its joint's motion since then (the scene's joint matrices over the rig's at death),
         // hidden while the scene hides the pelvis or the body is under half opacity. True: the voxel victim and its hat are not
@@ -497,11 +575,11 @@ namespace ChipArena.UnityConversion
             visualCorpsesGone.Clear();
             foreach(var pair in visualCorpses)
             {
-                bool kept=false;foreach(var c in corpses.Values)if(c==pair.Key){kept=true;break;}
+                bool kept=false;foreach(var c in corpses.Values)if(c==pair.Key||c.Twin==pair.Key){kept=true;break;}
                 if(!kept||pair.Value.Root==null){visualCorpsesGone.Add(pair.Key);continue;}
                 if(pair.Value.Frame!=Time.frameCount&&pair.Value.Root.activeSelf)pair.Value.Root.SetActive(false);
             }
-            foreach(var gone in visualCorpsesGone){var root=visualCorpses[gone].Root;if(root!=null)Destroy(root);visualCorpses.Remove(gone);}
+            foreach(var gone in visualCorpsesGone){VisualCorpseFree(visualCorpses[gone]);visualCorpses.Remove(gone);}
             if(visualScenes.Count==0)return;
             visualScenesGone.Clear();
             foreach(var pair in visualScenes)
@@ -513,7 +591,7 @@ namespace ChipArena.UnityConversion
         }
         private void ClearVisualCorpses()
         {
-            foreach(var c in visualCorpses.Values)if(c.Root!=null)Destroy(c.Root);visualCorpses.Clear();
+            foreach(var c in visualCorpses.Values)VisualCorpseFree(c);visualCorpses.Clear();
             foreach(var s in visualScenes.Values)if(s.Root!=null)Destroy(s.Root);visualScenes.Clear();
         }
 

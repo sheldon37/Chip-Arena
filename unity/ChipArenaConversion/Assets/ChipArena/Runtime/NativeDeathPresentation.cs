@@ -282,8 +282,9 @@ namespace ChipArena.UnityConversion
                 // ragdoll.ts copies the rig with copyVoxelPart (castShadow off): the body, hat and weapon cast no shadow.
                 // A pilot's body skin at the corpse's distance (death.model "pilot" names the pilot rig, not the skin).
                 int bodySkin=NativeBodySkins.StandardIndex;string model=(death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,BodyAt(death.id,center,out bodySkin)):death.model;bool recolored=false;Color ice=Color.white;
-                // A split body draws its two halves instead (and so skips the whole body below).
-                if(corpse.Bisect!=null)recolored=BisectDraw(corpse,death,model,bodySkin,alpha,clock);
+                // A split body draws its two halves instead (and so skips the whole body below): the visual body's halves when the
+                // pilot wears it (NativeVisualBodyPresentation.cs), else the voxel halves.
+                if(corpse.Bisect!=null)recolored=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha)||BisectDraw(corpse,death,model,bodySkin,alpha,clock);
                 if(frost)
                 {
                     // Frostbreak after 1.1 s: every mesh icy with the source's emissive.
