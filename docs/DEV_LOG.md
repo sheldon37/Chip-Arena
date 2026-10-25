@@ -1,3 +1,24 @@
+## 2026-10-24 — Claude: the bow plays the RPG pack's own clips (merged into shared)
+
+- **Branch/base:** `claude/motion-bow` from shared `cc865585`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - The bow uses the pack's `2Hand-Bow` set.
+  - Upper-body layer:
+    - drawn from the draw to the loose, the drawn poses by the pitch;
+    - the release for 0.6 s after the loose or any arrow (the Volley and Rain stamp only the last shot);
+    - carried at rest otherwise.
+  - The bow's left-fist turn is calibrated from the pack's level aim, and the bow turns onto the aim about its riser (within 35°).
+  - Bank: 227 clips, 2.36 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-cast.zip`.
+- **Checks (actual):**
+  - `--visual-rig` PASS with new bow checks; full CoreTests: see the merge.
+  - Unity compile: PASS.
+  - Play mode (moonlit, `idlebots=3`): draws at 25° up and 20° down, the loose, drawing while running, the Q volley; at rest after.
+- **Not run:**
+  - the E rain in play;
+  - charged-draw arrow kinds against the pose;
+  - a Windows build; multiplayer.
+- **Next:** the fighters, then specials and kit moves, dodge ghosts, severed kills, model everywhere.
+
 ## 2026-10-24 — Claude: the casters play the RPG pack's own clips; guns follow the look (merged into shared)
 
 - **Branch/base:** `claude/motion-casters` from shared `f8324126`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
@@ -14,7 +35,8 @@
   - Bank: 186 clips, 2.00 MB. The Drive's `LocalAssets.zip` is replaced (previous kept as `LocalAssets-2026-10-24-motion-gun.zip`): 357 files, 37.61 MB of the 40 MB budget.
   - The guns build `f8324126bfe4` succeeded and published.
 - **Checks (actual):**
-  - `--visual-rig` PASS with new cast and look checks; full CoreTests and the Unity compile: see the merge entry.
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of `baf3207b`), with new cast and look checks.
+  - Unity compile: PASS.
   - Play mode (moonlit, `idlebots=3`):
     - rifle and machine gun on the look, unaimed, at 0°, 30° up and 30° down, feet planted; low while sprinting;
     - fire and water casters: casts, the Q ability, running, a jump.
