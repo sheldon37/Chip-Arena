@@ -41,6 +41,12 @@ namespace ChipArena.UnityConversion
             /// Hit on the release, its end on the cast's end (the Whirlwind: the body turned by the game's spin). The rest keep
             /// the game's pose. Null: none.</summary>
             public string[] KitKinds, KitClips;
+            /// <summary>Per kit move: where the release lands in its clip (a share of its length; NaN: the clip's own Hit;
+            /// negative: the clip plays at its own pace from the cast, looping), and its recast's clip (null: the cast's).</summary>
+            public float[] KitHits; public string[] KitRecast;
+            /// <summary>Per kit move, a clip after the release (null: none): then the cast's clip is fitted to the release and
+            /// this one to the cast's end (a throw's wind-back, then its throw).</summary>
+            public string[] KitThen;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -59,21 +65,24 @@ namespace ChipArena.UnityConversion
         private static readonly Set Sword=Build(new Set{Spec="sword",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",
-            Attacks=Names("Sword-Attack-R","1","3","4","6","2","4"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            Attacks=Names("Sword-Attack-R","1","3","4","6","2","4"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
+            KitKinds=new[]{"flash-step","rising-dragon"},KitClips=new[]{"Armed-Dash-Forward","Armed-Boost1"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Air-Attack-R1"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
         private static readonly Set Daggers=Build(new Set{Spec="daggers",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-Dual",BlockHit="Armed-Block-Dual-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-L1",SprintAttack="Armed-Run-Attack-Dual",
-            Attacks=Names("Dagger-Attack-","R1","L3","R2","L2"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            Attacks=Names("Dagger-Attack-","R1","L3","R2","L2"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
+            KitKinds=new[]{"shadow-step","kunai-mark"},KitClips=new[]{"Armed-Dash-Forward","Armed-Cast-R-Attack2_start"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Dash-Forward"},KitThen=new[]{null,"Armed-Cast-R-Attack2_end"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // Shield: the game holds its shield in the right hand; the pack's shield set carries it on the left arm, so the set
         // plays mirrored (the bake mirrors a clip named with Mirror: left and right swapped). Its bashes and sweeps, mirrored,
         // sweep left to right as every one of the game's shield cuts does: Attack2, Attack3, Attack1.
         private static readonly Set Shield=Build(new Set{Spec="shield",Idle=M("Armed-Shield-Idle"),Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block=M("Armed-Shield-Block"),BlockHit=M("Armed-Shield-Block-GetHit1"),Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack=M("Armed-Shield-Attack1"),SprintAttack=M("Armed-Shield-Attack1"),
-            Attacks=Array.ConvertAll(Names("Armed-Shield-Attack","2","3","1"),M),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Shield-Run-","Armed-Shield-Strafe-",M("Armed-Shield-Run-Forward"),true);
+            Attacks=Array.ConvertAll(Names("Armed-Shield-Attack","2","3","1"),M),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
+            KitKinds=new[]{"bulwark-charge","aegis-ricochet"},KitClips=new[]{M("Armed-Shield-Run-Forward-Charge"),"Armed-Cast-R-Attack2_start"},KitHits=new[]{-1f,float.NaN},KitThen=new[]{null,"Armed-Cast-R-Attack2_end"}},"Armed-Shield-Run-","Armed-Shield-Strafe-",M("Armed-Shield-Run-Forward"),true);
         // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry by default; shouldered (its aim grid's
         // middle column by the pitch, a recoil on each shot) while aiming or just after a shot (owner 2026-10-24: "Aiming and
         // firing"), the reload fitted to the reload.
@@ -124,7 +133,7 @@ namespace ChipArena.UnityConversion
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
-            if(s.KitClips!=null)foreach(var c in s.KitClips)if(!all.Contains(c))all.Add(c);
+            foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
@@ -285,8 +294,16 @@ namespace ChipArena.UnityConversion
         private static bool Kit(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
             pick=default;if(set.KitKinds==null||!MeleeKitMotion.Clock(a,time,out var c))return false;
-            int i=Array.IndexOf(set.KitKinds,c.Kind);if(i<0||!clips.Has(set.KitClips[i]))return false;
-            string clip=set.KitClips[i];float len=clips.Length(clip),hit=clips.Hit(clip);if(!(hit>0&&hit<len))hit=len*.5f;
+            int i=Array.IndexOf(set.KitKinds,c.Kind);if(i<0)return false;
+            string clip=c.Recast&&set.KitRecast!=null&&set.KitRecast[i]!=null?set.KitRecast[i]:set.KitClips[i];if(!clips.Has(clip))return false;
+            float len=clips.Length(clip),share=set.KitHits!=null&&!c.Recast?set.KitHits[i]:float.NaN,hit=share>0?share*len:clips.Hit(clip);if(!(hit>0&&hit<len))hit=len*.5f;
+            if(share<0){pick=new Pick{Clip=clip,Time=time-c.At,Fade=FadeIn};return true;}
+            string then=!c.Recast&&set.KitThen!=null?set.KitThen[i]:null;
+            if(then!=null&&clips.Has(then))
+            {
+                if(time<c.Release)return Fit(clip,time,c.At,c.Release,clips,FadeIn,out pick);
+                return Fit(then,time,c.Release,Math.Max(c.Release+.05f,c.Until),clips,FadeIn,out pick);
+            }
             if(c.Kind=="whirlwind")
             {
                 var w=MeleeKitMotion.Spin(c,time);

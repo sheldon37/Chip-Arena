@@ -1,3 +1,26 @@
+## 2026-10-24 — Claude: the sword's, daggers' and shield's kit moves play the RPG pack's clips (merged into shared)
+
+- **Branch/base:** `claude/motion-kits` from shared `eb18ed19`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - Kit mapping fields:
+    - `KitHits`: where the release lands in the clip, or the clip's own pace;
+    - `KitRecast`: a recast's own clip;
+    - `KitThen`: a clip after the release (the throws' wind-back, then the throw).
+  - Sword: Flash Step (dash lunge), Rising Dragon (`Armed-Boost1`), Skyfall (air slash).
+  - Daggers: Shadow Step (dash), Kunai Mark (`Armed-Cast-R-Attack2` start and end), and its recast (dash).
+  - Shield: Bulwark Charge (charge run, mirrored), Aegis Ricochet (the throw).
+  - Bank: 271 clips, 2.82 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-gskit.zip`.
+  - The greatsword kit build `eb18ed1900cc` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of the docs commit, code `41b7f0dc`), with new kit checks.
+  - Unity compile: PASS.
+  - Play mode (moonlit, `idlebots=3`): each weapon's Q and E, clips in order; no pops outside the moves' own fast motion.
+- **Not run:**
+  - the recasts (Skyfall, the kunai teleport) in play; covered in the rules only;
+  - a Windows build; multiplayer.
+- **Hit timing:** unchanged (the clips are fitted to the rules' release and end).
+- **Next:** dodge ghosts on the model (the dash and roll afterimages are still voxel), severed kills, model everywhere.
+
 ## 2026-10-24 — Claude: the greatsword's Earthsplitter and Whirlwind play the RPG pack's clips (merged into shared)
 
 - **Branch/base:** `claude/motion-gs-kit` from shared `2bdd5d89`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

@@ -1240,6 +1240,16 @@ already? Cant we utilize that?"
       own spin (`MeleeKitMotion.Spin`'s grip angle, less the clip's own turn), so it faces home when the stop lands.
     - A mapped move's tail (its special still running past the cast) goes on to the idle instead of the game's pose.
     - The bank holds 266 clips in 2.78 MB.
+  - **Sword, daggers and shield kit moves (2026-10-24, `claude/motion-kits`):** every melee weapon's Q and E now play
+    pack clips.
+    - **Sword:** Flash Step plays the armed dash's lunge on the release. Rising Dragon plays the pack's rising thrust
+      (`Armed-Boost1`), and its Skyfall recast plays the armed air slash.
+    - **Daggers:** Shadow Step plays the dash's lunge. Kunai Mark plays the cast's wind-back fitted to the release, then
+      its overhand throw fitted to the cast's end; its recast plays the dash.
+    - **Shield:** Bulwark Charge plays the pack's shield charge run (mirrored) at its own pace. Aegis Ricochet plays the
+      wind-back and the throw.
+    - **Measured:** each Q and E in play.
+    - The bank holds 271 clips in 2.82 MB.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
