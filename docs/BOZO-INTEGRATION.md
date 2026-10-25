@@ -1170,6 +1170,14 @@ already? Cant we utilize that?"
       the body (the local tool's `path=1`).
     - The idle is an upright ready stance: hips 0.76 m (the game's squat had 0.69 m) with the feet on the floor.
     - The bank holds 73 clips in 0.81 MB.
+  - **Daggers (2026-10-24, `claude/motion-daggers`):** the pack's `Armed` set for idle, locomotion, jump, flip, fall,
+    landing, roll, `Block-Dual`, stun and reactions; `Armed-Air-Attack-L1` for the plunge; `Armed-Run-Attack-Dual` for the
+    sprint attack, both blades opening as the game's twin sweeps do.
+    - The combo alternates hands in the game's four (a forehand right to left, then three left to right, the fourth the
+      claw-mark finisher): `Dagger-Attack-R1, L3, R2, L2`, chosen by both blade tips' sweeps.
+    - The off hand's frame (the second blade) rides the model's left hand. The hold is kept for weapons the bake has no
+      model of, so the game's own daggers draw in the model's hands.
+    - The bank holds 81 clips in 0.91 MB.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
