@@ -1200,6 +1200,19 @@ already? Cant we utilize that?"
     - **Measured** (local tool `keep=` for held inputs): aiming raised the layer; shots kept it up (rifle 3 rounds, machine
       gun 26); the empty rifle's reload played the reload; sprint ran the pack's runs.
     - The bank holds 144 clips in 1.59 MB.
+    - **On the look (2026-10-24, `claude/motion-casters`; owner: the rifle and machine gun "pointed down each direction we
+      look"):** the low carry is now only for sprinting. Whenever the body's own motion leaves the arms free (idle,
+      locomotion, a jump's rise or fall, a landing), the gun is shouldered on the look. Rolls, strikes, reactions and blocks
+      keep their own arms. Unity places a human pose by its centre of mass, so a raised upper body used to swing the hips
+      and lift a foot. The legs' motion is now posed first and its hips kept under the upper body.
+  - **Casters (2026-10-24, `claude/motion-casters`):** the four schools and L33t H4x play the pack's `2Hand-Staff` set,
+    mirrored (the game's staff is in the left fist, the pack's in the right). Mirrored reactions swap sides.
+    - **Casts on the upper body,** over the legs' motion: the pack's cast start is fitted from the cast to the game's
+      release (`MagicPose.Windup`), its end plays after at its own pace, then the layer lowers. A Q/E ability plays the
+      pack's area cast likewise, to the ability's release. A cast is no melee strike: the legs keep idling or running.
+    - **The staff in the fist:** its shaft runs along the left fist's grip (the knuckles' line, toward the thumb).
+    - **Measured:** fire and water casters cast, the Q ability, running and a jump, all on the pack's clips.
+    - The bank holds 186 clips in 2.00 MB; the zip's visual body is 37.61 MB of its 40 MB budget.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
