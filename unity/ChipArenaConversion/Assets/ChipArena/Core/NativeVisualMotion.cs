@@ -32,6 +32,9 @@ namespace ChipArena.UnityConversion
             public string[] CastStart, CastEnd; public string AbilityStart, AbilityEnd;
             /// <summary>An unarmed fighter: its strikes follow the replicated jab and combo (the last of Attacks ends a chain).</summary>
             public bool Fighter;
+            /// <summary>A fighter's own moves (FighterMove): the Emperor's electric punch and wavedash; the Ansatsuken's tatsu kicks
+            /// (alternating), shoryuken, hadoken (the push), shinku charge (gathering, then held) and Demon Step.</summary>
+            public string Electric, Wave, Hadoken, ChargeStart, ChargeLoop, Shoryuken, Step; public string[] Kicks;
             /// <summary>The weapon in the model's left fist is a shaft (the staff): it runs along the fist's grip.</summary>
             public bool LeftShaft;
             /// <summary>A gun (its aim layer without a bow's draw): the hold calibrated from its level aim, its barrel onto the
@@ -119,7 +122,9 @@ namespace ChipArena.UnityConversion
         // heavy right.
         private static readonly Set Unarmed=Build(new Set{Spec="unarmed",Idle="Unarmed-Idle",Jump="Unarmed-Jump",Flip="Unarmed-Jump-Flip",Fall="Unarmed-Fall",
             Land="Unarmed-Land",Block="Unarmed-Block",BlockHit="Unarmed-Block-GetHit1",Stunned="Unarmed-Stunned",Roll="Unarmed-Roll-Forward",
-            AirAttack="Unarmed-Air-Attack1",SprintAttack="Unarmed-Run-Forward-Attack1-Right",Attacks=Names("Unarmed-Attack-","R1","L1","R2","L2","R3"),Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Fighter=true,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward"},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
+            AirAttack="Unarmed-Air-Attack1",SprintAttack="Unarmed-Run-Forward-Attack1-Right",Attacks=Names("Unarmed-Attack-","R1","L1","R2","L2","R3"),Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Fighter=true,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward",
+            Electric="Unarmed-Run-Forward-Attack1-Right",Wave="Unarmed-Dash-Forward",Step="Unarmed-Dash-Forward",Hadoken="Unarmed-Cast-Dual-Attack1_end",
+            ChargeStart="Unarmed-Cast-Dual-AOE1_start",ChargeLoop="Unarmed-Cast-Dual-AOE1_loop",Shoryuken="Unarmed-Boost1",Kicks=Names("Unarmed-Attack-Kick-","R2","L2")},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
         private static string M(string clip)=>clip+Mirror;
@@ -133,7 +138,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+Dir(i)+(mirrored?Mirror:"");s.Locomotion[NativeVisualStride.Walks+i]=walk+Dir(i)+(mirrored?Mirror:"");}
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
-            foreach(var c in new[]{s.Knockdown,s.RollBack})if(c!=null&&!all.Contains(c))all.Add(c);
+            foreach(var c in new[]{s.Knockdown,s.RollBack,s.Electric,s.Wave,s.Hadoken,s.ChargeStart,s.ChargeLoop,s.Shoryuken,s.Step})if(c!=null&&!all.Contains(c))all.Add(c);
+            if(s.Kicks!=null)foreach(var c in s.Kicks)if(!all.Contains(c))all.Add(c);
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
@@ -225,6 +231,8 @@ namespace ChipArena.UnityConversion
         /// <summary>A fighter strike's hit as a share of it (NativeFighters: a jab's .075 of .17 s, a combo's .12 of .25 s; a
         /// chain's last, .35).</summary>
         public const float StrikeHit=.45f, FinisherHit=.35f;
+        /// <summary>The wavedash plays the dash's first WaveShare (its lunge); the shinku charge gathers for ChargeIn s, then holds.</summary>
+        public const float WaveShare=.6f, ChargeIn=.3f;
         /// <summary>Why the last Choose declined (null when it chose): for the local checks.</summary>
         public static string Declined;
 
@@ -256,8 +264,8 @@ namespace ChipArena.UnityConversion
             // Juggled in the air: the fall's flight.
             if(a.JuggleUntil>time){if(set.Knockdown==null||!clips.Has(set.Knockdown)){Declined="juggle";return false;}pick=new Pick{Clip=set.Knockdown,Time=clips.Length(set.Knockdown)*KnockImpact*KnockFlight,Fade=FadeIn};return true;}
             if(!mapped&&a.MeleeKit!=null&&a.MeleeKit.At>-90&&time>=a.MeleeKit.At&&time<a.MeleeKit.Until){Declined="kit";return false;}
-            // The Ansatsuken's roll is its Demon Step (its own style clip): the game's pose.
-            if(a.Rolling(time)){if(set.Fighter&&a.SourceSpec=="ansatsuken"){Declined="fighter";return false;}return Fit(set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);}
+            // The Ansatsuken's roll is its Demon Step: the pack's dash.
+            if(a.Rolling(time))return Fit(set.Fighter&&a.SourceSpec=="ansatsuken"&&set.Step!=null?set.Step:set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);
             // The plunging air attack: its Hit on the impact (the landing), else on the clip's own.
             if(a.AirAttack&&a.AttackAt>-90&&time>=a.AttackAt)
             {
@@ -280,7 +288,11 @@ namespace ChipArena.UnityConversion
                         if(time<end){pick=new Pick{Clip=clip,Time=Retime(time,a.SourceAt,hitAt,end,hit,len),Fade=FadeIn};return true;}
                     }
                 }
-                else if(NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time)){Declined="fighter";return false;}
+                else if(NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time))
+                {
+                    if(FighterMove(set,a,time,clips,out pick))return true;
+                    Declined="fighter";return false;
+                }
             }
             // A caster's cast plays on the upper-body layer (Layer); its strike rules are not melee. A fighter's strikes are its own.
             if(a.Attacking(time)&&set.CastStart==null&&!set.Fighter)
@@ -333,6 +345,46 @@ namespace ChipArena.UnityConversion
                 pick=new Pick{Clip=clip,Time=t,Fade=FadeIn,Spin=true,Turn=w.Grip};return true;
             }
             pick=new Pick{Clip=clip,Time=Retime(time,c.At,c.Release,Math.Max(c.Release+.05f,c.Until),hit,len),Fade=FadeIn};return true;
+        }
+        /// <summary>A fighter's own move from its replicated action (NativeFighters' timings; the attack rate, not replicated, from
+        /// the move's own span): the electric punch's Hit at a quarter of it; the wavedash the dash's lunge (WaveShare of it);
+        /// the hadoken's and shinku's push across the move; the shinku charge's gathering (ChargeIn s), then its hold; the
+        /// tatsu's kicks alternating, each kick's wind-up to its Hit in the gap before its hit, the last one's recovery after;
+        /// the shoryuken's rise with its Hit on the first hit. False: no clip (the game's pose).</summary>
+        private static bool FighterMove(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;float at=a.SourceAt,until=Math.Max(a.SourceAt+.05f,a.SourceUntil);int total=Math.Max(1,a.SourceTotal);
+            bool Hit(string clip,float hitAt,float end,out Pick p)
+            {
+                p=default;if(clip==null||!clips.Has(clip))return false;float len=clips.Length(clip),hit=clips.Hit(clip);if(!(hit>0&&hit<len))hit=len*.5f;
+                p=new Pick{Clip=clip,Time=Retime(time,at,hitAt,Math.Max(end,hitAt+(len-hit)*.5f),hit,len),Fade=FadeIn};return true;
+            }
+            switch(a.SourceAction)
+            {
+                case "electric":return Hit(set.Electric,at+(until-at)*.25f,until,out pick);
+                case "wave":
+                    if(set.Wave==null||!clips.Has(set.Wave))return false;
+                    pick=new Pick{Clip=set.Wave,Time=clips.Length(set.Wave)*WaveShare*Clamp01((time-at)/(until-at)),Fade=FadeIn};return true;
+                case "hadoken":case "shinku":return Fit(set.Hadoken,time,at,until,clips,FadeIn,out pick);
+                case "charge":
+                    if(time<at+ChargeIn||set.ChargeLoop==null||!clips.Has(set.ChargeLoop))return Fit(set.ChargeStart,time,at,at+ChargeIn,clips,FadeIn,out pick);
+                    pick=new Pick{Clip=set.ChargeLoop,Time=time-at-ChargeIn,Fade=FadeIn};return true;
+                case "tatsu":
+                {
+                    if(set.Kicks==null)return false;
+                    float rate=(.12f+.18f*(total-1))/Math.Max(.05f,until-at-.22f),hitAt=at+.12f/rate,gap=.18f/rate,last=hitAt+(total-1)*gap;
+                    int k=time<hitAt?0:Math.Min(total-1,(int)((time-hitAt)/gap)+1);string clip=set.Kicks[k%set.Kicks.Length];if(!clips.Has(clip))return false;
+                    float len=clips.Length(clip),hit=clips.Hit(clip);if(!(hit>0&&hit<len))hit=len*.5f;
+                    float from=k==0?at:hitAt+(k-1)*gap,to=k==0?hitAt:hitAt+k*gap;
+                    float t=time<=last?hit*Clamp01((time-from)/Math.Max(1e-3f,to-from)):hit+(len-hit)*Clamp01((time-last)/Math.Max(.05f,until-last));
+                    pick=new Pick{Clip=clip,Time=t,Fade=FadeIn};return true;
+                }
+                case "shoryuken":
+                {
+                    float rate=(.08f+.16f*(total-1))/Math.Max(.05f,until-at-.68f);return Hit(set.Shoryuken,at+.08f/rate,until,out pick);
+                }
+            }
+            return false;
         }
         /// <summary>A clip played across [start, end], its whole length.</summary>
         private static bool Fit(string clip,float time,float start,float end,IClips clips,float fade,out Pick pick)
