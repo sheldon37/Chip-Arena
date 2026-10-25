@@ -30,6 +30,8 @@ namespace ChipArena.UnityConversion
             /// <summary>A caster's casts: each one's start (to the release) and end (after it), cycling; its Q/E ability's
             /// likewise. Null for the rest.</summary>
             public string[] CastStart, CastEnd; public string AbilityStart, AbilityEnd;
+            /// <summary>An unarmed fighter: its strikes follow the replicated jab and combo (the last of Attacks ends a chain).</summary>
+            public bool Fighter;
             /// <summary>The weapon in the model's left fist is a shaft (the staff): it runs along the fist's grip.</summary>
             public bool LeftShaft;
             /// <summary>A gun (its aim layer without a bow's draw): the hold calibrated from its level aim, its barrel onto the
@@ -96,6 +98,11 @@ namespace ChipArena.UnityConversion
             Land="2Hand-Bow-Land",Block="Hand-Bow-Block",BlockHit="2Hand-Bow-Block-GetHit1",Stunned="2Hand-Bow-Stunned",Roll="2Hand-Bow-Roll-Forward",
             AirAttack="2Hand-Bow-Fall",SprintAttack="2Hand-Bow-Attack1",Attacks=Names("2Hand-Bow-Attack","1","2","3"),Reactions=Names("2Hand-Bow-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Bow-Aiming-","DM","CM","UM"),Pull=Names("2Hand-Bow-Aiming-Pull-","DM","CM","UM"),Fire=Names("2Hand-Bow-Aiming-Fire-","DM","CM","UM")},"2Hand-Bow-Run-","2Hand-Bow-Strafe-","2Hand-Bow-Run-Forward");
+        // The unarmed fighters (Emperor, Ansatsuken): the pack's unarmed set, its strikes alternating hands, a chain's last the
+        // heavy right.
+        private static readonly Set Unarmed=Build(new Set{Spec="unarmed",Idle="Unarmed-Idle",Jump="Unarmed-Jump",Flip="Unarmed-Jump-Flip",Fall="Unarmed-Fall",
+            Land="Unarmed-Land",Block="Unarmed-Block",BlockHit="Unarmed-Block-GetHit1",Stunned="Unarmed-Stunned",Roll="Unarmed-Roll-Forward",
+            AirAttack="Unarmed-Air-Attack1",SprintAttack="Unarmed-Run-Forward-Attack1-Right",Attacks=Names("Unarmed-Attack-","R1","L1","R2","L2","R3"),Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Fighter=true},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
         private static string M(string clip)=>clip+Mirror;
@@ -117,7 +124,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
             spec=="rifle"||spec=="machinegun"?Rifle:spec=="pistol"?Pistol:spec=="bow"?Bow:
-            spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:null;
+            spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
         /// whether the layer is up (Raised: aimed, drawn, reloading or casting). False for melee sets.</summary>
@@ -190,6 +197,9 @@ namespace ChipArena.UnityConversion
         public struct Pick { public string Clip; public float Time; public bool Locomotion; public float Fade; }
 
         public const float FadeIn=.08f, FadeOut=.2f, LandFor=.22f, ReactionMin=.25f;
+        /// <summary>A fighter strike's hit as a share of it (NativeFighters: a jab's .075 of .17 s, a combo's .12 of .25 s; a
+        /// chain's last, .35).</summary>
+        public const float StrikeHit=.45f, FinisherHit=.35f;
         /// <summary>Why the last Choose declined (null when it chose): for the local checks.</summary>
         public static string Declined;
 
@@ -203,7 +213,8 @@ namespace ChipArena.UnityConversion
             if(NativeSpecialPose.Active(a,time)){Declined="special";return false;}
             if(a.JuggleUntil>time){Declined="juggle";return false;}
             if(a.MeleeKit!=null&&a.MeleeKit.At>-90&&time>=a.MeleeKit.At&&time<a.MeleeKit.Until){Declined="kit";return false;}
-            if(a.Rolling(time))return Fit(set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);
+            // The Ansatsuken's roll is its Demon Step (its own style clip): the game's pose.
+            if(a.Rolling(time)){if(set.Fighter&&a.SourceSpec=="ansatsuken"){Declined="fighter";return false;}return Fit(set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);}
             // The plunging air attack: its Hit on the impact (the landing), else on the clip's own.
             if(a.AirAttack&&a.AttackAt>-90&&time>=a.AttackAt)
             {
@@ -211,8 +222,25 @@ namespace ChipArena.UnityConversion
                 float hit=clips.Hit(set.AirAttack),len=clips.Length(set.AirAttack),impact=a.ImpactAt>a.AttackAt?a.ImpactAt:a.AttackAt+hit;
                 pick=new Pick{Clip=set.AirAttack,Time=Retime(time,a.AttackAt,impact,impact+(len-hit),hit,len),Fade=FadeIn};return true;
             }
-            // A caster's cast plays on the upper-body layer (Layer); its strike rules are not melee.
-            if(a.Attacking(time)&&set.CastStart==null)
+            // A fighter's jab or combo strike: its Hit on the rules' hit (a share of the strike, as NativeFighters times it), its
+            // recovery played out at up to twice its pace; the fighters' other moves keep the game's own pose for now.
+            if(set.Fighter)
+            {
+                bool strike=a.SourceAction=="jab"||a.SourceAction=="combo";
+                if(strike&&a.SourceUntil>a.SourceAt&&time>=a.SourceAt)
+                {
+                    int n=set.Attacks.Length;bool last=a.SourceTotal>1&&a.SourceIndex==a.SourceTotal-1;
+                    string clip=last?set.Attacks[n-1]:set.Attacks[Math.Max(0,a.SourceIndex)%(n-1)];
+                    if(clips.Has(clip))
+                    {
+                        float hit=clips.Hit(clip),len=clips.Length(clip),hitAt=a.SourceAt+(a.SourceUntil-a.SourceAt)*(last?FinisherHit:StrikeHit),end=Math.Max(a.SourceUntil,hitAt+(len-hit)*.5f);
+                        if(time<end){pick=new Pick{Clip=clip,Time=Retime(time,a.SourceAt,hitAt,end,hit,len),Fade=FadeIn};return true;}
+                    }
+                }
+                else if(NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time)){Declined="fighter";return false;}
+            }
+            // A caster's cast plays on the upper-body layer (Layer); its strike rules are not melee. A fighter's strikes are its own.
+            if(a.Attacking(time)&&set.CastStart==null&&!set.Fighter)
             {
                 string clip=a.SprintAttack?set.SprintAttack:set.Attacks[Math.Max(0,a.Combo)%set.Attacks.Length];if(!clips.Has(clip))return false;
                 float windup=a.VisualWindup>0?a.VisualWindup:.25f,hitAt=a.SwingAt>=a.AttackAt&&a.SwingUntil>a.SwingAt?(a.SwingAt+a.SwingUntil)*.5f:a.AttackAt+windup;
