@@ -1,3 +1,27 @@
+## 2026-10-25 — Claude: knockdowns and juggles play the pack's clips (merged into shared)
+
+- **Branch/base:** `claude/motion-knockdown` from shared `d5d1abff`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner direction:** "Lets work on all these" (the remaining conversion list); this is its first item.
+- **Changes (presentation only):**
+  - Each set gains `Knockdown` (pack `Knockdown1`) and `RollBack` (`Roll-Backward`).
+  - `Choose` plays them for the down state, by `NativeSpecialRules.Phase`:
+    - airborne: the flight, held short of the impact;
+    - landed: the impact and lying;
+    - roll and rise: the backward roll from on its back, fitted to the get-up.
+  - A juggle holds the flight.
+  - A set without the clips keeps the game's pose.
+  - Bank: 283 clips, 3.00 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-25-motion-kits.zip`: 38.61 MB of the 40 MB budget.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `1c4b297b`), with new knockdown checks.
+  - The revive-corpse build `d5d1abff9d67` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode (moonlit, `bring=`): Rising Dragon launched the bot through the whole knockdown on the model.
+- **Not run:**
+  - a shield launch;
+  - a knockdown on a slope;
+  - a Windows build; multiplayer.
+- **Next:** the fighters' signature moves, gun and caster abilities on the pack's clips.
+
 ## 2026-10-25 — Claude: a revive's early corpse wears the model (merged into shared)
 
 - **Branch/base:** `claude/model-revive-corpse` from shared `4fee09a1`. No PR; merged into shared and the builder.

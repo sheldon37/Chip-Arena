@@ -1250,6 +1250,15 @@ already? Cant we utilize that?"
       wind-back and the throw.
     - **Measured:** each Q and E in play.
     - The bank holds 271 clips in 2.82 MB.
+  - **Knockdowns and juggles (2026-10-25, `claude/motion-knockdown`):** a downed pilot plays its set's pack `Knockdown1`
+    and `Roll-Backward` (the shield uses the armed set's; the staff's mirrored).
+    - **Phases:** the game's knockdown phases (`NativeSpecialRules.Phase`) choose the clip time.
+      - Airborne, the fall's flight plays, held short of the impact (`KnockImpact` .52 of the clip, its flight .8 of that).
+      - On landing, the impact and lying play from the impact on.
+      - The roll and rise play the backward roll from on its back (`RollFromBack` .22), fitted to the get-up.
+    - **Juggles:** a juggled pilot holds the fall's flight.
+    - **Measured:** a bot launched by Rising Dragon was blown back, fell legs-up, lay flat, rolled up and stood.
+    - The bank holds 283 clips in 3.00 MB; the zip's visual body is 38.61 MB of its 40 MB budget.
   - **Echoes (2026-10-25, `claude/visual-ghosts`; owner: "The dodge effect still shows the voxel model"):** a pilot drawn
     as the model leaves the model's roll afterimages, dash ghosts (Flash Step, Bulwark Charge) and Demon Step ghosts.
     - Each ghost bakes the model's drawn renderers (skinned ones through `BakeMesh`, into pooled meshes; the shown weapon
