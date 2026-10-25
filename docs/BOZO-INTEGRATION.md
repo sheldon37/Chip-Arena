@@ -1289,6 +1289,14 @@ already? Cant we utilize that?"
       frame and nameplate stay.
     - It wears no hat (as in the arena). Classic keeps the voxel portrait and its edges.
     - Local tool: `cam=x,y,z,lx,ly,lz[,fov]` adds a fixed-eye shot (the broadcast hangs at (0 or ±43, 72, -115)).
+  - **Live ghosts (2026-10-25, `claude/model-ghosts`):** the ghosts posed every frame are the model where their pilot wears
+    it.
+    - Which ghosts: the Shadow Step decoy, the directed entrances' afterimages and hologram (while the intro pilot is the
+      model), and the Cyber Lord's split, clone and idle-glitch copies.
+    - Each is a pooled visual body on its holder rig, bound to the ghost's pose and drawn through that ghost's own shader
+      (`NativeWeaponGhost`, or the entrance's one-layer `NativeEntranceGhost` with its scanlines), in its tint and opacity.
+    - Body only: the ghost weapons stay voxel. It hides once a frame passes without it.
+    - The Cyber Lord's fork ghost, the PvE revive hologram and the Siren's crush drop keep the voxel body.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.

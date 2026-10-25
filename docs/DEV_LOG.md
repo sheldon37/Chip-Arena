@@ -1,3 +1,30 @@
+## 2026-10-25 — Claude: live ghosts are the model (merged into shared)
+
+- **Branch/base:** `claude/model-ghosts` from shared `20866604`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `VisualLiveGhostDraw`: a pooled visual body per key on a holder rig, bound to a pose each frame and drawn through a ghost shader (tint, opacity, the entrance ghost's scanlines). Body only.
+  - `VisualLiveGhostsShown` hides a ghost once a frame passes without it.
+  - Hooked into:
+    - the Shadow Step decoy;
+    - the directed entrances' ghosts, on holder rigs at the ghosts' roots;
+    - the Cyber Lord's split, clone and idle-glitch copies.
+  - Each applies only while its pilot draws the model; Classic keeps the voxel ghosts.
+  - Local tool: views list `Visual ghost` and `Visual bust` objects.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `0e8eae77`), with new live ghost checks.
+  - The broadcast build `20866604e18e` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode (moonlit): a daggers Shadow Step left the model's violet decoy kneeling at the departure point.
+- **Not run:**
+  - an entrance with ghosts in play (the daggers entrance shows none);
+  - the Cyber Lord's copies in play;
+  - a Windows build; multiplayer.
+- **Not done:**
+  - **The draft pilot:** close-framed, with the chip's flight from the voxel pose. The draft and chip-select files carry another agent's uncommitted edits in the owner's checkout, so this needs coordinating.
+  - **Portraits and the rooftop menu:** the cloud agent's files.
+  - The PvE revive hologram, built from the voxel wound geometry.
+- **Next:** cut-face caps.
+
 ## 2026-10-25 — Claude: the sky death broadcast's portrait is the model (merged into shared)
 
 - **Branch/base:** `claude/model-broadcast` from shared `9782ffb2`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
