@@ -8,7 +8,8 @@
   - The fork bomb clones are live ghosts.
   - Local tool: `gallery=T,Flag` (sandbox plus a presentation gallery).
 - **Checks (actual):**
-  - `--visual-rig` PASS with new revive checks; full CoreTests: see the merge.
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of `511699bd`), with new revive checks and `ReviveHoloChecks`' stand pin updated.
+  - The kill looks build `1ead7454` succeeded and published.
   - Unity compile: PASS.
   - Play mode (the sandbox revive gallery): the stand-in rises and stands on the model with the column; no voxel body. The lying phase was not caught in the captures.
 - **Not run:**
