@@ -1187,6 +1187,19 @@ already? Cant we utilize that?"
       to right, as all the game's shield cuts do. Jumps, roll, stun and reactions come from the `Armed` set.
     - The shield draws braced on the right forearm, its face forward.
     - The bank holds 103 clips in 1.17 MB.
+  - **Guns (2026-10-24, `claude/motion-guns`; owner: rifle and machine gun "shouldered when aiming and firing"):** the rifle
+    and machine gun play the pack's `2Hand-Shooting` set, the pistol its `Armed` set.
+    - **Carry:** each carries low by default: the pack's ready idle, the muzzle tipped 20° down.
+    - **Upper-body layer** (every muscle but the legs', over the legs' motion, eased in 0.12 s) raises the gun while aiming
+      or within the game's own shot hold: the pack's aim grid's down, level and up poses blended by the pilot's pitch, and
+      the long guns' recoil per shot. The pistol holds its aimed stance (its own firing cut throws the arm overhead).
+    - **Reload:** the pack's reload is fitted to the game's reload, and the support hand lets go.
+    - **In the hand:** the gun's turn is calibrated from the pack's own level aim (there its bore points straight ahead).
+      While raised, the barrel turns onto the aim line about its grip (within 35°), so the rounds leave the drawn muzzle. The
+      long guns' support fist reaches the model's handguard.
+    - **Measured** (local tool `keep=` for held inputs): aiming raised the layer; shots kept it up (rifle 3 rounds, machine
+      gun 26); the empty rifle's reload played the reload; sprint ran the pack's runs.
+    - The bank holds 144 clips in 1.59 MB.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
