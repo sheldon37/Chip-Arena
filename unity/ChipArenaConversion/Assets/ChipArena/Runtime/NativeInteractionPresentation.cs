@@ -69,7 +69,9 @@ namespace ChipArena.UnityConversion
                     else if(!corpses.TryGetValue(d.id,out var corpse)||corpse.Death.seed!=d.seed)
                     {
                         corpse?.Dispose();var temp=captured.Create(transform,-d.id);
-                        try {var atDeath=d.actor?.ViewCopy()??new Actor();atDeath.Hp=Math.Max(1,atDeath.Hp);temp.ActorPose(atDeath,d.position-Vector3.up*.865f,d.at);corpse=new NativeCorpse(d,temp,WeaponLoadout);corpses[d.id]=corpse;}
+                        try {var atDeath=d.actor?.ViewCopy()??new Actor();atDeath.Hp=Math.Max(1,atDeath.Hp);temp.ActorPose(atDeath,d.position-Vector3.up*.865f,d.at);corpse=new NativeCorpse(d,temp,WeaponLoadout);corpses[d.id]=corpse;
+                            // The corpse made here first wears its visual body as one made by the death presentation does.
+                            if((d.model??"pilot")=="pilot")VisualCorpseMake(corpse,d,temp);}
                         finally {temp.Dispose();}
                         corpse.Step(age);for(int b=0;b<22;b++)r.Body[b]=corpse.Bone(b);
                     }
