@@ -47,6 +47,9 @@ namespace ChipArena.UnityConversion
             /// <summary>Per kit move, a clip after the release (null: none): then the cast's clip is fitted to the release and
             /// this one to the cast's end (a throw's wind-back, then its throw).</summary>
             public string[] KitThen;
+            /// <summary>A knockdown (the pack's blown-back fall: its flight, its landing, lying) and the backward roll a downed
+            /// pilot gets up with.</summary>
+            public string Knockdown, RollBack;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -58,7 +61,7 @@ namespace ChipArena.UnityConversion
             Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
             AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
             Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
-            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack8"}},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack8"},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -66,7 +69,7 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",
             Attacks=Names("Sword-Attack-R","1","3","4","6","2","4"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
-            KitKinds=new[]{"flash-step","rising-dragon"},KitClips=new[]{"Armed-Dash-Forward","Armed-Boost1"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Air-Attack-R1"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            KitKinds=new[]{"flash-step","rising-dragon"},KitClips=new[]{"Armed-Dash-Forward","Armed-Boost1"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Air-Attack-R1"},Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
@@ -74,7 +77,7 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block="Armed-Block-Dual",BlockHit="Armed-Block-Dual-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-L1",SprintAttack="Armed-Run-Attack-Dual",
             Attacks=Names("Dagger-Attack-","R1","L3","R2","L2"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
-            KitKinds=new[]{"shadow-step","kunai-mark"},KitClips=new[]{"Armed-Dash-Forward","Armed-Cast-R-Attack2_start"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Dash-Forward"},KitThen=new[]{null,"Armed-Cast-R-Attack2_end"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            KitKinds=new[]{"shadow-step","kunai-mark"},KitClips=new[]{"Armed-Dash-Forward","Armed-Cast-R-Attack2_start"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Dash-Forward"},KitThen=new[]{null,"Armed-Cast-R-Attack2_end"},Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // Shield: the game holds its shield in the right hand; the pack's shield set carries it on the left arm, so the set
         // plays mirrored (the bake mirrors a clip named with Mirror: left and right swapped). Its bashes and sweeps, mirrored,
         // sweep left to right as every one of the game's shield cuts does: Attack2, Attack3, Attack1.
@@ -82,20 +85,20 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block=M("Armed-Shield-Block"),BlockHit=M("Armed-Shield-Block-GetHit1"),Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack=M("Armed-Shield-Attack1"),SprintAttack=M("Armed-Shield-Attack1"),
             Attacks=Array.ConvertAll(Names("Armed-Shield-Attack","2","3","1"),M),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
-            KitKinds=new[]{"bulwark-charge","aegis-ricochet"},KitClips=new[]{M("Armed-Shield-Run-Forward-Charge"),"Armed-Cast-R-Attack2_start"},KitHits=new[]{-1f,float.NaN},KitThen=new[]{null,"Armed-Cast-R-Attack2_end"}},"Armed-Shield-Run-","Armed-Shield-Strafe-",M("Armed-Shield-Run-Forward"),true);
+            KitKinds=new[]{"bulwark-charge","aegis-ricochet"},KitClips=new[]{M("Armed-Shield-Run-Forward-Charge"),"Armed-Cast-R-Attack2_start"},KitHits=new[]{-1f,float.NaN},KitThen=new[]{null,"Armed-Cast-R-Attack2_end"},Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Shield-Run-","Armed-Shield-Strafe-",M("Armed-Shield-Run-Forward"),true);
         // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry by default; shouldered (its aim grid's
         // middle column by the pitch, a recoil on each shot) while aiming or just after a shot (owner 2026-10-24: "Aiming and
         // firing"), the reload fitted to the reload.
         private static readonly Set Rifle=Build(new Set{Spec="rifle",Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
-            Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle"},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
+            Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward"},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
         // Pistol: the armed set, held low; raised to the pack's pistol stance (arm out) while aiming or just after a shot (its
         // own firing cut throws the arm overhead: the stance holds, the game's muzzle kick is the recoil), its reload fitted.
         private static readonly Set Pistol=Build(new Set{Spec="pistol",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
-            Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
         // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
         // cast likewise, on the upper body. Mirrored reactions swap sides.
@@ -104,19 +107,19 @@ namespace ChipArena.UnityConversion
             AirAttack=M("2Hand-Staff-Air-Attack1"),SprintAttack=M("2Hand-Staff-Run-Forward-Attack1"),Attacks=Array.ConvertAll(Names("2Hand-Staff-Attack","1","2","3"),M),
             Reactions=Array.ConvertAll(Names("2Hand-Staff-GetHit-","F1","B1","R1","L1"),M),
             CastStart=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_start","2_start","3_start"),M),CastEnd=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_end","2_end","3_end"),M),
-            AbilityStart=M("2Hand-Staff-Cast-L-AOE1_start"),AbilityEnd=M("2Hand-Staff-Cast-L-AOE1_end"),LeftShaft=true},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
+            AbilityStart=M("2Hand-Staff-Cast-L-AOE1_start"),AbilityEnd=M("2Hand-Staff-Cast-L-AOE1_end"),LeftShaft=true,Knockdown=M("2Hand-Staff-Knockdown1"),RollBack=M("2Hand-Staff-Roll-Backward")},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
         // The bow: the pack's bow set (its block clip is named "Hand-Bow-Block" inside), the bow in the left fist as the game's.
         // Raised while drawing (its drawn poses by the pitch), just after a loose (its release) or while aiming; else carried
         // at rest.
         private static readonly Set Bow=Build(new Set{Spec="bow",Idle="2Hand-Bow-Idle",Jump="2Hand-Bow-Jump",Flip="2Hand-Bow-Jump-Flip",Fall="2Hand-Bow-Fall",
             Land="2Hand-Bow-Land",Block="Hand-Bow-Block",BlockHit="2Hand-Bow-Block-GetHit1",Stunned="2Hand-Bow-Stunned",Roll="2Hand-Bow-Roll-Forward",
             AirAttack="2Hand-Bow-Fall",SprintAttack="2Hand-Bow-Attack1",Attacks=Names("2Hand-Bow-Attack","1","2","3"),Reactions=Names("2Hand-Bow-GetHit-","F1","B1","L1","R1"),
-            Aim=Names("2Hand-Bow-Aiming-","DM","CM","UM"),Pull=Names("2Hand-Bow-Aiming-Pull-","DM","CM","UM"),Fire=Names("2Hand-Bow-Aiming-Fire-","DM","CM","UM")},"2Hand-Bow-Run-","2Hand-Bow-Strafe-","2Hand-Bow-Run-Forward");
+            Aim=Names("2Hand-Bow-Aiming-","DM","CM","UM"),Pull=Names("2Hand-Bow-Aiming-Pull-","DM","CM","UM"),Fire=Names("2Hand-Bow-Aiming-Fire-","DM","CM","UM"),Knockdown="2Hand-Bow-Knockdown1",RollBack="2Hand-Bow-Roll-Backward"},"2Hand-Bow-Run-","2Hand-Bow-Strafe-","2Hand-Bow-Run-Forward");
         // The unarmed fighters (Emperor, Ansatsuken): the pack's unarmed set, its strikes alternating hands, a chain's last the
         // heavy right.
         private static readonly Set Unarmed=Build(new Set{Spec="unarmed",Idle="Unarmed-Idle",Jump="Unarmed-Jump",Flip="Unarmed-Jump-Flip",Fall="Unarmed-Fall",
             Land="Unarmed-Land",Block="Unarmed-Block",BlockHit="Unarmed-Block-GetHit1",Stunned="Unarmed-Stunned",Roll="Unarmed-Roll-Forward",
-            AirAttack="Unarmed-Air-Attack1",SprintAttack="Unarmed-Run-Forward-Attack1-Right",Attacks=Names("Unarmed-Attack-","R1","L1","R2","L2","R3"),Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Fighter=true},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
+            AirAttack="Unarmed-Air-Attack1",SprintAttack="Unarmed-Run-Forward-Attack1-Right",Attacks=Names("Unarmed-Attack-","R1","L1","R2","L2","R3"),Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Fighter=true,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward"},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
         private static string M(string clip)=>clip+Mirror;
@@ -130,6 +133,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+Dir(i)+(mirrored?Mirror:"");s.Locomotion[NativeVisualStride.Walks+i]=walk+Dir(i)+(mirrored?Mirror:"");}
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
+            foreach(var c in new[]{s.Knockdown,s.RollBack})if(c!=null&&!all.Contains(c))all.Add(c);
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
@@ -215,6 +219,9 @@ namespace ChipArena.UnityConversion
             public bool Spin; public float Turn; }
 
         public const float FadeIn=.08f, FadeOut=.2f, LandFor=.22f, ReactionMin=.25f;
+        /// <summary>The pack's knockdown: its back reaches the floor at KnockImpact of the clip; airborne, it holds at KnockFlight of
+        /// that (the legs-up flight). The backward roll is on its back from RollFromBack of the clip.</summary>
+        public const float KnockImpact=.52f, KnockFlight=.8f, RollFromBack=.22f;
         /// <summary>A fighter strike's hit as a share of it (NativeFighters: a jab's .075 of .17 s, a combo's .12 of .25 s; a
         /// chain's last, .35).</summary>
         public const float StrikeHit=.45f, FinisherHit=.35f;
@@ -227,12 +234,27 @@ namespace ChipArena.UnityConversion
             pick=default;
             if(a.Grounded!=m.WasGrounded){if(a.Grounded)m.LandedAt=time;else m.AirSince=time;m.WasGrounded=a.Grounded;}
             Declined=null;
-            if(NativeSpecialPose.Down(a,time)){Declined="down";return false;}
+            // Knocked down: the pack's fall (its flight while airborne, held short of the impact; its landing and lying once the
+            // pilot lands), then the backward roll from on its back fitted to the get-up (the roll and the rise).
+            if(NativeSpecialPose.Down(a,time))
+            {
+                if(set.Knockdown==null||!clips.Has(set.Knockdown)){Declined="down";return false;}
+                float len=clips.Length(set.Knockdown),impact=len*KnockImpact;
+                string phase=NativeSpecialRules.Phase(a.DownLanded,a.DownPickup,a.DownRoll,a.DownRollEnd,a.DownUsed,time);
+                if(phase=="air"){pick=new Pick{Clip=set.Knockdown,Time=Math.Min(time-a.DownAt,impact*KnockFlight),Fade=FadeIn};return true;}
+                if((phase=="roll"||phase=="rise")&&set.RollBack!=null&&clips.Has(set.RollBack))
+                {
+                    float roll=clips.Length(set.RollBack);
+                    pick=new Pick{Clip=set.RollBack,Time=roll*(RollFromBack+(1-RollFromBack)*Clamp01((time-a.DownRoll)/Math.Max(.05f,a.DownUntil-a.DownRoll))),Fade=FadeIn};return true;
+                }
+                pick=new Pick{Clip=set.Knockdown,Time=Math.Min(len,impact+Math.Max(0,time-a.DownLanded)),Fade=FadeIn};return true;
+            }
             if(Kit(set,a,time,clips,out pick))return true;
             // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.
             bool mapped=set.KitKinds!=null&&a.MeleeKit!=null&&Array.IndexOf(set.KitKinds,a.MeleeKit.Kind)>=0;
             if(!mapped&&NativeSpecialPose.Active(a,time)){Declined="special";return false;}
-            if(a.JuggleUntil>time){Declined="juggle";return false;}
+            // Juggled in the air: the fall's flight.
+            if(a.JuggleUntil>time){if(set.Knockdown==null||!clips.Has(set.Knockdown)){Declined="juggle";return false;}pick=new Pick{Clip=set.Knockdown,Time=clips.Length(set.Knockdown)*KnockImpact*KnockFlight,Fade=FadeIn};return true;}
             if(!mapped&&a.MeleeKit!=null&&a.MeleeKit.At>-90&&time>=a.MeleeKit.At&&time<a.MeleeKit.Until){Declined="kit";return false;}
             // The Ansatsuken's roll is its Demon Step (its own style clip): the game's pose.
             if(a.Rolling(time)){if(set.Fighter&&a.SourceSpec=="ansatsuken"){Declined="fighter";return false;}return Fit(set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);}

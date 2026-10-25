@@ -313,7 +313,15 @@ namespace ChipArena.UnityConversion
             var special=Ground();special.SpecialKind="wolf-spin";special.SpecialAt=80;special.SpecialUntil=83;
             Check(!NativeVisualMotion.Choose(set,special,81,new NativeVisualMotion.Memory(),book,false,out _),"a special keeps the game's pose");
             var kit=Ground();kit.MeleeKit=new NativeMeleeKit{Kind="flash-step",At=90,Until=92};Check(!NativeVisualMotion.Choose(set,kit,91,new NativeVisualMotion.Memory(),book,false,out _),"a kit move the set does not map keeps the game's pose");
-            var down=Ground();down.DownAt=95;down.DownUntil=97;Check(!NativeVisualMotion.Choose(set,down,96,new NativeVisualMotion.Memory(),book,false,out _),"a knockdown keeps the game's pose");
+            // Knocked down: the pack's fall airborne (held short of the impact), its landing and lying, then the backward roll.
+            var down=Ground();down.DownAt=95;down.DownUntil=97;var downBook=new GunBook();
+            Check(NativeVisualMotion.Choose(set,down,95.3f,new NativeVisualMotion.Memory(),downBook,false,out var downPick)&&downPick.Clip==set.Knockdown&&Math.Abs(downPick.Time-.3f)<1e-4f,"knocked down, airborne: the fall's flight");
+            Check(NativeVisualMotion.Choose(set,down,96.5f,new NativeVisualMotion.Memory(),downBook,false,out downPick)&&downPick.Clip==set.Knockdown&&Math.Abs(downPick.Time-1.2f*NativeVisualMotion.KnockImpact*NativeVisualMotion.KnockFlight)<1e-4f,"a long flight holds short of the impact");
+            down.DownLanded=95.6f;down.DownPickup=95.82f;down.DownRoll=96f;down.DownRollEnd=96.4f;down.DownUntil=96.6f;
+            Check(NativeVisualMotion.Choose(set,down,95.7f,new NativeVisualMotion.Memory(),downBook,false,out downPick)&&downPick.Clip==set.Knockdown&&Math.Abs(downPick.Time-(1.2f*NativeVisualMotion.KnockImpact+.1f))<1e-4f,"landed: the impact and lying");
+            Check(NativeVisualMotion.Choose(set,down,96.3f,new NativeVisualMotion.Memory(),downBook,false,out downPick)&&downPick.Clip==set.RollBack&&downPick.Time>1.2f*NativeVisualMotion.RollFromBack,"the get-up: the backward roll from on its back");
+            var juggled=Ground();juggled.JuggleUntil=99;Check(NativeVisualMotion.Choose(set,juggled,98.5f,new NativeVisualMotion.Memory(),downBook,false,out downPick)&&downPick.Clip==set.Knockdown,"juggled: the fall's flight");
+            Check(!NativeVisualMotion.Choose(sword,down,96,new NativeVisualMotion.Memory(),book,false,out _)&&NativeVisualMotion.Declined=="down","without the clips a knockdown keeps the game's pose");
             Check(Math.Abs(NativeVisualMotion.Retime(1,1,2,3,.4f,1.2f))<1e-6f&&Math.Abs(NativeVisualMotion.Retime(2,1,2,3,.4f,1.2f)-.4f)<1e-6f&&Math.Abs(NativeVisualMotion.Retime(9,1,2,3,.4f,1.2f)-1.2f)<1e-6f,"retiming: start, Hit and end held");
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
             string motion=R("Runtime/NativeVisualMotionPresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs");
