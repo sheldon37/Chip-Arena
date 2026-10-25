@@ -639,11 +639,65 @@ namespace ChipArena.UnityConversion
             return fill;
         }
         private static void VisualCorpseFree(VisualCorpse c){if(c.Root!=null)Destroy(c.Root);if(c.Owned!=null)foreach(var m in c.Owned)if(m!=null)Destroy(m);c.Owned=null;}
+        // A co-op revive on the model (owner 2026-10-24: "Model everywhere"; NativeReviveHoloPresentation.cs): the kept body's
+        // joints (`joint`, lifted) on the pilot's visual body, made once per revive from its rig as a death scene's body is; a
+        // missing part grows back as its repair solidifies (`grow` per joint, the scale of its subtree's top bone). Hidden once a
+        // frame passes without it, dropped 2 s after. False: the voxel body.
+        private readonly Dictionary<long,VisualScene> visualRevives=new Dictionary<long,VisualScene>();private readonly List<long> visualRevivesGone=new List<long>();
+        private bool VisualReviveBody(long key,CapturedAnimation.Player rig,NativeDeath death,Func<int,Matrix4x4> joint,Func<int,float> grow,float alpha)
+        {
+            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn||rig==null||death==null||!VisualDeathFor(death))return false;
+            if(!visualRevives.TryGetValue(key,out var s)||s.Root==null)
+            {
+                var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joints);if(root==null)return false;root.name="Visual revive "+death.id;
+                s=new VisualScene{Root=root,Bones=bones,Joint=joints,Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death),Top=new bool[bones.Length]};
+                var index=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)index[bones[v]]=v;
+                for(int v=0;v<bones.Length;v++){s.Bind[v]=bones[v].localToWorldMatrix;s.Top[v]=bones[v]==null||bones[v].parent==null||!index.TryGetValue(bones[v].parent,out int up)||joints[up]!=joints[v];}
+                for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
+                visualRevives[key]=s;
+            }
+            s.Frame=Time.frameCount;s.Seen=Time.unscaledTime;
+            if(alpha<(visualDissolve?.01f:.5f)){if(s.Root.activeSelf)s.Root.SetActive(false);return true;}
+            if(!s.Root.activeSelf)s.Root.SetActive(true);
+            if(visualDissolve)VisualDissolve(s.All,ref s.Dissolve,1-alpha,s.Edge);
+            for(int v=0;v<s.Bones.Length;v++)if(s.Top[v])s.Bones[v].localScale=Vector3.one;
+            for(int j=0;j<22;j++)s.Now[j]=joint(j)*s.Inverse[j];
+            for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
+            if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;float g=grow(s.Joint[v]);if(g<1)s.Bones[v].localScale=Vector3.one*Mathf.Max(.001f,g);}
+            return true;
+        }
+        // RenderRevives, after the revivals: a revive body not drawn this frame hides; one unseen 2 s goes.
+        private void VisualRevivesShown()
+        {
+            if(visualRevives.Count==0)return;visualRevivesGone.Clear();
+            foreach(var pair in visualRevives)
+            {
+                var s=pair.Value;if(s.Root==null||Time.unscaledTime-s.Seen>2){visualRevivesGone.Add(pair.Key);continue;}
+                if(s.Frame!=Time.frameCount&&s.Root.activeSelf)s.Root.SetActive(false);
+            }
+            foreach(long key in visualRevivesGone){var root=visualRevives[key].Root;if(root!=null)Destroy(root);visualRevives.Remove(key);}
+        }
+        // The revived pilot standing up from its kept body (NativeInteractionPresentation StandFromBody writes the rig's bones
+        // after the visual body bound the live pose): the visual body bound again from those bones. `make`: a stand-in rig the
+        // arena does not pose (the revive gallery) gets its body here, shown this frame. False without one.
+        private readonly CapturedRig.Pose standPose=new CapturedRig.Pose();
+        private bool VisualStandPose(CapturedAnimation.Player rig,Actor a,float time,bool make=false)
+        {
+            if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn||rig==null||a==null||a.SourceSpec=="siren")return false;
+            VisualBody body;
+            if(make){body=VisualBodyOf(rig,a.Id);if(body==null)return false;}
+            else if(!visualBodies.TryGetValue(rig,out body)||body.Root==null||body.PosedFrame!=Time.frameCount)return false;
+            int n=Mathf.Min(rig.Bones.Length,standPose.Position.Length);
+            for(int i=0;i<n;i++){var t=rig.Bones[i];var lp=t.localPosition;var lq=t.localRotation;standPose.Position[i]=CapturedRig.Mirror(new System.Numerics.Vector3(lp.x,lp.y,lp.z));standPose.Rotation[i]=CapturedRig.Mirror(new System.Numerics.Quaternion(lq.x,lq.y,lq.z,lq.w));}
+            standPose.World();body.Binding.State.Forget();
+            var held=VisualBodyBind(body,rig,a,time,standPose,false,false);var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            body.Moved=true;if(make)body.Seen=true;return true;
+        }
         // The authored death scenes (NativeSceneMotion.cs SourceDeathScene) move the victim's 22 joints from where they were at
         // death: each visual bone follows its joint's motion since then (the scene's joint matrices over the rig's at death),
         // hidden while the scene hides the pelvis or the body is under half opacity. True: the voxel victim and its hat are not
         // drawn. Kept per death until it goes undrawn for 2 s.
-        private sealed class VisualScene{public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;}
+        private sealed class VisualScene{public bool[] Top;public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;}
         private readonly Dictionary<long,VisualScene> visualScenes=new Dictionary<long,VisualScene>();private readonly List<long> visualScenesGone=new List<long>();
         private bool VisualSceneShown(NativeDeath death,Func<int,Matrix4x4> bone,Func<int,bool> visible,float alpha)
         {

@@ -29,7 +29,10 @@ namespace ChipArena.UnityConversion
             if(g.Index<0||g.Index>=cyberForkRigs.Length)return false;Actor caster=null;foreach(var a in s.Actors)if(a!=null&&a.Id==g.Actor){caster=a;break;}
             var clone=cyberForkActors[g.Index];NativeCyberLordFx.ForkActor(clone,caster,g);var rig=cyberForkRigs[g.Index]??=captured.Create(transform,-830-g.Index);
             rig.ActorPose(clone,new Vector3(g.Position.X,g.Position.Y,g.Position.Z),time);gp.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=rig.Bones[b].localToWorldMatrix;
-            var tint=new Color(g.Tint.X,g.Tint.Y,g.Tint.Z,0);sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
+            // The model's live ghost where the caster wears the model (NativeVisualBodyPresentation.cs), else the voxel one.
+            var tint=new Color(g.Tint.X,g.Tint.Y,g.Tint.Z,0);
+            if(!(VisualBodyPosed(rigs.TryGetValue(g.Actor,out var own)?own:null)&&VisualLiveGhostDraw(6L<<40|(long)g.Index<<32|(uint)g.Actor,rig,g.Actor,rig.Pose,Vector3.zero,"NativeWeaponGhost",tint,g.Opacity)))
+                sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
             var flare=new NativeCyberLordLook.Flare{Left=.6f,Right=.6f};int n=NativeCyberLordLook.PiecesIn(CyberSkin(null,g.Actor),g.Actor*3+g.Index+17,time,-100,flare,false,g.Opacity,.3f,true,cyberPieces,default);
             for(int k=0;k<n;k++)QueueCyberPiece(cyberPieces[k],rig.Bones[cyberPieces[k].Bone].localToWorldMatrix,1,0,null);return true;
         }

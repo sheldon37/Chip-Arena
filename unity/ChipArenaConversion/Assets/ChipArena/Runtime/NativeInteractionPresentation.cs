@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
                 var p=LoadoutPilot(a.Id);if(!IsReviving(p,time)||!rigs.TryGetValue(a.Id,out var rig))continue;
                 if(!revivals.TryGetValue(a.Id,out var r)&&time-p.RevivedAt>=NativeReviveRules.Settle)
                 {r=StartRevival(p,rig,time);revivals.Add(a.Id,r);}
-                if(r!=null&&r.Place&&time-r.At>=NativeReviveRules.Scan)StandFromBody(r,rig,time-r.At);
+                if(r!=null&&r.Place&&time-r.At>=NativeReviveRules.Scan){StandFromBody(r,rig,time-r.At);VisualStandPose(rig,a,time);}
                 // The levitation (Core NativeReviveHolo.Lift): the drawn rig only, settling back onto the authority body by the end.
                 if(r!=null)ReviveLift(r,rig,time,a.Id);
             }
@@ -144,7 +144,7 @@ namespace ChipArena.UnityConversion
                 if(!rigs.TryGetValue(r.Id,out var rig))continue;var pilot=PilotOf(arena,r.Id);if(!IsReviving(pilot,time))continue;
                 RenderRevival(arena,r,rig,time,!(FirstPerson&&r.Id==LocalId));
             }
-            ReviveLinger(arena,time);RevivePreview(arena);
+            ReviveLinger(arena,time);RevivePreview(arena);VisualRevivesShown();
         }
         private void RepairFrame(Matrix4x4 root,Vector3 min,Vector3 max,float age,float glow,float time)
         {
