@@ -25,13 +25,16 @@ namespace ChipArena.UnityConversion
             /// apart), its recoil per shot (likewise; FireFromHit: the clip's Hit lands on the shot, else it starts there) and
             /// its reload (fitted to the reload). Null for melee.</summary>
             public string[] Aim, Fire; public string Reload; public float AimPitch=45; public bool FireFromHit;
+            /// <summary>A bow's drawn poses (down, level, up) while it draws. Null for the rest.</summary>
+            public string[] Pull;
             /// <summary>A caster's casts: each one's start (to the release) and end (after it), cycling; its Q/E ability's
             /// likewise. Null for the rest.</summary>
             public string[] CastStart, CastEnd; public string AbilityStart, AbilityEnd;
             /// <summary>The weapon in the model's left fist is a shaft (the staff): it runs along the fist's grip.</summary>
             public bool LeftShaft;
-            /// <summary>A gun (its aim layer): the hold calibrated from its level aim, its barrel onto the aim.</summary>
-            public bool Gun=>Aim!=null;
+            /// <summary>A gun (its aim layer without a bow's draw): the hold calibrated from its level aim, its barrel onto the
+            /// aim.</summary>
+            public bool Gun=>Aim!=null&&Pull==null;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -86,6 +89,13 @@ namespace ChipArena.UnityConversion
             Reactions=Array.ConvertAll(Names("2Hand-Staff-GetHit-","F1","B1","R1","L1"),M),
             CastStart=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_start","2_start","3_start"),M),CastEnd=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_end","2_end","3_end"),M),
             AbilityStart=M("2Hand-Staff-Cast-L-AOE1_start"),AbilityEnd=M("2Hand-Staff-Cast-L-AOE1_end"),LeftShaft=true},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
+        // The bow: the pack's bow set (its block clip is named "Hand-Bow-Block" inside), the bow in the left fist as the game's.
+        // Raised while drawing (its drawn poses by the pitch), just after a loose (its release) or while aiming; else carried
+        // at rest.
+        private static readonly Set Bow=Build(new Set{Spec="bow",Idle="2Hand-Bow-Idle",Jump="2Hand-Bow-Jump",Flip="2Hand-Bow-Jump-Flip",Fall="2Hand-Bow-Fall",
+            Land="2Hand-Bow-Land",Block="Hand-Bow-Block",BlockHit="2Hand-Bow-Block-GetHit1",Stunned="2Hand-Bow-Stunned",Roll="2Hand-Bow-Roll-Forward",
+            AirAttack="2Hand-Bow-Fall",SprintAttack="2Hand-Bow-Attack1",Attacks=Names("2Hand-Bow-Attack","1","2","3"),Reactions=Names("2Hand-Bow-GetHit-","F1","B1","L1","R1"),
+            Aim=Names("2Hand-Bow-Aiming-","DM","CM","UM"),Pull=Names("2Hand-Bow-Aiming-Pull-","DM","CM","UM"),Fire=Names("2Hand-Bow-Aiming-Fire-","DM","CM","UM")},"2Hand-Bow-Run-","2Hand-Bow-Strafe-","2Hand-Bow-Run-Forward");
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
         private static string M(string clip)=>clip+Mirror;
@@ -100,17 +110,17 @@ namespace ChipArena.UnityConversion
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
-            foreach(var l in new[]{s.Aim,s.Fire,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
+            foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
-            spec=="rifle"||spec=="machinegun"?Rifle:spec=="pistol"?Pistol:
+            spec=="rifle"||spec=="machinegun"?Rifle:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:null;
 
-        /// <summary>A gun's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and whether
-        /// the layer is up (Raised: aimed, reloading or casting). False for melee sets.</summary>
+        /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
+        /// whether the layer is up (Raised: aimed, drawn, reloading or casting). False for melee sets.</summary>
         public struct Upper { public string A, B; public float TimeA, TimeB, Mix; public bool Raised; }
         /// <summary>A caster's upper body: the ability's (Q/E) or the cast's start fitted to its release, its end after it at
         /// its own pace; afterwards the end's last pose, lowered (Raised false).</summary>
@@ -135,6 +145,8 @@ namespace ChipArena.UnityConversion
             if(time<release){up=new Upper{A=start,TimeA=clips.Length(start)*Clamp01((time-at)/Math.Max(1e-3f,release-at)),Raised=true};return true;}
             float len=clips.Length(end);up=new Upper{A=end,TimeA=Math.Min(len,time-release),Raised=time-release<len};return true;
         }
+        /// <summary>How long after a loose the bow stays up.</summary>
+        public const float BowHold=.6f;
         /// <summary>How long after a shot the gun stays up (the game's own rule: the interval and a little).</summary>
         public static float ShotHold(Actor a)=>GunRules.Valid(a.Weapon)&&GunRules.Get(a.Weapon)!=null?Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f):.38f;
         /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): a gun
@@ -149,6 +161,14 @@ namespace ChipArena.UnityConversion
                 float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
             }
             float age=time-a.LastShot;bool raised=a.Aiming||age<ShotHold(a)||ready&&s.Gun&&!a.Sprinting;
+            // A bow: drawn (its drawn poses by the pitch) from the draw to the loose, its release after the loose or any arrow
+            // (the Volley's and the Rain's stamp only the last shot; NativeBowWire's fields: the draw start, the release time).
+            if(s.Pull!=null)
+            {
+                bool drawing=a.BowDrawAt>0&&time>=a.BowDrawAt&&a.BowDrawAt>=a.BowReleaseAt;age=time-Math.Max(a.BowReleaseAt,a.LastShot);raised=a.Aiming||drawing||age<BowHold;
+                float pp=Math.Max(-1,Math.Min(1,a.Pitch/s.AimPitch));
+                if(drawing){up=new Upper{A=s.Pull[1],B=s.Pull[pp>=0?2:0],Mix=Math.Abs(pp),Raised=true};return clips.Has(up.A);}
+            }
             // The pitch: level to up (positive) or down, between the grid's rows.
             float p=Math.Max(-1,Math.Min(1,a.Pitch/s.AimPitch));int b=p>=0?2:0;
             var row=s.Aim;float clipAge=0;
