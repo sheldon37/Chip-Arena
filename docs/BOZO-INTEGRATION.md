@@ -1222,6 +1222,15 @@ already? Cant we utilize that?"
       While raised, the bow turns onto the aim about its riser (within 35°).
     - **Measured:** draws at 25° up and 20° down, the loose, drawing while running, the Q volley.
     - The bank holds 227 clips in 2.36 MB.
+  - **Fighters (2026-10-24, `claude/motion-fighters`):** the Emperor and the Ansatsuken play the pack's `Unarmed` set.
+    - **Jabs and combos:** each strike follows the replicated action. The clip's Hit lands on the rules' share of the
+      strike (0.45 of a jab or a combo hit, 0.35 of a chain's last, as `NativeFighters` times them), and the recovery
+      plays out at up to twice its pace. The fists alternate, and a chain's last is the heavy right.
+    - **Their own moves keep the game's pose:** the Emperor's electric punch and wavedash, the Ansatsuken's hadoken,
+      tatsu, shoryuken and charge, and its Demon Step roll. The Emperor rolls the pack's roll.
+    - **Measured** (local tool `devweapon=` gives the offline seat developer access): the Emperor's jab chain, Q, run and
+      jump; the Ansatsuken's combo, E and Demon Step.
+    - The bank holds 264 clips in 2.75 MB; the zip's visual body is 38.36 MB of its 40 MB budget.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.

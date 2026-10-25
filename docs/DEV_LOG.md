@@ -1,3 +1,27 @@
+## 2026-10-24 — Claude: the fighters play the RPG pack's own clips (merged into shared)
+
+- **Branch/base:** `claude/motion-fighters` from shared `86b787c7`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - The Emperor and the Ansatsuken use the pack's `Unarmed` set.
+  - Jabs and combos follow the replicated action:
+    - the clip's Hit lands on the rules' share of the strike;
+    - the recovery plays at up to twice its pace;
+    - the fists alternate, and a chain's last is the heavy right.
+  - The fighters' own moves keep the game's pose: electric, wavedash, hadoken, tatsu, shoryuken, charge, and the Demon Step roll.
+  - Bank: 264 clips, 2.75 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-bow.zip`: 38.36 MB of the 40 MB budget, so the next banks need trimming or a raised budget.
+  - The casters build `cc8655858fb8` and the bow build `86b787c74a69` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of the code commit `c8e8ce3b` with these docs), with new fighter checks.
+  - Unity compile: PASS.
+  - Play mode (`devweapon=`, moonlit, `idlebots=3`):
+    - Emperor: the jab chain (pack right and heavy right), Q (the game's pose), run, jump;
+    - Ansatsuken: the combo (right, left, heavy right), E tatsu and the Demon Step (the game's poses).
+- **Not run:**
+  - the 10-hit arcade rush;
+  - wavedash and hadoken in play;
+  - a Windows build; multiplayer.
+- **Next:** specials and kit moves on the pack's clips, then dodge ghosts (the Demon Step's ghosts are still voxel), severed kills, model everywhere.
+
 ## 2026-10-24 — Claude: the bow plays the RPG pack's own clips (merged into shared)
 
 - **Branch/base:** `claude/motion-bow` from shared `cc865585`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
@@ -10,7 +34,7 @@
   - The bow's left-fist turn is calibrated from the pack's level aim, and the bow turns onto the aim about its riser (within 35°).
   - Bank: 227 clips, 2.36 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-cast.zip`.
 - **Checks (actual):**
-  - `--visual-rig` PASS with new bow checks; full CoreTests: see the merge.
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of `cdec2bd4`), with new bow checks.
   - Unity compile: PASS.
   - Play mode (moonlit, `idlebots=3`): draws at 25° up and 20° down, the loose, drawing while running, the Q volley; at rest after.
 - **Not run:**
