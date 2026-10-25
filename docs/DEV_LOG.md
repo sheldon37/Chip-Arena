@@ -1,3 +1,26 @@
+## 2026-10-24 — Claude: the guns' models play the RPG pack's own clips (merged into shared)
+
+- **Branch/base:** `claude/motion-guns` from shared `f812c8d5`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner reports addressed:** pistol sprint arms through the stomach (now the pack's armed run); rounds not leaving the gun (the barrel turns onto the aim line at the drawn muzzle); rifle and machine gun shouldered like the owner's sketch when aiming or firing, a low carry otherwise.
+- **Changes (presentation only):**
+  - Gun sets: rifle and machine gun use `2Hand-Shooting`; the pistol uses `Armed` with the pistol aim stance and reload.
+  - `NativeVisualMotion.Layer`: the upper-body layer (aim grid by pitch, recoil, reload fitted, raised while aiming or within the game's shot hold).
+  - Runtime:
+    - upper-muscle mask mix;
+    - hold turn calibrated from the level aim;
+    - barrel-to-aim turn within 35°;
+    - 20° low-carry tilt;
+    - long-gun support fist on the handguard, released while reloading.
+  - Local tool: `keep=T,D,Field;...` holds inputs (Aim, Shoot) from the cameras' pre-cull; the pose log adds the drawn pilot's aim, shot, reload and ammo, and the layer's weight.
+  - Bank: 144 clips, 1.59 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-sh.zip`: 357 files, 37.19 MB.
+  - The shield build `f812c8d5d5e0` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of `56147d8d`), with new layer checks.
+  - Unity compile: PASS.
+  - Play mode (moonlit, `idlebots=3`): rifle, machine gun and pistol: low carry, aim, fire (the layer up through the shots), the rifle's empty-magazine reload, held sprint; feet on the floor.
+- **Not run:** a pilot aiming far up or down in play (pitch blending checked in the rules only); the guns' specials; a Windows build; multiplayer.
+- **Next:** casters and the other classes, specials and kit moves, dodge ghosts, severed kills, model everywhere.
+
 ## 2026-10-24 — Claude: the shield's model plays the RPG pack's own clips, mirrored (merged into shared)
 
 - **Branch/base:** `claude/motion-shield` from shared `04a3b382`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

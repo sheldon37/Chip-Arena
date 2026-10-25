@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             SlashBrush(root);Console.WriteLine("PASS visual rig: the slash crescents take the baked ink brush's streaks (outside the shader's shared block, crescents only, off without a bake) ("+count+" checks)");
             Dissolve(root);Console.WriteLine("PASS visual rig: a dead pilot's visual body dissolves into the bake's noise as its corpse or death scene fades, the front in the pilot's accent (at half opacity without the noise) ("+count+" checks)");
             PackSlashes(root);Console.WriteLine("PASS visual rig: the slash pack's line slashes, claw marks and rings play on the sword's, daggers' and greatsword's finishers and on the sword launch, Wolf Spin, Rising Dragon, Whirlwind, the steps and charge and the dagger throw, once each at its hit or release, about the pilot, off on the low tier and in my own first person ("+count+" checks)");
-            Motion(root);Console.WriteLine("PASS visual rig: the greatsword's, sword's, daggers' and shield's (mirrored) models play the animation pack's own clips, retimed so each attack's Hit lands mid hit window, the roll fills the roll, the air states and landing follow the pilot, specials and kit moves keep the game's pose; the weapon rides the drawn hand and no foot goes under the floor ("+count+" checks)");
+            Motion(root);Console.WriteLine("PASS visual rig: every melee weapon's (the shield mirrored) and gun's model plays the animation pack's own clips (a gun shouldered over its legs while aimed or just fired, its reload fitted), retimed so each attack's Hit lands mid hit window, the roll fills the roll, the air states and landing follow the pilot, specials and kit moves keep the game's pose; the weapon rides the drawn hand and no foot goes under the floor ("+count+" checks)");
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
         }
 
@@ -187,15 +187,27 @@ namespace ChipArena.UnityConversion
         // rules", greatsword first): Core NativeVisualMotion's choices and timing, and its wiring (Runtime
         // NativeVisualMotionPresentation.cs).
         private sealed class MotionBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null&&c.StartsWith("2Hand-Sword-",StringComparison.Ordinal);public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
+        private sealed class GunBook : NativeVisualMotion.IClips { public bool Has(string c)=>c!=null;public float Length(string c)=>1.2f;public float Hit(string c)=>.42f; }
         private static void Motion(string root)
         {
-            var set=NativeVisualMotion.For("greatsword");var book=new MotionBook();
+            var set=NativeVisualMotion.For("greatsword");var book=new MotionBook();var book2=new GunBook();
             var sword=NativeVisualMotion.For("sword");
             var daggers=NativeVisualMotion.For("daggers");
             var shield=NativeVisualMotion.For("shield");
-            Check(set!=null&&sword!=null&&daggers!=null&&shield!=null&&sword!=set&&NativeVisualMotion.For("rifle")==null&&NativeVisualMotion.For(null)==null,"the greatsword, sword, daggers and shield play the pack's sets; the others keep the game's pose until theirs move over");
+            var rifle=NativeVisualMotion.For("rifle");var pistol=NativeVisualMotion.For("pistol");
+            Check(set!=null&&sword!=null&&daggers!=null&&shield!=null&&rifle!=null&&pistol!=null&&NativeVisualMotion.For("machinegun")==rifle&&sword!=set&&NativeVisualMotion.For("fire")==null&&NativeVisualMotion.For(null)==null,"the melee weapons and the guns play the pack's sets (the machine gun the rifle's); the others keep the game's pose until theirs move over");
+            // A gun's upper layer: low by default, raised aiming or just after a shot, fitted to the reload; pitched by the aim.
+            var gun=new Actor{Grounded=true,Weapon=WeaponId.Rifle};NativeVisualMotion.Upper up;
+            Check(NativeVisualMotion.Layer(rifle,gun,50,book2,out up)&&!up.Raised,"a rifle carried low by default");
+            gun.Aiming=true;Check(NativeVisualMotion.Layer(rifle,gun,50,book2,out up)&&up.Raised&&up.A==rifle.Aim[1]&&up.Mix==0,"aimed level: the level aim pose");
+            gun.Pitch=rifle.AimPitch*.5f;NativeVisualMotion.Layer(rifle,gun,50,book2,out up);Check(up.B==rifle.Aim[2]&&Math.Abs(up.Mix-.5f)<1e-5f,"aimed up: toward the up pose by the pitch");
+            gun.Pitch=-rifle.AimPitch*2;NativeVisualMotion.Layer(rifle,gun,50,book2,out up);Check(up.B==rifle.Aim[0]&&Math.Abs(up.Mix-1)<1e-5f,"aimed down: the down pose, held at its row");
+            gun.Aiming=false;gun.Pitch=0;gun.LastShot=50;NativeVisualMotion.Layer(rifle,gun,50.1f,book2,out up);Check(up.Raised&&up.A==rifle.Fire[1]&&Math.Abs(up.TimeA-.1f)<1e-5f,"just after a shot: raised, the recoil from the shot");
+            NativeVisualMotion.Layer(rifle,gun,50+NativeVisualMotion.ShotHold(gun)+.01f,book2,out up);Check(!up.Raised,"lowered again once the shot is past");
+            gun.ReloadAt=60;gun.ReloadUntil=62;NativeVisualMotion.Layer(rifle,gun,61,book2,out up);Check(up.Raised&&up.A==rifle.Reload&&Math.Abs(up.TimeA-.6f)<1e-4f,"the reload fitted to the reload");
+            Check(!NativeVisualMotion.Layer(set,new Actor{Grounded=true},50,book,out _),"melee has no upper layer");
             Check(shield.Idle.EndsWith(NativeVisualMotion.Mirror)&&Array.TrueForAll(shield.Attacks,c=>c.EndsWith(NativeVisualMotion.Mirror))&&shield.Locomotion[2]=="Armed-Shield-Run-Left"+NativeVisualMotion.Mirror,"the shield's set plays mirrored (its shield in the right hand): a mirrored run to the left runs right");
-            foreach(var s in new[]{set,sword,daggers,shield})Check(s.Locomotion.Length==NativeVisualStride.Clips&&s.Attacks.Length>=3&&s.Reactions.Length==4&&Array.TrueForAll(s.Locomotion,c=>Array.IndexOf(s.All,c)>=0)&&Array.TrueForAll(s.Attacks,c=>Array.IndexOf(s.All,c)>=0),"a set lists every clip it plays: "+s.Spec);
+            foreach(var s in new[]{set,sword,daggers,shield,rifle,pistol})Check(s.Locomotion.Length==NativeVisualStride.Clips&&s.Attacks.Length>=1&&s.Reactions.Length==4&&Array.TrueForAll(s.Locomotion,c=>Array.IndexOf(s.All,c)>=0)&&Array.TrueForAll(s.Attacks,c=>Array.IndexOf(s.All,c)>=0),"a set lists every clip it plays: "+s.Spec);
             Check(set.Locomotion.Length==NativeVisualStride.Clips&&Array.IndexOf(set.All,set.Idle)>=0&&Array.TrueForAll(set.Attacks,c=>Array.IndexOf(set.All,c)>=0),"the set lists its locomotion in the stride's order and every clip it plays");
             NativeVisualMotion.Pick P(Actor a,float t,bool moving=false,NativeVisualMotion.Memory m=null){Check(NativeVisualMotion.Choose(set,a,t,m??new NativeVisualMotion.Memory(),book,moving,out var p),"covered at "+t);return p;}
             Actor Ground()=>new Actor{Grounded=true};
