@@ -1226,8 +1226,8 @@ already? Cant we utilize that?"
     - **Jabs and combos:** each strike follows the replicated action. The clip's Hit lands on the rules' share of the
       strike (0.45 of a jab or a combo hit, 0.35 of a chain's last, as `NativeFighters` times them), and the recovery
       plays out at up to twice its pace. The fists alternate, and a chain's last is the heavy right.
-    - **Their own moves keep the game's pose:** the Emperor's electric punch and wavedash, the Ansatsuken's hadoken,
-      tatsu, shoryuken and charge, and its Demon Step roll. The Emperor rolls the pack's roll.
+    - **Their own moves** play the pack's clips too (see the fighters' own moves below). The Emperor rolls the pack's
+      roll.
     - **Measured** (local tool `devweapon=` gives the offline seat developer access): the Emperor's jab chain, Q, run and
       jump; the Ansatsuken's combo, E and Demon Step.
     - The bank holds 264 clips in 2.75 MB; the zip's visual body is 38.36 MB of its 40 MB budget.
@@ -1259,6 +1259,19 @@ already? Cant we utilize that?"
     - **Juggles:** a juggled pilot holds the fall's flight.
     - **Measured:** a bot launched by Rising Dragon was blown back, fell legs-up, lay flat, rolled up and stood.
     - The bank holds 283 clips in 3.00 MB; the zip's visual body is 38.61 MB of its 40 MB budget.
+  - **Fighters' own moves (2026-10-25, `claude/motion-fighter-moves`):** `FighterMove` plays the pack's unarmed clips by
+    NativeFighters' timings. The attack rate, which is not replicated, is recovered from the move's own span.
+    - **Emperor:**
+      - electric punch: the running punch, its Hit at a quarter of the move;
+      - wavedash: the dash's lunge.
+    - **Ansatsuken:**
+      - tatsu: the high kicks alternating right and left, each wind-up in the gap before its hit;
+      - shoryuken: the rising thrust (`Boost1`), its Hit on the first hit;
+      - hadoken and shinku: the two-hand push (`Cast-Dual-Attack1` end) across the move;
+      - shinku charge: the gathering (`Cast-Dual-AOE1` start), then its hold;
+      - Demon Step: the dash.
+    - **Measured:** each move in play (local tool `devweapon=`).
+    - The bank holds 290 clips in 3.06 MB.
   - **Echoes (2026-10-25, `claude/visual-ghosts`; owner: "The dodge effect still shows the voxel model"):** a pilot drawn
     as the model leaves the model's roll afterimages, dash ghosts (Flash Step, Bulwark Charge) and Demon Step ghosts.
     - Each ghost bakes the model's drawn renderers (skinned ones through `BakeMesh`, into pooled meshes; the shown weapon
