@@ -1,3 +1,24 @@
+## 2026-10-24 — Claude: the greatsword's Earthsplitter and Whirlwind play the RPG pack's clips (merged into shared)
+
+- **Branch/base:** `claude/motion-gs-kit` from shared `2bdd5d89`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `NativeVisualMotion.Set.KitKinds/KitClips` map kit moves to pack clips, read from `MeleeKitMotion.Clock`.
+  - Earthsplitter: the pack's overhead slam, its Hit on the release.
+  - Whirlwind: the pack's spin clip into its Hit through the wind-up, held there (blade out) through the spin, its end through the stop. The body is turned about its hips by `MeleeKitMotion.Spin`'s grip angle, less the clip's own turn (`NativeVisualMotionClips.Yaw`).
+  - A mapped move's lingering special goes on to the idle (it had popped to the game's pose for a frame).
+  - Bank: 266 clips, 2.78 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-fighters.zip`: 38.39 MB of the 40 MB budget.
+  - The fighters build `2bdd5d8977d6` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of the docs commit, code `658435ac`), with new kit checks.
+  - Unity compile: PASS.
+  - Play mode (moonlit, `idlebots=3`): the Q slam (raised, slammed, recovered); the E spin (blade level through every facing, back to the guard); no pose pop at the slam's end.
+- **Not run:**
+  - a recast-shortened Whirlwind;
+  - Earthsplitter on a slope;
+  - a Windows build; multiplayer.
+- **Hit timing:** unchanged (presentation only; the clips are fitted to the rules' release and end).
+- **Next:** the sword's, daggers' and shield's kit moves, then dodge ghosts, severed kills, model everywhere.
+
 ## 2026-10-24 — Claude: the fighters play the RPG pack's own clips (merged into shared)
 
 - **Branch/base:** `claude/motion-fighters` from shared `86b787c7`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

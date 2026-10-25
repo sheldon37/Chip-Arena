@@ -1231,6 +1231,15 @@ already? Cant we utilize that?"
     - **Measured** (local tool `devweapon=` gives the offline seat developer access): the Emperor's jab chain, Q, run and
       jump; the Ansatsuken's combo, E and Demon Step.
     - The bank holds 264 clips in 2.75 MB; the zip's visual body is 38.36 MB of its 40 MB budget.
+  - **Greatsword kit moves (2026-10-24, `claude/motion-gs-kit`):** a set's mapped kit moves (by `MeleeKitMotion`'s
+    replicated clock) play pack clips; the other weapons' kit moves keep the game's pose for now.
+    - **Earthsplitter (Q):** the pack's overhead slam (`2Hand-Sword-Attack11`), its Hit on the release, its end on the
+      cast's end.
+    - **Whirlwind (E):** the pack's spin (`2Hand-Sword-Attack8`). Its wind-up runs to the clip's Hit, it is held there
+      (the blade out) through the spin, and its end plays through the stop. The body is turned about its hips to the game's
+      own spin (`MeleeKitMotion.Spin`'s grip angle, less the clip's own turn), so it faces home when the stop lands.
+    - A mapped move's tail (its special still running past the cast) goes on to the idle instead of the game's pose.
+    - The bank holds 266 clips in 2.78 MB.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.

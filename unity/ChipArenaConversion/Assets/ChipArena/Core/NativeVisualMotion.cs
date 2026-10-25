@@ -37,6 +37,10 @@ namespace ChipArena.UnityConversion
             /// <summary>A gun (its aim layer without a bow's draw): the hold calibrated from its level aim, its barrel onto the
             /// aim.</summary>
             public bool Gun=>Aim!=null&&Pull==null;
+            /// <summary>The kit moves (Q/E, by MeleeKitMotion's kind) the set plays on the pack's clips, each with its clip: the clip's
+            /// Hit on the release, its end on the cast's end (the Whirlwind: the body turned by the game's spin). The rest keep
+            /// the game's pose. Null: none.</summary>
+            public string[] KitKinds, KitClips;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -47,7 +51,8 @@ namespace ChipArena.UnityConversion
         private static readonly Set Greatsword=Build(new Set{Spec="greatsword",Idle="2Hand-Sword-Idle",Jump="2Hand-Sword-Jump",Flip="2Hand-Sword-Jump-Flip",Fall="2Hand-Sword-Fall",
             Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
             AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
-            Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1")},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+            Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
+            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack8"}},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -119,6 +124,7 @@ namespace ChipArena.UnityConversion
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
+            if(s.KitClips!=null)foreach(var c in s.KitClips)if(!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
@@ -194,7 +200,10 @@ namespace ChipArena.UnityConversion
             public bool WasGrounded=true;public float AirSince=-100,LandedAt=-100,AirAttackAt=-100;
         }
         /// <summary>What the model plays this frame: a clip at a time (looping or held at its end), or the locomotion blend.</summary>
-        public struct Pick { public string Clip; public float Time; public bool Locomotion; public float Fade; }
+        public struct Pick { public string Clip; public float Time; public bool Locomotion; public float Fade;
+            /// <summary>Spin: the body is turned about its hips to Turn (radians from the facing, + toward the pilot's left), less
+            /// the clip's own turn.</summary>
+            public bool Spin; public float Turn; }
 
         public const float FadeIn=.08f, FadeOut=.2f, LandFor=.22f, ReactionMin=.25f;
         /// <summary>A fighter strike's hit as a share of it (NativeFighters: a jab's .075 of .17 s, a combo's .12 of .25 s; a
@@ -210,9 +219,12 @@ namespace ChipArena.UnityConversion
             if(a.Grounded!=m.WasGrounded){if(a.Grounded)m.LandedAt=time;else m.AirSince=time;m.WasGrounded=a.Grounded;}
             Declined=null;
             if(NativeSpecialPose.Down(a,time)){Declined="down";return false;}
-            if(NativeSpecialPose.Active(a,time)){Declined="special";return false;}
+            if(Kit(set,a,time,clips,out pick))return true;
+            // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.
+            bool mapped=set.KitKinds!=null&&a.MeleeKit!=null&&Array.IndexOf(set.KitKinds,a.MeleeKit.Kind)>=0;
+            if(!mapped&&NativeSpecialPose.Active(a,time)){Declined="special";return false;}
             if(a.JuggleUntil>time){Declined="juggle";return false;}
-            if(a.MeleeKit!=null&&a.MeleeKit.At>-90&&time>=a.MeleeKit.At&&time<a.MeleeKit.Until){Declined="kit";return false;}
+            if(!mapped&&a.MeleeKit!=null&&a.MeleeKit.At>-90&&time>=a.MeleeKit.At&&time<a.MeleeKit.Until){Declined="kit";return false;}
             // The Ansatsuken's roll is its Demon Step (its own style clip): the game's pose.
             if(a.Rolling(time)){if(set.Fighter&&a.SourceSpec=="ansatsuken"){Declined="fighter";return false;}return Fit(set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);}
             // The plunging air attack: its Hit on the impact (the landing), else on the clip's own.
@@ -267,6 +279,22 @@ namespace ChipArena.UnityConversion
             pick=new Pick{Clip=set.Idle,Time=time,Fade=FadeOut};return true;
         }
 
+        /// <summary>A kit move the set plays on the pack's clips (KitKinds), from the replicated cast (MeleeKitMotion.Clock): the
+        /// clip's Hit on the release and its end on the cast's end. The Whirlwind: the clip into its Hit through the wind-up,
+        /// held there (the blade out) through the spin, its end through the stop, the body turned to the game's own spin.</summary>
+        private static bool Kit(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;if(set.KitKinds==null||!MeleeKitMotion.Clock(a,time,out var c))return false;
+            int i=Array.IndexOf(set.KitKinds,c.Kind);if(i<0||!clips.Has(set.KitClips[i]))return false;
+            string clip=set.KitClips[i];float len=clips.Length(clip),hit=clips.Hit(clip);if(!(hit>0&&hit<len))hit=len*.5f;
+            if(c.Kind=="whirlwind")
+            {
+                var w=MeleeKitMotion.Spin(c,time);
+                float t=c.Part==KitPart.Windup||c.Part==KitPart.Recast?hit*Clamp01((time-c.At)/Math.Max(1e-3f,c.Release-c.At)):c.Part==KitPart.Active?hit:hit+(len-hit)*Clamp01((time-c.Start)/Math.Max(1e-3f,c.Until-c.Start));
+                pick=new Pick{Clip=clip,Time=t,Fade=FadeIn,Spin=true,Turn=w.Grip};return true;
+            }
+            pick=new Pick{Clip=clip,Time=Retime(time,c.At,c.Release,Math.Max(c.Release+.05f,c.Until),hit,len),Fade=FadeIn};return true;
+        }
         /// <summary>A clip played across [start, end], its whole length.</summary>
         private static bool Fit(string clip,float time,float start,float end,IClips clips,float fade,out Pick pick)
         {
