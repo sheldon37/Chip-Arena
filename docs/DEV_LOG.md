@@ -1,3 +1,26 @@
+## 2026-10-25 — Claude: every kill style wears the model (merged into shared)
+
+- **Branch/base:** `claude/visual-kill-looks` from shared `942133d7`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `VisualCorpseShown` no longer skips swarm corpses (the collapse comes through `PartScale`).
+  - Pinned smash: the bones are placed without the smash overlay and the root takes it (`NativeCorpse.Overlay`), so the skinned body flattens.
+  - Crushed and extra-crushed parts are cut away (`IsCrushed`).
+  - `VisualCorpseLook`:
+    - Soul Drift swaps the corpse to the ghost material in the soul's colour and opacity;
+    - Frostbreak sets every `_Color_n` to the ice.
+  - `DeathPresentation` uses those looks in place of the voxel ones.
+  - Local tool: `killfx=T,style` sets the local seat's kill effect.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `5c1ec751`), with the corpse pins updated and new look checks.
+  - The abilities build `942133d7` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode (moonlit, `bring=`, `kill=`): Frostbreak (the model iced), Soul Drift (a cyan ghost model), Ember (the model ragdoll with sparks).
+- **Not run:**
+  - a train, press-ram or crane smash in play (pinned flattening and thrown crush on the model; rule pins only);
+  - the other swarm styles;
+  - a Windows build; multiplayer.
+- **Next:** the revive hologram and the Cyber Lord fork ghost.
+
 ## 2026-10-25 — Claude: gun and caster abilities play their own pack clips (merged into shared)
 
 - **Branch/base:** `claude/motion-abilities` from shared `d1b9436d`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
