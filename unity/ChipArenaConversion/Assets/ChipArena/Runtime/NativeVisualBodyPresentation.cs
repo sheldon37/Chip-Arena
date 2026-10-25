@@ -433,9 +433,10 @@ namespace ChipArena.UnityConversion
         // the ragdoll part of the game joint at or above it rigidly (NativeCorpse.PartFrom: the part's motion, the corpse's sink,
         // overlay and shrink), the skeleton scaled by the parts' scale. A cut or crushed corpse (a melee slice, a sever wound)
         // and each half of a split one (a blade's killing blow, a saw) wear it severed at the joints (VisualCorpseSever); a
-        // smashed corpse, and a swarm, soul or frost look, keep the voxel body (their effects are made of its parts). It hides
-        // while the voxel body would be under half opacity and goes with its corpse.
-        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;}
+        // smashed one too (its crushed parts dropped, a pinned one flattened by the smash's overlay). A swarm's collapse shrinks
+        // it; the soul and frost looks are its own (VisualCorpseLook). It hides while the voxel body would be under half opacity
+        // and goes with its corpse.
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;}
         private readonly Dictionary<NativeCorpse,VisualCorpse> visualCorpses=new Dictionary<NativeCorpse,VisualCorpse>();
         private readonly List<NativeCorpse> visualCorpsesGone=new List<NativeCorpse>();
         // A death's visual body: an instance posed from the rig (in its last pose), `offset` from it, in the pilot's accent, without
@@ -462,7 +463,7 @@ namespace ChipArena.UnityConversion
         // PresentDeath, as a pilot's corpse is made from its rig (still in its last pose).
         private void VisualCorpseMake(NativeCorpse corpse,NativeDeath death,CapturedAnimation.Player rig)
         {
-            if(rig==null||!VisualDeathFor(death)||corpse.Smash!=null)return;
+            if(rig==null||!VisualDeathFor(death))return;
             // A split body: each half wears the model's parts on its side of the cut (whole parts: a part the cut crosses goes
             // to the side its joint is on; owner 2026-10-24: "Sever at joints").
             if(corpse.Bisect is BisectFx fx&&corpse.Twin!=null&&fx.Request!=null)
@@ -477,10 +478,10 @@ namespace ChipArena.UnityConversion
             }
             if(corpse.Bisect!=null)return;
             var whole=VisualCorpseFor(corpse,death,rig,out _);if(whole==null)return;
-            if(corpse.Severed.Count>0||corpse.CrushPart>=0)
+            if(corpse.Severed.Count>0||corpse.CrushPart>=0||corpse.ExtraCrush.Count>0)
             {
                 // A ragdoll part's piece: the nearest cut root at or above it (its index + 1), -1 under the crushed part, 0 the body.
-                int Piece(int part){for(int j=part;j>=0;j=CapturedRig.Bones[j].Parent){if(j==corpse.CrushPart)return -1;if(corpse.Severed.Contains(j))return j+1;}return 0;}
+                int Piece(int part){for(int j=part;j>=0;j=CapturedRig.Bones[j].Parent){if(corpse.IsCrushed(j))return -1;if(corpse.Severed.Contains(j))return j+1;}return 0;}
                 var piece=new int[whole.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=Piece(whole.Part[v]);
                 VisualCorpseSever(whole,piece);
             }
@@ -668,15 +669,37 @@ namespace ChipArena.UnityConversion
         // (also while hidden for a fade under half opacity).
         private bool VisualCorpseShown(NativeCorpse corpse,float alpha)
         {
-            if(!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null||corpse.Swarm!=null)return false;
+            if(!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null)return false;
             c.Frame=Time.frameCount;
             // With the bake's noise the body dissolves as the corpse fades (cells away, the front in the pilot's accent); without, it goes at half.
             if(alpha<(visualDissolve?.01f:.5f)){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}
             if(!c.Root.activeSelf)c.Root.SetActive(true);
             if(visualDissolve)VisualDissolve(c.All,ref c.Dissolve,1-alpha,c.Edge);
+            // A pinned smash's flattening (a scale about its pivot) rides the root: the bones are placed without it, the root then
+            // takes it, so the skinned body flattens as the voxel parts do.
+            var root=c.Root.transform;var overlay=corpse.Smash!=null?corpse.Overlay:Matrix4x4.identity;bool flat=!overlay.isIdentity;var undo=flat?overlay.inverse:Matrix4x4.identity;
+            Vector3 at=(undo*corpse.PartFrom(c.Part[0])*c.Bind[0]).GetColumn(3);root.SetPositionAndRotation(at,Quaternion.identity);root.localScale=Vector3.one;
             c.Bones[0].localScale=Vector3.one*Mathf.Max(.001f,corpse.PartScale);
-            for(int v=0;v<c.Bones.Length;v++){var m=corpse.PartFrom(c.Part[v])*c.Bind[v];c.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
+            for(int v=0;v<c.Bones.Length;v++){var m=undo*corpse.PartFrom(c.Part[v])*c.Bind[v];c.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
+            if(flat){var scale=new Vector3(overlay.GetColumn(0).magnitude,overlay.GetColumn(1).magnitude,overlay.GetColumn(2).magnitude);root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);}
             return true;
+        }
+        // A kill look on the corpse's visual body (owner 2026-10-24: "Model everywhere"): 1 Soul Drift, the body through the ghost
+        // shader in the soul's colour at its opacity; 2 Frostbreak, every colour the ice's. False without one (the voxel look).
+        private static readonly int[] BodyColours={Shader.PropertyToID("_Color_1"),Shader.PropertyToID("_Color_2"),Shader.PropertyToID("_Color_3"),Shader.PropertyToID("_Color_4"),Shader.PropertyToID("_Color_5"),Shader.PropertyToID("_Color_6"),Shader.PropertyToID("_Color_7"),Shader.PropertyToID("_Color_8"),Shader.PropertyToID("_Color_9")};
+        private MaterialPropertyBlock lookBlock;
+        private bool VisualCorpseLook(NativeCorpse corpse,int look,Color colour,float opacity)
+        {
+            if(ClassicBodies||!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null)return false;
+            lookBlock??=new MaterialPropertyBlock();
+            if(look==1)
+            {
+                if(c.Look!=1){var ghost=VisualEchoMaterial("NativeWeaponGhost");if(ghost==null)return false;foreach(var r in c.All){if(r==null)continue;var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=ghost;r.sharedMaterials=mats;}c.Look=1;}
+                foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);lookBlock.SetVector(VisualEchoTint,new Vector4(colour.r,colour.g,colour.b,opacity*VisualEchoShare));r.SetPropertyBlock(lookBlock);}
+                return VisualCorpseShown(corpse,1);
+            }
+            if(c.Look!=2){foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);foreach(int id in BodyColours)lookBlock.SetColor(id,colour);lookBlock.SetFloat(AccentGlowId,0);r.SetPropertyBlock(lookBlock);}c.Look=2;}
+            return VisualCorpseShown(corpse,opacity);
         }
         // A dead body's dissolve (0 whole to 1 gone; NativeVisualBodyFx.cginc DissolveFront) on its renderers, written when it moves.
         private MaterialPropertyBlock dissolveBlock;

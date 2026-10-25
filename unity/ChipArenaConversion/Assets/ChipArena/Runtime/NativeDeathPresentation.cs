@@ -272,12 +272,16 @@ namespace ChipArena.UnityConversion
             // dropped weapon is presented like its hand part (sink, shrink, collapse; NativeCorpse.PresentedWeapon).
             var drop=corpse.PresentedWeapon;
             bool hat=death.model=="pilot"&&corpse.HatModel!=null&&corpse.LooseHat<0&&!(corpse.Crushed&&corpse.CrushPart==CapturedRig.Head),weapon=drop.HasValue&&corpse.LooseModel!=null;
-            if(soul)
+            // Soul Drift and Frostbreak on the visual body when the pilot wears it (NativeVisualBodyPresentation.cs VisualCorpseLook):
+            // it stands in for the voxel body and its look.
+            bool modelLook=false;
+            if(soul||frost){NativeKillEffectRules.Linear(swarm.BodyColor,out double lr,out double lg,out double lb);modelLook=VisualCorpseLook(corpse,soul?1:2,new Color((float)lr,(float)lg,(float)lb,1),soul?alpha*(float)swarm.BodyOpacity:alpha);}
+            if(soul&&!modelLook)
             {
                 // Soul Drift: the body and what it carried as translucent cyan plain boxes (round hats and weapons from their models).
                 NativeKillEffectRules.Linear(swarm.BodyColor,out double r,out double g,out double b);soul=KillGhost(corpse,new Color((float)r,(float)g,(float)b,1),alpha*(float)swarm.BodyOpacity,hat,weapon);
             }
-            if(!soul&&alpha>.001f)
+            if(!soul&&!modelLook&&alpha>.001f)
             {
                 // ragdoll.ts copies the rig with copyVoxelPart (castShadow off): the body, hat and weapon cast no shadow.
                 // A pilot's body skin at the corpse's distance (death.model "pilot" names the pilot rig, not the skin).
