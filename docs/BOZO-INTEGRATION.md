@@ -1213,6 +1213,15 @@ already? Cant we utilize that?"
     - **The staff in the fist:** its shaft runs along the left fist's grip (the knuckles' line, toward the thumb).
     - **Measured:** fire and water casters cast, the Q ability, running and a jump, all on the pack's clips.
     - The bank holds 186 clips in 2.00 MB; the zip's visual body is 37.61 MB of its 40 MB budget.
+  - **Bow (2026-10-24, `claude/motion-bow`):** the bow plays the pack's `2Hand-Bow` set, the bow in the left fist as the
+    game's.
+    - **Upper-body layer,** over the legs' motion: drawn from the draw to the loose (the pack's drawn poses blended by the
+      pitch). After the loose or any arrow (the Volley's and the Rain's), its release plays for 0.6 s. Otherwise the bow is
+      carried at rest.
+    - **In the fist:** the bow's turn is calibrated from the pack's own level aim (limbs upright, the arrow line ahead).
+      While raised, the bow turns onto the aim about its riser (within 35°).
+    - **Measured:** draws at 25° up and 20° down, the loose, drawing while running, the Q volley.
+    - The bank holds 227 clips in 2.36 MB.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.

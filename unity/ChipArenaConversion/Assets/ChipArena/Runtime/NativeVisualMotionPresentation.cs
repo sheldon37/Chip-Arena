@@ -108,13 +108,13 @@ namespace ChipArena.UnityConversion
         }
         // The hold's turn that points the weapon's bore (+z) along the body's facing and its top (+y) up while the proxy wears
         // `level` (its first frame); the proxy is posed again by the next mix.
-        private static void VisualMotionCalibrate(VisualMotion m,NativeVisualMotionClips.Clip level,Transform origin)
+        private static void VisualMotionCalibrate(VisualMotion m,NativeVisualMotionClips.Clip level,Transform origin,bool left=false)
         {
             System.Array.Clear(m.Mix,0,m.Mix.Length);NativeVisualMotionClips.Add(level,0,1,m.Mix);NativeVisualMotionClips.Finish(m.Mix,1);
             m.Pose.bodyPosition=new Vector3(m.Mix[0],m.Mix[1],m.Mix[2]);m.Pose.bodyRotation=new Quaternion(m.Mix[3],m.Mix[4],m.Mix[5],m.Mix[6]);
             System.Array.Copy(m.Mix,NativeVisualMotionClips.Head,m.Pose.muscles,0,m.Pose.muscles.Length);m.Handler.SetHumanPose(ref m.Pose);
-            var hand=m.Animator!=null?m.Animator.GetBoneTransform(HumanBodyBones.RightHand):null;if(hand==null)return;
-            m.HoldRotation=Quaternion.Inverse(hand.rotation)*Quaternion.LookRotation(origin.forward,origin.up);
+            var hand=m.Animator!=null?m.Animator.GetBoneTransform(left?HumanBodyBones.LeftHand:HumanBodyBones.RightHand):null;if(hand==null)return;
+            var held=Quaternion.Inverse(hand.rotation)*Quaternion.LookRotation(origin.forward,origin.up);if(left)m.LeftHoldRotation=held;else m.HoldRotation=held;
         }
         // The mix (body frame and muscles) onto the proxy.
         private static void VisualMotionApply(VisualMotion m)
@@ -158,6 +158,8 @@ namespace ChipArena.UnityConversion
                 }
                 // A gun's turn in the hand from the pack's own level aim: there its barrel points straight ahead, upright.
                 if(m.Set.Gun&&VisualMotionBank.Clips.TryGetValue(m.Set.Aim[1],out var level))VisualMotionCalibrate(m,level,body.Root.transform);
+                // A bow's likewise, in the left fist: upright (its limbs the frame's up), its arrow line ahead.
+                else if(m.Set.Pull!=null&&VisualMotionBank.Clips.TryGetValue(m.Set.Aim[1],out var drawn))VisualMotionCalibrate(m,drawn,body.Root.transform,true);
             }
             var local=Quaternion.Inverse(body.Root.transform.rotation)*velocity;float speed=new Vector2(local.x,local.z).magnitude;
             bool moving=a.Grounded&&speed>NativeVisualStride.Moving;
@@ -183,8 +185,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<m.Clips.Length;i++)NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],m.Weights[i],m.Mix);
             for(int k=0;k<m.Loco.Length;k++){int i=m.Loco[k];if(i>=0)NativeVisualMotionClips.Add(m.Clips[i],m.Phase*m.LocoLength[k],m.LocoWeights[k]*m.LocoShare,m.Mix);}
             NativeVisualMotionClips.Finish(m.Mix,sum);
-            // A gun's upper body (aimed by the pitch, its recoil, or its reload) or a caster's (its cast), over the legs' motion by
-            // its eased weight.
+            // A gun's upper body (aimed by the pitch, its recoil, or its reload), a bow's (drawn, loosed) or a caster's (its cast),
+            // over the legs' motion by its eased weight.
             // The arms are free while the body idles, moves, rises, falls or lands (not in a roll, strike, reaction or block).
             bool ready=covered&&(pick.Locomotion||pick.Clip==m.Set.Idle||pick.Clip==m.Set.Jump||pick.Clip==m.Set.Fall||pick.Clip==m.Set.Land);
             var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready);
@@ -226,13 +228,15 @@ namespace ChipArena.UnityConversion
                 // On the hand as drawn, at any weight (a part-blended hand carries its weapon too).
                 weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);
                 if(m.LeftHand!=null&&m.Set.Spec!="greatsword")offHand.SetPositionAndRotation(m.LeftHand.position+m.LeftHand.rotation*m.LeftHoldPosition,m.LeftHand.rotation*m.LeftHoldRotation);
-                // A raised gun's barrel turned onto the aim (about its grip, a little): its rounds leave its muzzle.
+                // A raised gun's barrel turned onto the aim (about its grip, a little): its rounds leave its muzzle. A raised bow's
+                // likewise, about its riser: its arrow line on the aim.
                 bool reloading=time>=a.ReloadAt&&time<a.ReloadUntil;
-                if(m.Set.Gun&&!reloading&&m.Upper>0)
+                var aimed=m.Set.Gun&&!reloading?weaponHand:m.Set.Pull!=null?offHand:null;
+                if(aimed!=null&&m.Upper>0)
                 {
-                    var aim=Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward;var turn=Quaternion.FromToRotation(weaponHand.rotation*Vector3.forward,aim);
+                    var aim=Quaternion.Euler(-a.Pitch,a.Yaw,0)*Vector3.forward;var turn=Quaternion.FromToRotation(aimed.rotation*Vector3.forward,aim);
                     turn.ToAngleAxis(out float angle,out var axis);if(angle>180)angle-=360;
-                    weaponHand.rotation=Quaternion.AngleAxis(Mathf.Clamp(angle,-AimTurnLimit,AimTurnLimit)*m.Upper*wgt,axis)*weaponHand.rotation;
+                    aimed.rotation=Quaternion.AngleAxis(Mathf.Clamp(angle,-AimTurnLimit,AimTurnLimit)*m.Upper*wgt,axis)*aimed.rotation;
                 }
                 // A lowered gun (sprinting): the muzzle tipped down about the grip (the low ready carry; owner 2026-10-24).
                 if(m.Set.Gun&&!reloading&&m.Upper<1)weaponHand.rotation=Quaternion.AngleAxis(CarryTilt*(1-m.Upper)*wgt,weaponHand.rotation*Vector3.right)*weaponHand.rotation;
