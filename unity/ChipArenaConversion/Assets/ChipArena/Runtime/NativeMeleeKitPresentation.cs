@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         private KitScene kitScene;private KitSink kitSink;private Snapshot kitSnapshot;private float kitClock;
         private sealed class DecoyRig{public CapturedAnimation.Player Rig;public float Until;public Actor Pose;}
         private readonly Dictionary<int,DecoyRig> decoys=new Dictionary<int,DecoyRig>();private readonly List<int> staleDecoys=new List<int>();
-        private sealed class DashGhost{public GhostPose Pose=new GhostPose();public float At;public string Weapon,Body;public Color Tint;public bool Live;}
+        private sealed class DashGhost{public GhostPose Pose=new GhostPose();public float At;public string Weapon,Body;public Color Tint;public bool Live,Model;public VisualEcho Echo;}
         private readonly DashGhost[] dashGhosts=new DashGhost[NativeMeleeKitFx.DashGhostSlots];private int dashNext;
         private readonly Dictionary<int,(Vector3 At,float Cast)> dashLast=new Dictionary<int,(Vector3,float)>();
 
@@ -72,11 +72,12 @@ namespace ChipArena.UnityConversion
                 g.Pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)g.Pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
                 g.Weapon=!a.WeaponAway?Ghost(SkinnedHeld(a)):null;g.Pose.Armed=g.Weapon!=null;g.Body=Ghost(BodyModel(BodySkin(a.Id),BodyTier(root,false)));
                 if(g.Pose.Armed){float reach=WeaponReach(rig,a,time);for(int b=0;b<22&&b<rig.Bones.Length;b++)g.Pose.Weapon[b]=SourceWeaponBone(rig,a,time,false,b,reach);}
-                g.At=time;g.Live=true;g.Tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DashTint(a.SourceSpec,LoadoutPilot(a.Id)?.Weapon!=null?(int)LoadoutPilot(a.Id).Weapon.color:0));
+                g.Model=VisualEchoSnap(rig,ref g.Echo);g.At=time;g.Live=true;g.Tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DashTint(a.SourceSpec,LoadoutPilot(a.Id)?.Weapon!=null?(int)LoadoutPilot(a.Id).Weapon.color:0));
             }
             foreach(var g in dashGhosts)
             {
                 if(g==null||!g.Live)continue;float opacity=NativeMeleeKitFx.DashGhostFade(time-g.At);if(opacity<=0){g.Live=false;continue;}
+                if(g.Model){VisualEchoDraw(g.Echo,"NativeWeaponGhost",g.Tint,opacity);continue;}
                 sourceModels.Queue(g.Body??Ghost(NativeBodySkins.PrototypeModel),g.Pose.Root,g.Pose.Bone,null,0,null,g.Tint,null,opacity);
                 if(g.Pose.Armed)sourceModels.Queue(g.Weapon,g.Pose.Root,g.Pose.WeaponBone,null,0,null,g.Tint,null,opacity);
             }

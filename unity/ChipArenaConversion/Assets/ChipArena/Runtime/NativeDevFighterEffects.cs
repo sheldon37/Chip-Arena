@@ -51,6 +51,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,Quaternion> hadoukenTurns=new Dictionary<int,Quaternion>();private readonly Dictionary<string,string> ghostHats=new Dictionary<string,string>();
         private readonly List<NukeBlast> nukeBlasts=new List<NukeBlast>();private readonly List<int> devStale=new List<int>();private readonly double[] tongue=new double[NativeHadoukenFx.Points*2*3];
         private int devEvent,devFrame;private string ghostPilot,ghostGloves;private bool ghostsLoaded;private readonly string[] demonGloves=new string[NativeDemonGhosts.Slots],demonBodies=new string[NativeDemonGhosts.Slots];
+        private readonly VisualEcho[] demonEchoes=new VisualEcho[NativeDemonGhosts.Slots];private readonly bool[] demonModel=new bool[NativeDemonGhosts.Slots];
         private static readonly Color BoltGlow=Alpha(NativeArena.ColorOf(NativeEmperorBolts.GlowColor),NativeEmperorBolts.GlowOpacity),BoltDark=Alpha(NativeArena.ColorOf(NativeEmperorBolts.DarkColor),NativeEmperorBolts.DarkOpacity),
             BoltCore=Alpha(NativeArena.ColorOf(NativeEmperorBolts.CoreColor),NativeEmperorBolts.CoreOpacity),LeetGreen=NativeArena.ColorOf(NativeLeetFx.FieldGreen),BarkTint=NativeArena.ColorOf(NativeLeetFx.Bark).linear,
             GhostViolet=NativeArena.ColorOf(NativeDemonGhosts.Violet).linear,GhostIndigo=NativeArena.ColorOf(NativeDemonGhosts.Indigo).linear;
@@ -255,6 +256,7 @@ namespace ChipArena.UnityConversion
                 var a=p.Pose;if(a==null||a.SourceSpec!="ansatsuken"||p.Hp<=0||!p.Seat.connected||!a.Rolling(now)||FirstPerson&&arena.ViewPilot==p||!rigs.TryGetValue(p.Seat.id,out var rig))continue;
                 if(!ghosts.Due(p.Seat.id,now,a.RollAt,q))continue;int slot=ghosts.Take(p.Seat.id,now,q);var pose=ghostPoses[slot];demonBodies[slot]=BodyGhost(BodySkin(p.Seat.id),BodyTier(rig.Root.transform.position,false))??ghostPilot;demonGloves[slot]=NativeWeaponSkins.Index(p.Seat.weaponSkins,"ansatsuken")==NativeWeaponSkins.PrototypeIndex?ghostGloves:sourceModels.Ghost(SkinnedHeld(a))??ghostGloves;
                 pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
+                demonModel[slot]=VisualEchoSnap(rig,ref demonEchoes[slot]);
                 pose.Armed=ghostGloves!=null&&!a.WeaponAway;if(pose.Armed){float reach=WeaponReach(rig,a,now);for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Weapon[b]=SourceWeaponBone(rig,a,now,false,b,reach);}
                 pose.Hat=null;if(!string.IsNullOrEmpty(a.Hat)){if(!ghostHats.TryGetValue(a.Hat,out var hat)){hat=sourceModels.Ghost("hat-"+a.Hat);ghostHats[a.Hat]=hat;}pose.Hat=hat;}
             }
@@ -262,6 +264,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!ghosts.Live(s,now))continue;var owner=SeatPilot(arena,ghosts.Owner[s]);if(owner==null||owner.Hp<=0)continue;
                 var pose=ghostPoses[s];Color tint=NativeDemonGhosts.Color(s)==NativeDemonGhosts.Indigo?GhostIndigo:GhostViolet;float opacity=(float)NativeDemonGhosts.Fade(now-ghosts.At[s]);
+                if(demonModel[s]){VisualEchoDraw(demonEchoes[s],"NativeDevGhost",tint,opacity);continue;}
                 sourceModels.Queue(demonBodies[s]??ghostPilot,pose.Root,pose.Bone,null,0,null,tint,null,opacity);
                 if(pose.Armed)sourceModels.Queue(demonGloves[s]??ghostGloves,pose.Root,pose.WeaponBone,null,0,null,tint,null,opacity);
                 if(pose.Hat!=null)sourceModels.Queue(pose.Hat,pose.Root,pose.Bone,null,0,null,tint,null,opacity);

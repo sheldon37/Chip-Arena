@@ -1250,6 +1250,15 @@ already? Cant we utilize that?"
       wind-back and the throw.
     - **Measured:** each Q and E in play.
     - The bank holds 271 clips in 2.82 MB.
+  - **Echoes (2026-10-25, `claude/visual-ghosts`; owner: "The dodge effect still shows the voxel model"):** a pilot drawn
+    as the model leaves the model's roll afterimages, dash ghosts (Flash Step, Bulwark Charge) and Demon Step ghosts.
+    - Each ghost bakes the model's drawn renderers (skinned ones through `BakeMesh`, into pooled meshes; the shown weapon
+      with them) when the voxel ghost would snapshot the rig.
+    - It draws through the same ghost shader in the same tint and fade, at 55% of the voxel ghost's opacity (the model's
+      layered meshes add up under the additive ghost).
+    - A small depth offset toward the eye (`_EchoOffset`, 0 for the voxel ghosts) stops the baked copy z-fighting the
+      GPU-skinned body while they overlap.
+    - Pilots drawn voxel (Classic) keep the voxel ghosts.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.

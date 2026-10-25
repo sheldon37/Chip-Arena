@@ -1,3 +1,22 @@
+## 2026-10-25 — Claude: the dodge, dash and Demon Step ghosts are the model's (merged into shared)
+
+- **Branch/base:** `claude/visual-ghosts` from shared `2777e2da`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner report addressed:** "The dodge effect still shows the voxel model".
+- **Changes (presentation only):**
+  - `VisualEchoSnap`/`VisualEchoDraw` (visual body): bake the model's drawn renderers into pooled meshes, draw them through a ghost shader.
+  - Hooked into the roll afterimages, the dash ghosts and the Demon Step ghosts; Classic pilots keep the voxel ghosts.
+  - The ghost shaders gain `_EchoOffset` (depth offset toward the eye, default 0): the baked copy had z-fought the GPU-skinned body.
+  - Echoes draw at 55% of the ghost's opacity: the model's layered meshes add up under the additive shader.
+  - The kits build `2777e2da6c0e` succeeded and published; no bank change, so the Drive zip is unchanged.
+- **Checks (actual):**
+  - Full CoreTests 851 PASS, exit 0 (LF checkout of the docs commit, code `1adb1497`), with new echo wiring checks.
+  - Unity compile: PASS.
+  - Play mode (moonlit): a sword roll and Flash Step leave model echoes, with no speckle where they overlap the pilot; the Ansatsuken's Demon Step leaves violet model silhouettes.
+- **Not run:**
+  - the cost of many simultaneous echoes on a low-end machine (each bakes the body's skinned meshes once);
+  - a Windows build; multiplayer.
+- **Next:** slash kills sever the model at the joints, then model everywhere (intros, killcams, menus).
+
 ## 2026-10-24 — Claude: the sword's, daggers' and shield's kit moves play the RPG pack's clips (merged into shared)
 
 - **Branch/base:** `claude/motion-kits` from shared `eb18ed19`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
