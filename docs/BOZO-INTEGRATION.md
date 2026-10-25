@@ -1270,13 +1270,24 @@ already? Cant we utilize that?"
       pieces go. The copies are freed with the corpse.
     - The cut faces are open (no caps); the cut's blood covers them.
     - Smashed bodies and the swarm, soul and frost looks keep the voxel body.
+  - **Intros (2026-10-25, `claude/model-intros`; owner: "Model everywhere, classic will be stored as backup"):** the
+    entrance's pilot wears the model.
+    - `VisualIntroPose` binds the intro rig's own authored pose (the clip intros' and the directed entrances' pose) to a
+      visual body: no pack clips or stride, the feet as authored.
+    - While an entrance still builds the body in (its reveal under half on the pelvis, chest, head or a hand), the voxel body
+      draws that reveal; the model takes over once the body is whole.
+    - The model holds its own weapon where the entrance shows one; the bow keeps its live voxel bow, as in the arena. The
+      Sheldon intro keeps the voxel body (its head is the hat's).
+    - The arena pose and the intro share `VisualBodyOf` and `VisualBodyBind`.
+    - Settings · Player model is now set at the top of every frame, so Classic reaches intros, previews, replays and the
+      draft (they return before the arena renders).
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
   visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
-- **Other rigs still draw voxel:** intros, portraits, the draft and the death broadcast. Smashed bodies and the swarm,
+- **Other rigs still draw voxel:** portraits, the draft and the death broadcast. Smashed bodies and the swarm,
   soul and frost kill effects still use the voxel body (cut, crushed and split bodies wear the model severed at the
   joints).
 - **Captures:** the neutral turnaround.
