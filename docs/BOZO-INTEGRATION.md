@@ -1313,7 +1313,13 @@ already? Cant we utilize that?"
       - Fill: the cut edges are chained into loops and fanned on the piece's own vertices, so the cap moves with it.
       - Material: a last submesh in a copy of the body material, with the bodies' dark insides (NativeBisect's cut look) in
         every colour, both sides, no cut-out, outline or accent glow. It dissolves with the corpse.
-    - Smashed bodies and the swarm, soul and frost looks keep the voxel body.
+    - **Kill looks and smashes (2026-10-25, `claude/visual-kill-looks`):** every kill style now wears the model.
+      - **Swarm styles** (ember, static, gravity, pinball, fireworks, petals, singularity): the model ragdoll collapses by
+        the swarm.
+      - **Soul Drift:** the model through the fresnel ghost shader in the soul's colour.
+      - **Frostbreak:** every colour of the model the ice's.
+      - **Smashes:** the crushed parts dropped (their fragments stay voxel), and a pinned smash's flattening applied
+        through the corpse root's scale about the body.
   - **Intros (2026-10-25, `claude/model-intros`; owner: "Model everywhere, classic will be stored as backup"):** the
     entrance's pilot wears the model.
     - `VisualIntroPose` binds the intro rig's own authored pose (the clip intros' and the directed entrances' pose) to a
@@ -1349,9 +1355,8 @@ already? Cant we utilize that?"
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
   visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
-- **Other rigs still draw voxel:** portraits and the draft. Smashed bodies and the swarm,
-  soul and frost kill effects still use the voxel body (cut, crushed and split bodies wear the model severed at the
-  joints).
+- **Other rigs still draw voxel:** portraits and the draft. Every kill style wears the model (cut, crushed and split
+  bodies severed at the joints).
 - **Captures:** the neutral turnaround.
 - **The performance pass** (Phase C).
 - **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets

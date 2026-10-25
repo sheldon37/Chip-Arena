@@ -44,6 +44,8 @@ namespace ChipArena.UnityConversion
         internal Matrix4x4 PartFrom(int part)=>PartMatrix(part)*inverse[part];
         /// <summary>The parts' presented scale (the stock shrink, a swarm's collapse).</summary>
         internal float PartScale=>partScale;
+        /// <summary>The presented overlay (a ghost's lift, a launch, a pinned smash's flattening).</summary>
+        internal Matrix4x4 Overlay=>overlay;
         internal Matrix4x4 PartMatrix(int part)=>overlay*Matrix4x4.Translate(new Vector3(0,-sink,0))*Posed(part,Parts[part].transform.localToWorldMatrix)*Matrix4x4.Scale(new Vector3(partScale,partScale,partScale));
         /// <summary>The dropped weapon as its hand part is presented (ragdoll.ts keeps the held weapon's meshes in the hand
         /// part's group): the same sink, shrink and collapse, scaled about the weapon body's own origin.</summary>
