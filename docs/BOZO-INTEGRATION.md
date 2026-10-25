@@ -1363,8 +1363,16 @@ already? Cant we utilize that?"
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
-- **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
-  visual body.
+- **Done on the model (2026-10-25, `claude/model-dressing`; owner: "Lets work on all these"):**
+  - **Joint frames:** each game joint's frame is captured on its mapped model bone at the first bind (`VisualJointFrame`),
+    so what rides a joint follows the model through the pack's clips.
+  - **Hats** sit on the model's head at their own size, resting on the hair. The pack's under-hat hair shapes left the
+    model nearly bald and were not used. The Auditor halo floats there too; the Sheldon Head (a whole head) stays Classic
+    only.
+  - **Body chips, the spell charge orb and the hand motes** now draw for model pilots (they had been skipped).
+  - **Living wounds' blood and chips** spray from the hit point on the model.
+  - **The parry flash:** the model's own silhouette, snapshotted each frame of the flash.
+- **Not yet:** the Cyber Lord's pieces on the visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
 - **Other rigs still draw voxel:** portraits and the draft. Every kill style wears the model (cut, crushed and split
   bodies severed at the joints).
