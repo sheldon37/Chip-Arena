@@ -248,7 +248,14 @@ namespace ChipArena.UnityConversion
             NativeVisualMotion.Layer(staff,mage,release+.3f,book2,out up);Check(up.Raised&&Array.IndexOf(staff.CastEnd,up.A)>=0&&Math.Abs(up.TimeA-.3f)<1e-4f,"after the release: the cast's end at its own pace");
             Check(NativeVisualMotion.Layer(staff,mage,release+1.3f,book2,out up)&&!up.Raised,"the cast done: the layer lowers");
             Check(NativeVisualMotion.Choose(staff,mage,70.2f,new NativeVisualMotion.Memory(),book2,false,out var castPick)&&castPick.Clip==staff.Idle,"a cast is no melee strike: the body idles under it");
-            mage.AbilityId="flame-lance";mage.AbilityAt=80;mage.AbilityRelease=80.5f;NativeVisualMotion.Layer(staff,mage,80.25f,book2,out up);Check(up.Raised&&up.A==staff.AbilityStart&&Math.Abs(up.TimeA-.6f)<1e-4f,"an ability: the area cast's start fitted to its release");
+            mage.AbilityId="flame-lance";mage.AbilityAt=80;mage.AbilityRelease=80.5f;NativeVisualMotion.Layer(staff,mage,80.25f,book2,out up);Check(up.Raised&&up.A==staff.AbilityStarts[0]&&Math.Abs(up.TimeA-.6f)<1e-4f,"an ability: its own cast's start fitted to its release");
+            mage.AbilityId="unknown-cast";NativeVisualMotion.Layer(staff,mage,80.25f,book2,out up);Check(up.A==staff.AbilityStart,"an ability without its own cast: the area cast");
+            Check(staff.AbilityIds.Length==8&&staff.AbilityStarts.Length==8&&staff.AbilityEnds.Length==8&&Array.TrueForAll(staff.AbilityStarts,c=>c.EndsWith("_start"+NativeVisualMotion.Mirror)),"the eight school abilities each have a mirrored cast");
+            // A gun's Q/E: the pistol's grenade throw (wind-up, then the throw), the machine gun's flourish, the rocket held on the aim.
+            var thrower=new Actor{Grounded=true,Weapon=WeaponId.Pistol,AbilityId="frag-grenade",AbilityAt=120,AbilityRelease=120.2f};
+            Check(NativeVisualMotion.Layer(pistol,thrower,120.1f,book2,out up)&&up.Raised&&up.A==pistol.AbilityStarts[0]&&NativeVisualMotion.Layer(pistol,thrower,120.4f,book2,out up)&&up.A==pistol.AbilityEnds[0],"the grenade: the wind-up, then the throw");
+            var gunner=new Actor{Grounded=true,Weapon=WeaponId.MachineGun,AbilityId="overdrive",AbilityAt=130};Check(NativeVisualMotion.Layer(rifle,gunner,130.5f,book2,out up)&&up.Raised&&up.A==rifle.AbilityStarts[0]&&Math.Abs(up.TimeA-.5f)<1e-4f,"overdrive: the flourish at its pace");
+            gunner.AbilityId="rocket";gunner.AbilityRelease=130.12f;gunner.Sprinting=true;Check(NativeVisualMotion.Layer(rifle,gunner,130.3f,book2,out up,true)&&up.Raised&&up.A==rifle.Aim[1],"the rocket: held on the aim, even sprinting");
             Check(!NativeVisualMotion.Layer(rifle,new Actor{Grounded=true,Sprinting=true},50,book2,out up,true)||!up.Raised,"a sprinting gun stays low with its arms free");
             // A bow: carried at rest, drawn (its drawn poses by the pitch) from the draw to the loose, its release after; not a gun.
             var archer=new Actor{Grounded=true,SourceSpec="bow"};
