@@ -1,3 +1,29 @@
+## 2026-10-25 — Claude: gun and caster abilities play their own pack clips (merged into shared)
+
+- **Branch/base:** `claude/motion-abilities` from shared `d1b9436d`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - Per-ability upper-body clips: `Set.AbilityIds/AbilityStarts/AbilityEnds/AbilityRaise`.
+  - The staff's eight school abilities each have their own cast (mirrored); an unmapped ability uses the area cast.
+  - Guns:
+    - the pistol's grenade: a throw;
+    - overdrive: the shooting power-up;
+    - orbital mark and the rocket: held on the aim.
+  - Bank: 303 clips, 3.14 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-25-motion-fm.zip`.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `49f1d5b0`), with new ability checks.
+  - The fighter moves build `d1b9436d` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode:
+    - water Q (tidal wave);
+    - water E (geyser wall; hold-to-aim abilities cast on release, so the test sends `AbilityEReleased`);
+    - pistol E grenade;
+    - machine gun Q overdrive.
+- **Not run:**
+  - the other schools' abilities in play;
+  - the rifle's orbital mark;
+  - a Windows build; multiplayer.
+- **Next:** death scenes and the remaining voxel deaths on the model.
+
 ## 2026-10-25 — Claude: the fighters' own moves play the pack's clips (merged into shared)
 
 - **Branch/base:** `claude/motion-fighter-moves` from shared `694c263a`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

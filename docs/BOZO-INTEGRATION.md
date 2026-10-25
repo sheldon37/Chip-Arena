@@ -1272,6 +1272,23 @@ already? Cant we utilize that?"
       - Demon Step: the dash.
     - **Measured:** each move in play (local tool `devweapon=`).
     - The bank holds 290 clips in 3.06 MB.
+  - **Gun and caster abilities (2026-10-25, `claude/motion-abilities`):** each Q/E has its own upper-body clip
+    (`AbilityIds`/`AbilityStarts`/`AbilityEnds`): a start fitted to the release, an end after it.
+    - **Casters:** each school ability has its own cast, mirrored:
+      - flame lance: the thrust cast;
+      - meteor strike: the raised buff;
+      - tidal wave: the area cast;
+      - geyser wall and ball lightning: the summons;
+      - blink strike: the second buff;
+      - shadow shackles: the second attack cast;
+      - singularity: the second area cast.
+    - **Guns:**
+      - the pistol's frag grenade: the off hand's overhand throw (wind-up, then the throw);
+      - the machine gun's overdrive: the power-up at its own pace;
+      - the rifle's orbital mark and the machine gun's rocket: hold the gun on the aim through the cast, even sprinting.
+    - The fan hammer and ADS keep the aim layer; the bow's Volley and Rain keep the bow's own.
+    - **Measured:** the water caster's Q and E (hold and release), the pistol's grenade and the machine gun's overdrive.
+    - The bank holds 303 clips in 3.14 MB.
   - **Echoes (2026-10-25, `claude/visual-ghosts`; owner: "The dodge effect still shows the voxel model"):** a pilot drawn
     as the model leaves the model's roll afterimages, dash ghosts (Flash Step, Bulwark Charge) and Demon Step ghosts.
     - Each ghost bakes the model's drawn renderers (skinned ones through `BakeMesh`, into pooled meshes; the shown weapon
