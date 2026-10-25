@@ -60,6 +60,14 @@ namespace ChipArena.UnityConversion
             }
         }
 
+        /// <summary>The body's turn in clip `c` at `time` (its nearest frame; radians, clockwise seen from above, 0 its first
+        /// frame's forward when that faces ahead).</summary>
+        public static float Yaw(Clip c,float time)
+        {
+            int last=c.Frames-1,f=(int)Math.Round(time*c.Rate);f=f<0?0:f>last?last:f;int o=f*c.Stride;
+            float x=c.Data[o+3],y=c.Data[o+4],z=c.Data[o+5],w=c.Data[o+6];
+            return (float)Math.Atan2(2*(x*z+w*y),1-2*(x*x+y*y));
+        }
         /// <summary>Adds `weight` times clip `c`'s pose at `time` (looped or held at its ends) into `sum` (Head + muscles
         /// floats; the rotation kept on the hemisphere of what `sum` holds). Allocation free.</summary>
         public static void Add(Clip c,float time,float weight,float[] sum)

@@ -213,6 +213,12 @@ namespace ChipArena.UnityConversion
                 b.localRotation=wgt>=.999f?p.localRotation:Quaternion.Slerp(b.localRotation,p.localRotation,wgt);
                 if(b==m.BodyHips)b.localPosition=Vector3.Lerp(b.localPosition,p.localPosition,wgt);
             }
+            // A spinning kit move (the Whirlwind): the body turned about its hips to the game's spin, less the clip's own turn.
+            if(covered&&pick.Spin&&VisualMotionBank.Clips.TryGetValue(pick.Clip,out var spun))
+            {
+                float own=(NativeVisualMotionClips.Yaw(spun,pick.Time)-NativeVisualMotionClips.Yaw(spun,0))*Mathf.Rad2Deg;
+                m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,Mathf.DeltaAngle(0,-pick.Turn*Mathf.Rad2Deg-own)*wgt);
+            }
             // The contact guard: the body's lowest point (each contact bone less its clearance) on the pilot's floor point, its
             // feet's place (the pack's character stands a little lower on its feet than the body; its jumps, falls and plunges
             // carry their own lift, which the game's own height already gives). Running, only kept out of the floor (the
