@@ -1,3 +1,23 @@
+## 2026-10-25 — Claude: the co-op revive and the fork bomb clones wear the model (merged into shared)
+
+- **Branch/base:** `claude/model-revive` from shared `1ead7454`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `VisualReviveBody`: a model per revive posed from the kept body's joints, its missing subtrees scaled in by the repair's solid curve, hidden and dropped by `VisualRevivesShown`.
+  - `RenderRevival` draws it in place of the voxel bodies and voxel hologram passes; the slab, flying voxels, ring and column stay.
+  - `VisualStandPose` re-binds the revived pilot's model from the rig's bones after `StandFromBody` (and makes the gallery stand-in's).
+  - The fork bomb clones are live ghosts.
+  - Local tool: `gallery=T,Flag` (sandbox plus a presentation gallery).
+- **Checks (actual):**
+  - `--visual-rig` PASS with new revive checks; full CoreTests: see the merge.
+  - Unity compile: PASS.
+  - Play mode (the sandbox revive gallery): the stand-in rises and stands on the model with the column; no voxel body. The lying phase was not caught in the captures.
+- **Not run:**
+  - a real co-op revive;
+  - a gibbed or split revive on the model;
+  - the fork bomb in play;
+  - a Windows build; multiplayer.
+- **Next:** hats, Body Chips, living wounds and the parry flash on the model.
+
 ## 2026-10-25 — Claude: every kill style wears the model (merged into shared)
 
 - **Branch/base:** `claude/visual-kill-looks` from shared `942133d7`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

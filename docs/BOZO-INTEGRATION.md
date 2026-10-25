@@ -1346,7 +1346,18 @@ already? Cant we utilize that?"
     - Each is a pooled visual body on its holder rig, bound to the ghost's pose and drawn through that ghost's own shader
       (`NativeWeaponGhost`, or the entrance's one-layer `NativeEntranceGhost` with its scanlines), in its tint and opacity.
     - Body only: the ghost weapons stay voxel. It hides once a frame passes without it.
-    - The Cyber Lord's fork ghost, the PvE revive hologram and the Siren's crush drop keep the voxel body.
+    - The Cyber Lord's fork bomb clones are live ghosts too (2026-10-25, `claude/model-revive`). The Siren's crush drop
+      keeps the voxel body.
+  - **The co-op revive (2026-10-25, `claude/model-revive`):**
+    - **The kept body:** a model posed from the kept body's joints (lifted with the repair), in place of the voxel
+      wounded/healed bodies, the split halves, the hat, and the voxel hologram band and crater glows.
+    - **Missing parts:** grow back from the top of each lost subtree as their repair solidifies (`NativeReviveHolo.Solid`).
+    - **Kept as before:** the scan slab, the repair voxels flying in, the ring and column.
+    - **The stand-up:** the revived pilot's model is bound again from the rig after `StandFromBody`, so it stands up from
+      the kept body.
+    - **Simplifications:** a split body's halves no longer float together (the model lies whole). The second scan band
+      (voxel) is off on a model pilot.
+    - The local tool's `gallery=T,ReviveGallery` turns on the sandbox revive gallery.
   - **A corpse a co-op revive makes first** (NativeInteractionPresentation: the revive reads the body before the death
     presentation has drawn it) now wears its visual body too; it had stayed voxel (2026-10-25, `claude/model-revive-corpse`).
 
