@@ -1,3 +1,18 @@
+## 2026-10-24 — Claude: the shield's model plays the RPG pack's own clips, mirrored (merged into shared)
+
+- **Branch/base:** `claude/motion-shield` from shared `04a3b382`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - Shield set from the pack's `Armed-Shield` clips, mirrored, since the game's shield is in the right hand: idle, locomotion, block and its hit, and bashes `Attack2, 3, 1`, which sweep left to right as the game's shield cuts do. Jumps, roll, stun and reactions come from `Armed`.
+  - The bake's clip mirroring: left/right muscle twins swapped, the middle's sideways and twist muscles negated, body x and yaw/roll reflected.
+  - Bank: 103 clips, 1.17 MB. The Drive's `LocalAssets.zip` is replaced, with the previous one kept as `LocalAssets-2026-10-24-motion-dg.zip`: 357 files, 36.78 MB.
+  - The daggers build `04a3b382a5c1` succeeded and published.
+- **Checks (actual):**
+  - Full CoreTests 850 PASS, exit 0 (LF checkout of `8a0a127c`).
+  - Unity compile: PASS.
+  - Play mode (moonlit, `idlebots=3`): idle with the shield braced forward on the right arm; jump, fall and landing; block; five presses drew Attack2, 3, 1, 2 (mirrored); roll; feet on the floor.
+- **Not run:** the shield's specials and kit moves (shield throw, Bulwark Charge, Aegis Ricochet keep the game's pose); a Windows build; multiplayer.
+- **Next:** guns (rifle and machine gun shouldered when aiming or firing, pistol, the muzzle), casters, specials, dodge ghosts, severed kills.
+
 ## 2026-10-24 — Claude: the daggers' models play the RPG pack's own clips (merged into shared)
 
 - **Branch/base:** `claude/motion-daggers` from shared `0e2bbc54`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

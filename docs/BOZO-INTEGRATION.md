@@ -1178,6 +1178,15 @@ already? Cant we utilize that?"
     - The off hand's frame (the second blade) rides the model's left hand. The hold is kept for weapons the bake has no
       model of, so the game's own daggers draw in the model's hands.
     - The bank holds 81 clips in 0.91 MB.
+  - **Shield (2026-10-24, `claude/motion-shield`):** the game holds its shield in the right hand; the pack's `Armed-Shield`
+    set carries it on the left arm, so the shield plays that set mirrored.
+    - **Mirroring:** the bake mirrors any clip named with `NativeVisualMotion.Mirror`. Each left muscle swaps with its right
+      twin, the middle's sideways and twisting muscles turn the other way, and the body's position and turn reflect. A
+      mirrored run to the left runs right.
+    - **Clips:** idle, locomotion, block and its hit, and the bashes and sweeps `Attack2, 3, 1`; mirrored, they sweep left
+      to right, as all the game's shield cuts do. Jumps, roll, stun and reactions come from the `Armed` set.
+    - The shield draws braced on the right forearm, its face forward.
+    - The bank holds 103 clips in 1.17 MB.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
