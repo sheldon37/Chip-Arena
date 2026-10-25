@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             /// <summary>A split body (NativeBisectPresentation): its half models (body 0, 1, hat 0, 1) and each half's pose when the revive began.</summary>
             public string[] Halves;public readonly Matrix4x4[][] HalfFrom={new Matrix4x4[22],new Matrix4x4[22]};
             public float Age,Lift;public Matrix4x4 Up=Matrix4x4.identity;public CapturedAnimation.Player Rig;public bool Washed;
-            public Func<int,Matrix4x4> Bone,GibBone,RigBone,Half0,Half1;public Func<int,bool> Old,Missing;public Func<int,float> Heal,Wire,Fill,Band,Gib,HalfAlpha;
+            public Func<int,Matrix4x4> Bone,GibBone,RigBone,Half0,Half1;public Func<int,bool> Old,Missing;public Func<int,float> Heal,Wire,Fill,Band,Gib,HalfAlpha,Grow;
         }
         private readonly ReviveGlow[] reviveGlows=new ReviveGlow[NativeReviveHolo.CraterBudget(NativeReviveHolo.Full)+NativeReviveHolo.MaxAura+4];
         private int ReviveTier=>LowGraphics?NativeReviveHolo.Low:EffectsQuality<.5f?NativeReviveHolo.Reduced:NativeReviveHolo.Full;
@@ -70,6 +70,8 @@ namespace ChipArena.UnityConversion
             h.Band=b=>!r.Missing[b]?1:NativeReviveHolo.Clamp01(NativeReviveHolo.Fill(h.Age,r.Coordinate[b])+NativeReviveHolo.Solid(h.Age,r.Coordinate[b]));
             h.Gib=b=>1-NativeReviveHolo.Smooth((h.Age-.05f)/.35f);
             h.Half0=b=>HalfBone(r,0,b);h.Half1=b=>HalfBone(r,1,b);h.HalfAlpha=b=>1-NativeReviveHolo.Smooth((h.Age-HalfJoined)/.14f);
+            // The model's missing parts grow back from the top of each lost subtree as their repair solidifies.
+            h.Grow=b=>r.Missing[b]&&(CapturedRig.Bones[b].Parent<0||!r.Missing[CapturedRig.Bones[b].Parent])?(r.Place?NativeReviveHolo.Solid(h.Age,r.Coordinate[b]):0):1;
         }
         /// <summary>A split body's halves float back together by this age (s), then its whole skin dithers in over them.</summary>
         private const float HalfJoined=.4f;
@@ -100,7 +102,11 @@ namespace ChipArena.UnityConversion
             if(r.Body!=null&&!rise)
             {
                 float alpha=r.Place?1:1-NativeReviveRules.Smooth((age-.15f)/(NativeReviveRules.Dissolve-.15f));
-                if(h.Halves!=null&&r.Place)
+                // The pilot's visual body when it wears one (NativeVisualBodyPresentation.cs VisualReviveBody): it lies, lifts and
+                // grows its missing parts back in place of the voxel body, its halves and its hat.
+                bool model=VisualReviveBody(1L<<62|(uint)r.Seed,rig,r.Death,h.Bone,h.Grow,alpha);
+                if(model){}
+                else if(h.Halves!=null&&r.Place)
                 {
                     // The halves float back together, then the whole body (healed) dithers in over the seam.
                     if(age<HalfJoined+.14f)for(int k=0;k<2;k++){sourceModels.QueueShadowless(h.Halves[k],Matrix4x4.identity,k==0?h.Half0:h.Half1,null,h.Tint,h.Accent,alpha,h.HalfAlpha);if(h.Halves[2+k]!=null)sourceModels.QueueShadowless(h.Halves[2+k],Matrix4x4.identity,k==0?h.Half0:h.Half1,null,h.HatTint,null,alpha,h.HalfAlpha);}
@@ -119,7 +125,7 @@ namespace ChipArena.UnityConversion
                         if(hatAlpha>.002f)sourceModels.QueueShadowless(h.Hat,Matrix4x4.identity,h.Bone,null,h.HatTint,null,alpha*hatAlpha);
                     }
                 }
-                if(holo&&r.Place)
+                if(holo&&r.Place&&!model)
                 {
                     // The scan band (the healed body's hologram, lit where the front is), the missing parts' wireframes and holograms.
                     float s=Mathf.Clamp(NativeReviveHolo.Band(age),-.1f,1.15f);Vector3 at=Vector3.LerpUnclamped(r.AxisA,r.AxisB,s)+Vector3.up*lift;var sweep=new Vector4(axis.x,axis.y,axis.z,Vector3.Dot(at,axis));
@@ -132,7 +138,7 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
-            if(rise&&holo&&third)
+            if(rise&&holo&&third&&!VisualBodyPosed(rig))
             {
                 // The second pass, down the standing body as it sets down (the rig's root already carries the lift).
                 float k=NativeReviveHolo.Smooth(NativeReviveRules.Standing(age));float top=r.FloorY+lift+1.85f*(1-k)+.05f;
@@ -275,7 +281,8 @@ namespace ChipArena.UnityConversion
             if(age>=NativeReviveRules.Scan){StandFromBody(g,galleryReviveRig,age);float lift=NativeReviveHolo.Lift(age);if(lift>0)galleryReviveRig.Root.transform.position+=Vector3.up*lift;}
             RenderRevival(arena,g,galleryReviveRig,now,true);
             // The stand-in itself once it stands (a live pilot's rig is drawn with the arena's actors).
-            if(age>=NativeReviveRules.Scan){var h=g.Holo;h.Rig=galleryReviveRig;sourceModels.Queue(h.Healed,Matrix4x4.identity,h.RigBone,null,body:h.Tint,accent:h.Accent);if(h.Hat!=null)sourceModels.Queue(h.Hat,Matrix4x4.identity,h.RigBone,null,body:h.HatTint);}
+            if(age>=NativeReviveRules.Scan&&VisualStandPose(galleryReviveRig,galleryReviveActor,now,true)){}
+            else if(age>=NativeReviveRules.Scan){var h=g.Holo;h.Rig=galleryReviveRig;sourceModels.Queue(h.Healed,Matrix4x4.identity,h.RigBone,null,body:h.Tint,accent:h.Accent);if(h.Hat!=null)sourceModels.Queue(h.Hat,Matrix4x4.identity,h.RigBone,null,body:h.HatTint);}
             if(age>=NativeReviveHolo.End&&age<NativeReviveHolo.Total)
             {var floor=new Vector3(galleryReviveAt.x,g.FloorY,galleryReviveAt.z);DrawReviveGlows(NativeReviveHolo.Halo(age,unchecked((uint)g.Seed),CutNum(floor),NativeReviveHolo.StandRadius,0,ReviveTier,false,reviveGlows,0),now);}
         }
