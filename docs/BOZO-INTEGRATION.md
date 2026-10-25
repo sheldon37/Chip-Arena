@@ -1281,13 +1281,21 @@ already? Cant we utilize that?"
     - The arena pose and the intro share `VisualBodyOf` and `VisualBodyBind`.
     - Settings · Player model is now set at the top of every frame, so Classic reaches intros, previews, replays and the
       draft (they return before the arena renders).
+  - **The sky death broadcast (2026-10-25, `claude/model-broadcast`):** the victim's portrait is the model.
+    - The model is made on the broadcast rig, its meshes cut to the bust: the portrait's chest, neck, head and collarbones,
+      plus the upper spine and arms, where the model's shoulders are.
+    - It draws through the fresnel ghost shader in the broadcast's cyan, so the face reads without the voxel edge lines.
+    - It is scaled 1.6 about its neck to fill the frame fitted to the voxel head; the head drifts as before. The scanlines,
+      frame and nameplate stay.
+    - It wears no hat (as in the arena). Classic keeps the voxel portrait and its edges.
+    - Local tool: `cam=x,y,z,lx,ly,lz[,fov]` adds a fixed-eye shot (the broadcast hangs at (0 or ±43, 72, -115)).
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
   visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
-- **Other rigs still draw voxel:** portraits, the draft and the death broadcast. Smashed bodies and the swarm,
+- **Other rigs still draw voxel:** portraits and the draft. Smashed bodies and the swarm,
   soul and frost kill effects still use the voxel body (cut, crushed and split bodies wear the model severed at the
   joints).
 - **Captures:** the neutral turnaround.

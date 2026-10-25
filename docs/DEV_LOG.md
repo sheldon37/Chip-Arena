@@ -1,3 +1,23 @@
+## 2026-10-25 — Claude: the sky death broadcast's portrait is the model (merged into shared)
+
+- **Branch/base:** `claude/model-broadcast` from shared `9782ffb2`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `VisualBust`: the victim's visual body on the broadcast rig, cut to the bust (`VisualSever` with the portrait bones plus the upper spine and arms), in the fresnel ghost material.
+  - `VisualBustPose`: binds the portrait pose (head drift), sets the hologram tint and opacity, and scales 1.6 about the neck.
+  - `DeathBroadcasts`: draws the bust instead of the voxel portrait and its edges (Classic keeps them) and hides busts not drawn.
+  - The corpse sever and joint mapping became shared helpers (`VisualSever`, `VisualJoints`).
+  - Local tool: `cam=` fixed-eye shot.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `6090060a`), with a new bust group.
+  - The intros build `9782ffb25c3b` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode (moonlit): a bot kill's broadcast from a camera at (0, 60, -40) showed the bust (hair, face, collar, shoulders) filling the frame with the scanlines and name.
+- **Not run:**
+  - three broadcasts at once (the side slots);
+  - a hat wearer's frame fit (the voxel fit varies by hat);
+  - a Windows build; multiplayer.
+- **Next:** the revive hologram, the draft pilot, the remaining ghosts (Shadow Step afterimages, Cyber Lord), cut-face caps.
+
 ## 2026-10-25 — Claude: intros wear the model (merged into shared)
 
 - **Branch/base:** `claude/model-intros` from shared `ccdfe02f`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
