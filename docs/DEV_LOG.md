@@ -1,3 +1,30 @@
+## 2026-10-25 — Claude: slash and saw kills sever the model at the joints (merged into shared)
+
+- **Branch/base:** `claude/visual-sever` from shared `ec9b9d3a`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner report addressed:** "kill effects from slashes (like the saw or melee) revert to voxel"; decision: "Sever at joints".
+- **Changes (presentation only):**
+  - `VisualCorpseMake`: split bodies (blade killing blows, saws) make one model corpse per half, keeping the parts on that half's side of the cut (`BisectRequest.HalfOf` per joint).
+  - Sliced or crushed corpses sever the cut parts' pieces.
+  - `VisualCorpseSever`/`SeverMesh`: copy each skinned mesh. Every vertex keeps only its heaviest piece's bones (no stretching across the gap); triangles across pieces, or in a dropped piece, go. The copies are freed with the corpse.
+  - The cleanup keeps a split body's second half (it is the first's twin, not in the corpse list).
+  - The voxel halves draw only when the model halves do not.
+  - Local tool:
+    - `bring=T` puts the first bot 2.5 m before the local pilot;
+    - `devweapon=T,spec,bot` gives the bot developer access and that weapon;
+    - `killmelee=1` makes `kill=` the other side's melee blow.
+- **Checks (actual):**
+  - Full CoreTests 851 PASS, exit 0 (LF checkout of `e9049123`), with the visual body's corpse pins and `BisectChecks`' draw pin updated to the model halves.
+  - Unity compile: PASS.
+  - Play mode (moonlit): a greatsword bot's lethal blow on the local pilot made two model halves. The legs stood, the upper half toppled, with the cut's blood.
+- **Not run:**
+  - a Factory saw kill in play (same split path);
+  - a sever wound or the slice fallback in play;
+  - many simultaneous cut corpses (each copies the body's skinned meshes);
+  - a Windows build; multiplayer.
+- **Known:** the cut faces are open (no caps).
+- The ghosts build `ec9b9d3a63ad` succeeded and published.
+- **Next:** model everywhere (intros, killcams, menus; Classic kept as the backup); caps for the cut faces.
+
 ## 2026-10-25 — Claude: the dodge, dash and Demon Step ghosts are the model's (merged into shared)
 
 - **Branch/base:** `claude/visual-ghosts` from shared `2777e2da`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

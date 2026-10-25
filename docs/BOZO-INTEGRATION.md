@@ -1259,14 +1259,26 @@ already? Cant we utilize that?"
     - A small depth offset toward the eye (`_EchoOffset`, 0 for the voxel ghosts) stops the baked copy z-fighting the
       GPU-skinned body while they overlap.
     - Pilots drawn voxel (Classic) keep the voxel ghosts.
+  - **Severed kills (2026-10-25, `claude/visual-sever`; owner: slash and saw kills "revert to voxel", "Sever at joints"):**
+    a pilot's cut corpse now wears the model.
+    - **A split body** (a blade's killing blow, a Factory saw): each half wears the model's parts on its side of the cut.
+      Whole parts only: a part the cut crosses goes to the side its joint is on (`BisectRequest.HalfOf`).
+    - **A sliced or crushed corpse** (the slice's fallback joints, a sever wound): the parts cut off fly as model pieces;
+      a crushed part's triangles go, and its fragments and the stumps' blood are the kill wound's.
+    - **How it splits:** each skinned mesh is copied per corpse. Every vertex keeps only the bones of the piece most of its
+      weight is in, so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across
+      pieces go. The copies are freed with the corpse.
+    - The cut faces are open (no caps); the cut's blood covers them.
+    - Smashed bodies and the swarm, soul and frost looks keep the voxel body.
 
 **Not yet (step 4 continues):**
 - **Owner's concept pieces:** the mask and visor.
 - **Hats** (owner decision open); Body Chips dressing, living wounds, the parry flash and the Cyber Lord's pieces on the
   visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
-- **Other rigs still draw voxel:** intros, portraits, the draft and the death broadcast. Gory deaths (a cut, crushed or
-  split body) and the swarm, soul and frost kill effects still use the voxel body (step 6 region-based death).
+- **Other rigs still draw voxel:** intros, portraits, the draft and the death broadcast. Smashed bodies and the swarm,
+  soul and frost kill effects still use the voxel body (cut, crushed and split bodies wear the model severed at the
+  joints).
 - **Captures:** the neutral turnaround.
 - **The performance pass** (Phase C).
 - **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets
