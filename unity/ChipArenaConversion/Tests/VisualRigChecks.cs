@@ -103,6 +103,7 @@ namespace ChipArena.UnityConversion
             Motion(root);Console.WriteLine("PASS visual rig: every melee weapon's (the shield mirrored), gun's, bow's, caster's (the staff mirrored) and fighter's model plays the animation pack's own clips, every melee weapon's kit moves too (a gun shouldered over its legs, on the look unless sprinting, its reload fitted; a caster's cast over its legs, its start fitted to the release), retimed so each attack's Hit lands mid hit window, the roll fills the roll, the air states and landing follow the pilot, specials and kit moves keep the game's pose; the weapon rides the drawn hand and no foot goes under the floor ("+count+" checks)");
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
             Echoes(root);Console.WriteLine("PASS visual rig: a pilot drawn as the model leaves the model's roll afterimages, dash ghosts and Demon Step ghosts (its drawn renderers baked), tinted and fading as the voxel ghosts, a little toward the eye ("+count+" checks)");
+            Bust(root);Console.WriteLine("PASS visual rig: the sky death broadcast's portrait is the victim's model cut to its bust, a hologram in the broadcast's colour scaled about its neck to fill the frame, hidden when not drawn; Classic keeps the voxel portrait and its edges ("+count+" checks)");
         }
 
         // Echoes of the visual body (owner 2026-10-24: "The dodge effect still shows the voxel model"): the roll afterimages, dash
@@ -116,6 +117,17 @@ namespace ChipArena.UnityConversion
             Check(dash.Contains("g.Model=VisualEchoSnap(rig,ref g.Echo);")&&dash.Contains("if(g.Model){VisualEchoDraw(g.Echo,\"NativeWeaponGhost\",g.Tint,opacity);continue;}"),"the dash ghosts");
             Check(demon.Contains("demonModel[slot]=VisualEchoSnap(rig,ref demonEchoes[slot]);")&&demon.Contains("if(demonModel[s]){VisualEchoDraw(demonEchoes[s],\"NativeDevGhost\",tint,opacity);continue;}"),"the Demon Step ghosts");
             foreach(var shader in new[]{"NativeWeaponGhost","NativeDevGhost"}){var text=R("Resources/"+shader+".shader");Check(text.Contains("_EchoOffset(\"Depth offset\",Float)=0")&&text.Contains("Offset [_EchoOffset],[_EchoOffset]"),shader+": the echoes' depth offset, 0 for the voxel ghosts");}
+        }
+
+        // The sky death broadcast on the model (owner 2026-10-24: "Model everywhere"; NativeDeathBroadcastPresentation.cs).
+        private static void Bust(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            string body=R("Runtime/NativeVisualBodyPresentation.cs"),cast=R("Runtime/NativeDeathBroadcastPresentation.cs");
+            Check(cast.Contains("stage.Bust=VisualBust(rig,item.Victim,ref stage.Owned);")&&cast.Contains("bool model=stage.Bust?.Root!=null&&!ClassicBodies;"),"a broadcast makes the victim's bust, used unless Classic");
+            Check(cast.Contains("if(!model){Edges(NativeBroadcastEdges.Body);")&&cast.Contains("if(stage.Bust?.Root!=null&&stage.Frame!=Time.frameCount&&stage.Bust.Root.activeSelf)stage.Bust.Root.SetActive(false);"),"the voxel edges only on the voxel portrait; a bust not drawn hides");
+            Check(body.Contains("piece[v]=BustBone(joint[v])?0:-1;")&&body.Contains("r.sharedMaterials=mats;")&&body.Contains("if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn)return null;"),"the bust: cut to the portrait's bones, in the hologram material, none under Classic");
+            Check(Array.TrueForAll(new[]{CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LClav,CapturedRig.RClav},NativeBroadcastFx.PortraitBone)&&!NativeBroadcastFx.PortraitBone(CapturedRig.Pelvis),"the portrait's bones");
         }
 
         // Surface impacts from the owner's effect pack (owner 2026-10-24: "Implement whatever we have on asset packs that would work
