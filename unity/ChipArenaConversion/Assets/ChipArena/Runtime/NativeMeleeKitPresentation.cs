@@ -49,7 +49,9 @@ namespace ChipArena.UnityConversion
                 var feet=new Vector3(k.Afterimage.x,k.Afterimage.y-.865f,k.Afterimage.z);float at=NativeMeleeKitFx.DecoyPoseTime(k);
                 d.Rig.ActorPose(d.Pose,feet,at);
                 var tint=NativeWeaponFxShapes.Fx(NativeMeleeKitFx.DecoyTint());var root=d.Rig.Root.transform.localToWorldMatrix;
-                sourceModels.Queue(pilot,root,b=>b>=0&&b<d.Rig.Bones.Length?d.Rig.Bones[b].localToWorldMatrix:root,null,0,null,tint,null,opacity);
+                // The model's live ghost where the caster wears the model (NativeVisualBodyPresentation.cs), else the voxel one.
+                if(!(VisualBodyPosed(rigs.TryGetValue(a.Id,out var own)?own:null)&&VisualLiveGhostDraw(1L<<40|(uint)a.Id,d.Rig,a.Id,d.Rig.Pose,Vector3.zero,"NativeWeaponGhost",tint,opacity)))
+                    sourceModels.Queue(pilot,root,b=>b>=0&&b<d.Rig.Bones.Length?d.Rig.Bones[b].localToWorldMatrix:root,null,0,null,tint,null,opacity);
                 string weapon=Ghost(SkinnedHeld(a));
                 if(weapon!=null){float reach=WeaponReach(d.Rig,d.Pose,at);sourceModels.Queue(weapon,root,b=>SourceWeaponBone(d.Rig,d.Pose,at,false,b,reach),null,0,null,tint,null,opacity);}
             }

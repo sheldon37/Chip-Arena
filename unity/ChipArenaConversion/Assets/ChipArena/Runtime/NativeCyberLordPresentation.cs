@@ -165,8 +165,10 @@ namespace ChipArena.UnityConversion
                 {
                     if(!rigs.TryGetValue(g.Actor,out var rig)||rig?.Bones==null||pose>=cyberGhostPoses.Length)continue;var gp=cyberGhostPoses[pose++];var off=Matrix4x4.Translate(new Vector3(g.Offset.X,g.Offset.Y,g.Offset.Z));
                     gp.Root=off*rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=off*rig.Bones[b].localToWorldMatrix;
-                    // The glitched pilot in its own body skin (NativeBodySkinPresentation.cs; the Prototype ghost only as a fallback).
-                    sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
+                    // The glitched pilot in its own body skin (NativeBodySkinPresentation.cs; the Prototype ghost only as a fallback), the
+                    // model's live ghost where it wears the model (NativeVisualBodyPresentation.cs).
+                    if(!(VisualBodyPosed(rig)&&VisualLiveGhostDraw(3L<<40|(long)i<<32|(uint)g.Actor,rig,g.Actor,rig.Pose,new Vector3(g.Offset.X,g.Offset.Y,g.Offset.Z),"NativeWeaponGhost",tint,g.Opacity)))
+                        sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
                     if(i%2==0){var c=rig.Bones[CapturedRig.Chest].position+Vector3.up*.1f;cyberFx.GlitchBlocks(cyberSink,g.Actor,new NVector(c.x,c.y,c.z),g.Opacity/.42f,time,q,LowGraphics);}
                 }
                 else if(g.Kind==CyberGhost.Clone&&g.Index>=0&&g.Index<cyberCloneRigs.Length)
@@ -175,7 +177,8 @@ namespace ChipArena.UnityConversion
                     var clone=cyberCloneActors[g.Index];NativeCyberLordFx.CloneActor(clone,caster,g);var rig=cyberCloneRigs[g.Index]??=captured.Create(transform,-820-g.Index);float at=NativeCyberLordFx.CloneTime(g);
                     rig.ActorPose(clone,new Vector3(g.Position.X,g.Position.Y,g.Position.Z),at);var root=rig.Root.transform.localToWorldMatrix;
                     if(pose>=cyberGhostPoses.Length)continue;var gp=cyberGhostPoses[pose++];gp.Root=root;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=rig.Bones[b].localToWorldMatrix;
-                    sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
+                    if(!(VisualBodyPosed(rigs.TryGetValue(g.Actor,out var own)?own:null)&&VisualLiveGhostDraw(4L<<40|(long)g.Index<<32|(uint)g.Actor,rig,g.Actor,rig.Pose,Vector3.zero,"NativeWeaponGhost",tint,g.Opacity)))
+                        sourceModels.Queue(Ghost(BodyModel(BodySkin(g.Actor),BodyTier(rig.Root.transform.position,false)))??pilot,gp.Root,gp.Bone,null,0,null,tint,null,g.Opacity);
                     var flare=new NativeCyberLordLook.Flare{Left=1,Right=1};int n=NativeCyberLordLook.PiecesIn(CyberSkin(null,g.Actor),g.Actor*3+g.Index,at,-100,flare,false,g.Opacity,.3f,true,cyberPieces,default);
                     for(int k=0;k<n;k++)QueueCyberPiece(cyberPieces[k],rig.Bones[cyberPieces[k].Bone].localToWorldMatrix,1,0,null);
                 }
@@ -197,7 +200,8 @@ namespace ChipArena.UnityConversion
                 {
                     var gp=cyberIdleGhosts[used++];var off=Matrix4x4.Translate(k==0?across:-across);var c=k==0?magenta:cyan;
                     gp.Root=off*rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)gp.Bones[b]=off*rig.Bones[b].localToWorldMatrix;
-                    sourceModels.Queue(shell,gp.Root,gp.Bone,null,0,null,new Color(c.X,c.Y,c.Z,0),null,g.Split*CyberIdleGhostOpacity);
+                    if(!(VisualBodyPosed(rig)&&VisualLiveGhostDraw(5L<<40|(long)k<<32|(uint)a.Id,rig,a.Id,rig.Pose,k==0?across:-across,"NativeWeaponGhost",new Color(c.X,c.Y,c.Z,0),g.Split*CyberIdleGhostOpacity)))
+                        sourceModels.Queue(shell,gp.Root,gp.Bone,null,0,null,new Color(c.X,c.Y,c.Z,0),null,g.Split*CyberIdleGhostOpacity);
                 }
             }
         }
