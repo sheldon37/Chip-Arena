@@ -108,19 +108,33 @@ namespace ChipArena.UnityConversion
         private void VisualBodyPose(Actor a,float time)
         {
             if(Viewer||sourceModels==null||ClassicBodies||a.SourceSpec=="siren"||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig)||!VisualBodiesOn)return;
-            if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null)
-            {
-                body=CreateVisualBody(rig,a.Id);if(body==null)return;visualBodies[rig]=body;
-            }
+            var body=VisualBodyOf(rig,a.Id);if(body==null)return;
             var pose=rig.Pose;pose.World();
+            bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
+            var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle);
+            VisualStridePose(body,rig,a,time,roll,juggle);
+            VisualMotionPose(body,rig,a,time);
+            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            body.Moved=true;
+        }
+
+        // The visual body `rig` wears (made on first use for pilot `id`'s outfit); null without a bake.
+        private VisualBody VisualBodyOf(CapturedAnimation.Player rig,int id)
+        {
+            if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null){body=CreateVisualBody(rig,id);if(body==null)return null;visualBodies[rig]=body;}
+            return body;
+        }
+        // The body bound to `pose` (feet planted when `planted`, the airborne solve when `airborne`), its weapon in hand and the
+        // rig's hands onto its weapon frames; its held weapon.
+        private VisualWeapon VisualBodyBind(VisualBody body,CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,bool planted,bool airborne)
+        {
             Vector3 at=rig.Root.transform.position;
             // A fresh solve after a gap (death, first person, a hidden frame), a teleport or a weapon change.
             if(body.PosedFrame<Time.frameCount-1||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4)body.Binding.State.Forget();
             body.PosedFrame=Time.frameCount;body.Spec=a.SourceSpec;body.At=at;
-            bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
-            body.Binding.Apply(pose,grasp,a.Grounded&&!roll&&!juggle,roll||juggle);
+            body.Binding.Apply(pose,grasp,planted,airborne);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
             var origin=body.Root.transform;
@@ -131,12 +145,22 @@ namespace ChipArena.UnityConversion
                 body.HandPosition[side]=bone.localPosition;body.HandRotation[side]=bone.localRotation;
                 bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp),origin.rotation*(side==0?lq:rq));
             }
-            VisualStridePose(body,rig,a,time,roll,juggle);
-            VisualMotionPose(body,rig,a,time);
+            return held;
+        }
+        // The entrance's pilot on its visual body (owner 2026-10-24: "Model everywhere"): the intro rig's own authored pose
+        // (`pose`, as the entrance wrote it) retargeted, without the pack's clips or the stride and with the feet as authored;
+        // its weapon in hand where the entrance shows it (IntroWeapon). While the entrance still builds the body in (`reveal`
+        // under half on the pelvis, chest, head or a hand) the voxel body draws the reveal instead.
+        private static readonly int[] IntroSolidBones={CapturedRig.Pelvis,CapturedRig.Chest,CapturedRig.Head,CapturedRig.LHand,CapturedRig.RHand};
+        private void VisualIntroPose(CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,Func<int,float> reveal)
+        {
+            if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec=="siren"||!VisualBodiesOn)return;
+            if(reveal!=null)foreach(int b in IntroSolidBones)if(reveal(b)<.5f)return;
+            var body=VisualBodyOf(rig,a.Id);if(body==null)return;
+            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
         }
-
         private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id)
         {
             var root=Instantiate(visualBodyPrefab,rig.Root.transform,false);root.name="Visual body "+id;

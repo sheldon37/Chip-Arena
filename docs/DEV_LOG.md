@@ -1,3 +1,30 @@
+## 2026-10-25 — Claude: intros wear the model (merged into shared)
+
+- **Branch/base:** `claude/model-intros` from shared `ccdfe02f`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner direction:** "Model everywhere, classic will be stored as backup"; step 7 started on the owner's go-ahead (2026-10-25).
+- **Changes (presentation only):**
+  - `VisualIntroPose` binds the intro rig's authored pose (`NativeSourceMotion.IntroPose`, the directed entrances' `entrancePose`) to a visual body, with no pack clips or stride.
+  - The voxel body draws while the entrance still builds the body in.
+  - `SourceCharacter` lets the intro rig draw its visual body.
+  - `IntroWeapon` uses the model's own weapon when it is drawn; the bow and the Sheldon intro stay voxel.
+  - Intros call `VisualBodiesShown` (they return before the arena does).
+  - Shared helpers `VisualBodyOf` and `VisualBodyBind`, with the arena pose unchanged.
+  - `ConversionGame` sets `ClassicBodies` at the top of the frame: Classic had not reached intros, previews, replays or the draft.
+  - Local tool: `intros=1` plays the player intros.
+- **Checks (actual):**
+  - Full CoreTests 851 PASS, exit 0 (LF checkout of the docs commit, code `b1203aa5`), with two order pins and the `visual` pin rewritten for the shared helpers.
+  - The severed-kills build `ccdfe02f4e57` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode (moonlit, `intros=1`):
+    - sword, rifle and bow intros on the model;
+    - Classic (`classic=0.3`) shows the voxel body in the intro;
+    - the rifle entrance shows no gun at those moments on either body.
+- **Not run:**
+  - every weapon's entrance;
+  - the Sheldon intro;
+  - a Windows build; multiplayer.
+- **Next:** the death broadcast, revive hologram and draft on the model; cut-face caps.
+
 ## 2026-10-25 — Claude: slash and saw kills sever the model at the joints (merged into shared)
 
 - **Branch/base:** `claude/visual-sever` from shared `ec9b9d3a`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

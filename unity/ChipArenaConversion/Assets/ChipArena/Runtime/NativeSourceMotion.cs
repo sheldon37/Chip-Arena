@@ -32,6 +32,8 @@ namespace ChipArena.UnityConversion
         }
         // One pose for every intro frame (main thread only; NativeIntroMotion writes every joint), so the entrance allocates nothing per frame.
         private static readonly CapturedRig.Pose introPose=new CapturedRig.Pose();private static string introStyle,introKey;
+        /// <summary>The pose Intro last wrote on its rig (the intro's visual body binds to it).</summary>
+        public static CapturedRig.Pose IntroPose=>introPose;
         public static void Intro(CapturedAnimation.Player rig,string style,float age,Camera camera)
         {
             Ensure();if(style!=introStyle){introStyle=style;introKey="intro-"+style;}string key=introKey;if(!clips.TryGetValue(key,out var clip))return;
