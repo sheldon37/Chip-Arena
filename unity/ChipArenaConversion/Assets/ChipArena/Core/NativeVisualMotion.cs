@@ -46,19 +46,31 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block="Armed-Block-Dual",BlockHit="Armed-Block-Dual-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-L1",SprintAttack="Armed-Run-Attack-Dual",
             Attacks=Names("Dagger-Attack-","R1","L3","R2","L2"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+        // Shield: the game holds its shield in the right hand; the pack's shield set carries it on the left arm, so the set
+        // plays mirrored (the bake mirrors a clip named with Mirror: left and right swapped). Its bashes and sweeps, mirrored,
+        // sweep left to right as every one of the game's shield cuts does: Attack2, Attack3, Attack1.
+        private static readonly Set Shield=Build(new Set{Spec="shield",Idle=M("Armed-Shield-Idle"),Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+            Land="Armed-Land",Block=M("Armed-Shield-Block"),BlockHit=M("Armed-Shield-Block-GetHit1"),Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
+            AirAttack=M("Armed-Shield-Attack1"),SprintAttack=M("Armed-Shield-Attack1"),
+            Attacks=Array.ConvertAll(Names("Armed-Shield-Attack","2","3","1"),M),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1")},"Armed-Shield-Run-","Armed-Shield-Strafe-",M("Armed-Shield-Run-Forward"),true);
+        /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
+        public const string Mirror="~mirror";
+        private static string M(string clip)=>clip+Mirror;
         private static string[] Names(string prefix,params string[] parts)=>Array.ConvertAll(parts,p=>prefix+p);
-        private static Set Build(Set s,string run,string walk,string sprint)
+        private static Set Build(Set s,string run,string walk,string sprint,bool mirrored=false)
         {
+            // A mirrored run to the left is a run to the right.
             string[] dirs={"Forward","Forward-Right","Right","Backward-Right","Backward","Backward-Left","Left","Forward-Left"};
+            string Dir(int i)=>mirrored?dirs[i].Replace("Right","#").Replace("Left","Right").Replace("#","Left"):dirs[i];
             s.Locomotion=new string[NativeVisualStride.Clips];
-            for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+dirs[i];s.Locomotion[NativeVisualStride.Walks+i]=walk+dirs[i];}
+            for(int i=0;i<dirs.Length;i++){s.Locomotion[i]=run+Dir(i)+(mirrored?Mirror:"");s.Locomotion[NativeVisualStride.Walks+i]=walk+Dir(i)+(mirrored?Mirror:"");}
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
-        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:null;
+        public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:null;
 
         /// <summary>A body's memory across frames: when it left the ground and landed, and the last strike seen.</summary>
         public sealed class Memory
