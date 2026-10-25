@@ -1,3 +1,29 @@
+## 2026-10-24 — Claude: the casters play the RPG pack's own clips; guns follow the look (merged into shared)
+
+- **Branch/base:** `claude/motion-casters` from shared `f8324126`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner reports addressed:** the rifle and machine gun "pointed down each direction we look". The low ready carry showed whenever the pilot was not aiming or firing.
+- **Changes (presentation only):**
+  - Guns: shouldered on the look whenever the body's motion leaves the arms free; low only while sprinting.
+  - The legs' hips are kept under a raised upper body. Unity's center-of-mass placement had been swinging them and lifting a foot.
+  - Casters (four schools and L33t H4x): the pack's `2Hand-Staff` set, mirrored.
+    - Casts are on the upper-body layer: start fitted to the game's release (`MagicPose.Windup`), end after it.
+    - Q/E abilities play the pack's area cast, fitted to the ability's release.
+    - The staff's shaft runs along the left fist's grip.
+  - The bow and fighter sets wait for their own builds.
+  - Local tool: `pitch=T,D,deg` holds the look pitch; `devweapon=T,spec` gives the local seat developer access and switches its weapon.
+  - Bank: 186 clips, 2.00 MB. The Drive's `LocalAssets.zip` is replaced (previous kept as `LocalAssets-2026-10-24-motion-gun.zip`): 357 files, 37.61 MB of the 40 MB budget.
+  - The guns build `f8324126bfe4` succeeded and published.
+- **Checks (actual):**
+  - `--visual-rig` PASS with new cast and look checks; full CoreTests and the Unity compile: see the merge entry.
+  - Play mode (moonlit, `idlebots=3`):
+    - rifle and machine gun on the look, unaimed, at 0°, 30° up and 30° down, feet planted; low while sprinting;
+    - fire and water casters: casts, the Q ability, running, a jump.
+- **Not run:**
+  - the casters' E abilities, blocks and reactions in play;
+  - the bow and fighters (sets drafted locally, not shipped);
+  - a Windows build; multiplayer.
+- **Next:** the bow, then the fighters, then specials and kit moves, dodge ghosts, severed kills, model everywhere.
+
 ## 2026-10-24 — Claude: the guns' models play the RPG pack's own clips (merged into shared)
 
 - **Branch/base:** `claude/motion-guns` from shared `f812c8d5`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

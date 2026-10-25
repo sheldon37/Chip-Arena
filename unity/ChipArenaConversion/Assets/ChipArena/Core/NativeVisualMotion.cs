@@ -25,6 +25,13 @@ namespace ChipArena.UnityConversion
             /// apart), its recoil per shot (likewise; FireFromHit: the clip's Hit lands on the shot, else it starts there) and
             /// its reload (fitted to the reload). Null for melee.</summary>
             public string[] Aim, Fire; public string Reload; public float AimPitch=45; public bool FireFromHit;
+            /// <summary>A caster's casts: each one's start (to the release) and end (after it), cycling; its Q/E ability's
+            /// likewise. Null for the rest.</summary>
+            public string[] CastStart, CastEnd; public string AbilityStart, AbilityEnd;
+            /// <summary>The weapon in the model's left fist is a shaft (the staff): it runs along the fist's grip.</summary>
+            public bool LeftShaft;
+            /// <summary>A gun (its aim layer): the hold calibrated from its level aim, its barrel onto the aim.</summary>
+            public bool Gun=>Aim!=null;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -70,6 +77,15 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+        // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
+        // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
+        // cast likewise, on the upper body. Mirrored reactions swap sides.
+        private static readonly Set Staff=Build(new Set{Spec="staff",Idle=M("2Hand-Staff-Idle"),Jump=M("2Hand-Staff-Jump"),Flip=M("2Hand-Staff-Jump-Flip"),Fall=M("2Hand-Staff-Fall"),
+            Land=M("2Hand-Staff-Land"),Block=M("2Hand-Staff-Block"),BlockHit=M("2Hand-Staff-Block-GetHit1"),Stunned=M("2Hand-Staff-Stunned"),Roll=M("2Hand-Staff-Roll-Forward"),
+            AirAttack=M("2Hand-Staff-Air-Attack1"),SprintAttack=M("2Hand-Staff-Run-Forward-Attack1"),Attacks=Array.ConvertAll(Names("2Hand-Staff-Attack","1","2","3"),M),
+            Reactions=Array.ConvertAll(Names("2Hand-Staff-GetHit-","F1","B1","R1","L1"),M),
+            CastStart=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_start","2_start","3_start"),M),CastEnd=Array.ConvertAll(Names("2Hand-Staff-Cast-Attack","1_end","2_end","3_end"),M),
+            AbilityStart=M("2Hand-Staff-Cast-L-AOE1_start"),AbilityEnd=M("2Hand-Staff-Cast-L-AOE1_end"),LeftShaft=true},"2Hand-Staff-Run-","2Hand-Staff-Strafe-",M("2Hand-Staff-Run-Forward"),true);
         /// <summary>A clip's name suffix asking the bake for its mirror image (left and right swapped).</summary>
         public const string Mirror="~mirror";
         private static string M(string clip)=>clip+Mirror;
@@ -84,26 +100,55 @@ namespace ChipArena.UnityConversion
             s.Locomotion[NativeVisualStride.Sprint]=sprint;
             var all=new System.Collections.Generic.List<string>{s.Idle,s.Jump,s.Flip,s.Fall,s.Land,s.Block,s.BlockHit,s.Stunned,s.Roll,s.AirAttack,s.SprintAttack};
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
-            foreach(var l in new[]{s.Aim,s.Fire})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);if(s.Reload!=null&&!all.Contains(s.Reload))all.Add(s.Reload);
+            foreach(var l in new[]{s.Aim,s.Fire,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
+            foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
-            spec=="rifle"||spec=="machinegun"?Rifle:spec=="pistol"?Pistol:null;
+            spec=="rifle"||spec=="machinegun"?Rifle:spec=="pistol"?Pistol:
+            spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:null;
 
-        /// <summary>A gun's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and whether the layer is
-        /// up (Raised: aimed or reloading). False for melee sets.</summary>
+        /// <summary>A gun's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and whether
+        /// the layer is up (Raised: aimed, reloading or casting). False for melee sets.</summary>
         public struct Upper { public string A, B; public float TimeA, TimeB, Mix; public bool Raised; }
+        /// <summary>A caster's upper body: the ability's (Q/E) or the cast's start fitted to its release, its end after it at
+        /// its own pace; afterwards the end's last pose, lowered (Raised false).</summary>
+        private static bool Cast(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=new Upper{A=s.CastEnd[0],TimeA=clips.Has(s.CastEnd[0])?clips.Length(s.CastEnd[0]):0};
+            if(a.AbilityId!=null&&a.AbilityAt>a.AttackAt&&time>=a.AbilityAt)
+            {
+                float rel=a.AbilityRelease>a.AbilityAt?a.AbilityRelease:a.AbilityAt+.4f;
+                if(Phase(s.AbilityStart,s.AbilityEnd,a.AbilityAt,rel,time,clips,ref up))return true;
+            }
+            else if(a.AttackAt>-90&&time>=a.AttackAt)
+            {
+                int k=(int)Math.Abs(Math.Round(a.AttackAt*10))%s.CastStart.Length;float rel=a.AttackAt+MagicPose.Windup(MagicPose.School(a),Math.Max(.15f,a.CastRate));
+                if(Phase(s.CastStart[k],s.CastEnd[k],a.AttackAt,rel,time,clips,ref up))return true;
+            }
+            return clips.Has(up.A);
+        }
+        private static bool Phase(string start,string end,float at,float release,float time,IClips clips,ref Upper up)
+        {
+            if(!clips.Has(start)||!clips.Has(end))return false;
+            if(time<release){up=new Upper{A=start,TimeA=clips.Length(start)*Clamp01((time-at)/Math.Max(1e-3f,release-at)),Raised=true};return true;}
+            float len=clips.Length(end);up=new Upper{A=end,TimeA=Math.Min(len,time-release),Raised=time-release<len};return true;
+        }
         /// <summary>How long after a shot the gun stays up (the game's own rule: the interval and a little).</summary>
         public static float ShotHold(Actor a)=>GunRules.Valid(a.Weapon)&&GunRules.Get(a.Weapon)!=null?Math.Max(.38f,GunRules.Get(a.Weapon).Interval+.15f):.38f;
-        public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up)
+        /// <summary>`ready`: the body's own motion leaves the arms free (idle, locomotion, a jump's rise or fall, a landing): a gun
+        /// then follows the look unless sprinting (owner 2026-10-24: the low carry did not point where the pilot looks).</summary>
+        public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
         {
-            up=default;if(s.Aim==null)return false;
+            up=default;
+            if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
+            if(s.Aim==null)return false;
             if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
             {
                 float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
             }
-            float age=time-a.LastShot;bool raised=a.Aiming||age<ShotHold(a);
+            float age=time-a.LastShot;bool raised=a.Aiming||age<ShotHold(a)||ready&&s.Gun&&!a.Sprinting;
             // The pitch: level to up (positive) or down, between the grid's rows.
             float p=Math.Max(-1,Math.Min(1,a.Pitch/s.AimPitch));int b=p>=0?2:0;
             var row=s.Aim;float clipAge=0;
@@ -146,7 +191,8 @@ namespace ChipArena.UnityConversion
                 float hit=clips.Hit(set.AirAttack),len=clips.Length(set.AirAttack),impact=a.ImpactAt>a.AttackAt?a.ImpactAt:a.AttackAt+hit;
                 pick=new Pick{Clip=set.AirAttack,Time=Retime(time,a.AttackAt,impact,impact+(len-hit),hit,len),Fade=FadeIn};return true;
             }
-            if(a.Attacking(time))
+            // A caster's cast plays on the upper-body layer (Layer); its strike rules are not melee.
+            if(a.Attacking(time)&&set.CastStart==null)
             {
                 string clip=a.SprintAttack?set.SprintAttack:set.Attacks[Math.Max(0,a.Combo)%set.Attacks.Length];if(!clips.Has(clip))return false;
                 float windup=a.VisualWindup>0?a.VisualWindup:.25f,hitAt=a.SwingAt>=a.AttackAt&&a.SwingUntil>a.SwingAt?(a.SwingAt+a.SwingUntil)*.5f:a.AttackAt+windup;
