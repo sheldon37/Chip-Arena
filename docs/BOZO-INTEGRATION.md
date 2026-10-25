@@ -1268,7 +1268,12 @@ already? Cant we utilize that?"
     - **How it splits:** each skinned mesh is copied per corpse. Every vertex keeps only the bones of the piece most of its
       weight is in, so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across
       pieces go. The copies are freed with the corpse.
-    - The cut faces are open (no caps); the cut's blood covers them.
+    - **Caps (2026-10-25, `claude/visual-caps`):** each piece's cut holes are closed.
+      - Detection: an edge whose neighbour went with another piece is a cut (vertices welded by position across seams; the
+        mesh's own open edges are not cuts).
+      - Fill: the cut edges are chained into loops and fanned on the piece's own vertices, so the cap moves with it.
+      - Material: a last submesh in a copy of the body material, with the bodies' dark insides (NativeBisect's cut look) in
+        every colour, both sides, no cut-out, outline or accent glow. It dissolves with the corpse.
     - Smashed bodies and the swarm, soul and frost looks keep the voxel body.
   - **Intros (2026-10-25, `claude/model-intros`; owner: "Model everywhere, classic will be stored as backup"):** the
     entrance's pilot wears the model.

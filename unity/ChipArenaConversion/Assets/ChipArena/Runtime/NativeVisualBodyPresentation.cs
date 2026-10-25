@@ -505,10 +505,10 @@ namespace ChipArena.UnityConversion
         // so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across pieces go, as
         // do the dropped piece's (a crushed part's fragments and the stumps' blood are the kill wound's; the other half of a
         // split body is its twin's). The cut meshes go with the corpse.
-        private static void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone)=>VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned);
+        private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone)=>VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);
         // Each skinned renderer of `all` on its pieces (per visual bone of `bones`: `pieceOfBone`, -1 dropped; SeverMesh), the
-        // cut meshes added to `owned` (their owner frees them).
-        private static void VisualSever(Renderer[] all,Transform[] bones,int[] pieceOfBone,ref List<Mesh> owned)
+        // cut meshes added to `owned` (their owner frees them); with `caps`, the holes closed in the cut's material.
+        private void VisualSever(Renderer[] all,Transform[] bones,int[] pieceOfBone,ref List<Mesh> owned,bool caps=false)
         {
             var index=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)index[bones[v]]=v;
             foreach(var r in all)
@@ -516,7 +516,9 @@ namespace ChipArena.UnityConversion
                 if(!(r is SkinnedMeshRenderer skin)||skin.sharedMesh==null)continue;
                 var used=skin.bones;var piece=new int[used.Length];
                 for(int i=0;i<used.Length;i++)piece[i]=used[i]!=null&&index.TryGetValue(used[i],out int v)?pieceOfBone[v]:0;
-                var cut=SeverMesh(skin.sharedMesh,piece);if(cut==null)continue;skin.sharedMesh=cut;(owned??=new List<Mesh>()).Add(cut);
+                var cut=SeverMesh(skin.sharedMesh,piece,caps);if(cut==null)continue;skin.sharedMesh=cut;(owned??=new List<Mesh>()).Add(cut);
+                var mats=skin.sharedMaterials;
+                if(cut.subMeshCount>mats.Length&&mats.Length>0&&mats[0]!=null){var cap=VisualCapMaterial(mats[0]);System.Array.Resize(ref mats,cut.subMeshCount);for(int k=skin.sharedMaterials.Length;k<mats.Length;k++)mats[k]=cap;skin.sharedMaterials=mats;}
             }
         }
         // Per visual bone of `binding`, the game joint mapped at or above it (the pelvis for the root).
@@ -564,9 +566,20 @@ namespace ChipArena.UnityConversion
             if(!body.Root.activeSelf)body.Root.SetActive(true);
             foreach(var r in body.All){if(r==null)continue;r.GetPropertyBlock(body.Block);body.Block.SetVector(VisualEchoTint,new Vector4(BustColor.r,BustColor.g,BustColor.b,alpha));r.SetPropertyBlock(body.Block);}
         }
+        // The cut's material (a body material's copy): the bodies' dark insides (NativeBisect's cut look) in every colour, both
+        // sides, no cut-out, outline or accent glow; it keeps the shader's dissolve and hit flash. One per body material.
+        private static readonly Color CutInside=new Color(.047f,.065f,.078f);
+        private readonly Dictionary<Material,Material> capMaterials=new Dictionary<Material,Material>();
+        private Material VisualCapMaterial(Material source)
+        {
+            if(capMaterials.TryGetValue(source,out var cap))return cap;
+            cap=new Material(source){name=source.name+" (cut)"};for(int i=1;i<=9;i++)cap.SetColor("_Color_"+i,CutInside);
+            cap.SetFloat("_Cull",0);cap.SetFloat("_Cutoff",0);cap.SetFloat("_UseOutline",0);cap.SetFloat("_AccentGlow",0);
+            capMaterials[source]=cap;return cap;
+        }
         // `mesh` with each vertex kept to its heaviest piece's bones (renormalised) and only the triangles within one piece (not
-        // the crushed, -1); null when nothing is cut.
-        private static Mesh SeverMesh(Mesh mesh,int[] piece)
+        // the crushed, -1); with `caps`, a last submesh closes each piece's cut holes (SeverCaps). Null when nothing is cut.
+        private static Mesh SeverMesh(Mesh mesh,int[] piece,bool caps=false)
         {
             int n=mesh.vertexCount;var per=mesh.GetBonesPerVertex();var all=mesh.GetAllBoneWeights();if(per.Length!=n||all.Length==0)return null;
             var of=new int[n];var counts=new byte[n];var kept=new List<BoneWeight1>(all.Length);var sum=new float[24];bool any=false;
@@ -583,13 +596,46 @@ namespace ChipArena.UnityConversion
             if(!any)return null;
             var cut=Instantiate(mesh);cut.name=mesh.name+" (severed)";
             using(var c=new NativeArray<byte>(counts,Allocator.Temp))using(var w=new NativeArray<BoneWeight1>(kept.ToArray(),Allocator.Temp))cut.SetBoneWeights(c,w);
+            var keptTris=new List<int>[mesh.subMeshCount];
             for(int s=0;s<mesh.subMeshCount;s++)
             {
                 var tris=mesh.GetTriangles(s);var list=new List<int>(tris.Length);
                 for(int t=0;t+2<tris.Length;t+=3){int a=of[tris[t]];if(a>=0&&of[tris[t+1]]==a&&of[tris[t+2]]==a){list.Add(tris[t]);list.Add(tris[t+1]);list.Add(tris[t+2]);}}
-                cut.SetTriangles(list,s,false);
+                cut.SetTriangles(list,s,false);keptTris[s]=list;
             }
+            if(caps){var fill=SeverCaps(mesh,of,keptTris);if(fill.Count>0){cut.subMeshCount=mesh.subMeshCount+1;cut.SetTriangles(fill,mesh.subMeshCount,false);}}
             return cut;
+        }
+        // The cut's holes in each kept piece: its edges whose neighbour went with another piece (counted across the mesh's seams,
+        // vertices welded by position; the mesh's own open edges are not cuts), chained into loops and each filled with a fan
+        // on the piece's own vertices (they move with it).
+        private static List<int> SeverCaps(Mesh mesh,int[] of,List<int>[] kept)
+        {
+            var at=mesh.vertices;var weld=new int[at.Length];var ids=new Dictionary<(int,int,int),int>();
+            for(int i=0;i<at.Length;i++){var k=((int)Mathf.Round(at[i].x*1e4f),(int)Mathf.Round(at[i].y*1e4f),(int)Mathf.Round(at[i].z*1e4f));if(!ids.TryGetValue(k,out int w))ids[k]=w=ids.Count;weld[i]=w;}
+            long Key(int a,int b)=>a<b?(long)a<<32|(uint)b:(long)b<<32|(uint)a;
+            var everyEdge=new Dictionary<long,int>();var keptEdge=new Dictionary<long,int>();
+            for(int s=0;s<mesh.subMeshCount;s++){var t=mesh.GetTriangles(s);for(int i=0;i+2<t.Length;i+=3)for(int e=0;e<3;e++){long k=Key(weld[t[i+e]],weld[t[i+(e+1)%3]]);everyEdge.TryGetValue(k,out int c);everyEdge[k]=c+1;}}
+            foreach(var list in kept)for(int i=0;i+2<list.Count;i+=3)for(int e=0;e<3;e++){long k=Key(weld[list[i+e]],weld[list[i+(e+1)%3]]);keptEdge.TryGetValue(k,out int c);keptEdge[k]=c+1;}
+            // Each cut edge, directed as its kept triangle runs: (piece, start) to (end, its start and end vertices).
+            var next=new Dictionary<long,(int to,int a)>();
+            foreach(var list in kept)for(int i=0;i+2<list.Count;i+=3)
+            {
+                long piece=of[list[i]]+1;
+                for(int e=0;e<3;e++){int a=list[i+e],b=list[i+(e+1)%3];long k=Key(weld[a],weld[b]);if(keptEdge[k]==1&&everyEdge[k]>=2)next[piece<<32|(uint)weld[a]]=(weld[b],a);}
+            }
+            var fill=new List<int>();var used=new HashSet<long>();var loop=new List<int>();
+            foreach(var start in next.Keys)
+            {
+                if(used.Contains(start))continue;long piece=start>>32,here=start;bool closed=false;loop.Clear();
+                for(int guard=0;guard<8192;guard++)
+                {
+                    if(!next.TryGetValue(here,out var edge)||!used.Add(here))break;loop.Add(edge.a);here=piece<<32|(uint)edge.to;if(here==start){closed=true;break;}
+                }
+                if(!closed||loop.Count<3)continue;
+                for(int i=1;i+1<loop.Count;i++){fill.Add(loop[0]);fill.Add(loop[i+1]);fill.Add(loop[i]);}
+            }
+            return fill;
         }
         private static void VisualCorpseFree(VisualCorpse c){if(c.Root!=null)Destroy(c.Root);if(c.Owned!=null)foreach(var m in c.Owned)if(m!=null)Destroy(m);c.Owned=null;}
         // The authored death scenes (NativeSceneMotion.cs SourceDeathScene) move the victim's 22 joints from where they were at

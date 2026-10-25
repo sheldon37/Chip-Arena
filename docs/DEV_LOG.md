@@ -1,3 +1,22 @@
+## 2026-10-25 — Claude: the model's cut faces are capped (merged into shared)
+
+- **Branch/base:** `claude/visual-caps` from shared `e8ab143b`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `SeverCaps` finds each kept piece's cut holes: edges whose neighbour went with another piece, welded by position, the mesh's own open edges excluded.
+  - It chains them into loops and fans them on the piece's own vertices, in a last submesh.
+  - `VisualCapMaterial` copies the body material in the dark cut-inside colour, both sides, no cut-out, outline or glow; it keeps the dissolve.
+  - Only corpses are capped; the broadcast bust is not.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS, exit 0 (LF checkout of the docs commit, code `a5c31579`), with a new cap check.
+  - The live ghosts build `e8ab143be859` succeeded and published.
+  - Unity compile: PASS.
+  - Play mode (moonlit): a greatsword bot's lethal blow on the local pilot. The severed thighs' tops read closed and dark, with no see-through holes.
+- **Not run:**
+  - the time a cut takes on a slow machine (the caps add a weld-and-loop pass per mesh at death);
+  - very ragged cuts (a fan suits the joints' near-convex rings);
+  - a Windows build; multiplayer.
+- **Next:** the owner's bug pass on the model builds.
+
 ## 2026-10-25 — Claude: live ghosts are the model (merged into shared)
 
 - **Branch/base:** `claude/model-ghosts` from shared `20866604`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
