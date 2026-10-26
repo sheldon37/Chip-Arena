@@ -954,8 +954,8 @@ frame (`VisualBodyLook`), which writes them per renderer only while a spawn-in r
   - The hologram has no depth pre-pass (the voxel one's single layer), so overlapping cloth layers can stack slightly
     brighter in the slice.
   - The dither cells are world-fixed, as the voxel body's, so a floating body's dither crawls as it bobs.
-  - Still skipped on a visual body (`!visual`): Body Chips dressing, living wounds, the parry flash, the Cyber Lord's
-    hardlight pieces, hats.
+  - Still skipped on a visual body (`!visual`) at the time: Body Chips dressing, living wounds, the parry flash, the Cyber
+    Lord's hardlight pieces, hats. All of them draw on the model since 2026-10-25 (below).
 
 **The chest core and the right-wrist chip device (`claude/bozo-core`).** Our own pieces, kept from the stopped base
 (docs/CHARACTER-LOWPOLY.md section e), built in code (`Core/NativePilotGear.cs`, SourceLit sections; models
@@ -1362,7 +1362,20 @@ already? Cant we utilize that?"
     presentation has drawn it) now wears its visual body too; it had stayed voxel (2026-10-25, `claude/model-revive-corpse`).
 
 **Not yet (step 4 continues):**
-- **Owner's concept pieces:** the mask and visor.
+- **The owner's concept pieces: the tech mask and the glowing visor (2026-10-25, `claude/model-cyberlord`):**
+  - Our own pieces, built in code (`Core/NativePilotGear.cs` `Mask`, `Visor`), so nothing licensed is committed.
+  - **Fit:** measured on the baked head in its head bone's frame (the local tool's `bozo-face.request`).
+    - The mask covers the nose, mouth and chin about 5 mm off the face. Its lower edge follows the jaw and curls under
+      the chin, and its top tucks under the visor. Accent vents sit on the cheeks, a strip runs down the chin, and straps
+      go back into the hair.
+    - The visor is a band of accent glass over the eyes (4.2 cm with its frame), wrapping in front of the hair to pods at
+      the temples.
+  - **Who wears it:** the Prototype body skin on the model. The Standard keeps BoZo's face as authored (owner,
+    2026-10-22). One rule (`NativePilotGear.FaceGear`) sets this, so it can be flipped. The Locker's card texts still
+    describe the voxel skins.
+  - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
+  - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
+    and ghosts.
 - **Done on the model (2026-10-25, `claude/model-dressing`; owner: "Lets work on all these"):**
   - **Joint frames:** each game joint's frame is captured on its mapped model bone at the first bind (`VisualJointFrame`),
     so what rides a joint follows the model through the pack's clips.
@@ -1372,7 +1385,9 @@ already? Cant we utilize that?"
   - **Body chips, the spell charge orb and the hand motes** now draw for model pilots (they had been skipped).
   - **Living wounds' blood and chips** spray from the hit point on the model.
   - **The parry flash:** the model's own silhouette, snapshotted each frame of the flash.
-- **Not yet:** the Cyber Lord's pieces on the visual body.
+- **The Cyber Lord's hardlight pieces (2026-10-25, `claude/model-cyberlord`)** ride the model's joints, both the aura and
+  the gauntlets. The joint frames are now taken after the rig's hands go onto the model's wrists, so the gauntlets and
+  hand chips close round the model's hands.
 - **Pattern and decal overlays** for other outfits; normal maps.
 - **The draft (2026-10-25, `claude/model-draft`):** the drafting pilot wears the model in the cyber corridor.
   - `VisualDraftPose` binds the stage's pose (hat on the model's head, no weapon) and puts the model's hips on the pose's
@@ -1515,7 +1530,7 @@ ours to author.
 | Cargo joggers with straps | `Bottom_BeltedPants` (or `Bottom_BaggyPants`) | knee plates, belt pouches, glow strips |
 | High-top sneakers | `Feet_AthleticMidTop` | glow strips |
 | Fingerless gloves | `Gloves_FingerlessGloves` | forearm guards with glow |
-| Tech mask with glowing visor | none | mask (LowerFace) and visor (UpperFace), with variants |
+| Tech mask with glowing visor | none | built in code (2026-10-25), worn with the Prototype body skin; variants open |
 | Glow in the player colour | none: BoZo's toon shader has no emission | an emission mask and player colour in our ported shader (step 4) |
 | Hood up, cap, headphones, antenna | `Hat_BallCap`; `HeadAcc_AlienAttena` is a cartoon antenna | hood-up, headphones, tech antenna |
 | Chest core, right-wrist device | none | kept from the stopped base |
