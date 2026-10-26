@@ -334,6 +334,12 @@ namespace ChipArena.UnityConversion
                 sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(g,g,g,1),null,flash);
             }
             if(!first)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);
+            // The back emblem on the chest's model bone, glowing as the core does.
+            if(!first)
+            {
+                var of=body.Binding.Rig.Of;int cv=CapturedRig.Chest<of.Length?of[CapturedRig.Chest]:-1;var chest=cv>=0&&cv<body.Binding.Bones.Length?body.Binding.Bones[cv]:null;
+                if(chest!=null){gearMatrix=chest.localToWorldMatrix*EmblemFrame;var e=NativePilotGear.CoreGlow(time,1,time-body.LitAt,a.Id);sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(e,e,e,1),null,flash);}
+            }
             if(body.GearDevice==null)return;
             ChipDeviceLook(a.Id,out float look,out float plant,out int rgb,out int key);
             if(plant>=NativeDraftPlant.CarryEnd&&key!=body.SeatKey)
@@ -366,13 +372,19 @@ namespace ChipArena.UnityConversion
             world=body.GearDevice.TransformPoint(new Vector3(r+NativePilotGear.HousingTop+NativePilotGear.FrameHeight,(NativePilotGear.BayNear+NativePilotGear.BayFar)*.5f,0));return true;
         }
         private Matrix4x4 GearBoneOf(int bone)=>gearMatrix;
+        // The back emblem's frame on the chest bone (NativePilotGear: out of the back along the bone's +y, tilted with the cloth;
+        // up along its -x).
+        private static readonly Matrix4x4 EmblemFrame=Matrix4x4.TRS(new Vector3(NativePilotGear.EmblemDown,NativePilotGear.EmblemOut,0),
+            Quaternion.LookRotation(new Vector3(-NativePilotGear.EmblemSlope,1,0).normalized,new Vector3(-1,-NativePilotGear.EmblemSlope,0).normalized),Vector3.one);
         // The model's head bone (the game's head joint's).
         private static Transform VisualHeadOf(VisualBody body){var of=body.Binding.Rig.Of;int v=CapturedRig.Head<of.Length?of[CapturedRig.Head]:-1;return v>=0&&v<body.Binding.Bones.Length?body.Binding.Bones[v]:null;}
         // The face gear (the concept's mask and visor; Core NativePilotGear) on a model's head bone, for a pilot whose body skin
         // wears it: the live body (VisualGear), the draft's pilot and a whole corpse.
+        // The body skin that wears it on the model: the Prototype (the Standard keeps the model's face as authored, owner 2026-10-22).
+        private static bool WearsFaceGear(int bodySkin)=>bodySkin==NativeBodySkins.PrototypeIndex;
         private void VisualFaceGear(Transform head,int id,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
         {
-            if(head==null||!NativePilotGear.FaceGear(BodySkin(id))||!sourceModels.PilotFace())return;
+            if(head==null||!WearsFaceGear(BodySkin(id))||!sourceModels.PilotFace())return;
             gearBone??=GearBoneOf;gearMatrix=head.localToWorldMatrix;var accent=AccentTint(accentColor);var lit=new Vector4(1,1,1,1);
             sourceModels.Queue(NativeSourceModels.GearMask,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
             sourceModels.Queue(NativeSourceModels.GearVisor,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);

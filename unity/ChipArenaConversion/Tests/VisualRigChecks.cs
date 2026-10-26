@@ -1168,7 +1168,11 @@ namespace ChipArena.UnityConversion
                 if(name=="visor")Check(minY<=.044f&&maxY>=.08f,"the visor covers the eyes' band (y .044 to .080)");
             }
             Check(NativePilotGear.MaskSurface(0,.03f)>.154f&&NativePilotGear.MaskSurface(0,-.03f)>.125f,"the mask clears the nose tip and the chin");
-            Check(NativePilotGear.FaceGear(NativeBodySkins.PrototypeIndex)&&!NativePilotGear.FaceGear(NativeBodySkins.StandardIndex)&&!NativePilotGear.FaceGear(NativeBodySkins.SheldonIndex),"the Prototype body skin wears the face gear; the Standard keeps the authored face");
+            Check(body.Contains("private static bool WearsFaceGear(int bodySkin)=>bodySkin==NativeBodySkins.PrototypeIndex;")&&body.Contains("if(head==null||!WearsFaceGear(BodySkin(id))||!sourceModels.PilotFace())return;"),"the Prototype body skin wears the face gear; the Standard keeps the authored face");
+            // The back emblem: a ring, two X eyes and a smile facing out of the back, inside its radius, on the chest bone.
+            var emblem=Faces(NativePilotGear.Emblem());float reach=0;bool outward=true;foreach(var (c,n) in emblem){reach=Math.Max(reach,new Vector2(c.X,c.Y).Length());outward&=n.Z>.99f;}
+            Check(emblem.Count>=2*(28+4+10)&&outward&&reach<=NativePilotGear.EmblemRadius,"the back emblem's strokes face out of the back, inside its radius ("+emblem.Count+" faces)");
+            Check(models.Contains("GearModel(GearEmblem,NativePilotGear.Emblem(),CapturedRig.Chest);")&&body.Contains("gearMatrix=chest.localToWorldMatrix*EmblemFrame;"),"every model pilot wears the back emblem on its chest bone");
             Check(models.Contains("GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);")&&body.Contains("if(!first)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);")&&body.Contains("VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);")&&body.Contains("if(c.Look==0&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)"),"the face gear rides the model's head bone: the live body, the draft's pilot and a whole corpse");
             // The runtime: the anchors by name, the device's look read from the chip-select slot, the models on one SourceLit material,
             // and VisualGear building only values.

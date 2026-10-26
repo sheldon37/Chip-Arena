@@ -135,7 +135,7 @@ namespace ChipArena.UnityConversion
 
         // ---- the face gear ----
         // The owner's concept pieces for the model's face (docs/BOZO-INTEGRATION.md "Default outfit"): a lower-face tech mask and a
-        // glowing visor band over the eyes, in the BoZo head bone's frame (source axes: y up, z out of the face). Fitted to the
+        // glowing visor band over the eyes, in the model's head bone's frame (source axes: y up, z out of the face). Fitted to the
         // baked head (Head_AnimeYoung with its lashes, brows and front hair: the eyes at y .044-.080 with the lashes reaching
         // z .116, the nose tip at y .03, z .151, the chin at y -.04, the bangs to y .07, hair over the temples from |x| .06):
         // grids of points (columns at +-|x|, rows bottom to top) about 5 mm off the face, the shells FaceThick deep.
@@ -172,8 +172,6 @@ namespace ChipArena.UnityConversion
             .140f,.136f,.129f,.123f,.116f,.108f,.099f,
             .139f,.135f,.128f,.122f,.115f,.107f,.098f};
         private static readonly WeaponPaint VisorGlass=WeaponPaint.Accent(1.3f,.5f);
-        /// <summary>Which body skin wears the face gear on the model: the Prototype (the Standard keeps BoZo's face as authored).</summary>
-        public static bool FaceGear(int bodySkin)=>bodySkin==NativeBodySkins.PrototypeIndex;
         /// <summary>The lower-face mask: a dark shell over the nose, mouth and chin, three vents on each cheek and a strip down the
         /// chin in the accent, and a strap from each side back into the hair.</summary>
         public static WeaponMesh Mask()
@@ -227,6 +225,36 @@ namespace ChipArena.UnityConversion
             float At(float[] g,int r)=>g[r*n+c]+(g[r*n+c+1]-g[r*n+c])*u;
             int rows=MaskY.Length/n,k=0;while(k+2<rows&&y>At(MaskY,k+1))k++;
             float y0=At(MaskY,k),y1=At(MaskY,k+1),v=MathUtil.Clamp((y-y0)/Math.Max(1e-5f,y1-y0),0,1);return At(MaskZ,k)+(At(MaskZ,k+1)-At(MaskZ,k))*v;
+        }
+
+        // ---- the back emblem ----
+        // The concept sheet's glowing emblem on the back (a smiley with X eyes; every model pilot wears it, as the concept's
+        // default outfit does), our own: flat strokes in the accent, in its own
+        // frame (x across, y up, z out of the back) and placed on the chest's model bone (spine_05) by EmblemAt/EmblemTurn,
+        // measured on the baked hoodie: the upper back 7 cm below the bone, about 4 mm off the cloth, tilted with it.
+        /// <summary>The emblem's radius, its strokes' width, and its centre and tilt on the chest bone (the bone's frame: x down
+        /// the spine, y out of the back, z across).</summary>
+        public const float EmblemRadius=.042f,EmblemStroke=.0045f,EmblemDown=.07f,EmblemOut=.1075f,EmblemSlope=.056f;
+        private static readonly WeaponPaint EmblemGlow=WeaponPaint.Accent(2.0f,.4f);
+        /// <summary>The emblem: a ring, two X eyes and a smile.</summary>
+        public static WeaponMesh Emblem()
+        {
+            var mesh=new WeaponMesh{Spec="pilot-emblem"};var s=new WeaponSculpt(mesh,0);s.Into(0);float w=EmblemStroke*.5f;
+            // A stroke from a to b in the emblem's plane, facing +z.
+            void Stroke(Vector2 a,Vector2 b){var d=Vector2.Normalize(b-a);var n=new Vector2(-d.Y,d.X)*w;var c=(a+b)*.5f;var u=(b-a)*.5f;s.Decal(EmblemGlow,new Vector3(c,0),new Vector3(u,0),new Vector3(n,0),.0008f);}
+            void Arc(Vector2 c,float r,float from,float to,int segments)
+            {
+                for(int k=0;k<segments;k++)
+                {
+                    float a0=from+(to-from)*k/segments,a1=from+(to-from)*(k+1)/segments;
+                    Stroke(c+new Vector2((float)Math.Cos(a0),(float)Math.Sin(a0))*r,c+new Vector2((float)Math.Cos(a1),(float)Math.Sin(a1))*r);
+                }
+            }
+            Arc(Vector2.Zero,EmblemRadius-w,0,(float)Math.PI*2,28);
+            float e=.0075f;
+            for(int side=-1;side<=1;side+=2){var c=new Vector2(side*.0155f,.011f);Stroke(c+new Vector2(-e,-e),c+new Vector2(e,e));Stroke(c+new Vector2(-e,e),c+new Vector2(e,-e));}
+            Arc(new Vector2(0,.006f),.024f,(float)(Math.PI*1.18),(float)(Math.PI*1.82),10);
+            return mesh;
         }
 
         // ---- states ----
