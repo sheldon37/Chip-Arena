@@ -19,6 +19,9 @@ namespace ChipArena.UnityConversion
         public string cameraMode=NativeCameraModes.Default;public bool shoulderLeft;
         // The Locker's per-weapon skins (NativeWeaponSkins map; absent in older saves: every weapon Standard).
         public string weaponSkins="";
+        // The model's outfit (Core/NativeLook.cs): kept here and shown on this client's own pilot until the look contract
+        // carries it to the seat (Astra).
+        public string look="";
         public bool developmentConsole;
         // The headwear and backdrop colours picked in the Locker (NativeHatLooks: "" Auto, else #rrggbb; absent in older saves: Auto).
         public string hatColor="",backColor="";
@@ -171,7 +174,7 @@ namespace ChipArena.UnityConversion
             // A bound Expedition session's world pieces (NativeExpeditionWorldPresentation.cs): one mesh drawn for this frame.
             // Settings · Player model: Classic draws the voxel pilot body in place of the new one, set before any path draws a
             // pilot (previews, replays, the draft and the intros return before the arena renders).
-            NativeUiBlur.Frame();ExpeditionWorldFrame();if(cameraView==null)return;if(SplitLocalLoading){viewModelCamera.enabled=false;return;}cinematic.BeginFrame();presentation.ClassicBodies=prefs.playerModel=="Classic";if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();ExpeditionPlantAudio();nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
+            NativeUiBlur.Frame();ExpeditionWorldFrame();if(cameraView==null)return;if(SplitLocalLoading){viewModelCamera.enabled=false;return;}cinematic.BeginFrame();presentation.ClassicBodies=prefs.playerModel=="Classic";presentation.LocalLook=prefs.look??"";presentation.VisualEye=cameraView;if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();ExpeditionPlantAudio();nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();

@@ -26,14 +26,14 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,ContentWeapon> lockerIntroWeapon=new Dictionary<string,ContentWeapon>();private NativeAccess lockerAccess;private int lockerPoses=NativeLobbyPoses.Count(false);private string lockerAbilitySpec,lockerNameRaw,lockerName="Pilot";
         private readonly List<NativeLocker.AbilityOption> lockerQ=new List<NativeLocker.AbilityOption>(4),lockerE=new List<NativeLocker.AbilityOption>(4);
         private readonly Dictionary<(int,string),string> lockerText=new Dictionary<(int,string),string>();private GUIStyle lockerField,lockerHex;private string lockerKillsLabel="",lockerSkinsLabel="",lockerAbilityHint;
-        private struct LockerLook{public string Name,Weapon,Pose,Body,Accent,Hat,Kill,Intro,IntroText;public bool Override;public string Back,Skins,HatColor,BackColor;}
+        private struct LockerLook{public string Name,Weapon,Pose,Body,Accent,Hat,Kill,Intro,IntroText;public bool Override;public string Back,Skins,HatColor,BackColor,Look;}
         private LockerLook lockerBase;
         private static readonly float[] LkGlowAt={0f,.6f,1f},LkGlowA={1f,.25f,0f},LkRingAt={0f,.9f,.955f,1f},LkRingA={0f,0f,1f,0f},LkDiscAt={0f,.96f,1f},LkDiscA={1f,1f,0f};
 
         // ---- Baseline, Save, Revert, leaving -------------------------------------------------------------------------
-        private LockerLook LockerNow()=>new LockerLook{Name=prefs.name,Weapon=prefs.weapon,Pose=prefs.lobbyPose,Body=prefs.bodyColor,Accent=prefs.accentColor,Hat=prefs.hat,Kill=prefs.killEffect,Intro=prefs.intro,IntroText=prefs.introText,Override=prefs.overrideIntro,Skins=prefs.weaponSkins,Back=prefs.lobbyBack,HatColor=prefs.hatColor,BackColor=prefs.backColor};
+        private LockerLook LockerNow()=>new LockerLook{Name=prefs.name,Weapon=prefs.weapon,Pose=prefs.lobbyPose,Body=prefs.bodyColor,Accent=prefs.accentColor,Hat=prefs.hat,Kill=prefs.killEffect,Intro=prefs.intro,IntroText=prefs.introText,Override=prefs.overrideIntro,Skins=prefs.weaponSkins,Back=prefs.lobbyBack,HatColor=prefs.hatColor,BackColor=prefs.backColor,Look=prefs.look};
         private bool LockerDirty()
-        {var b=lockerBase;return b.Name!=prefs.name||b.Weapon!=prefs.weapon||b.Pose!=prefs.lobbyPose||b.Body!=prefs.bodyColor||b.Accent!=prefs.accentColor||b.Hat!=prefs.hat||b.Kill!=prefs.killEffect||b.Intro!=prefs.intro||b.IntroText!=prefs.introText||b.Override!=prefs.overrideIntro||b.Back!=prefs.lobbyBack||b.Skins!=prefs.weaponSkins||b.HatColor!=prefs.hatColor||b.BackColor!=prefs.backColor;}
+        {var b=lockerBase;return b.Name!=prefs.name||b.Weapon!=prefs.weapon||b.Pose!=prefs.lobbyPose||b.Body!=prefs.bodyColor||b.Accent!=prefs.accentColor||b.Hat!=prefs.hat||b.Kill!=prefs.killEffect||b.Intro!=prefs.intro||b.IntroText!=prefs.introText||b.Override!=prefs.overrideIntro||b.Back!=prefs.lobbyBack||b.Skins!=prefs.weaponSkins||b.HatColor!=prefs.hatColor||b.BackColor!=prefs.backColor||b.Look!=prefs.look;}
         // An account profile loaded while the Locker is open becomes its baseline (it is the saved look).
         private void LockerRebase(){if(menuScreen==MenuScreen.Customize)lockerBase=LockerNow();}
         // Go(Customize) from another screen (Preview Intro's way back keeps the session).
@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         private void LockerRevert()
         {
             var b=lockerBase;bool weapon=prefs.weapon!=b.Weapon;
-            prefs.name=b.Name;prefs.weapon=b.Weapon;prefs.lobbyPose=b.Pose;prefs.bodyColor=b.Body;prefs.accentColor=b.Accent;prefs.hat=b.Hat;prefs.killEffect=b.Kill;prefs.intro=b.Intro;prefs.introText=b.IntroText;prefs.overrideIntro=b.Override;prefs.lobbyBack=b.Back;prefs.weaponSkins=b.Skins;prefs.hatColor=b.HatColor;prefs.backColor=b.BackColor;
+            prefs.name=b.Name;prefs.weapon=b.Weapon;prefs.lobbyPose=b.Pose;prefs.bodyColor=b.Body;prefs.accentColor=b.Accent;prefs.hat=b.Hat;prefs.killEffect=b.Kill;prefs.intro=b.Intro;prefs.introText=b.IntroText;prefs.overrideIntro=b.Override;prefs.lobbyBack=b.Back;prefs.weaponSkins=b.Skins;prefs.hatColor=b.HatColor;prefs.backColor=b.BackColor;prefs.look=b.Look;
             GUIUtility.keyboardControl=0;
             // A host's weapon pick re-broadcasts its seat (SetWeapon); putting the weapon back does the same.
             if(weapon&&Hosting&&arena==null)LobbyBroadcast();
@@ -208,7 +208,7 @@ namespace ChipArena.UnityConversion
             {
                 case NativeLocker.Appearance:
                     LkHead(true);prefs.name=GUILayout.TextField(prefs.name??"",20,lockerField);LkHead();LkReserve(LkBodyRowH());
-                    LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");LkHead();LkSwatches(ref prefs.accentColor,"#70e1d0");
+                    LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");LkHead();LkSwatches(ref prefs.accentColor,"#70e1d0");if(LkOnModel){LkHead();LkReserve(LkOutfitH());}
                     LkHead();LkReserve(LkGrid(lockerW,lockerHats.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());LkHead();LkReserve(LkGrid(lockerW,lockerPoses,LkRowMin,LkRowH));
                     LkHead();LkReserve(LkGrid(lockerW,NativePortraitBacks.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());break;
                 case NativeLocker.KillEffects:LkHead(true);LkReserve(LkGrid(lockerW,lockerKills.Count,LkItemMin,LkItemH));break;
@@ -242,6 +242,8 @@ namespace ChipArena.UnityConversion
                     LkHeading(lockerSlots[k++],"BODY SKIN","Hover a body to try it on");LkBodyRow(lockerSlots[k++]);
                     LkHeading(lockerSlots[k++],"BODY COLOUR","Hover a swatch to try it");LkSwatchDraw(lockerSlots[k++],true);
                     LkHeading(lockerSlots[k++],"ACCENT COLOUR","Trims, visor and glow");LkSwatchDraw(lockerSlots[k++],false);
+                    // The model's outfit (Runtime/NativeLockerOutfitUI.cs), while the model draws.
+                    if(LkOnModel){LkHeading(lockerSlots[k++],"OUTFIT","Your pilot's clothes on the model");LkOutfit(lockerSlots[k++]);}
                     LkHeading(lockerSlots[k++],"HEADWEAR",null);var grid=lockerSlots[k++];Color body=LkColor(prefs.bodyColor,0xe5e7eb),accent=LkColor(prefs.accentColor,0x70e1d0);
                     int hatTint=NativeHatLooks.Rgb(lockerHatColor??prefs.hatColor);
                     for(int i=0;i<lockerHats.Count;i++)

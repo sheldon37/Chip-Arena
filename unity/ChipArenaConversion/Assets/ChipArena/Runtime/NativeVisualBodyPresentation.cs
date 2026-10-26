@@ -31,6 +31,10 @@ namespace ChipArena.UnityConversion
             // the body last appeared or finished forming (the core's flare), the last seated chip (its plant's key, when, colour)
             // and the pilot's accent (linear, the bay's and lens's rest colour).
             public Transform GearCore, GearDevice; public float GearRadius, LitAt=float.NaN, SeatAt=float.NaN; public int SeatKey=int.MinValue; public bool Building;
+            // The outfit it wears (Core/NativeLook.cs; VisualDress) and its back emblem's frame on the chest bone for that top.
+            public string Look=""; public Matrix4x4 Emblem=EmblemFrame;
+            // Its hair and cloth simulation (NativeVisualCloth: the local install's; null without one) and whether it runs (-1 unset).
+            public object ClothSim; public int ClothOn=-1;
             public Color ChipColor=Color.cyan, AccentLinear=Color.cyan;
             public readonly Vector3[] HandPosition=new Vector3[2]; public readonly Quaternion[] HandRotation=new Quaternion[2];
             // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
@@ -52,6 +56,12 @@ namespace ChipArena.UnityConversion
         public const float DissolveGlow=3f;
         /// <summary>Settings · Player model is Classic (set each frame from the preferences): every pilot draws its voxel body.</summary>
         public bool ClassicBodies;
+        // This client's own outfit (prefs.look, set every frame): its pilot's bodies wear it; every other pilot the default
+        // until the look contract carries a seat's (Astra).
+        public string LocalLook="";
+        // The arena's camera this frame (the cloth's distance hold).
+        public Camera VisualEye;
+        private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId?LocalLook??"":"";
         /// <summary>Whether this install draws the visual body at all (its bake found, not turned off at launch): Settings shows the
         /// Player model choice only then.</summary>
         public static bool VisualBodyInstalled=>VisualBodiesOn;
@@ -126,7 +136,9 @@ namespace ChipArena.UnityConversion
         // The visual body `rig` wears (made on first use for pilot `id`'s outfit); null without a bake.
         private VisualBody VisualBodyOf(CapturedAnimation.Player rig,int id)
         {
-            if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null){body=CreateVisualBody(rig,id);if(body==null)return null;visualBodies[rig]=body;}
+            // A changed outfit makes the body again in it (the Locker's picks apply in the lobby).
+            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal)){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}
+            if(body==null||body.Root==null){body=CreateVisualBody(rig,id);if(body==null)return null;visualBodies[rig]=body;}
             return body;
         }
         // The body bound to `pose` (feet planted when `planted`, the airborne solve when `airborne`), its weapon in hand and the
@@ -135,7 +147,7 @@ namespace ChipArena.UnityConversion
         {
             Vector3 at=rig.Root.transform.position;
             // A fresh solve after a gap (death, first person, a hidden frame), a teleport or a weapon change.
-            if(body.PosedFrame<Time.frameCount-1||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4)body.Binding.State.Forget();
+            if(body.PosedFrame<Time.frameCount-1||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4){body.Binding.State.Forget();if(body.ClothSim!=null)NativeVisualCloth.Reset?.Invoke(body.ClothSim);}
             body.PosedFrame=Time.frameCount;body.Spec=a.SourceSpec;body.At=at;
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
@@ -226,12 +238,15 @@ namespace ChipArena.UnityConversion
             var skeleton=root.transform.Find("VisualSkeleton");
             if(skeleton==null){Destroy(root);visualBodyState=-1;Debug.LogWarning("Visual body: "+VisualBodyResource+" has no VisualSkeleton; pilots draw voxel.");return null;}
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock()};
-            body.All=root.GetComponentsInChildren<Renderer>(true);body.Plain=new Material[body.All.Length][];
+            // Dressed in the pilot's outfit: only the worn pieces' renderers from here on.
+            body.Look=VisualLookOf(id);VisualDress(root,body.Look);
+            body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];
             foreach(var t in root.GetComponentsInChildren<Transform>(true))
             {
                 if(t.name=="VisualGearCore")body.GearCore=t;else if(t.name=="VisualGearDevice")body.GearDevice=t;
                 else if(t.name=="VisualGearDeviceRim")body.GearRadius=t.localPosition.magnitude;
             }
+            VisualAnchorsFor(body);
             if(body.GearDevice!=null&&!(body.GearRadius>.01f))body.GearDevice=null;
             body.Weapons=VisualWeaponsOf(root.transform);
             for(int k=0;k<body.All.Length;k++)
@@ -242,9 +257,12 @@ namespace ChipArena.UnityConversion
                 body.Block.SetFloat(CutoffId,m.HasProperty(CutoffId)?m.GetFloat(CutoffId):.5f);r.SetPropertyBlock(body.Block);
             }
             var cloth=new List<Renderer>();
-            foreach(var r in root.GetComponentsInChildren<Renderer>(true))foreach(var slot in ClothSlots)if(r.name.StartsWith(slot,StringComparison.Ordinal)){cloth.Add(r);break;}
+            foreach(var r in body.All)foreach(var slot in ClothSlots)if(r.name.StartsWith(slot,StringComparison.Ordinal)){cloth.Add(r);break;}
             body.Cloth=cloth.ToArray();
             if(id!=ViewBodyId)body.Stride=VisualStrideOf(root.transform,skeleton);
+            // Its hair and cloth, when the local install simulates them (never on the first-person body).
+            if(id!=ViewBodyId&&NativeVisualCloth.Attach!=null)
+            {try{body.ClothSim=NativeVisualCloth.Attach(root,skeleton);}catch(Exception e){NativeVisualCloth.Attach=null;Debug.LogWarning("Visual body: the cloth simulation failed and is off: "+e.Message);}}
             return body;
         }
 
@@ -338,7 +356,7 @@ namespace ChipArena.UnityConversion
             if(!first)
             {
                 var of=body.Binding.Rig.Of;int cv=CapturedRig.Chest<of.Length?of[CapturedRig.Chest]:-1;var chest=cv>=0&&cv<body.Binding.Bones.Length?body.Binding.Bones[cv]:null;
-                if(chest!=null){gearMatrix=chest.localToWorldMatrix*EmblemFrame;var e=NativePilotGear.CoreGlow(time,1,time-body.LitAt,a.Id);sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(e,e,e,1),null,flash);}
+                if(chest!=null){gearMatrix=chest.localToWorldMatrix*body.Emblem;var e=NativePilotGear.CoreGlow(time,1,time-body.LitAt,a.Id);sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(e,e,e,1),null,flash);}
             }
             if(body.GearDevice==null)return;
             ChipDeviceLook(a.Id,out float look,out float plant,out int rgb,out int key);
@@ -349,9 +367,9 @@ namespace ChipArena.UnityConversion
             }
             var dev=NativePilotGear.Device(look,plant,float.IsNaN(body.SeatAt)?float.NaN:time-body.SeatAt,time);
             var m=body.GearDevice.localToWorldMatrix;float r=Mathf.Round(Mathf.Clamp(body.GearRadius,.02f,.08f)*1000)/1000;
-            gearMatrix=m;sourceModels.Queue(NativeSourceModels.GearDevice,m,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(dev.Strips,dev.Strips,dev.Strips,1),null,flash);
+            gearMatrix=m;sourceModels.Queue(sourceModels.GearDeviceFor(body.GearRadius),m,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(dev.Strips,dev.Strips,dev.Strips,1),null,flash);
             // The bay shows only while the lid is up; the gear's source frame mirrors into Unity's (x toward the back of the forearm).
-            if(dev.Lid>.02f){var bay=(dev.BayChip?body.ChipColor:body.AccentLinear)*dev.Bay;sourceModels.Queue(NativeSourceModels.GearBay,m,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(bay.r,bay.g,bay.b,1),null,flash);}
+            if(dev.Lid>.02f){var bay=(dev.BayChip?body.ChipColor:body.AccentLinear)*dev.Bay;sourceModels.Queue(sourceModels.GearBayFor(body.GearRadius),m,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(bay.r,bay.g,bay.b,1),null,flash);}
             var h=NativePilotGear.Hinge(r);var lens=(dev.LensChip?body.ChipColor:body.AccentLinear)*dev.Lens;
             gearMatrix=m*Matrix4x4.TRS(new Vector3(-h.X,h.Y,h.Z),Quaternion.AngleAxis(dev.Lid*NativePilotGear.LidOpenDegrees,Vector3.forward),Vector3.one);
             sourceModels.Queue(NativeSourceModels.GearLid,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(lens.r,lens.g,lens.b,1),null,flash);
@@ -374,8 +392,68 @@ namespace ChipArena.UnityConversion
         private Matrix4x4 GearBoneOf(int bone)=>gearMatrix;
         // The back emblem's frame on the chest bone (NativePilotGear: out of the back along the bone's +y, tilted with the cloth;
         // up along its -x).
-        private static readonly Matrix4x4 EmblemFrame=Matrix4x4.TRS(new Vector3(NativePilotGear.EmblemDown,NativePilotGear.EmblemOut,0),
-            Quaternion.LookRotation(new Vector3(-NativePilotGear.EmblemSlope,1,0).normalized,new Vector3(-1,-NativePilotGear.EmblemSlope,0).normalized),Vector3.one);
+        private static readonly Matrix4x4 EmblemFrame=EmblemFrameAt(NativePilotGear.EmblemOut,NativePilotGear.EmblemSlope);
+        private static Matrix4x4 EmblemFrameAt(float outward,float slope)=>Matrix4x4.TRS(new Vector3(NativePilotGear.EmblemDown,outward,0),
+            Quaternion.LookRotation(new Vector3(-slope,1,0).normalized,new Vector3(-1,-slope,0).normalized),Vector3.one);
+
+        // ---- the wardrobe (owner 2026-10-26: "integrate switching the clothes on the model") ----
+        // The bake's look data (Resources/ChipArenaVisualLook, written with the bake by the local tool): each wardrobe piece's
+        // slot and id (Core/NativeLook.cs), its renderers, the body parts it covers and the tags it sets; the tags the always-worn
+        // pieces set (the head's); the body parts' renderers; the tag shapes (a piece's blendshape a worn piece's tag pulls in, as boots tuck trousers); and the gear's
+        // anchors measured per top (and hands, for the wrist device's band): the core's and device's local frames, the band's
+        // radius, the back emblem's distance and slope. Without it (an older bake) a body is the bake as it is.
+        [Serializable] public sealed class LookPiece{public string slot,id;public string[] renderers,covers,tags;}
+        [Serializable] public sealed class LookPart{public string renderer,part;}
+        [Serializable] public sealed class LookShape{public string renderer,tag;public int shape;}
+        [Serializable] public sealed class LookAnchor{public string upper,hands;public float[] core,device,emblem;public float radius;}
+        [Serializable] public sealed class LookData{public LookPiece[] pieces;public LookPart[] body;public LookShape[] shapes;public LookAnchor[] anchors;public string[] always;}
+        public const string VisualLookResource="ChipArenaVisualLook";
+        private static LookData lookData;private static int lookState; // 0 unread, 1 read, -1 none
+        private static LookData VisualLookData()
+        {
+            if(lookState==0)
+            {
+                var text=Resources.Load<TextAsset>(VisualLookResource);
+                try{lookData=text!=null?JsonUtility.FromJson<LookData>(text.text):null;}catch(ArgumentException){lookData=null;}
+                lookState=lookData?.pieces!=null&&lookData.pieces.Length>0?1:-1;
+            }
+            return lookState>0?lookData:null;
+        }
+        private static readonly HashSet<string> lookCovers=new HashSet<string>(StringComparer.Ordinal),lookTags=new HashSet<string>(StringComparer.Ordinal);
+        private static readonly Dictionary<string,Renderer> lookNamed=new Dictionary<string,Renderer>(StringComparer.Ordinal);
+        // A model instance in the outfit `look`: each wardrobe piece's renderers on when worn and off otherwise, the body parts
+        // the worn pieces cover off (the rest on), and the tag shapes full where a worn piece sets their tag. Runs when a body is
+        // made (once per outfit), never per frame.
+        private static void VisualDress(GameObject root,string look)
+        {
+            var d=VisualLookData();if(d==null||root==null)return;
+            lookNamed.Clear();foreach(var r in root.GetComponentsInChildren<Renderer>(true))lookNamed[r.name]=r;
+            lookCovers.Clear();lookTags.Clear();if(d.always!=null)lookTags.UnionWith(d.always);
+            foreach(var p in d.pieces)if(p!=null&&NativeLook.Of(look,p.slot)==p.id){if(p.covers!=null)lookCovers.UnionWith(p.covers);if(p.tags!=null)lookTags.UnionWith(p.tags);}
+            // Every piece off, then the worn ones on (two ids may share a piece, as two hair styles share a fringe).
+            foreach(var p in d.pieces)if(p?.renderers!=null)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(false);
+            foreach(var p in d.pieces)if(p?.renderers!=null&&NativeLook.Of(look,p.slot)==p.id)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(true);
+            if(d.body!=null)foreach(var b in d.body)if(b!=null&&lookNamed.TryGetValue(b.renderer,out var r))r.gameObject.SetActive(!lookCovers.Contains(b.part));
+            if(d.shapes!=null)foreach(var t in d.shapes)if(t!=null&&lookNamed.TryGetValue(t.renderer,out var r)&&r is SkinnedMeshRenderer skin&&skin.sharedMesh!=null&&t.shape>=0&&t.shape<skin.sharedMesh.blendShapeCount)skin.SetBlendShapeWeight(t.shape,lookTags.Contains(t.tag)?100:0);
+            lookNamed.Clear();
+        }
+        // The renderers a dressed instance draws (its worn pieces and uncovered body parts).
+        private static Renderer[] VisualWorn(GameObject root)
+        {
+            var all=root.GetComponentsInChildren<Renderer>(true);int n=0;foreach(var r in all)if(r.gameObject.activeSelf)n++;
+            if(n==all.Length)return all;var worn=new Renderer[n];n=0;foreach(var r in all)if(r.gameObject.activeSelf)worn[n++]=r;return worn;
+        }
+        // The gear's anchors for the body's top (and hands): the core's and device's frames, the band's radius, the emblem's
+        // frame; the bake's own (the default outfit's) when the data has none for it.
+        private static void VisualAnchorsFor(VisualBody body)
+        {
+            var d=VisualLookData();if(d?.anchors==null)return;string upper=NativeLook.Of(body.Look,NativeLook.Upper),hands=NativeLook.Of(body.Look,NativeLook.Hands);LookAnchor best=null;
+            foreach(var a in d.anchors)if(a!=null&&a.upper==upper&&(best==null||a.hands==hands))best=a;
+            if(best==null)return;
+            if(body.GearCore!=null&&best.core?.Length==7){body.GearCore.localPosition=new Vector3(best.core[0],best.core[1],best.core[2]);body.GearCore.localRotation=new Quaternion(best.core[3],best.core[4],best.core[5],best.core[6]);}
+            if(body.GearDevice!=null&&best.device?.Length==7&&best.radius>.01f){body.GearDevice.localPosition=new Vector3(best.device[0],best.device[1],best.device[2]);body.GearDevice.localRotation=new Quaternion(best.device[3],best.device[4],best.device[5],best.device[6]);body.GearRadius=best.radius;}
+            if(best.emblem?.Length==2&&best.emblem[0]>.03f)body.Emblem=EmblemFrameAt(best.emblem[0],best.emblem[1]);
+        }
         // The model's head bone (the game's head joint's).
         private static Transform VisualHeadOf(VisualBody body){var of=body.Binding.Rig.Of;int v=CapturedRig.Head<of.Length?of[CapturedRig.Head]:-1;return v>=0&&v<body.Binding.Bones.Length?body.Binding.Bones[v]:null;}
         // The face gear (the concept's mask and visor; Core NativePilotGear) on a model's head bone, for a pilot whose body skin
@@ -452,6 +530,7 @@ namespace ChipArena.UnityConversion
         {
             bool on=!Viewer&&sourceModels!=null&&!ClassicBodies&&!scoped&&view!=null&&a.SourceSpec!="siren"&&VisualBodiesOn;
             if(!on){if(viewBody?.Root!=null&&viewBody.Root.activeSelf)viewBody.Root.SetActive(false);return false;}
+            if(viewBody?.Root!=null&&!string.Equals(viewBody.Look,LocalLook??"",StringComparison.Ordinal)){viewBody.Root.SetActive(false);Destroy(viewBody.Root);viewBody=null;}
             if(viewBody==null||viewBody.Root==null){viewBody=CreateViewBody(view);if(viewBody==null)return false;}
             var pose=view.Pose;pose.World();
             if(viewBody.PosedFrame<Time.frameCount-1||viewBody.Spec!=a.SourceSpec)viewBody.Binding.State.Forget();
@@ -525,14 +604,14 @@ namespace ChipArena.UnityConversion
         // root). Inactive; null without a bake.
         private GameObject VisualDeathBody(CapturedAnimation.Player rig,NativeDeath death,Vector3 offset,out Transform[] bones,out int[] joint)
         {
-            bones=null;joint=null;var root=Instantiate(visualBodyPrefab);root.name="Visual corpse "+death.id;var skeleton=root.transform.Find("VisualSkeleton");
+            bones=null;joint=null;var root=Instantiate(visualBodyPrefab);root.name="Visual corpse "+death.id;VisualDress(root,VisualLookOf(death.id));var skeleton=root.transform.Find("VisualSkeleton");
             if(skeleton==null){Destroy(root);return null;}
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
             bones=binding.Bones;joint=VisualJoints(binding);
             var block=new MaterialPropertyBlock();ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var accent);
-            foreach(var r in root.GetComponentsInChildren<Renderer>(true))
+            foreach(var r in VisualWorn(root))
             {
                 r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;if(r is SkinnedMeshRenderer skin)skin.updateWhenOffscreen=true;
                 bool cloth=false;foreach(var slot in ClothSlots)if(r.name.StartsWith(slot,StringComparison.Ordinal))cloth=true;
@@ -573,7 +652,7 @@ namespace ChipArena.UnityConversion
         private VisualCorpse VisualCorpseFor(NativeCorpse corpse,NativeDeath death,CapturedAnimation.Player rig,out int[] joint)
         {
             var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out joint);if(root==null)return null;
-            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death)};
+            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death)};
             for(int v=0;v<bones.Length;v++)
             {
                 int part=-1;for(int j=corpse.Anchor[joint[v]];j>=0&&part<0;j=CapturedRig.Bones[j].Parent)if(corpse.Parts.ContainsKey(j))part=j;
@@ -731,7 +810,7 @@ namespace ChipArena.UnityConversion
             if(!visualRevives.TryGetValue(key,out var s)||s.Root==null)
             {
                 var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joints);if(root==null)return false;root.name="Visual revive "+death.id;
-                s=new VisualScene{Root=root,Bones=bones,Joint=joints,Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death),Top=new bool[bones.Length]};
+                s=new VisualScene{Root=root,Bones=bones,Joint=joints,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Top=new bool[bones.Length]};
                 var index=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)index[bones[v]]=v;
                 for(int v=0;v<bones.Length;v++){s.Bind[v]=bones[v].localToWorldMatrix;s.Top[v]=bones[v]==null||bones[v].parent==null||!index.TryGetValue(bones[v].parent,out int up)||joints[up]!=joints[v];}
                 for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
@@ -787,7 +866,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!rigs.TryGetValue(death.id,out var rig))return false;
                 var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joint);if(root==null)return false;
-                s=new VisualScene{Root=root,Bones=bones,Joint=joint,Bind=new Matrix4x4[bones.Length],All=root.GetComponentsInChildren<Renderer>(true),Edge=DissolveEdgeOf(death)};
+                s=new VisualScene{Root=root,Bones=bones,Joint=joint,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death)};
                 for(int v=0;v<bones.Length;v++)s.Bind[v]=bones[v].localToWorldMatrix;
                 for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
                 visualScenes[key]=s;
@@ -897,6 +976,12 @@ namespace ChipArena.UnityConversion
                 var body=pair.Value;
                 if(body.Root==null){VisualStrideRelease(body);VisualMotionRelease(body);visualBodiesGone.Add(pair.Key);continue;}
                 if(body.Root.activeSelf!=body.Seen)body.Root.SetActive(body.Seen);
+                // Its cloth runs while it shows, off the low tier and within Far of the arena's camera.
+                if(body.ClothSim!=null)
+                {
+                    bool sim=body.Seen&&!LowGraphics&&(VisualEye==null||(VisualEye.transform.position-body.At).sqrMagnitude<NativeVisualCloth.Far*NativeVisualCloth.Far);
+                    if((sim?1:0)!=body.ClothOn){body.ClothOn=sim?1:0;NativeVisualCloth.Enable?.Invoke(body.ClothSim,sim);}
+                }
                 VisualWeaponShown(body);body.Seen=false;
             }
             foreach(var rig in visualBodiesGone)visualBodies.Remove(rig);
