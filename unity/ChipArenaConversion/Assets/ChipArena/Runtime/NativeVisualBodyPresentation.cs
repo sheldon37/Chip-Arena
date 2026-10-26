@@ -215,6 +215,7 @@ namespace ChipArena.UnityConversion
             body.Moved=true;body.Seen=true;
             if(!string.IsNullOrEmpty(seat.hat)&&seat.hat!="none"&&seat.hat!=NativeSheldonHead.Hat)
             {var hb=VisualHatBone(rig);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
+            VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
             return true;
         }
         private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id)
@@ -332,6 +333,7 @@ namespace ChipArena.UnityConversion
                 float g=NativePilotGear.CoreGlow(time,health,time-body.LitAt,a.Id);gearMatrix=body.GearCore.localToWorldMatrix;
                 sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(g,g,g,1),null,flash);
             }
+            if(!first)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);
             if(body.GearDevice==null)return;
             ChipDeviceLook(a.Id,out float look,out float plant,out int rgb,out int key);
             if(plant>=NativeDraftPlant.CarryEnd&&key!=body.SeatKey)
@@ -364,6 +366,17 @@ namespace ChipArena.UnityConversion
             world=body.GearDevice.TransformPoint(new Vector3(r+NativePilotGear.HousingTop+NativePilotGear.FrameHeight,(NativePilotGear.BayNear+NativePilotGear.BayFar)*.5f,0));return true;
         }
         private Matrix4x4 GearBoneOf(int bone)=>gearMatrix;
+        // The model's head bone (the game's head joint's).
+        private static Transform VisualHeadOf(VisualBody body){var of=body.Binding.Rig.Of;int v=CapturedRig.Head<of.Length?of[CapturedRig.Head]:-1;return v>=0&&v<body.Binding.Bones.Length?body.Binding.Bones[v]:null;}
+        // The face gear (the concept's mask and visor; Core NativePilotGear) on a model's head bone, for a pilot whose body skin
+        // wears it: the live body (VisualGear), the draft's pilot and a whole corpse.
+        private void VisualFaceGear(Transform head,int id,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
+        {
+            if(head==null||!NativePilotGear.FaceGear(BodySkin(id))||!sourceModels.PilotFace())return;
+            gearBone??=GearBoneOf;gearMatrix=head.localToWorldMatrix;var accent=AccentTint(accentColor);var lit=new Vector4(1,1,1,1);
+            sourceModels.Queue(NativeSourceModels.GearMask,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
+            sourceModels.Queue(NativeSourceModels.GearVisor,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
+        }
 
         // Each renderer's materials with the hologram's after them (extra slots draw the mesh again).
         private Material[][] VisualSpawnSlots(VisualBody body)
@@ -490,7 +503,7 @@ namespace ChipArena.UnityConversion
         // smashed one too (its crushed parts dropped, a pinned one flattened by the smash's overlay). A swarm's collapse shrinks
         // it; the soul and frost looks are its own (VisualCorpseLook). It hides while the voxel body would be under half opacity
         // and goes with its corpse.
-        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;}
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public int Head=-2;}
         private readonly Dictionary<NativeCorpse,VisualCorpse> visualCorpses=new Dictionary<NativeCorpse,VisualCorpse>();
         private readonly List<NativeCorpse> visualCorpsesGone=new List<NativeCorpse>();
         // A death's visual body: an instance posed from the rig (in its last pose), `offset` from it, in the pilot's accent, without
@@ -790,8 +803,15 @@ namespace ChipArena.UnityConversion
             c.Bones[0].localScale=Vector3.one*Mathf.Max(.001f,corpse.PartScale);
             for(int v=0;v<c.Bones.Length;v++){var m=undo*corpse.PartFrom(c.Part[v])*c.Bind[v];c.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
             if(flat){var scale=new Vector3(overlay.GetColumn(0).magnitude,overlay.GetColumn(1).magnitude,overlay.GetColumn(2).magnitude);root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);}
+            // The face gear stays on a whole corpse's head as it fades (not on a split half, a crushed head or under a kill look).
+            if(c.Look==0&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)
+            {
+                if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
+                if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
+            }
             return true;
         }
+        private float corpseFade;private Func<int,float> corpseFadeOf;
         // A kill look on the corpse's visual body (owner 2026-10-24: "Model everywhere"): 1 Soul Drift, the body through the ghost
         // shader in the soul's colour at its opacity; 2 Frostbreak, every colour the ice's. False without one (the voxel look).
         private static readonly int[] BodyColours={Shader.PropertyToID("_Color_1"),Shader.PropertyToID("_Color_2"),Shader.PropertyToID("_Color_3"),Shader.PropertyToID("_Color_4"),Shader.PropertyToID("_Color_5"),Shader.PropertyToID("_Color_6"),Shader.PropertyToID("_Color_7"),Shader.PropertyToID("_Color_8"),Shader.PropertyToID("_Color_9")};

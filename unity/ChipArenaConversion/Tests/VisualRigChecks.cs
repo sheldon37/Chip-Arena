@@ -1157,6 +1157,19 @@ namespace ChipArena.UnityConversion
             var accepted=NativePilotGear.Device(1,(NativeDraftPlant.PulseStart+NativeDraftPlant.PulseEnd)*.5f,.3f,1);Check(accepted.BayChip&&accepted.Bay>1.2f&&accepted.LensChip,"the bay and lens take the chip's colour as it is accepted");
             float after=NativeDraftPlant.PulseEnd-NativeDraftPlant.CarryEnd;
             Check(NativePilotGear.Device(0,-1,after+.5f,1).LensChip&&!NativePilotGear.Device(0,-1,after+NativePilotGear.ActiveSeconds+.01f,1).LensChip,"the lens keeps the chip's colour for ActiveSeconds after the lid has shut");
+            // The face gear (the concept's mask and visor, in the head bone's frame): mirror-symmetric shells on the face, the front
+            // facing out; the mask over the nose tip, the visor over the eyes' band; the Prototype body skin wears it.
+            foreach(var (mesh,name) in new[]{(NativePilotGear.Mask(),"mask"),(NativePilotGear.Visor(),"visor")})
+            {
+                var faces=Faces(mesh);float minX=9,maxX=-9,minY=9,maxY=-9,minZ=9;var front=faces[0];
+                foreach(var sec in mesh.Sections)foreach(var v in sec.Positions){minX=Math.Min(minX,v.X);maxX=Math.Max(maxX,v.X);minY=Math.Min(minY,v.Y);maxY=Math.Max(maxY,v.Y);minZ=Math.Min(minZ,v.Z);}
+                foreach(var f in faces)if(f.c.Z>front.c.Z)front=f;
+                Check(faces.Count>100&&Math.Abs(minX+maxX)<1e-4f&&maxX<.11f&&minY>-.06f&&maxY<.1f&&minZ>.02f&&front.n.Z>.5f,"the "+name+" is built, symmetric, on the face and facing out ("+faces.Count+" faces, x to "+maxX+", y "+minY+".."+maxY+")");
+                if(name=="visor")Check(minY<=.044f&&maxY>=.08f,"the visor covers the eyes' band (y .044 to .080)");
+            }
+            Check(NativePilotGear.MaskSurface(0,.03f)>.154f&&NativePilotGear.MaskSurface(0,-.03f)>.125f,"the mask clears the nose tip and the chin");
+            Check(NativePilotGear.FaceGear(NativeBodySkins.PrototypeIndex)&&!NativePilotGear.FaceGear(NativeBodySkins.StandardIndex)&&!NativePilotGear.FaceGear(NativeBodySkins.SheldonIndex),"the Prototype body skin wears the face gear; the Standard keeps the authored face");
+            Check(models.Contains("GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);")&&body.Contains("if(!first)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);")&&body.Contains("VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);")&&body.Contains("if(c.Look==0&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)"),"the face gear rides the model's head bone: the live body, the draft's pilot and a whole corpse");
             // The runtime: the anchors by name, the device's look read from the chip-select slot, the models on one SourceLit material,
             // and VisualGear building only values.
             Check(body.Contains("t.name==\"VisualGearCore\"")&&body.Contains("t.name==\"VisualGearDevice\"")&&body.Contains("t.name==\"VisualGearDeviceRim\""),"the gear's anchors by the bake's names");
