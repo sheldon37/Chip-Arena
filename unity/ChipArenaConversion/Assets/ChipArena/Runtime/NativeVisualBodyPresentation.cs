@@ -195,6 +195,27 @@ namespace ChipArena.UnityConversion
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
         }
+        // The draft's pilot on its visual body (owner 2026-10-24: "Model everywhere"): the drafting seat as a stand-in actor (its
+        // outfit, accent, no weapon in hand: the hands pick the chips), bound to the stage's pose, with its hat on the model's
+        // head; shown this frame (the draft returns before the arena does). False: the voxel body (a Siren, Classic, no bake).
+        private readonly Actor draftActor=new Actor();
+        private bool VisualDraftPose(CapturedAnimation.Player rig,NativeSeat seat,CapturedRig.Pose pose,float time,Camera camera)
+        {
+            if(Viewer||sourceModels==null||ClassicBodies||rig==null||seat==null||pose==null||seat.spec=="siren"||!VisualBodiesOn)return false;
+            var a=draftActor;a.Id=seat.id;a.SourceSpec=seat.spec;a.AccentColor=seat.accentColor;a.BodyColor=seat.bodyColor;a.Hat=seat.hat;a.HatColor=seat.hatColor;a.WeaponAway=true;a.Grounded=true;
+            var body=VisualBodyOf(rig,seat.id);if(body==null)return false;
+            // The drafting pose stands lower than the arena's: the body's hips go onto the pose's pelvis, and the rig's hands (on
+            // the body's wrists after the bind) with them.
+            body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
+            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false);
+            int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
+            if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++){var hand=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];hand.position+=shift;}}
+            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            body.Moved=true;body.Seen=true;
+            if(!string.IsNullOrEmpty(seat.hat)&&seat.hat!="none"&&seat.hat!=NativeSheldonHead.Hat)
+            {var hb=VisualHatBone(rig);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
+            return true;
+        }
         private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id)
         {
             var root=Instantiate(visualBodyPrefab,rig.Root.transform,false);root.name="Visual body "+id;
