@@ -1,3 +1,25 @@
+## 2026-10-26 — Claude: face gear variants and the Locker's model cards (merged into shared)
+
+- **Branch/base:** `claude/model-face-variants` from shared `bf6049c8`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request (2026-10-26):** mask variants, and Locker card texts that describe the model.
+- **Changes (presentation and the cosmetic map):**
+  - `NativeWeaponSkins`: a last entry `face` (`mask-visor` default and never written, `visor`, `mask`). Normalize, With, Index and the host's gate carry it. The longest map is 309 of 320 characters.
+  - `VisualFaceGear` draws the mask, the visor or both by the pick.
+  - Locker, while the model draws:
+    - model texts and thumbnails on the body cards;
+    - the face gears under the Prototype body in BODY SKIN, and a Skins card for them;
+    - `SetFaceGear` also equips the Prototype body.
+  - Local tool: `locker=T:tab;...` (Locker captures in the main menu), `skins=map` (preset prefs.weaponSkins).
+- **Handoff to Astra (accounts):** `src/relay/accounts.ts` `weaponSkinMap` drops `face`. Please add `face` to `SKIN_WEAPONS` with the keys `mask-visor`, `visor` and `mask` (default `mask-visor`), plus a test. Until then a signed-in pilot's face pick resets to both at the next sign-in, when the account's map replaces prefs. An older host also drops the entry; that is harmless.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `8d388bc2`). Updated: BodySkinChecks (entries, face normalization), CyberLordAuraChecks (entry order, longest map 309), LockerChecks (row pin, SetBodySkin callers, model cards), VisualRigChecks (variant draw).
+  - Unity compile: PASS.
+  - Play mode:
+    - Locker Appearance: the body cards with model texts and the three face cards under the Prototype body;
+    - Locker Skins: the Face gear card and the banner;
+    - in a match, the visor alone and the mask alone on the model.
+- **Not run:** a signed-in account round trip (needs the relay change); multiplayer; a Windows build.
+
 ## 2026-10-25 — Claude: the Cyber Lord's pieces, and the concept's tech mask, visor and back emblem, on the model (merged into shared)
 
 - **Branch/base:** `claude/model-cyberlord` from shared `16b046dd`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

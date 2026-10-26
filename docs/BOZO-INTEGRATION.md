@@ -1372,7 +1372,16 @@ already? Cant we utilize that?"
       the temples.
   - **Who wears it:** the Prototype body skin on the model. The Standard keeps BoZo's face as authored (owner,
     2026-10-22). One presentation rule (`WearsFaceGear`) sets this. **Owner decision (2026-10-26):** keep the mask and
-    visor on the Prototype skin; the default keeps the face. The Locker's card texts still describe the voxel skins.
+    visor on the Prototype skin; the default keeps the face.
+  - **Variants (2026-10-26, `claude/model-face-variants`):** the skin map's last entry `face` picks both (the default,
+    never written), the visor alone or the mask alone.
+    - The account server (`src/relay/accounts.ts`) still drops the entry, so a signed-in pilot's pick resets to both at
+      the next sign-in until Astra adds it there. In a session, in matches and in local saves it works.
+  - **The Locker on the model:** while the model draws (installed, Player model not Classic), the body cards describe the
+    model ("Your pilot's own face", "Tech mask, glowing visor", "Coat in Classic mode") with model thumbnails.
+    - The face gears follow the Prototype body in Appearance's BODY SKIN row and have their own Skins card. Picking one
+      also puts on the Prototype body.
+    - The Locker's live preview is still the voxel portrait stage (the portrait files).
   - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
   - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
     and ghosts.
