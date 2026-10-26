@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
         // RenderMeleeTrails, after the rigs are posed: new finishers and releases cued, due cues played, finished effects put away.
         private void PackSlashFx(float time)
         {
-            var s=weaponSnapshot;if(s?.Actors==null||LowGraphics||!PackSlashBank())return;
+            var s=weaponSnapshot;if(!NativePackSlashes.On||s?.Actors==null||LowGraphics||!PackSlashBank())return;
             int generation=WeaponLoadout?.Generation??-1;if(generation!=packSlashGeneration){ClearPackSlashes();packSlashGeneration=generation;}
             foreach(var a in s.Actors)
             {

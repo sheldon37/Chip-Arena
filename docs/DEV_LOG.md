@@ -1,3 +1,15 @@
+## 2026-10-26 — Claude: the slash pack's effects off on every move (merged into shared)
+
+- **Branch/base:** `claude/no-pack-slashes` from shared `9a940499`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner report:** "It seems to be playing that 'multislash' effect on a lot of melee attacks". The owner's verdict: "Nothing fits it currently".
+- **Cause:** the pack's line slashes are the sword's combo finisher. The native combo counter keeps counting, so it fired on every third swing of a chain. Claw marks fired on every fourth dagger swing and rings on every second greatsword swing. Bots chaining swords triggered them too.
+- **Change (presentation only):** `NativePackSlashes.On` = false; `PackSlashFx` returns before cueing or loading anything. The finisher and ability tables and the bake's effects stay.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `1fdbf904`), with a new check that the effects are off and an updated pin.
+  - Unity compile: PASS.
+  - Play mode: a five-swing sword chain logs no pack effect (the bank never loads); before the change the third swing played the line slashes.
+- **Not run:** the special moves in play after the change (same early return).
+
 ## 2026-10-26 — Claude: the menu portraits on the model, and a ragdoll that no longer stretches it (merged into shared)
 
 - **Branch/base:** `claude/model-portraits` from shared `cfa253c4`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

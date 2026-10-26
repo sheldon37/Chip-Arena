@@ -116,6 +116,12 @@ Owner: "keep going with the next packs, starting with the sword slash arcs."
 
 Owner: "Next, bring the slash pack's ring slashes, claw marks and line slashes onto the special moves and finishers."
 
+**Off since 2026-10-26** (`claude/no-pack-slashes`). The owner saw the line slashes on a lot of melee attacks: the sword's
+finisher is every third swing of a chain, the daggers' every fourth and the greatsword's every second, so they showed
+through most fights. The owner's verdict: "Nothing fits it currently". `NativePackSlashes.On` is false, so no finisher,
+special move or Q/E ability cues them and the bank never loads. The tables below and the bake's effects stay for a move
+that fits.
+
 - **What plays** (`Core/NativePackSlashes`), tinted to the pilot's sweep colour where the pack's stroke is a colour:
 
   | Move | Effect | Laid |
