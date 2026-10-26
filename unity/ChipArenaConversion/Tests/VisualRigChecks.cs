@@ -1099,7 +1099,7 @@ namespace ChipArena.UnityConversion
             Check(write!=null&&write.Contains("if(!on&&!body.SpawnOn&&flash==body.Flash)return;")&&write.Contains("if(!on)look=VisualSpawnLook.Off;")&&write.Contains("body.Block.SetFloat(HitFlashId,flash);"),"the values are written while a spawn-in runs or the flash changes, and reset after");
             int news=0;for(int i=write?.IndexOf("new ",StringComparison.Ordinal)??-1;i>=0;i=write.IndexOf("new ",i+1,StringComparison.Ordinal))news++;
             Check(news==1&&write.Contains("var look=new VisualSpawnLook();"),"VisualBodyLook builds only a value per frame (the hologram's slots are made once)");
-            Gear(body,Read("Runtime/NativeChipSelectPresentation.cs"),Read("Runtime/NativePilotGearModels.cs"));
+            Gear(body,Read("Runtime/NativeChipSelectPresentation.cs"),Read("Runtime/NativePilotGearModels.cs"),Read("Runtime/NativeVisualCloth.cs"),Read("Runtime/ConversionGame.cs"));
             Check(!body.Contains("NativeSpawnIn")&&!body.Contains("SpawnInFrame"),"the visual body reads the spawn-in only through SpawnVisualLook (the spawn-in's presentation files)");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC"})
                 Check(!body.Contains(pack)&&!fx.Contains(pack)&&!toon.Contains(pack)&&!ghost.Contains(pack),"no pack types or names in the visual body's code: "+pack);
@@ -1107,7 +1107,7 @@ namespace ChipArena.UnityConversion
 
         // The pilot gear (Core NativePilotGear; Runtime NativePilotGearModels and VisualGear): its sections face outward where
         // they are seen, the lid clears the seated chip, and its states follow the pilot's health and chip select as designed.
-        private static void Gear(string body,string chip,string models)
+        private static void Gear(string body,string chip,string models,string cloth,string game)
         {
             // Every triangle of a section: its centroid and face normal (source frame, as built).
             static System.Collections.Generic.List<(Vector3 c,Vector3 n)> Faces(WeaponMesh mesh)
@@ -1172,7 +1172,25 @@ namespace ChipArena.UnityConversion
             // The back emblem: a ring, two X eyes and a smile facing out of the back, inside its radius, on the chest bone.
             var emblem=Faces(NativePilotGear.Emblem());float reach=0;bool outward=true;foreach(var (c,n) in emblem){reach=Math.Max(reach,new Vector2(c.X,c.Y).Length());outward&=n.Z>.99f;}
             Check(emblem.Count>=2*(28+4+10)&&outward&&reach<=NativePilotGear.EmblemRadius,"the back emblem's strokes face out of the back, inside its radius ("+emblem.Count+" faces)");
-            Check(models.Contains("GearModel(GearEmblem,NativePilotGear.Emblem(),CapturedRig.Chest);")&&body.Contains("gearMatrix=chest.localToWorldMatrix*EmblemFrame;"),"every model pilot wears the back emblem on its chest bone");
+            Check(models.Contains("GearModel(GearEmblem,NativePilotGear.Emblem(),CapturedRig.Chest);")&&body.Contains("gearMatrix=chest.localToWorldMatrix*body.Emblem;"),"every model pilot wears the back emblem on its chest bone (its frame the worn top's)");
+            // The wardrobe (owner 2026-10-26): the outfit map normalizes as the look contract has it; every model instance is
+            // dressed when made (the live and first-person bodies, corpses and what is made from them), worn renderers only from
+            // then on; a changed outfit makes the body again; the gear's anchors and the device's sleeve follow the top.
+            Check(NativeLook.Slots.Length==NativeLook.Ids.Length&&NativeLook.Ids.Length==NativeLook.Labels.Length&&NativeLook.Normalize("")==""&&NativeLook.Normalize("upper:hard-jacket,feet:work-boots,hair:wild")=="hair:wild,upper:hard-jacket,feet:work-boots"
+                &&NativeLook.Normalize("upper:open-hoodie,lower:gold,cape:red")==""&&NativeLook.With("",NativeLook.Hands,"bare")=="hands:bare"&&NativeLook.Index("feet:sneakers",NativeLook.Feet)==2&&NativeLook.Of("",NativeLook.Upper)=="open-hoodie"
+                &&System.Linq.Enumerable.All(NativeLook.Ids,ids=>System.Linq.Enumerable.All(ids,id=>System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z0-9-]{1,24}$"))),"the outfit map: canonical slot order, defaults omitted, unknown slots and ids dropped, contract ids");
+            int longest=0;foreach(var ids in NativeLook.Ids){int m=0;foreach(var id in ids)m=Math.Max(m,id.Length);longest+=m;}
+            Check(longest+NativeLook.Slots.Length*8<NativeLook.MaxLength,"the longest outfit map fits the contract's limit");
+            Check(body.Contains("body.Look=VisualLookOf(id);VisualDress(root,body.Look);")&&body.Contains("body.All=VisualWorn(root);")&&body.Contains("root.name=\"Visual corpse \"+death.id;VisualDress(root,VisualLookOf(death.id));")
+                &&!body.Contains("All=root.GetComponentsInChildren<Renderer>(true)")&&body.Contains("foreach(var r in VisualWorn(root))"),"every model instance is dressed when made and keeps only its worn renderers");
+            Check(body.Contains("!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal)){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}")&&body.Contains("if(viewBody?.Root!=null&&!string.Equals(viewBody.Look,LocalLook??\"\",StringComparison.Ordinal))"),"a changed outfit makes the body (and the first-person body) again");
+            Check(body.Contains("foreach(var p in d.pieces)if(p?.renderers!=null)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(false);")&&body.Contains("r.gameObject.SetActive(!lookCovers.Contains(b.part));")&&body.Contains("skin.SetBlendShapeWeight(t.shape,lookTags.Contains(t.tag)?100:0);"),"dressing: every piece off then the worn on, covered body parts off, tag shapes from the worn pieces' tags");
+            Check(body.Contains("VisualAnchorsFor(body);")&&body.Contains("body.GearRadius=best.radius;")&&body.Contains("body.Emblem=EmblemFrameAt(best.emblem[0],best.emblem[1]);")&&body.Contains("sourceModels.Queue(sourceModels.GearDeviceFor(body.GearRadius),m,gearBone,")&&models.Contains("gearDevices[mm]=device;gearBays[mm]=bay;"),"the gear follows the top: core, device and sleeve, emblem; one device model per sleeve radius");
+            Check(body.Contains("private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId?LocalLook??\"\":\"\";")&&game.Contains("presentation.LocalLook=prefs.look??\"\";"),"this client's pilot wears prefs.look; every other pilot the default until the seat carries a look (Astra)");
+            // The cloth hook: a local simulation registers; never on the first-person body; reset on a gap; held on the low tier and far away.
+            Check(cloth.Contains("public static Func<GameObject,Transform,object> Attach;")&&body.Contains("if(id!=ViewBodyId&&NativeVisualCloth.Attach!=null)")&&body.Contains("body.Binding.State.Forget();if(body.ClothSim!=null)NativeVisualCloth.Reset?.Invoke(body.ClothSim);")
+                &&body.Contains("bool sim=body.Seen&&!LowGraphics&&(VisualEye==null||(VisualEye.transform.position-body.At).sqrMagnitude<NativeVisualCloth.Far*NativeVisualCloth.Far);"),"cloth: registered locally, off in first person, reset on a gap, held on the low tier and past Far");
+            foreach(string pack in new[]{"Bozo","BoZo","Magica","BMAC","BSMC"})Check(!cloth.Contains(pack),"no pack names in the cloth hook: "+pack);
             Check(models.Contains("GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);")&&body.Contains("if(!first)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);")&&body.Contains("VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);")&&body.Contains("if(c.Look==0&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)"),"the face gear rides the model's head bone: the live body, the draft's pilot and a whole corpse");
             Check(body.Contains("int gear=NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);")&&body.Contains("if(gear!=NativeWeaponSkins.FaceVisor)sourceModels.Queue(NativeSourceModels.GearMask,")&&body.Contains("if(gear!=NativeWeaponSkins.FaceMask)sourceModels.Queue(NativeSourceModels.GearVisor,"),"the face gear pick draws both, the visor alone or the mask alone");
             // The runtime: the anchors by name, the device's look read from the chip-select slot, the models on one SourceLit material,

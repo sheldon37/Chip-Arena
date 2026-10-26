@@ -109,6 +109,11 @@ internal static class LockerChecks
         Check(row.Contains("LkRowCard(r,8260+i,on,null,default,NativeBodySkins.Labels[i],(LkOnModel?LkModelBodyTexts:LkBodyTexts)[i],null,out bool hot,i,i==NativeBodySkins.SheldonIndex);")&&ui.Contains("if(body>=0)LkBodyThumb(well,body,e,h);")
             &&Regex.Matches(Regex.Match(skinsFile,@"LkBodyTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeBodySkins.Count,"the row's cards reuse the Locker's row card with a body thumbnail, a line per body and the DEV badge on the Sheldon Clothes");
         Check(!skinsFile.Contains("U.Push("),"the body thumbnails draw untransformed (scroll clip)");
+        // The OUTFIT section (Runtime/NativeLockerOutfitUI.cs): Appearance, while the model draws; a click wears the piece through
+        // NativeLook.With; Revert and the unsaved-changes baseline cover prefs.look.
+        string outfit=R("NativeLockerOutfitUI.cs");
+        Check(appearanceLayout.Contains("if(LkOnModel){LkHead();LkReserve(LkOutfitH());}")&&appearance.Contains("if(LkOnModel){LkHeading(lockerSlots[k++],\"OUTFIT\",\"Your pilot's clothes on the model\");LkOutfit(lockerSlots[k++]);}")
+            &&outfit.Contains("prefs.look=NativeLook.With(prefs.look,slot,ids[k]);Click();")&&ui.Contains("BackColor=prefs.backColor,Look=prefs.look};")&&ui.Contains("||b.Look!=prefs.look;}")&&ui.Contains("prefs.look=b.Look;"),"the OUTFIT section wears a piece per click and is saved and reverted with the look");
         // On the model (owner 2026-10-26): each body says what it is there, the face gears follow the Prototype body in the row
         // and have their own Skins card; a face gear pick puts on the Prototype body; the thumbnails are the model's.
         Check(Regex.Matches(Regex.Match(skinsFile,@"LkModelBodyTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeBodySkins.Count&&Regex.Matches(Regex.Match(skinsFile,@"LkFaceTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeWeaponSkins.FaceKeys.Length
