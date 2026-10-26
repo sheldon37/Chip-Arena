@@ -106,9 +106,16 @@ internal static class LockerChecks
         Check(appearanceLayout.Contains("prefs.name=GUILayout.TextField(prefs.name??\"\",20,lockerField);LkHead();LkReserve(LkBodyRowH());\n                    LkHead();LkSwatches(ref prefs.bodyColor,\"#e5e7eb\");"),"its slots are reserved in the same place");
         int slots=int.Parse(Regex.Match(ui,@"private readonly Rect\[\] lockerSlots=new Rect\[(\d+)\];").Groups[1].Value);
         Check(Count(appearance,"lockerSlots[k++]")<=slots&&Count(appearance,"lockerSlots[k++]")==Count(appearanceLayout,"LkHead(")+Count(appearanceLayout,"LkReserve(")+Count(appearanceLayout,"LkSwatches("),"the Appearance section's "+Count(appearance,"lockerSlots[k++]")+" slots fit the "+slots+" reserved and match its layout");
-        Check(row.Contains("LkRowCard(r,8260+i,on,null,default,NativeBodySkins.Labels[i],LkBodyTexts[i],null,out bool hot,i,i==NativeBodySkins.SheldonIndex);")&&ui.Contains("if(body>=0)LkBodyThumb(well,body,e,h);")
+        Check(row.Contains("LkRowCard(r,8260+i,on,null,default,NativeBodySkins.Labels[i],(LkOnModel?LkModelBodyTexts:LkBodyTexts)[i],null,out bool hot,i,i==NativeBodySkins.SheldonIndex);")&&ui.Contains("if(body>=0)LkBodyThumb(well,body,e,h);")
             &&Regex.Matches(Regex.Match(skinsFile,@"LkBodyTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeBodySkins.Count,"the row's cards reuse the Locker's row card with a body thumbnail, a line per body and the DEV badge on the Sheldon Clothes");
         Check(!skinsFile.Contains("U.Push("),"the body thumbnails draw untransformed (scroll clip)");
+        // On the model (owner 2026-10-26): each body says what it is there, the face gears follow the Prototype body in the row
+        // and have their own Skins card; a face gear pick puts on the Prototype body; the thumbnails are the model's.
+        Check(Regex.Matches(Regex.Match(skinsFile,@"LkModelBodyTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeBodySkins.Count&&Regex.Matches(Regex.Match(skinsFile,@"LkFaceTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeWeaponSkins.FaceKeys.Length
+            &&skinsFile.Contains("private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!=\"Classic\";")&&skinsFile.Contains("private bool LkFaceRow=>LkOnModel&&BodySkinEquipped()==NativeBodySkins.PrototypeIndex;")
+            &&row.Contains("if(LkRowCard(r,8270+k,on,null,default,NativeWeaponSkins.FaceLabels[k],LkFaceTexts[k],null,out _,LkFaceThumb+k)&&!on)SetFaceGear(NativeWeaponSkins.FaceKeys[k]);")
+            &&skinsFile.Contains("if(BodySkinEquipped()!=NativeBodySkins.PrototypeIndex)SetBodySkin(NativeBodySkins.Prototype);}")&&skinsFile.Contains("if(lockerSkins[i]==NativeWeaponSkins.FaceEntry){LkFaceCard(LkCell(grid,i,LkSkinCardMin,LkSkinCardH),e);continue;}")
+            &&ui.Contains("if(LkOnModel)lockerSkins.Add(NativeWeaponSkins.FaceEntry);")&&skinsFile.Contains("if(LkOnModel||skin>=LkFaceThumb)LkModelThumb("),"on the model the bodies read as the model's and the face gear is picked under the Prototype body and on its own card");
         {
             // The setter's rule, run engine-free on Core (NativeCosmeticRules.Allowed is NativeCosmeticGate.Allowed, section 2):
             // whatever was stored, a non-DEV pilot is offered, marked, keeps and saves no Sheldon Clothes, a live DEV pilot can

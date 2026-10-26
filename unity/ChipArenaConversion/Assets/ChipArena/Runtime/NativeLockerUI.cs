@@ -74,10 +74,12 @@ namespace ChipArena.UnityConversion
             // The idle poses: the source's four, then the DEV Sheldon Idle with live DEV access (Core/NativeLobbyPoses.cs).
             lockerPoses=NativeLobbyPoses.Count(NativeCosmeticRules.Allowed(access,"pose",NativeLobbyPoses.SheldonKey));
             foreach(var id in lockerIntros)if(!lockerIntroWeapon.ContainsKey(id)&&id.StartsWith("weapon-",StringComparison.Ordinal)){var w=LockerWeaponById(id.Substring(7));if(w!=null)lockerIntroWeapon[id]=w;}
-            // The body card first (Core/NativeBodySkins.cs: the Sheldon Clothes need live DEV access), then the weapons.
+            // The body card first (Core/NativeBodySkins.cs: the Sheldon Clothes need live DEV access), the face gear's while the
+            // model draws (Runtime/NativeLockerSkinsUI.cs LkFaceCard), then the weapons.
             lockerBodySheldon=NativeCosmeticRules.Allowed(access,"body",NativeBodySkins.SheldonClothes);lockerSkins.Clear();lockerSkins.Add(NativeBodySkins.Entry);
+            if(LkOnModel)lockerSkins.Add(NativeWeaponSkins.FaceEntry);int lockerLooks=lockerSkins.Count;
             foreach(var w in content.weapons)if(AllowedWeapon(w)&&NativeWeaponSkins.Skinned(w.id))lockerSkins.Add(w.id);
-            lockerKillsLabel=lockerKills.Count+" EFFECTS";lockerSkinsLabel="BODY + "+(lockerSkins.Count-1)+" WEAPONS";
+            lockerKillsLabel=lockerKills.Count+" EFFECTS";lockerSkinsLabel=(lockerLooks>1?"BODY + FACE + ":"BODY + ")+(lockerSkins.Count-lockerLooks)+" WEAPONS";
         }
         private void LockerAbilities()
         {

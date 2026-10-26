@@ -91,7 +91,7 @@ internal static class CyberLordAuraChecks
         // ------------------------------------------------------------------------------------------------------------------
         count=0;int c0=count;
         const string id=CyberLordSpec.Id;
-        Check(NativeWeaponSkins.Skinned(id)&&!NativeWeaponSkins.Modelled(id)&&NativeWeaponSkins.Weapons[^1]==id&&Array.IndexOf(NativeWeaponSkins.Entries,id)==NativeWeaponSkins.Entries.Length-2,"the Cyber Lord is the last skinned entry before the body, and has no weapon model");
+        Check(NativeWeaponSkins.Skinned(id)&&!NativeWeaponSkins.Modelled(id)&&NativeWeaponSkins.Weapons[^1]==id&&Array.IndexOf(NativeWeaponSkins.Entries,id)==NativeWeaponSkins.Entries.Length-3,"the Cyber Lord is the last skinned entry before the body (and the face gear), and has no weapon model");
         Check(NativeWeaponSkins.Weapons.Count(w=>!NativeWeaponSkins.Modelled(w))==1&&NativeWeaponSkins.Weapons.Where(w=>w!=id).All(NativeWeaponSkins.Modelled),"every other skinned weapon keeps its models");
         Check(NativeWeaponSkins.With("",id,NativeWeaponSkins.Prototype)=="cyberlord:prototype"&&NativeCyberLordAura.Skin("cyberlord:prototype")==NativeWeaponSkins.PrototypeIndex&&NativeWeaponSkins.Of("cyberlord:prototype",id)==NativeWeaponSkins.Prototype,"\"cyberlord:prototype\" round-trips");
         Check(NativeWeaponSkins.With("cyberlord:prototype",id,NativeWeaponSkins.Standard)==""&&NativeWeaponSkins.Normalize(" cyberlord : prototype ")=="cyberlord:prototype"&&NativeWeaponSkins.Normalize("cyberlord:standard")=="","normalized; Standard is the default and never written");
@@ -102,7 +102,7 @@ internal static class CyberLordAuraChecks
         // An older client parses only its own entries: the new one never moves another weapon's or the body's pick.
         Check(NativeWeaponSkins.Index("cyberlord:prototype,sword:prototype","sword")==NativeWeaponSkins.PrototypeIndex&&NativeWeaponSkins.Index("cyberlord:prototype","sword")==NativeWeaponSkins.StandardIndex&&NativeBodySkins.Of("cyberlord:prototype,body:sheldon")==NativeBodySkins.SheldonIndex,"the entry leaves the other picks alone");
         Check(NativeBodySkins.Gate("cyberlord:prototype,body:sheldon",false)=="cyberlord:prototype","the body's DEV gate keeps the Cyber Lord's pick");
-        var longest=string.Join(",",NativeWeaponSkins.Entries.Select(e=>e+":prototype"));Check(NativeWeaponSkins.Normalize(longest)==longest&&longest.Length==298&&longest.Length<=NativeWeaponSkins.MaxLength,"the longest map is 298 characters, inside the frame limit "+NativeWeaponSkins.MaxLength);
+        var longest=string.Join(",",NativeWeaponSkins.Entries.Select(e=>e+":"+(e==NativeWeaponSkins.FaceEntry?"visor":"prototype")));Check(NativeWeaponSkins.Normalize(longest)==longest&&longest.Length==309&&longest.Length<=NativeWeaponSkins.MaxLength,"the longest map is 309 characters, inside the frame limit "+NativeWeaponSkins.MaxLength);
         Check(NativeWeaponSkins.Model("weapon-cyberlord",NativeWeaponSkins.StandardIndex)=="weapon-cyberlord"&&NativeWeaponSkins.StandardModel(id,0)==null&&NativeWeaponSkins.Held(id,"",0)=="weapon-cyberlord","no model id is invented for the look-only entry");
         yield return $"Cyber Lord skin map: {count-c0} checks (\"cyberlord\" after the weapons and before the body, round-trips \"cyberlord:prototype\", a missing / unknown / malformed / older map reads as the aura, longest map {longest.Length} of {NativeWeaponSkins.MaxLength})";
 
