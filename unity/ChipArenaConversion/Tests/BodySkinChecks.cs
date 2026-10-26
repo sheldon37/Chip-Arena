@@ -267,7 +267,7 @@ namespace ChipArena.UnityConversion
                 ("NativeWeaponFxPresentation.cs","afterimageBody[slot]=BodyAfterimage(BodySkin(a.Id),BodyTier(root,false))??pilot;","roll afterimages"),
                 ("NativeDeathBroadcastPresentation.cs","stage.Pilot=sourceModels.Hologram(BodyModel(BodySkin(item.Victim),BodyCloseTier));","the death broadcast hologram"),
                 ("NativeIntros.cs","sourceModels.EntranceGhost(BodyModel(script is NativeSheldonIntroScript?NativeBodySkins.SheldonIndex:BodySkin(introActor),BodyCloseTier))","entrance afterimages and holograms"),
-                ("NativeDraftPresentation.cs","int bodySkin=NativeBodySkins.Of(seat.weaponSkins);sourceModels.Queue(siren?\"siren\":BodyModel(bodySkin,BodyCloseTier)","the chip draft seat"),
+                ("NativeDraftPresentation.cs","int bodySkin=NativeBodySkins.Of(seat.weaponSkins);if(!asModel){sourceModels.Queue(siren?\"siren\":BodyModel(bodySkin,BodyCloseTier)","the chip draft seat"),
                 ("NativeRooftopPresentation.cs","BodyModel(i==0?pilot.BodySkin:NativeBodySkins.StandardIndex,","the rooftop home pilot and the crowd"),
                 ("NativePortraits.cs","bool pilot=NativeBodySkins.IsBody(id);int cls=pilot?NativePortraitRules.PartClass(name)","portrait part classes and lobby-pose covers for every body"),
                 ("NativePortraits.cs","var bodyParts=siren?Parts(\"siren\"):Parts(s.BodyModel);","portraits, lobby poses and the Locker stage"),

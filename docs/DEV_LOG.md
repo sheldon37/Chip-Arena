@@ -1,3 +1,19 @@
+## 2026-10-25 — Claude: the draft's pilot wears the model (merged into shared)
+
+- **Branch/base:** `claude/model-draft` from shared `902d2cf2`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Changes (presentation only):**
+  - `VisualDraftPose` (NativeVisualBodyPresentation.cs): the drafting seat as a stand-in actor (outfit, accent, hat, weapon away), bound to the stage's pose, its hips on the pose's pelvis.
+  - `RenderDraft`: the voxel body and hat only when the pilot is not on the model (the Siren, Classic, no bake).
+  - The catch palm, the chip's carry and the plant rings map from the stage's wrists onto the model's.
+  - The stage, its camera framing and the draft's timing are unchanged (NativeDraftStage is another agent's work in progress and was not touched).
+  - Local tool: `choose=T` (the drafting seat picks its first offer); `probe=` prefixes ending in `/` list children.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `e893d3e9`); BodySkinChecks' draft pin updated; two new VisualRigChecks.
+  - Unity compile: PASS.
+  - Play mode (sandbox draft preview, a pick): the model stands centred in the corridor, head in frame; the chip is caught, carried and pressed into the other wrist on the model, the rings round its cuff.
+- **Not run:** a real draft in a match; the Siren draft; a hat in the draft; a Windows build; multiplayer.
+- **Owner note:** the model is slimmer than the voxel robot, so it fills less of the draft frame; the framing is the stage's own.
+
 ## 2026-10-25 — Claude: the visual body's install budget is 56 MB (merged into shared)
 
 - **Branch/base:** `claude/visual-body-budget` from shared `b133773d`. No PR; merged into shared and the builder.

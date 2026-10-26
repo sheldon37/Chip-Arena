@@ -95,23 +95,31 @@ namespace ChipArena.UnityConversion
             DraftBackdrop(camera,tint,age,pulse,trayLine,reduced,siren,dt);
             var plant=stage.Plant;int hand=stage.Left?9:13;
             // draft-stage.ts animates the Siren drafter (animateSiren on the match clock): its idle look, eye halos lit.
-            var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;int bodySkin=NativeBodySkins.Of(seat.weaponSkins);sourceModels.Queue(siren?"siren":BodyModel(bodySkin,BodyCloseTier),root,draftBone,body:BodyTint(seat.bodyColor),accent:BodyAccent(bodySkin,seat.accentColor,seat.hat,seat.hatColor),look:sirenFace);if(!siren&&!AuditorHalo(seat.hat,draftRig.Bones[CapturedRig.Head].localToWorldMatrix,(float)time,1,reduced,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),root,draftBone,body:HatBody(seat.hat,seat.hatColor));
+            // The pilot on its visual body (NativeVisualBodyPresentation.cs VisualDraftPose), else the voxel body and hat.
+            int other=hand==CapturedRig.LHand?CapturedRig.RHand:CapturedRig.LHand;Matrix4x4 holdFrom=draftRig.Bones[hand].localToWorldMatrix,plantFrom=draftRig.Bones[other].localToWorldMatrix;
+            bool asModel=!siren&&VisualDraftPose(draftRig,seat,draftPose,(float)time,camera);VisualBodiesShown();
+            // On the model the rig's hands are the model's wrists (VisualBodyBind): the palm, the chip and the plant move from the
+            // stage's wrists onto them.
+            Matrix4x4 holdTo=asModel?draftRig.Bones[hand].localToWorldMatrix*holdFrom.inverse:Matrix4x4.identity,plantTo=asModel?draftRig.Bones[other].localToWorldMatrix*plantFrom.inverse:Matrix4x4.identity;
+            var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;int bodySkin=NativeBodySkins.Of(seat.weaponSkins);if(!asModel){sourceModels.Queue(siren?"siren":BodyModel(bodySkin,BodyCloseTier),root,draftBone,body:BodyTint(seat.bodyColor),accent:BodyAccent(bodySkin,seat.accentColor,seat.hat,seat.hatColor),look:sirenFace);if(!siren&&!AuditorHalo(seat.hat,draftRig.Bones[CapturedRig.Head].localToWorldMatrix,(float)time,1,reduced,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),root,draftBone,body:HatBody(seat.hat,seat.hatColor));}
             if(siren){sirenLookCamera=camera;SirenLookFx(draftRig,sirenFace,0,null,reduced?0:(float)time);}
             // The chip at its real size in the hand (never bigger than the hand), carried to the other wrist and pressed in.
-            var palm=Stage(stage.Palm);draftChipTint=(chipTint.a>0?chipTint:tint).linear;
+            var palm=holdTo.MultiplyPoint3x4(Stage(stage.Palm));draftChipTint=(chipTint.a>0?chipTint:tint).linear;
             if(age>=NativeDraftPlant.Contact&&(siren||plant.ChipShown))
             {
                 float scale=NativeDraftPlant.HeldChipScale(age,(float)time,reduced);var at=siren?palm:Stage(plant.Chip);var turn=siren?draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0):CapturedAnimation.Quat(CapturedRig.Mirror(plant.ChipRotation));
+                // The chip rides from the holding wrist to the receiving one.
+                if(asModel){float fromPalm=(at-Stage(stage.Palm)).magnitude,toCuff=(at-Stage(plant.At)).magnitude,ride=fromPalm/Mathf.Max(1e-5f,fromPalm+toCuff);at=Vector3.Lerp(holdTo.MultiplyPoint3x4(at),plantTo.MultiplyPoint3x4(at),ride);turn=Quaternion.Slerp(holdTo.rotation,plantTo.rotation,ride)*turn;}
                 if(scale>.001f){draftChip=Matrix4x4.TRS(at,turn,Vector3.one*scale);string model=sourceModels.MachineModel(NativeMachineModels.PickupModel(chipTier),"pve-pickup");draftChipOrbit=draftChip*sourceModels.PickupOrbit(model,reduced?0:(float)time);sourceModels.Queue(model,draftChip,draftChipBone,partTint:draftChipPart);}
             }
             // The plant pulse: two rarity rings expanding around the forearm, a spark at the cuff and the rim light's flash.
             if(pulse>=0)
             {
-                var at=siren?palm:Stage(plant.At);var axis=Quaternion.FromToRotation(Vector3.forward,siren?Vector3.up:CapturedAnimation.Vec(CapturedRig.Mirror(plant.Forearm)));var rare=draftChipTint;
+                var at=siren?palm:plantTo.MultiplyPoint3x4(Stage(plant.At));var axis=Quaternion.FromToRotation(Vector3.forward,siren?Vector3.up:plantTo.MultiplyVector(CapturedAnimation.Vec(CapturedRig.Mirror(plant.Forearm))));var rare=draftChipTint;
                 for(int ring=0;ring<2;ring++){float u=Mathf.Clamp01(pulse*1.35f-ring*.3f),fade=(1-u)*(1-u);if(u<=0||fade<.03f)continue;float r=.06f+.14f*NativeUiMotion.Bezier(.2f,.8f,.2f,1,u);sourceModels.QueuePiece(WeaponShape.Ring,true,Matrix4x4.TRS(at,axis,new Vector3(r,r,r*.6f)),rare*(1.6f*fade));}
                 float s=.03f*(1-pulse);if(s>.002f)sourceModels.QueuePiece(WeaponShape.Cube,true,Matrix4x4.TRS(at,Quaternion.identity,Vector3.one*s),rare*2);
             }
-            TeamBands(draftRig,DraftBandTeam);DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);catchAt=camera.WorldToScreenPoint(Stage(stage.CatchPalm));return camera.WorldToScreenPoint(palm);
+            TeamBands(draftRig,DraftBandTeam);DrawBatches(null,0,false);sourceModels.Flush(UsesInstancing);catchAt=camera.WorldToScreenPoint(holdTo.MultiplyPoint3x4(Stage(stage.CatchPalm)));return camera.WorldToScreenPoint(palm);
         }
         // A stage rig root-frame point (source axes) in Unity world space (the rig root stands at y .88, unrotated).
         private static Vector3 Stage(NVector p)=>new Vector3(-p.X,p.Y+.88f,p.Z);
