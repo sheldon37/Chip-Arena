@@ -11,7 +11,7 @@
   - **Not ported:** the pack's pattern, decal and normal-map inputs (no baked material uses them).
   - **Local tool:** `bozo-face.request` dumps a baked part's vertices, normals and UVs in a bone's frame (head by default).
 - **Checks (actual):**
-  - Full CoreTests: see the merge. `--visual-rig` PASS with new checks (the mask's and visor's shells, symmetry, coverage, nose clearance, the skin rule, the draw hooks, the Cyber Lord's pieces, the joint frames' order).
+  - Full CoreTests 852 PASS (LF checkout of `339c1122`). `--visual-rig` PASS with new checks (the mask's and visor's shells, symmetry, coverage, nose clearance, the skin rule, the draw hooks, the Cyber Lord's pieces, the joint frames' order).
   - Unity compile: PASS.
   - Play mode:
     - the Cyber Lord's aura and its gauntlets on the model (the gauntlets round the hands after the fix);
