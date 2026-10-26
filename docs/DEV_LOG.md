@@ -1,4 +1,4 @@
-## 2026-10-25 — Claude: the Cyber Lord's pieces, and the concept's tech mask and visor, on the model (merged into shared)
+## 2026-10-25 — Claude: the Cyber Lord's pieces, and the concept's tech mask, visor and back emblem, on the model (merged into shared)
 
 - **Branch/base:** `claude/model-cyberlord` from shared `16b046dd`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
 - **Changes (presentation only):**
@@ -6,14 +6,17 @@
   - **Joint frames:** `VisualJointsOf` runs after the rig's hands go onto the model's wrists, so what rides a hand closes round the model's hand.
   - **The mask and visor:** `NativePilotGear.Mask`/`Visor`, our own meshes in code, fitted to the measured head.
     - Models `pilot-gear-mask`/`-visor` on the head joint; `VisualFaceGear` draws them on the model's head bone.
-    - Worn with the Prototype body skin (`FaceGear`): the live body, the draft's pilot, a whole corpse.
-  - **Local tool:** `bozo-face.request` dumps the baked head's vertices in the head bone's frame.
+    - Worn with the Prototype body skin (`WearsFaceGear`, a presentation rule: Core reads no body skin): the live body, the draft's pilot, a whole corpse.
+  - **The back emblem:** `NativePilotGear.Emblem` (a smiley with X eyes, accent strokes) on the chest's model bone at the upper back, on every model pilot.
+  - **Not ported:** the pack's pattern, decal and normal-map inputs (no baked material uses them).
+  - **Local tool:** `bozo-face.request` dumps a baked part's vertices, normals and UVs in a bone's frame (head by default).
 - **Checks (actual):**
   - Full CoreTests: see the merge. `--visual-rig` PASS with new checks (the mask's and visor's shells, symmetry, coverage, nose clearance, the skin rule, the draw hooks, the Cyber Lord's pieces, the joint frames' order).
   - Unity compile: PASS.
   - Play mode:
     - the Cyber Lord's aura and its gauntlets on the model (the gauntlets round the hands after the fix);
-    - the mask and visor on the model in a match (front, three-quarter, profile), in the draft through a pick, and on a corpse.
+    - the mask and visor on the model in a match (front, three-quarter, profile), in the draft through a pick, and on a corpse;
+    - the back emblem from behind and three-quarter.
 - **Not run:** the Cyber Lord in first person or its entrance on the model; the face gear on a split, crushed or kill-look corpse; a Windows build; multiplayer.
 - **Owner decisions:** whether the mask and visor should be the default look (the concept sheet) or stay on the Prototype skin; mask variants; the Locker's card texts for the model.
 

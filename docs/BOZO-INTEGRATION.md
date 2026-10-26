@@ -1371,11 +1371,19 @@ already? Cant we utilize that?"
     - The visor is a band of accent glass over the eyes (4.2 cm with its frame), wrapping in front of the hair to pods at
       the temples.
   - **Who wears it:** the Prototype body skin on the model. The Standard keeps BoZo's face as authored (owner,
-    2026-10-22). One rule (`NativePilotGear.FaceGear`) sets this, so it can be flipped. The Locker's card texts still
+    2026-10-22). One presentation rule (`WearsFaceGear`) sets this, so it can be flipped. The Locker's card texts still
     describe the voxel skins.
   - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
   - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
     and ghosts.
+- **The concept's back emblem (2026-10-25, `claude/model-cyberlord`):** a smiley with X eyes in flat accent-glow strokes
+  (`NativePilotGear.Emblem`, our own), about 8 cm across on the upper back. It sits on the chest's model bone, measured on
+  the baked hoodie, and glows as the core does. Every model pilot wears it, as the concept's default outfit does.
+  - **Why not the pack's decals:** the pack projects decals into textures at runtime, and the hoodie's back is split and
+    stretched in its UV layout, so a UV decal would distort.
+  - **The pack's pattern, decal and normal-map inputs are not ported:** no baked material uses them (of the pack's 73 toon
+    materials, 4 head and skin materials carry a pattern, 5 a normal map with the switch off, none a decal). They wait
+    for an outfit that does.
 - **Done on the model (2026-10-25, `claude/model-dressing`; owner: "Lets work on all these"):**
   - **Joint frames:** each game joint's frame is captured on its mapped model bone at the first bind (`VisualJointFrame`),
     so what rides a joint follows the model through the pack's clips.
@@ -1388,7 +1396,8 @@ already? Cant we utilize that?"
 - **The Cyber Lord's hardlight pieces (2026-10-25, `claude/model-cyberlord`)** ride the model's joints, both the aura and
   the gauntlets. The joint frames are now taken after the rig's hands go onto the model's wrists, so the gauntlets and
   hand chips close round the model's hands.
-- **Pattern and decal overlays** for other outfits; normal maps.
+- **Pattern and decal overlays** for other outfits; normal maps (none of the baked materials uses them; see the back
+  emblem above).
 - **The draft (2026-10-25, `claude/model-draft`):** the drafting pilot wears the model in the cyber corridor.
   - `VisualDraftPose` binds the stage's pose (hat on the model's head, no weapon) and puts the model's hips on the pose's
     pelvis; the stage's camera framing is unchanged.
@@ -1526,7 +1535,7 @@ ours to author.
 |---|---|---|
 | Short spiky dark hair | `HairFront_Messy` + `HairBack_PineappleCut` (or `HairBack_WildLocks`) | colour only |
 | Jacket over a tee, light hood | `Top_OpenHoodie` (or `Top_HardJacket` for the high collar) | glow strips, the chest chevron |
-| Back emblem | BoZo's decal system can place it | the emblem texture (our own art) |
+| Back emblem | BoZo's decal system can place it | built in code as glowing strokes (2026-10-25), on every model pilot |
 | Cargo joggers with straps | `Bottom_BeltedPants` (or `Bottom_BaggyPants`) | knee plates, belt pouches, glow strips |
 | High-top sneakers | `Feet_AthleticMidTop` | glow strips |
 | Fingerless gloves | `Gloves_FingerlessGloves` | forearm guards with glow |
