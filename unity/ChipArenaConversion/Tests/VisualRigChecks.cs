@@ -1013,6 +1013,11 @@ namespace ChipArena.UnityConversion
             string draft=R("Runtime/NativeDraftPresentation.cs");
             Check(draft.Contains("bool asModel=!siren&&VisualDraftPose(draftRig,seat,draftPose,(float)time,camera);VisualBodiesShown();")&&draft.Contains("if(!asModel){sourceModels.Queue(siren?\"siren\":BodyModel(bodySkin,BodyCloseTier)")&&body.Contains("pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false);")&&body.Contains("var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;"),"the draft's pilot wears the model, its hips on the stage pose's pelvis (the Siren and Classic keep the voxel body)");
             Check(draft.Contains("Matrix4x4 holdTo=asModel?draftRig.Bones[hand].localToWorldMatrix*holdFrom.inverse:Matrix4x4.identity,plantTo=asModel?draftRig.Bones[other].localToWorldMatrix*plantFrom.inverse:Matrix4x4.identity;")&&draft.Contains("var palm=holdTo.MultiplyPoint3x4(Stage(stage.Palm));")&&draft.Contains("at=Vector3.Lerp(holdTo.MultiplyPoint3x4(at),plantTo.MultiplyPoint3x4(at),ride);")&&draft.Contains("var at=siren?palm:plantTo.MultiplyPoint3x4(Stage(plant.At));")&&draft.Contains("catchAt=camera.WorldToScreenPoint(holdTo.MultiplyPoint3x4(Stage(stage.CatchPalm)));"),"the draft's catch, chip and plant ride the model's wrists");
+            // The Cyber Lord's hardlight pieces (aura or gauntlets) ride the model's joints; the hands' joint frames are taken after
+            // the rig's hands go onto the model's wrists, so the gauntlets close round its hands.
+            Check(R("Runtime/NativeSourcePresentation.cs").Contains("if(SpawnShows(CapturedRig.RHand))CyberLordBody(rig,a,time,first,layer,camera);")&&R("Runtime/NativeCyberLordPresentation.cs").Contains("QueueCyberPiece(cyberPieces[i],first?rig.Bones[cyberPieces[i].Bone].localToWorldMatrix:VisualJointFrame(rig,cyberPieces[i].Bone),"),"the Cyber Lord's pieces draw on the model's joints");
+            int handsOn=body.IndexOf("bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp),origin.rotation*(side==0?lq:rq));",StringComparison.Ordinal),joints=body.IndexOf("if(body.JointFrom==null)VisualJointsOf(body,rig);",StringComparison.Ordinal);
+            Check(handsOn>0&&joints>handsOn,"the joint frames are taken after the hands go onto the model's wrists");
         }
         // The accent glow (owner 2026-10-23: "lights still show where old player model limbs are. I actually want to make lights
         // accentuate the blue colors on the clothes for new model"): the shader's emission over the accent channels, written per
@@ -1152,6 +1157,23 @@ namespace ChipArena.UnityConversion
             var accepted=NativePilotGear.Device(1,(NativeDraftPlant.PulseStart+NativeDraftPlant.PulseEnd)*.5f,.3f,1);Check(accepted.BayChip&&accepted.Bay>1.2f&&accepted.LensChip,"the bay and lens take the chip's colour as it is accepted");
             float after=NativeDraftPlant.PulseEnd-NativeDraftPlant.CarryEnd;
             Check(NativePilotGear.Device(0,-1,after+.5f,1).LensChip&&!NativePilotGear.Device(0,-1,after+NativePilotGear.ActiveSeconds+.01f,1).LensChip,"the lens keeps the chip's colour for ActiveSeconds after the lid has shut");
+            // The face gear (the concept's mask and visor, in the head bone's frame): mirror-symmetric shells on the face, the front
+            // facing out; the mask over the nose tip, the visor over the eyes' band; the Prototype body skin wears it.
+            foreach(var (mesh,name) in new[]{(NativePilotGear.Mask(),"mask"),(NativePilotGear.Visor(),"visor")})
+            {
+                var faces=Faces(mesh);float minX=9,maxX=-9,minY=9,maxY=-9,minZ=9;var front=faces[0];
+                foreach(var sec in mesh.Sections)foreach(var v in sec.Positions){minX=Math.Min(minX,v.X);maxX=Math.Max(maxX,v.X);minY=Math.Min(minY,v.Y);maxY=Math.Max(maxY,v.Y);minZ=Math.Min(minZ,v.Z);}
+                foreach(var f in faces)if(f.c.Z>front.c.Z)front=f;
+                Check(faces.Count>100&&Math.Abs(minX+maxX)<1e-4f&&maxX<.11f&&minY>-.06f&&maxY<.1f&&minZ>.02f&&front.n.Z>.5f,"the "+name+" is built, symmetric, on the face and facing out ("+faces.Count+" faces, x to "+maxX+", y "+minY+".."+maxY+")");
+                if(name=="visor")Check(minY<=.044f&&maxY>=.08f,"the visor covers the eyes' band (y .044 to .080)");
+            }
+            Check(NativePilotGear.MaskSurface(0,.03f)>.154f&&NativePilotGear.MaskSurface(0,-.03f)>.125f,"the mask clears the nose tip and the chin");
+            Check(body.Contains("private static bool WearsFaceGear(int bodySkin)=>bodySkin==NativeBodySkins.PrototypeIndex;")&&body.Contains("if(head==null||!WearsFaceGear(BodySkin(id))||!sourceModels.PilotFace())return;"),"the Prototype body skin wears the face gear; the Standard keeps the authored face");
+            // The back emblem: a ring, two X eyes and a smile facing out of the back, inside its radius, on the chest bone.
+            var emblem=Faces(NativePilotGear.Emblem());float reach=0;bool outward=true;foreach(var (c,n) in emblem){reach=Math.Max(reach,new Vector2(c.X,c.Y).Length());outward&=n.Z>.99f;}
+            Check(emblem.Count>=2*(28+4+10)&&outward&&reach<=NativePilotGear.EmblemRadius,"the back emblem's strokes face out of the back, inside its radius ("+emblem.Count+" faces)");
+            Check(models.Contains("GearModel(GearEmblem,NativePilotGear.Emblem(),CapturedRig.Chest);")&&body.Contains("gearMatrix=chest.localToWorldMatrix*EmblemFrame;"),"every model pilot wears the back emblem on its chest bone");
+            Check(models.Contains("GearModel(GearMask,NativePilotGear.Mask(),CapturedRig.Head);GearModel(GearVisor,NativePilotGear.Visor(),CapturedRig.Head);")&&body.Contains("if(!first)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);")&&body.Contains("VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);")&&body.Contains("if(c.Look==0&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)"),"the face gear rides the model's head bone: the live body, the draft's pilot and a whole corpse");
             // The runtime: the anchors by name, the device's look read from the chip-select slot, the models on one SourceLit material,
             // and VisualGear building only values.
             Check(body.Contains("t.name==\"VisualGearCore\"")&&body.Contains("t.name==\"VisualGearDevice\"")&&body.Contains("t.name==\"VisualGearDeviceRim\""),"the gear's anchors by the bake's names");

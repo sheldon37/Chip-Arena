@@ -133,6 +133,130 @@ namespace ChipArena.UnityConversion
         public static Vector3 Hinge(float r)=>new Vector3(-(r+HousingTop+FrameHeight),LidHinge,0);
         public static Vector3 Seat(float r)=>new Vector3(-(r+HousingTop),(BayNear+BayFar)*.5f+.001f,0);
 
+        // ---- the face gear ----
+        // The owner's concept pieces for the model's face (docs/BOZO-INTEGRATION.md "Default outfit"): a lower-face tech mask and a
+        // glowing visor band over the eyes, in the model's head bone's frame (source axes: y up, z out of the face). Fitted to the
+        // baked head (Head_AnimeYoung with its lashes, brows and front hair: the eyes at y .044-.080 with the lashes reaching
+        // z .116, the nose tip at y .03, z .151, the chin at y -.04, the bangs to y .07, hair over the temples from |x| .06):
+        // grids of points (columns at +-|x|, rows bottom to top) about 5 mm off the face, the shells FaceThick deep.
+        public const float FaceThick=.004f;
+        // The mask: its lower edge along the jaw, curling under the chin; over the nose; its top edge tucked under the visor.
+        private static readonly float[] MaskX={0,.015f,.03f,.045f,.058f,.068f};
+        private static readonly float[] MaskY={
+            -.050f,-.047f,-.038f,-.026f,-.014f,-.004f,
+            -.032f,-.030f,-.023f,-.013f,-.004f,.004f,
+            -.014f,-.012f,-.008f,-.001f,.006f,.012f,
+            .005f,.005f,.008f,.012f,.016f,.019f,
+            .021f,.021f,.021f,.023f,.025f,.026f,
+            .032f,.031f,.030f,.031f,.031f,.031f,
+            .041f,.040f,.038f,.037f,.036f,.035f};
+        private static readonly float[] MaskZ={
+            .113f,.109f,.101f,.096f,.095f,.088f,
+            .129f,.125f,.117f,.112f,.103f,.101f,
+            .136f,.132f,.124f,.119f,.112f,.102f,
+            .143f,.137f,.128f,.121f,.113f,.106f,
+            .152f,.143f,.130f,.122f,.115f,.107f,
+            .155f,.143f,.128f,.121f,.115f,.108f,
+            .139f,.131f,.123f,.118f,.110f,.104f};
+        // The visor: a band over the eyes (y .041-.083: the frame's 4 mm above and below the glass), wrapping to the temples in
+        // front of the hair.
+        private static readonly float[] VisorX={0,.02f,.04f,.055f,.068f,.08f,.09f};
+        private static readonly float[] VisorY={
+            .041f,.041f,.041f,.041f,.041f,.041f,.041f,
+            .045f,.045f,.045f,.045f,.045f,.045f,.045f,
+            .079f,.079f,.079f,.079f,.079f,.079f,.079f,
+            .083f,.083f,.083f,.083f,.083f,.083f,.083f};
+        private static readonly float[] VisorZ={
+            .141f,.137f,.130f,.124f,.117f,.109f,.100f,
+            .141f,.137f,.130f,.124f,.117f,.109f,.100f,
+            .140f,.136f,.129f,.123f,.116f,.108f,.099f,
+            .139f,.135f,.128f,.122f,.115f,.107f,.098f};
+        private static readonly WeaponPaint VisorGlass=WeaponPaint.Accent(1.3f,.5f);
+        /// <summary>The lower-face mask: a dark shell over the nose, mouth and chin, three vents on each cheek and a strip down the
+        /// chin in the accent, and a strap from each side back into the hair.</summary>
+        public static WeaponMesh Mask()
+        {
+            var mesh=new WeaponMesh{Spec="pilot-mask"};var s=new WeaponSculpt(mesh,0);s.Into(0);
+            Shell(s,MaskX,MaskY,MaskZ,(r,c)=>r==5?Metal:MetalDark,MetalDark,Metal);
+            for(int side=-1;side<=1;side+=2)
+            {
+                for(int k=0;k<3;k++){float y=-.006f+k*.009f;s.Decal(Strip,new Vector3(side*.04f,y,MaskSurface(.04f,y)),new Vector3(.73f,0,-side*.68f)*.0065f,new Vector3(0,.0015f,0),.0012f);}
+                s.Tube(Metal,new[]{new Vector3(side*.066f,.012f,.098f),new Vector3(side*.079f,.016f,.07f),new Vector3(side*.086f,.02f,.035f)},.0028f,6,Vector3.UnitY);
+            }
+            s.Decal(Strip,new Vector3(0,-.026f,MaskSurface(0,-.026f)),new Vector3(.0016f,0,0),new Vector3(0,.009f,.002f),.0012f);
+            return mesh;
+        }
+        /// <summary>The visor: a band of accent glass across the eyes in a dark frame, ending in pods at the temples.</summary>
+        public static WeaponMesh Visor()
+        {
+            var mesh=new WeaponMesh{Spec="pilot-visor"};var s=new WeaponSculpt(mesh,0);s.Into(0);int last=VisorX.Length*2-3;
+            Shell(s,VisorX,VisorY,VisorZ,(r,c)=>r==1&&c>0&&c<last?VisorGlass:MetalDark,MetalDark,Metal);
+            for(int side=-1;side<=1;side+=2)
+            {
+                s.Box(Metal,new Vector3(side*.094f,.062f,.094f),new Vector3(.009f,.03f,.02f),.002f);
+                s.Decal(Strip,new Vector3(side*.0985f,.062f,.094f),new Vector3(0,0,-side*.005f),new Vector3(0,.011f,0),.0008f);
+            }
+            return mesh;
+        }
+        // A shell over a grid (rows bottom to top, columns +-xs mirrored about x = 0, each point's y in ys and outer z in zs)
+        // FaceThick deep toward the head's vertical axis behind the face: the outer faces painted by row and column (left to
+        // right), the inner face and the rim.
+        private static void Shell(WeaponSculpt s,float[] xs,float[] ys,float[] zs,Func<int,int,WeaponPaint> outer,WeaponPaint inner,WeaponPaint rim)
+        {
+            int n=xs.Length,rows=ys.Length/n,cols=n*2-1;var o=new Vector3[rows,cols];var i=new Vector3[rows,cols];
+            for(int r=0;r<rows;r++)for(int c=0;c<cols;c++)
+            {
+                int k=c-(n-1),a=Math.Abs(k);var p=new Vector3(Math.Sign(k)*xs[a],ys[r*n+a],zs[r*n+a]);
+                o[r,c]=p;i[r,c]=p+Vector3.Normalize(new Vector3(0,p.Y,.02f)-p)*FaceThick;
+            }
+            for(int r=0;r+1<rows;r++)for(int c=0;c+1<cols;c++)
+            {
+                s.Quad(outer(r,c),o[r,c],o[r,c+1],o[r+1,c+1],o[r+1,c]);
+                s.Quad(inner,i[r,c],i[r+1,c],i[r+1,c+1],i[r,c+1]);
+            }
+            for(int c=0;c+1<cols;c++){s.Quad(rim,o[0,c],i[0,c],i[0,c+1],o[0,c+1]);s.Quad(rim,o[rows-1,c],o[rows-1,c+1],i[rows-1,c+1],i[rows-1,c]);}
+            for(int r=0;r+1<rows;r++){s.Quad(rim,o[r,0],o[r+1,0],i[r+1,0],i[r,0]);s.Quad(rim,o[r,cols-1],i[r,cols-1],i[r+1,cols-1],o[r+1,cols-1]);}
+        }
+        /// <summary>The mask's outer z at (x, y) in the head bone's frame: the grid's column at |x| (linear between columns), its
+        /// rows by their y there.</summary>
+        public static float MaskSurface(float x,float y)
+        {
+            x=Math.Abs(x);int n=MaskX.Length,c=0;while(c+2<n&&x>MaskX[c+1])c++;float u=MathUtil.Clamp((x-MaskX[c])/(MaskX[c+1]-MaskX[c]),0,1);
+            float At(float[] g,int r)=>g[r*n+c]+(g[r*n+c+1]-g[r*n+c])*u;
+            int rows=MaskY.Length/n,k=0;while(k+2<rows&&y>At(MaskY,k+1))k++;
+            float y0=At(MaskY,k),y1=At(MaskY,k+1),v=MathUtil.Clamp((y-y0)/Math.Max(1e-5f,y1-y0),0,1);return At(MaskZ,k)+(At(MaskZ,k+1)-At(MaskZ,k))*v;
+        }
+
+        // ---- the back emblem ----
+        // The concept sheet's glowing emblem on the back (a smiley with X eyes; every model pilot wears it, as the concept's
+        // default outfit does), our own: flat strokes in the accent, in its own
+        // frame (x across, y up, z out of the back) and placed on the chest's model bone (spine_05) by EmblemAt/EmblemTurn,
+        // measured on the baked hoodie: the upper back 7 cm below the bone, about 4 mm off the cloth, tilted with it.
+        /// <summary>The emblem's radius, its strokes' width, and its centre and tilt on the chest bone (the bone's frame: x down
+        /// the spine, y out of the back, z across).</summary>
+        public const float EmblemRadius=.042f,EmblemStroke=.0045f,EmblemDown=.07f,EmblemOut=.1075f,EmblemSlope=.056f;
+        private static readonly WeaponPaint EmblemGlow=WeaponPaint.Accent(2.0f,.4f);
+        /// <summary>The emblem: a ring, two X eyes and a smile.</summary>
+        public static WeaponMesh Emblem()
+        {
+            var mesh=new WeaponMesh{Spec="pilot-emblem"};var s=new WeaponSculpt(mesh,0);s.Into(0);float w=EmblemStroke*.5f;
+            // A stroke from a to b in the emblem's plane, facing +z.
+            void Stroke(Vector2 a,Vector2 b){var d=Vector2.Normalize(b-a);var n=new Vector2(-d.Y,d.X)*w;var c=(a+b)*.5f;var u=(b-a)*.5f;s.Decal(EmblemGlow,new Vector3(c,0),new Vector3(u,0),new Vector3(n,0),.0008f);}
+            void Arc(Vector2 c,float r,float from,float to,int segments)
+            {
+                for(int k=0;k<segments;k++)
+                {
+                    float a0=from+(to-from)*k/segments,a1=from+(to-from)*(k+1)/segments;
+                    Stroke(c+new Vector2((float)Math.Cos(a0),(float)Math.Sin(a0))*r,c+new Vector2((float)Math.Cos(a1),(float)Math.Sin(a1))*r);
+                }
+            }
+            Arc(Vector2.Zero,EmblemRadius-w,0,(float)Math.PI*2,28);
+            float e=.0075f;
+            for(int side=-1;side<=1;side+=2){var c=new Vector2(side*.0155f,.011f);Stroke(c+new Vector2(-e,-e),c+new Vector2(e,e));Stroke(c+new Vector2(-e,e),c+new Vector2(e,-e));}
+            Arc(new Vector2(0,.006f),.024f,(float)(Math.PI*1.18),(float)(Math.PI*1.82),10);
+            return mesh;
+        }
+
         // ---- states ----
         /// <summary>Health share under which the core flickers, the flicker's slot length (s) and the share of slots it drops in at
         /// zero health; the slow pulse's period and depth; the flare as the body appears (its rise, decay and peak).</summary>

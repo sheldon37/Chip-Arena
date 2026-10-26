@@ -114,7 +114,8 @@ namespace ChipArena.UnityConversion
             // (Core/CyberLordRanged.cs; not in the entrance); a guard packs the aura's shimmer denser.
             var mode=v!=null&&rig!=introRig?NativeCyberLordLook.ModeOf(v,time):default;float guard=rig!=introRig?NativeCyberLordAura.Guard(time,a.BlockAt,a.BlockUntil):0;
             int n=NativeCyberLordLook.PiecesIn(CyberSkin(rig,a.Id),a.Id,time,formAt,flare,first,solid,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics,cyberPieces,mode,guard);
-            for(int i=0;i<n;i++)QueueCyberPiece(cyberPieces[i],rig.Bones[cyberPieces[i].Bone].localToWorldMatrix,CyberLordIdlePose.ScanGain(glitch,cyberPieces[i],i,reduced),layer,camera);
+            // On a visual body the pieces ride the model's joints (NativeVisualBodyPresentation.cs VisualJointFrame).
+            for(int i=0;i<n;i++)QueueCyberPiece(cyberPieces[i],first?rig.Bones[cyberPieces[i].Bone].localToWorldMatrix:VisualJointFrame(rig,cyberPieces[i].Bone),CyberLordIdlePose.ScanGain(glitch,cyberPieces[i],i,reduced),layer,camera);
         }
         private void QueueCyberPiece(in CyberPiece p,Matrix4x4 bone,float gain,int layer,Camera camera)
         {
