@@ -5,8 +5,12 @@ namespace ChipArena.UnityConversion
     // which move plays which of the bake's effects, laid how. A finisher is the last cut of a weapon's cycle (the captured
     // sets' order: the sword's third, a thrust; the daggers' fourth; the greatsword's second); the melee Q/E abilities and
     // the special moves play theirs at their release. Presentation only: what a move does, when and to whom is the rules'.
+    // Off (owner 2026-10-26, of the line slashes on the melee attacks: "Nothing fits it currently"): no move plays them; the
+    // tables below and the bake's effects stay for a move that fits.
     public static class NativePackSlashes
     {
+        /// <summary>Whether any move plays the slash pack's effects (off: none does).</summary>
+        public static readonly bool On=false;
         public const int None=-1, Ring=0, RingReverse=1, Lines=2, Claws=3, Kinds=4;
         /// <summary>The bake's entries under VisualSlashFx, by kind.</summary>
         public static readonly string[] Names={"ring","ring-reverse","lines","claws"};
