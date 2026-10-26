@@ -1,3 +1,35 @@
+## 2026-10-26 — Claude: switching the clothes on the model, and hair cloth (merged into shared)
+
+- **Branch/base:** `claude/model-wardrobe` from shared `04a8beee`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner request (2026-10-26):** "integrate switching the clothes on the model", with Magica Cloth ("Go ahead for both").
+- **Changes (presentation; the install's limits):**
+  - **Outfit map:** `Core/NativeLook.cs` (the look contract's client half: five slots, 25 pieces), `prefs.look`.
+  - **Dressing:** `VisualDress` dresses every model instance from the bake's look data: worn pieces, covered body parts, tag shapes, gear anchors per top and hands, and one device model per sleeve radius. A changed outfit rebuilds the body.
+  - **Locker:** an OUTFIT section in Appearance while the model draws.
+  - **Cloth:** the `NativeVisualCloth` hook, plus a local, git-ignored Magica Cloth bridge with BoneCloth on hair chains and head, back and arm colliders.
+  - **Install limits:** `tools/install_local_assets.py` raises the visual-body budget from 56 to 72 MB and the zip's member total from 64 to 96 MiB. The body is 58.2 MB; the zip is 43.7 MB. The Drive zip is replaced with the wardrobe bake (old copy kept on the owner's PC).
+  - **Local tool:** `wardrobe=1` bakes the wardrobe; `look=map` and `cloth=T;...` (cloth state and chain angles) are play options; `bozo-face.request` takes a bone.
+- **Handoff to Astra:**
+  1. **The look contract (CHARACTER-LOWPOLY section i):**
+     - `NativeCosmetics.look`, `NativeSeat.look` and the seat frames;
+     - validation through `NativeLook.Normalize`;
+     - the backend allowlist from `NativeLook.Ids`.
+
+     Then `VisualLookOf` should read the seat's look rather than only this client's. Until then other clients see the default outfit.
+  2. **Cloth in builder builds:** commit Burst, Collections and Mathematics in the manifest, and carry `LocalAssets/MagicaCloth2` and the bridge in the zip. This is the owner's call.
+  3. **Still open:** the relay's `face` skin entry (earlier entry).
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `21c14d68`), with new VisualRigChecks (outfit map, dressing, rebuild, anchors, cloth hook) and LockerChecks (OUTFIT section).
+  - `Tests/test_visual_body_assets.py` 6 OK.
+  - Unity compile: PASS in the Editor, and PASS offline without the local packs.
+  - Play mode:
+    - five outfits front and back in a match (every slot; bare legs and arms where nothing covers them; the core and emblem on each top);
+    - the Locker's OUTFIT section;
+    - the draft's pilot in a chosen outfit;
+    - hair cloth on a running pilot (the chain tips swing and settle).
+- **Not run:** multiplayer (the outfit is local), a Windows build with cloth, a corpse's outfit in play, a cloth performance pass at 8 pilots.
+- **Risk:** an Editor-only check fits the cloth's colliders and presets by eye. Long hair chains (four bones or more) take the long-hair preset; none of today's styles has them.
+
 ## 2026-10-26 — Claude: face gear variants and the Locker's model cards (merged into shared)
 
 - **Branch/base:** `claude/model-face-variants` from shared `bf6049c8`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

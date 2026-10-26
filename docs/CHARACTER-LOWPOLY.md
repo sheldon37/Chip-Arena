@@ -566,6 +566,11 @@ baked-animation skinning, which is a separate decision.
 
 Astra implements this; nothing here changes rules.
 
+**Status (2026-10-26).** The client half is implemented: `Core/NativeLook.cs` (slots `hair`, `upper`, `lower`, `hands`,
+`feet`; Normalize, With, Index), `ConversionPreferences.look`, the Locker's OUTFIT section, and the model dressed by it
+(docs/BOZO-INTEGRATION.md). Still Astra's: `NativeCosmetics.look`, `NativeSeat.look` and the frames, the validation, the
+backend allowlist and any gates. The presentation then reads the seat's look in place of the local pick.
+
 **Field.** A compact normalized look map, `look` (string), following the `weaponSkins` pattern:
 - `slot:value` pairs, comma separated, in canonical slot order;
 - only non-default entries;
