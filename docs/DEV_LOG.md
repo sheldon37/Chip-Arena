@@ -1,3 +1,28 @@
+## 2026-10-26 — Claude: Handoff to Astra (owner-approved): Magica Cloth in the builder's test builds, and the look field
+
+- **Owner (2026-10-26, in chat with Claude):** "Yes: have Astra add Magica Cloth to the builder's test builds (the manifest packages and the zip), and carry the look field so other players see outfits."
+- **Base:** shared `3f0da3e4` (the wardrobe and the cloth hook are merged and published). No code changed in this entry.
+- **A. Magica Cloth in builder builds (build tooling):**
+  1. **Manifest:** add `com.unity.burst` 1.8.30, `com.unity.collections` 2.6.8 and `com.unity.mathematics` 1.3.3 to `Packages/manifest.json`.
+     - These are the versions the owner's Editor resolves today. They arrive there indirectly through Shader Graph, which the committed manifest does not have.
+     - Magica's asmdef compiles only with Burst 1.8.1 or later and Collections (`defineConstraints` `MC2_BURST`, `MC2_COLLECTIONS`).
+     - Collections also brings `test-framework`, `nuget.mono-cecil` and `test-framework.performance`.
+  2. **The zip:** carry `Assets/LocalAssets/MagicaCloth2` (3 MB; keep `Example (Can be deleted)` out, it needs the Wind module) and Claude's bridge `Assets/LocalAssets/ChipArenaLocalTools/Runtime/ChipArenaClothBridge.cs`, with their `.meta` files.
+     - Today `tools/pack_visual_body.py` leaves scripts out and `tools/install_local_assets.py` installs only the files listed in visual-body.json, so both need a path for code. The zip is the owner's private Drive file.
+     - The bridge embeds the hair pack's cloth presets, which are licensed: it stays out of git.
+     - The owner's PC has both files; Claude can repack on request.
+  3. **Scripting define:** Magica's `MagicaManager` writes `MAGICACLOTH2` into the target's scripting defines on every domain reload. That is ProjectSettings churn on the builder; don't commit it.
+  4. **Check:** in a builder build the bridge's `[RuntimeInitializeOnLoadMethod]` sets `NativeVisualCloth.Attach`, and a running pilot's hair swings. Without Magica in the zip the hook stays null and the bodies draw posed.
+- **B. The look field (CHARACTER-LOWPOLY section i; the client half is in `Core/NativeLook.cs`):**
+  1. **Fields:** `NativeCosmetics.look` (no initializer, as `hatColor`), `NativeSeat.look`, the game and lobby seat frames, and `LobbySeat`.
+     - Normalize with `NativeLook.Normalize`; reject a look longer than `NativeLook.MaxLength` (512) in `NativeGameFrame.Valid` and the lobby validation.
+  2. **Profile:** send `prefs.look` (already in `ConversionPreferences`; the Locker's OUTFIT section writes it, Save Pilot keeps it), and fill it on an account load.
+  3. **Account relay:** in `src/relay/accounts.ts`, allowlist the slots and ids from `NativeLook.Slots`/`NativeLook.Ids`.
+     - Also add the earlier `face` skin entry to `SKIN_WEAPONS`, keys `mask-visor` (default), `visor`, `mask`. Today a signed-in pilot's face pick resets at sign-in.
+  4. **Presentation switch:** `NativeVisualBodyPresentation.VisualLookOf(id)` returns `LocalLook` for this client's pilot and "" for others. Make it read the seat's look by id, as `SeatWeaponSkins(id)` does for skins. Corpses already ask by `death.id`.
+  5. **Rule:** no gameplay effect. Add a static scan that the authority sources never name `NativeLook`.
+- **Claude's side:** nothing blocks it; ask Claude for a repacked zip or the presentation switch if that is easier.
+
 ## 2026-10-26 — Claude: switching the clothes on the model, and hair cloth (merged into shared)
 
 - **Branch/base:** `claude/model-wardrobe` from shared `04a8beee`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
