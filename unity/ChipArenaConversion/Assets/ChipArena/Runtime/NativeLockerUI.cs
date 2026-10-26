@@ -651,7 +651,7 @@ namespace ChipArena.UnityConversion
                 float yaw=LockerYawShown(t)*Mathf.Deg2Rad;for(int i=0;i<8;i++){float a=i*Mathf.PI/4-yaw,depth=Mathf.Cos(a);var p=new Vector2(r.center.x+Mathf.Sin(a)*rx,fy+depth*ry);U.Fill(new Rect(p.x-1.5f,p.y-1.5f,3,3),U.A(accent,(.25f+.6f*Mathf.Clamp01(depth))*e));}
             }
             var look=new PortraitLook{Spec=w.id,Pose=pose,Hat=lockerHat??prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Yaw=LockerYawShown(t),Skin=LockerSkinShown(w.id),BodySkin=BodySkinShown(),HatColor=lockerHatColor??prefs.hatColor};
-            float ring=Mathf.Min(86,r.width*.26f);PortraitStage(r,LockerPortraitKey,look,lockerBack??prefs.lobbyBack,NativeHatLooks.Rgb(lockerBackColor??prefs.backColor),accent,body,NativeIcons.Spec(w.id),tone,e,t,0,new Vector2(r.center.x,r.y+r.height*.42f),ring,28,false);
+            float ring=Mathf.Min(86,r.width*.26f);PortraitStage(r,LockerPortraitKey,look,lockerBack??prefs.lobbyBack,NativeHatLooks.Rgb(lockerBackColor??prefs.backColor),accent,body,NativeIcons.Spec(w.id),tone,e,t,0,new Vector2(r.center.x,r.y+r.height*.42f),ring,28,false,true);
             U.Text(new Rect(r.x+16,r.y+14,200,14),"LIVE PREVIEW",10,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
             if(lockerHat!=null||lockerPose!=null||lockerBody!=null||lockerAccent!=null||lockerWeapon!=null||lockerBack!=null||lockerHatColor!=null||lockerBackColor!=null||lockerBodyTry!=null)U.Text(new Rect(r.x,r.y+14,r.width-16,14),"TRYING ON",10,U.Hex(0xc9bfff,e),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
             float hint=lockerTurned?Mathf.Clamp01(1-(Time.unscaledTime-lockerTurnAt-1.5f)):1;
