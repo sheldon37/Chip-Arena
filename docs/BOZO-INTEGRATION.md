@@ -1371,8 +1371,8 @@ already? Cant we utilize that?"
     - The visor is a band of accent glass over the eyes (4.2 cm with its frame), wrapping in front of the hair to pods at
       the temples.
   - **Who wears it:** the Prototype body skin on the model. The Standard keeps BoZo's face as authored (owner,
-    2026-10-22). One presentation rule (`WearsFaceGear`) sets this, so it can be flipped. The Locker's card texts still
-    describe the voxel skins.
+    2026-10-22). One presentation rule (`WearsFaceGear`) sets this. **Owner decision (2026-10-26):** keep the mask and
+    visor on the Prototype skin; the default keeps the face. The Locker's card texts still describe the voxel skins.
   - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
   - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
     and ghosts.
