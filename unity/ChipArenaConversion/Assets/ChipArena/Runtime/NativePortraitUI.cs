@@ -17,11 +17,22 @@ namespace ChipArena.UnityConversion
         private static readonly float[] DotAt={0f,.96f,1f},DotAlpha={1f,1f,0f};
         // The renderer, added beside the game by the first card that asks for a portrait. Only stages on screen ask (the
         // source skips a canvas outside the window); `top` is the hat top the renderer framed the pilot with.
-        private Texture Portrait(int key,in PortraitLook look,Rect stage,out float top)
+        private Texture Portrait(int key,in PortraitLook look,Rect stage,out float top,bool own=false)
         {
             top=0;if(Event.current.type!=EventType.Repaint||presentation==null||!OnScreen(stage))return null;
+            // On the model while it draws (Runtime/NativeVisualPortraitPresentation.cs): this client's own cards in its outfit and skins.
+            if(presentation.ModelPortraitFor(look)){presentation.ModelPortraitReduced=prefs.reducedEffects;return presentation.ModelPortrait(key,look,own?prefs.look:"",PortraitSkins(look,own),stage.width,stage.height,U.S,out top);}
             if(portraitRenderer==null){portraitRenderer=gameObject.AddComponent<NativePortraitRenderer>();portraitRenderer.Initialize(presentation,cameraView);}
             portraitRenderer.Reduced=prefs.reducedEffects;return portraitRenderer.Request(key,look,stage.width,stage.height,U.S,out top);
+        }
+        // A model portrait's skin map: this client's (with the shown body, which the Locker may be trying on), else the card's body.
+        private string portraitSkinsIn,portraitSkinsBody,portraitSkinsOut;
+        private string PortraitSkins(in PortraitLook look,bool own)
+        {
+            string body=string.IsNullOrEmpty(look.BodySkin)?NativeBodySkins.Standard:look.BodySkin;
+            if(!own)return body==NativeBodySkins.Prototype?"body:prototype":body==NativeBodySkins.Sheldon?"body:sheldon":"";
+            if(!ReferenceEquals(portraitSkinsIn,prefs.weaponSkins)||portraitSkinsBody!=body){portraitSkinsIn=prefs.weaponSkins;portraitSkinsBody=body;portraitSkinsOut=NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,body);}
+            return portraitSkinsOut;
         }
         // Whether any of a kit rect (virtual units, drawn at U.S physical pixels in the current clip) lands inside the window.
         private static bool OnScreen(Rect r)
@@ -52,7 +63,7 @@ namespace ChipArena.UnityConversion
             if(stage.height<PilotStageMin){var c=new Vector2(r.center.x,r.y+Mathf.Min(r.height*.36f,180));float ring=Mathf.Min(86,r.width*.26f);PilotEmblem(c,ring,accent,body,weapon,e,t);return c.y+ring+26;}
             var look=new PortraitLook{Spec=weapon.id,Pose=prefs.lobbyPose,Hat=prefs.hat,Body=HexOf(body),Accent=HexOf(accent),Skin=NativeWeaponSkins.Of(prefs.weaponSkins,weapon.id),HatColor=prefs.hatColor,BodySkin=BodySkinShown()};
             float emblemRing=Mathf.Min(86,r.width*.26f);var centre=new Vector2(stage.center.x,stage.y+Mathf.Min(stage.height*.42f,emblemRing+60));
-            PortraitStage(stage,1,look,prefs.lobbyBack,NativeHatLooks.Rgb(prefs.backColor),accent,body,NativeIcons.Spec(weapon.id),U.Hex((int)weapon.color),e,t,0,centre,emblemRing,28,false);
+            PortraitStage(stage,1,look,prefs.lobbyBack,NativeHatLooks.Rgb(prefs.backColor),accent,body,NativeIcons.Spec(weapon.id),U.Hex((int)weapon.color),e,t,0,centre,emblemRing,28,false,true);
             return stage.yMax+6;
         }
         // LobbyCard's .portrait-stage (lobby and PvE results cards): the seat's portrait, else the emblem the card had. Only
@@ -61,16 +72,16 @@ namespace ChipArena.UnityConversion
         {
             string icon=weapon!=null?NativeIcons.Spec(weapon.id):"shuffle";Color tone=weapon!=null?U.Hex((int)weapon.color):style;int ticks=ring<56?20:28;
             if(weapon==null||!CardLook(p,index,result,out int key,out var look,out string back,out int backColor)){PilotEmblem(centre,ring,p.accent,p.body,icon,tone,a,t,index*1.7f,ticks);return;}
-            PortraitStage(stage,key,look,back,backColor,p.accent,p.body,icon,tone,a,t,index*1.7f,centre,ring,ticks,!result);
+            PortraitStage(stage,key,look,back,backColor,p.accent,p.body,icon,tone,a,t,index*1.7f,centre,ring,ticks,!result,result?p.tag=="YOU":p.you);
         }
         // The portrait over its frame: the backdrop `back` (by default the emblem's accent glow, turning tick ring and orbiting
         // dot) around the pilot's upper body (the ring follows the framing), then the pilot; the sleeping pilot's z Z Z over
         // it. The emblem until ready. `backColor` (0xRRGGBB, -1 Auto: the accent) tints the backdrop (NativeHatLooks.Back).
-        private void PortraitStage(Rect stage,int key,in PortraitLook look,string back,int backColor,Color accent,Color body,string icon,Color tone,float e,float t,float phase,Vector2 emblemCentre,float emblemRing,int ticks,bool clipped)
+        private void PortraitStage(Rect stage,int key,in PortraitLook look,string back,int backColor,Color accent,Color body,string icon,Color tone,float e,float t,float phase,Vector2 emblemCentre,float emblemRing,int ticks,bool clipped,bool own=false)
         {
             // The backdrop's tint also colours the anime style's podium rim and gradient (NativePortraits).
             var lit=look;lit.Back=backColor<0?HexOf(accent):backColor;lit.HasBack=true;
-            var texture=Portrait(key,lit,stage,out float top);if(texture==null){PilotEmblem(emblemCentre,emblemRing,accent,body,icon,tone,e,t,phase,ticks);return;}
+            var texture=Portrait(key,lit,stage,out float top,own);if(texture==null){PilotEmblem(emblemCentre,emblemRing,accent,body,icon,tone,e,t,phase,ticks);return;}
             if(Event.current.type!=EventType.Repaint)return;
             int pose=NativeLobbyPoses.Effective(look.Spec,look.Pose);bool sleep=pose==NativeLobbyPoses.Sleep;var frame=NativePortraitRules.Frame(pose,stage.width/stage.height,top);
             // The ring's centre and radius in the stage: a world height and radius through the orthographic framing.

@@ -1458,8 +1458,25 @@ already? Cant we utilize that?"
   - The catch palm, the chip's carry and the plant rings move from the stage's wrists onto the model's (the rig's hands
     sit on the model's wrists after the bind).
   - The Siren and Classic keep the voxel body. The local tool's `choose=T` makes the drafting seat pick.
-- **Other rigs still draw voxel:** portraits. Every kill style wears the model (cut, crushed and split bodies severed at
-  the joints).
+- **Every kill style wears the model** (cut, crushed and split bodies severed at the joints).
+  - A whole corpse keeps the model's lengths (2026-10-26, `claude/model-portraits`; owner: "ragdoll effect is currently
+    stretching the player model"). Placing every bone on its ragdoll part stretched the skin as the parts drift apart in
+    the fall. Each bone now turns with its part and keeps its rest offset; only the root and a severed piece's first bone
+    take their part's place. Split halves keep the old placement.
+- **The menu portraits (2026-10-26, `claude/model-portraits`; owner: "Player model still shows voxel in customization?"):**
+  while the model draws, every pilot portrait is the model: the Locker's live preview, the home pilot card, and the lobby
+  and results cards.
+  - `Runtime/NativeVisualPortraitPresentation.cs` poses a model instance per card in the voxel portrait's lobby pose and
+    framing, so the backdrop and ring sit where they did.
+  - The portrait shows the outfit (this client's own cards), the body skin's face gear, the hat, the held weapon, the
+    gear, and the podium and chair.
+  - Its own key and rim lights and a hemisphere ambient light it. Fog is off, and the scene's settings are restored.
+  - The body's lit passes keep the target's alpha, so a second, alpha-only render
+    (`Resources/NativeVisualPortraitMask.shader`) writes the coverage. The voxel portraits' resolve then gives straight
+    alpha.
+  - The Siren and Classic keep the voxel portraits. The portrait files (`NativePortraits.cs` and its shaders) are
+    unchanged; the model path is chosen in `NativePortraitUI.Portrait`.
+  - Its outline is lost at the silhouette (the hull is not in the coverage).
 - **Captures:** the neutral turnaround.
 - **The performance pass** (Phase C).
 - **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets

@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The pilot's skin map: the seat of the arena the pilots come from (live, guest replica or killcam replay).</summary>
         private string SeatWeaponSkins(int id)
         {
+            // A model portrait's body wears the card's map (Runtime/NativeVisualPortraitPresentation.cs).
+            if(ModelPortraitOf(id,out var portrait))return portrait.Skins;
             if(Viewer)return ViewerWeaponSkins;var seats=WeaponLoadout?.Match?.Seats;if(seats==null)return null;
             for(int i=0;i<seats.Count;i++)if(seats[i]!=null&&seats[i].id==id)return seats[i].weaponSkins;return null;
         }

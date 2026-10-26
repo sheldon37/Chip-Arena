@@ -1,3 +1,24 @@
+## 2026-10-26 — Claude: the menu portraits on the model, and a ragdoll that no longer stretches it (merged into shared)
+
+- **Branch/base:** `claude/model-portraits` from shared `cfa253c4`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner reports (2026-10-26):** "Player model still shows voxel in customization?" and "ragdoll effect is currently stretching the player model".
+- **Changes (presentation only):**
+  - **Portraits:** `Runtime/NativeVisualPortraitPresentation.cs` (model portrait slots, a renderer component, its camera and lights) and `Resources/NativeVisualPortraitMask.shader` (coverage).
+    - `NativePortraitUI.Portrait` picks the model while it draws, passing this client's outfit and skin map for its own cards (`PortraitStage`'s new `own` flag).
+    - `VisualGear` takes a portrait's layer and camera.
+    - `VisualLookOf` and `SeatWeaponSkins` answer for portrait bodies.
+  - **Coordination:** the cloud agent's portrait files (`NativePortraits.cs`, `NativePortrait.shader`, `NativePortraitResolve.shader`) are unchanged; the model path uses their framing rules and resolve shader.
+  - **Ragdoll:** `VisualCorpseShown` keeps the model's lengths on a whole corpse, recording parents and rest offsets per corpse; the root and severed pieces are still placed.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `780813f2`), with new VisualRigChecks for portraits and the length-keeping corpse.
+  - Unity compile: PASS in the Editor, and offline without the local packs.
+  - Play mode:
+    - the Locker's preview shows the model in a chosen outfit, with the face gear on the Prototype skin and the pistol in hand;
+    - a sword kill's fall, frame by frame, before (stretched torso and hips) and after (proportions kept);
+    - a greatsword kill.
+- **Not run:** the lobby and results cards on the model in a real room; a severed (slash) corpse after the change; the chair and sleep poses on the model; a Windows build.
+- **Known limits:** the portrait loses the model's outline at the silhouette. A portrait body attaches its own hair cloth on a PC with the local bridge.
+
 ## 2026-10-26 — Claude: Handoff to Astra (owner-approved): Magica Cloth in the builder's test builds, and the look field
 
 - **Owner (2026-10-26, in chat with Claude):** "Yes: have Astra add Magica Cloth to the builder's test builds (the manifest packages and the zip), and carry the look field so other players see outfits."
