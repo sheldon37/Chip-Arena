@@ -1,0 +1,23 @@
+using System;
+using UnityEngine;
+
+namespace ChipArena.UnityConversion
+{
+    // Hair and cloth on the visual bodies (docs/BOZO-INTEGRATION.md step 5; owner 2026-10-22: cloth "on every applicable piece",
+    // 2026-10-26: "go ahead"). The bodies hand their dressed instance to a simulation that a local install registers here: a
+    // git-ignored bridge to the licensed cloth package, which ships with the local packs, never in this repository. Presentation
+    // only: each client simulates its own, nothing is networked; the first-person body has none; the low graphics tier and
+    // bodies past Far from the arena's camera hold the pose as drawn. Without a registered simulation the bodies draw as posed.
+    public static class NativeVisualCloth
+    {
+        /// <summary>Starts simulating the loose pieces of a dressed body (`root`, its skeleton `skeleton`): a handle, or null when
+        /// it has none.</summary>
+        public static Func<GameObject,Transform,object> Attach;
+        /// <summary>Simulates (true) or holds the pose as drawn (false).</summary>
+        public static Action<object,bool> Enable;
+        /// <summary>Back to the pose as drawn: a teleport, a respawn, a gap in the body's frames.</summary>
+        public static Action<object> Reset;
+        /// <summary>The distance from the arena's camera past which a body's cloth holds still (m).</summary>
+        public const float Far=30;
+    }
+}

@@ -1382,6 +1382,51 @@ already? Cant we utilize that?"
     - The face gears follow the Prototype body in Appearance's BODY SKIN row and have their own Skins card. Picking one
       also puts on the Prototype body.
     - The Locker's live preview is still the voxel portrait stage (the portrait files).
+- **Switching the clothes (2026-10-26, `claude/model-wardrobe`; owner: "integrate switching the clothes on the model"):**
+  - **The outfit:** `Core/NativeLook.cs` is the client half of the look contract (CHARACTER-LOWPOLY section i). It has five
+    slots with our own ids:
+    - hair: spiky, wild locks, side swept, tied back, fringe and tail;
+    - top: open hoodie, hard jacket, hoodie, T-shirt, tank top, sweater;
+    - bottoms: belted pants, baggy pants, skinny jeans, cuffed shorts, khakis;
+    - hands: fingerless gloves, gloves, arm bands, sweat bands, bare hands;
+    - shoes: mid-tops, work boots, sneakers, lace-ups.
+
+    The first of each slot is the concept outfit. The map lives in `prefs.look`.
+  - **Who wears it:** this client's own pilot. Every other pilot wears the default until the seat carries a look: Astra's
+    part of the contract (field, frames, account allowlist, gates).
+  - **The bake (local tool, `wardrobe=1`):**
+    - Every wardrobe piece is baked into the prefab with its object off. The covered body parts are kept, off.
+    - `Resources/ChipArenaVisualLook.bytes` holds each id's renderers, covers and tags, plus the head's always-on tag
+      (`anime`).
+    - It also holds the `Tag_*` shapes (hair under hats and hoods, trousers tucked into high boots).
+    - It also holds the gear's anchors, measured for each top with each hands: the core, the device and its sleeve
+      radius (3.2 to 7.8 cm), and the back emblem's distance and tilt.
+    - 97 renderers in all; an outfit draws about 20 k triangles.
+  - **Runtime:**
+    - `VisualDress` dresses every model instance when it is made: the live and first-person bodies, corpses, revive
+      bodies and death scenes.
+    - From then on only the worn renderers are listed, so ghosts, echoes and cut corpses never see hidden pieces.
+    - A changed outfit makes the body again. The gear takes the top's anchors, with one device model per sleeve radius.
+  - **The Locker:** Appearance has an OUTFIT section while the model draws, one row of chips per slot. Save Pilot keeps it,
+    and Revert and the unsaved-changes baseline cover it.
+  - **Install:** the body grew to 58.2 MB. The installer's budget is now 72 MB, and the zip's member total cap 96 MiB
+    (`tools/install_local_assets.py`).
+- **Cloth (step 5, 2026-10-26):**
+  - **The hook:** `Runtime/NativeVisualCloth.cs` is what a local simulation registers into.
+    - A body attaches when it is made (never the first-person body).
+    - It resets on a gap in the body's frames.
+    - It holds the pose as drawn on the low tier and past 30 m from the arena's camera.
+  - **The local bridge** (git-ignored, `LocalAssets/ChipArenaLocalTools/Runtime/ChipArenaClothBridge.cs`): Magica Cloth 2
+    BoneCloth on the worn hair's chains (`Hair_*`, `Tassle*`, `Cloth_*`).
+    - It uses the hair pack's ShortHair and LongHair presets.
+    - It adds capsule colliders on the head, the upper back (`spine_04`) and the upper arms.
+    - It runs on scaled time after the binding poses the bones in `LateUpdate`.
+    - Checked in play: the chain tips swing up to about 20 degrees as a pilot runs and stops, then settle.
+  - **Builds:** cloth runs only where the bridge and the package are installed (the owner's Editor and local builds). The
+    builder's test builds have none until the build carries the package (Burst, Collections, Mathematics in the manifest)
+    and the zip carries Magica and the bridge: Astra's build tooling, with the owner's go-ahead.
+  - **Not yet:** MeshCloth on loose clothing (no baked piece ships a paint map; maps painted or generated on the pieces' UVs
+    would be needed); cloth on corpses, intros and the draft.
   - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
   - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
     and ghosts.
