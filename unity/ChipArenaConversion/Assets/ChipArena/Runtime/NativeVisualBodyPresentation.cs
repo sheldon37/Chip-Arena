@@ -140,7 +140,6 @@ namespace ChipArena.UnityConversion
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
             body.Binding.Apply(pose,grasp,planted,airborne);
-            if(body.JointFrom==null)VisualJointsOf(body,rig);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
             var origin=body.Root.transform;
@@ -151,6 +150,8 @@ namespace ChipArena.UnityConversion
                 body.HandPosition[side]=bone.localPosition;body.HandRotation[side]=bone.localRotation;
                 bone.SetPositionAndRotation(origin.TransformPoint(side==0?lp:rp),origin.rotation*(side==0?lq:rq));
             }
+            // After the hands go onto the wrists: what rides a hand (the Cyber Lord's gauntlets, a chip) sits on the model's.
+            if(body.JointFrom==null)VisualJointsOf(body,rig);
             return held;
         }
         // VisualBodyBind's first bind (the body on the rig's own pose): each joint's frame on its bone.
