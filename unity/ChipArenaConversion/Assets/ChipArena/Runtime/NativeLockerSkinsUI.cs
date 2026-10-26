@@ -12,6 +12,10 @@ namespace ChipArena.UnityConversion
     // beside BODY COLOUR (LkBodyRow), small cards with a drawn body thumbnail. Both pickers read the same choices and equipped
     // body (BodySkinChoices, BodySkinEquipped), try a hovered body on the stage the same way (lockerBodyTry) and write through
     // the one setter (SetBodySkin), so they always agree.
+    // While the model draws (the visual body installed and the Player model not Classic: LkOnModel) the body cards say and
+    // show what each body is on the model, and the face gear the Prototype body wears (owner 2026-10-26: the mask and visor
+    // stay on the Prototype; variants) is picked on its own card (LkFaceCard) and under the BODY SKIN row: both, the visor or
+    // the mask ("face" entry, FaceGearEquipped, SetFaceGear, which also puts on the Prototype body).
     public sealed partial class ConversionGame
     {
         private string lockerSkinTry,lockerBodyTry;private bool lockerBodySheldon;
@@ -38,18 +42,25 @@ namespace ChipArena.UnityConversion
         /// <summary>The one setter of the body pick: the "body" entry of prefs.weaponSkins, through the DEV gate (a non-DEV pilot
         /// never keeps the Sheldon Clothes); Save Pilot stores and sends it with the rest of the map.</summary>
         private void SetBodySkin(string key){prefs.weaponSkins=NativeBodySkins.Gate(NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,key),lockerBodySheldon);}
+        // ---- the model's face gear ----
+        private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!="Classic";
+        /// <summary>The equipped face gear (NativeWeaponSkins.FaceBoth, FaceVisor or FaceMask).</summary>
+        private int FaceGearEquipped()=>NativeWeaponSkins.Index(prefs.weaponSkins,NativeWeaponSkins.FaceEntry);
+        /// <summary>The one setter of the face gear: its "face" entry, and the Prototype body that wears it.</summary>
+        private void SetFaceGear(string key){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,key);if(BodySkinEquipped()!=NativeBodySkins.PrototypeIndex)SetBodySkin(NativeBodySkins.Prototype);}
         private void LkSkins(Rect banner,Rect head,Rect grid,float e)
         {
             bool repaint=Event.current.type==EventType.Repaint;if(repaint){lockerSkinTry=null;lockerBodyTry=null;}
             U.RoundGradient(banner,U.Hex(0x2a2333,e),U.Hex(0x1d1e24,e),10,U.Hex(0x4c4653,e),1,true);var well=new Rect(banner.x+18,banner.center.y-22,44,44);U.Round(well,U.Hex(0x15161b,e),10,U.Hex(0x6b5b8a,e));
             NativeIcons.Draw(new Rect(well.x+11,well.y+11,22,22),"gem",U.Hex(0xc9bfff,e));
             U.Text(new Rect(well.xMax+16,banner.y+16,banner.width-100,22),"Pick a body and a finish for every weapon",16,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
-            var lines=U.Wrap("Standard is the current production model, lit in your accent colour. Prototype is the original build.",13,banner.width-well.xMax+banner.x-32,false,2);
+            var lines=U.Wrap(LkOnModel?"Standard shows your pilot's face; Prototype wears the tech mask and visor. Weapons: production or original build.":"Standard is the current production model, lit in your accent colour. Prototype is the original build.",13,banner.width-well.xMax+banner.x-32,false,2);
             for(int i=0;i<lines.Count;i++)U.Text(new Rect(well.xMax+16,banner.y+40+i*17,banner.width-100,17),lines[i],13,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
             LkHeading(head,lockerSkinsLabel,"Hover a finish to try it on");
             for(int i=0;i<lockerSkins.Count;i++)
             {
-                // The body card (its "body" entry) or a weapon's.
+                // The face gear's card, the body card (its "body" entry) or a weapon's.
+                if(lockerSkins[i]==NativeWeaponSkins.FaceEntry){LkFaceCard(LkCell(grid,i,LkSkinCardMin,LkSkinCardH),e);continue;}
                 bool body=lockerSkins[i]==NativeBodySkins.Entry;var w=body?null:LockerWeaponById(lockerSkins[i]);if(!body&&w==null)continue;
                 string entry=body?NativeBodySkins.Entry:w.id;var keys=body?NativeBodySkins.Keys:NativeWeaponSkins.Keys;var labels=body?NativeBodySkins.Labels:NativeWeaponSkins.Labels;
                 int count=body?BodySkinChoices:NativeWeaponSkins.Count;
@@ -79,12 +90,47 @@ namespace ChipArena.UnityConversion
             }
         }
 
+        // The face gear's card on the Skins tab while the model draws: its thumbnail, the equipped gear (or that the Prototype
+        // body wears it), and a chip per gear with a swatch (the visor's glowing band over the mask's dark block).
+        private void LkFaceCard(Rect r,float e)
+        {
+            int equipped=FaceGearEquipped(),count=NativeWeaponSkins.FaceKeys.Length;bool worn=BodySkinEquipped()==NativeBodySkins.PrototypeIndex;var labels=NativeWeaponSkins.FaceLabels;Color lit=LkColor(prefs.accentColor,0x70e1d0);
+            U.Round(r,U.Hex(0x1d1e24,e),10,U.Hex(0x3b3c45,e));
+            var icon=new Rect(r.x+12,r.y+12,40,40);U.Round(icon,U.Hex(0x121318,e),8,U.Hex(0x2f3038,e));LkModelThumb(new Vector2(icon.center.x,icon.yMax-3),equipped,lit,e,3);
+            U.Text(new Rect(icon.xMax+12,r.y+12,r.width-icon.width-36,20),"Face gear",14,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
+            U.Text(new Rect(icon.xMax+12,r.y+33,r.width-icon.width-36,16),worn?labels[equipped].ToUpperInvariant():"WITH THE PROTOTYPE BODY",9,U.Hex(0xffc590,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+            float gap=8,cw=(r.width-24-gap*(count-1))/count,cy=r.y+62;
+            for(int k=0;k<count;k++)
+            {
+                var chip=new Rect(r.x+12+k*(cw+gap),cy,cw,r.height-62-12);bool on=worn&&k==equipped;bool hot=lockerViewHot&&U.Hover(chip);float h=on?0:U.HoverAmount(8280+k,chip,hot);
+                U.Round(chip,on?U.Hex(0x3a2a26,e):U.A(U.Mix(U.Hex(0x23242b),U.Hex(0x2d2e36),h),e),8,on?U.Hex(0xff6b35,e):U.A(U.Mix(U.Hex(0x3b3c45),U.Hex(0x9a8a9e),h),e),on?2:1);
+                var sw=new Rect(chip.x+10,chip.center.y-7,14,14);
+                if(k!=NativeWeaponSkins.FaceVisor)U.Round(new Rect(sw.x,sw.y+7,sw.width,7),U.Hex(0x101217,e),2,U.Hex(0x3b3c45,e));
+                if(k!=NativeWeaponSkins.FaceMask)U.Fill(new Rect(sw.x,sw.y+2,sw.width,3),lit*new Color(1,1,1,e));
+                U.Text(new Rect(sw.xMax+8,chip.y,chip.width-sw.width-24,chip.height),LkFaceChips[k],12,on?U.Hex(0xfff1e5,e):U.A(U.Mix(U.Hex(0xc9c3d1),U.Hex(0xf4f4f5),h),e),TextAnchor.MiddleLeft,bold:true);
+                if(!lockerBlocked&&U.Button(chip)&&!on){SetFaceGear(NativeWeaponSkins.FaceKeys[k]);Click();}
+            }
+        }
+
         // ---- Appearance's BODY SKIN row (laid out and headed beside BODY COLOUR by Runtime/NativeLockerUI.cs) ----
-        // Short enough for one line beside the tick and the DEV badge at a third of the narrowest Locker column.
+        // Short enough for one line beside the tick and the DEV badge at a third of the narrowest Locker column: the voxel
+        // bodies', what each body is on the model, and the face gears'.
         private static readonly string[] LkBodyTexts={"Armour plates, visor","The original blocky build","Long glowing coat"};
-        // The bodies share the row as segments (two or three across, wrapping only when a card would be under LkRowMin).
+        private static readonly string[] LkModelBodyTexts={"Your pilot's own face","Tech mask, glowing visor","Coat in Classic mode"};
+        private static readonly string[] LkFaceTexts={"Visor and lower mask","Band over the eyes","Nose and mouth covered"};
+        // The face gear card's chips (three across a Skins card): short names.
+        private static readonly string[] LkFaceChips={"Both","Visor","Mask"};
+        // The bodies share the row as segments (two or three across, wrapping only when a card would be under LkRowMin); while
+        // the model draws and the Prototype body is on, its face gears follow as a second set.
         private int LkBodyCols()=>Mathf.Max(1,Mathf.Min(BodySkinChoices,LkCols(lockerW,LkRowMin)));
-        private float LkBodyRowH(){int cols=LkBodyCols(),rows=(BodySkinChoices+cols-1)/cols;return rows*LkRowH+(rows-1)*LkGap;}
+        private int LkFaceCols()=>Mathf.Max(1,Mathf.Min(NativeWeaponSkins.FaceKeys.Length,LkCols(lockerW,LkRowMin)));
+        private bool LkFaceRow=>LkOnModel&&BodySkinEquipped()==NativeBodySkins.PrototypeIndex;
+        private float LkBodyRowH()
+        {
+            int cols=LkBodyCols(),rows=(BodySkinChoices+cols-1)/cols;float h=rows*LkRowH+(rows-1)*LkGap;
+            if(LkFaceRow){int fc=LkFaceCols(),fr=(NativeWeaponSkins.FaceKeys.Length+fc-1)/fc;h+=fr*(LkRowH+LkGap);}
+            return h;
+        }
         private Rect LkBodyCell(Rect grid,int i){int cols=LkBodyCols();float w=(lockerW-(cols-1)*LkGap)/cols;return new Rect(grid.x+(i%cols)*(w+LkGap),grid.y+(i/cols)*(LkRowH+LkGap),w,LkRowH);}
         // A row card per body (LkRowCard with the body's thumbnail; the Sheldon Clothes badged DEV): hovering tries it on the
         // stage, a click equips it through SetBodySkin.
@@ -94,9 +140,16 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<count;i++)
             {
                 var r=LkBodyCell(grid,i);bool on=i==equipped;
-                bool click=LkRowCard(r,8260+i,on,null,default,NativeBodySkins.Labels[i],LkBodyTexts[i],null,out bool hot,i,i==NativeBodySkins.SheldonIndex);
+                bool click=LkRowCard(r,8260+i,on,null,default,NativeBodySkins.Labels[i],(LkOnModel?LkModelBodyTexts:LkBodyTexts)[i],null,out bool hot,i,i==NativeBodySkins.SheldonIndex);
                 if(hot&&repaint)lockerBodyTry=NativeBodySkins.Keys[i];
                 if(click&&!on)SetBodySkin(NativeBodySkins.Keys[i]);
+            }
+            if(!LkFaceRow)return;
+            int cols=LkBodyCols(),rows=(count+cols-1)/cols,fc=LkFaceCols(),face=FaceGearEquipped();float top=grid.y+rows*(LkRowH+LkGap),fw=(lockerW-(fc-1)*LkGap)/fc;
+            for(int k=0;k<NativeWeaponSkins.FaceKeys.Length;k++)
+            {
+                var r=new Rect(grid.x+(k%fc)*(fw+LkGap),top+(k/fc)*(LkRowH+LkGap),fw,LkRowH);bool on=k==face;
+                if(LkRowCard(r,8270+k,on,null,default,NativeWeaponSkins.FaceLabels[k],LkFaceTexts[k],null,out _,LkFaceThumb+k)&&!on)SetFaceGear(NativeWeaponSkins.FaceKeys[k]);
             }
         }
         // A body skin's thumbnail in a row card's 44 unit well: a front-view voxel figure from rects in the pilot's colours (nothing
@@ -105,13 +158,16 @@ namespace ChipArena.UnityConversion
         // body-tinted cloth (the default body colour gives the hood's navy, lifted a little to read on the well), piped in the seam
         // glow (NativeBodySkins.SheldonGlowRgb), with a sash, glowing cuffs and the mask helmet. Hovering brightens it and runs a
         // cyan scan line (none with Reduced effects).
+        // Thumbnail codes from LkFaceThumb are the face gears' (LkModelThumb), shown on the model.
+        private const int LkFaceThumb=10;
         private void LkBodyThumb(Rect well,int skin,float e,float hover)
         {
             int bodyRgb=NativePortraitRules.Parse(prefs.bodyColor,0xe5e7eb),accentRgb=NativePortraitRules.Parse(prefs.accentColor,0x70e1d0);
             Color body=U.Hex(bodyRgb),accent=U.Hex(accentRgb),glow=skin==NativeBodySkins.SheldonIndex?U.Hex(NativeBodySkins.SheldonGlowRgb(prefs.hat,prefs.hatColor,accentRgb)):accent;
             U.RadialStops(new Rect(well.x+2,well.y+1,well.width-4,well.height-2),U.A(glow,(.26f+.18f*hover)*e),LkGlowAt,LkGlowA);
             var f=new Vector2(well.center.x,well.yMax-4);
-            if(skin==NativeBodySkins.StandardIndex)
+            if(LkOnModel||skin>=LkFaceThumb)LkModelThumb(f,skin>=LkFaceThumb?skin-LkFaceThumb:skin==NativeBodySkins.PrototypeIndex?FaceGearEquipped():-1,accent,e);
+            else if(skin==NativeBodySkins.StandardIndex)
             {
                 Color under=U.Mix(U.Hex(0x1b242b),body,.12f),plate=body,lit=accent,cyan=U.Hex(NativeBodySkins.CyberCyan);
                 LkVox2(f,.3f,1.9f,.7f,4.4f,under,e);LkVox2(f,.2f,2.1f,0,.8f,plate,e);LkVox2(f,.45f,1.8f,1.2f,2.6f,plate,e);LkVox2(f,.8f,1.45f,1.6f,2.1f,lit,e);
@@ -141,6 +197,23 @@ namespace ChipArena.UnityConversion
                 LkVox(f,-1.15f,1.15f,8.2f,8.8f,cloth,e);LkVox(f,-1.35f,1.35f,8.8f,11.6f,U.Hex(0x14161d),e);LkVox(f,-1.05f,1.05f,9.3f,10.9f,U.Hex(0x050608),e);LkVox(f,-.85f,.85f,9.95f,10.25f,glow,e);
             }
             if(hover>.01f&&!prefs.reducedEffects){float k=Mathf.Repeat(Time.unscaledTime*.9f,1);U.Fill(new Rect(well.x+5,well.y+4+k*(well.height-8),well.width-10,1),U.Hex(NativeCyberTheme.CyanHex,.45f*hover*e));}
+        }
+        // A model pilot's thumbnail: head and shoulders in the hood's dark cloth with accent trims, spiky hair, and the face bare
+        // (gear -1) or under the face gear (NativeWeaponSkins.FaceBoth, FaceVisor, FaceMask): the visor's glowing band in its
+        // frame and temple pods, the mask's dark block with its vents. `u` pixels a unit, the shoulders' foot at `f`.
+        private void LkModelThumb(Vector2 f,int gear,Color accent,float e,float u=3.5f)
+        {
+            void Box(float x0,float x1,float y0,float y1,Color c)=>U.Fill(new Rect(f.x+x0*u,f.y-y1*u,(x1-x0)*u,(y1-y0)*u),U.A(c,e));
+            Color cloth=U.Hex(0x2c303a),hood=U.Hex(0x3a3f4b),hair=U.Hex(0x313a5a),skin=U.Hex(0xefd0bd),dark=U.Hex(0x0b0c10),eye=U.Hex(0x4a3036);
+            Box(-6,6,0,2.3f,cloth);Box(-3.7f,3.7f,2.3f,3.3f,hood);Box(-6,6,.35f,.6f,accent);Box(-1.1f,-.5f,.6f,2.3f,accent);Box(.5f,1.1f,.6f,2.3f,accent);
+            Box(-.9f,.9f,2.3f,3.6f,LkShade(skin,.82f));Box(-1.3f,1.3f,3.4f,4.1f,skin);Box(-2.2f,2.2f,4,8.6f,skin);
+            Box(-2.9f,2.9f,8.2f,10.4f,hair);Box(-2.9f,-2.2f,5.8f,8.6f,hair);Box(2.2f,2.9f,5.8f,8.6f,hair);Box(-2.2f,2.2f,7.7f,8.6f,hair);
+            Box(-2.5f,-1.5f,10.4f,11,hair);Box(-.5f,.5f,10.4f,11.3f,hair);Box(1.5f,2.5f,10.4f,11,hair);
+            bool visor=gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceVisor,mask=gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceMask;
+            if(visor){Box(-2.6f,2.6f,5.8f,7.5f,dark);Box(-2.4f,2.4f,6.05f,7.25f,accent);Box(-3.1f,-2.6f,6,7.3f,hood);Box(2.6f,3.1f,6,7.3f,hood);}
+            else{Box(-1.5f,-.6f,6.1f,7.1f,eye);Box(.6f,1.5f,6.1f,7.1f,eye);}
+            if(mask){Box(-2.3f,2.3f,3.5f,5.8f,dark);Box(-1.4f,-.8f,4.5f,4.7f,accent);Box(.8f,1.4f,4.5f,4.7f,accent);Box(-1.4f,-.8f,4.95f,5.15f,accent);Box(.8f,1.4f,4.95f,5.15f,accent);}
+            else Box(-.45f,.45f,4.6f,4.8f,LkShade(skin,.7f));
         }
         // One rect of the thumbnail in body units (3 per unit, feet at `f`, y up), and its mirror pair (x0..x1 and -x1..-x0).
         private static void LkVox(Vector2 f,float x0,float x1,float y0,float y1,Color c,float e)=>U.Fill(new Rect(f.x+x0*3,f.y-y1*3,(x1-x0)*3,(y1-y0)*3),U.A(c,e));
