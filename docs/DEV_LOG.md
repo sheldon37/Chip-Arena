@@ -18,7 +18,7 @@
     - the mask and visor on the model in a match (front, three-quarter, profile), in the draft through a pick, and on a corpse;
     - the back emblem from behind and three-quarter.
 - **Not run:** the Cyber Lord in first person or its entrance on the model; the face gear on a split, crushed or kill-look corpse; a Windows build; multiplayer.
-- **Owner decisions:** whether the mask and visor should be the default look (the concept sheet) or stay on the Prototype skin; mask variants; the Locker's card texts for the model.
+- **Owner decision (2026-10-26):** the mask and visor stay on the Prototype body skin; the default keeps the face. Still open: mask variants; the Locker's card texts for the model.
 
 ## 2026-10-25 — Claude: the draft's pilot wears the model (merged into shared)
 
