@@ -1374,8 +1374,14 @@ already? Cant we utilize that?"
   - **The parry flash:** the model's own silhouette, snapshotted each frame of the flash.
 - **Not yet:** the Cyber Lord's pieces on the visual body.
 - **Pattern and decal overlays** for other outfits; normal maps.
-- **Other rigs still draw voxel:** portraits and the draft. Every kill style wears the model (cut, crushed and split
-  bodies severed at the joints).
+- **The draft (2026-10-25, `claude/model-draft`):** the drafting pilot wears the model in the cyber corridor.
+  - `VisualDraftPose` binds the stage's pose (hat on the model's head, no weapon) and puts the model's hips on the pose's
+    pelvis; the stage's camera framing is unchanged.
+  - The catch palm, the chip's carry and the plant rings move from the stage's wrists onto the model's (the rig's hands
+    sit on the model's wrists after the bind).
+  - The Siren and Classic keep the voxel body. The local tool's `choose=T` makes the drafting seat pick.
+- **Other rigs still draw voxel:** portraits. Every kill style wears the model (cut, crushed and split bodies severed at
+  the joints).
 - **Captures:** the neutral turnaround.
 - **The performance pass** (Phase C).
 - **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets
