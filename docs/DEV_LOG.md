@@ -1,3 +1,27 @@
+## 2026-10-27 — Claude: the model's motion polished for every weapon (merged into shared)
+
+- **Branch/base:** `claude/model-motion-polish` from shared `5c6042a1`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner report:** "Can you just do another analyzation of the player animations? Make the movements look realistic and not 'glitchy'. For everything, movements, attacks, for all weapons."
+- **Method:** the local tool's new per-frame `motion=` log (bones in the body's frame, feet and blade in the world, the clip mix, the pilot's state) over a scripted routine per weapon: moves (runs in four directions, stops, sprint, turning in place, a flick, circling, jumps, rolls) and attacks (a six-press chain, single and running swings, the sprint attack, the air attack, block, Q, E), plus the fighters. Scratch analysers flagged one-frame jumps (scaled to a 120 Hz frame), clip-time jumps, bone-turn spikes and planted-foot slide.
+- **Causes and fixes (presentation only; details in BOZO-INTEGRATION, "Motion polish"):**
+  - `Core/NativeVisualMotion`: the Hit's time stays on the hit window's middle as the window resets (`HitAt`); strikes, fighter moves and kicks at most 1.5 times their clip's pace (`MaxStrikeRate`, a capped `Retime`); reactions, landings and rolls near their pace; the jump from its launch; a held block goes on.
+  - `Core/NativeVisualMotionClips`: a monotone cubic between frames; `StridePhase` (a stride's phase from its knees).
+  - `Runtime/NativeVisualMotionPresentation`: inertial blending of pose jumps (clip restarts, re-timings, upper-layer switches); eased crossfades with fading clips going on; strides offset onto one phase and the gait's walk-to-run share on a slower speed; the floor guard's switch carried off; planted feet locked, dragged within reach and stepping when turning in place; the sword carry's twist taken only from its own turn.
+  - `Runtime/NativeVisualStridePresentation`: footsteps from the model's drawn feet while its clips carry the legs.
+- **Animation impacts:** hit timing is kept (each clip's Hit still lands mid window); fast weapons' wind-ups now start later into their clips. Hit volumes, damage, steps, cooldowns, movement and networking unchanged. The motion bank is unchanged; no zip upload.
+- **Measured (before -> after, local tool, Play mode):**
+  - Clip-time jumps inside a swing: sword 10 -> 0, daggers 9 -> 0, shield 8 -> 0, greatsword 4 -> 0. Strikes now play at most 1.5 times their clip's pace (the daggers' ran at 2.0-2.4, the Ansatsuken's kicks at 2.7-4); reactions at 1.5 (2-2.7 before), landings at 1.15 (about 2), rolls at 1.3 (1.7).
+  - One-frame jumps over 10 cm (scaled to a 120 Hz frame) in the moves routine: sword 38 -> 16, greatsword 50 -> 20, daggers 47 -> 21, shield 38 -> 13, rifle 13 -> 1, pistol 39 -> 18, bow 36 -> 13, caster 48 -> 9. The largest: 43, 35, 38, 42, 24, 40, 41, 31 cm -> 22, 26, 20, 23, 14, 19, 29, 20 cm (what is left: the 180-degree flick in a tenth of a second and the roll's tumble).
+  - The attacks routine: daggers 85 -> 20, shield 31 -> 10, bow 26 -> 7, greatsword 34 -> 20, pistol 14 -> 10 (largest 66 -> 17 cm), rifle 4 -> 0, Emperor 17 -> 4, Ansatsuken 28 -> 9. The sword's count rose (45 -> 60, largest 95 -> 56 cm): what is left is inside its own quick cuts, which the smooth curve now shows as one peak where straight lines spread them flat.
+  - Planted feet while running: median 0.8-1.4 m/s -> 0.00 for every weapon (the 90th percentile is short drags, 0.2-4.7 m/s). Standing, turning in place: 90th percentile 1.0-1.9 m/s -> 0.00-0.64.
+  - The sword carry's forearm spins (75-80 degrees in a frame as it came and went) are gone; arm and leg bone turns over 30 degrees in a frame, moves routine: sword 15 -> 7, bow 12 -> 2.
+  - Hit reactions against a bot: 1.5 times their pace, a re-hit carried over instead of popping.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `49c92533`), with new VisualRigChecks: the Hit's time across the window's reset, the capped strike pace, reactions, a held block, the jump's launch, the landing, the roll's pace, stride phases, the cubic's bounds, and the runtime pins (inertia, eased fades, stride offsets, the guard's carry, the feet's order, the carry's twist, footsteps).
+  - Unity compile: PASS in the Editor.
+- **Not run:** another client's view (replicas take the same path from the replicated swing fields); first person (the model is hidden there); stairs and ramps with the feet locked; a Windows build.
+- **Left as the pack made it:** a few strikes cross most of their arc between two of the pack's own frames (the sword's thrust 1.5 m in 60 ms in the source clip); a 180-degree flick of the look in a tenth of a second. No Astra handoff is needed.
+
 ## 2026-10-27 — Claude: model corpses keep lengths, the sword's run carry, the rooftop pilots on the model (merged into shared)
 
 - **Branch/base:** `claude/model-gibs-rooftop` from shared `5021acea`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

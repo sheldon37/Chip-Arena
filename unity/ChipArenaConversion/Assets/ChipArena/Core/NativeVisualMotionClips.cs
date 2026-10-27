@@ -73,18 +73,40 @@ namespace ChipArena.UnityConversion
         public static void Add(Clip c,float time,float weight,float[] sum)
         {
             if(weight<=0)return;
-            float f=time*c.Rate;int last=c.Frames-1;
-            if(c.Loop&&last>0){f%=last;if(f<0)f+=last;}else f=f<0?0:f>last?last:f;
+            float f=time*c.Rate;int last=c.Frames-1;bool loop=c.Loop&&last>0;
+            if(loop){f%=last;if(f<0)f+=last;}else f=f<0?0:f>last?last:f;
             int a=(int)f;if(a>=last)a=last;int b=a<last?a+1:a;float t=f-a;
-            int ia=a*c.Stride,ib=b*c.Stride;
-            // The rotation: on the running sum's side.
+            // Between its frames the clip follows a smooth curve through the frames either side (a monotone cubic: no
+            // overshoot past a frame; a straight line between two frames bent the motion at every frame, 30 times a second).
+            int p=a>0?a-1:loop?last-1:a,n=b<last?b+1:loop?(b+1)%last:b;
+            int ip=p*c.Stride,ia=a*c.Stride,ib=b*c.Stride,iq=n*c.Stride;
+            // The rotation: on the running sum's side, its neighbours on its own.
             float dot=0;for(int i=3;i<7;i++)dot+=sum[i]*c.Data[ia+i];float sign=dot<0?-1:1;
+            float sp=Side(c.Data,ia,ip),sb=Side(c.Data,ia,ib),sq=Side(c.Data,ia,iq);
+            float t2=t*t,t3=t2*t,h00=2*t3-3*t2+1,h10=t3-2*t2+t,h01=-2*t3+3*t2,h11=t3-t2;
             for(int i=0;i<c.Stride;i++)
             {
-                float va=c.Data[ia+i],vb=c.Data[ib+i];
-                if(i>=3&&i<7){float qd=0;for(int j=3;j<7;j++)qd+=c.Data[ia+j]*c.Data[ib+j];if(qd<0)vb=-vb;va*=sign;vb*=sign;}
-                sum[i]+=weight*(va+(vb-va)*t);
+                float v0=c.Data[ip+i],v1=c.Data[ia+i],v2=c.Data[ib+i],v3=c.Data[iq+i];
+                if(i>=3&&i<7){v0*=sp*sign;v1*=sign;v2*=sb*sign;v3*=sq*sign;}
+                float d0=v1-v0,d1=v2-v1,d2=v3-v2;
+                float m1=p==a?d1:d0*d1<=0?0:(d0+d1)*.5f,m2=n==b?d1:d1*d2<=0?0:(d1+d2)*.5f;
+                float lim=3*Math.Abs(d1);if(Math.Abs(m1)>lim)m1=Math.Sign(m1)*lim;if(Math.Abs(m2)>lim)m2=Math.Sign(m2)*lim;
+                sum[i]+=weight*(h00*v1+h10*m1+h01*v2+h11*m2);
             }
+        }
+        // +1 when frame `j`'s rotation lies on frame `i`'s hemisphere, else -1.
+        private static float Side(float[] d,int i,int j){float q=0;for(int k=3;k<7;k++)q+=d[i+k]*d[j+k];return q<0?-1:1;}
+        /// <summary>A looping stride's phase (0..1): where its left knee is most bent against the right, from the first harmonic
+        /// of the two knees' difference over the loop (`left`, `right`: the Lower Leg Stretch muscles). The pack's runs and walks
+        /// do not agree on it (their left feet land up to 0.4 of a stride apart), so mixed at one phase their legs scissored and
+        /// slid; each offset onto one phase, they step together.</summary>
+        public static float StridePhase(Clip c,int left,int right)
+        {
+            int n=c.Loop&&c.Frames>2?c.Frames-1:c.Frames;if(n<2||left<0||right<0||Head+Math.Max(left,right)>=c.Stride)return 0;
+            double re=0,im=0;
+            for(int f=0;f<n;f++){int o=f*c.Stride+Head;double d=c.Data[o+right]-c.Data[o+left],ang=2*Math.PI*f/n;re+=d*Math.Cos(ang);im+=d*Math.Sin(ang);}
+            if(re*re+im*im<1e-12)return 0;
+            double ph=Math.Atan2(im,re)/(2*Math.PI);return (float)(ph-Math.Floor(ph));
         }
         /// <summary>The mixed pose from the sum of weights `total`: everything averaged, the rotation normalised.</summary>
         public static void Finish(float[] sum,float total)
