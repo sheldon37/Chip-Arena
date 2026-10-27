@@ -258,7 +258,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!rooftopShown){rooftopShown=true;rooftopFov=cameraView.fieldOfView;rooftopNear=cameraView.nearClipPlane;}
                 backdropMap=null;viewModelCamera.enabled=false;float quality=presentation.LowGraphics?.34f:prefs.reducedEffects?.6f:1;
-                var pilot=new RooftopPilot{Spec=prefs.weapon,BodySkin=NativeBodySkins.Index(BodySkinShown()),Hat=prefs.hat,Body=prefs.bodyColor,Accent=prefs.accentColor,HatColor=prefs.hatColor};
+                string bodySkin=BodySkinShown();var pilot=new RooftopPilot{Spec=prefs.weapon,BodySkin=NativeBodySkins.Index(bodySkin),Hat=prefs.hat,Body=prefs.bodyColor,Skins=RooftopSkins(bodySkin),Accent=prefs.accentColor,HatColor=prefs.hatColor};
                 if(presentation.RenderRooftop(cameraView,(float)(Time.unscaledTimeAsDouble%4800.0),pilot,quality,prefs.reducedEffects))return;
             }
             RooftopLeave();
@@ -266,7 +266,10 @@ namespace ChipArena.UnityConversion
             if(backdropMap!=map){backdropMap=map;NativeLighting.Apply(definition,cameraView);}
             viewModelCamera.enabled=false;ArenaPresentation.OverviewCamera(cameraView,Time.unscaledTime);presentation.RenderBackdrop(content.sourceCommit,map,Time.unscaledTime,cameraView);
         }
-        private void RooftopLeave(){if(!rooftopShown)return;rooftopShown=false;cameraView.fieldOfView=rooftopFov;cameraView.nearClipPlane=rooftopNear;backdropMap=null;}
+        private void RooftopLeave(){if(!rooftopShown)return;rooftopShown=false;cameraView.fieldOfView=rooftopFov;cameraView.nearClipPlane=rooftopNear;backdropMap=null;if(presentation!=null)presentation.RooftopHide();}
+        // The seated pilot's skin map on the model (your skins with the body skin the menu shows), made again only when either changes.
+        private string rooftopSkinsIn,rooftopSkinsBody,rooftopSkinsOut;
+        private string RooftopSkins(string body){if(!ReferenceEquals(rooftopSkinsIn,prefs.weaponSkins)||rooftopSkinsBody!=body){rooftopSkinsIn=prefs.weaponSkins;rooftopSkinsBody=body;rooftopSkinsOut=NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,body);}return rooftopSkinsOut;}
         // Where the seated pilot's feet hang over the lip, on the virtual canvas (the home screen's nameplate follows them), while
         // the rooftop is shown and the point is in front of the camera.
         private bool RooftopFeet(out Vector2 point)
