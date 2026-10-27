@@ -1,3 +1,52 @@
+## 2026-10-27 — Claude: model corpses keep lengths, the sword's run carry, the rooftop pilots on the model (merged into shared)
+
+- **Branch/base:** `claude/model-gibs-rooftop` from shared `5021acea`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner requests (2026-10-27):**
+  - "Bodies aren't gibbing, they seem to still stretch".
+  - "Fix run for sword as well, it looks not very styled lol".
+  - "Yes to all of the open items": the rooftop pilot on the model (Classic kept), the draft reframe, the white/green rooftop props.
+- **Corpses (`24f3bf8`, presentation only):**
+  - Every corpse, split halves included, now turns each bone with its part and keeps the bone's rest offset.
+    - Only the root and the first bone of a part with no joint to its parent part take their part's place (`NativeCorpse.Jointed`).
+    - Such a part is a cut, a part loose of a crushed part, or a part loose of the other half.
+  - Each such part is its own flying piece (`VisualCorpsePiece`). A crushed part goes to its fragments; the limbs it held stay as pieces instead of being deleted.
+- **Sword run (`7ff40ef`, presentation only; Core `NativeSwordTrail`):**
+  - The pack has no one-handed sword run (confirmed in its `1Hand-Sword` and `Armed` folders). Its armed run holds the arm out wide with the blade upright like a baton.
+  - Running ahead, the sword arm now sweeps back and out (35° back, 15° out, nearly straight). It keeps 30% of the clip's own swing, in time with the stride.
+  - The fist turns so the blade trails out and back past the hip, a little low.
+    - The fist's twist goes to the shoulder (55%) and the forearm, unwound frame to frame, so the wrist only bends, at most 35°.
+  - The chest leans 4° more into the run (8° at a sprint), the head kept up.
+  - A walk, a strafe or a back-pedal keeps the armed gait. The carry rides the locomotion blend's share, so a strike, block, roll, jump or reaction takes it away as its clip fades in.
+  - Preview: a stick-figure render of the pack's own armed-run clip, before and after, from the over-the-shoulder camera and the side (local tool, not committed).
+- **Rooftop (`b706a10`, presentation only):**
+  - While the model draws, each rooftop actor has its own rig (ids -400 down), posed with the game pose its voxel body drew. Its visual body binds to it as the portraits' bodies do.
+  - The seated pilot:
+    - its hips sit on the chair pose's pelvis;
+    - it wears your outfit and skin map (`RooftopPilot.Skins`);
+    - its weapon still lies on the lip.
+  - The crowd wears the default outfit in the Standard skin. Its held weapons ride the model's wrists, using the bake's own weapon where it has one.
+  - Hats and gear go on the model.
+  - The shared `VisualBodiesShown` pass shows the bodies posed this frame. `ConversionGame.RooftopLeave` hides them when the home screen leaves the rooftop.
+  - Classic, the Siren and installs without the bake keep the voxel pilots.
+- **Not done (needs another session):**
+  - **Draft reframe:** the stage (`Core/NativeDraftStage`) frames the pilot from the voxel head (`HeadTop` .36 over the head joint). On the model the crown is about .26 over it, so the slim body fills less of the frame. Moving the camera from the presentation would push the model off the tray, shade and plant rows the stage projects for the 2D layer. The fix belongs in the stage's framing (a model crown and plexus fed into `Frame`). That file carries another agent's uncommitted edits in the owner's checkout, so it waits for that work to land or for its owner.
+  - **White/green rooftop props:** still not reproduced here (2026-10-24 note above). The local session needs to pause on the main menu, select a white prop in the Scene view or the Frame Debugger, and record its object or draw name, material and shader.
+- **Animation impacts:** the sword's arm, fist and chest while running ahead, and the menu's rooftop pilots. Hit timing, hit volumes, damage, cooldowns, movement and networking are unchanged.
+- **Checks (actual):**
+  - run5b on `d6cd459` (gibs and the sword at the first lean): rc1 to rc5 all 0. Unity runtime and editor compile OK; relay with full CoreTests 853 PASS; Python 146 OK, 1 skipped; source package OK; diff check clean.
+  - run5b on `c9698de` (the rooftop's first commit): rc2 failed in `HatLookChecks`. Its pin expects the rooftop pilot's initializer in `ConversionGame` to end `Accent=prefs.accentColor,HatColor=prefs.hatColor};`, and the new `Skins` field came after it. Moved `Skins` earlier (`b706a10`).
+  - run5b on `b706a10` (the final code): rc1 to rc5 all 0. Unity runtime and editor compile OK; relay with full CoreTests 853 PASS; Python 146 OK, 1 skipped; source package OK; diff check clean.
+  - `--visual-rig` and `--menu-style` pass on the final tree. New checks:
+    - the sword carry's share (sword only, from the run, heading ahead);
+    - arm, blade, lean and swing limits;
+    - the fist solver on a synthetic hand (grip kept, wrist bend ≤ MaxBend, blade on the trail or as near as the bend allows);
+    - twist extraction, and the fist and blade tip clear of the floor and the legs;
+    - the runtime pins (carry after the floor guard, before the weapon rides the hand);
+    - the corpse pins;
+    - the rooftop model pins.
+- **Not run:** Play mode with the bake (cloud session has no Unity Editor or bake); a Windows build; multiplayer. The carry's look on the BoZo body, the rooftop pilot's lighting and seat on the lip, and the corpses in play need the owner's or the local session's look.
+- **Next:** the local session's look at the three; the draft reframe once `NativeDraftStage` is free; the white/green props once identified.
+
 ## 2026-10-26 — Claude: melee dash attacks on the model leave the floor (merged into shared)
 
 - **Branch/base:** `claude/model-dash-attacks` from shared `bb32a255`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
