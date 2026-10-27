@@ -45,6 +45,20 @@ namespace ChipArena.UnityConversion
         // The upper body's muscles (a gun's aim, recoil and reload layer): every muscle but the legs'.
         private static bool[] upperMuscles;
         private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
+        // The Whirlwind's legs (NativeVisualMotion.SpinLegs), as muscle offsets: the sit's thigh raise and knee bend, and a
+        // step's (each leg's Upper Leg Front-Back, Lower Leg Stretch; muscles left, then right).
+        private const float SitThigh=.12f, SitKnee=.2f, StepThigh=.22f, StepKnee=.38f;
+        private static int[] spinLegMuscles;
+        private static int[] SpinLegMuscles{get{if(spinLegMuscles==null){var n=HumanTrait.MuscleName;spinLegMuscles=new[]{System.Array.IndexOf(n,"Left Upper Leg Front-Back"),System.Array.IndexOf(n,"Left Lower Leg Stretch"),System.Array.IndexOf(n,"Right Upper Leg Front-Back"),System.Array.IndexOf(n,"Right Lower Leg Stretch")};}return spinLegMuscles;}}
+        private static void VisualSpinLegs(VisualMotion m,in NativeVisualMotion.Pick pick)
+        {
+            var leg=SpinLegMuscles;
+            for(int side=0;side<2;side++)
+            {
+                int thigh=leg[side*2],knee=leg[side*2+1];if(thigh<0||knee<0)continue;float lift=side==0?pick.LiftL:pick.LiftR;
+                m.Mix[NativeVisualMotionClips.Head+thigh]+=SitThigh*pick.Sit+StepThigh*lift;m.Mix[NativeVisualMotionClips.Head+knee]-=SitKnee*pick.Sit+StepKnee*lift;
+            }
+        }
         private static readonly HumanBodyBones[] ContactBones={HumanBodyBones.LeftFoot,HumanBodyBones.LeftToes,HumanBodyBones.RightFoot,HumanBodyBones.RightToes,
             HumanBodyBones.LeftLowerLeg,HumanBodyBones.RightLowerLeg,HumanBodyBones.Hips,HumanBodyBones.Chest,HumanBodyBones.Head,HumanBodyBones.LeftHand,HumanBodyBones.RightHand};
         private static readonly float[] ContactRadius={-1,-1,-1,-1,.06f,.06f,.10f,.12f,.12f,.05f,.05f};
@@ -185,6 +199,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<m.Clips.Length;i++)NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],m.Weights[i],m.Mix);
             for(int k=0;k<m.Loco.Length;k++){int i=m.Loco[k];if(i>=0)NativeVisualMotionClips.Add(m.Clips[i],m.Phase*m.LocoLength[k],m.LocoWeights[k]*m.LocoShare,m.Mix);}
             NativeVisualMotionClips.Finish(m.Mix,sum);
+            if(covered&&pick.Spin)VisualSpinLegs(m,pick);
             // A gun's upper body (aimed by the pitch, its recoil, or its reload), a bow's (drawn, loosed) or a caster's (its cast),
             // over the legs' motion by its eased weight.
             // The arms are free while the body idles, moves, rises, falls or lands (not in a roll, strike, reaction or block).
@@ -213,11 +228,19 @@ namespace ChipArena.UnityConversion
                 b.localRotation=wgt>=.999f?p.localRotation:Quaternion.Slerp(b.localRotation,p.localRotation,wgt);
                 if(b==m.BodyHips)b.localPosition=Vector3.Lerp(b.localPosition,p.localPosition,wgt);
             }
-            // A spinning kit move (the Whirlwind): the body turned about its hips to the game's spin, less the clip's own turn.
+            // A spinning kit move (the Whirlwind): the body turned about its hips to the game's spin, less the clip's own turn;
+            // by the pick's Align, turned instead so the drawn blade (the hold's +z off the right hand) lies on the game's tip,
+            // which crosses the facing on each of the rules' pulses (a near-upright blade has no bearing: the spin's turn).
             if(covered&&pick.Spin&&VisualMotionBank.Clips.TryGetValue(pick.Clip,out var spun))
             {
-                float own=(NativeVisualMotionClips.Yaw(spun,pick.Time)-NativeVisualMotionClips.Yaw(spun,0))*Mathf.Rad2Deg;
-                m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,Mathf.DeltaAngle(0,-pick.Turn*Mathf.Rad2Deg-own)*wgt);
+                float own=(NativeVisualMotionClips.Yaw(spun,pick.Time)-NativeVisualMotionClips.Yaw(spun,0))*Mathf.Rad2Deg,turn=Mathf.DeltaAngle(0,-pick.Turn*Mathf.Rad2Deg-own);
+                if(pick.Align>0&&m.HasHold)
+                {
+                    var blade=Quaternion.Inverse(body.Root.transform.rotation)*(m.RightHand.rotation*m.HoldRotation*Vector3.forward);float flat=new Vector2(blade.x,blade.z).magnitude;
+                    float onTip=Mathf.DeltaAngle(Mathf.Atan2(blade.x,blade.z)*Mathf.Rad2Deg,-pick.Tip*Mathf.Rad2Deg);
+                    turn+=Mathf.DeltaAngle(turn,onTip)*pick.Align*Mathf.Clamp01((flat-.3f)/.4f);
+                }
+                m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,turn*wgt);
             }
             // The contact guard: the body's lowest point (each contact bone less its clearance) on the pilot's floor point, its
             // feet's place (the pack's character stands a little lower on its feet than the body; its jumps, falls and plunges
