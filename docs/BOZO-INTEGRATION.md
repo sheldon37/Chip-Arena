@@ -1138,6 +1138,18 @@ already? Cant we utilize that?"
     - jump, air-jump flip, fall, landing, roll, block, stun, and hit reactions from front, back, left and right.
   - **Timing:** each attack plays from the strike's start. The clip's own `Hit` event lands mid hit window, and its recovery
     ends with the strike. The roll fills the roll; the plunge's `Hit` lands on its impact.
+  - **Dash (sprint) attacks leave the floor (2026-10-26, `claude/model-dash-attacks`; owner: "dash attacks need fixing on
+    melee, it looks like they need to be in the air when dash attacking? Reference the melee dash attacks"):**
+    - The pack's run attacks leap through their strides (both feet up to about 0.3 m off the floor). The model's floor
+      guard put every swing's lowest point on the floor, so those flights read as a kneeling crawl.
+    - A grounded sprint attack now keeps its clip's flight, under the run's rule: the body is only kept out of the floor
+      (`Pick.Flight`, `NativeVisualMotion.Flies`). This covers the sword, daggers and shield.
+    - The greatsword's dash attack is the game's own hop, so its clip stays on the pilot's feet in the air. Once it
+      lands, its run attack would stride on through its follow-through on a stopped pilot. Instead its legs become the
+      set's landing (`2Hand-Sword-Land`, from the touchdown), under the take's upper body, laid on at once (`Upper.Snap`).
+      That is the Classic's planted landing (`DashLanded`, `DashUpper`). The touchdown is the replicated `SwingAt`, then
+      the attack start plus its wind-up once the hit window has closed.
+    - Hit timing, steps, reach and the hop are unchanged.
   - **Kept on the game's pose for now:** specials, kit moves (Whirlwind, Earthsplitter), knockdowns and juggles. The model
     fades to the game's pose and back over 0.15 s.
   - **The bake** (local tool, the stride step and the body bake) writes the motion bank

@@ -1,3 +1,21 @@
+## 2026-10-26 — Claude: melee dash attacks on the model leave the floor (merged into shared)
+
+- **Branch/base:** `claude/model-dash-attacks` from shared `bb32a255`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner report:** "dash attacks need fixing on melee, it looks like they need to be in the air when dash attacking? Reference the melee dash attacks".
+- **Cause:** the model's floor guard put every swing's lowest point on the floor. The pack's run attacks (`Armed-Run-Attack-R1`, `-Dual`, `2Hand-Sword-Run-Forward-Attack1`) leap through their strides, so pinned they read as a kneeling crawl. In play the lowest point sat at 0 m through the sword's dash attack, against 0.35 m of flight in the sprint around it. The greatsword, after its hop landed, strode on through its follow-through while the pilot had stopped.
+- **Change (presentation only):**
+  - `NativeVisualMotion`: a grounded sprint attack's pick keeps its clip's flight (`Pick.Flight`, `Flies`: every melee weapon but the greatsword, whose hop is the game's). After the greatsword's touchdown (`DashLanded`, `Touchdown`) the pick is the set's landing, and `DashUpper` lays the take's upper body over it at once (`Upper.Snap`).
+  - `NativeVisualMotionPresentation`: the floor guard keeps a flight pick's lift, as the run's; a snapping upper layer is on at once.
+- **Animation impacts:** hit timing, hit volumes, damage, steps, the greatsword's hop, cooldowns, movement and networking unchanged. The model now leaves the floor during the run attacks' strides (about 0.3 m).
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `b0c26423`), with new VisualRigChecks: which dash attacks fly, the greatsword's hop and planted landing (also once the hit window has closed), and the updated floor-guard pin.
+  - Unity compile: PASS in the Editor.
+  - Play mode, a sprinting dash attack per weapon, captured 70 ms apart from the press (the local tool's new `hold=T,D,fwd,0,sprint`):
+    - the sword before the change (kneeling crawl) and after (leaping, feet up to 0.33 m);
+    - the daggers (leaping) and the shield's bash;
+    - the greatsword's hop, its planted landing squat and its return to guard.
+- **Not run:** the Classic body side by side (the reference was its documented footwork: the run's stride into the strike, the greatsword's planted landing); another client's view; first person; a Windows build.
+
 ## 2026-10-26 — Claude: the greatsword Whirlwind's spin on the model (merged into shared)
 
 - **Branch/base:** `claude/model-whirlwind` from shared `a099ec91`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
