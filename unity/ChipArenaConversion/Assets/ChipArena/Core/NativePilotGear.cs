@@ -148,16 +148,19 @@ namespace ChipArena.UnityConversion
             -.014f,-.012f,-.008f,-.001f,.006f,.012f,
             .005f,.005f,.008f,.012f,.016f,.019f,
             .021f,.021f,.021f,.023f,.025f,.026f,
-            .032f,.031f,.030f,.031f,.031f,.031f,
+            .034f,.031f,.030f,.031f,.031f,.031f,
             .041f,.040f,.038f,.037f,.036f,.035f};
+        // Refitted 2026-10-27 (owner: "Mask seems to glitch on face still"): the nose bridge had come through between the top
+        // two rows (to 4 mm: the face and the shell fought there) and the sides stood 14-16 mm off the cheeks (a plate with
+        // gaps); now at least 3 mm clear over the nose and 5-6 mm off the cheeks, the sides wrapping the jaw.
         private static readonly float[] MaskZ={
-            .113f,.109f,.101f,.096f,.095f,.088f,
-            .129f,.125f,.117f,.112f,.103f,.101f,
-            .136f,.132f,.124f,.119f,.112f,.102f,
-            .143f,.137f,.128f,.121f,.113f,.106f,
-            .152f,.143f,.130f,.122f,.115f,.107f,
-            .155f,.143f,.128f,.121f,.115f,.108f,
-            .139f,.131f,.123f,.118f,.110f,.104f};
+            .113f,.109f,.101f,.096f,.071f,.079f,
+            .129f,.126f,.116f,.106f,.094f,.080f,
+            .136f,.135f,.123f,.121f,.113f,.103f,
+            .143f,.138f,.129f,.121f,.108f,.104f,
+            .152f,.143f,.130f,.123f,.112f,.099f,
+            .157f,.143f,.130f,.122f,.111f,.105f,
+            .146f,.136f,.126f,.120f,.111f,.106f};
         // The visor: a band over the eyes (y .041-.083: the frame's 4 mm above and below the glass), wrapping to the temples in
         // front of the hair.
         private static readonly float[] VisorX={0,.02f,.04f,.055f,.068f,.08f,.09f};
@@ -181,7 +184,8 @@ namespace ChipArena.UnityConversion
             for(int side=-1;side<=1;side+=2)
             {
                 for(int k=0;k<3;k++){float y=-.006f+k*.009f;s.Decal(Strip,new Vector3(side*.04f,y,MaskSurface(.04f,y)),new Vector3(.73f,0,-side*.68f)*.0065f,new Vector3(0,.0015f,0),.0012f);}
-                s.Tube(Metal,new[]{new Vector3(side*.066f,.012f,.098f),new Vector3(side*.079f,.016f,.07f),new Vector3(side*.086f,.02f,.035f)},.0028f,6,Vector3.UnitY);
+                // The strap along the cheek to the ear, 5-7 mm off the skin (it had floated up to 3 cm out, a stray line).
+                s.Tube(Metal,new[]{new Vector3(side*.070f,.013f,.100f),new Vector3(side*.077f,.015f,.078f),new Vector3(side*.078f,.018f,.058f),new Vector3(side*.082f,.022f,.042f)},.0025f,6,Vector3.UnitY);
             }
             s.Decal(Strip,new Vector3(0,-.026f,MaskSurface(0,-.026f)),new Vector3(.0016f,0,0),new Vector3(0,.009f,.002f),.0012f);
             return mesh;

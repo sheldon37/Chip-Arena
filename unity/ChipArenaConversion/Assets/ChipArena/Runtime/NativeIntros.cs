@@ -84,8 +84,8 @@ namespace ChipArena.UnityConversion
             NativeLighting.Entrance(entranceLights,camera);
             // The pilot, its weapon, its team band; afterimages and the hologram as one-layer see-through silhouettes.
             entranceReveal??=b=>entranceScript.Solid(entranceTime,b);bool solid=script.Solid(t,CapturedRig.Chest)>.5f;
-            // On its visual body once built in (the Sheldon intro keeps the voxel body: its head is the hat's).
-            if(sheldon==null)VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal);
+            // On its visual body once built in (the Sheldon intro's hood and face over the model's head).
+            VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             EntranceGhosts(script,style,t);

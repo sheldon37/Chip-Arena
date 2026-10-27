@@ -358,9 +358,10 @@ namespace ChipArena.UnityConversion
             }
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;body.Seen=true;
+            VisualHatHair(body,look.Hat);
             if(look.Hat!="none"&&look.Hat!=NativeSheldonHead.Hat)
             {
-                var hb=VisualHatBone(rig);
+                var hb=VisualHatBone(rig,look.Hat);
                 if(!AuditorHalo(look.Hat,hb(CapturedRig.Head),time,1,reduced,0,camera,camera,hatColor))sourceModels.Queue(HatModel(look.Hat,hatColor),rig.Root.transform.localToWorldMatrix,hb,null,0,camera,body:HatBody(look.Hat,hatColor));
             }
             VisualGear(body,a,time,null,null,1,false);

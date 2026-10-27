@@ -35,6 +35,8 @@ namespace ChipArena.UnityConversion
             public string Look=""; public Matrix4x4 Emblem=EmblemFrame;
             // Its hair and cloth simulation (NativeVisualCloth: the local install's; null without one) and whether it runs (-1 unset).
             public object ClothSim; public int ClothOn=-1;
+            // Its hair pieces' hood shapes (VisualHatHair): the renderers, each one's shape and the outfit's weight, and whether pressed.
+            public SkinnedMeshRenderer[] HatHair; public int[] HatHairShape; public float[] HatHairRest; public bool HatHairOn;
             public Color ChipColor=Color.cyan, AccentLinear=Color.cyan;
             public readonly Vector3[] HandPosition=new Vector3[2]; public readonly Quaternion[] HandRotation=new Quaternion[2];
             // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
@@ -185,8 +187,40 @@ namespace ChipArena.UnityConversion
         }
         // A hat on the model's head (owner 2026-10-25: "Lets work on all these"): the head joint's frame on the model, where every
         // hat sits on the hair at its own size (the pack's under-hat hair shapes left it nearly bald).
-        private Func<int,Matrix4x4> hatBone;private CapturedAnimation.Player hatRig;
-        private Func<int,Matrix4x4> VisualHatBone(CapturedAnimation.Player rig){hatRig=rig;return hatBone??=b=>VisualJointFrame(hatRig,b);}
+        // Fitted to the model's head (NativeModelHats: scaled and seated on its crown, sunk by the hat's kind), its hair pressed
+        // under it (VisualHatHair).
+        private Func<int,Matrix4x4> hatBone;private CapturedAnimation.Player hatRig;private string hatWorn;
+        private Func<int,Matrix4x4> VisualHatBone(CapturedAnimation.Player rig,string hat){hatRig=rig;hatWorn=hat;return hatBone??=b=>VisualHatFrame(hatRig,hatWorn,b);}
+        private Matrix4x4 VisualHatFrame(CapturedAnimation.Player rig,string hat,int b)
+        {
+            if(b==CapturedRig.Head&&rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount)
+            {
+                var head=VisualHeadOf(body);
+                if(head!=null&&hat==NativeSheldonHead.Hat){var k=NativeModelHats.SheldonScale;var o=NativeModelHats.SheldonOffset;return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(o.X,o.Y,o.Z),Quaternion.identity,new Vector3(k.X,k.Y,k.Z));}
+                if(head!=null){NativeModelHats.Fit(hat,out float scale,out var offset);return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(offset.X,offset.Y,offset.Z),Quaternion.identity,Vector3.one*scale);}
+            }
+            return VisualJointFrame(rig,b);
+        }
+        // The worn hair pressed under a hat: each hair piece's own hood shape (the pack's "Tag_Hood": the spikes laid into a ring
+        // round the head, the crown under the hat) full while a hat that presses it is worn (NativeModelHats.Presses), back to the
+        // outfit's weight otherwise. Writes only when that changes.
+        private void VisualHatHair(CapturedAnimation.Player rig,string hat){if(rig!=null&&visualBodies.TryGetValue(rig,out var body))VisualHatHair(body,hat);}
+        private static void VisualHatHair(VisualBody body,string hat)
+        {
+            bool on=NativeModelHats.Presses(hat);if(body?.Root==null||body.HatHair!=null&&on==body.HatHairOn)return;
+            if(body.HatHair==null)
+            {
+                var hair=new List<SkinnedMeshRenderer>();var shape=new List<int>();var rest=new List<float>();
+                foreach(var skin in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                {
+                    var mesh=skin.sharedMesh;if(mesh==null)continue;
+                    for(int i=0;i<mesh.blendShapeCount;i++)if(mesh.GetBlendShapeName(i).EndsWith("Tag_Hood",StringComparison.Ordinal)){hair.Add(skin);shape.Add(i);rest.Add(skin.GetBlendShapeWeight(i));}
+                }
+                body.HatHair=hair.ToArray();body.HatHairShape=shape.ToArray();body.HatHairRest=rest.ToArray();
+            }
+            for(int k=0;k<body.HatHair.Length;k++)if(body.HatHair[k]!=null)body.HatHair[k].SetBlendShapeWeight(body.HatHairShape[k],on?100:body.HatHairRest[k]);
+            body.HatHairOn=on;
+        }
         // The parry flash on the model: its drawn body snapshotted each frame of the flash, tinted (VisualEchoSnap/Draw).
         private readonly Dictionary<int,VisualEcho> parryEchoes=new Dictionary<int,VisualEcho>();
         private void VisualParryFlash(CapturedAnimation.Player rig,Actor a,Color colour,float opacity)
@@ -225,8 +259,9 @@ namespace ChipArena.UnityConversion
             if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++){var hand=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];hand.position+=shift;}}
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;body.Seen=true;
+            VisualHatHair(body,seat.hat);
             if(!string.IsNullOrEmpty(seat.hat)&&seat.hat!="none"&&seat.hat!=NativeSheldonHead.Hat)
-            {var hb=VisualHatBone(rig);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
+            {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
             VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
             return true;
         }
@@ -690,7 +725,85 @@ namespace ChipArena.UnityConversion
         // so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across pieces go, as
         // do the dropped piece's (a crushed part's fragments and the stumps' blood are the kill wound's; the other half of a
         // split body is its twin's). The cut meshes go with the corpse.
-        private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone)=>VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);
+        private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone){VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);VisualCorpseBones(c,pieceOfBone);}
+        // The cut's bones (owner 2026-10-27: "Can you show bones + flesh on gibs too? correct on anamonics too"; Core
+        // NativeModelGore): at each joint the cut parts (a bone whose nearest ancestor went with another piece), each side's bones as
+        // short stubs on that side's bone, where they lie in its cross-section (the cut piece's sticking out a little, the stump's
+        // flush), their marrow dark at the end. In the body's own shader, added to the corpse's renderers so its dissolve and its
+        // kill looks reach them; they go with the corpse.
+        private static Mesh goreStub,goreDisc;
+        private void VisualCorpseBones(VisualCorpse c,int[] pieceOfBone)
+        {
+            if(c.Root==null||c.All==null||c.Parent==null)return;Material source=null;
+            foreach(var r in c.All)if(r is SkinnedMeshRenderer&&r.sharedMaterial!=null){source=r.sharedMaterial;break;}
+            if(source==null)return;
+            var boneLook=VisualGoreMaterial(source,NativeModelGore.Bone);var marrowLook=VisualGoreMaterial(source,NativeModelGore.Marrow);
+            goreStub??=GoreCylinder();goreDisc??=GoreDisc();
+            var root=c.Root.transform;var known=new HashSet<Transform>();foreach(var b in c.Bones)if(b!=null)known.Add(b);
+            var added=new List<Renderer>();
+            for(int w=0;w<c.Bones.Length;w++)
+            {
+                int v=c.Parent[w];if(v<0||v>=c.Bones.Length||c.Bones[w]==null||c.Bones[v]==null)continue;
+                int pw=pieceOfBone[w],pv=pieceOfBone[v];if(pw==pv)continue;
+                Transform limb=c.Bones[w],stump=c.Bones[v];var joint=limb.position;var along=joint-stump.position;if(along.sqrMagnitude<1e-8f)continue;along.Normalize();
+                // The cut piece's way: toward its bone's farthest child bone (its limb), or on from the stump's.
+                var into=along;string kind=NativeModelGore.Kind(limb.name);
+                if(kind!="hand"&&kind!="foot"&&kind!="head"){Vector3 far=Vector3.zero;foreach(Transform ch in limb)if(known.Contains(ch)){var d=ch.position-joint;if(d.sqrMagnitude>far.sqrMagnitude)far=d;}if(far.sqrMagnitude>1e-6f)into=far.normalized;}
+                if(pw>=0)Stubs(limb,stump.name,joint,into,NativeModelGore.Out);
+                if(pv>=0)Stubs(stump,limb.name,joint,-along,NativeModelGore.Stump);
+            }
+            if(added.Count>0){var all=new Renderer[c.All.Length+added.Count];c.All.CopyTo(all,0);added.CopyTo(all,c.All.Length);c.All=all;}
+            // The bones of `on`'s side through the joint at `joint`, running `into` that side, `stick` metres out of its cut.
+            void Stubs(Transform on,string across,Vector3 at,Vector3 inward,float stick)
+            {
+                var sections=NativeModelGore.At(on.name,across);if(sections.Length==0)return;int side=NativeModelGore.Side(on.name);
+                var ahead=Vector3.ProjectOnPlane(root.forward,inward);var outward=Vector3.ProjectOnPlane(root.right*(side<0?-1:1),inward);
+                if(ahead.sqrMagnitude<1e-6f||outward.sqrMagnitude<1e-6f)return;ahead.Normalize();outward.Normalize();
+                var turn=Quaternion.FromToRotation(Vector3.up,inward);
+                foreach(var s in sections)
+                {
+                    var centre=at+outward*s.Outward+ahead*s.Ahead;var end=centre-inward*stick;var deep=centre+inward*NativeModelGore.Depth(on.name);
+                    added.Add(GorePiece("Visual gore bone",goreStub,boneLook,on,(end+deep)*.5f,turn,new Vector3(s.Radius*2,(deep-end).magnitude,s.Radius*2)));
+                    added.Add(GorePiece("Visual gore marrow",goreDisc,marrowLook,on,end-inward*.0005f,Quaternion.FromToRotation(Vector3.up,-inward),new Vector3(s.Radius*1.1f,1,s.Radius*1.1f)));
+                }
+            }
+        }
+        private static Renderer GorePiece(string name,Mesh mesh,Material look,Transform on,Vector3 at,Quaternion turn,Vector3 size)
+        {
+            var go=new GameObject(name);go.transform.SetPositionAndRotation(at,turn);go.transform.localScale=size;go.transform.SetParent(on,true);
+            go.AddComponent<MeshFilter>().sharedMesh=mesh;var r=go.AddComponent<MeshRenderer>();r.sharedMaterial=look;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;return r;
+        }
+        // A unit cylinder (radius 0.5, height 1 along y about its middle, capped) and a unit disc (radius 0.5 facing +y).
+        private static Mesh GoreCylinder()
+        {
+            const int n=12;var v=new List<Vector3>();var nm=new List<Vector3>();var t=new List<int>();
+            for(int i=0;i<=n;i++){float a=i*2*Mathf.PI/n;var d=new Vector3(Mathf.Cos(a)*.5f,0,Mathf.Sin(a)*.5f);v.Add(d+Vector3.down*.5f);nm.Add(d*2);v.Add(d+Vector3.up*.5f);nm.Add(d*2);}
+            for(int i=0;i<n;i++){int a=i*2;t.AddRange(new[]{a,a+1,a+3,a,a+3,a+2});}
+            for(int e=0;e<2;e++)
+            {
+                float y=e==0?-.5f:.5f;int c=v.Count;v.Add(new Vector3(0,y,0));nm.Add(new Vector3(0,e==0?-1:1,0));
+                for(int i=0;i<=n;i++){float a=i*2*Mathf.PI/n;v.Add(new Vector3(Mathf.Cos(a)*.5f,y,Mathf.Sin(a)*.5f));nm.Add(new Vector3(0,e==0?-1:1,0));}
+                for(int i=0;i<n;i++){if(e==0)t.AddRange(new[]{c,c+1+i,c+2+i});else t.AddRange(new[]{c,c+2+i,c+1+i});}
+            }
+            var m=new Mesh{name="Visual gore bone"};m.SetVertices(v);m.SetNormals(nm);m.SetTriangles(t,0);m.RecalculateBounds();return m;
+        }
+        private static Mesh GoreDisc()
+        {
+            const int n=12;var v=new List<Vector3>{Vector3.zero};var nm=new List<Vector3>{Vector3.up};var t=new List<int>();
+            for(int i=0;i<=n;i++){float a=i*2*Mathf.PI/n;v.Add(new Vector3(Mathf.Cos(a)*.5f,0,Mathf.Sin(a)*.5f));nm.Add(Vector3.up);}
+            for(int i=0;i<n;i++)t.AddRange(new[]{0,2+i,1+i});
+            var m=new Mesh{name="Visual gore marrow"};m.SetVertices(v);m.SetNormals(nm);m.SetTriangles(t,0);m.RecalculateBounds();return m;
+        }
+        // A body material's copy in one colour (sRGB `hex`): both sides, no outline or accent glow; one per material and colour.
+        private readonly Dictionary<(Material,int),Material> visualGoreMaterials=new Dictionary<(Material,int),Material>();
+        private Material VisualGoreMaterial(Material source,int hex)
+        {
+            if(visualGoreMaterials.TryGetValue((source,hex),out var m))return m;
+            var color=new Color((hex>>16&255)/255f,(hex>>8&255)/255f,(hex&255)/255f);
+            m=new Material(source){name=source.name+" (gore "+hex.ToString("x6")+")"};for(int i=1;i<=9;i++)m.SetColor("_Color_"+i,color);
+            m.SetFloat("_Cull",0);m.SetFloat("_Cutoff",0);m.SetFloat("_UseOutline",0);m.SetFloat("_AccentGlow",0);
+            visualGoreMaterials[(source,hex)]=m;return m;
+        }
         // Each skinned renderer of `all` on its pieces (per visual bone of `bones`: `pieceOfBone`, -1 dropped; SeverMesh), the
         // cut meshes added to `owned` (their owner frees them); with `caps`, the holes closed in the cut's material.
         private void VisualSever(Renderer[] all,Transform[] bones,int[] pieceOfBone,ref List<Mesh> owned,bool caps=false)
@@ -751,9 +864,10 @@ namespace ChipArena.UnityConversion
             if(!body.Root.activeSelf)body.Root.SetActive(true);
             foreach(var r in body.All){if(r==null)continue;r.GetPropertyBlock(body.Block);body.Block.SetVector(VisualEchoTint,new Vector4(BustColor.r,BustColor.g,BustColor.b,alpha));r.SetPropertyBlock(body.Block);}
         }
-        // The cut's material (a body material's copy): the bodies' dark insides (NativeBisect's cut look) in every colour, both
-        // sides, no cut-out, outline or accent glow; it keeps the shader's dissolve and hit flash. One per body material.
-        private static readonly Color CutInside=new Color(.047f,.065f,.078f);
+        // The cut's material (a body material's copy): flesh (Core NativeModelGore; the model is a person: the voxel pilots' dark
+        // armoured insides read as a robot's) in every colour, both sides, no cut-out, outline or accent glow; it keeps the
+        // shader's dissolve and hit flash. One per body material.
+        private static readonly Color CutInside=new Color((NativeModelGore.Flesh>>16&255)/255f,(NativeModelGore.Flesh>>8&255)/255f,(NativeModelGore.Flesh&255)/255f);
         private readonly Dictionary<Material,Material> capMaterials=new Dictionary<Material,Material>();
         private Material VisualCapMaterial(Material source)
         {
