@@ -205,7 +205,7 @@ namespace ChipArena.UnityConversion
             // The arms are free while the body idles, moves, rises, falls or lands (not in a roll, strike, reaction or block).
             bool ready=covered&&(pick.Locomotion||pick.Clip==m.Set.Idle||pick.Clip==m.Set.Jump||pick.Clip==m.Set.Fall||pick.Clip==m.Set.Land);
             var up=default(NativeVisualMotion.Upper);bool layered=covered&&NativeVisualMotion.Layer(m.Set,a,time,VisualMotionBank,out up,ready);
-            m.Upper=Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);
+            m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);
             NativeVisualMotionClips.Clip ua=default;bool upper=layered&&m.Upper>0&&VisualMotionBank.Clips.TryGetValue(up.A,out ua);
             // A human pose places the body by its centre of mass: a raised upper body would swing the hips (and the legs with
             // them). The legs' motion is posed first and its hips kept.
@@ -244,12 +244,12 @@ namespace ChipArena.UnityConversion
             }
             // The contact guard: the body's lowest point (each contact bone less its clearance) on the pilot's floor point, its
             // feet's place (the pack's character stands a little lower on its feet than the body; its jumps, falls and plunges
-            // carry their own lift, which the game's own height already gives). Running, only kept out of the floor (the
-            // stride's flight).
+            // carry their own lift, which the game's own height already gives). Running, or a sprint attack's leaping run (the
+            // pick's Flight), only kept out of the floor (the stride's flight).
             {
                 var origin=body.Root.transform;float deepest=float.MaxValue;
                 for(int f=0;f<m.Contacts.Length;f++)if(m.Contacts[f]!=null)deepest=Mathf.Min(deepest,Vector3.Dot(m.Contacts[f].position-origin.position,origin.up)-m.Clearance[f]);
-                if(deepest<float.MaxValue&&(deepest<0||!(covered&&pick.Locomotion)))m.BodyHips.position-=origin.up*(deepest*wgt);
+                if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);
             }
             // The weapon on the model's right hand, the rig's weapon hand bone with it (what draws there follows the model).
             if(m.HasHold)

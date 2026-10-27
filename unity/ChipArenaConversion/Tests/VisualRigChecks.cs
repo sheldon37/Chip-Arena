@@ -289,6 +289,20 @@ namespace ChipArena.UnityConversion
                 NativeVisualMotion.Choose(set,stop,113.799f,new NativeVisualMotion.Memory(),book2,false,out var settled);NativeVisualMotion.Layer(set,stop,113.799f,book2,out var risen,true);
                 Check(settled.Align<.01f&&settled.LiftL==0&&settled.LiftR==0&&risen.TimeA>1.19f,"the stop: back off the blade and still, the sweep risen to its end");
             }
+            // A sprint (dash) attack keeps its leaping run's flight (owner 2026-10-26: "it looks like they need to be in the air
+            // when dash attacking?"); the greatsword's rides the game's hop; a plain swing stays on the floor.
+            {
+                var run=new Actor{Grounded=true,SourceSpec="sword",SprintAttack=true,AttackAt=200,AttackUntil=200.8f,SwingAt=200.16f,SwingUntil=200.34f,VisualWindup=.16f};
+                Check(NativeVisualMotion.Choose(sword,run,200.2f,new NativeVisualMotion.Memory(),book2,false,out var dashPick)&&dashPick.Clip==sword.SprintAttack&&dashPick.Flight,"a sword dash attack keeps its clip's flight");
+                run.SourceSpec="greatsword";run.Grounded=false;Check(NativeVisualMotion.Choose(set,run,200.1f,new NativeVisualMotion.Memory(),book2,false,out dashPick)&&dashPick.Clip==set.SprintAttack&&!dashPick.Flight,"the greatsword's dash attack rides the game's hop");
+                run.Grounded=true;Check(NativeVisualMotion.Choose(set,run,200.3f,new NativeVisualMotion.Memory(),book2,false,out dashPick)&&dashPick.Clip==set.Land&&Math.Abs(dashPick.Time-(200.3f-run.SwingAt))<1e-4f
+                    &&NativeVisualMotion.Layer(set,run,200.3f,book2,out up,true)&&up.A==set.SprintAttack&&up.Raised&&up.Snap,"landed, the greatsword's cleave plants on the landing's legs, its follow-through laid on at once");
+                run.SwingAt=run.SwingUntil=-100;Check(NativeVisualMotion.Choose(set,run,200.5f,new NativeVisualMotion.Memory(),book2,false,out dashPick)&&dashPick.Clip==set.Land&&Math.Abs(dashPick.Time-(200.5f-200.16f))<1e-4f,"still planted once the hit window has closed (the touchdown from the wind-up)");
+                run.SwingAt=200.16f;run.SwingUntil=200.34f;
+                Check(NativeVisualMotion.Choose(set,run,200.1f,new NativeVisualMotion.Memory(),book2,false,out dashPick)&&dashPick.Clip==set.SprintAttack&&!NativeVisualMotion.Layer(set,run,200.1f,book2,out up,true),"before the touchdown the take is the whole body");
+                run.SourceSpec="sword";run.SprintAttack=false;Check(NativeVisualMotion.Choose(sword,run,200.2f,new NativeVisualMotion.Memory(),book2,false,out dashPick)&&dashPick.Clip!=sword.SprintAttack&&!dashPick.Flight,"a plain swing stays on the floor");
+                Check(NativeVisualMotion.Flies("daggers")&&NativeVisualMotion.Flies("shield")&&!NativeVisualMotion.Flies("greatsword"),"which dash attacks fly");
+            }
             // The sword's, daggers' and shield's: the dash's lunge on the release, a recast its own clip, the charge at its pace.
             var dash=new Actor{Grounded=true,SourceSpec="sword",MeleeKit=new NativeMeleeKit{Kind="flash-step",Phase="windup",At=120,Release=120.15f,Until=120.6f},SpecialKind="flash-step",SpecialAt=120,SpecialUntil=120.6f};
             Check(NativeVisualMotion.Choose(sword,dash,120.15f,new NativeVisualMotion.Memory(),book2,false,out kitPick)&&kitPick.Clip==sword.KitClips[0]&&Math.Abs(kitPick.Time-.2f*1.2f)<1e-4f,"Flash Step: the dash's lunge on the release");
@@ -361,7 +375,7 @@ namespace ChipArena.UnityConversion
             int stride=body.IndexOf("VisualStridePose(body,rig,a,time,roll,juggle);",StringComparison.Ordinal),pose=body.IndexOf("VisualMotionPose(body,rig,a,time);",StringComparison.Ordinal),fit=body.IndexOf("VisualWeaponFit(right,held);",StringComparison.Ordinal);
             Check(stride>0&&pose>stride&&fit>pose,"the clips go on after the game pose and the stride, before the weapon fit");
             Check(motion.Contains("weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);"),"the weapon rides the drawn hand at any weight");
-            Check(motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&pick.Locomotion)))m.BodyHips.position-=origin.up*(deepest*wgt);"),"the body's lowest point stands on the pilot's floor point (running, only kept out of it)");
+            Check(motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);"),"the body's lowest point stands on the pilot's floor point (running or a dash attack's leaping run, only kept out of it)");
             Check(motion.Contains("foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);")&&motion.Contains("m.Handler.SetHumanPose(ref m.Pose);"),"the motion proxy draws nothing and takes the mixed pose through its avatar");
             Check(motion.Contains("var bytes=Resources.Load<TextAsset>(VisualMotionResource);")&&motion.Contains("const string VisualMotionResource=\"ChipArenaVisualMotion\";"),"the clips come from the bake's motion bank, read once");
             // The bank: written and read back, a frame sampled and two clips mixed.
@@ -1014,7 +1028,9 @@ namespace ChipArena.UnityConversion
             {
                 string motion=R("Runtime/NativeVisualMotionPresentation.cs");
                 Check(motion.Contains("if(covered&&pick.Spin)VisualSpinLegs(m,pick);")&&motion.Contains("turn+=Mathf.DeltaAngle(turn,onTip)*pick.Align*Mathf.Clamp01((flat-.3f)/.4f);")
-                    &&motion.Contains("m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,turn*wgt);"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
+                    &&motion.Contains("m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,turn*wgt);")
+                    &&motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);")
+                    &&motion.Contains("m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
             }
             // A whole corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
             // model"): each bone turns with its part and keeps its rest offset; the root and a severed piece's first bone take

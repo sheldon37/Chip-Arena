@@ -161,7 +161,9 @@ namespace ChipArena.UnityConversion
 
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
         /// whether the layer is up (Raised: aimed, drawn, reloading or casting). False for melee sets.</summary>
-        public struct Upper { public string A, B; public float TimeA, TimeB, Mix; public bool Raised; }
+        public struct Upper { public string A, B; public float TimeA, TimeB, Mix; public bool Raised;
+            /// <summary>Laid on at once rather than eased in (the layer continues what the whole body already played).</summary>
+            public bool Snap; }
 
         // ---- The Whirlwind on the model (owner 2026-10-26: "need to fix whirlwind on greatsword, the player spin is not good").
         // The held swing (Attack8's Hit: upright, the blade raised) turned as one rigid pose read as a statue on a turntable.
@@ -231,6 +233,7 @@ namespace ChipArena.UnityConversion
         {
             up=default;
             if(SpinUpper(s,a,time,clips,out up))return true;
+            if(DashUpper(s,a,time,clips,out up))return true;
             if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
             if(s.Aim==null)return false;
             if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
@@ -282,9 +285,36 @@ namespace ChipArena.UnityConversion
             /// <summary>Spin: the body is turned about its hips to Turn (radians from the facing, + toward the pilot's left), less
             /// the clip's own turn; by Align (0..1) the drawn blade's bearing is put on Tip instead (the game's blade tip, same
             /// frame). Sit (0..1): the legs bent into the spin's crouch; LiftL, LiftR (0..1): each foot's step.</summary>
-            public bool Spin; public float Turn, Tip, Align, Sit, LiftL, LiftR; }
+            public bool Spin; public float Turn, Tip, Align, Sit, LiftL, LiftR;
+            /// <summary>The clip's own flight is kept (the body only kept out of the floor, as the run's stride): a grounded sprint
+            /// attack's leaping run (Flies).</summary>
+            public bool Flight; }
 
         public const float FadeIn=.08f, FadeOut=.2f, LandFor=.22f, ReactionMin=.25f;
+        /// <summary>Whether a weapon's sprint (dash) attack keeps its clip's own flight (owner 2026-10-26: "dash attacks need
+        /// fixing on melee, it looks like they need to be in the air when dash attacking?"). The pack's run attacks leap through
+        /// their strides; pinned to the floor, their flights read as a crawl. The greatsword's is the game's own hop
+        /// (NativeSprintAttackRules.Leaps), whose height the body already has, so its clip stays on the pilot's feet.</summary>
+        public static bool Flies(string spec)=>!NativeSprintAttackRules.Leaps(spec);
+        /// <summary>A swing's clip time: its wind-up to the clip's Hit on the middle of the rules' hit window, its end on the swing's.</summary>
+        private static float AttackTime(Actor a,float time,string clip,IClips clips)
+        {
+            float windup=a.VisualWindup>0?a.VisualWindup:.25f,hitAt=a.SwingAt>=a.AttackAt&&a.SwingUntil>a.SwingAt?(a.SwingAt+a.SwingUntil)*.5f:a.AttackAt+windup;
+            return Retime(time,a.AttackAt,hitAt,Math.Max(hitAt+.05f,a.AttackUntil),clips.Hit(clip),clips.Length(clip));
+        }
+        /// <summary>The greatsword's leaping cleave has landed (the game's hop comes down as the hit window opens: SwingAt while it
+        /// is replicated, then the cast's wind-up from AttackAt, Touchdown): the pack's
+        /// run attack strides on through its follow-through, which on a stopped pilot read as a crawl, so its legs become the
+        /// set's landing (Land, from the touchdown) under the take's upper body, planted as the Classic lands it.</summary>
+        public static bool DashLanded(Set s,Actor a,float time,IClips clips)=>a.SprintAttack&&!Flies(a.SourceSpec)&&a.Grounded&&time>=Touchdown(a)
+            &&a.Attacking(time)&&clips.Has(s.Land)&&clips.Has(s.SprintAttack);
+        public static float Touchdown(Actor a)=>a.SwingAt>=a.AttackAt?a.SwingAt:a.AttackAt+(a.VisualWindup>0?a.VisualWindup:.25f);
+        /// <summary>The landed cleave's upper body: the take on its own timing, laid on at once (Snap: it is already the whole pose).</summary>
+        public static bool DashUpper(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=default;if(!DashLanded(s,a,time,clips))return false;
+            up=new Upper{A=s.SprintAttack,TimeA=AttackTime(a,time,s.SprintAttack,clips),Raised=true,Snap=true};return true;
+        }
         /// <summary>The pack's knockdown: its back reaches the floor at KnockImpact of the clip; airborne, it holds at KnockFlight of
         /// that (the legs-up flight). The backward roll is on its back from RollFromBack of the clip.</summary>
         public const float KnockImpact=.52f, KnockFlight=.8f, RollFromBack=.22f;
@@ -358,8 +388,9 @@ namespace ChipArena.UnityConversion
             if(a.Attacking(time)&&set.CastStart==null&&!set.Fighter)
             {
                 string clip=a.SprintAttack?set.SprintAttack:set.Attacks[Math.Max(0,a.Combo)%set.Attacks.Length];if(!clips.Has(clip))return false;
-                float windup=a.VisualWindup>0?a.VisualWindup:.25f,hitAt=a.SwingAt>=a.AttackAt&&a.SwingUntil>a.SwingAt?(a.SwingAt+a.SwingUntil)*.5f:a.AttackAt+windup;
-                pick=new Pick{Clip=clip,Time=Retime(time,a.AttackAt,hitAt,Math.Max(hitAt+.05f,a.AttackUntil),clips.Hit(clip),clips.Length(clip)),Fade=FadeIn};return true;
+                // The greatsword's leaping cleave, landed: the landing's legs (its follow-through is the upper body, DashUpper).
+                if(DashLanded(set,a,time,clips)){pick=new Pick{Clip=set.Land,Time=time-Touchdown(a),Fade=FadeIn};return true;}
+                pick=new Pick{Clip=clip,Time=AttackTime(a,time,clip,clips),Fade=FadeIn,Flight=a.SprintAttack&&Flies(a.SourceSpec)};return true;
             }
             if(a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin))
             {
