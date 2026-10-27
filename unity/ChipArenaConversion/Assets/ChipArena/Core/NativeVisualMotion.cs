@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
             Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
             AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
             Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
-            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack8"},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -162,6 +162,41 @@ namespace ChipArena.UnityConversion
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
         /// whether the layer is up (Raised: aimed, drawn, reloading or casting). False for melee sets.</summary>
         public struct Upper { public string A, B; public float TimeA, TimeB, Mix; public bool Raised; }
+
+        // ---- The Whirlwind on the model (owner 2026-10-26: "need to fix whirlwind on greatsword, the player spin is not good").
+        // The held swing (Attack8's Hit: upright, the blade raised) turned as one rigid pose read as a statue on a turntable.
+        // Now the upper body is the set's level sweep held at WhirlHold of its clip (the arms long and low before the belly, the
+        // blade level out past the knees) over the stance's legs, sat into a crouch by the spin's Low; while the blade spins each
+        // foot marks time once per turn; the body turns so the drawn blade rides the game's own tip (MeleeKitMotion.Spin).
+        /// <summary>Where the Whirlwind's sweep is held through the spin (a share of its clip: the level, low blade).</summary>
+        public const float WhirlHold=.6f;
+        /// <summary>A step's share of a turn (each foot is down the rest; the other foot steps half a turn later) and the speed
+        /// share (of the full spin) the steps start at and are full by.</summary>
+        public const float StepShare=.45f, StepFrom=.25f, StepFull=.75f;
+        /// <summary>The Whirlwind's upper body: its kit clip into its hold through the wind-up, held there through the spin,
+        /// on to its end through the stop. False for anything else.</summary>
+        public static bool SpinUpper(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=default;if(s.KitKinds==null||!MeleeKitMotion.Clock(a,time,out var c)||c.Kind!="whirlwind")return false;
+            int i=Array.IndexOf(s.KitKinds,c.Kind);if(i<0||!clips.Has(s.Idle))return false;string clip=s.KitClips[i];if(!clips.Has(clip))return false;
+            float len=clips.Length(clip),share=s.KitHits!=null?s.KitHits[i]:float.NaN,hold=share>0&&share<1?share*len:clips.Hit(clip);if(!(hold>0&&hold<len))hold=len*.5f;
+            float t=c.Part==KitPart.Windup||c.Part==KitPart.Recast?hold*Clamp01((time-c.At)/Math.Max(1e-3f,c.Release-c.At))
+                :c.Part==KitPart.Active?hold:hold+(len-hold)*Clamp01((time-c.Start)/Math.Max(1e-3f,c.Until-c.Start));
+            up=new Upper{A=clip,TimeA=t,Raised=true};return true;
+        }
+        /// <summary>How far the body is turned onto the blade (0: by the hands' turn, Grip): rising through the uncoil to the
+        /// release, held through the spin, falling as the stopped pilot settles to its guard.</summary>
+        public static float SpinAlign(in KitClock c,in MeleeKitMotion.Whirl w)
+            =>c.Part==KitPart.Active?1:c.Part==KitPart.Recovery?1-w.Settle:Smooth01(w.Uncoil);
+        /// <summary>The Whirlwind's legs: the sit (the spin's Low) and each foot's lift, once per turn of the hands (Grip), the
+        /// left on the turn, the right half a turn on, by the spin's speed.</summary>
+        public static void SpinLegs(in KitClock c,in MeleeKitMotion.Whirl w,out float sit,out float left,out float right)
+        {
+            sit=Clamp01(w.Low);float k=Smooth01((w.Speed-StepFrom)/(StepFull-StepFrom)),turns=w.Grip/(float)(2*Math.PI);
+            left=k*Step(turns-(float)Math.Floor(turns));float half=turns+.5f;right=k*Step(half-(float)Math.Floor(half));
+        }
+        private static float Step(float phase)=>phase<StepShare?(float)Math.Sin(Math.PI*phase/StepShare):0;
+        private static float Smooth01(float x){x=Clamp01(x);return x*x*(3-2*x);}
         /// <summary>A caster's upper body: the ability's (Q/E) or the cast's start fitted to its release, its end after it at
         /// its own pace; afterwards the end's last pose, lowered (Raised false).</summary>
         private static bool Cast(Set s,Actor a,float time,IClips clips,out Upper up)
@@ -195,6 +230,7 @@ namespace ChipArena.UnityConversion
         public static bool Layer(Set s,Actor a,float time,IClips clips,out Upper up,bool ready=false)
         {
             up=default;
+            if(SpinUpper(s,a,time,clips,out up))return true;
             if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
             if(s.Aim==null)return false;
             if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
@@ -244,8 +280,9 @@ namespace ChipArena.UnityConversion
         /// <summary>What the model plays this frame: a clip at a time (looping or held at its end), or the locomotion blend.</summary>
         public struct Pick { public string Clip; public float Time; public bool Locomotion; public float Fade;
             /// <summary>Spin: the body is turned about its hips to Turn (radians from the facing, + toward the pilot's left), less
-            /// the clip's own turn.</summary>
-            public bool Spin; public float Turn; }
+            /// the clip's own turn; by Align (0..1) the drawn blade's bearing is put on Tip instead (the game's blade tip, same
+            /// frame). Sit (0..1): the legs bent into the spin's crouch; LiftL, LiftR (0..1): each foot's step.</summary>
+            public bool Spin; public float Turn, Tip, Align, Sit, LiftL, LiftR; }
 
         public const float FadeIn=.08f, FadeOut=.2f, LandFor=.22f, ReactionMin=.25f;
         /// <summary>The pack's knockdown: its back reaches the floor at KnockImpact of the clip; airborne, it holds at KnockFlight of
@@ -363,9 +400,11 @@ namespace ChipArena.UnityConversion
             }
             if(c.Kind=="whirlwind")
             {
-                var w=MeleeKitMotion.Spin(c,time);
-                float t=c.Part==KitPart.Windup||c.Part==KitPart.Recast?hit*Clamp01((time-c.At)/Math.Max(1e-3f,c.Release-c.At)):c.Part==KitPart.Active?hit:hit+(len-hit)*Clamp01((time-c.Start)/Math.Max(1e-3f,c.Until-c.Start));
-                pick=new Pick{Clip=clip,Time=t,Fade=FadeIn,Spin=true,Turn=w.Grip};return true;
+                // The legs are the set's stance (the pack's level sweeps end in lunges, whose trailing leg the spin would sweep
+                // round); the kit clip is the upper body (Layer, SpinUpper).
+                if(!clips.Has(set.Idle))return false;
+                var w=MeleeKitMotion.Spin(c,time);SpinLegs(c,w,out float sit,out float left,out float right);
+                pick=new Pick{Clip=set.Idle,Time=time,Fade=FadeIn,Spin=true,Turn=w.Grip,Tip=w.Tip,Align=SpinAlign(c,w),Sit=sit,LiftL=left,LiftR=right};return true;
             }
             pick=new Pick{Clip=clip,Time=Retime(time,c.At,c.Release,Math.Max(c.Release+.05f,c.Until),hit,len),Fade=FadeIn};return true;
         }

@@ -270,7 +270,25 @@ namespace ChipArena.UnityConversion
             Check(NativeVisualMotion.Choose(set,slam,100.45f,new NativeVisualMotion.Memory(),book2,false,out var kitPick)&&kitPick.Clip==set.KitClips[0]&&Math.Abs(kitPick.Time-.42f)<1e-4f,"Earthsplitter: the slam's Hit on the release");
             slam.SpecialKind="wolf-spin";slam.SpecialAt=100;slam.SpecialUntil=101;Check(NativeVisualMotion.Choose(set,slam,100.9f,new NativeVisualMotion.Memory(),book2,false,out kitPick)&&kitPick.Clip==set.Idle,"a mapped kit move's tail goes on to the idle");
             var spin=new Actor{Grounded=true,SourceSpec="greatsword",MeleeKit=new NativeMeleeKit{Kind="whirlwind",Phase="active",At=110,Release=110.3f,Until=113.3f}};
-            Check(NativeVisualMotion.Choose(set,spin,111,new NativeVisualMotion.Memory(),book2,false,out kitPick)&&kitPick.Clip==set.KitClips[1]&&kitPick.Spin&&Math.Abs(kitPick.Time-.42f)<1e-4f&&kitPick.Turn!=0,"the Whirlwind: the blade held out, the body turned by the game's spin");
+            // The Whirlwind (owner 2026-10-26: "need to fix whirlwind on greatsword, the player spin is not good"): the stance's
+            // legs under the level sweep's upper body, the body turned so the drawn blade rides the game's tip, the feet marking
+            // time once per turn each.
+            Check(NativeVisualMotion.Choose(set,spin,111,new NativeVisualMotion.Memory(),book2,false,out kitPick)&&kitPick.Clip==set.Idle&&kitPick.Spin&&kitPick.Align==1&&kitPick.Sit==1
+                &&kitPick.Turn!=0&&Math.Abs(kitPick.Tip-kitPick.Turn-MeleeKitMotion.WhirlTip)<1e-4f,"the Whirlwind: the stance's legs, the body turned so its blade rides the game's tip");
+            Check(set.KitClips[1]=="2Hand-Sword-Attack2"&&NativeVisualMotion.Layer(set,spin,111,book2,out up,true)&&up.Raised&&up.A==set.KitClips[1]&&Math.Abs(up.TimeA-NativeVisualMotion.WhirlHold*1.2f)<1e-4f,
+                "the Whirlwind's upper body: the level sweep, held through the spin");
+            {
+                float maxL=0,maxR=0;bool both=false,still=true;
+                for(float t=110.3f;t<113.3f;t+=1/240f){NativeVisualMotion.Choose(set,spin,t,new NativeVisualMotion.Memory(),book2,false,out var p);maxL=Math.Max(maxL,p.LiftL);maxR=Math.Max(maxR,p.LiftR);both|=p.LiftL>.02f&&p.LiftR>.02f;}
+                var wind=new Actor{Grounded=true,SourceSpec="greatsword",MeleeKit=new NativeMeleeKit{Kind="whirlwind",Phase="windup",At=110,Release=110.3f,Until=113.3f}};
+                NativeVisualMotion.Choose(set,wind,110.001f,new NativeVisualMotion.Memory(),book2,false,out var start);NativeVisualMotion.Choose(set,wind,110.299f,new NativeVisualMotion.Memory(),book2,false,out var released);
+                NativeVisualMotion.Layer(set,wind,110.15f,book2,out var halfway,true);still=start.LiftL==0&&start.LiftR==0&&start.Align==0&&start.Turn==0;
+                Check(maxL>.95f&&maxR>.95f&&!both,"each foot steps once per turn, half a turn apart, never both up ("+maxL.ToString("0.00")+", "+maxR.ToString("0.00")+")");
+                Check(still&&released.Align>.99f&&Math.Abs(halfway.TimeA-NativeVisualMotion.WhirlHold*1.2f*.5f)<1e-3f,"the wind-up: from the guard as it stands, onto the blade by the release, the sweep into its hold");
+                var stop=new Actor{Grounded=true,SourceSpec="greatsword",MeleeKit=new NativeMeleeKit{Kind="whirlwind",Phase="recovery",At=110,Release=110.3f,Until=113.3f,RecoverAt=113.3f,RecoverUntil=113.8f}};
+                NativeVisualMotion.Choose(set,stop,113.799f,new NativeVisualMotion.Memory(),book2,false,out var settled);NativeVisualMotion.Layer(set,stop,113.799f,book2,out var risen,true);
+                Check(settled.Align<.01f&&settled.LiftL==0&&settled.LiftR==0&&risen.TimeA>1.19f,"the stop: back off the blade and still, the sweep risen to its end");
+            }
             // The sword's, daggers' and shield's: the dash's lunge on the release, a recast its own clip, the charge at its pace.
             var dash=new Actor{Grounded=true,SourceSpec="sword",MeleeKit=new NativeMeleeKit{Kind="flash-step",Phase="windup",At=120,Release=120.15f,Until=120.6f},SpecialKind="flash-step",SpecialAt=120,SpecialUntil=120.6f};
             Check(NativeVisualMotion.Choose(sword,dash,120.15f,new NativeVisualMotion.Memory(),book2,false,out kitPick)&&kitPick.Clip==sword.KitClips[0]&&Math.Abs(kitPick.Time-.2f*1.2f)<1e-4f,"Flash Step: the dash's lunge on the release");
@@ -993,6 +1011,11 @@ namespace ChipArena.UnityConversion
             Check(kill.Contains("internal Matrix4x4 PartFrom(int part)=>PartMatrix(part)*inverse[part];")&&body.Contains("var m=undo*corpse.PartFrom(c.Part[v])*c.Bind[v];"),"each bone rides its ragdoll part rigidly (the part's motion, sink, overlay and shrink)");
             int scale=body.IndexOf("c.Bones[0].localScale=Vector3.one*Mathf.Max(.001f,corpse.PartScale);",StringComparison.Ordinal),loop=body.IndexOf("var m=undo*corpse.PartFrom(c.Part[v])*c.Bind[v];",StringComparison.Ordinal);
             Check(scale>0&&loop>scale,"the skeleton takes the parts' scale before the bones are placed");
+            {
+                string motion=R("Runtime/NativeVisualMotionPresentation.cs");
+                Check(motion.Contains("if(covered&&pick.Spin)VisualSpinLegs(m,pick);")&&motion.Contains("turn+=Mathf.DeltaAngle(turn,onTip)*pick.Align*Mathf.Clamp01((flat-.3f)/.4f);")
+                    &&motion.Contains("m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,turn*wgt);"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
+            }
             // A whole corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
             // model"): each bone turns with its part and keeps its rest offset; the root and a severed piece's first bone take
             // their part's place; a split body's halves keep their bones on their parts.
