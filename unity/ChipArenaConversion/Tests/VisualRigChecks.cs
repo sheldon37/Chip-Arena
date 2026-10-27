@@ -394,6 +394,42 @@ namespace ChipArena.UnityConversion
             bool bad=false;try{NativeVisualMotionClips.Read(new byte[]{1,2,3,4,5,6,7,8});}catch(InvalidDataException){bad=true;}Check(bad,"a bank that is not one is refused");
             Check(motion.Contains("NativeVisualMotion.For(a.SourceSpec)!=null&&!StrideOff?VisualMotionFor(body,a.SourceSpec):null"),"--ca-no-stride keeps the game's pose");
             Check(body.Contains("if(body.Root==null){VisualStrideRelease(body);VisualMotionRelease(body);"),"each motion graph goes with its body");
+            // The sword's run (owner 2026-10-27: "Fix run for sword as well, it looks not very styled lol"): the arm swept back,
+            // the blade trailing out and back, the chest leaning in, running ahead only.
+            {
+                Check(NativeSwordTrail.Share("sword",0,6.8f)==1&&NativeSwordTrail.Share("sword",0,9.2f)==1&&NativeSwordTrail.Share("sword",0,2)==0&&NativeSwordTrail.Share("sword",0,-6.8f)==0&&NativeSwordTrail.Share("sword",6.8f,0)==0&&NativeSwordTrail.Share("sword",0,0)==0
+                    &&NativeSwordTrail.Share("greatsword",0,6.8f)==0&&NativeSwordTrail.Share("daggers",0,6.8f)==0&&NativeSwordTrail.Share(null,0,6.8f)==0,"the trailing carry: the sword only, from the run (sprint too), heading ahead; none walking, strafing or back-pedalling");
+                float half=NativeSwordTrail.Share("sword",4.8f,4.8f),walkRun=NativeSwordTrail.Share("sword",0,3.3f);
+                Check(half>0&&half<1&&walkRun>0&&walkRun<1,"it eases in between the walk and the run, and toward a strafe");
+                var trailArm=NativeSwordTrail.Arm(0);
+                Check(Math.Abs(trailArm.Length()-1)<1e-5f&&Math.Abs(NativeSwordTrail.Pitch(trailArm)-NativeSwordTrail.ArmBack)<.01f&&trailArm.X>0&&trailArm.Z<0&&trailArm.Y<-.7f,"the arm reaches down, back and out from the shoulder");
+                Check(Math.Abs(NativeSwordTrail.Pitch(NativeSwordTrail.Arm(99))-(NativeSwordTrail.ArmBack+NativeSwordTrail.SwingLimit))<.01f&&Math.Abs(NativeSwordTrail.Pitch(NativeSwordTrail.Arm(-99))-(NativeSwordTrail.ArmBack-NativeSwordTrail.SwingLimit))<.01f,"the clip's swing kept within its limit");
+                Check(NativeSwordTrail.Blade.X>.5f&&NativeSwordTrail.Blade.Z<-.5f&&NativeSwordTrail.Blade.Y<0&&NativeSwordTrail.Blade.Y>-.4f,"the blade trails out and back, a little low");
+                Check(NativeSwordTrail.LeanAt(6.8f)==NativeSwordTrail.Lean&&Math.Abs(NativeSwordTrail.LeanAt(9.2f)-(NativeSwordTrail.Lean+NativeSwordTrail.SprintLean))<1e-5f,"the chest leans in, more at a sprint");
+                // A fist whose knuckles run along its +x and whose blade leaves it 80 degrees from them.
+                var knuckleLocal=Vector3.UnitX;var bladeLocal=Vector3.Normalize(new Vector3((float)Math.Sin(.1745),(float)Math.Cos(.1745),0));
+                float Deg(Vector3 a,Vector3 b)=>NativeSwordTrail.Angle(Vector3.Normalize(a),Vector3.Normalize(b))*180/(float)Math.PI;
+                foreach(var forearm in new[]{trailArm,Vector3.Normalize(new Vector3(0,-.7f,.7f)),-Vector3.UnitY,Vector3.Normalize(new Vector3(.6f,-.3f,-.7f))})
+                {
+                    var q=NativeSwordTrail.Hand(bladeLocal,knuckleLocal,forearm,NativeSwordTrail.Blade,NativeSwordTrail.MaxBend);
+                    var b=Vector3.Transform(bladeLocal,q);var k=Vector3.Transform(knuckleLocal,q);
+                    Check(Math.Abs(q.Length()-1)<1e-4f&&Math.Abs(Deg(b,k)-80)<.1f&&Deg(k,forearm)<=NativeSwordTrail.MaxBend+.1f,"the fist keeps its grip and bends the wrist at most MaxBend");
+                    float needed=Math.Abs(Deg(forearm,NativeSwordTrail.Blade)-80);
+                    Check(Deg(b,NativeSwordTrail.Blade)<=Math.Max(0,needed-NativeSwordTrail.MaxBend)+.2f,"the blade lies on the trail, or as near as the wrist's bend allows");
+                }
+                Check(Deg(Vector3.Transform(bladeLocal,NativeSwordTrail.Hand(bladeLocal,knuckleLocal,trailArm,NativeSwordTrail.Blade,NativeSwordTrail.MaxBend)),NativeSwordTrail.Blade)<10,"on the trailing arm the blade comes within 10 degrees of the trail");
+                var pure=Quaternion.CreateFromAxisAngle(Vector3.UnitY,-2.5f);var swung=Quaternion.CreateFromAxisAngle(Vector3.UnitY,.7f)*Quaternion.CreateFromAxisAngle(Vector3.UnitX,.3f);
+                Check(Math.Abs(NativeSwordTrail.Twist(pure,Vector3.UnitY)+2.5f)<1e-4f&&Math.Abs(NativeSwordTrail.Twist(swung,Vector3.UnitY)-.7f)<1e-4f&&Math.Abs(NativeSwordTrail.Twist(Quaternion.Identity,Vector3.UnitY))<1e-6f,"a turn's twist about an axis, its swing aside");
+                // On a body: the shoulder 1.42 m up, the arm 0.6 m, a 0.95 m blade: the fist by the hip, the tip clear of the floor and out past the leg.
+                var shoulder=new Vector3(.19f,1.42f,0);var fist=shoulder+trailArm*.6f*NativeSwordTrail.Reach;var tip=fist+NativeSwordTrail.Blade*.95f;
+                Check(fist.Y>.8f&&fist.Z<-.2f&&tip.Y>.5f&&tip.X>.7f&&tip.Z<-.8f,"the fist rides behind the hip and the tip stays high and wide of the legs");
+                Check(motion.Contains("m.Trail=Mathf.MoveTowards(m.Trail,covered&&pick.Locomotion&&m.HasHold?NativeSwordTrail.Share(m.Set.Spec,local.x,local.z):0,dt/NativeSwordTrail.Ease);")
+                    &&motion.Contains("if(m.Trail>0)VisualSwordTrail(m,body.Root.transform,m.Trail*m.LocoShare*wgt,speed,dt);else m.TrailMean=m.TrailTwist=float.NaN;"),"the carry rides the locomotion blend's share and eases away with it");
+                int carry=motion.IndexOf("if(m.Trail>0)VisualSwordTrail(",StringComparison.Ordinal),guard=motion.IndexOf("m.BodyHips.position-=origin.up*(deepest*wgt);",StringComparison.Ordinal),held=motion.IndexOf("weaponHand.SetPositionAndRotation(m.RightHand.position",StringComparison.Ordinal);
+                Check(carry>guard&&held>carry,"the carry goes on after the floor guard and before the weapon rides the hand (the blade follows the fist)");
+                Check(motion.Contains("m.RightArm.rotation=Quaternion.AngleAxis(twist*NativeSwordTrail.ShoulderTwist,(fist-shoulder).normalized)*m.RightArm.rotation;")&&motion.Contains("m.RightHand.rotation=goal;"),"the fist's twist goes to the shoulder and the forearm, not the wrist");
+                foreach(string pack in new[]{"Bozo","BoZo","ExplosiveLLC","RPG-Character"})Check(!R("Core/NativeSwordTrail.cs").Contains(pack),"no pack names in the sword's carry: "+pack);
+            }
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC","ExplosiveLLC","RPG-Character"})Check(!motion.Contains(pack)&&!R("Core/NativeVisualMotion.cs").Contains(pack),"no pack types or names in the motion's code: "+pack);
         }
 

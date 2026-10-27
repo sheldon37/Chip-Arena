@@ -26,6 +26,9 @@ namespace ChipArena.UnityConversion
             public readonly Transform[] Contacts=new Transform[ContactBones.Length]; public readonly float[] Clearance=new float[ContactBones.Length]; public float Support, SupportGap;
             public readonly NativeVisualMotion.Memory Memory=new NativeVisualMotion.Memory();
             public bool HasHold; public Vector3 HoldPosition, LeftHoldPosition; public Quaternion HoldRotation=Quaternion.identity, LeftHoldRotation=Quaternion.identity;
+            // The sword's running carry (Core NativeSwordTrail): its arm, fist, spine and head, the carry's eased share and the
+            // clip's own arm swing's eased mean and the fist's last twist (NaN: not carrying).
+            public Transform RightArm, RightForearm, RightFist, Spine, Head; public float Trail, TrailMean=float.NaN, TrailTwist=float.NaN;
         }
         // The bake's motion bank (null without one: the game's pose everywhere), read once.
         private static NativeVisualMotionClips.Library visualMotionBank; private static bool visualMotionRead;
@@ -97,6 +100,8 @@ namespace ChipArena.UnityConversion
             m.RightHand=Body(HumanBodyBones.RightHand);m.LeftHand=Body(HumanBodyBones.LeftHand);m.LeftArm=Body(HumanBodyBones.LeftUpperArm);m.LeftForearm=Body(HumanBodyBones.LeftLowerArm);
             m.LeftIndex=Body(HumanBodyBones.LeftIndexProximal);m.LeftLittle=Body(HumanBodyBones.LeftLittleProximal);
             m.LeftFist=Body(HumanBodyBones.LeftMiddleProximal);
+            m.RightArm=Body(HumanBodyBones.RightUpperArm);m.RightForearm=Body(HumanBodyBones.RightLowerArm);m.RightFist=Body(HumanBodyBones.RightMiddleProximal);
+            m.Spine=Body(HumanBodyBones.Spine);m.Head=Body(HumanBodyBones.Head);
             // The feet's clearances: their rest heights, from the bake itself (the body here already wears this frame's pose).
             var rest=visualBodyPrefab!=null?visualBodyPrefab.transform.Find("VisualSkeleton"):null;
             for(int f=0;f<ContactBones.Length;f++)
@@ -119,6 +124,40 @@ namespace ChipArena.UnityConversion
             float along=(l1*l1-l2*l2+d*d)/(2*d),high=Mathf.Sqrt(Mathf.Max(0,l1*l1-along*along));
             upper.rotation=Quaternion.FromToRotation(b-a,dir*along+side*high)*upper.rotation;
             b=lower.position;c=hand.position;lower.rotation=Quaternion.FromToRotation(c-b,a+dir*d-b)*lower.rotation;
+        }
+        // The sword's running carry on the body by `w` (0..1): the spine leaned in about the body's right and the head kept up;
+        // the arm reaching back and out from the shoulder (a little of the clip's own swing kept, in time with its stride); the
+        // fist turned so the blade trails out and back, its twist taken up by the shoulder and the forearm so the wrist only
+        // bends (NativeSwordTrail).
+        private static void VisualSwordTrail(VisualMotion m,Transform origin,float w,float speed,float dt)
+        {
+            if(w<=0||m.RightArm==null||m.RightForearm==null)return;
+            var turn=origin.rotation;var inv=Quaternion.Inverse(turn);
+            if(m.Spine!=null)
+            {
+                float lean=NativeSwordTrail.LeanAt(speed)*w;m.Spine.rotation=Quaternion.AngleAxis(lean,origin.right)*m.Spine.rotation;
+                if(m.Head!=null)m.Head.rotation=Quaternion.AngleAxis(-lean*NativeSwordTrail.HeadKeep,origin.right)*m.Head.rotation;
+            }
+            Vector3 shoulder=m.RightArm.position,elbow=m.RightForearm.position,fist=m.RightHand.position;
+            float reach=((elbow-shoulder).magnitude+(fist-elbow).magnitude)*NativeSwordTrail.Reach,pitch=NativeSwordTrail.Pitch(CapturedAnimation.Num(inv*(fist-shoulder)));
+            m.TrailMean=float.IsNaN(m.TrailMean)?pitch:m.TrailMean+(pitch-m.TrailMean)*(1-Mathf.Exp(-dt/NativeSwordTrail.SwingMean));
+            var to=shoulder+turn*CapturedAnimation.Vec(NativeSwordTrail.Arm((pitch-m.TrailMean)*NativeSwordTrail.Swing))*reach;
+            ArmReachTo(m.RightArm,m.RightForearm,m.RightHand,Vector3.Lerp(fist,to,w),origin.up-origin.forward);
+            if(m.RightFist==null)return;
+            elbow=m.RightForearm.position;fist=m.RightHand.position;var hand=m.RightHand.rotation;
+            var knuckles=Quaternion.Inverse(hand)*(m.RightFist.position-fist);var forearm=fist-elbow;
+            if(knuckles.sqrMagnitude<1e-10f||forearm.sqrMagnitude<1e-10f)return;
+            var goal=CapturedAnimation.Quat(NativeSwordTrail.Hand(CapturedAnimation.Num(m.HoldRotation*Vector3.forward),CapturedAnimation.Num(knuckles),CapturedAnimation.Num(forearm),CapturedAnimation.Num(turn*CapturedAnimation.Vec(NativeSwordTrail.Blade)),NativeSwordTrail.MaxBend));
+            goal=Quaternion.Slerp(hand,goal,w);
+            // The fist's twist about the forearm, taken off the wrist: part turned at the shoulder (about the shoulder-to-fist
+            // line, the fist kept in place), the rest along the forearm.
+            var below=Quaternion.Inverse(m.RightForearm.rotation);
+            float twist=NativeSwordTrail.Twist(CapturedAnimation.Num(below*goal),CapturedAnimation.Num((below*forearm).normalized))*Mathf.Rad2Deg;
+            // Unwound from the last frame's, so a twist near a half turn never flips the elbow to the other side.
+            if(!float.IsNaN(m.TrailTwist)){twist=m.TrailTwist+Mathf.DeltaAngle(m.TrailTwist,twist);if(Mathf.Abs(twist)>270)twist-=Mathf.Sign(twist)*360;}m.TrailTwist=twist;
+            m.RightArm.rotation=Quaternion.AngleAxis(twist*NativeSwordTrail.ShoulderTwist,(fist-shoulder).normalized)*m.RightArm.rotation;
+            m.RightForearm.rotation=Quaternion.AngleAxis(twist*(1-NativeSwordTrail.ShoulderTwist),(fist-m.RightForearm.position).normalized)*m.RightForearm.rotation;
+            m.RightHand.rotation=goal;
         }
         // The hold's turn that points the weapon's bore (+z) along the body's facing and its top (+y) up while the proxy wears
         // `level` (its first frame); the proxy is posed again by the next mix.
@@ -251,6 +290,10 @@ namespace ChipArena.UnityConversion
                 for(int f=0;f<m.Contacts.Length;f++)if(m.Contacts[f]!=null)deepest=Mathf.Min(deepest,Vector3.Dot(m.Contacts[f].position-origin.position,origin.up)-m.Clearance[f]);
                 if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);
             }
+            // The sword's run: the arm swept back, the blade trailing past the hip, the chest leaning in (NativeSwordTrail). Only
+            // the locomotion blend carries it, so a strike, block, roll, jump or reaction takes it away as it comes in.
+            m.Trail=Mathf.MoveTowards(m.Trail,covered&&pick.Locomotion&&m.HasHold?NativeSwordTrail.Share(m.Set.Spec,local.x,local.z):0,dt/NativeSwordTrail.Ease);
+            if(m.Trail>0)VisualSwordTrail(m,body.Root.transform,m.Trail*m.LocoShare*wgt,speed,dt);else m.TrailMean=m.TrailTwist=float.NaN;
             // The weapon on the model's right hand, the rig's weapon hand bone with it (what draws there follows the model).
             if(m.HasHold)
             {
