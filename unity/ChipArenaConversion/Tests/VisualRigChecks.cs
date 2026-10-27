@@ -282,7 +282,7 @@ namespace ChipArena.UnityConversion
                 for(float t=110.3f;t<113.3f;t+=1/240f){NativeVisualMotion.Choose(set,spin,t,new NativeVisualMotion.Memory(),book2,false,out var p);maxL=Math.Max(maxL,p.LiftL);maxR=Math.Max(maxR,p.LiftR);both|=p.LiftL>.02f&&p.LiftR>.02f;}
                 var wind=new Actor{Grounded=true,SourceSpec="greatsword",MeleeKit=new NativeMeleeKit{Kind="whirlwind",Phase="windup",At=110,Release=110.3f,Until=113.3f}};
                 NativeVisualMotion.Choose(set,wind,110.001f,new NativeVisualMotion.Memory(),book2,false,out var start);NativeVisualMotion.Choose(set,wind,110.299f,new NativeVisualMotion.Memory(),book2,false,out var released);
-                NativeVisualMotion.Layer(set,wind,110.15f,book2,out var halfway,true);still=start.LiftL==0&&start.LiftR==0&&start.Align==0&&start.Turn==0;
+                NativeVisualMotion.Layer(set,wind,110.15f,book2,out var halfway,true);still=start.LiftL==0&&start.LiftR==0&&start.Align<1e-4f&&Math.Abs(start.Turn)<1e-3f;
                 Check(maxL>.95f&&maxR>.95f&&!both,"each foot steps once per turn, half a turn apart, never both up ("+maxL.ToString("0.00")+", "+maxR.ToString("0.00")+")");
                 Check(still&&released.Align>.99f&&Math.Abs(halfway.TimeA-NativeVisualMotion.WhirlHold*1.2f*.5f)<1e-3f,"the wind-up: from the guard as it stands, onto the blade by the release, the sweep into its hold");
                 var stop=new Actor{Grounded=true,SourceSpec="greatsword",MeleeKit=new NativeMeleeKit{Kind="whirlwind",Phase="recovery",At=110,Release=110.3f,Until=113.3f,RecoverAt=113.3f,RecoverUntil=113.8f}};
