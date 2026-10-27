@@ -1150,6 +1150,46 @@ already? Cant we utilize that?"
       That is the Classic's planted landing (`DashLanded`, `DashUpper`). The touchdown is the replicated `SwingAt`, then
       the attack start plus its wind-up once the hit window has closed.
     - Hit timing, steps, reach and the hop are unchanged.
+  - **Motion polish (2026-10-27, `claude/model-motion-polish`; owner: "Make the movements look realistic and not
+    'glitchy'. For everything, movements, attacks, for all weapons").** Measured first: the local tool's new `motion=T,D`
+    log (every frame, every tracked bone in the body's frame, the feet and blade in the world, the clip mix and the pilot's
+    state) over a scripted routine per weapon (`hold=` windows, `turn=`, presses). Causes found and fixed:
+    - **Swings hitched near the end of every hit window:** the clip's Hit sat on the replicated window's middle, then on
+      the wind-up alone once the window reset, so the clip jumped 0.08-0.11 s (the sword thrust's hand 95 cm in a frame).
+      `NativeVisualMotion.HitAt` is the same middle from the swing's own wind-up and active span.
+    - **Strikes played too fast:** the pack's wind-ups are long beside the rules' (a dagger cut's Hit 0.5 s in, the rules'
+      0.22 s), so fitted whole they ran at 2-4 times. A strike now plays at most `MaxStrikeRate` (1.5) times its clip's pace:
+      a short wind-up starts further into its clip (the Hit still mid window), a short recovery is cut by what follows.
+      The fighters' jabs, moves and tatsu kicks likewise.
+    - **Hit reactions, landings and rolls** were squeezed to the rules' spans (2-2.7, 2 and 1.7 times). A reaction plays
+      at 0.7-1.5 times, a landing at about its pace (`LandRate`, within `LandFor`), a roll at most `MaxRollRate` (1.3); each
+      finishes as it fades into what follows.
+    - **The jump** played its crouch and push after the take-off: the legs snapped straight in a frame. It starts at its
+      launch (`JumpLaunch`).
+    - **A held block** begun again every few tenths of a second (the rules raise it again) pumped the arms: it goes on.
+    - **The floor guard's switch** between pinning the lowest point (attacks, jumps, idles) and only keeping the body out
+      of the floor (the run's stride, a leaping dash attack) moved the body 27-37 cm in a frame at take-offs, landings and
+      rolls out of a run. The switch's difference is carried off by a critically damped spring (about 0.25 s), never
+      leaving the body under the floor.
+    - **Clip restarts and upper-layer switches** (a reaction begun again, a cast's start into its end, a throw into the
+      aim, a recoil restarted) popped the pose. The presentation now keeps the last drawn pose; when the mix would jump,
+      the difference is carried off by a spring with its motion (inertial blending, `VisualMotionInertia`). Crossfades are
+      eased in and out, and a clip fading out goes on at its own pace instead of freezing.
+    - **The pack's runs and walks are out of step** (their left feet land up to 0.4 of a stride apart), so direction and
+      walk-to-run blends scissored the legs (knees 13-34 cm in a frame). Each stride's phase is read from its knees
+      (`NativeVisualMotionClips.StridePhase`) and the clips play offset onto one phase. The gait's walk-to-run share
+      follows a slower speed (about 0.2 s), so a stop no longer whips the sword arm from the run's swing to the walk's carry.
+    - **Feet skated** (planted feet 0.8-1.0 m/s while running, pivoting while turning in place): a foot the clip puts down
+      is locked where it is drawn and keeps its heading, dragged within reach and let go as the clip lifts it or the leg
+      nears full stretch (its knee then has no side). Standing, a planted foot steps across once the body has turned 40
+      degrees or drifted 16 cm. Footsteps now sound on the drawn feet.
+    - **Between the bank's frames** the pose followed straight lines, bending the motion 30 times a second; it follows a
+      monotone cubic through the frames either side (no overshoot).
+    - **The sword's running carry** moved the clip's own wrist twist into the forearm even at a sliver of weight, spinning
+      it 75-80 degrees in a frame as the carry came and went: only the carry's own turn of the fist moves now.
+    - Left as the pack made it: a few strikes cross most of their arc between two of the pack's own frames (the sword's
+      thrust, 1.5 m in 60 ms in the source clip); a 180-degree flick of the look in a tenth of a second.
+    - Hit timing (the Hit still mid window), hit volumes, damage, steps, cooldowns, movement and networking are unchanged.
   - **Kept on the game's pose for now:** specials, kit moves (Whirlwind, Earthsplitter), knockdowns and juggles. The model
     fades to the game's pose and back over 0.15 s.
   - **The bake** (local tool, the stride step and the body bake) writes the motion bank
