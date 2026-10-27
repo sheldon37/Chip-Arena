@@ -394,6 +394,42 @@ namespace ChipArena.UnityConversion
             bool bad=false;try{NativeVisualMotionClips.Read(new byte[]{1,2,3,4,5,6,7,8});}catch(InvalidDataException){bad=true;}Check(bad,"a bank that is not one is refused");
             Check(motion.Contains("NativeVisualMotion.For(a.SourceSpec)!=null&&!StrideOff?VisualMotionFor(body,a.SourceSpec):null"),"--ca-no-stride keeps the game's pose");
             Check(body.Contains("if(body.Root==null){VisualStrideRelease(body);VisualMotionRelease(body);"),"each motion graph goes with its body");
+            // The sword's run (owner 2026-10-27: "Fix run for sword as well, it looks not very styled lol"): the arm swept back,
+            // the blade trailing out and back, the chest leaning in, running ahead only.
+            {
+                Check(NativeSwordTrail.Share("sword",0,6.8f)==1&&NativeSwordTrail.Share("sword",0,9.2f)==1&&NativeSwordTrail.Share("sword",0,2)==0&&NativeSwordTrail.Share("sword",0,-6.8f)==0&&NativeSwordTrail.Share("sword",6.8f,0)==0&&NativeSwordTrail.Share("sword",0,0)==0
+                    &&NativeSwordTrail.Share("greatsword",0,6.8f)==0&&NativeSwordTrail.Share("daggers",0,6.8f)==0&&NativeSwordTrail.Share(null,0,6.8f)==0,"the trailing carry: the sword only, from the run (sprint too), heading ahead; none walking, strafing or back-pedalling");
+                float half=NativeSwordTrail.Share("sword",4.8f,4.8f),walkRun=NativeSwordTrail.Share("sword",0,3.3f);
+                Check(half>0&&half<1&&walkRun>0&&walkRun<1,"it eases in between the walk and the run, and toward a strafe");
+                var trailArm=NativeSwordTrail.Arm(0);
+                Check(Math.Abs(trailArm.Length()-1)<1e-5f&&Math.Abs(NativeSwordTrail.Pitch(trailArm)-NativeSwordTrail.ArmBack)<.01f&&trailArm.X>0&&trailArm.Z<0&&trailArm.Y<-.7f,"the arm reaches down, back and out from the shoulder");
+                Check(Math.Abs(NativeSwordTrail.Pitch(NativeSwordTrail.Arm(99))-(NativeSwordTrail.ArmBack+NativeSwordTrail.SwingLimit))<.01f&&Math.Abs(NativeSwordTrail.Pitch(NativeSwordTrail.Arm(-99))-(NativeSwordTrail.ArmBack-NativeSwordTrail.SwingLimit))<.01f,"the clip's swing kept within its limit");
+                Check(NativeSwordTrail.Blade.X>.5f&&NativeSwordTrail.Blade.Z<-.5f&&NativeSwordTrail.Blade.Y<0&&NativeSwordTrail.Blade.Y>-.4f,"the blade trails out and back, a little low");
+                Check(NativeSwordTrail.LeanAt(6.8f)==NativeSwordTrail.Lean&&Math.Abs(NativeSwordTrail.LeanAt(9.2f)-(NativeSwordTrail.Lean+NativeSwordTrail.SprintLean))<1e-5f,"the chest leans in, more at a sprint");
+                // A fist whose knuckles run along its +x and whose blade leaves it 80 degrees from them.
+                var knuckleLocal=Vector3.UnitX;var bladeLocal=Vector3.Normalize(new Vector3((float)Math.Sin(.1745),(float)Math.Cos(.1745),0));
+                float Deg(Vector3 a,Vector3 b)=>NativeSwordTrail.Angle(Vector3.Normalize(a),Vector3.Normalize(b))*180/(float)Math.PI;
+                foreach(var forearm in new[]{trailArm,Vector3.Normalize(new Vector3(0,-.7f,.7f)),-Vector3.UnitY,Vector3.Normalize(new Vector3(.6f,-.3f,-.7f))})
+                {
+                    var q=NativeSwordTrail.Hand(bladeLocal,knuckleLocal,forearm,NativeSwordTrail.Blade,NativeSwordTrail.MaxBend);
+                    var b=Vector3.Transform(bladeLocal,q);var k=Vector3.Transform(knuckleLocal,q);
+                    Check(Math.Abs(q.Length()-1)<1e-4f&&Math.Abs(Deg(b,k)-80)<.1f&&Deg(k,forearm)<=NativeSwordTrail.MaxBend+.1f,"the fist keeps its grip and bends the wrist at most MaxBend");
+                    float needed=Math.Abs(Deg(forearm,NativeSwordTrail.Blade)-80);
+                    Check(Deg(b,NativeSwordTrail.Blade)<=Math.Max(0,needed-NativeSwordTrail.MaxBend)+.2f,"the blade lies on the trail, or as near as the wrist's bend allows");
+                }
+                Check(Deg(Vector3.Transform(bladeLocal,NativeSwordTrail.Hand(bladeLocal,knuckleLocal,trailArm,NativeSwordTrail.Blade,NativeSwordTrail.MaxBend)),NativeSwordTrail.Blade)<10,"on the trailing arm the blade comes within 10 degrees of the trail");
+                var pure=Quaternion.CreateFromAxisAngle(Vector3.UnitY,-2.5f);var swung=Quaternion.CreateFromAxisAngle(Vector3.UnitY,.7f)*Quaternion.CreateFromAxisAngle(Vector3.UnitX,.3f);
+                Check(Math.Abs(NativeSwordTrail.Twist(pure,Vector3.UnitY)+2.5f)<1e-4f&&Math.Abs(NativeSwordTrail.Twist(swung,Vector3.UnitY)-.7f)<1e-4f&&Math.Abs(NativeSwordTrail.Twist(Quaternion.Identity,Vector3.UnitY))<1e-6f,"a turn's twist about an axis, its swing aside");
+                // On a body: the shoulder 1.42 m up, the arm 0.6 m, a 0.95 m blade: the fist by the hip, the tip clear of the floor and out past the leg.
+                var shoulder=new Vector3(.19f,1.42f,0);var fist=shoulder+trailArm*.6f*NativeSwordTrail.Reach;var tip=fist+NativeSwordTrail.Blade*.95f;
+                Check(fist.Y>.8f&&fist.Z<-.2f&&tip.Y>.5f&&tip.X>.7f&&tip.Z<-.8f,"the fist rides behind the hip and the tip stays high and wide of the legs");
+                Check(motion.Contains("m.Trail=Mathf.MoveTowards(m.Trail,covered&&pick.Locomotion&&m.HasHold?NativeSwordTrail.Share(m.Set.Spec,local.x,local.z):0,dt/NativeSwordTrail.Ease);")
+                    &&motion.Contains("if(m.Trail>0)VisualSwordTrail(m,body.Root.transform,m.Trail*m.LocoShare*wgt,speed,dt);else m.TrailMean=m.TrailTwist=float.NaN;"),"the carry rides the locomotion blend's share and eases away with it");
+                int carry=motion.IndexOf("if(m.Trail>0)VisualSwordTrail(",StringComparison.Ordinal),guard=motion.IndexOf("m.BodyHips.position-=origin.up*(deepest*wgt);",StringComparison.Ordinal),held=motion.IndexOf("weaponHand.SetPositionAndRotation(m.RightHand.position",StringComparison.Ordinal);
+                Check(carry>guard&&held>carry,"the carry goes on after the floor guard and before the weapon rides the hand (the blade follows the fist)");
+                Check(motion.Contains("m.RightArm.rotation=Quaternion.AngleAxis(twist*NativeSwordTrail.ShoulderTwist,(fist-shoulder).normalized)*m.RightArm.rotation;")&&motion.Contains("m.RightHand.rotation=goal;"),"the fist's twist goes to the shoulder and the forearm, not the wrist");
+                foreach(string pack in new[]{"Bozo","BoZo","ExplosiveLLC","RPG-Character"})Check(!R("Core/NativeSwordTrail.cs").Contains(pack),"no pack names in the sword's carry: "+pack);
+            }
             foreach(string pack in new[]{"Bozo","BoZo","Magica","OutfitSystem","BMAC","BSMC","ExplosiveLLC","RPG-Character"})Check(!motion.Contains(pack)&&!R("Core/NativeVisualMotion.cs").Contains(pack),"no pack types or names in the motion's code: "+pack);
         }
 
@@ -1032,11 +1068,13 @@ namespace ChipArena.UnityConversion
                     &&motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);")
                     &&motion.Contains("m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
             }
-            // A whole corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
-            // model"): each bone turns with its part and keeps its rest offset; the root and a severed piece's first bone take
-            // their part's place; a split body's halves keep their bones on their parts.
-            Check(body.Contains("bool whole=corpse.Twin==null&&corpse.Host==null&&c.Parent!=null;")&&body.Contains("if(u<0||c.Part[v]!=c.Part[u]&&corpse.Severed.Contains(c.Part[v]))b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}")
-                &&body.Contains("c.Parent[v]=u<v?u:-1;"),"a ragdoll never stretches the model: rotations with the rest lengths, places only at the root and the cuts");
+            // Every corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
+            // model"; 2026-10-27: "Bodies aren't gibbing, they seem to still stretch"), a split body's halves too: each bone turns
+            // with its part and keeps its rest offset; the root and the first bone of a part with no joint to its parent part take
+            // their part's place.
+            Check(!body.Contains("bool whole=")&&body.Contains("if(c.Placed[v])b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}")
+                &&body.Contains("c.Parent[v]=u<v?u:-1;")&&body.Contains("int p=c.Parent[v];c.Placed[v]=p<0||c.Part[v]!=c.Part[p]&&(corpse.Severed.Contains(c.Part[v])||!corpse.Jointed(c.Part[v]));")
+                &&R("Runtime/NativeDeathPresentation.cs").Contains("internal bool Jointed(int part)=>Parts.TryGetValue(part,out var body)&&body.GetComponent<ConfigurableJoint>()!=null;"),"a ragdoll never stretches the model: rotations with the rest lengths, places only at the root and where the ragdoll has no joint");
             // The menu portraits on the model (owner 2026-10-26: "Player model still shows voxel in customization?").
             string portrait=R("Runtime/NativeVisualPortraitPresentation.cs"),portraitUi=R("Runtime/NativePortraitUI.cs");
             Check(portraitUi.Contains("if(presentation.ModelPortraitFor(look)){presentation.ModelPortraitReduced=prefs.reducedEffects;return presentation.ModelPortrait(key,look,own?prefs.look:\"\",PortraitSkins(look,own),stage.width,stage.height,U.S,out top);}")
@@ -1045,6 +1083,18 @@ namespace ChipArena.UnityConversion
                 &&portrait.Contains("view.RenderWithShader(modelPortraitMask,\"RenderType\");")&&portrait.Contains("RenderSettings.fog=fog;RenderSettings.sun=sun;RenderSettings.ambientProbe=ambient;"),"a model portrait: the voxel portrait's pose and framing, bound only while it draws, its coverage written, the scene's light restored");
             Check(body.Contains("ModelPortraitOf(id,out var portrait)?portrait.Outfit:\"\";")&&R("Runtime/NativeWeaponSkinPresentation.cs").Contains("if(ModelPortraitOf(id,out var portrait))return portrait.Skins;"),"a portrait body wears its card's outfit and skin map");
             foreach(string pack in new[]{"Bozo","BoZo","Magica","BMAC","BSMC"})Check(!portrait.Contains(pack),"no pack names in the portrait code: "+pack);
+            // The rooftop's pilots on the model (owner 2026-10-27: "Yes to all of the open items"), Classic kept.
+            {
+                string roof=R("Runtime/NativeRooftopPresentation.cs"),game=R("Runtime/ConversionGame.cs"),skins=R("Runtime/NativeWeaponSkinPresentation.cs");
+                Check(roof.Contains("if(siren||!RooftopModel(cast,i,root,group,time,camera,reduced,hatColor))")&&roof.Contains("if(Viewer||ClassicBodies||!VisualBodiesOn)return false;"),"each rooftop pilot draws as the model while it draws; Classic, the Siren and an install without the bake keep the voxel pilots");
+                Check(roof.Contains("if(!NativePoseWriter.Write(rig.Bones,s.Pose,\"a rooftop pilot\"))return false;")&&roof.Contains("var body=VisualBodyOf(rig,id);if(body==null)return false;")&&roof.Contains("var held=VisualBodyBind(body,rig,a,time,s.Pose,false,false);")&&roof.Contains("body.Moved=true;body.Seen=true;"),"its own rig takes the voxel pilot's game pose and the body binds to it, shown this frame");
+                int seat=roof.IndexOf("if(i==0)\n            {\n                int hips=",StringComparison.Ordinal),bind=roof.IndexOf("var held=VisualBodyBind(body,rig,a,time,s.Pose,false,false);",StringComparison.Ordinal);
+                Check(seat>bind&&bind>0,"the seated pilot's hips go onto the chair pose's pelvis after the bind, as the portraits seat theirs");
+                int flush=roof.IndexOf("sourceModels.Flush(UsesInstancing);\n            // The visual bodies posed this frame show",StringComparison.Ordinal),shown=roof.IndexOf("VisualBodiesShown();",StringComparison.Ordinal);
+                Check(flush>0&&shown>flush&&game.Contains("backdropMap=null;if(presentation!=null)presentation.RooftopHide();}"),"the bodies show while the rooftop draws and hide when the home screen leaves it");
+                Check(body.Contains("id==LocalId||id==ViewBodyId||id==RooftopIdTop?LocalLook")&&skins.Contains("if(id==RooftopIdTop)return rooftopSkins;")&&game.Contains("Skins=RooftopSkins(bodySkin),Accent=prefs.accentColor"),"the seated pilot wears your outfit and skins; the crowd the default outfit in the Standard skin");
+                Check(roof.Contains("cast.OwnWeapon[i]=s.Weapon.Visible&&VisualWeaponDrawn(rig,")&&roof.Contains("ModelHeldShown[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone&&!OwnWeapon[k]||s.Offhand.Visible&&b==s.Offhand.Bone;"),"the crowd's weapons ride the model's wrists (the bake's own where it has one)");
+            }
             Check(body.Contains("if(rig==null||!VisualDeathFor(death))return;")&&body.Contains("if(!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null)return false;"),"a smashed corpse and a swarm wear the model too");
             Check(body.Contains("var overlay=corpse.Smash!=null?corpse.Overlay:Matrix4x4.identity;")&&body.Contains("root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);"),"a pinned smash flattens the model by its overlay on the root");
             Check(death.Contains("modelLook=VisualCorpseLook(corpse,soul?1:2,")&&death.Contains("if(!soul&&!modelLook&&alpha>.001f)")&&body.Contains("foreach(int id in BodyColours)lookBlock.SetColor(id,colour);"),"Soul Drift and Frostbreak on the model stand in for the voxel looks");
@@ -1057,8 +1107,9 @@ namespace ChipArena.UnityConversion
             string holo=R("Runtime/NativeReviveHoloPresentation.cs"),inter=R("Runtime/NativeInteractionPresentation.cs");
             Check(holo.Contains("bool model=VisualReviveBody(1L<<62|(uint)r.Seed,rig,r.Death,h.Bone,h.Grow,alpha);")&&holo.Contains("if(holo&&r.Place&&!model)")&&holo.Contains("if(rise&&holo&&third&&!VisualBodyPosed(rig))"),"a revive's kept body is the model (its voxel hologram passes off), lifted, its missing parts grown back");
             Check(inter.Contains("{StandFromBody(r,rig,time-r.At);VisualStandPose(rig,a,time);}")&&inter.Contains("VisualRevivesShown();")&&body.Contains("if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;"),"the revived pilot's model stands up from its kept body");
-            Check(body.Contains("if(corpse.IsCrushed(j))return -1;if(corpse.Severed.Contains(j))return j+1;")&&body.Contains("VisualCorpseSever(whole,piece);"),"a cut or crushed corpse wears the model severed at its cut joints (the crushed part's left to its fragments)");
-            Check(body.Contains("piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?0:-1;")&&death.Contains("recolored=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha)||BisectDraw("),"each half of a split body (a blade's killing blow, a saw) wears the model's parts on its side of the cut");
+            Check(body.Contains("if(corpse.IsCrushed(j))return -1;")&&body.Contains("if(corpse.Severed.Contains(j)||corpse.Parts.ContainsKey(j)&&!corpse.Jointed(j))return j==CapturedRig.Pelvis?0:j+1;")&&body.Contains("piece[v]=VisualCorpsePiece(corpse,whole.Part[v]);")&&body.Contains("VisualCorpseSever(whole,piece);"),
+                "a cut or crushed corpse wears the model severed at its cut joints, the parts a crushed part held flying as their own pieces (the crushed part's left to its fragments)");
+            Check(body.Contains("piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?VisualCorpsePiece(half,c.Part[v]):-1;")&&death.Contains("recolored=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha)||BisectDraw("),"each half of a split body (a blade's killing blow, a saw) wears the model's parts on its side of the cut, its loose pieces their own meshes");
             Check(scene.Contains("bool dressed=layer==0&&only==null&&VisualSceneShown(death,Bone,Visible,alpha);")&&scene.Contains("if(!dressed)sourceModels.Queue((death.model??\"pilot\")==\"pilot\"")&&scene.Contains("if(!dressed&&!string.IsNullOrEmpty(death.actor?.Hat)"),"a death scene's victim plays in the visual body (not on a cinematic's own layer)");
             Check(body.Contains("for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];")&&body.Contains("for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;"),"each scene bone follows its joint's motion since death");
             // The draft's pilot on the model: the stage's pose bound to it (its hips on the pose's pelvis), the voxel body and hat
@@ -1239,7 +1290,7 @@ namespace ChipArena.UnityConversion
             Check(body.Contains("!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal)){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}")&&body.Contains("if(viewBody?.Root!=null&&!string.Equals(viewBody.Look,LocalLook??\"\",StringComparison.Ordinal))"),"a changed outfit makes the body (and the first-person body) again");
             Check(body.Contains("foreach(var p in d.pieces)if(p?.renderers!=null)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(false);")&&body.Contains("r.gameObject.SetActive(!lookCovers.Contains(b.part));")&&body.Contains("skin.SetBlendShapeWeight(t.shape,lookTags.Contains(t.tag)?100:0);"),"dressing: every piece off then the worn on, covered body parts off, tag shapes from the worn pieces' tags");
             Check(body.Contains("VisualAnchorsFor(body);")&&body.Contains("body.GearRadius=best.radius;")&&body.Contains("body.Emblem=EmblemFrameAt(best.emblem[0],best.emblem[1]);")&&body.Contains("sourceModels.Queue(sourceModels.GearDeviceFor(body.GearRadius),m,gearBone,")&&models.Contains("gearDevices[mm]=device;gearBays[mm]=bay;"),"the gear follows the top: core, device and sleeve, emblem; one device model per sleeve radius");
-            Check(body.Contains("private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId?LocalLook??\"\":ModelPortraitOf(id,out var portrait)?portrait.Outfit:\"\";")&&game.Contains("presentation.LocalLook=prefs.look??\"\";"),"this client's pilot wears prefs.look; every other pilot the default until the seat carries a look (Astra)");
+            Check(body.Contains("private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId||id==RooftopIdTop?LocalLook??\"\":ModelPortraitOf(id,out var portrait)?portrait.Outfit:\"\";")&&game.Contains("presentation.LocalLook=prefs.look??\"\";"),"this client's pilot (and its rooftop seat) wears prefs.look; every other pilot the default until the seat carries a look (Astra)");
             // The cloth hook: a local simulation registers; never on the first-person body; reset on a gap; held on the low tier and far away.
             Check(cloth.Contains("public static Func<GameObject,Transform,object> Attach;")&&body.Contains("if(id!=ViewBodyId&&NativeVisualCloth.Attach!=null)")&&body.Contains("body.Binding.State.Forget();if(body.ClothSim!=null)NativeVisualCloth.Reset?.Invoke(body.ClothSim);")
                 &&body.Contains("bool sim=body.Seen&&!LowGraphics&&(VisualEye==null||(VisualEye.transform.position-body.At).sqrMagnitude<NativeVisualCloth.Far*NativeVisualCloth.Far);"),"cloth: registered locally, off in first person, reset on a gap, held on the low tier and past Far");

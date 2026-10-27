@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
-        private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId?LocalLook??"":ModelPortraitOf(id,out var portrait)?portrait.Outfit:"";
+        private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId||id==RooftopIdTop?LocalLook??"":ModelPortraitOf(id,out var portrait)?portrait.Outfit:"";
         /// <summary>Whether this install draws the visual body at all (its bake found, not turned off at launch): Settings shows the
         /// Player model choice only then.</summary>
         public static bool VisualBodyInstalled=>VisualBodiesOn;
@@ -597,8 +597,9 @@ namespace ChipArena.UnityConversion
         // it; the soul and frost looks are its own (VisualCorpseLook). It hides while the voxel body would be under half opacity
         // and goes with its corpse.
         private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public int Head=-2;
-            // Each bone's nearest ancestor in Bones (-1: the root) and its rest offset from it (VisualCorpseShown keeps lengths).
-            public int[] Parent;public Vector3[] Rest;}
+            // Each bone's nearest ancestor in Bones (-1: the root) and its rest offset from it (VisualCorpseShown keeps lengths),
+            // and whether it takes its part's place (the root, and a loose piece's first bone).
+            public int[] Parent;public Vector3[] Rest;public bool[] Placed;}
         private readonly Dictionary<NativeCorpse,VisualCorpse> visualCorpses=new Dictionary<NativeCorpse,VisualCorpse>();
         private readonly List<NativeCorpse> visualCorpsesGone=new List<NativeCorpse>();
         // A death's visual body: an instance posed from the rig (in its last pose), `offset` from it, in the pilot's accent, without
@@ -628,12 +629,13 @@ namespace ChipArena.UnityConversion
             if(rig==null||!VisualDeathFor(death))return;
             // A split body: each half wears the model's parts on its side of the cut (whole parts: a part the cut crosses goes
             // to the side its joint is on; owner 2026-10-24: "Sever at joints").
+            // Within a half, each loose piece (a part whose parent went to the other half) is its own mesh, as below.
             if(corpse.Bisect is BisectFx fx&&corpse.Twin!=null&&fx.Request!=null)
             {
                 for(int h=0;h<2;h++)
                 {
                     var half=h==0?corpse:corpse.Twin;var c=VisualCorpseFor(half,death,rig,out var joint);if(c==null)continue;
-                    var piece=new int[c.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?0:-1;
+                    var piece=new int[c.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?VisualCorpsePiece(half,c.Part[v]):-1;
                     VisualCorpseSever(c,piece);visualCorpses[half]=c;
                 }
                 return;
@@ -642,12 +644,22 @@ namespace ChipArena.UnityConversion
             var whole=VisualCorpseFor(corpse,death,rig,out _);if(whole==null)return;
             if(corpse.Severed.Count>0||corpse.CrushPart>=0||corpse.ExtraCrush.Count>0)
             {
-                // A ragdoll part's piece: the nearest cut root at or above it (its index + 1), -1 under the crushed part, 0 the body.
-                int Piece(int part){for(int j=part;j>=0;j=CapturedRig.Bones[j].Parent){if(corpse.IsCrushed(j))return -1;if(corpse.Severed.Contains(j))return j+1;}return 0;}
-                var piece=new int[whole.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=Piece(whole.Part[v]);
+                var piece=new int[whole.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=VisualCorpsePiece(corpse,whole.Part[v]);
                 VisualCorpseSever(whole,piece);
             }
             visualCorpses[corpse]=whole;
+        }
+        // A ragdoll part's piece of the model: -1 when it is crushed (left to its fragments); else the nearest part at or above
+        // it that moves on its own (a cut, a part loose of a crushed part or of the other half; owner 2026-10-27: "Bodies aren't
+        // gibbing, they seem to still stretch"), its index + 1, with 0 for the pelvis (the body).
+        private static int VisualCorpsePiece(NativeCorpse corpse,int part)
+        {
+            for(int j=part;j>=0;j=CapturedRig.Bones[j].Parent)
+            {
+                if(corpse.IsCrushed(j))return -1;
+                if(corpse.Severed.Contains(j)||corpse.Parts.ContainsKey(j)&&!corpse.Jointed(j))return j==CapturedRig.Pelvis?0:j+1;
+            }
+            return 0;
         }
         // The visual body of `corpse` (a whole body or one half): each bone on the ragdoll part of the game joint at or above it
         // (the nearest such part the corpse has).
@@ -662,11 +674,14 @@ namespace ChipArena.UnityConversion
                 c.Part[v]=part<0?CapturedRig.Pelvis:part;c.Bind[v]=bones[v].localToWorldMatrix;
             }
             var index=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)index[bones[v]]=v;
-            c.Parent=new int[bones.Length];c.Rest=new Vector3[bones.Length];
+            c.Parent=new int[bones.Length];c.Rest=new Vector3[bones.Length];c.Placed=new bool[bones.Length];
             for(int v=0;v<bones.Length;v++)
             {
                 c.Parent[v]=-1;if(bones[v]==null)continue;c.Rest[v]=bones[v].localPosition;
                 for(var t=bones[v].parent;t!=null;t=t.parent)if(index.TryGetValue(t,out int u)){c.Parent[v]=u<v?u:-1;break;}
+                // The root, and the first bone of a part that moves on its own (no joint to its parent part: a cut, a part loose of a
+                // crushed part or of the other half), take their part's place; every other bone keeps its rest offset.
+                int p=c.Parent[v];c.Placed[v]=p<0||c.Part[v]!=c.Part[p]&&(corpse.Severed.Contains(c.Part[v])||!corpse.Jointed(c.Part[v]));
             }
             return c;
         }
@@ -903,15 +918,14 @@ namespace ChipArena.UnityConversion
             var root=c.Root.transform;var overlay=corpse.Smash!=null?corpse.Overlay:Matrix4x4.identity;bool flat=!overlay.isIdentity;var undo=flat?overlay.inverse:Matrix4x4.identity;
             Vector3 at=(undo*corpse.PartFrom(c.Part[0])*c.Bind[0]).GetColumn(3);root.SetPositionAndRotation(at,Quaternion.identity);root.localScale=Vector3.one;
             c.Bones[0].localScale=Vector3.one*Mathf.Max(.001f,corpse.PartScale);
-            // A whole corpse keeps the model's lengths (the ragdoll's parts drift apart as it falls, and placing every bone on
-            // its part stretched the skin between them): each bone takes its part's turn and keeps its rest offset from its
-            // parent; only the root and a severed piece's first bone take their part's place. Each half of a split body keeps
-            // its bones on their parts (its pieces are their own meshes).
-            bool whole=corpse.Twin==null&&corpse.Host==null&&c.Parent!=null;
+            // Every corpse keeps the model's lengths, a split body's halves too (the ragdoll's parts drift apart as it falls, and
+            // placing every bone on its part stretched the skin between them; owner 2026-10-27: "they seem to still stretch"):
+            // each bone takes its part's turn and keeps its rest offset from its parent; only the root and a loose piece's
+            // first bone (Placed) take their part's place, and each loose piece is its own mesh (VisualCorpsePiece).
             for(int v=0;v<c.Bones.Length;v++)
             {
-                var b=c.Bones[v];if(b==null)continue;var m=undo*corpse.PartFrom(c.Part[v])*c.Bind[v];int u=whole?c.Parent[v]:-1;
-                if(u<0||c.Part[v]!=c.Part[u]&&corpse.Severed.Contains(c.Part[v]))b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}
+                var b=c.Bones[v];if(b==null)continue;var m=undo*corpse.PartFrom(c.Part[v])*c.Bind[v];
+                if(c.Placed[v])b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}
             }
             if(flat){var scale=new Vector3(overlay.GetColumn(0).magnitude,overlay.GetColumn(1).magnitude,overlay.GetColumn(2).magnitude);root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);}
             // The face gear stays on a whole corpse's head as it fades (not on a split half, a crushed head or under a kill look).

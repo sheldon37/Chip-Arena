@@ -8,7 +8,7 @@ using NVector4=System.Numerics.Vector4;
 namespace ChipArena.UnityConversion
 {
     /// <summary>The player's look on the home screen's rooftop: the weapon id (its source spec), hat and colours (prefs).</summary>
-    public struct RooftopPilot {public string Spec,Hat,Body,Accent,HatColor;public int BodySkin;}
+    public struct RooftopPilot {public string Spec,Hat,Body,Accent,HatColor,Skins;public int BodySkin;}
     /// <summary>
     /// The home screen's background, "Pilot's Rooftop" (owner 2026-10-12; Core NativeRooftopCity, NativeRooftopActors,
     /// NativeRooftopArt): the deterministic cyber city built once per quality tier into a handful of meshes and drawn for the
@@ -249,10 +249,14 @@ namespace ChipArena.UnityConversion
             public readonly Matrix4x4[][] Bones;public readonly Matrix4x4[] Group;public readonly Func<int,Matrix4x4>[] Bone,Held;public readonly Func<int,bool>[] HeldShown;
             public readonly Color[] Body,Accent;public string SeatKey;public float SeatY;public int BodySkin=-1;public string HatColor;public Matrix4x4 Prop;public int PropBone;public bool PropShown;
             public readonly Func<int,Matrix4x4> PropMatrix;public readonly Func<int,bool> PropPart;
+            // On the model (RooftopModel): each actor's rig, its stand-in actor, its held weapons on the model's wrists and whether
+            // the bake's own weapon drew in the main hand (the voxel model then draws only the off hand's).
+            public readonly CapturedAnimation.Player[] Rigs;public readonly Actor[] Actors;public readonly Func<int,Matrix4x4>[] ModelHeld;public readonly Func<int,bool>[] ModelHeldShown;public readonly bool[] OwnWeapon;
             public RooftopCast()
             {
                 var crowd=NativeRooftopActors.Crowd;Count=crowd.Length+1;Looks=new NativeRooftopActors.Look[Count];States=new NativeRooftopActors.State[Count];Bones=new Matrix4x4[Count][];Group=new Matrix4x4[Count];
                 Bone=new Func<int,Matrix4x4>[Count];Held=new Func<int,Matrix4x4>[Count];HeldShown=new Func<int,bool>[Count];Body=new Color[Count];Accent=new Color[Count];
+                Rigs=new CapturedAnimation.Player[Count];Actors=new Actor[Count];ModelHeld=new Func<int,Matrix4x4>[Count];ModelHeldShown=new Func<int,bool>[Count];OwnWeapon=new bool[Count];
                 Looks[0]=new NativeRooftopActors.Look{Id="you",Script=NativeRooftopActors.Seated,Spec="pistol",Hat="none",Body="#e5e7eb",Accent="#22e6ff"};
                 for(int i=0;i<Count;i++)
                 {
@@ -262,10 +266,13 @@ namespace ChipArena.UnityConversion
                     // A held weapon rides its hand with the pose's held offset (NativeLobbyPoses' socket; zero for the clip poses).
                     Held[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone?bones[b]*Offset(s.Weapon):s.Offhand.Visible&&b==s.Offhand.Bone?bones[b]*Offset(s.Offhand):bones[b];
                     HeldShown[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone||s.Offhand.Visible&&b==s.Offhand.Bone;
+                    int k=i;Actors[i]=new Actor();
+                    ModelHeld[i]=b=>{var m=Rigs[k].Bones[b].localToWorldMatrix;return s.Weapon.Visible&&b==s.Weapon.Bone?m*Offset(s.Weapon):s.Offhand.Visible&&b==s.Offhand.Bone?m*Offset(s.Offhand):m;};
+                    ModelHeldShown[i]=b=>s.Weapon.Visible&&b==s.Weapon.Bone&&!OwnWeapon[k]||s.Offhand.Visible&&b==s.Offhand.Bone;
                 }
                 PropMatrix=_=>Prop;PropPart=b=>b==PropBone;
             }
-            private static Matrix4x4 Offset(LobbyHeld h)=>Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(h.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(h.Rotation)),Vector3.one);
+            public static Matrix4x4 Offset(LobbyHeld h)=>Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(h.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(h.Rotation)),Vector3.one);
         }
         /// <summary>
         /// Draws the home screen's rooftop for `camera` at `time` (seconds, wrapped by the caller), with the player's pilot
@@ -284,7 +291,7 @@ namespace ChipArena.UnityConversion
         }
         private void RooftopCastFrame(Camera camera,float time,RooftopPilot pilot,bool reduced)
         {
-            var cast=rooftopCast??=new RooftopCast();var you=cast.Looks[0];
+            var cast=rooftopCast??=new RooftopCast();var you=cast.Looks[0];rooftopSkins=pilot.Skins;
             string spec=string.IsNullOrEmpty(pilot.Spec)?"pistol":pilot.Spec,hat=string.IsNullOrEmpty(pilot.Hat)?"none":pilot.Hat;
             if(you.Spec!=spec||you.Hat!=hat||you.Body!=pilot.Body||you.Accent!=pilot.Accent||cast.BodySkin!=pilot.BodySkin||cast.HatColor!=pilot.HatColor||cast.SeatKey==null){you.Spec=spec;you.Hat=hat;you.Body=pilot.Body;you.Accent=pilot.Accent;cast.BodySkin=pilot.BodySkin;cast.HatColor=pilot.HatColor;cast.Body[0]=BodyTint(pilot.Body);cast.Accent[0]=BodyAccent(pilot.BodySkin,pilot.Accent,hat,pilot.HatColor);}
             // The seat height once per spec (the chair pose at t=0), so the pilot never bobs on the lip.
@@ -298,14 +305,17 @@ namespace ChipArena.UnityConversion
                 else{if(!sites.TryGetValue(look.Id,out var site))continue;yaw=site.Yaw;var o=s.Offset;feet=site.Position+new NVector(o.Z*Mathf.Sin(yaw)+o.X*Mathf.Cos(yaw),o.Y,o.Z*Mathf.Cos(yaw)-o.X*Mathf.Sin(yaw));}
                 var root=Matrix4x4.TRS(new Vector3(-feet.X,feet.Y,feet.Z),Quaternion.Euler(0,-yaw*Mathf.Rad2Deg,0),Vector3.one);var group=cast.Group[i]=root*Matrix4x4.Translate(new Vector3(0,NativePortraitRules.GroupY,0));
                 var bones=cast.Bones[i];var p=s.Pose;for(int b=0;b<bones.Length;b++)bones[b]=group*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.WorldPosition[b])),CapturedAnimation.Quat(CapturedRig.Mirror(p.WorldRotation[b])),Vector3.one);
-                bool siren=look.Spec=="siren";
-                // Your pilot in its body skin; the crowd in the Standard body at its distance (NativeBodySkinPresentation.cs).
-                string body=siren?"siren":BodyModel(i==0?pilot.BodySkin:NativeBodySkins.StandardIndex,NativeBodySkins.Tier(LowGraphics,reduced?.3f:1,i==0?0:Vector3.Distance(camera.transform.position,group.GetColumn(3)),false));
-                sourceModels.Queue(body,group,cast.Bone[i],null,0,camera,cast.Body[i],cast.Accent[i],look:siren?SirenStill(reduced?0:time):null);
-                // Your pilot's hat in its colour, the Sheldon Head animated (NativeHatPresentation.cs); the crowd keeps Auto.
-                string hatColor=i==0?pilot.HatColor:null;
-                if(!siren&&look.Hat!="none"&&!AuditorHalo(look.Hat,bones[CapturedRig.Head],time,1,reduced,0,camera,camera,hatColor)&&!SheldonStill(look.Hat,hatColor,group,cast.Bone[i],bones[CapturedRig.Head],time,i,reduced,0,camera))sourceModels.Queue(HatModel(look.Hat,hatColor),group,cast.Bone[i],null,0,camera,body:HatBody(look.Hat,hatColor));
-                if(i>0&&!siren&&(s.Weapon.Visible||s.Offhand.Visible))sourceModels.Queue("weapon-"+look.Spec,group,cast.Held[i],cast.HeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
+                bool siren=look.Spec=="siren";string hatColor=i==0?pilot.HatColor:null;
+                // Each pilot on its visual body while the model draws (RooftopModel); else (Classic, the Siren, no bake) voxel.
+                if(siren||!RooftopModel(cast,i,root,group,time,camera,reduced,hatColor))
+                {
+                    // Your pilot in its body skin; the crowd in the Standard body at its distance (NativeBodySkinPresentation.cs).
+                    string body=siren?"siren":BodyModel(i==0?pilot.BodySkin:NativeBodySkins.StandardIndex,NativeBodySkins.Tier(LowGraphics,reduced?.3f:1,i==0?0:Vector3.Distance(camera.transform.position,group.GetColumn(3)),false));
+                    sourceModels.Queue(body,group,cast.Bone[i],null,0,camera,cast.Body[i],cast.Accent[i],look:siren?SirenStill(reduced?0:time):null);
+                    // Your pilot's hat in its colour, the Sheldon Head animated (NativeHatPresentation.cs); the crowd keeps Auto.
+                    if(!siren&&look.Hat!="none"&&!AuditorHalo(look.Hat,bones[CapturedRig.Head],time,1,reduced,0,camera,camera,hatColor)&&!SheldonStill(look.Hat,hatColor,group,cast.Bone[i],bones[CapturedRig.Head],time,i,reduced,0,camera))sourceModels.Queue(HatModel(look.Hat,hatColor),group,cast.Bone[i],null,0,camera,body:HatBody(look.Hat,hatColor));
+                    if(i>0&&!siren&&(s.Weapon.Visible||s.Offhand.Visible))sourceModels.Queue("weapon-"+look.Spec,group,cast.Held[i],cast.HeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
+                }
                 // The seated pilot's weapon lies flat on the lip at its right, pointing along it (fists stay on the hands).
                 if(i==0&&!siren&&!NativeLobbyPoses.Fighter(look.Spec))
                 {
@@ -315,6 +325,57 @@ namespace ChipArena.UnityConversion
                 }
             }
             sourceModels.Flush(UsesInstancing);
+            // The visual bodies posed this frame show, the rest hide (the arena's pass; ConversionGame.RooftopLeave hides these
+            // when the rooftop goes).
+            VisualBodiesShown();
+        }
+
+        // The rooftop's pilots on the visual body (owner 2026-10-27: "Yes to all of the open items": the main menu's pilot on the
+        // new body, Classic kept as the backup). While the model draws, each actor's own rig (made once, ids RooftopIdTop and
+        // down) takes the game's pose its voxel body would draw; its body is bound to it as the portraits' are, the seated
+        // pilot's hips on the chair pose's pelvis (its feet hang over the lip), in your outfit and skins (VisualLookOf,
+        // SeatWeaponSkins: RooftopPilot.Skins) or the default outfit in the Standard skin for the crowd; its hat on the model's
+        // head, its gear, and the crowd's held weapons on the model's wrists (the bake's own weapon where it has one). Lit by the
+        // rooftop's lights as the voxel pilots were. False: the voxel pilot draws (Classic, no bake, a viewer).
+        public const int RooftopIdTop=-400;
+        private Transform rooftopHolder;private string rooftopSkins;
+        private bool RooftopModel(RooftopCast cast,int i,Matrix4x4 root,Matrix4x4 group,float time,Camera camera,bool reduced,string hatColor)
+        {
+            if(Viewer||ClassicBodies||!VisualBodiesOn)return false;
+            var look=cast.Looks[i];var s=cast.States[i];int id=RooftopIdTop-i;
+            if(rooftopHolder==null){var go=new GameObject("Rooftop pilots");go.transform.SetParent(transform,false);rooftopHolder=go.transform;}
+            var rig=cast.Rigs[i]??=captured.Create(rooftopHolder,id);
+            rig.Root.transform.SetPositionAndRotation(group.GetColumn(3),root.rotation);
+            if(!NativePoseWriter.Write(rig.Bones,s.Pose,"a rooftop pilot"))return false;
+            var a=cast.Actors[i];a.Id=id;a.SourceSpec=look.Spec;a.Hat=look.Hat;a.HatColor=hatColor;a.BodyColor=look.Body;a.AccentColor=look.Accent;a.WeaponAway=!s.Weapon.Visible;a.Grounded=true;
+            var body=VisualBodyOf(rig,id);if(body==null)return false;
+            body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
+            var held=VisualBodyBind(body,rig,a,time,s.Pose,false,false);
+            if(i==0)
+            {
+                int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
+                if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++)rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand].position+=shift;}
+            }
+            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            body.Moved=true;body.Seen=true;
+            if(look.Hat!="none"&&look.Hat!=NativeSheldonHead.Hat)
+            {
+                var hb=VisualHatBone(rig);
+                if(!AuditorHalo(look.Hat,hb(CapturedRig.Head),time,1,reduced,0,camera,camera,hatColor))sourceModels.Queue(HatModel(look.Hat,hatColor),rig.Root.transform.localToWorldMatrix,hb,null,0,camera,body:HatBody(look.Hat,hatColor));
+            }
+            VisualGear(body,a,time,null,null,1,false);
+            if(i>0&&(s.Weapon.Visible||s.Offhand.Visible))
+            {
+                cast.OwnWeapon[i]=s.Weapon.Visible&&VisualWeaponDrawn(rig,rig.Bones[s.Weapon.Bone].localToWorldMatrix*RooftopCast.Offset(s.Weapon));
+                sourceModels.Queue("weapon-"+look.Spec,rig.Root.transform.localToWorldMatrix,cast.ModelHeld[i],cast.ModelHeldShown[i],0,camera,accent:cast.Accent[i],glow:HeldGlow);
+            }
+            return true;
+        }
+        /// <summary>The rooftop's pilots' visual bodies hide (the home screen left the rooftop: ConversionGame.RooftopLeave).</summary>
+        public void RooftopHide()
+        {
+            var cast=rooftopCast;if(cast==null)return;
+            foreach(var rig in cast.Rigs)if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.Root.activeSelf){body.Root.SetActive(false);body.Seen=false;}
         }
     }
 }
