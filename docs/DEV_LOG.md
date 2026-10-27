@@ -1,3 +1,22 @@
+## 2026-10-26 — Claude: the greatsword Whirlwind's spin on the model (merged into shared)
+
+- **Branch/base:** `claude/model-whirlwind` from shared `a099ec91`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner report:** "need to fix whirlwind on greatsword, the player spin is not good".
+- **Cause:** the model held the pack's spin (`2Hand-Sword-Attack8`) at its Hit and turned that frozen pose as one piece. The frame is upright, with a narrow stance and the blade raised about 20°, and its blade sat about 57° off the game's tip.
+- **Change (presentation only):**
+  - `NativeVisualMotion`: the Whirlwind's pick is the set's stance with the leg rules (`SpinLegs`: a sit by the spin's Low; each foot steps once per turn, the feet half a turn apart). `SpinUpper` lays `2Hand-Sword-Attack2`'s low level sweep over it: into its hold through the wind-up, held through the spin, to its end through the stop. `SpinAlign` sets how far the body turns onto the blade.
+  - `NativeVisualMotionPresentation`: the legs as thigh and knee muscle offsets before the pose; the body turned so the drawn blade's bearing lies on `MeleeKitMotion.Spin`'s tip.
+- **Animation impacts:** hit timing, hit volumes, damage, cooldowns, movement and networking unchanged. The visible blade now crosses the facing on the rules' pulses. The motion bank is unchanged; no zip upload.
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `414fa627`), with new VisualRigChecks: the stance and blade-tip pick, the held sweep, steps alternating once per turn, the wind-up and stop, and the presentation pins.
+  - Unity compile: PASS in the Editor.
+  - Play mode (local tool frame renders of the pack's two-handed clips with the game's blade frame; then in-game captures):
+    - wind-up, spin, stop and return to guard;
+    - blade bearing against the game's tip, within 0-12° (the render clock runs up to one 60 Hz step behind the arena's);
+    - feet on the floor, hips bobbing 0.70-0.77 m;
+    - spinning while steering.
+- **Not run:** another client's view of a spinning pilot (same code path); first person; an early recast's stop; a Windows build.
+
 ## 2026-10-26 — Claude: the slash pack's effects off on every move (merged into shared)
 
 - **Branch/base:** `claude/no-pack-slashes` from shared `9a940499`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

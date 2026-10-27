@@ -1235,9 +1235,23 @@ already? Cant we utilize that?"
     replicated clock) play pack clips; the other weapons' kit moves keep the game's pose for now.
     - **Earthsplitter (Q):** the pack's overhead slam (`2Hand-Sword-Attack11`), its Hit on the release, its end on the
       cast's end.
-    - **Whirlwind (E):** the pack's spin (`2Hand-Sword-Attack8`). Its wind-up runs to the clip's Hit, it is held there
-      (the blade out) through the spin, and its end plays through the stop. The body is turned about its hips to the game's
-      own spin (`MeleeKitMotion.Spin`'s grip angle, less the clip's own turn), so it faces home when the stop lands.
+    - **Whirlwind (E), reworked 2026-10-26 (`claude/model-whirlwind`; owner: "need to fix whirlwind on greatsword, the
+      player spin is not good"):** the first version held the pack's spin (`2Hand-Sword-Attack8`) at its Hit. That frame
+      is upright, with a narrow stance and the blade raised about 20°, and the whole frozen pose turned like a statue on a
+      turntable, its blade about 57° off the game's tip. Now:
+      - **Legs:** the set's stance (`2Hand-Sword-Idle`), sat into a crouch by the spin's Low. The pack's level sweeps all
+        end in lunges, whose trailing leg the spin would sweep round.
+      - **Upper body:** the low level sweep of `2Hand-Sword-Attack2`, laid over the legs with the upper-body mask (the
+        legs' hips kept). It plays into its hold (`WhirlHold`, 0.6 of the clip) through the wind-up, is held through the
+        spin (arms long and low, the blade level out past the knees, about 20° down), and plays to its end through the stop.
+      - **Steps:** while the blade spins, each foot marks time once per turn of the hands, the other half a turn on
+        (thigh and knee muscle offsets, by the spin's speed; `NativeVisualMotion.SpinLegs`).
+      - **Turn:** the body turns about its hips so the drawn blade's bearing (the hold's +z off the right hand) lies on
+        `MeleeKitMotion.Spin`'s tip, which crosses the facing on each of the rules' pulses. The alignment rises through the
+        uncoil and falls as the stopped pilot settles; before and after, the body follows the hands' turn as before.
+      - The bank is unchanged (both clips were already in it).
+      - Measured in play: the blade within 0-12° of the tip (the render clock runs up to one 60 Hz step behind the
+        arena's), the feet on the floor, the hips bobbing 0.70-0.77 m with the steps.
     - A mapped move's tail (its special still running past the cast) goes on to the idle instead of the game's pose.
     - The bank holds 266 clips in 2.78 MB.
   - **Sword, daggers and shield kit moves (2026-10-24, `claude/motion-kits`):** every melee weapon's Q and E now play
