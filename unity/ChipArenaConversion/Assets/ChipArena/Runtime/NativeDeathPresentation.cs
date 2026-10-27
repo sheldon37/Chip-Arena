@@ -20,6 +20,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The part crushed into fragments (the authority's crush wound or a shield kill's), or -1.</summary>
         internal int CrushPart=-1;
         private bool Cut(int part)=>Severed.Contains(part);
+        /// <summary>Whether ragdoll part `part` hangs on a joint from its parent part; false when it moves on its own (the root, a
+        /// cut part, a part loose of the other half or of a crushed part). Set when the body is made.</summary>
+        internal bool Jointed(int part)=>Parts.TryGetValue(part,out var body)&&body.GetComponent<ConfigurableJoint>()!=null;
         private static Matrix4x4[] RigBind(NativeDeath death,CapturedAnimation.Player rig){var m=new Matrix4x4[22];var offset=Matrix4x4.Translate(death.position-rig.Root.transform.position);for(int i=0;i<22;i++)m[i]=offset*rig.Bones[i].localToWorldMatrix;return m;}
         private static Vector3[] RigAt(NativeDeath death,CapturedAnimation.Player rig){var p=new Vector3[22];Vector3 offset=death.position-rig.Root.transform.position;for(int i=0;i<22;i++)p[i]=rig.Bones[i].position+offset;return p;}
         private static Quaternion[] RigTurn(CapturedAnimation.Player rig){var q=new Quaternion[22];for(int i=0;i<22;i++)q[i]=rig.Bones[i].rotation;return q;}

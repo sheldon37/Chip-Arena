@@ -1032,11 +1032,13 @@ namespace ChipArena.UnityConversion
                     &&motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);")
                     &&motion.Contains("m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
             }
-            // A whole corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
-            // model"): each bone turns with its part and keeps its rest offset; the root and a severed piece's first bone take
-            // their part's place; a split body's halves keep their bones on their parts.
-            Check(body.Contains("bool whole=corpse.Twin==null&&corpse.Host==null&&c.Parent!=null;")&&body.Contains("if(u<0||c.Part[v]!=c.Part[u]&&corpse.Severed.Contains(c.Part[v]))b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}")
-                &&body.Contains("c.Parent[v]=u<v?u:-1;"),"a ragdoll never stretches the model: rotations with the rest lengths, places only at the root and the cuts");
+            // Every corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
+            // model"; 2026-10-27: "Bodies aren't gibbing, they seem to still stretch"), a split body's halves too: each bone turns
+            // with its part and keeps its rest offset; the root and the first bone of a part with no joint to its parent part take
+            // their part's place.
+            Check(!body.Contains("bool whole=")&&body.Contains("if(c.Placed[v])b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}")
+                &&body.Contains("c.Parent[v]=u<v?u:-1;")&&body.Contains("int p=c.Parent[v];c.Placed[v]=p<0||c.Part[v]!=c.Part[p]&&(corpse.Severed.Contains(c.Part[v])||!corpse.Jointed(c.Part[v]));")
+                &&R("Runtime/NativeDeathPresentation.cs").Contains("internal bool Jointed(int part)=>Parts.TryGetValue(part,out var body)&&body.GetComponent<ConfigurableJoint>()!=null;"),"a ragdoll never stretches the model: rotations with the rest lengths, places only at the root and where the ragdoll has no joint");
             // The menu portraits on the model (owner 2026-10-26: "Player model still shows voxel in customization?").
             string portrait=R("Runtime/NativeVisualPortraitPresentation.cs"),portraitUi=R("Runtime/NativePortraitUI.cs");
             Check(portraitUi.Contains("if(presentation.ModelPortraitFor(look)){presentation.ModelPortraitReduced=prefs.reducedEffects;return presentation.ModelPortrait(key,look,own?prefs.look:\"\",PortraitSkins(look,own),stage.width,stage.height,U.S,out top);}")
@@ -1057,8 +1059,9 @@ namespace ChipArena.UnityConversion
             string holo=R("Runtime/NativeReviveHoloPresentation.cs"),inter=R("Runtime/NativeInteractionPresentation.cs");
             Check(holo.Contains("bool model=VisualReviveBody(1L<<62|(uint)r.Seed,rig,r.Death,h.Bone,h.Grow,alpha);")&&holo.Contains("if(holo&&r.Place&&!model)")&&holo.Contains("if(rise&&holo&&third&&!VisualBodyPosed(rig))"),"a revive's kept body is the model (its voxel hologram passes off), lifted, its missing parts grown back");
             Check(inter.Contains("{StandFromBody(r,rig,time-r.At);VisualStandPose(rig,a,time);}")&&inter.Contains("VisualRevivesShown();")&&body.Contains("if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;"),"the revived pilot's model stands up from its kept body");
-            Check(body.Contains("if(corpse.IsCrushed(j))return -1;if(corpse.Severed.Contains(j))return j+1;")&&body.Contains("VisualCorpseSever(whole,piece);"),"a cut or crushed corpse wears the model severed at its cut joints (the crushed part's left to its fragments)");
-            Check(body.Contains("piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?0:-1;")&&death.Contains("recolored=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha)||BisectDraw("),"each half of a split body (a blade's killing blow, a saw) wears the model's parts on its side of the cut");
+            Check(body.Contains("if(corpse.IsCrushed(j))return -1;")&&body.Contains("if(corpse.Severed.Contains(j)||corpse.Parts.ContainsKey(j)&&!corpse.Jointed(j))return j==CapturedRig.Pelvis?0:j+1;")&&body.Contains("piece[v]=VisualCorpsePiece(corpse,whole.Part[v]);")&&body.Contains("VisualCorpseSever(whole,piece);"),
+                "a cut or crushed corpse wears the model severed at its cut joints, the parts a crushed part held flying as their own pieces (the crushed part's left to its fragments)");
+            Check(body.Contains("piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?VisualCorpsePiece(half,c.Part[v]):-1;")&&death.Contains("recolored=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha)||BisectDraw("),"each half of a split body (a blade's killing blow, a saw) wears the model's parts on its side of the cut, its loose pieces their own meshes");
             Check(scene.Contains("bool dressed=layer==0&&only==null&&VisualSceneShown(death,Bone,Visible,alpha);")&&scene.Contains("if(!dressed)sourceModels.Queue((death.model??\"pilot\")==\"pilot\"")&&scene.Contains("if(!dressed&&!string.IsNullOrEmpty(death.actor?.Hat)"),"a death scene's victim plays in the visual body (not on a cinematic's own layer)");
             Check(body.Contains("for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];")&&body.Contains("for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;"),"each scene bone follows its joint's motion since death");
             // The draft's pilot on the model: the stage's pose bound to it (its hips on the pose's pelvis), the voxel body and hat
