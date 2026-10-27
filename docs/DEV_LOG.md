@@ -1,3 +1,25 @@
+## 2026-10-27 — Claude: the mask refitted, hats on the model, the Sheldon intro on the model, gibs with flesh and bones (merged into shared)
+
+- **Branch/base:** `claude/model-mask-hats` from shared `96929597`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner reports (2026-10-27):** "Mask seems to glitch on face still and the hats still don't sit naturally and are too big"; "Still doesn't show correct model in intro (Tested with Sheldon Intro)"; "Can you show bones + flesh on gibs too? correct on anamonics too".
+- **Changes (presentation only; details in BOZO-INTEGRATION):**
+  - **Mask** (`Core/NativePilotGear`): refitted from the baked face. The nose bridge came through between the top rows (to 4 mm), the sides stood 14-16 mm off the cheeks, the straps floated up to 3 cm off the head. Now at least 3 mm over the nose, 5-6 mm off the cheeks, straps along the cheek.
+  - **Hats** (`Core/NativeModelHats`, `VisualHatFrame`, `VisualHatHair`): scaled to the model's head and seated on its crown by kind; a covering hat presses the hair with the hair pieces' hood shape.
+  - **Hats that never drew:** the bank's draw lists held the camera they were first queued for; the rooftop crowd's cap, beanie, antenna, cowboy hat and halo drew only to the menu camera after. A part queued for another camera now gets its own list (`NativeSourceModels.DrawsFor`). `NativeSourcePrimitives.cs` (pinned byte-identical) is unchanged.
+  - **Sheldon intro:** poses the model; the Sheldon Head is a hood over the model's head with its live face (drapes left off); the same anywhere it is worn on the model.
+  - **Gibs:** cut caps in flesh; at each cut joint each side's bones as stubs where they lie (`Core/NativeModelGore`, `VisualCorpseBones`).
+  - Local tool (not committed): `face=` (the face against the mask, per frame), `bozo-shapes.request` (hair shapes and renders), `hatinfo=`, `intro=`/`devaccess=` (a DEV intro in a capture).
+- **Animation impacts:** none (hit timing, volumes, movement and networking unchanged).
+- **Checks (actual):**
+  - Full CoreTests 852 PASS (LF checkout of `83ca7c09`), with new VisualRigChecks: hat scale, band and halo height, which hats press the hair, the Sheldon hood and intro wiring, the mask's nose clearance, the gore table (bones per side, their places and sizes), the flesh caps and bone hooks.
+  - Unity compile: PASS.
+  - Play mode (local tool):
+    - the mask through a sword combo and the moves routine (the face never reaches the shell beyond the nose bridge's fixed 1.5 mm under the visor, now cleared) and close-ups before and after;
+    - all nine hats on the model (front, three-quarter, side, back), before and after;
+    - the Sheldon intro before (voxel) and after (the model with the hood);
+    - a greatsword kill splitting the model: the waist's vertebra, the wrists' bones, flesh caps.
+- **Not run:** a Windows build; multiplayer (other pilots' hats ride the same draw); the hats on the other hair styles (their hood shapes are the pack's own); a leg or arm sever at the shoulder and hip in play; the Sheldon Head on the model outside its intro in play.
+
 ## 2026-10-27 — Claude: the model's motion polished for every weapon (merged into shared)
 
 - **Branch/base:** `claude/model-motion-polish` from shared `5c6042a1`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

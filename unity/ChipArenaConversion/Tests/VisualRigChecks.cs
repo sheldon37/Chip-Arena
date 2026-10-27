@@ -430,7 +430,7 @@ namespace ChipArena.UnityConversion
                     &&srcp.Contains("if(headShown&&visual&&!first&&a.Hat==NativeSheldonHead.Hat&&a.SourceSpec!=\"siren\")SheldonHead(a,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,a.Hat),")
                     &&NativeModelHats.SheldonScale.Z>NativeModelHats.SheldonScale.X,"the Sheldon Head a hood over the model's head, its intro on the model");
                 // The model's gibs show flesh and bones where they lie (owner 2026-10-27: "Can you show bones + flesh on gibs too?
-                // correct on anatomics too").
+                // correct on anamonics too").
                 Check(NativeModelGore.Kind("upperarm_twist_02_l")=="upperarm"&&NativeModelGore.Kind("spine_03")=="spine"&&NativeModelGore.Kind("calf_twist_01_l1")=="calf"&&NativeModelGore.Kind("head")=="head"
                     &&NativeModelGore.Side("thigh_l")==-1&&NativeModelGore.Side("calf_twist_01_r1")==1&&NativeModelGore.Side("neck_01")==0,"a bone's kind and side from its name");
                 var forearm=NativeModelGore.At("lowerarm_l","upperarm_l");var shin=NativeModelGore.At("calf_r","thigh_r");

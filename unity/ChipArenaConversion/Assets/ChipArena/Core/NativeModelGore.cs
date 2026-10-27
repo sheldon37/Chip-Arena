@@ -2,7 +2,7 @@ using System;
 
 namespace ChipArena.UnityConversion
 {
-    // The model's insides at a gib's cut (owner 2026-10-27: "Can you show bones + flesh on gibs too? correct on anatomics too";
+    // The model's insides at a gib's cut (owner 2026-10-27: "Can you show bones + flesh on gibs too? correct on anamonics too";
     // Runtime NativeVisualBodyPresentation.cs VisualCorpseBones). The model is a person, so where a corpse is severed at a joint
     // each side's cut shows red flesh and the bones that run through that side, each where it lies in the limb's cross-section:
     //  - the upper arm the humerus; the forearm the radius (to the outside) and the ulna (to the inside); the hand its carpals;

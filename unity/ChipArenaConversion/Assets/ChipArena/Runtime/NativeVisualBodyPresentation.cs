@@ -726,7 +726,7 @@ namespace ChipArena.UnityConversion
         // do the dropped piece's (a crushed part's fragments and the stumps' blood are the kill wound's; the other half of a
         // split body is its twin's). The cut meshes go with the corpse.
         private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone){VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);VisualCorpseBones(c,pieceOfBone);}
-        // The cut's bones (owner 2026-10-27: "Can you show bones + flesh on gibs too? correct on anatomics too"; Core
+        // The cut's bones (owner 2026-10-27: "Can you show bones + flesh on gibs too? correct on anamonics too"; Core
         // NativeModelGore): at each joint the cut parts (a bone whose nearest ancestor went with another piece), each side's bones as
         // short stubs on that side's bone, where they lie in its cross-section (the cut piece's sticking out a little, the stump's
         // flush), their marrow dark at the end. In the body's own shader, added to the corpse's renderers so its dissolve and its

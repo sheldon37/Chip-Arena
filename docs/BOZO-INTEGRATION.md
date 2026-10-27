@@ -1377,8 +1377,19 @@ already? Cant we utilize that?"
       - Detection: an edge whose neighbour went with another piece is a cut (vertices welded by position across seams; the
         mesh's own open edges are not cuts).
       - Fill: the cut edges are chained into loops and fanned on the piece's own vertices, so the cap moves with it.
-      - Material: a last submesh in a copy of the body material, with the bodies' dark insides (NativeBisect's cut look) in
-        every colour, both sides, no cut-out, outline or accent glow. It dissolves with the corpse.
+      - Material: a last submesh in a copy of the body material, in flesh (`NativeModelGore.Flesh`; until 2026-10-27 the
+        voxel bodies' dark insides, which read as a robot's) in every colour, both sides, no cut-out, outline or accent glow.
+        It dissolves with the corpse.
+    - **Flesh and bones (2026-10-27, `claude/model-mask-hats`; owner: "Can you show bones + flesh on gibs too? correct on
+      anamonics too"):** at each joint a cut parts, each side shows the bones that run through it (`Core/NativeModelGore`,
+      `VisualCorpseBones`), where they lie in the cross-section and sized for the model's slim build:
+      - the upper arm's humerus; the forearm's radius (outside) and ulna (inside); the hand's carpals;
+      - the thigh's femur; the shin's tibia (forward, inside, thicker) and fibula (behind, outside); the foot's talus;
+      - the vertebrae behind the middle of the neck and back, the neck's windpipe ahead; the skull's base; the hip bone at a
+        hip cut; the collarbone at the shoulder.
+      - Each is a short stub on that side's bone (it flies with the piece), sticking out 6 mm from the cut piece and 2 mm from
+        the stump, its marrow dark at the end, in the body's own shader (it dissolves and takes the kill looks with the
+        corpse).
     - **Kill looks and smashes (2026-10-25, `claude/visual-kill-looks`):** every kill style now wears the model.
       - **Swarm styles** (ember, static, gravity, pinball, fireworks, petals, singularity): the model ragdoll collapses by
         the swarm.
@@ -1392,8 +1403,13 @@ already? Cant we utilize that?"
       visual body: no pack clips or stride, the feet as authored.
     - While an entrance still builds the body in (its reveal under half on the pelvis, chest, head or a hand), the voxel body
       draws that reveal; the model takes over once the body is whole.
-    - The model holds its own weapon where the entrance shows one; the bow keeps its live voxel bow, as in the arena. The
-      Sheldon intro keeps the voxel body (its head is the hat's).
+    - The model holds its own weapon where the entrance shows one; the bow keeps its live voxel bow, as in the arena.
+    - **The Sheldon intro on the model (2026-10-27; owner: "Still doesn't show correct model in intro (Tested with Sheldon
+      Intro)"):** it had kept the voxel body because its look is the Sheldon Head, a whole voxel head. The intro now poses
+      the model, and the Sheldon Head is a hood over the model's head with its live face (`NativeModelHats.SheldonScale`,
+      `SheldonOffset`: the face screen just in front of the model's face from chin to brow, the hood round the hair laid
+      flat by the hood shape). Its voxel mantle and drapes, cut for the voxel chest, are left off; the model wears its own
+      top. The same hood shows wherever the Sheldon Head is worn on the model.
     - The arena pose and the intro share `VisualBodyOf` and `VisualBodyBind`.
     - Settings · Player model is now set at the top of every frame, so Classic reaches intros, previews, replays and the
       draft (they return before the arena renders).
@@ -1436,6 +1452,15 @@ already? Cant we utilize that?"
       go back into the hair.
     - The visor is a band of accent glass over the eyes (4.2 cm with its frame), wrapping in front of the hair to pods at
       the temples.
+  - **Refit (2026-10-27; owner: "Mask seems to glitch on face still"):** measured in play (the local tool's `face=` log of
+    the face against the shell, every frame through every move and attack: the face is rigid on the head bone, the clips
+    never move the jaw) and on the baked head:
+    - the nose bridge came through between the mask's two top rows (to 4 mm; the face and the shell fought there): the top
+      rows now clear it by at least 3 mm;
+    - the sides stood 14-16 mm off the cheeks and past the jaw (a plate with gaps that opened as the head turned): now 5-6 mm
+      off the cheeks, wrapping the jaw;
+    - the straps floated up to 3 cm off the head (a stray line across the cheek in profile): they run 5-7 mm off the cheek
+      to the ear.
   - **Who wears it:** the Prototype body skin on the model. The Standard keeps BoZo's face as authored (owner,
     2026-10-22). One presentation rule (`WearsFaceGear`) sets this. **Owner decision (2026-10-26):** keep the mask and
     visor on the Prototype skin; the default keeps the face.
@@ -1510,6 +1535,20 @@ already? Cant we utilize that?"
   - **Hats** sit on the model's head at their own size, resting on the hair. The pack's under-hat hair shapes left the
     model nearly bald and were not used. The Auditor halo floats there too; the Sheldon Head (a whole head) stays Classic
     only.
+  - **Hats fitted to the model (2026-10-27, `claude/model-mask-hats`; owner: "the hats still don't sit naturally and are
+    too big"):** the hats are built for the voxel head (about 36 cm across); on the model's head bone they stood 15 cm low
+    and 9 cm ahead of the skull at that size. `Core/NativeModelHats`:
+    - scaled 0.55 (halos 0.45) about the voxel crown onto the model's (the pressed hair's top, the skull's middle), then
+      sunk by kind: brimmed and knitted hats and the party cone down to a band about 5 cm over the brows, the open crown up
+      in the spiky hair, the antenna and halos raised clear of it;
+    - a hat that covers the crown presses the hair under it with each hair piece's own hood shape (`Tag_Hood`: the spikes
+      laid into a ring round the head; the pack's hat shape bares the scalp down the back, which only its own deep hats
+      cover);
+    - the Sheldon Head is a hood over the head (the intros, above).
+  - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
+    it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
+    camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed
+    none). A part queued for another camera now gets its own list (`NativeSourceModels.DrawsFor`).
   - **Body chips, the spell charge orb and the hand motes** now draw for model pilots (they had been skipped).
   - **Living wounds' blood and chips** spray from the hit point on the model.
   - **The parry flash:** the model's own silhouette, snapshotted each frame of the flash.
