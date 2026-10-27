@@ -32,6 +32,40 @@ namespace ChipArena.UnityConversion
     //  - The Sheldon Head's glow (face, ring and trim) always takes the body tint: the hat colour, or cyan on Auto.
     //  - A backdrop colour replaces the accent colour as the backdrop's tint.
     // Presentation only: the authority never reads these except to normalise them.
+    // The hats on the model (owner 2026-10-27: "the hats still don't sit naturally and are too big"). Every hat is built for the
+    // voxel head: its parts lie on the head joint, about 36 cm across, its brims and bands 2-3 cm under that head's crown (0.36
+    // over the joint). On the model's head bone (the same axes: x across, y up, z ahead) they stood 15 cm low and 9 cm ahead of
+    // the skull, at the voxel size: the cap, beanie and cowboy hat lost in the spiky hair, the top hat floating over it.
+    // Fitted: scaled to the model's head (Scale: its skull 19 cm across at the band, its hair pressed under the hat by each hair
+    // piece's own hood shape about 2 cm more) about the voxel crown onto the model's (ModelCrown: the pressed hair's top, the
+    // skull's middle front to back), then sunk by the hat's kind: a brimmed or knitted hat down to the forehead band (its band
+    // about 5 cm over the brows, a party cone with them), the open crown up in the spiky hair, an antenna and a halo raised clear
+    // of it. A hat that covers the crown presses the hair under it into a ring round the head (each hair piece's own
+    // hood shape: the pack's hat shape bares the scalp down the back, which only its own deep hats cover).
+    public static class NativeModelHats
+    {
+        public const float Scale=.55f, HaloScale=.45f, VoxelCrown=.36f, ModelCrownY=.222f, ModelCrownZ=.025f, Band=.054f, Perch=.03f, Raise=.05f;
+        /// <summary>A hat's scale from the voxel head: a halo a little smaller (a ring about the head's width).</summary>
+        public static float ScaleOf(string hat)=>hat=="halo"||hat==NativeAuditorHalo.Hat?HaloScale:Scale;
+        /// <summary>How far a hat sinks onto the model's head below the plain fit (m; negative: raised clear of the spiky hair).</summary>
+        public static float Sink(string hat)=>hat=="cap"||hat=="beanie"||hat=="top"||hat=="wizard"||hat=="cowboy"||hat=="cone"?Band:hat=="crown"?-Perch:hat=="antenna"||hat=="halo"||hat==NativeAuditorHalo.Hat?-Raise:0;
+        /// <summary>Whether the hair is pressed under the hat (the hair pieces' hood shape): a hat that covers the crown (the
+        /// Sheldon Head's hood too), not the open crown, an antenna or a halo.</summary>
+        public static bool Presses(string hat)=>hat=="cap"||hat=="beanie"||hat=="top"||hat=="wizard"||hat=="cowboy"||hat=="cone"||hat==NativeHatLooks.SheldonHead;
+        /// <summary>The Sheldon Head on the model (owner 2026-10-27: "Still doesn't show correct model in intro (Tested with Sheldon
+        /// Intro)"): a whole voxel head, its hood round a 36 cm head and its face screen (z .171) on that head's front, from its
+        /// neck (y -.047) to its brow (.366). Fitted unevenly onto the model's head: the screen just in front of the face (the
+        /// nose's tip at z .151) from the chin to the brow, the hood round the hair laid flat by the hood shape (to z -.134
+        /// behind, .121 to each side).</summary>
+        public static readonly System.Numerics.Vector3 SheldonScale=new System.Numerics.Vector3(.62f,.65f,.83f),SheldonOffset=new System.Numerics.Vector3(0,-.03f,.023f);
+        /// <summary>A hat's point (the voxel head joint's frame) on the model's head bone: scaled by `scale`, then moved by `offset`
+        /// (the head bone's frame).</summary>
+        public static void Fit(string hat,out float scale,out System.Numerics.Vector3 offset)
+        {
+            scale=ScaleOf(hat);offset=new System.Numerics.Vector3(0,ModelCrownY-Sink(hat)-scale*VoxelCrown,ModelCrownZ);
+        }
+    }
+
     public static class NativeHatLooks
     {
         public const string Auto="";

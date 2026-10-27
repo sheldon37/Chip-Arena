@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             if(sheldonParts==null)return;
             for(int p=NativeSheldonHead.EyeLeft;p<=NativeSheldonHead.RingGlow;p++)
             {
-                var part=sheldonParts[p];var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
+                var part=sheldonParts[p];var key=(part,layer,camera);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
                 float k=p<NativeSheldonHead.Ring?face.Glow:1;
                 d.Matrices.Add(head*PieceLocal(p,face));d.Bodies.Add(new Vector4(glow.r,glow.g,glow.b,opacity));d.Accents.Add(new Vector4(1,1,1,hitFlash));d.Tints.Add(scene);d.Glows.Add(new Vector4(k,k,k,1));
             }
@@ -116,11 +116,11 @@ namespace ChipArena.UnityConversion
         /// the face and ring animated (blinks, a flicker on hits, a laugh after a kill). False for any other hat (the caller
         /// queues the bank model, the Sheldon Head's included where no live rig exists).
         /// </summary>
-        private bool SheldonHead(Actor a,Matrix4x4 root,Func<int,Matrix4x4> bone,float time,int layer,Camera camera,Func<int,Color> partTint,float flash)
+        private bool SheldonHead(Actor a,Matrix4x4 root,Func<int,Matrix4x4> bone,float time,int layer,Camera camera,Func<int,Color> partTint,float flash,Func<int,bool> visible=null)
         {
             if(a.Hat!=NativeSheldonHead.Hat||sourceModels==null||!sourceModels.Has(NativeSourceModels.SheldonLive))return false;
             var glow=HatBody(a.Hat,a.HatColor)??Color.white;
-            sourceModels.Queue(NativeSourceModels.SheldonLive,root,bone,null,layer,camera,body:glow,partTint:partTint,hitFlash:flash);
+            sourceModels.Queue(NativeSourceModels.SheldonLive,root,bone,visible,layer,camera,body:glow,partTint:partTint,hitFlash:flash);
             var face=sheldonScripted?sheldonScriptFace:NativeSheldonHead.Evaluate(time,a.Id,SheldonHitAge(a.Id,time),SheldonKillAge(a.Id,time),HaloReduced);
             sourceModels.QueueSheldonPieces(bone(CapturedRig.Head),face,glow,layer,camera,1,flash,partTint?.Invoke(CapturedRig.Head)??Color.white);
             return true;

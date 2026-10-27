@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
         private void Draw(Part part,Matrix4x4 matrix,Vector4 body,Color tint,Vector4 glow)=>Draw(part,matrix,body,tint,glow,Vector4.one);
         private void Draw(Part part,Matrix4x4 matrix,Vector4 body,Color tint,Vector4 glow,Vector4 accent)
         {
-            var key=(part,0);if(!draws.TryGetValue(key,out var draw)){draw=new Draws{Part=part};draws[key]=draw;}
+            var key=(part,0,(Camera)null);if(!draws.TryGetValue(key,out var draw)){draw=new Draws{Part=part};draws[key]=draw;}
             draw.Matrices.Add(matrix);draw.Bodies.Add(body);draw.Accents.Add(accent);draw.Tints.Add(tint);draw.Glows.Add(glow);
         }
         /// <summary>A model's meshes as <see cref="Queue"/> draws them, but casting no shadow (a ragdoll's copied parts).
@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
         private void Prune(Dictionary<Part,Part> twins)
         {
             recolorStale.Clear();foreach(var pair in twins)if(pair.Key.Mesh==null)recolorStale.Add(pair.Key);
-            foreach(var part in recolorStale){var twin=twins[part];twins.Remove(part);if(twin!=null)draws.Remove((twin,0));}
+            foreach(var part in recolorStale){var twin=twins[part];twins.Remove(part);if(twin!=null)foreach(var k in System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Where(draws.Keys,k=>k.Item1==twin)))draws.Remove(k);}
         }
     }
 }
