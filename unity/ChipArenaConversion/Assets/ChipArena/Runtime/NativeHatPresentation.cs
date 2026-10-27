@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             if(sheldonParts==null)return;
             for(int p=NativeSheldonHead.EyeLeft;p<=NativeSheldonHead.RingGlow;p++)
             {
-                var part=sheldonParts[p];var key=(part,layer,camera);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
+                var part=sheldonParts[p];var d=DrawsFor(part,layer,camera);
                 float k=p<NativeSheldonHead.Ring?face.Glow:1;
                 d.Matrices.Add(head*PieceLocal(p,face));d.Bodies.Add(new Vector4(glow.r,glow.g,glow.b,opacity));d.Accents.Add(new Vector4(1,1,1,hitFlash));d.Tints.Add(scene);d.Glows.Add(new Vector4(k,k,k,1));
             }

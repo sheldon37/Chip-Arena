@@ -207,7 +207,7 @@ namespace ChipArena.UnityConversion
             {
                 var part=p.Shapes!=null?p.Shapes[pose.Shape]:p.Part;if(part==null||!pose.Shown[p.Index]||visible!=null&&!visible(p.Bone))continue;
                 if(p.Bone!=jointBone){jointBone=p.Bone;joint=bone!=null?bone(p.Bone):root;}
-                var key=(part,layer,camera);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
+                var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
                 // The grin breathes with the eye halos (NativeSirenLook.GrinGlow; the pose's Breath is 1 unless the arena set it).
                 var g=glow??Vector4.one;if(p.Index==NativeSirenLook.GrinUpper||p.Index==NativeSirenLook.GrinLower){float k=(float)NativeSirenLook.GrinGlow(pose.Breath);g.x*=k;g.y*=k;g.z*=k;}
                 else if(p.Line){g.x*=p.Tone.x*line;g.y*=p.Tone.y*line;g.z*=p.Tone.z*line;}

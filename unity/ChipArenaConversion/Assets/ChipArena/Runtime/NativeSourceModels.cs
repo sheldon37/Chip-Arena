@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
             /// stand-in for a cut's cap (a wound cut's unwounded part), and whether its section is never capped (glass, flat cloth).</summary>
             public WeaponSection Core,Fill;public bool Open;}
         private sealed class Draws {public Part Part;public int Layer;public Camera Camera;public readonly List<Matrix4x4> Matrices=new List<Matrix4x4>();public readonly List<Vector4> Bodies=new List<Vector4>(),Accents=new List<Vector4>(),Tints=new List<Vector4>(),Glows=new List<Vector4>();}
-        private readonly Dictionary<string,Part[]> models=new Dictionary<string,Part[]>();private readonly Dictionary<(Part,int,Camera),Draws> draws=new Dictionary<(Part,int,Camera),Draws>();
+        private readonly Dictionary<string,Part[]> models=new Dictionary<string,Part[]>();private readonly Dictionary<(Part,int),Draws> draws=new Dictionary<(Part,int),Draws>();private readonly Dictionary<(Part,int,Camera),Draws> cameraDraws=new Dictionary<(Part,int,Camera),Draws>();
         private readonly List<Texture2D> textures=new List<Texture2D>();private readonly List<Material> materials=new List<Material>();private readonly Matrix4x4[] buffer=new Matrix4x4[512];private readonly Vector4[] bodies=new Vector4[512],accents=new Vector4[512],tints=new Vector4[512],glows=new Vector4[512];private readonly MaterialPropertyBlock properties=new MaterialPropertyBlock();
         public static string Decode(string resource)
         {var asset=Resources.Load<TextAsset>(resource);if(asset==null)throw new InvalidOperationException(resource+" is missing");var envelope=JsonUtility.FromJson<SourceEnvelope>(asset.text);if(envelope.schema!=1||envelope.commit!="05950eaef80ff2483a9c44d898cad98be1a76bbc")throw new InvalidDataException("Unverified "+resource);using(var bytes=new MemoryStream(Convert.FromBase64String(envelope.data)))using(var zip=new GZipStream(bytes,CompressionMode.Decompress))using(var reader=new StreamReader(zip))return reader.ReadToEnd();}
@@ -90,7 +90,17 @@ namespace ChipArena.UnityConversion
             }
             SplitSirenPieces(data);HordeMaterials();WeaponSkins();SheldonModels();PilotBodies();BowModels();HordeKindModels();MachineSkins();
         }
-        public void Begin(){foreach(var d in draws.Values){d.Matrices.Clear();d.Bodies.Clear();d.Accents.Clear();d.Tints.Clear();d.Glows.Clear();}}
+        public void Begin(){foreach(var d in draws.Values)Clear(d);foreach(var d in cameraDraws.Values)Clear(d);}
+        private static void Clear(Draws d){d.Matrices.Clear();d.Bodies.Clear();d.Accents.Clear();d.Tints.Clear();d.Glows.Clear();}
+        // A part's draw list for a layer and camera: the part and layer's own, or, when that one draws to another camera, one of
+        // its own for this camera (2026-10-27: a part first queued for one camera, the menu rooftop crowd's cap, beanie, antenna,
+        // cowboy hat and halo, drew only to that camera after, so a match's model pilots showed none of them to any other).
+        private Draws DrawsFor(Part part,int layer,Camera camera)
+        {
+            var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);return d;}
+            if(d.Camera==camera)return d;
+            var own=(part,layer,camera);if(!cameraDraws.TryGetValue(own,out var c)){c=new Draws{Part=part,Layer=layer,Camera=camera};cameraDraws.Add(own,c);}return c;
+        }
         public bool Has(string id)=>id!=null&&models.ContainsKey(id);
         // `look` poses the Siren's animated pieces (NativeSirenLookPresentation.cs); without one they hold the rest look.
         // `hitFlash`: the struck pilot's flash code (Core NativeHitFlash.Code, 1 = none), carried in the accent tint's unused w
@@ -98,7 +108,7 @@ namespace ChipArena.UnityConversion
         public void Queue(string id,Matrix4x4 root,Func<int,Matrix4x4> bone=null,Func<int,bool> visible=null,int layer=0,Camera camera=null,Color? body=null,Color? accent=null,float opacity=1,Func<int,float> partOpacity=null,Func<int,Color> partTint=null,Vector4? glow=null,NativeSirenLookPose look=null,float hitFlash=1)
         {
             if(!models.TryGetValue(id,out var model))return;Color bc=body??Color.white,ac=accent??Color.white;
-            foreach(var part in model){if(visible!=null&&!visible(part.Bone))continue;var key=(part,layer,camera);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}var matrix=part.Bone>=0&&bone!=null?bone(part.Bone):root;d.Matrices.Add(weaponStretch.Count>0?WeaponStretched(part.Mesh,matrix):matrix);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(part.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,hitFlash));d.Tints.Add(partTint?.Invoke(part.Bone)??Color.white);d.Glows.Add(glow??Vector4.one);}
+            foreach(var part in model){if(visible!=null&&!visible(part.Bone))continue;var d=DrawsFor(part,layer,camera);var matrix=part.Bone>=0&&bone!=null?bone(part.Bone):root;d.Matrices.Add(weaponStretch.Count>0?WeaponStretched(part.Mesh,matrix):matrix);d.Bodies.Add(new Vector4(bc.r,bc.g,bc.b,opacity*(partOpacity?.Invoke(part.Bone)??1)));d.Accents.Add(new Vector4(ac.r,ac.g,ac.b,hitFlash));d.Tints.Add(partTint?.Invoke(part.Bone)??Color.white);d.Glows.Add(glow??Vector4.one);}
             if(lookPieces.Count>0&&lookPieces.TryGetValue(id,out var list))QueuePieces(list,root,bone,visible,layer,camera,bc,ac,opacity,partOpacity,partTint,glow,look);
         }
         /// <summary>
@@ -106,9 +116,10 @@ namespace ChipArena.UnityConversion
         /// the shaders' stage block (`_StageLit`, NativeLighting.Intro), which every other draw leaves off.
         /// </summary>
         public bool Stage;private static readonly int StageLitId=Shader.PropertyToID("_StageLit");
-        public void Flush(bool instancing)
+        public void Flush(bool instancing){FlushAll(draws,instancing);FlushAll(cameraDraws,instancing);}
+        private void FlushAll<K>(Dictionary<K,Draws> lists,bool instancing)
         {
-            foreach(var d in draws.Values)for(int start=0;start<d.Matrices.Count;start+=512)
+            foreach(var d in lists.Values)for(int start=0;start<d.Matrices.Count;start+=512)
             {
                 int count=Math.Min(512,d.Matrices.Count-start);d.Matrices.CopyTo(start,buffer,0,count);d.Bodies.CopyTo(start,bodies,0,count);d.Accents.CopyTo(start,accents,0,count);d.Tints.CopyTo(start,tints,0,count);d.Glows.CopyTo(start,glows,0,count);properties.Clear();properties.SetVectorArray("_BodyTint",bodies);properties.SetVectorArray("_AccentTint",accents);properties.SetVectorArray("_SceneTint",tints);properties.SetVectorArray("_GlowTint",glows);properties.SetFloat(StageLitId,Stage?1:0);
                 bool drawn=false;if(instancing&&SystemInfo.supportsInstancing)try{Graphics.DrawMeshInstanced(d.Part.Mesh,0,d.Part.Material,buffer,count,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true,d.Layer,d.Camera);drawn=true;}catch(InvalidOperationException){instancing=false;}

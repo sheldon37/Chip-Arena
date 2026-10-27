@@ -167,7 +167,7 @@ namespace ChipArena.UnityConversion
         public void WoundCube(Matrix4x4 matrix,Color color,float opacity=1)
         {
             if(!models.TryGetValue("wound-cube",out var parts)){var mat=new Material(Resources.Load<Shader>("NativeSourceLit")){enableInstancing=true};materials.Add(mat);var d=new NativeWoundPart{name="wound-cube",bone=-1,size=new WoundVector(1,1,1),matrix=new float[]{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1},color=new float[]{1,1,1},emission=new float[]{.3f,.3f,.3f}};parts=new[]{CarveMesh(d,new List<WoundSolid>{new WoundSolid{min=new WoundVector(-.5,-.5,-.5),max=new WoundVector(.5,.5,.5),color=new WoundVector(1,1,1)}},mat)};models["wound-cube"]=parts;}
-            var key=(parts[0],0,(Camera)null);if(!draws.TryGetValue(key,out var draw)){draw=new Draws{Part=parts[0]};draws[key]=draw;}draw.Matrices.Add(matrix);draw.Bodies.Add(new Vector4(1,1,1,opacity));draw.Accents.Add(Vector4.one);draw.Tints.Add(color);draw.Glows.Add(Vector4.one);
+            var key=(parts[0],0);if(!draws.TryGetValue(key,out var draw)){draw=new Draws{Part=parts[0]};draws[key]=draw;}draw.Matrices.Add(matrix);draw.Bodies.Add(new Vector4(1,1,1,opacity));draw.Accents.Add(Vector4.one);draw.Tints.Add(color);draw.Glows.Add(Vector4.one);
         }
         /// <summary>Releases one carve: its Prototype boxes, its models and its body-skin cuts.</summary>
         private void ReleaseCarved(Carved old)

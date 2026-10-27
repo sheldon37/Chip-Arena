@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
         }
         private void Face(Part part,Matrix4x4 world,int layer,Camera camera,Vector4 glow)
         {
-            var key=(part,layer,camera);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
+            var key=(part,layer);if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
             d.Matrices.Add(world);d.Bodies.Add(Vector4.one);d.Accents.Add(Vector4.one);d.Tints.Add(Vector4.one);d.Glows.Add(glow);
         }
     }

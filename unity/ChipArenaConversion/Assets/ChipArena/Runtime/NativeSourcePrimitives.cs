@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
         // One piece for this frame's batches (flushed with the source models). `tint` is linear; glow pieces never cast shadows.
         public void QueuePiece(WeaponShape shape,bool glow,Matrix4x4 matrix,Color tint,int layer=0,Camera camera=null)
         {
-            if(pieces==null)BuildPieces();var part=pieces[(int)shape*2+(glow?1:0)];var key=(part,layer,camera);
+            if(pieces==null)BuildPieces();var part=pieces[(int)shape*2+(glow?1:0)];var key=(part,layer);
             if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
             d.Matrices.Add(matrix);d.Bodies.Add(Vector4.one);d.Accents.Add(Vector4.one);d.Tints.Add(new Vector4(tint.r,tint.g,tint.b,1));d.Glows.Add(Vector4.one);
         }
