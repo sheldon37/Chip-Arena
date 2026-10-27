@@ -125,7 +125,7 @@ namespace ChipArena.UnityConversion
             for(int f=0;f<ContactBones.Length;f++)
             {
                 var pb=animator.GetBoneTransform(ContactBones[f]);m.Contacts[f]=pb!=null?Twin(proxy.transform,skeleton,pb):null;
-                var r=pb!=null&&rest!=null&&ContactRadius[f]<0?Twin(proxy.transform,rest,pb):null;m.Clearance[f]=ContactRadius[f]>=0?ContactRadius[f]:r!=null?r.position.y-visualBodyPrefab.transform.position.y:0;
+                var r=pb!=null&&rest!=null&&ContactRadius[f]<0?Twin(proxy.transform,rest,pb):null;m.Clearance[f]=ContactRadius[f]>=0?ContactRadius[f]:r!=null?r.position.y-visualBodyPrefab.transform.position.y+body.Lift:0;
             }
             if(m.BodyHips==null||m.RightHand==null){visualMotionWhy="no hips or right hand";m.Handler.Dispose();Destroy(proxy);return null;}
             visualMotionWhy=null;body.Motion=m;return m;

@@ -1,3 +1,22 @@
+## 2026-10-27 — Claude: Sheldon's clothes on the model, and the Sheldon Head as a cloth hood (merged into shared)
+
+- **Branch/base:** `claude/sheldon-clothes` from shared `4310d477`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
+- **Owner (2026-10-27):** "Can you remake Sheldon clothes into functional clothing items (Hood/face, robe, pants, shoes. Shoeless option too - these are all dev items)"; "Currently the intro uses the voxel head."; "I want it to utilize magica cloth for any kind of fabric movement. I want a very clean design that fits the model perfectly."; "Id like to utilize the same face on the sheldon face".
+- **Changes (presentation only; details in BOZO-INTEGRATION "Sheldon's clothes on the model"):**
+  - **Pieces:** `sheldon-robe` (the pack's long kimono), `sheldon-pants`, `sheldon-boots` and `barefoot`, DEV only (`NativeLook.Gate`, the Locker lists and marks them with live DEV access), in the Sheldon palette on the bake's piped colour maps, the piping in the Sheldon glow. A feet piece's lift sets the body down (bare feet; the sneakers and lace-ups also stopped floating 1.8 cm).
+  - **Hood:** the Sheldon Head on the model is a cloth hood (`Core/NativeSheldonHood`), fitted round the head and hair, with the Sheldon face (a void shaped to the opening, the live eyes, grin and ring) in a piped arch opening, a cowl over the shoulders, skinned head to neck to spine; the hair hides under it. In play, the Sheldon intro, the draft, revives, the portraits and the rooftop.
+  - **Cloth:** the local bridge runs MeshCloth on the kimono's skirt (the pack's paint map) and the hood's cowl (the game's), with hip, leg and floor colliders.
+  - **Bake (local, in the Drive zip):** the wardrobe gains the kimono and trousers, the piped maps and the cloth map; `tools/pack_visual_body.py` carries the textures under the bake's Resources (its test updated).
+  - Local tool v193 (not committed): the Sheldon wardrobe entries, `SheldonMap`, `ClothMap`, the feet lifts, `bozo-face` `hood=1`.
+- **Animation impacts:** none on hit timing, volumes, cooldowns, movement or networking; the bodies' rest is set lower by a feet piece's lift (presentation).
+- **Checks (actual):**
+  - Full CoreTests 853 PASS (LF checkout of `b29ba32c`), with a new VisualRigChecks group: the DEV pieces each slot's last and gated, the Locker and worn look through the gate, the palette, piped maps and glow, the lift before the binding, the hood's arch and rim (sections meet the rim within 1 mm), the void inside the walls and behind the rim, the hair and nose clearance, the eyes and laughing grin inside the opening, the mesh deterministic, in budget and whole-weighted, the cloth's paint and colour layout, the wiring in every body path.
+  - `Tests/test_visual_body_assets.py` PASS. Unity compile: PASS.
+  - Play mode (local tool): the robe set front, three-quarter, side and back; running, sprinting, jumping and rolling (the skirt moving); bare feet and sneakers on the floor; the hood front and three-quarter close-ups, over the robe, the open hoodie and the hard jacket, looking up and down; the Sheldon intro on the model in the cloth hood; the Locker's OUTFIT section with DEV access, and its live preview in the Sheldon Head (local tool v194 `prefhat=`).
+  - Drive zip repacked and checked (`install_local_assets.py --check`: 651 visual body files, 63.65 MB).
+- **Not run:** the main menu's rooftop pilot in the Sheldon Head in play (wired and checked in source; the capture's backdrop did not frame it); a Windows build; multiplayer (other pilots show the default outfit until the look travels; the hood rides the hat, which does travel); cloth in builder builds (no Magica there yet).
+- **Handoff to Astra (pending since 2026-10-26, now with):** when the look field travels, the host applies `NativeLook.Gate` with the peer's verified DEV access (as `NativeBodySkins.Gate`), and the relay's allowlist takes the new ids; the zip's Magica path carries the regenerated bridge (`ChipArenaClothBridge.cs`).
+
 ## 2026-10-27 — Claude: the mask refitted, hats on the model, the Sheldon intro on the model, gibs with flesh and bones (merged into shared)
 
 - **Branch/base:** `claude/model-mask-hats` from shared `96929597`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.

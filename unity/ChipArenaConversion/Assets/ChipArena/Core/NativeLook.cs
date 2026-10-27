@@ -8,8 +8,9 @@ namespace ChipArena.UnityConversion
     // non-default picks ("upper:hard-jacket,feet:work-boots"), unknown slots and ids dropped, "" for the default outfit (the
     // concept's: spiky hair, the open hoodie, belted pants, fingerless gloves and mid-top sneakers). Each id names a piece of
     // the local visual-body bake's wardrobe; the bake's look data maps it onto its meshes (Runtime/NativeVisualBodyPresentation.cs
-    // VisualDress). It is kept in prefs.look; carrying it to other clients and the account (and any gate) is Astra's part of
-    // the contract. Presentation only: no rule, hit volume, timing or network authority reads it.
+    // VisualDress). It is kept in prefs.look; carrying it to other clients and the account is Astra's part of the contract, with
+    // the DEV gate (Gate: Sheldon's clothes and bare feet, NativeSheldonWear, need live DEV access, as the Sheldon Clothes body
+    // skin does). Presentation only: no rule, hit volume, timing or network authority reads it.
     public static class NativeLook
     {
         public const string Hair="hair",Upper="upper",Lower="lower",Hands="hands",Feet="feet";
@@ -19,16 +20,16 @@ namespace ChipArena.UnityConversion
         /// <summary>Each slot's ids in Slots order (the first is the default) and their labels.</summary>
         public static readonly string[][] Ids={
             new[]{"spiky","wild","side-swept","tied-back","fringe-tail"},
-            new[]{"open-hoodie","hard-jacket","hoodie","tee","tank","sweater"},
-            new[]{"belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis"},
+            new[]{"open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeSheldonWear.Robe},
+            new[]{"belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",NativeSheldonWear.Pants},
             new[]{"fingerless","gloves","arm-bands","sweat-bands","bare"},
-            new[]{"mid-tops","work-boots","sneakers","lace-ups"}};
+            new[]{"mid-tops","work-boots","sneakers","lace-ups",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
         public static readonly string[][] Labels={
             new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail"},
-            new[]{"Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater"},
-            new[]{"Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis"},
+            new[]{"Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater","Sheldon robe"},
+            new[]{"Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis","Sheldon pants"},
             new[]{"Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
-            new[]{"Mid-tops","Work boots","Sneakers","Lace-ups"}};
+            new[]{"Mid-tops","Work boots","Sneakers","Lace-ups","Sheldon boots","Barefoot"}};
         /// <summary>The contract's limit; the longest normalized map is far under it.</summary>
         public const int MaxLength=512;
         public static int SlotIndex(string slot)=>Array.IndexOf(Slots,slot);
@@ -52,6 +53,17 @@ namespace ChipArena.UnityConversion
             return result;
         }
         public static string Of(string map,string slot){int s=SlotIndex(slot);return s<0?null:Ids[s][Index(map,slot)];}
+        /// <summary>Whether a piece is DEV only (Sheldon's clothes and bare feet; NativeSheldonWear).</summary>
+        public static bool DevOnly(string id)=>NativeSheldonWear.DevOnly(id);
+        /// <summary>The map (normalized) with every DEV piece back to its slot's default unless `allowed` (live DEV access): the
+        /// Locker's picks, the pilot's own bodies and, when the look travels, the host's seat. The same string when nothing drops.</summary>
+        public static string Gate(string map,bool allowed)
+        {
+            map=Normalize(map);if(allowed||map.Length==0)return map;
+            var picks=new int[Slots.Length];bool dropped=false;
+            for(int s=0;s<Slots.Length;s++){int k=Index(map,Slots[s]);if(DevOnly(Ids[s][k])){k=0;dropped=true;}picks[s]=k;}
+            return dropped?Join(picks):map;
+        }
 
         /// <summary>The canonical form of a map (see the class comment); never longer than MaxLength.</summary>
         public static string Normalize(string map)

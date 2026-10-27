@@ -1410,6 +1410,8 @@ already? Cant we utilize that?"
       `SheldonOffset`: the face screen just in front of the model's face from chin to brow, the hood round the hair laid
       flat by the hood shape). Its voxel mantle and drapes, cut for the voxel chest, are left off; the model wears its own
       top. The same hood shows wherever the Sheldon Head is worn on the model.
+      - **Since 2026-10-27 (`claude/sheldon-clothes`):** the cloth Sheldon hood (Sheldon's clothes, below) in place of the
+        voxel one; the intro's first beat still forms the voxel body out of its data streams, as every entrance's reveal does.
     - The arena pose and the intro share `VisualBodyOf` and `VisualBodyBind`.
     - Settings · Player model is now set at the top of every frame, so Classic reaches intros, previews, replays and the
       draft (they return before the arena renders).
@@ -1516,11 +1518,53 @@ already? Cant we utilize that?"
   - **Builds:** cloth runs only where the bridge and the package are installed (the owner's Editor and local builds). The
     builder's test builds have none until the build carries the package (Burst, Collections, Mathematics in the manifest)
     and the zip carries Magica and the bridge: Astra's build tooling, with the owner's go-ahead.
-  - **Not yet:** MeshCloth on loose clothing (no baked piece ships a paint map; maps painted or generated on the pieces' UVs
-    would be needed); cloth on corpses, intros and the draft.
+  - **MeshCloth (2026-10-27, `claude/sheldon-clothes`):** a worn piece with a paint map (red fixed, green moving) runs as
+    MeshCloth on the pack's skirt preset: the pack's own maps (`MC2Map`; the bake copies them, readable, to
+    `Resources/ChipArenaVisualCloth/<renderer>`: the kimono's skirt) and the game's own (`NativeVisualCloth.PaintMaps`: the
+    Sheldon hood's cowl). The bridge adds colliders on the hips, thighs and calves and a floor plane under the pilot.
+  - **Not yet:** cloth on corpses; maps for the other pack pieces (none ships one).
   - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
   - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
     and ghosts.
+- **Sheldon's clothes on the model (2026-10-27, `claude/sheldon-clothes`; owner: "Can you remake Sheldon clothes into
+  functional clothing items (Hood/face, robe, pants, shoes. Shoeless option too - these are all dev items)", "I want it to
+  utilize magica cloth for any kind of fabric movement. I want a very clean design that fits the model perfectly.", "Id like
+  to utilize the same face on the sheldon face"):** the DEV Sheldon Clothes (the voxel body skin's long dark coat with
+  glowing seams) and the Sheldon Head as pieces the model wears.
+  - **The pieces** (`Core/NativeSheldonWear`, `Core/NativeLook`): upper `sheldon-robe` (the pack's long kimono: a wrap front,
+    a sash, wide cuffs, a skirt to the ankles), lower `sheldon-pants` (its slim dress trousers), feet `sheldon-boots` (its
+    work boots, shared with Work boots) and `barefoot` (no shoes).
+    - DEV only: each slot's last pieces; `NativeLook.Gate` drops them without live DEV access (the Locker, which lists and
+      marks them only then, and the pilot's own bodies through `LookShown`). The look's network half must gate them too.
+    - **Palette:** the Sheldon Head's dark navy cloth (`Cloth` 0x1f2538), a lighter navy on the trims (`Trim` 0x343d5c), the
+      accent the glow, set per renderer (`VisualSheldonPalette`); the glow is the Sheldon glow (`NativeBodySkins.SheldonGlow`).
+    - **Piping:** the bake writes each piece's colour weights with every trim region's edge against the cloth (its green
+      texels within 5 mm of red) turned to the accent (`SheldonMap`, `Resources/ChipArenaVisualWear/<renderer>`): the robe's
+      collar, cuffs, front and hem edges, the trousers' seams, the boots' caps and laces glow.
+    - **Bare feet** stand on the floor: the bake writes each feet piece's lift (its sole against the default shoes'), and a
+      body's skeleton is set by it before the binding reads its rest (`VisualLiftOf`), the feet's clearances with it. Bare
+      feet sit 2.65 cm lower; the sneakers and lace-ups, which stood 1.8 cm over the floor, now stand on it.
+  - **The hood** (`Core/NativeSheldonHood`, `Runtime/NativeSheldonHoodPresentation.cs`): the Sheldon Head worn on the model
+    is a cloth hood, made with the body (`VisualHooded`: a body is made again when the hat changes).
+    - **Shape:** horizontal superellipse sections round the head's middle; the half width, back and front from smooth
+      profiles; a dome over the crown with a soft point up the back seam. Measured on the bake (`bozo-face` with `hood=1`:
+      every hair style laid flat by its hood shape, every top's collar and shoulders): at least 2.3 cm clear of the head and
+      hair, clear of every top's shoulders.
+    - **Opening:** an arch from the chin to over the brow (20 cm wide), its rim 18 to 20.5 cm ahead of the head bone (a brim
+      over the brow, the walls standing out past the face), piped with a rolled tube; a cowl over the neck and the tops of
+      the shoulders, its hem down to the chest and back with a piped band; a dark lining inside.
+    - **Face:** the Sheldon Head's own (owner: "the same face"): a void plate shaped to the opening (`NativeSheldonHood.Void`,
+      with the face's baked soft glow), the live crescent eyes, jagged grin and broken ring (`SheldonHoodFace`;
+      `SheldonHoodStill` on the portraits and the rooftop), on the face's fit (`NativeModelHats.SheldonScale`). The void
+      reaches 1.6 cm under the chin, so a look down through the opening never meets the gap over the chest.
+    - **Skinning:** the head to the chin (the face's frame and the rim), its back easing onto the neck from 6 cm higher
+      (the nape follows the neck over a hoodie's hood); the cowl through the neck to `spine_05`, its sides partly on their
+      collarbone.
+    - **Cloth:** its paint map holds the hood to the chin fixed and lets the cowl move (`NativeSheldonHood.Maps`).
+    - The hair hides under it. Where it shows: play, the intros (the Sheldon intro's resolve), the draft, revives, the
+      portraits and the rooftop (where the model had shown no Sheldon Head).
+  - **Where cloth runs:** the Editor and local builds (the bridge). Builder builds draw the skirt and the cowl skinned until
+    the builder carries Magica (Astra's handoff, 2026-10-26).
 - **The concept's back emblem (2026-10-25, `claude/model-cyberlord`):** a smiley with X eyes in flat accent-glow strokes
   (`NativePilotGear.Emblem`, our own), about 8 cm across on the upper back. It sits on the chest's model bone, measured on
   the baked hoodie, and glows as the core does. Every model pilot wears it, as the concept's default outfit does.
@@ -1544,7 +1588,7 @@ already? Cant we utilize that?"
     - a hat that covers the crown presses the hair under it with each hair piece's own hood shape (`Tag_Hood`: the spikes
       laid into a ring round the head; the pack's hat shape bares the scalp down the back, which only its own deep hats
       cover);
-    - the Sheldon Head is a hood over the head (the intros, above).
+    - the Sheldon Head is a cloth hood (Sheldon's clothes, below).
   - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
     it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
     camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed

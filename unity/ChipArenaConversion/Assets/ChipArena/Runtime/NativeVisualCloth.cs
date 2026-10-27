@@ -19,5 +19,8 @@ namespace ChipArena.UnityConversion
         public static Action<object> Reset;
         /// <summary>The distance from the arena's camera past which a body's cloth holds still (m).</summary>
         public const float Far=30;
+        /// <summary>Paint maps for the game's own cloth pieces, by their renderers' names (red fixed, green moving; readable): the
+        /// Sheldon hood's. The simulation takes these before the bake's own (the pack's, by the same names).</summary>
+        public static readonly System.Collections.Generic.Dictionary<string,Texture2D> PaintMaps=new System.Collections.Generic.Dictionary<string,Texture2D>(StringComparer.Ordinal);
     }
 }

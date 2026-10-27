@@ -348,7 +348,7 @@ namespace ChipArena.UnityConversion
             rig.Root.transform.SetPositionAndRotation(group.GetColumn(3),root.rotation);
             if(!NativePoseWriter.Write(rig.Bones,s.Pose,"a rooftop pilot"))return false;
             var a=cast.Actors[i];a.Id=id;a.SourceSpec=look.Spec;a.Hat=look.Hat;a.HatColor=hatColor;a.BodyColor=look.Body;a.AccentColor=look.Accent;a.WeaponAway=!s.Weapon.Visible;a.Grounded=true;
-            var body=VisualBodyOf(rig,id);if(body==null)return false;
+            var body=VisualBodyOf(rig,id,VisualHooded(a));if(body==null)return false;
             body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
             var held=VisualBodyBind(body,rig,a,time,s.Pose,false,false);
             if(i==0)
@@ -364,6 +364,7 @@ namespace ChipArena.UnityConversion
                 var hb=VisualHatBone(rig,look.Hat);
                 if(!AuditorHalo(look.Hat,hb(CapturedRig.Head),time,1,reduced,0,camera,camera,hatColor))sourceModels.Queue(HatModel(look.Hat,hatColor),rig.Root.transform.localToWorldMatrix,hb,null,0,camera,body:HatBody(look.Hat,hatColor));
             }
+            else SheldonHoodStill(body,look.Hat,hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,look.Hat),time,i,reduced,0,camera);
             VisualGear(body,a,time,null,null,1,false);
             if(i>0&&(s.Weapon.Visible||s.Offhand.Visible))
             {
