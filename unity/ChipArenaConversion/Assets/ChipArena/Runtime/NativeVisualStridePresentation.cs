@@ -78,6 +78,9 @@ namespace ChipArena.UnityConversion
         private bool VisualStrideContacts(int id,out int contacts)
         {
             contacts=0;if(!rigs.TryGetValue(id,out var rig)||!visualBodies.TryGetValue(rig,out var body)||body.PosedFrame!=Time.frameCount)return false;
+            // While the model's own clips carry the legs, its drawn feet's plants (VisualMotionFeet): the stride's run under them
+            // is out of step with what is drawn.
+            var m=body.Motion;if(m!=null&&m.Weight>=.5f&&m.LocoShare>=.5f){contacts=(m.FootLocked[0]?1:0)|(m.FootLocked[1]?2:0);return true;}
             var s=body.Stride;if(s==null||s.Weight<.5f)return false;
             contacts=(s.Locked[0]?1:0)|(s.Locked[1]?2:0);return true;
         }

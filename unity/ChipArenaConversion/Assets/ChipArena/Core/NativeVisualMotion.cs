@@ -279,6 +279,9 @@ namespace ChipArena.UnityConversion
         public sealed class Memory
         {
             public bool WasGrounded=true;public float AirSince=-100,LandedAt=-100,AirAttackAt=-100;
+            /// <summary>A block held on (the rules raise it again every few tenths of a second while it is held): when it began,
+            /// and when the last seen one ends.</summary>
+            public float BlockFrom=-100,BlockSeenUntil=-100;
         }
         /// <summary>What the model plays this frame: a clip at a time (looping or held at its end), or the locomotion blend.</summary>
         public struct Pick { public string Clip; public float Time; public bool Locomotion; public float Fade;
@@ -290,18 +293,41 @@ namespace ChipArena.UnityConversion
             /// attack's leaping run (Flies).</summary>
             public bool Flight; }
 
-        public const float FadeIn=.08f, FadeOut=.2f, LandFor=.22f, ReactionMin=.25f;
+        public const float FadeIn=.1f, FadeOut=.2f, ReactionMin=.25f;
+        // ---- Motion polish (owner 2026-10-27: "Make the movements look realistic and not glitchy. For everything, movements,
+        // attacks, for all weapons"). Measured frame by frame in play, every weapon:
+        /// <summary>A strike's clip plays at most this much faster than its own pace. The pack's wind-ups are slow beside the
+        /// rules' (a dagger cut's Hit 0.5 s in, the rules' 0.22 s), so fitted whole they played at two to four times: a wind-up
+        /// that short starts further into its clip instead, and a recovery that short is cut by what comes next.</summary>
+        public const float MaxStrikeRate=1.5f;
+        /// <summary>The jump clip's launch (s): before it, its crouch and push, which the game's jump has already made; played
+        /// from the press, the legs snapped from the crouch to straight in one frame.</summary>
+        public const float JumpLaunch=.067f, JumpFade=.12f;
+        /// <summary>A landing plays at LandRate times its own pace, for at most LandFor seconds (squeezed into 0.22 s it played
+        /// at twice its pace).</summary>
+        public const float LandFor=.45f, LandRate=1.15f;
+        /// <summary>A hit reaction plays between ReactSlow and MaxStrikeRate times its own pace (fitted whole to the rules'
+        /// quarter-second reaction it twitched at two to three times); past the reaction it fades into what follows, going on.</summary>
+        public const float ReactSlow=.7f;
+        /// <summary>A roll plays at most MaxRollRate times its pace (the pack's 0.8 s roll fitted to the rules' half second tumbled
+        /// at 1.6 times): it is still getting up as the roll ends, and finishes as it fades into what follows.</summary>
+        public const float MaxRollRate=1.3f;
         /// <summary>Whether a weapon's sprint (dash) attack keeps its clip's own flight (owner 2026-10-26: "dash attacks need
         /// fixing on melee, it looks like they need to be in the air when dash attacking?"). The pack's run attacks leap through
         /// their strides; pinned to the floor, their flights read as a crawl. The greatsword's is the game's own hop
         /// (NativeSprintAttackRules.Leaps), whose height the body already has, so its clip stays on the pilot's feet.</summary>
         public static bool Flies(string spec)=>!NativeSprintAttackRules.Leaps(spec);
-        /// <summary>A swing's clip time: its wind-up to the clip's Hit on the middle of the rules' hit window, its end on the swing's.</summary>
+        /// <summary>A swing's clip time: its wind-up to the clip's Hit on the middle of the rules' hit window, its end on the
+        /// swing's, at most MaxStrikeRate times the clip's pace.</summary>
         private static float AttackTime(Actor a,float time,string clip,IClips clips)
         {
-            float windup=a.VisualWindup>0?a.VisualWindup:.25f,hitAt=a.SwingAt>=a.AttackAt&&a.SwingUntil>a.SwingAt?(a.SwingAt+a.SwingUntil)*.5f:a.AttackAt+windup;
-            return Retime(time,a.AttackAt,hitAt,Math.Max(hitAt+.05f,a.AttackUntil),clips.Hit(clip),clips.Length(clip));
+            float hitAt=HitAt(a);
+            return Retime(time,a.AttackAt,hitAt,Math.Max(hitAt+.05f,a.AttackUntil),clips.Hit(clip),clips.Length(clip),MaxStrikeRate);
         }
+        /// <summary>The middle of a swing's hit window: the replicated window while it lasts, then the same from the swing's own
+        /// wind-up and active span (the window resets once it closes; reading the wind-up alone jumped the clip 0.08-0.11 s on).</summary>
+        public static float HitAt(Actor a)=>a.SwingAt>=a.AttackAt&&a.SwingUntil>a.SwingAt?(a.SwingAt+a.SwingUntil)*.5f
+            :a.AttackAt+(a.VisualWindup>0?a.VisualWindup:.25f)+Math.Max(0,a.VisualActive)*.5f;
         /// <summary>The greatsword's leaping cleave has landed (the game's hop comes down as the hit window opens: SwingAt while it
         /// is replicated, then the cast's wind-up from AttackAt, Touchdown): the pack's
         /// run attack strides on through its follow-through, which on a stopped pilot read as a crawl, so its legs become the
@@ -355,7 +381,12 @@ namespace ChipArena.UnityConversion
             if(a.JuggleUntil>time){if(set.Knockdown==null||!clips.Has(set.Knockdown)){Declined="juggle";return false;}pick=new Pick{Clip=set.Knockdown,Time=clips.Length(set.Knockdown)*KnockImpact*KnockFlight,Fade=FadeIn};return true;}
             if(!mapped&&a.MeleeKit!=null&&a.MeleeKit.At>-90&&time>=a.MeleeKit.At&&time<a.MeleeKit.Until){Declined="kit";return false;}
             // The Ansatsuken's roll is its Demon Step: the pack's dash.
-            if(a.Rolling(time))return Fit(set.Fighter&&a.SourceSpec=="ansatsuken"&&set.Step!=null?set.Step:set.Roll,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);
+            if(a.Rolling(time))
+            {
+                if(set.Fighter&&a.SourceSpec=="ansatsuken"&&set.Step!=null)return Fit(set.Step,time,a.RollAt,a.RollAt+a.VisualRollDuration,clips,FadeIn,out pick);
+                if(!clips.Has(set.Roll))return false;float len=clips.Length(set.Roll),rate=Math.Max(1,Math.Min(MaxRollRate,len/Math.Max(.05f,a.VisualRollDuration)));
+                pick=new Pick{Clip=set.Roll,Time=Math.Min(len,(time-a.RollAt)*rate),Fade=FadeIn};return true;
+            }
             // The plunging air attack: its Hit on the impact (the landing), else on the clip's own.
             if(a.AirAttack&&a.AttackAt>-90&&time>=a.AttackAt)
             {
@@ -375,7 +406,7 @@ namespace ChipArena.UnityConversion
                     if(clips.Has(clip))
                     {
                         float hit=clips.Hit(clip),len=clips.Length(clip),hitAt=a.SourceAt+(a.SourceUntil-a.SourceAt)*(last?FinisherHit:StrikeHit),end=Math.Max(a.SourceUntil,hitAt+(len-hit)*.5f);
-                        if(time<end){pick=new Pick{Clip=clip,Time=Retime(time,a.SourceAt,hitAt,end,hit,len),Fade=FadeIn};return true;}
+                        if(time<end){pick=new Pick{Clip=clip,Time=Retime(time,a.SourceAt,hitAt,end,hit,len,MaxStrikeRate),Fade=FadeIn};return true;}
                     }
                 }
                 else if(NativeFighterPose.Acting(a.SourceAction,a.SourceUntil,time))
@@ -395,19 +426,29 @@ namespace ChipArena.UnityConversion
             if(a.ReactionAt>-90&&time>=a.ReactionAt&&time<Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin))
             {
                 string clip=set.Reactions[Side(a.ReactionYaw)];if(!clips.Has(clip))return false;
-                return Fit(clip,time,a.ReactionAt,Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin),clips,FadeIn,out pick);
+                float len=clips.Length(clip),span=Math.Max(a.ReactionUntil,a.ReactionAt+ReactionMin)-a.ReactionAt,rate=Math.Max(ReactSlow,Math.Min(MaxStrikeRate,len/Math.Max(.05f,span)));
+                pick=new Pick{Clip=clip,Time=Math.Min(len,(time-a.ReactionAt)*rate),Fade=FadeIn};return true;
             }
             if(a.StunUntil>time&&clips.Has(set.Stunned)){pick=new Pick{Clip=set.Stunned,Time=time,Fade=FadeIn};return true;}
-            if(time>=a.BlockAt&&time<a.BlockUntil&&clips.Has(set.Block)){pick=new Pick{Clip=set.Block,Time=time-a.BlockAt,Fade=FadeIn};return true;}
+            if(time>=a.BlockAt&&time<a.BlockUntil&&clips.Has(set.Block))
+            {
+                // Held on, the block's clip keeps going (raised again by the rules, begun again it pumped the arms).
+                if(a.BlockAt>m.BlockSeenUntil+.05f||a.BlockAt<m.BlockFrom)m.BlockFrom=a.BlockAt;m.BlockSeenUntil=a.BlockUntil;
+                pick=new Pick{Clip=set.Block,Time=time-m.BlockFrom,Fade=FadeIn};return true;
+            }
             if(!a.Grounded)
             {
                 // The air jump's flip, the rise, the fall.
                 if(a.AirJumps>0&&a.AirJumpAt>-90&&time>=a.AirJumpAt&&time-a.AirJumpAt<clips.Length(set.Flip)&&clips.Has(set.Flip)){pick=new Pick{Clip=set.Flip,Time=time-a.AirJumpAt,Fade=FadeIn};return true;}
-                if(a.Velocity.y>0&&clips.Has(set.Jump)){pick=new Pick{Clip=set.Jump,Time=time-m.AirSince,Fade=FadeIn};return true;}
+                if(a.Velocity.y>0&&clips.Has(set.Jump)){pick=new Pick{Clip=set.Jump,Time=time-m.AirSince+JumpLaunch,Fade=JumpFade};return true;}
                 if(clips.Has(set.Fall)){pick=new Pick{Clip=set.Fall,Time=time-m.AirSince,Fade=FadeOut};return true;}
                 Declined="air";return false;
             }
-            if(!moving&&time-m.LandedAt<LandFor&&clips.Has(set.Land)){pick=new Pick{Clip=set.Land,Time=(time-m.LandedAt)*clips.Length(set.Land)/LandFor,Fade=FadeIn};return true;}
+            if(!moving&&clips.Has(set.Land))
+            {
+                float rate=Math.Max(LandRate,clips.Length(set.Land)/LandFor),since=time-m.LandedAt;
+                if(since<clips.Length(set.Land)/rate){pick=new Pick{Clip=set.Land,Time=since*rate,Fade=FadeIn};return true;}
+            }
             if(moving){pick=new Pick{Locomotion=true,Fade=FadeOut};return true;}
             if(!clips.Has(set.Idle))return false;
             pick=new Pick{Clip=set.Idle,Time=time,Fade=FadeOut};return true;
@@ -450,7 +491,7 @@ namespace ChipArena.UnityConversion
             bool Hit(string clip,float hitAt,float end,out Pick p)
             {
                 p=default;if(clip==null||!clips.Has(clip))return false;float len=clips.Length(clip),hit=clips.Hit(clip);if(!(hit>0&&hit<len))hit=len*.5f;
-                p=new Pick{Clip=clip,Time=Retime(time,at,hitAt,Math.Max(end,hitAt+(len-hit)*.5f),hit,len),Fade=FadeIn};return true;
+                p=new Pick{Clip=clip,Time=Retime(time,at,hitAt,Math.Max(end,hitAt+(len-hit)*.5f),hit,len,MaxStrikeRate),Fade=FadeIn};return true;
             }
             switch(a.SourceAction)
             {
@@ -469,7 +510,8 @@ namespace ChipArena.UnityConversion
                     int k=time<hitAt?0:Math.Min(total-1,(int)((time-hitAt)/gap)+1);string clip=set.Kicks[k%set.Kicks.Length];if(!clips.Has(clip))return false;
                     float len=clips.Length(clip),hit=clips.Hit(clip);if(!(hit>0&&hit<len))hit=len*.5f;
                     float from=k==0?at:hitAt+(k-1)*gap,to=k==0?hitAt:hitAt+k*gap;
-                    float t=time<=last?hit*Clamp01((time-from)/Math.Max(1e-3f,to-from)):hit+(len-hit)*Clamp01((time-last)/Math.Max(.05f,until-last));
+                    float start=Math.Max(0,hit-Math.Max(1e-3f,to-from)*MaxStrikeRate);
+                    float t=time<=last?start+(hit-start)*Clamp01((time-from)/Math.Max(1e-3f,to-from)):hit+(len-hit)*Clamp01((time-last)/Math.Max(Math.Max(.05f,until-last),(len-hit)/MaxStrikeRate));
                     pick=new Pick{Clip=clip,Time=t,Fade=FadeIn};return true;
                 }
                 case "shoryuken":
@@ -491,6 +533,14 @@ namespace ChipArena.UnityConversion
         {
             if(time<=hitAt)return hit*Clamp01((time-start)/Math.Max(1e-3f,hitAt-start));
             return hit+(length-hit)*Clamp01((time-hitAt)/Math.Max(1e-3f,end-hitAt));
+        }
+        /// <summary>Retime at most `maxRate` times the clip's pace: a wind-up too short for the clip's starts later into it (the
+        /// Hit still on hitAt), and a recovery too short for its clip plays on past `end` (what comes next fades it out).</summary>
+        public static float Retime(float time,float start,float hitAt,float end,float hit,float length,float maxRate)
+        {
+            float from=Math.Max(0,hit-Math.Max(1e-3f,hitAt-start)*maxRate);
+            if(time<=hitAt)return from+(hit-from)*Clamp01((time-start)/Math.Max(1e-3f,hitAt-start));
+            return hit+(length-hit)*Clamp01((time-hitAt)/Math.Max(Math.Max(1e-3f,end-hitAt),(length-hit)/maxRate));
         }
         /// <summary>The reaction's side from its yaw (the struck pilot's facing frame, +x its left, radians): 0 front, 1 back,
         /// 2 left, 3 right.</summary>

@@ -346,13 +346,13 @@ namespace ChipArena.UnityConversion
             float last=-1;for(float t=10;t<11;t+=.01f){float c=P(cut,t).Time;Check(c>=last-1e-5f,"a strike's clip only moves forward");last=c;}
             cut.Combo=1;Check(P(cut,10.2f).Clip==set.Attacks[1],"the combo's next cut its next clip");cut.Combo=set.Attacks.Length;Check(P(cut,10.2f).Clip==set.Attacks[0],"the combo's clips cycle");
             cut.SprintAttack=true;Check(P(cut,10.2f).Clip==set.SprintAttack,"a sprint attack its own clip");
-            var roll=Ground();roll.RollAt=5;Check(P(roll,5+roll.VisualRollDuration*.5f).Clip==set.Roll&&Math.Abs(P(roll,5+roll.VisualRollDuration*.5f).Time-.6f)<1e-3f,"a roll fills the roll");
+            var roll=Ground();roll.RollAt=5;Check(P(roll,5+roll.VisualRollDuration*.5f).Clip==set.Roll&&Math.Abs(P(roll,5+roll.VisualRollDuration*.5f).Time-roll.VisualRollDuration*.5f*NativeVisualMotion.MaxRollRate)<1e-3f,"a roll plays through the roll at most MaxRollRate times its pace");
             var plunge=new Actor{Grounded=false,AirAttack=true,AttackAt=20,AttackUntil=21,ImpactAt=20.5f};Check(P(plunge,20.5f).Clip==set.AirAttack&&Math.Abs(P(plunge,20.5f).Time-.42f)<1e-4f,"the plunge's Hit on its impact");
             var air=new Actor{Grounded=false,Velocity=new V3(0,3,0)};Check(P(air,30).Clip==set.Jump,"rising: the jump");
             air.Velocity=new V3(0,-3,0);Check(P(air,30).Clip==set.Fall,"falling: the fall");
             air.AirJumps=1;air.AirJumpAt=30;Check(P(air,30.1f).Clip==set.Flip,"an air jump: the flip");
             var mem=new NativeVisualMotion.Memory();var land=new Actor{Grounded=false};P(land,40,false,mem);land.Grounded=true;
-            Check(P(land,40.05f,false,mem).Clip==set.Land&&P(land,40.05f+NativeVisualMotion.LandFor,false,mem).Clip==set.Idle,"a landing, then the idle");
+            Check(P(land,40.05f,false,mem).Clip==set.Land&&P(land,40.05f+NativeVisualMotion.LandFor+.01f,false,mem).Clip==set.Idle,"a landing, then the idle");
             var hit=Ground();hit.ReactionAt=60;hit.ReactionUntil=60.5f;hit.ReactionYaw=0;Check(P(hit,60.2f).Clip==set.Reactions[0],"struck from the front");
             hit.ReactionYaw=(float)Math.PI;Check(P(hit,60.2f).Clip==set.Reactions[1],"struck from behind");
             Check(NativeVisualMotion.Side(1.2f)==2&&NativeVisualMotion.Side(-1.2f)==3&&NativeVisualMotion.Side(.3f)==0&&NativeVisualMotion.Side(3f)==1,"reaction sides by the yaw");
@@ -370,12 +370,64 @@ namespace ChipArena.UnityConversion
             var juggled=Ground();juggled.JuggleUntil=99;Check(NativeVisualMotion.Choose(set,juggled,98.5f,new NativeVisualMotion.Memory(),downBook,false,out downPick)&&downPick.Clip==set.Knockdown,"juggled: the fall's flight");
             Check(!NativeVisualMotion.Choose(sword,down,96,new NativeVisualMotion.Memory(),book,false,out _)&&NativeVisualMotion.Declined=="down","without the clips a knockdown keeps the game's pose");
             Check(Math.Abs(NativeVisualMotion.Retime(1,1,2,3,.4f,1.2f))<1e-6f&&Math.Abs(NativeVisualMotion.Retime(2,1,2,3,.4f,1.2f)-.4f)<1e-6f&&Math.Abs(NativeVisualMotion.Retime(9,1,2,3,.4f,1.2f)-1.2f)<1e-6f,"retiming: start, Hit and end held");
+            // Motion polish (owner 2026-10-27: "Make the movements look realistic and not glitchy. For everything, movements,
+            // attacks, for all weapons"), measured frame by frame in play on every weapon.
+            {
+                // The Hit: on the window's middle while it is replicated and after it resets (the clip jumped 0.08-0.11 s on).
+                var swing=new Actor{Grounded=true,SourceSpec="sword",AttackAt=10,AttackUntil=10.62f,SwingAt=10.14f,SwingUntil=10.3f,VisualWindup=.14f,VisualActive=.16f};
+                float open=NativeVisualMotion.HitAt(swing);NativeVisualMotion.Choose(sword,swing,10.35f,new NativeVisualMotion.Memory(),book2,false,out var during);
+                swing.SwingAt=swing.SwingUntil=-100;NativeVisualMotion.Choose(sword,swing,10.35f,new NativeVisualMotion.Memory(),book2,false,out var after);
+                Check(Math.Abs(open-10.22f)<1e-5f&&Math.Abs(NativeVisualMotion.HitAt(swing)-open)<1e-5f&&Math.Abs(during.Time-after.Time)<1e-5f,"a swing's clip runs on as its hit window resets");
+                // A wind-up too short for its clip starts further in, at most MaxStrikeRate times its pace; its Hit still mid window.
+                var quick=new Actor{Grounded=true,SourceSpec="daggers",AttackAt=20,AttackUntil=20.4f,SwingAt=20.1f,SwingUntil=20.2f};
+                NativeVisualMotion.Choose(daggers,quick,20,new NativeVisualMotion.Memory(),book2,false,out var q0);NativeVisualMotion.Choose(daggers,quick,20.075f,new NativeVisualMotion.Memory(),book2,false,out var q1);
+                NativeVisualMotion.Choose(daggers,quick,20.15f,new NativeVisualMotion.Memory(),book2,false,out var q2);NativeVisualMotion.Choose(daggers,quick,20.25f,new NativeVisualMotion.Memory(),book2,false,out var q3);
+                Check(Math.Abs(q0.Time-(.42f-.15f*NativeVisualMotion.MaxStrikeRate))<1e-4f&&Math.Abs((q1.Time-q0.Time)/.075f-NativeVisualMotion.MaxStrikeRate)<1e-3f&&Math.Abs(q2.Time-.42f)<1e-4f
+                    &&Math.Abs((q3.Time-q2.Time)/.1f-NativeVisualMotion.MaxStrikeRate)<1e-3f,"a quick strike: into its wind-up late, its Hit mid window, never faster than MaxStrikeRate");
+                Check(Math.Abs(NativeVisualMotion.Retime(5,1,2,3,.4f,1.2f,10)-1.2f)<1e-6f&&Math.Abs(NativeVisualMotion.Retime(2.5f,1,2,3,.4f,1.2f,.5f)-.65f)<1e-5f&&Math.Abs(NativeVisualMotion.Retime(1,1,2,3,.4f,1.2f,.2f)-.2f)<1e-5f,"the capped retime: a slow fit unchanged, a quick one limited each side");
+                // The jump from its launch (its crouch is the game's own push); a landing at about its own pace.
+                var jm=new NativeVisualMotion.Memory();var hop=new Actor{Grounded=true};P(hop,29,false,jm);hop.Grounded=false;hop.Velocity=new V3(0,4,0);var rise=P(hop,30,false,jm);
+                Check(rise.Clip==set.Jump&&Math.Abs(rise.Time-NativeVisualMotion.JumpLaunch)<1e-5f&&rise.Fade==NativeVisualMotion.JumpFade,"a jump plays from its launch");
+                var lm=new NativeVisualMotion.Memory();var down2=new Actor{Grounded=false};NativeVisualMotion.Choose(sword,down2,40,lm,book2,false,out _);down2.Grounded=true;NativeVisualMotion.Choose(sword,down2,40.05f,lm,book2,false,out _);
+                Check(NativeVisualMotion.Choose(sword,down2,40.15f,lm,book2,false,out var landed)&&landed.Clip==sword.Land&&Math.Abs(landed.Time-.1f*Math.Max(NativeVisualMotion.LandRate,1.2f/NativeVisualMotion.LandFor))<1e-4f
+                    &&NativeVisualMotion.Choose(sword,down2,40.06f+NativeVisualMotion.LandFor,lm,book2,false,out var stood)&&stood.Clip==sword.Idle,"a landing at its own pace or a little quicker, done within LandFor");
+                // A hit reaction at about its own pace (it twitched at two to three times); a block held on keeps its clip going.
+                var struck=Ground();struck.ReactionAt=60;struck.ReactionUntil=60.25f;
+                Check(Math.Abs(P(struck,60.2f).Time-.2f*NativeVisualMotion.MaxStrikeRate)<1e-4f,"a quick reaction plays at most MaxStrikeRate times its pace");
+                var bm=new NativeVisualMotion.Memory();var held=Ground();held.BlockAt=70;held.BlockUntil=70.3f;var b1=P(held,70.2f,false,bm);held.BlockAt=70.28f;held.BlockUntil=70.58f;var b2=P(held,70.4f,false,bm);
+                held.BlockAt=75;held.BlockUntil=75.3f;var b3=P(held,75.1f,false,bm);
+                Check(b1.Clip==set.Block&&Math.Abs(b1.Time-.2f)<1e-4f&&Math.Abs(b2.Time-.4f)<1e-4f&&Math.Abs(b3.Time-.1f)<1e-4f,"a block raised again while held goes on; a new block starts afresh");
+                // The stride's phase: from the knees' bend, so the mixed runs and walks step together.
+                NativeVisualMotionClips.Clip Gait(float shift){int n=24,w=NativeVisualMotionClips.Head+2;var c=new NativeVisualMotionClips.Clip{Frames=n+1,Stride=w,Rate=30,Loop=true,Length=n/30f,Data=new float[(n+1)*w]};
+                    for(int f=0;f<=n;f++){double a=2*Math.PI*(f/(double)n-shift);c.Data[f*w+6]=1;c.Data[f*w+NativeVisualMotionClips.Head]=(float)Math.Cos(a);c.Data[f*w+NativeVisualMotionClips.Head+1]=-(float)Math.Cos(a);}return c;}
+                float g0=NativeVisualMotionClips.StridePhase(Gait(0),0,1),g3=NativeVisualMotionClips.StridePhase(Gait(.3f),0,1);
+                Check(Math.Abs(g0-.5f)<1e-3f&&Math.Abs(g3-.8f)<1e-3f&&NativeVisualMotionClips.StridePhase(Gait(0),-1,1)==0,"a stride's phase from its knees, and its shift");
+                // Between frames: a smooth curve through them, never past them.
+                var ramp=new NativeVisualMotionClips.Clip{Frames=4,Stride=NativeVisualMotionClips.Head+1,Rate=1,Length=3,Data=new float[4*(NativeVisualMotionClips.Head+1)]};
+                for(int f=0;f<4;f++){ramp.Data[f*(NativeVisualMotionClips.Head+1)+6]=1;ramp.Data[f*(NativeVisualMotionClips.Head+1)+NativeVisualMotionClips.Head]=f<2?0:1;}
+                var smix=new float[NativeVisualMotionClips.Head+1];float lastV=-1;bool inside=true,rising=true;
+                for(float s=0;s<=3;s+=.05f){Array.Clear(smix,0,smix.Length);NativeVisualMotionClips.Add(ramp,s,1,smix);NativeVisualMotionClips.Finish(smix,1);float v=smix[NativeVisualMotionClips.Head];inside&=v>=-1e-5f&&v<=1+1e-5f;rising&=v>=lastV-1e-5f;lastV=v;}
+                Array.Clear(smix,0,smix.Length);NativeVisualMotionClips.Add(ramp,1.5f,1,smix);NativeVisualMotionClips.Finish(smix,1);
+                Check(inside&&rising&&Math.Abs(smix[NativeVisualMotionClips.Head]-.5f)<1e-5f,"a clip's curve between frames neither overshoots nor turns back");
+                string mo=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeVisualMotionPresentation.cs")).Replace("\r\n","\n");
+                Check(mo.Contains("if(m.Weights[ti]>.02f&&(d<-.02f||d>.05f+dt*2.5f))jumped=true;")&&mo.Contains("if(upper&&m.UpA!=null&&(up.A!=m.UpA||!(Mathf.Abs(up.TimeA-m.UpTimeA-dt)<.05f+dt*2.5f)))jumped=true;")
+                    &&mo.Contains("VisualMotionInertia(m,jumped,dt,upper);")&&mo.IndexOf("VisualMotionInertia(m,jumped,dt,upper);",StringComparison.Ordinal)<mo.IndexOf("VisualMotionApply(m,m.Mix);",StringComparison.Ordinal),
+                    "a pose that would jump is carried over (its difference sprung away) before it goes on the body");
+                Check(mo.Contains("NativeVisualMotionClips.Add(m.Clips[i],m.Times[i],Ease(m.Weights[i]),m.Mix);")&&mo.Contains("if(i!=target&&m.Weights[i]>0){var c=m.Clips[i];m.Times[i]=c.Loop?m.Times[i]+dt:Mathf.Min(m.Times[i]+dt,c.Length);}")
+                    &&mo.Contains("Mathf.Repeat(m.Phase+m.LocoOffset[k],1)*m.LocoLength[k]"),"crossfades eased, a fading clip going on at its pace, each stride on its offset");
+                Check(mo.Contains("if(m.GuardSeen&&pin!=m.GuardPin){m.GuardCarry+=m.GuardApplied-goal;m.GuardCarryVel=0;}")&&mo.Contains("float applied=m.GuardApplied=Mathf.Min(goal+m.GuardCarry,deepest);"),"the guard's switch carried off, never under the floor");
+                int feet=mo.IndexOf("VisualMotionFeet(m,body.Root.transform,plant,pick.Locomotion,dt,wgt);",StringComparison.Ordinal),guarded=mo.IndexOf("m.BodyHips.position-=origin.up*(applied*wgt);",StringComparison.Ordinal),carried=mo.IndexOf("if(m.Trail>0)VisualSwordTrail(",StringComparison.Ordinal);
+                Check(feet>guarded&&carried>feet,"the feet plant after the guard and before the sword's carry");
+                Check(mo.Contains("float twist=NativeSwordTrail.Twist(CapturedAnimation.Num(goal*Quaternion.Inverse(hand)),CapturedAnimation.Num(forearm.normalized))*Mathf.Rad2Deg;"),"the carry moves only its own turn of the fist to the arm");
+                Check(File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeVisualStridePresentation.cs")).Replace("\r\n","\n").Contains("var m=body.Motion;if(m!=null&&m.Weight>=.5f&&m.LocoShare>=.5f){contacts=(m.FootLocked[0]?1:0)|(m.FootLocked[1]?2:0);return true;}"),
+                    "footsteps sound as the model's drawn feet plant while its own clips carry the legs");
+            }
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
             string motion=R("Runtime/NativeVisualMotionPresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs");
             int stride=body.IndexOf("VisualStridePose(body,rig,a,time,roll,juggle);",StringComparison.Ordinal),pose=body.IndexOf("VisualMotionPose(body,rig,a,time);",StringComparison.Ordinal),fit=body.IndexOf("VisualWeaponFit(right,held);",StringComparison.Ordinal);
             Check(stride>0&&pose>stride&&fit>pose,"the clips go on after the game pose and the stride, before the weapon fit");
             Check(motion.Contains("weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);"),"the weapon rides the drawn hand at any weight");
-            Check(motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);"),"the body's lowest point stands on the pilot's floor point (running or a dash attack's leaping run, only kept out of it)");
+            Check(motion.Contains("bool pin=!(covered&&(pick.Locomotion||pick.Flight));float goal=pin?deepest:Mathf.Min(deepest,0);")&&motion.Contains("m.BodyHips.position-=origin.up*(applied*wgt);"),"the body's lowest point stands on the pilot's floor point (running or a dash attack's leaping run, only kept out of it)");
             Check(motion.Contains("foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);")&&motion.Contains("m.Handler.SetHumanPose(ref m.Pose);"),"the motion proxy draws nothing and takes the mixed pose through its avatar");
             Check(motion.Contains("var bytes=Resources.Load<TextAsset>(VisualMotionResource);")&&motion.Contains("const string VisualMotionResource=\"ChipArenaVisualMotion\";"),"the clips come from the bake's motion bank, read once");
             // The bank: written and read back, a frame sampled and two clips mixed.
@@ -425,7 +477,7 @@ namespace ChipArena.UnityConversion
                 Check(fist.Y>.8f&&fist.Z<-.2f&&tip.Y>.5f&&tip.X>.7f&&tip.Z<-.8f,"the fist rides behind the hip and the tip stays high and wide of the legs");
                 Check(motion.Contains("m.Trail=Mathf.MoveTowards(m.Trail,covered&&pick.Locomotion&&m.HasHold?NativeSwordTrail.Share(m.Set.Spec,local.x,local.z):0,dt/NativeSwordTrail.Ease);")
                     &&motion.Contains("if(m.Trail>0)VisualSwordTrail(m,body.Root.transform,m.Trail*m.LocoShare*wgt,speed,dt);else m.TrailMean=m.TrailTwist=float.NaN;"),"the carry rides the locomotion blend's share and eases away with it");
-                int carry=motion.IndexOf("if(m.Trail>0)VisualSwordTrail(",StringComparison.Ordinal),guard=motion.IndexOf("m.BodyHips.position-=origin.up*(deepest*wgt);",StringComparison.Ordinal),held=motion.IndexOf("weaponHand.SetPositionAndRotation(m.RightHand.position",StringComparison.Ordinal);
+                int carry=motion.IndexOf("if(m.Trail>0)VisualSwordTrail(",StringComparison.Ordinal),guard=motion.IndexOf("m.BodyHips.position-=origin.up*(applied*wgt);",StringComparison.Ordinal),held=motion.IndexOf("weaponHand.SetPositionAndRotation(m.RightHand.position",StringComparison.Ordinal);
                 Check(carry>guard&&held>carry,"the carry goes on after the floor guard and before the weapon rides the hand (the blade follows the fist)");
                 Check(motion.Contains("m.RightArm.rotation=Quaternion.AngleAxis(twist*NativeSwordTrail.ShoulderTwist,(fist-shoulder).normalized)*m.RightArm.rotation;")&&motion.Contains("m.RightHand.rotation=goal;"),"the fist's twist goes to the shoulder and the forearm, not the wrist");
                 foreach(string pack in new[]{"Bozo","BoZo","ExplosiveLLC","RPG-Character"})Check(!R("Core/NativeSwordTrail.cs").Contains(pack),"no pack names in the sword's carry: "+pack);
@@ -1065,7 +1117,7 @@ namespace ChipArena.UnityConversion
                 string motion=R("Runtime/NativeVisualMotionPresentation.cs");
                 Check(motion.Contains("if(covered&&pick.Spin)VisualSpinLegs(m,pick);")&&motion.Contains("turn+=Mathf.DeltaAngle(turn,onTip)*pick.Align*Mathf.Clamp01((flat-.3f)/.4f);")
                     &&motion.Contains("m.BodyHips.RotateAround(m.BodyHips.position,body.Root.transform.up,turn*wgt);")
-                    &&motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);")
+                    &&motion.Contains("bool pin=!(covered&&(pick.Locomotion||pick.Flight));float goal=pin?deepest:Mathf.Min(deepest,0);")&&motion.Contains("m.BodyHips.position-=origin.up*(applied*wgt);")
                     &&motion.Contains("m.Upper=layered&&up.Raised&&up.Snap?1:Mathf.MoveTowards(m.Upper,layered&&up.Raised?1:0,dt/UpperEase);"),"the Whirlwind's legs as muscle offsets before the pose; the body turned onto the blade's bearing");
             }
             // Every corpse keeps the model's lengths (owner 2026-10-26: "ragdoll effect is currently stretching the player
