@@ -277,12 +277,8 @@ namespace ChipArena.UnityConversion
         private static void BuildVoid(SheldonSection s,List<Vector2> features)
         {
             const int nx=20,ny=24;int start=s.Positions.Count;var col=Lin(PlateColor);
-            void Vertex(float x,float y)
-            {
-                float d=float.MaxValue;foreach(var f in features)d=Math.Min(d,Vector2.Distance(f,new Vector2(x,y)));d=Math.Max(0,d-.004f);
-                // A soft bloom baked round the face, so it glows on screens without bloom too (tinted with the face).
-                float glow=.45f*MathF.Exp(-d/.011f)+.035f*MathF.Exp(-d/.03f);s.Add(new Vector3(x,y,PlateZ),Vector3.UnitZ,col,new Vector4(glow,glow,glow,1));
-            }
+            // A soft bloom baked round the face, so it glows on screens without bloom too (tinted with the face).
+            void Vertex(float x,float y)=>s.Add(new Vector3(x,y,PlateZ),Vector3.UnitZ,col,VoidBloom(features,new Vector2(x,y)));
             for(int j=0;j<=ny;j++)for(int i=0;i<=nx;i++)Vertex(-PlateHalf+2*PlateHalf*i/nx,PlateBottom+(PlateTop-PlateBottom)*j/ny);
             for(int j=0;j<ny;j++)for(int i=0;i<nx;i++){int a=start+j*(nx+1)+i;s.Quad(a,a+1,a+nx+2,a+nx+1);}
             // Its sides where the opening widens round the eyes, out to the eye rim (just inside its cloth).
@@ -449,15 +445,36 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Count;i++)parts[i]=new SheldonSection{Part=Parts[i],Bone=i>=Mantle?(i==Mantle?CapturedRig.Chest:i==DrapeLeft?CapturedRig.LClav:CapturedRig.RClav):CapturedRig.Head,Transparent=i==RingGlow,DoubleSide=i==RingGlow};
             BuildHood(parts[Hood]);
             BuildEye(parts[EyeLeft],1);BuildEye(parts[EyeRight],-1);BuildGrin(parts[GrinUpper],parts[GrinLower]);
+            BuildVoid(parts[Void],Features(parts));
+            BuildRing(parts[Ring],parts[RingGlow]);
+            BuildMantle(parts[Mantle]);BuildDrape(parts[DrapeLeft],1);BuildDrape(parts[DrapeRight],-1);
+            return parts;
+        }
+        // The face's points: every vertex and triangle centre of the eyes and the grin.
+        private static List<Vector2> Features(SheldonSection[] parts)
+        {
             var features=new List<Vector2>();foreach(int p in new[]{EyeLeft,EyeRight,GrinUpper,GrinLower})
             {
                 var sec=parts[p];foreach(var v in sec.Positions)features.Add(new Vector2(v.X,v.Y));
                 for(int i=0;i+2<sec.Indices.Count;i+=3){var c=(sec.Positions[sec.Indices[i]]+sec.Positions[sec.Indices[i+1]]+sec.Positions[sec.Indices[i+2]])/3;features.Add(new Vector2(c.X,c.Y));}
             }
-            BuildVoid(parts[Void],features);
-            BuildRing(parts[Ring],parts[RingGlow]);
-            BuildMantle(parts[Mantle]);BuildDrape(parts[DrapeLeft],1);BuildDrape(parts[DrapeRight],-1);
-            return parts;
+            return features;
+        }
+        /// <summary>The face's points at rest (head space; the void's soft glow is measured from them), for the Sheldon hood's void
+        /// on the model (NativeSheldonHood.Void).</summary>
+        public static List<Vector2> FaceFeatures()
+        {
+            var parts=new SheldonSection[Count];foreach(int p in new[]{EyeLeft,EyeRight,GrinUpper,GrinLower})parts[p]=new SheldonSection();
+            BuildEye(parts[EyeLeft],1);BuildEye(parts[EyeRight],-1);BuildGrin(parts[GrinUpper],parts[GrinLower]);
+            return Features(parts);
+        }
+        /// <summary>The void's colour (linear) and its emission at a point (head space): a soft bloom baked round the face, tinted
+        /// with it, so it glows on screens without bloom too.</summary>
+        public static Vector4 VoidColor=>Lin(PlateColor);
+        public static Vector4 VoidBloom(List<Vector2> features,Vector2 at)
+        {
+            float d=float.MaxValue;foreach(var f in features)d=Math.Min(d,Vector2.Distance(f,at));d=Math.Max(0,d-.004f);
+            float glow=.45f*MathF.Exp(-d/.011f)+.035f*MathF.Exp(-d/.03f);return new Vector4(glow,glow,glow,1);
         }
         public static int Vertices(SheldonSection[] parts){int n=0;foreach(var p in parts)n+=p.Positions.Count;return n;}
         public static int Triangles(SheldonSection[] parts){int n=0;foreach(var p in parts)n+=p.Indices.Count/3;return n;}

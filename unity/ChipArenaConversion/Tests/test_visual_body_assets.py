@@ -33,7 +33,7 @@ class Bake:
         tracked = project / 'Assets/ChipArena/Resources/Toon.shader'
         self.write(tracked, 'Shader "x" {}')
         self.write(tracked.with_name('Toon.shader.meta'), meta('a' * 32))
-        for folder in ('ChipArenaLocal', 'ChipArenaLocal/Resources', 'ChipArenaLocal/Materials', 'ChipArenaLocal/Stride', 'Pack', 'Pack/Textures', 'Pack/Meshes', 'Pack/Shaders', 'Pack/Clips'):
+        for folder in ('ChipArenaLocal', 'ChipArenaLocal/Resources', 'ChipArenaLocal/Resources/ChipArenaVisualWear', 'ChipArenaLocal/Materials', 'ChipArenaLocal/Stride', 'Pack', 'Pack/Textures', 'Pack/Meshes', 'Pack/Shaders', 'Pack/Clips'):
             self.write(self.local / (folder + '.meta'), meta(self.next(), True))
         self.graph = self.asset('Pack/Shaders/Clothes.shadergraph', '{}')
         self.texture = self.asset('Pack/Textures/Top_D.png', 'PNG fake')
@@ -46,6 +46,8 @@ class Bake:
         self.asset(PREFAB, f'm_Mesh: {{fileID: 4300000, guid: {self.mesh}, type: 3}}\nm_Materials:\n  - {{fileID: 2100000, guid: {self.mat}, type: 2}}\nm_Controller: {{fileID: 9100000, guid: {self.controller}, type: 2}}\n')
         # The motion bank: a data file beside the prefab, loaded by name.
         self.asset('ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes', 'CAMO fake')
+        # A wardrobe piece's own colour map: a texture in a Resources folder, loaded by name.
+        self.asset('ChipArenaLocal/Resources/ChipArenaVisualWear/Top.Top_Robe.png', 'PNG wear fake')
         self.write(self.local / 'Pack/Textures/Unused.png', 'not used')
         self.write(self.local / 'Pack/Textures/Unused.png.meta', meta(self.next()))
 
@@ -107,8 +109,8 @@ class VisualBodyTests(unittest.TestCase):
             names = set(z.namelist())
             manifest = json.loads(z.read('visual-body.json'))
         self.assertEqual(manifest['prefab'], PREFAB)
-        expected = {PREFAB, 'ChipArenaLocal/Materials/Top 1.mat', 'Pack/Textures/Top_D.png', 'Pack/Meshes/Top.fbx', 'Pack/Meshes/Top.mat', 'ChipArenaLocal/Stride/Stride.controller', 'Pack/Clips/Run.fbx', 'ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes'}
-        expected |= {p + '.meta' for p in expected} | {f + '.meta' for f in ('ChipArenaLocal', 'ChipArenaLocal/Resources', 'ChipArenaLocal/Materials', 'ChipArenaLocal/Stride', 'Pack', 'Pack/Textures', 'Pack/Meshes', 'Pack/Clips')}
+        expected = {PREFAB, 'ChipArenaLocal/Materials/Top 1.mat', 'Pack/Textures/Top_D.png', 'Pack/Meshes/Top.fbx', 'Pack/Meshes/Top.mat', 'ChipArenaLocal/Stride/Stride.controller', 'Pack/Clips/Run.fbx', 'ChipArenaLocal/Resources/ChipArenaVisualMotion.bytes', 'ChipArenaLocal/Resources/ChipArenaVisualWear/Top.Top_Robe.png'}
+        expected |= {p + '.meta' for p in expected} | {f + '.meta' for f in ('ChipArenaLocal', 'ChipArenaLocal/Resources', 'ChipArenaLocal/Resources/ChipArenaVisualWear', 'ChipArenaLocal/Materials', 'ChipArenaLocal/Stride', 'Pack', 'Pack/Textures', 'Pack/Meshes', 'Pack/Clips')}
         self.assertEqual(set(manifest['files']), expected)
         for rel, digest in manifest['files'].items():
             self.assertEqual(hashlib.sha256(z_bytes(out, rel)).hexdigest(), digest, rel)
@@ -132,7 +134,7 @@ class VisualBodyTests(unittest.TestCase):
         keep.write_text('a full local pack keeps its other files')
         code, text = self.install(out)
         self.assertEqual(code, 0, text)
-        self.assertIn('Installed the visual body: 24 files', text)
+        self.assertIn('Installed the visual body: 27 files', text)
         local = self.project / 'Assets/LocalAssets'
         self.assertTrue((local / PREFAB).is_file() and (local / (PREFAB + '.meta')).is_file())
         self.assertTrue((local / 'Pack/Meshes/Top.fbx').is_file())

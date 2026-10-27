@@ -121,10 +121,10 @@ namespace ChipArena.UnityConversion
             if(s.Accent!=look.Accent||s.AccentHex==null){s.Accent=look.Accent;s.AccentHex="#"+look.Accent.ToString("x6");}
             a.BodyColor=s.BodyHex;a.AccentColor=s.AccentHex;
             // The body in its outfit (made again when the outfit changes), on the portrait layer, casting no shadow.
-            if(s.Model!=null&&(s.Model.Root==null||!string.Equals(s.Model.Look,s.Outfit,StringComparison.Ordinal))){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);if(s.Model.Root!=null){s.Model.Root.SetActive(false);Destroy(s.Model.Root);}s.Model=null;}
+            if(s.Model!=null&&(s.Model.Root==null||s.Model.Hood!=(hat==NativeSheldonHead.Hat)||!string.Equals(s.Model.Look,s.Outfit,StringComparison.Ordinal))){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);if(s.Model.Root!=null){s.Model.Root.SetActive(false);Destroy(s.Model.Root);}s.Model=null;}
             if(s.Model==null)
             {
-                s.Model=CreateVisualBody(s.Player,id);if(s.Model==null){modelPortraitFailed=true;return;}
+                s.Model=CreateVisualBody(s.Player,id,hat==NativeSheldonHead.Hat);if(s.Model==null){modelPortraitFailed=true;return;}
                 foreach(var t in s.Model.Root.GetComponentsInChildren<Transform>(true))t.gameObject.layer=PortraitLayer;
                 foreach(var r in s.Model.All)r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
             }
@@ -157,6 +157,7 @@ namespace ChipArena.UnityConversion
                     var hb=VisualHatBone(s.Player,hat);
                     if(!AuditorHalo(hat,hb(CapturedRig.Head),time,1,ModelPortraitReduced,PortraitLayer,null,view,look.HatColor))sourceModels.Queue(HatModel(hat,look.HatColor),s.Player.Root.transform.localToWorldMatrix,hb,null,PortraitLayer,view,body:HatBody(hat,look.HatColor));
                 }
+                else if(hat==NativeSheldonHead.Hat)SheldonHoodStill(body,hat,look.HatColor,s.Player.Root.transform.localToWorldMatrix,VisualHatBone(s.Player,hat),time,id,ModelPortraitReduced,PortraitLayer,view);
                 VisualGear(body,a,time,null,null,1,false);
                 sourceModels.Flush(UsesInstancing);
                 // The framing: the voxel portrait's, to the model's crown (its hair, and a hat over it).

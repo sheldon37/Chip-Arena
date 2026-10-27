@@ -46,17 +46,25 @@ namespace ChipArena.UnityConversion
             var all=new List<Part>();var shell=new List<Part>();
             for(int p=0;p<sections.Length;p++)
             {
-                var s=sections[p];int n=s.Positions.Count;var vertices=new Vector3[n];var normals=new Vector3[n];var colors=new Color[n];var emission=new List<Vector4>(n);
-                for(int i=0;i<n;i++){var v=s.Positions[i];var nn=s.Normals[i];var c=s.Colors[i];var e=s.Emission[i];vertices[i]=new Vector3(-v.X,v.Y,v.Z);normals[i]=new Vector3(-nn.X,nn.Y,nn.Z);colors[i]=new Color(c.X,c.Y,c.Z,c.W);emission.Add(new Vector4(e.X,e.Y,e.Z,e.W));}
-                var t=new int[s.Indices.Count];for(int i=0;i+2<t.Length;i+=3){t[i]=s.Indices[i];t[i+1]=s.Indices[i+2];t[i+2]=s.Indices[i+1];}
-                var mesh=new Mesh{name="hat-sheldon-head / "+s.Part};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=new Vector2[n];mesh.SetUVs(1,emission);mesh.triangles=t;mesh.RecalculateBounds();mesh.UploadMeshData(true);
-                var material=new Material(s.Transparent?clear:lit){enableInstancing=true,name="Sheldon Head "+s.Part};material.SetInt("_Cull",s.DoubleSide?0:2);material.SetFloat("_Ink",0);if(s.Transparent)material.SetFloat("_Unlit",1);materials.Add(material);
-                var part=new Part{Name=s.Part,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=s.Transparent||NativeSheldonHead.Animated(p)&&p!=NativeSheldonHead.Ring,Core=CoreOf(vertices,normals,colors,emission,t),Open=s.Transparent||s.DoubleSide};
+                var part=SheldonPart(sections[p],lit,clear,NativeSheldonHead.Animated(p)&&p!=NativeSheldonHead.Ring);
                 sheldonParts[p]=part;all.Add(part);if(!NativeSheldonHead.Animated(p))shell.Add(part);
             }
             models["hat-"+NativeSheldonHead.Hat]=all.ToArray();models[SheldonLive]=shell.ToArray();
+            // On the model the hood is cloth (Core/NativeSheldonHood.cs, Runtime/NativeSheldonHoodPresentation.cs): its face's void
+            // is a plate shaped to that hood's opening.
+            models[SheldonHoodVoid]=new[]{SheldonPart(NativeSheldonHood.Void(),lit,clear,false)};
         }
-        public const string SheldonLive="hat-"+NativeSheldonHead.Hat+NativeHatLooks.LiveSuffix;
+        // One Sheldon section as a bank part (x mirrored and the winding turned over, as the export converts the source models).
+        private Part SheldonPart(SheldonSection s,Shader lit,Shader clear,bool noShadow)
+        {
+            int n=s.Positions.Count;var vertices=new Vector3[n];var normals=new Vector3[n];var colors=new Color[n];var emission=new List<Vector4>(n);
+            for(int i=0;i<n;i++){var v=s.Positions[i];var nn=s.Normals[i];var c=s.Colors[i];var e=s.Emission[i];vertices[i]=new Vector3(-v.X,v.Y,v.Z);normals[i]=new Vector3(-nn.X,nn.Y,nn.Z);colors[i]=new Color(c.X,c.Y,c.Z,c.W);emission.Add(new Vector4(e.X,e.Y,e.Z,e.W));}
+            var t=new int[s.Indices.Count];for(int i=0;i+2<t.Length;i+=3){t[i]=s.Indices[i];t[i+1]=s.Indices[i+2];t[i+2]=s.Indices[i+1];}
+            var mesh=new Mesh{name="hat-sheldon-head / "+s.Part};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=new Vector2[n];mesh.SetUVs(1,emission);mesh.triangles=t;mesh.RecalculateBounds();mesh.UploadMeshData(true);
+            var material=new Material(s.Transparent?clear:lit){enableInstancing=true,name="Sheldon Head "+s.Part};material.SetInt("_Cull",s.DoubleSide?0:2);material.SetFloat("_Ink",0);if(s.Transparent)material.SetFloat("_Unlit",1);materials.Add(material);
+            return new Part{Name=s.Part,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=s.Transparent||noShadow,Core=CoreOf(vertices,normals,colors,emission,t),Open=s.Transparent||s.DoubleSide};
+        }
+        public const string SheldonLive="hat-"+NativeSheldonHead.Hat+NativeHatLooks.LiveSuffix,SheldonHoodVoid="hat-"+NativeSheldonHead.Hat+"+hood";
         // A face or ring piece's matrix on the head joint (Unity frame: the source motion mirrored in x).
         private static Matrix4x4 PieceLocal(int part,in SheldonFace face)
         {

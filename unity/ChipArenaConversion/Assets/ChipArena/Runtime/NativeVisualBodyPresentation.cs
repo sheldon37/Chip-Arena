@@ -37,6 +37,11 @@ namespace ChipArena.UnityConversion
             public object ClothSim; public int ClothOn=-1;
             // Its hair pieces' hood shapes (VisualHatHair): the renderers, each one's shape and the outfit's weight, and whether pressed.
             public SkinnedMeshRenderer[] HatHair; public int[] HatHairShape; public float[] HatHairRest; public bool HatHairOn;
+            // Its Sheldon pieces' renderers (Core NativeSheldonWear; VisualDress), the glow they last took (VisualSheldonGlow) and
+            // the lift its feet piece set the skeleton by (VisualLiftOf: bare feet down onto the floor).
+            public Renderer[] Sheldon=Array.Empty<Renderer>(); public string SheldonGlow; public float Lift;
+            // Whether it was made for a pilot in the Sheldon Head (VisualHooded) and its cloth hood (NativeSheldonHoodPresentation.cs).
+            public bool Hood; public SkinnedMeshRenderer HoodRenderer;
             public Color ChipColor=Color.cyan, AccentLinear=Color.cyan;
             public readonly Vector3[] HandPosition=new Vector3[2]; public readonly Quaternion[] HandRotation=new Quaternion[2];
             // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
@@ -125,7 +130,7 @@ namespace ChipArena.UnityConversion
         private void VisualBodyPose(Actor a,float time)
         {
             if(Viewer||sourceModels==null||ClassicBodies||a.SourceSpec=="siren"||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig)||!VisualBodiesOn)return;
-            var body=VisualBodyOf(rig,a.Id);if(body==null)return;
+            var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             var pose=rig.Pose;pose.World();
             bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
             var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle);
@@ -135,12 +140,13 @@ namespace ChipArena.UnityConversion
             body.Moved=true;
         }
 
-        // The visual body `rig` wears (made on first use for pilot `id`'s outfit); null without a bake.
-        private VisualBody VisualBodyOf(CapturedAnimation.Player rig,int id)
+        // The visual body `rig` wears (made on first use for pilot `id`'s outfit, with the Sheldon hood when `hood`); null without
+        // a bake.
+        private VisualBody VisualBodyOf(CapturedAnimation.Player rig,int id,bool hood)
         {
-            // A changed outfit makes the body again in it (the Locker's picks apply in the lobby).
-            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal)){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}
-            if(body==null||body.Root==null){body=CreateVisualBody(rig,id);if(body==null)return null;visualBodies[rig]=body;}
+            // A changed outfit or hood makes the body again in it (the Locker's picks apply in the lobby).
+            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&(body.Hood!=hood||!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal))){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}
+            if(body==null||body.Root==null){body=CreateVisualBody(rig,id,hood);if(body==null)return null;visualBodies[rig]=body;}
             return body;
         }
         // The body bound to `pose` (feet planted when `planted`, the airborne solve when `airborne`), its weapon in hand and the
@@ -155,6 +161,7 @@ namespace ChipArena.UnityConversion
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
             body.Binding.Apply(pose,grasp,planted,airborne);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
+            if(body.Sheldon.Length>0)VisualSheldonGlow(body,NativeBodySkins.SheldonGlow(a.Hat,a.HatColor,a.AccentColor));
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
             var origin=body.Root.transform;
             body.Binding.WeaponFrame(pose,out var rp,out var rq);body.Binding.LeftWeaponFrame(pose,out var lp,out var lq);
@@ -237,7 +244,7 @@ namespace ChipArena.UnityConversion
         {
             if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec=="siren"||!VisualBodiesOn)return;
             if(reveal!=null)foreach(int b in IntroSolidBones)if(reveal(b)<.5f)return;
-            var body=VisualBodyOf(rig,a.Id);if(body==null)return;
+            var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
@@ -250,7 +257,7 @@ namespace ChipArena.UnityConversion
         {
             if(Viewer||sourceModels==null||ClassicBodies||rig==null||seat==null||pose==null||seat.spec=="siren"||!VisualBodiesOn)return false;
             var a=draftActor;a.Id=seat.id;a.SourceSpec=seat.spec;a.AccentColor=seat.accentColor;a.BodyColor=seat.bodyColor;a.Hat=seat.hat;a.HatColor=seat.hatColor;a.WeaponAway=true;a.Grounded=true;
-            var body=VisualBodyOf(rig,seat.id);if(body==null)return false;
+            var body=VisualBodyOf(rig,seat.id,VisualHooded(a));if(body==null)return false;
             // The drafting pose stands lower than the arena's: the body's hips go onto the pose's pelvis, and the rig's hands (on
             // the body's wrists after the bind) with them.
             body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
@@ -265,16 +272,21 @@ namespace ChipArena.UnityConversion
             VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
             return true;
         }
-        private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id)
+        private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id,bool hood=false)
         {
             var root=Instantiate(visualBodyPrefab,rig.Root.transform,false);root.name="Visual body "+id;
             // Its origin is the pilot's floor point: the rig root stands .865 m over the floor (NativeVisualRig.Floor).
             root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);root.transform.localRotation=Quaternion.identity;root.transform.localScale=Vector3.one;
             var skeleton=root.transform.Find("VisualSkeleton");
             if(skeleton==null){Destroy(root);visualBodyState=-1;Debug.LogWarning("Visual body: "+VisualBodyResource+" has no VisualSkeleton; pilots draw voxel.");return null;}
-            var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock()};
-            // Dressed in the pilot's outfit: only the worn pieces' renderers from here on.
-            body.Look=VisualLookOf(id);VisualDress(root,body.Look);
+            // Dressed in the pilot's outfit (only the worn pieces' renderers from here on), its skeleton set by its shoes' lift
+            // before the binding reads the rest pose.
+            var look=VisualLookOf(id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);float lift=VisualLiftOf(look);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
+            // The Sheldon hood, when its pilot wears the Sheldon Head (its piping in the Sheldon glow with the Sheldon pieces').
+            var hoodRenderer=hood?VisualHoodMake(root,skeleton):null;if(hoodRenderer!=null)sheldon.Add(hoodRenderer);
+            // Under it the hair is hidden (the void covers the face; the hair's cloth would swing its tips through).
+            if(hoodRenderer!=null)foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(false))if(r.name.StartsWith("HairFront.",StringComparison.Ordinal)||r.name.StartsWith("HairBack.",StringComparison.Ordinal))r.gameObject.SetActive(false);
+            var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=look,Sheldon=sheldon.ToArray(),Lift=lift,Hood=hood,HoodRenderer=hoodRenderer};
             body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];
             foreach(var t in root.GetComponentsInChildren<Transform>(true))
             {
@@ -288,7 +300,7 @@ namespace ChipArena.UnityConversion
             {
                 var r=body.All[k];body.Plain[k]=r.sharedMaterials;var m=r.sharedMaterial;if(m==null||!m.HasProperty(TextureId))continue;
                 // The hologram's slots cut out as the part does: the part's texture and cut-off on its renderer.
-                r.GetPropertyBlock(body.Block);var tex=m.GetTexture(TextureId);if(tex!=null)body.Block.SetTexture(TextureId,tex);
+                r.GetPropertyBlock(body.Block);var tex=m.GetTexture(TextureId);if(tex!=null&&!body.Block.HasTexture(TextureId))body.Block.SetTexture(TextureId,tex);
                 body.Block.SetFloat(CutoffId,m.HasProperty(CutoffId)?m.GetFloat(CutoffId):.5f);r.SetPropertyBlock(body.Block);
             }
             var cloth=new List<Renderer>();
@@ -335,9 +347,17 @@ namespace ChipArena.UnityConversion
             body.AccentLinear=color.linear;
             foreach(var r in body.Cloth)
             {
-                if(r==null)continue;
+                if(r==null||Array.IndexOf(body.Sheldon,r)>=0)continue;
                 r.GetPropertyBlock(body.Block);foreach(int id in AccentChannels)body.Block.SetColor(id,color);r.SetPropertyBlock(body.Block);
             }
+        }
+        // The Sheldon pieces' piping in the Sheldon glow (NativeBodySkins.SheldonGlow: a picked hat colour, cyan under the hood,
+        // else the accent), written only when it changes.
+        private static void VisualSheldonGlow(VisualBody body,string glow)
+        {
+            if(string.Equals(body.SheldonGlow,glow,StringComparison.Ordinal))return;
+            body.SheldonGlow=glow;if(!ColorUtility.TryParseHtmlString(glow??NativeBodySkins.SheldonCyan,out var color))return;
+            foreach(var r in body.Sheldon){if(r==null)continue;r.GetPropertyBlock(body.Block);foreach(int id in AccentChannels)body.Block.SetColor(id,color);r.SetPropertyBlock(body.Block);}
         }
 
         // While drawing it (SourceCharacter): the pilot's hit flash code and match-start spawn-in on the visual body's shader,
@@ -437,7 +457,7 @@ namespace ChipArena.UnityConversion
         // pieces set (the head's); the body parts' renderers; the tag shapes (a piece's blendshape a worn piece's tag pulls in, as boots tuck trousers); and the gear's
         // anchors measured per top (and hands, for the wrist device's band): the core's and device's local frames, the band's
         // radius, the back emblem's distance and slope. Without it (an older bake) a body is the bake as it is.
-        [Serializable] public sealed class LookPiece{public string slot,id;public string[] renderers,covers,tags;}
+        [Serializable] public sealed class LookPiece{public string slot,id;public string[] renderers,covers,tags;public float lift;}
         [Serializable] public sealed class LookPart{public string renderer,part;}
         [Serializable] public sealed class LookShape{public string renderer,tag;public int shape;}
         [Serializable] public sealed class LookAnchor{public string upper,hands;public float[] core,device,emblem;public float radius;}
@@ -457,9 +477,10 @@ namespace ChipArena.UnityConversion
         private static readonly HashSet<string> lookCovers=new HashSet<string>(StringComparer.Ordinal),lookTags=new HashSet<string>(StringComparer.Ordinal);
         private static readonly Dictionary<string,Renderer> lookNamed=new Dictionary<string,Renderer>(StringComparer.Ordinal);
         // A model instance in the outfit `look`: each wardrobe piece's renderers on when worn and off otherwise, the body parts
-        // the worn pieces cover off (the rest on), and the tag shapes full where a worn piece sets their tag. Runs when a body is
-        // made (once per outfit), never per frame.
-        private static void VisualDress(GameObject root,string look)
+        // the worn pieces cover off (the rest on), the tag shapes full where a worn piece sets their tag, and the Sheldon pieces in
+        // their palette (VisualSheldonPalette; their renderers added to `sheldon`). Runs when a body is made (once per outfit),
+        // never per frame.
+        private static void VisualDress(GameObject root,string look,List<Renderer> sheldon=null)
         {
             var d=VisualLookData();if(d==null||root==null)return;
             lookNamed.Clear();foreach(var r in root.GetComponentsInChildren<Renderer>(true))lookNamed[r.name]=r;
@@ -470,7 +491,30 @@ namespace ChipArena.UnityConversion
             foreach(var p in d.pieces)if(p?.renderers!=null&&NativeLook.Of(look,p.slot)==p.id)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(true);
             if(d.body!=null)foreach(var b in d.body)if(b!=null&&lookNamed.TryGetValue(b.renderer,out var r))r.gameObject.SetActive(!lookCovers.Contains(b.part));
             if(d.shapes!=null)foreach(var t in d.shapes)if(t!=null&&lookNamed.TryGetValue(t.renderer,out var r)&&r is SkinnedMeshRenderer skin&&skin.sharedMesh!=null&&t.shape>=0&&t.shape<skin.sharedMesh.blendShapeCount)skin.SetBlendShapeWeight(t.shape,lookTags.Contains(t.tag)?100:0);
+            foreach(var p in d.pieces)if(p?.renderers!=null&&NativeSheldonWear.IsSheldon(p.id)&&NativeLook.Of(look,p.slot)==p.id)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r)){VisualSheldonPalette(r);sheldon?.Add(r);}
             lookNamed.Clear();
+        }
+        // Sheldon's clothes (Core NativeSheldonWear): a piece's renderer in the Sheldon palette (the cloth and trim colours of each
+        // layer, the glow cyan until VisualSheldonGlow sets the pilot's) on the bake's piped colour map for it, when there is one.
+        private static MaterialPropertyBlock wearBlock;
+        private static readonly Dictionary<string,Texture2D> wearMaps=new Dictionary<string,Texture2D>(StringComparer.Ordinal);
+        private static readonly Color WearCloth=WearColor(NativeSheldonWear.Cloth),WearTrim=WearColor(NativeSheldonWear.Trim),WearGlow=WearColor(NativeBodySkins.CyberCyan);
+        private static Color WearColor(int rgb)=>new Color((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f);
+        private static void VisualSheldonPalette(Renderer r)
+        {
+            wearBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(wearBlock);
+            for(int i=0;i<BodyColours.Length;i++)wearBlock.SetColor(BodyColours[i],i%3==0?WearCloth:i%3==1?WearTrim:WearGlow);
+            if(!wearMaps.TryGetValue(r.name,out var map)){map=Resources.Load<Texture2D>(NativeSheldonWear.MapFolder+r.name);wearMaps[r.name]=map;}
+            if(map!=null)wearBlock.SetTexture(TextureId,map);
+            r.SetPropertyBlock(wearBlock);
+        }
+        // The lift a look's feet piece sets the body's skeleton by (the bake's lift for it against the default shoes'): bare feet
+        // set down onto the floor.
+        private static float VisualLiftOf(string look)
+        {
+            var d=VisualLookData();if(d==null)return 0;string feet=NativeLook.Of(look,NativeLook.Feet),first=NativeLook.Ids[NativeLook.SlotIndex(NativeLook.Feet)][0];float worn=0,rest=0;
+            foreach(var p in d.pieces){if(p==null||p.slot!=NativeLook.Feet)continue;if(p.id==feet)worn=p.lift;if(p.id==first)rest=p.lift;}
+            return Mathf.Clamp(worn-rest,-.05f,.05f);
         }
         // The renderers a dressed instance draws (its worn pieces and uncovered body parts).
         private static Renderer[] VisualWorn(GameObject root)
@@ -642,18 +686,20 @@ namespace ChipArena.UnityConversion
         // root). Inactive; null without a bake.
         private GameObject VisualDeathBody(CapturedAnimation.Player rig,NativeDeath death,Vector3 offset,out Transform[] bones,out int[] joint)
         {
-            bones=null;joint=null;var root=Instantiate(visualBodyPrefab);root.name="Visual corpse "+death.id;VisualDress(root,VisualLookOf(death.id));var skeleton=root.transform.Find("VisualSkeleton");
+            bones=null;joint=null;var root=Instantiate(visualBodyPrefab);root.name="Visual corpse "+death.id;var look=VisualLookOf(death.id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);var skeleton=root.transform.Find("VisualSkeleton");
             if(skeleton==null){Destroy(root);return null;}
+            float lift=VisualLiftOf(look);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
             bones=binding.Bones;joint=VisualJoints(binding);
             var block=new MaterialPropertyBlock();ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var accent);
+            ColorUtility.TryParseHtmlString(NativeBodySkins.SheldonGlow(death.actor?.Hat,death.actor?.HatColor,death.actor?.AccentColor??"#70e1d0"),out var glow);
             foreach(var r in VisualWorn(root))
             {
                 r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;if(r is SkinnedMeshRenderer skin)skin.updateWhenOffscreen=true;
                 bool cloth=false;foreach(var slot in ClothSlots)if(r.name.StartsWith(slot,StringComparison.Ordinal))cloth=true;
-                if(!cloth)continue;r.GetPropertyBlock(block);foreach(int id in AccentChannels)block.SetColor(id,accent);r.SetPropertyBlock(block);
+                if(!cloth)continue;r.GetPropertyBlock(block);foreach(int id in AccentChannels)block.SetColor(id,sheldon.Contains(r)?glow:accent);r.SetPropertyBlock(block);
             }
             root.SetActive(false);return root;
         }
@@ -983,7 +1029,7 @@ namespace ChipArena.UnityConversion
         {
             if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn||rig==null||a==null||a.SourceSpec=="siren")return false;
             VisualBody body;
-            if(make){body=VisualBodyOf(rig,a.Id);if(body==null)return false;}
+            if(make){body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return false;}
             else if(!visualBodies.TryGetValue(rig,out body)||body.Root==null||body.PosedFrame!=Time.frameCount)return false;
             int n=Mathf.Min(rig.Bones.Length,standPose.Position.Length);
             for(int i=0;i<n;i++){var t=rig.Bones[i];var lp=t.localPosition;var lq=t.localRotation;standPose.Position[i]=CapturedRig.Mirror(new System.Numerics.Vector3(lp.x,lp.y,lp.z));standPose.Rotation[i]=CapturedRig.Mirror(new System.Numerics.Quaternion(lq.x,lq.y,lq.z,lq.w));}
