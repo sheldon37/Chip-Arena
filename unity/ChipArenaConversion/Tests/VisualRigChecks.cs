@@ -375,7 +375,7 @@ namespace ChipArena.UnityConversion
             int stride=body.IndexOf("VisualStridePose(body,rig,a,time,roll,juggle);",StringComparison.Ordinal),pose=body.IndexOf("VisualMotionPose(body,rig,a,time);",StringComparison.Ordinal),fit=body.IndexOf("VisualWeaponFit(right,held);",StringComparison.Ordinal);
             Check(stride>0&&pose>stride&&fit>pose,"the clips go on after the game pose and the stride, before the weapon fit");
             Check(motion.Contains("weaponHand.SetPositionAndRotation(m.RightHand.position+m.RightHand.rotation*m.HoldPosition,m.RightHand.rotation*m.HoldRotation);"),"the weapon rides the drawn hand at any weight");
-            Check(motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&pick.Locomotion)))m.BodyHips.position-=origin.up*(deepest*wgt);"),"the body's lowest point stands on the pilot's floor point (running, only kept out of it)");
+            Check(motion.Contains("if(deepest<float.MaxValue&&(deepest<0||!(covered&&(pick.Locomotion||pick.Flight))))m.BodyHips.position-=origin.up*(deepest*wgt);"),"the body's lowest point stands on the pilot's floor point (running or a dash attack's leaping run, only kept out of it)");
             Check(motion.Contains("foreach(var r in proxy.GetComponentsInChildren<Renderer>(true))Destroy(r);")&&motion.Contains("m.Handler.SetHumanPose(ref m.Pose);"),"the motion proxy draws nothing and takes the mixed pose through its avatar");
             Check(motion.Contains("var bytes=Resources.Load<TextAsset>(VisualMotionResource);")&&motion.Contains("const string VisualMotionResource=\"ChipArenaVisualMotion\";"),"the clips come from the bake's motion bank, read once");
             // The bank: written and read back, a frame sampled and two clips mixed.
