@@ -257,7 +257,7 @@ namespace ChipArena.UnityConversion
             float z=(VoidZ-off.Z)/sc.Z;
             // The outline (model frame): up the right side, over the top, down the left, under the chin.
             var outline=new List<Vector2>();const int side=24;
-            for(int i=0;i<=side;i++){float p=-1+2f*i/side,y=OpeningY(p);outline.Add(new Vector2(OpeningHalfWidth(y)+VoidMargin,y-(p<0?VoidChin*p*p:0)));}
+            for(int i=0;i<=side;i++){float p=-1+2f*i/side,y=OpeningY(p);outline.Add(new Vector2(OpeningHalfWidth(y)+VoidMargin,y-(p<0?VoidChin*-p:0)));}
             outline[0]=new Vector2(0,OpenBottom-VoidMargin-VoidChin);outline[side]=new Vector2(0,OpenTop+VoidMargin);
             for(int i=side-1;i>0;i--)outline.Add(new Vector2(-outline[i].X,outline[i].Y));
             var features=NativeSheldonHead.FaceFeatures();var colour=NativeSheldonHead.VoidColor;
