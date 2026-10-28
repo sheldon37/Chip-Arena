@@ -34,10 +34,10 @@ namespace ChipArena.UnityConversion
         public static NativePackBank.Bank Bank=>Set==null?null:NativePackBanks.Bank(Set.bank);
         /// <summary>The map's entry when the kit bank is present (a map without one never loads the bank).</summary>
         public static PackMapDressing Entry(string mapId){var e=NativePackDressing.Entry(Set,mapId);return e!=null&&Bank!=null?e:null;}
-        /// <summary>The map's plan (cached per map content; null: every block keeps its box).</summary>
+        /// <summary>The map's plan (cached per map content; null: every block keeps its box). A map without an entry never loads the bank.</summary>
         public static PackPlan Plan(ContentMap map)
         {
-            if(map==null)return null;var bank=Bank;if(ReferenceEquals(map,planMap)&&ReferenceEquals(bank,planBank))return plan;
+            if(map==null||NativePackDressing.Entry(Set,map.id)==null)return null;var bank=Bank;if(ReferenceEquals(map,planMap)&&ReferenceEquals(bank,planBank))return plan;
             planMap=map;planBank=bank;plan=null;
             try{plan=NativePackDressing.Plan(Set,map,bank);}catch(Exception e){Debug.LogWarning("Pack dressing for "+map.id+" disabled: "+e.Message);plan=null;}
             return plan;
@@ -99,7 +99,7 @@ namespace ChipArena.UnityConversion
         private sealed class Chunk {public readonly Matrix4x4[] M=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Rest=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk];}
         private sealed class Batch {public readonly List<Chunk> Chunks=new List<Chunk>();public int Count;}
         private Batch[] byMesh=Array.Empty<Batch>();private readonly List<int> used=new List<int>();private NativePackBank.Bank bank;private MaterialPropertyBlock block;
-        private static readonly int RestId=Shader.PropertyToID("_BlockRest"),LookId=Shader.PropertyToID("_BlockLook"),ColorId=Shader.PropertyToID("_BlockColor"),SizeId=Shader.PropertyToID("_BlockSize");
+        private static readonly int RestId=Shader.PropertyToID("_BlockRest"),LookId=Shader.PropertyToID("_BlockLook"),ColorId=Shader.PropertyToID("_BlockColor");
         private static readonly Vector4 White=new Vector4(1,1,1,1);
         public int Draws{get;private set;}public int Instances{get;private set;}
         public void Begin(){foreach(int m in used)byMesh[m].Count=0;used.Clear();Draws=Instances=0;}

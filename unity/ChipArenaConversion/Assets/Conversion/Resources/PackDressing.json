@@ -103,21 +103,14 @@
   {
    "id": "container-20",
    "layout": "fill",
-   "note": "A 20 ft shipping container stretched to its box.",
+   "note": "A 20 ft shipping container stretched to its box, in the bright liveries (yellow, red, blue, teal, orange, green).",
    "props": [
-    "harbor-shipping-container-02a",
     "harbor-shipping-container-02b",
     "harbor-shipping-container-02c",
-    "harbor-shipping-container-02d",
     "harbor-shipping-container-02e",
-    "harbor-shipping-container-02f",
-    "harbor-shipping-container-05a",
     "harbor-shipping-container-05b",
     "harbor-shipping-container-05c",
-    "harbor-shipping-container-05d",
-    "harbor-shipping-container-05e",
-    "harbor-shipping-container-05f",
-    "harbor-shipping-container-05g"
+    "harbor-shipping-container-02a"
    ],
    "stretch": 1.0,
    "along": 0,
