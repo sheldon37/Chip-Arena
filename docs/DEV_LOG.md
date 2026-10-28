@@ -1,6 +1,6 @@
-## 2026-10-28 — Claude: advanced lighting (runtime light volume, volumetric beams, fog scattering, weather, Balanced tier) (branch)
+## 2026-10-28 — Claude: advanced lighting (runtime light volume, volumetric beams, fog scattering, weather, Balanced tier) (merged into shared)
 
-- **Branch/base:** `claude/advanced-lighting` from shared `55a6e5d` (the pack bank), current shared merged in (`2e3fc00` at `ae7e8a0`, then `0b12961`). Branch only: not merged into shared, not published.
+- **Branch/base:** `claude/advanced-lighting` from shared `55a6e5d` (the pack bank), current shared merged in (`2e3fc00` at `ae7e8a0`, then `0b12961`). Reviewed and merged into shared and the builder by Claude (no PR); not published.
 - **Owner request (2026-10-28, via the task brief):** our own equivalents of the licensed lighting packs (Volumetric Light Beam, UniStorm / Weather Maker, Bakery) for the runtime-built maps: a per-map light volume, volumetric beams, fog light scattering, weather, a medium tier gating them, and a note on why Bakery cannot apply. The packs are technique references only (docs/ASSET-CREDITS.md): VLB's shaders were read, UniStorm and Weather Maker were not; no pack code or content in the repo.
 - **Changes (presentation only; details in docs/LIGHTING-ADVANCED.md):**
   - **Light volume** (`Core/NativeLightVolume`): built on a worker thread two frames after a map's look applies; a bounded grid (the look's cell, 1 m on the shipped looks; 1.25 m on Balanced; at most 262,144 cells, 48 high) of occlusion, sky share and one bounce tinted by the blocks' colours, lit by the key, the sky and up to 64 practical lights (the look's 8 and the map's lamps); an RGBAHalf 3D texture read by NativeBlockLit (plain, anime style and the stage kits' pack props), NativeSourceLit, NativeZombieLit and NativeVisualBodyToon (actors at a share). Ward Zero keeps its own ceiling field.
@@ -16,7 +16,13 @@
   - Offline renders (a scratch harness, not committed: the maps' boxes from the JSON through a GLSL port of NativeBlockLit's shared section, before and after, 1280x720): Factory (hall, crane bay, machine row), Cyber City (avenue, alley, the avenue in a lightning flash), Central Station (concourse, platforms). Bake times there (40 rays, loaded 4-CPU machine): Factory 0.7-0.9 s, Cyber City 1.2-1.4 s, Central Station 1.8-2.1 s.
 - **Not run:** the Unity Editor and Play mode (no check here compiles the shaders), a Windows build, GPU timings, the full CoreTests run (shared machine), the stage kits' pack props in the renders (they need the private bank).
 - **Risks:** shader compile on the owner's PC (the new include in five shaders, the 3D and cover textures); the volume and the cover see blocks only (Central Station's broken vault is kit, so its drizzle is kept light); the volume reflects the map as built, not its broken blocks; the per-look strengths are tuned on the offline renders only; a settings file saved with `balanced` reads as no listed choice on an older build (it draws as High there).
-- **Next:** owner review in play (tuning per look), then merge into shared. No Astra handoff.
+- **Review before the merge (Claude, 2026-10-28):**
+  - Shaders: every edited and new pass (NativeBlockLit base and BLOCK_PACK, NativeNightSky, NativeVolumetricBeam, NativeSourceLit, NativeZombieLit, NativeVisualBodyToon surface and outline) passes glslang's HLSL front end against stub UnityCG/AutoLight/Lighting includes, fog off/on, linear/gamma, forward base and add; the surface checks also run the vertex, lighting and finalcolor functions. This is a syntax and type check, not Unity's compiler.
+  - Fixed: the light volume's key was a new string every frame (Frame, VolumeGlobals); now built only when the map, look or candidates change, and pinned in AdvancedLightingChecks.
+  - Fixed: `tools/asset-lock.json` still held the old MapLooks.json receipt, so `package_source.py` failed; refreshed through `tools/generate_expedition.py` (UnityMaps unchanged; Astra's rotation note kept).
+  - Full run on the merged tree: Unity semantic compile OK; relay/CoreTests 862 PASS (Advanced lighting 503); Python 166 OK (one Windows-only skip); package and diff checks pass after the receipt fix.
+  - Offline renders: Factory reads warmer and hazier, and its local colours lose some saturation (the blue crates go grey); tune `advanced.scatter` per look in Play mode if it is too much.
+- **Next:** owner review in play (shader compile on the PC, the volume's pop-in once its bake lands, tuning per look). No Astra handoff.
 
 ## 2026-10-28 — Claude: Locker OUTFIT picker: an icon and arrows a slot instead of a chip a piece (merged into shared)
 

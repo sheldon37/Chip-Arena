@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A map's look applied (NativeLighting.Apply, after its own globals): resolves what this tier draws and writes it.</summary>
         public static void Apply(ContentMap m,MapLook l)
         {
-            if(!ReferenceEquals(m,map))candidates.Clear();map=m;look=l;appliedFrame=Time.frameCount;NativeAdvancedLooks.Resolve(l,Tier,Reduced,State);on=State.Any;
+            if(!ReferenceEquals(m,map))candidates.Clear();map=m;look=l;keyStale=true;appliedFrame=Time.frameCount;NativeAdvancedLooks.Resolve(l,Tier,Reduced,State);on=State.Any;
             if(!on){Off();return;}
             Write();
         }
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         /// than the eight slots), handed by its presentation before the bake starts; the look's eight are always in.</summary>
         public static void Candidates(string mapId,IList<NativeVolumeLight> lights)
         {
-            if(map==null||map.id!=mapId||candidatesMap==mapId&&candidates.Count>0)return;candidatesMap=mapId;candidates.Clear();
+            if(map==null||map.id!=mapId||candidatesMap==mapId&&candidates.Count>0)return;candidatesMap=mapId;candidates.Clear();keyStale=true;
             if(lights!=null)for(int i=0;i<lights.Count&&candidates.Count<NativeLightVolume.MaxLights-NativeMapLooks.MaxLights;i++)candidates.Add(lights[i]);
         }
         /// <summary>Everything off (a stage, the draft, the rooftop; the low tier; a look without it). Apply turns it back on.</summary>
@@ -76,7 +76,14 @@ namespace ChipArena.UnityConversion
             var v=volume;Shader.SetGlobalTexture(GiVolumeId,volumeTexture);Shader.SetGlobalVector(GiBoxId,new Vector4(v.MinX,v.MinY,v.MinZ,v.Cell));Shader.SetGlobalVector(GiSizeId,new Vector4(v.Nx*v.Cell,v.Ny*v.Cell,v.Nz*v.Cell,s.GiActors));
             Shader.SetGlobalVector(GiId,new Vector4(s.GiOcclusion,s.GiBounce,s.GiFloor,1));
         }
-        private static string Key()=>map==null||look==null?null:map.id+"|"+look.look+"|"+State.GiCell.ToString("0.###")+"|"+State.GiRays+"|"+candidates.Count;
+        // The volume's identity (map, look, cell, rays, the candidates' count), built again only when one of them changes (Apply,
+        // Candidates): Frame and VolumeGlobals read it every frame and must not allocate.
+        private static string keyCache;private static bool keyStale=true;
+        private static string Key()
+        {
+            if(keyStale){keyCache=map==null||look==null?null:map.id+"|"+look.look+"|"+State.GiCell.ToString("0.###")+"|"+State.GiRays+"|"+candidates.Count;keyStale=false;}
+            return keyCache;
+        }
         /// <summary>
         /// Each frame the arena draws (ArenaPresentation's AdvancedLightingWorld; `time` the presentation clock): starts or takes
         /// the volume's bake, and writes the scattering's key (the live key light: the zone boss song's house light moves it),
