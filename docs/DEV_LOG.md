@@ -1,3 +1,22 @@
+## 2026-10-28 — Claude: skin tone with a colour wheel, and MASKS in place of the model's body skins
+
+- **Branch/base:** `claude/skin-color-masks` from shared `d91fee6` (advanced lighting merged). No PR; merged into shared and the builder by Claude (owner standing authorization).
+- **Owner (2026-10-28):** "Give skin color customization, along with a 'Color selector circle' for more color options. Remove Body Skin Options 'Prototype' and 'Sheldon Clothes' and just add 'Masks' section for selecting masks."
+- **Changes (presentation only):**
+  - **Look map:** the skin tone is the map's last entry, `skin:rrggbb` (`Core/NativeLook.cs`: `SkinOf`, `WithSkin`, `SameOutfit`, `KeepSkin`, ten presets light to deep). Normalize, With and the DEV gate keep it; an invalid one is dropped.
+  - **Model:** the toon shader scales skin pixels by the tone over the part's base skin (`Resources/NativeVisualBodyFx.cginc` `SkinShare`/`SkinToned`, mirrored by `Core/NativeColorWheel.cs`). It applies to the surface and the outline, is off by default and is written per skin part when a body is dressed. A tone-only change retints the body in place (`VisualRetone`, arena body and portraits): no new instance, nothing per frame.
+  - **Locker, on the model:** CALLSIGN, MASKS (No mask / Mask + visor / Visor / Mask, with hover try-on), SKIN TONE (DEFAULT, ten tones, a colour wheel with a brightness track; hover try-on through `LookShown`), ACCENT COLOUR, OUTFIT. BODY SKIN and BODY COLOUR show only in Classic. The Skins tab lists only weapons on the model; Classic keeps the body card. The model thumbnails wear the picked tone.
+  - **Account load:** keeps this PC's tone when the account look has none (`NativeLook.KeepSkin` in `NativeProfileUI`).
+- **Animation impacts:** none (hit timing, hitboxes, damage, cooldowns, movement and networking unchanged).
+- **Astra handoff (accounts):** `src/relay/accounts.ts` `lookMap` drops keys it does not know, so the account never stores the tone. Please keep a `skin` entry whose value matches `/^[0-9a-f]{6}$/i`, lowercased, as the map's last entry (`...,skin:c48a62`). It is not DEV gated. Once it is stored, `NativeLook.KeepSkin` can go (a saved map without a tone then means DEFAULT). Rooms already carry it: the seat look passes through `NativeLook.Gate` unchanged.
+- **Checks (actual, on `claude/skin-color-masks`):**
+  - Unity compile (runtime and editor scripts): PASS. relay/CoreTests: 863 PASS, among them `--skin-tone` (SkinToneChecks, 248 checks) and the updated Locker, look contract, body skin and visual rig pins. Python 166 OK (one Windows-only skip). Package and diff checks pass.
+  - Shaders: NativeVisualBodyToon's surface pass (forward base and add, with the vertex, lighting and final-colour functions) and its outline pass pass glslang's HLSL front end, linear and gamma, fog off and on.
+  - Locker renders (a scratch IMGUI harness drawing the real LkMasks and LkSkinTone code; not committed): the closed row, the open wheel with a custom colour, and a narrow Locker. They lay out cleanly, wrap at narrow width and show the tone in the mask thumbnails.
+- **Not run:** the Unity Editor and Play mode (the tint on the real bake: which renderers are the head and body parts, and how a textured part's skin reads), a Windows build.
+- **Risks:** `SkinShare` is tuned on the palette colours known here (the model's skin, the cyber palette, cloth darks). A warm hair colour on a skin part, or a texture with warm non-skin detail on the head, would take the tone too. Hair renderers are not skin parts. Check in Play mode and tighten the thresholds or the part list if needed.
+- **Next:** owner review in play; Astra's `lookMap` change.
+
 ## 2026-10-28 — Claude: advanced lighting (runtime light volume, volumetric beams, fog scattering, weather, Balanced tier) (merged into shared)
 
 - **Branch/base:** `claude/advanced-lighting` from shared `55a6e5d` (the pack bank), current shared merged in (`2e3fc00` at `ae7e8a0`, then `0b12961`). Reviewed and merged into shared and the builder by Claude (no PR); not published.
