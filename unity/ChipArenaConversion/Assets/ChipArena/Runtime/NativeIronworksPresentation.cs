@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
         private ContentMap iwMap;private NativeIronworksKit iwKit;private NativeIronFxScene iwScene;private NativeIronworksLights iwLights;private ExpeditionAreaLayout iwArea;private bool iwAreaRead;
         private readonly IronworksHazardView[] iwViews=new IronworksHazardView[NativeIronworksHazards.Count];
         private readonly List<MetroBatch> iwBatches=new List<MetroBatch>();private int iwUsed;private readonly List<IronMoltenBatch> iwMelt=new List<IronMoltenBatch>();private int iwMeltUsed;
-        private NativePropBody[] iwParents=Array.Empty<NativePropBody>();private bool[] iwOut=Array.Empty<bool>();private Vector3[] iwNudge=Array.Empty<Vector3>();private bool[] iwMoved=Array.Empty<bool>();
+        private bool[] iwPack;private NativePropBody[] iwParents=Array.Empty<NativePropBody>();private bool[] iwOut=Array.Empty<bool>();private Vector3[] iwNudge=Array.Empty<Vector3>();private bool[] iwMoved=Array.Empty<bool>();
         private readonly Dictionary<string,int> iwIndex=new Dictionary<string,int>();private float[] iwSeeds=Array.Empty<float>();private Matrix4x4[] iwRest=Array.Empty<Matrix4x4>(),iwMeltRest=Array.Empty<Matrix4x4>();
         private Vector4[] iwRestColor=Array.Empty<Vector4>(),iwRestSpot=Array.Empty<Vector4>();private bool iwColorLinear;
         private readonly Matrix4x4[] iwFrames=new Matrix4x4[NativeIronworksKit.Frames];private readonly Quaternion[] iwFrameQ=new Quaternion[NativeIronworksKit.Frames];
@@ -146,6 +146,8 @@ namespace ChipArena.UnityConversion
                 var p=parts[i];var b=blocks[p.Parent];iwSeeds[i]=NativeBlockLooks.Seed(b.id+"#"+i);
                 iwRest[i]=Matrix4x4.TRS(new Vector3(p.X,p.Y,p.Z),new Quaternion(p.Qx,p.Qy,p.Qz,p.Qw),Vector3.one);iwRestSpot[i]=new Vector4(b.pos.x+p.X,b.pos.y+p.Y,b.pos.z+p.Z,0);
             }
+            // A part of a block drawn as pack props (docs/arenas/STAGE-KITS.md) stops drawing with its box; parts resting on its top stay.
+            iwPack=NativePackStage.Covered(map,parts.Length,i=>parts[i].Parent,i=>(new Vector3(parts[i].X,parts[i].Y,parts[i].Z),new Vector3(parts[i].Hx,parts[i].Hy,parts[i].Hz),new Quaternion(parts[i].Qx,parts[i].Qy,parts[i].Qz,parts[i].Qw)),false);
             var melt=iwKit.Molten;iwMeltRest=new Matrix4x4[melt.Length];for(int i=0;i<melt.Length;i++){var m=melt[i];iwMeltRest[i]=Matrix4x4.TRS(new Vector3(m.X,m.Y,m.Z),new Quaternion(m.Qx,m.Qy,m.Qz,m.Qw),Vector3.one);}
             IronRestColors();
         }
@@ -162,7 +164,7 @@ namespace ChipArena.UnityConversion
             var parts=iwKit.Parts;bool lean=LowGraphics||!UsesInstancing;
             for(int i=0;i<parts.Length;i++)
             {
-                var part=parts[i];if(part.Detail&&lean||iwOut[part.Parent])continue;Matrix4x4 m;
+                var part=parts[i];if(part.Detail&&lean||iwOut[part.Parent]||iwPack!=null&&iwPack[i])continue;Matrix4x4 m;
                 if(part.Frame!=NativeIronworksKit.FrameStatic)m=iwFrames[part.Frame]*iwRest[i];
                 else if(iwMoved[part.Parent]&&iwParents[part.Parent]!=null){var b=arena.Map.blocks[part.Parent];var off=iwParents[part.Parent].transform.position+iwNudge[part.Parent]-new Vector3(b.pos.x,b.pos.y,b.pos.z);m=Matrix4x4.Translate(off)*iwRest[i];}
                 else m=iwRest[i];

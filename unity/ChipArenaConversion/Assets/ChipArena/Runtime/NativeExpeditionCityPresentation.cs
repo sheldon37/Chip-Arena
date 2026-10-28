@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         // The anime style's wrap goes to the parts that need it (Core NativeMapStyle.NeedsWrap), drawn first: the batches holding any
         // of them take the wrap, the rest the rounded box (the same count of batches; a third fewer kit vertices, a quarter of its triangles).
         private int[] townOrder=Array.Empty<int>();private int townWrapParts,townCastWrap,townTrimWrap;
-        private ContentMap townMap;private NativeExpeditionCityKit townKit;private NativeCityFxScene townScene;private NativeExpeditionCityLights townLights;private ExpeditionAreaLayout townArea;private bool townAreaRead;private float[] townReach=Array.Empty<float>(),townBehind=Array.Empty<float>();
+        private bool[] townPack;private ContentMap townMap;private NativeExpeditionCityKit townKit;private NativeCityFxScene townScene;private NativeExpeditionCityLights townLights;private ExpeditionAreaLayout townArea;private bool townAreaRead;private float[] townReach=Array.Empty<float>(),townBehind=Array.Empty<float>();
         private NativePropBody[] townParents=Array.Empty<NativePropBody>();private bool[] townOut=Array.Empty<bool>();private Vector3[] townNudge=Array.Empty<Vector3>();private float[] townSeeds=Array.Empty<float>();
         private readonly Dictionary<string,int> townIndex=new Dictionary<string,int>();private MaterialPropertyBlock townOne;private float townLast=-1;private NativeArena townArena;private int townGeneration=-1;
         // The town's blocks are static: each part's matrix and steady colour at its block's rest pose, made once; a block that
@@ -75,7 +75,9 @@ namespace ChipArena.UnityConversion
             {
                 var shader=Resources.Load<Shader>("NativeBlockLit");if(shader==null)throw new InvalidOperationException("NativeBlockLit shader is missing");
                 townMaterial=new Material(shader){name="Expedition town dressing",enableInstancing=true};townMesh=MetroMeshOf(NativeBlockLooks.Build(0));townDraw=new NativeFxDraw();townFx=new NativeExpeditionCityFx();
-                townBackdrop=NativeExpeditionCityScenery.Build(out townFires);
+                // With the pack bank's docks (Core NativePackScenery): their lots left empty, the west plate ending at the quay.
+                var docks=NativePackStage.Entry(NativeExpeditionCityKit.MapId);double quay=NativePackScenery.WestQuay(docks);
+                townBackdrop=docks?.yards!=null?NativeExpeditionCityScenery.Build(out townFires,true,(x0,x1,z0,z1)=>NativePackScenery.Reserved(docks,x0,x1,z0,z1),quay):NativeExpeditionCityScenery.Build(out townFires);
                 for(int i=0;i<townBackdrop.Length;i++)
                 {
                     var b=townBackdrop[i];if(i%NativeBlockLooks.Chunk==0)townBack.Add(new MetroBatch());var bt=townBack[townBack.Count-1];var lin=MetroLinear(b.Color)*b.Gain;
@@ -110,6 +112,8 @@ namespace ChipArena.UnityConversion
                 var part=parts[i];var b=blocks[part.Parent];var r=b.rotation;var q=r==null?Quaternion.identity:new Quaternion(r.x,r.y,r.z,r.w);var at=new Vector3(b.pos.x,b.pos.y,b.pos.z);
                 townRestMatrix[i]=Matrix4x4.TRS(at+q*new Vector3(part.X,part.Y,part.Z),q*new Quaternion(part.Qx,part.Qy,part.Qz,part.Qw),Vector3.one);townRestSpot[i]=new Vector4(b.pos.x+part.X,b.pos.y+part.Y,b.pos.z+part.Z,0);
             }
+            // A part of a block drawn as pack props (docs/arenas/STAGE-KITS.md) stops drawing with its box; parts resting on its top stay.
+            townPack=NativePackStage.Covered(map,parts.Length,i=>parts[i].Parent,i=>(new Vector3(parts[i].X,parts[i].Y,parts[i].Z),new Vector3(parts[i].Hx,parts[i].Hy,parts[i].Hz),new Quaternion(parts[i].Qx,parts[i].Qy,parts[i].Qz,parts[i].Qw)),true);
             TownRestColors();
         }
         // The steady parts' colours for the active colour space (driven parts are coloured each frame).
@@ -125,7 +129,7 @@ namespace ChipArena.UnityConversion
             var parts=townKit.Parts;bool lean=LowGraphics||!UsesInstancing,near=eye!=null;Vector3 at=from;if(near)townKit.Hide(at.x,at.y,at.z,townBehind);
             for(int k=0;k<parts.Length;k++)
             {
-                int i=townOrder[k];var part=parts[i];if(part.Detail&&lean)continue;var prop=townParents[part.Parent];if(prop==null||townOut[part.Parent])continue;
+                int i=townOrder[k];var part=parts[i];if(part.Detail&&lean)continue;var prop=townParents[part.Parent];if(prop==null||townOut[part.Parent]||townPack!=null&&townPack[i])continue;
                 if(near){var spot=townRestSpot[i];float sx=spot.x-at.x,sy=spot.y-at.y,sz=spot.z-at.z;if(sx*sx+sy*sy+sz*sz>townReach[i]||part.Face!=0&&townBehind[part.Face]<=part.Back)continue;}
                 Matrix4x4 m;if(townMoved[part.Parent]){var t=prop.transform;Quaternion q=t.rotation;m=Matrix4x4.TRS(t.position+townNudge[part.Parent]+q*new Vector3(part.X,part.Y,part.Z),q*new Quaternion(part.Qx,part.Qy,part.Qz,part.Qw),Vector3.one);}else m=townRestMatrix[i];
                 if(fade&&part.Fade&&MetroBetween(from,to,new Vector3(m.m03,m.m13,m.m23),new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;

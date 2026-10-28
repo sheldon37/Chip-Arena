@@ -16,6 +16,13 @@ Shader "ChipArena/NativeBlockLit"
     // NativeArenaDressing.Flashes) and the guns' 4 muzzle lights (_MuzzleLight*, NativeMuzzleLight.cginc); then the ground
     // haze and fog. On Ward Zero only (NativeWardLight.cginc): the ceiling light
     // field (one 3D texture, the only texture read here) and the practical slots' beacon beams.
+    // BLOCK_PACK (a local keyword; Runtime/NativePackStage's materials, docs/arenas/STAGE-KITS.md): a pack bank prop drawn in a
+    // block's place or round the map. Its own mesh and place (no lattice), the pack's atlas (_PackTex, uv0) times _PackColor as
+    // the albedo, the same texel times _PackEmit and the map's _ArenaPackGlow as emission (the lights atlas: windows and lamps),
+    // a cutout below _PackCutoff (the logos), and every light, toon, haze, fog, muzzle, flash and dust term a block takes
+    // (PackSurface). Per instance: _BlockRest y the prop's base height (its grime ramp), w its local dust coat; _BlockLook y the
+    // block's health share, z its seed, w its flags; _BlockColor rgb a tint. Normals go through the instance's inverse transpose
+    // (a fitted prop is scaled per axis).
     Properties {}
     SubShader
     {
@@ -787,6 +794,29 @@ Shader "ChipArena/NativeBlockLit"
 
             return s;
         }
+        // A pack prop's surface (BLOCK_PACK; Core NativePackDressing): tex the atlas texel times the material colour (linear), glow
+        // its emission; the layers a block takes that read on a painted prop: the anime style's albedo floor, soot from S1 (health
+        // as NativeBlockLooks.Normalised gives it; past the rule's kept stage the block draws as its box again), the grime ramp up
+        // from the prop's base (baseY), top-face dust, the round's dust coat and the style's occlusion band at the foot.
+        float _ArenaPackGlow;
+        BlockSurf PackSurface(float3 tex,float3 glow,float3 world,float3 n,float baseY,float health,float dust,float seed)
+        {
+            bool toon=_ArenaToon.x>0.5;float3 alb=tex;
+            if(toon)alb=max(alb,_ArenaToonFloor.x*_ArenaToonShade.rgb/max(max(_ArenaToonShade.r,_ArenaToonShade.g),max(_ArenaToonShade.b,0.0001)));
+            bool top=n.y>0.7;float2 uv=top?world.xz:(abs(n.x)>abs(n.z)?world.zy:world.xy);float yb=world.y-baseY;
+            if(health<0.66)
+            {
+                float dmg=saturate((0.66-health)/0.33);float soot=smoothstep(0.35,0.75,BkFbm(uv*1.7+seed*7.0))*dmg;
+                alb=lerp(alb,BK_SOOT,0.6*soot)*(1.0-0.15*dmg);
+            }
+            if(!top&&toon)alb*=1.0-_ArenaToonPaint.w*(1.0-smoothstep(0.0,1.6,yb));
+            else if(!top)alb*=1.0-BK_GRIME*0.6*(1.0-smoothstep(1.2,1.8,yb));
+            if(top)alb=lerp(alb,BK_DUST,0.08*smoothstep(0.35,0.75,BkFbm(uv*0.35+seed*3.0)));
+            float coat=saturate(saturate(_ArenaDust+0.6*_ArenaDustCoat+dust)*(top?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3)));
+            BlockSurf s;s.albedo=lerp(alb,BK_COAT,coat);s.emit=glow*(1.0-0.5*coat);s.bump=float3(0.0,0.0,0.0);s.occ=0.0;
+            if(toon)s.occ=max(top?0.0:1.0-smoothstep(_ArenaToonFx.w-0.04,_ArenaToonFx.w+0.04,yb),step(0.5,-n.y));
+            return s;
+        }
         // The rim light, MapLooks' practical lights ((1 - (d/r)^2)^2, NativeMapLooks.Attenuation; a beacon slot's beam,
         // NativeWardLight.cginc WardBeam) and the blast flashes (min(1, 5(1 - q^2)) / (1 + 25 q^2), NativeBlockLooks.FlashFalloff),
         // each times max(0, N.L); then Ward Zero's ceiling light field (WardField; nothing elsewhere) and the guns' muzzle lights
@@ -825,14 +855,24 @@ Shader "ChipArena/NativeBlockLit"
             return lerp(col,_ArenaHaze.rgb,_ArenaHaze.w*(1.0-t)*(1.0-t)*smoothstep(4.0,40.0,dist));
         }
         // SHARED END
+        sampler2D _PackTex;float4 _PackColor;float _PackEmit;float _PackCutoff;
+        // A pack prop's normal in the world: the instance's inverse transpose (the cofactors of its 3x3, normalised).
+        float3 PackNormal(float3 n)
+        {
+            float3 a=unity_ObjectToWorld[0].xyz,b=unity_ObjectToWorld[1].xyz,c=unity_ObjectToWorld[2].xyz;
+            return normalize(float3(dot(cross(b,c),n),dot(cross(c,a),n),dot(cross(a,b),n)));
+        }
         void BlockVertex(inout appdata_block v)
         {
+            // A pack prop keeps its own vertices (BLOCK_PACK).
+            #if !defined(BLOCK_PACK)
             float4 size=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockSize);float flags=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook).w;
             float3 n=v.normal;
             // The anime style's wrap mesh (uv0.w 1; only drawn while the style is on) or every other stage mesh.
             if(v.texcoord.w>0.5){float4 look=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook);v.vertex=float4(ToonWrap(v.texcoord,v.texcoord1,size.xyz,ToonChamfer(size.xyz,size.w),look.x,look.w,look.z,v.color,n),1.0);}
             else v.vertex=float4(ToonLattice(v.texcoord.xyz,v.texcoord1.xyz,size.xyz,size.w,flags,n),1.0);
             v.normal=n;
+            #endif
         }
         ENDCG
         Pass
@@ -847,6 +887,7 @@ Shader "ChipArena/NativeBlockLit"
             #pragma multi_compile_fwdbase nolightmap nodirlightmap nodynlightmap novertexlight
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #pragma multi_compile_local __ BLOCK_PACK
             #pragma instancing_options assumeuniformscaling
             #include "AutoLight.cginc"
             #include "UnityLightingCommon.cginc"
@@ -855,15 +896,34 @@ Shader "ChipArena/NativeBlockLit"
             {
                 v2f o;UNITY_SETUP_INSTANCE_ID(v);UNITY_INITIALIZE_OUTPUT(v2f,o);
                 float4 size=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockSize);float4 rest=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockRest);float4 col=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockColor);float4 look=UNITY_ACCESS_INSTANCED_PROP(BlockProps,_BlockLook);
+                #if defined(BLOCK_PACK)
+                // A pack prop: uv0 in pat.xy, its base height in shade.x, the world normal through the inverse transpose.
+                o.pos=UnityObjectToClipPos(v.vertex);o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,col.w);o.obj=float4(v.vertex.xyz,rest.w);
+                o.pat=float4(v.texcoord.xy,0.0,look.w);o.size=float4(0.0,0.0,0.0,look.y);o.col=float4(col.rgb,look.z);o.shade=float4(rest.y,0.0,0.0,0.0);
+                o.nO=v.normal;o.nW=PackNormal(v.normal);
+                #else
                 BlockVertex(v);o.pos=UnityObjectToClipPos(v.vertex);o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,col.w);
                 o.obj=float4(v.vertex.xyz,rest.w);o.pat=float4(v.vertex.xyz+rest.xyz,look.x+16.0*look.w);o.size=float4(size.xyz,look.y);o.col=float4(col.rgb,look.z);o.shade=v.color;
                 o.nO=v.normal;o.nW=UnityObjectToWorldNormal(v.normal);
                 // The anime style: the instance's x and y axes in the world (its rounded normal's frame) and the chamfer drawn.
                 o.ax=float4(UnityObjectToWorldDir(float3(1.0,0.0,0.0)),_ArenaToon.x>0.5?ToonChamfer(size.xyz,size.w):size.w);o.ay=float4(UnityObjectToWorldDir(float3(0.0,1.0,0.0)),0.0);
+                #endif
                 UNITY_TRANSFER_SHADOW(o,float2(0.0,0.0));UNITY_TRANSFER_FOG(o,o.pos);return o;
             }
             fixed4 frag(v2f i):SV_Target
             {
+                #if defined(BLOCK_PACK)
+                {
+                    float4 t=tex2D(_PackTex,i.pat.xy);clip(t.a-_PackCutoff);float3 alb=t.rgb*_PackColor.rgb*i.col.rgb;
+                    float3 nT=normalize(i.nW);float3 nF=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),nT);
+                    BlockSurf ps=PackSurface(alb,t.rgb*(_PackEmit*_ArenaPackGlow),i.world.xyz,nT,i.shade.x,i.size.w,i.obj.w,i.col.w);
+                    UNITY_LIGHT_ATTENUATION(pa,i,i.world.xyz);float3 pc;
+                    if(_ArenaToon.x>0.5)pc=ToonBlockLit(ps.albedo,ps.emit,ps.occ,i.world.xyz,nT,nF,normalize(_WorldSpaceCameraPos-i.world.xyz),_WorldSpaceLightPos0.xyz,_LightColor0.rgb,pa,ShadeSH9(float4(nT,1.0)),ShadeSH9(float4(0.0,1.0,0.0,1.0)),ShadeSH9(float4(0.0,-1.0,0.0,1.0)));
+                    else pc=ps.albedo*(ShadeSH9(float4(nT,1.0))+_LightColor0.rgb*(saturate(dot(nT,_WorldSpaceLightPos0.xyz))*pa)+BlockLights(i.world.xyz,nT))+ps.emit;
+                    fixed4 pk=fixed4(BlockHaze(pc,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
+                    UNITY_APPLY_FOG(i.fogCoord,pk);return pk;
+                }
+                #else
                 float3 fwP=fwidth(i.pat.xyz);float fpx=length(fwidth(i.world.xyz));
                 float3 nO=BlockOrient(cross(ddx(i.obj.xyz),ddy(i.obj.xyz)),i.nO);float3 nW=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),i.nW);
                 BlockSurf s=BlockSurface(i.obj.xyz,i.pat.xyz,fwP,nO,i.size.xyz,i.pat.w,i.size.w,i.col.rgb,i.col.w,i.shade,i.obj.w,i.world.w);
@@ -885,6 +945,7 @@ Shader "ChipArena/NativeBlockLit"
                 }
                 fixed4 c=fixed4(BlockHaze(col,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
                 UNITY_APPLY_FOG(i.fogCoord,c);return c;
+                #endif
             }
             ENDCG
         }
@@ -897,10 +958,18 @@ Shader "ChipArena/NativeBlockLit"
             #pragma target 3.5
             #pragma multi_compile_shadowcaster
             #pragma multi_compile_instancing
+            #pragma multi_compile_local __ BLOCK_PACK
             #pragma instancing_options assumeuniformscaling
-            struct v2fs {V2F_SHADOW_CASTER;};
-            v2fs vertShadow(appdata_block v){v2fs o;UNITY_SETUP_INSTANCE_ID(v);UNITY_INITIALIZE_OUTPUT(v2fs,o);BlockVertex(v);TRANSFER_SHADOW_CASTER_NORMALOFFSET(o)return o;}
-            float4 fragShadow(v2fs i):SV_Target{SHADOW_CASTER_FRAGMENT(i)}
+            // A pack prop's cutout (the logos) holds in its shadow and depth too.
+            struct v2fs {V2F_SHADOW_CASTER;float2 uv:TEXCOORD1;};
+            v2fs vertShadow(appdata_block v){v2fs o;UNITY_SETUP_INSTANCE_ID(v);UNITY_INITIALIZE_OUTPUT(v2fs,o);BlockVertex(v);o.uv=v.texcoord.xy;TRANSFER_SHADOW_CASTER_NORMALOFFSET(o)return o;}
+            float4 fragShadow(v2fs i):SV_Target
+            {
+                #if defined(BLOCK_PACK)
+                clip(tex2D(_PackTex,i.uv).a-_PackCutoff);
+                #endif
+                SHADOW_CASTER_FRAGMENT(i)
+            }
             ENDCG
         }
     }

@@ -92,6 +92,12 @@ namespace ChipArena.UnityConversion
                         pair[0]=place;pair[1]=Matrix4x4.TRS(at-t.up*.4f,t.rotation,Vector3.one*.4f);
                         try{Graphics.DrawMeshInstanced(quad,0,mi,pair,2,null,ShadowCastingMode.On,true,Layer,camera);}catch(InvalidOperationException){}catch(ArgumentException){}
                     }
+                    // The blocks' pack variant (BLOCK_PACK, NativePackStage) when the kit bank is present: plain and instanced.
+                    if(s.name=="ChipArena/NativeBlockLit"&&NativePackStage.MaterialFor(0) is Material pm)
+                    {
+                        Graphics.DrawMesh(quad,place,pm,Layer,camera,0,null,ShadowCastingMode.On,true);pair[0]=place;pair[1]=Matrix4x4.TRS(at-t.up*.4f,t.rotation,Vector3.one*.4f);
+                        if(SystemInfo.supportsInstancing)try{Graphics.DrawMeshInstanced(quad,0,pm,pair,2,null,ShadowCastingMode.On,true,Layer,camera);}catch(InvalidOperationException){}catch(ArgumentException){}
+                    }
                     warmed++;
                 }
                 next=end;camera.Render();

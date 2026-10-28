@@ -77,6 +77,8 @@ namespace ChipArena.UnityConversion
             ExpeditionCityScenery(arena);
             IronworksScenery(arena);
             IronworksBossScenery(arena);
+            // The harbour yards round the map (NativePackStage.cs; nothing without the kit bank).
+            PackYards(arena);
             if(revamp)WardZeroScenery(arena);
             // The hazard kit (NativeHazardKitPresentation.cs): the map's alarm placements, or the DEV preview gallery.
             HazardKitWorld(arena);
