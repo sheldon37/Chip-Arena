@@ -194,6 +194,38 @@ realistic looks) Of course, as long as it produces proper glow + lighting".
 - **Not yet:** seen in the Unity Editor or a build; Overdrive's heat and Fan the Hammer on the sheets were checked in the
   rules only.
 
+## Blood splats from the pack (2026-10-28, `claude/pack-fx-hits`)
+
+Owner (2026-10-28): the blood upgrades approved.
+
+- **What it does:** a splat on a floor or wall (`Core/NativeBlood`, unchanged: the drops, where they land, stretch, wall
+  runs, the 384 + 48 pool, the fade when a surface goes) draws as the pack's shaded splat texture on one quad, in place of
+  today's toon fan (blob, wet core, satellites, tail).
+- **Kinds** (`Core/NativeBloodSplatLook.Pick`, by the splat's seed and its length over width):
+
+  | Kind | When | Laid | Size (half extents) |
+  | --- | --- | --- | --- |
+  | Round (`splat03` frame 0) | landed steeply (length/width up to 1.2), 85% | spun at random | 2.8 x its half length and width |
+  | Splash (`splat02` frame 0) | 1.2 to 1.45, and 15% of the steep ones | along its travel, the lobes ahead | 2.2 x |
+  | Streak (`splat01` frame 0) | grazing (over 1.45), and every wall run | along its travel (down a wall), the spray ahead | 2.6 x along, 1.7 x across |
+
+  Mirrored on about half, 0.92-1.08 in size. Source: Epic Toon FX's `splat0x_shaded_3x3` sheets (the first frame, cropped by
+  the selection `tools/pack_bank/selections/fx-blood.json`).
+- **Shader** (`Resources/NativeBloodSplat.shader`): the texture's alpha is the shape; a few mips down it tells the thick
+  middle (the wet core colour) from the lobes and drops (the rim colour); its grey bevel shades the rim and, while wet,
+  catches a highlight that dries off with the colour. Colours, lighting (the CPU's ambient and sun), drying, fog and the
+  queue (Transparent-60, premultiplied, no depth write) are today's.
+- **Runtime** (`Runtime/NativeBloodPresentation.cs`): with all three textures and the shader, one quad a splat in a second
+  pooled mesh; without them, and on the low graphics tier (the blob alone), today's fans. Siren ink splats take the same
+  quads in the ink colours.
+- **Checks:** `CoreTests --pack-fx-hits` (the kinds by grazing, placement, size following the splat, determinism, the
+  sheen, the selection, the fallbacks, the shader's block); `--zombie-gore`, `--gib`, `--weapon-sockets` (hit feel)
+  passing.
+- **Renders** (offline, the Core blood sim spraying six wounds onto a floor and a wall, both looks from the same 135
+  splats): fresh, dried, the wall runs and the low tier.
+- **Not yet:** seen in the Editor or a build; a quad near a block's edge can overhang it a little more than the fan did (the
+  sim's support test is unchanged).
+
 ## Candidates from the same drive (not started)
 
 - **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles, muzzle flashes, explosions and magic in the toon style.

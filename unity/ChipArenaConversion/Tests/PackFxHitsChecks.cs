@@ -6,7 +6,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 namespace ChipArena.UnityConversion
 {
-    // The effect upgrades from the owner's packs (owner 2026-10-28; docs/PACK-EFFECTS.md): the guns' pack muzzle flashes. Each
+    // The effect upgrades from the owner's packs (owner 2026-10-28; docs/PACK-EFFECTS.md): the guns' pack muzzle flashes, the
+    // pack's blood splats. Each
     // look is a pure function of the replicated shot and falls back to exactly today's when its textures are missing.
     internal static class PackFxHitsChecks
     {
@@ -18,6 +19,7 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
             Muzzle(root,R);
+            Blood(root,R);
             Console.WriteLine("PASS pack fx hits: "+count+" checks");
         }
 
@@ -70,6 +72,40 @@ namespace ChipArena.UnityConversion
             Check(draw.Contains("public const float SheetFlameMode=8,SheetBurstMode=9;"),"the drawer's sheet modes match the shader");
             Check(kit.Contains("NativeMuzzleFx.Look(\"machinegun\",out var look);NativeMuzzleFx.Turret(ref look);"),"the turrets' flash takes the turret sheet");
             foreach(var f in new[]{"Runtime/NativeWeaponFxDraw.cs","Core/NativeMuzzleFlash.cs","Resources/NativeWeaponFx.shader"})foreach(string pack in new[]{"Kripto","kripto","MuzzleFlash1","Flame3"})Check(!R(f).Contains(pack),"no pack names in "+f+": "+pack);
+        }
+
+        // B. Blood: the pack's splat textures, one quad a splat, today's colours, drying and pool; fans without them and on the
+        // low graphics tier.
+        private static void Blood(string root,Func<string,string> R)
+        {
+            int[] kinds=new int[NativeBloodSplatLook.Kinds];int mirrored=0,n=0;
+            for(uint seed=1;seed<400;seed++)
+            {
+                float w=.012f+.05f*NativeBloodRules.Hash(seed,0,5),g=1+1.2f*NativeBloodRules.Hash(seed,1,5),l=w*g;
+                NativeBloodSplatLook.Pick(seed,l,w,out int kind,out float spin,out bool mirror,out float along,out float across,out float ahead);
+                NativeBloodSplatLook.Pick(seed,l,w,out int kind2,out float spin2,out bool mirror2,out float along2,out _,out _);
+                Check(kind==kind2&&spin==spin2&&mirror==mirror2&&along==along2,"a splat's look is a function of its seed");
+                Check(kind>=0&&kind<NativeBloodSplatLook.Kinds&&along>0&&across>0&&ahead>=0&&ahead<along,"seed "+seed+": a quad on the splat");
+                Check(g>NativeBloodSplatLook.StreakAbove?kind==NativeBloodSplatLook.Streak:g>NativeBloodSplatLook.SplashAbove?kind==NativeBloodSplatLook.Splash:kind!=NativeBloodSplatLook.Streak,"seed "+seed+": the kind follows how it grazed ("+g+")");
+                if(kind==NativeBloodSplatLook.Round)Check(ahead==0&&spin>=0&&spin<MathF.PI*2+1e-4f&&along>=l*2.5f&&across>=w*2.5f,"a round splat centred, spun at random, about its blob's size and its spatter");
+                else Check(MathF.Abs(spin)<.26f&&ahead>along*.3f&&along>=l*1.9f,"a splash or streak laid along its travel, its impact end on the splat");
+                kinds[kind]++;if(mirror)mirrored++;n++;
+            }
+            Check(kinds.All(k=>k>10)&&mirrored>n/4&&mirrored<n*3/4,"every kind shows; about half mirrored ("+string.Join(",",kinds)+")");
+            NativeBloodSplatLook.Pick(9,.06f,.03f,out _,out _,out _,out float a1,out float c1,out _);NativeBloodSplatLook.Pick(9,.12f,.06f,out _,out _,out _,out float a2,out float c2,out _);
+            Check(a2>a1*1.9f&&c2>c1*1.9f,"the quad grows with the splat (stretch by travel kept)");
+            Check(NativeBloodSplatLook.Wet(0)==1&&NativeBloodSplatLook.Wet(600)<.01f&&NativeBloodSplatLook.Wet(30)<NativeBloodSplatLook.Wet(5),"the sheen dries off with the colour");
+            var sel=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/pack_bank/selections/fx-blood.json"))).RootElement;
+            Check(sel.GetProperty("textures").EnumerateArray().Select(t=>t.GetProperty("id").GetString()).OrderBy(x=>x).SequenceEqual(NativeBloodSplatLook.Ids.OrderBy(x=>x))&&!sel.TryGetProperty("bank",out _),"fx-blood.json lists exactly the splat ids");
+            string blood=Code(R("Runtime/NativeBloodPresentation.cs")),shader=R("Resources/NativeBloodSplat.shader");
+            Check(blood.Contains("bool sheets=!low&&SplatSheets();")&&blood.Contains("if(sheets)SheetSplat(s,a,now);else Splat(s,a,now,low);"),"the pack splats off the low tier only (the blob alone there), today's fans without them");
+            Check(blood.Contains("if(round==null||splash==null||streak==null)return false;")&&blood.Contains("NativePackBanks.Texture(NativeBloodSplatLook.Ids[NativeBloodSplatLook.Round])")&&blood.Contains("var shader=Resources.Load<Shader>(\"NativeBloodSplat\");if(shader==null||!shader.isSupported)return false;"),"all three textures and the shader, or today's fans");
+            Check(blood.Contains("Fan(o,u,v,n,Vector2.zero,1,rim);")&&blood.Contains("if(!low)Fan(o+n*.0005f,u,v,n,new Vector2(L*.12f,0),.58f,core);"),"today's fans unchanged");
+            Check(blood.Contains("renderQueue=(int)RenderQueue.Transparent-60};")&&shader.Contains("Blend One OneMinusSrcAlpha")&&shader.Contains("ZWrite Off")&&shader.Contains("UNITY_APPLY_FOG_COLOR(")&&shader.Contains("GammaToLinearSpace(i.color.rgb)"),"premultiplied, no depth write, fogged, where today's splats draw, today's colours");
+            var block=Code(Between(shader,"BLOOD SPLAT SHARED BEGIN","BLOOD SPLAT SHARED END"));
+            Check(block.Length>100&&!block.Contains("tex2D")&&!block.Contains("mul(")&&Regex.Matches(block,@"(?<![\w.])\d+(?![\w.])").Count==0,"the splat block: float literals only, no texture reads");
+            Check(Regex.IsMatch(R("Resources/NativeBloodSplat.shader.meta"),@"^guid: [0-9a-f]{32}$",RegexOptions.Multiline),"the splat shader has its .meta");
+            var sheet=Between(blood,"private void SheetSplat(","private void Fan(");Check(!Regex.IsMatch(sheet,@"new\s+(?!Vector4\b|Vector3\b|Color\b)\w+")&&!blood.Contains("Random("),"the pack splats allocate nothing per splat and use no clock-free randomness");
         }
     }
 }
