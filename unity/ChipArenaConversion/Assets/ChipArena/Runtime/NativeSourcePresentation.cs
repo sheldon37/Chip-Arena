@@ -69,6 +69,8 @@ namespace ChipArena.UnityConversion
             // imported the map carries no look and this is today's path.
             bool revamp=NativeWardZeroLooks.Active(arena.Map);
             if(!revamp)sourceModels.Queue("map-"+arena.MapId,Matrix4x4.identity);HazardPresentation(arena);SceneryMotion(arena);if(arena.MapId=="siren"&&!revamp)WardPresentation(arena);
+            // The advanced lighting (NativeAdvancedLightingPresentation.cs): the FX builders below take this frame's beam list.
+            AdvancedLightingBegin(arena);
             FactoryScenery(arena);
             BrickfallScenery(arena);
             StationScenery(arena);
@@ -78,6 +80,7 @@ namespace ChipArena.UnityConversion
             IronworksScenery(arena);
             IronworksBossScenery(arena);
             if(revamp)WardZeroScenery(arena);
+            AdvancedLightingWorld(arena);
             // The hazard kit (NativeHazardKitPresentation.cs): the map's alarm placements, or the DEV preview gallery.
             HazardKitWorld(arena);
             PveMachinePresentation(arena);

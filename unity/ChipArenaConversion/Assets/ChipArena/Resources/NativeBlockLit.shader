@@ -15,7 +15,9 @@ Shader "ChipArena/NativeBlockLit"
     // (_ArenaLight*, its own arrays, never the entrance stage's _StageLight*), the 3 blast flashes (_ArenaFlash*,
     // NativeArenaDressing.Flashes) and the guns' 4 muzzle lights (_MuzzleLight*, NativeMuzzleLight.cginc); then the ground
     // haze and fog. On Ward Zero only (NativeWardLight.cginc): the ceiling light
-    // field (one 3D texture, the only texture read here) and the practical slots' beacon beams.
+    // field (one 3D texture) and the practical slots' beacon beams. With a look's `advanced` on the medium and high tiers
+    // (NativeAdvancedLight.cginc; docs/LIGHTING-ADVANCED.md): the light volume (the other 3D texture: occlusion and bounce
+    // on the ambient, the lightning), wet faces (puddles, rings, sheen) and the height fog's scattering before Unity's fog.
     Properties {}
     SubShader
     {
@@ -118,6 +120,8 @@ Shader "ChipArena/NativeBlockLit"
         #include "NativeWardLight.cginc"
         // The guns' muzzle lights (four slots of their own on every map; off while _MuzzleLightCount is 0).
         #include "NativeMuzzleLight.cginc"
+        // The advanced lighting (off on every map without it: its globals are 0).
+        #include "NativeAdvancedLight.cginc"
         // The anime map style's switch, ramp and helpers (_ArenaToon*; 0 everywhere but a map whose look turns it on).
         #include "NativeToon.cginc"
         // The vertex lattice (NativeBlockLooks.Corner) and the instance's 180-degree mesh turns, which only pick other chipped corners.
@@ -816,6 +820,8 @@ Shader "ChipArena/NativeBlockLit"
             // The shade side's sky bounce: the ambient a little lighter up a wall than at its foot (a painted gradient in shade).
             float bounce=1.0+_ArenaToonPaint.y*(saturate(world.y/12.0)-0.35)*1.5;
             float3 light=ToonOcclude(ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y)*bounce,key,dot(nT,keyDir),atten),occ)+ToonPoints(BlockLights(world,nT));
+            // The light volume on the ambient as the ramp takes it (the key's share 0), in the occlusion band like the rest.
+            light+=ToonOcclude(ArenaGI(ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y)*bounce,float3(0.0,0.0,0.0),dot(nT,keyDir),atten),world,nT),occ);
             return albedo*(light+ToonEdge(nT,v,keyDir,key,atten,edge))+ToonSheen(nT,v,shUp)+emit;
         }
         // Ground haze (3.10: 15% from 0 to 2.5 m): _ArenaHaze.w at the street, gone at _ArenaHazeTop, faded in from 4 to 40 m away.
@@ -868,6 +874,8 @@ Shader "ChipArena/NativeBlockLit"
                 float3 nO=BlockOrient(cross(ddx(i.obj.xyz),ddy(i.obj.xyz)),i.nO);float3 nW=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),i.nW);
                 BlockSurf s=BlockSurface(i.obj.xyz,i.pat.xyz,fwP,nO,i.size.xyz,i.pat.w,i.size.w,i.col.rgb,i.col.w,i.shade,i.obj.w,i.world.w);
                 UNITY_LIGHT_ATTENUATION(atten,i,i.world.xyz);
+                // Wet faces (NativeAdvancedLight.cginc): the albedo darkened, a puddle on up-facing faces (nothing while dry).
+                float puddle=ArenaPuddle(i.world.xyz,nW);s.albedo=ArenaWetAlbedo(s.albedo,puddle,nW);
                 float3 col;
                 // The anime style (NativeToon.cginc; Core NativeMapStyle): the rounded normal in the instance's frame, then the ramp.
                 if(_ArenaToon.x>0.5)
@@ -881,9 +889,12 @@ Shader "ChipArena/NativeBlockLit"
                 else
                 {
                     float3 light=ShadeSH9(float4(nW,1.0))+_LightColor0.rgb*(saturate(dot(nW,_WorldSpaceLightPos0.xyz))*atten)+BlockLights(i.world.xyz,nW);
+                    light+=ArenaGI(ShadeSH9(float4(nW,1.0)),i.world.xyz,nW);
                     col=s.albedo*light+s.emit;
                 }
+                col+=ArenaWetSheen(i.world.xyz,nW,normalize(_WorldSpaceCameraPos-i.world.xyz),puddle,_WorldSpaceLightPos0.xyz,_LightColor0.rgb,atten);
                 fixed4 c=fixed4(BlockHaze(col,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
+                c.rgb=ArenaScatter(c.rgb,i.world.xyz,_WorldSpaceCameraPos);
                 UNITY_APPLY_FOG(i.fogCoord,c);return c;
             }
             ENDCG

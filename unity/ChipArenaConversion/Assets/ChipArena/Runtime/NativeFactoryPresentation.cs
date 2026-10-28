@@ -58,6 +58,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Each hazard's blood (the hazard clock of the last pilot its saw cut this round, NaN none; null: no blood, gore off), set before Render.</summary>
         public double[] Blood;
+        /// <summary>The frame's volumetric beam list (ArenaPresentation.AdvancedBeams; null: the skylights' billboard sheets).</summary>
+        public NativeBeamList Beams;
         /// <summary>One arena frame. now: the drawn arena's field clock; quality: effects quality; low: graphics=performance.</summary>
         public void Render(NativeArena arena,float now,Camera camera,float quality,bool low,bool instancing,NativeDustCoat coat)
         {
@@ -92,7 +94,7 @@ namespace ChipArena.UnityConversion
         private void Effects(FactoryHazard[] hz,int round,double clock,float time,Camera camera,float quality,bool low,bool atmosphere)
         {
             if(camera==null)return;ReadLight();var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            fx.Build(hz,round,clock,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,fxLight,Mathf.Clamp01(quality),low,atmosphere);
+            fx.Beams=Beams;fx.Build(hz,round,clock,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,fxLight,Mathf.Clamp01(quality),low,atmosphere);
             var q=fx.Quads;fxDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {
@@ -170,14 +172,14 @@ namespace ChipArena.UnityConversion
         private void FactoryScenery(NativeArena arena)
         {
             if(!NativeFactoryScenery.Active(arena.MapId))return;if(factoryStage==null)factoryStage=gameObject.AddComponent<NativeFactoryStage>();
-            factoryStage.Blood=SawBlood(arena,NativeFactoryStage.Hazards(arena.MapId));
+            factoryStage.Blood=SawBlood(arena,NativeFactoryStage.Hazards(arena.MapId));factoryStage.Beams=AdvancedBeams;
             factoryStage.Render(arena,FieldClock(arena),WorldEye,EffectsQuality,LowGraphics,UsesInstancing,dustCoat);
         }
         // RenderBackdrop: behind the main menu, on the render clock.
         private void FactoryBackdrop(string mapId,float time,Camera camera)
         {
             if(!NativeFactoryScenery.Active(mapId))return;if(factoryStage==null)factoryStage=gameObject.AddComponent<NativeFactoryStage>();
-            factoryStage.Backdrop(time,camera,EffectsQuality,LowGraphics);
+            factoryStage.Beams=null;factoryStage.Backdrop(time,camera,EffectsQuality,LowGraphics);
         }
     }
 }

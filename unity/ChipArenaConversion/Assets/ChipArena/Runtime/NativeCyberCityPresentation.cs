@@ -158,7 +158,7 @@ namespace ChipArena.UnityConversion
         private void DrawCyberFx(float time,Camera camera,bool atmosphere,int screens)
         {
             if(camera==null)return;ReadCyberLight();var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            metroFx.Build(metroScene,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,metroLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,atmosphere?metroStates:null,metroScreens,screens);
+            metroFx.BeamList=AdvancedBeams;metroFx.ExternalRain=AdvancedRain&&atmosphere;metroFx.Build(metroScene,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,metroLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,atmosphere?metroStates:null,metroScreens,screens);
             var q=metroFx.Quads;metroDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {

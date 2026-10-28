@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
             else for(int c=0;c<2;c++)Graphics.DrawMesh(brickfallJib,brickfallJibs[c],brickfallLit,backdrop,null,0,null,ShadowCastingMode.Off,true);
             if(camera==null)return;
             ReadBrickfallLight();BrickfallDustInUse=structureFx!=null?structureFx.Fx.PuffCount:0;var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            brickfallFx.Build(time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,brickfallLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,brickfallMemory,roundStart,BrickfallDustInUse);
+            brickfallFx.Beams=AdvancedBeams;brickfallFx.Build(time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,brickfallLight,Mathf.Clamp01(EffectsQuality),LowGraphics,atmosphere,brickfallMemory,roundStart,BrickfallDustInUse);
             var q=brickfallFx.Quads;brickfallDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {

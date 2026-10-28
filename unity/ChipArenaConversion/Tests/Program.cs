@@ -34,6 +34,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--menu-style"){MenuStyleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--visual-rig"){VisualRigChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-bank"){PackBankChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--advanced-lighting"){var alRoot=ProjectRoot();var alData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(alRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});AdvancedLightingChecks.Run(alRoot);foreach(var result in MapLookChecks.Run(alRoot,alData))Console.WriteLine("PASS "+result);foreach(var result in BlockLookChecks.Run(alRoot,alData))Console.WriteLine("PASS "+result);MapStyleChecks.Run(alRoot);WardLightingChecks.Run(alRoot);ZombieLightChecks.Run(alRoot);ArmorLightChecks.Run(alRoot);BloomChecks.Run(alRoot);FactoryChecks.Run(alRoot);BrickfallSceneryChecks.Run(alRoot);CyberCityChecks.Run(alRoot);return 0;}
             if(args.Length==1&&args[0]=="--expedition-join-view"){ExpeditionJoinPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-visuals"){ExpeditionStationVisualChecks.Run(ProjectRoot());ZombieLightChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-light"){ZombieLightChecks.Run(ProjectRoot());return 0;}
@@ -186,6 +187,7 @@ internal static class Program
             BodySkinChecks.Run(root,data);
             VisualRigChecks.Run(root);
             PackBankChecks.Run(root);
+            AdvancedLightingChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             HealNumberChecks.Run(root);

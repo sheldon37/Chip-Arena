@@ -70,6 +70,9 @@ namespace ChipArena.UnityConversion
         public MapLookShadows shadows;public MapLookSky sky;public MapLookPractical[] lights;public MapLookBlock[] blockLooks,kitLooks;public string dressing,backdrop,atmosphere,ambience;public MapLookBlocks blocks;
         /// <summary>The anime map style (Core NativeMapStyle; docs/MAP-STYLE-ANIME.md): missing or `on` false is the legacy look.</summary>
         public MapLookToon toon;
+        /// <summary>The advanced lighting (Core NativeAdvancedLooks; docs/LIGHTING-ADVANCED.md): the light volume, the fog's
+        /// scattering, the volumetric beams and the weather. Missing is today's look.</summary>
+        public MapLookAdvanced advanced;
     }
     [Serializable] public sealed class MapLookLight {public int color;public float intensity,elevation,bearing,shadowStrength;public V3 from;public string shadows;}
     [Serializable] public sealed class MapLookAmbient {public int sky,equator,ground;public float skyScale,equatorScale,groundScale;}
@@ -267,7 +270,7 @@ namespace ChipArena.UnityConversion
                     if(l.flicker=="fire"&&!(l.rate>0))Fail(id,"fire flicker needs a rate: "+l.id);if(l.flicker=="stutter"&&!(l.length>0&&l.period>l.length))Fail(id,"stutter needs period > length > 0: "+l.id);
                 }
                 BlockLooks(id,m.blockLooks);BlockLooks(id+" kit",m.kitLooks);foreach(var b in m.kitLooks??Array.Empty<MapLookBlock>())if(b.band||b.block.StartsWith("material:",StringComparison.Ordinal))Fail(id,"kit look "+b.block+" with a band or a material");
-                NativeMapStyle.Validate(id,m.toon);
+                NativeMapStyle.Validate(id,m.toon);NativeAdvancedLooks.Validate(id,m.advanced);
                 var k=m.blocks;if(k!=null&&(!Finite(k.dust,k.haze,k.hazeTop)||k.dust<0||k.dust>1||k.haze<0||k.haze>1||k.haze>0&&!(k.hazeTop>0)||!Rgb(k.hazeColor)))Fail(id,"blocks");
             }
             BlockLooks("preview",set.preview);

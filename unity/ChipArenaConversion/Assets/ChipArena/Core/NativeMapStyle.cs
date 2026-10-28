@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
             if(!On(look,legacy))return look;var t=look.toon;
             var s=new MapLook{id=look.id,look=look.look,farClip=look.farClip,background=t.background!=0?t.background:look.background,key=Has(t.key)?t.key:look.key,rim=Has(t.rim)?t.rim:look.rim,
                 ambient=Has(t.ambient)?t.ambient:look.ambient,shadows=look.shadows,sky=Has(t.sky)?t.sky:look.sky,lights=look.lights,blockLooks=look.blockLooks,kitLooks=look.kitLooks,
-                dressing=look.dressing,backdrop=look.backdrop,atmosphere=look.atmosphere,ambience=look.ambience,toon=t};
+                dressing=look.dressing,backdrop=look.backdrop,atmosphere=look.atmosphere,ambience=look.ambience,toon=t,advanced=look.advanced};
             var f=look.fog;s.fog=f==null?null:new MapLookFog{mode=f.mode,color=t.fogColor!=0?t.fogColor:f.color,skyLerp=t.fogColor!=0?0:f.skyLerp,start=t.fogStart>0&&t.fogStart<f.end?t.fogStart:f.start,end=f.end,density=f.density};
             var b=look.blocks;s.blocks=b==null?null:new MapLookBlocks{dressed=b.dressed,dust=b.dust,haze=b.haze,hazeTop=b.hazeTop,hazeColor=t.hazeColor!=0?t.hazeColor:b.hazeColor};
             return s;

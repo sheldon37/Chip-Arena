@@ -165,7 +165,7 @@ namespace ChipArena.UnityConversion
         private void DrawStationFx(float time,Camera camera,NativeStationView view)
         {
             if(camera==null)return;var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;stationFx.GlassView=view;
-            stationFx.Build(stationScene,stationState,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
+            stationFx.Beams=AdvancedBeams;stationFx.Build(stationScene,stationState,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
             var q=stationFx.Quads;stationDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {

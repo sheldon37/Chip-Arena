@@ -93,6 +93,10 @@ namespace ChipArena.UnityConversion
         public const int RainFull=720,SplashFull=96,SteamPer=6,HazeMax=40,ReflectMax=64;
         public const double RainRadius=16,RainHeight=24,RainSpeed=11,WindX=1.6,WindZ=.5;
         public int Rain,Splashes,Steam,Haze,Reflections,Pools,Cars,Lights,Beams,Telegraph,Guide;
+        /// <summary>The volumetric beams (Core NativeBeamList): while set, the searchlights go here instead of their billboards.</summary>
+        public NativeBeamList BeamList;
+        /// <summary>The advanced weather draws the rain and its splashes (Core NativeWeatherFx, the same fall): this builder leaves them out.</summary>
+        public bool ExternalRain;
         /// <summary>The first of this frame's way-out guidance quads (Guide of them follow).</summary>
         public int GuideStart;
         public const int PoolMax=56;
@@ -121,7 +125,7 @@ namespace ChipArena.UnityConversion
             if(!atmosphere)return;
             for(int i=0;i<screenCount&&screens!=null&&i<screens.Length;i++)if(screens[i].Live)ScreenFx(screens[i],time);
             MaglevFx(scene,states,time);GridFx(scene,states,time);GuideFx(scene,states,time);
-            PoolFx(scene,quality,low);Reflect(scene,quality,low);HazeFx(scene,quality,low);SteamFx(scene,time,quality,low);RainFx(scene,states,time,quality,low);SplashFx(scene,time,quality,low);
+            PoolFx(scene,quality,low);Reflect(scene,quality,low);HazeFx(scene,quality,low);SteamFx(scene,time,quality,low);if(!ExternalRain){RainFx(scene,states,time,quality,low);SplashFx(scene,time,quality,low);}
         }
 
         // ---------------- primitives ----------------
@@ -191,6 +195,7 @@ namespace ChipArena.UnityConversion
                 // The beam's width faces the camera round its axis, widening toward the clouds.
                 double mx=x+dx*len/2-ex,my=y+dy*len/2-ey,mz=z+dz*len/2-ez,sx=dy*mz-dz*my,sy=dz*mx-dx*mz,sz=dx*my-dy*mx,sl=Math.Sqrt(sx*sx+sy*sy+sz*sz);if(sl<1e-6)continue;sx/=sl;sy/=sl;sz/=sl;
                 double w0=2.5,w1=26,bx=x+dx*len,by=y+dy*len,bz=z+dz*len,ml=Math.Sqrt(mx*mx+my*my+mz*mz),c=ml>1e-6?Math.Abs(dx*mx+dy*my+dz*mz)/ml:1,fa=.07*(1-c*c);
+                if(BeamList!=null&&BeamList.Add(x,y,z,bx,by,bz,w0*.7,w1*.7,.55*.07*NativeBeamList.FromBillboard,.62*.07*NativeBeamList.FromBillboard,.9*.07*NativeBeamList.FromBillboard,.5,i)){Beams++;Point(x,y,z,4,.012,.8,.85,1,.6);continue;}
                 Quads.Add(x-sx*w0,y-sy*w0,z-sz*w0,bx-sx*w1,by-sy*w1,bz-sz*w1,bx+sx*w1,by+sy*w1,bz+sz*w1,x+sx*w0,y+sy*w0,z+sz*w0,.55,.62,.9,Math.Max(.004,fa),0,true,1);Beams++;
                 Point(x,y,z,4,.012,.8,.85,1,.6);
             }

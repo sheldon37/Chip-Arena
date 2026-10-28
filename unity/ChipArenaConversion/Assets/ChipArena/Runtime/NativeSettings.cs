@@ -11,7 +11,8 @@ namespace ChipArena.UnityConversion
         {
             // The Siren mode key comes first and only for pilots who can play the Siren (main.ts settings).
             if(account.Developer||(account.Access??NativeAccess.Guest).Allows("weapon:siren",DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())){Field("Siren mode key");prefs.sirenMode=ChoiceGrid(new[]{"Q","F","V"},prefs.sirenMode);Fine("V also changes the camera view.");}
-            Field("Graphics");prefs.graphics=ChoiceGrid(new[]{"auto","high","performance"},prefs.graphics,new[]{"Auto · targets 60 FPS","High · sharper image","Performance · no shadows"});
+            // Balanced (Core NativeGraphicsTiers): everything High draws today, with the advanced lighting lighter (docs/LIGHTING-ADVANCED.md).
+            Field("Graphics");prefs.graphics=ChoiceGrid(NativeGraphicsTiers.Choices,NativeGraphicsTiers.Known(prefs.graphics),NativeGraphicsTiers.Labels);
             // Settings · Camera (Core/NativeCameraModes): the two shoulders, Close action, Classic (the old camera) and first person.
             Field("Camera");NativeCameraModes.Choose(ChoiceGrid(NativeCameraModes.Choices,NativeCameraModes.Choice(prefs.cameraMode,prefs.shoulderLeft,prefs.firstPerson),NativeCameraModes.Labels),ref prefs.cameraMode,ref prefs.shoulderLeft,ref prefs.firstPerson);
             Fine("V switches to first person and back; "+NativeCameraModes.SwapKey+" swaps the shoulder during play.");
@@ -87,6 +88,8 @@ namespace ChipArena.UnityConversion
             if(!windowModeInitialized)SetFullscreen(prefs.fullscreen);else SyncFullscreen();
             prefs.sensitivity=Mathf.Clamp(prefs.sensitivity,.2f,2.5f);prefs.audio=Mathf.Clamp01(prefs.audio);prefs.music=Mathf.Clamp01(prefs.music);prefs.menuMusic=Mathf.Clamp01(prefs.menuMusic);
             bool low=prefs.graphics=="performance"||prefs.graphics=="auto"&&(SystemInfo.graphicsMemorySize<2048||SystemInfo.graphicsShaderLevel<45);QualitySettings.shadows=low?ShadowQuality.Disable:ShadowQuality.All;QualitySettings.antiAliasing=low?0:4;QualitySettings.pixelLightCount=low?3:9;NativeLighting.Graphics(low);
+            // The advanced lighting's tier (Core NativeGraphicsTiers: auto keeps today's low rule, then picks by video memory).
+            var tier=low?NativeGraphicsTier.Low:NativeGraphicsTiers.Pick(prefs.graphics,SystemInfo.graphicsMemorySize,SystemInfo.graphicsShaderLevel);NativeAdvancedLighting.Graphics(tier,prefs.reducedEffects);if(presentation!=null)presentation.GraphicsTier=tier;
             if(nativeAudio!=null){nativeAudio.Effects=prefs.audio;nativeAudio.Music=prefs.music;nativeAudio.Menu=prefs.menuMusic;}if(presentation!=null){presentation.TrailsEnabled=prefs.trails;presentation.LowGraphics=low;}
             // The match camera's bloom: off on the low tier, x.6 with Reduced effects (NativeBloom.Quality).
             if(bloom!=null)bloom.Quality(low,prefs.reducedEffects);

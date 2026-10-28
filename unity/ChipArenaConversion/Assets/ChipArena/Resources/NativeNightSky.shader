@@ -12,7 +12,7 @@ Properties { _Horizon("Horizon",Color)=(.04,.06,.12,1) _Zenith("Zenith",Color)=(
 SubShader { Tags { "Queue"="Background" "RenderType"="Background" "PreviewType"="Skybox" } Cull Off ZWrite Off
 Pass { CGPROGRAM
 #pragma vertex vert
-#pragma fragment frag
+#pragma fragment fragFlash
 #include "UnityCG.cginc"
 struct appdata { float4 vertex:POSITION; };struct v2f { float4 pos:SV_POSITION;float3 dir:TEXCOORD0; };
 float4 _Horizon,_Zenith,_SunDir,_DiscColor,_DiscShade,_HaloColor,_CloudTint;float _SceneTime;float _MoonSize,_HaloFalloff,_Stars,_CloudSpeed;
@@ -77,4 +77,8 @@ float4 f=SkyCumulus(az+2.1,el,px,26,.025,size*.36,3,cover*.9,sunAz,sunEl);f.rgb=
 return lerp(col*(1-c.a)+c.rgb,_SkyToonFog.rgb,_SkyToonFog.w*(1-smoothstep(0,2*_SkyToon.w,up)));
 }
 float4 frag(v2f i):SV_Target {float3 d=normalize(i.dir);if(_SkyToon.x>0.5)return float4(AnimeSky(d),1);float up=max(0,d.y);float3 col=lerp(_Horizon.rgb,_Zenith.rgb,smoothstep(0,.85,up));col=lerp(col,_Horizon.rgb*.45,smoothstep(0,.45,-d.y));float3 md=normalize(_SunDir.xyz);float distance=length(d-md),halo=exp(-distance*_HaloFalloff);col+=_HaloColor.rgb*halo;float disc=1-smoothstep(_MoonSize*.96,_MoonSize,distance);col=lerp(col,_DiscColor.rgb*(_DiscShade.x+_DiscShade.y*fbm(d*170)),disc);float3 stars=d*230,cell=floor(stars);float star=step(.996,hash(cell))*pow(max(0,1-length(frac(stars)-.5)*2),8)*smoothstep(.08,.3,d.y)*_Stars;col+=float3(.62,.72,.9)*star*(.8+.2*sin(_SceneTime*.4+hash(cell)*30));float drift=_SceneTime*_CloudSpeed;float3 cloud=float3(d.x/(abs(d.y)+.28)*2+drift*.008,.35,d.z/(abs(d.y)+.28)*2+drift*.004);float density=smoothstep(.40,.72,fbm(cloud))*smoothstep(-.04,.22,d.y);col=lerp(col,lerp(_Horizon.rgb*.85,_CloudTint.rgb,halo),density*.76);return float4(col,1);}
+// The lightning (Runtime NativeAdvancedLighting; 0 on every map without it): the clouds and the sky above the horizon lit by
+// the flash, brightest high up, a cold white.
+float _SkyFlash;
+float4 fragFlash(v2f i):SV_Target {float4 c=frag(i);if(_SkyFlash>0){float3 d=normalize(i.dir);float k=smoothstep(-.05,.35,d.y)*(.55+.45*fbm(d*6+float3(0,_SceneTime*.05,0)));c.rgb+=float3(.55,.6,.78)*(_SkyFlash*k);}return c;}
 ENDCG } } Fallback Off }

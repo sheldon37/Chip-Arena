@@ -46,6 +46,9 @@ Shader "ChipArena/SourceLit" {
  #include "NativeMuzzleLight.cginc"
  // The anime map style (NativeToon.cginc via NativeToonSurface.cginc): the actor and muzzle lights go on in its stairs.
  #include "NativeToonSurface.cginc"
+ // The advanced lighting (NativeAdvancedLight.cginc; off on every map without it): the light volume on a lit part's ambient
+ // (as emission, like the actor lights) and the height fog's scattering in StageTone, never on an entrance stage.
+ #include "NativeAdvancedLight.cginc"
  // StageTone (finalcolor, before fog as three tone-maps before fog): renderer.ts's ACES filmic tone mapping at exposure .92
  // (three r180 ACESFilmicToneMapping) on an entrance's lit parts, as the source tone-maps every lit material; unlit parts
  // (glows, toneMapped false in the source) stay raw. Skipped in additive light passes, which only directional key lights add.
@@ -92,6 +95,7 @@ Shader "ChipArena/SourceLit" {
   StageGrade(i,color);
   HitFlash(i,color);
   #endif
+  if(_StageLit<.5)ArenaScatterFinal(i.worldPos,color);
  }
  // The Siren ink (InkMaterial): a pale fresnel rim pow(1-|N.V|,3) and slow rising streaks, added as emission. surf never
  // writes o.Normal, so viewDir and worldNormal are both world space (dotting viewDir with a fixed axis lit the whole body
@@ -122,6 +126,7 @@ Shader "ChipArena/SourceLit" {
   surf(i,o);if(_InkFill>.5)return;
   if(_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,normalize(i.worldNormal)));
   if(_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ToonPoints(MuzzleLights(i.worldPos,normalize(i.worldNormal),.35));
+  if(_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ArenaGIBody(i.worldPos,normalize(i.worldNormal));
   float3 accent=UNITY_ACCESS_INSTANCED_PROP(Props,_AccentTint).rgb;float4 glow=UNITY_ACCESS_INSTANCED_PROP(Props,_GlowTint);
   ArmorLight(o,i.emission.w,i.worldPos,i.worldNormal,i.viewDir,accent,_ArmorExportEmber.rgb*accent*UNITY_ACCESS_INSTANCED_PROP(Props,_SceneTint).rgb*glow.rgb,glow.w,_StageLit);
  }
