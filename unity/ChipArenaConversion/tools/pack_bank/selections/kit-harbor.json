@@ -1,0 +1,1787 @@
+{
+ "schema": 1,
+ "bank": "ChipArenaPackKit",
+ "note": "Toon Harbor props for the stages (docs/PACK-BANK.md). Names only: no pack content.",
+ "texture_max": 1024,
+ "sources": {
+  "harbor": "Toon Harbor Pack/Assets/Toon Harbor Pack"
+ },
+ "props": [
+  {
+   "id": "harbor-cage-barrels-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Cage_Barrels_01A.prefab",
+   "group": "barrel-cage"
+  },
+  {
+   "id": "harbor-cage-barrels-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Cage_Barrels_01B.prefab",
+   "group": "barrel-cage"
+  },
+  {
+   "id": "harbor-shipping-container-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01A.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01A_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01B.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01B_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01C.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01C_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01d",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01D.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01d-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01D_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01e",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01E.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01e-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01E_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01f",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01F.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-01f-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01F_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02A.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02A_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02B.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02B_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02C.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02C_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02d",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02D.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02d-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02D_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02e",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02E.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02e-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02E_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02f",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02F.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-02f-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02F_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03A.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03A_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03B.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03B_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03C.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03C_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03d",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03D.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03d-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03D_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03e",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03E.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03e-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03E_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03f",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03F.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-03f-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03F_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04A.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04A_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04B.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04B_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04C.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04C_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04d",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04D.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04d-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04D_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04e",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04E.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04e-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04E_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04f",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04F.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04f-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04F_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04g",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04G.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-04g-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04G_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05A.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05A_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05B.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05B_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05C.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05C_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05d",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05D.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05d-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05D_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05e",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05E.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05e-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05E_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05f",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05F.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05f-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05F_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05g",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05G.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-05g-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05G_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06A.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06A_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06B.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06B_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06C.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06C_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06d",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06D.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06d-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06D_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06e",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06E.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06e-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06E_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06f",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06F.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06f-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06F_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06g",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06G.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-container-06g-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06G_Mobile.prefab",
+   "group": "container"
+  },
+  {
+   "id": "harbor-shipping-metal-crate-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Metal_Crate_01A.prefab",
+   "group": "crate-metal"
+  },
+  {
+   "id": "harbor-shipping-metal-crate-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Metal_Crate_01B.prefab",
+   "group": "crate-metal"
+  },
+  {
+   "id": "harbor-shipping-metal-crate-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Metal_Crate_01C.prefab",
+   "group": "crate-metal"
+  },
+  {
+   "id": "harbor-shipping-metal-crate-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Metal_Crate_02A.prefab",
+   "group": "crate-metal"
+  },
+  {
+   "id": "harbor-shipping-metal-crate-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Metal_Crate_02B.prefab",
+   "group": "crate-metal"
+  },
+  {
+   "id": "harbor-shipping-metal-crate-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Metal_Crate_02C.prefab",
+   "group": "crate-metal"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_01A.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_01B.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_01C.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02A.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-02a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02A_Mobile.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02B.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-02b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02B_Mobile.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02C.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-02c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02C_Mobile.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_03A.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_03B.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-shipping-wooden-crate-03c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_03C.prefab",
+   "group": "crate"
+  },
+  {
+   "id": "harbor-wooden-pallet-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Wooden_Pallet_01A.prefab",
+   "group": "pallet"
+  },
+  {
+   "id": "harbor-wooden-pallet-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Wooden_Pallet_01B.prefab",
+   "group": "pallet"
+  },
+  {
+   "id": "harbor-wooden-pallet-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Wooden_Pallet_02A.prefab",
+   "group": "pallet"
+  },
+  {
+   "id": "harbor-wooden-pallet-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Cargo/TH_Wooden_Pallet_02B.prefab",
+   "group": "pallet"
+  },
+  {
+   "id": "harbor-concrete-block-addon-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_01A.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_01B.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_01C.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_02A.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_02B.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_02C.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_03A.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_03B.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-concrete-block-addon-03c",
+   "source": "harbor",
+   "prefab": "Prefabs/Concrete Structure Elements/TH_Concrete_Block_Addon_03C.prefab",
+   "group": "concrete-block"
+  },
+  {
+   "id": "harbor-brick-pile-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_01A.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_01B.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_02A.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_02B.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_03A.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_03B.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_04A.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-04b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_04B.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-05a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_05A.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-05b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_05B.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-06a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_06A.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-brick-pile-06b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Brick_Pile_06B.prefab",
+   "group": "bricks"
+  },
+  {
+   "id": "harbor-pipe-cluster-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01A.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-01a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01A_Mobile.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01B.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-01b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01B_Mobile.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01C.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-01c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01C_Mobile.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02A.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-02a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02A_Mobile.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02B.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-02b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02B_Mobile.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02C.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-pipe-cluster-02c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02C_Mobile.prefab",
+   "group": "pipes"
+  },
+  {
+   "id": "harbor-wood-stack-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_01A.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-wood-stack-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_01B.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-wood-stack-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_02A.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-wood-stack-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_02B.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-wood-stack-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_03A.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-wood-stack-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_03B.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-wood-stack-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_04A.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-wood-stack-04b",
+   "source": "harbor",
+   "prefab": "Prefabs/Construction Materials/TH_Wood_Stack_04B.prefab",
+   "group": "wood-stack"
+  },
+  {
+   "id": "harbor-cabinet-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_01A.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_01B.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_02A.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_03A.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_03B.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_04A.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-05a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_05A.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-05b",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_05B.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-06a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_06A.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-cabinet-06b",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Cabinet_06B.prefab",
+   "group": "cabinet"
+  },
+  {
+   "id": "harbor-locker-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Locker_01A.prefab",
+   "group": "locker"
+  },
+  {
+   "id": "harbor-locker-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Locker_01B.prefab",
+   "group": "locker"
+  },
+  {
+   "id": "harbor-locker-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Locker_02A.prefab",
+   "group": "locker"
+  },
+  {
+   "id": "harbor-locker-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Locker_02B.prefab",
+   "group": "locker"
+  },
+  {
+   "id": "harbor-shelves-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Shelves_01A.prefab",
+   "group": "shelves"
+  },
+  {
+   "id": "harbor-shelves-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Shelves_02A.prefab",
+   "group": "shelves"
+  },
+  {
+   "id": "harbor-shelves-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Shelves_03A.prefab",
+   "group": "shelves"
+  },
+  {
+   "id": "harbor-trashcan-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Trashcan_01A.prefab",
+   "group": "trashcan"
+  },
+  {
+   "id": "harbor-trashcan-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Trashcan_02A.prefab",
+   "group": "trashcan"
+  },
+  {
+   "id": "harbor-trashcan-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Trashcan_02B.prefab",
+   "group": "trashcan"
+  },
+  {
+   "id": "harbor-trashcan-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Trashcan_02C.prefab",
+   "group": "trashcan"
+  },
+  {
+   "id": "harbor-trashcan-02d",
+   "source": "harbor",
+   "prefab": "Prefabs/Interior Elements/TH_Trashcan_02D.prefab",
+   "group": "trashcan"
+  },
+  {
+   "id": "harbor-giant-pipe-straight-regular-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01A.prefab",
+   "group": "pipe-giant"
+  },
+  {
+   "id": "harbor-giant-pipe-straight-regular-01a-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01A_Mobile.prefab",
+   "group": "pipe-giant"
+  },
+  {
+   "id": "harbor-giant-pipe-straight-regular-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01B.prefab",
+   "group": "pipe-giant"
+  },
+  {
+   "id": "harbor-giant-pipe-straight-regular-01b-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01B_Mobile.prefab",
+   "group": "pipe-giant"
+  },
+  {
+   "id": "harbor-giant-pipe-straight-regular-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01C.prefab",
+   "group": "pipe-giant"
+  },
+  {
+   "id": "harbor-giant-pipe-straight-regular-01c-mobile",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01C_Mobile.prefab",
+   "group": "pipe-giant"
+  },
+  {
+   "id": "harbor-liquid-tank-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_01A.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_01B.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_01C.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_02A.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_02B.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_02C.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_03A.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_03B.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-03c",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_03C.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_04A.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-04b",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_04B.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-liquid-tank-04c",
+   "source": "harbor",
+   "prefab": "Prefabs/Pipe System/TH_Liquid_Tank_04C.prefab",
+   "group": "tank"
+  },
+  {
+   "id": "harbor-barrel-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_01A.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_01B.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_02A.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_02B.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_03A.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_03B.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_04A.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-04b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_04B.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-05a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_05A.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-05b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_05B.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-06a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_06A.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-06b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_06B.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-07a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_07A.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-barrel-07b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Barrel_07B.prefab",
+   "group": "barrel"
+  },
+  {
+   "id": "harbor-box-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Box_01A.prefab",
+   "group": "box"
+  },
+  {
+   "id": "harbor-box-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Box_02A.prefab",
+   "group": "box"
+  },
+  {
+   "id": "harbor-box-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Box_03A.prefab",
+   "group": "box"
+  },
+  {
+   "id": "harbor-box-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Box_04A.prefab",
+   "group": "box"
+  },
+  {
+   "id": "harbor-concrete-fence-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Concrete_Fence_01A.prefab",
+   "group": "fence-concrete"
+  },
+  {
+   "id": "harbor-concrete-fence-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Concrete_Fence_02A.prefab",
+   "group": "fence-concrete"
+  },
+  {
+   "id": "harbor-concrete-tetrapod-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Concrete_Tetrapod_01A.prefab",
+   "group": "tetrapod"
+  },
+  {
+   "id": "harbor-concrete-tetrapod-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Concrete_Tetrapod_01B.prefab",
+   "group": "tetrapod"
+  },
+  {
+   "id": "harbor-electric-pole-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Electric_Pole_01A.prefab",
+   "group": "electric-pole"
+  },
+  {
+   "id": "harbor-electric-pole-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Electric_Pole_01B.prefab",
+   "group": "electric-pole"
+  },
+  {
+   "id": "harbor-fire-extinguisher-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Fire_Extinguisher_01A.prefab",
+   "group": "extinguisher"
+  },
+  {
+   "id": "harbor-fire-extinguisher-01a-fixed",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Fire_Extinguisher_01A_Fixed.prefab",
+   "group": "extinguisher"
+  },
+  {
+   "id": "harbor-fire-extinguisher-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Fire_Extinguisher_01B.prefab",
+   "group": "extinguisher"
+  },
+  {
+   "id": "harbor-fire-extinguisher-01b-fixed",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Fire_Extinguisher_01B_Fixed.prefab",
+   "group": "extinguisher"
+  },
+  {
+   "id": "harbor-gas-barrel-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Gas_Barrel_01A.prefab",
+   "group": "gas-barrel"
+  },
+  {
+   "id": "harbor-gas-barrel-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Gas_Barrel_01B.prefab",
+   "group": "gas-barrel"
+  },
+  {
+   "id": "harbor-metal-cable-waste-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Cable_Waste_01A.prefab",
+   "group": "cable-waste"
+  },
+  {
+   "id": "harbor-metal-cable-waste-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Cable_Waste_01B.prefab",
+   "group": "cable-waste"
+  },
+  {
+   "id": "harbor-metal-cable-waste-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Cable_Waste_01C.prefab",
+   "group": "cable-waste"
+  },
+  {
+   "id": "harbor-metal-cable-waste-01d",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Cable_Waste_01D.prefab",
+   "group": "cable-waste"
+  },
+  {
+   "id": "harbor-metal-fence-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_01A.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-metal-fence-01a-module",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_01A_Module.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-metal-fence-01a-pole",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_01A_Pole.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-metal-fence-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_02A.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-metal-fence-02a-module",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_02A_Module.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-metal-fence-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_03A.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-metal-fence-03a-module",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_03A_Module.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-metal-fence-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Metal_Fence_04A.prefab",
+   "group": "fence-metal"
+  },
+  {
+   "id": "harbor-plank-pile-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Plank_Pile_01A.prefab",
+   "group": "planks"
+  },
+  {
+   "id": "harbor-plank-pile-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Plank_Pile_01B.prefab",
+   "group": "planks"
+  },
+  {
+   "id": "harbor-plank-pile-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Plank_Pile_02A.prefab",
+   "group": "planks"
+  },
+  {
+   "id": "harbor-plank-pile-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Plank_Pile_02B.prefab",
+   "group": "planks"
+  },
+  {
+   "id": "harbor-powerbox-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Powerbox_01A.prefab",
+   "group": "powerbox"
+  },
+  {
+   "id": "harbor-powerbox-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Powerbox_01B.prefab",
+   "group": "powerbox"
+  },
+  {
+   "id": "harbor-powerbox-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Powerbox_02A.prefab",
+   "group": "powerbox"
+  },
+  {
+   "id": "harbor-powerbox-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Powerbox_02B.prefab",
+   "group": "powerbox"
+  },
+  {
+   "id": "harbor-powerbox-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Powerbox_03A.prefab",
+   "group": "powerbox"
+  },
+  {
+   "id": "harbor-powerbox-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Powerbox_04A.prefab",
+   "group": "powerbox"
+  },
+  {
+   "id": "harbor-rope-pile-1a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Rope_Pile_1A.prefab",
+   "group": "rope"
+  },
+  {
+   "id": "harbor-rope-pile-2a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Rope_Pile_2A.prefab",
+   "group": "rope"
+  },
+  {
+   "id": "harbor-scaffolding-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Scaffolding_01A.prefab",
+   "group": "scaffolding"
+  },
+  {
+   "id": "harbor-scaffolding-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Scaffolding_01B.prefab",
+   "group": "scaffolding"
+  },
+  {
+   "id": "harbor-scaffolding-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Scaffolding_02A.prefab",
+   "group": "scaffolding"
+  },
+  {
+   "id": "harbor-scaffolding-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Scaffolding_02B.prefab",
+   "group": "scaffolding"
+  },
+  {
+   "id": "harbor-siren-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Siren_01A.prefab",
+   "group": "siren"
+  },
+  {
+   "id": "harbor-siren-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Siren_01B.prefab",
+   "group": "siren"
+  },
+  {
+   "id": "harbor-streetlight-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Streetlight_03A.prefab",
+   "group": "streetlight"
+  },
+  {
+   "id": "harbor-wall-light-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Light_01A.prefab",
+   "group": "wall-light"
+  },
+  {
+   "id": "harbor-wall-light-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Light_01B.prefab",
+   "group": "wall-light"
+  },
+  {
+   "id": "harbor-wall-light-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Light_02A.prefab",
+   "group": "wall-light"
+  },
+  {
+   "id": "harbor-wall-light-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Light_02B.prefab",
+   "group": "wall-light"
+  },
+  {
+   "id": "harbor-wall-light-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Light_03A.prefab",
+   "group": "wall-light"
+  },
+  {
+   "id": "harbor-wall-light-04a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Light_04A.prefab",
+   "group": "wall-light"
+  },
+  {
+   "id": "harbor-wall-light-05a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Light_05A.prefab",
+   "group": "wall-light"
+  },
+  {
+   "id": "harbor-wall-siren-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Siren_01A.prefab",
+   "group": "siren"
+  },
+  {
+   "id": "harbor-wall-siren-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Props/TH_Wall_Siren_01B.prefab",
+   "group": "siren"
+  },
+  {
+   "id": "harbor-road-barrier-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Road System/TH_Road_Barrier_01A.prefab",
+   "group": "barrier"
+  },
+  {
+   "id": "harbor-streetlight-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Road System/TH_Streetlight_01A.prefab",
+   "group": "streetlight"
+  },
+  {
+   "id": "harbor-streetlight-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Road System/TH_Streetlight_01B.prefab",
+   "group": "streetlight"
+  },
+  {
+   "id": "harbor-streetlight-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Road System/TH_Streetlight_02A.prefab",
+   "group": "streetlight"
+  },
+  {
+   "id": "harbor-rescue-buoy-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rescue_Buoy_01A.prefab",
+   "group": "buoy"
+  },
+  {
+   "id": "harbor-rescue-buoy-01a-fixed",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rescue_Buoy_01A_Fixed.prefab",
+   "group": "buoy"
+  },
+  {
+   "id": "harbor-rescue-buoy-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rescue_Buoy_01B.prefab",
+   "group": "buoy"
+  },
+  {
+   "id": "harbor-rescue-buoy-01b-fixed",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rescue_Buoy_01B_Fixed.prefab",
+   "group": "buoy"
+  },
+  {
+   "id": "harbor-rescue-buoy-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rescue_Buoy_01C.prefab",
+   "group": "buoy"
+  },
+  {
+   "id": "harbor-rescue-buoy-01c-fixed",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rescue_Buoy_01C_Fixed.prefab",
+   "group": "buoy"
+  },
+  {
+   "id": "harbor-rotating-light-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rotating_Light_01A.prefab",
+   "group": "beacon"
+  },
+  {
+   "id": "harbor-rotating-light-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rotating_Light_01B.prefab",
+   "group": "beacon"
+  },
+  {
+   "id": "harbor-rotating-light-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rotating_Light_01C.prefab",
+   "group": "beacon"
+  },
+  {
+   "id": "harbor-rotating-light-01d",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ship Elements/TH_Rotating_Light_01D.prefab",
+   "group": "beacon"
+  },
+  {
+   "id": "harbor-forklift-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Forklift_01A.prefab",
+   "group": "forklift"
+  },
+  {
+   "id": "harbor-forklift-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Forklift_01B.prefab",
+   "group": "forklift"
+  },
+  {
+   "id": "harbor-forklift-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Forklift_01C.prefab",
+   "group": "forklift"
+  },
+  {
+   "id": "harbor-truck-cabin-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_01A.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-cabin-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_01B.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-cabin-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_01C.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-cabin-01d",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_01D.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-cabin-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_02A.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-cabin-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_02B.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-cabin-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_02C.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-cabin-02d",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Cabin_02D.prefab",
+   "group": "truck-cabin"
+  },
+  {
+   "id": "harbor-truck-trailer-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_01A.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_01B.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_01C.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-01d",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_01D.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_02A.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-02b",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_02B.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-02c",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_02C.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-02d",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_02D.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_03A.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-truck-trailer-03b",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Truck_Trailer_03B.prefab",
+   "group": "truck-trailer"
+  },
+  {
+   "id": "harbor-van-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Van_01A.prefab",
+   "group": "van"
+  },
+  {
+   "id": "harbor-van-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Van_01B.prefab",
+   "group": "van"
+  },
+  {
+   "id": "harbor-van-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Vehicles/TH_Van_01C.prefab",
+   "group": "van"
+  },
+  {
+   "id": "harbor-air-conditioner-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ventilation/TH_Air_Conditioner_01A.prefab",
+   "group": "aircon"
+  },
+  {
+   "id": "harbor-air-conditioner-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ventilation/TH_Air_Conditioner_02A.prefab",
+   "group": "aircon"
+  },
+  {
+   "id": "harbor-hvac-system-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ventilation/TH_HVAC_System_01A.prefab",
+   "group": "hvac"
+  },
+  {
+   "id": "harbor-hvac-system-01b",
+   "source": "harbor",
+   "prefab": "Prefabs/Ventilation/TH_HVAC_System_01B.prefab",
+   "group": "hvac"
+  },
+  {
+   "id": "harbor-hvac-system-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Ventilation/TH_HVAC_System_01C.prefab",
+   "group": "hvac"
+  }
+ ]
+}
