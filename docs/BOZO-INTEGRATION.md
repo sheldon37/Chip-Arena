@@ -1694,6 +1694,52 @@ already? Cant we utilize that?"
   - The Siren and Classic keep the voxel portraits. The portrait files (`NativePortraits.cs` and its shaders) are
     unchanged; the model path is chosen in `NativePortraitUI.Portrait`.
   - Its outline is lost at the silhouette (the hull is not in the coverage).
+- **Relaxed arms on the model (2026-10-28, `claude/model-pose-fix`; owner: "Fix idle animations, lobby card poses, and
+  intros to fully support the new player model. Since the transfer, a lot of unnatural arm positioning and movements"):**
+  `NativeVisualRig.Relax`, opted into per caller with `Grasp.Relax` and `Grasp.Still` (0 keeps the adapter as before).
+  - **Causes** (measured on a skeleton with outfit A's rest joints, step 2):
+    - The game's free hands are placed for the voxel body: shoulders .345 m out, a chest .53 m wide, arms .175 m thick.
+      Copied by direction onto shoulder joints .133 m out, with the hanging Spread on top, relaxed arms stood 22-38 degrees
+      out with the hands 13-28 cm off the thighs (an A-pose).
+    - Inside's shoulder ratio (.39) is narrower than the torso ratio (.57), so hands in front of the body sank into the hips
+      (the daggers card's fists 8-11 cm deep).
+    - The voxel's folded arms cannot reach across its chest, so 'Arms crossed' has its elbows 10 degrees from straight. The
+      copy kept that bend, and the arms reached straight forward across the belly.
+    - The voxel's thick thighs left the seated hands hovering 16 cm beside the model's thin lap.
+    - The portrait and rooftop actors kept the sword's weapon id and set. The daggers, greatsword, shield and guns were held
+      as a sword or not at all, so the support hands had no grip and the wrists rolled up to 180 degrees.
+    - Entrances that show no weapon still closed the fists on the pilot's unseen one.
+  - **What it does:** a free hand is placed by the body's landmarks:
+    - its height under the shoulder line is scaled by the arm lengths;
+    - across, inside the body it keeps its share of the width at that height (chest, waist, hips:
+      `TorsoHalfWidth`, `WaistHalfWidth`, `HipHalfWidth`); outside, its gap off the side is compressed (`RelaxGap`: a voxel
+      hand's 10 cm hang becomes 3 cm, a wide gesture keeps its offset);
+    - in depth, it keeps its share of the torso and its offset in front of it.
+    - The arm is no straighter than the game's own. A hand flung clear of the body (`RelaxNear` to `RelaxFar`) keeps the
+      game arm's extension.
+    - The elbow sits on the two bones' circle out, down and back, or on the game elbow's side where the game bends the arm.
+      It swings only as far as keeps it, the forearm and the upper arm out of the torso, and moves at most 10 degrees a frame.
+    - The hand keeps its turn on the forearm. Hands at or over the shoulder line keep the copied arm.
+    - A still stance (`Still`) also relaxes the weapon arms (not a braced shield), and seated hands rest on the lap, palm
+      down (`OnLap`: both thighs level).
+  - **Callers** (`VisualArms` on `VisualBodyBind`):
+    - Live: the arena (only where the pack clips do not cover the state), a revive standing up, and an entrance that shows
+      a weapon.
+    - Unarmed: an entrance that shows none. Its hands hold nothing; the fighters keep their fists.
+    - Still: the portraits and the rooftop's seated pilot and watcher.
+    - Reach: the draft, whose hands reach for the chips on screen.
+    - First person keeps the game's arms. Relax is off while the chip-select look is up. A caster's staff and the bow ride
+      a carrying hand (`LeftCarries`).
+    - The portrait and rooftop actors now carry the pilot's weapon id and set (`VisualArmedAs`).
+  - **Measured on the outfit A skeleton**, copied, then relaxed:
+    - the hero stance's free arm: 23-30 degrees out, then 16-17; hand off the thigh 10-14 cm, then 4-6;
+    - 'Sitting on chair': 25 degrees out, then 8-9, with the hands on the thighs and the palms down;
+    - 'Arms crossed': elbows 10 degrees, then 104-108; fists 23-26 cm in front of the chest, then 1-2;
+    - the procedural entrances' free arms: 24-30 degrees out, then 16-23;
+    - the Cyber Lord's idle: 20 and 15 degrees out, then 15 and 12.
+    - `CoreTests --model-poses` pins these.
+  - **Not seen yet:** the real meshes in the Editor. The torso is measured as a proxy from step 2's widths, and the
+    forearms rest 3-3.5 cm into it on the folded arms and lap.
 - **Captures:** the neutral turnaround.
 - **The performance pass** (Phase C).
 - **Builds (2026-10-23, `claude/visual-body-install`):** the owner's builder installs the bake from the licensed-assets

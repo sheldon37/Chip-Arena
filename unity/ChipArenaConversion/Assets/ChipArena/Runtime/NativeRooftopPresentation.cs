@@ -347,10 +347,11 @@ namespace ChipArena.UnityConversion
             var rig=cast.Rigs[i]??=captured.Create(rooftopHolder,id);
             rig.Root.transform.SetPositionAndRotation(group.GetColumn(3),root.rotation);
             if(!NativePoseWriter.Write(rig.Bones,s.Pose,"a rooftop pilot"))return false;
-            var a=cast.Actors[i];a.Id=id;a.SourceSpec=look.Spec;a.Hat=look.Hat;a.HatColor=hatColor;a.BodyColor=look.Body;a.AccentColor=look.Accent;a.WeaponAway=!s.Weapon.Visible;a.Grounded=true;
+            var a=cast.Actors[i];a.Id=id;a.SourceSpec=look.Spec;a.Hat=look.Hat;a.HatColor=hatColor;a.BodyColor=look.Body;a.AccentColor=look.Accent;a.WeaponAway=!s.Weapon.Visible;a.Grounded=true;VisualArmedAs(a,look.Spec);
             var body=VisualBodyOf(rig,id,VisualHooded(a));if(body==null)return false;
             body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
-            var held=VisualBodyBind(body,rig,a,time,s.Pose,false,false);
+            // The seated pilot and the watcher stand still (their weapon arms relaxed too); the runner, blade and gunner move.
+            var held=VisualBodyBind(body,rig,a,time,s.Pose,false,false,look.Script==NativeRooftopActors.Seated||look.Script==NativeRooftopActors.Watcher?VisualArms.Still:VisualArms.Live);
             if(i==0)
             {
                 int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;

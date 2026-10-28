@@ -143,7 +143,8 @@ namespace ChipArena.UnityConversion
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             var pose=rig.Pose;pose.World();
             bool roll=a.Rolling(time),juggle=NativeJugglePose.Active(a.JuggleUntil,time);
-            var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle);
+            // (While the pack's clips covered the whole body last frame they overwrite the arms: no relaxing them.)
+            var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle,body.Motion!=null&&body.Motion.Weight>=1?VisualArms.Reach:VisualArms.Live);
             VisualStridePose(body,rig,a,time,roll,juggle);
             VisualMotionPose(body,rig,a,time);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
@@ -159,9 +160,15 @@ namespace ChipArena.UnityConversion
             if(body==null||body.Root==null){body=CreateVisualBody(rig,id,hood);if(body==null)return null;body.Arena=rigs.TryGetValue(id,out var own)&&own==rig;visualBodies[rig]=body;}
             return body;
         }
+        // How a bind places the arms on the model (owner 2026-10-28: "Fix idle animations, lobby card poses, and intros to fully
+        // support the new player model"; Core NativeVisualRig.Relax): Live, the free arms re-placed by the model's own body (the
+        // arena, the intros, a revive); Still, the arms holding a weapon too (a menu stance: the portraits, the rooftop); Unarmed,
+        // Live with nothing in the hands (an entrance that shows no weapon, whose fists closed on the pilot's unseen one);
+        // Reach, the game's arms as the voxel body takes them (the draft's hands reach for the chips on screen).
+        private enum VisualArms { Live, Still, Unarmed, Reach }
         // The body bound to `pose` (feet planted when `planted`, the airborne solve when `airborne`), its weapon in hand and the
         // rig's hands onto its weapon frames; its held weapon.
-        private VisualWeapon VisualBodyBind(VisualBody body,CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,bool planted,bool airborne)
+        private VisualWeapon VisualBodyBind(VisualBody body,CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,bool planted,bool airborne,VisualArms arms=VisualArms.Live)
         {
             Vector3 at=rig.Root.transform.position;
             // A fresh solve after a gap (death, first person, a hidden frame), a teleport or a weapon change.
@@ -169,6 +176,7 @@ namespace ChipArena.UnityConversion
             body.PosedFrame=Time.frameCount;body.Spec=a.SourceSpec;body.At=at;
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
+            VisualArmsOf(ref grasp,a,arms,ChipLookOf(a.Id));
             body.Binding.Apply(pose,grasp,planted,airborne);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             if(body.Sheldon.Length>0)VisualSheldonGlow(body,NativeBodySkins.SheldonGlow(a.Hat,a.HatColor,a.AccentColor));
@@ -184,6 +192,15 @@ namespace ChipArena.UnityConversion
             // After the hands go onto the wrists: what rides a hand (the Cyber Lord's gauntlets, a chip) sits on the model's.
             if(body.JointFrom==null)VisualJointsOf(body,rig);
             return held;
+        }
+        // The arms' mode on the grasp: the free arms relaxed (and the held ones for a Still stance), except while the chip-select
+        // look is up (the left hand taps the right wrist's device) and in Reach; Unarmed lets go of the unseen weapon (the
+        // fighters keep their fists). A caster's staff and the bow ride the left hand unseated: it carries them.
+        private static void VisualArmsOf(ref NativeVisualRig.Grasp g,Actor a,VisualArms arms,float chip)
+        {
+            if(arms==VisualArms.Unarmed){bool fists=NativeLobbyPoses.Fighter(a.SourceSpec);g=new NativeVisualRig.Grasp{RightGrip=fists?g.RightGrip:0,LeftGrip=fists?g.LeftGrip:0};}
+            else g.LeftCarries=!a.WeaponAway&&NativeLobbyPoses.HeldBone(a.SourceSpec)==CapturedRig.LHand;
+            float relax=arms==VisualArms.Reach?0:1-Mathf.Clamp01(chip);g.Relax=relax;g.Still=arms==VisualArms.Still?relax:0;
         }
         // VisualBodyBind's first bind (the body on the rig's own pose): each joint's frame on its bone.
         private static void VisualJointsOf(VisualBody body,CapturedAnimation.Player rig)
@@ -249,12 +266,13 @@ namespace ChipArena.UnityConversion
         // (`pose`, as the entrance wrote it) retargeted, without the pack's clips or the stride and with the feet as authored;
         // its weapon in hand where the entrance shows it (IntroWeapon). While the entrance builds the body in or glitches it
         // (`reveal`: the Sheldon Intro's drop-outs; owner 2026-10-28: "it uses voxel model in the "glitching""), the model
-        // takes the reveal bone by bone in its shader (VisualRevealLook), as the voxel parts did.
-        private void VisualIntroPose(CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,Func<int,float> reveal)
+        // takes the reveal bone by bone in its shader (VisualRevealLook), as the voxel parts did. `armed`: the entrance shows a
+        // weapon in hand (else the hands hold nothing: VisualArms.Unarmed).
+        private void VisualIntroPose(CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,Func<int,float> reveal,bool armed=true)
         {
             if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec=="siren"||!VisualBodiesOn)return;
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
-            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false);
+            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,armed?VisualArms.Live:VisualArms.Unarmed);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
         }
@@ -299,7 +317,7 @@ namespace ChipArena.UnityConversion
             // The drafting pose stands lower than the arena's: the body's hips go onto the pose's pelvis, and the rig's hands (on
             // the body's wrists after the bind) with them.
             body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
-            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false);
+            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,VisualArms.Reach);
             int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
             if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++){var hand=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];hand.position+=shift;}}
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);

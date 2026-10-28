@@ -10,7 +10,8 @@ namespace ChipArena.UnityConversion
     // Per frame: every bone's world turn is the game joint's turn since its rest (a split chain shares it; wrists ease the
     // fist's deep bend, see Wrist), applied to the bone's rest aligned once at bind (limbs straightened to the game's
     // arms-down, legs-down rest; spine, head and feet keep their authored posture). Then the root height scales by the leg ratio, hands
-    // inside the game's shoulder line swing to their chest-relative place (Inside), planted feet and two-handed support grips take
+    // inside the game's shoulder line swing to their chest-relative place (Inside), free arms (and a still stance's held ones) are
+    // re-placed by the body's landmarks where the caller asks (Grasp.Relax, Still: Relax), planted feet and two-handed support grips take
     // two-bone IK (a far grip's shoulder reaches first), fists and held weapons keep out of the head and torso (Clear), the
     // weapons ride the closed fists (HoldWeapon; a braced shield stays on the wrist), every arm the hands move keeps a hinged
     // elbow (Reach), twist bones take a share of their limb's final roll, and the weapon rides the visual right hand (P1).
@@ -58,10 +59,17 @@ namespace ChipArena.UnityConversion
             // rises .148 m over the shoulder joints) and hooded top (.30 x .22 m round the spine, its front .13 m ahead of
             // shoulder joints .265 m apart); a caller that has the meshes may set its own.
             public Vector3 HeadCenter, HeadRadii; public float TorsoHalfWidth, TorsoHalfDepth, ShoulderFront;
+            // The body's side a relaxed free hand is placed by (Relax): the half-width at the waist and at the hips, and how far
+            // the waist (the spine bone) and the hips (the thigh joints) sit under the shoulder joints. Set from the skeleton:
+            // the waist .8 of the chest, the hips the thigh joint's offset plus a fifth of the thigh (the first outfit: .12 and
+            // .18 m at .35 and .46 m under the shoulders); a caller that has the meshes may set its own.
+            public float WaistHalfWidth, HipHalfWidth, WaistDrop, HipDrop;
             public readonly Vector3 PelvisRest, GamePelvisRest;
             // The closed fist per side (0 left, 1 right; Fists): where a handle runs through it, from the hand bone (FistCenter),
             // its direction toward the index side (FistAxis) and the hand's forward square to it (FistAhead), in the aligned rest.
             public readonly Vector3[] FistCenter=new Vector3[2], FistAxis=new Vector3[2], FistAhead=new Vector3[2];
+            // The palm's facing per side in the aligned rest, square to FistAxis and FistAhead on the side the fingers curl to.
+            public readonly Vector3[] FistPalm=new Vector3[2];
             public readonly bool[] HasFist=new bool[2];
 
             public Rig(BoneSpec[] bones)
@@ -119,6 +127,9 @@ namespace ChipArena.UnityConversion
                 LegUpper=Segment(CapturedRig.RHip,CapturedRig.RKnee); LegLower=Segment(CapturedRig.RKnee,CapturedRig.RFoot);
                 int hip=Of[CapturedRig.RHip],foot=Of[CapturedRig.RFoot];
                 LegRatio=hip<0||foot<0?1:(AlignedPosition[hip].Y-AlignedPosition[foot].Y)/(CapturedRig.Bones[CapturedRig.RKnee].Position.Length()+CapturedRig.Bones[CapturedRig.RFoot].Position.Length());
+                int waist=Of[CapturedRig.Spine]; float shoulderY=arm<0?0:AlignedPosition[arm].Y;
+                WaistHalfWidth=.8f*TorsoHalfWidth; HipHalfWidth=hip<0?1.15f*TorsoHalfWidth:Math.Abs(AlignedPosition[hip].X)+.2f*LegUpper;
+                WaistDrop=arm<0||waist<0?.35f:Math.Max(.05f,shoulderY-AlignedPosition[waist].Y); HipDrop=arm<0||hip<0?WaistDrop+.11f:Math.Max(WaistDrop+.02f,shoulderY-AlignedPosition[hip].Y);
             }
 
             // Curl axes: a finger chain bends the way its rest already curls (the turn from each segment into the next), so no
@@ -175,6 +186,7 @@ namespace ChipArena.UnityConversion
                     Vector3 ahead=knuckles-AlignedPosition[hand]; ahead-=axis*Vector3.Dot(ahead,axis);
                     if(ahead.LengthSquared()<1e-10f) continue;
                     FistCenter[side]=centres-AlignedPosition[hand]; FistAxis[side]=axis; FistAhead[side]=Vector3.Normalize(ahead); HasFist[side]=true;
+                    Vector3 palm=Vector3.Cross(axis,FistAhead[side]); FistPalm[side]=Vector3.Dot(palm,centres-knuckles)<0?-palm:palm;
                 }
             }
             private static Vector3 Circumcentre(Vector3 a,Vector3 b,Vector3 c)
@@ -210,6 +222,8 @@ namespace ChipArena.UnityConversion
             public float LeftFootWeight, RightFootWeight, SupportWeight, LeftArmReach, LeftLegReach, RightLegReach, LeftGrip, RightGrip, LeftInside, RightInside, ShoulderTurn, GiveWay;
             // How far each fist (with its weapon) moved out of the head and torso this frame (Clear), metres.
             public float LeftClear, RightClear;
+            // How far each free arm was re-placed by the body's landmarks this frame (Relax), 0..1.
+            public float LeftRelax, RightRelax;
             // Where each hand's weapon is drawn (P1; WeaponFrame), and whether its fist is seated on a handle this frame.
             public Vector3 LeftAnchor, RightAnchor; public bool LeftSeated, RightSeated;
             // Shouldered: 0..1, a long gun's stock at the shoulder pocket. SupportSlide: how far the support fist slid back along
@@ -221,6 +235,8 @@ namespace ChipArena.UnityConversion
             internal readonly float[] LastSwing=new float[2]; // last frame's elbow swings off the animation's side (Reach)
             internal readonly Vector3[] LastClear=new Vector3[2], LastGameHand=new Vector3[2]; // last frame's moves out of the body and game hands (Clear)
             internal readonly bool[] Under;
+            internal readonly Vector3[] RelaxLast=new Vector3[2]; internal readonly bool[] RelaxHad=new bool[2]; // last frame's relaxed elbows, from the shoulder (Relax)
+            internal readonly float[] RelaxCost=new float[Swings]; // RelaxElbow's candidates' costs (scratch)
             // Drops last frame's elbows and hands (a cut, a respawn, a weapon swap): the next pose is solved afresh.
             public void Forget() { HasLast=false; }
             public State(Rig rig)
@@ -257,7 +273,12 @@ namespace ChipArena.UnityConversion
         // weapon. Support: 0..1, whether the right hand's weapon may be held two-handed (HandsTogether gates it); SupportHold:
         // where the left fist closes on that weapon, in the right wrist's frame (none: the left keeps the game's wrist offset).
         // Stock: a long gun's stock butt behind its frame's origin along -z (0: none); shouldered while the game holds it up.
-        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock; public Hold Right, Left, SupportHold; }
+        // Relax: 0..1, a free arm (no fist seated on a handle, not supporting a two-handed grip) re-placed by the body's landmarks
+        // (Relax); 0 copies the game's arm as before. Still: 0..1, a still stance (the menus' portraits, the rooftop's seated
+        // pilot and watcher; not a cut or a signature move, whose weapon paths stay the game's): an arm whose fist is seated
+        // relaxes too, and seated hands rest on the lap (OnLap). LeftCarries, RightCarries: that hand carries what no handle seats
+        // (a caster's staff, the bow, on the left): it counts as held, not free.
+        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still; public bool LeftCarries, RightCarries; public Hold Right, Left, SupportHold; }
 
         // The Standard weapons' handles (NativeWeaponModels). The sword family draws at the hand turned by
         // NativeSpecialPose.HeldRotation (`held`) with its grip along +z through the wrist; the shield's grip bar stands up behind
@@ -361,6 +382,16 @@ namespace ChipArena.UnityConversion
             s.ElbowSwing[0]=s.ElbowSwing[1]=0;
             s.LeftInside=Inside(s,pose,true); s.RightInside=Inside(s,pose,false);
             Positions(s,pose);
+            s.LeftRelax=s.RightRelax=0;
+            if(grasp.Relax>0||grasp.Still>0)
+            {
+                float relax=CapturedClip.Clamp(grasp.Relax,0,1),still=CapturedClip.Clamp(grasp.Still,0,1);
+                // (A braced shield stays where the game holds it: drawn in, its face ran across the body.)
+                bool leftHeld=grasp.Left.Seated||grasp.LeftCarries,rightHeld=grasp.Right.Seated||grasp.RightCarries;
+                s.LeftRelax=Relax(s,pose,true,(leftHeld?grasp.Left.Braced?0:still:relax)*(1-support),leftHeld,still);
+                s.RightRelax=Relax(s,pose,false,rightHeld?grasp.Right.Braced?0:still:relax,rightHeld,still);
+                Positions(s,pose);
+            }
             s.LeftClear=Clear(s,pose,true,grasp.Left,default); s.RightClear=Clear(s,pose,false,grasp.Right,support>0?grasp.SupportHold:default);
             if(plantFeet)
             {
@@ -813,6 +844,242 @@ namespace ChipArena.UnityConversion
             Quaternion swing=CapturedRig.FromTo(CapturedRig.Unit(copied,-CapturedRig.Y),CapturedRig.Unit(moved,CapturedRig.Unit(copied,-CapturedRig.Y)));
             Rotate(s,va,ve,swing); Rotate(s,ve,vh,swing);
             return w;
+        }
+
+        // Relaxed free arms on a body of other proportions (owner 2026-10-28: "Fix idle animations, lobby card poses, and intros
+        // to fully support the new player model. Since the transfer, a lot of unnatural arm positioning and movements"). The
+        // game's standing, sitting and entrance poses place free hands for the voxel body: shoulders .345 m out, a chest .53 m
+        // wide and .30 m deep, arms .52 m long and .175 m thick. A relaxed voxel hand hangs 10-18 cm off its blocky hips, and
+        // folded arms cannot reach across its chest (the crossed arms' elbows stay 10 degrees from straight). Copied by
+        // direction onto shoulder joints .13 m out (with the hanging Spread on top), those arms stood 22-38 degrees out with
+        // the hands 13-28 cm off the thighs (an A-pose), and folded arms reached nearly straight across the belly.
+        // A free hand (no fist seated on a handle, not supporting a two-handed grip) is re-placed by the body's landmarks:
+        //  - height: its drop under the shoulder line, scaled by the arms' lengths;
+        //  - across: inside the body's width, in proportion to the widths at that height (chest, waist, hips: GameHalfWidth and
+        //    the rig's TorsoHalfWidth, WaistHalfWidth, HipHalfWidth); outside it, by its gap off the side, the voxel hand's
+        //    thickness and a relaxed hang's small gap compressed (RelaxGap) while a wide gesture keeps its offset;
+        //  - depth: inside the torso in proportion to its depth, in front of or behind it by the same offset.
+        // The arm reaches that wrist hinged, its elbow out, down and back (a natural hang and fold) or on the game elbow's
+        // side where the game bends the arm (a seated arm, a guard), swung only as far as keeps the elbow and forearm out of
+        // the torso and the upper arm's roll human (RelaxElbow), and the hand keeps its turn on the forearm. Hands at or over the
+        // shoulder line keep the copied arm (raised arms, a staff held up, a hand under the head), fading in from RelaxNone to
+        // RelaxFull under it. The move is weighted by Grasp.Relax (0: the pose exactly as before; a held arm by Grasp.Still), the
+        // arm is no straighter than the game's own, a hand flung clear of the body keeps the game arm's extension, and the elbow
+        // eases frame to frame (RelaxElbow). Returns the weight used.
+        public const float RelaxFull=-.12f, RelaxNone=.10f, RelaxHand=.035f, RelaxSlope=.2f, RelaxSpan=.25f, RelaxNear=.18f, RelaxFar=.32f,
+            RelaxBendFrom=25*(float)Math.PI/180, RelaxBendFull=50*(float)Math.PI/180;
+        // The natural elbow side in the chest's frame: out, down and back.
+        public static readonly Vector3 RelaxPole=new Vector3(.35f,-1,-.6f);
+        // The voxel body (CapturedRig.Boxes) under its shoulder line: the chest block .53 m wide down to .22 m under it, the
+        // spine block .36 m from .26 to .34 m, the pelvis and thighs .455 m from .39 m down; its torso .30 m deep (the lower
+        // blocks .28) and its hand .16 m thick.
+        public const float GameChestHalf=.265f, GameWaistHalf=.18f, GameHipHalf=.2275f, GameChestDepth=.15f, GameLowDepth=.14f, GameHand=.08f;
+        public static float GameHalfWidth(float drop)=>drop<=.22f?GameChestHalf:drop<=.26f?Mix(GameChestHalf,GameWaistHalf,(drop-.22f)/.04f):drop<=.34f?GameWaistHalf:drop<=.39f?Mix(GameWaistHalf,GameHipHalf,(drop-.34f)/.05f):GameHipHalf;
+        public static float GameHalfDepth(float drop)=>drop<=.22f?GameChestDepth:drop<=.26f?Mix(GameChestDepth,GameLowDepth,(drop-.22f)/.04f):GameLowDepth;
+        // The visual body's half-width `drop` under its shoulder line: the chest down to half the waist's drop, then the waist,
+        // then the hips.
+        public static float HalfWidth(Rig r,float drop)
+        {
+            float chest=.5f*r.WaistDrop;
+            if(drop<=chest) return r.TorsoHalfWidth;
+            if(drop<=r.WaistDrop) return Mix(r.TorsoHalfWidth,r.WaistHalfWidth,(drop-chest)/Math.Max(1e-4f,r.WaistDrop-chest));
+            if(drop<=r.HipDrop) return Mix(r.WaistHalfWidth,r.HipHalfWidth,(drop-r.WaistDrop)/Math.Max(1e-4f,r.HipDrop-r.WaistDrop));
+            return r.HipHalfWidth;
+        }
+        private static float Mix(float a,float b,float t)=>a+(b-a)*CapturedClip.Clamp(t,0,1);
+        // A hand `gap` outside the voxel body's side, its centre: touching (GameHand) maps to touching (`hand`: RelaxHand, or
+        // RelaxHeldHand with a weapon in the fist); beyond that the gap's first part shrinks to RelaxSlope (a voxel hand's 10 cm
+        // hang becomes 3 cm) and a wide one keeps its offset.
+        public const float RelaxHeldHand=.06f;
+        public static float RelaxGap(float gap,float hand=RelaxHand)
+        {
+            if(gap<=GameHand) return gap*hand/GameHand;
+            float u=gap-GameHand;
+            return hand+u-(1-RelaxSlope)*RelaxSpan*(1-(float)Math.Exp(-u/RelaxSpan));
+        }
+        // Across the body (outward from the middle, either side): inside the body's width in proportion, outside by its gap.
+        private static float Across(float game,float gameHalf,float half,float hand)
+        {
+            float a=Math.Abs(game),v=a<=gameHalf?a*half/gameHalf:half+RelaxGap(a-gameHalf,hand);
+            return game<0?-v:v;
+        }
+        private static float Deep(float game,float gameHalf,float half)
+        {
+            float a=Math.Abs(game),v=a<=gameHalf?a*half/gameHalf:half+(a-gameHalf);
+            return game<0?-v:v;
+        }
+        private static float Relax(State s,CapturedRig.Pose pose,bool left,float weight,bool held,float still)
+        {
+            var r=s.Rig; int ga=left?CapturedRig.LArm:CapturedRig.RArm,va=r.Of[ga],ve=r.Of[ga+1],vh=r.Of[ga+2],la=r.Of[CapturedRig.LArm],ra=r.Of[CapturedRig.RArm],chest=r.Of[CapturedRig.Chest];
+            if(weight<=0||va<0||ve<0||vh<0||la<0||ra<0||chest<0||r.ArmUpper<=0||r.ArmLower<=0){s.RelaxHad[left?0:1]=false;return 0;}
+            // The game hand in its chest's frame, from the middle of its shoulder line.
+            Quaternion C=pose.WorldRotation[CapturedRig.Chest]; float side=left?1:-1;
+            Vector3 game=Vector3.Transform(pose.WorldPosition[ga+2]-(pose.WorldPosition[CapturedRig.LArm]+pose.WorldPosition[CapturedRig.RArm])*.5f,Quaternion.Inverse(C));
+            float w=weight*(1-CapturedClip.Ease((game.Y-RelaxFull)/(RelaxNone-RelaxFull)));
+            if(w<=1e-4f){s.RelaxHad[left?0:1]=false;return 0;}
+            // Mapped onto the visual body by its landmarks, from the middle of its own shoulder line in its chest's frame.
+            float drop=-game.Y,ratio=(r.ArmUpper+r.ArmLower)/GameArm,vdrop=drop*ratio;
+            var local=new Vector3(side*Across(side*game.X,GameHalfWidth(drop),HalfWidth(r,vdrop),held?RelaxHeldHand:RelaxHand),-vdrop,Deep(game.Z,GameHalfDepth(drop),r.TorsoHalfDepth));
+            // No straighter than the game's own arm: a hanging hand drawn in toward narrower hips keeps the elbow's soft bend
+            // by rising a little (the drop eased so the reach is the game's extension of the arm).
+            Quaternion V=Eff(s,chest); Vector3 middle=(s.Position[la]+s.Position[ra])*.5f,shoulderAt=Vector3.Transform(s.Position[va]-middle,Quaternion.Inverse(V)),rel=local-shoulderAt;
+            float most=Vector3.Distance(pose.WorldPosition[ga],pose.WorldPosition[ga+2])/GameArm*(r.ArmUpper+r.ArmLower),flat=rel.X*rel.X+rel.Z*rel.Z;
+            if(rel.Y<0&&rel.LengthSquared()>most*most&&flat<most*most) local.Y=shoulderAt.Y-(float)Math.Sqrt(most*most-flat);
+            // A hand flung clear of the body (RelaxNear to RelaxFar off the voxel's side or front) keeps the game arm's extension
+            // along the placed direction: the body's landmarks place hands at it (hung, folded, on the lap), and drawing a far
+            // hand in bent the elbow and stood the arm out wider than the game's own in an entrance's gestures.
+            float clear=Math.Max(0,Math.Max(Math.Abs(game.X)-GameHalfWidth(drop),Math.Abs(game.Z)-GameHalfDepth(drop))),far=CapturedClip.Ease((clear-RelaxNear)/(RelaxFar-RelaxNear));
+            rel=local-shoulderAt;
+            if(far>0&&rel.LengthSquared()>1e-8f) local=shoulderAt+rel*((rel.Length()+(most-rel.Length())*far)/rel.Length());
+            Vector3 target=middle+Vector3.Transform(local,V);
+            float lap=0; Vector3 down=Vector3.Zero;
+            if(still>0){target=Vector3.Lerp(target,OnLap(s,pose,ga+2,held,out lap,out down),lap*still);lap*=still;}
+            // The elbow's side: natural (out, down and back), or the game's own where the game bends the arm.
+            Vector3 pole=Vector3.Transform(new Vector3(side*RelaxPole.X,RelaxPole.Y,RelaxPole.Z),C);
+            Vector3 gS=pose.WorldPosition[ga],gE=pose.WorldPosition[ga+1],gW=pose.WorldPosition[ga+2],gLine=CapturedRig.Unit(gW-gS,-CapturedRig.Y),gOff=gE-gS-gLine*Vector3.Dot(gE-gS,gLine);
+            float bend=(float)Math.Acos(CapturedClip.Clamp(Vector3.Dot(CapturedRig.Unit(gE-gS,-CapturedRig.Y),CapturedRig.Unit(gW-gE,-CapturedRig.Y)),-1,1));
+            float sure=CapturedClip.Ease((bend-RelaxBendFrom)/(RelaxBendFull-RelaxBendFrom));
+            Vector3 S=s.Position[va],E0=s.Position[ve],W0=s.Position[vh];
+            Quaternion hand=Quaternion.Inverse(Eff(s,ve))*Eff(s,vh);
+            int k=left?0:1;
+            Vector3 E1=RelaxElbow(s,pose,left,S,target,pole,gOff,sure,E0,w);
+            s.RelaxLast[k]=E1-S; s.RelaxHad[k]=true;
+            // Blended from the copied arm by the weight: the wrist lerped, and the elbow (whose preferred side already turns
+            // from the copied elbow's to the relaxed one with the weight, RelaxElbow) swung off the copied elbow's side by
+            // RelaxBlend's ease, so the arm stays a hinge and the copied arm is kept exactly at no weight.
+            // (A copied elbow on the shoulder-wrist line names no side: the relaxed one's is taken.)
+            bool named=SwingOff(S,target,E0,E1,out float swing);
+            s.RefElbow[k]=named?E0:E1;
+            Reach(s,pose,left,Vector3.Lerp(W0,target,w),Vector3.Zero,Eff(s,vh),false,out _,named?swing*CapturedClip.Ease(w/RelaxBlend):0);
+            TurnHand(s,vh,Quaternion.Normalize(Eff(s,ve)*hand));
+            // A hand resting on the lap lies palm down: turned about the forearm toward it, at most LapPronate.
+            int fist=left?0:1;
+            if(lap>0&&r.HasFist[fist]&&!held)
+            {
+                Vector3 f=Vector3.Transform(-CapturedRig.Y,Eff(s,ve)),palm=Vector3.Transform(r.FistPalm[fist],Eff(s,vh)),want=down;
+                palm-=f*Vector3.Dot(palm,f); want-=f*Vector3.Dot(want,f);
+                if(palm.LengthSquared()>1e-6f&&want.LengthSquared()>1e-6f)
+                {
+                    float turn=(float)Math.Atan2(Vector3.Dot(f,Vector3.Cross(palm,want)),Vector3.Dot(palm,want));
+                    TurnHand(s,vh,Quaternion.Normalize(CapturedRig.Rot(f,CapturedClip.Clamp(turn,-LapPronate,LapPronate)*lap*w)*Eff(s,vh)));
+                }
+            }
+            return w;
+        }
+        // Hands on the lap (a still seated pose: 'Sitting on chair', the rooftop's seated pilot). The voxel's seated hands hover beside
+        // its knees, 4 cm over a .22 m thick thigh (GameThigh: half); on the model's thigh, a fifth of its length thick
+        // (LapThigh), that left them 8-12 cm over and beside the lap. A game wrist within LapNear of a thigh that lies within
+        // about 12 degrees of level (LapLevel, gone by 20), with the other thigh level too (seated: a fighting stance's lead thigh
+        // lies 18-23 degrees off level over a standing rear leg), above its middle, rests on the model's thigh instead: on top, a
+        // LapOut share toward the side the game hand is on, at the same share along it (slid back toward the hip as far as the
+        // arm reaches: the model's thighs are 1.7 times the voxel's), the wrist LapRest over the cloth. Both thighs blend by
+        // their weights, so a hand passing from one to the other glides. Returns where, and the weight (0: no lap).
+        public const float GameThigh=.11f, LapThigh=.2f, LapNear=.30f, LapFar=.42f, LapLevel=.20f, LapTilt=.15f, LapOut=.25f, LapRest=.065f,
+            LapPronate=80*(float)Math.PI/180;
+        // `down`: into the lap (the palm's way).
+        private static Vector3 OnLap(State s,CapturedRig.Pose pose,int gameHand,bool held,out float weight,out Vector3 down)
+        {
+            down=Vector3.Zero;
+            // Level and over against the world's up, not the chest's (a hunched fighting stance's lead thigh lies level to its chest).
+            var r=s.Rig; weight=0; int va=r.Of[gameHand-2]; Vector3 sum=Vector3.Zero,wrist=pose.WorldPosition[gameHand],up=CapturedRig.Y; float total=0;
+            if(va<0) return Vector3.Zero;
+            Vector3 S=s.Position[va]; float most=.95f*(r.ArmUpper+r.ArmLower),radius=LapThigh*r.LegUpper+LapRest+(held?RelaxHeldHand-RelaxHand:0);
+            // Seated: both thighs level (a lunge's lead thigh can lie level over a standing rear leg).
+            float seated=Math.Min(Level(pose,CapturedRig.LHip,up),Level(pose,CapturedRig.RHip,up)); if(seated<=1e-4f) return Vector3.Zero;
+            for(int leg=0;leg<2;leg++)
+            {
+                int hip=leg==0?CapturedRig.LHip:CapturedRig.RHip,vh=r.Of[hip],vk=r.Of[hip+1]; if(vh<0||vk<0) continue;
+                Vector3 a=pose.WorldPosition[hip],b=pose.WorldPosition[hip+1],ab=b-a; if(ab.LengthSquared()<1e-8f) continue;
+                float t=CapturedClip.Clamp(Vector3.Dot(wrist-a,ab)/ab.LengthSquared(),0,1);
+                Vector3 off=wrist-(a+ab*t); float d=off.Length(); if(d<1e-5f) continue;
+                Vector3 dir=off/d;
+                float w=seated*(1-CapturedClip.Ease((d-GameThigh-LapNear)/(LapFar-LapNear)))*CapturedClip.Ease((Vector3.Dot(dir,up)+.2f)/.4f);
+                if(w<=1e-4f) continue;
+                Vector3 h=s.Position[vh],k=s.Position[vk],along=CapturedRig.Unit(k-h,CapturedRig.Z),top=CapturedRig.Unit(up-along*Vector3.Dot(up,along),CapturedRig.Y);
+                Vector3 side=dir-along*Vector3.Dot(dir,along); side-=top*Vector3.Dot(side,top);
+                Vector3 rest=CapturedRig.Unit(top+side*LapOut,top)*radius;
+                float u=t;
+                if(Vector3.Distance(Vector3.Lerp(h,k,u)+rest,S)>most)
+                {
+                    float lo=0,hi=u;
+                    for(int i=0;i<6;i++){float mid=(lo+hi)*.5f;if(Vector3.Distance(Vector3.Lerp(h,k,mid)+rest,S)>most)hi=mid;else lo=mid;}
+                    u=lo;
+                }
+                sum+=(Vector3.Lerp(h,k,u)+rest)*w; total+=w; weight=Math.Max(weight,w); down-=top*w;
+            }
+            return total>0?sum/total:Vector3.Zero;
+        }
+        private static float Level(CapturedRig.Pose pose,int hip,Vector3 up)
+        {
+            Vector3 thigh=pose.WorldPosition[hip+1]-pose.WorldPosition[hip]; if(thigh.LengthSquared()<1e-8f) return 0;
+            return 1-CapturedClip.Ease((Math.Abs(Vector3.Dot(Vector3.Normalize(thigh),up))-LapLevel)/LapTilt);
+        }
+        // The relaxed elbow for an arm from shoulder S to wrist W: on the circle the two bones allow, swung from the `pole`'s side
+        // only as far as keeps it and the forearm out of the torso (Reach's TorsoClear, ForearmClear and Sink), the upper arm's
+        // lower part off the chest's sides (RelaxUpper of the way down it UpperClear wide, by the armpit; RelaxUpperLow, the
+        // arm's own thickness, UpperLowClear; a folded arm's elbow otherwise drew
+        // in front of the ribs and its upper arm through them) and the upper arm's roll within HumerusRoll; a soft minimum over
+        // the circle.
+        public const float RelaxUpper=.5f, RelaxUpperLow=.8f, UpperClear=.02f, UpperLowClear=.045f;
+        // The side is the natural pole's turned toward the game elbow's (`game`) by `sure`, by angle about the shoulder-wrist line:
+        // a lerp of the two directions flipped round the arm as they crossed (a fire cast's elbow jumped 24 cm in a frame). A
+        // game elbow more than RelaxOpposite off the natural side (a fling's elbow leading forward across the chest) counts less,
+        // none by 150 degrees. Frame to frame (after the first) the elbow turns on its circle by at most RelaxStep from last
+        // frame's, which it also prefers (SwingHold): in a fast gesture the cost can have two minima either side of the upper
+        // arm's roll limit, and choosing afresh each frame jumped between them.
+        // Under less than full weight (`w`, Relax: a hand rising toward the shoulder line) the side turns back toward the copied
+        // elbow's (`copied`).
+        public const float RelaxOpposite=90*(float)Math.PI/180, RelaxStep=10*(float)Math.PI/180, RelaxBlend=.25f;
+        private static Vector3 RelaxElbow(State s,CapturedRig.Pose pose,bool left,Vector3 S,Vector3 W,Vector3 pole,Vector3 game,float sure,Vector3 copied,float w)
+        {
+            var r=s.Rig; int ga=left?CapturedRig.LArm:CapturedRig.RArm,vc=r.Of[ga-1],va=r.Of[ga],pelvis=r.Of[CapturedRig.Pelvis],neck=r.Of[CapturedRig.Neck];
+            float a=r.ArmUpper,b=r.ArmLower; Vector3 to=W-S; float d=CapturedClip.Clamp(to.Length(),Math.Abs(a-b)+1e-4f,(a+b)*.9999f);
+            Vector3 n=CapturedRig.Unit(to,-CapturedRig.Y),P=S+n*d;
+            float along=(a*a-b*b+d*d)/(2*d),h=(float)Math.Sqrt(Math.Max(0,a*a-along*along));
+            Vector3 C=S+n*along,e1=pole-n*Vector3.Dot(pole,n);
+            if(e1.LengthSquared()<1e-8f) e1=Vector3.Cross(n,Math.Abs(n.Y)<.9f?CapturedRig.Y:CapturedRig.X);
+            e1=Vector3.Normalize(e1); Vector3 e2=Vector3.Cross(n,e1);
+            Vector3 g=game-n*Vector3.Dot(game,n); float side=0;
+            if(sure>0&&g.LengthSquared()>1e-8f)
+            {
+                float at=(float)Math.Atan2(Vector3.Dot(g,e2),Vector3.Dot(g,e1));
+                side=at*sure*(1-CapturedClip.Ease((Math.Abs(at)-RelaxOpposite)/((float)Math.PI*5/6-RelaxOpposite)));
+            }
+            Vector3 c=copied-C; c-=n*Vector3.Dot(c,n);
+            if(w<1&&c.LengthSquared()>1e-8f){float from=(float)Math.Atan2(Vector3.Dot(c,e2),Vector3.Dot(c,e1));side=from+Wrap(side-from)*w;}
+            Vector3 low=pelvis<0?S:s.Position[pelvis],high=neck<0?S:s.Position[neck];
+            Quaternion shoulder=(vc<0?Quaternion.Identity:Eff(s,vc))*Spread(pose,left),upperNow=Eff(s,va);
+            int k=left?0:1; bool keep=s.HasLast&&s.RelaxHad[k]; float was=0;
+            if(keep){Vector3 prev=S+s.RelaxLast[k]-C;prev-=n*Vector3.Dot(prev,n);if(prev.LengthSquared()<1e-10f)keep=false;else was=(float)Math.Atan2(Vector3.Dot(prev,e2),Vector3.Dot(prev,e1));}
+            float Cost(float phi)
+            {
+                Vector3 E=C+(e1*(float)Math.Cos(phi)+e2*(float)Math.Sin(phi))*h;
+                HingeTurns(S,E,P,upperNow,out var upper,out _);
+                return Square((phi-side)/ElbowSpread)+(keep?Square(Wrap(phi-was)/SwingHold):0)+Sink(TorsoClear-Segment(E,low,high))+Sink(ForearmClear-Segment((E+P)*.5f,low,high))
+                    +Sink(Out(s,Vector3.Lerp(S,E,RelaxUpper),0,UpperClear).Length())+Sink(Out(s,Vector3.Lerp(S,E,RelaxUpperLow),0,UpperLowClear).Length())
+                    +Square(Math.Max(0,Math.Abs(Twist(Quaternion.Inverse(shoulder)*upper))-HumerusRoll)/.35f);
+            }
+            // Candidates round last frame's elbow when there is one (as Reach's are), else round the side.
+            float centre=keep?side+Wrap(was-side):side,best=float.MaxValue; var costs=s.RelaxCost;
+            for(int i=0;i<Swings;i++){costs[i]=Cost(centre-SwingRange+2*SwingRange*i/(Swings-1));best=Math.Min(best,costs[i]);}
+            float sum=0,weighted=0;
+            for(int i=0;i<Swings;i++)
+            {
+                float phi=centre-SwingRange+2*SwingRange*i/(Swings-1),wt=(float)Math.Exp(-(costs[i]-best)/Softness);
+                sum+=wt; weighted+=wt*phi;
+            }
+            float elbow=weighted/sum;
+            if(keep){float turn=Wrap(elbow-was);if(Math.Abs(turn)>RelaxStep)elbow=was+Math.Sign(turn)*RelaxStep;}
+            return C+(e1*(float)Math.Cos(elbow)+e2*(float)Math.Sin(elbow))*h;
+        }
+        // The turn about the shoulder-wrist line (S to W) from elbow `from`'s side to elbow `to`'s (as Reach's swing counts it).
+        // False when `from` lies on that line.
+        private static bool SwingOff(Vector3 S,Vector3 W,Vector3 from,Vector3 to,out float swing)
+        {
+            Vector3 n=CapturedRig.Unit(W-S,-CapturedRig.Y),a=from-S,b=to-S; a-=n*Vector3.Dot(a,n); b-=n*Vector3.Dot(b,n); swing=0;
+            if(a.LengthSquared()<1e-8f) return false;
+            if(b.LengthSquared()>1e-10f) swing=(float)Math.Atan2(Vector3.Dot(n,Vector3.Cross(a,b)),Vector3.Dot(a,b));
+            return true;
         }
 
         // Fists and what they hold keep out of the visual body (owner review 2026-10-22: the greatsword's fists and crossguard in
