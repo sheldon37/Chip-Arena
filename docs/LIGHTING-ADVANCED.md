@@ -105,7 +105,8 @@ The shaders (`NativeAdvancedLight.cginc` ArenaGI) read it at the surface moved o
 over the box's last 1.5 cells, and add `ambient x (lerp(1, max(occlusion, floor), strength) - 1) + bounce x gain` to their
 own light:
 
-- NativeBlockLit: on its SH ambient (the legacy path) and on the anime style's ambient through its ramp and occlusion band.
+- NativeBlockLit: on its SH ambient (the legacy path) and on the anime style's ambient through its ramp and occlusion band;
+  the stage kits' pack props (its BLOCK_PACK variant) the same, with the wet faces, the sheen and the scattering.
 - SourceLit, ZombieLit and the visual body (and its outline): as emission on a lit part, at the body share (`actors`), on the
   ambient the lighting model takes (Unity's SH, or the style's flattened SH).
 
@@ -123,7 +124,7 @@ flat elliptic column for a slot) from its source to its end, its light at the so
 x the look's gain).
 
 `Runtime/NativeVolumetricBeams` draws them in one instanced draw of a unit open cone (24 x 10), additive and HDR so the bloom
-takes the cores. `NativeVolumetricBeam.shader` per pixel:
+takes the cores (the stage loading's shader warm-up draws it instanced too: `StagePreloadPlan.InstancedShaders`). `NativeVolumetricBeam.shader` per pixel:
 
 - the air the view ray crosses inside the beam: the chord through its local ellipse from where the ray meets the side to
   where it leaves (or the beam's end when looking down it), over the beam's width, to the soft-edge power, so the beam is soft
@@ -210,7 +211,7 @@ floats against .NET's), the beams (the camera inside, the unit mesh's winding, t
 low tier), the weather (cover, determinism, amounts, kinds, allocation free, the lightning's rhythm and its reduced pulse), the
 glow integral, and source pins on the shaders and the runtime; then the lighting pins it can touch (MapLookChecks,
 BlockLookChecks, MapStyleChecks, WardLightingChecks, ZombieLightChecks, ArmorLightChecks, BloomChecks, FactoryChecks,
-BrickfallSceneryChecks, CyberCityChecks).
+BrickfallSceneryChecks, CyberCityChecks, StageKitChecks).
 
 ## Astra handoff
 

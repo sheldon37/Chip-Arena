@@ -25,7 +25,7 @@ Shader "ChipArena/NativeBlockLit"
     // (PackSurface). Per instance: _BlockRest x a yard's floodlit share, y the prop's base height (its grime ramp), w its local
     // dust coat; _BlockLook y the
     // block's health share, z its seed, w its flags; _BlockColor rgb a tint. Normals go through the instance's inverse transpose
-    // (a fitted prop is scaled per axis).
+    // (a fitted prop is scaled per axis). The advanced lighting's volume, wet faces and scattering reach the props too.
     Properties {}
     SubShader
     {
@@ -925,10 +925,16 @@ Shader "ChipArena/NativeBlockLit"
                     float4 t=tex2D(_PackTex,i.pat.xy);clip(t.a-_PackCutoff);float3 alb=t.rgb*_PackColor.rgb*i.col.rgb;
                     float3 nT=normalize(i.nW);float3 nF=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),nT);
                     BlockSurf ps=PackSurface(alb,t.rgb*(_PackEmit*_ArenaPackGlow),i.world.xyz,nT,i.shade.x,i.size.w,i.obj.w,i.col.w,i.shade.y);
+                    // The advanced lighting as a block takes it (each term 0 while its switch is off): wet faces, the volume
+                    // (inside ToonBlockLit for the anime style), the sheen and the scattering.
+                    float pw=ArenaWetAt(i.world.xyz);float pp=ArenaPuddle(i.world.xyz,nT,pw);ps.albedo=ArenaWetAlbedo(ps.albedo,pw,pp,nT);
                     UNITY_LIGHT_ATTENUATION(pa,i,i.world.xyz);float3 pc;
                     if(_ArenaToon.x>0.5)pc=ToonBlockLit(ps.albedo,ps.emit,ps.occ,i.world.xyz,nT,nF,normalize(_WorldSpaceCameraPos-i.world.xyz),_WorldSpaceLightPos0.xyz,_LightColor0.rgb,pa,ShadeSH9(float4(nT,1.0)),ShadeSH9(float4(0.0,1.0,0.0,1.0)),ShadeSH9(float4(0.0,-1.0,0.0,1.0)));
                     else pc=ps.albedo*(ShadeSH9(float4(nT,1.0))+_LightColor0.rgb*(saturate(dot(nT,_WorldSpaceLightPos0.xyz))*pa)+BlockLights(i.world.xyz,nT))+ps.emit;
+                    if(_ArenaToon.x<=0.5)pc+=ps.albedo*ArenaGI(ShadeSH9(float4(nT,1.0)),i.world.xyz,nT);
+                    pc+=ArenaWetSheen(i.world.xyz,nT,normalize(_WorldSpaceCameraPos-i.world.xyz),pw,pp,_WorldSpaceLightPos0.xyz,_LightColor0.rgb,pa);
                     fixed4 pk=fixed4(BlockHaze(pc,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
+                    pk.rgb=ArenaScatter(pk.rgb,i.world.xyz,_WorldSpaceCameraPos);
                     UNITY_APPLY_FOG(i.fogCoord,pk);return pk;
                 }
                 #else
