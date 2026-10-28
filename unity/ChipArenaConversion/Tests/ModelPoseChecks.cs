@@ -134,13 +134,20 @@ namespace ChipArena.UnityConversion
             var sc=NativeEntranceDirector.Script(style);
             if(sc!=null)
             {
-                if(sc is NativeWeaponEntrance&&!sc.Ready){var c=clips["intro-"+style];sc.Bind(new NativeEntranceClip(c.Values,c.Roots,c.Frames,c.Duration));}
-                sc.Prepare();
-                for(float age=0;age<=4.8f;age+=1/60f)
+                // The director keeps one script a style for the whole run: a clip bound here is unbound again after, so later
+                // checks (EntranceDirectorChecks: a weapon signature waits for its clip) find the scripts as they were.
+                bool bound=false;
+                if(sc is NativeWeaponEntrance&&!sc.Ready){var c=clips["intro-"+style];sc.Bind(new NativeEntranceClip(c.Values,c.Roots,c.Frames,c.Duration));bound=true;}
+                try
                 {
-                    float t=sc.Clock(age);sc.Pose(t,p,out _,out _);p.World();if(sc.Solid(t,CapturedRig.Chest)<.5f){fresh=true;continue;}
-                    yield return new Frame{Time=age,Pose=p,Grasp=Grasp(spec,false,p,arms),Fresh=fresh};fresh=false;
+                    sc.Prepare();
+                    for(float age=0;age<=4.8f;age+=1/60f)
+                    {
+                        float t=sc.Clock(age);sc.Pose(t,p,out _,out _);p.World();if(sc.Solid(t,CapturedRig.Chest)<.5f){fresh=true;continue;}
+                        yield return new Frame{Time=age,Pose=p,Grasp=Grasp(spec,false,p,arms),Fresh=fresh};fresh=false;
+                    }
                 }
+                finally{if(bound)sc.Bind(null);}
                 yield break;
             }
             var clip=clips["intro-"+style];
@@ -283,6 +290,9 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             var clips=Clips(root);
+            // The director's scripts are kept for the whole run: these checks leave each one bound or unbound as they found it.
+            string ReadyStyles()=>string.Join(",",NativeEntranceDirector.Styles.Where(s=>NativeEntranceDirector.Script(s).Ready));
+            string readyBefore=ReadyStyles();
             foreach(var (rigName,rig) in new[]{("the measured skeleton",Measured()),("the synthetic skeleton",VisualRigChecks.Synthetic(out _))})
             {
                 var st=new Stats();
@@ -297,6 +307,7 @@ namespace ChipArena.UnityConversion
                 Run(rig,"the Cyber Lord's idle",CyberIdle(6),st,false,palms);
                 Console.WriteLine("PASS model poses ("+rigName+"): "+st.Poses+" poses of every lobby pose, entrance and the Cyber Lord's idle, "+st.Relaxed+" relaxed arms: hinged, elbows at most "+st.ElbowMax.ToString("0")+" degrees; nearly straight free arms by the body no wider than the game's, the model's hang or the copied arm (closest "+st.WorstSpread.ToString("0.0")+" degrees; "+st.Narrower+" narrower than copied); forearms and fists deepest "+(st.WorstForearm*100).ToString("0.0")+" cm inside the torso ("+st.ForearmAt+"; past "+(ForearmInside*100).ToString("0.0")+" cm in "+st.DeepForearm+" relaxed arms against "+st.DeepForearmBefore+" free copied ones), upper arms "+(st.WorstUpper*100).ToString("0.0")+" ("+st.UpperAt+"); "+st.Hanging+" hanging free arms "+st.HangAbdMin.ToString("0")+"-"+st.HangAbdMax.ToString("0")+" degrees out (copied up to "+st.HangBeforeAbd.ToString("0")+"), hands "+(st.HangGapMin*100).ToString("0")+"-"+(st.HangGapMax*100).ToString("0")+" cm off the thighs (copied up to "+(st.HangBeforeGap*100).ToString("0")+"), elbows at most "+st.HangElbowMax.ToString("0")+"; frame to frame within the transition bound (closest "+(st.WorstStep*100).ToString("0.0")+" cm, "+st.StepAt+") ("+count+" checks)");
             }
+            Check(ReadyStyles()==readyBefore,"the entrance scripts are left as found (a clip bound for these checks is unbound again)");
             Cards(root,clips);
             Repeats(clips);
             Wiring(root);
