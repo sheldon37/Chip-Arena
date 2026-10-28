@@ -46,9 +46,9 @@ const LOOK_SLOTS:Record<string,string[]>={
  feet:['mid-tops','work-boots','sneakers','lace-ups','sheldon-boots','barefoot']};
 const DEV_LOOK=new Set(['sheldon-robe','sheldon-pants','sheldon-boots','barefoot']);
 function lookMap(raw:unknown,developer=false){
- if(typeof raw!=='string'||raw.length>512)return '';const picks=new Map<string,string>();
- for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const slot=entry.slice(0,i).trim(),id=entry.slice(i+1).trim();if(Object.hasOwn(LOOK_SLOTS,slot)&&LOOK_SLOTS[slot].includes(id))picks.set(slot,id);}
- return Object.keys(LOOK_SLOTS).filter(s=>picks.has(s)&&picks.get(s)!==LOOK_SLOTS[s][0]&&(developer||!DEV_LOOK.has(picks.get(s)!))).map(s=>s+':'+picks.get(s)).join(',');
+ if(typeof raw!=='string'||raw.length>512)return '';const picks=new Map<string,string>();let skin='';
+ for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const slot=entry.slice(0,i).trim(),id=entry.slice(i+1).trim();if(slot==='skin'&&/^[0-9a-f]{6}$/i.test(id))skin=id.toLowerCase();else if(Object.hasOwn(LOOK_SLOTS,slot)&&LOOK_SLOTS[slot].includes(id))picks.set(slot,id);}
+ return Object.keys(LOOK_SLOTS).filter(s=>picks.has(s)&&picks.get(s)!==LOOK_SLOTS[s][0]&&(developer||!DEV_LOOK.has(picks.get(s)!))).map(s=>s+':'+picks.get(s)).concat(skin?['skin:'+skin]:[]).join(',');
 }
 function accountCosmetics(raw:any,a:Access){
  const clean=cosmetics(raw,a);

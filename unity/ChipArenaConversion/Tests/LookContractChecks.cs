@@ -25,6 +25,15 @@ internal static class LookContractChecks
             if(name=="NativeArena.cs"||name.StartsWith("NativeCombat")||name.StartsWith("NativeDamage")||name.StartsWith("NativeMovement")||name.StartsWith("NativePrediction")||name=="NativeAbilities.cs")
                 Check(!File.ReadAllText(f).Contains("NativeLook"),"authority is outfit independent: "+name);
         }
+        foreach(var file in new[]{
+            "Core/ArenaWorld.cs","Core/NativeCombatRules.cs","Core/NativeMeleeRules.cs","Core/NativePrediction.cs",
+            "Runtime/NativeMelee.cs","Runtime/NativeFighters.cs","Runtime/NativeChips.cs","Runtime/NativePveHorde.cs",
+            "Runtime/NativeMeleeSpecials.cs","Runtime/NativeProjectiles.cs"})
+        {
+            string path=Path.Combine(root,"Assets/ChipArena",file);
+            Check(File.Exists(path),"authority scan target exists: "+file);
+            Check(!File.ReadAllText(path).Contains("NativeLook"),"authority is outfit independent: "+file);
+        }
         Console.WriteLine("PASS outfit contract: slot gates, network/profile routes and authority isolation");
     }
 }

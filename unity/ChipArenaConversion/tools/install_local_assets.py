@@ -338,6 +338,7 @@ def remove(project):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('source', nargs='?', help='licensed-assets folder or .zip')
+    parser.add_argument('--require-cloth', action='store_true', help='reject a bundle without Magica and the runtime bridge before installing')
     parser.add_argument('--project', default=str(ROOT), help='Unity project root (default: this project)')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='verify the source only')
@@ -369,6 +370,8 @@ def main(argv=None):
             keys, clips, total = verify(content)
             body = verify_visual_body(content)
             cloth = local_cloth.verify(content)
+            if args.require_cloth and not cloth:
+                raise Problem('cloth runtime required: repack on the licensed-asset PC with pack_visual_body.py --with-cloth')
             print(f"Cloth runtime: {len(cloth)} verified files" if cloth else "Cloth runtime: absent (posed-body fallback)")
             body_bytes = sum(content.joinpath(*PurePosixPath(rel).parts).stat().st_size for rel in body)
             if not args.check:
