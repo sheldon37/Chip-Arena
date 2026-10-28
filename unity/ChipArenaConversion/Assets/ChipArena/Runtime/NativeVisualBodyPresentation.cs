@@ -156,7 +156,7 @@ namespace ChipArena.UnityConversion
         private VisualBody VisualBodyOf(CapturedAnimation.Player rig,int id,bool hood)
         {
             // A changed outfit or hood makes the body again in it (the Locker's picks apply in the lobby).
-            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&(body.Hood!=hood||!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal))){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}
+            if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&(body.Hood!=hood||!VisualRetone(body,VisualLookOf(id)))){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}
             if(body==null||body.Root==null){body=CreateVisualBody(rig,id,hood);if(body==null)return null;body.Arena=rigs.TryGetValue(id,out var own)&&own==rig;visualBodies[rig]=body;}
             return body;
         }
@@ -535,8 +535,8 @@ namespace ChipArena.UnityConversion
         private static readonly Dictionary<string,Renderer> lookNamed=new Dictionary<string,Renderer>(StringComparer.Ordinal);
         // A model instance in the outfit `look`: each wardrobe piece's renderers on when worn and off otherwise, the body parts
         // the worn pieces cover off (the rest on), the tag shapes full where a worn piece sets their tag, and the Sheldon pieces in
-        // their palette (VisualSheldonPalette; their renderers added to `sheldon`). Runs when a body is made (once per outfit),
-        // never per frame.
+        // their palette (VisualSheldonPalette; their renderers added to `sheldon`), and the skin parts in the pilot's tone
+        // (VisualSkinToneOne). Runs when a body is made (once per outfit), never per frame.
         private static void VisualDress(GameObject root,string look,List<Renderer> sheldon=null)
         {
             var d=VisualLookData();if(d==null||root==null)return;
@@ -549,7 +549,58 @@ namespace ChipArena.UnityConversion
             if(d.body!=null)foreach(var b in d.body)if(b!=null&&lookNamed.TryGetValue(b.renderer,out var r))r.gameObject.SetActive(!lookCovers.Contains(b.part));
             if(d.shapes!=null)foreach(var t in d.shapes)if(t!=null&&lookNamed.TryGetValue(t.renderer,out var r)&&r is SkinnedMeshRenderer skin&&skin.sharedMesh!=null&&t.shape>=0&&t.shape<skin.sharedMesh.blendShapeCount)skin.SetBlendShapeWeight(t.shape,lookTags.Contains(t.tag)?100:0);
             foreach(var p in d.pieces)if(p?.renderers!=null&&NativeSheldonWear.IsSheldon(p.id)&&NativeLook.Of(look,p.slot)==p.id)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r)){VisualSheldonPalette(r);sheldon?.Add(r);}
+            // The skin tone (none: the parts are left as they are). Every palette's base is read before a textured part takes the body's.
+            int tone=NativeLook.SkinOf(look);
+            if(tone>=0){foreach(var r in lookNamed.Values)if(VisualSkinPart(r))VisualBaseSkin(r.sharedMaterial);foreach(var r in lookNamed.Values)VisualSkinToneOne(r,tone);}
             lookNamed.Clear();
+        }
+        // The pilot's skin tone (Core NativeLook's skin entry; owner 2026-10-28: "Give skin color customization"): written on the
+        // skin parts when a body is dressed, and again in place when only the tone changes (VisualRetone), never per frame. A
+        // skin part is a body part of the bake's look data or the head or body mesh; the model's shader scales its skin colours
+        // by the tone over the part's base skin (Resources/NativeVisualBodyFx.cginc SkinToned). The base is the brightest skin
+        // colour of the part's palette (Core NativeColorWheel.BaseSkin), or, for a part drawn from its texture, the body's: the
+        // brightest base of the palettes seen (the model's own skin, NativeColorWheel.ModelSkin, when none has one).
+        private static readonly int SkinToneId=Shader.PropertyToID("_SkinTone"),SkinRefId=Shader.PropertyToID("_SkinRef"),UseCustomTextureId=Shader.PropertyToID("_UseCustomTexture");
+        private static readonly HashSet<string> skinParts=new HashSet<string>(StringComparer.Ordinal);private static LookData skinPartsOf;
+        private static readonly Dictionary<Material,int> skinBases=new Dictionary<Material,int>();private static int skinBase=-1;
+        private static readonly int[] skinPalette=new int[9];private static MaterialPropertyBlock toneBlock;
+        private static bool VisualSkinPart(Renderer r)
+        {
+            var d=VisualLookData();
+            if(!ReferenceEquals(d,skinPartsOf)){skinPartsOf=d;skinParts.Clear();if(d?.body!=null)foreach(var b in d.body)if(!string.IsNullOrEmpty(b?.renderer))skinParts.Add(b.renderer);}
+            string n=r.name;return skinParts.Contains(n)||n.StartsWith("Head.",StringComparison.Ordinal)||n.StartsWith("Body.",StringComparison.Ordinal);
+        }
+        // A part's base skin (0xRRGGBB, -1 when its palette has none or it draws its texture as it is), once per material.
+        private static int VisualBaseSkin(Material m)
+        {
+            if(m==null)return -1;if(skinBases.TryGetValue(m,out int known))return known;int found=-1;
+            if(!m.HasProperty(UseCustomTextureId)||m.GetFloat(UseCustomTextureId)>.5f)
+            {
+                for(int i=0;i<BodyColours.Length;i++){if(!m.HasProperty(BodyColours[i])){skinPalette[i]=-1;continue;}var c=m.GetColor(BodyColours[i]);skinPalette[i]=Mathf.RoundToInt(Mathf.Clamp01(c.r)*255)<<16|Mathf.RoundToInt(Mathf.Clamp01(c.g)*255)<<8|Mathf.RoundToInt(Mathf.Clamp01(c.b)*255);}
+                found=NativeColorWheel.BaseSkin(skinPalette);
+            }
+            skinBases[m]=found;if(found>=0&&(skinBase<0||NativeColorWheel.Luma(found)>NativeColorWheel.Luma(skinBase)))skinBase=found;return found;
+        }
+        private static void VisualSkinToneOne(Renderer r,int tone)
+        {
+            if(r==null||!VisualSkinPart(r))return;
+            toneBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(toneBlock);
+            int base0=tone<0?-1:VisualBaseSkin(r.sharedMaterial);if(base0<0)base0=skinBase>=0?skinBase:NativeColorWheel.ModelSkin;
+            if(tone<0){if(toneBlock.GetVector(SkinToneId).w<.5f)return;toneBlock.SetVector(SkinToneId,Vector4.zero);} // only a toned part is cleared
+            else
+            {
+                bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;Color t=WearColor(tone),b=WearColor(base0);if(linear){t=t.linear;b=b.linear;}
+                toneBlock.SetVector(SkinToneId,new Vector4(t.r,t.g,t.b,1));toneBlock.SetVector(SkinRefId,new Vector4(b.r,b.g,b.b,1));
+            }
+            r.SetPropertyBlock(toneBlock);
+        }
+        /// <summary>Whether a body made in its look can show `look` as it is: the same look, or the same outfit in another skin
+        /// tone, which it then takes in place (no new instance while a colour is dragged on the wheel).</summary>
+        private static bool VisualRetone(VisualBody body,string look)
+        {
+            if(string.Equals(body.Look,look,StringComparison.Ordinal))return true;
+            if(!NativeLook.SameOutfit(body.Look,look))return false;
+            int tone=NativeLook.SkinOf(look);if(body.All!=null)foreach(var r in body.All)VisualSkinToneOne(r,tone);body.Look=look;return true;
         }
         // Sheldon's clothes (Core NativeSheldonWear): a piece's renderer in the Sheldon palette (the cloth and trim colours of each
         // layer, the glow cyan until VisualSheldonGlow sets the pilot's) on the bake's piped colour map for it, when there is one.
@@ -666,7 +717,7 @@ namespace ChipArena.UnityConversion
         {
             bool on=!Viewer&&sourceModels!=null&&!ClassicBodies&&!scoped&&view!=null&&a.SourceSpec!="siren"&&VisualBodiesOn;
             if(!on){if(viewBody?.Root!=null&&viewBody.Root.activeSelf)viewBody.Root.SetActive(false);return false;}
-            if(viewBody?.Root!=null&&!string.Equals(viewBody.Look,LocalLook??"",StringComparison.Ordinal)){viewBody.Root.SetActive(false);Destroy(viewBody.Root);viewBody=null;}
+            if(viewBody?.Root!=null&&!VisualRetone(viewBody,LocalLook??"")){viewBody.Root.SetActive(false);Destroy(viewBody.Root);viewBody=null;}
             if(viewBody==null||viewBody.Root==null){viewBody=CreateViewBody(view);if(viewBody==null)return false;}
             var pose=view.Pose;pose.World();
             if(viewBody.PosedFrame<Time.frameCount-1||viewBody.Spec!=a.SourceSpec)viewBody.Binding.State.Forget();

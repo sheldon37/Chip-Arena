@@ -284,7 +284,7 @@ namespace ChipArena.UnityConversion
                 ("NativeNetwork.cs","weaponSkins=NativeBodySkins.Gate(c.weaponSkins,NativeCosmeticRules.Allowed(access,\"body\",NativeBodySkins.SheldonClothes)),","the host gates every seat"),
                 ("NativeProfileUI.cs","prefs.weaponSkins=GatedSkins();","saving gates the map"),
                 ("NativeLockerSkinsUI.cs","lockerBodyTry=keys[k]","the Locker's body card tries a body on"),
-                ("NativeLockerUI.cs","lockerBodySheldon=NativeCosmeticRules.Allowed(access,\"body\",NativeBodySkins.SheldonClothes);lockerSkins.Clear();lockerSkins.Add(NativeBodySkins.Entry);","the body card leads the skins; the Sheldon Clothes listed only with DEV access"),
+                ("NativeLockerUI.cs","lockerBodySheldon=NativeCosmeticRules.Allowed(access,\"body\",NativeBodySkins.SheldonClothes);lockerSkins.Clear();if(!LkOnModel)lockerSkins.Add(NativeBodySkins.Entry);","the body card leads the skins in Classic (on the model MASKS picks the body); the Sheldon Clothes listed only with DEV access"),
             };
             foreach(var w in wiring)Check(R(w.file).Contains(w.text),w.what+" ("+w.file+")");
             Check(NativeSheldonIntro.Suit=="#e5e7eb","the Sheldon Intro shows the Sheldon Clothes in the hood's own fabric (the export's body colour)");

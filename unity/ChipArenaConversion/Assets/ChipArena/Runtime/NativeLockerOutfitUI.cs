@@ -25,13 +25,16 @@ namespace ChipArena.UnityConversion
             }
         }
         // The outfit this pilot wears: prefs.look through the DEV gate (NativeLook.Gate), made again only when the pick or the
-        // access changes (read every frame).
-        private string lookShownFrom,lookShown="";private int lookShownDev=-1;
+        // access changes (read every frame). A skin tone hovered in Appearance's SKIN TONE row (lockerToneTry: -1 DEFAULT, else
+        // 0xRRGGBB; Runtime/NativeColorWheelUI.cs) is tried on it.
+        private string lookShownFrom,lookShown="",lookTriedFrom,lookTried;private int lookShownDev=-1,lookTriedTone=-2;
         private string LookShown()
         {
             var look=prefs.look??"";int dev=NativeBodySkins.LiveDeveloper(account?.Access??NativeAccess.Guest,System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())?1:0;
             if(!ReferenceEquals(look,lookShownFrom)||dev!=lookShownDev){lookShownFrom=look;lookShownDev=dev;lookShown=NativeLook.Gate(look,dev==1);}
-            return lookShown;
+            if(lockerToneTry==-2||menuScreen!=MenuScreen.Customize||lockerTab!=NativeLocker.Appearance)return lookShown;
+            if(!ReferenceEquals(lookShown,lookTriedFrom)||lookTriedTone!=lockerToneTry){lookTriedFrom=lookShown;lookTriedTone=lockerToneTry;lookTried=NativeLook.WithSkin(lookShown,lockerToneTry);}
+            return lookTried;
         }
     }
 

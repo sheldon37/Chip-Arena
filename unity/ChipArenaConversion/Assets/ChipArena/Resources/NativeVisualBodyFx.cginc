@@ -58,6 +58,26 @@ void RevealClip(float3 world)
  }
  if(share<0.999)clip(share-max(frac(sin(dot(floor(world*120.0),float3(12.9898,78.233,37.719)))*43758.5453),0.001));
 }
+// The pilot's skin tone (Core NativeLook's skin entry; Runtime/NativeVisualBodyPresentation.cs VisualSkinToneOne, written on the
+// body's skin parts only): _SkinTone rgb the picked tone and w on, _SkinRef rgb the part's base skin (its palette's brightest
+// skin colour), both in the colour space the shader works in. A pixel that reads as skin (Core NativeColorWheel.SkinShare,
+// tested on its sRGB colour) is scaled by the tone over the base per channel, so the shade, the blush and the lips keep their
+// relation to the skin; any other pixel keeps its colour. With _SkinTone.w 0 (unset, or no tone picked) nothing changes.
+float4 _SkinTone;float4 _SkinRef;
+float SkinShare(float3 c)
+{
+ #ifndef UNITY_COLORSPACE_GAMMA
+ c=sqrt(max(c,float3(0.0,0.0,0.0)));
+ #endif
+ float hi=max(c.r,max(c.g,c.b)),lo=min(c.r,min(c.g,c.b));float sat=(hi-lo)/max(hi,0.0001);
+ float warm=saturate((c.r-c.g)*60.0+0.5)*saturate((c.g-c.b)*60.0+0.5);
+ return warm*smoothstep(0.05,0.12,sat)*(1.0-smoothstep(0.80,0.92,sat))*smoothstep(0.03,0.08,hi);
+}
+float3 SkinToned(float3 c)
+{
+ if(_SkinTone.w<0.5)return c;
+ return lerp(c,saturate(c*(_SkinTone.rgb/max(_SkinRef.rgb,float3(0.0003,0.0003,0.0003)))),SkinShare(c));
+}
 // The spawn-in's hardlight tint (SpawnTintOf): the tint colour by its share, hottest where the body has just formed, then
 // the completion flash toward white.
 float3 SpawnTinted(float3 c,float y)

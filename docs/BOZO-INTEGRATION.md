@@ -1570,6 +1570,26 @@ already? Cant we utilize that?"
     unsaved-changes baseline cover it. Since 2026-10-28 it is one fixed-height row a slot (`NativeOutfitPicker` in
     `Runtime/NativeLockerOutfitUI.cs`): the slot's icon and name, then wrapping arrows round the worn piece's name and a
     dot a piece. Two columns from 700 px. More pieces add dots (a count past 14), not rows.
+  - **Skin tone and masks (2026-10-28, owner: "Give skin color customization, along with a 'Color selector circle' for
+    more color options. Remove Body Skin Options 'Prototype' and 'Sheldon Clothes' and just add 'Masks' section"):**
+    - On the model, Appearance reads CALLSIGN, MASKS, SKIN TONE, ACCENT COLOUR, OUTFIT. BODY SKIN and BODY COLOUR show
+      only in Classic (the voxel bodies), and the Skins tab lists only the weapons.
+    - MASKS: No mask (the Standard body), Mask + visor, Visor, Mask (the Prototype body's face gear, `face` entry of the
+      skin map). Hovering one tries it on the stage.
+    - SKIN TONE: DEFAULT (the model's own skin), ten tones light to deep (`NativeLook.SkinTones`) and a colour wheel
+      (`Runtime/NativeColorWheelUI.cs`: hue round the disc, saturation outward, a brightness track). Hovering a tone tries
+      it on the stage; a drag on the wheel retints the stage pilot live.
+    - The tone rides the look map as its last entry, `skin:rrggbb` (`Core/NativeLook.cs`). The DEV gate keeps it. A map that
+      differs only in it is the same outfit (`SameOutfit`), so a body takes a new tone in place (`VisualRetone`), never
+      made again.
+    - Drawing: the toon shader scales each pixel that reads as skin (`SkinShare`, mirrored in `Core/NativeColorWheel.cs`)
+      by the tone over its part's base skin (the brightest skin colour of the part's palette, or the body's for a textured
+      part). The base skin itself becomes the tone exactly, and shade, blush and lips keep their ratio. Whites, greys, the
+      cyber palette and dark cloth keep their colour. Only body parts and the `Head.`/`Body.` meshes take it (not hair, not
+      clothes). It is written once when a body is dressed or the tone changes, never per frame.
+    - **Account:** the account Worker (`src/relay/accounts.ts` `lookMap`, Astra's) drops keys it does not know, so a
+      signed-in pilot's tone is kept on this PC (`NativeLook.KeepSkin`) until the Worker stores `skin` (six hex digits).
+      Rooms carry it already (the look travels as it is through `NativeLook.Gate`).
   - **Install:** the body grew to 58.2 MB. The installer's budget is now 72 MB, and the zip's member total cap 96 MiB
     (`tools/install_local_assets.py`).
 - **Cloth (step 5, 2026-10-26):**
