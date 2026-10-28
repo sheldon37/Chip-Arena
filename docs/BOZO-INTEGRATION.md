@@ -1464,8 +1464,11 @@ already? Cant we utilize that?"
     entrance's pilot wears the model.
     - `VisualIntroPose` binds the intro rig's own authored pose (the clip intros' and the directed entrances' pose) to a
       visual body: no pack clips or stride, the feet as authored.
-    - While an entrance still builds the body in (its reveal under half on the pelvis, chest, head or a hand), the voxel body
-      draws that reveal; the model takes over once the body is whole.
+    - While an entrance builds the body in or glitches it (its per-bone reveal), the model takes that reveal bone by bone
+      (2026-10-28; owner: "Sheldon intro still needs revisions, it uses voxel model in the "glitching""). Each game bone is a
+      world segment (`Core/NativeBodyReveal`); the body's toon gives each pixel its nearest segment's share and dithers it in
+      the voxel reveal's cells (`NativeVisualBodyFx.cginc` `RevealClip`: the body, its outline and its cast shadow). The voxel
+      body no longer stands in while the reveal is under half.
     - The model holds its own weapon where the entrance shows one; the bow keeps its live voxel bow, as in the arena.
     - **The Sheldon intro on the model (2026-10-27; owner: "Still doesn't show correct model in intro (Tested with Sheldon
       Intro)"):** it had kept the voxel body because its look is the Sheldon Head, a whole voxel head. The intro now poses
