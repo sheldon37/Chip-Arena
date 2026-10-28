@@ -14,6 +14,8 @@ Shader "ChipArena/VisualBodyToon" {
   _SpawnTint("Spawn-in: hardlight tint (rgb) and its share",Vector)=(1,1,1,0)
   _SpawnGlitch("Spawn-in: flash, split (m), split opacity, clock",Vector)=(0,0,0,0)
   _SpawnHolo("Spawn-in: hologram colour (linear) and slice opacity",Vector)=(1,1,1,0)
+  _SkinTone("Skin tone (rgb) and on (w; the arena sets it per skin part)",Vector)=(0,0,0,0)
+  _SkinRef("The part's base skin (rgb)",Vector)=(1,1,1,1)
  }
  // The visual body's toon (docs/BOZO-INTEGRATION.md step 4; Runtime/NativeVisualBodyPresentation.cs): a modular character's
  // inputs on the arena's own lighting, so a skinned pilot takes the light the voxel pilots take (ChipArena/SourceLit):
@@ -32,6 +34,7 @@ Shader "ChipArena/VisualBodyToon" {
  //    map's pass is off but its tint and distances are written;
  //  - the anime style's outline mark: every pass writes 0 to stencil bit 16, as characters do, so the map's lines
  //    (NativeToonEdge) never cross a pilot;
+ //  - the pilot's skin tone on the skin parts (NativeVisualBodyFx.cginc SkinToned, per renderer), before the spawn-in tint;
  //  - the voxel pilots' hit flash and match-start spawn-in (NativeVisualBodyFx.cginc, per renderer): the struck flash after
  //    the light (not in the add passes), and the body formed from the feet up in the spawn-in's dithered front with its
  //    hardlight tint and completion flash, the outline and the cast shadow with it; a directed entrance's per-bone reveal
@@ -67,7 +70,7 @@ Shader "ChipArena/VisualBodyToon" {
  {
   SpawnClip(i.worldPos);RevealClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
   float front=DissolveFront(i.uv_Texture2D);o.Emission+=_DissolveEdge.rgb*front;
-  o.Albedo=SpawnTinted(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb,i.worldPos.y);o.Alpha=map.a;
+  o.Albedo=SpawnTinted(SkinToned(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb),i.worldPos.y);o.Alpha=map.a;
   if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
   float3 n=normalize(i.worldNormal);
   if(_ArenaActorLit>.5)o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,n));
@@ -149,7 +152,7 @@ Shader "ChipArena/VisualBodyToon" {
   {
    clip(i.color.a-.5);SpawnClip(i.world);RevealClip(i.world);float4 map=tex2D(_Texture2D,i.uv);clip(map.a-_Cutoff);
    DissolveFront(i.uv);
-   float3 albedo=SpawnTinted(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb,i.world.y);float3 n=normalize(i.normal);
+   float3 albedo=SpawnTinted(SkinToned(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb),i.world.y);float3 n=normalize(i.normal);
    UNITY_LIGHT_ATTENUATION(atten,i,i.world);float ndl=dot(n,_WorldSpaceLightPos0.xyz);float3 sh=ShadeSH9(float4(n,1));
    // As NativeToonSurface's ArenaToon lights the body: Lambert while the style is off, the ramp over the flattened SH on.
    float3 light=_ArenaToon.x<.5?sh+_LightColor0.rgb*(saturate(ndl)*atten):ToonDiffuse(ToonAmbient(sh,ShadeSH9(float4(0,1,0,1)),ShadeSH9(float4(0,-1,0,1)),n.y),_LightColor0.rgb,ndl,atten);

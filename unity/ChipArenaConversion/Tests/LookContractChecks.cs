@@ -16,7 +16,7 @@ internal static class LookContractChecks
         Check(R("NativeNetwork.cs").Contains("look=GatedLook()")&&R("NativeNetwork.cs").Contains("look=NativeLook.Gate(c.look,NativeCosmeticRules.Allowed(access,"),"host uses verified access, profile sends look");
         Check(R("NativeNetwork.cs").Contains("s.look.Length>NativeLook.MaxLength")&&R("NativeNetworkFrame.cs").Contains("s.look.Length>NativeLook.MaxLength"),"both wire bounds");
         Check(R("NativeNetworkFrame.cs").Contains("look=s.look,")&&R("NativeLobbyLogic.cs").Contains("look=s.look,")&&R("NativeNetworkFrame.cs").Contains("seat.look=NativeLook.Normalize(sf.look);"),"capture, lobby and apply");
-        Check(R("NativeProfileUI.cs").Contains("if(c.look!=null)prefs.look=NativeLook.Gate"),"absent old account preserves local selection");
+        Check(R("NativeProfileUI.cs").Contains("if(c.look!=null)prefs.look=NativeLook.KeepSkin(NativeLook.Gate(c.look,"),"absent old account preserves local selection (and a local skin tone the account lacks)");
         Check(R("NativeVisualBodyPresentation.cs").Contains("WeaponLoadout?.Match?.Seat(id)")&&R("NativePortraitUI.cs").Contains("PortraitOutfit(key)"),"displayed arena and remote portraits");
         // Cosmetic state may be transported by networking, never used by damage/movement simulation.
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Runtime"),"*.cs"))

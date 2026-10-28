@@ -121,7 +121,7 @@ namespace ChipArena.UnityConversion
             if(s.Accent!=look.Accent||s.AccentHex==null){s.Accent=look.Accent;s.AccentHex="#"+look.Accent.ToString("x6");}
             a.BodyColor=s.BodyHex;a.AccentColor=s.AccentHex;
             // The body in its outfit (made again when the outfit changes), on the portrait layer, casting no shadow.
-            if(s.Model!=null&&(s.Model.Root==null||s.Model.Hood!=(hat==NativeSheldonHead.Hat)||!string.Equals(s.Model.Look,s.Outfit,StringComparison.Ordinal))){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);if(s.Model.Root!=null){s.Model.Root.SetActive(false);Destroy(s.Model.Root);}s.Model=null;}
+            if(s.Model!=null&&(s.Model.Root==null||s.Model.Hood!=(hat==NativeSheldonHead.Hat)||!VisualRetone(s.Model,s.Outfit))){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);if(s.Model.Root!=null){s.Model.Root.SetActive(false);Destroy(s.Model.Root);}s.Model=null;}
             if(s.Model==null)
             {
                 s.Model=CreateVisualBody(s.Player,id,hat==NativeSheldonHead.Hat);if(s.Model==null){modelPortraitFailed=true;return;}

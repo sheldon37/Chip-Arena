@@ -32,12 +32,18 @@ namespace ChipArena.UnityConversion
             if(key>=10000&&key<10009)foreach(var seat in RoomSeats)if(seat!=null&&seat.id==key-10000)return seat.look??"";
             return "";
         }
-        private string portraitSkinsIn,portraitSkinsBody,portraitSkinsOut;
+        private string portraitSkinsIn,portraitSkinsBody,portraitSkinsFace,portraitSkinsOut;
         private string PortraitSkins(in PortraitLook look,bool own)
         {
             string body=string.IsNullOrEmpty(look.BodySkin)?NativeBodySkins.Standard:look.BodySkin;
             if(!own)return body==NativeBodySkins.Prototype?"body:prototype":body==NativeBodySkins.Sheldon?"body:sheldon":"";
-            if(!ReferenceEquals(portraitSkinsIn,prefs.weaponSkins)||portraitSkinsBody!=body){portraitSkinsIn=prefs.weaponSkins;portraitSkinsBody=body;portraitSkinsOut=NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,body);}
+            // A mask hovered in the Locker's MASKS row tries its face gear too (Runtime/NativeLockerSkinsUI.cs LkMasks).
+            string face=lockerFaceTry!=null&&menuScreen==MenuScreen.Customize&&lockerTab==NativeLocker.Appearance?lockerFaceTry:null;
+            if(!ReferenceEquals(portraitSkinsIn,prefs.weaponSkins)||portraitSkinsBody!=body||!string.Equals(portraitSkinsFace,face,System.StringComparison.Ordinal))
+            {
+                portraitSkinsIn=prefs.weaponSkins;portraitSkinsBody=body;portraitSkinsFace=face;portraitSkinsOut=NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,body);
+                if(face!=null)portraitSkinsOut=NativeWeaponSkins.With(portraitSkinsOut,NativeWeaponSkins.FaceEntry,face);
+            }
             return portraitSkinsOut;
         }
         // Whether any of a kit rect (virtual units, drawn at U.S physical pixels in the current clip) lands inside the window.

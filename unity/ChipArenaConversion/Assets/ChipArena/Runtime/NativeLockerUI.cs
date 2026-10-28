@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private int lockerTab,lockerTabNext=-1,lockerN;private bool lockerConfirm,lockerBlocked,lockerViewHot,lockerTurned,lockerSavedAccount;
-        private float lockerFade=1,lockerW=500,lockerYaw,lockerTurnAt=-9,lockerDragX,lockerSavedAt=-9,lockerListsAt=-9,lockerKillAt;
+        private float lockerFade=1,lockerW=500,lockerYaw,lockerTurnAt=-9,lockerDragX,lockerSavedAt=-9,lockerListsAt=-9,lockerKillAt;private bool lockerListsModel;
         private readonly Vector2[] lockerScroll=new Vector2[NativeLocker.Count];private readonly Rect[] lockerSlots=new Rect[24];private Action lockerDraw;
         // This repaint's hovered item, shown on the pilot (null: the equipped one).
         private string lockerHat,lockerPose,lockerBody,lockerAccent,lockerWeapon,lockerKill,lockerBack;
@@ -67,19 +67,18 @@ namespace ChipArena.UnityConversion
         private void LockerLists()
         {
             if(Event.current.type!=EventType.Layout&&lockerHats.Count>0)return;var access=account?.Access;float now=Time.unscaledTime;
-            if(lockerHats.Count>0&&ReferenceEquals(access,lockerAccess)&&now>=lockerListsAt&&now-lockerListsAt<2)return;lockerAccess=access;lockerListsAt=now;
+            bool model=LkOnModel;if(lockerHats.Count>0&&ReferenceEquals(access,lockerAccess)&&model==lockerListsModel&&now>=lockerListsAt&&now-lockerListsAt<2)return;lockerAccess=access;lockerListsAt=now;lockerListsModel=model;
             lockerHats.Clear();foreach(var id in NativeCosmeticRules.Hats)if(NativeCosmeticRules.Allowed(access,"hat",id))lockerHats.Add(id);
             lockerKills.Clear();foreach(var id in NativeCosmeticRules.Kills)if(NativeCosmeticRules.Allowed(access,"effect",id))lockerKills.Add(id);
             lockerIntros.Clear();foreach(var id in NativeCosmeticRules.Intros)if(NativeCosmeticRules.Allowed(access,"intro",id))lockerIntros.Add(id);
             // The idle poses: the source's four, then the DEV Sheldon Idle with live DEV access (Core/NativeLobbyPoses.cs).
             lockerPoses=NativeLobbyPoses.Count(NativeCosmeticRules.Allowed(access,"pose",NativeLobbyPoses.SheldonKey));
             foreach(var id in lockerIntros)if(!lockerIntroWeapon.ContainsKey(id)&&id.StartsWith("weapon-",StringComparison.Ordinal)){var w=LockerWeaponById(id.Substring(7));if(w!=null)lockerIntroWeapon[id]=w;}
-            // The body card first (Core/NativeBodySkins.cs: the Sheldon Clothes need live DEV access), the face gear's while the
-            // model draws (Runtime/NativeLockerSkinsUI.cs LkFaceCard), then the weapons.
-            lockerBodySheldon=NativeCosmeticRules.Allowed(access,"body",NativeBodySkins.SheldonClothes);lockerSkins.Clear();lockerSkins.Add(NativeBodySkins.Entry);
-            if(LkOnModel)lockerSkins.Add(NativeWeaponSkins.FaceEntry);int lockerLooks=lockerSkins.Count;
+            // The body card first in Classic (Core/NativeBodySkins.cs: the Sheldon Clothes need live DEV access), then the weapons.
+            // On the model the body and its face gear are Appearance's MASKS (Runtime/NativeLockerSkinsUI.cs LkMasks): weapons only.
+            lockerBodySheldon=NativeCosmeticRules.Allowed(access,"body",NativeBodySkins.SheldonClothes);lockerSkins.Clear();if(!LkOnModel)lockerSkins.Add(NativeBodySkins.Entry);int lockerLooks=lockerSkins.Count;
             foreach(var w in content.weapons)if(AllowedWeapon(w)&&NativeWeaponSkins.Skinned(w.id))lockerSkins.Add(w.id);
-            lockerKillsLabel=lockerKills.Count+" EFFECTS";lockerSkinsLabel=(lockerLooks>1?"BODY + FACE + ":"BODY + ")+(lockerSkins.Count-lockerLooks)+" WEAPONS";
+            lockerKillsLabel=lockerKills.Count+" EFFECTS";lockerSkinsLabel=(lockerLooks>0?"BODY + ":"")+(lockerSkins.Count-lockerLooks)+" WEAPONS";
         }
         private void LockerAbilities()
         {
@@ -125,7 +124,7 @@ namespace ChipArena.UnityConversion
         {
             var ev=Event.current;if(ev.type==EventType.Layout&&lockerTabNext>=0){lockerTab=lockerTabNext;lockerTabNext=-1;}
             LockerStyles();LockerLists();LockerAbilities();if(prefs.name!=lockerNameRaw){lockerNameRaw=prefs.name;lockerName=NativeCosmeticRules.Name(prefs.name);}
-            if(ev.type==EventType.Repaint){lockerHat=lockerPose=lockerBody=lockerAccent=lockerWeapon=lockerBack=lockerHatColor=lockerBackColor=null;lockerBodyTry=null;}
+            if(ev.type==EventType.Repaint){lockerHat=lockerPose=lockerBody=lockerAccent=lockerWeapon=lockerBack=lockerHatColor=lockerBackColor=null;lockerBodyTry=null;lockerFaceTry=null;lockerToneTry=-2;}
             float W=U.W,H=U.H,e=In(age,0,.26f),t=Time.unscaledTime;bool tight=H<720,compact=W<1320;lockerFade=e;
             float total=Mathf.Min(W-56,1760);var shell=new Rect((W-total)/2,80+10*(1-e),total,H-62-80);
             bool dirty=LockerDirty();lockerBlocked=lockerConfirm;if(lockerConfirm)menuBlockedNow=true;
@@ -207,8 +206,10 @@ namespace ChipArena.UnityConversion
             switch(tab)
             {
                 case NativeLocker.Appearance:
-                    LkHead(true);prefs.name=GUILayout.TextField(prefs.name??"",20,lockerField);LkHead();LkReserve(LkBodyRowH());
-                    LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");LkHead();LkSwatches(ref prefs.accentColor,"#70e1d0");if(LkOnModel){LkHead();LkReserve(LkOutfitH());}
+                    LkHead(true);prefs.name=GUILayout.TextField(prefs.name??"",20,lockerField);
+                    if(LkOnModel){LkHead();LkReserve(LkMasksH());LkHead();LkReserve(LkToneH());}
+                    else{LkHead();LkReserve(LkBodyRowH());LkHead();LkSwatches(ref prefs.bodyColor,"#e5e7eb");}
+                    LkHead();LkSwatches(ref prefs.accentColor,"#70e1d0");if(LkOnModel){LkHead();LkReserve(LkOutfitH());}
                     LkHead();LkReserve(LkGrid(lockerW,lockerHats.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());LkHead();LkReserve(LkGrid(lockerW,lockerPoses,LkRowMin,LkRowH));
                     LkHead();LkReserve(LkGrid(lockerW,NativePortraitBacks.Count,LkItemMin,LkItemH));LkHead();LkReserve(LkPickerH());break;
                 case NativeLocker.KillEffects:LkHead(true);LkReserve(LkGrid(lockerW,lockerKills.Count,LkItemMin,LkItemH));break;
@@ -238,9 +239,19 @@ namespace ChipArena.UnityConversion
                 case NativeLocker.Appearance:
                 {
                     LkHeading(lockerSlots[k++],"CALLSIGN","Shown over your pilot in rooms and intros");
-                    // The body skin (Runtime/NativeLockerSkinsUI.cs: the Skins tab's choices, equipped body and setter).
-                    LkHeading(lockerSlots[k++],"BODY SKIN","Hover a body to try it on");LkBodyRow(lockerSlots[k++]);
-                    LkHeading(lockerSlots[k++],"BODY COLOUR","Hover a swatch to try it");LkSwatchDraw(lockerSlots[k++],true);
+                    // On the model (owner 2026-10-28: "Remove Body Skin Options 'Prototype' and 'Sheldon Clothes' and just add 'Masks'
+                    // section"): the face gear (Runtime/NativeLockerSkinsUI.cs LkMasks) and the skin tone (Runtime/NativeColorWheelUI.cs).
+                    // In Classic, the voxel body skin (the Skins tab's choices, equipped body and setter) and its colour.
+                    if(LkOnModel)
+                    {
+                        LkHeading(lockerSlots[k++],"MASKS","Hover one to try it on");LkMasks(lockerSlots[k++]);
+                        LkHeading(lockerSlots[k++],"SKIN TONE",LkToneHint());LkSkinTone(lockerSlots[k++]);
+                    }
+                    else
+                    {
+                        LkHeading(lockerSlots[k++],"BODY SKIN","Hover a body to try it on");LkBodyRow(lockerSlots[k++]);
+                        LkHeading(lockerSlots[k++],"BODY COLOUR","Hover a swatch to try it");LkSwatchDraw(lockerSlots[k++],true);
+                    }
                     LkHeading(lockerSlots[k++],"ACCENT COLOUR","Trims, visor and glow");LkSwatchDraw(lockerSlots[k++],false);
                     // The model's outfit (Runtime/NativeLockerOutfitUI.cs), while the model draws.
                     if(LkOnModel){LkHeading(lockerSlots[k++],"OUTFIT","Your pilot's clothes on the model");LkOutfit(lockerSlots[k++]);}
