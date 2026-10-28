@@ -1,6 +1,6 @@
 Shader "ChipArena/NativeVolumetricBeam"
 {
-    // Volumetric light beams (docs/LIGHTING-ADVANCED.md "Volumetric beams"; Core NativeBeamList, Runtime NativeVolumetricBeams):
+    // Volumetric beams (docs/LIGHTING-ADVANCED.md "Volumetric beams"; Core NativeBeamList, Runtime NativeVolumetricBeams):
     // one instanced draw of a unit open cone side (Core NativeBeamList.UnitMesh), each instance's matrix placing it from the
     // light's end (its origin) along its axis (+y, the beam's length) with its cross radii (x, z), additive and HDR so the bloom
     // takes the bright cores. Per pixel: the air the view ray crosses inside the beam (the chord through its local ellipse,

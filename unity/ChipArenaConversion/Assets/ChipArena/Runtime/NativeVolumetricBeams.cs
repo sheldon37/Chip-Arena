@@ -35,7 +35,9 @@ namespace ChipArena.UnityConversion
             {
                 float outside=beams.Outside(i,eye.x,eye.y,eye.z);if(outside<=.001f)continue;
                 var a=new Vector3(beams.Ax[i],beams.Ay[i],beams.Az[i]);var axis=new Vector3(beams.Bx[i],beams.By[i],beams.Bz[i])-a;float len=axis.magnitude;if(len<.05f)continue;
-                var up=axis/len;var wide=new Vector3(beams.Wx[i],beams.Wy[i],beams.Wz[i]);var other=Vector3.Cross(up,wide);
+                var up=axis/len;var wide=new Vector3(beams.Wx[i],beams.Wy[i],beams.Wz[i]);// The cross axes and the axis as the unit mesh's x, z and y: other = wide x axis keeps the frame a rotation (a mirrored
+                // frame would turn the cone's outside faces in, and the back-face cull would drop them).
+                var other=Vector3.Cross(wide,up);
                 var m=new Matrix4x4();m.SetColumn(0,wide*beams.R0[i]);m.SetColumn(1,axis);m.SetColumn(2,other*(beams.R0[i]*beams.Aspect[i]));m.SetColumn(3,new Vector4(a.x,a.y,a.z,1));matrices[k]=m;
                 var c=new Color(beams.R[i],beams.G[i],beams.B[i]);if(!linear)c=c.gamma;
                 colors[k]=new Vector4(c.r,c.g,c.b,beams.Dust[i]);shapes[k]=new Vector4(beams.R1[i]/beams.R0[i],outside,beams.Seed[i],0);k++;

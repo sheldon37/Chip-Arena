@@ -67,6 +67,7 @@ namespace ChipArena.UnityConversion
         {
             if(camera==null)return;var s=NativeAdvancedLighting.State;var map=arena.Map;
             if(!ReferenceEquals(map,weatherMap)){weatherMap=map;weatherCover=NativeWeatherCover.Build(map?.blocks,map?.bounds);}
+            NativeAdvancedLighting.Cover(weatherCover);
             ReadSceneLight(weatherLight);var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
             weatherFx.Build(s.Weather,s.Amount,s.Wind,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,weatherLight,weatherCover);
             var q=weatherFx.Quads;weatherDraw.Clear();

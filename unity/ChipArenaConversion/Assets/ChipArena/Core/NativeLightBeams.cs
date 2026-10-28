@@ -3,7 +3,7 @@ using System;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// A frame's volumetric light beams (docs/LIGHTING-ADVANCED.md "Volumetric beams"; Runtime NativeVolumetricBeams draws them,
+    /// A frame's volumetric beams (docs/LIGHTING-ADVANCED.md "Volumetric beams"; Runtime NativeVolumetricBeams draws them,
     /// Resources/NativeVolumetricBeam.shader shades them). The maps' FX builders (Brickfall's sun shafts, the Factory's skylight
     /// sheets, Central Station's moonlight and sodium cones, the town's lamp shafts, Ward Zero's and the Ironworks' shafts) add
     /// their shafts here in place of their billboard quads while the runtime hands them a list (the medium and high tiers with
@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeBeamList
     {
-        public const int Capacity=96;
+        public const int Capacity=128;
         /// <summary>A billboard shaft's opacity to a beam's light: the beam's soft edge and fall-off keep about this share of a flat sheet's.</summary>
         public const float FromBillboard=2.4f;
         public int Count;

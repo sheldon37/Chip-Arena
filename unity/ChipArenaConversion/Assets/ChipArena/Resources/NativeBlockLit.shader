@@ -875,7 +875,7 @@ Shader "ChipArena/NativeBlockLit"
                 BlockSurf s=BlockSurface(i.obj.xyz,i.pat.xyz,fwP,nO,i.size.xyz,i.pat.w,i.size.w,i.col.rgb,i.col.w,i.shade,i.obj.w,i.world.w);
                 UNITY_LIGHT_ATTENUATION(atten,i,i.world.xyz);
                 // Wet faces (NativeAdvancedLight.cginc): the albedo darkened, a puddle on up-facing faces (nothing while dry).
-                float puddle=ArenaPuddle(i.world.xyz,nW);s.albedo=ArenaWetAlbedo(s.albedo,puddle,nW);
+                float wet=ArenaWetAt(i.world.xyz);float puddle=ArenaPuddle(i.world.xyz,nW,wet);s.albedo=ArenaWetAlbedo(s.albedo,wet,puddle,nW);
                 float3 col;
                 // The anime style (NativeToon.cginc; Core NativeMapStyle): the rounded normal in the instance's frame, then the ramp.
                 if(_ArenaToon.x>0.5)
@@ -892,7 +892,7 @@ Shader "ChipArena/NativeBlockLit"
                     light+=ArenaGI(ShadeSH9(float4(nW,1.0)),i.world.xyz,nW);
                     col=s.albedo*light+s.emit;
                 }
-                col+=ArenaWetSheen(i.world.xyz,nW,normalize(_WorldSpaceCameraPos-i.world.xyz),puddle,_WorldSpaceLightPos0.xyz,_LightColor0.rgb,atten);
+                col+=ArenaWetSheen(i.world.xyz,nW,normalize(_WorldSpaceCameraPos-i.world.xyz),wet,puddle,_WorldSpaceLightPos0.xyz,_LightColor0.rgb,atten);
                 fixed4 c=fixed4(BlockHaze(col,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
                 c.rgb=ArenaScatter(c.rgb,i.world.xyz,_WorldSpaceCameraPos);
                 UNITY_APPLY_FOG(i.fogCoord,c);return c;

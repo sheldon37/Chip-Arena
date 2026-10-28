@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         public float MinX=-40,MaxX=40,MinZ=-32,MaxZ=32,Ceiling=24,Cell=1;public int Rays=NativeAdvancedLooks.RaysHigh;
         public float KeyX,KeyY=1,KeyZ,KeyR,KeyG,KeyB;public readonly float[] Ambient=new float[9];
         public NativeVolumeLight[] Lights=Array.Empty<NativeVolumeLight>();
+        /// <summary>The worker threads the bake may use (0: all but one, so the game's main thread keeps a core).</summary>
+        public int Threads;
     }
 
     /// <summary>
@@ -38,7 +40,7 @@ namespace ChipArena.UnityConversion
     /// facing times that cell's sky share) times the block's albedo; (4) a 1-2-1 blur over the open cells; (5) the open values
     /// carried into the solid cells (as the Ward field does), so a face never reads the inside of its own block.</para>
     /// <para>Texel (Unity's Texture3D order: x fastest, then y, then z): rgb the bounce (linear light, the shaders add albedo x it),
-    /// a the occlusion: openness x (<see cref="SkyFloor"/> + (1 - SkyFloor) x sky share), 1 in the open, about .5 under a roof.
+    /// a the occlusion: openness x (<see cref="SkyFloor"/> + (1 - SkyFloor) x sky share), about .9 in the open, .4 to .5 under a roof.
     /// The shaders darken the ambient toward it by the look's `occlusion`, never below its `floor`.</para>
     /// Memory: at most <see cref="MaxCells"/> cells (the cell widens to fit: 1 m on the arenas, about 1.8 m on the 240 m town).
     /// Pure and deterministic: every cell is its own sum, so the worker threads never change the result.
@@ -49,12 +51,11 @@ namespace ChipArena.UnityConversion
         public const int MaxCells=262144,MaxY=48;public const float MinCell=.75f;
         /// <summary>The practical lights the bake takes (a visibility bit each).</summary>
         public const int MaxLights=64;
-        /// <summary>The first pass's rays up for the sky share, the occlusion's reach (m) and the bounce's reach (m).</summary>
-        public const int SkyRays=10;public const float Near=3.5f,Reach=14f,KeyReach=90f;
+        /// <summary>The first pass's rays up for the sky share, the occlusion's reach (m), the bounce's reach (m), how far a ray
+        /// looks for the sky (one that meets nothing so far sees it) and the key's shadow ray.</summary>
+        public const int SkyRays=10;public const float Near=3.5f,Reach=14f,SkyReach=40f,KeyReach=90f;
         /// <summary>The occlusion a cell keeps that sees no sky (inside, under a roof), and the ambient's share of the bounce.</summary>
-        public const float SkyFloor=.55f,AmbientBounce=.5f;
-        /// <summary>A ray that reaches its end without a hit sees this much sky (the open air beyond the reach).</summary>
-        public const float FarSky=.6f;
+        public const float SkyFloor=.45f,AmbientBounce=.5f;
         public int Nx,Ny,Nz;public float MinX,MinY,MinZ,Cell;public float[] Data=Array.Empty<float>();public double BakeMs;public int Open,Lights,Voxels;
 
         /// <summary>The golden-angle sphere of `n` directions (y from top to bottom), the base the cells turn.</summary>
@@ -78,6 +79,7 @@ namespace ChipArena.UnityConversion
         public static NativeLightVolume Build(NativeLightVolumeInput input)
         {
             var watch=System.Diagnostics.Stopwatch.StartNew();var blocks=input.Blocks??Array.Empty<ContentBlock>();
+            var po=new System.Threading.Tasks.ParallelOptions{MaxDegreeOfParallelism=input.Threads>0?input.Threads:Math.Max(1,Environment.ProcessorCount-1)};
             // The box: the play bounds widened by 2 m, from just under the lowest walkable top to the ceiling (at most 3 m over the
             // tallest block), the cell widened until the grid fits the budget.
             float lo=float.MaxValue,hi=float.MinValue;
@@ -96,7 +98,7 @@ namespace ChipArena.UnityConversion
             var ox=new float[cells];var oy=new float[cells];var oz=new float[cells];var open=new bool[cells];
             var kv=new float[cells];var bits=new ulong[cells];var sky1=new float[cells];
             var up=Sphere(SkyRays*2);
-            System.Threading.Tasks.Parallel.For(0,nz,iz=>
+            System.Threading.Tasks.Parallel.For(0,nz,po,iz=>
             {
                 for(int iy=0;iy<ny;iy++)for(int ix=0;ix<nx;ix++)
                 {
@@ -120,8 +122,8 @@ namespace ChipArena.UnityConversion
                     float turn=Turn(c),cs=(float)Math.Cos(turn),sn=(float)Math.Sin(turn),seen=0,all=0;
                     for(int k=0;k<SkyRays;k++)
                     {
-                        float bx=up[k*3],by=up[k*3+1],bz=up[k*3+2],dx=bx*cs-bz*sn,dz=bx*sn+bz*cs;int r=grid.Cast(px,py,pz,dx,by,dz,Reach,out _,out _,out _);
-                        all+=by;if(r==Out)seen+=by;else if(r==Miss)seen+=by*FarSky;
+                        float bx=up[k*3],by=up[k*3+1],bz=up[k*3+2],dx=bx*cs-bz*sn,dz=bx*sn+bz*cs;int r=grid.Cast(px,py,pz,dx,by,dz,SkyReach,out _,out _,out _);
+                        all+=by;if(r!=Hit)seen+=by;
                     }
                     sky1[c]=all>0?seen/all:0;
                 }
@@ -129,7 +131,7 @@ namespace ChipArena.UnityConversion
             // The gather.
             int rays=Math.Max(8,input.Rays);var dirs=Sphere(rays);float wAll=0,skyAll=0;for(int k=0;k<rays;k++){wAll+=Math.Max(0,dirs[k*3+1]+.35f);skyAll+=Math.Max(0,dirs[k*3+1]);}
             var raw=new float[cells*4];float half=cell*.5f;
-            System.Threading.Tasks.Parallel.For(0,nz,iz=>
+            System.Threading.Tasks.Parallel.For(0,nz,po,iz=>
             {
                 for(int iy=0;iy<ny;iy++)for(int ix=0;ix<nx;ix++)
                 {
@@ -138,9 +140,9 @@ namespace ChipArena.UnityConversion
                     for(int k=0;k<rays;k++)
                     {
                         float bx=dirs[k*3],dy=dirs[k*3+1],bz=dirs[k*3+2],dx=bx*cs-bz*sn,dz=bx*sn+bz*cs;float w=Math.Max(0,dy+.35f);
-                        int r=grid.Cast(px,py,pz,dx,dy,dz,Reach,out float t,out int axis,out int block);
-                        if(r!=Hit){occ+=w;if(dy>0)seen+=r==Out?dy:dy*FarSky;continue;}
-                        float o=Math.Min(1,t/Near);o=1-(1-o)*(1-o);occ+=w*o;
+                        int r=grid.Cast(px,py,pz,dx,dy,dz,dy>0?SkyReach:Reach,out float t,out int axis,out int block);
+                        if(r!=Hit){occ+=w;if(dy>0)seen+=dy;continue;}
+                        float o=Math.Min(1,t/Near);o=1-(1-o)*(1-o);occ+=w*o;if(t>Reach)continue;
                         // The face hit: its normal against the ray, the point, the open cell in front of it.
                         float nX=axis==0?(dx>0?-1:1):0,nY=axis==1?(dy>0?-1:1):0,nZ=axis==2?(dz>0?-1:1):0;
                         float hx=px+dx*t,hy=py+dy*t,hz=pz+dz*t;int f=v.CellAt(hx+nX*half*.5f,hy+nY*half*.5f,hz+nZ*half*.5f);if(f<0||!open[f])f=c;
@@ -165,7 +167,7 @@ namespace ChipArena.UnityConversion
             for(int axis=0;axis<3;axis++)
             {
                 var from=axis==1?tmp:raw;var to=axis==1?raw:tmp;int stride=axis==0?1:axis==1?nx:nx*ny,len=axis==0?nx:axis==1?ny:nz;
-                System.Threading.Tasks.Parallel.For(0,nz,iz=>
+                System.Threading.Tasks.Parallel.For(0,nz,po,iz=>
                 {
                     for(int iy=0;iy<ny;iy++)for(int ix=0;ix<nx;ix++)
                     {

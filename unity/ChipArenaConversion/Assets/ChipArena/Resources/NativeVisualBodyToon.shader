@@ -155,7 +155,7 @@ Shader "ChipArena/VisualBodyToon" {
    light+=ToonPoints(MuzzleLights(i.world,n,.35));if(_ArenaActorLit>.5)light+=ToonPoints(ActorLights(i.world,n));
    light+=ArenaGIBody(i.world,n);
    // A struck pilot's line is the darker version of its flash (the silhouette's share of it).
-   fixed4 c=fixed4(VisualHitFlash(albedo*light,1)*lerp(float3(1,1,1),EdgeTint(),saturate(i.ink)),1);c.rgb=ArenaScatter(c.rgb,i.world,_WorldSpaceCameraPos);UNITY_APPLY_FOG(i.fogCoord,c);return c;
+   fixed4 c=fixed4(VisualHitFlash(albedo*light,1)*lerp(float3(1,1,1),EdgeTint(),saturate(i.ink)),1);c.rgb=ArenaScatterView(c.rgb,i.world);UNITY_APPLY_FOG(i.fogCoord,c);return c;
   }
   ENDCG
  }

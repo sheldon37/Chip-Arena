@@ -27,7 +27,8 @@ namespace ChipArena.UnityConversion
         private static ContentMap map;private static MapLook look;private static bool on,written;private static int appliedFrame=-10;
         private static readonly int GiId=Shader.PropertyToID("_ArenaGI"),GiBoxId=Shader.PropertyToID("_ArenaGIBox"),GiSizeId=Shader.PropertyToID("_ArenaGISize"),GiVolumeId=Shader.PropertyToID("_ArenaGIVolume"),LightningId=Shader.PropertyToID("_ArenaLightning"),
             ScatterId=Shader.PropertyToID("_ArenaScatter"),ScatterFogId=Shader.PropertyToID("_ArenaScatterFog"),ScatterKeyId=Shader.PropertyToID("_ArenaScatterKey"),ScatterDirId=Shader.PropertyToID("_ArenaScatterDir"),
-            WetId=Shader.PropertyToID("_ArenaWet"),WetSkyId=Shader.PropertyToID("_ArenaWetSky"),SkyFlashId=Shader.PropertyToID("_SkyFlash");
+            WetId=Shader.PropertyToID("_ArenaWet"),WetSkyId=Shader.PropertyToID("_ArenaWetSky"),SkyFlashId=Shader.PropertyToID("_SkyFlash"),CoverId=Shader.PropertyToID("_ArenaWetCover"),CoverBoxId=Shader.PropertyToID("_ArenaWetCoverBox");
+        private static Texture2D coverTexture;private static NativeWeatherCover coverOf;
         // The volume: the bake in flight (its key), the one up (its key and texture).
         private static System.Threading.Tasks.Task<(NativeLightVolume volume,ushort[] half)> bake;private static string bakeKey,volumeKey;private static NativeLightVolume volume;private static Texture3D volumeTexture;
         private static readonly List<NativeVolumeLight> candidates=new List<NativeVolumeLight>();private static string candidatesMap;
@@ -61,8 +62,11 @@ namespace ChipArena.UnityConversion
         private static void Write()
         {
             written=true;var s=State;
+            // The frame's part starts from nothing (Frame writes it each frame the arena draws; behind the menu it stays 0).
+            Shader.SetGlobalVector(LightningId,Vector4.zero);Shader.SetGlobalFloat(SkyFlashId,0);Shader.SetGlobalVector(ScatterKeyId,Vector4.zero);Shader.SetGlobalVector(WetId,Vector4.zero);
             if(s.Scatter){var c=Lin(s.ScatterColor);Shader.SetGlobalVector(ScatterId,new Vector4(c.r,c.g,c.b,s.Max));Shader.SetGlobalVector(ScatterFogId,new Vector4(s.Density,s.Height,s.Falloff,s.Lights));}else Shader.SetGlobalVector(ScatterId,Vector4.zero);
-            if(s.Wet>0){var sky=RenderSettings.ambientSkyColor;var c=QualitySettings.activeColorSpace==ColorSpace.Linear?sky.linear:sky;Shader.SetGlobalVector(WetSkyId,new Vector4(c.r*1.6f,c.g*1.6f,c.b*1.6f,1));}else Shader.SetGlobalVector(WetId,Vector4.zero);
+            // What a wet face mirrors: the sky's light and the city's glow in the fog.
+            if(s.Wet>0){var sky=RenderSettings.ambientSkyColor+RenderSettings.fogColor;var c=QualitySettings.activeColorSpace==ColorSpace.Linear?sky.linear:sky;Shader.SetGlobalVector(WetSkyId,new Vector4(c.r*1.5f,c.g*1.5f,c.b*1.5f,1));}
             VolumeGlobals();
         }
         private static void VolumeGlobals()
@@ -118,6 +122,20 @@ namespace ChipArena.UnityConversion
             VolumeGlobals();
         }
         private static void Release(){if(volumeTexture!=null)CapturedAnimation.Release(volumeTexture);volumeTexture=null;volume=null;volumeKey=null;}
+        /// <summary>The weather's cover for the wet faces (ArenaPresentation's weather hands it once per map): an RHalf height map,
+        /// bilinear, clamped; without RHalf, no cover (everything wet).</summary>
+        public static void Cover(NativeWeatherCover c)
+        {
+            if(ReferenceEquals(c,coverOf))return;coverOf=c;if(coverTexture!=null)CapturedAnimation.Release(coverTexture);coverTexture=null;
+            if(c==null||c.Roof.Length==0||!SystemInfo.SupportsTextureFormat(TextureFormat.RHalf)){Shader.SetGlobalVector(CoverBoxId,Vector4.zero);return;}
+            try
+            {
+                var tex=new Texture2D(c.MapX,c.MapZ,TextureFormat.RHalf,false,true){name="Weather cover",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear};
+                tex.SetPixelData(NativeLightVolume.Half(c.Roof),0);tex.Apply(false,true);coverTexture=tex;
+                Shader.SetGlobalTexture(CoverId,tex);Shader.SetGlobalVector(CoverBoxId,new Vector4(c.OriginX,c.OriginZ,c.MapX,c.MapZ));
+            }
+            catch(Exception e){Debug.LogWarning("Weather cover disabled: "+e.Message);Shader.SetGlobalVector(CoverBoxId,Vector4.zero);}
+        }
         // The content materials' colours (the dressing's base colour for a block without a look), from the arena's content.
         private static readonly Dictionary<string,int> materialColors=new Dictionary<string,int>();private static ContentMaterial[] materialsFrom;
         /// <summary>The arena's content materials (the arena hands them each frame; read once per content).</summary>

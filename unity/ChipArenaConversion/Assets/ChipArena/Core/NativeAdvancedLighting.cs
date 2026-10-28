@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     /// `density` per metre at `height` (m), falling off by e every `falloff` m above it; `max` its greatest opacity (0..1);
     /// `key` the key light's share scattered toward the eye; `phase` the forward lobe (Henyey-Greenstein g, 0..0.9); `lights`
     /// the practical lights' share (their glow in the air).</item>
-    /// <item>`beams`: volumetric light beams in place of the billboard shafts: `on`; `gain` on the shafts' light; `dust` how
+    /// <item>`beams`: volumetric beams in place of the billboard shafts: `on`; `gain` on the shafts' light; `dust` how
     /// much the scrolling dust breaks them up (0..1); `soft` the soft edge's power (view angle).</item>
     /// <item>`weather`: `kind` "", "rain", "drizzle" or "snow"; `amount` (0..1 of the kind's full fall); `wind` (m/s along x);
     /// `wet` the wet surfaces (0..1); `puddles` (0..1); `lightning` the flashes' strength (0 none), every `interval` s on
