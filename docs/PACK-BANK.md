@@ -45,6 +45,13 @@ python3 -I tools/pack_bank/build_pack_bank.py --packs DIR [--out ASSETS/LocalAss
   - `props`: `id`, `source`, `prefab`, `group`. A prop is the prefab's visible mesh parts, in prefab space.
   - `textures`: `id`, `source`, `path`, and optionally `max`, `alpha`, `linear`, `mips`, `clamp`, `crop`. Textures that props'
     materials use are added on their own, as `<source>-<file stem>`.
+  - `sheets`: effect sheets composed from pack textures (`tools/pack_bank/sheets.py`), each written as one texture by its
+    `id`. Tiles name a `source`, a `path`, and optionally a flipbook `grid` and `frame`, a size (`scale` or `reach`),
+    `rotate`, `mirror`, `squash` and `grow`.
+    - `kind: toon`: the shared effects renderer's toon sheet layout (16 puffs, then 16 flash, crescent and spark tiles),
+      rebuilt from cartoon masks into Core's channels (signed distances, the lit tone, erosion, outline). Linear and
+      uncompressed (`textureCompression: 0`).
+    - `kind: atlas`: a grid of sprites, premultiplied, sRGB, compressed.
   - `texture_max` sets the default size limit (1024).
 - The output is deterministic: the same packs and selections give the same bytes.
 
@@ -82,5 +89,7 @@ Little-endian. The full layout is in the `NativePackBank` comment:
 | Bank | Selection | What |
 |---|---|---|
 | `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages: barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, cranes and more (296 props, 721 meshes, 5 atlas textures, 12.7 MB) |
+| (textures only) | `fx-blasts.json` | `fx-toon-sheet`: the toon sheet from Epic Toon FX's cartoon masks, for blasts, smoke and fire (`docs/PACK-EFFECTS.md`; 1024 x 512, 0.7 MB) |
+| (textures only) | `fx-magic.json` | `fx-magic-sheet`: the magic bolts' sprites from Magic Arsenal and Sci-Fi Arsenal (`docs/PACK-EFFECTS.md`; 2048 x 1024, 1.3 MB) |
 
 The effect sheets, weapons and further kits are added by the streams that use them.

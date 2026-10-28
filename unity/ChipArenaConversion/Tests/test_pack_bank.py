@@ -15,6 +15,7 @@ import bank as bankfmt  # noqa: E402
 import build_pack_bank  # noqa: E402
 import fbx  # noqa: E402
 import images  # noqa: E402
+import sheets  # noqa: E402
 import unity_assets  # noqa: E402
 
 FIXTURE = ROOT / 'Tests' / 'pack-bank-fixture.bytes'
@@ -199,6 +200,94 @@ class Prefabs(unittest.TestCase):
             info = unity_assets.material(folder, 'c' * 32)
             self.assertTrue(info['albedo'].endswith('Paint.png'))
             self.assertEqual(info['color'], (1.0, 0.5, 0.25, 1.0))
+
+
+def _disc_png(path, size, r, grey=255, ring=None):
+    """A white disc on transparent (a cartoon mask); ring: an outline band of that width at a darker grey."""
+    px = bytearray(size * size * 4)
+    for y in range(size):
+        for x in range(size):
+            d = ((x + .5 - size / 2) ** 2 + (y + .5 - size / 2) ** 2) ** .5
+            if d < r:
+                g = 120 if ring and d > r - ring else grey
+                px[(y * size + x) * 4:(y * size + x) * 4 + 4] = bytes((g, g, g, 255))
+    path.write_bytes(images.encode_png(images.Image(size, size, px)))
+
+
+class Sheets(unittest.TestCase):
+    def test_sdf_of_a_disc(self):
+        n, r = 64, 20.0
+        mask = [((x + .5 - 32) ** 2 + (y + .5 - 32) ** 2) ** .5 < r for y in range(n) for x in range(n)]
+        d = sheets.sdf(mask, n, n)
+        for (x, y) in ((32, 32), (5, 5), (32, 60), (45, 40)):
+            true = r - ((x + .5 - 32) ** 2 + (y + .5 - 32) ** 2) ** .5
+            self.assertAlmostEqual(d[y * n + x], true, delta=1.0)
+
+    def test_toon_sheet_layout_and_channels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'P').mkdir()
+            _disc_png(root / 'P' / 'puff.png', 64, 24)
+            _disc_png(root / 'P' / 'flash.png', 64, 20)
+            puff = {'source': 'p', 'path': 'puff.png', 'reach': .8}
+            spec = {'id': 'syn-toon', 'kind': 'toon', 'puffs': [puff] * 16,
+                    'shapes': [{'source': 'p', 'path': 'flash.png', 'scale': 1}] * 15 + [{'procedural': 'drop'}]}
+            b = build_pack_bank.Builder(str(root))
+            b.build({'schema': 1, 'sources': {'p': 'P'}, 'sheets': [spec]})
+            png = b.files['ChipArenaLocal/Resources/PackBank/syn-toon.png']
+            meta = b.files['ChipArenaLocal/Resources/PackBank/syn-toon.png.meta'].decode()
+            self.assertIn('sRGBTexture: 0', meta)
+            self.assertIn('textureCompression: 0', meta)
+            self.assertIn('alphaIsTransparency: 0', meta)
+            img = images.decode_png(png)
+            self.assertEqual((img.w, img.h), (1024, 512))
+
+            def texel(tile, x, y):  # tile point (x, y in tile units, y up) of Core's layout (row 0 at the bottom)
+                col, row = tile % 8, tile // 8
+                px = int(col * 128 + (x + 1) / 2 * 128)
+                py = int(row * 128 + (y + 1) / 2 * 128)
+                o = ((511 - py) * 1024 + px) * 4
+                return img.rgba[o:o + 4]
+            c = texel(0, 0, 0)
+            self.assertGreater(c[0], 160)  # inside the puff
+            self.assertGreater(c[2], 0)  # an erosion threshold inside
+            self.assertLess(texel(0, .95, .95)[0], 128)  # outside it, in the gutter
+            self.assertEqual(texel(0, .95, .95)[2], 0)  # no erosion outside
+            lit_up, lit_down = texel(0, -.3, .52)[1], texel(0, .3, -.52)[1]
+            self.assertGreater(lit_up, lit_down)  # the lit tone toward the light (upper left), a shadow crescent lower right
+            self.assertGreater(texel(16, 0, 0)[0], 128)  # the flash flipbook's first frame
+            self.assertGreater(texel(31, .42, 0)[0], 128)  # Core's droplet head
+            self.assertEqual(texel(20, 0, 0)[3], 0)  # shape tiles: A 0
+            again = build_pack_bank.Builder(str(root))
+            again.build({'schema': 1, 'sources': {'p': 'P'}, 'sheets': [spec]})
+            self.assertEqual(again.files, b.files)  # deterministic
+
+    def test_atlas_premultiplied_and_fitted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'P').mkdir()
+            _disc_png(root / 'P' / 'orb.png', 128, 40, grey=200)
+            spec = {'id': 'syn-atlas', 'kind': 'atlas', 'grid': [2, 1], 'tile': 32, 'tiles': [{'source': 'p', 'path': 'orb.png'}]}
+            b = build_pack_bank.Builder(str(root))
+            b.build({'schema': 1, 'sources': {'p': 'P'}, 'sheets': [spec]})
+            img = images.decode_png(b.files['ChipArenaLocal/Resources/PackBank/syn-atlas.png'])
+            self.assertEqual((img.w, img.h), (64, 32))
+            centre = img.rgba[(16 * 64 + 16) * 4:(16 * 64 + 16) * 4 + 4]
+            self.assertTrue(190 <= centre[0] <= 210 and centre[3] == 255)
+            corner = img.rgba[(1 * 64 + 1) * 4:(1 * 64 + 1) * 4 + 4]
+            self.assertEqual(tuple(corner), (0, 0, 0, 0))  # premultiplied: nothing where nothing covers
+            self.assertEqual(tuple(img.rgba[(16 * 64 + 48) * 4:(16 * 64 + 48) * 4 + 4]), (0, 0, 0, 0))  # the empty second tile
+            self.assertIn('sRGBTexture: 1', b.files['ChipArenaLocal/Resources/PackBank/syn-atlas.png.meta'].decode())
+
+    def test_sheet_rules(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            b = build_pack_bank.Builder(tmp)
+            with self.assertRaises(build_pack_bank.SelectionError):
+                b.build({'schema': 1, 'sheets': [{'id': 'Bad Id', 'kind': 'toon'}]})
+            with self.assertRaises(build_pack_bank.SelectionError):
+                b.build({'schema': 1, 'sheets': [{'id': 'syn-x', 'kind': 'toon', 'puffs': [], 'shapes': []}]})
+            with self.assertRaises(build_pack_bank.SelectionError):
+                b.build({'schema': 1, 'sheets': [{'id': 'syn-y', 'kind': 'other'}]})
 
 
 class Bank(unittest.TestCase):

@@ -155,9 +155,95 @@ that fits.
   - Real triggers: a bot's Flash Step and Rising Dragon, and a dagger bot's fourth cut, played theirs.
   - Not seen live: the sword's and greatsword's finishers (the AI bots rarely chain combos).
 
+## Blasts, smoke, fire and the magic bolts from the effect packs (2026-10-28, `claude/pack-fx-blasts`)
+
+Owner (2026-10-28): "Lets do all of those" (the in-place upgrades from the drive's packs), "Do whatever needs to be done".
+This one comes in through the pack banks (`docs/PACK-BANK.md`), not the bake: the tool composes two sheets from the packs
+and the licensed-assets zip carries them as textures the game loads by id.
+
+- **Blasts, smoke and fire** (selection `fx-blasts.json`, texture `fx-toon-sheet`):
+  - **Source:** Archanor's Epic Toon FX cartoon masks: `cloud_2x2_hardshadow` (the puffs), `explosion_round_3x3` (the round
+    flash flipbook), `wave3` and two late `explosion_round_3x3` frames (the crescent licks), `triangle_curve` (the spike),
+    `circle_sharp` (the lens, squashed), `sparkle3` (the star). The droplet tile stays Core's own teardrop.
+  - **How:** the tool (`tools/pack_bank/sheets.py`, `toon`) rebuilds them into the shared effects renderer's toon sheet,
+    same layout and channels as `Core/NativeVfxTextures.ToonSheet`:
+    - R: the silhouette's signed distance (from the mask's alpha, an exact distance transform).
+    - G: the lit tone, the silhouette shifted toward the light (upper left, as Core's) less the mask's inner creases. Each
+      puff gets the game's hard shadow crescent at its lower right and the pack's folds between its lobes.
+    - B: the erosion field (interior depth and round cells, Core's formula with a deeper interior), so puffs are still
+      eaten into round blobs late in life.
+    - A: a thin outline along the silhouette.
+    - Puffs: the pack's four cloud shapes, each centred and sized to the tile (`reach`) and turned up to 26 degrees for 16
+      variants (the shader still mirrors them by seed).
+    - Linear, uncompressed (the four channels are independent fields), mipmapped, trilinear.
+  - **What changes:** only the texture (`NativeVfxDraw.Upload` swaps it in when it is there). Every smoke, cloud, toon fire,
+    toon water, flash, lick, spike, star and droplet keeps the game's palette, lighting, timing, sizes, erosion and low tier.
+    That covers every blast style and the other effects that draw toon puffs (melee dust, the fuse, blood drops, the zombie
+    effects).
+- **The magic bolts** (selection `fx-magic.json`, texture `fx-magic-sheet`):
+  - **Source:**
+    - Archanor's Magic Arsenal: the Fire, Water and Lightning missiles' and explosions' sprites (`fire_orb`, `fire_ring`,
+      `fire_flame`, `fire_smoke_molten`, `water_drop`, `water_splash`, `water_droplets`, `water_bubble`, `lightning_ball`,
+      `lightning_new_arcs_2x2`, `lightning_new_arc`, `lightning_new_glow2`, `light_particle`, `arcane_glow`).
+    - Archanor's Sci-Fi Arsenal for L33t H4x's cyber look: `laserball_green`, `symbol_hexagon_simple`, four `symbols`
+      frames and eight `fire4x4_modular` frames.
+  - **How:** the tool (`atlas`) fits each sprite into an 8 x 4 grid of 256 px tiles, premultiplied, sRGB, compressed. The
+    tile order is `Core/NativeMagicPackFx`'s.
+  - **Drawing:** the shared effects renderer draws a tile as a camera-facing sprite (`NativeVfxDraw.Pack`,
+    `NativeVfx.shader` mode 12).
+    - The sprite's brightest channel is its shape, and its whiteness is where it runs white-hot.
+    - The rest takes the shot's own colour (`NativeShotRules.HaloColor`, the weapon's), so the schools keep the game's
+      palette.
+    - The sprites sort with the smoke and puffs.
+  - **Per school** (`Core/NativeMagicPackFx`):
+    - **Fire:** a flame orb in two counter-turning rings of fire; flame puffs and molten embers behind it; on a hit, two
+      ring flashes, flung embers and an ember cloud (the fire staff's blast stays). Its sprites run hot through the fire
+      blasts' flame yellow (`NativeBlastSim.FireYellow`) rather than white, which read pink on the weapon's orange.
+    - **Water:** a swirling drop in a faint bubble; splashes, droplets and bubbles behind it; on a hit, a drop flash, two
+      splashes, a droplet spray and rising bubbles.
+    - **Lightning:** a ball flickering at 15 Hz with three arcs re-struck every 50 ms; small balls and arcs behind it; on a
+      hit, a flash, a starburst and arc bolts struck afresh every 40 ms.
+    - **L33t H4x:** a glowing ball in two counter-spinning hexagons; data bits behind it; on a hit, a cyber flare (the
+      flipbook), an expanding hexagon and flung bits.
+    - **Darkness:** keeps `NativeMagicFx`'s void orb (bolt, hit and surface burst).
+  - **The bolt:**
+    - The head replaces the energy core, and the shot's model gives way to it (`NativeShotPresentation.PackHeads`; its chip
+      module parts stay).
+    - The trail sprites keep `NativeTrailFx`'s spacing, life, size curve, offsets and drift, with the school's tile, spin
+      and colour ramp. The white masks (the hexagon, the data bits, the flare flipbook) take the shot's colour all through
+      (`NativeMagicPackFx.HotOf`).
+    - The ribbon's newest point steps back into the head and draws as an older one, so the ribbon grows out of the head
+      (the model hid its bright square end).
+    - The halo, the spill light, the source trail and the 120-trail budget are unchanged.
+  - **Hits** (`Runtime/NativeMagicPackPresentation.cs`):
+    - What triggers one: a surface Impact event, or a direct (or reflected) pilot Hit, whose source holds a school's
+      weapon.
+    - Bursts keep a ring of 32, each lasting 0.5 s and seeded by the event id, sized 1.3 on a surface and 1.1 on a pilot.
+      On a pilot the burst opens back along the bolt's path.
+    - The weapon-coloured spark burst, the hard-surface shards and the white hit sparks stay.
+    - Reduced effects draws 3 flung pieces and the low tier 5, against 8.
+- **Fallback:** without the zip's textures (CI, cloud builds, the public source) or with `--ca-no-pack-banks`, the procedural
+  sheet, the energy core, the model and the soft trail sprites draw exactly as before. The offline harness's fallback run
+  gave the same billboards, meshes and quads as the base commit.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation only; every
+  sprite is a pure function of the shot key, the sprite index, the event id and the presentation clock).
+- **Checks:**
+  - `--pack-fx-blasts` (`Tests/PackFxBlastsChecks.cs`): the schools, heads, trails and bursts (tiles in the sheet,
+    additive, deterministic, fewer when reduced, nothing past their life, no allocation), the selections' ids and tile
+    order, and the renderer's pins and fallbacks.
+  - `Tests/test_pack_bank.py`: the distance transform, the toon sheet's layout and channels, the atlas, the sheet rules.
+  - Offline WebGL renders (scratch harness: the real `NativeVfxDraw` queueing on stand-in Unity types, the shaders' own
+    SHARED maths in GLSL, a dark grid floor, the bloom's knee and shoulder), before and after: a frag grenade, a rocket, a
+    fire staff blast, smoke, and each school's bolt, wall hit and pilot hit.
+- **Not yet:**
+  - seen in Unity or a Windows build (the sheets' import settings come from the tool's `.meta`);
+  - the soft smoke atlas (mode 5: mist, vapour, the bosses' fireballs) is still procedural;
+  - the fire staff's hit uses Magic Arsenal's ring and embers, not the Sci-Fi fire flipbook the sheet carries for L33t H4x.
+
 ## Candidates from the same drive (not started)
 
-- **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles, muzzle flashes, explosions and magic in the toon style.
+- **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles and muzzle flashes (the explosions, smoke, fire and magic
+  bolts are in, above).
 - **Kronnect's Trails FX:** afterimages for rolls, dashes and sprint attacks.
 
 Each would follow the same route: converted at the bake, drawn from events, presentation only.

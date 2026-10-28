@@ -1,3 +1,30 @@
+## 2026-10-28 — Claude: blasts, smoke, fire and the magic bolts from the effect packs (stream branch, not merged)
+
+- **Branch/base:** `claude/pack-fx-blasts` from `claude/pack-bank` `606c39c`. No PR; Claude reviews and merges. Nothing changes look until the bank zip (`fx-toon-sheet`, `fx-magic-sheet`) is installed.
+- **Owner (2026-10-28):** "Lets do all of those" (the in-place upgrades from the drive's packs); realistic effects are fine "as long as it produces proper glow + lighting"; "Do whatever needs to be done".
+- **Changes (presentation and tooling only; details in PACK-EFFECTS "Blasts, smoke, fire and the magic bolts"):**
+  - `tools/pack_bank/sheets.py` (new, standard library): effect sheets composed from pack textures, a selection's `sheets`.
+    - `toon`: Epic Toon FX's cartoon masks rebuilt into the toon sheet's layout and channels (exact distance transforms, the lit tone shifted toward the light, Core's erosion).
+    - `atlas`: Magic Arsenal and Sci-Fi Arsenal sprites, premultiplied.
+    - `build_pack_bank.py` builds them; `texture_meta` gains `compress` (the toon sheet is uncompressed data).
+  - Selections `fx-blasts.json` and `fx-magic.json` (texture-only). Zip: 2 textures, 2.0 MB, about 55 s.
+  - `Runtime/NativeVfxDraw`: the pack toon sheet replaces the procedural one when it is there (every blast, smoke, fire, flash, lick and spark keeps its palette, lighting, erosion and low tier); `Pack` draws a magic sheet tile.
+  - `Resources/NativeVfx.shader` mode 12: a camera-facing pack sprite at its roll, tinted by the shot's colour (`VfxPackSprite` in the GLSL-shared block).
+  - `Core/NativeMagicPackFx` (new): per school (fire, water, lightning, L33t H4x) the bolt's head, its trail sprites (NativeTrailFx's spacing, life and drift) and its hit burst. Darkness stays NativeMagicFx's.
+  - `Runtime/NativeMagicPackPresentation` (new) and `NativeWeaponFxPresentation`: the head in place of the energy core, pack trail sprites, the ribbon growing out of the head, hit bursts on surface impacts and direct pilot hits (a ring of 32, 0.5 s).
+  - `NativeShotPresentation.PackHeads`: a school bolt's model gives way to its head; chip parts stay.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (pure functions of replicated shots and events on the presentation clock).
+- **Checks (actual):**
+  - `CoreTests --pack-fx-blasts` (new `Tests/PackFxBlastsChecks.cs`) 4202 checks PASS; `--pack-bank` PASS.
+  - By reflection on the same build: VfxRuntime, Vfx, Blast, MagicFx, Shot, WeaponFx, MuzzleFlash, GunKit, FinalKillcam, ZombieFx, RoundsVisual, WeaponSkin, Bow, CyberLordRanged, VisualRig, BodySkin, WeaponSocket groups PASS.
+  - Python suite 160 tests OK (1 skipped), with four new sheet tests.
+  - Unity runtime and editor compile: PASS.
+  - `git diff --check` clean.
+  - Offline WebGL renders before and after (scratch harness: the real `NativeVfxDraw` queueing on stand-in Unity types, the shaders' SHARED maths in GLSL, bloom knee and shoulder): frag grenade, rocket (and a close-up), fire staff blast, smoke, each school's bolt, wall hit and pilot hit.
+  - The harness's fallback run (no textures) matched the base commit's billboards, meshes and quads.
+- **Not run:** the full CoreTests runner (machine shared; targeted groups only); Unity Editor import of the two textures and Play mode; a Windows build; multiplayer.
+- **Next:** merge; install the zip with the other streams' banks; look at the bolts and blasts in Play mode (the sheets' import settings come from the tool's `.meta`). The soft smoke atlas (mist, vapour) could follow the same route.
+
 ## 2026-10-28 — Claude: pack banks, the owner's packs without the Unity Editor (foundation; merged into shared)
 
 - **Branch/base:** `claude/pack-bank` from shared `8f8f3d8`. No PR; merged into shared and the builder. Nothing in the game changes look until the streams below land and the bank zip is installed.
