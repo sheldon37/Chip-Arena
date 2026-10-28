@@ -104,6 +104,19 @@ Gun rounds hitting a surface (`docs/PACK-EFFECTS.md`) play converted particle ef
 kripto289's Impacts and Muzzle Flashes. The effects are its concrete, metal and wood impacts, and the textures, meshes and
 materials the bake uses ship in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
 
+### Hits and motion effects through the pack bank (2026-10-28, owner licence)
+
+Textures only, through the pack bank (`docs/PACK-BANK.md`; selections `fx-muzzle.json`, `fx-blood.json`, `fx-impacts.json`,
+`fx-trails.json`), under the visual body's rules: they ship in the licensed-assets zip, never committed or published as
+files, and no pack shader or script ships (`docs/PACK-EFFECTS.md`).
+
+- kripto289's Impacts and Muzzle Flashes: the muzzle flipbooks `Flame1`, `Flame3`, `MuzzleFlash8`, `MuzzleFlash9` and the
+  bursts `MuzzleFlash1`, `MuzzleFlash3`, `MuzzleFlash6`; the bullet holes `BrickBulletDecal3`, `BrokenGlassDecal`,
+  `DirtBulletDecal3`.
+- Epic Toon FX: the first frame of `splat01_shaded_3x3`, `splat02_shaded_3x3` and `splat03_shaded_3x3` (blood splats).
+- Kronnect's Trails FX - Stylized Motion Effects: `SamplePresets/StylizedRamp1` (the afterimages' colour ramp); the
+  afterimage shader is our own.
+
 ### Dissolve noise (2026-10-24, owner licence)
 
 A dead pilot's dissolve (`docs/PACK-EFFECTS.md`) reads `Cutout Map 15` of Advanced Dissolve (Amazing Assets). It ships in

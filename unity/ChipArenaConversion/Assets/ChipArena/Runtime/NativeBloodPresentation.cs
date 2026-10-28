@@ -31,6 +31,11 @@ namespace ChipArena.UnityConversion
         private readonly List<Vector3> splatPoints=new List<Vector3>(),splatNormals=new List<Vector3>();private readonly List<Color> splatColors=new List<Color>();
         private readonly List<Vector4> splatUv=new List<Vector4>();private readonly List<int> splatIndices=new List<int>();
         private readonly Vector2[] splatRing=new Vector2[12];
+        // The pack's splat textures (Core NativeBloodSplatLook): one quad a splat on Resources/NativeBloodSplat.shader when the bank
+        // holds all three (read once); else, and on the low graphics tier (the blob alone), today's fans above.
+        private Mesh splatSheetMesh;private Material splatSheetMaterial;private bool splatSheetRead;
+        private readonly List<Vector3> sheetPoints=new List<Vector3>();private readonly List<Color> sheetColors=new List<Color>();
+        private readonly List<Vector4> sheetUv=new List<Vector4>(),sheetCore=new List<Vector4>();private readonly List<int> sheetIndices=new List<int>();
         private static readonly RaycastHit[] bloodHits=new RaycastHit[8];
         /// <summary>Live droplets and splats (the checks and the dev overlay).</summary>
         public int BloodDrops=>blood.Flying;public int BloodSplats=>blood.Splats.Live;
@@ -132,10 +137,13 @@ namespace ChipArena.UnityConversion
             if(animating||pool.Version!=bloodVersion||now-bloodBuilt>.5f||now<bloodBuilt)
             {
                 bloodVersion=pool.Version;bloodBuilt=now;SplatLight();splatPoints.Clear();splatNormals.Clear();splatColors.Clear();splatUv.Clear();splatIndices.Clear();bool low=LowGraphics;
-                for(int i=0;i<NativeBloodSplats.Capacity;i++){var s=pool.Items[i];if(!s.Live)continue;float a=pool.Opacity(i,now);if(a>.002f)Splat(s,a,now,low);}
+                bool sheets=!low&&SplatSheets();sheetPoints.Clear();sheetColors.Clear();sheetUv.Clear();sheetCore.Clear();sheetIndices.Clear();
+                for(int i=0;i<NativeBloodSplats.Capacity;i++){var s=pool.Items[i];if(!s.Live)continue;float a=pool.Opacity(i,now);if(a>.002f){if(sheets)SheetSplat(s,a,now);else Splat(s,a,now,low);}}
                 splatMesh.Clear();if(splatPoints.Count>0){splatMesh.SetVertices(splatPoints);splatMesh.SetNormals(splatNormals);splatMesh.SetColors(splatColors);splatMesh.SetUVs(0,splatUv);splatMesh.SetTriangles(splatIndices,0,false);splatMesh.bounds=new Bounds(Vector3.zero,Vector3.one*4000);}
+                if(splatSheetMesh!=null){splatSheetMesh.Clear();if(sheetPoints.Count>0){splatSheetMesh.SetVertices(sheetPoints);splatSheetMesh.SetColors(sheetColors);splatSheetMesh.SetUVs(0,sheetUv);splatSheetMesh.SetUVs(1,sheetCore);splatSheetMesh.SetTriangles(sheetIndices,0,false);splatSheetMesh.bounds=new Bounds(Vector3.zero,Vector3.one*4000);}}
             }
             if(splatMesh.vertexCount>0)Graphics.DrawMesh(splatMesh,Matrix4x4.identity,splatMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
+            if(splatSheetMesh!=null&&splatSheetMesh.vertexCount>0)Graphics.DrawMesh(splatSheetMesh,Matrix4x4.identity,splatSheetMaterial,0,camera,0,null,ShadowCastingMode.Off,false);
         }
         private static readonly Vector4 SplatUv=new Vector4(0,0,NativeFxDraw.Flat,NativeFxDraw.Authored);
         // One splat: an irregular toon blob stretched along its travel (a dark rim, a wetter core pushed toward where it slid),
@@ -165,6 +173,36 @@ namespace ChipArena.UnityConversion
                 Blob(o+n*.0003f,u,v,n,new Vector2(along,side),r,r*(1+.6f*H(60+k)),rim,6);
             }
             if(L>W*1.3f)Blob(o+n*.0002f,u,v,n,new Vector2(-L*.95f,W*(H(70)-.5f)*.3f),W*.12f,L*.35f,rim,6,true);
+        }
+        // The pack's textures and the splat shader, once; false (today's fans) without all three or the shader.
+        private bool SplatSheets()
+        {
+            if(splatSheetRead)return splatSheetMaterial!=null;splatSheetRead=true;
+            var shader=Resources.Load<Shader>("NativeBloodSplat");if(shader==null||!shader.isSupported)return false;
+            Texture round=NativePackBanks.Texture(NativeBloodSplatLook.Ids[NativeBloodSplatLook.Round]),splash=NativePackBanks.Texture(NativeBloodSplatLook.Ids[NativeBloodSplatLook.Splash]),streak=NativePackBanks.Texture(NativeBloodSplatLook.Ids[NativeBloodSplatLook.Streak]);
+            if(round==null||splash==null||streak==null)return false;
+            splatSheetMaterial=new Material(shader){name="Blood splats (pack)",renderQueue=(int)RenderQueue.Transparent-60};
+            splatSheetMaterial.SetTexture("_SplatRound",round);splatSheetMaterial.SetTexture("_SplatSplash",splash);splatSheetMaterial.SetTexture("_SplatStreak",streak);
+            splatSheetMesh=new Mesh{name="Blood splats (pack)",indexFormat=IndexFormat.UInt32};splatSheetMesh.MarkDynamic();return true;
+        }
+        // One splat as the pack's texture (Core NativeBloodSplatLook.Pick): a quad on its surface along its travel, turned and
+        // mirrored by its seed, in today's lit rim and wet-core colours, drying as today's do and losing its sheen.
+        private void SheetSplat(in NativeBloodSplats.Splat s,float alpha,float now)
+        {
+            Vector3 n=new Vector3(s.Normal.X,s.Normal.Y,s.Normal.Z),o=new Vector3(s.Center.X,s.Center.Y,s.Center.Z),u=new Vector3(s.Along.X,s.Along.Y,s.Along.Z);
+            u=(u-n*Vector3.Dot(u,n)).normalized;if(u.sqrMagnitude<.5f)u=Vector3.Cross(n,Vector3.right).normalized;
+            float age=now-s.Born,dry=NativeBloodRules.Darken(age);Color light=n.y>.5f?splatUp:n.y<-.5f?splatDown:splatSide;
+            Color Tone(int hex,float k){var c=NativeArena.ColorOf(hex);return new Color(c.r*k*light.r,c.g*k*light.g,c.b*k*light.b,alpha);}
+            Color rim=Tone(s.Ink?NativeBloodRules.InkRim:NativeBloodRules.Rim,dry*.95f),core=Tone(s.Ink?NativeBloodRules.InkCore:NativeBloodRules.Core,dry*(.75f+.25f*dry));
+            NativeBloodSplatLook.Pick(s.Seed,s.Length,s.Width,out int kind,out float spin,out bool mirror,out float along,out float across,out float ahead);
+            Vector3 a=Quaternion.AngleAxis(spin*Mathf.Rad2Deg,n)*u,b=Vector3.Cross(n,a)*(mirror?-1:1),c0=o+a*ahead;
+            var coreUv=new Vector4(core.r,core.g,core.b,NativeBloodSplatLook.Wet(age));int start=sheetPoints.Count;
+            for(int k=0;k<4;k++)
+            {
+                float x=k==1||k==2?1:-1,y=k>=2?1:-1;sheetPoints.Add(c0+a*(x*along)+b*(y*across));sheetColors.Add(rim);
+                sheetUv.Add(new Vector4(x*.5f+.5f,y*.5f+.5f,kind,0));sheetCore.Add(coreUv);
+            }
+            sheetIndices.Add(start);sheetIndices.Add(start+1);sheetIndices.Add(start+2);sheetIndices.Add(start);sheetIndices.Add(start+2);sheetIndices.Add(start+3);
         }
         private void Fan(Vector3 o,Vector3 u,Vector3 v,Vector3 n,Vector2 offset,float scale,Color c)
         {

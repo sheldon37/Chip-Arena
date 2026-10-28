@@ -19,10 +19,12 @@
 // Modes: 0 petal (a muzzle star's flame petal, x pivot to tip, y across), 1 crescent (x tail to head along the arc, y inner
 // to outer), 2 ribbon (x tail to head, y across), 3 glow sprite (profiles 0 soft, 1 hot core, 2 ring, 3 sparkle), 4 smoke
 // wisp, 5 streak (a capsule with a hot core), 6 flame card (the muzzle's side flame along the barrel), 7 shard (a curved
-// triangle pointing at its head).
+// triangle pointing at its head); and, from a gun family's own material only (NativeWeaponFxDraw.SheetFlame / SheetBurst, the
+// owner's muzzle-flash pack through the pack bank), 8 the flipbook flame card along the barrel (w: the frame, negative
+// mirrored) and 9 the burst sprite (a billboard).
 Shader "ChipArena/NativeWeaponFx"
 {
-    Properties { _WeaponFxSoft("Soft particles (depth texture)",Float)=0 _SlashBrush("Slash brush (alpha: its streaks)",2D)="white"{} _SlashBrushRect("Slash brush: its streaks' rectangle (uv min, size)",Vector)=(0,0,1,1) _SlashBrushOn("Slash brush on",Float)=0 }
+    Properties { _WeaponFxSoft("Soft particles (depth texture)",Float)=0 _SlashBrush("Slash brush (alpha: its streaks)",2D)="white"{} _SlashBrushRect("Slash brush: its streaks' rectangle (uv min, size)",Vector)=(0,0,1,1) _SlashBrushOn("Slash brush on",Float)=0 _FlashSheet("Pack flash: the flame flipbook",2D)="black"{} _FlashGrid("Pack flash: columns, rows",Vector)=(1,1,0,0) _FlashBurst("Pack flash: the burst",2D)="black"{} }
     SubShader
     {
         Tags { "Queue"="Transparent+6" "RenderType"="Transparent" "IgnoreProjector"="True" "PreviewType"="Plane" }
@@ -43,6 +45,9 @@ Shader "ChipArena/NativeWeaponFx"
             // The slash crescents' brush (NativeWeaponFxDraw.SlashBrush; the owner's effect pack through the local bake): an ink
             // stroke's streaks in the alpha of _SlashBrushRect. Off, the crescents are the procedural shape alone.
             sampler2D _SlashBrush;float4 _SlashBrushRect;float _SlashBrushOn;
+            // A gun family's pack flash (NativeWeaponFxDraw.FlashSheets): the flame flipbook (_FlashGrid columns and rows, frame 0
+            // at the top left) and the burst sprite. Only that family's material sets them and only its quads use modes 8 and 9.
+            sampler2D _FlashSheet;float4 _FlashGrid;sampler2D _FlashBurst;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             // ---- WEAPON FX SHARED BEGIN (HLSL and GLSL: float literals only, no matrices, no texture reads) ----
             // Each shape returns its intensity (x) and its white-hot share (y).
@@ -170,6 +175,30 @@ Shader "ChipArena/NativeWeaponFx"
                 float m=tex2D(_SlashBrush,_SlashBrushRect.xy+s*_SlashBrushRect.zw).a;
                 return under>0.5?float2(shape.x*lerp(0.1,2.6,m),shape.y):float2(shape.x*lerp(0.25,1.45,m),shape.y*lerp(0.55,1.25,m));
             }
+            // A photographic flash texel as the shapes' intensity (x: its brightness through its coverage) and white-hot share (y:
+            // only its brightest, whitest parts), so FxShade keeps the flash colour (the kit's heat, the gain for bloom) on the
+            // body and edges and whitens the core, and the texture gives the form.
+            float2 FlashTexel(float4 t)
+            {
+                float m=max(t.r,max(t.g,t.b)),n=min(t.r,min(t.g,t.b)),l=dot(t.rgb,float3(0.3,0.55,0.15));
+                return float2(t.a*m*(0.55+0.45*l),saturate((l-0.5)*2.4)*saturate((n/max(m,0.001)-0.35)*2.0));
+            }
+            // The flame card: t 0 at the crown to 1 at its tip (the cell's u), s -1..1 across (its v); frame's whole part the
+            // frame, its fraction the blend toward the next (the last frame blends to nothing), its sign the mirror.
+            float2 FlashFlame(float t,float s,float frame)
+            {
+                float cols=max(_FlashGrid.x,1.0),rows=max(_FlashGrid.y,1.0),f=abs(frame),f0=floor(f),k=f-f0;
+                float2 cell=float2(clamp(t,0.004,0.996),clamp((frame<0.0?-s:s)*0.5+0.5,0.004,0.996));
+                float2 a=float2((fmod(f0,cols)+cell.x)/cols,1.0-(floor(f0/cols)+1.0-cell.y)/rows);
+                float f1=f0+1.0;float2 b=float2((fmod(f1,cols)+cell.x)/cols,1.0-(floor(f1/cols)+1.0-cell.y)/rows);
+                float4 ta=tex2D(_FlashSheet,a),tb=f1<cols*rows?tex2D(_FlashSheet,b):float4(0,0,0,0);
+                return FlashTexel(lerp(ta,tb,k));
+            }
+            // The burst sprite at corner c (-1..1).
+            float2 FlashBurst(float2 c)
+            {
+                return FlashTexel(tex2D(_FlashBurst,saturate(c*0.5+0.5)));
+            }
             struct appdata
             {
                 float3 vertex:POSITION;
@@ -191,7 +220,7 @@ Shader "ChipArena/NativeWeaponFx"
                 v2f o;
                 float mode=v.uv.z;float3 world=v.vertex;float4 data=float4(0,0,0,0);float2 shapeUv=v.uv.xy;
                 float3 right=UNITY_MATRIX_V[0].xyz,up=UNITY_MATRIX_V[1].xyz,back=UNITY_MATRIX_V[2].xyz;data.z=0.05;
-                if(mode>2.5&&mode<4.5)
+                if(mode>2.5&&mode<4.5||mode>8.5)
                 {
                     // Billboards: corner (extra.xy) times half the size, rolled.
                     float hw=max(v.extra.z,0.0001)*0.5;float s=sin(v.extra.w),c=cos(v.extra.w);float2 local=v.extra.xy*hw;
@@ -227,6 +256,7 @@ Shader "ChipArena/NativeWeaponFx"
                     float t=(uv.x/max(i.data.x,0.0001))*0.5+0.5;
                     shape=mode<6.5?FxFlame(t,uv.y,w):FxShard(t,uv.y);
                 }
+                if(mode>7.5)shape=mode<8.5?FlashFlame((uv.x/max(i.data.x,0.0001))*0.5+0.5,uv.y,w):FlashBurst(uv);
                 if(mode>0.5&&mode<1.5&&_SlashBrushOn>0.5)shape=SlashBrushed(shape,uv,w);
                 float4 c=FxShade(i.color,shape);
                 // A select, not a blend: whatever an unrendered depth texture holds never reaches the colour.
