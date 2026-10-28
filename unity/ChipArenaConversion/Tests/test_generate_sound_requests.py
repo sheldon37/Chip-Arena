@@ -27,7 +27,7 @@ class GeneratorTests(unittest.TestCase):
 
     def test_counts_and_selection(self):
         self.assertEqual(len(gen.entries(self.m)), 70)
-        self.assertEqual(len(gen.entries(self.m, optional=True)), 88)
+        self.assertEqual(len(gen.entries(self.m, optional=True)), 148)  # incl. the 60 optional Central Station cue files
         self.assertEqual(len(self.jobs), 6)
         self.assertEqual(len(gen.entries(self.m, keys=['pve.zombie.moan'], variants=[2, 4])), 2)
         for args in (dict(keys=['unknown']), dict(variants=[99]), dict(keys=['move.step.metal'])):

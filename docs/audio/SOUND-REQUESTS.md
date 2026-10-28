@@ -101,5 +101,34 @@ generator. Claude owns this manifest and the importer.
 | `move.step.concrete` | step | 3 | 6 | 0.6 | 0.12–0.33 | Single footstep of an armored soldier boot on concrete, firm heel strike with a faint metallic armor clink, isolated, dry close-mic recording, no reverb, no music, no background noise |
 | `move.step.metal` | step | 3 | 6 | 0.6 | 0.12–0.33 | Single footstep of an armored soldier boot on a metal floor grate, hard metallic clank, isolated, dry close-mic recording, no reverb, no music, no background noise |
 | `move.step.gravel` | step | 3 | 6 | 0.6 | 0.12–0.33 | Single footstep of an armored soldier boot on loose gravel and rubble, crunchy, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.linesman.idle` | voice | 3 | 3 | 2.5 | 1.4–2 | Raspy zombie groan from a damaged human throat mixed with a crackling electrical buzz and small spark pops, as if the body is live with current, slow and droning, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.linesman.charge` | voice | 3 | 3 | 1.5 | 0.9–1.2 | Rising electric whine building over one second, a high-voltage charge-up with crackling arcs and sparks that intensifies to a peak, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.linesman.arc` | voice | 3 | 3 | 1 | 0.4–0.7 | Sharp lightning-bolt crack followed by a quick chain of electric zaps jumping from target to target, short and violent, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.linesman.ground` | voice | 3 | 2 | 1.2 | 0.6–1 | A heavy hand slapping down on a steel rail with a dull metallic clang, then a deep humming electrical surge through the metal, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.linesman.hurt` | voice | 3 | 3 | 0.8 | 0.2–0.5 | Zombie getting hit, a short choked grunt with a sharp static pop and spark, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.linesman.death` | voice | 3 | 3 | 2 | 1.1–1.7 | Electrocution death, a zombie scream buzzing with electricity, then a battery bursting with a hard pop and a fading electrical sizzle, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.conductor.inhale` | voice | 3 | 2 | 1.2 | 0.5–0.9 | A rattling dead breath drawn in sharply through a ruined throat before blowing a whistle, wet and wheezing, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.conductor.whistle` | voice | 3 | 3 | 1.5 | 0.7–1.1 | A shrill railway guard's pea whistle blown hard, distorted and held too long with a trilling rattle, harsh and piercing, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.conductor.bell` | voice | 3 | 2 | 1.5 | 0.8–1.3 | An old brass handbell rung urgently, rapid clanging strokes, slightly cracked and tinny, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.conductor.mutter` | voice | 3 | 3 | 2.5 | 1.4–2.1 | A hoarse zombie voice muttering a train timetable under its breath, slurred unintelligible words and numbers, rasping and broken, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.conductor.lantern` | voice | 3 | 2 | 1 | 0.35–0.7 | A small glass and tin railway lantern shattering, glass bursting and a thin metal frame clattering, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.conductor.death` | voice | 3 | 3 | 2 | 0.9–1.5 | A zombie's wheezing last breath and body collapse, then a tin lantern clattering on the floor, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.undertow.bubble` | voice | 3 | 3 | 2.5 | 1.5–2.1 | Slow bubbles rising and popping in still dark water, deep and ominous, steady and loopable, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.undertow.surface` | voice | 3 | 3 | 1.2 | 0.5–0.9 | Something bursting up out of water with a big splash and a wet gurgling snarl, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.undertow.grab` | voice | 3 | 3 | 1 | 0.35–0.7 | A wet slap of a hand gripping a body, then a choking gurgle, short, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.undertow.drag` | voice | 3 | 2 | 2 | 1.1–1.6 | A body dragged through shallow water, sloshing and scraping, one steady pull, loopable, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.undertow.death` | voice | 3 | 3 | 2 | 0.9–1.5 | A drowning zombie's bubbling gurgle that cuts off, then a heavy body sinking into water with a splash, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.pileup.moan` | voice | 3 | 3 | 3 | 1.8–2.6 | Several zombie voices moaning together, layered and overlapping, muffled behind a heavy steel door, low and hollow, isolated, no music, no background noise |
+| `pve.station.pileup.brace` | voice | 3 | 2 | 1 | 0.45–0.8 | A heavy steel door scraping across a concrete floor, a short grinding drag, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.pileup.shove` | voice | 3 | 3 | 1 | 0.35–0.7 | A big metal slam of a steel door shoved forward, with a whoosh of a body thrown through the air, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.pileup.ricochet` | voice | 3 | 3 | 0.5 | 0.15–0.35 | A single bullet ricochet off thick steel plate, a hard metallic ping and a short whine, isolated, dry close-mic recording, no reverb, no music, no background noise |
+| `pve.station.pileup.split` | voice | 3 | 3 | 2 | 1–1.6 | Wet tearing flesh as a heap of bodies rips apart, then a steel door clanging down onto concrete, isolated, dry close-mic recording, no reverb, no music, no background noise |
 
-Totals: 17 keys, 88 files.
+Totals: 39 keys, 148 files (the zombies and steps: 17 keys, 88 files; the Central Station: 22 keys, 60 files).
+
+The 22 Central Station enemy cues (`pve.station.*`, `docs/EXPEDITION-CENTRAL-STATION.md` section 10; each cap in
+`Core/NativeStationKinds.cs` `CueCaps` and the bank contract) are voices, so the importer matches them to the zombie voices'
+loudness. They are priority 3 (optional to generate). A batch designed from the owner's licensed packs covers all 60 files
+(`station-sounds-batch.zip`, kept outside the repository; sources in `docs/ASSET-CREDITS.md`, Central Station enemy cues).
+The prompts stay, so ElevenLabs takes can replace or join those later (`--include-player-steps --key <key>`,
+`docs/audio/SOUND-GENERATOR.md`).

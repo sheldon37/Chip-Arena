@@ -1,3 +1,37 @@
+## 2026-10-28 — Claude: the Central Station's 22 enemy cues designed from the owner's sound packs (merged into shared)
+
+- **Branch/base:** `claude/station-sounds` from `claude/pack-bank` `55a6e5d`. No PR; merged into shared and the builder (the clips stay outside the repository).
+- **Request:** the 22 `pve.station.*` cues (`Core/NativeStationKinds.cs` `CueKeys`, section 10 of EXPEDITION-CENTRAL-STATION) had
+  no clips: 10 were silent and 12 borrowed other keys' clips. Real clips were to be made from the owner's licensed packs, for
+  the owner to import into the private bank.
+- **Changes (docs, the request manifest and two test pins; no game code):**
+  - `docs/audio/sound-requests.json` and `SOUND-REQUESTS.md`: the 22 keys as voices, priority 3 (optional to generate), 3
+    variants each or 2 for the simplest one-shots (60 files). Each `targetSeconds` is inside the key's cap, and each key keeps a
+    prompt, so ElevenLabs takes stay possible. The totals are now 39 keys and 148 files. `SOUND-GENERATOR.md`: the optional
+    count and credits.
+  - The batch, kept outside the repository: `station-sounds-batch.zip`, 60 `<key>_<NN>.wav` files (44.1 kHz mono 16-bit).
+    They are layered and edited in ffmpeg from 176 files of Universal Sound FX, Fantasy Game Sound Effects, Battle Sound
+    Library and Interface and Item Sounds. `docs/ASSET-CREDITS.md`, Central Station enemy cues, lists the design and the
+    sources of every variant.
+  - `Tests/FootfallAudioChecks.cs`: the station cues count as voices; the pin is now 39 keys (22 station cues) and 148 files.
+    `Tests/test_generate_sound_requests.py`: 148 optional files. The default paid batch stays 70 files.
+- **Animation impacts:** none (no change to timing, hit volumes, damage, cooldowns, movement or networking). The clips fit the
+  existing cue times: the charge builds over `ArcWindup` 1.1 s, the inhale fits `WhistleWindup` 0.8 s, the brace fits
+  `ShoveWindup` 0.7 s, the drag is 1.45 s against its 1.4 s replay, and the bubbles are 2.0 s against their 2.1 s call.
+- **Checks (actual):**
+  - `import_sound_requests.py --check` on the batch: 60 files, 22 keys, valid (one warning: no receipt).
+  - A full import into a synthetic base bank: 60 of 60 accepted, none trimmed beyond trailing silence, voices at -18.0 to
+    -18.3 LUFS momentary max, no limiting, true peak at most -3.3 dBTP, 0.95 MB of Ogg; the install check passed.
+  - Python unittest: the full suite, 156 OK (1 skip). CoreTests `--footfalls`, `--station-enemies` and `--pack-bank`: PASS.
+  - The clips were checked offline only, on spectrograms, envelopes and per-layer levels.
+- **Not run:** listening (there is no audio playback here, and nobody has heard the clips); the import on the owner's real
+  LocalAssets zip (its 16 MB budget with these 0.95 MB is checked by the importer there); a Windows build; play.
+- **Next:** the owner runs `py -3 unity/ChipArenaConversion/tools/import_sound_requests.py --manifest docs/audio/sound-requests.json
+  --in station-sounds-batch.zip --base "<current LocalAssets zip>" --out "<new LocalAssets zip>" --report import-report.json`
+  from the repository root. Then they listen in the Dev Sandbox's minion gallery, whose second row loops the station kinds'
+  moves with their cues, and in a Central Station run.
+  Replace any variant that misses with a new batch for that key.
+
 ## 2026-10-28 — Claude: pack banks, the owner's packs without the Unity Editor (foundation; merged into shared)
 
 - **Branch/base:** `claude/pack-bank` from shared `8f8f3d8`. No PR; merged into shared and the builder. Nothing in the game changes look until the streams below land and the bank zip is installed.
