@@ -1,3 +1,75 @@
+## 2026-10-28 — Claude: stage kits from the harbor kit bank (block props, harbour yards, the textured block variant) (merged into shared)
+
+- **Branch/base:** `claude/stage-kits` from `claude/pack-bank` (`55a6e5d`). No PR; merged into shared and the builder by
+  Claude after review (not released).
+- **Owner (2026-10-28):** "Lets do all of those"; "I want to have advanced lighting and much better environment + stage
+  development"; "Do whatever needs to be done". Toon Harbor's crates and containers replace box props on the Factory and the
+  Ironworks.
+- **Changes (presentation only; details in `docs/arenas/STAGE-KITS.md`):**
+  - **Rules:** `Core/NativePackDressing` with the new table `Resources/PackDressing.json` (kits, per-map rules, yards, glow,
+    flood).
+    - A block's props are picked deterministically by the id's hash and fitted inside its collider (nothing proud, no side
+      or top more than 0.25 m short); solid groups only.
+    - What keeps its box: no bank or entry, foundations, roles other than static and cover, collapse members and supports,
+      big blocks, fragments, rubble, and damage past the kept stage (S2).
+  - **Blocks drawn as props:**
+    - Factory: 16 (cover crates on pallets, the stacked crates, drum cages, dock pallets, the dock containers, parts bins);
+    - Ironworks: 5 (mould boxes, scrap and charge boxes; the kit's scrap stays on top);
+    - the town: 20 (crates, the wild containers).
+    - A dressed block's kit parts stop with it (`NativePackDressing.Covers`: Factory `Strip`, Ironworks `iwPack`, the town
+      `townPack`).
+  - **Yards** (`Core/NativePackScenery`, outside the arena's keep-out, which `Build` enforces):
+    - Factory: the south quay with three STS cranes, quay cranes, a loaded freighter, tugs, container stacks, trucks, lamps
+      and fence.
+    - City Ironworks: the yard east of the hall.
+    - Central Station: a freight depot to the north.
+    - The town: the west docks by the Ironworks gate. Its skyline leaves those lots and its west plate ends at the quay so
+      the basin shows, only while the docks draw.
+    - Baked per bank material and tier on the backdrop layer. Night yards are floodlit and get stepped sodium pools.
+    - The low tier drops the detail tier and swaps each loaded freighter for its empty hull.
+  - **Shader:** NativeBlockLit `BLOCK_PACK` (a local keyword in both passes):
+    - the atlas albedo, the lights atlas as emission by the map's glow, the logos' cutout (shadows too), the normal's
+      inverse transpose;
+    - every block lighting, toon, haze, fog, muzzle, flash, Ward field and dust term;
+    - `PackSurface` in SHARED. Warmed behind the loading screen.
+  - **Runtime:**
+    - `Runtime/NativePackStage` (table, plans, materials, pooled instanced `NativePackDraws`, `NativePackYards`);
+    - `NativeArenaDressing` draws planned blocks as props up to their kept stage;
+    - `SourceWorld` and `RenderBackdrop` draw the yards; `PrewarmStage` builds the plan and yards.
+  - **Selection** `kit-harbor.json`: 255 props. The pack's low-detail duplicates are left out; 2 STS cranes, 2 quay cranes,
+    a loaded and an empty freighter, 2 tugs and 2 sheds are added.
+  - **Docs:** STAGE-KITS.md; `docs/arenas/HARBOR_PROPOSAL.md` (a Harbor PvP stage, Pier 9, and an Expedition docks zone, with
+    the Astra handoff); PACK-BANK.md; ASSET-CREDITS.md.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The props follow the
+  blocks' own transforms.
+- **Checks (actual):**
+  - `CoreTests --stage-kits` PASS: 13,591 checks against the synthetic bank (CI's case). With `CA_PACK_BANK` naming the
+    built bank it is 13,688 checks: the real-bank plans, and the yards' triangles 0.10-0.50 M (0.09-0.22 M on the low tier).
+  - `--pack-bank` PASS: 5,487 checks.
+  - The touched groups were run alone through a scratch runner over the Tests sources, all PASS: StageKit, PackBank,
+    BlockLook, MapLook, MapStyle, Factory, Surface, IronworksVisual, ExpeditionCity, ExpeditionDressing, ExpeditionHub,
+    ExpeditionJoinPresentation, TransitionLoading, StructureFx, MachinePlacement, BrickfallScenery, MuzzleFlash,
+    WardLighting, WardZero, ZombieLight, CyberCity, ExpeditionStationVisual.
+  - Unity runtime and editor compile: PASS. Python `unittest`: 156 OK (1 skipped). `git diff --check`: clean.
+  - Bank built to scratch (`build_pack_bank.py --zip`): 255 props, 877 meshes, 6 materials, 5 textures; 19.98 MB written,
+    a 6.9 MB zip.
+  - Offline renders from a scratch WebGL harness. It builds the scenes from this branch's Core (blocks, kits, rigs,
+    backdrops, plans, yards) and runs NativeBlockLit's SHARED code, `PackSurface` included, as GLSL. Before/after views:
+    - Factory: cover crates, dock container and drum cage, parts bins, the south harbour;
+    - City Ironworks: scrap, mould and charge boxes, the yard from outside;
+    - the town's west edge from the street (the cranes over the roofs) and from a roof (the docks), its crates, and the
+      station depot.
+- **Not run:**
+  - the Unity Editor, a Windows build or play mode (the BLOCK_PACK HLSL is not compiled here);
+  - multiplayer and the killcam in the game (the props key off block ids and transforms only);
+  - the full CoreTests runner (machine shared; the touched groups were run, see above).
+- **Next:**
+  - Owner or local session: bake the kit bank into the licensed-assets zip (`build_pack_bank.py --zip`, then
+    `pack_visual_body.py`) and look at the Factory, the Ironworks and the town in play.
+  - Decide whether destructible crates keep their props to S2 (`keep: 2`).
+  - **Astra:** the Harbor stage's collision, gantry and water hazards and the docks zone (HARBOR_PROPOSAL.md "Astra
+    handoff"); optionally an opening in the Ironworks and station shells so their yards read from the floor.
+
 ## 2026-10-28 — Claude: blasts, smoke, fire and the magic bolts from the effect packs (merged into shared)
 
 - **Branch/base:** `claude/pack-fx-blasts` from `claude/pack-bank` `606c39c`, with shared `4ecd806` (pack-fx-hits, pack-weapons) merged in. No PR; merged into shared and the builder by Claude after review. Nothing changes look until the bank zip (`fx-toon-sheet`, `fx-magic-sheet`) is installed.

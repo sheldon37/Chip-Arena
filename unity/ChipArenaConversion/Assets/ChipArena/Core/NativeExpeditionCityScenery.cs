@@ -44,9 +44,12 @@ namespace ChipArena.UnityConversion
         /// are drawn apart (NativeSurfaceLayers, backdrop settings).</summary>
         public static NativeCityBackdropBox[] Build(bool layers=true)=>Build(out _,layers);
         /// <summary>The backdrop and its distant fires (each a burning tower's top floor and size).</summary>
-        public static NativeCityBackdropBox[] Build(out NativeCityBackdropFire[] fires,bool layers=true)
+        /// <summary>`reserved` (the harbour docks' footprint, Core NativePackScenery.Reserved; null: none) leaves its lots empty, and
+        /// a finite `westWater` ends the west ground plate at that x (the docks' quay; the basin's water lies beyond it). Without
+        /// them, today's skyline.</summary>
+        public static NativeCityBackdropBox[] Build(out NativeCityBackdropFire[] fires,bool layers=true,Func<double,double,double,double,bool> reserved=null,double westWater=double.NaN)
         {
-            var s=new Sink();GroundPlates(s);Blocks(s);Cranes(s);var o=s.Boxes.ToArray();fires=s.Fires.ToArray();if(layers)Layers(o);return o;
+            var s=new Sink();GroundPlates(s,westWater);Blocks(s,reserved);Cranes(s);var o=s.Boxes.ToArray();fires=s.Fires.ToArray();if(layers)Layers(o);return o;
         }
         /// <summary>Whether a box's footprint (turned) reaches inside the town's edge grown by `margin` (the checks hold every
         /// standing box beyond <see cref="Margin"/>, the ground plates beyond the edge itself).</summary>
@@ -67,14 +70,15 @@ namespace ChipArena.UnityConversion
                 double t=o[i].Yaw*Math.PI/180,c=Math.Cos(t),n=Math.Sin(t);o[i].X+=(float)(c*sx+n*sz);o[i].Y+=sy;o[i].Z+=(float)(-n*sx+c*sz);o[i].Hx+=gx;o[i].Hy+=gy;o[i].Hz+=gz;
             }
         }
-        private static void GroundPlates(Sink s)
+        private static void GroundPlates(Sink s,double westWater)
         {
-            // Four plates round the town's slab (its blocks run to the edge), flush with the street.
-            const double G=Ground;
+            // Four plates round the town's slab (its blocks run to the edge), flush with the street; the west one ends at the
+            // docks' quay when they draw.
+            const double G=Ground;double w=westWater>-G&&westWater<EdgeMinX?westWater:-G;
             s.Add(0,-.25,(EdgeMaxZ+G)/2,2*G,.5,G-EdgeMaxZ,Asphalt,0,0x2E2C30);s.Add(0,-.25,(EdgeMinZ-G)/2,2*G,.5,G+EdgeMinZ,Asphalt,0,0x2E2C30);
-            s.Add((EdgeMaxX+G)/2,-.25,(EdgeMinZ+EdgeMaxZ)/2,G-EdgeMaxX,.5,EdgeMaxZ-EdgeMinZ,Asphalt,0,0x2E2C30);s.Add((EdgeMinX-G)/2,-.25,(EdgeMinZ+EdgeMaxZ)/2,G+EdgeMinX,.5,EdgeMaxZ-EdgeMinZ,Asphalt,0,0x2E2C30);
+            s.Add((EdgeMaxX+G)/2,-.25,(EdgeMinZ+EdgeMaxZ)/2,G-EdgeMaxX,.5,EdgeMaxZ-EdgeMinZ,Asphalt,0,0x2E2C30);s.Add((EdgeMinX+w)/2,-.25,(EdgeMinZ+EdgeMaxZ)/2,EdgeMinX-w,.5,EdgeMaxZ-EdgeMinZ,Asphalt,0,0x2E2C30);
         }
-        private static void Blocks(Sink s)
+        private static void Blocks(Sink s,Func<double,double,double,double,bool> reserved)
         {
             // A 24 m grid (12 m streets between 12-20 m lots); lots near the town's edge (and their streets) are the town.
             int id=0;
@@ -89,7 +93,7 @@ namespace ChipArena.UnityConversion
                 {
                     double w=lots==1?R(12,18,id,2):R(7,9.5,id,2,l),dep=R(10,18,id,3,l);double ox=lots==1?0:(l==0?-5:5);double bx=cx+ox+R(-1,1,id,4,l),bz=cz+R(-2,2,id,5,l);
                     // Keep the town clear: the nearest face stands Margin beyond its edge.
-                    if(!Clear(bx,bz,w/2,dep/2,Margin))continue;
+                    if(!Clear(bx,bz,w/2,dep/2,Margin)||reserved!=null&&reserved(bx-w/2,bx+w/2,bz-dep/2,bz+dep/2))continue;
                     double h=R(8,20,id,6,l)+far*far*R(10,95,id,7,l);if(H(id,8,l)<.12)h*=.45;bool brick=h<30&&H(id,9,l)<.55;
                     int tone=brick?Bricks[(int)(H(id,10,l)*Bricks.Length)%Bricks.Length]:Tones[(int)(H(id,10,l)*Tones.Length)%Tones.Length];tone=Shade(tone,1-.4*far);
                     Tower(s,id*4+l,bx,bz,w,dep,h,brick?Brick:Concrete,tone,far);

@@ -28,6 +28,8 @@ namespace ChipArena.UnityConversion
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworks()){if(!ReferenceEquals(map,iwMap))IronworksBuild(map);built++;}
             // THE CONVERTER's meshes (drawn only once its record is live), so the boss's arrival builds nothing mid-fight.
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworksBoss())built++;
+            // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).
+            var pack=NativePackStage.Entry(id);if(map!=null&&pack!=null){NativePackStage.Plan(map);if(pack.yards!=null&&pack.yards.Length>0)(packYards??=new NativePackYards()).Prepare(map,id);built++;}
             EnsureHazardKit();
             return built;
         }
@@ -91,6 +93,12 @@ namespace ChipArena.UnityConversion
                         var mi=instanced[i];if(mi==null){mi=instanced[i]=new Material(s){name="Warm-up instanced "+s.name,hideFlags=HideFlags.HideAndDontSave,enableInstancing=true};}
                         pair[0]=place;pair[1]=Matrix4x4.TRS(at-t.up*.4f,t.rotation,Vector3.one*.4f);
                         try{Graphics.DrawMeshInstanced(quad,0,mi,pair,2,null,ShadowCastingMode.On,true,Layer,camera);}catch(InvalidOperationException){}catch(ArgumentException){}
+                    }
+                    // The blocks' pack variant (BLOCK_PACK, NativePackStage) when the kit bank is present: plain and instanced.
+                    if(s.name=="ChipArena/NativeBlockLit"&&NativePackStage.MaterialFor(0) is Material pm)
+                    {
+                        Graphics.DrawMesh(quad,place,pm,Layer,camera,0,null,ShadowCastingMode.On,true);pair[0]=place;pair[1]=Matrix4x4.TRS(at-t.up*.4f,t.rotation,Vector3.one*.4f);
+                        if(SystemInfo.supportsInstancing)try{Graphics.DrawMeshInstanced(quad,0,pm,pair,2,null,ShadowCastingMode.On,true,Layer,camera);}catch(InvalidOperationException){}catch(ArgumentException){}
                     }
                     warmed++;
                 }

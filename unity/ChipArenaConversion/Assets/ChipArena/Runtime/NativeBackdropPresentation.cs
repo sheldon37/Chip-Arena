@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
             // The revamped Ward Zero draws its own cut-away (NativeWardZeroPresentation.cs) in place of today's hall.
             bool revamp=NativeLighting.CurrentMap?.id==mapId&&NativeWardZeroLooks.Active(NativeLighting.CurrentMap);
             if(!revamp)sourceModels.Queue("map-"+mapId,Matrix4x4.identity);HazardPresentation(mapId,time);SceneryMotion(commit,mapId);
-            FactoryBackdrop(mapId,time,camera);
+            FactoryBackdrop(mapId,time,camera);PackBackdrop(mapId);
             BrickfallBackdrop(mapId,time,camera);
             CyberCityBackdrop(mapId,time,camera);
             if(revamp)WardZeroBackdrop(mapId,time,camera);

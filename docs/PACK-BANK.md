@@ -91,7 +91,7 @@ Little-endian. The full layout is in the `NativePackBank` comment:
 
 | Bank | Selection | What |
 |---|---|---|
-| `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages: barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, cranes and more (296 props, 721 meshes, 5 atlas textures, 12.7 MB) |
+| `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages (docs/arenas/STAGE-KITS.md): barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, ship-to-shore and quay cranes, freighters, tugboats, sheds and more (255 props, the pack's low-detail duplicates left out; 877 meshes, 6 materials, 5 atlas textures, 19.98 MB) |
 | `ChipArenaPackWeapons` | `weapons.json` | The visual body's daggers, shield, bow and caster staffs (`docs/BOZO-INTEGRATION.md`, pack weapons): 4 props, 4 meshes, 5 textures, 1.6 MB |
 | (textures only) | `fx-muzzle.json`, `fx-blood.json`, `fx-impacts.json`, `fx-trails.json` | Muzzle flipbooks and bursts, blood splats, bullet holes, the afterimages' ramp (14 textures, 1.4 MB; `docs/PACK-EFFECTS.md`) |
 | (textures only) | `fx-blasts.json` | `fx-toon-sheet`: the toon sheet from Epic Toon FX's cartoon masks, for blasts, smoke and fire (`docs/PACK-EFFECTS.md`; 1024 x 512, 0.7 MB) |

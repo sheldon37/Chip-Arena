@@ -156,6 +156,15 @@ The model's own animation (`docs/BOZO-INTEGRATION.md`) plays the same pack's `2H
 are sampled on the body at the bake into a motion bank (`ChipArenaVisualMotion.bytes`, humanoid poses per frame). The bank
 ships in the licensed-assets zip; the pack's clip files do not.
 
+### Stage kits (2026-10-28, owner licence)
+
+The stage props and harbour yards (`docs/arenas/STAGE-KITS.md`) draw meshes and the palette, lights and logos atlases of
+Toon Harbor Pack (Asset Store, owner licence): crates, steel crates, pallets, drum cages and shipping containers in blocks'
+places; ship-to-shore and quay cranes, freighters, tugboats, trucks, streetlights, fences, yard clutter and two metal sheds
+round the maps. The kit bank (`ChipArenaPackKit`, `docs/PACK-BANK.md`) carries them in the licensed-assets zip under the
+visual body's rules: never committed or published as files, and no pack shader or script ships (they draw through our own
+`NativeBlockLit`). Builds without the zip draw today's boxes and backdrops.
+
 ### Hazard kit additions (2026-10-14)
 
 The hazard kit's 19 keys (`docs/HAZARD-KIT.md`) add 46 clips, all from Universal Sound FX (Imphenzia, 17256).
