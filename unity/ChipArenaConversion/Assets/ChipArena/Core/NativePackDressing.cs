@@ -14,8 +14,9 @@ namespace ChipArena.UnityConversion
     /// <summary>A block rule: the block id (exact, or a `*` glob as MapLooks' blockLooks), the kit, and the last damage stage the
     /// prop draws at (`keep`, 0..2; 0 means the default <see cref="NativePackDressing.KeepDefault"/>): past it the block draws as today.</summary>
     [Serializable] public sealed class PackRule {public string block,kit,note;public int keep;}
-    /// <summary>One map's entry: its block rules, its yards (Core NativePackScenery) and the lights atlas' night level (`glow`).</summary>
-    [Serializable] public sealed class PackMapDressing {public string map,note;public float glow;public PackRule[] rules;public PackYard[] yards;}
+    /// <summary>One map's entry: its block rules, its yards (Core NativePackScenery), the lights atlas' night level (`glow`) and the
+    /// yards' floodlit share (`flood`, 0..1: a night yard lit by its masts reads in the dark).</summary>
+    [Serializable] public sealed class PackMapDressing {public string map,note;public float glow,flood;public PackRule[] rules;public PackYard[] yards;}
     /// <summary>A yard piece round the map (Core NativePackScenery): its kind, its anchor and turn (degrees, Unity yaw), its extent
     /// (length along the turned x, depth along the turned z), a height or tier count, a count, a seed, optional props in place
     /// of the kind's, and `detail` (left out on the low tier).</summary>
@@ -75,7 +76,7 @@ namespace ChipArena.UnityConversion
             var maps=new HashSet<string>(StringComparer.Ordinal);
             foreach(var m in set.maps??Array.Empty<PackMapDressing>())
             {
-                if(m?.map==null||!maps.Add(m.map))throw new InvalidOperationException("pack map "+m?.map);if(!(m.glow>=0&&m.glow<=2))throw new InvalidOperationException("pack map "+m.map+" glow");
+                if(m?.map==null||!maps.Add(m.map))throw new InvalidOperationException("pack map "+m?.map);if(!(m.glow>=0&&m.glow<=2)||!(m.flood>=0&&m.flood<=1))throw new InvalidOperationException("pack map "+m.map+" glow or flood");
                 foreach(var r in m.rules??Array.Empty<PackRule>())if(r?.block==null||r.kit==null||!kits.Contains(r.kit)||r.keep<0||r.keep>2)throw new InvalidOperationException("pack rule "+r?.block+" in "+m.map);
                 foreach(var y in m.yards??Array.Empty<PackYard>())if(y?.kind==null||Array.IndexOf(NativePackScenery.Kinds,y.kind)<0)throw new InvalidOperationException("pack yard "+y?.kind+" in "+m.map);
             }

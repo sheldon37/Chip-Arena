@@ -5,15 +5,15 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>One bank prop placed round a map: the prop, its world place (prop space to the Unity frame, System.Numerics row
-    /// vectors), and whether it is detail (left out on the low tier).</summary>
-    public struct PackPlacement {public int Prop;public Matrix4x4 World;public bool Detail;}
+    /// vectors), and its tier: detail (left out on the low tier) or the low tier's lighter stand-in (drawn only there).</summary>
+    public struct PackPlacement {public int Prop;public Matrix4x4 World;public bool Detail,LowOnly;}
     /// <summary>A map's harbour yards: the bank props, the ground boxes (aprons, quay walls, water; SourceLit sector meshes: 0 the
     /// ground, 1 its detail) and the keep-out rectangle every piece stays outside (the map blocks' footprint grown by
     /// <see cref="NativePackScenery.Margin"/>).</summary>
     public sealed class PackScene {public PackPlacement[] Props=Array.Empty<PackPlacement>();public NativeSceneryMesh[] Ground=Array.Empty<NativeSceneryMesh>();public double MinX,MaxX,MinZ,MaxZ;}
     /// <summary>One baked backdrop mesh of bank props: every placement's parts of one bank material, in world space (positions,
     /// normals, uv0; 32-bit indices), so a map's yards draw in a few draws.</summary>
-    public sealed class PackBakedMesh {public int Material;public bool Detail;public float[] Positions,Normals,Uv;public int[] Indices;public float MinX,MinY,MinZ,MaxX,MaxY,MaxZ;public int Vertices=>Positions.Length/3;}
+    public sealed class PackBakedMesh {public int Material;public bool Detail,LowOnly;public float[] Positions,Normals,Uv;public int[] Indices;public float MinX,MinY,MinZ,MaxX,MaxY,MaxZ;public int Vertices=>Positions.Length/3;}
 
     /// <summary>
     /// The harbour yards round a map (docs/arenas/STAGE-KITS.md "Yards"): container terminals, ship-to-shore and quay cranes,
@@ -42,10 +42,12 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Containers20={"harbor-shipping-container-02a","harbor-shipping-container-02b","harbor-shipping-container-02c","harbor-shipping-container-02d","harbor-shipping-container-02e","harbor-shipping-container-02f",
             "harbor-shipping-container-05a","harbor-shipping-container-05b","harbor-shipping-container-05c","harbor-shipping-container-05d","harbor-shipping-container-05e","harbor-shipping-container-05f","harbor-shipping-container-05g"};
         public static readonly string[] Sts={"harbor-gantry-crane-01a","harbor-gantry-crane-01c"},Cranes={"harbor-harbor-crane-01a","harbor-harbor-crane-01e"},
-            Ships={"harbor-freighter-03a-loaded"},Tugs={"harbor-tugboat-01a","harbor-tugboat-03a"},Lamps={"harbor-streetlight-01a","harbor-streetlight-01b"},Fences={"harbor-metal-fence-01a"},
+            Ships={"harbor-freighter-03a-loaded"},ShipsLow={"harbor-freighter-02a"},Tugs={"harbor-tugboat-01a","harbor-tugboat-03a"},Lamps={"harbor-streetlight-01a","harbor-streetlight-01b"},Fences={"harbor-metal-fence-01a"},
             Scatter={"harbor-wooden-pallet-01a","harbor-barrel-01a","harbor-barrel-05a","harbor-shipping-wooden-crate-01a","harbor-shipping-metal-crate-01b","harbor-cage-barrels-01a","harbor-gas-barrel-01a","harbor-plank-pile-01a"},
             Cabins={"harbor-truck-cabin-01a","harbor-truck-cabin-01c","harbor-truck-cabin-02b"},Trailers={"harbor-truck-trailer-02a","harbor-truck-trailer-02c","harbor-truck-trailer-01b"},Buildings={"harbor-metal-structure-kit-building-05a"};
         public const double Bay40=12.6,Row=3.3,Tier=3.0;
+        // A lamp's ground pool: the three steps' radii (m) and shares of the yard's `height` level; the sodium glow.
+        private static readonly double[] PoolRadius={7.5,4.8,2.6},PoolLevel={.35,.65,1.0};public const int Sodium=0xFFB060;
         public static double Hash(int a,int b=0,int c=0)=>NativeBrickfallScenery.Hash(a+4049,b+17,c+29);
 
         /// <summary>The keep-out rectangle: the footprint of every block in the map (turned blocks by their corners) grown by Margin.</summary>
@@ -74,20 +76,20 @@ namespace ChipArena.UnityConversion
             public Sink(PackScene s,NativePackBank.Bank b){Scene=s;Bank=b;}
             public int Find(string name)=>name!=null&&Bank.PropIndex.TryGetValue(name,out int k)?k:-1;
             /// <summary>A prop at a world point and turn (degrees), lifted by y; skipped when the bank lacks it.</summary>
-            public void Put(string name,double x,double y,double z,double yaw,bool detail)
+            public void Put(string name,double x,double y,double z,double yaw,bool detail,bool lowOnly=false)
             {
                 int k=Find(name);if(k<0)return;var p=Bank.Props[k];
                 var m=Matrix4x4.CreateRotationY((float)(yaw*Math.PI/180))*Matrix4x4.CreateTranslation((float)x,(float)y,(float)z);
                 NativePackDressing.Bounds(p,m,out var lo,out var hi);
                 if(Enters(Scene,lo.X,hi.X,lo.Z,hi.Z))throw new InvalidOperationException("Pack yard "+Where+": "+name+" enters the arena at "+x.ToString("0.#")+", "+z.ToString("0.#"));
-                Props.Add(new PackPlacement{Prop=k,World=m,Detail=detail});
+                Props.Add(new PackPlacement{Prop=k,World=m,Detail=detail,LowOnly=lowOnly});
             }
             /// <summary>A flat-coloured box (centre, full size, yaw) into a ground group, outside the keep-out.</summary>
-            public void Box(int group,double x,double y,double z,double sx,double sy,double sz,int hex,double yaw=0,double shade=1,int skip=0)
+            public void Box(int group,double x,double y,double z,double sx,double sy,double sz,int hex,double yaw=0,double shade=1,int skip=0,int glow=0,double level=0)
             {
                 double t=yaw*Math.PI/180,c=Math.Abs(Math.Cos(t)),n=Math.Abs(Math.Sin(t)),ex=(c*sx+n*sz)/2,ez=(n*sx+c*sz)/2;
                 if(Enters(Scene,x-ex,x+ex,z-ez,z+ez))throw new InvalidOperationException("Pack yard "+Where+": a ground box enters the arena at "+x.ToString("0.#")+", "+z.ToString("0.#"));
-                Boxes.Current=group;Boxes.Box(x,y,z,sx,sy,sz,hex,yaw:yaw,shade:shade,skip:skip);
+                Boxes.Current=group;Boxes.Box(x,y,z,sx,sy,sz,hex,yaw:yaw,shade:shade,skip:skip,glow:glow,level:level);
             }
         }
         // The yard's frame: local (u along the turned x, w along the turned z) to world.
@@ -143,10 +145,22 @@ namespace ChipArena.UnityConversion
                 {
                     // `count` along u, spaced evenly over the length; cranes face +w (their booms over the water).
                     var list=y.props!=null&&y.props.Length>0?y.props:y.kind=="sts"?Sts:y.kind=="crane"?Cranes:y.kind=="tug"?Tugs:Lamps;int count=Math.Max(1,y.count);
-                    for(int i=0;i<count;i++){double u=count==1?0:-hl+y.length*i/(count-1);At(y,u,0,out double x,out double z);s.Put(Pick(list,seed,i),x,y.kind=="tug"?Water:Deck,z,y.yaw+(y.kind=="tug"?90+(Hash(seed,i,3)<.5?0:180):0),d);}
+                    for(int i=0;i<count;i++)
+                    {
+                        double u=count==1?0:-hl+y.length*i/(count-1);At(y,u,0,out double x,out double z);s.Put(Pick(list,seed,i),x,y.kind=="tug"?Water:Deck,z,y.yaw+(y.kind=="tug"?90+(Hash(seed,i,3)<.5?0:180):0),d);
+                        // A lamp's pool of light on the ground (`height`: its brightest step): three steps, each four turned squares (a
+                        // sixteen-point rosette, near round), the painted light of a toon night.
+                        if(y.kind=="lights"&&y.height>0)for(int k=0;k<3;k++){double r=PoolRadius[k]*.85,t=.004*(k+1);for(int q=0;q<4;q++)s.Box(Ground,x,.002+t/2,z,2*r,t,2*r,Apron,y.yaw+q*22.5,.9,8,Sodium,y.height*PoolLevel[k]);}
+                    }
                     break;
                 }
-                case "ship":{At(y,0,0,out double x,out double z);s.Put(Pick(y.props!=null&&y.props.Length>0?y.props:Ships,seed),x,Water,z,y.yaw+90,d);break;}
+                case "ship":
+                {
+                    // The loaded freighter on the normal tiers; the low tier draws the empty hull in its place (a fifth of the triangles).
+                    At(y,0,0,out double x,out double z);bool named=y.props!=null&&y.props.Length>0;
+                    s.Put(named?y.props[0]:Ships[0],x,Water,z,y.yaw+90,true);if(!d)s.Put(named?(y.props.Length>1?y.props[1]:y.props[0]):ShipsLow[0],x,Water,z,y.yaw+90,false,true);
+                    break;
+                }
                 case "building":{At(y,0,0,out double x,out double z);s.Put(Pick(y.props!=null&&y.props.Length>0?y.props:Buildings,seed),x,Deck,z,y.yaw,d);break;}
                 case "fence":
                 {
@@ -177,18 +191,18 @@ namespace ChipArena.UnityConversion
         }
 
         /// <summary>
-        /// The scene's props baked into one mesh per bank material and tier (detail or not), in world space: positions, the normals
+        /// The scene's props baked into one mesh per bank material and tier (both tiers, detail, the low tier's stand-ins), in world space: positions, the normals
         /// through each place's inverse transpose, uv0, 32-bit indices. Parts with a non-opaque material (glass) bake as the others.
         /// </summary>
         public static PackBakedMesh[] Bake(NativePackBank.Bank bank,PackPlacement[] props)
         {
             var o=new List<PackBakedMesh>();if(bank==null||props==null)return o.ToArray();
-            for(int tier=0;tier<2;tier++)for(int mat=0;mat<bank.Materials.Count;mat++)
+            for(int tier=0;tier<3;tier++)for(int mat=0;mat<bank.Materials.Count;mat++)
             {
                 var P=new List<float>();var N=new List<float>();var U=new List<float>();var T=new List<int>();
                 foreach(var pl in props)
                 {
-                    if(pl.Detail!=(tier==1))continue;var prop=bank.Props[pl.Prop];
+                    if((pl.LowOnly?2:pl.Detail?1:0)!=tier)continue;var prop=bank.Props[pl.Prop];
                     foreach(var part in prop.Parts)
                     {
                         var mesh=bank.Meshes[part.Mesh];bool any=false;foreach(var sm in mesh.Submeshes)if(sm.Material==mat){any=true;break;}if(!any)continue;
@@ -201,7 +215,7 @@ namespace ChipArena.UnityConversion
                         foreach(var sm in mesh.Submeshes)if(sm.Material==mat)foreach(int i in sm.Indices)T.Add(start+i);
                     }
                 }
-                if(T.Count==0)continue;var b=new PackBakedMesh{Material=mat,Detail=tier==1,Positions=P.ToArray(),Normals=N.ToArray(),Uv=U.ToArray(),Indices=T.ToArray()};
+                if(T.Count==0)continue;var b=new PackBakedMesh{Material=mat,Detail=tier==1,LowOnly=tier==2,Positions=P.ToArray(),Normals=N.ToArray(),Uv=U.ToArray(),Indices=T.ToArray()};
                 b.MinX=b.MinY=b.MinZ=float.MaxValue;b.MaxX=b.MaxY=b.MaxZ=float.MinValue;
                 for(int i=0;i<b.Positions.Length;i+=3){b.MinX=Math.Min(b.MinX,b.Positions[i]);b.MaxX=Math.Max(b.MaxX,b.Positions[i]);b.MinY=Math.Min(b.MinY,b.Positions[i+1]);b.MaxY=Math.Max(b.MaxY,b.Positions[i+1]);b.MinZ=Math.Min(b.MinZ,b.Positions[i+2]);b.MaxZ=Math.Max(b.MaxZ,b.Positions[i+2]);}
                 o.Add(b);

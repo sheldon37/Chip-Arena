@@ -20,7 +20,8 @@ Shader "ChipArena/NativeBlockLit"
     // block's place or round the map. Its own mesh and place (no lattice), the pack's atlas (_PackTex, uv0) times _PackColor as
     // the albedo, the same texel times _PackEmit and the map's _ArenaPackGlow as emission (the lights atlas: windows and lamps),
     // a cutout below _PackCutoff (the logos), and every light, toon, haze, fog, muzzle, flash and dust term a block takes
-    // (PackSurface). Per instance: _BlockRest y the prop's base height (its grime ramp), w its local dust coat; _BlockLook y the
+    // (PackSurface). Per instance: _BlockRest x a yard's floodlit share, y the prop's base height (its grime ramp), w its local
+    // dust coat; _BlockLook y the
     // block's health share, z its seed, w its flags; _BlockColor rgb a tint. Normals go through the instance's inverse transpose
     // (a fitted prop is scaled per axis).
     Properties {}
@@ -797,9 +798,10 @@ Shader "ChipArena/NativeBlockLit"
         // A pack prop's surface (BLOCK_PACK; Core NativePackDressing): tex the atlas texel times the material colour (linear), glow
         // its emission; the layers a block takes that read on a painted prop: the anime style's albedo floor, soot from S1 (health
         // as NativeBlockLooks.Normalised gives it; past the rule's kept stage the block draws as its box again), the grime ramp up
-        // from the prop's base (baseY), top-face dust, the round's dust coat and the style's occlusion band at the foot.
+        // from the prop's base (baseY), top-face dust, the round's dust coat and the style's occlusion band at the foot. flood: a
+        // harbour yard's floodlit share (Core NativePackScenery; 0 for a block's props), the yard lit the way its masts light it.
         float _ArenaPackGlow;
-        BlockSurf PackSurface(float3 tex,float3 glow,float3 world,float3 n,float baseY,float health,float dust,float seed)
+        BlockSurf PackSurface(float3 tex,float3 glow,float3 world,float3 n,float baseY,float health,float dust,float seed,float flood)
         {
             bool toon=_ArenaToon.x>0.5;float3 alb=tex;
             if(toon)alb=max(alb,_ArenaToonFloor.x*_ArenaToonShade.rgb/max(max(_ArenaToonShade.r,_ArenaToonShade.g),max(_ArenaToonShade.b,0.0001)));
@@ -813,7 +815,7 @@ Shader "ChipArena/NativeBlockLit"
             else if(!top)alb*=1.0-BK_GRIME*0.6*(1.0-smoothstep(1.2,1.8,yb));
             if(top)alb=lerp(alb,BK_DUST,0.08*smoothstep(0.35,0.75,BkFbm(uv*0.35+seed*3.0)));
             float coat=saturate(saturate(_ArenaDust+0.6*_ArenaDustCoat+dust)*(top?1.0:0.55)*(0.75+0.5*BkNoise(uv*1.3)));
-            BlockSurf s;s.albedo=lerp(alb,BK_COAT,coat);s.emit=glow*(1.0-0.5*coat);s.bump=float3(0.0,0.0,0.0);s.occ=0.0;
+            BlockSurf s;s.albedo=lerp(alb,BK_COAT,coat);s.emit=glow*(1.0-0.5*coat)+s.albedo*flood;s.bump=float3(0.0,0.0,0.0);s.occ=0.0;
             if(toon)s.occ=max(top?0.0:1.0-smoothstep(_ArenaToonFx.w-0.04,_ArenaToonFx.w+0.04,yb),step(0.5,-n.y));
             return s;
         }
@@ -899,7 +901,7 @@ Shader "ChipArena/NativeBlockLit"
                 #if defined(BLOCK_PACK)
                 // A pack prop: uv0 in pat.xy, its base height in shade.x, the world normal through the inverse transpose.
                 o.pos=UnityObjectToClipPos(v.vertex);o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,col.w);o.obj=float4(v.vertex.xyz,rest.w);
-                o.pat=float4(v.texcoord.xy,0.0,look.w);o.size=float4(0.0,0.0,0.0,look.y);o.col=float4(col.rgb,look.z);o.shade=float4(rest.y,0.0,0.0,0.0);
+                o.pat=float4(v.texcoord.xy,0.0,look.w);o.size=float4(0.0,0.0,0.0,look.y);o.col=float4(col.rgb,look.z);o.shade=float4(rest.y,rest.x,0.0,0.0);
                 o.nO=v.normal;o.nW=PackNormal(v.normal);
                 #else
                 BlockVertex(v);o.pos=UnityObjectToClipPos(v.vertex);o.world=float4(mul(unity_ObjectToWorld,v.vertex).xyz,col.w);
@@ -916,7 +918,7 @@ Shader "ChipArena/NativeBlockLit"
                 {
                     float4 t=tex2D(_PackTex,i.pat.xy);clip(t.a-_PackCutoff);float3 alb=t.rgb*_PackColor.rgb*i.col.rgb;
                     float3 nT=normalize(i.nW);float3 nF=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),nT);
-                    BlockSurf ps=PackSurface(alb,t.rgb*(_PackEmit*_ArenaPackGlow),i.world.xyz,nT,i.shade.x,i.size.w,i.obj.w,i.col.w);
+                    BlockSurf ps=PackSurface(alb,t.rgb*(_PackEmit*_ArenaPackGlow),i.world.xyz,nT,i.shade.x,i.size.w,i.obj.w,i.col.w,i.shade.y);
                     UNITY_LIGHT_ATTENUATION(pa,i,i.world.xyz);float3 pc;
                     if(_ArenaToon.x>0.5)pc=ToonBlockLit(ps.albedo,ps.emit,ps.occ,i.world.xyz,nT,nF,normalize(_WorldSpaceCameraPos-i.world.xyz),_WorldSpaceLightPos0.xyz,_LightColor0.rgb,pa,ShadeSH9(float4(nT,1.0)),ShadeSH9(float4(0.0,1.0,0.0,1.0)),ShadeSH9(float4(0.0,-1.0,0.0,1.0)));
                     else pc=ps.albedo*(ShadeSH9(float4(nT,1.0))+_LightColor0.rgb*(saturate(dot(nT,_WorldSpaceLightPos0.xyz))*pa)+BlockLights(i.world.xyz,nT))+ps.emit;

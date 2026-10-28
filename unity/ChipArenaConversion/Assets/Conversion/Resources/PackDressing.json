@@ -13,10 +13,7 @@
     "harbor-shipping-wooden-crate-01c",
     "harbor-shipping-wooden-crate-02a",
     "harbor-shipping-wooden-crate-02b",
-    "harbor-shipping-wooden-crate-02c",
-    "harbor-shipping-wooden-crate-03a",
-    "harbor-shipping-wooden-crate-03b",
-    "harbor-shipping-wooden-crate-03c"
+    "harbor-shipping-wooden-crate-02c"
    ],
    "stretch": 0.35,
    "along": 2,
@@ -39,10 +36,7 @@
     "harbor-shipping-wooden-crate-01c",
     "harbor-shipping-wooden-crate-02a",
     "harbor-shipping-wooden-crate-02b",
-    "harbor-shipping-wooden-crate-02c",
-    "harbor-shipping-wooden-crate-03a",
-    "harbor-shipping-wooden-crate-03b",
-    "harbor-shipping-wooden-crate-03c"
+    "harbor-shipping-wooden-crate-02c"
    ],
    "stretch": 0.35,
    "along": 2,
@@ -79,25 +73,6 @@
    "palletHeight": 0.18
   },
   {
-   "id": "crates-2x2",
-   "layout": "grid",
-   "note": "Four wooden crates standing on the floor (mould boxes).",
-   "props": [
-    "harbor-shipping-wooden-crate-01a",
-    "harbor-shipping-wooden-crate-01b",
-    "harbor-shipping-wooden-crate-01c",
-    "harbor-shipping-wooden-crate-02a",
-    "harbor-shipping-wooden-crate-02b",
-    "harbor-shipping-wooden-crate-02c",
-    "harbor-shipping-wooden-crate-03a",
-    "harbor-shipping-wooden-crate-03b",
-    "harbor-shipping-wooden-crate-03c"
-   ],
-   "stretch": 0.3,
-   "along": 2,
-   "across": 2
-  },
-  {
    "id": "crate",
    "layout": "fill",
    "note": "One wooden crate.",
@@ -107,28 +82,9 @@
     "harbor-shipping-wooden-crate-01c",
     "harbor-shipping-wooden-crate-02a",
     "harbor-shipping-wooden-crate-02b",
-    "harbor-shipping-wooden-crate-02c",
-    "harbor-shipping-wooden-crate-03a",
-    "harbor-shipping-wooden-crate-03b",
-    "harbor-shipping-wooden-crate-03c"
+    "harbor-shipping-wooden-crate-02c"
    ],
    "stretch": 0.3,
-   "along": 0,
-   "across": 0
-  },
-  {
-   "id": "metal-crate",
-   "layout": "fill",
-   "note": "One steel crate stretched to its box (a charge or scrap box).",
-   "props": [
-    "harbor-shipping-metal-crate-01a",
-    "harbor-shipping-metal-crate-01b",
-    "harbor-shipping-metal-crate-01c",
-    "harbor-shipping-metal-crate-02a",
-    "harbor-shipping-metal-crate-02b",
-    "harbor-shipping-metal-crate-02c"
-   ],
-   "stretch": 1.0,
    "along": 0,
    "across": 0
   },
@@ -166,6 +122,33 @@
    "stretch": 1.0,
    "along": 0,
    "across": 0
+  },
+  {
+   "id": "iron-metal-crate",
+   "layout": "fill",
+   "note": "One steel crate stretched to its box, in the Ironworks' greys and drabs.",
+   "props": [
+    "harbor-shipping-metal-crate-01a",
+    "harbor-shipping-metal-crate-02b",
+    "harbor-shipping-metal-crate-02c"
+   ],
+   "stretch": 1.0,
+   "along": 0,
+   "across": 0
+  },
+  {
+   "id": "iron-crates-2x2",
+   "layout": "grid",
+   "note": "Four dark wooden crates standing on the floor (the Ironworks' mould boxes).",
+   "props": [
+    "harbor-shipping-wooden-crate-01a",
+    "harbor-shipping-wooden-crate-02a",
+    "harbor-shipping-wooden-crate-03a",
+    "harbor-shipping-wooden-crate-03b"
+   ],
+   "stretch": 0.3,
+   "along": 2,
+   "across": 2
   }
  ],
  "maps": [
@@ -174,6 +157,11 @@
    "glow": 0.6,
    "note": "Corvane Works: the cover crates, drums, dock pallets, the dock containers and the parts bins; the docks south of the stockyard.",
    "rules": [
+    {
+     "block": "factory-crate-*-1",
+     "kit": "crate",
+     "note": "the small crate stacked on each cover crate"
+    },
     {
      "block": "factory-crate-*",
      "kit": "crates-on-pallet-2x2"
@@ -338,7 +326,7 @@
      "yaw": 180,
      "length": 300,
      "depth": 0,
-     "height": 0,
+     "height": 0.05,
      "count": 16,
      "seed": 10,
      "detail": false
@@ -367,24 +355,25 @@
      "seed": 0,
      "detail": true
     }
-   ]
+   ],
+   "flood": 0.0
   },
   {
    "map": "expedition-foundry",
    "glow": 1.2,
-   "note": "City Ironworks: the mould boxes and the charge and scrap boxes; the dock yard out of the east door.",
+   "note": "City Ironworks: the mould boxes and the charge and scrap boxes; the dock yard east of the hall (the shell and roof hide it from the floor: it reads from outside cameras and the overview).",
    "rules": [
     {
      "block": "expedition-foundry-mold-boxes",
-     "kit": "crates-2x2"
+     "kit": "iron-crates-2x2"
     },
     {
      "block": "expedition-foundry-scrap-box-*",
-     "kit": "metal-crate"
+     "kit": "iron-metal-crate"
     },
     {
      "block": "expedition-foundry-charge-box-*",
-     "kit": "metal-crate"
+     "kit": "iron-metal-crate"
     }
    ],
    "yards": [
@@ -524,16 +513,16 @@
     },
     {
      "kind": "lights",
-     "x": 58,
+     "x": 64.5,
      "z": 0,
      "yaw": 90,
      "length": 64,
      "depth": 0,
-     "height": 0,
+     "height": 0.12,
      "count": 5,
      "seed": 27,
      "detail": false,
-     "note": "lamps along the hall, seen through the east door"
+     "note": "lamps along the hall's east wall"
     },
     {
      "kind": "trucks",
@@ -583,12 +572,13 @@
      "seed": 0,
      "detail": true
     }
-   ]
+   ],
+   "flood": 0.14
   },
   {
    "map": "expedition-transit",
    "glow": 1.2,
-   "note": "Central Station: the freight depot north of the hall (through the north door and from above).",
+   "note": "Central Station: the freight depot north of the hall (the shell and roof hide it from the floor: it reads from outside cameras and the overview).",
    "rules": [],
    "yards": [
     {
@@ -690,11 +680,11 @@
     {
      "kind": "lights",
      "x": 0,
-     "z": 46,
+     "z": 50,
      "yaw": 0,
      "length": 90,
      "depth": 0,
-     "height": 0,
+     "height": 0.12,
      "count": 6,
      "seed": 45,
      "detail": false
@@ -735,7 +725,8 @@
      "seed": 0,
      "detail": true
     }
-   ]
+   ],
+   "flood": 0.14
   },
   {
    "map": "expedition-city",
@@ -840,12 +831,12 @@
     },
     {
      "kind": "lights",
-     "x": -127,
+     "x": -135.5,
      "z": -30,
      "yaw": 270,
      "length": 170,
      "depth": 0,
-     "height": 0,
+     "height": 0.08,
      "count": 9,
      "seed": 68,
      "detail": false
@@ -874,7 +865,8 @@
      "seed": 70,
      "detail": true
     }
-   ]
+   ],
+   "flood": 0.04
   }
  ]
 }

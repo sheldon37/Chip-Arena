@@ -86,6 +86,7 @@ namespace ChipArena.UnityConversion
             ("harbor-gantry-crane-01c",-9.6f,-0.0f,-33.0f,9.405f,85.4f,79.0f),
             ("harbor-harbor-crane-01a",-9.6f,0.0f,-23.412f,9.405f,35.0f,23.412f),
             ("harbor-harbor-crane-01e",-9.6f,0.0f,-23.412f,9.405f,35.0f,23.412f),
+            ("harbor-freighter-02a",-12.504f,-7.616f,-82.11f,12.504f,27.382f,103.625f),
             ("harbor-freighter-03a-loaded",-12.712f,-7.184f,-79.22f,12.712f,32.619f,98.909f),
             ("harbor-tugboat-01a",-5.63f,-3.211f,-19.55f,5.718f,22.5f,16.629f),
             ("harbor-tugboat-03a",-5.63f,-3.211f,-19.55f,5.718f,12.6f,16.629f),
@@ -134,8 +135,9 @@ namespace ChipArena.UnityConversion
             foreach(var e in set.maps)Check(maps.Any(m=>m.id==e.map),e.map+" is a Unity-era map (UnityMaps.json)");
             foreach(var k in set.kits)foreach(var n in k.props.Concat(k.pallet??Array.Empty<string>()))Check(groups.TryGetValue(n,out var g)&&NativePackDressing.Solid.Contains(g),"kit "+k.id+": "+n+" is selected and solid");
             foreach(var e in set.maps)foreach(var r in e.rules??Array.Empty<PackRule>())Check(maps.Single(m=>m.id==e.map).blocks.Any(b=>NativePackDressing.Rule(e,b.id)==r),e.map+": the rule "+r.block+" dresses blocks");
+            foreach(var k in set.kits)Check(set.maps.Any(m=>(m.rules??Array.Empty<PackRule>()).Any(r=>r.kit==k.id)),"the kit "+k.id+" is used");
             foreach(var n in NativePackScenery.Containers40.Concat(NativePackScenery.Containers20).Concat(NativePackScenery.Sts).Concat(NativePackScenery.Cranes).Concat(NativePackScenery.Ships).Concat(NativePackScenery.Tugs).Concat(NativePackScenery.Lamps)
-                .Concat(NativePackScenery.Fences).Concat(NativePackScenery.Scatter).Concat(NativePackScenery.Cabins).Concat(NativePackScenery.Trailers).Concat(NativePackScenery.Buildings).Concat(set.maps.SelectMany(m=>m.yards??Array.Empty<PackYard>()).SelectMany(y=>y.props??Array.Empty<string>())))
+                .Concat(NativePackScenery.ShipsLow).Concat(NativePackScenery.Fences).Concat(NativePackScenery.Scatter).Concat(NativePackScenery.Cabins).Concat(NativePackScenery.Trailers).Concat(NativePackScenery.Buildings).Concat(set.maps.SelectMany(m=>m.yards??Array.Empty<PackYard>()).SelectMany(y=>y.props??Array.Empty<string>())))
                 Check(groups.ContainsKey(n),"the yards' "+n+" is selected");
             bool Throws(Action a){try{a();return false;}catch(InvalidOperationException){return true;}}
             Check(Throws(()=>NativePackDressing.Validate(new PackDressingSet{schema=2}))&&Throws(()=>NativePackDressing.Validate(new PackDressingSet{schema=1,kits=new[]{new PackKit{id="a",layout="pile",props=new[]{"x"}}}}))
@@ -204,10 +206,10 @@ namespace ChipArena.UnityConversion
             string rt(string f)=>R("Assets/ChipArena/Runtime/"+f);var dressing=rt("NativeArenaDressing.cs");var stage=rt("NativePackStage.cs");var shader=R("Assets/ChipArena/Resources/NativeBlockLit.shader");
             Check(dressing.Contains("if(e.Pack!=null&&stage<=e.Pack.Keep)")&&dressing.Contains("var dress=!prop.Fragment&&b.role!=\"rubble\"?packPlan?.For(b.id):null;")&&dressing.Contains("pack.Flush(instancing);")&&dressing.Contains("packPlan=dressed?NativePackStage.Plan(map):null;"),"the dressing draws a planned block's props up to its kept stage, never for fragments or rubble");
             Check(dressing.IndexOf("if(e.Pack!=null&&stage<=e.Pack.Keep)",StringComparison.Ordinal)>dressing.IndexOf("Posed.TryGetValue(p.Definition.id,out var pose)",StringComparison.Ordinal)&&dressing.IndexOf("if(e.Pack!=null",StringComparison.Ordinal)>dressing.IndexOf("Hidden.Contains(p.Definition.id))continue;",StringComparison.Ordinal),"props follow the block's pose and nudge and hide with it");
-            Check(stage.Contains("public const string Keyword=\"BLOCK_PACK\";")&&stage.Contains("m.EnableKeyword(Keyword);")&&stage.Contains("JsonUtility.FromJson<PackDressingSet>(asset.text);NativePackDressing.Validate(s);")&&stage.Contains("public static PackMapDressing Entry(string mapId)=>Bank==null?null:"),"the runtime reads the validated table and gives nothing without the bank");
-            Check(Count(stage,"Graphics.DrawMesh(p.mesh,Matrix4x4.identity,m,layer,null,0,block,ShadowCastingMode.Off,true)")==1&&stage.Contains("if(p.detail&&low)continue;")&&stage.Contains("const int layer=NativeSceneryBuilder.BackdropLayer;"),"the yards draw on the backdrop layer without shadows, the detail tier off on the low tier");
+            Check(stage.Contains("public const string Keyword=\"BLOCK_PACK\";")&&stage.Contains("m.EnableKeyword(Keyword);")&&stage.Contains("JsonUtility.FromJson<PackDressingSet>(asset.text);NativePackDressing.Validate(s);")&&stage.Contains("var e=NativePackDressing.Entry(Set,mapId);return e!=null&&Bank!=null?e:null;"),"the runtime reads the validated table and gives nothing without the bank");
+            Check(Count(stage,"Graphics.DrawMesh(p.mesh,Matrix4x4.identity,m,layer,null,0,block,ShadowCastingMode.Off,true)")==1&&stage.Contains("if(p.detail&&low||p.lowOnly&&!low)continue;")&&stage.Contains("const int layer=NativeSceneryBuilder.BackdropLayer;"),"the yards draw on the backdrop layer without shadows, the detail tier off on the low tier");
             Check(rt("NativeSourcePresentation.cs").Contains("PackYards(arena);")&&rt("NativeBackdropPresentation.cs").Contains("PackBackdrop(mapId);")&&rt("NativeFactoryPresentation.cs").Contains("NativePackStage.Strip(kitMap,parts);")
-                &&rt("NativeIronworksPresentation.cs").Contains("||iwPack!=null&&iwPack[i])continue;")&&rt("NativeExpeditionCityPresentation.cs").Contains("||townPack!=null&&townPack[i])continue;")&&rt("NativeStagePrewarm.cs").Contains("NativePackStage.MaterialFor(0) is Material pm"),"the kits drop a dressed block's parts; the yards draw in play and behind the menu; the variant is warmed");
+                &&rt("NativeIronworksPresentation.cs").Contains("||iwPack!=null&&iwPack[i])continue;")&&rt("NativeExpeditionCityPresentation.cs").Contains("||townPack!=null&&townPack[i])continue;")&&rt("NativeStagePrewarm.cs").Contains("NativePackStage.MaterialFor(0) is Material pm")&&rt("NativeStagePrewarm.cs").Contains("(packYards??=new NativePackYards()).Prepare(map,id);"),"the kits drop a dressed block's parts; the yards draw in play and behind the menu and build behind the loading screen; the variant is warmed");
             Check(Count(shader,"#pragma multi_compile_local __ BLOCK_PACK")==2&&shader.Contains("BlockSurf PackSurface(")&&shader.IndexOf("BlockSurf PackSurface(",StringComparison.Ordinal)<shader.IndexOf("// SHARED END",StringComparison.Ordinal)&&shader.Contains("float3 PackNormal(float3 n)")&&shader.Contains("clip(tex2D(_PackTex,i.uv).a-_PackCutoff);"),"NativeBlockLit's pack variant in both passes, its surface in the shared (harness) code");
 
             // 8. The real bank, when one is named (the owner's PC or the local session): the same plans and the yards' budgets.
@@ -219,8 +221,8 @@ namespace ChipArena.UnityConversion
                 {
                     var map=maps.Single(m=>m.id==e.map);var plan=NativePackDressing.Plan(set,map,kit);Check(plan.Dressed==expected[e.map]&&plan.Kept.Count==0,e.map+" (real bank): "+plan.Dressed+" dressed, kept: "+string.Join("; ",plan.Kept));Fits(plan,map,kit,e.map+" (real bank)");
                     if(e.yards==null||e.yards.Length==0)continue;var scene=NativePackScenery.Build(e,map,kit);var baked=NativePackScenery.Bake(kit,scene.Props);
-                    int all=baked.Sum(m=>m.Indices.Length/3),low=baked.Where(m=>!m.Detail).Sum(m=>m.Indices.Length/3);
-                    Check(all<=1500000&&low<=1200000,e.map+" (real bank): the yards' "+all+" triangles ("+low+" on the low tier) within budget");
+                    int all=baked.Where(m=>!m.LowOnly).Sum(m=>m.Indices.Length/3),low=baked.Where(m=>!m.Detail).Sum(m=>m.Indices.Length/3);
+                    Check(all<=800000&&low<=300000&&low<all,e.map+" (real bank): the yards' "+all+" triangles ("+low+" on the low tier) within budget");
                     Console.WriteLine("  "+e.map+": "+plan.Dressed+" blocks as props ("+plan.ById.Values.Sum(d=>d.Pieces.Length)+" pieces), "+scene.Props.Length+" yard props, "+all+" yard triangles ("+low+" low), "+baked.Length+" yard meshes");
                 }
             }

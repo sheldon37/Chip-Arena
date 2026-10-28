@@ -28,6 +28,8 @@ namespace ChipArena.UnityConversion
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworks()){if(!ReferenceEquals(map,iwMap))IronworksBuild(map);built++;}
             // THE CONVERTER's meshes (drawn only once its record is live), so the boss's arrival builds nothing mid-fight.
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworksBoss())built++;
+            // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).
+            var pack=NativePackStage.Entry(id);if(map!=null&&pack!=null){NativePackStage.Plan(map);if(pack.yards!=null&&pack.yards.Length>0)(packYards??=new NativePackYards()).Prepare(map,id);built++;}
             EnsureHazardKit();
             return built;
         }

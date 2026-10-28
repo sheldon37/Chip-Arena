@@ -32,7 +32,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The kit bank the table names (null without the licensed-assets zip).</summary>
         public static NativePackBank.Bank Bank=>Set==null?null:NativePackBanks.Bank(Set.bank);
-        public static PackMapDressing Entry(string mapId)=>Bank==null?null:NativePackDressing.Entry(Set,mapId);
+        /// <summary>The map's entry when the kit bank is present (a map without one never loads the bank).</summary>
+        public static PackMapDressing Entry(string mapId){var e=NativePackDressing.Entry(Set,mapId);return e!=null&&Bank!=null?e:null;}
         /// <summary>The map's plan (cached per map content; null: every block keeps its box).</summary>
         public static PackPlan Plan(ContentMap map)
         {
@@ -141,8 +142,8 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativePackYards
     {
-        private ContentMap map;private readonly List<(Mesh mesh,int material,bool detail)> props=new List<(Mesh,int,bool)>();private readonly List<(Mesh mesh,bool detail)> ground=new List<(Mesh,bool)>();
-        private Material groundLit;private MaterialPropertyBlock block;private float glow;private string mapId;private bool failed;
+        private ContentMap map;private readonly List<(Mesh mesh,int material,bool detail,bool lowOnly)> props=new List<(Mesh,int,bool,bool)>();private readonly List<(Mesh mesh,bool detail)> ground=new List<(Mesh,bool)>();
+        private Material groundLit;private MaterialPropertyBlock block;private float glow,flood;private string mapId;private bool failed;
         private static readonly int RestId=Shader.PropertyToID("_BlockRest"),LookId=Shader.PropertyToID("_BlockLook"),ColorId=Shader.PropertyToID("_BlockColor");
         public int Draws{get;private set;}
         /// <summary>Builds for a map (by content, or by id for the menu's backdrop, which has no arena).</summary>
@@ -152,19 +153,21 @@ namespace ChipArena.UnityConversion
             var entry=NativePackStage.Entry(id);var bank=NativePackStage.Bank;if(entry?.yards==null||entry.yards.Length==0||bank==null||content==null)return;
             try
             {
-                var scene=NativePackScenery.Build(entry,content,bank);glow=entry.glow;
-                foreach(var b in NativePackScenery.Bake(bank,scene.Props))props.Add((MeshOf(b),b.Material,b.Detail));
+                var scene=NativePackScenery.Build(entry,content,bank);glow=entry.glow;flood=entry.flood;
+                foreach(var b in NativePackScenery.Bake(bank,scene.Props))props.Add((MeshOf(b),b.Material,b.Detail,b.LowOnly));
                 for(int g=0;g<scene.Ground.Length;g++)if(scene.Ground[g].Positions.Length>0)ground.Add((SceneryMesh(scene.Ground[g],"Pack yard ground "+g),g==NativePackScenery.GroundDetail));
                 var source=Resources.Load<Shader>("NativeSourceLit");if(source!=null&&ground.Count>0){groundLit=new Material(source){name="Pack yard ground",enableInstancing=true};groundLit.SetFloat("_StageLit",0);groundLit.SetFloat("_ToonEdgeRef",16);}
             }
             catch(Exception e){Debug.LogWarning("Pack yards for "+id+" disabled: "+e.Message);Clear();failed=true;}
         }
-        /// <summary>Draws the map's yards this frame (low: the detail tier left out).</summary>
+        /// <summary>Builds the map's yards now (the stage loading screen's prewarm), drawing nothing.</summary>
+        public void Prepare(ContentMap content,string id)=>Bind(content,id);
+        /// <summary>Draws the map's yards this frame (low: the detail tier left out, its lighter stand-ins in).</summary>
         public void Render(ContentMap content,string id,bool low)
         {
             Draws=0;Bind(content,id);if(failed||props.Count==0&&ground.Count==0)return;const int layer=NativeSceneryBuilder.BackdropLayer;
-            NativePackStage.Glow(glow);block??=new MaterialPropertyBlock();block.Clear();block.SetVector(RestId,new Vector4(0,0,0,0));block.SetVector(LookId,new Vector4(0,1,0,0));block.SetVector(ColorId,new Vector4(1,1,1,1));
-            foreach(var p in props){if(p.detail&&low)continue;var m=NativePackStage.MaterialFor(p.material);if(m==null)continue;Graphics.DrawMesh(p.mesh,Matrix4x4.identity,m,layer,null,0,block,ShadowCastingMode.Off,true);Draws++;}
+            NativePackStage.Glow(glow);block??=new MaterialPropertyBlock();block.Clear();block.SetVector(RestId,new Vector4(flood,0,0,0));block.SetVector(LookId,new Vector4(0,1,0,0));block.SetVector(ColorId,new Vector4(1,1,1,1));
+            foreach(var p in props){if(p.detail&&low||p.lowOnly&&!low)continue;var m=NativePackStage.MaterialFor(p.material);if(m==null)continue;Graphics.DrawMesh(p.mesh,Matrix4x4.identity,m,layer,null,0,block,ShadowCastingMode.Off,true);Draws++;}
             if(groundLit!=null)foreach(var g in ground){if(g.detail&&low)continue;Graphics.DrawMesh(g.mesh,Matrix4x4.identity,groundLit,layer,null,0,null,ShadowCastingMode.Off,true);Draws++;}
         }
         private static Mesh MeshOf(PackBakedMesh b)
