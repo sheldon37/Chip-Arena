@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace ChipArena.UnityConversion
 {
     // The effect upgrades from the owner's packs (owner 2026-10-28; docs/PACK-EFFECTS.md): the guns' pack muzzle flashes, the
-    // pack's blood splats, the surface impacts for every surface. Each
+    // pack's blood splats, the surface impacts for every surface, the afterimages' trails look and motion triggers. Each
     // look is a pure function of the replicated shot and falls back to exactly today's when its textures are missing.
     internal static class PackFxHitsChecks
     {
@@ -21,6 +21,7 @@ namespace ChipArena.UnityConversion
             Muzzle(root,R);
             Blood(root,R);
             Impacts(root,R);
+            Trails(root,R);
             Console.WriteLine("PASS pack fx hits: "+count+" checks");
         }
 
@@ -134,6 +135,41 @@ namespace ChipArena.UnityConversion
             Check(impacts.Contains("NativePackBanks.Texture(NativeSurfaceImpacts.HoleTexture(k))")&&impacts.Contains("var hole=!own&&decals[k]!=null?"),"the bank's hole only where the bake lacks the kind");
             var doc=File.ReadAllText(Path.Combine(root,"../../docs/PACK-EFFECTS.md"));var request=Between(doc,"Local session: add these kinds to the impacts bake","\n## ");
             foreach(var (kind,prefab) in new[]{("brick","BrickImpact"),("glass","GlassImpact"),("dirt","DirtImpact"),("rock","RockImpact"),("plaster","PlasterImpact"),("water","WaterImpact")})Check(request.Contains("VisualImpacts/"+kind)&&request.Contains(prefab+".prefab"),"the bake request names "+kind+" and "+prefab);
+        }
+
+        // D. Afterimages: the motion triggers (with the pack look only) and the trails look on the copies.
+        private static void Trails(string root,Func<string,string> R)
+        {
+            Actor A(string spec="sword")=>new Actor{SourceSpec=spec,Hp=100};
+            var roll=A();roll.RollAt=1;roll.VisualRollDuration=.3f;
+            Check(NativeAfterimages.Trigger(roll,1.1f,-100,-100,-100,out double k0)==NativeAfterimages.Roll&&k0==1,"the roll is still a trigger, keyed by its start");
+            var sa=A();sa.SprintAttack=true;sa.SwingAt=2;sa.SwingUntil=2.25f;
+            Check(NativeAfterimages.Trigger(sa,2.1f,-100,-100,-100,out double k1)==NativeAfterimages.SprintAttack&&NativeAfterimages.Trigger(sa,2.3f,-100,-100,-100,out _)==NativeAfterimages.None&&NativeAfterimages.Trigger(sa,1.9f,-100,-100,-100,out _)==NativeAfterimages.None,"the sprint attack's swing window");
+            sa.SprintAttack=false;Check(NativeAfterimages.Trigger(sa,2.1f,-100,-100,-100,out _)==NativeAfterimages.None,"a plain swing leaves none");
+            var jump=A();jump.AirJumpAt=3;Check(NativeAfterimages.Trigger(jump,3.1f,-100,-100,-100,out double k2)==NativeAfterimages.AirJump&&NativeAfterimages.Trigger(jump,3f+(float)NativeAfterimages.AirJumpWindow+.01f,-100,-100,-100,out _)==NativeAfterimages.None,"an air jump's first moment");
+            Check(NativeAfterimages.Trigger(A(CyberLordSpec.Id),5.1f,-100,5,5.3f,out double k3)==NativeAfterimages.Dash&&NativeAfterimages.Trigger(A(CyberLordSpec.Id),5.4f,-100,5,5.3f,out _)==NativeAfterimages.None,"the Cyber Lord's dash window");
+            var run=A();run.Sprinting=true;Check(NativeAfterimages.Trigger(run,6.5f,6,-100,-100,out double k4)==NativeAfterimages.Sprint&&NativeAfterimages.Trigger(run,7.1f,6,-100,-100,out _)==NativeAfterimages.None,"a sprint's first second");
+            run.Sprinting=false;Check(NativeAfterimages.Trigger(run,6.5f,6,-100,-100,out _)==NativeAfterimages.None,"not once the sprint ends");
+            Check(new[]{k0,k1,k2,k3,k4}.Distinct().Count()==5,"each trigger keys its own copies");
+            foreach(var spec in new[]{"ansatsuken","siren"}){var x=A(spec);x.RollAt=1;x.VisualRollDuration=.3f;x.SprintAttack=true;x.SwingAt=1;x.SwingUntil=1.3f;x.AirJumpAt=1;x.Sprinting=true;Check(NativeAfterimages.Trigger(x,1.1f,1,1,1.3f,out _)==NativeAfterimages.None,spec+" keeps its own (no copies)");}
+            var dead=A();dead.Hp=0;dead.AirJumpAt=1;Check(NativeAfterimages.Trigger(dead,1.1f,-100,-100,-100,out _)==NativeAfterimages.None,"not the dead");
+            Check(NativeAfterimages.SpacingOf(NativeAfterimages.Roll,1)==NativeAfterimages.Spacing&&NativeAfterimages.SpacingOf(NativeAfterimages.Roll,.3f)==NativeAfterimages.ReducedSpacing&&NativeAfterimages.SpacingOf(NativeAfterimages.Sprint,1)>NativeAfterimages.SpacingOf(NativeAfterimages.AirJump,1)&&NativeAfterimages.SpacingOf(NativeAfterimages.AirJump,.3f)>NativeAfterimages.SpacingOf(NativeAfterimages.AirJump,1),"the roll's spacing as before; the sprint's wider; sparser with Reduced effects");
+            var ghosts=new NativeAfterimages();Check(!ghosts.Due(1,System.Numerics.Vector3.Zero,7,7,1,1.2)&&!ghosts.Due(1,new System.Numerics.Vector3(1.1f,0,0),7,7.1,1,1.2)&&ghosts.Due(1,new System.Numerics.Vector3(1.2f,0,0),7,7.1,1,1.2),"a trigger's own spacing");
+            Check(NativeAfterimages.LifeShare(0)==0&&NativeAfterimages.LifeShare(NativeAfterimages.Life)==1&&NativeAfterimages.LifeShare(-1)==0&&Math.Abs(NativeAfterimages.LifeShare(NativeAfterimages.Life/2)-.5f)<1e-5f,"the copy's life share");
+            var sel=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/pack_bank/selections/fx-trails.json"))).RootElement;
+            Check(sel.GetProperty("textures").EnumerateArray().Select(t=>t.GetProperty("id").GetString()).SequenceEqual(new[]{NativeAfterimages.RampId})&&!sel.TryGetProperty("bank",out _),"fx-trails.json holds the ramp, texture only");
+            string fx=Code(R("Runtime/NativeWeaponFxPresentation.cs")),body=Code(R("Runtime/NativeVisualBodyPresentation.cs")),shader=R("Resources/NativeAfterimage.shader");
+            var pack=Between(fx,"private bool PackTrails","private string PackModel(");
+            Check(pack.Contains("if(LowGraphics)return false;")&&pack.Contains("var ramp=NativePackBanks.Texture(NativeAfterimages.RampId);var shader=ramp!=null?Resources.Load<Shader>(\"NativeAfterimage\"):null;")&&pack.Contains("Shader.SetGlobalTexture(AfterimageRampId,ramp);packTrailsState=1;"),"the pack look only off the low tier, with the ramp and the shader");
+            var loop=Between(fx,"private void Afterimages(Snapshot s,float time)","private bool PackAfterimage(");
+            Check(loop.Contains("int motionLeft=pack?NativeAfterimages.MotionPerFrame:0;")&&loop.Contains("if(trigger==NativeAfterimages.None&&motionLeft>0)")&&loop.Contains("NativeAfterimages.MotionRange*NativeAfterimages.MotionRange")&&loop.Contains("else motionLeft--;"),"the motion triggers only with the pack look, a few a frame, near the camera");
+            Check(loop.Contains("if(trigger==NativeAfterimages.Roll){if(!afterimages.Due(a.Id,at,a.RollAt,time,q))continue;}")&&loop.Contains("afterimagePack[slot]=pack;")&&loop.Contains("if(afterimagePack[k]&&PackAfterimage(k,pose,tint,opacity,time))continue;"),"the roll as before; a copy keeps the look it was taken with");
+            Check(Between(fx,"private bool PackAfterimage(","/// <summary>The charge orb").Contains("VisualEchoDraw(afterimageEchoes[k],\"NativeAfterimage\",tint,opacity,")&&body.Contains("visualPackEchoBlock.SetVector(VisualGhostAccent,accent);"),"the model's echoes take the look with their life in the accent tint");
+            Check(shader.Contains("Blend One One")&&shader.Contains("ZWrite Off")&&shader.Contains("Offset [_EchoOffset],[_EchoOffset]")&&shader.Contains("UNITY_DEFINE_INSTANCED_PROP(float4,_AccentTint)")&&shader.Contains("#pragma multi_compile_instancing")&&shader.Contains("\"Queue\"=\"Transparent+1\""),"additive, instanced, offset like the ghosts");
+            var block=Code(Between(shader,"AFTERIMAGE SHARED BEGIN","AFTERIMAGE SHARED END"));
+            Check(block.Length>100&&!block.Contains("tex2D")&&!block.Contains("mul(")&&Regex.Matches(block,@"(?<![\w.])\d+(?![\w.])").Count==0,"the afterimage block: float literals only, no texture reads");
+            Check(Regex.IsMatch(R("Resources/NativeAfterimage.shader.meta"),@"^guid: [0-9a-f]{32}$",RegexOptions.Multiline),"the afterimage shader has its .meta");
+            foreach(var f in new[]{"Runtime/NativeWeaponFxPresentation.cs","Resources/NativeAfterimage.shader","Core/NativeWeaponFx.cs"})foreach(string name in new[]{"Kronnect","StylizedRamp","TrailsFX"})Check(!R(f).Contains(name),"no pack names in "+f+": "+name);
         }
     }
 }

@@ -1208,6 +1208,16 @@ namespace ChipArena.UnityConversion
             var material=VisualEchoMaterial(shader);if(material==null)return;visualEchoBlock??=new MaterialPropertyBlock();visualEchoBlock.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));
             for(int i=0;i<echo.Count;i++){var mesh=echo.Meshes[i];if(mesh==null)continue;for(int sub=0;sub<mesh.subMeshCount;sub++)Graphics.DrawMesh(mesh,echo.At[i],material,0,null,sub,visualEchoBlock);}
         }
+        // The same through a shader that also reads the accent tint (the pack afterimage: the copy's life share and seed); false
+        // without the material (the caller draws the ghost).
+        private MaterialPropertyBlock visualPackEchoBlock;
+        private bool VisualEchoDraw(VisualEcho echo,string shader,Color tint,float opacity,Vector4 accent)
+        {
+            if(echo==null||echo.Count==0)return false;var material=VisualEchoMaterial(shader);if(material==null)return false;if(!(opacity>0))return true;
+            visualPackEchoBlock??=new MaterialPropertyBlock();visualPackEchoBlock.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));visualPackEchoBlock.SetVector(VisualGhostAccent,accent);
+            for(int i=0;i<echo.Count;i++){var mesh=echo.Meshes[i];if(mesh==null)continue;for(int sub=0;sub<mesh.subMeshCount;sub++)Graphics.DrawMesh(mesh,echo.At[i],material,0,null,sub,visualPackEchoBlock);}
+            return true;
+        }
         // The ghost shader's material for the model's echoes and live ghosts (a little toward the eye where the shader has the
         // offset); null where the shader is missing.
         private Material VisualEchoMaterial(string shader)

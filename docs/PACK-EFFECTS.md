@@ -274,9 +274,44 @@ no decal, scripts or lights in `Effect`):
 Each `Decal` is the same 0.14 m alpha-blended quad as the first three's. Until an entry is baked, its kind plays the stone
 entry (with the bank's hole where listed above), so the bake can add them one at a time.
 
+## Afterimage trails (2026-10-28, `claude/pack-fx-hits`)
+
+Owner (2026-10-28): "Im fine with using Kronnect Trails FX wherever it fits".
+
+- **What it does:** the afterimages (`Core/NativeAfterimages`: mesh snapshots of the posed pilot, the voxel parts or the
+  model's baked echo) take a motion-trail look, and more moves leave them.
+- **Look** (`Resources/NativeAfterimage.shader`, our own; Trails FX is the reference, its code is not used):
+  - a faint body and a strong fresnel rim in the pilot's accent, as before;
+  - over the copy's life its brightness follows the pack's colour ramp (`StylizedRamp1` from the pack's sample presets,
+    selection `tools/pack_bank/selections/fx-trails.json`): white-hot when new, streaked as it ages; the accent keeps the
+    hue;
+  - it dissolves along the ramp's streaks and fine scanlines under a front that rises with its age, the front hot;
+  - it stands off its surface by 2.2 cm as it appears and settles as it goes.
+- **Triggers** (`NativeAfterimages.Trigger`, presentation only, from replicated state):
+  - the roll, as before;
+  - the sprint attack's swing window (`Actor.SprintAttack` within `SwingAt`..`SwingUntil`);
+  - an air jump's first 0.3 s (`Actor.AirJumpAt`);
+  - the Cyber Lord's data dash (its Q window, `CyberLordView.At`/`Until`);
+  - the first second of a sprint (`Actor.Sprinting`'s rising edge as the presentation sees it).
+
+  The Ansatsuken (its Demon Step ghosts) and the Siren stay excluded. Copies every 0.75 m (the sprint's 1.25 m, sparser
+  with Reduced effects; the roll's 0.6 m as before).
+- **Cost and tiers:** a copy of a pilot drawn as the model bakes its skinned mesh, so the new triggers take at most two new
+  copies a frame, only of pilots within 30 m of the camera, in the same 24-slot ring. The low graphics tier, and any build
+  without the ramp or the shader, keep exactly today's: the roll alone, on the fresnel ghost.
+- **Animation impacts:** none: the copies read the posed rigs; hit timing, hitboxes, damage, cooldowns, movement and the
+  network frame are unchanged.
+- **Checks:** `CoreTests --pack-fx-hits` (each trigger's window and key, the exclusions, the spacing, the life share, the
+  selection, the tier and texture gate, the shader's block); `--muzzle-flash` (WeaponFxChecks' afterimage rules and pins)
+  and `--visual-rig` (the echoes) passing.
+- **Renders:** strips of six copies 0.06-0.37 s old behind a voxel runner, three accents, dark and bright, today's ghost
+  beside the pack look, through the game's bloom.
+- **Not yet:** seen on the model's echoes in the Editor; the triggers seen in a match.
+
 ## Candidates from the same drive (not started)
 
-- **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles, muzzle flashes, explosions and magic in the toon style.
-- **Kronnect's Trails FX:** afterimages for rolls, dashes and sprint attacks.
+- **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles, explosions and magic in the toon style (Epic Toon FX's blood
+  splats are in, above; the muzzle flashes came from kripto289's pack).
+- **Kronnect's Trails FX:** started (afterimage trails, above).
 
 Each would follow the same route: converted at the bake, drawn from events, presentation only.

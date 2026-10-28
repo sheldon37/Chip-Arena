@@ -246,12 +246,46 @@ namespace ChipArena.UnityConversion
         public static bool Eligible(Actor a,float time)=>a!=null&&a.Alive&&a.SourceSpec!="ansatsuken"&&a.SourceSpec!="siren"&&a.Rolling(time);
         /// <summary>A rolling pilot at `position`: true when it has travelled Spacing since its last copy of this roll (the
         /// first copy is taken one spacing into the roll, so the ghosts trail behind it).</summary>
-        public bool Due(int owner,Vector3 position,double rollAt,double now,float quality)
+        public bool Due(int owner,Vector3 position,double rollAt,double now,float quality)=>Due(owner,position,rollAt,now,quality,quality<.5f?ReducedSpacing:Spacing);
+        /// <summary>The same with its own spacing (m): the motion triggers' (SpacingOf).</summary>
+        public bool Due(int owner,Vector3 position,double rollAt,double now,float quality,double spacing)
         {
             if(now<rollAt)return false;
             if(!last.TryGetValue(owner,out var l)||l.Roll!=rollAt){last[owner]=(position,rollAt);return false;}
-            return Vector3.Distance(position,l.At)>=(quality<.5f?ReducedSpacing:Spacing);
+            return Vector3.Distance(position,l.At)>=spacing;
         }
+
+        /// <summary>
+        /// The motion triggers beside the roll (owner 2026-10-28: the motion-trails pack "wherever it fits"), taken
+        /// only with the pack look (Runtime: the ramp texture through the bank, off on the low graphics tier, so without it the
+        /// roll is the only trigger, as before): the sprint attack's swing window (Actor.SprintAttack within SwingAt..SwingUntil),
+        /// an air jump's first AirJumpWindow s (Actor.AirJumpAt), the Cyber Lord's data dash (its Q window, handed in) and the
+        /// first SprintWindow s of a sprint (its start as the presentation saw it). Not the Demon Step's Ansatsuken nor the Siren,
+        /// as the roll. `key` tells one trigger's copies from the next (its start, offset by the kind).
+        /// </summary>
+        public const int None=0,Roll=1,SprintAttack=2,AirJump=3,Dash=4,Sprint=5;
+        public const double AirJumpWindow=.3,SprintWindow=1,SprintSpacing=1.25,MotionSpacing=.75,ReducedMotionSpacing=1.4;
+        /// <summary>At most this many copies a frame from the motion triggers (each copy of a pilot drawn as the model bakes its
+        /// skinned mesh), and only of pilots within MotionRange of the camera (m).</summary>
+        public const int MotionPerFrame=2;public const float MotionRange=30;
+        /// <summary>The pack look's colour ramp in the bank (tools/pack_bank/selections/fx-trails.json): across it the copy's life,
+        /// along it streaks the shader reads by height.</summary>
+        public const string RampId="trails-ramp";
+        public static int Trigger(Actor a,float time,float sprintAt,float dashAt,float dashUntil,out double key)
+        {
+            key=0;if(a==null||!a.Alive||a.SourceSpec=="ansatsuken"||a.SourceSpec=="siren")return None;
+            if(a.Rolling(time)){key=a.RollAt;return Roll;}
+            if(dashUntil>dashAt&&time>=dashAt&&time<dashUntil){key=dashAt+4e4;return Dash;}
+            if(a.SprintAttack&&time>=a.SwingAt&&time<a.SwingUntil){key=a.SwingAt+2e4;return SprintAttack;}
+            if(a.AirJumpAt>-50&&time>=a.AirJumpAt&&time<a.AirJumpAt+AirJumpWindow){key=a.AirJumpAt+3e4;return AirJump;}
+            if(a.Sprinting&&sprintAt>-50&&time>=sprintAt&&time<sprintAt+SprintWindow){key=sprintAt+5e4;return Sprint;}
+            return None;
+        }
+        /// <summary>A trigger's spacing (m): the roll's as before, the sprint's wider (it covers more ground), the others'
+        /// between; sparser with Reduced effects.</summary>
+        public static double SpacingOf(int trigger,float quality)=>trigger==Roll?(quality<.5f?ReducedSpacing:Spacing):quality<.5f?ReducedMotionSpacing*(trigger==Sprint?1.4:1):trigger==Sprint?SprintSpacing:MotionSpacing;
+        /// <summary>A copy's life share at `age` (0 new, 1 gone): the pack look's colour ramp, dissolve and swell read it.</summary>
+        public static float LifeShare(double age)=>(float)Math.Max(0,Math.Min(1,age/Life));
         public int Take(int owner,Vector3 position,double rollAt,double now,float quality)
         {int slot=index++%(quality<.5f?ReducedSlots:Slots);if(index>=Slots*1000)index=0;At[slot]=now;Owner[slot]=owner;last[owner]=(position,rollAt);return slot;}
         public bool Live(int slot,double now){double age=now-At[slot];return age>=0&&age<Life;}
