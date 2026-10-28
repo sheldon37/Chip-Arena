@@ -30,6 +30,9 @@ namespace ChipArena.UnityConversion
         private readonly AudioSource[] shotAudio=new AudioSource[24];
         private int nextAudio;
         public int LocalId=1;
+        /// <summary>This client's own pilot (its seat id): the one wearing the Locker's outfit (VisualLookOf). LocalId is the
+        /// pilot the view follows, which a spectated view, a L33t H4x possession and the killcam replay move to another pilot.</summary>
+        public int OwnId=1;
         public bool SoundEnabled=true;
         public float LastHitUntil,LastHitDamage;
         public bool LastHeadshot;

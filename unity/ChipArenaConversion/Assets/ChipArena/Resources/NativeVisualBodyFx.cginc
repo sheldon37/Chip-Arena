@@ -42,6 +42,22 @@ void SpawnClip(float3 world)
  float s=SpawnSolid(world.y);
  if(s<0.999)clip(s-max(frac(sin(dot(floor(world*120.0),float3(12.9898,78.233,37.719)))*43758.5453),0.001));
 }
+// A directed entrance's per-bone reveal (Runtime/NativeVisualBodyPresentation.cs VisualRevealLook: the voxel parts'
+// partOpacity, the Sheldon Intro's glitch drop-outs): each game bone a world segment, _RevealA[k].xyz to _RevealB[k].xyz,
+// and its solid share (_RevealA[k].w). A pixel takes its nearest segment's share and is dithered by it in SpawnClip's world
+// cells, so a bone of the model drops out or flickers in as the voxel part does. With _RevealOn 0 nothing is read or cut.
+float _RevealOn;float4 _RevealA[21];float4 _RevealB[21];
+void RevealClip(float3 world)
+{
+ if(_RevealOn<0.5)return;
+ float best=1e9;float share=1.0;
+ for(int k=0;k<21;k++)
+ {
+  float3 a=_RevealA[k].xyz,ab=_RevealB[k].xyz-a;float t=saturate(dot(world-a,ab)/max(dot(ab,ab),1e-6));float3 d=world-(a+ab*t);
+  float e=dot(d,d);if(e<=best){best=e;share=_RevealA[k].w;}
+ }
+ if(share<0.999)clip(share-max(frac(sin(dot(floor(world*120.0),float3(12.9898,78.233,37.719)))*43758.5453),0.001));
+}
 // The spawn-in's hardlight tint (SpawnTintOf): the tint colour by its share, hottest where the body has just formed, then
 // the completion flash toward white.
 float3 SpawnTinted(float3 c,float y)

@@ -210,7 +210,7 @@ namespace ChipArena.UnityConversion
             }
             // The DEV fly camera (NativeDevPanel.cs) replaces the view after the pilot camera and its shakes; presentation only.
             DevCamera();
-            presentation.SoundEnabled=false;presentation.LocalId=arena.ViewPilot.Seat.id;
+            presentation.SoundEnabled=false;presentation.OwnId=arena.LocalId;presentation.LocalId=arena.ViewPilot.Seat.id;
             float renderTime=arena.Replica?arena.ReplicaRenderTime:visualClock.Sample(match.Time,Time.timeAsDouble-Time.fixedTimeAsDouble,menu);
             long snapshotAt=System.Diagnostics.Stopwatch.GetTimestamp();var frame=arena.Snapshot(true);hitchSnapshot+=HitchMs(snapshotAt);
             // Melee hit kick (Core/NativeHitReact): first person, a live local view and Settings · camera shake on (reduced

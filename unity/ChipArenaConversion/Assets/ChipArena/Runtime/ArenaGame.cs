@@ -164,7 +164,7 @@ namespace ChipArena.UnityConversion
             if(snapshot!=null)
             {
                 float t=snapshot.Tick*Rules.Dt+(session==Session.Guest?Mathf.Min(.1f,Time.unscaledTime-lastStateAt):0);
-                presentation.LocalId=session==Session.Guest?2:1; presentation.Render(snapshot,t,session==Session.Guest);
+                presentation.LocalId=presentation.OwnId=session==Session.Guest?2:1; presentation.Render(snapshot,t,session==Session.Guest);
             }
             if(!cameraUpdated) UpdateCamera(); UpdateMetrics();
         }
