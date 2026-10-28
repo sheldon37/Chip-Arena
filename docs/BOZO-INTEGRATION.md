@@ -1566,8 +1566,10 @@ already? Cant we utilize that?"
       bodies and death scenes.
     - From then on only the worn renderers are listed, so ghosts, echoes and cut corpses never see hidden pieces.
     - A changed outfit makes the body again. The gear takes the top's anchors, with one device model per sleeve radius.
-  - **The Locker:** Appearance has an OUTFIT section while the model draws, one row of chips per slot. Save Pilot keeps it,
-    and Revert and the unsaved-changes baseline cover it.
+  - **The Locker:** Appearance has an OUTFIT section while the model draws. Save Pilot keeps it, and Revert and the
+    unsaved-changes baseline cover it. Since 2026-10-28 it is one fixed-height row a slot (`NativeOutfitPicker` in
+    `Runtime/NativeLockerOutfitUI.cs`): the slot's icon and name, then wrapping arrows round the worn piece's name and a
+    dot a piece. Two columns from 700 px. More pieces add dots (a count past 14), not rows.
   - **Install:** the body grew to 58.2 MB. The installer's budget is now 72 MB, and the zip's member total cap 96 MiB
     (`tools/install_local_assets.py`).
 - **Cloth (step 5, 2026-10-26):**

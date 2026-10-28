@@ -1,3 +1,18 @@
+## 2026-10-28 — Claude: Locker OUTFIT picker: an icon and arrows a slot instead of a chip a piece (merged into shared)
+
+- **Branch/base:** `claude/locker-outfit-carousel` from shared `2e3fc00`. No PR; fast-forwarded into shared and the builder by Claude.
+- **Owner (2026-10-28):** "It clutters a bit much with the buttons for clothing pieces (I do plan to add more, so maybe we can do some kind of Icon with arrows to the left and right?) Whatever works best, I will take a design recommendation here instead if needed. Just want a very clean looking UI~".
+- **Changes (menu presentation only, `Runtime/NativeLockerOutfitUI.cs`):**
+  - New `NativeOutfitPicker`: one 52 px row a slot (hair, top, bottoms, hands, shoes), the same height however many pieces a slot holds.
+  - The left of a row: a line icon a slot (own SVG, drawn through `NativeIcons.DrawMarkup`), in the accent while the slot wears a non-default piece, then the slot name.
+  - The right of a row: previous and next round buttons (wrapping) round the worn piece's name, which slides 14 px in from the side it came from (.18 s). A DEV pill on a DEV piece. A dot a piece under the name: the worn one an orange bar, DEV pieces gold; a click on a dot wears it. Past 14 pieces a count ("3 / 20") replaces the dots.
+  - The carousel is at most 300 px against the row's right edge. Two columns from 700 px (1080p and up), one column below.
+  - Unchanged: the pick path (`NativeLook.With` through the DEV gate), Save, Revert, the unsaved baseline, the DEV list rule, `LookShown`.
+- **Checks:** `LockerChecks` pins the row-a-slot height, the wrapping arrows, the dot pick, an icon a slot and no per-frame allocation in a row. `VisualRigChecks` follows the DEV marker to the pill. BOZO-INTEGRATION's Locker line updated.
+- **Verification:** Unity Player/Runtime/Editor semantic compile OK; relay/CoreTests 861 PASS (Locker 1537 checks, visual rig), 35 managed-core checks; Python 166 tests OK (one Windows-only skip); source package (2746 files) and diff check pass. Offline IMGUI renders (the kit's real draw ops through the UI harness) at the Locker's real widths (643 px one column, 934 px two columns) and 2x, old grid vs new. Not run: the Unity Editor or a Windows player, so real hover animation and font hinting are not seen.
+- **Gameplay/animation:** none. No hit timing, hitboxes, damage, cooldowns, movement or networking touched; the outfit's wire format is unchanged.
+- **Next:** owner look in the real Locker. Further pieces need only `Core/NativeLook.cs` ids and labels plus the model's wardrobe pieces.
+
 ## 2026-10-28 — Claude: stage kits from the harbor kit bank (block props, harbour yards, the textured block variant) (merged into shared)
 
 - **Branch/base:** `claude/stage-kits` from `claude/pack-bank` (`55a6e5d`). No PR; merged into shared and the builder by
