@@ -1,3 +1,30 @@
+## 2026-10-28 — Claude: pack banks, the owner's packs without the Unity Editor (foundation; merged into shared)
+
+- **Branch/base:** `claude/pack-bank` from shared `8f8f3d8`. No PR; merged into shared and the builder. Nothing in the game changes look until the streams below land and the bank zip is installed.
+- **Owner (2026-10-28):** "Lets do all of those" (the in-place upgrades from the drive's packs); Kronnect Trails FX "wherever it fits"; pack muzzle flashes "as long as it produces proper glow + lighting"; the environment packs, UniStorm, Weather Maker, Volumetric Light Beam and Bakery too; "I want to have advanced lighting and much better environment + stage development ... (I still need to get rid of the old maps)"; "Do whatever needs to be done, and I can pass whatever needed to astra as well."
+- **Changes (presentation and tooling only):**
+  - `tools/pack_bank/` (standard library only, run with `python3 -I`): reads the owner's packs as data and writes banks and textures.
+    - Binary FBX is converted as Unity's importer does: node-space mesh, geometric offset, unit and scale factor, X mirror, root axis conversion.
+    - Also reads prefab and material YAML, and PSD, TGA and PNG images.
+    - Output goes under `Assets/LocalAssets/ChipArenaLocal/Resources` (banks `.bytes`, `PackBank/<id>.png` with import settings in the `.meta`), which `tools/pack_visual_body.py` already packs into the licensed-assets zip. Nothing is committed.
+  - `Core/NativePackBank` (format reader and writer, `Fit` of a prop in a box) and `Runtime/NativePackBanks` (Resources loader, built meshes, textures).
+    - A missing piece is a null, so today's look stays.
+    - `--ca-no-pack-banks` turns banks off.
+  - First selection `selections/kit-harbor.json`: 296 Toon Harbor props, 721 meshes, 5 atlases, 12.7 MB, built in 22 s.
+  - `tools/install_local_assets.py`: the visual-body budget goes to 160 MB and the zip's to 224 MiB, for the banks (Astra: tooling, please review).
+  - Docs: `docs/PACK-BANK.md` (the route), `docs/arenas/OLD-MAPS-REMOVAL.md` (refreshed ARENA_PROPOSAL §6.2 with current lines and a ready-to-paste Astra prompt).
+- **Streams started on this base** (each its own branch, reviewed and merged by Claude):
+  - `claude/stage-kits`: Toon Harbor props in place of box props, harbor backdrops, a Harbor stage proposal with an Astra contract.
+  - `claude/advanced-lighting`: a runtime light volume (GI/AO) for runtime-built maps, our own volumetric beams (VLB as reference), fog scattering, weather, a medium tier, and a Bakery note.
+  - `claude/pack-fx-hits`: pack muzzle flashes with glow and light, textured blood splats, impacts for every surface (plus a bake request), and Trails-FX-style afterimages.
+  - `claude/pack-fx-blasts`: Epic Toon FX sheets in the explosion renderer, and Magic Arsenal bolts and impacts per school.
+  - `claude/pack-weapons`: daggers, shield, bow and staffs on the model from Synty, polyperfect and RB models.
+  - `claude/station-sounds`: Central Station kind recordings from the sound packs (import batch for the private bank).
+- **Checks (actual):** `Tests/test_pack_bank.py` (10 tests: codecs, binary FBX, prefab flattening, the bank equal to `Tests/pack-bank-fixture.bytes`) OK; `CoreTests --pack-bank` 5469 checks PASS; run5b on `55a6e5d`: rc1-rc5 all 0 (Unity runtime and editor compile OK; relay with full CoreTests 855 PASS; Python 156 OK, 1 skipped; source package OK; diff check clean).
+- **Preview:** the converter's barrel, crate, forklift, container, streetlight, barrel cage and pallet rendered upright, at size, with correct atlas colours and the crate's logo (WebGL harness, local, not committed).
+- **Not run:** Unity Editor import of the bank's textures and `.bytes` (the `.meta` files follow the repository's own importer format); a Windows build; Play mode.
+- **Next:** review and merge the streams; one combined bank zip for the owner; the Astra prompt for old-map removal.
+
 ## 2026-10-27 — Claude: Sheldon's clothes on the model, and the Sheldon Head as a cloth hood (merged into shared)
 
 - **Branch/base:** `claude/sheldon-clothes` from shared `4310d477`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
