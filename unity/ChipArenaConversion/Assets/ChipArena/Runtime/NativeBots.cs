@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             bool obstacle=move.sqrMagnitude>.01f&&root.scene.GetPhysicsScene().Raycast(pos-Vector3.up*.4f,move.normalized,out _,1.1f,WorldMask,QueryTriggerInteraction.Ignore);
             if(obstacle){if(!Map.unity)move=NativeMeleeRules.Standard(p.Seat.spec)?MeleeApproachLane(p,move):move*.25f+Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*.4f)>0?1:-1);input.Jump=p.Grounded||p.AirJumps<NativeJumpSimulation.Budget(p.Seat.spec,p.Stats.Get("extraAirJumps"))&&p.Body.linearVelocity.y<=2;}
             if(NativeWhirlwindRules.Active(p.Special,Time))move=distance>1.8f?move:Vector3.zero;
-            else if(melee&&p.Stamina<p.Weapon.cost)move=-flat*.8f;
+            else if(melee&&p.Stamina<NativeMeleeFeel.Cost(p.Weapon,p.Stats))move=-flat*.8f;
             var clamped=ClampMap(pos,true);if(clamped.x!=pos.x)move.x=Math.Sign(clamped.x-pos.x);if(clamped.z!=pos.z)move.z=Math.Sign(clamped.z-pos.z);
             input.X=Mathf.Clamp(move.x,-1,1);input.Z=Mathf.Clamp(move.z,-1,1);input.Shoot=melee?distance<p.Weapon.range*1.25:visible||obstacle;input.Reload=p.Weapon.ammo>0&&(p.Ammo==0||p.Seat.spec!="rifle"&&p.Ammo<2);
             if(NativeMeleeRules.Standard(p.Seat.spec))
@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
             if(p.Seat.spec=="cyberlord"){BotCyber(p,ref input,target,distance,visible);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){BotMeleeAbilities(p,ref input,target,distance,visible,level);return;}
             if(!FighterReady(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.AttackEnd&&!(Dev(p,"emperor")&&p.Fighter?.Kind=="wave"))return;
-            if(p.Fighter?.Kind=="charge"){input.HadokenHeld=visible&&Time-p.Fighter.At<1.45f&&p.Stamina>=30*p.Stats["resourceCost"];input.Shoot=input.Roll=false;return;}
+            if(p.Fighter?.Kind=="charge"){input.HadokenHeld=visible&&Time-p.Fighter.At<1.45f&&p.Stamina>=30*p.Stats["resourceCost"]*NativeMeleeFeel.StaminaCostMultiplier;input.Shoot=input.Roll=false;return;}
             if(!visible)return;
             bool Ready(ContentAbility d)=>d!=null&&d.live&&d.kind!="ads"&&(!NativeRangedRules.Q(d.id)||RangedQReady(p,d))&&(d.slot=="q"?Time>=p.QReady:p.ECharges>0)&&p.Mana>=NativeAbilityRules.Cost(d,p.Stats)&&distance>=NativeBotRules.Ability(d.id).min&&distance<=NativeBotRules.Ability(d.id).max;
             var q=Content.Ability(p.Seat.spec,"q");var e=Content.Ability(p.Seat.spec,"e");var cast=q?.id=="tidal-wave"&&distance<6&&Ready(q)?q:Ready(e)?e:Ready(q)?q:null;

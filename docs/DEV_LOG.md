@@ -1,5 +1,16 @@
 ## 2026-10-28 — Claude: pack effects for hits and motion: muzzle flashes, blood splats, impacts for every surface, afterimage trails (merged into shared)
 
+
+## 2026-10-28 — Codex: melee stamina and sprint reductions (implemented on task branch)
+
+- Branch/base: `codex/stamina-reduction-20261028`, shared `claude/sleepy-ritchie-g8ruhv` at `4ecd806a`.
+- Owner request: melee stamina consumption about one tenth; substantially cheaper sprinting.
+- Melee primaries (including air/sprint attacks and extra strikes), standard melee Q/E, and Ansatsuken/Emperor stamina attacks now cost 10% of their previous amount. Chip multipliers remain multiplicative. Fighter charge admission and bot funding checks follow the reduced costs. Roll costs and hostile stamina drains are unchanged.
+- Sprint drain is 6/s instead of 12/s, using Rules.SprintDrain in both native movement paths and the managed simulation. Speed, regeneration and exhaustion behavior are unchanged.
+- No animation timing, hitboxes, damage, cooldown or wire-format changes. Updated native validation expectations and added numeric cost/chip/non-melee regressions to SprintAttackChecks.
+- Checks: git diff --check clean; managed melee kit, Whirlwind, melee feel, sprint attacks and prediction regressions passed. Pinned Unity 6000.3.24f1 Runtime/Editor compilation passed. Python: 158 tests OK (1 skipped). Full managed suite stopped at Transitions/loading: warm-up instanced shader set mismatch (includes NativeAfterimage); this change does not touch those shaders or warm-up code. Baseline reproduction not run.
+- Status: locally committed only; automatic approval review blocked GitHub push pending explicit user authorization for source/log disclosure. Not merged or published. Windows gameplay and multiplayer play testing not run here. Next: obtain push authorization, open PR, resolve/verify the shader-check blocker before builder synchronization/publication.
+
 - **Branch/base:** `claude/pack-fx-hits` from `claude/pack-bank` `55a6e5d` (its `606c39c` docs merged in). No PR; merged into shared and the builder by Claude after review.
 - **Owner (2026-10-28):** muzzle flashes "would be okay (Im okay with combining certain things like effects and lighting with realistic looks) Of course, as long as it produces proper glow + lighting"; "Im fine with using Kronnect Trails FX wherever it fits"; the blood and surface impact upgrades approved.
 - **Changes (presentation only; details in PACK-EFFECTS, four sections):**

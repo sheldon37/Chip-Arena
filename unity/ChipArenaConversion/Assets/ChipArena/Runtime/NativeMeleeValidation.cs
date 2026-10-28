@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
             {
                 foreach(string spec in new[]{"sword","daggers","greatsword","shield"})
                 {
-                    Setup(spec);Check(TryMelee(a),"primary refused "+spec);NearNative(a.Stamina,100-(float)a.Weapon.cost,"stamina cost");
+                    Setup(spec);Check(TryMelee(a),"primary refused "+spec);NearNative(a.Stamina,100-NativeMeleeFeel.Cost(a.Weapon,a.Stats),"stamina cost");
                     Check(!TryBlock(a),"block cancelled a committed primary");StepMelee(a);Check(b.Hp==100,"windup hit early");
                     Position(b,new Vector3(1000,100,998));Advance(a.Swing.HitAt-Time+.001f);StepMelee(a);Check(b.Hp==100,"rear target hit");
                     Position(b,new Vector3(1000,100,1002));Advance((a.Swing.HitAt+a.Swing.HitUntil)/2-Time);StepMelee(a);

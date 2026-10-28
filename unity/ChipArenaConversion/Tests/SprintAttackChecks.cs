@@ -9,6 +9,26 @@ internal static class SprintAttackChecks
     public static void Run(ConversionContent data)
     {
         string[] specs={"sword","daggers","shield","greatsword"};
+        Check(Near(Rules.SprintDrain,6),"sprint drains six stamina per second");
+        foreach(var spec in specs)
+        {
+            var stats=NativeContentRules.Stats(data,spec,new Dictionary<string,int>());
+            var weapon=data.Weapon(spec);
+            Check(Near(NativeMeleeFeel.Cost(weapon,stats),(float)weapon.cost/10),"90% cheaper primary "+spec);
+            stats["extraStrikes"]=2;stats["resourceCost"]=.8;stats["abilityCost"]=.7;
+            Check(Near(NativeMeleeFeel.Cost(weapon,stats),(float)((weapon.cost+4)*.08)),"extra strikes and resource chips scale once "+spec);
+            foreach(var slot in new[]{"q","e"})
+            {
+                var ability=data.Ability(spec,slot);
+                Check(Near(NativeAbilityRules.Cost(ability,stats),(float)(ability.cost*.056)),"90% cheaper ability with chips "+spec+slot);
+            }
+        }
+        foreach(var spec in new[]{"fire","rifle"})
+        {
+            var stats=NativeContentRules.Stats(data,spec,new Dictionary<string,int>());
+            var ability=data.Ability(spec,"q");
+            Check(Near(NativeAbilityRules.Cost(ability,stats),(float)ability.cost),"non-melee ability unchanged "+spec);
+        }
         float[] wind={.16f,.12f,.12f,.48f},active={.18f,.24f,.16f,.16f},recovery={.45f,.25f,.5f,.7f},distance={2.2f,2.6f,2,2.4f},scale={1.2f,.7f,.9f,1.4f};
         NativePredictionState State(string spec)=>new NativePredictionState{Time=1,MeleeWeapon=data.Weapon(spec),MeleeStats=NativeContentRules.Stats(data,spec,new Dictionary<string,int>()),CanMove=true,CanSprint=true,Grounded=true,Stamina=100,Combo=-1,BufferUntil=-1,Gravity=23,Speed=6.8f};
         for(int i=0;i<specs.Length;i++)foreach(float rate in new[]{.5f,1,2})
