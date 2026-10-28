@@ -139,3 +139,25 @@ test('Cyber Lord skin survives save, reload and login in native order without un
   }
  }finally{f.db.close();}
 });
+
+test('outfits and face gear persist; DEV clothes cannot be forged or retained after revocation',async()=>{
+ const f=await fixture();try{
+  const user:any=await(await f.request('register',{username:'outfits',password})).json();
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  for(const [pilot,allowed] of [[user,false],[dev,true]] as const){
+   const look='feet:barefoot,upper:sheldon-robe,lower:sheldon-pants,hair:wild,hands:gloves,unknown:foo';
+   const saved:any=await(await f.request('profile',{revision:0,profile:{cosmetics:{look,weaponSkins:'face:visor',developer:true}}},pilot.session)).json();
+   const expected=allowed?'hair:wild,upper:sheldon-robe,lower:sheldon-pants,hands:gloves,feet:barefoot':'hair:wild,hands:gloves';
+   assert.equal(saved.account.profile.cosmetics.look,expected);
+   const reread:any=await(await f.request('me',undefined,pilot.session)).json();
+   assert.equal(reread.account.profile.cosmetics.look,expected);assert.equal(reread.account.profile.cosmetics.weaponSkins,'face:visor');
+  }
+  let revision=1;
+  for(const [look,expected] of [[' upper:hard-jacket ,feet:work-boots,hair:wild','hair:wild,upper:hard-jacket,feet:work-boots'],['hair:wild,hair:spiky',''],['upper:tee,upper:invalid','upper:tee'],['__proto__:x,constructor:x',''],[null,''],[42,''],['x'.repeat(513),''],['','']] as const){
+   const r=await f.request('profile',{revision:revision++,profile:{cosmetics:{look,weaponSkins:'face:mask,face:mask-visor'}}},user.session);assert.equal(r.status,200);const v:any=await r.json();assert.equal(v.account.profile.cosmetics.look,expected);assert.equal(v.account.profile.cosmetics.weaponSkins,'');
+  }
+  // Re-read sanitizes stored selections with current account authority, not the original save's status.
+  f.db.sql.prepare('UPDATE player_accounts SET developer=0 WHERE id=?').run(dev.account.id);
+  const revoked:any=await(await f.request('me',undefined,dev.session)).json();assert.equal(revoked.account.profile.cosmetics.look,'hair:wild,hands:gloves');
+ }finally{f.db.close();}
+});

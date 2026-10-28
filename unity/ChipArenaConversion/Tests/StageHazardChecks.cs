@@ -17,7 +17,7 @@ internal static class StageHazardChecks
         var set=JsonSerializer.Deserialize<UnityMapContent>(json,opt);var city=set.maps.Single(m=>m.id=="cybercity");var factory=set.maps.Single(m=>m.id=="factory");
         foreach(var map in new[]{city,factory})
         {
-            NativeMapRules.Validate(map);Check(!map.rotation,"excluded from random");Check(map.hazards.Length==(map==city?3:11),"hazard inventory");Check(map.blocks.Length==(map==city?702:353),"original block inventory");
+            NativeMapRules.Validate(map);Check(map.rotation,"modern arena included in random");Check(map.hazards.Length==(map==city?3:11),"hazard inventory");Check(map.blocks.Length==(map==city?702:353),"original block inventory");
             var nodes=map.nav.nodes.ToDictionary(n=>n.id);var adj=nodes.Keys.ToDictionary(id=>id,id=>new List<string>());
             // With every hazard-tagged link shut, the safe ground routes still connect every spawn.
             foreach(var l in map.nav.links.Where(l=>(l.hazards?.Length??0)==0)){adj[l.a].Add(l.b);adj[l.b].Add(l.a);}
@@ -78,7 +78,7 @@ internal static class StageHazardChecks
         var saw=factory.hazards.First(h=>h.kind=="saw-slot");var state=NativeFactoryHazards.State(saw,0,saw.start+saw.warn+saw.rise+1);
         Check(NativeStageHazards.FactoryBox(saw,state,out c,out z)&&Math.Abs(c.y-z.y/2)<.0001,"slot clips to floor");
         Check(NativeStageHazards.Touch(new V3(c.x,.85f,c.z),c,z)&&!NativeStageHazards.Touch(new V3(c.x,.85f,c.z+.6f),c,z),"saw lethal line / .6 m aside");
-        var legacy=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),opt);foreach(var m in legacy.maps)m.hazards=new[]{mag};NativeMapRules.Merge(legacy,set,json);Check(legacy.maps.Where(m=>!m.unity).All(m=>m.hazards==null),"legacy inline hazards normalized");
+        var legacy=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),opt);foreach(var m in legacy.maps)m.hazards=new[]{mag};NativeMapRules.Merge(legacy,set,json);Check(legacy.maps.All(m=>m.unity),"legacy inline hazards normalized");
         Check(!NativeMapRules.Compatible(NativeConnection.Protocol,legacy.sourceCommit,NativeMapRules.Revision(json+" "),legacy),"exact content revision mismatch refused");
         Console.WriteLine("PASS stage simulation: both authored layouts, strict hazard schema, closed-hazard spawn routes, four cut ramps and independent landing-to-street nav routes, swept maglev, safe pockets/bridges, eight grid ticks, jumps, saw clearance, crane collider clock, legacy defaults and revision refusal");
     }

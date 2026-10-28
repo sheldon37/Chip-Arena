@@ -21,11 +21,17 @@ namespace ChipArena.UnityConversion
         {
             top=0;if(Event.current.type!=EventType.Repaint||presentation==null||!OnScreen(stage))return null;
             // On the model while it draws (Runtime/NativeVisualPortraitPresentation.cs): this client's own cards in its outfit and skins.
-            if(presentation.ModelPortraitFor(look)){presentation.ModelPortraitReduced=prefs.reducedEffects;return presentation.ModelPortrait(key,look,own?LookShown():"",PortraitSkins(look,own),stage.width,stage.height,U.S,out top);}
+            if(presentation.ModelPortraitFor(look)){presentation.ModelPortraitReduced=prefs.reducedEffects;return presentation.ModelPortrait(key,look,own?LookShown():PortraitOutfit(key),PortraitSkins(look,own),stage.width,stage.height,U.S,out top);}
             if(portraitRenderer==null){portraitRenderer=gameObject.AddComponent<NativePortraitRenderer>();portraitRenderer.Initialize(presentation,cameraView);}
             portraitRenderer.Reduced=prefs.reducedEffects;return portraitRenderer.Request(key,look,stage.width,stage.height,U.S,out top);
         }
         // A model portrait's skin map: this client's (with the shown body, which the Locker may be trying on), else the card's body.
+        private string PortraitOutfit(int key)
+        {
+            if(key>=20000&&key<20009)return arena?.Match?.Seat(key-20000)?.look??"";
+            if(key>=10000&&key<10009)foreach(var seat in RoomSeats)if(seat!=null&&seat.id==key-10000)return seat.look??"";
+            return "";
+        }
         private string portraitSkinsIn,portraitSkinsBody,portraitSkinsOut;
         private string PortraitSkins(in PortraitLook look,bool own)
         {

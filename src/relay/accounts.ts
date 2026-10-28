@@ -27,19 +27,33 @@ const LOBBY_BACKS=new Set(['tick-ring','clean-glow','sunburst','hex-field','circ
 // only non-default picks are kept, once per entry (the last wins), in entry order: the weapons, then the pilot's body (Core/
 // NativeBodySkins.cs: standard, prototype, or the DEV-only "sheldon" Sheldon Clothes, kept only on DEV accounts like the
 // Sheldon Head). Anything else is the Standard skin ('').
-const SKIN_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet','bow','cyberlord','body'];
+const SKIN_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet','bow','cyberlord','body','face'];
 const WEAPON_SKINS=new Set(['standard','prototype']);
+const FACE_SKINS=new Set(['mask-visor','visor','mask']);
 const BODY_SKINS=new Set(['standard','prototype','sheldon']);
 function weaponSkinMap(raw:unknown,developer=false){
  if(typeof raw!=='string'||!raw)return '';const picks=new Map<string,string>();
- for(const entry of raw.slice(0,4096).split(',')){const i=entry.indexOf(':');if(i<=0)continue;const spec=entry.slice(0,i).trim(),skin=entry.slice(i+1).trim();if(SKIN_WEAPONS.includes(spec)&&(spec==='body'?BODY_SKINS:WEAPON_SKINS).has(skin))picks.set(spec,skin);}
+ for(const entry of raw.slice(0,4096).split(',')){const i=entry.indexOf(':');if(i<=0)continue;const spec=entry.slice(0,i).trim(),skin=entry.slice(i+1).trim();if(SKIN_WEAPONS.includes(spec)&&(spec==='body'?BODY_SKINS:spec==='face'?FACE_SKINS:WEAPON_SKINS).has(skin))picks.set(spec,skin);}
  if(picks.get('body')==='sheldon'&&!developer)picks.delete('body');
- return SKIN_WEAPONS.filter(s=>picks.has(s)&&picks.get(s)!=='standard').map(s=>s+':'+picks.get(s)).join(',');
+ return SKIN_WEAPONS.filter(s=>picks.has(s)&&picks.get(s)!==(s==='face'?'mask-visor':'standard')).map(s=>s+':'+picks.get(s)).join(',');
+}
+// Mirrors NativeLook's canonical order and defaults. Outfit selections never affect gameplay.
+const LOOK_SLOTS:Record<string,string[]>={
+ hair:['spiky','wild','side-swept','tied-back','fringe-tail'],
+ upper:['open-hoodie','hard-jacket','hoodie','tee','tank','sweater','sheldon-robe'],
+ lower:['belted-pants','baggy-pants','skinny-jeans','cuffed-shorts','khakis','sheldon-pants'],
+ hands:['fingerless','gloves','arm-bands','sweat-bands','bare'],
+ feet:['mid-tops','work-boots','sneakers','lace-ups','sheldon-boots','barefoot']};
+const DEV_LOOK=new Set(['sheldon-robe','sheldon-pants','sheldon-boots','barefoot']);
+function lookMap(raw:unknown,developer=false){
+ if(typeof raw!=='string'||raw.length>512)return '';const picks=new Map<string,string>();
+ for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const slot=entry.slice(0,i).trim(),id=entry.slice(i+1).trim();if(Object.hasOwn(LOOK_SLOTS,slot)&&LOOK_SLOTS[slot].includes(id))picks.set(slot,id);}
+ return Object.keys(LOOK_SLOTS).filter(s=>picks.has(s)&&picks.get(s)!==LOOK_SLOTS[s][0]&&(developer||!DEV_LOOK.has(picks.get(s)!))).map(s=>s+':'+picks.get(s)).join(',');
 }
 function accountCosmetics(raw:any,a:Access){
  const clean=cosmetics(raw,a);
  const tint=(value:unknown)=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:'';
- return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&a.developer?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
+ return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&a.developer?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),look:lookMap(raw?.look,a.developer),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
 }
 function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
 function view(row:any){return {id:row.id,username:row.username,profileSchema:2,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}

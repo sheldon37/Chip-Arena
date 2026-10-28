@@ -75,7 +75,7 @@ def navigation(m):
 path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
 for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]:
-    m=draft(name,fn);m['music']=song;m['rotation']=False;navigation(m)
+    m=draft(name,fn);m['music']=song;m['rotation']=True;navigation(m)
     content['maps']=[old for old in content['maps'] if old['id']!=name]+[m]
 path.write_text(json.dumps(content,separators=(',',':'))+'\n')
 

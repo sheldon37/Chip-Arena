@@ -11,7 +11,15 @@ The 14 maps carried over from the Electron game are the whole Random rotation to
 This updates `docs/arenas/ARENA_PROPOSAL.md` §6.2 with current line numbers (`shared 8f8f3d8`); its checklist still holds.
 Removal is logic, content and tests, so it is **Astra's** PR. Claude's presentation follow-ups are listed at the end.
 
-## Owner decisions needed
+## Implemented by Astra (2026-10-28, PR #294)
+
+Owner confirmed Brickfall, Factory and Cyber City in Random, Ward Zero selectable separately, and all music retained.
+The Unity merge now keeps only authored UnityMaps entries, migrates retired/unknown saved picks to Brickfall, includes the
+catalog policy in the peer revision, and guards an empty Random pool. Dedicated and appearance-preview defaults, Windows
+validation fixtures and map generators use the retained arenas. Expedition instances stay outside arena selection.
+Source exports, presentation branches and music files remain intact; Claude's visual cleanup below is still optional follow-up.
+
+## Original decisions requested (resolved above)
 
 1. **The new rotation.**
    - Proposal: `brickfall`, `factory`, `cybercity`, plus Ward Zero (`siren`) for PvP rounds if wanted.
