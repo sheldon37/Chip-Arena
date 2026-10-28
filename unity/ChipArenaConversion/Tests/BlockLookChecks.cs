@@ -60,10 +60,12 @@ namespace ChipArena.UnityConversion
                 Check(shader.Contains(expr),"shader has "+expr);
             Check(NativeBlastSim.LightCapacity==3&&NativeMapLooks.MaxLights==8,"3 flash and 8 practical slots, as the shader's arrays");
             string code=Regex.Replace(shader,@"//[^\n]*","");
-            Check(!code.Contains("_StageLight")&&!code.Contains("ForwardAdd")&&!Regex.IsMatch(code,@"\btex2D|sampler2D")&&!code.Contains("#pragma surface"),"own light arrays (not the entrance stage's), no add pass, no 2D textures");
+            // The pack variant (BLOCK_PACK, docs/arenas/STAGE-KITS.md) reads its atlas; outside its sections no 2D texture is read.
+            string blocks=Regex.Replace(Regex.Replace(code,@"#if defined\(BLOCK_PACK\).*?#(else|endif)","",RegexOptions.Singleline),@"sampler2D _PackTex;","");
+            Check(!code.Contains("_StageLight")&&!code.Contains("ForwardAdd")&&!Regex.IsMatch(blocks,@"\btex2D|sampler2D")&&Regex.Matches(code,@"\btex2D\(_PackTex,").Count==2&&!code.Contains("#pragma surface"),"own light arrays (not the entrance stage's), no add pass, no 2D textures but the pack variant's atlas");
             // The one texture: Ward Zero's light field volume, read through NativeWardLight.cginc (off on every other map).
             string ward=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeWardLight.cginc"));
-            Check(code.Contains("#include \"NativeWardLight.cginc\"")&&Regex.Matches(ward,@"\btex3Dlod\b").Count==1&&!Regex.IsMatch(ward,@"\btex2D|sampler2D")&&ward.Contains("sampler3D _WardField;"),"the only texture is the Ward light field's volume, read without derivatives");
+            Check(code.Contains("#include \"NativeWardLight.cginc\"")&&Regex.Matches(ward,@"\btex3Dlod\b").Count==1&&!Regex.IsMatch(ward,@"\btex2D|sampler2D")&&ward.Contains("sampler3D _WardField;"),"the blocks' only texture is the Ward light field's volume, read without derivatives");
             string Body(string head){int at=shader.IndexOf(head,StringComparison.Ordinal);Check(at>=0,"shader function "+head);int open=shader.IndexOf('{',at),depth=0;for(int i=open;i<shader.Length;i++){if(shader[i]=='{')depth++;else if(shader[i]=='}'&&--depth==0)return shader.Substring(at,i-at+1);}throw new Exception("unclosed "+head);}
             foreach(var head in new[]{"float3 BlockLattice(","void BlockVertex(","v2f vert(","v2fs vertShadow("})Check(!Regex.IsMatch(Body(head),@"\b(ddx|ddy|fwidth|tex2D)\b"),"no derivatives in the vertex stage: "+head);
             string frag=Body("fixed4 frag(");int deriv=Math.Max(frag.LastIndexOf("fwidth",StringComparison.Ordinal),frag.LastIndexOf("ddy",StringComparison.Ordinal));Check(deriv>0&&deriv<frag.IndexOf("BlockSurface(",StringComparison.Ordinal),"every derivative is taken before the branching look code");

@@ -34,7 +34,8 @@ Shader "ChipArena/VisualBodyToon" {
  //    (NativeToonEdge) never cross a pilot;
  //  - the voxel pilots' hit flash and match-start spawn-in (NativeVisualBodyFx.cginc, per renderer): the struck flash after
  //    the light (not in the add passes), and the body formed from the feet up in the spawn-in's dithered front with its
- //    hardlight tint and completion flash, the outline and the cast shadow with it. The hologram that leads the front and
+ //    hardlight tint and completion flash, the outline and the cast shadow with it; a directed entrance's per-bone reveal
+ //    (RevealClip) the same way. The hologram that leads the front and
  //    the completion's split are NativeVisualBodyGhost.shader's, on extra material slots while a spawn-in shows.
  SubShader { Tags { "RenderType"="TransparentCutout" "Queue"="AlphaTest" } Cull [_Cull]
  Stencil { Ref 0 WriteMask 16 Comp Always Pass Replace }
@@ -64,7 +65,7 @@ Shader "ChipArena/VisualBodyToon" {
  float3 VisualAccentPart(float3 w,float3 layer){return lerp(lerp(_Color_3.rgb*w.z*layer.x,_Color_6.rgb*w.z,layer.y),_Color_9.rgb*w.z,layer.z);}
  void surf(Input i,inout SurfaceOutput o)
  {
-  SpawnClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
+  SpawnClip(i.worldPos);RevealClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
   float front=DissolveFront(i.uv_Texture2D);o.Emission+=_DissolveEdge.rgb*front;
   o.Albedo=SpawnTinted(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb,i.worldPos.y);o.Alpha=map.a;
   if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
@@ -146,7 +147,7 @@ Shader "ChipArena/VisualBodyToon" {
   }
   fixed4 frag(v2f i):SV_Target
   {
-   clip(i.color.a-.5);SpawnClip(i.world);float4 map=tex2D(_Texture2D,i.uv);clip(map.a-_Cutoff);
+   clip(i.color.a-.5);SpawnClip(i.world);RevealClip(i.world);float4 map=tex2D(_Texture2D,i.uv);clip(map.a-_Cutoff);
    DissolveFront(i.uv);
    float3 albedo=SpawnTinted(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb,i.world.y);float3 n=normalize(i.normal);
    UNITY_LIGHT_ATTENUATION(atten,i,i.world);float ndl=dot(n,_WorldSpaceLightPos0.xyz);float3 sh=ShadeSH9(float4(n,1));

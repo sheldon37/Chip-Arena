@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion.Editor
             var content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);content.Validate();
             int pairs=int.TryParse(Environment.GetEnvironmentVariable("CHIP_DUEL_SEEDS"),out int count)?count:4;
             if(pairs<1||pairs>64)throw new ArgumentOutOfRangeException("CHIP_DUEL_SEEDS","Use 1–64 paired seeds");
-            var maps=(Environment.GetEnvironmentVariable("CHIP_DUEL_MAPS")??"brickfall,foundry,freight").Split(',').Select(s=>s.Trim()).ToArray();
+            var maps=(Environment.GetEnvironmentVariable("CHIP_DUEL_MAPS")??"brickfall,factory,cybercity").Split(',').Select(s=>s.Trim()).ToArray();
             foreach(string map in maps)if(!content.maps.Any(m=>m.id==map)||content.Map(map).blocks.Length<10)throw new ArgumentException("Unknown/non-cover duel map: "+map);
             var difficulty=Environment.GetEnvironmentVariable("CHIP_DUEL_DIFFICULTY")??"normal";
             if(difficulty!="easy"&&difficulty!="normal"&&difficulty!="hard")throw new ArgumentException("Invalid duel difficulty");

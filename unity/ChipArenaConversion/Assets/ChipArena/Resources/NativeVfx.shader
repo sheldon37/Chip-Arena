@@ -28,6 +28,11 @@
 // where it meets the scene's depth (_CameraDepthTexture, _VfxSoft 1; 0 on the low graphics tier, which asks for no depth
 // texture). The smoke atlas (Core/NativeVfxTextures.SmokeAtlas: R density, G baked light, B erosion threshold, A edge) is
 // built off the main thread; until it is uploaded (_VfxAtlasReady 0) the puffs use a round stand-in with the same channels.
+// Pack pass (owner 2026-10-28, the licensed packs as in-place upgrades): _VfxToon may be the effect pack's cartoon masks in
+// the same layout and channels (nothing here changes for it), and 12 is a pack sprite: a camera-facing tile of _VfxPack (the
+// magic sheet, _VfxPackGrid columns x rows, row 0 at its top; TEXCOORD1.w the tile) at its roll, its shape the sheet's
+// brightest channel and its white-hot share the sheet's own (times TEXCOORD2.w), tinted by its colour (VfxPackSprite).
+// Without the sheet nothing draws in mode 12.
 Shader "ChipArena/NativeVfx"
 {
     Properties
@@ -37,6 +42,8 @@ Shader "ChipArena/NativeVfx"
         _VfxAtlasReady("Atlas uploaded",Float)=0
         _VfxFlashGain("Blast flash light on smoke",Float)=1
         _VfxSoft("Soft particles (depth texture)",Float)=0
+        _VfxPack("Magic sheet (premultiplied colour, coverage)",2D)="black"{}
+        _VfxPackGrid("Magic sheet grid (columns, rows)",Vector)=(8,4,0,0)
     }
     SubShader
     {
@@ -55,7 +62,7 @@ Shader "ChipArena/NativeVfx"
             #pragma target 3.5
             #include "UnityCG.cginc"
             #include "UnityLightingCommon.cginc"
-            sampler2D _VfxAtlas,_VfxToon;
+            sampler2D _VfxAtlas,_VfxToon,_VfxPack;float4 _VfxPackGrid;
             float _VfxAtlasReady,_VfxFlashGain,_VfxSoft;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             // The three blast flashes (NativeArenaDressing.Flashes): position and range, colour times intensity as Unity applies it.
@@ -253,6 +260,18 @@ Shader "ChipArena/NativeVfx"
                 float halo = tex.b * (1.0 - saturate(color.a * 4.0));
                 return float4(col * shape + color.rgb * (halo * 0.22), shape * color.a);
             }
+            // A pack sprite (the magic sheet: premultiplied colour, coverage), premultiplied: its brightest channel is the shape, its
+            // whiteness (least over brightest channel) where the pack's own art runs white-hot (times hot: 1 keeps the art's white
+            // cores, 0 tints a white mask all through), the rest takes color's hue (HDR); color.a 0 adds it, above 0 blends it at
+            // that coverage.
+            float4 VfxPackSprite(float4 tex, float4 color, float hot)
+            {
+                float shape = max(max(tex.r, tex.g), tex.b);
+                float white = shape > 0.0001 ? min(min(tex.r, tex.g), tex.b) / shape : 0.0;
+                float peak = max(max(color.r, color.g), color.b);
+                float3 col = lerp(color.rgb, float3(peak, peak, peak), white * white * hot);
+                return float4(col * shape, tex.a * color.a);
+            }
             // ---- VFX SHARED END ----
             struct appdata
             {
@@ -297,6 +316,8 @@ Shader "ChipArena/NativeVfx"
                     float s=sin(v.shape.w),c=cos(v.shape.w);
                     offset=float2(local.x*c-local.y*s,local.x*s+local.y*c);
                 }
+                // A pack sprite faces the camera at its roll, as the glows do (the oriented branch above takes every mode past 10.5).
+                if(mode>11.5){float2 local=v.shape.xy*hw;float s=sin(v.shape.w),c=cos(v.shape.w);offset=float2(local.x*c-local.y*s,local.x*s+local.y*c);coords=float3(v.shape.xy,0.0);}
                 float3 world=v.vertex+right*offset.x+up*offset.y;
                 o.pos=mul(UNITY_MATRIX_VP,float4(world,1.0));
                 o.color=v.color;
@@ -313,6 +334,8 @@ Shader "ChipArena/NativeVfx"
                 else if(mode>8.5){float s=screenAxis.y<0.0?-1.0:1.0;tc=float2(-coords.y*s,along*s);}
                 float sheetCol=sheet-8.0*floor(sheet/8.0),sheetRow=floor(sheet/8.0);
                 o.toon=float4((sheetCol+tc.x*0.46+0.5)*0.125,(sheetRow+tc.y*0.46+0.5)*0.25,0,0);
+                // The magic sheet's tile (zw): column t mod columns, rows from the top of the sheet (its image's order).
+                if(mode>11.5){float pt=v.life.w,pc=pt-_VfxPackGrid.x*floor(pt/_VfxPackGrid.x),pr=_VfxPackGrid.y-1.0-floor(pt/_VfxPackGrid.x);o.toon.zw=(float2(pc,pr)+v.shape.xy*0.48+0.5)/_VfxPackGrid.xy;}
                 o.alt=float4(VfxHexLinear(mode>8.5?v.axis.w:v.axis.y),0);
                 float depth=dot(v.vertex-_WorldSpaceCameraPos,-back);
                 float nearFade=saturate((depth-0.2)/max(0.35,size*0.6));
@@ -343,6 +366,7 @@ Shader "ChipArena/NativeVfx"
                 // Sampled outside the branches (no gradients in divergent flow); the stand-in until the atlas is uploaded.
                 float4 tex=lerp(VfxPuffStandIn(i.uv.xy),tex2D(_VfxAtlas,i.uv.zw),_VfxAtlasReady);
                 float4 toon=lerp(VfxToonStandIn(i.uv.xy),tex2D(_VfxToon,i.toon.xy),_VfxAtlasReady);float4 aa=fwidth(toon);
+                float4 pack=tex2D(_VfxPack,i.toon.zw);
                 float scene=LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen)));
                 float4 c;
                 if(mode<3.5)c=i.color*VfxGlow(i.uv.xy,mode);
@@ -366,6 +390,7 @@ Shader "ChipArena/NativeVfx"
                     }
                     c*=saturate(i.data.w);
                 }
+                else if(mode>11.5)c=VfxPackSprite(pack,i.color,i.sun.w);
                 else c=VfxToonSprite(toon,aa,i.color);
                 // A select, not a blend: whatever an unrendered depth texture holds never reaches the colour.
                 c*=i.amb1.a*(_VfxSoft>0.5?VfxSoftFade(scene,i.screen.z,mode>3.5&&mode<4.5?0.08:i.data.z):1.0);

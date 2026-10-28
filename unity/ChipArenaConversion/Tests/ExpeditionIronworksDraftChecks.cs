@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
             var t0=DateTime.UtcNow;map.nav=Navigation(map,supported,"ei",2);int navMs=(int)(DateTime.UtcNow-t0).TotalMilliseconds;
             Check(map.nav.nodes.Length>20000&&map.nav.links.Length>map.nav.nodes.Length&&map.nav.nodes.Any(n=>n.layer==1)&&map.nav.links.Count(l=>l.kind=="drop")==map.navHints.drops.Length,"importer-style navigation (0.5 m, ei): "+map.nav.nodes.Length+" nodes, "+map.nav.links.Length+" links, both levels, every drop hint linked");
             NativeMapRules.Validate(map);count++;
-            var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=content.maps.Count(m=>m.rotation);
+            var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=unity.maps.Count(m=>m.rotation);
             NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Concat(new[]{map}).ToArray()},unityText);
             Check(content.Map(MapId)==map&&content.maps.Count(m=>m.rotation)==rotation&&content.Map("expedition-city").nav.nodes.Length>0&&content.Map("siren").blocks.Length==unity.maps.Single(m=>m.id=="siren").blocks.Length,"the draft imports beside today's maps (Ward Zero, the town and the rotation unchanged)");
             var normalized=new NativeRoomOptions{map=MapId};normalized.Normalize(content);Check(normalized.map!=MapId,"room normalization refuses the foundry like every Expedition map");

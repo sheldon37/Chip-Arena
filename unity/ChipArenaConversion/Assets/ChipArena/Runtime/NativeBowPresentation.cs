@@ -68,8 +68,13 @@ namespace ChipArena.UnityConversion
             string riser=NativeBowModels.PartId(std,0,tier);if(!sourceModels.Has(riser))return -1;
             bowHand=rig.Bones[CapturedRig.LHand].localToWorldMatrix;var root=rig.Root.transform.localToWorldMatrix;int n=0;
             bowHandBone??=b=>bowHand;bowPartBone??=b=>bowPart;
-            sourceModels.Queue(riser,root,bowHandBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:glow);n++;
-            for(int l=0;l<2;l++){bowPart=bowHand*BowPiece(NativeBowRig.Limb(l==0,f.Pull));sourceModels.Queue(NativeBowModels.PartId(std,1+l,tier),root,bowPartBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:glow);n++;}
+            // A visual body's pack bow takes the riser's and limbs' place, its limbs bent as theirs (NativePackWeaponPresentation.cs).
+            if(PackBowDrawn(rig,bowHand,f.Pull))n+=3;
+            else
+            {
+                sourceModels.Queue(riser,root,bowHandBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:glow);n++;
+                for(int l=0;l<2;l++){bowPart=bowHand*BowPiece(NativeBowRig.Limb(l==0,f.Pull));sourceModels.Queue(NativeBowModels.PartId(std,1+l,tier),root,bowPartBone,null,layer,camera,accent:accent,hitFlash:hf,partTint:tint,glow:glow);n++;}
+            }
             string str=std?NativeBowModels.StringId:NativeBowModels.StringProtoId;
             for(int s=0;s<2;s++){sourceModels.Queue(str,bowHand*BowPiece(NativeBowRig.String(s==0,f.Pull,v.Buzz,time)),null,null,layer,camera,accent:accent,partTint:tint);n++;}
             string arrow=NativeBowModels.ArrowId(std,tier);

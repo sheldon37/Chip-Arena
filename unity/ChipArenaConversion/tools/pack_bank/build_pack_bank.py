@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bank as bankfmt  # noqa: E402
 import fbx  # noqa: E402
 import images  # noqa: E402
+import sheets  # noqa: E402
 import unity_assets as ua  # noqa: E402
 
 RESOURCES = 'ChipArenaLocal/Resources'
@@ -52,7 +53,7 @@ def bytes_meta(path):
             '  assetBundleVariant: \n') % guid_for(path)
 
 
-def texture_meta(path, size, srgb=True, mips=True, alpha=False, normal=False, clamp=False, point=False):
+def texture_meta(path, size, srgb=True, mips=True, alpha=False, normal=False, clamp=False, point=False, compress=True):
     return """fileFormatVersion: 2
 guid: {guid}
 TextureImporter:
@@ -83,13 +84,13 @@ TextureImporter:
     buildTarget: DefaultTexturePlatform
     maxTextureSize: {size}
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: {compress}
     overridden: 0
   userData:
   assetBundleName:
   assetBundleVariant:
 """.format(guid=guid_for(path), mips=int(mips), srgb=int(srgb and not normal), size=size, filt=0 if point else 1,
-           wrap=1 if clamp else 0, kind=1 if normal else 0, alpha=int(alpha))
+           wrap=1 if clamp else 0, kind=1 if normal else 0, alpha=int(alpha), compress=int(compress))
 
 
 def source_texture_settings(meta):
@@ -191,19 +192,62 @@ class Builder:
             self.emit_texture(t['id'], path, int(t.get('max', limit)), t.get('alpha'), t.get('crop'), settings)
             out.texture(t['id'], (bankfmt.TEX_ALPHA if t.get('alpha') else 0) | (bankfmt.TEX_LINEAR if t.get('linear') else 0))
 
+        # Effect sheets composed from pack textures (sheets.py): a toon sheet in the effects renderer's layout (linear data,
+        # uncompressed, since its four channels are independent distance fields) or a sprite atlas (colour, compressed).
+        decoded = {}
+
+        def load(tile):
+            path = os.path.join(self.packs, sources[tile['source']], tile['path'])
+            if path not in decoded:
+                if not os.path.isfile(path):
+                    raise SelectionError('sheet tile missing: ' + tile['path'])
+                decoded[path] = images.decode(path)
+                self.provenance.append({'sheet-source': os.path.relpath(path, self.packs)})
+            return decoded[path]
+        for sh in sel.get('sheets', []):
+            if not ID.match(sh['id']):
+                raise SelectionError('sheet id ' + sh['id'])
+            try:
+                if sh.get('kind') == 'toon':
+                    img = sheets.toon_sheet(sh, load)
+                    settings = dict(srgb=False, mips=True, alpha=False, clamp=True, compress=False)
+                elif sh.get('kind') == 'atlas':
+                    img = sheets.atlas(sh, load)
+                    settings = dict(srgb=True, mips=True, alpha=False, clamp=True, compress=True)
+                else:
+                    raise SelectionError('sheet kind ' + str(sh.get('kind')))
+            except sheets.SheetError as e:
+                raise SelectionError('sheet %s: %s' % (sh['id'], e))
+            rel = '%s/%s.png' % (TEXTURES, sh['id'])
+            if rel in self.files:
+                raise SelectionError('two sheets write ' + sh['id'])
+            self.files[rel] = images.encode_png(img, alpha=True)
+            self.files[rel + '.meta'] = texture_meta(rel, max(img.w, img.h), **settings).encode()
+            self.provenance.append({'file': rel, 'sheet': sh['kind']})
+            out.texture(sh['id'], bankfmt.TEX_ALPHA | (0 if settings['srgb'] else bankfmt.TEX_LINEAR))
+
         for p in sel.get('props', []):
             if not ID.match(p['id']):
                 raise SelectionError('prop id ' + p['id'])
             folder = self.folder(sources[p['source']])
-            prefab = os.path.join(folder.root, p['prefab'])
+            # A prefab, or a model file (`model`) where the pack's prefabs are binary-serialized; `albedo` (a texture path)
+            # then gives every submesh one material drawing that texture as it is.
+            prefab = os.path.join(folder.root, p['model'] if 'model' in p else p['prefab'])
             if not os.path.isfile(prefab):
-                raise SelectionError('prefab missing: ' + p['prefab'])
+                raise SelectionError(('model' if 'model' in p else 'prefab') + ' missing: ' + os.path.relpath(prefab, folder.root))
+            albedo = None
+            if 'albedo' in p:
+                albedo = os.path.join(folder.root, p['albedo'])
+                if not os.path.isfile(albedo):
+                    raise SelectionError('albedo missing: ' + p['albedo'])
+                stem = re.sub(r'[^a-z0-9]+', '-', os.path.splitext(os.path.basename(albedo))[0].lower()).strip('-')
+                albedo = out.material(p['source'] + '/' + stem, tex_of(albedo, p['source']))
             parts = []
-            for part in ua.flatten(folder, prefab):
+            for part in (ua.model_parts(folder, prefab) if 'model' in p else ua.flatten(folder, prefab)):
                 mesh = ua.mesh_for(folder, part)
                 if mesh is None or not mesh.submeshes:
                     continue
-                mats = [mat_of(folder, part.materials[i] if i < len(part.materials) else (part.materials[-1] if part.materials else None), p['source'])
+                mats = [albedo if albedo is not None else mat_of(folder, part.materials[i] if i < len(part.materials) else (part.materials[-1] if part.materials else None), p['source'])
                         for i in range(len(mesh.submeshes))]
                 path, scene, model = part.source
                 mesh_name = '%s/%s/%s' % (p['source'], os.path.splitext(os.path.basename(path))[0], model.name)

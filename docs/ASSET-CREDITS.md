@@ -85,11 +85,37 @@ The same rules as the visual body apply. The packs stay in the git-ignored `Asse
 the meshes and textures the bake uses ship in the licensed-assets zip, which the builder installs for builds. They are
 never committed or published as files.
 
+### Visual body pack weapons (2026-10-28, owner licence)
+
+The visual body's daggers, shield, bow and caster staffs (`docs/BOZO-INTEGRATION.md`, pack weapons) come from the weapons
+pack bank (`docs/PACK-BANK.md`; selection `tools/pack_bank/selections/weapons.json`, names only):
+- daggers: the gladius of the SciFantasy Sword Pack (RB), on both hands;
+- shield: `SM_Wep_Shield_02` of Synty's POLYGON Knights;
+- bow: the `Bow` of polyperfect's Low Poly Ultimate Pack, its baked string and nocked arrow dropped (the game draws its own
+  string);
+- staffs: `SM_Prop_WizardStaff_01` of Synty's POLYGON Fantasy Characters, its crystal in each school's colour.
+
+Each is drawn with its pack's texture on our own toon material; no pack shader, material or script ships. The bank and those
+textures ship in the licensed-assets zip only, under the visual body's rules: never committed or published as files.
+
 ### Surface impacts (2026-10-24, owner licence)
 
 Gun rounds hitting a surface (`docs/PACK-EFFECTS.md`) play converted particle effects and bullet-hole textures from
 kripto289's Impacts and Muzzle Flashes. The effects are its concrete, metal and wood impacts, and the textures, meshes and
 materials the bake uses ship in the licensed-assets zip under the visual body's rules. No pack shader or script ships.
+
+### Hits and motion effects through the pack bank (2026-10-28, owner licence)
+
+Textures only, through the pack bank (`docs/PACK-BANK.md`; selections `fx-muzzle.json`, `fx-blood.json`, `fx-impacts.json`,
+`fx-trails.json`), under the visual body's rules: they ship in the licensed-assets zip, never committed or published as
+files, and no pack shader or script ships (`docs/PACK-EFFECTS.md`).
+
+- kripto289's Impacts and Muzzle Flashes: the muzzle flipbooks `Flame1`, `Flame3`, `MuzzleFlash8`, `MuzzleFlash9` and the
+  bursts `MuzzleFlash1`, `MuzzleFlash3`, `MuzzleFlash6`; the bullet holes `BrickBulletDecal3`, `BrokenGlassDecal`,
+  `DirtBulletDecal3`.
+- Epic Toon FX: the first frame of `splat01_shaded_3x3`, `splat02_shaded_3x3` and `splat03_shaded_3x3` (blood splats).
+- Kronnect's Trails FX - Stylized Motion Effects: `SamplePresets/StylizedRamp1` (the afterimages' colour ramp); the
+  afterimage shader is our own.
 
 ### Dissolve noise (2026-10-24, owner licence)
 
@@ -114,6 +140,19 @@ The same pack's `Eff1_Left`, `Eff1_Right`, `Eff6` and `Eff4` effects (ring slash
 finishers and specials. Their particle systems, meshes and textures ship in the licensed-assets zip, on materials converted
 at the bake to our own `NativePackSlash` shader; no pack shader or script ships.
 
+### Blasts, smoke, fire and magic sprites (2026-10-28, owner licence)
+
+The blasts', smoke's and fire's toon sheet and the magic bolts' sprite sheet (`docs/PACK-EFFECTS.md`, `docs/PACK-BANK.md`)
+are composed by the pack bank tool from three of Archanor's packs the owner licensed:
+
+- Epic Toon FX: cartoon cloud, flash, crescent and spark masks;
+- Magic Arsenal: the fire, water and lightning missiles' and explosions' sprites;
+- Sci-Fi Arsenal: a laser ball, hexagon symbols and a fire flipbook.
+
+The two composed textures ship in the licensed-assets zip under the visual body's rules. They are never committed or
+published as files, and no pack shader, script or prefab ships. The selections (`tools/pack_bank/selections/fx-blasts.json`,
+`fx-magic.json`) name the files used.
+
 ### Visual body locomotion clips (2026-10-24, owner licence)
 
 The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, the stride) play 17 `Unarmed` locomotion
@@ -124,6 +163,15 @@ The model's own animation (`docs/BOZO-INTEGRATION.md`) plays the same pack's `2H
 `Armed` and `1Hand-Sword` clips for the sword, its `1Hand-Dagger` clips for the daggers, its `Armed-Shield` clips (mirrored) for the shield, its `2Hand-Shooting` and `1Hand-Pistol` clips for the guns, its `2Hand-Staff` clips (mirrored) for the casters, its `2Hand-Bow` clips for the bow, and its `Unarmed` clips for the fighters. They
 are sampled on the body at the bake into a motion bank (`ChipArenaVisualMotion.bytes`, humanoid poses per frame). The bank
 ships in the licensed-assets zip; the pack's clip files do not.
+
+### Stage kits (2026-10-28, owner licence)
+
+The stage props and harbour yards (`docs/arenas/STAGE-KITS.md`) draw meshes and the palette, lights and logos atlases of
+Toon Harbor Pack (Asset Store, owner licence): crates, steel crates, pallets, drum cages and shipping containers in blocks'
+places; ship-to-shore and quay cranes, freighters, tugboats, trucks, streetlights, fences, yard clutter and two metal sheds
+round the maps. The kit bank (`ChipArenaPackKit`, `docs/PACK-BANK.md`) carries them in the licensed-assets zip under the
+visual body's rules: never committed or published as files, and no pack shader or script ships (they draw through our own
+`NativeBlockLit`). Builds without the zip draw today's boxes and backdrops.
 
 ### Hazard kit additions (2026-10-14)
 
@@ -202,6 +250,49 @@ series per key, 4 to 8 takes. Universal Sound FX paths are relative to `Assets/U
 | `pve.zombie.step.run` | asphalt (hard floors) | `FOOTSTEP_Trainers_Asphalt_Run` (6) | `HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR2_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR3_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR4_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR6_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR7_mono.wav`<br>`HUMAN/Footsteps/Trainers_Asphalt_Run/FOOTSTEP_Trainers_Asphalt_Run_RR8_mono.wav` |
 | `pve.zombie.step.heavy` | stone (hard floors) | Fantasy `Stone_Heavy` (5) | Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_A.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_C.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_E.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_G.wav`<br>Fantasy Game Sound Effects: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Stone_Heavy_I.wav` |
 | `pve.zombie.step.crawl` | body drag (every surface) | `FRICTION_Deep_Body_Drag` (4) | `FRICTION/Body/FRICTION_Deep_Body_Drag_03_mono.wav`<br>`FRICTION/Body/FRICTION_Deep_Body_Drag_04_mono.wav`<br>`FRICTION/Body/FRICTION_Deep_Body_Drag_05_mono.wav`<br>`FRICTION/Body/FRICTION_Deep_Body_Drag_06_mono.wav` |
+
+### Central Station enemy cues (2026-10-28)
+
+The Central Station's 22 enemy cue keys (`pve.station.*`, `docs/EXPEDITION-CENTRAL-STATION.md` section 10) had no clips: 10
+were silent and 12 borrowed other keys' clips (`Core/NativeStationKinds.cs` `StandIn`). Their 60 requested variants
+(`docs/audio/SOUND-REQUESTS.md`) were designed from 176 files of four of the owner's packs: Universal Sound FX (Imphenzia,
+17256; 153 files), Fantasy Game Sound Effects (Epic Sounds and FX, 94186; 13), Battle Sound Library - Magic & Melee (Infinity
+PBR, 176417; 9) and Interface and Item Sounds (Cafofo, 89646; 1). Each variant layers two to seven cuts of them in ffmpeg:
+pitch and time edits, reversal, filters, tremolo and vibrato, drive and comb resonance. Each layer is levelled against the
+lead layer, and transients are limited. The variants are a batch of `<key>_<NN>.wav` files (44.1 kHz mono 16-bit) that
+`tools/import_sound_requests.py` imports into the private LocalAssets bank, as voices. The batch and the clips are never in
+this repository.
+
+Universal Sound FX paths are relative to `Assets/Universal Sound FX/`. Fantasy paths are relative to the Fantasy Game Sound
+Effects pack (`Assets/`), Battle paths to its `Battle Sound Library/` folder, and Interface paths to
+`Assets/Interface and Item Sounds/`. A few sources also serve other keys of the bank, but here they are layers, pitched,
+slowed or filtered: the zombie moans `ZOMBIE_Moan_01`, `02`, `05` and `09` sit muffled in the Pileup's moans, and some sparks,
+zaps, whooshes and the add-death grunt `MONSTER_Grunt_Deep_Hurt` (pitched down and buzzing in a Linesman hurt) are accents.
+
+| Key | Variants | Design | Sources per variant |
+|---|---:|---|---|
+| `pve.station.linesman.idle` | 3 | A moan or groan buzzing at the mains rate (tremolo) over a high-passed electrical crackle, with spark pops. | 01: `MONSTERS_CREATURES/ZOMBIE_Moan_03_mono.wav`, `ELECTRICITY/ELECTRICITY_Distorted_Fizzy_loop_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_02_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_03_mono.wav`<br>02: `MONSTERS_CREATURES/ZOMBIE_Moan_08_mono.wav`, `ELECTRICITY/ELECTRICITY_Fuzzy_Spikey_loop_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_01_mono.wav`, `ZAPS/ZAP_Subtle_07_mono.wav`<br>03: `MONSTERS_CREATURES/MONSTER_Groan_01_mono.wav`, `ELECTRICITY/ELECTRICITY_Distorted_loop_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_01_mono.wav`, `ZAPS/ZAP_Bright_01_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_03_mono.wav` |
+| `pve.station.linesman.charge` | 3 | An electric warm-up stretched over the 1.1 s wind-up, a rising charge sweep, a spark bed fading in, sparks thickening to the strike. | 01: Battle: `Magic (Mono)/Electric/Warmup Short/Electric_Warmup_Short_1_M.wav`, `CHARGE_UPS_DOWNS/CHARGE_Complex_Wet_12_Semi_Up_1000ms_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_Force_01_loop_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_02_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_03_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_02_mono.wav`<br>02: Battle: `Magic (Mono)/Electric/Warmup Short/Electric_Warmup_Short_2_M.wav`, `CHARGE_UPS_DOWNS/CHARGE_Servo_24_Semi_Up_1000ms_mono.wav`, `ELECTRICITY/ELECTRICITY_Distorted_Fizzy_loop_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_01_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_01_mono.wav`<br>03: Battle: `Magic (Mono)/Electric/Warmup Short/Electric_Warmup_Short_3_M.wav`, `CHARGE_UPS_DOWNS/CHARGE_Complex_Wet_12_Semi_Up_1000ms_mono.wav`, `ELECTRICITY/ELECTRICITY_Fuzzy_Spikey_loop_mono.wav`, `ZAPS/ZAP_Bright_01_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_03_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_02_mono.wav` |
+| `pve.station.linesman.arc` | 3 | A lightning blast cut to 0.6 s, then a chain of zaps, each a hop later and higher. | 01: Fantasy: `Fantasy_Game_16bit/SFX_Update_1.1/Magic/Fantasy_Game_Magic_Lightning_4_Blast_Electric_Zap_Spell.wav`, `ZAPS/ZAP_Bright_02_mono.wav`, `ZAPS/ZAP_Bright_04_mono.wav`, `ZAPS/ZAP_Generic_02_mono.wav`, `ZAPS/ZAP_Bright_01_mono.wav`<br>02: Fantasy: `Fantasy_Game_16bit/SFX_Update_1.1/Magic/Fantasy_Game_Magic_Lightning_5_Blast_Electric_Zap_Spell.wav`, `ZAPS/ZAP_Deep_03_mono.wav`, `ZAPS/ZAP_Bright_04_mono.wav`, `ZAPS/ZAP_Bright_02_mono.wav`, `ZAPS/ZAP_Generic_04_mono.wav`<br>03: Fantasy: `Fantasy_Game_16bit/SFX_Update_1.1/Magic/Fantasy_Game_Magic_Lightning_2_Blast_Electric_Zap_Spell.wav`, `IMPACTS/Energy/IMPACT_Energy_Spark_01_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_01_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_03_mono.wav` |
+| `pve.station.linesman.ground` | 2 | A fist or club on metal, slowed (the palm on the rail), a slap, a deep zap and a low-passed surge. | 01: Battle: `Battle/Fist/Fist On Metal/Impact/Fist_On_Metal_Impact_2.wav`, `IMPACTS/Slap/SLAP_Hand_Face_01_mono.wav`, `ZAPS/ZAP_Deep_02_mono.wav`, `ELECTRICITY/ELECTRICITY_Distorted_loop_mono.wav`<br>02: `IMPACTS/Metal/IMPACT_Metal_Hit_Large_Metal_01_mono.wav`, Battle: `Battle/Club/Club On Metal/Impact/Club_On_Metal_Impact_3.wav`, `ZAPS/ZAP_Deep_06_mono.wav`, `ELECTRICITY/ELECTRICITY_Subtle_loop_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_01_mono.wav` |
+| `pve.station.linesman.hurt` | 3 | A short grunt pitched down and buzzing, a static pop and a zap. | 01: `MONSTERS_CREATURES/MONSTER_Grunt_Short_02_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_03_mono.wav`, `ZAPS/ZAP_Bright_01_mono.wav`<br>02: `MONSTERS_CREATURES/MONSTER_Grunt_Deep_Hurt_mono.wav`, `ZAPS/ZAP_Generic_02_mono.wav`, `ELECTRICITY/ELECTRICITY_Spark_01_mono.wav`<br>03: `VOICES/Grunts_Groans_Hurt/GRUNT_Male_Quick_Deep_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_02_mono.wav`, `ZAPS/ZAP_Subtle_07_mono.wav` |
+| `pve.station.linesman.death` | 3 | A scream or roar pitched down, buzzing and driven, over a crackle; a pop and an electric burst at 0.85 s; a sizzle dying away. | 01: `VOICES/Screams/SCREAM_Male_B_02_mono.wav`, `ELECTRICITY/ELECTRICITY_Distorted_Fizzy_loop_mono.wav`, `EXPLOSIONS/Subtle/EXPLOSION_Subtle_Dirty_Distorted_mono.wav`, Battle: `Magic (Mono)/Electric/Explosion/Electric_Explosion_1_M.wav`, `ELECTRICITY/ELECTRICITY_Sparks_Force_01_loop_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_02_mono.wav`<br>02: `VOICES/Screams/SCREAM_Male_B_03_mono.wav`, `ELECTRICITY/ELECTRICITY_Fuzzy_Spikey_loop_mono.wav`, `FOLEY/BALLOONS/BALLOON_Pop_Very_Deep_01_mono.wav`, `EXPLOSIONS/Subtle/EXPLOSION_Subtle_Bang_mono.wav`, Battle: `Magic (Mono)/Electric/Explosion/Electric_Explosion_2_M.wav`, `ELECTRICITY/ELECTRICITY_Sparks_01_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_Force_01_loop_mono.wav`<br>03: `MONSTERS_CREATURES/MONSTER_Roar_02_mono.wav`, `VOICES/Screams/VOICE_Male_41yo_Scream_03_mono.wav`, `ELECTRICITY/ELECTRICITY_Distorted_loop_mono.wav`, `EXPLOSIONS/Subtle/EXPLOSION_Subtle_Hollow_mono.wav`, `IMPACTS/Energy/IMPACT_Energy_Spark_06_mono.wav`, `ELECTRICITY/ELECTRICITY_Sparks_Force_01_loop_mono.wav` |
+| `pve.station.conductor.inhale` | 2 | An exhale reversed into an inhale, rattling (tremolo), over a reversed growl or wheeze. | 01: `MONSTERS_CREATURES/ORCH_Breath_01_mono.wav`, `MONSTERS_CREATURES/MONSTER_Growl_Subtle_02_mono.wav`<br>02: `MONSTERS_CREATURES/MONSTER_Breath_06_mono.wav`, `MONSTERS_CREATURES/MONSTER_Exhausted_15_loop_mono.wav` |
+| `pve.station.conductor.whistle` | 3 | Train and toy whistles pitched up to about 4 kHz and stretched, with a pea trill (24 to 32 Hz tremolo) and drive. | 01: `VEHICLES/Land/Trains/TRAIN_Steam_Train_Whistle_Distant_mono.wav`, `VEHICLES/Land/Trains/TRAIN_Steam_Train_Whistle_mono.wav`, `CARTOON/CARTOON_Whistle_02_mono.wav`<br>02: `CARTOON/CARTOON_Whistle_02_mono.wav`, `VEHICLES/Land/Trains/TRAIN_Steam_Train_Whistle_mono.wav`<br>03: `VEHICLES/Land/Trains/TRAIN_Steam_Train_Onboard_Outside_Short_Whistle_loop_mono.wav`, `CARTOON/CARTOON_Whistle_01_mono.wav` |
+| `pve.station.conductor.bell` | 2 | Boxing bells pitched up 6 to 8 semitones into a handbell, two ringing passes interleaved. | 01: `SPORTS/Boxing/BOXING_Bell_3_Rings_02_mono.wav`, `SPORTS/Boxing/BOXING_Bell_Ring_03_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Medium_Rattle_Short_mono.wav`<br>02: `SPORTS/Boxing/BOXING_Bell_3_Rings_03_mono.wav`, `SPORTS/Boxing/BOXING_Bell_3_Rings_01_mono.wav` |
+| `pve.station.conductor.mutter` | 3 | Spoken numbers and words, some reversed, pitched down 4 to 6 semitones with their formants, slurred, band-limited and driven, over a breath or growl. | 01: `VOICES/Words_Phrases/Male_A/VOICE_MALE_Approaching_1_mono.wav`, `VOICES/Words_Phrases/Male_A/VOICE_MALE_9_mono.wav`, `VOICES/Words_Phrases/Male_A/VOICE_MALE_Standing_By_1_mono.wav`, `MONSTERS_CREATURES/MONSTER_Breath_05_mono.wav`<br>02: `VOICES/Words_Phrases/Male_A/VOICE_MALE_10_mono.wav`, `VOICES/Words_Phrases/Male_A/VOICE_MALE_2_mono.wav`, `VOICES/Words_Phrases/Male_A/VOICE_MALE_Time's_Up_1_mono.wav`, `VOICES/Words_Phrases/Male_A/VOICE_MALE_7_mono.wav`, `MONSTERS_CREATURES/MONSTER_Growl_Breath_03_mono.wav`<br>03: `VOICES/Words_Phrases/Male_A/VOICE_MALE_4_mono.wav`, `VOICES/Words_Phrases/Male_A/VOICE_MALE_Standing_By_1_mono.wav`, `VOICES/Words_Phrases/Male_A/VOICE_MALE_9_mono.wav`, Interface: `MISC/Humam Mumble 1 Loop.wav`, `MONSTERS_CREATURES/MONSTER_Breath_03_Slow_mono.wav` |
+| `pve.station.conductor.lantern` | 2 | A small glass shatter with a thin tin plate or box rattle and a falling fragment. | 01: `SHATTER/SHATTER_Glass_Medium_Short_01_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Soft_Plate_01_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Rattle_Dirty_mono.wav`, `GLASS/GLASS_Fragment_07_mono.wav`<br>02: `GLASS/GLASS_Window_Break_03_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Medium_Box_Rattle_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Medium_Rattle_Short_mono.wav` |
+| `pve.station.conductor.death` | 3 | An exhausted wheeze pitched down, a body thud, then light tin and rattle drops. | 01: `MONSTERS_CREATURES/MONSTER_Exhausted_12_mono.wav`, `THUDS_THUMPS/THUD_Dark_01_mono.wav`, `MOVEMENT/Fabrics_Metal_Rattles/MOVEMENT_Fabrics_and_Metal_Rattles_03_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Tool_Drop_Hard_Surface_mono.wav`<br>02: `MONSTERS_CREATURES/MONSTER_Exhausted_07_mono.wav`, `THUDS_THUMPS/THUD_Movement_Before_After_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Medium_Box_Rattle_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Soft_Plate_02_mono.wav`<br>03: `MONSTERS_CREATURES/MONSTER_Exhausted_02_mono.wav`, `THUDS_THUMPS/THUD_Dark_02_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Rod_Drop_Hard_Surface_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Rattle_Dirty_mono.wav` |
+| `pve.station.undertow.bubble` | 3 | Potion bubbles pitched down 4 to 6 semitones and low-passed, evened by a compressor, over a low-passed underwater bubble tail. | 01: Fantasy: `Fantasy_Game_16bit/Crafting/Fantasy_Game_Crafting_Material_Water_Bubble_Potion_3.wav`, `EXPLOSIONS/Underwater/EXPLOSION_Underwater_Implode_Bubbles_01_mono.wav`, Fantasy: `Fantasy_Game_16bit/Crafting/Fantasy_Game_Crafting_Material_Water_Bubble_Potion.wav`<br>02: Fantasy: `Fantasy_Game_16bit/Crafting/Fantasy_Game_Crafting_Material_Liquid_Bubble_Pick_Up_1.wav`, `GORE_SPLATS/GORE_Stab_Bubbles_mono.wav`, `EXPLOSIONS/Torpedo/EXPLOSION_Torpedo_Underwater_Impact_Bubbles_02_mono.wav`<br>03: Fantasy: `Fantasy_Game_16bit/Crafting/Fantasy_Game_Crafting_Material_Water_Bubble_Potion_5.wav`, Fantasy: `Fantasy_Game_16bit/UI/Fantasy_Game_UI_Material_Liquid_Bubble_Pop_2.wav`, `EXPLOSIONS/Underwater/EXPLOSION_Underwater_Implode_Bubbles_01_mono.wav` |
+| `pve.station.undertow.surface` | 3 | A quick splash or water whoosh with a short growl gurgled (vibrato and flutter) and bubbles. | 01: `ELEMENTS/Water/Splashes/SPLASH_Designed_Quick_02_mono.wav`, `MONSTERS_CREATURES/MONSTER_Growl_Very_Short_05_mono.wav`, `GORE_SPLATS/GORE_Stab_Splat_Only_Bubbles_mono.wav`<br>02: `IMPACTS/Water/IMPACT_Water_Whoosh_Splash_01_mono.wav`, Fantasy: `Fantasy_Game_16bit/SFX_Update_1.1/Creatures/Fantasy_Game_Creatures_Grimy_1_Monster_Loud_Slime_Nasty.wav`, `ELEMENTS/Water/Splashes/SPLASH_Subtle_05_mono.wav`<br>03: `ELEMENTS/Water/Splashes/SPLASH_Designed_Quick_01_mono.wav`, `MONSTERS_CREATURES/MONSTER_Growl_Short_15_mono.wav`, `GORE_SPLATS/GORE_Splat_Hit_Bubbles_mono.wav` |
+| `pve.station.undertow.grab` | 3 | A hand slap, a small splash and squish, then a cough, grunt or growl gurgled, and bubbles. | 01: `IMPACTS/Slap/SLAP_Hand_Face_01_mono.wav`, `ELEMENTS/Water/Splashes/SPLASH_Subtle_05_mono.wav`, `GORE_SPLATS/GORE_Deep_Short_Squish_01_mono.wav`, `MONSTERS_CREATURES/MONSTER_Cough_01_mono.wav`, `GORE_SPLATS/GORE_Stab_Splat_Only_Bubbles_mono.wav`<br>02: `IMPACTS/Slap/SLAP_Hand_Face_03_mono.wav`, Fantasy: `Fantasy_Game_16bit/Footsteps/Fantasy_Game_Footstep_Water_2.wav`, `GORE_SPLATS/GORE_Deep_Short_Squish_04_mono.wav`, `VOICES/Grunts_Groans_Hurt/GRUNT_Male_Hurt_With_Cough_mono.wav`, Fantasy: `Fantasy_Game_16bit/UI/Fantasy_Game_UI_Material_Liquid_Bubble_Pop_1.wav`<br>03: `IMPACTS/Slap/SLAP_Hand_Face_05_mono.wav`, `IMPACTS/Water/IMPACT_Water_Thump_Splash_01_mono.wav`, `MONSTERS_CREATURES/MONSTER_Grunt_Short_03_mono.wav`, `GORE_SPLATS/GORE_Splat_Hit_Bubbles_mono.wav` |
+| `pve.station.undertow.drag` | 2 | A 1.45 s window of a swimming loop with a low-passed deep body drag (and a slow splash). | 01: `ELEMENTS/Water/Swim/SWIM_Water_02_loop_mono.wav`, `FRICTION/Body/FRICTION_Deep_Body_Drag_02_mono.wav`<br>02: `ELEMENTS/Water/Swim/SWIM_Water_05_loop_mono.wav`, `FRICTION/Body/FRICTION_Deep_Body_Drag_01_mono.wav`, `ELEMENTS/Water/Splashes/SPLASH_Movement_02_mono.wav` |
+| `pve.station.undertow.death` | 3 | A growl, squeal or groan pitched down and gurgled, bubbles, then a slowed sinking splash. | 01: `MONSTERS_CREATURES/MONSTER_Growl_Subtle_02_mono.wav`, Fantasy: `Fantasy_Game_16bit/Crafting/Fantasy_Game_Crafting_Material_Liquid_Bubble_Pick_Up_2.wav`, `GORE_SPLATS/GORE_Stab_Bubbles_mono.wav`, `ELEMENTS/Water/Splashes/SPLASH_Designed_Medium_01_mono.wav`<br>02: `MONSTERS_CREATURES/MONSTER_Squeel_Deep_mono.wav`, Fantasy: `Fantasy_Game_16bit/SFX_Update_1.1/Creatures/Fantasy_Game_Creatures_Grimy_2_Monster_Loud_Slime_Nasty.wav`, `ELEMENTS/Water/Splashes/SPLASH_Deep_02_mono.wav`<br>03: `VOICES/Grunts_Groans_Hurt/GROAN_Male_Hurt_Long_mono.wav`, `GORE_SPLATS/GORE_Splat_Hit_Bubbles_mono.wav`, `IMPACTS/Water/IMPACT_Water_Whoosh_Thump_Splash_03_mono.wav` |
+| `pve.station.pileup.moan` | 3 | Four moans and groans at different pitches and delays, low-passed with a short comb (metal box) resonance and a hollow mid boost, a faint knock. | 01: `MONSTERS_CREATURES/ZOMBIE_Moan_01_mono.wav`, `MONSTERS_CREATURES/ZOMBIE_Moan_05_mono.wav`, `MONSTERS_CREATURES/MONSTER_Groan_Long_mono.wav`, `MONSTERS_CREATURES/ZOMBIE_Moan_09_mono.wav`, `DOORS_GATES_DRAWERS/GATE_Metal_Close_05_Dark_Short_mono.wav`<br>02: `MONSTERS_CREATURES/ZOMBIE_Moan_02_mono.wav`, `MONSTERS_CREATURES/ZOMBIE_Moan_08_mono.wav`, `MONSTERS_CREATURES/MONSTER_Growl_Long_01_mono.wav`, `MONSTERS_CREATURES/ZOMBIE_Male_06_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Hard_03_mono.wav`<br>03: `MONSTERS_CREATURES/ZOMBIE_Moan_03_mono.wav`, `MONSTERS_CREATURES/MONSTER_Groan_01_mono.wav`, `MONSTERS_CREATURES/ZOMBIE_Moan_06_mono.wav`, `MONSTERS_CREATURES/MONSTER_Growl_Breath_03_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Hard_01_mono.wav` |
+| `pve.station.pileup.brace` | 2 | A concrete slab or flag scrape with slowed metal friction and a low gate weight. | 01: `SCRAPES_SCRATCHES/SCRAPE_Concrete_Slab_on_Concrete_Slab_Short_mono.wav`, `FRICTION/Metal/FRICTION_Metal_Bars_03_mono.wav`, `DOORS_GATES_DRAWERS/GATE_Metal_Large_Close_04_mono.wav`<br>02: `FRICTION/Flags/FRICTION_Concrete_Flag_Hard_Slide_05_mono.wav`, `SCRAPES_SCRATCHES/SCRAPE_Metal_on_Metal_Cling_Short_mono.wav`, `SCRAPES_SCRATCHES/SCRAPE_Hollow_Fade_In_Out_mono.wav` |
+| `pve.station.pileup.shove` | 3 | A club on metal or a sheet-metal hit with a metal door or gate, and a slow whoosh for the thrown body. | 01: Battle: `Battle/Club/Club On Metal/Impact/Club_On_Metal_Impact_2.wav`, `DOORS_GATES_DRAWERS/DOOR_Metal_Hatch_01_Close_mono.wav`, `WHOOSHES/Air/WHOOSH_Air_Very_Slow_RR2_mono.wav`<br>02: `IMPACTS/Metal/IMPACT_Metal_Hit_Large_Sheet_Metal_mono.wav`, `THUDS_THUMPS/THUD_Dark_02_mono.wav`, `DOORS_GATES_DRAWERS/GATE_Metal_Close_06_mono.wav`, `WHOOSHES/Air/WHOOSH_Air_Blade_RR1_mono.wav`<br>03: Battle: `Battle/Club/Club On Metal/Impact/Club_On_Metal_Impact_3.wav`, `DOORS_GATES_DRAWERS/DOOR_Metal_Door_02_Close_mono.wav`, Battle: `Battle/Miss/Miss_Hit_1.wav`, `WHOOSHES/Air/WHOOSH_Air_Very_Slow_RR5_mono.wav` |
+| `pve.station.pileup.ricochet` | 3 | A bullet hit on metal with the first 0.3 s of a ricochet whine (and a slowed clank). | 01: `IMPACTS/Bullets/IMPACT_Bullet_Metal_10_mono.wav`, `WEAPONS/Firearms/Ricochets/RICOCHET_Bullet_02_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Hit_Metal_mono.wav`<br>02: `IMPACTS/Bullets/IMPACT_Bullet_Metal_14_mono.wav`, `WEAPONS/Firearms/Ricochets/RICOCHET_Bullet_11_mono.wav`<br>03: `IMPACTS/Bullets/IMPACT_Bullet_Metal_03_mono.wav`, `WEAPONS/Firearms/Ricochets/RICOCHET_Bullet_41_mono.wav`, `IMPACTS/Bullets/IMPACT_Bullet_Metal_16_mono.wav` |
+| `pve.station.pileup.split` | 3 | A gore tear or stretch-snap with a rip and a wet open, then a heavy metal door or gate clanging down. | 01: `GORE_SPLATS/GORE_Deep_Medium_Tear_01_mono.wav`, `RIPS_TEARS/RIP_Tear_01_mono.wav`, `GORE_SPLATS/GORE_Deep_Medium_Open_04_mono.wav`, `DOORS_GATES_DRAWERS/DOOR_Metal_Hollow_Deep_Close_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Large_Deep_Metallic_Bang_Rattle_stereo.wav`<br>02: `GORE_SPLATS/GORE_Mid_Medium_Stretch_Snap_03_mono.wav`, `GORE_SPLATS/GORE_Mid_Short_Tear_01_mono.wav`, `DOORS_GATES_DRAWERS/GATE_Metal_Close_05_Dark_Short_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Hit_Large_Metal_01_mono.wav`<br>03: `GORE_SPLATS/GORE_Deep_Medium_Crack_Squish_02_mono.wav`, `RIPS_TEARS/RIP_Tear_07_mono.wav`, `GORE_SPLATS/GORE_Deep_Medium_Open_03_mono.wav`, `DOORS_GATES_DRAWERS/GATE_Metal_Close_01_Mid_Short_mono.wav`, `IMPACTS/Metal/IMPACT_Metal_Scrap_Deep_Pipe_stereo.wav` |
 
 ## Unity entrance music (Asset Store packs, owner licence)
 

@@ -39,6 +39,11 @@ namespace ChipArena.UnityConversion
     /// No allocations per frame in steady state; new props and new fragment looks allocate once.
     /// AllBlocks includes static, carried and rubble geometry. Only a segment's own members receive its visual telegraph;
     /// overlapping warnings do not sag neighbouring static floors or unrelated structures.
+    /// Pack dressing (docs/arenas/STAGE-KITS.md; Core NativePackDressing, Runtime NativePackStage): with the kit bank, a block the
+    /// map's table names draws as its plan's bank props in its place (its pose, nudge and fall included; its dust coat, health
+    /// soot and seed passed on) up to its kept damage stage, then as its box again; fragments, rubble and every unplanned block
+    /// draw boxes. The props join pooled instanced batches per bank mesh (NativePackDraws), drawn after the boxes. Without the
+    /// bank no plan exists and this is today's path.
     /// </summary>
     public sealed class NativeArenaDressing : MonoBehaviour
     {
@@ -58,7 +63,7 @@ namespace ChipArena.UnityConversion
         /// collider never move); empty until then, cleared with Hidden.</summary>
         public static readonly Dictionary<string,Matrix4x4> Posed=new Dictionary<string,Matrix4x4>();
         private const float BoundsSize=200;
-        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public int Tooth;public bool Pending,Machine;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;}
+        private sealed class Entry {public int Look,Color,Flags,Seen;public string Segment;public uint Hash;public float Seed,Max,S1,S2,Reach;public int Tooth;public bool Pending,Machine;public Vector3 Last,Offset;public Vector4 Size,Rest,Linear;public PackDress Pack;public int[] PackMesh;public Matrix4x4[] PackLocal;}
         private sealed class Batch {public readonly Matrix4x4[] Matrices=new Matrix4x4[NativeBlockLooks.Chunk];public readonly Vector4[] Size=new Vector4[NativeBlockLooks.Chunk],Rest=new Vector4[NativeBlockLooks.Chunk],Color=new Vector4[NativeBlockLooks.Chunk],Look=new Vector4[NativeBlockLooks.Chunk];}
         private struct Gone {public Vector3 Position;public float Reach;public int Look,Color,Flags,Frame;public Vector4 Linear;}
         private struct Kept {public int Look,Color,Flags;}
@@ -78,6 +83,8 @@ namespace ChipArena.UnityConversion
         // whole 2 mm steps; render only) and each block id's index into them; fragments and rubble take none.
         private float[] lifts=Array.Empty<float>();private readonly Dictionary<string,int> liftIndex=new Dictionary<string,int>();private ContentBlock[] liftBlocks;
         private Mesh[] meshes;private Material material;private MaterialPropertyBlock block;private bool instancing;
+        // The map's pack plan and bank (null without the kit bank) and the frame's pack prop batches.
+        private PackPlan packPlan;private NativePackBank.Bank packBank;private readonly NativePackDraws pack=new NativePackDraws();
         private static readonly int SizeId=Shader.PropertyToID("_BlockSize"),RestId=Shader.PropertyToID("_BlockRest"),ColorId=Shader.PropertyToID("_BlockColor"),LookId=Shader.PropertyToID("_BlockLook");
         private static readonly int HazeId=Shader.PropertyToID("_ArenaHaze"),HazeTopId=Shader.PropertyToID("_ArenaHazeTop"),DustId=Shader.PropertyToID("_ArenaDust"),CoatId=Shader.PropertyToID(NativeDustCoat.Global);
         private static readonly int FlashPosId=Shader.PropertyToID("_ArenaFlashPos"),FlashColorId=Shader.PropertyToID("_ArenaFlashColor");
@@ -113,13 +120,21 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.AllBlocks){if(p==null||p.Definition==null)continue;if(!entries.TryGetValue(p,out var e)){e=Create(p);entries.Add(p,e);}e.Seen=frame;}
             foreach(var pair in entries)if(pair.Value.Seen!=frame)removed.Add(pair.Key);
             foreach(var p in removed){var e=entries[p];entries.Remove(p);gone[goneNext]=new Gone{Position=e.Last,Reach=e.Reach,Look=e.Look,Color=e.Color,Flags=e.Flags,Linear=e.Linear,Frame=frame};goneNext=(goneNext+1)%gone.Length;spare.Push(e);}
-            removed.Clear();for(int s=0;s<counts.Length;s++)counts[s]=0;
+            removed.Clear();for(int s=0;s<counts.Length;s++)counts[s]=0;pack.Begin();if(packPlan!=null)NativePackStage.Glow(packPlan.Glow);
             foreach(var p in arena.AllBlocks)
             {
                 if(p==null||p.Definition==null||!entries.TryGetValue(p,out var e)||e.Machine)continue;if(Hidden.Count>0&&p.Definition.id!=null&&Hidden.Contains(p.Definition.id))continue;var t=p.transform;Vector3 pos=t.position;Quaternion rot=t.rotation;
                 if(e.Pending){e.Pending=false;Inherit(e,p.Definition.id,pos,frame);}e.Last=pos;if(Nudged.Count>0&&p.Definition.id!=null&&Nudged.TryGetValue(p.Definition.id,out var nudge))pos+=nudge;
                 if(Posed.Count>0&&p.Definition.id!=null&&Posed.TryGetValue(p.Definition.id,out var pose)){pos=pose.MultiplyPoint3x4(pos);rot=pose.rotation*rot;}
                 float f=NativeBlockLooks.Fraction(p.Health,e.Max,p.Indestructible);int stage=NativeBlockLooks.Stage(f,e.S1,e.S2);Vector4 size=e.Size,rest=e.Rest;
+                // A planned block's bank props up to its kept stage (planned blocks are never segment members, so no telegraph sags them).
+                if(e.Pack!=null&&stage<=e.Pack.Keep)
+                {
+                    var place=Matrix4x4.TRS(pos,rot,Vector3.one);float baseY=pos.y-(rot*new Vector3(0,size.y,0)).y;
+                    var pr=new Vector4(0,baseY,0,coat.Local(pos.x,pos.z));var pl=new Vector4(0,NativeBlockLooks.Normalised(f,e.S1,e.S2),e.Seed,e.Flags);
+                    for(int j=0;j<e.PackMesh.Length;j++)pack.Add(packBank,e.PackMesh[j],place*e.PackLocal[j],pr,pl);
+                    continue;
+                }
                 // S3 is a stub of the block's lower 24% (same base, same rest-space pattern).
                 if(stage==3){float drop=size.y*(1-NativeBlockLooks.StubShare);pos-=rot*new Vector3(0,drop,0);size.y*=NativeBlockLooks.StubShare;rest.y-=drop;}
                 // The 3.9 telegraph: sag (moving the instance only; the rest-space pattern stays glued) and the window light.
@@ -140,6 +155,7 @@ namespace ChipArena.UnityConversion
             NativeLighting.ArenaRim();var k=look?.blocks;Color haze=k!=null?Linear(NativeArena.ColorOf(k.hazeColor)):Color.black;
             Shader.SetGlobalVector(HazeId,new Vector4(haze.r,haze.g,haze.b,k!=null?k.haze:0));Shader.SetGlobalFloat(HazeTopId,k!=null&&k.hazeTop>0?k.hazeTop:1);Shader.SetGlobalFloat(DustId,k!=null?k.dust:0);
             for(int s=0;s<counts.Length;s++)for(int start=0,i=0;start<counts[s];start+=NativeBlockLooks.Chunk,i++){int n=Math.Min(NativeBlockLooks.Chunk,counts[s]-start);Draw(NativeLighting.StyleActive?ToonStage(s):meshes[s],batches[s][i],n);Draws++;Instances+=n;}
+            pack.Flush(instancing);Draws+=pack.Draws;Instances+=pack.Instances;
         }
         private void Rebind(NativeArena arena,NativeDustCoat coat)
         {
@@ -147,6 +163,7 @@ namespace ChipArena.UnityConversion
             var map=arena.Content.Map(mapId);look=NativeLighting.Look(map);preview=NativeLighting.LookSet().preview;dressed=NativeBlockLooks.Dressed(look,Preview);floor=map.floor;
             var source=map.blocks;if(dressed&&!ReferenceEquals(source,liftBlocks)){liftBlocks=source;lifts=NativeSurfaceLayers.Blocks(source);liftIndex.Clear();if(source!=null)for(int i=0;i<source.Length;i++)if(source[i]?.id!=null&&!liftIndex.ContainsKey(source[i].id))liftIndex[source[i].id]=i;}
             materials.Clear();foreach(var m in arena.Content.materials)if(m!=null&&m.id!=null)materials[m.id]=m;
+            packPlan=dressed?NativePackStage.Plan(map):null;packBank=packPlan!=null?NativePackStage.Bank:null;if(packBank==null)packPlan=null;
             if(dressed&&!ReferenceEquals(source,toothBlocks)){toothBlocks=source;tooth=NativeMapStyle.On(look,NativeLighting.LegacyStyle)?NativeMapStyle.ToothEnds(source,ToothCandidate):Array.Empty<int>();}
             // The killcam's replay arena (in its own scene) shares the live round's dust coat and fragment looks; a new round or arena
             // starts clean ones.
@@ -175,6 +192,14 @@ namespace ChipArena.UnityConversion
             // (NativeMachinePresentation), and a block over it would hide its front.
             e.Machine=prop.LocalFixture&&!prop.Fragment&&NativeMachineModels.IsCollider(b.id);
             prop.GetComponentsInChildren(true,renderers);foreach(var r in renderers)r.forceRenderingOff=true;renderers.Clear();
+            // The plan's bank props for a map block (never a fragment or rubble): each piece's parts, block space, made once per entry.
+            e.Pack=null;e.PackMesh=null;e.PackLocal=null;var dress=!prop.Fragment&&b.role!="rubble"?packPlan?.For(b.id):null;
+            if(dress!=null)
+            {
+                int n=0;foreach(var piece in dress.Pieces)n+=packBank.Props[piece.Prop].Parts.Length;e.PackMesh=new int[n];e.PackLocal=new Matrix4x4[n];n=0;
+                foreach(var piece in dress.Pieces)foreach(var part in packBank.Props[piece.Prop].Parts){e.PackMesh[n]=part.Mesh;e.PackLocal[n]=NativePackBanks.Place(part.Place*piece.Place);n++;}
+                e.Pack=dress;
+            }
             return e;
         }
         // A new fragment takes the look of the closest block that left Props this frame within that block's reach (no band or

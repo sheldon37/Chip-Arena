@@ -47,15 +47,16 @@ namespace ChipArena.UnityConversion
             string path=Path.Combine(root,"../../docs/audio/sound-requests.json");
             if(!File.Exists(path)){log.Add("request manifest not in this tree (skipped)");return;}
             using var doc=JsonDocument.Parse(File.ReadAllText(path));var top=doc.RootElement;Check(top.GetProperty("schema").GetString()=="chip-arena.sound-requests/1","request schema");
-            int n=0,files=0;
+            int n=0,files=0,stationN=0;
             foreach(var s in top.GetProperty("sounds").EnumerateArray())
             {
                 string key=s.GetProperty("key").GetString();Check(Known(key),"requested key "+key+" is in the bank contract");var d=keys[key];float max=s.GetProperty("targetSeconds").GetProperty("max").GetSingle(),min=s.GetProperty("targetSeconds").GetProperty("min").GetSingle();
                 int countN=s.GetProperty("count").GetInt32();string cat=s.GetProperty("category").GetString();
                 Check(d.Cap+1e-4f>=max&&min>0&&min<max,key+" cap "+d.Cap+" s holds the request's "+min+"-"+max+" s");Check(countN>=1&&countN<=NativeSoundKeys.MaxClips,key+" count "+countN);
-                Check(d.Space==NativeSoundSpace.Positional&&(cat=="voice")==NativeCreatureSynth.Voice(key)&&(cat=="step"||cat=="voice"),key+" "+cat+" positional");n++;files+=countN;
+                bool station=Array.IndexOf(NativeStationKinds.CueKeys,key)>=0;Check(d.Space==NativeSoundSpace.Positional&&(cat=="voice")==(NativeCreatureSynth.Voice(key)||station)&&(cat=="step"||cat=="voice"),key+" "+cat+" positional");n++;files+=countN;stationN+=station?1:0;
             }
-            Check(n==17&&files==88,"17 keys, 88 files requested ("+n+", "+files+")");
+            // The 22 Central Station enemy cues (Core NativeStationKinds.CueKeys) are requested too, as voices (the importer's voice level).
+            Check(n==39&&files==148&&stationN==NativeStationKinds.CueKeys.Length,"39 keys (22 station cues), 148 files requested ("+n+", "+stationN+", "+files+")");
             log.Add("keys: 14 zombie keys and 6 steps and the landing with built-in takes, stand-ins on every map; the "+n+" requested keys ("+files+" files) fit their caps");
         }
         private static void Surfaces(string root,List<string> log)

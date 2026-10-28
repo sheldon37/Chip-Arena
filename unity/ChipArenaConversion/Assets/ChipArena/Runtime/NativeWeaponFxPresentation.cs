@@ -23,6 +23,22 @@ namespace ChipArena.UnityConversion
             var parts=new Part[source.Length];for(int i=0;i<parts.Length;i++)parts[i]=new Part{Name=source[i].Name,Bone=source[i].Bone,Mesh=source[i].Mesh,Material=afterimageMaterial,NoShadow=true};
             models[id]=parts;return id;
         }
+        private Material packAfterimageMaterial;private bool packAfterimageFailed;
+        /// <summary>The pack look of an afterimage model (Afterimage's id, "afterimage-" and the model): the same meshes on
+        /// Resources/NativeAfterimage.shader (the ramp, dissolve and swell over the copy's life in the accent tint's x); null
+        /// without the shader.</summary>
+        public string PackAfterimage(string afterimage)
+        {
+            const string Prefix="afterimage-";if(string.IsNullOrEmpty(afterimage)||!afterimage.StartsWith(Prefix,StringComparison.Ordinal))return null;
+            string id="packimage-"+afterimage.Substring(Prefix.Length);if(models.ContainsKey(id))return id;if(!models.TryGetValue(afterimage.Substring(Prefix.Length),out var source))return null;
+            if(packAfterimageMaterial==null)
+            {
+                if(packAfterimageFailed)return null;var shader=Resources.Load<Shader>("NativeAfterimage");if(shader==null||!shader.isSupported){packAfterimageFailed=true;return null;}
+                packAfterimageMaterial=new Material(shader){enableInstancing=true,name="Native afterimage (pack look)"};materials.Add(packAfterimageMaterial);
+            }
+            var parts=new Part[source.Length];for(int i=0;i<parts.Length;i++)parts[i]=new Part{Name=source[i].Name,Bone=source[i].Bone,Mesh=source[i].Mesh,Material=packAfterimageMaterial,NoShadow=true};
+            models[id]=parts;return id;
+        }
     }
 
     // The weapons milestone's arena hooks (Core/NativeWeaponFx.cs for the rules, NativeWeaponFxDraw.cs for the geometry): muzzle
@@ -48,7 +64,9 @@ namespace ChipArena.UnityConversion
             public readonly Vector3[] Points=new Vector3[NativeTrailFx.RibbonSamples];public readonly float[] Times=new float[NativeTrailFx.RibbonSamples];public int Count;
             public void Push(Vector3 at,float time){if(Count==Points.Length){Array.Copy(Points,1,Points,0,Count-1);Array.Copy(Times,1,Times,0,Count-1);Count--;}Points[Count]=at;Times[Count]=time;Count++;}
         }
-        private struct TrailSprite{public Vector3 At,Drift;public float Born,Life,Size;public Color Color;}
+        // Tile: a pack trail sprite's tile of the magic sheet (-1: the soft glow sprite), with its school, roll and spin; its Color
+        // is then the shot's halo (NativeMagicPackPresentation.cs).
+        private struct TrailSprite{public Vector3 At,Drift;public float Born,Life,Size,Roll,Spin;public Color Color;public int Tile;public NativeMagicSchool School;}
         private struct ImpactMark{public Vector3 At,Normal;public float Born;public long Seed;public Color Tint;}
         private NativeWeaponFxDraw weaponFx;private Snapshot weaponSnapshot;private int weaponFrame;
         private readonly Dictionary<long,SlashState> slashes=new Dictionary<long,SlashState>();private readonly Stack<SlashState> spareSlashes=new Stack<SlashState>();private readonly List<long> staleSlashes=new List<long>();
@@ -56,6 +74,27 @@ namespace ChipArena.UnityConversion
         private readonly NativeAfterimages afterimages=new NativeAfterimages();private GhostPose[] afterimagePoses;private readonly Color[] afterimageTints=new Color[NativeAfterimages.Slots];
         private readonly VisualEcho[] afterimageEchoes=new VisualEcho[NativeAfterimages.Slots];private readonly bool[] afterimageModel=new bool[NativeAfterimages.Slots];
         private readonly string[] afterimageWeapon=new string[NativeAfterimages.Slots],afterimageBody=new string[NativeAfterimages.Slots];private readonly Dictionary<string,string> afterimageModels=new Dictionary<string,string>();
+        // The pack look (owner 2026-10-28: the motion-trails pack "wherever it fits"; Core NativeAfterimages.Trigger):
+        // the motion triggers beside the roll and every copy on Resources/NativeAfterimage.shader, its colour ramp the pack's
+        // through the bank (read once, set as the global _AfterimageRamp); off on the low graphics tier and without the ramp or
+        // the shader, where the roll's ghosts are exactly as before.
+        private readonly bool[] afterimagePack=new bool[NativeAfterimages.Slots];private readonly float[] afterimageSeed=new float[NativeAfterimages.Slots];
+        private readonly Dictionary<string,string> packAfterimageModels=new Dictionary<string,string>();private readonly Dictionary<int,(bool On,float At)> sprintSeen=new Dictionary<int,(bool,float)>();
+        private int packTrailsState;private static readonly int AfterimageRampId=Shader.PropertyToID("_AfterimageRamp");
+        private bool PackTrails
+        {
+            get
+            {
+                if(LowGraphics)return false;
+                if(packTrailsState==0)
+                {
+                    packTrailsState=-1;var ramp=NativePackBanks.Texture(NativeAfterimages.RampId);var shader=ramp!=null?Resources.Load<Shader>("NativeAfterimage"):null;
+                    if(shader!=null&&shader.isSupported){Shader.SetGlobalTexture(AfterimageRampId,ramp);packTrailsState=1;}
+                }
+                return packTrailsState==1;
+            }
+        }
+        private string PackModel(string afterimage){if(afterimage==null)return null;if(!packAfterimageModels.TryGetValue(afterimage,out var id))packAfterimageModels[afterimage]=id=sourceModels.PackAfterimage(afterimage);return id;}
         private readonly Dictionary<long,Emitter> emitters=new Dictionary<long,Emitter>();private readonly Stack<Emitter> spareEmitters=new Stack<Emitter>();private readonly List<long> staleEmitters=new List<long>();
         private TrailSprite[] trailSprites=new TrailSprite[512];private int trailSpriteCount;
         private readonly ImpactMark[] impactMarks=new ImpactMark[32];private int impactNext,impactEvent;private NativeArena impactArena;private int impactGeneration=-1;
@@ -208,17 +247,31 @@ namespace ChipArena.UnityConversion
             return any;
         }
         // Roll afterimages: a snapshot of each rolling third-person rig every NativeAfterimages.Spacing metres, drawn for its life
-        // in the pilot's accent colour (body, and the weapon it holds).
+        // in the pilot's accent colour (body, and the weapon it holds). With the pack look also the motion triggers (the sprint
+        // attack, an air jump, the Cyber Lord's dash, a sprint's first second), at most MotionPerFrame new copies a frame of
+        // pilots within MotionRange, every copy in the pack look.
         private void Afterimages(Snapshot s,float time)
         {
             string pilot=afterimageModels.TryGetValue("pilot",out var id)?id:(afterimageModels["pilot"]=sourceModels.Afterimage("pilot"));if(pilot==null)return;
             if(afterimagePoses==null){afterimagePoses=new GhostPose[NativeAfterimages.Slots];for(int i=0;i<afterimagePoses.Length;i++)afterimagePoses[i]=new GhostPose();}
-            float q=WeaponEffectsQuality;
+            float q=WeaponEffectsQuality;bool pack=PackTrails;int motionLeft=pack?NativeAfterimages.MotionPerFrame:0;var eye=WorldEye;
             foreach(var a in s.Actors)
             {
-                if(!NativeAfterimages.Eligible(a,time)||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig))continue;
+                if(a==null)continue;
+                // A sprint's start as this presentation saw it (the replicated flag's rising edge).
+                if(!sprintSeen.TryGetValue(a.Id,out var sp)||sp.On!=a.Sprinting)sprintSeen[a.Id]=sp=(a.Sprinting,a.Sprinting?time:-100);
+                int trigger=NativeAfterimages.Eligible(a,time)?NativeAfterimages.Roll:NativeAfterimages.None;double key=a.RollAt;
+                if(trigger==NativeAfterimages.None&&motionLeft>0)
+                {
+                    var cyber=a.SourceSpec==CyberLordSpec.Id?CyberLordViewOf(a.Id):null;
+                    trigger=NativeAfterimages.Trigger(a,time,sp.At,cyber!=null?cyber.At[CyberLordSpec.Q]:-100,cyber!=null?cyber.Until[CyberLordSpec.Q]:-100,out key);
+                }
+                if(trigger==NativeAfterimages.None||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig))continue;
                 var root=rig.Root.transform.position;var at=new NVector3(root.x,root.y,root.z);
-                if(!afterimages.Due(a.Id,at,a.RollAt,time,q))continue;int slot=afterimages.Take(a.Id,at,a.RollAt,time,q);var pose=afterimagePoses[slot];
+                if(trigger==NativeAfterimages.Roll){if(!afterimages.Due(a.Id,at,a.RollAt,time,q))continue;}
+                else if(eye==null||(eye.transform.position-root).sqrMagnitude>NativeAfterimages.MotionRange*NativeAfterimages.MotionRange||!afterimages.Due(a.Id,at,key,time,q,NativeAfterimages.SpacingOf(trigger,q)))continue;
+                else motionLeft--;
+                int slot=afterimages.Take(a.Id,at,key,time,q);var pose=afterimagePoses[slot];afterimagePack[slot]=pack;afterimageSeed[slot]=(float)NativeWeaponFx.Hash(a.Id,slot+(long)(time*60));
                 pose.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22&&b<rig.Bones.Length;b++)pose.Bones[b]=rig.Bones[b].localToWorldMatrix;
                 string weapon=null;if(!a.WeaponAway&&NativeWeaponDressing.SocketShown(a.SourceSpec)){string w=SkinnedHeld(a);if(!afterimageModels.TryGetValue(w,out weapon))afterimageModels[w]=weapon=sourceModels.Afterimage(w);}
                 afterimageWeapon[slot]=weapon;pose.Armed=weapon!=null;afterimageBody[slot]=BodyAfterimage(BodySkin(a.Id),BodyTier(root,false))??pilot;
@@ -231,10 +284,22 @@ namespace ChipArena.UnityConversion
             {
                 if(!afterimages.Live(k,time))continue;float opacity=(float)NativeAfterimages.Fade(time-afterimages.At[k]);if(opacity<=.002f)continue;
                 var pose=afterimagePoses[k];var tint=afterimageTints[k];
+                if(afterimagePack[k]&&PackAfterimage(k,pose,tint,opacity,time))continue;
                 if(afterimageModel[k]){VisualEchoDraw(afterimageEchoes[k],"NativeWeaponGhost",tint,opacity);continue;}
                 sourceModels.Queue(afterimageBody[k]??pilot,pose.Root,pose.Bone,null,0,null,tint,null,opacity);
                 if(pose.Armed)sourceModels.Queue(afterimageWeapon[k],pose.Root,pose.WeaponBone,null,0,null,tint,null,opacity);
             }
+        }
+        // A copy in the pack look: the model's echo or the voxel parts on the afterimage shader, the copy's life share and seed in
+        // the accent tint (x, y). False when its models are missing (the caller draws the ghost).
+        private bool PackAfterimage(int k,GhostPose pose,Color tint,float opacity,float time)
+        {
+            var life=new Color(NativeAfterimages.LifeShare(time-afterimages.At[k]),afterimageSeed[k],1,1);
+            if(afterimageModel[k])return VisualEchoDraw(afterimageEchoes[k],"NativeAfterimage",tint,opacity,new Vector4(life.r,life.g,life.b,life.a));
+            string body=PackModel(afterimageBody[k]);if(body==null)return false;
+            sourceModels.Queue(body,pose.Root,pose.Bone,null,0,null,tint,life,opacity);
+            if(pose.Armed){string weapon=PackModel(afterimageWeapon[k]);if(weapon!=null)sourceModels.Queue(weapon,pose.Root,pose.WeaponBone,null,0,null,tint,life,opacity);}
+            return true;
         }
         /// <summary>The charge orb's converging streaks and shrinking rings round the socket (the orb's own frame, so they follow
         /// its growth and the view model's size), in the school colour, on the rig's camera.</summary>
@@ -265,11 +330,13 @@ namespace ChipArena.UnityConversion
             {
                 var p=trailSprites[i];float age=now-p.Born;
                 if(!(age<p.Life)||age<-.5f){trailSprites[i]=trailSprites[--trailSpriteCount];continue;}
-                NativeWeaponFxShapes.Sprite(draw,p.At,p.Drift,p.Color,p.Size,p.Life,age);i++;
+                if(p.Tile>=0&&PackLooks)PackTrailSprite(p,age);else NativeWeaponFxShapes.Sprite(draw,p.At,p.Drift,p.Color,p.Size,p.Life,age);i++;
             }
             // The pistol / machine-gun Q kit (NativeGunKitPresentation.cs) on the pose clock, before the drawer is submitted.
             GunKitFx();BowFx(arena,now);
-            ImpactFx(draw,arena,now,q,low);
+            ImpactFx(draw,arena,now,q,low);MagicPackHits(arena,now,q,low);
+            // A school bolt's model gives way to its pack head (drawn in ShotFx) from the next frame.
+            if(shots!=null)shots.PackHeads=PackLooks;
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
             // The muzzle lights: the nearest shooters the tier, Combat glow, Reduced effects and Alarm lights allow.
             NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);muzzleLights.Resolve(new NVector3(eye.x,eye.y,eye.z),lights,gain);NativeMuzzleLights.Upload(muzzleLights);
@@ -289,8 +356,11 @@ namespace ChipArena.UnityConversion
             // A round drawn from the muzzle (NativeShotLaunch) knows how far past the crown it is, so its streak never reaches
             // back into the barrel; any other is held to the distance since it was first seen.
             if(tracer){if(trails){float flown=v.Launched?(float)v.Flown:Vector3.Distance(at,e.Origin)+.25f;if(look.Kit)KitTracer(draw,at,velocity,flown,look);else NativeWeaponFxShapes.Tracer(draw,at,velocity,flown,v.Spec);}e.Last=at;e.LastAt=now;return;}
-            // Energy: the core and glow on the model, then the trail sprites every Spacing metres flown and the ribbon.
-            NativeWeaponFxShapes.EnergyCore(draw,at,eye,e.Halo,e.Radius,v.Spec,.93f+.07f*Mathf.Sin(now*23+(e.Seed&63)));
+            // Energy: the core and glow on the model, then the trail sprites every Spacing metres flown and the ribbon. A school's
+            // bolt (Core NativeMagicPackFx) draws its pack head instead of the core, and pack trail sprites.
+            var school=PackLooks?NativeMagicPackFx.Bolt(v):NativeMagicSchool.None;
+            if(school!=NativeMagicSchool.None)PackHead(school,at,e.Halo,e.Radius,e.Seed,now);
+            else NativeWeaponFxShapes.EnergyCore(draw,at,eye,e.Halo,e.Radius,v.Spec,.93f+.07f*Mathf.Sin(now*23+(e.Seed&63)));
             if(trails)
             {
                 float spacing=NativeTrailFx.Spacing(q,low);Vector3 step=at-e.Last;float distance=step.magnitude;
@@ -300,15 +370,24 @@ namespace ChipArena.UnityConversion
                     while(travelled+spacing<=distance)
                     {
                         travelled+=spacing;float f=travelled/distance;
-                        NativeTrailFx.Sprite(e.Seed,e.Emitted++,e.Radius,out float life,out float size,out var offset,out var drift);
+                        NativeTrailFx.Sprite(e.Seed,e.Emitted,e.Radius,out float life,out float size,out var offset,out var drift);
+                        int tile=-1;float roll=0,spin=0;if(school!=NativeMagicSchool.None){NativeMagicPackFx.Trail(school,e.Seed,e.Emitted,out tile,out float scale,out roll,out spin);size*=scale;}
+                        e.Emitted++;
                         if(trailSpriteCount==trailSprites.Length)Array.Resize(ref trailSprites,trailSprites.Length*2);
-                        trailSprites[trailSpriteCount++]=new TrailSprite{At=e.Last+step*f+NativeWeaponFxShapes.V(offset),Drift=NativeWeaponFxShapes.V(drift)+velocity*.06f,Born=Mathf.Lerp(e.LastAt,now,f),Life=life,Size=size,Color=color};
+                        trailSprites[trailSpriteCount++]=new TrailSprite{At=e.Last+step*f+NativeWeaponFxShapes.V(offset),Drift=NativeWeaponFxShapes.V(drift)+velocity*.06f,Born=Mathf.Lerp(e.LastAt,now,f),Life=life,Size=size,Color=tile>=0?e.Halo:color,Tile=tile,School=school,Roll=roll,Spin=spin};
                     }
                     e.Carry=distance-travelled;
                 }
                 if(e.Count==0||Vector3.Distance(e.Points[e.Count-1],at)>.02f)e.Push(at,now);else{e.Points[e.Count-1]=at;e.Times[e.Count-1]=now;}
                 int first=0;while(first<e.Count-1&&now-e.Times[first]>NativeTrailFx.RibbonLife)first++;
-                NativeWeaponFxShapes.Ribbon(draw,e.Points,e.Times,first,e.Count,now,eye,e.Halo,e.Radius);
+                // A pack head covers the bolt: the ribbon's newest point steps back into it and draws as an older one, so the
+                // ribbon grows out of the head instead of ending in a bright square cut across it (the model hid that end).
+                if(school!=NativeMagicSchool.None&&e.Count>1&&velocity.sqrMagnitude>1e-6f)
+                {
+                    var head=e.Points[e.Count-1];float born=e.Times[e.Count-1];e.Points[e.Count-1]=head-velocity.normalized*(e.Radius*1.5f);e.Times[e.Count-1]=now-(float)NativeTrailFx.RibbonLife*.8f;
+                    NativeWeaponFxShapes.Ribbon(draw,e.Points,e.Times,first,e.Count,now,eye,e.Halo,e.Radius);e.Points[e.Count-1]=head;e.Times[e.Count-1]=born;
+                }
+                else NativeWeaponFxShapes.Ribbon(draw,e.Points,e.Times,first,e.Count,now,eye,e.Halo,e.Radius);
             }
             e.Last=at;e.LastAt=now;
         }
@@ -333,8 +412,8 @@ namespace ChipArena.UnityConversion
         private void ClearWeaponFx()
         {
             weaponFx?.Begin();weaponSnapshot=null;ClearEmitters();emitterArena=null;emitterGeneration=-1;muzzleLights.Clear();NativeMuzzleLights.Off();
-            foreach(var st in slashes.Values)spareSlashes.Push(st);slashes.Clear();hitFlashes.Clear();hitFlashEvent=0;afterimages.Clear();
-            impactArena=null;impactGeneration=-1;impactEvent=0;for(int i=0;i<impactMarks.Length;i++)impactMarks[i].Born=-100;
+            foreach(var st in slashes.Values)spareSlashes.Push(st);slashes.Clear();hitFlashes.Clear();hitFlashEvent=0;afterimages.Clear();sprintSeen.Clear();
+            impactArena=null;impactGeneration=-1;impactEvent=0;for(int i=0;i<impactMarks.Length;i++)impactMarks[i].Born=-100;ClearMagicPack();
         }
         private void DisposeWeaponFx(){ClearWeaponFx();weaponFx?.Dispose();weaponFx=null;}
     }

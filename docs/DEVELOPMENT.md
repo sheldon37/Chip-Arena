@@ -299,3 +299,30 @@ process by default. Loaded machines can set `CHIP_TEST_TIMEOUT_SECONDS=600` or
 pass `--test-timeout 600` (the CLI wins). Values must be positive integer seconds;
 invalid configuration fails before starting builds or the relay. This changes no
 test assertions, relay startup deadline, or CI job deadline.
+
+### Optional Magica Cloth in native test builds
+
+`pack_visual_body.py --with-cloth` adds a separate `cloth-runtime.json` to the
+private licensed-assets ZIP. Run it on the PC holding the current Magica import
+and regenerated bridge:
+
+```sh
+python unity/ChipArenaConversion/tools/pack_visual_body.py LocalAssets.zip LocalAssets-with-cloth.zip --with-cloth
+python unity/ChipArenaConversion/tools/install_local_assets.py LocalAssets-with-cloth.zip --check
+```
+
+The packer includes `Assets/LocalAssets/MagicaCloth2` (excluding examples/samples)
+and `ChipArenaLocalTools/Runtime/ChipArenaClothBridge.cs`, with file/folder metas.
+The installer validates paths, hashes, GUIDs and a 12 MiB cloth budget before
+copying. These are trusted local scripts which Unity compiles on import, not
+assets to obtain from an untrusted ZIP. They stay git-ignored and out of source
+packages. Without the optional manifest, existing ZIPs retain posed-body fallback.
+Normal body repacks preserve an existing cloth bundle; use `--with-cloth` whenever
+the bridge or plugin changes. Fresh builder worktrees prevent obsolete installed
+scripts from surviving a new build. Installing over a manually maintained project
+does not delete its unrelated local files.
+
+The manifest pins Burst 1.8.30, Collections 2.6.8 and Mathematics 1.3.3; package
+availability/dependencies are recorded in the source-package catalog. Do not
+commit Magica's generated `MAGICACLOTH2` ProjectSettings changes. Native import,
+bridge registration and hair/skirt/hood motion still require a real Unity build.

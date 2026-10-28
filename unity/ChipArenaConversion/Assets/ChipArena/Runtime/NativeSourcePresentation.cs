@@ -55,8 +55,9 @@ namespace ChipArena.UnityConversion
             bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!ChipStowed(a,first)&&!NativeSirenVictimPose.Active(a,time)&&SpawnShows(CapturedRig.RHand);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             // The bow draws its live parts (Runtime/NativeBowPresentation.cs: the flexed limbs, the string to the nock, the arrows).
             if(armed&&BowHeld(rig,a,time,first,layer,camera,tint,flash))armed=false;
-            // A visual body draws its own model of the weapon where it has one (NativeVisualWeaponPresentation.cs); the dressing stays.
-            if(armed){if(!(visual&&VisualWeaponDrawn(rig,WeaponBone(CapturedRig.RHand)))){string held=HeldWeaponModel(rig,a,first);sourceModels.Queue(held,rig.Root.transform.localToWorldMatrix,WeaponBone,b=>!a.MainWeaponAway||a.SourceSpec!="daggers"||b!=CapturedRig.RHand,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:StandardModel(held)?flash:1,partTint:tint,glow:HeldGlow);}WeaponDressing(rig,a,time,first,layer,camera,reach);}
+            // A visual body draws its own model of the weapon where it has one (NativeVisualWeaponPresentation.cs; the daggers' second
+            // blade at the off-hand's frame); the dressing stays.
+            if(armed){if(!(visual&&VisualWeaponDrawn(rig,WeaponBone(CapturedRig.RHand),a.SourceSpec=="daggers"?WeaponBone(CapturedRig.LHand):(Matrix4x4?)null))){string held=HeldWeaponModel(rig,a,first);sourceModels.Queue(held,rig.Root.transform.localToWorldMatrix,WeaponBone,b=>!a.MainWeaponAway||a.SourceSpec!="daggers"||b!=CapturedRig.RHand,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:StandardModel(held)?flash:1,partTint:tint,glow:HeldGlow);}WeaponDressing(rig,a,time,first,layer,camera,reach);}
             if(dressed&&!visual&&rigFlash>0)ParryFlash(rig,a,layer,camera,Bone,Visible,armed?WeaponBone:(Func<int,Matrix4x4>)null,first);
             // The model's parry flash: its own silhouette.
             if(dressed&&visual&&!first&&rigFlash>0){var pc=NativeBlockTint.OverlayColor(rigFlash);VisualParryFlash(rig,a,new Color(pc.X,pc.Y,pc.Z,1),NativeBlockTint.FlashLerp(rigFlash));}
@@ -79,6 +80,8 @@ namespace ChipArena.UnityConversion
             ExpeditionCityScenery(arena);
             IronworksScenery(arena);
             IronworksBossScenery(arena);
+            // The harbour yards round the map (NativePackStage.cs; nothing without the kit bank).
+            PackYards(arena);
             if(revamp)WardZeroScenery(arena);
             AdvancedLightingWorld(arena);
             // The hazard kit (NativeHazardKitPresentation.cs): the map's alarm placements, or the DEV preview gallery.

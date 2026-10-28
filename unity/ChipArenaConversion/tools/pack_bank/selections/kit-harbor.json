@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "bank": "ChipArenaPackKit",
- "note": "Toon Harbor props for the stages (docs/PACK-BANK.md). Names only: no pack content.",
+ "note": "Toon Harbor props for the stages (docs/PACK-BANK.md, docs/arenas/STAGE-KITS.md): kit props for the blocks and the harbour yards' cranes, ships and sheds. Names only: no pack content.",
  "texture_max": 1024,
  "sources": {
   "harbor": "Toon Harbor Pack/Assets/Toon Harbor Pack"
@@ -26,21 +26,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-01a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01A_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-01b",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_01B.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-01b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01B_Mobile.prefab",
    "group": "container"
   },
   {
@@ -50,21 +38,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-01c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01C_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-01d",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_01D.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-01d-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01D_Mobile.prefab",
    "group": "container"
   },
   {
@@ -74,21 +50,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-01e-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01E_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-01f",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_01F.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-01f-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_01F_Mobile.prefab",
    "group": "container"
   },
   {
@@ -98,21 +62,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-02a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02A_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-02b",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_02B.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-02b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02B_Mobile.prefab",
    "group": "container"
   },
   {
@@ -122,21 +74,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-02c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02C_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-02d",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_02D.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-02d-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02D_Mobile.prefab",
    "group": "container"
   },
   {
@@ -146,21 +86,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-02e-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02E_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-02f",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_02F.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-02f-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_02F_Mobile.prefab",
    "group": "container"
   },
   {
@@ -170,21 +98,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-03a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03A_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-03b",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_03B.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-03b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03B_Mobile.prefab",
    "group": "container"
   },
   {
@@ -194,21 +110,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-03c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03C_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-03d",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_03D.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-03d-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03D_Mobile.prefab",
    "group": "container"
   },
   {
@@ -218,21 +122,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-03e-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03E_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-03f",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_03F.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-03f-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_03F_Mobile.prefab",
    "group": "container"
   },
   {
@@ -242,21 +134,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-04a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04A_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-04b",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_04B.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-04b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04B_Mobile.prefab",
    "group": "container"
   },
   {
@@ -266,21 +146,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-04c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04C_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-04d",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_04D.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-04d-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04D_Mobile.prefab",
    "group": "container"
   },
   {
@@ -290,21 +158,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-04e-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04E_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-04f",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_04F.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-04f-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04F_Mobile.prefab",
    "group": "container"
   },
   {
@@ -314,21 +170,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-04g-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_04G_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-05a",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_05A.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-05a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05A_Mobile.prefab",
    "group": "container"
   },
   {
@@ -338,21 +182,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-05b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05B_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-05c",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_05C.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-05c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05C_Mobile.prefab",
    "group": "container"
   },
   {
@@ -362,21 +194,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-05d-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05D_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-05e",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_05E.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-05e-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05E_Mobile.prefab",
    "group": "container"
   },
   {
@@ -386,21 +206,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-05f-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05F_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-05g",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_05G.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-05g-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_05G_Mobile.prefab",
    "group": "container"
   },
   {
@@ -410,21 +218,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-06a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06A_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-06b",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_06B.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-06b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06B_Mobile.prefab",
    "group": "container"
   },
   {
@@ -434,21 +230,9 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-06c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06C_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-06d",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_06D.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-06d-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06D_Mobile.prefab",
    "group": "container"
   },
   {
@@ -458,33 +242,15 @@
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-06e-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06E_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-06f",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_06F.prefab",
    "group": "container"
   },
   {
-   "id": "harbor-shipping-container-06f-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06F_Mobile.prefab",
-   "group": "container"
-  },
-  {
    "id": "harbor-shipping-container-06g",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Container_06G.prefab",
-   "group": "container"
-  },
-  {
-   "id": "harbor-shipping-container-06g-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Container_06G_Mobile.prefab",
    "group": "container"
   },
   {
@@ -548,33 +314,15 @@
    "group": "crate"
   },
   {
-   "id": "harbor-shipping-wooden-crate-02a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02A_Mobile.prefab",
-   "group": "crate"
-  },
-  {
    "id": "harbor-shipping-wooden-crate-02b",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02B.prefab",
    "group": "crate"
   },
   {
-   "id": "harbor-shipping-wooden-crate-02b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02B_Mobile.prefab",
-   "group": "crate"
-  },
-  {
    "id": "harbor-shipping-wooden-crate-02c",
    "source": "harbor",
    "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02C.prefab",
-   "group": "crate"
-  },
-  {
-   "id": "harbor-shipping-wooden-crate-02c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Cargo/TH_Shipping_Wooden_Crate_02C_Mobile.prefab",
    "group": "crate"
   },
   {
@@ -752,21 +500,9 @@
    "group": "pipes"
   },
   {
-   "id": "harbor-pipe-cluster-01a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01A_Mobile.prefab",
-   "group": "pipes"
-  },
-  {
    "id": "harbor-pipe-cluster-01b",
    "source": "harbor",
    "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01B.prefab",
-   "group": "pipes"
-  },
-  {
-   "id": "harbor-pipe-cluster-01b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01B_Mobile.prefab",
    "group": "pipes"
   },
   {
@@ -776,21 +512,9 @@
    "group": "pipes"
   },
   {
-   "id": "harbor-pipe-cluster-01c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_01C_Mobile.prefab",
-   "group": "pipes"
-  },
-  {
    "id": "harbor-pipe-cluster-02a",
    "source": "harbor",
    "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02A.prefab",
-   "group": "pipes"
-  },
-  {
-   "id": "harbor-pipe-cluster-02a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02A_Mobile.prefab",
    "group": "pipes"
   },
   {
@@ -800,21 +524,9 @@
    "group": "pipes"
   },
   {
-   "id": "harbor-pipe-cluster-02b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02B_Mobile.prefab",
-   "group": "pipes"
-  },
-  {
    "id": "harbor-pipe-cluster-02c",
    "source": "harbor",
    "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02C.prefab",
-   "group": "pipes"
-  },
-  {
-   "id": "harbor-pipe-cluster-02c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Construction Materials/TH_Pipe_Cluster_02C_Mobile.prefab",
    "group": "pipes"
   },
   {
@@ -1004,33 +716,15 @@
    "group": "pipe-giant"
   },
   {
-   "id": "harbor-giant-pipe-straight-regular-01a-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01A_Mobile.prefab",
-   "group": "pipe-giant"
-  },
-  {
    "id": "harbor-giant-pipe-straight-regular-01b",
    "source": "harbor",
    "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01B.prefab",
    "group": "pipe-giant"
   },
   {
-   "id": "harbor-giant-pipe-straight-regular-01b-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01B_Mobile.prefab",
-   "group": "pipe-giant"
-  },
-  {
    "id": "harbor-giant-pipe-straight-regular-01c",
    "source": "harbor",
    "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01C.prefab",
-   "group": "pipe-giant"
-  },
-  {
-   "id": "harbor-giant-pipe-straight-regular-01c-mobile",
-   "source": "harbor",
-   "prefab": "Prefabs/Pipe System/TH_Giant_Pipe_Straight_Regular_01C_Mobile.prefab",
    "group": "pipe-giant"
   },
   {
@@ -1782,6 +1476,66 @@
    "source": "harbor",
    "prefab": "Prefabs/Ventilation/TH_HVAC_System_01C.prefab",
    "group": "hvac"
+  },
+  {
+   "id": "harbor-gantry-crane-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cranes/TH_Gantry_Crane_01A.prefab",
+   "group": "crane-sts"
+  },
+  {
+   "id": "harbor-gantry-crane-01c",
+   "source": "harbor",
+   "prefab": "Prefabs/Cranes/TH_Gantry_Crane_01C.prefab",
+   "group": "crane-sts"
+  },
+  {
+   "id": "harbor-harbor-crane-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Cranes/TH_Harbor_Crane_01A.prefab",
+   "group": "crane"
+  },
+  {
+   "id": "harbor-harbor-crane-01e",
+   "source": "harbor",
+   "prefab": "Prefabs/Cranes/TH_Harbor_Crane_01E.prefab",
+   "group": "crane"
+  },
+  {
+   "id": "harbor-freighter-03a-loaded",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ships/TH_Freighter_03A_Loaded.prefab",
+   "group": "ship"
+  },
+  {
+   "id": "harbor-freighter-02a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ships/TH_Freighter_02A.prefab",
+   "group": "ship"
+  },
+  {
+   "id": "harbor-tugboat-01a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ships/TH_Tugboat_01A.prefab",
+   "group": "tug"
+  },
+  {
+   "id": "harbor-tugboat-03a",
+   "source": "harbor",
+   "prefab": "Prefabs/Ships/Ships/TH_Tugboat_03A.prefab",
+   "group": "tug"
+  },
+  {
+   "id": "harbor-metal-structure-kit-building-05a",
+   "source": "harbor",
+   "prefab": "Prefabs/Metal Structures/TH_Metal_Structure_Kit_Building_05A.prefab",
+   "group": "building"
+  },
+  {
+   "id": "harbor-metal-structure-kit-building-10a",
+   "source": "harbor",
+   "prefab": "Prefabs/Metal Structures/TH_Metal_Structure_Kit_Building_10A.prefab",
+   "group": "building"
   }
  ]
 }

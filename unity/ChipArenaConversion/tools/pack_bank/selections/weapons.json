@@ -1,0 +1,39 @@
+{
+ "schema": 1,
+ "bank": "ChipArenaPackWeapons",
+ "note": "Life-size weapons for the visual body where the local bake has none: the daggers, shield, bow and caster staffs (docs/BOZO-INTEGRATION.md 'Pack weapons'; Core/NativePackWeapons.cs fits each to the game's weapon frame). Names only: no pack content.",
+ "texture_max": 1024,
+ "sources": {
+  "swords": "SciFantasy Sword Pack/Assets/RB_Sword_Pack",
+  "knights": "POLYGON Knights/Assets/Synty",
+  "fantasy": "POLYGON Fantasy Characters/Assets/Synty",
+  "lowpoly": "Low Poly Ultimate Pack/Assets/polyperfect/Low Poly Ultimate Pack"
+ },
+ "props": [
+  {
+   "id": "weapon-short-sword",
+   "source": "swords",
+   "model": "Meshes/Gladius.fbx",
+   "albedo": "Textures/RB_Sword_Pack_C.tga",
+   "group": "daggers"
+  },
+  {
+   "id": "weapon-quartered-shield",
+   "source": "knights",
+   "prefab": "PolygonKnights/Prefabs/Weapons/SM_Wep_Shield_02.prefab",
+   "group": "shield"
+  },
+  {
+   "id": "weapon-long-bow",
+   "source": "lowpoly",
+   "prefab": "_T/Prefabs_T/Weapons_T/Bow.prefab",
+   "group": "bow"
+  },
+  {
+   "id": "weapon-crystal-staff",
+   "source": "fantasy",
+   "prefab": "PolygonFantasyCharacters/Prefabs/SM_Prop_WizardStaff_01.prefab",
+   "group": "staff"
+  }
+ ]
+}

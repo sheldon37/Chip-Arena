@@ -10,7 +10,7 @@ second route that a cloud session can run end to end:
      the file unit and the import's scale factor applied, X mirrored, the axis conversion on root nodes unless the import bakes it.
    - Prefab and material YAML: each mesh part with its transform and materials, and each material's albedo and emission
      texture and colour.
-   - PSD (the merged image), TGA and PNG images, scaled down to the selection's limit.
+   - PSD (the merged image), TGA and PNG images (interlaced too), scaled down to the selection's limit.
 2. It writes a **bank** (`Resources/<bank>.bytes`) and **textures** (`Resources/PackBank/<id>.png` with their import settings in
    the `.meta`).
    - They go under `Assets/LocalAssets/ChipArenaLocal/Resources`, the folder `tools/pack_visual_body.py` already packs into the
@@ -43,8 +43,17 @@ python3 -I tools/pack_bank/build_pack_bank.py --packs DIR [--out ASSETS/LocalAss
   - A selection with only textures writes none: effect sheets are loaded by their id.
   - `sources`: id to the pack folder's path under `DIR`.
   - `props`: `id`, `source`, `prefab`, `group`. A prop is the prefab's visible mesh parts, in prefab space.
+    - Where a pack's prefabs are binary-serialized (the SciFantasy Sword Pack), `model` names the model file instead: its
+      mesh nodes as its model prefab places them. `albedo` then names a texture that every submesh draws as it is.
   - `textures`: `id`, `source`, `path`, and optionally `max`, `alpha`, `linear`, `mips`, `clamp`, `crop`. Textures that props'
     materials use are added on their own, as `<source>-<file stem>`.
+  - `sheets`: effect sheets composed from pack textures (`tools/pack_bank/sheets.py`), each written as one texture by its
+    `id`. Tiles name a `source`, a `path`, and optionally a flipbook `grid` and `frame`, a size (`scale` or `reach`),
+    `rotate`, `mirror`, `squash` and `grow`.
+    - `kind: toon`: the shared effects renderer's toon sheet layout (16 puffs, then 16 flash, crescent and spark tiles),
+      rebuilt from cartoon masks into Core's channels (signed distances, the lit tone, erosion, outline). Linear and
+      uncompressed (`textureCompression: 0`).
+    - `kind: atlas`: a grid of sprites, premultiplied, sRGB, compressed.
   - `texture_max` sets the default size limit (1024).
 - The output is deterministic: the same packs and selections give the same bytes.
 
@@ -67,7 +76,8 @@ Little-endian. The full layout is in the `NativePackBank` comment:
 - **`Tests/test_pack_bank.py`** (the Python suite) builds a synthetic pack and compares the bank to
   `Tests/pack-bank-fixture.bytes`. The pack is a hand-written binary FBX with a geometric offset and a turned node, a prefab with
   a nested part, a material and a texture.
-  - It also checks the PNG, TGA (RLE) and PSD (RLE) codecs, the axis conversion, the prefab flattening and the selection rules.
+  - It also checks the PNG (plain and interlaced), TGA (RLE) and PSD (RLE) codecs, the axis conversion, the prefab
+    flattening, a model-file prop with its albedo, and the selection rules.
   - Nothing under `tools/pack_bank` may be anything but code and selections.
 - **`CoreTests --pack-bank`** (`Tests/PackBankChecks.cs`, in the full run):
   - reads the same fixture and checks its content;
@@ -81,6 +91,10 @@ Little-endian. The full layout is in the `NativePackBank` comment:
 
 | Bank | Selection | What |
 |---|---|---|
-| `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages: barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, cranes and more (296 props, 721 meshes, 5 atlas textures, 12.7 MB) |
+| `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages (docs/arenas/STAGE-KITS.md): barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, ship-to-shore and quay cranes, freighters, tugboats, sheds and more (255 props, the pack's low-detail duplicates left out; 877 meshes, 6 materials, 5 atlas textures, 19.98 MB) |
+| `ChipArenaPackWeapons` | `weapons.json` | The visual body's daggers, shield, bow and caster staffs (`docs/BOZO-INTEGRATION.md`, pack weapons): 4 props, 4 meshes, 5 textures, 1.6 MB |
+| (textures only) | `fx-muzzle.json`, `fx-blood.json`, `fx-impacts.json`, `fx-trails.json` | Muzzle flipbooks and bursts, blood splats, bullet holes, the afterimages' ramp (14 textures, 1.4 MB; `docs/PACK-EFFECTS.md`) |
+| (textures only) | `fx-blasts.json` | `fx-toon-sheet`: the toon sheet from Epic Toon FX's cartoon masks, for blasts, smoke and fire (`docs/PACK-EFFECTS.md`; 1024 x 512, 0.7 MB) |
+| (textures only) | `fx-magic.json` | `fx-magic-sheet`: the magic bolts' sprites from Magic Arsenal and Sci-Fi Arsenal (`docs/PACK-EFFECTS.md`; 2048 x 1024, 1.3 MB) |
 
 The effect sheets, weapons and further kits are added by the streams that use them.

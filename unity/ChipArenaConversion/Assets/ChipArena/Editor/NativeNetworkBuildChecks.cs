@@ -42,6 +42,11 @@ namespace ChipArena.UnityConversion.Editor
             if(skinPrefs.weaponSkins!="sword:prototype"||skinReady.profile.cosmetics.weaponSkins!="pistol:prototype,sword:prototype"||NativeWeaponSkins.Index(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins,"sword")!=NativeWeaponSkins.StandardIndex)
                 throw new Exception("Saved pilot/ready DTO lost the weapon skins, or an old save did not load as Standard");
             if(NativeBodySkins.Of(JsonUtility.FromJson<ConversionPreferences>("{\"name\":\"Old Pilot\"}").weaponSkins)!=NativeBodySkins.StandardIndex||NativeBodySkins.Gate("body:sheldon",false)!="")throw new Exception("An old save did not load the Standard body, or the Sheldon Clothes passed the gate");
+            const string outfit="hair:wild,upper:hard-jacket,feet:work-boots";
+            var outfitReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{look=outfit}}}));
+            var outfitLobby=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="lobby",seats=new[]{new NativeSeatFrame{id=1,look=outfit}}}));
+            if(outfitReady.profile.cosmetics.look!=outfit||outfitLobby.seats[0].look!=outfit||JsonUtility.FromJson<NativeCosmetics>("{}").look!=null)
+                throw new Exception("Outfit profile/lobby round trip or legacy default failed");
             // Headwear and backdrop colours (NativeHatLooks) travel the same way; an old save and an old profile are Auto.
             var colourPrefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{hatColor="#22e6ff",backColor="#ff3dcf"}));
             var colourReady=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="ready",profile=new NativeProfile{cosmetics=new NativeCosmetics{hatColor="#22e6ff",backColor="#ff3dcf",hat="sheldon-head"}}}));
@@ -55,7 +60,8 @@ namespace ChipArena.UnityConversion.Editor
             var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
             try
             {
-                var frame=authority.NetworkFrame();var again=authority.NetworkFrame();float saved=frame.snapshot.Actors[0].Hp;authority.Local.Pose.Hp=0;
+                var savedOutfit=authority.Local.Seat.look;authority.Local.Seat.look=outfit;
+                var frame=authority.NetworkFrame();authority.Local.Seat.look=savedOutfit;var again=authority.NetworkFrame();float saved=frame.snapshot.Actors[0].Hp;authority.Local.Pose.Hp=0;
                 if(frame.snapshot.Actors[0].Hp!=saved||!ReferenceEquals(frame.props[0],again.props[0]))throw new Exception("Replay capture mutated actor history or failed to share static props");authority.Local.Pose.Hp=saved;
                 var message=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=frame}));
                 var copy=message.frame;
@@ -65,6 +71,14 @@ namespace ChipArena.UnityConversion.Editor
                     throw new Exception("Real JsonUtility match-frame round trip lost optional field presence");
                 replica=new NativeArena(authority.Content,new NativeMatch(authority.Content),authority.MapId){Replica=true,LocalId=authority.LocalId,ReplicaScene=scene};
                 replica.ApplyFrame(copy,authority.LocalId);
+                if(replica.Match.Seat(authority.LocalId).look!=outfit||NativeFrameCodec.Clone(copy).seats.First(s=>s.id==authority.LocalId).look!=outfit)
+                    throw new Exception("Outfit guest/replay round trip failed");
+                var outfitFrame=NativeFrameCodec.Clone(copy);outfitFrame.seats[0].look=new string('x',NativeLook.MaxLength+1);
+                if(outfitFrame.Valid(authority.Content))throw new Exception("Oversized outfit accepted");
+                outfitFrame.seats[0].look=null;replica.ApplyFrame(outfitFrame,authority.LocalId);
+                if(replica.Match.Seat(outfitFrame.seats[0].id).look!="")throw new Exception("Old host outfit did not clear");
+                replica.ApplyFrame(copy,authority.LocalId);
+                Debug.Log("PASS outfit profile/lobby, guest/replay, legacy defaults and length cap");
                 if(replica.Pve!=null||replica.Root.scene!=scene)throw new Exception("PvP replay/replica escaped its isolated scene or created PvE");
                 var final=NativeFrameCodec.Clone(copy);final.hasFinalKillcam=true;final.finalVictim=final.seats[1].id;final.finalSeed=42;final.resultAt=final.time;final.phaseEnd=final.time+8.5;final.phase=NativePhase.Result;
                 final=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=final})).frame;
@@ -269,7 +283,7 @@ namespace ChipArena.UnityConversion.Editor
             try
             {
                 var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="A",spec="pistol"});match.Seats.Add(new NativeSeat{id=2,name="B",spec="pistol"});
-                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateDevCombatParity();arena.ValidateParityCombat();arena.ValidateFollowupParity();arena.ValidateRoundsCards();
+                arena=new NativeArena(content,match,NativeMapRules.DefaultArena){ReplicaScene=scene};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});arena.ValidateDevCombatParity();arena.ValidateParityCombat();arena.ValidateFollowupParity();arena.ValidateRoundsCards();
                 Debug.Log("PASS native combat: no generic stun, ability block rules, splash/DoT roll rules, reload-independent abilities and authority wall-clamped aim");
             }
             finally{arena?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
@@ -283,7 +297,7 @@ namespace ChipArena.UnityConversion.Editor
             try
             {
                 var match=new NativeMatch(content,7);match.Seats.Add(new NativeSeat{id=1,name="A",spec="pistol"});match.Seats.Add(new NativeSeat{id=2,name="B",spec="pistol"});
-                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();
+                arena=new NativeArena(content,match,NativeMapRules.DefaultArena){ReplicaScene=scene};match.Start();
                 arena.ValidateKernelPanic();
             }
             finally{arena?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}

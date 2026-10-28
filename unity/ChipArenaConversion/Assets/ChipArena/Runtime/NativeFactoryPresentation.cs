@@ -117,6 +117,8 @@ namespace ChipArena.UnityConversion
         // The static kit into batches of 500 by shadow mode, packed once.
         private void Pack(NativeFactoryKit.Writer parts)
         {
+            // The parts of blocks drawn as pack props (docs/arenas/STAGE-KITS.md) stop drawing with their boxes.
+            NativePackStage.Strip(kitMap,parts);
             int casters=0,flat=0;for(int i=0;i<parts.Count;i++)if(parts.Items[i].Shadow)casters++;else flat++;
             int nc=(casters+NativeBlockLooks.Chunk-1)/NativeBlockLooks.Chunk,nf=(flat+NativeBlockLooks.Chunk-1)/NativeBlockLooks.Chunk;kit=new Batch[nc+nf];
             for(int i=0;i<kit.Length;i++)kit[i]=new Batch{Shadow=i<nc};int ci=0,fi=0;

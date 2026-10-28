@@ -19,23 +19,19 @@ internal static class BrickfallChecks
             if(i%2==1){old.spawns.ffa=Array.Empty<MapSpawn>();old.spawns.teams=Array.Empty<MapTeamSpawns>();old.nav.nodes=Array.Empty<MapNavNode>();old.nav.links=Array.Empty<MapNavLink>();}
         }
         NativeMapRules.Merge(data,JsonSerializer.Deserialize<UnityMapContent>(text,opts),text);var map=data.Map("brickfall");
-        var legacySeats=Enumerable.Range(0,8).Select(i=>new NativeSeat{id=i+1,team=i%2}).ToArray();
-        foreach(var old in data.maps.Where(m=>!m.unity))
-        {
-            foreach(bool teams in new[]{false,true})for(int i=0;i<8;i++)
-            {
-                var spawn=NativeMapRules.Spawn(data,old,legacySeats,i,teams);var expected=data.spawns[i];
-                Check((spawn.pos-expected).Length<.001&&Math.Abs(spawn.yaw-Math.Atan2(-expected.x,-expected.z)*180/Math.PI)<.001,"legacy spawn/yaw "+old.id);
-            }
-            Check(old.spawns==null&&old.nav==null&&old.bounds==null,"legacy inline defaults "+old.id);
-            Check((NativeMapRules.Clamp(old,new V3(100,4,-100))-new V3(31,4,-27)).Length<.001,"legacy player bounds "+old.id);
-            Check((NativeMapRules.Clamp(old,new V3(-100,4,100),true)-new V3(-28,4,24)).Length<.001,"legacy bot bounds "+old.id);
-        }
+        Check(data.maps.All(m=>m.unity)&&data.maps.Length==8,"only authored Unity maps survive the export merge");
+        Check(data.maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"brickfall","cybercity","factory"}),"modern random rotation");
+        Check(data.maps.Where(NativeMapRules.ArenaSelectable).Count()==4&&!data.Map("siren").rotation,"Ward Zero selectable outside Random");
+        foreach(string id in legacy.maps.Select(m=>m.id).Where(id=>id!="siren").Concat(new string[]{null,"unknown","expedition-transit"}))
+        {var room=new NativeRoomOptions{map=id};room.Normalize(data);Check(room.map==NativeMapRules.DefaultArena,"saved map migration "+id);}
+        foreach(string id in new[]{"brickfall","factory","cybercity","siren","random"})Check(NativeMapRules.Selection(data,id)==id,"valid choice retained "+id);
+        for(uint seed=0;seed<100;seed++)Check(data.Map(NativeMapRules.RandomArena(data,seed)).rotation,"random uses only rotation");
+        var emptyRotation=new ConversionContent{maps=new[]{new ContentMap{id="brickfall"}}};Check(NativeMapRules.RandomArena(emptyRotation,1)=="brickfall","empty rotation fallback");
+        Check(data.contentRevision!=NativeMapRules.Revision(text),"catalog policy participates in peer compatibility");
         var malformed=JsonSerializer.Deserialize<UnityMapContent>(text,opts).maps[0];malformed.spawns=new MapSpawns();bool rejected=false;
         try{NativeMapRules.Validate(malformed);}catch(InvalidOperationException){rejected=true;}
         Check(rejected,"missing authored Unity spawn table silently accepted");
-        Console.WriteLine("PASS legacy map loading: omitted inline defaults, 15 maps / 240 FFA-team spawns, player/bot bounds; invalid Unity spawns rejected");
-        Check(data.maps.Length==legacy.maps.Length+7&&data.maps.Count(m=>m.rotation)==legacy.maps.Count(m=>m.rotation)&&!map.rotation,"old maps or rotation changed");
+        Console.WriteLine("PASS Unity map catalog: modern rotation, saved-map migration, empty-pool fallback, revision compatibility");
         Check(data.contentRevision.Length==64&&data.contentRevision!=NativeMapRules.Revision(text+" "),"revision not byte sensitive");
         Check(!NativeMapRules.Compatible(5,data.sourceCommit,data.contentRevision,data)&&!NativeMapRules.Compatible(NativeConnection.Protocol,data.sourceCommit,null,data)&&!NativeMapRules.Compatible(NativeConnection.Protocol,data.sourceCommit,NativeMapRules.Revision(text+" "),data)&&NativeMapRules.Compatible(NativeConnection.Protocol,data.sourceCommit,data.contentRevision,data),"old/mismatched join compatibility");
         Check((NativeMapRules.Clamp(map,new V3(100,4,-100))-new V3(29.58f,4,-25.58f)).Length<.001,"map bounds");

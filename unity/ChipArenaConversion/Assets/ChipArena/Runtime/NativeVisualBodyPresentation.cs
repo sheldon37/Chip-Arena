@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
             public int[] JointBone; public Matrix4x4[] JointFrom;
             // A broadcast bust's neck bone and its place in the body (VisualBust).
             public int BustNeck=-1; public Vector3 BustPivot=new Vector3(float.NaN,0,0);
-            public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted; public Vector3 At; public float Flash=1, Glow=-1;
+            public string Spec, Accent; public int PosedFrame=-10; public bool Seen, Moved, SpawnOn, Ghosted, RevealOn; public Vector3 At; public float Flash=1, Glow=-1;
             public Material[][] Plain, Spawning;
             // The gear's anchors (the bake's VisualGearCore and VisualGearDevice, the band's radius from VisualGearDeviceRim), when
             // the body last appeared or finished forming (the core's flare), the last seated chip (its plant's key, when, colour)
@@ -47,6 +47,9 @@ namespace ChipArena.UnityConversion
             // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
             // fitted on the right hand bone, whose scale RightScale restores) and the one shown (when).
             public Dictionary<string,VisualWeapon> Weapons; public VisualWeapon Held, Shown; public int ShownFrame=-1; public Vector3 RightScale=Vector3.one;
+            // An arena pilot's own body (its rig the arena poses: the pack bank's weapons draw on it, NativePackWeaponPresentation.cs),
+            // those made for it by spec (null: none for that spec), and whether its main dagger is thrown this frame.
+            public bool Arena, MainAway; public Dictionary<string,VisualWeapon> Packs;
             // Its stride: the pack's locomotion clips on a proxy skeleton, for the legs (NativeVisualStridePresentation.cs).
             public VisualStride Stride;
             // Its own animation: the pack's clips whole for a weapon whose set has moved over (NativeVisualMotionPresentation.cs).
@@ -68,7 +71,14 @@ namespace ChipArena.UnityConversion
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
-        private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId||id==RooftopIdTop?LocalLook??"":ModelPortraitOf(id,out var portrait)?portrait.Outfit:"";
+        private string VisualLookOf(int id)
+        {
+            if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??"";
+            if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
+            // Use the displayed arena, including replay/guest seats, rather than current local preferences.
+            var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??"";
+            return id==LocalId?LocalLook??"":"";
+        }
         /// <summary>Whether this install draws the visual body at all (its bake found, not turned off at launch): Settings shows the
         /// Player model choice only then.</summary>
         public static bool VisualBodyInstalled=>VisualBodiesOn;
@@ -146,7 +156,7 @@ namespace ChipArena.UnityConversion
         {
             // A changed outfit or hood makes the body again in it (the Locker's picks apply in the lobby).
             if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&(body.Hood!=hood||!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal))){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}
-            if(body==null||body.Root==null){body=CreateVisualBody(rig,id,hood);if(body==null)return null;visualBodies[rig]=body;}
+            if(body==null||body.Root==null){body=CreateVisualBody(rig,id,hood);if(body==null)return null;body.Arena=rigs.TryGetValue(id,out var own)&&own==rig;visualBodies[rig]=body;}
             return body;
         }
         // The body bound to `pose` (feet planted when `planted`, the airborne solve when `airborne`), its weapon in hand and the
@@ -237,17 +247,45 @@ namespace ChipArena.UnityConversion
         }
         // The entrance's pilot on its visual body (owner 2026-10-24: "Model everywhere"): the intro rig's own authored pose
         // (`pose`, as the entrance wrote it) retargeted, without the pack's clips or the stride and with the feet as authored;
-        // its weapon in hand where the entrance shows it (IntroWeapon). While the entrance still builds the body in (`reveal`
-        // under half on the pelvis, chest, head or a hand) the voxel body draws the reveal instead.
-        private static readonly int[] IntroSolidBones={CapturedRig.Pelvis,CapturedRig.Chest,CapturedRig.Head,CapturedRig.LHand,CapturedRig.RHand};
+        // its weapon in hand where the entrance shows it (IntroWeapon). While the entrance builds the body in or glitches it
+        // (`reveal`: the Sheldon Intro's drop-outs; owner 2026-10-28: "it uses voxel model in the "glitching""), the model
+        // takes the reveal bone by bone in its shader (VisualRevealLook), as the voxel parts did.
         private void VisualIntroPose(CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,Func<int,float> reveal)
         {
             if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec=="siren"||!VisualBodiesOn)return;
-            if(reveal!=null)foreach(int b in IntroSolidBones)if(reveal(b)<.5f)return;
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;
+        }
+        // A directed entrance's per-bone reveal on the model (NativeVisualBodyFx.cginc RevealClip): each game bone of `rig` as its
+        // world segment (Core NativeBodyReveal.Segment) with its share of `reveal`; written while some bone is under whole, and
+        // cleared once after.
+        private static readonly int RevealOnId=Shader.PropertyToID("_RevealOn"),RevealAId=Shader.PropertyToID("_RevealA"),RevealBId=Shader.PropertyToID("_RevealB");
+        private readonly Vector4[] revealA=new Vector4[NativeBodyReveal.Segments],revealB=new Vector4[NativeBodyReveal.Segments];
+        private readonly System.Numerics.Vector3[] revealAt=new System.Numerics.Vector3[CapturedRig.Bones.Length];
+        private void VisualRevealLook(VisualBody body,CapturedAnimation.Player rig,Func<int,float> reveal)
+        {
+            bool on=false;
+            if(reveal!=null&&rig.Bones.Length>=CapturedRig.Bones.Length)
+            {
+                for(int b=0;b<revealAt.Length;b++){var p=rig.Bones[b].position;revealAt[b]=new System.Numerics.Vector3(p.x,p.y,p.z);}
+                var up=rig.Bones[CapturedRig.Head].up;var headUp=new System.Numerics.Vector3(up.x,up.y,up.z);
+                for(int b=1;b<=NativeBodyReveal.Segments;b++)
+                {
+                    float share=Mathf.Clamp01(reveal(b));if(share<.999f)on=true;
+                    NativeBodyReveal.Segment(b,revealAt,headUp,out var from,out var to);
+                    revealA[b-1]=new Vector4(from.X,from.Y,from.Z,share);revealB[b-1]=new Vector4(to.X,to.Y,to.Z,0);
+                }
+            }
+            if(!on&&!body.RevealOn)return;
+            foreach(var r in body.All)
+            {
+                if(r==null)continue;r.GetPropertyBlock(body.Block);body.Block.SetFloat(RevealOnId,on?1:0);
+                if(on){body.Block.SetVectorArray(RevealAId,revealA);body.Block.SetVectorArray(RevealBId,revealB);}
+                r.SetPropertyBlock(body.Block);
+            }
+            body.RevealOn=on;
         }
         // The draft's pilot on its visual body (owner 2026-10-24: "Model everywhere"): the drafting seat as a stand-in actor (its
         // outfit, accent, no weapon in hand: the hands pick the chips), bound to the stage's pose, with its hat on the model's
@@ -378,6 +416,7 @@ namespace ChipArena.UnityConversion
                 body.Ghosted=ghost;
             }
             VisualAccentGlow(body,a.Id,time);
+            if(rig==introRig)VisualRevealLook(body,rig,reveal);
             if(!on&&!body.SpawnOn&&flash==body.Flash)return;
             if(!on)look=VisualSpawnLook.Off;
             foreach(var r in body.All)
@@ -1207,6 +1246,16 @@ namespace ChipArena.UnityConversion
             if(echo==null||echo.Count==0||!(opacity>0))return;
             var material=VisualEchoMaterial(shader);if(material==null)return;visualEchoBlock??=new MaterialPropertyBlock();visualEchoBlock.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));
             for(int i=0;i<echo.Count;i++){var mesh=echo.Meshes[i];if(mesh==null)continue;for(int sub=0;sub<mesh.subMeshCount;sub++)Graphics.DrawMesh(mesh,echo.At[i],material,0,null,sub,visualEchoBlock);}
+        }
+        // The same through a shader that also reads the accent tint (the pack afterimage: the copy's life share and seed); false
+        // without the material (the caller draws the ghost).
+        private MaterialPropertyBlock visualPackEchoBlock;
+        private bool VisualEchoDraw(VisualEcho echo,string shader,Color tint,float opacity,Vector4 accent)
+        {
+            if(echo==null||echo.Count==0)return false;var material=VisualEchoMaterial(shader);if(material==null)return false;if(!(opacity>0))return true;
+            visualPackEchoBlock??=new MaterialPropertyBlock();visualPackEchoBlock.SetVector(VisualEchoTint,new Vector4(tint.r,tint.g,tint.b,opacity*VisualEchoShare));visualPackEchoBlock.SetVector(VisualGhostAccent,accent);
+            for(int i=0;i<echo.Count;i++){var mesh=echo.Meshes[i];if(mesh==null)continue;for(int sub=0;sub<mesh.subMeshCount;sub++)Graphics.DrawMesh(mesh,echo.At[i],material,0,null,sub,visualPackEchoBlock);}
+            return true;
         }
         // The ghost shader's material for the model's echoes and live ghosts (a little toward the eye where the shader has the
         // offset); null where the shader is missing.

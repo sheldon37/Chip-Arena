@@ -8,7 +8,7 @@ internal static class ParityFollowupChecks
     private static void Check(bool ok,string why){if(!ok)throw new Exception(why);}
     public static void Run(ConversionContent data)
     {
-        Check(NativeLobbyRules.PreviewMap("random",false)=="moonlit"&&NativeLobbyRules.PreviewMap("random",true)=="siren","boot/preview random maps never dereference an absent arena or map");
+        Check(NativeLobbyRules.PreviewMap("random",false)==NativeMapRules.DefaultArena&&NativeLobbyRules.PreviewMap("random",true)=="siren","boot/preview random maps never dereference an absent arena or map");
         var human=new NativeSeat{id=1,team=0,connected=true};var boss=new NativeSeat{id=8,team=7,AuthorityBoss=true,connected=false};
         Check(!NativeCombatRules.CanHit(human,boss,true,false)&&NativeCombatRules.MinionCanHit(human,boss,true,true,false)&&NativeCombatRules.MinionEnemy(human,boss,true,true),"hidden boss stays untargetable while its PvE adds accept human/recruit attacks");
         Check(!NativeCombatRules.MinionCanHit(human,boss,false,true,true)&&!NativeCombatRules.MinionCanHit(boss,boss,true,true,true),"ordinary summons and Siren self hits do not inherit the horde exception");

@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
                 {
                     var match=new NativeMatch(content,11);var victim=new NativeSeat{id=1,name="Victim"};var dev=new NativeSeat{id=2,name="Dev"};match.Seats.Add(victim);match.Seats.Add(dev);
                     var grant=new NativeAccess();typeof(NativeAccess).GetProperty("Developer").GetSetMethod(true).Invoke(grant,new object[]{true});typeof(NativeAccess).GetProperty("Expires").GetSetMethod(true).Invoke(grant,new object[]{double.MaxValue});dev.access=grant;
-                    arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene,LocalId=online?1:2};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});
+                    arena=new NativeArena(content,match,NativeMapRules.DefaultArena){ReplicaScene=scene,LocalId=online?1:2};match.Start();match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10});
                     int n=0;double clock=0;
                     NativeDevReply Send(string action,int target=1,params string[] args)
                     {
