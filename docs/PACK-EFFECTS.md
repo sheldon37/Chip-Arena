@@ -54,7 +54,7 @@ Before, a surface hit drew only the weapon-coloured spark burst (`NativeImpactCu
 - **Not yet:**
   - holes on moving or breaking props stay where the hit was (they fade in 9 s);
   - surfaces whose material is snow, dirt or glass use stone (the pack also has dirt, glass, brick, rock, plaster and water
-    impacts).
+    impacts). Since 2026-10-28 the kinds are there (next sections); their effects wait for the local bake.
 
 ## The slash crescents' ink brush (2026-10-24, `claude/slash-brush`)
 
@@ -225,6 +225,54 @@ Owner (2026-10-28): the blood upgrades approved.
   splats): fresh, dried, the wall runs and the low tier.
 - **Not yet:** seen in the Editor or a build; a quad near a block's edge can overhang it a little more than the fan did (the
   sim's support test is unchanged).
+
+## Surface impacts for every surface (2026-10-28, `claude/pack-fx-hits`)
+
+Owner (2026-10-28): the surface impact upgrades approved.
+
+- **Kinds** (`Core/NativeSurfaceImpacts.Surface`): stone, metal and wood as before, and brick, glass, dirt, rock, plaster and
+  water. A round's kind comes from the prop it hit:
+  - its material by the structure rules (`NativeStructureFx.Classify`): brick, masonry and terracotta are brick; glass and
+    windows glass; metal, steel, iron and rebar metal; wood and timber wood;
+  - loose ground (snow, ice, dirt, gravel, sand, mud) is dirt, rubble, cobble and rock are rock, water is water;
+  - inside a building (the `interior-` blocks): plaster on the walls, stone underfoot;
+  - the ground (a `foundation` block hit from above) is the map's floor as its footsteps hear it (`NativeFootsteps.Surface`):
+    the snow maps (Moonlit, Frozen) and the gravel map (Outpost) dirt, the stone maps (Citadel, Forge, Spikevault,
+    Lavaworks) rock, the wood maps (Canal, Sawmill) wood, the metal maps metal, the rest stone;
+  - the stone maps' stone blocks are rock; every other surface stone.
+
+  The impact sound's three kinds (`NativeSurfaceImpacts.Kind`) are unchanged. No map content uses `water` yet, so the water
+  impact has no trigger until a prop does; glass shows where Brickfall's structures carry it.
+- **Runtime** (`Runtime/NativeSurfaceImpactPresentation.cs`): the pools are sized by the kind count. Only the bake's
+  `VisualImpacts/stone` entry is required now: a kind the bake lacks plays the stone effect and hole, never switching the
+  feature off. Where the bake lacks a kind, its hole takes the pack bank's texture for it (`impact-hole-brick`,
+  `impact-hole-glass`, `impact-hole-dirt`: kripto289's `BrickBulletDecal3`, `BrokenGlassDecal`, `DirtBulletDecal3`, selection
+  `tools/pack_bank/selections/fx-impacts.json`) on a copy of the stone hole's material; rock and plaster keep the stone hole
+  (the pack's concrete and plaster holes are one texture); water leaves none.
+- **Checks:** `CoreTests --pack-fx-hits` (the kinds by material, block, normal and map, the fallbacks, the selection, this
+  bake request); `--visual-rig` (the existing impact pins) passing.
+- **Renders:** the holes by kind on matching surfaces, before (every kind the stone hole) and after (the bank's holes where
+  the bake lacks the kind). The particle effects themselves need the bake.
+
+### Local session: add these kinds to the impacts bake
+
+The local tool's `bozo-impacts.request` (also run by the body bake) adds, beside the existing `stone`, `metal` and `wood`,
+one entry per new kind under `VisualImpacts` on the visual body's prefab, with the same conversion rules as the first three
+(above: the flipbook dust `Legacy Shaders/Particles/Alpha Blended`, sparks `Legacy Shaders/Particles/Additive`, tints
+halved, debris on `Standard`, distortion layers dropped, textures at most 1024, hierarchy scale 0.6, debris at most 1.6 s,
+no decal, scripts or lights in `Effect`):
+
+| Entry | Pack prefab (`Assets/KriptoFX/MuzzleFlashes/Prefab/Impacts/`) | `Effect` holds | `Decal` |
+| --- | --- | --- | --- |
+| `VisualImpacts/brick` | `BrickImpact.prefab` | `Dust`, `DustVertical`, `Dust` (8x8), `rocks`, `rocks (1)` | `BrickBulletDecal3` |
+| `VisualImpacts/glass` | `GlassImpact.prefab` | both `GlassParticles` (mesh shards, `Standard`, keep their transparency) | `BrokenGlassDecal` |
+| `VisualImpacts/dirt` | `DirtImpact.prefab` | `Dust`, `DustVertical`, both `rocks (1)` | `DirtBulletDecal3` |
+| `VisualImpacts/rock` | `RockImpact.prefab` | both `rocks`, `Dust`, `DustVertical` | the concrete hole (as `stone`) |
+| `VisualImpacts/plaster` | `PlasterImpact.prefab` | `DustVertical`, `Dust`, both `rocks` | the concrete hole (as `stone`) |
+| `VisualImpacts/water` | `WaterImpact.prefab` | `WaterRings`, `WaterParticles`, `WaterParticles2` (their flipbook splashes alpha blended; the distortion and normal-map parts dropped) | none |
+
+Each `Decal` is the same 0.14 m alpha-blended quad as the first three's. Until an entry is baked, its kind plays the stone
+entry (with the bank's hole where listed above), so the bake can add them one at a time.
 
 ## Candidates from the same drive (not started)
 

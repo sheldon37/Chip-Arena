@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace ChipArena.UnityConversion
 {
     // The effect upgrades from the owner's packs (owner 2026-10-28; docs/PACK-EFFECTS.md): the guns' pack muzzle flashes, the
-    // pack's blood splats. Each
+    // pack's blood splats, the surface impacts for every surface. Each
     // look is a pure function of the replicated shot and falls back to exactly today's when its textures are missing.
     internal static class PackFxHitsChecks
     {
@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
             Muzzle(root,R);
             Blood(root,R);
+            Impacts(root,R);
             Console.WriteLine("PASS pack fx hits: "+count+" checks");
         }
 
@@ -106,6 +107,33 @@ namespace ChipArena.UnityConversion
             Check(block.Length>100&&!block.Contains("tex2D")&&!block.Contains("mul(")&&Regex.Matches(block,@"(?<![\w.])\d+(?![\w.])").Count==0,"the splat block: float literals only, no texture reads");
             Check(Regex.IsMatch(R("Resources/NativeBloodSplat.shader.meta"),@"^guid: [0-9a-f]{32}$",RegexOptions.Multiline),"the splat shader has its .meta");
             var sheet=Between(blood,"private void SheetSplat(","private void Fan(");Check(!Regex.IsMatch(sheet,@"new\s+(?!Vector4\b|Vector3\b|Color\b)\w+")&&!blood.Contains("Random("),"the pack splats allocate nothing per splat and use no clock-free randomness");
+        }
+
+        // C. Surface impacts for every surface: the kinds by material, block and map; a kind the bake lacks plays the stone entry
+        // (its own hole from the bank where there is one); the feature needs only the stone entry.
+        private static void Impacts(string root,Func<string,string> R)
+        {
+            int S(string m,string map="arena",string block="b-1",float up=0)=>NativeSurfaceImpacts.Surface(m,map,block,up);
+            Check(NativeSurfaceImpacts.Names.Length==NativeSurfaceImpacts.Kinds&&NativeSurfaceImpacts.Names.Distinct().Count()==NativeSurfaceImpacts.Kinds&&NativeSurfaceImpacts.Names[NativeSurfaceImpacts.Stone]=="stone","a bake entry name per kind, stone first");
+            Check(S("brick")==NativeSurfaceImpacts.Brick&&S("masonry")==NativeSurfaceImpacts.Brick&&S("terracotta")==NativeSurfaceImpacts.Brick&&S("red-brick-wall")==NativeSurfaceImpacts.Brick,"brick props take brick");
+            Check(S("glass")==NativeSurfaceImpacts.Glass&&S("shop-window")==NativeSurfaceImpacts.Glass,"glass and windows take glass");
+            Check(S("metal")==NativeSurfaceImpacts.Metal&&S("steel")==NativeSurfaceImpacts.Metal&&S("rebar")==NativeSurfaceImpacts.Metal&&S("wood")==NativeSurfaceImpacts.Wood&&S("timber")==NativeSurfaceImpacts.Wood,"metal and wood as before");
+            Check(S("snow")==NativeSurfaceImpacts.Dirt&&S("gravel")==NativeSurfaceImpacts.Dirt&&S("dirt")==NativeSurfaceImpacts.Dirt&&S("rubble")==NativeSurfaceImpacts.Rock&&S("water")==NativeSurfaceImpacts.Water,"loose ground dirt, rubble rock, water water");
+            Check(S("foundation","moonlit","floor",1)==NativeSurfaceImpacts.Dirt&&S("foundation","frozen","floor",1)==NativeSurfaceImpacts.Dirt&&S("foundation","outpost","floor",1)==NativeSurfaceImpacts.Dirt,"the snow and gravel maps' ground kicks up dirt");
+            Check(S("foundation","citadel","floor",1)==NativeSurfaceImpacts.Rock&&S("foundation","canal","floor",1)==NativeSurfaceImpacts.Wood&&S("foundation","foundry","floor",1)==NativeSurfaceImpacts.Metal&&S("foundation","arena","floor",1)==NativeSurfaceImpacts.Stone,"the other maps' ground as their footsteps");
+            Check(S("foundation","moonlit","ledge",0)==NativeSurfaceImpacts.Stone&&S("stone","moonlit")==NativeSurfaceImpacts.Stone&&S("stone","citadel")==NativeSurfaceImpacts.Rock&&S(null)==NativeSurfaceImpacts.Stone,"a built foundation's side and stone blocks stone (rock on the stone maps)");
+            Check(S("stone","moonlit","interior-house-3-facade-7",0)==NativeSurfaceImpacts.Plaster&&S("foundation","moonlit","interior-house-3-floor-2",1)==NativeSurfaceImpacts.Stone&&S("wood","moonlit","interior-house-3-facade-7",0)==NativeSurfaceImpacts.Wood,"inside a building: plaster walls, stone floors, its own wood and metal");
+            Check(NativeSurfaceImpacts.Kind("brick")==NativeSurfaceImpacts.Stone,"the impact sound's three kinds unchanged");
+            var sel=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/pack_bank/selections/fx-impacts.json"))).RootElement;
+            var holes=Enumerable.Range(0,NativeSurfaceImpacts.Kinds).Select(NativeSurfaceImpacts.HoleTexture).Where(x=>x!=null).OrderBy(x=>x).ToArray();
+            Check(holes.Length==3&&sel.GetProperty("textures").EnumerateArray().Select(t=>t.GetProperty("id").GetString()).OrderBy(x=>x).SequenceEqual(holes),"fx-impacts.json lists exactly the holes the bank stands in for");
+            Check(!NativeSurfaceImpacts.Holes(NativeSurfaceImpacts.Water)&&Enumerable.Range(0,NativeSurfaceImpacts.Kinds).Count(NativeSurfaceImpacts.Holes)==NativeSurfaceImpacts.Kinds-1,"water leaves no hole");
+            string impacts=Code(R("Runtime/NativeSurfaceImpactPresentation.cs"));
+            Check(impacts.Contains("var stone=holder.Find(NativeSurfaceImpacts.Names[NativeSurfaceImpacts.Stone]);if(stone==null)return false;")&&impacts.Contains("var entry=holder.Find(NativeSurfaceImpacts.Names[k]);bool own=entry!=null;if(!own)entry=stone;")&&!impacts.Contains("if(entry==null)return false;"),"only the stone entry is required; a missing kind plays stone");
+            Check(impacts.Contains("var lists=new List<LiveImpact>[NativeSurfaceImpacts.Kinds];")&&impacts.Contains("int kind=NativeSurfaceImpacts.Surface(SurfaceMaterialOf(arena,e.SurfaceId),arena.MapId,e.SurfaceId,normal.y);"),"the pools by kind count; the kind by material, map, block and normal");
+            Check(impacts.Contains("NativePackBanks.Texture(NativeSurfaceImpacts.HoleTexture(k))")&&impacts.Contains("var hole=!own&&decals[k]!=null?"),"the bank's hole only where the bake lacks the kind");
+            var doc=File.ReadAllText(Path.Combine(root,"../../docs/PACK-EFFECTS.md"));var request=Between(doc,"Local session: add these kinds to the impacts bake","\n## ");
+            foreach(var (kind,prefab) in new[]{("brick","BrickImpact"),("glass","GlassImpact"),("dirt","DirtImpact"),("rock","RockImpact"),("plaster","PlasterImpact"),("water","WaterImpact")})Check(request.Contains("VisualImpacts/"+kind)&&request.Contains(prefab+".prefab"),"the bake request names "+kind+" and "+prefab);
         }
     }
 }
