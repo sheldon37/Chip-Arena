@@ -85,6 +85,19 @@ The same rules as the visual body apply. The packs stay in the git-ignored `Asse
 the meshes and textures the bake uses ship in the licensed-assets zip, which the builder installs for builds. They are
 never committed or published as files.
 
+### Visual body pack weapons (2026-10-28, owner licence)
+
+The visual body's daggers, shield, bow and caster staffs (`docs/BOZO-INTEGRATION.md`, pack weapons) come from the weapons
+pack bank (`docs/PACK-BANK.md`; selection `tools/pack_bank/selections/weapons.json`, names only):
+- daggers: the gladius of the SciFantasy Sword Pack (RB), on both hands;
+- shield: `SM_Wep_Shield_02` of Synty's POLYGON Knights;
+- bow: the `Bow` of polyperfect's Low Poly Ultimate Pack, its baked string and nocked arrow dropped (the game draws its own
+  string);
+- staffs: `SM_Prop_WizardStaff_01` of Synty's POLYGON Fantasy Characters, its crystal in each school's colour.
+
+Each is drawn with its pack's texture on our own toon material; no pack shader, material or script ships. The bank and those
+textures ship in the licensed-assets zip only, under the visual body's rules: never committed or published as files.
+
 ### Surface impacts (2026-10-24, owner licence)
 
 Gun rounds hitting a surface (`docs/PACK-EFFECTS.md`) play converted particle effects and bullet-hole textures from

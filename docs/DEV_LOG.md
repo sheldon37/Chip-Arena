@@ -1,3 +1,22 @@
+## 2026-10-28 — Claude: pack weapons on the model (daggers, shield, bow, caster staffs) (implemented on branch)
+
+- **Branch/base:** `claude/pack-weapons` from `claude/pack-bank` `55a6e5d` (the pack-bank foundation, on shared `8f8f3d8`). Not merged; for Claude's review and merge.
+- **Owner (2026-10-28):** "Lets do all of those" (the in-place upgrades from the drive's packs), "Do whatever needs to be done". The model drew the bake's life-size guns and swords but still the game's procedural daggers, shield, bow and staffs, which clashed.
+- **Changes (presentation only; details in BOZO-INTEGRATION "Pack weapons", PACK-BANK, ASSET-CREDITS):**
+  - Selection `tools/pack_bank/selections/weapons.json` (bank `ChipArenaPackWeapons`, names only): the sword pack's gladius (daggers), the knights pack's quartered shield, the low-poly pack's bow, the fantasy pack's crystal staff. Picked from side-by-side renders of the candidates (Synty and polyperfect daggers, eight shields, four staffs).
+  - `Core/NativePackWeapons`: per spec, the prop's grip point and axes, scale and piecewise axis map onto the game's weapon frame and sockets; `Shape` (largest piece, marked crystal, normals, winding); the bow's limb weights and bend (`NativeBowRig.Limb`).
+  - `Runtime/NativePackWeaponPresentation` and `NativeVisualWeaponPresentation`: where the bake has no model, an arena pilot's visual body draws the pack weapon. It is built once, made once per body, and shown and hidden as the bake's models: the daggers on both hands (the thrown main dagger hides its copy), the bow skinned in `BowDraw` in place of the riser and limbs (the game's string, arrows and quiver unchanged), the staffs on the left with the left fist closed on the shaft and the crystal in each school's colour. Standard skin only; without the bank, today's models.
+  - Pack bank tool: `model` + `albedo` props (for packs with binary-serialized prefabs) and interlaced PNGs (`Tests/test_pack_bank.py` +2 tests; the fixture unchanged).
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The caster's visual left fist now closes on the staff, which moves from the bare wrist to the fist (about 9 cm), with its charge orb and effects.
+- **Checks (actual):**
+  - `CoreTests --pack-weapons` PASS, 436 checks (481 with `CHIP_PACK_WEAPONS` set to the built bank: the real meshes measured).
+  - `--visual-rig` PASS (130,632), `--bow` PASS (5,044), `--weapon-sockets` PASS, `--pack-bank` PASS (5,481); WeaponSkinChecks PASS (1,574) and ChipModuleChecks PASS (36,280), each run alone.
+  - Python suite PASS (158 tests). Unity compile (runtime and editor): PASS. `git diff --check` clean.
+  - Bank built to scratch: 4 props, 4 meshes, 5 textures, zip 1.48 MB.
+  - Offline WebGL renders (scratch): every pick over the game's own model as a silhouette (grips, tips, shield edge, staff tip and muzzle, the bow at rest, half and full draw with the game's string), and a contact sheet of the picks.
+- **Not run:** the full CoreTests run (shared CPUs); Unity Play mode, the toon look in game, the arena lighting and the hands round the new handles (the owner's PC with the body bake and the zip); a Windows build; multiplayer.
+- **Next:** copy the bank into the licensed-assets zip (`--zip` over `Assets/LocalAssets`), then a Play-mode pass on the owner's PC: the fist round the bow's thick riser, the staff's seat under the casters' clips, and the crystals' glow with Reduced effects.
+
 ## 2026-10-27 — Claude: Sheldon's clothes on the model, and the Sheldon Head as a cloth hood (merged into shared)
 
 - **Branch/base:** `claude/sheldon-clothes` from shared `4310d477`. No PR; merged into shared and the builder. The builder's agent publishes the build to the test channel.
