@@ -82,5 +82,6 @@ Little-endian. The full layout is in the `NativePackBank` comment:
 | Bank | Selection | What |
 |---|---|---|
 | `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages: barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, cranes and more (296 props, 721 meshes, 5 atlas textures, 12.7 MB) |
+| (textures only) | `fx-muzzle.json`, `fx-blood.json`, `fx-impacts.json`, `fx-trails.json` | Muzzle flipbooks and bursts, blood splats, bullet holes, the afterimages' ramp (14 textures, 1.4 MB; `docs/PACK-EFFECTS.md`) |
 
 The effect sheets, weapons and further kits are added by the streams that use them.
