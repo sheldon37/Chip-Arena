@@ -145,6 +145,23 @@ class Images(unittest.TestCase):
         rgb = images.decode_png(images.encode_png(img, alpha=False))
         self.assertEqual(bytes(rgb.rgba[3::4]), b'\xff' * 6)
 
+    def test_png_adam7_interlaced(self):
+        # 10x9 RGBA through the seven Adam7 passes (filter 0 rows), against the plain decode of the same pixels.
+        w, h = 10, 9
+        rgba = b''.join(bytes(p) for p in [(x * 25, y * 28, (x * y) % 256, 255 - x) for y in range(h) for x in range(w)])
+        raw = b''
+        for x0, y0, dx, dy in ((0, 0, 8, 8), (4, 0, 8, 8), (0, 4, 4, 8), (2, 0, 4, 4), (0, 2, 2, 4), (1, 0, 2, 2), (0, 1, 1, 2)):
+            for y in range(y0, h, dy):
+                row = b''.join(rgba[(y * w + x) * 4:(y * w + x) * 4 + 4] for x in range(x0, w, dx))
+                if row:
+                    raw += b'\x00' + row
+
+        def chunk(kind, body):
+            return struct.pack('>I', len(body)) + kind + body + struct.pack('>I', zlib.crc32(kind + body) & 0xffffffff)
+        data = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 1)) + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b'')
+        img = images.decode_png(data)
+        self.assertEqual((img.w, img.h, bytes(img.rgba)), (w, h, rgba))
+
     def test_tga_rle_bottom_up(self):
         # 2x2, 24 bit, RLE, bottom-up rows: a run of two blue pixels then two raw ones.
         head = bytes([0, 0, 10]) + b'\x00' * 9 + struct.pack('<HHBB', 2, 2, 24, 0)
@@ -223,6 +240,24 @@ class Bank(unittest.TestCase):
                 b.build(dict(SELECTION, bank='Other'))
             with self.assertRaises(build_pack_bank.SelectionError):
                 b.build(dict(SELECTION, props=[{'id': 'Bad Id', 'source': 'syn', 'prefab': 'Box.prefab'}]))
+
+    def test_model_prop_with_albedo(self):
+        # A model file as the prop (a pack whose prefabs are binary-serialized), one material drawing the named texture.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = write_pack(tmp)
+            b = build_pack_bank.Builder(str(root))
+            sel = dict(SELECTION, props=[{'id': 'syn-model', 'source': 'syn', 'model': 'Box.fbx', 'albedo': 'Paint.png', 'group': 'model'}])
+            out = b.build(sel)
+            self.assertEqual([p[0] for p in out.props], ['syn-model'])
+            self.assertEqual(len(out.props[0][4]), 1)  # the model's one mesh node
+            self.assertEqual(out.materials[0][:3], ('syn/paint', 0, -1))
+            self.assertEqual(out.textures, [('syn-paint', 0)])
+            self.assertIn('ChipArenaLocal/Resources/PackBank/syn-paint.png', b.files)
+            lo, hi = out.props[0][2], out.props[0][3]
+            self.assertEqual([round(v, 4) for v in lo[:1] + hi[:1]], [-2.0, -1.0])  # the model prefab's place: its one node at the root
+            for bad in ({'model': 'Missing.fbx'}, {'model': 'Box.fbx', 'albedo': 'Missing.png'}):
+                with self.assertRaises(build_pack_bank.SelectionError):
+                    build_pack_bank.Builder(str(root)).build(dict(SELECTION, props=[dict({'id': 'syn-bad', 'source': 'syn'}, **bad)]))
 
     def test_no_pack_content_committed(self):
         # The selections name pack files; nothing under tools/pack_bank may be pack content.
