@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
             NativeMeleeAction Start(float target=1002)
             {setup("greatsword");position(b,target);Check(TryMeleeAbility(a,"e"),"cast accepted");return a.Special;}
             var spin=Start();float ready=a.EReady;
-            NearNative(a.Stamina,55,"Whirlwind cost");NearNative(ready-Time,11,"Whirlwind cooldown");
+            NearNative(a.Stamina,95.5f,"Whirlwind cost");NearNative(ready-Time,11,"Whirlwind cooldown");
             At(spin.Release-.001f);Check(b.Hp==100&&spin.Tick==0,"no windup hit");At(spin.Release+.001f);
             NearNative(b.Hp,91.5f,"first pulse");Check(b.StunEnd>Time&&spin.Phase=="active"&&!a.MeleeKit.SuperArmour,"only ordinary light stagger, no legacy armour");
             StepSpecial(a);NearNative(b.Hp,91.5f,"no repeated first pulse");

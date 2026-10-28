@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     {
         // Selected values from shared commit 05950ea; see PROTOTYPE-SCOPE.md for deliberate differences.
         public const float Dt = 1f / 60, Speed = 6.8f, Acceleration = 35, Gravity = 23, JumpSpeed = 8.5f;
-        public const float Radius = .42f, StaminaRegen = 24, RegenDelay = .45f, SprintMultiplier = 1.35f, SprintDrain = 12;
+        public const float Radius = .42f, StaminaRegen = 24, RegenDelay = .45f, SprintMultiplier = 1.35f, SprintDrain = 6;
         public const float BlockDuration = .30f, BlockCooldown = 4, SwordCost = 14, SwordDamage = 30;
         public const float SwordWindup = .14f, SwordActive = .16f, SwordDuration = .62f, SwordReach = 2.5f;
         public const float RollDuration = .4625f, RollDistance = 5.3f, RollCost = 24, RollCooldown = .75f;

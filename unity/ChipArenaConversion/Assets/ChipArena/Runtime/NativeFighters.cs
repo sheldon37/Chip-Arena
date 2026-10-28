@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             bool single=kind=="combo"||kind=="jab",electric=kind=="electric";
             int total=emperor?(electric?1:Has(p,"mishima-pressure")?3:2):kind=="combo"?(Has(p,"arcade-rush")?10:3):kind=="tatsu"?(Has(p,"arcade-cyclone")?7:4):(Has(p,"arcade-rising")?3:1);
             int index=single&&f.Single&&f.LastUntil>f.At&&Time<=f.LastUntil+2.4f?(f.Index+1)%total:0;
-            float cost=(emperor?(electric?0:6f/total):kind=="combo"?(total==10?22f:12f)/total:kind=="tatsu"?22:25)*(float)p.Stats["resourceCost"];if(p.Stamina<cost)return false;p.Stamina-=cost;
+            float cost=(emperor?(electric?0:6f/total):kind=="combo"?(total==10?22f:12f)/total:kind=="tatsu"?22:25)*(float)p.Stats["resourceCost"]*NativeMeleeFeel.StaminaCostMultiplier;if(p.Stamina<cost)return false;p.Stamina-=cost;
             float rate=(float)p.Stats["attackRate"]*(electric&&Has(p,"mishima-godfist")?1.4f:1),gap=(emperor?.17f:kind=="combo"?(total==10?.115f:.25f):kind=="tatsu"?.18f:.16f)/rate;
             float hit=Time+(emperor?(electric?.1f:.075f):kind=="shoryuken"?.08f:kind=="combo"?Math.Min(.12f,gap*rate*.6f):.12f)/rate;
             float until=emperor?(electric?Time+.4f/rate:index==total-1?hit+.14f/rate:Time+gap):kind=="combo"?(index==total-1?hit+.22f:Time+gap):hit+(total-1)*gap+(kind=="shoryuken"?.68f:.22f);
@@ -68,14 +68,14 @@ namespace ChipArena.UnityConversion
             {
                 if(p.Input.AbilityE)StartFighter(p,"tatsu");if(p.Input.Uppercut)StartFighter(p,"shoryuken");
                 if(p.Input.Hadoken&&Time>=f.HadokenReady&&Time>=p.Ready&&f.Kind==null)
-                {if(Has(p,"arcade-shinku")){if(p.Stamina>=12*p.Stats["resourceCost"]){f.Kind="charge";f.At=Time;f.Until=Time+3;f.Single=false;f.Charge=0;}}else Hadoken(p,false);}
+                {if(Has(p,"arcade-shinku")){if(p.Stamina>=12*p.Stats["resourceCost"]*NativeMeleeFeel.StaminaCostMultiplier){f.Kind="charge";f.At=Time;f.Until=Time+3;f.Single=false;f.Charge=0;}}else Hadoken(p,false);}
             }
         }
         private Vector3 FighterMotion(NativePilot p)
         {var f=p.Fighter;if(f==null)return Vector3.zero;return Vec(V3.Forward(p.Input.Yaw))*(f.Kind=="electric"&&p.Grounded&&Time<f.StepUntil?6:0);}
         private void Hadoken(NativePilot p,bool super)
         {
-            var f=Fighter(p);float cost=(super?30:12)*(float)p.Stats["resourceCost"];if(ProjectileCount>=100||p.Stamina<cost){CancelFighter(p);return;}p.Stamina-=cost;
+            var f=Fighter(p);float cost=(super?30:12)*(float)p.Stats["resourceCost"]*NativeMeleeFeel.StaminaCostMultiplier;if(ProjectileCount>=100||p.Stamina<cost){CancelFighter(p);return;}p.Stamina-=cost;
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)),pos=p.Body.position+Vector3.up*.18f+dir*.72f;
             var b=new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=pos,Velocity=dir*(super?27:23),Damage=(super?22:23)*(float)p.Stats["damage"],Impulse=(super?180:320)*(float)p.Stats["impulse"],Radius=(super?.5f:.24f)*(float)p.Stats["projectileSize"],Life=4,Travel=75,Direct=false,EffectsUsed=true,Pierces=super?7:0,Burn=(Has(p,"arcade-red")?12:4)+(float)p.Stats["burn"],Poison=(float)p.Stats["poison"],Hadoken=true,Super=super,Mods=new Dictionary<string,int>(p.Seat.chips)};Bullets.Add(b);
             f.Kind=super?"shinku":"hadoken";f.At=Time;f.Until=Time+.48f;f.Single=false;f.Charge=0;f.Count=f.Next=0;f.HadokenReady=Time+(super?3.4f:1.1f);p.AttackAt=p.LastAttack=p.LastShot=Time;p.BlockEnd=0;p.AttackEnd=p.Ready=f.Until;p.RegenAt=f.Until+.45f;Emit(EventKind.Shot,p,0,pos,0);

@@ -1,3 +1,14 @@
+## 2026-10-28 — Codex: melee stamina and sprint reductions (PR #295; shader blocker resolved)
+
+- Branch/base: `codex/stamina-reduction-20261028`, shared `claude/sleepy-ritchie-g8ruhv` at `4ecd806a`.
+- Owner request: melee stamina consumption about one tenth; substantially cheaper sprinting.
+- Melee primaries (including air/sprint attacks and extra strikes), standard melee Q/E, and Ansatsuken/Emperor stamina attacks now cost 10% of their previous amount. Chip multipliers remain multiplicative. Fighter charge admission and bot funding checks follow the reduced costs. Roll costs and hostile stamina drains are unchanged.
+- Sprint drain is 6/s instead of 12/s, using Rules.SprintDrain in both native movement paths and the managed simulation. Speed, regeneration and exhaustion behavior are unchanged.
+- No animation timing, hitboxes, damage, cooldown or wire-format changes. Updated native validation expectations and added numeric cost/chip/non-melee regressions to SprintAttackChecks.
+- Checks: git diff --check clean; managed melee kit, Whirlwind, melee feel, sprint attacks and prediction regressions passed. Pinned Unity 6000.3.24f1 Runtime/Editor compilation passed. Python: 158 tests OK (1 skipped). Full managed suite stopped at Transitions/loading: warm-up instanced shader set mismatch (includes NativeAfterimage); this change does not touch those shaders or warm-up code. Baseline reproduction not run.
+- Follow-up: integrated shared `a98fe332` into PR #295, including `1f836ced` which registers NativeAfterimage in StagePreloadPlan.InstancedShaders. The missing instanced warm-up registration caused the earlier failure; the exact-shader-set regression remains intact. Combined Core source compiled with warnings as errors; transitions/loading passed 3,602 checks. Full managed suite rerun is in progress. Used the SDK Roslyn compiler directly because the local dotnet CLI/MSBuild process-stat lookup fails before building. No shader visuals or gameplay semantics changed by this fix.
+- Status: PR #295 pushed, not released. Windows gameplay/PhysX and multiplayer play testing remain unrun. Final full-suite results will be recorded in the PR before merge/builder synchronization.
+
 ## 2026-10-28 — Astra: integrate Claude pack streams and retire legacy arenas
 
 - Branch `codex/unity-claude-handoff-20261028`, PR #294, integrates shared `4ecd806ae0c5668fd0e4d260e625bb98382dcd39`, preserving Claude's pack banks, weapons, hit effects and station-sound requests, including the larger private-bank budget.
@@ -15,6 +26,8 @@
 - Private Drive `LocalAssets.zip` updated October 27 verifies: 226 audio keys/593 clips, 651 visual-body files/63.65 MB. It contains **no** Magica or bridge. The licensed-asset PC must repack with `--with-cloth`, following DEVELOPMENT.md, then replace its private builder input. Nothing sent to Claude or others.
 - Gameplay/animation: no hit timing, hitboxes, damage, cooldowns, movement or animation changes. Additive cosmetic fields only; network protocol unchanged. Status: task branch, not released. Live account Worker deployment, real Unity import/cloth registration, Windows player build, two-player visuals and test-feed publication are not claimed. Do not say cloth is active merely because source CI passes.
 ## 2026-10-28 — Claude: pack effects for hits and motion: muzzle flashes, blood splats, impacts for every surface, afterimage trails (merged into shared)
+
+
 
 - **Branch/base:** `claude/pack-fx-hits` from `claude/pack-bank` `55a6e5d` (its `606c39c` docs merged in). No PR; merged into shared and the builder by Claude after review.
 - **Owner (2026-10-28):** muzzle flashes "would be okay (Im okay with combining certain things like effects and lighting with realistic looks) Of course, as long as it produces proper glow + lighting"; "Im fine with using Kronnect Trails FX wherever it fits"; the blood and surface impact upgrades approved.

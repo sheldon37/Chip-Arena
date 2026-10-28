@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
                 p.Input=new InputFrame{X=raw.X,Z=raw.Z,Yaw=raw.Yaw,Pitch=raw.Pitch,Sprint=raw.Sprint,Jump=raw.Jump};
                 p.Yaw=raw.Yaw;p.Pitch=raw.Pitch;ProbePilotGround(p);
                 var move=new Vector3(raw.X,0,raw.Z);bool sprint=raw.Sprint&&p.Stamina>0&&move.magnitude>.5f&&Vector3.Dot(move.normalized,Quaternion.Euler(0,p.Yaw,0)*Vector3.forward)>=.6f;
-                if(sprint)p.Stamina=Math.Max(0,p.Stamina-12*dt);
+                if(sprint)p.Stamina=Math.Max(0,p.Stamina-Rules.SprintDrain*dt);
                 float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1);
                 p.MoveVelocity=new Vector3(Mathf.MoveTowards(p.MoveVelocity.x,move.x*speed,35*dt),0,Mathf.MoveTowards(p.MoveVelocity.z,move.z*speed,35*dt));
                 var velocity=new Vector3(p.MoveVelocity.x,p.Body.linearVelocity.y,p.MoveVelocity.z);
@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
             CyberStepMotion(p);
             var move=new Vector3(i.X,0,i.Z);if(!i.Sprint)p.SprintExhausted=false;
             bool sprint=i.Sprint&&p.AbilityCast==null&&p.CastAt<=0&&!p.SprintExhausted&&!locked&&!rolling&&!i.Shoot&&!aim&&p.ReloadEnd==0&&Time>=p.BlockEnd&&p.Stamina>0&&move.magnitude>.5f&&Vector3.Dot(move.normalized,Quaternion.Euler(0,p.Yaw,0)*Vector3.forward)>=.6f;
-            if(sprint){p.Stamina=Math.Max(0,p.Stamina-12*dt);p.RegenAt=Time+.45f;if(p.Stamina<=0)p.SprintExhausted=true;}
+            if(sprint){p.Stamina=Math.Max(0,p.Stamina-Rules.SprintDrain*dt);p.RegenAt=Time+.45f;if(p.Stamina<=0)p.SprintExhausted=true;}
             if(Time>=p.RegenAt&&!sprint)p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+(float)(24*p.Stats["staminaRegen"]*dt));
             p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+(float)(12*p.Stats["manaRegen"]*dt));
             if(Time-p.LastDamage>=3)Heal(p,(float)(p.Stats["regeneration"]*dt));

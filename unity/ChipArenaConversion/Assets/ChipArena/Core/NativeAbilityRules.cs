@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
         private static double Clamp(double x,double lo,double hi)=>Math.Max(lo,Math.Min(hi,x));
         public static float CastTime(double seconds,ChipStats s)=>(float)(seconds/Clamp(s["attackRate"],.15,1.5));
         public static float Cooldown(ContentAbility a,ChipStats s)=>(float)(a.cooldown*Clamp(s["abilityCooldown"],.45,3));
-        public static float Cost(ContentAbility a,ChipStats s)=>(float)(a.cost*s["abilityCost"]*s["resourceCost"]);
+        public static float Cost(ContentAbility a,ChipStats s)=>(float)(a.cost*s["abilityCost"]*s["resourceCost"])*(NativeMeleeRules.Standard(a.spec)?NativeMeleeFeel.StaminaCostMultiplier:1);
         public static float Radius(ContentAbility a,ChipStats s)=>(float)(a.radius*Clamp(s["abilityRadius"],.5,1.5));
         public static float Scale(ChipStats s,bool highMana,bool echo=false)=>(float)(Math.Min(2.25,Clamp(Math.Sqrt(s["damage"]),.5,1.5)*Math.Min(2,s["abilityPower"]*(highMana?1+s["arcaneSurge"]:1)))*(echo?.5:1));
         public static int Charges(ChipStats s)=>(int)Math.Min(3,1+Math.Max(0,Math.Floor(s["abilityCharges"])));
