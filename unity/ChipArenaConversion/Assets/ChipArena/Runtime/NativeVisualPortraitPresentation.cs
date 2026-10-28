@@ -116,7 +116,7 @@ namespace ChipArena.UnityConversion
             s.Player.Root.transform.SetPositionAndRotation(origin+Vector3.up*NativePortraitRules.GroupY,spin);
             NativePoseWriter.Write(s.Player.Bones,s.Pose,"a model portrait");
             // The pilot as an actor (its colours derived once per change), its weapon away when the pose holds none.
-            var a=s.Actor;a.Id=id;a.SourceSpec=spec;a.Hat=hat;a.HatColor=look.HatColor;a.WeaponAway=!weapon.Visible;a.Grounded=true;
+            var a=s.Actor;a.Id=id;a.SourceSpec=spec;a.Hat=hat;a.HatColor=look.HatColor;a.WeaponAway=!weapon.Visible;a.Grounded=true;VisualArmedAs(a,spec);
             if(s.Body!=look.Body||s.BodyHex==null){s.Body=look.Body;s.BodyHex="#"+look.Body.ToString("x6");}
             if(s.Accent!=look.Accent||s.AccentHex==null){s.Accent=look.Accent;s.AccentHex="#"+look.Accent.ToString("x6");}
             a.BodyColor=s.BodyHex;a.AccentColor=s.AccentHex;
@@ -133,7 +133,7 @@ namespace ChipArena.UnityConversion
             visualBodies[s.Player]=body;
             try
             {
-                var held=VisualBodyBind(body,s.Player,a,time,s.Pose,false,false);
+                var held=VisualBodyBind(body,s.Player,a,time,s.Pose,false,false,VisualArms.Still);
                 if(pose==NativeLobbyPoses.Chair||pose==NativeLobbyPoses.Sleep)
                 {
                     int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
@@ -178,6 +178,14 @@ namespace ChipArena.UnityConversion
                 finally{view.targetTexture=null;RenderTexture.ReleaseTemporary(target);}
             }
             finally{visualBodies.Remove(s.Player);gearLayer=0;gearCamera=null;}
+        }
+        // A stand-in actor's weapon as the arena's pilots carry theirs (NativeArena: the guns' ids, the blades' visual sets), so the
+        // model's fists close on the right handles: the slot's actor had kept the sword's, and the daggers, greatsword, shield
+        // and guns were held as a sword or not at all.
+        private static void VisualArmedAs(Actor a,string spec)
+        {
+            a.Weapon=spec=="pistol"?WeaponId.Pistol:spec=="rifle"?WeaponId.Rifle:spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;
+            a.VisualSet=spec=="daggers"?1:spec=="greatsword"?2:spec=="shield"?3:0;
         }
         private static readonly Color PortraitPodium=new Color(.2f,.2f,.25f).linear;
         private static int modelPortraitMsaa;

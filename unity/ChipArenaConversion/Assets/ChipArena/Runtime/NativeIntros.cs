@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             var script=NativeEntranceDirector.Script(style);if(script!=null){DirectedIntro(script,arena,pilot,actor,style,age,camera);return;}
             NativeSourceMotion.Intro(introRig,style,age,camera);introBeats=style=="dev-siren"?arena.BossTrack?.beats:null;
             // The pilot on its visual body (NativeVisualBodyPresentation.cs VisualIntroPose), shown for this frame below.
-            if(style!="dev-siren")VisualIntroPose(introRig,actor,arena.Time,NativeSourceMotion.IntroPose,null);
+            if(style!="dev-siren")VisualIntroPose(introRig,actor,arena.Time,NativeSourceMotion.IntroPose,null,NativeIntroRules.IntroWeapon(style)!=null);
             if(style!="dev-siren"){SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age);IntroWeapon(style,age);TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));}if(!IntroStage(style,age,camera))throw new System.InvalidOperationException("Missing source entrance stage: "+style);
             VisualBodiesShown();
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
@@ -85,7 +85,7 @@ namespace ChipArena.UnityConversion
             // The pilot, its weapon, its team band; afterimages and the hologram as one-layer see-through silhouettes.
             entranceReveal??=b=>entranceScript.Solid(entranceTime,b);bool solid=script.Solid(t,CapturedRig.Chest)>.5f;
             // On its visual body once built in (the Sheldon intro's hood and face over the model's head).
-            VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal);
+            VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
             EntranceGhosts(script,style,t);
