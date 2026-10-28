@@ -57,7 +57,8 @@
     backdrops, plans, yards) and runs NativeBlockLit's SHARED code, `PackSurface` included, as GLSL. Before/after views:
     - Factory: cover crates, dock container and drum cage, parts bins, the south harbour;
     - City Ironworks: scrap, mould and charge boxes, the yard from outside;
-    - the town's west docks, its crates and the station depot.
+    - the town's west edge from the street (the cranes over the roofs) and from a roof (the docks), its crates, and the
+      station depot.
 - **Not run:**
   - the Unity Editor, a Windows build or play mode (the BLOCK_PACK HLSL is not compiled here);
   - multiplayer and the killcam in the game (the props key off block ids and transforms only);

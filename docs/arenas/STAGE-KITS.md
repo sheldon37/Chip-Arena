@@ -74,7 +74,8 @@ back to today's look when the kit bank is missing (CI, cloud builds, the public 
 
 The Ironworks and the station are closed halls: their shells and roofs hide the yards from the floor, so those yards read
 from outside cameras (the overview) only. Opening a door or skylight is collision work (HARBOR_PROPOSAL.md, Astra handoff).
-The Factory's cranes stand over its roof and through its roof gaps; the town's docks are in plain view from the west edge.
+The Factory's cranes stand over its roof and through its roof gaps. The town's west edge is walled by its buildings and the
+Ironworks hall: from the street the cranes rise over the roofs; the quay, the stacks and the freighter read from the roofs.
 
 ## Runtime
 
