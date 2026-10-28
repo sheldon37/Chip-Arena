@@ -37,6 +37,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--body-reveal"){BodyRevealChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-weapons"){PackWeaponChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-fx-hits"){PackFxHitsChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-join-view"){ExpeditionJoinPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-visuals"){ExpeditionStationVisualChecks.Run(ProjectRoot());ZombieLightChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-light"){ZombieLightChecks.Run(ProjectRoot());return 0;}
@@ -193,6 +194,7 @@ internal static class Program
             BodyRevealChecks.Run(root);
             PackWeaponChecks.Run(root);
             PackFxHitsChecks.Run(root);
+            PackFxBlastsChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);
             HealNumberChecks.Run(root);

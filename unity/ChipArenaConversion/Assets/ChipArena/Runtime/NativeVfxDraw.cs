@@ -32,6 +32,11 @@ namespace ChipArena.UnityConversion
     ///    floor, bright at its foot and fading to its top (never a flat ring).
     ///  - The modelled chip bomb gets a fuse effect (spike sparks, tiny falling sparks, a flickering tip glow and rising puffs,
     ///    a pure function of its age, faster in its last second).
+    ///  - Pack pass (owner 2026-10-28, the licensed packs as in-place upgrades; docs/PACK-EFFECTS.md): when the licensed-assets
+    ///    zip carries them (NativePackBanks), the toon sheet is the effect pack's cartoon masks in the same layout and
+    ///    channels (Core NativeVfxTextures.PackToonId), so every puff, flash, lick and spark keeps its colours, lighting,
+    ///    erosion and low tier with the pack's shapes; and the magic sheet (Core NativeMagicPackFx.SheetId) draws pack sprites
+    ///    (<see cref="Pack"/>, mode 12): the magic bolts' heads, trails and hits. Without them everything is as before.
     /// Three draws a frame, each one dynamic mesh refilled from reused arrays (no per-frame allocation): every sprite, streak
     /// and puff in one premultiplied mesh sorted back to front (Resources/NativeVfx.shader, queue Transparent with bounds
     /// round what it holds, so Unity sorts the batch among the field domes and the dust by where it is; the Tidal Wave's body,
@@ -54,6 +59,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Toon pass modes: toon smoke, toon fire, toon water (oriented along its segment), a flash (a camera-facing
         /// toon sheet sprite, the round flipbook played over its life) and a sprite along a segment (crescent, spike, droplet).</summary>
         public const float ToonSmokeMode=7,ToonFireMode=8,ToonWaterMode=9,FlashMode=10,SpriteMode=11;
+        /// <summary>Pack pass: a camera-facing sprite of the magic sheet at its roll (TEXCOORD1.w its tile).</summary>
+        public const float PackMode=12;
         /// <summary>The floor of a puff that has none (no floor fade).</summary>
         public const float NoFloor=-1e9f;
         // ---- the look: sprite size per voxel edge and HDR gain per role (stylized, punchy; the bloom takes what passes 1) ----
@@ -174,11 +181,19 @@ namespace ChipArena.UnityConversion
             catch(Exception){Volatile.Write(ref built,3);}
         }
         private static readonly int AtlasId=Shader.PropertyToID("_VfxAtlas"),ReadyId=Shader.PropertyToID("_VfxAtlasReady"),NoiseId=Shader.PropertyToID("_VfxNoise"),ToonId=Shader.PropertyToID("_VfxToon");
+        private static readonly int PackId=Shader.PropertyToID("_VfxPack"),PackGridId=Shader.PropertyToID("_VfxPackGrid");
 
         private readonly Material billboardMaterial,litMaterial,shockMaterial;
         private readonly Batch<BillboardVertex> billboards=new Batch<BillboardVertex>("Native vfx billboards",BillboardLayout,4096,0,true);
         private readonly Batch<MeshVertex> lit=new Batch<MeshVertex>("Native vfx lit",MeshLayout,8192,8192,false),shocks=new Batch<MeshVertex>("Native vfx shocks",MeshLayout,2048,4096,false);
         private Texture2D atlas,noise,toon;
+        // The pack pass's sheets (NativePackBanks: Resources textures of the licensed-assets zip, owned there, never released
+        // here); null without them.
+        private readonly Texture2D packSheet,packToon;
+        /// <summary>The magic sheet is loaded: <see cref="Pack"/> draws (otherwise callers keep their own look).</summary>
+        public bool PackSprites=>packSheet!=null;
+        /// <summary>The toon sheet is the effect pack's (checks, the DEV panel).</summary>
+        public bool PackToon=>packToon!=null;
         private Queued[] puffs=new Queued[1024];private float[] keys=new float[1024];private int[] order=new int[1024];private int puffCount;
         private int[] linkSeed=new int[128],linkIndex=new int[128];private int links;
         /// <summary>Sprites, streaks and puffs queued this frame (checks).</summary>
@@ -207,6 +222,10 @@ namespace ChipArena.UnityConversion
             // The shells draw over the puffs inside them (both faces: a rim from outside, the surrounding shell from inside).
             shockMaterial=new Material(lighting){name="Native vfx shocks",renderQueue=(int)RenderQueue.Transparent+4,hideFlags=HideFlags.HideAndDontSave};shockMaterial.SetOverrideTag("RenderType","Transparent");
             shockMaterial.SetFloat("_Src",(float)BlendMode.One);shockMaterial.SetFloat("_Dst",(float)BlendMode.One);shockMaterial.SetFloat("_ZWrite",0);shockMaterial.SetFloat("_Cull",(float)CullMode.Off);shockMaterial.SetFloat("_Shock",1);
+            // The pack pass: the magic sheet now (sprites draw from the first frame), the pack's toon sheet once the procedural
+            // textures are uploaded (it replaces the procedural one there, so the stand-in switch stays one switch).
+            packSheet=NativePackBanks.Texture(NativeMagicPackFx.SheetId);packToon=NativePackBanks.Texture(NativeVfxTextures.PackToonId);
+            if(packSheet!=null){packSheet.wrapMode=TextureWrapMode.Clamp;billboardMaterial.SetTexture(PackId,packSheet);billboardMaterial.SetVector(PackGridId,new Vector4(NativeMagicPackFx.Columns,NativeMagicPackFx.Rows,0,0));}
             StartBuild();
         }
         /// <summary>Starts a frame: nothing queued.</summary>
@@ -275,6 +294,13 @@ namespace ChipArena.UnityConversion
         private void Sprite(Vector3 head,Vector3 segment,Color color,float width,int tile,float u,float seed)=>Add(head-segment*.5f,color,width,0,u,seed,SpriteMode,tile,new Vector4(segment.x,segment.y,segment.z,0));
         // A camera-facing toon sheet sprite at any roll; tile FlashFirst plays the round flipbook over u, later tiles stay put.
         private void Flash(Vector3 at,Color color,float size,int tile,float u,float seed){uint h=(uint)seed*0x9e3779b1u;Add(at,color,size,(h>>8)/16777216f*6.2831853f,u,seed,FlashMode,tile,new Vector4(0,0,0,1));}
+        /// <summary>A pack sprite (the magic sheet's tile, Core NativeMagicPackFx): camera-facing at its roll (radians), size its
+        /// width (m), color linear HDR (alpha 0 adds it, above 0 blends it at that coverage), hot the share of the art's own white
+        /// kept white (TEXCOORD2.w; 0 tints it all). Nothing without the sheet.</summary>
+        public void Pack(Vector3 at,Color color,float size,float roll,int tile,float hot=1)
+        {if(packSheet==null||!(size>1e-4f)||tile<0)return;Add(at,color,size,roll,0,0,PackMode,tile,new Vector4(0,0,0,hot));}
+        /// <summary>A Core pack sprite (NativeMagicPackFx.Head, Impact).</summary>
+        public void Pack(in NativePackSprite s)=>Pack(new Vector3(s.At.X,s.At.Y,s.At.Z),new Color(s.Color.R,s.Color.G,s.Color.B,s.Color.A),s.Size,s.Roll,s.Tile,s.Hot);
         /// <summary>A blood droplet in flight (Core/NativeBlood): the toon sheet's blended teardrop along its velocity, `width` m
         /// across; color linear, its alpha the coverage. The low tier keeps every drop (they are few and short-lived).</summary>
         public void Blood(Vector3 head,Vector3 velocity,Color color,float width,float seed)
@@ -614,6 +640,9 @@ namespace ChipArena.UnityConversion
             toon=new Texture2D(NativeVfxTextures.ToonWidth,NativeVfxTextures.ToonHeight,TextureFormat.RGBA32,true,true){name="Native vfx toon sheet",wrapMode=TextureWrapMode.Clamp,filterMode=FilterMode.Trilinear,hideFlags=HideFlags.HideAndDontSave};
             toon.SetPixelData(t,0);toon.Apply(true,true);
             billboardMaterial.SetTexture(AtlasId,atlas);billboardMaterial.SetTexture(ToonId,toon);billboardMaterial.SetFloat(ReadyId,1);shockMaterial.SetTexture(NoiseId,noise);
+            // The effect pack's toon sheet (the same layout and channels, linear and uncompressed: tools/pack_bank sheets.py)
+            // in place of the procedural one, filtered as it is.
+            if(packToon!=null){packToon.wrapMode=TextureWrapMode.Clamp;packToon.filterMode=FilterMode.Trilinear;billboardMaterial.SetTexture(ToonId,packToon);}
         }
         // Soft particles need the camera's depth texture: asked for on the normal tiers (the shadowed key light already makes
         // forward render it), taken back on the low tier or when the camera changes; only a request this renderer made.

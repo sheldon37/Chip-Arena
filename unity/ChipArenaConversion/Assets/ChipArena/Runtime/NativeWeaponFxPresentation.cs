@@ -64,7 +64,9 @@ namespace ChipArena.UnityConversion
             public readonly Vector3[] Points=new Vector3[NativeTrailFx.RibbonSamples];public readonly float[] Times=new float[NativeTrailFx.RibbonSamples];public int Count;
             public void Push(Vector3 at,float time){if(Count==Points.Length){Array.Copy(Points,1,Points,0,Count-1);Array.Copy(Times,1,Times,0,Count-1);Count--;}Points[Count]=at;Times[Count]=time;Count++;}
         }
-        private struct TrailSprite{public Vector3 At,Drift;public float Born,Life,Size;public Color Color;}
+        // Tile: a pack trail sprite's tile of the magic sheet (-1: the soft glow sprite), with its school, roll and spin; its Color
+        // is then the shot's halo (NativeMagicPackPresentation.cs).
+        private struct TrailSprite{public Vector3 At,Drift;public float Born,Life,Size,Roll,Spin;public Color Color;public int Tile;public NativeMagicSchool School;}
         private struct ImpactMark{public Vector3 At,Normal;public float Born;public long Seed;public Color Tint;}
         private NativeWeaponFxDraw weaponFx;private Snapshot weaponSnapshot;private int weaponFrame;
         private readonly Dictionary<long,SlashState> slashes=new Dictionary<long,SlashState>();private readonly Stack<SlashState> spareSlashes=new Stack<SlashState>();private readonly List<long> staleSlashes=new List<long>();
@@ -328,11 +330,13 @@ namespace ChipArena.UnityConversion
             {
                 var p=trailSprites[i];float age=now-p.Born;
                 if(!(age<p.Life)||age<-.5f){trailSprites[i]=trailSprites[--trailSpriteCount];continue;}
-                NativeWeaponFxShapes.Sprite(draw,p.At,p.Drift,p.Color,p.Size,p.Life,age);i++;
+                if(p.Tile>=0&&PackLooks)PackTrailSprite(p,age);else NativeWeaponFxShapes.Sprite(draw,p.At,p.Drift,p.Color,p.Size,p.Life,age);i++;
             }
             // The pistol / machine-gun Q kit (NativeGunKitPresentation.cs) on the pose clock, before the drawer is submitted.
             GunKitFx();BowFx(arena,now);
-            ImpactFx(draw,arena,now,q,low);
+            ImpactFx(draw,arena,now,q,low);MagicPackHits(arena,now,q,low);
+            // A school bolt's model gives way to its pack head (drawn in ShotFx) from the next frame.
+            if(shots!=null)shots.PackHeads=PackLooks;
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
             // The muzzle lights: the nearest shooters the tier, Combat glow, Reduced effects and Alarm lights allow.
             NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);muzzleLights.Resolve(new NVector3(eye.x,eye.y,eye.z),lights,gain);NativeMuzzleLights.Upload(muzzleLights);
@@ -352,8 +356,11 @@ namespace ChipArena.UnityConversion
             // A round drawn from the muzzle (NativeShotLaunch) knows how far past the crown it is, so its streak never reaches
             // back into the barrel; any other is held to the distance since it was first seen.
             if(tracer){if(trails){float flown=v.Launched?(float)v.Flown:Vector3.Distance(at,e.Origin)+.25f;if(look.Kit)KitTracer(draw,at,velocity,flown,look);else NativeWeaponFxShapes.Tracer(draw,at,velocity,flown,v.Spec);}e.Last=at;e.LastAt=now;return;}
-            // Energy: the core and glow on the model, then the trail sprites every Spacing metres flown and the ribbon.
-            NativeWeaponFxShapes.EnergyCore(draw,at,eye,e.Halo,e.Radius,v.Spec,.93f+.07f*Mathf.Sin(now*23+(e.Seed&63)));
+            // Energy: the core and glow on the model, then the trail sprites every Spacing metres flown and the ribbon. A school's
+            // bolt (Core NativeMagicPackFx) draws its pack head instead of the core, and pack trail sprites.
+            var school=PackLooks?NativeMagicPackFx.Bolt(v):NativeMagicSchool.None;
+            if(school!=NativeMagicSchool.None)PackHead(school,at,e.Halo,e.Radius,e.Seed,now);
+            else NativeWeaponFxShapes.EnergyCore(draw,at,eye,e.Halo,e.Radius,v.Spec,.93f+.07f*Mathf.Sin(now*23+(e.Seed&63)));
             if(trails)
             {
                 float spacing=NativeTrailFx.Spacing(q,low);Vector3 step=at-e.Last;float distance=step.magnitude;
@@ -363,15 +370,24 @@ namespace ChipArena.UnityConversion
                     while(travelled+spacing<=distance)
                     {
                         travelled+=spacing;float f=travelled/distance;
-                        NativeTrailFx.Sprite(e.Seed,e.Emitted++,e.Radius,out float life,out float size,out var offset,out var drift);
+                        NativeTrailFx.Sprite(e.Seed,e.Emitted,e.Radius,out float life,out float size,out var offset,out var drift);
+                        int tile=-1;float roll=0,spin=0;if(school!=NativeMagicSchool.None){NativeMagicPackFx.Trail(school,e.Seed,e.Emitted,out tile,out float scale,out roll,out spin);size*=scale;}
+                        e.Emitted++;
                         if(trailSpriteCount==trailSprites.Length)Array.Resize(ref trailSprites,trailSprites.Length*2);
-                        trailSprites[trailSpriteCount++]=new TrailSprite{At=e.Last+step*f+NativeWeaponFxShapes.V(offset),Drift=NativeWeaponFxShapes.V(drift)+velocity*.06f,Born=Mathf.Lerp(e.LastAt,now,f),Life=life,Size=size,Color=color};
+                        trailSprites[trailSpriteCount++]=new TrailSprite{At=e.Last+step*f+NativeWeaponFxShapes.V(offset),Drift=NativeWeaponFxShapes.V(drift)+velocity*.06f,Born=Mathf.Lerp(e.LastAt,now,f),Life=life,Size=size,Color=tile>=0?e.Halo:color,Tile=tile,School=school,Roll=roll,Spin=spin};
                     }
                     e.Carry=distance-travelled;
                 }
                 if(e.Count==0||Vector3.Distance(e.Points[e.Count-1],at)>.02f)e.Push(at,now);else{e.Points[e.Count-1]=at;e.Times[e.Count-1]=now;}
                 int first=0;while(first<e.Count-1&&now-e.Times[first]>NativeTrailFx.RibbonLife)first++;
-                NativeWeaponFxShapes.Ribbon(draw,e.Points,e.Times,first,e.Count,now,eye,e.Halo,e.Radius);
+                // A pack head covers the bolt: the ribbon's newest point steps back into it and draws as an older one, so the
+                // ribbon grows out of the head instead of ending in a bright square cut across it (the model hid that end).
+                if(school!=NativeMagicSchool.None&&e.Count>1&&velocity.sqrMagnitude>1e-6f)
+                {
+                    var head=e.Points[e.Count-1];float born=e.Times[e.Count-1];e.Points[e.Count-1]=head-velocity.normalized*(e.Radius*1.5f);e.Times[e.Count-1]=now-(float)NativeTrailFx.RibbonLife*.8f;
+                    NativeWeaponFxShapes.Ribbon(draw,e.Points,e.Times,first,e.Count,now,eye,e.Halo,e.Radius);e.Points[e.Count-1]=head;e.Times[e.Count-1]=born;
+                }
+                else NativeWeaponFxShapes.Ribbon(draw,e.Points,e.Times,first,e.Count,now,eye,e.Halo,e.Radius);
             }
             e.Last=at;e.LastAt=now;
         }
@@ -397,7 +413,7 @@ namespace ChipArena.UnityConversion
         {
             weaponFx?.Begin();weaponSnapshot=null;ClearEmitters();emitterArena=null;emitterGeneration=-1;muzzleLights.Clear();NativeMuzzleLights.Off();
             foreach(var st in slashes.Values)spareSlashes.Push(st);slashes.Clear();hitFlashes.Clear();hitFlashEvent=0;afterimages.Clear();sprintSeen.Clear();
-            impactArena=null;impactGeneration=-1;impactEvent=0;for(int i=0;i<impactMarks.Length;i++)impactMarks[i].Born=-100;
+            impactArena=null;impactGeneration=-1;impactEvent=0;for(int i=0;i<impactMarks.Length;i++)impactMarks[i].Born=-100;ClearMagicPack();
         }
         private void DisposeWeaponFx(){ClearWeaponFx();weaponFx?.Dispose();weaponFx=null;}
     }

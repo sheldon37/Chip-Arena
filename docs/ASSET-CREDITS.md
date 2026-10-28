@@ -132,6 +132,19 @@ The same pack's `Eff1_Left`, `Eff1_Right`, `Eff6` and `Eff4` effects (ring slash
 finishers and specials. Their particle systems, meshes and textures ship in the licensed-assets zip, on materials converted
 at the bake to our own `NativePackSlash` shader; no pack shader or script ships.
 
+### Blasts, smoke, fire and magic sprites (2026-10-28, owner licence)
+
+The blasts', smoke's and fire's toon sheet and the magic bolts' sprite sheet (`docs/PACK-EFFECTS.md`, `docs/PACK-BANK.md`)
+are composed by the pack bank tool from three of Archanor's packs the owner licensed:
+
+- Epic Toon FX: cartoon cloud, flash, crescent and spark masks;
+- Magic Arsenal: the fire, water and lightning missiles' and explosions' sprites;
+- Sci-Fi Arsenal: a laser ball, hexagon symbols and a fire flipbook.
+
+The two composed textures ship in the licensed-assets zip under the visual body's rules. They are never committed or
+published as files, and no pack shader, script or prefab ships. The selections (`tools/pack_bank/selections/fx-blasts.json`,
+`fx-magic.json`) name the files used.
+
 ### Visual body locomotion clips (2026-10-24, owner licence)
 
 The visual body's legs while running and walking (`docs/BOZO-INTEGRATION.md`, the stride) play 17 `Unarmed` locomotion

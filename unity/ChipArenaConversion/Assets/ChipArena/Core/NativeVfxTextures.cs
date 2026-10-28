@@ -99,6 +99,10 @@ namespace ChipArena.UnityConversion
         /// a lens, a four-point star and a droplet (round head toward +x).</summary>
         public const int ToonPuffs=16,FlashFirst=16,FlashFrames=8,CrescentFirst=24,Crescents=4,SpikeTile=28,LensTile=29,StarTile=30,DropTile=31;
         public const uint ToonSeed=0x70a1;
+        /// <summary>The effect pack's toon sheet in this layout (pack pass, owner 2026-10-28: tools/pack_bank selection fx-blasts,
+        /// sheets.py rebuilds the pack's cartoon masks into these channels), loaded by id from the licensed-assets zip; the
+        /// shared effects renderer uses it in place of <see cref="ToonSheet"/> when it is there.</summary>
+        public const string PackToonId="fx-toon-sheet";
         /// <summary>Signed distances are stored as .5 + d / (2 ToonSdfRange), d in tile units (the tile's half-width is 1),
         /// positive inside: .5 is the edge, so a shader draws a crisp edge with a one-pixel ramp at any size.</summary>
         public const double ToonSdfRange=.25;
