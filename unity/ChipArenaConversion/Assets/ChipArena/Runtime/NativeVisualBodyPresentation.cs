@@ -47,6 +47,9 @@ namespace ChipArena.UnityConversion
             // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
             // fitted on the right hand bone, whose scale RightScale restores) and the one shown (when).
             public Dictionary<string,VisualWeapon> Weapons; public VisualWeapon Held, Shown; public int ShownFrame=-1; public Vector3 RightScale=Vector3.one;
+            // An arena pilot's own body (its rig the arena poses: the pack bank's weapons draw on it, NativePackWeaponPresentation.cs),
+            // those made for it by spec (null: none for that spec), and whether its main dagger is thrown this frame.
+            public bool Arena, MainAway; public Dictionary<string,VisualWeapon> Packs;
             // Its stride: the pack's locomotion clips on a proxy skeleton, for the legs (NativeVisualStridePresentation.cs).
             public VisualStride Stride;
             // Its own animation: the pack's clips whole for a weapon whose set has moved over (NativeVisualMotionPresentation.cs).
@@ -146,7 +149,7 @@ namespace ChipArena.UnityConversion
         {
             // A changed outfit or hood makes the body again in it (the Locker's picks apply in the lobby).
             if(visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&(body.Hood!=hood||!string.Equals(body.Look,VisualLookOf(id),StringComparison.Ordinal))){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}
-            if(body==null||body.Root==null){body=CreateVisualBody(rig,id,hood);if(body==null)return null;visualBodies[rig]=body;}
+            if(body==null||body.Root==null){body=CreateVisualBody(rig,id,hood);if(body==null)return null;body.Arena=rigs.TryGetValue(id,out var own)&&own==rig;visualBodies[rig]=body;}
             return body;
         }
         // The body bound to `pose` (feet planted when `planted`, the airborne solve when `airborne`), its weapon in hand and the
