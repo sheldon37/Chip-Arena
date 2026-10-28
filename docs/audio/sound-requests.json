@@ -227,6 +227,270 @@
     "max": 0.33
    },
    "prompt": "Single footstep of an armored soldier boot on loose gravel and rubble, crunchy, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.linesman.idle",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.0
+   },
+   "prompt": "Raspy zombie groan from a damaged human throat mixed with a crackling electrical buzz and small spark pops, as if the body is live with current, slow and droning, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.linesman.charge",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.9,
+    "max": 1.2
+   },
+   "prompt": "Rising electric whine building over one second, a high-voltage charge-up with crackling arcs and sparks that intensifies to a peak, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.linesman.arc",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.4,
+    "max": 0.7
+   },
+   "prompt": "Sharp lightning-bolt crack followed by a quick chain of electric zaps jumping from target to target, short and violent, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.linesman.ground",
+   "category": "voice",
+   "priority": 3,
+   "count": 2,
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.6,
+    "max": 1.0
+   },
+   "prompt": "A heavy hand slapping down on a steel rail with a dull metallic clang, then a deep humming electrical surge through the metal, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.linesman.hurt",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 0.8,
+   "targetSeconds": {
+    "min": 0.2,
+    "max": 0.5
+   },
+   "prompt": "Zombie getting hit, a short choked grunt with a sharp static pop and spark, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.linesman.death",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 1.1,
+    "max": 1.7
+   },
+   "prompt": "Electrocution death, a zombie scream buzzing with electricity, then a battery bursting with a hard pop and a fading electrical sizzle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.conductor.inhale",
+   "category": "voice",
+   "priority": 3,
+   "count": 2,
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 0.9
+   },
+   "prompt": "A rattling dead breath drawn in sharply through a ruined throat before blowing a whistle, wet and wheezing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.conductor.whistle",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.7,
+    "max": 1.1
+   },
+   "prompt": "A shrill railway guard's pea whistle blown hard, distorted and held too long with a trilling rattle, harsh and piercing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.conductor.bell",
+   "category": "voice",
+   "priority": 3,
+   "count": 2,
+   "generateSeconds": 1.5,
+   "targetSeconds": {
+    "min": 0.8,
+    "max": 1.3
+   },
+   "prompt": "An old brass handbell rung urgently, rapid clanging strokes, slightly cracked and tinny, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.conductor.mutter",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.4,
+    "max": 2.1
+   },
+   "prompt": "A hoarse zombie voice muttering a train timetable under its breath, slurred unintelligible words and numbers, rasping and broken, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.conductor.lantern",
+   "category": "voice",
+   "priority": 3,
+   "count": 2,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.35,
+    "max": 0.7
+   },
+   "prompt": "A small glass and tin railway lantern shattering, glass bursting and a thin metal frame clattering, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.conductor.death",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 0.9,
+    "max": 1.5
+   },
+   "prompt": "A zombie's wheezing last breath and body collapse, then a tin lantern clattering on the floor, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.undertow.bubble",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 2.5,
+   "targetSeconds": {
+    "min": 1.5,
+    "max": 2.1
+   },
+   "prompt": "Slow bubbles rising and popping in still dark water, deep and ominous, steady and loopable, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.undertow.surface",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 1.2,
+   "targetSeconds": {
+    "min": 0.5,
+    "max": 0.9
+   },
+   "prompt": "Something bursting up out of water with a big splash and a wet gurgling snarl, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.undertow.grab",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.35,
+    "max": 0.7
+   },
+   "prompt": "A wet slap of a hand gripping a body, then a choking gurgle, short, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.undertow.drag",
+   "category": "voice",
+   "priority": 3,
+   "count": 2,
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 1.1,
+    "max": 1.6
+   },
+   "prompt": "A body dragged through shallow water, sloshing and scraping, one steady pull, loopable, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.undertow.death",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 0.9,
+    "max": 1.5
+   },
+   "prompt": "A drowning zombie's bubbling gurgle that cuts off, then a heavy body sinking into water with a splash, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.pileup.moan",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 3.0,
+   "targetSeconds": {
+    "min": 1.8,
+    "max": 2.6
+   },
+   "prompt": "Several zombie voices moaning together, layered and overlapping, muffled behind a heavy steel door, low and hollow, isolated, no music, no background noise"
+  },
+  {
+   "key": "pve.station.pileup.brace",
+   "category": "voice",
+   "priority": 3,
+   "count": 2,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.45,
+    "max": 0.8
+   },
+   "prompt": "A heavy steel door scraping across a concrete floor, a short grinding drag, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.pileup.shove",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 1.0,
+   "targetSeconds": {
+    "min": 0.35,
+    "max": 0.7
+   },
+   "prompt": "A big metal slam of a steel door shoved forward, with a whoosh of a body thrown through the air, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.pileup.ricochet",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 0.5,
+   "targetSeconds": {
+    "min": 0.15,
+    "max": 0.35
+   },
+   "prompt": "A single bullet ricochet off thick steel plate, a hard metallic ping and a short whine, isolated, dry close-mic recording, no reverb, no music, no background noise"
+  },
+  {
+   "key": "pve.station.pileup.split",
+   "category": "voice",
+   "priority": 3,
+   "count": 3,
+   "generateSeconds": 2.0,
+   "targetSeconds": {
+    "min": 1.0,
+    "max": 1.6
+   },
+   "prompt": "Wet tearing flesh as a heap of bodies rips apart, then a steel door clanging down onto concrete, isolated, dry close-mic recording, no reverb, no music, no background noise"
   }
  ]
 }

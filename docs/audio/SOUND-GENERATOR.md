@@ -38,7 +38,8 @@ py -3 unity/ChipArenaConversion/tools/generate_sound_requests.py --out "$env:USE
 
 Use a new ZIP path each time. Both batch and ZIP must be outside the repository.
 A complete new batch defaults to 70 zombie files. `--include-player-steps` adds the
-18 optional files. `--key pve.zombie.moan` selects a key; repeat `--key` to select
+78 optional files (18 player steps and the 60 Central Station cues, which a pack-designed
+batch already covers). `--key pve.zombie.moan` selects a key; repeat `--key` to select
 several. `--variant 2` selects a take; repeat it for multiple variants. To regenerate,
 select the desired keys/variants and use a NEW output folder; originals are never
 overwritten. Without `--out`, a new UTC timestamp folder under Documents is used.
@@ -84,7 +85,8 @@ to the API reference. Do not silently downgrade it; coordinate any manifest chan
 with the importer. The overview's WAV options do not override the shared MP3 contract.
 
 At the overview's documented 40 credits per specified second: six samples = 9.3 s /
-372 credits; 70 zombies = 95.9 s / 3,836 credits; all 88 = 106.7 s / 4,268 credits.
+372 credits; 70 zombies = 95.9 s / 3,836 credits; the 88 zombie and step files = 106.7 s /
+4,268 credits; all 148 = 203.5 s / 8,140 credits.
 These are estimates for successful requests, not account-specific quotes or dollar
 prices. Live generation, billing, audio quality and Windows double-click execution
 have not been exercised in the development environment.

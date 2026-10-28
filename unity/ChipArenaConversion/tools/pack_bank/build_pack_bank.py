@@ -230,15 +230,24 @@ class Builder:
             if not ID.match(p['id']):
                 raise SelectionError('prop id ' + p['id'])
             folder = self.folder(sources[p['source']])
-            prefab = os.path.join(folder.root, p['prefab'])
+            # A prefab, or a model file (`model`) where the pack's prefabs are binary-serialized; `albedo` (a texture path)
+            # then gives every submesh one material drawing that texture as it is.
+            prefab = os.path.join(folder.root, p['model'] if 'model' in p else p['prefab'])
             if not os.path.isfile(prefab):
-                raise SelectionError('prefab missing: ' + p['prefab'])
+                raise SelectionError(('model' if 'model' in p else 'prefab') + ' missing: ' + os.path.relpath(prefab, folder.root))
+            albedo = None
+            if 'albedo' in p:
+                albedo = os.path.join(folder.root, p['albedo'])
+                if not os.path.isfile(albedo):
+                    raise SelectionError('albedo missing: ' + p['albedo'])
+                stem = re.sub(r'[^a-z0-9]+', '-', os.path.splitext(os.path.basename(albedo))[0].lower()).strip('-')
+                albedo = out.material(p['source'] + '/' + stem, tex_of(albedo, p['source']))
             parts = []
-            for part in ua.flatten(folder, prefab):
+            for part in (ua.model_parts(folder, prefab) if 'model' in p else ua.flatten(folder, prefab)):
                 mesh = ua.mesh_for(folder, part)
                 if mesh is None or not mesh.submeshes:
                     continue
-                mats = [mat_of(folder, part.materials[i] if i < len(part.materials) else (part.materials[-1] if part.materials else None), p['source'])
+                mats = [albedo if albedo is not None else mat_of(folder, part.materials[i] if i < len(part.materials) else (part.materials[-1] if part.materials else None), p['source'])
                         for i in range(len(mesh.submeshes))]
                 path, scene, model = part.source
                 mesh_name = '%s/%s/%s' % (p['source'], os.path.splitext(os.path.basename(path))[0], model.name)

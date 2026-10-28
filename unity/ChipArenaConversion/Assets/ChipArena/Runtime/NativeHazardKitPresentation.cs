@@ -93,10 +93,11 @@ namespace ChipArena.UnityConversion
             }
             kitDraw.Draw(camera,null,time);
         }
-        // Turret rounds as the guns draw theirs: the machine gun's muzzle star, a tracer flying at 90 m/s, the impact at its end.
+        // Turret rounds as the guns draw theirs: the machine gun's muzzle star (with the turret's pack flash when the bank has
+        // it, Core NativeMuzzleFx.Turret), a tracer flying at 90 m/s, the impact at its end.
         private void DrawKitRounds(NativeKitScene scene,float now,Camera camera)
         {
-            if(camera==null||scene.ShotCount==0)return;kitWeapon.Low=LowGraphics;kitWeapon.Begin();NativeMuzzleFx.Look("machinegun",out var look);float q=Mathf.Clamp01(EffectsQuality);bool low=LowGraphics;
+            if(camera==null||scene.ShotCount==0)return;kitWeapon.Low=LowGraphics;kitWeapon.Begin();NativeMuzzleFx.Look("machinegun",out var look);NativeMuzzleFx.Turret(ref look);float q=Mathf.Clamp01(EffectsQuality);bool low=LowGraphics;
             int shards=NativeImpactFx.ShardCount(q,low),sparks=NativeImpactFx.SparkCount(q,low);var tint=Color.Lerp(NativeWeaponFxShapes.Lin(0xffedb8),Color.white,.55f);
             for(int i=0;i<scene.ShotCount;i++)
             {

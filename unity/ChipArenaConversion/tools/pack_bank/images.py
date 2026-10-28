@@ -48,61 +48,68 @@ def decode_png(data):
             idat.append(body)
         elif kind == b'IEND':
             break
-    if interlace:
-        raise ImageError('interlaced PNG')
     chans = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[ctype]
     bits = depth * chans
-    stride = (w * bits + 7) // 8
     bpp = max(1, bits // 8)
     raw = zlib.decompress(b''.join(idat))
     out = bytearray(w * h * 4)
-    prev = bytearray(stride)
-    o = 0
-    for y in range(h):
-        f = raw[y * (stride + 1)]
-        line = bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
-        if f == 1:
-            for i in range(bpp, stride):
-                line[i] = (line[i] + line[i - bpp]) & 255
-        elif f == 2:
-            for i in range(stride):
-                line[i] = (line[i] + prev[i]) & 255
-        elif f == 3:
-            for i in range(stride):
-                line[i] = (line[i] + (((line[i - bpp] if i >= bpp else 0) + prev[i]) >> 1)) & 255
-        elif f == 4:
-            for i in range(stride):
-                a = line[i - bpp] if i >= bpp else 0
-                c = prev[i - bpp] if i >= bpp else 0
-                line[i] = (line[i] + _paeth(a, prev[i], c)) & 255
-        prev = line
-        for x in range(w):
-            if depth == 8:
-                px = line[x * chans:(x + 1) * chans]
-            elif depth == 16:
-                px = line[x * chans * 2:(x + 1) * chans * 2:2]
-            else:  # 1, 2, 4 bit grey or palette
-                per = 8 // depth
-                byte = line[x // per]
-                v = (byte >> (8 - depth * (x % per + 1))) & ((1 << depth) - 1)
-                px = bytes([v if ctype == 3 else v * 255 // ((1 << depth) - 1)])
-            if ctype == 0:
-                r = g = b = px[0]
-                a = 255
-            elif ctype == 2:
-                r, g, b = px[0], px[1], px[2]
-                a = 255
-            elif ctype == 3:
-                i = px[0]
-                r, g, b = palette[i * 3:i * 3 + 3]
-                a = trns[i] if trns and i < len(trns) else 255
-            elif ctype == 4:
-                r = g = b = px[0]
-                a = px[1]
-            else:
-                r, g, b, a = px[0], px[1], px[2], px[3]
-            out[o:o + 4] = bytes((r, g, b, a))
-            o += 4
+    # Adam7 interlacing: seven reduced images, each filtered on its own, scattered onto the grid (x0, y0, dx, dy).
+    passes = ((0, 0, 8, 8), (4, 0, 8, 8), (0, 4, 4, 8), (2, 0, 4, 4), (0, 2, 2, 4), (1, 0, 2, 2), (0, 1, 1, 2)) if interlace else ((0, 0, 1, 1),)
+    at = 0
+    for x0, y0, dx, dy in passes:
+        pw, ph = (w - x0 + dx - 1) // dx, (h - y0 + dy - 1) // dy
+        if pw <= 0 or ph <= 0:
+            continue
+        stride = (pw * bits + 7) // 8
+        prev = bytearray(stride)
+        for row in range(ph):
+            f = raw[at]
+            line = bytearray(raw[at + 1:at + 1 + stride])
+            at += 1 + stride
+            if f == 1:
+                for i in range(bpp, stride):
+                    line[i] = (line[i] + line[i - bpp]) & 255
+            elif f == 2:
+                for i in range(stride):
+                    line[i] = (line[i] + prev[i]) & 255
+            elif f == 3:
+                for i in range(stride):
+                    line[i] = (line[i] + (((line[i - bpp] if i >= bpp else 0) + prev[i]) >> 1)) & 255
+            elif f == 4:
+                for i in range(stride):
+                    a = line[i - bpp] if i >= bpp else 0
+                    c = prev[i - bpp] if i >= bpp else 0
+                    line[i] = (line[i] + _paeth(a, prev[i], c)) & 255
+            prev = line
+            y = y0 + row * dy
+            for col in range(pw):
+                x = col
+                if depth == 8:
+                    px = line[x * chans:(x + 1) * chans]
+                elif depth == 16:
+                    px = line[x * chans * 2:(x + 1) * chans * 2:2]
+                else:  # 1, 2, 4 bit grey or palette
+                    per = 8 // depth
+                    byte = line[x // per]
+                    v = (byte >> (8 - depth * (x % per + 1))) & ((1 << depth) - 1)
+                    px = bytes([v if ctype == 3 else v * 255 // ((1 << depth) - 1)])
+                if ctype == 0:
+                    r = g = b = px[0]
+                    a = 255
+                elif ctype == 2:
+                    r, g, b = px[0], px[1], px[2]
+                    a = 255
+                elif ctype == 3:
+                    i = px[0]
+                    r, g, b = palette[i * 3:i * 3 + 3]
+                    a = trns[i] if trns and i < len(trns) else 255
+                elif ctype == 4:
+                    r = g = b = px[0]
+                    a = px[1]
+                else:
+                    r, g, b, a = px[0], px[1], px[2], px[3]
+                o = (y * w + x0 + col * dx) * 4
+                out[o:o + 4] = bytes((r, g, b, a))
     return Image(w, h, out)
 
 
