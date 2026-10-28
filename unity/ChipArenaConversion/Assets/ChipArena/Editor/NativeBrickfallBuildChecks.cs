@@ -9,21 +9,12 @@ namespace ChipArena.UnityConversion.Editor
         private static void CheckLegacyMapDefaults(ConversionContent data)
         {
             // This runs after the actual JsonUtility + supplemental-map loader, before any physics scene.
-            var seats=Enumerable.Range(0,8).Select(i=>new NativeSeat{id=i+1,team=i%2}).ToArray();int count=0;
-            foreach(var map in data.maps.Where(m=>!m.unity))
-            {
-                if(map.spawns!=null||map.bounds!=null||map.nav!=null||map.segments!=null||map.pilotBlocks!=null||map.hazards!=null)
-                    throw new Exception("Legacy map retained supplemental inline defaults: "+map.id);
-                foreach(bool teams in new[]{false,true})for(int i=0;i<seats.Length;i++)
-                {
-                    var spawn=NativeMapRules.Spawn(data,map,seats,i,teams);var expected=data.spawns[i];
-                    if((spawn.pos-expected).Length>.001||Math.Abs(spawn.yaw-Math.Atan2(-expected.x,-expected.z)*180/Math.PI)>.001)
-                        throw new Exception("Legacy JsonUtility spawn/yaw changed: "+map.id+" seat "+i);count++;
-                }
-                if((NativeMapRules.Clamp(map,new V3(100,4,-100))-new V3(31,4,-27)).Length>.001||(NativeMapRules.Clamp(map,new V3(-100,4,100),true)-new V3(-28,4,24)).Length>.001)
-                    throw new Exception("Legacy JsonUtility player/bot bounds changed: "+map.id);
-            }
-            Debug.Log("PASS legacy JsonUtility map defaults: "+count+" FFA/team spawns, yaw, bounds and legacy navigation");
+            if(data.maps.Any(m=>!m.unity)||data.maps.Length!=8)throw new Exception("Legacy map survived Unity catalog filtering");
+            if(!data.maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"brickfall","cybercity","factory"}))throw new Exception("Unity rotation differs");
+            foreach(string id in new[]{"moonlit","foundry","unknown",null})
+            {var prefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{map=id}));if(NativeMapRules.Selection(data,prefs.map)!=NativeMapRules.DefaultArena)throw new Exception("Saved map migration failed");}
+            foreach(var map in data.maps)NativeMapRules.Validate(map);
+            Debug.Log("PASS real JsonUtility Unity catalog, modern rotation, saved-map migration and authored spawn tables");
         }
         private static void CheckBrickfallReplica(NativeArena host)
         {

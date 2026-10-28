@@ -177,11 +177,11 @@ namespace ChipArena.UnityConversion
         {
             var o=new JsonSerializerOptions{IncludeFields=true};var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
             var unity=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
-            var list=content.maps.Where(m=>!unity.maps.Any(u=>u.id==m.id)).ToList();list.AddRange(unity.maps);return list;
+            NativeMapRules.Merge(content,unity,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));return content.maps.ToList();
         }
         private static void Schematics(List<ContentMap> maps)
         {
-            Check(maps.Count>=20&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
+            Check(maps.Count==8&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
             foreach(var m in maps)
             {
                 var s=NativeStageSchematic.Build(m);Check(s!=null&&s.Count>0&&s.Count<=NativeStageSchematic.Max,m.id+" scans ("+(s?.Count??0)+")");

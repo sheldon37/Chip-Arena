@@ -20,6 +20,7 @@ materials, textures, prefabs and their .meta files, every folder's .meta, no scr
 bank, within VISUAL_BODY_BUDGET; the prefab is ChipArenaVisualBody.prefab in a Resources folder, which the game loads in place
 of the voxel pilot body. They are copied over Assets/LocalAssets at their paths and nothing there is deleted, so installing
 over a full local pack only rewrites the same files. Without it the pilots draw the voxel body.
+Optional cloth-runtime.json separately allowlists the owner-supplied Magica code and single runtime bridge, with hashes, metas and a size cap. Unity compiles that code on import; only use trusted licensed inputs.
 --check verifies only; --remove deletes the installed EffectsAudio folder (the visual body stays). Exit status 1 on any
 problem.
 """
@@ -34,6 +35,9 @@ import stat
 import sys
 import tempfile
 import zipfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import local_cloth
 
 ROOT = Path(__file__).resolve().parents[1]
 BANK_SOURCE = ROOT / 'Assets/ChipArena/Core/NativeSoundBank.cs'
@@ -364,11 +368,14 @@ def main(argv=None):
                 raise Problem('SOURCE must be a folder or a .zip: ' + str(source))
             keys, clips, total = verify(content)
             body = verify_visual_body(content)
+            cloth = local_cloth.verify(content)
+            print(f"Cloth runtime: {len(cloth)} verified files" if cloth else "Cloth runtime: absent (posed-body fallback)")
             body_bytes = sum(content.joinpath(*PurePosixPath(rel).parts).stat().st_size for rel in body)
             if not args.check:
                 install(content, project)
                 verify(project / 'Assets/LocalAssets')
                 install_visual_body(content, project, body)
+                install_visual_body(content, project, cloth)
         except Problem as problem:
             print('Licensed assets rejected:\n' + str(problem), file=sys.stderr)
             return 1

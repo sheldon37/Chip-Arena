@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
             Check(town.id=="expedition-city"&&town.look=="expedition-city"&&inst.id=="expedition-ward-zero"&&inst.look=="quarantine","map ids and looks");
             Check(!town.rotation&&!inst.rotation,"neither draft joins the random rotation");
             NativeMapRules.Validate(town);NativeMapRules.Validate(inst);count+=2;
-            var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=content.maps.Count(m=>m.rotation);
+            var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=unity.maps.Count(m=>m.rotation);
             NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Where(m=>m.id!="expedition-city"&&m.id!="expedition-ward-zero").Concat(new[]{town,inst}).ToArray()},unityText);
             Check(content.Map("expedition-city")!=null&&content.Map("expedition-ward-zero")!=null&&content.Map("siren").blocks.Length==siren.blocks.Length&&content.maps.Count(m=>m.rotation)==rotation,"the drafts import beside today's maps; Ward Zero and the rotation unchanged");
             Check(town.blocks.All(b=>b.id.StartsWith("expedition-city-",StringComparison.Ordinal)&&b.role=="static"&&new[]{"stone","brick","metal","wood","foundation"}.Contains(b.material)),"town blocks: own ids, static, existing materials");

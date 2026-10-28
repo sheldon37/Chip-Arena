@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
             Check(station.id=="expedition-transit"&&station.look=="central-station"&&!station.rotation&&!NativeMapRules.ArenaSelectable(station),"map id, look, not in the rotation, outside the arena lists");
             NativeMapRules.Validate(station);count++;
             Check(station.blocks.All(b=>b.id.StartsWith("expedition-transit-",StringComparison.Ordinal)&&b.role=="static")&&station.nav.nodes.Length==0&&station.ramps.All(r=>r.blocks.All(id=>station.navHints.collisionOff.Contains(id))),"own block ids, static, no navigation yet, every stair's steps visual only");
-            var maps=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=content.maps.Count(m=>m.rotation);
+            var maps=JsonSerializer.Deserialize<UnityMapContent>(unityText,o);var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=maps.maps.Count(m=>m.rotation);
             NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=maps.materials,maps=maps.maps.Where(m=>m.id!="expedition-transit").Concat(new[]{station}).ToArray()},unityText);
             Check(content.Map("expedition-transit")!=null&&content.maps.Count(m=>m.rotation)==rotation,"the draft imports beside today's maps; the rotation unchanged");
             var areaNode=draft["layout"]["area"].AsObject();

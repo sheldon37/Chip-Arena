@@ -149,6 +149,7 @@ internal static class Program
             BuildLabelChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);
+            LookContractChecks.Run(root);
             MovementModsChecks.Run(root);RoundsCardsChecks.Run(root);NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);MeleeBisectChecks.Run(root);GibChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);

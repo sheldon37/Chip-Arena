@@ -8,7 +8,7 @@ using UnityEngine.Networking;
 namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeCosmetics
-    {public string weaponSkins;public bool overrideWeaponIntro;public string lobbyPose="weapon",preferredSpec="pistol",intro=NativeIntroRules.Default,introText="Ready to make an impact",bodyColor="#e5e7eb",hat="none",killEffect="impact-ragdoll";public string lobbyBack;
+    {public string weaponSkins;public string look;public bool overrideWeaponIntro;public string lobbyPose="weapon",preferredSpec="pistol",intro=NativeIntroRules.Default,introText="Ready to make an impact",bodyColor="#e5e7eb",hat="none",killEffect="impact-ragdoll";public string lobbyBack;
      // Headwear and backdrop colours (NativeHatLooks; "" Auto). No initializer: a profile without them leaves the local pick alone.
      public string hatColor,backColor;}
     [Serializable] public sealed class NativeProfile {public string name="Pilot",@class="ranged",color="#70e1d0";public NativeCosmetics cosmetics=new NativeCosmetics();}

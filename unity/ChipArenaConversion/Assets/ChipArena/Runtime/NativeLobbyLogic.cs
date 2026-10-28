@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         public NativeRoomOptions RoomOptions=>Hosting||!Online?CaptureRoomOptions():receivedOptions;
         private string PreviewMapId=>NativeLobbyRules.PreviewMap(prefs.map,prefs.pve);
         private string SelectMatchMap()
-        {var maps=content.maps.Where(m=>NativeMapRules.ArenaSelectable(m)&&m.rotation).ToArray();return prefs.pve?"siren":prefs.map=="random"?maps[(int)(NativeMatch.NewSeed()%(uint)maps.Length)].id:prefs.map;}
+        {return prefs.pve?"siren":prefs.map=="random"?NativeMapRules.RandomArena(content,NativeMatch.NewSeed()):NativeMapRules.Selection(content,prefs.map);}
         private NativeRoomOptions CaptureRoomOptions()=>new NativeRoomOptions{map=prefs.map,cooperative=prefs.pve,expedition=prefs.pve&&prefs.expedition,teams=prefs.teams,friendlyFire=prefs.friendlyFire,bots=prefs.bots,rounds=prefs.rounds,sets=prefs.sets,choices=prefs.choices,selectionSeconds=prefs.selectionSeconds,skipBotDrafts=prefs.skipBotDrafts,bothDraft=prefs.bothDraft,skipPlayerIntros=prefs.skipPlayerIntros,randomizeMap=prefs.randomizeMap,mirrorWeapons=prefs.mirrorWeapons,stationary=prefs.stationary,skipWaves=prefs.skipWaves,botDifficulty=prefs.botDifficulty,botOptions=prefs.botOptions??Array.Empty<NativeBotOption>(),hostTeam=prefs.team};
         public void SetRoomOptions(NativeRoomOptions options)
         {
@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             int index=Array.FindIndex(bots,b=>b.id==seatId);if(index<0)return false;
             var options=CaptureRoomOptions();options.Normalize(content);if(options.botOptions.Length<=index){var expanded=options.botOptions;Array.Resize(ref expanded,index+1);options.botOptions=expanded;for(int i=0;i<expanded.Length;i++)if(expanded[i]==null)expanded[i]=new NativeBotOption{difficulty=options.botDifficulty};}options.botOptions[index].team=team;SetRoomOptions(options);return true;
         }
-        private NativeSeatFrame LobbySeat(NativeSeat s,bool ready)=>new NativeSeatFrame{devRevealed=s.devRevealed,devCommandsRan=s.devCommandsRan,devDummy=s.devDummy,devScale=s.devScale,id=s.id,name=s.name,spec=s.spec,team=s.team,connected=s.connected,ready=ready,bot=s.bot,difficulty=s.difficulty,bodyColor=s.bodyColor,accentColor=s.accentColor,hat=s.hat,lobbyPose=s.lobbyPose,lobbyBack=s.lobbyBack,hatColor=s.hatColor,backColor=s.backColor,weaponSkins=s.weaponSkins,killEffect=s.killEffect,intro=s.intro,introText=s.introText};
+        private NativeSeatFrame LobbySeat(NativeSeat s,bool ready)=>new NativeSeatFrame{devRevealed=s.devRevealed,devCommandsRan=s.devCommandsRan,devDummy=s.devDummy,devScale=s.devScale,id=s.id,name=s.name,spec=s.spec,team=s.team,connected=s.connected,ready=ready,bot=s.bot,difficulty=s.difficulty,bodyColor=s.bodyColor,accentColor=s.accentColor,hat=s.hat,lobbyPose=s.lobbyPose,lobbyBack=s.lobbyBack,hatColor=s.hatColor,backColor=s.backColor,weaponSkins=s.weaponSkins,look=s.look,killEffect=s.killEffect,intro=s.intro,introText=s.introText};
         private NativeSeat[] LobbyBots(int humans)
         {var options=CaptureRoomOptions();options.Normalize(content);return Enumerable.Range(0,Math.Max(0,Math.Min(options.bots,(prefs.pve?4:8)-humans))).Select(i=>NativeLobbyRules.Bot(content,options,i,prefs.weapon,roomSeed)).ToArray();}
         private void LobbyTick()

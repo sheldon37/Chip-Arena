@@ -71,7 +71,14 @@ namespace ChipArena.UnityConversion
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
-        private string VisualLookOf(int id)=>id==LocalId||id==ViewBodyId||id==RooftopIdTop?LocalLook??"":ModelPortraitOf(id,out var portrait)?portrait.Outfit:"";
+        private string VisualLookOf(int id)
+        {
+            if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??"";
+            if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
+            // Use the displayed arena, including replay/guest seats, rather than current local preferences.
+            var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??"";
+            return id==LocalId?LocalLook??"":"";
+        }
         /// <summary>Whether this install draws the visual body at all (its bake found, not turned off at launch): Settings shows the
         /// Player model choice only then.</summary>
         public static bool VisualBodyInstalled=>VisualBodiesOn;

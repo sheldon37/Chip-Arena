@@ -10,8 +10,8 @@ namespace ChipArena.UnityConversion.Editor
             try
             {
                 var match=new NativeMatch(content,7);for(int id=1;id<=3;id++)match.Seats.Add(new NativeSeat{id=id,name="Ranged check "+id,spec="pistol"});
-                arena=new NativeArena(content,match,"foundry"){ReplicaScene=scene};match.Start();arena.Reset();
-                guest=new NativeArena(content,new NativeMatch(content),"foundry"){Replica=true,LocalId=2,ReplicaScene=other};
+                arena=new NativeArena(content,match,NativeMapRules.DefaultArena){ReplicaScene=scene};match.Start();arena.Reset();
+                guest=new NativeArena(content,new NativeMatch(content),NativeMapRules.DefaultArena){Replica=true,LocalId=2,ReplicaScene=other};
                 arena.ValidateCyberRanged(guest);
             }
             finally{guest?.Dispose();arena?.Dispose();EditorSceneManager.ClosePreviewScene(other);EditorSceneManager.ClosePreviewScene(scene);}
