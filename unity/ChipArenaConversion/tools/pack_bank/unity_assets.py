@@ -301,6 +301,22 @@ def flatten(folder, prefab_path, depth=0):
     return parts
 
 
+def model_parts(folder, model_path):
+    """A model file's mesh parts as its model prefab places them (its single root node at the origin), for a pack whose own
+    prefabs are binary-serialized: each node with a mesh, with the materials its import remaps (None where it has none)."""
+    scene = folder.scene(model_path)
+    meta = folder.meta(model_path)
+    remap = _remaps(folder, meta)
+    roots = scene.roots()
+    rel = fbx.inverse(_unity_world(scene, roots[0], meta)) if len(roots) == 1 else fbx.ident()
+    parts = []
+    for m in scene.models.values():
+        if m.geometry is None:
+            continue
+        parts.append(Part((model_path, scene, m), fbx.mul(rel, _unity_world(scene, m, meta)), [remap.get(name) for name in m.materials], m.name))
+    return parts
+
+
 def _unity_world(scene, model, meta):
     """The node's GameObject transform in the model prefab (Unity space), as a map from its mesh asset's space:
     Sm Mirror C World(n) (Sm Mirror)^-1, with the axis conversion C at the root unless the import bakes it."""

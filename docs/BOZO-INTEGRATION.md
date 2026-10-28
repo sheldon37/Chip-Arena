@@ -1082,6 +1082,69 @@ owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CRE
   - the Standard skin's accent lights in the pilot's colour (the kit models have none);
   - the daggers.
 
+**Pack weapons (2026-10-28, `claude/pack-weapons`).** Owner (2026-10-28): "Lets do all of those", "Do whatever needs to be
+done". The bake's life-size guns and swords left the daggers, shield, bow and caster staffs on the game's procedural models
+in the model's hands. Those now draw pack models from the weapons pack bank (`docs/PACK-BANK.md`; no local bake needed):
+- **Which** (each fitted to the game's weapon frame, `Core/NativePackWeapons.cs`):
+  - daggers: the sword pack's gladius at 1.19 (the falchion's and greatsword's style), on both hands in the reverse grip;
+    its point on the game's (.832), its pommel .16 behind the grip;
+  - shield: the knights pack's quartered heater (blue and violet field, steel rim) at 1.12. Its left arm loop sits on the
+    braced grip bar (0, .09, .15), the second loop on the forearm's side (the shield set's forearm leaves the hand toward
+    the frame's +x). It spans -.33 to .43 high (the game's -.34 to .425); its top dips at the middle, 5 cm under the game's
+    edge socket;
+  - bow: the low-poly pack's longbow at 1.141, its baked string and nocked arrow dropped (only its largest piece is kept).
+    Its string nocks sit on the game's string anchors. The game's grip (0, -.06, .035) is on its riser, which is 4 cm thick
+    there, thicker than the fist's curl;
+  - staffs: the fantasy pack's crystal staff. The four schools' are shortened to the game's: the head at .75, the shaft at
+    .54; the crystal at .77, the hook's top at .96, the heel at -.36, so the charge orb's muzzle (.88) sits inside the hook.
+    L33t H4x's is at .935 of its length: crystal 1.29, top at its 1.52 muzzle, heel -.52. The crystal is its own piece in
+    each school's core colour from its Standard staff (fire #ff7c3e, water #65d8ed, lightning #c2a2ff, darkness #b98bff,
+    L33t #52ff83), glowing.
+- **Fits** (`NativePackWeapons.Fit`): the prop, its grip point and axes, the cross-section scale and a piecewise map along
+  the axis, where the grip lands in the frame, the hands, whether the left fist closes on it, the bow's limbs, the largest
+  or marked piece, and the tip, end and handle measured on the prop (for the checks). `Shape` turns the prop into one mesh in
+  the weapon frame (Unity's: the source frame with x mirrored), the faces' winding kept.
+- **The runtime** (`Runtime/NativePackWeaponPresentation.cs`, through `NativeVisualWeaponPresentation.cs`):
+  - Where the bake has no `VisualWeapons` entry for a spec, an arena pilot's body draws the pack weapon. An arena body is
+    one made for the rig the arena poses (`VisualBody.Arena`), so the entrances, draft, menus, portraits, first person and
+    corpses keep the game's model, as do the Prototype Series and the Classic voxel body.
+  - Each weapon is built once (its mesh and its materials on the visual body's toon, the pack texture as drawn, outline off;
+    the crystal on the toon's nine-colour mode with its accent in the school's colour and glow). Each body makes its mount
+    and model once per weapon under its root (the daggers an off-hand copy, the bow skinned to a riser and two limb bones).
+    They show and hide as the bake's models do, so nothing is allocated per frame once warm.
+  - Rules: the Standard skin in hand; `WeaponAway` hides it; `MainWeaponAway` hides the main dagger's copy only.
+    `SourceCharacter` passes the off-hand blade's frame (`WeaponBone(LHand)`, with the reach stretch).
+  - Staffs: the left fist closes on the shaft at the game's main grip (a left blade hold), so the staff frame, and the
+    charge orb, muzzle and effects on it, follow the fist instead of the bare wrist.
+  - Bow: `BowDraw` draws it in the riser's and limbs' place; the string, arrows, quiver and modules draw as before. Its limb
+    weight rises from the limb pocket (`NativeBow.PivotY`) to 1 within .16 m, and each limb bone takes the game's limb piece
+    (`NativeBowRig.Limb`) at the pull. The tips therefore move as the game's limbs do and the string's halves stay on them.
+  - Without the bank, its prop or the shader, every pilot draws today's model.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Only the visual left
+  hand changes: a caster's fist closes on the staff, which moves to the fist about 9 cm from the wrist, with its effects.
+  The daggers and shield stretch along their frame with reach, as the bake's blades do (the whole model).
+- **Checks:** `CoreTests --pack-weapons` (in the full run, 436 checks):
+  - every grip is on the visual rig's seat (reverse blade grip, braced shield bar, the staff's left seat, the bow grip on
+    its riser), and every measured tip is within 2 to 6 cm of the game's sockets (blade tip, shield edge, staff tip, the
+    muzzle inside the head, L33t's top on its muzzle, the bow's nocks on the string anchors at every pull, with the limb
+    bone's turn equal to the game's limb piece's);
+  - the shaping on a synthetic bank: the marked piece, the largest piece, the parts' places, the axis map, unit normals,
+    the faces' winding;
+  - the runtime pins and no pack names in the code.
+  - With the bank on the machine (`CHIP_PACK_WEAPONS=<bank file>`, or the checkout's `Assets/LocalAssets`), the real meshes
+    are measured too: triangle budgets (128 to 938), the handle at each grip (radius 2.0 cm daggers, 2.3 cm shield loop,
+    3.4 cm staffs, 4.0 cm bow riser), the tips and the crystals (481 checks).
+- **Offline renders** (local scratch; WebGL from the bank's shaped meshes against the game's own models as silhouettes):
+  the grips, tips, shield edge, the staff tip and muzzle, and the bow at rest, half and full draw with the game's string
+  line up as above; a contact sheet of the final picks.
+- **Not yet (owner's PC):**
+  - the Play-mode look on the toon and the arena lighting;
+  - the fist round the bow's thick riser;
+  - the staff's left seat under the casters' own clips;
+  - a single detail tier;
+  - the crystal's glow with Reduced effects;
+  - first person, which keeps the game's models.
+
 **Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
 "We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack
 already? Cant we utilize that?"
