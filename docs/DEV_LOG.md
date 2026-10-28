@@ -1,4 +1,14 @@
-## 2026-10-28 — Claude: natural arms on the model in the idles, lobby cards and intros (implemented on branch, not merged)
+## 2026-10-28 — Astra: cloth handoff readiness and account look persistence
+
+- **Base:** shared `claude/sleepy-ritchie-g8ruhv` at `fcbbf5a4`. The package pins, private-code pack/install support, look transport, verified DEV gates, face allowlist and remote-seat presentation from the October 26–27 handoff are already present in this base.
+- **Changes:** preserve Claude's new `skin:rrggbb` look entry in relay accounts, normalize hex case and retain it through DEV revocation; expand account regression cases. Add `install_local_assets.py --require-cloth` to reject an incomplete bundle before installation, with tests. Log whether all three cloth hooks are registered at scene startup; this is diagnostic evidence only, not a simulation test. Extend the NativeLook authority-isolation scan to explicit core and runtime movement/combat files.
+- **Owner's new Drive upload inspected:** `Magica Soft.zip` (October 28) contains `Magica Cloth 2.unitypackage`, with the Magica runtime/editor assets and examples. It does **not** contain `ChipArenaClothBridge.cs`. Current `LocalAssets.zip` (October 27) still has no cloth runtime manifest, plugin or bridge. No licensed source or `MAGICACLOTH2` scripting define was added to git.
+- **Remaining private-asset step:** supply the regenerated `Assets/LocalAssets/ChipArenaLocalTools/Runtime/ChipArenaClothBridge.cs` and its `.meta`, then repack the imported local assets with `pack_visual_body.py --with-cloth` (which excludes examples) and replace the builder's `LocalAssets.zip`. Validate that bundle with `python3 tools/install_local_assets.py LocalAssets.zip --check --require-cloth` from the Unity project. The uploaded Unity package alone cannot register the game's cloth hooks.
+- **Checks actually run:** relay verification (types, account/relay tests and Worker build) passed; five private-cloth and six visual-body Python tests passed; targeted managed LookContractChecks passed including DEV gates, wire/profile routes and authority scan; pinned Unity Player, Runtime and Editor semantic compilation passed. The tiny standalone look harness initially omitted NativeSheldonWear; rerunning against all Core sources passed.
+- **Not run / blockers:** no Unity Editor or live two-player visual test in this environment; Attach registration and visible robe skirt, hood cowl and hair motion are **not verified**. The latest fetched builder log at base `fcbbf5a4` fails separately with `Brickfall runtime: friendly-fire on`; no successful new builder build is claimed. The private bridge is still required before cloth activation can be completed.
+- **Merge (Claude, 2026-10-28):** merged into shared and the builder after its CI (scope, verify, native-source, native-updater-windows, required checks) passed; the only conflict was these DEV_LOG entries, both kept.
+
+## 2026-10-28 — Claude: natural arms on the model in the idles, lobby cards and intros (merged into shared)
 
 - **Branch/base:** `claude/model-pose-fix` from shared `claude/sleepy-ritchie-g8ruhv` `d91fee6`; implementation `c54e27f`, then current shared `fcbbf5a` (skin tone, MASKS) merged in at `4ee7185`. Pushed for review; no PR, not merged into shared, not published.
 - **Owner (2026-10-28):** "Fix idle animations, lobby card poses, and intros to fully support the new player model. Since the transfer, a lot of unnatural arm positioning and movements. Please review, fix to look realistic and natural."
@@ -53,6 +63,8 @@
   - The DEV Sheldon Idle with long guns keeps a pre-existing support-wrist roll near 180 degrees.
   - The lap rest pronates the hands up to 80 degrees.
 - **Next:** owner look in the Locker, lobby cards, rooftop and entrances on the PC. No Astra handoff.
+- **Merge (Claude, 2026-10-28):** reviewed and merged into shared and the builder at `823952e` (signed merge of `69eb33f`, tree identical to the branch head). Five checks on the merge: Unity compile OK; relay/CoreTests 868 PASS; Python 166 OK (one Windows-only skip); package (2,771 files) and diff checks pass.
+
 
 ## 2026-10-28 — Claude: skin tone with a colour wheel, and MASKS in place of the model's body skins
 
@@ -64,7 +76,7 @@
   - **Locker, on the model:** CALLSIGN, MASKS (No mask / Mask + visor / Visor / Mask, with hover try-on), SKIN TONE (DEFAULT, ten tones, a colour wheel with a brightness track; hover try-on through `LookShown`), ACCENT COLOUR, OUTFIT. BODY SKIN and BODY COLOUR show only in Classic. The Skins tab lists only weapons on the model; Classic keeps the body card. The model thumbnails wear the picked tone.
   - **Account load:** keeps this PC's tone when the account look has none (`NativeLook.KeepSkin` in `NativeProfileUI`).
 - **Animation impacts:** none (hit timing, hitboxes, damage, cooldowns, movement and networking unchanged).
-- **Astra handoff (accounts):** `src/relay/accounts.ts` `lookMap` drops keys it does not know, so the account never stores the tone. Please keep a `skin` entry whose value matches `/^[0-9a-f]{6}$/i`, lowercased, as the map's last entry (`...,skin:c48a62`). It is not DEV gated. Once it is stored, `NativeLook.KeepSkin` can go (a saved map without a tone then means DEFAULT). Rooms already carry it: the seat look passes through `NativeLook.Gate` unchanged.
+- **Astra handoff (accounts), done in #296 (merged):** `src/relay/accounts.ts` `lookMap` dropped keys it did not know, so the account never stored the tone. Please keep a `skin` entry whose value matches `/^[0-9a-f]{6}$/i`, lowercased, as the map's last entry (`...,skin:c48a62`). It is not DEV gated. Once the Worker with #296 is deployed, `NativeLook.KeepSkin` can go (a saved map without a tone then means DEFAULT); it stays until then so signed-in tones survive a load. Rooms already carry it: the seat look passes through `NativeLook.Gate` unchanged.
 - **Checks (actual, on `claude/skin-color-masks`):**
   - Unity compile (runtime and editor scripts): PASS. relay/CoreTests: 863 PASS, among them `--skin-tone` (SkinToneChecks, 248 checks) and the updated Locker, look contract, body skin and visual rig pins. Python 166 OK (one Windows-only skip). Package and diff checks pass.
   - Shaders: NativeVisualBodyToon's surface pass (forward base and add, with the vertex, lighting and final-colour functions) and its outline pass pass glslang's HLSL front end, linear and gamma, fog off and on.

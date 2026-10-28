@@ -1588,7 +1588,7 @@ already? Cant we utilize that?"
       cyber palette and dark cloth keep their colour. Only body parts and the `Head.`/`Body.` meshes take it (not hair, not
       clothes). It is written once when a body is dressed or the tone changes, never per frame.
     - **Account:** the account Worker (`src/relay/accounts.ts` `lookMap`, Astra's) drops keys it does not know, so a
-      signed-in pilot's tone is kept on this PC (`NativeLook.KeepSkin`) until the Worker stores `skin` (six hex digits).
+      signed-in pilot's tone is kept on this PC (`NativeLook.KeepSkin`) until the Worker that stores `skin` (Astra, #296) is deployed.
       Rooms carry it already (the look travels as it is through `NativeLook.Gate`).
   - **Install:** the body grew to 58.2 MB. The installer's budget is now 72 MB, and the zip's member total cap 96 MiB
     (`tools/install_local_assets.py`).

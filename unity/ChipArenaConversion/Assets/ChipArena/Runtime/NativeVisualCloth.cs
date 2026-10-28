@@ -19,6 +19,17 @@ namespace ChipArena.UnityConversion
         public static Action<object> Reset;
         /// <summary>The distance from the arena's camera past which a body's cloth holds still (m).</summary>
         public const float Far=30;
+        /// <summary>All three hooks are needed: attachment alone does not prove enable/reset lifecycle support.</summary>
+        public static bool Registered=>Attach!=null&&Enable!=null&&Reset!=null;
+        // Runs after the bridge's startup registration. This is a registration receipt, not proof of visible simulation.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void ReportRegistration()
+        {
+            Debug.Log(Registered
+                ? "Cloth runtime: bridge registered (attach/enable/reset). Verify hair, robe skirt and hood cowl motion in play."
+                : "Cloth runtime: bridge unavailable or incomplete; posed-body fallback. Repack licensed assets with --with-cloth.");
+        }
+
         /// <summary>Paint maps for the game's own cloth pieces, by their renderers' names (red fixed, green moving; readable): the
         /// Sheldon hood's. The simulation takes these before the bake's own (the pack's, by the same names).</summary>
         public static readonly System.Collections.Generic.Dictionary<string,Texture2D> PaintMaps=new System.Collections.Generic.Dictionary<string,Texture2D>(StringComparer.Ordinal);

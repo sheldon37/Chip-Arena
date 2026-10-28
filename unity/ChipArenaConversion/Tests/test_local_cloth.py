@@ -42,6 +42,17 @@ class ClothTests(unittest.TestCase):
         self.assertEqual(local_cloth.verify(self.bake.local),{})
         with self.assertRaisesRegex(installer.Problem,'requires local'):packer.pack(self.base,self.tmp/'missing.zip',self.dev,with_cloth=True)
 
+    def test_require_cloth_rejects_fallback_before_install(self):
+        code,text=self.install(self.base,'--require-cloth')
+        self.assertEqual(code,1,text);self.assertIn('cloth runtime required',text)
+        self.assertFalse((self.project/'Assets/LocalAssets/Resources/EffectsAudio').exists())
+        self.cloth();out=self.tmp/'cloth.zip';packer.pack(self.base,out,self.dev,with_cloth=True)
+        code,text=self.install(out,'--check','--require-cloth')
+        self.assertEqual(code,0,text)
+        self.assertFalse((self.project/'Assets/LocalAssets/Resources/EffectsAudio').exists())
+        code,text=self.install(out,'--require-cloth');self.assertEqual(code,0,text)
+        self.assertTrue((self.project/'Assets/LocalAssets'/local_cloth.BRIDGE).is_file())
+
     def test_narrow_code_paths(self):
         for path in ('../evil.cs','/evil.cs','MagicaCloth2/../evil.cs','MagicaCloth2//Cloth.cs','MagicaCloth2/Example (Can be deleted)/Demo.cs','ChipArenaLocalTools/Editor/Tool.cs','ChipArenaLocalTools/Runtime/Other.cs','MagicaCloth2/evil.dll','MagicaCloth2/evil.exe'):
             self.assertFalse(local_cloth.allowed(path),path)
