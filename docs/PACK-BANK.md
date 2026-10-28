@@ -81,6 +81,6 @@ Little-endian. The full layout is in the `NativePackBank` comment:
 
 | Bank | Selection | What |
 |---|---|---|
-| `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages: barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, cranes and more (296 props, 721 meshes, 5 atlas textures, 12.7 MB) |
+| `ChipArenaPackKit` | `kit-harbor.json` | Toon Harbor props for the stages (docs/arenas/STAGE-KITS.md): barrels, crates, containers, pallets, fences, tanks, vehicles, lamps, pipes, ship-to-shore and quay cranes, freighters, tugboats, sheds and more (255 props, the pack's low-detail duplicates left out; 877 meshes, 6 materials, 5 atlas textures, 19.98 MB) |
 
 The effect sheets, weapons and further kits are added by the streams that use them.
