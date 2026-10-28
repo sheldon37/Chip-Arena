@@ -1,3 +1,59 @@
+## 2026-10-28 — Claude: natural arms on the model in the idles, lobby cards and intros (implemented on branch, not merged)
+
+- **Branch/base:** `claude/model-pose-fix` from shared `claude/sleepy-ritchie-g8ruhv` `d91fee6`; implementation `c54e27f`, then current shared `fcbbf5a` (skin tone, MASKS) merged in at `4ee7185`. Pushed for review; no PR, not merged into shared, not published.
+- **Owner (2026-10-28):** "Fix idle animations, lobby card poses, and intros to fully support the new player model. Since the transfer, a lot of unnatural arm positioning and movements. Please review, fix to look realistic and natural."
+- **Root causes** (measured by a scratch harness, not committed: every lobby pose of 16 pilots, the 24 entrances and the Cyber Lord's idle, sampled through the adapter on a skeleton with outfit A's measured rest joints, BOZO-INTEGRATION step 2):
+  - The game's free hands are placed for the voxel body: shoulders .345 m out, a chest .53 m wide, arms .175 m thick. Copied by direction onto shoulder joints .133 m out, with the hanging Spread (+15 degrees) on top:
+    - the hero stance's free arm stood 23-30 degrees out, its hand 10-14 cm off the thigh;
+    - the procedural entrances' arms stood 24-30 degrees out, the hands 17-26 cm off;
+    - the chair's arms stood 25 degrees out, the hands 16 cm beside the lap.
+    - That is the A-pose look.
+  - `Inside` maps a hand in front of the body by the shoulder-width ratio (.39), narrower than the torso's (.57). The daggers card's fists sank 8-11 cm into the hips.
+  - 'Arms crossed': the voxel arms cannot reach across the voxel chest, so the game's elbows stay 10 degrees from straight. The copy kept that, and the model's arms poked straight forward across the belly: upper arms 35-43 degrees across the chest, fists 23-26 cm in front of it.
+  - The portrait and rooftop stand-in actors kept the sword's weapon id and visual set. The daggers, greatsword, shield and guns were held as a sword or not at all, so the long guns' support hands had no grip and the wrists rolled up to 180 degrees.
+  - The procedural entrances (no weapon shown) still closed the fists on the pilot's unseen weapon.
+  - The arena's idles already play the pack's clips; the game pose shows only where they do not cover the state (the Cyber Lord, kit moves).
+- **Changes (presentation only):**
+  - `Core/NativeVisualRig.cs` `Relax` (opt-in: `Grasp.Relax`, `Grasp.Still`, `LeftCarries`/`RightCarries`; 0 keeps the adapter exactly as before):
+    - a free hand is placed by the body's landmarks: its height by the arm lengths; across, its share of the body's width at that height (chest, waist, hips), its gap off the side compressed (`RelaxGap`); in depth, its share of the torso and its offset in front of it;
+    - no straighter than the game's arm; a hand flung clear of the body keeps the game arm's extension;
+    - the elbow is hinged out, down and back, or on the game's side where the game bends the arm, kept out of the torso, at most 10 degrees a frame;
+    - the hand keeps its turn on the forearm; hands near or over the shoulder line keep the copied arm (fully from 10 cm above it, fading in to 12 cm below);
+    - `Still` (menu stances) also relaxes the weapon arms (not a braced shield) and rests seated hands on the lap, palms down (`OnLap`).
+  - `Runtime/NativeVisualBodyPresentation.cs`: `VisualArms` on `VisualBodyBind`.
+    - Live: the arena (as copied while the pack's clips cover the whole body), a revive, and an entrance that shows a weapon.
+    - Unarmed: an entrance that shows none. Still: the portraits and the rooftop's seated pilot and watcher. Reach: the draft.
+    - Fades out as the chip-select look comes up; off in first person. Small, local edits; `VisualDress` untouched.
+  - `NativeVisualPortraitPresentation.cs`, `NativeRooftopPresentation.cs`: the stand-in actors carry the pilot's weapon (`VisualArmedAs`).
+  - `NativeIntros.cs`: passes whether the entrance shows a weapon.
+  - Tests: `Tests/ModelPoseChecks.cs` (`CoreTests --model-poses`, also in the full run). The string pins in VisualRigChecks and BodyRevealChecks follow the new calls.
+  - Docs: BOZO-INTEGRATION "Relaxed arms on the model".
+- **After (same harness, relaxed):**
+  - hero stance free arm 16-17 degrees out (elbow 18 as the game's), hand 4-6 cm off the thigh, palm toward it;
+  - chair 8-9 degrees, hands on the thighs, palms down, both sides alike;
+  - crossed: elbows 104-108 degrees, upper arms -2/-9, fists 1-2 cm off the chest;
+  - daggers card: fists out of the hips (+1/-1 cm);
+  - procedural entrances: 16-23 degrees, hands 8-18 cm off;
+  - Cyber Lord idle: 20/15 to 15/12 degrees.
+  - Worst forearm-into-torso in the pistol entrance: 12.0 to 5.5 cm.
+  - Weapon arms in the entrances and the arena are unchanged by design (their paths and anchored effects stay the game's).
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Only the model's arm bones move. The rig's hand bones follow the model's wrists as before, so what rides a hand moves with it. Classic voxel: no voxel pose code changed; LobbyPoseChecks parity passes; Classic never reaches the binds.
+- **Checks (actual):**
+  - The before/after numbers above: the scratch harness through the adapter (relaxed against today's copy).
+  - On the merged tree: Unity compile (runtime and editor scripts) OK. CoreTests groups, all PASS:
+    - `--model-poses`: ModelPoseChecks on the measured and a synthetic skeleton (21,657 poses, 27,116 relaxed arms each); the cards (321,776 checks); repeat, allocation and off-switch; the wiring; LobbyPoseChecks parity (the voxel poses unchanged).
+    - `--visual-rig` (23 PASS, 130,632 checks), `--body-reveal`, `--draft-stage`, `--skin-tone`.
+  - Full run on the merged tree with the fix below: Unity compile OK; relay/CoreTests 868 PASS (35 managed-core checks); Python 166 tests OK (one Windows-only skip); source package (2771 files) and diff check pass.
+  - The first full run on the merged tree stopped at EntranceDirectorChecks: ModelPoseChecks had left the director's cached weapon-signature scripts bound to their clips. The test now unbinds what it bound, pinned by a check.
+- **Not run / needs the owner's PC:** the Unity Editor and Play mode with the bake (the real meshes, skin weights and cloth). The torso and limb thicknesses here are proxies from step 2's widths, and folded arms and lap hands rest 3-3.5 cm into that proxy. No Windows build.
+- **Risks:**
+  - The relax costs about 40 µs a pose on this machine. It is skipped while the pack's clips cover an arena body; the portraits (up to 12 slots) pay it.
+  - The elbow's 10-degree-a-frame limit is per frame, so it follows slower at low frame rates.
+  - Fast entrance gestures still clip a forearm into the torso for single frames (8 cm in the Cyber Lord entrance, 10.6 copied).
+  - The DEV Sheldon Idle with long guns keeps a pre-existing support-wrist roll near 180 degrees.
+  - The lap rest pronates the hands up to 80 degrees.
+- **Next:** owner look in the Locker, lobby cards, rooftop and entrances on the PC. No Astra handoff.
+
 ## 2026-10-28 — Claude: skin tone with a colour wheel, and MASKS in place of the model's body skins
 
 - **Branch/base:** `claude/skin-color-masks` from shared `d91fee6` (advanced lighting merged). No PR; merged into shared and the builder by Claude (owner standing authorization).
