@@ -114,6 +114,16 @@ internal static class LockerChecks
         string outfit=R("NativeLockerOutfitUI.cs");
         Check(appearanceLayout.Contains("if(LkOnModel){LkHead();LkReserve(LkOutfitH());}")&&appearance.Contains("if(LkOnModel){LkHeading(lockerSlots[k++],\"OUTFIT\",\"Your pilot's clothes on the model\");LkOutfit(lockerSlots[k++]);}")
             &&outfit.Contains("prefs.look=NativeLook.Gate(NativeLook.With(prefs.look,slot,ids[k]),lockerBodySheldon);Click();")&&ui.Contains("BackColor=prefs.backColor,Look=prefs.look};")&&ui.Contains("||b.Look!=prefs.look;}")&&ui.Contains("prefs.look=b.Look;"),"the OUTFIT section wears a piece per click and is saved and reverted with the look");
+        // Owner 2026-10-28 ("It clutters a bit much with the buttons for clothing pieces", "Just want a very clean looking UI"):
+        // one fixed-height row a slot however many pieces it lists, its icon and name, and arrows that wrap round the worn piece.
+        string picker=outfit.Substring(outfit.IndexOf("public static class NativeOutfitPicker"));
+        string pickerRow=picker.Substring(picker.IndexOf("public static int Row("),picker.IndexOf("private static bool Arrow(")-picker.IndexOf("public static int Row("));
+        Check(outfit.Contains("private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length);")&&picker.Contains("return rows<=0?0:rows*RowH+(rows-1)*Gap;")
+            &&pickerRow.Contains("pick=(worn-1+shown)%shown;")&&pickerRow.Contains("pick=(worn+1)%shown;")&&pickerRow.Contains("if(!on&&hot&&U.Button(hit)){pick=i;")
+            &&picker.Contains("public static readonly string[] Icons={")&&Regex.Matches(picker.Substring(picker.IndexOf("Icons={"),picker.IndexOf("IconKeys=")-picker.IndexOf("Icons={")),"\"<path").Count>=NativeLook.Slots.Length,
+            "the OUTFIT picker is a row a slot (icon, name, wrapping arrows, dots) whose height does not grow with the pieces");
+        string rowBody=pickerRow.Replace("(worn+1)+\" / \"+shown","");
+        Check(pickerRow.Contains("(worn+1)+\" / \"+shown")&&!Regex.IsMatch(rowBody,@"\bnew\s+(?!Rect\()")&&!rowBody.Contains("+\"")&&!rowBody.Contains("$\""),"an OUTFIT row allocates nothing per frame but the count past MaxDots");
         // On the model (owner 2026-10-26): each body says what it is there, the face gears follow the Prototype body in the row
         // and have their own Skins card; a face gear pick puts on the Prototype body; the thumbnails are the model's.
         Check(Regex.Matches(Regex.Match(skinsFile,@"LkModelBodyTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeBodySkins.Count&&Regex.Matches(Regex.Match(skinsFile,@"LkFaceTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeWeaponSkins.FaceKeys.Length
