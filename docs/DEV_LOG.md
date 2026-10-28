@@ -1,3 +1,31 @@
+## 2026-10-28 — Claude: the Sheldon Intro's glitch (and every entrance's build-in) on the model; the killcam outfit (merged into shared)
+
+- **Branch/base:** `claude/sheldon-reveal` from shared `a98fe33` (Astra's PR #294 merged). No PR; merged into shared and the
+  builder by Claude.
+- **Owner (2026-10-28):** "Sheldon intro still needs revisions, it uses voxel model in the "glitching""; "Replay also shows
+  default clothing instead of player selected clothing, on death also seems to revert customizations".
+- **Outfit:** root cause found here: the outfit lookup keyed on `LocalId`, which the killcam replay moves to the killer
+  (`NativeReplay`: `presentation.LocalId=target.Seat.id`), as a spectated view and a L33t H4x possession do. Astra's PR #294
+  (outfit transport, entry below) already replaced that lookup with the displayed seat's own `look` (replay copies
+  included), so it is fixed on shared for every pilot. No outfit change on this branch.
+- **Sheldon Intro (root cause):** `VisualIntroPose` returned while any of the pelvis, chest, head or hands was under half
+  revealed, and the voxel body drew the reveal. The Sheldon Intro's bands lock in on its ticks, drop bones out on glitch
+  steps and project dithered until the resolve (2.38 s), so the whole glitch was voxel.
+- **Change:** the model takes the reveal per bone. `Core/NativeBodyReveal` gives each game bone a world segment (joint to
+  child, the leaves on along their parent's way, the head up its axis; a joint belongs to its child's segment). The body's
+  toon shader (`NativeVisualBodyFx.cginc` `RevealClip`) picks a pixel's nearest segment and dithers by its share in the voxel
+  reveal's world cells: body, outline and cast shadow. `VisualRevealLook` writes the 21 segments only for the entrance rig,
+  while some bone is under whole, and clears them once after. Every directed entrance now builds in on the model (no voxel
+  pop at the end of a build-in); the entrance ghosts follow the model while it is posed.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking (presentation only).
+- **Checks (actual):** Unity runtime and editor compile OK; CoreTests `--body-reveal` PASS (on the rest pose 43 of the 48 voxel
+  parts pick their own bone, the other 5, joint caps, a neighbour; wiring pins), `--visual-rig` PASS. Offline render (scratch
+  `renders-sheldon/reveal-sheet.png`): the Sheldon Intro's real pose and per-bone reveal from Core at ten moments, the voxel
+  pilot over a smooth stand-in body with the shader's maths: the same pieces drop out.
+- **Not run:** the shader compile and Play mode (the owner's PC with the body bake); the licensed model itself; Windows build,
+  multiplayer.
+- **Next:** a Play-mode look at the Sheldon Intro and a weapon entrance's build-in on the model.
+
 ## 2026-10-28 — Astra: integrate Claude pack streams and retire legacy arenas
 
 - Branch `codex/unity-claude-handoff-20261028`, PR #294, integrates shared `4ecd806ae0c5668fd0e4d260e625bb98382dcd39`, preserving Claude's pack banks, weapons, hit effects and station-sound requests, including the larger private-bank budget.
