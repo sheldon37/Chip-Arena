@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         public NativeRoomOptions RoomOptions=>Hosting||!Online?CaptureRoomOptions():receivedOptions;
         private string PreviewMapId=>NativeLobbyRules.PreviewMap(prefs.map,prefs.pve);
         private string SelectMatchMap()
-        {var maps=content.maps.Where(m=>NativeMapRules.ArenaSelectable(m)&&m.rotation).ToArray();return prefs.pve?"siren":prefs.map=="random"?maps[(int)(NativeMatch.NewSeed()%(uint)maps.Length)].id:prefs.map;}
+        {return prefs.pve?"siren":prefs.map=="random"?NativeMapRules.RandomArena(content,NativeMatch.NewSeed()):NativeMapRules.Selection(content,prefs.map);}
         private NativeRoomOptions CaptureRoomOptions()=>new NativeRoomOptions{map=prefs.map,cooperative=prefs.pve,expedition=prefs.pve&&prefs.expedition,teams=prefs.teams,friendlyFire=prefs.friendlyFire,bots=prefs.bots,rounds=prefs.rounds,sets=prefs.sets,choices=prefs.choices,selectionSeconds=prefs.selectionSeconds,skipBotDrafts=prefs.skipBotDrafts,bothDraft=prefs.bothDraft,skipPlayerIntros=prefs.skipPlayerIntros,randomizeMap=prefs.randomizeMap,mirrorWeapons=prefs.mirrorWeapons,stationary=prefs.stationary,skipWaves=prefs.skipWaves,botDifficulty=prefs.botDifficulty,botOptions=prefs.botOptions??Array.Empty<NativeBotOption>(),hostTeam=prefs.team};
         public void SetRoomOptions(NativeRoomOptions options)
         {

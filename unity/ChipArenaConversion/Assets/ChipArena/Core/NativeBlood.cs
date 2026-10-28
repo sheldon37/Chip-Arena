@@ -102,6 +102,43 @@ namespace ChipArena.UnityConversion
     }
 
     /// <summary>
+    /// The pack's splat textures on the floor and walls (owner 2026-10-28: the blood upgrades approved; Runtime
+    /// NativeBloodPresentation draws them through Resources/NativeBloodSplat.shader when the bank holds the three textures of
+    /// tools/pack_bank/selections/fx-blood.json, else today's fans). Each splat is one textured quad on its surface: a round
+    /// splat (spun at random) or a three-lobed splash where the drop came down steeply, a splash running into a streak
+    /// where it grazed (and down a wall), both laid along its travel; mirrored by its seed, sized from the splat's length
+    /// and width so it stretches as today's does. The rim and wet core colours, the drying and the pool are today's.
+    /// </summary>
+    public static class NativeBloodSplatLook
+    {
+        public const int Round=0,Splash=1,Streak=2,Kinds=3;
+        /// <summary>The bank's texture ids by kind.</summary>
+        public static readonly string[] Ids={"blood-splat-round","blood-splat-splash","blood-splat-streak"};
+        /// <summary>Length over width above which a splat is a splash, and a streak; the share of round drops that splash.</summary>
+        public const float SplashAbove=1.2f,StreakAbove=1.45f,SplashShare=.15f;
+        /// <summary>
+        /// Splat `seed` of half length `length` along its travel and half width `width`: its kind, its turn off the travel
+        /// (radians, about the surface normal), whether it is mirrored across, the quad's half extents along and across the
+        /// turned axis (m) and how far its centre sits ahead of the splat's (m): a splash or streak's impact end lies on the
+        /// splat, its spray ahead.
+        /// </summary>
+        public static void Pick(uint seed,float length,float width,out int kind,out float spin,out bool mirror,out float along,out float across,out float ahead)
+        {
+            length=NativeBloodRules.Finite(length,.03f);width=Math.Max(1e-3f,NativeBloodRules.Finite(width,.03f));float g=length/width;
+            float H(int k)=>NativeBloodRules.Hash(seed,k,71);float size=.92f+.16f*H(1);
+            kind=g>StreakAbove?Streak:g>SplashAbove||H(0)<SplashShare?Splash:Round;mirror=H(2)<.5f;
+            switch(kind)
+            {
+                case Round:spin=H(3)*(float)Math.PI*2;along=length*2.8f*size;across=width*2.8f*size;ahead=0;return;
+                case Splash:spin=(H(3)-.5f)*.5f;along=Math.Max(length,width)*2.2f*size;across=width*2.2f*size;ahead=along*.4f;return;
+                default:spin=(H(3)-.5f)*.18f;along=length*2.6f*size;across=width*1.7f*size;ahead=along*.84f;return;
+            }
+        }
+        /// <summary>How wet a splat still looks (its sheen): 1 fresh, 0 once dry (<see cref="NativeBloodRules.Darken"/>'s floor).</summary>
+        public static float Wet(float age)=>MeleeMath.Clamp((NativeBloodRules.Darken(age)-.52f)/.48f,0,1);
+    }
+
+    /// <summary>
     /// The persistent splat pool: <see cref="Kept"/> splats stay; adding past that fades the oldest out over
     /// <see cref="FadeSeconds"/> (in its <see cref="Spare"/> fading slots), and a splat whose surface breaks or moves fades over
     /// <see cref="SurfaceFade"/>. Each splat is keyed by its droplet, so the same wound fed twice (the killcam replay, a guest's

@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
             int parityAt=editor.IndexOf("NativeParityChecks.Run(data,fixtures)",StringComparison.Ordinal),mergeAt=editor.IndexOf("NativeUnityMapLoader.Load(data)",StringComparison.Ordinal),legacyAt=editor.IndexOf("CheckLegacyMapDefaults(data)",StringComparison.Ordinal);
             Check(parityAt>=0&&mergeAt>parityAt&&legacyAt>mergeAt,"Editor checks raw source parity before map loading, then validates normalized legacy maps");
             var maps=Read<UnityMapContent>("UnityMaps.json");NativeMapRules.Merge(content,maps,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));
-            Check(content.maps.Count(m=>!m.unity)==14,"Ward replacement removes exactly one legacy map");
+            Check(content.maps.All(m=>m.unity)&&content.maps.Count(m=>m.id=="siren")==1,"only authored maps remain with one Ward replacement");
             bool rejectsMerged=false;try{NativeParityChecks.Run(content,parity);}catch(Exception e){rejectsMerged=e.Message=="Content inventory differs from pinned source";}
             Check(rejectsMerged,"regression reproduces original failure when parity sees merged content; inventory gate remains strict");
             var map=content.maps.Single(m=>m.id=="siren");var pve=Read<NativePveContent>("PveContent.json");NativeWardEntries.Validate(pve,map);

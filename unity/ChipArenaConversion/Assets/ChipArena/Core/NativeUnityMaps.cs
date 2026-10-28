@@ -25,6 +25,12 @@ namespace ChipArena.UnityConversion
     public static class NativeMapRules
     {
         public const float PilotRadius=.42f;
+        public const string DefaultArena="brickfall";
+        // Only authored Unity maps enter this runtime; exported Electron maps remain source fixtures.
+        public const string CatalogPolicy="unity-authored-only-v1";
+        public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;
+        public static string RandomArena(ConversionContent c,uint seed)
+        {var maps=c.maps.Where(m=>ArenaSelectable(m)&&m.rotation).ToArray();return maps.Length==0?DefaultArena:maps[(int)(seed%(uint)maps.Length)].id;}
         public static bool WardInstance(string id)=>id=="siren"||id=="expedition-ward-zero";
         public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-foundry"||id=="expedition-ironworks";
         public static bool ArenaSelectable(ContentMap map)=>map!=null&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
@@ -42,7 +48,7 @@ namespace ChipArena.UnityConversion
             // Normalize at the shared load boundary so every runtime/build-check consumer agrees.
             // Authored UnityMaps below still require their own validated tables and bounds.
             foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;m.ramps=null;m.navHints=null;}
-            c.contentRevision=Revision(text);c.materials=c.materials.Concat(u.materials).ToArray();
+            c.contentRevision=Revision(CatalogPolicy+"\n"+text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
             // The Expedition instance shares Ward Zero's authored hazards, including their IDs
             // (used by lights/alarms), so boss-test tuning cannot drift between the two modes.
@@ -51,7 +57,8 @@ namespace ChipArena.UnityConversion
             foreach(var m in u.maps){m.unity=true;Validate(m);}
             // Ward Zero deliberately replaces its exported legacy map, preserving its public ID.
             if(u.maps.GroupBy(m=>m.id).Any(g=>g.Count()>1)||u.maps.Any(m=>m.id!="siren"&&c.maps.Any(old=>old.id==m.id)))throw new InvalidOperationException("Duplicate Unity map");
-            c.maps=c.maps.Where(m=>!u.maps.Any(next=>next.id==m.id)).Concat(u.maps).ToArray();c.Validate();
+            c.maps=u.maps.ToArray();c.Validate();
+            if(!c.maps.Any(m=>m.id==DefaultArena&&ArenaSelectable(m)))throw new InvalidOperationException("Missing default Unity arena");
         }
         public static V3 Clamp(ContentMap m,V3 p,bool bot=false)
         {

@@ -5,15 +5,17 @@ namespace ChipArena.UnityConversion
     // Surface impacts (Core NativeSurfaceImpacts): a gun's plain round that hits a prop (a replicated Impact event with its
     // surface) plays the bake's effect for the surface's kind there, out along the surface normal, and leaves its bullet hole,
     // which fades. The bake (the visual body's prefab, VisualImpacts: per kind an Effect of particle systems on the engine's
-    // own particle shaders and a Decal quad) is read once; without it nothing draws. Pooled: effects per kind and a ring of
-    // holes, no allocation once warm. The low graphics tier draws the holes only; reduced effects play fewer at once.
-    // Presentation only.
+    // own particle shaders and a Decal quad) is read once; without its stone entry nothing draws. A kind the bake lacks plays the
+    // stone entry, its hole the pack bank's texture for the kind where there is one (Core NativeSurfaceImpacts.HoleTexture),
+    // never switching the feature off. Pooled: effects per kind and a ring of holes, no allocation once warm. The low graphics
+    // tier draws the holes only; reduced effects play fewer at once. Presentation only.
     public sealed partial class ArenaPresentation
     {
         private sealed class LiveImpact { public GameObject Go; public ParticleSystem[] Systems; public float Until=float.NegativeInfinity; }
         private sealed class LiveDecal { public GameObject Go; public Renderer Renderer; public int Kind; public float Born=float.NegativeInfinity, Alpha=-1; }
-        private GameObject[] surfaceEffects, surfaceDecals; private bool surfaceBankRead; private Transform surfaceRoot;
-        private readonly List<LiveImpact>[] surfaceLive={new List<LiveImpact>(),new List<LiveImpact>(),new List<LiveImpact>()};
+        private GameObject[] surfaceEffects, surfaceDecals; private Material[] surfaceHoleMaterials; private bool surfaceBankRead; private Transform surfaceRoot;
+        private readonly List<LiveImpact>[] surfaceLive=SurfaceLists();
+        private static List<LiveImpact>[] SurfaceLists(){var lists=new List<LiveImpact>[NativeSurfaceImpacts.Kinds];for(int k=0;k<lists.Length;k++)lists[k]=new List<LiveImpact>();return lists;}
         private LiveDecal[] surfaceHoles; private int surfaceNextHole; private MaterialPropertyBlock surfaceHoleBlock;
         private NativeArena surfaceArena; private int surfaceGeneration=-1, surfaceSeen;
         private readonly Dictionary<string,string> surfaceMaterials=new Dictionary<string,string>();
@@ -25,9 +27,17 @@ namespace ChipArena.UnityConversion
         {
             if(surfaceBankRead)return surfaceEffects!=null;surfaceBankRead=true;
             var prefab=Resources.Load<GameObject>(VisualBodyResource);var holder=prefab!=null?prefab.transform.Find("VisualImpacts"):null;if(holder==null)return false;
-            var effects=new GameObject[NativeSurfaceImpacts.Kinds];var decals=new GameObject[NativeSurfaceImpacts.Kinds];
-            for(int k=0;k<effects.Length;k++){var entry=holder.Find(NativeSurfaceImpacts.Names[k]);if(entry==null)return false;effects[k]=entry.Find("Effect")?.gameObject;decals[k]=entry.Find("Decal")?.gameObject;}
-            surfaceEffects=effects;surfaceDecals=decals;
+            var effects=new GameObject[NativeSurfaceImpacts.Kinds];var decals=new GameObject[NativeSurfaceImpacts.Kinds];var holes=new Material[NativeSurfaceImpacts.Kinds];
+            var stone=holder.Find(NativeSurfaceImpacts.Names[NativeSurfaceImpacts.Stone]);if(stone==null)return false;
+            for(int k=0;k<effects.Length;k++)
+            {
+                var entry=holder.Find(NativeSurfaceImpacts.Names[k]);bool own=entry!=null;if(!own)entry=stone;
+                effects[k]=entry.Find("Effect")?.gameObject;decals[k]=NativeSurfaceImpacts.Holes(k)?entry.Find("Decal")?.gameObject:null;
+                // The stone hole in the kind's own texture from the bank, where the bake has no entry for the kind.
+                var hole=!own&&decals[k]!=null?NativePackBanks.Texture(NativeSurfaceImpacts.HoleTexture(k)):null;var r=hole!=null?decals[k].GetComponent<Renderer>():null;
+                if(r!=null&&r.sharedMaterial!=null)holes[k]=new Material(r.sharedMaterial){name="Impact hole "+NativeSurfaceImpacts.Names[k],mainTexture=hole};
+            }
+            surfaceEffects=effects;surfaceDecals=decals;surfaceHoleMaterials=holes;
             surfaceRoot=new GameObject("Surface impacts").transform;surfaceRoot.SetParent(transform,false);
             surfaceHoles=new LiveDecal[NativeSurfaceImpacts.Decals];surfaceHoleBlock=new MaterialPropertyBlock();
             return true;
@@ -56,8 +66,8 @@ namespace ChipArena.UnityConversion
                 if(e.Kind!=EventKind.Impact||string.IsNullOrEmpty(e.SurfaceId)||now-e.Time>NativeSurfaceImpacts.Stale)continue;
                 string spec=null;foreach(var p in arena.Pilots)if(p.Seat.id==e.Source){spec=p.Seat.spec;break;}
                 if(!NativeSurfaceImpacts.Shows(spec,e.Detail))continue;
-                int kind=NativeSurfaceImpacts.Kind(SurfaceMaterialOf(arena,e.SurfaceId));
                 Vector3 at=NativeArena.Vec(e.Position),normal=NativeArena.Vec(e.Normal);normal=normal.sqrMagnitude>.01f?normal.normalized:Vector3.up;
+                int kind=NativeSurfaceImpacts.Surface(SurfaceMaterialOf(arena,e.SurfaceId),arena.MapId,e.SurfaceId,normal.y);
                 if(!LowGraphics)SurfaceEffect(kind,at+normal*NativeSurfaceImpacts.Lift,normal,now);
                 SurfaceHole(kind,at+normal*NativeSurfaceImpacts.DecalLift,normal,now,e.Id);
             }
@@ -84,8 +94,8 @@ namespace ChipArena.UnityConversion
         {
             var template=surfaceDecals[kind];if(template==null)return;
             int slot=surfaceNextHole;surfaceNextHole=(slot+1)%surfaceHoles.Length;var d=surfaceHoles[slot];
-            if(d==null||d.Go==null){var go=Instantiate(template,surfaceRoot,false);d=surfaceHoles[slot]=new LiveDecal{Go=go,Renderer=go.GetComponent<Renderer>(),Kind=kind};}
-            else if(d.Kind!=kind){var tr=template.GetComponent<Renderer>();if(tr!=null)d.Renderer.sharedMaterial=tr.sharedMaterial;d.Kind=kind;}
+            if(d==null||d.Go==null){var go=Instantiate(template,surfaceRoot,false);d=surfaceHoles[slot]=new LiveDecal{Go=go,Renderer=go.GetComponent<Renderer>(),Kind=-1};}
+            if(d.Kind!=kind){var tr=template.GetComponent<Renderer>();var m=surfaceHoleMaterials[kind]!=null?surfaceHoleMaterials[kind]:tr!=null?tr.sharedMaterial:null;if(m!=null&&d.Renderer!=null)d.Renderer.sharedMaterial=m;d.Kind=kind;}
             // Its quad faces -z: turned to face out of the surface, spun and sized by the event (the same hole on every client).
             var side=Vector3.Cross(normal,Mathf.Abs(normal.y)<.9f?Vector3.up:Vector3.right).normalized;var spin=Quaternion.AngleAxis(seed*137.5f%360,normal)*side;
             float size=.85f+(seed*61%31)/100f;d.Go.transform.SetPositionAndRotation(at,Quaternion.LookRotation(-normal,spin));d.Go.transform.localScale=template.transform.localScale*size;

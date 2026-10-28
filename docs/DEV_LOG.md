@@ -1,3 +1,10 @@
+## 2026-10-28 — Astra: integrate Claude pack streams and retire legacy arenas
+
+- Branch `codex/unity-claude-handoff-20261028`, PR #294, integrates shared `4ecd806ae0c5668fd0e4d260e625bb98382dcd39`, preserving Claude's pack banks, weapons, hit effects and station-sound requests, including the larger private-bank budget.
+- Owner chose Random = Brickfall / Factory / Cyber City; Ward Zero remains separately selectable and all music stays. Unity catalog contains only authored UnityMaps entries (four arenas and four Expedition maps). Canonical GameContent, visuals and audio remain intact. Saved unknown/retired map IDs migrate to Brickfall; room, dedicated, preview and Random paths are safe. Catalog policy is hashed into peer compatibility; no protocol/discovery changes.
+- Updated generators, asset receipt and build/check fixtures so regeneration cannot restore the old rotation. Legacy export parity remains a separate check; authored catalog/migration/empty-pool checks added. Gameplay geometry, hit timing, hitboxes, damage, cooldowns and movement unchanged by Astra; maps available to PvP intentionally changed.
+- Verification in progress; final PR records the combined managed/relay, Python, Unity semantic and hosted CI results. Windows gameplay/PhysX, private cloth import and test-feed publication are not claimed. Builder sync follows verified merge. Claude's optional old-map visual cleanup remains in OLD-MAPS-REMOVAL.md; music must remain.
+
 ## 2026-10-28 — Astra: outfit transport, account face picks and optional cloth packaging
 
 - Branch `codex/unity-claude-handoff-20261028`, shared/builder base `8f8f3d836a3b5bf2de29fdd55a880a90320ebf62`. Implements Claude's owner-approved October 26–27 handoff; owner requested completion and push.
@@ -7,6 +14,101 @@
 - Initial regressions caught stale exact-source assertions after adding the field and Python `-I` sibling import resolution; fixed without weakening behavioral gates. This environment's dotnet CLI sometimes fails its process-stat lookup inside Python; compiled both projects directly and used the supported `--compiled-relay`/`--compiled-tests` path.
 - Private Drive `LocalAssets.zip` updated October 27 verifies: 226 audio keys/593 clips, 651 visual-body files/63.65 MB. It contains **no** Magica or bridge. The licensed-asset PC must repack with `--with-cloth`, following DEVELOPMENT.md, then replace its private builder input. Nothing sent to Claude or others.
 - Gameplay/animation: no hit timing, hitboxes, damage, cooldowns, movement or animation changes. Additive cosmetic fields only; network protocol unchanged. Status: task branch, not released. Live account Worker deployment, real Unity import/cloth registration, Windows player build, two-player visuals and test-feed publication are not claimed. Do not say cloth is active merely because source CI passes.
+## 2026-10-28 — Claude: pack effects for hits and motion: muzzle flashes, blood splats, impacts for every surface, afterimage trails (merged into shared)
+
+- **Branch/base:** `claude/pack-fx-hits` from `claude/pack-bank` `55a6e5d` (its `606c39c` docs merged in). No PR; merged into shared and the builder by Claude after review.
+- **Owner (2026-10-28):** muzzle flashes "would be okay (Im okay with combining certain things like effects and lighting with realistic looks) Of course, as long as it produces proper glow + lighting"; "Im fine with using Kronnect Trails FX wherever it fits"; the blood and surface impact upgrades approved.
+- **Changes (presentation only; details in PACK-EFFECTS, four sections):**
+  - **Muzzle flashes** (`Core/NativeMuzzleFx` sheets, `Runtime/NativeWeaponFxDraw`, `Resources/NativeWeaponFx.shader` modes 8-9): per gun family (pistol, rifle, machine gun, hazard turrets) a kripto289 flipbook flame along the barrel instead of the procedural plume and a burst sprite over a softer fireball, HDR for bloom, frames blended, seeded mirror; first person lets the burst reach 0.3 of the view. Core, petals, vents, pods, sparks, smoke and the scene light unchanged.
+  - **Blood** (`Core/NativeBloodSplatLook`, `Resources/NativeBloodSplat.shader`, `Runtime/NativeBloodPresentation`): one quad a splat of Epic Toon FX's shaded splat (round, splash or streak by how it grazed, laid along its travel), today's lit rim and wet-core colours, drying with its sheen. Sim, pool, caps and wall runs unchanged; low tier keeps the fan blob.
+  - **Surface impacts** (`Core/NativeSurfaceImpacts.Surface`, `Runtime/NativeSurfaceImpactPresentation`): kinds brick, glass, dirt, rock, plaster and water beside stone/metal/wood, by material (structure rules), interior blocks (plaster walls) and the map's floor (snow and gravel dirt, stone maps rock); pools by kind count; only the bake's stone entry required, a missing kind plays stone with its own bank hole. Bake request for the local session in PACK-EFFECTS.
+  - **Afterimages** (`Core/NativeAfterimages.Trigger`, `Resources/NativeAfterimage.shader`, `Runtime/NativeWeaponFxPresentation`): a motion-trail look on every copy (the pack's ramp over its life, streak and scanline dissolve with a hot front, a slight swell) and new triggers: sprint attack, air jump, Cyber Lord dash, a sprint's first second (two new copies a frame at most, within 30 m). Siren and Ansatsuken still excluded.
+  - Selections `fx-muzzle.json`, `fx-blood.json`, `fx-impacts.json`, `fx-trails.json` (textures only, 14 textures, 1.4 MB). Every look falls back to exactly today's without the bank; the new afterimage triggers also need it and are off on the low tier.
+- **Animation impacts:** none: hit timing, hitboxes, damage, cooldowns, movement, animation clocks and the network frame are unchanged (the afterimages read the posed rigs; the flash, blood and impacts read replicated events).
+- **Checks (actual):** CoreTests `--pack-fx-hits` (new, 2171 checks) PASS; `--muzzle-flash`, `--visual-rig`, `--pack-bank`, `--zombie-gore`, `--gib`, `--weapon-sockets` PASS; Unity compile (runtime and editor) PASS; Python `unittest` (156 tests) OK; `git diff --check` clean. The bank tool built all four selections into one zip (31 files).
+- **Renders (offline, Core rules through ports of the drawer and shaders, the game's bloom chain):** every flash family in third and first person at 4-100 ms over a dark and a bright stage; 135 splats from six wounds, fresh, dried, wall runs, low tier; bullet holes by kind; afterimage strips in three accents. Before and after side by side.
+- **Not run:** the Unity Editor (import of the textures, the three new shader modes and shaders, Play mode); a Windows build; multiplayer; the impacts' new particle effects (they need the local bake); the full CoreTests run.
+- **Next:** review and merge; the local session bakes the six new impact kinds (PACK-EFFECTS request); the owner's zip takes the four selections.
+
+## 2026-10-28 — Claude: pack weapons on the model (daggers, shield, bow, caster staffs) (merged into shared)
+
+- **Branch/base:** `claude/pack-weapons` from `claude/pack-bank` `55a6e5d` (the pack-bank foundation, on shared `8f8f3d8`). Merged into shared and the builder by Claude after review.
+- **Owner (2026-10-28):** "Lets do all of those" (the in-place upgrades from the drive's packs), "Do whatever needs to be done". The model drew the bake's life-size guns and swords but still the game's procedural daggers, shield, bow and staffs, which clashed.
+- **Changes (presentation only; details in BOZO-INTEGRATION "Pack weapons", PACK-BANK, ASSET-CREDITS):**
+  - Selection `tools/pack_bank/selections/weapons.json` (bank `ChipArenaPackWeapons`, names only): the sword pack's gladius (daggers), the knights pack's quartered shield, the low-poly pack's bow, the fantasy pack's crystal staff. Picked from side-by-side renders of the candidates (Synty and polyperfect daggers, eight shields, four staffs).
+  - `Core/NativePackWeapons`: per spec, the prop's grip point and axes, scale and piecewise axis map onto the game's weapon frame and sockets; `Shape` (largest piece, marked crystal, normals, winding); the bow's limb weights and bend (`NativeBowRig.Limb`).
+  - `Runtime/NativePackWeaponPresentation` and `NativeVisualWeaponPresentation`: where the bake has no model, an arena pilot's visual body draws the pack weapon. It is built once, made once per body, and shown and hidden as the bake's models: the daggers on both hands (the thrown main dagger hides its copy), the bow skinned in `BowDraw` in place of the riser and limbs (the game's string, arrows and quiver unchanged), the staffs on the left with the left fist closed on the shaft and the crystal in each school's colour. Standard skin only; without the bank, today's models.
+  - Pack bank tool: `model` + `albedo` props (for packs with binary-serialized prefabs) and interlaced PNGs (`Tests/test_pack_bank.py` +2 tests; the fixture unchanged).
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The caster's visual left fist now closes on the staff, which moves from the bare wrist to the fist (about 9 cm), with its charge orb and effects.
+- **Checks (actual):**
+  - `CoreTests --pack-weapons` PASS, 436 checks (481 with `CHIP_PACK_WEAPONS` set to the built bank: the real meshes measured).
+  - `--visual-rig` PASS (130,632), `--bow` PASS (5,044), `--weapon-sockets` PASS, `--pack-bank` PASS (5,481); WeaponSkinChecks PASS (1,574) and ChipModuleChecks PASS (36,280), each run alone.
+  - Python suite PASS (158 tests). Unity compile (runtime and editor): PASS. `git diff --check` clean.
+  - Bank built to scratch: 4 props, 4 meshes, 5 textures, zip 1.48 MB.
+  - Offline WebGL renders (scratch): every pick over the game's own model as a silhouette (grips, tips, shield edge, staff tip and muzzle, the bow at rest, half and full draw with the game's string), and a contact sheet of the picks.
+- **Not run:** the full CoreTests run (shared CPUs); Unity Play mode, the toon look in game, the arena lighting and the hands round the new handles (the owner's PC with the body bake and the zip); a Windows build; multiplayer.
+- **Next:** copy the bank into the licensed-assets zip (`--zip` over `Assets/LocalAssets`), then a Play-mode pass on the owner's PC: the fist round the bow's thick riser, the staff's seat under the casters' clips, and the crystals' glow with Reduced effects.
+
+## 2026-10-28 — Claude: the Central Station's 22 enemy cues designed from the owner's sound packs (merged into shared)
+
+- **Branch/base:** `claude/station-sounds` from `claude/pack-bank` `55a6e5d`. No PR; merged into shared and the builder (the clips stay outside the repository).
+- **Request:** the 22 `pve.station.*` cues (`Core/NativeStationKinds.cs` `CueKeys`, section 10 of EXPEDITION-CENTRAL-STATION) had
+  no clips: 10 were silent and 12 borrowed other keys' clips. Real clips were to be made from the owner's licensed packs, for
+  the owner to import into the private bank.
+- **Changes (docs, the request manifest and two test pins; no game code):**
+  - `docs/audio/sound-requests.json` and `SOUND-REQUESTS.md`: the 22 keys as voices, priority 3 (optional to generate), 3
+    variants each or 2 for the simplest one-shots (60 files). Each `targetSeconds` is inside the key's cap, and each key keeps a
+    prompt, so ElevenLabs takes stay possible. The totals are now 39 keys and 148 files. `SOUND-GENERATOR.md`: the optional
+    count and credits.
+  - The batch, kept outside the repository: `station-sounds-batch.zip`, 60 `<key>_<NN>.wav` files (44.1 kHz mono 16-bit).
+    They are layered and edited in ffmpeg from 176 files of Universal Sound FX, Fantasy Game Sound Effects, Battle Sound
+    Library and Interface and Item Sounds. `docs/ASSET-CREDITS.md`, Central Station enemy cues, lists the design and the
+    sources of every variant.
+  - `Tests/FootfallAudioChecks.cs`: the station cues count as voices; the pin is now 39 keys (22 station cues) and 148 files.
+    `Tests/test_generate_sound_requests.py`: 148 optional files. The default paid batch stays 70 files.
+- **Animation impacts:** none (no change to timing, hit volumes, damage, cooldowns, movement or networking). The clips fit the
+  existing cue times: the charge builds over `ArcWindup` 1.1 s, the inhale fits `WhistleWindup` 0.8 s, the brace fits
+  `ShoveWindup` 0.7 s, the drag is 1.45 s against its 1.4 s replay, and the bubbles are 2.0 s against their 2.1 s call.
+- **Checks (actual):**
+  - `import_sound_requests.py --check` on the batch: 60 files, 22 keys, valid (one warning: no receipt).
+  - A full import into a synthetic base bank: 60 of 60 accepted, none trimmed beyond trailing silence, voices at -18.0 to
+    -18.3 LUFS momentary max, no limiting, true peak at most -3.3 dBTP, 0.95 MB of Ogg; the install check passed.
+  - Python unittest: the full suite, 156 OK (1 skip). CoreTests `--footfalls`, `--station-enemies` and `--pack-bank`: PASS.
+  - The clips were checked offline only, on spectrograms, envelopes and per-layer levels.
+- **Not run:** listening (there is no audio playback here, and nobody has heard the clips); the import on the owner's real
+  LocalAssets zip (its 16 MB budget with these 0.95 MB is checked by the importer there); a Windows build; play.
+- **Next:** the owner runs `py -3 unity/ChipArenaConversion/tools/import_sound_requests.py --manifest docs/audio/sound-requests.json
+  --in station-sounds-batch.zip --base "<current LocalAssets zip>" --out "<new LocalAssets zip>" --report import-report.json`
+  from the repository root. Then they listen in the Dev Sandbox's minion gallery, whose second row loops the station kinds'
+  moves with their cues, and in a Central Station run.
+  Replace any variant that misses with a new batch for that key.
+
+## 2026-10-28 — Claude: pack banks, the owner's packs without the Unity Editor (foundation; merged into shared)
+
+- **Branch/base:** `claude/pack-bank` from shared `8f8f3d8`. No PR; merged into shared and the builder. Nothing in the game changes look until the streams below land and the bank zip is installed.
+- **Owner (2026-10-28):** "Lets do all of those" (the in-place upgrades from the drive's packs); Kronnect Trails FX "wherever it fits"; pack muzzle flashes "as long as it produces proper glow + lighting"; the environment packs, UniStorm, Weather Maker, Volumetric Light Beam and Bakery too; "I want to have advanced lighting and much better environment + stage development ... (I still need to get rid of the old maps)"; "Do whatever needs to be done, and I can pass whatever needed to astra as well."
+- **Changes (presentation and tooling only):**
+  - `tools/pack_bank/` (standard library only, run with `python3 -I`): reads the owner's packs as data and writes banks and textures.
+    - Binary FBX is converted as Unity's importer does: node-space mesh, geometric offset, unit and scale factor, X mirror, root axis conversion.
+    - Also reads prefab and material YAML, and PSD, TGA and PNG images.
+    - Output goes under `Assets/LocalAssets/ChipArenaLocal/Resources` (banks `.bytes`, `PackBank/<id>.png` with import settings in the `.meta`), which `tools/pack_visual_body.py` already packs into the licensed-assets zip. Nothing is committed.
+  - `Core/NativePackBank` (format reader and writer, `Fit` of a prop in a box) and `Runtime/NativePackBanks` (Resources loader, built meshes, textures).
+    - A missing piece is a null, so today's look stays.
+    - `--ca-no-pack-banks` turns banks off.
+  - First selection `selections/kit-harbor.json`: 296 Toon Harbor props, 721 meshes, 5 atlases, 12.7 MB, built in 22 s.
+  - `tools/install_local_assets.py`: the visual-body budget goes to 160 MB and the zip's to 224 MiB, for the banks (Astra: tooling, please review).
+  - Docs: `docs/PACK-BANK.md` (the route), `docs/arenas/OLD-MAPS-REMOVAL.md` (refreshed ARENA_PROPOSAL §6.2 with current lines and a ready-to-paste Astra prompt).
+- **Streams started on this base** (each its own branch, reviewed and merged by Claude):
+  - `claude/stage-kits`: Toon Harbor props in place of box props, harbor backdrops, a Harbor stage proposal with an Astra contract.
+  - `claude/advanced-lighting`: a runtime light volume (GI/AO) for runtime-built maps, our own volumetric beams (VLB as reference), fog scattering, weather, a medium tier, and a Bakery note.
+  - `claude/pack-fx-hits`: pack muzzle flashes with glow and light, textured blood splats, impacts for every surface (plus a bake request), and Trails-FX-style afterimages.
+  - `claude/pack-fx-blasts`: Epic Toon FX sheets in the explosion renderer, and Magic Arsenal bolts and impacts per school.
+  - `claude/pack-weapons`: daggers, shield, bow and staffs on the model from Synty, polyperfect and RB models.
+  - `claude/station-sounds`: Central Station kind recordings from the sound packs (import batch for the private bank).
+- **Checks (actual):** `Tests/test_pack_bank.py` (10 tests: codecs, binary FBX, prefab flattening, the bank equal to `Tests/pack-bank-fixture.bytes`) OK; `CoreTests --pack-bank` 5469 checks PASS; run5b on `55a6e5d`: rc1-rc5 all 0 (Unity runtime and editor compile OK; relay with full CoreTests 855 PASS; Python 156 OK, 1 skipped; source package OK; diff check clean).
+- **Preview:** the converter's barrel, crate, forklift, container, streetlight, barrel cage and pallet rendered upright, at size, with correct atlas colours and the crate's logo (WebGL harness, local, not committed).
+- **Not run:** Unity Editor import of the bank's textures and `.bytes` (the `.meta` files follow the repository's own importer format); a Windows build; Play mode.
+- **Next:** review and merge the streams; one combined bank zip for the owner; the Astra prompt for old-map removal.
 
 ## 2026-10-27 — Claude: Sheldon's clothes on the model, and the Sheldon Head as a cloth hood (merged into shared)
 

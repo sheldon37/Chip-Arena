@@ -205,7 +205,7 @@ namespace ChipArena.UnityConversion.Editor
                         }
                         foreach(var pilot in arena.Pilots)if(!MathUtil.Finite(pilot.Body.position.y)||pilot.Body.position.y<-.5f)throw new Exception("Native capsule fell through the map: "+map.id);
                         if(arena.AllBlocks.Count()!=map.blocks.Length)throw new Exception("Native map lost blocks: "+map.id);
-                        if(map==data.maps.First(m=>!m.unity))
+                        if(map==data.Map(NativeMapRules.DefaultArena))
                         {
                             var shown=arena.Snapshot(true);var pilot=arena.Local;
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
@@ -227,7 +227,7 @@ namespace ChipArena.UnityConversion.Editor
                         finally{if(scene.IsValid())EditorSceneManager.ClosePreviewScene(scene);}
                     }
                 }
-                Debug.Log("PASS native Unity physics: 15 source layouts / "+pads+" spawn floors and dynamic capsule settling");
+                Debug.Log("PASS native Unity physics: authored Unity layouts / "+pads+" spawn floors and dynamic capsule settling");
             }
             finally{Physics.gravity=gravity;if(active.IsValid()&&active.isLoaded)SceneManager.SetActiveScene(active);}
             // The death presentation's primitives (sky broadcast lines, stars and nameplate; the vent splat's SPLAT!).
