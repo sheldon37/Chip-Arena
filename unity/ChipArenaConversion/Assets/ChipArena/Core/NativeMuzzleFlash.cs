@@ -42,6 +42,20 @@ namespace ChipArena.UnityConversion
         public ChipSockets Sockets;
         /// <summary>Overdrive's barrel heat (0..1): a hotter, whiter, larger flash as the barrels heat.</summary>
         public float Heat;
+        /// <summary>The pack flash family (NativeMuzzleFx.SheetPistol..SheetTurret; 0 none): its flipbook flame and burst draw
+        /// when the drawer holds that family's textures, else the procedural flash alone.</summary>
+        public int Sheet;
+    }
+
+    /// <summary>One gun family's pack flash (NativeMuzzleFx.SheetLooks): the flame flipbook's texture id, grid (columns, rows,
+    /// frame 0 at the top left), the first frame played and how many; the flame's length (share of the look's plume) and width
+    /// (share of its length: the cell's 2:1 aspect), its life (flash lives); the burst sprite's id, size (share of the
+    /// fireball), life (flash lives) and the HDR gains of both.</summary>
+    public readonly struct MuzzleSheet
+    {
+        public readonly string Flame,Burst;public readonly int Columns,Rows,First,Frames;public readonly float Length,Width,Life,BurstSize,BurstLife,Gain;
+        public MuzzleSheet(string flame,int columns,int rows,int first,int frames,float length,float width,float life,string burst,float burstSize,float burstLife,float gain)
+        {Flame=flame;Columns=columns;Rows=rows;First=first;Frames=frames;Length=length;Width=width;Life=life;Burst=burst;BurstSize=burstSize;BurstLife=burstLife;Gain=gain;}
     }
 
     /// <summary>
@@ -150,7 +164,7 @@ namespace ChipArena.UnityConversion
                 default:look=default;return false;
             }
             bool standard=skin==NativeWeaponSkins.StandardIndex&&NativeWeaponModels.Designed(spec);
-            look.Device=Device(spec,standard);look.Crown=Crown(spec,standard);look.Kit=kit;
+            look.Device=Device(spec,standard);look.Crown=Crown(spec,standard);look.Kit=kit;look.Sheet=Family(spec);
             // The Prototype Series' block face: a cross of four petals (the machine gun keeps its X), a little broader.
             if(!standard){look.Petals=4;look.FixedRoll=true;look.RollBase=spec=="machinegun"?(float)(Math.PI/4):0;look.RollJitter=.3f;look.StarWidth*=1.15f;}
             if(kit==MuzzleKit.Fan){Grow(ref look,1.12f);look.Gain*=1.15f;look.Life*=1.1f;}
@@ -270,6 +284,65 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>First person: a glow no wider than ViewShare of the view's height at its eye depth (m; tanHalf: the tangent of
         /// half the vertical field of view).</summary>
-        public static float ViewSize(float size,float depth,float tanHalf)=>Math.Min(size,ViewShare*2*Math.Max(.05f,depth)*Math.Max(.05f,tanHalf));
+        public static float ViewSize(float size,float depth,float tanHalf)=>ViewSize(size,depth,tanHalf,ViewShare);
+        /// <summary>The same under another share of the view's height (the pack flash's burst: ViewBurstShare).</summary>
+        public static float ViewSize(float size,float depth,float tanHalf,float share)=>Math.Min(size,share*2*Math.Max(.05f,depth)*Math.Max(.05f,tanHalf));
+        /// <summary>First person: the pack flash's burst may reach this share of the view's height (its spikes leave the view gun
+        /// readable through it, where a solid glow would not), and the eye behind the gun sees it, not the flame along the
+        /// barrel, so it is the view's main shape.</summary>
+        public const float ViewBurstShare=.3f,ViewBurst=1.35f;
+
+        /// <summary>
+        /// The owner's muzzle-flash pack (2026-10-28: muzzle flashes "would be okay (Im okay with combining certain things like
+        /// effects and lighting with realistic looks) Of course, as long as it produces proper glow + lighting"): per gun family a
+        /// photographic flipbook flame along the barrel in place of the procedural plume, and a burst sprite over the fireball,
+        /// both HDR so the match camera's bloom glows them. The white-hot core, the star, the vents' jets, the pods, the sparks,
+        /// the smoke and the shot's scene light (NativeMuzzleLight) stay. The textures come through the pack bank
+        /// (tools/pack_bank/selections/fx-muzzle.json, loaded by id in Runtime NativeWeaponFxDraw); a family the drawer holds no
+        /// textures for draws exactly the procedural flash. Pure functions of the shot's seed and age, as the rest of the flash.
+        /// </summary>
+        public const int SheetPistol=1,SheetRifle=2,SheetMachineGun=3,SheetTurret=4,Sheets=4;
+        /// <summary>The families' sheets (index family - 1): the pistol's short diamond flame (4x4, frames 4-13) and fiery star
+        /// burst, the rifle's long tapering flame (2x4) and fireball burst, the machine gun's flame with sparks (2x4) and smoky
+        /// burst, the hazard kit's turrets' broad flame (2x4) and the pistol's star.</summary>
+        public static readonly MuzzleSheet[] SheetLooks=
+        {
+            new MuzzleSheet("muzzle-flame-pistol",4,4,4,10,1.3f,.5f,1.8f,"muzzle-burst-star",.95f,1.3f,1),
+            new MuzzleSheet("muzzle-flame-rifle",2,4,0,8,1.12f,.42f,1.4f,"muzzle-burst-fire",.9f,1.05f,1.05f),
+            new MuzzleSheet("muzzle-flame-machinegun",2,4,0,8,1.3f,.46f,1.7f,"muzzle-burst-smoke",.95f,1.3f,1),
+            new MuzzleSheet("muzzle-flame-turret",2,4,0,8,1.3f,.48f,1.7f,"muzzle-burst-star",.9f,1.3f,1)
+        };
+        /// <summary>The pack texture ids every family takes (the selection lists exactly these).</summary>
+        public static readonly string[] SheetIds={"muzzle-flame-pistol","muzzle-flame-rifle","muzzle-flame-machinegun","muzzle-flame-turret","muzzle-burst-star","muzzle-burst-fire","muzzle-burst-smoke"};
+        public static bool SheetOf(int family,out MuzzleSheet sheet){bool ok=family>=1&&family<=Sheets;sheet=ok?SheetLooks[family-1]:default;return ok;}
+        /// <summary>A gun's family (0 for weapons without a flash).</summary>
+        public static int Family(string spec)=>spec=="pistol"?SheetPistol:spec=="rifle"?SheetRifle:spec=="machinegun"?SheetMachineGun:0;
+        /// <summary>The hazard kit's turrets: the plain machine-gun look with the turret's own sheet.</summary>
+        public static void Turret(ref MuzzleLook look){look.Sheet=SheetTurret;}
+        /// <summary>
+        /// The flipbook flame from the crown along the barrel: its length and width (m), the frame played (a float: the whole
+        /// part the frame, the fraction the blend toward the next), whether it is mirrored across (seeded) and its opacity. It
+        /// plays its frames once over Life flash lives and fades over the last two fifths; the size spread follows the look's flicker.
+        /// </summary>
+        public static bool SheetFlame(in MuzzleLook l,long seed,double age,out float length,out float width,out float frame,out bool mirror,out float alpha)
+        {
+            length=width=frame=alpha=0;mirror=false;if(!SheetOf(l.Sheet,out var s))return false;double u=age/(l.Life*s.Life);if(!(u>=0&&u<1))return false;
+            length=l.Plume*s.Length*J(seed,150,l.Flicker*.6f);width=length*s.Width*J(seed,151,.12f);frame=s.First+(float)Math.Min(s.Frames-1.001,u*s.Frames);
+            mirror=NativeWeaponFx.Hash(seed,152)<.5;alpha=u<.6?1:(float)Math.Pow((1-u)/.4,1.5);return true;
+        }
+        /// <summary>The burst sprite over the fireball: its size (m), roll (radians, seeded), and HDR colour (white-hot to the
+        /// plume's orange, out over BurstLife flash lives).</summary>
+        public static bool SheetBurst(in MuzzleLook l,long seed,double age,out float size,out float roll,out FxColor color)
+        {
+            size=roll=0;color=default;if(!SheetOf(l.Sheet,out var s))return false;double u=age/(l.Life*s.BurstLife);if(!(u>=0&&u<1))return false;
+            size=l.Fireball*s.BurstSize*J(seed,153,l.Flicker)*(.85f+.3f*(float)Math.Sqrt(u));roll=(float)(NativeWeaponFx.Hash(seed,154)*Math.PI*2);
+            color=FxColor.Lerp(Hot(l,CoreColor),Hot(l,PlumeColor),(float)u)*(2.2f*s.Gain*l.Gain*(float)Math.Pow(1-u,1.5));return true;
+        }
+        /// <summary>The flame's HDR colour at `age` (the plume's: hot orange cooling to the edge colour), times its opacity.</summary>
+        public static FxColor SheetFlameColor(in MuzzleLook l,double age,float alpha)
+        {
+            SheetOf(l.Sheet,out var s);double u=Math.Max(0,Math.Min(1,age/(l.Life*Math.Max(.1f,s.Life))));
+            return FxColor.Lerp(Hot(l,PlumeColor),NativeWeaponFx.Linear(EdgeColor),(float)u*.8f)*(1.6f*Math.Max(.1f,s.Gain)*l.Gain*alpha);
+        }
     }
 }

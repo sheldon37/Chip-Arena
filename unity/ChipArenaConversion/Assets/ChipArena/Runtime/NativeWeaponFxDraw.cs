@@ -20,6 +20,9 @@ namespace ChipArena.UnityConversion
         /// <summary>Shader modes (NativeWeaponFx.shader TEXCOORD0.z) and glow profiles (TEXCOORD0.w).</summary>
         public const float Petal=0,Crescent=1,Ribbon=2,GlowMode=3,WispMode=4,StreakMode=5,FlameMode=6,ShardMode=7;
         public const float Soft=0,HotCore=1,RingProfile=2,Sparkle=3;
+        /// <summary>The pack muzzle flash's modes (Core NativeMuzzleFx sheets): the flipbook flame card along the barrel (an axis
+        /// card, TEXCOORD0.w the frame, negative mirrored) and the burst sprite (a billboard), drawn only by a family's material.</summary>
+        public const float SheetFlameMode=8,SheetBurstMode=9;
         [StructLayout(LayoutKind.Sequential)]
         private struct Vertex{public Vector3 Position;public Color Color;public Vector4 Uv,Extra;}
         private static readonly VertexAttributeDescriptor[] Layout=
@@ -32,9 +35,9 @@ namespace ChipArena.UnityConversion
         // One camera's mesh: covering quads (under) then additive ones (over), four vertices a quad, a fixed index pattern.
         private sealed class Layer
         {
-            public readonly Mesh Mesh;public Vertex[] Under=new Vertex[256],Over=new Vertex[1024],Merged=new Vertex[1280];public int UnderCount,OverCount;
+            public readonly Mesh Mesh;public Vertex[] Under,Over,Merged;public int UnderCount,OverCount;
             private int[] indices=new int[0];private int vertexCapacity=-1,indexCapacity=-1;
-            public Layer(string name){Mesh=new Mesh{name=name,hideFlags=HideFlags.HideAndDontSave};Mesh.MarkDynamic();}
+            public Layer(string name,int under=256,int over=1024){Mesh=new Mesh{name=name,hideFlags=HideFlags.HideAndDontSave};Mesh.MarkDynamic();Under=new Vertex[under];Over=new Vertex[over];Merged=new Vertex[under+over];}
             public void Clear(){UnderCount=0;OverCount=0;}
             public int Quads=>(UnderCount+OverCount)/4;
             public int Add(bool under)
@@ -70,8 +73,26 @@ namespace ChipArena.UnityConversion
         {
             var shader=Resources.Load<Shader>("NativeWeaponFx");if(shader==null)throw new InvalidOperationException("NativeWeaponFx shader is missing");
             material=new Material(shader){name="Native weapon fx",renderQueue=(int)RenderQueue.Transparent+6,hideFlags=HideFlags.HideAndDontSave};
+            FlashSheets(shader);
         }
-        public void Begin(){world.Clear();view.Clear();}
+        // The pack muzzle flashes (Core NativeMuzzleFx.SheetLooks, the owner's pack through the bank): per gun family a copy of the
+        // material holding its flame flipbook and burst, and its own world and view meshes (additive, so their order against the
+        // shared meshes does not matter). A family missing either texture has none: its guns keep the procedural flash.
+        private readonly Layer[] sheetWorld=new Layer[NativeMuzzleFx.Sheets],sheetView=new Layer[NativeMuzzleFx.Sheets];private readonly Material[] sheetMaterials=new Material[NativeMuzzleFx.Sheets];
+        private static readonly int FlashSheetId=Shader.PropertyToID("_FlashSheet"),FlashGridId=Shader.PropertyToID("_FlashGrid"),FlashBurstId=Shader.PropertyToID("_FlashBurst");
+        private void FlashSheets(Shader shader)
+        {
+            for(int f=0;f<NativeMuzzleFx.Sheets;f++)
+            {
+                var s=NativeMuzzleFx.SheetLooks[f];Texture flame=NativePackBanks.Texture(s.Flame),burst=NativePackBanks.Texture(s.Burst);if(flame==null||burst==null)continue;
+                var m=new Material(shader){name="Native weapon fx (pack flash "+(f+1)+")",renderQueue=(int)RenderQueue.Transparent+6,hideFlags=HideFlags.HideAndDontSave};
+                m.SetTexture(FlashSheetId,flame);m.SetTexture(FlashBurstId,burst);m.SetVector(FlashGridId,new Vector4(s.Columns,s.Rows,0,0));
+                sheetMaterials[f]=m;sheetWorld[f]=new Layer("Native weapon fx pack flash (world)",4,64);sheetView[f]=new Layer("Native weapon fx pack flash (view model)",4,16);
+            }
+        }
+        /// <summary>Whether gun family `family` (NativeMuzzleFx.SheetPistol..SheetTurret) has its pack flash.</summary>
+        public bool HasSheet(int family)=>family>=1&&family<=NativeMuzzleFx.Sheets&&sheetMaterials[family-1]!=null;
+        public void Begin(){world.Clear();view.Clear();for(int f=0;f<sheetMaterials.Length;f++)if(sheetMaterials[f]!=null){sheetWorld[f].Clear();sheetView[f].Clear();}}
         private static readonly int BrushId=Shader.PropertyToID("_SlashBrush"),BrushRectId=Shader.PropertyToID("_SlashBrushRect"),BrushOnId=Shader.PropertyToID("_SlashBrushOn");
         /// <summary>The slash crescents' brush: a texture whose alpha holds an ink stroke's streaks in `rect` (uv min, size); null: off.</summary>
         public void SlashBrush(Texture brush,Vector4 rect){material.SetTexture(BrushId,brush);material.SetVector(BrushRectId,rect);material.SetFloat(BrushOnId,brush!=null?1:0);}
@@ -104,6 +125,21 @@ namespace ChipArena.UnityConversion
             var l=L(first);bool under=color.a>0;int i=l.Add(under);var v=under?l.Under:l.Over;var extra=new Vector4(edge,0,0,0);
             Put(v,i,a,color,new Vector4(ua.x,ua.y,mode,param),extra);Put(v,i+1,b,color,new Vector4(ub.x,ub.y,mode,param),extra);Put(v,i+2,c,color,new Vector4(uc.x,uc.y,mode,param),extra);Put(v,i+3,d,color,new Vector4(ud.x,ud.y,mode,param),extra);
         }
+        /// <summary>Gun family `family`'s flipbook flame card along tail to head (frame: NativeMuzzleFx.SheetFlame's, mirrored
+        /// across when `mirror`); nothing without the family's pack flash. color: linear, additive (alpha 0).</summary>
+        public void SheetFlame(bool first,int family,Vector3 tail,Vector3 head,Color color,float width,float frame,bool mirror)
+        {
+            Vector3 d=head-tail;if(!HasSheet(family)||!(width>1e-4f)||d.sqrMagnitude<1e-10f)return;var l=(first?sheetView:sheetWorld)[family-1];color.a=0;
+            var mid=(tail+head)*.5f;var extra=new Vector4(d.x,d.y,d.z,width);float w=mirror?-(frame+.001f):frame+.001f;int i=l.Add(false);var v=l.Over;
+            Put(v,i,mid,color,new Vector4(-1,-1,SheetFlameMode,w),extra);Put(v,i+1,mid,color,new Vector4(1,-1,SheetFlameMode,w),extra);Put(v,i+2,mid,color,new Vector4(1,1,SheetFlameMode,w),extra);Put(v,i+3,mid,color,new Vector4(-1,1,SheetFlameMode,w),extra);
+        }
+        /// <summary>Gun family `family`'s burst sprite facing the camera (rolled); nothing without the family's pack flash.</summary>
+        public void SheetBurst(bool first,int family,Vector3 at,Color color,float size,float roll)
+        {
+            if(!HasSheet(family)||!(size>1e-4f))return;var l=(first?sheetView:sheetWorld)[family-1];color.a=0;int i=l.Add(false);var v=l.Over;
+            Put(v,i,at,color,new Vector4(0,0,SheetBurstMode,0),new Vector4(-1,-1,size,roll));Put(v,i+1,at,color,new Vector4(0,0,SheetBurstMode,0),new Vector4(1,-1,size,roll));
+            Put(v,i+2,at,color,new Vector4(0,0,SheetBurstMode,0),new Vector4(1,1,size,roll));Put(v,i+3,at,color,new Vector4(0,0,SheetBurstMode,0),new Vector4(-1,1,size,roll));
+        }
         /// <summary>Draws the frame: the world mesh to the match camera (layer 0; soft where the camera renders a depth texture,
         /// which the shared effects renderer asks for on the normal tiers) and the view mesh to the view-model camera (layer 10,
         /// first person only, never soft); then the queues are empty.</summary>
@@ -111,9 +147,14 @@ namespace ChipArena.UnityConversion
         {
             if(camera!=null){worldProperties.SetFloat(SoftId,!Low&&(camera.depthTextureMode&DepthTextureMode.Depth)!=0?1:0);world.Draw(material,0,camera,worldProperties);}
             if(viewCamera!=null){viewProperties.SetFloat(SoftId,0);view.Draw(material,10,viewCamera,viewProperties);}
+            for(int f=0;f<sheetMaterials.Length;f++)if(sheetMaterials[f]!=null){if(camera!=null)sheetWorld[f].Draw(sheetMaterials[f],0,camera,worldProperties);if(viewCamera!=null)sheetView[f].Draw(sheetMaterials[f],10,viewCamera,viewProperties);}
             Begin();
         }
-        public void Dispose(){Begin();CapturedAnimation.Release(world.Mesh);CapturedAnimation.Release(view.Mesh);CapturedAnimation.Release(material);}
+        public void Dispose()
+        {
+            Begin();CapturedAnimation.Release(world.Mesh);CapturedAnimation.Release(view.Mesh);CapturedAnimation.Release(material);
+            for(int f=0;f<sheetMaterials.Length;f++)if(sheetMaterials[f]!=null){CapturedAnimation.Release(sheetWorld[f].Mesh);CapturedAnimation.Release(sheetView[f].Mesh);CapturedAnimation.Release(sheetMaterials[f]);sheetMaterials[f]=null;}
+        }
     }
 
 
@@ -146,10 +187,19 @@ namespace ChipArena.UnityConversion
             // barrel, so both sit further out (NativeMuzzleFx.ViewLead) to clear the view gun's own silhouette.
             // They are larger there too (NativeMuzzleFx.ViewGlow), under the ViewShare cap: the gun's top and sights hide a small one.
             float lead=first?NativeMuzzleFx.ViewLead:0,glow=first?NativeMuzzleFx.ViewGlow:1;
-            if(NativeMuzzleFx.Fireball(look,seed,age,out float fireball,out var fire)){var at=crown+z*((.06f+lead)*size);draw.Glow(first,at,Fx(fire)*gain,ViewCap(view,at,fireball*size*glow,eye,forward,tanHalf),NativeWeaponFxDraw.Soft);}
+            // The gun family's pack flash (Core NativeMuzzleFx sheets) when the drawer holds it: its burst over a softer fireball
+            // and its flipbook flame along the barrel in place of the plume; else the procedural flash alone.
+            bool sheet=draw.HasSheet(look.Sheet);
+            if(NativeMuzzleFx.Fireball(look,seed,age,out float fireball,out var fire)){var at=crown+z*((.06f+lead)*size);draw.Glow(first,at,Fx(fire)*(gain*(sheet?SheetFireball:1)),ViewCap(view,at,fireball*size*glow,eye,forward,tanHalf),NativeWeaponFxDraw.Soft);}
+            if(sheet&&NativeMuzzleFx.SheetBurst(look,seed,age,out float burst,out float burstRoll,out var burstColor)){var at=crown+z*((.05f+lead)*size);draw.SheetBurst(first,look.Sheet,at,Fx(burstColor)*gain,ViewCap(view,at,burst*size*glow*(first?NativeMuzzleFx.ViewBurst:1),eye,forward,tanHalf,NativeMuzzleFx.ViewBurstShare),burstRoll);}
             if(NativeMuzzleFx.Core(look,seed,age,out float core,out var hot)){var at=crown+z*((.025f+lead)*size);draw.Glow(first,at,Fx(hot)*gain,ViewCap(view,at,core*size*glow,eye,forward,tanHalf),NativeWeaponFxDraw.HotCore);}
+            if(sheet)
+            {
+                if(NativeMuzzleFx.SheetFlame(look,seed,age,out float flame,out float flameWidth,out float frame,out bool mirror,out float flameAlpha))
+                    draw.SheetFlame(first,look.Sheet,crown,crown+z*(flame*size),Fx(NativeMuzzleFx.SheetFlameColor(look,age,flameAlpha))*gain,flameWidth*size,frame,mirror);
+            }
             // The forward plume along the barrel.
-            if(NativeMuzzleFx.Plume(look,seed,age,out float plume,out float plumeWidth,out float plumeAlpha))
+            else if(NativeMuzzleFx.Plume(look,seed,age,out float plume,out float plumeWidth,out float plumeAlpha))
             {
                 var c=Add(Color.Lerp(Lin(NativeMuzzleFx.PlumeColor),Lin(NativeMuzzleFx.EdgeColor),(float)(age/look.Life))*(2.6f*look.Gain*gain*plumeAlpha));
                 draw.Axis(first,crown,crown+z*(plume*size),c,plumeWidth*size,NativeWeaponFxDraw.FlameMode,(float)NativeWeaponFx.Hash(seed,9));
@@ -201,10 +251,12 @@ namespace ChipArena.UnityConversion
                 draw.Wisp(first,crown+(x*local.X+y*local.Y+z*local.Z)*size+Vector3.up*(rise*size),new Color(.62f*cover,.64f*cover,.7f*cover,cover),wispSize*size,(float)NativeWeaponFx.Hash(seed,80+k)*10,(float)NativeWeaponFx.Hash(seed,90+k)*6.28f);
             }
         }
+        // With the pack flash the procedural fireball is the burst's soft halo.
+        private const float SheetFireball=.5f;
         // A point of the source weapon frame (+x the gun's left) relative to the crown at z `crownZ`, in the world.
         private static Vector3 Weapon(Vector3 crown,Vector3 x,Vector3 y,Vector3 z,float size,float crownZ,NVector3 local)=>crown+x*(-local.X*size)+y*(local.Y*size)+z*((local.Z-crownZ)*size);
         // First person: a glow no wider than NativeMuzzleFx.ViewShare of the view at its depth.
-        private static float ViewCap(Camera view,Vector3 at,float size,Vector3 eye,Vector3 forward,float tanHalf)=>view==null?size:NativeMuzzleFx.ViewSize(size,Vector3.Dot(at-eye,forward),tanHalf);
+        private static float ViewCap(Camera view,Vector3 at,float size,Vector3 eye,Vector3 forward,float tanHalf,float share=NativeMuzzleFx.ViewShare)=>view==null?size:NativeMuzzleFx.ViewSize(size,Vector3.Dot(at-eye,forward),tanHalf,share);
         /// <summary>
         /// A slash crescent swept from a blade's samples (Core/NativeSlashTrail): the dark underlay, then the additive band from
         /// the look's inner share of the blade out to its tip, tail to head along the tip's path (the crescent shader's x), with

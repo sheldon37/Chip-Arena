@@ -155,6 +155,45 @@ that fits.
   - Real triggers: a bot's Flash Step and Rising Dragon, and a dagger bot's fourth cut, played theirs.
   - Not seen live: the sword's and greatsword's finishers (the AI bots rarely chain combos).
 
+## Muzzle flashes from the pack (2026-10-28, `claude/pack-fx-hits`)
+
+Owner (2026-10-28): muzzle flashes "would be okay (Im okay with combining certain things like effects and lighting with
+realistic looks) Of course, as long as it produces proper glow + lighting".
+
+- **What it does:** each gun family's flash takes a photographic flipbook flame along the barrel, in place of the
+  procedural plume, and a burst sprite over the fireball (which drops to half as its halo). Both are HDR, so the match
+  camera's bloom glows them. The white-hot core, the petals, the vents' jets, the multishot pods, the sparks, the smoke and
+  the shot's scene light (`NativeMuzzleLight`) are unchanged.
+- **Families** (`Core/NativeMuzzleFx.SheetLooks`; the selection `tools/pack_bank/selections/fx-muzzle.json`, textures only,
+  loaded by id):
+
+  | Family | Flame (grid, frames) | Burst | Life (flash lives) |
+  | --- | --- | --- | --- |
+  | Pistol | `Flame3` (4x4, frames 4-13): a short diamond | `MuzzleFlash1` (fiery star) | 1.8 |
+  | Rifle | `MuzzleFlash8` (2x4): a long tapering flame | `MuzzleFlash3` (fireball) | 1.4 |
+  | Machine gun | `MuzzleFlash9` (2x4): flame with sparks | `MuzzleFlash6` (smoky) | 1.7 |
+  | Hazard kit turrets | `Flame1` (2x4): broad | `MuzzleFlash1` | 1.7 |
+
+  Source: kripto289's Impacts and Muzzle Flashes (`Textures/Effects/Muzzle`). The pack's prefabs pair one stretched
+  flipbook flame with front bursts and sparks; only the textures are taken.
+- **Rules** (pure functions of the shot's seed and age, like the rest of the flash): the flame plays its frames once
+  (blended between frames), its length the look's plume times 1.1-1.3, half as wide, mirrored on about half the shots,
+  fading over the last two fifths. The burst is rolled by the seed and fades white-hot to orange. Fan the Hammer and
+  Overdrive grow and heat it as they do the procedural flash. First person: the burst may fill up to 0.3 of the view's
+  height (the glows keep 0.2), since the eye behind the gun sees the burst rather than the flame along the barrel.
+- **Shader** (`Resources/NativeWeaponFx.shader`, outside the shared block): mode 8 the flame card (an axis card; the frame
+  in TEXCOORD0.w, negative mirrored), mode 9 the burst (a billboard). A texel gives the shape its intensity (coverage times
+  brightness) and its white-hot share (only its brightest, whitest parts), so the flash keeps its colour and gain.
+- **Runtime** (`Runtime/NativeWeaponFxDraw.cs`): the drawer loads each family's two textures; a family with both gets a copy
+  of the material and its own world and view meshes. The match's drawer and the hazard kit's both do. Without the bank's
+  textures there is no family material and the flash is exactly the procedural one.
+- **Checks:** `CoreTests --pack-fx-hits` (the families and their grids, the frames' range and order, fades, determinism,
+  HDR at the shot, the selection's ids, the fallback wiring, the shader modes); `--muzzle-flash` unchanged and passing.
+- **Renders** (offline: the Core rules through a port of the drawer and the shader, the game's bloom chain at 0.4): every
+  family in third and first person at 4-100 ms over a dark and a bright stage, today's flash beside the pack flash.
+- **Not yet:** seen in the Unity Editor or a build; Overdrive's heat and Fan the Hammer on the sheets were checked in the
+  rules only.
+
 ## Candidates from the same drive (not started)
 
 - **Archanor's Sci-Fi Arsenal and Epic Toon FX:** projectiles, muzzle flashes, explosions and magic in the toon style.
