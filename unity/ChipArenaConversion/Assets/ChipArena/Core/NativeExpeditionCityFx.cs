@@ -82,6 +82,9 @@ namespace ChipArena.UnityConversion
         public const int Capacity=2800,SortMax=320;
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
         public int Flames,Embers,Smoke,Halos,Pools,Fog,Ash,Bulbs,Columns,Heli,Steam,Shafts,Pockets;
+        /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
+        /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
+        public NativeBeamList Beams;
         public const double FogRadius=40,WindX=.55,WindZ=.3;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz,hx,hz;private NativeFxLight light;
         private readonly double[] key=new double[SortMax],sx=new double[SortMax],sy=new double[SortMax],sz=new double[SortMax],ss=new double[SortMax],sr=new double[SortMax],sg=new double[SortMax],sb=new double[SortMax],sa=new double[SortMax];
@@ -257,7 +260,7 @@ namespace ChipArena.UnityConversion
                 // A warm pool on the street under the lamps (not the floods, beacons or signs).
                 if((kind==NativeExpeditionCityKit.GlowLamp||kind==NativeExpeditionCityKit.GlowLampFlicker)&&d<70){Flat(g.X,.025,g.Z,g.Range*.42,r*.5*k,gg*.5*k,b*.5*k,.22,true);Pools++;
                     // Its shaft in the haze (the city detail pass): a soft beam from the head to the street, near the eye only.
-                    if(d<40&&g.Y>2.5&&Shafts<ShaftMax){double fade=Math.Min(1,(40-d)/12);Beam(g.X,g.Y-.12,g.Z,g.X,.05,g.Z,.22,g.Range*.55,r,gg,b,.045*k*fade);Shafts++;}}
+                    if(d<40&&g.Y>2.5&&Shafts<ShaftMax){double fade=Math.Min(1,(40-d)/12);if(Beams!=null){if(Beams.Shaft(g.X,g.Y-.12,g.Z,g.X,.05,g.Z,.22,g.Range*.55,r,gg,b,.045*k,.55,i))Shafts++;}else{Beam(g.X,g.Y-.12,g.Z,g.X,.05,g.Z,.22,g.Range*.55,r,gg,b,.045*k*fade);Shafts++;}}}
             }
         }
         public const int ShaftMax=24,SteamMax=8,PocketMax=40;

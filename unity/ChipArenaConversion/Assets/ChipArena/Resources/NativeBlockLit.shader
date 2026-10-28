@@ -15,7 +15,9 @@ Shader "ChipArena/NativeBlockLit"
     // (_ArenaLight*, its own arrays, never the entrance stage's _StageLight*), the 3 blast flashes (_ArenaFlash*,
     // NativeArenaDressing.Flashes) and the guns' 4 muzzle lights (_MuzzleLight*, NativeMuzzleLight.cginc); then the ground
     // haze and fog. On Ward Zero only (NativeWardLight.cginc): the ceiling light
-    // field (one 3D texture, the only texture read here) and the practical slots' beacon beams.
+    // field (one 3D texture) and the practical slots' beacon beams. With a look's `advanced` on the medium and high tiers
+    // (NativeAdvancedLight.cginc; docs/LIGHTING-ADVANCED.md): the light volume (the other 3D texture: occlusion and bounce
+    // on the ambient, the lightning), wet faces (puddles, rings, sheen) and the height fog's scattering before Unity's fog.
     // BLOCK_PACK (a local keyword; Runtime/NativePackStage's materials, docs/arenas/STAGE-KITS.md): a pack bank prop drawn in a
     // block's place or round the map. Its own mesh and place (no lattice), the pack's atlas (_PackTex, uv0) times _PackColor as
     // the albedo, the same texel times _PackEmit and the map's _ArenaPackGlow as emission (the lights atlas: windows and lamps),
@@ -23,7 +25,7 @@ Shader "ChipArena/NativeBlockLit"
     // (PackSurface). Per instance: _BlockRest x a yard's floodlit share, y the prop's base height (its grime ramp), w its local
     // dust coat; _BlockLook y the
     // block's health share, z its seed, w its flags; _BlockColor rgb a tint. Normals go through the instance's inverse transpose
-    // (a fitted prop is scaled per axis).
+    // (a fitted prop is scaled per axis). The advanced lighting's volume, wet faces and scattering reach the props too.
     Properties {}
     SubShader
     {
@@ -126,6 +128,8 @@ Shader "ChipArena/NativeBlockLit"
         #include "NativeWardLight.cginc"
         // The guns' muzzle lights (four slots of their own on every map; off while _MuzzleLightCount is 0).
         #include "NativeMuzzleLight.cginc"
+        // The advanced lighting (off on every map without it: its globals are 0).
+        #include "NativeAdvancedLight.cginc"
         // The anime map style's switch, ramp and helpers (_ArenaToon*; 0 everywhere but a map whose look turns it on).
         #include "NativeToon.cginc"
         // The vertex lattice (NativeBlockLooks.Corner) and the instance's 180-degree mesh turns, which only pick other chipped corners.
@@ -848,6 +852,8 @@ Shader "ChipArena/NativeBlockLit"
             // The shade side's sky bounce: the ambient a little lighter up a wall than at its foot (a painted gradient in shade).
             float bounce=1.0+_ArenaToonPaint.y*(saturate(world.y/12.0)-0.35)*1.5;
             float3 light=ToonOcclude(ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y)*bounce,key,dot(nT,keyDir),atten),occ)+ToonPoints(BlockLights(world,nT));
+            // The light volume on the ambient as the ramp takes it (the key's share 0), in the occlusion band like the rest.
+            light+=ToonOcclude(ArenaGI(ToonDiffuse(ToonAmbient(shN,shUp,shDown,nT.y)*bounce,float3(0.0,0.0,0.0),dot(nT,keyDir),atten),world,nT),occ);
             return albedo*(light+ToonEdge(nT,v,keyDir,key,atten,edge))+ToonSheen(nT,v,shUp)+emit;
         }
         // Ground haze (3.10: 15% from 0 to 2.5 m): _ArenaHaze.w at the street, gone at _ArenaHazeTop, faded in from 4 to 40 m away.
@@ -919,10 +925,16 @@ Shader "ChipArena/NativeBlockLit"
                     float4 t=tex2D(_PackTex,i.pat.xy);clip(t.a-_PackCutoff);float3 alb=t.rgb*_PackColor.rgb*i.col.rgb;
                     float3 nT=normalize(i.nW);float3 nF=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),nT);
                     BlockSurf ps=PackSurface(alb,t.rgb*(_PackEmit*_ArenaPackGlow),i.world.xyz,nT,i.shade.x,i.size.w,i.obj.w,i.col.w,i.shade.y);
+                    // The advanced lighting as a block takes it (each term 0 while its switch is off): wet faces, the volume
+                    // (inside ToonBlockLit for the anime style), the sheen and the scattering.
+                    float pw=ArenaWetAt(i.world.xyz);float pp=ArenaPuddle(i.world.xyz,nT,pw);ps.albedo=ArenaWetAlbedo(ps.albedo,pw,pp,nT);
                     UNITY_LIGHT_ATTENUATION(pa,i,i.world.xyz);float3 pc;
                     if(_ArenaToon.x>0.5)pc=ToonBlockLit(ps.albedo,ps.emit,ps.occ,i.world.xyz,nT,nF,normalize(_WorldSpaceCameraPos-i.world.xyz),_WorldSpaceLightPos0.xyz,_LightColor0.rgb,pa,ShadeSH9(float4(nT,1.0)),ShadeSH9(float4(0.0,1.0,0.0,1.0)),ShadeSH9(float4(0.0,-1.0,0.0,1.0)));
                     else pc=ps.albedo*(ShadeSH9(float4(nT,1.0))+_LightColor0.rgb*(saturate(dot(nT,_WorldSpaceLightPos0.xyz))*pa)+BlockLights(i.world.xyz,nT))+ps.emit;
+                    if(_ArenaToon.x<=0.5)pc+=ps.albedo*ArenaGI(ShadeSH9(float4(nT,1.0)),i.world.xyz,nT);
+                    pc+=ArenaWetSheen(i.world.xyz,nT,normalize(_WorldSpaceCameraPos-i.world.xyz),pw,pp,_WorldSpaceLightPos0.xyz,_LightColor0.rgb,pa);
                     fixed4 pk=fixed4(BlockHaze(pc,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
+                    pk.rgb=ArenaScatter(pk.rgb,i.world.xyz,_WorldSpaceCameraPos);
                     UNITY_APPLY_FOG(i.fogCoord,pk);return pk;
                 }
                 #else
@@ -930,6 +942,8 @@ Shader "ChipArena/NativeBlockLit"
                 float3 nO=BlockOrient(cross(ddx(i.obj.xyz),ddy(i.obj.xyz)),i.nO);float3 nW=BlockOrient(cross(ddx(i.world.xyz),ddy(i.world.xyz)),i.nW);
                 BlockSurf s=BlockSurface(i.obj.xyz,i.pat.xyz,fwP,nO,i.size.xyz,i.pat.w,i.size.w,i.col.rgb,i.col.w,i.shade,i.obj.w,i.world.w);
                 UNITY_LIGHT_ATTENUATION(atten,i,i.world.xyz);
+                // Wet faces (NativeAdvancedLight.cginc): the albedo darkened, a puddle on up-facing faces (nothing while dry).
+                float wet=ArenaWetAt(i.world.xyz);float puddle=ArenaPuddle(i.world.xyz,nW,wet);s.albedo=ArenaWetAlbedo(s.albedo,wet,puddle,nW);
                 float3 col;
                 // The anime style (NativeToon.cginc; Core NativeMapStyle): the rounded normal in the instance's frame, then the ramp.
                 if(_ArenaToon.x>0.5)
@@ -943,9 +957,12 @@ Shader "ChipArena/NativeBlockLit"
                 else
                 {
                     float3 light=ShadeSH9(float4(nW,1.0))+_LightColor0.rgb*(saturate(dot(nW,_WorldSpaceLightPos0.xyz))*atten)+BlockLights(i.world.xyz,nW);
+                    light+=ArenaGI(ShadeSH9(float4(nW,1.0)),i.world.xyz,nW);
                     col=s.albedo*light+s.emit;
                 }
+                col+=ArenaWetSheen(i.world.xyz,nW,normalize(_WorldSpaceCameraPos-i.world.xyz),wet,puddle,_WorldSpaceLightPos0.xyz,_LightColor0.rgb,atten);
                 fixed4 c=fixed4(BlockHaze(col,i.world.xyz,distance(i.world.xyz,_WorldSpaceCameraPos)),1.0);
+                c.rgb=ArenaScatter(c.rgb,i.world.xyz,_WorldSpaceCameraPos);
                 UNITY_APPLY_FOG(i.fogCoord,c);return c;
                 #endif
             }

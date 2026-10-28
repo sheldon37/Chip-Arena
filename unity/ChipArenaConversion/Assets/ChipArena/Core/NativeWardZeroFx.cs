@@ -79,6 +79,9 @@ namespace ChipArena.UnityConversion
         /// it never lifts the dark).</summary>
         public const double PoolShare=.025,PoolAlpha=.085,HazeShade=.6;
         public int Halos,Pools,Shafts,Haze,Motes,Steam,Sparks,Drips,Ink,Telegraph,Entrances,Guide;
+        /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
+        /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
+        public NativeBeamList Beams;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz;private NativeFxLight light;
 
         private static uint Mix(uint x){unchecked{x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;x^=x>>16;return x;}}
@@ -184,10 +187,11 @@ namespace ChipArena.UnityConversion
                 {
                     // The Spine: a cold column down the hatch onto the Cradle, violet as the ink spreads, pumping with the song.
                     double ink=m.Ink,k=(.08+.06*m.Beat*m.Groove)*haze;double r=.75*(1-ink*.5)+.5*ink,gg=.85*(1-ink*.7),b=1;
-                    Cone(g.X,g.Y,g.Z,g.Y-.2,2.4,3.4,r,gg,b,k);Cone(g.X,g.Y,g.Z,g.Y-.2,1.2,1.8,r,gg,b,k*1.4);Flat(g.X,.04,g.Z,1,0,3.6,3.6,r,gg,b,.16*haze,1,true);n+=3;Shafts+=3;continue;
+                    if(Beams!=null){Beams.Shaft(g.X,g.Y,g.Z,g.X,.2,g.Z,3.2,4.6,r,gg,b,k*1.6,.6,i);}else{Cone(g.X,g.Y,g.Z,g.Y-.2,2.4,3.4,r,gg,b,k);Cone(g.X,g.Y,g.Z,g.Y-.2,1.2,1.8,r,gg,b,k*1.4);}
+                    Flat(g.X,.04,g.Z,1,0,3.6,3.6,r,gg,b,.16*haze,1,true);n+=3;Shafts+=3;continue;
                 }
                 if(g.Kind!=NativeWardZeroKit.GlowHighBay||!Near(g.X,g.Y,g.Z,60))continue;float level=NativeWardZeroKit.FluorLevel(g.Param,m,time);if(level<.1f)continue;
-                Cone(g.X,g.Y,g.Z,Math.Min(g.Y-.2,9),.7,2.6,g.R,g.G,g.B,.05*level*haze);n++;Shafts++;
+                if(Beams!=null)Beams.Shaft(g.X,g.Y,g.Z,g.X,g.Y-Math.Min(g.Y-.2,9),g.Z,1.0,3.6,g.R,g.G,g.B,.05*level*haze,.6,i);else Cone(g.X,g.Y,g.Z,Math.Min(g.Y-.2,9),.7,2.6,g.R,g.G,g.B,.05*level*haze);n++;Shafts++;
             }
         }
         private void HazeFx(in NativeWardMood m,double time,double q,bool low)

@@ -158,7 +158,7 @@ namespace ChipArena.UnityConversion
         private void DrawTownFx(float time,Camera camera)
         {
             if(camera==null)return;ReadCyberLight();var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            townFx.Build(townScene,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,metroLight,Mathf.Clamp01(EffectsQuality),LowGraphics);
+            townFx.Beams=AdvancedBeams;townFx.Build(townScene,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,metroLight,Mathf.Clamp01(EffectsQuality),LowGraphics);
             var q=townFx.Quads;townDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {

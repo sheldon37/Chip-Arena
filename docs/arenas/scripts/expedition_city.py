@@ -713,8 +713,14 @@ def look():
                            BL('material:brick', 'brick-red', 0x7A4A3E, 'tenements, shops and corners'), BL('material:stone', 'concrete-board', 0x8A8478, 'towers and civic blocks'),
                            BL('material:metal', 'corrugated', 0x5A6062, 'depots'), BL('material:wood', 'timber', 0, 'anything else wood')],
             'kitLooks': [], 'dressing': MAP, 'backdrop': MAP, 'atmosphere': MAP, 'ambience': MAP,
-            'blocks': dict(dressed=True, dust=0.06, haze=0.3, hazeTop=3.2, hazeColor=0x5E4A62), 'toon': TOON}
+            'blocks': dict(dressed=True, dust=0.06, haze=0.3, hazeTop=3.2, hazeColor=0x5E4A62), 'advanced': ADVANCED, 'toon': TOON}
 
+# The advanced lighting (docs/LIGHTING-ADVANCED.md, Core NativeAdvancedLooks): the light volume, the dusk haze's scattering, the
+# lamp shafts as volumetric beams and a light storm (rain .45 with lightning; set weather.kind to '' to turn it off).
+ADVANCED = {'gi': dict(on=True, occlusion=0.7, bounce=1.2, floor=0.4, cell=1.0, actors=0.8),
+            'scatter': dict(on=True, color=0x3E3242, density=0.012, height=0.0, falloff=6.0, max=0.18, key=0.3, phase=0.5, lights=0.45),
+            'beams': dict(on=True, gain=1.3, dust=0.6, soft=2.0),
+            'weather': dict(kind='rain', amount=0.45, wind=1.0, wet=0.6, puddles=0.5, lightning=0.8, interval=24, lightningColor=0xC8D4FF)}
 MAPLOOKS = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'unity', 'ChipArenaConversion', 'Assets', 'Conversion', 'Resources', 'MapLooks.json'))
 def look_text():
     """The look as MapLooks.json writes its entries (one field per line, one light or block look per line)."""
@@ -727,6 +733,7 @@ def look_text():
     rows.append(f'   "kitLooks":{j(L["kitLooks"])},')
     rows.append('   ' + ','.join(f'{j(k)}:{j(L[k])}' for k in ('dressing', 'backdrop', 'atmosphere', 'ambience')) + ',')
     rows.append(f'   "blocks":{j(L["blocks"])},')
+    rows.append(f'   "advanced":{j(L["advanced"])},')
     groups = [','.join(f'{j(k)}:{j(L["toon"][k])}' for k in g) for g in TOON_GROUPS]
     rows.append('   "toon":{' + groups[0] + ','); rows += ['     ' + g + ',' for g in groups[1:-1]]; rows.append('     ' + groups[-1] + '}}')
     return '\n'.join(rows)

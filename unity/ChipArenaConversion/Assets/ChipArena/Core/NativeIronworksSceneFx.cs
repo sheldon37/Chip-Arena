@@ -49,6 +49,9 @@ namespace ChipArena.UnityConversion
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
         public readonly NativeHeatSource[] Heat=new NativeHeatSource[HeatMax];public int HeatCount;
         public int Sparks,Smoke,Halos,Telegraphs,Embers,Shafts,Steam;
+        /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
+        /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
+        public NativeBeamList Beams;
         /// <summary>The zone boss song (set before <see cref="Build"/>; Off by default, docs/ZONE-BOSS-MUSIC.md): the furnace mouths spit
         /// more sparks on the pulse, the coke standpipes and the hoods puff steam on the downbeats and slams, and the drop rains a
         /// shower of sparks from the roof over the casting floor. The telegraphs, the pour, the hazards' sparks and steam never change.</summary>
@@ -189,7 +192,9 @@ namespace ChipArena.UnityConversion
             foreach(float z in NativeIronworksKit.MonitorZ)for(int i=0;i<per;i++)
             {
                 double x=-42+i*(84.0/Math.Max(1,per-1))+(H(26,(int)z,i)-.5)*3,top=17.7,bot=1.0;double dx=3.2,dz=1.6;
-                double flick=.85+.15*Math.Sin(time*.3+i);Streak(x,top,z,x+dx,bot,z+dz,3.0,.012*flick,.017*flick,.026*flick,1,1);Shafts++;
+                double flick=.85+.15*Math.Sin(time*.3+i);
+                if(Beams!=null){if(Beams.Shaft(x,top,z,x+dx,bot,z+dz,3.0,3.4,.012*flick,.017*flick,.026*flick,1,.7,i+z))Shafts++;continue;}
+                Streak(x,top,z,x+dx,bot,z+dz,3.0,.012*flick,.017*flick,.026*flick,1,1);Shafts++;
             }
         }
 

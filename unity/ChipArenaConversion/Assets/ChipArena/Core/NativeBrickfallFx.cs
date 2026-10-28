@@ -50,6 +50,9 @@ namespace ChipArena.UnityConversion
         private readonly double[] sortKey=new double[64],corner=new double[12],cloudTime=new double[NativeBrickfallMemory.Collapses];private readonly int[] sortIndex=new int[64],cloudIndex=new int[NativeBrickfallMemory.Collapses];
         private readonly double[] puffX=new double[64],puffY=new double[64],puffZ=new double[64],puffS=new double[64],puffA=new double[64];
         public int Shafts,Motes,Scraps,Pigeons,Birds,DustPuffs;
+        /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
+        /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
+        public NativeBeamList Beams;
         // Camera.
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz;private NativeFxLight light;
 
@@ -185,6 +188,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<n;i++)
             {
                 int s=i*NativeBrickfallAtmosphere.Shafts/n;NativeBrickfallAtmosphere.Shaft(s,time,out double x,out double y,out double z,out double length,out double width,out double alpha);
+                // A beam keeps its own soft edge and the camera's fade (no view fade): from the sun's end down the shaft.
+                if(Beams!=null){double bh=length/2;if(Beams.Shaft(x-dx*bh,y-dy*bh,z-dz*bh,x+dx*bh,y+dy*bh,z+dz*bh,width*.85,width*1.15,light.Sr,light.Sg*.92,light.Sb*.8,alpha,.75,s))Shafts++;continue;}
                 double vx=ex-x,vy=ey-y,vz=ez-z,vd=Math.Sqrt(vx*vx+vy*vy+vz*vz);if(vd<1e-4)continue;vx/=vd;vy/=vd;vz/=vd;
                 double along=vx*dx+vy*dy+vz*dz,distance=Math.Sqrt(Math.Max(0,1-along*along))*vd;alpha*=NativeBrickfallAtmosphere.ShaftView(distance,along);if(alpha<=.002)continue;
                 double wx=dy*vz-dz*vy,wy=dz*vx-dx*vz,wz=dx*vy-dy*vx,wl=Math.Sqrt(wx*wx+wy*wy+wz*wz);if(wl<1e-6)continue;wx*=width/2/wl;wy*=width/2/wl;wz*=width/2/wl;

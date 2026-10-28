@@ -203,7 +203,7 @@ namespace ChipArena.UnityConversion
         private void DrawIronFx(float time,Camera camera)
         {
             if(camera==null)return;var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            iwFx.Music=iwMusic;iwFx.Build(iwScene,iwViews,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
+            iwFx.Beams=AdvancedBeams;iwFx.Music=iwMusic;iwFx.Build(iwScene,iwViews,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
             var q=iwFx.Quads;iwDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {

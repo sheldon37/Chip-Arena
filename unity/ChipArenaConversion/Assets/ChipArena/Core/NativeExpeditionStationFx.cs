@@ -70,6 +70,9 @@ namespace ChipArena.UnityConversion
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
         /// <summary>This frame's counts by family (the budget lines and the checks).</summary>
         public int Shafts,Motes,Halos,Pools,Reflections,Ripples,Mist,Drips,Fire,Smoke,Telegraph,Sparks,Dust,Glass,Arcs;
+        /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
+        /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
+        public NativeBeamList Beams;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz,fx,fy,fz;private float quality;private bool low;
         // Premultiplied pieces wait here, sorted far to near before they go out.
         private readonly double[] pc=new double[SortMax*12],pk=new double[SortMax];private readonly float[] pcol=new float[SortMax*4];private readonly int[] pidx=new int[SortMax];private readonly byte[] pmode=new byte[SortMax];private int pn;
@@ -147,8 +150,10 @@ namespace ChipArena.UnityConversion
                 double mx=(s.X0+s.X1)/2,my=(s.Y0+s.Y1)/2,mz=(s.Z0+s.Z1)/2;if(Dist(mx,my,mz)>95||!Ahead(mx,my,mz,12))continue;
                 float drift=(float)(.82+.18*Math.Sin(t*.21+i*1.7));float a=s.Alpha*drift*.1f;
                 double y1=low?s.Y0+(s.Y1-s.Y0)*.6:s.Y1,x1=low?s.X0+(s.X1-s.X0)*.6:s.X1,z1=low?s.Z0+(s.Z1-s.Z0)*.6:s.Z1;
-                Shafts+=Beam(s.X0,s.Y0,s.Z0,x1,y1,z1,s.W0*.4,s.W1*.4,mr,mg,mb,a*1.9f,14);
-                Shafts+=Beam(s.X0,s.Y0,s.Z0,x1,y1,z1,s.W0,s.W1,mr,mg,mb,a*.8f,12);
+                // A beam: the two sheets (the core and its soft spread) as one soft column.
+                if(Beams!=null){if(Beams.Shaft(s.X0,s.Y0,s.Z0,x1,y1,z1,s.W0*.8,s.W1*.8,mr,mg,mb,a*1.5f,.7,i))Shafts++;}
+                else{Shafts+=Beam(s.X0,s.Y0,s.Z0,x1,y1,z1,s.W0*.4,s.W1*.4,mr,mg,mb,a*1.9f,14);
+                Shafts+=Beam(s.X0,s.Y0,s.Z0,x1,y1,z1,s.W0,s.W1,mr,mg,mb,a*.8f,12);}
                 // Where it lands: a soft pool of moonlight.
                 if(!low){Flat(s.X1,s.Y1+.02,s.Z1,s.W1*1.1,s.W1*.8,0,mr,mg,mb,a*2.4f);Pools++;}
                 for(int k=0;k<motes;k++)
@@ -166,7 +171,7 @@ namespace ChipArena.UnityConversion
                 var s=sc.Shafts[i];if(s.Kind!=NativeExpeditionStationKit.ShaftLamp)continue;double d=Dist(s.X0,2.5,s.Z0);if(d>60||!Ahead(s.X0,2.5,s.Z0,6))continue;
                 // The zone boss song: the sodium cones and pools follow their lamps (the intro's west-to-east steps, the cuts, the pulse).
                 float lr=lr0,lg=lg0,lb=lb0;if(st!=null&&st.Music.On)NativeExpeditionStationKit.MusicLight(NativeExpeditionStationKit.GlowLamp,null,s.X0,st.Music,st.Signal,ref lr,ref lg,ref lb);
-                if(!low)Shafts+=Beam(s.X0,s.Y0,s.Z0,s.X1,s.Y1+.6,s.Z1,s.W0,s.W1,lr,lg,lb,s.Alpha*.13f,4);
+                if(!low)Shafts+=Beams!=null?(Beams.Shaft(s.X0,s.Y0,s.Z0,s.X1,s.Y1,s.Z1,s.W0,s.W1,lr,lg,lb,s.Alpha*.13f,.5,i+40)?1:0):Beam(s.X0,s.Y0,s.Z0,s.X1,s.Y1+.6,s.Z1,s.W0,s.W1,lr,lg,lb,s.Alpha*.13f,4);
                 Flat(s.X1,s.Y1+.01,s.Z1,2.6,2.6,0,lr,lg,lb,.16f);Pools++;
             }
         }

@@ -196,7 +196,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Rooftop(Camera camera,Material skybox)
         {
-            WardFieldOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;
+            WardFieldOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;NativeAdvancedLighting.Off();
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=new Color(.03f,.02f,.07f);RenderSettings.fogStartDistance=45;RenderSettings.fogEndDistance=700;
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.10f,.11f,.24f);RenderSettings.ambientEquatorColor=new Color(.09f,.05f,.13f);RenderSettings.ambientGroundColor=new Color(.10f,.03f,.09f);
             // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
@@ -250,6 +250,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Turns the style off (an entrance, the draft or the rooftop owns the screen); Apply turns the map's back on.</summary>
         public static void StyleOff()
         {
+            // The advanced lighting goes with the style (a stage, the draft, the rooftop); Apply turns the map's back on.
+            NativeAdvancedLighting.Off();
             if(!styleWritten&&!StyleActive)return;StyleActive=false;styleWritten=false;Style.Clear();
             Shader.SetGlobalVector(ToonId,Vector4.zero);Shader.SetGlobalVector(EdgeId,Vector4.zero);Shader.SetGlobalVector(GradeId,new Vector4(1,1,0,0));if(sky!=null)sky.SetVector(SkyToonId,Vector4.zero);
         }
@@ -289,6 +291,9 @@ namespace ChipArena.UnityConversion
                 if(moon!=null)moon.intensity=s.KeyIntensity;if(rim!=null){rim.intensity=s.RimIntensity;if(s.RimAim.Has)Aim(rim,s.RimAim);else rim.transform.SetPositionAndRotation(rimFrom,rimHome);}
             }
             PracticalLights(look,Time.unscaledTime);NativeMuzzleLights.Off();
+            // The advanced lighting (Runtime NativeAdvancedLighting): the look's light volume, scattering, beams and weather on
+            // this graphics tier (nothing on the low tier or for a look without them).
+            NativeAdvancedLighting.Apply(map,look);
         }
         /// <summary>
         /// The zone boss song's house light (Core NativeZoneBossBeat.House; presentation only): scales the look's ambient and key

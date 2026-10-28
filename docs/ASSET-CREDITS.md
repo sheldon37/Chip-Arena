@@ -123,6 +123,14 @@ A dead pilot's dissolve (`docs/PACK-EFFECTS.md`) reads `Cutout Map 15` of Advanc
 the licensed-assets zip under the visual body's rules; the pack's shaders and scripts do not ship, and the dissolve shader
 code is our own.
 
+### Lighting packs as technique references (2026-10-28, owner licence)
+
+The advanced lighting (`docs/LIGHTING-ADVANCED.md`) read the owner's Volumetric Light Beam (Tech Salad) shaders for its
+approach (soft edges by view angle, the glare along the axis, the camera's near and inside fades, the soft depth
+intersection, the noise). No file of the pack ships, is copied or loads at run time: the beam shader and its maths are our own.
+Bakery (Mr F) was not used: the maps are built at run time, which an Editor bake cannot reach; the runtime light volume is our
+own. UniStorm and Weather Maker were not read; the weather is our own (Cyber City's rain made a system).
+
 ### Slash brush (2026-10-24, owner licence)
 
 The slash crescents' ink-brush streaks (`docs/PACK-EFFECTS.md`) read the `WhiteScratches` texture of Ordoss' Magic Slashes

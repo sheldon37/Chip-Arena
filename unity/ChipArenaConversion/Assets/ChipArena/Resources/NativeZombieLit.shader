@@ -52,6 +52,8 @@ Shader "ChipArena/ZombieLit" {
  #include "NativeWardLight.cginc"
  // The guns' muzzle lights, as SourceLit's (NativeMuzzleLight.cginc): every map, the body's albedo, never its glow.
  #include "NativeMuzzleLight.cginc"
+ // The advanced lighting (NativeAdvancedLight.cginc; off on every map without it), as SourceLit's.
+ #include "NativeAdvancedLight.cginc"
  float3 StageRrt(float3 v){float3 a=v*(v+0.0245786)-0.000090537;float3 b=v*(0.983729*v+0.4329510)+0.238081;return a/b;}
  float3 StageAces(float3 c)
  {
@@ -86,6 +88,7 @@ Shader "ChipArena/ZombieLit" {
   if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))color.rgb=StageAces(color.rgb);
   HitFlash(i,color);
   #endif
+  if(_StageLit<.5)ArenaScatterFinal(i.worldPos,color);
  }
  // The Siren minion glow cells, exactly SourceLit's MinionFlicker (Tests/MinionFxChecks holds the two the same).
  float MinionFlicker(float code,float w,float charred)
@@ -191,6 +194,7 @@ Shader "ChipArena/ZombieLit" {
   if(_StageLit>.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=StageLight(o.Albedo,i.worldPos,normalize(i.worldNormal));
   if(_InkFill<.5&&_ArenaActorLit>.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ActorLights(i.worldPos,normalize(i.worldNormal));
   if(_InkFill<.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*MuzzleLights(i.worldPos,normalize(i.worldNormal),.35);
+  if(_InkFill<.5&&_StageLit<.5&&!Unlit(i.color.rgb,i.emission.rgb))o.Emission+=o.Albedo*ArenaGIBody(i.worldPos,normalize(i.worldNormal));
   o.Alpha=shell.a;
  }
  ENDCG

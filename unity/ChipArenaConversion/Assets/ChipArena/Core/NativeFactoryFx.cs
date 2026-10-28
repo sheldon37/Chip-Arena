@@ -25,6 +25,9 @@ namespace ChipArena.UnityConversion
         public const int Capacity=3600;
         public readonly NativeFxQuads Quads=new NativeFxQuads(Capacity);
         public int Sparks,Puffs,Halos,Shafts,Motes;
+        /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
+        /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
+        public NativeBeamList Beams;
         /// <summary>The first sun-shaft quad of the last build (the shafts are Shafts quads from here).</summary>
         public int ShaftStart;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz;private NativeFxLight light;
@@ -206,7 +209,10 @@ namespace ChipArena.UnityConversion
                     // the sheet stops where it meets an outer wall or the bay wall (never drawn outside the hall it lights)
                     double t=1,ex2=x+dx,ez2=zc+dz,zin=side==0?BayWallZ:-ShellZ,zout=side==0?ShellZ:-BayWallZ;if(Math.Abs(ex2)>ShellX)t=Math.Min(t,(Math.Sign(dx)*ShellX-x)/dx);
                     if(ez2>zout)t=Math.Min(t,(zout-zc)/dz);else if(ez2<zin)t=Math.Min(t,(zin-zc)/dz);if(t<.15)continue;
-                    double flick=.85+.15*Math.Sin(time*.21+x*.7+zc);Streak(x,RoofY,zc,dx*t,dy*t,dz*t,1.6,sr*flick,sg*flick,sb*flick,1,true,1);Shafts++;
+                    double flick=.85+.15*Math.Sin(time*.21+x*.7+zc);
+                    // A beam: the slot's sheet as a flat elliptic column 6 m along the hall (the segment) and the slot's 1.5 m across.
+                    if(Beams!=null){if(Beams.Add(x,RoofY,zc,x+dx*t,RoofY+dy*t,zc+dz*t,3.1,3.1,sr*flick*NativeBeamList.FromBillboard,sg*flick*NativeBeamList.FromBillboard,sb*flick*NativeBeamList.FromBillboard,.7,x*.37+zc,1,0,0,.26))Shafts++;continue;}
+                    Streak(x,RoofY,zc,dx*t,dy*t,dz*t,1.6,sr*flick,sg*flick,sb*flick,1,true,1);Shafts++;
                 }
             }
         }

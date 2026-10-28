@@ -224,7 +224,7 @@ namespace ChipArena.UnityConversion
         private void DrawWardFx(float time,Camera camera)
         {
             if(camera==null)return;ReadCyberLight();var t=camera.transform;Vector3 e=t.position,r=t.right,u=t.up;
-            wzFx.Build(wzScene,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,metroLight,Mathf.Clamp01(EffectsQuality),LowGraphics,wzMood,wzStates,wzOpen,wzSongOn,wzSongWarn);
+            wzFx.Beams=AdvancedBeams;wzFx.Build(wzScene,time,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,metroLight,Mathf.Clamp01(EffectsQuality),LowGraphics,wzMood,wzStates,wzOpen,wzSongOn,wzSongWarn);
             var q=wzFx.Quads;wzDraw.Clear();
             for(int i=0;i<q.Count;i++)
             {
