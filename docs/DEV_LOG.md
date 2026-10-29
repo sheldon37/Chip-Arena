@@ -1,3 +1,31 @@
+## 2026-10-29 — Claude: the Sheldon Head's face on every hooded model body
+
+- **Branch/base:** `claude/sheldon-hood-face` from shared `2552522`. No PR; merged into shared and the builder.
+- **Task (owner):** "Also, sheldon helmet seems to remove the "face" on the mask, and instead show the player model face. Can
+  we fix that?"
+- **Cause (found in source):** a body made for a pilot in the Sheldon Head wears the cloth hood (hair hidden), and the void
+  plate with the eyes, grin and ring is drawn where the hat is drawn. Four paths made the hooded body but never drew the face:
+  - the draft's pilot (the chip-select close-up): its hat draw skips the Sheldon Head and has no other branch;
+  - the authored death scenes and a revive's kept body: they draw no hat;
+  - the revive gallery's stand-in: no hat at all on the model.
+
+  The opening then showed the model's own face. The arena, the intros, the portraits, the rooftop and corpses already drew it.
+- **Changes (presentation only; docs/BOZO-INTEGRATION.md "The face everywhere"):**
+  - the draft and the gallery draw the void and the idle face (`SheldonHoodStill`); the gallery also gets the other hats;
+  - the death scenes and the revive body draw it as corpses do (`VisualDeadHood`, shared with the corpse);
+  - under the hood the model's head, eyes, brows, lashes and teeth are hidden with the hair (`VisualUnderHood`), so where the
+    void does not draw the hood's dark lining shows, never a face;
+  - the face gear (the masks) is left off under the hood (live, draft, corpse).
+- **Gameplay impact:** none (no timing, hit volume or network change).
+- **Checks (actual):** unity-check (runtime + editor compile) OK; `tools/check_relay.py` with the full CoreTests passed (874
+  PASS lines, 35 managed-core checks, rc 0); python unittest 167 OK (1 skipped); `package_source.py` OK; `git diff --check`
+  clean. New VisualRigChecks pins (the face on the draft, the scenes, the revive body and the gallery; no face gear under the
+  hood; the head and face hidden); a deliberate break of the draft's face line made `--visual-rig` fail, then was restored.
+- **Not run:** Unity Play mode and captures (no Editor here); a Windows build.
+- **Risks / next (owner's PC):** capture the Sheldon Head in the chip-select close-up, a death scene, a revive and the revive
+  gallery; confirm the bake's face renderers are named `Eyes.`, `EyeBrows.`, `EyeLashes.` and `Teeth.` (the zombies use
+  `Eyes.` and `Teeth.`); look up under the hood's chin from low angles (the head is hidden there now).
+
 ## 2026-10-29 — Claude (PC): the free arm's run checked in Unity; the bow's run names confirmed
 
 - **Branch/base:** `claude/run-arm-pc` from shared `25525222` (the cloud's `claude/model-run-arm` merge). No PR; merged into shared

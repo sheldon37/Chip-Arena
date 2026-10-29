@@ -18,6 +18,15 @@ namespace ChipArena.UnityConversion
         /// <summary>The lining's colour (sRGB): the Sheldon Head's dark inside.</summary>
         private const int HoodLining=0x0b0d14;
         private static bool VisualHooded(Actor a)=>a!=null&&a.Hat==NativeSheldonHead.Hat&&a.SourceSpec!="siren";
+        // Under the hood the model's own head goes (owner 2026-10-29: "sheldon helmet seems to remove the "face" on the mask, and
+        // instead show the player model face"): its hair (its cloth would swing the tips through the hood), its head and its face's
+        // pieces. The void covers the opening; wherever it does not draw, the hood's dark lining shows, never the model's face. On
+        // a body or corpse made with the hood, before its worn renderers are read.
+        private static readonly string[] UnderHood={"HairFront.","HairBack.","Head.","Eyes.","EyeBrows.","EyeLashes.","Teeth."};
+        private static void VisualUnderHood(GameObject root)
+        {
+            foreach(var r in root.GetComponentsInChildren<Renderer>(false))foreach(var p in UnderHood)if(r.name.StartsWith(p,StringComparison.Ordinal)){r.gameObject.SetActive(false);break;}
+        }
 
         // The hood on a body being made (`root`, its skeleton at rest): its renderer, or null when it cannot be made (the
         // voxel hood shows then).
@@ -81,12 +90,21 @@ namespace ChipArena.UnityConversion
             sourceModels.QueueSheldonPieces(bone(CapturedRig.Head),face,glow,layer,camera,1,flash,partTint?.Invoke(CapturedRig.Head)??Color.white);
             return true;
         }
-        // The same at rest on a menu body (the portraits, the rooftop): its void and the idle face and ring on `time`.
+        // The same at rest on a body no arena pass draws the hat of (the portraits, the rooftop, the draft's pilot, the revive
+        // gallery): its void and the idle face and ring on `time`.
         private bool SheldonHoodStill(VisualBody body,string hat,string color,Matrix4x4 root,Func<int,Matrix4x4> bone,float time,int seed,bool reduced,int layer,Camera camera)
         {
             if(hat!=NativeSheldonHead.Hat||body?.HoodRenderer==null||sourceModels==null||!sourceModels.Has(NativeSourceModels.SheldonHoodVoid))return false;
             var glow=HatBody(hat,color)??Color.white;sourceModels.Queue(NativeSourceModels.SheldonHoodVoid,root,bone,null,layer,camera,body:glow);
             sourceModels.QueueSheldonPieces(bone(CapturedRig.Head),NativeSheldonHead.Evaluate(time,seed,-1,-1,reduced),glow,layer,camera,1,1,Color.white);return true;
+        }
+        // On a dead model's head (a corpse's, a death scene's) fitted at `fit`: its void and the face as it died, at `alpha`.
+        private bool VisualDeadHood(Matrix4x4 fit,NativeDeath death,float alpha)
+        {
+            var a=death.actor;if(a==null||sourceModels==null||!sourceModels.Has(NativeSourceModels.SheldonHoodVoid))return false;
+            corpseHat=fit;corpseHatBone??=_=>corpseHat;var glow=HatBody(a.Hat,a.HatColor)??Color.white;
+            sourceModels.Queue(NativeSourceModels.SheldonHoodVoid,Matrix4x4.identity,corpseHatBone,null,body:glow,opacity:alpha);
+            sourceModels.QueueSheldonPieces(corpseHat,NativeSheldonHead.Evaluate(death.at,death.id,-1,-1,HaloReduced),glow,0,null,alpha,1,Color.white);return true;
         }
     }
 }

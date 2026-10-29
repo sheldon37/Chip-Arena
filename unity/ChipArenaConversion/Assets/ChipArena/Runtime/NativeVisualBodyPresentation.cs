@@ -358,7 +358,9 @@ namespace ChipArena.UnityConversion
             VisualHatHair(body,seat.hat);
             if(!string.IsNullOrEmpty(seat.hat)&&seat.hat!="none"&&seat.hat!=NativeSheldonHead.Hat)
             {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
-            VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
+            // The Sheldon Head: the hood's void and face (the body wears the hood; without them the opening showed the model's face).
+            else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
+            if(!body.Hood)VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
             return true;
         }
         private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id,bool hood=false,bool simulate=true)
@@ -373,8 +375,8 @@ namespace ChipArena.UnityConversion
             var look=VisualLookOf(id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);float lift=VisualLiftOf(look);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
             // The Sheldon hood, when its pilot wears the Sheldon Head (its piping in the Sheldon glow with the Sheldon pieces').
             var hoodRenderer=hood?VisualHoodMake(root,skeleton):null;if(hoodRenderer!=null)sheldon.Add(hoodRenderer);
-            // Under it the hair is hidden (the void covers the face; the hair's cloth would swing its tips through).
-            if(hoodRenderer!=null)foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(false))if(r.name.StartsWith("HairFront.",StringComparison.Ordinal)||r.name.StartsWith("HairBack.",StringComparison.Ordinal))r.gameObject.SetActive(false);
+            // Under it the hair, the head and the face are hidden (VisualUnderHood: the void covers the opening).
+            if(hoodRenderer!=null)VisualUnderHood(root);
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=look,Sheldon=sheldon.ToArray(),Lift=lift,Hood=hood,HoodRenderer=hoodRenderer};
             body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];VisualCutWarm(body.All);
             // Its skeleton, off until a wound opens into it (an arena pilot's body; not the view body, busts, ghosts or portraits).
@@ -500,7 +502,7 @@ namespace ChipArena.UnityConversion
                 float g=NativePilotGear.CoreGlow(time,health,time-body.LitAt,a.Id);gearMatrix=body.GearCore.localToWorldMatrix;
                 sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(g,g,g,1),null,flash);
             }
-            if(!first)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);
+            if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);
             // The back emblem on the chest's model bone, glowing as the core does.
             if(!first)
             {
@@ -849,9 +851,10 @@ namespace ChipArena.UnityConversion
             bones=null;joint=null;var root=VisualCorpseInstance();root.name="Visual corpse "+death.id;var look=VisualLookOf(death.id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);var skeleton=root.transform.Find("VisualSkeleton");
             if(skeleton==null){Destroy(root);return null;}
             float lift=VisualLiftOf(look);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
-            // The Sheldon hood the live body wore (its hair hidden under it, as there; VisualCorpseHat draws its face).
+            // The Sheldon hood the live body wore (its hair, head and face hidden under it, as there; VisualCorpseHat and the death
+            // scenes draw its face).
             var hood=VisualHooded(death.actor)?VisualHoodMake(root,skeleton):null;
-            if(hood!=null){sheldon.Add(hood);foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(false))if(r.name.StartsWith("HairFront.",StringComparison.Ordinal)||r.name.StartsWith("HairBack.",StringComparison.Ordinal))r.gameObject.SetActive(false);}
+            if(hood!=null){sheldon.Add(hood);VisualUnderHood(root);}
             // The skeleton inside (a cut or wound shows it).
             VisualSkeletonMake(root,skeleton);
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
@@ -1242,7 +1245,7 @@ namespace ChipArena.UnityConversion
             if(!visualRevives.TryGetValue(key,out var s)||s.Root==null)
             {
                 var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joints);if(root==null)return false;root.name="Visual revive "+death.id;
-                s=new VisualScene{Root=root,Bones=bones,Joint=joints,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Top=new bool[bones.Length]};
+                s=new VisualScene{Root=root,Bones=bones,Joint=joints,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Top=new bool[bones.Length]};VisualSceneHooded(s);
                 var index=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)index[bones[v]]=v;
                 for(int v=0;v<bones.Length;v++){s.Bind[v]=bones[v].localToWorldMatrix;s.Top[v]=bones[v]==null||bones[v].parent==null||!index.TryGetValue(bones[v].parent,out int up)||joints[up]!=joints[v];}
                 for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
@@ -1256,6 +1259,7 @@ namespace ChipArena.UnityConversion
             for(int j=0;j<22;j++)s.Now[j]=joint(j)*s.Inverse[j];
             for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
             if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;float g=grow(s.Joint[v]);if(g<1)s.Bones[v].localScale=Vector3.one*Mathf.Max(.001f,g);}
+            VisualSceneHood(s,death,alpha);
             return true;
         }
         // RenderRevives, after the revivals: a revive body not drawn this frame hides; one unseen 2 s goes.
@@ -1285,11 +1289,24 @@ namespace ChipArena.UnityConversion
             var held=VisualBodyBind(body,rig,a,time,standPose,false,false);var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
             body.Moved=true;if(make)body.Seen=true;return true;
         }
+        // The revive gallery's stand-in wears its hat on the model's head as the arena's pilots do (no arena pass draws it): the
+        // Sheldon Head as the hood's void and face.
+        private void VisualStandHat(CapturedAnimation.Player rig,Actor a,float time)
+        {
+            if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null||string.IsNullOrEmpty(a.Hat)||a.Hat=="none")return;
+            VisualHatHair(body,a.Hat);
+            if(a.Hat!=NativeSheldonHead.Hat){var hb=VisualHatBone(rig,a.Hat);if(!AuditorHalo(a.Hat,hb(CapturedRig.Head),time,1,HaloReduced,0,null,color:a.HatColor))sourceModels.Queue(HatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(a.Hat,a.HatColor));}
+            else SheldonHoodStill(body,a.Hat,a.HatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,a.Hat),time,a.Id,HaloReduced,0,null);
+        }
         // The authored death scenes (NativeSceneMotion.cs SourceDeathScene) move the victim's 22 joints from where they were at
         // death: each visual bone follows its joint's motion since then (the scene's joint matrices over the rig's at death),
         // hidden while the scene hides the pelvis or the body is under half opacity. True: the voxel victim and its hat are not
         // drawn. Kept per death until it goes undrawn for 2 s.
-        private sealed class VisualScene{public bool[] Top;public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;}
+        private sealed class VisualScene{public bool[] Top;public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;public bool Hood;public int Head=-1;}
+        // A scene's or revive's body made with the Sheldon hood: its model head, where the hood's void and face ride (the scene and
+        // the revive draw no hat; the hood is the body's own).
+        private static void VisualSceneHooded(VisualScene s){s.Hood=s.Root.transform.Find(NativeSheldonHood.Renderer)!=null;s.Head=s.Hood?Array.FindIndex(s.Bones,b=>b!=null&&b.name=="head"):-1;}
+        private void VisualSceneHood(VisualScene s,NativeDeath death,float alpha){if(s.Hood&&s.Head>=0)VisualDeadHood(VisualHatFit(s.Bones[s.Head],NativeSheldonHead.Hat),death,alpha);}
         private readonly Dictionary<long,VisualScene> visualScenes=new Dictionary<long,VisualScene>();private readonly List<long> visualScenesGone=new List<long>();
         private bool VisualSceneShown(NativeDeath death,Func<int,Matrix4x4> bone,Func<int,bool> visible,float alpha)
         {
@@ -1298,7 +1315,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!rigs.TryGetValue(death.id,out var rig))return false;
                 var root=VisualDeathBody(rig,death,Vector3.zero,out var bones,out var joint);if(root==null)return false;
-                s=new VisualScene{Root=root,Bones=bones,Joint=joint,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death)};
+                s=new VisualScene{Root=root,Bones=bones,Joint=joint,Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death)};VisualSceneHooded(s);
                 for(int v=0;v<bones.Length;v++)s.Bind[v]=bones[v].localToWorldMatrix;
                 for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;
                 visualScenes[key]=s;
@@ -1309,6 +1326,7 @@ namespace ChipArena.UnityConversion
             if(visualDissolve)VisualDissolve(s.All,ref s.Dissolve,1-alpha,s.Edge);
             for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];
             for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
+            VisualSceneHood(s,death,alpha);
             return true;
         }
         // PresentDeath, where the body draws: pose the corpse's visual body; true when it stands in for the voxel body this frame
@@ -1339,8 +1357,9 @@ namespace ChipArena.UnityConversion
             }
             if(flat){var scale=new Vector3(overlay.GetColumn(0).magnitude,overlay.GetColumn(1).magnitude,overlay.GetColumn(2).magnitude);root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);}
             if(c.Holes!=null)VisualHolesCut(c.All,c.Bones,c.Holes,null);
-            // The face gear stays on a whole corpse's head as it fades (not on a split half, a crushed head or under a kill look).
-            if(c.Look==0&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)
+            // The face gear stays on a whole corpse's head as it fades (not on a split half, a crushed head, under a kill look or
+            // under the Sheldon hood, whose face it would break through).
+            if(c.Look==0&&!c.Hood&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
                 if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
@@ -1359,12 +1378,7 @@ namespace ChipArena.UnityConversion
             if(!visualCorpses.TryGetValue(on,out var c)||c.Root==null||!c.Root.activeSelf||c.Look!=0)return false;
             if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");if(c.Head<0)return false;
             corpseHat=VisualHatFit(c.Bones[c.Head],hat);corpseHatBone??=_=>corpseHat;
-            if(hat==NativeSheldonHead.Hat)
-            {
-                if(!c.Hood||sourceModels==null||!sourceModels.Has(NativeSourceModels.SheldonHoodVoid))return false;
-                var glow=HatBody(hat,a.HatColor)??Color.white;sourceModels.Queue(NativeSourceModels.SheldonHoodVoid,Matrix4x4.identity,corpseHatBone,null,body:glow,opacity:alpha);
-                sourceModels.QueueSheldonPieces(corpseHat,NativeSheldonHead.Evaluate(death.at,death.id,-1,-1,HaloReduced),glow,0,null,alpha,1,Color.white);return true;
-            }
+            if(hat==NativeSheldonHead.Hat)return c.Hood&&VisualDeadHood(corpseHat,death,alpha);
             if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&corpse.HatModel!=null)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpseHatBone,null,HatBody(hat,a.HatColor),null,alpha);
             return true;
         }

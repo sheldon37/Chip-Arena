@@ -281,7 +281,7 @@ namespace ChipArena.UnityConversion
             if(age>=NativeReviveRules.Scan){StandFromBody(g,galleryReviveRig,age);float lift=NativeReviveHolo.Lift(age);if(lift>0)galleryReviveRig.Root.transform.position+=Vector3.up*lift;}
             RenderRevival(arena,g,galleryReviveRig,now,true);
             // The stand-in itself once it stands (a live pilot's rig is drawn with the arena's actors).
-            if(age>=NativeReviveRules.Scan&&VisualStandPose(galleryReviveRig,galleryReviveActor,now,true)){}
+            if(age>=NativeReviveRules.Scan&&VisualStandPose(galleryReviveRig,galleryReviveActor,now,true))VisualStandHat(galleryReviveRig,galleryReviveActor,now);
             else if(age>=NativeReviveRules.Scan){var h=g.Holo;h.Rig=galleryReviveRig;sourceModels.Queue(h.Healed,Matrix4x4.identity,h.RigBone,null,body:h.Tint,accent:h.Accent);if(h.Hat!=null)sourceModels.Queue(h.Hat,Matrix4x4.identity,h.RigBone,null,body:h.HatTint);}
             if(age>=NativeReviveHolo.End&&age<NativeReviveHolo.Total)
             {var floor=new Vector3(galleryReviveAt.x,g.FloorY,galleryReviveAt.z);DrawReviveGlows(NativeReviveHolo.Halo(age,unchecked((uint)g.Seed),CutNum(floor),NativeReviveHolo.StandRadius,0,ReviveTier,false,reviveGlows,0),now);}
