@@ -1,3 +1,9 @@
+## 2026-10-28 — Claude: cloth confirmed in the builder's Windows build
+
+- **Build:** shared `420fde9e` (Astra's #297 Brickfall builder check fix on top of `claude/cloth-bridge-regen`) built and published by the builder with the Drive zip that carries the cloth runtime: channel commit `125aa83f`, public feed verified.
+- **Checked (actual):** the build log imports `Assets/LocalAssets/MagicaCloth2` and lists `ChipArenaClothBridge.cs` in the build report; the player's `Managed` has `MagicaClothV2.dll`, Burst, Collections and Mathematics, with `Plugins/x86_64/lib_burst_generated.dll`; `RuntimeInitializeOnLoads.json` lists `ChipArenaClothBridge.Register` (before the scene) and `NativeVisualCloth.ReportRegistration`; the player run headless for 20 s logs "Cloth runtime: bridge registered (attach/enable/reset)".
+- **Not run:** cloth motion seen in the Windows player (hair, the DEV Sheldon robe's skirt, the Sheldon hood's cowl): the owner's play check; multiplayer.
+
 ## 2026-10-28 — Astra: isolate Brickfall's builder validation from fatal combat fixtures
 
 - **Branch/base:** `codex/brickfall-builder-check`, from shared `d967a336` (includes Claude's regenerated cloth-bridge/Drive bundle receipt). Builder base inspected: `40b7c1a7`.
