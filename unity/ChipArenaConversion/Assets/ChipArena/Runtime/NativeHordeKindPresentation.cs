@@ -309,7 +309,7 @@ namespace ChipArena.UnityConversion
             float swell=HordeSwellNow(s,m,now);var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);StationGlow(m,kind,now,ref glow);
             // On the player's model (NativeZombieModelPresentation.cs) for a modelled kind on the full tier, else the voxel model.
             bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;
-            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Lost,0,flash,glow.x)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
+            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Lost,0,flash,glow.x,swell)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
             bool vent=a.Entry.kind=="vent";
             HordeAdd(rig,m.Id,a.Travelling?float.NaN:(float)NativeMinionFx.VentAge(vent,a.ActiveAt,hordeClock),float.NaN,vent?NativeArena.Vec(a.Entry.@exit.Position(.9f)).y-.9f:ground,ground,a.Possessed?a.PossessedAt:float.NaN,velocity,a.Lost,true,kind*8+s.Look);
             return true;
@@ -530,7 +530,9 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // Severed, sliced and gibbed parts (the model's own parts, tumbling, bouncing, bleeding, then lying with the corpses)
         // ================================================================================================================
-        private sealed class HordePart{public bool Live;public string Model;public int Kind,Joint,Id,Bled;public uint Seed;public float At,Kick,Floor;public NVector2 Push;public readonly Matrix4x4[] Bones=new Matrix4x4[22];public Matrix4x4 Root;}
+        private sealed class HordePart{public bool Live;public string Model;public int Kind,Joint,Id,Bled;public uint Seed;public float At,Kick,Floor;public NVector2 Push;public readonly Matrix4x4[] Bones=new Matrix4x4[22];public Matrix4x4 Root;
+            // A modelled zombie's part: its pieces cut from the model (NativeZombieModelPresentation.cs), drawn in place of the voxel part.
+            public List<ZombiePiece> Pieces;}
         private readonly HordePart[] hordeParts=MakeHordeParts();private int hordePartNext;
         private static HordePart[] MakeHordeParts(){var p=new HordePart[HordePartMax];for(int i=0;i<p.Length;i++)p[i]=new HordePart();return p;}
         /// <summary>The parts kept (the oldest goes first); each lies as long as a corpse on the tier (NativeHordeGore.CorpseLife).</summary>
@@ -539,6 +541,7 @@ namespace ChipArena.UnityConversion
         {
             var p=hordeParts[hordePartNext++%hordeParts.Length];p.Live=true;p.Model=model;p.Kind=kind;p.Joint=joint;p.Id=id;p.At=at;p.Bled=0;p.Push=push;p.Kick=kick;p.Floor=floor;p.Seed=NativeHordeKinds.Seed(id)^(uint)(joint*2654435761u);
             p.Root=rig.Root.transform.localToWorldMatrix;for(int b=0;b<22;b++)p.Bones[b]=rig.Bones[b].localToWorldMatrix;
+            p.Pieces=ZombiePartPieces(id,joint,p.Pieces);
         }
         // The authority's severed limbs (new LIMB bits on a living add): each root limb's part flies off along the newest blow.
         private void HordeSever(CapturedAnimation.Player rig,HordeKindState s,int fresh,float now,float ground)
@@ -563,9 +566,9 @@ namespace ChipArena.UnityConversion
             int tier=hordeGore.Tier<0?0:hordeGore.Tier>2?2:hordeGore.Tier;float life=NativeHordeGore.CorpseLife[tier];
             for(int i=0;i<hordeParts.Length;i++)
             {
-                var p=hordeParts[i];if(!p.Live)continue;float age=now-p.At;if(age<-.5f||NativeHordeGore.Gone(age,life)){p.Live=false;continue;}if(age<0)continue;
+                var p=hordeParts[i];if(!p.Live)continue;float age=now-p.At;if(age<-.5f||NativeHordeGore.Gone(age,life)){p.Live=false;ZombiePiecesFree(p.Pieces);continue;}if(age<0)continue;
                 NativeHordeGore.Sink(age,life,out float sink,out float alpha);hordeDrawPart=p;hordeDrawAge=age;hordeDrawSink=sink;var body=HordeVariation(p.Model,p.Id);body.a=alpha;
-                sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,body:body,glow:HordeGlow(p.Id));
+                if(!ZombiePartDrawn(p,age,sink))sourceModels.Queue(p.Model,p.Root,hordePartBone,hordePartVisible,body:body,glow:HordeGlow(p.Id));
                 // The cut: a raw cap on the part's root (its parent's side), and blood trailing off it while it flies.
                 var turn=HordePartTurn(p,age,out var stump);var m=turn*p.Bones[p.Joint];var cut=NativeHordeGore.CutOut(p.Joint);var along=m.MultiplyVector(new Vector3(cut.X,cut.Y,cut.Z)).normalized;stump.y-=sink;
                 float scale=m.MultiplyVector(Vector3.right).magnitude;hordeGore.Cap(GoreV(stump),GoreV(along),NativeHordeGore.PartCut(p.Kind,p.Joint)*scale,age,p.Seed,sink);

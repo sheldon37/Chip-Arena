@@ -16,7 +16,7 @@ internal static class ZombieModelChecks
     private static int Picks(){int sink=0;for(int i=0;i<4000;i++){var v=NativeZombieLooks.Of(Kinds[i%Kinds.Length],10000+i);sink+=v.Female?1:0;}return sink;}
     public static void Run(string root)
     {
-        Table();Pick();Shapes();Sources(root);
+        Table();Pick();Shapes();Sac();Decay();Sources(root);
         Console.WriteLine("PASS zombie models: "+count+" checks (20 variants over five kinds, two male and two female each; wardrobe fallbacks; silhouettes by build; the pick by id; the shape names; the shader's zombie look; the horde's draw, death, corpses and wounds on the model; presentation only)");
     }
 
@@ -48,7 +48,7 @@ internal static class ZombieModelChecks
             Check(v.Shapes.Length==NativeZombieLooks.ShapeNames.Length&&v.Shapes.Take(NativeZombieLooks.BodyShapes).All(w=>!float.IsNaN(w))&&v.Shapes.All(w=>float.IsNaN(w)||w>=-100&&w<=100),v.Id+": every body shape set, weights in -100..100");
             var b=v.Build;
             Check(new[]{b.Arm,b.Forearm,b.Thigh,b.Calf,b.Hand}.All(g=>g>=.8f&&g<=1.6f)&&b.Head>=.9f&&b.Head<=1.1f&&b.Shoulder>=.9f&&b.Shoulder<=1.2f,v.Id+": the build within the rig's limits");
-            Check(v.Grime>=0&&v.Grime<=1&&v.Tears>=0&&v.Tears<=.5f&&v.Rot>=0&&v.Rot<=1,v.Id+": wear within 0..1 (tears at most half: a few patches, not shreds)");
+            Check(v.Grime>=0&&v.Grime<=1&&v.Tears>=0&&v.Tears<=.62f&&v.Rot>=0&&v.Rot<=1,v.Id+": wear within 0..1 (torn, not shredded: the owner's \"torn clothes\", 2026-10-29)");
             // Pale skin and blank eyes: every zombie's skin is greyed (low saturation), its eyes near white.
             float Sat(int rgb){float r=(rgb>>16&255)/255f,g=(rgb>>8&255)/255f,bl=(rgb&255)/255f,hi=Math.Max(r,Math.Max(g,bl)),lo=Math.Min(r,Math.Min(g,bl));return hi>0?(hi-lo)/hi:0;}
             Check(Sat(v.Skin)<.22f&&Sat(v.Eyes)<.1f&&(v.Eyes>>16&255)>200,v.Id+": greyed skin, blank eyes");
@@ -76,7 +76,7 @@ internal static class ZombieModelChecks
         Check(NativeZombieLooks.Of(NativeHordeKinds.Crawler,1)==null&&NativeZombieLooks.Of(NativeHordeKinds.Bloater,1)==null&&NativeZombieLooks.Of(NativeHordeKinds.Count,1)==null,"kinds without variants keep their voxel model");
         bool was=NativeZombieLooks.Drafts;
         NativeZombieLooks.Drafts=false;
-        Check(NativeZombieLooks.Modelled(NativeHordeKinds.Shambler)&&Kinds.Skip(1).All(k=>!NativeZombieLooks.Modelled(k)),"shipped: the shambler on the model first (the owner's order), the rest voxel until reviewed");
+        Check(Kinds.All(NativeZombieLooks.Modelled)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Crawler)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Bloater),"shipped: all five kinds on the model after the PC captures (the shambler first, then the reviewed drafts); never the crawler or bloater");
         NativeZombieLooks.Drafts=true;
         Check(Kinds.All(NativeZombieLooks.Modelled)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Crawler)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Bloater)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Count)&&!NativeZombieLooks.Modelled(-1),"drafts: all five kinds; never the crawler, bloater or a zone kind");
         NativeZombieLooks.Drafts=was;
@@ -93,6 +93,59 @@ internal static class ZombieModelChecks
             Check(NativeZombieLooks.ShapeMatches(name,want)==ok,"shape name "+(name??"null")+" is "+want+": "+ok);
     }
 
+    // ---- the spitter's throat sac (Core NativeZombieSac) ----
+    private static void Sac()
+    {
+        var neck=new System.Numerics.Vector3(0,1.45f,0);var head=new System.Numerics.Vector3(0,1.55f,.01f);var fwd=new System.Numerics.Vector3(0,0,1);
+        var s=NativeZombieSac.Build(neck,head,fwd,0x8f9a86);
+        Check(s!=null&&s.Positions.Count==2+(NativeZombieSac.Rings-1)*NativeZombieSac.Sides&&s.Indices.Count%3==0&&s.Indices.All(i=>i>=0&&i<s.Positions.Count),"the sac builds: a closed ellipsoid of rings");
+        Check(s.Positions.Count==s.Normals.Count&&s.Positions.Count==s.Swell.Count&&s.Positions.Count==s.Colors.Count&&s.Positions.Count==s.Head.Count,"every vertex has a normal, a swell, a colour and a head share");
+        var c=s.Positions.Aggregate(System.Numerics.Vector3.Zero,(a,p)=>a+p)/s.Positions.Count;
+        Check(c.Z>.02f&&c.Y>neck.Y&&c.Y<head.Y,"ahead of the neck, between neck_01 and the head (under the jaw)");
+        float back=s.Positions.Min(p=>p.Z),front=s.Positions.Max(p=>p.Z);Check(front-c.Z>(c.Z-back)*1.3f,"its back half flattened into the neck");
+        var swollen=s.Positions.Select((p,i)=>p+s.Swell[i]).ToList();Check(swollen.Max(p=>p.Z)>front+.03f&&swollen.Max(p=>p.X)>s.Positions.Max(p=>p.X)+.015f,"swollen, it grows forward and wide");
+        Check(s.Head.All(h=>h>=0&&h<=.76f)&&s.Head[0]>.5f&&s.Head[s.Head.Count-1]<.05f,"its top rides the head, its bottom the neck");
+        Check(Math.Abs(s.Colors[0].X-0x8f/255f)<.02f&&s.Colors[s.Colors.Count-1].Y>s.Colors[s.Colors.Count-1].Z,"its top blends into the skin, its tip a paler acid green");
+        int outward=0,tris=s.Indices.Count/3;for(int t=0;t<tris;t++){var a=s.Positions[s.Indices[t*3]];var b=s.Positions[s.Indices[t*3+1]];var d=s.Positions[s.Indices[t*3+2]];if(System.Numerics.Vector3.Dot(System.Numerics.Vector3.Cross(b-a,d-a),(a+b+d)/3-c)>0)outward++;}
+        Check(outward==tris,"every face turned out ("+outward+" of "+tris+")");
+        Check(NativeZombieSac.Glow(0)==NativeZombieSac.GlowRest&&NativeZombieSac.Glow(1)==NativeZombieSac.GlowSwollen&&NativeZombieSac.Glow(2)==NativeZombieSac.GlowSwollen,"its glow rises with the swell");
+        Check(NativeZombieSac.Build(neck,neck,fwd,0)==null&&NativeZombieSac.Build(neck,head,head-neck,0)==null,"no sac without a neck line or a front");
+        Check(NativeZombieLooks.All.Where(v=>v.Sac).All(v=>v.Kind==NativeHordeKinds.Spitter)&&NativeZombieLooks.All.Count(v=>v.Sac)==4,"every spitter wears one, nothing else");
+    }
+
+    // ---- the undead look: decay openings onto flesh and bone (Core NativeZombieDecay), wear ----
+    private static void Decay()
+    {
+        foreach(var v in NativeZombieLooks.All)
+        {
+            Check(v.Decay!=null&&v.Decay.Length>=2&&v.Decay.Length<=NativeZombieDecay.Max&&v.Decay.All(n=>NativeZombieDecay.Find(n)!=null)&&v.Decay.Distinct().Count()==v.Decay.Length,v.Id+": two to four decay openings, each a known site");
+            Check(v.Tears>=.35f&&v.Tears<=.62f&&v.Rot>=.35f&&v.Rot<=.75f&&v.Blood>=.4f&&v.Blood<=.6f&&v.Grime>0,v.Id+": torn, rotting and bloodied");
+        }
+        Check(NativeZombieDecay.All.Select(x=>x.Name).Distinct().Count()==NativeZombieDecay.All.Length&&NativeZombieDecay.All.All(x=>x.Radius>.02f&&x.Radius<.08f&&x.Depth>0&&x.Depth<.06f),"every site named once, a few centimetres wide");
+        foreach(var x in NativeZombieDecay.All.Where(x=>x.Name.EndsWith("-l",StringComparison.Ordinal)))Check(NativeZombieDecay.Find(x.Name.Substring(0,x.Name.Length-2)+"-r") is NativeZombieDecay.Site r&&r.Radius==x.Radius&&r.Bone==x.Bone.Replace("_l","_r")&&r.Limb==x.Limb,x.Name+": its right twin");
+        // On a mannequin's rest joints (root space, +z front, the left at -x as the bake has it).
+        var j=new System.Collections.Generic.Dictionary<string,System.Numerics.Vector3>{
+            {"spine_02",new(0,1.10f,.035f)},{"spine_03",new(0,1.16f,.043f)},{"spine_04",new(0,1.25f,.038f)},{"spine_05",new(0,1.42f,0)},{"head",new(0,1.6f,-.005f)},
+            {"clavicle_l",new(-.01f,1.48f,-.02f)},{"clavicle_r",new(.01f,1.48f,-.02f)},{"upperarm_l",new(-.13f,1.45f,-.03f)},{"upperarm_r",new(.13f,1.45f,-.03f)},
+            {"lowerarm_l",new(-.29f,1.24f,-.03f)},{"lowerarm_r",new(.29f,1.24f,-.03f)},{"hand_l",new(-.43f,1.09f,.06f)},{"hand_r",new(.43f,1.09f,.06f)},
+            {"thigh_l",new(-.09f,.95f,0)},{"thigh_r",new(.09f,.95f,0)},{"calf_l",new(-.1f,.5f,.01f)},{"calf_r",new(.1f,.5f,.01f)},{"foot_l",new(-.1f,.08f,-.02f)},{"foot_r",new(.1f,.08f,-.02f)}};
+        System.Numerics.Vector3? Rest(string n)=>j.TryGetValue(n,out var p)?p:(System.Numerics.Vector3?)null;
+        foreach(var x in NativeZombieDecay.All)
+        {
+            Check(NativeZombieDecay.Place(x,Rest,out var at,out var dir)&&Math.Abs(dir.Length()-1)<1e-4f,x.Name+": placed on the rest joints");
+            if(x.Name.EndsWith("-l",StringComparison.Ordinal))Check(dir.X<-.1f,x.Name+": faces out of the left side");
+            if(x.Name.EndsWith("-r",StringComparison.Ordinal))Check(dir.X>.1f,x.Name+": faces out of the right side");
+            if(x.Limb){var axis=System.Numerics.Vector3.Normalize(j[x.To]-j[x.From]);Check(Math.Abs(System.Numerics.Vector3.Dot(axis,dir))<1e-3f,x.Name+": square to its limb");}
+        }
+        NativeZombieDecay.Place(NativeZombieDecay.Find("ribs-l"),Rest,out var ribs,out _);Check(ribs.Y>1.25f&&ribs.Y<1.3f,"the ribs' openings at the ribcage, not the waist");
+        NativeZombieDecay.Place(NativeZombieDecay.Find("back"),Rest,out _,out var back);Check(back.Z<-.99f,"the back's opening faces behind");
+        Check(!NativeZombieDecay.Place(NativeZombieDecay.Find("shin-l"),n=>n=="foot_l"?null:Rest(n),out _,out _)&&!NativeZombieDecay.Place(null,Rest,out _,out _),"no opening without its joints");
+        var shin=NativeZombieDecay.Find("shin-l");var ribsSite=NativeZombieDecay.Find("ribs-l");
+        Check(NativeZombieDecay.DepthOf(shin,.05f)==.05f+shin.Depth&&NativeZombieDecay.DepthOf(ribsSite,.15f)==ribsSite.Depth,"a limb's opening reaches past its bone, a trunk's its own depth");
+        float lo=9,hi=0;for(int a=0;a<720;a++){float r=NativeZombieDecay.Rag(a*MathF.PI/360,.37f);lo=Math.Min(lo,r);hi=Math.Max(hi,r);}
+        Check(lo>.55f&&hi<1.09f&&hi-lo>.2f,"a ragged rim within its pit's 1.12 radius ("+lo.ToString("F2")+" to "+hi.ToString("F2")+")");
+    }
+
     // ---- the shader and the runtime ----
     private static void Sources(string root)
     {
@@ -103,9 +156,9 @@ internal static class ZombieModelChecks
         Check(look.Contains("if(_ZombieEye.w>0.5)return _ZombieEye.rgb;")&&look.Contains("if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;"),"the zombie look: blank eyes, and nothing changed with it unset (every pilot)");
         Check(Regex.Matches(toon,@"_Zombie(Tint|Wear|Eye|Skin)\(""[^""]*"",Vector\)=\(0,0,0,0\)").Count==4,"its four properties off by default");
         Check(toon.Contains("if(_VertexAlbedo<=0){o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D);")&&toon.Contains("albedo=ZombieLook(albedo,i.uv);"),"the surface and its outline take the zombie look (never a cut's cap)");
-        Check(look.Contains("edge=1.0-0.45*_ZombieWear.y")&&look.Contains("uv*5.3"),"torn patches on the part's own texture coordinates (they stay on the cloth), a few at the table's tears");
+        Check(look.Contains("edge=1.0-0.45*_ZombieWear.y")&&look.Contains("ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3"),"torn patches on the part's own texture coordinates (they stay on the cloth), a few at the table's tears");
         // The horde: the model in place of the voxel model on the full tier; the voxel draw kept as the fallback.
-        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Lost,0,flash,glow.x)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}"),"a living add: its model, else its voxel model and jaw");
+        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Lost,0,flash,glow.x,swell)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}"),"a living add: its model, else its voxel model and jaw");
         Check(kp.Contains("bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;"),"feet planted on the gait, a door's wake and a landing; airborne in a dive and a jump-down's fall");
         Check(kp.Contains("if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);"),"a death: its model falls, else the voxel body");
         Check(kp.Contains("ClearHordeGore();ClearZombieModels();"),"cleared with the horde");
@@ -119,6 +172,19 @@ internal static class ZombieModelChecks
         Check(zr.Contains("if(zombieMakes>=ZombieMakesPerFrame||zombiePool.Count==0)return null;")&&zr.Contains("ZombieMakesPerFrame=3,ZombieSparesPerVariant=6")&&zr.Contains("zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);")&&!zr.Contains("VisualCorpseInstance()")&&!zr.Contains("Instantiate(visualBodyPrefab)"),"a few new bodies a frame from their own pool, made ahead off the main thread (never at once, never the pilots' corpse pool); spares kept per variant");
         Check(kp.Contains("if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);"),"the pool made ahead while a horde is about");
         Check(zr.Contains("Graphics.DrawMesh(mesh,m,mats[sub],0,null,sub,c.Blocks[i],false,true)"),"a corpse drawn from its baked meshes, no shadow");
+        Check(zr.Contains("var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;")&&zr.IndexOf("var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;",StringComparison.Ordinal)>zr.IndexOf("ZombieBuild(skeleton,v.Build);",StringComparison.Ordinal),"a spitter's sac made on its built rest");
+        Check(zr.Contains("ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);")&&zr.Contains("z.Sac.SetBlendShapeWeight(0,swell*100);")&&zr.Contains("ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);"),"the sac swells with the gait's swell, none in a death");
+        Check(zr.Contains("ws[i]=new BoneWeight{boneIndex0=0,weight0=1-sac.Head[i],boneIndex1=1,weight1=sac.Head[i]};")&&zr.Contains("renderer.bones=new[]{neck,head};"),"skinned on neck_01 and the head");
+        Check(zr.Contains("zombieBlock.SetFloat(UseOutlineId,0);r.SetPropertyBlock(zombieBlock);continue;}"),"blank eyes drawn without an outline (a map's tinted line reads as an iris)");
+        // The undead look: the decay openings cut in the meshes' rest space, with pits and bones; the wear's blood and gashes.
+        Check(fx.Contains("void DecayClip(float3 rest)")&&toon.Contains("clip(i.cut);DecayClip(i.rest);WoundClip(i.worldPos);")&&toon.Contains("clip(i.cut);DecayClip(i.rest);WoundClip(i.world);")&&Regex.Matches(toon,@"o\.rest=v\.texcoord3\.xyz;").Count==2,"both passes cut the openings in the rest space");
+        Check(look.Contains("if(_ZombieSkin.w>0.0)")&&look.Contains("float gash=")&&look.Contains("float3 under="),"dried blood in the cloth, gashes on the skin, raw flesh through the tears");
+        Check(zr.Contains("if(v.Decay!=null&&v.Decay.Length>0)body.All=ZombieDecayMake(root,skeleton,v,body.All);")&&zr.Contains("s.sharedMesh.SetUVs(3,rest);")&&zr.Contains("var pit=VisualHolePit(all,bone,h);")&&zr.Contains("var go=new GameObject(\"Bones.Decay\");"),"each opening's rest written once, its pit and its bones made");
+        Check(zr.Contains("private static bool ZombieDecayCut(Renderer r)=>r!=null&&!ZombieEyePart(r)&&!r.name.StartsWith(\"Teeth.\",StringComparison.Ordinal)&&r.name!=\"Sac.Spitter\";"),"eyes, teeth and the sac never cut");
+        // Flying parts from the model, not the voxel parts; their meshes pooled.
+        Check(kp.Contains("p.Pieces=ZombiePartPieces(id,joint,p.Pieces);")&&kp.Contains("if(!ZombiePartDrawn(p,age,sink))sourceModels.Queue(p.Model,")&&kp.Contains("p.Live=false;ZombiePiecesFree(p.Pieces);continue;"),"a modelled zombie's severed, sliced and gibbed parts are its own model's");
+        Check(zr.Contains("if((mine[t[i]]?1:0)+(mine[t[i+1]]?1:0)+(mine[t[i+2]]?1:0)<2)continue;")&&zr.Contains("skin.BakeMesh(baked,true);zombieBakedNow[skin]=baked;"),"a part keeps the triangles skinned mostly to its bones, each renderer baked once a frame");
+        Check(zr.Contains("if(c.Meshes[i]!=null&&c.Baked[i])zombieCorpseMeshes.Push(c.Meshes[i]);"),"a corpse's pits drawn from their own meshes, never pooled for bakes");
         foreach(var ban in new[]{".Hp=","StrikeAt","LastAttack=","Struck","Damage(","NativeNetwork","PveAddStats",".radius=",".height="})Check(!zr.Contains(ban)&&!core.Contains(ban),"presentation only: never "+ban);
         Check(!core.Contains("UnityEngine"),"the table is Core (no Unity types)");
     }

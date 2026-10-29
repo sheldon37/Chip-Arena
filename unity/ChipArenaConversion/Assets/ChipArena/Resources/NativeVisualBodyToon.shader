@@ -50,7 +50,9 @@ Shader "ChipArena/VisualBodyToon" {
 //  - a corpse's cut (NativeVisualBodyFx.cginc CutKeep, per vertex by its index): a split's halves each cut away the other's
 //    side of the blade's plane, a severed body what is not wholly on one piece, the outline with it; its caps are meshes of
 //    their own in this shader, coloured by their vertex colours (_VertexAlbedo), as is the skeleton inside;
-//  - open wounds (NativeVisualBodyFx.cginc WoundClip): holes through the skin and clothes onto their pits and the skeleton.
+//  - open wounds (NativeVisualBodyFx.cginc WoundClip): holes through the skin and clothes onto their pits and the skeleton;
+//  - a zombie's decay openings (NativeVisualBodyFx.cginc DecayClip): cut in the meshes' rest space (their fourth texture
+//    coordinates), onto a flesh pit with the skeleton inside.
  SubShader { Tags { "RenderType"="TransparentCutout" "Queue"="AlphaTest" } Cull [_Cull]
  Stencil { Ref 0 WriteMask 16 Comp Always Pass Replace }
  CGPROGRAM
@@ -59,7 +61,7 @@ Shader "ChipArena/VisualBodyToon" {
  #define VISUAL_BODY_CUT
  sampler2D _Texture2D;float _UseCustomTexture,_VertexAlbedo;
  float4 _Color_1,_Color_2,_Color_3,_Color_4,_Color_5,_Color_6,_Color_7,_Color_8,_Color_9;
- struct Input {float2 uv_Texture2D;float4 color:COLOR;float3 worldPos;float3 worldNormal;float3 viewDir;float cut;};
+ struct Input {float2 uv_Texture2D;float4 color:COLOR;float3 worldPos;float3 worldNormal;float3 viewDir;float cut;float3 rest;};
  float _ArenaActorLit;float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];
  #include "NativeWardLight.cginc"
  #include "NativeMuzzleLight.cginc"
@@ -79,10 +81,10 @@ Shader "ChipArena/VisualBodyToon" {
  float _AccentGlow;
  float3 VisualAccentPart(float3 w,float3 layer){return lerp(lerp(_Color_3.rgb*w.z*layer.x,_Color_6.rgb*w.z,layer.y),_Color_9.rgb*w.z,layer.z);}
  struct appdata_cut {float4 vertex:POSITION;float4 tangent:TANGENT;float3 normal:NORMAL;float4 texcoord:TEXCOORD0;float4 texcoord1:TEXCOORD1;float4 texcoord2:TEXCOORD2;float4 texcoord3:TEXCOORD3;float4 color:COLOR;uint vid:SV_VertexID;};
- void CutVert(inout appdata_cut v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.cut=CutKeep(v.vid);}
+ void CutVert(inout appdata_cut v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.cut=CutKeep(v.vid);o.rest=v.texcoord3.xyz;}
  void surf(Input i,inout SurfaceOutput o)
  {
-  clip(i.cut);WoundClip(i.worldPos);SpawnClip(i.worldPos);RevealClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
+  clip(i.cut);DecayClip(i.rest);WoundClip(i.worldPos);SpawnClip(i.worldPos);RevealClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
   float front=DissolveFront(i.uv_Texture2D);o.Emission+=_DissolveEdge.rgb*front;
   o.Albedo=_VertexAlbedo>0?i.color.rgb:SpawnTinted(SkinToned(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb),i.worldPos.y);o.Alpha=map.a;
   if(_VertexAlbedo<=0){o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D);if(_ZombieEye.w>1)o.Emission+=_ZombieEye.rgb*(_ZombieEye.w-1);}
@@ -140,8 +142,8 @@ Shader "ChipArena/VisualBodyToon" {
    return float3(.0232,.0130,.0513);
    #endif
   }
-  struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;float4 texcoord:TEXCOORD0;float4 color:COLOR;uint vid:SV_VertexID;};
-  struct v2f {float4 pos:SV_POSITION;float2 uv:TEXCOORD0;float4 color:TEXCOORD1;float3 world:TEXCOORD2;float3 normal:TEXCOORD3;float ink:TEXCOORD4;UNITY_SHADOW_COORDS(5) UNITY_FOG_COORDS(6) float cut:TEXCOORD7;};
+  struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;float4 texcoord:TEXCOORD0;float4 texcoord3:TEXCOORD3;float4 color:COLOR;uint vid:SV_VertexID;};
+  struct v2f {float4 pos:SV_POSITION;float2 uv:TEXCOORD0;float4 color:TEXCOORD1;float3 world:TEXCOORD2;float3 normal:TEXCOORD3;float ink:TEXCOORD4;UNITY_SHADOW_COORDS(5) UNITY_FOG_COORDS(6) float cut:TEXCOORD7;float3 rest:TEXCOORD8;};
   v2f vert(appdata v)
   {
    v2f o;float3 world=mul(unity_ObjectToWorld,v.vertex).xyz;float3 n=normalize(UnityObjectToWorldNormal(v.normal));
@@ -161,12 +163,12 @@ Shader "ChipArena/VisualBodyToon" {
    // map line takes its nearer surface's, not the far side's the hull's back faces show.
    float3 across=n-ray*dot(n,ray);float lean=length(across);across=lean>.001?across/lean:n;
    o.pos=UnityObjectToClipPos(v.vertex);o.uv=TRANSFORM_TEX(v.texcoord.xy,_Texture2D);o.color=v.color;o.color.a=keep;
-   o.world=mul(unity_ObjectToWorld,v.vertex).xyz;o.normal=across;o.ink=ink;o.cut=CutKeep(v.vid);
+   o.world=mul(unity_ObjectToWorld,v.vertex).xyz;o.normal=across;o.ink=ink;o.cut=CutKeep(v.vid);o.rest=v.texcoord3.xyz;
    UNITY_TRANSFER_SHADOW(o,v.texcoord.xy);UNITY_TRANSFER_FOG(o,o.pos);return o;
   }
   fixed4 frag(v2f i):SV_Target
   {
-   clip(i.color.a-.5);clip(i.cut);WoundClip(i.world);SpawnClip(i.world);RevealClip(i.world);float4 map=tex2D(_Texture2D,i.uv);clip(map.a-_Cutoff);
+   clip(i.color.a-.5);clip(i.cut);DecayClip(i.rest);WoundClip(i.world);SpawnClip(i.world);RevealClip(i.world);float4 map=tex2D(_Texture2D,i.uv);clip(map.a-_Cutoff);
    DissolveFront(i.uv);
    float3 albedo=SpawnTinted(SkinToned(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb),i.world.y);float3 n=normalize(i.normal);
    albedo=ZombieLook(albedo,i.uv);

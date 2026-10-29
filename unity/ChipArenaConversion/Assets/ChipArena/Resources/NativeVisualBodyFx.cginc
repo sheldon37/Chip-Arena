@@ -81,12 +81,16 @@ float3 SkinToned(float3 c)
 // A zombie on the model (Runtime/NativeZombieModelPresentation.cs; Core/NativeZombieLooks), per renderer, after the skin tone:
 //  _ZombieTint:  a clothing or hair piece's colour, rgb (the shader's colour space), w one over the piece's own main brightness:
 //                each pixel takes the colour at its own brightness against the piece's, so seams, folds and prints keep their
-//                light and shade; 0 off
+//                light and shade; brighter parts (pockets, trims, a hoodie's lining) rise more gently and fade toward a dirty
+//                grey, so a light second colour never reads as bare skin or a glowing band; 0 off
 //  _ZombieWear:  x grime (darker, duller, browner in soft patches), y torn patches (the skin, _ZombieSkin, through ragged holes
 //                with a frayed dark rim), z rot (bruised blotches on skin), w the add's seed; all read on the part's own
-//                texture coordinates, so the patches stay on the cloth as the body moves
+//                texture coordinates, so the patches stay on the cloth as the body moves. The pack packs each piece into a
+//                corner of its texture (a leg is about a tenth of it across), so the noise is fine: holes a few centimetres wide.
 //  _ZombieEye:   the blank eyes: rgb their colour, w on (the eye mesh drawn in it, iris and pupil gone); past 1 they glow by
 //                w - 1 (the surface pass's emission: brighter through a wind-up)
+//  _ZombieSkin:  rgb the skin under torn clothes (raw and bloodied toward a hole's middle); w dried blood soaked into the cloth
+//  On skin the rot also opens gashes: long strokes of raw red flesh in a dark crusted edge, the bone's ivory at the deepest.
 // Unset (every pilot), nothing changes.
 float4 _ZombieTint;float4 _ZombieWear;float4 _ZombieEye;float4 _ZombieSkin;
 float ZombieHash(float2 p){return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
@@ -100,27 +104,62 @@ float3 ZombieLook(float3 c,float2 uv)
  if(_ZombieEye.w>0.5)return _ZombieEye.rgb;
  if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;
  float luma=dot(c,float3(0.299,0.587,0.114));
- if(_ZombieTint.w>0.0)c=_ZombieTint.rgb*min(luma*_ZombieTint.w,2.2);
+ if(_ZombieTint.w>0.0)
+ {
+  float x=luma*_ZombieTint.w,k=x<1.0?x:sqrt(x);
+  c=_ZombieTint.rgb*min(k,1.6);c=lerp(c,dot(c,float3(0.299,0.587,0.114))*float3(1.0,0.97,0.9),saturate(k-1.0)*0.6);
+ }
  float2 s=float2(frac(_ZombieWear.w*0.0137)*91.0,frac(_ZombieWear.w*0.0071)*57.0);
  if(_ZombieWear.x>0.0)
  {
-  float g=ZombieNoise(uv*6.0+s)*0.6+ZombieNoise(uv*17.0+s.yx)*0.4;
+  float g=ZombieNoise(uv*18.0+s)*0.6+ZombieNoise(uv*52.0+s.yx)*0.4;
   float k=_ZombieWear.x*smoothstep(0.25,0.85,g);
   c=lerp(c,dot(c,float3(0.299,0.587,0.114))*float3(1.0,0.96,0.86),k*0.45)*(1.0-0.38*k);
  }
  if(_ZombieWear.y>0.0)
  {
-  float t=ZombieNoise(uv*5.3+s*1.7),edge=1.0-0.45*_ZombieWear.y;
+  float t=ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3,edge=1.0-0.45*_ZombieWear.y;
   float hole=smoothstep(edge,edge+0.012,t),rim=saturate(smoothstep(edge-0.035,edge,t)-hole);
-  c=lerp(c,_ZombieSkin.rgb*0.85,hole)*(1.0-0.6*rim);
+  float3 under=lerp(_ZombieSkin.rgb*0.5,float3(0.3,0.04,0.04),smoothstep(edge+0.006,edge+0.035,t));
+  c=lerp(c,under,hole)*(1.0-0.7*rim);
+ }
+ if(_ZombieSkin.w>0.0)
+ {
+  float b=ZombieNoise(uv*11.0+s.yx*0.7)*0.65+ZombieNoise(uv*37.0+s)*0.35;float k=_ZombieSkin.w*smoothstep(0.6,0.78,b);
+  c=lerp(c,float3(0.17,0.025,0.02)+c*0.15,k*0.85);
  }
  if(_ZombieWear.z>0.0)
  {
-  float r=ZombieNoise(uv*7.0+s.yx*1.3)*0.7+ZombieNoise(uv*23.0+s)*0.3;
+  float r=ZombieNoise(uv*14.0+s.yx*1.3)*0.7+ZombieNoise(uv*42.0+s)*0.3;
   float b=_ZombieWear.z*smoothstep(0.52,0.82,r);
   c=lerp(c,c*float3(0.70,0.60,0.68),b);
+  float2 g2=float2(uv.x*55.0+uv.y*18.0,uv.y*14.0-uv.x*6.0)+s*2.3;
+  float gash=ZombieNoise(g2)*0.75+ZombieNoise(uv*70.0+s.yx)*0.25,e=1.0-0.36*_ZombieWear.z;
+  float open=smoothstep(e,e+0.015,gash),crust=saturate(smoothstep(e-0.05,e,gash)-open);
+  float3 flesh=lerp(float3(0.42,0.06,0.06),float3(0.22,0.02,0.03),smoothstep(e+0.02,e+0.07,gash));
+  flesh=lerp(flesh,float3(0.86,0.8,0.66),smoothstep(e+0.085,e+0.1,gash));
+  c=lerp(c*(1.0-0.55*crust)+float3(0.08,0.0,0.0)*crust,flesh,open);
  }
  return c;
+}
+// A zombie's decay openings (Core NativeZombieDecay; Runtime/NativeZombieModelPresentation.cs), per renderer: _DecayAt xyz an
+// opening's centre on the surface and w its radius, _DecayIn xyz inward and w how deep it reaches, both in the meshes' own rest
+// space (root space at rest, written to their fourth texture coordinates), so an opening rides the skin as it deforms and cuts
+// every layer over it (skin and clothes alike); its rim is ragged (NativeZombieDecay.Rag). A flesh pit with the skeleton in it
+// closes it. _Decays the number set; 0 for every pilot.
+float _Decays;float4 _DecayAt[4];float4 _DecayIn[4];
+void DecayClip(float3 rest)
+{
+ if(_Decays<0.5)return;
+ for(int k=0;k<4;k++)
+ {
+  if(k>=_Decays)break;
+  float3 v=rest-_DecayAt[k].xyz;float3 n=_DecayIn[k].xyz;float t=dot(v,n);if(t<-0.03||t>_DecayIn[k].w)continue;
+  float3 w=v-n*t;float3 a=normalize(cross(n,abs(n.y)<0.9?float3(0.0,1.0,0.0):float3(1.0,0.0,0.0)));float3 b=cross(n,a);
+  float ang=atan2(dot(w,b),dot(w,a)),seed=_DecayAt[k].x*13.7+_DecayAt[k].z*7.3;
+  float rad=_DecayAt[k].w*(0.82+0.18*sin(ang*5.0+seed*97.0)+0.08*sin(ang*11.0+3.0));
+  if(dot(w,w)<rad*rad)clip(-1.0);
+ }
 }
 // The spawn-in's hardlight tint (SpawnTintOf): the tint colour by its share, hottest where the body has just formed, then
 // the completion flash toward white.
