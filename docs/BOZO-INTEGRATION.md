@@ -1827,6 +1827,15 @@ already? Cant we utilize that?"
     - **Cloth:** its paint map holds the hood to the chin fixed and lets the cowl move (`NativeSheldonHood.Maps`).
     - The hair hides under it. Where it shows: play, the intros (the Sheldon intro's resolve), the draft, revives, the
       portraits and the rooftop (where the model had shown no Sheldon Head).
+    - **The face everywhere (2026-10-29; owner: "sheldon helmet seems to remove the "face" on the mask, and instead show
+      the player model face"):** the draft's pilot wore the hood without its face (its hat draw left the Sheldon Head
+      out), so the chip-select close-up showed the model's face in the opening; so did the authored death scenes and a
+      revive's kept body (they draw no hat) and the revive gallery's stand-in.
+      - All four now draw the void and the face (`SheldonHoodStill` on the draft and the gallery, `VisualDeadHood` on the
+        scenes, the revive body and corpses).
+      - Under the hood the model's head and face pieces are hidden with the hair (`VisualUnderHood`: `Head.`, `Eyes.`,
+        `EyeBrows.`, `EyeLashes.`, `Teeth.`), so wherever the void does not draw the dark lining shows, never a face.
+      - The face gear (the masks) is left off under the hood (live, draft, corpse): it would break through the void.
   - **Where cloth runs:** the Editor and local builds (the bridge); builder builds once the owner's Drive zip carries the
     cloth runtime (packed 2026-10-28, above).
 - **The concept's back emblem (2026-10-25, `claude/model-cyberlord`):** a smiley with X eyes in flat accent-glow strokes
