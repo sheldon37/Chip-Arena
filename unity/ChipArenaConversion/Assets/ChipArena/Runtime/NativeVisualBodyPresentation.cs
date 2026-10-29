@@ -328,7 +328,7 @@ namespace ChipArena.UnityConversion
             VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
             return true;
         }
-        private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id,bool hood=false)
+        private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id,bool hood=false,bool simulate=true)
         {
             var root=Instantiate(visualBodyPrefab,rig.Root.transform,false);root.name="Visual body "+id;
             // Its origin is the pilot's floor point: the rig root stands .865 m over the floor (NativeVisualRig.Floor).
@@ -363,8 +363,9 @@ namespace ChipArena.UnityConversion
             foreach(var r in body.All)foreach(var slot in ClothSlots)if(r.name.StartsWith(slot,StringComparison.Ordinal)){cloth.Add(r);break;}
             body.Cloth=cloth.ToArray();
             if(id!=ViewBodyId)body.Stride=VisualStrideOf(root.transform,skeleton);
-            // Its hair and cloth, when the local install simulates them (never on the first-person body).
-            if(id!=ViewBodyId&&NativeVisualCloth.Attach!=null)
+            // Its hair and cloth, when the local install simulates them: the live and draft pilots and whole corpses, never the
+            // first-person body, the broadcast's bust, the ghosts or the menu portraits (`simulate` false: nothing holds them still).
+            if(simulate&&id!=ViewBodyId&&NativeVisualCloth.Attach!=null)
             {try{body.ClothSim=NativeVisualCloth.Attach(root,skeleton);}catch(Exception e){NativeVisualCloth.Attach=null;Debug.LogWarning("Visual body: the cloth simulation failed and is off: "+e.Message);}}
             return body;
         }
@@ -994,7 +995,7 @@ namespace ChipArena.UnityConversion
         {
             if(Viewer||sourceModels==null||ClassicBodies||!VisualBodiesOn)return null;
             if(bustMaterial==null){var shader=Resources.Load<Shader>("NativeWeaponGhost");if(shader==null||!shader.isSupported)return null;bustMaterial=new Material(shader){name="Visual body bust"};}
-            var body=CreateVisualBody(rig,id);if(body==null)return null;body.Root.name="Visual bust "+id;
+            var body=CreateVisualBody(rig,id,simulate:false);if(body==null)return null;body.Root.name="Visual bust "+id;
             var joint=VisualJoints(body.Binding);var piece=new int[joint.Length];for(int v=0;v<piece.Length;v++)piece[v]=BustBone(joint[v])?0:-1;
             body.BustNeck=-1;for(int v=0;v<joint.Length&&body.BustNeck<0;v++)if(joint[v]==CapturedRig.Neck)body.BustNeck=v;
             VisualSever(body.All,body.Binding.Bones,piece,ref owned);
@@ -1352,7 +1353,7 @@ namespace ChipArena.UnityConversion
             {
                 if(g?.Body?.Root!=null)Destroy(g.Body.Root);
                 var material=VisualEchoMaterial(shader);if(material==null)return false;
-                var body=CreateVisualBody(holder,id);if(body==null)return false;body.Root.name="Visual ghost "+id;
+                var body=CreateVisualBody(holder,id,simulate:false);if(body==null)return false;body.Root.name="Visual ghost "+id;
                 foreach(var r in body.All)
                 {
                     if(r==null)continue;var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=material;

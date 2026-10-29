@@ -124,7 +124,7 @@ namespace ChipArena.UnityConversion
             if(s.Model!=null&&(s.Model.Root==null||s.Model.Hood!=(hat==NativeSheldonHead.Hat)||!VisualRetone(s.Model,s.Outfit))){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);if(s.Model.Root!=null){s.Model.Root.SetActive(false);Destroy(s.Model.Root);}s.Model=null;}
             if(s.Model==null)
             {
-                s.Model=CreateVisualBody(s.Player,id,hat==NativeSheldonHead.Hat);if(s.Model==null){modelPortraitFailed=true;return;}
+                s.Model=CreateVisualBody(s.Player,id,hat==NativeSheldonHead.Hat,simulate:false);if(s.Model==null){modelPortraitFailed=true;return;}
                 foreach(var t in s.Model.Root.GetComponentsInChildren<Transform>(true))t.gameObject.layer=PortraitLayer;
                 foreach(var r in s.Model.All)r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
             }
