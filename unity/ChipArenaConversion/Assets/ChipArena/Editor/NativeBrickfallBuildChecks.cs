@@ -16,6 +16,23 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var map in data.maps)NativeMapRules.Validate(map);
             Debug.Log("PASS real JsonUtility Unity catalog, modern rotation, saved-map migration and authored spawn tables");
         }
+        private static void CheckBrickfallRuntime(ConversionContent data)
+        {
+            // The default-map combat gates deliberately leave a dead pilot and modified combat state.
+            // Give structure damage/replication a fresh match and its own physics scene, not that fixture.
+            var scene=EditorSceneManager.NewPreviewScene();
+            try
+            {
+                var match=new NativeMatch(data);
+                match.Seats.Add(new NativeSeat{id=1,name="Brickfall A",spec="pistol"});
+                match.Seats.Add(new NativeSeat{id=2,name="Brickfall B",spec="sword",team=1});
+                using(var arena=new NativeArena(data,match,"brickfall",areaScene:scene))
+                {
+                    arena.Reset();arena.ValidateBrickfallRuntime();CheckBrickfallReplica(arena);
+                }
+            }
+            finally{EditorSceneManager.ClosePreviewScene(scene);}
+        }
         private static void CheckBrickfallReplica(NativeArena host)
         {
             var scene=EditorSceneManager.NewPreviewScene();NativeArena guest=null;

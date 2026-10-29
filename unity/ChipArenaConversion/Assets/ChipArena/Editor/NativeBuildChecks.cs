@@ -216,7 +216,7 @@ namespace ChipArena.UnityConversion.Editor
                         if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
                         if(map.id=="cybercity")arena.ValidateCyberCityExits();
                         if(NativeMapRules.WardInstance(map.id)&&map.look=="quarantine"){if(map.id=="siren")arena.ValidateWardSimulation();arena.ValidateWardTraversal();}
-                        if(map.id=="brickfall"){arena.ValidateCorpsePhysics();arena.ValidateBrickfallRuntime();CheckBrickfallReplica(arena);}
+                        if(map.id=="brickfall"){arena.ValidateCorpsePhysics();CheckBrickfallRuntime(data);}
                         if(map.id=="expedition-city"||map.id=="expedition-ward-zero"){arena.ValidateExpeditionM1Geometry();arena.ValidateExpeditionM1Combat();arena.ValidateExpeditionHubAuthority();arena.ValidateExpeditionCoop();}
                         if(map.id=="siren"){arena.ValidatePveEconomy(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));arena.ValidateHordeDrops();arena.ValidatePveSpitters();arena.ValidateHulkHunt();}
                         Debug.Log("PASS native map "+map.id+": isolated Edit-mode physics, 8 spawn floors, capsule settling");

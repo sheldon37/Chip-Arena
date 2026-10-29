@@ -25,7 +25,15 @@ namespace ChipArena.UnityConversion
             var self=Local;triggeringMembers["hotel-nw"]=new System.Collections.Generic.HashSet<string>{"hotel-pier-nw"};self.Stats["damageTaken"]=1.59;float initial=self.Hp;
             CollapseDamage(self,"hotel-nw",45,Vector3.zero,0);CollapseDamage(self,"hotel-nw",25,Vector3.zero,0);
             Check(Math.Abs(initial-self.Hp-Math.Min(60,.6*initial))<.01&&self.Hp>0,"self-crush shared final allowance");
-            var teammate=Pilots[1];Match.Teams=true;FriendlyFire=false;teammate.Seat.team=self.Seat.team;initial=teammate.Hp;CollapseDamage(teammate,"hotel-nw",45,Vector3.zero,0);Check(teammate.Hp==initial,"friendly-fire off");FriendlyFire=true;CollapseDamage(teammate,"hotel-nw",45,Vector3.zero,0);Check(teammate.Hp<initial,"friendly-fire on");Match.Teams=false;
+            var teammate=Pilots[1];
+            Check(teammate.Hp>45&&teammate.Seat.alive&&teammate.Seat.connected&&teammate.Death==null,"friendly-fire fixture must be a fresh live pilot");
+            Check(Credit(Map.segments.First(s=>s.id=="hotel-nw"))==self.Seat.id,"collapse credited to fixture attacker");
+            Match.Teams=true;FriendlyFire=false;teammate.Seat.team=self.Seat.team;initial=teammate.Hp;
+            float blocked=CollapseDamage(teammate,"hotel-nw",45,Vector3.zero,0);
+            Check(blocked==0&&teammate.Hp==initial,"friendly-fire off");
+            FriendlyFire=true;float dealt=CollapseDamage(teammate,"hotel-nw",45,Vector3.zero,0);
+            Check(Math.Abs(dealt-45)<.001f&&Math.Abs(initial-teammate.Hp-45)<.001f,"friendly-fire on: expected 45 actual damage, got "+dealt);
+            Match.Teams=false;
             // Real codec/transport packet sizes at start and at the 80-fragment peak (8 pilots).
             void Budget(string name){var f=NetworkFrame();string json=NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=f});var packet=NativeFrameBudget.Encode(f,1);Check(packet!=null&&packet.Length<=NativeFrameBudget.MaxPacketBytes,"frame budget "+name);Debug.Log("PASS Brickfall frame "+name+": JSON="+Encoding.UTF8.GetByteCount(json)+" bytes, packet="+packet.Length+" bytes, props="+f.props.Length+", fragments="+Props.Count(p=>p.Fragment));}
             Budget("round start");foreach(var p in Props.Where(p=>p.Definition.role=="cover").Take(20).ToArray())Fracture(p,Vector3.zero,Local);Check(Props.Count(p=>p.Fragment)<=80,"fragment cap");var peak=Structures.Snapshot();foreach(var s in peak.Take(3)){s.state=2;s.t0=Time;}Structures.Restore(peak,Time);Budget("80 fragments / 3 falls");Structures.Restore(new NativeStructureState(Map).Snapshot(),Time);

@@ -1,3 +1,12 @@
+## 2026-10-28 — Astra: isolate Brickfall's builder validation from fatal combat fixtures
+
+- **Branch/base:** `codex/brickfall-builder-check`, from shared `d967a336` (includes Claude's regenerated cloth-bridge/Drive bundle receipt). Builder base inspected: `40b7c1a7`.
+- **Cause:** Brickfall is now the default arena, so the generic combat gates run before its structure gate. `ValidateRangedAndMagic` ends by killing pilot B in four headshot cases and leaves B dead. `ValidateBrickfallRuntime` reused that pilot for its friendly-fire-on assertion. `Damage` correctly returns zero for a dead target; friendly-fire-off consequently passed without testing a live teammate.
+- **Fix:** run the existing Brickfall structure and replica gates in their own fresh match and preview physics scene, disposed in `finally`. Keep the earlier combat and corpse gates. Require a live, connected, death-free teammate and verify the collapse's attacker credit, zero blocked damage with friendly fire off, and exactly 45 actual damage with it on. No gameplay damage or protection rules changed.
+- **Animation/gameplay impact:** none; validation code only. Hit timing, hitboxes, movement, cooldowns, networking and cloth presentation are unchanged.
+- **Verification:** pinned Unity Player, runtime and Editor semantic compilation passed; `git diff --check` passed. Full CoreTests suite passed (867 PASS lines, exit 0), including Brickfall rules and real LAN checks; compiled with ARENA_TESTS and the project's non-tiered/non-concurrent-GC settings.
+- **Not run here:** actual Unity/PhysX builder validation, a Windows player, or multiplayer/cloth motion. The builder's next run must execute this gate and install the new Drive bundle. Claude's Editor cloth measurements are distinct from a published builder result; cloth in a builder build remains unconfirmed.
+
 ## 2026-10-28 — Claude: the cloth bridge regenerated, and the licensed-assets zip packed with cloth (merged into shared)
 
 - **Branch/base:** `claude/cloth-bridge-regen` from shared `1d779140`. No PR; merged into shared and the builder.
