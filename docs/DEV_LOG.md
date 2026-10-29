@@ -22,8 +22,8 @@
   - Cost, Editor play mode, 8 pilots on Factory (9 cloths built, 3-4 simulating, the rest past 30 m): mean frame 13.68 and 13.25 ms with cloth, 11.42 and 12.30 ms without (95th percentile 15.22/14.89 against 12.78/13.89).
   - Full CoreTests 867 PASS (LF checkout of `5bcea655`).
 - **Not run:** a Windows builder build with cloth (the zip is not on Drive until the owner uploads it); multiplayer; the low tier's frame seen in a capture (its state logged only); a Windows player build's cost.
-- **Owner step:** upload `LocalAssets-with-cloth.zip` to Drive as the builder's `LocalAssets.zip`, keeping the current one as `LocalAssets-2026-10-27.zip`.
-- **For Astra:** the bundle is ready for a builder build once it is on Drive (`--require-cloth` passes). The MAGICACLOTH2 define Magica writes into ProjectSettings is not committed. Brickfall's separate runtime (friendly fire on failure) is untouched.
+- **On Drive (owner's go-ahead, 2026-10-28):** `LocalAssets-with-cloth.zip` is now the builder's `LocalAssets.zip` (48.5 MB); the October 27 zip is kept as `LocalAssets-2026-10-27.zip`. The Drive copy passes `install_local_assets.py --check --require-cloth` (414 cloth files, 226 audio keys, 651 visual body files).
+- **For Astra:** the bundle is on Drive and ready for a builder build. The merge's builder run (`40b7c1a7`) failed before packaging on the Brickfall runtime check ("friendly-fire on"), which is yours; cloth in a builder build is unverified until that passes. The MAGICACLOTH2 define Magica writes into ProjectSettings is not committed. Brickfall's separate runtime (friendly fire on failure) is untouched.
 
 ## 2026-10-28 — Astra: cloth handoff readiness and account look persistence
 
