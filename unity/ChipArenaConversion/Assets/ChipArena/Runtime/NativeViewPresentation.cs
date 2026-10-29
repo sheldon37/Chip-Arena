@@ -74,10 +74,12 @@ namespace ChipArena.UnityConversion
             {
                 var hand=viewRig.Bones[CapturedRig.RHand];float y=shown.Weapon==WeaponId.Pistol?.105f:shown.Weapon==WeaponId.Rifle?.175f:.25f;
                 float z=shown.Weapon==WeaponId.Pistol?-.03f:shown.Weapon==WeaponId.Rifle?-.075f:-.02f;
-                Vector3 rear=hand.TransformPoint(new Vector3(0,y,z));
+                // The visual body's model has its own rear sight (NativeVisualWeaponPresentation.cs VisualViewSight).
+                var sight=new Vector3(0,y,z);VisualViewSight(shown,ref sight);
+                Vector3 rear=hand.TransformPoint(sight);
                 Quaternion align=Quaternion.FromToRotation(hand.forward,ViewCamera.transform.forward);
                 viewRig.Root.transform.rotation=Quaternion.Slerp(viewRig.Root.transform.rotation,align*viewRig.Root.transform.rotation,ads);
-                rear=hand.TransformPoint(new Vector3(0,y,z));Vector3 local=ViewCamera.transform.InverseTransformPoint(rear);
+                rear=hand.TransformPoint(sight);Vector3 local=ViewCamera.transform.InverseTransformPoint(rear);
                 viewRig.Root.transform.position-=(ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y)*ads;
             }
             ApplyViewSway(shown,time,ads);
@@ -96,6 +98,7 @@ namespace ChipArena.UnityConversion
                 else if(magic)DrawStaff(viewRig,school==MagicPose.Leet?1:school,true);
                 else {if(!shown.WeaponAway&&!shown.MainWeaponAway)Weapon(MeleeHand(viewRig,shown,time),viewRig.Set,0);if(viewRig.Set==1)Weapon(MeleeHand(viewRig,shown,time,true),1,0);}
             }
+            VisualViewWeaponShown();
             DrawBatches(ViewCamera,10,false);
         }
     }

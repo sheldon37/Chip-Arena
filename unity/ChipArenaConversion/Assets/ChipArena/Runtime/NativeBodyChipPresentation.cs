@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private readonly BodyChip[] bodyChips=new BodyChip[NativeBodyChips.MaxPieces];private readonly SpellMote[] handMotes=new SpellMote[8];
+        private readonly NativeBodyChipGear.Part[] bodyChipParts=new NativeBodyChipGear.Part[NativeBodyChipGear.MaxParts];
         private readonly Dictionary<int,NativeWaveDash> chipWaves=new Dictionary<int,NativeWaveDash>();private readonly Dictionary<int,NativeSpellMotes> moteClocks=new Dictionary<int,NativeSpellMotes>();
         private readonly Dictionary<int,string> impactIds=new Dictionary<int,string>();
         // This rig's block-cooldown factor and parry flash, set by RigTint before the rig's parts are queued.
@@ -60,7 +61,9 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// bodyModifiers for one rig (after its model is queued): the spell charge in the right hand, the hand motes (third-person
         /// rigs; the first-person view takes them from the hidden body, HiddenSweep), and the body chips on their joints (the
-        /// first-person rig keeps only the chest's).
+        /// first-person rig keeps only the chest's). On the player's model (owner 2026-10-29: "NO VOXEL appearances") the chips
+        /// are its own sculpted parts on its chest, shoulders and feet (Core/NativeBodyChipGear, BodyChipModel); the first-person
+        /// view body (forearms and hands) wears none of them. The Classic voxel body keeps the source's pieces.
         /// </summary>
         private void BodyDressing(CapturedAnimation.Player rig,Actor a,float time,bool first,int layer,Camera camera)
         {
@@ -80,13 +83,48 @@ namespace ChipArena.UnityConversion
             }
             if(!first)HandMotes(rig,a,time,color);
             if(pilot?.Stats==null||pilot.Seat?.chips==null)return;int n=NativeBodyChips.Build(pilot.Seat.chips,pilot.Stats,bodyChips);if(n==0)return;
+            if(first&&VisualViewDrawn(rig))return;var model=first?null:VisualPosedBody(rig);int parts=0;
             if(!chipWaves.TryGetValue(a.Id,out var wave)){wave=new NativeWaveDash();chipWaves.Add(a.Id,wave);}float dash=NativeBodyChips.DashTime(a,wave,time);
             for(int i=0;i<n;i++)
             {
                 var c=bodyChips[i];if(first&&!NativeBodyChips.FirstPerson(c.Bone))continue;NativeBodyChips.Animate(ref c,time,dash);
-                // On the model's joint where the pilot wears it (NativeVisualBodyPresentation.cs VisualJointFrame).
+                if(model!=null){parts=NativeBodyChipGear.Parts(c,time,bodyChipParts,parts);continue;}
                 if(c.Visible)QueuePiece(c.Piece,first?rig.Bones[c.Bone].localToWorldMatrix:VisualJointFrame(rig,c.Bone),layer,camera);
             }
+            if(model!=null)BodyChipModel(model,rig,parts,layer,camera);
+        }
+        // The model's parts on their anchors: the chest core's frame, the shoulders' and the ankles' (the model's joints, the game
+        // joints' axes), each in its Chip's colour.
+        private readonly Matrix4x4[] bodyChipAnchors=new Matrix4x4[5];
+        private void BodyChipModel(VisualBody body,CapturedAnimation.Player rig,int count,int layer,Camera camera)
+        {
+            if(count==0)return;int done=0;
+            for(int i=0;i<count;i++)
+            {
+                var p=bodyChipParts[i];int k=(int)p.Anchor;
+                if((done&(1<<k))==0){bodyChipAnchors[k]=p.Anchor==NativeBodyChipGear.Anchor.Core?VisualCoreFrame(body,rig):VisualLimbFrame(body,rig,LimbOf(p.Anchor));done|=1<<k;}
+                var matrix=bodyChipAnchors[k]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(p.Rotation)),Vector3.one);
+                sourceModels.Queue(p.Id,matrix,null,null,layer,camera,body:NativeArena.ColorOf(p.Color).linear);
+            }
+        }
+        private static int LimbOf(NativeBodyChipGear.Anchor a)=>a==NativeBodyChipGear.Anchor.LeftArm?CapturedRig.LArm:a==NativeBodyChipGear.Anchor.RightArm?CapturedRig.RArm:a==NativeBodyChipGear.Anchor.LeftFoot?CapturedRig.LFoot:CapturedRig.RFoot;
+        // The visual body `rig` draws this frame (an arena pilot's, an entrance's, the draft's), or null.
+        private VisualBody VisualPosedBody(CapturedAnimation.Player rig)=>rig!=null&&visualBodies.TryGetValue(rig,out var b)&&b.Root!=null&&b.Root.activeInHierarchy&&b.PosedFrame==Time.frameCount?b:null;
+        // A joint of the model: at its bone (the shoulder's, the ankle's), turned as the game joint rides it (VisualJointFrame), at
+        // the body's scale.
+        private Matrix4x4 VisualLimbFrame(VisualBody body,CapturedAnimation.Player rig,int joint)
+        {
+            var frame=VisualJointFrame(rig,joint);int v=joint<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[joint]:-1;
+            Vector3 at=v>=0&&v<body.Binding.Bones.Length&&body.Binding.Bones[v]!=null?body.Binding.Bones[v].position:(Vector3)frame.GetColumn(3);
+            Vector3 z=frame.GetColumn(2),y=frame.GetColumn(1);var turn=z.sqrMagnitude>1e-10f&&y.sqrMagnitude>1e-10f?Quaternion.LookRotation(z,y):Quaternion.identity;
+            return Matrix4x4.TRS(at,turn,Vector3.one*body.Root.transform.lossyScale.x);
+        }
+        // The chest's front where the pilot gear's core sits (VisualGearCore, the bake's per top); without it the model's chest
+        // bone, a hand forward and down.
+        private Matrix4x4 VisualCoreFrame(VisualBody body,CapturedAnimation.Player rig)
+        {
+            if(body.GearCore!=null)return body.GearCore.localToWorldMatrix;
+            var chest=VisualLimbFrame(body,rig,CapturedRig.Chest);return chest*Matrix4x4.Translate(new Vector3(0,-.06f,.12f));
         }
         /// <summary>spellMotes: element sparks from the casting hand (renderer.ts:128 spellBurst), at the source effects quality.</summary>
         private void HandMotes(CapturedAnimation.Player rig,Actor a,float time,int color)

@@ -127,6 +127,9 @@ namespace ChipArena.UnityConversion
         private float cadence=1,hunchJitter,tilt,hang,idleRate=1,limpSide=1,drag;private int kind;private bool quad;
         // the add's takes (Core/NativeZombieMotion: -1 for the procedural crawl), this frame's blended stride shape, the rows
         private int walkClip=-1,runClip=-1,idleClip=-1;private float idlePhase,duty0=.6f,duty1=.6f,off1=.5f,lastDt,sinkNow;
+        /// <summary>How far (rig metres) this pose's hips were sunk so the short voxel legs reach the stride's feet (0 while they
+        /// reach). The model's longer legs need none of it (Core/NativeZombiePosture.Stance).</summary>
+        public float Sunk{get;private set;}
         private readonly float[] rowW=new float[CapturedClip.Channels],rowR=new float[CapturedClip.Channels],rowI=new float[CapturedClip.Channels],rowA=new float[CapturedClip.Channels],row=new float[CapturedClip.Channels];
         private readonly float[] retimeAt=new float[4],retimeMarks=new float[4];
         private readonly Vector3[] mocapAnkle=new Vector3[2],mocapKnee=new Vector3[2],mocapHip=new Vector3[2];private readonly Quaternion[] mocapFoot=new Quaternion[2];
@@ -164,7 +167,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Pose(in HordeMotionInput f,CapturedRig.Pose p,NativeHordeReact react=null)
         {
-            NativeZombieMotion.Warm();Step(f,react);LifeStep(f,react,stepFresh);p.Reset();AttackClip=-1;armLayers=0;
+            NativeZombieMotion.Warm();Step(f,react);LifeStep(f,react,stepFresh);p.Reset();AttackClip=-1;armLayers=0;Sunk=0;
             // A blow the authority cancelled (a stagger in the wind-up) stops where it was and lets go over CancelFade: it never
             // strikes, and it never snaps off.
             float age=f.AttackAge,keep=1;
@@ -295,7 +298,7 @@ namespace ChipArena.UnityConversion
                 if(eased<hard){sinkEase.Value=hard;if(sinkEase.Velocity<0)sinkEase.Velocity=0;eased=hard;}sinkNow=eased;
             }
             // (The hips never drop below a deep crouch: the thighs would fold the knees into the floor.)
-            {var bb=p.Position[CapturedRig.Body];bb.Y=Math.Max(bb.Y-sinkNow,Math.Min(bb.Y,heavy?-.26f:-.18f));p.Position[CapturedRig.Body]=bb;p.World();}
+            {var bb=p.Position[CapturedRig.Body];float y0=bb.Y;bb.Y=Math.Max(bb.Y-sinkNow,Math.Min(bb.Y,heavy?-.26f:-.18f));Sunk=y0-bb.Y;p.Position[CapturedRig.Body]=bb;p.World();}
             for(int i=0;i<2;i++)
             {
                 bool left=i==0;int hip=left?CapturedRig.LHip:CapturedRig.RHip,foot=hip+2;

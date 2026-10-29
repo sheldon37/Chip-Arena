@@ -309,7 +309,7 @@ namespace ChipArena.UnityConversion
             float swell=HordeSwellNow(s,m,now);var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);StationGlow(m,kind,now,ref glow);
             // On the player's model (NativeZombieModelPresentation.cs) for a modelled kind on the full tier, else the voxel model.
             bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;
-            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Lost,0,flash,glow.x,swell)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
+            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait.Sunk,a.Lost,0,flash,glow.x,swell)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
             bool vent=a.Entry.kind=="vent";
             HordeAdd(rig,m.Id,a.Travelling?float.NaN:(float)NativeMinionFx.VentAge(vent,a.ActiveAt,hordeClock),float.NaN,vent?NativeArena.Vec(a.Entry.@exit.Position(.9f)).y-.9f:ground,ground,a.Possessed?a.PossessedAt:float.NaN,velocity,a.Lost,true,kind*8+s.Look);
             return true;

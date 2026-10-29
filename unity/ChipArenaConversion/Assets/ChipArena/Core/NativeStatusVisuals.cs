@@ -94,6 +94,25 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3[] BandPositions={new Vector3(0,.22f,.165f),new Vector3(0,.12f,-.17f),new Vector3(0,-.12f,0),new Vector3(0,-.12f,0)};
         public static readonly Vector3[] BandSizes={new Vector3(.45f,.09f,.02f),new Vector3(.36f,.16f,.03f),new Vector3(.17f,.075f,.19f),new Vector3(.17f,.075f,.19f)};
         public static int TeamIndex(int team)=>((team%8)+8)%8;
+        // On the player's model (owner 2026-10-29: "NO VOXEL appearances") the team shows as a band round each upper arm, on the
+        // model's shoulder joint in the game arm's axes (y up the arm): ArmbandDrop below the joint, ArmbandRadius round the
+        // sleeve, ArmbandHeight tall (Armband's unit band scaled by them).
+        public const float ArmbandDrop=.10f,ArmbandRadius=.058f,ArmbandHeight=.045f,ArmbandWall=.12f;
+        /// <summary>A band about +y: radius 1 outside (1 - ArmbandWall inside), height 1 centred on 0; walls, top and bottom faces out.</summary>
+        public static void Armband(int sides,out Vector3[] points,out int[] triangles)
+        {
+            points=new Vector3[sides*4];var t=new System.Collections.Generic.List<int>(sides*24);float inner=1-ArmbandWall;
+            for(int i=0;i<sides;i++){double a=i*Math.PI*2/sides;float c=(float)Math.Cos(a),s=(float)Math.Sin(a);points[i*4]=new Vector3(c,-.5f,s);points[i*4+1]=new Vector3(c,.5f,s);points[i*4+2]=new Vector3(c*inner,-.5f,s*inner);points[i*4+3]=new Vector3(c*inner,.5f,s*inner);}
+            for(int i=0;i<sides;i++)
+            {
+                int j=(i+1)%sides,ob=i*4,ot=i*4+1,ib=i*4+2,it=i*4+3,ob1=j*4,ot1=j*4+1,ib1=j*4+2,it1=j*4+3;
+                t.AddRange(new[]{ob,ot1,ob1,ob,ot,ot1});    // outside, facing out
+                t.AddRange(new[]{ib,ib1,it1,ib,it1,it});    // inside, facing in
+                t.AddRange(new[]{it,ot1,ot,it,it1,ot1});    // top, facing up
+                t.AddRange(new[]{ib,ob,ob1,ib,ob1,ib1});    // bottom, facing down
+            }
+            triangles=t.ToArray();
+        }
         // The band team (TeamColors index) or -1. PvE forces a teams match with the party in blue and the Siren in purple
         // (pve/contract.ts:26,29); the native PvE seats use their own team numbers, so the source colours are applied here.
         public static int BandTeam(bool teams,bool cooperative,bool boss,int team)=>!teams?-1:cooperative?(boss?4:1):TeamIndex(team);
