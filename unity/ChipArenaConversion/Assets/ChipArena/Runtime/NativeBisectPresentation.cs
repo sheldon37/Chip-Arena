@@ -207,11 +207,13 @@ namespace ChipArena.UnityConversion
                     var r=NativeBisect.Request(slot?"preview-saw-slot":"preview-saw-rail",CutNum(pelvis),CutNum(normal),CutNum(travel),unchecked((uint)galleryDeath.seed*2654435761u),part:slot?1.55f:1.35f,lift:slot?1.1f:.5f,push:.16f,topple:slot?2.6f:2.1f,hitch:slot?.17f:.13f,blood:1.6f,sparks:true);
                     r.Hub=CutNum(hub);r.Axle=CutNum(normal);r.Rate=slot?46:-46;r.Radius=slot?.8f:.85f;return r;
                 });
+                // The model's halves when pilots draw as the model (NativeVisualCutPresentation.cs), as a kill's.
+                if(galleryCorpse!=null)VisualCorpseMake(galleryCorpse,galleryDeath,rig);
                 rig.Dispose();if(galleryCorpse==null){galleryDeath=null;return;}
                 galleryCorpse.SetupBisect(NativeKillEffectRules.MaxDeathVoxels/3,Mathf.Clamp01(EffectsQuality),false,null);
             }
             float age=now-galleryDeath.at,clock=KillClock(arena);galleryCorpse.Step(age);BisectPresent(galleryCorpse,age,Matrix4x4.identity,0,1);
-            BisectDraw(galleryCorpse,galleryDeath,null,0,1,clock);BisectBlood(galleryCorpse,galleryDeath,clock);
+            if(!(VisualCorpseShown(galleryCorpse,1)&VisualCorpseShown(galleryCorpse.Twin,1)))BisectDraw(galleryCorpse,galleryDeath,null,0,1,clock);BisectBlood(galleryCorpse,galleryDeath,clock);
             KillSpray(galleryCorpse,age,1,clock);if(galleryCorpse.Twin!=null)KillSpray(galleryCorpse.Twin,age,1,clock);
             GalleryBlade((BisectFx)galleryCorpse.Bisect,age);
         }

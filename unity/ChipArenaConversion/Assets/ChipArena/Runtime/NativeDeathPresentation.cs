@@ -291,7 +291,13 @@ namespace ChipArena.UnityConversion
                 int bodySkin=NativeBodySkins.StandardIndex;string model=(death.model??"pilot")=="pilot"?sourceModels.WoundedPilot(death.id,death.actor?.Wounds,death.actor?.BodyColor,ForceCompatibilityRendering,BodyAt(death.id,center,out bodySkin)):death.model;bool recolored=false;Color ice=Color.white;
                 // A split body draws its two halves instead (and so skips the whole body below): the visual body's halves when the
                 // pilot wears it (NativeVisualBodyPresentation.cs), else the voxel halves.
-                if(corpse.Bisect!=null)recolored=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha)||BisectDraw(corpse,death,model,bodySkin,alpha,clock);
+                if(corpse.Bisect!=null)
+                {
+                    bool halves=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha);
+                    // The model's halves wear the hat on the head's half (VisualCorpseHat); the voxel halves split theirs.
+                    if(halves&&hat)VisualCorpseHat(corpse,death,alpha,clock);
+                    recolored=halves||BisectDraw(corpse,death,model,bodySkin,alpha,clock);
+                }
                 if(frost)
                 {
                     // Frostbreak after 1.1 s: every mesh icy with the source's emissive.
@@ -306,8 +312,10 @@ namespace ChipArena.UnityConversion
                 bool dressed=false;
                 if(!recolored)
                 {
-                    // The visual body's corpse, when this pilot has one (it wears no hat or bands; NativeVisualBodyPresentation.cs).
+                    // The visual body's corpse, when this pilot has one (no bands; its hat on its head, VisualCorpseHat;
+                    // NativeVisualBodyPresentation.cs).
                     dressed=VisualCorpseShown(corpse,alpha);
+                    if(dressed&&hat)VisualCorpseHat(corpse,death,alpha,clock);
                     if(!dressed)sourceModels.QueueShadowless(model,Matrix4x4.identity,corpse.PresentedBone,corpse.ShownBone,BodyTint(death.actor?.BodyColor),BodyAccent(bodySkin,death.actor?.AccentColor,death.actor?.Hat,death.actor?.HatColor),alpha);
                     if(!dressed)
                     {
