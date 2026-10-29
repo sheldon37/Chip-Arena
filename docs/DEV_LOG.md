@@ -21,9 +21,9 @@
 - **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the model's pose only (hips height,
   the Hulk's bone lengths and its drawn growth); blows still land on the gait's contact frames; the voxel tiers and authority are
   unchanged.
-- **Checks (actual):** Unity compile clean at each step; `CoreTests --zombie-posture` (225 checks), `--zombie-models` (20703, with the
-  mutation group), `--body-chip-model` (7924), `--visual-rig`, `--zombie-loco`, `--zombie-gore` pass in this checkout; the full
-  CoreTests on a clean LF worktree of the merge commit and `git diff --check`: see the merge note below. Crowd cost (Editor, same
+- **Checks (actual):** Unity compile clean at each step; `CoreTests --zombie-posture` (218 checks), `--zombie-models` (20703, with the
+  mutation group), `--body-chip-model` (7923), `--visual-rig`, `--zombie-loco`, `--zombie-gore` pass; the full CoreTests on a clean
+  LF worktree of `caa91a1c`: rc 0, 872 PASS lines, 35 managed-core checks; `git diff --check` against shared clean. Crowd cost (Editor, same
   conditions as 10-29's first): 24 modelled adds 20.8/20.9 ms mean, 22.9/22.6 p95 (was 20.2/20.3, 22.5/22.1); voxel 15.6; none 8.5.
 - **Captured (Unity Editor, Brickfall):** all five kinds male and female A idle 5 s, walk, run, a blow, a stagger, a fall and the
   corpse, a legless crawl, before/after the stance fix; the mutant Hulk idle, smashing, and female; first person for all 13 specs plus
