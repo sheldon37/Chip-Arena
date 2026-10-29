@@ -11,8 +11,8 @@
   no frame over 400 degrees a second under locomotion. The caps are unchanged (the arm does not flare or read clamped). The bank
   holds "2Hand-Bow-Run-Forward" (and its diagonals) already: no name fix needed (docs/BOZO-INTEGRATION.md "On the PC").
 - **Animation impacts:** none (no code change).
-- **Checks (actual):** `CoreTests --run-arm` 724 checks pass; the full CoreTests on a clean LF worktree of the commit (see merge);
-  `git diff --check` clean.
+- **Checks (actual):** `CoreTests --run-arm` 724 checks pass; the full CoreTests on a clean LF worktree of `afa576a4`: rc 0, 873
+  PASS lines, 35 managed-core checks; `git diff --check` clean.
 - **Not run:** a Windows player build; multiplayer; other staff schools, the greatsword and the guns' two-handed carries (no free arm).
 - **Next:** none for this; the owner's look on the test channel.
 
