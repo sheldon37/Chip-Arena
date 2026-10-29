@@ -189,6 +189,8 @@ namespace ChipArena.UnityConversion
             double woundsBefore=sourceModels?.DiagnosticWoundMs??0;
             try{DeathPresentationCore(arena);}
             finally{DiagnosticDeathWoundMs+=(sourceModels?.DiagnosticWoundMs??0)-woundsBefore;DiagnosticDeathPresentationMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
+            // The zombies on the player's model posed this frame show, the rest hide (NativeZombieModelPresentation.cs).
+            ZombieModelsShown();
         }
         private void DeathPresentationCore(NativeArena arena)
         {

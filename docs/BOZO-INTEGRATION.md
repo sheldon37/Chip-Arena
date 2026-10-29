@@ -1950,7 +1950,7 @@ ours to author.
   - a skin-tone palette or free colours, and whether faces and hair need entitlements;
   - today's hats on BoZo heads;
   - team identity (bands or a paint channel);
-  - whether zombies stay voxel (recommended);
+  - whether zombies stay voxel (decided 2026-10-29: zombies on the model, docs/ZOMBIE-MODELS.md);
   - the backend allowlist deploy (a Sites deploy with owner approval).
 - **Female body:** BoZo blends with `Shape_BodyType`. When it follows the male is undecided.
 - **For Astra:**
