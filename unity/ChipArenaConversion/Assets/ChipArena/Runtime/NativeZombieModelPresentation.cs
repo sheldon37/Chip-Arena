@@ -39,10 +39,13 @@ namespace ChipArena.UnityConversion
             // The model bone of each game joint and its rest scale (a lost part's bone collapses).
             public readonly Transform[] Joint=new Transform[CapturedRig.Bones.Length];public readonly Vector3[] JointScale=new Vector3[CapturedRig.Bones.Length];
             public bool Dying;
+            // Whether it crawls (its legs gone: the model's pelvis at the gait's height, NativeZombiePosture.Stance) and how far its
+            // gait sank its hips this pose (NativeHordeGait.Sunk).
+            public bool Crawl;public float Sunk;
             // The spitter's sac and its swell as last written.
             public SkinnedMeshRenderer Sac;public float Swell=-1;
         }
-        private readonly Dictionary<int,ZombieBody> zombieBodies=new Dictionary<int,ZombieBody>();private readonly List<int> zombieBodiesGone=new List<int>();
+        private readonly Dictionary<int,ZombieBody> zombieBodies=new Dictionary<int,ZombieBody>();private readonly CapturedRig.Pose zombieFitPose=new CapturedRig.Pose();private readonly List<int> zombieBodiesGone=new List<int>();
         private readonly Dictionary<NativeZombieLooks.Variant,Stack<ZombieBody>> zombieSpares=new Dictionary<NativeZombieLooks.Variant,Stack<ZombieBody>>();
         private static int zombieArgs;private static bool zombieModelsFailed;private int zombieMakesFrame=-1,zombieMakes;
         private bool ZombieModelsOn
@@ -61,16 +64,16 @@ namespace ChipArena.UnityConversion
         // Posing (HordeKindAdd, HordeKindDeath): the model in place of the voxel model
         // ================================================================================================================
         /// <summary>A living add (its rig posed from minionPose this frame): its model posed, true; false draws its voxel model.</summary>
-        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,int lost,int hidden,float flash,float glow,float swell)
+        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,float sunk,int lost,int hidden,float flash,float glow,float swell)
         {
             if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind);if(z==null)return false;
-            z.Dying=false;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
+            z.Dying=false;z.Crawl=crawl;z.Sunk=sunk;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
         }
         /// <summary>A dying add's fall (HordeKindDeath, its rig posed from minionPose): its model, true; false: the voxel body falls.</summary>
         private bool ZombieModelDeath(CapturedAnimation.Player rig,int id,int kind,int lost,int hidden)
         {
             if(rig==null||!zombieBodies.TryGetValue(id,out var z)||z.Body.Root==null||z.Kind!=kind||!ZombieModelsOn)return false;
-            z.Dying=true;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
+            z.Dying=true;z.Sunk=0;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
         }
         private void ZombieModelBind(ZombieBody z,CapturedAnimation.Player rig,bool planted,bool airborne,int lost,int hidden,float flash,float glow,float swell)
         {
@@ -79,7 +82,9 @@ namespace ChipArena.UnityConversion
             t.SetPositionAndRotation(rt.TransformPoint(0,NativeVisualRig.Floor,0),rt.rotation);t.localScale=rt.lossyScale;
             if(!root.activeSelf)root.SetActive(true);
             if(z.PosedFrame<Time.frameCount-1)z.Body.Binding.State.Forget();
-            var pose=minionPose;pose.World();
+            // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
+            // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
+            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk);
             z.Body.Binding.Apply(pose,default(NativeVisualRig.Grasp),planted,airborne);
             ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
@@ -172,9 +177,15 @@ namespace ChipArena.UnityConversion
                 if(ready!=null)foreach(var made in ready)if(made!=null){made.SetActive(false);made.name="Zombie model (ready)";zombiePool.Push(made);}
                 zombieFill=null;
             }
-            if(arena==null||arena.Pve==null&&arena.Minions.Count==0||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
+            if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
             if(zombieHolder==null){zombieHolder=new GameObject("Zombie model pool");zombieHolder.SetActive(false);DontDestroyOnLoad(zombieHolder);}
             zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);
+        }
+        // A pilot who can summon zombies (Graveyard Shift, Corpse Party): bodies are made ahead for them too.
+        private static bool ZombieSummoner(NativeArena arena)
+        {
+            foreach(var p in arena.Pilots){var chips=p.Seat?.chips;if(chips!=null&&(chips.TryGetValue("graveyard-shift",out int g)&&g>0||chips.TryGetValue("corpse-party",out int c)&&c>0))return true;}
+            return false;
         }
         // A body no add wears any more: back to its variant's spares (hidden, whole), or taken apart past the spares kept.
         private void ZombieModelSpare(ZombieBody z)

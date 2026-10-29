@@ -43,7 +43,9 @@ namespace ChipArena.UnityConversion
             {
                 var e=events[i];if(e.Id<=summonEvent)continue;summonEvent=e.Id;
                 if(e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot||!NativeSummonBreak.Fresh(now,e.Time)||!SummonTarget(arena,e.Target,out bool toy))continue;
-                SourceBurst(Vec(e.Position),NativeSummonBreak.HitColor(toy),NativeSummonBreak.HitCount,NativeSummonBreak.HitPower);
+                // A summoned zombie on the player's model bleeds as the horde's do (its blood drops), not voxel puffs.
+                if(!toy&&ZombieModelDrawn(e.Target))GoreInk(e.Time,(uint)e.Id*2654435761u,Vec(e.Position),NativeSummonBreak.HitCount,NativeSummonBreak.HitPower,BlastQuality);
+                else SourceBurst(Vec(e.Position),NativeSummonBreak.HitColor(toy),NativeSummonBreak.HitCount,NativeSummonBreak.HitPower);
             }
         }
         // A live summon, or the one this hit just killed (gone from the list; the source still holds its rig for the event).
@@ -61,7 +63,9 @@ namespace ChipArena.UnityConversion
             // A Drone Nest drone breaks up as itself (NativeRoundsFxPresentation): no toy soldier rig or voxel bursts.
             if(summon&&toy&&RoundsDroneDeath(arena,death))return true;
             // At SUMMON_LOOK.death.breakAt the rig hides and three bursts fire up the body in the gib colours, once.
-            if(summon&&summonBreakups.Due(death.id,death.seed,age))for(int i=0;i<NativeSummonBreak.Bursts;i++){NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);}
+            // A summoned zombie that fell on the player's model (ZombieModelDeath below) breaks up in blood, not voxel bursts.
+            if(summon&&summonBreakups.Due(death.id,death.seed,age)){bool model=!toy&&ZombieModelDrawn(death.id);for(int i=0;i<NativeSummonBreak.Bursts;i++){NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);
+                if(model)GoreInk(death.at+NativeSummonBreak.BreakAt,(uint)death.seed*2654435761u+(uint)i,death.position+Vector3.up*lift,count,NativeSummonBreak.BurstPower,BlastQuality);else SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);}}
             if(summon&&age>=NativeSummonBreak.BreakAt)return true;if(horde&&age>=NativeMinionFx.DeathFxSeconds)return true;
             if(!minionRigs.TryGetValue(death.id,out var rig)){rig=captured.Create(transform,death.id);minionRigs.Add(death.id,rig);}
             // A Siren minion kind dies as itself (NativeHordeKindPresentation.cs): its fall, burst or slice, then the same burn-away.
@@ -74,7 +78,9 @@ namespace ChipArena.UnityConversion
             // A horde add the kinds never drew (the bank's fallback body) falls on the bank's death take and stays whole (no char or
             // burn-away since 2026-10-19: owner, "standard zombies"); it is gone with its record's DEATH_SECONDS.
             if(horde){float fx=hordeClock-death.at;bool body=!NativeMinionFx.Gone(fx);if(body)HordeDeathBody(rig,death.model,death.id,death.lost,fx,b=>MinionPartVisible(death.lost,b));HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),death.position.y-.85f,death.position.y-.85f,float.NaN,Vector3.zero,death.lost,body);return true;}
-            sourceModels.Queue(death.model,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b));return true;
+            // A summoned zombie drawn on the player's model while it lived falls on it (NativeZombieModelPresentation.cs).
+            if(summon&&!toy&&ZombieModelDeath(rig,death.id,NativeHordeKinds.Shambler,death.lost,0))return true;
+            sourceModels.Queue(SummonModelOf(death.model),rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,b=>MinionPartVisible(death.lost,b));return true;
         }
         private static bool MinionPartVisible(int lost,int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
     }

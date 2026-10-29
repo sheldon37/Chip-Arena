@@ -1,3 +1,40 @@
+## 2026-10-29 — Claude: zombie motion on the model, first-person model weapons, chips on the model (no voxel)
+
+- **Branch/base:** `claude/model-zombie-motion` from shared `4110bc6`. No PR; merged into shared and the builder.
+- **Task (owner):** "the idle; they stand "unnaturally" like bending their lower back weird ... update the first person view to
+  reflect the updated models for weapons ... go through the chips that provide visual changes and update them according to the
+  new models (NO VOXEL appearances) ... What we were using for the voxel ones were working, but it doesn't seem to translate well
+  for the player models."
+- **Zombie motion (docs/ZOMBIE-MODELS.md 4b; `Core/NativeZombiePosture.cs`, `NativeVisualRig.State` Across/Level/Stand):**
+  measured on the measured skeleton, the gait's voxel-era choices hinged the hunch at the belt (60-76% of the trunk's bend in
+  `spine_01`/`02`), sat the hips 1.7x too far back, folded the knees (~47° at rest, 64-84° walking) and splayed the arms. The
+  model now binds a fitted copy of the gait's pose: the bend moves up the back, the arms point from their planned shoulders,
+  the pelvis takes the game's horizontal metres and stands up by the clip's offset, the floor gap and the gait's stride sink
+  (`NativeHordeGait.Sunk`) as far as the planted legs reach; a legless crawl lies at the gait's height (it floated ~40 cm).
+  After: lumbar share .25-.32, rest knees 23-26° (Hulk 44°), planted ankles on their marks. Pilots untouched.
+- **First person (docs/BOZO-INTEGRATION.md):** the view body holds the bake's and pack's weapon models (fitted right hand,
+  model grasp, `VisualHolder`, hide pass, shadowless view-layer renderers); ADS lines up an entry's optional `Sight`, else the
+  Standard sight through the fit. Classic, the Siren, a scope and the Prototype Series unchanged.
+- **Chips on the model:** body chips are sculpted parts (`Core/NativeBodyChipGear.cs`): gems, studs and rib lights round the
+  chest core, pectoral plates and pauldrons (frame), orbiting orbs, sabatons and heel thrusters; none in first person. Team
+  colours are armbands. Graveyard Shift's / Corpse Party's zombie draws, falls and bleeds on the zombie model; the Toy Soldier
+  is a sculpted tin toy (`Core/NativeToySoldier.cs`). Classic keeps the voxel pieces.
+- **Gameplay impact:** none. No rule, timing, reach, hit volume, AI or network change; zombie blows stay on the gait's contact
+  frames; first-person aim and muzzle rules are the game's.
+- **Checks (actual):** unity-check (runtime + editor compile) OK; `tools/check_relay.py` with the full CoreTests passed
+  (873 PASS lines, 35 managed-core checks, rc 0); python unittest 167 OK (1 skipped); `package_source.py` OK; `git diff
+  --check` clean. New `--zombie-posture` (198 checks) and `--body-chip-model` (7922 checks); `--visual-rig`, `--pack-weapons`,
+  `--zombie-models`, `--zombie-loco`, `--zombie-gore` pass. Two source pins updated for the changed lines (the summon
+  break-up's model branch in `SummonCeilingPickupChecks`, the view body's weapon grasp in `ModelPoseChecks`). Offline
+  software renders of the toy and of the parts on a stand-in mannequin (scratch, not Unity).
+- **Not run:** Unity Play mode, captures and a Windows build (no Editor in this container); the parts on real outfits; the
+  first-person grip and sight picture; crowd cost after the fit (it adds a pose copy and up to one extra Positions pass per
+  modelled add).
+- **Risks / next (owner's PC):** chest parts follow the core anchor and a guessed chest curve (may float or sink on some tops);
+  the chip modules still use the Standard models' sockets on the bake/pack weapons; ADS without `Sight` children uses the
+  fitted Standard sight; the runner's chase is still low (its takes are crouched); the Prototype Series skin keeps its voxel
+  weapons and modules (owner's call whether that skin should change).
+
 ## 2026-10-29 — Claude: zombie models on the PC — undead look, model gore, the spitter's sac, all kinds live (merged into shared)
 
 - **Branch/base:** `claude/zombie-models-pc` from shared `80d95dc9`. No PR; merged into shared and the builder.

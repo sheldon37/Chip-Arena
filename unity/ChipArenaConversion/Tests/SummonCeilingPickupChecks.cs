@@ -216,7 +216,9 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));
             string summon=R("NativeSummonPresentation.cs");
-            Check(summon.Contains("summonBreakups.Due(death.id,death.seed,age)")&&summon.Contains("NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);"),"the break-up fires the three source bursts once");
+            Check(summon.Contains("summonBreakups.Due(death.id,death.seed,age)")&&summon.Contains("NativeSummonBreak.Burst(toy,i,out float lift,out int color,out int count);")&&summon.Contains("else SourceBurst(death.position+Vector3.up*lift,color,count,NativeSummonBreak.BurstPower);"),"the break-up fires the three source bursts once");
+            // A summoned zombie on the player's model bleeds and breaks up in its blood drops instead (the same count and power).
+            Check(summon.Contains("bool model=!toy&&ZombieModelDrawn(death.id);")&&summon.Contains("if(model)GoreInk(death.at+NativeSummonBreak.BreakAt,")&&summon.Contains("if(!toy&&ZombieModelDrawn(e.Target))GoreInk(e.Time,"),"the modelled zombie breaks up and bleeds in blood");
             Check(summon.Contains("if(summon&&age>=NativeSummonBreak.BreakAt)return true;")&&summon.Contains("death.position-Vector3.right*NativeSummonBreak.Shake(age)"),"the rig hides at breakAt and jitters before it (mirrored x)");
             Check(!summon.Contains("VoxelCloud(")&&!summon.Contains("age>=.9f"),"no palette cube cloud from .9 s");
             Check(summon.Contains("SourceBurst(Vec(e.Position),NativeSummonBreak.HitColor(toy),NativeSummonBreak.HitCount,NativeSummonBreak.HitPower);")&&summon.Contains("m.Pve==null&&NativeSummonBreak.Summon(m.Kind)"),"minionHit puffs on summons only");

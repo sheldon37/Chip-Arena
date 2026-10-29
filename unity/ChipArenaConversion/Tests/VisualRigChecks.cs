@@ -1295,6 +1295,27 @@ namespace ChipArena.UnityConversion
             Check(body.Contains("bool on=!Viewer&&sourceModels!=null&&!ClassicBodies&&!scoped&&view!=null&&a.SourceSpec!=\"siren\"&&VisualBodiesOn;"),"Classic, a scope, the Siren and a missing bake keep the voxel arms");
             Check(body.Contains("if(viewBody!=null&&viewBody.Root!=null&&viewBody.Root.activeSelf&&viewBody.PosedFrame<Time.frameCount-1)viewBody.Root.SetActive(false);"),"the view body hides once first person stops");
             Check(body.Contains("int layer=first?10:gearLayer;var camera=first?ViewCamera:gearCamera;")&&body.Contains("if(body.GearCore!=null&&!first)"),"first person draws the device on the view model, not the core (a portrait's gear on its layer and camera)");
+            // First person holds the visual body's own weapon models (owner 2026-10-29: "update the first person view to reflect the
+            // updated models for weapons").
+            string weapons=R("Runtime/NativeVisualWeaponPresentation.cs"),packWeapons=R("Runtime/NativePackWeaponPresentation.cs");
+            int vp=body.IndexOf("private bool VisualViewPose(",StringComparison.Ordinal),vpick=body.IndexOf("var held=viewBody.Held=VisualWeaponFor(viewBody,a);",vp,StringComparison.Ordinal),vgrasp=body.IndexOf("if(held!=null)VisualWeaponGrasp(ref grasp,held);",vp,StringComparison.Ordinal),
+                vapply=body.IndexOf("viewBody.Binding.Apply(pose,grasp,false,false);",vp,StringComparison.Ordinal),vplace=body.IndexOf("root.SetPositionAndRotation(hand.position-turn*(rp*s),turn);",vp,StringComparison.Ordinal),
+                vfit=body.IndexOf("viewBody.HandPosition[1]=hand.localPosition;viewBody.HandRotation[1]=hand.localRotation;viewBody.RightScale=hand.localScale;VisualWeaponFit(hand,held);",vp,StringComparison.Ordinal);
+            Check(vp>0&&vpick>vp&&vgrasp>vpick&&vapply>vgrasp&&vplace>vapply&&vfit>vplace,"first person: the view body picks its weapon model and grasps it before it poses; the view hand takes the fitted frame once the body is placed");
+            Check(body.Contains("right.localPosition=viewBody.HandPosition[1];right.localRotation=viewBody.HandRotation[1];right.localScale=viewBody.RightScale;viewBody.Moved=false;"),"the view hand comes off the fit before the view rig poses again");
+            Check(body.Contains("body.Root.name=\"Visual view body\";body.Arena=true;"),"the view body holds the pack bank's weapons too");
+            Check(weapons.Contains("private VisualBody VisualHolder(CapturedAnimation.Player rig)=>rig==null?null:rig==viewRig?viewBody:visualBodies.TryGetValue(rig,out var body)?body:null;")
+                &&weapons.Contains("var body=VisualHolder(rig);if(body==null||body.Held==null||body.PosedFrame!=Time.frameCount)return false;")&&packWeapons.Contains("var body=VisualHolder(rig);if(body==null||body.Held==null||!body.Held.Pack"),"the models and the pack bow draw on the view body for the view rig");
+            Check(weapons.Contains("r.enabled=true;r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;r.receiveShadows=false;"),"the view body's weapon renderers draw (the arm cut leaves them off) without shadows");
+            int vdraw=view.IndexOf("if(!ScopeActive&&!SourceCharacter(viewRig,shown,time,true))",StringComparison.Ordinal),vshown=view.IndexOf("VisualViewWeaponShown();",StringComparison.Ordinal),vbatch=view.IndexOf("DrawBatches(ViewCamera,10,false);",StringComparison.Ordinal);
+            Check(vdraw>0&&vshown>vdraw&&vbatch>vshown,"a view model not drawn this frame hides after the draw");
+            Check(view.Contains("var sight=new Vector3(0,y,z);VisualViewSight(shown,ref sight);")&&view.Contains("rear=hand.TransformPoint(sight);Vector3 local=")&&weapons.Contains("if(w.Sighted)rear=w.Sight;else if(w.Scale!=1)rear=w.Centre+w.Scale*(rear-w.Centre);"),"aiming down the sights lines up the model's rear sight (the bake's Sight, else the Standard one through the fit)");
+            // The fitted sight: the Standard rear sight taken through a fit is where the fitted frame draws it (H T(c) S(s) T(-c)).
+            {
+                var c=new Vector3(.01f,.06f,.12f);float sc=.313f;var rear=new Vector3(0,.105f,-.03f);var fitted=c+sc*(rear-c);
+                var m=Matrix4x4.CreateTranslation(-c)*Matrix4x4.CreateScale(sc)*Matrix4x4.CreateTranslation(c);
+                Check((Vector3.Transform(rear,m)-fitted).Length()<1e-5f,"the fitted rear sight is the fitted frame's");
+            }
             int made=death.IndexOf("if(pilot)VisualCorpseMake(corpse,death,rig);",StringComparison.Ordinal),dispose=death.IndexOf("if(temporary)rig.Dispose();",StringComparison.Ordinal);
             Check(made>0&&dispose>made,"the corpse's visual body is posed from the rig before a temporary rig goes");
             Check(death.Contains("dressed=VisualCorpseShown(corpse,alpha);")&&death.Contains("if(!dressed)sourceModels.QueueShadowless(model,")&&death.Contains("if(!dressed)\n                    {\n                    if(hat&&!AuditorHalo(")&&death.Contains("corpse.Band>=0&&alpha>.5f&&!dressed&&"),"a dressed corpse draws no voxel body, hat or bands");

@@ -11,9 +11,10 @@ namespace ChipArena.UnityConversion
     // the tip on the game's sockets), on the visual body's toon with the pack's texture as drawn (the staffs' crystal in the
     // school's colour, glowing); each body makes its GameObjects once per weapon and shows or hides them as the bake's models
     // (VisualWeaponDrawn, VisualWeaponShown), so nothing is allocated per frame once warm. The rules for when it draws are the
-    // bake's: the Standard skin in hand on a visual body (the Prototype Series, the Classic voxel body, first person, the
-    // entrances, the menus and the portraits keep the game's model), hidden with the weapon put away or thrown (the main
-    // dagger alone hides its copy). Without the bank, its prop or the shader, every pilot draws today's model.
+    // bake's: the Standard skin in hand on an arena pilot's visual body or the first-person view body (the Prototype Series,
+    // the Classic voxel body, the entrances, the menus and the portraits keep the game's model), hidden with the weapon put
+    // away or thrown (the main dagger alone hides its copy). Without the bank, its prop or the shader, every pilot draws
+    // today's model.
     public sealed partial class ArenaPresentation
     {
         // One weapon's built pieces, shared by every body: the fit, the mesh (skinned to the riser and two limb bones for the
@@ -121,7 +122,7 @@ namespace ChipArena.UnityConversion
         // reach its tips. False: the game's riser and limbs draw.
         private bool PackBowDrawn(CapturedAnimation.Player rig,Matrix4x4 hand,float pull)
         {
-            if(rig==null||!visualBodies.TryGetValue(rig,out var body)||body.Held==null||!body.Held.Pack||body.Held.Upper==null||body.PosedFrame!=Time.frameCount)return false;
+            var body=VisualHolder(rig);if(body==null||body.Held==null||!body.Held.Pack||body.Held.Upper==null||body.PosedFrame!=Time.frameCount)return false;
             var w=body.Held;if(!VisualWeaponMount(w.Mount,hand))return false;
             for(int l=0;l<2;l++){var piece=BowPiece(NativeBowRig.Limb(l==0,pull));var bone=l==0?w.Upper:w.Lower;bone.localPosition=piece.GetColumn(3);bone.localRotation=piece.rotation;}
             if(body.Shown!=w){if(body.Shown!=null)body.Shown.Hide();body.Shown=w;}

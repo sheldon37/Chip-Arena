@@ -50,7 +50,8 @@ namespace ChipArena.UnityConversion
         private static Vector3 Row(float[] f,int i)=>new Vector3(f[i],f[i+1],f[i+2]);
         private static Quaternion Rotation(float[] f,int i){var v=Row(f,i);float a=v.Length();return a<1e-8f?Quaternion.Identity:Quaternion.CreateFromAxisAngle(v/a,a);}
         /// <summary>The hips' height channel (rig metres from the capture's standing hips; the body sits .025 below it).</summary>
-        public static float Hips(float[] f)=>f[2]-.025f;
+        public static float Hips(float[] f)=>f[2]-HipsBelow;
+        public const float HipsBelow=.025f;
         /// <summary>The heading channel (rad, about +y): the pelvis's turn from the cycle's travel.</summary>
         public static float Heading(float[] f)=>f[0];
         /// <summary>The hips' sideways and forward sway off the take's first frame (source frame, rig metres).</summary>

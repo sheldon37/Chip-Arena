@@ -1078,7 +1078,7 @@ owner's new packs (POLY Mega Weapons Kit, SciFantasy Sword Pack; `docs/ASSET-CRE
   - forced shots light the face with the muzzle light.
   - The flash's shapes draw on the match camera only, so they are not seen in the orbit shots.
 - **Not yet:**
-  - first person, which needs each model's sight line for aiming down the sights;
+  - ~~first person~~: done 2026-10-29 ("First person, body chips and summons on the model" below);
   - the Standard skin's accent lights in the pilot's colour (the kit models have none);
   - the daggers.
 
@@ -1106,8 +1106,8 @@ in the model's hands. Those now draw pack models from the weapons pack bank (`do
   the weapon frame (Unity's: the source frame with x mirrored), the faces' winding kept.
 - **The runtime** (`Runtime/NativePackWeaponPresentation.cs`, through `NativeVisualWeaponPresentation.cs`):
   - Where the bake has no `VisualWeapons` entry for a spec, an arena pilot's body draws the pack weapon. An arena body is
-    one made for the rig the arena poses (`VisualBody.Arena`), so the entrances, draft, menus, portraits, first person and
-    corpses keep the game's model, as do the Prototype Series and the Classic voxel body.
+    one made for the rig the arena poses (`VisualBody.Arena`) or the first-person view body (2026-10-29), so the entrances,
+    draft, menus, portraits and corpses keep the game's model, as do the Prototype Series and the Classic voxel body.
   - Each weapon is built once (its mesh and its materials on the visual body's toon, the pack texture as drawn, outline off;
     the crystal on the toon's nine-colour mode with its accent in the school's colour and glow). Each body makes its mount
     and model once per weapon under its root (the daggers an off-hand copy, the bow skinned to a riser and two limb bones).
@@ -1143,7 +1143,50 @@ in the model's hands. Those now draw pack models from the weapons pack bank (`do
   - the staff's left seat under the casters' own clips;
   - a single detail tier;
   - the crystal's glow with Reduced effects;
-  - first person, which keeps the game's models.
+  - ~~first person~~: done 2026-10-29 (below).
+
+**First person, body chips and summons on the model (2026-10-29, `claude/model-zombie-motion`).** Owner (2026-10-29):
+"update the first person view to reflect the updated models for weapons. Finally, go through the chips that provide visual
+changes and update them according to the new models (NO VOXEL appearances)".
+- **First person** (`Runtime/NativeVisualBodyPresentation.cs` VisualViewPose, `NativeVisualWeaponPresentation.cs` "First
+  person"):
+  - the view body (forearms and hands) holds the visual body's own weapon models, as the arena body does: the bake's guns
+    and swords, the pack's daggers, shield, bow and staffs (the view body is `Arena`);
+  - the grasp takes the model's handguard, stock and staff seat before the view body poses;
+  - once it is placed, the view rig's right hand takes the model's fitted frame (VisualWeaponFit), so the muzzle flash, the
+    rounds' origin, the modules and the Q kit's pieces sit on the model; `VisualViewRestore` puts the hand back (position,
+    turn and scale) before the view rig poses again;
+  - the model draws where the game's view weapon would (`VisualWeaponDrawn` and `PackBowDrawn` resolve the view rig to the
+    view body, `VisualHolder`); its renderers are switched on and shadowless on the view layer (the arm cut leaves
+    non-skinned renderers off); it hides after the draw the frame it is not drawn (`VisualViewWeaponShown`);
+  - aiming down the sights lines up the model's rear sight: an entry's optional `Sight` child (weapon frame), else the
+    Standard rear sight taken through the fit (`VisualViewSight`);
+  - unchanged: Classic, no bake, the Siren, an active scope and the Prototype Series keep the game's view weapon; the aim,
+    the camera, FOV, sway and every rule are the game's.
+- **Body chips** (`Core/NativeBodyChipGear.cs`, `Runtime/NativeBodyChipPresentation.cs` BodyChipModel): on a model pilot each
+  of the source's body-chip pieces (NativeBodyChips, still the Classic body's) becomes a sculpted part at the model's size:
+  - on the chest core's anchor: red vital gems round the core, three teal block studs above it, green stamina lights down
+    the ribs, the frame's two pectoral plates, the violet mana orbs circling the torso (parked behind the back under the
+    plates, as the source's are);
+  - on the shoulders (the model's joint, the game arm's axes): the frame's pauldrons, three lames each;
+  - on the ankles: the boot chips' sabaton (instep plate and cuff, gold with Salvage) and the dash chips' heel thruster,
+    its flame lit while dashing.
+  The first-person view body (forearms only) wears none of them; the Classic body keeps the source's pieces. Part meshes are
+  built once at bank load (`Runtime/NativeBodyChipModels.cs`).
+- **Team colours:** a model pilot's team shows as a band round each upper arm (`NativeStatusVisuals.Armband`), not the voxel
+  bands' boxes at the voxel joints.
+- **Summons:** Graveyard Shift's and Corpse Party's zombie draws on the zombie model (a shambler variant), falls on it and
+  bleeds blood drops instead of voxel puffs; bodies are made ahead for a pilot holding either Chip. The Toy Soldier (Puppet
+  Master) draws a sculpted tin toy (`Core/NativeToySoldier.cs`: red coat, cross belts, shako, musket) on its own rig.
+- **Not done here (needs the bake, the owner's PC):**
+  - the Standard chip modules' sockets on the bake's and pack's meshes: they still use the Standard models' sockets (the
+    guns through the fit; blades and pack props as the Standard's), so rails, pods and strips may float or sink a little;
+  - the bake's `Sight` children (until then the fitted Standard sight), and the ADS distance with the life-size guns;
+  - the Prototype Series skin keeps its voxel weapons and modules (it is that skin's look); the thrown dagger and shield
+    fly as the Standard models.
+- **Checks:** `CoreTests --body-chip-model` (the parts, their layout, mirrors, the armband, the toy, the runtime routes),
+  `--visual-rig` and `--pack-weapons` (the first-person pins). Not a render: the parts on each outfit, the first-person grip
+  and sight picture are verified in Unity only.
 
 **Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
 "We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack

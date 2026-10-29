@@ -18,8 +18,8 @@ namespace ChipArena.UnityConversion
             public void Add(Matrix4x4 matrix){if(Count<Matrices.Length)Matrices[Count++]=matrix;}
         }
         private const int StatusSurfaces=9;
-        private readonly StatusBatch[] statusWorld=new StatusBatch[StatusSurfaces],statusView=new StatusBatch[StatusSurfaces],teamBands=new StatusBatch[8];
-        private readonly Material[] statusMaterials=new Material[StatusSurfaces+8];private readonly Mesh[] statusMeshes=new Mesh[5];
+        private readonly StatusBatch[] statusWorld=new StatusBatch[StatusSurfaces],statusView=new StatusBatch[StatusSurfaces],teamBands=new StatusBatch[8],teamArmbands=new StatusBatch[8];
+        private readonly Material[] statusMaterials=new Material[StatusSurfaces+8];private readonly Mesh[] statusMeshes=new Mesh[6];private Matrix4x4 armbandLocal;
         private readonly NativeStatusVisuals.Piece[] statusPieces=new NativeStatusVisuals.Piece[NativeStatusVisuals.MaxPieces];
         private readonly NativeMinion[] statusAdds=new NativeMinion[NativeStatusVisuals.AddRigs];private readonly float[] statusAddDistance=new float[NativeStatusVisuals.AddRigs];private readonly byte[] statusAddFlags=new byte[NativeStatusVisuals.AddRigs];
         private readonly Matrix4x4[] bandLocal=new Matrix4x4[4];private Matrix4x4 coreLocal,rimLocal,glintLocal;private bool statusReady,statusFailed;
@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
                 var status=new NativeStatusVisuals.Rig{Active=true,Quality=quality,Fire=(flags&1)!=0,Poison=(flags&2)!=0,Slowed=(flags&4)!=0,SlowUntil=time+1,Root=new NVector(-at.x,at.y,at.z),Camera=sourceEye,CameraRotation=sourceLook};
                 QueueStatus(status,time,Matrix4x4.Translate(at),statusWorld);
             }
-            FlushStatus(statusWorld,0,null);FlushStatus(teamBands,0,null);
+            FlushStatus(statusWorld,0,null);FlushStatus(teamBands,0,null);FlushStatus(teamArmbands,0,null);
             // The hands rig (StatusRig(true)) rides the view model: three flames and three bubbles, no slow or mark parts.
             if(!view||!FirstPerson||!fight||viewRig==null||ViewCamera==null||ScopeActive)return;
             NativePilot self=null;foreach(var p in arena.Pilots)if(p.Seat.id==LocalId){self=p;break;}
@@ -69,9 +69,14 @@ namespace ChipArena.UnityConversion
             QueueStatus(hands,time,viewRig.Root.transform.localToWorldMatrix,statusView);FlushStatus(statusView,10,ViewCamera);
         }
         // Team bands on a single presentation rig (draft stage, entrance), drawn at once.
-        private void TeamBands(CapturedAnimation.Player rig,int team){if(rig==null||team<0||!StatusReady())return;Bands(rig,team);FlushStatus(teamBands,0,null);}
+        private void TeamBands(CapturedAnimation.Player rig,int team){if(rig==null||team<0||!StatusReady())return;Bands(rig,team);FlushStatus(teamBands,0,null);FlushStatus(teamArmbands,0,null);}
         private void Bands(CapturedAnimation.Player rig,int team)
-        {if(team<0||team>=teamBands.Length)return;var batch=teamBands[team];for(int i=0;i<bandLocal.Length;i++)batch.Add(rig.Bones[NativeStatusVisuals.BandBones[i]].localToWorldMatrix*bandLocal[i]);}
+        {
+            if(team<0||team>=teamBands.Length)return;
+            // On the player's model: a band round each upper arm (the voxel bands' boxes sit at the voxel body's joints).
+            var body=VisualPosedBody(rig);if(body!=null){var ring=teamArmbands[team];ring.Add(VisualLimbFrame(body,rig,CapturedRig.LArm)*armbandLocal);ring.Add(VisualLimbFrame(body,rig,CapturedRig.RArm)*armbandLocal);return;}
+            var batch=teamBands[team];for(int i=0;i<bandLocal.Length;i++)batch.Add(rig.Bones[NativeStatusVisuals.BandBones[i]].localToWorldMatrix*bandLocal[i]);
+        }
         private static NativeStatusVisuals.Rig PilotStatus(NativeArena arena,NativePilot p,double now,float quality)
         {
             // simulation.ts:539 a status shows while any of its DoTs has time left; ability-system.ts:165 the slow; the
@@ -129,6 +134,7 @@ namespace ChipArena.UnityConversion
             NativeStatusVisuals.Sphere(8,6,out var bubble,out var bubbleTriangles);statusMeshes[2]=StatusMesh("Status bubble",bubble,bubbleTriangles);
             NativeStatusVisuals.Ring(.88f,1,16,out var ring,out var ringTriangles);statusMeshes[3]=StatusMesh("Status bubble rim",ring,ringTriangles);
             NativeStatusVisuals.Sphere(5,3,out var glint,out var glintTriangles);statusMeshes[4]=StatusMesh("Status bubble glint",glint,glintTriangles);
+            NativeStatusVisuals.Armband(14,out var band,out var bandTriangles);statusMeshes[5]=StatusMesh("Team armband",band,bandTriangles);
             for(int s=0;s<StatusSurfaces;s++)
             {
                 // Translucent layers draw back to front within a part as three's per-object sort does: flame then core; body, rim, glint.
@@ -137,11 +143,12 @@ namespace ChipArena.UnityConversion
                 var mesh=s<=(int)NativeStatusVisuals.Surface.Core?statusMeshes[0]:s<=(int)NativeStatusVisuals.Surface.Glint?statusMeshes[s-1]:cube;
                 statusWorld[s]=new StatusBatch(256){Mesh=mesh,Material=material};statusView[s]=new StatusBatch(16){Mesh=mesh,Material=material};
             }
-            for(int t=0;t<teamBands.Length;t++){var material=StatusMaterial(shader,NativeStatusVisuals.TeamColors[t],1,false);statusMaterials[StatusSurfaces+t]=material;teamBands[t]=new StatusBatch(64){Mesh=cube,Material=material};}
+            for(int t=0;t<teamBands.Length;t++){var material=StatusMaterial(shader,NativeStatusVisuals.TeamColors[t],1,false);statusMaterials[StatusSurfaces+t]=material;teamBands[t]=new StatusBatch(64){Mesh=cube,Material=material};teamArmbands[t]=new StatusBatch(32){Mesh=statusMeshes[5],Material=material};}
             Vector3 Mirror(NVector v)=>new Vector3(-v.X,v.Y,v.Z);Vector3 Size(NVector v)=>new Vector3(v.X,v.Y,v.Z);
             coreLocal=Matrix4x4.TRS(Mirror(NativeStatusVisuals.CorePosition),Quaternion.identity,Size(NativeStatusVisuals.CoreScale));rimLocal=Matrix4x4.Translate(Mirror(NativeStatusVisuals.RimPosition));
             glintLocal=Matrix4x4.TRS(Mirror(NativeStatusVisuals.GlintPosition),Quaternion.identity,Size(NativeStatusVisuals.GlintScale));
             for(int i=0;i<bandLocal.Length;i++)bandLocal[i]=Matrix4x4.TRS(Mirror(NativeStatusVisuals.BandPositions[i]),Quaternion.identity,Size(NativeStatusVisuals.BandSizes[i]));
+            armbandLocal=Matrix4x4.TRS(new Vector3(0,-NativeStatusVisuals.ArmbandDrop,0),Quaternion.identity,new Vector3(NativeStatusVisuals.ArmbandRadius,NativeStatusVisuals.ArmbandHeight,NativeStatusVisuals.ArmbandRadius));
             return statusReady=true;
         }
         private static Material StatusMaterial(Shader shader,int hex,float opacity,bool doubleSide,int order=0)

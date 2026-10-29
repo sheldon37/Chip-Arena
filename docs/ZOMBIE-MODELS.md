@@ -172,6 +172,67 @@ clothes, flesh wounds, bones visible, etc. Also, they seem to render back to vox
   - so about 4 ms a frame for 24 modelled adds over voxel (the profiler: the game's PlayerLoop about 20 against 15.5 ms).
   Not measured in a Windows player.
 
+## 4b. Motion on the model (2026-10-29, `claude/model-zombie-motion`)
+
+Owner (2026-10-29): "the idle; they stand "unnaturally" like bending their lower back weird", "What we were using for the voxel
+ones were working, but it doesn't seem to translate well for the player models".
+
+**Why.** The gait poses the voxel rig (a .615 m torso on .50 m legs, one block a joint); the model is a .50 m torso on .85 m
+legs with a five-bone spine. Measured on the first outfit's measured skeleton (`CoreTests --zombie-posture`), four voxel-era
+choices read wrong on it:
+- **The hunch hinged at the belt.** The capture's lumbar and lower thoracic bend both sit on the rig's Spine joint (the
+  retarget maps Spine and Spine1 there), which the model spreads over `spine_01`/`spine_02`, 2 to 9 cm above the pelvis:
+  60 to 76% of the trunk's bend sat there.
+- **The hips sat far back.** The gait sits the hips back to keep the face over the hit capsule (Balance), and the binding
+  scaled the pelvis's whole offset by the legs' ratio (1.71), across as well as up.
+- **The knees folded.** The capture's hips sit .025 under its standing height and the gait's floor .015 over the model's soles;
+  in a stride the gait also sinks the hips so the short voxel legs reach the feet. On the model's 1.71-times-longer legs (its
+  feet are the gait's) all three only bend the knees: about 45 to 50 degrees at rest, 64 to 84 walking.
+- **The arms splayed.** The gait sets the narrow voxel bodies' clavicles in and reaches the hands from there, angling the arms
+  out; the model copies arm directions from its own shoulders.
+
+**The fit** (`Core/NativeZombiePosture.cs`, on a copy of the gait's pose the model binds; the rig, voxel tiers, gore, hit volumes
+and the authority keep the gait's own):
+- 60% of the Spine joint's bend moves up onto the Chest joint (`spine_03`–`05`); the chest's, neck's and head's world turn
+  are unchanged, so the gaze and reach are the gait's;
+- each upper arm turns back to the direction from the shoulder its reach was planned from;
+- the model's pelvis takes the horizontal offset at the game's metres (`NativeVisualRig.State.Across`);
+- it rises by the clip's .025, the floor gap and the gait's stride sink (`NativeHordeGait.Sunk`), as far as each planted leg
+  reaches with 1% of its length to spare (`Stand`, `Rise`; it eases by 6 mm a pose, and comes down at once where a planted leg
+  needs it; with nothing planted, in a dive or a fall, it eases out);
+- a legless crawl's pelvis sits at the gait pelvis's own height (`Level`; it floated about 40 cm up before).
+
+Pilots are untouched (their state's stance is off). Nothing changes timing, reach, volumes or rules: the blows still land on
+the gait's contact frames.
+
+**Measured** (synthetic skeleton, two looks per kind, 4 s each at 60 fps after a 1.5 s settle; not a render):
+
+| kind | gait | lumbar share of the trunk bend | knee (mean) | hips behind the feet | upper arm out |
+|---|---|---|---|---|---|
+| shambler | rest | 0.63 → 0.26 | 45° → 24° | 16 → 10 cm | 34.5° → 25.1° |
+| shambler | walk | 0.75 → 0.31 | 64° → 42° | 9 → 3 cm | 43.1° → 35.7° |
+| shambler | run | 0.70 → 0.28 | 72° → 58° | 15 → 7 cm | 47.7° → 40.0° |
+| runner | rest | 0.67 → 0.27 | 50° → 26° | 10 → 6 cm | 22.2° → 15.6° |
+| runner | walk | 0.61 → 0.26 | 84° → 71° | 4 → 4 cm | 37.9° → 31.6° |
+| runner | run | 0.63 → 0.26 | 80° → 68° | 11 → 7 cm | 41.4° → 35.3° |
+| spitter | rest | 0.72 → 0.29 | 47° → 24° | 16 → 9 cm | 29.1° → 18.9° |
+| spitter | walk | 0.71 → 0.29 | 68° → 46° | 5 → 3 cm | 29.6° → 20.3° |
+| spitter | run | 0.72 → 0.29 | 73° → 59° | 13 → 6 cm | 48.5° → 39.0° |
+| brute | rest | 0.71 → 0.29 | 43° → 23° | 18 → 11 cm | 19.7° → 19.7° |
+| brute | walk | 0.69 → 0.28 | 66° → 47° | 2 → 2 cm | 20.3° → 20.4° |
+| brute | run | 0.76 → 0.32 | 71° → 51° | 14 → 7 cm | 47.0° → 47.0° |
+| hulk | rest | 0.72 → 0.29 | 61° → 44° | 3 → 2 cm | 47.0° → 47.4° |
+| hulk | walk | 0.65 → 0.26 | 75° → 65° | 6 → 5 cm | 46.4° → 46.4° |
+| hulk | run | 0.62 → 0.25 | 85° → 80° | 13 → 9 cm | 48.9° → 48.8° |
+
+Planted ankles stay on their marks (p95 0.0 cm); the hips move no faster than before (p95 lower for every kind but the
+Hulk's walk, .60 → .77 m/s); the head stays over the hit capsule. The brute and the Hulk set no clavicle inset, so their arms
+are unchanged; the Hulk's deep knees are its heavy stance (by design). The runner still walks low: its chase takes are
+captured crouched.
+
+**Also:** Graveyard Shift's and Corpse Party's summoned zombie draws on the model (a shambler variant), falls on it and bleeds
+blood drops instead of voxel puffs (docs/BOZO-INTEGRATION.md, "First person, body chips and summons on the model").
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
@@ -180,6 +241,9 @@ clothes, flesh wounds, bones visible, etc. Also, they seem to render back to vox
 - A reduced model for the Reduced tier, replacing the voxel style at distance.
 - The owner's per-type motion notes (shambler drag, runner intent, spitter guard, brute and hulk weight): the captures show the
   gait's motion on the model with blows on time; any change that needs a rule goes to Astra as a measured mismatch (none known).
+- The posture fit (4b) in Unity: the stance on real outfits, the runner's low chase, the Hulk's knees; the ZOMBIE PRO exports
+  still carry the retarget's spine softening made for the voxel torso (`scripts/mocap/mixamo-retarget.mjs`), which a
+  re-export for the model could drop (it needs the private pack).
 - A head burst (`HeadGib`) still leaves the gore's own stump and fountain on the model's collapsed neck.
 
 ## 6. Checks
@@ -188,6 +252,7 @@ clothes, flesh wounds, bones visible, etc. Also, they seem to render back to vox
 decay sites (placed on a mannequin's joints, left and right, square to their limbs) and the runtime's wiring (openings, pits,
 bones, model gore parts).
 `--zombie-gore` admits the new presentation file among the gore's readers.
+`--zombie-posture` measures the model fit (4b) and pins its wiring.
 
 None of these is a Unity render. Visual quality, foot contact on the model, crowd cost and multiplayer views are verified only in
 Unity on the owner's PC.

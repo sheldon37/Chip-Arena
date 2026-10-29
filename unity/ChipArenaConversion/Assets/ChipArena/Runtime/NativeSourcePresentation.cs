@@ -105,8 +105,11 @@ namespace ChipArena.UnityConversion
                 if(m.Pve==null)NativeSummonPose.Sample(minionPose,m.Kind=="toy",arena.Time,m.Speed,arena.Time-m.LastAttack,arena.Time-m.LastHitAt,m.Id.ToString().Length);else NativeSourceMotion.Sample("horde-"+variant+"-"+kind,age,duration,minionPose);
                 NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");
                 rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,m.Yaw,0));rig.Root.transform.localScale=Vector3.one*(m.Pve!=null?1:m.Kind=="toy"?.6f:.85f);
+                // A summoned zombie (Graveyard Shift, Corpse Party) on the player's model, as the horde's shamblers are
+                // (NativeZombieModelPresentation.cs); its voxel model only until a body is ready, or on Classic.
+                if(add==null&&m.Kind=="zombie"&&ZombieModelPose(rig,m.Id,NativeHordeKinds.Shambler,NativeHordeModels.Full,true,false,false,0,0,0,HitFlashCode(m.Id,arena.Time),1,0))continue;
                 int lost=add?.Lost??0;bool Visible(int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
-                sourceModels.Queue(m.Pve==null?"summon-"+m.Kind:"horde-"+variant,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible,glow:add!=null?HordeGlow(m.Id):(Vector4?)null);
+                sourceModels.Queue(m.Pve==null?SummonModelOf("summon-"+m.Kind):"horde-"+variant,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible,glow:add!=null?HordeGlow(m.Id):(Vector4?)null);
                 // Siren minion effects (NativeMinionFxPresentation.cs): tongues and their licks, the crack haze, the possession hint
                 // by its replicated start (grin and trail from level 2) and a vent climb's emergence pool (on the vent's floor; the
                 // source counts its age to ActiveAt = 1.95 s).
@@ -115,6 +118,9 @@ namespace ChipArena.UnityConversion
             // C17: severed limbs fly off as chunks (the rigs above are posed), and the downed get revive beacons.
             HordeKindsEnd(arena);PveGore(arena);PveBeacons(arena);
         }
+        // A summon's model: the Toy Soldier's sculpted figure once the player's model is on (Core/NativeToySoldier.cs; the Classic
+        // look and an install without the bake keep its blocks).
+        private string SummonModelOf(string model)=>model=="summon-toy"&&!ClassicBodies&&VisualBodiesOn&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model;
         private void ClearSourceActors(){ClearRevives();ClearRigDressing();ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();ClearHordeKinds(null);ClearHordeGallery();sourceModels?.Begin();}
         public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
     }

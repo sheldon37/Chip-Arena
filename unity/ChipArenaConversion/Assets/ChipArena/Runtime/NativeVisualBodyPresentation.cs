@@ -738,15 +738,17 @@ namespace ChipArena.UnityConversion
         // The view model wears the visual body's forearms and hands, as the voxel view shows the elbows and hands only
         // (NativeViewRules.ViewModelBone): a second instance under the view rig, its skinned meshes cut to the triangles weighted
         // below the elbows (ArmMesh, made once per mesh and kept), on the view model's layer without shadows. It is posed from the
-        // view rig and placed so its right hand's weapon frame is where the view rig holds the weapon (the sights, the aim and the
-        // muzzle stay the game's); the left hand's item rides the visual left hand, as in third person.
+        // view rig and placed so its right hand's weapon frame is where the view rig holds the weapon (the aim stays the game's);
+        // the left hand's item rides the visual left hand, as in third person. It holds the visual body's own weapon models
+        // (NativeVisualWeaponPresentation.cs, its "First person"): the right hand on the fitted frame, the sights the model's.
         private VisualBody viewBody;private static readonly Dictionary<Mesh,Mesh> armMeshes=new Dictionary<Mesh,Mesh>();
         private bool VisualViewDrawn(CapturedAnimation.Player rig)=>rig==viewRig&&viewBody!=null&&viewBody.Root!=null&&viewBody.PosedFrame==Time.frameCount;
-        // RenderFirstPerson, before the view rig poses: its left hand goes back where its own pose put it.
+        // RenderFirstPerson, before the view rig poses: its hands go back where its own pose put them (the right off the fit).
         private void VisualViewRestore()
         {
             if(viewBody==null||!viewBody.Moved||viewRig==null)return;
-            var bone=viewRig.Bones[CapturedRig.LHand];bone.localPosition=viewBody.HandPosition[0];bone.localRotation=viewBody.HandRotation[0];viewBody.Moved=false;
+            var bone=viewRig.Bones[CapturedRig.LHand];bone.localPosition=viewBody.HandPosition[0];bone.localRotation=viewBody.HandRotation[0];
+            var right=viewRig.Bones[CapturedRig.RHand];right.localPosition=viewBody.HandPosition[1];right.localRotation=viewBody.HandRotation[1];right.localScale=viewBody.RightScale;viewBody.Moved=false;
         }
         // RenderFirstPerson, once the view rig is placed (aimed, swayed, chip-select layered): pose and place the view body; false
         // (and hidden) when the voxel arms draw instead (Classic, no bake, the Siren, a scope up).
@@ -759,7 +761,10 @@ namespace ChipArena.UnityConversion
             var pose=view.Pose;pose.World();
             if(viewBody.PosedFrame<Time.frameCount-1||viewBody.Spec!=a.SourceSpec)viewBody.Binding.State.Forget();
             viewBody.PosedFrame=Time.frameCount;viewBody.Spec=a.SourceSpec;
-            viewBody.Binding.Apply(pose,VisualGrasp(a,pose,time,ChipLookOf(a.Id)),false,false);
+            // Its own model of the weapon in hand, as the arena body's: the grasp on its handguard and stock, a staff's shaft.
+            var held=viewBody.Held=VisualWeaponFor(viewBody,a);if(held!=null&&!held.ViewReady)VisualViewWeaponReady(held);
+            var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
+            viewBody.Binding.Apply(pose,grasp,false,false);
             if(viewBody.Accent!=a.AccentColor)VisualAccent(viewBody,a.AccentColor);
             if(!viewBody.Root.activeSelf)viewBody.Root.SetActive(true);
             // The body moves (rigidly) so its right weapon frame lands on the view rig's right hand, where the weapon draws.
@@ -768,13 +773,17 @@ namespace ChipArena.UnityConversion
             root.SetPositionAndRotation(hand.position-turn*(rp*s),turn);
             viewBody.Binding.LeftWeaponFrame(pose,out var lp,out var lq);var left=view.Bones[CapturedRig.LHand];
             viewBody.HandPosition[0]=left.localPosition;viewBody.HandRotation[0]=left.localRotation;
-            left.SetPositionAndRotation(root.TransformPoint(lp),root.rotation*lq);viewBody.Moved=true;
+            left.SetPositionAndRotation(root.TransformPoint(lp),root.rotation*lq);
+            // The right hand on the model's fitted frame (VisualWeaponFit), for what draws there.
+            viewBody.HandPosition[1]=hand.localPosition;viewBody.HandRotation[1]=hand.localRotation;viewBody.RightScale=hand.localScale;VisualWeaponFit(hand,held);
+            viewBody.Moved=true;
             return true;
         }
         private VisualBody CreateViewBody(CapturedAnimation.Player view)
         {
             var body=CreateVisualBody(view,ViewBodyId);if(body==null)return null;
-            body.Root.name="Visual view body";
+            // The local pilot's own body in first person: it holds the pack bank's weapons too (VisualWeaponFor).
+            body.Root.name="Visual view body";body.Arena=true;
             var arm=new HashSet<Transform>();
             foreach(int j in new[]{CapturedRig.LElbow,CapturedRig.RElbow}){int v=body.Binding.Rig.Of[j];if(v>=0)foreach(var t in body.Binding.Bones[v].GetComponentsInChildren<Transform>(true))arm.Add(t);}
             foreach(var t in body.Root.GetComponentsInChildren<Transform>(true))t.gameObject.layer=10;

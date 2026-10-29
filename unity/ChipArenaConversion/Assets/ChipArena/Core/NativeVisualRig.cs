@@ -237,6 +237,12 @@ namespace ChipArena.UnityConversion
             internal readonly bool[] Under;
             internal readonly Vector3[] RelaxLast=new Vector3[2]; internal readonly bool[] RelaxHad=new bool[2]; // last frame's relaxed elbows, from the shoulder (Relax)
             internal readonly float[] RelaxCost=new float[Swings]; // RelaxElbow's candidates' costs (scratch)
+            // A zombie's stance on the model (Core/NativeZombiePosture; a pilot's: all off). Across: the pelvis's horizontal offset
+            // from its rest at the game's metres (the legs' ratio scales only its height), so a hunched add's hips sit back as far
+            // as the game's do, not 1.7 times as far. Level: the pelvis at the game pelvis's own height over the floor (a legless
+            // crawl, its legs gone). Stand: how far (metres) the pelvis rises over its planted feet, as far as each planted leg
+            // reaches with KneeRoom to spare; Raise, how far it is raised this frame (it eases by RaiseStep a pose).
+            public bool Across, Level; public float Stand, Raise;
             // Drops last frame's elbows and hands (a cut, a respawn, a weapon swap): the next pose is solved afresh.
             public void Forget() { HasLast=false; }
             public State(Rig rig)
@@ -378,6 +384,7 @@ namespace ChipArena.UnityConversion
                 s.World[v]=Quaternion.Normalize(s.Turn[v]*r.AlignedWorld[v]);
             }
             Positions(s,pose);
+            if(s.Stand>0||s.Raise!=0) Rise(s,pose,plantFeet);
             s.LeftFootWeight=s.RightFootWeight=s.SupportWeight=0; s.LeftArmReach=s.LeftLegReach=s.RightLegReach=s.ShoulderTurn=s.GiveWay=0;
             s.ElbowSwing[0]=s.ElbowSwing[1]=0;
             s.LeftInside=Inside(s,pose,true); s.RightInside=Inside(s,pose,false);
@@ -752,12 +759,48 @@ namespace ChipArena.UnityConversion
         {
             var r=s.Rig; int pelvis=r.Of[CapturedRig.Pelvis];
             Vector3 lift=(pose.WorldPosition[CapturedRig.Pelvis]-r.GamePelvisRest)*r.LegRatio;
+            if(s.Across||s.Level||s.Raise!=0) lift=Stance(s,pose,lift);
             for(int v=0;v<r.Count;v++)
             {
                 int p=r.Parent[v];
                 if(v==pelvis) s.Position[v]=r.PelvisRest+lift;
                 else s.Position[v]=p<0?r.RestPosition[v]:s.Position[p]+Vector3.Transform(r.RestPosition[v],s.World[p]);
             }
+        }
+
+        private static Vector3 Stance(State s,CapturedRig.Pose pose,Vector3 lift)
+        {
+            var r=s.Rig; Vector3 at=pose.WorldPosition[CapturedRig.Pelvis];
+            if(s.Across) { lift.X=at.X-r.GamePelvisRest.X; lift.Z=at.Z-r.GamePelvisRest.Z; }
+            if(s.Level) lift.Y=at.Y-r.PelvisRest.Y;
+            lift.Y+=s.Raise; return lift;
+        }
+        // The share of each planted leg's reach the stance's rise leaves it (about 16 degrees of knee), and the rise's ease a pose.
+        public const float KneeRoom=.99f, RaiseStep=.006f;
+        // State.Stand: the pelvis raised toward Stand while the feet are planted, never past what a planted leg reaches with
+        // KneeRoom to spare (a foot easing down holds it by its plant weight, so nothing pops); with nothing planted (a dive, a
+        // fall, a crawl) it eases back down. It eases up by RaiseStep a pose and comes down at once where a planted leg needs it.
+        private static void Rise(State s,CapturedRig.Pose pose,bool plantFeet)
+        {
+            var r=s.Rig; float want=plantFeet&&!s.Level?Math.Max(0,s.Stand):0;
+            if(want>0)
+                for(int side=0;side<2;side++)
+                {
+                    int hip=side==0?CapturedRig.LHip:CapturedRig.RHip,vh=r.Of[hip],va=r.Of[hip+2];
+                    if(vh<0||va<0) continue;
+                    Vector3 game=pose.WorldPosition[hip+2]; float above=game.Y-AnkleRest(hip);
+                    float weight=1-CapturedClip.Ease((above-PlantedHeight)/(LiftedHeight-PlantedHeight));
+                    if(weight<=0) continue;
+                    // (The hip as unraised: Positions placed it with last pose's rise.)
+                    Vector3 hipAt=s.Position[vh]-new Vector3(0,s.Raise,0);
+                    float dx=game.X-hipAt.X,dz=game.Z-hipAt.Z,drop=hipAt.Y-(r.AlignedPosition[va].Y+above),reach=(r.LegUpper+r.LegLower)*KneeRoom,h2=dx*dx+dz*dz;
+                    float most=h2>=reach*reach?0:Math.Max(0,(float)Math.Sqrt(reach*reach-h2)-drop);
+                    want=Math.Min(want,want+(Math.Min(want,most)-want)*weight);
+                }
+            float raise=s.HasLast?s.Raise+CapturedClip.Clamp(want-s.Raise,-RaiseStep,RaiseStep):want;
+            if(plantFeet) raise=Math.Min(raise,want);
+            if(raise==s.Raise) return;
+            s.Raise=raise; Positions(s,pose);
         }
 
         // Planted feet: the visual ankle goes to the game ankle's ground point, the knee toward the game knee's side.
