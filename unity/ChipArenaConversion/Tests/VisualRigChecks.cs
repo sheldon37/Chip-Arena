@@ -173,8 +173,8 @@ namespace ChipArena.UnityConversion
             // The shaders: a keep value per vertex by its index, interpolated, the outline and the hologram cut with the body.
             string fx=R("Resources/NativeVisualBodyFx.cginc"),toon=R("Resources/NativeVisualBodyToon.shader"),ghost=R("Resources/NativeWeaponGhost.shader");
             Check(fx.Contains("if(_CutPick.x+_CutPick.y<0.5)return 1.0;")&&fx.Contains("return dot(_CutTex.Load(int3(i%w,i/w,0)).rg,_CutPick.xy);")&&fx.Contains("#ifdef SHADER_TARGET_SURFACE_ANALYSIS"),"unset, nothing is read or cut; set, a vertex's keep value is read by its index");
-            Check(toon.Contains("vertex:CutVert")&&toon.Contains("void CutVert(inout appdata_cut v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.cut=CutKeep(v.vid);}")&&toon.Contains("clip(i.cut);DecayClip(i.rest);WoundClip(i.worldPos);SpawnClip(i.worldPos);")
-                &&toon.Contains("o.cut=CutKeep(v.vid);\n")&&toon.Contains("clip(i.color.a-.5);clip(i.cut);"),"the toon and its outline cut where the keep value falls under 0");
+            Check(toon.Contains("vertex:CutVert")&&toon.Contains("void CutVert(inout appdata_cut v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.cut=CutKeep(v.vid);o.rest=v.texcoord3.xyz;}")&&toon.Contains("clip(i.cut);DecayClip(i.rest);WoundClip(i.worldPos);SpawnClip(i.worldPos);")
+                &&toon.Contains("o.cut=CutKeep(v.vid);o.rest=v.texcoord3.xyz;\n")&&toon.Contains("clip(i.color.a-.5);clip(i.cut);"),"the toon and its outline cut where the keep value falls under 0");
             Check(toon.Contains("o.Albedo=_VertexAlbedo>0?i.color.rgb:")&&ghost.Contains("o.cut=CutKeep(v.vid);")&&ghost.Contains("clip(i.cut);UNITY_SETUP_INSTANCE_ID(i);"),"caps coloured by their vertices; the hologram cut the same way");
             // A split body: both halves the whole model, cut along the plane on a worker, the second shown once it is in.
             string cut=R("Runtime/NativeVisualCutPresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs"),death=R("Runtime/NativeDeathPresentation.cs"),bisect=R("Runtime/NativeBisectPresentation.cs");
