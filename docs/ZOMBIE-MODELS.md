@@ -233,6 +233,51 @@ captured crouched.
 **Also:** Graveyard Shift's and Corpse Party's summoned zombie draws on the model (a shambler variant), falls on it and bleeds
 blood drops instead of voxel puffs (docs/BOZO-INTEGRATION.md, "First person, body chips and summons on the model").
 
+## 4c. On the PC: the legs in a stride, and the Hulk a mutant (2026-10-29, `claude/zombie-motion-pc`)
+
+Owner (2026-10-29), after 4b: the motion review on the PC, then "Hulk zombies need to look a LOT different, they are essentially
+mutated. Theyre supposed to be huge, muscled zombies. They look just like a taller version of the player model right now", and a
+reference of the giant-brute archetype (a head sunk between boulder shoulders, a barrel chest, huge long arms on small legs).
+
+**The legs (Core/NativeZombiePosture.Stance, NativeVisualRig.State.Room, NativeHordeGait.Crouch and Busy).** Measured in Unity
+(the local tool's stance log: each knee's bend, the pelvis over the soles; five male A variants, idle facing the pilot and
+hunting it on Brickfall), 4b's fit stood the adds up at rest but a stride still sat in a squat: the shambler's planted knee
+about 50° walking (a person's is 5 to 20°), the Hulk 41° standing. 4b raised the hips only by the gait's own lowering (the
+clip's .025, the floor gap, the stride sink), and the takes' hips sit lower still (1 to 4 cm of rig) on the voxel legs' share.
+Now the model's hips also stand out of the takes' own crouch and by `Lift` (8 cm) more, as far as the planted legs reach with
+`Room` to spare (.99 of the leg, about 16° of knee; the Hulk's .965, about 30°: its heavy stance), except where a blow, a reel, a
+roar or a keyed move owns the pose (`Busy`): those crouches are the gait's to show. Between two planted steps (a run's flight)
+the rise holds instead of climbing.
+
+| measured | before (4b) | after |
+|---|---|---|
+| synthetic, planted knee walking / running (shambler, runner, spitter, brute, hulk) | 34-45° / 39-71° | 26-36° / 31-42° |
+| synthetic, knees at rest | 23-26°, Hulk 44° | 20-21°, Hulk 32° |
+| Unity, idle, lower knee (male A) | shambler 24°, runner 38°, spitter 23°, brute 20°, Hulk 41° | 18°, 16°, 16°, 17°, 30° |
+| Unity, hunting (walk and blows), lower knee | shambler 50°, runner 43°, spitter 40°, brute 22°, Hulk 46° | 33°, 16°, 38° (spits from range: busy), 16°, 36° |
+
+The captures (all five kinds, male and female A: idle, walk, run, a blow, a stagger, a fall and the corpse, a legless crawl)
+show the hunch rounding the upper back, soft knees at rest, straight-legged strides, the crawl on the floor, planted feet and
+blows on time. The hips' speed is no higher than the gait's (p95 within 4b's bounds).
+
+**The Hulk, a mutant (Core/NativeZombieMutation, `NativeZombieLooks.Variant.Mutant`, Build `Right`/`Neck`/`Reach`).**
+- The build: limbs to twice a person's girth, hands 1.85 to 2x, the shoulders' span 1.36 to 1.42 (the arms hang outside the
+  trunk), the neck shortened to .6 (the head sits low between the shoulders), the arms 1.26 to 1.3 times as long (the elbow and
+  wrist set out along the limb), the right arm a little past the left; pale grey-pink skin; the males bare-chested.
+- The growth: muscle masses placed from the rest joints, summed as fields and polygonised as three smooth surfaces (surface
+  nets: the trunk, each arm), so they meet in fillets instead of reading as separate balls. The trunk: trapezius and a mound
+  behind and round the sunken head, a barrel chest, a gut, lats. Each arm: a boulder shoulder, the upper arm, a forearm club
+  that flares and turns raw toward the fist. Bone spurs (shoulders, the back, the right forearm) and glowing pustules.
+- Skinning: each vertex on the two bones whose masses it grew from, by their shares there, so the elbow and shoulder bend
+  smoothly; spurs and pustules rigid. Drawn in the toon by its vertex colours with the outline; outside the decay openings.
+- Cost: built once per variant when its first body is made (33 ms in the .NET checks; four variants), 6.5k vertices and 12.8k
+  faces, one more skinned renderer on each Hulk.
+
+**Crowd cost (Editor; i9-13900K, RTX 4090, Game view 2560x1440, Brickfall, 24 adds hunting a god-mode pilot, frames 11 to 19 s,
+the same conditions as section 4).** Modelled 20.8 / 20.9 ms mean, 22.9 / 22.6 ms p95 (4: 20.2 / 20.3, 22.5 / 22.1): the fit's
+pose copy and rise cost about .6 ms for 24 adds. Voxel 15.6 ms (17.3 p95), no zombies 8.5 ms (9.5 p95). Measured before the
+Hulk's growth (one Hulk in this crowd). A Windows player was not measured.
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
@@ -241,9 +286,10 @@ blood drops instead of voxel puffs (docs/BOZO-INTEGRATION.md, "First person, bod
 - A reduced model for the Reduced tier, replacing the voxel style at distance.
 - The owner's per-type motion notes (shambler drag, runner intent, spitter guard, brute and hulk weight): the captures show the
   gait's motion on the model with blows on time; any change that needs a rule goes to Astra as a measured mismatch (none known).
-- The posture fit (4b) in Unity: the stance on real outfits, the runner's low chase, the Hulk's knees; the ZOMBIE PRO exports
-  still carry the retarget's spine softening made for the voxel torso (`scripts/mocap/mixamo-retarget.mjs`), which a
-  re-export for the model could drop (it needs the private pack).
+- The ZOMBIE PRO exports still carry the retarget's spine softening made for the voxel torso (`scripts/mocap/mixamo-retarget.mjs`),
+  which a re-export for the model could drop (it needs the private pack).
+- The Hulk's growth: its first body per variant builds the mesh on the main thread (tens of ms, once); a prewarm would hide it.
+  The growth has no own wounds (hits on it show the body's) and its voxel tier is the old Hulk.
 - A head burst (`HeadGib`) still leaves the gore's own stump and fountain on the model's collapsed neck.
 
 ## 6. Checks
@@ -252,7 +298,9 @@ blood drops instead of voxel puffs (docs/BOZO-INTEGRATION.md, "First person, bod
 decay sites (placed on a mannequin's joints, left and right, square to their limbs) and the runtime's wiring (openings, pits,
 bones, model gore parts).
 `--zombie-gore` admits the new presentation file among the gore's readers.
-`--zombie-posture` measures the model fit (4b) and pins its wiring.
+`--zombie-posture` measures the model fit (4b, 4c: the planted knee in a stride, a busy pose's crouch kept, the rise holding in
+flight) and pins its wiring. `--zombie-models` also builds the Hulk's growth on a mannequin (placement, frames, sizes, the clubs,
+smooth trunk, winding, bones and weights, determinism, its build time).
 
 None of these is a Unity render. Visual quality, foot contact on the model, crowd cost and multiplayer views are verified only in
 Unity on the owner's PC.

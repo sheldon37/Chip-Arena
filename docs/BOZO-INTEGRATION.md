@@ -1187,6 +1187,34 @@ changes and update them according to the new models (NO VOXEL appearances)".
 - **Checks:** `CoreTests --body-chip-model` (the parts, their layout, mirrors, the armband, the toy, the runtime routes),
   `--visual-rig` and `--pack-weapons` (the first-person pins). Not a render: the parts on each outfit, the first-person grip
   and sight picture are verified in Unity only.
+- **On the PC (2026-10-29, `claude/zombie-motion-pc`; Unity Editor captures, local tool v221-v228):**
+  - First person, every spec: the bake's pistol, rifle, machine gun, sword and greatsword sit in the gloved hands; the muzzle
+    flash and smoke leave the model's muzzle; swings, the bow's draw and the casters' charge play on the model. The shield and
+    the daggers at rest frame as the game's own view does (the Prototype skin's voxel ones sit the same way: the shield edge-on
+    low, the daggers mostly below the screen). Prototype, Classic and the Siren keep the game's view weapons; L33t and the
+    Siren need developer access (a run without it falls back to the pistol).
+  - Aim down the sights exists for the rifle only (`NativeRangedRules.Scope`, the Q key): past 60% of the blend it is the scope,
+    and the model is hidden within about two frames, so there is no lasting sight picture on the model and no `Sight` child is
+    needed. The pistol and the machine gun have no ADS.
+  - The pack weapons (the gladius daggers, the heater shield, the longbow, the crystal staffs) do not show on this PC: the pack
+    banks (`docs/PACK-BANK.md`, `ChipArenaPack*.bytes`) were never built here, and no LocalAssets zip on the Drive (10-16 to
+    10-29) carries them, so the builder lacks them too. Pilots draw the Standard weapons there. Building them needs the
+    packs unpacked from the Drive's zips (Synty and others, tens of GB).
+  - Body chips on the open hoodie, the tee and the hard jacket (pistol: vital x6, frame, endurance, stabilizer, salvage, dash,
+    rebound): the vital gems, block studs and stamina lights sit on the cloth round the core, the sabatons (gold with Salvage)
+    and heel thrusters on the shoes, none in first person. The pauldrons rode the upper arm alone and stood off a raised arm
+    like a wing: they now take `NativeBodyChipGear.PauldronArm` (30%) of the arm's turn and the rest the chest's
+    (`VisualShoulderFrame`). Mana, reservoir and stamina chips are magic- or melee-only (refused on a pistol); the orbs and
+    the stamina run were captured on the fire staff and the sword.
+  - Team armbands (two a side): a band round each upper arm in the team's colour; the local pilot shows none (the game's own
+    `!own` rule).
+  - Summons: Puppet Master's toy soldier draws the sculpted toy, fights beside the add and is gone at its 6 s (no voxel
+    blocks). Graveyard Shift and Corpse Party need a successful block, which the tool could not trigger (a held or tapped
+    block from input injection did not register as one): not verified.
+  - Chip modules on the model guns: rings and coils sit on the barrels; on the rifle the top run (the homing seeker's beads,
+    the rail strip) floats about 3-4 cm over the handguard (the Standard rifle's top-rail height through the uniform fit). The
+    fix is per-model socket tables (the top run's height and the pods' and magazine's places measured on each bake mesh),
+    not made here.
 
 **Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
 "We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack

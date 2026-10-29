@@ -24,6 +24,12 @@ namespace ChipArena.UnityConversion
     //   model that sink only folds the knees. The model takes the offset across at the game's metres (Across), its hips raised
     //   by those three (Stand) as far as each planted leg reaches with room to bend, and a legless crawl at the game pelvis's own
     //   height (Level).
+    // - Stance, the legs (on the PC, 2026-10-29: the walks still read as a squat): the takes were acted on a person's legs and
+    //   bound to the voxel's as a share of their length, idle, walk and run alike, and the gait sits a near add lower still (its
+    //   alert); on the model's legs those shares bent the planted knees 34 to 45 degrees in a stride (a person's is 5 to 20).
+    //   The model's hips also stand up out of the takes' own crouch (NativeHordeGait.Crouch) and by Lift more, as far as the
+    //   planted legs reach (Room), except where a blow, a reel, a roar or a keyed move owns the pose (NativeHordeGait.Busy):
+    //   those crouches are the gait's to show.
     // Presentation only: no timing, reach, volume or rule changes; the blows still land on the gait's contact frames.
     public static class NativeZombiePosture
     {
@@ -55,14 +61,19 @@ namespace ChipArena.UnityConversion
             p.World();
         }
 
-        /// <summary>The model's stance for an add of `kind` (crawling: its legs are gone; `sunk`: the gait's NativeHordeGait.Sunk this
-        /// pose) on its binding's state.</summary>
-        public static void Stance(NativeVisualRig.State s,int kind,bool crawl,float sunk)
+        /// <summary>How far past the gait's own lowering the model's hips may stand (m) while no blow, reel, roar or keyed move owns
+        /// the pose: the planted legs' reach is what stops them (NativeVisualRig.State.Room), so standing and in a stride the knees
+        /// keep about 16 degrees of bend; the Hulk's room keeps about 30 (its heavy stance).</summary>
+        public const float Lift=.08f,HulkRoom=.965f;
+
+        /// <summary>The model's stance for an add of `kind` (crawling: its legs are gone) from its gait this pose (NativeHordeGait
+        /// Sunk, Crouch and Busy; none for a pose the gait did not make) on its binding's state.</summary>
+        public static void Stance(NativeVisualRig.State s,int kind,bool crawl,float sunk,float crouch,float busy)
         {
-            s.Across=true;s.Level=crawl;
+            s.Across=true;s.Level=crawl;s.Room=kind==NativeHordeKinds.Hulk?HulkRoom:NativeVisualRig.KneeRoom;
             // (The gait's floor sits Root under the rig root; the model's soles NativeVisualRig.Floor under it.)
             float gap=Math.Max(0,-NativeVisualRig.Floor-NativeHordeKinds.Root[NativeHordeKinds.Index(kind)]);
-            s.Stand=crawl?0:(NativeZombieClips.HipsBelow+Math.Max(0,sunk))*s.Rig.LegRatio+gap;
+            s.Stand=crawl?0:(NativeZombieClips.HipsBelow+Math.Max(0,sunk)+Math.Max(0,crouch))*s.Rig.LegRatio+gap+Lift*(1-Math.Max(0,Math.Min(1,busy)));
         }
     }
 }

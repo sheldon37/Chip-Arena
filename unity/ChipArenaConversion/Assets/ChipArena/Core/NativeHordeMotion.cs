@@ -130,6 +130,14 @@ namespace ChipArena.UnityConversion
         /// <summary>How far (rig metres) this pose's hips were sunk so the short voxel legs reach the stride's feet (0 while they
         /// reach). The model's longer legs need none of it (Core/NativeZombiePosture.Stance).</summary>
         public float Sunk{get;private set;}
+        /// <summary>How far (rig metres) this pose's idle, walk and run takes sit their hips under the capture's standing hips, before a
+        /// blow, a reel or a roar lays its own crouch on (0 for the procedural crawl). The takes were acted on a person's legs and
+        /// bound to the voxel rig's short ones as a share of their length; on the model's longer legs that share reads as a squat
+        /// (Core/NativeZombiePosture.Stance stands it up).</summary>
+        public float Crouch{get;private set;}
+        /// <summary>How much of this pose a blow, a reel, a roar or a keyed move owns (0 to 1): their crouches are the gait's to show
+        /// on the model too (Core/NativeZombiePosture.Stance lifts only the rest).</summary>
+        public float Busy{get;private set;}
         private readonly float[] rowW=new float[CapturedClip.Channels],rowR=new float[CapturedClip.Channels],rowI=new float[CapturedClip.Channels],rowA=new float[CapturedClip.Channels],row=new float[CapturedClip.Channels];
         private readonly float[] retimeAt=new float[4],retimeMarks=new float[4];
         private readonly Vector3[] mocapAnkle=new Vector3[2],mocapKnee=new Vector3[2],mocapHip=new Vector3[2];private readonly Quaternion[] mocapFoot=new Quaternion[2];
@@ -167,7 +175,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Pose(in HordeMotionInput f,CapturedRig.Pose p,NativeHordeReact react=null)
         {
-            NativeZombieMotion.Warm();Step(f,react);LifeStep(f,react,stepFresh);p.Reset();AttackClip=-1;armLayers=0;Sunk=0;
+            NativeZombieMotion.Warm();Step(f,react);LifeStep(f,react,stepFresh);p.Reset();AttackClip=-1;armLayers=0;Sunk=0;Crouch=0;Busy=0;
             // A blow the authority cancelled (a stagger in the wind-up) stops where it was and lets go over CancelFade: it never
             // strikes, and it never snaps off.
             float age=f.AttackAge,keep=1;
@@ -200,7 +208,7 @@ namespace ChipArena.UnityConversion
             if(!float.IsNaN(wake))NativeZombieClips.Sample(NativeZombieMotion.Wake,Math.Min(wake,NativeZombieClips.Duration(NativeZombieMotion.Wake)),rowI);
             else NativeZombieClips.Sample(idleClip,t*idleRate+idlePhase,rowI);
             // (The Hulk keeps only a little of a zombie take walking: its heavy stride is its own, Core/NativeHordeHeavy.)
-            NativeZombieClips.Blend(rowI,rowA,heavy?moving*HeavyTakeShare:moving,row);
+            NativeZombieClips.Blend(rowI,rowA,heavy?moving*HeavyTakeShare:moving,row);Crouch=Math.Max(0,-row[2]);
             // The capture's pelvis swings a long way about the travel (a person's whole turn per stride): kept to two thirds, so
             // the body reads along its path and the planted feet stay under it.
             row[0]*=.62f;
@@ -262,7 +270,7 @@ namespace ChipArena.UnityConversion
             LifeTrunk(p,f,moving);
             // ---- head: tracks its pilot, the Siren's crooked tilt and twitches ----
             // (A blow handing over to the next keeps its weight through the hand-over: the head's tracking never jumps.)
-            float held=Math.Max(attackW,tailHeld);
+            float held=Math.Max(attackW,tailHeld);Busy=Math.Min(1,Math.Max(Math.Max(held,reel),Math.Max(roarW,moveW)));
             float twitch=heavy?.35f*Twitch(t*.75f):Twitch(t);float headPitch=lookPitch*.6f*alert+aHead,headYaw=lookYaw*(.55f+.35f*alert)*(1-held*.5f)+twitch*.5f,headRoll=tilt+twitch*.8f;
             RoamHead(f,moving,ref headPitch,ref headYaw,ref headRoll);
             Bend(p,CapturedRig.Neck,headPitch*.45f,headYaw*.45f,headRoll*.4f);Bend(p,CapturedRig.Head,headPitch*.55f,headYaw*.55f,headRoll*.6f);LifeHead(p,f,alert);RoamAim(p);

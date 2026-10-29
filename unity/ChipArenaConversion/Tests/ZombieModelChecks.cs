@@ -16,7 +16,7 @@ internal static class ZombieModelChecks
     private static int Picks(){int sink=0;for(int i=0;i<4000;i++){var v=NativeZombieLooks.Of(Kinds[i%Kinds.Length],10000+i);sink+=v.Female?1:0;}return sink;}
     public static void Run(string root)
     {
-        Table();Pick();Shapes();Sac();Decay();Sources(root);
+        Table();Pick();Shapes();Sac();Decay();Mutation();Sources(root);
         Console.WriteLine("PASS zombie models: "+count+" checks (20 variants over five kinds, two male and two female each; wardrobe fallbacks; silhouettes by build; the pick by id; the shape names; the shader's zombie look; the horde's draw, death, corpses and wounds on the model; presentation only)");
     }
 
@@ -40,14 +40,16 @@ internal static class ZombieModelChecks
             {
                 var c=NativeZombieLooks.Candidates(v.Pieces[s]);string last=c.Last();
                 Check(c.Length>0,v.Id+": a candidate in slot "+NativeLook.Slots[s]);
-                Check(last==NativeZombieLooks.None&&s==0||NativeLook.Ids[s].Contains(last)&&!NativeLook.DevOnly(last),v.Id+": slot "+NativeLook.Slots[s]+" falls back on one of today's pieces (every bake dresses it): "+last);
+                Check(last==NativeZombieLooks.None&&(s==0||s==1&&v.Mutant)||NativeLook.Ids[s].Contains(last)&&!NativeLook.DevOnly(last),v.Id+": slot "+NativeLook.Slots[s]+" falls back on one of today's pieces (every bake dresses it): "+last);
                 foreach(var id in c.Take(c.Length-1))Check(id.StartsWith(NativeZombieLooks.Own,StringComparison.Ordinal)&&!NativeLook.Ids.Any(ids=>ids.Contains(id)),v.Id+": a preferred piece is the zombies' own, never a Locker id: "+id);
                 Check(v.Colours[s]==-1||v.Colours[s]>=0&&v.Colours[s]<=0xffffff,v.Id+": colour in range");
             }
             Check(v.Skin>=0&&v.Skin<=0xffffff&&v.Eyes>=0&&v.Eyes<=0xffffff,v.Id+": skin and eyes in range");
             Check(v.Shapes.Length==NativeZombieLooks.ShapeNames.Length&&v.Shapes.Take(NativeZombieLooks.BodyShapes).All(w=>!float.IsNaN(w))&&v.Shapes.All(w=>float.IsNaN(w)||w>=-100&&w<=100),v.Id+": every body shape set, weights in -100..100");
             var b=v.Build;
-            Check(new[]{b.Arm,b.Forearm,b.Thigh,b.Calf,b.Hand}.All(g=>g>=.8f&&g<=1.6f)&&b.Head>=.9f&&b.Head<=1.1f&&b.Shoulder>=.9f&&b.Shoulder<=1.2f,v.Id+": the build within the rig's limits");
+            // (A mutant, the Hulk's, swells past a person's: its limbs to twice, its head small; its right arm grown past the left.)
+            if(v.Mutant)Check(v.Kind==NativeHordeKinds.Hulk&&new[]{b.Arm,b.Forearm,b.Thigh,b.Calf,b.Hand}.All(g=>g>=1.2f&&g<=2.1f)&&b.Head>=.8f&&b.Head<.9f&&b.Shoulder>=1.2f&&b.Shoulder<=1.5f&&b.Right>1&&b.Right<=1.2f&&b.Neck>=.4f&&b.Neck<=.8f&&b.Reach>1&&b.Reach<=1.35f,v.Id+": a mutant's build, swollen within the rig's limits (the head sunk, the arms long)");
+            else Check(new[]{b.Arm,b.Forearm,b.Thigh,b.Calf,b.Hand}.All(g=>g>=.8f&&g<=1.6f)&&b.Head>=.9f&&b.Head<=1.1f&&b.Shoulder>=.9f&&b.Shoulder<=1.2f&&b.Right==1&&b.Neck==1&&b.Reach==1,v.Id+": the build within the rig's limits");
             Check(v.Grime>=0&&v.Grime<=1&&v.Tears>=0&&v.Tears<=.62f&&v.Rot>=0&&v.Rot<=1,v.Id+": wear within 0..1 (torn, not shredded: the owner's \"torn clothes\", 2026-10-29)");
             // Pale skin and blank eyes: every zombie's skin is greyed (low saturation), its eyes near white.
             float Sat(int rgb){float r=(rgb>>16&255)/255f,g=(rgb>>8&255)/255f,bl=(rgb&255)/255f,hi=Math.Max(r,Math.Max(g,bl)),lo=Math.Min(r,Math.Min(g,bl));return hi>0?(hi-lo)/hi:0;}
@@ -94,6 +96,48 @@ internal static class ZombieModelChecks
     }
 
     // ---- the spitter's throat sac (Core NativeZombieSac) ----
+    // ---- the Hulk's mutation (Core NativeZombieMutation): grown flesh, spurs and pustules over its build ----
+    private static void Mutation()
+    {
+        Check(NativeZombieLooks.All.Where(v=>v.Kind==NativeHordeKinds.Hulk).All(v=>v.Mutant)&&NativeZombieLooks.All.Where(v=>v.Kind!=NativeHordeKinds.Hulk).All(v=>!v.Mutant),"every Hulk a mutant, no other kind");
+        Check(NativeZombieLooks.All.Where(v=>v.Kind==NativeHordeKinds.Hulk&&!v.Female).All(v=>v.Pieces[1]==NativeZombieLooks.None),"the male Hulks bare-chested (the grown torso shows)");
+        Check(NativeZombieLooks.All.Where(v=>v.Kind==NativeHordeKinds.Hulk).Average(v=>v.Build.Arm+v.Build.Forearm)>NativeZombieLooks.All.Where(v=>v.Kind==NativeHordeKinds.Brute).Average(v=>v.Build.Arm+v.Build.Forearm)+.6f,"the Hulk's arms far past the brute's");
+        // On a mannequin's rest joints (root space, +z front, the left at -x as the bake has it).
+        var j=new System.Collections.Generic.Dictionary<string,System.Numerics.Vector3>{
+            {"spine_03",new(0,1.16f,.043f)},{"spine_04",new(0,1.25f,.038f)},{"spine_05",new(0,1.42f,0)},{"neck_01",new(0,1.5f,-.01f)},{"head",new(0,1.6f,-.005f)},
+            {"upperarm_l",new(-.13f,1.45f,-.03f)},{"upperarm_r",new(.13f,1.45f,-.03f)},{"lowerarm_l",new(-.29f,1.24f,-.03f)},{"lowerarm_r",new(.29f,1.24f,-.03f)},
+            {"hand_l",new(-.43f,1.09f,.06f)},{"hand_r",new(.43f,1.09f,.06f)}};
+        System.Numerics.Vector3? Rest(string n)=>j.TryGetValue(n,out var q)?q:(System.Numerics.Vector3?)null;
+        foreach(var m in NativeZombieMutation.Masses)
+        {
+            Check(NativeZombieMutation.Place(m,Rest,out var c,out var x,out var y,out var z,out var radii)&&radii.X>0&&radii.Y>0&&radii.Z>0&&Math.Abs(x.Length()-1)<1e-4f&&Math.Abs(y.Length()-1)<1e-4f&&z.Z>0,m.Name+": placed, its frame facing the front");
+            if(m.Name.EndsWith("-r",StringComparison.Ordinal))Check(c.X>.05f,m.Name+": on the right");if(m.Name.EndsWith("-l",StringComparison.Ordinal))Check(c.X<-.05f,m.Name+": on the left");
+            if(m.Limb){var axis=System.Numerics.Vector3.Normalize(j[m.From]-j[m.To]);Check(Math.Abs(radii.Y-m.Radii.Y*(j[m.From]-j[m.To]).Length())<1e-4f,m.Name+": as long as its share of the limb");Check(Math.Abs(System.Numerics.Vector3.Dot(axis,y))>.999f&&Math.Abs(System.Numerics.Vector3.Dot(axis,x))<1e-3f,m.Name+": along its limb");}
+            Check(j.ContainsKey(m.Bone),m.Name+": rigid on a joint of the model");
+        }
+        NativeZombieMutation.Place(NativeZombieMutation.Find("mound"),Rest,out var mound,out _,out _,out _,out _);Check(mound.Z<-.1f&&mound.Y>j["spine_05"].Y,"the mound behind the upper back");
+        var g=NativeZombieMutation.Build(Rest,0x8e8295,1234u);Check(g!=null,"the mutation builds on the mannequin");
+        int n=g.Positions.Count;var watch=System.Diagnostics.Stopwatch.StartNew();NativeZombieMutation.Build(Rest,0x8e8295,77u);double ms=watch.Elapsed.TotalMilliseconds;
+        Check(n>2000&&n<16000&&g.Normals.Count==n&&g.Colors.Count==n&&g.Bone.Count==n&&g.Bone2.Count==n&&g.Weight2.Count==n&&g.Weight2.All(w=>w>=0&&w<=.5f)&&g.Indices.Count%3==0&&g.Indices.All(i=>i>=0&&i<n),"every vertex a normal, a colour and its bones ("+n+" vertices, "+g.Indices.Count/3+" faces, built in "+ms.ToString("0")+" ms)");
+        Console.WriteLine("  mutation: "+n+" vertices, "+g.Indices.Count/3+" faces, built in "+ms.ToString("0")+" ms");
+        Check(g.Normals.All(v=>Math.Abs(v.Length()-1)<1e-3f)&&g.Bone.All(b=>b>=0&&b<g.Bones.Count)&&g.Bone2.All(b=>b>=0&&b<g.Bones.Count)&&g.Bones.All(b=>j.ContainsKey(b)),"unit normals, each vertex on one of its bones");
+        Check(g.Colors.All(c=>c.X>=0&&c.X<=1&&c.Y>=0&&c.Y<=1&&c.Z>=0&&c.Z<=1&&(c.W==0||c.W==1))&&g.Colors.Count(c=>c.W==1)>=NativeZombieMutation.Pustules.Length*20,"colours in range; only the pustules glow");
+        float top=g.Positions.Max(p=>p.Y);Check(top>j["neck_01"].Y+.05f&&top<j["head"].Y+.25f,"the grown shoulders rise round the neck ("+top.ToString("0.00")+" m), not over the head");
+        Check(g.Positions.Max(p=>p.X)>j["upperarm_r"].X+.12f&&g.Positions.Max(p=>p.X)>-g.Positions.Min(p=>p.X),"the right shoulder grown past the left");
+        // Faces out: each face's normal points away from its part (the toon culls the back), most vertices' normals agree.
+        int agree=0;for(int i=0;i<g.Indices.Count;i+=3){int a=g.Indices[i],b=g.Indices[i+1],c=g.Indices[i+2];var f=System.Numerics.Vector3.Cross(g.Positions[b]-g.Positions[a],g.Positions[c]-g.Positions[a]);if(System.Numerics.Vector3.Dot(f,g.Normals[a]+g.Normals[b]+g.Normals[c])>0)agree++;}
+        Check(agree==g.Indices.Count/3,"every face wound to its normals ("+agree+" of "+g.Indices.Count/3+")");
+        // The forearms club toward the fists: wider at the wrist end than at the elbow, and raw there.
+        foreach(var side in new[]{"l","r"})
+        {
+            var fm=NativeZombieMutation.Find("forearm-"+side);Check(fm.Taper>.2f&&fm.Raw>.5f&&NativeZombieMutation.Lump(new System.Numerics.Vector3(1,-.6f,0)/1.1662f,fm,0)>NativeZombieMutation.Lump(new System.Numerics.Vector3(1,.6f,0)/1.1662f,fm,0)*1.2f,"forearm-"+side+": a club, wider toward the fist");
+        }
+        Check(NativeZombieMutation.Masses.Where(m=>!m.Limb).All(m=>m.Lumps<=.08f),"the trunk's masses smooth muscle, not bubbles");
+        var again=NativeZombieMutation.Build(Rest,0x8e8295,1234u);Check(again.Positions.Count==n&&again.Positions.Zip(g.Positions,(a,b)=>(a-b).Length()).Max()==0,"the same seed, the same growth");
+        var other=NativeZombieMutation.Build(Rest,0x8e8295,99u);Check(other.Positions.Zip(g.Positions,(a,b)=>(a-b).Length()).Max()>.005f,"another seed lumps differently");
+        Check(NativeZombieMutation.Build(x=>x=="upperarm_r"?null:Rest(x),0x8e8295,1u)==null,"no growth without its joints");
+    }
+
     private static void Sac()
     {
         var neck=new System.Numerics.Vector3(0,1.45f,0);var head=new System.Numerics.Vector3(0,1.55f,.01f);var fwd=new System.Numerics.Vector3(0,0,1);
@@ -158,7 +202,7 @@ internal static class ZombieModelChecks
         Check(toon.Contains("if(_VertexAlbedo<=0){o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D);")&&toon.Contains("albedo=ZombieLook(albedo,i.uv);"),"the surface and its outline take the zombie look (never a cut's cap)");
         Check(look.Contains("edge=1.0-0.45*_ZombieWear.y")&&look.Contains("ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3"),"torn patches on the part's own texture coordinates (they stay on the cloth), a few at the table's tears");
         // The horde: the model in place of the voxel model on the full tier; the voxel draw kept as the fallback.
-        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait.Sunk,a.Lost,0,flash,glow.x,swell)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}"),"a living add: its model, else its voxel model and jaw");
+        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}"),"a living add: its model, else its voxel model and jaw");
         Check(kp.Contains("bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;"),"feet planted on the gait, a door's wake and a landing; airborne in a dive and a jump-down's fall");
         Check(kp.Contains("if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);"),"a death: its model falls, else the voxel body");
         Check(kp.Contains("ClearHordeGore();ClearZombieModels();"),"cleared with the horde");
@@ -180,7 +224,8 @@ internal static class ZombieModelChecks
         Check(fx.Contains("void DecayClip(float3 rest)")&&toon.Contains("clip(i.cut);DecayClip(i.rest);WoundClip(i.worldPos);")&&toon.Contains("clip(i.cut);DecayClip(i.rest);WoundClip(i.world);")&&Regex.Matches(toon,@"o\.rest=v\.texcoord3\.xyz;").Count==2,"both passes cut the openings in the rest space");
         Check(look.Contains("if(_ZombieSkin.w>0.0)")&&look.Contains("float gash=")&&look.Contains("float3 under="),"dried blood in the cloth, gashes on the skin, raw flesh through the tears");
         Check(zr.Contains("if(v.Decay!=null&&v.Decay.Length>0)body.All=ZombieDecayMake(root,skeleton,v,body.All);")&&zr.Contains("s.sharedMesh.SetUVs(3,rest);")&&zr.Contains("var pit=VisualHolePit(all,bone,h);")&&zr.Contains("var go=new GameObject(\"Bones.Decay\");"),"each opening's rest written once, its pit and its bones made");
-        Check(zr.Contains("private static bool ZombieDecayCut(Renderer r)=>r!=null&&!ZombieEyePart(r)&&!r.name.StartsWith(\"Teeth.\",StringComparison.Ordinal)&&r.name!=\"Sac.Spitter\";"),"eyes, teeth and the sac never cut");
+        Check(zr.Contains("private static bool ZombieDecayCut(Renderer r)=>r!=null&&!ZombieEyePart(r)&&!r.name.StartsWith(\"Teeth.\",StringComparison.Ordinal)&&r.name!=\"Sac.Spitter\"&&r.name!=\"Growth.Hulk\";"),"eyes, teeth, the sac and a mutant's growth never cut");
+        Check(zr.Contains("var growth=v.Mutant?ZombieGrowthMake(root,skeleton,v):null;")&&zr.Contains("ws[i]=new BoneWeight{boneIndex0=g.Bone[i],weight0=1-g.Weight2[i],boneIndex1=g.Bone2[i],weight1=g.Weight2[i]};")&&zr.Contains("float h=n==\"hand_r\"?b.Hand*b.Right:b.Hand;"),"a mutant's growth made on its rest after the build, rigid on its bones; its right arm grown");
         // Flying parts from the model, not the voxel parts; their meshes pooled.
         Check(kp.Contains("p.Pieces=ZombiePartPieces(id,joint,p.Pieces);")&&kp.Contains("if(!ZombiePartDrawn(p,age,sink))sourceModels.Queue(p.Model,")&&kp.Contains("p.Live=false;ZombiePiecesFree(p.Pieces);continue;"),"a modelled zombie's severed, sliced and gibbed parts are its own model's");
         Check(zr.Contains("if((mine[t[i]]?1:0)+(mine[t[i+1]]?1:0)+(mine[t[i+2]]?1:0)<2)continue;")&&zr.Contains("skin.BakeMesh(baked,true);zombieBakedNow[skin]=baked;"),"a part keeps the triangles skinned mostly to its bones, each renderer baked once a frame");
