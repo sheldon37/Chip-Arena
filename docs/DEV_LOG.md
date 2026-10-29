@@ -1,3 +1,42 @@
+## 2026-10-29 — Claude (PC): zombie motion verified and fixed in Unity, the Hulk a mutant, first person/chips/summons checked
+
+- **Branch/base:** `claude/zombie-motion-pc` from shared `83c2e428` (the cloud's `claude/model-zombie-motion` merge). No PR; merged
+  into shared and the builder.
+- **Task (owner):** verify the cloud's zombie posture, first-person model weapons and chips-on-the-model pass in Unity and tune what
+  the captures show; mid-task: "Hulk zombies need to look a LOT different, they are essentially mutated. Theyre supposed to be huge,
+  muscled zombies. They look just like a taller version of the player model right now", then a giant-brute reference (head sunk
+  between boulder shoulders, barrel chest, huge long arms on small legs).
+- **What the captures showed (local tool v221-v228: voxel-rig marks, aimed and leg hits, crawl, DEV commands, stance log, teams,
+  aim hold, weapon close-ups):** the hunch now rounds the upper back (no belt hinge), knees soft at rest, crawl on the floor, blows on
+  time; but strides still sat in a squat (shambler's planted knee ~50° walking) and the Hulk stood in a sumo squat (41°); the Hulk
+  read as a tall player; the pauldrons stood off a raised arm; the rifle's top-run modules float ~3-4 cm; the pack banks are missing.
+- **Changes (presentation only; docs/ZOMBIE-MODELS.md 4c, docs/BOZO-INTEGRATION.md "On the PC"):**
+  - zombie stance: the model's hips also stand out of the takes' crouch (`NativeHordeGait.Crouch`) and by `Lift` 8 cm, capped by the
+    planted legs' reach (`NativeVisualRig.State.Room`; the Hulk's .965), not where a blow/reel/roar/keyed move owns the pose
+    (`NativeHordeGait.Busy`); the rise holds through a run's flight. Planted knee in a stride 26-36° (was 34-45°), rest ~20°, Hulk 32°;
+  - the Hulk a mutant (`Core/NativeZombieMutation`, `Variant.Mutant`, Build `Right`/`Neck`/`Reach`): sunk head, wide shoulders,
+    long arms, huge hands, males bare-chested, pale grey-pink; grown muscle as three smooth surface-nets meshes (trunk, each arm;
+    two-bone weights), club forearms raw toward the fists, bone spurs, glowing pustules;
+  - pauldrons ride the shoulder girdle (`NativeBodyChipGear.PauldronArm` .3, `VisualShoulderFrame`).
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking: the model's pose only (hips height,
+  the Hulk's bone lengths and its drawn growth); blows still land on the gait's contact frames; the voxel tiers and authority are
+  unchanged.
+- **Checks (actual):** Unity compile clean at each step; `CoreTests --zombie-posture` (225 checks), `--zombie-models` (20703, with the
+  mutation group), `--body-chip-model` (7924), `--visual-rig`, `--zombie-loco`, `--zombie-gore` pass in this checkout; the full
+  CoreTests on a clean LF worktree of the merge commit and `git diff --check`: see the merge note below. Crowd cost (Editor, same
+  conditions as 10-29's first): 24 modelled adds 20.8/20.9 ms mean, 22.9/22.6 p95 (was 20.2/20.3, 22.5/22.1); voxel 15.6; none 8.5.
+- **Captured (Unity Editor, Brickfall):** all five kinds male and female A idle 5 s, walk, run, a blow, a stagger, a fall and the
+  corpse, a legless crawl, before/after the stance fix; the mutant Hulk idle, smashing, and female; first person for all 13 specs plus
+  Prototype, Classic, the Siren and the rifle's scope blend; body chips on five tops (pistol, fire staff, sword), first person with
+  chips, the dash; team armbands; the toy soldier alive to its expiry; chip modules on the five bake weapons.
+- **Not run / not verified:** a Windows player build; multiplayer; Graveyard Shift's and Corpse Party's summon (the tool could not
+  trigger a successful block); the toy's death effect; the voxel-zombie comparison shots (marks placed; not reviewed); the crowd
+  cost with the Hulk's growth; Ward Zero and Central Station.
+- **Risks / next:** the pack banks (the pack daggers, shield, bow and staffs, and the pack effects) were never built on this PC nor put in any
+  LocalAssets zip, so the builder lacks them; building them needs the packs unpacked from the Drive's zips. The rifle's top-run
+  modules need per-model socket tables. The Hulk's growth builds on the main thread the first time a variant appears (tens of ms).
+  The Prototype Series keeps its voxel weapons and modules (the owner's call whether that skin should change).
+
 ## 2026-10-29 — Claude: zombie motion on the model, first-person model weapons, chips on the model (no voxel)
 
 - **Branch/base:** `claude/model-zombie-motion` from shared `4110bc6`. No PR; merged into shared and the builder.
