@@ -28,8 +28,10 @@ namespace ChipArena.UnityConversion
         public sealed class Build
         {
             /// <summary>Girth of the upper arm, forearm, thigh and calf (their twist bones' cross-section), the hands' and head's size,
-            /// the shoulders' span (the upper arm set out along the collarbone).</summary>
-            public float Arm=1,Forearm=1,Thigh=1,Calf=1,Hand=1,Head=1,Shoulder=1;
+            /// the shoulders' span (the upper arm set out along the collarbone), and a mutant's: the right arm's own growth past the
+            /// left (its girth and hand times Right), the neck's length (Neck: the head sunk between the shoulders) and the arms'
+            /// (Reach: the elbow and the wrist set out along the limb).</summary>
+            public float Arm=1,Forearm=1,Thigh=1,Calf=1,Hand=1,Head=1,Shoulder=1,Right=1,Neck=1,Reach=1;
         }
         public sealed class Variant
         {
@@ -48,12 +50,14 @@ namespace ChipArena.UnityConversion
             public string[] Decay;
             /// <summary>The spitter's throat sac (Runtime: a skinned sac on the neck that swells with the spit).</summary>
             public bool Sac;
+            /// <summary>A mutant (the Hulk's): grown flesh, bone spurs and pustules over its build (Core NativeZombieMutation).</summary>
+            public bool Mutant;
         }
 
         private static float[] Body(float type,float weight,float muscle,float belly,float chest,float neck,float curvy,float butt,float waist,float maturity=float.NaN,float sharp=float.NaN,float round=float.NaN)
             =>new[]{type,weight,muscle,belly,chest,neck,curvy,butt,waist,maturity,sharp,round};
-        private static Variant V(string id,int kind,bool female,string hair,string upper,string lower,string hands,string feet,int[] colours,int skin,float[] shapes,Build build,float grime,float tears,float rot,bool sac=false,int eyes=0xe9ece4,string decay=null,float blood=0)
-            =>new Variant{Id=id,Kind=kind,Female=female,Pieces=new[]{hair,upper,lower,hands,feet},Colours=colours,Skin=skin,Eyes=eyes,Shapes=shapes,Build=build,Grime=grime,Tears=tears,Rot=rot,Sac=sac,Decay=string.IsNullOrEmpty(decay)?Array.Empty<string>():decay.Split(','),Blood=blood};
+        private static Variant V(string id,int kind,bool female,string hair,string upper,string lower,string hands,string feet,int[] colours,int skin,float[] shapes,Build build,float grime,float tears,float rot,bool sac=false,int eyes=0xe9ece4,string decay=null,float blood=0,bool mutant=false)
+            =>new Variant{Id=id,Kind=kind,Female=female,Pieces=new[]{hair,upper,lower,hands,feet},Colours=colours,Skin=skin,Eyes=eyes,Shapes=shapes,Build=build,Grime=grime,Tears=tears,Rot=rot,Sac=sac,Mutant=mutant,Decay=string.IsNullOrEmpty(decay)?Array.Empty<string>():decay.Split(','),Blood=blood};
         private const int Keep=-1;
 
         /// <summary>Every variant, by kind then male A, male B, female A, female B (the owner's sheets).</summary>
@@ -94,15 +98,17 @@ namespace ChipArena.UnityConversion
                 Body(15,40,85,10,40,70,15,25,10,40),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.12f,Shoulder=1.05f},.55f,.56f,.59f,false,0xe9ece4,decay:"forearm-r,thigh-l",blood:0.6f),
             V("brute-female-b",NativeHordeKinds.Brute,true,"wild","z-denim-vest|sweater","z-cargo-pants|baggy-pants","bare","work-boots",new[]{0xcfcfcf,0x6a2a2e,0x5c5e62,Keep,0x3a2f26},0xa3a597,
                 Body(15,45,80,20,45,70,15,25,15,70),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.12f,Shoulder=1.05f},.55f,.56f,.59f,false,0xe9ece4,decay:"ribs-l,upperarm-l",blood:0.6f),
-            // ---- Hulk: the giant (drawn at 1.8x), gorilla arms and huge forearms ----
-            V("hulk-male-a",NativeHordeKinds.Hulk,false,None,"z-denim-vest|open-hoodie","z-cargo-pants|baggy-pants","bare","work-boots",new[]{Keep,0x2b3552,0x2a3047,Keep,0x1f1f22},0x8e8295,
-                Body(100,30,100,0,100,100,0,0,10,60,40),new Build{Arm=1.4f,Forearm=1.55f,Thigh=1.2f,Calf=1.2f,Hand=1.45f,Shoulder=1.14f,Head=.96f},.6f,.62f,.65f,false,0xe9ece4,decay:"ribs-r,forearm-l,upperarm-r",blood:0.55f),
-            V("hulk-male-b",NativeHordeKinds.Hulk,false,"spiky","z-denim-vest|open-hoodie","z-cargo-pants|baggy-pants","bare","work-boots",new[]{0xd8d6d0,0xa8822e,0x7a2f2b,Keep,0x1f1f22},0x8d8780,
-                Body(100,35,100,10,100,100,0,0,10,65,40),new Build{Arm=1.4f,Forearm=1.55f,Thigh=1.2f,Calf=1.2f,Hand=1.45f,Shoulder=1.14f,Head=.96f},.6f,.62f,.65f,false,0xe9ece4,decay:"back,forearm-r,cheek-l",blood:0.55f),
-            V("hulk-female-a",NativeHordeKinds.Hulk,true,"spiky","z-denim-vest|hard-jacket","z-cargo-pants|baggy-pants","bare","work-boots",new[]{0x1d1b1f,0x2b3552,0x2a3047,Keep,0x1f1f22},0x8a7f92,
-                Body(35,30,100,0,70,85,10,30,10,50,45),new Build{Arm=1.36f,Forearm=1.5f,Thigh=1.18f,Calf=1.18f,Hand=1.4f,Shoulder=1.12f,Head=.96f},.6f,.62f,.65f,false,0xe9ece4,decay:"ribs-l,forearm-r,upperarm-l",blood:0.55f),
-            V("hulk-female-b",NativeHordeKinds.Hulk,true,"wild","z-denim-vest|open-hoodie","baggy-pants","bare","work-boots",new[]{0xa9a9a6,0x6b2a2c,0x28282b,Keep,0x5a3d28},0x8f978a,
-                Body(35,35,100,10,70,85,10,30,10,70,45),new Build{Arm=1.36f,Forearm=1.5f,Thigh=1.18f,Calf=1.18f,Hand=1.4f,Shoulder=1.12f,Head=.96f},.6f,.62f,.65f,false,0xe9ece4,decay:"cheek-r,upperarm-r,shin-l",blood:0.55f),
+            // ---- Hulk: the mutant giant (drawn at 1.8x): a small head sunk between boulder shoulders, a barrel chest, long swollen
+            // arms with club forearms and huge fists on small legs, bone spurs and pustules (Core NativeZombieMutation); pale grey-pink,
+            // the males bare-chested ----
+            V("hulk-male-a",NativeHordeKinds.Hulk,false,None,None,"z-cargo-pants|baggy-pants","bare","work-boots",new[]{Keep,Keep,0x2a3047,Keep,0x1f1f22},0xb7a7a2,
+                Body(100,30,100,0,100,100,0,0,10,60,40),new Build{Arm=1.75f,Forearm=2f,Thigh=1.3f,Calf=1.25f,Hand=2f,Shoulder=1.42f,Head=.82f,Right=1.08f,Neck=.6f,Reach=1.3f},.6f,.62f,.7f,false,0xe9ece4,decay:"ribs-r,forearm-l,upperarm-r",blood:0.55f,mutant:true),
+            V("hulk-male-b",NativeHordeKinds.Hulk,false,"spiky",None,"z-cargo-pants|baggy-pants","bare","work-boots",new[]{0xd8d6d0,Keep,0x7a2f2b,Keep,0x1f1f22},0xab9e98,
+                Body(100,35,100,10,100,100,0,0,10,65,40),new Build{Arm=1.75f,Forearm=2f,Thigh=1.3f,Calf=1.25f,Hand=2f,Shoulder=1.42f,Head=.82f,Right=1.08f,Neck=.6f,Reach=1.3f},.6f,.62f,.7f,false,0xe9ece4,decay:"back,forearm-r,cheek-l",blood:0.55f,mutant:true),
+            V("hulk-female-a",NativeHordeKinds.Hulk,true,"spiky","z-denim-vest|hard-jacket","z-cargo-pants|baggy-pants","bare","work-boots",new[]{0x1d1b1f,0x2b3552,0x2a3047,Keep,0x1f1f22},0xb3a4a3,
+                Body(65,30,100,0,70,100,0,30,10,50,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"ribs-l,forearm-r,upperarm-l",blood:0.55f,mutant:true),
+            V("hulk-female-b",NativeHordeKinds.Hulk,true,"wild","z-denim-vest|open-hoodie","baggy-pants","bare","work-boots",new[]{0xa9a9a6,0x6b2a2c,0x28282b,Keep,0x5a3d28},0xaaa39c,
+                Body(65,35,100,10,70,100,0,30,10,70,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-r,upperarm-r,shin-l",blood:0.55f,mutant:true),
         };
 
         /// <summary>The kinds drawn on the model in shipped builds (the owner's order: one male and one female shambler end to end first,

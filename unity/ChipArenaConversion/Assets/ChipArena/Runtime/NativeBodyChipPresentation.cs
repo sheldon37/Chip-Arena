@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<count;i++)
             {
                 var p=bodyChipParts[i];int k=(int)p.Anchor;
-                if((done&(1<<k))==0){bodyChipAnchors[k]=p.Anchor==NativeBodyChipGear.Anchor.Core?VisualCoreFrame(body,rig):VisualLimbFrame(body,rig,LimbOf(p.Anchor));done|=1<<k;}
+                if((done&(1<<k))==0){bodyChipAnchors[k]=p.Anchor==NativeBodyChipGear.Anchor.Core?VisualCoreFrame(body,rig):p.Anchor==NativeBodyChipGear.Anchor.LeftArm||p.Anchor==NativeBodyChipGear.Anchor.RightArm?VisualShoulderFrame(body,rig,LimbOf(p.Anchor)):VisualLimbFrame(body,rig,LimbOf(p.Anchor));done|=1<<k;}
                 var matrix=bodyChipAnchors[k]*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(p.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(p.Rotation)),Vector3.one);
                 sourceModels.Queue(p.Id,matrix,null,null,layer,camera,body:NativeArena.ColorOf(p.Color).linear);
             }
@@ -118,6 +118,13 @@ namespace ChipArena.UnityConversion
             Vector3 at=v>=0&&v<body.Binding.Bones.Length&&body.Binding.Bones[v]!=null?body.Binding.Bones[v].position:(Vector3)frame.GetColumn(3);
             Vector3 z=frame.GetColumn(2),y=frame.GetColumn(1);var turn=z.sqrMagnitude>1e-10f&&y.sqrMagnitude>1e-10f?Quaternion.LookRotation(z,y):Quaternion.identity;
             return Matrix4x4.TRS(at,turn,Vector3.one*body.Root.transform.lossyScale.x);
+        }
+        // A pauldron's shoulder: at the shoulder joint, turned PauldronArm of the way from the chest's turn to the upper arm's (the
+        // two agree with the arm at rest), so it stays on the shoulder while the arm aims.
+        private Matrix4x4 VisualShoulderFrame(VisualBody body,CapturedAnimation.Player rig,int arm)
+        {
+            var a=VisualLimbFrame(body,rig,arm);var c=VisualLimbFrame(body,rig,CapturedRig.Chest);
+            return Matrix4x4.TRS(a.GetColumn(3),Quaternion.Slerp(c.rotation,a.rotation,NativeBodyChipGear.PauldronArm),a.lossyScale);
         }
         // The chest's front where the pilot gear's core sits (VisualGearCore, the bake's per top); without it the model's chest
         // bone, a hand forward and down.

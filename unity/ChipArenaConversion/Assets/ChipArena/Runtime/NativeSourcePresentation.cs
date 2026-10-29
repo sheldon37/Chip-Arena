@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
                 rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,m.Yaw,0));rig.Root.transform.localScale=Vector3.one*(m.Pve!=null?1:m.Kind=="toy"?.6f:.85f);
                 // A summoned zombie (Graveyard Shift, Corpse Party) on the player's model, as the horde's shamblers are
                 // (NativeZombieModelPresentation.cs); its voxel model only until a body is ready, or on Classic.
-                if(add==null&&m.Kind=="zombie"&&ZombieModelPose(rig,m.Id,NativeHordeKinds.Shambler,NativeHordeModels.Full,true,false,false,0,0,0,HitFlashCode(m.Id,arena.Time),1,0))continue;
+                if(add==null&&m.Kind=="zombie"&&ZombieModelPose(rig,m.Id,NativeHordeKinds.Shambler,NativeHordeModels.Full,true,false,false,null,0,0,HitFlashCode(m.Id,arena.Time),1,0))continue;
                 int lost=add?.Lost??0;bool Visible(int b){int[] bits={1,2,4,8,16,32,64,128,256},bones={5,7,11,8,12,14,18,15,19};for(int i=0;i<bits.Length;i++)if((lost&bits[i])!=0&&BoneWithin(b,bones[i]))return false;return true;}
                 sourceModels.Queue(m.Pve==null?SummonModelOf("summon-"+m.Kind):"horde-"+variant,rig.Root.transform.localToWorldMatrix,b=>rig.Bones[b].localToWorldMatrix,Visible,glow:add!=null?HordeGlow(m.Id):(Vector4?)null);
                 // Siren minion effects (NativeMinionFxPresentation.cs): tongues and their licks, the crack haze, the possession hint

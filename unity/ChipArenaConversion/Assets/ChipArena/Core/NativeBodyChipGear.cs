@@ -33,6 +33,10 @@ namespace ChipArena.UnityConversion
         public static readonly string[] Ids={Pip,Node,Strip,PlateL,PlateR,PauldronL,PauldronR,Sabaton,Nozzle,Flame,Orb};
         /// <summary>Lights only (no housing to shade): no shadow.</summary>
         public static bool Light(string id)=>id==Pip||id==Node||id==Strip||id==Flame||id==Orb;
+        /// <summary>How much of the upper arm's turn a pauldron takes, the rest the chest's: it rides the shoulder girdle, so a raised
+        /// arm tips it a little instead of lifting it off the shoulder (the PC captures, 2026-10-29: a gun arm's stood up like a
+        /// wing).</summary>
+        public const float PauldronArm=.3f;
         /// <summary>Two parts at most per body chip (a dash jet's thruster and its flame; the frame's two plates).</summary>
         public const int MaxParts=NativeBodyChips.MaxPieces*2;
 

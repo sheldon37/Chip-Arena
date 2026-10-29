@@ -39,9 +39,10 @@ namespace ChipArena.UnityConversion
             // The model bone of each game joint and its rest scale (a lost part's bone collapses).
             public readonly Transform[] Joint=new Transform[CapturedRig.Bones.Length];public readonly Vector3[] JointScale=new Vector3[CapturedRig.Bones.Length];
             public bool Dying;
-            // Whether it crawls (its legs gone: the model's pelvis at the gait's height, NativeZombiePosture.Stance) and how far its
-            // gait sank its hips this pose (NativeHordeGait.Sunk).
-            public bool Crawl;public float Sunk;
+            // Whether it crawls (its legs gone: the model's pelvis at the gait's height, NativeZombiePosture.Stance), how far its gait
+            // sank its hips and its takes crouch them this pose, and how much of it a blow or a reel owns (NativeHordeGait Sunk,
+            // Crouch, Busy).
+            public bool Crawl;public float Sunk,Crouch,Busy;
             // The spitter's sac and its swell as last written.
             public SkinnedMeshRenderer Sac;public float Swell=-1;
         }
@@ -64,16 +65,16 @@ namespace ChipArena.UnityConversion
         // Posing (HordeKindAdd, HordeKindDeath): the model in place of the voxel model
         // ================================================================================================================
         /// <summary>A living add (its rig posed from minionPose this frame): its model posed, true; false draws its voxel model.</summary>
-        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,float sunk,int lost,int hidden,float flash,float glow,float swell)
+        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,NativeHordeGait gait,int lost,int hidden,float flash,float glow,float swell)
         {
             if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind);if(z==null)return false;
-            z.Dying=false;z.Crawl=crawl;z.Sunk=sunk;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
+            z.Dying=false;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
         }
         /// <summary>A dying add's fall (HordeKindDeath, its rig posed from minionPose): its model, true; false: the voxel body falls.</summary>
         private bool ZombieModelDeath(CapturedAnimation.Player rig,int id,int kind,int lost,int hidden)
         {
             if(rig==null||!zombieBodies.TryGetValue(id,out var z)||z.Body.Root==null||z.Kind!=kind||!ZombieModelsOn)return false;
-            z.Dying=true;z.Sunk=0;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
+            z.Dying=true;z.Sunk=z.Crouch=z.Busy=0;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
         }
         private void ZombieModelBind(ZombieBody z,CapturedAnimation.Player rig,bool planted,bool airborne,int lost,int hidden,float flash,float glow,float swell)
         {
@@ -84,7 +85,7 @@ namespace ChipArena.UnityConversion
             if(z.PosedFrame<Time.frameCount-1)z.Body.Binding.State.Forget();
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
-            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk);
+            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy);
             z.Body.Binding.Apply(pose,default(NativeVisualRig.Grasp),planted,airborne);
             ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
@@ -156,6 +157,7 @@ namespace ChipArena.UnityConversion
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=v.Id,Lift=lift};
             body.All=VisualWorn(root);body.Cloth=Array.Empty<Renderer>();body.Weapons=VisualWeaponsOf(root.transform);
             var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;if(sac!=null){var all=new Renderer[body.All.Length+1];body.All.CopyTo(all,0);all[all.Length-1]=sac;body.All=all;}
+            var growth=v.Mutant?ZombieGrowthMake(root,skeleton,v):null;if(growth!=null){var all=new Renderer[body.All.Length+1];body.All.CopyTo(all,0);all[all.Length-1]=growth;body.All=all;}
             if(v.Decay!=null&&v.Decay.Length>0)body.All=ZombieDecayMake(root,skeleton,v,body.All);
             foreach(var r in body.All){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer s)s.updateWhenOffscreen=false;}
             var z=new ZombieBody{Body=body,Variant=v,Sac=sac};
@@ -306,7 +308,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The bone build on the model's skeleton, before the binding reads its rest pose: a limb's girth on its twist bones
         /// (leaves; their cross-section only, along the limb unchanged), the hands' and head's size, the shoulders' span (the upper
-        /// arm set out along its collarbone).</summary>
+        /// arm set out along its collarbone), a mutant's neck shortened and arms lengthened.</summary>
         private static void ZombieBuild(Transform skeleton,NativeZombieLooks.Build b)
         {
             if(b==null)return;
@@ -316,10 +318,14 @@ namespace ChipArena.UnityConversion
                 if(t.childCount==0&&n.IndexOf("twist",StringComparison.OrdinalIgnoreCase)>=0)
                 {
                     float g=n.StartsWith("upperarm",StringComparison.Ordinal)?b.Arm:n.StartsWith("lowerarm",StringComparison.Ordinal)?b.Forearm:n.StartsWith("thigh",StringComparison.Ordinal)?b.Thigh:n.StartsWith("calf",StringComparison.Ordinal)?b.Calf:1;
+                    if((n.StartsWith("upperarm",StringComparison.Ordinal)||n.StartsWith("lowerarm",StringComparison.Ordinal))&&n.EndsWith("_r",StringComparison.Ordinal))g*=b.Right;
                     if(Mathf.Abs(g-1)>1e-3f)ZombieGirth(t,g);
                 }
-                else if(n=="hand_l"||n=="hand_r"){if(Mathf.Abs(b.Hand-1)>1e-3f)t.localScale*=b.Hand;}
+                else if(n=="hand_l"||n=="hand_r"){float h=n=="hand_r"?b.Hand*b.Right:b.Hand;if(Mathf.Abs(h-1)>1e-3f)t.localScale*=h;}
                 else if(n=="head"){if(Mathf.Abs(b.Head-1)>1e-3f)t.localScale*=b.Head;}
+                if(n=="neck_01"||n=="neck_02"||n=="head"){if(Mathf.Abs(b.Neck-1)>1e-3f)t.localPosition*=b.Neck;}
+                // (The elbow and the wrist, and the twist bones between, set out along the limb.)
+                if(Mathf.Abs(b.Reach-1)>1e-3f&&t.parent!=null&&(n.StartsWith("lowerarm_",StringComparison.Ordinal)||n.StartsWith("hand_",StringComparison.Ordinal)&&n.Length==6||n.IndexOf("twist",StringComparison.OrdinalIgnoreCase)>0&&(n.StartsWith("upperarm",StringComparison.Ordinal)||n.StartsWith("lowerarm",StringComparison.Ordinal))))t.localPosition*=b.Reach;
                 else if(n=="upperarm_l"||n=="upperarm_r"){if(Mathf.Abs(b.Shoulder-1)>1e-3f)t.localPosition*=b.Shoulder;}
             }
         }
@@ -367,6 +373,43 @@ namespace ChipArena.UnityConversion
             var go=new GameObject("Sac.Spitter");go.transform.SetParent(root.transform,false);
             var renderer=go.AddComponent<SkinnedMeshRenderer>();renderer.sharedMesh=mesh;renderer.bones=new[]{neck,head};renderer.sharedMaterial=zombieSacMaterial;
             var bounds=mesh.bounds;bounds.Expand(1.2f);renderer.localBounds=bounds;renderer.skinnedMotionVectors=false;
+            return renderer;
+        }
+        // A mutant's grown flesh, spurs and pustules (Core NativeZombieMutation) on this body's rest joints after its build (the mesh,
+        // kept per variant, is bound to that rest), each vertex rigid on its bone, drawn in the toon by its vertex colours with the
+        // outline (a pustule's alpha glows); null without the joints or the toon.
+        private static readonly Dictionary<NativeZombieLooks.Variant,(Mesh mesh,string[] bones)> zombieGrowthMeshes=new Dictionary<NativeZombieLooks.Variant,(Mesh,string[])>();private static Material zombieGrowthMaterial;
+        public const float ZombieGrowthGlow=.7f;
+        private static SkinnedMeshRenderer ZombieGrowthMake(GameObject root,Transform skeleton,NativeZombieLooks.Variant v)
+        {
+            var named=new Dictionary<string,Transform>();foreach(var t in skeleton.GetComponentsInChildren<Transform>(true))if(!named.ContainsKey(t.name))named[t.name]=t;
+            if(zombieGrowthMaterial==null)
+            {
+                Material template=null;foreach(var r in root.GetComponentsInChildren<Renderer>(true))if(r.sharedMaterial!=null&&r.sharedMaterial.HasProperty(VertexAlbedoId)){template=r.sharedMaterial;break;}
+                if(template==null)return null;
+                var m=new Material(template){name="Zombie growth",hideFlags=HideFlags.HideAndDontSave};m.SetTexture(TextureId,Texture2D.whiteTexture);
+                m.SetFloat(VertexAlbedoId,ZombieGrowthGlow);m.SetFloat(UseCustomTextureId,0);m.SetFloat(UseOutlineId,1);m.SetFloat("_Cull",2);m.SetFloat(CutoffId,0);m.SetFloat(AccentGlowId,0);
+                zombieGrowthMaterial=m;
+            }
+            var toRoot=root.transform.worldToLocalMatrix;
+            if(!zombieGrowthMeshes.TryGetValue(v,out var made))
+            {
+                NVector3? Rest(string n){if(!named.TryGetValue(n,out var t))return null;var p=toRoot.MultiplyPoint3x4(t.position);return new NVector3(p.x,p.y,p.z);}
+                uint seed=2166136261;foreach(char ch in v.Id)seed=(seed^ch)*16777619;var g=NativeZombieMutation.Build(Rest,v.Skin,seed);if(g==null||g.Bones.Exists(b=>!named.ContainsKey(b)))return null;
+                int count=g.Positions.Count;bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
+                var vs=new Vector3[count];var ns=new Vector3[count];var cs=new Color[count];var ws=new BoneWeight[count];
+                for(int i=0;i<count;i++)
+                {
+                    var p=g.Positions[i];var q=g.Normals[i];var c=g.Colors[i];vs[i]=new Vector3(p.X,p.Y,p.Z);ns[i]=new Vector3(q.X,q.Y,q.Z);
+                    var col=new Color(c.X,c.Y,c.Z,1);cs[i]=linear?col.linear:col;cs[i].a=c.W;ws[i]=new BoneWeight{boneIndex0=g.Bone[i],weight0=1-g.Weight2[i],boneIndex1=g.Bone2[i],weight1=g.Weight2[i]};
+                }
+                var bones=g.Bones.ToArray();var poses=new Matrix4x4[bones.Length];for(int b=0;b<bones.Length;b++)poses[b]=named[bones[b]].worldToLocalMatrix*root.transform.localToWorldMatrix;
+                var mesh=new Mesh{name="Zombie growth "+v.Id,hideFlags=HideFlags.HideAndDontSave};mesh.vertices=vs;mesh.normals=ns;mesh.colors=cs;mesh.boneWeights=ws;mesh.bindposes=poses;
+                mesh.SetTriangles(g.Indices,0);mesh.RecalculateBounds();made=(mesh,bones);zombieGrowthMeshes[v]=made;
+            }
+            var go=new GameObject("Growth.Hulk");go.transform.SetParent(root.transform,false);
+            var renderer=go.AddComponent<SkinnedMeshRenderer>();renderer.sharedMesh=made.mesh;var bs=new Transform[made.bones.Length];for(int b=0;b<bs.Length;b++)bs[b]=named[made.bones[b]];
+            renderer.bones=bs;renderer.sharedMaterial=zombieGrowthMaterial;var bounds=made.mesh.bounds;bounds.Expand(1.2f);renderer.localBounds=bounds;renderer.skinnedMotionVectors=false;
             return renderer;
         }
         // ---- flying parts from the model ----
@@ -471,7 +514,7 @@ namespace ChipArena.UnityConversion
         private static readonly Dictionary<NativeZombieLooks.Variant,ZombieDecayPlan> zombieDecayPlans=new Dictionary<NativeZombieLooks.Variant,ZombieDecayPlan>();
         private static readonly Dictionary<Mesh,Matrix4x4> zombieRestMeshes=new Dictionary<Mesh,Matrix4x4>();
         private static readonly int DecaysId=Shader.PropertyToID("_Decays"),DecayAtId=Shader.PropertyToID("_DecayAt"),DecayInId=Shader.PropertyToID("_DecayIn");
-        private static bool ZombieDecayCut(Renderer r)=>r!=null&&!ZombieEyePart(r)&&!r.name.StartsWith("Teeth.",StringComparison.Ordinal)&&r.name!="Sac.Spitter";
+        private static bool ZombieDecayCut(Renderer r)=>r!=null&&!ZombieEyePart(r)&&!r.name.StartsWith("Teeth.",StringComparison.Ordinal)&&r.name!="Sac.Spitter"&&r.name!="Growth.Hulk";
         /// <summary>A body's decay openings: its worn meshes' rest in their fourth texture coordinates (once per mesh), the openings on
         /// every renderer that is cut, a flesh pit on each opening's bone and the skeleton's pieces there; the renderers with the
         /// pits and the bones added.</summary>
