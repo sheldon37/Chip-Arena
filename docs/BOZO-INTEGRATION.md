@@ -1430,10 +1430,11 @@ already? Cant we utilize that?"
   - **Severed kills (2026-10-25, `claude/visual-sever`; owner: slash and saw kills "revert to voxel", "Sever at joints"):**
     a pilot's cut corpse now wears the model.
     - **A split body** (a blade's killing blow, a Factory saw): each half wears the model's parts on its side of the cut.
-      Whole parts only: a part the cut crosses goes to the side its joint is on (`BisectRequest.HalfOf`).
+      Whole parts only: a part the cut crosses goes to the side its joint is on (`BisectRequest.HalfOf`). Since 2026-10-28
+      only where the shader cut (below) cannot read the body.
     - **A sliced or crushed corpse** (the slice's fallback joints, a sever wound): the parts cut off fly as model pieces;
       a crushed part's triangles go, and its fragments and the stumps' blood are the kill wound's.
-    - **How it splits:** each skinned mesh is copied per corpse. Every vertex keeps only the bones of the piece most of its
+    - **How it splits (until 2026-10-28; now only where the shader cut cannot read the body):** each skinned mesh is copied per corpse. Every vertex keeps only the bones of the piece most of its
       weight is in, so a piece moves rigidly with its ragdoll part and nothing stretches across the gap; triangles across
       pieces go. The copies are freed with the corpse.
     - **Caps (2026-10-25, `claude/visual-caps`):** each piece's cut holes are closed.
@@ -1460,6 +1461,36 @@ already? Cant we utilize that?"
       - **Frostbreak:** every colour of the model the ice's.
       - **Smashes:** the crushed parts dropped (their fragments stay voxel), and a pinned smash's flattening applied
         through the corpse root's scale about the body.
+  - **Cut in the shader (2026-10-28, `claude/model-plane-gibs`; owner: "Can we improve gib slicing? (Kinda like how we did
+    for voxel, we "slice" right on the trail of a hit) Think like how we did the saw for the factory level. Also, prevent fps
+    drops during enemy kill"; "Also hat still seems to remove on death"):** no mesh is copied on a kill
+    (`Runtime/NativeVisualCutPresentation.cs`).
+    - **The shaders:** the toon, its outline and the hologram (`NativeWeaponGhost`) read a keep value per vertex by its index
+      (`NativeVisualBodyFx.cginc` `CutKeep`: `_CutTex`, `_CutBase`, `_CutWidth`, `_CutPick`), interpolate it and cut under 0.
+      Unset, nothing is read. Needs shader model 3.5 (`SV_VertexID`, `Texture2D.Load`). A mesh drawn from a submesh base
+      vertex, or a machine without float textures, falls back to the copies.
+    - **A split body:** both halves wear the whole model. A vertex keeps its half's side of the bisect's plane: its signed
+      distance in the death pose (blend shapes and four bones applied on a worker), or half 0 where its body is outside the
+      request's mask. The cut runs straight through skin, clothes and hair on the blade's trail.
+      - Each half's bones ride its own parts. One with no part of its own above it rides the nearest one below (a cut-off
+        head's neck rides the head), never the stand-in pelvis, so nothing stretches.
+      - Caps as the voxel halves' (Core `NativeBisect.CapOf`, `ModelLook`: a 5 mm rim in the shell's colour, no lining, then
+        the flesh layers). Each outline is kept where the plane decides most of it. The two faces mirror, and each piece of the
+        face rides the crossed bone nearest it. The bones the plane crosses show as stubs (`NativeModelGore`).
+      - The second half waits hidden until the worker is in (the first draws the whole body), and the halves wait for it
+        before they part, as for the voxel split.
+      - The Dev Sandbox saw preview splits the model too.
+    - **A severed body** (the slice's fallback joints, a sever wound, a crush, a smash): one body keeping each vertex all of
+      whose weight is on one uncrushed piece, so nothing stretches between pieces. Each opening is capped once (its widest
+      layer): a skin rim, then flesh to a dark middle. The joint stubs are as before.
+    - **No kill-frame cost:**
+      - corpse, bust and pilot bodies come from a pool filled by `InstantiateAsync`;
+      - gone bodies are taken apart 12 pieces a frame;
+      - the death code is compiled on a worker when the model loads (`GetFunctionPointer`);
+      - the cut's mesh data is read ahead from the live bodies, a renderer a frame;
+      - the broadcast's bust is cut in the hologram shader by a keep texture per mesh.
+    - **Hats:** a model corpse wears its hat on its head, fitted as the live body wears it (`VisualHatFit`), on the half its
+      head went to. A Sheldon Head corpse keeps the cloth hood, its void and its face as it died.
   - **Intros (2026-10-25, `claude/model-intros`; owner: "Model everywhere, classic will be stored as backup"):** the
     entrance's pilot wears the model.
     - `VisualIntroPose` binds the intro rig's own authored pose (the clip intros' and the directed entrances' pose) to a
