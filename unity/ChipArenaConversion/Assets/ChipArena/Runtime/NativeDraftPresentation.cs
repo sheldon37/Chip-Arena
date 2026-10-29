@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
             // onto the authoritative one (simulation ticks and network frames would otherwise step it).
             float dt=Time.unscaledDeltaTime;bool siren=seat.spec=="siren";var stage=draftStage;var draftPose=stage.Pose;age=stage.SmoothAge(age,dt);stage.Begin(dt,reduced);double time=stage.Clock;
             if(siren)NativeSourceMotion.Sample("siren-idle-melee",reduced?0:(float)time,0,draftPose);
-            stage.Frame(camera.aspect,trayLine,trayBottom,DraftCrown(seat.hat,siren),siren,dt);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
+            stage.Frame(camera.aspect,trayLine,trayBottom,DraftCrown(seat.hat,siren),siren,dt,VisualDraftModel(seat)?NativeDraftStage.ModelHeadTop:NativeDraftStage.HeadTop);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
             draftRig.Root.transform.SetPositionAndRotation(new Vector3(0,.88f,0),Quaternion.identity);
             NativePoseWriter.Write(draftRig.Bones,draftPose,"the draft rig");
             float pulse=age>=0&&!reduced?NativeDraftPlant.Pulse(age):-1,flash=pulse>=0?(1-pulse)*(1-pulse):0;

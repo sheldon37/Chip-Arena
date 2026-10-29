@@ -41,11 +41,15 @@ namespace ChipArena.UnityConversion
         // stays close to the bare-headed scale (the hats' brims and lower parts and the halo's ring in view). The Siren drafter's
         // head is the pilot's (her look pieces sit on the face), so she takes only BossTop more for her idle's rise. The visible pilot
         // (head top to plexus) at most MaxSeat of the screen's height (never closer: the plexus keeps its row and the head gains
-        // room) and at least MinSeat (never smaller: a tall tray then covers the lower chest, the head keeping its room), at least
-        // MinWidth metres across (the shoulders and the raised hands), at most MaxHeight tall. A crown is taken up to MaxCrown.
-        public const float Headroom=.05f,HeadTop=.36f,CrownGap=.03f,CrownRoom=.2f,MaxCrown=1.5f,BossTop=.04f,PlexusGap=.04f,MaxSeat=.8f,MinSeat=.5f,MinWidth=1.2f,MaxHeight=4f,DefaultTray=.72f;
-        // The room Frame takes over the bare head's top for a worn cosmetic whose measured top is `crown` (m over the head joint).
-        public static float CrownTaken(float crown)=>crown>0&&MathUtil.Finite(crown)?MathUtil.Clamp(Math.Min(crown,MaxCrown)+CrownGap-HeadTop,0,CrownRoom):0;
+        // room) and at least MinSeat (never smaller: a tray taller still then covers the lower chest, the head keeping its room), at
+        // least MinWidth metres across (the shoulders and the raised hands), at most MaxHeight tall. A crown is taken up to
+        // MaxCrown. MinSeat was .5 until 2026-10-29 (owner: "The player is under chips if theres around 12 chips"): two rows of
+        // cards then hid the pilot to the chin; at .3 the pilot sits above the second row on every screen. The player's model
+        // (ModelHeadTop: its hair's top over the head joint) is framed by its own head, the voxel body's block by HeadTop.
+        public const float Headroom=.05f,HeadTop=.36f,ModelHeadTop=.3f,CrownGap=.03f,CrownRoom=.2f,MaxCrown=1.5f,BossTop=.04f,PlexusGap=.04f,MaxSeat=.8f,MinSeat=.3f,MinWidth=1.2f,MaxHeight=4f,DefaultTray=.72f;
+        // The room Frame takes over the bare head's top (`headTop` over the head joint) for a worn cosmetic whose measured top is
+        // `crown` (m over the head joint).
+        public static float CrownTaken(float crown,float headTop=HeadTop)=>crown>0&&MathUtil.Finite(crown)?MathUtil.Clamp(Math.Min(crown,MaxCrown)+CrownGap-headTop,0,CrownRoom):0;
         // The screen's lower shade (NativeDraftScreen.DraftShades): from just above its line (ShadeLine: the tray's top, or
         // PlexusGap under the resting plexus when a tall tray covers the plexus) it deepens to ShadeOpaque by ShadeDrop under the
         // resting plexus as the eased camera sees it, so with the pilot's size on every screen (ShadeDeep: at least ShadeRamp of
@@ -72,7 +76,9 @@ namespace ChipArena.UnityConversion
         // camera still for the outer cards of a wide tray, so their turn from an eye at EyeZ stays inside OuterTurn = tan .7 rad):
         // the head points along the camera ray through the card with a moderate turn. With no card in mind (and after the pick)
         // the gaze rests on the display straight ahead, RestLook under the tray's top line.
-        public const float LookZ=1.3f,EyeZ=.3f,OuterTurn=.84f,RestLook=.1f;
+        // A two-row tray's lower cards likewise: the depth comes nearer (in LookStep steps, short of the lens by LensGap) until
+        // the look down from the eye stays inside OuterDrop (the smaller pilot over a tall tray looks down further).
+        public const float LookZ=1.3f,EyeZ=.3f,OuterTurn=.84f,RestLook=.1f,OuterDrop=.6f,LookStep=.1f,LensGap=.3f;
         // Considering: the hand rises out of the lap ConsiderReach of the way to its catch (above the tray's top line, in front of
         // the lower chest on its card's side), slid ConsiderSlide toward the card and turning ConsiderTurn of the way to the open
         // palm (draft-stage.ts CONSIDER, a soft elbow), kept Beside its own side of the body, the path arching Arc above the
@@ -178,10 +184,10 @@ namespace ChipArena.UnityConversion
         // most CrownRoom of it over the bare head's top (CrownTaken). Snaps on the first frame after a Reset, then eases, so a
         // resize or a re-laid tray never cuts. The camera is solved so the head's top (with its crown room) and the solar plexus
         // land on their rows.
-        public void Frame(float aspect,float trayTop,float trayBottom,float crown,bool boss,float dt)
+        public void Frame(float aspect,float trayTop,float trayBottom,float crown,bool boss,float dt,float headTop=HeadTop)
         {
             bool known=trayTop>=0&&MathUtil.Finite(trayTop)&&MathUtil.Finite(trayBottom)&&trayBottom>trayTop;if(!known){trayTop=DefaultTray;framed=false;}
-            Aspect=Math.Max(.2f,aspect);float top=restHead+HeadTop+CrownTaken(crown)+(boss?BossTop:0),py=RestPlexus.Y,pz=RestPlexus.Z;
+            Aspect=Math.Max(.2f,aspect);float top=restHead+headTop+CrownTaken(crown,headTop)+(boss?BossTop:0),py=RestPlexus.Y,pz=RestPlexus.Z;
             TrayLine=MathUtil.Clamp(trayTop,.3f,.95f);float plexusRow=TrayLine-PlexusGap,headRow=Headroom;
             // The camera's height and centre (on the plane z = 0) that put the head's top and the plexus on their rows.
             float height=(top-py)/Math.Max(.05f,plexusRow-headRow),centre=top-(.5f-headRow)*height;
@@ -249,6 +255,13 @@ namespace ChipArena.UnityConversion
             // Seated: leaning a little toward the cards (the Siren, hunched in her idle, sits lower instead).
             if(siren)p.Position[CapturedRig.Body].Y-=SirenSink;else p.Rotation[CapturedRig.Spine]=p.Rotation[CapturedRig.Spine]*CapturedRig.Euler(Lean);p.World();
             lookNear=LookZ;for(int i=0;i<count;i++)lookNear=Math.Max(lookNear,EyeZ+Math.Abs(OnPlane(cards[i].X,cards[i].Y,LookZ).X)/OuterTurn);
+            float eyeY=p.WorldPosition[CapturedRig.Head].Y+EyeUp;
+            for(int i=0;i<count;i++)
+            {
+                float z=lookNear;
+                for(int k=0;k<16&&z<CameraPosition.Z-LensGap;k++){if(eyeY-OnPlane(cards[i].X,cards[i].Y,z).Y<=OuterDrop*(z-EyeZ))break;z+=LookStep;}
+                lookNear=Math.Max(lookNear,z);
+            }
             var rest=OnDisplay(.5f,TrayLine+RestLook);var card=focus>=0?OnDisplay(cards[focus].X,cards[focus].Y):rest;
             // The reaching hand is the left for a pilot (owner 2026-10-22: the chip goes into the device on the right wrist), the
             // one on the chosen card's side for the Siren drafter, chosen once per pick; if that arm was already lifting toward a

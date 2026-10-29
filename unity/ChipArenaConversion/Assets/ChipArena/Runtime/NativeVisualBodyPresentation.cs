@@ -342,9 +342,11 @@ namespace ChipArena.UnityConversion
         // outfit, accent, no weapon in hand: the hands pick the chips), bound to the stage's pose, with its hat on the model's
         // head; shown this frame (the draft returns before the arena does). False: the voxel body (a Siren, Classic, no bake).
         private readonly Actor draftActor=new Actor();
+        // Whether the drafting seat draws on its visual body (VisualDraftPose's own test; the stage frames the model's head).
+        private bool VisualDraftModel(NativeSeat seat)=>!Viewer&&sourceModels!=null&&!ClassicBodies&&seat!=null&&seat.spec!="siren"&&VisualBodiesOn;
         private bool VisualDraftPose(CapturedAnimation.Player rig,NativeSeat seat,CapturedRig.Pose pose,float time,Camera camera)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||rig==null||seat==null||pose==null||seat.spec=="siren"||!VisualBodiesOn)return false;
+            if(rig==null||pose==null||!VisualDraftModel(seat))return false;
             var a=draftActor;a.Id=seat.id;a.SourceSpec=seat.spec;a.AccentColor=seat.accentColor;a.BodyColor=seat.bodyColor;a.Hat=seat.hat;a.HatColor=seat.hatColor;a.WeaponAway=true;a.Grounded=true;
             var body=VisualBodyOf(rig,seat.id,VisualHooded(a));if(body==null)return false;
             // The drafting pose stands lower than the arena's: the body's hips go onto the pose's pelvis, and the rig's hands (on
