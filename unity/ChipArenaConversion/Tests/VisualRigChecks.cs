@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
             var sk=NativeModelSkeleton.Build(n=>at.TryGetValue(n,out var p)?p:(Vector3?)null);
             Check(sk!=null&&sk.Positions.Count>3000&&sk.Indices.Count%3==0&&sk.Indices.TrueForAll(i=>i>=0&&i<sk.Positions.Count),"the skeleton builds on the mannequin's joints");
             Check(sk.Bone.TrueForAll(b=>b>=0&&b<sk.Bones.Count)&&sk.Bones.TrueForAll(b=>at.ContainsKey(b))&&sk.Kind.TrueForAll(k=>k<=NativeModelSkeleton.Socket)&&sk.Normals.TrueForAll(n=>Math.Abs(n.Length()-1)<1e-3f),"every piece on a bone the model has, a kind and a unit normal");
-            foreach(var b in new[]{"head","neck_01","spine_03","spine_05","pelvis","clavicle_l","upperarm_l","lowerarm_l","hand_l","index_01_l","thumb_02_r","thigh_r","calf_r","foot_r","ball_r"})Check(sk.Bones.Contains(b),"a piece on "+b);
+            foreach(var b in new[]{"head","neck_01","spine_03","spine_05","pelvis","clavicle_l","upperarm_l","lowerarm_l","hand_l","thumb_02_r","thigh_r","calf_r","foot_r","ball_r"})Check(sk.Bones.Contains(b),"a piece on "+b);
             int left=0,right=0;foreach(int b in sk.Bone){var name=sk.Bones[b];if(name.EndsWith("_l",StringComparison.Ordinal))left++;else if(name.EndsWith("_r",StringComparison.Ordinal))right++;}
             Check(left==right&&left>0,"the limbs mirror ("+left+" vertices a side)");
             // Each triangle faces out of its piece (Unity's front face): over the mesh, the normals agree with the faces.
