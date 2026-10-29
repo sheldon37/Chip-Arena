@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private void HordeKindsBegin(NativeArena arena)
         {
-            hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;float now=arena.Time;
+            hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);float now=arena.Time;
             if(arena!=hordeKindArena||arena.Generation!=hordeKindGeneration||!float.IsNaN(hordeKindTime)&&now<hordeKindTime-.25f)ClearHordeKinds(arena);
             hordeKindTime=now;
             // The clock every add is posed on: the field clock (the replica render time on a guest, the visual clock on the host),
@@ -307,7 +307,9 @@ namespace ChipArena.UnityConversion
             NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");
             rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             float swell=HordeSwellNow(s,m,now);var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);StationGlow(m,kind,now,ref glow);
-            HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
+            // On the player's model (NativeZombieModelPresentation.cs) for a modelled kind on the full tier, else the voxel model.
+            bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;
+            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Lost,0,flash,glow.x)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
             bool vent=a.Entry.kind=="vent";
             HordeAdd(rig,m.Id,a.Travelling?float.NaN:(float)NativeMinionFx.VentAge(vent,a.ActiveAt,hordeClock),float.NaN,vent?NativeArena.Vec(a.Entry.@exit.Position(.9f)).y-.9f:ground,ground,a.Possessed?a.PossessedAt:float.NaN,velocity,a.Lost,true,kind*8+s.Look);
             return true;
@@ -648,7 +650,7 @@ namespace ChipArena.UnityConversion
             {
                 // The lost and sliced joints left out through the cached visibility test (no closure per frame).
                 hordeQueueLost=death.lost;hordeQueueHidden=d.Slice;hordeQueueVisible??=b=>HordeJointShown(hordeQueueLost,b)&&(hordeQueueHidden==0||!HordeHiddenJoint(hordeQueueHidden,b));
-                if(burn||HordeGoreSettle(death.id,death.at,fall,rig,death.lost,d.Slice,floorY)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);GoreWoundsJob(death.id,rig);}
+                if(burn||HordeGoreSettle(death.id,death.at,fall,rig,death.lost,d.Slice,floorY)){if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);}GoreWoundsJob(death.id,rig);}
             }
             if(d.Fate==NativeHordeGore.Fate.HeadGib){int f=d.Fountain;HordeGoreFountain(death.id,death.at,hordeClock,rig,ref f);if(f!=d.Fountain){d.Fountain=f;hordeDead[death.id]=d;}}
             HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),floorY,floorY,float.NaN,Vector3.zero,death.lost,body,d.Kind*8+d.Look);IronworksDeath(death,d.Kind,d.Melee,rig,fx,floorY);StationDeathFx(death,d.Kind,d.Seed,fx,rig,floorY);
@@ -760,7 +762,7 @@ namespace ChipArena.UnityConversion
         private void ClearHordeKinds(NativeArena arena)
         {
             foreach(var s in hordeKindStates.Values)hordeKindSpare.Push(s);hordeKindStates.Clear();foreach(var d in hordeDead.Values)if(d.Blend!=null)hordeBlendSpare.Push(d.Blend);hordeDead.Clear();hordeSnapshotAt=double.NegativeInfinity;ClearHordeHulkMoves();hordeKindArena=arena;hordeKindGeneration=arena?.Generation??-1;hordeKindEvent=0;hordeSpitEvent=0;hordeSpitEvents.Clear();hordeSpat.Clear();
-            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;ClearHordeGore();ClearHordeAcid();ClearHordeBreaches();for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();ClearIronworks();ClearStationKinds();
+            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;ClearHordeGore();ClearZombieModels();ClearHordeAcid();ClearHordeBreaches();for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();ClearIronworks();ClearStationKinds();
         }
     }
 

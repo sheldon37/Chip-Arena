@@ -734,7 +734,7 @@ namespace ChipArena.UnityConversion
             var dir=Path.Combine(root,"Assets/ChipArena");var readers=new List<string>();
             foreach(var f in Directory.GetFiles(dir,"*.cs",SearchOption.AllDirectories)){var s=Code(File.ReadAllText(f));if(s.Contains("NativeHordeGore")||s.Contains("HordeGore"))readers.Add(Path.GetFileName(f));}
             // (NativeHordeKindModels.cs: the bank's loader hands the gore the Full models it builds, NativeHordeGoreBody.Keep.)
-            var allowed=new HashSet<string>{"NativeHordeGore.cs","NativeHordeGoreBody.cs","NativeHordeGorePresentation.cs","NativeHordeGoreGallery.cs","NativeHordeKindPresentation.cs","NativeHordeKindModels.cs","NativeMinionFxPresentation.cs","NativeIronworksKindsPresentation.cs","NativeBowPresentation.cs"};
+            var allowed=new HashSet<string>{"NativeHordeGore.cs","NativeHordeGoreBody.cs","NativeHordeGorePresentation.cs","NativeZombieModelPresentation.cs","NativeHordeGoreGallery.cs","NativeHordeKindPresentation.cs","NativeHordeKindModels.cs","NativeMinionFxPresentation.cs","NativeIronworksKindsPresentation.cs","NativeBowPresentation.cs"};
             foreach(var f in readers)Check(allowed.Contains(f),"only presentation files use the gore ("+f+")");
             foreach(var f in new[]{"Runtime/NativePveHorde.cs","Runtime/NativeArena.cs","Runtime/NativeNetwork.cs","Runtime/NativeNetworkFrame.cs","Runtime/NativeDeaths.cs","Runtime/NativeSummons.cs","Core/NativeHordeDamage.cs","Core/NativeHordeKinds.cs","Core/ArenaModel.cs"})
                 if(File.Exists(Path.Combine(dir,f)))Check(!Code(R(f)).Contains("HordeGore"),f+" (authority, rules or network) never reads the gore");

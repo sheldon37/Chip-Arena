@@ -17,6 +17,10 @@ Shader "ChipArena/VisualBodyToon" {
   _SkinTone("Skin tone (rgb) and on (w; the arena sets it per skin part)",Vector)=(0,0,0,0)
   _SkinRef("The part's base skin (rgb)",Vector)=(1,1,1,1)
   _VertexAlbedo("A cut's cap: the vertex colour (linear) is the colour, glowing by this share (0: the texture's colours)",Float)=0
+  _ZombieTint("A zombie's piece colour (rgb) over its brightness (w: one over its own; 0 off)",Vector)=(0,0,0,0)
+  _ZombieWear("A zombie's grime, tears, rot and seed",Vector)=(0,0,0,0)
+  _ZombieEye("A zombie's blank eyes (rgb, w on)",Vector)=(0,0,0,0)
+  _ZombieSkin("A zombie's skin under its torn clothes (rgb)",Vector)=(0,0,0,0)
  }
  // The visual body's toon (docs/BOZO-INTEGRATION.md step 4; Runtime/NativeVisualBodyPresentation.cs): a modular character's
  // inputs on the arena's own lighting, so a skinned pilot takes the light the voxel pilots take (ChipArena/SourceLit):
@@ -36,6 +40,8 @@ Shader "ChipArena/VisualBodyToon" {
  //  - the anime style's outline mark: every pass writes 0 to stencil bit 16, as characters do, so the map's lines
  //    (NativeToonEdge) never cross a pilot;
  //  - the pilot's skin tone on the skin parts (NativeVisualBodyFx.cginc SkinToned, per renderer), before the spawn-in tint;
+ //  - a zombie's look (NativeVisualBodyFx.cginc ZombieLook, per renderer; Runtime/NativeZombieModelPresentation.cs): its pieces'
+ //    colours, grime, torn patches, rotting skin and blank eyes, on the surface and its outline alike;
  //  - the voxel pilots' hit flash and match-start spawn-in (NativeVisualBodyFx.cginc, per renderer): the struck flash after
  //    the light (not in the add passes), and the body formed from the feet up in the spawn-in's dithered front with its
  //    hardlight tint and completion flash, the outline and the cast shadow with it; a directed entrance's per-bone reveal
@@ -78,6 +84,7 @@ Shader "ChipArena/VisualBodyToon" {
   clip(i.cut);SpawnClip(i.worldPos);RevealClip(i.worldPos);float4 map=tex2D(_Texture2D,i.uv_Texture2D);
   float front=DissolveFront(i.uv_Texture2D);o.Emission+=_DissolveEdge.rgb*front;
   o.Albedo=_VertexAlbedo>0?i.color.rgb:SpawnTinted(SkinToned(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb),i.worldPos.y);o.Alpha=map.a;
+  if(_VertexAlbedo<=0){o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D);if(_ZombieEye.w>1)o.Emission+=_ZombieEye.rgb*(_ZombieEye.w-1);}
   if(_VertexAlbedo>0)o.Emission+=i.color.rgb*_VertexAlbedo;else if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
   float3 n=normalize(i.worldNormal);
   if(_ArenaActorLit>.5)o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,n));
@@ -161,6 +168,7 @@ Shader "ChipArena/VisualBodyToon" {
    clip(i.color.a-.5);clip(i.cut);SpawnClip(i.world);RevealClip(i.world);float4 map=tex2D(_Texture2D,i.uv);clip(map.a-_Cutoff);
    DissolveFront(i.uv);
    float3 albedo=SpawnTinted(SkinToned(_UseCustomTexture>.5?VisualColours(map.rgb,i.color.rgb):map.rgb),i.world.y);float3 n=normalize(i.normal);
+   albedo=ZombieLook(albedo,i.uv);
    UNITY_LIGHT_ATTENUATION(atten,i,i.world);float ndl=dot(n,_WorldSpaceLightPos0.xyz);float3 sh=ShadeSH9(float4(n,1));
    // As NativeToonSurface's ArenaToon lights the body: Lambert while the style is off, the ramp over the flattened SH on.
    float3 light=_ArenaToon.x<.5?sh+_LightColor0.rgb*(saturate(ndl)*atten):ToonDiffuse(ToonAmbient(sh,ShadeSH9(float4(0,1,0,1)),ShadeSH9(float4(0,-1,0,1)),n.y),_LightColor0.rgb,ndl,atten);

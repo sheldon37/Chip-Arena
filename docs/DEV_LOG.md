@@ -1,3 +1,93 @@
+## 2026-10-29 — Claude: zombies on the player model, first pass (merged into shared)
+
+- **Branch/base:** `claude/zombie-models` from shared `275cee5`. No PR; merged into shared and the builder.
+- **Owner request (2026-10-29):** "Implement the attached zombie designs in Chip Arena using the existing low-poly player model as the starting point", "Shambler, Runner, Spitter, Brute, and Hulk, with two male and two female visual variants per type", reusing the model's assets, rig, motion and gore, with gameplay unchanged. The owner's order: inspect; one male and one female Shambler end to end; Unity captures beside the player; then the other kinds, the second variants, multiplayer, gore and crowd cost.
+- **Step 1, inventory:** in docs/ZOMBIE-MODELS.md.
+  - The model:
+    - one baked prefab and skeleton;
+    - 25 wardrobe pieces of the pack's 166;
+    - nine body blendshapes plus face shapes, all settable at run time;
+    - the binding reads bone positions and rotations, not scale.
+  - Today's zombies: voxel joint meshes posed by their own gait into the same 22-joint pose the model binds from.
+  - The authority's timings per kind.
+  - Tiers: the nearest 24 full.
+  - Gore and corpses: on the voxel path only.
+- **Changes (presentation only):**
+  - **Variants:** `Core/NativeZombieLooks`, 20 variants as data. Each has:
+    - a piece per slot (zombie-only `z-…` candidates first, today's nearest piece as the fallback);
+    - colours, skin, blank eyes;
+    - body and face shapes by name;
+    - a bone build (twist-bone girth, hands, head, shoulders);
+    - wear (grime, torn patches, rot);
+    - the spitter's sac flag.
+    - Silhouettes are told apart by build: Hulk > Brute > Shambler > Runner > Spitter in arm bulk, the Hulk at 1.8×. The add's id picks the variant, the same on every peer.
+  - **Runtime:** `Runtime/NativeZombieModelPresentation.cs`.
+    - **Rollout:** the shambler is live; the other four are drafts behind `--ca-zombie-drafts` or `NativeZombieLooks.Drafts`.
+    - **Drawing:** a full-tier add draws the bake's model in its variant, posed from its gait's own pose. Feet are planted on the gait, a door's wake and a landing; it is airborne in a dive and a jump-down. It shows the hit flash, and its eyes glow through a wind-up.
+    - **Body supply:**
+      - bodies are reused per variant (6 spares);
+      - new ones come from their own pool, made off the main thread while a horde is about (8 ahead, at most 3 a frame);
+      - an add without one draws voxel that frame;
+      - the pilots' corpse pool is not touched.
+    - **Gore:**
+      - lost and sliced parts collapse at their joint;
+      - deaths fall on the model;
+      - the settled corpse is baked once to static meshes, drawn sinking on the voxel corpse's timeline, and its body returns to the spares.
+    - **Still voxel:** the reduced and impostor tiers, unmodelled kinds, no bake, `--ca-voxel-zombies`, and Classic.
+  - **Shader:** `NativeVisualBodyFx.cginc` `ZombieLook` in both toon passes.
+    - Piece colour at its own brightness, grime, a few torn patches (about 5% of a piece at the table's tears), rot and blank eyes.
+    - All of it is on the parts' texture coordinates, so it stays on the cloth.
+    - Off by default, so every pilot is unchanged.
+  - **Hooks:**
+    - `HordeKindAdd` and `HordeKindDeath`: model, else voxel;
+    - `HordeCorpsesDraw`: the baked corpse;
+    - `GoreWoundsJob`: no voxel-fitted wounds on the model;
+    - `DeathPresentation`: shows the bodies posed this frame and hides the rest;
+    - `ClearHordeKinds`: clears them.
+  - **Docs:** BOZO-INTEGRATION's open question "whether zombies stay voxel" closed.
+- **Animation, timing, networking:** no rule, hit volume, reach, hit time, cooldown, AI or network change.
+  - The model rebinds the gait's pose, so its contact frame stays at `LastAttack + hit`.
+  - The gait's per-kind motion (ZOMBIE PRO takes, planted feet, heavy strides) is unchanged.
+  - No Astra mismatch is known yet.
+- **Checks (actual):**
+  - Unity compile (runtime and editor against the 6000.3.24f1 assemblies): OK.
+  - Shader (glslang HLSL front end, linear/gamma, fog on/off): OK.
+    - The surface pass compiles without its custom vertex hook, which the harness cannot run; the shared shader fails there the same way.
+    - The outline pass compiles whole.
+  - `CoreTests --zombie-models`: 20,535 checks.
+  - Groups re-run:
+    - zombie gore 315,432 (its gore-reader list admits the new presentation file);
+    - horde kinds 565,218;
+    - minion fx 51,140;
+    - visual rig 130,658;
+    - skin tone 248;
+    - body reveal 57;
+    - zombie motion 29,905;
+    - zombie flow 4,460.
+  - `check_relay.py`: exit 0, 870 PASS lines.
+  - Python unittest: 167 OK (1 skipped).
+  - `package_source.py`: passed (2,778 files).
+  - `git diff --check`: clean.
+- **Not run (cloud, no Unity, no licensed bake):**
+  - any render or capture of the models;
+  - foot contact, elbows and wrists, clipping and transitions on the model;
+  - whether the eye renderer is `Eyes.*` and the shape names match the pack's (the game logs them once);
+  - the zombie-only pieces, which the bake does not carry yet, so every variant wears its fallback today;
+  - multiplayer views;
+  - crowd cost (24 modelled adds: about 16 skinned renderers and a 34 µs bind each, unmeasured);
+  - a Windows build.
+- **Known gaps:**
+  - no throat sac on the spitter model yet, so the spitter stays a draft;
+  - no wound marks on modelled adds (blood and mist remain);
+  - flying severed parts and stumps are still the voxel parts;
+  - arrows lodge at the voxel joints;
+  - adds switch between voxel and model at the full tier's edge (24th nearest, 40 m, 3 m hysteresis).
+- **Next (owner's PC):** the handoff prompt.
+  1. Bake the zombie-only pieces and verify the names.
+  2. Capture the shambler pair beside the player in neutral, walk, turn, attack, hit and death, and tune.
+  3. Bring in the drafts and the spitter sac, then flip each kind live.
+  4. Measure the crowd cost.
+
 ## 2026-10-28 — Claude: model gibs cut along the blade in the shader, no kill-frame hitch, hats on model corpses (merged into shared)
 
 - **Branch/base:** `claude/model-plane-gibs` from shared `50cc1082`. No PR; merged into shared and the builder.
