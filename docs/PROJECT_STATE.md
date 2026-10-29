@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-29 Claude the main menu rooftop reworked (`claude/rooftop-rework`, from shared `951b599`; presentation only; docs/MAP-STYLE-ANIME.md section 6 "The rework"): towers in four styles with detailed roofs and faces, facades with lit office runs and interior-mapped rooms (the old speckle fixed at its cause, the interpolated seed), eight scene lights, our roof rebuilt, framed and animated holo screens whose light breathes with them, the duel and the runners choreographed (dash, parries, flip, roll). Unity capture and Windows FXC pending on the PC.
+
 2026-10-29 Claude the Sheldon Head's face on every hooded model body (`claude/sheldon-hood-face`, from shared `2552522`; presentation only; docs/BOZO-INTEGRATION.md "The face everywhere"): the chip-select close-up, the death scenes, a revive's kept body and the revive gallery wore the cloth hood without its void and face, so the model's face showed; they draw it now, the model's head and face are hidden under the hood, and masks are left off under it. Next: owner check in the Windows build.
 
 2026-10-29 Claude the free arm's run on the model (`claude/model-run-arm`, from shared `83c2e42`; presentation only; docs/BOZO-INTEGRATION.md "The free arm's run"): while running or sprinting, the arm not holding the weapon is lowered toward the body (the pack's armed and staff runs flung it up to the shoulder's height and out); walks, idles and the pack's plain runs unchanged. The Prototype Series keeps its voxel weapons and modules (owner). Next: owner check in the Windows build.

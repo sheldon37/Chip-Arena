@@ -5,31 +5,34 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     // The home screen's background, "Pilot's Rooftop" (owner 2026-10-12: "have them sitting on top of a building, look down at a
-    // cyber city? Can see other pilots in the distance"). Presentation only: a deterministic voxel cyber city built once from a
+    // cyber city? Can see other pilots in the distance"). Presentation only: a deterministic cyber city built once from a
     // seed, in the source frame (+x the rig's left; the Unity boundary mirrors x, as every Core rule here does). Nothing in it
-    // is read by the simulation, the authority or the network frame.
+    // is read by the simulation, the authority or the network frame. The towers, our roof, the lights and the screens' frames
+    // are NativeRooftopTowers.cs and NativeRooftopScreens.cs (the 2026-10-29 rework).
     //  - Our perch: a roof at y 0 with a low lip at its front edge (z -1.8) where the player's pilot sits; its right edge (x 1.7)
     //    drops into the avenue below, so the camera, floating just beyond that corner, looks down the facade.
-    //  - The city: 34 m lots on a 50 m street grid with 2-3 voxel setback tiers, rooftop machinery and neon roof trims; one
-    //    avenue canyon (x 4..48) runs away under the camera; landmark towers carry the holo screens.
+    //  - The city: 34 m lots on a 50 m street grid, each a tower of one of four styles with its setbacks, roof and neon trims
+    //    (Towers); one avenue canyon (x 4..48) runs away under the camera; landmark towers carry the holo screens.
     //  - Everything the composition depends on is placed from screen intent through the loop's t=0 camera at 16:9 (At), so the
     //    duel, the runners' skybridge and the screens land where the concept framed them; generated lots keep out of them.
     //  - Traffic lanes whose periods divide the 48 s loop; the near lane is timed so a car crosses in front of the pilot as its
     //    gaze follows it (NativeRooftopActors).
     public struct RooftopBox {public Vector3 Min,Max;public int Mode;public Vector4 Attr;}
-    public struct RooftopQuad {public Vector3 A,B,C,D,Normal;public Vector4 Uv;public int Mode;public Vector4 Attr;}
+    public struct RooftopQuad {public Vector3 A,B,C,D,Normal;public Vector4 Uv;public int Mode;public Vector4 Attr;public float W;}
     public struct RooftopScreen {public string Kind;public Vector3 Center;public float Width,Height,Yaw,Gain;}
     public struct RooftopSite {public string Id;public Vector3 Position;public float Yaw;}
     public struct RooftopSprite {public Vector3 Position;public Vector4 Color;public float Size,Seed;public int Kind;public Vector4 Move;}
     public sealed class RooftopLane {public Vector3[] Points;public int Count;public float Period;public int Dir;public Vector3 Color;public bool Near;public float Phase;}
-    public static class NativeRooftopCity
+    public static partial class NativeRooftopCity
     {
         public const float Loop=48,Street=-140,FovDegrees=42,PlacementAspect=16f/9;
         // Vertex modes the world shader branches on (NativeRooftop.shader): a tower facade (window grid), a lit surface (albedo in
-        // Attr), an emissive neon bar (HDR colour in Attr), a puddle (dark mirror, rain rings).
+        // Attr), an emissive neon bar (HDR colour in Attr), a puddle (dark mirror, rain rings). The towers and props have their
+        // own shaders (Tower, Prop: NativeRooftopTowers.cs).
         public const int Facade=0,Lit=1,Neon=2,Puddle=4;
-        public const int Kinds=6;
-        public const int Glow=0,FlatMist=1,Mote=2,Puff=3,Rain=4,Spark=5;
+        public const int Kinds=7;
+        // Sprite kinds (NativeRooftopSprite.shader); a beacon is a glow that blinks.
+        public const int Glow=0,FlatMist=1,Mote=2,Puff=3,Rain=4,Spark=5,Beacon=6;
         // Our roof: x -26..1.7, z -1.8..16 (front edge where the pilot sits), lip .32 high and .42 deep.
         public const float RoofX0=-26,RoofX1=1.7f,RoofZ0=-1.8f,RoofZ1=16,LipTop=.32f,LipDepth=.42f;
         // The seated pilot: centred on the lip, facing the city (-z).
@@ -74,6 +77,7 @@ namespace ChipArena.UnityConversion
             public readonly List<RooftopLane> Lanes=new List<RooftopLane>();
             public readonly Dictionary<string,RooftopSite> Sites=new Dictionary<string,RooftopSite>();
             public readonly List<RooftopSprite> Glows=new List<RooftopSprite>(),Mist=new List<RooftopSprite>(),Steam=new List<RooftopSprite>(),Motes=new List<RooftopSprite>(),Rain=new List<RooftopSprite>();
+            public readonly List<RooftopLight> Lights=new List<RooftopLight>();
             public Vector3 SparkAt,SignLight,CyanLight,Beacon;public int LotCount;
         }
         private struct Lot {public float X0,Z0,W,D,H,Seed,Tier,Hue;public bool Bare;}
@@ -107,18 +111,19 @@ namespace ChipArena.UnityConversion
                 var c=At(sx,sy,dist);float half=size*.5f,ry=(float)Math.Atan2(eye0.X-c.X,eye0.Z-c.Z),back=half*Math.Abs((float)Math.Sin(ry))+2;
                 keepOut.Add(new Rect2(c.X-size*.75f,c.X+size*.75f,c.Z-back-size*1.2f,c.Z+size*.6f));
                 Bld(c.X-size*.6f,c.X+size*.6f,c.Z-size*1.1f-back,c.Z-back,c.Y+half*aspect+(kind=="chip"?2.5f:10+size*.25f),kind=="siren"?.6f:.2f,kind!="siren");
-                w.Screens.Add(new RooftopScreen{Kind=kind,Center=c,Width=size,Height=size*aspect,Yaw=ry,Gain=gain});
+                w.Screens.Add(new RooftopScreen{Kind=kind,Center=c,Width=size,Height=size*aspect,Yaw=ry,Gain=gain});ScreenFrame(w,c,ry,size,size*aspect,back);
             }
             Tower("siren",.82f,.21f,320,48,1,1.8f);Tower("arena",.57f,.13f,470,34,1,1.6f);Tower("chip",.665f,.43f,160,30,.75f,1.5f);Tower("banner",.955f,.33f,210,9,3,1.6f);
             var lots=Lots(custom,keepOut);w.LotCount=lots.Count;
-            CityQuads(w,lots);Perch(w);
-            foreach(var b in bridges){Box(w,b.x0,b.y-1.2f,b.z0,b.x1,b.y,b.z1,Lit,Albedo(.03f,.035f,.055f));Box(w,b.x0,b.y,b.z0,b.x1,b.y+1,b.z0+.15f,Lit,Albedo(.02f,.03f,.05f));Box(w,b.x0,b.y,b.z1-.15f,b.x1,b.y+1,b.z1,Lit,Albedo(.02f,.03f,.05f));
+            Towers(w,lots);Perch(w);
+            foreach(var b in bridges){Slab(w,b.x0,b.y-1.2f,b.z0,b.x1,b.y,b.z1,Mat(.045f,.05f,.07f,Metal));Box(w,b.x0,b.y,b.z0,b.x1,b.y+1,b.z0+.15f,Prop,DarkSteel);Box(w,b.x0,b.y,b.z1-.15f,b.x1,b.y+1,b.z1,Prop,DarkSteel);
              foreach(float zz in new[]{b.z0,b.z1})NeonBar(w,new Vector3(b.x0,b.y+1,zz),new Vector3(b.x1,b.y+1,zz),.12f,new Vector3(.2f,2.2f,2.8f));}
-            foreach(var h in huts){Box(w,h.x0,h.y0,h.z0,h.x1,h.y1,h.z1,Lit,Albedo(.035f,.04f,.06f));NeonBar(w,new Vector3(h.x0,h.y1-.12f,h.z1+.01f),new Vector3(h.x1,h.y1-.12f,h.z1+.01f),.12f,new Vector3(2.4f,.3f,2f));}
+            foreach(var h in huts){Box(w,h.x0,h.y0,h.z0,h.x1,h.y1,h.z1,Prop,DarkConcrete);Slab(w,h.x0-.25f,h.y1,h.z0-.25f,h.x1+.25f,h.y1+.18f,h.z1+.25f,PaleConcrete);NeonBar(w,new Vector3(h.x0,h.y1-.12f,h.z1+.01f),new Vector3(h.x1,h.y1-.12f,h.z1+.01f),.12f,new Vector3(2.4f,.3f,2f));}
             // street glow strips along the avenue floor
             for(float z=60;z>-1500;z-=6){float k=.6f+.4f*Hash2((int)z,3);Quad(w,new Vector3(30,Street+.2f,z),new Vector3(62,Street+.2f,z),new Vector3(62,Street+.2f,z-5),new Vector3(30,Street+.2f,z-5),Vector3.UnitY,Vector4.Zero,Neon,new Vector4(.25f*k,.08f*k,.25f*k,1));}
             Traffic(w);Sprites(w,quality,low);
             var chip=w.Screens.Find(s=>s.Kind=="chip");w.SparkAt=new Vector3(chip.Center.X-chip.Width*.5f,chip.Center.Y+chip.Height*.5f,chip.Center.Z);
+            Lights(w);
             return w;
         }
         private static Vector4 Albedo(float r,float g,float b)=>new Vector4(r,g,b,1);
@@ -154,48 +159,6 @@ namespace ChipArena.UnityConversion
         {
             var dir=b-a;var n=Vector3.Normalize(new Vector3(-dir.Z,0,dir.X));if(float.IsNaN(n.X))n=Vector3.UnitZ;var o=n*.05f;
             Quad(w,a+o-new Vector3(0,h,0),b+o-new Vector3(0,h,0),b+o,a+o,n,Vector4.Zero,Neon,new Vector4(color,1));
-        }
-        private static void CityQuads(World w,List<Lot> lots)
-        {
-            var trims=new List<(float x0,float x1,float z0,float z1,float y,float hue,float seed)>();
-            foreach(var l in lots)
-            {
-                float top=Street+l.H,x0=l.X0,x1=l.X0+l.W,z0=l.Z0-l.D,z1=l.Z0,y=Street;int tiers=l.Tier>.55f?3:2;
-                for(int k=0;k<tiers;k++)
-                {
-                    float ty=k==tiers-1?top:Lerp(Street,top,(k+1)/(tiers+.4f));Box(w,x0,y,z0,x1,ty,z1,Facade,new Vector4(l.Seed,k,l.Hue,0));
-                    if(k==tiers-1||l.Tier>.8f)trims.Add((x0,x1,z0,z1,ty,l.Hue,l.Seed+k));y=ty;float ins=Math.Min(5,(x1-x0)*.12f);x0+=ins;x1-=ins;z0+=ins;z1-=ins;
-                }
-                var r=new Random((uint)Math.Floor(l.Seed*97));int n=l.Bare?0:1+(int)Math.Floor(r.Next()*3);
-                for(int k=0;k<n;k++){float bw=2+r.Next()*5,bd=2+r.Next()*5,bh=1.5f+r.Next()*4,cx=Lerp(x0+bw,x1-bw,r.Next()),cz=Lerp(z0+bd,z1-bd,r.Next());Box(w,cx-bw/2,top,cz-bd/2,cx+bw/2,top+bh,cz+bd/2,Facade,new Vector4(l.Seed+50+k,9,l.Hue,0));}
-            }
-            var tr=new Random(5);
-            foreach(var t in trims)
-            {
-                if(tr.Next()<.35f)continue;var col=t.hue<.55f?new Vector3(.2f,2.4f,3f):new Vector3(2.8f,.25f,2.2f);float k=.8f+tr.Next()*.8f;col*=k;
-                NeonBar(w,new Vector3(t.x0,t.y,t.z1),new Vector3(t.x1,t.y,t.z1),.35f,col);NeonBar(w,new Vector3(t.x1,t.y,t.z1),new Vector3(t.x1,t.y,t.z0),.35f,col);
-                NeonBar(w,new Vector3(t.x1,t.y,t.z0),new Vector3(t.x0,t.y,t.z0),.35f,col);NeonBar(w,new Vector3(t.x0,t.y,t.z0),new Vector3(t.x0,t.y,t.z1),.35f,col);
-                if(Hash2((int)Math.Floor(t.seed),9)>=.65f)w.Glows.Add(new RooftopSprite{Position=new Vector3((t.x0+t.x1)/2,t.y,(t.z0+t.z1)/2),Color=t.hue<.55f?new Vector4(.15f,.7f,.9f,.18f):new Vector4(.8f,.1f,.6f,.18f),Size=Math.Max(t.x1-t.x0,8)*1.4f,Kind=Glow});
-            }
-        }
-        // Our perch: 1 m voxel roof tiles, the facades with storey ledges, the lip (with a cyan neon strip), an AC unit with its
-        // grille, a vent stack, the antenna mast, a stair hut, four puddles and the magenta ARENA blade sign on the corner.
-        private static void Perch(World w)
-        {
-            for(float x=RoofX0;x<RoofX1;x+=1)for(float z=RoofZ0;z<RoofZ1;z+=1){float h=Hash2((int)Math.Floor(x*3),(int)Math.Floor(z*5));float y=h>.9f?.06f:0,k=.85f+.3f*h;Box(w,x,-.4f,z,Math.Min(x+1,RoofX1),y,Math.Min(z+1,RoofZ1),Lit,Albedo(.020f*k,.024f*k,.034f*k));}
-            var wall=Albedo(.012f,.014f,.026f);Box(w,RoofX0,Street,RoofZ0-.01f,RoofX1,-.4f,RoofZ0,Lit,wall);Box(w,RoofX1,Street,RoofZ0,RoofX1+.01f,-.4f,RoofZ1,Lit,wall);
-            for(float y=-4;y>-60;y-=3.6f){Box(w,RoofX0,y-.25f,RoofZ0-.35f,RoofX1+.35f,y,RoofZ0,Lit,Albedo(.02f,.022f,.035f));Box(w,RoofX1,y-.25f,RoofZ0-.35f,RoofX1+.35f,y,RoofZ1,Lit,Albedo(.02f,.022f,.035f));}
-            Box(w,RoofX0,0,RoofZ0,RoofX1,LipTop,RoofZ0+LipDepth,Lit,Albedo(.018f,.02f,.032f),Albedo(.028f,.032f,.046f));Box(w,RoofX1-LipDepth,0,RoofZ0,RoofX1,LipTop,RoofZ1,Lit,Albedo(.018f,.02f,.032f),Albedo(.028f,.032f,.046f));
-            NeonBar(w,new Vector3(RoofX1,LipTop,RoofZ0-.005f),new Vector3(RoofX0,LipTop,RoofZ0-.005f),.03f,new Vector3(.15f,1.6f,2f));
-            Box(w,-3.9f,0,-1.25f,-2.1f,1.15f,-.05f,Lit,Albedo(.026f,.03f,.042f),Albedo(.036f,.04f,.054f));for(int k=0;k<4;k++)Box(w,-3.75f+k*.42f,1.15f,-1.1f,-3.5f+k*.42f,1.2f,-.2f,Lit,Albedo(.015f,.016f,.022f));
-            Box(w,-5.2f,0,-.9f,-4.6f,1.6f,-.3f,Lit,Albedo(.045f,.05f,.065f));Box(w,-5.1f,1.6f,-.8f,-4.7f,1.9f,-.4f,Lit,Albedo(.03f,.034f,.045f));
-            Box(w,-7.1f,0,-1.3f,-6.8f,9,-1,Lit,Albedo(.06f,.06f,.075f));Box(w,-7.5f,0,-1.7f,-6.4f,.25f,-.6f,Lit,Albedo(.05f,.05f,.065f));for(int k=1;k<5;k++)Box(w,-7.6f+k*.05f,k*1.8f,-1.25f,-6.3f-k*.05f,k*1.8f+.08f,-1.05f,Lit,Albedo(.05f,.05f,.06f));
-            Box(w,-24,0,4,-15,4.2f,13,Lit,Albedo(.03f,.034f,.05f),Albedo(.045f,.05f,.068f));
-            foreach(var (x,z,s) in new[]{(-1.2f,-.85f,1.3f),(.9f,-.6f,1f),(-4.4f,.6f,1.6f),(-1.6f,1.6f,2.2f)}){float hx=s*.8f,hz=s*.5f;Quad(w,new Vector3(x-hx,.012f,z+hz),new Vector3(x+hx,.012f,z+hz),new Vector3(x+hx,.012f,z-hz),new Vector3(x-hx,.012f,z-hz),Vector3.UnitY,new Vector4(0,0,1,1),Puddle,Vector4.Zero);}
-            // the blade sign: a magenta box hanging off the corner below the lip, its lit letters facing out (+x)
-            Box(w,RoofX1+.1f,-7.25f,-2.5f,RoofX1+.6f,-.75f,.1f,Neon,new Vector4(2.4f,.25f,1.9f,1));
-            w.Screens.Add(new RooftopScreen{Kind="sign",Center=new Vector3(RoofX1+.62f,-4,-1.2f),Width=2.2f,Height=6,Yaw=(float)Math.PI/2,Gain=2.2f});
-            w.SignLight=new Vector3(RoofX1+.4f,-1.2f,-1);w.CyanLight=new Vector3(-1.2f,.9f,-1.2f);w.Beacon=new Vector3(-6.95f,9.2f,-1.15f);
         }
         private static void Traffic(World w)
         {

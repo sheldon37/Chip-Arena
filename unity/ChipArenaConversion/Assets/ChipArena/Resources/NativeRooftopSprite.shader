@@ -2,7 +2,8 @@ Shader "ChipArena/NativeRooftopSprite"
 {
     // The rooftop scene's sprinkle of small effects (NativeRooftopPresentation): camera-facing quads expanded here from their
     // centre. uv0: corner xy, size, kind; uv1: drift velocity xyz and loop period (0: still); uv2: rgb (HDR) and alpha; uv3.x seed.
-    // Kinds: 0 glow, 1 flat mist, 2 square mote (twinkles), 3 steam puff, 4 rain streak, 5 falling spark. Looping sprites rise
+    // Kinds: 0 glow, 1 flat mist, 2 square mote (twinkles), 3 steam puff, 4 rain streak, 5 falling spark, 6 a beacon (a glow that
+    // blinks, each on its own phase: the towers' masts). Looping sprites rise
     // (or fall) along their drift over each period and fade in and out, so the sprinkle needs no CPU work once built.
     // _SrcBlend/_DstBlend: additive (One One) for light, alpha (SrcAlpha OneMinusSrcAlpha) for mist and steam.
     // The anime style (_ArenaToon.x on, NativeLighting.Rooftop): the mist and steam take crisp, flat-toned edges (painted
@@ -33,6 +34,7 @@ Shader "ChipArena/NativeRooftopSprite"
                     if(kind>4.5){p.y-=4.9*(ph*v.uv1.w)*(ph*v.uv1.w);fade*=1.0-ph;}
                 }
                 if(kind>1.5&&kind<2.5)fade*=.55+.45*sin(_RoofTime*2.3+seed*40.0);
+                if(kind>5.5)fade*=.12+.88*smoothstep(.5,.56,frac(_RoofTime*.42+seed*3.7));
                 float3 right=UNITY_MATRIX_V[0].xyz,up=UNITY_MATRIX_V[1].xyz;float2 c=v.uv0.xy;float s=v.uv0.z;
                 if(kind>3.5&&kind<4.5){up=normalize(float3(-.12,-1.0,0.0));right=normalize(cross(up,normalize(_WorldSpaceCameraPos-p)));c=float2(c.x*.04,c.y);}
                 else if(kind>.5&&kind<1.5)c.y*=.28;
