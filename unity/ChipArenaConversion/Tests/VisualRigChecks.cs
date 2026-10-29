@@ -1,6 +1,8 @@
 #if ARENA_TESTS
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 namespace ChipArena.UnityConversion
 {
@@ -104,7 +106,57 @@ namespace ChipArena.UnityConversion
             Stride(root);Console.WriteLine("PASS visual rig: the stride mixes the pack's runs, walks and sprint by the body's travel (direction, gait, sprint forward only), weights summing to one, at the rate that makes the mix travel at the body's speed, without allocating; legs and hips taken after the game pose, off in the air, rolling, attacking, stunned, juggled, in a special or a reaction ("+count+" checks)");
             Echoes(root);Console.WriteLine("PASS visual rig: a pilot drawn as the model leaves the model's roll afterimages, dash ghosts and Demon Step ghosts (its drawn renderers baked), tinted and fading as the voxel ghosts, a little toward the eye; its Shadow Step decoy, entrance ghosts and Cyber Lord copies are live ghosts of the model ("+count+" checks)");
             SheldonWear(root);Console.WriteLine("PASS visual rig: Sheldon's clothes on the model (DEV): the robe, trousers, boots and bare feet as wardrobe pieces in the Sheldon palette with glowing piping, the skirt and the hood as cloth; the Sheldon Head a cloth hood fitted round the head with the Sheldon face in its opening, in play, the draft, the portraits, the rooftop and the intro ("+count+" checks)");
+            ModelCut(root);Console.WriteLine("PASS visual rig: a model corpse is cut in its shader, no mesh copied: a split body's halves along the blade's plane, capped as the voxel cut is with the bones it crosses; a severed body at its pieces, each opening capped; bodies pooled and the death code compiled ahead, so a kill makes nothing on its frame; the hat (and the Sheldon hood) stays on ("+count+" checks)");
             Bust(root);Console.WriteLine("PASS visual rig: the sky death broadcast's portrait is the victim's model cut to its bust, a hologram in the broadcast's colour scaled about its neck to fill the frame, hidden when not drawn; Classic keeps the voxel portrait and its edges ("+count+" checks)");
+        }
+
+        // The model's gibs cut in its shader (owner 2026-10-28: "Can we improve gib slicing? (Kinda like how we did for voxel, we
+        // "slice" right on the trail of a hit) Think like how we did the saw for the factory level. Also, prevent fps drops during
+        // enemy kill"; "Also hat still seems to remove on death"; Runtime NativeVisualCutPresentation.cs).
+        private static void ModelCut(string root)
+        {
+            string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
+            // Core NativeBisect.CapOf: a section's cap, the voxel cut's look, from outlines found elsewhere.
+            var n=new Vector3(0,0,1);var plane=new BisectPlane(new Vector3(.3f,-.2f,.05f),n);var o=new Vector3(.3f,-.2f,.05f);
+            NativeBisect.Basis(n,out var u,out var v);
+            Vector3 P(float x,float y)=>o+u*x+v*y;var skin=new Vector4(.6f,.4f,.3f,1);
+            var square=new[]{P(-.08f,-.06f),P(.08f,-.06f),P(.08f,.06f),P(-.08f,.06f)};
+            var a=new List<Vector3>();var b=new List<Vector3>();var paint=new List<Vector4>();for(int k=0;k<4;k++){a.Add(square[k]);b.Add(square[(k+1)%4]);paint.Add(skin);}
+            var front=NativeBisect.CapOf(a,b,paint,plane,NativeBisect.ModelLook,0,0x5a17u,true);var back=NativeBisect.CapOf(a,b,paint,plane,NativeBisect.ModelLook,0,0x5a17u,false);
+            Check(front.Indices.Count>=6&&front.Positions.All(p=>Math.Abs(Vector3.Dot(p-o,n))<1e-4f&&Math.Abs(Vector3.Dot(p-o,u))<=.0801f&&Math.Abs(Vector3.Dot(p-o,v))<=.0601f),"the cap fills the section on its plane, inside its outline");
+            Check(front.Normals.All(q=>Vector3.Dot(q,n)>.999f)&&back.Normals.All(q=>Vector3.Dot(q,n)<-.999f)&&back.Indices.Count==front.Indices.Count,"half 0's cap faces along the normal, half 1's against it");
+            Check(front.Colors.Any(c=>BisectChecks.Flesh(new Vector3(c.X,c.Y,c.Z)))&&front.Colors.Any(c=>Math.Abs(c.X-skin.X*NativeBisect.ModelLook.RimShade)<.02f&&Math.Abs(c.Y-skin.Y*NativeBisect.ModelLook.RimShade)<.02f),"flesh inside a rim of the shell's own colour");
+            var ra=new List<Vector3>(b);var rb=new List<Vector3>(a);
+            Check(NativeBisect.CapOf(ra,rb,paint,plane,NativeBisect.ModelLook,0,1,true).Indices.Count==0&&NativeBisect.CapOf(a.Take(3).ToList(),b.Take(3).ToList(),paint,plane,NativeBisect.ModelLook,0,1,true).Indices.Count==0,"an outline turned the wrong way or left open caps nothing");
+            Check(NativeBisect.ModelLook.Inner==0&&NativeBisect.ModelLook.Rim<NativeBodyModels.CutLook(NativeBodySkins.StandardIndex).Rim,"the model's cut has no suit lining and a thin rim");
+            // The shaders: a keep value per vertex by its index, interpolated, the outline and the hologram cut with the body.
+            string fx=R("Resources/NativeVisualBodyFx.cginc"),toon=R("Resources/NativeVisualBodyToon.shader"),ghost=R("Resources/NativeWeaponGhost.shader");
+            Check(fx.Contains("if(_CutPick.x+_CutPick.y<0.5)return 1.0;")&&fx.Contains("return dot(_CutTex.Load(int3(i%w,i/w,0)).rg,_CutPick.xy);")&&fx.Contains("#ifdef SHADER_TARGET_SURFACE_ANALYSIS"),"unset, nothing is read or cut; set, a vertex's keep value is read by its index");
+            Check(toon.Contains("vertex:CutVert")&&toon.Contains("void CutVert(inout appdata_cut v,out Input o){UNITY_INITIALIZE_OUTPUT(Input,o);o.cut=CutKeep(v.vid);}")&&toon.Contains("clip(i.cut);SpawnClip(i.worldPos);")
+                &&toon.Contains("o.cut=CutKeep(v.vid);\n")&&toon.Contains("clip(i.color.a-.5);clip(i.cut);"),"the toon and its outline cut where the keep value falls under 0");
+            Check(toon.Contains("o.Albedo=_VertexAlbedo>0?i.color.rgb:")&&ghost.Contains("o.cut=CutKeep(v.vid);")&&ghost.Contains("clip(i.cut);UNITY_SETUP_INSTANCE_ID(i);"),"caps coloured by their vertices; the hologram cut the same way");
+            // A split body: both halves the whole model, cut along the plane on a worker, the second shown once it is in.
+            string cut=R("Runtime/NativeVisualCutPresentation.cs"),body=R("Runtime/NativeVisualBodyPresentation.cs"),death=R("Runtime/NativeDeathPresentation.cs"),bisect=R("Runtime/NativeBisectPresentation.cs");
+            Check(body.Contains("if(VisualCorpseCut(corpse,fx,halves,joint))return;")&&cut.Contains("float k0,k1;if(!p.Masked[top]){k0=1;k1=-1;}else{k0=-dist;k1=dist;decided[i]=true;}"),"each half keeps its side of the plane; a body outside the request's mask stays whole on half 0");
+            Check(cut.Contains("corpse.SplitReady=()=>(ready==null||ready())&&job.Done;")&&cut.Contains("halves[1].Root.SetActive(false);VisualCutStart(job);")&&body.Contains("else if(c.Cut.Halves.Length>1&&c==c.Cut.Halves[1]){if(c.Root.activeSelf)c.Root.SetActive(false);return true;}"),"the halves part only once the cut is on; the second waits hidden while the first draws whole");
+            Check(cut.Contains("job.Task=System.Threading.Tasks.Task.Run(job.Run);")&&!cut.Contains("BakeMesh")&&!cut.Contains("Instantiate(")&&cut.Contains("var cap=NativeBisect.CapOf(ka,kb,kp,new BisectPlane(N(Point),N(Normal)),NativeBisect.ModelLook,0,Seed,true);"),"the skinning, section and cap on a worker, no mesh copied, capped as the voxel cut is");
+            Check(cut.Contains("nm.Add(into.MultiplyVector(front?q:-q).normalized);")&&cut.Contains("if(!front){int s=tris[t0+1];tris[t0+1]=tris[t0+2];tris[t0+2]=s;}")&&cut.Contains("go.transform.SetParent(c.Bones[g.Key],false);"),"the halves' faces mirror; each cap piece rides its bone");
+            Check(body.Contains("if(part<0&&stand)part=VisualOwnBelow(corpse.Anchor[joint[v]],Own);")&&R("Runtime/NativeBisectCorpse.cs").Contains("internal bool RootStandIn=>standIn;"),"a half's bones ride its own parts (below them when none is above), never its stand-in pelvis");
+            Check(bisect.Contains("if(galleryCorpse!=null)VisualCorpseMake(galleryCorpse,galleryDeath,rig);")&&bisect.Contains("if(!(VisualCorpseShown(galleryCorpse,1)&VisualCorpseShown(galleryCorpse.Twin,1)))BisectDraw("),"the Dev Sandbox saw preview splits the model too");
+            // A severed body: one model, what is wholly on one piece kept, its holes capped.
+            Check(body.Contains("{if(!VisualCorpseSeverCut(c,pieceOfBone))VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);VisualCorpseBones(c,pieceOfBone);}")&&cut.Contains("keep[(p.Base+i)*2]=p.Piece[i]>=0?1:-1;")
+                &&cut.Contains("void On(int b,float weight){if(weight<=0||q==-1)return;int p=piece[b];q=p<0||q>=0&&q!=p?-1:p;}"),"a severed body keeps each vertex all of whose weight is on one uncrushed piece (nothing stretches as they part)");
+            Check(cut.Contains("if((mc-mo).sqrMagnitude<reach*reach&&Vector3.Dot(normals[c],normals[o])>.5f){under.Add(c);break;}")&&cut.Contains("CapColor.Add(FleshDeep);"),"each opening capped once (its widest layer), skin to dark flesh");
+            // No kill frame makes a body or copies a mesh: pooled instances, gone bodies taken apart over frames, compiled ahead.
+            Check(body.Contains("var root=VisualCorpseInstance();root.name=\"Visual corpse \"+death.id;")&&body.Contains("var root=VisualCorpseInstance();root.transform.SetParent(rig.Root.transform,false);root.SetActive(true);")
+                &&body.Contains("corpseFill=InstantiateAsync(visualBodyPrefab,corpseHolder.transform);")&&body.Contains("private static void VisualCorpseFree(VisualCorpse c){VisualBodyGone(c.Root);"),"corpse and pilot bodies from a pool filled off the main thread; gone ones taken apart a few pieces a frame");
+            Check(body.Contains("if(visualBodyState==1)VisualWarmDeaths();")&&body.Contains("try{m.MethodHandle.GetFunctionPointer();}catch(Exception){}")&&body.Contains("VisualCutWarm(body.All);")&&cut.Contains("if(fresh)return;"),"the death code compiled on a worker and the cut's mesh data read ahead, a renderer a frame");
+            Check(body.Contains("var keep=VisualBustKeep(skin,index,joint);")&&!body.Contains("VisualSever(body.All,body.Binding.Bones,piece,ref owned);"),"the broadcast's bust is cut in the hologram shader (a copy only where it cannot be)");
+            // The hat stays on (and the Sheldon Head's cloth hood and face).
+            Check(death.Contains("if(dressed&&hat)VisualCorpseHat(corpse,death,alpha,clock);")&&death.Contains("if(halves&&hat)VisualCorpseHat(corpse,death,alpha,clock);")&&body.Contains("corpseHat=VisualHatFit(c.Bones[c.Head],hat);")
+                &&body.Contains("if(head!=null)return VisualHatFit(head,hat);"),"a model corpse wears its hat fitted as the live body did, on the half its head went to");
+            Check(body.Contains("var hood=VisualHooded(death.actor)?VisualHoodMake(root,skeleton):null;")&&body.Contains("sourceModels.QueueSheldonPieces(corpseHat,NativeSheldonHead.Evaluate(death.at,death.id,-1,-1,HaloReduced),glow,0,null,alpha,1,Color.white);"),"a Sheldon Head corpse keeps its cloth hood and face");
+            foreach(string pack in new[]{"Bozo","BoZo","Magica","BMAC","BSMC"})Check(!cut.Contains(pack),"no pack names in the cut: "+pack);
         }
 
         // Echoes of the visual body (owner 2026-10-24: "The dodge effect still shows the voxel model"): the roll afterimages, dash
@@ -510,7 +562,7 @@ namespace ChipArena.UnityConversion
                     &&NativeModelGore.At("pelvis","thigh_l")[0].Ahead==0&&NativeModelGore.At("pelvis","spine_01")[0].Ahead<0&&NativeModelGore.At("thigh_l","pelvis")[0].Radius>NativeModelGore.At("upperarm_l","clavicle_l")[0].Radius
                     &&NativeModelGore.At("Hair_Front2","head").Length==0&&NativeModelGore.At("ik_hand_l","hand_l").Length==0,"the spine behind the middle and the windpipe ahead; the hip bone at a hip cut; the femur the thickest; none for hair or IK bones");
                 string bodyp=File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime","NativeVisualBodyPresentation.cs")).Replace("\r\n","\n");
-                Check(bodyp.Contains("private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone){VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);VisualCorpseBones(c,pieceOfBone);}")
+                Check(bodyp.Contains("private void VisualCorpseSever(VisualCorpse c,int[] pieceOfBone){if(!VisualCorpseSeverCut(c,pieceOfBone))VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);VisualCorpseBones(c,pieceOfBone);}")
                     &&bodyp.Contains("private static readonly Color CutInside=new Color((NativeModelGore.Flesh>>16&255)/255f")&&bodyp.Contains("c.All.CopyTo(all,0);added.CopyTo(all,c.All.Length);c.All=all;"),"a cut corpse's caps in flesh, its bones on each side, dissolving with it");
                 // The tech mask refitted: clear of the nose bridge between its top rows.
                 Check(NativePilotGear.MaskSurface(0,.036f)>.153f&&NativePilotGear.MaskSurface(0,.039f)>.147f,"the mask clears the nose bridge");
@@ -1246,7 +1298,7 @@ namespace ChipArena.UnityConversion
             Check(body.Contains("if(rig==null||!VisualDeathFor(death))return;")&&body.Contains("if(!visualCorpses.TryGetValue(corpse,out var c)||c.Root==null)return false;"),"a smashed corpse and a swarm wear the model too");
             Check(body.Contains("var overlay=corpse.Smash!=null?corpse.Overlay:Matrix4x4.identity;")&&body.Contains("root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);"),"a pinned smash flattens the model by its overlay on the root");
             Check(death.Contains("modelLook=VisualCorpseLook(corpse,soul?1:2,")&&death.Contains("if(!soul&&!modelLook&&alpha>.001f)")&&body.Contains("foreach(int id in BodyColours)lookBlock.SetColor(id,colour);"),"Soul Drift and Frostbreak on the model stand in for the voxel looks");
-            Check(body.Contains("{VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);")&&body.Contains("if(caps){var fill=SeverCaps(mesh,of,keptTris);")&&body.Contains("if(keptEdge[k]==1&&everyEdge[k]>=2)")&&body.Contains("cap.SetFloat(\"_Cull\",0);"),"a cut corpse's holes are capped in flesh (the mesh's own open edges are not cuts), both sides, keeping the dissolve");
+            Check(body.Contains("if(!VisualCorpseSeverCut(c,pieceOfBone))VisualSever(c.All,c.Bones,pieceOfBone,ref c.Owned,true);")&&body.Contains("if(caps){var fill=SeverCaps(mesh,of,keptTris);")&&body.Contains("if(keptEdge[k]==1&&everyEdge[k]>=2)")&&body.Contains("cap.SetFloat(\"_Cull\",0);"),"a cut corpse its shader cannot read is copied, its holes capped in flesh (the mesh's own open edges are not cuts), both sides, keeping the dissolve");
             Check(R("Runtime/NativeInteractionPresentation.cs").Contains("if((d.model??\"pilot\")==\"pilot\")VisualCorpseMake(corpse,d,temp);"),"a corpse a revive makes first wears its visual body too");
             // The model's dressing: hats on its head, chips and spell charges, hit blood from its hit point, its own parry flash.
             string src=R("Runtime/NativeSourcePresentation.cs");
@@ -1257,7 +1309,7 @@ namespace ChipArena.UnityConversion
             Check(inter.Contains("{StandFromBody(r,rig,time-r.At);VisualStandPose(rig,a,time);}")&&inter.Contains("VisualRevivesShown();")&&body.Contains("if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;"),"the revived pilot's model stands up from its kept body");
             Check(body.Contains("if(corpse.IsCrushed(j))return -1;")&&body.Contains("if(corpse.Severed.Contains(j)||corpse.Parts.ContainsKey(j)&&!corpse.Jointed(j))return j==CapturedRig.Pelvis?0:j+1;")&&body.Contains("piece[v]=VisualCorpsePiece(corpse,whole.Part[v]);")&&body.Contains("VisualCorpseSever(whole,piece);"),
                 "a cut or crushed corpse wears the model severed at its cut joints, the parts a crushed part held flying as their own pieces (the crushed part's left to its fragments)");
-            Check(body.Contains("piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?VisualCorpsePiece(half,c.Part[v]):-1;")&&death.Contains("recolored=corpse.Twin!=null&&VisualCorpseShown(corpse,alpha)&VisualCorpseShown(corpse.Twin,alpha)||BisectDraw("),"each half of a split body (a blade's killing blow, a saw) wears the model's parts on its side of the cut, its loose pieces their own meshes");
+            Check(body.Contains("piece[v]=c.Bones[v]!=null&&fx.Request.HalfOf(joint[v],CutNum(c.Bones[v].position))==h?VisualCorpsePiece(half,c.Part[v]):-1;")&&death.Contains("recolored=halves||BisectDraw("),"each half of a split body (a blade's killing blow, a saw) its shader cannot cut wears the model's parts on its side of the cut, its loose pieces their own meshes");
             Check(scene.Contains("bool dressed=layer==0&&only==null&&VisualSceneShown(death,Bone,Visible,alpha);")&&scene.Contains("if(!dressed)sourceModels.Queue((death.model??\"pilot\")==\"pilot\"")&&scene.Contains("if(!dressed&&!string.IsNullOrEmpty(death.actor?.Hat)"),"a death scene's victim plays in the visual body (not on a cinematic's own layer)");
             Check(body.Contains("for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];")&&body.Contains("for(int j=0;j<22;j++)s.Inverse[j]=rig.Bones[j].worldToLocalMatrix;"),"each scene bone follows its joint's motion since death");
             // The draft's pilot on the model: the stage's pose bound to it (its hips on the pose's pelvis), the voxel body and hat
@@ -1328,7 +1380,7 @@ namespace ChipArena.UnityConversion
             // The spawn-in: the body and its outline clip in the front's dither and take its tint; the hologram is the slice's.
             int includes=0;for(int i=toon.IndexOf("#include \"NativeVisualBodyFx.cginc\"",StringComparison.Ordinal);i>=0;i=toon.IndexOf("#include \"NativeVisualBodyFx.cginc\"",i+1,StringComparison.Ordinal))includes++;
             Check(includes==2&&ghost.Contains("#include \"NativeVisualBodyFx.cginc\""),"the body, its outline and the hologram share the include");
-            Check(toon.Contains("SpawnClip(i.worldPos);")&&toon.Contains("o.Albedo=SpawnTinted(")&&toon.Contains("SpawnClip(i.world);")&&toon.Contains("float3 albedo=SpawnTinted("),"the body and its outline form in the front and take its tint (the cast shadow runs the body's surf)");
+            Check(toon.Contains("SpawnClip(i.worldPos);")&&toon.Contains("o.Albedo=_VertexAlbedo>0?i.color.rgb:SpawnTinted(")&&toon.Contains("SpawnClip(i.world);")&&toon.Contains("float3 albedo=SpawnTinted("),"the body and its outline form in the front and take its tint (the cast shadow runs the body's surf)");
             Check(toon.Contains("addshadow")&&toon.Contains("_SpawnFront(\"Spawn-in: solid front (world y), band, heat span, slice lead\",Vector)=(100000,")&&toon.Contains("_HitFlash(\"Hit flash code (1 none; the arena sets it per renderer)\",Float)=1"),"unset, the body is formed and unflashed");
             Check(ghost.Contains("Blend SrcAlpha OneMinusSrcAlpha")&&ghost.Contains("ZWrite Off")&&!ghost.Contains("ShadowCaster")&&ghost.Contains("SpawnSlice(i.world.y)*_SpawnHolo.w")&&ghost.Contains("_SpawnGlitch.x*0.55")&&ghost.Contains("UNITY_MATRIX_V[0].xyz*(_GhostSide*_SpawnGlitch.y)"),"the hologram: the slice, the flash silhouette and the split copies, see-through, no shadow");
             // The per-pixel functions as written, and their mapping (x the solid front, w the slice lead) equals Core's per part.
@@ -1435,7 +1487,7 @@ namespace ChipArena.UnityConversion
             Check(longest+NativeLook.Slots.Length*8<NativeLook.MaxLength,"the longest outfit map fits the contract's limit");
             Check(body.Contains("var look=VisualLookOf(id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);")&&body.Contains("body.All=VisualWorn(root);")&&body.Contains("root.name=\"Visual corpse \"+death.id;var look=VisualLookOf(death.id);var sheldon=new List<Renderer>();VisualDress(root,look,sheldon);")
                 &&!body.Contains("All=root.GetComponentsInChildren<Renderer>(true)")&&body.Contains("foreach(var r in VisualWorn(root))"),"every model instance is dressed when made and keeps only its worn renderers");
-            Check(body.Contains("(body.Hood!=hood||!VisualRetone(body,VisualLookOf(id)))){VisualStrideRelease(body);VisualMotionRelease(body);body.Root.SetActive(false);Destroy(body.Root);body.Root=null;}")&&body.Contains("if(viewBody?.Root!=null&&!VisualRetone(viewBody,LocalLook??\"\"))"),"a changed outfit makes the body (and the first-person body) again; a changed skin tone alone retints it (VisualRetone)");
+            Check(body.Contains("(body.Hood!=hood||!VisualRetone(body,VisualLookOf(id)))){VisualStrideRelease(body);VisualMotionRelease(body);VisualBodyGone(body.Root);body.Root=null;}")&&body.Contains("if(viewBody?.Root!=null&&!VisualRetone(viewBody,LocalLook??\"\"))"),"a changed outfit makes the body (and the first-person body) again; a changed skin tone alone retints it (VisualRetone)");
             Check(body.Contains("foreach(var p in d.pieces)if(p?.renderers!=null)foreach(var n in p.renderers)if(lookNamed.TryGetValue(n,out var r))r.gameObject.SetActive(false);")&&body.Contains("r.gameObject.SetActive(!lookCovers.Contains(b.part));")&&body.Contains("skin.SetBlendShapeWeight(t.shape,lookTags.Contains(t.tag)?100:0);"),"dressing: every piece off then the worn on, covered body parts off, tag shapes from the worn pieces' tags");
             Check(body.Contains("VisualAnchorsFor(body);")&&body.Contains("body.GearRadius=best.radius;")&&body.Contains("body.Emblem=EmblemFrameAt(best.emblem[0],best.emblem[1]);")&&body.Contains("sourceModels.Queue(sourceModels.GearDeviceFor(body.GearRadius),m,gearBone,")&&models.Contains("gearDevices[mm]=device;gearBays[mm]=bay;"),"the gear follows the top: core, device and sleeve, emblem; one device model per sleeve radius");
             Check(body.Contains("var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??\"\";")&&body.Contains("if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??\"\";")&&game.Contains("presentation.LocalLook=LookShown();"),"pilots wear the displayed arena seat's outfit; previews and the rooftop keep the local DEV-gated outfit");

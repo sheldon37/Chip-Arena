@@ -25,6 +25,9 @@ namespace ChipArena.UnityConversion
         private bool parted;
         /// <summary>This half's pelvis is a stand-in (Core BisectCut.Rooted false): still, collisionless, nothing hangs from it.</summary>
         private bool standIn;
+        /// <summary>Whether this half's pelvis is a stand-in (the visual body's bones ride the half's own parts instead,
+        /// NativeVisualBodyPresentation.cs VisualCorpseFor).</summary>
+        internal bool RootStandIn=>standIn;
         /// <summary>Both halves of a bisected death from a posed rig: `split` gets the bind matrices and the pelvis (Unity world)
         /// and returns the cut and its request (null: no split, the caller makes the whole corpse).</summary>
         internal static NativeCorpse Bisected(NativeDeath death,CapturedAnimation.Player rig,NativeArena arena,Func<Matrix4x4[],Vector3,(BisectCut cut,BisectRequest request)> split,bool stock=false)

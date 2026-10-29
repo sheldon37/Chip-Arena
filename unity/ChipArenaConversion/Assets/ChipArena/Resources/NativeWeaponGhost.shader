@@ -5,6 +5,8 @@
 // opaque scene, front faces, scene fog toward black; Transparent+1 so it lands after the arena's alpha-blended parts.
 // _EchoOffset: a depth offset toward the eye for the visual body's echoes (a baked snapshot over the GPU-skinned body would
 // z-fight while they overlap); 0 for the voxel ghosts.
+// The visual body's per-vertex cut (NativeVisualBodyFx.cginc CutKeep: the death broadcast's bust, a split corpse's halves
+// under the soul look); unset on everything else, which it leaves whole.
 Shader "ChipArena/NativeWeaponGhost"
 {
     Properties { _BodyTint("Colour (linear) and opacity",Color)=(1,1,1,1) _EchoOffset("Depth offset",Float)=0 }
@@ -23,8 +25,10 @@ Shader "ChipArena/NativeWeaponGhost"
             #pragma fragment frag
             #pragma multi_compile_instancing
             #pragma multi_compile_fog
-            #pragma target 3.0
+            #pragma target 3.5
+            #define VISUAL_BODY_CUT
             #include "UnityCG.cginc"
+            #include "NativeVisualBodyFx.cginc"
             UNITY_INSTANCING_BUFFER_START(Props)
             UNITY_DEFINE_INSTANCED_PROP(float4,_BodyTint)
             UNITY_INSTANCING_BUFFER_END(Props)
@@ -36,18 +40,18 @@ Shader "ChipArena/NativeWeaponGhost"
                 return 0.06 + 1.6 * rim;
             }
             // ---- GHOST SHARED END ----
-            struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;UNITY_VERTEX_INPUT_INSTANCE_ID};
-            struct v2f {float4 pos:SV_POSITION;float3 normal:TEXCOORD0;float3 view:TEXCOORD1;UNITY_FOG_COORDS(2) UNITY_VERTEX_INPUT_INSTANCE_ID};
+            struct appdata {float4 vertex:POSITION;float3 normal:NORMAL;uint vid:SV_VertexID;UNITY_VERTEX_INPUT_INSTANCE_ID};
+            struct v2f {float4 pos:SV_POSITION;float3 normal:TEXCOORD0;float3 view:TEXCOORD1;UNITY_FOG_COORDS(2) float cut:TEXCOORD3;UNITY_VERTEX_INPUT_INSTANCE_ID};
             v2f vert(appdata v)
             {
                 v2f o;UNITY_SETUP_INSTANCE_ID(v);UNITY_TRANSFER_INSTANCE_ID(v,o);
                 float3 world=mul(unity_ObjectToWorld,v.vertex).xyz;o.pos=UnityObjectToClipPos(v.vertex);
-                o.normal=UnityObjectToWorldNormal(v.normal);o.view=_WorldSpaceCameraPos-world;
+                o.normal=UnityObjectToWorldNormal(v.normal);o.view=_WorldSpaceCameraPos-world;o.cut=CutKeep(v.vid);
                 UNITY_TRANSFER_FOG(o,o.pos);return o;
             }
             float4 frag(v2f i):SV_Target
             {
-                UNITY_SETUP_INSTANCE_ID(i);float4 tint=UNITY_ACCESS_INSTANCED_PROP(Props,_BodyTint);
+                clip(i.cut);UNITY_SETUP_INSTANCE_ID(i);float4 tint=UNITY_ACCESS_INSTANCED_PROP(Props,_BodyTint);
                 float facing=abs(dot(normalize(i.normal),normalize(i.view)));
                 float4 c=float4(tint.rgb*(GhostFresnel(facing)*tint.a),0);
                 UNITY_APPLY_FOG_COLOR(i.fogCoord,c,float4(0,0,0,0));

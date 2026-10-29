@@ -98,4 +98,25 @@ float DissolveFront(float2 uv)
  clip(n-cut);
  return 1.0-saturate((n-cut)/0.07);
 }
+#ifdef VISUAL_BODY_CUT
+// A model corpse's cut (Runtime/NativeVisualCutPresentation.cs; owner 2026-10-28: "slice right on the trail of a hit"), no mesh
+// copied: _CutTex holds, per vertex of the body's skinned meshes (texel _CutBase + the vertex's index, in rows _CutWidth long),
+// two keep values; _CutPick picks one, (1,0) or (0,1). A split corpse's halves each keep their side of the blade's plane (r for
+// half 0, g for half 1: the vertex's signed distance from it in the death pose, positive on that half's side, or 1 and -1 where
+// its body stays whole on half 0); a body severed at its joints keeps each vertex all of whose weight is on one piece (r: 1, else
+// -1); the death broadcast's bust its bust bones'. The value is interpolated, so a pixel under 0 lies past the cut. With
+// _CutPick (0,0) (unset) nothing is read or cut. (The surface shader's analysis pass reads no texture objects.)
+float _CutBase;float _CutWidth;float4 _CutPick;
+#ifdef SHADER_TARGET_SURFACE_ANALYSIS
+float CutKeep(uint vid){return 1.0;}
+#else
+Texture2D<float2> _CutTex;
+float CutKeep(uint vid)
+{
+ if(_CutPick.x+_CutPick.y<0.5)return 1.0;
+ uint i=(uint)_CutBase+vid;uint w=max((uint)_CutWidth,1u);
+ return dot(_CutTex.Load(int3(i%w,i/w,0)).rg,_CutPick.xy);
+}
+#endif
+#endif
 #endif

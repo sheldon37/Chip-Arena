@@ -143,6 +143,27 @@ namespace ChipArena.UnityConversion
         }
 
         // ================================================================================================ the split
+        /// <summary>The model's look at a cut (Runtime NativeVisualBodyPresentation.cs VisualCorpseCut): a thin rim in the
+        /// shell's own colour (its skin or cloth), no lining (the model is a person), then the flesh.</summary>
+        public static readonly BisectLook ModelLook=new BisectLook{Rim=.005f,Inner=0,RimShade=.8f};
+        /// <summary>
+        /// A cap for a section found elsewhere (the model's skinned meshes, cut in its shader: Runtime
+        /// NativeVisualBodyPresentation.cs VisualCorpseCut). Segment k runs from `a[k]` to `b[k]` (world points on `plane`)
+        /// with the solid on its left seen from along the normal, its shell painted `paint[k]` (linear, w 1); the cap is the
+        /// union of the closed outlines (open chains dropped) in `look`, on tier `tier`'s cells and `seed`'s pattern, facing
+        /// along the normal (`front`: half 0's) or against it, in world points. Empty when nothing closes.
+        /// </summary>
+        public static WeaponSection CapOf(IReadOnlyList<Vector3> a,IReadOnlyList<Vector3> b,IReadOnlyList<Vector4> paint,in BisectPlane plane,BisectLook look,int tier,uint seed,bool front)
+        {
+            var n=CapturedRig.Unit(plane.Normal,Vector3.UnitX);Basis(n,out var u,out var v);float d=Vector3.Dot(n,plane.Point);
+            var frame=new Frame{N=n,D=d,Scale=1,U=u,V=v,O=n*d};int count=Math.Min(a?.Count??0,Math.Min(b?.Count??0,paint?.Count??0));var segs=new List<Seg>(count);
+            for(int k=0;k<count;k++)
+            {
+                Vector3 pa=a[k]-frame.O,pb=b[k]-frame.O;var a2=new Vector2(Vector3.Dot(pa,u),Vector3.Dot(pa,v));var b2=new Vector2(Vector3.Dot(pb,u),Vector3.Dot(pb,v));
+                if((b2-a2).LengthSquared()<1e-16f)continue;segs.Add(new Seg{A=a2,B=b2,Color=paint[k],Emission=Vector4.Zero});
+            }
+            var cap=new WeaponSection();if(look!=null&&segs.Count>=3)Cap(segs,look,Cells[Math.Max(0,Math.Min(Cells.Length-1,tier))],seed,frame,front,cap);return cap;
+        }
         private struct Seg{public Vector2 A,B;public Vector4 Color,Emission;}
         private sealed class Frame{public Vector3 N,O,U,V;public float D,Scale;}
         /// <summary>

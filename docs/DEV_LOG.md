@@ -1,3 +1,43 @@
+## 2026-10-28 — Claude: model gibs cut along the blade in the shader, no kill-frame hitch, hats on model corpses (merged into shared)
+
+- **Branch/base:** `claude/model-plane-gibs` from shared `50cc1082`. No PR; merged into shared and the builder.
+- **Task (owner):**
+  - "Can we improve gib slicing? (Kinda like how we did for voxel, we "slice" right on the trail of a hit) Think like how we did the saw for the factory level. Also, prevent fps drops during enemy kill"
+  - "Also hat still seems to remove on death"
+- **Cause of the drop (measured, Editor, greatsword melee kill on a bot, Factory):**
+  - the kill frame took 451 ms;
+  - each half of the split model copied every skinned mesh (`SeverMesh`): 130-145 ms per half;
+  - making each half's body cost about 8 ms;
+  - the death broadcast's bust copied the meshes again (about 22 ms).
+- **Changes (presentation only; `Runtime/NativeVisualCutPresentation.cs`, docs/BOZO-INTEGRATION.md "Cut in the shader"):**
+  - **Shaders:** the toon, its outline and the hologram cut per vertex: a keep value read by the vertex's index from a float texture, interpolated, clipped under 0.
+  - **Split bodies:** both halves wear the whole model, each keeping its side of the bisect's plane from the death pose (bodies outside the request's mask stay on half 0).
+    - The skinning, the section and the caps are made on a worker. The caps come from Core `NativeBisect.CapOf` (new; the voxel cap with `ModelLook`): mirrored per half, each piece on the nearest crossed bone. Bone stubs mark where the plane crosses a limb or the spine.
+    - A half's bones ride its own parts, the nearest one below where none is above (`VisualOwnBelow`), never the stand-in pelvis.
+  - **Joint severs:** keep vertices wholly on one piece, and cap each opening once (skin rim to flesh).
+  - **Saw preview:** the Dev Sandbox saw preview splits the model.
+  - **Hitch removal:** an `InstantiateAsync` body pool, gone bodies taken apart over frames, the death code compiled ahead on a worker, the cut's mesh data read ahead, and the bust cut in the hologram shader.
+  - **Hats:** a model corpse wears its hat fitted as the live body did, on its head's half. The Sheldon Head corpse keeps its cloth hood and face.
+- **Gameplay impact:** none. No hit volume, timing, damage, cooldown, movement or network rule changes. The ragdoll halves wait for the model cut (about 10 ms on a worker) before they part, as they already wait for the voxel split.
+- **Checks (actual):**
+  - Unity compile: no errors; the shaders import.
+  - Play mode (Editor, local tool v202):
+    - first kill of a session: kill frame 451 → 80 ms (Mono JIT 27 ms of it);
+    - later kills: build about 12 ms, no frame over 25 ms around the kill;
+    - shield kill (head and arms off, chest crushed): the cut 1.0 ms (5.6 ms on the first), the corpse 5 ms;
+    - the bust: 7 ms (was 22).
+  - Captures:
+    - the saw preview splits the model through clothes and body, with layered flesh caps on both halves;
+    - a melee kill's and a severed head's hats stay on;
+    - the Sheldon Head corpse keeps its hood and face.
+  - Full CoreTests 868 PASS (LF checkout of `0802dac9`), with the new `ModelCut` group (Core `CapOf` behaviour, the shader and runtime wiring).
+- **Not run:** a Windows player build's frame times (Mono JIT there is the Editor's in kind; IL2CPP is not used); multiplayer; the builder build (it publishes on the builder sync).
+- **Risks:**
+  - The cut needs shader model 3.5 and float textures. Otherwise it falls back to the copies; so does a submesh drawn from a base vertex.
+  - A jagged sever opening's fan cap can leave small gaps.
+  - The round-end replay's corpse rebuild still costs 64-130 ms in the Editor. There the pre-existing "Scene with name 'Cosmetic body ...' already exists" error repeats.
+- **Local tool (not committed):** v202 adds `prof=T,D` (the profiler's slowest frames dumped), the slowest perf frames by number, and `kill2/3` and `bring2/3`.
+
 ## 2026-10-28 — Claude: cloth confirmed in the builder's Windows build
 
 - **Build:** shared `420fde9e` (Astra's #297 Brickfall builder check fix on top of `claude/cloth-bridge-regen`) built and published by the builder with the Drive zip that carries the cloth runtime: channel commit `125aa83f`, public feed verified.
