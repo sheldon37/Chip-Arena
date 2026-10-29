@@ -454,6 +454,32 @@ item).
     mist and steam take crisp, flat-toned edges; every motion kept. The animation, the camera loop, the cast and the UI
     are untouched.
   - The low tier: no outline, no bloom and so no grade (as on the maps); the rest of the style draws.
+  - **The rework (2026-10-29, owner: "Rework main menu background. Improve the graphics immensely~ utilize lighting ...
+    the screens better designed on buildings + animated ... the background characters animations better designed ...
+    Improve building design (It still appears "voxels") and flat").** The towers no longer draw through
+    `NativeRooftop.shader`'s window grid: Core `NativeRooftopTowers.cs` builds them in four styles (glazed, residential,
+    corporate, masonry) with setbacks on ledges, chamfered corners, parapets, roof plant, crowns, helipads, masts with
+    blinking beacons, fins, tanks, billboards and, on the near faces the camera sees, balconies, air-con, fire escapes
+    and hanging signs; detail follows what the camera sees (everything to 300 m, massing and roofs to 750 m, beyond
+    that the massing and a lit pole under each beacon). `NativeRooftopFacade.shader` draws each style's rhythm (curtain
+    wall, punched windows, ribbon windows over spandrels, deep-set masonry), rooms behind the glass by interior mapping,
+    offices lit in runs along whole storeys (mostly warm and cool white, a few neon tints), the moon from one side and
+    the street's glow from below (the cool shade palette's two tones while the style is on), and a level of detail down
+    to runs, storey bands and the tower's mean so nothing shimmers; the tower seed is a whole number the shader rounds
+    back before hashing, the cause of the old facades' speckle. `NativeRooftopProp.shader` draws the built detail by
+    material (concrete, painted metal with seams, louvres, lit signs with glyph strokes, the roof membrane with its
+    gravel, laps and wet patches, glass, lamps). Both share `NativeRooftopLights.cginc`: eight soft point lights (the
+    four screens', the corner sign's, the lip strip's, our stair house lamp and our string of lamps, Core
+    `NativeRooftopCity.Lights`), the street glow and the sky's reflection. Our roof is rebuilt as a membrane with its
+    coping and cyan strip, HVAC, vent stack, lattice mast and dish, stair house with a lit door, a water tank, pipes on
+    sleepers, crates and a string of lamps. The landmark screens hang in frames (bezel, casing, brackets to their tower,
+    flood lamps) and animate from Core `NativeRooftopCity.ScreenState` (a breathing glow, a holo sweep every 6 s, the
+    Siren and Chip Arena cutting through a glitch to a heartbeat monitor and an equalizer for 4 s of every 24, a foil
+    sheen on the chip card, the vertical CHIP and ARENA signs chasing their letters), their lights breathing with them.
+    The crowd (`NativeRooftopActors`): the blade is driven back by every tracer it deflects (a blockHit flinch each),
+    dashes in with cutB into cutC and hops back; the gunner backpedals from the dash; the tracers and sparks follow
+    them (`DuelOffset`); the runners gather into their take-off, runB front-flips over its gap in the Jump-Flip tuck and
+    runA rolls out of its drop on the bridge; the watcher flinches; moves crossfade. Budget 135k triangles of 170k.
 - **Chip selection, the draft backdrop.** `NativeDraftBackdrop.shader`, behind its own switch `_BackToon` (set once with
   the material by `NativeDraftBackdropPresentation` from `NativeMenuStyle.DraftToon`):
   - flat-toned panels (two tones stepping with height, a third on the floor) lit by the far glow in cel bands down the

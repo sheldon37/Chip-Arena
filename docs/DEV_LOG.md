@@ -1,3 +1,37 @@
+## 2026-10-29 — Claude: the main menu rooftop reworked (towers, lighting, animated screens, the crowd's moves)
+
+- **Branch/base:** `claude/rooftop-rework` from shared `951b599`. No PR; merged into shared and the builder.
+- **Task (owner):** "Rework main menu background. Improve the graphics immensely~ utilize lighting. Can make the screens better
+  designed on buildings + animated; Can make the background characters animations better designed. Improve building design
+  (It still appears "voxels") and flat; Add exceptional detail to make a beautiful display."
+- **Changes (presentation only; docs/MAP-STYLE-ANIME.md section 6 "The rework"):**
+  - towers (Core `NativeRooftopTowers.cs`, `Resources/NativeRooftopFacade.shader`): four styles with setbacks, ledges,
+    chamfers, parapets, roof plant, crowns, helipads, masts with blinking beacons, fins, tanks, billboards; balconies, air-con,
+    fire escapes and hanging signs on the near faces; detail by distance and view. Facades: each style's window rhythm, rooms
+    by interior mapping, offices lit in runs along storeys, a moon key and the street glow, a level of detail to runs, storey
+    bands and the tower mean. The old speckle ("voxels") was a hash of the interpolated tower seed: the seed is now a whole
+    number the shader rounds back;
+  - lighting (`NativeRooftopLights.cginc`): eight soft point lights (screens, sign, lip strip, our lamps) on towers and props;
+  - our roof rebuilt (membrane, coping, HVAC, vent stack, lattice mast and dish, stair house, tank, pipes, string of lamps);
+  - screens (`NativeRooftopScreens.cs`, `NativeRooftopScreen.shader`): framed (bezel, casing, brackets, flood lamps) and
+    animated from Core `ScreenState` (breathing, sweep, the Siren's heartbeat and Chip Arena's equalizer cuts, chip foil, the
+    signs' letter chase); their lights breathe with them;
+  - the crowd (`NativeRooftopActors`): the blade driven back by each deflected tracer, then a dash with two cuts and a hop
+    back; the gunner backpedals; tracers and sparks follow them; the runners gather, flip (runB) and roll (runA, grounded);
+    the watcher flinches; crossfades between moves.
+- **Gameplay impact:** none (home screen only; no timing, hit volume, network or save change).
+- **Checks (actual):** unity-check (runtime + editor compile) OK; `tools/check_relay.py` with the full CoreTests passed (875 PASS
+  lines, 35 managed-core checks, rc 0); python unittest 167 OK (1 skipped); `package_source.py` OK; `git diff --check` clean.
+  RooftopChecks: 135,374 triangles of the 170k budget, the composition sightlines clear at 16:9 and 21:9, and a new rework section
+  (facades, whole seeds, four styles, eight lights breathing, screen animation looping in range with its cuts, frames, the duel's
+  footwork, the flip, the grounded roll, the new shaders and includes with metas). Mutations caught: an unrounded seed and a
+  removed flip each failed RooftopChecks, then were restored.
+- **Renders:** the offline Chromium harness (the shaders translated to GLSL) at t 6/20/34 before and after, zoomed duel and runner
+  strips; not a Unity capture.
+- **Not run:** Unity Play mode, Windows FXC compile of the new shaders, frame time, captures (no Editor here).
+- **Risks / next (owner's PC):** FXC on the facade, prop and screen passes (kept short and branch free); frame time of ~135k
+  triangles; z-fighting at the screen casings; the crowd's flip and roll on the visual body. PC prompt prepared.
+
 ## 2026-10-29 — Claude: the Sheldon Head's face on every hooded model body
 
 - **Branch/base:** `claude/sheldon-hood-face` from shared `2552522`. No PR; merged into shared and the builder.

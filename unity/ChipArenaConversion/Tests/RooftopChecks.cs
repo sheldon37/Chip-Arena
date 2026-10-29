@@ -124,6 +124,49 @@ internal static class RooftopChecks
         }
         Console.WriteLine("PASS Rooftop cast: "+looks.Length+" pilots over "+samples+" samples finite and looping; the pilot seated on the lip for 7 specs; "+NativeRooftopActors.Shots.Length+" tracers deflected");
 
+        // 5b. The rework (owner 2026-10-29: "Rework main menu background. Improve the graphics immensely~ utilize lighting ... the
+        //     screens better designed on buildings + animated ... the background characters animations better designed ...
+        //     building design (It still appears "voxels")"): towers, props, lights, framed animated screens, the crowd's moves.
+        var towers=w.Quads.Where(q=>q.Mode>=NativeRooftopCity.Tower&&q.Mode<NativeRooftopCity.Prop).ToList();var props=w.Quads.Where(q=>q.Mode>=NativeRooftopCity.Prop).ToList();
+        Check(towers.Count>5000&&props.Count>5000&&w.Quads.Count(q=>q.Mode==NativeRooftopCity.Facade)==0,"the towers draw as facades ("+towers.Count+" quads) with their built detail ("+props.Count+" props); no voxel window boxes remain");
+        Check(towers.All(q=>q.Attr.X==Math.Floor(q.Attr.X)&&q.Attr.Y>=0&&q.Attr.Y<=3&&q.Attr.W>0&&q.Attr.W<=1&&q.W>NativeRooftopCity.Street),"every facade carries a whole seed (the shader rounds it back before hashing: no speckle), a style, a lit share and its tower's top");
+        Check(towers.Select(q=>(int)q.Attr.Y).Distinct().Count()==4,"all four tower styles stand in the city");
+        Check(props.All(q=>q.Attr.W>=0&&q.Attr.W<=6),"every prop names one of the seven materials");
+        Check(w.Lights.Count==NativeRooftopCity.LightCount&&w.Lights.Count(l=>l.Screen!=null&&l.Screen!="sign")==4&&w.Lights.Any(l=>l.Screen=="sign")&&w.Lights.All(l=>Finite(l.Position)&&l.Reach>0),"eight lights: the four screens', the corner sign's and our roof's lamps");
+        foreach(var l in w.Lights.Where(l=>l.Screen!=null))
+        {
+            var lo=Enumerable.Range(0,96).Select(k=>NativeRooftopCity.ScreenLight(l,k*.5f).Length()).ToArray();
+            Check(lo.Max()>lo.Min()*1.05f&&Near(NativeRooftopCity.ScreenLight(l,7.3f),NativeRooftopCity.ScreenLight(l,7.3f+NativeRooftopCity.Loop),1e-3f),"the "+l.Screen+" screen's light breathes with its panel and loops");
+        }
+        foreach(var sc in w.Screens)
+        {
+            for(float t=0;t<NativeRooftopCity.Loop;t+=.25f)
+            {
+                NativeRooftopCity.ScreenState(sc.Kind,t,out float pulse,out float cut,out float sweep,out float chase);NativeRooftopCity.ScreenState(sc.Kind,t+NativeRooftopCity.Loop,out float p2,out float c2,out float s2,out float h2);
+                if(Math.Abs(pulse-p2)>1e-3f||Math.Abs(cut-c2)>1e-3f||Math.Abs(sweep-s2)>1e-3f||Math.Abs(chase-h2)>1e-3f||pulse<.8f||pulse>1.25f||cut<0||cut>1||sweep>1||(sweep<0&&sweep!=-1))Check(false,sc.Kind+" screen's animation stays in range and loops at "+t);
+            }
+            float cutTime=Enumerable.Range(0,480).Count(k=>{NativeRooftopCity.ScreenState(sc.Kind,k*.1f,out _,out float c,out _,out _);return c>.5f;})*.1f;
+            Check(sc.Kind=="siren"||sc.Kind=="arena"?Math.Abs(cutTime-NativeRooftopCity.Loop/NativeRooftopCity.ScreenCycle*(NativeRooftopCity.ScreenCut-.4f))<.6f:cutTime==0,sc.Kind+": cuts to its own loop "+cutTime.ToString("0.0")+" s a loop (the Siren and Chip Arena only)");
+            if(sc.Kind=="sign")continue;
+            int frame=props.Count(q=>Vector3.Distance((q.A+q.C)*.5f,sc.Center)<Math.Max(sc.Width,sc.Height)*.8f+2);
+            Check(frame>=40,sc.Kind+" screen hangs in its frame ("+frame+" frame quads: bezel, casing, brackets, lamps)");
+        }
+        // the duel's footwork: the blade driven back by every deflected tracer, its dash and hop back; the gunner's backpedal
+        float zHit0=NativeRooftopActors.DuelOffset("blade",.75f).Z,zHitN=NativeRooftopActors.DuelOffset("blade",2.55f).Z,zDash=NativeRooftopActors.DuelOffset("blade",3.5f).Z;
+        Check(zHitN<zHit0-1.5f&&zDash>zHit0+1&&Near(NativeRooftopActors.DuelOffset("blade",0),NativeRooftopActors.DuelOffset("blade",NativeRooftopActors.DuelCycle),1e-3f)&&Near(NativeRooftopActors.DuelOffset("blade",3.99f),NativeRooftopActors.DuelOffset("blade",4.01f),.05f),"the blade is driven back by the burst ("+zHit0.ToString("0.0")+" to "+zHitN.ToString("0.0")+" m), dashes in ("+zDash.ToString("0.0")+") and hops back to its mark, seamlessly");
+        Check(NativeRooftopActors.Shots.All(t=>Math.Abs(NativeRooftopActors.DuelOffset("gunner",t).Z)<1e-3f)&&NativeRooftopActors.DuelOffset("gunner",3.3f).Z<-1&&Near(NativeRooftopActors.DuelOffset("gunner",3.99f),NativeRooftopActors.DuelOffset("gunner",4.01f),.05f),"the gunner fires from its mark, backpedals from the dash and walks back before the next burst");
+        string roofScene=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeRooftopPresentation.cs"));
+        Check(roofScene.Contains("muzzleLocal+NativeRooftopActors.DuelOffset(\"gunner\",time)")&&roofScene.Contains("hitLocal+NativeRooftopActors.DuelOffset(\"blade\",time)"),"the tracers and sparks follow the fighters' footwork");
+        // the runners: the level gap's front flip turns the body over; the drop's roll keeps every joint above the bridge
+        {
+            var runA=NativeRooftopActors.Crowd.First(c=>c.Id=="runA");var runB=NativeRooftopActors.Crowd.First(c=>c.Id=="runB");var st=new NativeRooftopActors.State();bool over=false;float lowest=float.MaxValue;
+            for(float x=runB.L1;x<runB.L1+runB.Gap;x+=.2f){NativeRooftopActors.Sample(runB,st,x/runB.Speed-runB.Phase+runB.Cycle);var P=st.Pose.WorldPosition;if(P[CapturedRig.Head].Y<P[CapturedRig.Pelvis].Y)over=true;}
+            for(float x=runA.L1+runA.Gap;x<runA.L1+runA.Gap+runA.Speed*.8f;x+=.1f){NativeRooftopActors.Sample(runA,st,x/runA.Speed-runA.Phase);var P=st.Pose.WorldPosition;float joint=P.Take(CapturedRig.Bones.Length).Min(v=>v.Y)+NativePortraitRules.GroupY+st.Offset.Y+runA.Drop;lowest=Math.Min(lowest,joint);}
+            Check(over,"runB front-flips over its gap (head below the hips mid-air)");
+            Check(lowest>-.02f,"runA rolls out of its drop with every joint on or above the bridge (lowest "+lowest.ToString("0.00")+" m)");
+        }
+        Console.WriteLine("PASS Rooftop rework: "+towers.Count+" facade and "+props.Count+" prop quads in four styles, "+w.Lights.Count+" lights breathing with their screens, framed animated screens, the duel's footwork, the flip and the roll");
+
         // 6. The art: the ads and the wordmark rasterise through the engine's own rasteriser.
         string Glyphs="CHIPARENBOST ";Check("CHIP ARENA THE SIREN BOSS TEST RICOCHET RARE".All(NativeRooftopArt.Has)&&Glyphs.All(NativeRooftopArt.Has),"every letter the art uses has a glyph");
         Check(NativeRooftopArt.Transform("M1 1H5V7Z",2,10,20)=="M12 22 H20 V34 Z","glyph paths scale and offset");
@@ -154,8 +197,14 @@ internal static class RooftopChecks
         string[] orange={"0xff6b35","0xff865b","0xff784b","0xff8a5b","0xff996f","0xffb15c","0xffc590","0xefb587","0xffac68","0xffc4a3","0x36251f"};
         foreach(var f in new[]{"NativeHomeMenu.cs","NativeUi.cs","NativeMenuSkin.cs","NativeUpdateUI.cs","NativeLobbyUI.cs","NativeRoomOptionsUI.cs"}){var text=R(f);var left=orange.Where(o=>text.Contains(o)).ToArray();Check(left.Length==0,f+" has no orange left ("+string.Join(",",left)+")");Check(text.Contains("NativeCyberTheme"),f+" draws with NativeCyberTheme");}
         Check(scene.Contains("NativeRooftopCity.Build(quality)")&&scene.Contains("tri[t]=v;tri[t+1]=v+2;tri[t+2]=v+1;")&&scene.Contains("new Vector3(-v.X,v.Y,v.Z)"),"the Runtime mirrors x and flips the winding at the boundary");
-        foreach(var s in new[]{"NativeRooftop","NativeRooftopSky","NativeRooftopScreen","NativeRooftopSprite"}){var path=Path.Combine(root,"Assets/ChipArena/Resources",s+".shader");Check(File.Exists(path)&&File.Exists(path+".meta")&&File.ReadAllText(path).Contains("Shader \"ChipArena/"+s+"\""),s+".shader is in Resources with its meta");}
-        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeRooftopCommon.cginc.meta")),"the shared include has its meta");
+        foreach(var s in new[]{"NativeRooftop","NativeRooftopSky","NativeRooftopScreen","NativeRooftopSprite","NativeRooftopFacade","NativeRooftopProp"}){var path=Path.Combine(root,"Assets/ChipArena/Resources",s+".shader");Check(File.Exists(path)&&File.Exists(path+".meta")&&File.ReadAllText(path).Contains("Shader \"ChipArena/"+s+"\""),s+".shader is in Resources with its meta");}
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeRooftopCommon.cginc.meta"))&&File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeRooftopLights.cginc.meta")),"the shared includes have their metas");
+        {
+            string res(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources",f));string facade=res("NativeRooftopFacade.shader"),prop=res("NativeRooftopProp.shader"),screenShader=res("NativeRooftopScreen.shader");
+            Check(facade.Contains("float seed=frac(floor(i.uv1.x+.5)*.6180339)*97.0")&&facade.Contains("float2 fw=max(fwidth(g),float2(1e-4,1e-4))"),"the facade rounds its seed back before hashing and takes its footprint before any flow control");
+            Check(facade.Contains("#include \"NativeRooftopLights.cginc\"")&&prop.Contains("#include \"NativeRooftopLights.cginc\"")&&facade.Contains("Tags { \"LightMode\"=\"ShadowCaster\" }")&&prop.Contains("Tags { \"LightMode\"=\"ShadowCaster\" }"),"the facades and props share the city's lights and write the depth the outline reads");
+            Check(screenShader.Contains("_Kind(\"Kind\",Float)")&&screenShader.Contains("_Anim(\"Animation\",Vector)")&&scene.Contains("b.SetVector(AnimId,new Vector4(pulse,cut,sweep,chase));")&&scene.Contains("NativeRooftopCity.ScreenLight(l,time)"),"the screens animate from Core's ScreenState each frame and their lights breathe with them");
+        }
         Console.WriteLine("PASS Rooftop home menu: "+count+" checks (routing, functions, updater states, palette, shaders) in "+total.ElapsedMilliseconds+" ms");
     }
 }
