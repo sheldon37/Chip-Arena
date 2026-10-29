@@ -55,6 +55,8 @@ namespace ChipArena.UnityConversion
         private void GoreWoundsJob(int id,CapturedAnimation.Player rig,int tier=NativeHordeModels.Full)
         {
             if(rig==null||tier!=NativeHordeModels.Full||hordeGore.Wounds(id)==0)return;
+            // (On the player's model the wounds are not drawn: their marks are fitted to the voxel model's surface.)
+            if(ZombieModelDrawn(id))return;
             if(goreJobCount==goreJobs.Length){Array.Resize(ref goreJobs,goreJobCount*2);Array.Resize(ref goreRank,goreJobCount*2);Array.Resize(ref goreOrder,goreJobCount*2);}
             goreJobs[goreJobCount++]=new GoreJob{Id=id,Rig=rig};
         }
@@ -179,6 +181,8 @@ namespace ChipArena.UnityConversion
                 if(!r.Live||!r.Body||!r.Posed||r.Frame>=hordeKindFrame)continue;float age=now-r.At;if(age<0)continue;
                 NativeHordeGore.Sink(age,r.FadeAt,out float sink,out float alpha);if(alpha<=.01f)continue;
                 var chest=GoreU(NativeHordeGore.Origin(r.Bones[CapturedRig.Chest]));float d=hordeEyeKnown?Vector3.Distance(chest,hordeEye):0;if(d>80)continue;
+                // A corpse whose add drew on the player's model: its baked model (NativeZombieModelPresentation.cs).
+                if(ZombieCorpseDrawn(r,sink,alpha))continue;
                 int tier=d<=24?NativeHordeModels.Full:NativeHordeModels.Reduced;string model=NativeHordeModels.Id(r.Kind,r.Look,tier);if(!sourceModels.Has(model))continue;
                 goreDraw=r;goreDrawSink=sink;var root=GoreU(r.Root);root.m13-=sink;var body=new Color(r.Variation.X,r.Variation.Y,r.Variation.Z,alpha);var glow=HordeGlow(r.Id);
                 sourceModels.Queue(model,root,goreCorpseBone,goreCorpseVisible,body:body,glow:glow);
@@ -186,6 +190,7 @@ namespace ChipArena.UnityConversion
                 if(r.Extra>=0)IronworksCorpseCrust(r.Extra,tier,root,goreCorpseBone,goreCorpseVisible,glow,alpha);
                 if(r.Prop>=0){var pm=GoreU(r.PropMatrix);pm.m13-=sink;sourceModels.Queue(NativeHordeModels.PropId(r.Prop,0),pm);}
             }
+            ZombieCorpsesKept();
         }
 
         /// <summary>A horde add's joint for an arrow lodged in it (NativeBowPresentation BowBone): the live or falling rig, then the

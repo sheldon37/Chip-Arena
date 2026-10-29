@@ -78,6 +78,50 @@ float3 SkinToned(float3 c)
  if(_SkinTone.w<0.5)return c;
  return lerp(c,saturate(c*(_SkinTone.rgb/max(_SkinRef.rgb,float3(0.0003,0.0003,0.0003)))),SkinShare(c));
 }
+// A zombie on the model (Runtime/NativeZombieModelPresentation.cs; Core/NativeZombieLooks), per renderer, after the skin tone:
+//  _ZombieTint:  a clothing or hair piece's colour, rgb (the shader's colour space), w one over the piece's own main brightness:
+//                each pixel takes the colour at its own brightness against the piece's, so seams, folds and prints keep their
+//                light and shade; 0 off
+//  _ZombieWear:  x grime (darker, duller, browner in soft patches), y torn patches (the skin, _ZombieSkin, through ragged holes
+//                with a frayed dark rim), z rot (bruised blotches on skin), w the add's seed; all read on the part's own
+//                texture coordinates, so the patches stay on the cloth as the body moves
+//  _ZombieEye:   the blank eyes: rgb their colour, w on (the eye mesh drawn in it, iris and pupil gone); past 1 they glow by
+//                w - 1 (the surface pass's emission: brighter through a wind-up)
+// Unset (every pilot), nothing changes.
+float4 _ZombieTint;float4 _ZombieWear;float4 _ZombieEye;float4 _ZombieSkin;
+float ZombieHash(float2 p){return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
+float ZombieNoise(float2 p)
+{
+ float2 i=floor(p),f=frac(p);f=f*f*(3.0-2.0*f);
+ return lerp(lerp(ZombieHash(i),ZombieHash(i+float2(1.0,0.0)),f.x),lerp(ZombieHash(i+float2(0.0,1.0)),ZombieHash(i+float2(1.0,1.0)),f.x),f.y);
+}
+float3 ZombieLook(float3 c,float2 uv)
+{
+ if(_ZombieEye.w>0.5)return _ZombieEye.rgb;
+ if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;
+ float luma=dot(c,float3(0.299,0.587,0.114));
+ if(_ZombieTint.w>0.0)c=_ZombieTint.rgb*min(luma*_ZombieTint.w,2.2);
+ float2 s=float2(frac(_ZombieWear.w*0.0137)*91.0,frac(_ZombieWear.w*0.0071)*57.0);
+ if(_ZombieWear.x>0.0)
+ {
+  float g=ZombieNoise(uv*6.0+s)*0.6+ZombieNoise(uv*17.0+s.yx)*0.4;
+  float k=_ZombieWear.x*smoothstep(0.25,0.85,g);
+  c=lerp(c,dot(c,float3(0.299,0.587,0.114))*float3(1.0,0.96,0.86),k*0.45)*(1.0-0.38*k);
+ }
+ if(_ZombieWear.y>0.0)
+ {
+  float t=ZombieNoise(uv*5.3+s*1.7),edge=1.0-0.45*_ZombieWear.y;
+  float hole=smoothstep(edge,edge+0.012,t),rim=saturate(smoothstep(edge-0.035,edge,t)-hole);
+  c=lerp(c,_ZombieSkin.rgb*0.85,hole)*(1.0-0.6*rim);
+ }
+ if(_ZombieWear.z>0.0)
+ {
+  float r=ZombieNoise(uv*7.0+s.yx*1.3)*0.7+ZombieNoise(uv*23.0+s)*0.3;
+  float b=_ZombieWear.z*smoothstep(0.52,0.82,r);
+  c=lerp(c,c*float3(0.70,0.60,0.68),b);
+ }
+ return c;
+}
 // The spawn-in's hardlight tint (SpawnTintOf): the tint colour by its share, hottest where the body has just formed, then
 // the completion flash toward white.
 float3 SpawnTinted(float3 c,float y)
