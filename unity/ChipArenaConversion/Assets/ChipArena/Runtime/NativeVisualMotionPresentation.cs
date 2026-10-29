@@ -143,6 +143,21 @@ namespace ChipArena.UnityConversion
             upper.rotation=Quaternion.FromToRotation(b-a,dir*along+side*high)*upper.rotation;
             b=lower.position;c=hand.position;lower.rotation=Quaternion.FromToRotation(c-b,a+dir*d-b)*lower.rotation;
         }
+        // A free arm lowered about the chest's forward axis by `w` (0..1) of NativeRunArm's drop: the chest's up from the spine to
+        // the head, its outward side along the shoulder line, the turn's sense taken from where it carries the outward side (out
+        // toward down); the whole arm turns about the shoulder, its hand with it.
+        private static void VisualRunArm(VisualMotion m,bool left,float w)
+        {
+            if(!NativeRunArm.Free(m.Set,left)||m.LeftArm==null||m.RightArm==null||m.Spine==null||m.Head==null)return;
+            Transform upper=left?m.LeftArm:m.RightArm,lower=left?m.LeftForearm:m.RightForearm,hand=left?m.LeftHand:m.RightHand;
+            if(lower==null||hand==null)return;
+            Vector3 up=m.Head.position-m.Spine.position,outward=(left?1:-1)*(m.LeftArm.position-m.RightArm.position);
+            if(up.sqrMagnitude<1e-8f)return;up.Normalize();outward-=Vector3.Dot(outward,up)*up;if(outward.sqrMagnitude<1e-8f)return;outward.Normalize();
+            float drop=NativeRunArm.Drop(CapturedAnimation.Num(upper.position),CapturedAnimation.Num(lower.position),CapturedAnimation.Num(hand.position),CapturedAnimation.Num(outward),CapturedAnimation.Num(up))*w*Mathf.Rad2Deg;
+            if(drop<=1e-3f)return;
+            var forward=Vector3.Cross(up,outward);var turn=Quaternion.AngleAxis(drop,forward);if(Vector3.Dot(turn*outward,up)>0)turn=Quaternion.AngleAxis(-drop,forward);
+            upper.rotation=turn*upper.rotation;
+        }
         // The sword's running carry on the body by `w` (0..1): the spine leaned in about the body's right and the head kept up;
         // the arm reaching back and out from the shoulder (a little of the clip's own swing kept, in time with its stride); the
         // fist turned so the blade trails out and back, its twist taken up by the shoulder and the forearm so the wrist only
@@ -468,6 +483,12 @@ namespace ChipArena.UnityConversion
                 bool grounded=covered&&a.Grounded&&!pick.Flight&&!pick.Spin&&!a.Rolling(time)&&!NativeSpecialPose.Down(a,time)&&a.JuggleUntil<=time&&!MeleeKitMotion.Clock(a,time,out _);
                 float plant=grounded?pick.Locomotion?1:1-Mathf.Clamp01((speed-1f)/1.5f):0;
                 VisualMotionFeet(m,body.Root.transform,plant,pick.Locomotion,dt,wgt);
+            }
+            // The free arm's run (NativeRunArm): the pack's runs and sprint fling it up and out; lowered in the chest's frontal
+            // plane by the running share of the blend, not under a raised upper layer (an aim, a cast).
+            {
+                float run=covered&&pick.Locomotion?NativeRunArm.RunShare(m.LocoWeights)*loco*wgt*(1-m.Upper):0;
+                if(run>0){VisualRunArm(m,true,run);VisualRunArm(m,false,run);}
             }
             // The sword's run: the arm swept back, the blade trailing past the hip, the chest leaning in (NativeSwordTrail). Only
             // the locomotion blend carries it, so a strike, block, roll, jump or reaction takes it away as it comes in.

@@ -1,3 +1,29 @@
+## 2026-10-29 — Claude: the free arm's run on the model
+
+- **Branch/base:** `claude/model-run-arm` from shared `83c2e42`. No PR; merged into shared and the builder.
+- **Task (owner):** "For sprinting/running, I noticed the other arm not holding the weapon tends to extend outward. Its a bit
+  flamboyant looking, can we adjust this animation?" Also: "Prototype can keep there weapons / addons. It fits the model"
+  (recorded in docs/BOZO-INTEGRATION.md; nothing changed).
+- **Cause (measured on the pack's clips, scratch tools):** the model plays the Explosive pack's runs whole; the armed run's free
+  arm goes 28-69 degrees out of the body's middle plane with the hand up to the shoulder's height and 2.2-2.9 shoulder
+  half-widths out, the staff run's 13-68 (the walks and idles 21-33, the pack's plain runs 13-40).
+- **Change (`Core/NativeRunArm.cs`, `VisualRunArm` in `NativeVisualMotionPresentation.cs`):**
+  - While running or sprinting, each free arm is lowered in the chest's frontal plane toward soft caps (hand line 26 to 34,
+    elbow 30 to 38, upper arm never under 14). Its swing, bend and hand are the clip's.
+  - Free arms per set: the off hand of the one-handed sets, the right beside the staff and the bow, both of a fighter's; none
+    for the greatsword and long guns.
+  - After, the armed run's upper arm is 16-31 and the hand at least 25 degrees under the shoulder line; walks, idles and plain
+    runs move 0-5. The table is in docs/BOZO-INTEGRATION.md.
+- **Gameplay impact:** none (presentation only; no timing, reach, hit volume or network change; first person untouched).
+- **Checks (actual):** unity-check (runtime + editor compile) OK; `tools/check_relay.py` with the full CoreTests passed (874
+  PASS lines, 35 managed-core checks, rc 0); python unittest 167 OK (1 skipped); `package_source.py` OK; `git diff --check`
+  clean. New `--run-arm` (724 checks). The pack's clips were measured and the change simulated on them with scratch tools (not
+  shipped; the licensed clips stay out of the repo).
+- **Not run:** Unity Play mode, captures and a Windows build (no Editor here); how it reads on each outfit.
+- **Risks / next (owner's PC):** capture each set's run and sprint beside the walk; tune `NativeRunArm`'s caps if the arm now
+  reads stiff. Confirm the bake's bank names the bow's forward runs as the set asks ("2Hand-Bow-Run-Forward"; the pack's files
+  say "Foward").
+
 ## 2026-10-29 — Claude (PC): zombie motion verified and fixed in Unity, the Hulk a mutant, first person/chips/summons checked
 
 - **Branch/base:** `claude/zombie-motion-pc` from shared `83c2e428` (the cloud's `claude/model-zombie-motion` merge). No PR; merged

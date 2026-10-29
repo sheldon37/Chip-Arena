@@ -1182,8 +1182,8 @@ changes and update them according to the new models (NO VOXEL appearances)".
   - the Standard chip modules' sockets on the bake's and pack's meshes: they still use the Standard models' sockets (the
     guns through the fit; blades and pack props as the Standard's), so rails, pods and strips may float or sink a little;
   - the bake's `Sight` children (until then the fitted Standard sight), and the ADS distance with the life-size guns;
-  - the Prototype Series skin keeps its voxel weapons and modules (it is that skin's look; owner 2026-10-29: "Keep it voxel");
-    the thrown dagger and shield fly as the Standard models.
+  - the Prototype Series skin keeps its voxel weapons and modules (it is that skin's look; owner 2026-10-29: "Keep it voxel",
+    "Prototype can keep there weapons / addons. It fits the model"); the thrown dagger and shield fly as the Standard models.
 - **Checks:** `CoreTests --body-chip-model` (the parts, their layout, mirrors, the armband, the toy, the runtime routes),
   `--visual-rig` and `--pack-weapons` (the first-person pins). Not a render: the parts on each outfit, the first-person grip
   and sight picture are verified in Unity only.
@@ -1215,6 +1215,45 @@ changes and update them according to the new models (NO VOXEL appearances)".
     the rail strip) floats about 3-4 cm over the handguard (the Standard rifle's top-rail height through the uniform fit). The
     fix is per-model socket tables (the top run's height and the pods' and magazine's places measured on each bake mesh),
     not made here.
+
+**The free arm's run (2026-10-29, `claude/model-run-arm`).** Owner (2026-10-29): "For sprinting/running, I noticed the other
+arm not holding the weapon tends to extend outward. Its a bit flamboyant looking, can we adjust this animation?"
+- **Cause:** every set plays the Explosive pack's clips whole on the model (`NativeVisualMotion`). The pack's character is
+  built broad, and its armed and staff runs fling the free arm up and out on each stride. Measured on the clips (scratch
+  tools over the pack's FBX; degrees out of the body's middle plane; hand out in shoulder half-widths from the middle):
+
+  | Clip, free arm | Shoulder-to-hand line | Upper arm | Hand height (vs the shoulder) | Hand out |
+  |---|---|---|---|---|
+  | Armed run forward (sword, pistol, daggers, shield's off hand) | 37-63 | 28-69 | -35 to +3 | 2.2-2.9 |
+  | 2Hand-Staff run forward (the casters' right arm, mirrored) | 21-57 | 13-68 | -69 to +19 | 1.6-2.4 |
+  | Unarmed sprint (fighters, both arms) | 6-32 | 21-46 | -70 to +7 | 1.1-1.9 |
+  | Armed walk / idle (unchanged) | 24-36 | 21-33 | -59 to -45 | 1.8-2.2 |
+  | Pack's plain runs (Relax-Run, Unarmed-Run) | 5-33 | 13-40 | -73 to -14 | 1.1-2.0 |
+
+- **Change (`Core/NativeRunArm.cs`, the motion's `VisualRunArm`):**
+  - While running or sprinting (the blend's run and sprint share; walks keep their carry), each free arm is lowered in the
+    chest's frontal plane. It turns about the chest's forward axis, out toward down, the whole arm about the shoulder.
+  - It is lowered as far as brings its shoulder-to-hand line under a soft cap (kept to 26, eased toward 34) and its elbow
+    under another (kept to 30, toward 38).
+  - It is never lowered so far that the upper arm stands less than 14 out (against the chest), and it is lowered less as the
+    arm points forward or back out of the frontal plane.
+  - Its forward and back swing, its bend and its hand are the clip's.
+  - It does not act under a raised upper layer (an aim, a cast).
+  - Free arms: the off hand of the one-handed sets (sword, pistol, daggers' second blade, shield), the right beside the staff
+    and the bow, both of a fighter's. None for the greatsword or the long guns (the support fist rides the handle).
+- **After (same clips):**
+  - The armed run's hand line is 33-40, its upper arm 16-31, the hand at least 25 degrees under the shoulder line and 2.1-2.3
+    half-widths out.
+  - The staff run's upper arm is 13-38, its hand no higher than the shoulder.
+  - The bow's run needs none: its free right arm hangs 2-15 out.
+  - The plain runs, the walks and the idles move by 0-5.
+  - The largest change between two frames is 4.9 degrees at 75 per second.
+  - Gameplay, hit timing and networking are untouched.
+- **Checks:** `CoreTests --run-arm` (synthetic arms: flung, raised, forward, hanging, mirrored; a stride's sweep for
+  smoothness; the free arms per set; the running share; the runtime's place). How it reads on the outfits is the PC's to
+  capture.
+- **For the PC:** the pack spells the bow's forward runs "2Hand-Bow-Run-Foward" while the bow set asks for
+  "2Hand-Bow-Run-Forward"; confirm the bake's bank carries the name the set asks for.
 
 **Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
 "We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack
