@@ -1491,6 +1491,33 @@ already? Cant we utilize that?"
       - the broadcast's bust is cut in the hologram shader by a keep texture per mesh.
     - **Hats:** a model corpse wears its hat on its head, fitted as the live body wears it (`VisualHatFit`), on the half its
       head went to. A Sheldon Head corpse keeps the cloth hood, its void and its face as it died.
+  - **The skeleton inside (2026-10-29, `claude/model-skeleton`; owner: "Can you design a full skeleton inside the player
+    (From skull to toe) that can be visible during gibs + wounds? Ananomically correct and in the same style of the model,
+    this should also improve slicing graphics"):**
+    - **The bones:** `Core/NativeModelSkeleton` builds one mesh from the model's rest joints (root space, the bake's mannequin
+      names), fitted inside the base body as measured from the bake (the local tool's `bozo-skel.request`):
+      - the skull (cranium, face, dark orbits and nasal opening, cheekbones) and the mandible on the jaw;
+      - 7 cervical, 12 thoracic and 5 lumbar vertebrae, 3-5 cm in from the back skin, with discs; the sacrum and coccyx;
+      - 12 pairs of ribs with costal cartilage, the manubrium and sternum;
+      - the clavicles and scapulae, the humerus, ulna and radius, the carpals, metacarpals and every finger's phalanges;
+      - the iliac wings, acetabula and rami, the femur, patella, tibia and fibula, the talus, calcaneus, midfoot,
+        metatarsals and toes.
+      Each piece rides one bone rigidly. About 6.8k vertices and 10k triangles, ivory in the body's toon with its outline
+      (`_VertexAlbedo`, a faint glow). It was checked at rest against the skin (nothing shows through the face, hands or feet),
+      and posed on a living bot.
+    - **Corpses** wear it inside (`NativeVisualSkeletonPresentation.cs`), so the cut stubs are gone:
+      - a split's bones stand 4 mm proud of the flesh's cut face, each section with its own face on 1.2 mm cells: a long
+        bone's cortex round its marrow, spongy bone's honeycomb, the skull round the brain, cartilage solid;
+      - a severed body's bones stay whole with their pieces (a femur's head stands out of a thigh cut at the hip);
+      - the soul look hides it.
+    - **Open wounds** (`NativeVisualWoundPresentation.cs`): a living pilot's punctures, cavities and cuts (four at most, not
+      bruises or burns) open holes through its skin and clothes (`NativeVisualBodyFx.cginc` `WoundClip`: a capsule round the
+      wound's line), each onto a flesh pit.
+      - Where the mark meets the model is found once per wound on a worker: the closest point on that body part's skin,
+        facing out, moved onto the outermost layer over it.
+      - A limb's pit reaches just past its bone (aimed at it within 20 degrees of straight in), so the bone shows. The pit's
+        rim is sunk by the limb's curve.
+      - The body's skeleton is on only while a wound shows. A corpse keeps its pilot's holes (a split body's on their halves).
   - **Intros (2026-10-25, `claude/model-intros`; owner: "Model everywhere, classic will be stored as backup"):** the
     entrance's pilot wears the model.
     - `VisualIntroPose` binds the intro rig's own authored pose (the clip intros' and the directed entrances' pose) to a

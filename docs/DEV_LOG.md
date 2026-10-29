@@ -1,3 +1,45 @@
+## 2026-10-29 — Claude: a full skeleton inside the model, shown in cuts and open wounds (merged into shared)
+
+- **Branch/base:** `claude/model-skeleton` from shared `275cee5d`; shared `bf1b716e` (the zombie models) merged in at `0b23b032` (the toon shader holds both the zombie look and the wound clip). No PR; merged into shared and the builder.
+- **Task (owner):** "Can you design a full skeleton inside the player (From skull to toe) that can be visible during gibs + wounds? Ananomically correct and in the same style of the model, this should also improve slicing graphics + etc."
+- **Changes (presentation only; docs/BOZO-INTEGRATION.md "The skeleton inside"):**
+  - **The skeleton:** `Core/NativeModelSkeleton` builds it from the model's rest joints and fits it inside the base body.
+    - Measured from the bake with the local tool's new `bozo-skel.request`: rest bones and skin vertices, a clearance check, x-ray renders.
+    - The skull and mandible, 24 vertebrae with discs, the sacrum, 12 pairs of ribs with cartilage, the sternum, clavicles and scapulae, the arms' and legs' long bones, the hands' and feet's bones.
+    - Each piece rides one bone. It is drawn in the body's toon with its outline (`_VertexAlbedo`; caps' glow now scales by vertex alpha).
+  - **Corpses wear it** (`NativeVisualSkeletonPresentation.cs`), so the cut stubs are gone:
+    - a split's bones stand 4 mm out of the flesh's face, each kind with its own cut face (Core `NativeModelSkeleton.CutLook`; `NativeBisect.CapOf` takes a finer cell);
+    - each half's caps are now its own set;
+    - a sever keeps bones whole on their pieces.
+  - **Open wounds** (`NativeVisualWoundPresentation.cs`, `WoundClip` in the toon and its outline):
+    - punctures, cavities and cuts (up to four) open holes through skin and clothes onto flesh pits, with the skeleton on behind them;
+    - where the mark meets the model is found on a worker (the closest skin on that body part, facing out, onto the outermost layer);
+    - a limb's pit reaches past its bone;
+    - corpses keep the holes.
+- **Gameplay impact:** none. No hit volume, timing, damage, cooldown, movement or network rule changes. Wounds are the game's own records; only how the model shows them changed.
+- **Checks (actual):**
+  - Unity compile: no errors.
+  - Skeleton fit at rest:
+    - x-ray renders front, side and back, plus torso, head, pelvis, hand, foot and knee close-ups;
+    - an opaque-body render: nothing shows through the face, hands or feet;
+    - remaining "outside" readings are inside the mouth and shoes.
+  - Play mode (Editor, local tool v208):
+    - the saw preview's cut shows the ribs and a vertebra in section in the flesh;
+    - the living bot's skeleton alone is posed exactly on the model;
+    - forced wounds (`hurt=`) open on its torso, thigh and neck, the femur showing in a thigh pit;
+    - a kill after wounds keeps the holes;
+    - frame times around a wounded bot's second greatsword kill are as before: only the broadcast and the round-end replay stand out.
+  - After merging shared's zombie models: Unity compile clean (shader included); the saw split still shows the ribs in section; forced wounds still open.
+  - Full CoreTests 870 PASS (LF checkout of `0b23b032`), with the new `ModelSkeleton` group (the build on the test mannequin, mirroring, faces out, the cut looks, the wiring).
+- **Not run:** a Windows build; multiplayer; every outfit's clothes at the wound holes (seen on the default outfit and the bots' hoodie and pants).
+- **Risks:**
+  - The skeleton is rigid per bone, so a hard-bent ragdoll knee or elbow may poke a bone end through the skin.
+  - A wound mark far from the model's skin (over 12 cm) opens no hole.
+  - A hole near a thin limb's edge can look oblique.
+- **Local tool (not committed):** v208 adds:
+  - `bozo-skel.request` (rest bones, skin vertices, the skeleton's CSV, x-ray renders, `body=solid|off`, `views=`);
+  - play options `hurt=T:dy:dmg:kind[:side];...` (non-lethal hits through the arena's Damage), `pits=dist` (a shot down each wound pit) and `skelonly=1`.
+
 ## 2026-10-29 — Claude: zombies on the player model, first pass (merged into shared)
 
 - **Branch/base:** `claude/zombie-models` from shared `275cee5`. No PR; merged into shared and the builder.
