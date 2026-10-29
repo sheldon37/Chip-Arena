@@ -146,13 +146,13 @@ namespace ChipArena.UnityConversion
                 var arena=typeof(ArenaPresentation);
                 foreach(var t in arena.Assembly.GetTypes())
                 {
-                    if(t.Namespace!=arena.Namespace||t.ContainsGenericParameters)continue;bool whole=t!=arena&&(t.DeclaringType==arena||Named(t.Name));
+                    if(t.Namespace!=arena.Namespace||t.ContainsGenericParameters)continue;bool every=t!=arena&&(t.DeclaringType==arena||Named(t.Name));
                     foreach(var m in t.GetMethods(All))
                     {
-                        if(m.IsAbstract||m.ContainsGenericParameters||!whole&&!Named(m.Name))continue;
+                        if(m.IsAbstract||m.ContainsGenericParameters||!every&&!Named(m.Name))continue;
                         try{m.MethodHandle.GetFunctionPointer();}catch(Exception){}
                     }
-                    if(whole)foreach(var c in t.GetConstructors(All))try{c.MethodHandle.GetFunctionPointer();}catch(Exception){}
+                    if(every)foreach(var c in t.GetConstructors(All))try{c.MethodHandle.GetFunctionPointer();}catch(Exception){}
                 }
             });}catch(Exception){}
         }
