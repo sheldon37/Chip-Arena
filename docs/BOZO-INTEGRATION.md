@@ -1252,8 +1252,18 @@ arm not holding the weapon tends to extend outward. Its a bit flamboyant looking
 - **Checks:** `CoreTests --run-arm` (synthetic arms: flung, raised, forward, hanging, mirrored; a stride's sweep for
   smoothness; the free arms per set; the running share; the runtime's place). How it reads on the outfits is the PC's to
   capture.
-- **For the PC:** the pack spells the bow's forward runs "2Hand-Bow-Run-Foward" while the bow set asks for
-  "2Hand-Bow-Run-Forward"; confirm the bake's bank carries the name the set asks for.
+- **On the PC (2026-10-29, `claude/run-arm-pc`; Unity Editor, local tool v229: a walk at a third of the input, run, sprint,
+  standing, run, then a strike, shot or cast, per frame the free arm's angles in the body's frame):**
+  - Pistol, sword, daggers, shield, fire staff, bow, Emperor and Ansatsuken. In runs and sprints the free arm's hand stays
+    under the shoulder line (at least 23 degrees under for the staff, 29 for the fighters, 38 for the one-handed sets); its hand
+    line peaks 28-41 degrees out of the middle plane (the bow's 15); it keeps its forward and back swing and does not cut into the
+    torso in the captures. The fighters keep their guard; the staff and bow carry the weapon across. The caps are unchanged.
+  - The walk-to-run blend is smooth: no frame over 400 degrees a second (about 6 degrees at the Editor's frame rate) while the
+    locomotion owns the pose. The largest steps are a strike's own swing coming in, and the pistol's first three frames of a
+    shot (about 5 degrees a frame) as the aim layer takes the arm.
+  - The bake's bank already carries the bow's forward runs as "2Hand-Bow-Run-Forward", "-Forward-Left" and "-Forward-Right"
+    (the clips' own names; only the pack's file names say "Foward"): no fix is needed. Every bow clip the set asks for is in
+    the bank (its block is the pack's own "Hand-Bow-Block").
 
 **Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
 "We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack

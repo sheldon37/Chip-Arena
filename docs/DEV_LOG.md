@@ -1,3 +1,21 @@
+## 2026-10-29 — Claude (PC): the free arm's run checked in Unity; the bow's run names confirmed
+
+- **Branch/base:** `claude/run-arm-pc` from shared `25525222` (the cloud's `claude/model-run-arm` merge). No PR; merged into shared
+  and the builder.
+- **Task:** verify the free arm's run (`Core/NativeRunArm`, owner: the off arm "tends to extend outward ... flamboyant") on the
+  model and tune it if needed; confirm the bake's bank has the bow's forward runs under the set's names.
+- **Done:** captured pistol, sword, daggers, shield, fire staff, bow, Emperor and Ansatsuken through a walk, run, sprint, standing,
+  run and a strike, shot or cast (front, three-quarter both sides), and logged the free arm per frame (local tool v229 adds the
+  upper arms to the motion log and a magnitude to `hold`, so a third of the input walks). In runs and sprints the hand stays under
+  the shoulder line, the hand line peaks 28-41 degrees out, the swing kept, no clipping seen; the walk-to-run blend has
+  no frame over 400 degrees a second under locomotion. The caps are unchanged (the arm does not flare or read clamped). The bank
+  holds "2Hand-Bow-Run-Forward" (and its diagonals) already: no name fix needed (docs/BOZO-INTEGRATION.md "On the PC").
+- **Animation impacts:** none (no code change).
+- **Checks (actual):** `CoreTests --run-arm` 724 checks pass; the full CoreTests on a clean LF worktree of the commit (see merge);
+  `git diff --check` clean.
+- **Not run:** a Windows player build; multiplayer; other staff schools, the greatsword and the guns' two-handed carries (no free arm).
+- **Next:** none for this; the owner's look on the test channel.
+
 ## 2026-10-29 — Claude: the free arm's run on the model
 
 - **Branch/base:** `claude/model-run-arm` from shared `83c2e42`. No PR; merged into shared and the builder.
