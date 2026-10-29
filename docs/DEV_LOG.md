@@ -1,3 +1,30 @@
+## 2026-10-28 — Claude: the cloth bridge regenerated, and the licensed-assets zip packed with cloth (merged into shared)
+
+- **Branch/base:** `claude/cloth-bridge-regen` from shared `1d779140`. No PR; merged into shared and the builder.
+- **Task (owner's brief, after Astra's #296):** the owner's Drive `Magica Soft.zip` holds only the Magica package, and the October 27 `LocalAssets.zip` has no cloth; regenerate the private bridge and pack a zip that carries Magica and the bridge for the builder.
+- **The bridge (git-ignored `Assets/LocalAssets/ChipArenaLocalTools/Runtime/ChipArenaClothBridge.cs`, fresh GUID; written by the session's `cloth_bridge3.py`):**
+  - Registers `NativeVisualCloth.Attach`, `Enable` and `Reset` before the scene loads (one file, no asmdef, compiled into Assembly-CSharp unguarded).
+  - Attach builds, on children of the body's root: BoneCloth on each worn hair chain (ShortHair under four bones, LongHair from four); MeshCloth on each worn skinned piece with a paint map (`NativeVisualCloth.PaintMaps` first, as the Sheldon hood's cowl, else the bake's `Resources/ChipArenaVisualCloth/<renderer>`, as the kimono skirt) on the Skirt preset with a modest reduction. A piece with an unreadable mesh or map, or that fails to build, is skipped with one warning.
+  - Colliders: the head, `spine_04`, the upper arms; the hips, thighs and calves; `neck_01`, `spine_05` and the collarbones; a plane at the pilot's floor. The ShortHair, LongHair and Skirt presets are embedded.
+  - Magica's Normal (scaled-time) step, which runs after the game's LateUpdate pose; pose ratio 0; camera and distance culling off (the game holds cloth through Enable). Enable off holds the drawn pose (MeshCloth back on its original skinned mesh); Reset snaps back.
+- **Game side:** only bodies the game holds still get cloth: `CreateVisualBody(..., simulate)` is false for the death broadcast's bust, live ghosts and menu portraits (the bust had simulated 120 m away in play).
+- **Local tool (not committed):** v199 adds `pref=field:value` (re-applies the settings), `nocloth=1`, `perf=T,D`, and the cloth log's reset count and distance from the arena's eye.
+- **Pack and check (actual):** `pack_visual_body.py <Drive LocalAssets.zip> LocalAssets-with-cloth.zip --with-cloth`: 651 visual body files, 63.65 MB, beside 1430 members; `install_local_assets.py ... --check --require-cloth`: "Cloth runtime: 414 verified files", 226 audio keys and 593 clips, the visual body 651 files. The cloth runtime is Magica Cloth 2 2.18.4 without examples plus the bridge: 2.42 MiB of the 12 MiB budget.
+- **Checks (actual):**
+  - Unity compile: no errors; the bridge gives no warnings (the pack scripts' own warnings remain).
+  - Play mode (Editor, local tool), seen in the logs and captures:
+    - startup: "Cloth runtime: bridge registered (attach/enable/reset)";
+    - hair: tips swing 15-28 degrees as a run starts, about 23 at the stop and in a fast turn, and settle to about 2 within two seconds;
+    - the DEV Sheldon robe's skirt and the Sheldon hood's cowl move through running, sprinting, a jump and a roll on Factory; their bounds stay steady (no blow-up) and the legs stay inside; the hood stays on the head;
+    - held: a model bot 69 m from the arena's eye, and both cloths on the low tier (`pref=graphics:performance`) at 3 m, stay disabled with the hair at rest;
+    - a death and respawn: resets go 5 at spawn, 7 at the death, 10 at the respawn; the whole corpse keeps simulating 3 s on, 5.7 m from the camera;
+    - first person: no cloth on the view body.
+  - Cost, Editor play mode, 8 pilots on Factory (9 cloths built, 3-4 simulating, the rest past 30 m): mean frame 13.68 and 13.25 ms with cloth, 11.42 and 12.30 ms without (95th percentile 15.22/14.89 against 12.78/13.89).
+  - Full CoreTests 867 PASS (LF checkout of `5bcea655`).
+- **Not run:** a Windows builder build with cloth (the zip is not on Drive until the owner uploads it); multiplayer; the low tier's frame seen in a capture (its state logged only); a Windows player build's cost.
+- **Owner step:** upload `LocalAssets-with-cloth.zip` to Drive as the builder's `LocalAssets.zip`, keeping the current one as `LocalAssets-2026-10-27.zip`.
+- **For Astra:** the bundle is ready for a builder build once it is on Drive (`--require-cloth` passes). The MAGICACLOTH2 define Magica writes into ProjectSettings is not committed. Brickfall's separate runtime (friendly fire on failure) is untouched.
+
 ## 2026-10-28 — Astra: cloth handoff readiness and account look persistence
 
 - **Base:** shared `claude/sleepy-ritchie-g8ruhv` at `fcbbf5a4`. The package pins, private-code pack/install support, look transport, verified DEV gates, face allowlist and remote-seat presentation from the October 26–27 handoff are already present in this base.

@@ -1606,11 +1606,19 @@ already? Cant we utilize that?"
   - **Builds:** cloth runs only where the bridge and the package are installed (the owner's Editor and local builds). The
     builder's test builds have none until the build carries the package (Burst, Collections, Mathematics in the manifest)
     and the zip carries Magica and the bridge: Astra's build tooling, with the owner's go-ahead.
+    - **2026-10-28 (`claude/cloth-bridge-regen`):** the manifest pins are in shared (Astra, #294/#296), and the bridge is
+      regenerated to the bundle's spec (the session's `cloth_bridge3.py`: the three hooks, every piece guarded so one bad
+      piece is skipped with one warning, readable meshes and maps only, Magica's Normal step and pose ratio 0, its camera and
+      distance culling off, modest MeshCloth reduction, cowl colliders on `neck_01`, `spine_05` and the collarbones). The
+      licensed-assets zip packed with `--with-cloth` carries it with Magica 2.18.4 (414 files, 2.42 MiB of the 12 MiB
+      budget); the owner puts it on Drive as the builder's `LocalAssets.zip`.
+    - Only bodies the game holds still get cloth: the live and draft pilots and whole corpses (`CreateVisualBody`'s
+      `simulate`), not the death broadcast's bust, the live ghosts or the menu portraits.
   - **MeshCloth (2026-10-27, `claude/sheldon-clothes`):** a worn piece with a paint map (red fixed, green moving) runs as
     MeshCloth on the pack's skirt preset: the pack's own maps (`MC2Map`; the bake copies them, readable, to
     `Resources/ChipArenaVisualCloth/<renderer>`: the kimono's skirt) and the game's own (`NativeVisualCloth.PaintMaps`: the
     Sheldon hood's cowl). The bridge adds colliders on the hips, thighs and calves and a floor plane under the pilot.
-  - **Not yet:** cloth on corpses; maps for the other pack pieces (none ships one).
+  - **Not yet:** maps for the other pack pieces (none ships one).
   - **Where:** the live body, the draft's pilot and a whole corpse, which keeps them as it fades.
   - **Not drawn yet:** on a split half, a crushed head or a corpse under a kill look, the death broadcast's bust, or echoes
     and ghosts.
@@ -1651,8 +1659,8 @@ already? Cant we utilize that?"
     - **Cloth:** its paint map holds the hood to the chin fixed and lets the cowl move (`NativeSheldonHood.Maps`).
     - The hair hides under it. Where it shows: play, the intros (the Sheldon intro's resolve), the draft, revives, the
       portraits and the rooftop (where the model had shown no Sheldon Head).
-  - **Where cloth runs:** the Editor and local builds (the bridge). Builder builds draw the skirt and the cowl skinned until
-    the builder carries Magica (Astra's handoff, 2026-10-26).
+  - **Where cloth runs:** the Editor and local builds (the bridge); builder builds once the owner's Drive zip carries the
+    cloth runtime (packed 2026-10-28, above).
 - **The concept's back emblem (2026-10-25, `claude/model-cyberlord`):** a smiley with X eyes in flat accent-glow strokes
   (`NativePilotGear.Emblem`, our own), about 8 cm across on the upper back. It sits on the chest's model bone, measured on
   the baked hoodie, and glows as the core does. Every model pilot wears it, as the concept's default outfit does.
