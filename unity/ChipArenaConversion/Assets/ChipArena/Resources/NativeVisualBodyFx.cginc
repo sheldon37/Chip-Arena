@@ -107,6 +107,22 @@ float DissolveFront(float2 uv)
 // -1); the death broadcast's bust its bust bones'. The value is interpolated, so a pixel under 0 lies past the cut. With
 // _CutPick (0,0) (unset) nothing is read or cut. (The surface shader's analysis pass reads no texture objects.)
 float _CutBase;float _CutWidth;float4 _CutPick;
+// Open wounds (Runtime/NativeVisualWoundPresentation.cs): up to four holes through the body's skin and clothes, each a capsule
+// round the wound's line in the surface: _WoundAt xyz its centre on the skin and w its radius, _WoundIn xyz inward and w how deep
+// it reaches, _WoundAlong xyz the line and w its half length (0 for a round hole); _Wounds the number set. Its pit is a mesh of
+// its own. Unset (0) nothing is cut.
+float _Wounds;float4 _WoundAt[4];float4 _WoundIn[4];float4 _WoundAlong[4];
+void WoundClip(float3 world)
+{
+ if(_Wounds<0.5)return;
+ for(int k=0;k<4;k++)
+ {
+  if(k>=_Wounds)break;
+  float3 v=world-_WoundAt[k].xyz;float t=dot(v,_WoundIn[k].xyz);if(t<-0.012||t>_WoundIn[k].w)continue;
+  float a=dot(v,_WoundAlong[k].xyz);float3 w=v-_WoundIn[k].xyz*t-_WoundAlong[k].xyz*a;float e=max(abs(a)-_WoundAlong[k].w,0.0);
+  if(e*e+dot(w,w)<_WoundAt[k].w*_WoundAt[k].w)clip(-1.0);
+ }
+}
 #ifdef SHADER_TARGET_SURFACE_ANALYSIS
 float CutKeep(uint vid){return 1.0;}
 #else

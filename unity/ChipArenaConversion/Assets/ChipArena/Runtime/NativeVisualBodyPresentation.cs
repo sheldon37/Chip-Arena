@@ -54,6 +54,8 @@ namespace ChipArena.UnityConversion
             public VisualStride Stride;
             // Its own animation: the pack's clips whole for a weapon whose set has moved over (NativeVisualMotionPresentation.cs).
             public VisualMotion Motion;
+            // Its open wounds' holes and its skeleton, on while one shows (NativeVisualWoundPresentation.cs; not in All).
+            public List<VisualHole> Holes; public SkinnedMeshRenderer Skeleton;
         }
         public const string VisualBodyResource="ChipArenaVisualBody", VoxelBodiesArgument="--ca-voxel-bodies";
         private const int ViewBodyId=-999;
@@ -375,6 +377,8 @@ namespace ChipArena.UnityConversion
             if(hoodRenderer!=null)foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(false))if(r.name.StartsWith("HairFront.",StringComparison.Ordinal)||r.name.StartsWith("HairBack.",StringComparison.Ordinal))r.gameObject.SetActive(false);
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=look,Sheldon=sheldon.ToArray(),Lift=lift,Hood=hood,HoodRenderer=hoodRenderer};
             body.All=VisualWorn(root);body.Plain=new Material[body.All.Length][];VisualCutWarm(body.All);
+            // Its skeleton, off until a wound opens into it (an arena pilot's body; not the view body, busts, ghosts or portraits).
+            if(simulate&&id!=ViewBodyId){body.Skeleton=VisualSkeletonMake(root,skeleton);if(body.Skeleton!=null)body.Skeleton.enabled=false;}
             foreach(var t in root.GetComponentsInChildren<Transform>(true))
             {
                 if(t.name=="VisualGearCore")body.GearCore=t;else if(t.name=="VisualGearDevice")body.GearDevice=t;
@@ -456,6 +460,7 @@ namespace ChipArena.UnityConversion
             bool first=rig==viewRig&&viewBody!=null;VisualBody body;
             if(first)body=viewBody;else if(!visualBodies.TryGetValue(rig,out body))return;
             if(body.Root==null)return;
+            if(!first)VisualWounds(body,rig,a);
             var look=new VisualSpawnLook();bool on=SpawnVisualLook(spawn,rig,ref look);body.Building=on&&look.Front.x<1e4f;
             VisualGear(body,a,time,reveal,tint,flash,first);
             bool ghost=on&&look.Ghost&&VisualGhosts()!=null;
@@ -817,8 +822,11 @@ namespace ChipArena.UnityConversion
         // (VisualCorpseLook). It wears its hat (VisualCorpseHat). It hides while the voxel body would be under half opacity and
         // goes with its corpse.
         private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public int Head=-2;
-            // A split body's cut (both halves share it; the first half owns its texture) and whether it wears the Sheldon hood.
-            public CutJob Cut;public Texture2D CutTexture;public bool Hood;
+            // A split body's cut (both halves share it; the first half owns its texture), whether it wears the Sheldon hood, and its
+            // skeleton (NativeVisualSkeletonPresentation.cs).
+            public CutJob Cut;public Texture2D CutTexture;public bool Hood;public Renderer Skeleton;
+            // Its pilot's open wounds' holes (NativeVisualWoundPresentation.cs).
+            public List<VisualHole> Holes;
             // Each bone's nearest ancestor in Bones (-1: the root) and its rest offset from it (VisualCorpseShown keeps lengths),
             // and whether it takes its part's place (the root, and a loose piece's first bone).
             public int[] Parent;public Vector3[] Rest;public bool[] Placed;}
@@ -835,6 +843,8 @@ namespace ChipArena.UnityConversion
             // The Sheldon hood the live body wore (its hair hidden under it, as there; VisualCorpseHat draws its face).
             var hood=VisualHooded(death.actor)?VisualHoodMake(root,skeleton):null;
             if(hood!=null){sheldon.Add(hood);foreach(var r in root.GetComponentsInChildren<SkinnedMeshRenderer>(false))if(r.name.StartsWith("HairFront.",StringComparison.Ordinal)||r.name.StartsWith("HairBack.",StringComparison.Ordinal))r.gameObject.SetActive(false);}
+            // The skeleton inside (a cut or wound shows it).
+            VisualSkeletonMake(root,skeleton);
             var at=rig.Root.transform;root.transform.SetPositionAndRotation(at.TransformPoint(new Vector3(0,NativeVisualRig.Floor,0))+offset,at.rotation);
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
@@ -896,7 +906,9 @@ namespace ChipArena.UnityConversion
                 for(int h=0;h<2;h++){halves[h]=VisualCorpseFor(h==0?corpse:corpse.Twin,death,rig,out var j);joint??=j;}
                 if(halves[0]==null||halves[1]==null){foreach(var c in halves)if(c!=null)VisualCorpseFree(c);return;}
                 visualCorpses[corpse]=halves[0];visualCorpses[corpse.Twin]=halves[1];
-                if(VisualCorpseCut(corpse,fx,halves,joint))return;
+                bool cut=VisualCorpseCut(corpse,fx,halves,joint);
+                for(int h=0;h<2;h++){int side=h;halves[h].Holes=VisualCorpseHoles(rig,halves[h],(hole,at)=>fx.Request.HalfOf(joint[hole.Bone],CutNum(at))==side);}
+                if(cut)return;
                 for(int h=0;h<2;h++)
                 {
                     var half=h==0?corpse:corpse.Twin;var c=halves[h];
@@ -912,6 +924,7 @@ namespace ChipArena.UnityConversion
                 var piece=new int[whole.Bones.Length];for(int v=0;v<piece.Length;v++)piece[v]=VisualCorpsePiece(corpse,whole.Part[v]);
                 VisualCorpseSever(whole,piece);
             }
+            whole.Holes=VisualCorpseHoles(rig,whole,null);
             visualCorpses[corpse]=whole;
         }
         // A ragdoll part's piece of the model: -1 when it is crushed (left to its fragments); else the nearest part at or above
@@ -933,7 +946,7 @@ namespace ChipArena.UnityConversion
         private VisualCorpse VisualCorpseFor(NativeCorpse corpse,NativeDeath death,CapturedAnimation.Player rig,out int[] joint)
         {
             var root=VisualDeathBody(rig,death,death.position-rig.Root.transform.position,out var bones,out joint);if(root==null)return null;
-            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Hood=root.transform.Find(NativeSheldonHood.Renderer)!=null};
+            var c=new VisualCorpse{Root=root,Bones=bones,Part=new int[bones.Length],Bind=new Matrix4x4[bones.Length],All=VisualWorn(root),Edge=DissolveEdgeOf(death),Hood=root.transform.Find(NativeSheldonHood.Renderer)!=null,Skeleton=root.transform.Find(SkeletonRenderer)?.GetComponent<Renderer>()};
             var parentOf=new Dictionary<Transform,int>();for(int v=0;v<bones.Length;v++)if(bones[v]!=null)parentOf[bones[v]]=v;
             bool stand=corpse.RootStandIn;bool Own(int j)=>corpse.Parts.ContainsKey(j)&&!(stand&&j==CapturedRig.Pelvis);
             for(int v=0;v<bones.Length;v++)
@@ -980,7 +993,8 @@ namespace ChipArena.UnityConversion
         private static Mesh goreStub,goreDisc;
         private void VisualCorpseBones(VisualCorpse c,int[] pieceOfBone)
         {
-            if(c.Root==null||c.All==null||c.Parent==null)return;Material source=null;
+            // The skeleton shows a corpse's own bones at its cuts (NativeVisualSkeletonPresentation.cs): no stubs then.
+            if(c.Root==null||c.All==null||c.Parent==null||c.Skeleton!=null)return;Material source=null;
             foreach(var r in c.All)if(r is SkinnedMeshRenderer&&r.sharedMaterial!=null){source=r.sharedMaterial;break;}
             if(source==null)return;
             var boneLook=VisualGoreMaterial(source,NativeModelGore.Bone);var marrowLook=VisualGoreMaterial(source,NativeModelGore.Marrow);
@@ -1315,6 +1329,7 @@ namespace ChipArena.UnityConversion
                 if(c.Placed[v])b.SetPositionAndRotation(m.GetColumn(3),m.rotation);else{b.localPosition=c.Rest[v];b.rotation=m.rotation;}
             }
             if(flat){var scale=new Vector3(overlay.GetColumn(0).magnitude,overlay.GetColumn(1).magnitude,overlay.GetColumn(2).magnitude);root.localScale=scale;root.position=(Vector3)overlay.GetColumn(3)+Vector3.Scale(scale,at);}
+            if(c.Holes!=null)VisualHolesCut(c.All,c.Bones,c.Holes,null);
             // The face gear stays on a whole corpse's head as it fades (not on a split half, a crushed head or under a kill look).
             if(c.Look==0&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)
             {
@@ -1354,7 +1369,7 @@ namespace ChipArena.UnityConversion
             lookBlock??=new MaterialPropertyBlock();
             if(look==1)
             {
-                if(c.Look!=1){var ghost=VisualEchoMaterial("NativeWeaponGhost");if(ghost==null)return false;foreach(var r in c.All){if(r==null)continue;var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=ghost;r.sharedMaterials=mats;}c.Look=1;}
+                if(c.Look!=1){var ghost=VisualEchoMaterial("NativeWeaponGhost");if(ghost==null)return false;foreach(var r in c.All){if(r==null)continue;var mats=new Material[r.sharedMaterials.Length];for(int k=0;k<mats.Length;k++)mats[k]=ghost;r.sharedMaterials=mats;}if(c.Skeleton!=null)c.Skeleton.enabled=false;c.Look=1;}
                 foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);lookBlock.SetVector(VisualEchoTint,new Vector4(colour.r,colour.g,colour.b,opacity*VisualEchoShare));r.SetPropertyBlock(lookBlock);}
                 return VisualCorpseShown(corpse,1);
             }

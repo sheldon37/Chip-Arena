@@ -37,7 +37,26 @@ namespace ChipArena.UnityConversion
         // One skinned renderer's share: its mesh, its bones' skinning in the death pose, whether the plane may cross each bone's
         // body (a split) or each vertex's piece (-1: none; a sever), its worn blend shapes (a frame's deltas and their share), its
         // index among the body's renderers, its first texel and its shell's paint (linear).
-        private sealed class CutPart{public CutMesh Mesh;public Matrix4x4[] Skin;public bool[] Masked;public int[] Piece;public List<(Vector3[] delta,float share)> Shapes;public int Index,Base;public NVector4 Paint;}
+        private sealed class CutPart{public CutMesh Mesh;public Matrix4x4[] Skin;public bool[] Masked;public int[] Piece;public List<(Vector3[] delta,float share)> Shapes;public int Index,Base;public NVector4 Paint;
+            // The skeleton's (NativeVisualSkeletonPresentation.cs): each vertex's kind, and each of its bones' index in the corpse's bones.
+            public byte[] Kinds;public int[] Visual;}
+        // One body's caps (world, death pose): positions, normals, colours (linear; alpha the share they glow by), triangles, and
+        // each triangle's bone.
+        private sealed class CapSet
+        {
+            public readonly List<Vector3> At=new List<Vector3>(),Normal=new List<Vector3>();public readonly List<Color> Color=new List<Color>();public readonly List<int> Tris=new List<int>(),Bone=new List<int>();
+            // A cap as made (half 0's face) or mirrored (half 1's), each triangle on `bone` of its middle.
+            public void Add(WeaponSection cap,float glow,Func<Vector3,int> bone,bool mirror)
+            {
+                int first=At.Count;
+                for(int i=0;i<cap.Positions.Count;i++){var p=cap.Positions[i];var q=cap.Normals[i];var c=cap.Colors[i];At.Add(new Vector3(p.X,p.Y,p.Z));Normal.Add(mirror?new Vector3(-q.X,-q.Y,-q.Z):new Vector3(q.X,q.Y,q.Z));Color.Add(new Color(c.X,c.Y,c.Z,glow));}
+                for(int t=0;t+2<cap.Indices.Count;t+=3)
+                {
+                    int a=first+cap.Indices[t],b=first+cap.Indices[t+1],c=first+cap.Indices[t+2];Tris.Add(a);if(mirror){Tris.Add(c);Tris.Add(b);}else{Tris.Add(b);Tris.Add(c);}
+                    Bone.Add(bone((At[a]+At[b]+At[c])/3));
+                }
+            }
+        }
         // A corpse's cut: made on a worker (Run), put on its bodies on the main thread (VisualCutFinish).
         private sealed class CutJob
         {
@@ -46,15 +65,13 @@ namespace ChipArena.UnityConversion
             // The bones the caps may ride: each one's segment in the death pose, its index in the corpse's bones and its piece.
             public Vector3[] BoneA,BoneB;public int[] BoneOf,BonePiece;
             public float[] Keep;
-            // The caps (world, death pose; half 1 draws them mirrored): positions, normals, colours (linear), triangles, each
-            // triangle's bone.
-            public readonly List<Vector3> CapAt=new List<Vector3>(),CapNormal=new List<Vector3>();public readonly List<Color> CapColor=new List<Color>();
-            public readonly List<int> CapTris=new List<int>(),CapBone=new List<int>();
+            // Each body's caps.
+            public readonly CapSet[] Caps={new CapSet(),new CapSet()};
             public System.Threading.Tasks.Task Task;public Exception Error;public bool Finished;
             public bool Done=>Finished||Task==null||Task.IsCompleted;
             public void Run(){try{if(Pieces)MakePieces();else MakePlane();}catch(Exception e){Error=e;}}
             // Each vertex where the death pose put it (its blend shapes, then its four bones).
-            private static Vector3[] Posed(CutPart p)
+            internal static Vector3[] Posed(CutPart p)
             {
                 var m=p.Mesh;int n=m.At.Length;var at=new Vector3[n];
                 for(int i=0;i<n;i++)
@@ -72,29 +89,29 @@ namespace ChipArena.UnityConversion
             private void MakePlane()
             {
                 Keep=new float[Count*2];var a=new List<Vector3>();var b=new List<Vector3>();var paint=new List<NVector4>();var plane=new List<bool>();
+                // The skeleton's sections per half (its bones reach NativeModelSkeleton.BoneOut past the plane on either side).
+                var bones=new[]{new List<(Vector3 a,Vector3 b,byte kind,int bone)>(),new List<(Vector3 a,Vector3 b,byte kind,int bone)>()};float reach=NativeModelSkeleton.BoneOut;
                 foreach(var p in Parts)
                 {
-                    var m=p.Mesh;int n=m.At.Length;var at=Posed(p);var d=new float[n];var decided=new bool[n];
+                    var m=p.Mesh;int n=m.At.Length;var at=Posed(p);var d=new float[n];var decided=new bool[n];float out_=p.Kinds!=null?reach:0;
                     for(int i=0;i<n;i++)
                     {
                         float dist=Vector3.Dot(at[i]-Point,Normal);d[i]=dist;var w=m.Weights[i];
                         // Its body (its heaviest bone's) outside the mask: wholly on half 0; else the plane decides.
                         int top=w.boneIndex0;float most=w.weight0;if(w.weight1>most){top=w.boneIndex1;most=w.weight1;}if(w.weight2>most){top=w.boneIndex2;most=w.weight2;}if(w.weight3>most)top=w.boneIndex3;
-                        float k0,k1;if(!p.Masked[top]){k0=1;k1=-1;}else{k0=-dist;k1=dist;decided[i]=true;}
+                        float k0,k1;if(!p.Masked[top]){k0=1;k1=-1;}else{k0=out_-dist;k1=out_+dist;decided[i]=true;}
                         Keep[(p.Base+i)*2]=k0;Keep[(p.Base+i)*2+1]=k1;
                     }
-                    // The section: where each triangle crosses the plane, running with the solid on its left seen from along the
-                    // normal (Core NativeBisect's Clip), each crossing computed from its edge's lower end (two faces sharing an edge,
-                    // even through duplicated vertices, meet at one point).
-                    var tris=m.Tris;
-                    for(int t=0;t+2<tris.Length;t+=3)
+                    if(p.Kinds!=null)
                     {
-                        int i0=tris[t],i1=tris[t+1],i2=tris[t+2];bool s0=d[i0]>=0,s1=d[i1]>=0,s2=d[i2]>=0;if(s0==s1&&s1==s2)continue;
-                        Vector3 c0,c1;if(s0==s1){c0=Crossing(at,d,i1,i2);c1=Crossing(at,d,i2,i0);}else if(s1==s2){c0=Crossing(at,d,i0,i1);c1=Crossing(at,d,i2,i0);}else{c0=Crossing(at,d,i0,i1);c1=Crossing(at,d,i1,i2);}
-                        var face=Vector3.Cross(at[i1]-at[i0],at[i2]-at[i0]);var outward=face-Normal*Vector3.Dot(face,Normal);if(outward.sqrMagnitude<1e-20f)continue;
-                        if(Vector3.Dot(c1-c0,Vector3.Cross(Normal,outward))<0){var sw=c0;c0=c1;c1=sw;}
-                        if((c1-c0).sqrMagnitude<1e-14f)continue;a.Add(c0);b.Add(c1);paint.Add(p.Paint);plane.Add(decided[i0]&&decided[i1]&&decided[i2]);
+                        for(int h=0;h<2;h++)
+                        {
+                            var list=bones[h];var dh=new float[n];float off=h==0?reach:-reach;for(int i=0;i<n;i++)dh[i]=d[i]-off;
+                            Section(at,dh,m.Tris,decided,(c0,c1,i0,i1,i2)=>list.Add((c0,c1,p.Kinds[i0],p.Visual[m.Weights[i0].boneIndex0])));
+                        }
+                        continue;
                     }
+                    Section(at,d,m.Tris,null,(c0,c1,i0,i1,i2)=>{a.Add(c0);b.Add(c1);paint.Add(p.Paint);plane.Add(decided[i0]&&decided[i1]&&decided[i2]);});
                 }
                 // Each closed outline is kept where the plane decides most of it (an outline round a body outside the mask, which
                 // stays whole, would cap a hole that is not there).
@@ -104,10 +121,38 @@ namespace ChipArena.UnityConversion
                 var ka=new List<NVector3>();var kb=new List<NVector3>();var kp=new List<NVector4>();
                 for(int k=0;k<a.Count;k++){int c=join.Find(ends[k]);by.TryGetValue(c,out float bl);if(bl*2<total[c])continue;ka.Add(N(a[k]));kb.Add(N(b[k]));kp.Add(paint[k]);}
                 var cap=NativeBisect.CapOf(ka,kb,kp,new BisectPlane(N(Point),N(Normal)),NativeBisect.ModelLook,0,Seed,true);
-                for(int i=0;i<cap.Positions.Count;i++){CapAt.Add(U(cap.Positions[i]));CapNormal.Add(U(cap.Normals[i]));var c=cap.Colors[i];CapColor.Add(new Color(c.X,c.Y,c.Z,0));}
-                CapTris.AddRange(cap.Indices);
-                // Each cap triangle rides the crossed bone nearest its middle.
-                for(int t=0;t+2<CapTris.Count;t+=3)CapBone.Add(Nearest((CapAt[CapTris[t]]+CapAt[CapTris[t+1]]+CapAt[CapTris[t+2]])/3,-1));
+                // Each cap triangle rides the crossed bone nearest its middle; half 1's face mirrors half 0's.
+                Caps[0].Add(cap,1,q=>Nearest(q,-1),false);Caps[1].Add(cap,1,q=>Nearest(q,-1),true);
+                // The bones' faces (each kind its own: cortex and marrow, spongy bone, the skull and brain, cartilage), on fine cells,
+                // a little proud of the flesh's; each triangle on the bone of the section nearest it.
+                for(int h=0;h<2;h++)
+                {
+                    var list=bones[h];var at=new BisectPlane(N(Point+Normal*(h==0?reach:-reach)),N(Normal));
+                    for(byte kind=0;kind<=NativeModelSkeleton.Socket;kind++)
+                    {
+                        var sa=new List<NVector3>();var sb=new List<NVector3>();var sp=new List<NVector4>();var mids=new List<(Vector3 at,int bone)>();
+                        foreach(var s in list)if(s.kind==kind){sa.Add(N(s.a));sb.Add(N(s.b));sp.Add(BonePaint(kind));mids.Add(((s.a+s.b)*.5f,s.bone));}
+                        if(sa.Count<3)continue;
+                        var face=NativeBisect.CapOf(sa,sb,sp,at,NativeModelSkeleton.CutLook(kind),0,Seed^(uint)(kind*7919+h*131),h==0,.0012f);
+                        Caps[h].Add(face,.35f,q=>{float best=float.MaxValue;int on=-1;foreach(var m in mids){float e=(m.at-q).sqrMagnitude;if(e<best){best=e;on=m.bone;}}return on;},false);
+                    }
+                }
+            }
+            private static NVector4 BonePaint(byte kind){var c=NativePortraitRules.Linear(kind==NativeModelSkeleton.Cartilage?NativeModelSkeleton.CartilageColor:kind==NativeModelSkeleton.Socket?NativeModelSkeleton.SocketColor:NativeModelSkeleton.Ivory);return new NVector4(c.X,c.Y,c.Z,1);}
+            // A section: where each triangle crosses the zero of `d`, running with the solid on its left seen from along the normal
+            // (Core NativeBisect's Clip), each crossing computed from its edge's lower end (two faces sharing an edge, even through
+            // duplicated vertices, meet at one point); `only` (when given) keeps the triangles all of whose vertices it marks.
+            private void Section(Vector3[] at,float[] d,int[] tris,bool[] only,Action<Vector3,Vector3,int,int,int> add)
+            {
+                for(int t=0;t+2<tris.Length;t+=3)
+                {
+                    int i0=tris[t],i1=tris[t+1],i2=tris[t+2];bool s0=d[i0]>=0,s1=d[i1]>=0,s2=d[i2]>=0;if(s0==s1&&s1==s2)continue;
+                    if(only!=null&&!(only[i0]&&only[i1]&&only[i2]))continue;
+                    Vector3 c0,c1;if(s0==s1){c0=Crossing(at,d,i1,i2);c1=Crossing(at,d,i2,i0);}else if(s1==s2){c0=Crossing(at,d,i0,i1);c1=Crossing(at,d,i2,i0);}else{c0=Crossing(at,d,i0,i1);c1=Crossing(at,d,i1,i2);}
+                    var face=Vector3.Cross(at[i1]-at[i0],at[i2]-at[i0]);var outward=face-Normal*Vector3.Dot(face,Normal);if(outward.sqrMagnitude<1e-20f)continue;
+                    if(Vector3.Dot(c1-c0,Vector3.Cross(Normal,outward))<0){var sw=c0;c0=c1;c1=sw;}
+                    if((c1-c0).sqrMagnitude<1e-14f)continue;add(c0,c1,i0,i1,i2);
+                }
             }
             // A sever's caps: each hole of a piece (where a kept vertex of it meets one that is not) closed by a fan to its middle,
             // a skin rim, then flesh darkening inward, on the piece's bone nearest it. (The keep values are already on.)
@@ -152,10 +197,10 @@ namespace ChipArena.UnityConversion
                     if(!bones.TryGetValue(c,out int bone))bones[c]=bone=Nearest(mid,s.piece);if(bone<0)continue;
                     // The rim: half a centimetre of the shell's colour, darkened; the flesh to the middle.
                     Vector3 Rim(Vector3 p){var to=mid-p;float l=to.magnitude;return l>1e-6f?p+to*(Mathf.Min(.005f,l*.5f)/l):p;}
-                    var rim=new Color(s.paint.X*.7f,s.paint.Y*.7f,s.paint.Z*.7f,0);
-                    int i=CapAt.Count;CapAt.Add(s.a);CapAt.Add(s.b);CapAt.Add(Rim(s.b));CapAt.Add(Rim(s.a));CapAt.Add(mid);
-                    for(int j=0;j<5;j++)CapNormal.Add(n);CapColor.Add(rim);CapColor.Add(rim);CapColor.Add(FleshOuter);CapColor.Add(FleshOuter);CapColor.Add(FleshDeep);
-                    CapTris.AddRange(new[]{i,i+1,i+2,i,i+2,i+3,i+3,i+2,i+4});CapBone.Add(bone);CapBone.Add(bone);CapBone.Add(bone);
+                    var rim=new Color(s.paint.X*.7f,s.paint.Y*.7f,s.paint.Z*.7f,1);
+                    var cs=Caps[0];int i=cs.At.Count;cs.At.Add(s.a);cs.At.Add(s.b);cs.At.Add(Rim(s.b));cs.At.Add(Rim(s.a));cs.At.Add(mid);
+                    for(int j=0;j<5;j++)cs.Normal.Add(n);cs.Color.Add(rim);cs.Color.Add(rim);cs.Color.Add(FleshOuter);cs.Color.Add(FleshOuter);cs.Color.Add(FleshDeep);
+                    cs.Tris.AddRange(new[]{i,i+1,i+2,i,i+2,i+3,i+3,i+2,i+4});cs.Bone.Add(bone);cs.Bone.Add(bone);cs.Bone.Add(bone);
                 }
             }
             // The bone of piece `piece` (any piece: -1) nearest `p`.
@@ -242,11 +287,12 @@ namespace ChipArena.UnityConversion
         private CutPart VisualCutPart(SkinnedMeshRenderer skin,int k,int first,Dictionary<Transform,int> index,int[] joint,uint mask,int[] pieceOfBone)
         {
             if(skin==null||skin.sharedMesh==null)return null;var mesh=CutMeshOf(skin.sharedMesh);var bones=skin.bones;if(mesh==null||bones.Length<mesh.Bind.Length)return null;
-            var part=new CutPart{Mesh=mesh,Skin=new Matrix4x4[mesh.Bind.Length],Masked=new bool[mesh.Bind.Length],Index=k,Base=first,Paint=VisualCutPaint(skin)};var piece=new int[mesh.Bind.Length];
+            var part=new CutPart{Mesh=mesh,Skin=new Matrix4x4[mesh.Bind.Length],Masked=new bool[mesh.Bind.Length],Index=k,Base=first,Paint=VisualCutPaint(skin),Visual=new int[mesh.Bind.Length]};var piece=new int[mesh.Bind.Length];
+            if(skin.sharedMesh==skeletonMesh)part.Kinds=skeletonKinds;
             for(int i=0;i<part.Skin.Length;i++)
             {
                 var bone=bones[i];part.Skin[i]=bone!=null?bone.localToWorldMatrix*mesh.Bind[i]:Matrix4x4.identity;
-                int v=-1;for(var t=bone;t!=null&&v<0;t=t.parent)if(!index.TryGetValue(t,out v))v=-1;
+                int v=-1;for(var t=bone;t!=null&&v<0;t=t.parent)if(!index.TryGetValue(t,out v))v=-1;part.Visual[i]=v;
                 if(joint!=null)part.Masked[i]=NativeBisect.Masked(mask,v>=0?joint[v]:CapturedRig.Pelvis);
                 if(pieceOfBone!=null)piece[i]=v>=0&&v<pieceOfBone.Length?pieceOfBone[v]:0;
             }
@@ -346,33 +392,31 @@ namespace ChipArena.UnityConversion
                     cutBlock.SetVector(CutPickId,h==0?new Vector4(1,0,0,0):new Vector4(0,1,0,0));r.SetPropertyBlock(cutBlock);
                 }
             }
-            for(int h=0;h<halves.Length;h++)VisualCutCaps(halves[h],job,h==0);
+            for(int h=0;h<halves.Length;h++)VisualCutCaps(halves[h],job.Caps[h]);
             if(halves.Length>1)halves[1].Root.SetActive(halves[0].Root.activeSelf);
         }
-        // A body's caps (half 1's mirrored), one mesh per bone they ride, in the body's toon coloured by their vertices (so the
-        // dissolve and the kill looks reach them); they go with the corpse.
-        private void VisualCutCaps(VisualCorpse c,CutJob job,bool front)
+        // A body's caps, one mesh per bone they ride, in the body's toon coloured by their vertices (so the dissolve and the kill
+        // looks reach them); they go with the corpse.
+        private void VisualCutCaps(VisualCorpse c,CapSet caps)
         {
-            if(job.CapTris.Count==0)return;var look=VisualCutCapMaterial(c);if(look==null)return;
+            if(caps.Tris.Count==0)return;var look=VisualCutCapMaterial(c);if(look==null)return;
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
-            var groups=new Dictionary<int,List<int>>();for(int t=0;t<job.CapBone.Count;t++){int b=job.CapBone[t];if(b<0||b>=c.Bones.Length||c.Bones[b]==null)continue;if(!groups.TryGetValue(b,out var list))groups[b]=list=new List<int>();list.Add(t);}
+            var groups=new Dictionary<int,List<int>>();for(int t=0;t<caps.Bone.Count;t++){int b=caps.Bone[t];if(b<0||b>=c.Bones.Length||c.Bones[b]==null)continue;if(!groups.TryGetValue(b,out var list))groups[b]=list=new List<int>();list.Add(t);}
             var added=new List<Renderer>();
             foreach(var g in groups)
             {
                 var into=c.Bind[g.Key].inverse;var map=new Dictionary<int,int>();var at=new List<Vector3>();var nm=new List<Vector3>();var col=new List<Color>();var uv=new List<Vector2>();var tris=new List<int>();
                 foreach(int t in g.Value)
                 {
-                    int t0=tris.Count;
                     for(int k=0;k<3;k++)
                     {
-                        int i=job.CapTris[t*3+k];if(!map.TryGetValue(i,out int o))
+                        int i=caps.Tris[t*3+k];if(!map.TryGetValue(i,out int o))
                         {
-                            o=at.Count;map[i]=o;var p=job.CapAt[i];at.Add(into.MultiplyPoint3x4(p));var q=job.CapNormal[i];nm.Add(into.MultiplyVector(front?q:-q).normalized);
-                            var cl=job.CapColor[i];col.Add(linear?cl:cl.gamma);uv.Add(new Vector2(p.x+p.z,p.y)*2);
+                            o=at.Count;map[i]=o;var p=caps.At[i];at.Add(into.MultiplyPoint3x4(p));nm.Add(into.MultiplyVector(caps.Normal[i]).normalized);
+                            var cl=caps.Color[i];col.Add(linear?cl:cl.gamma);uv.Add(new Vector2(p.x+p.z,p.y)*2);
                         }
                         tris.Add(o);
                     }
-                    if(!front){int s=tris[t0+1];tris[t0+1]=tris[t0+2];tris[t0+2]=s;}
                 }
                 var mesh=new Mesh{name="Visual corpse cut",indexFormat=at.Count>65535?UnityEngine.Rendering.IndexFormat.UInt32:UnityEngine.Rendering.IndexFormat.UInt16};
                 mesh.SetVertices(at);mesh.SetNormals(nm);mesh.SetColors(col);mesh.SetUVs(0,uv);mesh.SetTriangles(tris,0);mesh.RecalculateBounds();(c.Owned??=new List<Mesh>()).Add(mesh);
@@ -383,10 +427,11 @@ namespace ChipArena.UnityConversion
         }
         // The caps' material: the body's toon coloured by the cap's vertices (the flesh glows a little, as the voxel caps'), both
         // sides, no cut-out, outline or accent glow. One for every corpse.
-        private Material VisualCutCapMaterial(VisualCorpse c)
+        private Material VisualCutCapMaterial(VisualCorpse c)=>VisualCutCapMaterial(c.All);
+        private Material VisualCutCapMaterial(Renderer[] all)
         {
             if(cutCapMaterial!=null)return cutCapMaterial;Material source=null;
-            foreach(var r in c.All)if(r is SkinnedMeshRenderer&&r.sharedMaterial!=null&&r.sharedMaterial.HasProperty(VertexAlbedoId)){source=r.sharedMaterial;break;}
+            foreach(var r in all)if(r is SkinnedMeshRenderer&&r.sharedMaterial!=null&&r.sharedMaterial.HasProperty(VertexAlbedoId)){source=r.sharedMaterial;break;}
             if(source==null)return null;
             cutCapMaterial=new Material(source){name="Visual corpse cut",hideFlags=HideFlags.HideAndDontSave};cutCapMaterial.SetTexture(TextureId,Texture2D.whiteTexture);
             cutCapMaterial.SetFloat(VertexAlbedoId,.3f);cutCapMaterial.SetFloat(UseCustomTextureId,0);cutCapMaterial.SetFloat("_Cull",0);cutCapMaterial.SetFloat(CutoffId,0);cutCapMaterial.SetFloat("_UseOutline",0);cutCapMaterial.SetFloat(AccentGlowId,0);
@@ -412,7 +457,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(!index.TryGetValue(child,out int u)||!CutNext(kind,NativeModelGore.Kind(child.name)))continue;
                     Vector3 to=c.Bind[u].GetColumn(3);boneA.Add(from);boneB.Add(to);boneOf.Add(v);any=true;
-                    float df=Vector3.Dot(from-point,normal),dt=Vector3.Dot(to-point,normal);if(df>=0==dt>=0||boneLook==null)continue;
+                    float df=Vector3.Dot(from-point,normal),dt=Vector3.Dot(to-point,normal);if(df>=0==dt>=0||boneLook==null||c.Skeleton!=null)continue;
                     var sections=NativeModelGore.At(bone.name,child.name);if(sections.Length==0)continue;
                     var cross=from+(to-from)*(df/(df-dt));var axis=(to-from).normalized;int side=NativeModelGore.Side(bone.name);
                     var ahead=Vector3.ProjectOnPlane(facing*Vector3.forward,axis);var outward=Vector3.ProjectOnPlane(facing*Vector3.right*(side<0?-1:1),axis);
