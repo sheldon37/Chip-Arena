@@ -35,7 +35,7 @@
 - **Risks / next:** the pack banks (the pack daggers, shield, bow and staffs, and the pack effects) were never built on this PC nor put in any
   LocalAssets zip, so the builder lacks them; building them needs the packs unpacked from the Drive's zips. The rifle's top-run
   modules need per-model socket tables. The Hulk's growth builds on the main thread the first time a variant appears (tens of ms).
-  The Prototype Series keeps its voxel weapons and modules (the owner's call whether that skin should change).
+  The Prototype Series keeps its voxel weapons and modules: the owner decided (2026-10-29) "Keep it voxel".
 
 ## 2026-10-29 — Claude: zombie motion on the model, first-person model weapons, chips on the model (no voxel)
 

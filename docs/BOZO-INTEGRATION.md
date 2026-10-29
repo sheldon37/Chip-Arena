@@ -1182,8 +1182,8 @@ changes and update them according to the new models (NO VOXEL appearances)".
   - the Standard chip modules' sockets on the bake's and pack's meshes: they still use the Standard models' sockets (the
     guns through the fit; blades and pack props as the Standard's), so rails, pods and strips may float or sink a little;
   - the bake's `Sight` children (until then the fitted Standard sight), and the ADS distance with the life-size guns;
-  - the Prototype Series skin keeps its voxel weapons and modules (it is that skin's look); the thrown dagger and shield
-    fly as the Standard models.
+  - the Prototype Series skin keeps its voxel weapons and modules (it is that skin's look; owner 2026-10-29: "Keep it voxel");
+    the thrown dagger and shield fly as the Standard models.
 - **Checks:** `CoreTests --body-chip-model` (the parts, their layout, mirrors, the armband, the toy, the runtime routes),
   `--visual-rig` and `--pack-weapons` (the first-person pins). Not a render: the parts on each outfit, the first-person grip
   and sight picture are verified in Unity only.
