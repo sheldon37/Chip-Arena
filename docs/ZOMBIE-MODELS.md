@@ -107,9 +107,10 @@ example the overalls fall back to baggy pants).
 - **Variant table and pick:** `Core/NativeZombieLooks` holds all twenty variants. The add's id picks the variant, the same on every
   peer.
 - **Live kinds:**
-  - the **shambler** is live on the model, both male and female variants (the owner's step 2);
-  - runner, spitter, brute and hulk are drafts: `--ca-zombie-drafts`, or `NativeZombieLooks.Drafts` from the local tool, draws
-    them all.
+  - the **shambler** is live on the model, both male and female variants (the owner's step 2); since the PC pass (section 4)
+    all five kinds are;
+  - runner, spitter, brute and hulk were drafts until then (`--ca-zombie-drafts`, or `NativeZombieLooks.Drafts` from the local
+    tool, still draws every kind with variants).
 - **Runtime** (`Runtime/NativeZombieModelPresentation.cs`):
   - a Full-tier add of a modelled kind draws the model in its variant, posed from its gait's pose;
   - feet are planted on the gait, on a door's wake and on a landing; airborne in a dive and a jump-down;
@@ -132,31 +133,60 @@ example the overalls fall back to baggy pants).
   - every kind not yet live;
   - without the bake, with `--ca-voxel-zombies`, or while Settings · Player model is Classic.
 
-## 4. Not done yet (open)
+## 4. The PC pass (2026-10-29, `claude/zombie-models-pc`)
 
-**Owner's PC (Unity Editor, the pack, the bake):**
-- the zombie-only pieces in the bake, with their covers and tags;
-- checking that the eye mesh's renderer is `Eyes.*` and that the shape names match (the game logs them);
-- the actual captures: the Shambler pair beside the player in neutral, walk, turn, attack, hit and death;
-- tuning palettes, wear and builds against them;
-- crowd cost: 24 modelled adds plus voxel tiers, Editor and Windows player, with the conditions stated.
+Done on the owner's PC with the Unity Editor and the bake (owner, the same day: "Need to make the models look more undead, torn
+clothes, flesh wounds, bones visible, etc. Also, they seem to render back to voxel form on death. Improve this massively").
 
-**Code, after the captures:**
-- the spitter's throat sac (a skinned mesh on the neck that swells with the spit, as the voxel sac does);
-- wounds fitted to the model's surface (today a modelled add shows no wound marks; the blood and mist remain);
-- flying parts and stumps drawn from the model, not the voxel part;
-- arrows lodging on the model's surface, not the voxel joints;
-- a reduced model for the Reduced tier, replacing the voxel style at distance.
+- **Checked in Unity:** the eye mesh is `Eyes.Eyes_AnimeBasic` (`ZombieEyePart` matches); the shapes are `BS_<part>.Shape_<Name>`
+  on the body parts and clothes and `BS_Head_AnimeYoung.Shape_Maturity|Sharpness|Roundness` on the head (`ShapeMatches` matches;
+  `Shape_EyeRoundness` is rightly not `Roundness`). Neither needed a fix.
+- **The zombie-only pieces in the bake** (the local tool's wardrobe), the pack's closest piece to each:
+  - `z-work-jacket`, `z-utility-jacket`: Top_SchoolBoyJacket; `z-cardigan`: Top_ComfyCartagan; `z-track-jacket`: Top_ThickHenslay
+    (raglan sleeves); `z-work-shirt`, `z-blouse`: Top_DressShirt; `z-zip-vest`, `z-denim-vest`: Top_SleevelessDressShirt;
+  - `z-capri-leggings`: Bottom_RippedCapris; `z-flats`: Feet_BalletFlats;
+  - not in the pack (fallbacks kept): `z-hoodie-vest`, `z-scrubs-top`, `z-joggers`, `z-scrub-pants`, `z-overalls`, `z-cargo-pants`.
+- **The undead look:**
+  - the shader's tears scaled to the pack's texture layout (each piece packed small in its texture, so the old noise made one
+    leg-sized patch): small ragged holes with raw, bloodied skin in them; dried blood soaked into the cloth; gashes on the skin
+    with bone at their deepest; trims and pockets brighter than the piece ease toward a dirty grey (the jeans' light pockets
+    read as bare skin before); blank eyes without an outline (a map's tinted line round them read as an iris);
+  - decay openings (Core `NativeZombieDecay`; two to four sites a variant): cut through skin and clothes in the meshes' rest
+    space (the shader's `DecayClip` on their fourth texture coordinates, written once per mesh), each onto a flesh pit on its bone
+    with the skeleton's own pieces there (Core `NativeModelSkeleton`): ribs through a flank or the back, forearm and upper arm
+    bones, the jaw through a cheek, the tibia, the femur; planned once per variant at the bake's rest; corpses keep them;
+  - heavier tears and rot, and blood, in the variant table.
+- **Deaths on the model:** severed, sliced and gibbed (crushed) parts are cut from the zombie's own model (each renderer baked
+  once at the launch, the triangles skinned mostly to that joint's bones kept), drawn with its looks; no voxel limbs. A gib's
+  trunk still bursts in blood as before; the raw cap on a part is the gore's.
+- **The spitter's throat sac** (Core `NativeZombieSac`): skinned on neck_01 and the head, swelling forward and down with
+  `NativeHordeFx.Swell` through the spit's wind-up, its acid glow rising with it, released at the spit.
+- **All five kinds live** (`NativeZombieLooks.Live`): each kind's variants were captured beside the player, and each blow lands
+  on the model at the authority's contact time (the runner's lunge at +.34 s, the brute's slam at +.43 s, the hulk's punch at
+  +.62 s, the shambler's swing at +.34 s).
+- **Crowd cost (Editor, measured):** 24 adds hunting a god-mode pilot on Brickfall (Ward Zero is not playable as an arena
+  match through the local tool), i9-13900K, RTX 4090, the Editor's Game view at 2560x1440, the default graphics tier:
+  - modelled: mean 20.2 / 20.3 ms, p95 22.5 / 22.1 ms (two runs);
+  - `--ca-voxel-zombies` (the same crowd voxel): mean 15.4 / 16.9 ms, p95 17.1 / 18.7 ms;
+  - no zombies: mean 8.3 ms, p95 9.6 ms;
+  - so about 4 ms a frame for 24 modelled adds over voxel (the profiler: the game's PlayerLoop about 20 against 15.5 ms).
+  Not measured in a Windows player.
 
-**Motion:**
-- the zombies' own motion is the gait's; the model only rebinds it;
-- the owner's per-type notes (shambler drag, runner intent, spitter guard, brute and hulk weight) need the captures to judge.
+## 5. Not done yet (open)
 
-Any motion change that would need a different rule goes to Astra as a measured mismatch; none is known today.
+- A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
+- Wounds fitted to the model's surface during life (a living add's bullet marks; the decay openings are fixed per variant).
+- Arrows lodging on the model's surface, not the voxel joints.
+- A reduced model for the Reduced tier, replacing the voxel style at distance.
+- The owner's per-type motion notes (shambler drag, runner intent, spitter guard, brute and hulk weight): the captures show the
+  gait's motion on the model with blows on time; any change that needs a rule goes to Astra as a measured mismatch (none known).
+- A head burst (`HeadGib`) still leaves the gore's own stump and fountain on the model's collapsed neck.
 
-## 5. Checks
+## 6. Checks
 
-`CoreTests --zombie-models` covers the table, the pick, the shape names, the shader's zombie look and the runtime's wiring.
+`CoreTests --zombie-models` covers the table, the pick, the shape names, the shader's zombie look, the throat sac's geometry, the
+decay sites (placed on a mannequin's joints, left and right, square to their limbs) and the runtime's wiring (openings, pits,
+bones, model gore parts).
 `--zombie-gore` admits the new presentation file among the gore's readers.
 
 None of these is a Unity render. Visual quality, foot contact on the model, crowd cost and multiplayer views are verified only in

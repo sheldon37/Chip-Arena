@@ -1,3 +1,48 @@
+## 2026-10-29 — Claude: zombie models on the PC — undead look, model gore, the spitter's sac, all kinds live (merged into shared)
+
+- **Branch/base:** `claude/zombie-models-pc` from shared `80d95dc9`. No PR; merged into shared and the builder.
+- **Task (owner):** the zombie models PC brief (bake the zombie-only pieces, capture, tune, the drafts, the sac, the crowd cost),
+  then mid-task: "Need to make the models look more undead, torn clothes, flesh wounds, bones visible, etc. Also, they seem to
+  render back to voxel form on death. Improve this massively please."
+- **What the captures showed (Unity, local tool v209-v220 captures beside the player):**
+  - the eyes and shape names already matched (no fix); the blank eyes read as red irises on Brickfall: the map's line round the
+    eye mesh (fixed: no outline on zombie eyes);
+  - the tears were one leg-sized patch (the pack packs pieces small in their textures) and the jeans' light pockets glowed like
+    bare skin (fixed in the shader);
+  - attack contact on time for every kind at the match camera; deaths, falls, baked corpses and their sink on the model;
+  - deaths turned voxel only through the gore: crushed and gibbed limbs, blade slices and severs were the voxel parts (fixed).
+- **Changes (presentation only; docs/ZOMBIE-MODELS.md section 4):**
+  - the shader's zombie look: tears with raw flesh, dried blood, skin gashes with bone, trims eased toward grey;
+  - decay openings (Core `NativeZombieDecay`, shader `DecayClip` in the meshes' rest space) onto flesh pits with the skeleton's
+    pieces inside;
+  - model gore parts: a modelled zombie's flying parts cut from its own model (`ZombiePartPieces` from `HordeLaunch`);
+  - the spitter's throat sac (Core `NativeZombieSac`), swelling with `NativeHordeFx.Swell`;
+  - `NativeZombieLooks.Live`: runner, brute, spitter and hulk on; heavier tears and rot, blood, decay sites per variant;
+  - the bake's zombie-only pieces (local tool, not committed): 7 pack pieces for 10 ids; 6 ids keep their fallbacks.
+- **Gameplay impact:** none. No rule, hit volume, timing, AI or network change; contact frames checked at the authority's times.
+- **Checks (actual):**
+  - Unity compile and shader import: no errors.
+  - Captures (Editor, Brickfall and Factory): shambler male A and female A beside the player (front, side, back, face, pair),
+    walk, attack (LastAttack + .05 to + .83 s on the arena's clock), hit, death, the baked corpse at + 3 s, its sink at + 23 s;
+    the drafts beside the player; runner, brute and hulk blows at contact; the spitter's sac through a spit; a crush kill
+    throwing the model's limbs; the decay openings on six kinds.
+  - Crowd cost (Editor; i9-13900K, RTX 4090, Game view 2560x1440): 24 modelled adds mean 20.2 / 20.3 ms (p95 22.5 / 22.1),
+    voxel 15.4 / 16.9 ms (p95 17.1 / 18.7), none 8.3 ms (p95 9.6). An earlier reading of 53 ms was the local tool's own
+    per-frame scan of every transform (fixed in the tool; those numbers are void).
+  - The zip: `pack_visual_body.py <Drive LocalAssets.zip, its old body stripped> LocalAssets-zombies.zip --with-cloth`, then
+    `install_local_assets.py --check --require-cloth`: 2578 files, 56.13 MB (limit 224 MB; visual body 73.97 MB of 160 MB),
+    cloth runtime 414 files, 226 audio keys. Uploaded as the builder's LocalAssets.zip; the old one kept as LocalAssets-2026-10-28.zip.
+  - Full CoreTests 870 PASS (LF checkout of `773fe6d1`), with the new sac and decay checks.
+- **Not run:** a Windows player (build or crowd cost); multiplayer views; Ward Zero or Central Station (not playable through the tool).
+- **Risks:**
+  - The decay openings are fixed per variant; on a body shaped far from the bake (a hulk's girth) a pit may sit a little deep.
+  - Model gore parts bake each renderer at the launch (about a millisecond or two a death in the Editor); a mass gib in one frame
+    pays it per body.
+  - The rest positions live in the shared meshes' fourth texture coordinates (pilots ignore them: their `_Decays` is 0).
+- **Local tool (not committed):** v209-v220: the wardrobe's `z-` pieces; play options `monsters=T:kind:count:place:behaviour[:variant]`,
+  `god=`, `mhurt=T:dmg[:which[:kind]]`, `mplace=`, `mface=`, `zattack=`, `gat=`, `zclock=arena`, `zlog=`, `zinfo=`, `zblock=`,
+  `zeyetest=`, `zdrafts=1`, `zvoxel=1`, `zcorpse=1`, `zhide=1`, `subjects=`; views `pair`, `zface`.
+
 ## 2026-10-29 — Claude: a full skeleton inside the model, shown in cuts and open wounds (merged into shared)
 
 - **Branch/base:** `claude/model-skeleton` from shared `275cee5d`; shared `bf1b716e` (the zombie models) merged in at `0b23b032` (the toon shader holds both the zombie look and the wound clip). No PR; merged into shared and the builder.
