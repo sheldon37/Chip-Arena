@@ -1,3 +1,41 @@
+## 2026-10-29 — Claude (PC): chip select on the model (12 cards, the insert, far more chip detail) and the intros revised
+
+- **Branch/base:** `claude/chip-select-model` from shared `e35e8294`. No PR; merged into shared and the builder.
+- **Task (owner):** "Can we fix the chip selection for the new player model? Now; The player is under chips if theres around 12
+  chips, and inserting the chip animation could be improved for the new model as well. Again, lets improve the design of the
+  chips in selection mode too. (The design looked good for voxels, but now, Id like to have a lot more detail put into them)
+  Intros will need reworking too; They are based in a voxel atmosphere or models, review and revise." Detail for both the
+  draft's cards and the 3D chip (owner's answer).
+- **Changes (presentation only; docs/BOZO-INTEGRATION.md "Chip select and the intros on the model"):**
+  - 12 chips: the draft seats the pilot lower and frames the model by its own head; two rows put its head and shoulders above
+    the cards (`NativeDraftStage`);
+  - the 3D chip: a circuit board inside the bezel (processor, passives, memory, clock, traces, vias, buses), rank pips, a
+    status lamp and vent, a bolted collar with an iris and a tick dial, notches, an ID slot, edge clamps, finer pads
+    (`NativeMachineModels.Pickup`); the draft's cards: a baked board tile, bezel notches and lamps, a header ruler, collar
+    bolts and ticks (`NativeChipBake`, `NativeChipArt`, `NativeChipCard`);
+  - the insert on the model: the wrist device drawn in the draft, the forearm presented with its bay to the camera, the lid
+    opening, the chip shrinking into the bay with the left hand beside it (the rig's support grip, `Grasp.Bound`, and a learnt
+    offset), a ring over the bay and light up the sleeve (`NativeDraftPlant.Device`, `NativeDraftPresentation`); the voxel
+    pilot unchanged;
+  - the intros: the model's toon shader takes the entrances' point lights (`NativeVisualStageLight.cginc`, switched by
+    `NativeLighting`); sculpted pylons, dais and Orbital Drop's pod and door (`NativeEntranceStageModels`, the props'
+    `Model` hook, boxes as the fallback).
+- **Animation impacts:** the draft plant on the model only (pose of the presented arm, the pressing hand's place, the chip's
+  turn and size); same timeline (contact .62 s, plant 1.14 s, return 1.95 s). No hit timing, hitbox, damage, cooldown, movement
+  or network change.
+- **Checks (actual):** CoreTests `--draft-stage` (new device checks: the bay faces the camera >= .84, the chip in the bay within
+  .2 mm at the carry's end, never past edge-on through the seat, the palm 8 cm beside the bay; device mode in the 30-240 Hz
+  motion pass, 0 bytes per frame), `--chips` (chip cartridge 131,140 checks with the board and notch bakes; machine models'
+  budgets raised for the chip's detail), `--machines` (460 checks with the stage models); the full CoreTests on a clean LF
+  checkout of the merged commit: COUNT PASS lines, no failure (a first run stopped at the map style's pinned stage sequence,
+  which the switch had split; fixed); `git diff --check` clean. Unity Editor captures (local tool v231,
+  1470x719 Game view): 12 and 6 cards, the pick and insert, sword, greatsword, orbital drop and blackout entrances.
+- **Not run:** a Windows player build; multiplayer; the DEV intros (baked stages) beyond the shared lighting; the Siren's pick on
+  the model's device (it keeps its own catch).
+- **Risks / next:** the insert's left hand is placed by an offset learnt during the first pick (a small correction can show on the
+  very first install of a match); the blasts' toon puffs and debris, the smaller entrance props and the DEV intros' baked
+  stages are not rebuilt (owner's call: the puffs are the gameplay effects too). Owner look on the test channel.
+
 ## 2026-10-29 — Claude: the main menu rooftop reworked (towers, lighting, animated screens, the crowd's moves)
 
 - **Branch/base:** `claude/rooftop-rework` from shared `951b599`. No PR; merged into shared and the builder.

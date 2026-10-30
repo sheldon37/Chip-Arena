@@ -1265,6 +1265,42 @@ arm not holding the weapon tends to extend outward. Its a bit flamboyant looking
     (the clips' own names; only the pack's file names say "Foward"): no fix is needed. Every bow clip the set asks for is in
     the bank (its block is the pack's own "Hand-Bow-Block").
 
+**Chip select and the intros on the model (2026-10-29, `claude/chip-select-model`; Unity Editor, local tool v231).** Owner
+(2026-10-29): "The player is under chips if theres around 12 chips, and inserting the chip animation could be improved for the
+new model as well. Again, lets improve the design of the chips in selection mode too. (The design looked good for voxels, but
+now, Id like to have a lot more detail put into them) Intros will need reworking too; They are based in a voxel atmosphere or
+models, review and revise." Both the draft's cards and the 3D chip get the detail (owner's answer).
+- **Twelve chips:** the draft's close framing seats the pilot lower (`NativeDraftStage.MinSeat` .3, was .5) and frames the
+  model by its own head (`ModelHeadTop`); with two rows of cards the pilot's head and shoulders sit above both rows, its face
+  turned to the cards it reads (`OuterDrop`, the look's depth). Captured at 12 cards (1470x719 Game view).
+- **The 3D chip (`NativeMachineModels.Pickup`):** inside the bezel a circuit board: a processor with pins on four sides (the
+  core's bus into its top row, the connector's bus off its bottom), capacitors, a can, resistors, a memory package and the
+  clock, traces with vias; beside the core the rank's pips (the kits' alternate) and a status lamp over a vent; a bolted
+  collar with its iris in six arcs and a dial of ticks round the crystal; machined notches and a lit ID slot on the bezel,
+  clamps over the edge band, fifteen fine gold pads. About 4,700-6,300 triangles a chip (was 1,900-3,400).
+- **The draft's cards (`NativeChipArt`, `NativeChipBake`):** a seamless circuit-board tile under the face (faint under the
+  text, clearer between the content and the footer), machined notches down the bezel and two status lamps (one breathing),
+  a ruler of ticks under the header, bolts and a tick dial on the core's collar. The text stays legible in the captures.
+- **The insert on the model (`NativeDraftPlant.Device`):** the model's wrist device was not drawn in the draft and the chip
+  sank into the palm side of the glove. Now the receiving forearm is presented with the device's bay toward the camera (its
+  roll from the bay's normal as measured on the model each frame), the lid opens as the arm rises, the left hand comes down
+  beside the bay (not over it) and the chip slides out of the palm into the bay, shrinking to the bay's chip by the carry's end;
+  the bay takes the chip's colour, a tight ring opens over it and light runs up the sleeve; the lid shuts on the return and the
+  lens keeps the colour (`NativePilotGear.Device`'s states on the plant's clock). The model's arms are its own proportions,
+  so its left hand is placed by the visual rig's support grip (`Grasp.Bound`) with an offset learnt from where its palm lands
+  (kept between picks). The voxel pilot keeps the palm-side cuff and the big rings. Timing unchanged (the plant at 1.14 s).
+- **The intros:** the model took only the key light and the ambient in the entrances (its toon shader never read the stage's
+  point lights), so it stood as a dark silhouette. It now takes the stage block's rim, fill, flash and set lights while an
+  entrance lights the screen (`Resources/NativeVisualStageLight.cginc`, `_VisualStageLit` set by `NativeLighting.Intro` and
+  `Entrance`, cleared by `EndIntro` and the draft), the top end eased so a light at arm's length does not burn a patch. The
+  directed entrances' pylons, dais and Orbital Drop's pod and door are sculpted models (`NativeEntranceStageModels`: light
+  towers with segmented strips and lamp heads, a panelled dais with nothing glowing on it, a ribbed pod with a faceted nose),
+  drawn through `INativeEntranceProps.Model` with the boxes kept as the fallback.
+- **Not changed (decisions for the owner):** the blasts' toon smoke puffs and rock debris are the shared effects renderer's,
+  the same as in play, so they look the same in the intros; the smaller set pieces (Holo Projection's projectors, Blackout's
+  lamps, Skyline Zip's anchors and trolley, Overclock's chip) are still primitives; the DEV intros' baked stages (Emperor,
+  Ansatsuken, Matrix, Siren) are the source's voxel scenes, now lighting the model but not rebuilt.
+
 **Animation revamp (started 2026-10-24).** Owner (2026-10-23): "Some of these animations really dont fit the new body",
 "We may need to revamp the animations as well due to new body + height", "I thought we have a running animation pack
 already? Cant we utilize that?"
