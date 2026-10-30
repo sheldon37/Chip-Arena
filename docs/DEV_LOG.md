@@ -27,6 +27,19 @@
   same spring sank them into a squat, so they need their own tuning (a follow-up). A variant's first Hulk outside a horde draws
   voxel until its growth is built.
 
+## 2026-10-30 — Astra: fix small-wave navigation spikes in Expedition
+
+- Branch `codex/unity-expedition-navigation-20261030`, base shared `d327f1e` (includes the earlier crowd cost patch and Claude's model pace).
+- Owner capture: Ward Zero, eight adds, local boss test. Worst active frame 380.82 ms, navigation 362.83 ms, link checks 161,813; another frame spends 135.13 ms in nearest-node lookup. Rendering is 9.6–10.4 ms. These are nested timings, not additive. The separate historical 10.57-second maximum remains unattributed.
+- Root cause: StepPveHorde explicitly selected per-add, unbounded A* below 12 adds; the hub wrapper also discarded the shared goal. Nearest-node lookup could scan/raycast all nodes when nearby candidates were obstructed.
+- Fix: every horde size shares the existing incremental reverse search per target (512 edge visits per goal/tick). The hub retains that goal while continuing to evaluate its barrier rules. Possessed hiding uses a private negative actor key, removed with its minion; no chase/hide target oscillation or permanent orphan search state.
+- Nearest attachment: 4 m spatial buckets and an allocation-free candidate heap, within 8 m / 64 predicates for normal attachment, 16 m / 128 for emergency escape. Exhaustion returns no local attachment and existing safe stop/retry behavior; it never admits an occluded node. This intentionally replaces unlimited reach/scanning. Live hazard, gate, collapse and physics predicates are unchanged and not cached.
+- Validation: 4,048 independent exhaustive-oracle nearest cases across authored maps, spawn/node coverage, negative/off-map coordinates, blocked candidates and zero warm allocations pass. Blocked-origin predicates 74,712 -> 512 across the eight maps. Existing equivalence, directed-drop, gate-change, settled-flow and per-slice budget checks pass. Managed timings are not Windows FPS or PhysX benchmarks.
+- Added real-Unity gate: eight live adds through StepPveHorde must share one search and stay within 512+8 link checks. Existing full-size Hulk movement, 192-call shared flow and possessed-hide cache gates remain. A further native check compares bounded versus exhaustive attachment at authored spawns and entry exits with real collision/hazards. These gates compile but have not executed in this environment.
+- Player/runtime/editor semantic compile against pinned Unity 6000.3.24f1 passes; package source validation 2,821 files and diff whitespace checks pass. Full managed suite passes: 877 PASS lines, 35 managed-core checks, exit 0.
+- No animation, enemy-count, damage, hit timing, collision-volume or wire-format changes. Scheduling can delay a not-yet-settled route by several ticks; a blocked origin with no local safe node waits instead of searching the whole map.
+- Next: builder's real-Unity gates and Windows playtest, same eight-add Ward Zero scene, then city hub and a split party. Compare navigationNearestMs/navigationLinkMs/checks and worstActiveHitch. Source integration is not a claim that a new Windows player is published or the historical 10-second stall is resolved.
+
 ## 2026-10-30 — Claude: the zombies' pace on the model, a stride for its own legs
 
 - **Branch/base:** `claude/zombie-model-pace` from shared `0f17175`. No PR; merged into shared and the builder.
