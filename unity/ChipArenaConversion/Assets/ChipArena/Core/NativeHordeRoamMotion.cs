@@ -46,8 +46,7 @@ namespace ChipArena.UnityConversion
         // The walk part of the stride: the kind's walk take blended toward the wander take.
         private float WalkCadence(float v)=>roamTake>0?Lerp(NativeZombieMotion.Cadence(walkClip,v,kind),NativeZombieMotion.Cadence(wanderClip,v,kind),roamTake):NativeZombieMotion.Cadence(walkClip,v,kind);
         private float WalkDuty(int foot)=>roamTake>0?Lerp(NativeZombieMotion.Duty(walkClip,foot),NativeZombieMotion.Duty(wanderClip,foot),roamTake):NativeZombieMotion.Duty(walkClip,foot);
-        private float WalkOffset()=>roamTake>0?Lerp(NativeZombieMotion.Offset(walkClip,1),NativeZombieMotion.Offset(wanderClip,1),roamTake):NativeZombieMotion.Offset(walkClip,1);
-        private float WalkGround()=>roamTake>0?Lerp(NativeZombieMotion.Ground(walkClip),NativeZombieMotion.Ground(wanderClip),roamTake):NativeZombieMotion.Ground(walkClip);
+        private float WalkSwing(int foot,float s)=>roamTake>0?Lerp(NativeZombieMotion.SwingLift(walkClip,foot,s),NativeZombieMotion.SwingLift(wanderClip,foot,s),roamTake):NativeZombieMotion.SwingLift(walkClip,foot,s);
         private void RoamWalkRow(){if(roamTake>0){SampleCalm(wanderClip,Phase,rowV,RateOf(wanderClip,Math.Max(gaitSpeed,.8f*Speed)));NativeZombieClips.Blend(rowW,rowV,roamTake,rowW);}}
 
         // A Unity world yaw (degrees, +Z = 0, + to the right) as the rig's turn from the presented facing (rad, + toward its left).

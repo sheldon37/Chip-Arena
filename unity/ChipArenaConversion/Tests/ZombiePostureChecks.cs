@@ -20,6 +20,10 @@ namespace ChipArena.UnityConversion
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Zombie posture: "+what);count++;}
         private const float Deg=57.29578f,Dt=1/60f;
+        // A running stance (world speeds from RunsFrom m/s: the runner's sprint takes even at its 2.6 m/s walk) loads the planted
+        // knee deeper than a walk's, as a person's does at a run (about 40 degrees at mid-stance): the sprints stand on the
+        // ground for their own stance now (Core/NativeZombieMotion.Duty), not the fifth of a cycle the marks gave them.
+        private const float RunsFrom=2.2f,RunKnee=42;
         private static readonly int[] Kinds={NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute,NativeHordeKinds.Hulk};
 
         private sealed class Drive
@@ -71,7 +75,7 @@ namespace ChipArena.UnityConversion
                     lines.Add($"{name,-14} lumbar share {before.Share:0.00} -> {after.Share:0.00}; knee {Mean(before.Knee),4:0}deg -> {Mean(after.Knee),4:0}deg (planted {Mean(before.Stance),3:0} -> {Mean(after.Stance),3:0}); hips behind the feet {Mean(before.Back):0.000} -> {Mean(after.Back):0.000} m; arm out {Mean(before.Spread),4:0.0}deg -> {Mean(after.Spread),4:0.0}deg; planted ankle off its mark p95 {P95(before.Foot)*100:0.0} -> {P95(after.Foot)*100:0.0} cm; hips' speed p95 {P95(before.Rise):0.00} -> {P95(after.Rise):0.00} m/s; head from the axis max {before.Head.Max():0.00} -> {after.Head.Max():0.00} (gait {before.GameHead.Max():0.00})");Console.WriteLine("  "+lines[lines.Count-1]);
                     float bend=Mean(after.Lumbar)+Mean(after.Upper);
                     if(bend>4){Check(after.Share<=.5f&&after.Share<before.Share,name+": the trunk bends up the back, not at the belt (lumbar share "+after.Share.ToString("0.00")+", was "+before.Share.ToString("0.00")+")");worstShare=Math.Max(worstShare,after.Share);}
-                    if(gait!="rest"){float k=Mean(after.Stance);Check(k<=(kind==NativeHordeKinds.Hulk?45:38)&&k<Mean(before.Stance),name+": strides on its legs, the planted knee straight as a person's (mean "+k.ToString("0")+" deg, was "+Mean(before.Stance).ToString("0")+")");worstStride=Math.Max(worstStride,k);}
+                    if(gait!="rest"){float k=Mean(after.Stance);Check(k<=(kind==NativeHordeKinds.Hulk?45:speed*sc>=RunsFrom?RunKnee:38)&&k<Mean(before.Stance),name+": strides on its legs, the planted knee straight as a person's (mean "+k.ToString("0")+" deg, was "+Mean(before.Stance).ToString("0")+")");worstStride=Math.Max(worstStride,k);}
                     if(gait=="rest"){Check(Mean(after.Knee)<=(kind==NativeHordeKinds.Hulk?34:24)&&Mean(after.Knee)<Mean(before.Knee),name+": stands on its legs, knees soft (mean "+Mean(after.Knee).ToString("0")+" deg, was "+Mean(before.Knee).ToString("0")+")");worstIdleKnee=Math.Max(worstIdleKnee,Mean(after.Knee));
                         Check(Mean(after.Back)<=.12f,name+": the hips at most 12 cm behind the feet ("+Mean(after.Back).ToString("0.000")+")");worstBack=Math.Max(worstBack,Mean(after.Back));}
                     Check(P95(after.Foot)<=.01f,name+": the planted ankles stay on their marks (p95 "+(P95(after.Foot)*100).ToString("0.0")+" cm)");worstFoot=Math.Max(worstFoot,P95(after.Foot));

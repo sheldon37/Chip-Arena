@@ -64,6 +64,7 @@ namespace ChipArena.UnityConversion
                 for(int k=0;k<n;k++){c.Sample(c.Duration*k/n,row);NativeZombieClips.Pose(row,p,false);p.World();sum+=Math.Min(p.WorldPosition[CapturedRig.LFoot].Y,p.WorldPosition[CapturedRig.RFoot].Y);}
                 ground[i]=sum/n;
             }
+            Feet();
             ready=true;
         }
         /// <summary>Whether a kind walks on the capture (all but the crawler, whose four-limbed trot stays procedural).</summary>
@@ -127,15 +128,103 @@ namespace ChipArena.UnityConversion
         private static float[][] means;
         /// <summary>A cycle's cadence at ground speed `v` (cycles per second).</summary>
         public static float Cadence(int clip,float v,int kind)=>Rate(clip,v,kind)/Math.Max(.1f,NativeZombieClips.Duration(clip));
-        /// <summary>The share of the cycle a foot is planted (0 left, 1 right), kept in a range the planted feet can walk on.</summary>
+        /// <summary>The share of the gait's cycle a foot is planted (0 left, 1 right), kept in a range the planted feet can walk on:
+        /// a sprint's its own stance (its foot from its strike to most back) on the warped cycle, a walk's the exporter's lift marks.
+        /// (The sprints' marks lift each foot a fifth of a cycle after it lands: a run in the air 60% of the time, bounding rather
+        /// than running. The walks' stances stand as they were: the legs' reach shortens them at speed, and a longer one measured
+        /// off the limping takes kept a foot down behind a stopping add while its other foot stepped.)</summary>
         public static float Duty(int clip,int foot)
         {
-            float d=foot==0?NativeZombieClips.LeftLift(clip):Frac(NativeZombieClips.RightLift(clip)-NativeZombieClips.RightLand(clip));
-            bool sprint=NativeZombieClips.Speed(clip)>1;return Math.Max(sprint?.2f:.5f,Math.Min(sprint?.42f:.7f,d));
+            Warm();bool sprint=NativeZombieClips.Speed(clip)>1;
+            float d=sprint?stance[clip*2+foot]:foot==0?NativeZombieClips.LeftLift(clip):Frac(NativeZombieClips.RightLift(clip)-NativeZombieClips.RightLand(clip));return Math.Max(sprint?.2f:.5f,Math.Min(sprint?.42f:.7f,d));
         }
-        /// <summary>The phase offset of a foot (the left strikes at 0, the right at its own strike, kept within a tenth of the
-        /// half cycle: a capture's dragged foot reads as a late strike, which planted feet would turn into a hop).</summary>
-        public static float Offset(int clip,int foot)=>foot==0?0:Math.Max(.4f,Math.Min(.6f,Frac(1-NativeZombieClips.RightLand(clip))));
+        /// <summary>The phase offset of a foot on the gait's cycle: the left strikes at 0, the right half a cycle later on every
+        /// take (<see cref="Warp"/> times the take's own strikes to them).</summary>
+        public static float Offset(int clip,int foot)=>foot==0?0:.5f;
         private static float Frac(float x)=>x-(float)Math.Floor(x);
+
+        // ---- the takes' own feet, and the warp that steps them in time ----
+        // (Owner 2026-10-30: "Zombie run looks a little weird at the moment, sometimes their legs are completely out of sync and
+        // move weird directions." Measured on the takes' own legs: the exporter's right-foot marks miss on several takes (chase-1-full
+        // strikes its right foot at .49 of the cycle, marked .19), and the limping takes strike it at .7 (walk-4) and .75 (chase-5,
+        // chase-5-full). The gait plants the right foot half a cycle after the left, clamped to .4-.6 of the marks, so the trunk,
+        // arms and the swing's lift played up to a third of a cycle out of step with the feet.)
+        private static float[] rightAt,warpGain,stance,swingLift;
+        /// <summary>The farthest the warp moves the right foot's strike (cycles): the warped take never plays slower than about a
+        /// third of its pace through the cycle.</summary>
+        public const float WarpMost=.28f;
+        private const int WarpSteps=64,FootSamples=120,SwingSteps=24;
+        // The warp's shape: its rate over the cycle 1 + g·sq(P) (sq a soft square wave, +1 through the first half and -1 the second),
+        // cumulated; WarpHalf, its area over the first half, so a gain k/WarpHalf moves the half cycle by k.
+        private static readonly float[] warpShape=Shape();public static readonly float WarpHalf=warpShape[WarpSteps/2];
+        private static float[] Shape()
+        {
+            var c=new float[WarpSteps+1];const int sub=8;double sum=0;
+            for(int j=0;j<WarpSteps;j++){for(int q=0;q<sub;q++){double x=(j+(q+.5)/sub)/WarpSteps;sum+=Math.Tanh(3*Math.Sin(2*Math.PI*x))/Math.Tanh(3)/(WarpSteps*sub);}c[j+1]=(float)sum;}
+            c[WarpSteps]=0;return c;
+        }
+        private static float ShapeAt(float p){p=Frac(p)*WarpSteps;int j=Math.Min(WarpSteps-1,(int)p);return warpShape[j]+(warpShape[j+1]-warpShape[j])*(p-j);}
+        /// <summary>The take's own phase for the gait's phase `phase` (cycles): the left foot's strike (the cycle's start) at the
+        /// gait's 0, the right's at its .5, the take's pace eased between them (a symmetric take plays as captured). Continuous
+        /// over the cycles.</summary>
+        public static float Warp(int clip,float phase)=>clip<0||warpGain==null?phase:phase+warpGain[clip]*ShapeAt(phase);
+        /// <summary>The gait's phase (0..1) the take's own phase `take` plays at (<see cref="Warp"/>'s inverse).</summary>
+        public static float Unwarp(int clip,float take)
+        {
+            float x=Frac(take),g=warpGain[clip],lo=0,hi=1;
+            for(int n=0;n<24;n++){float m=(lo+hi)*.5f;if(m+g*ShapeAt(m)<x)lo=m;else hi=m;}
+            return (lo+hi)*.5f;
+        }
+        /// <summary>How high (rig metres over the take's planted ankle) a loop take carries foot `foot` at `s` (0..1) through its own
+        /// swing, most back to most forward: the gait lifts its swinging foot on the take's own arc, whatever share of the gait's
+        /// cycle the swing takes. (A walking take run fast plants its feet for less of the gait's cycle than of its own, and its
+        /// foot read at the gait's phase still stood low for the first third of the gait's swing: a dragged, late-kicking stride.)
+        /// The arc eases off the floor and back onto it over the swing's first and last SwingEase (a sprint's foot is up already
+        /// at its most back and still up at its most forward).</summary>
+        public static float SwingLift(int clip,int foot,float s)
+        {
+            Warm();if(clip<0)return 0;s=Math.Max(0,Math.Min(1,s));float x=s*(SwingSteps-1);int j=Math.Min(SwingSteps-2,(int)x),at=(clip*2+foot)*SwingSteps+j;
+            float up=Smooth(s/SwingEase)*Smooth((1-s)/SwingEase);
+            return (swingLift[at]+(swingLift[at+1]-swingLift[at])*(x-j))*up;
+        }
+        public const float SwingEase=.25f;
+        private static float Smooth(float x){x=Math.Max(0,Math.Min(1,x));return x*x*(3-2*x);}
+        /// <summary>The take phase (0..1) of a loop take's foot strike: the left's the cycle's start (the exporter cuts the loops
+        /// there), the right's the left's plus the measured time between the feet coming most forward under the hips.</summary>
+        public static float Strike(int clip,int foot){Warm();return foot==0?0:rightAt[clip];}
+        // Each loop take's feet sampled over its cycle as captured (the take's own legs, no planting): when the right foot strikes
+        // after the left (the time between the two coming most forward, which reads cleanly on every take; the feet's heights do
+        // not on the dragging walks, and the exporter's right-foot marks miss on several), the warp that times it to the gait's half
+        // cycle as far as WarpMost moves it, and each foot's stance (from its strike to most back) on the gait's cycle.
+        private static void Feet()
+        {
+            int count=NativeZombieClips.Count;rightAt=new float[count];warpGain=new float[count];stance=new float[count*2];swingLift=new float[count*2*SwingSteps];
+            var row=new float[NativeZombieClips.Channels];var p=new CapturedRig.Pose();var z=new float[2,FootSamples];
+            for(int i=0;i<count;i++)
+            {
+                stance[i*2]=stance[i*2+1]=.6f;if(!NativeZombieClips.Clip(i).Loop)continue;
+                for(int k=0;k<FootSamples;k++){NativeZombieClips.SamplePhase(i,k/(float)FootSamples,row);NativeZombieClips.Pose(row,p,false);p.World();z[0,k]=p.WorldPosition[CapturedRig.LFoot].Z;z[1,k]=p.WorldPosition[CapturedRig.RFoot].Z;}
+                float lFore=Extreme(z,0,1),rFore=Extreme(z,1,1),lBack=Extreme(z,0,-1),rBack=Extreme(z,1,-1);
+                rightAt[i]=Frac(rFore-lFore);warpGain[i]=Math.Max(-WarpMost,Math.Min(WarpMost,rightAt[i]-.5f))/WarpHalf;
+                stance[i*2]=Unwarp(i,lBack);stance[i*2+1]=Frac(Unwarp(i,rBack)-.5f);
+                // Each foot's swing, most back to most forward, at SwingSteps points: its height over the take's planted ankle.
+                for(int foot=0;foot<2;foot++)
+                {
+                    float from=foot==0?lBack:rBack,span=Frac((foot==0?lFore:rFore)-from);
+                    for(int k=0;k<SwingSteps;k++)
+                    {
+                        NativeZombieClips.SamplePhase(i,from+span*k/(SwingSteps-1),row);NativeZombieClips.Pose(row,p,false);p.World();
+                        swingLift[(i*2+foot)*SwingSteps+k]=Math.Max(0,p.WorldPosition[foot==0?CapturedRig.LFoot:CapturedRig.RFoot].Y-ground[i]);
+                    }
+                }
+            }
+        }
+        // The phase (0..1) of a sampled foot's most forward (`sign` 1) or most back (-1) place, refined between its samples.
+        private static float Extreme(float[,] z,int foot,int sign)
+        {
+            int n=z.GetLength(1),best=0;for(int k=1;k<n;k++)if(sign*z[foot,k]>sign*z[foot,best])best=k;
+            float a=z[foot,(best+n-1)%n],b=z[foot,best],c=z[foot,(best+1)%n],den=a-2*b+c,shift=Math.Abs(den)>1e-9f?Math.Max(-.5f,Math.Min(.5f,.5f*(a-c)/den)):0;
+            return Frac((best+shift)/n);
+        }
     }
 }
