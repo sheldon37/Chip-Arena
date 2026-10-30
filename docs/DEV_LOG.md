@@ -17,7 +17,8 @@
 - **Animation impacts:** the model's hips (the Hulk only) and fingers; no hit timing, hitbox, damage, cooldown, movement or network
   change. Hulk walk: biggest hip drop in a pose 5.7 → 2.2 cm, travel 14.1 → 8.2 cm, jerk p95 1.15 → .25; run 7.2 → 1.5 cm; planted
   knees 36/42 → 40/44 degrees (rest 33). Other kinds unchanged (measured offline, the same numbers).
-- **Checks (actual):** the full CoreTests on a clean LF checkout of `f3490c8e`: 876 PASS lines and 35 managed-core checks, rc 0; `--zombie-models` (the new mutation group on
+- **Checks (actual):** the full CoreTests on a clean LF checkout of `f3490c8e`: 876 PASS lines and 35 managed-core checks, rc 0,
+  and of the tree merged with shared `7f1266f` (Astra's navigation follow-up) `4ca3e1a3`: 877 PASS lines, 35 managed-core, rc 0; `--zombie-models` (the new mutation group on
   Unity's measured male Hulk rest), `--zombie-posture` (with the new carried-hips group), `--visual-rig` pass; `git diff --check`
   clean. Unity Editor (local tool v232, Brickfall): before/after close views of male and female A (front, back, side), the head,
   the fists at rest and through a punch, the walk with a per-frame bone log (the fastest hip drop 3.1 → 1.6 m/s).
