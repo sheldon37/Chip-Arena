@@ -33,7 +33,14 @@
   - `--zombie-loco`, `--zombie-flow`, `--zombie-twitch`, `--horde-roam`, `--hulk-motion`, `--hulk-charge`, `--horde-drops`,
     `--visual-rig`, `--model-poses`, `--zombie-models` and `--zombie-gore` all pass.
   - unity-check (runtime and editor build) OK.
-  - The five repo checks: RESULT_PLACEHOLDER.
+  - The five repo checks, on the tree merged with shared `1457f48` (Astra's crowd cost change):
+    - the relay suite: 877 PASS lines and 35 managed-core checks, rc 0;
+    - unity-check (runtime and editor build) OK;
+    - python: 167 tests OK (1 skipped);
+    - package_source: 2,821 source files;
+    - `git diff --check` clean.
+  - Mutation-tested. Each of these fails a check: the binding ignoring the stride, `StepRate` ignoring the legs, the runtime
+    not setting them, no squeeze, no `OnReach`, the stance reach unscaled.
 - **Not run:** Unity on the owner's PC: whether the walks read at a natural pace, whether the sprints read too slow, the
   Full/Reduced tier crossing. A PC prompt asks for captures.
 - **Risks / next:** the sprints play under their pace on the model (a runner tempo on the model is a one-number change if they read
