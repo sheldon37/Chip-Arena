@@ -7,11 +7,12 @@ using Paint=ChipArena.UnityConversion.NativeModelHatMeshes.Paint;
 namespace ChipArena.UnityConversion
 {
     // The robot suit (owner 2026-10-30: "Lets also design clothing that resembles our previous player model (Robotic style) and
-    // reference the previous face. Of course, in the new player style."): the Prototype body skin on the model, the original
-    // voxel robot's build worn as plates over a dark fitted under-suit (Under), in the model's own smooth style. From the robot:
-    // its white shell (here the pilot's body colour), the glowing accent at its waist and edges, the reactor panel and its
-    // cross on its back, its segmented dark neck, the square ear modules with their light either side of its head; its face's
-    // visor bar and mouth plate are the Prototype's face gear (Core/NativePilotGear Visor, Mask). Each piece is authored on the
+    // reference the previous face. Of course, in the new player style."; the model's default outfit since owner 2026-10-30: "I
+    // think we will make the default outfit the new designed armor and that full helmet"): the original voxel robot's build worn
+    // as plates over a dark fitted under-suit (Under), in the model's own smooth style. From the robot: its white shell (here the
+    // pilot's body colour), the glowing accent at its waist and edges, the reactor panel and its cross on its back, its segmented
+    // dark neck, the square ear modules with their light either side of its head; its head (the visor bar, the grille) is the
+    // robot's helmet (Core/NativeRobotHelm), whose own ear modules then take these ones' place. Each piece is authored on the
     // pack body at rest (its bind pose: metres, x the body's right, y up, z ahead) and rides one bone (Bones), drawn with that
     // bone's matrix times its bind pose (Runtime/NativeRobotSuitPresentation.cs). The fit was measured in Unity on the rest
     // body in the under-suit (2026-10-30): its cross-sections round the torso, each limb and the neck, the plates a centimetre

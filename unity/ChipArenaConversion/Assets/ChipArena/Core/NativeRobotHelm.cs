@@ -8,8 +8,9 @@ namespace ChipArena.UnityConversion
     // The robot's helmet and half mask (owner 2026-10-30: "Can we develop essentially a full helmet and a half mask similar to
     // what we had on voxel?"): the original voxel robot's head (its rounded box, the glowing visor bar across it, the three
     // grille slots under that, the jaw below, the square ear modules with their light) made for the model's head in the model's
-    // smooth style. They are two more face gears on the Prototype body skin (the skin map's "face" entry: NativeWeaponSkins
-    // FaceHelm, FaceHalf; Runtime/NativeRobotHelmPresentation.cs). Built in the head bone's frame (x across, y up, z ahead, as
+    // smooth style. They are face gears (the skin map's "face" entry: NativeWeaponSkins FaceHelm, FaceHalf; Runtime/
+    // NativeRobotHelmPresentation.cs), the helmet the model's default with the robot suit (owner 2026-10-30: "I think we will make
+    // the default outfit the new designed armor and that full helmet"). Built in the head bone's frame (x across, y up, z ahead, as
     // the model hats are) round the model's head as measured in Unity (2026-10-30; its head, eyes, lashes and brows: the ears
     // 10.8 cm to each side, the nose tip 15.1 cm ahead, the back of the skull 8.4 cm behind, the crown 21.2 cm up, the chin's
     // foot 4.5 cm down).

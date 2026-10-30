@@ -69,10 +69,11 @@ namespace ChipArena.UnityConversion
             Check(bank.Contains("MachineSkins();ModelHats();SuitModels();")&&suit.Contains("models[Suit]=parts;"),"the suit in the bank");
             Check(suit.Contains("private bool WearsSuit(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id==ViewBodyId?LocalId:id),NativeWeaponSkins.SuitEntry)==NativeWeaponSkins.SuitRobot;")
                 &&body.Contains("private string VisualLookOf(int id){var look=VisualOutfitOf(id);return WearsSuit(id)?NativeRobotSuit.Look(look):look;}"),"the skin map's suit entry wears it (the first-person arms the local pilot's), its under-suit in place of the clothes");
-            // Picked in the skin map's "suit" entry (none by default, never written), set from the Locker's OUTFIT section.
-            Check(NativeWeaponSkins.SuitKeys.SequenceEqual(new[]{"none","robot"})&&NativeWeaponSkins.Normalize("suit:robot")=="suit:robot"&&NativeWeaponSkins.Normalize("suit:none")==""&&NativeWeaponSkins.Normalize("suit:prototype")==""
-                &&NativeWeaponSkins.Normalize("suit:robot,face:mask,body:prototype")=="body:prototype,face:mask,suit:robot"&&NativeWeaponSkins.Index("body:prototype",NativeWeaponSkins.SuitEntry)==NativeWeaponSkins.SuitNone
-                &&NativeWeaponSkins.With("sword:prototype",NativeWeaponSkins.SuitEntry,"robot")=="sword:prototype,suit:robot"&&NativeBodySkins.Of("suit:robot")==NativeBodySkins.StandardIndex,"the suit's pick normalizes, defaults to none and leaves the body and masks alone");
+            // Picked in the skin map's "suit" entry (the robot's by default, never written: the default outfit, owner 2026-10-30), set
+            // from the Locker's OUTFIT section.
+            Check(NativeWeaponSkins.SuitKeys.SequenceEqual(new[]{"robot","none"})&&NativeWeaponSkins.Normalize("suit:none")=="suit:none"&&NativeWeaponSkins.Normalize("suit:robot")==""&&NativeWeaponSkins.Normalize("suit:prototype")==""
+                &&NativeWeaponSkins.Normalize("suit:none,face:mask,body:prototype")=="body:prototype,face:mask,suit:none"&&NativeWeaponSkins.Index("body:prototype",NativeWeaponSkins.SuitEntry)==NativeWeaponSkins.SuitRobot&&NativeWeaponSkins.Index("",NativeWeaponSkins.SuitEntry)==NativeWeaponSkins.SuitRobot
+                &&NativeWeaponSkins.With("sword:prototype",NativeWeaponSkins.SuitEntry,"none")=="sword:prototype,suit:none"&&NativeBodySkins.Of("suit:none")==NativeBodySkins.StandardIndex,"the suit's pick normalizes, defaults to the robot's and leaves the body and masks alone");
             string outfit=R("NativeLockerOutfitUI.cs");
             Check(outfit.Contains("int pick=NativeOutfitPicker.Row(NativeOutfitPicker.Cell(grid,lockerW,row),row,NativeOutfitPicker.SuitName,NativeWeaponSkins.SuitKeys,NativeWeaponSkins.SuitLabels,suit,")
                 &&outfit.Contains("if(pick!=suit){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.SuitEntry,NativeWeaponSkins.SuitKeys[pick]);Click();}")&&outfit.Contains("\"outfit-suit\""),"a SUIT row under the outfit's slots picks it");

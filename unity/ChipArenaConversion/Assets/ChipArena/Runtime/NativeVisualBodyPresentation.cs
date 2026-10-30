@@ -812,25 +812,23 @@ namespace ChipArena.UnityConversion
         }
         // The model's head bone (the game's head joint's).
         private static Transform VisualHeadOf(VisualBody body){var of=body.Binding.Rig.Of;int v=CapturedRig.Head<of.Length?of[CapturedRig.Head]:-1;return v>=0&&v<body.Binding.Bones.Length?body.Binding.Bones[v]:null;}
-        // The face gear (the concept's mask and visor; Core NativePilotGear) on a model's head bone, for a pilot whose body skin
-        // wears it, as its "face" pick has it (both, the visor alone or the mask alone; Core NativeWeaponSkins): the live body
-        // (VisualGear), the draft's pilot and a whole corpse; the robot's helmet and half mask (Core NativeRobotHelm) in its body
-        // colour, the helmet also on the half of a split corpse that holds the head.
-        // The body skin that wears it on the model: the Prototype (the Standard keeps the model's face as authored, owner 2026-10-22).
-        private static bool WearsFaceGear(int bodySkin)=>bodySkin==NativeBodySkins.PrototypeIndex;
+        // The face gear on a model's head bone, as the pilot's "face" pick has it (Core NativeWeaponSkins; FaceGearOf): the robot's
+        // helmet (the default) or half mask (Core NativeRobotHelm) in its body colour, the concept's mask and visor (Core
+        // NativePilotGear) both or either alone, or none (the model's own face): the live body (VisualGear), the draft's pilot, a
+        // whole corpse, a death scene; the helmet also on the half of a split corpse that holds the head.
         private void VisualFaceGear(Transform head,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
         {
-            if(head==null||!WearsFaceGear(BodySkin(id))||!sourceModels.PilotFace())return;
-            int gear=NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
+            int gear=FaceGearOf(id);if(head==null||gear==NativeWeaponSkins.FaceNone||!sourceModels.PilotFace())return;
             gearBone??=GearBoneOf;gearMatrix=head.localToWorldMatrix;var accent=AccentTint(accentColor);var lit=new Vector4(1,1,1,1);
-            if(gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf)
+            bool helm=gear==NativeWeaponSkins.FaceHelm;
+            if(helm||gear==NativeWeaponSkins.FaceHalf)
             {
-                string model=gear==NativeWeaponSkins.FaceHelm?NativeSourceModels.Helm:NativeSourceModels.HalfMask;
+                string model=helm?NativeSourceModels.Helm:NativeSourceModels.HalfMask;
                 if(sourceModels.Has(model))sourceModels.Queue(model,gearMatrix,gearBone,null,layer,camera,BodyTint(bodyColor),accent,1,reveal,tint,lit,null,flash);
                 return;
             }
-            if(gear!=NativeWeaponSkins.FaceVisor)sourceModels.Queue(NativeSourceModels.GearMask,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
-            if(gear!=NativeWeaponSkins.FaceMask)sourceModels.Queue(NativeSourceModels.GearVisor,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
+            if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceMask)sourceModels.Queue(NativeSourceModels.GearMask,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
+            if(gear==NativeWeaponSkins.FaceBoth||gear==NativeWeaponSkins.FaceVisor)sourceModels.Queue(NativeSourceModels.GearVisor,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
         }
 
         // Each renderer's materials with the hologram's after them (extra slots draw the mesh again).
