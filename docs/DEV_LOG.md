@@ -1,3 +1,39 @@
+## 2026-10-30 — Claude (PC): the robot suit (clothing after the original voxel robot)
+
+- **Branch/base:** `claude/robot-suit` from shared `3677b449`. No PR; merged into shared and the builder.
+- **Task (owner):** "Lets also design clothing that resembles our previous player model (Robotic style) and reference the
+  previous face. Of course, in the new player style."
+- **Changes (presentation and one skin-map entry; docs/BOZO-INTEGRATION.md "The robot suit"):**
+  - `Core/NativeRobotSuit` (new): 15 pieces sculpted round the measured rest body, about 12,300 triangles:
+    - chest and back plates (the back carries the robot's reactor panel and glowing cross);
+    - a belt with the glowing waist band, a ribbed collar, square ear modules with their light;
+    - pauldrons, vambraces, thigh plates, knee caps, shin guards.
+  - The plates take the body colour, the strips the accent. `Look` swaps the clothes for the under-suit (sweater, skinny jeans,
+    gloves, work boots) and keeps the hair and skin.
+  - `Runtime/NativeRobotSuitPresentation` (new): the suit is banked, and each piece is drawn with its bone's matrix times its
+    bind pose. It shows on the live body, the draft's seat and corpses; the back emblem is hidden under the back plate.
+  - `NativeWeaponSkins`: a `suit` entry (`none` / `robot`). The longest normalized map is now 320 characters, at
+    `MaxLength`.
+  - The Locker's OUTFIT section has a SUIT row with a helmet icon (`NativeOutfitPicker.Row` generalized).
+  - `NativeModelHatMeshes.Kit` / `Paint` are shared (internal), with accent and body-colour paints.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The plates are rigid on
+  their bones.
+- **Checks (actual):**
+  - `CoreTests --suit` (new, 23 checks) and `--hats` pass.
+  - Updated pins: `BodySkinChecks` and `CyberLordAuraChecks` (the new map entry), `LockerChecks` (the outfit section's
+    height).
+  - Full CoreTests on a clean LF checkout: see the merge entry below.
+  - Offline probe over the rest body dumped from Unity.
+  - Unity Editor (local tool v242, Factory): the suit on the player with a pistol and with a sword and cap, front, back and
+    face views, and a Locker capture showing its preview and the SUIT row.
+- **Not run / not verified:**
+  - a Windows player build; multiplayer;
+  - a suited corpse and the draft seat (the capture framed neither);
+  - plates against the body in extreme poses (rigid plates can graze at bent shoulders and hips);
+  - the Locker's clothes rows still show the pilot's own picks under the suit.
+- **Handoff (Astra):** `src/relay/accounts.ts` drops the new `suit` entry. Add it to `SKIN_WEAPONS` with `SUIT_SKINS`
+  {`none`, `robot`} (default `none`, never stored). Until then a signed-in pilot's suit resets at the next sign-in.
+
 ## 2026-10-30 — Claude (PC): hats made for the model (the hair held per hat)
 
 - **Branch/base:** `claude/model-hats` from shared `8bee06a9`. No PR; merged into shared and the builder.

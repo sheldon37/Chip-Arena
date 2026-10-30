@@ -21,6 +21,9 @@ namespace ChipArena.UnityConversion
     // The last entry ("face", owner 2026-10-26) picks the model's face gear on the Prototype body (the concept's tech mask and
     // glowing visor; Runtime/NativeVisualBodyPresentation.cs VisualFaceGear): both (the default), the visor alone or the mask
     // alone. Other bodies, Classic and older clients ignore it.
+    // The "suit" entry after it (owner 2026-10-30: "design clothing that resembles our previous player model (Robotic style)")
+    // puts the robot suit on the model (Core/NativeRobotSuit; Runtime/NativeRobotSuitPresentation.cs): none (the default, never
+    // written) or the robot's. Classic and older clients ignore it.
     public static class NativeWeaponSkins
     {
         public const string Standard="standard",Prototype="prototype";
@@ -32,7 +35,7 @@ namespace ChipArena.UnityConversion
         /// Cyber Lord, whose skin is its look.</summary>
         public static readonly string[] Weapons={"pistol","rifle","machinegun","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet","bow",CyberLordSpec.Id};
         /// <summary>The longest normalized map (every weapon and the Cyber Lord on the Prototype Series, the body on the Prototype,
-        /// the face gear on the visor alone) is 309 characters; frames refuse longer.</summary>
+        /// the face gear on the visor alone, the robot suit) is 320 characters; frames refuse longer.</summary>
         public const int MaxLength=320;
         public static bool Skinned(string spec)=>spec!=null&&Array.IndexOf(Weapons,spec)>=0;
         /// <summary>A skinned weapon with weapon models (a Prototype Series bake or build and usually a Standard design): every
@@ -43,11 +46,16 @@ namespace ChipArena.UnityConversion
         public const string FaceEntry="face";
         public static readonly string[] FaceKeys={"mask-visor","visor","mask"},FaceLabels={"Mask + visor","Visor","Mask"};
         public const int FaceBoth=0,FaceVisor=1,FaceMask=2;
-        /// <summary>Every entry the map carries, in its canonical order: the weapons, then the pilot's body, then the face gear.</summary>
-        public static readonly string[] Entries=Join(Join(Weapons,NativeBodySkins.Entry),FaceEntry);
+        /// <summary>The robot suit's entry, its keys (none, the default; the robot's) and labels.</summary>
+        public const string SuitEntry="suit";
+        public static readonly string[] SuitKeys={"none","robot"},SuitLabels={"None","Robot suit"};
+        public const int SuitNone=0,SuitRobot=1;
+        /// <summary>Every entry the map carries, in its canonical order: the weapons, then the pilot's body, the face gear and the
+        /// suit.</summary>
+        public static readonly string[] Entries=Join(Join(Join(Weapons,NativeBodySkins.Entry),FaceEntry),SuitEntry);
         private static string[] Join(string[] a,string b){var o=new string[a.Length+1];Array.Copy(a,o,a.Length);o[a.Length]=b;return o;}
         /// <summary>The skin keys an entry accepts: a weapon's two finishes, the body's three skins or the face gear's three.</summary>
-        private static string[] KeysOf(string entry)=>entry==NativeBodySkins.Entry?NativeBodySkins.Keys:entry==FaceEntry?FaceKeys:Keys;
+        private static string[] KeysOf(string entry)=>entry==NativeBodySkins.Entry?NativeBodySkins.Keys:entry==FaceEntry?FaceKeys:entry==SuitEntry?SuitKeys:Keys;
         private static int SkinIndex(string entry,string skin){var keys=KeysOf(entry);for(int k=0;k<keys.Length;k++)if(keys[k]==skin)return k;return -1;}
 
         /// <summary>The skin picked for `spec` (a weapon, or the body entry) in a map (StandardIndex when absent or malformed). Allocation free.</summary>

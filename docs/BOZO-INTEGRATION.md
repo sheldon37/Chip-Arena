@@ -1966,6 +1966,30 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
     - Also fixed: the band's dip down the back of the head had run up the whole crown, sinking the back of domed hats
       onto the scalp; the cowboy's crease and pinches left its peak folded.
     - Checks: `Tests/ModelHatChecks.cs` (`--hats`), on a skull of the head's measure.
+  - **The robot suit (2026-10-30, `claude/robot-suit`; owner: "Lets also design clothing that resembles our previous player
+    model (Robotic style) and reference the previous face. Of course, in the new player style."):** the original voxel
+    robot's build worn as plates over a dark fitted under-suit, in the model's smooth style (`Core/NativeRobotSuit`). Our own
+    pieces, built in code: nothing licensed is committed.
+    - **From the robot:** its shell (here the pilot's body colour over an off-white, a little self-lit so it stays bright
+      in any arena's light) and the accent's light along its edges and round its waist. Its back carries the reactor panel
+      with the glowing cross, its neck the segmented dark collar, and the square ear modules with their light sit either side
+      of the head. The robot's face (the visor bar, the mouth plate) is the MASKS row's face gear, which can be worn with it.
+    - **The pieces:** chest and back plates, belt, collar, ear modules, pauldrons, vambraces (the right one stops short of
+      the wrist device), thigh plates, knee caps and shin guards, about 12,300 triangles. Each rides one bone. It is authored
+      on the pack body at rest (its bind pose) and drawn with that bone's matrix times its bind pose, read off the body's own
+      skinned meshes (`Runtime/NativeRobotSuitPresentation.cs`).
+    - **The fit:** measured in Unity on the rest body in the under-suit (sweater, skinny jeans, gloves, work boots): the
+      torso's outline every 15 degrees at 13 heights, each limb's and the neck's cross-sections. The plates sit about a
+      centimetre over them.
+    - **The pick:** the skin map's `suit` entry (`none`, the default and never written, or `robot`). It is set by a SUIT row
+      under the Locker's OUTFIT slots, and is independent of the masks and body skins. Worn, its under-suit takes the clothes'
+      place (`VisualLookOf`); the pilot's hair and skin tone stay. The live body, the draft's seat and a corpse wear it; the
+      first-person arms wear the under-suit's sleeves. The back emblem stays under the back plate. Classic and older clients
+      ignore the entry.
+    - The account server (`src/relay/accounts.ts`) still drops the entry. A signed-in pilot's suit therefore resets at the
+      next sign-in until Astra adds it there (`suit`: `none` / `robot`, default `none`). In a session, in matches and in
+      local saves it works.
+    - Checks: `Tests/RobotSuitChecks.cs` (`--suit`).
   - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
     it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
     camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed
