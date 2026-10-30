@@ -1,3 +1,25 @@
+## 2026-10-29 — Claude (PC): the blasts' smoke and rubble restyled for the model
+
+- **Branch/base:** `claude/fx-restyle` from shared `fdf42cbb`. No PR; merged into shared and the builder.
+- **Task (owner):** "Restyle them too": the blasts' toon smoke puffs and rock debris (left out of the chip-select task because
+  the same renderer draws gameplay's effects; the owner chose to restyle them everywhere).
+- **Changes (presentation only; docs/BOZO-INTEGRATION.md "Chip select and the intros on the model", the effects):**
+  - smoke and fire puffs (`NativeVfx.shader` modes 7 and 8; every caller of `NativeVfxDraw.Smoke` and the blasts' Smoke, Cloud,
+    Fireball and Flame roles): shaped by the billowy smoke atlas, see-through at their thin edges, eaten into wisps, a soft
+    terminator, rims lit instead of outlined (`VfxSoftMask`, `VfxSoftSmoke`; the old `VfxToonSmoke` removed). Toon water and
+    the sheet's sprites unchanged. This replaces the toon pass's outlined puffs (2026-10-11), in play as well as in the intros;
+  - rubble (`NativeVfxDraw.Chunk`): smaller, never a flat card (`Thick`, .45), rock with a trace of self-glow, a seeded tone
+    and a two-puff dust trail while it flies fast.
+- **Animation impacts:** none (no timing, hit volume, damage, cooldown, movement or network change).
+- **Checks (actual):** the full CoreTests on a clean LF checkout of `e76c7083`: 874 PASS lines, rc 0 (VfxRuntimeChecks follow the
+  new look: the soft mask from the atlas, water kept toon, the old toon smoke gone, the rubble's thickness, glow and dust);
+  `git diff --check` clean. Unity Editor captures (local tool v231): greatsword, orbital drop and fire staff entrances, and the
+  greatsword's abilities in a Brickfall match, against the same captures with the base effect files.
+- **Not run:** a Windows player build; GPU cost on the low tier (the puffs' count is unchanged; rock adds two puffs per fast chunk);
+  multiplayer.
+- **Risks / next:** the soft puffs' look is the owner's call against the toon pass it replaces; a big blast (Fire, Meteor) in play
+  was not captured (the intros' blasts are the same renderer). Owner look on the test channel.
+
 ## 2026-10-29 — Claude (PC): chip select on the model (12 cards, the insert, far more chip detail) and the intros revised
 
 - **Branch/base:** `claude/chip-select-model` from shared `e35e8294`. No PR; merged into shared and the builder.

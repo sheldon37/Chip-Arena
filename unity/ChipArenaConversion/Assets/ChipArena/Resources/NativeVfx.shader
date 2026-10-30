@@ -212,13 +212,26 @@ Shader "ChipArena/NativeVfx"
             {
                 return 0.78 + 0.3 * (ambTop + sun) + 0.8 * flash;
             }
-            // Toon smoke, premultiplied: the lit tone, a darker and cooler shadow tone in the crescents, darker outlines; a saturated
-            // cloud adds a little of its own glow.
-            float4 VfxToonSmoke(float3 mask, float opacity, float3 albedo, float3 ambTop, float3 ambBottom, float3 sun, float3 flash, float glow)
+            // ---- the model's puffs (owner 2026-10-29: the blasts' smoke restyled for the model; the toon sheet keeps water and the
+            // sprites) ----
+            // A smoke or fire puff from the billowy atlas (R density, G baked light, B erosion threshold, A thin edge), as a mask:
+            // x its coverage, thin and see-through at its billows' edges, dense in its core, eaten into wisps over its life; y its
+            // light, a soft terminator between two tones; z its thin rims, which catch the light (no outline).
+            float3 VfxSoftMask(float4 tex, float u)
             {
-                float3 shade = (0.5 + 0.25 * ambBottom + 0.35 * flash) * float3(0.86, 0.9, 1.04);
-                float3 col = albedo * lerp(shade, VfxToonLight(ambTop, sun, flash), mask.y);
-                col = col * (1.0 - 0.28 * mask.z) + albedo * glow;
+                float d = VfxDissolve(tex.r, tex.b, u);
+                float cover = smoothstep(0.0, 0.8, d) * VfxBirth(u);
+                float lit = smoothstep(0.32, 0.68, tex.g);
+                return float3(cover, lit, tex.a * saturate(1.0 - d * 1.5));
+            }
+            // The model's smoke, premultiplied: the lit tone and a cooler shade across the soft terminator, its folds deepened by
+            // the baked light, its thin rims lit by the moon and the flashes; a saturated cloud adds a little of its own glow.
+            float4 VfxSoftSmoke(float3 mask, float4 tex, float opacity, float3 albedo, float3 ambTop, float3 ambBottom, float3 sun, float3 flash, float glow)
+            {
+                float3 shade = (0.42 + 0.3 * ambBottom + 0.35 * flash) * float3(0.84, 0.89, 1.05);
+                float3 lit = 0.8 + 0.32 * (ambTop + sun) + 0.8 * flash;
+                float3 col = albedo * lerp(shade, lit, mask.y) * (0.8 + 0.2 * tex.g);
+                col += albedo * mask.z * (0.3 + 0.5 * dot(sun + flash, float3(0.333, 0.333, 0.333))) + albedo * glow;
                 float a = mask.x * saturate(opacity);
                 return float4(col * a, a);
             }
@@ -383,9 +396,9 @@ Shader "ChipArena/NativeVfx"
                     else if(mode<6.5)c=VfxFireball(tex,u,i.color.a,i.color.rgb,ambient+i.sun.rgb*(0.2+0.8*tex.g)+i.flash.rgb);
                     else
                     {
-                        float3 mask=VfxToonMask(toon,aa,VfxToonCut(u)),light=VfxToonLight(i.amb0.rgb,i.sun.rgb,i.flash.rgb);
-                        if(mode<7.5)c=VfxToonSmoke(mask,i.color.a,i.color.rgb,i.amb0.rgb,i.amb1.rgb,i.sun.rgb,i.flash.rgb,i.flash.w*(1.0-u));
-                        else if(mode<8.5)c=VfxToonFire(mask,u,i.color.a,i.color.rgb,i.alt.rgb,light);
+                        float3 mask=VfxToonMask(toon,aa,VfxToonCut(u)),light=VfxToonLight(i.amb0.rgb,i.sun.rgb,i.flash.rgb),soft=VfxSoftMask(tex,u);
+                        if(mode<7.5)c=VfxSoftSmoke(soft,tex,i.color.a,i.color.rgb,i.amb0.rgb,i.amb1.rgb,i.sun.rgb,i.flash.rgb,i.flash.w*(1.0-u));
+                        else if(mode<8.5)c=VfxToonFire(float3(soft.xy,0.0),u,i.color.a,i.color.rgb,i.alt.rgb,light);
                         else c=VfxToonWater(mask,toon,aa,i.color.a,i.color.rgb,i.alt.rgb,light);
                     }
                     c*=saturate(i.data.w);
