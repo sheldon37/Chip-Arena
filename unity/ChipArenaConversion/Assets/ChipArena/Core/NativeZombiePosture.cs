@@ -65,12 +65,15 @@ namespace ChipArena.UnityConversion
         /// the pose: the planted legs' reach is what stops them (NativeVisualRig.State.Room), so standing and in a stride the knees
         /// keep about 16 degrees of bend; the Hulk's room keeps about 30 (its heavy stance).</summary>
         public const float Lift=.08f,HulkRoom=.965f;
+        /// <summary>The Hulk's hips carried on a spring of this time (seconds; NativeVisualRig.State.Ease): its heavy stride and stamp
+        /// drop its gait's hips with each foot, and riding its legs' reach they jolted (owner 2026-10-30: "too wiggly").</summary>
+        public const float HulkCarry=.07f;
 
         /// <summary>The model's stance for an add of `kind` (crawling: its legs are gone) from its gait this pose (NativeHordeGait
         /// Sunk, Crouch, Busy and LegsNow, `stride`; none for a pose the gait did not make) on its binding's state.</summary>
         public static void Stance(NativeVisualRig.State s,int kind,bool crawl,float sunk,float crouch,float busy,float stride=1)
         {
-            s.Across=true;s.Level=crawl;s.Follow=!crawl;s.Stride=crawl||!(stride>1)?1:stride;s.Room=kind==NativeHordeKinds.Hulk?HulkRoom:NativeVisualRig.KneeRoom;
+            s.Across=true;s.Level=crawl;s.Follow=!crawl;s.Ease=kind==NativeHordeKinds.Hulk?HulkCarry:0;s.Stride=crawl||!(stride>1)?1:stride;s.Room=kind==NativeHordeKinds.Hulk?HulkRoom:NativeVisualRig.KneeRoom;
             // (The gait's floor sits Root under the rig root; the model's soles NativeVisualRig.Floor under it.)
             float gap=Math.Max(0,-NativeVisualRig.Floor-NativeHordeKinds.Root[NativeHordeKinds.Index(kind)]);
             s.Stand=crawl?0:(NativeZombieClips.HipsBelow+Math.Max(0,sunk)+Math.Max(0,crouch))*s.Rig.LegRatio+gap+Lift*(1-Math.Max(0,Math.Min(1,busy)));

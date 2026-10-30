@@ -45,6 +45,9 @@ namespace ChipArena.UnityConversion
             // (Stride: how far the gait drew this pose's ankles in about the hips, its stride planned for the model's legs:
             // NativeHordeGait.LegsNow.)
             public bool Crawl;public float Sunk,Crouch,Busy,Stride=1;
+            // A mutant's growth not on it yet (ZombieGrowthAttach: it draws voxel until its variant's growth is made), and when it
+            // was last posed (the Hulk's carried hips step by it: NativeVisualRig.State.Dt).
+            public bool Growing;public double PoseTime;
             // The spitter's sac and its swell as last written.
             public SkinnedMeshRenderer Sac;public float Swell=-1;
             public readonly NativeCrowdPoseClock PoseClock=new NativeCrowdPoseClock();private int poseLost,poseHidden;
@@ -76,12 +79,13 @@ namespace ChipArena.UnityConversion
         private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,NativeHordeGait gait,int lost,int hidden,float flash,float glow,float swell)
         {
             if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind);if(z==null)return false;
+            if(z.Growing&&!ZombieGrowthAttach(z)){z.SeenAt=Time.unscaledTime;return false;}
             z.Dying=false;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;z.Stride=gait?.LegsNow??1;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
         }
         /// <summary>A dying add's fall (HordeKindDeath, its rig posed from minionPose): its model, true; false: the voxel body falls.</summary>
         private bool ZombieModelDeath(CapturedAnimation.Player rig,int id,int kind,int lost,int hidden)
         {
-            if(rig==null||!zombieBodies.TryGetValue(id,out var z)||z.Body.Root==null||z.Kind!=kind||!ZombieModelsOn)return false;
+            if(rig==null||!zombieBodies.TryGetValue(id,out var z)||z.Body.Root==null||z.Kind!=kind||z.Growing||!ZombieModelsOn)return false;
             z.Dying=true;z.Sunk=z.Crouch=z.Busy=0;z.Stride=1;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
         }
         private void ZombieModelBind(ZombieBody z,CapturedAnimation.Player rig,bool planted,bool airborne,int lost,int hidden,float flash,float glow,float swell)
@@ -101,7 +105,9 @@ namespace ChipArena.UnityConversion
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
             minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
-            z.Body.Binding.Apply(pose,default(NativeVisualRig.Grasp),planted,airborne);
+            double now=Time.unscaledTimeAsDouble;z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;
+            // (The Hulk's hands are fists, clenched hardest through a blow: owner 2026-10-30, "the punch is open handed still".)
+            z.Body.Binding.Apply(pose,z.Kind==NativeHordeKinds.Hulk?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy}:default(NativeVisualRig.Grasp),planted,airborne);
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
             ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
@@ -173,20 +179,22 @@ namespace ChipArena.UnityConversion
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=v.Id,Lift=lift};
             body.All=VisualWorn(root);body.Cloth=Array.Empty<Renderer>();body.Weapons=VisualWeaponsOf(root.transform);
             var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;if(sac!=null){var all=new Renderer[body.All.Length+1];body.All.CopyTo(all,0);all[all.Length-1]=sac;body.All=all;}
-            var growth=v.Mutant?ZombieGrowthMake(root,skeleton,v):null;if(growth!=null){var all=new Renderer[body.All.Length+1];body.All.CopyTo(all,0);all[all.Length-1]=growth;body.All=all;}
+            if(v.Mutant)ZombieGrowthStart(root,skeleton,v,body.All);
             if(v.Decay!=null&&v.Decay.Length>0)body.All=ZombieDecayMake(root,skeleton,v,body.All);
             foreach(var r in body.All){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer s)s.updateWhenOffscreen=false;}
-            var z=new ZombieBody{Body=body,Variant=v,Sac=sac};
+            var z=new ZombieBody{Body=body,Variant=v,Sac=sac,Growing=v.Mutant};
             var of=body.Binding.Rig.Of;
             for(int j=0;j<z.Joint.Length;j++){int b=j<of.Length?of[j]:-1;if(b<0||b>=body.Binding.Bones.Length)continue;z.Joint[j]=body.Binding.Bones[b];z.JointScale[j]=z.Joint[j].localScale;}
             ZombieModelLog(root);
+            if(z.Growing)ZombieGrowthAttach(z);
             return z;
         }
         // The bake's instances the zombies are made from, made ahead off the main thread (InstantiateAsync, under an inactive holder)
         // while a horde is about, never at once (about 8 ms each); the pilots' corpse pool is left to the pilots.
         private const int ZombiePoolTarget=8,ZombiePoolBatch=4;
         private static readonly Stack<GameObject> zombiePool=new Stack<GameObject>();private static AsyncInstantiateOperation<GameObject> zombieFill;private static GameObject zombieHolder;
-        /// <summary>HordeKindsBegin: the pool topped up while the arena has a horde (or adds) and the models are on.</summary>
+        /// <summary>HordeKindsBegin: the pool topped up while the arena has a horde (or adds) and the models are on; in a horde, the
+        /// mutants' first bodies made ahead.</summary>
         private void ZombieModelsPrewarm(NativeArena arena)
         {
             if(zombieFill!=null)
@@ -195,6 +203,9 @@ namespace ChipArena.UnityConversion
                 if(ready!=null)foreach(var made in ready)if(made!=null){made.SetActive(false);made.name="Zombie model (ready)";zombiePool.Push(made);}
                 zombieFill=null;
             }
+            // (In a horde, each mutant variant's first body is made ahead, one a frame, so its growth is built before a Hulk needs it.)
+            if(arena!=null&&arena.Pve!=null&&ZombieModelsOn&&zombiePool.Count>0)
+                foreach(var v in NativeZombieLooks.All)if(v.Mutant&&NativeZombieLooks.Modelled(v.Kind)&&!zombieGrowths.ContainsKey(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);break;}
             if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
             if(zombieHolder==null){zombieHolder=new GameObject("Zombie model pool");zombieHolder.SetActive(false);DontDestroyOnLoad(zombieHolder);}
             zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);
@@ -391,42 +402,99 @@ namespace ChipArena.UnityConversion
             var bounds=mesh.bounds;bounds.Expand(1.2f);renderer.localBounds=bounds;renderer.skinnedMotionVectors=false;
             return renderer;
         }
-        // A mutant's grown flesh, spurs and pustules (Core NativeZombieMutation) on this body's rest joints after its build (the mesh,
-        // kept per variant, is bound to that rest), each vertex rigid on its bone, drawn in the toon by its vertex colours with the
-        // outline (a pustule's alpha glows); null without the joints or the toon.
-        private static readonly Dictionary<NativeZombieLooks.Variant,(Mesh mesh,string[] bones)> zombieGrowthMeshes=new Dictionary<NativeZombieLooks.Variant,(Mesh,string[])>();private static Material zombieGrowthMaterial;
-        public const float ZombieGrowthGlow=.7f;
-        private static SkinnedMeshRenderer ZombieGrowthMake(GameObject root,Transform skeleton,NativeZombieLooks.Variant v)
+        // A mutant's grown flesh (Core NativeZombieMutation: every muscle of its upper body, veins, torn skin, spurs and pustules),
+        // built once per variant off the main thread (a quarter second or more) from its first body's rest after its build, and
+        // bound to that rest; each body then wears it (until it is made the body draws voxel), drawn in the toon by its vertex
+        // colours with the outline (a pustule's alpha glows), and the worn meshes' triangles the flesh covers are dropped (copies
+        // per variant: the model's skin within its reach of the flesh, clothes and the head inside it; the hands stay), so no skin
+        // or cloth shows through it.
+        private sealed class ZombieGrowth
         {
-            var named=new Dictionary<string,Transform>();foreach(var t in skeleton.GetComponentsInChildren<Transform>(true))if(!named.ContainsKey(t.name))named[t.name]=t;
-            if(zombieGrowthMaterial==null)
+            public System.Threading.Tasks.Task<NativeZombieMutation.Growth> Build;public Mesh Mesh;public bool Failed;
+            // Each bone's rest bind (root space), and each worn mesh's vertices at the variant's rest (root space) and its cut copy.
+            public readonly Dictionary<string,Matrix4x4> Binds=new Dictionary<string,Matrix4x4>();public readonly Dictionary<Mesh,(Vector3[] at,float reach)> Rest=new Dictionary<Mesh,(Vector3[],float)>();
+            public readonly Dictionary<Mesh,Mesh> Cut=new Dictionary<Mesh,Mesh>();public string[] Bones;
+        }
+        private static readonly Dictionary<NativeZombieLooks.Variant,ZombieGrowth> zombieGrowths=new Dictionary<NativeZombieLooks.Variant,ZombieGrowth>();private static Material zombieGrowthMaterial;
+        /// <summary>The Hulk's fists at rest (Grasp.Clench; a blow clenches them fully), the skin's and the head's reach past the flesh
+        /// it is dropped within (m), and the growth's glow.</summary>
+        public const float ZombieClench=.6f,ZombieSkinReach=.06f,ZombieHeadReach=.004f,ZombieGrowthGlow=.7f;
+        private static void ZombieGrowthStart(GameObject root,Transform skeleton,NativeZombieLooks.Variant v,Renderer[] worn)
+        {
+            if(zombieGrowths.ContainsKey(v))return;var e=new ZombieGrowth();zombieGrowths[v]=e;
+            var toRoot=root.transform.worldToLocalMatrix;var rest=new Dictionary<string,NVector3>();
+            foreach(var t in skeleton.GetComponentsInChildren<Transform>(true)){if(rest.ContainsKey(t.name))continue;var p=toRoot.MultiplyPoint3x4(t.position);rest[t.name]=new NVector3(p.x,p.y,p.z);e.Binds[t.name]=t.worldToLocalMatrix*root.transform.localToWorldMatrix;}
+            var baked=new Mesh();
+            foreach(var r in worn)
             {
-                Material template=null;foreach(var r in root.GetComponentsInChildren<Renderer>(true))if(r.sharedMaterial!=null&&r.sharedMaterial.HasProperty(VertexAlbedoId)){template=r.sharedMaterial;break;}
-                if(template==null)return null;
-                var m=new Material(template){name="Zombie growth",hideFlags=HideFlags.HideAndDontSave};m.SetTexture(TextureId,Texture2D.whiteTexture);
-                m.SetFloat(VertexAlbedoId,ZombieGrowthGlow);m.SetFloat(UseCustomTextureId,0);m.SetFloat(UseOutlineId,1);m.SetFloat("_Cull",2);m.SetFloat(CutoffId,0);m.SetFloat(AccentGlowId,0);
-                zombieGrowthMaterial=m;
+                if(!(r is SkinnedMeshRenderer s)||s.sharedMesh==null||!s.sharedMesh.isReadable||e.Rest.ContainsKey(s.sharedMesh)||ZombieEyePart(r))continue;
+                s.BakeMesh(baked,true);var rel=toRoot*s.transform.localToWorldMatrix;var vs=baked.vertices;for(int i=0;i<vs.Length;i++)vs[i]=rel.MultiplyPoint3x4(vs[i]);
+                e.Rest[s.sharedMesh]=(vs,r.name.StartsWith("Body.",StringComparison.Ordinal)?ZombieSkinReach:r.name.StartsWith("Head.",StringComparison.Ordinal)?ZombieHeadReach:-.004f);
             }
-            var toRoot=root.transform.worldToLocalMatrix;
-            if(!zombieGrowthMeshes.TryGetValue(v,out var made))
+            Destroy(baked);
+            uint seed=2166136261;foreach(char ch in v.Id)seed=(seed^ch)*16777619;int skin=v.Skin,top=v.Female?v.Colours[1]:-1;float right=v.Build.Right;
+            e.Build=System.Threading.Tasks.Task.Run(()=>NativeZombieMutation.Build(n=>rest.TryGetValue(n,out var p)?p:(NVector3?)null,skin,seed,right,top));
+        }
+        /// <summary>A growing body's growth put on once its variant's is made: true when it is on (or failed: the body as it is).</summary>
+        private bool ZombieGrowthAttach(ZombieBody z)
+        {
+            if(!zombieGrowths.TryGetValue(z.Variant,out var e)){z.Growing=false;return true;}
+            if(e.Mesh==null&&!e.Failed)
             {
-                NVector3? Rest(string n){if(!named.TryGetValue(n,out var t))return null;var p=toRoot.MultiplyPoint3x4(t.position);return new NVector3(p.x,p.y,p.z);}
-                uint seed=2166136261;foreach(char ch in v.Id)seed=(seed^ch)*16777619;var g=NativeZombieMutation.Build(Rest,v.Skin,seed);if(g==null||g.Bones.Exists(b=>!named.ContainsKey(b)))return null;
-                int count=g.Positions.Count;bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
-                var vs=new Vector3[count];var ns=new Vector3[count];var cs=new Color[count];var ws=new BoneWeight[count];
-                for(int i=0;i<count;i++)
+                if(!e.Build.IsCompleted)return false;
+                var g=e.Build.Status==System.Threading.Tasks.TaskStatus.RanToCompletion?e.Build.Result:null;
+                if(g==null||g.Bones.Exists(b=>!e.Binds.ContainsKey(b))||!ZombieGrowthMaterial(z.Body.Root)){e.Failed=true;Debug.LogWarning("Zombie growth: "+z.Variant.Id+" not built; its body draws without it.");}
+                else ZombieGrowthMesh(e,g,z.Variant);
+            }
+            z.Growing=false;if(e.Failed)return true;
+            var named=new Dictionary<string,Transform>();foreach(var t in z.Body.Root.GetComponentsInChildren<Transform>(true))if(!named.ContainsKey(t.name))named[t.name]=t;
+            foreach(var r in z.Body.All)if(r is SkinnedMeshRenderer s&&s.sharedMesh!=null&&e.Cut.TryGetValue(s.sharedMesh,out var cut))s.sharedMesh=cut;
+            var go=new GameObject("Growth.Hulk");go.transform.SetParent(z.Body.Root.transform,false);
+            var renderer=go.AddComponent<SkinnedMeshRenderer>();renderer.sharedMesh=e.Mesh;var bs=new Transform[e.Bones.Length];for(int b=0;b<bs.Length;b++)bs[b]=named[e.Bones[b]];
+            renderer.bones=bs;renderer.sharedMaterial=zombieGrowthMaterial;var bounds=e.Mesh.bounds;bounds.Expand(1.2f);renderer.localBounds=bounds;renderer.skinnedMotionVectors=false;
+            renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;renderer.updateWhenOffscreen=false;
+            var all=new Renderer[z.Body.All.Length+1];z.Body.All.CopyTo(all,0);all[all.Length-1]=renderer;z.Body.All=all;z.Flash=-1;
+            return true;
+        }
+        private static bool ZombieGrowthMaterial(GameObject root)
+        {
+            if(zombieGrowthMaterial!=null)return true;
+            Material template=null;foreach(var r in root.GetComponentsInChildren<Renderer>(true))if(r.sharedMaterial!=null&&r.sharedMaterial.HasProperty(VertexAlbedoId)){template=r.sharedMaterial;break;}
+            if(template==null)return false;
+            var m=new Material(template){name="Zombie growth",hideFlags=HideFlags.HideAndDontSave};m.SetTexture(TextureId,Texture2D.whiteTexture);
+            m.SetFloat(VertexAlbedoId,ZombieGrowthGlow);m.SetFloat(UseCustomTextureId,0);m.SetFloat(UseOutlineId,1);m.SetFloat("_Cull",2);m.SetFloat(CutoffId,0);m.SetFloat(AccentGlowId,0);
+            zombieGrowthMaterial=m;return true;
+        }
+        // The variant's growth mesh (each vertex on up to four bones, bound to the rest it was built on) and its worn meshes' cut
+        // copies.
+        private static void ZombieGrowthMesh(ZombieGrowth e,NativeZombieMutation.Growth g,NativeZombieLooks.Variant v)
+        {
+            int count=g.Positions.Count;bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
+            var vs=new Vector3[count];var ns=new Vector3[count];var cs=new Color[count];var ws=new BoneWeight[count];
+            for(int i=0;i<count;i++)
+            {
+                var p=g.Positions[i];var q=g.Normals[i];var c=g.Colors[i];vs[i]=new Vector3(p.X,p.Y,p.Z);ns[i]=new Vector3(q.X,q.Y,q.Z);
+                var col=new Color(c.X,c.Y,c.Z,1);cs[i]=linear?col.linear:col;cs[i].a=c.W;
+                ws[i]=new BoneWeight{boneIndex0=g.Bone[i],weight0=g.Weight[i],boneIndex1=g.Bone2[i],weight1=g.Weight2[i],boneIndex2=g.Bone3[i],weight2=g.Weight3[i],boneIndex3=g.Bone4[i],weight3=g.Weight4[i]};
+            }
+            e.Bones=g.Bones.ToArray();var poses=new Matrix4x4[e.Bones.Length];for(int b=0;b<poses.Length;b++)poses[b]=e.Binds[e.Bones[b]];
+            var mesh=new Mesh{name="Zombie growth "+v.Id,hideFlags=HideFlags.HideAndDontSave,indexFormat=count>65000?UnityEngine.Rendering.IndexFormat.UInt32:UnityEngine.Rendering.IndexFormat.UInt16};
+            mesh.vertices=vs;mesh.normals=ns;mesh.colors=cs;mesh.boneWeights=ws;mesh.bindposes=poses;mesh.SetTriangles(g.Indices,0);mesh.RecalculateBounds();e.Mesh=mesh;
+            int dropped=0,kept=0;var tri=new List<int>();
+            foreach(var pair in e.Rest)
+            {
+                var source=pair.Key;var (at,reach)=pair.Value;if(at.Length!=source.vertexCount)continue;
+                var covered=new bool[at.Length];for(int i=0;i<at.Length;i++)covered[i]=g.Covers(new NVector3(at[i].x,at[i].y,at[i].z),reach);
+                var copy=Instantiate(source);copy.name=source.name+" (grown "+v.Id+")";copy.hideFlags=HideFlags.HideAndDontSave;bool any=false;
+                for(int sub=0;sub<source.subMeshCount;sub++)
                 {
-                    var p=g.Positions[i];var q=g.Normals[i];var c=g.Colors[i];vs[i]=new Vector3(p.X,p.Y,p.Z);ns[i]=new Vector3(q.X,q.Y,q.Z);
-                    var col=new Color(c.X,c.Y,c.Z,1);cs[i]=linear?col.linear:col;cs[i].a=c.W;ws[i]=new BoneWeight{boneIndex0=g.Bone[i],weight0=1-g.Weight2[i],boneIndex1=g.Bone2[i],weight1=g.Weight2[i]};
+                    var t=source.GetTriangles(sub);tri.Clear();
+                    for(int i=0;i+2<t.Length;i+=3){if(covered[t[i]]&&covered[t[i+1]]&&covered[t[i+2]]){dropped++;any=true;continue;}kept++;tri.Add(t[i]);tri.Add(t[i+1]);tri.Add(t[i+2]);}
+                    copy.SetTriangles(tri,sub,false);
                 }
-                var bones=g.Bones.ToArray();var poses=new Matrix4x4[bones.Length];for(int b=0;b<bones.Length;b++)poses[b]=named[bones[b]].worldToLocalMatrix*root.transform.localToWorldMatrix;
-                var mesh=new Mesh{name="Zombie growth "+v.Id,hideFlags=HideFlags.HideAndDontSave};mesh.vertices=vs;mesh.normals=ns;mesh.colors=cs;mesh.boneWeights=ws;mesh.bindposes=poses;
-                mesh.SetTriangles(g.Indices,0);mesh.RecalculateBounds();made=(mesh,bones);zombieGrowthMeshes[v]=made;
+                if(any)e.Cut[source]=copy;else Destroy(copy);
             }
-            var go=new GameObject("Growth.Hulk");go.transform.SetParent(root.transform,false);
-            var renderer=go.AddComponent<SkinnedMeshRenderer>();renderer.sharedMesh=made.mesh;var bs=new Transform[made.bones.Length];for(int b=0;b<bs.Length;b++)bs[b]=named[made.bones[b]];
-            renderer.bones=bs;renderer.sharedMaterial=zombieGrowthMaterial;var bounds=made.mesh.bounds;bounds.Expand(1.2f);renderer.localBounds=bounds;renderer.skinnedMotionVectors=false;
-            return renderer;
+            Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"Zombie growth: {0} {1} vertices, {2} faces, {3} bones; {4} worn triangles under it dropped, {5} kept",v.Id,count,g.Indices.Count/3,e.Bones.Length,dropped,kept);
         }
         // ---- flying parts from the model ----
         private sealed class ZombiePiece{public Mesh Mesh;public Matrix4x4 Matrix;public Material[] Materials;public readonly MaterialPropertyBlock Block=new MaterialPropertyBlock();public bool Own;}

@@ -1,3 +1,33 @@
+## 2026-10-30 — Claude (PC): the Hulk in detail (anatomy, fists, calmer hips, the head on its neck)
+
+- **Branch/base:** `claude/hulk-detail` from shared `d327f1e1`. No PR; merged into shared and the builder.
+- **Task (owner):** "Improve hulk design again (I still see "clothes" inside there muscle like theyre meshed together, their
+  muscles look just like bubbles currently; Please work with much more detail. Also, the punch is open handed still, they need
+  to close their fists.) Movement still needs a bit more adjusting too, they look too "wiggly"", then "Need to blend the head
+  better".
+- **Changes (presentation only; docs/ZOMBIE-MODELS.md 4f):**
+  - `Core/NativeZombieMutation` rewritten: 31 muscles a side as shaped signed distances meeting in creases over a softer core,
+    a finer grid, crease/hollow shading, mottling, stretch marks, torn skin over raw muscle, 17 raised veins, spurs, pustules, the
+    women's top as a painted chest wrap, four-bone skinning by distance, `Covers`; built in parallel;
+  - `Runtime/NativeZombieModelPresentation`: the growth built off the main thread from a variant's first body (made ahead in a
+    horde; the body draws voxel until it is built), the worn triangles it covers dropped from per-variant mesh copies, the Hulk's
+    hands clenched (`NativeVisualRig.Grasp.Clench`, .6 at rest, 1 through a blow);
+  - `NativeVisualRig.State.Ease` / `Carry` (`NativeZombiePosture.HulkCarry`): the Hulk's hips on a spring under both legs' reach;
+  - `NativeZombieLooks`: no Hulk wears a top; decay where no flesh grows.
+- **Animation impacts:** the model's hips (the Hulk only) and fingers; no hit timing, hitbox, damage, cooldown, movement or network
+  change. Hulk walk: biggest hip drop in a pose 5.7 → 2.2 cm, travel 14.1 → 8.2 cm, jerk p95 1.15 → .25; run 7.2 → 1.5 cm; planted
+  knees 36/42 → 40/44 degrees (rest 33). Other kinds unchanged (measured offline, the same numbers).
+- **Checks (actual):** the full CoreTests on a clean LF checkout of `f3490c8e`: 876 PASS lines and 35 managed-core checks, rc 0,
+  and of the tree merged with shared `7f1266f` (Astra's navigation follow-up) `4ca3e1a3`: 877 PASS lines, 35 managed-core, rc 0; `--zombie-models` (the new mutation group on
+  Unity's measured male Hulk rest), `--zombie-posture` (with the new carried-hips group), `--visual-rig` pass; `git diff --check`
+  clean. Unity Editor (local tool v232, Brickfall): before/after close views of male and female A (front, back, side), the head,
+  the fists at rest and through a punch, the walk with a per-frame bone log (the fastest hip drop 3.1 → 1.6 m/s).
+- **Not run / not verified:** a Windows player build; multiplayer; the build time in a player; maps other than Brickfall (the skin
+  match was measured under its moonlight); male B and female B were seen only offline.
+- **Risks / next:** the other kinds still ride their legs' reach (hips 15-28 cm a stride, drops up to 6 cm a pose offline): the
+  same spring sank them into a squat, so they need their own tuning (a follow-up). A variant's first Hulk outside a horde draws
+  voxel until its growth is built.
+
 ## 2026-10-30 — Astra: fix small-wave navigation spikes in Expedition
 
 - Branch `codex/unity-expedition-navigation-20261030`, base shared `d327f1e` (includes the earlier crowd cost patch and Claude's model pace).

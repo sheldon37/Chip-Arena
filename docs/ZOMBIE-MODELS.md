@@ -407,6 +407,66 @@ The posture on the model's stride (`--zombie-posture`, which now runs the gait a
 tempo for the runner on the model is a one-number change). Also check that no foot slides or pops when an add crosses between
 the Full tier (model) and the Reduced tier (voxel): the stride switches with it.
 
+## 4f. The Hulk in detail: anatomy, fists, calmer hips, the head on its neck (2026-10-30, `claude/hulk-detail`)
+
+Owner (2026-10-30): "Improve hulk design again (I still see "clothes" inside there muscle like theyre meshed together, their
+muscles look just like bubbles currently; Please work with much more detail. Also, the punch is open handed still, they need
+to close their fists.) Movement still needs a bit more adjusting too, they look too "wiggly"", then mid-task: "Need to blend
+the head better".
+
+**What the captures showed (Brickfall, the local tool v232, close views at the Hulk's 1.8x):** the growth was thirteen smooth
+masses summed as soft fields, so they melted into balloons; the women's vest and jacket and the model's own chest and arms
+poked through it; the hands hung open (zombies are posed with no grasp); walking, the hips dropped 6 to 11 cm in a frame
+several times a second; the trap and neck mounds rose over the chin, and the flesh drew bluer than the head's skin.
+
+**The anatomy (Core/NativeZombieMutation, rewritten).**
+- Each muscle its own form from its origin to its insertion on the rest joints (`Muscle`, `Mark`): a spindle or a fan slab
+  thickest at its belly, its belly lifted off the line between them, mirrored for the left. 31 kinds, 62 placed: the traps
+  (upper swollen round the sunk head, middle, lower), the sternocleidomastoid from under the jaw, the pecs in three fans, the
+  deltoid's three heads, the lats, teres and infraspinatus, the erectors, four serratus fingers, the obliques, an eight-pack;
+  the biceps, brachialis, both triceps heads, a swelling below the elbow under the brachioradialis, extensors and flexors. The
+  right arm's grow by the variant's `Right`. Sizes scale with the shoulders' span.
+- Each a signed distance, joined by a tight smooth minimum (`Crease`, 5.5 mm), so they meet in creases; a core (rib cage, belly,
+  the waist into the trousers, the neck, the shoulder girdle, the limbs' bones) joined more softly under them. Surface nets on a
+  1.05 cm grid (about 24,000 vertices, 48,000 faces).
+- Colour: the skin tone warmed to what the skin texture draws (`SkinMatch`, measured on the head beside the flesh), lighter over
+  the bellies, darker and redder down the creases and in hollows, mottled, stretch marks across the swollen masses, six patches
+  of torn skin over raw striated muscle with a pale rim. Raised veins (17 tubes: forearms, biceps, shoulders, chest, neck), nine
+  bone spurs, eight pustules (they glow).
+- The women's top: no Hulk wears one (the grown flesh is the whole upper body); a woman's top colour is a torn chest wrap
+  painted on the flesh (`top`), with no vein, tear or pustule under it. The decay opens where no flesh grows (the face, the legs).
+- What it covers (`Growth.Covers`): per variant, copies of the worn meshes drop every triangle the flesh covers: the model's skin
+  within 6 cm of it (the flesh replaces it), clothes and the head inside it, never past a wrist (the hands are the model's). On
+  the male Hulk 5,705 of 28,574 worn triangles go; nothing of the skin or clothes shows through.
+- The head: the neck's core ends below the jaw and the sternocleidomastoid starts there, so the face is clear of the flesh (a
+  check); within 5 cm of where the flesh meets the head it is the head's tone, unmarked.
+- Skinning: every vertex on four of the bones its muscles move with (the forearms on their twist bones), by its distance to each
+  bone's segment, less the fifth's. Weighting each vertex by its own muscle's bones first tore the creases (a shoulder-blade
+  vertex rode the forearm: shards in Unity); by distance alone the weights change smoothly (p99 .31 across an edge).
+- Cost: built in parallel off the main thread from a variant's first body (30 ms in the .NET checks; longer in the Editor), the
+  body drawing voxel until it is made; in a horde each mutant variant's first body is made ahead (one a frame), so a Hulk's
+  arrives built.
+
+**The fists (NativeVisualRig.Grasp.Clench).** The Hulk is posed with both hands closed and clenched past a handle's grip into a
+tight fist (`Clenched`: fingers rolled into the palm, the thumb across them), .6 at rest and fully through a blow (the gait's
+`Busy`). Other kinds stay open-handed.
+
+**Calmer hips (NativeVisualRig State.Ease, `Carry`; NativeZombiePosture.HulkCarry .07 s).** The stance's rise rode each planted
+leg's reach, 0.6 cm up a pose and down at once when the next foot came into reach, and the Hulk's stamp (its gait's hips drop with
+the foot) showed until the rise climbed back. The Hulk's pelvis is now carried on a critically damped spring toward the stance,
+under both followed feet's reach, by a margin while that reach has been falling (so it is down before a foot lands), never above a
+planted foot's; stepped by the time since the body's last pose (the crowd's clock poses far adds less often). The other kinds keep
+the rise (carrying them sank them into a squat).
+
+| the Hulk on the model (60 Hz, rest units; drawn at 1.8x) | before | after |
+|---|---|---|
+| walk: biggest hip drop in a pose / travel / jerk p95 | 5.7 cm / 14.1 cm / 1.15 | 2.2 / 8.2 / .25 |
+| run | 7.2 / 17.0 / 2.12 | 1.5 / 13.3 / .48 |
+| planted knee mean in a stride (walk, run), at rest | 36, 42; 33 | 40, 44; 33 |
+
+In Unity the walking male Hulk's fastest hip drop fell from 3.1 to 1.6 m/s (a noisier measure: the capture's shots slow the
+Editor to about 20 fps).
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
@@ -417,8 +477,11 @@ the Full tier (model) and the Reduced tier (voxel): the stride switches with it.
   gait's motion on the model with blows on time; any change that needs a rule goes to Astra as a measured mismatch (none known).
 - The ZOMBIE PRO exports still carry the retarget's spine softening made for the voxel torso (`scripts/mocap/mixamo-retarget.mjs`),
   which a re-export for the model could drop (it needs the private pack).
-- The Hulk's growth: its first body per variant builds the mesh on the main thread (tens of ms, once); a prewarm would hide it.
-  The growth has no own wounds (hits on it show the body's) and its voxel tier is the old Hulk.
+- The Hulk's growth has no own wounds (hits on it show the body's) and its voxel tier is the old Hulk; outside a horde (DEV
+  monsters, summons) a variant's first Hulk draws voxel until its growth is built. The other kinds still ride their legs' reach
+  (section 4f): their hips travel 15 to 28 cm a stride on the model with drops of 1.4 to 6 cm in a pose (measured offline).
+- The Hulk's skin tone against its head is matched by a constant (`SkinMatch`) measured under Brickfall's moonlight; other maps'
+  light may show a difference.
 - A head burst (`HeadGib`) still leaves the gore's own stump and fountain on the model's collapsed neck.
 - The sprints play at .62 to .91 of their pace on the model's stride (4e); a faster tempo for the runner on the model is open
   until the owner sees it.
@@ -435,8 +498,11 @@ bones, model gore parts).
 `--zombie-posture` measures the model fit (4b, 4c: the planted knee in a stride, a busy pose's crouch kept, the rise holding in
 flight) and pins its wiring; it runs `--zombie-gait` too (4d: the takes' warps, offsets, stances and swing arcs; the model's
 ankles on the gait's, the feet's speed, the knees, the feet alternating, the takes in step; the follow flag and the knee clamp;
-4e: the stride on the model's legs, its cadence and footfalls, planted feet still, the takes' pace and the runtime's wiring). `--zombie-models` also builds the Hulk's growth on a mannequin (placement, frames, sizes, the clubs,
-smooth trunk, winding, bones and weights, determinism, its build time).
+4e: the stride on the model's legs, its cadence and footfalls, planted feet still, the takes' pace and the runtime's wiring; 4f:
+the Hulk's carried hips against the old rise). `--zombie-models` also builds the Hulk's growth on the male Hulk's rest joints as
+Unity measured them (4f: every muscle placed and mirrored, the eight-pack and the pecs standing off their creases, four weights
+summing to 1 and smooth across edges, winding, the face clear, the traps' crest, what it covers, the women's wrap, determinism,
+its build time, the fists' clench).
 
 None of these is a Unity render. Visual quality, foot contact on the model, crowd cost and multiplayer views are verified only in
 Unity on the owner's PC.
