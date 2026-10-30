@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            CrowdPoseChecks.Run();
+            if(args.Length==1&&args[0]=="--crowd-pose")return 0;
             SnapshotChecks.Run();
             TransportBacklogChecks.Run();
             if(args.Length==1&&args[0]=="--transport-backlog")return 0;

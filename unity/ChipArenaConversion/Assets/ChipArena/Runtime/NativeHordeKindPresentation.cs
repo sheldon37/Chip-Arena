@@ -93,8 +93,11 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // Frame begin: hits into reactions, ink, blows; the crowd's tiers
         // ================================================================================================================
+        private readonly Plane[] crowdFrustum=new Plane[6];private bool crowdFrustumReady;
         private void HordeKindsBegin(NativeArena arena)
         {
+            var crowdCamera=WorldEye;crowdFrustumReady=crowdCamera!=null;
+            if(crowdFrustumReady)GeometryUtility.CalculateFrustumPlanes(crowdCamera,crowdFrustum);
             hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);float now=arena.Time;
             if(arena!=hordeKindArena||arena.Generation!=hordeKindGeneration||!float.IsNaN(hordeKindTime)&&now<hordeKindTime-.25f)ClearHordeKinds(arena);
             hordeKindTime=now;

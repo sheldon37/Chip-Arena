@@ -99,6 +99,7 @@ namespace ChipArena.UnityConversion
         {
             if(expeditionError!=null)return;
             var state=splitRun.PartySnapshot();if(state.phase==ExpeditionPhase.Ended||!state.members.Any(m=>m.alive&&m.connected&&!m.extracted)){ExpeditionView=SplitView(account.Access.AccountId);return;}
+            long splitAt=System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
                 var own=splitCohorts.Member(account.Access.AccountId);
@@ -122,6 +123,14 @@ namespace ChipArena.UnityConversion
                 if(before.Single(m=>m.Account==own.Account).Area!=own.Area&&arena.Local!=null){yaw=arena.Local.Yaw;pending=new InputFrame();}
                 splitAreas.Find(own.Area).Input=own.Pending==null&&own.Ready&&StagePresentationReady?pending:new InputFrame();
                 splitAreas.Step(++splitTick,dt=>splitSessions[expeditionM1Layout.world].Tick(dt));
+                foreach(var area in expeditionM1Layout.areas)
+                {
+                    var measured=splitAreas.Find(area.id);if(measured.LastTick!=splitTick)continue;
+                    hitchArenaStep+=measured.ArenaStepMs;hitchPhysics+=measured.PhysicsMs;hitchNavigation+=measured.NavigationMs;
+                    hitchHorde+=measured.HordeMs;hitchHordeSpawn+=measured.HordeSpawnMs;hitchDeathRecord+=measured.DeathRecordMs;
+                    hitchNavNearest+=measured.NavigationNearestMs;hitchNavLinks+=measured.NavigationLinkMs;
+                    hitchNavSearches+=measured.NavigationSearches;hitchNavLinkChecks+=measured.NavigationLinkChecks;
+                }
                 double clock=splitTick/60d;
                 foreach(var area in expeditionM1Layout.areas)
                 {
@@ -136,6 +145,7 @@ namespace ChipArena.UnityConversion
                 ExpeditionView=SplitView(account.Access.AccountId);pending=pending.HeldOnly();
             }
             catch(Exception e){Debug.LogException(e);expeditionError=e.Message;Notice("Expedition stopped: "+e.Message);}
+            finally{stepMs=HitchMs(splitAt);}
         }
         private void ResetSplitLoop()
         {
