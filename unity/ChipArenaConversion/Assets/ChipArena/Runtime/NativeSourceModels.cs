@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
                     if(s.texture>=0){material.mainTexture=textures[s.texture];var repeat=data.textures[s.texture].repeat;material.mainTextureScale=new Vector2(repeat[0],repeat[1]);}materials.Add(material);parts.Add(new Part{Name=s.part,Bone=s.bone,Mesh=mesh,Material=material,Core=Banked(model.id)?CoreOf(s):null,Open=s.transparent||s.doubleSide});
                 }ArmorLights(model,parts);models.Add(model.id,parts.ToArray());HatTwin(model,parts);
             }
-            SplitSirenPieces(data);HordeMaterials();WeaponSkins();SheldonModels();PilotBodies();BowModels();ModelHats();HordeKindModels();MachineSkins();
+            SplitSirenPieces(data);HordeMaterials();WeaponSkins();SheldonModels();PilotBodies();BowModels();HordeKindModels();MachineSkins();ModelHats();
         }
         public void Begin(){foreach(var d in draws.Values)Clear(d);foreach(var d in cameraDraws.Values)Clear(d);}
         private static void Clear(Draws d){d.Matrices.Clear();d.Bodies.Clear();d.Accents.Clear();d.Tints.Clear();d.Glows.Clear();}
