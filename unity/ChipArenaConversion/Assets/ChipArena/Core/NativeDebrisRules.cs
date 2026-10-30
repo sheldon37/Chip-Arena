@@ -13,8 +13,8 @@ namespace ChipArena.UnityConversion
         private sealed class Pair {public double last=double.NegativeInfinity;public bool touching,seen;}
         private readonly Dictionary<string,Pair> pairs=new Dictionary<string,Pair>();private readonly Dictionary<string,(double at,double damage)> groups=new Dictionary<string,(double,double)>();
         public void Begin(){foreach(var p in pairs.Values)p.seen=false;}
-        public double Claim(string pair,string group,double time,double damage)
-        {if(!pairs.TryGetValue(pair,out var p)){p=new Pair();pairs[pair]=p;}p.seen=true;bool allowed=!p.touching&&time-p.last>=.4;p.touching=true;if(!allowed||damage<=0)return 0;p.last=time;if(!groups.TryGetValue(group,out var g)||time-g.at>.35)g=(time,0);double amount=Math.Min(damage,Math.Max(0,75-g.damage));groups[group]=(g.at,g.damage+amount);return amount;}
+        public double Claim(string pair,string group,double time,double damage,double groupCap=75)
+        {if(!pairs.TryGetValue(pair,out var p)){p=new Pair();pairs[pair]=p;}p.seen=true;bool allowed=!p.touching&&time-p.last>=.4;p.touching=true;if(!allowed||damage<=0)return 0;p.last=time;if(!groups.TryGetValue(group,out var g)||time-g.at>.35)g=(time,0);double amount=Math.Min(damage,Math.Max(0,groupCap-g.damage));groups[group]=(g.at,g.damage+amount);return amount;}
         public void End(double time){foreach(var item in pairs.ToArray()){if(!item.Value.seen)item.Value.touching=false;if(time-item.Value.last>10&&!item.Value.touching)pairs.Remove(item.Key);}foreach(var g in groups.ToArray())if(time-g.Value.at>2)groups.Remove(g.Key);}
         public void Clear(){pairs.Clear();groups.Clear();}
     }

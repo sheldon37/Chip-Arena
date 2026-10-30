@@ -1,4 +1,5 @@
-import {sqliteTable,text,integer,index} from 'drizzle-orm/sqlite-core';
+import {sql} from 'drizzle-orm';
+import {sqliteTable,text,integer,index,primaryKey,check} from 'drizzle-orm/sqlite-core';
 export const relayRooms=sqliteTable('relay_rooms',{
  code:text('code').primaryKey(),hostKey:text('host_key').notNull(),guestKey:text('guest_key'),guestProfile:text('guest_profile'),creator:text('creator').notNull(),expires:integer('expires').notNull(),closed:integer('closed').notNull().default(0),guestLeft:integer('guest_left').notNull().default(0),hostSeen:integer('host_seen').notNull(),guestSeen:integer('guest_seen').notNull().default(0),hostSeq:integer('host_seq').notNull().default(0),guestSeq:integer('guest_seq').notNull().default(0),hostAck:integer('host_ack').notNull().default(0),guestAck:integer('guest_ack').notNull().default(0),hostPacket:text('host_packet'),guestPacket:text('guest_packet')
 },t=>[index('relay_expiry').on(t.expires),index('relay_creator').on(t.creator)]);
@@ -22,3 +23,13 @@ export const playerSessions=sqliteTable('player_sessions',{
 export const accountAudit=sqliteTable('account_audit',{
  id:text('id').primaryKey(),actor:text('actor').notNull(),target:text('target').notNull(),action:text('action').notNull(),detail:text('detail').notNull(),created:integer('created').notNull()
 },t=>[index('account_audit_target').on(t.target,t.created)]);
+
+export const accountXp=sqliteTable('account_xp',{
+ account:text('account').primaryKey().notNull().references(()=>playerAccounts.id,{onDelete:'cascade'}),
+ total:integer('total').notNull().default(0),revision:integer('revision').notNull().default(0)
+},t=>[check('account_xp_total_range',sql`${t.total} BETWEEN 0 AND 1237500`)]);
+export const accountXpAwards=sqliteTable('account_xp_awards',{
+ account:text('account').notNull().references(()=>playerAccounts.id,{onDelete:'cascade'}),completion:text('completion').notNull(),
+ payload:text('payload').notNull(),previousTotal:integer('previous_total').notNull(),newTotal:integer('new_total').notNull(),
+ marker:text('marker').notNull(),created:integer('created').notNull()
+},t=>[primaryKey({columns:[t.account,t.completion]})]);

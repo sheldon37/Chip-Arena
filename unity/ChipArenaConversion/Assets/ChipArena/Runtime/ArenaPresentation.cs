@@ -8,10 +8,22 @@ namespace ChipArena.UnityConversion
     {
         private Mesh cube;
         private CapturedAnimation captured;
-        private NativeCombatGlow combatGlow;
-        public float GlowQuality=1;public bool TrailsEnabled=true;
-        public void RenderGlow(NativeArena arena,Camera camera)
-        {if(combatGlow==null)return;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);}
+        private NativeCombatGlow combatGlow;private NativeBlastPresentation blasts;private NativeFieldPresentation fieldTelegraphs;private NativeMeleeFlashPresentation meleeFlash;
+        // The shared effects renderer (owner 2026-10-11 effects overhaul): the blasts, field cores, burst sparks, melee hit sparks
+        // and slam dust and the impact contact flashes queue into it during RenderGlow, and it draws them once, sorted, at the
+        // end (after the combat glow, also on its early return). It follows the low graphics tier (LowGraphics).
+        private NativeVfxDraw vfx;
+        public float GlowQuality=1,BlastQuality=1;public bool TrailsEnabled=true;
+        // The clock of the field telegraphs, their C6 field emitters, the eruption stand-in (C9) and the projectile models,
+        // modules, emitters, halos and trails (C10). A replica's arena.Time only moves when a 20 Hz host frame lands, so a guest
+        // uses the continuous snapshot clock it renders at (Render's renderTime, arena.ReplicaRenderTime: about 0.1 s behind the
+        // newest frame, as the source's SnapshotBuffer cursor). Fields born in the newest frame then start with a briefly
+        // negative age, as in the source. Host and killcam replay: PresentationClock. It never runs backwards within a
+        // generation, so the .25 s rewind clears hold.
+        private float FieldClock(NativeArena arena)=>arena.Replica&&hazardClock<=arena.Time&&arena.Time-hazardClock<1?hazardClock:PresentationClock(arena);
+        // paused: the match itself is stopped (offline menu), so the blasts hold still; see NativeBlastFrame.Step.
+        public void RenderGlow(NativeArena arena,Camera camera,bool paused=false)
+        {float now=PresentationClock(arena),fields=FieldClock(arena);if(vfx!=null)vfx.Low=LowGraphics;vfx?.Begin();fieldTelegraphs?.Collect(arena,fields);StructureFx(arena,camera,fields);if(blasts!=null)blasts.Trails=TrailsEnabled;blasts?.Render(arena,camera,now,BlastQuality,paused,fieldTelegraphs);EventWorldFx(arena,camera,fields);fieldTelegraphs?.Render(arena,camera,fields,abilityPreview,abilityPreviewClamped);shotTracker.Begin(arena,arena.Generation,arena.Replica,arena.Time);shots?.Render(arena,camera,fields,BlastQuality,paused,shotTracker);MagicFx(arena,camera,fields);CyberLordFx(arena,camera,fields);MeleeKitFx(arena,camera,fields);meleeFlash?.Render(arena,camera,fields,WeaponEffectsQuality);WeaponFx(arena,camera,fields);DevEffects(arena,camera,fields);JumpFx(arena,fields);AirAttackFx(arena,fields);SprintAttackFx(arena,fields);RoundsFx(arena,camera,fields);BloodFx(arena,camera,fields);SpawnInFx(arena,camera);if(combatGlow==null){vfx?.Submit(camera);return;}combatGlow.Tracker=shotTracker;combatGlow.Shown=spawnJoint??=SpawnJointOf;combatGlow.Visual=visualGlow??=VisualGlowAt;combatGlow.Clock=fields;combatGlow.Quality=GlowQuality;combatGlow.Trails=TrailsEnabled;combatGlow.Render(arena,camera,ViewCamera,FirstPerson,rigs,ScopeActive?null:viewRig,FirstPerson&&viewRig!=null&&arena.ViewPilot.Pose.MagicVisual>0?(Matrix4x4?)StaffMatrix(viewRig,true):null);vfx?.Submit(camera);}
         private readonly AudioClip[] gunSounds=new AudioClip[4];
         private AudioClip reloadStart,reloadEnd,hitSound;
         private AudioSource localAudio;
@@ -23,6 +35,7 @@ namespace ChipArena.UnityConversion
         public bool LastHeadshot;
         private static readonly string[] GunStates={"ready","aim","fire","reload","block"};
         private readonly Dictionary<int,CapturedAnimation.Player> rigs=new Dictionary<int,CapturedAnimation.Player>();
+        private readonly MeleeImpacts meleeImpacts=new MeleeImpacts();
         private readonly List<int> removedRigs=new List<int>();
         private readonly System.Diagnostics.Stopwatch animationTimer=new System.Diagnostics.Stopwatch();
         public bool CapturedPlayers=true, Viewer;
@@ -72,7 +85,8 @@ namespace ChipArena.UnityConversion
             }
             for(int i=7;i<materials.Count;i++){materials[i].SetColor("_Emission",colors[i]*.55f);compatibilityMaterials[i].SetColor("_Emission",colors[i]*.55f);}
             Debug.Log($"Unity prototype renderer: {RenderingMode}; {SystemInfo.graphicsDeviceType}; {SystemInfo.graphicsDeviceName}; shaderSupported={shader.isSupported}");
-            captured=new CapturedAnimation();if(!buildArena){combatGlow=new NativeCombatGlow(transform);sourceModels=new NativeSourceModels();}
+            captured=new CapturedAnimation();if(!buildArena){vfx=new NativeVfxDraw();combatGlow=new NativeCombatGlow(transform,vfx);blasts=new NativeBlastPresentation(transform,vfx);shots=new NativeShotPresentation(vfx);blasts.Sparks=shots.SparkPool;meleeFlash=new NativeMeleeFlashPresentation(vfx);sourceModels=new NativeSourceModels();CreateMagicFx();}
+            if(!buildArena)fieldTelegraphs=new NativeFieldPresentation(vfx);
             string[] soundNames={"","pistol","rifle","machinegun"};
             for(int i=1;i<4;i++) gunSounds[i]=Resources.Load<AudioClip>("GunAudio/"+soundNames[i]);
             reloadStart=Resources.Load<AudioClip>("GunAudio/reload-start"); reloadEnd=Resources.Load<AudioClip>("GunAudio/reload-end");hitSound=Resources.Load<AudioClip>("GunAudio/hit");
@@ -108,37 +122,57 @@ namespace ChipArena.UnityConversion
             var o=GameObject.CreatePrimitive(PrimitiveType.Cube); o.name=name; o.transform.SetParent(stage); o.transform.position=position; o.transform.localScale=scale;
             o.GetComponent<Renderer>().sharedMaterial=material; if(!collider) Destroy(o.GetComponent<Collider>()); return o;
         }
-        public void ResetPresentation()
+        /// <summary>Clears the presented world. <paramref name="keepWorldMarks"/>: the killcam starts or ends, so the destruction
+        /// kit keeps its decals and structure records (NativeStructureFxPresentation.Reset), which the event buffer cannot rebuild.</summary>
+        public void ResetPresentation(bool keepWorldMarks=false)
         {
-            ClearSourceActors();combatGlow?.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
+            ClearSourceActors();ClearSpawnIn();combatGlow?.Clear();blasts?.Clear();ClearStructureFx(keepWorldMarks);ClearBlood(!keepWorldMarks);if(!keepWorldMarks)killBlows.Clear();if(!keepWorldMarks)hazardGibs.Clear();fieldTelegraphs?.Clear();ClearRoundsFx();shots?.Clear();vfx?.Clear();meleeFlash?.Clear();ClearMeleeKit();ClearCyberLord();ClearMagicFx();shotTracker.Clear();hitLedger.Clear();aimMotion.Reset();viewRig?.Dispose();viewRig=null;lastEvent=0; LastHitUntil=0; visualPositions.Clear(); particles.Clear();
             foreach(var source in shotAudio) if(source!=null) source.Stop(); if(localAudio!=null) localAudio.Stop();
-            foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
+            ClearVisualBodies();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear();
             foreach(var o in debris) if(o!=null) Destroy(o); debris.Clear();
             foreach(var o in coverObjects) if(o!=null) Destroy(o); coverObjects.Clear();
+            ClearWeaponPresentation();
         }
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
-            if(s==null) return;sourceModels?.Begin();
+            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;SpawnBegin();ObserveHits(s);BeginWeaponFx(s);BeginHatFx(s);BeginCyberLord(s,renderTime);shotTracker.Muzzles.Clear();
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
-            foreach(int id in removedRigs) { rigs[id].Dispose(); rigs.Remove(id); visualPositions.Remove(id); }
+            foreach(int id in removedRigs) { rigs[id].Dispose(); rigs.Remove(id); visualPositions.Remove(id); stepTrackers.Remove(id); }
             animationTimer.Restart();
             foreach(Actor a in s.Actors)
             {
                 Vector3 old; Vector3 target=Vec(a.Position);
-                if(!visualPositions.TryGetValue(a.Id,out old)||(old-target).sqrMagnitude>64) old=target;
+                if(!visualPositions.TryGetValue(a.Id,out old)||(CyberKit2Unshift(a.Id,ref old)-target).sqrMagnitude>64) old=target;
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
+                // The match-start spawn-in (NativeSpawnInPresentation.cs): the beam holds the feet; the rig is posed on the ground
+                // while it does and in the air for its drop, with the replicated flag restored after posing.
+                p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);
                 visualPositions[a.Id]=p;
+                bool posed=a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
+                if(posed){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{VisualBodyRestore(a.Id);PrepareCapturedPose(a,p,renderTime);VisualBodyPose(a,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
+                // Its footfalls from the gait just posed (NativeFootfallPresentation.cs).
+                PilotFootfall(a,p,renderTime,posed);
+            }
+            // Pose everyone before drawing: a held victim must use this frame's claw, regardless of seat order.
+            PrepareInteractions(s,renderTime);
+            foreach(Actor a in s.Actors)
+            {
+                Vector3 p=visualPositions[a.Id];
+                if(FirstPerson&&a.Id==LocalId&&a.Alive)HiddenSweep(a,p,renderTime,CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
                 if(!a.Alive||(FirstPerson&&a.Id==LocalId)) continue;
                 int color=a.Bot?2:a.Id-1;
                 if(renderTime<a.FlashUntil) color=4;
                 if(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon)) CapturedPose(a,p,renderTime,color);
                 else Pose(a,p,renderTime,color);
             }
+            VisualBodiesShown();
             animationTimer.Stop(); AnimationMs=animationTimer.Elapsed.TotalMilliseconds;
-            foreach(Shot p in s.Shots)
+            RenderMeleeTrails(renderTime);
+            // Native arenas draw their projectiles with NativeShotPresentation (source models); only the prototype draws these.
+            if(sourceModels==null)foreach(Shot p in s.Shots)
             {
                 if(GunRules.Ranged(p.Weapon)) Add(11,Matrix4x4.TRS(Vec(p.Position),Quaternion.LookRotation(Vec(p.Velocity)),new Vector3(.04f,.04f,Mathf.Clamp(p.Velocity.Length*.01f,.25f,1.5f))));
                 else Add(p.MagicVisual>0?6+p.MagicVisual:4, Matrix4x4.TRS(Vec(p.Position),Quaternion.Euler(renderTime*140,renderTime*90,0),Vector3.one*Mathf.Max(.18f,p.Radius*2)));
@@ -155,6 +189,9 @@ namespace ChipArena.UnityConversion
             foreach(ArenaEvent e in s.Events)
             {
                 if(e.Id<=lastEvent) continue; lastEvent=e.Id;
+                // Captured melee hit-stop (attacker) and block impact (defender), as the source's block-impacts records.
+                if((e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Source>0) meleeImpacts.RecordHit(e.Source.ToString(),e.Time);
+                else if(e.Kind==EventKind.Block&&e.Source>0) meleeImpacts.RecordBlock(e.Source.ToString(),e.Time);
                 if(e.Kind==EventKind.Shot)
                 {
                     int weapon=(int)e.Amount;
@@ -172,18 +209,31 @@ namespace ChipArena.UnityConversion
                     LastHitUntil=Time.unscaledTime+.25f;LastHitDamage=e.Amount;LastHeadshot=e.Kind==EventKind.Headshot;
                     if(SoundEnabled) localAudio.PlayOneShot(hitSound,.45f);
                 }
-                if(e.Kind==EventKind.Dodge) continue;
-                Burst(Vec(e.Position), e.Kind==EventKind.Block?new Color(.3f,.9f,1):e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
-                if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
+                bool native=sourceModels!=null;
+                if(DebrisEnabled&&(e.Kind==EventKind.Break||e.Kind==EventKind.Death&&!native)) Debris(Vec(e.Position)+Vector3.up*.3f,e.Kind==EventKind.Death?materials[2]:materials[3]);
+                // The prototype lab's particle burst, only for the kinds it was written for. Native arenas draw the source's
+                // voxel sparks and streaks for these events instead (NativeImpactCues via NativeBlastPresentation). A Block is the
+                // block effect's clash or deflect everywhere (NativeBlockFxPresentation), no burst.
+                if(NativeEventFeedback.HitBurst(e.Kind,native)) Burst(Vec(e.Position), e.Kind==EventKind.Death?new Color(1,.2f,.35f):new Color(1,.7f,.3f),e.Kind==EventKind.Death?24:12);
             }
+            // The block effect: guards on open block windows, clashes and deflects (after the rigs and the view weapon are posed).
+            RenderBlockFx(s,renderTime);
+            // The melee Q/E kit: its events, the Shadow Step decoy and the dash ghosts (NativeMeleeKitPresentation.cs).
+            RenderMeleeKit(s,renderTime);
+            // The PvE chip selection's wrist holograms (NativeChipSelectPresentation.cs).
+            RenderChipSelect(s);
+        }
+        private void PrepareCapturedPose(Actor a,Vector3 position,float time)
+        {
+            CapturedAnimation.Player rig;
+            if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rig.Hits=hitLedger; rigs.Add(a.Id,rig); }
+            if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
+            else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
+            else { PoseReach(rig,a,time); rig.ReducedEffects=WeaponEffectsQuality<.5f; CyberBoostPreview(rig,a,time); rig.ActorPose(a,position,CyberPoseTime(a,time)); CyberVictimPose(rig,a,time); ChipSelectPose(rig,a,time); }
         }
         private void CapturedPose(Actor a,Vector3 position,float time,int color)
         {
-            CapturedAnimation.Player rig;
-            if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rigs.Add(a.Id,rig); }
-            if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
-            else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
-            else rig.ActorPose(a,position,time);
+            var rig=rigs[a.Id];if(!ReviveVisible(a.Id,time))return;
             if(a.Id==LocalId) PlayerState=rig.State;
             if(SourceCharacter(rig,a,time))return;
             foreach(var box in CapturedRig.Boxes)
@@ -201,12 +251,14 @@ namespace ChipArena.UnityConversion
                 }
                 GunPresentation.Draw(rig,shown,Viewer?ViewerTime:time,Add); return;
             }
-            if(a.MagicVisual>0)
+            // The stand-in staff (without the source models; L33t H4x borrows the first school's).
+            int school=MagicPose.School(a);
+            if(school>0)
             {
-                DrawStaff(rig,a.MagicVisual);
+                DrawStaff(rig,school==MagicPose.Leet?1:school);
                 return;
             }
-            if(!a.WeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);
+            if(!a.WeaponAway&&!a.MainWeaponAway)Weapon(MeleeHand(rig,a,time),rig.Set,color);
             if(rig.Set==1) Weapon(MeleeHand(rig,a,time,true),1,color);
         }
         private static Matrix4x4 MeleeHand(CapturedAnimation.Player rig,Actor a,float time,bool left=false)
@@ -275,6 +327,7 @@ namespace ChipArena.UnityConversion
         }
         private void Part(Matrix4x4 parent,Vector3 p,Vector3 scale,Quaternion rotation,int color) { Add(color,parent*Matrix4x4.TRS(p,rotation,scale)); }
         private void Add(int color,Matrix4x4 matrix) { batches[color].Add(matrix); DrawnParts++; }
+        // The prototype lab's ParticleSystem burst (native arenas draw NativeImpactCues' source sparks instead).
         private void Burst(Vector3 position,Color color,int count)
         {
             particles.Play();
@@ -296,10 +349,12 @@ namespace ChipArena.UnityConversion
         }
         private void OnDestroy()
         {
-            ClearSourceActors();sourceModels?.Dispose();combatGlow?.Dispose();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
+            rooftop?.Dispose();rooftop=null;ClearSourceActors();DisposeSpawnIn();DisposeDevEffects();DisposeEventWorldFx();DisposeStructureFx();DisposeRoundsFx();DisposeHalos();DisposeBrickfall();DisposeCyberCity();DisposeAdvancedLighting();DisposeExpeditionCity();DisposeWardZero();DisposeHazardKit();sourceModels?.Dispose();combatGlow?.Dispose();blasts?.Dispose();meleeFlash?.Dispose();fieldTelegraphs?.Dispose();shots?.Dispose();DisposeMagicFx();vfx?.Dispose();DisposeStatus();viewRig?.Dispose();foreach(var rig in rigs.Values) rig.Dispose(); rigs.Clear(); captured?.Dispose();
             foreach(var m in materials) CapturedAnimation.Release(m);
             foreach(var m in compatibilityMaterials) CapturedAnimation.Release(m);
             if(particleMaterial!=null) CapturedAnimation.Release(particleMaterial);
+            DisposeWeaponPresentation();
+            DisposeIronworks();
         }
     }
 }

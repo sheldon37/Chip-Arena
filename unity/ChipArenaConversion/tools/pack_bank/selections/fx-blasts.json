@@ -1,0 +1,384 @@
+{
+ "schema": 1,
+ "note": "Blasts, smoke and fire: the toon sheet rebuilt from the effect pack's cartoon cloud, round-flash, crescent and spark masks (tools/pack_bank/sheets.py, docs/PACK-EFFECTS.md). Texture-only: no bank; the game loads fx-toon-sheet by id. Names only: no pack content.",
+ "sources": {
+  "toon": "Epic Toon FX/Assets/Epic Toon FX"
+ },
+ "sheets": [
+  {
+   "id": "fx-toon-sheet",
+   "kind": "toon",
+   "seed": 28833,
+   "puffs": [
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 0,
+     "rotate": 0,
+     "reach": 0.86,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 0,
+     "rotate": 14,
+     "reach": 0.82,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 0,
+     "rotate": -14,
+     "reach": 0.84,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 0,
+     "rotate": 26,
+     "reach": 0.8,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 2,
+     "rotate": 0,
+     "reach": 0.86,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 2,
+     "rotate": 14,
+     "reach": 0.82,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 2,
+     "rotate": -14,
+     "reach": 0.84,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 2,
+     "rotate": 26,
+     "reach": 0.8,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 3,
+     "rotate": 0,
+     "reach": 0.86,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 3,
+     "rotate": 14,
+     "reach": 0.82,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 3,
+     "rotate": -14,
+     "reach": 0.84,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 3,
+     "rotate": 26,
+     "reach": 0.8,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 1,
+     "rotate": 0,
+     "reach": 0.72,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 1,
+     "rotate": 0,
+     "reach": 0.56,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 0,
+     "rotate": -26,
+     "reach": 0.78,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    },
+    {
+     "source": "toon",
+     "path": "Textures/cloud_2x2_hardshadow.png",
+     "grid": [
+      2,
+      2
+     ],
+     "frame": 3,
+     "rotate": -26,
+     "reach": 0.8,
+     "light": "both",
+     "depth": 0.34,
+     "fold": false
+    }
+   ],
+   "shapes": [
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 0,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 1,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 2,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 3,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 4,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 5,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 6,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 7,
+     "scale": 1.05
+    },
+    {
+     "source": "toon",
+     "path": "Textures/wave3.png",
+     "reach": 0.84,
+     "mirror": true,
+     "grow": 0.02,
+     "core": 0.06
+    },
+    {
+     "source": "toon",
+     "path": "Textures/wave3.png",
+     "reach": 0.8,
+     "mirror": true,
+     "grow": 0.05,
+     "core": 0.06
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 3,
+     "rotate": -90,
+     "scale": 1.15,
+     "core": 0.06
+    },
+    {
+     "source": "toon",
+     "path": "Textures/explosion_round_3x3.png",
+     "grid": [
+      3,
+      3
+     ],
+     "frame": 4,
+     "rotate": -90,
+     "scale": 1.15,
+     "core": 0.06
+    },
+    {
+     "source": "toon",
+     "path": "Textures/triangle_curve.png",
+     "reach": 0.86,
+     "mirror": true
+    },
+    {
+     "source": "toon",
+     "path": "Textures/circle_sharp.png",
+     "reach": 0.86,
+     "squash": 0.3
+    },
+    {
+     "source": "toon",
+     "path": "Textures/sparkle3.png",
+     "reach": 0.86,
+     "cut": 0.35,
+     "core": 0.06
+    },
+    {
+     "procedural": "drop"
+    }
+   ]
+  }
+ ]
+}

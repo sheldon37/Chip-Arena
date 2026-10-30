@@ -53,26 +53,41 @@ namespace ChipArena.UnityConversion
             if(ViewCamera==null)return;Actor source=System.Array.Find(snapshot.Actors,a=>a.Id==LocalId&&a.Alive);if(source==null)return;
             foreach(var batch in batches)batch.Clear();
             if(viewRig==null)viewRig=captured.Create(transform,-999);
-            var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;
+            VisualViewRestore();
+            var shown=source.ViewCopy();shown.Aiming=AimHeld;shown.Pitch=0;shown.Yaw=0;shown.AimYaw=0;shown.Grounded=SpawnContact(shown.Id,shown.Grounded);
             // A camera-attached presentation rig never changes the authoritative pilot or muzzle.
-            viewRig.ActorPose(shown,Vector3.zero,time,true);
-            bool gun=GunRules.Ranged(shown.Weapon),magic=shown.MagicVisual>0;
-            Vector3 offset=gun?new Vector3(.24f,-.48f,.20f):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):new Vector3(.16f,-.22f,.30f);
+            viewRig.PreviewAirJumpAt=rigs.TryGetValue(LocalId,out var own)?own.PreviewAirJumpAt:-100;// the Dev Sandbox's Cyber Lord boost preview
+            viewRig.ViewPitch=source.Pitch;viewRig.ActorPose(shown,Vector3.zero,time,true);
+            // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
+            int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0,bow=NativeBowWire.Is(shown.SourceSpec);
+            // first-person-view.ts:69 class bases (NativeViewBase): guns right of centre, the DEV fighters' fists centred and low
+            // (their view rig ends on the guard clip, NativeSourceMotion.Pilot), melee raised.
+            // The bow (Core/NativeBowPose: its rig is placed so the arrow line runs under and left of the eye).
+            Vector3 offset=bow?NativeBowView(true):gun?CapturedAnimation.Vec(NativeViewBase.Gun):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):CapturedAnimation.Vec(NativeViewBase.IsFighter(shown.SourceSpec)?NativeViewBase.Fighter:NativeViewBase.Melee);
             float ads=aimMotion.Sample(time,gun&&AimHeld);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
-            float scale=gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
-            viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation);
+            float scale=bow?NativeBowPose.ViewScale:gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
+            offset+=HitViewDip(source,time,out float dip);
+            viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation*Quaternion.Euler(dip,0,0));
             viewRig.Root.transform.localScale=Vector3.one*scale;
             if(gun&&ads>0&&shown.ReloadUntil<=time&&time>=shown.BlockUntil&&!shown.Rolling(time)&&time>=shown.StunUntil)
             {
                 var hand=viewRig.Bones[CapturedRig.RHand];float y=shown.Weapon==WeaponId.Pistol?.105f:shown.Weapon==WeaponId.Rifle?.175f:.25f;
                 float z=shown.Weapon==WeaponId.Pistol?-.03f:shown.Weapon==WeaponId.Rifle?-.075f:-.02f;
-                Vector3 rear=hand.TransformPoint(new Vector3(0,y,z));
+                // The visual body's model has its own rear sight (NativeVisualWeaponPresentation.cs VisualViewSight).
+                var sight=new Vector3(0,y,z);VisualViewSight(shown,ref sight);
+                Vector3 rear=hand.TransformPoint(sight);
                 Quaternion align=Quaternion.FromToRotation(hand.forward,ViewCamera.transform.forward);
                 viewRig.Root.transform.rotation=Quaternion.Slerp(viewRig.Root.transform.rotation,align*viewRig.Root.transform.rotation,ads);
-                rear=hand.TransformPoint(new Vector3(0,y,z));Vector3 local=ViewCamera.transform.InverseTransformPoint(rear);
+                rear=hand.TransformPoint(sight);Vector3 local=ViewCamera.transform.InverseTransformPoint(rear);
                 viewRig.Root.transform.position-=(ViewCamera.transform.right*local.x+ViewCamera.transform.up*local.y)*ads;
             }
+            ApplyViewSway(shown,time,ads);
+            // PvE chip selection: the raised wrist and its hologram in view (NativeChipSelectPresentation.cs).
+            ChipSelectView(viewRig,source,time);
+            if(shown.SourceSpec=="siren")SirenViewArms(shown,time);
+            // The visual body's forearms and hands in place of the voxel arms (NativeVisualBodyPresentation.cs).
+            VisualViewPose(viewRig,shown,time,ScopeActive);
             PlayerState=viewRig.State;
             // A scoped rifle uses the centred reticle; its magnified housing would obscure the whole screen.
             if(!ScopeActive&&!SourceCharacter(viewRig,shown,time,true))
@@ -80,9 +95,10 @@ namespace ChipArena.UnityConversion
                 foreach(var box in CapturedRig.Boxes)if(NativeViewRules.ViewModelBone(box.Bone))
                     Part(viewRig.Bones[box.Bone].localToWorldMatrix,CapturedAnimation.Vec(CapturedRig.Mirror(box.Position)),CapturedAnimation.Vec(box.Size),Quaternion.identity,box.Color<0?0:box.Color);
                 if(gun)GunPresentation.Draw(viewRig,shown,time,Add);
-                else if(magic)DrawStaff(viewRig,shown.MagicVisual,true);
-                else {if(!shown.WeaponAway)Weapon(MeleeHand(viewRig,shown,time),viewRig.Set,0);if(viewRig.Set==1)Weapon(MeleeHand(viewRig,shown,time,true),1,0);}
+                else if(magic)DrawStaff(viewRig,school==MagicPose.Leet?1:school,true);
+                else {if(!shown.WeaponAway&&!shown.MainWeaponAway)Weapon(MeleeHand(viewRig,shown,time),viewRig.Set,0);if(viewRig.Set==1)Weapon(MeleeHand(viewRig,shown,time,true),1,0);}
             }
+            VisualViewWeaponShown();
             DrawBatches(ViewCamera,10,false);
         }
     }

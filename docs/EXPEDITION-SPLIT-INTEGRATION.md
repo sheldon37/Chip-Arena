@@ -1,0 +1,99 @@
+# Split-area integration and activation receipt
+
+Published activation (source `45e24ac`, native test version `ae31a979`, 2026-10-17 01:07 UTC; PR #255 and #256–259): production now uses four independent native areas, shared run ledger with area facades, scoped inputs/frames, protocol 3, local readiness and atomic captured-cohort transfers. The exp-layout-5 manifest enables Ward Zero, Central Station and City Ironworks. Historical milestone receipts below describe earlier inactive versions, not this candidate.
+
+The host and guests load the destination before acknowledging their exact ticket. Bystanders keep simulating. A shared monotonic combat clock runs through local loading and empty-area suspension, preserving ability deadlines on transfer; empty areas do not step physics/AI. Crossing cancels outgoing area-owned attacks, summons, target references and rewind history; the pilot, vitals, chips, DOT damage, ability deadlines and persistent chip procs move together. Reprint placement must succeed before cross-area revival/payment. Local exit votes return only their living occupants; final/loop changes require everyone home.
+
+Three-second circle occupancy replaces F entry; F remains for machines and cleared-area return votes. The Ward circle is at (79,0,0), away from the door. New entrances have separate clear return slots outside their circles. Existing presentation primitives show the ring/countdown and roster locations; Claude retains visual polish ownership. New maps use authored geometry, spawns, lighting and machines with the current horde and placeholder Siren encounters. Proposed new enemy archetypes and map-specific hazard scripts are not implemented by this activation.
+
+Verification is in DEV_LOG and PR #255. The native builder now runs a four-area/three-recipient fixture including real scene transfers, guest ApplyFrame/collision, actual JsonUtility identities, concurrent encounters, shared time and 30 seconds of timing/packet/memory measurements. Its real Windows execution and publication succeeded: four occupied areas, 1,800 ticks, p95 5.8 ms, worst 19.3 ms. Full receipt in DEV_LOG. A successful automated fixture is not a human multiplayer playtest.
+
+## Historical inactive milestone receipt
+
+Status: incomplete and inactive on `codex/expedition-split-integration`, parent
+`e75d2516cd94273c3ad3366a642e969e09280c72`. This branch does not implement
+working split-party gameplay. Do not merge it into the builder as a finished
+stand-in fix or activate exp-layout-4 based on managed/compile results.
+
+## Implemented
+
+- `ExpeditionJoinRules`: host-only 3-second countdown, eligible members currently
+  inside at expiry only, empty cancellation, capsule centre feet + 0.85, inclusive
+  cylinder, airborne membership, ordinal single-door resolution, detached views.
+  Transfer refusal starts a new full countdown on the next tick.
+- `ExpeditionCohorts.Active/Members`: detached snapshots for the runtime adapter.
+- `NativeExpeditionCohortPlacement`: reserve validated supported empty slots, hold
+  cohort input, move existing pilot GameObjects and seats between local scenes,
+  retain vitals, update occupancy, restore source on rollback.
+- `NativeExpeditionAreaTransfers`: connects the inactive registry and cohort
+  state machine to join membership and slot reservations. Existing Ward occupants
+  are not held while a newcomer waits for readiness. Requires both runtimes to
+  already exist and be ready; does not itself load scenes or bind transport.
+- Native import fixture for subset movement, rollback, unchanged bystander,
+  seat/scene ownership and rejection before mutation for unequal clocks.
+
+## Remaining blockers
+
+1. Pilot cooldowns and kit timers use arena-local clocks. Runtime clocks diverge
+   during empty suspension or PvE hold. Placement deliberately refuses unequal
+   clocks; implement and test an explicit timer migration contract. Active
+   projectiles/fields, DOT references, rewind history, corpse/contact ledgers and
+   held cast state need ownership audit and failure recovery before activation.
+2. Replace the single arena FixedUpdate path with registry scheduling and stable
+   account/seat routing; preserve one session clock tick and one scene simulation.
+   Rebind local presentation without resetting the other area's encounter.
+3. Director, progression, damage/revive/reprint, closures, encounters, participant
+   freeze, wipe, extraction and checkpoints still use the old global run area.
+   Implement the owner-approved cross-area table in EXPEDITION-HUB.md.
+4. Negotiate split-area wire capability; route each recipient's frame/projection,
+   input, event and ack with area/epoch/transfer identity. Existing network code
+   still broadcasts one area; never expose two-area data through it.
+5. Owner removed run saves/resume on 2026-10-16. No save-envelope or schema-1
+   reader work remains. Finish packet-byte, active-count and memory instrumentation;
+   run required Windows worst-case timing.
+6. Connect `joins[]` records (doorId, area, joinInside, joinStartedAt, duration),
+   `members[].atJoin/area`, and viewer-local area/phase/loading/areaBarrier to
+   the public projection. Only then replace F entry alongside subset transfer.
+   Preserve F exit/interactions. Claude owns the visual ring/countdown/party list.
+7. After all gates, switch live exp-layout-4 and BOTH LiveSha256 and Python PINNED.
+   Fresh runs no longer load saved layouts. Live connections still validate layout identity.
+
+## Verification
+
+Managed C#9 warnings-as-errors compile passes. Join-rule suite: 25 assertions;
+cohort: 69; registry/query audit: 292; co-op: 41; director: 98; join draft: 38;
+layout: 268. Source package check: 2219 files.
+
+Unity Player/Runtime/Editor semantic compilation uses pinned Unity 6000.3.24f1
+reference assemblies; compiler warnings in existing presentation/updater fields
+are unrelated. This is not execution of Unity or its native PhysX fixtures.
+
+Not run: new native placement fixture, split-area transport acceptance, Windows
+one-host/three-guest play with hub bystander, Windows two-area timing. No smoothness
+or performance claim. Shared and builder were observed at bb4b36a before push;
+this work has not been merged, built, published or enabled.
+
+## Follow-up: fresh runs and wire guards
+
+Live no-save policy was merged and synced to shared/builder at `8d1ec86` on
+2026-10-16, including the separately merged airborne chip-selection fix.
+Publication has not been verified. The gated split additions remain on this branch.
+This integration branch adds `ExpeditionAreaChannel<T>` for explicitly bound
+area/epoch/transfer identities with independent monotonic frame/event streams;
+`ExpeditionAreaCommandGate` rejects stale, duplicate, unready and wrong-account
+input. Capability negotiation contract is defined, but not advertised by live
+connections until the scene/director path is integrated.
+
+`ExpeditionAreaProjection.Build` requires a detached area-specific provider,
+refuses cross-area anchors, chests, arrivals, closures, loot, dice and hub state,
+and separates recipient-private data. Shared-public batching explicitly refuses
+split sessions. View receivers require explicit ticket binding and clear pending
+state on transfer/reconnect; guest replies must match both request and current
+identity. `joins[]`, `members[].area/atJoin` keep the agreed field names.
+The current global director is deliberately prohibited from supplying split views.
+A per-area provider and actor-frame transport call sites still need integration.
+
+Checks: 25 area-wire checks, 11 fresh-run checks, 91 integration, 481 rules,
+8370 presentation, 41 co-op and 98 director pass, plus C#9 warnings-as-errors
+compilation and Player/Runtime/Editor Unity API compilation. Source package: 2225
+files. No native execution, live split transport or Windows timing claim.

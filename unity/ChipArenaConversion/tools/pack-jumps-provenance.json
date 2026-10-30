@@ -1,0 +1,560 @@
+{
+ "pack": "Explosive RPG Character Mecanim Animation Pack (owner licence; FBX never committed)",
+ "channels": 64,
+ "quantum": 0.00390625,
+ "clips": [
+  {
+   "clip": "sword/guard",
+   "source": "Armed-Idle",
+   "range": [
+    0,
+    0
+   ],
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "6ce46aa2377d28f7e0719988f5de4621d459a1d61e393d7706c9264bcb3d95f9",
+   "input": "81b8baf9661038ff2e6bacfc27f47e335c7ce43bfdbe3bda3c7ac5748f8439b0"
+  },
+  {
+   "clip": "sword/jump",
+   "source": "Armed-Jump",
+   "range": [
+    0,
+    18
+   ],
+   "fps": 60,
+   "frames": 37,
+   "loop": false,
+   "marks": [
+    0.0333,
+    0.0667,
+    0.3333,
+    0.6
+   ],
+   "sha256": "07b940d32b63d166a676f55e5c63a0315630aa9f5582005f5c439a312e1eb704",
+   "input": "82bdb855b7d03bd55e95ab00c756b1ca89160fd449092d5bd43221afff80c058"
+  },
+  {
+   "clip": "sword/fall",
+   "source": "Armed-Fall",
+   "range": [
+    0,
+    32
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": true,
+   "marks": [],
+   "sha256": "a26659074752f51c3f219a70f13515e0c4d46842c4d30f10d9d8db8cc8a78033",
+   "input": "26d58511a595c0c97056b9c92b77da4cf6b5ba2b7a3f090c2ba8304177d8d1f9"
+  },
+  {
+   "clip": "sword/land",
+   "source": "Armed-Land",
+   "range": [
+    20,
+    34
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.4667
+   ],
+   "sha256": "2ad2a820c659f0a9549510177ec539ddc6931ac38a2dfee618bd4ec6daa8d389",
+   "input": "c23c4517b633d6aec1c3a51d6eef9eb7ee57860b9112a543b258da549d7b7a24"
+  },
+  {
+   "clip": "sword/flip",
+   "source": "Armed-Jump-Flip",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [],
+   "sha256": "f10290c921c83531a44b84ef3a890a31d1d27b80d69d5cf251f6ae15ebe07ae1",
+   "input": "1d62446211c7ce49bac52a40f0dac57fd84a40cca77e3e064e1f644db10e7fd4"
+  },
+  {
+   "clip": "daggers/guard",
+   "source": "Armed-Idle",
+   "range": [
+    0,
+    0
+   ],
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "97b187d33cb9f90b773f04fe5664c8bb542f27cacea444d8a7f98c7df2f0671f",
+   "input": "81b8baf9661038ff2e6bacfc27f47e335c7ce43bfdbe3bda3c7ac5748f8439b0"
+  },
+  {
+   "clip": "daggers/jump",
+   "source": "Armed-Jump",
+   "range": [
+    0,
+    18
+   ],
+   "fps": 60,
+   "frames": 37,
+   "loop": false,
+   "marks": [
+    0.0333,
+    0.0667,
+    0.3333,
+    0.6
+   ],
+   "sha256": "f01a99d20cd3c8f3a45fec403fc4a47395ddcf45e71fe50231de1d3e809764b8",
+   "input": "82bdb855b7d03bd55e95ab00c756b1ca89160fd449092d5bd43221afff80c058"
+  },
+  {
+   "clip": "daggers/fall",
+   "source": "Armed-Fall",
+   "range": [
+    0,
+    32
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": true,
+   "marks": [],
+   "sha256": "e9d5be23fead6bef0f958f2031a5e7ec88ac5bcdb56edca4a4fc04c8d07d5038",
+   "input": "26d58511a595c0c97056b9c92b77da4cf6b5ba2b7a3f090c2ba8304177d8d1f9"
+  },
+  {
+   "clip": "daggers/land",
+   "source": "Armed-Land",
+   "range": [
+    20,
+    34
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.4667
+   ],
+   "sha256": "29005fdece5ea4d41e7d789c4d96b864daf34224d655bf3d94de81565de1c52d",
+   "input": "c23c4517b633d6aec1c3a51d6eef9eb7ee57860b9112a543b258da549d7b7a24"
+  },
+  {
+   "clip": "daggers/flip",
+   "source": "Armed-Jump-Flip",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [],
+   "sha256": "869a4d9ef42eefd4d8b28d0ed58c3a26dff6466325f6395cb93d7904d7416e0e",
+   "input": "1d62446211c7ce49bac52a40f0dac57fd84a40cca77e3e064e1f644db10e7fd4"
+  },
+  {
+   "clip": "greatsword/guard",
+   "source": "2Hand-Sword-Idle",
+   "range": [
+    0,
+    0
+   ],
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "2000cd8bf3139ad3a1848b68e010df6effb4b723e997bb6215bf61a05be6fb1f",
+   "input": "69af4eeab2f93345b89459800d0809af1f5b2a7ffc45ff8d7b04a4f3872126b5"
+  },
+  {
+   "clip": "greatsword/jump",
+   "source": "2Hand-Sword-Jump",
+   "range": [
+    0,
+    18
+   ],
+   "fps": 60,
+   "frames": 37,
+   "loop": false,
+   "marks": [
+    0.0333,
+    0.0667,
+    0.3333,
+    0.6
+   ],
+   "sha256": "cd379a2f84454dcc2c2e97bce97669452624d7a923bd2f28588fffcbdcb1852e",
+   "input": "d53abc7c53acee3ef278004e0f414404fedcc970d525518b9e6538cc977b930e"
+  },
+  {
+   "clip": "greatsword/fall",
+   "source": "2Hand-Sword-Fall",
+   "range": [
+    0,
+    32
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": true,
+   "marks": [],
+   "sha256": "a63579c1af196a2a70e9b1abb3d2cc6573e6426535c07f49a35a9240917f6e76",
+   "input": "391c43cbcb305576f25a29ec14da79574621f8ea289fa607eddc1882fd6e4a23"
+  },
+  {
+   "clip": "greatsword/land",
+   "source": "2Hand-Sword-Land",
+   "range": [
+    21,
+    34
+   ],
+   "fps": 60,
+   "frames": 27,
+   "loop": false,
+   "marks": [
+    0,
+    0.1333,
+    0.4333
+   ],
+   "sha256": "2f6c70d52df123f86300cb5adcbf9f338e2c8a7c8943a37735dda58159423318",
+   "input": "d53abc7c53acee3ef278004e0f414404fedcc970d525518b9e6538cc977b930e"
+  },
+  {
+   "clip": "greatsword/flip",
+   "source": "2Hand-Sword-Jump-Flip",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [],
+   "sha256": "25eb7bdc8ca87d1b91420595293662e3ef440b5ac026740b50a523d351428915",
+   "input": "f882815941d224adbcd5d235e7b256082de7e7ac00c2e233ad11a594a5060a6f"
+  },
+  {
+   "clip": "shield/guard",
+   "source": "Armed-Idle",
+   "range": [
+    0,
+    0
+   ],
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "8207ffb5d33551d67f89b2b205a24a439782b69483fc0b9d378b9e3344df23b3",
+   "input": "81b8baf9661038ff2e6bacfc27f47e335c7ce43bfdbe3bda3c7ac5748f8439b0"
+  },
+  {
+   "clip": "shield/jump",
+   "source": "Armed-Jump",
+   "range": [
+    0,
+    18
+   ],
+   "fps": 60,
+   "frames": 37,
+   "loop": false,
+   "marks": [
+    0.0333,
+    0.0667,
+    0.3333,
+    0.6
+   ],
+   "sha256": "322bc58ad3ca4de59cd72552f0b82b103e8f936f668846e53b7bf1bc2b767ec2",
+   "input": "82bdb855b7d03bd55e95ab00c756b1ca89160fd449092d5bd43221afff80c058"
+  },
+  {
+   "clip": "shield/fall",
+   "source": "Armed-Fall",
+   "range": [
+    0,
+    32
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": true,
+   "marks": [],
+   "sha256": "3f9aad7d10a92453cf886e1af456690d1db69291a7f871242c4e1b07f8639726",
+   "input": "26d58511a595c0c97056b9c92b77da4cf6b5ba2b7a3f090c2ba8304177d8d1f9"
+  },
+  {
+   "clip": "shield/land",
+   "source": "Armed-Land",
+   "range": [
+    20,
+    34
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.4667
+   ],
+   "sha256": "c9eea35d3d62e35022c3a824313d9e8afc95af89ee87d4bb928f93eae5461960",
+   "input": "c23c4517b633d6aec1c3a51d6eef9eb7ee57860b9112a543b258da549d7b7a24"
+  },
+  {
+   "clip": "shield/flip",
+   "source": "Armed-Jump-Flip",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [],
+   "sha256": "b581f8e20f0ee0516efcd654973480c5ecc24c72b887ec81e5584fd437eec7b0",
+   "input": "1d62446211c7ce49bac52a40f0dac57fd84a40cca77e3e064e1f644db10e7fd4"
+  },
+  {
+   "clip": "shooting/guard",
+   "source": "2Hand-Shooting-Idle",
+   "range": [
+    0,
+    0
+   ],
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "aeabb2c7a45480fd54517af959860782f1d0fbf3ae992bce9e4dc3b5c2072298",
+   "input": "23f90ae142cf556f0dad9d44921a59e1279a1eab165e6d3531f87097e78e4e79"
+  },
+  {
+   "clip": "shooting/jump",
+   "source": "2Hand-Shooting-Jump",
+   "range": [
+    0,
+    15
+   ],
+   "fps": 60,
+   "frames": 31,
+   "loop": false,
+   "marks": [
+    0.0667,
+    0.1333,
+    0.3667,
+    0.5
+   ],
+   "sha256": "42f4656980fcfeea4b7f73756fcefdee0b4b81b902edbc62140e00bfd5b19413",
+   "input": "752930265db83b81e9c584ff36d290ceb12be7d004d6c36a7359531455154396"
+  },
+  {
+   "clip": "shooting/fall",
+   "source": "2Hand-Shooting-Fall",
+   "range": [
+    0,
+    32
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": true,
+   "marks": [],
+   "sha256": "a946b959742732e4adb1e8639e8136f16679fafbe9cbfd218a19c81c6f69c562",
+   "input": "2b26592e25a513c13aeded05f4c78e9e166b8f9d36fa5a7318b3e52c3163ddfd"
+  },
+  {
+   "clip": "shooting/land",
+   "source": "2Hand-Shooting-Land",
+   "range": [
+    32,
+    48
+   ],
+   "fps": 60,
+   "frames": 33,
+   "loop": false,
+   "marks": [
+    0,
+    0.1667,
+    0.5333
+   ],
+   "sha256": "f254249db2ef7d429577614b9a72beb9c0b5317599ec627282517b21ac85bfd9",
+   "input": "752930265db83b81e9c584ff36d290ceb12be7d004d6c36a7359531455154396"
+  },
+  {
+   "clip": "shooting/flip",
+   "source": "2Hand-Shooting-Jump-Flip",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [],
+   "sha256": "fd7f38568ef12427e3b9241cec546465006ab505700db4ac7af48aa432337dc3",
+   "input": "4744a85f3807158eda697cacc9b5b7e89a44cfaa5d00c3bce525be2efffc08a5"
+  },
+  {
+   "clip": "staff/guard",
+   "source": "2Hand-Staff-Idle",
+   "range": [
+    0,
+    0
+   ],
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "08ef01c0f00c78f1b3a065135205f77ce0190182a5c705b16c204439b4218672",
+   "input": "fc1f7408598495b583696f286de176bb0ad6055859a4940afe7bffacbc99b84a"
+  },
+  {
+   "clip": "staff/jump",
+   "source": "2Hand-Staff-Jump",
+   "range": [
+    1,
+    20
+   ],
+   "fps": 60,
+   "frames": 39,
+   "loop": false,
+   "marks": [
+    0,
+    0.0333,
+    0.3,
+    0.6333
+   ],
+   "sha256": "be0c3966297decf20262b910f0f7d9fc8984818b470dbe8ada5ebf47937c963b",
+   "input": "6c08e447d94b4353ea29edf4a6b34ce8d84f060f2100a3552e948df3a27b7992"
+  },
+  {
+   "clip": "staff/fall",
+   "source": "2Hand-Staff-Fall",
+   "range": [
+    0,
+    32
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": true,
+   "marks": [],
+   "sha256": "accc2b07779bd8888a05214ea49fa5ce230d1ceae00188349f1cfc9245cab922",
+   "input": "db190075b4951a859c644a5225a388cdc5c46f2b4fb35ecea88120f9f121b389"
+  },
+  {
+   "clip": "staff/land",
+   "source": "2Hand-Staff-Land",
+   "range": [
+    21,
+    34
+   ],
+   "fps": 60,
+   "frames": 27,
+   "loop": false,
+   "marks": [
+    0,
+    0.1,
+    0.4333
+   ],
+   "sha256": "fe393bdbd79bb991fde0f501d2cd6648bb1e308b09aae98e5c6419c9953c77c5",
+   "input": "6c08e447d94b4353ea29edf4a6b34ce8d84f060f2100a3552e948df3a27b7992"
+  },
+  {
+   "clip": "staff/flip",
+   "source": "2Hand-Staff-Jump-Flip",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [],
+   "sha256": "ffd8382d1abfda277b6c95c9753dde63cd6927da50bdf7cf5d47fdba9a271063",
+   "input": "2958454bfe6ee77a50b4569b9822d4ab8957c85915b932b951b964041caf978a"
+  },
+  {
+   "clip": "unarmed/guard",
+   "source": "Unarmed-Idle",
+   "range": [
+    0,
+    0
+   ],
+   "fps": 60,
+   "frames": 2,
+   "loop": false,
+   "marks": [],
+   "sha256": "023d4717b3e67d5a27628c800962c3900dfe03538ba3a47d87fc35067756945d",
+   "input": "bae09780f68d8f4bba3e6f59bc3b4225212f95d7bc56fe2305719ca3358e8b20"
+  },
+  {
+   "clip": "unarmed/jump",
+   "source": "Unarmed-Jump",
+   "range": [
+    1,
+    20
+   ],
+   "fps": 60,
+   "frames": 39,
+   "loop": false,
+   "marks": [
+    0,
+    0.0333,
+    0.4,
+    0.6333
+   ],
+   "sha256": "d89123d4f8b275c998a4e90131ccb3ff2786a21aceee61384a987f7acdda34bf",
+   "input": "0d9f0980eb57fc193d5a5b543c9cf2258c48879b885cd9696129233298763039"
+  },
+  {
+   "clip": "unarmed/fall",
+   "source": "Unarmed-Fall",
+   "range": [
+    0,
+    32
+   ],
+   "fps": 30,
+   "frames": 33,
+   "loop": true,
+   "marks": [],
+   "sha256": "6e5418a3ae40f64baf8023f72b868d3065ac3a40e94070b15d180d82ae9400c0",
+   "input": "6335d3449e1ad32adcf4f772e42f705c70c9472889d54f5478689cefb04734e3"
+  },
+  {
+   "clip": "unarmed/land",
+   "source": "Unarmed-Land",
+   "range": [
+    21,
+    34
+   ],
+   "fps": 60,
+   "frames": 27,
+   "loop": false,
+   "marks": [
+    0,
+    0.1333,
+    0.4333
+   ],
+   "sha256": "1c63f603bbeddf806e0ec65df558941c5a7c9f1a3fa61bb210934bf761ee7ec8",
+   "input": "0d9f0980eb57fc193d5a5b543c9cf2258c48879b885cd9696129233298763039"
+  },
+  {
+   "clip": "unarmed/flip",
+   "source": "Unarmed-Jump-Flip",
+   "range": [
+    0,
+    14
+   ],
+   "fps": 60,
+   "frames": 29,
+   "loop": false,
+   "marks": [],
+   "sha256": "742e4455612cc9a6bf1c4a70c81ac932e24f50abe41414e244262df05f841c09",
+   "input": "c3a5506efb0084fb3feba8ca0359b453c0e2b8fa7ee80b225aa907239faa04a5"
+  }
+ ]
+}
