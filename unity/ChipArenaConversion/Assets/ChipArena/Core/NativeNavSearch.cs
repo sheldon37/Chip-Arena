@@ -36,12 +36,52 @@ namespace ChipArena.UnityConversion
             Array.Sort(nearestOrder,nearestComparer);
             foreach(int i in nearestOrder)if(usable(nodes[i]))return nodes[i];return null;
         }
+        private const float CellSize=4;
+        private readonly Dictionary<(int x,int y,int z),List<int>> cells=new Dictionary<(int,int,int),List<int>>();
+        private static int Cell(float coordinate)=>(int)Math.Floor(coordinate/CellSize);
+        // Attach locally, never raycast the entire map when the origin is blocked or off-mesh.
+        // Exact distance order within the radius; at most maxCandidates expensive predicates.
+        // Null means no safe local attachment was found, not permission to walk through a wall.
+        public MapNavNode NearestLocal(V3 point,Func<MapNavNode,bool> usable,float radius=8,int maxCandidates=64)
+        {
+            if(!(radius>0)||float.IsInfinity(radius)||maxCandidates<1)throw new ArgumentOutOfRangeException();
+            int count=0;float square=radius*radius;
+            for(int x=Cell(point.x-radius);x<=Cell(point.x+radius);x++)
+            for(int y=Cell(point.y-radius);y<=Cell(point.y+radius);y++)
+            for(int z=Cell(point.z-radius);z<=Cell(point.z+radius);z++)
+            {
+                if(!cells.TryGetValue((x,y,z),out var candidates))continue;
+                foreach(int i in candidates)
+                {var d=nodes[i].pos-point;float ds=V3.Dot(d,d);if(ds>square)continue;nearestDistance[i]=ds;nearestOrder[count++]=i;}
+            }
+            // Heap only the local candidates and pop the bounded prefix. Array.Sort's
+            // ranged comparer adapter allocates on .NET; this also avoids sorting the unused tail.
+            for(int i=count/2-1;i>=0;i--)NearestDown(i,count);
+            int limit=Math.Min(count,maxCandidates);
+            for(int k=0;k<limit;k++)
+            {var node=nodes[nearestOrder[0]];nearestOrder[0]=nearestOrder[--count];if(count>0)NearestDown(0,count);if(usable(node))return node;}
+            return null;
+        }
+        private void NearestDown(int slot,int count)
+        {
+            int value=nearestOrder[slot];
+            while(slot*2+1<count)
+            {
+                int child=slot*2+1;
+                if(child+1<count&&nearestComparer.Compare(nearestOrder[child+1],nearestOrder[child])<0)child++;
+                if(nearestComparer.Compare(value,nearestOrder[child])<=0)break;
+                nearestOrder[slot]=nearestOrder[child];slot=child;
+            }
+            nearestOrder[slot]=value;
+        }
         public NativeNavSearch(MapNav graph)
         {
             nodes=graph.nodes;int n=nodes.Length;edges=new List<Edge>[n];incoming=new List<Edge>[n];
             nearestOrder=new int[n];nearestDistance=new float[n];nearestComparer=new NearestComparer(nearestDistance);
             distance=new float[n];estimate=new float[n];previous=new int[n];heap=new int[n];position=new int[n];closed=new bool[n];
             for(int i=0;i<n;i++){index.Add(nodes[i].id,i);edges[i]=new List<Edge>();incoming[i]=new List<Edge>();}
+            for(int i=0;i<n;i++)
+            {var p=nodes[i].pos;var key=(Cell(p.x),Cell(p.y),Cell(p.z));if(!cells.TryGetValue(key,out var list)){list=new List<int>();cells.Add(key,list);}list.Add(i);}
             foreach(var link in graph.links)
             {
                 int a=index[link.a],b=index[link.b];float cost=(nodes[b].pos-nodes[a].pos).Length;

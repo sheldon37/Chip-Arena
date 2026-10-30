@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
         private MapNavNode NearestNavNode(Vector3 point)
         {
             long at=System.Diagnostics.Stopwatch.GetTimestamp();
-            try{navOrigin=point;return navSearch.Nearest(Vec(point),navUsable);}
+            try{navOrigin=point;return navSearch.NearestLocal(Vec(point),navUsable);}
             finally{NavigationNearestMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
         }
         private MapNavNode NearestEscapeNode(Vector3 point,bool pocket)
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
             // Test candidates in distance order, stopping at the first visible one.
             // Where(expensive physics).OrderBy(...).First used to raycast the whole
             // floor for every escaping mob on every catch-up tick.
-            try{navOrigin=point;return navSearch.Nearest(Vec(point),pocket?navPocketUsable:navEscapeUsable);}
+            try{navOrigin=point;return navSearch.NearestLocal(Vec(point),pocket?navPocketUsable:navEscapeUsable,16,128);}
             finally{NavigationNearestMs+=(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;}
         }
         private bool NavPocketUsable(MapNavNode node)

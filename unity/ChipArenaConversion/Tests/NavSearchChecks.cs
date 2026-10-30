@@ -23,6 +23,7 @@ internal static class NavSearchChecks
     {
         void Check(bool ok,string why){if(!ok)throw new Exception("Navigation search: "+why);}
         var set=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),new JsonSerializerOptions{IncludeFields=true});
+        CheckLocalNearest(set,Check);
         CheckHazardBroadPhase(set,Check);
         var map=set.maps.Single(m=>m.id=="siren");var search=new NativeNavSearch(map.nav);var result=new List<string>(map.nav.nodes.Length);
         Func<MapNavLink,bool> all=l=>true,closedHazards=l=>(l.hazards?.Length??0)==0;
@@ -146,6 +147,35 @@ internal static class NavSearchChecks
         if(h.kind=="vent"){c=h.a+new V3(0,h.size.y/2,0);size=h.size;}
         return NativeStageHazards.Cross(a,b,c,size);
     }
+    private static void CheckLocalNearest(UnityMapContent set,Action<bool,string> check)
+    {
+        int cases=0,baselineCalls=0,boundedCalls=0;
+        foreach(var map in set.maps.Where(m=>m.nav!=null))
+        {
+            var search=new NativeNavSearch(map.nav);
+            var points=map.spawns.ffa.Select(p=>p.pos).Concat(map.nav.nodes.Where((n,i)=>i%79==0).Select(n=>n.pos)).ToArray();
+            foreach(var point in points)foreach(int blocked in new[]{0,3,16,64})
+            {
+                var ordered=map.nav.nodes.OrderBy(n=>V3.Dot(n.pos-point,n.pos-point)).ToArray();
+                var rejected=new HashSet<MapNavNode>(ordered.Take(blocked));
+                var expected=ordered.Where(n=>V3.Dot(n.pos-point,n.pos-point)<=64).Take(64).FirstOrDefault(n=>!rejected.Contains(n));
+                int calls=0;var actual=search.NearestLocal(point,n=>{calls++;return !rejected.Contains(n);});
+                check(ReferenceEquals(actual,expected),"local nearest exhaustive oracle "+map.id);
+                check(calls<=64,"local attachment predicate budget");cases++;
+                if(blocked==0)check(actual!=null,"authored spawns/nodes have a local attachment "+map.id);
+            }
+            var at=points[0];
+            search.Nearest(at,n=>{baselineCalls++;return false;});
+            search.NearestLocal(at,n=>{boundedCalls++;return false;});
+            int outside=0;check(search.NearestLocal(new V3(100000,100000,100000),n=>{outside++;return true;})==null&&outside==0,"off-map returns without any world checks");
+            Func<MapNavNode,bool> reject=n=>false;search.NearestLocal(at,reject);
+            long before=GC.GetAllocatedBytesForCurrentThread();for(int i=0;i<100;i++)search.NearestLocal(at,reject);
+            check(GC.GetAllocatedBytesForCurrentThread()==before,"local attachment allocation free");
+        }
+        check(boundedCalls<baselineCalls,"blocked origin no longer scans the map");
+        Console.WriteLine($"PASS bounded nearest: {cases} exhaustive-oracle cases, authored spawn/node coverage, zero warm allocations; blocked predicates {baselineCalls} -> {boundedCalls}");
+    }
+
     private static void CheckHazardBroadPhase(UnityMapContent set,Action<bool,string> check)
     {
         int comparisons=0;double oldMs=0,newMs=0;

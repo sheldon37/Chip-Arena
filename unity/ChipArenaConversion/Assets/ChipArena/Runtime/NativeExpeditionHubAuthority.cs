@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
             return HubCross(start,target)||HubInside(start);
         }
         private Vector3 HubNavMove(NativeMinion m,Vector3 from,Vector3 to,Vector3 fallback,int? crowd=null)
-        {bool old=hubNav;hubNav=HubOn;try{return StructureNavMove(m.Id,from,to,fallback,HubOn?null:crowd);}finally{hubNav=old;}}
+        {bool old=hubNav;hubNav=HubOn;try{return StructureNavMove(m.Id,from,to,fallback,crowd);}finally{hubNav=old;}}
         private void StepHubPopulation()
         {
             if(!HubOn)return;StepHubGates();var state=Expedition.Session.Run.Snapshot();
