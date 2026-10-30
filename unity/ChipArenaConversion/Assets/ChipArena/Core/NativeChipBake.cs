@@ -223,6 +223,9 @@ namespace ChipArena.UnityConversion
                     float rim=Clamp01(1-Math.Abs(rr-.9f)/.1f)*Clamp01((dir.X*.6f+dir.Y*.8f-.2f)/.5f);cv.Over(x,y,Vector3.Lerp(hi,mid,.3f),.35f*rim*Cover(dw));
                 }
             }
+            // Six bolts in the collar's corners and, from a 40 px core, a dial of ticks round the crystal under the glass.
+            for(int i=0;i<6;i++){double ang=(-90+60*i)*Math.PI/180;Screw(cv,c+new Vector2((float)Math.Cos(ang),(float)Math.Sin(ang))*((R+Rin)*.5f),Math.Max(.8f,bw*.15f),m);}
+            if(px>=40)for(int i=0;i<24;i++){double ang=i*Math.PI/12;var u=new Vector2((float)Math.Cos(ang),(float)Math.Sin(ang));Stroke(cv,c+u*(Rc*1.06f),c+u*(Rin*(i%4==0?.95f:.91f)),Math.Max(.3f,.32f*s),inlay,i%4==0?.7f:.45f);}
             // The specular dot on the dome.
             Dot(cv,c+new Vector2(-Rin*.42f,-Rin*.5f),Math.Max(1,Rin*.09f),Vector3.One,.85f);
             return Done(cv);
@@ -238,6 +241,11 @@ namespace ChipArena.UnityConversion
         static Vector3 Spectrum(float u)
         {
             u-=(float)Math.Floor(u);float r=Clamp01(Math.Abs(u*6-3)-1),g=Clamp01(2-Math.Abs(u*6-2)),b=Clamp01(2-Math.Abs(u*6-4));return Vector3.Lerp(new Vector3(r,g,b),Vector3.One,.35f);
+        }
+        static void Stroke(Canvas cv,Vector2 a,Vector2 b,float half,Vector3 col,float k)
+        {
+            int x0=(int)(Math.Min(a.X,b.X)-half-2),x1=(int)(Math.Max(a.X,b.X)+half+2),y0=(int)(Math.Min(a.Y,b.Y)-half-2),y1=(int)(Math.Max(a.Y,b.Y)+half+2);
+            for(int y=y0;y<=y1;y++)for(int x=x0;x<=x1;x++)cv.Over(x,y,col,k*Line(Segment(new Vector2(x+.5f,y+.5f),a,b),half));
         }
         static void Dot(Canvas cv,Vector2 c,float r,Vector3 col,float a)
         {
@@ -268,6 +276,59 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The traces image's extent in core radii (its origin is TraceOrigin radii up and left of the core's centre).</summary>
         public const float TraceOrigin=-1.2f,TraceSpanX=9.8f,TraceSpanY=4.9f;
+
+        // ---- the board: the circuit under the card's face (owner 2026-10-29: "a lot more detail put into them"), a seamless
+        // tile, white (tinted when drawn): two buses crossing it edge to edge and a riser between them; branches into a
+        // processor's pins (a package with six pins a side, its die and pin-one dot), into a memory package and onto SMD pad
+        // pairs; a via field and vias where the branches end. Only the buses touch the tile's edges, so it tiles without a seam.
+        public const float BoardW=132,BoardH=88;
+        public static Image Board(float scale)
+        {
+            int W=(int)Math.Round(BoardW*scale),H=(int)Math.Round(BoardH*scale);var cv=new Canvas(W,H);var cover=new float[W*H];float lw=Math.Max(.75f,.8f*scale);
+            // Coverage is the maximum over the strokes, pads and vias, each rasterised in its own bounds.
+            void Put(int x,int y,float c){if(x<0||y<0||x>=W||y>=H)return;int i=y*W+x;if(c>cover[i])cover[i]=c;}
+            void Seg(float ax,float ay,float bx,float by,float k=1)
+            {
+                var a=new Vector2(ax,ay)*scale;var b=new Vector2(bx,by)*scale;float m=lw+1;
+                for(int y=(int)(Math.Min(a.Y,b.Y)-m);y<=(int)(Math.Max(a.Y,b.Y)+m);y++)for(int x=(int)(Math.Min(a.X,b.X)-m);x<=(int)(Math.Max(a.X,b.X)+m);x++)Put(x,y,k*Clamp01(lw*.5f+.5f-Segment(new Vector2(x+.5f,y+.5f),a,b)));
+            }
+            void Path(params float[] p){for(int i=2;i+1<p.Length;i+=2)Seg(p[i-2],p[i-1],p[i],p[i+1]);}
+            void Outline(float x0,float y0,float x1,float y1,float k){Seg(x0,y0,x1,y0,k);Seg(x1,y0,x1,y1,k);Seg(x1,y1,x0,y1,k);Seg(x0,y1,x0,y0,k);}
+            void Pad(float x0,float y0,float x1,float y1,float k)
+            {
+                for(int y=(int)(y0*scale)-1;y<=(int)(y1*scale)+1;y++)for(int x=(int)(x0*scale)-1;x<=(int)(x1*scale)+1;x++)
+                {float d=Math.Max(Math.Max(x0*scale-(x+.5f),x+.5f-x1*scale),Math.Max(y0*scale-(y+.5f),y+.5f-y1*scale));Put(x,y,k*Cover(d));}
+            }
+            void Via(float vx,float vy,float k=1)
+            {
+                var c=new Vector2(vx,vy)*scale;float r=1.7f*scale,half=Math.Max(.45f,.45f*scale);
+                for(int y=(int)(c.Y-r-2);y<=(int)(c.Y+r+2);y++)for(int x=(int)(c.X-r-2);x<=(int)(c.X+r+2);x++)Put(x,y,k*Clamp01(half+.5f-Math.Abs((new Vector2(x+.5f,y+.5f)-c).Length()-r)));
+            }
+            // The buses, edge to edge, and the riser between them.
+            foreach(float y in new[]{12f,16f,20f,68f,72f})Seg(0,y,BoardW,y);foreach(float x in new[]{104f,108f})Seg(x,20,x,68);
+            // The processor: its package, the die and its pin-one dot, six pins a side; the upper bus into its top pins, the lower
+            // into its bottom ones, its left pins out to vias, its right pins into the memory package (pins on its sides).
+            Outline(25,33,47,55,.9f);Pad(31,39,41,49,.22f);Outline(31,39,41,49,.5f);Via(28.4f,36.4f,.8f);
+            for(int i=0;i<6;i++){float o=28.5f+3*i,v=36.5f+3*i;Seg(o,33,o,30.5f,.85f);Seg(o,55,o,57.5f,.85f);Seg(25,v,22.5f,v,.85f);Seg(47,v,49.5f,v,.85f);}
+            foreach(float x in new[]{31.5f,37.5f,43.5f})Seg(x,20,x,30.5f);foreach(float x in new[]{34.5f,40.5f})Seg(x,72,x,57.5f);
+            Path(22.5f,38.5f,14,38.5f,8,32.5f);Via(8,32.5f);Path(22.5f,44.5f,12,44.5f);Via(12,44.5f);Path(22.5f,50.5f,16,50.5f,10,56.5f);Via(10,56.5f);
+            Outline(66,36,84,52,.9f);for(int i=0;i<4;i++){float v=39.5f+3*i;Seg(66,v,63.5f,v,.85f);Seg(84,v,86.5f,v,.85f);Seg(49.5f,v,63.5f,v);}
+            Path(86.5f,39.5f,97,39.5f);Via(97,39.5f);Path(86.5f,45.5f,94,45.5f,98,49.5f);Via(98,49.5f);
+            // SMD pad pairs off the riser, a via field, short runs into the corners.
+            foreach(float y in new[]{30f,38f,46f}){Seg(108,y+1.2f,115,y+1.2f);Pad(115,y,117.4f,y+2.4f,.85f);Pad(120.6f,y,123,y+2.4f,.85f);Pad(117.4f,y+.5f,120.6f,y+1.9f,.3f);}
+            for(int i=0;i<2;i++)for(int j=0;j<3;j++)Via(118+6*i,54+4.5f*j,.85f);
+            Path(60,72,66,78,90,78);Via(90,78);Path(6,72,12,78,22,78);Via(22,78);Path(116,72,122,78,126,78);Via(126,78);Path(50,12,56,6,80,6);Via(80,6);Path(20,12,26,6,40,6);Via(40,6);
+            for(int y=0;y<H;y++)for(int x=0;x<W;x++)cv.Over(x,y,Vector3.One,cover[y*W+x]);
+            return Done(cv);
+        }
+        // ---- the bezel's machined notches (a tile repeating down the long sides): a dark cut with a lit lip under it ----
+        public const float NotchW=4,NotchH=7;
+        public static Image Notch(float scale)
+        {
+            int W=Math.Max(2,(int)Math.Round(NotchW*scale)),H=Math.Max(3,(int)Math.Round(NotchH*scale));var cv=new Canvas(W,H);float y0=2.4f*scale,t=Math.Max(.8f,.9f*scale),lip=Math.Max(.7f,.6f*scale);
+            for(int y=0;y<H;y++)for(int x=0;x<W;x++){float py=y+.5f;cv.Over(x,y,Vector3.Zero,.62f*Clamp01(Math.Min(py-y0,y0+t-py)+.5f));cv.Over(x,y,Vector3.One,.16f*Clamp01(Math.Min(py-(y0+t),y0+t+lip-py)+.5f));}
+            return Done(cv);
+        }
 
         // ---- the edge connector's pad (one period: a gold finger and its gap) ----
         public static Image Pad(float scale)

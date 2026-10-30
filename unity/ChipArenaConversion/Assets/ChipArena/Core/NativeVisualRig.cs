@@ -283,8 +283,9 @@ namespace ChipArena.UnityConversion
         // (Relax); 0 copies the game's arm as before. Still: 0..1, a still stance (the menus' portraits, the rooftop's seated
         // pilot and watcher; not a cut or a signature move, whose weapon paths stay the game's): an arm whose fist is seated
         // relaxes too, and seated hands rest on the lap (OnLap). LeftCarries, RightCarries: that hand carries what no handle seats
-        // (a caster's staff, the bow, on the left): it counts as held, not free.
-        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still; public bool LeftCarries, RightCarries; public Hold Right, Left, SupportHold; }
+        // (a caster's staff, the bow, on the left): it counts as held, not free. Bound: the support holds whatever the hands' distance
+        // (the draft's wrist plant, whose left hand works on the right forearm).
+        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold; }
 
         // The Standard weapons' handles (NativeWeaponModels). The sword family draws at the hand turned by
         // NativeSpecialPose.HeldRotation (`held`) with its grip along +z through the wrist; the shield's grip bar stands up behind
@@ -357,7 +358,7 @@ namespace ChipArena.UnityConversion
         public static void Pose(State s,CapturedRig.Pose pose,in Grasp grasp,bool plantFeet,bool fitFloor)
         {
             var r=s.Rig; int n=r.Count;
-            float support=Math.Min(1,grasp.Support)*HandsTogether(pose);
+            float support=Math.Min(1,grasp.Support)*(grasp.Bound?1:HandsTogether(pose));
             // The game can let go of (or take up) a two-handed grip within a frame; the visual hands ease over WeightStep.
             if(s.HasLast) support=s.LastSupport+CapturedClip.Clamp(support-s.LastSupport,-WeightStep,WeightStep);
             s.LastSupport=support;

@@ -272,9 +272,11 @@ namespace ChipArena.UnityConversion
             {
                 s.Push(WeaponSculpt.S(1,1,face));Face(s,mesh,l,outline,zf,cy,w,h,tc,bc,metal,land,dark,face);s.Pop();
             }
-            // The edge connector: the substrate tab under the body and the gold pads on both faces (a key notch a third along).
+            // The edge connector: the substrate tab under the body and fifteen fine gold pads on both faces (a key notch a third
+            // along); clamps over the edge band down the long sides.
             s.Into(Body);s.Box(dark,V(0,-h/2-.035f,0),V(.58f,.08f,.03f),.006f);
-            for(int i=0;i<10;i++){if(i==3)continue;float x=-.252f+i*.056f;foreach(int face in new[]{1,-1})s.Box(Gold,V(x,-h/2-.04f,face*.0165f),V(.036f,.068f,.004f),.0012f);}
+            for(int i=0;i<16;i++){if(i==5)continue;float x=-.255f+i*.034f;foreach(int face in new[]{1,-1})s.Box(Gold,V(x,-h/2-.04f,face*.0165f),V(.022f,.068f,.004f));}
+            foreach(int side in new[]{-1,1})foreach(float y in new[]{-.22f,.08f})s.Box(metal,V(side*w/2,y,0),V(.016f,.05f,.028f),.003f);
             // Fins (Epic and up): swept blades off both sides, their leading edges lit.
             if(l.Fins)foreach(int side in new[]{-1,1})
             {
@@ -292,8 +294,9 @@ namespace ChipArena.UnityConversion
             return mesh;
         }
         // One face (+z, before the pickup's turn): the faceted bezel and its inlay (Rare and up: a second inlay; Uncommon and up:
-        // lit seams), the traces, the core (collar, well, crystal, glass dome; Rare and up: a holographic film), the corner gems
-        // (Legendary, Mythic) and the ring with its satellites (Epic and up; Mythic's are crystal shards).
+        // lit seams), machined notches down its sides and a lit ID slot on its top; the board inside it (Board); the core (a
+        // bolted collar, the lit iris in six arcs, a dial of ticks round the crystal, the glass dome; Rare and up: a holographic
+        // film), the corner gems (Legendary, Mythic) and the ring with its satellites (Epic and up; Mythic's are crystal shards).
         private static void Face(WeaponSculpt s,WeaponMesh mesh,in NativeChipCartridge.Look l,Vector2[] outline,float zf,float cy,float w,float h,float tc,float bc,WeaponPaint metal,WeaponPaint land,WeaponPaint dark,int face)
         {
             var o=Flat(outline,0);
@@ -301,14 +304,21 @@ namespace ChipArena.UnityConversion
             s.Into(Lights);Strip(s,Light(0xffffff,1.8f,.55f),WeaponSculpt.Inset(o,.068f,zf+.004f),WeaponSculpt.Inset(o,.078f,zf+.004f));
             if(l.SecondInlay)Strip(s,Light(0xffffff,1.4f,.5f),WeaponSculpt.Inset(o,.029f,zf+.0305f),WeaponSculpt.Inset(o,.035f,zf+.0305f));
             if(l.Seams)Strip(s,Light(0xffffff,1.2f,.45f),WeaponSculpt.Inset(o,.0135f,zf+.0303f),WeaponSculpt.Inset(o,.0175f,zf+.0303f));
-            var trace=Light(0xffffff,.42f,.3f);foreach(var t in PickupTraces)for(int i=1;i<t.Length;i++)Line(s,trace,t[i-1]+new Vector2(0,cy),t[i]+new Vector2(0,cy),zf+.0012f,.006f,.002f);
+            // Machined notches down the bezel's sides (inside the inlays) and the lit ID slot on its top edge.
+            s.Into(Body);for(int i=0;i<9;i++)foreach(int side in new[]{-1,1})Etch(s,Black,new Vector2(side*(w/2-.037f),-.3f+i*.06f),new Vector2(side*(w/2-.049f),-.3f+i*.06f),zf+.031f,.008f);
+            s.Into(Lights);s.Box(Light(0xffffff,1.6f,.5f),V(0,h/2-.032f,zf+.031f),V(.12f,.009f,.002f));
+            Board(s,l,o,zf,cy,metal,land,dark);
             // Relief: hex screws in the four corners of the face.
             s.Into(Body);foreach(var sp in ScrewSpots(w,h,tc,bc)){s.Cylinder(land,.017f,zf,zf+.008f,6,0,sp.X,sp.Y);s.Box(dark,V(sp.X,sp.Y,zf+.0085f),V(.022f,.005f,.002f));}
             var hc=new Vector2(0,cy);
             s.Into(Body);Strip(s,metal,Hex3(hc,.25f,zf),Hex3(hc,.235f,zf+.045f));Strip(s,land,Hex3(hc,.235f,zf+.045f),Hex3(hc,.19f,zf+.045f));Strip(s,metal,Hex3(hc,.19f,zf+.045f),Hex3(hc,.166f,zf+.012f));
+            // The collar's six hex bolts in its corners, the iris broken into six arcs by dark clamps.
+            for(int k=0;k<6;k++){double a=Math.PI/2+k*Math.PI/3;float ca=(float)Math.Cos(a),sa=(float)Math.Sin(a);s.Cylinder(land,.012f,zf+.044f,zf+.051f,6,0,.2125f*ca,cy+.2125f*sa);s.Box(dark,V(.159f*ca,cy+.159f*sa,zf+.0135f),V(.02f,.012f,.003f),0,0,0,(float)a);}
             s.Into(Lights);Strip(s,Light(0xffffff,2.2f,.6f),Hex3(hc,.166f,zf+.0125f),Hex3(hc,.152f,zf+.0125f));
             s.Into(Body);Disc(s,dark,Hex3(hc,.152f,zf+.012f));
-            s.Into(Lights);Crystal(s,l,new Vector3(0,cy,zf+.02f));
+            // A dial of ticks round the crystal (every fourth longer), under the dome.
+            s.Into(Lights);for(int k=0;k<24;k++){double a=k*Math.PI/12;var u=new Vector2((float)Math.Cos(a),(float)Math.Sin(a));Etch(s,Light(0xffffff,.9f,.4f),hc+u*(k%4==0?.106f:.114f),hc+u*.126f,zf+.0128f,k%4==0?.006f:.004f);}
+            Crystal(s,l,new Vector3(0,cy,zf+.02f));
             s.Into(Glass);var dome=new Vector3(0,cy,zf+.012f);Clear(mesh,DomeAlpha,()=>s.Sphere(WeaponPaint.Glow(0xe8f0ff,.08f,.5f),dome,new Vector3(.155f,.155f,.05f),4,12));
             if(l.Holo)Clear(mesh,HoloAlpha,()=>s.Sphere(WeaponPaint.Glow(0xb8ffe8,.18f,.6f),dome+new Vector3(0,0,.002f),new Vector3(.148f,.148f,.046f),4,12));
             s.Into(Body);if(l.Gems)foreach(var g in GemSpots(w,h,tc,bc))s.Gem(GemPaint(l),new Vector3(g.X,g.Y,zf+.036f),.026f,.04f,8,.6f,0,.55f);
@@ -321,15 +331,68 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Alpha of the core's glass dome and the rarer tiers' holographic film.</summary>
         public const float DomeAlpha=.22f,HoloAlpha=.14f;
-        // The traces in the face's plane (model units, the core at the origin): from the collar out to the edges, PCB style.
-        private static readonly Vector2[][] PickupTraces=
+        // The board inside the bezel (one face, +z; model units, the chip centred, the core at (0, cy)): a substrate plate a shade
+        // off the body (so the face reads as a surface, not a hole); the processor under the core (a package with a heat spreader,
+        // its pin-one lamp and the core's hex etched on the spreader, pins on all four sides), fed by the core's bus on its top
+        // row and feeding the connector's bus off its bottom row; on its left three capacitors, a can and three resistors, on
+        // its right a memory package and the clock; a trace network with vias between them (the tier's light, dim; the buses
+        // bright); and the side plates beside the core: the rank's pips on the left (lit from the bottom to the tier's rank; the
+        // kits' alternate), a status lamp over a vent on the right.
+        private static void Board(WeaponSculpt s,in NativeChipCartridge.Look l,Vector3[] o,float zf,float cy,WeaponPaint metal,WeaponPaint land,WeaponPaint dark)
         {
-            new[]{new Vector2(.22f,-.1f),new Vector2(.28f,-.16f),new Vector2(.28f,-.3f)},
-            new[]{new Vector2(.12f,-.24f),new Vector2(.12f,-.34f),new Vector2(.2f,-.42f),new Vector2(.25f,-.42f)},
-            new[]{new Vector2(-.12f,-.24f),new Vector2(-.12f,-.36f),new Vector2(-.24f,-.48f)},
-            new[]{new Vector2(0,-.26f),new Vector2(0,-.5f)},
-            new[]{new Vector2(-.22f,-.1f),new Vector2(-.28f,-.16f),new Vector2(-.28f,-.26f)},
+            float zb=zf+.0015f,zt=zb+.001f;var pkg=WeaponPaint.Solid(0x111318,.03f);var pin=l.Metal==NativeChipCartridge.Metal.Gold?Gold:land;var ceramic=WeaponPaint.Solid(0x7a664c,.04f);
+            s.Into(Body);Disc(s,WeaponPaint.Solid(Mix(l.Body,l.MetalLo,.5f),.03f),WeaponSculpt.Inset(o,.078f,zb));
+            // The processor and its pins.
+            s.Box(pkg,V(0,-.27f,zb+.007f),V(.2f,.13f,.014f),.003f);s.Box(metal,V(0,-.27f,zb+.015f),V(.12f,.08f,.004f),.0015f);
+            for(int i=0;i<7;i++){float x=-.075f+i*.025f;s.Box(pin,V(x,-.197f,zb+.002f),V(.009f,.018f,.004f));s.Box(pin,V(x,-.344f,zb+.002f),V(.009f,.018f,.004f));}
+            for(int i=0;i<5;i++)foreach(int side in new[]{-1,1})s.Box(pin,V(side*.109f,-.31f+i*.02f,zb+.002f),V(.018f,.009f,.004f));
+            // Left: three capacitors (ceramic, metal ends), the can (a cross scored in its top), three resistors.
+            foreach(float y in new[]{-.23f,-.27f,-.31f}){s.Box(ceramic,V(-.2f,y,zb+.006f),V(.044f,.022f,.012f),.002f);foreach(int e in new[]{-1,1})s.Box(land,V(-.2f+e*.018f,y,zb+.0065f),V(.01f,.024f,.013f));}
+            s.Cylinder(land,.03f,zb,zb+.024f,12,.004f,-.255f,-.175f);Etch(s,dark,new Vector2(-.273f,-.175f),new Vector2(-.237f,-.175f),zb+.0242f,.004f);Etch(s,dark,new Vector2(-.255f,-.193f),new Vector2(-.255f,-.157f),zb+.0242f,.004f);
+            foreach(float x in new[]{-.215f,-.175f,-.135f}){s.Box(pkg,V(x,-.365f,zb+.004f),V(.03f,.016f,.008f));foreach(int e in new[]{-1,1})s.Box(land,V(x+e*.0125f,-.365f,zb+.0045f),V(.007f,.017f,.009f));}
+            // Right: the memory package (pins on its sides) and the clock's can.
+            s.Box(pkg,V(.215f,-.25f,zb+.006f),V(.1f,.075f,.012f),.002f);
+            for(int i=0;i<3;i++)foreach(float x in new[]{.157f,.273f})s.Box(pin,V(x,-.27f+i*.02f,zb+.002f),V(.016f,.008f,.004f));
+            s.Box(metal,V(.215f,-.345f,zb+.007f),V(.08f,.036f,.014f),.006f);
+            // The side plates: the rank's pips (left), the status lamp over the vent (right).
+            foreach(int side in new[]{-1,1})s.Box(metal,V(side*.272f,.11f,zb+.003f),V(.07f,.36f,.006f),.002f);
+            for(int i=0;i<6;i++){float y=-.05f+i*.06f;s.Into(Body);s.Box(dark,V(-.272f,y,zb+.0062f),V(.036f,.032f,.002f));if(l.Rank>0?i<l.Rank:i%2==0){s.Into(Lights);s.Box(Light(0xffffff,2f,.6f),V(-.272f,y,zb+.0072f),V(.024f,.02f,.002f));}}
+            s.Into(Body);s.Box(dark,V(.272f,.25f,zb+.0062f),V(.032f,.032f,.002f));for(int i=0;i<5;i++)s.Box(dark,V(.272f,.18f-i*.05f,zb+.0062f),V(.046f,.012f,.002f));
+            // The lights: the lamps, the traces and vias, the buses (the core's into the processor's top pins; the connector's off
+            // its bottom pins), the core's hex on the spreader.
+            s.Into(Lights);s.Box(Light(0xffffff,2.2f,.6f),V(.272f,.25f,zb+.0072f),V(.02f,.02f,.002f));s.Box(Light(0xffffff,2f,.6f),V(-.085f,-.22f,zb+.0145f),V(.012f,.012f,.002f));
+            var trace=Light(0xffffff,.55f,.32f);var bus=Light(0xffffff,1.1f,.45f);var via=Light(0xffffff,.9f,.4f);
+            foreach(var t in BoardTraces)for(int i=1;i<t.Length;i++)Etch(s,trace,t[i-1],t[i],zt,.006f);
+            foreach(var v in BoardVias)Etch(s,via,v-new Vector2(.007f,0),v+new Vector2(.007f,0),zt+.0003f,.014f);
+            for(int i=0;i<7;i++){float x=-.075f+i*.025f;Etch(s,bus,new Vector2(x,cy-.25f+.577f*Math.Abs(x)),new Vector2(x,-.19f),zt,.007f);Etch(s,bus,new Vector2(x,-.352f),new Vector2(x,-.398f),zt,.007f);}
+            var hex=Hex3(new Vector2(0,-.27f),.024f,zb+.0175f);for(int k=0;k<6;k++)Etch(s,bus,new Vector2(hex[k].X,hex[k].Y),new Vector2(hex[(k+1)%6].X,hex[(k+1)%6].Y),zb+.0175f,.004f);
+        }
+        // The board's traces (Board; model units): the processor's side pins to the capacitors, the can, the memory and the clock;
+        // the capacitors on to vias; the collar's lower flanks down the sides (the right into the memory); the memory up to the
+        // right plate; the resistors down to the bezel; short feeds from the collar's top to the top edge.
+        private static readonly Vector2[][] BoardTraces=
+        {
+            new[]{new Vector2(-.118f,-.23f),new Vector2(-.178f,-.23f)},new[]{new Vector2(-.118f,-.27f),new Vector2(-.178f,-.27f)},new[]{new Vector2(-.118f,-.31f),new Vector2(-.178f,-.31f)},
+            new[]{new Vector2(-.118f,-.25f),new Vector2(-.145f,-.25f),new Vector2(-.145f,-.2f),new Vector2(-.17f,-.175f),new Vector2(-.226f,-.175f)},
+            new[]{new Vector2(-.118f,-.29f),new Vector2(-.165f,-.29f)},
+            new[]{new Vector2(-.222f,-.23f),new Vector2(-.25f,-.23f)},new[]{new Vector2(-.222f,-.27f),new Vector2(-.262f,-.27f)},new[]{new Vector2(-.222f,-.31f),new Vector2(-.25f,-.31f)},
+            new[]{new Vector2(-.215f,-.373f),new Vector2(-.215f,-.398f)},new[]{new Vector2(-.175f,-.373f),new Vector2(-.175f,-.398f)},new[]{new Vector2(-.135f,-.373f),new Vector2(-.135f,-.398f)},
+            new[]{new Vector2(.118f,-.23f),new Vector2(.149f,-.23f)},new[]{new Vector2(.118f,-.25f),new Vector2(.149f,-.25f)},new[]{new Vector2(.118f,-.27f),new Vector2(.149f,-.27f)},
+            new[]{new Vector2(.118f,-.29f),new Vector2(.14f,-.29f),new Vector2(.14f,-.325f),new Vector2(.16f,-.345f),new Vector2(.175f,-.345f)},
+            new[]{new Vector2(.118f,-.31f),new Vector2(.128f,-.31f),new Vector2(.128f,-.398f)},
+            new[]{new Vector2(.281f,-.23f),new Vector2(.297f,-.23f)},new[]{new Vector2(.281f,-.25f),new Vector2(.297f,-.25f)},new[]{new Vector2(.281f,-.27f),new Vector2(.297f,-.27f)},
+            new[]{new Vector2(-.16f,-.028f),new Vector2(-.16f,-.1f),new Vector2(-.19f,-.13f),new Vector2(-.19f,-.15f)},
+            new[]{new Vector2(.16f,-.028f),new Vector2(.16f,-.12f),new Vector2(.2f,-.16f),new Vector2(.2f,-.2125f)},
+            new[]{new Vector2(.245f,-.2125f),new Vector2(.245f,-.16f),new Vector2(.272f,-.133f),new Vector2(.272f,-.07f)},
+            new[]{new Vector2(-.1f,.322f),new Vector2(-.1f,.4f)},new[]{new Vector2(-.05f,.351f),new Vector2(-.05f,.4f)},new[]{new Vector2(.05f,.351f),new Vector2(.05f,.4f)},new[]{new Vector2(.1f,.322f),new Vector2(.1f,.4f)},
         };
+        private static readonly Vector2[] BoardVias={new Vector2(-.165f,-.29f),new Vector2(-.25f,-.23f),new Vector2(-.262f,-.27f),new Vector2(-.25f,-.31f),new Vector2(.297f,-.23f),new Vector2(.297f,-.25f),new Vector2(.297f,-.27f),new Vector2(-.19f,-.15f)};
+        // A flat strip (one quad facing +z) from a to b at depth z, `width` wide, its ends squared off half the width past them.
+        private static void Etch(WeaponSculpt s,in WeaponPaint c,Vector2 a,Vector2 b,float z,float width)
+        {
+            var d=b-a;float len=d.Length();if(len<1e-5f)return;d*=width*.5f/len;var n=new Vector2(-d.Y,d.X);a-=d;b+=d;
+            s.Quad(c,V(a.X-n.X,a.Y-n.Y,z),V(b.X-n.X,b.Y-n.Y,z),V(b.X+n.X,b.Y+n.Y,z),V(a.X+n.X,a.Y+n.Y,z));
+        }
         private static WeaponPaint MetalPaint(in NativeChipCartridge.Look l,int part)
         {
             int hex=part==0?l.MetalMid:Mix(l.MetalMid,l.MetalHi,.35f);float sheen=l.Metal==NativeChipCartridge.Metal.Gold?.16f:l.Metal==NativeChipCartridge.Metal.BlackChrome?.12f:.06f;

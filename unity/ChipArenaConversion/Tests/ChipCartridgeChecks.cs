@@ -187,6 +187,9 @@ namespace ChipArena.UnityConversion
             foreach(float sc in new[]{.8f,1.2f,1.6f})
             {
                 var tr=NativeChipBake.Traces(24,sc);InRange(tr,"traces");Check(Same(tr,NativeChipBake.Traces(24,sc))&&AlphaSum(tr,0,tr.H)>50,"traces deterministic and drawn");
+                var bd=NativeChipBake.Board(sc);InRange(bd,"board");Check(Same(bd,NativeChipBake.Board(sc))&&AlphaSum(bd,0,bd.H)>bd.W*6,"board deterministic and drawn");
+                bool seam=true;for(int y=0;y<bd.H;y++)seam&=Math.Abs(Px(bd,0,y).W-Px(bd,bd.W-1,y).W)<.35f;for(int x=0;x<bd.W;x++)seam&=Math.Abs(Px(bd,x,0).W-Px(bd,x,bd.H-1).W)<.35f;Check(seam,"board tiles without a seam");
+                var notch=NativeChipBake.Notch(sc);InRange(notch,"notch");Check(Same(notch,NativeChipBake.Notch(sc))&&AlphaSum(notch,0,notch.H)>1&&Px(notch,0,0).W<.05f,"notch deterministic, a cut with clear space round it");
                 var pad=NativeChipBake.Pad(sc);InRange(pad,"pad");Check(Px(pad,pad.W/2,pad.H/2).W>.99f&&Px(pad,0,pad.H/2).W<.05f,"a pad and its gap");
                 foreach(bool f in new[]{true,false}){var ring=NativeChipBake.Ring(24,sc,f);InRange(ring,"ring");Check(AlphaSum(ring,0,ring.H/2)>1||AlphaSum(ring,ring.H/2,ring.H)>1,"ring half drawn");}
             }
@@ -203,7 +206,7 @@ namespace ChipArena.UnityConversion
         static void Wiring(Func<string,string> R)
         {
             var card=R("Assets/ChipArena/Runtime/NativeChipCard.cs");var art=R("Assets/ChipArena/Runtime/NativeChipArt.cs");var draw=Body(card,"public static void Draw(Rect r,ContentChip c,int copies,ChipSize s,ChipLook look)");
-            foreach(var layer in new[]{"NativeChipArt.Shell(","NativeChipArt.Core(","NativeChipArt.Connector(","NativeChipArt.Traces(","NativeChipArt.Packets(","NativeChipArt.Crest(","NativeChipArt.Fins(","NativeChipArt.Body(","NativeChipArt.TitlePlate(","NativeChipArt.Embers(","NativeChipArt.Shards(","NativeChipArt.Aura(","NativeChipArt.Holographic(","NativeChipArt.Sweep("})
+            foreach(var layer in new[]{"NativeChipArt.Shell(","NativeChipArt.Hardware(","NativeChipArt.Board(","NativeChipArt.Core(","NativeChipArt.Connector(","NativeChipArt.Traces(","NativeChipArt.Packets(","NativeChipArt.Crest(","NativeChipArt.Fins(","NativeChipArt.Body(","NativeChipArt.TitlePlate(","NativeChipArt.Embers(","NativeChipArt.Shards(","NativeChipArt.Aura(","NativeChipArt.Holographic(","NativeChipArt.Sweep("})
                 Check(draw.Contains(layer),"the card draws "+layer);
             foreach(var hook in new[]{"NativeChipArt.HoloHalo(","NativeChipArt.HoloEdge(","NativeChipArt.HoloPads(","NativeChipArt.HoloScan(","NativeChipArt.HoloBrackets(","NativeChipArt.HoloGhost(","look.Recede","look.Focus","look.Chosen","look.Badge","look.Charge","look.Unbuilt","look.Bright","look.Calm","look.Plain","look.SweepAt","NativeHoloScan.DieCharge("})
                 Check(draw.Contains(hook),"the card keeps "+hook);
@@ -212,7 +215,7 @@ namespace ChipArena.UnityConversion
             // Allocation: the draw builds no string, array, list or lambda per frame (layouts and strings are cached).
             foreach(var bad in new[]{"new[]","new List<","new float[","new Color[","ToString(","ToList(",".Select(",".Where(","string.Format","+\"","\"+","=>{"})Check(!draw.Contains(bad),"the card draw allocates nothing ("+bad+")");
             Check(card.Contains("layouts.TryGetValue(key,out var cached)")&&card.Contains("counts.TryGetValue(key,out var text)"),"layouts and counts cached");
-            foreach(var fn in new[]{"public static void Shell(","public static void Body(","public static void Traces(","public static void Packets(","public static void Connector(","public static void Fins(","public static void Crest(","public static void Core(","public static void Embers(","public static void Shards(","public static void Badge(","public static float Pips(","public static void HoloEdge(","public static void HoloPads(","public static void TitlePlate("})
+            foreach(var fn in new[]{"public static void Shell(","public static void Body(","public static void Board(","public static void Hardware(","public static void Traces(","public static void Packets(","public static void Connector(","public static void Fins(","public static void Crest(","public static void Core(","public static void Embers(","public static void Shards(","public static void Badge(","public static float Pips(","public static void HoloEdge(","public static void HoloPads(","public static void TitlePlate("})
             {var b=Body(art,fn);foreach(var bad in new[]{"new[]","new List<","new float[","new Color[","ToString(","=>{"})Check(!b.Contains(bad),fn+" allocates nothing ("+bad+")");}
             // The bakes run only on a cache miss (Baked); no draw calls a bake directly.
             var bakeCall=new Regex("NativeChipBake\\.(Shell|Core|Traces|Pad|Fin|Ring|Crest|Badge)\\(");

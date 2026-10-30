@@ -66,21 +66,23 @@ namespace ChipArena.UnityConversion
         private static Texture2D Make(int w,int h,bool repeat)=>new Texture2D(w,h,TextureFormat.RGBA32,false){wrapMode=repeat?TextureWrapMode.Repeat:TextureWrapMode.Clamp,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};
 
         // ---- baked layers (Core/NativeChipBake.cs), cached by kind, tier and physical size ----
-        private enum Bake{Shell,ShellLarge,Core,Traces,Pad,Fin,RingFront,RingBack,Crest,Badge,Pip}
+        private enum Bake{Shell,ShellLarge,Core,Traces,Pad,Fin,RingFront,RingBack,Crest,Badge,Pip,Board,Notch}
+        // The tiles drawn repeating (their textures wrap).
+        private static bool Repeats(Bake kind)=>kind==Bake.Pad||kind==Bake.Board||kind==Bake.Notch;
         private static readonly Dictionary<(Bake,int,int),Texture2D> baked=new Dictionary<(Bake,int,int),Texture2D>();
         private static int TierIndex(string tier){int i=Array.IndexOf(Cart.Tiers,tier);return i>=0?i:tier==Cart.Rainbow?Cart.Tiers.Length:0;}
         private static string TierAt(int i)=>i<Cart.Tiers.Length?Cart.Tiers[i]:Cart.Rainbow;
         private static Texture2D Baked(Bake kind,string tier,int size)
         {
             var key=(kind,TierIndex(tier),size);if(baked.TryGetValue(key,out var t)&&t!=null)return t;if(baked.Count>320)ClearBakes();
-            return baked[key]=Upload(Raster(kind,TierAt(key.Item2),size),kind==Bake.Pad);
+            return baked[key]=Upload(Raster(kind,TierAt(key.Item2),size),Repeats(kind));
         }
         // A layer rasterised (pure managed code: safe on the warming worker).
         private static NativeChipBake.Image Raster(Bake kind,string id,int size)
         {
             float s=size/100f;
             return kind==Bake.Shell?NativeChipBake.Shell(id,s,false):kind==Bake.ShellLarge?NativeChipBake.Shell(id,s,true):kind==Bake.Core?NativeChipBake.Core(id,size):kind==Bake.Traces?NativeChipBake.Traces(TraceRadius,s):
-                kind==Bake.Pad?NativeChipBake.Pad(s):kind==Bake.Fin?NativeChipBake.Fin(id,s):kind==Bake.RingFront?NativeChipBake.Ring(RingRadius,s,true):kind==Bake.RingBack?NativeChipBake.Ring(RingRadius,s,false):
+                kind==Bake.Board?NativeChipBake.Board(s):kind==Bake.Notch?NativeChipBake.Notch(s):kind==Bake.Pad?NativeChipBake.Pad(s):kind==Bake.Fin?NativeChipBake.Fin(id,s):kind==Bake.RingFront?NativeChipBake.Ring(RingRadius,s,true):kind==Bake.RingBack?NativeChipBake.Ring(RingRadius,s,false):
                 kind==Bake.Crest?NativeChipBake.Crest(id,s):kind==Bake.Badge?NativeChipBake.Badge(id,s):PipImage(size);
         }
         private static Texture2D Upload(NativeChipBake.Image im,bool repeat)
@@ -110,14 +112,14 @@ namespace ChipArena.UnityConversion
                     if(NativeChipBake.HasCrest(Cart.Tiers[i])){jobs.Add((Bake.Crest,i,ScaleKey(CrestScale(272))));jobs.Add((Bake.Crest,i,ScaleKey(CrestScale(480))));}if(l.Fins)jobs.Add((Bake.Fin,i,scale));
                 }
                 foreach(float coreR in new[]{27f,42f}){jobs.Add((Bake.Traces,0,ScaleKey(TraceStep(coreR))));jobs.Add((Bake.RingFront,0,RingKey(coreR)));jobs.Add((Bake.RingBack,0,RingKey(coreR)));}
-                jobs.Add((Bake.Pad,0,scale));jobs.Add((Bake.Pip,0,PipKey(6)));jobs.Add((Bake.Pip,0,PipKey(7)));jobs.RemoveAll(j=>baked.ContainsKey(j));
+                jobs.Add((Bake.Pad,0,scale));jobs.Add((Bake.Board,0,scale));jobs.Add((Bake.Notch,0,scale));jobs.Add((Bake.Pip,0,PipKey(6)));jobs.Add((Bake.Pip,0,PipKey(7)));jobs.RemoveAll(j=>baked.ContainsKey(j));
                 warmUploaded=0;warming=System.Threading.Tasks.Task.Run(()=>{var done=new List<((Bake,int,int),NativeChipBake.Image)>(jobs.Count);foreach(var j in jobs)done.Add((j,Raster(j.Item1,TierAt(j.Item2),j.Item3)));return done;});
                 return;
             }
             if(!warming.IsCompleted)return;
             if(warming.IsFaulted){Debug.LogWarning("Chip art failed to warm: "+warming.Exception?.GetBaseException().Message);warming=null;return;}
             var list=warming.Result;
-            for(int n=0;n<6&&warmUploaded<list.Count;n++,warmUploaded++){var (key,image)=list[warmUploaded];if(!baked.TryGetValue(key,out var t)||t==null)baked[key]=Upload(image,key.Item1==Bake.Pad);}
+            for(int n=0;n<6&&warmUploaded<list.Count;n++,warmUploaded++){var (key,image)=list[warmUploaded];if(!baked.TryGetValue(key,out var t)||t==null)baked[key]=Upload(image,Repeats(key.Item1));}
             if(warmUploaded>=list.Count)warming=null;
         }
         public static void ClearBakes(){foreach(var t in baked.Values)if(t!=null)UnityEngine.Object.Destroy(t);baked.Clear();}
@@ -167,6 +169,30 @@ namespace ChipArena.UnityConversion
             float lift=Mathf.Min(30,r.height*.22f);U.Fade(Rect.MinMaxRect(r.x+bc+bw,r.yMax-bw-lift,r.xMax-bc-bw,r.yMax-bw),U.A(rare,(siren?.05f:.075f)*a),false);
         }
         private static readonly float[] PoolAt={0,.4f,1},PoolAlpha={1,.4f,0},Stops3={0,.42f,.72f,1},Stops2={0,.42f,1},Alpha2={1,1,0,0},Alpha1={1,0,0};
+        // ---- the board: the circuit under the face (NativeChipBake.Board's tile, anchored on the card), faint under the text and
+        // clearer in the free band between the content and the footer (`freeTop`..`freeBottom`, absolute y), in a pale tint of
+        // the tier ----
+        public static void Board(Rect r,float radius,Color rare,float a,float freeTop,float freeBottom)
+        {
+            if(a<=0||Event.current.type!=EventType.Repaint)return;float bw=BezelOf(radius);var tex=Baked(Bake.Board,"common",ScaleKey());
+            var face=Rect.MinMaxRect(r.x+bw+1,r.y+TopCut(radius),r.xMax-bw-1,r.yMax-BottomCut(radius)-bw);var tile=new Vector2(NativeChipBake.BoardW,NativeChipBake.BoardH);var tint=Color.Lerp(rare,Color.white,.35f);
+            U.Tile(face,tex,U.A(tint,.085f*a),tile,new Vector2(face.x-r.x,face.y-r.y));
+            if(freeBottom-freeTop>6){var band=Rect.MinMaxRect(face.x,Mathf.Max(face.y,freeTop),face.xMax,Mathf.Min(face.yMax,freeBottom));U.Tile(band,tex,U.A(tint,.15f*a),tile,new Vector2(band.x-r.x,band.y-r.y));}
+        }
+        // ---- the hardware on the bezel: machined notches down both long sides (a tile each), and two status lamps on the right
+        // side under the top cut, one steady, one breathing (Reduced effects: both steady) ----
+        public static void Hardware(Rect r,float radius,Color rare,float t,bool calm,float a)
+        {
+            if(a<=0||Event.current.type!=EventType.Repaint)return;float bw=BezelOf(radius),top=r.y+TopCut(radius)+bw+3,y1=r.yMax-BottomCut(radius)-bw-3;
+            var tex=Baked(Bake.Notch,"common",ScaleKey());var period=new Vector2(NativeChipBake.NotchW,NativeChipBake.NotchH);var c=new Color(1,1,1,a);float w=NativeChipBake.NotchW;
+            if(y1-top>2*NativeChipBake.NotchH)U.Tile(Rect.MinMaxRect(r.x+.5f,top,r.x+.5f+w,y1),tex,c,period);
+            if(y1-top-14>2*NativeChipBake.NotchH)U.Tile(Rect.MinMaxRect(r.xMax-.5f-w,top+14,r.xMax-.5f,y1),tex,c,period);
+            for(int i=0;i<2;i++)
+            {
+                float k=i==0||calm?1:.55f+.45f*Mathf.Cos(t*3.7f);var lamp=new Rect(r.xMax-bw*.5f-1,top+5*i,2,2);
+                U.Glow(lamp,U.A(rare,.45f*k*a),3);U.Fill(lamp,U.A(Color.Lerp(rare,Color.white,.45f),k*a));
+            }
+        }
         // ---- the title plate: a recessed, anodised panel behind the grade and name (right of the core, above the divider) ----
         public static void TitlePlate(Rect plate,in Cart.Look l,Color rare,float a)
         {

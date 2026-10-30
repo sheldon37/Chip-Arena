@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
             // same twice with clean geometry; it is centred on its spin and stays a slim cartridge (its body .8 wide, the hand's
             // PickupWidth; fins inside the old leads' reach; under a quarter as thick as wide); the core's crystal, inlay, traces
             // and the edge band light both faces in neutral colours (the draw tints them with the rarity); the glass domes are
-            // see-through; the ring (bone 2) belongs to Epic and up; budgets hold; the tiers differ by ornament (the crest rises
+            // see-through; the ring (bone 2) belongs to Epic and up; budgets hold (the board's detail: a few thousand triangles a chip); the tiers differ by ornament (the crest rises
             // over the top edge, the fins widen it, the gold reads gold) as well as by tint.
             var common=NativeMachineModels.Pickup("common");common.Bounds(-1,out var c0,out var c1);float commonTall=c1.Z-c0.Z;
             Check(Same(NativeMachineModels.Pickup(),common)&&NativeMachineModels.PickupModel("common")==NativeMachineModels.PickupId&&NativeMachineModels.PickupModel("bogus")==NativeMachineModels.PickupId,"the common cartridge is the fallback model");
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                 Check(pickup.Sections.Where(s=>s.Bone==NativeMachineModels.Lights||s.Bone==NativeMachineModels.Orbit).SelectMany(s=>s.Colors).All(c=>Math.Abs(c.X-c.Y)<1e-4f&&Math.Abs(c.Y-c.Z)<1e-4f),tier+" chip's lights are neutral (the tint is the rarity)");
                 var bones=pickup.Sections.Select(s=>s.Bone).Distinct().OrderBy(b=>b).ToArray();var want=look.Ring?new[]{NativeMachineModels.Glass,0,1,NativeMachineModels.Orbit}:new[]{NativeMachineModels.Glass,0,1};
                 Check(bones.SequenceEqual(want),tier+" chip bones "+string.Join(",",bones));
-                Check(pickup.Triangles<=(look.Ornaments>=4?3600:3200),tier+" chip budget ("+pickup.Triangles+")");
+                Check(pickup.Triangles<=(look.Ornaments>=4?6800:5600),tier+" chip budget ("+pickup.Triangles+")");
                 // The ring's pivot is the core: inside the chip, above its middle (the core sits in the upper half), on the face plane.
                 Check(Math.Abs(core.X)<1e-3f&&Math.Abs(core.Y)<1e-3f&&core.Z>.02f&&core.Z<cmax.Z,tier+" ring pivot at the core ("+core+")");
                 if(look.Ring){pickup.Bounds(NativeMachineModels.Orbit,out var omin,out var omax);var mid=(omin+omax)*.5f;Check(Math.Abs(mid.X-core.X)<.01f&&Math.Abs(mid.Z-core.Z)<.01f,tier+" ring centred on its pivot");}

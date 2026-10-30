@@ -39,6 +39,13 @@ internal static class DraftStageChecks
     private static Vector3 Eye(CapturedRig.Pose p)=>p.WorldPosition[CapturedRig.Head]+Vector3.Transform(Vector3.UnitY*NativeDraftStage.EyeUp,p.WorldRotation[CapturedRig.Head]);
     private static Vector3 Forward(CapturedRig.Pose p,int bone)=>Vector3.Transform(Vector3.UnitZ,p.WorldRotation[bone]);
     private static float Angle(Quaternion a,Quaternion b){float d=Math.Min(1,Math.Abs(Quaternion.Dot(a,b)));return 2*(float)Math.Acos(d);}
+    // The plant on the model's wrist device (`bay` 1: the stage's default bay; 2: one as the draw measures it on the model, its
+    // normal across the hand); 0 the voxel pilot's cuff.
+    private static void Device(NativeDraftStage s,int bay)
+    {s.Plant.Device=bay>0;if(bay==2){s.Plant.BayLocal=new Vector3(-.009f,.045f,.055f);s.Plant.BayNormal=Vector3.Normalize(new Vector3(-.27f,0,.96f));}}
+    // Where the pressing palm comes down at the plant: on the cuff, or beside the device's bay (NativeDraftPlant.PressLift and
+    // PressSide along the forearm).
+    private static Vector3 Pressed(NativeDraftStage s)=>s.Plant.Device?s.Plant.At+s.Plant.Normal*NativeDraftPlant.PressLift+s.Plant.Forearm*NativeDraftPlant.PressSide:s.Plant.At;
     private static void Frame(NativeDraftStage s,float dt,float rawAge,int focus,Vector2[] cards,float aspect,float trayTop,float trayBottom,bool siren=false,bool consider=false,float crown=0)
     {float age=s.SmoothAge(rawAge,dt);s.Begin(dt,false);if(siren)SirenIdle(s.Pose,s.Clock);s.Frame(aspect,trayTop,trayBottom,crown,siren,dt);s.Step(dt,age,focus,consider,cards,cards.Length,siren,false);}
     // The highest screen row (fraction from the top) that any vertex of a hat model (head space) reaches on the posed head, up to
@@ -232,13 +239,17 @@ internal static class DraftStageChecks
         // the card flies to the stage's solved catch (CatchPalm), which holds still on the screen through the flight (so the card
         // never dips toward the hand still rising from the lap) and is where the palm meets it at the contact; the wrist plant
         // (carry end to sink) is on screen above the solar plexus and over a one-row tray above the cards; the Siren drafter's
-        // catch is in frame too and held to the return.
+        // catch is in frame too and held to the return. On the model's wrist device (NativeDraftPlant.Device: the stage's
+        // default bay and one as measured on the model), for the local picker: the bay faces the camera from the carry's end to
+        // the sink, the chip lies in it at the carry's end (its face as it showed in the palm: through the seat it
+        // never turns past edge-on) and has shrunk to the bay's chip, and the pressing palm comes down beside the bay, not over it.
         {
-            float worstCatch=1,worstPlantRow=1,worstSide=1,worstDrift=0,worstMeet=0;int picks=0;
-            foreach(var sc in Screens)foreach(int kind in new[]{0,1,2})foreach(bool lastCard in new[]{false,true})foreach(bool local in new[]{true,false})
+            float worstCatch=1,worstPlantRow=1,worstSide=1,worstDrift=0,worstMeet=0,worstFacing=1,worstLay=1,worstSeat=0,nearestPalm=1;int picks=0,devicePicks=0;
+            foreach(var sc in Screens)foreach(int kind in new[]{0,1,2})foreach(bool lastCard in new[]{false,true})foreach(bool local in new[]{true,false})foreach(int bay in kind==2||!local?new[]{0}:new[]{0,1,2})
             {
                 bool pve=kind==1,siren=kind==2;int n=pve?8:5,chosen=lastCard?n-1:0;var rects=Tray(n,sc.W,sc.H,pve,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);float trayTop=top/sc.H,dt=1/60f;
-                bool oneRow=rects[n-1].Y<=rects[0].Y+1;var s=new NativeDraftStage();var hold=new NativeDraftHover();string what=sc.Name+(pve?" Siren pick":siren?" Siren drafter":" PvP")+" card "+chosen+(local?"":" (spectated)");
+                bool oneRow=rects[n-1].Y<=rects[0].Y+1;var s=new NativeDraftStage();var hold=new NativeDraftHover();string what=sc.Name+(pve?" Siren pick":siren?" Siren drafter":" PvP")+" card "+chosen+(local?"":" (spectated)")+(bay==1?" (device)":bay==2?" (model's device)":"");
+                Device(s,bay);if(bay>0)devicePicks++;
                 Vector2 firstCatch=default;bool flying=false;
                 for(int f=0;f<=(int)(4.4f*60);f++)
                 {
@@ -259,10 +270,21 @@ internal static class DraftStageChecks
                     {
                         var plantAt=s.Project(s.Plant.At);float plexus=s.Project(NativeDraftStage.Plexus(s.Pose)).Y;
                         Check(OnScreen(plantAt,.05f)&&plantAt.Y<plexus-.04f,what+": the plant at "+plantAt+" (plexus row "+plexus+")");if(oneRow){Check(plantAt.Y<trayTop-.05f,what+": the plant behind the cards ("+plantAt.Y+")");worstPlantRow=Math.Min(worstPlantRow,trayTop-plantAt.Y);}
+                        if(bay>0){float facing=Vector3.Dot(s.Plant.Normal,Vector3.Normalize(s.CameraPosition-s.Plant.At));worstFacing=Math.Min(worstFacing,facing);Check(facing>.5f,what+": the bay faces "+facing+" toward the camera at "+age.ToString("0.00"));}
+                    }
+                    if(bay>0&&age>=NativeDraftPlant.CarryEnd-NativeDraftPlant.SeatSpan&&age<=NativeDraftPlant.CarryEnd+.001f)
+                    {
+                        float lay=Vector3.Dot(Vector3.Transform(Vector3.UnitY,s.Plant.ChipRotation),-s.Plant.Normal);worstLay=Math.Min(worstLay,lay);Check(lay>-.3f,what+": the chip turns over into the bay ("+lay+") at "+age.ToString("0.00"));
+                        if(Math.Abs(age-NativeDraftPlant.CarryEnd)<.5f*dt+.001f)
+                        {
+                            float gap=(s.Plant.Chip-s.Plant.At).Length(),k=NativeDraftPlant.DeviceChipScale(age,0,true)*NativeDraftPlant.PickupWidth;worstSeat=Math.Max(worstSeat,gap);nearestPalm=Math.Min(nearestPalm,(s.Palm-s.Plant.At).Length());
+                            Check(gap<.01f&&lay>.95f,what+": the chip not in the bay at the carry's end ("+gap+" m, face "+lay+")");Check(Math.Abs(k-NativeDraftPlant.BayChipWidth)<.003f,what+": the chip "+k+" m wide in the bay");
+                            Check((s.Palm-s.Plant.At).Length()>.06f,what+": the palm over the bay ("+(s.Palm-s.Plant.At).Length()+" m)");
+                        }
                     }
                 }
             }
-            yield return "Draft pick in frame on "+Screens.Length+" screens (PvP, Siren pick and Siren drafter, outer cards both sides, local and spectated; "+picks+" picks): the catching palm in front of the chest (a pilot's left palm, just across the middle for a card on the right; the Siren's on the card's side), on screen (>= "+(worstSide*100).ToString("0")+"% from a side) and at least "+(worstCatch*100).ToString("0.0")+"% above a one-row tray; the card flies to the solved catch (still within "+(worstDrift*100).ToString("0.0")+"% of the screen through the flight, met by the palm within "+(worstMeet*1000).ToString("0")+" mm); the wrist plant above the solar plexus and at least "+(worstPlantRow*100).ToString("0.0")+"% above a one-row tray; the Siren drafter's catch held in frame to the return";
+            yield return "Draft pick in frame on "+Screens.Length+" screens (PvP, Siren pick and Siren drafter, outer cards both sides, local and spectated; "+picks+" picks): the catching palm in front of the chest (a pilot's left palm, just across the middle for a card on the right; the Siren's on the card's side), on screen (>= "+(worstSide*100).ToString("0")+"% from a side) and at least "+(worstCatch*100).ToString("0.0")+"% above a one-row tray; the card flies to the solved catch (still within "+(worstDrift*100).ToString("0.0")+"% of the screen through the flight, met by the palm within "+(worstMeet*1000).ToString("0")+" mm); the wrist plant above the solar plexus and at least "+(worstPlantRow*100).ToString("0.0")+"% above a one-row tray; the Siren drafter's catch held in frame to the return; on the model's wrist device ("+devicePicks+" picks) the bay facing the camera (at least "+worstFacing.ToString("0.00")+"), the chip in it at the carry's end (within "+(worstSeat*1000).ToString("0.0")+" mm, the bay chip's size, never past edge-on through the seat: its face at least "+worstLay.ToString("0.00")+" into the bay) and the palm beside it (at least "+(nearestPalm*100).ToString("0")+" cm off)";
         }
 
         // Settling: a step across the whole display and a step to a neighbour settle without overshoot (95% in .45 s, 1% in 1.1 s).
@@ -352,10 +374,10 @@ internal static class DraftStageChecks
         // frame-to-frame snap of the head, chest or hands, never both arms lifted, no dip as a considering arm takes the card,
         // the hands back in the lap after the return, the same motion at every rate.
         float headRate=0,chestRate=0,handRate=0,browseHand=0,bothUp=0,worstPlant=0,worstRate=0,dip=0,settle=0;long allocated=0;string at="";var heads=new Dictionary<int,List<Quaternion>>();
-        foreach(int hz in new[]{30,60,144,240})foreach(int mode in new[]{0,1,2})
+        foreach(int hz in new[]{30,60,144,240})foreach(int mode in new[]{0,1,2,3})
         {
             bool siren=mode==2,local=mode!=1;var hold=new NativeDraftHover();
-            var sc=Screens[1];var rects=Tray(6,sc.W,sc.H,false,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);var s=new NativeDraftStage();float dt=1f/hz;double pickAt=4.2;
+            var sc=Screens[1];var rects=Tray(6,sc.W,sc.H,false,out float top,out float bottom);var cards=Centres(rects,sc.W,sc.H);var s=new NativeDraftStage();float dt=1f/hz;double pickAt=4.2;Device(s,mode==3?2:0);
             Quaternion lastHead=default,lastChest=default;Vector3 lastL=default,lastR=default;bool first=true;float lastAge=-1,lastWl=0,lastWr=0;var samples=new List<Quaternion>();
             for(int f=0;f<=(int)(7.0*hz);f++)
             {
@@ -375,7 +397,7 @@ internal static class DraftStageChecks
                 }
                 // One arm considers at a time; a remote picker's and the Siren's arms stay resting until the pick.
                 float wl=s.Weight(true),wr=s.Weight(false);if(raw<0)bothUp=Math.Max(bothUp,Math.Min(wl,wr));
-                if(raw<0&&mode!=0||siren)Check(wl==0&&wr==0,(siren?"Siren":"remote picker")+" arm lifted before the pick at "+hz+" Hz t "+t.ToString("0.00"));
+                if(raw<0&&mode==1||siren)Check(wl==0&&wr==0,(siren?"Siren":"remote picker")+" arm lifted before the pick at "+hz+" Hz t "+t.ToString("0.00"));
                 if(mode==0&&raw<0&&start>=1.5)Check(Math.Max(wl,wr)>.02f,"no arm considers the highlighted card at "+hz+" Hz t "+t.ToString("0.00"));
                 // The considering arm keeps lifting through the pick: its weight never drops before the contact.
                 if(mode==0&&raw>=0&&s.Age<NativeDraftPlant.Contact)dip=Math.Max(dip,(s.Left?lastWl:lastWr)-s.Weight(s.Left));lastWl=wl;lastWr=wr;
@@ -387,7 +409,7 @@ internal static class DraftStageChecks
                     float age=s.Age;
                     // From the catch to the return the reaching palm stays in front of the chest.
                     if(age>=NativeDraftPlant.Contact&&age<NativeDraftPlant.ReturnStart)Check(s.Palm.Z>p.WorldPosition[CapturedRig.Chest].Z+.12f,"the palm falls back against the chest at "+hz+" Hz age "+age.ToString("0.00"));
-                    if(!siren&&Math.Abs(age-NativeDraftPlant.CarryEnd)<.5f*dt+.002f)worstPlant=Math.Max(worstPlant,(s.Palm-s.Plant.At).Length());
+                    if(!siren&&Math.Abs(age-NativeDraftPlant.CarryEnd)<.5f*dt+.002f)worstPlant=Math.Max(worstPlant,(s.Palm-Pressed(s)).Length());
                     // After the return both hands rest in the lap again.
                     if(age>NativeDraftPlant.ReturnEnd+.3f)settle=Math.Max(settle,Math.Max((l-NativeDraftStage.RestHand(true)).Length(),(r-NativeDraftStage.RestHand(false)).Length()));
                 }
@@ -400,6 +422,6 @@ internal static class DraftStageChecks
         for(int k=0;k<marks;k++){float d=Math.Max(Angle(heads[30][k],heads[240][k]),Angle(heads[60][k],heads[240][k]));if(k*.1f<4.2f-1e-3f)worstRate=Math.Max(worstRate,d);else worstPick=Math.Max(worstPick,d);}
         Check(headRate<8,"the head turns "+headRate+" rad/s in one frame (a snap) at "+at);Check(chestRate<4,"the chest turns "+chestRate+" rad/s in one frame");Check(handRate<4.5f,"a hand moves "+handRate+" m/s in one frame");Check(browseHand<2.8f,"a considering hand moves "+browseHand+" m/s");Check(bothUp<.5f,"both arms lifted ("+bothUp+") on a switch of sides");Check(dip<1e-4f,"the considering arm dips by "+dip+" as it takes the card");
         Check(worstPlant<.03f,"the palm misses the wrist by "+worstPlant+" m at the plant");Check(settle<.01f,"the hands do not settle back in the lap ("+settle+" m)");Check(worstRate<.02f,"frame rates disagree by "+worstRate+" rad while browsing");Check(worstPick<.15f,"frame rates disagree by "+worstPick+" rad through the pick");Check(allocated==0,"the stage allocated "+allocated+" bytes");
-        yield return "Draft stage at 30/60/144/240 Hz (local and remote pilot and Siren, 15 Hz guest clock): head <= "+headRate.ToString("0.0")+" rad/s, chest <= "+chestRate.ToString("0.0")+" rad/s, hands <= "+handRate.ToString("0.00")+" m/s per frame (no snaps; considering <= "+browseHand.ToString("0.00")+" m/s), one considering arm at a time (the other at most "+bothUp.ToString("0.00")+" up on a switch), no dip into the pick, rates agree within "+(worstRate*57.3f).ToString("0.0")+" deg browsing and "+(worstPick*57.3f).ToString("0")+" deg through the pick, the palm in front of the chest from the catch to the return and on the wrist within "+(worstPlant*1000).ToString("0")+" mm at the plant, hands back in the lap within "+(settle*1000).ToString("0")+" mm, 0 bytes per frame";
+        yield return "Draft stage at 30/60/144/240 Hz (local and remote pilot, the local one on the model's wrist device, and Siren, 15 Hz guest clock): head <= "+headRate.ToString("0.0")+" rad/s, chest <= "+chestRate.ToString("0.0")+" rad/s, hands <= "+handRate.ToString("0.00")+" m/s per frame (no snaps; considering <= "+browseHand.ToString("0.00")+" m/s), one considering arm at a time (the other at most "+bothUp.ToString("0.00")+" up on a switch), no dip into the pick, rates agree within "+(worstRate*57.3f).ToString("0.0")+" deg browsing and "+(worstPick*57.3f).ToString("0")+" deg through the pick, the palm in front of the chest from the catch to the return and on the wrist within "+(worstPlant*1000).ToString("0")+" mm at the plant, hands back in the lap within "+(settle*1000).ToString("0")+" mm, 0 bytes per frame";
     }
 }
