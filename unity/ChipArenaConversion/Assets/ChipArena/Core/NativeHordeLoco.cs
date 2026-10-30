@@ -37,9 +37,15 @@ namespace ChipArena.UnityConversion
         /// half a metre, the rig's legs at full stride), 3.4 m/s runs at 3.9.</summary>
         public const float CadenceAt1=2.56f,CadenceExp=.35f;
         /// <summary>The steps per second a kind takes at rig speed `v` (m/s): the body's cadence (its tempo: the brute, the bloater
-        /// and the big zone kinds step slower and longer), whatever take it walks on.</summary>
-        public static float StepRate(int kind,float v)
+        /// and the big zone kinds step slower and longer), whatever take it walks on. `legs`: the legs the stride is planned for, as
+        /// a multiple of the rig's (<see cref="Legs"/>; the model's are about 1.7 times as long).</summary>
+        public static float StepRate(int kind,float v,float legs=1)
         {
+            // (Longer legs step as the rig's do at the speed that is the same pace for them (the Froude number: the speed over the
+            // root of the legs), their time the root of their length slower: rate falls by legs^-.675 and the steps lengthen by
+            // legs^.675. The model at 1.5 m/s takes 2.05 steps of .73 m a second (a person walking, about 1.9 to 2), not the voxel
+            // rig's 2.95 of .51 m, which put its takes at up to 2.2 times their pace: the owner's "sped up animations".)
+            if(legs>1.001f){float k=(float)Math.Sqrt(Math.Min(LegsMost,legs));return StepRate(kind,v/k)/k;}
             v=Math.Max(.12f,v);float rate=NativeHordeZones.Tempo(NativeHordeKinds.Index(kind),NativeZombieMotion.Tempo)*CadenceAt1*(float)Math.Pow(v,CadenceExp);
             // (Never a step longer than the legs carry: a slow-tempo kind walking fast steps quicker rather than floating. A walk
             // (to 1 m/s) keeps its feet down together between steps; by 2.6 m/s every body runs, a flight between them.)
@@ -47,6 +53,30 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The longest step (rig metres) walking (feet down together between steps) and running (a flight between them).</summary>
         public const float StepMost=.5f,RunStepMost=.9f;
+
+        // ================================================================================================================
+        // The legs the stride is planned for: the rig's, or the model's longer ones
+        // ================================================================================================================
+        /// <summary>
+        /// The legs the add's stride is planned for this pose, as a multiple of the rig's (1; the presentation sets it each pose to
+        /// the model's ratio, NativeVisualRig.Rig.LegRatio, while the add draws on the model, owner 2026-10-30: "I think a lot of
+        /// the issue is the sped up animations on the zombie"). An upright kind's cadence, stance reach and steps follow it
+        /// (<see cref="StepRate"/>): the footprints are a person's. The rig's legs cannot reach them, so its legs are posed on a
+        /// copy of each footprint drawn in fore and aft of its hip by the same ratio (<see cref="LegsNow"/>; the rig is a short-
+        /// legged copy of the model's stride), and the model's binding spreads its ankles back out (NativeVisualRig.State.Stride),
+        /// so the model's feet land on the footprints and nothing the rig's reach rules do changes. The Hulk keeps its own heavy
+        /// stride and the crawl its own; the voxel tiers draw on 1.
+        /// </summary>
+        public float Legs=1;
+        /// <summary>The longest legs the stride is planned for.</summary>
+        public const float LegsMost=2.2f;
+        private float legsNow=1;
+        /// <summary>The legs this pose's stride was planned for (1: the rig's): each rig ankle sits fore or aft of its hip by the
+        /// footprint's offset over this.</summary>
+        public float LegsNow=>legsNow;
+        // A footprint (rig frame) drawn in fore and aft of `hip` for the rig's legs, and a rig point spread back out to the footprint.
+        private Vector3 Squeeze(Vector3 at,Vector3 hip){if(legsNow!=1)at.Z=hip.Z+(at.Z-hip.Z)/legsNow;return at;}
+        private Vector3 Spread(Vector3 at,Vector3 hip){if(legsNow!=1)at.Z=hip.Z+(at.Z-hip.Z)*legsNow;return at;}
 
         // ================================================================================================================
         // The gait speed: the presented root's speed eased, and the walk-to-run blend on it
@@ -72,8 +102,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The farthest the hips travel over a planted foot (rig metres): about twice the leg's reach in front of and
         /// behind the hip with the knees bent.</summary>
         public const float StanceMost=.56f;
-        /// <summary>A stance share `duty` kept within the legs' reach at cycle rate `hz` (cycles a second) and speed `v`.</summary>
-        private static float Reachable(float duty,float hz,float v)=>v<=.05f?duty:Math.Max(.2f,Math.Min(duty,StanceMost*hz/v));
+        /// <summary>A stance share `duty` kept within the reach of legs `legs` times the rig's at cycle rate `hz` (cycles a second)
+        /// and speed `v`.</summary>
+        private static float Reachable(float duty,float hz,float v,float legs)=>v<=.05f?duty:Math.Max(.2f,Math.Min(duty,StanceMost*legs*hz/v));
 
         // ================================================================================================================
         // Calm: a take played faster than it was captured swings less about its cycle's mean
@@ -118,7 +149,7 @@ namespace ChipArena.UnityConversion
             Calm(clip,row,rate,Steady(kind));
         }
         /// <summary>The playback rate a cycle runs at this frame (its cadence over its own), for the calm.</summary>
-        private float RateOf(int clip,float v)=>clip<0?1:NativeZombieMotion.Rate(clip,v,kind)*cadence;
+        private float RateOf(int clip,float v)=>clip<0?1:NativeZombieMotion.Rate(clip,v,kind,legsNow)*cadence;
 
         // ================================================================================================================
         // The shoulders on the chest

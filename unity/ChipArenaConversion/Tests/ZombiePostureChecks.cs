@@ -22,8 +22,10 @@ namespace ChipArena.UnityConversion
         private const float Deg=57.29578f,Dt=1/60f;
         // A running stance (world speeds from RunsFrom m/s: the runner's sprint takes even at its 2.6 m/s walk) loads the planted
         // knee deeper than a walk's, as a person's does at a run (about 40 degrees at mid-stance): the sprints stand on the
-        // ground for their own stance now (Core/NativeZombieMotion.Duty), not the fifth of a cycle the marks gave them.
-        private const float RunsFrom=2.2f,RunKnee=42;
+        // ground for their own stance now (Core/NativeZombieMotion.Duty), not the fifth of a cycle the marks gave them. A sprint
+        // (from SprintsFrom m/s: the runner's 4.6) on the stride planned for the model's legs (NativeHordeGait.Legs: steps of
+        // 1.5 m) loads it deeper still, as a sprinter's does (40 to 50 degrees at mid-stance).
+        private const float RunsFrom=2.2f,RunKnee=42,SprintsFrom=4f,SprintKnee=48;
         private static readonly int[] Kinds={NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute,NativeHordeKinds.Hulk};
 
         private sealed class Drive
@@ -57,25 +59,28 @@ namespace ChipArena.UnityConversion
                     var before=new Stats();var after=new Stats();
                     for(int look=0;look<2;look++)
                     {
-                        var d=new Drive(kind,40000+kind*101+look*17,look);var sb=new NativeVisualRig.State(rig);var sa=new NativeVisualRig.State(rig);float lastB=float.NaN,lastA=float.NaN;
+                        // (Before: the rig's gait bound as a pilot's. After: the gait as the runtime runs it for an add drawn on the model,
+                        // its stride planned for the model's legs (NativeHordeGait.Legs), fitted and in the zombie stance.)
+                        var d=new Drive(kind,40000+kind*101+look*17,look);var dm=new Drive(kind,40000+kind*101+look*17,look);dm.G.Legs=rig.LegRatio;
+                        var sb=new NativeVisualRig.State(rig);var sa=new NativeVisualRig.State(rig);float lastB=float.NaN,lastA=float.NaN;
                         for(int i=0;i<330;i++)
                         {
-                            d.Step(i*Dt,speed);var p=d.P;p.World();
+                            d.Step(i*Dt,speed);var p=d.P;p.World();dm.Step(i*Dt,speed);var pm=dm.P;pm.World();
                             NativeVisualRig.Pose(sb,p,default(NativeVisualRig.Grasp),true,false);
-                            NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(sa,kind,false,d.G.Sunk,d.G.Crouch,d.G.Busy);NativeVisualRig.Pose(sa,fit,default(NativeVisualRig.Grasp),true,false);
+                            NativeZombiePosture.Fit(pm,fit);NativeZombiePosture.Stance(sa,kind,false,dm.G.Sunk,dm.G.Crouch,dm.G.Busy,dm.G.LegsNow);NativeVisualRig.Pose(sa,fit,default(NativeVisualRig.Grasp),true,false);
                             if(i<90){lastB=sb.Position[pelvis].Y;lastA=sa.Position[pelvis].Y;continue;}
-                            Measure(rig,sb,p,before,ref lastB);Measure(rig,sa,fit,after,ref lastA);
-                            float gh=new Vector2(p.WorldPosition[CapturedRig.Head].X,p.WorldPosition[CapturedRig.Head].Z).Length();before.GameHead.Add(gh);after.GameHead.Add(gh);
+                            Measure(rig,sb,p,before,ref lastB);Measure(rig,sa,fit,after,ref lastA,dm.G.FootAir);
+                            before.GameHead.Add(new Vector2(p.WorldPosition[CapturedRig.Head].X,p.WorldPosition[CapturedRig.Head].Z).Length());after.GameHead.Add(new Vector2(pm.WorldPosition[CapturedRig.Head].X,pm.WorldPosition[CapturedRig.Head].Z).Length());
                             // The fit keeps the trunk's top and the gaze where the gait put them.
                             if(i==200)foreach(int j in new[]{CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head})
-                                Check(Angle(Quaternion.Inverse(p.WorldRotation[j])*fit.WorldRotation[j])<.05f,NativeHordeKinds.Ids[kind]+" "+gait+": the fit keeps "+CapturedRig.Bones[j].Name+"'s world turn");
+                                Check(Angle(Quaternion.Inverse(pm.WorldRotation[j])*fit.WorldRotation[j])<.05f,NativeHordeKinds.Ids[kind]+" "+gait+": the fit keeps "+CapturedRig.Bones[j].Name+"'s world turn");
                         }
                     }
                     string name=NativeHordeKinds.Ids[kind]+" "+gait;
                     lines.Add($"{name,-14} lumbar share {before.Share:0.00} -> {after.Share:0.00}; knee {Mean(before.Knee),4:0}deg -> {Mean(after.Knee),4:0}deg (planted {Mean(before.Stance),3:0} -> {Mean(after.Stance),3:0}); hips behind the feet {Mean(before.Back):0.000} -> {Mean(after.Back):0.000} m; arm out {Mean(before.Spread),4:0.0}deg -> {Mean(after.Spread),4:0.0}deg; planted ankle off its mark p95 {P95(before.Foot)*100:0.0} -> {P95(after.Foot)*100:0.0} cm; hips' speed p95 {P95(before.Rise):0.00} -> {P95(after.Rise):0.00} m/s; head from the axis max {before.Head.Max():0.00} -> {after.Head.Max():0.00} (gait {before.GameHead.Max():0.00})");Console.WriteLine("  "+lines[lines.Count-1]);
                     float bend=Mean(after.Lumbar)+Mean(after.Upper);
                     if(bend>4){Check(after.Share<=.5f&&after.Share<before.Share,name+": the trunk bends up the back, not at the belt (lumbar share "+after.Share.ToString("0.00")+", was "+before.Share.ToString("0.00")+")");worstShare=Math.Max(worstShare,after.Share);}
-                    if(gait!="rest"){float k=Mean(after.Stance);Check(k<=(kind==NativeHordeKinds.Hulk?45:speed*sc>=RunsFrom?RunKnee:38)&&k<Mean(before.Stance),name+": strides on its legs, the planted knee straight as a person's (mean "+k.ToString("0")+" deg, was "+Mean(before.Stance).ToString("0")+")");worstStride=Math.Max(worstStride,k);}
+                    if(gait!="rest"){float k=Mean(after.Stance);Check(k<=(kind==NativeHordeKinds.Hulk?45:speed*sc>=SprintsFrom?SprintKnee:speed*sc>=RunsFrom?RunKnee:38)&&k<Mean(before.Stance),name+": strides on its legs, the planted knee straight as a person's (mean "+k.ToString("0")+" deg, was "+Mean(before.Stance).ToString("0")+")");worstStride=Math.Max(worstStride,k);}
                     if(gait=="rest"){Check(Mean(after.Knee)<=(kind==NativeHordeKinds.Hulk?34:24)&&Mean(after.Knee)<Mean(before.Knee),name+": stands on its legs, knees soft (mean "+Mean(after.Knee).ToString("0")+" deg, was "+Mean(before.Knee).ToString("0")+")");worstIdleKnee=Math.Max(worstIdleKnee,Mean(after.Knee));
                         Check(Mean(after.Back)<=.12f,name+": the hips at most 12 cm behind the feet ("+Mean(after.Back).ToString("0.000")+")");worstBack=Math.Max(worstBack,Mean(after.Back));}
                     Check(P95(after.Foot)<=.01f,name+": the planted ankles stay on their marks (p95 "+(P95(after.Foot)*100).ToString("0.0")+" cm)");worstFoot=Math.Max(worstFoot,P95(after.Foot));
@@ -87,7 +92,9 @@ namespace ChipArena.UnityConversion
             Pilot(rig);Crawl(rig,pelvis);Dying(rig,pelvis);Busy(rig);Flight(rig);Repeat(rig);Wiring(root);
             Console.WriteLine("PASS zombie posture: "+count+" checks (five kinds at rest, walk and run on the measured skeleton: lumbar share at most "+worstShare.ToString("0.00")+", resting knees at most "+worstIdleKnee.ToString("0")+" deg, planted knees in a stride at most "+worstStride.ToString("0")+" deg, hips at most "+worstBack.ToString("0.00")+" m behind the feet, planted ankles within "+(worstFoot*100).ToString("0.0")+" cm; the trunk's top and the gaze kept; pilots untouched)");
         }
-        private static void Measure(NativeVisualRig.Rig r,NativeVisualRig.State s,CapturedRig.Pose game,Stats o,ref float lastY)
+        // (`air`: the gait's feet in the air this pose. A foot lifting off behind a long stride, or coming down, is low enough to
+        // weigh as planted on the model, and rises onto the leg's reach (NativeVisualRig.OnReach): not a planted foot off its mark.)
+        private static void Measure(NativeVisualRig.Rig r,NativeVisualRig.State s,CapturedRig.Pose game,Stats o,ref float lastY,bool[] air=null)
         {
             int pelvis=r.Of[CapturedRig.Pelvis],low=r.Of[CapturedRig.Spine],top=r.Of[CapturedRig.Chest],head=r.Of[CapturedRig.Head];
             o.Lumbar.Add(Angle(Quaternion.Inverse(s.Turn[pelvis])*s.Turn[low]));o.Upper.Add(Angle(Quaternion.Inverse(s.Turn[low])*s.Turn[top]));
@@ -98,7 +105,8 @@ namespace ChipArena.UnityConversion
                 Vector3 h=s.Position[vh],k=s.Position[vk],a=s.Position[va];o.Knee.Add(Between(k-h,a-k));mid+=a*.5f;
                 float w=side==0?s.LeftFootWeight:s.RightFootWeight;
                 if(w>=.999f)o.Stance.Add(Between(k-h,a-k));
-                if(w>=.999f){var g=game.WorldPosition[hip+2];var mark=new Vector3(g.X,r.AlignedPosition[va].Y+g.Y-NativeVisualRig.AnkleRest(hip),g.Z);o.Foot.Add((a-mark).Length());}
+                // (The game ankle spread back out to the stride it was planned for: NativeVisualRig.State.Stride.)
+                if(w>=.999f&&(air==null||!air[side])){var g=game.WorldPosition[hip+2];g.Z=game.WorldPosition[hip].Z+(g.Z-game.WorldPosition[hip].Z)*s.Stride;var mark=new Vector3(g.X,r.AlignedPosition[va].Y+g.Y-NativeVisualRig.AnkleRest(hip),g.Z);o.Foot.Add((a-mark).Length());}
                 int arm=r.Of[side==0?CapturedRig.LArm:CapturedRig.RArm],elbow=r.Of[side==0?CapturedRig.LElbow:CapturedRig.RElbow];
                 var u=s.Position[elbow]-s.Position[arm];float outward=side==0?u.X:-u.X;o.Spread.Add((float)Math.Atan2(outward,Math.Max(1e-4f,-u.Y))*Deg);
             }
@@ -161,7 +169,7 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
             string zm=R("Runtime/NativeZombieModelPresentation.cs"),rig=R("Core/NativeVisualRig.cs"),fit=R("Core/NativeZombiePosture.cs");
-            Check(zm.Contains("minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy);")
+            Check(zm.Contains("minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);")
                 &&zm.Contains("z.Body.Binding.Apply(pose,default(NativeVisualRig.Grasp),planted,airborne);"),"the model binds the fitted copy (the rig, its voxel tiers and gore keep the gait's pose)");
             Check(R("Runtime/NativeHordeKindPresentation.cs").Contains("ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,")&&zm.Contains("z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;"),"the add's crawl reaches the model");
             Check(rig.Contains("if(s.Across||s.Level||s.Raise!=0) lift=Stance(s,pose,lift);")&&rig.Contains("if(s.Stand>0||s.Raise!=0) Rise(s,pose,plantFeet);"),"the stance runs only for a state that asks for it");

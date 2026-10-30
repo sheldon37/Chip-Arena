@@ -289,6 +289,8 @@ namespace ChipArena.UnityConversion
                     Flow=true,YawRate=s.Flow.YawRate,Bank=s.Flow.Bank,Pitch=s.Flow.Pitch,Tier=s.Tier,Cancelled=cancelled,CancelAge=now-s.CancelAt,
                     HasTarget=target!=null,Target=target!=null?ToN(target.Body.position)*inv:default,Entering=entering,EntryAge=now-a.SpawnAt,EntryWalk=(breach?breakAt:a.WalkAt)-a.SpawnAt,Roaring=!float.IsNaN(roar),RoarAge=roar,Move=move};f.Roam=roam;
                 HordeHulkInput(ref f,m,now,entering,breach);IronworksInput(arena,s,m);StationInput(ref f,kind);
+                // (On the model the stride is planned for its longer legs: fewer, longer steps, the takes nearer their own pace.)
+                s.Gait.Legs=ZombieModelLegs(m.Id,kind,s.Tier);
                 s.Gait.Pose(f,minionPose,s.React);if(cancelled){f.AttackAge=age;f.Cancelled=false;}yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);StationPosed(arena,m,s,kind,now,ground,f,ref pos);
                 HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);
                 if(s.Gait.Landed!=0){HordeDust(s,kind,ground,now);HordeFootfalls(s,m,kind,ground,now);}

@@ -118,16 +118,16 @@ namespace ChipArena.UnityConversion
         /// the speed. (The shipped mapping scaled each take's own pace by the speed's .7 power, which played the pack's .3-.5 m/s
         /// shambles at 2-2.8 times their speed at the authority's 1.3-1.6 m/s walks.)
         /// </summary>
-        public static float Rate(int clip,float v,int kind)
+        public static float Rate(int clip,float v,int kind,float legs=1)
         {
-            float r=NativeHordeGait.StepRate(kind,Math.Max(.12f,v))*.5f*Math.Max(.1f,NativeZombieClips.Duration(clip));
+            float r=NativeHordeGait.StepRate(kind,Math.Max(.12f,v),legs)*.5f*Math.Max(.1f,NativeZombieClips.Duration(clip));
             return r<MinRate?MinRate:r>MaxRate?MaxRate:r;
         }
         /// <summary>A cycle's mean row over its loop (the pose it swings about; NativeHordeGait.Calm), null for a one-shot.</summary>
         public static float[] Mean(int clip){Warm();return clip>=0&&clip<means.Length?means[clip]:null;}
         private static float[][] means;
-        /// <summary>A cycle's cadence at ground speed `v` (cycles per second).</summary>
-        public static float Cadence(int clip,float v,int kind)=>Rate(clip,v,kind)/Math.Max(.1f,NativeZombieClips.Duration(clip));
+        /// <summary>A cycle's cadence at ground speed `v` (cycles per second) on legs `legs` times the rig's (NativeHordeGait.Legs).</summary>
+        public static float Cadence(int clip,float v,int kind,float legs=1)=>Rate(clip,v,kind,legs)/Math.Max(.1f,NativeZombieClips.Duration(clip));
         /// <summary>The share of the gait's cycle a foot is planted (0 left, 1 right), kept in a range the planted feet can walk on:
         /// a sprint's its own stance (its foot from its strike to most back) on the warped cycle, a walk's the exporter's lift marks.
         /// (The sprints' marks lift each foot a fifth of a cycle after it lands: a run in the air 60% of the time, bounding rather
