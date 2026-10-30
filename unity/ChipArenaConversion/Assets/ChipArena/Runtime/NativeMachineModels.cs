@@ -32,6 +32,9 @@ namespace ChipArena.UnityConversion
             // The dispensed / held chip: a cartridge per tier (the common one under PickupId, the fallback), and each one's ring
             // pivot (its core's centre) for PickupOrbit.
             foreach(var tier in NativeMachineModels.PickupTiers){var built=NativeMachineModels.Pickup(tier,out var core);string id=NativeMachineModels.PickupModel(tier);Add(id,built);pickupAxes[id]=new Vector3(core.X,core.Y,core.Z);}
+            // The directed entrances' stage: the sculpted pylon and dais (NativeIntros' EntranceProps.Model).
+            Add(NativeEntranceStageModels.PylonId,NativeEntranceStageModels.Pylon());Add(NativeEntranceStageModels.DaisId,NativeEntranceStageModels.Dais());
+            Add(NativeEntranceStageModels.PodId,NativeEntranceStageModels.Pod());Add(NativeEntranceStageModels.PodDoorId,NativeEntranceStageModels.PodDoor());
         }
         private readonly Dictionary<string,Vector3> pickupAxes=new Dictionary<string,Vector3>();
         /// <summary>The ring's turn (Epic and up, bone NativeMachineModels.Orbit) of a chip model at `t`: about its core's axis

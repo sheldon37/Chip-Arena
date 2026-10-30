@@ -88,7 +88,25 @@ namespace ChipArena.UnityConversion
             Check(pres.Contains("sourceModels.PickupOrbit(model,t)")&&pres.Contains("b==NativeMachineModels.Orbit?orbit:root")&&pres.Contains("NativeChipCartridge.Breath("),"the dispensed chip's ring orbits and its core breathes");
             Check(draft.Contains("MachineModel(NativeMachineModels.PickupModel(chipTier),\"pve-pickup\")")&&draft.Contains("chosenChip?.rarity")&&draft.Contains("b==NativeMachineModels.Orbit?draftChipOrbit:draftChip"),"the draft tray's chip is the chosen tier's cartridge, its ring orbiting");
             Check(!reg.Contains("Update(")&&!reg.Contains("LateUpdate"),"built once at load, nothing per frame");
-            Console.WriteLine("PASS machine models ("+count+" checks: chip dispenser, recruit pod and med station sculpted inside their colliders with the bank's tinted-light part, the flap, door and pulse about the presentation's pivots, see-through glass and pulse, every rarity stocked, red-capable lights for the deny flash, the dispensed chip a cartridge per tier lit on both faces in its tint with its tier's ornaments and orbiting ring, budgets, deterministic builds, and the draws preferring the sculpted models with the exported ones kept as the fallback)");
+            // The directed entrances' sculpted stage (NativeEntranceStageModels): each builds the same twice with clean geometry,
+            // its body opaque and its lights neutral (the draw tints them); the pylon stands its height on a footing inside its
+            // camera guard's reach, the dais's top is the floor the pilot stands on and nothing on it glows, the pod and its door
+            // keep the boxes' size; the bank builds all four and the stage, the pod and the door draw them where built.
+            foreach(var (id,build) in new (string,Func<WeaponMesh>)[]{(NativeEntranceStageModels.PylonId,NativeEntranceStageModels.Pylon),(NativeEntranceStageModels.DaisId,NativeEntranceStageModels.Dais),(NativeEntranceStageModels.PodId,NativeEntranceStageModels.Pod),(NativeEntranceStageModels.PodDoorId,NativeEntranceStageModels.PodDoor)})
+            {
+                var m=build();Clean(m,id);Alpha(m,id);Check(Same(m,build()),id+" builds the same twice");Check(m.Triangles<=2500,id+" budget ("+m.Triangles+")");
+                Check(m.Sections.Where(x=>x.Bone==NativeEntranceStageModels.Lights).SelectMany(x=>x.Colors).All(c=>Math.Abs(c.X-c.Y)<1e-4f&&Math.Abs(c.Y-c.Z)<1e-4f),id+" lights neutral");
+                m.Bounds(-1,out var lo,out var hi);
+                if(id==NativeEntranceStageModels.PylonId)Check(Math.Abs(hi.Y-NativeEntranceStage.PylonHeight-.3f)<.1f&&lo.Y>=-1e-4f&&Math.Max(hi.X,hi.Z)<=.4f&&m.Sections.Any(x=>x.Bone==NativeEntranceStageModels.Lights),"pylon "+lo+" .. "+hi);
+                if(id==NativeEntranceStageModels.DaisId)Check(hi.Y>=NativeEntranceStage.FloorY-.001f&&hi.Y<=NativeEntranceStage.FloorY+.005f&&Math.Abs(lo.Y-NativeEntranceStage.GroundY)<.002f&&Math.Max(hi.X,hi.Z)<=NativeEntranceStage.DaisRadius+.13f&&m.Sections.All(x=>x.Bone!=NativeEntranceStageModels.Lights),"dais "+lo+" .. "+hi+", no light");
+                if(id==NativeEntranceStageModels.PodId)Check(hi.Y<=2.85f&&Math.Max(hi.X,hi.Z)<=.92f,"pod "+lo+" .. "+hi);
+                if(id==NativeEntranceStageModels.PodDoorId)Check(Math.Abs(hi.Y-.81f)<.01f&&Math.Abs(hi.X-.26f)<.01f,"pod door "+lo+" .. "+hi);
+            }
+            var intros=R("Assets/ChipArena/Runtime/NativeIntros.cs");var stage=R("Assets/ChipArena/Core/NativeEntranceStage.cs");var proc=R("Assets/ChipArena/Core/NativeEntranceProcedural.cs");
+            Check(reg.Contains("Add(NativeEntranceStageModels.PylonId,")&&reg.Contains("Add(NativeEntranceStageModels.DaisId,")&&reg.Contains("Add(NativeEntranceStageModels.PodId,")&&reg.Contains("Add(NativeEntranceStageModels.PodDoorId,")
+                &&intros.Contains("public bool Model(string id,")&&stage.Contains("props.Model(NativeEntranceStageModels.PylonId,")&&stage.Contains("props.Model(NativeEntranceStageModels.DaisId,")
+                &&proc.Contains("props.Model(NativeEntranceStageModels.PodId,")&&proc.Contains("props.Model(NativeEntranceStageModels.PodDoorId,"),"the bank builds the sculpted stage and the entrances draw it");
+            Console.WriteLine("PASS machine models ("+count+" checks: chip dispenser, recruit pod and med station sculpted inside their colliders with the bank's tinted-light part, the flap, door and pulse about the presentation's pivots, see-through glass and pulse, every rarity stocked, red-capable lights for the deny flash, the dispensed chip a cartridge per tier lit on both faces in its tint with its tier's ornaments and orbiting ring, the entrances' sculpted pylon, dais, pod and door, budgets, deterministic builds, and the draws preferring the sculpted models with the exported ones kept as the fallback)");
         }
         private static Vector3 Norm(Vector3 v){float m=Math.Max(v.X,Math.Max(v.Y,v.Z));return m>1e-6f?v/m:v;}
         private static void Clean(WeaponMesh mesh,string what)

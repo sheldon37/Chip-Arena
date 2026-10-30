@@ -67,6 +67,7 @@ Shader "ChipArena/VisualBodyToon" {
  #include "NativeMuzzleLight.cginc"
  #include "NativeToonSurface.cginc"
  #include "NativeVisualBodyFx.cginc"
+ #include "NativeVisualStageLight.cginc"
  // The advanced lighting (NativeAdvancedLight.cginc; off on every map without it): the light volume as SourceLit takes it.
  #include "NativeAdvancedLight.cginc"
  // Nine colours: each layer is its three colours weighted by the texture's rgb; layer 1 by the vertex red, blended to layer 2
@@ -93,6 +94,7 @@ Shader "ChipArena/VisualBodyToon" {
   if(_ArenaActorLit>.5)o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,n));
   o.Emission+=o.Albedo*ToonPoints(MuzzleLights(i.worldPos,n,.35));
   o.Emission+=o.Albedo*ArenaGIBody(i.worldPos,n);
+  if(_VisualStageLit>.5)o.Emission+=o.Albedo*ToonPoints(VisualStagePoints(i.worldPos,n));
  }
  // The hit flash after the light, as SourceLit's (before the fog; the add passes only add light).
  void VisualFinal(Input i,SurfaceOutput o,inout fixed4 color)
@@ -124,6 +126,7 @@ Shader "ChipArena/VisualBodyToon" {
   #include "NativeMuzzleLight.cginc"
   #include "NativeToon.cginc"
   #include "NativeVisualBodyFx.cginc"
+  #include "NativeVisualStageLight.cginc"
   #include "NativeAdvancedLight.cginc"
   // The map's line (NativeToonEdge.shader's globals, NativeLighting writes them): x strength, y and z its fade (m); rgb tint.
   float4 _ArenaEdge;float4 _ArenaEdgeColor;
@@ -176,7 +179,7 @@ Shader "ChipArena/VisualBodyToon" {
    // As NativeToonSurface's ArenaToon lights the body: Lambert while the style is off, the ramp over the flattened SH on.
    float3 light=_ArenaToon.x<.5?sh+_LightColor0.rgb*(saturate(ndl)*atten):ToonDiffuse(ToonAmbient(sh,ShadeSH9(float4(0,1,0,1)),ShadeSH9(float4(0,-1,0,1)),n.y),_LightColor0.rgb,ndl,atten);
    light+=ToonPoints(MuzzleLights(i.world,n,.35));if(_ArenaActorLit>.5)light+=ToonPoints(ActorLights(i.world,n));
-   light+=ArenaGIBody(i.world,n);
+   light+=ArenaGIBody(i.world,n);if(_VisualStageLit>.5)light+=ToonPoints(VisualStagePoints(i.world,n));
    // A struck pilot's line is the darker version of its flash (the silhouette's share of it).
    fixed4 c=fixed4(VisualHitFlash(albedo*light,1)*lerp(float3(1,1,1),EdgeTint(),saturate(i.ink)),1);c.rgb=ArenaScatterView(c.rgb,i.world);UNITY_APPLY_FOG(i.fogCoord,c);return c;
   }
