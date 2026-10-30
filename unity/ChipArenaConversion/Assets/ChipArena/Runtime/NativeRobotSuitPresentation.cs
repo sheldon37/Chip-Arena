@@ -34,7 +34,8 @@ namespace ChipArena.UnityConversion
         // under-suit in place of its clothes (VisualLookOf), the plates on its bones,
         // each drawn with its bone's matrix times that bone's bind pose (read off the body's own skinned meshes), in the pilot's
         // body colour with its accent's light; the live body, the draft's seat and a corpse alike. The back emblem stays under
-        // the back plate.
+        // the back plate. Under the robot's helmet or half mask (Core NativeRobotHelm, its own ear modules) the suit's ear modules
+        // are left off.
         // (The first-person arms are the local pilot's: they wear its under-suit's sleeves.)
         private bool WearsSuit(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id==ViewBodyId?LocalId:id),NativeWeaponSkins.SuitEntry)==NativeWeaponSkins.SuitRobot;
         private sealed class SuitRig{public Transform[] Bones;public Matrix4x4[] Bind;}
@@ -56,12 +57,13 @@ namespace ChipArena.UnityConversion
         }
         private readonly Matrix4x4[] suitMatrices=new Matrix4x4[NativeRobotSuit.Bones.Length];private Func<int,Matrix4x4> suitBone;
         private Func<int,float> suitReveal,suitRevealOf;private Func<int,Color> suitTint,suitTintOf;
+        private static readonly Func<int,bool> SuitNoEars=b=>b!=NativeRobotSuit.Head;
         private void VisualSuit(GameObject root,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
         {
             if(!WearsSuit(id)||sourceModels==null||!sourceModels.Has(NativeSourceModels.Suit))return;var rig=SuitRigOf(root);if(rig==null)return;
             for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i].localToWorldMatrix*rig.Bind[i];
             suitBone??=i=>suitMatrices[i];suitReveal=reveal;suitTint=tint;
-            sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,null,layer,camera,BodyTint(bodyColor),AccentTint(accentColor),1,
+            sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,FaceGearOf(id)>=NativeWeaponSkins.FaceHelm?SuitNoEars:null,layer,camera,BodyTint(bodyColor),AccentTint(accentColor),1,
                 reveal==null?null:suitRevealOf??=i=>suitReveal(SuitJoints[i]),tint==null?null:suitTintOf??=i=>suitTint(SuitJoints[i]),new Vector4(1,1,1,1),null,flash);
         }
     }

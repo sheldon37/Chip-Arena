@@ -114,13 +114,13 @@ namespace ChipArena.UnityConversion
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime",f)).Replace("\r\n","\n");
             string bank=R("NativeHatPresentation.cs"),models=R("NativeSourceModels.cs"),body=R("NativeVisualBodyPresentation.cs"),src=R("NativeSourcePresentation.cs"),roof=R("NativeRooftopPresentation.cs"),portrait=R("NativeVisualPortraitPresentation.cs");
             Check(models.Contains("HordeKindModels();MachineSkins();ModelHats();")&&bank.Contains("models[\"hat-\"+hat+ModelSuffix+(tinted?NativeHatLooks.TintSuffix:\"\")]=parts;")&&bank.Contains("private string VisualHatModel(string hat,string color)"),"the model hats and their twins in the bank");
-            Check(body.Contains("if(NativeModelHatMeshes.Has(hat))return head.localToWorldMatrix;"),"a model hat on the head bone's own frame");
+            Check(body.Contains("if(NativeModelHatMeshes.Has(hat))return frame;")&&body.Contains("var frame=helm?head.localToWorldMatrix*HelmHatFit(hat):head.localToWorldMatrix;"),"a model hat on the head bone's own frame (on the robot's helmet, its fit there)");
             Check(src.Contains("sourceModels.Queue(VisualHatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,hb,null,layer,camera,")&&roof.Contains("sourceModels.Queue(VisualHatModel(look.Hat,hatColor),rig.Root.transform.localToWorldMatrix,hb,")
                 &&portrait.Contains("sourceModels.Queue(VisualHatModel(hat,look.HatColor),")&&body.Contains("sourceModels.Queue(VisualHatModel(seat.hat,seat.hatColor),")&&body.Contains("sourceModels.Queue(VisualHatModel(a.Hat,a.HatColor),")
                 &&body.Contains("sourceModels.QueueShadowless(VisualHatModel(hat,a.HatColor)??corpse.HatModel,"),"every model-head hat site draws the model hat (the arena, rooftops, portraits, the draft, the revive stand-in, corpses)");
-            Check(body.Contains("string worn=hat==NativeHatLooks.SheldonHead||NativeModelHatMeshes.PressesHair(hat)?hat:null;")&&body.Contains("var want=worn!=null&&!flat?VisualPressedHair(mesh,skin,worn):mesh;")
+            Check(body.Contains("string worn=body!=null&&body.Helm?NativeRobotHelm.Hair:hat==NativeHatLooks.SheldonHead||NativeModelHatMeshes.PressesHair(hat)?hat:null;")&&body.Contains("var want=worn!=null&&!flat?VisualPressedHair(mesh,skin,worn):mesh;")
                 &&body.Contains("pressingHair[key]=System.Threading.Tasks.Task.Run(()=>")&&body.Contains("if(!press.PressPiece(at,triangles,pressed,hold))return (null,null);")
-                &&body.Contains("if(NativeModelHatMeshes.PressesHair(death.actor?.Hat))"),"the hair pressed per hat off the main thread, the Sheldon hood still flat, a corpse's hair as the live body's");
+                &&body.Contains("string under=hood==null&&death.actor!=null&&WearsHelm(death.id)?NativeRobotHelm.Hair:NativeModelHatMeshes.PressesHair(death.actor?.Hat)?death.actor.Hat:null;"),"the hair pressed per hat off the main thread, the Sheldon hood still flat, a corpse's hair as the live body's");
             Console.WriteLine("PASS model hats ("+count+" checks)");
         }
     }

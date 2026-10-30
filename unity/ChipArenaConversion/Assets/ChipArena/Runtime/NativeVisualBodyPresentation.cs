@@ -38,6 +38,9 @@ namespace ChipArena.UnityConversion
             // Its hair under a hat (VisualHatHair): the renderers, each one's hood shape (-1: none) and the outfit's weight on it, each
             // one's own mesh, and the hat they are worn under (null: as styled).
             public SkinnedMeshRenderer[] HatHair; public int[] HatHairShape; public float[] HatHairRest; public Mesh[] HatHairMesh; public string HatHairWorn;
+            // Whether its pilot wears the robot's helmet (Core NativeRobotHelm; set as it is posed, VisualBodyBind): its hair hidden
+            // under it, a hat on its shell.
+            public bool Helm;
             // Its Sheldon pieces' renderers (Core NativeSheldonWear; VisualDress), the glow they last took (VisualSheldonGlow) and
             // the lift its feet piece set the skeleton by (VisualLiftOf: bare feet down onto the floor).
             public Renderer[] Sheldon=Array.Empty<Renderer>(); public string SheldonGlow; public float Lift;
@@ -211,6 +214,7 @@ namespace ChipArena.UnityConversion
             bool fresh=body.PosedFrame<Time.frameCount-1;
             if(fresh||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4){body.Binding.State.Forget();if(body.ClothSim!=null)NativeVisualCloth.Reset?.Invoke(body.ClothSim);}
             body.PosedFrame=Time.frameCount;body.Spec=a.SourceSpec;body.At=at;
+            body.Helm=!body.Hood&&WearsHelm(a.Id);
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
             VisualArmsOf(ref grasp,a,arms,ChipLookOf(a.Id));
@@ -269,27 +273,29 @@ namespace ChipArena.UnityConversion
         private Matrix4x4 VisualHatFrame(CapturedAnimation.Player rig,string hat,int b)
         {
             if(b==CapturedRig.Head&&rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.PosedFrame==Time.frameCount)
-            {var head=VisualHeadOf(body);if(head!=null)return VisualHatFit(head,hat);}
+            {var head=VisualHeadOf(body);if(head!=null)return VisualHatFit(head,hat,body.Helm);}
             return VisualJointFrame(rig,b);
         }
-        // Hat `hat` fitted to the model's head bone `head` (the Sheldon Head's face on its own fit).
-        private static Matrix4x4 VisualHatFit(Transform head,string hat)
+        // Hat `hat` fitted to the model's head bone `head` (the Sheldon Head's face on its own fit), on the robot's helmet when
+        // `helm` (Core NativeRobotHelm.HatFit).
+        private static Matrix4x4 VisualHatFit(Transform head,string hat,bool helm=false)
         {
             if(hat==NativeSheldonHead.Hat){var k=NativeModelHats.SheldonScale;var o=NativeModelHats.SheldonOffset;return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(o.X,o.Y,o.Z),Quaternion.identity,new Vector3(k.X,k.Y,k.Z));}
+            var frame=helm?head.localToWorldMatrix*HelmHatFit(hat):head.localToWorldMatrix;
             // (A hat made for the model is authored in its head bone's frame.)
-            if(NativeModelHatMeshes.Has(hat))return head.localToWorldMatrix;
-            NativeModelHats.Fit(hat,out float scale,out var offset);return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(offset.X,offset.Y,offset.Z),Quaternion.identity,Vector3.one*scale);
+            if(NativeModelHatMeshes.Has(hat))return frame;
+            NativeModelHats.Fit(hat,out float scale,out var offset);return frame*Matrix4x4.TRS(new Vector3(offset.X,offset.Y,offset.Z),Quaternion.identity,Vector3.one*scale);
         }
         // The worn hair under a hat (owner 2026-10-30: "Hats still cutting hair completely": the pack's one under-hat shape laid
         // the whole style flat, so the scalp showed): a hat made for the model holds it as its own crown would
         // (NativeModelHatMeshes.HairPress: the hair over its band tucked inside it, the hair under its band and brim as styled),
         // each hair piece drawn with its mesh so pressed (VisualPressedHair); the Sheldon Head's hood lays it flat with the pack's
-        // own hood shape ("Tag_Hood"). Any other hat, or none: the hair as styled. Writes only when that changes; a piece whose mesh
-        // was replaced since (a cut) keeps it.
+        // own hood shape ("Tag_Hood"). Under the robot's helmet (body.Helm) every piece is hidden. Any other hat, or none: the hair
+        // as styled. Writes only when that changes; a piece whose mesh was replaced since (a cut) keeps it.
         private void VisualHatHair(CapturedAnimation.Player rig,string hat){if(rig!=null&&visualBodies.TryGetValue(rig,out var body))VisualHatHair(body,hat);}
         private static void VisualHatHair(VisualBody body,string hat)
         {
-            string worn=hat==NativeHatLooks.SheldonHead||NativeModelHatMeshes.PressesHair(hat)?hat:null;if(body?.Root==null||body.HatHair!=null&&worn==body.HatHairWorn)return;
+            string worn=body!=null&&body.Helm?NativeRobotHelm.Hair:hat==NativeHatLooks.SheldonHead||NativeModelHatMeshes.PressesHair(hat)?hat:null;if(body?.Root==null||body.HatHair!=null&&worn==body.HatHairWorn)return;
             if(body.HatHair==null)
             {
                 var hair=new List<SkinnedMeshRenderer>();var shape=new List<int>();var rest=new List<float>();var meshes=new List<Mesh>();
@@ -342,6 +348,13 @@ namespace ChipArena.UnityConversion
         private static Mesh VisualPressedHair(Mesh mesh,SkinnedMeshRenderer skin,string hat)
         {
             var key=(mesh,hat);if(pressedHair.TryGetValue(key,out var made))return made;
+            // Under the robot's helmet (NativeRobotHelm.Hair) the piece draws nothing: a copy of it (its vertices, weights and shapes)
+            // without triangles.
+            if(hat==NativeRobotHelm.Hair)
+            {
+                made=mesh;if(mesh.isReadable){made=UnityEngine.Object.Instantiate(mesh);made.name=mesh.name+" under the helmet";for(int i=0;i<made.subMeshCount;i++)made.SetTriangles(Array.Empty<int>(),i,false);made.bounds=mesh.bounds;pressedHairOf[made]=mesh;}
+                pressedHair[key]=made;return made;
+            }
             if(pressingHair.TryGetValue(key,out var task))
             {
                 if(!task.IsCompleted)return null;pressingHair.Remove(key);made=mesh;
@@ -449,7 +462,7 @@ namespace ChipArena.UnityConversion
             {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(VisualHatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
             // The Sheldon Head: the hood's void and face (the body wears the hood; without them the opening showed the model's face).
             else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
-            if(!body.Hood)VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
+            if(!body.Hood)VisualFaceGear(VisualHeadOf(body),seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);
             VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);
             return true;
         }
@@ -618,7 +631,7 @@ namespace ChipArena.UnityConversion
                 float g=NativePilotGear.CoreGlow(time,health,time-body.LitAt,a.Id);gearMatrix=body.GearCore.localToWorldMatrix;
                 sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(g,g,g,1),null,flash);
             }
-            if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);
+            if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
             if(!first)VisualSuit(body.Root,a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
             // The back emblem on the chest's model bone, glowing as the core does (under the robot suit's back plate: none).
             if(!first&&!WearsSuit(a.Id))
@@ -801,14 +814,21 @@ namespace ChipArena.UnityConversion
         private static Transform VisualHeadOf(VisualBody body){var of=body.Binding.Rig.Of;int v=CapturedRig.Head<of.Length?of[CapturedRig.Head]:-1;return v>=0&&v<body.Binding.Bones.Length?body.Binding.Bones[v]:null;}
         // The face gear (the concept's mask and visor; Core NativePilotGear) on a model's head bone, for a pilot whose body skin
         // wears it, as its "face" pick has it (both, the visor alone or the mask alone; Core NativeWeaponSkins): the live body
-        // (VisualGear), the draft's pilot and a whole corpse.
+        // (VisualGear), the draft's pilot and a whole corpse; the robot's helmet and half mask (Core NativeRobotHelm) in its body
+        // colour, the helmet also on the half of a split corpse that holds the head.
         // The body skin that wears it on the model: the Prototype (the Standard keeps the model's face as authored, owner 2026-10-22).
         private static bool WearsFaceGear(int bodySkin)=>bodySkin==NativeBodySkins.PrototypeIndex;
-        private void VisualFaceGear(Transform head,int id,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
+        private void VisualFaceGear(Transform head,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
         {
             if(head==null||!WearsFaceGear(BodySkin(id))||!sourceModels.PilotFace())return;
             int gear=NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
             gearBone??=GearBoneOf;gearMatrix=head.localToWorldMatrix;var accent=AccentTint(accentColor);var lit=new Vector4(1,1,1,1);
+            if(gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf)
+            {
+                string model=gear==NativeWeaponSkins.FaceHelm?NativeSourceModels.Helm:NativeSourceModels.HalfMask;
+                if(sourceModels.Has(model))sourceModels.Queue(model,gearMatrix,gearBone,null,layer,camera,BodyTint(bodyColor),accent,1,reveal,tint,lit,null,flash);
+                return;
+            }
             if(gear!=NativeWeaponSkins.FaceVisor)sourceModels.Queue(NativeSourceModels.GearMask,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
             if(gear!=NativeWeaponSkins.FaceMask)sourceModels.Queue(NativeSourceModels.GearVisor,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,lit,null,flash);
         }
@@ -978,10 +998,11 @@ namespace ChipArena.UnityConversion
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
             bones=binding.Bones;joint=VisualJoints(binding);
-            // Its hair under its hat as the live body wore it (VisualHatHair).
-            if(NativeModelHatMeshes.PressesHair(death.actor?.Hat))
+            // Its hair under its hat as the live body wore it (VisualHatHair), hidden under the robot's helmet.
+            string under=hood==null&&death.actor!=null&&WearsHelm(death.id)?NativeRobotHelm.Hair:NativeModelHatMeshes.PressesHair(death.actor?.Hat)?death.actor.Hat:null;
+            if(under!=null)
                 foreach(var skin in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-                    if(skin.sharedMesh!=null&&VisualHairPiece(skin)){var pressed=VisualPressedHair(skin.sharedMesh,skin,death.actor.Hat);if(pressed!=null&&pressed!=skin.sharedMesh)VisualHairMesh(skin,pressed);}
+                    if(skin.sharedMesh!=null&&VisualHairPiece(skin)){var pressed=VisualPressedHair(skin.sharedMesh,skin,under);if(pressed!=null&&pressed!=skin.sharedMesh)VisualHairMesh(skin,pressed);}
             var block=new MaterialPropertyBlock();ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var accent);
             ColorUtility.TryParseHtmlString(NativeBodySkins.SheldonGlow(death.actor?.Hat,death.actor?.HatColor,death.actor?.AccentColor??"#70e1d0"),out var glow);
             foreach(var r in VisualWorn(root))
@@ -1380,7 +1401,7 @@ namespace ChipArena.UnityConversion
             for(int j=0;j<22;j++)s.Now[j]=joint(j)*s.Inverse[j];
             for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
             if(grow!=null)for(int v=0;v<s.Bones.Length;v++){if(!s.Top[v])continue;float g=grow(s.Joint[v]);if(g<1)s.Bones[v].localScale=Vector3.one*Mathf.Max(.001f,g);}
-            VisualSceneHood(s,death,alpha);
+            VisualSceneHood(s,death,alpha);VisualSceneFace(s,death,alpha);
             return true;
         }
         // RenderRevives, after the revivals: a revive body not drawn this frame hides; one unseen 2 s goes.
@@ -1426,7 +1447,10 @@ namespace ChipArena.UnityConversion
         private sealed class VisualScene{public bool[] Top;public GameObject Root;public Transform[] Bones;public int[] Joint;public Matrix4x4[] Bind;public readonly Matrix4x4[] Inverse=new Matrix4x4[22],Now=new Matrix4x4[22];public int Frame=-1;public float Seen;public Renderer[] All;public float Dissolve=-1;public Color Edge;public bool Hood;public int Head=-1;}
         // A scene's or revive's body made with the Sheldon hood: its model head, where the hood's void and face ride (the scene and
         // the revive draw no hat; the hood is the body's own).
-        private static void VisualSceneHooded(VisualScene s){s.Hood=s.Root.transform.Find(NativeSheldonHood.Renderer)!=null;s.Head=s.Hood?Array.FindIndex(s.Bones,b=>b!=null&&b.name=="head"):-1;}
+        private static void VisualSceneHooded(VisualScene s){s.Hood=s.Root.transform.Find(NativeSheldonHood.Renderer)!=null;s.Head=Array.FindIndex(s.Bones,b=>b!=null&&b.name=="head");}
+        // The face gear on a death scene's or a revive's head (the robot's helmet over its hidden hair), fading with it.
+        private float sceneFade;private Func<int,float> sceneFadeOf;
+        private void VisualSceneFace(VisualScene s,NativeDeath death,float alpha){if(s.Hood||s.Head<0)return;sceneFade=alpha;VisualFaceGear(s.Bones[s.Head],death.id,death.actor?.BodyColor,death.actor?.AccentColor,0,null,alpha<1?sceneFadeOf??=_=>sceneFade:null,null,0);}
         private void VisualSceneHood(VisualScene s,NativeDeath death,float alpha){if(s.Hood&&s.Head>=0)VisualDeadHood(VisualHatFit(s.Bones[s.Head],NativeSheldonHead.Hat),death,alpha);}
         private readonly Dictionary<long,VisualScene> visualScenes=new Dictionary<long,VisualScene>();private readonly List<long> visualScenesGone=new List<long>();
         private bool VisualSceneShown(NativeDeath death,Func<int,Matrix4x4> bone,Func<int,bool> visible,float alpha)
@@ -1447,7 +1471,7 @@ namespace ChipArena.UnityConversion
             if(visualDissolve)VisualDissolve(s.All,ref s.Dissolve,1-alpha,s.Edge);
             for(int j=0;j<22;j++)s.Now[j]=bone(j)*s.Inverse[j];
             for(int v=0;v<s.Bones.Length;v++){var m=s.Now[s.Joint[v]]*s.Bind[v];s.Bones[v].SetPositionAndRotation(m.GetColumn(3),m.rotation);}
-            VisualSceneHood(s,death,alpha);
+            VisualSceneHood(s,death,alpha);if(visible(CapturedRig.Head))VisualSceneFace(s,death,alpha);
             return true;
         }
         // PresentDeath, where the body draws: pose the corpse's visual body; true when it stands in for the voxel body this frame
@@ -1483,8 +1507,14 @@ namespace ChipArena.UnityConversion
             if(c.Look==0&&!c.Hood&&corpse.Twin==null&&corpse.Host==null&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null)
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
-                if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
+                if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
                 corpseFade=alpha;VisualSuit(c.Root,corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);
+            }
+            // A split corpse keeps the robot's helmet on the half that holds its head (its hair is hidden under it).
+            else if(c.Look==0&&!c.Hood&&(corpse.Twin!=null||corpse.Host!=null)&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null&&WearsHelm(corpse.Death.id)&&VisualCorpseHead(corpse))
+            {
+                if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
+                if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
             }
             return true;
         }
@@ -1499,7 +1529,7 @@ namespace ChipArena.UnityConversion
             if(corpse.Twin!=null&&corpse.Bisect is BisectFx fx&&fx.Request!=null&&fx.Request.HalfOf(CapturedRig.Head,CutNum(corpse.Bind[CapturedRig.Head].GetColumn(3)))==1)on=corpse.Twin;
             if(!visualCorpses.TryGetValue(on,out var c)||c.Root==null||!c.Root.activeSelf||c.Look!=0)return false;
             if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");if(c.Head<0)return false;
-            corpseHat=VisualHatFit(c.Bones[c.Head],hat);corpseHatBone??=_=>corpseHat;
+            corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id));corpseHatBone??=_=>corpseHat;
             if(hat==NativeSheldonHead.Hat)return c.Hood&&VisualDeadHood(corpseHat,death,alpha);
             if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&corpse.HatModel!=null)sourceModels.QueueShadowless(VisualHatModel(hat,a.HatColor)??corpse.HatModel,Matrix4x4.identity,corpseHatBone,null,HatBody(hat,a.HatColor),null,alpha);
             return true;

@@ -30,13 +30,13 @@ namespace ChipArena.UnityConversion
             return skin<0?map:NativeLook.WithSkin(map,skin);
         }
 
-        // ---- paints: the robot's shell under the body colour, a little self-lit as the voxel pilot's armour light keeps it
+        // ---- paints (the helmet's and half mask's too: Core/NativeRobotHelm): the robot's shell under the body colour, a little self-lit as the voxel pilot's armour light keeps it
         // bright in any arena's light, dark metal seams and joints, the accent's light ----
-        private const int Shell=0xf3f1ea,Dark=0x2b3038,Darker=0x1a1e24,Screen=0x0f1317;
+        internal const int Shell=0xf3f1ea,Dark=0x2b3038,Darker=0x1a1e24,Screen=0x0f1317;
         private const float ShellGlow=.22f;
-        private static Paint Plate(float shade=1)=>new Paint(Shell,shade,false,ShellGlow){Body=true};
-        private static Paint Metal(float shade=1)=>new Paint(Dark,shade);
-        private static readonly Paint Light=Paint.Lit(2.2f),Soft=Paint.Lit(1.2f,.3f);
+        internal static Paint Plate(float shade=1)=>new Paint(Shell,shade,false,ShellGlow){Body=true};
+        internal static Paint Metal(float shade=1)=>new Paint(Dark,shade);
+        internal static readonly Paint Light=Paint.Lit(2.2f),Soft=Paint.Lit(1.2f,.3f);
         private const float Gap=.013f,Thick=.008f;
 
         // ---- the rest body (bind pose) ----
@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
             build(k.Part(name+" L",left),v=>v);build(k.Part(name+" R",left+1),Mirror);
         }
         // A box on three axes (half sizes), each face painted by `face` (0 +x, 1 -x, 2 +y, 3 -y, 4 +z, 5 -z).
-        private static void Box(Kit k,SheldonSection s,Vector3 c,Vector3 ax,Vector3 ay,Vector3 az,Vector3 half,Func<int,Paint> face,Func<Vector3,Vector3> map=null)
+        internal static void Box(Kit k,SheldonSection s,Vector3 c,Vector3 ax,Vector3 ay,Vector3 az,Vector3 half,Func<int,Paint> face,Func<Vector3,Vector3> map=null)
         {
             map??=v=>v;Vector3 X=ax*half.X,Y=ay*half.Y,Z=az*half.Z;
             void F(int i,Vector3 n,Vector3 a,Vector3 b,Vector3 d,Vector3 e)

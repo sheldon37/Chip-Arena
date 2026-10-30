@@ -20,7 +20,9 @@ namespace ChipArena.UnityConversion
     // the aura like every other Standard.
     // The last entry ("face", owner 2026-10-26) picks the model's face gear on the Prototype body (the concept's tech mask and
     // glowing visor; Runtime/NativeVisualBodyPresentation.cs VisualFaceGear): both (the default), the visor alone or the mask
-    // alone. Other bodies, Classic and older clients ignore it.
+    // alone, or (owner 2026-10-30: "a full helmet and a half mask similar to what we had on voxel") the robot's helmet or half
+    // mask (Core/NativeRobotHelm). Other bodies, Classic and older clients ignore it (an older client reads a key it does not
+    // know as both).
     // The "suit" entry after it (owner 2026-10-30: "design clothing that resembles our previous player model (Robotic style)")
     // puts the robot suit on the model (Core/NativeRobotSuit; Runtime/NativeRobotSuitPresentation.cs): none (the default, never
     // written) or the robot's. Classic and older clients ignore it.
@@ -42,10 +44,11 @@ namespace ChipArena.UnityConversion
         /// entry but the Cyber Lord's, whose two skins are drawn looks (NativeCyberLordLook.PiecesIn).</summary>
         public static bool Modelled(string spec)=>Skinned(spec)&&spec!=CyberLordSpec.Id;
         public static int SkinIndex(string skin)=>skin==Prototype?PrototypeIndex:skin==Standard?StandardIndex:-1;
-        /// <summary>The face gear's entry, its keys (the first the default), labels and indices.</summary>
+        /// <summary>The face gear's entry, its keys (the first the default; none longer than "visor", so MaxLength holds), labels
+        /// and indices.</summary>
         public const string FaceEntry="face";
-        public static readonly string[] FaceKeys={"mask-visor","visor","mask"},FaceLabels={"Mask + visor","Visor","Mask"};
-        public const int FaceBoth=0,FaceVisor=1,FaceMask=2;
+        public static readonly string[] FaceKeys={"mask-visor","visor","mask","helm","half"},FaceLabels={"Mask + visor","Visor","Mask","Helmet","Half mask"};
+        public const int FaceBoth=0,FaceVisor=1,FaceMask=2,FaceHelm=3,FaceHalf=4;
         /// <summary>The robot suit's entry, its keys (none, the default; the robot's) and labels.</summary>
         public const string SuitEntry="suit";
         public static readonly string[] SuitKeys={"none","robot"},SuitLabels={"None","Robot suit"};
@@ -54,7 +57,7 @@ namespace ChipArena.UnityConversion
         /// suit.</summary>
         public static readonly string[] Entries=Join(Join(Join(Weapons,NativeBodySkins.Entry),FaceEntry),SuitEntry);
         private static string[] Join(string[] a,string b){var o=new string[a.Length+1];Array.Copy(a,o,a.Length);o[a.Length]=b;return o;}
-        /// <summary>The skin keys an entry accepts: a weapon's two finishes, the body's three skins or the face gear's three.</summary>
+        /// <summary>The skin keys an entry accepts: a weapon's two finishes, the body's three skins, the face gear's five or the suit's two.</summary>
         private static string[] KeysOf(string entry)=>entry==NativeBodySkins.Entry?NativeBodySkins.Keys:entry==FaceEntry?FaceKeys:entry==SuitEntry?SuitKeys:Keys;
         private static int SkinIndex(string entry,string skin){var keys=KeysOf(entry);for(int k=0;k<keys.Length;k++)if(keys[k]==skin)return k;return -1;}
 

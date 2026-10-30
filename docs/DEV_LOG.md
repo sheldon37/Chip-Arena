@@ -1,3 +1,63 @@
+## 2026-10-30 — Claude (PC): the robot's helmet and half mask (face gear after the voxel robot's head)
+
+- **Branch/base:** `claude/robot-helm` from shared `a3943081`. No PR; merged into shared and the builder.
+- **Task (owner):** "Can we develop essentially a full helmet and a half mask similar to what we had on voxel?"
+- **Changes (presentation and two face keys; docs/BOZO-INTEGRATION.md "The robot's helmet and half mask"):**
+  - `Core/NativeRobotHelm` (new), fitted to the model's head dumped from Unity:
+    - the helmet: a rounded shell, open under the jaw. It has the voxel robot's visor bar (recessed accent glass in a dark
+      frame), three grille slots, a jaw seam, back vents, a foot seal and ear modules. About 7,900 triangles.
+    - the half mask: a plate over the nose, mouth and chin, curling under the chin, with the grille, cheek lights and ear
+      modules. About 2,500 triangles.
+    - Both are in the body colour with the accent's light.
+    - A per-hat fit puts each model hat on the helmet, clear of its shell.
+  - `NativeWeaponSkins`: the `face` entry takes `helm` and `half`. Neither is longer than `visor`, so `MaxLength` (320)
+    holds. Older clients read the new keys as "Mask + visor".
+  - The Locker's MASKS row has two more cards, "Helmet" and "Half mask", with thumbnails.
+  - `Runtime/NativeRobotHelmPresentation` (new) banks both. `VisualFaceGear` draws them in the body colour, so its calls now
+    pass the body colour.
+  - Under the helmet:
+    - the hair is hidden (each piece draws a triangle-less copy of itself), including on corpses;
+    - hats sit on the helmet (`VisualHatFit(..., helm)`).
+  - Corpses and scenes:
+    - the helmet stays on the head half of a split corpse;
+    - the face gear (all of it) now also draws in death scenes and on revive bodies;
+    - `VisualSceneHooded` finds the head for every scene.
+  - Under either piece, the robot suit's ear modules are left off.
+  - The suit's paints and `Box` are internal, so the helmet shares them.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Both pieces are rigid on
+  the head bone. The face's blend shapes still play under them.
+- **Checks (actual):**
+  - `CoreTests --helm` (new, 29 checks): budgets, mirror symmetry, the head table inside the helmet, every hat clear of it,
+    the face clear of the half mask, the keys, and the wiring.
+  - Pins updated for the new call shapes in `BodySkinChecks`, `ModelHatChecks` and `VisualRigChecks`.
+  - Full CoreTests on a clean LF worktree of `236c65cf`: 881 PASS lines, 35 managed-core checks, rc 0, run with one local,
+    uncommitted patch to `ExpeditionEndingChecks`. That check compares `Path.Combine(A,"Core/...")` with
+    `Directory.GetFiles` paths, which never match on Windows, so it failed ("no other asset shares a new GUID") before the
+    patch. With `Path.GetFullPath` it passes.
+  - No meta GUID is duplicated. `git diff --check` is clean. The Unity assembly compile passes (`tools/check_unity_compile.py`).
+  - Offline probe on the dumped head:
+    - the head is 3.2 mm or more inside the helmet's inner face;
+    - every model hat clears the helmet by 3 to 8 mm;
+    - the face is 6.8 mm or more behind the half mask's inner face.
+  - Unity Editor (local tool v242, Brickfall):
+    - the helmet with and without a cap, face, three-quarter, side and back views;
+    - the half mask with the wild hair, and with the robot suit (one pair of ear modules);
+    - a dead pilot's corpse in the helmet and a cowboy hat (no hair shows);
+    - the Locker's MASKS row with both cards.
+- **Not run / not verified:**
+  - a Windows player build; multiplayer;
+  - the helmet on a split corpse (the saw gallery's stand-in does not wear the local pick, and its cut runs through the
+    head);
+  - a death scene and a revive in the helmet;
+  - the half mask while the jaw opens on an attack shout;
+  - the hats on the helmet in game (only the cap and the cowboy hat; the rest offline).
+- **Known gaps:** under a kill look (Soul Drift, Frostbreak) or on a crushed head the corpse has no helmet and no hair.
+  Side hair can cover the half mask's ear modules.
+- **Handoff (Astra):**
+  - `src/relay/accounts.ts`: add `helm` and `half` to `FACE_SKINS`. Until then a signed-in pilot's pick resets to "Mask +
+    visor" at the next sign-in.
+  - `Tests/ExpeditionEndingChecks.cs` fails on Windows checkouts. Normalize the `mine` paths with `Path.GetFullPath`.
+
 ## 2026-10-30 — Claude (PC): the robot suit (clothing after the original voxel robot)
 
 - **Branch/base:** `claude/robot-suit` from shared `3677b449`. No PR; merged into shared and the builder.

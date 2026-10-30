@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         private void SetBodySkin(string key){prefs.weaponSkins=NativeBodySkins.Gate(NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,key),lockerBodySheldon);}
         // ---- the model's face gear ----
         private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!="Classic";
-        /// <summary>The equipped face gear (NativeWeaponSkins.FaceBoth, FaceVisor or FaceMask).</summary>
+        /// <summary>The equipped face gear (NativeWeaponSkins.FaceBoth, FaceVisor, FaceMask, FaceHelm or FaceHalf).</summary>
         private int FaceGearEquipped()=>NativeWeaponSkins.Index(prefs.weaponSkins,NativeWeaponSkins.FaceEntry);
         /// <summary>The one setter of the face gear: its "face" entry, and the Prototype body that wears it.</summary>
         private void SetFaceGear(string key){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,key);if(BodySkinEquipped()!=NativeBodySkins.PrototypeIndex)SetBodySkin(NativeBodySkins.Prototype);}
@@ -95,8 +95,8 @@ namespace ChipArena.UnityConversion
         // Short enough for one line beside the tick and the DEV badge at a third of the narrowest Locker column: the voxel
         // bodies', and the masks' (no mask, then the face gears).
         private static readonly string[] LkBodyTexts={"Armour plates, visor","The original blocky build","Long glowing coat"};
-        private static readonly string[] LkMaskLabels={"No mask","Mask + visor","Visor","Mask"};
-        private static readonly string[] LkMaskTexts={"Your pilot's own face","Visor and lower mask","Band over the eyes","Nose and mouth covered"};
+        private static readonly string[] LkMaskLabels={"No mask","Mask + visor","Visor","Mask","Helmet","Half mask"};
+        private static readonly string[] LkMaskTexts={"Your pilot's own face","Visor and lower mask","Band over the eyes","Nose and mouth covered","Full robot helmet","Robot plate, nose to chin"};
         // The bodies share the row as segments (two or three across, wrapping only when a card would be under LkRowMin).
         private int LkBodyCols()=>Mathf.Max(1,Mathf.Min(BodySkinChoices,LkCols(lockerW,LkRowMin)));
         private float LkBodyRowH(){int cols=LkBodyCols(),rows=(BodySkinChoices+cols-1)/cols;return rows*LkRowH+(rows-1)*LkGap;}
@@ -115,7 +115,7 @@ namespace ChipArena.UnityConversion
             }
         }
         // ---- Appearance's MASKS row (on the model; laid out and headed by Runtime/NativeLockerUI.cs) ----
-        // No mask (the Standard body) and the three face gears, as row cards with the model's thumbnail: hovering one tries it on
+        // No mask (the Standard body) and the five face gears (the robot's helmet and half mask among them), as row cards with the model's thumbnail: hovering one tries it on
         // the stage (lockerBodyTry and, for a gear, lockerFaceTry), a click equips it through SetBodySkin or SetFaceGear. A body
         // other than the Prototype (a Sheldon Clothes pick, worn in Classic) reads as no mask.
         private int LkMaskCols()=>Mathf.Max(1,Mathf.Min(LkMaskLabels.Length,LkCols(lockerW,LkRowMin)));
@@ -179,8 +179,10 @@ namespace ChipArena.UnityConversion
         }
         // A model pilot's thumbnail: head and shoulders in the hood's dark cloth with accent trims, spiky hair, the skin in the
         // picked tone (LkToneShown: the model's own without one), and the face bare
-        // (gear -1) or under the face gear (NativeWeaponSkins.FaceBoth, FaceVisor, FaceMask): the visor's glowing band in its
-        // frame and temple pods, the mask's dark block with its vents. `u` pixels a unit, the shoulders' foot at `f`.
+        // (gear -1) or under the face gear (NativeWeaponSkins.FaceBoth .. FaceHalf): the visor's glowing band in its frame and
+        // temple pods, the mask's dark block with its vents; the robot's helmet (in the body colour, its visor bar, grille and ear
+        // modules over the whole head) or its half mask (the plate with the grille over the lower face, the ear modules either
+        // side). `u` pixels a unit, the shoulders' foot at `f`.
         private void LkModelThumb(Vector2 f,int gear,Color accent,float e,float u=3.5f)
         {
             void Box(float x0,float x1,float y0,float y1,Color c)=>U.Fill(new Rect(f.x+x0*u,f.y-y1*u,(x1-x0)*u,(y1-y0)*u),U.A(c,e));
@@ -194,6 +196,21 @@ namespace ChipArena.UnityConversion
             else{Box(-1.5f,-.6f,6.1f,7.1f,eye);Box(.6f,1.5f,6.1f,7.1f,eye);}
             if(mask){Box(-2.3f,2.3f,3.5f,5.8f,dark);Box(-1.4f,-.8f,4.5f,4.7f,accent);Box(.8f,1.4f,4.5f,4.7f,accent);Box(-1.4f,-.8f,4.95f,5.15f,accent);Box(.8f,1.4f,4.95f,5.15f,accent);}
             else Box(-.45f,.45f,4.6f,4.8f,LkShade(skin,.7f));
+            if(gear!=NativeWeaponSkins.FaceHelm&&gear!=NativeWeaponSkins.FaceHalf)return;
+            Color shell=U.Hex(NativePortraitRules.Parse(prefs.bodyColor,0xe5e7eb)),side=LkShade(shell,.78f);
+            if(gear==NativeWeaponSkins.FaceHelm)
+            {
+                Box(-3,3,3.3f,10.6f,shell);Box(-2.5f,2.5f,10.6f,11.4f,shell);Box(-3,3,3.3f,3.55f,dark);
+                Box(-2.7f,2.7f,6.6f,8.3f,dark);Box(-2.45f,2.45f,6.85f,8.05f,accent);
+                Box(-1.2f,1.2f,5.6f,5.85f,dark);Box(-1.2f,1.2f,5.05f,5.3f,dark);Box(-.85f,.85f,4.5f,4.75f,dark);
+                Box(-3.6f,-3,6,8.2f,side);Box(3,3.6f,6,8.2f,side);Box(-3.5f,-3.3f,7.5f,7.9f,accent);Box(3.3f,3.5f,7.5f,7.9f,accent);
+            }
+            else
+            {
+                Box(-2.5f,2.5f,3.9f,6.1f,shell);Box(-1.8f,1.8f,3.4f,3.9f,shell);
+                Box(-1.1f,1.1f,5.3f,5.5f,dark);Box(-1.1f,1.1f,4.8f,5,dark);Box(-.8f,.8f,4.3f,4.5f,dark);Box(-2.1f,-1.9f,5.1f,5.8f,accent);Box(1.9f,2.1f,5.1f,5.8f,accent);
+                Box(-3.1f,-2.4f,5.4f,7.4f,side);Box(2.4f,3.1f,5.4f,7.4f,side);Box(-3,-2.8f,6.8f,7.2f,accent);Box(2.8f,3,6.8f,7.2f,accent);
+            }
         }
         // One rect of the thumbnail in body units (3 per unit, feet at `f`, y up), and its mirror pair (x0..x1 and -x1..-x0).
         private static void LkVox(Vector2 f,float x0,float x1,float y0,float y1,Color c,float e)=>U.Fill(new Rect(f.x+x0*3,f.y-y1*3,(x1-x0)*3,(y1-y0)*3),U.A(c,e));
