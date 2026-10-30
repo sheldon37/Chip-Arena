@@ -118,7 +118,7 @@ internal static class LockerChecks
         // one fixed-height row a slot however many pieces it lists, its icon and name, and arrows that wrap round the worn piece.
         string picker=outfit.Substring(outfit.IndexOf("public static class NativeOutfitPicker"));
         string pickerRow=picker.Substring(picker.IndexOf("public static int Row("),picker.IndexOf("private static bool Arrow(")-picker.IndexOf("public static int Row("));
-        Check(outfit.Contains("private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length);")&&picker.Contains("return rows<=0?0:rows*RowH+(rows-1)*Gap;")
+        Check(outfit.Contains("private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length+1);")&&picker.Contains("return rows<=0?0:rows*RowH+(rows-1)*Gap;")
             &&pickerRow.Contains("pick=(worn-1+shown)%shown;")&&pickerRow.Contains("pick=(worn+1)%shown;")&&pickerRow.Contains("if(!on&&hot&&U.Button(hit)){pick=i;")
             &&picker.Contains("public static readonly string[] Icons={")&&Regex.Matches(picker.Substring(picker.IndexOf("Icons={"),picker.IndexOf("IconKeys=")-picker.IndexOf("Icons={")),"\"<path").Count>=NativeLook.Slots.Length,
             "the OUTFIT picker is a row a slot (icon, name, wrapping arrows, dots) whose height does not grow with the pieces");

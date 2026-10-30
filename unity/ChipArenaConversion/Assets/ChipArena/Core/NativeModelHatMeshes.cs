@@ -35,15 +35,25 @@ namespace ChipArena.UnityConversion
         public const float BandY=.118f,BandZ=.025f,BandX=.121f,BandDepth=.127f,CrownTop=.215f;
         public const int Around=96;
 
-        // A vertex's paint: its colour (sRGB), whether it is the hat's main material, and how much it glows.
-        private struct Paint{public int Rgb;public float Shade;public bool Main;public float Glow;public Paint(int rgb,float shade=1,bool main=false,float glow=0){Rgb=rgb;Shade=shade;Main=main;Glow=glow;}}
-        private sealed class Kit
+        // A vertex's paint: its colour (sRGB), whether it is the hat's main material, and how much it glows; or the pilot's accent
+        // glowing `Glow` strong, or its colour under the pilot's body colour (the robot suit's light strips and shell:
+        // Core/NativeRobotSuit).
+        internal struct Paint
+        {
+            public int Rgb;public float Shade;public bool Main;public float Glow;public bool Accent,Body;
+            public Paint(int rgb,float shade=1,bool main=false,float glow=0){Rgb=rgb;Shade=shade;Main=main;Glow=glow;Accent=Body=false;}
+            public static Paint Lit(float glow,float albedo=.35f)=>new Paint{Shade=albedo,Glow=glow,Accent=true};
+        }
+        // The surface kit (shared with the robot suit, whose parts ride other bones).
+        internal sealed class Kit
         {
             public readonly List<SheldonSection> Parts=new List<SheldonSection>();public bool Tinted;public int MainRgb;
-            public SheldonSection Part(string name){var s=new SheldonSection{Part=name,Bone=CapturedRig.Head};Parts.Add(s);return s;}
+            public SheldonSection Part(string name,int bone=CapturedRig.Head){var s=new SheldonSection{Part=name,Bone=bone};Parts.Add(s);return s;}
             public int Vertex(SheldonSection s,Vector3 p,Vector3 n,Paint c)
             {
+                if(c.Accent){var e=NativePortraitRules.ExportEmber;return s.Add(p,n,new Vector4(e*c.Shade,1),new Vector4(e*c.Glow,2));}
                 var lin=NativePortraitRules.Linear(c.Rgb)*c.Shade;
+                if(c.Body)return s.Add(p,n,new Vector4(lin,1),new Vector4(lin*c.Glow,1));
                 if(Tinted&&c.Main)
                 {
                     float level=NativeHatLooks.Luma(lin)/Math.Max(1e-5f,NativeHatLooks.Luma(NativePortraitRules.Linear(MainRgb)));

@@ -76,7 +76,9 @@ namespace ChipArena.UnityConversion
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
-        private string VisualLookOf(int id)
+        // (A pilot in the robot suit wears its under-suit in place of its clothes: NativeRobotSuitPresentation.)
+        private string VisualLookOf(int id){var look=VisualOutfitOf(id);return WearsSuit(id)?NativeRobotSuit.Look(look):look;}
+        private string VisualOutfitOf(int id)
         {
             if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??"";
             if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
@@ -448,6 +450,7 @@ namespace ChipArena.UnityConversion
             // The Sheldon Head: the hood's void and face (the body wears the hood; without them the opening showed the model's face).
             else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
             if(!body.Hood)VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
+            VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);
             return true;
         }
         // The draft's visual body this frame (VisualDraftPose; null when the pilot draws voxel): its wrist device takes the
@@ -616,8 +619,9 @@ namespace ChipArena.UnityConversion
                 sourceModels.Queue(NativeSourceModels.GearCore,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(g,g,g,1),null,flash);
             }
             if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.AccentColor,layer,camera,reveal,tint,flash);
-            // The back emblem on the chest's model bone, glowing as the core does.
-            if(!first)
+            if(!first)VisualSuit(body.Root,a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
+            // The back emblem on the chest's model bone, glowing as the core does (under the robot suit's back plate: none).
+            if(!first&&!WearsSuit(a.Id))
             {
                 var of=body.Binding.Rig.Of;int cv=CapturedRig.Chest<of.Length?of[CapturedRig.Chest]:-1;var chest=cv>=0&&cv<body.Binding.Bones.Length?body.Binding.Bones[cv]:null;
                 if(chest!=null){gearMatrix=chest.localToWorldMatrix*body.Emblem;var e=NativePilotGear.CoreGlow(time,1,time-body.LitAt,a.Id);sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(e,e,e,1),null,flash);}
@@ -1480,6 +1484,7 @@ namespace ChipArena.UnityConversion
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
                 if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
+                corpseFade=alpha;VisualSuit(c.Root,corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);
             }
             return true;
         }

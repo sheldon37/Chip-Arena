@@ -8,13 +8,16 @@ namespace ChipArena.UnityConversion
     // Revert undoes with the rest of the look. The pilot's model wears it in the lobby, the draft and matches
     // (Runtime/NativeVisualBodyPresentation.cs VisualDress); the Locker's own stage is the portrait pilot. The DEV pieces
     // (Sheldon's clothes and bare feet, each slot's last; Core NativeSheldonWear) show, marked DEV, only with live DEV access
-    // (lockerBodySheldon, the Sheldon Clothes' gate), and the pilot wears its pick through that gate (LookShown).
+    // (lockerBodySheldon, the Sheldon Clothes' gate), and the pilot wears its pick through that gate (LookShown). A last row
+    // picks the robot suit (owner 2026-10-30: "design clothing that resembles our previous player model (Robotic style)"): its
+    // skin map's "suit" entry (NativeWeaponSkins.SuitEntry), saved and reverted with the map; worn, its under-suit takes the
+    // clothes' place (Runtime/NativeRobotSuitPresentation.cs).
     public sealed partial class ConversionGame
     {
         private readonly NativeOutfitPicker.Motion lockerOutfitMotion=new NativeOutfitPicker.Motion();
         // The pieces a slot lists: all of them with live DEV access, else those before its DEV pieces (each slot's last).
         private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;return n;}
-        private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length);
+        private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length+1);
         private void LkOutfit(Rect grid)
         {
             for(int s=0;s<NativeLook.Slots.Length;s++)
@@ -23,6 +26,9 @@ namespace ChipArena.UnityConversion
                 int k=NativeOutfitPicker.Row(NativeOutfitPicker.Cell(grid,lockerW,s),s,worn,shown,lockerFade,lockerViewHot&&!lockerBlocked,Time.unscaledTime,lockerOutfitMotion);
                 if(k!=worn){prefs.look=NativeLook.Gate(NativeLook.With(prefs.look,slot,ids[k]),lockerBodySheldon);Click();}
             }
+            int suit=NativeWeaponSkins.Index(prefs.weaponSkins,NativeWeaponSkins.SuitEntry),row=NativeLook.Slots.Length;
+            int pick=NativeOutfitPicker.Row(NativeOutfitPicker.Cell(grid,lockerW,row),row,NativeOutfitPicker.SuitName,NativeWeaponSkins.SuitKeys,NativeWeaponSkins.SuitLabels,suit,NativeWeaponSkins.SuitKeys.Length,lockerFade,lockerViewHot&&!lockerBlocked,Time.unscaledTime,lockerOutfitMotion);
+            if(pick!=suit){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.SuitEntry,NativeWeaponSkins.SuitKeys[pick]);Click();}
         }
         // The outfit this pilot wears: prefs.look through the DEV gate (NativeLook.Gate), made again only when the pick or the
         // access changes (read every frame). A skin tone hovered in Appearance's SKIN TONE row (lockerToneTry: -1 DEFAULT, else
@@ -60,31 +66,37 @@ namespace ChipArena.UnityConversion
             return new Rect(grid.x+(i%cols)*(w+Gap),grid.y+(i/cols)*(RowH+Gap),w,RowH);
         }
 
-        // The slots' line icons (24-unit boxes, round 1.8 strokes in white, tinted when drawn): hair, top, bottoms, hands, shoes.
+        // The slots' line icons (24-unit boxes, round 1.8 strokes in white, tinted when drawn): hair, top, bottoms, hands, shoes,
+        // then the suit row's (a visored helmet).
         private const string Stroke=" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"";
         public static readonly string[] Icons={
             "<path d=\"M5.5 14C5 8.5 8 4.5 12 4.5s7 4 6.5 9.5\""+Stroke+"/><path d=\"M5.5 12.5c2.6.2 5.2-1 6.5-3.6 1.3 2.4 3.6 3.6 6.5 3.6\""+Stroke+"/><path d=\"M7.5 14v1.5a4.5 4.5 0 0 0 9 0V14\""+Stroke+"/>",
             "<path d=\"M9 4 4 6.5 2.5 11l3 1.5L7 11v9h10v-9l1.5 1.5 3-1.5L20 6.5 15 4c-.5 1.7-1.6 2.5-3 2.5S9.5 5.7 9 4Z\""+Stroke+"/>",
             "<path d=\"M7 3.5h10l1.5 17h-4.2L12 11l-2.3 9.5H5.5Z\""+Stroke+"/><path d=\"M6.8 6.5h10.4\""+Stroke+"/>",
             "<path d=\"M8 12.5V6a1.5 1.5 0 0 1 3 0v5\""+Stroke+"/><path d=\"M11 10V4.5a1.5 1.5 0 0 1 3 0V10\""+Stroke+"/><path d=\"M14 10.5V6a1.5 1.5 0 0 1 3 0v6c0 4.7-2.6 8-6.5 8-2.4 0-4-1.1-5.3-3l-2-3.1a1.5 1.5 0 0 1 2.4-1.8L8 14\""+Stroke+"/>",
-            "<path d=\"M3 15.5V11l3.5-1 3 2.5 5 1.2c3.6.8 6.5 2.3 6.5 4.3v.5H3Z\""+Stroke+"/><path d=\"M3 18.5h18\""+Stroke+"/><path d=\"M10 12.8 11.2 11M12.6 13.3l1.1-1.7\""+Stroke+"/>"};
-        private static readonly string[] IconKeys={"outfit-hair","outfit-top","outfit-bottoms","outfit-hands","outfit-shoes"};
+            "<path d=\"M3 15.5V11l3.5-1 3 2.5 5 1.2c3.6.8 6.5 2.3 6.5 4.3v.5H3Z\""+Stroke+"/><path d=\"M3 18.5h18\""+Stroke+"/><path d=\"M10 12.8 11.2 11M12.6 13.3l1.1-1.7\""+Stroke+"/>",
+            "<path d=\"M5 14.5V12a7 7 0 0 1 14 0v2.5\""+Stroke+"/><path d=\"M5 11h14v3.5H5Z\""+Stroke+"/><path d=\"M7 14.5v2.5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2.5M10 17h4\""+Stroke+"/>"};
+        private static readonly string[] IconKeys={"outfit-hair","outfit-top","outfit-bottoms","outfit-hands","outfit-shoes","outfit-suit"};
+        /// <summary>The suit row's name (its picks are the skin map's suit keys and labels).</summary>
+        public const string SuitName="Suit";
         private const string Prev="<path d=\"m14.5 6-6 6 6 6\""+Stroke+"/>",Next="<path d=\"m9.5 6 6 6-6 6\""+Stroke+"/>";
 
         /// <summary>
         /// One slot's row in `r` (slot `s`, its `worn` piece of the `shown` it lists, faded by `e`): returns the piece the pilot
         /// picks this frame (`worn` without a click). `hot` is false while the Locker is blocked or the pointer is elsewhere.
         /// </summary>
-        public static int Row(Rect r,int s,int worn,int shown,float e,bool hot,float now,Motion motion)
+        public static int Row(Rect r,int s,int worn,int shown,float e,bool hot,float now,Motion motion)=>Row(r,s,NativeLook.SlotLabels[s],NativeLook.Ids[s],NativeLook.Labels[s],worn,shown,e,hot,now,motion);
+        /// <summary>A row of picks `ids` named `labels` under the name `name` (slot `s`: its icon and motion).</summary>
+        public static int Row(Rect r,int s,string name,string[] ids,string[] labels,int worn,int shown,float e,bool hot,float now,Motion motion)
         {
-            var ids=NativeLook.Ids[s];int pick=worn;bool custom=worn!=0;
+            int pick=worn;bool custom=worn!=0;
             bool over=hot&&U.Hover(r);float h=U.HoverAmount(8400+s,r,over);
             U.Round(r,U.A(U.Mix(U.Hex(0x1c1d23),U.Hex(0x212228),h),e),10,U.A(U.Mix(U.Hex(0x30313a),U.Hex(0x45464f),h),e),1);
             // The slot: its icon on a tile, the accent while it wears something of its own, and its name.
             var tile=new Rect(r.x+10,r.y+(r.height-32)/2,32,32);
             U.Round(tile,custom?U.Hex(0x3a2a26,e):U.Hex(0x26272e,e),8,custom?U.Hex(0x6b3a26,e):U.Hex(0x34353d,e),1);
             if(s<Icons.Length)NativeIcons.DrawMarkup(new Rect(tile.x+6,tile.y+6,20,20),IconKeys[s],Icons[s],24,custom?U.Hex(0xff8a5c,e):U.Hex(0xb9b6c2,e));
-            U.Text(new Rect(tile.xMax+10,r.y,LabelW-52,r.height),NativeLook.SlotLabels[s].ToUpperInvariant(),10,U.Hex(0x9d9ca6,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+            U.Text(new Rect(tile.xMax+10,r.y,LabelW-52,r.height),name.ToUpperInvariant(),10,U.Hex(0x9d9ca6,e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
             // The carousel: the arrows round the piece's name and its dots.
             // (at most CarouselW wide, against the row's right edge, so the arrows stay close round the name on a wide Locker)
             float x1=r.xMax-8,x0=Mathf.Max(r.x+LabelW,x1-CarouselW);if(x1-x0<ArrowW*2+80)x0=x1-(ArrowW*2+80);
@@ -94,7 +106,7 @@ namespace ChipArena.UnityConversion
             var stage=new Rect(left.xMax+6,r.y+5,right.x-left.xMax-12,r.height-10);
             // The name slides 14 px in from the side it came from and fades up over .18 s (a value per slot, no allocation).
             float k=Mathf.Clamp01((now-motion.At[s])/.18f),ease=1-(1-k)*(1-k)*(1-k),dx=(1-ease)*14*motion.Dir[s];
-            string label=NativeLook.Labels[s][worn];bool dev=NativeLook.DevOnly(ids[worn]);float size=14;
+            string label=labels[worn];bool dev=NativeLook.DevOnly(ids[worn]);float size=14;
             float tw=U.Measure(label,size,true).x,tagW=dev?34:0,total=tw+(dev?tagW+8:0),nx=stage.center.x-total/2+dx;
             U.Text(new Rect(nx,stage.y,tw+4,22),label,size,U.Hex(0xf4f4f5,e*(.35f+.65f*ease)),TextAnchor.MiddleLeft,bold:true);
             if(dev){var tag=new Rect(nx+tw+8,stage.y+4,tagW,15);U.Round(tag,U.Hex(0x3b2f12,e),4,U.Hex(0xb8860b,e),1);U.Text(tag,"DEV",9,U.Hex(0xffd479,e),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f);}
