@@ -70,7 +70,8 @@ namespace ChipArena.UnityConversion
         // A saturated cloud (toxic gas, acid fumes, Void's lilac ring) glows this much in its own colour.
         private const float CloudGlow=.35f;
         private const float DarkRim=3f;
-        private const float ChunkSelf=.3f,DebrisScale=1.45f,RockScale=1.3f,HotLife=.35f,HotGain=2.2f;
+        private const float ChunkSelf=.3f,RockSelf=.08f,DebrisScale=1.1f,RockScale=.95f,HotLife=.35f,HotGain=2.2f,DustCover=.32f,DustSpeed=1.2f;
+        private static readonly Color DustTone=new Color(.42f,.39f,.36f,0);
         private static readonly Color HotColor=new Color(1,.42f,.12f,0);
         // Flames burn in their own hue (FlameTint) and age slower in the puff (FlameAge), so a tongue stays hot for most of its
         // short life instead of handing off into its end colour at a third of it.
@@ -432,16 +433,22 @@ namespace ChipArena.UnityConversion
         private static Vector3 At(float[] o,int w)=>new Vector3(o[w],o[w+1],o[w+2]);
         private static Vector3 Edges(float[] o,int w)=>new Vector3(o[w+3],o[w+4],o[w+5]);
         private static Quaternion Turn(float[] o,int w)=>new Quaternion(o[w+6],o[w+7],o[w+8],o[w+9]);
-        // Rubble: flat-shaded chunks by seed, lit, scaled up so a chunk covers about what the cube did (a hull is a third to a
-        // half of its box). Fire-family debris (HotDebris) leaves the fireball glowing orange-hot and cools over its first
-        // HotLife of life; other bright (impact) pieces glow and cool by their colour; a little of its own colour as emission
-        // keeps the stylized rubble readable against a night arena.
+        // Rubble: flat-shaded chunks by seed, lit; the model's look (owner 2026-10-29) draws them finer than the cubes they replace
+        // and lets rock read as stone: only a trace of its own colour as emission, a seeded tone per chunk, and a faint trail of
+        // dust (two soft puffs behind it) while it flies fast. Fire-family debris (HotDebris) leaves the fireball glowing
+        // orange-hot and cools over its first HotLife of life; other bright (impact) pieces glow and cool by their colour, metal
+        // keeping a little of its own (ChunkSelf).
         private void Chunk(float[] o,int w,int seed,float u,Color color,NativeFxRole role)
         {
             bool rock=role==NativeFxRole.Rock;var shape=chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants];Color emissive;
             if(role==NativeFxRole.HotDebris){float hot=Mathf.Clamp01(1-u/HotLife);emissive=HotColor*(HotGain*hot*hot)+color*ChunkSelf;}
-            else{float lum=.2126f*color.r+.7152f*color.g+.0722f*color.b,hot=Mathf.Clamp01((lum-.3f)*2.2f)*(1-u)*1.2f;emissive=color*(hot+ChunkSelf);}
-            LitMesh(shape,At(o,w),Turn(o,w),Edges(o,w)*(rock?RockScale:DebrisScale),color*(rock?.9f:.85f),rock?.1f:.15f,rock?.2f:.25f,emissive,color*.6f+new Color(.04f,.04f,.05f,0));
+            else{float lum=.2126f*color.r+.7152f*color.g+.0722f*color.b,hot=Mathf.Clamp01((lum-.3f)*2.2f)*(1-u)*1.2f;emissive=color*(hot+(rock?RockSelf:ChunkSelf));}
+            float tone=rock?.78f+.4f*(((uint)seed*2654435761u)>>24)/255f:1;var at=At(o,w);
+            LitMesh(shape,at,Turn(o,w),Edges(o,w)*(rock?RockScale:DebrisScale),color*((rock?.9f:.85f)*tone),rock?.1f:.15f,rock?.2f:.25f,emissive,color*.6f+new Color(.04f,.04f,.05f,0));
+            if(!rock)return;
+            int v=w+NativeBlastPool.VelocityAt;var velocity=new Vector3(o[v],o[v+1],o[v+2]);float fast=Mathf.Clamp01((velocity.magnitude-DustSpeed)/3f);if(fast<=0)return;
+            var dust=Mix(color,DustTone,.55f);float size=o[w+3]*RockScale,floor=o[w+NativeBlastPool.FloorAt];
+            for(int k=1;k<=2;k++)Toon(at-velocity*(.035f*k),dust,DustCover*fast*(1-u)/k,size*(.7f+.3f*k),ToonSmokeMode,u,seed*7+k,floor);
         }
         // Ice: a crystal along the voxel's long axis, a bright HDR fresnel edge in its tint (the bloom catches it), a glint and
         // some emission. A landed crystal bounces every frame (the pool's floor bounce flips its velocity, so its velocity pose
