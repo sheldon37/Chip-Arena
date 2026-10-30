@@ -1733,6 +1733,33 @@ already? Cant we utilize that?"
   - **A corpse a co-op revive makes first** (NativeInteractionPresentation: the revive reads the body before the death
     presentation has drawn it) now wears its visual body too; it had stayed voxel (2026-10-25, `claude/model-revive-corpse`).
 
+**Faces (2026-10-30, `claude/faces`; Unity Editor, local tool v233).** Owner: "I think we have facial expressions available?
+Can we begin utizling those in the game as well? For zombies as well. Characters are currently emotionless".
+- **What the pack has.** Head_AnimeYoung carries 43 `Expression_*` blend shapes (brows raised, lowered, angry, sad; eyes closed,
+  narrowed, opened wide; the mouth smiling, sad, wide, grimacing, puckered; the jaw open and aside; clenched teeth, a big smile,
+  the tongue, the vowels A E I O U, a kitty mouth, blank eyes and mouth), the lashes the same 43, the brows the 8 brow shapes, the
+  teeth the 23 mouth and jaw shapes (listed by the local tool's `shapes` option). Its expression clips (Angry, Devious, Evil, Happy,
+  Sad, Smile, Surprised, Blink) set them; nothing in the game did.
+- **Core/NativeFace.** 35 of those shapes in 24 moods (the pack's Happy, Sad, Surprised and Devious as clipped; the rest composed):
+  layered from what a body does this frame, eased (in .06 s, out .2 s; the lids at most .035 s) and blinking on its own clock (every
+  2.2 to 5.6 s, sometimes twice).
+  - A pilot in a match: a set, narrowed focus; a shout through a blow, a special or an ability; gritted teeth through a block or a
+    roll; a squint down the sights; a wince when hit (by the hit's strength), strain under 40% health, a daze when stunned, a grin
+    for 1.6 s after a kill, a breath sprinting tired; slack and closed-eyed once dead. In the menus (the rooftop, the lobby cards,
+    the draft, the intros) a smile.
+  - A zombie: its kind's own face (the shambler's moan, the runner's bared teeth, the spitter's slack mouth, the brute's grimace,
+    the Hulk's rage), its jaw where its gait opens it (the voxel jaw's own opening: moans, bites, a roar; a bite snarls wide), a roar
+    through a blow, a wince when hit, the spitter's mouth gathering through a spit, slack once dying.
+- **Runtime (NativeVisualFacePresentation).** Each model body finds its face meshes once (the shapes by name), and its face is set
+  where it is posed: every pilot body in `VisualBodyBind` (the match, the menus, the intros, the draft, a revive), a zombie in
+  `ZombieModelBind` (at the crowd clock's rate). A weight is written only when it moved half a point; a hidden head (the Sheldon
+  hood) is left.
+- **Checks:** `CoreTests --faces` (the shapes on the pack's head, the moods in range, a pilot's focus, wince, shout, grin, smile and
+  death, the blink, easing at most 18 points a 60 Hz frame, five zombie kinds' own faces, jaws and the spitter's pucker, nothing
+  allocated a frame, the wiring).
+- **Not yet:** voice-driven mouths (no voice lines speak), the Sheldon Head's own face (it has its own expressions), the death
+  scenes and corpses (not posed through the bind: they keep the face they had).
+
 **Not yet (step 4 continues):**
 - **The owner's concept pieces: the tech mask and the glowing visor (2026-10-25, `claude/model-cyberlord`):**
   - Our own pieces, built in code (`Core/NativePilotGear.cs` `Mask`, `Visor`), so nothing licensed is committed.

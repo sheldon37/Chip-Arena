@@ -48,6 +48,8 @@ namespace ChipArena.UnityConversion
             // A mutant's growth not on it yet (ZombieGrowthAttach: it draws voxel until its variant's growth is made), and when it
             // was last posed (the Hulk's carried hips step by it: NativeVisualRig.State.Dt).
             public bool Growing;public double PoseTime;
+            // Its jaw's opening this pose (0..1: the gait's, the voxel jaw's own; its face's: NativeFace).
+            public float Jaw;
             // The spitter's sac and its swell as last written.
             public SkinnedMeshRenderer Sac;public float Swell=-1;
             public readonly NativeCrowdPoseClock PoseClock=new NativeCrowdPoseClock();private int poseLost,poseHidden;
@@ -76,11 +78,11 @@ namespace ChipArena.UnityConversion
         // Posing (HordeKindAdd, HordeKindDeath): the model in place of the voxel model
         // ================================================================================================================
         /// <summary>A living add (its rig posed from minionPose this frame): its model posed, true; false draws its voxel model.</summary>
-        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,NativeHordeGait gait,int lost,int hidden,float flash,float glow,float swell)
+        private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,NativeHordeGait gait,int lost,int hidden,float flash,float glow,float swell,float jaw=0)
         {
             if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind);if(z==null)return false;
             if(z.Growing&&!ZombieGrowthAttach(z)){z.SeenAt=Time.unscaledTime;return false;}
-            z.Dying=false;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;z.Stride=gait?.LegsNow??1;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
+            z.Dying=false;z.Jaw=jaw;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;z.Stride=gait?.LegsNow??1;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
         }
         /// <summary>A dying add's fall (HordeKindDeath, its rig posed from minionPose): its model, true; false: the voxel body falls.</summary>
         private bool ZombieModelDeath(CapturedAnimation.Player rig,int id,int kind,int lost,int hidden)
@@ -108,6 +110,7 @@ namespace ChipArena.UnityConversion
             double now=Time.unscaledTimeAsDouble;z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;
             // (The Hulk's hands are fists, clenched hardest through a blow: owner 2026-10-30, "the punch is open handed still".)
             z.Body.Binding.Apply(pose,z.Kind==NativeHordeKinds.Hulk?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy}:default(NativeVisualRig.Grasp),planted,airborne);
+            ZombieFace(z,flash,swell,z.PosedFrame<Time.frameCount-1);
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
             ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;

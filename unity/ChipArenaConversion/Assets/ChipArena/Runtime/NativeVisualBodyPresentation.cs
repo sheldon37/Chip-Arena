@@ -40,6 +40,8 @@ namespace ChipArena.UnityConversion
             // Its Sheldon pieces' renderers (Core NativeSheldonWear; VisualDress), the glow they last took (VisualSheldonGlow) and
             // the lift its feet piece set the skeleton by (VisualLiftOf: bare feet down onto the floor).
             public Renderer[] Sheldon=Array.Empty<Renderer>(); public string SheldonGlow; public float Lift;
+            // Its face (Core NativeFace; NativeVisualFacePresentation): made on its first pose from its worn face meshes.
+            public VisualFaceRig Face;
             // Whether it was made for a pilot in the Sheldon Head (VisualHooded) and its cloth hood (NativeSheldonHoodPresentation.cs).
             public bool Hood; public SkinnedMeshRenderer HoodRenderer;
             public Color ChipColor=Color.cyan, AccentLinear=Color.cyan;
@@ -203,7 +205,8 @@ namespace ChipArena.UnityConversion
         {
             Vector3 at=rig.Root.transform.position;
             // A fresh solve after a gap (death, first person, a hidden frame), a teleport or a weapon change.
-            if(body.PosedFrame<Time.frameCount-1||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4){body.Binding.State.Forget();if(body.ClothSim!=null)NativeVisualCloth.Reset?.Invoke(body.ClothSim);}
+            bool fresh=body.PosedFrame<Time.frameCount-1;
+            if(fresh||body.Spec!=a.SourceSpec||(at-body.At).sqrMagnitude>4){body.Binding.State.Forget();if(body.ClothSim!=null)NativeVisualCloth.Reset?.Invoke(body.ClothSim);}
             body.PosedFrame=Time.frameCount;body.Spec=a.SourceSpec;body.At=at;
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
@@ -212,6 +215,7 @@ namespace ChipArena.UnityConversion
             // model's (the stage's palm is on the bay), so the model's palm meets its own bay whatever its arms' proportions.
             if(support>0){grasp.Support=support;grasp.SupportHold=default;grasp.Bound=true;}
             body.Binding.Apply(pose,grasp,planted,airborne);
+            VisualFacePilot(body,a,time,fresh);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             if(body.Sheldon.Length>0)VisualSheldonGlow(body,NativeBodySkins.SheldonGlow(a.Hat,a.HatColor,a.AccentColor));
             // The rig's hands onto the visual weapon frames (the right's weapon, the left's off-hand blade or bare wrist).
