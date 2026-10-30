@@ -39,6 +39,37 @@
 - **Risks / next:** the sprints play under their pace on the model (a runner tempo on the model is a one-number change if they read
   slow). The brute's limping walk-4 is a little less in step (.90 → .78).
 
+## 2026-10-30 — Astra: Expedition crowd cost and missing performance attribution
+
+- Branch `codex/expedition-lag-20261030`, base shared/builder `0f17175b`.
+- Owner capture: local boss test, expedition-city, 40 minions, 61.35 ms frame; presentation 25.26 ms,
+  abilities 17.48 ms, effects 22.43 ms, fixed callbacks 17.60 ms over four ticks. These timings are nested:
+  abilities includes SourceWorld (scenery and horde models), and effects includes abilities. The historical
+  17,312.76 ms maximum is not attributed by this frame. No proof of a network, GPU or GC bottleneck.
+- Verified diagnostic defects: SplitFixedFrame bypassed normal arena/physics/navigation/horde counters
+  and stepMs. Instrument actual stepped areas only (LastTick guard), aggregate their per-tick costs, and
+  restore simulation-time and worst-active-frame reporting. Split bookkeeping remains in simulationMs.
+  Add sceneryMs, hordePresentationMs, zombiePoseMs and sourceFlushMs to separate work hidden under
+  abilities/effects. zombiePoseMs is a subset of hordePresentationMs (also includes dying model poses).
+- Performance changes: linear reusable-set minion rig retention instead of per-rig nested searches and
+  LINQ allocations. Remote off-camera model skeleton fits/bone writes refresh at 10 Hz, staggered by ID;
+  conservative frustum bounds, within 12 m, visibility, dying/crawling/airborne, flashes, wind-up glow,
+  swelling and sever changes force a full update. Roots and gait keep updating each frame; first use,
+  reappearance and clock rewind refresh immediately. No model geometry, skin, damage, hit timing,
+  hitbox, movement, enemy count or wire-format change. Distant off-camera shadows may animate at 10 Hz.
+- Verification: new CrowdPoseChecks passes at 30/60/144 Hz; synthetic 40 hidden models schedule 400
+  rather than 2,400 fits/sec at 60 Hz, peak 9 refreshes in a frame. This is a scheduling result, not an
+  FPS benchmark (the existing full-model crowd cap remains 24/16). Unity 6000.3.24f1 player/runtime/editor
+  semantic compilation passes; existing unused-field warnings. Full managed suite passes (876 PASS lines, 35 managed-core checks, exit 0);
+  Python suite passes (167 tests, one Windows-only skip).
+  Source package validation passes (2,821 files); git diff --check clean.
+- Not run: Unity/Windows gameplay, live multiplayer, actual frame/GPU profiling or test-feed publication.
+  The SDK CLI fails reading process metadata in this environment; managed sources are compiled directly
+  with its Roslyn compiler, warnings as errors, net8 reference assemblies and existing runtime settings.
+- Next: builder build then repeat the owner's 40-minion capture looking toward/away from the crowd and
+  during combat, including a two-area party. Confirm shadows and camera turns. A complete lag resolution
+  and FPS improvement cannot be asserted until those measurements are available.
+
 ## 2026-10-30 — Claude: zombie runs and sprints on the model, the legs in step and pointing forward
 
 - **Branch/base:** `claude/zombie-gait-model` from shared `d1a7f35` (started on `fdf42cb`, fast-forwarded before the first

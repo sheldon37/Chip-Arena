@@ -63,9 +63,16 @@ namespace ChipArena.UnityConversion
             if(dressed&&visual&&!first&&rigFlash>0){var pc=NativeBlockTint.OverlayColor(rigFlash);VisualParryFlash(rig,a,new Color(pc.X,pc.Y,pc.Z,1),NativeBlockTint.FlashLerp(rigFlash));}
             spawnNow=null;ClearRigTint();return true;
         }
+        public double DiagnosticSceneryMs{get;private set;}
+        public double DiagnosticHordePresentationMs{get;private set;}
+        public double DiagnosticZombiePoseMs{get;private set;}
+        public double DiagnosticSourceFlushMs{get;private set;}
+        private static double PresentationElapsed(long at)=>(System.Diagnostics.Stopwatch.GetTimestamp()-at)*1000d/System.Diagnostics.Stopwatch.Frequency;
+        private readonly HashSet<int> retainedMinionRigs=new HashSet<int>();
+        private readonly List<int> expiredMinionRigs=new List<int>();
         private void SourceWorld(NativeArena arena)
         {
-            if(sourceModels==null)return;
+            if(sourceModels==null)return;long sceneryAt=System.Diagnostics.Stopwatch.GetTimestamp();
             // The revamped Ward Zero (NativeWardZeroPresentation.cs) replaces today's exported hall and its motion; until it is
             // imported the map carries no look and this is today's path.
             bool revamp=NativeWardZeroLooks.Active(arena.Map);
@@ -88,7 +95,12 @@ namespace ChipArena.UnityConversion
             HazardKitWorld(arena);
             PveMachinePresentation(arena);
             // A dead add's rig stays posed until its death effects end (NativeMinionFxPresentation.cs: flames rise off its joints).
-            foreach(int id in minionRigs.Keys.Where(id=>!arena.Minions.Any(m=>m.Id==id)&&!arena.MinionDeaths.Any(d=>d.id==id&&arena.Time-d.at<NativeMinionFx.DeathFxSeconds)).ToArray()){minionRigs[id].Dispose();minionRigs.Remove(id);}
+            DiagnosticSceneryMs+=PresentationElapsed(sceneryAt);long hordeAt=System.Diagnostics.Stopwatch.GetTimestamp();
+            retainedMinionRigs.Clear();expiredMinionRigs.Clear();
+            foreach(var m in arena.Minions)retainedMinionRigs.Add(m.Id);
+            foreach(var d in arena.MinionDeaths)if(arena.Time-d.at<NativeMinionFx.DeathFxSeconds)retainedMinionRigs.Add(d.id);
+            foreach(int id in minionRigs.Keys)if(!retainedMinionRigs.Contains(id))expiredMinionRigs.Add(id);
+            foreach(int id in expiredMinionRigs){minionRigs[id].Dispose();minionRigs.Remove(id);}
             BeginHordeFx(arena);HordeKindsBegin(arena);
             foreach(var m in arena.Minions)
             {
@@ -117,11 +129,12 @@ namespace ChipArena.UnityConversion
             }
             // C17: severed limbs fly off as chunks (the rigs above are posed), and the downed get revive beacons.
             HordeKindsEnd(arena);PveGore(arena);PveBeacons(arena);
+            DiagnosticHordePresentationMs+=PresentationElapsed(hordeAt);
         }
         // A summon's model: the Toy Soldier's sculpted figure once the player's model is on (Core/NativeToySoldier.cs; the Classic
         // look and an install without the bake keep its blocks).
         private string SummonModelOf(string model)=>model=="summon-toy"&&!ClassicBodies&&VisualBodiesOn&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model;
         private void ClearSourceActors(){ClearRevives();ClearRigDressing();ClearWardZero();ClearSirenLooks();ClearDevEffects();draftRig?.Dispose();draftRig=null;ClearBroadcasts();slenderHops.Clear();ClearSceneryMotion();ClearWoundSpray();sourceModels?.ClearWounds();ClearCorpses();if(pitMaterial!=null){CapturedAnimation.Release(pitMaterial);pitMaterial=null;}introRig?.Dispose();introRig=null;foreach(var rig in minionRigs.Values)rig.Dispose();minionRigs.Clear();ClearHordeKinds(null);ClearHordeGallery();sourceModels?.Begin();}
-        public void FinishSourceFrame()=>sourceModels?.Flush(UsesInstancing);
+        public void FinishSourceFrame(){long at=System.Diagnostics.Stopwatch.GetTimestamp();sourceModels?.Flush(UsesInstancing);DiagnosticSourceFlushMs+=PresentationElapsed(at);}
     }
 }

@@ -47,6 +47,8 @@ namespace ChipArena.UnityConversion
             public bool Crawl;public float Sunk,Crouch,Busy,Stride=1;
             // The spitter's sac and its swell as last written.
             public SkinnedMeshRenderer Sac;public float Swell=-1;
+            public readonly NativeCrowdPoseClock PoseClock=new NativeCrowdPoseClock();private int poseLost,poseHidden;
+            public bool ChangedParts(int lost,int hidden){bool changed=lost!=poseLost||hidden!=poseHidden;poseLost=lost;poseHidden=hidden;return changed;}
         }
         private readonly Dictionary<int,ZombieBody> zombieBodies=new Dictionary<int,ZombieBody>();private readonly CapturedRig.Pose zombieFitPose=new CapturedRig.Pose();private readonly List<int> zombieBodiesGone=new List<int>();
         private readonly Dictionary<NativeZombieLooks.Variant,Stack<ZombieBody>> zombieSpares=new Dictionary<NativeZombieLooks.Variant,Stack<ZombieBody>>();
@@ -88,11 +90,19 @@ namespace ChipArena.UnityConversion
             // The floor point under the rig root, as a pilot's body (NativeVisualRig.Floor), at the rig's scale (the Hulk's).
             t.SetPositionAndRotation(rt.TransformPoint(0,NativeVisualRig.Floor,0),rt.rotation);t.localScale=rt.lossyScale;
             if(!root.activeSelf)root.SetActive(true);
-            if(z.PosedFrame<Time.frameCount-1)z.Body.Binding.State.Forget();
+            if(z.PosedFrame<Time.frameCount-1){z.Body.Binding.State.Forget();z.PoseClock.Reset();}
+            var eye=WorldEye;float distance=eye==null?0:(t.position-eye.transform.position).sqrMagnitude;
+            // Conservative bounds include the complete gait, long arms and Hulk scale; close shadows stay full-rate.
+            bool visible=eye==null||!crowdFrustumReady||GeometryUtility.TestPlanesAABB(crowdFrustum,new Bounds(t.position+Vector3.up*2*rt.lossyScale.y,Vector3.one*8*Mathf.Max(1,rt.lossyScale.y)));
+            bool urgent=z.Dying||z.Crawl||airborne||flash!=1||glow>1||swell>0||z.ChangedParts(lost,hidden);
+            if(!z.PoseClock.Due(Time.unscaledTimeAsDouble,distance,visible,urgent,z.Id))
+            {z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;return;}
+            long poseAt=System.Diagnostics.Stopwatch.GetTimestamp();
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
             minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
             z.Body.Binding.Apply(pose,default(NativeVisualRig.Grasp),planted,airborne);
+            DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
             ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
         }
