@@ -1,3 +1,23 @@
+## 2026-10-30 — Claude (PC): faces on the model (pilots and zombies)
+
+- **Branch/base:** `claude/faces` from shared `90cafedb`. No PR; merged into shared and the builder.
+- **Task (owner):** "I think we have facial expressions available? Can we begin utizling those in the game as well? For zombies as
+  well. Characters are currently emotionless".
+- **Changes (presentation only; docs/BOZO-INTEGRATION.md "Faces"):**
+  - `Core/NativeFace` (new): 35 of the head's 43 `Expression_*` shapes in 24 moods, layered from a pilot's actor state (focus,
+    shout, grit, squint, wince, strain, daze, grin, breath, death; a smile in the menus) or a zombie's (its kind's face, the gait's
+    jaw, a roar, a wince, the spitter's pucker, slack in death), eased, with a blink on its own clock;
+  - `Runtime/NativeVisualFacePresentation` (new): each body's face meshes found by name, weights written when they move; called
+    from `VisualBodyBind` (every pilot body) and `ZombieModelBind` (the horde passes its voxel jaw's opening).
+- **Animation impacts:** faces only (blend shapes); no bone, hit timing, hitbox, damage, cooldown, movement or network change.
+- **Checks (actual):** `CoreTests --faces` (new, 49 checks), `--zombie-models`, `--zombie-posture`, `--visual-rig` pass; the full
+  CoreTests on a clean LF checkout of `ff1e5b50`: 878 PASS lines and 35 managed-core checks, rc 0; `git diff --check` clean. Unity Editor (local tool v233, Brickfall): the
+  face meshes' shapes listed; zombie faces (shambler, runner, brute, Hulk) over a hunt; bot pilots' faces in a sword and bow fight.
+- **Not run / not verified:** a Windows player build; multiplayer; the menus' smiles and the intros were not captured (the same
+  bind path); the Sheldon Head keeps its own face.
+- **Risks / next:** a pilot's moods read its actor's fields (hit reaction, attack, special, ability, shot, block, roll, stun, kills),
+  which a remote pilot's replicated actor carries as far as the network sends them; a field never sent leaves that mood unused.
+
 ## 2026-10-30 — Claude (PC): the Hulk in detail (anatomy, fists, calmer hips, the head on its neck)
 
 - **Branch/base:** `claude/hulk-detail` from shared `d327f1e1`. No PR; merged into shared and the builder.
