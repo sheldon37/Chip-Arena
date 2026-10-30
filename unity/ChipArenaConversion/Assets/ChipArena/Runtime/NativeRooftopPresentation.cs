@@ -379,7 +379,7 @@ namespace ChipArena.UnityConversion
             if(look.Hat!="none"&&look.Hat!=NativeSheldonHead.Hat)
             {
                 var hb=VisualHatBone(rig,look.Hat);
-                if(!AuditorHalo(look.Hat,hb(CapturedRig.Head),time,1,reduced,0,camera,camera,hatColor))sourceModels.Queue(HatModel(look.Hat,hatColor),rig.Root.transform.localToWorldMatrix,hb,null,0,camera,body:HatBody(look.Hat,hatColor));
+                if(!AuditorHalo(look.Hat,hb(CapturedRig.Head),time,1,reduced,0,camera,camera,hatColor))sourceModels.Queue(VisualHatModel(look.Hat,hatColor),rig.Root.transform.localToWorldMatrix,hb,null,0,camera,body:HatBody(look.Hat,hatColor));
             }
             else SheldonHoodStill(body,look.Hat,hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,look.Hat),time,i,reduced,0,camera);
             VisualGear(body,a,time,null,null,1,false);

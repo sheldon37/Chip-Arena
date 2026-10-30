@@ -1943,6 +1943,29 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
       laid into a ring round the head; the pack's hat shape bares the scalp down the back, which only its own deep hats
       cover);
     - the Sheldon Head is a cloth hood (Sheldon's clothes, below).
+  - **Hats made for the model (2026-10-30, `claude/model-hats`; owner: "Need to rework hats, they were all designed voxel
+    style and a lot of them have fitting issues (Player head shows outside of hat)", then "Hats still cutting hair
+    completely"):** every bank hat (cap, beanie, top hat, wizard, crown, party cone, antenna, halo, cowboy) is now a smooth
+    model of its own, built round the model's skull in the head bone's frame (`Core/NativeModelHatMeshes`; band 12.1 by
+    12.7 cm half-widths, 1.6 cm over the brows, the crown 1.5 cm over the skull). These are drawn as `hat-<id>+model` and
+    `+model+tint` wherever a hat sits on the model's head: the arena, the rooftop, portraits, the draft, the revive
+    stand-in and corpses. The voxel hats stay for the voxel body, gibs and holograms.
+    - **The hair under a hat.** The pack's one `Tag_Hood` shape flattened the whole style, so a hat had to be sized round
+      the flattened hair, and the scalp showed. Now each closed hat holds the hair as its own crown would
+      (`NativeModelHatMeshes.HairPress`, applied by `VisualHatHair` and `VisualPressedHair`):
+      - hair above the band is tucked inside the crown, toward the head's middle;
+      - hair just under the band goes in at its own height onto a rim that widens fast below the band; lower down the hair
+        is untouched;
+      - the hat holds the hair it moves (weights onto the head, or the piece's own bone under it) as far as it moved it, so
+        the cloth cannot swing that hair back out;
+      - a lock the press would tear (the fringe-tail's tail) goes under the hat whole.
+    - Each hair piece's pressed copy is made once per piece and hat, off the main thread, from the piece at rest on the
+      head. Some pieces hang off their own bone (`HairFront`/`HairBack`) rather than the head. Corpses wear the live
+      body's pressed hair; the Sheldon hood still lays the hair flat with `Tag_Hood`.
+    - The crown, antenna and halo stand in the hair; the cone holds only the hair in its own footprint.
+    - Also fixed: the band's dip down the back of the head had run up the whole crown, sinking the back of domed hats
+      onto the scalp; the cowboy's crease and pinches left its peak folded.
+    - Checks: `Tests/ModelHatChecks.cs` (`--hats`), on a skull of the head's measure.
   - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
     it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
     camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed

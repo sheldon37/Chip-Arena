@@ -1,3 +1,40 @@
+## 2026-10-30 — Claude (PC): hats made for the model (the hair held per hat)
+
+- **Branch/base:** `claude/model-hats` from shared `8bee06a9`. No PR; merged into shared and the builder.
+- **Task (owner):** "Need to rework hats, they were all designed voxel style and a lot of them have fitting issues (Player head
+  shows outside of hat) etc.", then "Hats still cutting hair completely" (with a capture of the hair pressed bald under the
+  antenna). The robotic outfit in the same request is not in this entry.
+- **Changes (presentation only; docs/BOZO-INTEGRATION.md "Hats made for the model"):**
+  - `Core/NativeModelHatMeshes` (new): all nine bank hats as smooth models on the head bone, 1–2 cm over the skull. The band is
+    12.1 by 12.7 cm half-widths (the old fit worked out to 14.2 by 16.3), dipping down the back.
+  - `HairPress`: each closed hat holds the hair as its crown would:
+    - hair over the band is tucked in toward the head's middle;
+    - hair just under the band goes in at its own height onto a widening rim, with no step;
+    - lower hair is untouched;
+    - a lock the press would tear goes under the hat whole.
+  - Fixed on the way: the back dip used to run up the whole crown and sank domed hats onto the scalp; the cowboy's peak folded.
+  - `Runtime/NativeVisualBodyPresentation` `VisualHatHair` / `VisualPressedHair`:
+    - each hair piece gets a pressed copy per hat, made off the main thread from the piece at rest on its head;
+    - some pieces hang off their own `HairFront`/`HairBack` bone, not the head;
+    - the moved hair is held to that bone as far as it was moved, so the cloth cannot swing it out through the hat;
+    - corpses wear the live body's pressed hair; the Sheldon hood keeps `Tag_Hood`.
+  - `NativeHatPresentation` banks `hat-<id>+model` (+tint). `VisualHatModel` draws it at every model-head site: arena, rooftop,
+    portraits, draft, revive stand-in, corpses. `VisualHatFit` puts a model hat on the head bone's own frame.
+- **Animation impacts:** none on bones, hit timing, hitboxes, damage, cooldowns, movement or networking. The hair under a closed
+  hat swings less (its pressed part rides the head).
+- **Checks (actual):**
+  - `CoreTests --hats` (new, 53 checks).
+  - Full CoreTests on a clean LF checkout of `c3026699`: 879 PASS lines, 35 managed-core checks, rc 0. `git diff --check` clean.
+  - Offline probe on the real head and hair dumped from Unity (spiky, fringe-tail, wild): 0 points showing outside the cap, top
+    hat, wizard and cone. Up to 5 on the beanie and 1 on the cowboy, all at the rim edge or hair roots inside the skull.
+  - Unity Editor (local tool v239, Factory): every hat on the player; cap/beanie/cowboy/cone on all five hairstyles; face, side,
+    back and top views.
+- **Not run / not verified:** a Windows player build; multiplayer; corpses with a hat (the capture framed the feet); the draft
+  seat and portraits (same call as the arena). The hair press's first-wear cost was timed offline only (6–16 ms a piece, worker
+  thread).
+- **Risks / next:** a hairstyle added later is pressed the same way but unchecked; an extremely long lock may be tucked whole
+  under a closed hat. Next: the robotic outfit (owner's same request).
+
 ## 2026-10-30 — Claude (PC): faces on the model (pilots and zombies)
 
 - **Branch/base:** `claude/faces` from shared `90cafedb`. No PR; merged into shared and the builder.

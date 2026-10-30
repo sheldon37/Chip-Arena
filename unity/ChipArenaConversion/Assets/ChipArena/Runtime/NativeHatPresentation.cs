@@ -65,6 +65,29 @@ namespace ChipArena.UnityConversion
             return new Part{Name=s.Part,Bone=s.Bone,Mesh=mesh,Material=material,NoShadow=s.Transparent||noShadow,Core=CoreOf(vertices,normals,colors,emission,t),Open=s.Transparent||s.DoubleSide};
         }
         public const string SheldonLive="hat-"+NativeSheldonHead.Hat+NativeHatLooks.LiveSuffix,SheldonHoodVoid="hat-"+NativeSheldonHead.Hat+"+hood";
+        // The hats made for the model's head (Core/NativeModelHatMeshes), each with its tintable twin: "hat-<id>+model" and
+        // "hat-<id>+model+tint", authored in the model head bone's own frame (no mirror: their faces already face out).
+        public const string ModelSuffix="+model";
+        private void ModelHats()
+        {
+            var lit=Resources.Load<Shader>("NativeSourceLit");if(lit==null)return;
+            foreach(var hat in NativeModelHatMeshes.Hats)
+                foreach(bool tinted in new[]{false,true})
+                {
+                    var sections=NativeModelHatMeshes.Build(hat,tinted);var parts=new Part[sections.Length];
+                    for(int p=0;p<sections.Length;p++)parts[p]=ModelHatPart(sections[p],lit,hat);
+                    models["hat-"+hat+ModelSuffix+(tinted?NativeHatLooks.TintSuffix:"")]=parts;
+                }
+        }
+        private Part ModelHatPart(SheldonSection s,Shader lit,string hat)
+        {
+            int n=s.Positions.Count;var vertices=new Vector3[n];var normals=new Vector3[n];var colors=new Color[n];var emission=new List<Vector4>(n);
+            for(int i=0;i<n;i++){var v=s.Positions[i];var nn=s.Normals[i];var c=s.Colors[i];var e=s.Emission[i];vertices[i]=new Vector3(v.X,v.Y,v.Z);normals[i]=new Vector3(nn.X,nn.Y,nn.Z);colors[i]=new Color(c.X,c.Y,c.Z,c.W);emission.Add(new Vector4(e.X,e.Y,e.Z,e.W));}
+            var t=s.Indices.ToArray();
+            var mesh=new Mesh{name="hat-"+hat+ModelSuffix+" / "+s.Part,indexFormat=n>65535?IndexFormat.UInt32:IndexFormat.UInt16};mesh.vertices=vertices;mesh.normals=normals;mesh.colors=colors;mesh.uv=new Vector2[n];mesh.SetUVs(1,emission);mesh.triangles=t;mesh.RecalculateBounds();mesh.UploadMeshData(true);
+            var material=new Material(lit){enableInstancing=true,name="Model hat "+hat};material.SetInt("_Cull",2);materials.Add(material);
+            return new Part{Name=s.Part,Bone=s.Bone,Mesh=mesh,Material=material,Core=CoreOf(vertices,normals,colors,emission,t)};
+        }
         // A face or ring piece's matrix on the head joint (Unity frame: the source motion mirrored in x).
         private static Matrix4x4 PieceLocal(int part,in SheldonFace face)
         {
@@ -98,6 +121,13 @@ namespace ChipArena.UnityConversion
         // The bank model and body tint a pilot's hat is queued with (NativeHatLooks): on Auto the authored model and no tint,
         // so the call is exactly the one made before colours existed. Model ids are cached (no per-frame strings).
         private readonly Dictionary<(string,string),string> hatModels=new Dictionary<(string,string),string>();
+        // On the model's head the hat made for it, where there is one (its own fit: VisualHatFit).
+        private string VisualHatModel(string hat,string color)
+        {
+            string id=HatModel(hat,color);if(id==null||!NativeModelHatMeshes.Has(hat)||sourceModels==null)return id;var key=(hat,"model:"+(color??""));
+            if(!hatModels.TryGetValue(key,out var model)){model="hat-"+hat+NativeSourceModels.ModelSuffix+(id.EndsWith(NativeHatLooks.TintSuffix,StringComparison.Ordinal)?NativeHatLooks.TintSuffix:"");if(!sourceModels.Has(model))model=id;hatModels[key]=model;}
+            return model;
+        }
         private string HatModel(string hat,string color)
         {
             if(string.IsNullOrEmpty(hat))return null;color=color??"";var key=(hat,color);
