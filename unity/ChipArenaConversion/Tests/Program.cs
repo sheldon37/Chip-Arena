@@ -47,6 +47,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--zombie-posture"){ZombiePostureChecks.Run(ProjectRoot());ZombieGaitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-gait"){ZombieGaitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--run-arm"){RunArmChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--faces"){FaceChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--body-chip-model"){var bcRoot=ProjectRoot();BodyChipModelChecks.Run(bcRoot,System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(bcRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true}));return 0;}
             if(args.Length==1&&args[0]=="--advanced-lighting"){var alRoot=ProjectRoot();var alData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(alRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});AdvancedLightingChecks.Run(alRoot);foreach(var result in MapLookChecks.Run(alRoot,alData))Console.WriteLine("PASS "+result);foreach(var result in BlockLookChecks.Run(alRoot,alData))Console.WriteLine("PASS "+result);MapStyleChecks.Run(alRoot);WardLightingChecks.Run(alRoot);ZombieLightChecks.Run(alRoot);ArmorLightChecks.Run(alRoot);BloomChecks.Run(alRoot);FactoryChecks.Run(alRoot);BrickfallSceneryChecks.Run(alRoot);CyberCityChecks.Run(alRoot);StageKitChecks.Run(alRoot);return 0;}
             if(args.Length==1&&args[0]=="--expedition-join-view"){ExpeditionJoinPresentationChecks.Run(ProjectRoot());return 0;}
@@ -162,7 +163,7 @@ internal static class Program
             BuildLabelChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);
-            LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);RunArmChecks.Run(root);
+            LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
             MovementModsChecks.Run(root);RoundsCardsChecks.Run(root);NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);MeleeBisectChecks.Run(root);GibChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);
