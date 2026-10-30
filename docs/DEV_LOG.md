@@ -27,8 +27,9 @@
   .2 mm at the carry's end, never past edge-on through the seat, the palm 8 cm beside the bay; device mode in the 30-240 Hz
   motion pass, 0 bytes per frame), `--chips` (chip cartridge 131,140 checks with the board and notch bakes; machine models'
   budgets raised for the chip's detail), `--machines` (460 checks with the stage models); the full CoreTests on a clean LF
-  checkout of the merged commit: COUNT PASS lines, no failure (a first run stopped at the map style's pinned stage sequence,
-  which the switch had split; fixed); `git diff --check` clean. Unity Editor captures (local tool v231,
+  checkout of `85602a64`: 874 PASS lines, 35 managed-core checks, rc 0. Earlier runs stopped at pinned source lines (the
+  map style's stage sequence, which the light switch had split, and the draft's model bind in the visual rig and model pose
+  checks): the switch moved after the sequence, the checks updated to the bind's support weight and the draft's model guard; `git diff --check` clean. Unity Editor captures (local tool v231,
   1470x719 Game view): 12 and 6 cards, the pick and insert, sword, greatsword, orbital drop and blackout entrances.
 - **Not run:** a Windows player build; multiplayer; the DEV intros (baked stages) beyond the shared lighting; the Siren's pick on
   the model's device (it keeps its own catch).
