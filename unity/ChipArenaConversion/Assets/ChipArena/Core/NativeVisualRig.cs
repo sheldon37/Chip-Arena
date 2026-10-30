@@ -242,7 +242,8 @@ namespace ChipArena.UnityConversion
             // as the game's do, not 1.7 times as far. Level: the pelvis at the game pelvis's own height over the floor (a legless
             // crawl, its legs gone). Stand: how far (metres) the pelvis rises over its planted feet, as far as each planted leg
             // reaches with Room (KneeRoom unless set) to spare; Raise, how far it is raised this frame (it eases by RaiseStep a pose).
-            public bool Across, Level; public float Stand, Raise, Room=KneeRoom;
+            // Follow: every foot goes to the game's ankle, a swinging one too (Foot), and every knee bends the game knee's way.
+            public bool Across, Level, Follow; public float Stand, Raise, Room=KneeRoom;
             // Drops last frame's elbows and hands (a cut, a respawn, a weapon swap): the next pose is solved afresh.
             public void Forget() { HasLast=false; }
             public State(Rig rig)
@@ -807,6 +808,13 @@ namespace ChipArena.UnityConversion
         }
 
         // Planted feet: the visual ankle goes to the game ankle's ground point, the knee toward the game knee's side.
+        // State.Follow (a zombie, Core/NativeZombiePosture): a swinging foot goes to the game ankle as well, lifted by the legs'
+        // ratio (a planted one keeps its height), and the knee bends the game knee's way off the game leg, a little forward of
+        // the hips. (Measured on the gait's walks and runs: the game's swinging leg turns copied onto the model's longer legs put
+        // the swinging foot 15-25 cm from the gait's, and it popped onto it at up to 25 m/s as it came down; the model's own knee
+        // off the moved hip-ankle line turned up to 45 degrees aside about the leg, 130 on a long reach: the "weird directions".)
+        // The weight returned is the plant's either way.
+        public const float FollowAhead=.05f;
         private static float Foot(State s,CapturedRig.Pose pose,bool left)
         {
             var r=s.Rig;
@@ -816,13 +824,19 @@ namespace ChipArena.UnityConversion
             Vector3 game=pose.WorldPosition[ankle];
             float above=game.Y-AnkleRest(hip);
             float weight=1-CapturedClip.Ease((above-PlantedHeight)/(LiftedHeight-PlantedHeight));
-            if(weight<=0) return 0;
-            Vector3 target=new Vector3(game.X,r.AlignedPosition[va].Y+above,game.Z);
-            target=Vector3.Lerp(s.Position[va],target,weight);
+            if(weight<=0&&!s.Follow) return 0;
+            float rise=s.Follow?above*(weight+(1-weight)*r.LegRatio):above;
+            Vector3 target=new Vector3(game.X,r.AlignedPosition[va].Y+rise,game.Z);
+            if(!s.Follow) target=Vector3.Lerp(s.Position[va],target,weight);
             Vector3 pole=s.Position[vk]-(s.Position[vh]+target)*.5f,fallback=pose.WorldPosition[knee]-(pose.WorldPosition[hip]+game)*.5f;
+            if(s.Follow)
+            {
+                Vector3 ahead=Vector3.Transform(CapturedRig.Z,pose.WorldRotation[CapturedRig.Pelvis]); ahead.Y=0;
+                pole=fallback+CapturedRig.Unit(ahead,CapturedRig.Z)*FollowAhead;
+            }
             float reach=TwoBone(s,vh,vk,va,target,pole,fallback,r.LegUpper,r.LegLower);
             if(left) s.LeftLegReach=reach; else s.RightLegReach=reach;
-            return weight;
+            return Math.Max(0,weight);
         }
 
         // Finger curl per joint (radians): relaxed when the hand is open, closed round a weapon's grip (about 3-4 cm across).

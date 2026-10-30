@@ -105,14 +105,15 @@ namespace ChipArena.UnityConversion
         /// otherwise turn into a shiver.</summary>
         public const float BlurMost=.06f;
         private readonly float[] blurA=new float[CapturedClip.Channels],blurB=new float[CapturedClip.Channels];
-        /// <summary>Samples take `clip` at `phase` (cycles) into `row`, its trunk and arms blurred over the cycle and calmed about its
-        /// mean by its playback `rate` (neither at or under its own pace) and the kind's steadiness.</summary>
+        /// <summary>Samples take `clip` at the gait's `phase` (cycles; the take's own phase is its warp, NativeZombieMotion.Warp: its
+        /// feet strike when the gait's do) into `row`, its trunk and arms blurred over the cycle and calmed about its mean by its
+        /// playback `rate` (neither at or under its own pace) and the kind's steadiness.</summary>
         private void SampleCalm(int clip,float phase,float[] row,float rate)
         {
-            NativeZombieClips.SamplePhase(clip,phase,row);
+            NativeZombieClips.SamplePhase(clip,NativeZombieMotion.Warp(clip,phase),row);
             // (Only the nearest adds' (the Full tier's) are blurred: two more samples a take; the far crowd is calmed alone.)
             float d=lifeTier==NativeHordeModels.Full?BlurMost*Math.Max(0,Math.Min(1,rate-1)):0;
-            if(d>1e-4f){NativeZombieClips.SamplePhase(clip,phase-d,blurA);NativeZombieClips.SamplePhase(clip,phase+d,blurB);
+            if(d>1e-4f){NativeZombieClips.SamplePhase(clip,NativeZombieMotion.Warp(clip,phase-d),blurA);NativeZombieClips.SamplePhase(clip,NativeZombieMotion.Warp(clip,phase+d),blurB);
                 for(int s=0;s<CalmFrom.Length;s++)for(int c=CalmFrom[s];c<CalmTo[s];c++)row[c]=.5f*row[c]+.25f*(blurA[c]+blurB[c]);}
             Calm(clip,row,rate,Steady(kind));
         }

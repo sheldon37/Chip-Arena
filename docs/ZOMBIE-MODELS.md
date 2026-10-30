@@ -278,6 +278,69 @@ the same conditions as section 4).** Modelled 20.8 / 20.9 ms mean, 22.9 / 22.6 m
 pose copy and rise cost about .6 ms for 24 adds. Voxel 15.6 ms (17.3 p95), no zombies 8.5 ms (9.5 p95). Measured before the
 Hulk's growth (one Hulk in this crowd). A Windows player was not measured.
 
+## 4d. Runs and sprints: the legs in step and pointing forward (2026-10-30, `claude/zombie-gait-model`)
+
+Owner (2026-10-30): "Zombie run looks a little weird at the moment, sometimes their legs are completely out of sync and move weird
+directions. Evaluate the runs/sprints and all movements of zombies for new model. Please make changes and make it look more
+realistic (Use pack as needed)".
+
+**Why** (measured offline: each modelled kind's gait at its walk and run on up to six take pairs, bound to the measured skeleton
+as the runtime binds it; and each ZOMBIE PRO loop take's own legs):
+- **Swinging feet off the gait's.** The model only put a foot on the gait's ankle once it was nearly down (under 10 cm). In a
+  swing it copied the gait's leg turns onto its 1.71-times-longer legs, so the foot swung 15 to 31 cm from where the gait put it.
+  Then it snapped back onto the gait's ankle as it came down, at up to 25 m/s.
+- **Knees aside and backward.** The knee bent toward the model's own copied knee, measured off the moved hip-ankle line. That
+  turned the knees up to 45 degrees aside (p95), and 132 degrees (backward) on the brute's limping walk.
+- **The takes out of step with the feet.** The gait plants the right foot half a cycle after the left, kept within .4-.6 of the
+  exporter's right-strike mark. But those marks miss on several takes: chase-1-full's right foot strikes at .49 of its cycle,
+  marked .19. The limping takes strike it at .70 (walk-4) and .75 (chase-5, chase-5-full). So the trunk, arms and swing lift
+  played up to a third of a cycle out of step with the feet.
+- **Sprints bounding.** The sprints' marks lift each foot a fifth of a cycle after it lands, so the run was in the air 60% of the
+  time.
+- **Dragged run strides.** A walking take run fast stands for less of the gait's cycle than of its own. The swinging foot's height
+  was read from the take at the gait's phase, where the take's foot often still stood: it dragged, then kicked late.
+
+**The fix** (presentation only: no rule, timing, hit volume, damage, cooldown, movement or network value changes; the blows still
+land on the gait's contact frames):
+- `Core/NativeZombieMotion`: each loop take's feet are measured once when the takes load. The right strike is read off the time
+  between the two feet coming most forward under the hips, against the left strike at the cycle's start (where the exporter cuts
+  the loops). Each take is then time-warped so its right strike plays at the gait's half cycle (`Warp`, up to .28 cycles; the
+  take never plays slower than about a third of its pace). The right foot steps half a cycle after the left on every take
+  (`Offset`). A sprint stands for its own measured stance (`Duty`: .42 with the clamp, not .2); the walks keep the marks'.
+  `SwingLift` gives each foot's own swing arc, from most back to most forward, eased off and onto the floor.
+- `Core/NativeHordeLoco` samples the takes on the warp. `Core/NativeHordeMotion` lifts a swinging foot on the takes' arcs over
+  the gait's swing. It eases the low-knee lift in and out (the Hulk's foot jumped 10 cm in a frame as it lifted), caps a knee at
+  20 degrees aside of forward about its leg (`KneeSplay`, a guard), and steps a planted foot whose heel has peeled all the way
+  (the ball slid 3 cm as an add broke into a run).
+- `Core/NativeVisualRig.State.Follow`, set by `NativeZombiePosture.Stance` for every upright zombie (not a legless crawl, not a
+  pilot): every model foot goes to the gait's ankle, a swinging one too, lifted by the legs' ratio. Every knee bends the gait's
+  knee's way off the gait's own leg, 5 cm forward of the hips.
+
+**Measured** (synthetic skeleton, 5.5 s at 60 fps after a 1.5 s settle per take pair, the worst of up to six pairs; speeds in
+the rig's metres, a kind's world speed over its scale; not a render):
+
+| kind | gait (m/s) | swinging ankle off the gait's, max | fastest foot | knee aside, p95 | take in step (worst) | swing height (median, rig) |
+|---|---|---|---|---|---|---|
+| shambler | walk (1.50) | 19 → 0 cm | 15 → 4 m/s | 45° → 14° | 0.66 → 0.84 | 5 → 6 cm |
+| shambler | run (3.40) | 28 → 0 cm | 11 → 7 m/s | 30° → 8° | 0.53 → 0.53 | 8 → 10 cm |
+| runner | walk (2.60) | 26 → 0 cm | 10 → 8 m/s | 44° → 20° | 0.95 → 0.85 | 14 → 15 cm |
+| runner | run (4.60) | 29 → 0 cm | 14 → 10 m/s | 27° → 22° | 0.92 → 0.91 | 12 → 14 cm |
+| spitter | walk (1.60) | 17 → 0 cm | 6 → 4 m/s | 26° → 8° | 0.75 → 0.77 | 6 → 6 cm |
+| spitter | run (2.90) | 26 → 0 cm | 10 → 6 m/s | 36° → 9° | 0.58 → 0.58 | 8 → 10 cm |
+| brute | walk (1.30) | 16 → 0 cm | 10 → 3 m/s | 132° → 16° | 0.31 → 0.84 | 6 → 6 cm |
+| brute | run (2.40) | 24 → 0 cm | 10 → 4 m/s | 42° → 16° | 0.59 → 0.63 | 6 → 9 cm |
+| hulk | walk (0.42) | 26 → 0 cm | 16 → 3 m/s | 29° → 13° | 0.66 → 0.83 | 10 → 10 cm |
+| hulk | run (0.64) | 31 → 0 cm | 25 → 4 m/s | 17° → 15° | 0.45 → 0.90 | 11 → 11 cm |
+
+The knee is measured about the leg's own line. "In step" is the correlation of the take's own feet (fore-aft under its hips)
+with the gait's. At the run, walking chases (chase-2, chase-1) stay near .55: their stance is longer than the run's, and the
+swing arcs carry their feet. The fastest foot is now within twice the ground speed and 3 m/s, which is what a swinging foot
+does. The runs' mean planted knee is 34 to 41 degrees (31 to 36 before; the Hulk's 42 as before), as a runner's bends at
+mid-stance.
+
+**For Unity on the PC:** the runner's and shambler's sprints (both feet should alternate under the hips, knees forward, a short
+flight between steps), the brute's and Hulk's walk-4 (the limp in step), and the spitter breaking into a run and stopping.
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
@@ -291,6 +354,9 @@ Hulk's growth (one Hulk in this crowd). A Windows player was not measured.
 - The Hulk's growth: its first body per variant builds the mesh on the main thread (tens of ms, once); a prewarm would hide it.
   The growth has no own wounds (hits on it show the body's) and its voxel tier is the old Hulk.
 - A head burst (`HeadGib`) still leaves the gore's own stump and fountain on the model's collapsed neck.
+- The run sets still include walking chases (chase-2, chase-1, chase-5) played fast. Their feet now lift on their own arcs, but
+  their trunk keeps the walk's rhythm (section 4d). A run set of the sprints alone would change the kinds' character: the owner's
+  call.
 
 ## 6. Checks
 
@@ -299,7 +365,8 @@ decay sites (placed on a mannequin's joints, left and right, square to their lim
 bones, model gore parts).
 `--zombie-gore` admits the new presentation file among the gore's readers.
 `--zombie-posture` measures the model fit (4b, 4c: the planted knee in a stride, a busy pose's crouch kept, the rise holding in
-flight) and pins its wiring. `--zombie-models` also builds the Hulk's growth on a mannequin (placement, frames, sizes, the clubs,
+flight) and pins its wiring; it runs `--zombie-gait` too (4d: the takes' warps, offsets, stances and swing arcs; the model's
+ankles on the gait's, the feet's speed, the knees, the feet alternating, the takes in step; the follow flag and the knee clamp). `--zombie-models` also builds the Hulk's growth on a mannequin (placement, frames, sizes, the clubs,
 smooth trunk, winding, bones and weights, determinism, its build time).
 
 None of these is a Unity render. Visual quality, foot contact on the model, crowd cost and multiplayer views are verified only in

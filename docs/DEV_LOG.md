@@ -1,3 +1,51 @@
+## 2026-10-30 — Claude: zombie runs and sprints on the model, the legs in step and pointing forward
+
+- **Branch/base:** `claude/zombie-gait-model` from shared `d1a7f35` (started on `fdf42cb`, fast-forwarded before the first
+  commit). No PR; merged into shared and the builder.
+- **Task (owner):** "Zombie run looks a little weird at the moment, sometimes their legs are completely out of sync and move weird
+  directions. Evaluate the runs/sprints and all movements of zombies for new model. Please make changes and make it look more
+  realistic (Use pack as needed)".
+- **Causes (measured offline, docs/ZOMBIE-MODELS.md 4d):**
+  - the model's swinging feet copied the gait's leg turns onto its 1.71-times-longer legs: 15-31 cm off the gait's feet, then a
+    snap back onto them at landing (up to 25 m/s);
+  - the model's knees bent toward its own copied knee: up to 45 degrees aside, 132 on the brute's limping walk;
+  - the takes ran out of step with the planted feet: the exporter's right-foot marks miss on several takes (chase-1-full .19
+    against .49 measured), the limping takes strike the right foot at .70-.75, and the gait clamped it to .4-.6;
+  - the sprints' marks kept each foot down a fifth of a cycle, so the run was in the air 60% of the time;
+  - walking chases run fast dragged their swinging feet.
+- **Changes (presentation only; the pack's ZOMBIE PRO takes already in Core, nothing new imported):**
+  - `NativeZombieMotion`: each loop take's feet are measured when the takes load. A per-take time warp plays its right strike
+    at the gait's half cycle (`Warp`, up to .28 cycles); the right foot steps at .5 on every take (`Offset`). Sprints stand for
+    their own stance (`Duty`; walks keep the marks'). Each foot gets its own swing arc (`SwingLift`), eased onto and off the
+    floor.
+  - `NativeHordeLoco`/`NativeHordeMotion`: the takes are sampled on the warp, and swing heights come from the arcs. The low-knee
+    lift is eased (the Hulk's foot jumped 10 cm in a frame). A 20-degree knee guard (`KneeSplay`). A fully peeled heel steps
+    (a 3 cm ball slide when breaking into a run).
+  - `NativeVisualRig.State.Follow` (set by `NativeZombiePosture.Stance` for upright zombies): every model foot follows the
+    gait's ankle, swinging ones too. The knees bend the gait's knee's way, 5 cm forward of the hips.
+- **Animation impacts:** legs and the takes' timing only. The sprints stand on each foot longer (.42 of a cycle at the clamp,
+  shorter at speed by the legs' reach) and fly less. The limping and mis-marked takes' right foot strikes at the half cycle.
+  No hit timing, hitbox, damage, cooldown, movement or network change: blows still land on the gait's contact frames.
+- **Measured** (docs/ZOMBIE-MODELS.md 4d table): the model's ankles on the gait's (0 cm; was 16-31), the fastest foot 3-10 m/s
+  (was 6-25), the knees 8-22 degrees aside p95 (was 17-132), the limping takes in step .83-.90 (was .31-.66).
+- **Checks (actual):**
+  - CoreTests `--zombie-gait` (new, `Tests/ZombieGaitChecks.cs`, 6,688 checks; mutation-tested: no follow, no warp, the old
+    offset, the marks' sprint stance and an un-eased swing arc each fail it; removing the knee guard's call does not, its own
+    unit check covers it);
+  - `--zombie-posture` (its planted-knee bound is 42 degrees from 2.2 m/s: a run's stance; 38 walking, 45 the Hulk), and
+    `--zombie-loco`, `--zombie-flow`, `--zombie-twitch`, `--horde-roam`, `--hulk-motion`, `--hulk-charge`, `--horde-drops`,
+    `--visual-rig`, `--model-poses`, `--zombie-models`, `--zombie-gore` all pass;
+  - `Tests/station-enemies-baseline.txt`: the six captured kinds' `kindN.motion` lines are rewritten, with a header note as the
+    earlier zombie passes did (the relay's first run stopped there: the posed joints change on purpose). Every other measure,
+    and the crawler's, is unchanged;
+  - the five repo checks: the relay suite on the final tree, 876 PASS lines and 35 managed-core checks, rc 0; unity-check (runtime
+    and editor build), python 167 tests OK (1 skipped), package_source (2,818 source files) on the tree before the baseline
+    rewrite (a test data file only); `git diff --check` clean on the final tree.
+- **Not run:** Unity (Editor or player) on the owner's PC: how the runs read on screen, foot contact on the model, the crowd's
+  cost. A PC prompt asks for captures of the sprints, the limping walks and a start/stop.
+- **Risks / next:** the run sets still play walking chases fast (their trunk keeps a walk's rhythm, their feet lift on their own
+  arcs). A sprint-only run set is the owner's call (docs/ZOMBIE-MODELS.md section 5).
+
 ## 2026-10-29 — Claude (PC): the blasts' smoke and rubble restyled for the model
 
 - **Branch/base:** `claude/fx-restyle` from shared `fdf42cbb`. No PR; merged into shared and the builder.

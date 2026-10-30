@@ -213,7 +213,6 @@ namespace ChipArena.UnityConversion
             // the body reads along its path and the planted feet stay under it.
             row[0]*=.62f;
             if(heavy)HeavyArms(row,moving,run,sprint,t);
-            float ground=Lerp(NativeZombieMotion.Ground(idleClip),Lerp(WalkGround(),NativeZombieMotion.Ground(runClip),run),moving);
             // ---- the blow: the pack's take retimed onto the authority's strike, over the trunk and arms ----
             bool attacking=!float.IsNaN(age)&&age>=0&&age<f.Recover+.25f;
             // The heavy kinds' keyed moves (Core/NativeHordeHeavy): a punch, a swipe, a knock or a charge replaces the take and the
@@ -281,7 +280,12 @@ namespace ChipArena.UnityConversion
             p.World();
             for(int i=0;i<2;i++)
             {
-                if(feet[i].Swing&&moving>0&&!heavy){float lift=Math.Max(0,mocapAnkle[i].Y-ground);feet[i].Y=Lerp(feet[i].Y,Math.Min(.4f,lift+.01f),moving);}
+                // (A swinging foot lifts on the takes' own swing arcs, NativeZombieMotion.SwingLift, carried through the gait's swing.)
+                if(feet[i].Swing&&moving>0&&!heavy)
+                {
+                    float s=Clamp01((f.Time-feet[i].T0)/Math.Max(1e-3f,feet[i].T1-feet[i].T0)),lift=Lerp(WalkSwing(i,s),NativeZombieMotion.SwingLift(runClip,i,s),run);
+                    feet[i].Y=Lerp(feet[i].Y,Math.Min(.4f,lift+.01f),moving);
+                }
             }
             float sink=0,hard=0;
             for(int i=0;i<2;i++)
@@ -311,12 +315,21 @@ namespace ChipArena.UnityConversion
             {
                 bool left=i==0;int hip=left?CapturedRig.LHip:CapturedRig.RHip,foot=hip+2;
                 Vector3 local=ToLocal(FootWorld[i],f.Root);local.Y=f.Ground-f.Root.Y+AnkleHeight+feet[i].Y;
-                // The knee goes where the capture's knee goes (zombie knock knees and splay), never backward.
+                // The knee goes where the capture's knee goes (zombie knock knees and splay), never backward, and never more than
+                // KneeSplay aside about the leg's own line (a guard: on the straight walks and runs measured the knees stay within
+                // about 20 degrees anyway; the capture's knee off its own leg's line could otherwise swing a leg out sideways).
                 var kneeDir=mocapKnee[i]-(mocapHip[i]+mocapAnkle[i])*.5f;kneeDir.Z=Math.Max(kneeDir.Z,.02f);var pole=heavy?HeavyPole(left):CapturedRig.Unit(kneeDir+new Vector3(0,0,.04f),Vector3.UnitZ);
                 float heel=Reached(p,f,i,hip,ref local);
+                if(!heavy)pole=Splayed(pole,p.WorldPosition[hip],local);
                 LegKept(p,left,local,pole,i);
-                // A swinging leg folded so far its knee would scrape the floor lifts its foot instead.
-                if(feet[i].Swing){p.World();float knee=p.WorldPosition[hip+1].Y-(f.Ground-f.Root.Y),clear=heavy?.27f:.19f;if(knee<clear){local.Y+=clear-knee;LegKept(p,left,local,pole,i);}}
+                // A swinging leg folded so far its knee would scrape the floor lifts its foot instead (eased in off the lift and out
+                // into the landing: the knee stood as low planted, and the foot jumped 10 cm in a frame as it lifted).
+                if(feet[i].Swing)
+                {
+                    p.World();float knee=p.WorldPosition[hip+1].Y-(f.Ground-f.Root.Y),clear=heavy?.27f:.19f;
+                    float s=Clamp01((f.Time-feet[i].T0)/Math.Max(1e-3f,feet[i].T1-feet[i].T0)),ease=Sm(s/ClearEase)*Sm((1-s)/ClearEase);
+                    if(knee<clear&&ease>0){local.Y+=(clear-knee)*ease;LegKept(p,left,local,pole,i);}
+                }
                 // A planted foot keeps the way it landed while the body turns over it (the foot locks in turn as well as place); a
                 // swinging one turns to the body's facing by its landing.
                 if(f.Tier<NativeHordeModels.Impostor){float tw=FootTwist(i,f.Time);if(tw!=0)p.Rotation[foot]=p.Rotation[foot]*CapturedRig.Rot(Vector3.UnitY,tw);}
@@ -510,7 +523,8 @@ namespace ChipArena.UnityConversion
                 // carries the hips past the legs' reach (NativeHordeLoco.StanceMost).
                 duty0=Lerp(WalkDuty(0),Math.Min(.55f,NativeZombieMotion.Duty(runClip,0)),run);duty1=Lerp(WalkDuty(1),Math.Min(.55f,NativeZombieMotion.Duty(runClip,1)),run);
                 duty0=Reachable(duty0,rateHz,Speed);duty1=Reachable(duty1,rateHz,Speed);
-                off1=Lerp(WalkOffset(),NativeZombieMotion.Offset(runClip,1),run);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
+                // (The right foot strikes half a cycle after the left on every take: the takes are warped to it, NativeZombieMotion.Warp.)
+                off1=NativeZombieMotion.Offset(runClip,1);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
                 if(!moving)rateHz=0;
             }
             else{stride=ProceduralStride(gk,Speed);duty0=duty1=Duty(gk,Speed);off1=.5f;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
@@ -563,6 +577,19 @@ namespace ChipArena.UnityConversion
         }
         // Left 0, right .5; the crawler's hands (2, 3) trot with the opposite feet.
         private static float FootOffset(int i)=>i==0?0:i==1?.5f:i==2?.5f:0;
+        /// <summary>The share of a swing over which a low knee's lift eases in after the foot leaves and out before it lands.</summary>
+        public const float ClearEase=.22f;
+        /// <summary>The farthest a walking knee turns aside of the add's forward about the leg's own line (rad, 20 degrees).</summary>
+        public const float KneeSplay=.35f;
+        /// <summary>A knee's pole kept within KneeSplay of forward about the leg's line from `hip` to `target` (the add's frame).</summary>
+        public static Vector3 Splayed(Vector3 pole,Vector3 hip,Vector3 target)
+        {
+            var d=target-hip;float n=d.Length();if(n<1e-4f)return pole;d/=n;
+            var ahead=Vector3.UnitZ-d*d.Z;float a=ahead.Length();if(a<.2f)return pole;ahead/=a;var side=Vector3.Cross(d,ahead);
+            float along=Vector3.Dot(pole,ahead),aside=Vector3.Dot(pole,side);
+            if(along>0&&Math.Abs(aside)<=along*(float)Math.Tan(KneeSplay))return pole;
+            return ahead*(float)Math.Cos(KneeSplay)+side*(aside<0?-1:1)*(float)Math.Sin(KneeSplay);
+        }
         private static float SideOf(int i)=>i==0||i==2?-1:1;
         private bool OtherSwinging(int i,int count){for(int j=0;j<count;j++)if(j!=i&&feet[j].Swing&&((j&1)!=(i&1)||count==2))return true;return false;}
         private Vector2 Home(int i,Vector2 at,in Def d)
@@ -780,8 +807,9 @@ namespace ChipArena.UnityConversion
                     if(Vector3.DistanceSquared(hipAt,HeelAnkle(ball,fwd,hi))<=LegReach*LegReach)for(int n=0;n<10;n++){float m=(lo+hi)*.5f;if(Vector3.DistanceSquared(hipAt,HeelAnkle(ball,fwd,m))<=LegReach*LegReach)hi=m;else lo=m;}
                     heel=hi;target=HeelAnkle(ball,fwd,heel);
                 }
-                // (Still out of reach on its ball, or out of reach ahead: the foot steps next frame rather than slide.)
-                overReach[i]=Vector3.DistanceSquared(hipAt,target)>LegReach*LegReach*1.0004f;
+                // (Still out of reach on its ball, or out of reach ahead: the foot steps next frame rather than slide. A heel peeled
+                // (nearly) all the way goes too: the hips carry on, and the ball slid 3 cm the next frame as an add broke into a run.)
+                overReach[i]=heel>=HeelMost*.95f||Vector3.DistanceSquared(hipAt,target)>LegReach*LegReach*1.0004f;
             }
             else overReach[i]=false;
             heelLift[i]=heel;heelRise[i]=target-flat;return Heel[i]=heel;
