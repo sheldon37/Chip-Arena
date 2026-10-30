@@ -246,6 +246,12 @@ namespace ChipArena.UnityConversion
             // Stride: how far the game's ankles sit drawn in fore and aft of their hips (NativeHordeGait.LegsNow: a stride planned for
             // the model's legs, posed on the game's shorter ones): the game ankle's offset from its hip is spread back out by it.
             public bool Across, Level, Follow; public float Stand, Raise, Room=KneeRoom, Stride=1;
+            // Ease (a followed stance's, the Hulk's: Carry): the pelvis carried toward Stand on a critically damped spring of this
+            // time (seconds; 0: the rise by RaiseStep a pose), stepped by Dt (the frame's seconds, the presentation's). Hip, HipSpeed:
+            // the carried height and its speed; LastCap, CapFall: the legs' reach last pose and how fast it has been falling.
+            public float Ease, Dt=1/60f, Hip, HipSpeed, LastCap, CapFall; public bool Carried;
+            // Clench: this pose's fist past the grip (Grasp.Clench).
+            public float Clench;
             // Drops last frame's elbows and hands (a cut, a respawn, a weapon swap): the next pose is solved afresh.
             public void Forget() { HasLast=false; }
             public State(Rig rig)
@@ -288,7 +294,8 @@ namespace ChipArena.UnityConversion
         // relaxes too, and seated hands rest on the lap (OnLap). LeftCarries, RightCarries: that hand carries what no handle seats
         // (a caster's staff, the bow, on the left): it counts as held, not free. Bound: the support holds whatever the hands' distance
         // (the draft's wrist plant, whose left hand works on the right forearm).
-        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold; }
+        // Clench: 0..1, closed hands drawn on past a handle's grip into a tight fist with nothing in it (a Hulk's punch).
+        public struct Grasp { public float RightGrip, LeftGrip, Support, Stock, Relax, Still, Clench; public bool LeftCarries, RightCarries, Bound; public Hold Right, Left, SupportHold; }
 
         // The Standard weapons' handles (NativeWeaponModels). The sword family draws at the hand turned by
         // NativeSpecialPose.HeldRotation (`held`) with its grip along +z through the wrist; the shield's grip bar stands up behind
@@ -365,7 +372,7 @@ namespace ChipArena.UnityConversion
             // The game can let go of (or take up) a two-handed grip within a frame; the visual hands ease over WeightStep.
             if(s.HasLast) support=s.LastSupport+CapturedClip.Clamp(support-s.LastSupport,-WeightStep,WeightStep);
             s.LastSupport=support;
-            s.RightGrip=CapturedClip.Clamp(grasp.RightGrip,0,1); s.LeftGrip=Math.Max(CapturedClip.Clamp(grasp.LeftGrip,0,1),support);
+            s.RightGrip=CapturedClip.Clamp(grasp.RightGrip,0,1); s.LeftGrip=Math.Max(CapturedClip.Clamp(grasp.LeftGrip,0,1),support); s.Clench=CapturedClip.Clamp(grasp.Clench,0,1);
             for(int v=0;v<n;v++)
             {
                 int p=r.Parent[v]; Quaternion parentTurn=p<0?Quaternion.Identity:s.Turn[p];
@@ -383,7 +390,7 @@ namespace ChipArena.UnityConversion
                     s.Turn[v]=Quaternion.Normalize(start*(r.Share[v]>=.9999f?local:Quaternion.Slerp(Quaternion.Identity,local,r.Share[v])));
                 }
                 else if(r.TwistJoint[v]>=0) s.Turn[v]=Quaternion.Normalize(parentTurn*CapturedRig.Rot(CapturedRig.Y,r.TwistShare[v]*Twist(pose.Rotation[r.TwistJoint[v]])));
-                else if(r.Finger[v]!=0) s.Turn[v]=Quaternion.Normalize(parentTurn*CapturedRig.Rot(r.FingerAxis[v],Curl(r.Finger[v],r.Side[v]==1?s.RightGrip:s.LeftGrip)));
+                else if(r.Finger[v]!=0) s.Turn[v]=Quaternion.Normalize(parentTurn*CapturedRig.Rot(r.FingerAxis[v],Curl(r.Finger[v],r.Side[v]==1?s.RightGrip:s.LeftGrip,s.Clench)));
                 else s.Turn[v]=parentTurn;
                 s.World[v]=Quaternion.Normalize(s.Turn[v]*r.AlignedWorld[v]);
             }
@@ -787,6 +794,8 @@ namespace ChipArena.UnityConversion
         // comes down at once where a planted leg needs it.
         private static void Rise(State s,CapturedRig.Pose pose,bool plantFeet)
         {
+            if(s.Follow&&s.Ease>0&&plantFeet&&!s.Level) { Carry(s,pose); return; }
+            s.Carried=false;
             var r=s.Rig; float want=plantFeet&&!s.Level?Math.Max(0,s.Stand):0; bool stood=false;
             if(want>0)
                 for(int side=0;side<2;side++)
@@ -805,6 +814,45 @@ namespace ChipArena.UnityConversion
             if(want>0&&!stood&&s.HasLast) want=Math.Min(want,s.Raise);
             float raise=s.HasLast?s.Raise+CapturedClip.Clamp(want-s.Raise,-RaiseStep,RaiseStep):want;
             if(plantFeet) raise=Math.Min(raise,want);
+            if(raise==s.Raise) return;
+            s.Raise=raise; Positions(s,pose);
+        }
+
+        // The Hulk's carried hips (State.Ease; owner 2026-10-30: "they look too wiggly"). Measured on its walk, the rise above rode
+        // each planted leg's reach: up by RaiseStep through a step, then down at once as the next foot came into reach (5.7 cm in
+        // a pose), and its stamp (the gait's hips dropped with the foot) showed until the rise climbed back; the hips travelled
+        // 14 cm a step. Carried, the pelvis eases toward Stand over the gait's own height on a spring, so the gait's lowering and
+        // a blow's crouch come and go smoothly. Every foot follows the gait's ankle (State.Follow), so both legs' reach bounds it:
+        // it aims under the lower by CarryMargin while that reach has been falling (CapFall, over CarryFallTime: a stride's), so it
+        // is already down when a foot lands, and it never stands higher than a planted foot (on the floor) reaches.
+        public const float CarryMargin=.035f, CarryFallTime=.6f, CarryFallShare=3;
+        private static void Carry(State s,CapturedRig.Pose pose)
+        {
+            var r=s.Rig; int vp=r.Of[CapturedRig.Pelvis]; float dt=CapturedClip.Clamp(s.Dt,1e-4f,.1f);
+            // (The pelvis as unraised: Positions placed it with last pose's rise.)
+            float under=s.Position[vp].Y-s.Raise,cap=float.MaxValue,hard=float.MaxValue;
+            for(int side=0;side<2;side++)
+            {
+                int hip=side==0?CapturedRig.LHip:CapturedRig.RHip,vh=r.Of[hip],va=r.Of[hip+2];
+                if(vh<0||va<0) continue;
+                Vector3 game=GameAnkle(s,pose,hip); float above=Math.Max(0,game.Y-AnkleRest(hip));
+                Vector3 hipAt=s.Position[vh]-new Vector3(0,s.Raise,0);
+                float dx=game.X-hipAt.X,dz=game.Z-hipAt.Z,drop=hipAt.Y-(r.AlignedPosition[va].Y+above),reach=(r.LegUpper+r.LegLower)*s.Room,h2=dx*dx+dz*dz;
+                float most=under+(h2>=reach*reach?-drop:(float)Math.Sqrt(reach*reach-h2)-drop);
+                cap=Math.Min(cap,most); if(above<=PlantedHeight) hard=Math.Min(hard,most);
+            }
+            float want=under+Math.Max(0,s.Stand);
+            if(!s.HasLast||!s.Carried) { s.Hip=Math.Min(want,Math.Min(cap,hard)); s.HipSpeed=0; s.CapFall=0; }
+            else
+            {
+                float fall=Math.Max(0,(s.LastCap-cap)/dt); s.CapFall+=(fall-s.CapFall)*(1-(float)Math.Exp(-dt/CarryFallTime));
+                float goal=Math.Min(want,cap-Math.Min(CarryMargin,s.CapFall*s.Ease*CarryFallShare));
+                float w=2/s.Ease,x=s.Hip-goal,e=(float)Math.Exp(-w*dt),k=(s.HipSpeed+w*x)*dt;
+                s.HipSpeed=(s.HipSpeed-w*k)*e; s.Hip=goal+(x+k)*e;
+                if(s.Hip>hard) { s.Hip=hard; if(s.HipSpeed>0) s.HipSpeed=0; }
+            }
+            s.LastCap=cap; s.Carried=true;
+            float raise=s.Hip-under;
             if(raise==s.Raise) return;
             s.Raise=raise; Positions(s,pose);
         }
@@ -863,10 +911,17 @@ namespace ChipArena.UnityConversion
         // Finger curl per joint (radians): relaxed when the hand is open, closed round a weapon's grip (about 3-4 cm across).
         // Entries 0-2 are a finger's proximal, middle and tip joints, 3-5 the thumb's.
         public static readonly float[] Relaxed={.26f,.44f,.26f,.09f,.17f,.17f}, Closed={.96f,1.31f,.79f,.35f,.52f,.52f};
+        // A tight fist (Grasp.Clench): the fingers rolled into the palm, the thumb folded across them.
+        public static readonly float[] Clenched={1.5f,1.72f,1.05f,.6f,.85f,.75f};
         public static float Curl(int finger,float grip)
         {
             int i=finger>=11?finger-8:finger-1; if(i<0||i>5) return 0;
             return Relaxed[i]+(Closed[i]-Relaxed[i])*grip;
+        }
+        public static float Curl(int finger,float grip,float clench)
+        {
+            int i=finger>=11?finger-8:finger-1; if(i<0||i>5) return 0;
+            return Curl(finger,grip)+(Clenched[i]-Closed[i])*clench*grip;
         }
 
         // How firmly the game's own hands hold together: 1 while its wrists are within the support grips' reach of each other

@@ -99,16 +99,17 @@ namespace ChipArena.UnityConversion
             V("brute-female-b",NativeHordeKinds.Brute,true,"wild","z-denim-vest|sweater","z-cargo-pants|baggy-pants","bare","work-boots",new[]{0xcfcfcf,0x6a2a2e,0x5c5e62,Keep,0x3a2f26},0xa3a597,
                 Body(15,45,80,20,45,70,15,25,15,70),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.12f,Shoulder=1.05f},.55f,.56f,.59f,false,0xe9ece4,decay:"ribs-l,upperarm-l",blood:0.6f),
             // ---- Hulk: the mutant giant (drawn at 1.8x): a small head sunk between boulder shoulders, a barrel chest, long swollen
-            // arms with club forearms and huge fists on small legs, bone spurs and pustules (Core NativeZombieMutation); pale grey-pink,
-            // the males bare-chested ----
+            // arms with club forearms and huge fists on small legs, every muscle defined, veins, torn skin, bone spurs and pustules
+            // (Core NativeZombieMutation); pale grey-pink. The grown flesh is the whole upper body: none wears a top (a woman's top
+            // colour is her torn chest wrap, painted on the flesh), and the decay opens where no flesh grows (the face, the legs) ----
             V("hulk-male-a",NativeHordeKinds.Hulk,false,None,None,"z-cargo-pants|baggy-pants","bare","work-boots",new[]{Keep,Keep,0x2a3047,Keep,0x1f1f22},0xb7a7a2,
-                Body(100,30,100,0,100,100,0,0,10,60,40),new Build{Arm=1.75f,Forearm=2f,Thigh=1.3f,Calf=1.25f,Hand=2f,Shoulder=1.42f,Head=.82f,Right=1.08f,Neck=.6f,Reach=1.3f},.6f,.62f,.7f,false,0xe9ece4,decay:"ribs-r,forearm-l,upperarm-r",blood:0.55f,mutant:true),
+                Body(100,30,100,0,100,100,0,0,10,60,40),new Build{Arm=1.75f,Forearm=2f,Thigh=1.3f,Calf=1.25f,Hand=2f,Shoulder=1.42f,Head=.82f,Right=1.08f,Neck=.6f,Reach=1.3f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-l,thigh-r",blood:0.55f,mutant:true),
             V("hulk-male-b",NativeHordeKinds.Hulk,false,"spiky",None,"z-cargo-pants|baggy-pants","bare","work-boots",new[]{0xd8d6d0,Keep,0x7a2f2b,Keep,0x1f1f22},0xab9e98,
-                Body(100,35,100,10,100,100,0,0,10,65,40),new Build{Arm=1.75f,Forearm=2f,Thigh=1.3f,Calf=1.25f,Hand=2f,Shoulder=1.42f,Head=.82f,Right=1.08f,Neck=.6f,Reach=1.3f},.6f,.62f,.7f,false,0xe9ece4,decay:"back,forearm-r,cheek-l",blood:0.55f,mutant:true),
-            V("hulk-female-a",NativeHordeKinds.Hulk,true,"spiky","z-denim-vest|hard-jacket","z-cargo-pants|baggy-pants","bare","work-boots",new[]{0x1d1b1f,0x2b3552,0x2a3047,Keep,0x1f1f22},0xb3a4a3,
-                Body(65,30,100,0,70,100,0,30,10,50,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"ribs-l,forearm-r,upperarm-l",blood:0.55f,mutant:true),
-            V("hulk-female-b",NativeHordeKinds.Hulk,true,"wild","z-denim-vest|open-hoodie","baggy-pants","bare","work-boots",new[]{0xa9a9a6,0x6b2a2c,0x28282b,Keep,0x5a3d28},0xaaa39c,
-                Body(65,35,100,10,70,100,0,30,10,70,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-r,upperarm-r,shin-l",blood:0.55f,mutant:true),
+                Body(100,35,100,10,100,100,0,0,10,65,40),new Build{Arm=1.75f,Forearm=2f,Thigh=1.3f,Calf=1.25f,Hand=2f,Shoulder=1.42f,Head=.82f,Right=1.08f,Neck=.6f,Reach=1.3f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-l,shin-r",blood:0.55f,mutant:true),
+            V("hulk-female-a",NativeHordeKinds.Hulk,true,"spiky",None,"z-cargo-pants|baggy-pants","bare","work-boots",new[]{0x1d1b1f,0x2b3552,0x2a3047,Keep,0x1f1f22},0xb3a4a3,
+                Body(65,30,100,0,70,100,0,30,10,50,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-r,thigh-l",blood:0.55f,mutant:true),
+            V("hulk-female-b",NativeHordeKinds.Hulk,true,"wild",None,"baggy-pants","bare","work-boots",new[]{0xa9a9a6,0x6b2a2c,0x28282b,Keep,0x5a3d28},0xaaa39c,
+                Body(65,35,100,10,70,100,0,30,10,70,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-r,shin-l",blood:0.55f,mutant:true),
         };
 
         /// <summary>The kinds drawn on the model in shipped builds (the owner's order: one male and one female shambler end to end first,

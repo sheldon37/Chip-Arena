@@ -89,7 +89,7 @@ namespace ChipArena.UnityConversion
                     Check(Mean(after.Spread)<=Mean(before.Spread)+.5f,name+": the arms hang no wider than before ("+Mean(after.Spread).ToString("0.0")+" deg)");
                 }
             }
-            Pilot(rig);Crawl(rig,pelvis);Dying(rig,pelvis);Busy(rig);Flight(rig);Repeat(rig);Wiring(root);
+            Pilot(rig);Crawl(rig,pelvis);Dying(rig,pelvis);Busy(rig);Flight(rig);Repeat(rig);Carried(rig,pelvis);Wiring(root);
             Console.WriteLine("PASS zombie posture: "+count+" checks (five kinds at rest, walk and run on the measured skeleton: lumbar share at most "+worstShare.ToString("0.00")+", resting knees at most "+worstIdleKnee.ToString("0")+" deg, planted knees in a stride at most "+worstStride.ToString("0")+" deg, hips at most "+worstBack.ToString("0.00")+" m behind the feet, planted ankles within "+(worstFoot*100).ToString("0.0")+" cm; the trunk's top and the gaze kept; pilots untouched)");
         }
         // (`air`: the gait's feet in the air this pose. A foot lifting off behind a long stride, or coming down, is low enough to
@@ -165,12 +165,41 @@ namespace ChipArena.UnityConversion
             Vector3[] Run(){var d=new Drive(NativeHordeKinds.Shambler,777,0);var s=new NativeVisualRig.State(rig);var fit=new CapturedRig.Pose();for(int i=0;i<120;i++){d.Step(i*Dt,i<60?0:1.5f);d.P.World();NativeZombiePosture.Fit(d.P,fit);NativeZombiePosture.Stance(s,NativeHordeKinds.Shambler,false,d.G.Sunk,d.G.Crouch,d.G.Busy);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);}return (Vector3[])s.Position.Clone();}
             var a=Run();var b=Run();Check(a.Zip(b,(x,y)=>(x-y).Length()).Max()==0,"the same gait poses the same model, bit for bit");
         }
+        // The Hulk's carried hips (owner 2026-10-30: "they look too wiggly"; NativeVisualRig.State.Ease): its walk and run on the
+        // model as the runtime runs them, against the same with the rise as it was (by RaiseStep up, at once down). The hips'
+        // biggest drop in a pose, their travel and their jerk fall, the planted feet stay on their marks; other kinds keep the
+        // rise.
+        private static void Carried(NativeVisualRig.Rig rig,int pelvis)
+        {
+            var s0=new NativeVisualRig.State(rig);NativeZombiePosture.Stance(s0,NativeHordeKinds.Shambler,false,0,0,0);Check(s0.Ease==0,"other kinds keep the rise");
+            NativeZombiePosture.Stance(s0,NativeHordeKinds.Hulk,false,0,0,0);Check(s0.Ease==NativeZombiePosture.HulkCarry&&s0.Ease>0,"the Hulk's hips carried");
+            var st=NativeHordeKinds.ProposedRow(NativeHordeKinds.Hulk);float sc=NativeHordeKinds.Scale[NativeHordeKinds.Index(NativeHordeKinds.Hulk)];var fit=new CapturedRig.Pose();
+            foreach(var (gait,speed) in new[]{("walk",st.walk/sc),("run",st.run/sc)})
+            {
+                float[] drop=new float[2],travel=new float[2],jerk=new float[2];
+                for(int carried=0;carried<2;carried++)
+                {
+                    var d=new Drive(NativeHordeKinds.Hulk,40000+NativeHordeKinds.Hulk*101,0);d.G.Legs=rig.LegRatio;var s=new NativeVisualRig.State(rig);var ys=new List<float>();
+                    for(int i=0;i<330;i++)
+                    {
+                        d.Step(i*Dt,speed);var p=d.P;p.World();NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,NativeHordeKinds.Hulk,false,d.G.Sunk,d.G.Crouch,d.G.Busy,d.G.LegsNow);if(carried==0)s.Ease=0;
+                        NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);if(i>=90)ys.Add(s.Position[pelvis].Y);
+                    }
+                    var dy=ys.Zip(ys.Skip(1),(a,b)=>b-a).ToList();var ddy=dy.Zip(dy.Skip(1),(a,b)=>Math.Abs(b-a)).ToList();
+                    drop[carried]=-dy.Min();travel[carried]=ys.Max()-ys.Min();jerk[carried]=P95(ddy);
+                }
+                Console.WriteLine($"  hulk {gait} hips: biggest drop a pose {drop[0]*100:0.0} -> {drop[1]*100:0.0} cm, travel {travel[0]*100:0.0} -> {travel[1]*100:0.0} cm, jerk p95 {jerk[0]*100:0.00} -> {jerk[1]*100:0.00} cm/pose^2");
+                Check(drop[1]<=.025f&&drop[1]<drop[0]*.5f,"the Hulk "+gait+": no hip drops in a pose ("+(drop[1]*100).ToString("0.0")+" cm, was "+(drop[0]*100).ToString("0.0")+")");
+                Check(travel[1]<travel[0]&&jerk[1]<jerk[0]*.6f,"the Hulk "+gait+": the hips travel less and smoothly (jerk p95 "+(jerk[1]*100).ToString("0.00")+" cm, was "+(jerk[0]*100).ToString("0.00")+")");
+            }
+        }
         private static void Wiring(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
             string zm=R("Runtime/NativeZombieModelPresentation.cs"),rig=R("Core/NativeVisualRig.cs"),fit=R("Core/NativeZombiePosture.cs");
             Check(zm.Contains("minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);")
-                &&zm.Contains("z.Body.Binding.Apply(pose,default(NativeVisualRig.Grasp),planted,airborne);"),"the model binds the fitted copy (the rig, its voxel tiers and gore keep the gait's pose)");
+                &&zm.Contains("z.Body.Binding.Apply(pose,z.Kind==NativeHordeKinds.Hulk?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy}:default(NativeVisualRig.Grasp),planted,airborne);"),"the model binds the fitted copy (the rig, its voxel tiers and gore keep the gait's pose)");
+            Check(zm.Contains("z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;"),"the carried hips step by the time since the body's last pose (the crowd's clock poses far adds less often)");
             Check(R("Runtime/NativeHordeKindPresentation.cs").Contains("ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,")&&zm.Contains("z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;"),"the add's crawl reaches the model");
             Check(rig.Contains("if(s.Across||s.Level||s.Raise!=0) lift=Stance(s,pose,lift);")&&rig.Contains("if(s.Stand>0||s.Raise!=0) Rise(s,pose,plantFeet);"),"the stance runs only for a state that asks for it");
             foreach(string w in new[]{"NativeArena","Authority","Pilot.","Collider","Strike(","Recover("})Check(!fit.Contains(w),"the fit reads no rule or authority: "+w);
