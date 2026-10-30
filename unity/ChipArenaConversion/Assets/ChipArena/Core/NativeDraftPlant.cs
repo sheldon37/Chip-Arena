@@ -36,6 +36,29 @@ namespace ChipArena.UnityConversion
         public const float Arch=.06f;
         // Where the chip goes in: the palm side of the wrist cuff (hand frame).
         public static readonly Vector3 CuffLocal=new Vector3(0,.005f,.105f);
+        // The model's wrist device (owner 2026-10-29: "inserting the chip animation could be improved for the new model"): on a
+        // pilot drawn on the model (Device), the receiving forearm is presented back up toward the camera, as one checks a
+        // watch, and the chip goes into the device's bay on the back of the forearm (NativePilotGear; the draw measures the bay
+        // on the model and gives it here, BayLocal and its outward BayNormal in the receiving hand's frame). The chip turns to
+        // lie in the bay over the seat with the face it showed in the palm still up (no flip), and from ShrinkSpan before the
+        // carry's end it shrinks from its held size to the bay's chip (BayChipWidth), so the device's own chip takes over as it
+        // sinks. The voxel pilot keeps the palm-side cuff.
+        // The pressing palm does not cover the bay: it comes down PressLift over the forearm, PressSide past the bay toward the
+        // receiving hand, and the chip slides out of it along the forearm into the bay over the seat. PressOffset (root frame)
+        // moves the pressing wrist's goal: the draw measures how far the model's palm lands from where the stage's does against
+        // the bay (the model's arms are its own proportions) and gives it here, so the model's palm takes the stage's place.
+        public bool Device;public Vector3 BayLocal=DefaultBay,BayNormal=-Vector3.UnitZ,PressOffset;
+        public const float PressLift=.025f,PressSide=.08f;
+        public static readonly Vector3 DefaultBay=new Vector3(0,.045f,-.065f);
+        public const float BayChipWidth=.026f,ShrinkSpan=.34f;
+        public static float Shrink(float age)=>MathUtil.Smooth((age-(CarryEnd-ShrinkSpan))/ShrinkSpan);
+        public static float DeviceChipScale(float age,float time,bool reduced)=>HeldChipScale(age,time,reduced)*(1+(BayChipWidth/HeldChipWidth-1)*Shrink(age));
+        // The chip lying in the bay (receiving hand frame): the face up in the pressing palm into the bay, its crest toward the
+        // hand's +y (the elbow) in the bay's plane.
+        public Quaternion ChipInBay()
+        {
+            var y=-CapturedRig.Unit(BayNormal,-Vector3.UnitZ);var z=CapturedRig.Unit(Vector3.UnitY-y*Vector3.Dot(Vector3.UnitY,y),Vector3.UnitX);return CapturedRig.Basis(Vector3.Cross(y,z),y,z);
+        }
         // The tray's reaching wrist turn at the contact (NativeDraftStage), the carry's starting turn.
         public static readonly Quaternion ContactWrist=CapturedRig.Euler(-1.45f);
         // A hand turning between palm down and palm up (half a turn, which a plain slerp may take either way, flipping as the
@@ -61,6 +84,7 @@ namespace ChipArena.UnityConversion
             var f=plant-shoulder;f=CapturedRig.Unit(f-n*Vector3.Dot(f,n),new Vector3(left?-1:1,0,0));var y=-f;var z=-n;var press=CapturedRig.Basis(Vector3.Cross(y,z),y,z);
             float carry=Carry(age),sink=Sink(age),ret=Return(age);
             var goal=plant+n*(.004f-.012f*sink)-Vector3.Transform(PalmLocal,press);
+            if(Device){var along=CapturedRig.Unit(Vector3.Transform(Forearm,chestInv),Vector3.UnitX);goal+=n*(PressLift-.004f)+along*PressSide+Vector3.Transform(PressOffset,chestInv);}
             goal=Vector3.Lerp(reach,goal,carry)+n*(.07f*(float)Math.Sin(Math.PI*carry));var wrist=Roll(ContactWrist,press,left,carry);
             // Keep the resting arm and carry the wrist back to it over the return along an arch (no switch between IK and the
             // rest), the joints settling exactly onto the rest over the return's last quarter.
@@ -78,14 +102,14 @@ namespace ChipArena.UnityConversion
         public void Place(CapturedRig.Pose p,bool left,float age)
         {
             int other=left?CapturedRig.RHand:CapturedRig.LHand,hand=left?CapturedRig.LHand:CapturedRig.RHand;
-            At=p.WorldPosition[other]+Vector3.Transform(CuffLocal,p.WorldRotation[other]);Normal=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[other]);
+            At=p.WorldPosition[other]+Vector3.Transform(Device?BayLocal:CuffLocal,p.WorldRotation[other]);Normal=Vector3.Transform(Device?CapturedRig.Unit(BayNormal,-Vector3.UnitZ):Vector3.UnitZ,p.WorldRotation[other]);
             Forearm=CapturedRig.Unit(p.WorldPosition[other]-p.WorldPosition[other-1],Vector3.UnitX);
             float sink=Sink(age),seat=Seat(age);ChipShown=age>=Contact&&sink<.999f;if(age<Contact){Chip=At;ChipRotation=Quaternion.Identity;return;}
             var held=p.WorldPosition[hand]+Vector3.Transform(PalmLocal,p.WorldRotation[hand]);var heldRot=p.WorldRotation[hand]*ChipInHand;
-            Chip=Vector3.Lerp(held,At,sink>0?1:seat)-Normal*(.012f*sink);ChipRotation=Quaternion.Slerp(heldRot,p.WorldRotation[other]*ChipInHand,seat);
+            Chip=Vector3.Lerp(held,At,sink>0?1:seat)-Normal*(.012f*sink);ChipRotation=Quaternion.Slerp(heldRot,p.WorldRotation[other]*(Device?ChipInBay():ChipInHand),seat);
         }
         // The receiving arm raised by `k` (0 rest .. 1 presented): forearm across the front of the chest, the hand along it
-        // with the inner wrist (+z) turned up and toward the camera. The wrist travels from its rest over the arch, the joints
+        // with the inner wrist (+z) turned up and toward the camera (the device: its bay). The wrist travels from its rest over the arch, the joints
         // easing in from the rest over the first quarter.
         private void Present(CapturedRig.Pose p,bool left,float k)
         {
@@ -95,8 +119,11 @@ namespace ChipArena.UnityConversion
             var goal=Raised(left);var presented=new Vector3(left?1:-1,-.9f,-.1f);var pole=Vector3.Lerp(NativeDraftStage.RestPole,new Vector3(1,-.9f,-.1f),k);if(!left)pole.X=-pole.X;
             CapturedRig.Arm(p,left,goal,restTurn,presented);p.World();
             var fore=CapturedRig.Unit(Vector3.Transform(p.WorldPosition[h]-p.WorldPosition[h-1],chestInv),new Vector3(left?-1:1,0,0));
-            var up=new Vector3(0,.6f,.8f);up=CapturedRig.Unit(up-fore*Vector3.Dot(up,fore),Vector3.UnitY);var y=-fore;
-            CapturedRig.Arm(p,left,Vector3.Lerp(restAt,goal,k)+Vector3.UnitY*(Arch*(float)Math.Sin(Math.PI*k)),Quaternion.Slerp(restTurn,CapturedRig.Basis(Vector3.Cross(y,up),y,up),k),pole);
+            var up=new Vector3(0,.6f,.8f);up=CapturedRig.Unit(up-fore*Vector3.Dot(up,fore),Vector3.UnitY);var y=-fore;var turn=CapturedRig.Basis(Vector3.Cross(y,up),y,up);
+            // The device: the hand rolled about its length so the bay's normal (hand frame, across the hand's +y) faces where the
+            // inner wrist would.
+            if(Device){var a=CapturedRig.Unit(BayNormal-Vector3.UnitY*BayNormal.Y,-Vector3.UnitZ);turn*=Quaternion.Inverse(CapturedRig.Basis(Vector3.Cross(Vector3.UnitY,a),Vector3.UnitY,a));}
+            CapturedRig.Arm(p,left,Vector3.Lerp(restAt,goal,k)+Vector3.UnitY*(Arch*(float)Math.Sin(Math.PI*k)),Quaternion.Slerp(restTurn,turn,k),pole);
             float ease=MathUtil.Smooth(k/.25f);if(ease<1)for(int i=0;i<3;i++){solved[i]=p.Rotation[arm+i];p.Rotation[arm+i]=Quaternion.Slerp(rest[i],solved[i],ease);}
             p.World();
         }

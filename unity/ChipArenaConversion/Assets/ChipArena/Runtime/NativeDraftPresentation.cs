@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         // The worn head cosmetic's top above the head joint, for the stage's framing (NativeDraftStage.Frame), measured once per
         // outfit as the portraits' hatTop is: the hat model's head-space bounds (the meshes drawn), or the Auditor halo's
         // reach (NativeAuditorHalo.Top); 0 bare-headed, for an unknown hat (nothing is drawn) and for the Siren drafter.
-        private string draftCrownHat;private float draftCrown;
+        private string draftCrownHat;private float draftCrown;private bool draftDevice;
         private float DraftCrown(string hat,bool siren)
         {
             if(siren||string.IsNullOrEmpty(hat)||hat=="none")return 0;if(hat==draftCrownHat)return draftCrown;
@@ -85,8 +85,10 @@ namespace ChipArena.UnityConversion
             // The stage runs on the frame clock: the idle (and the Siren's) on its own presentation clock, the pick's age eased
             // onto the authoritative one (simulation ticks and network frames would otherwise step it).
             float dt=Time.unscaledDeltaTime;bool siren=seat.spec=="siren";var stage=draftStage;var draftPose=stage.Pose;age=stage.SmoothAge(age,dt);stage.Begin(dt,reduced);double time=stage.Clock;
+            // On the model the chip goes into the wrist device's bay (NativeDraftPlant.Device; the bay as measured last frame).
+            stage.Plant.Device=!siren&&draftDevice;
             if(siren)NativeSourceMotion.Sample("siren-idle-melee",reduced?0:(float)time,0,draftPose);
-            stage.Frame(camera.aspect,trayLine,trayBottom,DraftCrown(seat.hat,siren),siren,dt);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
+            stage.Frame(camera.aspect,trayLine,trayBottom,DraftCrown(seat.hat,siren),siren,dt,VisualDraftModel(seat)?NativeDraftStage.ModelHeadTop:NativeDraftStage.HeadTop);stage.Step(dt,age,focus,consider,cards,count,siren,reduced);
             draftRig.Root.transform.SetPositionAndRotation(new Vector3(0,.88f,0),Quaternion.identity);
             NativePoseWriter.Write(draftRig.Bones,draftPose,"the draft rig");
             float pulse=age>=0&&!reduced?NativeDraftPlant.Pulse(age):-1,flash=pulse>=0?(1-pulse)*(1-pulse):0;
@@ -97,23 +99,48 @@ namespace ChipArena.UnityConversion
             // draft-stage.ts animates the Siren drafter (animateSiren on the match clock): its idle look, eye halos lit.
             // The pilot on its visual body (NativeVisualBodyPresentation.cs VisualDraftPose), else the voxel body and hat.
             int other=hand==CapturedRig.LHand?CapturedRig.RHand:CapturedRig.LHand;Matrix4x4 holdFrom=draftRig.Bones[hand].localToWorldMatrix,plantFrom=draftRig.Bones[other].localToWorldMatrix;
-            bool asModel=!siren&&VisualDraftPose(draftRig,seat,draftPose,(float)time,camera);VisualBodiesShown();
+            // On the device the model's pressing hand keeps the stage's offset from the receiving wrist through the carry and the
+            // plant (VisualBodyBind's support), easing back to its own arm over the return.
+            float press=stage.Plant.Device&&age>=NativeDraftPlant.Contact?NativeDraftPlant.Carry(age)*(1-NativeDraftPlant.Return(age)):0;
+            bool asModel=!siren&&VisualDraftPose(draftRig,seat,draftPose,(float)time,camera,press);VisualBodiesShown();
             // On the model the rig's hands are the model's wrists (VisualBodyBind): the palm, the chip and the plant move from the
             // stage's wrists onto them.
             Matrix4x4 holdTo=asModel?draftRig.Bones[hand].localToWorldMatrix*holdFrom.inverse:Matrix4x4.identity,plantTo=asModel?draftRig.Bones[other].localToWorldMatrix*plantFrom.inverse:Matrix4x4.identity;
+            // The device's bay on the model as drawn: back into the stage hand's frame (source axes) for the plant's next frame.
+            Vector3 bayAt=default,bayOut=default;bool device=asModel&&!siren&&VisualDraftBay(out bayAt,out bayOut);draftDevice=device;
+            if(device)
+            {
+                var back=plantTo.inverse;var bp=back.MultiplyPoint3x4(bayAt);var bn=back.MultiplyVector(bayOut);var turn=System.Numerics.Quaternion.Inverse(draftPose.WorldRotation[other]);
+                stage.Plant.BayLocal=NVector.Transform(new NVector(-bp.x,bp.y-.88f,bp.z)-draftPose.WorldPosition[other],turn);stage.Plant.BayNormal=NVector.Transform(new NVector(-bn.x,bn.y,bn.z),turn);
+                VisualDraftDevice(seat,age,(float)time,(chipTint.a>0?chipTint:tint).linear,flash);
+                // How far the model's palm lands from where the stage's lands against the bay, learnt while the support holds
+                // the hand (kept between picks: the model's proportions do not change).
+                if(press>.5f){var miss=(bayAt-holdTo.MultiplyPoint3x4(Stage(stage.Palm)))-(Stage(plant.At)-Stage(stage.Palm));stage.Plant.PressOffset=NVector.Lerp(stage.Plant.PressOffset,new NVector(-miss.x,miss.y,miss.z),1-Mathf.Exp(-dt/.08f));}
+            }
             var root=draftRig.Root.transform.localToWorldMatrix;var sirenFace=siren?SirenStill(reduced?0:(float)time):null;int bodySkin=NativeBodySkins.Of(seat.weaponSkins);if(!asModel){sourceModels.Queue(siren?"siren":BodyModel(bodySkin,BodyCloseTier),root,draftBone,body:BodyTint(seat.bodyColor),accent:BodyAccent(bodySkin,seat.accentColor,seat.hat,seat.hatColor),look:sirenFace);if(!siren&&!AuditorHalo(seat.hat,draftRig.Bones[CapturedRig.Head].localToWorldMatrix,(float)time,1,reduced,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),root,draftBone,body:HatBody(seat.hat,seat.hatColor));}
             if(siren){sirenLookCamera=camera;SirenLookFx(draftRig,sirenFace,0,null,reduced?0:(float)time);}
             // The chip at its real size in the hand (never bigger than the hand), carried to the other wrist and pressed in.
             var palm=holdTo.MultiplyPoint3x4(Stage(stage.Palm));draftChipTint=(chipTint.a>0?chipTint:tint).linear;
             if(age>=NativeDraftPlant.Contact&&(siren||plant.ChipShown))
             {
-                float scale=NativeDraftPlant.HeldChipScale(age,(float)time,reduced);var at=siren?palm:Stage(plant.Chip);var turn=siren?draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0):CapturedAnimation.Quat(CapturedRig.Mirror(plant.ChipRotation));
+                float scale=device?NativeDraftPlant.DeviceChipScale(age,(float)time,reduced):NativeDraftPlant.HeldChipScale(age,(float)time,reduced);var at=siren?palm:Stage(plant.Chip);var turn=siren?draftRig.Bones[hand].rotation*Quaternion.Euler(90,0,0):CapturedAnimation.Quat(CapturedRig.Mirror(plant.ChipRotation));
                 // The chip rides from the holding wrist to the receiving one.
                 if(asModel){float fromPalm=(at-Stage(stage.Palm)).magnitude,toCuff=(at-Stage(plant.At)).magnitude,ride=fromPalm/Mathf.Max(1e-5f,fromPalm+toCuff);at=Vector3.Lerp(holdTo.MultiplyPoint3x4(at),plantTo.MultiplyPoint3x4(at),ride);turn=Quaternion.Slerp(holdTo.rotation,plantTo.rotation,ride)*turn;}
                 if(scale>.001f){draftChip=Matrix4x4.TRS(at,turn,Vector3.one*scale);string model=sourceModels.MachineModel(NativeMachineModels.PickupModel(chipTier),"pve-pickup");draftChipOrbit=draftChip*sourceModels.PickupOrbit(model,reduced?0:(float)time);sourceModels.Queue(model,draftChip,draftChipBone,partTint:draftChipPart);}
             }
-            // The plant pulse: two rarity rings expanding around the forearm, a spark at the cuff and the rim light's flash.
-            if(pulse>=0)
+            // The plant pulse on the device: a tight ring opening over the bay, light running up the sleeve toward the elbow, a
+            // spark in the bay and the rim light's flash.
+            if(pulse>=0&&device)
+            {
+                var rare=draftChipTint;var face=Quaternion.FromToRotation(Vector3.forward,bayOut);float u=Mathf.Clamp01(pulse*1.6f),fade=(1-u)*(1-u);
+                if(fade>.03f){float r=.02f+.035f*NativeUiMotion.Bezier(.2f,.8f,.2f,1,u);sourceModels.QueuePiece(WeaponShape.Ring,true,Matrix4x4.TRS(bayAt+bayOut*.006f,face,new Vector3(r,r,r*.5f)),rare*(2.2f*fade));}
+                var elbow=-plantTo.MultiplyVector(CapturedAnimation.Vec(CapturedRig.Mirror(plant.Forearm))).normalized;var run=Quaternion.LookRotation(elbow,bayOut);
+                for(int k=0;k<3;k++){float v=Mathf.Clamp01(pulse*1.8f-k*.18f);if(v<=0||v>=1)continue;sourceModels.QueuePiece(WeaponShape.Cube,true,Matrix4x4.TRS(bayAt+elbow*(.04f+.15f*v)-bayOut*.016f,run,new Vector3(.004f,.003f,.024f)),rare*(1.6f*Mathf.Sin(Mathf.PI*v)));}
+                float spark=.016f*(1-pulse);if(spark>.002f)sourceModels.QueuePiece(WeaponShape.Cube,true,Matrix4x4.TRS(bayAt+bayOut*.004f,face,Vector3.one*spark),rare*2);
+            }
+            // The plant pulse on the voxel pilot: two rarity rings expanding around the forearm, a spark at the cuff and the rim
+            // light's flash.
+            else if(pulse>=0)
             {
                 var at=siren?palm:plantTo.MultiplyPoint3x4(Stage(plant.At));var axis=Quaternion.FromToRotation(Vector3.forward,siren?Vector3.up:plantTo.MultiplyVector(CapturedAnimation.Vec(CapturedRig.Mirror(plant.Forearm))));var rare=draftChipTint;
                 for(int ring=0;ring<2;ring++){float u=Mathf.Clamp01(pulse*1.35f-ring*.3f),fade=(1-u)*(1-u);if(u<=0||fade<.03f)continue;float r=.06f+.14f*NativeUiMotion.Bezier(.2f,.8f,.2f,1,u);sourceModels.QueuePiece(WeaponShape.Ring,true,Matrix4x4.TRS(at,axis,new Vector3(r,r,r*.6f)),rare*(1.6f*fade));}

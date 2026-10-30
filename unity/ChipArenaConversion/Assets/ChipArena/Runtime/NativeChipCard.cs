@@ -29,8 +29,9 @@ namespace ChipArena.UnityConversion
         public static ChipSize Spotlight=>new ChipSize{Pad=19,PinInset=24,Pin=12,Die=84,Icon=34,Label=12,Name=30,NameLine=1.08f,Desc=17,DescLine=1.55f,Stat=14,Foot=10,Radius=11,DescLines=8,NameLines=3};
     }
     // client/chip-card.ts as an IMGUI drawing, restyled as a neural core cartridge (Core/NativeChipCartridge.cs): the cartridge
-    // (the faceted bezel and its inlay, the anodised body with traces radiating from the core, the tier's fins, ring, crest,
-    // gems and particles, the gold edge connector under it), the header (the core with the chip's icon projected in its
+    // (the faceted bezel and its inlay, its machined notches and status lamps, the anodised body with the board's circuit
+    // under it and traces radiating from the core, the tier's fins, ring, crest, gems and particles, the gold edge connector
+    // under it), the header (the core with the chip's icon projected in its
     // crystal; the grade with its rank pips and the name), the source description and stat rows (exported by
     // tools/export_chip_text.mjs), and the footer with the install count and stack slots. The art is NativeChipArt's.
     public static class NativeChipCard
@@ -107,7 +108,7 @@ namespace ChipArena.UnityConversion
             // The edge connector under the card and the fins behind its sides, then the shell (bezel, inlay, body) and the crest.
             NativeChipArt.Connector(r,s.Radius,s.Pin,s.PinInset,rare,built,frame);if(scan)NativeChipArt.HoloPads(r,s.Radius,s.Pin,s.PinInset,tier,rare,holo,age,look.Calm);
             if(cart.Fins)NativeChipArt.Fins(r,tier,spread,frame);
-            NativeChipArt.Shell(r,tier,s.Radius,spread,frame);NativeChipArt.Crest(r,tier,s.Radius,spread*1.4f,frame);
+            NativeChipArt.Shell(r,tier,s.Radius,spread,frame);NativeChipArt.Hardware(r,s.Radius,rare,t,calm,frame);NativeChipArt.Crest(r,tier,s.Radius,spread*1.4f,frame);
             // The holo scan's lit edge on the outline, under the core mounted over the frame.
             if(scan)NativeChipArt.HoloEdge(r,s.Radius,tier,rare,holo,age,t,look.Calm);
             // The header: the core at the left, its light pooled on the body; the traces radiating from it, the sweep's packets.
@@ -115,15 +116,19 @@ namespace ChipArena.UnityConversion
             float light=Cart.CoreLight(cart,t,calm,charge)*Mathf.Max(0,look.Bright);
             NativeChipArt.Body(r,cart,rare,s.Radius,cc,core/2,light,a,look.Plain);NativeChipArt.Traces(r,s.Radius,cc,core/2,rare,(siren?.14f:.1f+.025f*cart.Rank)*a,look.Plain);
             if(Cart.Sweep(t,Cart.Phase(c.id),calm,out float sweepU))NativeChipArt.Packets(r,s.Radius,cc,core/2,Color.Lerp(rare,Color.white,.35f),sweepU,a);
+            // The board's circuit under the face: faint under the text, clearer between the content and the footer.
+            float fy=r.y+Mathf.Max(l.FootTop,r.height-(l.Height-l.FootTop));NativeChipArt.Board(r,s.Radius,rare,a,r.y+l.FootTop-4,fy-2);
             // Kit sparks drifting off the long edges (2.8 s; Siren 3.4 s) in the kits' colours, and the kits' card art.
             int sparks=calm?0:Particles(tier);float period=siren?3.4f:2.8f;Color spark=tier=="mishima"?U.Hex(0xff234a):tier=="ansatsuken"?U.Hex(0xff6071):siren?U.Hex(0xd9d0ff):rare,sparkGlow=tier=="mishima"?U.Hex(0xf30035):tier=="ansatsuken"?U.Hex(0xff294f):siren?U.Hex(0x9b87ff):rare;
             for(int n=0;n<sparks;n++){float k=Mathf.Repeat(t/period+n*.31f/period,1),op=k<.2f?k/.2f*.9f:.9f*(1-(k-.2f)/.8f);bool even=n%2==0;float px=r.x+r.width*((n*37+11)%100)/100f+(n-6)*3*k,py=even?r.y+2+3-35*k:r.yMax-3-3+35*k;
                 float sw=3*(1-.6f*k),sh=(siren?5:3)*(1-.6f*k);var sp=new Rect(px,py,sw,sh);bool dark=siren&&n%3==2;U.Glow(sp,A(dark?U.Hex(0xb7a8ff):sparkGlow,.5f*op),3);U.Fill(sp,A(dark?U.Hex(0x050409):spark,op));}
             NativeChipArt.Aura(r,s.Radius,tier,t,a,look.Plain);
             // The footer's well (a darker band inside the bezel) and the etched divider under the header, its glint in the tier.
-            float fy=r.y+Mathf.Max(l.FootTop,r.height-(l.Height-l.FootTop)),p1=NativeHudChrome.Px;NativeHudChrome.Cut(Rect.MinMaxRect(r.x+bw,fy,r.xMax-bw,r.yMax-bw),A(new Color(0,0,0,siren?.3f:.26f)),NativeChipArt.BottomCut(s.Radius)*.55f,NativeHudChrome.Corners.BL|NativeHudChrome.Corners.BR);
+            float p1=NativeHudChrome.Px;NativeHudChrome.Cut(Rect.MinMaxRect(r.x+bw,fy,r.xMax-bw,r.yMax-bw),A(new Color(0,0,0,siren?.3f:.26f)),NativeChipArt.BottomCut(s.Radius)*.55f,NativeHudChrome.Corners.BL|NativeHudChrome.Corners.BR);
             float dy=r.y+l.Head;U.Fill(new Rect(r.x+bw+2,dy,r.width-2*bw-4,p1),A(new Color(0,0,0,.55f)));U.Fill(new Rect(r.x+bw+2,dy+p1,r.width-2*bw-4,p1),A(new Color(1,1,1,.06f)));
             U.HGradient(new Rect(r.x+bw+2,dy,Mathf.Min(r.width*.45f,core*2.2f),p1),A(U.Mix(rare,Color.white,.2f),.7f),Color.clear);
+            // A ruler of ticks under the divider's right end.
+            for(int i=0;i<7;i++)U.Fill(new Rect(r.xMax-bw-6-3*i,dy+2*p1,p1,i%2==0?3:1.5f),A(Color.white,.16f));
             // The header band's sheen: Mythic's foil drifting, the hover sweep, Legendary and Mythic's gleam every 4.6 s.
             var head=Rect.MinMaxRect(r.x+bw+1,r.y+NativeChipArt.TopCut(s.Radius)*.6f,r.xMax-bw-1,dy);
             if(mythic&&!look.Plain)NativeChipArt.Holographic(head,t,a);

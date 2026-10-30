@@ -140,7 +140,13 @@ namespace ChipArena.UnityConversion
         /// <summary>A directed entrance's set pieces into the source-model piece batches (stage lit; mirrored into Unity's frame).</summary>
         private sealed class EntranceProps:INativeEntranceProps
         {
-            private readonly NativeSourceModels models;public EntranceProps(NativeSourceModels models){this.models=models;}
+            private readonly NativeSourceModels models;private Color light;private readonly Func<int,Color> lights;
+            public EntranceProps(NativeSourceModels models){this.models=models;lights=b=>b==NativeEntranceStageModels.Lights?light:Color.white;}
+            public bool Model(string id,System.Numerics.Vector3 position,System.Numerics.Quaternion rotation,float scale,System.Numerics.Vector3 tint)
+            {
+                if(!models.Has(id))return false;light=new Color(tint.X,tint.Y,tint.Z,1);
+                models.Queue(id,Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(position)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),Vector3.one*scale),partTint:lights);return true;
+            }
             public void Piece(WeaponShape shape,bool glow,System.Numerics.Vector3 position,System.Numerics.Quaternion rotation,System.Numerics.Vector3 scale,System.Numerics.Vector3 color)
             {
                 var m=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(position)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),CapturedAnimation.Vec(scale));

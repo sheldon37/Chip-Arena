@@ -199,7 +199,7 @@ namespace ChipArena.UnityConversion
         private enum VisualArms { Live, Still, Unarmed, Reach }
         // The body bound to `pose` (feet planted when `planted`, the airborne solve when `airborne`), its weapon in hand and the
         // rig's hands onto its weapon frames; its held weapon.
-        private VisualWeapon VisualBodyBind(VisualBody body,CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,bool planted,bool airborne,VisualArms arms=VisualArms.Live)
+        private VisualWeapon VisualBodyBind(VisualBody body,CapturedAnimation.Player rig,Actor a,float time,CapturedRig.Pose pose,bool planted,bool airborne,VisualArms arms=VisualArms.Live,float support=0)
         {
             Vector3 at=rig.Root.transform.position;
             // A fresh solve after a gap (death, first person, a hidden frame), a teleport or a weapon change.
@@ -208,6 +208,9 @@ namespace ChipArena.UnityConversion
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
             VisualArmsOf(ref grasp,a,arms,ChipLookOf(a.Id));
+            // The draft's plant on the device (`support`): the left hand keeps the stage's offset from the right wrist on the
+            // model's (the stage's palm is on the bay), so the model's palm meets its own bay whatever its arms' proportions.
+            if(support>0){grasp.Support=support;grasp.SupportHold=default;grasp.Bound=true;}
             body.Binding.Apply(pose,grasp,planted,airborne);
             if(body.Accent!=a.AccentColor)VisualAccent(body,a.AccentColor);
             if(body.Sheldon.Length>0)VisualSheldonGlow(body,NativeBodySkins.SheldonGlow(a.Hat,a.HatColor,a.AccentColor));
@@ -342,15 +345,17 @@ namespace ChipArena.UnityConversion
         // outfit, accent, no weapon in hand: the hands pick the chips), bound to the stage's pose, with its hat on the model's
         // head; shown this frame (the draft returns before the arena does). False: the voxel body (a Siren, Classic, no bake).
         private readonly Actor draftActor=new Actor();
-        private bool VisualDraftPose(CapturedAnimation.Player rig,NativeSeat seat,CapturedRig.Pose pose,float time,Camera camera)
+        // Whether the drafting seat draws on its visual body (VisualDraftPose's own test; the stage frames the model's head).
+        private bool VisualDraftModel(NativeSeat seat)=>!Viewer&&sourceModels!=null&&!ClassicBodies&&seat!=null&&seat.spec!="siren"&&VisualBodiesOn;
+        private bool VisualDraftPose(CapturedAnimation.Player rig,NativeSeat seat,CapturedRig.Pose pose,float time,Camera camera,float support=0)
         {
-            if(Viewer||sourceModels==null||ClassicBodies||rig==null||seat==null||pose==null||seat.spec=="siren"||!VisualBodiesOn)return false;
+            draftBody=null;if(rig==null||pose==null||!VisualDraftModel(seat))return false;
             var a=draftActor;a.Id=seat.id;a.SourceSpec=seat.spec;a.AccentColor=seat.accentColor;a.BodyColor=seat.bodyColor;a.Hat=seat.hat;a.HatColor=seat.hatColor;a.WeaponAway=true;a.Grounded=true;
-            var body=VisualBodyOf(rig,seat.id,VisualHooded(a));if(body==null)return false;
+            var body=VisualBodyOf(rig,seat.id,VisualHooded(a));if(body==null)return false;draftBody=body;
             // The drafting pose stands lower than the arena's: the body's hips go onto the pose's pelvis, and the rig's hands (on
             // the body's wrists after the bind) with them.
             body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
-            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,VisualArms.Reach);
+            pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,VisualArms.Reach,support);
             int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
             if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++){var hand=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];hand.position+=shift;}}
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
@@ -362,6 +367,32 @@ namespace ChipArena.UnityConversion
             else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
             if(!body.Hood)VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
             return true;
+        }
+        // The draft's visual body this frame (VisualDraftPose; null when the pilot draws voxel): its wrist device takes the
+        // drafted chip (NativeDraftPlant.Device).
+        private VisualBody draftBody;
+        // The bay's chip seat on the draft body (world) and the bay's outward normal (the back of the forearm); false without the
+        // device.
+        private bool VisualDraftBay(out Vector3 at,out Vector3 outward)
+        {
+            at=outward=default;var body=draftBody;if(body?.GearDevice==null)return false;var s=NativePilotGear.Seat(Mathf.Clamp(body.GearRadius,.02f,.08f));
+            at=body.GearDevice.TransformPoint(new Vector3(-s.X,s.Y,s.Z));outward=body.GearDevice.TransformDirection(Vector3.right).normalized;return true;
+        }
+        // The device on the draft body through the pick, as VisualGear draws it in the arena but on the plant's clock: the lid
+        // opens as the receiving arm rises and shuts on the return, the bay glows ready in the accent, shows the chip from the
+        // carry's end and pulses in its colour, the lens keeps the colour after; the band's strips flare with the pulse.
+        private void VisualDraftDevice(NativeSeat seat,float age,float time,Color chip,float flash)
+        {
+            var body=draftBody;if(body?.GearDevice==null||!sourceModels.PilotGear(body.GearRadius>.01f?body.GearRadius:.04f))return;
+            gearBone??=GearBoneOf;var accent=AccentTint(seat.accentColor);
+            var dev=NativePilotGear.Device(age>=0?NativeDraftPlant.Raise(age):0,age,age>=NativeDraftPlant.CarryEnd?age-NativeDraftPlant.CarryEnd:float.NaN,time);
+            var m=body.GearDevice.localToWorldMatrix;float r=Mathf.Round(Mathf.Clamp(body.GearRadius,.02f,.08f)*1000)/1000,strips=dev.Strips*(1+2*flash);
+            gearMatrix=m;sourceModels.Queue(sourceModels.GearDeviceFor(body.GearRadius),m,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(strips,strips,strips,1),null,0);
+            if(dev.Lid>.02f){var bay=(dev.BayChip?chip:body.AccentLinear)*dev.Bay;sourceModels.Queue(sourceModels.GearBayFor(body.GearRadius),m,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(bay.r,bay.g,bay.b,1),null,0);}
+            var h=NativePilotGear.Hinge(r);var lens=(dev.LensChip?chip:body.AccentLinear)*dev.Lens;
+            gearMatrix=m*Matrix4x4.TRS(new Vector3(-h.X,h.Y,h.Z),Quaternion.AngleAxis(dev.Lid*NativePilotGear.LidOpenDegrees,Vector3.forward),Vector3.one);
+            sourceModels.Queue(NativeSourceModels.GearLid,gearMatrix,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(lens.r,lens.g,lens.b,1),null,0);
+            if(dev.Chip){var s=NativePilotGear.Seat(r);var c=chip*1.6f;gearMatrix=m*Matrix4x4.Translate(new Vector3(-s.X,s.Y,s.Z));sourceModels.Queue(NativeSourceModels.GearChip,gearMatrix,gearBone,null,0,null,Color.white,accent,1,null,null,new Vector4(c.r,c.g,c.b,1),null,0);}
         }
         private VisualBody CreateVisualBody(CapturedAnimation.Player rig,int id,bool hood=false,bool simulate=true)
         {

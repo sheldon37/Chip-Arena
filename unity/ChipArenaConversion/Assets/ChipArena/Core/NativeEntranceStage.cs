@@ -8,6 +8,9 @@ namespace ChipArena.UnityConversion
         /// <summary>A primitive (source frame): lit (Lambert, its colour the albedo) or glow (unlit, its colour emitted; linear, may
         /// exceed 1 for the bloom).</summary>
         void Piece(WeaponShape shape,bool glow,Vector3 position,Quaternion rotation,Vector3 scale,Vector3 color);
+        /// <summary>A sculpted stage model (NativeEntranceStageModels; source frame), its lights (bone 1) in `light` (linear, may
+        /// exceed 1). False when the model is not built here: the caller draws its primitives instead.</summary>
+        bool Model(string id,Vector3 position,Quaternion rotation,float scale,Vector3 light)=>false;
     }
     /// <summary>
     /// The light of one directed entrance frame, in the source renderer's units (three.js colour x intensity, linear), which
@@ -31,8 +34,9 @@ namespace ChipArena.UnityConversion
     /// <summary>
     /// Presentation only: the directed entrances' arena stage. A dark floor slab with a faint 1 m grid, a ring of twelve
     /// neon pylons 7.5 m out (their strips power on, flash and pulse with the entrance) and a distant skyline of dark towers
-    /// with lit windows in the fog, all from source-model primitives (no flat glowing discs or rings on the floor), and the
-    /// light rig the entrances animate. The subject stands at the origin; the floor top is FloorY.
+    /// with lit windows in the fog (no flat glowing discs or rings on the floor), and the light rig the entrances animate. The
+    /// pylons and the dais are sculpted models where the draw has them (NativeEntranceStageModels), source-model primitives
+    /// otherwise. The subject stands at the origin; the floor top is FloorY.
     /// </summary>
     public static class NativeEntranceStage
     {
@@ -54,7 +58,7 @@ namespace ChipArena.UnityConversion
         {
             props.Piece(WeaponShape.Cube,false,new Vector3(0,GroundY-.5f,0),Quaternion.Identity,new Vector3(70,1,70),FloorColor);
             // The dais: a hexagon (three crossed slabs) whose top is the floor the pilot stands on, with a darker bevelled skirt.
-            for(int k=0;k<3;k++)
+            if(!props.Model(NativeEntranceStageModels.DaisId,Vector3.Zero,Quaternion.Identity,1,Vector3.Zero))for(int k=0;k<3;k++)
             {
                 var q=NativeEntranceMath.Yaw(k*1.0471976f);
                 props.Piece(WeaponShape.Cube,false,new Vector3(0,(FloorY+GroundY)*.5f,0),q,new Vector3(DaisRadius,FloorY-GroundY,DaisRadius*1.7320508f),DaisColor);
@@ -76,6 +80,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Pylons;i++)
             {
                 var p=Pylon(i);float yaw=(float)Math.Atan2(p.X,p.Z);var q=NativeEntranceMath.Yaw(yaw);var inward=-Vector3.Normalize(p);
+                if(props.Model(NativeEntranceStageModels.PylonId,p+new Vector3(0,GroundY,0),q,1,accent*(Math.Max(0,pylon[i])*2.4f)))continue;
                 props.Piece(WeaponShape.Cube,false,p+new Vector3(0,PylonHeight*.5f+GroundY,0),q,new Vector3(.42f,PylonHeight,.42f),Metal);
                 props.Piece(WeaponShape.Cube,false,p+new Vector3(0,GroundY+.09f,0),q,new Vector3(.7f,.18f,.7f),Metal*.7f);
                 float level=pylon[i];if(level<=.002f)continue;

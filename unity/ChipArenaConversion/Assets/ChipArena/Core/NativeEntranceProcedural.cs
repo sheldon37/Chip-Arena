@@ -183,6 +183,9 @@ namespace ChipArena.UnityConversion
             var b=Pod(t);var dir=Velocity(t);var tilt=dir.LengthSquared()>1e-4f?Quaternion.CreateFromAxisAngle(Vector3.Normalize(Vector3.Cross(Vector3.UnitY,-Vector3.Normalize(dir))),.18f):Quaternion.Identity;
             Vector3 W(Vector3 local)=>b+Vector3.Transform(local,tilt);float heat=t<Impact?NativeEntranceMath.Ramp(t,0,.6f):1-NativeEntranceMath.Ramp(t,Impact,Impact+1.4f);
             float strip=t<Impact?2.5f:1.2f+1.6f*NativeEntranceMath.Pulse(t,Door,.02f,.3f)+.5f*(float)Math.Sin(t*9)*(t<Door?1:0);
+            // The sculpted pod where the draw has it (NativeEntranceStageModels.Pod, its seams in the heat's colour), else the boxes.
+            if(!props.Model(NativeEntranceStageModels.PodId,W(new Vector3(0,NativeEntranceStage.FloorY,0)),tilt,1,Vector3.Lerp(Accent*strip,new Vector3(3,2.2f,1.6f),heat*.6f)))
+            {
             for(int i=0;i<8;i++)
             {
                 float a=i*.7853982f;var q8=tilt*NativeEntranceMath.Yaw(a);var outward=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));
@@ -194,11 +197,12 @@ namespace ChipArena.UnityConversion
             props.Piece(WeaponShape.Cube,false,W(new Vector3(0,NativeEntranceStage.FloorY+.08f,0)),tilt*NativeEntranceMath.Yaw(.39f),new Vector3(1.55f,.16f,1.55f),Trim);
             props.Piece(WeaponShape.Cube,false,W(new Vector3(0,NativeEntranceStage.FloorY+2.06f,0)),tilt*NativeEntranceMath.Yaw(.39f),new Vector3(1.48f,.1f,1.48f),Trim);
             for(int i=0;i<4;i++){float a=i*1.5708f+.7854f;var o=new Vector3((float)Math.Sin(a),0,(float)Math.Cos(a));props.Piece(WeaponShape.Cube,false,W(o*.82f+new Vector3(0,NativeEntranceStage.FloorY+.55f,0)),tilt*NativeEntranceMath.Yaw(a),new Vector3(.06f,1.0f,.34f),Trim);}
+            props.Piece(WeaponShape.Cube,false,W(new Vector3(0,NativeEntranceStage.FloorY+.17f,0)),tilt,new Vector3(1.0f,.02f,1.0f),Trim*.6f);
+            }
             // The beacon on the nose blinks after the landing.
             float beacon=t>Impact&&((int)(t*5))%2==0?3:.3f;props.Piece(WeaponShape.Sphere,true,W(new Vector3(0,NativeEntranceStage.FloorY+2.8f,0)),Quaternion.Identity,new Vector3(.07f),new Vector3(beacon,.1f,.05f));
             // Inside: a lit back wall.
             props.Piece(WeaponShape.Cube,true,W(new Vector3(0,NativeEntranceStage.FloorY+1.05f,-.58f)),tilt,new Vector3(.42f,1.5f,.02f),NativeEntranceFx.Hex(0xffe2b8,t>Door?2.2f:.4f));
-            props.Piece(WeaponShape.Cube,false,W(new Vector3(0,NativeEntranceStage.FloorY+.17f,0)),tilt,new Vector3(1.0f,.02f,1.0f),Trim*.6f);
             // The door: shut until it blows, then thrown out to the side, tumbling, skidding to rest.
             DoorPanel(props,t,b,tilt);
         }
@@ -213,8 +217,9 @@ namespace ChipArena.UnityConversion
                 else{float s=a-land,slide=1-(float)Math.Exp(-4*s);var rest=Landing+start+v*land+new Vector3(0,-4.9f*land*land,0);pos=new Vector3(rest.X+1.1f*slide,NativeEntranceStage.FloorY+.04f,rest.Z+1.3f*slide);
                     rot=Quaternion.CreateFromAxisAngle(Vector3.UnitY,.6f+.4f*slide)*Quaternion.CreateFromAxisAngle(Vector3.UnitX,-1.5708f);}
             }
-            props.Piece(WeaponShape.Cube,false,pos,rot,new Vector3(.52f,1.62f,.07f),Hull*1.3f);
             var glow=t<Door?Accent*(1.4f+1.4f*(float)Math.Sin(t*14)*(t>Impact?1:0)):Accent*.5f;
+            if(props.Model(NativeEntranceStageModels.PodDoorId,pos,rot,1,glow))return;
+            props.Piece(WeaponShape.Cube,false,pos,rot,new Vector3(.52f,1.62f,.07f),Hull*1.3f);
             props.Piece(WeaponShape.Cube,true,pos+Vector3.Transform(new Vector3(0,0,.045f),rot),rot,new Vector3(.3f,.05f,.02f),glow);
         }
         public override int Boxes(float t,Span<Vector4> into){int n=NativeEntranceStage.PylonBoxes(into,0);if(t>=Impact){into[n++]=new Vector4(Landing.X,1.05f,Landing.Z,0);into[n++]=new Vector4(.78f,1.3f,.78f,0);}return n;}

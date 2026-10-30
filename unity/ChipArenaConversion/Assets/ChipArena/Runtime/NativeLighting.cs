@@ -27,6 +27,9 @@ namespace ChipArena.UnityConversion
         // pow() never sees a zero distance with a zero exponent.
         private static readonly NativeStageLight[] points=new NativeStageLight[NativeStageLighting.Max];private static readonly Vector4[] pointPos=new Vector4[NativeStageLighting.Max],pointColor=new Vector4[NativeStageLighting.Max];
         private static readonly int StagePosId=Shader.PropertyToID("_StageLightPos"),StageColorId=Shader.PropertyToID("_StageLightColor");
+        // The visual body takes the stage block while an entrance lights the screen (Resources/NativeVisualStageLight.cginc); the
+        // draft, the rooftop, a map's look and EndIntro turn it off.
+        private static readonly int VisualStageId=Shader.PropertyToID("_VisualStageLit");
         // The arrays are globals; only the entrance's own draws enable the block (NativeSourceModels.Stage sets `_StageLit`).
         private static void StageBlock(int count)
         {
@@ -37,7 +40,7 @@ namespace ChipArena.UnityConversion
             }
             Shader.SetGlobalVectorArray(StagePosId,pointPos);Shader.SetGlobalVectorArray(StageColorId,pointColor);
         }
-        public static void EndIntro(ContentMap map,Camera camera){if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
+        public static void EndIntro(ContentMap map,Camera camera){Shader.SetGlobalFloat(VisualStageId,0);if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
         // An entrance or the draft takes the screen: it keeps the fog it found for EndIntro (all of it, the density included).
         // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin),
         // and the guns' muzzle lights (no arena flash lights a stage).
@@ -53,7 +56,7 @@ namespace ChipArena.UnityConversion
         // (Brickfall's linear fog, 4 cascades, .85 key) never reaches it; on every old map those are the values it had, but for
         // the fog colour, which was the map's and now is the draft's backdrop (nothing the draft draws lies beyond the 30 m start).
         public static void Draft(Camera camera,Color tint,float flash=0)
-        {WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
+        {WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();Shader.SetGlobalFloat(VisualStageId,0);foreach(var light in stageLights)if(light!=null)light.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=C(NativeMapLooks.DraftBackground);RenderSettings.skybox=null;WriteFog(NativeMapLooks.DraftFog);StageShadows();Ambient();if(moon!=null){moon.enabled=true;moon.color=new Color(.8f,.88f,1);moon.intensity=1.4f;moon.transform.rotation=Quaternion.Euler(35,-145,0);moon.shadows=LightShadowsOf(NativeMapLooks.StageKeyShadows);moon.shadowStrength=NativeMapLooks.StageShadowStrength;}if(rim!=null){rim.enabled=true;rim.color=tint;rim.intensity=1.2f+1.6f*Mathf.Clamp01(flash);rim.transform.rotation=Quaternion.Euler(15,35,0);}}
         private static void Ambient(){RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=NativeArena.ColorOf(0x92b4f0)*.48f;RenderSettings.ambientEquatorColor=NativeArena.ColorOf(0x9aaccd)*.27f;RenderSettings.ambientGroundColor=NativeArena.ColorOf(0x171320)*.48f;}
         // An entrance stage from the scene bank (NativeSceneMotion): three's linear backdrop, fog and lights. Colours go to sRGB
         // (Unity linearises them in Linear space); directional lights become Unity lights through NativeEntranceLight, so the
@@ -65,7 +68,7 @@ namespace ChipArena.UnityConversion
         // from NativeSirenIntroLight at the song time `age` in place of the bank's 30 Hz samples of its bulb, fill and ambient.
         public static void Intro(NativeSceneClip clip,float age,Camera camera,double[] siren=null)
         {
-            WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;int f=Math.Min(clip.frames-1,(int)(Mathf.Clamp01(age/clip.duration)*(clip.frames-1))),e=f*8;var env=clip.environment;camera.backgroundColor=new Color(env[e],env[e+1],env[e+2]).gamma;var fog=new Color(env[e+3],env[e+4],env[e+5]).gamma;WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),env[e+6],env[e+7]));StageShadows();RenderSettings.skybox=null;
+            WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();Shader.SetGlobalFloat(VisualStageId,1);if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;int f=Math.Min(clip.frames-1,(int)(Mathf.Clamp01(age/clip.duration)*(clip.frames-1))),e=f*8;var env=clip.environment;camera.backgroundColor=new Color(env[e],env[e+1],env[e+2]).gamma;var fog=new Color(env[e+3],env[e+4],env[e+5]).gamma;WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),env[e+6],env[e+7]));StageShadows();RenderSettings.skybox=null;
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;float skyR=0,skyG=0,skyB=0,groundR=0,groundG=0,groundB=0;int count=0,stage=0;
             foreach(var track in clip.lights)
             {
@@ -98,7 +101,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Entrance(NativeEntranceLights l,Camera camera)
         {
-            WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
+            WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();Shader.SetGlobalFloat(VisualStageId,1);if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
             camera.backgroundColor=new Color(l.Background.X,l.Background.Y,l.Background.Z).gamma;var fog=new Color(l.Fog.X,l.Fog.Y,l.Fog.Z).gamma;
             WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),l.FogNear,l.FogFar));StageShadows();RenderSettings.skybox=null;
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear,linearIntensity=GraphicsSettings.lightsUseLinearIntensity;int count=0;
@@ -196,7 +199,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Rooftop(Camera camera,Material skybox)
         {
-            WardFieldOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;NativeAdvancedLighting.Off();
+            WardFieldOff();camera.clearFlags=CameraClearFlags.Skybox;RenderSettings.skybox=skybox;camera.farClipPlane=3000;NativeAdvancedLighting.Off();Shader.SetGlobalFloat(VisualStageId,0);
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=new Color(.03f,.02f,.07f);RenderSettings.fogStartDistance=45;RenderSettings.fogEndDistance=700;
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.10f,.11f,.24f);RenderSettings.ambientEquatorColor=new Color(.09f,.05f,.13f);RenderSettings.ambientGroundColor=new Color(.10f,.03f,.09f);
             // No shadow maps: the city's shaders take none, and the pilots' own would only fall on each other.
@@ -276,6 +279,7 @@ namespace ChipArena.UnityConversion
         // looks moved into data, except Cinder Crossing's sky (forge theme).
         public static void Apply(ContentMap map,Camera camera)
         {
+            Shader.SetGlobalFloat(VisualStageId,0);
             var look=Look(map);current=look;currentMap=map;arenaPicked=false;WardFieldOff();zoneHouse=1;var s=applied;NativeMapLooks.Applied(look,map.sky,NativeArenaDressing.Preview,s);
             camera.farClipPlane=s.FarClip;camera.backgroundColor=C(s.Background);camera.clearFlags=s.Skybox?CameraClearFlags.Skybox:CameraClearFlags.SolidColor;
             WriteFog(s.Fog);if(introActive)stageFog=ReadFog();
