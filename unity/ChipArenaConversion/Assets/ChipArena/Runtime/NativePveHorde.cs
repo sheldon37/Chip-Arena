@@ -174,7 +174,7 @@ namespace ChipArena.UnityConversion
                     // Resolve hiding before requesting a route: the old chase-then-hide
                     // calls invalidated each other's cached target twice every fixed tick.
                     Vector3 dir=hideSpot&&(destination-navAt).magnitude<1?Vector3.zero:
-                        Map.unity?HubNavMove(m,navAt,destination,(destination-navAt).normalized,hideSpot||adds.Count<12?(int?)null:target.Seat.id):
+                        Map.unity?HubNavMove(m,navAt,destination,(destination-navAt).normalized,hideSpot?-m.Id:target.Seat.id):
                         pveNavigation.Direction(at,destination,target.Seat.id);
                     if(a.HasBreachShortcut)dir=a.BreachShortcut;
                     if(a.WallBreach!=null&&Time>=a.WallBreach.breakAt&&Time<a.WallBreach.breakAt+3f)dir=Vec(a.WallBreach.normal);

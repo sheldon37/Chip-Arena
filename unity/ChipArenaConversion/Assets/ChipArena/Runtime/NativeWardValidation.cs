@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
             void Check(bool ok,string why){if(!ok)throw new Exception("Ward Hulk/crowd: "+why);}
             void Clock(double now)=>Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=now,fightAt=10,round=Match.Round,set=Match.Set});
             var savedPve=Pve;var savedNav=Map.nav;var content=StageContent;var savedHides=content.hideSpots;
-            NativePropBody platform=null;NativeMinion hulk=null;var p=Local;
+            NativePropBody platform=null;NativeMinion hulk=null;var p=Local;var smallWave=new System.Collections.Generic.List<NativeMinion>();
             try
             {
                 platform=AddProp(new ContentBlock{id="hulk-check-floor",material="foundation",role="static",pos=new V3(1000,-.5f,1000),size=new V3(16,1,16),rotation=new ContentRotation()});
@@ -110,7 +110,18 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<30;i++){Clock(300+i/60d);StepPveHorde();root.scene.GetPhysicsScene().Simulate(1f/60);}
                 Check(hulk.Body.position.z>1000.25f,"full-size Hulk advances on supported route");
                 Check(Math.Abs(hulk.Collider.height-NativeHordeKinds.HulkHeight)<.001f&&Math.Abs(hulk.Collider.radius-NativeHordeKinds.HulkRadius)<.001f,"Hulk collider preserved");
-                navRoutes.Clear();crowdRoutes.Clear();Clock(300.5);int crowdBefore=NavigationSearches;
+                // Exercise the real horde caller with eight adds: this used to select eight unbounded A* searches.
+                for(int i=0;i<7;i++)
+                {
+                    var mob=SpawnPveAdd("shambler",true);
+                    Check(mob!=null,"small wave spawn");smallWave.Add(mob);mob.Pve.ActiveAt=mob.Pve.ExposedAt=Time-1;
+                    mob.Pve.Target=p;mob.Pve.ThinkAt=Time+10;mob.Pve.RecoverAt=Time-1;mob.Body.position=new Vector3(1000,.875f,1000);
+                }
+                navRoutes.Clear();crowdRoutes.Clear();Physics.SyncTransforms();Clock(300.5);int smallBefore=NavigationSearches,smallLinks=NavigationLinkChecks;
+                StepPveHorde();Check(NavigationSearches-smallBefore==1,"eight-add wave shares one budgeted goal");
+                Check(NavigationLinkChecks-smallLinks<=512+8,"small wave cannot perform map-wide searches per add");
+                foreach(var mob in smallWave)RemoveMinion(mob,false);smallWave.Clear();
+                navRoutes.Clear();crowdRoutes.Clear();Clock(300.6);int crowdBefore=NavigationSearches;
                 for(int i=0;i<192;i++)
                 {
                     var move=StructureNavMove(-1000-i,new Vector3(1000,.875f,1000),p.Body.position,Vector3.forward,p.Seat.id);
@@ -122,6 +133,13 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<12;i++){Clock(301+i/60d);StepPveHorde();root.scene.GetPhysicsScene().Simulate(1f/60);}
                 Check(NavigationSearches-before==1,"possessed hide route is cached, not chase/hide rebuilt every tick");
                 Map.nav=savedNav;navMap=null;PrepareNavigation();
+                // Compare local attachment against the old exhaustive predicate with real collision/hazards.
+                foreach(var point in Map.spawns.ffa.Select(s=>s.pos).Concat(content.entries.Select(e=>e.@exit.Position(.9f))))
+                {
+                    var actual=NearestNavNode(Vec(point));navOrigin=Vec(point);var expected=navSearch.Nearest(point,navUsable);
+                    if(expected!=null&&(expected.pos-point).Length>8)expected=null;
+                    Check(ReferenceEquals(actual,expected),"bounded attachment preserves authored spawn/entry access");
+                }
                 bool completed=false;var goal=Vec(Map.nav.nodes[0].pos);
                 for(int tick=0;tick<120&&!completed;tick++)
                 {
@@ -138,6 +156,7 @@ namespace ChipArena.UnityConversion
             }
             finally
             {
+                foreach(var mob in smallWave)if(Minions.Contains(mob))RemoveMinion(mob,false);
                 if(hulk!=null&&Minions.Contains(hulk))RemoveMinion(hulk,false);
                 if(platform!=null)RemoveStructureProp(platform);
                 content.hideSpots=savedHides;Map.nav=savedNav;Pve=savedPve;navMap=null;navRoutes.Clear();crowdRoutes.Clear();
