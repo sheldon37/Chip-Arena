@@ -35,8 +35,9 @@ namespace ChipArena.UnityConversion
             public string Look=""; public Matrix4x4 Emblem=EmblemFrame;
             // Its hair and cloth simulation (NativeVisualCloth: the local install's; null without one) and whether it runs (-1 unset).
             public object ClothSim; public int ClothOn=-1;
-            // Its hair pieces' hood shapes (VisualHatHair): the renderers, each one's shape and the outfit's weight, and whether pressed.
-            public SkinnedMeshRenderer[] HatHair; public int[] HatHairShape; public float[] HatHairRest; public bool HatHairOn;
+            // Its hair under a hat (VisualHatHair): the renderers, each one's hood shape (-1: none) and the outfit's weight on it, each
+            // one's own mesh, and the hat they are worn under (null: as styled).
+            public SkinnedMeshRenderer[] HatHair; public int[] HatHairShape; public float[] HatHairRest; public Mesh[] HatHairMesh; public string HatHairWorn;
             // Its Sheldon pieces' renderers (Core NativeSheldonWear; VisualDress), the glow they last took (VisualSheldonGlow) and
             // the lift its feet piece set the skeleton by (VisualLiftOf: bare feet down onto the floor).
             public Renderer[] Sheldon=Array.Empty<Renderer>(); public string SheldonGlow; public float Lift;
@@ -273,27 +274,104 @@ namespace ChipArena.UnityConversion
         private static Matrix4x4 VisualHatFit(Transform head,string hat)
         {
             if(hat==NativeSheldonHead.Hat){var k=NativeModelHats.SheldonScale;var o=NativeModelHats.SheldonOffset;return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(o.X,o.Y,o.Z),Quaternion.identity,new Vector3(k.X,k.Y,k.Z));}
+            // (A hat made for the model is authored in its head bone's frame.)
+            if(NativeModelHatMeshes.Has(hat))return head.localToWorldMatrix;
             NativeModelHats.Fit(hat,out float scale,out var offset);return head.localToWorldMatrix*Matrix4x4.TRS(new Vector3(offset.X,offset.Y,offset.Z),Quaternion.identity,Vector3.one*scale);
         }
-        // The worn hair pressed under a hat: each hair piece's own hood shape (the pack's "Tag_Hood": the spikes laid into a ring
-        // round the head, the crown under the hat) full while a hat that presses it is worn (NativeModelHats.Presses), back to the
-        // outfit's weight otherwise. Writes only when that changes.
+        // The worn hair under a hat (owner 2026-10-30: "Hats still cutting hair completely": the pack's one under-hat shape laid
+        // the whole style flat, so the scalp showed): a hat made for the model holds it as its own crown would
+        // (NativeModelHatMeshes.HairPress: the hair over its band tucked inside it, the hair under its band and brim as styled),
+        // each hair piece drawn with its mesh so pressed (VisualPressedHair); the Sheldon Head's hood lays it flat with the pack's
+        // own hood shape ("Tag_Hood"). Any other hat, or none: the hair as styled. Writes only when that changes; a piece whose mesh
+        // was replaced since (a cut) keeps it.
         private void VisualHatHair(CapturedAnimation.Player rig,string hat){if(rig!=null&&visualBodies.TryGetValue(rig,out var body))VisualHatHair(body,hat);}
         private static void VisualHatHair(VisualBody body,string hat)
         {
-            bool on=NativeModelHats.Presses(hat);if(body?.Root==null||body.HatHair!=null&&on==body.HatHairOn)return;
+            string worn=hat==NativeHatLooks.SheldonHead||NativeModelHatMeshes.PressesHair(hat)?hat:null;if(body?.Root==null||body.HatHair!=null&&worn==body.HatHairWorn)return;
             if(body.HatHair==null)
             {
-                var hair=new List<SkinnedMeshRenderer>();var shape=new List<int>();var rest=new List<float>();
+                var hair=new List<SkinnedMeshRenderer>();var shape=new List<int>();var rest=new List<float>();var meshes=new List<Mesh>();
                 foreach(var skin in body.Root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
                 {
-                    var mesh=skin.sharedMesh;if(mesh==null)continue;
-                    for(int i=0;i<mesh.blendShapeCount;i++)if(mesh.GetBlendShapeName(i).EndsWith("Tag_Hood",StringComparison.Ordinal)){hair.Add(skin);shape.Add(i);rest.Add(skin.GetBlendShapeWeight(i));}
+                    var mesh=skin.sharedMesh;if(mesh==null)continue;int hood=-1;
+                    for(int i=0;i<mesh.blendShapeCount;i++)if(mesh.GetBlendShapeName(i).EndsWith("Tag_Hood",StringComparison.Ordinal)){hood=i;break;}
+                    bool piece=VisualHairPiece(skin);if(hood<0&&!piece)continue;
+                    hair.Add(skin);shape.Add(hood);rest.Add(hood>=0?skin.GetBlendShapeWeight(hood):0);meshes.Add(piece?mesh:null);
                 }
-                body.HatHair=hair.ToArray();body.HatHairShape=shape.ToArray();body.HatHairRest=rest.ToArray();
+                body.HatHair=hair.ToArray();body.HatHairShape=shape.ToArray();body.HatHairRest=rest.ToArray();body.HatHairMesh=meshes.ToArray();
             }
-            for(int k=0;k<body.HatHair.Length;k++)if(body.HatHair[k]!=null)body.HatHair[k].SetBlendShapeWeight(body.HatHairShape[k],on?100:body.HatHairRest[k]);
-            body.HatHairOn=on;
+            bool flat=worn==NativeHatLooks.SheldonHead,ready=true;
+            for(int k=0;k<body.HatHair.Length;k++)
+            {
+                var skin=body.HatHair[k];if(skin==null)continue;var mesh=body.HatHairMesh[k];var now=skin.sharedMesh;
+                if(mesh!=null&&now!=null&&(now==mesh||pressedHairOf.TryGetValue(now,out var of)&&of==mesh))
+                {
+                    var want=worn!=null&&!flat?VisualPressedHair(mesh,skin,worn):mesh;
+                    if(want==null)ready=false;else if(want!=now)VisualHairMesh(skin,want);
+                }
+                if(body.HatHairShape[k]>=0)skin.SetBlendShapeWeight(body.HatHairShape[k],flat?100:body.HatHairRest[k]);
+            }
+            // (While a piece's press is still being made the hair stays as styled, and this looks again next frame.)
+            if(ready)body.HatHairWorn=worn;
+        }
+        private static bool VisualHairPiece(SkinnedMeshRenderer skin)=>skin.name.StartsWith("HairFront.",StringComparison.Ordinal)||skin.name.StartsWith("HairBack.",StringComparison.Ordinal);
+        // A piece's mesh swapped, its blend shapes' weights kept.
+        private static void VisualHairMesh(SkinnedMeshRenderer skin,Mesh mesh)
+        {
+            int n=Math.Min(skin.sharedMesh.blendShapeCount,mesh.blendShapeCount);var w=new float[n];for(int i=0;i<n;i++)w[i]=skin.GetBlendShapeWeight(i);
+            skin.sharedMesh=mesh;for(int i=0;i<n;i++)skin.SetBlendShapeWeight(i,w[i]);
+        }
+        // Hair piece `mesh` (worn by `skin`) as hat `hat` holds it, made once a piece and hat (from the first body seen wearing
+        // them: every body's hair rests alike), off the main thread. Null while it is being made; the piece itself when the hat
+        // leaves it as it is (or it cannot be read, or is not on the head).
+        private static readonly Dictionary<(Mesh,string),Mesh> pressedHair=new Dictionary<(Mesh,string),Mesh>();
+        private static readonly Dictionary<(Mesh,string),System.Threading.Tasks.Task<(Vector3[],BoneWeight[])>> pressingHair=new Dictionary<(Mesh,string),System.Threading.Tasks.Task<(Vector3[],BoneWeight[])>>();
+        private static readonly Dictionary<Mesh,Mesh> pressedHairOf=new Dictionary<Mesh,Mesh>();
+        // A vertex's weights `w` with share `hold` moved onto bone `held` (its four heaviest kept, summing to one).
+        private static BoneWeight VisualHeldHair(BoneWeight w,int held,float hold)
+        {
+            var b=new int[5];var k=new float[5];int n=0;
+            HeldAdd(b,k,ref n,held,hold);HeldAdd(b,k,ref n,w.boneIndex0,w.weight0*(1-hold));HeldAdd(b,k,ref n,w.boneIndex1,w.weight1*(1-hold));HeldAdd(b,k,ref n,w.boneIndex2,w.weight2*(1-hold));HeldAdd(b,k,ref n,w.boneIndex3,w.weight3*(1-hold));
+            for(int i=1;i<n;i++)for(int j=i;j>0&&k[j]>k[j-1];j--){(k[j],k[j-1])=(k[j-1],k[j]);(b[j],b[j-1])=(b[j-1],b[j]);}
+            n=Math.Min(n,4);float sum=0;for(int j=0;j<n;j++)sum+=k[j];if(sum<=0)return new BoneWeight{boneIndex0=held,weight0=1};
+            var r=new BoneWeight{boneIndex0=b[0],weight0=k[0]/sum};if(n>1){r.boneIndex1=b[1];r.weight1=k[1]/sum;}if(n>2){r.boneIndex2=b[2];r.weight2=k[2]/sum;}if(n>3){r.boneIndex3=b[3];r.weight3=k[3]/sum;}return r;
+        }
+        private static void HeldAdd(int[] b,float[] k,ref int n,int bone,float weight){if(weight<=0)return;for(int j=0;j<n;j++)if(b[j]==bone){k[j]+=weight;return;}b[n]=bone;k[n]=weight;n++;}
+        private static Mesh VisualPressedHair(Mesh mesh,SkinnedMeshRenderer skin,string hat)
+        {
+            var key=(mesh,hat);if(pressedHair.TryGetValue(key,out var made))return made;
+            if(pressingHair.TryGetValue(key,out var task))
+            {
+                if(!task.IsCompleted)return null;pressingHair.Remove(key);made=mesh;
+                if(task.Status==System.Threading.Tasks.TaskStatus.RanToCompletion&&task.Result.Item1!=null)
+                {made=UnityEngine.Object.Instantiate(mesh);made.name=mesh.name+" under "+hat;made.vertices=task.Result.Item1;made.boneWeights=task.Result.Item2;made.bounds=mesh.bounds;pressedHairOf[made]=mesh;}
+                pressedHair[key]=made;return made;
+            }
+            // Each vertex at rest on the head (through a bone that moves with it: the head, or the piece's own bone on it, which some
+            // pieces hang off; at rest every bone of a piece places it alike, so its cloth's swing then does not count), pressed,
+            // and then held by that bone as far as the hat holds it (HairPress.Hold).
+            var press=NativeModelHatMeshes.HairPress.Of(hat);var bones=skin.bones;var bind=mesh.bindposes;Transform head=null;
+            foreach(var b in bones)if(b!=null&&b.name=="head"){head=b;break;}
+            for(var t=skin.rootBone;head==null&&t!=null;t=t.parent)if(t.name=="head")head=t;
+            int held=Array.IndexOf(bones,head);
+            if(held<0)for(int i=0;i<bones.Length;i++)if(bones[i]!=null&&bones[i].parent==head&&!bones[i].name.StartsWith("Hair_",StringComparison.Ordinal)){held=i;break;}
+            if(press==null||head==null||held<0||bind.Length!=bones.Length||!mesh.isReadable){pressedHair[key]=mesh;return mesh;}
+            var m=head.worldToLocalMatrix*bones[held].localToWorldMatrix*bind[held];
+            var rest=new System.Numerics.Matrix4x4(m.m00,m.m10,m.m20,m.m30,m.m01,m.m11,m.m21,m.m31,m.m02,m.m12,m.m22,m.m32,m.m03,m.m13,m.m23,m.m33);
+            if(!System.Numerics.Matrix4x4.Invert(rest,out var back)){pressedHair[key]=mesh;return mesh;}
+            var v=mesh.vertices;var weights=mesh.boneWeights;var triangles=mesh.triangles;if(weights.Length!=v.Length){pressedHair[key]=mesh;return mesh;}
+            pressingHair[key]=System.Threading.Tasks.Task.Run(()=>
+            {
+                var at=new System.Numerics.Vector3[v.Length];var pressed=new System.Numerics.Vector3[v.Length];var hold=new float[v.Length];
+                for(int i=0;i<v.Length;i++)at[i]=System.Numerics.Vector3.Transform(new System.Numerics.Vector3(v[i].x,v[i].y,v[i].z),rest);
+                if(!press.PressPiece(at,triangles,pressed,hold))return (null,null);
+                for(int i=0;i<v.Length;i++)
+                {
+                    if(pressed[i]==at[i])continue;var r=System.Numerics.Vector3.Transform(pressed[i],back);v[i]=new Vector3(r.X,r.Y,r.Z);weights[i]=VisualHeldHair(weights[i],held,hold[i]);
+                }
+                return (v,weights);
+            });
+            return null;
         }
         // The parry flash on the model: its drawn body snapshotted each frame of the flash, tinted (VisualEchoSnap/Draw).
         private readonly Dictionary<int,VisualEcho> parryEchoes=new Dictionary<int,VisualEcho>();
@@ -366,7 +444,7 @@ namespace ChipArena.UnityConversion
             body.Moved=true;body.Seen=true;
             VisualHatHair(body,seat.hat);
             if(!string.IsNullOrEmpty(seat.hat)&&seat.hat!="none"&&seat.hat!=NativeSheldonHead.Hat)
-            {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(HatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
+            {var hb=VisualHatBone(rig,seat.hat);if(!AuditorHalo(seat.hat,hb(CapturedRig.Head),time,1,false,0,null,camera,seat.hatColor))sourceModels.Queue(VisualHatModel(seat.hat,seat.hatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(seat.hat,seat.hatColor));}
             // The Sheldon Head: the hood's void and face (the body wears the hood; without them the opening showed the model's face).
             else SheldonHoodStill(body,seat.hat,seat.hatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,seat.hat),time,seat.id,HaloReduced,0,null);
             if(!body.Hood)VisualFaceGear(VisualHeadOf(body),seat.id,seat.accentColor,0,null,null,null,0);
@@ -896,6 +974,10 @@ namespace ChipArena.UnityConversion
             var binding=new NativeVisualRigBinding(root.transform,skeleton);var pose=rig.Pose;pose.World();
             binding.Apply(pose,VisualGrasp(death.actor??new Actor(),pose,death.at,0),false,false);
             bones=binding.Bones;joint=VisualJoints(binding);
+            // Its hair under its hat as the live body wore it (VisualHatHair).
+            if(NativeModelHatMeshes.PressesHair(death.actor?.Hat))
+                foreach(var skin in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                    if(skin.sharedMesh!=null&&VisualHairPiece(skin)){var pressed=VisualPressedHair(skin.sharedMesh,skin,death.actor.Hat);if(pressed!=null&&pressed!=skin.sharedMesh)VisualHairMesh(skin,pressed);}
             var block=new MaterialPropertyBlock();ColorUtility.TryParseHtmlString(death.actor?.AccentColor??"#70e1d0",out var accent);
             ColorUtility.TryParseHtmlString(NativeBodySkins.SheldonGlow(death.actor?.Hat,death.actor?.HatColor,death.actor?.AccentColor??"#70e1d0"),out var glow);
             foreach(var r in VisualWorn(root))
@@ -1330,7 +1412,7 @@ namespace ChipArena.UnityConversion
         {
             if(!visualBodies.TryGetValue(rig,out var body)||body.Root==null||string.IsNullOrEmpty(a.Hat)||a.Hat=="none")return;
             VisualHatHair(body,a.Hat);
-            if(a.Hat!=NativeSheldonHead.Hat){var hb=VisualHatBone(rig,a.Hat);if(!AuditorHalo(a.Hat,hb(CapturedRig.Head),time,1,HaloReduced,0,null,color:a.HatColor))sourceModels.Queue(HatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(a.Hat,a.HatColor));}
+            if(a.Hat!=NativeSheldonHead.Hat){var hb=VisualHatBone(rig,a.Hat);if(!AuditorHalo(a.Hat,hb(CapturedRig.Head),time,1,HaloReduced,0,null,color:a.HatColor))sourceModels.Queue(VisualHatModel(a.Hat,a.HatColor),rig.Root.transform.localToWorldMatrix,hb,body:HatBody(a.Hat,a.HatColor));}
             else SheldonHoodStill(body,a.Hat,a.HatColor,rig.Root.transform.localToWorldMatrix,VisualHatBone(rig,a.Hat),time,a.Id,HaloReduced,0,null);
         }
         // The authored death scenes (NativeSceneMotion.cs SourceDeathScene) move the victim's 22 joints from where they were at
@@ -1414,7 +1496,7 @@ namespace ChipArena.UnityConversion
             if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");if(c.Head<0)return false;
             corpseHat=VisualHatFit(c.Bones[c.Head],hat);corpseHatBone??=_=>corpseHat;
             if(hat==NativeSheldonHead.Hat)return c.Hood&&VisualDeadHood(corpseHat,death,alpha);
-            if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&corpse.HatModel!=null)sourceModels.QueueShadowless(corpse.HatModel,Matrix4x4.identity,corpseHatBone,null,HatBody(hat,a.HatColor),null,alpha);
+            if(!AuditorHalo(hat,corpseHat,clock,alpha,HaloReduced,0,null,color:a.HatColor)&&corpse.HatModel!=null)sourceModels.QueueShadowless(VisualHatModel(hat,a.HatColor)??corpse.HatModel,Matrix4x4.identity,corpseHatBone,null,HatBody(hat,a.HatColor),null,alpha);
             return true;
         }
         // A kill look on the corpse's visual body (owner 2026-10-24: "Model everywhere"): 1 Soul Drift, the body through the ghost

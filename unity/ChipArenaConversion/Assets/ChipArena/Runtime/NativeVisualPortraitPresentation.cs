@@ -155,7 +155,7 @@ namespace ChipArena.UnityConversion
                 if(hat!="none"&&hat!=NativeSheldonHead.Hat)
                 {
                     var hb=VisualHatBone(s.Player,hat);
-                    if(!AuditorHalo(hat,hb(CapturedRig.Head),time,1,ModelPortraitReduced,PortraitLayer,null,view,look.HatColor))sourceModels.Queue(HatModel(hat,look.HatColor),s.Player.Root.transform.localToWorldMatrix,hb,null,PortraitLayer,view,body:HatBody(hat,look.HatColor));
+                    if(!AuditorHalo(hat,hb(CapturedRig.Head),time,1,ModelPortraitReduced,PortraitLayer,null,view,look.HatColor))sourceModels.Queue(VisualHatModel(hat,look.HatColor),s.Player.Root.transform.localToWorldMatrix,hb,null,PortraitLayer,view,body:HatBody(hat,look.HatColor));
                 }
                 else if(hat==NativeSheldonHead.Hat)SheldonHoodStill(body,hat,look.HatColor,s.Player.Root.transform.localToWorldMatrix,VisualHatBone(s.Player,hat),time,id,ModelPortraitReduced,PortraitLayer,view);
                 VisualGear(body,a,time,null,null,1,false);
