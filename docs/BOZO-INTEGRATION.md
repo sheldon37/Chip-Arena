@@ -1990,6 +1990,33 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
       next sign-in until Astra adds it there (`suit`: `none` / `robot`, default `none`). In a session, in matches and in
       local saves it works.
     - Checks: `Tests/RobotSuitChecks.cs` (`--suit`).
+  - **The robot's helmet and half mask (2026-10-30, `claude/robot-helm`; owner: "Can we develop essentially a full helmet and
+    a half mask similar to what we had on voxel?"):** the original voxel robot's head made for the model's head, in its smooth
+    style (`Core/NativeRobotHelm`). Our own pieces, built in code: nothing licensed is committed.
+    - **The helmet:** a rounded shell (flatter at the face, rounder behind, squarer at the jaw) a centimetre or so round the
+      model's head and open under the jaw. It carries a recessed visor of accent glass in a dark frame over the eyes, the
+      robot's three grille slots, a seam from the chin up to the ear modules, back vents and a dark seal round its foot.
+      About 7,900 triangles.
+    - **The half mask:** a plate over the nose, mouth and chin that curls under the chin, with wings back to ear modules over
+      the ears. It has the grille slots and a light on each cheek. Its sections were fitted per height to the face, 7 mm or
+      more off it. About 2,500 triangles.
+    - Both take the body colour, as the suit's plates do, and the accent's light. They were measured against the head
+      dumped from Unity (head, eyes, lashes and brows, in the head bone's frame).
+    - **The pick:** two more keys in the skin map's `face` entry, `helm` and `half` (no longer than `visor`, so `MaxLength`
+      holds). They appear in the Locker's MASKS row ("Helmet", "Half mask") with thumbnails, on the Prototype body like the
+      other face gear. An older client reads the new keys as "Mask + visor".
+    - **Where they draw:** wherever the face gear draws (the live body, the draft's seat, the menu's and the Locker's pilots,
+      a whole corpse). The face gear now also shows in death scenes and on revive bodies. The helmet also stays on the half of
+      a split corpse that holds the head.
+    - **Under the helmet:**
+      - the hair is hidden: each hair piece draws a copy of itself without triangles (`VisualPressedHair`), on corpses too;
+      - a hat sits on the helmet. Each model hat has a fit there (`NativeRobotHelm.HatFit`): the closed hats about an eighth
+        larger and 2 cm up, the crown, cone, antenna and halo lifted. Each clears the shell by 2 mm or more (a cone's elastic
+        runs into it).
+    - With the robot suit, the suit's own ear modules are left off under either piece.
+    - The account server (`src/relay/accounts.ts`) still lists only the three earlier face keys. A signed-in pilot's helmet
+      or half mask therefore resets at the next sign-in until Astra adds `helm` and `half` there.
+    - Checks: `Tests/RobotHelmChecks.cs` (`--helm`).
   - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
     it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
     camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed
