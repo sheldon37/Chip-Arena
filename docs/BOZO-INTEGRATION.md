@@ -1296,8 +1296,16 @@ models, review and revise." Both the draft's cards and the 3D chip get the detai
   directed entrances' pylons, dais and Orbital Drop's pod and door are sculpted models (`NativeEntranceStageModels`: light
   towers with segmented strips and lamp heads, a panelled dais with nothing glowing on it, a ribbed pod with a faceted nose),
   drawn through `INativeEntranceProps.Model` with the boxes kept as the fallback.
-- **Not changed (decisions for the owner):** the blasts' toon smoke puffs and rock debris are the shared effects renderer's,
-  the same as in play, so they look the same in the intros; the smaller set pieces (Holo Projection's projectors, Blackout's
+- **The effects (owner's follow-up, "Restyle them too", `claude/fx-restyle`):** the shared renderer's smoke and fire puffs
+  (blasts, the melee kits' dust, the fuse, in play and in the intros) take their shape from the billowy smoke atlas instead
+  of the toon sheet's outlined cartoon lobes: see-through at their thin edges, dense in the core, eaten into wisps over their
+  life, a soft terminator between two tones and rims that catch the light (`NativeVfx.shader` `VfxSoftMask`, `VfxSoftSmoke`;
+  fire keeps its white-hot to ash ramp). Toon water and the flash, crescent and spark sprites keep the toon sheet. Rubble is
+  finer (debris x1.1, rock x.95 of the voxel edge, was 1.45 and 1.3), never a flat card (its thinnest edge at least .45 of its
+  longest), and rock reads as stone: a trace of self-glow, a seeded tone per chunk and two soft dust puffs behind it while it
+  flies fast. The earthsplitter's glowing crystal shards (the kit's light bursting up) and Brickfall's wind-blown scraps are
+  unchanged.
+- **Not changed (decisions for the owner):** the smaller set pieces (Holo Projection's projectors, Blackout's
   lamps, Skyline Zip's anchors and trolley, Overclock's chip) are still primitives; the DEV intros' baked stages (Emperor,
   Ansatsuken, Matrix, Siren) are the source's voxel scenes, now lighting the model but not rebuilt.
 
