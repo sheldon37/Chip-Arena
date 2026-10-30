@@ -29,8 +29,9 @@ namespace ChipArena.UnityConversion
 
     public sealed partial class ArenaPresentation
     {
-        // A model pilot whose skin map picks the robot suit (its "suit" entry: NativeWeaponSkins.SuitEntry; the Locker's OUTFIT
-        // section) wears it (owner 2026-10-30: "design clothing that resembles our previous player model (Robotic style)"): its
+        // A model pilot whose skin map picks the robot suit (its "suit" entry: NativeWeaponSkins.SuitEntry, the robot's by default
+        // since owner 2026-10-30: "I think we will make the default outfit the new designed armor"; the Locker's OUTFIT section)
+        // wears it (owner 2026-10-30: "design clothing that resembles our previous player model (Robotic style)"): its
         // under-suit in place of its clothes (VisualLookOf), the plates on its bones,
         // each drawn with its bone's matrix times that bone's bind pose (read off the body's own skinned meshes), in the pilot's
         // body colour with its accent's light; the live body, the draft's seat and a corpse alike. The back emblem stays under
@@ -63,7 +64,7 @@ namespace ChipArena.UnityConversion
             if(!WearsSuit(id)||sourceModels==null||!sourceModels.Has(NativeSourceModels.Suit))return;var rig=SuitRigOf(root);if(rig==null)return;
             for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i].localToWorldMatrix*rig.Bind[i];
             suitBone??=i=>suitMatrices[i];suitReveal=reveal;suitTint=tint;
-            sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,FaceGearOf(id)>=NativeWeaponSkins.FaceHelm?SuitNoEars:null,layer,camera,BodyTint(bodyColor),AccentTint(accentColor),1,
+            sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,HelmEars(id)?SuitNoEars:null,layer,camera,BodyTint(bodyColor),AccentTint(accentColor),1,
                 reveal==null?null:suitRevealOf??=i=>suitReveal(SuitJoints[i]),tint==null?null:suitTintOf??=i=>suitTint(SuitJoints[i]),new Vector4(1,1,1,1),null,flash);
         }
     }

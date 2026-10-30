@@ -33,14 +33,17 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         // The robot's helmet and half mask (owner 2026-10-30: "Can we develop essentially a full helmet and a half mask similar to
-        // what we had on voxel?") are face gears (the skin map's "face" entry, the Locker's MASKS row) and draw where the face gear
+        // what we had on voxel?"; the helmet the default: "I think we will make the default outfit the new designed armor and that
+        // full helmet") are face gears (the skin map's "face" entry, the Locker's MASKS row) and draw where the face gear
         // does (VisualFaceGear: the live body, the draft's seat, the menu's and the Locker's pilots, a corpse and a death scene), in
         // the pilot's body colour with its accent's light. Under the helmet the hair is hidden (VisualHatHair; a corpse's when it
         // is made) and a hat sits on the helmet's shell (VisualHatFit: Core NativeRobotHelm.HatFit). Either one takes the place of
         // the robot suit's ear modules (VisualSuit).
-        // The face gear pilot `id` wears on the model (NativeWeaponSkins.FaceBoth .. FaceHalf), or -1 with none.
-        private int FaceGearOf(int id)=>WearsFaceGear(BodySkin(id))?NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry):-1;
+        // The face gear pilot `id` wears on the model (NativeWeaponSkins.FaceHelm, the default, .. FaceNone), whatever its body skin.
+        private int FaceGearOf(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
         private bool WearsHelm(int id)=>FaceGearOf(id)==NativeWeaponSkins.FaceHelm;
+        // Whether its face gear brings its own ear modules (the helmet's or the half mask's), in place of the robot suit's.
+        private bool HelmEars(int id){int gear=FaceGearOf(id);return gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf;}
         // A hat's place on the helmet, in the head bone's frame.
         private static Matrix4x4 HelmHatFit(string hat){NativeRobotHelm.HatFit(hat,out float k,out var move);return Matrix4x4.TRS(new Vector3(move.X,move.Y,move.Z),Quaternion.identity,Vector3.one*k);}
         // Whether a corpse holds its head: a whole one, or the half of a split one its cut left the head on (VisualCorpseHat's test).

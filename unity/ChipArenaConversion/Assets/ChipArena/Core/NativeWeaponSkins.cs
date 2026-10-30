@@ -18,14 +18,15 @@ namespace ChipArena.UnityConversion
     // aura round the hands (Core/NativeCyberLordAura.cs), the Prototype Series the hardlight gauntlets and fist shells it wore
     // before (Core/NativeCyberLordLook.cs). It has no model ids (Modelled is false), and a missing or unknown pick reads as
     // the aura like every other Standard.
-    // The last entry ("face", owner 2026-10-26) picks the model's face gear on the Prototype body (the concept's tech mask and
-    // glowing visor; Runtime/NativeVisualBodyPresentation.cs VisualFaceGear): both (the default), the visor alone or the mask
-    // alone, or (owner 2026-10-30: "a full helmet and a half mask similar to what we had on voxel") the robot's helmet or half
-    // mask (Core/NativeRobotHelm). Other bodies, Classic and older clients ignore it (an older client reads a key it does not
-    // know as both).
+    // The "face" entry (owner 2026-10-26) picks the model's face gear (Runtime/NativeVisualBodyPresentation.cs VisualFaceGear):
+    // the robot's helmet (the default since owner 2026-10-30: "I think we will make the default outfit the new designed armor
+    // and that full helmet") or half mask (Core/NativeRobotHelm), the concept's tech mask and glowing visor both, the visor
+    // alone, the mask alone, or none (the model's own face). It no longer depends on the body skin, which picks the voxel bodies
+    // (Classic). Classic ignores it; an older client draws its own face gear only on the Prototype body and reads a key it does
+    // not know as its own default.
     // The "suit" entry after it (owner 2026-10-30: "design clothing that resembles our previous player model (Robotic style)")
-    // puts the robot suit on the model (Core/NativeRobotSuit; Runtime/NativeRobotSuitPresentation.cs): none (the default, never
-    // written) or the robot's. Classic and older clients ignore it.
+    // puts the robot suit on the model (Core/NativeRobotSuit; Runtime/NativeRobotSuitPresentation.cs): the robot's (the default
+    // outfit, never written) or none. Classic ignores it; an older client draws no suit.
     public static class NativeWeaponSkins
     {
         public const string Standard="standard",Prototype="prototype";
@@ -37,22 +38,22 @@ namespace ChipArena.UnityConversion
         /// Cyber Lord, whose skin is its look.</summary>
         public static readonly string[] Weapons={"pistol","rifle","machinegun","fire","water","lightning","darkness","sword","daggers","shield","greatsword","emperor","ansatsuken","leet","bow",CyberLordSpec.Id};
         /// <summary>The longest normalized map (every weapon and the Cyber Lord on the Prototype Series, the body on the Prototype,
-        /// the face gear on the visor alone, the robot suit) is 320 characters; frames refuse longer.</summary>
+        /// the face gear on the visor alone, no suit) is 319 characters; frames refuse longer than 320.</summary>
         public const int MaxLength=320;
         public static bool Skinned(string spec)=>spec!=null&&Array.IndexOf(Weapons,spec)>=0;
         /// <summary>A skinned weapon with weapon models (a Prototype Series bake or build and usually a Standard design): every
         /// entry but the Cyber Lord's, whose two skins are drawn looks (NativeCyberLordLook.PiecesIn).</summary>
         public static bool Modelled(string spec)=>Skinned(spec)&&spec!=CyberLordSpec.Id;
         public static int SkinIndex(string skin)=>skin==Prototype?PrototypeIndex:skin==Standard?StandardIndex:-1;
-        /// <summary>The face gear's entry, its keys (the first the default; none longer than "visor", so MaxLength holds), labels
-        /// and indices.</summary>
+        /// <summary>The face gear's entry, its keys (the first the default: the robot's helmet; none longer than "visor", so
+        /// MaxLength holds), labels and indices.</summary>
         public const string FaceEntry="face";
-        public static readonly string[] FaceKeys={"mask-visor","visor","mask","helm","half"},FaceLabels={"Mask + visor","Visor","Mask","Helmet","Half mask"};
-        public const int FaceBoth=0,FaceVisor=1,FaceMask=2,FaceHelm=3,FaceHalf=4;
-        /// <summary>The robot suit's entry, its keys (none, the default; the robot's) and labels.</summary>
+        public static readonly string[] FaceKeys={"helm","half","both","visor","mask","none"},FaceLabels={"Helmet","Half mask","Mask + visor","Visor","Mask","No mask"};
+        public const int FaceHelm=0,FaceHalf=1,FaceBoth=2,FaceVisor=3,FaceMask=4,FaceNone=5;
+        /// <summary>The robot suit's entry, its keys (the robot's, the default; none) and labels.</summary>
         public const string SuitEntry="suit";
-        public static readonly string[] SuitKeys={"none","robot"},SuitLabels={"None","Robot suit"};
-        public const int SuitNone=0,SuitRobot=1;
+        public static readonly string[] SuitKeys={"robot","none"},SuitLabels={"Robot suit","None"};
+        public const int SuitRobot=0,SuitNone=1;
         /// <summary>Every entry the map carries, in its canonical order: the weapons, then the pilot's body, the face gear and the
         /// suit.</summary>
         public static readonly string[] Entries=Join(Join(Join(Weapons,NativeBodySkins.Entry),FaceEntry),SuitEntry);

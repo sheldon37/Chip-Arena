@@ -14,10 +14,10 @@ namespace ChipArena.UnityConversion
     // the one setter (SetBodySkin), so they always agree.
     // While the model draws (the visual body installed and the Player model not Classic: LkOnModel) the body is no longer
     // picked as a skin (owner 2026-10-28: "Remove Body Skin Options 'Prototype' and 'Sheldon Clothes' and just add 'Masks'
-    // section for selecting masks"): Appearance's MASKS row (LkMasks) offers no mask (the Standard body: the pilot's own face)
-    // or the face gear the Prototype body wears on the model (owner 2026-10-26): both, the visor or the mask ("face" entry,
-    // FaceGearEquipped, SetFaceGear, which also puts on the Prototype body). The Skins tab then lists only the weapons. Classic
-    // keeps the BODY SKIN row and the body card, the voxel bodies being different builds.
+    // section for selecting masks"): Appearance's MASKS row (LkMasks) offers the face gear ("face" entry, FaceGearEquipped,
+    // SetFaceGear): the robot's helmet (the default, owner 2026-10-30) or half mask, the concept's mask and visor both, the visor,
+    // the mask, or no mask (the pilot's own face). The Skins tab then lists only the weapons. Classic keeps the BODY SKIN row and
+    // the body card, the voxel bodies being different builds.
     public sealed partial class ConversionGame
     {
         private string lockerSkinTry,lockerBodyTry,lockerFaceTry;private bool lockerBodySheldon;
@@ -46,10 +46,10 @@ namespace ChipArena.UnityConversion
         private void SetBodySkin(string key){prefs.weaponSkins=NativeBodySkins.Gate(NativeWeaponSkins.With(prefs.weaponSkins,NativeBodySkins.Entry,key),lockerBodySheldon);}
         // ---- the model's face gear ----
         private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!="Classic";
-        /// <summary>The equipped face gear (NativeWeaponSkins.FaceBoth, FaceVisor, FaceMask, FaceHelm or FaceHalf).</summary>
+        /// <summary>The equipped face gear (NativeWeaponSkins.FaceHelm, the default, .. FaceNone).</summary>
         private int FaceGearEquipped()=>NativeWeaponSkins.Index(prefs.weaponSkins,NativeWeaponSkins.FaceEntry);
-        /// <summary>The one setter of the face gear: its "face" entry, and the Prototype body that wears it.</summary>
-        private void SetFaceGear(string key){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,key);if(BodySkinEquipped()!=NativeBodySkins.PrototypeIndex)SetBodySkin(NativeBodySkins.Prototype);}
+        /// <summary>The one setter of the face gear: its "face" entry (on the model it no longer needs the Prototype body).</summary>
+        private void SetFaceGear(string key){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,key);}
         private void LkSkins(Rect banner,Rect head,Rect grid,float e)
         {
             bool repaint=Event.current.type==EventType.Repaint;if(repaint){lockerSkinTry=null;lockerBodyTry=null;}
@@ -95,8 +95,8 @@ namespace ChipArena.UnityConversion
         // Short enough for one line beside the tick and the DEV badge at a third of the narrowest Locker column: the voxel
         // bodies', and the masks' (no mask, then the face gears).
         private static readonly string[] LkBodyTexts={"Armour plates, visor","The original blocky build","Long glowing coat"};
-        private static readonly string[] LkMaskLabels={"No mask","Mask + visor","Visor","Mask","Helmet","Half mask"};
-        private static readonly string[] LkMaskTexts={"Your pilot's own face","Visor and lower mask","Band over the eyes","Nose and mouth covered","Full robot helmet","Robot plate, nose to chin"};
+        private static readonly string[] LkMaskLabels={"Helmet","Half mask","Mask + visor","Visor","Mask","No mask"};
+        private static readonly string[] LkMaskTexts={"Full robot helmet","Robot plate, nose to chin","Visor and lower mask","Band over the eyes","Nose and mouth covered","Your pilot's own face"};
         // The bodies share the row as segments (two or three across, wrapping only when a card would be under LkRowMin).
         private int LkBodyCols()=>Mathf.Max(1,Mathf.Min(BodySkinChoices,LkCols(lockerW,LkRowMin)));
         private float LkBodyRowH(){int cols=LkBodyCols(),rows=(BodySkinChoices+cols-1)/cols;return rows*LkRowH+(rows-1)*LkGap;}
@@ -115,20 +115,20 @@ namespace ChipArena.UnityConversion
             }
         }
         // ---- Appearance's MASKS row (on the model; laid out and headed by Runtime/NativeLockerUI.cs) ----
-        // No mask (the Standard body) and the five face gears (the robot's helmet and half mask among them), as row cards with the model's thumbnail: hovering one tries it on
-        // the stage (lockerBodyTry and, for a gear, lockerFaceTry), a click equips it through SetBodySkin or SetFaceGear. A body
-        // other than the Prototype (a Sheldon Clothes pick, worn in Classic) reads as no mask.
+        // The face gears in NativeWeaponSkins.FaceKeys order (the robot's helmet, the default, first; No mask last), as row cards
+        // with the model's thumbnail: hovering one tries it on the stage (lockerFaceTry), a click equips it through SetFaceGear.
         private int LkMaskCols()=>Mathf.Max(1,Mathf.Min(LkMaskLabels.Length,LkCols(lockerW,LkRowMin)));
         private float LkMasksH(){int cols=LkMaskCols(),rows=(LkMaskLabels.Length+cols-1)/cols;return rows*LkRowH+(rows-1)*LkGap;}
         private void LkMasks(Rect grid)
         {
-            bool repaint=Event.current.type==EventType.Repaint,masked=BodySkinEquipped()==NativeBodySkins.PrototypeIndex;int worn=masked?FaceGearEquipped()+1:0,cols=LkMaskCols();float w=(lockerW-(cols-1)*LkGap)/cols;
+            bool repaint=Event.current.type==EventType.Repaint;int worn=FaceGearEquipped(),cols=LkMaskCols();float w=(lockerW-(cols-1)*LkGap)/cols;
             for(int k=0;k<LkMaskLabels.Length;k++)
             {
                 var r=new Rect(grid.x+(k%cols)*(w+LkGap),grid.y+(k/cols)*(LkRowH+LkGap),w,LkRowH);bool on=k==worn;
-                bool click=LkRowCard(r,8270+k,on,null,default,LkMaskLabels[k],LkMaskTexts[k],null,out bool hot,k==0?NativeBodySkins.StandardIndex:LkFaceThumb+k-1);
-                if(hot&&repaint){lockerBodyTry=k==0?NativeBodySkins.Standard:NativeBodySkins.Prototype;lockerFaceTry=k==0?null:NativeWeaponSkins.FaceKeys[k-1];}
-                if(click&&!on){if(k==0)SetBodySkin(NativeBodySkins.Standard);else SetFaceGear(NativeWeaponSkins.FaceKeys[k-1]);}
+                bool click=LkRowCard(r,8270+k,on,null,default,LkMaskLabels[k],LkMaskTexts[k],null,out bool hot,LkFaceThumb+k);
+                string key=NativeWeaponSkins.FaceKeys[k];
+                if(hot&&repaint)lockerFaceTry=key;
+                if(click&&!on)SetFaceGear(key);
             }
         }
         // A body skin's thumbnail in a row card's 44 unit well: a front-view voxel figure from rects in the pilot's colours (nothing
@@ -145,7 +145,7 @@ namespace ChipArena.UnityConversion
             Color body=U.Hex(bodyRgb),accent=U.Hex(accentRgb),glow=skin==NativeBodySkins.SheldonIndex?U.Hex(NativeBodySkins.SheldonGlowRgb(prefs.hat,prefs.hatColor,accentRgb)):accent;
             U.RadialStops(new Rect(well.x+2,well.y+1,well.width-4,well.height-2),U.A(glow,(.26f+.18f*hover)*e),LkGlowAt,LkGlowA);
             var f=new Vector2(well.center.x,well.yMax-4);
-            if(LkOnModel||skin>=LkFaceThumb)LkModelThumb(f,skin>=LkFaceThumb?skin-LkFaceThumb:skin==NativeBodySkins.PrototypeIndex?FaceGearEquipped():-1,accent,e);
+            if(LkOnModel||skin>=LkFaceThumb)LkModelThumb(f,skin>=LkFaceThumb?skin-LkFaceThumb:FaceGearEquipped(),accent,e);
             else if(skin==NativeBodySkins.StandardIndex)
             {
                 Color under=U.Mix(U.Hex(0x1b242b),body,.12f),plate=body,lit=accent,cyan=U.Hex(NativeBodySkins.CyberCyan);
@@ -179,7 +179,7 @@ namespace ChipArena.UnityConversion
         }
         // A model pilot's thumbnail: head and shoulders in the hood's dark cloth with accent trims, spiky hair, the skin in the
         // picked tone (LkToneShown: the model's own without one), and the face bare
-        // (gear -1) or under the face gear (NativeWeaponSkins.FaceBoth .. FaceHalf): the visor's glowing band in its frame and
+        // (NativeWeaponSkins.FaceNone) or under the face gear: the visor's glowing band in its frame and
         // temple pods, the mask's dark block with its vents; the robot's helmet (in the body colour, its visor bar, grille and ear
         // modules over the whole head) or its half mask (the plate with the grille over the lower face, the ear modules either
         // side). `u` pixels a unit, the shoulders' foot at `f`.

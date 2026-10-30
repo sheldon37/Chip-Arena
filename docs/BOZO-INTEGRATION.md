@@ -1780,7 +1780,9 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
       to the ear.
   - **Who wears it:** the Prototype body skin on the model. The Standard keeps BoZo's face as authored (owner,
     2026-10-22). One presentation rule (`WearsFaceGear`) sets this. **Owner decision (2026-10-26):** keep the mask and
-    visor on the Prototype skin; the default keeps the face.
+    visor on the Prototype skin; the default keeps the face. **Superseded (2026-10-30, the default outfit):** on the model
+    the `face` pick alone decides, whatever the body skin, and its default is the robot's helmet (see "The default outfit"
+    below).
   - **Variants (2026-10-26, `claude/model-face-variants`):** the skin map's last entry `face` picks both (the default,
     never written), the visor alone or the mask alone.
     - The account server (`src/relay/accounts.ts`) still drops the entry, so a signed-in pilot's pick resets to both at
@@ -1981,7 +1983,8 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
     - **The fit:** measured in Unity on the rest body in the under-suit (sweater, skinny jeans, gloves, work boots): the
       torso's outline every 15 degrees at 13 heights, each limb's and the neck's cross-sections. The plates sit about a
       centimetre over them.
-    - **The pick:** the skin map's `suit` entry (`none`, the default and never written, or `robot`). It is set by a SUIT row
+    - **The pick:** the skin map's `suit` entry (`robot`, the default since "The default outfit" below and never written, or
+      `none`). It is set by a SUIT row
       under the Locker's OUTFIT slots, and is independent of the masks and body skins. Worn, its under-suit takes the clothes'
       place (`VisualLookOf`); the pilot's hair and skin tone stay. The live body, the draft's seat and a corpse wear it; the
       first-person arms wear the under-suit's sleeves. The back emblem stays under the back plate. Classic and older clients
@@ -2002,9 +2005,8 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
       more off it. About 2,500 triangles.
     - Both take the body colour, as the suit's plates do, and the accent's light. They were measured against the head
       dumped from Unity (head, eyes, lashes and brows, in the head bone's frame).
-    - **The pick:** two more keys in the skin map's `face` entry, `helm` and `half` (no longer than `visor`, so `MaxLength`
-      holds). They appear in the Locker's MASKS row ("Helmet", "Half mask") with thumbnails, on the Prototype body like the
-      other face gear. An older client reads the new keys as "Mask + visor".
+    - **The pick:** keys in the skin map's `face` entry, `helm` and `half`, picked in the Locker's MASKS row ("Helmet",
+      "Half mask") with thumbnails. No key is longer than `visor`, so `MaxLength` holds.
     - **Where they draw:** wherever the face gear draws (the live body, the draft's seat, the menu's and the Locker's pilots,
       a whole corpse). The face gear now also shows in death scenes and on revive bodies. The helmet also stays on the half of
       a split corpse that holds the head.
@@ -2014,9 +2016,31 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
         larger and 2 cm up, the crown, cone, antenna and halo lifted. Each clears the shell by 2 mm or more (a cone's elastic
         runs into it).
     - With the robot suit, the suit's own ear modules are left off under either piece.
-    - The account server (`src/relay/accounts.ts`) still lists only the three earlier face keys. A signed-in pilot's helmet
-      or half mask therefore resets at the next sign-in until Astra adds `helm` and `half` there.
     - Checks: `Tests/RobotHelmChecks.cs` (`--helm`).
+  - **The default outfit (2026-10-30, `claude/robot-default`; owner: "I think we will make the default outfit the new
+    designed armor and that full helmet"):** a model pilot with no picks wears the robot suit and the robot's helmet.
+    - **Face:** the `face` keys are now `helm` (the default), `half`, `both` (the mask and visor; it was `mask-visor`, which
+      was the default and so never written), `visor`, `mask` and `none` (the model's own face). The longest map, with
+      `face:visor` and `suit:none`, is 319 characters, under `MaxLength` 320.
+    - **On the model the `face` pick alone decides** (`FaceGearOf`), whatever the body skin. The body skin still picks the
+      voxel bodies in Classic, whose defaults are unchanged. The Locker's MASKS row lists the face keys in order (Helmet
+      first, No mask last) and no longer puts on the Prototype body.
+    - **Suit:** the `suit` default is `robot`; "None" is written as `suit:none`.
+    - **Who gets it:** every pilot without picks, including bots, the draft and a fresh profile. A pilot who had picked
+      "Mask + visor" (the old default, never written) now wears the helmet until they pick again.
+    - The menu rooftop's crowd keeps its own faces and clothes (`face:none,suit:none`); the rooftop's own pilot wears its
+      owner's picks. Other pilots' portrait cards carry only the body skin, so they show the default.
+    - **Older clients:** they draw no suit for a default pilot, show the face gear only on the Prototype body, and read the
+      new keys as their own default.
+    - **The account server** (`src/relay/accounts.ts`) still knows only `mask-visor`, `visor` and `mask`, with `mask-visor`
+      as the default, and drops `suit`. Until Astra updates it, a signed-in pilot keeps the helmet and suit (the defaults, never
+      written), the Visor and the Mask across a sign-in; Half mask, Mask + visor (`both`), No mask and No suit reset to the
+      default at the next sign-in. The update: `FACE_SKINS`
+      {`helm`, `half`, `both`, `visor`, `mask`, `none`} with default `helm`; `suit` in `SKIN_WEAPONS` with {`robot`,
+      `none`} and default `robot`.
+    - Unity's Jobs IL post-processor (Mono.Cecil) cannot read an Assembly-CSharp PDB with exactly 65,535 local variables
+      ("ILPostProcessor has thrown ... ArgumentOutOfRangeException ... ReadLocalScope"). This change briefly landed there;
+      two named locals took it to 65,537. Any later change that lands on 65,535 needs the same nudge.
   - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
     it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
     camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed

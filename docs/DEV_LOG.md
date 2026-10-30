@@ -1,3 +1,49 @@
+## 2026-10-30 — Claude (PC): the default outfit (the robot suit and the robot's helmet)
+
+- **Branch/base:** `claude/robot-default` from shared `3ff87b9b`. No PR; merged into shared and the builder.
+- **Task (owner):** "I think we will make the default outfit the new designed armor and that full helmet"
+- **Changes (presentation and the skin map's face and suit keys; docs/BOZO-INTEGRATION.md "The default outfit"):**
+  - `NativeWeaponSkins`:
+    - `face` keys are now `helm` (the default), `half`, `both` (was `mask-visor`, the old default and so never written),
+      `visor`, `mask` and `none`;
+    - `suit` keys are `robot` (the default) and `none`;
+    - the longest map is now 319 characters (`MaxLength` 320 unchanged).
+  - On the model the `face` pick alone decides (`FaceGearOf`); the Prototype body is no longer needed for face gear. The
+    body skin still picks Classic's voxel bodies, whose defaults are unchanged.
+  - The Locker's MASKS row lists the face keys in order (Helmet first, No mask last), and `SetFaceGear` no longer puts on
+    the Prototype body.
+  - The menu rooftop's crowd keeps its own faces and clothes (`face:none,suit:none`).
+- **Who changes:** every model pilot without picks (fresh profiles, bots, the draft, other pilots' portrait cards) now
+  wears the suit and helmet. Pilots who had "Mask + visor" (the old default, never written) now wear the helmet until
+  they pick again.
+- **Animation impacts:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. These are cosmetic
+  defaults.
+- **Unity compile hazard found:** with the change, Assembly-CSharp's PDB had exactly 65,535 local variables. Unity's Jobs
+  IL post-processor (Mono.Cecil `ReadLocalScope`) then throws `ArgumentOutOfRangeException` and the Editor won't enter
+  play mode, although `csc` compiles cleanly. Two named locals (`helm` in `VisualFaceGear`, `key` in `LkMasks`) took it to
+  65,537. Any later change that lands on exactly 65,535 needs the same nudge (scratchpad `pdb_rows.py` reads the counts).
+- **Checks (actual):**
+  - `CoreTests --helm` (30) and `--suit` (23).
+  - Pins updated in BodySkin, CyberLordAura, Locker, RobotHelm, RobotSuit, SkinTone and VisualRig checks.
+  - Full CoreTests on a clean LF worktree of `b2899536`: 881 PASS lines, 35 managed-core checks, rc 0. This used the same
+    local, uncommitted `ExpeditionEndingChecks` path patch as the helmet entry.
+  - `git diff --check` clean. Unity assembly compile passes (`tools/check_unity_compile.py`).
+  - Unity Editor (tool v242, Brickfall):
+    - empty picks: the pilot and a bot wear the suit and helmet (the bot in its own colours, with its cap on the helmet);
+    - the Locker's MASKS row shows Helmet first and equipped;
+    - `face:none,suit:none` shows the pilot's own face and hoodie.
+- **Not run / not verified:**
+  - a Windows player build; multiplayer, including a mixed-version match;
+  - the menu rooftop's crowd (the menu shot did not frame its pilots);
+  - a signed-in pilot across a sign-in.
+- **Handoff (Astra), replacing the helmet entry's:** `src/relay/accounts.ts` `weaponSkinMap`:
+  - `FACE_SKINS` = {`helm`, `half`, `both`, `visor`, `mask`, `none`}, with the face default `helm` (not `mask-visor`);
+  - add `suit` to `SKIN_WEAPONS` with {`robot`, `none`} and default `robot`.
+  - Until then a signed-in pilot keeps the helmet, suit, Visor and Mask across a sign-in, but Half mask, Mask + visor,
+    No mask and No suit reset to the default.
+  - Also still open: `Tests/ExpeditionEndingChecks.cs` fails on Windows (normalize its `mine` paths with
+    `Path.GetFullPath`).
+
 ## 2026-10-30 — Claude (PC): the robot's helmet and half mask (face gear after the voxel robot's head)
 
 - **Branch/base:** `claude/robot-helm` from shared `a3943081`. No PR; merged into shared and the builder.

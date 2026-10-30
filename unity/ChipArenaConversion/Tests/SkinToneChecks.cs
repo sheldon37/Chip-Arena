@@ -122,10 +122,10 @@ internal static class SkinToneChecks
         Check(callsign>=0&&callsign<masks&&masks<tone&&tone<accent&&accent<outfitAt&&deferred.Contains("LkMasks(lockerSlots[k++]);")&&deferred.Contains("LkSkinTone(lockerSlots[k++]);"),"CALLSIGN, MASKS, SKIN TONE, ACCENT COLOUR, then OUTFIT");
         Check(ui.Contains("if(!LkOnModel)lockerSkins.Add(NativeBodySkins.Entry);")&&!ui.Contains("lockerSkins.Add(NativeWeaponSkins.FaceEntry)")&&!skins.Contains("LkFaceCard")&&ui.Contains("model==lockerListsModel"),"on the model the Skins tab lists only weapons (rebuilt when the model is switched)");
         string masksBody=Body(skins,"private void LkMasks(");
-        Check(masksBody.Contains("if(click&&!on){if(k==0)SetBodySkin(NativeBodySkins.Standard);else SetFaceGear(NativeWeaponSkins.FaceKeys[k-1]);}")&&masksBody.Contains("int worn=masked?FaceGearEquipped()+1:0")
-            &&Regex.Matches(Regex.Match(skins,@"LkMaskLabels=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeWeaponSkins.FaceKeys.Length+1&&Regex.Matches(Regex.Match(skins,@"LkMaskTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeWeaponSkins.FaceKeys.Length+1,
-            "MASKS offers no mask and each face gear, through the body and face setters");
-        Check(masksBody.Contains("lockerBodyTry=k==0?NativeBodySkins.Standard:NativeBodySkins.Prototype;lockerFaceTry=k==0?null:NativeWeaponSkins.FaceKeys[k-1];")&&portraitUi.Contains("lockerFaceTry!=null&&menuScreen==MenuScreen.Customize&&lockerTab==NativeLocker.Appearance?lockerFaceTry:null")
+        Check(masksBody.Contains("string key=NativeWeaponSkins.FaceKeys[k];")&&masksBody.Contains("if(click&&!on)SetFaceGear(key);")&&masksBody.Contains("int worn=FaceGearEquipped(),")
+            &&Regex.Matches(Regex.Match(skins,@"LkMaskLabels=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeWeaponSkins.FaceKeys.Length&&Regex.Matches(Regex.Match(skins,@"LkMaskTexts=\{([^}]*)\}").Groups[1].Value,"\"[^\"]+\"").Count==NativeWeaponSkins.FaceKeys.Length,
+            "MASKS offers each face gear (No mask among them), through the face setter");
+        Check(masksBody.Contains("if(hot&&repaint)lockerFaceTry=key;")&&portraitUi.Contains("lockerFaceTry!=null&&menuScreen==MenuScreen.Customize&&lockerTab==NativeLocker.Appearance?lockerFaceTry:null")
             &&ui.Contains("lockerBodyTry=null;lockerFaceTry=null;lockerToneTry=-2;}"),"hovering a mask tries it on the stage (cleared every repaint)");
         // The SKIN TONE row: one writer, try-ons through LookShown, no per-frame allocation in the draw.
         Check(Count(wheelUi+skins+ui+outfit,"NativeLook.WithSkin(prefs.look")==1&&wheelUi.Contains("private void SetSkinTone(int rgb,bool fromWheel=false){prefs.look=NativeLook.WithSkin(prefs.look,rgb);"),"SetSkinTone is the only writer of the tone");

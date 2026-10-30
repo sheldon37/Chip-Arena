@@ -94,7 +94,7 @@ internal static class LockerChecks
         const string choices="private int BodySkinChoices=>lockerBodySheldon?NativeBodySkins.Count:NativeBodySkins.SheldonIndex;";
         const string equippedRule="private int BodySkinEquipped(){int k=NativeBodySkins.Of(prefs.weaponSkins);return k<BodySkinChoices?k:NativeBodySkins.StandardIndex;}";
         Check(Count(skinsFile,setter)==1&&Count(skinsFile,choices)==1&&Count(skinsFile,equippedRule)==1,"one setter, one choice list and one equipped rule for the body");
-        Check(Count(skinsFile+ui,"SetBodySkin(")==5&&skinsFile.Contains("if(BodySkinEquipped()!=NativeBodySkins.PrototypeIndex)SetBodySkin(NativeBodySkins.Prototype);")&&skins.Contains("if(body)SetBodySkin(keys[k]);else prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&row.Contains("if(click&&!on)SetBodySkin(NativeBodySkins.Keys[i]);"),"the Skins card, the BODY SKIN row, a face gear pick (the Prototype body) and MASKS' no mask equip through SetBodySkin (its only callers)");
+        Check(Count(skinsFile+ui,"SetBodySkin(")==3&&!skinsFile.Contains("SetBodySkin(NativeBodySkins.Prototype)")&&skins.Contains("if(body)SetBodySkin(keys[k]);else prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,entry,keys[k]);")&&row.Contains("if(click&&!on)SetBodySkin(NativeBodySkins.Keys[i]);"),"the Skins card and the BODY SKIN row equip through SetBodySkin (its only callers; the face gear no longer puts on the Prototype body)");
         Check(skins.Contains("int count=body?BodySkinChoices:NativeWeaponSkins.Count;")&&skins.Contains("int equipped=body?BodySkinEquipped():")&&row.Contains("int equipped=BodySkinEquipped(),count=BodySkinChoices;"),"both pickers offer the same bodies and mark the same equipped one");
         Check(Count(skinsFile+ui,"NativeBodySkins.Entry,key")==1&&!Regex.IsMatch(row,@"prefs\.\w+=")&&!Regex.IsMatch(ui,@"prefs\.weaponSkins=(?!b\.Skins;)"),"nothing else in the Locker writes the body entry (Revert restores the whole map)");
         foreach(var bad in new[]{"SavePilot(","Save(","account.","SendServer(","LobbyBroadcast("})Check(!row.Contains(bad)&&!setter.Contains(bad),"the BODY SKIN row saves only through Save Pilot (no "+bad+")");
@@ -127,9 +127,9 @@ internal static class LockerChecks
         // On the model (owner 2026-10-28: "Remove Body Skin Options 'Prototype' and 'Sheldon Clothes' and just add 'Masks'
         // section"): Appearance's MASKS row picks no mask (Standard) or a face gear (the Prototype body), the Skins tab lists only
         // weapons, and the thumbnails are the model's (Tests/SkinToneChecks.cs pins the section itself).
-        Check(skinsFile.Contains("private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!=\"Classic\";")&&skinsFile.Contains("if(BodySkinEquipped()!=NativeBodySkins.PrototypeIndex)SetBodySkin(NativeBodySkins.Prototype);}")
+        Check(skinsFile.Contains("private bool LkOnModel=>ArenaPresentation.VisualBodyInstalled&&prefs.playerModel!=\"Classic\";")&&skinsFile.Contains("private void SetFaceGear(string key){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.FaceEntry,key);}")
             &&!skinsFile.Contains("LkFaceCard")&&!skinsFile.Contains("LkFaceRow")&&!ui.Contains("NativeWeaponSkins.FaceEntry")&&skinsFile.Contains("if(LkOnModel||skin>=LkFaceThumb)LkModelThumb(")
-            &&Body(skinsFile,"private void LkMasks(").Contains("k==0?NativeBodySkins.StandardIndex:LkFaceThumb+k-1"),"on the model the face gear is picked in MASKS, with the model's thumbnails");
+            &&Body(skinsFile,"private void LkMasks(").Contains(",null,out bool hot,LkFaceThumb+k);"),"on the model the face gear is picked in MASKS, with the model's thumbnails");
         {
             // The setter's rule, run engine-free on Core (NativeCosmeticRules.Allowed is NativeCosmeticGate.Allowed, section 2):
             // whatever was stored, a non-DEV pilot is offered, marked, keeps and saves no Sheldon Clothes, a live DEV pilot can
