@@ -212,22 +212,11 @@ Shader "ChipArena/NativeVfx"
             {
                 return 0.78 + 0.3 * (ambTop + sun) + 0.8 * flash;
             }
-            // Toon smoke, premultiplied: the lit tone, a darker and cooler shadow tone in the crescents, darker outlines; a saturated
-            // cloud adds a little of its own glow.
-            float4 VfxToonSmoke(float3 mask, float opacity, float3 albedo, float3 ambTop, float3 ambBottom, float3 sun, float3 flash, float glow)
-            {
-                float3 shade = (0.5 + 0.25 * ambBottom + 0.35 * flash) * float3(0.86, 0.9, 1.04);
-                float3 col = albedo * lerp(shade, VfxToonLight(ambTop, sun, flash), mask.y);
-                col = col * (1.0 - 0.28 * mask.z) + albedo * glow;
-                float a = mask.x * saturate(opacity);
-                return float4(col * a, a);
-            }
             // ---- the model's puffs (owner 2026-10-29: the blasts' smoke restyled for the model; the toon sheet keeps water and the
             // sprites) ----
             // A smoke or fire puff from the billowy atlas (R density, G baked light, B erosion threshold, A thin edge), as a mask:
             // x its coverage, thin and see-through at its billows' edges, dense in its core, eaten into wisps over its life; y its
-            // light, a soft terminator between
-            // two tones; z its thin rims, which catch the light (no outline).
+            // light, a soft terminator between two tones; z its thin rims, which catch the light (no outline).
             float3 VfxSoftMask(float4 tex, float u)
             {
                 float d = VfxDissolve(tex.r, tex.b, u);

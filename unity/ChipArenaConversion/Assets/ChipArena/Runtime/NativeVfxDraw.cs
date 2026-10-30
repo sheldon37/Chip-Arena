@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
         // A saturated cloud (toxic gas, acid fumes, Void's lilac ring) glows this much in its own colour.
         private const float CloudGlow=.35f;
         private const float DarkRim=3f;
-        private const float ChunkSelf=.3f,RockSelf=.08f,DebrisScale=1.1f,RockScale=.95f,HotLife=.35f,HotGain=2.2f,DustCover=.32f,DustSpeed=1.2f;
+        private const float ChunkSelf=.3f,RockSelf=.08f,DebrisScale=1.1f,RockScale=.95f,HotLife=.35f,HotGain=2.2f,DustCover=.32f,DustSpeed=1.2f,ChunkThick=.45f;
         private static readonly Color DustTone=new Color(.42f,.39f,.36f,0);
         private static readonly Color HotColor=new Color(1,.42f,.12f,0);
         // Flames burn in their own hue (FlameTint) and age slower in the puff (FlameAge), so a tongue stays hot for most of its
@@ -433,18 +433,18 @@ namespace ChipArena.UnityConversion
         private static Vector3 At(float[] o,int w)=>new Vector3(o[w],o[w+1],o[w+2]);
         private static Vector3 Edges(float[] o,int w)=>new Vector3(o[w+3],o[w+4],o[w+5]);
         private static Quaternion Turn(float[] o,int w)=>new Quaternion(o[w+6],o[w+7],o[w+8],o[w+9]);
-        // Rubble: flat-shaded chunks by seed, lit; the model's look (owner 2026-10-29) draws them finer than the cubes they replace
-        // and lets rock read as stone: only a trace of its own colour as emission, a seeded tone per chunk, and a faint trail of
-        // dust (two soft puffs behind it) while it flies fast. Fire-family debris (HotDebris) leaves the fireball glowing
-        // orange-hot and cools over its first HotLife of life; other bright (impact) pieces glow and cool by their colour, metal
-        // keeping a little of its own (ChunkSelf).
+        // Rubble: flat-shaded chunks by seed, lit; the model's look (owner 2026-10-29) draws them finer than the cubes they replace,
+        // never as flat cards (Thick), and lets rock read as stone: only a trace of its own colour as emission, a seeded tone per
+        // chunk, and a faint trail of dust (two soft puffs behind it) while it flies fast. Fire-family debris (HotDebris) leaves
+        // the fireball glowing orange-hot and cools over its first HotLife of life; other bright (impact) pieces glow and cool by
+        // their colour, metal keeping a little of its own (ChunkSelf).
         private void Chunk(float[] o,int w,int seed,float u,Color color,NativeFxRole role)
         {
             bool rock=role==NativeFxRole.Rock;var shape=chunks[(seed%NativeVfxMeshes.ChunkVariants+NativeVfxMeshes.ChunkVariants)%NativeVfxMeshes.ChunkVariants];Color emissive;
             if(role==NativeFxRole.HotDebris){float hot=Mathf.Clamp01(1-u/HotLife);emissive=HotColor*(HotGain*hot*hot)+color*ChunkSelf;}
             else{float lum=.2126f*color.r+.7152f*color.g+.0722f*color.b,hot=Mathf.Clamp01((lum-.3f)*2.2f)*(1-u)*1.2f;emissive=color*(hot+(rock?RockSelf:ChunkSelf));}
             float tone=rock?.78f+.4f*(((uint)seed*2654435761u)>>24)/255f:1;var at=At(o,w);
-            LitMesh(shape,at,Turn(o,w),Edges(o,w)*(rock?RockScale:DebrisScale),color*((rock?.9f:.85f)*tone),rock?.1f:.15f,rock?.2f:.25f,emissive,color*.6f+new Color(.04f,.04f,.05f,0));
+            LitMesh(shape,at,Turn(o,w),Thick(Edges(o,w))*(rock?RockScale:DebrisScale),color*((rock?.9f:.85f)*tone),rock?.1f:.15f,rock?.2f:.25f,emissive,color*.6f+new Color(.04f,.04f,.05f,0));
             if(!rock)return;
             int v=w+NativeBlastPool.VelocityAt;var velocity=new Vector3(o[v],o[v+1],o[v+2]);float fast=Mathf.Clamp01((velocity.magnitude-DustSpeed)/3f);if(fast<=0)return;
             var dust=Mix(color,DustTone,.55f);float size=o[w+3]*RockScale,floor=o[w+NativeBlastPool.FloorAt];
@@ -460,6 +460,9 @@ namespace ChipArena.UnityConversion
             if(rest>0){var lie=Quaternion.AngleAxis(((long)seed*137508L%360000L)*.001f,Vector3.up)*Quaternion.AngleAxis(-90,Vector3.forward);q=Quaternion.Slerp(q,lie,rest);}
             LitMesh(shard,At(o,w),q,e,color*CrystalAlbedo,CrystalSpec,CrystalGloss,color*CrystalGlow,color*CrystalRim);
         }
+        // A chunk's edge lengths with its thinnest at least ChunkThick of its longest: a voxel slab drawn as is read as a flat card
+        // flying, a chunk reads as a stone or a shard of metal.
+        private static Vector3 Thick(Vector3 e){float least=Mathf.Max(e.x,Mathf.Max(e.y,e.z))*ChunkThick;return Vector3.Max(e,new Vector3(least,least,least));}
         // Void's light-eating core: an opaque black orb (radius the particle's edge) with an HDR fresnel rim in its own hue,
         // the black hole's core look (NativeFieldPresentation).
         private void DarkCore(Vector3 at,float radius,Color color)
