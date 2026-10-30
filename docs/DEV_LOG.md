@@ -1,3 +1,44 @@
+## 2026-10-30 — Claude: the zombies' pace on the model, a stride for its own legs
+
+- **Branch/base:** `claude/zombie-model-pace` from shared `0f17175`. No PR; merged into shared and the builder.
+- **Task (owner):** "I think a lot of the issue is the sped up animations on the zombie" (after the gait pass below).
+- **Cause (measured offline, docs/ZOMBIE-MODELS.md 4e):** the cadence and reach were tuned for the voxel rig's .50 m legs, and the
+  model's feet follow the gait's footprints on legs 1.71 times as long. So the model took 2.95 steps of .51 m a second at a 1.5
+  m/s walk (a person about 2 of .75 m), and the takes played at 1.5 to 2.2 times their captured pace.
+- **Changes (presentation only, the model's Full tier only):**
+  - `NativeHordeGait.Legs`: the horde presentation sets the model's leg ratio for an add drawn on the model last frame. The Hulk
+    and the crawl keep their own strides; the voxel tiers keep 1.
+  - `StepRate(kind,v,legs)`: the rig's cadence at the same pace for longer legs (the Froude number), the root of their length
+    slower; the stance reach and the out-of-reach re-step scale with the legs. The walk and run take choice is unchanged.
+  - The rig's legs are posed on each footprint drawn in about its hip by that ratio (`Squeeze`; its sink, heel peel, landing
+    clamp and knee rules as before). The model's binding spreads the ankles back out (`NativeVisualRig.State.Stride`).
+  - `NativeVisualRig.OnReach`: a followed foot out of the leg's reach rises onto it (a long stride's toe-off) rather than the leg
+    falling short.
+- **Animation impacts:** the model's legs and the takes' playback only. Fewer, longer steps: shambler walk 2.95 → 2.06 steps a
+  second, runner sprint 5.11 → 3.04. The takes' pace falls from a mean of 1.59 to 1.09 times their capture, the fastest from 2.23
+  to 1.55; the sprints now play at .62 to .91. Footfalls (dust, step sounds) follow the model's steps. No hit timing, hitbox,
+  damage, cooldown, movement or network change. An add drawn on the voxel model keeps the rig's stride. An add on the model has
+  its rig's legs posed on the drawn-in footprints; effects on the rig's leg joints were already off the model's longer legs.
+- **Measured** (docs/ZOMBIE-MODELS.md 4e table):
+  - the model's ankles on the footprints (0.0 cm) and planted feet still (0.0 mm a frame);
+  - knees 21 degrees aside p95;
+  - the takes in step at the walk .78 worst, .90 mean;
+  - planted knees 30-34 degrees mean in a stride (the runner's sprint 46).
+- **Checks (actual):**
+  - CoreTests `--zombie-gait` runs on the model's legs now (6,858 checks: cadence on longer legs, footfalls, planted feet, the
+    takes' pace under 1.6, the runtime's wiring). Its "in step" measure reads each ankle from its own hip; the pelvis-relative
+    one mixed the pelvis's yaw into a stride spread fore and aft.
+  - `--zombie-posture` runs the gait as the runtime does for an add on the model. Its sprint bound is 48 degrees from 4 m/s; its
+    planted-mark measure skips feet the gait has in the air.
+  - `--zombie-loco`, `--zombie-flow`, `--zombie-twitch`, `--horde-roam`, `--hulk-motion`, `--hulk-charge`, `--horde-drops`,
+    `--visual-rig`, `--model-poses`, `--zombie-models` and `--zombie-gore` all pass.
+  - unity-check (runtime and editor build) OK.
+  - The five repo checks: RESULT_PLACEHOLDER.
+- **Not run:** Unity on the owner's PC: whether the walks read at a natural pace, whether the sprints read too slow, the
+  Full/Reduced tier crossing. A PC prompt asks for captures.
+- **Risks / next:** the sprints play under their pace on the model (a runner tempo on the model is a one-number change if they read
+  slow). The brute's limping walk-4 is a little less in step (.90 → .78).
+
 ## 2026-10-30 — Claude: zombie runs and sprints on the model, the legs in step and pointing forward
 
 - **Branch/base:** `claude/zombie-gait-model` from shared `d1a7f35` (started on `fdf42cb`, fast-forwarded before the first

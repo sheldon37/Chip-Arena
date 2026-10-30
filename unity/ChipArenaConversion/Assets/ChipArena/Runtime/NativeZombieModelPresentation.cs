@@ -42,7 +42,9 @@ namespace ChipArena.UnityConversion
             // Whether it crawls (its legs gone: the model's pelvis at the gait's height, NativeZombiePosture.Stance), how far its gait
             // sank its hips and its takes crouch them this pose, and how much of it a blow or a reel owns (NativeHordeGait Sunk,
             // Crouch, Busy).
-            public bool Crawl;public float Sunk,Crouch,Busy;
+            // (Stride: how far the gait drew this pose's ankles in about the hips, its stride planned for the model's legs:
+            // NativeHordeGait.LegsNow.)
+            public bool Crawl;public float Sunk,Crouch,Busy,Stride=1;
             // The spitter's sac and its swell as last written.
             public SkinnedMeshRenderer Sac;public float Swell=-1;
         }
@@ -60,6 +62,10 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether add `id` of `kind` draws on the model on `tier` (its wounds then go with the model's, not the voxel surface).</summary>
         private bool ZombieModelled(int kind,int tier)=>tier==NativeHordeModels.Full&&NativeZombieLooks.Modelled(kind)&&ZombieModelsOn;
         private bool ZombieModelDrawn(int id)=>zombieBodies.TryGetValue(id,out var z)&&z.PosedFrame>=Time.frameCount-1;
+        /// <summary>The legs add `id` of `kind` on `tier` has its stride planned for (NativeHordeGait.Legs, set before its gait poses):
+        /// its model's (the legs' ratio to the rig's) while it draws on the model (it did last frame), else the rig's own. (A model
+        /// not made yet draws the voxel model this frame, on the rig's stride.)</summary>
+        private float ZombieModelLegs(int id,int kind,int tier)=>ZombieModelled(kind,tier)&&zombieBodies.TryGetValue(id,out var z)&&z.Kind==kind&&z.Body.Root!=null&&z.PosedFrame>=Time.frameCount-1?z.Body.Binding.State.Rig.LegRatio:1;
 
         // ================================================================================================================
         // Posing (HordeKindAdd, HordeKindDeath): the model in place of the voxel model
@@ -68,13 +74,13 @@ namespace ChipArena.UnityConversion
         private bool ZombieModelPose(CapturedAnimation.Player rig,int id,int kind,int tier,bool planted,bool airborne,bool crawl,NativeHordeGait gait,int lost,int hidden,float flash,float glow,float swell)
         {
             if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind);if(z==null)return false;
-            z.Dying=false;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
+            z.Dying=false;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;z.Stride=gait?.LegsNow??1;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
         }
         /// <summary>A dying add's fall (HordeKindDeath, its rig posed from minionPose): its model, true; false: the voxel body falls.</summary>
         private bool ZombieModelDeath(CapturedAnimation.Player rig,int id,int kind,int lost,int hidden)
         {
             if(rig==null||!zombieBodies.TryGetValue(id,out var z)||z.Body.Root==null||z.Kind!=kind||!ZombieModelsOn)return false;
-            z.Dying=true;z.Sunk=z.Crouch=z.Busy=0;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
+            z.Dying=true;z.Sunk=z.Crouch=z.Busy=0;z.Stride=1;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
         }
         private void ZombieModelBind(ZombieBody z,CapturedAnimation.Player rig,bool planted,bool airborne,int lost,int hidden,float flash,float glow,float swell)
         {
@@ -85,7 +91,7 @@ namespace ChipArena.UnityConversion
             if(z.PosedFrame<Time.frameCount-1)z.Body.Binding.State.Forget();
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
-            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy);
+            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
             z.Body.Binding.Apply(pose,default(NativeVisualRig.Grasp),planted,airborne);
             ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;

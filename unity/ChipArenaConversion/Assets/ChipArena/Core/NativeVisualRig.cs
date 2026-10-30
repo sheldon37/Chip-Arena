@@ -243,7 +243,9 @@ namespace ChipArena.UnityConversion
             // crawl, its legs gone). Stand: how far (metres) the pelvis rises over its planted feet, as far as each planted leg
             // reaches with Room (KneeRoom unless set) to spare; Raise, how far it is raised this frame (it eases by RaiseStep a pose).
             // Follow: every foot goes to the game's ankle, a swinging one too (Foot), and every knee bends the game knee's way.
-            public bool Across, Level, Follow; public float Stand, Raise, Room=KneeRoom;
+            // Stride: how far the game's ankles sit drawn in fore and aft of their hips (NativeHordeGait.LegsNow: a stride planned for
+            // the model's legs, posed on the game's shorter ones): the game ankle's offset from its hip is spread back out by it.
+            public bool Across, Level, Follow; public float Stand, Raise, Room=KneeRoom, Stride=1;
             // Drops last frame's elbows and hands (a cut, a respawn, a weapon swap): the next pose is solved afresh.
             public void Forget() { HasLast=false; }
             public State(Rig rig)
@@ -791,7 +793,7 @@ namespace ChipArena.UnityConversion
                 {
                     int hip=side==0?CapturedRig.LHip:CapturedRig.RHip,vh=r.Of[hip],va=r.Of[hip+2];
                     if(vh<0||va<0) continue;
-                    Vector3 game=pose.WorldPosition[hip+2]; float above=game.Y-AnkleRest(hip);
+                    Vector3 game=GameAnkle(s,pose,hip); float above=game.Y-AnkleRest(hip);
                     float weight=1-CapturedClip.Ease((above-PlantedHeight)/(LiftedHeight-PlantedHeight));
                     if(weight<=0) continue; stood=true;
                     // (The hip as unraised: Positions placed it with last pose's rise.)
@@ -815,20 +817,39 @@ namespace ChipArena.UnityConversion
         // off the moved hip-ankle line turned up to 45 degrees aside about the leg, 130 on a long reach: the "weird directions".)
         // The weight returned is the plant's either way.
         public const float FollowAhead=.05f;
+        // The share of the leg's length a followed foot rises to be reached at, and that rise: `at` raised over its own spot until
+        // `hip` reaches it with `reach` (as it is when already reached, or when no rise reaches it).
+        public const float FollowReach=.995f;
+        public static Vector3 OnReach(Vector3 hip,Vector3 at,float reach)
+        {
+            float dx=at.X-hip.X,dz=at.Z-hip.Z,h2=dx*dx+dz*dz,dy=hip.Y-at.Y;
+            if(h2+dy*dy<=reach*reach||h2>=reach*reach||dy<=0) return at;
+            at.Y=hip.Y-(float)Math.Sqrt(reach*reach-h2); return at;
+        }
+        // The game ankle of the leg from `hip`, its offset fore and aft of its hip spread back out by State.Stride.
+        private static Vector3 GameAnkle(State s,CapturedRig.Pose pose,int hip)
+        {
+            Vector3 a=pose.WorldPosition[hip+2]; if(s.Stride==1) return a;
+            float z=pose.WorldPosition[hip].Z; a.Z=z+(a.Z-z)*s.Stride; return a;
+        }
         private static float Foot(State s,CapturedRig.Pose pose,bool left)
         {
             var r=s.Rig;
             int hip=left?CapturedRig.LHip:CapturedRig.RHip,knee=hip+1,ankle=hip+2;
             int vh=r.Of[hip],vk=r.Of[knee],va=r.Of[ankle];
             if(vh<0||vk<0||va<0) return 0;
-            Vector3 game=pose.WorldPosition[ankle];
+            Vector3 game=GameAnkle(s,pose,hip);
             float above=game.Y-AnkleRest(hip);
             float weight=1-CapturedClip.Ease((above-PlantedHeight)/(LiftedHeight-PlantedHeight));
             if(weight<=0&&!s.Follow) return 0;
             float rise=s.Follow?above*(weight+(1-weight)*r.LegRatio):above;
             Vector3 target=new Vector3(game.X,r.AlignedPosition[va].Y+rise,game.Z);
             if(!s.Follow) target=Vector3.Lerp(s.Position[va],target,weight);
-            Vector3 pole=s.Position[vk]-(s.Position[vh]+target)*.5f,fallback=pose.WorldPosition[knee]-(pose.WorldPosition[hip]+game)*.5f;
+            // (A followed foot the leg cannot reach where it stands, the trailing one lifting off behind a long stride or one reaching
+            // out to land, rises onto the leg's reach over its own spot rather than the straight leg falling short of it.)
+            else target=OnReach(s.Position[vh],target,(r.LegUpper+r.LegLower)*FollowReach);
+            // (The game knee's bend off the game's own leg, its ankle where the game posed it.)
+            Vector3 pole=s.Position[vk]-(s.Position[vh]+target)*.5f,fallback=pose.WorldPosition[knee]-(pose.WorldPosition[hip]+pose.WorldPosition[ankle])*.5f;
             if(s.Follow)
             {
                 Vector3 ahead=Vector3.Transform(CapturedRig.Z,pose.WorldRotation[CapturedRig.Pelvis]); ahead.Y=0;

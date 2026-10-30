@@ -145,8 +145,9 @@ namespace ChipArena.UnityConversion
         public int WalkClip=>walkClip;public int RunClip=>runClip;public int IdleClip=>idleClip;
         /// <summary>The capture clip and its time the last frame's blow played (-1: none or procedural), for the checks and effects.</summary>
         public int AttackClip{get;private set;}=-1;public float AttackClipTime{get;private set;}
-        /// <summary>Forgets the add (a new arena, a rewind, a jump): the next frame plants its feet where it stands.</summary>
-        public void Reset(){time=float.NaN;}
+        /// <summary>Forgets the add (a new arena, a rewind, a jump): the next frame plants its feet where it stands. (A pose the gait
+        /// did not make, a dive's or a climb's, has its legs as the rig's: LegsNow is 1 until the gait poses again.)</summary>
+        public void Reset(){time=float.NaN;legsNow=1;}
 
         private static float Sm(float x)=>MeleeMath.Smooth(x);
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
@@ -293,7 +294,7 @@ namespace ChipArena.UnityConversion
                 // A planted foot holds the hips down; a swinging one starts to as it comes down over its spot (by its landing it holds
                 // them fully), so the hips settle into a long stride's landing instead of dropping on its frame.
                 float hold=1;if(feet[i].Swing){if(heavy)continue;float s=Clamp01((f.Time-feet[i].T0)/Math.Max(1e-3f,feet[i].T1-feet[i].T0));hold=BossMath.Smoother((s-.35f)/.65f);if(hold<=0)continue;}
-                Vector3 local=ToLocal(FootWorld[i],f.Root);local.Y=f.Ground-f.Root.Y+AnkleHeight+(feet[i].Swing?0:feet[i].Y);var hipAt=p.WorldPosition[i==0?CapturedRig.LHip:CapturedRig.RHip];
+                var hipAt=p.WorldPosition[i==0?CapturedRig.LHip:CapturedRig.RHip];Vector3 local=Squeeze(ToLocal(FootWorld[i],f.Root),hipAt);local.Y=f.Ground-f.Root.Y+AnkleHeight+(feet[i].Swing?0:feet[i].Y);
                 float dx=local.X-hipAt.X,dz=local.Z-hipAt.Z,h2=dx*dx+dz*dz,dy=hipAt.Y-local.Y,R=.485f;float need=(h2>=R*R?dy-.05f:dy-(float)Math.Sqrt(R*R-h2))*hold;if(need>sink)sink=need;
                 // (A foot that stood planted before this frame must stay in reach now: the take's own hips can rise or lunge off it.)
                 if(!feet[i].Swing&&(Landed&(1<<i))==0){float must=h2>=LegReach*LegReach?dy-.05f:dy-(float)Math.Sqrt(LegReach*LegReach-h2);if(must>hard)hard=must;}
@@ -314,7 +315,8 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<2;i++)
             {
                 bool left=i==0;int hip=left?CapturedRig.LHip:CapturedRig.RHip,foot=hip+2;
-                Vector3 local=ToLocal(FootWorld[i],f.Root);local.Y=f.Ground-f.Root.Y+AnkleHeight+feet[i].Y;
+                // (A stride planned for the model's legs is posed on the rig's drawn in about the hip: Squeeze, NativeHordeLoco.Legs.)
+                Vector3 local=Squeeze(ToLocal(FootWorld[i],f.Root),p.WorldPosition[hip]);local.Y=f.Ground-f.Root.Y+AnkleHeight+feet[i].Y;
                 // The knee goes where the capture's knee goes (zombie knock knees and splay), never backward, and never more than
                 // KneeSplay aside about the leg's own line (a guard: on the straight walks and runs measured the knees stay within
                 // about 20 degrees anyway; the capture's knee off its own leg's line could otherwise swing a leg out sideways).
@@ -463,6 +465,8 @@ namespace ChipArena.UnityConversion
         {
             kind=NativeHordeKinds.Index(f.Kind);quad=kind==NativeHordeKinds.Crawler||f.Crawl||!NativeZombieMotion.Captured(kind);
             int gk=quad?NativeHordeKinds.Crawler:kind;var d=defs[NativeHordeKinds.Base(gk)];heavy=kind==NativeHordeKinds.Hulk&&!quad;
+            // (The legs the stride is planned for: the model's while it draws on them, NativeHordeLoco.Legs; never the Hulk's or a crawl's.)
+            legsNow=heavy||quad||!(Legs>1)?1:Math.Min(LegsMost,Legs);
             float dt=float.IsNaN(time)?0:f.Time-time;bool fresh=float.IsNaN(time)||id!=f.Id||dt<-.001f||dt>ResetGap;
             if(fresh)
             {
@@ -518,11 +522,11 @@ namespace ChipArena.UnityConversion
             {
                 // (The cadence follows the eased speed, but never lags far behind a burst of speed: a body that sets off takes
                 // quick steps, not long ones.)
-                float run=runNow,cv=Math.Max(gaitSpeed,.8f*Speed);rateHz=Lerp(WalkCadence(cv),NativeZombieMotion.Cadence(runClip,cv,kind),run)*cadence;
+                float run=runNow,cv=Math.Max(gaitSpeed,.8f*Speed);rateHz=Lerp(WalkCadence(cv),NativeZombieMotion.Cadence(runClip,cv,kind,legsNow),run)*cadence;
                 // A run's stance is short (a walking take run fast keeps its feet down no more than half the cycle), and no stance
                 // carries the hips past the legs' reach (NativeHordeLoco.StanceMost).
                 duty0=Lerp(WalkDuty(0),Math.Min(.55f,NativeZombieMotion.Duty(runClip,0)),run);duty1=Lerp(WalkDuty(1),Math.Min(.55f,NativeZombieMotion.Duty(runClip,1)),run);
-                duty0=Reachable(duty0,rateHz,Speed);duty1=Reachable(duty1,rateHz,Speed);
+                duty0=Reachable(duty0,rateHz,Speed,legsNow);duty1=Reachable(duty1,rateHz,Speed,legsNow);
                 // (The right foot strikes half a cycle after the left on every take: the takes are warped to it, NativeZombieMotion.Warp.)
                 off1=NativeZombieMotion.Offset(runClip,1);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
                 if(!moving)rateHz=0;
@@ -558,7 +562,7 @@ namespace ChipArena.UnityConversion
                     // (Moving, it lands on the stride's own beat, so a foot left behind falls back into step instead of skipping along.)
                     // (A walking foot left out of reach on its ball goes even while the other swings: a moment in the air, never
                     // a slide.)
-                    else if((Vector2.Distance(ft.W,home)>.45f+(quad?0:.25f*Clamp01(stride-1))&&!OtherSwinging(i,feetCount))||moving&&!quad&&overReach[i]){lift=true;swingTime=moving&&!quad?Math.Min(heavy?1.2f:.42f,(1-u)/Math.Max(.3f,rateHz)+.02f):.16f;}
+                    else if((Vector2.Distance(ft.W,home)>(.45f+(quad?0:.25f*Clamp01(stride/legsNow-1)))*legsNow&&!OtherSwinging(i,feetCount))||moving&&!quad&&overReach[i]){lift=true;swingTime=moving&&!quad?Math.Min(heavy?1.2f:.42f,(1-u)/Math.Max(.3f,rateHz)+.02f):.16f;}
                     if(lift){ft.Swing=true;ft.Scrape=false;ft.From=ft.W;ft.FromTurn=Wrap(ft.Turn-Yaw);ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(heavy?1.2f:.5f,swingTime));ft.Cycle=cycle;ft.Lift=heavy?(moving?HeavyLift(Speed):.06f):(moving?Lerp(d.Lift,d.RunLift,RunBlend(gk,Speed)):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
                 }
                 if(ft.Swing)
@@ -794,7 +798,7 @@ namespace ChipArena.UnityConversion
                 if(h>most&&h>1e-4f)
                 {
                     float k=most/h;target.X=hipAt.X+hx*k;target.Z=hipAt.Z+hz*k;flat=target;
-                    var w=ToWorld(target,f.Root);feet[i].W=new Vector2(w.X,w.Z);FootWorld[i]=new Vector3(w.X,f.Ground,w.Z);
+                    var w=ToWorld(Spread(target,hipAt),f.Root);feet[i].W=new Vector2(w.X,w.Z);FootWorld[i]=new Vector3(w.X,f.Ground,w.Z);
                 }
             }
             float heel=0;

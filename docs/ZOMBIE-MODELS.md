@@ -341,6 +341,72 @@ mid-stance.
 **For Unity on the PC:** the runner's and shambler's sprints (both feet should alternate under the hips, knees forward, a short
 flight between steps), the brute's and Hulk's walk-4 (the limp in step), and the spitter breaking into a run and stopping.
 
+## 4e. The pace: a stride for the model's own legs (2026-10-30, `claude/zombie-model-pace`)
+
+Owner (2026-10-30): "I think a lot of the issue is the sped up animations on the zombie".
+
+**Why** (measured offline). The gait's cadence and reach were tuned for the voxel rig's .50 m legs, and the model's feet follow
+the gait's footprints (4d). The model's legs are 1.71 times as long (.85 m), so it took a short-legged body's steps: 2.95 steps of
+.51 m a second at the shambler's 1.5 m/s walk, where a person takes about 2 of .75 m. Each take is played at that cadence over
+its own, so the walking takes ran at 1.5 to 2.2 times their captured pace: 2.0 for chase-1 at the walk, 2.2 for chase-2 at the
+shambler's run, 1.5 for sprint-2 at the runner's.
+
+**The fix** (presentation only, the model's Full tier only: no rule, timing, hit volume, damage, cooldown, movement or network
+value changes; an add drawn on the voxel model, on the Reduced and far tiers or of a kind not modelled, keeps the rig's own stride.
+The rig of an add on the model is posed on the drawn-in footprints below. Effects placed on its leg joints (an arrow lodged in a
+leg) were already off the model's 1.7-times-longer legs, and stay so):
+- `NativeHordeGait.Legs`: the legs the stride is planned for, as a multiple of the rig's. The horde presentation sets it each
+  pose to the model's ratio (`Rig.LegRatio`) for an add drawn on the model last frame, else 1. The Hulk keeps its own heavy
+  stride and a crawl its own.
+- `StepRate(kind, v, legs)`: longer legs step as the rig's do at the speed that is the same pace for them (the speed over the
+  root of the legs, the Froude number), their time the root of their length slower. The cadence falls by legs^-.675 and the
+  steps lengthen by legs^.675. The stance reach (`StanceMost`) and the out-of-reach re-step scale with the legs. The walk and
+  run take choice is unchanged (by the authority's speed), so each kind keeps its takes.
+- The rig cannot reach those footprints, so its legs are posed on a copy of each footprint drawn in fore and aft of its hip by
+  the same ratio (`Squeeze`). Its sink, heel peel, landing clamp and knee rules work as before on that copy. The model's binding
+  spreads the ankle back out (`NativeVisualRig.State.Stride`, from `NativeHordeGait.LegsNow`), so the model's feet land on the
+  footprints. Its knee keeps the gait's own leg's bend.
+- `NativeVisualRig.OnReach`: a followed foot the leg cannot reach where it stands rises onto the leg's reach over its own spot,
+  rather than the straight leg falling short of it. This happens to the trailing foot lifting off behind a long run stride (up
+  to 5 cm, a toe-off) and to one reaching out to land.
+
+**Measured** (the rig's legs → the model's; world m/s; steps a second and step length from `StepRate`; the takes' pace is each
+playing take's playback rate over its capture; the bloater and the crawler draw on the voxel model and are unchanged):
+
+| kind | gait (m/s) | steps/s | step (m) | the takes' pace |
+|---|---|---|---|---|
+| shambler | walk (1.50) | 2.95 → 2.06 | .51 → .73 | chase-1 2.02 → 1.41, chase-2 1.67 → 1.17, chase-1-full 2.11 → 1.47 |
+| shambler | run (3.40) | 3.93 → 2.74 | .87 → 1.24 | sprint-3 .98 → .68, chase-2 2.23 → 1.55 |
+| runner | walk (2.60) | 3.58 → 2.49 | .73 → 1.04 | sprint-3 .89 → .62, sprint-2 1.07 → .75 |
+| runner | run (4.60) | 5.11 → 3.04 | .90 → 1.51 | sprint-3 1.28 → .76, sprint-2 1.53 → .91 |
+| spitter | walk (1.60) | 2.87 → 2.00 | .56 → .80 | chase-1 1.96 → 1.37, walk-6-full 1.72 → 1.20 |
+| spitter | run (2.90) | 3.53 → 2.46 | .82 → 1.18 | chase-2 2.00 → 1.39, sprint-3 .88 → .62 |
+| brute | walk (1.30) | 2.53 → 1.76 | .51 → .74 | walk-6-full 1.52 → 1.06, walk-4 1.68 → 1.17 |
+| brute | run (2.40) | 3.13 → 2.18 | .77 → 1.10 | chase-2 1.77 → 1.24, chase-5-full 1.72 → 1.20 |
+| hulk | walk, run | unchanged (its heavy stride) | | .72 to .78 |
+
+Across the modelled kinds' walks and runs, the mean take pace goes from 1.59 to 1.09 times the capture and the fastest from
+2.23 to 1.55. The sprints now play under their captured pace (.62 to .91): they were acted at 4 steps a second, faster than a
+person runs at these speeds (2.5 to 3).
+
+On the measured skeleton as the runtime binds it (`--zombie-gait`, five kinds, walk and run, up to four take pairs each):
+- the model's ankles land on the footprints (0.0 cm) and a planted foot stands still (0.0 mm a frame);
+- every step has a footfall, and the cadence is the planned one (within 8 %);
+- the knees stay forward (21 degrees aside p95);
+- the takes stay in step at the walk (each ankle fore and aft of its own hip: .78 worst on the limping walk-4, .90 mean). On the
+  rig's legs this is .81 worst and .90 mean; the brute's walk-4 drops from .90 to .78 (its marks give its dragged right foot
+  half a cycle).
+
+The posture on the model's stride (`--zombie-posture`, which now runs the gait as the runtime does):
+- planted knees in a stride 30 to 34 degrees mean (the Hulk's 36 and 42 as before; the runner's sprint 46, as a sprinter's at
+  mid-stance, its bound 48 from 4 m/s);
+- resting knees 20;
+- the planted ankles on their marks.
+
+**For Unity on the PC:** whether the walks now read at a natural pace, and whether the sprints read too slow (if they do, a
+tempo for the runner on the model is a one-number change). Also check that no foot slides or pops when an add crosses between
+the Full tier (model) and the Reduced tier (voxel): the stride switches with it.
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
@@ -354,6 +420,8 @@ flight between steps), the brute's and Hulk's walk-4 (the limp in step), and the
 - The Hulk's growth: its first body per variant builds the mesh on the main thread (tens of ms, once); a prewarm would hide it.
   The growth has no own wounds (hits on it show the body's) and its voxel tier is the old Hulk.
 - A head burst (`HeadGib`) still leaves the gore's own stump and fountain on the model's collapsed neck.
+- The sprints play at .62 to .91 of their pace on the model's stride (4e); a faster tempo for the runner on the model is open
+  until the owner sees it.
 - The run sets still include walking chases (chase-2, chase-1, chase-5) played fast. Their feet now lift on their own arcs, but
   their trunk keeps the walk's rhythm (section 4d). A run set of the sprints alone would change the kinds' character: the owner's
   call.
@@ -366,7 +434,8 @@ bones, model gore parts).
 `--zombie-gore` admits the new presentation file among the gore's readers.
 `--zombie-posture` measures the model fit (4b, 4c: the planted knee in a stride, a busy pose's crouch kept, the rise holding in
 flight) and pins its wiring; it runs `--zombie-gait` too (4d: the takes' warps, offsets, stances and swing arcs; the model's
-ankles on the gait's, the feet's speed, the knees, the feet alternating, the takes in step; the follow flag and the knee clamp). `--zombie-models` also builds the Hulk's growth on a mannequin (placement, frames, sizes, the clubs,
+ankles on the gait's, the feet's speed, the knees, the feet alternating, the takes in step; the follow flag and the knee clamp;
+4e: the stride on the model's legs, its cadence and footfalls, planted feet still, the takes' pace and the runtime's wiring). `--zombie-models` also builds the Hulk's growth on a mannequin (placement, frames, sizes, the clubs,
 smooth trunk, winding, bones and weights, determinism, its build time).
 
 None of these is a Unity render. Visual quality, foot contact on the model, crowd cost and multiplayer views are verified only in
