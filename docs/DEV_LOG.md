@@ -22,7 +22,9 @@
   - `CoreTests --suit` (new, 23 checks) and `--hats` pass.
   - Updated pins: `BodySkinChecks` and `CyberLordAuraChecks` (the new map entry), `LockerChecks` (the outfit section's
     height).
-  - Full CoreTests on a clean LF checkout: see the merge entry below.
+  - Full CoreTests on a clean LF checkout of `0269e949`: 880 PASS lines, 35 managed-core checks, rc 0. `git diff --check`
+    clean.
+  - Also updated: the `CyberLordAuraChecks` entry-order pin.
   - Offline probe over the rest body dumped from Unity.
   - Unity Editor (local tool v242, Factory): the suit on the player with a pistol and with a sword and cap, front, back and
     face views, and a Locker capture showing its preview and the SUIT row.
