@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-31 Claude new stages M1 (`claude/new-stages`, from shared `0cd720e`; merged into shared and the builder; docs and draft scripts only, nothing wired in; docs/arenas/NEW-STAGES.md): five stages and a Training Room planned and blocked out with checked draft generators. Breakwater (flat 1v1), Pier 9, Skyframe, Deepwell, Polaris and Calibration Bay. Next: Astra integrates (hazards, kill volumes, selection, the Training Room mode), then Claude's looks and dressing per stage; the owner confirms the lineup.
+
 2026-10-30 Claude faces on the model (`claude/faces`, from shared `90cafedb`; merged into shared and the builder; presentation only; docs/BOZO-INTEGRATION.md "Faces"): the pack's expression shapes driven at last; pilots focus, shout, wince, grin, smile in the menus, blink and close their eyes in death; zombies moan, bare their teeth, bite, roar, wince and go slack. Next: owner check in the Windows build.
 
 2026-10-30 Claude the Hulk in detail (`claude/hulk-detail`, from shared `d327f1e1`; merged into shared and the builder; presentation only; docs/ZOMBIE-MODELS.md 4f): the grown flesh rebuilt as anatomy (each muscle its own form meeting in creases, veins, torn skin, spurs) with the worn skin and clothes it covers dropped (nothing shows through), the women's top a painted chest wrap, the neck meeting the head under the jaw in the head's tone; fists clenched, hardest in a blow; the Hulk's hips carried on a spring (no frame drops). Next: owner check in the Windows build.
