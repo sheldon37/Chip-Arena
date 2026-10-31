@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private NativeExpeditionAreaTransfers splitTransfers;
         private readonly Dictionary<string,ExpeditionSession> splitSessions=new Dictionary<string,ExpeditionSession>();
         private readonly Dictionary<string,ExpeditionCommandRouter> splitRouters=new Dictionary<string,ExpeditionCommandRouter>();
-        private int splitLoop;private NativeSeat[] splitSeats;private NativeExpedition splitRun;private long splitTick,splitReturn;
+        private bool deploymentInitialReady;private int splitLoop;private NativeSeat[] splitSeats;private NativeExpedition splitRun;private long splitTick,splitReturn;
         private bool ExpeditionSplit=>splitAreas!=null;
         private bool SplitLocalLoading=>ExpeditionSplit&&arena?.Local==null;
         private NativeArena SplitPilotArena(string who)=>splitCohorts==null?null:splitAreas.Find(splitCohorts.Member(who)?.Area)?.Arena;
@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         private void StartSplitAreas(ExpeditionSession initial,NativeSeat[] seats)
         {
             // The validated loader has already checked each map's native geometry.
-            arena.Dispose();arena=null;match=null;splitRun=initial.Run;splitSeats=seats;splitTick=splitReturn=0;splitLoop=0;
+            arena.Dispose();arena=null;match=null;splitRun=initial.Run;splitSeats=seats;splitTick=splitReturn=0;splitLoop=0;deploymentInitialReady=deploymentBundle==null;
             splitRun.EnableAreas();
             splitCohorts=new ExpeditionCohorts(splitRun.PartySnapshot().run,splitRun.PartySnapshot().epoch,expeditionM1Layout.compatibility,expeditionM1Layout.areas.Select(a=>a.id));
             foreach(var seat in seats)splitCohorts.Add(seat.access.AccountId,expeditionM1Layout.world);
@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
             });
             foreach(var area in expeditionM1Layout.areas)
             {
-                var runtime=splitAreas.Acquire(area.id);var sim=runtime.Arena;sim.LocalId=1;
+                var runtime=splitAreas.Acquire(area.id);var sim=runtime.Arena;sim.GeneratedRun=deploymentBundle;sim.LocalId=1;
                 var session=new ExpeditionSession(splitRun.ForArea(area.id),content);
                 session.Sources.Seat=SplitSeat;session.Sources.DisplayName=id=>seats.FirstOrDefault(p=>p.access?.AccountId==id)?.name;
                 var director=new ExpeditionDirector(session,expeditionM1Layout,id=>sim.Pilots.FirstOrDefault(p=>p.Seat.id==SplitSeat(id)) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,sim.ExpeditionVisible,100,100,60);
@@ -109,6 +109,11 @@ namespace ChipArena.UnityConversion
                 if(!own.Ready&&StageLoadProgress>=0)
                     expeditionLoadReports.Accept(own.Account,own.Ticket,false,own.Connected,StageLoadProgress,Time.unscaledTime);
                 if(!own.Ready&&splitAreas.Find(own.Ticket.area)?.Load==ExpeditionRuntimeLoad.Ready&&ReferenceEquals(stageSeen,arena)&&StagePresentationReady&&StagePresentation.Generation==arena.Generation)splitCohorts.Acknowledge(own.Account,own.Ticket);
+                if(!deploymentInitialReady)
+                {
+                    deploymentInitialReady=splitCohorts.Members.Where(m=>m.Connected).All(m=>m.Ready);
+                    if(!deploymentInitialReady){pending=new InputFrame();ExpeditionView=SplitView(account.Access.AccountId);return;}
+                }
                 var before=splitCohorts.Members;
                 splitTransfers.Step(splitRun.Elapsed,id=>splitRun.PartySnapshot().members.FirstOrDefault(m=>m.account==id),id=>splitRun.PartySnapshot().instances.Single(i=>i.id==id).cleared?ExpeditionJoinClosedReason.Cleared:ExpeditionJoinClosedReason.Open);
                 foreach(var group in splitCohorts.Members.Where(m=>before.Single(p=>p.Account==m.Account).Area!=m.Area).GroupBy(m=>(source:before.Single(p=>p.Account==m.Account).Area,destination:m.Area)))
@@ -194,7 +199,7 @@ namespace ChipArena.UnityConversion
                 var view=SplitRecipient(who);var frame=SplitFrame(who);
                 // One replaceable recipient snapshot keeps public/private/arena state coherent
                 // and cannot fill the reliable command queue during a slow write.
-                var packet=NativeFrameBudget.Encode(frame,networkEpoch,view.Public,view.Private);
+                var packet=NativeFrameBudget.Encode(frame,networkEpoch,view.Public,view.Private,deploymentRoom?.Ticket);
                 if(packet==null)throw new InvalidOperationException("Area snapshot exceeded its budget.");peer.Connection.SendEncoded(packet,true);
             }
         }

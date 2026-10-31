@@ -22,6 +22,7 @@ namespace ChipArena.UnityConversion
 
         private void EnsureExpeditionLayout()
         {
+            if(deploymentBundle!=null){expeditionLayout=deploymentBundle.Layout;expeditionLayoutFingerprint=deploymentBundle.Identity;expeditionLayoutRead=true;return;}
             if(expeditionLayoutRead||content==null)return;expeditionLayoutRead=true;
             try{var asset=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName);if(asset!=null){expeditionLayout=NativeExpeditionLayout.Parse(asset.text);expeditionLayoutFingerprint=NativeExpeditionLayout.Compatibility(asset.text,content);}}
             catch(System.Exception e)when(e is System.FormatException||e is System.ArgumentException||e is System.InvalidOperationException){Debug.LogWarning("Expedition layout presentation disabled: "+e.Message);expeditionLayout=null;}

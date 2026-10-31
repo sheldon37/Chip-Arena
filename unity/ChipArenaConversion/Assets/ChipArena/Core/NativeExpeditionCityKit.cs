@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
     {
         public const string MapId="expedition-city",Prefix="expedition-city-";
         /// <summary>Whether a map id is the town: every town hook is inert on any other map.</summary>
-        public static bool Active(string mapId)=>mapId==MapId;
+        public static bool Active(string mapId)=>mapId==MapId||mapId==NativeExpeditionGeneratedWorld.MapId;
         public const byte DriveSteady=0,DriveFlicker=1,DriveFire=2,DriveBlink=3,DriveStrobe=4,DriveTv=5,DrivePolice=6,DriveBulbs=7;
         public const byte RoleFacade=0,RoleGround=1,RoleClutter=2,RoleSpawnDoor=3,RoleVent=4,RoleRoof=5,RoleVehicle=6,RoleSanctuary=7,RoleBreach=8,RoleSign=9,RoleLamp=10,RoleGate=11,RoleHigh=12,RoleLandmark=13;
         public const byte GlowLamp=0,GlowLampFlicker=1,GlowFire=2,GlowBrazier=3,GlowNeon=4,GlowCold=5,GlowWarning=6,GlowBeacon=7,GlowPolice=8,GlowBulbs=9,GlowWindowFire=10,GlowFlood=11;

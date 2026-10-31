@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         private bool ExpeditionM1=>expeditionDirector!=null;
         private void StartExpeditionM1()
         {
-            if(!ModsReady||deploymentRoom!=null)return;
+            if(!ModsReady||deploymentRoom!=null&&!deploymentLaunch)return;
             if(server!=null||dedicated)return;
             var party=peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).ToArray();
             var host=SanitizedSeat(1,Profile(),account?.Token);
@@ -23,16 +23,16 @@ namespace ChipArena.UnityConversion
             foreach(var guest in party){guest.Loading.Begin("start:"+(networkEpoch+1),NetworkNow);guest.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-starting",epoch=networkEpoch+1}));}
             try
             {
-                EndPreview();ClearReplay();ResetExpeditionNetwork();arena?.Dispose();arena=null;match=null;expeditionDirector=null;expeditionError=null;
+                LeaveLiveDeployment();EndPreview();ClearReplay();ResetExpeditionNetwork();arena?.Dispose();arena=null;match=null;expeditionDirector=null;expeditionError=null;
                 Time.timeScale=1;endFlow.Reset();presentation.ResetPresentation();
                 var layoutText=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName)?.text;
-                expeditionM1Layout=NativeExpeditionLayout.Parse(layoutText);
+                expeditionM1Layout=deploymentBundle?.Layout??NativeExpeditionLayout.Parse(layoutText);
                 expeditionHorde=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text);
                 match=new NativeMatch(content){Cooperative=true,Teams=true,ShowIntros=false,FinalKillcams=false};
                 foreach(var member in seats){member.team=0;member.chips.Clear();match.Seats.Add(member);}var seat=host;
                 networkEpoch++;inputSequence=0;
                 match.Seats.Add(new NativeSeat{id=900,name="TEST Expedition Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
-                arena=new NativeArena(content,match,expeditionM1Layout.Area(expeditionM1Layout.world).map){LocalId=1};
+                arena=new NativeArena(content,match,expeditionM1Layout.Area(expeditionM1Layout.world).map){LocalId=1,GeneratedRun=deploymentBundle};
                 if(!match.Start())throw new InvalidOperationException("Expedition arena could not start.");
                 expeditionM1Layout=arena.LoadExpeditionM1Layout(layoutText,expeditionHorde);
                 // Three times the original 12-kill preview quota before each instance boss.
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
                 menu=false;pending=new InputFrame();sprint=false;pitch=12;expeditionScreenOpen=false;
                 Notice("Expedition · F to interact · J for party votes or extraction · C for your chip choices.");
             }
-            catch(Exception e){Debug.LogException(e);expeditionError=e.Message;networkStatus="Expedition M1 refused: "+e.Message;arena?.Dispose();arena=null;match=null;expeditionDirector=null;ResetExpeditionNetwork();menu=true;}
+            catch(Exception e){Debug.LogException(e);expeditionError=e.Message;networkStatus="Expedition M1 refused: "+e.Message;arena?.Dispose();arena=null;match=null;expeditionDirector=null;ResetExpeditionNetwork();deploymentLaunch=false;menu=true;}
         }
         private bool ExpeditionM1Load()
         {
@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
                     foreach(var p in arena.Pilots)if(vitals.TryGetValue(p.Seat.id,out var v)){p.Hp=v.Hp;p.Mana=v.Mana;p.Stamina=v.Stamina;p.Ammo=v.Ammo;}
                     arena.RestoreExpeditionMembers();
                     Physics.SyncTransforms();
-                    if(NativeExpeditionLayout.Compatibility(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text,content)!=ticket.layout)throw new InvalidOperationException("Layout changed during load.");
+                    if((deploymentBundle?.Identity??NativeExpeditionLayout.Compatibility(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text,content))!=ticket.layout)throw new InvalidOperationException("Layout changed during load.");
 
                     expeditionLoadedGeneration=barrier.generation;
                 }

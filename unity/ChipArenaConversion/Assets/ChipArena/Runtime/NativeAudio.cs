@@ -124,7 +124,7 @@ namespace ChipArena.UnityConversion
             }
             // The DEV hazard kit gallery's music lock (Sandbox only): the boss song from the gallery's own clock, for its beat.
             else if(!double.IsNaN(NativeHazardKitWorld.GallerySongAt(arena)))Track("music/black-siren-protocol",Music*.55f,false,arena.BossTrack.Looped(arena.Time-NativeHazardKitWorld.GallerySongAt(arena)),arena,NativeHazardKitWorld.GallerySongAt(arena));
-            else if(arena.MapId=="expedition-city")Track("music/safe-hub-under-siege",Music*.55f);
+            else if(NativeExpeditionCityKit.Active(arena.MapId))Track("music/safe-hub-under-siege",Music*.55f);
             else if(arena.MapId=="expedition-foundry"||arena.MapId=="expedition-ironworks")Track("music/foundry-of-the-dead",Music*.55f);
             else if(arena.MapId=="expedition-transit")Track("music/subway-arrival-chime",Music*.55f);
             else if(arena.Pve!=null)Track("music/restricted-zone-pulse",Music*.55f*NativeStageMusic.Dip(match.Phase,true),!NativeStageMusic.Plays(match.Phase,true,false));

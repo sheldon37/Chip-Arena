@@ -1,3 +1,14 @@
+## 2026-10-31 — Astra: live Deployment Station and generated-run integration
+
+- Branch/base: `codex/deployment-completion`, from pushed continuation `c9039362`; merged Claude station branch `654c4f85` locally, preserving both handoffs and test entry points.
+- Bound Claude's station to authenticated room state, actual party appearances/readiness and host intents. Destination rolls construct/cache the detached generated run bundle. Deploy locks the identity, enters native validation and the existing loading pipeline. Optional mutators deferred by the owner; no effect or reward assumptions introduced.
+- Shared generated layout/map/hub used by all host split areas, guest PvE and gates, world/door presentation and reconnect reconstruction. Added ticket payload to combined snapshots and lobby codecs, including empty-ticket cleanup on return. Capability 2 fences old staging-only clients. Initial generated simulation waits for all connected load acknowledgements; later subset transfers remain independent.
+- Native gate expanded for full composed-layout geometry validation and Unity lobby/snapshot ticket round trips. Managed bundle tests cover detached catalogues, deterministic identity, deployed restore, tampered-digest rejection and reroll invalidation.
+- Local implementation commit: `8a33a779`. Push to the existing `sheldon37/Chip-Arena` repository on `codex/deployment-completion` was blocked by automatic approval review: it required explicit authorization for that destination/source disclosure. No remote branch, PR, shared merge or builder update was created. Do not bypass that rejection through another transport.
+- Final verification: full managed/real-relay suite PASS, exit 0 (886 PASS lines; all 35 managed-core checks). .NET build has zero warnings/errors. Deployment 3,674 checks, station presentation 436,266 checks, models 1,987 checks pass. Python: 167 tests, OK with one skip; package validation: 2,881 files. Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes. No Unity Editor execution, Windows play, native PhysX, shader compilation or test-channel publication claimed. Active-run endpoint migration remains unsupported; Claude's generated district dressing/transition pass remains. Existing staging host promotion keeps its ticket.
+- Final lifecycle fix: explicitly leave the station presentation and restore the camera before arena startup or station exit; all three pinned Unity semantic assembly compiles pass after this fix.
+- Combat damage, hitboxes, attack timing, cooldowns and animation curves unchanged. Generated-world topology and initial loading behavior change as requested. Source branch remains draft pending native and multiplayer acceptance; no shared/builder merge.
+
 ## 2026-10-31 — Astra: Deployment Station generated blockout and stage acceptance continuation
 
 - Delivery follow-up: owner explicitly authorized GitHub pushes. Command-line Git has no write credentials in this host; publish the identical validated tree through the connected GitHub API. Earlier rejection notes below are historical.
@@ -16,6 +27,60 @@
 - Actual checks: focused managed suite PASS (49 deployment checks); CoreTests build zero warnings/errors; pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compile PASS. Full managed/real-relay regression PASS: 884 PASS lines, final 35 managed-core checks, exit 0. The normal runner initially failed in the .NET CLI Process.StartTime lookup (environment); using its supported compiled-assemblies arguments avoids that CLI failure. Added native JsonUtility/codec/promotion checks; compiled, not executed in Unity.
 - Incomplete scope: full generated playable map/manifest/nav/collision and static-city-equivalent seed validation, generated map runtime loading/handshake, readiness-to-Deploy startup, active-run endpoint migration, station presentation and approved mutator rules. This is deliberately a draft continuation, not completion of the owner's entire Astra list. No generated geometry or working scene is claimed. Windows/PhysX/two-client play unrun.
 - Gameplay timing, hitboxes, damage, cooldowns and animation unchanged. No live release, account mutation, shared merge or test-feed publication. Follow-up must finish the generated-world path before enabling the station in menus.
+## 2026-10-31 — Claude: the Deployment Station drawn (models, scene, console, DEV preview)
+
+- **Branch/base:** `claude/deployment-station`, stacked on Astra's draft PR #302
+  (`codex/expedition-deployment-machines-20261031`, head `0f23c87`, base shared `3323310`).
+  - Presentation rules: `7a4acf3`, `b254aef`.
+  - Runtime work: `31b495f` (Core), `d8032d5` (Runtime), `ca8162d` (checks), `7046f6f` (docs).
+  - Review fixes: `1f380ce`.
+  - Pushed. **Not merged into shared or the builder:** #302 is still a draft, and this branch carries its commits. Merge
+    this branch after #302 lands. Not released.
+- **Changes:**
+  - **Core:** `NativeDeployModels` (both machines, the reel drum and rims, the card dial, the holo war-table, pads, the
+    DEPLOY gate with doors and lift, the console and the room). `NativeDeployArt` (reel symbols, mutator cards, stamps, and a
+    chamfered monoline A-Z). `NativeDeployStage` with `NativeDeployClock` (the per-frame pose; no allocation).
+  - **Runtime:** `NativeDeployScene`, `NativeDeployCast`, `NativeDeployConsoleUI`, `NativeDeployPreview`
+    (`--ca-deploy-preview`, a local authority) and `Resources/NativeDeployScreen.shader`.
+  - **Shared files:** one-line hooks in ConversionGame (GuiFrame, MenuBackdrop) and in VisualOutfitOf and SeatWeaponSkins.
+    The overview and deploy shots are reframed.
+  - **Review fixes (`1f380ce`):**
+    - The screen shader had a variable named `line`, which HLSL reserves; it is renamed, and a check now rejects
+      reserved words.
+    - The Deploy light columns were solid double-sided tubes that washed out the Deploy shot. They are now soft
+      camera-facing shafts.
+    - With more than four party members, the console's readiness chips overlapped; they now narrow to fit one row.
+  - **Docs:** docs/EXPEDITION-DEPLOYMENT.md "Runtime presentation" (including what Astra wires).
+- **Affected systems:**
+  - The menu backdrop and GUI change only behind the DEV flag.
+  - The visual body's outfit and skin lookups gain a branch for the deploy actor ids (-500 to -507).
+  - No change to the simulation, the authority, the network, saves or the Expedition start flow.
+  - No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks (actual, on `1f380ce`):**
+  - `CoreTests --deploy-models` 1,985 PASS; `--deploy-presentation` 436,266 PASS; `--expedition-deployment` 26 PASS.
+  - `unity-check` (Runtime and Editor against Unity 6000.3.24f1): OK.
+  - The relay suite (`tools/check_relay.py`, test timeout 900 s): 886 PASS lines, exit 0, 415 s; build 0 errors.
+  - Python: 167 tests OK (1 skipped).
+  - `tools/package_source.py`: the source zip builds (removed afterwards).
+  - `git diff --check` from `b254aef`: clean after stripping one blank line's trailing spaces (whitespace only, after the
+    suites ran).
+  - Offline WebGL renders of the Core meshes posed by the stage were reviewed and iterated, including after the shaft fix.
+    They emulate the Lambert, stage block, ACES, fog and bloom path, use stand-in pilot figures, and are not committed.
+- **Not run:**
+  - the Unity Editor or player;
+  - any Unity compile of the new shader;
+  - Windows;
+  - the cast on the real visual body;
+  - multiplayer.
+- **Risks:**
+  - `NativeDeployScreen.shader` has only had a text check.
+  - About 150 non-instanced draws per frame.
+  - The console layout at ultrawide, and bloom and fog tuning, are unchecked in Unity.
+  - The door leaves slide inside the pillars.
+- **Next:**
+  1. Astra takes #302 out of draft and merges it; then this branch merges into shared and the builder.
+  2. The owner tries `--ca-deploy-preview` on the PC.
+  3. Astra wires the live room: state, the `NativeDeployClock` times, readiness, catalogs and the console's intents.
 
 ## 2026-10-31 — Claude: CI time for the managed tests after the M1 stages
 

@@ -93,6 +93,26 @@ namespace ChipArena.UnityConversion
             Check(!room.Execute("guest",0,ExpeditionDeploymentIntent.RollInstances),"room rejects guest");
             Check(room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"room rolls validated live pool");
             Check(!room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"duplicate roll rejected by revision");
+            var originalMaps=content.maps;
+            var bundle=ExpeditionRunBundle.Build(room.Ticket,content,layoutJson);
+            Check(ReferenceEquals(content.maps,originalMaps)&&!content.maps.Any(m=>m.id==NativeExpeditionGeneratedWorld.MapId),"bundle leaves shipped map catalogue unchanged");
+            Check(!ReferenceEquals(bundle.Content,content)&&bundle.Content.maps.Length==content.maps.Length+1,"run owns a detached map catalogue");
+            Check(bundle.Identity==ExpeditionRunBundle.Build(room.Ticket,content,layoutJson).Identity,"host and guest reconstruct identical full run identity");
+            var lockRoom=ExpeditionDeploymentRoom.Restore(room.Ticket,"host",layout,content);
+            Check(lockRoom.Execute("host",lockRoom.Snapshot().revision,ExpeditionDeploymentIntent.Deploy,true,bundle.Identity),"deploy binds actual generated bundle identity");
+            var locked=ExpeditionRunBundle.Build(lockRoom.Ticket,content,layoutJson);
+            Check(locked.Identity==bundle.Identity&&locked.Matches(lockRoom.Ticket),"locked ticket reconstructs same map and authored interiors");
+            var badBundleTicket=lockRoom.Ticket;badBundleTicket.generatedCompatibility=new string('0',64);
+            bool bundleRejected=false;try{ExpeditionRunBundle.Build(badBundleTicket,content,layoutJson);}catch(ArgumentException){bundleRejected=true;}
+            Check(bundleRejected&&!locked.Matches(badBundleTicket),"tampered generated digest rejected before use");
+            var malformed=lockRoom.Ticket;malformed.schema=9;
+            Check(!locked.Matches(malformed),"cache cannot bypass ticket schema validation");
+            malformed=lockRoom.Ticket;malformed.revision++;
+            Check(!locked.Matches(malformed),"cache cannot bypass ticket revision validation");
+            var rerollRoom=ExpeditionDeploymentRoom.Restore(room.Ticket,"host",layout,content);
+            rerollRoom.Execute("host",rerollRoom.Snapshot().revision,ExpeditionDeploymentIntent.RollInstances);
+            Check(!bundle.Matches(rerollRoom.Ticket),"new roll invalidates cached generated content");
+            Check(bundle.Layout.instances.All(id=>bundle.Content.maps.Any(m=>m.id==bundle.Layout.Area(id).map)),"every selected interior resolves through the same run content");
             var generated=NativeExpeditionGeneratedWorld.Build(room);
             Check(generated.Map.blocks.Length>100&&generated.Map.nav.nodes.Length>1000,"roll creates real collision and navigation");
             Check(!NativeMapRules.ArenaSelectable(generated.Map)&&!generated.Map.rotation,"generated map never enters PvP");

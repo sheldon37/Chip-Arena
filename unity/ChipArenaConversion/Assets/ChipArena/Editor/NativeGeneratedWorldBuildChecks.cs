@@ -9,7 +9,9 @@ namespace ChipArena.UnityConversion.Editor
         // Runs in the real builder, not the engine-free semantic compilation gate.
         private static void CheckGeneratedDeploymentWorld(ConversionContent content,ExpeditionDeploymentRoom room)
         {
-            var world=NativeExpeditionGeneratedWorld.Build(room);
+            string authored=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
+            var bundle=ExpeditionRunBundle.Build(room.Ticket,content,authored);
+            var world=bundle.World;
             var copy=JsonUtility.FromJson<ConversionContent>(JsonUtility.ToJson(content));
             copy.contentRevision=content.contentRevision;
             copy.maps=copy.maps.Concat(new[]{world.Map}).ToArray();foreach(var m in copy.maps)m.unity=true;
@@ -20,7 +22,13 @@ namespace ChipArena.UnityConversion.Editor
                 match.Seats.Add(new NativeSeat{id=2,name="Generated B",spec="pistol",team=0});
             },_=>EditorSceneManager.NewPreviewScene(),s=>EditorSceneManager.ClosePreviewScene(s)))
             {
-                var arena=runtime.Arena;Physics.SyncTransforms();
+                var arena=runtime.Arena;arena.GeneratedRun=bundle;Physics.SyncTransforms();
+                var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,
+                    deployment=room.Ticket,frame=arena.NetworkFrame(),expeditionPublic=new ExpeditionView(),expeditionPrivate=new ExpeditionPrivateFrame()}));
+                if(wire.deployment?.station!=room.Ticket.station||wire.deployment.instanceRolls!=room.Ticket.instanceRolls)
+                    throw new Exception("Generated run ticket lost in Unity snapshot codec.");
+                var lobby=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="lobby",deployment=room.Ticket}));
+                if(lobby.deployment?.station!=room.Ticket.station)throw new Exception("Station ticket lost in lobby codec.");
                 var points=world.Area.slots.Concat(world.Area.bossPoints).Concat(world.Area.doors.SelectMany(d=>d.returns.Concat(new[]{d.approach})))
                     .Concat(world.Area.interactions.Select(i=>new ExpeditionPoint{x=i.x,y=i.y,z=i.z}));
                 foreach(var p in points)
@@ -34,8 +42,11 @@ namespace ChipArena.UnityConversion.Editor
                     double angle=i*Math.PI/4;var p=new V3(door.join.x+door.join.r*(float)Math.Cos(angle),0,door.join.z+door.join.r*(float)Math.Sin(angle));
                     if(!arena.ExpeditionSupported(p,.45f,1.8f))throw new Exception("Generated join circle native collision: "+door.anchor);
                 }
+                var loaded=arena.LoadExpeditionM1Layout(authored,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
+                if(loaded.compatibility!=bundle.Identity||loaded.Area(loaded.world).map!=world.Map.id)
+                    throw new Exception("Generated startup validated a different layout.");
             }
-            Debug.Log("PASS generated deployment blockout: native collision, Hulk routes and join circles (not live deployment)");
+            Debug.Log("PASS generated deployment blockout: native collision, Hulk routes, join circles and run/lobby ticket codec");
         }
     }
 }

@@ -139,7 +139,7 @@ namespace ChipArena.UnityConversion
                 var data=JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text);
                 if(!NativeMapRules.ArenaSelectable(Map))
                 {
-                    var layout=NativeExpeditionLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text);
+                    var layout=GeneratedRun?.Layout??NativeExpeditionLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text);
                     var area=layout.areas.Single(a=>a.map==MapId);
                     NativeExpeditionLayout.BindContent(area,data);
                 }

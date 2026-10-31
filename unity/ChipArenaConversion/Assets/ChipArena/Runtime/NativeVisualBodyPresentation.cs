@@ -84,6 +84,7 @@ namespace ChipArena.UnityConversion
         private string VisualOutfitOf(int id)
         {
             if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??"";
+            if(DeployOutfit(id,out var deploy))return deploy;
             if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
             // Use the displayed arena, including replay/guest seats, rather than current local preferences.
             var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??"";

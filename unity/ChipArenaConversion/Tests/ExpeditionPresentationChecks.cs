@@ -637,7 +637,7 @@ namespace ChipArena.UnityConversion
             foreach(Match m in Regex.Matches(view,@"\brun\.(\w+)"))Check(reads.Contains(m.Groups[1].Value),"the view builder only reads the authority (run."+m.Groups[1].Value+")");
             foreach(var src in new[]{hud,rules,view,screen,layout,live,world3d,world})Check(!src.Contains("Random")&&!src.Contains("NativePveRandom"),"no randomness in presentation");
             // Room networking now owns launch permission; presentation still only dispatches the action.
-            Check(R("Runtime/NativeExpeditionsMenu.cs").Contains("case X.LaunchKind.ExpeditionM1:RequestStage(StageLoadKind.Expedition,StartExpeditionM1);")&&R("Runtime/NativeExpeditionM1.cs").Contains("NativeExpeditionParty.Validate(")&&ui.Contains("--ca-expedition-preview"),"Expedition entry validates the party and preview retains its separate flag");
+            Check(R("Runtime/NativeExpeditionsMenu.cs").Contains("case X.LaunchKind.ExpeditionM1:BeginDeploymentStation(K.At(expPick).Id);")&&R("Runtime/NativeExpeditionDeploymentRoom.cs").Contains("NativeExpeditionParty.Validate(")&&R("Runtime/NativeExpeditionM1.cs").Contains("NativeExpeditionParty.Validate(")&&ui.Contains("--ca-expedition-preview"),"Expedition entry validates the party and preview retains its separate flag");
         }
     }
 }
