@@ -40,6 +40,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Native source parity, managed regressions and real relay
+        # The managed suite reads UnityMaps.json about 60 times. With the six M1 maps' navigation (25 MB) it runs near
+        # check_relay's 300 s default, so give the test process 15 minutes; the job keeps its 30-minute cap for hangs.
+        env:
+          CHIP_TEST_TIMEOUT_SECONDS: '900'
         run: python3 unity/ChipArenaConversion/tools/check_relay.py
       - name: Source package validation
         run: |
