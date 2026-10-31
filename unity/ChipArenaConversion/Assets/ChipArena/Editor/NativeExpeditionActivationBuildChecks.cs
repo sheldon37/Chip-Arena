@@ -14,6 +14,7 @@ namespace ChipArena.UnityConversion.Editor
             var layout=NativeExpeditionLayout.Parse(json);layout.compatibility=NativeExpeditionLayout.Compatibility(json,content);
             var deployment=new ExpeditionDeploymentRoom("native-deployment","p1",0xffffffffu,"black-siren",layout,content);
             Check(deployment.Execute("p1",0,ExpeditionDeploymentIntent.RollInstances),"deployment host rolls");
+            CheckGeneratedDeploymentWorld(content,deployment);
             var deploymentJson=NativeNetCodec.Encode(new NativeNetMessage{type="deployment-state",epoch=7,deployment=deployment.Ticket});
             Check(deploymentJson.Length<4096&&!deploymentJson.Contains("influences"),"bounded deployment descriptor, no blueprint on wire");
             var deploymentWire=NativeNetCodec.Decode(deploymentJson);

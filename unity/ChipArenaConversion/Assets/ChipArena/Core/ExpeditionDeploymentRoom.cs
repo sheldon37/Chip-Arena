@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
 
     public sealed class ExpeditionDeploymentRoom
     {
-        public const string GeneratorVersion="deployment-blueprint-1";
+        public const string GeneratorVersion="deployment-blueprint-1/"+NativeExpeditionGeneratedWorld.Version;
         private readonly ExpeditionInstanceTheme[] catalog;
         private readonly string expedition,compatibility,owner;
         private NativeExpeditionDeployment authority;

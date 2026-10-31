@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
             new ExpeditionInstanceTheme{id="exp-transit",theme="rail"},
             new ExpeditionInstanceTheme{id="exp-catacombs",theme="catacombs"},
         };
-        private static string Json(object value)=>JsonSerializer.Serialize(value,new JsonSerializerOptions{IncludeFields=true});
+        private static string Json(object value)=>JsonSerializer.Serialize(value,new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true});
         private static bool Reachable(ExpeditionDeploymentState state,int gx,int gz)
         {
             var roads=new HashSet<string>(state.cells.Where(x=>x.road).Select(x=>x.x+":"+x.z));
@@ -93,6 +93,36 @@ namespace ChipArena.UnityConversion
             Check(!room.Execute("guest",0,ExpeditionDeploymentIntent.RollInstances),"room rejects guest");
             Check(room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"room rolls validated live pool");
             Check(!room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"duplicate roll rejected by revision");
+            var generated=NativeExpeditionGeneratedWorld.Build(room);
+            Check(generated.Map.blocks.Length>100&&generated.Map.nav.nodes.Length>1000,"roll creates real collision and navigation");
+            Check(!NativeMapRules.ArenaSelectable(generated.Map)&&!generated.Map.rotation,"generated map never enters PvP");
+            Check(generated.Area.doors.Length==3&&generated.Hub.Gates.Length==4&&generated.Area.gates.Single().opens=="final","three instances and separate final court");
+            Check(NativeExpeditionGeneratedWorld.Build(room).Compatibility==generated.Compatibility,"deterministic generated geometry receipt");
+            Check(generated.Hub.Routes.Length==3&&generated.Hub.Routes.All(r=>r.Path>=r.Straight),"street routes and measured distances");
+            var composed=NativeExpeditionGeneratedWorld.ComposeLayout(generated,layoutJson);
+            Check(composed.Area(composed.world).map==generated.Map.id&&composed.instances.SequenceEqual(room.Snapshot().instances),"generated manifest selects the rolled roster");
+            foreach(string id in composed.instances)Check(Json(composed.Area(id))==Json(layout.Area(id)),"authored interior remains unchanged");
+            var migratedWorld=NativeExpeditionGeneratedWorld.Build(ExpeditionDeploymentRoom.Restore(room.Ticket,"next",layout,content));
+            Check(migratedWorld.Compatibility==generated.Compatibility,"host migration reconstructs identical map");
+            var culture=System.Globalization.CultureInfo.CurrentCulture;
+            try{var changed=(System.Globalization.CultureInfo)culture.Clone();changed.NumberFormat.NegativeSign="minus";changed.NumberFormat.NumberDecimalSeparator=",";System.Globalization.CultureInfo.CurrentCulture=changed;
+                Check(NativeExpeditionGeneratedWorld.Build(room).Compatibility==generated.Compatibility,"culture-independent generation");}
+            finally{System.Globalization.CultureInfo.CurrentCulture=culture;}
+
+            foreach(uint seed in new uint[]{99,1234,98765,uint.MaxValue}.Concat(Enumerable.Range(0,64).Select(i=>(uint)i)))
+            {
+                var seedRoom=new ExpeditionDeploymentRoom("seed-room","host",seed,"black-siren",layout,content);
+                Check(seedRoom.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"seed roll");
+                var world=NativeExpeditionGeneratedWorld.Build(seedRoom);
+                foreach(var door in world.Area.doors)
+                {
+                    foreach(var point in door.returns.Concat(new[]{door.approach}))Check(ExpeditionLayoutChecks.Supported(world.Map,point.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight),"independent entrance collision probe");
+                    for(int i=0;i<8;i++){double angle=i*Math.PI/4;Check(ExpeditionLayoutChecks.Supported(world.Map,new V3(door.join.x+3*(float)Math.Cos(angle),0,door.join.z+3*(float)Math.Sin(angle)),.45f,1.8f),"join circle collision probe");}
+                }
+                Check(world.Map.blocks.Length<500&&world.Map.nav.nodes.Length<12000,"bounded generated map");
+            }
+
+
             Check(room.Snapshot().instances.OrderBy(x=>x).SequenceEqual(layout.instances.OrderBy(x=>x)),"only authored roster selected");
             Check(!room.Execute("host",1,ExpeditionDeploymentIntent.RollMutators),"unapproved mutators unavailable");
             Check(room.Execute("host",1,ExpeditionDeploymentIntent.SkipMutators),"no-mutator start valid");
