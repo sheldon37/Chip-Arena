@@ -1,3 +1,17 @@
+## 2026-10-31 — Claude: CI time for the managed tests after the M1 stages
+
+- **Branch/base:** `claude/ci-test-timeout` from shared `0681430` (the merge of Astra's PR #301). Merged into shared and
+  the builder at `a8261cd`.
+- **Cause:** `native-source` failed twice on `0681430`, a tree whose own PR run had passed. `check_relay.py` killed
+  CoreTests at its 300 s default while it was still passing checks. The six M1 maps' navigation doubled `UnityMaps.json`
+  (13.6 to 25.2 MB), and the managed suite reads that file 63 times, so the suite now runs at about the limit.
+- **Change:** `.github/workflows/unity-conversion.yml` sets `CHIP_TEST_TIMEOUT_SECONDS: '900'` on the relay step. The
+  job keeps its 30-minute cap for hangs. No test, game code or data changed.
+- **Checks (actual):** locally the full relay suite on the head passes (883 PASS lines) in 477 s including the build.
+  CI on `a8261cd`: all 9 checks green, including all three `native-source` runs (about 11.5 minutes each).
+- **Next:** a shared, parsed `UnityMaps.json` in the tests would cut the suite's time; that is optional and Astra's
+  call (tests).
+
 ## 2026-10-31 — Astra: M1 stages and public Training Room integration
 
 - **Branch/base/implementation:** `codex/unity-m1-stages-training`, from shared `claude/sleepy-ritchie-g8ruhv` at `2066db7`; pushed implementation `1eac6d396a2e85ecd190343755cb14091801a2cd` plus the final fixes accompanying this entry. Integration PR: #301; final implementation `3bb72462a681d962e70b96ca2b386342e8b91c72`. Shared merge and builder synchronization follow verification; no Windows build or test-feed publication claimed here.
