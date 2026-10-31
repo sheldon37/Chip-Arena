@@ -270,8 +270,8 @@ namespace ChipArena.UnityConversion
                 case Shot.InstanceMachine:return new View{Eye=new Vector3(-2.4f,2.3f,.6f),Target=InstanceMachineAt+new Vector3(0,1.5f,0),Fov=42};
                 case Shot.MutatorMachine:return new View{Eye=new Vector3(2.4f,2.3f,.6f),Target=MutatorMachineAt+new Vector3(0,1.5f,0),Fov=42};
                 case Shot.Map:return new View{Eye=new Vector3(0,4.6f,-1.2f),Target=Table+new Vector3(0,1,0),Fov=46};
-                case Shot.Deploy:return new View{Eye=new Vector3(0,3f,-6.5f),Target=Gate+new Vector3(0,2.4f,0),Fov=50};
-                default:return new View{Eye=new Vector3(0,4.2f,-8.6f),Target=new Vector3(0,1.4f,3.4f),Fov=50};
+                case Shot.Deploy:return new View{Eye=new Vector3(0,3.3f,-6.2f),Target=Gate+new Vector3(0,2.5f,0),Fov=46};
+                default:return new View{Eye=new Vector3(0,5.1f,-9.2f),Target=new Vector3(0,1.5f,3.6f),Fov=48};
             }
         }
         /// <summary>The shot to frame: the machine that is spinning, the gate while deploying, else the overview.</summary>
