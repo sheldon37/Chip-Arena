@@ -257,6 +257,8 @@ namespace ChipArena.UnityConversion
         private string backdropMap;private bool rooftopShown;private float rooftopFov,rooftopNear;
         private void MenuBackdrop()
         {
+            // DEV ONLY: the Deployment Station preview draws its station instead (NativeDeployPreview.cs).
+            if(DeployPreviewBackdrop())return;
             if(menuScreen==MenuScreen.Home&&!InRoom&&presentation!=null&&presentation.RooftopSupported)
             {
                 if(!rooftopShown){rooftopShown=true;rooftopFov=cameraView.fieldOfView;rooftopNear=cameraView.nearClipPlane;}
@@ -369,6 +371,8 @@ namespace ChipArena.UnityConversion
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
             if(ExpeditionPreviewGui(width,height))return;
+            // DEV ONLY: the Deployment Station preview (--ca-deploy-preview), in place of the main menu (NativeDeployPreview.cs).
+            if(DeployPreviewGui(width,height))return;
             // A bound Expedition session's screen (J), in place of the frame while open; nothing draws without a binding.
             if(ExpeditionLiveGui(width,height))return;
             if(match?.Phase!=NativePhase.Match)matchEndAt=-1;if(arena!=null)menuFromMatch=true;
