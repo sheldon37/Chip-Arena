@@ -1,3 +1,12 @@
+## 2026-10-31 — Astra: stage and Training navigation acceptance follow-up
+
+- Delivery follow-up: owner explicitly authorized GitHub pushes. Command-line Git has no write credentials in this host; publish the identical validated tree through the connected GitHub API. Earlier rejection notes below are historical.
+- Branch/base: `codex/m1-stage-navigation-acceptance`, shared/builder `33233109`. PR #301 is verified merged and present in both branches; the earlier integration-pending wording was stale.
+- Require all six integrated maps exactly once; respect authored one-way drop links; fail when a spawn/pad has no nav node within 2 m and 0.6 m of its height. Previously a missing map could be silently skipped, drop links were bidirectional, and the nearest node could belong to a different floor.
+- Focused regression: 5,076 checks pass. The exact stage branch compiles with warnings-as-errors and passes the focused regression. The combined Deployment continuation tree also passes the full managed/real-relay suite (884 PASS lines, 35 managed-core checks), pinned Unity Player/Runtime/Editor semantic compilation, 167 Python tests (one skip), and all six draft validators. This branch changes only tests and handoff documentation, not shipped content, rotation, combat, animation or networking.
+- Local implementation: `bc0c678b`. Automatic approval review rejected the push to `sheldon37/Chip-Arena` because this turn did not explicitly authorize sharing changes to GitHub. No PR, merge or builder synchronization occurred; the branch remains local pending explicit push authorization.
+- Native Windows/PhysX, bots on open edges and human Training co-op remain unrun here; Claude's stage dressing and Training readout-board presentation remain. No new player binary or test-feed publication.
+
 ## 2026-10-31 — Claude: CI time for the managed tests after the M1 stages
 
 - **Branch/base:** `claude/ci-test-timeout` from shared `0681430` (the merge of Astra's PR #301). Merged into shared and
