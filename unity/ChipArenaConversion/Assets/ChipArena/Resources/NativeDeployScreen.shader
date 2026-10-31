@@ -7,6 +7,7 @@ Shader "ChipArena/NativeDeployScreen"
     //    contrast (roads, the plaza ring, district borders), the blueprint's 25 x 19 cell grid, a frame with corner brackets
     //    and the scan sweep (_Sweep, -1 none); _Texel is one texel of the map;
     //  - the PENDING / ACTIVE stamps, the floor's light pools and the light columns (vertex alpha fades them).
+    // HLSL reserves `line`, `point`, `triangle` and `sample`: keep them out of variable names.
     // Raw HDR (never graded: the bloom takes the bright parts), times the vertex colour, _Tint and _Gain; linear fog (to black
     // when additive). The material sets the blend: opaque strips, additive light (_Additive), premultiplied-alpha stamps.
     Properties { _MainTex("Texture",2D)="white"{} _Tint("Tint",Vector)=(1,1,1,1) _Rep("Rep",Float)=1 _Scroll("Scroll",Float)=0 _Blur("Blur",Float)=0 _Gain("Gain",Float)=1 _Sweep("Sweep",Float)=-1 _Chroma("Chroma",Float)=1 _Holo("Holo",Float)=0 _Texel("Map texel",Vector)=(.005,.0066,0,0) _Additive("Additive",Float)=0 _SrcBlend("Src blend",Float)=1 _DstBlend("Dst blend",Float)=0 _ZWrite("ZWrite",Float)=1 _Cull("Cull",Float)=2 }
@@ -44,8 +45,8 @@ Shader "ChipArena/NativeDeployScreen"
                 c*=i.color.rgb*_Tint.rgb*_Gain;float a=s.a*i.color.a*_Tint.a;
                 if(_Holo>.5)
                 {
-                    float2 e=min(i.uv,1-i.uv);float line=smoothstep(.006,0,abs(min(e.x,e.y)-.01));float bracket=step(min(e.x,e.y),.007)*step(max(e.x,e.y),.08);
-                    c+=float3(.35,.85,1)*(line*.7+bracket*1.5);
+                    float2 e=min(i.uv,1-i.uv);float rule=1-smoothstep(0,.006,abs(min(e.x,e.y)-.01));float bracket=step(min(e.x,e.y),.007)*step(max(e.x,e.y),.08);
+                    c+=float3(.35,.85,1)*(rule*.7+bracket*1.5);
                 }
                 if(_Sweep>=0)
                 {

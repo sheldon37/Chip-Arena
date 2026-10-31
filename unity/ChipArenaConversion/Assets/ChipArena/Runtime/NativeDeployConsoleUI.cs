@@ -100,12 +100,12 @@ namespace ChipArena.UnityConversion
             H.Panel(r,a,accent,14,H.Corners.Diagonal,true,.92f);
             // the party: a chip per seat (name and lamp)
             U.Text(new Rect(r.x+20,r.y+12,200,14),"PARTY",10,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
-            int count=party!=null?Mathf.Min(party.Count,NativeDeployPresentation.Pads):0;float px=r.x+20;
+            // one row of chips, narrower as the party grows (up to the eight pads) so they never reach the buttons
+            int count=party!=null?Mathf.Min(party.Count,NativeDeployPresentation.Pads):0;float px=r.x+20,cw=count>4?Mathf.Max(52,(Mathf.Min(420,r.width*.42f)-6*(count-1))/count):96;
             for(int i=0;i<count;i++)
             {
-                bool ready=party.Ready[i];var chip=new Rect(px,r.y+32,96,26);U.Fill(chip,C.Void(.6f*a));var lamp=ready?C.Good(a):C.Warn(a);
-                U.Disc(new Rect(chip.x+8,chip.y+8,10,10),lamp);U.Text(new Rect(chip.x+24,chip.y,chip.width-28,chip.height),party.Names[i]??"",11,C.Ink(a),TextAnchor.MiddleLeft,bold:i==0);px+=chip.width+6;
-                if(i==3&&count>4){px=r.x+20;}
+                bool ready=party.Ready[i];var chip=new Rect(px,r.y+32,cw,26);U.Fill(chip,C.Void(.6f*a));var lamp=ready?C.Good(a):C.Warn(a);
+                U.Disc(new Rect(chip.x+8,chip.y+8,10,10),lamp);U.Text(new Rect(chip.x+24,chip.y,chip.width-28,chip.height),party.Names[i]??"",cw<80?9:11,C.Ink(a),TextAnchor.MiddleLeft,bold:i==0);px+=chip.width+6;
             }
             U.Text(new Rect(r.x+20,r.y+66,420,18),NativeDeployPresentation.ConsoleLabel(launch),13,accent*new Color(1,1,1,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);
             // the controls

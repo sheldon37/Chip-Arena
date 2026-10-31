@@ -242,6 +242,9 @@ namespace ChipArena.UnityConversion
             Check(R(Rt+"NativeVisualBodyPresentation.cs").Contains("if(DeployOutfit(id,out var deploy))return deploy;")&&R(Rt+"NativeWeaponSkinPresentation.cs").Contains("if(DeploySkins(id,out var deploy))return deploy;"),"the deploy pilots wear their seats' outfits and skins");
             // the shader and every new file are registered with Unity
             var shader=Path.Combine(root,"Assets/ChipArena/Resources/NativeDeployScreen.shader");Check(File.Exists(shader)&&File.Exists(shader+".meta")&&File.ReadAllText(shader).Contains("Shader \"ChipArena/NativeDeployScreen\""),"the screen shader and its meta");
+            // HLSL reserves these words (geometry-shader primitives, the sample modifier): a variable named after one fails to compile
+            var hlsl=File.Exists(shader)?File.ReadAllText(shader):"";
+            foreach(var word in new[]{"line","lineadj","point","triangle","triangleadj","sample"})Check(!System.Text.RegularExpressions.Regex.IsMatch(hlsl,@"\b(float|float2|float3|float4|half|int|bool)\s+"+word+@"\b"),"the screen shader names no variable `"+word+"`");
             var guids=new HashSet<string>();
             foreach(var f in new[]{"Core/NativeDeployModels.cs","Core/NativeDeployArt.cs","Core/NativeDeployStage.cs","Runtime/NativeDeployScene.cs","Runtime/NativeDeployCast.cs","Runtime/NativeDeployConsoleUI.cs","Runtime/NativeDeployPreview.cs","Resources/NativeDeployScreen.shader"})
             {var meta=Path.Combine(root,"Assets/ChipArena",f+".meta");Check(File.Exists(meta),f+" has a meta");var g=Regex.Match(File.ReadAllText(meta),@"guid: ([0-9a-f]{32})").Groups[1].Value;Check(g.Length==32&&guids.Add(g),f+" has its own guid");}

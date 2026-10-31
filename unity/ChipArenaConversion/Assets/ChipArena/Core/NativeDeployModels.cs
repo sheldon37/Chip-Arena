@@ -538,17 +538,27 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<3;k++){float y=2.0f+k*.42f;s.Box(Lamp(Ice,.6f+.2f*k),V(-.3f,y-.17f,.2f),V(.62f,.05f,.012f),0,0,0,.52f);}
             s.Pop();return mesh;
         }
-        /// <summary>The light column a pilot rises in at Deploy (pad local; screen section, additive, fading upward).</summary>
+        /// <summary>The light shaft a pilot rises in at Deploy (pad local; screen section, additive): a vertical ribbon in the
+        /// local XY plane that the stage turns to face the camera, soft at its edges with a bright core and fading upward (vertex
+        /// alpha), so it reads as a shaft of light from any shot instead of a solid tube; and a soft glow disc on the pad.</summary>
         public static WeaponMesh Beam()
         {
-            var mesh=new WeaponMesh{Spec="deploy-beam",Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Screen);const int n=32;const float h=4.2f;
-            for(int k=0;k<n;k++)for(int j=0;j<6;j++)
+            var mesh=new WeaponMesh{Spec="deploy-beam",Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Screen);const int rows=8;const float h=4.2f;
+            // denser columns near the centre carry the core's falloff through linear interpolation
+            float[] xs={-.36f,-.26f,-.17f,-.1f,-.06f,-.03f,0,.03f,.06f,.1f,.17f,.26f,.36f};
+            for(int k=0;k+1<xs.Length;k++)for(int j=0;j<rows;j++)
             {
-                float a0=2*Pi*k/n,a1=2*Pi*(k+1)/n,y0=h*j/6,y1=h*(j+1)/6,r0=.32f-.04f*j/6,r1=.32f-.04f*(j+1)/6;Vector3 P(float r,float y,float a)=>V(r*(float)Math.Cos(a),y,r*(float)Math.Sin(a));
-                s.Quad(WeaponPaint.Solid(0xffffff),P(r0,y0,a0),P(r0,y0,a1),P(r1,y1,a1),P(r1,y1,a0));s.Quad(WeaponPaint.Solid(0xffffff),P(r0,y0,a1),P(r0,y0,a0),P(r1,y1,a0),P(r1,y1,a1));
+                float y0=h*j/rows,y1=h*(j+1)/rows;
+                s.Quad(WeaponPaint.Solid(0xffffff),V(xs[k],y0,0),V(xs[k+1],y0,0),V(xs[k+1],y1,0),V(xs[k],y1,0));
+            }
+            var sec=mesh.Sections[mesh.Sections.Count-1];int ribbon=sec.Positions.Count;
+            for(int i=0;i<ribbon;i++)
+            {
+                var p=sec.Positions[i];float x=Math.Abs(p.X)/.36f,y=p.Y/h,halo=(float)Math.Pow(Math.Max(0,1-x),1.5),core=(float)Math.Exp(-p.X*p.X/(.05f*.05f));
+                sec.Colors[i]=new Vector4(1,1,1,Math.Min(1,.5f*halo+.5f*core)*(1-y)*(1-y));sec.Data[i]=new Vector2(.5f,.5f);
             }
             Column(s,WeaponPaint.Solid(0xffffff),.3f,0,0,0,.02f,32);
-            foreach(var sec in mesh.Sections)for(int i=0;i<sec.Positions.Count;i++){float y=sec.Positions[i].Y/h;sec.Colors[i]=new Vector4(1,1,1,(1-y)*(1-y));sec.Data[i]=new Vector2(.5f,.5f);}
+            for(int i=ribbon;i<sec.Positions.Count;i++){sec.Colors[i]=new Vector4(1,1,1,.45f);sec.Data[i]=new Vector2(.5f,.5f);}
             return mesh;
         }
         /// <summary>The pad's top (its brass inlay): where a pilot's feet stand.</summary>

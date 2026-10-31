@@ -295,7 +295,12 @@ namespace ChipArena.UnityConversion
                 var pad=NativeDeployPresentation.Pad(i);var front=Vector3.Normalize(new Vector3(-pad.X*.35f,0,-1));var gate=NativeDeployPresentation.Gate-pad;gate.Y=0;
                 var face=Vector3.Normalize(Vector3.Lerp(front,Vector3.Normalize(gate),Smooth(dep.Dim*1.4f-.1f)));if(face.LengthSquared()<.5f)face=front;
                 PilotFeet[i]=pad+new Vector3(0,NativeDeployModels.PadTop+3.2f*dep.Lift*dep.Lift,0);PilotFacing[i]=face;PilotShown[i]=i<seats?1-Smooth((dep.Lift-.25f)/.35f):0;
-                if(i<seats&&dep.Lift>0&&dep.Lift<1){ref var beam=ref Add(Model.Beam,T(pad));beam.Blend=Blend.Additive;beam.Screen=Col(0x9ff0ff,.24f*(float)Math.Sin(Math.PI*dep.Lift));}
+                if(i<seats&&dep.Lift>0&&dep.Lift<1)
+                {
+                    // the shaft turns to face the camera about its pad's vertical (a soft ribbon reads as light from any shot)
+                    var toEye=Camera.Eye-pad;float yaw=(float)Math.Atan2(toEye.X,toEye.Z);
+                    ref var beam=ref Add(Model.Beam,Matrix4x4.CreateRotationY(yaw)*T(pad));beam.Blend=Blend.Additive;beam.Screen=Col(0x9ff0ff,.8f*(float)Math.Sin(Math.PI*dep.Lift));
+                }
             }
             // the light: each machine's practical at its power, the table, the gate opening, the console's button
             float consoleLevel=Launch==NativeDeployPresentation.Launch.Ready||Launch==NativeDeployPresentation.Launch.HostOnly?.6f+.4f*breath:Launch==NativeDeployPresentation.Launch.Launching?1:.1f;
