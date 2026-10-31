@@ -52,7 +52,7 @@ either way. Station frame: metres, x right, z away from the default camera, y up
   - brighter roads and the neutral plaza ring;
   - the three entrances as rings in their colours;
   - the boss gate as a red diamond on the north edge.
-  
+
   It freezes at Deploy.
 - **The party pads:** 8 pads on an arc 4.4 m in front of the table, the host on the centre pad and the rest alternating
   outward (`Pad(i)`). Each pilot stands on its pad in its lobby idle, with a ready lamp under it from the room's readiness.
