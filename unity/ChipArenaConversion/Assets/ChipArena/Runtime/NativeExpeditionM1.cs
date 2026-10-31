@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         private bool ExpeditionM1=>expeditionDirector!=null;
         private void StartExpeditionM1()
         {
-            if(!ModsReady)return;
+            if(!ModsReady||deploymentRoom!=null)return;
             if(server!=null||dedicated)return;
             var party=peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).ToArray();
             var host=SanitizedSeat(1,Profile(),account?.Token);

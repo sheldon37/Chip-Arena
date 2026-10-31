@@ -1,3 +1,12 @@
+## 2026-10-31 — Astra: deployment room tickets, replication and staging handoff (draft)
+
+- Branch/base: `codex/expedition-deployment-integration`, foundation PR #302 at `0f23c87b`; local commit only. Push was blocked by automated export approval; no remote task branch/PR, shared merge or builder publication.
+- Added a selected-Expedition authored-instance pool, bounded deterministic ticket reconstruction, content/generator identity, revision-checked host intents, immutable deployed restore and detached guest snapshots. Live wrapper refuses mutator rolls because no gameplay effects are approved; skip remains valid.
+- Runtime API opens staging without an arena or PvE session; broadcasts compact state with lobby refresh/reconnect; verifies deployment capability and signed-in identity; transfers the ticket through existing lobby promotion prepare/commit. Ordinary/fixed-M1 starts cannot bypass staging. Existing fixed M1 runs retain their schema/path. Claude can bind the APIs documented in EXPEDITION-DEPLOYMENT.md.
+- Actual checks: focused managed suite PASS (49 deployment checks); CoreTests build zero warnings/errors; pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compile PASS. Full managed/real-relay regression PASS: 884 PASS lines, final 35 managed-core checks, exit 0. The normal runner initially failed in the .NET CLI Process.StartTime lookup (environment); using its supported compiled-assemblies arguments avoids that CLI failure. Added native JsonUtility/codec/promotion checks; compiled, not executed in Unity.
+- Incomplete scope: full generated playable map/manifest/nav/collision and static-city-equivalent seed validation, generated map runtime loading/handshake, readiness-to-Deploy startup, active-run endpoint migration, station presentation and approved mutator rules. This is deliberately a draft continuation, not completion of the owner's entire Astra list. No generated geometry or working scene is claimed. Windows/PhysX/two-client play unrun.
+- Gameplay timing, hitboxes, damage, cooldowns and animation unchanged. No live release, account mutation, shared merge or test-feed publication. Follow-up must finish the generated-world path before enabling the station in menus.
+
 ## 2026-10-31 — Claude: CI time for the managed tests after the M1 stages
 
 - **Branch/base:** `claude/ci-test-timeout` from shared `0681430` (the merge of Astra's PR #301). Merged into shared and

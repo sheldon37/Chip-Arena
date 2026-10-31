@@ -72,8 +72,11 @@ namespace ChipArena.UnityConversion
         {public int version=NativeConnection.Protocol;public int epoch;public ExpeditionCohortTicket areaIdentity;public string type="expedition-area-ready";public ExpeditionAreaReadyRequest expeditionAreaReady;}
         [Serializable] private sealed class ExpeditionLoadStatusEnvelope
         {public int version=NativeConnection.Protocol;public string type="expedition-party-load";public ExpeditionLoadStatusFrame expeditionLoadStatus;}
+        [Serializable] private sealed class DeploymentEnvelope
+        {public int version=NativeConnection.Protocol,epoch;public string type="deployment-state";public ExpeditionDeploymentTicket deployment;}
         public static string Encode(NativeNetMessage message)
         {
+            if(message.type=="deployment-state")return JsonUtility.ToJson(new DeploymentEnvelope{epoch=message.epoch,deployment=message.deployment});
             if(message.type=="expedition-state")
             {
                 if(message.frame==null||message.expeditionPublic==null||message.expeditionPrivate==null)throw new ArgumentException("Incomplete Expedition state");
@@ -97,6 +100,7 @@ namespace ChipArena.UnityConversion
         public static NativeNetMessage Decode(string json)
         {
             var message=JsonUtility.FromJson<NativeNetMessage>(json);
+            if(message?.type=="deployment-state")message.deployment=JsonUtility.FromJson<DeploymentEnvelope>(json).deployment;
             if(message?.type=="expedition-state")
             {var state=JsonUtility.FromJson<ExpeditionStateEnvelope>(json);message.frame=state.frame;message.frame?.RestorePresence();message.expeditionPublic=state.expeditionPublic;message.expeditionPrivate=state.expeditionPrivate;}
             if(message?.type=="dev-command")message.devCommand=JsonUtility.FromJson<DevCommandEnvelope>(json).devCommand;

@@ -12,6 +12,18 @@ namespace ChipArena.UnityConversion.Editor
             void Check(bool ok,string why){if(!ok)throw new Exception("Expedition activation: "+why);}
             string json=Resources.Load<TextAsset>("ExpeditionLayout").text;
             var layout=NativeExpeditionLayout.Parse(json);layout.compatibility=NativeExpeditionLayout.Compatibility(json,content);
+            var deployment=new ExpeditionDeploymentRoom("native-deployment","p1",0xffffffffu,"black-siren",layout,content);
+            Check(deployment.Execute("p1",0,ExpeditionDeploymentIntent.RollInstances),"deployment host rolls");
+            var deploymentJson=NativeNetCodec.Encode(new NativeNetMessage{type="deployment-state",epoch=7,deployment=deployment.Ticket});
+            Check(deploymentJson.Length<4096&&!deploymentJson.Contains("influences"),"bounded deployment descriptor, no blueprint on wire");
+            var deploymentWire=NativeNetCodec.Decode(deploymentJson);
+            var deploymentGuest=new ExpeditionDeploymentReceiver();
+            Check(deploymentWire.epoch==7&&deploymentGuest.Accept(deploymentWire.deployment,layout,content),"Unity deployment ticket round trip");
+            Check(deploymentGuest.Snapshot.worldSeed==deployment.Snapshot().worldSeed&&deploymentGuest.Snapshot.instances.SequenceEqual(deployment.Snapshot().instances),"guest reconstructs host world");
+            var prepared=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="host-prepare",transfer=new string('a',32),deploymentHandoff=JsonUtility.ToJson(deployment.Ticket)}));
+            var promoted=ExpeditionDeploymentRoom.Restore(JsonUtility.FromJson<ExpeditionDeploymentTicket>(prepared.deploymentHandoff),"p2",layout,content);
+            Check(promoted.Execute("p2",1,ExpeditionDeploymentIntent.RollInstances)&&deployment.Execute("p1",1,ExpeditionDeploymentIntent.RollInstances)&&promoted.Snapshot().worldSeed==deployment.Snapshot().worldSeed,"Unity promotion retains draw stream");
+            Check(!NativeNetCodec.Encode(new NativeNetMessage{type="ping"}).Contains("generatedCompatibility"),"unrelated packets do not serialize nested deployment DTO");
             var joinWire=new ExpeditionView{joins=new[]{new ExpeditionJoinView{h=4,deployedAt=3,deployedAccounts=new[]{"p2"},closedReason=ExpeditionJoinClosedReason.Reserved}},members=new[]{new ExpeditionViewMember{account="p2",area=layout.world,pendingArea=layout.instances[0]}}};
             var decodedJoin=JsonUtility.FromJson<ExpeditionView>(JsonUtility.ToJson(joinWire));
             Check(decodedJoin.joins[0].h==4&&decodedJoin.joins[0].deployedAt==3&&decodedJoin.joins[0].deployedAccounts.SequenceEqual(new[]{"p2"})&&decodedJoin.joins[0].closedReason==ExpeditionJoinClosedReason.Reserved&&decodedJoin.members[0].pendingArea==layout.instances[0],"join presentation fields survive Unity wire serialization");

@@ -8,6 +8,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        private ExpeditionDeploymentRoom promotionDeployment;
         private string promotionToken,promotionCode;private NativePeer promotionPeer;
         private int promotionTeam=-1,promotionExpected;private bool promotionOnline;private double promotionDeadline,promotionMoveAt;
         private CancellationTokenSource promotionStop;private Task<INativeOnlineHost> promotionCreating;
@@ -24,11 +25,11 @@ namespace ChipArena.UnityConversion
             if(PromotionBusy||!CanPromote(id))return;
             promotionPeer=peers.First(p=>p.Seat?.id==id);promotionToken=RandomToken(16);promotionDeadline=NetworkNow+45;
             promotionOnline=relayHost!=null;networkStatus="Preparing "+promotionPeer.Seat.name+" as host…";
-            promotionPeer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="host-prepare",transfer=promotionToken,transferOnline=promotionOnline,id=peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)}));
+            promotionPeer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="host-prepare",deploymentHandoff=deploymentRoom==null?null:JsonUtility.ToJson(deploymentRoom.Ticket),transfer=promotionToken,transferOnline=promotionOnline,id=peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)}));
         }
         private void CancelHostPromotion()
         {
-            promotionStop?.Cancel();promotionStop=null;
+            promotionDeployment=null;promotionStop?.Cancel();promotionStop=null;
             if(promotionCreating!=null){var task=promotionCreating;_=task.ContinueWith(t=>{if(t.Status==TaskStatus.RanToCompletion)t.Result.Dispose();});}
             promotionCreating=null;promotionHost?.Dispose();promotionHost=null;promotionListener?.Dispose();promotionListener=null;
             promotionPrevious?.Dispose();promotionPrevious=null;promotionToken=null;promotionPeer=null;promotionCode=null;promotionOptions=null;promotionMoveAt=0;promotionExpected=0;promotionTeam=-1;
@@ -56,7 +57,18 @@ namespace ChipArena.UnityConversion
                 promotionExpected=Math.Max(0,Math.Min(7,message.id));promotionToken=message.transfer;promotionOnline=message.transferOnline;promotionOptions=receivedOptions;
                 promotionOptions.hostTeam=lobbySeats.FirstOrDefault(s=>s.id==networkId)?.team??0;
                 promotionDeadline=NetworkNow+45;networkStatus="Preparing your host room…";
-                try{if(promotionOnline){promotionStop=new CancellationTokenSource();promotionCreating=CreateOnlineRoom(promotionStop.Token);}
+                try{
+                    promotionDeployment=null;
+                    if(!string.IsNullOrEmpty(message.deploymentHandoff))
+                    {
+                        if(message.deploymentHandoff.Length>4096||account?.Access==null||account.Access.Expires<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())throw new ArgumentException("Invalid deployment handoff.");
+                        var ticket=JsonUtility.FromJson<ExpeditionDeploymentTicket>(message.deploymentHandoff);
+                        if(deploymentLayout==null)deploymentLayout=LoadDeploymentLayout();
+                        if(deploymentReceiver==null||!deploymentReceiver.Accept(ticket,deploymentLayout,content))throw new ArgumentException("Deployment handoff does not match the current station.");
+                        promotionDeployment=ExpeditionDeploymentRoom.Restore(ticket,account.Access.AccountId,deploymentLayout,content);
+                    }
+                    else if(DeploymentState!=null)throw new ArgumentException("Deployment handoff is missing.");
+                    if(promotionOnline){promotionStop=new CancellationTokenSource();promotionCreating=CreateOnlineRoom(promotionStop.Token);}
                     else{promotionListener=new NativeListener(0);promotionCode=NativeRoomCodes.Create();PromotionPrepared();}}
                 catch(Exception e){Debug.LogWarning("Host preparation: "+e.Message);SendServer(new NativeNetMessage{type="host-failed",transfer=promotionToken});CancelHostPromotion();}
                 return true;
@@ -69,6 +81,7 @@ namespace ChipArena.UnityConversion
                 // Keep the old transport alive until its acknowledgement has had time to drain.
                 SendServer(new NativeNetMessage{type="host-live",transfer=promotionToken});promotionPrevious=server;server=null;
                 relayHost=promotionHost;promotionHost=null;listener=promotionListener;promotionListener=null;roomCode=promotionCode;
+                deploymentRoom=promotionDeployment;promotionDeployment=null;deploymentReceiver=null;
                 receivedOptions=null;SetRoomOptions(promotionOptions);networkId=1;networkEpoch++;networkReady=false;lobbySeats=Array.Empty<NativeSeatFrame>();
                 if(listener!=null)try{lanDiscovery=new NativeLanDiscovery(roomCode,content.sourceCommit,listener.Port);}catch(System.Net.Sockets.SocketException){ }
                 promotionMoveAt=NetworkNow+2;promotionToken=null;LobbyBroadcast();networkStatus="You are now the host · "+RoomCode;return true;

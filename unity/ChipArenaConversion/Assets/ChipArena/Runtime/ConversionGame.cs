@@ -99,7 +99,7 @@ namespace ChipArena.UnityConversion
             expeditionDirector=null;ResetExpeditionNetwork();Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
             if(trainingWanted){prefs.pve=false;prefs.bots=0;}
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
-            if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
+            if(server!=null||deploymentRoom!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
             // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
             // is touched, so the reason shows in the menu instead of the fatal error screen.
             {var sides=new System.Collections.Generic.HashSet<int>();int n=0;if(!dedicated){sides.Add(prefs.pve?0:prefs.teams?prefs.team:1);n++;}

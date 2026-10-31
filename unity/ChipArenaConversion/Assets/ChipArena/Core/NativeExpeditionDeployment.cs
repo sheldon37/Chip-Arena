@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionDeploymentState Snapshot()=>state.Copy();
         public bool Ready=>state.worldRolled&&!state.deployed;
         public bool Deployed=>state.deployed;
-        private bool Authorized(string account)=>account==state.host&&!state.deployed;
+        private bool Authorized(string account)=>account==state.host&&!state.deployed&&state.revision<int.MaxValue;
         private static bool InstanceCatalog(ExpeditionInstanceTheme[] items)=>
             items!=null&&items.Length>=InstanceCount&&items.Length<=64&&
             items.All(x=>x!=null&&ExpeditionValidation.Id(x.id)&&ExpeditionValidation.Id(x.theme))&&
@@ -140,6 +140,25 @@ namespace ChipArena.UnityConversion
         {
             if(!Authorized(account)||!state.worldRolled||!partyReady)return false;
             state.deployed=true;state.revision++;return true;
+        }
+
+        // Reconstruct only from bounded draw indices and the locally validated catalog.
+        // No network sender supplies chosen instances, cells, weights or worldSeed.
+        internal static NativeExpeditionDeployment Restore(ExpeditionDeploymentTicket ticket,ExpeditionInstanceTheme[] catalog)
+        {
+            if(ticket==null||ticket.schema!=1||!ExpeditionValidation.Id(ticket.station)||
+               !ExpeditionValidation.Id(ticket.originHost)||ticket.instanceRolls<0||ticket.revision<0||
+               ticket.instanceRolls>ticket.revision||ticket.deployed&&ticket.instanceRolls==0||
+               ticket.revision!=(long)ticket.instanceRolls+(ticket.deployed?1:0))
+                throw new ArgumentException("Invalid deployment ticket.");
+            var result=new NativeExpeditionDeployment(ticket.station,ticket.originHost,ticket.seed);
+            if(ticket.instanceRolls>0)
+            {
+                result.state.instanceRolls=ticket.instanceRolls-1;
+                if(!result.RollInstances(ticket.originHost,catalog))throw new ArgumentException("Invalid deployment catalog.");
+            }
+            result.state.revision=ticket.revision;result.state.deployed=ticket.deployed;
+            return result;
         }
 
         private static int CellIndex(int x,int z)=>(x+HalfX)*GridHeight+(z+HalfZ);

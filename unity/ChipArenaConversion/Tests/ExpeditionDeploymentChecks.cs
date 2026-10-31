@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             }
             return false;
         }
-        public static void Run()
+        public static void Run(string root)
         {
             count=0;
             var a=new NativeExpeditionDeployment("station","host",12345);
@@ -78,7 +78,55 @@ namespace ChipArena.UnityConversion
             Check(Json(a.Snapshot())==frozen,"nested snapshot deep copy");
             var different=new NativeExpeditionDeployment("station","host",54321);
             Check(different.RollInstances("host",Pool)&&different.Snapshot().worldSeed!=initial.worldSeed,"new seed changes the world seed");
+            RoomChecks(root);
             Console.WriteLine("PASS Expedition deployment: "+count+" checks");
+        }
+        private static void RoomChecks(string root)
+        {
+            var options=new JsonSerializerOptions{IncludeFields=true};
+            string Read(string name)=>System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources",name));
+            string mapsJson=Read("UnityMaps.json"),layoutJson=Read("ExpeditionLayout.json");
+            var maps=JsonSerializer.Deserialize<UnityMapContent>(mapsJson,options);
+            var content=new ConversionContent{maps=maps.maps,contentRevision=NativeMapRules.Revision(mapsJson)};
+            var layout=NativeExpeditionLayout.Parse(layoutJson);layout.compatibility=NativeExpeditionLayout.Compatibility(layoutJson,content);
+            var room=new ExpeditionDeploymentRoom("room","host",123,"black-siren",layout,content);
+            Check(!room.Execute("guest",0,ExpeditionDeploymentIntent.RollInstances),"room rejects guest");
+            Check(room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"room rolls validated live pool");
+            Check(!room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"duplicate roll rejected by revision");
+            Check(room.Snapshot().instances.OrderBy(x=>x).SequenceEqual(layout.instances.OrderBy(x=>x)),"only authored roster selected");
+            Check(!room.Execute("host",1,ExpeditionDeploymentIntent.RollMutators),"unapproved mutators unavailable");
+            Check(room.Execute("host",1,ExpeditionDeploymentIntent.SkipMutators),"no-mutator start valid");
+            var wire=JsonSerializer.Deserialize<ExpeditionDeploymentTicket>(Json(room.Ticket),options);
+            var receiver=new ExpeditionDeploymentReceiver();
+            Check(receiver.Accept(wire,layout,content),"guest restores compact ticket");
+            Check(Json(receiver.Snapshot)==Json(room.Snapshot()),"guest rebuild exactly matches authority");
+            var migrated=ExpeditionDeploymentRoom.Restore(wire,"new-host",layout,content);
+            Check(!migrated.Execute("host",1,ExpeditionDeploymentIntent.RollInstances)&&
+                migrated.Execute("new-host",1,ExpeditionDeploymentIntent.RollInstances),"only reassigned authority can continue");
+            Check(room.Execute("host",1,ExpeditionDeploymentIntent.RollInstances)&&Json(room.Snapshot())==Json(migrated.Snapshot()),"migration preserves draw stream");
+            Check(receiver.Accept(room.Ticket,layout,content)&&!receiver.Accept(wire,layout,content),"stale snapshot cannot rewind");
+            Check(!room.Execute("host",2,ExpeditionDeploymentIntent.Deploy,true),"blueprint alone cannot deploy");
+            string digest=new string('a',64);
+            Check(!room.Execute("host",2,ExpeditionDeploymentIntent.Deploy,false,digest),"readiness enforced");
+            Check(room.Execute("host",2,ExpeditionDeploymentIntent.Deploy,true,digest),"validated generation locks before run");
+            Check(receiver.Accept(room.Ticket,layout,content),"guest receives locked run");
+            var frozen=Json(room.Snapshot());
+            var resumed=ExpeditionDeploymentRoom.Restore(room.Ticket,"next-host",layout,content);
+            Check(Json(resumed.Snapshot())==frozen&&!resumed.Execute("next-host",3,ExpeditionDeploymentIntent.RollInstances),"deployed handoff permanently locked");
+            Check(!receiver.Accept(wire,layout,content),"reconnect cannot unlock deployment");
+            var bad=room.Ticket;bad.compatibility=new string('b',64);
+            Check(!new ExpeditionDeploymentReceiver().Accept(bad,layout,content),"content mismatch rejected");
+            bad=room.Ticket;bad.instanceRolls=int.MaxValue;bad.revision=int.MaxValue;
+            Check(!new ExpeditionDeploymentReceiver().Accept(bad,layout,content),"overflow ticket rejected without replaying rolls");
+            bad=room.Ticket;bad.generatedCompatibility=null;
+            Check(!new ExpeditionDeploymentReceiver().Accept(bad,layout,content),"deployed snapshot requires generated compatibility");
+            var copy=receiver.Snapshot;copy.cells[0].influences[0]=-5;
+            Check(Json(receiver.Snapshot)==frozen,"receiver snapshots detached");
+            var late=new ExpeditionDeploymentReceiver();
+            Check(late.Accept(room.Ticket,layout,content)&&Json(late.Snapshot)==frozen,"late join same seed and locked selection");
+            var broken=layout.Area(layout.instances[0]);string old=broken.map;broken.map="missing";
+            bool rejected=false;try{new ExpeditionDeploymentRoom("bad","host",1,"black-siren",layout,content);}catch(ArgumentException){rejected=true;}
+            broken.map=old;Check(rejected,"missing authored instance fails catalog");
         }
     }
 }

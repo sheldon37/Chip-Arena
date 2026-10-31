@@ -45,3 +45,26 @@ Owner direction (2026-10-31): party starts together at a Deployment Station, rol
 ## Verification and release
 
 The new authority and test file are source-only; the current environment does not have the pinned Unity Editor or .NET SDK to execute managed tests. This work is not integrated into the live scene or published to the builder. First check on a suitable development machine: dotnet run --project unity/ChipArenaConversion/Tests/CoreTests.csproj -- --expedition-deployment. Then run the full managed suite and an actual Windows multi-client preview after the UI, geometry and network work.
+
+
+## Astra room integration — 2026-10-31 (draft, not the completed feature)
+
+Branch `codex/expedition-deployment-integration`, based on foundation `0f23c87b` (PR #302).
+
+Implemented:
+- `ExpeditionDeploymentRoom` chooses its pool from the selected, unlocked Expedition catalogue and the loaded layout/maps. Missing interiors, nav nodes, bosses, mismatched area/map IDs and missing compatibility fail closed. The final boss never enters the instance pool.
+- `ExpeditionDeploymentTicket` carries schema, station, original host, seed, draw index, revision, expedition and content/generator compatibility. It carries no client-selected instances or cells. Receiver reconstruction is bounded (one deterministic draw, never replay N rolls), rejects rewind/content mismatch and returns detached snapshots.
+- Revision-checked host intents reject duplicate rolls. The room wrapper rejects all mutator rolls until an effect catalogue is approved; skipping is valid. Core deployment additionally requires a generated-content digest and trusted readiness. The runtime intentionally exposes no Deploy method yet: a digest string alone is not geometry validation.
+- `ConversionGame.BeginDeploymentStation(expeditionId)`, `RollDeploymentInstances(expectedRevision)`, `SkipDeploymentMutators(expectedRevision)` and `DeploymentState` are the presentation integration API. No menu calls Begin yet. Begin creates no arena, PvE clock, kills or rewards. Leaving the network resets this staging state.
+- The host broadcasts a compact `deployment-state` envelope with lobby refreshes, including reconnect/late join. The `deploymentProtocol=1` hello capability and verified account are required while staging; old fixed-M1 room protocol/schema are unchanged. Guests have no roll authority or client-supplied selected-ID path.
+- Lobby host promotion freezes rolls through the existing PromotionBusy gate, transfers the bounded ticket in its prepare transaction, validates it before preparation succeeds, then rebinds the same draw stream to the new authenticated host at commit. Missing/incompatible handoff aborts. This is lobby promotion, **not active-run endpoint migration**.
+- Fixed M1/ordinary match starts cannot bypass an open station. Closing the room clears staging. Existing M1 runs without a station retain their old path.
+
+Still required before activation:
+1. A full procedural outdoor generator: real buildings, entrance shells, scenery, sanctuary/gates, supported surfaces/collision, caches/spawns, nav and a separate final arena. Apply all static city geometry/LOS/nav/clearance gates over many seeds. The cell blueprint is still only a blueprint.
+2. Generated map/layout loading throughout host split areas and guest reconstruction; replace the hardcoded resource reads with a per-run validated manifest. Bind its digest to the ticket, actual run handshake and active-run transfer. Lock before creating/ticking PvE. Preserve fixed M1 schema fallback.
+3. Actual readiness-to-Deploy transaction and generated-content validation. No callable runtime deployment is claimed by this patch.
+4. Claude's room, machines, previews and entry/exit controls. No station scene or artwork changed here.
+5. Approved mutator effects/compatibility/rewards, native JsonUtility/transport tests and Windows multi-client preview. No guessed effects or multipliers were introduced.
+
+Verification: focused managed deployment checks pass (49); pinned Unity 6000.3.24f1 Player, Runtime and Editor semantic compilation passes. Full managed/relay regression passes: 884 PASS lines, exit 0; receipt is in the latest DEV_LOG entry. Unity execution, PhysX, Windows build, real multi-client staging/promotion and active-run migration are unrun. No merge, builder synchronization or test-feed publication; this is a draft continuation, not a playable release.
