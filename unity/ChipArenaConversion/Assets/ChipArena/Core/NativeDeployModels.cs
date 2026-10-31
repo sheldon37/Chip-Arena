@@ -301,7 +301,7 @@ namespace ChipArena.UnityConversion
             foreach(int side in new[]{-1,1}){s.Box(Lamp(Warm,.85f),V(side*.985f,1.75f,.405f),V(.012f,.84f,.012f));s.Box(Lamp(Amber,.7f),V(side*1.02f,.72f,.45f),V(.008f,.8f,.008f));}
             s.Box(Lamp(Warm,.7f),V(0,1.385f,.52f),V(1.8f,.008f,.006f));s.Box(Lamp(Amber,.8f),V(0,.19f,.63f),V(1.9f,.012f,.008f));
         });
-        
+
         /// <summary>One reel's symbol band about its axle (x), front toward -z; uv x across the band, y the strip position in
         /// symbols from the front (DrumSlots round the drum), so the draw scrolls it (Runtime: _Scroll, _Rep) and any strip lands.</summary>
         public static WeaponMesh Drum()

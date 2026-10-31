@@ -166,7 +166,8 @@ Branch `claude/deployment-station`. Presentation only, built on the rules above;
     wild-card back until rolled.
   - **Stamps:** PENDING until Deploy, ACTIVE after.
   - **Deploy:** the doors part, the lift rises, the party turns to the gate and is lifted out in light columns, and the
-    machines dim. The map freezes at Deploy.
+    machines dim. The map freezes at Deploy. Each light shaft is a soft ribbon with a bright core, fading upward, turned
+    to face the camera about its pad, so the close Deploy shot reads as light rather than solid tubes.
   - **Each frame:** the camera eases between `ShotOf` shots. It sets the lights and floor light pools, and the
     console's host controls (`ControlsOf`).
   - **Allocation:** none per frame (checked).
@@ -194,7 +195,7 @@ Branch `claude/deployment-station`. Presentation only, built on the rules above;
 
 ### Checks
 
-- `CoreTests --deploy-models` (also in the full suite): 1,979 checks.
+- `CoreTests --deploy-models` (also in the full suite): 1,985 checks.
   - **Models:** deterministic, clean, inside footprints and budgets. Lights are unlit and glass is see-through.
   - **Pivots:** the lever hub, axle stubs, spindle hubs, door leaves and lift sit on their bodies.
   - **Screen UVs:** correct.
@@ -204,6 +205,8 @@ Branch `claude/deployment-station`. Presentation only, built on the rules above;
   - **Art:** the tile art is checked.
   - **Runtime wiring (text scan):** the reels come from `Reel()` and the map from `Preview()`, and only the DEV preview
     calls the authority. The draw does not allocate, and the metas are present.
+  - **Shader text:** `NativeDeployScreen.shader` names no variable after an HLSL reserved word (`line`, `point`,
+    `triangle`, `sample` and the adjacency forms). The first draft used `line`, which would not have compiled.
 - Offline renders were made with WebGL emulating the shader path; they are not committed.
 
 ### What Astra wires for the live room (presentation reads it; nothing here changes the authority)

@@ -1,8 +1,12 @@
 ## 2026-10-31 — Claude: the Deployment Station drawn (models, scene, console, DEV preview)
 
-- **Branch/base:** `claude/deployment-station`, on the presentation rules `b254aef`. Those sit on Astra's
-  `codex/expedition-deployment-machines-20261031`. Local commits `31b495f` (Core), `d8032d5` (Runtime) and `ca8162d`
-  (checks), plus this docs commit. Not pushed, merged or released.
+- **Branch/base:** `claude/deployment-station`, stacked on Astra's draft PR #302
+  (`codex/expedition-deployment-machines-20261031`, head `0f23c87`, base shared `3323310`).
+  - Presentation rules: `7a4acf3`, `b254aef`.
+  - Runtime work: `31b495f` (Core), `d8032d5` (Runtime), `ca8162d` (checks), `7046f6f` (docs).
+  - Review fixes: `1f380ce`.
+  - Pushed. **Not merged into shared or the builder:** #302 is still a draft, and this branch carries its commits. Merge
+    this branch after #302 lands. Not released.
 - **Changes:**
   - **Core:** `NativeDeployModels` (both machines, the reel drum and rims, the card dial, the holo war-table, pads, the
     DEPLOY gate with doors and lift, the console and the room). `NativeDeployArt` (reel symbols, mutator cards, stamps, and a
@@ -11,26 +15,43 @@
     (`--ca-deploy-preview`, a local authority) and `Resources/NativeDeployScreen.shader`.
   - **Shared files:** one-line hooks in ConversionGame (GuiFrame, MenuBackdrop) and in VisualOutfitOf and SeatWeaponSkins.
     The overview and deploy shots are reframed.
+  - **Review fixes (`1f380ce`):**
+    - The screen shader had a variable named `line`, which HLSL reserves; it is renamed, and a check now rejects
+      reserved words.
+    - The Deploy light columns were solid double-sided tubes that washed out the Deploy shot. They are now soft
+      camera-facing shafts.
+    - With more than four party members, the console's readiness chips overlapped; they now narrow to fit one row.
   - **Docs:** docs/EXPEDITION-DEPLOYMENT.md "Runtime presentation" (including what Astra wires).
 - **Affected systems:**
   - The menu backdrop and GUI change only behind the DEV flag.
   - The visual body's outfit and skin lookups gain a branch for the deploy actor ids (-500 to -507).
   - No change to the simulation, the authority, the network, saves or the Expedition start flow.
   - No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
-- **Checks (actual):**
-  - `CoreTests --deploy-models` 1,979 PASS; `--deploy-presentation` 436,266 PASS; `--expedition-deployment` 26 PASS.
-  - The full managed suite: 885 PASS lines, exit 0.
+- **Checks (actual, on `1f380ce`):**
+  - `CoreTests --deploy-models` 1,985 PASS; `--deploy-presentation` 436,266 PASS; `--expedition-deployment` 26 PASS.
   - `unity-check` (Runtime and Editor against Unity 6000.3.24f1): OK.
-  - Offline WebGL renders of the Core meshes posed by the stage were reviewed and iterated. They emulate the Lambert, stage
-    block, ACES, fog and bloom path, use stand-in pilot figures, and are not committed.
-- **Not run:** the Unity Editor or player, any compile of the new shader, Windows, the cast on the real visual body, and
-  multiplayer.
+  - The relay suite (`tools/check_relay.py`, test timeout 900 s): 886 PASS lines, exit 0, 415 s; build 0 errors.
+  - Python: 167 tests OK (1 skipped).
+  - `tools/package_source.py`: the source zip builds (removed afterwards).
+  - `git diff --check` from `b254aef`: clean after stripping one blank line's trailing spaces (whitespace only, after the
+    suites ran).
+  - Offline WebGL renders of the Core meshes posed by the stage were reviewed and iterated, including after the shaft fix.
+    They emulate the Lambert, stage block, ACES, fog and bloom path, use stand-in pilot figures, and are not committed.
+- **Not run:**
+  - the Unity Editor or player;
+  - any Unity compile of the new shader;
+  - Windows;
+  - the cast on the real visual body;
+  - multiplayer.
 - **Risks:**
-  - `NativeDeployScreen.shader` is unverified by any compiler.
+  - `NativeDeployScreen.shader` has only had a text check.
   - About 150 non-instanced draws per frame.
-  - Console layout at ultrawide, and bloom and fog tuning, are unchecked in Unity.
-- **Next:** the owner tries `--ca-deploy-preview` on the PC. Astra wires the live room: state, clock, readiness, catalogs and
-  intents.
+  - The console layout at ultrawide, and bloom and fog tuning, are unchecked in Unity.
+  - The door leaves slide inside the pillars.
+- **Next:**
+  1. Astra takes #302 out of draft and merges it; then this branch merges into shared and the builder.
+  2. The owner tries `--ca-deploy-preview` on the PC.
+  3. Astra wires the live room: state, the `NativeDeployClock` times, readiness, catalogs and the console's intents.
 
 ## 2026-10-31 — Claude: CI time for the managed tests after the M1 stages
 
