@@ -164,9 +164,9 @@ namespace ChipArena.UnityConversion
             Check(exp.Contains("if(seat==X.Seat.Guest){expPick=K.Default;expMode=receivedOptions?.expedition==true?X.Mode.Expedition:X.Mode.Waves;}"),"a guest sees the room's run: the default expedition in Wave Defense");
             Check(Regex.Matches(exp,@"if\(edit\)ExpTurnTo").Count==2&&exp.Contains("if(!edit)return;if(!X.WaveSupported(start))")&&exp.Contains("bool live=ExpLive(a)&&edit;float h=U.HoverAmount(9500+index")&&exp.Contains("ExpPartyCard(slot,party[i],i,ce,now,seat,edit&&i==newest,bots)")&&exp.Contains("bool canAdd=edit&&"),"a guest's keys, mode tiles, wave row and bot buttons do nothing");
             Check(exp.Contains("BeginRules(false,width);var o=rules;"),"the drawer's party rows go through BeginRules (read-only on a guest connection)");
-            // Presentation only: no room field or message added (Astra's contract in DEV_LOG).
+            // Expedition presentation adds no fields; Astra's M1 integration adds the separate training room mode.
             var fields=typeof(NativeRoomOptions).GetFields().Select(f=>f.Name).OrderBy(s=>s,StringComparer.Ordinal).ToArray();
-            Check(string.Join(",",fields)=="botDifficulty,botOptions,bothDraft,bots,choices,cooperative,expedition,friendlyFire,hostTeam,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
+            Check(string.Join(",",fields)=="botDifficulty,botOptions,bothDraft,bots,choices,cooperative,expedition,friendlyFire,hostTeam,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams,training","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
             Check(!exp.Contains("type=\"expedition")&&!Regex.IsMatch(exp,@"new NativeNetMessage\{type=""(?!profile"")"),"the screen sends no new message");
             // The transitions read EXPEDITIONS / PVE for this screen and a PvE room.
             Check(Regex.Match(mt,"MenuTitles=\\{([^}]*)\\}").Groups[1].Value.Split(',')[5].Trim()=="\"EXPEDITIONS\""&&Regex.Match(mt,"MenuEyebrows=\\{([^}]*)\\}").Groups[1].Value.Split(',')[5].Trim()=="\"PVE\"","the transition titles EXPEDITIONS / PVE");

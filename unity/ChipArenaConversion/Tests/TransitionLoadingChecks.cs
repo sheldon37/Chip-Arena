@@ -181,7 +181,7 @@ namespace ChipArena.UnityConversion
         }
         private static void Schematics(List<ContentMap> maps)
         {
-            Check(maps.Count==8&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
+            Check(maps.Count==14&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
             foreach(var m in maps)
             {
                 var s=NativeStageSchematic.Build(m);Check(s!=null&&s.Count>0&&s.Count<=NativeStageSchematic.Max,m.id+" scans ("+(s?.Count??0)+")");

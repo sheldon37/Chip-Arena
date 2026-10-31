@@ -9,12 +9,12 @@ namespace ChipArena.UnityConversion
         private string[] sandboxChipQueue;private int sandboxChipIndex;private float sandboxChipAt;
         public bool SandboxConfigure(string map=null,string weapon=null,string difficulty=null)
         {
-            if(!SandboxAllowed)return false;
+            if(!SandboxAllowed||Training&&map!=null&&map!="training")return false;
             if(map!=null&&!Content.maps.Any(m=>m.id==map&&NativeMapRules.ArenaSelectable(m))||weapon!=null&&!Content.weapons.Any(w=>w.id==weapon&&(!w.devOnly||Local.Seat.access.Allows("weapon:"+weapon,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))))return false;
             if(difficulty!=null)foreach(var p in Pilots.Where(p=>p.Seat.bot))p.Seat.difficulty=NativeLobbyRules.Difficulty(difficulty);
             if(weapon!=null){Local.Seat.spec=weapon;Local.Seat.chips.Clear();}if(map!=null)MapId=map;if(map!=null||weapon!=null){sandboxDummy=null;Reset();}return true;
         }
-        public void SandboxReset(){if(!SandboxAllowed)return;sandboxChipQueue=null;SandboxPreviewRarity=null;procLedger.Clear();Reset();Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=Time,fightAt=Time});}
+        public void SandboxReset(){if(!SandboxAllowed)return;if(Training){ResetTraining();return;}sandboxChipQueue=null;SandboxPreviewRarity=null;procLedger.Clear();Reset();Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=Time,fightAt=Time});}
         public void SandboxTestBlock(){if(!SandboxAllowed)return;SandboxRestore(Local);var other=Pilots.FirstOrDefault(p=>p.Seat.bot);if(other==null)return;SandboxCast("sword","ai");other.Body.position=Local.Body.position+Vector3.forward*2;Local.Input=new InputFrame{Yaw=0};TryBlock(Local);}
         public void SandboxPreview(string kind,string rarity="common")
         {

@@ -190,6 +190,7 @@ namespace ChipArena.UnityConversion.Editor
                         if(!scene.IsValid()||!EditorSceneManager.IsPreviewScene(scene)||!physics.IsValid()||physics==Physics.defaultPhysicsScene)
                             throw new Exception("Build check requires a preview scene with independent 3D physics: "+map.id);
                         var match=new NativeMatch(data);match.Seats.Add(new NativeSeat{id=1,name="Check A",spec="pistol"});match.Seats.Add(new NativeSeat{id=2,name="Check B",spec="sword",team=1});
+                        if(map.id=="training"){match.Seats[1].team=0;match.Teams=true;NativeTrainingRules.AddDummies(match,map);}
                         arena=new NativeArena(data,match,map.id);arena.Reset();SceneManager.MoveGameObjectToScene(arena.Root,scene);
                         // Prove Edit-mode simulation advances; a no-op must not pass settling checks.
                         var probe=new GameObject("Physics advance check");probe.transform.SetParent(arena.Root.transform);
@@ -214,6 +215,7 @@ namespace ChipArena.UnityConversion.Editor
                             CheckNetworkSerialization(arena);CheckCombatParity(data);CheckInteractionFeedback(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();
                         }
                         if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
+                        if(new[]{"breakwater","harbor","skyframe","rig","polar","training"}.Contains(map.id))arena.ValidateM1Runtime();
                         if(map.id=="cybercity")arena.ValidateCyberCityExits();
                         if(NativeMapRules.WardInstance(map.id)&&map.look=="quarantine"){if(map.id=="siren")arena.ValidateWardSimulation();arena.ValidateWardTraversal();}
                         if(map.id=="brickfall"){arena.ValidateCorpsePhysics();CheckBrickfallRuntime(data);}
