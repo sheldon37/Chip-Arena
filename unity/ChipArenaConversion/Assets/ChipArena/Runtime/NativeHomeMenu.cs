@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         private void Fine(string text)=>GUILayout.Label(text,fine);
         // A row of mutually exclusive choices drawn as toggle buttons (the skin's on-state is the source's active option).
         private int ChoiceRow(string[] labels,int selected)
-        {GUILayout.BeginHorizontal();for(int i=0;i<labels.Length;i++)if(GUILayout.Toggle(i==selected,(i==selected?"✓ ":"")+labels[i],button)&&i!=selected){selected=i;Click();}GUILayout.EndHorizontal();return selected;}
+        {GUILayout.BeginHorizontal();for(int i=0;i<labels.Length;i++)if(NativeControllerPointer.Toggle(i==selected,(i==selected?"✓ ":"")+labels[i],button)&&i!=selected){selected=i;Click();}GUILayout.EndHorizontal();return selected;}
 
         // ---- Routing -------------------------------------------------------------------------------------------------
         private void HomeMenu()
@@ -490,9 +490,9 @@ namespace ChipArena.UnityConversion
         // The panel body: the existing GUILayout form inside its own area and scroll view, faded with the panel.
         private void ScreenBody(ScreenLayout l,Action draw)
         {
-            var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*l.Enter);GUILayout.BeginArea(l.Body);
+            NativeControllerPointer.SetClip(l.Body);var c=GUI.color;GUI.color=new Color(c.r,c.g,c.b,c.a*l.Enter);GUILayout.BeginArea(l.Body);
             U.BeginDeferred();screenScroll=GUILayout.BeginScrollView(screenScroll,false,false,GUIStyle.none,GUI.skin.verticalScrollbar);draw();GUI.enabled=true;GUILayout.Space(4);
-            if(Event.current.type==EventType.Repaint)screenContent=GUILayoutUtility.GetLastRect().yMax;GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(l.Body,screenScroll);
+            if(Event.current.type==EventType.Repaint)screenContent=GUILayoutUtility.GetLastRect().yMax;GUILayout.EndScrollView();GUILayout.EndArea();GUI.color=c;U.EndDeferred(l.Body,screenScroll);NativeControllerPointer.ClearClip();
         }
         // .lobby-actions: a rule, then equal-width actions along the panel's foot; returns the index clicked, or -1.
         private int ScreenActions(ScreenLayout l,params (string icon,string label,bool primary,bool enabled)[] items)

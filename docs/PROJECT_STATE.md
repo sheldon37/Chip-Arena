@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-31 Astra controllers (`codex/unity-controller-options`, base `0cd720e`): configurable Gamepad support, platform button labels, saved custom layouts/reset, movement/combat/Expedition bindings and menu pointer. Steam Controller/Deck require Steam Input's Gamepad template. Managed binding checks and Unity semantic compilation pass; physical-controller/menu acceptance and the native Windows builder gate remain. See CONTROLLERS.md and the task PR for final verification/integration status.
+
 2026-10-30 Claude faces on the model (`claude/faces`, from shared `90cafedb`; merged into shared and the builder; presentation only; docs/BOZO-INTEGRATION.md "Faces"): the pack's expression shapes driven at last; pilots focus, shout, wince, grin, smile in the menus, blink and close their eyes in death; zombies moan, bare their teeth, bite, roar, wince and go slack. Next: owner check in the Windows build.
 
 2026-10-30 Claude the Hulk in detail (`claude/hulk-detail`, from shared `d327f1e1`; merged into shared and the builder; presentation only; docs/ZOMBIE-MODELS.md 4f): the grown flesh rebuilt as anatomy (each muscle its own form meeting in creases, veins, torn skin, spurs) with the worn skin and clothes it covers dropped (nothing shows through), the women's top a painted chest wrap, the neck meeting the head under the jaw in the head's tone; fists clenched, hardest in a blow; the Hulk's hips carried on a spring (no frame drops). Next: owner check in the Windows build.

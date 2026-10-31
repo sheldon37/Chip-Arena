@@ -22,6 +22,7 @@ namespace ChipArena.UnityConversion.Editor
         {
             Prepare();
             NativeBuildChecks.Run();
+            NativeControllerBuildChecks.Run();
             foreach(string name in RegressionTests.Run()) Debug.Log("PASS " + name);
             foreach(string name in RangedRegressionTests.Run()) Debug.Log("PASS " + name);
             using(var animations=new CapturedAnimation()) animations.ValidatePlayback();
@@ -48,7 +49,8 @@ namespace ChipArena.UnityConversion.Editor
             ConfigureRendering();
             var settings=new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")[0]);
             var input=settings.FindProperty("activeInputHandler");
-            if(input!=null&&input.intValue!=0) { input.intValue=0; settings.ApplyModifiedPropertiesWithoutUndo(); }
+            // Both: existing keyboard/mouse and IMGUI plus the controller Input System backend.
+            if(input!=null&&input.intValue!=2) { input.intValue=2; settings.ApplyModifiedPropertiesWithoutUndo(); }
             EditorBuildSettings.scenes=new[] { new EditorBuildSettingsScene(ScenePath,true) };
             AssetDatabase.SaveAssets();
         }

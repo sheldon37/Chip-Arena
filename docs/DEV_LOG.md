@@ -1,3 +1,13 @@
+## 2026-10-31 — Astra: configurable controllers
+
+- Branch `codex/unity-controller-options`, base shared `0cd720e`. Adds Unity Input System 1.17.0 while retaining legacy keyboard/mouse and IMGUI. Both the project and builder preserve Both input backends.
+- Controller settings: Auto/Xbox/PlayStation/Steam labels, 19 remappable gameplay actions, conflict swaps, chord bindings, sensitivity/deadzone/invert/swap sticks, explicit save and restore defaults. Preferences stay local in the existing file; schema migration preserves old saves. Steam Controller/Deck use Steam Input's Gamepad template; native Steam action sets, gyro, paddles and rumble are not added.
+- Routes into existing InputFrame and lock/Expedition controls; fixed menu pointer/confirm/back plus form scrolling and sliders. Uses local hit tests during genuine IMGUI repaint; does not send OS mouse input or replace render events. Keyboard text entry remains available/required for text fields. One gamepad controls the local pilot, not local split-screen.
+- Disconnect/focus/loading/context changes release actions and wait for neutral; modifier release cannot fire the underlying held button. Save failures are reported. No animation, damage, cooldown, hitbox, network schema or authoritative movement-rule changes.
+- Validation: 17 controller managed regressions pass. Native builder fixture covers Unity JSON migration/remaps and synthetic Gamepad input; added but not executed here. The compile gate now checksums and compiles the actual pinned Input System source before Player/Runtime/Editor. Final full-suite and compile results are recorded in the PR.
+- Local SDK CLI cannot read this sandbox's process stats, so managed tests use direct SDK Roslyn, warnings-as-errors, ARENA_TESTS and the csproj's GC/tiering settings. The first broad run exposed existing partial-class static initialization ordering in NativeHordeModels; rerun uses sorted source paths to match normal project compilation. No game code was changed for that harness issue.
+- Windows export, physical Xbox/PS USB/Bluetooth, Steam Input, rendered menu interaction and live host/guest play remain unrun. `docs/CONTROLLERS.md` records defaults and the hardware acceptance checklist. Source integration/builder sync does not itself verify a published Windows update.
+
 ## 2026-10-30 — Claude (PC): the default outfit (the robot suit and the robot's helmet)
 
 - **Branch/base:** `claude/robot-default` from shared `3ff87b9b`. No PR; merged into shared and the builder.
