@@ -35,6 +35,110 @@ Owner direction (2026-10-31): party starts together at a Deployment Station, rol
 - Mutator machine visually communicates optionality, good/bad/chaotic effects and a skip option. A rolled effect must not be visually presented as active until the host applies it.
 - When Deploy occurs, the machines go dark/lock, selected map preview freezes, and the party travels to the generated world. The station is not the hub sanctuary; it is a pre-run location.
 
+## Presentation (Claude, 2026-10-31): the station, the machines and the map
+
+Branch `claude/deployment-station`, on top of Astra's foundation (`codex/expedition-deployment-machines-20261031`).
+Presentation only. Nothing here rolls, decides or writes state: every client draws the same pictures from the replicated
+`ExpeditionDeploymentState`, plus its own clock since it saw each roll.
+
+### The set
+
+The Deployment Station is a staged set, not a walkable map. Like the rooftop menu and the draft stage, the party stands on
+marked pads and the station needs no collision or nav. Astra can make it walkable later; the layout below is the contract
+either way. Station frame: metres, x right, z away from the default camera, y up.
+
+- **The holo war-table** (centre, `Table` (0, 0, 2), radius 1.6 m) projects the blueprint map: Core `Preview`. It shows
+  - district colours blended by the cell influences;
+  - brighter roads and the neutral plaza ring;
+  - the three entrances as rings in their colours;
+  - the boss gate as a red diamond on the north edge.
+  
+  It freezes at Deploy.
+- **The party pads:** 8 pads on an arc 4.4 m in front of the table, the host on the centre pad and the rest alternating
+  outward (`Pad(i)`). Each pilot stands on its pad in its lobby idle, with a ready lamp under it from the room's readiness.
+- **The INSTANCE MACHINE** (left, `InstanceMachineAt` (-5.6, 0, 3.6), turned 55 degrees toward the table): a tall
+  three-reel "destination engine".
+  - **Cabinet and lever:** a graphite and brass cabinet with a big pull lever.
+  - **Reels:** three drum reels carrying the eligible instances' emblems, each reel topped by its entrance label (EAST,
+    WEST, SOUTH).
+  - **Approach strip:** a strip under the reels shows each district's generated approach in its colour.
+  - **Theme:** heavy, mechanical, warm industrial light.
+- **The MUTATOR MACHINE** (right, mirrored): mechanically different, a "wild card" machine.
+  - **Dials:** three card dials spinning under a glass dome.
+  - **Polarity colours:** boon green, bane red, chaos violet, unknown grey.
+  - **Skip plate:** a SKIP plate and "OPTIONAL" signage with dashed light outlines, so it never reads as required.
+  - **Theme:** volatile, flickering, cooler light.
+- **The DEPLOY gate** (back wall, `Gate` (0, 0, 9)): a lift platform behind blast doors, with a console in front (the
+  Deploy action) and a readiness light per party member.
+- **Shots** (`ShotOf`, `Framing`): the overview by default, the spinning machine's close-up while it rolls, the gate on
+  Deploy.
+
+### What each piece shows (Core `NativeDeployPresentation`)
+
+- **Reels:** each reel spins forward from where the last roll left it.
+  - Timing: a 0.3 s spin-up, then a cruise of at least 11 symbols a second.
+  - Stops: the reels stop left to right at 1.6, 2.05 and 2.5 s, overshoot a quarter symbol and settle onto the
+    authority's result (instance reel i on district i; mutator reel i on mutator i).
+  - Edge cases: a client that joins after a roll sees it landed. An id the presentation does not know is added to the
+    strip, so it still lands.
+- **Instance machine:** Dormant (the host is invited to pull; a guest sees "waiting for the host"), then Spinning, Landed
+  (the host may reroll), then Locked at Deploy. When locked it dims to 20% with the result still legible, and the lever is
+  clamped.
+- **Mutator machine:**
+  - **Before the first roll:** Unavailable until the destinations are rolled, then Optional ("roll, or deploy without").
+  - **Rolled:** Spinning, then **Pending**. A rolled mutator is never shown as active before Deploy; its card carries a
+    PENDING stamp.
+  - **Skipped:** reads "no mutators".
+  - **At Deploy:** Active, the cards stamped ACTIVE and still lit while the cabinet darkens, or just Locked when there are
+    none.
+- **Deploy console:** "roll destinations to deploy", "waiting for the party", DEPLOY (host only; guests see "waiting for the
+  host"), then deploying.
+- **Deploy sequence:**
+  - the machines dim (0.6 s) and clamp (0.2–0.5 s);
+  - the gate opens (0.8–2.2 s);
+  - the lift carries the party out (2.2–3.6 s);
+  - the screen fades (3.4–4 s);
+  - the travel hand-off starts at 4 s.
+- **Display tables:**
+  - **Destinations:** Ward Zero (quarantine green), Central Station (transit cyan), City Ironworks (foundry orange). A new
+    instance falls back to its theme's look, then to neutral.
+  - **Mutators:** `surge`, `storm`, `darkness` and `brittle` (the ids Astra's checks use), plus `windfall` and
+    `second-wind`. Names and one-line flavour only, no numbers. Astra's catalog decides what each id does; an unknown id
+    reads UNKNOWN.
+
+### The generated world's look (for the outdoor map, once Astra generates it)
+
+- `Weights(state, x, z)` gives the theme blend [neutral, district 0, 1, 2] at any world point. It is the bilinear,
+  smoothstep-weighted blend of the four nearest cells' influences.
+  - It equals each cell's influences at the cell centre and sums to 1 everywhere.
+  - It changes by at most 0.08 over 25 cm, so dressing driven by it (props, wall kits, lighting, fog, ambient sound, enemy
+    look) fades between districts with no seam at cell borders.
+- `Road(state, x, z)` is the same blend for roads.
+- Interiors stay authored. Only the outdoor approach is blended.
+
+### Checks
+
+`CoreTests --deploy-presentation` (also in the full suite): 436,266 checks.
+- Reels land on the result for every strip length 1 to 12, every reel, every start and every result. They spin forward
+  only, never faster than 30 symbols a second with no jump, and overshoot and settle.
+- Phases are checked for host and guest across a real authority's lifecycle (roll, mutators, skip, reroll, deploy). Mutators
+  are never Active before Deploy at any time.
+- The deploy timeline is monotone, and travel starts at 4 s.
+- Weights equal each cell at its centre, sum to 1, have no seam and are neutral at the plaza, and each district owns its
+  entrance.
+- The map is deterministic and opaque, with entrances in their colours and the boss gate red.
+- The pads are apart and clear of the table and machines; the shots are sane; the display tables have fallbacks.
+
+### Needs from Astra (data the presentation reads; nothing here changes the authority)
+
+- **The state:** the replicated `ExpeditionDeploymentState` on every client.
+- **Roll times:** each client's local time when it first saw a new `instanceRolls` or `mutatorRolls`, so reels spin. A
+  missing time is fine: the result shows landed.
+- **Deploy time:** each client's local time when it saw `deployed`, for the sequence.
+- **Readiness:** per-seat readiness for the pad lamps, and the aggregate `partyReady` for the console.
+- **Intents:** host intents from the console's buttons: roll destinations, roll mutators, skip, deploy. The runtime only
+  asks; the authority answers.
+
 ## Open design knobs (safe defaults for foundation only)
 
 - Unlimited pre-launch rerolls with no price, until cost/cooldown is specified.
