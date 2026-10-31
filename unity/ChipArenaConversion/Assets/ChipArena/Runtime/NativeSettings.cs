@@ -20,9 +20,10 @@ namespace ChipArena.UnityConversion
             // voxel pilot. Only how this PC draws every pilot; it applies at once, mid-match too (the pause menu's settings).
             if(ArenaPresentation.VisualBodyInstalled){Field("Player model");prefs.playerModel=ChoiceGrid(PlayerModels,prefs.playerModel=="Classic"?"Classic":"New",PlayerModelLabels);Fine("How every pilot looks on this PC; other players keep their own choice.");}
             Field("Controls");prefs.sensitivity=Slider("Mouse sensitivity",prefs.sensitivity,.2f,2.5f);
-            Field("Audio");prefs.sound=!GUILayout.Toggle(!prefs.sound,"Mute audio");SoundTestRow();prefs.menuMusic=Slider("Menu Music",prefs.menuMusic,0,1);prefs.music=Slider("Stage Music",prefs.music,0,1);prefs.audio=Slider("Sounds",prefs.audio,0,1);
+            ControllerSettings();
+            Field("Audio");prefs.sound=!NativeControllerPointer.Toggle(!prefs.sound,"Mute audio");SoundTestRow();prefs.menuMusic=Slider("Menu Music",prefs.menuMusic,0,1);prefs.music=Slider("Stage Music",prefs.music,0,1);prefs.audio=Slider("Sounds",prefs.audio,0,1);
             if(nativeAudio!=null){nativeAudio.Effects=Mathf.Clamp01(prefs.audio);nativeAudio.Music=Mathf.Clamp01(prefs.music);nativeAudio.Menu=Mathf.Clamp01(prefs.menuMusic);}
-            Field("Effects");prefs.trails=GUILayout.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=GUILayout.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=GUILayout.Toggle(prefs.cameraShake,"Camera shake");
+            Field("Effects");prefs.trails=NativeControllerPointer.Toggle(prefs.trails,"Projectile trails");prefs.reducedEffects=NativeControllerPointer.Toggle(prefs.reducedEffects,"Reduced effects");prefs.cameraShake=NativeControllerPointer.Toggle(prefs.cameraShake,"Camera shake");
             GUILayout.Label("Combat glow",small);int glow=prefs.combatGlow=="Off"?0:prefs.combatGlow=="Low"?1:2;prefs.combatGlow=new[]{"Off","Low","Full"}[ChoiceRow(new[]{"Off","Low","Full"},glow)];
             // The damage screen (NativeDamageScreenPresentation): Off, Subtle (60%, no colour split) or Full; Reduced effects also stills it.
             GUILayout.Label("Damage screen effect",small);int hurt=prefs.damageScreen=="Off"?0:prefs.damageScreen=="Subtle"?1:2;prefs.damageScreen=new[]{"Off","Subtle","Full"}[ChoiceRow(new[]{"Off","Subtle","Full"},hurt)];
@@ -32,15 +33,15 @@ namespace ChipArena.UnityConversion
             // The desktop shell's View menu (desktop/main.cjs:47): togglefullscreen beside the zoom roles that Interface scale
             // stands in for. It applies and saves at once through SetFullscreen, and shows the window's actual mode, which the
             // player's Alt+Enter can change without the saved preference.
-            Field("Interface");bool now=Screen.fullScreenMode!=FullScreenMode.Windowed,full=GUILayout.Toggle(now,"Full screen");if(full!=now)SetFullscreen(full);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
+            Field("Interface");bool now=Screen.fullScreenMode!=FullScreenMode.Windowed,full=NativeControllerPointer.Toggle(now,"Full screen");if(full!=now)SetFullscreen(full);prefs.uiScale=Mathf.Round(Slider("Interface scale",prefs.uiScale>0?prefs.uiScale:1,.75f,1.5f)*20)/20;Fine("Scales every menu and overlay; the canvas follows as you drag.");
             if(account.Developer)
             {
-                Field("Developer");bool console=GUILayout.Toggle(prefs.developmentConsole,"Show development console");
+                Field("Developer");bool console=NativeControllerPointer.Toggle(prefs.developmentConsole,"Show development console");
                 if(console!=prefs.developmentConsole){prefs.developmentConsole=console;SyncDevelopmentConsole();Save();}
                 // DEV Abuse (NativeDevPanel.cs, docs/DEV-TOOLS.md): off by default, saved; the DEV panel (F3) in any match, offline or
                 // online, host or guest, for this verified dev account only, and Astra's session opt-in DevAbuseEnabled. The host never
                 // trusts it: every DEV command is checked against the verified seat (docs/DEV-ABUSE-AUTHORITY.md).
-                if(NativeDevGate.ToggleVisible(account.Developer)){bool abuse=GUILayout.Toggle(prefs.devAbuse,"DEV Abuse: DEV tools in every match (F3)");if(abuse!=prefs.devAbuse){prefs.devAbuse=abuse;DevAbuseEnabled=NativeDevGate.CommandsEnabled(abuse,account.Developer);Save();}Fine("Off by default. Turns on this session's DEV commands (DevAbuseEnabled); the match's authority still checks your verified grant for every command.");}
+                if(NativeDevGate.ToggleVisible(account.Developer)){bool abuse=NativeControllerPointer.Toggle(prefs.devAbuse,"DEV Abuse: DEV tools in every match (F3)");if(abuse!=prefs.devAbuse){prefs.devAbuse=abuse;DevAbuseEnabled=NativeDevGate.CommandsEnabled(abuse,account.Developer);Save();}Fine("Off by default. Turns on this session's DEV commands (DevAbuseEnabled); the match's authority still checks your verified grant for every command.");}
                 // The Siren minion kinds before their rules exist (NativeHordeKindPresentation.cs): every horde add drawn as one kind, or a
                 // mix by id. Looks only (the add's rules, timing and hit volume stay its own); this session only, never saved.
                 GUILayout.Label("Siren minion preview (looks only)",small);NativeHordeKinds.Preview=HordePreviewChoice(ChoiceGrid(HordePreviewIds,HordePreviewId(NativeHordeKinds.Preview),HordePreviewNames));
@@ -59,7 +60,7 @@ namespace ChipArena.UnityConversion
             });
         }
         private static readonly string[] PlayerModels={"New","Classic"},PlayerModelLabels={"New body","Classic voxel"};
-        private float Slider(string name,float value,float min,float max){GUILayout.Label(name+"  "+value.ToString("0.00"),small);return GUILayout.HorizontalSlider(value,min,max);}
+        private float Slider(string name,float value,float min,float max){GUILayout.Label(name+"  "+value.ToString("0.00"),small);return NativeControllerPointer.Slider(value,min,max);}
         // Development builds keep Player.log, but never pop the overlay before a verified DEV opts in.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void HideDevelopmentConsole(){Debug.developerConsoleEnabled=false;Debug.developerConsoleVisible=false;}
@@ -84,6 +85,7 @@ namespace ChipArena.UnityConversion
         public void SetFullscreen(bool enabled){windowModeInitialized=true;windowModeRequestedAt=Time.frameCount;prefs.fullscreen=enabled;Screen.fullScreenMode=enabled?FullScreenMode.FullScreenWindow:FullScreenMode.Windowed;Save();}
         private void ApplySettings()
         {
+            ControllerPrefs.Normalize();
             SyncDevelopmentConsole();
             if(!windowModeInitialized)SetFullscreen(prefs.fullscreen);else SyncFullscreen();
             prefs.sensitivity=Mathf.Clamp(prefs.sensitivity,.2f,2.5f);prefs.audio=Mathf.Clamp01(prefs.audio);prefs.music=Mathf.Clamp01(prefs.music);prefs.menuMusic=Mathf.Clamp01(prefs.menuMusic);

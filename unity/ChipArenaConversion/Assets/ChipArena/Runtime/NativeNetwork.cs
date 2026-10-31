@@ -188,7 +188,7 @@ namespace ChipArena.UnityConversion
             if(!o.cooperative)MatchOptions(RulesPart.All,false,false);
             RuleSelect(7482,RoomOpt.Online,"Connection",ConnectionLabels,internetRooms?0:1);RuleFine(7484,internetRooms?"Friends on any network can join with your room code.":"Only players on the same local network can join.",0,4);
             if(!internetRooms){Field("Port");portText=GUILayout.TextField(portText,5,GUILayout.Width(120));Fine("The lobby shows your LAN address and invite link once the room is open. Friends on the same LAN can join with just the code.");}
-            else if(UseManagedRelay){listedRoom=GUILayout.Toggle(listedRoom,"Show in public room list");}
+            else if(UseManagedRelay){listedRoom=NativeControllerPointer.Toggle(listedRoom,"Show in public room list");}
             if(!o.cooperative)DraftOptions();IntroOptions();
             if(!o.cooperative)RuleCheck(7486,RoomOpt.BothDraft,"All players draft after each set",o.bothDraft);else RuleFine(7488,"Party bots and where the run starts are set in the lobby.",0,6);
             RuleFine(7494,"Keep your game open while friends are in your room.",8,6);
@@ -209,8 +209,8 @@ namespace ChipArena.UnityConversion
             else if(UseManagedRelay)
             {
                 GUI.enabled=relayConnecting==null&&connecting==null&&!listingRooms;
-                if(GUILayout.Button(listingRooms?"Finding rooms…":"Browse public rooms",button))StartCoroutine(ListRelayRooms());
-                foreach(var room in relayRooms)if(GUILayout.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}GUI.enabled=true;
+                if(NativeControllerPointer.Button(listingRooms?"Finding rooms…":"Browse public rooms",button))StartCoroutine(ListRelayRooms());
+                foreach(var room in relayRooms)if(NativeControllerPointer.Button(room.name+" · "+room.players+" / "+room.capacity+" · "+room.code,button)){joinCode=room.code;JoinRoom();}GUI.enabled=true;
             }
             else Fine("Enter the six-character code from your host. They need to keep their room open while you play.");
             ClassRow("Your class",ClassCardStyle.Stacked);

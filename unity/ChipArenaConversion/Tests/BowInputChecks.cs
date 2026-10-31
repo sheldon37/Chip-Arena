@@ -45,7 +45,7 @@ internal static class BowInputChecks
         Check(data.Ability("cyberlord","q").id=="data-dash"&&NativeRangedRules.KeyboardQ(data,"cyberlord",true),"Cyber Lord Q routes Data Dash");
         Check(!NativeRangedRules.Q("volley"),"Volley remains on its own dispatch and presentation path");
         var source=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ConversionGame.cs"));
-        Check(source.Contains("pending.AbilityQ|=NativeRangedRules.KeyboardQ(content,p.Seat.spec,Input.GetKeyDown(KeyCode.Q));"),"real keyboard adapter uses tested gate without an extra filter");
+        Check(source.Contains("pending.AbilityQ|=NativeRangedRules.KeyboardQ(content,p.Seat.spec,(Input.GetKeyDown(KeyCode.Q)||PadDown(PadAction.Aim)));"),"keyboard and controller adapters use tested gate without an extra filter");
         Console.WriteLine("PASS production keyboard Q gate: Bow Volley edge/latching, legacy abilities and rifle-only ADS");
     }
 }

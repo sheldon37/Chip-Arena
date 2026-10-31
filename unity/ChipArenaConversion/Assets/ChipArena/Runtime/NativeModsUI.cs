@@ -49,23 +49,23 @@ namespace ChipArena.UnityConversion
             Fine("Selections apply after restarting Chip Arena. Packs add chips to draft and PvE offers; they do not grant chips immediately.");
             if(modsError.Length>0)Fine("Load error: "+modsError);
             GUILayout.Label("Gameplay modifiers",small);int flags=prefs.modRules;
-            void Rule(int bit,string label){bool on=(flags&bit)!=0;if(GUILayout.Toggle(on,label))flags|=bit;else flags&=~bit;}
+            void Rule(int bit,string label){bool on=(flags&bit)!=0;if(NativeControllerPointer.Toggle(on,label))flags|=bit;else flags&=~bit;}
             Rule(NativeMods.Airborne,"Airborne: everyone gets +2 air jumps");Rule(NativeMods.Overclocked,"Overclocked: everyone gets +25% movement speed");Rule(NativeMods.Pinball,"Pinball: double outgoing knockback, +50% knockback taken");
-            GUILayout.Label("Bundled adaptations",small);bool rounds=GUILayout.Toggle(prefs.roundsCardsPlus,"Cards+ adaptations: 20 chips · original author willis81808");
+            GUILayout.Label("Bundled adaptations",small);bool rounds=NativeControllerPointer.Toggle(prefs.roundsCardsPlus,"Cards+ adaptations: 20 chips · original author willis81808");
             Fine("Original Chip Arena implementations with adjusted effects. Packs marked partial contain only reviewed adaptations; more cards remain pending. Author credit appears on each chip.");
             if(rounds!=prefs.roundsCardsPlus){prefs.roundsCardsPlus=rounds;Save();}
             var bundled=new HashSet<string>(prefs.roundsPacks??Array.Empty<string>(),StringComparer.Ordinal);
-            foreach(string id in NativeRoundsPacks.Ids.Concat(bundled).Distinct().ToArray()){bool was=bundled.Contains(id),on=GUILayout.Toggle(was,NativeRoundsPacks.Label(id)+(NativeRoundsPacks.Ids.Contains(id)?"":" (unavailable)"));if(was!=on){if(on)bundled.Add(id);else bundled.Remove(id);prefs.roundsPacks=bundled.OrderBy(x=>x,StringComparer.Ordinal).ToArray();Save();}}
+            foreach(string id in NativeRoundsPacks.Ids.Concat(bundled).Distinct().ToArray()){bool was=bundled.Contains(id),on=NativeControllerPointer.Toggle(was,NativeRoundsPacks.Label(id)+(NativeRoundsPacks.Ids.Contains(id)?"":" (unavailable)"));if(was!=on){if(on)bundled.Add(id);else bundled.Remove(id);prefs.roundsPacks=bundled.OrderBy(x=>x,StringComparer.Ordinal).ToArray();Save();}}
             GUILayout.Label("External chip packs",small);bool changed=flags!=prefs.modRules;prefs.modRules=flags;var selected=new HashSet<string>(prefs.chipPacks??Array.Empty<string>(),StringComparer.Ordinal);
             foreach(string file in modsFiles.Concat(selected).Distinct().OrderBy(x=>x,StringComparer.Ordinal).ToArray())
-            {bool old=selected.Contains(file),on=GUILayout.Toggle(old,file+(modsFiles.Contains(file)?"":" (missing)"));if(old!=on){changed=true;if(on)selected.Add(file);else selected.Remove(file);}}
+            {bool old=selected.Contains(file),on=NativeControllerPointer.Toggle(old,file+(modsFiles.Contains(file)?"":" (missing)"));if(old!=on){changed=true;if(on)selected.Add(file);else selected.Remove(file);}}
             if(changed){prefs.chipPacks=selected.OrderBy(x=>x,StringComparer.Ordinal).ToArray();Save();}
             if(!bundled.SetEquals(activeRoundsPacks)||prefs.roundsCardsPlus!=activeRoundsCardsPlus||prefs.modRules!=activeModRules||!selected.SetEquals(activeChipPacks))Fine("Restart required to apply these selections.");
-            if(GUILayout.Button("Disable all mods for next launch",button)){prefs.roundsPacks=Array.Empty<string>();prefs.roundsCardsPlus=false;prefs.modRules=0;prefs.chipPacks=Array.Empty<string>();Save();}
-            if(GUILayout.Button("Open Mods folder",button))Application.OpenURL(new Uri(ModsDirectory+Path.DirectorySeparatorChar).AbsoluteUri);
-            if(GUILayout.Button("Create example chip pack",button))
+            if(NativeControllerPointer.Button("Disable all mods for next launch",button)){prefs.roundsPacks=Array.Empty<string>();prefs.roundsCardsPlus=false;prefs.modRules=0;prefs.chipPacks=Array.Empty<string>();Save();}
+            if(NativeControllerPointer.Button("Open Mods folder",button))Application.OpenURL(new Uri(ModsDirectory+Path.DirectorySeparatorChar).AbsoluteUri);
+            if(NativeControllerPointer.Button("Create example chip pack",button))
             {try{string path=Path.Combine(ModsDirectory,"example-mobility.json");var pack=new NativeChipPack{schema=1,id="example-mobility",name="Example Mobility",version="1.0.0",requires=Array.Empty<string>(),chips=new[]{new ContentChip{id="hop-drive",name="Hop Drive",description="+1 extra mid-air jump and +8% movement speed.",rarity="rare",max=2,tags=new[]{"all"},effects=new[]{NativeMovementContent.Effect("extraAirJumps","add",1),NativeMovementContent.Effect("speed","mul",1.08)}}}};using(var stream=new FileStream(path,FileMode.CreateNew,FileAccess.Write))using(var writer=new StreamWriter(stream))writer.Write(JsonUtility.ToJson(pack,true));ScanMods();networkStatus="Example created; enable it and restart to use it.";}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus=e.Message;}}
-            if(GUILayout.Button("Refresh pack list",button))try{ScanMods();}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus=e.Message;}
+            if(NativeControllerPointer.Button("Refresh pack list",button))try{ScanMods();}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus=e.Message;}
             Fine("Schema 1: JSON chips using supported effects only. No DLLs, scripts or automatic downloads. Use Create example chip pack; instructions are in the Mods folder.");
         }
     }

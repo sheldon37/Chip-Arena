@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            ControllerChecks.Run();
+            if(args.Length==1&&args[0]=="--controller")return 0;
             CrowdPoseChecks.Run();
             if(args.Length==1&&args[0]=="--crowd-pose")return 0;
             SnapshotChecks.Run();

@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
         // carries it to the seat (Astra).
         public string look="";
         public bool developmentConsole;
+        public NativeControllerPreferences controller=new NativeControllerPreferences();
         // The headwear and backdrop colours picked in the Locker (NativeHatLooks: "" Auto, else #rrggbb; absent in older saves: Auto).
         public string hatColor="",backColor="";
         // DEV tools (NativeDevPanel.cs, docs/DEV-TOOLS.md): Settings · Developer · DEV Abuse (off by default) and the panel's chip favourites.
@@ -87,9 +88,10 @@ namespace ChipArena.UnityConversion
             }
             catch(Exception e){error=e.ToString();Debug.LogException(e);if(dedicated)Application.Quit(2);}
         }
-        private void Save()
+        private void Save()=>TrySavePreferences();
+        private bool TrySavePreferences()
         {
-            try{NativeFileStore.Write(PreferencePath,JsonUtility.ToJson(prefs,true));}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus="Could not save pilot preferences: "+e.Message;Notice(networkStatus);}
+            try{NativeFileStore.Write(PreferencePath,JsonUtility.ToJson(prefs,true));return true;}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){networkStatus="Could not save pilot preferences: "+e.Message;Notice(networkStatus);return false;}
         }
         private void StartMatch()
         {
@@ -119,25 +121,27 @@ namespace ChipArena.UnityConversion
         private void Update(){long at=System.Diagnostics.Stopwatch.GetTimestamp();try{UpdateFrame();}finally{hitchUpdate+=HitchMs(at);}}
         private void UpdateFrame()
         {
+            ControllerStep();
             SyncDevelopmentConsole();
             if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();AccountXpTick();
+            if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
             if(arena==null)menu=true;if(!menu)pauseScreen=PauseScreen.Menu;
             // A bound Expedition session's screen: J toggles it, Escape closes it (NativeExpeditionLiveUI.cs).
             if(ExpeditionLiveKeys())return;
             // Escape waits while the stage loading screen closes or is closed (NativeStageLoadingUI.cs).
-            bool escape=Input.GetKeyDown(KeyCode.Escape)&&!StageInputHeld;
+            bool escape=(Input.GetKeyDown(KeyCode.Escape)||PadBack)&&!StageInputHeld;
             if(escape&&previewArena!=null){EndPreview();return;}if(escape&&inspectSeat!=0){inspectSeat=0;return;}if(escape&&ReplayActive){EndReplay();return;}if(escape){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
             // M mutes anywhere and V switches the camera during a match (main.ts keydown), neither while a text field has focus
             // or the board is open; both confirm with a notice. V toggles first person and the chosen third-person camera; X
             // swaps the shoulder (NativeShoulderCamera.cs).
             bool typing=GUIUtility.keyboardControl!=0;
             if(Input.GetKeyDown(KeyCode.M)&&!typing&&!BoardOpen){prefs.sound=!prefs.sound;if(nativeAudio!=null)nativeAudio.Muted=!prefs.sound;Save();Notice(prefs.sound?"Sound on · M to mute":"Sound muted · M to unmute");}
-            if(Input.GetKeyDown(KeyCode.V)&&arena!=null&&!typing&&!BoardOpen&&!(arena.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)){prefs.firstPerson=!prefs.firstPerson;Save();Notice(CameraName+" · V to switch");}
+            if((Input.GetKeyDown(KeyCode.V)&&!(arena?.ViewPilot?.Seat.spec=="siren"&&prefs.sirenMode=="V"&&!menu)||PadDown(PadAction.Camera))&&arena!=null&&!typing&&!BoardOpen){prefs.firstPerson=!prefs.firstPerson;Save();Notice(CameraName+" · V to switch");}
             CameraKeys(typing);DevUpdate(typing);
             // C in an Expedition opens its chip screen instead (ExpeditionLiveKeys, NativeExpeditionChipScreen.cs).
-            if(Input.GetKeyDown(KeyCode.C)&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
+            if((Input.GetKeyDown(KeyCode.C)||PadDown(PadAction.Chips))&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
             bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
             // The Expedition chip pick frees the cursor to click a card for the whole hold, no Alt (NativeExpeditionChipScreen.cs).
@@ -147,22 +151,23 @@ namespace ChipArena.UnityConversion
             SpectatorControls();var p=arena.ViewPilot;
             UpdateLock();if(play)
             {
-                var ads=content.Ads(p.Seat.spec);bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&Input.GetKey(KeyCode.Q);
+                var ads=content.Ads(p.Seat.spec);bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&(Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));
                 // Choosing in an Expedition holds the camera (ExpeditionCameraHeld, PR #241) and takes the mouse as the chip cursor (no Alt);
                 // mouse look waits a couple of frames after the pointer locks again (NativeExpeditionChipScreen.cs).
-                if(!lockPoint.HasValue&&!ExpeditionLookSettling&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);}
+                if(!lockPoint.HasValue&&!ExpeditionLookSettling&&!cinematic.Directing&&!ExpeditionCameraHeld&&!ExpeditionPickPointer){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity*(aiming?(float)ads.sens:1);pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity*(aiming?(float)ads.sens:1),-70,70);ControllerLook(aiming?(float)ads.sens:1);}
                 if(Input.GetKeyDown(KeyCode.W)){if(Time.unscaledTime-lastW<.3f)sprint=true;lastW=Time.unscaledTime;}if(!Input.GetKey(KeyCode.W))sprint=false;
                 var move=Quaternion.Euler(0,yaw,0)*new Vector3((Input.GetKey(KeyCode.D)?1:0)-(Input.GetKey(KeyCode.A)?1:0),0,(Input.GetKey(KeyCode.W)?1:0)-(Input.GetKey(KeyCode.S)?1:0)).normalized;
-                pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint;pending.Aim=aiming;
-                pending.Shoot=Input.GetMouseButton(0);pending.Attack|=Input.GetMouseButtonDown(0);pending.LockTarget=lockPoint.HasValue?lockTarget:0;
-                pending.AbilityQ|=NativeRangedRules.KeyboardQ(content,p.Seat.spec,Input.GetKeyDown(KeyCode.Q));pending.AbilityE|=Input.GetKeyDown(KeyCode.E);pending.AbilityEReleased|=Input.GetKeyUp(KeyCode.E);pending.AbilityEHeld=Input.GetKey(KeyCode.E);
-                pending.Hadoken|=Input.GetKeyDown(KeyCode.Alpha1);pending.HadokenHeld=Input.GetKey(KeyCode.Alpha1);pending.Uppercut|=Input.GetKeyDown(KeyCode.Alpha2);
-                for(int key=0;key<(arena.Local?.Seat.spec=="cyberlord"?5:4);key++)if(Input.GetKeyDown(KeyCode.Alpha1+key))pending.SirenAbility=(byte)(key+1);
-                pending.AbilityQ|=p.Seat.spec=="emperor"&&Input.GetKeyDown(KeyCode.Q)||p.Seat.spec=="siren"&&Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q);
-                pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F");pending.Block|=Input.GetMouseButtonDown(1);pending.Reload|=Input.GetKeyDown(KeyCode.R);pending.Roll|=Input.GetKeyDown(KeyCode.LeftShift);pending.Jump|=Input.GetKeyDown(KeyCode.Space);
+                var padMove=Quaternion.Euler(0,yaw,0)*new Vector3(padMoveAxis.x,0,padMoveAxis.y);if(move.sqrMagnitude<.001f)move=padMove;
+                pending.X=move.x;pending.Z=move.z;pending.Yaw=yaw;pending.Pitch=-pitch;pending.Sprint=sprint||PadHeld(PadAction.Sprint);pending.Aim=aiming;
+                pending.Shoot=(Input.GetMouseButton(0)||PadHeld(PadAction.Attack));pending.Attack|=(Input.GetMouseButtonDown(0)||PadDown(PadAction.Attack));pending.LockTarget=lockPoint.HasValue?lockTarget:0;
+                pending.AbilityQ|=NativeRangedRules.KeyboardQ(content,p.Seat.spec,(Input.GetKeyDown(KeyCode.Q)||PadDown(PadAction.Aim)));pending.AbilityE|=(Input.GetKeyDown(KeyCode.E)||PadDown(PadAction.Ability));pending.AbilityEReleased|=(Input.GetKeyUp(KeyCode.E)||PadUp(PadAction.Ability));pending.AbilityEHeld=(Input.GetKey(KeyCode.E)||PadHeld(PadAction.Ability));
+                pending.Hadoken|=(Input.GetKeyDown(KeyCode.Alpha1)||PadDown(PadAction.Slot1));pending.HadokenHeld=(Input.GetKey(KeyCode.Alpha1)||PadHeld(PadAction.Slot1));pending.Uppercut|=(Input.GetKeyDown(KeyCode.Alpha2)||PadDown(PadAction.Slot2));
+                for(int key=0;key<(arena.Local?.Seat.spec=="cyberlord"?5:4);key++)if(Input.GetKeyDown(KeyCode.Alpha1+key)||PadDown(PadAction.Slot1+key))pending.SirenAbility=(byte)(key+1);
+                pending.AbilityQ|=p.Seat.spec=="emperor"&&(Input.GetKeyDown(KeyCode.Q)||PadDown(PadAction.Aim))||p.Seat.spec=="siren"&&(Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q)||PadDown(PadAction.Aim));
+                pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F")||PadDown(PadAction.Interact);pending.Block|=(Input.GetMouseButtonDown(1)||PadDown(PadAction.Block));pending.Reload|=(Input.GetKeyDown(KeyCode.R)||PadDown(PadAction.Reload));pending.Roll|=(Input.GetKeyDown(KeyCode.LeftShift)||PadDown(PadAction.Roll));pending.Jump|=(Input.GetKeyDown(KeyCode.Space)||PadDown(PadAction.Jump));
                 // The Expedition chip tray takes the digit keys (and the mouse buttons while Alt is held): client routing, no lock.
                 ExpeditionPickRoute();
-                if(match.ResultMovement||arena.BossVictoryWalk)pending=new InputFrame{X=pending.X,Z=pending.Z,Yaw=yaw,Pitch=-pitch,Sprint=sprint,Jump=pending.Jump};
+                if(match.ResultMovement||arena.BossVictoryWalk)pending=new InputFrame{X=pending.X,Z=pending.Z,Yaw=yaw,Pitch=-pitch,Sprint=pending.Sprint,Jump=pending.Jump};
             }
             else pending=new InputFrame{Yaw=yaw,Pitch=-pitch};
         }
@@ -356,7 +361,7 @@ namespace ChipArena.UnityConversion
         private void OnGUI()
         {
             // The stage loading screen holds the GUI's input while it closes and while it is closed; it draws over every screen.
-            if(dedicated)return;if(SlenderGUI())return;Styles();StageInputGate();GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();
+            if(dedicated)return;var original=Event.current;try{ControllerGuiEvent();if(SlenderGUI())return;Styles();StageInputGate();GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();ControllerCursor();}finally{Event.current=original;}
         }
         private void GuiFrame()
         {
