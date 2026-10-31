@@ -1,3 +1,46 @@
+## 2026-10-31 — Claude: five new stages and the Training Room (plan and M1 blockouts)
+
+- **Branch/base:** `claude/new-stages` from shared `0cd720e`. No PR; merged into shared and the builder. Docs and draft
+  scripts only: nothing is wired into the game, so no runtime, sim or network change.
+- **Task (owner):** "Can we begin development on the new stages utilizing high quality designs? I would like a smaller, flat,
+  1v1 map as well. Lets make use of assets if possible. Hazards are good to add too, not needed on each addition though.
+  Lets also add a training room level. Good for testing things. Lets add, another... 5 stages ?"
+- **Read as:** five new stages, one of them the small flat 1v1, plus a Training Room as a separate sandbox level.
+- **Plan:** `docs/arenas/NEW-STAGES.md`. Each stage has one identity (light, landmark, palette):
+  - **Breakwater:** the 1v1 duel, flat pier head at blue hour, no hazards.
+  - **Pier 9:** night container terminal; gantry container drop and the quay edge.
+  - **Skyframe:** half-built tower at high noon; tower-crane beam drop and open edges.
+  - **Deepwell:** offshore rig in a storm; flare burners and sea falls.
+  - **Polaris Station:** aurora night, no hazards.
+  - **Calibration Bay:** the Training Room (range, melee ring, movement course, cover lab, hazard bay).
+  - All use the banked Toon Harbor kit; Skyframe and Polaris use only its industrial pieces.
+- **M1 blockouts** (`docs/arenas/scripts/{breakwater,harbor,skyframe,rig,polar,training}_m1.py`): each writes the map in the
+  `UnityMaps.json` shape and a plan PNG, and exits 1 on a failed check.
+  - Checks: spawn sightlines under ±1 m jitter at three eye heights (3D on the layered maps), spacing, hazard clearance,
+    bounds, reachability on foot (a 0.25 m 3D raster on layered maps), pilot columns over rails and unstandable tops, and
+    no tops between 1.3 and 2.2 m.
+  - Breakwater was built in this session; the other five by subagents briefed from the plan and reviewed here.
+  - Review fixes: Pier 9's bounds now run past the quay edge, because `NativeUnityMaps.Clamp` holds pilots inside the
+    bounds and the fall could not happen. Skyframe got the same fix while it was being built. Breakwater's mirrored
+    crate and barrier ids collided; they were renamed, and a unique-id check was added.
+- **Hit timing, hitboxes, damage, cooldowns, movement, networking:** unchanged (no game code). Proposed hazard values reuse
+  today's kinds and timings; Deepwell's burner ticks 8 (Ward Zero's 10) pending Astra.
+- **Checks (actual):**
+  - All six drafts exit 0 with and without `--out`.
+  - All six load through `generate_stage_hazards.draft()`'s loader. Ids are unique and prefixed by the map id, spawns are
+    8 FFA plus 4 + 4, materials and roles are valid, and every breakable has hp.
+  - A pilot-column audit finds no walkable deck cut by a lower column. Skyframe's hits sit under the deck's own edge rail.
+  - Sight lanes, measured 0.6 m wide, sit well inside the shipped Factory's numbers on the same measure (3,637 lanes of
+    40 m or more there; the longest 75.5 m).
+  - Offline isometric previews of all six.
+- **Not run:** Astra's integration (nav generation, the C# map and hazard validators), any Unity build or playtest. None of
+  these maps exist in the game yet.
+- **Next:**
+  - Astra: integrate, simulate the hazards and kill volumes, selection (Breakwater for 1v1 and 2v2), the Training Room
+    mode. The ready-to-paste prompt is in NEW-STAGES.md.
+  - Claude: per stage, after integration, the looks, kit dressing, yards, hazard rigs and the Training Room presentation.
+  - Owner: confirm the lineup, and the open asks in NEW-STAGES.md.
+
 ## 2026-10-30 — Claude (PC): the default outfit (the robot suit and the robot's helmet)
 
 - **Branch/base:** `claude/robot-default` from shared `3ff87b9b`. No PR; merged into shared and the builder.
