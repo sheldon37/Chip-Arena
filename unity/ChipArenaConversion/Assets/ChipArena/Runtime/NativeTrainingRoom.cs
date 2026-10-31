@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private bool TrainingDummy(NativePilot p)=>Training&&p.Seat.id>=NativeTrainingRules.FirstDummy&&p.Seat.id<NativeTrainingRules.FirstDummy+(Map.trainingPads?.Length??0);
         private TrainingPad TrainingPadOf(NativePilot p)=>TrainingDummy(p)?Map.trainingPads[p.Seat.id-NativeTrainingRules.FirstDummy]:null;
         private void TrainingInitialize()
-        {trainingMeters.Clear();if(!Training)return;foreach(var p in Pilots){var pad=TrainingPadOf(p);if(pad!=null){p.Body.position=Vec(pad.pos);p.Yaw=pad.yaw;trainingMeters.Add(p.Seat.id,new TrainingDamageMeter(pad,p.Seat.id));}}}
+        {trainingMeters.Clear();if(!Training)return;foreach(var p in Pilots){if(!Replica)p.Seat.alive=p.Hp>0&&p.Seat.connected;var pad=TrainingPadOf(p);if(pad!=null){p.Body.position=Vec(pad.pos);p.Yaw=pad.yaw;trainingMeters.Add(p.Seat.id,new TrainingDamageMeter(pad,p.Seat.id));}}}
         private void TrainingStep()
         {
             if(!Training||Replica)return;

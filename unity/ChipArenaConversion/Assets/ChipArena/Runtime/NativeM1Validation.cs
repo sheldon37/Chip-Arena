@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
                 Damage(target,Local,100000,Vector3.zero,0,false,forced:true,direct:false,primary:false);
                 Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=16,fightAt=0,teams=true,round=1,set=1});TrainingStep();
                 Check(target.Hp==hp&&target.Death==null,"dummy respawn");
-                Check(ResetTraining()&&TrainingReadouts().All(r=>r.total==0)&&AllBlocks.Count()==Map.blocks.Length,"reset restores props and readouts");
+                Check(ResetTraining()&&TrainingReadouts().All(r=>r.total==0)&&AllBlocks.Count()==Map.blocks.Length&&Pilots.All(p=>p.Seat.alive==p.Seat.connected),"reset restores props, living flags and readouts");
             }
             Debug.Log("PASS M1 runtime "+MapId+": elevated loads / training authority where applicable");
         }

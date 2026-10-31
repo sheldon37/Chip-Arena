@@ -637,7 +637,7 @@ namespace ChipArena.UnityConversion
             items.Add(("settings","Settings",false,true,()=>{pauseScreen=PauseScreen.Settings;menuScreenAt=Time.unscaledTime;screenScroll=Vector2.zero;screenContent=400;}));
             // DEV Tools (NativeDevPanel.cs): the offline Developer Sandbox's tools, and with Settings · Developer · DEV Abuse any match's.
             if(DevPanelAvailable)items.Add(("flask-conical","DEV Tools",false,true,()=>DevOpen(true)));
-            if(!Online&&!lost)items.Add(("rotate-cw",ExpeditionM1?"Restart Expedition M1":"Restart Match",false,true,()=>{if(ExpeditionM1)RequestStage(StageLoadKind.Expedition,StartExpeditionM1);else RequestStage(StageKindOf(arena),StartMatch);}));
+            if(!Online&&!lost)items.Add(("rotate-cw",ExpeditionM1?"Restart Expedition M1":"Restart Match",false,true,()=>{if(ExpeditionM1)RequestStage(StageLoadKind.Expedition,StartExpeditionM1);else if(arena.Training)RequestStage(StageLoadKind.Sandbox,StartTraining);else RequestStage(StageKindOf(arena),StartMatch);}));
             if(!lost)items.Add(("undo-2","Return to Lobby",false,(Hosting||!Online)&&!returning,()=>{if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();menu=false;}));
             items.Add(("log-out","Return to Main Menu",lost,true,()=>{afterMatch=lost?MenuScreen.Join:MenuScreen.Home;RequestStage(StageLoadKind.Return,()=>{if(Online)LeaveRoom();else ReturnToLobby();});}));
             string hints="WASD move · double-tap W sprint · LMB fire / attack · RMB block · Q / E abilities · R reload · Shift roll · Space jump · V camera · X shoulder · Tab lock-on / board · G scores · Esc menu";

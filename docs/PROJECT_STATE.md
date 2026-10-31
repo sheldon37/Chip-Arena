@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-10-31 Astra M1 integration (`codex/unity-m1-stages-training`, base `2066db7`, implementation `1eac6d3`): five PvP maps plus public solo/co-op Training Room now wired through canonical maps/nav/music/asset lock. All new maps stay out of rotation; Training is never PvP. Elevated cranes, Deepwell hazards, 28 training targets, replicated damage/DPS readouts and reset are implemented. Local managed/Python/Unity semantic checks are documented in DEV_LOG. Next: shared/builder integration, native Windows validation and Claude stage/Training presentation; no new binary publication claimed.
+
 2026-10-31 Claude new stages M1 (`claude/new-stages`, from shared `0cd720e`; merged into shared and the builder; docs and draft scripts only, nothing wired in; docs/arenas/NEW-STAGES.md): five stages and a Training Room planned and blocked out with checked draft generators. Breakwater (flat 1v1), Pier 9, Skyframe, Deepwell, Polaris and Calibration Bay. Next: Astra integrates (hazards, kill volumes, selection, the Training Room mode), then Claude's looks and dressing per stage; the owner confirms the lineup.
 
 2026-10-30 Claude faces on the model (`claude/faces`, from shared `90cafedb`; merged into shared and the builder; presentation only; docs/BOZO-INTEGRATION.md "Faces"): the pack's expression shapes driven at last; pilots focus, shout, wince, grin, smile in the menus, blink and close their eyes in death; zombies moan, bare their teeth, bite, roar, wince and go slack. Next: owner check in the Windows build.
