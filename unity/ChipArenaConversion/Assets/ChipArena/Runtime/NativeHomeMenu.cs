@@ -32,8 +32,8 @@ namespace ChipArena.UnityConversion
             // Leaving Settings keeps what was changed (applied and saved); leaving Create / Join abandons a pending connection.
             if(from==MenuScreen.Settings&&screen!=MenuScreen.Settings){ApplySettings();Save();}
             if((from==MenuScreen.Create||from==MenuScreen.Join)&&screen!=MenuScreen.Lobby&&!InRoom&&(connecting!=null||relayConnecting!=null||server!=null||listingRooms)){CloseNetwork();networkStatus="Connection cancelled.";}
-            if(screen==MenuScreen.Play){prefs.pve=false;prefs.bots=Mathf.Clamp(prefs.bots,1,7);sandboxWanted=false;}
-            if(screen==MenuScreen.Boss){prefs.pve=true;prefs.bots=Mathf.Clamp(prefs.bots,0,3);sandboxWanted=false;}
+            if(screen==MenuScreen.Play){trainingRoom=false;prefs.pve=false;prefs.bots=Mathf.Clamp(prefs.bots,1,7);sandboxWanted=false;}
+            if(screen==MenuScreen.Boss){trainingRoom=false;prefs.pve=true;prefs.bots=Mathf.Clamp(prefs.bots,0,3);sandboxWanted=false;}
             // A room opens at the top of both lobby columns; Customize and Settings return to where the lobby was.
             if(screen==MenuScreen.Lobby&&from!=MenuScreen.Customize&&from!=MenuScreen.Settings){lobbyRosterScroll=lobbyRoomScroll=Vector2.zero;lobbyRosterContent=lobbyRoomContent=400;}
             // Entering the Locker takes the look it can revert to (Preview Intro's way back stays in the same session).
@@ -280,7 +280,7 @@ namespace ChipArena.UnityConversion
         private void HomeScreen(float age)
         {
             float W=U.W,H=U.H,x0=HomeX;bool dev=account.Developer;HomeKeys();float ce=In(age,0,.26f);
-            const float wy=86,gh=36,rh=58;float ry=wy+gh+16,top=ry+56,lastMain=top+rh*(HomeItems.Length-1);int quiet=(dev&&!Online?1:0)+(dev?1:0)+1;float bottom=lastMain+rh*.9f+6+34*(quiet-1)+18;
+            const float wy=86,gh=36,rh=58;float ry=wy+gh+16,top=ry+56,lastMain=top+rh*(HomeItems.Length-1);int quiet=(dev&&!Online?1:0)+(dev?1:0)+2;float bottom=lastMain+rh*.9f+6+34*(quiet-1)+18;
             float fit=Mathf.Clamp((H-70-wy+20)/(bottom-wy+20),.6f,1);U.Push(new Vector2(x0,wy-20),Vector2.zero,fit);
             float ww=Wordmark(x0,wy,gh,ce,age);
             // the chip-pin rule: a hairline with leg ticks, its first run in cyan and its last in magenta
@@ -293,6 +293,7 @@ namespace ChipArena.UnityConversion
             // .subtle-link's quiet rows: Developer Sandbox (developers, offline), the conversion catalogue (developers only: the
             // source has no such screen and its import notes are not for players) and Quit.
             float qy=lastMain+rh*.9f+6,qe=ce*In(age,.3f,.3f);
+            if(!Online&&QuietRow(ref qy,"training","TRAINING ROOM",null,qe))RequestStage(StageLoadKind.Sandbox,StartTraining);
             if(dev&&!Online&&QuietRow(ref qy,"sandbox","SANDBOX","DEV",qe))Go(MenuScreen.Play,true);
             if(dev&&QuietRow(ref qy,"catalogue","CATALOGUE","DEV",qe))Go(MenuScreen.Catalogue);
             if(QuietRow(ref qy,"quit","QUIT",null,qe)){Save();Application.Quit();}

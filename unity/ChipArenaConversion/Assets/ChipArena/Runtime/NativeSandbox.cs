@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         public bool Sandbox,SafeMode;public float DummyRespawn=5;private float sandboxCastUntil,sandboxRepeatAt;public float SandboxRepeat;private string sandboxKey="ai";private bool sandboxTap;private NativePilot sandboxDummy;
         private bool SandboxAllowed=>Sandbox&&!Replica&&Local?.Seat.access?.Developer==true&&Local.Seat.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        private bool SandboxHolds()=>SandboxAllowed&&(Pilots.Any(p=>InShaft(p))||DummyRespawn>0&&Local.Hp>0);
+        private bool SandboxHolds()=>Training||SandboxAllowed&&(Pilots.Any(p=>InShaft(p))||DummyRespawn>0&&Local.Hp>0);
         private void SandboxStep()
         {
             if(!SandboxAllowed)return;StepWardSandbox();SandboxNextChip();foreach(var p in Pilots)if(p.Seat.bot&&p.Hp<=0&&p.Death!=null&&DummyRespawn>0&&!InShaft(p)&&Time-p.Death.at>=DummyRespawn)SandboxRestore(p);

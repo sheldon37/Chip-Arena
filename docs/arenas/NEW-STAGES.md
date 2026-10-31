@@ -9,11 +9,11 @@ addition though. Lets also add a training room level. Good for testing things. L
 Read as: **five new stages, one of them the small flat 1v1 map, plus a Training Room** (a sandbox level, not a sixth PvP
 stage).
 
-Status: **M1 blockout drafts only.**
+Status: **M1 simulation integrated on `codex/unity-m1-stages-training` (base `2066db79`); presentation and Windows playtest pending.**
 - Each stage has a draft generator in `docs/arenas/scripts/<id>_m1.py` that writes the map in the `UnityMaps.json` shape and
   a top-down plan, and checks spawn sightlines, spacing, hazard clearance, bounds and reachability.
-- None is wired into the game or selectable. Geometry, spawns and hazard timing become Astra's once integrated, as with
-  the Factory and Cyber City.
+- All six are generated through `unity/ChipArenaConversion/tools/generate_stage_hazards.py`. Five are selectable with
+  `rotation: false`; `training` is sandbox-only and rejected by PvP selection. Draft geometry, IDs and timings are preserved.
 
 ## At a glance
 
@@ -85,6 +85,9 @@ These come from ARENA_PROPOSAL §2.1 and the Factory and Cyber City drafts.
 
 ## 1. Breakwater (`breakwater`): the 1v1 duel
 
+**Astra M1 integration:** selectable for up to four FFA pilots or teams of at most two (1v1/2v2).
+The first four FFA points are used. No geometry or hazard changes. Temporary music: `cybercity-neon-riot`.
+
 **Pitch.** The end of a stone pier at blue hour. A short, flat, symmetric slab with no high ground. Spawns face each other
 across 35 m of cover. The lighthouse beam sweeps over the duel.
 
@@ -128,6 +131,11 @@ across 35 m of cover. The lighthouse beam sweeps over the duel.
 
 ## 2. Pier 9 (`harbor`): the night container terminal
 
+**Astra M1 integration:** no geometry/timing changes; existing `killY = -6` is used for the quay fall.
+The proposed `killVolumes` key is omitted from generated runtime data, so death occurs at -6 rather than the proposed
+water surface threshold of -1. Bounds remain z +34. Handrails are left as drafted for initial playtest; adding them would
+change combat geometry. Temporary music: `factory-anvil-loop`.
+
 Full pitch in `HARBOR_PROPOSAL.md`. **M1 change: the quay moves to the north edge, and the map mirrors across x = 0.**
 In the proposal only team B had the water at its back. Now both teams share it, and the three lanes stay:
 
@@ -153,6 +161,11 @@ In the proposal only team B had the water at its back. Now both teams share it, 
 - **Bounds:** x ±40, z −30..+34 (4 m past the quay edge, so the fall exists), ceiling 20, killY −6.
 
 ## 3. Skyframe (`skyframe`): the half-built tower
+
+**Astra M1 integration:** crane fall, regrip, hoist, impact cue, lethal height and landed collider now use each
+zone's floor y. Timings and geometry unchanged. Current movement has no general landing-damage rule: the 3.6 m
+internal drops remain free of fall damage; external drops still reach killY. Keep the 7.2 m FFA perches for playtest.
+Actual draft bounds x ±32 are retained (the original pitch below says ±28). Temporary music: `cybercity-neon-riot`.
 
 The ARENA_PROPOSAL alternative, simplified for M1: **no hinge or drop groups**. Structure falls are a later milestone
 built on Brickfall's segment system.
@@ -186,6 +199,11 @@ built on Brickfall's segment system.
 
 ## 4. Deepwell (`rig`): the offshore platform in a storm
 
+**Astra M1 integration:** geometry and timing unchanged. Navigation samples at 0.5 m here: the existing 1 m
+grid isolated some main-deck spawn pockets despite the draft's finer on-foot checks. Burners and vents dispatch by kind,
+not Ward Zero map ID. Keep 8 HP per 0.25 s tick: 32 HP/s, 10 ticks / 80 HP per complete 2.5 s burst against 100 base HP
+before damage modifiers (Ward Zero is 100 HP per burst). Sea notches retain killY. Temporary music: `factory-anvil-loop`.
+
 - **Setting:**
   - A production platform in the North Sea at night in a gale.
   - Rain, lightning flashes and the flare stack's orange roar at the north end, outside the bounds.
@@ -215,6 +233,8 @@ built on Brickfall's segment system.
 
 ## 5. Polaris Station (`polar`): the research station at polar night
 
+**Astra M1 integration:** no geometry or hazard changes. Temporary music: `cybercity-neon-riot`.
+
 - **Setting:**
   - An Antarctic research station on the ice shelf under a green and violet aurora.
   - Snowfield, berms and drifts; station modules on skids; a central radome.
@@ -235,6 +255,23 @@ built on Brickfall's segment system.
   - Warm window light from the modules, blowing snow, frost on metal, breath in the cold.
 
 ## T. Calibration Bay (`training`): the Training Room
+
+**Astra M1 integration:** owner confirmed entry for every player; DEV tools retain the existing verified-DEV
+gates. Home has a solo Training Room entry. In a hosted room, enable Training Room (co-op), ready the party, then enter;
+up to eight humans plus 28 authored target actors. Human spawn positions/yaws are the authored north-facing pad points.
+Training never enters PvP lists or Random, earns no progression, never resolves a competitive round, and has no overtime
+damage. Target actors are static except the rail target (smooth ±3 m motion, peak speed 2.5 m/s); melee targets retain
+their inward yaw. Dead targets and humans restore after five seconds; a reconnect also restores a dead human.
+
+`ContentMap.trainingPads` carries the draft data. `NativeArena.TrainingReadouts()` and replicated
+`NativeGameFrame.trainingReadouts` provide one record per pad: `pad`, `actor`, cumulative actual HP `total`,
+`last`, `headshot`, `sourceActor`, `source` (weapon/environment plus hit kind), centre-to-centre `distance`,
+last-hit `at`, and `dps` (actual damage in (now-5, now], divided by five). Overkill is excluded; deaths do not clear totals.
+The host's pause-menu reset clears all readouts and rebuilds targets and all three destruction samples at authored HP,
+along with the rest of the map; the normal frame generation change replicates that reset. No separate dummy combat path.
+The five authored hazard samples loop on fight time; existing DEV hazard-trigger/at commands can trigger their previews.
+No saw-rail/burner samples are added in M1. Look-only marks remain Claude presentation constants; no trainingMarks field
+is introduced. Temporary music: `factory-anvil-loop`. No geometry/timing changes.
 
 A sandbox-only interior: a hangar with a 1 m floor grid, built to test weapons, abilities, movement and hazards. It is not
 in PvP rotation or the PvP map list. The menu entry and its mode are Astra's.
