@@ -1,3 +1,37 @@
+## 2026-10-31 — Claude: the Deployment Station drawn (models, scene, console, DEV preview)
+
+- **Branch/base:** `claude/deployment-station`, on the presentation rules `b254aef`. Those sit on Astra's
+  `codex/expedition-deployment-machines-20261031`. Local commits `31b495f` (Core), `d8032d5` (Runtime) and `ca8162d`
+  (checks), plus this docs commit. Not pushed, merged or released.
+- **Changes:**
+  - **Core:** `NativeDeployModels` (both machines, the reel drum and rims, the card dial, the holo war-table, pads, the
+    DEPLOY gate with doors and lift, the console and the room). `NativeDeployArt` (reel symbols, mutator cards, stamps, and a
+    chamfered monoline A-Z). `NativeDeployStage` with `NativeDeployClock` (the per-frame pose; no allocation).
+  - **Runtime:** `NativeDeployScene`, `NativeDeployCast`, `NativeDeployConsoleUI`, `NativeDeployPreview`
+    (`--ca-deploy-preview`, a local authority) and `Resources/NativeDeployScreen.shader`.
+  - **Shared files:** one-line hooks in ConversionGame (GuiFrame, MenuBackdrop) and in VisualOutfitOf and SeatWeaponSkins.
+    The overview and deploy shots are reframed.
+  - **Docs:** docs/EXPEDITION-DEPLOYMENT.md "Runtime presentation" (including what Astra wires).
+- **Affected systems:**
+  - The menu backdrop and GUI change only behind the DEV flag.
+  - The visual body's outfit and skin lookups gain a branch for the deploy actor ids (-500 to -507).
+  - No change to the simulation, the authority, the network, saves or the Expedition start flow.
+  - No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks (actual):**
+  - `CoreTests --deploy-models` 1,979 PASS; `--deploy-presentation` 436,266 PASS; `--expedition-deployment` 26 PASS.
+  - The full managed suite: 885 PASS lines, exit 0.
+  - `unity-check` (Runtime and Editor against Unity 6000.3.24f1): OK.
+  - Offline WebGL renders of the Core meshes posed by the stage were reviewed and iterated. They emulate the Lambert, stage
+    block, ACES, fog and bloom path, use stand-in pilot figures, and are not committed.
+- **Not run:** the Unity Editor or player, any compile of the new shader, Windows, the cast on the real visual body, and
+  multiplayer.
+- **Risks:**
+  - `NativeDeployScreen.shader` is unverified by any compiler.
+  - About 150 non-instanced draws per frame.
+  - Console layout at ultrawide, and bloom and fog tuning, are unchecked in Unity.
+- **Next:** the owner tries `--ca-deploy-preview` on the PC. Astra wires the live room: state, clock, readiness, catalogs and
+  intents.
+
 ## 2026-10-31 — Claude: CI time for the managed tests after the M1 stages
 
 - **Branch/base:** `claude/ci-test-timeout` from shared `0681430` (the merge of Astra's PR #301). Merged into shared and
