@@ -1,3 +1,56 @@
+## 2026-11-01 — Claude: the five M1 stages drawn (looks, kit, rigs, backdrops, effects)
+
+- **Branch/base:** `claude/new-stages-look` from shared `3323310`. Shared was merged in at `0c80fa9` and `9fa08ed`.
+  Implementation `20be166`, then docs and checks `3a7a269` and the asset receipt `b3965c1`, then this log. Merged into
+  shared and the builder.
+- **Task:** Astra's M1 handoff, Claude's part: the stage looks, dressing and hazard rigs for Breakwater, Pier 9, Skyframe,
+  Deepwell and Polaris Station. The Training Room is the entry below.
+- **Changes (presentation only):** drawn only on these five map ids; every other map draws as before.
+  - **Looks:** a MapLooks entry per stage, each with the anime style, the advanced lighting and weather.
+    - Breakwater: blue hour with drizzle.
+    - Pier 9: night with drizzle.
+    - Skyframe: high noon, clear.
+    - Deepwell: storm with rain and lightning.
+    - Polaris: aurora night with snow.
+  - **Kit and rigs:** Core `NativeNewStageKit` and `NativeNewStageRig`.
+    - Pier 9: the gantry (bridge, trolley, spreader, container, slot lamps, the warning cone).
+    - Skyframe: the slewing tower crane. From the warning to the hoist it is the sim's hook; while the hook is high and
+      harmless, it slews between the same points.
+    - Deepwell: burner grates that glow through the warning and fire columns while burning, blowdown vents with steam,
+      the derrick and the flare stack.
+    - Polaris: the geodesic dome over the radome roof.
+  - **Backdrops and effects:** Core `NativeNewStageScenery` and `NativeNewStageFx`.
+    - Breakwater: the sea, the lighthouse sweep and the harbour town.
+    - Pier 9: a freighter, the terminal, the city and a bridge.
+    - Skyframe: the tower below the slab, the neighbouring towers and the city.
+    - Deepwell: the storm sea and whitecaps.
+    - Polaris: aurora curtains, ground drift, the ice shelf and nunataks.
+    - The backdrops are box-built, so every stage reads without the kit bank. PackDressing.json adds four kits and the
+      five stages' rules and yards for when the bank is present.
+  - **Hooks:** one line each in `SourceWorld` and `PrewarmStage`. The asset-lock receipt for MapLooks.json was refreshed.
+  - **Tests:** a new `--new-stage-looks` flag. StageKit, MapStyle (13 styled looks), AdvancedLighting and
+    TransitionLoading checks cover the five looks.
+  - **Docs:** `docs/arenas/NEW-STAGES.md` "Stage looks (presentation)".
+- **Animation impact:** none. Hazard timing, colliders, lethal bands, damage, spawns, navigation and networking are
+  unchanged, and the rigs read only replicated state (round, phase, FightAt, field clock). Telegraphs are never reduced.
+- **Checks (actual, on `b3965c1`):**
+  - `--new-stage-looks`: 457,586 checks pass.
+  - Also pass: `--advanced-lighting`, `--stage-kits` (20,813), `--new-stages` (4,941), `--map-style`, `--surfaces`,
+    `--transitions` and `--training-look`.
+  - `unity-check`: runtime+editor build OK.
+  - Relay suite: rc 0, 892 PASS lines, 365 s.
+  - Python: 167 OK (1 skipped). `package_source.py` passes. `git diff --check` is clean.
+  - 30 offline before and after renders were reviewed. They are made without the bank, beams, light volume or wet
+    surfaces.
+- **Training Room CI fix:** the Training Room merge (`0c80fa9`) failed `native-source` at packaging, because MapLooks.json
+  changed without its asset-lock receipt. Fixed in `d859990` (merged at `9fa08ed`). Packaging is now part of these checks.
+- **Not run:** the Unity Editor or player, Unity compiling the HLSL, Windows, and the bank-dependent dressing (liveries,
+  yard placement, Deepwell deck props).
+- **Limits:** burners and crane telegraphs light only themselves (no dynamic light slots). Polaris has no breath effect,
+  and falls into the water have no splash.
+- **Astra:** nothing required. Optional: a water-fall event if splashes are wanted.
+- **Next:** a PC pass with the bank (yards and liveries), then a look in Unity and on Windows.
+
 ## 2026-11-01 — Claude: the Training Room drawn (studio look, marks, pads, readout boards, bay rigs)
 
 - **Branch/base:** `claude/training-room-look` from shared `3323310`. Commits `e9242dc` (presentation) and `088ba36`
