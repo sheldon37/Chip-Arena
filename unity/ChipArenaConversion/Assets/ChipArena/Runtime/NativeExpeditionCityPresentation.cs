@@ -78,15 +78,23 @@ namespace ChipArena.UnityConversion
                 // With the pack bank's docks (Core NativePackScenery): their lots left empty, the west plate ending at the quay.
                 var docks=NativePackStage.Entry(NativeExpeditionCityKit.MapId);double quay=NativePackScenery.WestQuay(docks);
                 townBackdrop=docks?.yards!=null?NativeExpeditionCityScenery.Build(out townFires,true,(x0,x1,z0,z1)=>NativePackScenery.Reserved(docks,x0,x1,z0,z1),quay):NativeExpeditionCityScenery.Build(out townFires);
-                for(int i=0;i<townBackdrop.Length;i++)
-                {
-                    var b=townBackdrop[i];if(i%NativeBlockLooks.Chunk==0)townBack.Add(new MetroBatch());var bt=townBack[townBack.Count-1];var lin=MetroLinear(b.Color)*b.Gain;
-                    Put(bt,Matrix4x4.TRS(new Vector3(b.X,b.Y,b.Z),Quaternion.Euler(0,b.Yaw,0),Vector3.one),new Vector4(b.Hx,b.Hy,b.Hz,NativeBlockLooks.Chamfer),new Vector4(b.X,b.Y,b.Z,0),new Vector4(lin.r,lin.g,lin.b,b.Level),new Vector4(b.Look,1,NativeBlockLooks.Seed("town-backdrop-"+i),b.Flags));
-                }
-                foreach(var bt in townBack)MetroUpload(bt);return true;
+                TownBackdropBatches(townBackdrop,townBack);return true;
             }
             catch(Exception e){Debug.LogWarning("Expedition town dressing disabled: "+e.Message);DisposeExpeditionCity();townFailed=true;return false;}
         }
+        private void TownBackdropBatches(NativeCityBackdropBox[] boxes,List<MetroBatch> into)
+        {
+            for(int i=0;i<boxes.Length;i++)
+            {
+                var b=boxes[i];if(i%NativeBlockLooks.Chunk==0)into.Add(new MetroBatch());var bt=into[into.Count-1];var lin=MetroLinear(b.Color)*b.Gain;
+                Put(bt,Matrix4x4.TRS(new Vector3(b.X,b.Y,b.Z),Quaternion.Euler(0,b.Yaw,0),Vector3.one),new Vector4(b.Hx,b.Hy,b.Hz,NativeBlockLooks.Chamfer),new Vector4(b.X,b.Y,b.Z,0),new Vector4(lin.r,lin.g,lin.b,b.Level),new Vector4(b.Look,1,NativeBlockLooks.Seed("town-backdrop-"+i),b.Flags));
+            }
+            foreach(var bt in into)MetroUpload(bt);
+        }
+        // The generated Expedition map (Core NativeExpeditionGeneratedWorld): its own area, hub and blueprint, and the skyline round
+        // its footprint (NativeExpeditionCityScenery.Around: the town's starts inside it), made on its first build.
+        private readonly List<MetroBatch> townGenBack=new List<MetroBatch>();private NativeCityBackdropFire[] townGenFires;private bool townGenerated;
+        private ExpeditionAreaLayout townAuthoredArea;private ExpeditionHubLayout townAuthoredHub;
         // Once per map content (the killcam's replay arena shares it): the kit with the town's records, its atmosphere and lights.
         public ExpeditionRunBundle GeneratedRun {get;set;}
         private void ExpeditionCityBuild(ContentMap map)
@@ -94,15 +102,17 @@ namespace ChipArena.UnityConversion
             if(!townAreaRead)
             {
                 townAreaRead=true;
-                try{var asset=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName);if(asset!=null){var layout=NativeExpeditionLayout.Parse(asset.text);foreach(var a in layout.areas)if(a.map==map.id){townArea=a;break;}
+                try{var asset=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName);if(asset!=null){var layout=NativeExpeditionLayout.Parse(asset.text);foreach(var a in layout.areas)if(a.map==NativeExpeditionCityKit.MapId){townAuthoredArea=a;break;}
                     // The hub record (exp-layout-3): the gates, the wilds and the routes; absent from older manifests.
-                    if(townArea!=null)townHub=ExpeditionHubLayout.Parse(asset.text,townArea.id);}}
+                    if(townAuthoredArea!=null)townAuthoredHub=ExpeditionHubLayout.Parse(asset.text,townAuthoredArea.id);}}
                 catch(Exception e){Debug.LogWarning("Expedition town dressing: no layout records ("+e.Message+"); spawns undressed");}
-                if(GeneratedRun!=null&&map.id==GeneratedRun.World.Map.id){townArea=GeneratedRun.World.Area;townHub=GeneratedRun.World.Hub;}
-                NativeExpeditionHubLive.Sanctuary=townArea?.sanctuary??Array.Empty<ExpeditionVolume>();
             }
-            townMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();townKit=NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds);var look=NativeLighting.Look(map);
-            townScene=NativeCityFxScene.Build(blocks,townKit,townFires,look,townHub);townLights=NativeExpeditionCityLights.Build(townKit,look);HubWardSegments(map);
+            // Each generated run brings its own records; the town keeps the authored ones.
+            var run=GeneratedRun!=null&&map.id==GeneratedRun.World.Map.id?GeneratedRun.World:null;townGenerated=run!=null;
+            townArea=run?.Area??townAuthoredArea;townHub=run!=null?run.Hub:townAuthoredHub;NativeExpeditionHubLive.Sanctuary=townArea?.sanctuary??Array.Empty<ExpeditionVolume>();
+            if(townGenerated&&townGenFires==null&&map.bounds!=null){TownBackdropBatches(NativeExpeditionCityScenery.Around(out townGenFires,map.bounds.minX,map.bounds.maxX,map.bounds.minZ,map.bounds.maxZ),townGenBack);}
+            townMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();townKit=NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds,true,run?.Blueprint);var look=NativeLighting.Look(map);
+            townScene=NativeCityFxScene.Build(blocks,townKit,townGenerated?townGenFires??Array.Empty<NativeCityBackdropFire>():townFires,look,townHub);townLights=NativeExpeditionCityLights.Build(townKit,look);HubWardSegments(map);
             townParents=new NativePropBody[blocks.Length];townOut=new bool[blocks.Length];townNudge=new Vector3[blocks.Length];townIndex.Clear();for(int i=0;i<blocks.Length;i++)if(blocks[i]?.id!=null)townIndex[blocks[i].id]=i;
             townSeeds=new float[townKit.Parts.Length];for(int i=0;i<townSeeds.Length;i++)townSeeds[i]=NativeBlockLooks.Seed(blocks[townKit.Parts[i].Parent].id+"#"+i);
             townOrder=new int[townKit.Parts.Length];int w=0;for(int i=0;i<townOrder.Length;i++)if(TownNeedsWrap(i))townOrder[w++]=i;townWrapParts=w;for(int i=0;i<townOrder.Length;i++)if(!TownNeedsWrap(i))townOrder[w++]=i;
@@ -155,7 +165,7 @@ namespace ChipArena.UnityConversion
         private void DrawTownBackdrop()
         {
             if(!UsesInstancing)return;const int layer=NativeSceneryBuilder.BackdropLayer;
-            foreach(var bt in townBack){Graphics.DrawMeshInstanced(TownMesh,0,townMaterial,bt.M,bt.Count,bt.Block,ShadowCastingMode.Off,true,layer,null);TownDraws++;TownInstances+=bt.Count;}
+            foreach(var bt in townGenerated?townGenBack:townBack){Graphics.DrawMeshInstanced(TownMesh,0,townMaterial,bt.M,bt.Count,bt.Block,ShadowCastingMode.Off,true,layer,null);TownDraws++;TownInstances+=bt.Count;}
         }
         private void DrawTownFx(float time,Camera camera)
         {
@@ -175,7 +185,7 @@ namespace ChipArena.UnityConversion
         private void DisposeExpeditionCity()
         {
             CapturedAnimation.Release(townMesh);if(townToon!=null)CapturedAnimation.Release(townToon);townToon=null;if(townWrap!=null)CapturedAnimation.Release(townWrap);townWrap=null;CapturedAnimation.Release(townMaterial);townMesh=null;townMaterial=null;townDraw?.Dispose();townDraw=null;
-            townBack.Clear();townCast.Clear();townTrim.Clear();townMap=null;townKit=null;townScene=null;townLights=null;townArena=null;townGeneration=-1;townLast=-1;DisposeExpeditionHub();
+            townBack.Clear();townGenBack.Clear();townGenFires=null;townCast.Clear();townTrim.Clear();townMap=null;townKit=null;townScene=null;townLights=null;townArena=null;townGeneration=-1;townLast=-1;DisposeExpeditionHub();
         }
     }
 }

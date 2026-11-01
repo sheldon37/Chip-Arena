@@ -32,8 +32,8 @@ namespace ChipArena.UnityConversion
         // the tighter ranges and the back-face rule (NativeExpeditionCityKit.Hide) hold every frame at the city check's six points
         // at or under exp-layout-6's parts and draws (ExpeditionCityChecks).
         internal const int MaxParts=25000,MaxLowParts=11500,MaxCasters=1200,MaxBackdrop=3000,MaxQuads=NativeExpeditionCityFx.Capacity;
-        private struct World{public double X0,X1,Y0,Y1,Z0,Z1;public double[] Cx,Cz;}
-        private static World Pose(ContentBlock b,in NativeCityPart p)
+        internal struct World{public double X0,X1,Y0,Y1,Z0,Z1;public double[] Cx,Cz;}
+        internal static World Pose(ContentBlock b,in NativeCityPart p)
         {
             var r=b.rotation;double qx=r?.x??0,qy=r?.y??0,qz=r?.z??0,qw=r?.w??1;NativeExpeditionCityKit.Rotate(qx,qy,qz,qw,p.X,p.Y,p.Z,out double ox,out double oy,out double oz);
             double wx=qw*p.Qx+qx*p.Qw+qy*p.Qz-qz*p.Qy,wy=qw*p.Qy-qx*p.Qz+qy*p.Qw+qz*p.Qx,wz=qw*p.Qz+qx*p.Qy-qy*p.Qx+qz*p.Qw,ww=qw*p.Qw-qx*p.Qx-qy*p.Qy-qz*p.Qz;
@@ -42,17 +42,17 @@ namespace ChipArena.UnityConversion
             return w;
         }
         // Horizontal distance from (x, z) to a block's turned footprint (0 inside).
-        private static double Outside(ContentBlock b,double x,double z)
+        internal static double Outside(ContentBlock b,double x,double z)
         {
             var r=b.rotation;double qx=r?.x??0,qy=r?.y??0,qz=r?.z??0,qw=r?.w??1;NativeExpeditionCityKit.Rotate(-qx,-qy,-qz,qw,x-b.pos.x,0,z-b.pos.z,out double lx,out _,out double lz);
             double dx=Math.Max(0,Math.Abs(lx)-b.size.x/2),dz=Math.Max(0,Math.Abs(lz)-b.size.z/2);return Math.Sqrt(dx*dx+dz*dz);
         }
-        private static bool Disc(in World w,double x,double z,double r,double y0,double y1)
+        internal static bool Disc(in World w,double x,double z,double r,double y0,double y1)
         {
             if(w.Y1<=y0||w.Y0>=y1)return false;double cx=Math.Max(w.X0,Math.Min(x,w.X1)),cz=Math.Max(w.Z0,Math.Min(z,w.Z1));return (cx-x)*(cx-x)+(cz-z)*(cz-z)<r*r-1e-6;
         }
-        private static bool BoxHit(in World w,double x0,double x1,double y0,double y1,double z0,double z1)=>w.X1>x0+1e-4&&w.X0<x1-1e-4&&w.Y1>y0+1e-4&&w.Y0<y1-1e-4&&w.Z1>z0+1e-4&&w.Z0<z1-1e-4;
-        private static double[] Aabb(ExpeditionVolume v)
+        internal static bool BoxHit(in World w,double x0,double x1,double y0,double y1,double z0,double z1)=>w.X1>x0+1e-4&&w.X0<x1-1e-4&&w.Y1>y0+1e-4&&w.Y0<y1-1e-4&&w.Z1>z0+1e-4&&w.Z0<z1-1e-4;
+        internal static double[] Aabb(ExpeditionVolume v)
         {
             double a=v.yaw*Math.PI/180,c=Math.Abs(Math.Cos(a)),s=Math.Abs(Math.Sin(a)),hx=c*v.sx/2+s*v.sz/2,hz=s*v.sx/2+c*v.sz/2;return new[]{v.x-hx,v.x+hx,v.y-v.sy/2,v.y+v.sy/2,v.z-hz,v.z+hz};
         }

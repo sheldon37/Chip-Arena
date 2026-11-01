@@ -51,6 +51,25 @@ namespace ChipArena.UnityConversion
         {
             var s=new Sink();GroundPlates(s,westWater);Blocks(s,reserved);Cranes(s);var o=s.Boxes.ToArray();fires=s.Fires.ToArray();if(layers)Layers(o);return o;
         }
+        /// <summary>The skyline round another footprint (the generated Expedition map's bounds, NativeExpeditionCityKit.Generated.cs):
+        /// today's skyline with every lot, crane and fire reaching inside the footprint grown by <see cref="Margin"/> left out, and
+        /// its ground plates cut back to the footprint's edge (the map's own floor runs to it).</summary>
+        public static NativeCityBackdropBox[] Around(out NativeCityBackdropFire[] fires,double minX,double maxX,double minZ,double maxZ)
+        {
+            bool Over(double x0,double x1,double z0,double z1)=>x1>minX-Margin&&x0<maxX+Margin&&z1>minZ-Margin&&z0<maxZ+Margin;
+            var all=Build(out var burning,false,Over);var kept=new List<NativeCityBackdropBox>();
+            foreach(var b in all)
+            {
+                double t=b.Yaw*Math.PI/180,c=Math.Abs(Math.Cos(t)),n=Math.Abs(Math.Sin(t)),ex=c*b.Hx+n*b.Hz,ez=n*b.Hx+c*b.Hz;
+                if(b.Y+b.Hy>.001f){if(!Over(b.X-ex,b.X+ex,b.Z-ez,b.Z+ez))kept.Add(b);continue;}
+                // A ground plate (unturned) over the footprint: the parts of it beyond the footprint's edge.
+                double x0=b.X-b.Hx,x1=b.X+b.Hx,z0=b.Z-b.Hz,z1=b.Z+b.Hz;
+                if(!(x1>minX&&x0<maxX&&z1>minZ&&z0<maxZ)){kept.Add(b);continue;}
+                void Piece(double a0,double a1,double c0,double c1){if(a1-a0>.01&&c1-c0>.01){var p=b;p.X=(float)((a0+a1)/2);p.Z=(float)((c0+c1)/2);p.Hx=(float)((a1-a0)/2);p.Hz=(float)((c1-c0)/2);kept.Add(p);}}
+                Piece(x0,minX,z0,z1);Piece(maxX,x1,z0,z1);Piece(Math.Max(x0,minX),Math.Min(x1,maxX),z0,minZ);Piece(Math.Max(x0,minX),Math.Min(x1,maxX),maxZ,z1);
+            }
+            var o=kept.ToArray();var f=new List<NativeCityBackdropFire>();foreach(var fire in burning)if(!Over(fire.X-1,fire.X+1,fire.Z-1,fire.Z+1))f.Add(fire);fires=f.ToArray();Layers(o);return o;
+        }
         /// <summary>Whether a box's footprint (turned) reaches inside the town's edge grown by `margin` (the checks hold every
         /// standing box beyond <see cref="Margin"/>, the ground plates beyond the edge itself).</summary>
         public static bool Inside(in NativeCityBackdropBox b,double margin=Margin)

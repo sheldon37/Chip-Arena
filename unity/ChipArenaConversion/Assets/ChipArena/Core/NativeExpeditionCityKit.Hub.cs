@@ -17,10 +17,11 @@ namespace ChipArena.UnityConversion
         private ExpeditionHubLayout hub;
         public const int PalisadeHex=0x6E5236,PalisadeDarkHex=0x4E3A26,ScrapHex=0x5E625E,WarnHex=0xE8C830,WardSignHex=0x8AE89A;
 
-        /// <summary>Builds the kit with the town's hub record (fence gates, wilds, routes) and the map's bounds.</summary>
-        public static NativeExpeditionCityKit Build(ContentBlock[] blocks,ExpeditionAreaLayout area,ExpeditionHubLayout hub,MapBounds bounds,bool layers=true)
+        /// <summary>Builds the kit with the town's hub record (fence gates, wilds, routes) and the map's bounds; for the generated
+        /// map, its blueprint (the district blend, NativeExpeditionCityKit.Generated.cs).</summary>
+        public static NativeExpeditionCityKit Build(ContentBlock[] blocks,ExpeditionAreaLayout area,ExpeditionHubLayout hub,MapBounds bounds,bool layers=true,ExpeditionDeploymentState blueprint=null)
         {
-            var k=new NativeExpeditionCityKit{blocks=blocks??Array.Empty<ContentBlock>(),area=area,hub=hub};
+            var k=new NativeExpeditionCityKit{blocks=blocks??Array.Empty<ContentBlock>(),area=area,hub=hub,blueprint=blueprint};
             if(bounds!=null){k.bx0=bounds.minX;k.bx1=bounds.maxX;k.bz0=bounds.minZ;k.bz1=bounds.maxZ;}
             return k.Make(layers);
         }

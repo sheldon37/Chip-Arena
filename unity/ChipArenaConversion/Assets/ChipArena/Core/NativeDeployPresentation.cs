@@ -179,7 +179,7 @@ namespace ChipArena.UnityConversion
         public static float WorldHalfZ=>(HalfZ+.5f)*CellMetres;
         /// <summary>The final boss's gate on the map: the north edge's centre (the generator's temporary anchor).</summary>
         public static Vector2 BossAnchor=>new Vector2(0,HalfZ*CellMetres);
-        private static ExpeditionWorldCell CellAt(ExpeditionDeploymentState s,int x,int z)
+        public static ExpeditionWorldCell CellAt(ExpeditionDeploymentState s,int x,int z)
         {
             x=Math.Max(-HalfX,Math.Min(HalfX,x));z=Math.Max(-HalfZ,Math.Min(HalfZ,z));
             int i=(x+HalfX)*NativeExpeditionDeployment.GridHeight+(z+HalfZ);
