@@ -91,7 +91,7 @@ internal static class CyberLordAuraChecks
         // ------------------------------------------------------------------------------------------------------------------
         count=0;int c0=count;
         const string id=CyberLordSpec.Id;
-        Check(NativeWeaponSkins.Skinned(id)&&!NativeWeaponSkins.Modelled(id)&&NativeWeaponSkins.Weapons[^1]==id&&Array.IndexOf(NativeWeaponSkins.Entries,id)==NativeWeaponSkins.Entries.Length-4,"the Cyber Lord is the last skinned entry before the body (and the face gear and the suit), and has no weapon model");
+        Check(NativeWeaponSkins.Skinned(id)&&!NativeWeaponSkins.Modelled(id)&&NativeWeaponSkins.Weapons[^1]==id&&Array.IndexOf(NativeWeaponSkins.Entries,id)==NativeWeaponSkins.Entries.Length-3,"the Cyber Lord is the last skinned entry before the body (and the face gear), and has no weapon model");
         Check(NativeWeaponSkins.Weapons.Count(w=>!NativeWeaponSkins.Modelled(w))==1&&NativeWeaponSkins.Weapons.Where(w=>w!=id).All(NativeWeaponSkins.Modelled),"every other skinned weapon keeps its models");
         Check(NativeWeaponSkins.With("",id,NativeWeaponSkins.Prototype)=="cyberlord:prototype"&&NativeCyberLordAura.Skin("cyberlord:prototype")==NativeWeaponSkins.PrototypeIndex&&NativeWeaponSkins.Of("cyberlord:prototype",id)==NativeWeaponSkins.Prototype,"\"cyberlord:prototype\" round-trips");
         Check(NativeWeaponSkins.With("cyberlord:prototype",id,NativeWeaponSkins.Standard)==""&&NativeWeaponSkins.Normalize(" cyberlord : prototype ")=="cyberlord:prototype"&&NativeWeaponSkins.Normalize("cyberlord:standard")=="","normalized; Standard is the default and never written");
