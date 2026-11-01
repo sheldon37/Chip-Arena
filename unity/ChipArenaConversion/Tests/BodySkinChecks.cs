@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             Check(NativeBodySkins.Model(NativeBodySkins.PrototypeIndex,0)=="pilot"&&NativeBodySkins.Model(NativeBodySkins.PrototypeIndex,2)=="pilot","the Prototype body is the bank's own \"pilot\" at every tier");
 
             // ---- 2. The skin map's body entry (Core/NativeWeaponSkins.cs) ----
-            Check(NativeWeaponSkins.Entries.Length==NativeWeaponSkins.Weapons.Length+3&&NativeWeaponSkins.Entries[NativeWeaponSkins.Weapons.Length]==NativeBodySkins.Entry&&NativeWeaponSkins.Entries[^2]==NativeWeaponSkins.FaceEntry&&NativeWeaponSkins.Entries[^1]==NativeWeaponSkins.SuitEntry,"the map carries the body after the weapons, then the model's face gear and its suit");
+            Check(NativeWeaponSkins.Entries.Length==NativeWeaponSkins.Weapons.Length+2&&NativeWeaponSkins.Entries[NativeWeaponSkins.Weapons.Length]==NativeBodySkins.Entry&&NativeWeaponSkins.Entries[^1]==NativeWeaponSkins.FaceEntry,"the map carries the body after the weapons, then the model's face gear");
             // The face gear (owner 2026-10-26): both by default (never written), the visor or the mask; anything else dropped.
             Check(NativeWeaponSkins.FaceKeys.SequenceEqual(new[]{"helm","half","both","visor","mask","none"})&&NativeWeaponSkins.Normalize("face:visor")=="face:visor"&&NativeWeaponSkins.Normalize("face:mask")=="face:mask"&&NativeWeaponSkins.Normalize("face:helm")==""&&NativeWeaponSkins.Normalize("face:prototype")==""
                 &&NativeWeaponSkins.Normalize("face:mask,body:prototype")=="body:prototype,face:mask"&&NativeWeaponSkins.Index("body:prototype",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceHelm&&NativeWeaponSkins.Index("face:visor",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceVisor

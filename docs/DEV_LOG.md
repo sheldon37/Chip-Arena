@@ -29,6 +29,55 @@
 - Actual checks: full managed/real-relay suite exit 0, 895 PASS lines and all 35 managed-core checks. Focused deployment 3,681 checks. Python 167 tests OK (one skipped); source package 2,905 files; Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes. No Unity execution, native PhysX, shader compile, Windows/co-op acceptance or publication.
 - No damage, hitbox, cooldown, animation or movement changes. Source integration remains draft: Claude's generated-district dressing/transitions, native loading/failure/reconnect and multi-seed acceptance, and active-run endpoint migration remain. Do not merge/sync this unfinished feature to the builder. PR #303 is the consolidated handoff; optional mutators remain deferred.
 
+## 2026-11-01 — Claude: the robot armour as clothing (four outfit pieces)
+
+- **Branch/base:** `claude/robot-clothes` from shared `6b5d9e4`. Implementation `5271b43` and a check pin `90f7a48`, then docs
+  and this log.
+  Merged into shared and the builder (test channel). Not a live release.
+- **Task:** owner: "It seems the clothes no longer show with this new skin. Can we make the armor portion into clothing?
+  Like separate them like we have other clothes currently." With the robot suit as the default, it replaced the pilot's
+  clothes, so the OUTFIT picks did nothing.
+- **Changes (presentation only):**
+  - **Four clothing pieces**, each its slot's first id (the default) in `Core/NativeLook`, each worn over its own garment:
+    - "Robot armour" (top): the sweater, chest and back plates, collar, pauldrons, vambraces, ear modules;
+    - "Robot legs" (bottoms): skinny jeans, belt, thigh plates, knees, shins;
+    - "Robot gauntlets" (hands): gloves with a plate on the back of each hand (new);
+    - "Robot boots" (shoes): work boots with a toe cap and a heel guard (new).
+  - `Core/NativeRobotSuit`:
+    - `Dress` puts the body in each robot piece's garment;
+    - `Shown` lets each slot's plates draw only with its piece (the vambraces are left off under arm bands);
+    - the new gauntlet, toe cap and heel guard are fitted to the gloves and boots dumped at rest.
+  - **Gone:** the skin map's `suit` entry (`Core/NativeWeaponSkins`; the longest map is now 309) and the Locker's SUIT row.
+  - **The rooftop crowd** keeps the concept's clothes (`NativeLook.Concept`).
+  - **The feet lift** measures against the bake's rest shoes, not the slot's first id.
+- **Affected systems:** the model pilot's dressing and plates, the Locker's OUTFIT rows, the skin map's entries. No hit
+  timing, hitbox, damage, cooldown, movement or network authority changes. The outfit map's format is unchanged; its
+  default ids moved.
+- **Checks:**
+  - CoreTests: `--suit` (35 checks), `--helm` and `--visual-rig` PASS. Full suite on a clean LF worktree: 891 PASS lines,
+    rc 0 (ExpeditionEndingChecks' Windows path patch applied there only, as before).
+  - `git diff --check` clean.
+  - In Unity (captures, BoZo play):
+    - the default pilot in all four pieces and the helmet;
+    - arm bands, khakis and sneakers (the armour without vambraces, no leg or boot plates);
+    - hard jacket and baggy pants with the default gauntlets and boots;
+    - open hoodie and lace-ups over the robot legs;
+    - close views of the gauntlets, toe caps and heel guards;
+    - the Locker's OUTFIT rows (Top: Robot armour).
+  - The plates' clearance was also checked offline over the rest body.
+- **Not verified:** a Windows build; multiplayer; first person (the plates are not drawn there, as before); every
+  top/bottoms/shoes combination (e.g. the shin guards over lace-ups' tops); corpses and death scenes in the new pieces.
+- **Astra handoff (account server, `src/relay/accounts.ts`):**
+  - `LOOK_SLOTS` needs `robot-armour`, `robot-legs`, `robot-gauntlets` and `robot-boots` first in `upper`, `lower`, `hands`
+    and `feet`. Until then a signed-in pick of the open hoodie, belted pants, fingerless gloves or mid-tops (now written
+    picks, dropped there as defaults) resets to the robot piece at the next sign-in.
+  - The `suit` entry asked for in the default-outfit entry below is no longer needed. `FACE_SKINS` still needs its update.
+- **Risks:**
+  - Older test builds read the missing `suit` entry as the full suit and draw it over pilots whose outfits have no robot
+    pieces (cosmetic).
+  - Pilots who wore the old defaults unsaved now wear the robot pieces.
+- **Next:** owner feedback on the gauntlet and boot looks.
+
 ## 2026-11-01 — Claude: the five M1 stages drawn (looks, kit, rigs, backdrops, effects)
 
 - **Branch/base:** `claude/new-stages-look` from shared `3323310`. Shared was merged in at `0c80fa9` and `9fa08ed`.

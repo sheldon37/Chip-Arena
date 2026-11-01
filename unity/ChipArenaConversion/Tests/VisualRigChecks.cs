@@ -1553,7 +1553,7 @@ namespace ChipArena.UnityConversion
             // dressed when made (the live and first-person bodies, corpses and what is made from them), worn renderers only from
             // then on; a changed outfit makes the body again; the gear's anchors and the device's sleeve follow the top.
             Check(NativeLook.Slots.Length==NativeLook.Ids.Length&&NativeLook.Ids.Length==NativeLook.Labels.Length&&NativeLook.Normalize("")==""&&NativeLook.Normalize("upper:hard-jacket,feet:work-boots,hair:wild")=="hair:wild,upper:hard-jacket,feet:work-boots"
-                &&NativeLook.Normalize("upper:open-hoodie,lower:gold,cape:red")==""&&NativeLook.With("",NativeLook.Hands,"bare")=="hands:bare"&&NativeLook.Index("feet:sneakers",NativeLook.Feet)==2&&NativeLook.Of("",NativeLook.Upper)=="open-hoodie"
+                &&NativeLook.Normalize("upper:robot-armour,lower:gold,cape:red")==""&&NativeLook.With("",NativeLook.Hands,"bare")=="hands:bare"&&NativeLook.Index("feet:sneakers",NativeLook.Feet)==3&&NativeLook.Of("",NativeLook.Upper)=="robot-armour"
                 &&System.Linq.Enumerable.All(NativeLook.Ids,ids=>System.Linq.Enumerable.All(ids,id=>System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z0-9-]{1,24}$"))),"the outfit map: canonical slot order, defaults omitted, unknown slots and ids dropped, contract ids");
             int longest=0;foreach(var ids in NativeLook.Ids){int m=0;foreach(var id in ids)m=Math.Max(m,id.Length);longest+=m;}
             Check(longest+NativeLook.Slots.Length*8<NativeLook.MaxLength,"the longest outfit map fits the contract's limit");
