@@ -133,6 +133,8 @@ namespace ChipArena.UnityConversion
             if(viewBody?.Root==null||viewBody.PosedFrame<Time.frameCount-1)return;
             var w=VisualWeaponFor(viewBody,a);if(w==null)return;
             if(w.Sighted)rear=w.Sight;else if(w.Scale!=1)rear=w.Centre+w.Scale*(rear-w.Centre);
+            // The model draws larger about the hand's frame in first person (VisualViewPose), and its sight with it.
+            rear*=NativeFirstPersonPose.ModelScale(VisualViewGun(a));
         }
         // RenderFirstPerson, after the draw: the view body's model hides the frame it is not drawn (put away, stowed, thrown).
         private void VisualViewWeaponShown()
