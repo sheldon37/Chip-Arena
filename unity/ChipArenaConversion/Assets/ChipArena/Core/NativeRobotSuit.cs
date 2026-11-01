@@ -7,28 +7,54 @@ using Paint=ChipArena.UnityConversion.NativeModelHatMeshes.Paint;
 namespace ChipArena.UnityConversion
 {
     // The robot suit (owner 2026-10-30: "Lets also design clothing that resembles our previous player model (Robotic style) and
-    // reference the previous face. Of course, in the new player style."; the model's default outfit since owner 2026-10-30: "I
-    // think we will make the default outfit the new designed armor and that full helmet"): the original voxel robot's build worn
-    // as plates over a dark fitted under-suit (Under), in the model's own smooth style. From the robot: its white shell (here the
-    // pilot's body colour), the glowing accent at its waist and edges, the reactor panel and its cross on its back, its segmented
-    // dark neck, the square ear modules with their light either side of its head; its head (the visor bar, the grille) is the
-    // robot's helmet (Core/NativeRobotHelm), whose own ear modules then take these ones' place. Each piece is authored on the
-    // pack body at rest (its bind pose: metres, x the body's right, y up, z ahead) and rides one bone (Bones), drawn with that
-    // bone's matrix times its bind pose (Runtime/NativeRobotSuitPresentation.cs). The fit was measured in Unity on the rest
-    // body in the under-suit (2026-10-30): its cross-sections round the torso, each limb and the neck, the plates a centimetre
-    // or so over them. Presentation only.
+    // reference the previous face. Of course, in the new player style."): the original voxel robot's build worn as plates over
+    // fitted clothes, in the model's own smooth style, as four clothing pieces (owner 2026-11-01: "Can we make the armor portion
+    // into clothing? Like separate them like we have other clothes currently."): each one a slot's default in Core/NativeLook
+    // (the default outfit since owner 2026-10-30: "I think we will make the default outfit the new designed armor and that full
+    // helmet"), worn over the garment it was fitted on (Under, the body dressed in it: Dress), so any of them goes with any
+    // other piece. The robot armour (the top) is the sweater with the chest, back, collar, pauldrons, vambraces and ear modules;
+    // its legs skinny jeans with the belt, thigh plates, knee caps and shin guards; its gauntlets gloves with a plate on the back
+    // of each hand; its boots work boots with a toe cap and a heel guard. The vambraces are left off under arm bands, which wrap
+    // the forearms they sit on (Shown). From the robot: its white shell (here the pilot's body colour), the glowing accent at its
+    // waist and edges, the reactor panel and its cross on its back, its segmented dark neck, the square ear modules with their
+    // light either side of its head; its head (the visor bar, the grille) is the robot's helmet (Core/NativeRobotHelm), whose
+    // own ear modules then take these ones' place. Each plate is authored on the pack body at rest (its bind pose: metres, x the
+    // body's right, y up, z ahead) and rides one bone (Bones), drawn with that bone's matrix times its bind pose
+    // (Runtime/NativeRobotSuitPresentation.cs). The fit was measured in Unity on the rest body in those garments (2026-10-30;
+    // the hands and feet 2026-11-01): its cross-sections round the torso, each limb and the neck, the backs of the gloves, the
+    // boots' toes and heels, the plates a few millimetres to a centimetre or so over them. The boots' plates stay under the
+    // khakis' hem (8 cm up), which comes down over the boots. Presentation only.
     public static class NativeRobotSuit
     {
         /// <summary>The bones the pieces ride, by index (the parts' Bone).</summary>
-        public static readonly string[] Bones={"spine_05","pelvis","neck_01","head","upperarm_l","upperarm_r","lowerarm_l","lowerarm_r","thigh_l","thigh_r","calf_l","calf_r"};
-        public const int Chest=0,Hips=1,Neck=2,Head=3,ArmL=4,ArmR=5,ForearmL=6,ForearmR=7,ThighL=8,ThighR=9,ShinL=10,ShinR=11;
-        /// <summary>The under-suit: the model's fitted pieces the plates sit over (its hair and skin stay the pilot's own).</summary>
-        public const string Under="upper:sweater,lower:skinny-jeans,hands:gloves,feet:work-boots";
-        /// <summary>The pilot's look with the under-suit in place of its clothes (Core/NativeLook map).</summary>
-        public static string Look(string look)
+        public static readonly string[] Bones={"spine_05","pelvis","neck_01","head","upperarm_l","upperarm_r","lowerarm_l","lowerarm_r","thigh_l","thigh_r","calf_l","calf_r",
+            "hand_l","hand_r","foot_l","foot_r"};
+        public const int Chest=0,Hips=1,Neck=2,Head=3,ArmL=4,ArmR=5,ForearmL=6,ForearmR=7,ThighL=8,ThighR=9,ShinL=10,ShinR=11,HandL=12,HandR=13,FootL=14,FootR=15;
+        /// <summary>The slot (Core/NativeLook.Slots) of the piece each bone's plates belong to: the armour (top), the legs
+        /// (bottoms), the gauntlets (hands) or the boots (shoes).</summary>
+        public static readonly int[] BoneSlot={1,2,1,1,1,1,1,1,2,2,2,2,3,3,4,4};
+        /// <summary>The garment each slot's robot piece is worn over (NativeLook.Slots order; the hair has none).</summary>
+        public static readonly string[] Under={null,"sweater","skinny-jeans","gloves","work-boots"};
+        private const string ArmBands="arm-bands";
+        /// <summary>Whether `look` wears the robot's piece in slot `s` (NativeLook.Slots): the slot's default. Allocation free.</summary>
+        public static bool Worn(string look,int s)=>s>0&&s<NativeLook.Slots.Length&&NativeLook.Index(look,NativeLook.Slots[s])==0;
+        /// <summary>The look the body is dressed in (Core/NativeLook map): each robot piece as the garment under it, the rest of
+        /// the pilot's look (its other pieces, hair and skin) as it is.</summary>
+        public static string Dress(string look)
         {
-            var map=NativeLook.With(NativeLook.Normalize(Under),NativeLook.Hair,NativeLook.Of(look,NativeLook.Hair));int skin=NativeLook.SkinOf(look);
-            return skin<0?map:NativeLook.WithSkin(map,skin);
+            string map=NativeLook.Normalize(look);
+            for(int s=1;s<NativeLook.Slots.Length;s++)if(Worn(map,s))map=NativeLook.With(map,NativeLook.Slots[s],Under[s]);
+            return map;
+        }
+        /// <summary>The bones (a bit each, Bones order) whose plates `look` wears: its robot pieces' (BoneSlot), less the ear
+        /// modules under the robot's helmet or half mask (`helmEars`: their own) and the vambraces under arm bands. Allocation free.</summary>
+        public static int Shown(string look,bool helmEars)
+        {
+            int worn=0;for(int s=1;s<NativeLook.Slots.Length;s++)if(Worn(look,s))worn|=1<<s;if(worn==0)return 0;
+            int shown=0;for(int b=0;b<Bones.Length;b++)if((worn>>BoneSlot[b]&1)!=0)shown|=1<<b;
+            if(helmEars)shown&=~(1<<Head);
+            if(NativeLook.Of(look,NativeLook.Hands)==ArmBands)shown&=~(1<<ForearmL|1<<ForearmR);
+            return shown;
         }
 
         // ---- paints (the helmet's and half mask's too: Core/NativeRobotHelm): the robot's shell under the body colour, a little self-lit as the voxel pilot's armour light keeps it
@@ -44,6 +70,7 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 Pelvis=new Vector3(0,.9869f,.0238f),NeckRoot=new Vector3(0,1.4914f,-.0155f),HeadRoot=new Vector3(0,1.5734f,-.0048f);
         private static readonly Vector3 UpperArm=new Vector3(-.1326f,1.4253f,-.0275f),Forearm=new Vector3(-.2909f,1.2154f,-.0299f),Hand=new Vector3(-.4269f,1.06f,.0575f);
         private static readonly Vector3 Thigh=new Vector3(-.0929f,.9612f,.038f),Calf=new Vector3(-.1031f,.5361f,.0299f),Foot=new Vector3(-.1172f,.1095f,-.0052f);
+        private static readonly Vector3 Knuckle=new Vector3(-.4847f,.9831f,.0962f),IndexSide=new Vector3(.0171f,.0031f,.0632f);
         // The torso's outline round a vertical axis at z .02 (plus TorsoZ), from ahead (0) to behind (12) in 15 degree steps, at
         // each height (the sweater over the chest, the jeans at the hips; under the arms the shoulder's reach).
         private static readonly float[] TorsoY={1.00f,1.03f,1.06f,1.10f,1.14f,1.18f,1.22f,1.26f,1.30f,1.34f,1.38f,1.42f,1.45f};
@@ -106,7 +133,7 @@ namespace ChipArena.UnityConversion
         public static SheldonSection[] Build()
         {
             var k=new Kit();
-            ChestPlate(k);BackPlate(k);Belt(k);Collar(k);Ears(k);Pauldrons(k);Vambraces(k);Legs(k);
+            ChestPlate(k);BackPlate(k);Belt(k);Collar(k);Ears(k);Pauldrons(k);Vambraces(k);Legs(k);Gauntlets(k);Boots(k);
             return k.Parts.ToArray();
         }
 
@@ -237,6 +264,97 @@ namespace ChipArena.UnityConversion
                 Vector3 Out(float u,float v)=>map(shin.O+shin.Out(D((u*2-1)*86)))-map(shin.O);
                 k.Slab(s,16,9,false,Thick,P,Out,(u,v)=>MathF.Abs(v-.78f)<.05f?Metal(.8f):Plate(1),(u,v)=>Metal(.6f));
                 k.Slab(s,2,6,false,.002f,(u,v)=>{float uu=.47f+u*.06f,vv=.08f+v*.55f;return P(uu,vv)+Vector3.Normalize(Out(uu,vv))*(Thick*.5f+.0035f);},Out,(u,v)=>Light,(u,v)=>Light);
+            });
+        }
+
+        // A height over a grid (rows along t from t0 by dt, `cols` columns along u from u0 by du), bilinear between its points
+        // and held at its edges.
+        private static float Grid(float[] table,int cols,float t0,float dt,float u0,float du,float t,float u)
+        {
+            int rows=table.Length/cols;float x=Math.Clamp((t-t0)/dt,0,rows-1.001f),y=Math.Clamp((u-u0)/du,0,cols-1.001f);int i=(int)x,j=(int)y;float fx=x-i,fy=y-j;
+            float At(int r,int c)=>table[r*cols+c];
+            return (At(i,j)*(1-fy)+At(i,j+1)*fy)*(1-fx)+(At(i+1,j)*(1-fy)+At(i+1,j+1)*fy)*fx;
+        }
+
+        // ---- the hands: a plate over the back of each glove, a dark knuckle guard along its front with four studs, a light strip
+        // down its middle ----
+        // The gloves' backs at rest in the hand's frame (from the wrist: t toward the middle knuckle, u across toward the index
+        // finger, the height off the back): each point the highest of the left glove and the mirrored right one within 3 mm of
+        // t .018 + .008 i, u -.04 + .008 j.
+        private static readonly float[] HandBack={
+            .0003f,.0134f,.0191f,.0218f,.0233f,.0235f,.0227f,.0203f,.0142f,.0023f,
+            .0036f,.0136f,.0190f,.0215f,.0228f,.0230f,.0223f,.0200f,.0148f,.0066f,
+            .0049f,.0135f,.0184f,.0211f,.0222f,.0224f,.0217f,.0196f,.0151f,.0084f,
+            .0059f,.0133f,.0177f,.0201f,.0210f,.0212f,.0204f,.0182f,.0146f,.0088f,
+            .0067f,.0129f,.0169f,.0191f,.0197f,.0199f,.0191f,.0169f,.0138f,.0089f,
+            .0075f,.0125f,.0163f,.0185f,.0189f,.0189f,.0181f,.0163f,.0133f,.0086f,
+            .0078f,.0123f,.0157f,.0178f,.0182f,.0182f,.0174f,.0156f,.0129f,.0081f,
+            .0077f,.0122f,.0151f,.0171f,.0174f,.0175f,.0166f,.0149f,.0124f,.0076f,
+            .0076f,.0121f,.0145f,.0163f,.0167f,.0167f,.0158f,.0141f,.0117f,.0066f,
+            .0071f,.0118f,.0140f,.0155f,.0159f,.0160f,.0150f,.0133f,.0110f,.0059f};
+        private static readonly Limb HandFrame=new Limb(Hand,Knuckle,IndexSide);
+        private static float GloveBack(float t,float u)=>Grid(HandBack,10,.018f,.008f,-.04f,.008f,t,u);
+        /// <summary>How far a point at rest (on the left hand's side) stands off the back of the glove: the gauntlet's fit.</summary>
+        internal static float OverGlove(Vector3 p){var q=p-HandFrame.O;return Vector3.Dot(q,HandFrame.S)-GloveBack(Vector3.Dot(q,HandFrame.A),Vector3.Dot(q,HandFrame.R));}
+        private static void Gauntlets(Kit k)
+        {
+            var hand=HandFrame;const float t0=.024f,t1=.08f,gap=.0035f,thick=.005f;
+            float Lo(float t)=>-.033f-.004f*(t-t0)/(t1-t0);float Hi(float t)=>.024f+.004f*(t-t0)/(t1-t0);
+            Vector3 On(float u,float v,float lift)
+            {
+                float t=t0+(t1-t0)*v,w=Lo(t)+(Hi(t)-Lo(t))*u;
+                return hand.At(t,0,0,w,GloveBack(t,w)+gap+thick*.5f+lift+.0015f*MathF.Sin(MathF.PI*u));
+            }
+            Both(k,"gauntlet",HandL,(s,map)=>
+            {
+                Vector3 P(float u,float v)=>map(On(u,v,0));Vector3 Out(float u,float v)=>map(hand.O+hand.S)-map(hand.O);
+                k.Slab(s,12,10,false,thick,P,Out,(u,v)=>v>.84f?Metal(.85f):MathF.Abs(v-.4f)<.04f?Metal(.8f):Plate(1-.04f*v),(u,v)=>Metal(.6f));
+                k.Slab(s,1,8,false,.002f,(u,v)=>map(On(.45f+u*.1f,.08f+v*.26f,thick*.5f+.001f)),Out,(u,v)=>Light,(u,v)=>Light);
+                for(int i=0;i<4;i++)Box(k,s,On(.16f+i*.23f,.92f,thick*.5f+.0025f),hand.R,hand.A,hand.S,new Vector3(.0065f,.0045f,.0025f),f=>f==4?Plate(.95f):Metal(.75f),map);
+            });
+        }
+
+        // ---- the feet: a toe cap round each boot's toe with a light strip across its back, a heel guard round its heel with
+        // a light strip along its top ----
+        // The left boot's front at rest: inside an ellipsoid round its toe box (centre ToeAt; half axes ToeAxes: across, up and
+        // ahead), the smallest that holds it over the toe cap's reach, fitted on the owner's PC (2026-11-01; the boot touches it).
+        private static readonly Vector3 ToeAt=new Vector3(-.1125f,.02f,.11f),ToeAxes=new Vector3(.0541f,.0429f,.0746f);
+        // The boot's heel at rest: its reach round a vertical axis at (HeelX, z 0) behind it, at heights .01 + .01 i.
+        private static readonly float[] HeelReach={.053f,.054f,.053f,.049f,.047f,.046f,.046f};
+        private const float HeelX=-.1165f;
+        private static float HeelAt(float y){float x=Math.Clamp((y-.01f)/.01f,0,HeelReach.Length-1.001f);int i=(int)x;return HeelReach[i]+(HeelReach[i+1]-HeelReach[i])*(x-i);}
+        /// <summary>A point's reach in the toe's ellipsoid (the boot's front within 1: the toe cap's fit), and how far a point at
+        /// rest (on the left foot's side) stands out from the boot's heel (the heel guard's).</summary>
+        internal static float ToeReach(Vector3 p)=>((p-ToeAt)/ToeAxes).Length();
+        internal static float OffHeel(Vector3 p)=>MathF.Sqrt((p.X-HeelX)*(p.X-HeelX)+p.Z*p.Z)-HeelAt(p.Y);
+        private static void Boots(Kit k)
+        {
+            const float gap=.0035f,thick=.005f;
+            // The toe cap, on the foot's bone (the stiff boot's toe box follows it, not the toes'): a shell round the front of the
+            // toe box, from a light strip across its back over the top and down its sides to the nose (u across, from one side's
+            // lower edge over the top to the other's; v from the back to the nose).
+            const float lower=72;
+            Vector3 Dir(float u,float v){float g=D((u*2-1)*lower),l=D(90*v);return new Vector3(MathF.Sin(g)*MathF.Cos(l),MathF.Cos(g)*MathF.Cos(l),MathF.Sin(l));}
+            Vector3 Toe(float u,float v,float lift){var d=Dir(u,v);float off=gap+thick*.5f+lift;return ToeAt+new Vector3(d.X*(ToeAxes.X+off),d.Y*(ToeAxes.Y+off),d.Z*(ToeAxes.Z+off));}
+            Both(k,"toe cap",FootL,(s,map)=>
+            {
+                Vector3 P(float u,float v)=>map(Toe(u,v,0));Vector3 Out(float u,float v)=>map(ToeAt+Dir(u,v))-map(ToeAt);
+                k.Slab(s,14,10,false,thick,P,Out,(u,v)=>MathF.Abs(v-.4f)<.04f?Metal(.8f):Plate(1),(u,v)=>Metal(.6f));
+                k.Slab(s,12,1,false,.002f,(u,v)=>map(Toe(.06f+u*.88f,.03f+v*.04f,thick*.5f+.001f)),Out,(u,v)=>Light,(u,v)=>Light);
+            });
+            // The heel guard, on the foot's bone: round the back of the heel from side to side, under the khakis' hem.
+            const float y0=.014f,y1=.062f,half=80;
+            Vector3 Heel(float u,float v,float lift)
+            {
+                float th=D((u*2-1)*half),y=y0+(y1-y0)*v,r=HeelAt(y)-.003f*Smooth((MathF.Abs(th)-D(45))/D(30))+gap+thick*.5f+lift+.0015f*MathF.Sin(MathF.PI*v);
+                return new Vector3(HeelX+MathF.Sin(th)*r,y,-MathF.Cos(th)*r);
+            }
+            Both(k,"heel guard",FootL,(s,map)=>
+            {
+                Vector3 P(float u,float v)=>map(Heel(u,v,0));
+                Vector3 Out(float u,float v){float th=D((u*2-1)*half);return map(new Vector3(MathF.Sin(th),0,-MathF.Cos(th)));}
+                k.Slab(s,16,6,false,thick,P,Out,(u,v)=>MathF.Abs(v-.35f)<.06f?Metal(.8f):Plate(1),(u,v)=>Metal(.6f));
+                k.Slab(s,14,1,false,.002f,(u,v)=>map(Heel(.06f+u*.88f,.86f+v*.07f,thick*.5f+.001f)),Out,(u,v)=>Light,(u,v)=>Light);
             });
         }
     }

@@ -30,7 +30,18 @@ namespace ChipArena.UnityConversion
                 game.expeditionError=null;gate.Begin(200);game.deploymentInitialReady=gate.Update(201,true);
                 Check(game.SplitCommandBlock==null,"successful readiness releases run-wide command hold");
                 Check(gate.Update(300,false)&&!gate.Failed,"later subset loading does not reactivate initial barrier");
-                Debug.Log("PASS native deployment loading: timeout boundary, late readiness, command refusal before session mutation and subsequent-load independence");
+                var run=NativeExpedition.Create("freeze-fixture","hub","host","sword",17,new[]{new ExpeditionInstance{id="ward",target=1}});
+                Check(run.Join("next","sword"),"handoff party");run.EnableAreas();var ward=run.ForArea("ward");
+                Check(run.MoveMembers("hub","ward",new[]{"next"})&&ward.Progress("kill",1)&&ward.StartBosses(new[]{"boss"})&&ward.DefeatBoss("boss")&&run.SetSafe("host",true),"handoff eligibility");
+                var h=run.PrepareHandoff("fixture-handoff",new[]{"host"},new[]{new ExpeditionHostCandidate{account="next",capable=true,reachable=true}});
+                Check(h!=null,"prepare shared freeze");game.splitRun=run;
+                Check(commands.Blocked(command)!=null&&commands.Send(command).state==ExpeditionCommandState.Refused,"handoff refuses commands before session access");
+                string before=JsonUtility.ToJson(run.PartySnapshot());game.SplitFixedFrame();
+                Check(JsonUtility.ToJson(run.PartySnapshot())==before,"handoff returns before simulation or cohort access");
+                var restored=NativeExpedition.RestorePreparedHandoff(JsonUtility.FromJson<ExpeditionHandoff>(JsonUtility.ToJson(h)),"next");
+                Check(restored.Migrating&&restored.ForArea("ward").Migrating&&JsonUtility.ToJson(restored.PartySnapshot())==before,"native handoff codec and frozen restore");
+                Check(run.AbortHandoff(h.id)&&game.SplitCommandBlock==null,"source abort releases command barrier");game.splitRun=null;
+                Debug.Log("PASS native deployment loading: timeout boundary, late readiness, command refusal before session mutation subsequent-load independence, all-area handoff freeze and native checkpoint codec");
             }
             finally{UnityEngine.Object.DestroyImmediate(owner);}
         }

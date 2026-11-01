@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         // Readiness is a run-wide barrier, not just a per-pilot input gate. Commands
         // mutate inventory/votes immediately, even while the fixed simulation is held.
         private string SplitCommandBlock=>expeditionError!=null?"Expedition stopped. Leave the run and deploy again.":
-            !deploymentInitialReady?"Waiting for the party to finish loading.":null;
+            !deploymentInitialReady?"Waiting for the party to finish loading.":splitRun?.Migrating==true?"Host transfer in progress.":null;
         private bool SplitLocalLoading=>ExpeditionSplit&&arena?.Local==null;
         private NativeArena SplitPilotArena(string who)=>splitCohorts==null?null:splitAreas.Find(splitCohorts.Member(who)?.Area)?.Arena;
         private int SplitSeat(string who)=>splitSeats?.FirstOrDefault(s=>s.access?.AccountId==who)?.id??0;
@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
         }
         private void SplitFixedFrame()
         {
-            if(expeditionError!=null)return;
+            if(expeditionError!=null||splitRun.Migrating)return;
             var state=splitRun.PartySnapshot();if(state.phase==ExpeditionPhase.Ended||!state.members.Any(m=>m.alive&&m.connected&&!m.extracted)){ExpeditionView=SplitView(account.Access.AccountId);return;}
             long splitAt=System.Diagnostics.Stopwatch.GetTimestamp();
             try
