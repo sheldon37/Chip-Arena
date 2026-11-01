@@ -79,11 +79,20 @@ namespace ChipArena.UnityConversion
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
-        // (A pilot in the robot suit wears its under-suit in place of its clothes: NativeRobotSuitPresentation.)
-        private string VisualLookOf(int id){var look=VisualOutfitOf(id);return WearsSuit(id)?NativeRobotSuit.Look(look):look;}
+        // The look a pilot's body is dressed in: its outfit with each robot piece as the garment under it (Core NativeRobotSuit.Dress;
+        // its plates: NativeRobotSuitPresentation), made once an outfit (read every frame).
+        private readonly Dictionary<string,string> robotDressed=new Dictionary<string,string>(StringComparer.Ordinal);
+        private string VisualLookOf(int id)
+        {
+            var look=VisualOutfitOf(id)??"";
+            if(!robotDressed.TryGetValue(look,out var dressed)){if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);}
+            return dressed;
+        }
         private string VisualOutfitOf(int id)
         {
             if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??"";
+            // The rooftop's crowd keeps the concept's clothes (Runtime/NativeRooftopPresentation.cs).
+            if(id<RooftopIdTop&&id>RooftopIdTop-8)return NativeLook.Concept;
             if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
             // Use the displayed arena, including replay/guest seats, rather than current local preferences.
             var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??"";
@@ -633,8 +642,8 @@ namespace ChipArena.UnityConversion
             }
             if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
             if(!first)VisualSuit(body.Root,a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
-            // The back emblem on the chest's model bone, glowing as the core does (under the robot suit's back plate: none).
-            if(!first&&!WearsSuit(a.Id))
+            // The back emblem on the chest's model bone, glowing as the core does (under the robot armour's back plate: none).
+            if(!first&&!WearsArmour(a.Id))
             {
                 var of=body.Binding.Rig.Of;int cv=CapturedRig.Chest<of.Length?of[CapturedRig.Chest]:-1;var chest=cv>=0&&cv<body.Binding.Bones.Length?body.Binding.Bones[cv]:null;
                 if(chest!=null){gearMatrix=chest.localToWorldMatrix*body.Emblem;var e=NativePilotGear.CoreGlow(time,1,time-body.LitAt,a.Id);sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(e,e,e,1),null,flash);}
@@ -785,11 +794,11 @@ namespace ChipArena.UnityConversion
             if(map!=null)wearBlock.SetTexture(TextureId,map);
             r.SetPropertyBlock(wearBlock);
         }
-        // The lift a look's feet piece sets the body's skeleton by (the bake's lift for it against the default shoes'): bare feet
-        // set down onto the floor.
+        // The lift a look's feet piece sets the body's skeleton by (the bake's lift for it against its rest shoes', the concept's:
+        // NativeLook.Concept): bare feet set down onto the floor.
         private static float VisualLiftOf(string look)
         {
-            var d=VisualLookData();if(d==null)return 0;string feet=NativeLook.Of(look,NativeLook.Feet),first=NativeLook.Ids[NativeLook.SlotIndex(NativeLook.Feet)][0];float worn=0,rest=0;
+            var d=VisualLookData();if(d==null)return 0;string feet=NativeLook.Of(look,NativeLook.Feet),first=NativeLook.Of(NativeLook.Concept,NativeLook.Feet);float worn=0,rest=0;
             foreach(var p in d.pieces){if(p==null||p.slot!=NativeLook.Feet)continue;if(p.id==feet)worn=p.lift;if(p.id==first)rest=p.lift;}
             return Mathf.Clamp(worn-rest,-.05f,.05f);
         }
