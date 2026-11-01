@@ -10,13 +10,13 @@ namespace ChipArena.UnityConversion
         /// <summary>The skin map the sandbox / preview viewer rigs show (prefs.weaponSkins; null: every weapon Standard).</summary>
         public string ViewerWeaponSkins;
         /// <summary>The pilot's skin map: the seat of the arena the pilots come from (live, guest replica or killcam replay).</summary>
-        private const string RooftopCrowdSkins="face:none,suit:none";
+        private const string RooftopCrowdSkins="face:none";
         private string SeatWeaponSkins(int id)
         {
             // A model portrait's body wears the card's map (Runtime/NativeVisualPortraitPresentation.cs).
             if(ModelPortraitOf(id,out var portrait))return portrait.Skins;
             // The rooftop's seated pilot is yours (Runtime/NativeRooftopPresentation.cs RooftopModel); its crowd the Standard, in
-            // their own faces and clothes (no default helmet and suit).
+            // their own faces (no default helmet) and clothes (VisualOutfitOf: the concept's).
             if(id==RooftopIdTop)return rooftopSkins;if(id<RooftopIdTop&&id>RooftopIdTop-8)return RooftopCrowdSkins;
             if(Viewer)return ViewerWeaponSkins;var seats=WeaponLoadout?.Match?.Seats;if(seats==null)return null;
             for(int i=0;i<seats.Count;i++)if(seats[i]!=null&&seats[i].id==id)return seats[i].weaponSkins;return null;

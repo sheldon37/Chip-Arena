@@ -8,16 +8,15 @@ namespace ChipArena.UnityConversion
     // Revert undoes with the rest of the look. The pilot's model wears it in the lobby, the draft and matches
     // (Runtime/NativeVisualBodyPresentation.cs VisualDress); the Locker's own stage is the portrait pilot. The DEV pieces
     // (Sheldon's clothes and bare feet, each slot's last; Core NativeSheldonWear) show, marked DEV, only with live DEV access
-    // (lockerBodySheldon, the Sheldon Clothes' gate), and the pilot wears its pick through that gate (LookShown). A last row
-    // picks the robot suit (owner 2026-10-30: "design clothing that resembles our previous player model (Robotic style)"): its
-    // skin map's "suit" entry (NativeWeaponSkins.SuitEntry), saved and reverted with the map; worn, its under-suit takes the
-    // clothes' place (Runtime/NativeRobotSuitPresentation.cs).
+    // (lockerBodySheldon, the Sheldon Clothes' gate), and the pilot wears its pick through that gate (LookShown). Each slot below
+    // the hair lists the robot's piece first, its default (Core NativeRobotSuit; owner 2026-11-01: "Can we make the armor
+    // portion into clothing? Like separate them like we have other clothes currently.").
     public sealed partial class ConversionGame
     {
         private readonly NativeOutfitPicker.Motion lockerOutfitMotion=new NativeOutfitPicker.Motion();
         // The pieces a slot lists: all of them with live DEV access, else those before its DEV pieces (each slot's last).
         private int LkOutfitCount(int slot){var ids=NativeLook.Ids[slot];int n=ids.Length;if(!lockerBodySheldon)while(n>1&&NativeLook.DevOnly(ids[n-1]))n--;return n;}
-        private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length+1);
+        private float LkOutfitH()=>NativeOutfitPicker.Height(lockerW,NativeLook.Slots.Length);
         private void LkOutfit(Rect grid)
         {
             for(int s=0;s<NativeLook.Slots.Length;s++)
@@ -26,9 +25,6 @@ namespace ChipArena.UnityConversion
                 int k=NativeOutfitPicker.Row(NativeOutfitPicker.Cell(grid,lockerW,s),s,worn,shown,lockerFade,lockerViewHot&&!lockerBlocked,Time.unscaledTime,lockerOutfitMotion);
                 if(k!=worn){prefs.look=NativeLook.Gate(NativeLook.With(prefs.look,slot,ids[k]),lockerBodySheldon);Click();}
             }
-            int suit=NativeWeaponSkins.Index(prefs.weaponSkins,NativeWeaponSkins.SuitEntry),row=NativeLook.Slots.Length;
-            int pick=NativeOutfitPicker.Row(NativeOutfitPicker.Cell(grid,lockerW,row),row,NativeOutfitPicker.SuitName,NativeWeaponSkins.SuitKeys,NativeWeaponSkins.SuitLabels,suit,NativeWeaponSkins.SuitKeys.Length,lockerFade,lockerViewHot&&!lockerBlocked,Time.unscaledTime,lockerOutfitMotion);
-            if(pick!=suit){prefs.weaponSkins=NativeWeaponSkins.With(prefs.weaponSkins,NativeWeaponSkins.SuitEntry,NativeWeaponSkins.SuitKeys[pick]);Click();}
         }
         // The outfit this pilot wears: prefs.look through the DEV gate (NativeLook.Gate), made again only when the pick or the
         // access changes (read every frame). A skin tone hovered in Appearance's SKIN TONE row (lockerToneTry: -1 DEFAULT, else
@@ -66,19 +62,15 @@ namespace ChipArena.UnityConversion
             return new Rect(grid.x+(i%cols)*(w+Gap),grid.y+(i/cols)*(RowH+Gap),w,RowH);
         }
 
-        // The slots' line icons (24-unit boxes, round 1.8 strokes in white, tinted when drawn): hair, top, bottoms, hands, shoes,
-        // then the suit row's (a visored helmet).
+        // The slots' line icons (24-unit boxes, round 1.8 strokes in white, tinted when drawn): hair, top, bottoms, hands, shoes.
         private const string Stroke=" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"";
         public static readonly string[] Icons={
             "<path d=\"M5.5 14C5 8.5 8 4.5 12 4.5s7 4 6.5 9.5\""+Stroke+"/><path d=\"M5.5 12.5c2.6.2 5.2-1 6.5-3.6 1.3 2.4 3.6 3.6 6.5 3.6\""+Stroke+"/><path d=\"M7.5 14v1.5a4.5 4.5 0 0 0 9 0V14\""+Stroke+"/>",
             "<path d=\"M9 4 4 6.5 2.5 11l3 1.5L7 11v9h10v-9l1.5 1.5 3-1.5L20 6.5 15 4c-.5 1.7-1.6 2.5-3 2.5S9.5 5.7 9 4Z\""+Stroke+"/>",
             "<path d=\"M7 3.5h10l1.5 17h-4.2L12 11l-2.3 9.5H5.5Z\""+Stroke+"/><path d=\"M6.8 6.5h10.4\""+Stroke+"/>",
             "<path d=\"M8 12.5V6a1.5 1.5 0 0 1 3 0v5\""+Stroke+"/><path d=\"M11 10V4.5a1.5 1.5 0 0 1 3 0V10\""+Stroke+"/><path d=\"M14 10.5V6a1.5 1.5 0 0 1 3 0v6c0 4.7-2.6 8-6.5 8-2.4 0-4-1.1-5.3-3l-2-3.1a1.5 1.5 0 0 1 2.4-1.8L8 14\""+Stroke+"/>",
-            "<path d=\"M3 15.5V11l3.5-1 3 2.5 5 1.2c3.6.8 6.5 2.3 6.5 4.3v.5H3Z\""+Stroke+"/><path d=\"M3 18.5h18\""+Stroke+"/><path d=\"M10 12.8 11.2 11M12.6 13.3l1.1-1.7\""+Stroke+"/>",
-            "<path d=\"M5 14.5V12a7 7 0 0 1 14 0v2.5\""+Stroke+"/><path d=\"M5 11h14v3.5H5Z\""+Stroke+"/><path d=\"M7 14.5v2.5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2.5M10 17h4\""+Stroke+"/>"};
-        private static readonly string[] IconKeys={"outfit-hair","outfit-top","outfit-bottoms","outfit-hands","outfit-shoes","outfit-suit"};
-        /// <summary>The suit row's name (its picks are the skin map's suit keys and labels).</summary>
-        public const string SuitName="Suit";
+            "<path d=\"M3 15.5V11l3.5-1 3 2.5 5 1.2c3.6.8 6.5 2.3 6.5 4.3v.5H3Z\""+Stroke+"/><path d=\"M3 18.5h18\""+Stroke+"/><path d=\"M10 12.8 11.2 11M12.6 13.3l1.1-1.7\""+Stroke+"/>"};
+        private static readonly string[] IconKeys={"outfit-hair","outfit-top","outfit-bottoms","outfit-hands","outfit-shoes"};
         private const string Prev="<path d=\"m14.5 6-6 6 6 6\""+Stroke+"/>",Next="<path d=\"m9.5 6 6 6-6 6\""+Stroke+"/>";
 
         /// <summary>
