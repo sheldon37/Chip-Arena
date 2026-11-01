@@ -1,3 +1,21 @@
+## 2026-11-01 — Claude: generated districts brought up to #303's head
+
+- **Branch/base:** `claude/generated-districts`, merge `65bbe87` of draft #303's head `3cdaa7b7`
+  (`codex/deployment-completion`) into the district pass `1f07a2c`. Pushed; **not merged** into #303, shared or the
+  builder.
+- **Why:** Astra's latest #303 entries still list Claude's generated-district dressing as remaining. That work is done
+  on this branch (entry below), which until now sat on `a0fd8e8a`. Only the DEV_LOG conflicted (both histories kept,
+  newest first). Against `3cdaa7b7` the branch now adds only the district pass: 14 files, presentation and its checks.
+- **Checks (on the merged tree):** full suite on a clean LF worktree: 896 PASS lines, rc 0, including
+  `generated districts: 2933497 checks (3 rolls)` (ExpeditionEndingChecks' Windows path patch applied there only).
+  `tools/check_unity_compile.py` against Unity 6000.3.24f1: Assembly-CSharp and Assembly-CSharp-Editor PASS (existing
+  warnings). `git diff --check` against `3cdaa7b7` clean.
+- **Not checked:** no Unity play or new captures on the merged tree (the district code is unchanged since its captures),
+  native deployment acceptance, Windows build, co-op, performance on the generated map.
+- **Next:** Astra: fast-forward #303 to this branch's head (it contains `3cdaa7b7` exactly) or merge it. #303's other
+  gates (active-run migration, native acceptance, Windows co-op) stay Astra's. Claude's later district items (fog and
+  colour by position, district audio, plaza props) do not block #303.
+
 ## 2026-11-01 — Claude: generated Expedition districts drawn
 
 - **Branch/base:** `claude/generated-districts` from Astra's draft `codex/deployment-completion` at `a0fd8e8a`, with
