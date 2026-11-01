@@ -15,7 +15,9 @@ namespace ChipArena.UnityConversion
         private INativeOnlineHost promotionHost;private NativeListener promotionListener;
         private NativeRoomOptions promotionOptions;private NativeConnection promotionPrevious;
         private bool PromotionBusy=>promotionToken!=null||promotionMoveAt>0||promotionExpected>peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)&&NetworkNow<promotionDeadline;
-        private bool CanPromote(int id)=>Hosting&&!dedicated&&arena==null&&expeditionSession==null&&!stageLoad.Requested&&
+        // Lobby transfers must never replace a locked generated run, including its loading window.
+        private bool PromotionLobbyOpen=>arena==null&&expeditionSession==null&&!stageLoad.Requested&&!deploymentLocked&&DeploymentState?.deployed!=true;
+        private bool CanPromote(int id)=>Hosting&&!dedicated&&PromotionLobbyOpen&&
             peers.Any(p=>p.Seat?.id==id&&p.Seat.connected&&p.Connection?.Closed==false&&p.LobbyProtocol==1)&&
             peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).All(p=>p.LobbyProtocol==1);
         private void PromotionButton(Rect r,LobbyPilot p,float alpha)
@@ -37,7 +39,7 @@ namespace ChipArena.UnityConversion
         private bool PromotionHostMessage(NativePeer peer,NativeNetMessage message)
         {
             if(message.type!="host-prepared"&&message.type!="host-live"&&message.type!="host-failed")return false;
-            if(peer!=promotionPeer||message.transfer!=promotionToken||arena!=null)return true;
+            if(peer!=promotionPeer||message.transfer!=promotionToken||!PromotionLobbyOpen||NetworkNow>=promotionDeadline)return true;
             if(message.type=="host-failed"){CancelHostPromotion();networkStatus="Could not change host. The current lobby is still open.";return true;}
             if(message.type=="host-prepared")
             {
@@ -53,7 +55,7 @@ namespace ChipArena.UnityConversion
         {
             if(message.type=="host-prepare")
             {
-                if(server==null||networkId<1||arena!=null||receivedOptions==null||PromotionBusy||message.transfer?.Length!=32)return true;
+                if(server==null||networkId<1||!PromotionLobbyOpen||receivedOptions==null||PromotionBusy||message.transfer?.Length!=32)return true;
                 promotionExpected=Math.Max(0,Math.Min(7,message.id));promotionToken=message.transfer;promotionOnline=message.transferOnline;promotionOptions=receivedOptions;
                 promotionOptions.hostTeam=lobbySeats.FirstOrDefault(s=>s.id==networkId)?.team??0;
                 promotionDeadline=NetworkNow+45;networkStatus="Preparing your host room…";
@@ -77,7 +79,7 @@ namespace ChipArena.UnityConversion
             {if(message.transfer==promotionToken){CancelHostPromotion();networkStatus="Host change cancelled. Staying in this lobby.";}return true;}
             if(message.type=="host-commit")
             {
-                if(message.transfer!=promotionToken||promotionCode==null||server==null||arena!=null||promotionHost==null&&promotionListener==null)return true;
+                if(message.transfer!=promotionToken||promotionCode==null||server==null||!PromotionLobbyOpen||NetworkNow>=promotionDeadline||promotionHost==null&&promotionListener==null)return true;
                 // Keep the old transport alive until its acknowledgement has had time to drain.
                 SendServer(new NativeNetMessage{type="host-live",transfer=promotionToken});promotionPrevious=server;server=null;
                 relayHost=promotionHost;promotionHost=null;listener=promotionListener;promotionListener=null;roomCode=promotionCode;
@@ -88,7 +90,7 @@ namespace ChipArena.UnityConversion
             }
             if(message.type=="host-move")
             {
-                if(server==null||networkId<1||arena!=null||!NativeRoomCodes.Valid(message.room))return true;
+                if(server==null||networkId<1||!PromotionLobbyOpen||!NativeRoomCodes.Valid(message.room))return true;
                 promotionTeam=Math.Max(0,Math.Min(7,message.team));promotionCode=message.room;promotionOnline=message.transferOnline;promotionMoveAt=NetworkNow+.1;networkStatus="Joining the new host…";return true;
             }
             return false;

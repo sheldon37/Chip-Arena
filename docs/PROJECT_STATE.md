@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-11-01 Astra deployment transfer guards (`codex/deployment-migration-20261101`, base PR #303 `6a135bf7`): lobby transfer handlers now refuse locked/loading runs and expired acknowledgements/commits. Native loopback regressions added; pinned Unity semantic compilation and 16 actual compiled Player guard probes pass (no native execution). Active-run combat-state/endpoint transfer, Windows acceptance and Claude generated-district visuals remain; draft only. See newest DEV_LOG receipt.
+
 2026-11-01 Astra deployment recovery (`codex/deployment-recovery-20261101`, from PR #303 at `032d9d07`): initial-party loading and stopped-run guards now cover immediate host/guest commands and guest input as well as fixed simulation. See the newest DEV_LOG receipt. Source remains draft pending native/Windows acceptance, Claude district visuals and active-run endpoint migration; no shared/builder or binary publication.
 
 2026-10-31 Astra deployment follow-up (`codex/deployment-followup`, PR #303 continuation): current shared stage/Training presentation integrated; fixed 60-second initial-load failure boundary and authenticated/current-epoch readiness. Full managed/relay (895 PASS), Python (167, one skip), package and pinned Unity semantic checks pass. Draft only; native/Windows co-op acceptance, Claude generated-district visuals and active-run endpoint migration remain. Original #303 was pushed; earlier upload-block notes below are historical.

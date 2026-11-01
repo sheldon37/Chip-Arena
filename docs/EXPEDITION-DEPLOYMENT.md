@@ -22,6 +22,16 @@ The combined candidate now includes shared stage/Training presentation at `6b5d9
 
 Initial party loading also blocks immediate Expedition commands, including inventory and vote changes, from both the local host and authenticated guests. Guest inputs are discarded during this hold. Once the initial barrier succeeds, normal per-area readiness controls apply again. Any stopped split run refuses further commands; blocked guest requests receive a rate-limited, transaction- and area-bound refusal without entering the command journal.
 
+### Astra follow-up: fence lobby transfers at deployment
+
+Lobby host promotion now checks the same eligibility at initiation and at every incoming prepare,
+commit and redirect: no arena/session, no requested stage, and no locked deployment (either the
+local lock or replicated ticket). A late lobby message cannot switch authority or redirect a
+party that has already locked its generated run. Prepared/live acknowledgements and commit
+messages also check the 45-second deadline directly, before the periodic timeout handler runs.
+The native loopback fixture covers these refusals and retains the successful ordinary lobby
+transfer/rejoin path. These guards do not implement active-run migration.
+
 ### Remaining acceptance and presentation work
 
 This is source integration, not a verified Windows release. Native Unity/PhysX execution, the station shader, real co-op join/leave/reconnect, initial-load failure handling, multi-seed native performance and rendered acceptance must pass before shared/builder publication. The build gate now includes generated-world native placements/routes, the full composed-layout startup validator and Unity codec round trips for both lobby and combined snapshots.
