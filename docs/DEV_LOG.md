@@ -24,32 +24,20 @@
 - **Next:** Astra: fold this branch into #303 (it merges cleanly onto `a0fd8e8a`) or merge #303 forward first and
   re-merge this. Claude (later): district fog and ambient colour by camera position, district audio, plaza props.
 
-## 2026-11-01 — Claude: first-person model weapons at a readable size
+## 2026-11-01 — Astra: integrate Claude's first-person and customization passes into deployment draft
 
-- **Branch/base:** `claude/first-person-weapons` from shared `df30400`. Implementation `874bcc3`, then this log. Merged
-  into shared and the builder (test channel). Not a live release.
-- **Task:** owner: "Also need to fix first person, weapons looks super small". The visual body's first-person arms hold
-  the life-size weapon models in the voxel view's frame (tuned for its chunky weapons), so the pistol sat on the bottom
-  edge and the sword read as a needle. The classic voxel view has the same framing; this is not a regression.
-- **Changes (presentation only):**
-  - `Core/NativeFirstPersonPose`: `ModelView` 1.7 (guns), `ModelBlade` 1.3 (blades, bow, staffs), `ModelScale`, and
-    `ModelLift` (camera frame: pistol 10 cm up and 2 cm in, long guns 5 cm up, everything else none).
-  - `VisualViewPose`: with a model in hand, the view body (its forearms and hands) is drawn at that scale about the right
-    hand's weapon frame, and both view-rig hands carry it, so the model, the muzzle flash, the rounds' visual origin and
-    the kit pieces drawn there grow together. `VisualViewRestore` puts the left hand's scale back too.
-  - `VisualViewLift` raises the hold while the view body holds a model; `VisualViewSight` scales the sight with the
-    model, so the rifle's sight still lines up as it goes to the scope.
-  - Unchanged: the voxel and Classic views, non-Standard skins (the game's models), and the specs this install draws
-    with the voxel models (daggers, shield, bow without the pack bank).
-- **Affected systems:** first-person view model only. No aim, muzzle, reach, hit timing, hitbox, damage, cooldown,
-  movement or network change.
-- **Checks:** CoreTests `VisualRigChecks` pin updated plus new checks (sizes, order, the left hand's restore, the sight
-  and lift hooks). Full suite on a clean LF worktree: 891 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch applied there only). `git diff --check` clean. In Unity
-  (BoZo first-person captures, brickfall): pistol, rifle, machine gun, sword and greatsword idle; sword swing and
-  pistol fire (flash and tracer at the larger muzzle); scoped rifle aiming.
-- **Not checked:** a Windows build, every weapon skin, the bow and staffs with the pack bank installed, ultrawide
-  aspects. The sword's idle off-hand fist still shows at the bottom edge, as before.
-- **Next:** if the owner wants other sizes, the three constants in `NativeFirstPersonPose` are the dials.
+- Target draft #303 (`codex/deployment-completion`), base `6af17821`; task checkout `codex/deployment-claude-pass-20261101`. Merged shared `6e5d0cb1`, including `874bcc3` (larger first-person model weapons) and `0c3f74f` (intro customization binding and corpse armour retention). Shared/builder refs are not changed by this integration; no publication.
+- Resolved `ConversionGame.LateFrame` by preserving `presentation.GeneratedRun=deploymentBundle` and setting `presentation.WeaponLoadout=arena` before `RenderIntro`. Preserved the rooftop-crowd `NativeLook.Concept` branch before `DeployOutfit`, both complete log histories, and the draft's all-area migration rules checkpoint. No extra visual redesign or combat/rule changes.
+- Verification on the merged tree: rebuilt managed sources; focused `--visual-rig`, `--suit` (35), `--helm` (30), `--deploy-models` (1,989), `--expedition-deployment` (3,681) and `--expedition-handoff` (44) all exited 0. Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings; source package validation 2,906 files; whitespace clean. Exact log-history preservation and generated-world/intro-loadout/outfit ordering checked. Full managed/relay and Python discovery were not rerun for this presentation-only merge; their preceding results belong to `6af17821`.
+- Not run here: native Unity/PhysX/GPU, Windows gameplay, guest intros, every first-person weapon/skin/aspect, bisected and Frostbreak corpse captures. Claude's own observed captures and limitations remain in his entries below. No hit timing, hitbox, damage, cooldown, movement or network changes. Active-run combat/session/endpoint migration, native deployment acceptance and Claude generated-district work remain; keep #303 draft and do not merge into shared or builder.
+
+## 2026-11-01 — Astra: shared clothing merge and split-run migration rules checkpoint
+
+- Target `codex/deployment-completion` / draft #303, base `a0fd8e8a`; task checkout `codex/deployment-active-handoff-20261101`. Merged shared `df30400f` into the draft only. Per owner, `VisualOutfitOf` keeps the rooftop-crowd `NativeLook.Concept` branch immediately before `DeployOutfit`; shared's four-piece robot clothing replaces the old `WearsSuit`/skin-map suit path. Preserved both DEV_LOG histories. Shared and builder refs are not changed; no publication.
+- Fixed split authority's handoff freeze: all area facades now share one migration state, including facades obtained after preparation. Area/member mutations, XP toggling and runtime commands/fixed simulation respect the freeze. Preparation waits for all area loading/member transfers to finish and is scoped to the world authority.
+- Added detached, serializable all-area rules checkpoints and `RestorePreparedHandoff`: party ledger plus area phases/votes/countdowns, schema/identity/epoch/revision/membership validation, frozen destination restoration and matching commit. Destination abort cannot resume the old epoch; discard the instance. A committed destination can later prepare/abort as source. Old party-wide runs also round-trip. Native deployment acceptance includes Unity JSON and runtime command/fixed-step freeze fixtures; those native fixtures are not executed here.
+- Verification: final full managed/real-loopback-relay suite exit 0, 896 PASS lines and all 35 managed-core checks, including 44 new handoff checks; Python 167 tests OK (one skip); pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings; 13 reflection checks against actual compiled Player command guards passed. Source package 2,906 files and whitespace checks pass. Attempting the fixed-step reflection probe hit Unity native ECall restrictions; no fixed-step/PhysX or native JSON execution is claimed.
+- Remaining: full authoritative combat/physics/RNG/AI/projectile state in every area, cohort/session state and command journals, then endpoint reservation/fencing/digest/commit/reconnect. The rules checkpoint does not enable active-run migration capability; replica frames remain insufficient. Native Unity/PhysX/GPU, Windows co-op/multi-seed performance acceptance and Claude's generated-district dressing remain. No combat timings, hitboxes, damage or movement changes in this continuation; shared clothing is presentation only. Keep #303 draft and do not merge to shared/builder.
 
 ## 2026-11-01 — Astra: draft deployment native acceptance entry point
 
@@ -82,6 +70,54 @@
 - Actual checks: full managed/real-relay suite exit 0, 895 PASS lines and all 35 managed-core checks. Focused deployment 3,681 checks. Python 167 tests OK (one skipped); source package 2,905 files; Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes. No Unity execution, native PhysX, shader compile, Windows/co-op acceptance or publication.
 - No damage, hitbox, cooldown, animation or movement changes. Source integration remains draft: Claude's generated-district dressing/transitions, native loading/failure/reconnect and multi-seed acceptance, and active-run endpoint migration remain. Do not merge/sync this unfinished feature to the builder. PR #303 is the consolidated handoff; optional mutators remain deferred.
 
+## 2026-11-01 — Claude: intros wear the pilots' customizations; corpses keep the robot plates
+
+- **Branch/base:** `claude/intro-customizations` from shared `269f332`. Implementation `0c3f74f`, then this log. Merged
+  into shared and the builder (test channel). Not a live release.
+- **Task:** owner: "Intro animations aren't showing correct customizations" and "Death is removing suits".
+- **Changes (presentation only):**
+  - **Intros:** `ConversionGame` sets `presentation.WeaponLoadout=arena` before `RenderIntro`. The presentation reads
+    each pilot's seat (outfit, weapon skins, face gear, helmet) through it, and it was set only after the intro returned,
+    so an entrance used the previous match's seats or none (the default robot pieces).
+  - **Corpses** (`VisualCorpseShown`, `VisualCorpseSuit`): the plates were drawn only on a whole, uncrushed corpse with no
+    kill look. Now each half of a split body keeps the plates on its side of the cut (the bisect's `HalfOf`, as the
+    helmet's half test), a crushed head loses only its own plates, and Frostbreak tints them the ice's colour. Soul
+    Drift's ghost still goes without (opaque plates on a ghost). `VisualSuit` takes a bone mask.
+- **Affected systems:** the entrance and corpse presentation. No hit timing, hitbox, damage, cooldown, movement or
+  network change.
+- **Checks:** RobotSuitChecks pin updated. Full suite on a clean LF worktree: 891 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch applied there only). `git diff --check` clean. In
+  Unity (BoZo): the entrance in a hoodie, khakis, bare hands and sneakers now shows them, not the armour; a plain death
+  and a sword death that severs a hand keep the back plate, pauldrons and helmet (0.6 to 1.8 s after death); a temporary log confirmed the corpse
+  queues every plate (removed).
+- **Not checked:** a bisected corpse's two halves and Frostbreak in a capture (the halves' split follows the helmet's
+  own test), a guest's entrance over the network, a Windows build.
+
+## 2026-11-01 — Claude: first-person model weapons at a readable size
+
+- **Branch/base:** `claude/first-person-weapons` from shared `df30400`. Implementation `874bcc3`, then this log. Merged
+  into shared and the builder (test channel). Not a live release.
+- **Task:** owner: "Also need to fix first person, weapons looks super small". The visual body's first-person arms hold
+  the life-size weapon models in the voxel view's frame (tuned for its chunky weapons), so the pistol sat on the bottom
+  edge and the sword read as a needle. The classic voxel view has the same framing; this is not a regression.
+- **Changes (presentation only):**
+  - `Core/NativeFirstPersonPose`: `ModelView` 1.7 (guns), `ModelBlade` 1.3 (blades, bow, staffs), `ModelScale`, and
+    `ModelLift` (camera frame: pistol 10 cm up and 2 cm in, long guns 5 cm up, everything else none).
+  - `VisualViewPose`: with a model in hand, the view body (its forearms and hands) is drawn at that scale about the right
+    hand's weapon frame, and both view-rig hands carry it, so the model, the muzzle flash, the rounds' visual origin and
+    the kit pieces drawn there grow together. `VisualViewRestore` puts the left hand's scale back too.
+  - `VisualViewLift` raises the hold while the view body holds a model; `VisualViewSight` scales the sight with the
+    model, so the rifle's sight still lines up as it goes to the scope.
+  - Unchanged: the voxel and Classic views, non-Standard skins (the game's models), and the specs this install draws
+    with the voxel models (daggers, shield, bow without the pack bank).
+- **Affected systems:** first-person view model only. No aim, muzzle, reach, hit timing, hitbox, damage, cooldown,
+  movement or network change.
+- **Checks:** CoreTests `VisualRigChecks` pin updated plus new checks (sizes, order, the left hand's restore, the sight
+  and lift hooks). Full suite on a clean LF worktree: 891 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch applied there only). `git diff --check` clean. In Unity
+  (BoZo first-person captures, brickfall): pistol, rifle, machine gun, sword and greatsword idle; sword swing and
+  pistol fire (flash and tracer at the larger muzzle); scoped rifle aiming.
+- **Not checked:** a Windows build, every weapon skin, the bow and staffs with the pack bank installed, ultrawide
+  aspects. The sword's idle off-hand fist still shows at the bottom edge, as before.
+- **Next:** if the owner wants other sizes, the three constants in `NativeFirstPersonPose` are the dials.
 
 ## 2026-11-01 — Claude: the robot armour as clothing (four outfit pieces)
 

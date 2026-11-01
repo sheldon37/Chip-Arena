@@ -990,7 +990,7 @@ namespace ChipArena.UnityConversion
         // pinned one flattened by the smash's overlay). A swarm's collapse shrinks it; the soul and frost looks are its own
         // (VisualCorpseLook). It wears its hat (VisualCorpseHat). It hides while the voxel body would be under half opacity and
         // goes with its corpse.
-        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public int Head=-2;
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public string LookHex;public int Head=-2;
             // A split body's cut (both halves share it; the first half owns its texture), whether it wears the Sheldon hood, and its
             // skeleton (NativeVisualSkeletonPresentation.cs).
             public CutJob Cut;public Texture2D CutTexture;public bool Hood;public Renderer Skeleton;
@@ -1529,13 +1529,19 @@ namespace ChipArena.UnityConversion
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
                 if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
-                corpseFade=alpha;VisualSuit(c.Root,corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);
             }
             // A split corpse keeps the robot's helmet on the half that holds its head (its hair is hidden under it).
             else if(c.Look==0&&!c.Hood&&(corpse.Twin!=null||corpse.Host!=null)&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null&&WearsHelm(corpse.Death.id)&&VisualCorpseHead(corpse))
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
                 if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
+            }
+            // The robot pieces' plates stay on the dead body (owner 2026-11-01: "Death is removing suits"): whole, split (each half its
+            // side of the cut), crushed (the head's go) and under Frostbreak (in the ice's colour); not through Soul Drift's ghost.
+            if(c.Look!=1&&corpse.Death!=null)
+            {
+                string body=c.Look==2?c.LookHex:corpse.Death.actor?.BodyColor,accent=c.Look==2?c.LookHex:corpse.Death.actor?.AccentColor;
+                corpseFade=alpha;VisualSuit(c.Root,corpse.Death.id,body,accent,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0,VisualCorpseSuit(corpse));
             }
             return true;
         }
@@ -1569,7 +1575,7 @@ namespace ChipArena.UnityConversion
                 foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);lookBlock.SetVector(VisualEchoTint,new Vector4(colour.r,colour.g,colour.b,opacity*VisualEchoShare));r.SetPropertyBlock(lookBlock);}
                 return VisualCorpseShown(corpse,1);
             }
-            if(c.Look!=2){foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);foreach(int id in BodyColours)lookBlock.SetColor(id,colour);lookBlock.SetFloat(AccentGlowId,0);r.SetPropertyBlock(lookBlock);}c.Look=2;}
+            if(c.Look!=2){foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);foreach(int id in BodyColours)lookBlock.SetColor(id,colour);lookBlock.SetFloat(AccentGlowId,0);r.SetPropertyBlock(lookBlock);}c.Look=2;c.LookHex="#"+ColorUtility.ToHtmlStringRGB(colour);}
             return VisualCorpseShown(corpse,opacity);
         }
         // A dead body's dissolve (0 whole to 1 gone; NativeVisualBodyFx.cginc DissolveFront) on its renderers, written when it moves.

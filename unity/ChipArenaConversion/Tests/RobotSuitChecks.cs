@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
                 &&suit.Contains("CapturedRig.LHand,CapturedRig.RHand,CapturedRig.LFoot,CapturedRig.RFoot};"),
                 "each piece on its bone through the bind pose (one the body lacks left off), a pilot's reveal and tint by the joint it answers to");
             Check(body.Contains("VisualSuit(body.Root,seat.id,seat.bodyColor,seat.accentColor,0,null,null,null,0);")&&body.Contains("if(!first)VisualSuit(body.Root,a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);")
-                &&body.Contains("VisualSuit(c.Root,corpse.Death.id,corpse.Death.actor?.BodyColor,")&&body.Contains("if(!first&&!WearsArmour(a.Id))"),"worn by the live body, the draft's seat and a corpse, the back emblem under the armour's back plate");
+                &&body.Contains("VisualSuit(c.Root,corpse.Death.id,body,accent,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0,VisualCorpseSuit(corpse));")&&body.Contains("if(c.Look!=1&&corpse.Death!=null)")&&body.Contains("if(!first&&!WearsArmour(a.Id))"),"worn by the live body, the draft's seat and a corpse (split, crushed and frozen ones too; not the ghost look), the back emblem under the armour's back plate");
             Console.WriteLine("PASS robot suit ("+count+" checks)");
         }
     }

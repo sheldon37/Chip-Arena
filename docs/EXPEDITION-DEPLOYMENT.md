@@ -32,6 +32,28 @@ messages also check the 45-second deadline directly, before the periodic timeout
 The native loopback fixture covers these refusals and retains the successful ordinary lobby
 transfer/rejoin path. These guards do not implement active-run migration.
 
+### Migration rules checkpoint (active-run transport still pending)
+
+`PrepareHandoff` now freezes the shared run across all existing and newly obtained area
+facades. It waits for area loading and member transfers to finish and runs only through the
+world facade. The handoff carries the complete party rules snapshot plus every area's phase,
+exit votes and deadline; returned arrays are detached. The runtime command and fixed-step
+barriers honor the shared freeze. No candidate is advertised as active-run-migration capable.
+
+`RestorePreparedHandoff(payload, authenticatedNextHost)` validates the schema, identities,
+epoch/revision, area membership and votes, then restores a frozen rules authority. The caller
+must authenticate and validate the complete package before using this API. Only a matching
+world-facade commit releases it and extracts the departing host. Source abort resumes the
+old authority; destination abort must discard the restored instance, never resume the old
+epoch. A committed destination can become the source of a later transfer.
+
+This is **not a complete active-run handoff**. Remaining work: serialize/restore authoritative
+combat and physics in every area (including RNG, AI, cooldowns and projectiles), cohort/session
+state and command journals, then implement endpoint reservation, fencing, digest acknowledgement,
+commit and authenticated reconnect. Replica frames are not authority checkpoints. The existing
+native deployment acceptance entry also includes the rules checkpoint's Unity JSON round trip
+and command/fixed-step freeze fixture; it still requires actual Unity execution.
+
 ### Run deployment acceptance directly from this draft
 
 `NativeBuildChecks.CheckDeploymentAcceptance` is an Editor menu/CLI entry point. It does not
