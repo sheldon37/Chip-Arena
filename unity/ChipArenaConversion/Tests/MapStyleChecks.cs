@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
         private static void Switch(MapLookSet set)
         {
             var on=set.maps.Where(m=>NativeMapStyle.On(m,false)).Select(m=>m.id).OrderBy(x=>x).ToArray();
-            Check(on.SequenceEqual(new[]{"brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","factory","siren-quarantine"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks) turn the style on: "+string.Join(",",on));
+            Check(on.SequenceEqual(new[]{"breakwater","brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","factory","harbor","polar","rig","siren-quarantine","skyframe"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks; the five M1 stages) turn the style on: "+string.Join(",",on));
             var state=new MapStyleState();
             foreach(var m in set.maps)
             {
@@ -476,7 +476,7 @@ namespace ChipArena.UnityConversion
                 {var b=Copy();breakIt(b);bool threw=false;try{NativeMapStyle.Validate(id,b);}catch(InvalidOperationException){threw=true;}Check(threw,id+": refused: "+what);}
             }
             var off=new MapLookToon{on=false,softness=float.NaN};NativeMapStyle.Validate("x",off);Check(true,"a look with the style off is never read");
-            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==7,"seven looks carry the style (stage 1's pilots; stage 2's Factory, Cyber City, quarantine, Central Station and the Ironworks)");
+            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==12,"twelve looks carry the style (stage 1's pilots; stage 2's Factory, Cyber City, quarantine, Central Station and the Ironworks; the five M1 stages)");
         }
     }
 }

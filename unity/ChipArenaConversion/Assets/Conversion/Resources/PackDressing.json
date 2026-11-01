@@ -142,6 +142,62 @@
    "stretch": 0.3,
    "along": 2,
    "across": 2
+  },
+  {
+   "id": "container-40",
+   "layout": "fill",
+   "note": "A 40 ft shipping container stretched to its box (the new stages' yard rows and station modules).",
+   "props": [
+    "harbor-shipping-container-03a",
+    "harbor-shipping-container-03b",
+    "harbor-shipping-container-03c",
+    "harbor-shipping-container-03e",
+    "harbor-shipping-container-06a",
+    "harbor-shipping-container-06c",
+    "harbor-shipping-container-06e"
+   ],
+   "stretch": 1.0,
+   "along": 0,
+   "across": 0
+  },
+  {
+   "id": "drum-cages-2x1",
+   "layout": "grid",
+   "note": "Two cages of drums side by side (a 2.4 m lashing or drum cage).",
+   "props": [
+    "harbor-cage-barrels-01a",
+    "harbor-cage-barrels-01b"
+   ],
+   "stretch": 0.0,
+   "along": 2,
+   "across": 1
+  },
+  {
+   "id": "tank-fit",
+   "layout": "fill",
+   "note": "A squat liquid tank fitted to its box (a cellar tank, a station fuel tank).",
+   "props": [
+    "harbor-liquid-tank-03a",
+    "harbor-liquid-tank-03b",
+    "harbor-liquid-tank-03c"
+   ],
+   "stretch": 0.0,
+   "along": 0,
+   "across": 0
+  },
+  {
+   "id": "brick-piles-2x1",
+   "layout": "grid",
+   "note": "Two strapped piles of blocks side by side (Skyframe's pallets of blocks).",
+   "props": [
+    "harbor-brick-pile-01a",
+    "harbor-brick-pile-01b",
+    "harbor-brick-pile-02a",
+    "harbor-brick-pile-02b"
+   ],
+   "stretch": 0.2,
+   "along": 2,
+   "across": 1
   }
  ],
  "maps": [
@@ -860,6 +916,550 @@
     }
    ],
    "flood": 0.04
+  },
+  {
+   "map": "breakwater",
+   "glow": 0.9,
+   "note": "Breakwater: the crates, drums and containers on the pier head; across the harbour, the town's container quay with its ship-to-shore cranes, a freighter and tugs (the stage's own box-built cranes stand down while these draw).",
+   "rules": [
+    {
+     "block": "breakwater-crate-*",
+     "kit": "crate",
+     "note": "crates (1.2 m)"
+    },
+    {
+     "block": "breakwater-drums-*",
+     "kit": "drum-cage",
+     "note": "oil drums"
+    },
+    {
+     "block": "breakwater-container-*",
+     "kit": "container-20",
+     "note": "the chicane, spawn and corner containers"
+    }
+   ],
+   "yards": [
+    {
+     "kind": "apron",
+     "x": -205,
+     "z": 245,
+     "yaw": 0,
+     "length": 150,
+     "depth": 90,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false,
+     "note": "the town's container quay, north of the town"
+    },
+    {
+     "kind": "quay",
+     "x": -205,
+     "z": 200,
+     "yaw": 180,
+     "length": 150,
+     "depth": 36,
+     "height": 0,
+     "count": 0,
+     "seed": 0,
+     "detail": false,
+     "note": "its wall and water toward the pier"
+    },
+    {
+     "kind": "sts",
+     "x": -205,
+     "z": 206,
+     "yaw": 180,
+     "length": 90,
+     "depth": 0,
+     "height": 0,
+     "count": 3,
+     "seed": 1,
+     "detail": false,
+     "note": "ship-to-shore cranes, booms over the harbour"
+    },
+    {
+     "kind": "stacks",
+     "x": -205,
+     "z": 252,
+     "yaw": 0,
+     "length": 120,
+     "depth": 40,
+     "height": 4,
+     "count": 0,
+     "seed": 2,
+     "detail": false
+    },
+    {
+     "kind": "ship",
+     "x": -205,
+     "z": 180,
+     "yaw": 180,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 3,
+     "detail": false,
+     "note": "a freighter at the quay"
+    },
+    {
+     "kind": "tug",
+     "x": -120,
+     "z": 150,
+     "yaw": 30,
+     "length": 40,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 4,
+     "detail": false
+    },
+    {
+     "kind": "lights",
+     "x": -205,
+     "z": 226,
+     "yaw": 0,
+     "length": 140,
+     "depth": 0,
+     "height": 1.0,
+     "count": 6,
+     "seed": 5,
+     "detail": false
+    },
+    {
+     "kind": "scatter",
+     "x": 22,
+     "z": -20,
+     "yaw": 0,
+     "length": 10,
+     "depth": 4,
+     "height": 0,
+     "count": 4,
+     "seed": 6,
+     "detail": false,
+     "props": [
+      "harbor-concrete-tetrapod-01a",
+      "harbor-concrete-tetrapod-01b"
+     ],
+     "note": "armour beside the tug's berth"
+    },
+    {
+     "kind": "scatter",
+     "x": -2,
+     "z": 20,
+     "yaw": 0,
+     "length": 40,
+     "depth": 4,
+     "height": 0,
+     "count": 12,
+     "seed": 7,
+     "detail": true,
+     "props": [
+      "harbor-concrete-tetrapod-01a",
+      "harbor-concrete-tetrapod-01b"
+     ],
+     "note": "armour along the north face"
+    }
+   ],
+   "flood": 0.0
+  },
+  {
+   "map": "harbor",
+   "glow": 1.2,
+   "note": "Pier 9: the one-high container rows, the quay's single box, crates and cages; the terminal on beyond the fences (ship-to-shore cranes over the basin, stacks, trucks, light masts; the stage's own box-built cranes and stacks stand down while these draw).",
+   "rules": [
+    {
+     "block": "harbor-stack-*-0",
+     "kit": "container-40",
+     "note": "the front rows, one high"
+    },
+    {
+     "block": "harbor-stack-q-c",
+     "kit": "container-20",
+     "note": "the quay's single box"
+    },
+    {
+     "block": "harbor-crate-a",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "harbor-crate-b",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "harbor-crate-w-1",
+     "kit": "crates-on-pallet-2x2",
+     "note": "the shed's low crate stacks"
+    },
+    {
+     "block": "harbor-crate-e-1",
+     "kit": "crates-on-pallet-2x2"
+    },
+    {
+     "block": "harbor-crate-w-4",
+     "kit": "crates-on-pallet-2x2"
+    },
+    {
+     "block": "harbor-crate-e-4",
+     "kit": "crates-on-pallet-2x2"
+    },
+    {
+     "block": "harbor-crate-w-3",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "harbor-crate-e-3",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "harbor-crate-*",
+     "kit": "crate",
+     "note": "the shed's 2.4 m crates"
+    },
+    {
+     "block": "harbor-cage-*",
+     "kit": "drum-cages-2x1",
+     "note": "lashing and drum cages"
+    }
+   ],
+   "yards": [
+    {
+     "kind": "sts",
+     "x": -70,
+     "z": 30,
+     "yaw": 0,
+     "length": 24,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 11,
+     "detail": false,
+     "note": "west: ship-to-shore cranes over the basin"
+    },
+    {
+     "kind": "sts",
+     "x": 72,
+     "z": 30,
+     "yaw": 0,
+     "length": 24,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 12,
+     "detail": false,
+     "note": "east"
+    },
+    {
+     "kind": "stacks",
+     "x": -95,
+     "z": -8,
+     "yaw": 0,
+     "length": 96,
+     "depth": 30,
+     "height": 4,
+     "count": 0,
+     "seed": 13,
+     "detail": false
+    },
+    {
+     "kind": "stacks",
+     "x": 95,
+     "z": -8,
+     "yaw": 0,
+     "length": 96,
+     "depth": 30,
+     "height": 4,
+     "count": 0,
+     "seed": 14,
+     "detail": false
+    },
+    {
+     "kind": "trucks",
+     "x": 0,
+     "z": -48,
+     "yaw": 0,
+     "length": 80,
+     "depth": 0,
+     "height": 0,
+     "count": 6,
+     "seed": 15,
+     "detail": false
+    },
+    {
+     "kind": "lights",
+     "x": -100,
+     "z": 22,
+     "yaw": 0,
+     "length": 80,
+     "depth": 0,
+     "height": 1.2,
+     "count": 4,
+     "seed": 16,
+     "detail": false
+    },
+    {
+     "kind": "lights",
+     "x": 100,
+     "z": 22,
+     "yaw": 0,
+     "length": 80,
+     "depth": 0,
+     "height": 1.2,
+     "count": 4,
+     "seed": 17,
+     "detail": false
+    },
+    {
+     "kind": "tug",
+     "x": -120,
+     "z": 80,
+     "yaw": 90,
+     "length": 40,
+     "depth": 0,
+     "height": 0,
+     "count": 2,
+     "seed": 18,
+     "detail": false
+    },
+    {
+     "kind": "scatter",
+     "x": -95,
+     "z": -40,
+     "yaw": 0,
+     "length": 60,
+     "depth": 10,
+     "height": 0,
+     "count": 10,
+     "seed": 19,
+     "detail": true
+    },
+    {
+     "kind": "scatter",
+     "x": 95,
+     "z": -40,
+     "yaw": 0,
+     "length": 60,
+     "depth": 10,
+     "height": 0,
+     "count": 10,
+     "seed": 20,
+     "detail": true
+    }
+   ],
+   "flood": 0.5
+  },
+  {
+   "map": "skyframe",
+   "glow": 0.0,
+   "note": "Skyframe: the site cabins and deck containers, the pallets of blocks. No yards: the ground round floor 31 is 112 m down (a yard stands at y 0).",
+   "rules": [
+    {
+     "block": "skyframe-cabin-*",
+     "kit": "container-20",
+     "note": "site cabins"
+    },
+    {
+     "block": "skyframe-container-*",
+     "kit": "container-20",
+     "note": "containers on the decks"
+    },
+    {
+     "block": "skyframe-pallet-*",
+     "kit": "brick-piles-2x1",
+     "note": "pallets of blocks"
+    }
+   ],
+   "yards": [],
+   "flood": 0.0
+  },
+  {
+   "map": "rig",
+   "glow": 0.0,
+   "note": "Deepwell: the crates, drums and cellar tanks. No yards: the platform stands over the sea (a yard stands at y 0).",
+   "rules": [
+    {
+     "block": "rig-crate-*",
+     "kit": "crate"
+    },
+    {
+     "block": "rig-barrels-*",
+     "kit": "drum-cage"
+    },
+    {
+     "block": "rig-tank-cellar-*",
+     "kit": "tank-fit",
+     "note": "the cellar's tanks"
+    }
+   ],
+   "yards": [],
+   "flood": 0.0
+  },
+  {
+   "map": "polar",
+   "glow": 1.0,
+   "note": "Polaris Station: the station modules (containers on skids), the fuel tanks, crates and drums (the two-high crate columns and the shallow tanks keep their boxes: no prop fills them); out on the ice, the fuel depot, a storage row, the vehicle line, a hangar, wind fences and the skiway's lamps.",
+   "rules": [
+    {
+     "block": "polar-module-n-w",
+     "kit": "container-40",
+     "note": "the long modules"
+    },
+    {
+     "block": "polar-module-s-e",
+     "kit": "container-40"
+    },
+    {
+     "block": "polar-module-*",
+     "kit": "container-20",
+     "note": "the short modules"
+    },
+    {
+     "block": "polar-tank-n-e-*",
+     "kit": "tank-fit",
+     "note": "fuel tank pairs"
+    },
+    {
+     "block": "polar-tank-s-w-*",
+     "kit": "tank-fit"
+    },
+    {
+     "block": "polar-tank-w-0",
+     "kit": "tank-fit"
+    },
+    {
+     "block": "polar-tank-e-0",
+     "kit": "tank-fit"
+    },
+    {
+     "block": "polar-crate-n-w-0",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "polar-crate-n-w-2",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "polar-crate-s-e-0",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "polar-crate-s-e-2",
+     "kit": "crates-on-pallet-2x1"
+    },
+    {
+     "block": "polar-crate-w-0",
+     "kit": "crate"
+    },
+    {
+     "block": "polar-crate-e-0",
+     "kit": "crate"
+    },
+    {
+     "block": "polar-garage-*-drums",
+     "kit": "drum-cage"
+    }
+   ],
+   "yards": [
+    {
+     "kind": "scatter",
+     "x": -60,
+     "z": 60,
+     "yaw": 0,
+     "length": 30,
+     "depth": 12,
+     "height": 0,
+     "count": 14,
+     "seed": 31,
+     "detail": false,
+     "props": [
+      "harbor-gas-barrel-01a",
+      "harbor-barrel-05a",
+      "harbor-cage-barrels-01a",
+      "harbor-wooden-pallet-01a",
+      "harbor-shipping-metal-crate-01b"
+     ],
+     "note": "the fuel depot"
+    },
+    {
+     "kind": "stacks",
+     "x": -80,
+     "z": -58,
+     "yaw": 0,
+     "length": 52,
+     "depth": 7,
+     "height": 1,
+     "count": 0,
+     "seed": 32,
+     "detail": false,
+     "note": "a storage row, one high"
+    },
+    {
+     "kind": "trucks",
+     "x": 62,
+     "z": -60,
+     "yaw": 0,
+     "length": 30,
+     "depth": 0,
+     "height": 0,
+     "count": 3,
+     "seed": 33,
+     "detail": false,
+     "note": "the vehicle line"
+    },
+    {
+     "kind": "building",
+     "x": 110,
+     "z": 80,
+     "yaw": 180,
+     "length": 0,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 34,
+     "detail": false,
+     "note": "the hangar"
+    },
+    {
+     "kind": "fence",
+     "x": -58,
+     "z": 50,
+     "yaw": 0,
+     "length": 32,
+     "depth": 0,
+     "height": 0,
+     "count": 0,
+     "seed": 35,
+     "detail": false,
+     "note": "wind fences at the depot"
+    },
+    {
+     "kind": "lights",
+     "x": 120,
+     "z": -34,
+     "yaw": 90,
+     "length": 60,
+     "depth": 0,
+     "height": 0.8,
+     "count": 5,
+     "seed": 36,
+     "detail": false,
+     "note": "the skiway's lamps"
+    },
+    {
+     "kind": "scatter",
+     "x": 50,
+     "z": 62,
+     "yaw": 0,
+     "length": 30,
+     "depth": 9,
+     "height": 0,
+     "count": 8,
+     "seed": 37,
+     "detail": true
+    }
+   ],
+   "flood": 0.0
   }
  ]
 }
