@@ -88,6 +88,7 @@ namespace ChipArena.UnityConversion
             catch(Exception e){Debug.LogWarning("Expedition town dressing disabled: "+e.Message);DisposeExpeditionCity();townFailed=true;return false;}
         }
         // Once per map content (the killcam's replay arena shares it): the kit with the town's records, its atmosphere and lights.
+        public ExpeditionRunBundle GeneratedRun {get;set;}
         private void ExpeditionCityBuild(ContentMap map)
         {
             if(!townAreaRead)
@@ -97,6 +98,7 @@ namespace ChipArena.UnityConversion
                     // The hub record (exp-layout-3): the gates, the wilds and the routes; absent from older manifests.
                     if(townArea!=null)townHub=ExpeditionHubLayout.Parse(asset.text,townArea.id);}}
                 catch(Exception e){Debug.LogWarning("Expedition town dressing: no layout records ("+e.Message+"); spawns undressed");}
+                if(GeneratedRun!=null&&map.id==GeneratedRun.World.Map.id){townArea=GeneratedRun.World.Area;townHub=GeneratedRun.World.Hub;}
                 NativeExpeditionHubLive.Sanctuary=townArea?.sanctuary??Array.Empty<ExpeditionVolume>();
             }
             townMap=map;var blocks=map.blocks??Array.Empty<ContentBlock>();townKit=NativeExpeditionCityKit.Build(blocks,townArea,townHub,map.bounds);var look=NativeLighting.Look(map);

@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
             // The rooftop's seated pilot is yours (Runtime/NativeRooftopPresentation.cs RooftopModel); its crowd the Standard, in
             // their own faces (no default helmet) and clothes (VisualOutfitOf: the concept's).
             if(id==RooftopIdTop)return rooftopSkins;if(id<RooftopIdTop&&id>RooftopIdTop-8)return RooftopCrowdSkins;
+            // The Deployment Station's pilots wear their seats' skins (Runtime/NativeDeployCast.cs).
+            if(DeploySkins(id,out var deploy))return deploy;
             if(Viewer)return ViewerWeaponSkins;var seats=WeaponLoadout?.Match?.Seats;if(seats==null)return null;
             for(int i=0;i<seats.Count;i++)if(seats[i]!=null&&seats[i].id==id)return seats[i].weaponSkins;return null;
         }

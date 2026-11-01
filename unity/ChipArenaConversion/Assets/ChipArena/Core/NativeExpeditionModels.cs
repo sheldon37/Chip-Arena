@@ -70,9 +70,18 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionHandoff
     {
+        public int schema=1;public bool splitAreas;
+        public ExpeditionAreaHandoff[] areas=Array.Empty<ExpeditionAreaHandoff>();
         public string id, oldHost, nextHost;public int nextEpoch;
         public long revision;public string[] leaving=Array.Empty<string>();
         public ExpeditionSnapshot state;
+    }
+
+    [Serializable] public sealed class ExpeditionAreaHandoff
+    {
+        public string id;public ExpeditionPhase phase;public bool loading;
+        public double exitAt=-1;public string[] exitVotes=Array.Empty<string>();
+        public ExpeditionAreaHandoff Copy()=>new ExpeditionAreaHandoff{id=id,phase=phase,loading=loading,exitAt=exitAt,exitVotes=(string[])exitVotes.Clone()};
     }
 
     public static class ExpeditionValidation

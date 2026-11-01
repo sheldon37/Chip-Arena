@@ -12,12 +12,18 @@ internal static class NewStagesChecks
         var o=new JsonSerializerOptions{IncludeFields=true};
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
         var maps=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
-        foreach(var map in maps.maps.Where(m=>new[]{"breakwater","harbor","skyframe","rig","polar","training"}.Contains(m.id)))
+        var required=new[]{"breakwater","harbor","skyframe","rig","polar","training"};
+        Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"all six integrated maps exist exactly once");
+        foreach(var map in maps.maps.Where(m=>required.Contains(m.id)))
         {
             NativeMapRules.Validate(map);Check(!map.rotation,"rotation "+map.id);
             var nodes=map.nav.nodes.ToDictionary(n=>n.id);var adj=nodes.Keys.ToDictionary(k=>k,k=>new List<string>());
-            foreach(var l in map.nav.links){adj[l.a].Add(l.b);adj[l.b].Add(l.a);}
-            string Near(V3 p)=>nodes.Values.OrderBy(n=>(n.pos-p).Length).First().id;
+            foreach(var l in map.nav.links){adj[l.a].Add(l.b);if(l.kind!="drop")adj[l.b].Add(l.a);}
+            string Near(V3 p)
+            {
+                var n=nodes.Values.Where(n=>Math.Abs(n.pos.y-p.y)<=.6f&&(n.pos-p).Length<=2).OrderBy(n=>(n.pos-p).Length).FirstOrDefault();
+                Check(n!=null,"bounded same-floor nav attachment "+map.id+" "+p.x+","+p.y+","+p.z);return n.id;
+            }
             var first=Near(map.spawns.ffa[0].pos);var seen=new HashSet<string>{first};var q=new Queue<string>();q.Enqueue(first);
             while(q.Count>0)foreach(var n in adj[q.Dequeue()])if(seen.Add(n))q.Enqueue(n);
             foreach(var p in map.spawns.ffa.Concat(map.spawns.teams.SelectMany(t=>t.points)))Check(seen.Contains(Near(p.pos)),"nav spawn "+map.id+" "+p.pos.x+","+p.pos.y+","+p.pos.z);

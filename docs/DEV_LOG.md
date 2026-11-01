@@ -1,3 +1,49 @@
+## 2026-11-01 — Astra: integrate Claude's first-person and customization passes into deployment draft
+
+- Target draft #303 (`codex/deployment-completion`), base `6af17821`; task checkout `codex/deployment-claude-pass-20261101`. Merged shared `6e5d0cb1`, including `874bcc3` (larger first-person model weapons) and `0c3f74f` (intro customization binding and corpse armour retention). Shared/builder refs are not changed by this integration; no publication.
+- Resolved `ConversionGame.LateFrame` by preserving `presentation.GeneratedRun=deploymentBundle` and setting `presentation.WeaponLoadout=arena` before `RenderIntro`. Preserved the rooftop-crowd `NativeLook.Concept` branch before `DeployOutfit`, both complete log histories, and the draft's all-area migration rules checkpoint. No extra visual redesign or combat/rule changes.
+- Verification on the merged tree: rebuilt managed sources; focused `--visual-rig`, `--suit` (35), `--helm` (30), `--deploy-models` (1,989), `--expedition-deployment` (3,681) and `--expedition-handoff` (44) all exited 0. Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings; source package validation 2,906 files; whitespace clean. Exact log-history preservation and generated-world/intro-loadout/outfit ordering checked. Full managed/relay and Python discovery were not rerun for this presentation-only merge; their preceding results belong to `6af17821`.
+- Not run here: native Unity/PhysX/GPU, Windows gameplay, guest intros, every first-person weapon/skin/aspect, bisected and Frostbreak corpse captures. Claude's own observed captures and limitations remain in his entries below. No hit timing, hitbox, damage, cooldown, movement or network changes. Active-run combat/session/endpoint migration, native deployment acceptance and Claude generated-district work remain; keep #303 draft and do not merge into shared or builder.
+
+## 2026-11-01 — Astra: shared clothing merge and split-run migration rules checkpoint
+
+- Target `codex/deployment-completion` / draft #303, base `a0fd8e8a`; task checkout `codex/deployment-active-handoff-20261101`. Merged shared `df30400f` into the draft only. Per owner, `VisualOutfitOf` keeps the rooftop-crowd `NativeLook.Concept` branch immediately before `DeployOutfit`; shared's four-piece robot clothing replaces the old `WearsSuit`/skin-map suit path. Preserved both DEV_LOG histories. Shared and builder refs are not changed; no publication.
+- Fixed split authority's handoff freeze: all area facades now share one migration state, including facades obtained after preparation. Area/member mutations, XP toggling and runtime commands/fixed simulation respect the freeze. Preparation waits for all area loading/member transfers to finish and is scoped to the world authority.
+- Added detached, serializable all-area rules checkpoints and `RestorePreparedHandoff`: party ledger plus area phases/votes/countdowns, schema/identity/epoch/revision/membership validation, frozen destination restoration and matching commit. Destination abort cannot resume the old epoch; discard the instance. A committed destination can later prepare/abort as source. Old party-wide runs also round-trip. Native deployment acceptance includes Unity JSON and runtime command/fixed-step freeze fixtures; those native fixtures are not executed here.
+- Verification: final full managed/real-loopback-relay suite exit 0, 896 PASS lines and all 35 managed-core checks, including 44 new handoff checks; Python 167 tests OK (one skip); pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings; 13 reflection checks against actual compiled Player command guards passed. Source package 2,906 files and whitespace checks pass. Attempting the fixed-step reflection probe hit Unity native ECall restrictions; no fixed-step/PhysX or native JSON execution is claimed.
+- Remaining: full authoritative combat/physics/RNG/AI/projectile state in every area, cohort/session state and command journals, then endpoint reservation/fencing/digest/commit/reconnect. The rules checkpoint does not enable active-run migration capability; replica frames remain insufficient. Native Unity/PhysX/GPU, Windows co-op/multi-seed performance acceptance and Claude's generated-district dressing remain. No combat timings, hitboxes, damage or movement changes in this continuation; shared clothing is presentation only. Keep #303 draft and do not merge to shared/builder.
+
+## 2026-11-01 — Astra: draft deployment native acceptance entry point
+
+- Branch `codex/deployment-completion`, fetched/checked out at `7c700a58` (the successor to the requested `6a135bf7`). PR #303 stays draft; no shared/builder branch changes or publication.
+- Added Editor/menu/CLI `NativeBuildChecks.CheckDeploymentAcceptance`: eight generated seed/roll layouts through real collision/support/Hulk-route/join-circle/startup validation and Unity ticket codec, including locked reconnect reconstruction and stale unlocked-ticket rejection. Four first-roll bundles also exercise the existing 1,800-tick four-area transfer/combat/replica fixture; authority and guest arenas now receive the same generated bundle in that fixture. Logs retain per-layout identity, timings, p95/worst ticks and packet metrics. No arbitrary machine-dependent FPS threshold added.
+- Added the previously omitted `NativeDeployScreen` import/error check to ordinary native validation. The explicit acceptance entry refuses `-nographics`, forces synchronous no-fog/linear-fog material passes, and fails on logged native errors. Added an Editor component test for initial command hold, the exact timeout boundary, no late revival and subsequent-load independence. It reuses the existing loopback promotion/rejoin test. Preview arenas and temporary materials are disposed; global editor/physics state is restored.
+- Actual checks: pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed (existing warnings; final Editor source recompiled after adding error capture). Focused managed deployment suite passed 3,681 checks, using the already compiled unchanged Core/Tests sources; component-initializer Python checks 2/2; source package validation 2,905 files; whitespace clean. No new shipping gameplay/simulation code changed, so the earlier full-suite result is not represented as a fresh run.
+- Not executed here: the new native entry point, PhysX/GPU shader passes, Windows, or real co-op. The eight layouts and 7,200 ticks describe newly implemented coverage, not observed native results. The menu and Windows command with exit-code/success-marker checks are in EXPEDITION-DEPLOYMENT.md. Run against this draft checkout without moving the builder; retain its commit and log. Performance/rendered acceptance, full active-run combat-state/endpoint migration and Claude's generated district visuals still remain. No hit timing, hitbox, damage, cooldown, movement or animation changes.
+
+## 2026-11-01 — Astra: deployment/lobby-transfer fencing
+
+- Branch `codex/deployment-migration-20261101`, based on PR #303 head `6a135bf7`. This is a bounded continuation of the draft, not active-run migration.
+- Found that incoming lobby transfer prepare/commit/redirect messages only checked for an arena, leaving the earlier locked/loading interval unguarded. All entry points now share the no-arena/no-session/no-requested-stage/no-deployed-ticket eligibility check. Prepared/live acknowledgements and commits enforce their deadline before the periodic timeout tick.
+- Extended `ValidateLobbyPromotion` (already called by the native build gate): local and replicated deployment locks, requested loading, expired preparation/commit, plus the existing successful real-loopback lobby promotion and repeat rejoin. The fixture builds a generated bundle to lock the real ticket; it does not enable active-run migration.
+- Checks completed: Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation with existing warnings; 16 reflection checks against the actual compiled Player handlers (lock/session/arena/loading refusal, expired acknowledgements/commit, authority retained); `package_source.py --check` passes for 2,905 files; whitespace check passes. Reflection is not Unity execution. The temporary reflection harness initially passed no argument to an optional parameter; corrected invocation passed. A pre-existing untracked temporary map caused the first packaging check to fail; preserved it outside the checkout and rechecked successfully, without changing tracked assets.
+- Python discovery ran 167 tests with one skip; one resource-immutability assertion observed the temporary map being moved during its before/after snapshot. No tracked resource changed. The isolated assertion then passed in 24 seconds with a stable resource tree. Full managed/real-relay suite exited 0 (895 PASS lines; all 35 managed-core checks).
+- No gameplay, animation, hit timing, damage, collision or visual changes. Native loopback/PhysX/shader execution and Windows co-op acceptance remain unrun here. The full active-run transfer still needs all-area authoritative combat state capture/restore and endpoint reservation/commit/reconnect; the existing control-state handoff alone is explicitly insufficient. Claude still owns generated-district dressing. Keep #303 draft; no shared/builder merge or binary publication.
+
+## 2026-11-01 — Astra: resumed deployment command barrier
+
+- Branch `codex/deployment-recovery-20261101`, based on verified PR #303 head `032d9d07` (`codex/deployment-completion`). The prior candidate was already pushed; recovered work does not replace Claude's changes.
+- Found that per-member readiness allowed immediate commands while the run-wide initial loading barrier still held, and that stopped runs could still accept commands. Added a shared guard for host-local commands, authenticated guest requests and guest input. Blocked guest commands receive bounded, rate-limited refusals with their transaction and area identity; they do not enter the command journal. Successful initial readiness restores existing per-area behavior.
+- Checks: full managed/real-relay suite exit 0 (895 PASS lines; all 35 managed-core checks), including 3,681 deployment checks; Python 167 tests OK, one skip; pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings. A reflection probe against the compiled Player assembly passed 10 actual command-guard cases (waiting, ready release, failure precedence and host refusal before session access), without invoking Unity native APIs. Whitespace checks pass. SDK CLI process lookup is unavailable in this host; SDK Roslyn compiled the same sources in sorted order with the existing runtime settings. An initial unsorted temporary harness hit a model static-initialization failure; corrected source ordering passed. Guest transport behavior still requires native co-op acceptance.
+- No combat timing, damage, hitbox, animation, map or visual changes. Native Unity/PhysX, Windows co-op acceptance, generated-district visuals and active-run endpoint migration remain outstanding. Keep #303 draft; no shared/builder merge or binary publication.
+
+## 2026-10-31 — Astra: deployment follow-up and current shared presentation
+
+- Branch `codex/deployment-followup`, from PR #303 head `05ad8c42`; merged shared `6b5d9e4d`, preserving Claude's new-stage and Training Room presentation and both agents' logs. Original #303 is already pushed; earlier export-block entries are historical.
+- Implementation `18118ec8`: generated-run initial readiness has a fixed 60-second real-time deadline after area construction, matching the existing load allowance. Timeout stops the run with an explicit host/guest status and requires leaving/restarting; no combat, time or rewards advance. Late acknowledgements cannot release a failed barrier. Normal later subset transfers are unchanged. Ready messages now check network epoch and authentication expiry.
+- Actual checks: full managed/real-relay suite exit 0, 895 PASS lines and all 35 managed-core checks. Focused deployment 3,681 checks. Python 167 tests OK (one skipped); source package 2,905 files; Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes. No Unity execution, native PhysX, shader compile, Windows/co-op acceptance or publication.
+- No damage, hitbox, cooldown, animation or movement changes. Source integration remains draft: Claude's generated-district dressing/transitions, native loading/failure/reconnect and multi-seed acceptance, and active-run endpoint migration remain. Do not merge/sync this unfinished feature to the builder. PR #303 is the consolidated handoff; optional mutators remain deferred.
+
 ## 2026-11-01 — Claude: intros wear the pilots' customizations; corpses keep the robot plates
 
 - **Branch/base:** `claude/intro-customizations` from shared `269f332`. Implementation `0c3f74f`, then this log. Merged
@@ -196,6 +242,89 @@
   - Optional: on the host, `TrainingReadouts()` allocates its rows on every call (at the 10 Hz poll rate only). A
     non-allocating accessor would remove that.
 - **Next:** check the look in Unity and on Windows, then the five PvP stage looks (`claude/new-stages-look`).
+## 2026-10-31 — Astra: live Deployment Station and generated-run integration
+
+- Branch/base: `codex/deployment-completion`, from pushed continuation `c9039362`; merged Claude station branch `654c4f85` locally, preserving both handoffs and test entry points.
+- Bound Claude's station to authenticated room state, actual party appearances/readiness and host intents. Destination rolls construct/cache the detached generated run bundle. Deploy locks the identity, enters native validation and the existing loading pipeline. Optional mutators deferred by the owner; no effect or reward assumptions introduced.
+- Shared generated layout/map/hub used by all host split areas, guest PvE and gates, world/door presentation and reconnect reconstruction. Added ticket payload to combined snapshots and lobby codecs, including empty-ticket cleanup on return. Capability 2 fences old staging-only clients. Initial generated simulation waits for all connected load acknowledgements; later subset transfers remain independent.
+- Native gate expanded for full composed-layout geometry validation and Unity lobby/snapshot ticket round trips. Managed bundle tests cover detached catalogues, deterministic identity, deployed restore, tampered-digest rejection and reroll invalidation.
+- Local implementation commit: `8a33a779`. Push to the existing `sheldon37/Chip-Arena` repository on `codex/deployment-completion` was blocked by automatic approval review: it required explicit authorization for that destination/source disclosure. No remote branch, PR, shared merge or builder update was created. Do not bypass that rejection through another transport.
+- Final verification: full managed/real-relay suite PASS, exit 0 (886 PASS lines; all 35 managed-core checks). .NET build has zero warnings/errors. Deployment 3,674 checks, station presentation 436,266 checks, models 1,987 checks pass. Python: 167 tests, OK with one skip; package validation: 2,881 files. Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes. No Unity Editor execution, Windows play, native PhysX, shader compilation or test-channel publication claimed. Active-run endpoint migration remains unsupported; Claude's generated district dressing/transition pass remains. Existing staging host promotion keeps its ticket.
+- Final lifecycle fix: explicitly leave the station presentation and restore the camera before arena startup or station exit; all three pinned Unity semantic assembly compiles pass after this fix.
+- Combat damage, hitboxes, attack timing, cooldowns and animation curves unchanged. Generated-world topology and initial loading behavior change as requested. Source branch remains draft pending native and multiplayer acceptance; no shared/builder merge.
+
+## 2026-10-31 — Astra: Deployment Station generated blockout and stage acceptance continuation
+
+- Delivery follow-up: owner explicitly authorized GitHub pushes. Command-line Git has no write credentials in this host; publish the identical validated tree through the connected GitHub API. Earlier rejection notes below are historical.
+- Branch/base: `codex/deployment-stages-continuation` from remote `codex/expedition-deployment-integration` at `8264f8b5`, containing PR #302 and shared/builder `33233109`. This confirms the earlier room handoff was pushed despite the previous entry's historical export-block note. PR #301 is merged and already in both shared and builder branches.
+- Stage/Training follow-up: require all six maps, honor one-way drop links and bound same-floor nav attachments. 5,076 targeted assertions pass; no map geometry, rotation, hazard or combat changes. This test-only part can integrate independently.
+- Deployment: added deterministic real collision blockout generation, Hulk-clear 2 m navigation, sanctuary gates/apron, three entrance shells/return groups, caches, spawn zones, measured street routes and a separate gated final court. The composed layout preserves newly parsed authored interiors. Stable generation and its fingerprint survive host reassignment and locale changes; the generator version fences staging compatibility.
+- Validation so far: 3,664 deployment assertions across 68 seeds and independent doorway/circle collision probes; managed warnings-as-errors compilation; pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation pass. Full managed/real-relay suite passes (884 PASS lines, all 35 managed-core checks, exit 0); Python 167 tests pass (one skip); all six draft validators and source package validation pass (2,857 files). .NET SDK CLI cannot read Process.StartTime in this host, so SDK Roslyn compiled the project sources directly with the existing reference profile and test runtime settings.
+- Local implementation: `e41a6dd0`; separate stage commit: `bc0c678b` on `codex/m1-stage-navigation-acceptance`. Automatic approval review rejected the push to `sheldon37/Chip-Arena`, stating that this turn did not explicitly authorize sharing changes to GitHub. No PR, merge, builder synchronization or publication was performed. Both commits and handoffs remain locally available pending explicit push authorization.
+- Native builder collision/Hulk-route/join-circle gate added and compiled, not executed. No Unity Editor execution, Windows play, actual FPS, multi-client generated deployment, publication or live release. The generated blockout is still dormant: per-run runtime bundle loading/identity, atomic Deploy readiness, full static-city-equivalent/native seed acceptance, physical machine fixtures, Claude presentation and approved mutator rules remain. Current fixed M1 path is unchanged. This continuation remains draft; do not merge it as a playable feature.
+
+## 2026-10-31 — Astra: deployment room tickets, replication and staging handoff (draft)
+
+- Branch/base: `codex/expedition-deployment-integration`, foundation PR #302 at `0f23c87b`; local commit only. Push was blocked by automated export approval; no remote task branch/PR, shared merge or builder publication.
+- Added a selected-Expedition authored-instance pool, bounded deterministic ticket reconstruction, content/generator identity, revision-checked host intents, immutable deployed restore and detached guest snapshots. Live wrapper refuses mutator rolls because no gameplay effects are approved; skip remains valid.
+- Runtime API opens staging without an arena or PvE session; broadcasts compact state with lobby refresh/reconnect; verifies deployment capability and signed-in identity; transfers the ticket through existing lobby promotion prepare/commit. Ordinary/fixed-M1 starts cannot bypass staging. Existing fixed M1 runs retain their schema/path. Claude can bind the APIs documented in EXPEDITION-DEPLOYMENT.md.
+- Actual checks: focused managed suite PASS (49 deployment checks); CoreTests build zero warnings/errors; pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compile PASS. Full managed/real-relay regression PASS: 884 PASS lines, final 35 managed-core checks, exit 0. The normal runner initially failed in the .NET CLI Process.StartTime lookup (environment); using its supported compiled-assemblies arguments avoids that CLI failure. Added native JsonUtility/codec/promotion checks; compiled, not executed in Unity.
+- Incomplete scope: full generated playable map/manifest/nav/collision and static-city-equivalent seed validation, generated map runtime loading/handshake, readiness-to-Deploy startup, active-run endpoint migration, station presentation and approved mutator rules. This is deliberately a draft continuation, not completion of the owner's entire Astra list. No generated geometry or working scene is claimed. Windows/PhysX/two-client play unrun.
+- Gameplay timing, hitboxes, damage, cooldowns and animation unchanged. No live release, account mutation, shared merge or test-feed publication. Follow-up must finish the generated-world path before enabling the station in menus.
+## 2026-10-31 — Claude: the Deployment Station drawn (models, scene, console, DEV preview)
+
+- **Branch/base:** `claude/deployment-station`, stacked on Astra's draft PR #302
+  (`codex/expedition-deployment-machines-20261031`, head `0f23c87`, base shared `3323310`).
+  - Presentation rules: `7a4acf3`, `b254aef`.
+  - Runtime work: `31b495f` (Core), `d8032d5` (Runtime), `ca8162d` (checks), `7046f6f` (docs).
+  - Review fixes: `1f380ce`.
+  - Pushed. **Not merged into shared or the builder:** #302 is still a draft, and this branch carries its commits. Merge
+    this branch after #302 lands. Not released.
+- **Changes:**
+  - **Core:** `NativeDeployModels` (both machines, the reel drum and rims, the card dial, the holo war-table, pads, the
+    DEPLOY gate with doors and lift, the console and the room). `NativeDeployArt` (reel symbols, mutator cards, stamps, and a
+    chamfered monoline A-Z). `NativeDeployStage` with `NativeDeployClock` (the per-frame pose; no allocation).
+  - **Runtime:** `NativeDeployScene`, `NativeDeployCast`, `NativeDeployConsoleUI`, `NativeDeployPreview`
+    (`--ca-deploy-preview`, a local authority) and `Resources/NativeDeployScreen.shader`.
+  - **Shared files:** one-line hooks in ConversionGame (GuiFrame, MenuBackdrop) and in VisualOutfitOf and SeatWeaponSkins.
+    The overview and deploy shots are reframed.
+  - **Review fixes (`1f380ce`):**
+    - The screen shader had a variable named `line`, which HLSL reserves; it is renamed, and a check now rejects
+      reserved words.
+    - The Deploy light columns were solid double-sided tubes that washed out the Deploy shot. They are now soft
+      camera-facing shafts.
+    - With more than four party members, the console's readiness chips overlapped; they now narrow to fit one row.
+  - **Docs:** docs/EXPEDITION-DEPLOYMENT.md "Runtime presentation" (including what Astra wires).
+- **Affected systems:**
+  - The menu backdrop and GUI change only behind the DEV flag.
+  - The visual body's outfit and skin lookups gain a branch for the deploy actor ids (-500 to -507).
+  - No change to the simulation, the authority, the network, saves or the Expedition start flow.
+  - No change to hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks (actual, on `1f380ce`):**
+  - `CoreTests --deploy-models` 1,985 PASS; `--deploy-presentation` 436,266 PASS; `--expedition-deployment` 26 PASS.
+  - `unity-check` (Runtime and Editor against Unity 6000.3.24f1): OK.
+  - The relay suite (`tools/check_relay.py`, test timeout 900 s): 886 PASS lines, exit 0, 415 s; build 0 errors.
+  - Python: 167 tests OK (1 skipped).
+  - `tools/package_source.py`: the source zip builds (removed afterwards).
+  - `git diff --check` from `b254aef`: clean after stripping one blank line's trailing spaces (whitespace only, after the
+    suites ran).
+  - Offline WebGL renders of the Core meshes posed by the stage were reviewed and iterated, including after the shaft fix.
+    They emulate the Lambert, stage block, ACES, fog and bloom path, use stand-in pilot figures, and are not committed.
+- **Not run:**
+  - the Unity Editor or player;
+  - any Unity compile of the new shader;
+  - Windows;
+  - the cast on the real visual body;
+  - multiplayer.
+- **Risks:**
+  - `NativeDeployScreen.shader` has only had a text check.
+  - About 150 non-instanced draws per frame.
+  - The console layout at ultrawide, and bloom and fog tuning, are unchecked in Unity.
+  - The door leaves slide inside the pillars.
+- **Next:**
+  1. Astra takes #302 out of draft and merges it; then this branch merges into shared and the builder.
+  2. The owner tries `--ca-deploy-preview` on the PC.
+  3. Astra wires the live room: state, the `NativeDeployClock` times, readiness, catalogs and the console's intents.
 
 ## 2026-10-31 — Claude: CI time for the managed tests after the M1 stages
 

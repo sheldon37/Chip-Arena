@@ -35,14 +35,14 @@ namespace ChipArena.UnityConversion
         }
         public void EnableAreas()
         {
-            if(SplitAreas||s.elapsed!=0||s.area!=s.world||s.loading)throw new InvalidOperationException("Enable areas before launch.");
+            if(Migrating||SplitAreas||s.elapsed!=0||s.area!=s.world||s.loading)throw new InvalidOperationException("Enable areas before launch.");
             areaStates=new Dictionary<string,AreaState>(StringComparer.Ordinal);
             areaStates.Add(s.world,new AreaState{Id=s.world,Phase=s.phase});
             foreach(var i in s.instances)areaStates.Add(i.id,new AreaState{Id=i.id,Phase=ExpeditionPhase.Instance});
             foreach(var p in s.members)p.area=s.world;
             scope=areaStates[s.world];Changed();
         }
-        private NativeExpedition(NativeExpedition owner,AreaState next){s=owner.s;areaStates=owner.areaStates;scope=next;}
+        private NativeExpedition(NativeExpedition owner,AreaState next){s=owner.s;areaStates=owner.areaStates;scope=next;migration=owner.migration;}
         public NativeExpedition ForArea(string area)
         {
             if(!SplitAreas||!areaStates.TryGetValue(area,out var next))throw new ArgumentException("Unknown run area.");
@@ -50,18 +50,18 @@ namespace ChipArena.UnityConversion
         }
         public bool HoldMembers(string[] accounts,bool held)
         {
-            if(!SplitAreas||accounts==null||accounts.Any(a=>Member(a)==null))return false;
+            if(!Running||!SplitAreas||accounts==null||accounts.Any(a=>Member(a)==null))return false;
             bool changed=false;foreach(var a in accounts){var p=Member(a);changed|=p.transferring!=held;p.transferring=held;if(held){p.safe=p.choosing=false;p.choosingUntil=0;}}
             if(changed)Changed();return true;
         }
         public bool MoveMembers(string source,string destination,string[] accounts)
         {
-            if(!SplitAreas||!areaStates.ContainsKey(destination)||accounts==null||accounts.Length==0||accounts.Distinct().Count()!=accounts.Length||accounts.Any(a=>Member(a)==null||Member(a).area!=source||Member(a).extracted))return false;
+            if(!Running||!SplitAreas||!areaStates.ContainsKey(destination)||accounts==null||accounts.Length==0||accounts.Distinct().Count()!=accounts.Length||accounts.Any(a=>Member(a)==null||Member(a).area!=source||Member(a).extracted))return false;
             foreach(var a in accounts){var p=Member(a);p.area=destination;p.safe=false;p.carriedBy=null;p.choosing=false;p.choosingUntil=0;p.transferring=false;}
             var encounter=s.instances.FirstOrDefault(i=>i.id==destination);if(encounter!=null){if(!encounter.entered)encounter.scalingParty=accounts.Length;encounter.entered=true;}
             foreach(var state in areaStates.Values){state.ExitVotes=state.ExitVotes.Where(a=>Member(a)?.area==state.Id).ToArray();if(state.ExitVotes.Length==0)state.ExitAt=-1;}
             Changed();return true;
         }
-        public string[] DueReturns()=>SplitAreas&&Area!=s.world&&ExitAt>=0&&Elapsed>=ExitAt?Living():Array.Empty<string>();
+        public string[] DueReturns()=>!Migrating&&SplitAreas&&Area!=s.world&&ExitAt>=0&&Elapsed>=ExitAt?Living():Array.Empty<string>();
     }
 }

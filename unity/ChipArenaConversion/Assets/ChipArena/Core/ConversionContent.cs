@@ -40,6 +40,12 @@ namespace ChipArena.UnityConversion
         public ContentMaterial[] materials;public ContentAbility[] abilities;public ContentAds[] ads;
         public NumberValue[] baseStats,config,weights;public RarityData[] rarities;
         public ExclusionData[] incompatibilities;public ExclusiveOdds[] exclusiveOdds;public V3[] spawns;
+        // A run owns its map array. Shipped maps and rules remain read-only shared inputs.
+        public ConversionContent WithGeneratedMap(ContentMap generated)
+        {
+            if(generated==null||maps.Any(m=>m.id==generated.id))throw new ArgumentException("Generated map must have a fresh id.");
+            var copy=(ConversionContent)MemberwiseClone();copy.maps=maps.Concat(new[]{generated}).ToArray();return copy;
+        }
         public ContentWeapon Weapon(string id) => Array.Find(weapons,x=>x.id==id)??throw new ArgumentException("Unknown weapon: "+id);
         public ContentChip Chip(string id) => Array.Find(chips,x=>x.id==id)??throw new ArgumentException("Unknown chip: "+id);
         public ContentMap Map(string id) {foreach(var map in maps)if(map.id==id)return map;throw new ArgumentException("Unknown map: "+id);}

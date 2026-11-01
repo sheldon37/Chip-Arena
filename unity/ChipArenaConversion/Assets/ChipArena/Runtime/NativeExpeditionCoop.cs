@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         private void ExpeditionReplicaTick()
         {
             if(!prefs.expedition||arena?.Replica!=true||ExpeditionView==null||arena.Generation!=expeditionReplicaGeneration)return;
-            if(expeditionReplicaLayout==null){expeditionReplicaJson=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;expeditionReplicaLayout=NativeExpeditionLayout.Parse(expeditionReplicaJson);expeditionReplicaIdentity=NativeExpeditionLayout.Compatibility(expeditionReplicaJson,content);}
+            if(expeditionReplicaLayout==null){expeditionReplicaJson=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;expeditionReplicaLayout=deploymentBundle?.Layout??NativeExpeditionLayout.Parse(expeditionReplicaJson);expeditionReplicaIdentity=deploymentBundle?.Identity??NativeExpeditionLayout.Compatibility(expeditionReplicaJson,content);}
             string json=expeditionReplicaJson;
             var view=ExpeditionView;var area=expeditionReplicaLayout.Area(view.area);
             if(area==null||arena.MapId!=area.map)return;
@@ -126,7 +126,7 @@ namespace ChipArena.UnityConversion
                 foreach(var gate in area.gates)expeditionClosures[gate.id]=Box("Expedition closure "+gate.id,gate.closure,gate.closure.y,gate.closure.sy);
                 if(area.role=="world")
                 {
-                    expeditionReplicaHub=ExpeditionHubLayout.Parse(json,area.id);
+                    expeditionReplicaHub=GeneratedRun?.World.Hub??ExpeditionHubLayout.Parse(json,area.id);
                     foreach(var gate in expeditionReplicaHub.Gates){hubDoors.Add(Box(gate.Id,gate.Closure,gate.Closure.y,gate.Closure.sy));hubTops.Add(Box(gate.Id+" no vault",gate.Closure,21.55f,36.9f));}
                 }
             }

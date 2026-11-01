@@ -6,6 +6,46 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        public static void ValidateDeploymentLoadBarrier()
+        {
+            var owner=new GameObject("Deployment loading fixture");owner.SetActive(false);
+            var game=owner.AddComponent<ConversionGame>();
+            void Check(bool ok,string why){if(!ok)throw new Exception("Deployment loading: "+why);}
+            try
+            {
+                var commands=new SplitLocalCommands(game,"p1");var command=new ExpeditionCommand();
+                // No session is bound: a blocked command must return before accessing any inventory/router.
+                game.deploymentInitialReady=false;
+                Check(commands.Blocked(command)!=null&&commands.Send(command).state==ExpeditionCommandState.Refused,"initial hold rejects immediate local commands");
+                var gate=game.deploymentLoadGate;gate.Begin(100);
+                Check(!gate.Update(159,false)&&!gate.Failed,"unready party holds before deadline");
+                Check(!gate.Update(160,true)&&gate.Failed,"deadline wins over simultaneous final acknowledgement");
+                Check(!gate.Update(161,true),"late readiness cannot revive a failed run");
+                game.expeditionError="fixture timeout";
+                foreach(bool ready in new[]{false,true})
+                {
+                    game.deploymentInitialReady=ready;
+                    Check(commands.Blocked(command)!=null&&commands.Send(command).state==ExpeditionCommandState.Refused,"stopped run rejects commands regardless of readiness");
+                }
+                game.expeditionError=null;gate.Begin(200);game.deploymentInitialReady=gate.Update(201,true);
+                Check(game.SplitCommandBlock==null,"successful readiness releases run-wide command hold");
+                Check(gate.Update(300,false)&&!gate.Failed,"later subset loading does not reactivate initial barrier");
+                var run=NativeExpedition.Create("freeze-fixture","hub","host","sword",17,new[]{new ExpeditionInstance{id="ward",target=1}});
+                Check(run.Join("next","sword"),"handoff party");run.EnableAreas();var ward=run.ForArea("ward");
+                Check(run.MoveMembers("hub","ward",new[]{"next"})&&ward.Progress("kill",1)&&ward.StartBosses(new[]{"boss"})&&ward.DefeatBoss("boss")&&run.SetSafe("host",true),"handoff eligibility");
+                var h=run.PrepareHandoff("fixture-handoff",new[]{"host"},new[]{new ExpeditionHostCandidate{account="next",capable=true,reachable=true}});
+                Check(h!=null,"prepare shared freeze");game.splitRun=run;
+                Check(commands.Blocked(command)!=null&&commands.Send(command).state==ExpeditionCommandState.Refused,"handoff refuses commands before session access");
+                string before=JsonUtility.ToJson(run.PartySnapshot());game.SplitFixedFrame();
+                Check(JsonUtility.ToJson(run.PartySnapshot())==before,"handoff returns before simulation or cohort access");
+                var restored=NativeExpedition.RestorePreparedHandoff(JsonUtility.FromJson<ExpeditionHandoff>(JsonUtility.ToJson(h)),"next");
+                Check(restored.Migrating&&restored.ForArea("ward").Migrating&&JsonUtility.ToJson(restored.PartySnapshot())==before,"native handoff codec and frozen restore");
+                Check(run.AbortHandoff(h.id)&&game.SplitCommandBlock==null,"source abort releases command barrier");game.splitRun=null;
+                Debug.Log("PASS native deployment loading: timeout boundary, late readiness, command refusal before session mutation subsequent-load independence, all-area handoff freeze and native checkpoint codec");
+            }
+            finally{UnityEngine.Object.DestroyImmediate(owner);}
+        }
+
         // Inactive components avoid Awake (account/prefs/presentation); real loopback transports
         // exercise the same handlers used by the lobby, including the native JsonUtility codec.
         public static void ValidateLobbyPromotion(ConversionContent data)
@@ -45,10 +85,36 @@ namespace ChipArena.UnityConversion
                     expeditionProtocol=NativeExpeditionParty.Protocol,resume=guest.resumeToken,profile=guest.Profile()});guest.ClientMessage(Read(guest.server));
                 host.FlushLobby();guest.ClientMessage(Read(guest.server));
                 Check(host.CanPromote(2),"updated connected guest eligible");active.LobbyProtocol=0;Check(!host.CanPromote(2),"old guest cannot transfer");active.LobbyProtocol=1;
+                host.deploymentLocked=true;Check(!host.CanPromote(2),"locked deployment cannot promote even before arena construction");host.deploymentLocked=false;
+                host.stageLoad.Request(StageLoadKind.Expedition,false);Check(!host.CanPromote(2),"requested stage cannot promote");host.stageLoad.Cancel();
+                var layout=host.LoadDeploymentLayout();
+                var lockedRoom=new ExpeditionDeploymentRoom("promotion-locked","fixture-host",17,"black-siren",layout,data);
+                Check(lockedRoom.Execute("fixture-host",0,ExpeditionDeploymentIntent.RollInstances),"fixture rolls destinations");
+                var bundle=ExpeditionRunBundle.Build(lockedRoom.Ticket,data,host.DeploymentAuthoredJson);
+                Check(lockedRoom.Execute("fixture-host",1,ExpeditionDeploymentIntent.Deploy,true,bundle.Identity),"fixture locks generated identity");
+                host.deploymentRoom=lockedRoom;Check(!host.CanPromote(2),"authority ticket blocks promotion without cached lock flag");host.deploymentRoom=null;
+                guest.deploymentReceiver=new ExpeditionDeploymentReceiver();
+                Check(guest.deploymentReceiver.Accept(lockedRoom.Ticket,layout,data),"guest receives deployed ticket");
+                guest.PromotionClientMessage(new NativeNetMessage{type="host-move",room=NativeRoomCodes.Create(),transfer=new string('a',32)});
+                Check(guest.promotionMoveAt==0,"replicated locked ticket blocks redirection without cached lock flag");guest.deploymentReceiver=null;
+                guest.deploymentLocked=true;
+                guest.PromotionClientMessage(new NativeNetMessage{type="host-prepare",transfer=new string('a',32),id=1});
+                guest.PromotionClientMessage(new NativeNetMessage{type="host-move",room=NativeRoomCodes.Create(),transfer=new string('a',32)});
+                Check(guest.promotionToken==null&&guest.promotionMoveAt==0,"locked guest ignores preparation and redirection");guest.deploymentLocked=false;
+                guest.stageLoad.Request(StageLoadKind.Expedition,false);
+                guest.PromotionClientMessage(new NativeNetMessage{type="host-move",room=NativeRoomCodes.Create(),transfer=new string('a',32)});
+                Check(guest.promotionMoveAt==0,"loading guest ignores redirection");guest.stageLoad.Cancel();
                 host.PromoteHost(2);Check(host.PromotionBusy&&!host.GuestsReady,"start blocked during preparation");guest.ClientMessage(Read(guest.server));
-                Check(!guest.Hosting&&host.Hosting,"old lobby remains authority while preparing");host.HostMessage(active,Read(active.Connection));
+                Check(!guest.Hosting&&host.Hosting,"old lobby remains authority while preparing");var prepared=Read(active.Connection);
+                double hostDeadline=host.promotionDeadline;host.promotionDeadline=NetworkNow-1;
+                host.HostMessage(active,prepared);Check(host.promotionCode==null,"expired preparation cannot commit before timeout tick");
+                host.promotionDeadline=hostDeadline;host.HostMessage(active,prepared);
                 guest.PromotionClientMessage(new NativeNetMessage{type="host-commit",transfer="wrong"});Check(!guest.Hosting,"wrong transfer cannot commit");
-                guest.ClientMessage(Read(guest.server));host.HostMessage(active,Read(active.Connection));
+                var commit=Read(guest.server);guest.deploymentLocked=true;
+                guest.ClientMessage(commit);Check(!guest.Hosting&&guest.server!=null,"deployment locked after prepare refuses commit");guest.deploymentLocked=false;
+                double guestDeadline=guest.promotionDeadline;guest.promotionDeadline=NetworkNow-1;
+                guest.ClientMessage(commit);Check(!guest.Hosting&&guest.server!=null,"expired commit cannot change authority before timeout tick");
+                guest.promotionDeadline=guestDeadline;guest.ClientMessage(commit);host.HostMessage(active,Read(active.Connection));
                 Check(guest.Hosting&&guest.server==null&&guest.prefs.expedition&&guest.prefs.bots==0,"target becomes host with room options");
                 Check(host.promotionMoveAt>0&&host.promotionCode==guest.roomCode,"old host schedules join only after new host acknowledges");
                 Check(!guest.CanPromote(1),"host cannot promote itself");
