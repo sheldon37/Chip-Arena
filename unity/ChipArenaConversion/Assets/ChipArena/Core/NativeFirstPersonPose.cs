@@ -7,6 +7,16 @@ namespace ChipArena.UnityConversion
     public static class NativeFirstPersonPose
     {
         public const float Scale=.78f,StaffScale=.85f,StaffRoll=20;
+        // The visual body's view model (owner 2026-11-01: "Also need to fix first person, weapons looks super small"): with a
+        // life-size weapon model in hand, its forearms, hands and that model draw larger about the right hand's weapon frame
+        // (ModelScale: a gun ModelView, a blade, bow or staff ModelBlade, as their models already reach the game's tip), and the
+        // hold rises into view (ModelLift, camera frame, m; aiming down the sights still centres the sight). The hand stays on
+        // the weapon frame; the weapon grows out of it, the forearm back off screen. Presentation only: aim, muzzle, reach and
+        // hit volumes are the game's.
+        public const float ModelView=1.7f,ModelBlade=1.3f;
+        public static readonly Vector3 ModelPistolLift=new Vector3(-.02f,.10f,0),ModelGunLift=new Vector3(0,.05f,0),ModelBladeLift=new Vector3(0,0,0);
+        public static float ModelScale(bool gun)=>gun?ModelView:ModelBlade;
+        public static Vector3 ModelLift(bool gun,bool pistol,bool blade)=>gun?pistol?ModelPistolLift:ModelGunLift:blade?ModelBladeLift:Vector3.Zero;
         // Captured native torso sits lower than the source rig; a 5 cm lift keeps the crystal visible during casts.
         public const float NativeRigLift=.05f;
         public static readonly Vector3 MagicOffset=new Vector3(.20f,-.50f+NativeRigLift,.20f);
