@@ -68,6 +68,17 @@ Update channel unless the owner says otherwise. No per-update publication
 confirmation is required. Follow DEVELOPMENT.md and record actual verification
 and publication results. This does not authorize automatic merges, live-feed or
 Site releases, or bypassing verification.
+Owner direction (2026-10-08): all game changes going forward go into the Unity
+Chip Arena (`unity/ChipArenaConversion`). Do not add new features to the Electron
+game; keep its existing runtime, hosting, accounts and updater working as above.
+Until the owner names a shared Unity base branch, build on the newest Unity
+integration head, which contains the other Unity branches (currently
+`claude/sleepy-ritchie-g8ruhv`, PR #62, stacked on #61 and #59).
+Owner role split (2026-10-08): Astra (Codex) handles game logic and programming:
+simulation, rules, networking, accounts, updater, build/publish tooling and tests.
+Claude handles visuals: rendering, animation, VFX, menus/HUD presentation and
+audio-visual polish. Route each change to its owner; when a task spans both, split
+it and hand off through DEV_LOG/PR notes rather than taking over the other's part.
 At completion or handoff, add a concise entry to DEV_LOG on your own task branch:
 date/agent/task, branch and base, PR or implementation commit if known, changes and
 rationale, affected systems, actual checks/results, remaining risks and next step.
@@ -77,3 +88,11 @@ impacts on hit timing, hitboxes, damage, cooldowns, movement and networking.
 Keep PROJECT_STATE short. Preserve other agents' entries when resolving conflicts;
 do not overwrite their work. Coordinate overlapping files/systems before editing.
 Do not append long transcripts or duplicate full diffs. No automatic review loop.
+
+Owner standing instruction (2026-10-12): completed fixes may always be pushed
+to GitHub unless the owner specifies otherwise; no per-push confirmation is needed.
+Owner follow-up (2026-10-12): merges are also authorized going forward unless
+specified otherwise. Completed task PRs may be merged into the shared development
+branch and synced to the existing builder branch without per-merge confirmation.
+Preserve verification requirements and other agents' work. Existing live-release,
+production, and infrastructure boundaries still apply.

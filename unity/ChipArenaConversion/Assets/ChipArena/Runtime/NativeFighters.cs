@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeFighter
     {
-        public string Kind;public int Id,Index,Total,Next,Count;public float At,HitAt,Until,Gap,HadokenReady,UppercutReady,LastHit=-100,LastUntil,Charge,StepUntil;
+        public NativeFighter ViewCopy()=>(NativeFighter)MemberwiseClone();
+        public string Kind;public int Id,Index,Total,Next,Count;public float At,HitAt,Until,Gap,HadokenReady,UppercutReady,LastHit=-100,LastUntil,Charge,StepUntil,WaveUntil;
         public int ComboTarget,Hits;public float ComboDamage;public bool Single;
     }
     public sealed class NativeJuggle
@@ -20,14 +21,15 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         public readonly List<NativeFighterEcho> FighterEchoes=new List<NativeFighterEcho>();public readonly List<NativeStormTrail> StormTrails=new List<NativeStormTrail>();
-        private bool Dev(NativePilot p,string spec)=>p!=null&&p.Seat.spec==spec&&(p.Seat.AuthorityBoss&&spec=="siren"||p.Seat.access.Allows("weapon:"+spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        private bool Dev(NativePilot p,string spec)=>p!=null&&p.Seat.spec==spec&&(p.Seat.AuthorityBoss&&spec=="siren"||p.Seat.access.Allows("weapon:"+spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.Allows("weapon:"+spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
         private NativeFighter Fighter(NativePilot p)=>p.Fighter??(p.Fighter=new NativeFighter());
-        private void CancelFighter(NativePilot p){if(p.Fighter==null)return;p.Fighter.Kind=null;p.Fighter.Charge=p.Fighter.StepUntil=0;p.Fighter.Count=p.Fighter.Next=0;}
+        private void CancelFighter(NativePilot p){if(p.Fighter==null)return;p.Fighter.Kind=null;p.Fighter.Charge=p.Fighter.StepUntil=p.Fighter.WaveUntil=0;p.Fighter.Count=p.Fighter.Next=0;}
         private bool FighterReady(NativePilot p)=>p.Hp>0&&p.Seat.connected&&!Incapacitated(p)&&Time>=p.BlockEnd&&Time>=p.RollEnd;
         private bool StartFighter(NativePilot p,string kind)
         {
             bool emperor=Dev(p,"emperor");if(!(emperor||Dev(p,"ansatsuken"))||!FighterReady(p))return false;var f=Fighter(p);
-            bool cancel=!emperor&&kind!="combo"&&Has(p,"arcade-cancel")&&f.Kind=="combo"&&f.LastHit>=f.At&&Time-f.LastHit<.5f;
+            // shared/emperor.ts: waves do not occupy the attack slot; a one-tick Q or jab can replace them.
+            bool cancel=emperor?f.Kind=="wave"&&(kind=="electric"||kind=="jab")&&Time>=p.Ready:kind!="combo"&&Has(p,"arcade-cancel")&&f.Kind=="combo"&&f.LastHit>=f.At&&Time-f.LastHit<.5f;
             if((Time<p.Ready||f.Kind!=null)&&!cancel)return false;if(kind=="tatsu"&&Time<p.EReady||kind=="shoryuken"&&Time<f.UppercutReady)return false;
             bool single=kind=="combo"||kind=="jab",electric=kind=="electric";
             int total=emperor?(electric?1:Has(p,"mishima-pressure")?3:2):kind=="combo"?(Has(p,"arcade-rush")?10:3):kind=="tatsu"?(Has(p,"arcade-cyclone")?7:4):(Has(p,"arcade-rising")?3:1);
@@ -53,14 +55,14 @@ namespace ChipArena.UnityConversion
             if(f.Kind!=null&&f.Kind!="charge")
             {
                 while(f.Next<f.Count&&Time>=f.HitAt+f.Next*f.Gap){int index=f.Single?f.Index:f.Next;FighterStrike(p,f.Kind,index,f.Total,f.Id);if(!FighterReady(p)||f.Kind==null)return;f.Next++;}
-                if(f.Kind=="tatsu"&&Has(p,"arcade-cyclone"))foreach(var q in Pilots){Vector3 d=p.Body.position-q.Body.position;if(q.Hp>0&&Enemy(p,q)&&d.magnitude<4.5f&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback+=d.normalized*(7f/60);}
+                if(f.Kind=="tatsu"&&Has(p,"arcade-cyclone"))foreach(var q in Pilots){Vector3 d=p.Body.position-q.Body.position;if(q.Hp>0&&CanHit(p,q)&&d.magnitude<4.5f&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback+=d.normalized*(7f/60);}
                 if(Time>=f.Until)f.Kind=null;
             }
             if(p.Input.Shoot)StartFighter(p,emperor?"jab":"combo");
             if(emperor)
             {
                 if(p.Input.AbilityQ)StartFighter(p,"electric");
-                if(p.Input.AbilityEHeld&&Time>=p.Ready&&f.Kind==null){f.Kind="wave";f.At=Time;f.Total=1;f.Until=Time+.18f;p.AttackEnd=f.Until;f.Next=f.Count=0;if(Has(p,"mishima-trail")&&StormTrails.Count<24)StormTrails.Add(new NativeStormTrail{Owner=p,Position=p.Body.position,At=Time,Until=Time+.7f});}
+                if(p.Input.AbilityEHeld&&p.Grounded&&Time>=p.Ready&&f.Kind==null){f.Kind="wave";f.At=Time;f.Total=1;f.Until=f.WaveUntil=Time+.18f;f.Single=false;p.Knockback=Vec(V3.Forward(p.Input.Yaw))*9+Vector3.up*p.Knockback.y;p.AttackEnd=f.Until;f.Next=f.Count=0;if(Has(p,"mishima-trail")&&StormTrails.Count<24)StormTrails.Add(new NativeStormTrail{Owner=p,Position=p.Body.position,At=Time,Until=Time+.7f});}
             }
             else
             {
@@ -70,12 +72,12 @@ namespace ChipArena.UnityConversion
             }
         }
         private Vector3 FighterMotion(NativePilot p)
-        {var f=p.Fighter;if(f==null)return Vector3.zero;return Vec(V3.Forward(p.Input.Yaw))*(f.Kind=="wave"&&Time<f.Until?9:f.Kind=="electric"&&Time<f.StepUntil?6:0);}
+        {var f=p.Fighter;if(f==null)return Vector3.zero;return Vec(V3.Forward(p.Input.Yaw))*(f.Kind=="electric"&&p.Grounded&&Time<f.StepUntil?6:0);}
         private void Hadoken(NativePilot p,bool super)
         {
             var f=Fighter(p);float cost=(super?30:12)*(float)p.Stats["resourceCost"];if(ProjectileCount>=100||p.Stamina<cost){CancelFighter(p);return;}p.Stamina-=cost;
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)),pos=p.Body.position+Vector3.up*.18f+dir*.72f;
-            var b=new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=pos,Velocity=dir*(super?27:23),Damage=(super?22:23)*(float)p.Stats["damage"],Impulse=(super?180:320)*(float)p.Stats["impulse"],Radius=(super?.5f:.24f)*(float)p.Stats["projectileSize"],Life=4,Travel=75,Direct=false,EffectsUsed=true,Pierces=super?7:0,Burn=(Has(p,"arcade-red")?12:4)+(float)p.Stats["burn"],Poison=(float)p.Stats["poison"],Hadoken=true,Super=super};Bullets.Add(b);
+            var b=new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=pos,Velocity=dir*(super?27:23),Damage=(super?22:23)*(float)p.Stats["damage"],Impulse=(super?180:320)*(float)p.Stats["impulse"],Radius=(super?.5f:.24f)*(float)p.Stats["projectileSize"],Life=4,Travel=75,Direct=false,EffectsUsed=true,Pierces=super?7:0,Burn=(Has(p,"arcade-red")?12:4)+(float)p.Stats["burn"],Poison=(float)p.Stats["poison"],Hadoken=true,Super=super,Mods=new Dictionary<string,int>(p.Seat.chips)};Bullets.Add(b);
             f.Kind=super?"shinku":"hadoken";f.At=Time;f.Until=Time+.48f;f.Single=false;f.Charge=0;f.Count=f.Next=0;f.HadokenReady=Time+(super?3.4f:1.1f);p.AttackAt=p.LastAttack=p.LastShot=Time;p.BlockEnd=0;p.AttackEnd=p.Ready=f.Until;p.RegenAt=f.Until+.45f;Emit(EventKind.Shot,p,0,pos,0);
         }
         private void FighterStrike(NativePilot p,string kind,int index,int total,int id)
@@ -87,29 +89,32 @@ namespace ChipArena.UnityConversion
             foreach(var q in Pilots.ToArray())
             {
                 Vector3 d=q.Body.position-origin;float distance=emperor?new Vector2(d.x,d.z).magnitude:d.magnitude;
-                if(q.Hp<=0||!Enemy(p,q)||distance>radius+(emperor?.35f:.4f)||Math.Abs(d.y)>(emperor?(electric?3.2f:2.1f):kind=="shoryuken"?3:1.8f)||kind!="tatsu"&&Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos((emperor?.9f:.8f)*(float)p.Stats["meleeArc"])||!MeleeVisible(origin,q.Body.position,p,q.Collider))continue;
+                if(q.Hp<=0||!CanHit(p,q)||distance>radius+(emperor?.35f:.4f)||Math.Abs(d.y)>(emperor?(electric?3.2f:2.1f):kind=="shoryuken"?3:1.8f)||kind!="tatsu"&&Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos((emperor?.9f:.8f)*(float)p.Stats["meleeArc"])||!MeleeVisible(origin,q.Body.position,p,q.Collider))continue;
                 float scale=emperor?(Has(p,"mishima-rage")&&p.Hp<p.Stats["hp"]/3?1.45f:1)*(electric&&Has(p,"mishima-counter")&&Time-q.LastAttack<.4f?1.6f:1)*(Has(p,"mishima-screw")&&((q.Juggle?.Hits??0)+1)%3==0?1.25f:1):(Has(p,"arcade-juggle")&&!q.Grounded?1.45f:1)*(Has(p,"arcade-counter")&&Time-q.LastAttack<.35f?1.35f:1);
                 Vector3 aim=electric?(dir+Vector3.up*1.2f).normalized:kind=="shoryuken"?(dir*.3f+Vector3.up).normalized:(d.normalized+Vector3.up*(last?.25f:0)).normalized;
-                float actual=Damage(q,p,damage*(float)p.Stats["damage"]*scale,aim,impulse*(!emperor&&Has(p,"arcade-counter")&&Time-q.LastAttack<.35f?1.4f:1),false,melee:true);
-                if(actual>0){ImpactChips(p,q,null,q.Body.position,aim,id,id+index);ConfirmFighter(p,q,actual,electric,last?.38f:kind=="tatsu"?.22f:total==10?.15f:.3f);if(!emperor&&last&&kind=="shoryuken"&&q.Hp>0&&!SirenArmor(q)){bool pickup=q.Down?.PickupUsed==true||q.Juggle?.Pickup==true||NativeSpecialRules.Pickup(q.Down,Time);q.Juggle=null;q.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=pickup};q.Grounded=false;q.MoveVelocity=Vector3.zero;}if(!emperor&&last&&Has(p,"arcade-perfect")){p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+22);Heal(p,8);}if(electric&&Has(p,"mishima-twin")&&FighterEchoes.Count<32)FighterEchoes.Add(new NativeFighterEcho{Owner=p,Position=q.Body.position,At=Time+.13f,Until=Time+.15f,Radius=1.6f,Damage=3*(float)p.Stats["damage"],Remaining=1,Electric=true});}
+                Emit(emperor?EventKind.Emperor:EventKind.Arcade,p,q.Seat.id,q.Body.position,damage,p.Fighter?.Kind);float actual=Damage(q,p,damage*(float)p.Stats["damage"]*scale,aim,impulse*(!emperor&&Has(p,"arcade-counter")&&Time-q.LastAttack<.35f?1.4f:1),false,melee:true,weaponHit:true);
+                if(actual>0){ImpactChips(p,q,null,q.Body.position,aim,id,id+index);ConfirmFighter(p,q,actual,electric,last?.38f:kind=="tatsu"?.22f:total==10?.15f:.3f);if(!emperor&&last&&kind=="shoryuken"&&q.Hp>0&&!SirenArmor(q)){bool pickup=q.Down?.PickupUsed==true||q.Juggle?.Pickup==true||NativeSpecialRules.Pickup(q.Down,Time);CancelMelee(q);q.Juggle=null;q.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=pickup};q.Grounded=false;q.MoveVelocity=Vector3.zero;}if(!emperor&&last&&Has(p,"arcade-perfect")){p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+22);Heal(p,8);}if(electric&&Has(p,"mishima-twin")&&FighterEchoes.Count<32)FighterEchoes.Add(new NativeFighterEcho{Owner=p,Position=q.Body.position,At=Time+.13f,Until=Time+.15f,Radius=1.6f,Damage=3*(float)p.Stats["damage"],Remaining=1,Electric=true});}
                 if(!FighterReady(p)||f.Kind==null)return;
             }
             foreach(var prop in Props.ToArray())
-            {if(prop==null||prop.Indestructible)continue;Vector3 d=prop.transform.position-origin;if(d.magnitude>radius+.4f||kind!="tatsu"&&Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos((emperor?.9f:.8f)*(float)p.Stats["meleeArc"])||!MeleeVisible(origin,prop.transform.position,p,prop.GetComponent<Collider>()))continue;ImpactChips(p,null,prop,prop.transform.position,d.normalized,id,id+index);DamageProp(prop,damage*(float)(p.Stats["damage"]*p.Stats["demolition"]),d.normalized*impulse,prop.transform.position,p);}
-            foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-origin;if(Enemy(p,m.Owner)&&d.magnitude<radius+.4f&&(kind=="tatsu"||Vector3.Dot(d.normalized,dir)>.25f)&&MeleeVisible(origin,m.Body.position,p,m.Collider))Heal(p,HitMinion(m,p,damage*(float)p.Stats["damage"],d.normalized,impulse)*(float)p.Stats["lifeSteal"]);}
+            {if(prop==null||prop.Indestructible)continue;Vector3 d=prop.transform.position-origin;if(d.magnitude>radius+.4f||kind!="tatsu"&&Vector3.Dot(new Vector3(d.x,0,d.z).normalized,dir)<Mathf.Cos((emperor?.9f:.8f)*(float)p.Stats["meleeArc"])||!MeleeVisible(origin,prop.transform.position,p,prop.GetComponent<Collider>()))continue;ImpactChips(p,null,prop,prop.transform.position,d.normalized,id,id+index);DamageProp(prop,damage*(float)(p.Stats["damage"]*p.Stats["demolition"]),d.normalized*impulse,prop.transform.position,p,"melee");}
+            foreach(var m in Minions.ToArray()){Vector3 d=m.Body.position-origin;if(p.Hp>0&&CanHit(p,m)&&d.magnitude<radius+(emperor?.5f:.4f)&&(kind=="tatsu"||Vector3.Dot(d.normalized,dir)>(emperor?.2f:.25f))&&MeleeVisible(origin,m.Body.position,p,m.Collider))Heal(p,HitMinion(m,p,(emperor?(electric?8:10):damage)*(float)p.Stats["damage"],emperor?dir:d.normalized,emperor?(electric?550:150):impulse)*(float)p.Stats["lifeSteal"]);}
             if(!emperor&&kind=="combo"&&Has(p,"arcade-afterimage")&&FighterEchoes.Count<64)FighterEchoes.Add(new NativeFighterEcho{Owner=p,Position=origin+dir*1.1f,Direction=dir,Radius=1.1f*(float)p.Stats["reach"],Damage=damage*.38f*(float)p.Stats["damage"],Impulse=50,At=Time+.22f,Until=Time+.3f,Remaining=1});
-            if(kind=="shoryuken"&&last&&Has(p,"arcade-rising"))foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible&&Vector3.Distance(prop.transform.position,origin)<3.5f)DamageProp(prop,80,(prop.transform.position-origin+Vector3.up*2).normalized*1500*(float)p.Stats["impulse"],prop.transform.position,p);
-            Fx(origin,radius,electric?1:3);
+            if(kind=="shoryuken"&&last&&Has(p,"arcade-rising"))foreach(var prop in Props.ToArray())if(prop!=null&&!prop.Indestructible&&Vector3.Distance(prop.transform.position,origin)<3.5f)DamageProp(prop,80,(prop.transform.position-origin+Vector3.up*2).normalized*1500*(float)p.Stats["impulse"],prop.transform.position,p,"melee");
+            // No swing blast: the source draws none (emperor-effects.ts bolts and the C12 DEV effects cover the fighters), and the
+            // old stand-in drew the lightning (Shock) blast on every basic hit (owner, 2026-10-09). Presentation feed only.
         }
-        private void ConfirmFighter(NativePilot p,NativePilot q,float actual,bool electric,float stun,bool echo=false)
+        private void ConfirmFighter(NativePilot p,NativePilot q,float actual,bool electric,float stun,bool echo=false,bool meleeStrike=true)
         {
             var f=Fighter(p);bool emperor=Dev(p,"emperor");if(f.ComboTarget!=q.Seat.id||Time-f.LastHit>(emperor?1.35f:1.1f)){f.Hits=0;f.ComboDamage=0;}f.ComboTarget=q.Seat.id;f.Hits++;f.ComboDamage+=actual;f.LastHit=Time;
-            if(q.Hp>0&&!SirenArmor(q))
+            if(q.Hp>0&&!SirenArmor(q)&&!NativeMeleeKitRules.LightArmour(q.MeleeKit,Time,actual))
             {
-                var old=q.Juggle;bool pickup=NativeSpecialRules.Pickup(q.Down,Time),air=old!=null||!q.Grounded||pickup;StunMelee(q,Math.Max(.09f,(emperor?(electric?.42f:.25f):stun)/(float)p.Stats["attackRate"]));
+                var old=q.Juggle;bool pickup=NativeSpecialRules.Pickup(q.Down,Time),air=old!=null||!q.Grounded||pickup;
+                // Strikes get a short, immunity-gated stun; projectiles and delayed echoes do not refresh it.
+                if(meleeStrike)StaggerMelee(q,NativeMeleeRules.FighterHitStun(emperor,electric||stun>=.3f,(float)p.Stats["attackRate"]));
                 if(emperor&&(electric||air))
                 {
-                    var j=old??new NativeJuggle{At=Time,Owner=p,Pickup=pickup||q.Down?.PickupUsed==true};j.Hits++;if(electric&&!echo)j.ElectricHits++;j.LastHit=Time;j.Until=Time+1.25f;j.Owner=p;if(Has(p,"mishima-screw")&&j.Hits%3==0)j.SpinUntil=Time+.65f;q.Juggle=j;q.Down=null;
+                    var j=old??new NativeJuggle{At=Time,Owner=p,Pickup=pickup||q.Down?.PickupUsed==true};j.Hits++;if(electric&&!echo)j.ElectricHits++;j.LastHit=Time;j.Until=Time+1.25f;j.Owner=p;if(Has(p,"mishima-screw")&&j.Hits%3==0)j.SpinUntil=Time+.65f;CancelMelee(q);q.Juggle=j;q.Down=null;
                     float h=q.Body.position.y-p.Body.position.y,vy=electric?Mathf.Clamp(7.7f-h*3.5f,1.5f,10):Mathf.Clamp(5-h*2,1,6);q.Knockback.y=vy-q.Body.linearVelocity.y;q.Grounded=false;
                     Vector3 dir=Vec(V3.Forward(p.Input.Yaw));float push=(Math.Min(36,3+Math.Max(0,j.ElectricHits-1)*4.5f)+(Has(p,"mishima-wall")?4:0))*(float)(p.Stats["impulse"]*q.Stats["knockbackTaken"]);q.Knockback.x=dir.x*push;q.Knockback.z=dir.z*push;
                     if(Has(p,"mishima-magnet")){Vector3 d=p.Body.position+dir*1.45f-q.Body.position,lateral=d-dir*Vector3.Dot(d,dir);lateral.y=0;q.Knockback+=lateral.normalized*Math.Min(6,lateral.magnitude*5);}
@@ -120,9 +125,9 @@ namespace ChipArena.UnityConversion
         private void StepFighterWorld()
         {
             foreach(var e in FighterEchoes.ToArray())
-            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&Enemy(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Body.position);continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true);}e.Remaining--;e.At+=e.Gap;Fx(e.Position,e.Radius,e.Electric?1:3);}
+            {if(e.Remaining<=0||Time>e.Until||e.Owner.Hp<=0){FighterEchoes.Remove(e);continue;}if(Time<e.At)continue;foreach(var q in Pilots)if(q!=e.Spare&&q.Hp>0&&CanHit(e.Owner,q)&&Vector3.Distance(q.Body.position,e.Position)<e.Radius&&MeleeVisible(e.Position,q.Body.position,e.Owner,q.Collider)){if(Time<q.BlockEnd){BlockProc(q,e.Owner,q.Collider.ClosestPoint(e.Position),"clash");continue;}float actual=Damage(q,e.Owner,e.Damage,e.Direction,e.Remaining==1?e.Impulse:25,false,primary:false);if(actual>0)ConfirmFighter(e.Owner,q,actual,e.Electric,e.Remaining==1?.26f:.14f,true,false);}e.Remaining--;e.At+=e.Gap;}
             foreach(var trail in StormTrails.ToArray())
-            {if(Time>=trail.Until||trail.Owner.Hp<=0){StormTrails.Remove(trail);continue;}foreach(var q in Pilots)if(q.Hp>0&&Enemy(trail.Owner,q)&&!trail.Hit.Contains(q.Seat.id)&&Vector3.Distance(q.Body.position,trail.Position)<1.4f&&MeleeVisible(trail.Position,q.Body.position,trail.Owner,q.Collider)){trail.Hit.Add(q.Seat.id);Damage(q,trail.Owner,6*(float)trail.Owner.Stats["damage"],Vector3.zero,0,false,primary:false);}}
+            {if(Time>=trail.Until||trail.Owner.Hp<=0){StormTrails.Remove(trail);continue;}foreach(var q in Pilots)if(q.Hp>0&&CanHit(trail.Owner,q)&&!trail.Hit.Contains(q.Seat.id)&&Vector3.Distance(q.Body.position,trail.Position)<1.4f&&MeleeVisible(trail.Position,q.Body.position,trail.Owner,q.Collider)){trail.Hit.Add(q.Seat.id);Damage(q,trail.Owner,6*(float)trail.Owner.Stats["damage"],Vector3.zero,0,false,primary:false);}}
             foreach(var q in Pilots)
             {
                 var j=q.Juggle;if(j==null)continue;if(q.Hp<=0||!q.Seat.connected){q.Juggle=null;continue;}var p=j.Owner;
@@ -134,7 +139,7 @@ namespace ChipArena.UnityConversion
         }
         private void FighterProjectileHit(NativeBullet b,NativePilot p,NativePilot q,float actual)
         {
-            if(!b.Hadoken||actual<=0)return;RefreshDot(q,p,"fire",b.Burn,2);RefreshDot(q,p,"poison",b.Poison,4);ConfirmFighter(p,q,actual,false,b.Super?.15f:.26f);
+            if(!b.Hadoken||actual<=0)return;RefreshDot(q,p,"fire",b.Burn,2);RefreshDot(q,p,"poison",b.Poison,4);ConfirmFighter(p,q,actual,false,b.Super?.15f:.26f,false,false);
             if(b.Super&&FighterEchoes.Count<64)FighterEchoes.Add(new NativeFighterEcho{Owner=p,Position=q.Body.position,Direction=b.Velocity.normalized,At=Time+.1f,Until=Time+.5f,Radius=1.5f,Damage=Math.Min(40,b.Damage*.45f),Impulse=550,Remaining=4,Gap=.1f});
         }
     }

@@ -33,3 +33,131 @@ test('short passwords register, authenticate and recover; empty and oversized pa
   assert.equal((await f.request('login',{username:'short_pass',password:'b'})).status,200);
  }finally{f.db.close();}
 });
+
+
+test('native account cosmetics survive save, reload and a second login without granting DEV access',async()=>{
+ const f=await fixture();try{
+  const first:any=await(await f.request('register',{username:'nativepilot',password})).json();assert.equal(first.account.profileSchema,2);
+  let revision=0;
+  for(const intro of ['orbital-drop','grid-rez','holo-projection','blackout','skyline-zip','hero-landing','overclock']){
+   const response=await f.request('profile',{revision,profile:{name:'Native',class:'melee',color:'#123456',cosmetics:{intro,overrideWeaponIntro:true,lobbyBack:'hex-field',preferredSpec:'sword',hat:'auditor-halo'}}},first.session);
+   assert.equal(response.status,200);const saved:any=await response.json();revision=saved.account.revision;
+   const reread:any=await(await f.request('me',undefined,first.session)).json();
+   assert.equal(reread.account.profile.cosmetics.intro,intro);assert.equal(reread.account.profile.cosmetics.overrideWeaponIntro,true);assert.equal(reread.account.profile.cosmetics.lobbyBack,'hex-field');assert.equal(reread.account.profile.cosmetics.hat,'none');
+  }
+  const second:any=await(await f.request('login',{username:'nativepilot',password})).json();assert.equal(second.account.profile.cosmetics.intro,'overclock');assert.equal(second.account.profile.cosmetics.lobbyBack,'hex-field');
+  // Unity weapon skins: a normalized per-weapon map (strict allowlist, Standard when absent or invalid), kept across reloads.
+  const skinned:any=await(await f.request('profile',{revision,profile:{name:'Native',class:'melee',color:'#123456',cosmetics:{intro:'overclock',lobbyBack:'hex-field',weaponSkins:' sword : prototype ,pistol:prototype,rifle:standard,nope:prototype,shield:gold,<script>'}}},first.session)).json();
+  revision=skinned.account.revision;assert.equal(skinned.account.profile.cosmetics.weaponSkins,'pistol:prototype,sword:prototype');
+  const skinRead:any=await(await f.request('me',undefined,first.session)).json();assert.equal(skinRead.account.profile.cosmetics.weaponSkins,'pistol:prototype,sword:prototype');assert.equal(skinRead.account.profile.cosmetics.lobbyBack,'hex-field');
+  const skinLogin:any=await(await f.request('login',{username:'nativepilot',password})).json();assert.equal(skinLogin.account.profile.cosmetics.weaponSkins,'pistol:prototype,sword:prototype');
+  // The pilot body rides the same map after the weapons (Unity Core/NativeBodySkins.cs): a non-DEV account cannot keep the Sheldon Clothes.
+  const bodied:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:'body:prototype,pistol:prototype,body:gold,pistol:sheldon'}}},first.session)).json();revision=bodied.account.revision;assert.equal(bodied.account.profile.cosmetics.weaponSkins,'pistol:prototype,body:prototype');
+  const hooded:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:'sword:prototype,body:sheldon'}}},first.session)).json();revision=hooded.account.revision;assert.equal(hooded.account.profile.cosmetics.weaponSkins,'sword:prototype');
+  const longest=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','emperor','ansatsuken','leet'].map(s=>s+':prototype').join(',');
+  const all:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:longest.split(',').reverse().join(',')+',sword:prototype,siren:prototype'}}},first.session)).json();revision=all.account.revision;assert.equal(all.account.profile.cosmetics.weaponSkins,longest);
+  const bow:any=await(await f.request('profile',{revision,profile:{cosmetics:{preferredSpec:'bow',weaponSkins:'bow:prototype'}}},first.session)).json();revision=bow.account.revision;assert.equal(bow.account.profile.cosmetics.preferredSpec,'bow');assert.equal((await(await f.request('me',undefined,first.session)).json() as any).account.profile.cosmetics.weaponSkins,'bow:prototype');
+  for(const junk of [undefined,null,42,{sword:'prototype'},'',',,:,','sword','sword:standard','x'.repeat(5000)+',sword:prototype']){
+   const r:any=await(await f.request('profile',{revision,profile:{cosmetics:{weaponSkins:junk}}},first.session)).json();revision=r.account.revision;assert.equal(r.account.profile.cosmetics.weaponSkins,'',String(junk).slice(0,40));
+  }
+  const bad:any=await(await f.request('profile',{revision,profile:{cosmetics:{intro:'dev-siren',lobbyBack:'<script>',overrideWeaponIntro:true}}},first.session)).json();assert.equal(bad.account.profile.cosmetics.intro,'neon-drop');assert.equal(bad.account.profile.cosmetics.lobbyBack,'tick-ring');assert.equal(bad.account.developer,false);
+ }finally{f.db.close();}
+});
+
+
+test('native tints persist and Sheldon cosmetics require a DEV account',async()=>{
+ const f=await fixture();try{
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  const user:any=await(await f.request('register',{username:'colours',password})).json();
+  for(const [pilot,allowed] of [[dev,true],[user,false]] as const){
+   const c={preferredSpec:'cyberlord',hatColor:'#aBc123',backColor:'#123456',hat:'sheldon-head',intro:'sheldon-intro',overrideWeaponIntro:true};
+   const save=await f.request('profile',{revision:0,profile:{cosmetics:c}},pilot.session);assert.equal(save.status,200);
+   const read:any=await(await f.request('me',undefined,pilot.session)).json();const got=read.account.profile.cosmetics;
+   assert.equal(got.preferredSpec,allowed?'cyberlord':undefined);assert.equal(got.hatColor,c.hatColor);assert.equal(got.backColor,c.backColor);assert.equal(got.hat,allowed?'sheldon-head':'none');assert.equal(got.intro,allowed?'sheldon-intro':'neon-drop');
+   const bad:any=await(await f.request('profile',{revision:1,profile:{cosmetics:{hatColor:'',backColor:'<script>',hat:'sheldon-head',intro:'sheldon-intro'}}},pilot.session)).json();
+   assert.equal(bad.account.profile.cosmetics.hatColor,'');assert.equal(bad.account.profile.cosmetics.backColor,'');
+   // The Sheldon Clothes body skin: kept on the DEV account, Standard ('' for the body) on any other; weapon picks stay.
+   const clothes:any=await(await f.request('profile',{revision:2,profile:{cosmetics:{weaponSkins:'body:sheldon,sword:prototype'}}},pilot.session)).json();
+   assert.equal(clothes.account.profile.cosmetics.weaponSkins,allowed?'sword:prototype,body:sheldon':'sword:prototype');
+   const reload:any=await(await f.request('me',undefined,pilot.session)).json();assert.equal(reload.account.profile.cosmetics.weaponSkins,allowed?'sword:prototype,body:sheldon':'sword:prototype');
+   const cyber:any=await(await f.request('profile',{revision:3,profile:{cosmetics:{intro:'dev-cyberlord',overrideWeaponIntro:true}}},pilot.session)).json();
+   assert.equal(cyber.account.profile.cosmetics.intro,allowed?'dev-cyberlord':'neon-drop');
+   const cyberRead:any=await(await f.request('me',undefined,pilot.session)).json();assert.equal(cyberRead.account.profile.cosmetics.intro,allowed?'dev-cyberlord':'neon-drop');
+  }
+ }finally{f.db.close();}
+});
+
+test('Sheldon Idle persists only for live DEV accounts and stays outside the Electron pose catalog',async()=>{
+ const {LOBBY_POSES,lobbyPose}=await import('../src/shared/lobby-presentation.js');
+ assert.equal(Object.hasOwn(LOBBY_POSES,'sheldon-idle'),false);
+ assert.equal(lobbyPose('sheldon-idle'),'weapon');
+ const f=await fixture();try{
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  const user:any=await(await f.request('register',{username:'idle_player',password})).json();
+  for(const [pilot,allowed] of [[dev,true],[user,false]] as const){
+   const saved:any=await(await f.request('profile',{revision:0,profile:{developer:true,cosmetics:{lobbyPose:'sheldon-idle'}}},pilot.session)).json();
+   assert.equal(saved.account.profile.cosmetics.lobbyPose,allowed?'sheldon-idle':'weapon');
+   const read:any=await(await f.request('me',undefined,pilot.session)).json();
+   assert.equal(read.account.profile.cosmetics.lobbyPose,allowed?'sheldon-idle':'weapon');
+   const login:any=await(await f.request('login',{username:allowed?'Sheldon':'idle_player',password})).json();
+   assert.equal(login.account.profile.cosmetics.lobbyPose,allowed?'sheldon-idle':'weapon');
+  }
+  // Stored values and old sessions cannot retain DEV cosmetics after access is revoked.
+  f.db.sql.prepare('UPDATE player_accounts SET developer=0,unlocks=? WHERE id=?').run(JSON.stringify(['pose:sheldon-idle']),dev.account.id);
+  const revoked:any=await(await f.request('me',undefined,dev.session)).json();
+  assert.equal(revoked.account.developer,false);assert.equal(revoked.account.profile.cosmetics.lobbyPose,'weapon');
+  const forged:any=await(await f.request('profile',{revision:1,profile:{developer:true,cosmetics:{lobbyPose:'sheldon-idle'}}},dev.session)).json();
+  assert.equal(forged.account.profile.cosmetics.lobbyPose,'weapon');
+  let revision=2;
+  for(const pose of [...Object.keys(LOBBY_POSES),'unknown','__proto__',null,42]){
+   const r:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{lobbyPose:pose}}},dev.session)).json();
+   assert.equal(r.account.profile.cosmetics.lobbyPose,lobbyPose(pose));
+  }
+ }finally{f.db.close();}
+});
+
+
+test('Cyber Lord skin survives save, reload and login in native order without unlocking the DEV class',async()=>{
+ const f=await fixture();try{
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  const user:any=await(await f.request('register',{username:'cyber_skin',password})).json();
+  const expected='bow:prototype,cyberlord:prototype,body:prototype';
+  for(const [pilot,allowed,username] of [[dev,true,'Sheldon'],[user,false,'cyber_skin']] as const){
+   const save=await f.request('profile',{revision:0,profile:{developer:true,cosmetics:{preferredSpec:'cyberlord',weaponSkins:'body:prototype,cyberlord:prototype,bow:prototype'}}},pilot.session);
+   assert.equal(save.status,200);const saved:any=await save.json();
+   const read:any=await(await f.request('me',undefined,pilot.session)).json();
+   const login:any=await(await f.request('login',{username,password})).json();
+   for(const response of [saved,read,login]){
+    assert.equal(response.account.profile.cosmetics.weaponSkins,expected);
+    assert.equal(response.account.profile.cosmetics.preferredSpec,allowed?'cyberlord':undefined);
+    assert.equal(response.account.developer,allowed);
+   }
+   const access=await verifyPlayerToken(login.token,now,f.publicKey);assert.equal(access.developer,allowed);
+   // Standard is represented by omission; unsupported skins never replace it.
+   const reset:any=await(await f.request('profile',{revision:1,profile:{cosmetics:{weaponSkins:'cyberlord:prototype,cyberlord:standard,cyberlord:sheldon,bow:prototype'}}},pilot.session)).json();
+   assert.equal(reset.account.profile.cosmetics.weaponSkins,'bow:prototype');
+  }
+ }finally{f.db.close();}
+});
+
+test('outfits and face gear persist; DEV clothes cannot be forged or retained after revocation',async()=>{
+ const f=await fixture();try{
+  const user:any=await(await f.request('register',{username:'outfits',password})).json();
+  const dev:any=await(await f.request('login',{username:'Sheldon',password})).json();
+  for(const [pilot,allowed] of [[user,false],[dev,true]] as const){
+   const look='feet:barefoot,upper:sheldon-robe,lower:sheldon-pants,hair:wild,hands:gloves,unknown:foo,skin:Aa12fF';
+   const saved:any=await(await f.request('profile',{revision:0,profile:{cosmetics:{look,weaponSkins:'face:visor',developer:true}}},pilot.session)).json();
+   const expected=allowed?'hair:wild,upper:sheldon-robe,lower:sheldon-pants,hands:gloves,feet:barefoot,skin:aa12ff':'hair:wild,hands:gloves,skin:aa12ff';
+   assert.equal(saved.account.profile.cosmetics.look,expected);
+   const reread:any=await(await f.request('me',undefined,pilot.session)).json();
+   assert.equal(reread.account.profile.cosmetics.look,expected);assert.equal(reread.account.profile.cosmetics.weaponSkins,'face:visor');
+  }
+  let revision=1;
+  for(const [look,expected] of [[' upper:hard-jacket ,feet:work-boots,hair:wild','hair:wild,upper:hard-jacket,feet:work-boots'],['hair:wild,hair:spiky',''],['upper:tee,upper:invalid','upper:tee'],['__proto__:x,constructor:x',''],['skin:FFaa00,upper:tee','upper:tee,skin:ffaa00'],['skin:000000,skin:123456','skin:123456'],['skin:123456,skin:bad','skin:123456'],['skin:#112233,skin:abcdef0',''],['skin:000000','skin:000000'],[null,''],[42,''],['x'.repeat(513),''],['','']] as const){
+   const r=await f.request('profile',{revision:revision++,profile:{cosmetics:{look,weaponSkins:'face:mask,face:mask-visor'}}},user.session);assert.equal(r.status,200);const v:any=await r.json();assert.equal(v.account.profile.cosmetics.look,expected);assert.equal(v.account.profile.cosmetics.weaponSkins,'');
+  }
+  // Re-read sanitizes stored selections with current account authority, not the original save's status.
+  f.db.sql.prepare('UPDATE player_accounts SET developer=0 WHERE id=?').run(dev.account.id);
+  const revoked:any=await(await f.request('me',undefined,dev.session)).json();assert.equal(revoked.account.profile.cosmetics.look,'hair:wild,hands:gloves,skin:aa12ff');
+ }finally{f.db.close();}
+});

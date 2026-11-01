@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion.Editor
         private static void Prepare()
         {
             PlayerSettings.companyName="ChipArenaConversion";
-            PlayerSettings.productName="Chip Arena Native Conversion TEST";
+            PlayerSettings.productName="Chip Arena";
             PlayerSettings.bundleVersion="0.5.0-native-updater";
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
@@ -56,6 +56,9 @@ namespace ChipArena.UnityConversion.Editor
         // Runtime-created actor/bolt materials are invisible to scene-based variant stripping.
         internal static void ConfigureRendering()
         {
+            PlayerSettings.colorSpace=ColorSpace.Linear;
+            if(PlayerSettings.colorSpace!=ColorSpace.Linear)throw new BuildFailedException("Native builds require Linear colour space.");
+            Debug.Log("NATIVE_COLOR_SPACE: Linear");
             var graphics=new SerializedObject(GraphicsSettings.GetGraphicsSettings());
             var stripping=graphics.FindProperty("m_InstancingStripping");
             if(stripping==null) throw new BuildFailedException("Cannot configure instancing shader retention in this Unity Editor.");
@@ -64,6 +67,16 @@ namespace ChipArena.UnityConversion.Editor
             graphics.Update();
             if(graphics.FindProperty("m_InstancingStripping").intValue!=2)
                 throw new BuildFailedException("Instancing Variants must be Keep All for runtime-created characters and projectiles.");
+            // Review #82: NativeLighting turns linear fog on at runtime and no scene in the build uses fog, so Automatic fog
+            // stripping would drop every FOG_LINEAR variant and the player would render without the Editor's fog. Keep
+            // linear fog (Custom mode) for the lit, transparent, blast, status and field shaders.
+            var fog=graphics.FindProperty("m_FogStripping");var linear=graphics.FindProperty("m_FogKeepLinear");
+            if(fog==null||linear==null) throw new BuildFailedException("Cannot configure fog shader retention in this Unity Editor.");
+            fog.intValue=1;linear.boolValue=true; // 0=Automatic, 1=Custom.
+            graphics.ApplyModifiedPropertiesWithoutUndo();
+            graphics.Update();
+            if(graphics.FindProperty("m_FogStripping").intValue!=1||!graphics.FindProperty("m_FogKeepLinear").boolValue)
+                throw new BuildFailedException("Fog Modes must be Custom with Linear kept: the game enables linear fog at runtime.");
         }
 
         private static void ConfigureIcon()
@@ -99,30 +112,34 @@ namespace ChipArena.UnityConversion.Editor
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone,ScriptingImplementation.Mono2x);
             string root=Path.GetFullPath(Path.Combine(Application.dataPath,".."));
             string folder=NativeUpdateBuild.PlayerFolder(root);
-            string exe=Path.Combine(folder,"ChipArena-Native-Conversion-TEST.exe");
+            string exe=Path.Combine(folder,"Chip Arena.exe");
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes=new[] { ScenePath }, locationPathName=exe,
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development });
             if(report.summary.result!=BuildResult.Succeeded||!File.Exists(exe)) throw new Exception("Unity Windows build failed: "+report.summary.result);
-            if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"ChipArena-Native-Conversion-TEST_Data")))
+            PackageWindows(root,folder);
+        }
+
+        // Shared by the local builder and the already-exported Build Automation player.
+        internal static NativeBuildIdentity PackageWindows(string root,string folder)
+        {
+            if(!File.Exists(Path.Combine(folder,"UnityPlayer.dll"))||!Directory.Exists(Path.Combine(folder,"Chip Arena_Data")))
                 throw new Exception("The Windows player is incomplete: UnityPlayer.dll or its game data folder is missing.");
-            NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
+            var identity=NativeUpdateBuild.Package(root,folder);string install=Path.GetDirectoryName(folder);
             File.WriteAllText(Path.Combine(install,"READ-ME.txt"),
-                "Chip Arena Native Conversion - CONVERSION CANDIDATE\r\n\r\nRun ChipArena-Native-Conversion-TEST.exe. Keep the entire folder together.\r\n"+
-                "Use the EXE in the top folder: it is the stable launcher. Keep its app subfolder together. Updates are in the game menu.\r\n"+
-                "Updates download published Unity player builds, verify them, restart and restore the previous build if startup fails. Settings stay in the existing user-data folder.\r\n"+
-                "WASD move, double-tap W sprint, mouse look, LMB fire/attack, Q aim/magic ability, E ability, V first/third-person, R reload, RMB block, Shift dodge, Space jump.\r\n"+
-                "Choose weapon and map before starting. G scoreboard / build inspection. Tab melee lock-on. Esc menu. Local, LAN and configured relay rooms.\r\n"+
-                "15 maps, 236 Chips, native PvP and Ward Zero co-op. Full conversion remains in active completion.\r\n"+
-                "Read CONVERSION-STATUS.md and VALIDATION.md for implementation boundaries and unrun native acceptance.\r\n"+
-                "Built with Unity "+Application.unityVersion+". Core checks and player build passed on the build machine; human gameplay acceptance is separate.\r\n");
+                "CHIP ARENA\r\n\r\nOpen Chip Arena.exe to play.\r\n"+
+                "Keep this whole Chip Arena folder together, including the app folder. You can move it or make a shortcut to Chip Arena.exe.\r\n"+
+                "Use Update Game from the main menu for future updates. Your settings and account stay saved.\r\n\r\n"+
+                "WASD move, double-tap W sprint, mouse look, LMB attack, Q aim/ability, E ability, V camera, R reload, RMB block, Shift dodge, Space jump. Esc opens the menu.\r\n");
             string zip=Path.Combine(root,"Builds","Chip-Arena-Native-Conversion-TEST-Windows.zip");
             NativeUpdateBuild.SeedZip(install,zip);
+            File.Copy(zip,Path.Combine(root,"Builds",NativeUpdateRules.PortableZip),true);
             Debug.Log("UNITY_TEST_BUILD_READY: "+zip);
+            return identity;
         }
     }
 
     // Protect builds started from the standard Build Profiles window as well as our build menu.
-    public sealed class PrototypeRenderingBuildGuard : IPreprocessBuildWithReport
+    public sealed class PrototypeRenderingBuildGuard : IPreprocessBuildWithReport,IPostprocessBuildWithReport
     {
         public int callbackOrder => -1000;
         public void OnPreprocessBuild(BuildReport report)
@@ -130,6 +147,11 @@ namespace ChipArena.UnityConversion.Editor
             PrototypeBuild.ConfigureRendering();
             AssetDatabase.SaveAssets();
             Debug.Log("UNITY_INSTANCING_VARIANTS: Keep All (runtime actor/projectile rendering)");
+        }
+        public void OnPostprocessBuild(BuildReport report)
+        {
+            if(report.summary.platform==BuildTarget.StandaloneWindows64)
+                NativeTunnelBuild.Stage(Path.GetFullPath(Path.Combine(Application.dataPath,"..")),Path.GetDirectoryName(report.summary.outputPath));
         }
     }
 }

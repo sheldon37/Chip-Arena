@@ -3,6 +3,14 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeMusicLoop {public double start,end;public int fromBar,toBar;}
     [Serializable] public sealed class NativeMusicSection {public string id;public int fromBar,toBar;}
+    // audio.ts ArenaAudio.updateStageMusic: PvP map music only plays in countdown, fight and result (the player intros, draft and
+    // match screens are silent); the PvE stage track loops from the first in-game phase (lobby and match idle it) and dips to .35
+    // under a player intro sting. The Siren's boss song (bossSong) silences both.
+    public static class NativeStageMusic
+    {
+        public static bool Plays(NativePhase phase,bool pve,bool bossSong)=>!bossSong&&(pve?phase!=NativePhase.Lobby&&phase!=NativePhase.Match:phase==NativePhase.Countdown||phase==NativePhase.Fight||phase==NativePhase.Result);
+        public static float Dip(NativePhase phase,bool pve)=>pve&&phase==NativePhase.Intro?.35f:1;
+    }
     [Serializable] public sealed class NativeBossTrack
     {
         public string id,file;public double duration,introEnd;public double[] beats;public int firstDownbeat;public NativeMusicLoop loop;public NativeMusicSection[] sections;
