@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         // matrix times that bone's bind pose (read off the body's own skinned meshes), in the pilot's body colour with its
         // accent's light; the live body, the draft's seat and a corpse alike. The back emblem stays under the armour's back
         // plate. Under the robot's helmet or half mask (Core NativeRobotHelm, its own ear modules) the armour's ear modules are
-        // left off, and under arm bands its vambraces (NativeRobotSuit.Shown).
+        // left off, and under arm bands its vambraces (NativeRobotSuit.Shown). A corpse keeps them (VisualCorpseSuit).
         // (The first-person arms are the local pilot's: they wear the armour's sweater sleeves and its gauntlets' gloves.)
         private int SuitShown(int id)=>NativeRobotSuit.Shown(VisualOutfitOf(id),HelmEars(id));
         private bool WearsArmour(int id)=>NativeRobotSuit.Worn(VisualOutfitOf(id),NativeRobotSuit.BoneSlot[NativeRobotSuit.Chest]);
@@ -46,6 +46,17 @@ namespace ChipArena.UnityConversion
         // The game joint each suit bone answers to (a pilot's per-joint reveal and tint: the spawn-in's, a corpse's fade).
         private static readonly int[] SuitJoints={CapturedRig.Chest,CapturedRig.Pelvis,CapturedRig.Neck,CapturedRig.Head,CapturedRig.LArm,CapturedRig.RArm,CapturedRig.LElbow,CapturedRig.RElbow,CapturedRig.LHip,CapturedRig.RHip,CapturedRig.LKnee,CapturedRig.RKnee,
             CapturedRig.LHand,CapturedRig.RHand,CapturedRig.LFoot,CapturedRig.RFoot};
+        // The plates a corpse keeps (owner 2026-11-01: "Death is removing suits"; NativeVisualBodyPresentation.cs, the corpse's
+        // frame): a bit per suit bone; a crushed head drops its own, and each half of a split body keeps those on its side of
+        // the cut (the bisect's HalfOf, as the helmet's VisualCorpseHead).
+        private int VisualCorpseSuit(NativeCorpse corpse)
+        {
+            int keep=-1;if(corpse.IsCrushed(CapturedRig.Head))keep&=~(1<<NativeRobotSuit.Head);
+            var first=corpse.Host??corpse;if(first.Twin==null)return corpse.Host==null?keep:0;
+            if(!(first.Bisect is BisectFx fx)||fx.Request==null)return 0;
+            for(int b=0;b<SuitJoints.Length;b++){int j=SuitJoints[b],half=fx.Request.HalfOf(j,CutNum(first.Bind[j].GetColumn(3)));if(corpse.Host==null?half==1:half!=1)keep&=~(1<<b);}
+            return keep;
+        }
         // A body's suit bones (Found: a bit each one found; a piece whose bone the body lacks is left off).
         private SuitRig SuitRigOf(GameObject root)
         {
@@ -63,9 +74,9 @@ namespace ChipArena.UnityConversion
         private readonly Matrix4x4[] suitMatrices=new Matrix4x4[NativeRobotSuit.Bones.Length];private Func<int,Matrix4x4> suitBone;
         private Func<int,float> suitReveal,suitRevealOf;private Func<int,Color> suitTint,suitTintOf;
         private int suitShown;private Func<int,bool> suitVisible;
-        private void VisualSuit(GameObject root,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash)
+        private void VisualSuit(GameObject root,int id,string bodyColor,string accentColor,int layer,Camera camera,Func<int,float> reveal,Func<int,Color> tint,float flash,int keep=-1)
         {
-            int shown=SuitShown(id);if(shown==0||sourceModels==null||!sourceModels.Has(NativeSourceModels.Suit))return;var rig=SuitRigOf(root);if(rig==null||(shown&=rig.Found)==0)return;
+            int shown=SuitShown(id)&keep;if(shown==0||sourceModels==null||!sourceModels.Has(NativeSourceModels.Suit))return;var rig=SuitRigOf(root);if(rig==null||(shown&=rig.Found)==0)return;
             for(int i=0;i<suitMatrices.Length;i++)suitMatrices[i]=rig.Bones[i]!=null?rig.Bones[i].localToWorldMatrix*rig.Bind[i]:Matrix4x4.identity;
             suitBone??=i=>suitMatrices[i];suitReveal=reveal;suitTint=tint;suitShown=shown;suitVisible??=b=>(suitShown>>b&1)!=0;
             sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,suitBone,suitVisible,layer,camera,BodyTint(bodyColor),AccentTint(accentColor),1,
