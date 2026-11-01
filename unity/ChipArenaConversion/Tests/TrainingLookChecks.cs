@@ -251,6 +251,7 @@ internal static class TrainingLookChecks
         }
         var shader=R("Assets/ChipArena/Resources/NativeTrainingStudio.shader");
         Check(shader.Contains("Shader \"ChipArena/NativeTrainingStudio\"")&&shader.Contains("_Mode<.5")&&shader.Contains("_Mode<1.5")&&shader.Contains("tex2Dgrad")&&shader.Contains("UNITY_APPLY_FOG_COLOR(i.fogCoord,shade,fixed4(1,1,1,1))"),"studio shader: grid, screen and tag modes, mip-correct sampling, the grid fogs to no change");
+        int fs=shader.IndexOf("fixed4 frag(",StringComparison.Ordinal),fe=shader.IndexOf("ENDCG",fs,StringComparison.Ordinal);Check(fs>0&&fe>fs&&!Regex.IsMatch(shader.Substring(fs,fe-fs),@"\b(if|for|while)\s*\(")&&Regex.Matches(shader.Substring(fs,fe-fs),@"\{UNITY_APPLY_FOG").Count==3,"studio shader: no flow control round its derivatives, each fog macro in its own block");
         var reserved=new[]{"line","point","triangle","sample","linear","texture","vector","matrix","pass","compile","string","precise","centroid","shared","sampler","register","lineadj","triangleadj","nointerpolation","noperspective","snorm","unorm","uniform","in","out","inout","static","const"};
         foreach(Match m in Regex.Matches(shader,@"\b(?:float[234]?|half[234]?|fixed[234]?|int[234]?|bool|sampler2D)\s+([A-Za-z_][A-Za-z0-9_]*)"))Check(!reserved.Contains(m.Groups[1].Value),"shader name not reserved: "+m.Groups[1].Value);
         var guids=new Dictionary<string,string>();

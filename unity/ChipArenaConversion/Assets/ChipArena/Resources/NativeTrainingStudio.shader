@@ -79,29 +79,23 @@ Shader "ChipArena/NativeTrainingStudio"
                 float mixAmount=saturate(max(dudv.x,dudv.y)-1.0);
                 return lerp(snapped,texel,mixAmount)*_MainTex_TexelSize.xy;
             }
+            // every mode's value is computed with no flow control round the derivatives (fwidth, ddx, ddy, tex2Dgrad), then
+            // the material's mode picks one; each fog macro sits in its own block (it declares its factor)
             fixed4 frag(v2f i):SV_Target
             {
-                if(_Mode<.5)
-                {
-                    float ink=GridAmount(i.world);
-                    fixed4 shade=fixed4(lerp(float3(1,1,1),_GridInk.rgb,ink),1);
-                    UNITY_APPLY_FOG_COLOR(i.fogCoord,shade,fixed4(1,1,1,1));
-                    return shade;
-                }
+                float ink=GridAmount(i.world);
                 float4 tex=tex2Dgrad(_MainTex,CrispUv(i.uv),ddx(i.uv),ddy(i.uv));
                 float2 edge=min(i.uv,1.0-i.uv)*_MainTex_TexelSize.zw;
                 float rim=saturate(1.0-min(edge.x,edge.y)/7.0)*_Flash;
                 float3 glow=tex.rgb*_Gain+float3(.35,1.3,1.6)*rim;
-                if(_Mode<1.5)
-                {
-                    fixed4 screen=fixed4(glow,1);
-                    UNITY_APPLY_FOG(i.fogCoord,screen);
-                    return screen;
-                }
                 float a=saturate(max(tex.a,rim))*_Fade;
+                fixed4 shade=fixed4(lerp(float3(1,1,1),_GridInk.rgb,ink),1);
+                {UNITY_APPLY_FOG_COLOR(i.fogCoord,shade,fixed4(1,1,1,1));}
+                fixed4 screen=fixed4(glow,1);
+                {UNITY_APPLY_FOG(i.fogCoord,screen);}
                 fixed4 tag=fixed4(glow*a,a);
-                UNITY_APPLY_FOG_COLOR(i.fogCoord,tag,fixed4(unity_FogColor.rgb*a,a));
-                return tag;
+                {UNITY_APPLY_FOG_COLOR(i.fogCoord,tag,fixed4(unity_FogColor.rgb*a,a));}
+                return _Mode<.5?shade:(_Mode<1.5?screen:tag);
             }
             ENDCG
         }
