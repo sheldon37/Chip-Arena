@@ -1,3 +1,25 @@
+## 2026-11-01 — Claude: intros wear the pilots' customizations; corpses keep the robot plates
+
+- **Branch/base:** `claude/intro-customizations` from shared `269f332`. Implementation `0c3f74f`, then this log. Merged
+  into shared and the builder (test channel). Not a live release.
+- **Task:** owner: "Intro animations aren't showing correct customizations" and "Death is removing suits".
+- **Changes (presentation only):**
+  - **Intros:** `ConversionGame` sets `presentation.WeaponLoadout=arena` before `RenderIntro`. The presentation reads
+    each pilot's seat (outfit, weapon skins, face gear, helmet) through it, and it was set only after the intro returned,
+    so an entrance used the previous match's seats or none (the default robot pieces).
+  - **Corpses** (`VisualCorpseShown`, `VisualCorpseSuit`): the plates were drawn only on a whole, uncrushed corpse with no
+    kill look. Now each half of a split body keeps the plates on its side of the cut (the bisect's `HalfOf`, as the
+    helmet's half test), a crushed head loses only its own plates, and Frostbreak tints them the ice's colour. Soul
+    Drift's ghost still goes without (opaque plates on a ghost). `VisualSuit` takes a bone mask.
+- **Affected systems:** the entrance and corpse presentation. No hit timing, hitbox, damage, cooldown, movement or
+  network change.
+- **Checks:** RobotSuitChecks pin updated. Full suite on a clean LF worktree: 891 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch applied there only). `git diff --check` clean. In
+  Unity (BoZo): the entrance in a hoodie, khakis, bare hands and sneakers now shows them, not the armour; a plain death
+  and a sword death that severs a hand keep the back plate, pauldrons and helmet (0.6 to 1.8 s after death); a temporary log confirmed the corpse
+  queues every plate (removed).
+- **Not checked:** a bisected corpse's two halves and Frostbreak in a capture (the halves' split follows the helmet's
+  own test), a guest's entrance over the network, a Windows build.
+
 ## 2026-11-01 — Claude: first-person model weapons at a readable size
 
 - **Branch/base:** `claude/first-person-weapons` from shared `df30400`. Implementation `874bcc3`, then this log. Merged
