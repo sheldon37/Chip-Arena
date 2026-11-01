@@ -1,3 +1,30 @@
+## 2026-11-01 — Claude: first-person model weapons at a readable size
+
+- **Branch/base:** `claude/first-person-weapons` from shared `df30400`. Implementation `874bcc3`, then this log. Merged
+  into shared and the builder (test channel). Not a live release.
+- **Task:** owner: "Also need to fix first person, weapons looks super small". The visual body's first-person arms hold
+  the life-size weapon models in the voxel view's frame (tuned for its chunky weapons), so the pistol sat on the bottom
+  edge and the sword read as a needle. The classic voxel view has the same framing; this is not a regression.
+- **Changes (presentation only):**
+  - `Core/NativeFirstPersonPose`: `ModelView` 1.7 (guns), `ModelBlade` 1.3 (blades, bow, staffs), `ModelScale`, and
+    `ModelLift` (camera frame: pistol 10 cm up and 2 cm in, long guns 5 cm up, everything else none).
+  - `VisualViewPose`: with a model in hand, the view body (its forearms and hands) is drawn at that scale about the right
+    hand's weapon frame, and both view-rig hands carry it, so the model, the muzzle flash, the rounds' visual origin and
+    the kit pieces drawn there grow together. `VisualViewRestore` puts the left hand's scale back too.
+  - `VisualViewLift` raises the hold while the view body holds a model; `VisualViewSight` scales the sight with the
+    model, so the rifle's sight still lines up as it goes to the scope.
+  - Unchanged: the voxel and Classic views, non-Standard skins (the game's models), and the specs this install draws
+    with the voxel models (daggers, shield, bow without the pack bank).
+- **Affected systems:** first-person view model only. No aim, muzzle, reach, hit timing, hitbox, damage, cooldown,
+  movement or network change.
+- **Checks:** CoreTests `VisualRigChecks` pin updated plus new checks (sizes, order, the left hand's restore, the sight
+  and lift hooks). Full suite on a clean LF worktree: 891 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch applied there only). `git diff --check` clean. In Unity
+  (BoZo first-person captures, brickfall): pistol, rifle, machine gun, sword and greatsword idle; sword swing and
+  pistol fire (flash and tracer at the larger muzzle); scoped rifle aiming.
+- **Not checked:** a Windows build, every weapon skin, the bow and staffs with the pack bank installed, ultrawide
+  aspects. The sword's idle off-hand fist still shows at the bottom edge, as before.
+- **Next:** if the owner wants other sizes, the three constants in `NativeFirstPersonPose` are the dials.
+
 ## 2026-11-01 — Claude: the robot armour as clothing (four outfit pieces)
 
 - **Branch/base:** `claude/robot-clothes` from shared `6b5d9e4`. Implementation `5271b43` and a check pin `90f7a48`, then docs
