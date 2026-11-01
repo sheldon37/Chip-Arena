@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             string R(string p)=>File.ReadAllText(Path.Combine(root,p));
             var o=new JsonSerializerOptions{IncludeFields=true};
             var set=JsonSerializer.Deserialize<MapLookSet>(R("Assets/Conversion/Resources/MapLooks.json"),o);NativeMapLooks.Validate(set);
-            Switch(set);Console.WriteLine("PASS map style: the switch (only expedition-city, brickfall, factory, cybercity, Ward Zero (quarantine), Central Station and the Ironworks turn it on; legacy and every other map write 0) and the styled look keeps the fog end, lights, block and kit looks and dressing the budgets read ("+count+" checks)");
+            Switch(set);Console.WriteLine("PASS map style: the switch (only expedition-city, brickfall, factory, cybercity, Ward Zero (quarantine), Central Station, the Ironworks and the Training Room turn it on; legacy and every other map write 0) and the styled look keeps the fog end, lights, block and kit looks and dressing the budgets read ("+count+" checks)");
             Shaders(root,R);Console.WriteLine("PASS map style: the shaders' toon constants and formulas are the Core's, every legacy path is kept behind the one uniform branch, the outline marks and tests stencil bit 16 ("+count+" checks)");
             Ramp();Console.WriteLine("PASS map style: the ramp (three bands, monotonic, a cast shadow takes the turned-away shade), the soft stairs, the stepped point lights and the rounded normal ("+count+" checks)");
             Mesh();var lg=NativeBlockLooks.Build(0);Console.WriteLine("PASS map style: the rounded box is closed and outward at every size, inside the block, on the legacy faces, deterministic and under the legacy S0 mesh ("+NativeToonMesh.VertexCount+" vertices and "+NativeToonMesh.TriangleCount+" triangles against "+lg.Vertices+" and "+lg.Triangles.Length/3+"); stages 1-4 keep the legacy meshes ("+count+" checks)");
@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
         private static void Switch(MapLookSet set)
         {
             var on=set.maps.Where(m=>NativeMapStyle.On(m,false)).Select(m=>m.id).OrderBy(x=>x).ToArray();
-            Check(on.SequenceEqual(new[]{"breakwater","brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","factory","harbor","polar","rig","siren-quarantine","skyframe"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks; the five M1 stages) turn the style on: "+string.Join(",",on));
+            Check(on.SequenceEqual(new[]{"breakwater","brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","factory","harbor","polar","rig","siren-quarantine","skyframe","training"}),"only the styled maps (stage 1's pilots; stage 2's Factory, Cyber City, Ward Zero's quarantine look, Central Station and the Ironworks; the five M1 stages; the Training Room) turn the style on: "+string.Join(",",on));
             var state=new MapStyleState();
             foreach(var m in set.maps)
             {
@@ -454,7 +454,7 @@ namespace ChipArena.UnityConversion
         // ---- the data ----
         private static void Data(MapLookSet set)
         {
-            foreach(var id in new[]{"expedition-city","brickfall","factory","cybercity","siren-quarantine","expedition-transit","expedition-foundry"})
+            foreach(var id in new[]{"expedition-city","brickfall","factory","cybercity","siren-quarantine","expedition-transit","expedition-foundry","training"})
             {
                 var t=NativeMapLooks.Find(set,id).toon;NativeMapStyle.Validate(id,t);
                 Check(t.line>0&&t.lineFadeEnd<=NativeMapLooks.Find(set,id).fog.end&&t.skyToon==(NativeMapLooks.Find(set,id).sky.variant=="none"?0:1)&&t.saturation>=1&&t.saturation<=1.2f&&t.detail<1,id+": outline faded within the fog, the anime sky where the map has a sky (none sealed), a light grade, simplified detail");
@@ -476,7 +476,7 @@ namespace ChipArena.UnityConversion
                 {var b=Copy();breakIt(b);bool threw=false;try{NativeMapStyle.Validate(id,b);}catch(InvalidOperationException){threw=true;}Check(threw,id+": refused: "+what);}
             }
             var off=new MapLookToon{on=false,softness=float.NaN};NativeMapStyle.Validate("x",off);Check(true,"a look with the style off is never read");
-            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==12,"twelve looks carry the style (stage 1's pilots; stage 2's Factory, Cyber City, quarantine, Central Station and the Ironworks; the five M1 stages)");
+            Check(set.maps.Count(m=>m.toon!=null&&m.toon.on)==13,"thirteen looks carry the style (stage 1's pilots; stage 2's Factory, Cyber City, quarantine, Central Station and the Ironworks; the Training Room's studio; the five M1 stages)");
         }
     }
 }

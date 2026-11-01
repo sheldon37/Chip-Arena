@@ -304,6 +304,55 @@ in PvP rotation or the PvP map list. The menu entry and its mode are Astra's.
   - Cyan lane markers and the destruction colour code on the samples.
   - A DPS and hit readout board over the range (presentation; it reads the sandbox's damage events).
 
+### Training Room presentation (Claude, 2026-11-01; branch `claude/training-room-look`)
+
+Presentation only: no simulation, rule, network, save, damage or timing change. Marks stay presentation constants derived
+from the map (`trainingPads`, blocks, hazards, bounds) plus two draft constants the map does not carry (the sprint straight,
+the ring's 7 m apothem); no `trainingMarks` field.
+
+- **Look (`training-studio`, MapLooks.json):** a sealed studio (sky `none`), a bright neutral key and rim with no shadows
+  (the roof block would shade the whole hall), a high trilight, light fog from 70 m, three soft practicals (hazard bay,
+  backstop, spawn), the anime style on with a neutral grade, and block looks for every training id (light grey floor and
+  walls, dark kerbs, the ring's orange kerb, the samples by colour code, the banded structural column). Its `kitLooks`
+  give the bay's rig parts the Factory kit's looks.
+- **Floor and wall paint** (Core `NativeTrainingMarks`, one SourceLit mesh without outlines):
+  - a metre grid with bolder 5 m and 10 m lines over the hall, and over the lanes a grid measured from the firing line
+    (Resources/NativeTrainingStudio.shader, multiplied over the floor);
+  - the firing line, a shooter's box and number per lane, dashed lane edges, a 1 m ruler along the barrier with numbers,
+    cyan lane markers along the kerb tops;
+  - per pad: a puck in its kind's colour (cyan static, magenta strafe, orange melee) with a crosshair and facing chevron,
+    and an ID plate with the authored distance label ("20 M") and the pad ID ("L1-20"); the strafe pad's rail from
+    `rail.a` to `rail.b` with lit edges, end stops and ±metre ticks; the melee pads' 1, 2 and 3 m reach arcs;
+  - the spawn pad, the sprint straight's 5 m marks and run-out, step heights on tops and risers, gap widths, deck heights,
+    cover heights, the lab wall's sill, head and door ticks, the samples' colour plates with their hp, the bay's sign and
+    each sample's name, zone labels, the walls' wainscot, seams, titles and height rulers.
+- **Fixtures** (outlined): the readout boards and their hangers, the roof's light panels.
+- **Readout boards:** one board per authored distance, hung over its distance line (bottom 7 m), a cell over each lane;
+  the ring's board north of the ring (bottom 5.8 m). Each cell shows the pad's header, total HP, last hit with a HEAD badge,
+  rolling 5 s DPS, source (weapon or hazard and hit kind) and distance. A floating tag over each recently hit target
+  (6 s hold, 2 s fade, the 3 most recent only) shows the same cell, camera-facing at a share of the view's height.
+  Rows come from `NativeArena.TrainingReadouts()` (the host's meters, a guest's replicated `TrainingRemote`) at 10 Hz; a
+  cell's texture is repainted only when a drawn value changes.
+- **Hazard bay:** the existing hazard presentation draws these kinds only on the Factory (its crane is the Factory hall's
+  bridge), so Core `NativeTrainingBay` draws the five samples from the simulation's pure clocks (`NativeFactoryHazards.State`,
+  `NativeCyberCityHazards.At`) with the Factory kit's parts and lamp rules: the slot saw, the press ram, the vent's lamps
+  and steam, the grid's lamps, bars and arcs, and a monorail hoist under the runway block with its load and zone lamps.
+  It also draws the strafing target's carriage.
+- **Hooks:** `TrainingScenery(arena)` in `SourceWorld` and `TrainingPrepare(arena)` in `PrewarmStage` (one line each);
+  everything else is Runtime/NativeTrainingPresentation.cs, a component that draws only on the training map.
+- **Checks:** `dotnet run --project Tests/CoreTests.csproj -c Release -- --training-look` (also in the full suite):
+  placement from the pads, nothing in play space (floor paint at most 3 cm, wall and block-face paint at most 3 cm proud,
+  fixtures from 5.5 m, under the roof, clear of blocks and out of reach), determinism, readout formatting and host/guest
+  parity, bay capacities, no per-frame allocation, the look, and text scans of the runtime wiring. MapStyleChecks counts the
+  training look among the styled looks; TransitionLoadingChecks requires its prewarm.
+- **Unverified:** the Unity Editor, a Windows build and the shader compile (only Runtime and Editor C# were compiled
+  against the Unity assemblies); the look under Unity's real NativeBlockLit and toon outline (the renders are an offline
+  WebGL approximation); readability on screen; guest play. The host's `TrainingReadouts()` allocates its rows when polled
+  (10 Hz); a non-allocating accessor would be Astra's change.
+- **For Astra (found, not changed):** `TrainingStep` pins each target's body at its pad's `pos`, whose y is 1.1 (the spawn
+  convention, floor + 1.1); with the capsule's 0.85 m half height the drawn feet (body − 0.865) stand about 0.24 m above
+  the floor and the pad's puck. Pinning at floor + 0.865 (or keeping the settled y) would ground them; it is a sim change.
+
 ## M1 drafts (2026-10-31): what is built and checked
 
 Run any draft with `python3 docs/arenas/scripts/<id>_m1.py [--out DIR]`. It prints the plan and checks, exits 1 if a check
