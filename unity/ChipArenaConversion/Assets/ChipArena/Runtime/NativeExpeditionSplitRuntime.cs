@@ -15,6 +15,10 @@ namespace ChipArena.UnityConversion
         private readonly ExpeditionDeploymentLoadGate deploymentLoadGate=new ExpeditionDeploymentLoadGate();
         private bool deploymentInitialReady;private int splitLoop;private NativeSeat[] splitSeats;private NativeExpedition splitRun;private long splitTick,splitReturn;
         private bool ExpeditionSplit=>splitAreas!=null;
+        // Readiness is a run-wide barrier, not just a per-pilot input gate. Commands
+        // mutate inventory/votes immediately, even while the fixed simulation is held.
+        private string SplitCommandBlock=>expeditionError!=null?"Expedition stopped. Leave the run and deploy again.":
+            !deploymentInitialReady?"Waiting for the party to finish loading.":null;
         private bool SplitLocalLoading=>ExpeditionSplit&&arena?.Local==null;
         private NativeArena SplitPilotArena(string who)=>splitCohorts==null?null:splitAreas.Find(splitCohorts.Member(who)?.Area)?.Arena;
         private int SplitSeat(string who)=>splitSeats?.FirstOrDefault(s=>s.access?.AccountId==who)?.id??0;
@@ -230,8 +234,14 @@ namespace ChipArena.UnityConversion
             {
                 if(member==null||peer.Seat.access.Expires<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()||message.epoch!=networkEpoch||!splitCohorts.Accepts(who,message.areaIdentity))return true;
                 var sim=SplitPilotArena(who);
-                if(message.type=="input"){if(message.generation==sim.Generation)sim.AcceptInput(peer.Seat.id,message.input);return true;}
+                if(message.type=="input"){if(SplitCommandBlock==null&&message.generation==sim.Generation)sim.AcceptInput(peer.Seat.id,message.input);return true;}
                 if(!peer.Changes.Allow(Time.unscaledTime)||!member.Ticket.Matches(message.expeditionCommand?.areaIdentity))return true;
+                if(SplitCommandBlock is string blocked)
+                {
+                    var request=message.expeditionCommand;
+                    if(ExpeditionValidation.Id(request.transaction))peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-reply",expeditionReply=new ExpeditionCommandReply{transaction=request.transaction,areaIdentity=member.Ticket.Copy(),state=ExpeditionCommandState.Refused,reason=blocked}}));
+                    return true;
+                }
                 var reply=splitRouters[member.Area].Execute(who,message.expeditionCommand);peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-reply",expeditionReply=reply}));return true;
             }
             // The area protocol owns readiness and combat commands. Legacy PvE / stage
@@ -243,7 +253,7 @@ namespace ChipArena.UnityConversion
             private readonly ConversionGame game;public string Viewer{get;}
             public SplitLocalCommands(ConversionGame game,string viewer){this.game=game;Viewer=viewer;}
             private ExpeditionSession Session=>game.splitSessions[game.splitCohorts.Member(Viewer).Area];
-            public string Blocked(ExpeditionCommand command)=>(game.splitCohorts.Member(Viewer).Pending!=null||!game.splitCohorts.Member(Viewer).Ready)?"Loading area":new ExpeditionHostCommands(Session.Run,Viewer,Session.Hooks()).Blocked(command);
+            public string Blocked(ExpeditionCommand command)=>game.SplitCommandBlock??((game.splitCohorts.Member(Viewer).Pending!=null||!game.splitCohorts.Member(Viewer).Ready)?"Loading area":new ExpeditionHostCommands(Session.Run,Viewer,Session.Hooks()).Blocked(command));
             public ExpeditionCommandResult Send(ExpeditionCommand command)=>Blocked(command) is string why?ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,why):Session.Execute(Viewer,command);
         }
     }

@@ -18,6 +18,10 @@ Task branch `codex/deployment-completion` combines continuation `c9039362` with 
 
 The combined candidate now includes shared stage/Training presentation at `6b5d9e4d`. Generated runs use the existing 60-second loading allowance for the initial ready barrier, measured from the completion of host area construction on a real-time clock. Progress/ready packets cannot extend it. A timeout freezes the run, reports the failure to the host and connected guests, and requires leaving/restarting; it never starts combat with an unready party. A late acknowledgement cannot revive the failed run. Once initial readiness succeeds, later subset loads use their existing independent rules. Readiness acknowledgements also require a current connection epoch and unexpired authentication.
 
+### Astra follow-up: command barrier
+
+Initial party loading also blocks immediate Expedition commands, including inventory and vote changes, from both the local host and authenticated guests. Guest inputs are discarded during this hold. Once the initial barrier succeeds, normal per-area readiness controls apply again. Any stopped split run refuses further commands; blocked guest requests receive a rate-limited, transaction- and area-bound refusal without entering the command journal.
+
 ### Remaining acceptance and presentation work
 
 This is source integration, not a verified Windows release. Native Unity/PhysX execution, the station shader, real co-op join/leave/reconnect, initial-load failure handling, multi-seed native performance and rendered acceptance must pass before shared/builder publication. The build gate now includes generated-world native placements/routes, the full composed-layout startup validator and Unity codec round trips for both lobby and combined snapshots.

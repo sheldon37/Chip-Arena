@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-11-01 Astra deployment recovery (`codex/deployment-recovery-20261101`, from PR #303 at `032d9d07`): initial-party loading and stopped-run guards now cover immediate host/guest commands and guest input as well as fixed simulation. See the newest DEV_LOG receipt. Source remains draft pending native/Windows acceptance, Claude district visuals and active-run endpoint migration; no shared/builder or binary publication.
+
 2026-10-31 Astra deployment follow-up (`codex/deployment-followup`, PR #303 continuation): current shared stage/Training presentation integrated; fixed 60-second initial-load failure boundary and authenticated/current-epoch readiness. Full managed/relay (895 PASS), Python (167, one skip), package and pinned Unity semantic checks pass. Draft only; native/Windows co-op acceptance, Claude generated-district visuals and active-run endpoint migration remain. Original #303 was pushed; earlier upload-block notes below are historical.
 
 2026-11-01 Claude five M1 stage looks (`claude/new-stages-look`, from shared `3323310`; merged into shared and the builder; presentation only; docs/arenas/NEW-STAGES.md "Stage looks (presentation)"): Breakwater, Pier 9, Skyframe, Deepwell and Polaris each have their own look, weather, kit detail, hazard rigs on the replicated state, box-built backdrops (they read without the kit bank) and effects. Managed, Unity-compile, relay, Python and packaging checks pass; not run in the Unity Editor or on Windows. Next: a PC pass with the kit bank (yards, liveries), then Unity/Windows.

@@ -1,3 +1,10 @@
+## 2026-11-01 — Astra: resumed deployment command barrier
+
+- Branch `codex/deployment-recovery-20261101`, based on verified PR #303 head `032d9d07` (`codex/deployment-completion`). The prior candidate was already pushed; recovered work does not replace Claude's changes.
+- Found that per-member readiness allowed immediate commands while the run-wide initial loading barrier still held, and that stopped runs could still accept commands. Added a shared guard for host-local commands, authenticated guest requests and guest input. Blocked guest commands receive bounded, rate-limited refusals with their transaction and area identity; they do not enter the command journal. Successful initial readiness restores existing per-area behavior.
+- Checks: full managed/real-relay suite exit 0 (895 PASS lines; all 35 managed-core checks), including 3,681 deployment checks; Python 167 tests OK, one skip; pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings. A reflection probe against the compiled Player assembly passed 10 actual command-guard cases (waiting, ready release, failure precedence and host refusal before session access), without invoking Unity native APIs. Whitespace checks pass. SDK CLI process lookup is unavailable in this host; SDK Roslyn compiled the same sources in sorted order with the existing runtime settings. An initial unsorted temporary harness hit a model static-initialization failure; corrected source ordering passed. Guest transport behavior still requires native co-op acceptance.
+- No combat timing, damage, hitbox, animation, map or visual changes. Native Unity/PhysX, Windows co-op acceptance, generated-district visuals and active-run endpoint migration remain outstanding. Keep #303 draft; no shared/builder merge or binary publication.
+
 ## 2026-10-31 — Astra: deployment follow-up and current shared presentation
 
 - Branch `codex/deployment-followup`, from PR #303 head `05ad8c42`; merged shared `6b5d9e4d`, preserving Claude's new-stage and Training Room presentation and both agents' logs. Original #303 is already pushed; earlier export-block entries are historical.
