@@ -14,6 +14,10 @@ Task branch `codex/deployment-completion` combines continuation `c9039362` with 
 - Deployment capability is now `2`; capability `1` only implemented the dormant staging descriptor and cannot join this live path. General fixed-M1 networking is unchanged.
 - Owner confirmed the optional mutator machine should wait for a separately agreed effect list. Live inputs supply an empty catalogue, so it stays unavailable; skipping is valid. Preview-only effect names are not live gameplay effects.
 
+### Astra follow-up: bounded initial loading
+
+The combined candidate now includes shared stage/Training presentation at `6b5d9e4d`. Generated runs use the existing 60-second loading allowance for the initial ready barrier, measured from the completion of host area construction on a real-time clock. Progress/ready packets cannot extend it. A timeout freezes the run, reports the failure to the host and connected guests, and requires leaving/restarting; it never starts combat with an unready party. A late acknowledgement cannot revive the failed run. Once initial readiness succeeds, later subset loads use their existing independent rules. Readiness acknowledgements also require a current connection epoch and unexpired authentication.
+
 ### Remaining acceptance and presentation work
 
 This is source integration, not a verified Windows release. Native Unity/PhysX execution, the station shader, real co-op join/leave/reconnect, initial-load failure handling, multi-seed native performance and rendered acceptance must pass before shared/builder publication. The build gate now includes generated-world native placements/routes, the full composed-layout startup validator and Unity codec round trips for both lobby and combined snapshots.

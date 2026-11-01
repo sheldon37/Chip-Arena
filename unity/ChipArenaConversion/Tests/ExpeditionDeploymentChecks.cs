@@ -78,6 +78,14 @@ namespace ChipArena.UnityConversion
             Check(Json(a.Snapshot())==frozen,"nested snapshot deep copy");
             var different=new NativeExpeditionDeployment("station","host",54321);
             Check(different.RollInstances("host",Pool)&&different.Snapshot().worldSeed!=initial.worldSeed,"new seed changes the world seed");
+            var gate=new ExpeditionDeploymentLoadGate();gate.Begin(100);
+            Check(!gate.Update(100,false)&&!gate.Failed,"initial load holds simulation");
+            Check(!gate.Update(159.9,false)&&!gate.Failed,"slow load gets existing sixty-second grace");
+            Check(!gate.Update(160,false)&&gate.Failed,"initial load expires with a fixed deadline");
+            Check(!gate.Update(161,true),"late acknowledgement cannot restart failed run");
+            gate.Begin(200);Check(gate.Update(201,true),"new run accepts a ready party");
+            Check(gate.Update(300,false)&&!gate.Failed,"later subset loads do not reopen initial barrier");
+            gate.Begin(400);Check(!gate.Update(460,true)&&gate.Failed,"readiness at deadline cannot bypass failure");
             RoomChecks(root);
             Console.WriteLine("PASS Expedition deployment: "+count+" checks");
         }

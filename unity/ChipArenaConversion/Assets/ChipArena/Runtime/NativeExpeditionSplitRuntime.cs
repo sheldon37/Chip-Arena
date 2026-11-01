@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
         private NativeExpeditionAreaTransfers splitTransfers;
         private readonly Dictionary<string,ExpeditionSession> splitSessions=new Dictionary<string,ExpeditionSession>();
         private readonly Dictionary<string,ExpeditionCommandRouter> splitRouters=new Dictionary<string,ExpeditionCommandRouter>();
+        private readonly ExpeditionDeploymentLoadGate deploymentLoadGate=new ExpeditionDeploymentLoadGate();
         private bool deploymentInitialReady;private int splitLoop;private NativeSeat[] splitSeats;private NativeExpedition splitRun;private long splitTick,splitReturn;
         private bool ExpeditionSplit=>splitAreas!=null;
         private bool SplitLocalLoading=>ExpeditionSplit&&arena?.Local==null;
@@ -57,7 +58,7 @@ namespace ChipArena.UnityConversion
             splitTransfers=new NativeExpeditionAreaTransfers(splitAreas,expeditionM1Layout,splitCohorts,SplitSeat);
             BindSplitLocal(expeditionM1Layout.world);
             expeditionSession=splitSessions[expeditionM1Layout.world];expeditionLocal=new SplitLocalCommands(this,account.Access.AccountId);
-            ExpeditionView=SplitView(account.Access.AccountId);expeditionNextSend=0;
+            ExpeditionView=SplitView(account.Access.AccountId);expeditionNextSend=0;deploymentLoadGate.Begin(Time.realtimeSinceStartupAsDouble);
         }
         private bool SplitReprint(string payer,string target)
         {
@@ -111,7 +112,13 @@ namespace ChipArena.UnityConversion
                 if(!own.Ready&&splitAreas.Find(own.Ticket.area)?.Load==ExpeditionRuntimeLoad.Ready&&ReferenceEquals(stageSeen,arena)&&StagePresentationReady&&StagePresentation.Generation==arena.Generation)splitCohorts.Acknowledge(own.Account,own.Ticket);
                 if(!deploymentInitialReady)
                 {
-                    deploymentInitialReady=splitCohorts.Members.Where(m=>m.Connected).All(m=>m.Ready);
+                    deploymentInitialReady=deploymentLoadGate.Update(Time.realtimeSinceStartupAsDouble,splitCohorts.Members.Where(m=>m.Connected).All(m=>m.Ready));
+                    if(deploymentLoadGate.Failed)
+                    {
+                        networkStatus="Deployment loading timed out. Leave the run and deploy again.";
+                        foreach(var peer in peers.Where(p=>p.Connection?.Closed==false))peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="error",error=networkStatus}));
+                        pending=new InputFrame();throw new InvalidOperationException(networkStatus);
+                    }
                     if(!deploymentInitialReady){pending=new InputFrame();ExpeditionView=SplitView(account.Access.AccountId);return;}
                 }
                 var before=splitCohorts.Members;
@@ -216,7 +223,7 @@ namespace ChipArena.UnityConversion
             if(message.type=="expedition-area-ready")
             {
                 var t=message.expeditionAreaReady;
-                if(member!=null&&peer.Changes.Allow(Time.unscaledTime)&&message.areaIdentity?.Matches(member.Ticket)==true&&t!=null&&t.run==member.Ticket.run&&t.epoch==member.Ticket.epoch&&t.target==member.Ticket.area&&t.layout==member.Ticket.layout&&t.generation==member.Ticket.serial)splitCohorts.Acknowledge(who,member.Ticket);
+                if(member!=null&&peer.Seat.access.Expires>DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()&&message.epoch==networkEpoch&&peer.Changes.Allow(Time.unscaledTime)&&message.areaIdentity?.Matches(member.Ticket)==true&&t!=null&&t.run==member.Ticket.run&&t.epoch==member.Ticket.epoch&&t.target==member.Ticket.area&&t.layout==member.Ticket.layout&&t.generation==member.Ticket.serial)splitCohorts.Acknowledge(who,member.Ticket);
                 return true;
             }
             if(message.type=="input"||message.type=="expedition-command")

@@ -1,3 +1,110 @@
+## 2026-10-31 — Astra: deployment follow-up and current shared presentation
+
+- Branch `codex/deployment-followup`, from PR #303 head `05ad8c42`; merged shared `6b5d9e4d`, preserving Claude's new-stage and Training Room presentation and both agents' logs. Original #303 is already pushed; earlier export-block entries are historical.
+- Implementation `18118ec8`: generated-run initial readiness has a fixed 60-second real-time deadline after area construction, matching the existing load allowance. Timeout stops the run with an explicit host/guest status and requires leaving/restarting; no combat, time or rewards advance. Late acknowledgements cannot release a failed barrier. Normal later subset transfers are unchanged. Ready messages now check network epoch and authentication expiry.
+- Actual checks: full managed/real-relay suite exit 0, 895 PASS lines and all 35 managed-core checks. Focused deployment 3,681 checks. Python 167 tests OK (one skipped); source package 2,905 files; Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes. No Unity execution, native PhysX, shader compile, Windows/co-op acceptance or publication.
+- No damage, hitbox, cooldown, animation or movement changes. Source integration remains draft: Claude's generated-district dressing/transitions, native loading/failure/reconnect and multi-seed acceptance, and active-run endpoint migration remain. Do not merge/sync this unfinished feature to the builder. PR #303 is the consolidated handoff; optional mutators remain deferred.
+
+## 2026-11-01 — Claude: the five M1 stages drawn (looks, kit, rigs, backdrops, effects)
+
+- **Branch/base:** `claude/new-stages-look` from shared `3323310`. Shared was merged in at `0c80fa9` and `9fa08ed`.
+  Implementation `20be166`, then docs and checks `3a7a269` and the asset receipt `b3965c1`, then this log. Merged into
+  shared and the builder.
+- **Task:** Astra's M1 handoff, Claude's part: the stage looks, dressing and hazard rigs for Breakwater, Pier 9, Skyframe,
+  Deepwell and Polaris Station. The Training Room is the entry below.
+- **Changes (presentation only):** drawn only on these five map ids; every other map draws as before.
+  - **Looks:** a MapLooks entry per stage, each with the anime style, the advanced lighting and weather.
+    - Breakwater: blue hour with drizzle.
+    - Pier 9: night with drizzle.
+    - Skyframe: high noon, clear.
+    - Deepwell: storm with rain and lightning.
+    - Polaris: aurora night with snow.
+  - **Kit and rigs:** Core `NativeNewStageKit` and `NativeNewStageRig`.
+    - Pier 9: the gantry (bridge, trolley, spreader, container, slot lamps, the warning cone).
+    - Skyframe: the slewing tower crane. From the warning to the hoist it is the sim's hook; while the hook is high and
+      harmless, it slews between the same points.
+    - Deepwell: burner grates that glow through the warning and fire columns while burning, blowdown vents with steam,
+      the derrick and the flare stack.
+    - Polaris: the geodesic dome over the radome roof.
+  - **Backdrops and effects:** Core `NativeNewStageScenery` and `NativeNewStageFx`.
+    - Breakwater: the sea, the lighthouse sweep and the harbour town.
+    - Pier 9: a freighter, the terminal, the city and a bridge.
+    - Skyframe: the tower below the slab, the neighbouring towers and the city.
+    - Deepwell: the storm sea and whitecaps.
+    - Polaris: aurora curtains, ground drift, the ice shelf and nunataks.
+    - The backdrops are box-built, so every stage reads without the kit bank. PackDressing.json adds four kits and the
+      five stages' rules and yards for when the bank is present.
+  - **Hooks:** one line each in `SourceWorld` and `PrewarmStage`. The asset-lock receipt for MapLooks.json was refreshed.
+  - **Tests:** a new `--new-stage-looks` flag. StageKit, MapStyle (13 styled looks), AdvancedLighting and
+    TransitionLoading checks cover the five looks.
+  - **Docs:** `docs/arenas/NEW-STAGES.md` "Stage looks (presentation)".
+- **Animation impact:** none. Hazard timing, colliders, lethal bands, damage, spawns, navigation and networking are
+  unchanged, and the rigs read only replicated state (round, phase, FightAt, field clock). Telegraphs are never reduced.
+- **Checks (actual, on `b3965c1`):**
+  - `--new-stage-looks`: 457,586 checks pass.
+  - Also pass: `--advanced-lighting`, `--stage-kits` (20,813), `--new-stages` (4,941), `--map-style`, `--surfaces`,
+    `--transitions` and `--training-look`.
+  - `unity-check`: runtime+editor build OK.
+  - Relay suite: rc 0, 892 PASS lines, 365 s.
+  - Python: 167 OK (1 skipped). `package_source.py` passes. `git diff --check` is clean.
+  - 30 offline before and after renders were reviewed. They are made without the bank, beams, light volume or wet
+    surfaces.
+- **Training Room CI fix:** the Training Room merge (`0c80fa9`) failed `native-source` at packaging, because MapLooks.json
+  changed without its asset-lock receipt. Fixed in `d859990` (merged at `9fa08ed`). Packaging is now part of these checks.
+- **Not run:** the Unity Editor or player, Unity compiling the HLSL, Windows, and the bank-dependent dressing (liveries,
+  yard placement, Deepwell deck props).
+- **Limits:** burners and crane telegraphs light only themselves (no dynamic light slots). Polaris has no breath effect,
+  and falls into the water have no splash.
+- **Astra:** nothing required. Optional: a water-fall event if splashes are wanted.
+- **Next:** a PC pass with the bank (yards and liveries), then a look in Unity and on Windows.
+
+## 2026-11-01 — Claude: the Training Room drawn (studio look, marks, pads, readout boards, bay rigs)
+
+- **Branch/base:** `claude/training-room-look` from shared `3323310`. Commits `e9242dc` (presentation) and `088ba36`
+  (studio shader without flow control around its derivatives), then this log. Merged into shared and the builder.
+- **Task:** Astra's M1 handoff, Claude's part: "Render the readout board, grid/marks, dummy pads, stage looks/dressing and
+  hazard rigs next. Keep marks as presentation constants." This entry covers the Training Room only. The five PvP stages'
+  looks are on their own branch.
+- **Changes (presentation only; drawn only when the map id is `training`; every other map draws as before):**
+  - **The look:** MapLooks `training-studio`, a sealed, bright studio with no sky, a key light that casts no shadows, light
+    fog, three soft practical lights, the anime style with a neutral grade, and block looks for every training id.
+  - **The marks** (Core `NativeTrainingLook`) are built from `trainingPads`, the blocks and the bounds:
+    - the hall grid, and a range grid measured from the firing line;
+    - the firing line, a shooter's box per lane, lane markers and a ruler;
+    - sprint marks, heights on the steps, decks and cover, gap widths, lab-wall ticks, zone labels and height rulers.
+  - **The pads:** a puck per kind (static cyan, strafe magenta, melee orange) and an ID plate with the authored distance.
+    The strafe pad's rail runs from `rail.a` to `rail.b`, with a carriage that follows the dummy. Each melee pad has reach
+    arcs.
+  - **The readouts:**
+    - One board per distance, with a cell per lane, plus the melee ring's board.
+    - Each cell shows total HP, last hit (with a HEAD badge), 5 s DPS, the source and the distance.
+    - Each recently hit target gets a camera-facing tag (at most 3, held 6 s, then a 2 s fade).
+    - They read `NativeArena.TrainingReadouts()`, so the host and guests draw the same values. They are polled at 10 Hz,
+      and a cell is repainted only when a value it shows changes.
+  - **The hazard bay:** rigs for the five samples (slot saw, press, vent, grid, monorail hoist), posed from the sim's
+    clocks with the Factory kit's parts and lamp rules.
+  - **Hooks:** one line each in `SourceWorld` and `PrewarmStage`.
+  - **Tests:** MapStyleChecks counts the new styled look (8), and TransitionLoadingChecks requires its prewarm.
+  - **Docs:** `docs/arenas/NEW-STAGES.md` "Training Room presentation".
+- **Animation impact:** none. Hit timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
+- **Checks (actual):**
+  - `--training-look`: 8 sections PASS, including 22,428 play-space checks, 99,980 bay-cycle checks, host/guest readout
+    parity and 0 bytes allocated per frame.
+  - `--advanced-lighting` passes (exit 0), and `--transitions` passes (3,707 checks).
+  - `unity-check`: runtime+editor build OK on both commits.
+  - The full relay suite on `e9242dc`: rc 0, 891 PASS lines, 6m41s. It was not re-run on `088ba36`, a shader and
+    shader-test-only commit; `--training-look`, `--transitions` and the Unity compile were re-run on it.
+  - Python: 167 OK (1 skipped). `git diff --check` is clean.
+  - Offline WebGL renders (an approximation, not Unity's shader) were reviewed.
+- **Not run:** the Unity Editor or player, Unity compiling the shader, Windows, readability on real screens, guest play
+  and the killcam.
+- **For Astra (sim, not changed here):**
+  - `TrainingStep` pins each target's body at its pad's `pos` (y 1.1). With the capsule's 0.85 m half height, the feet are
+    drawn about 0.24 m above the floor and the puck. Pinning at floor + 0.865, or keeping the settled height, would ground
+    them.
+  - Optional: on the host, `TrainingReadouts()` allocates its rows on every call (at the 10 Hz poll rate only). A
+    non-allocating accessor would remove that.
+- **Next:** check the look in Unity and on Windows, then the five PvP stage looks (`claude/new-stages-look`).
 ## 2026-10-31 — Astra: live Deployment Station and generated-run integration
 
 - Branch/base: `codex/deployment-completion`, from pushed continuation `c9039362`; merged Claude station branch `654c4f85` locally, preserving both handoffs and test entry points.

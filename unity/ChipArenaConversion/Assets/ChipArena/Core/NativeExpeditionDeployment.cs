@@ -224,4 +224,19 @@ namespace ChipArena.UnityConversion
             return cells;
         }
     }
+    // One initial party barrier per generated run. Readiness/progress packets never renew its deadline.
+    public sealed class ExpeditionDeploymentLoadGate
+    {
+        private double deadline;
+        public bool Ready {get;private set;}
+        public bool Failed {get;private set;}
+        public void Begin(double now){deadline=now+NativeExpeditionLoadWindow.Seconds;Ready=Failed=false;}
+        public bool Update(double now,bool allReady)
+        {
+            if(Ready||Failed)return Ready;
+            if(now>=deadline){Failed=true;return false;}
+            return Ready=allReady;
+        }
+    }
+
 }

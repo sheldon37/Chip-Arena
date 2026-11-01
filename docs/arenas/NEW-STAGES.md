@@ -304,6 +304,164 @@ in PvP rotation or the PvP map list. The menu entry and its mode are Astra's.
   - Cyan lane markers and the destruction colour code on the samples.
   - A DPS and hit readout board over the range (presentation; it reads the sandbox's damage events).
 
+### Training Room presentation (Claude, 2026-11-01; branch `claude/training-room-look`)
+
+Presentation only: no simulation, rule, network, save, damage or timing change. Marks stay presentation constants derived
+from the map (`trainingPads`, blocks, hazards, bounds) plus two draft constants the map does not carry (the sprint straight,
+the ring's 7 m apothem); no `trainingMarks` field.
+
+- **Look (`training-studio`, MapLooks.json):** a sealed studio (sky `none`), a bright neutral key and rim with no shadows
+  (the roof block would shade the whole hall), a high trilight, light fog from 70 m, three soft practicals (hazard bay,
+  backstop, spawn), the anime style on with a neutral grade, and block looks for every training id (light grey floor and
+  walls, dark kerbs, the ring's orange kerb, the samples by colour code, the banded structural column). Its `kitLooks`
+  give the bay's rig parts the Factory kit's looks.
+- **Floor and wall paint** (Core `NativeTrainingMarks`, one SourceLit mesh without outlines):
+  - a metre grid with bolder 5 m and 10 m lines over the hall, and over the lanes a grid measured from the firing line
+    (Resources/NativeTrainingStudio.shader, multiplied over the floor);
+  - the firing line, a shooter's box and number per lane, dashed lane edges, a 1 m ruler along the barrier with numbers,
+    cyan lane markers along the kerb tops;
+  - per pad: a puck in its kind's colour (cyan static, magenta strafe, orange melee) with a crosshair and facing chevron,
+    and an ID plate with the authored distance label ("20 M") and the pad ID ("L1-20"); the strafe pad's rail from
+    `rail.a` to `rail.b` with lit edges, end stops and ±metre ticks; the melee pads' 1, 2 and 3 m reach arcs;
+  - the spawn pad, the sprint straight's 5 m marks and run-out, step heights on tops and risers, gap widths, deck heights,
+    cover heights, the lab wall's sill, head and door ticks, the samples' colour plates with their hp, the bay's sign and
+    each sample's name, zone labels, the walls' wainscot, seams, titles and height rulers.
+- **Fixtures** (outlined): the readout boards and their hangers, the roof's light panels.
+- **Readout boards:** one board per authored distance, hung over its distance line (bottom 7 m), a cell over each lane;
+  the ring's board north of the ring (bottom 5.8 m). Each cell shows the pad's header, total HP, last hit with a HEAD badge,
+  rolling 5 s DPS, source (weapon or hazard and hit kind) and distance. A floating tag over each recently hit target
+  (6 s hold, 2 s fade, the 3 most recent only) shows the same cell, camera-facing at a share of the view's height.
+  Rows come from `NativeArena.TrainingReadouts()` (the host's meters, a guest's replicated `TrainingRemote`) at 10 Hz; a
+  cell's texture is repainted only when a drawn value changes.
+- **Hazard bay:** the existing hazard presentation draws these kinds only on the Factory (its crane is the Factory hall's
+  bridge), so Core `NativeTrainingBay` draws the five samples from the simulation's pure clocks (`NativeFactoryHazards.State`,
+  `NativeCyberCityHazards.At`) with the Factory kit's parts and lamp rules: the slot saw, the press ram, the vent's lamps
+  and steam, the grid's lamps, bars and arcs, and a monorail hoist under the runway block with its load and zone lamps.
+  It also draws the strafing target's carriage.
+- **Hooks:** `TrainingScenery(arena)` in `SourceWorld` and `TrainingPrepare(arena)` in `PrewarmStage` (one line each);
+  everything else is Runtime/NativeTrainingPresentation.cs, a component that draws only on the training map.
+- **Checks:** `dotnet run --project Tests/CoreTests.csproj -c Release -- --training-look` (also in the full suite):
+  placement from the pads, nothing in play space (floor paint at most 3 cm, wall and block-face paint at most 3 cm proud,
+  fixtures from 5.5 m, under the roof, clear of blocks and out of reach), determinism, readout formatting and host/guest
+  parity, bay capacities, no per-frame allocation, the look, and text scans of the runtime wiring. MapStyleChecks counts the
+  training look among the styled looks; TransitionLoadingChecks requires its prewarm.
+- **Unverified:** the Unity Editor, a Windows build and the shader compile (only Runtime and Editor C# were compiled
+  against the Unity assemblies); the look under Unity's real NativeBlockLit and toon outline (the renders are an offline
+  WebGL approximation); readability on screen; guest play. The host's `TrainingReadouts()` allocates its rows when polled
+  (10 Hz); a non-allocating accessor would be Astra's change.
+- **For Astra (found, not changed):** `TrainingStep` pins each target's body at its pad's `pos`, whose y is 1.1 (the spawn
+  convention, floor + 1.1); with the capsule's 0.85 m half height the drawn feet (body − 0.865) stand about 0.24 m above
+  the floor and the pad's puck. Pinning at floor + 0.865 (or keeping the settled y) would ground them; it is a sim change.
+
+## Stage looks (presentation)
+
+Claude, 2026-11-01; branch `claude/new-stages-look` from shared `3323310` (shared `0c80fa9` merged in). Step 2 of
+"Ownership and order" for the five PvP stages. Presentation only: no collision, navigation, spawn, hazard timing, damage,
+network, save or selection change. Every other map draws exactly as before (the code is keyed on the five map ids).
+
+**Where it hooks.**
+- Data: `MapLooks.json` gains one entry per stage (the look id each map already names: lights, the anime sky and style,
+  fog, practical lights, block and kit looks, `blocks.dressed`, the advanced lighting and weather). `PackDressing.json`
+  gains four kits and an entry per stage (rules for solid blocks; yards where the ground is at y 0).
+- Core (engine-free; `Tests/CoreTests --new-stage-looks`):
+  - `NativeNewStageLooks`: the five ids and looks, the `stage-kit-*` kinds (resolved per look from `kitLooks`, with
+    defaults) and the places the scenery, rigs and effects share (sea levels, lighthouse, flare, dome).
+  - `NativeNewStageScenery`: the box-built backdrops, baked into three SourceLit sectors per stage. Its builder throws on
+    any box inside the bounds grown by 1 m above the floor's base (water, the pier's body, the tower's facade and the jacket
+    lie under the floor).
+  - `NativeNewStageKit`: detail on the blocks (every part inside its block grown by 0.25 m, the stage rule; nearly all
+    within 2 cm of the face) and the overhead structure no block stands for (each at least 2 m over every standable top
+    under it, like the Factory's crane bridge).
+  - `NativeNewStageRig`: the hazard rigs and two ambient rigs, posed each frame from `NativeFactoryHazards.State` (cranes,
+    vents) and `NativeWardZeroHazards.At` (burners) at the round index, phase, FightAt and field clock: the replicated
+    state, so host, guests and the killcam agree. Allocation free.
+  - `NativeNewStageFx`: the effects quads and, above the low tier, the volumetric beam list. Telegraphs are never reduced.
+- Runtime: `NativeNewStagePresentation.cs` (`NativeNewStageDraw`; NativeBlockLit instancing as the Factory's kit,
+  SourceLit sectors on the backdrop layer without shadows, one NativeFxDraw batch). One line in `SourceWorld`
+  (`NewStageScenery(arena)`) and one in `PrewarmStage` (`PrewarmNewStage`). The kit drops the parts of blocks the bank
+  dresses (`NativePackStage.Strip`). No new shader or material asset.
+
+**Per stage.**
+- **Breakwater (`breakwater-blue-hour`):** the sun 3° under the western horizon (orange halo, sunset-lit anime clouds,
+  first stars), a cool 0.3 key from the west, warm lamps. Granite setts, rendered booths with lit windows, liveried
+  containers with corner posts and door ends, the parapet's coping and scuppers, barrier reflectors. Backdrop: a faceted
+  blue-hour sea, the pier's stone body and tetrapod armour, the causeway west with its lamps, lamp posts outside the
+  parapet, a moored tug, channel buoys, the lighthouse on its plinth past the east parapet (16-sided banded tower, gallery,
+  lantern, copper dome), the harbour town with lit windows and its cranes. Effects: the lantern and two sweeping beams,
+  spray over the north and west parapets, foam, glints toward the afterglow and the lantern, halos, buoy blinks. Weather:
+  a light drizzle (wet stone). Rig: the lighthouse optic turning.
+- **Pier 9 (`harbor-night`):** moonlight key 0.32, sodium rim and practical floods, light drizzle with wet asphalt and
+  puddles. Containers per id in liveries with tier seams, doors and corner posts; reefer units; the shed's pallet racks
+  (uprights, beams, goods); gatehouse and office windows; the quay kerb in hazard stripes; yard lines and the five drop
+  slots hatched under the gantry. Overhead: the ship-to-shore crane's portal, A-frame, boom over the basin, machinery
+  house and cab over its in-map legs (from 15 m, 6 m over the 9 m deck). Rig: the rail-mounted gantry (bridge between the
+  two runways at the hook's x, end trucks, cab, trolley and beacon, ropes, headblock, spreader 1.1 m under it, the 20 ft
+  container, the slots' corner lamps). Backdrop: the basin, the quay face and fenders, the freighter alongside past the
+  bounds (hull, deck lights, 4 to 7 tiers of containers, lit house, funnel), the terminal beyond the fences (stacks, masts,
+  two more ship-to-shore cranes), sheds, the city and a lit bridge. Effects: flood halos and cones, aviation lights, the
+  gantry's red cone over the slot (strobing through the warning, solid as it falls), landing dust, reflections, mist.
+- **Skyframe (`skyframe-high-noon`):** a hard key at 74°, deep blue zenith, white anime clouds, haze below (height fog
+  from the street 112 m down). Red-primer columns, blockwork, yellow edge protection, cabins, bundles with straps, pallets of
+  blocks, the drop zones' paint on the slab and decks; the mast painted as a boxed lattice (it is solid: it stops shots).
+  Overhead: the tower crane's head over the mast top. Rig: the slewing tower crane (slewing unit, cab, laced jib, counter-jib
+  and weights, pendants, trolley, hook, slings, the beam bundle, the zones' lamps on their own floors). The simulation moves
+  the hook straight between zones (through the mast for opposite zones); while it travels, high and harmless, the rig
+  slews and trollies between the same two points instead, and from the warning to the next travel the drawn hook is the
+  simulation's. Backdrop: the open frame of floors 30 and 29 with netting, the glazed tower to the street, the hoists' masts
+  and parked cars, the neighbours (a glass tower north, a stone block south), the city on its grid with two more cranes.
+  Effects: haze layers, netting snapping, dust motes, jib glints, the crane's telegraph and landing dust.
+- **Deepwell (`rig-storm`):** a cold 0.2 key, the flare's warm rim from the north and a flickering practical light at the
+  flare, rain with lightning (every 11 s on average), wet steel. White accommodation with lit windows, orange derrick and
+  cranes, KO drums with saddles and beacons, wellhead and BOP, pipe racks with pipes, walkway edges, burner lanes hatched
+  red, vent grates ringed, muster points. Overhead: the derrick lattice from 3.2 m over the drill floor, the pedestal
+  cranes' booms. Rig: the burner grates and nozzle rows (embers, an amber flicker through the 1.5 s warning, white-hot
+  burning, cooling red) and each lane's drum beacon; the vents' grates and corner lamps. Backdrop: the storm sea 5 m under
+  the cellar deck (a pilot through a landing meets it just before killY), the jacket clear of every landing, lifeboats in
+  davits, the flare boom, a standby vessel, two distant platforms. Effects: the flare, burner fire columns and smoke, vent
+  hiss, steam column and drift, spray up the deck edges, whitecaps, deck halos, distant flares.
+- **Polaris (`polar-aurora`):** a green 0.32 aurora key from the north, a cold blue rim, blue shade, snow. Station modules
+  (containers on skids) with lit windows, doors, porch lamps, snow caps and frost; tanks, huts, garages with roof lights,
+  snowcats; the drill masts painted as lattice. Overhead: the radome's geodesic dome over the radome block's unstandable
+  roof. Rig: a radar turning on the met tower. Backdrop: the ice shelf with sastrugi and drift banks, flag lines, skiway
+  lights, a drum line, outbuildings, an antenna field, a wind turbine, nunataks and an ice cliff. Effects: the aurora's
+  rayed curtains (green below, violet above, pulses along them), ground drift, halos, aviation lights. Weather: snow.
+
+**The kit bank (Toon Harbor), on the owner's PC only.** Rules (solid props; the plan keeps a box it cannot fill):
+Breakwater crates, drums and containers (56 blocks); Pier 9 one-high rows, the quay box, crates and cages (35); Skyframe
+cabins, deck containers and pallets of blocks (34); Deepwell crates, drums and cellar tanks (8); Polaris modules, tank
+pairs, crates and drums (24; the two-high crate columns and the shallow tanks keep their boxes). Yards: Breakwater's
+container quay north of the town (cranes, stacks, a freighter, tugs) and tetrapods along its faces; Pier 9's terminal beyond
+the fences (its box-built cranes and stacks stand down while these draw); Polaris's fuel depot, storage row, vehicle line,
+hangar, wind fences and skiway lamps. Skyframe and Deepwell have no yards (a yard stands at y 0, which is floor 31's level
+and the deck's). Without the bank (CI, cloud builds) every stage draws its own block looks, kit, backdrop, rigs and
+effects.
+
+**Checks.** `CoreTests --new-stage-looks` (`Tests/NewStageLookChecks.cs`, also in the full run): every look resolves,
+styled and dressed with the advanced lighting; block looks decide real blocks; kit looks are kit kinds; attached kit parts
+inside their blocks and overhead parts clear of standable tops; the pack rules dress real blocks inside their colliders
+against a synthetic bank of the props' real bounds; the yards and backdrops stay out of the play space; the rigs follow the
+replicated state (the same at any FightAt, the hooks and loads the simulation's from the warning to the hoist, parked before
+the arm delay, the tower crane never through the mast); telegraphs are never reduced; determinism; no allocation per
+frame; the runtime's wiring and the new files' metas; every other map untouched. `StageKitChecks`, `MapStyleChecks`,
+`AdvancedLightingChecks` and `TransitionLoadingChecks` list the five new looks.
+
+**Renders.** Offline WebGL renders (the stage-kits harness: NativeBlockLit's SHARED code and the anime sky as GLSL, one
+shadow map, its own bloom) from the worktree's Core and the map JSON, without the bank, before (the moonlit fallback and
+flat-coloured cubes, as the shared branch draws them) and after, per stage: an overview, a player-height lane and the
+hazard rig (Breakwater: the lighthouse).
+
+**Not verified / needs the PC.**
+- Not seen in the Unity Editor or a Windows build. The harness has no volumetric beams (their billboard fallback is
+  drawn), no light volume, no wet surfaces or puddles and no lightning.
+- The kit bank's props and yards are unseen here: a PC pass should look at the liveries the rules pick, the tank and
+  brick piles' fit, the yards' placement against the box backdrops (Breakwater's town, Polaris's outbuildings) and whether
+  Deepwell wants deck props (beacons, sirens, pipe clusters) through a new yard kind at deck height.
+- Practical lights are the look's eight static slots: the burners' fire and the crane telegraphs light nothing but
+  themselves (no dynamic light slots are claimed; the hazard kit owns `NativeLighting.KitLights`).
+- Not drawn: breath in the cold on Polaris (needs pilot heads), splashes when a pilot falls into the water (Astra's
+  event, if wanted), the lighthouse beam's sweep on the volumetric path (its billboards were tuned here).
+- Audio ambience (the maps' `ambience` keys) is unchanged.
+
 ## M1 drafts (2026-10-31): what is built and checked
 
 Run any draft with `python3 docs/arenas/scripts/<id>_m1.py [--out DIR]`. It prints the plan and checks, exits 1 if a check
@@ -385,7 +543,7 @@ without limit.
 **Claude (presentation)**, in this order, each step a branch merged into the shared branch:
 
 1. M1 blockout drafts with checks and plan images: all six are done (`claude/new-stages`, see "M1 drafts" above).
-2. Per stage, after Astra integrates it:
+2. Per stage, after Astra integrates it (built on `claude/new-stages-look`; see "Stage looks (presentation)"):
    - the MapLooks look;
    - the PackDressing rules for its ids and its yards (scenery outside the bounds);
    - the hazard rigs' presentation (gantry, tower crane, flare);
