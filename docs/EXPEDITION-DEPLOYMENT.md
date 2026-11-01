@@ -32,6 +32,53 @@ messages also check the 45-second deadline directly, before the periodic timeout
 The native loopback fixture covers these refusals and retains the successful ordinary lobby
 transfer/rejoin path. These guards do not implement active-run migration.
 
+### Run deployment acceptance directly from this draft
+
+`NativeBuildChecks.CheckDeploymentAcceptance` is an Editor menu/CLI entry point. It does not
+build or publish a player, move a branch, contact live services, or require merging #303.
+Use a separate checkout of `codex/deployment-completion`, the pinned Unity **6000.3.24f1**, and
+leave Play mode. In Unity choose **Chip Arena > Check Expedition deployment acceptance**.
+For Windows batch execution, from the repository root:
+
+```powershell
+$project = (Resolve-Path "unity/ChipArenaConversion").Path
+$editor = "$env:ProgramFiles\Unity\Hub\Editor\6000.3.24f1\Editor\Unity.exe"
+$log = Join-Path $env:TEMP "chip-deployment-acceptance.log"
+$run = Start-Process -FilePath $editor -ArgumentList @(
+    '-batchmode', '-quit', '-force-d3d11',
+    '-projectPath', ('"{0}"' -f $project),
+    '-executeMethod', 'ChipArena.UnityConversion.Editor.NativeBuildChecks.CheckDeploymentAcceptance',
+    '-logFile', ('"{0}"' -f $log)
+) -Wait -PassThru
+if ($run.ExitCode -ne 0) { throw "Deployment acceptance failed; see $log" }
+if (-not (Select-String -Path $log -SimpleMatch 'DEPLOYMENT_NATIVE_ACCEPTANCE_READY:')) {
+    throw "Acceptance did not finish; see $log"
+}
+git rev-parse HEAD
+```
+
+Keep the commit and log together. Do not pass `-nographics`: this entry point refuses a null
+graphics device, exercises the station screen's no-fog/linear-fog passes synchronously, and
+checks shader errors. The ordinary native build gate also checks the station shader import.
+
+The suite checks seeds `1`, `17`, `0x80000000`, `0xffffffff`, each at rolls 1 and 2:
+
+- All eight layouts: real collision/support and Hulk routes, spawn exits, join circles,
+  composed-layout startup, deployment-ticket codec, late/reconnecting receiver reconstruction
+  and rejection of an earlier unlocked ticket.
+- Each first roll: the existing 1,800-tick split-area fixture, now using the generated bundle
+  on authority and replica arenas, four occupied areas, transfers into all three instances,
+  serialized state identity, shared clocks, encounter spawning and zone-boss replication.
+- Existing loopback lobby promotion/rejoin checks, plus native component loading/command
+  guard checks covering the exact timeout boundary and refusal after failure.
+
+Logs identify every seed/roll/layout and include total time, per-area simulation/navigation/
+physics timings, worst/p95 tick time and packet bytes. These measurements are for review;
+there is no new machine-dependent FPS threshold. Physics mode, gravity, active scene, time
+scale and cursor settings are restored on exit. Preview arenas are disposed even on failure.
+A success marker proves this automated fixture completed, **not** a human co-op session,
+finished generated-district visuals, acceptable real gameplay FPS, or active-run migration.
+
 ### Remaining acceptance and presentation work
 
 This is source integration, not a verified Windows release. Native Unity/PhysX execution, the station shader, real co-op join/leave/reconnect, initial-load failure handling, multi-seed native performance and rendered acceptance must pass before shared/builder publication. The build gate now includes generated-world native placements/routes, the full composed-layout startup validator and Unity codec round trips for both lobby and combined snapshots.

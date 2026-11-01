@@ -173,6 +173,7 @@ namespace ChipArena.UnityConversion.Editor
             Debug.Log("PASS Brickfall stage music: Brickfall Run, complete stereo clip at the map's runtime resource path");
             CheckExpeditionAreaRuntimes(data);
             CheckExpeditionCohortPlacement(data);
+            CheckDeploymentShader();
             CheckExpeditionActivation(data);
             CheckLocomotion(data);
             var active=SceneManager.GetActiveScene();Vector3 gravity=Physics.gravity;int pads=0;

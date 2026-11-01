@@ -7,24 +7,29 @@ namespace ChipArena.UnityConversion.Editor
 {
     public static partial class NativeBuildChecks
     {
-        private static void CheckExpeditionActivation(ConversionContent content)
+        private static void CheckExpeditionActivation(ConversionContent content,ExpeditionRunBundle generated=null)
         {
             void Check(bool ok,string why){if(!ok)throw new Exception("Expedition activation: "+why);}
             string json=Resources.Load<TextAsset>("ExpeditionLayout").text;
-            var layout=NativeExpeditionLayout.Parse(json);layout.compatibility=NativeExpeditionLayout.Compatibility(json,content);
-            var deployment=new ExpeditionDeploymentRoom("native-deployment","p1",0xffffffffu,"black-siren",layout,content);
-            Check(deployment.Execute("p1",0,ExpeditionDeploymentIntent.RollInstances),"deployment host rolls");
-            CheckGeneratedDeploymentWorld(content,deployment);
-            var deploymentJson=NativeNetCodec.Encode(new NativeNetMessage{type="deployment-state",epoch=7,deployment=deployment.Ticket});
-            Check(deploymentJson.Length<4096&&!deploymentJson.Contains("influences"),"bounded deployment descriptor, no blueprint on wire");
-            var deploymentWire=NativeNetCodec.Decode(deploymentJson);
-            var deploymentGuest=new ExpeditionDeploymentReceiver();
-            Check(deploymentWire.epoch==7&&deploymentGuest.Accept(deploymentWire.deployment,layout,content),"Unity deployment ticket round trip");
-            Check(deploymentGuest.Snapshot.worldSeed==deployment.Snapshot().worldSeed&&deploymentGuest.Snapshot.instances.SequenceEqual(deployment.Snapshot().instances),"guest reconstructs host world");
-            var prepared=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="host-prepare",transfer=new string('a',32),deploymentHandoff=JsonUtility.ToJson(deployment.Ticket)}));
-            var promoted=ExpeditionDeploymentRoom.Restore(JsonUtility.FromJson<ExpeditionDeploymentTicket>(prepared.deploymentHandoff),"p2",layout,content);
-            Check(promoted.Execute("p2",1,ExpeditionDeploymentIntent.RollInstances)&&deployment.Execute("p1",1,ExpeditionDeploymentIntent.RollInstances)&&promoted.Snapshot().worldSeed==deployment.Snapshot().worldSeed,"Unity promotion retains draw stream");
-            Check(!NativeNetCodec.Encode(new NativeNetMessage{type="ping"}).Contains("generatedCompatibility"),"unrelated packets do not serialize nested deployment DTO");
+            var layout=generated?.Layout??NativeExpeditionLayout.Parse(json);
+            if(generated==null)layout.compatibility=NativeExpeditionLayout.Compatibility(json,content);
+            else content=generated.Content;
+            if(generated==null)
+            {
+                var deployment=new ExpeditionDeploymentRoom("native-deployment","p1",0xffffffffu,"black-siren",layout,content);
+                Check(deployment.Execute("p1",0,ExpeditionDeploymentIntent.RollInstances),"deployment host rolls");
+                CheckGeneratedDeploymentWorld(content,deployment);
+                var deploymentJson=NativeNetCodec.Encode(new NativeNetMessage{type="deployment-state",epoch=7,deployment=deployment.Ticket});
+                Check(deploymentJson.Length<4096&&!deploymentJson.Contains("influences"),"bounded deployment descriptor, no blueprint on wire");
+                var deploymentWire=NativeNetCodec.Decode(deploymentJson);
+                var deploymentGuest=new ExpeditionDeploymentReceiver();
+                Check(deploymentWire.epoch==7&&deploymentGuest.Accept(deploymentWire.deployment,layout,content),"Unity deployment ticket round trip");
+                Check(deploymentGuest.Snapshot.worldSeed==deployment.Snapshot().worldSeed&&deploymentGuest.Snapshot.instances.SequenceEqual(deployment.Snapshot().instances),"guest reconstructs host world");
+                var prepared=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="host-prepare",transfer=new string('a',32),deploymentHandoff=JsonUtility.ToJson(deployment.Ticket)}));
+                var promoted=ExpeditionDeploymentRoom.Restore(JsonUtility.FromJson<ExpeditionDeploymentTicket>(prepared.deploymentHandoff),"p2",layout,content);
+                Check(promoted.Execute("p2",1,ExpeditionDeploymentIntent.RollInstances)&&deployment.Execute("p1",1,ExpeditionDeploymentIntent.RollInstances)&&promoted.Snapshot().worldSeed==deployment.Snapshot().worldSeed,"Unity promotion retains draw stream");
+                Check(!NativeNetCodec.Encode(new NativeNetMessage{type="ping"}).Contains("generatedCompatibility"),"unrelated packets do not serialize nested deployment DTO");
+            }
             var joinWire=new ExpeditionView{joins=new[]{new ExpeditionJoinView{h=4,deployedAt=3,deployedAccounts=new[]{"p2"},closedReason=ExpeditionJoinClosedReason.Reserved}},members=new[]{new ExpeditionViewMember{account="p2",area=layout.world,pendingArea=layout.instances[0]}}};
             var decodedJoin=JsonUtility.FromJson<ExpeditionView>(JsonUtility.ToJson(joinWire));
             Check(decodedJoin.joins[0].h==4&&decodedJoin.joins[0].deployedAt==3&&decodedJoin.joins[0].deployedAccounts.SequenceEqual(new[]{"p2"})&&decodedJoin.joins[0].closedReason==ExpeditionJoinClosedReason.Reserved&&decodedJoin.members[0].pendingArea==layout.instances[0],"join presentation fields survive Unity wire serialization");
@@ -44,7 +49,7 @@ namespace ChipArena.UnityConversion.Editor
                 int Seat(string id)=>int.Parse(id.Substring(1));
                 foreach(var area in layout.areas)
                 {
-                    var runtime=registry.Acquire(area.id);var sim=runtime.Arena;
+                    var runtime=registry.Acquire(area.id);var sim=runtime.Arena;sim.GeneratedRun=generated;
                     var session=new ExpeditionSession(run.ForArea(area.id),content);session.Sources.Seat=Seat;
                     var director=new ExpeditionDirector(session,layout,id=>sim.Pilots.FirstOrDefault(p=>p.Seat.id==Seat(id)) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,sim.ExpeditionVisible,100,100,60);
                     runtime.Ready(a=>{a.Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,cooperative=true,teams=true});a.Match.HoldResolution=()=>true;a.BindExpeditionCombat(director,area,horde);});
@@ -63,8 +68,9 @@ namespace ChipArena.UnityConversion.Editor
                     Check(receiver.Private(personal)&&ExpeditionAreaReady.Capture(receiver.View)!=null,"initial public/private wire pair produces guest readiness ticket");
                     var first=hub.Arena.NetworkFrame();first.areaIdentity=ticket;var decoded=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=first})).frame;
                     Check(decoded.Valid(content)&&receiver.View.areaIdentity.Matches(decoded.areaIdentity),"initial guest accepts matching world frame");
-                    var bundle=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,expeditionPublic=initialView,expeditionPrivate=personal,frame=first}));
+                    var bundle=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,deployment=generated?.Ticket,expeditionPublic=initialView,expeditionPrivate=personal,frame=first}));
                     Check(bundle.epoch==7&&bundle.frame.Valid(content)&&bundle.expeditionPublic.areaIdentity.Matches(bundle.frame.areaIdentity)&&bundle.expeditionPrivate.viewer==who,"atomic state bundle retains area and private viewer");
+                    Check(generated==null||bundle.deployment?.generatedCompatibility==generated.Identity,"combined state retains generated deployment identity");
                     Check(cohorts.Acknowledge(who,receiver.View.areaIdentity),"initial ready");
                 }
                 var transfers=new NativeExpeditionAreaTransfers(registry,layout,cohorts,Seat);
@@ -93,7 +99,7 @@ namespace ChipArena.UnityConversion.Editor
                     var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
                     try
                     {
-                        replica=new NativeArena(content,new NativeMatch(content),area.map){Replica=true,LocalId=Seat(who),ReplicaScene=scene};
+                        replica=new NativeArena(content,new NativeMatch(content),area.map){Replica=true,LocalId=Seat(who),ReplicaScene=scene,GeneratedRun=generated};
                         Check(frame.Valid(content),"valid recipient frame");replica.ApplyFrame(frame,Seat(who));
                         var view=NativeExpeditionView.Build(sessions[area.id].Run,who,sessions[area.id].Sources);
                         replica.ApplyExpeditionCollision(view,area,json);
@@ -132,7 +138,7 @@ namespace ChipArena.UnityConversion.Editor
                     var scene=EditorSceneManager.NewPreviewScene();NativeArena guest=null;
                     try
                     {
-                        guest=new NativeArena(content,new NativeMatch(content),area.map){Replica=true,ReplicaScene=scene};
+                        guest=new NativeArena(content,new NativeMatch(content),area.map){Replica=true,ReplicaScene=scene,GeneratedRun=generated};
                         registry.Find(area.id).Arena.ValidateZoneCombat(frame=>
                         {
                             var packet=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=frame})).frame;
@@ -151,7 +157,7 @@ namespace ChipArena.UnityConversion.Editor
                     }
                     finally{guest?.Dispose();EditorSceneManager.ClosePreviewScene(scene);}
                 }
-                Debug.Log("PASS native Expedition activation: four simultaneous areas, subset ownership, independent encounters, shared clock, stale input and ready/command codec. 1800 ticks ms="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", worst="+worst.ToString("F1")+", p95="+samples.OrderBy(ms=>ms).ElementAt((int)(samples.Count*.95)).ToString("F1")+", raw packet bytes="+packetBytes+", managed memory delta="+(GC.GetTotalMemory(false)-memoryBefore)+". Automated fixture; not a human multiplayer playtest.");
+                Debug.Log("PASS native Expedition activation ["+(generated?.Identity??"authored")+"]: four simultaneous areas, subset ownership, independent encounters, shared clock, stale input and ready/command codec. 1800 ticks ms="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", worst="+worst.ToString("F1")+", p95="+samples.OrderBy(ms=>ms).ElementAt((int)(samples.Count*.95)).ToString("F1")+", raw packet bytes="+packetBytes+", managed memory delta="+(GC.GetTotalMemory(false)-memoryBefore)+". Automated fixture; not a human multiplayer playtest.");
             }
         }
     }

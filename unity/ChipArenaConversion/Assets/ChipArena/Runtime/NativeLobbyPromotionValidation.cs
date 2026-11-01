@@ -6,6 +6,35 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        public static void ValidateDeploymentLoadBarrier()
+        {
+            var owner=new GameObject("Deployment loading fixture");owner.SetActive(false);
+            var game=owner.AddComponent<ConversionGame>();
+            void Check(bool ok,string why){if(!ok)throw new Exception("Deployment loading: "+why);}
+            try
+            {
+                var commands=new SplitLocalCommands(game,"p1");var command=new ExpeditionCommand();
+                // No session is bound: a blocked command must return before accessing any inventory/router.
+                game.deploymentInitialReady=false;
+                Check(commands.Blocked(command)!=null&&commands.Send(command).state==ExpeditionCommandState.Refused,"initial hold rejects immediate local commands");
+                var gate=game.deploymentLoadGate;gate.Begin(100);
+                Check(!gate.Update(159,false)&&!gate.Failed,"unready party holds before deadline");
+                Check(!gate.Update(160,true)&&gate.Failed,"deadline wins over simultaneous final acknowledgement");
+                Check(!gate.Update(161,true),"late readiness cannot revive a failed run");
+                game.expeditionError="fixture timeout";
+                foreach(bool ready in new[]{false,true})
+                {
+                    game.deploymentInitialReady=ready;
+                    Check(commands.Blocked(command)!=null&&commands.Send(command).state==ExpeditionCommandState.Refused,"stopped run rejects commands regardless of readiness");
+                }
+                game.expeditionError=null;gate.Begin(200);game.deploymentInitialReady=gate.Update(201,true);
+                Check(game.SplitCommandBlock==null,"successful readiness releases run-wide command hold");
+                Check(gate.Update(300,false)&&!gate.Failed,"later subset loading does not reactivate initial barrier");
+                Debug.Log("PASS native deployment loading: timeout boundary, late readiness, command refusal before session mutation and subsequent-load independence");
+            }
+            finally{UnityEngine.Object.DestroyImmediate(owner);}
+        }
+
         // Inactive components avoid Awake (account/prefs/presentation); real loopback transports
         // exercise the same handlers used by the lobby, including the native JsonUtility codec.
         public static void ValidateLobbyPromotion(ConversionContent data)

@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-11-01 Astra deployment acceptance tooling (`codex/deployment-completion`, base `7c700a58`): standalone native check for eight generated seed/roll layouts, four 1,800-tick generated split-area fixtures, locked reconnect tickets, station shader passes and loading/transfer guards. Semantic compilation, 3,681 managed deployment checks, 2 Python checks and source packaging pass. The new native suite is NOT executed here; Windows command and exact coverage in EXPEDITION-DEPLOYMENT.md. #303 remains draft; no shared/builder/publication. Active-run migration and Claude district visuals remain.
+
 2026-11-01 Astra deployment transfer guards (`codex/deployment-migration-20261101`, base PR #303 `6a135bf7`): lobby transfer handlers now refuse locked/loading runs and expired acknowledgements/commits. Native loopback regressions added; pinned Unity semantic compilation and 16 actual compiled Player guard probes pass (no native execution). Active-run combat-state/endpoint transfer, Windows acceptance and Claude generated-district visuals remain; draft only. See newest DEV_LOG receipt.
 
 2026-11-01 Astra deployment recovery (`codex/deployment-recovery-20261101`, from PR #303 at `032d9d07`): initial-party loading and stopped-run guards now cover immediate host/guest commands and guest input as well as fixed simulation. See the newest DEV_LOG receipt. Source remains draft pending native/Windows acceptance, Claude district visuals and active-run endpoint migration; no shared/builder or binary publication.

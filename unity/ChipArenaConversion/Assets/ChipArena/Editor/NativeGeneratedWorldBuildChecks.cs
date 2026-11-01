@@ -1,13 +1,89 @@
 using System;
 using System.Linq;
+using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
 using UnityEngine;
 namespace ChipArena.UnityConversion.Editor
 {
     public static partial class NativeBuildChecks
     {
+        // Explicit draft acceptance entry point: no player build, publisher, branch movement or live services.
+        [MenuItem("Chip Arena/Check Expedition deployment acceptance")]
+        public static void CheckDeploymentAcceptance()
+        {
+            if(Application.isPlaying)throw new InvalidOperationException("Leave Play mode before checking deployment");
+            if(SystemInfo.graphicsDeviceType==UnityEngine.Rendering.GraphicsDeviceType.Null)
+                throw new InvalidOperationException("Deployment shader acceptance requires a graphics device; omit -nographics.");
+            var active=SceneManager.GetActiveScene();var gravity=Physics.gravity;var mode=Physics.simulationMode;
+            float scale=Time.timeScale;var cursor=Cursor.lockState;bool visible=Cursor.visible;
+            var errors=new System.Collections.Generic.List<string>();
+            void Capture(string message,string trace,LogType type)
+            {if(type==LogType.Error||type==LogType.Exception||type==LogType.Assert)errors.Add(message);}
+            Application.logMessageReceived+=Capture;
+            try
+            {
+                CheckDeploymentShader(true);
+                var asset=Resources.Load<TextAsset>("GameContent");
+                if(asset==null)throw new Exception("Missing deployment GameContent");
+                var content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);content.Validate();
+                string authored=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
+                var layout=NativeExpeditionLayout.Parse(authored);layout.compatibility=NativeExpeditionLayout.Compatibility(authored,content);
+                ConversionGame.ValidateLobbyPromotion(content);
+                ConversionGame.ValidateDeploymentLoadBarrier();
+                foreach(uint seed in new uint[]{1,17,0x80000000u,0xffffffffu})for(int roll=1;roll<=2;roll++)
+                {
+                    var timer=System.Diagnostics.Stopwatch.StartNew();
+                    var room=new ExpeditionDeploymentRoom("native-seed-"+seed+"-"+roll,"p1",seed,"black-siren",layout,content);
+                    for(int i=0;i<roll;i++)if(!room.Execute("p1",i,ExpeditionDeploymentIntent.RollInstances))throw new Exception("Native seed roll refused");
+                    var bundle=CheckGeneratedDeploymentWorld(content,room);
+                    if(!room.Execute("p1",roll,ExpeditionDeploymentIntent.Deploy,true,bundle.Identity))throw new Exception("Native seed deploy refused");
+                    var locked=ExpeditionRunBundle.Build(room.Ticket,content,authored);
+                    if(locked.Identity!=bundle.Identity)throw new Exception("Deploy changed the native generated identity");
+                    var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="deployment-state",epoch=7,deployment=room.Ticket}));
+                    var reconnect=new ExpeditionDeploymentReceiver();
+                    if(!reconnect.Accept(wire.deployment,layout,content)||!reconnect.Snapshot.deployed||
+                       ExpeditionRunBundle.Build(wire.deployment,content,authored).Identity!=locked.Identity||
+                       reconnect.Accept(bundle.Ticket,layout,content))
+                        throw new Exception("Native late/reconnecting guest lost the locked generated identity");
+                    // All eight layouts get geometry/startup checks. Four first rolls also run the
+                    // existing 1,800-tick four-area combat/transfer/replica/performance fixture.
+                    if(roll==1)CheckExpeditionActivation(content,locked);
+                    Debug.Log("PASS deployment seed acceptance: seed="+seed+", roll="+roll+", identity="+locked.Identity+", totalMs="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", simulatedTicks="+(roll==1?1800:0));
+                }
+                if(errors.Count>0)throw new Exception("Deployment acceptance logged native errors: "+string.Join(" | ",errors));
+                Debug.Log("DEPLOYMENT_NATIVE_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; station shader, lobby transfers and loading guards. Automated fixture, not a human co-op or rendered acceptance test.");
+            }
+            finally
+            {
+                Application.logMessageReceived-=Capture;
+                Physics.gravity=gravity;Physics.simulationMode=mode;Time.timeScale=scale;Cursor.lockState=cursor;Cursor.visible=visible;
+                if(active.IsValid()&&active.isLoaded)SceneManager.SetActiveScene(active);
+            }
+        }
+        private static void CheckDeploymentShader(bool exercisePass=false)
+        {
+            var shader=Resources.Load<Shader>("NativeDeployScreen");
+            if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeDeployScreen");
+            if(!exercisePass)return;
+            bool async=ShaderUtil.allowAsyncCompilation;Material material=null;
+            try
+            {
+                ShaderUtil.allowAsyncCompilation=false;
+                material=new Material(shader){hideFlags=HideFlags.HideAndDontSave};
+                foreach(bool fog in new[]{false,true})
+                {
+                    material.shaderKeywords=fog?new[]{"FOG_LINEAR"}:Array.Empty<string>();
+                    if(!shader.isSupported||!material.SetPass(0)||ShaderUtil.ShaderHasError(shader))
+                        throw new Exception("Deployment screen pass failed, linear fog="+fog);
+                }
+                Debug.Log("PASS deployment screen shader: no-fog and linear-fog pass on "+SystemInfo.graphicsDeviceType);
+            }
+            finally{ShaderUtil.allowAsyncCompilation=async;if(material!=null)UnityEngine.Object.DestroyImmediate(material);}
+        }
+
         // Runs in the real builder, not the engine-free semantic compilation gate.
-        private static void CheckGeneratedDeploymentWorld(ConversionContent content,ExpeditionDeploymentRoom room)
+        private static ExpeditionRunBundle CheckGeneratedDeploymentWorld(ConversionContent content,ExpeditionDeploymentRoom room)
         {
             string authored=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
             var bundle=ExpeditionRunBundle.Build(room.Ticket,content,authored);
@@ -46,7 +122,8 @@ namespace ChipArena.UnityConversion.Editor
                 if(loaded.compatibility!=bundle.Identity||loaded.Area(loaded.world).map!=world.Map.id)
                     throw new Exception("Generated startup validated a different layout.");
             }
-            Debug.Log("PASS generated deployment blockout: native collision, Hulk routes, join circles and run/lobby ticket codec");
+            Debug.Log("PASS generated deployment blockout: seed="+room.Ticket.seed+", roll="+room.Ticket.instanceRolls+", identity="+bundle.Identity+"; native collision, Hulk routes, join circles and run/lobby ticket codec");
+            return bundle;
         }
     }
 }
