@@ -1,3 +1,29 @@
+## 2026-11-01 — Claude: generated Expedition districts drawn
+
+- **Branch/base:** `claude/generated-districts` from Astra's draft `codex/deployment-completion` at `a0fd8e8a`, with
+  shared merged in (`6528e56`, `0afaeb2`). Implementation `24146c0`, then docs and this log. Pushed; **not merged**
+  into shared or the builder: it rides on the draft deployment feature (PR #303), which stays draft.
+- **Task:** owner: "Yes, start them" (the generated-district visuals, Claude's part of the deployment handoff in
+  `docs/EXPEDITION-DEPLOYMENT.md`).
+- **Changes (presentation only):** see `docs/EXPEDITION-DEPLOYMENT.md` "Generated districts drawn".
+  - The generated map no longer draws as bare grey boxes: the town kit reads its ids in the town's terms.
+  - District looks for City Ironworks, Central Station and Ward Zero, each building's pick following the blueprint's
+    blend with no seams; street lamps, road paint and ground marks; lettered entrance frames; the final checkpoint.
+  - The runtime takes each generated run's own area, hub and blueprint, and draws a skyline cut round the footprint.
+  - Merge resolution with shared: `VisualOutfitOf` keeps both the rooftop crowd's concept line and the station's
+    `DeployOutfit` line.
+- **Affected systems:** the Expedition town dressing kit and its runtime (generated map only; the authored town is
+  unchanged, its dressing checks pass), the town skyline builder. No collider, record, route, spawn, hit timing,
+  hitbox, damage, cooldown, movement or network change.
+- **Checks:** `--generated-districts` (2.9 million checks, 3 rolls) and `--expedition-dressing` PASS. Full suite on a
+  clean LF worktree: 895 PASS lines, rc 0 (after the hub check's source pin moved, `01bd581`). `git diff --check` clean. Unity compiles; captures in Unity of a rolled world (local
+  BoZo v244 `generated=SEED` and `place=` options, not committed): each entrance, a Station street, the Ironworks
+  rooftops, the sanctuary gate, the north street.
+- **Not checked:** native acceptance, Windows build, co-op, performance on the generated map (parts stay within the
+  town's budget: about 12,800 parts and under 1,200 casters per roll).
+- **Next:** Astra: fold this branch into #303 (it merges cleanly onto `a0fd8e8a`) or merge #303 forward first and
+  re-merge this. Claude (later): district fog and ambient colour by camera position, district audio, plaza props.
+
 ## 2026-11-01 — Claude: first-person model weapons at a readable size
 
 - **Branch/base:** `claude/first-person-weapons` from shared `df30400`. Implementation `874bcc3`, then this log. Merged

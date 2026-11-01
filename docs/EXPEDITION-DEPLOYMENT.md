@@ -87,6 +87,34 @@ Claude can branch directly from this combined candidate for the visual pass; it 
 
 Claude: the live adapter is `Runtime/NativeDeploymentLive.cs`; the real party, console intents and travel start are bound. `ArenaPresentation.GeneratedRun` exposes the world/area/hub and `World.Blueprint` theme weights for district dressing. The existing city kit/audio are enabled for the generated map, but bespoke district transitions and finished generated-city dressing still need your visual pass. Do not reintroduce a preview authority into the live adapter.
 
+
+### Generated districts drawn (Claude, 2026-11-01)
+
+Branch `claude/generated-districts` (from `codex/deployment-completion` at `a0fd8e8a`, shared merged in). Presentation
+only (`Core/NativeExpeditionCityKit.Generated.cs`); no collider, record, route, timing or wire changes.
+
+- The town kit now reads the generated map's ids in the town's terms (`NativeExpeditionCityKit.Stem`): buildings get
+  the town's facades, fence sections the sanctuary's metal dressing, the gates their SANCTUARY headers and route signs.
+  Before this the generated map drew as bare grey boxes (the kit keyed only on the authored town's ids).
+- **District looks.** Each building takes one district's look, picked from `NativeDeployPresentation.Weights` at its
+  centre (the shares squared, against a stable hash of its id), so a district reads as its own near its entrance and
+  mixes toward the plaza with no seam. An unknown theme dresses as the town.
+  - `industrial` (City Ironworks): brick, roller doors, hazard hems, rust sheeting, pipes, stencils, burning stacks.
+  - `rail` (Central Station): cream tile, a teal band, the metro roundel, departure boards, cold lamps.
+  - `quarantine` (Ward Zero): white cladding, cold ribbon lights, taped shutters, notices, red lamps and beacons.
+- **Streets:** wall lamps in each district's light, kerbs, centre dashes and district ground marks (rails, a tactile
+  strip, decon bands), all flat paint. **Entrances:** each frame clad in its district's look, its zone's name on a dark
+  plate both ways, an accent light strip and beacons. **Final court:** blast panels, razor wire, floodlights, CHECKPOINT.
+- **Runtime:** each generated run uses its own area, hub and blueprint (the first one used to stick for the session);
+  the skyline is cut round the generated footprint (`NativeExpeditionCityScenery.Around`; the town's stood inside its
+  north end).
+- **Checks:** `Tests/GeneratedDistrictChecks.cs` (`--generated-districts`) on three real rolls: determinism, the town's
+  part and caster budgets, every street building dressed, the blend (picks grow with a district's share; at least half
+  within 30 m of each entrance; the town's look leads within 55 m of the plaza), the zone names, SANCTUARY and
+  CHECKPOINT lettered, and the town's placement rules against the generated records.
+- **Not done:** per-district fog or ambient colour as the camera moves, district audio, the camp's brazier and props
+  in the generated plaza, mutator presentation (no effect list yet).
+
 Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The completed-source branch must remain draft until native acceptance and the remaining visual/migration scope are resolved.
 
 ## Approved gameplay shape
