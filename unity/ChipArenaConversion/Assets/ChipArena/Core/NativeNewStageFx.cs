@@ -333,7 +333,7 @@ namespace ChipArena.UnityConversion
             {
                 double phase=H(408,i)*life,cyc=Math.Floor((t+phase)/life),age=(t+phase)-cyc*life;int c=(int)cyc;
                 double a=H(409,i,c)*2*Math.PI,r=12+Math.Pow(H(410,i,c),.6)*120,x=ex+Math.Cos(a)*r,z=ez+Math.Sin(a)*r;if(Math.Abs(x)<29&&Math.Abs(z)<23)continue;
-                double s=age/life,k=Math.Sin(Math.Min(1,s*3)*Math.PI*.5)*(1-s);Flat(x+s*3,sea,z,1.6+s*3.2,.35+s*.5,.3,.82,.88,.92,.42*k,false,1);Atmosphere++;
+                double s=age/life,k=Math.Sin(Math.Min(1,s*3)*Math.PI*.5)*(1-s);Flat(x+s*3,sea,z,2.0+s*3.6,.45+s*.6,.3,.86,.92,.96,.6*k,false,1);Atmosphere++;
             }
         }
         private void FarFlares(double t)

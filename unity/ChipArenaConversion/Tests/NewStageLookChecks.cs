@@ -68,6 +68,9 @@ namespace ChipArena.UnityConversion
                 Check(NativeBlockLooks.Dressed(look,false)&&NativeMapStyle.On(look,false)&&NativeAdvancedLooks.BeamsOn(look)&&NativeAdvancedLooks.ScatterOn(look)&&NativeAdvancedLooks.GiOn(look),id+": dressed blocks, the anime style and the advanced lighting");
                 var styled=NativeMapStyle.Styled(look,false);var st=new MapLookState();NativeMapLooks.Applied(styled,map.sky,false,st);Check(st.Skybox&&st.Fog.On&&st.FarClip>=st.Fog.End,id+": a sky, fog and a far plane past the fog");
                 Check((look.lights?.Length??0)>0&&look.lights.Length<=NativeMapLooks.MaxLights,id+": practical lights");
+                var t=look.toon;NativeMapStyle.Validate(id,t);
+                Check(t.line>0&&t.lineFadeEnd<=look.fog.end&&t.skyToon==1&&t.saturation>=1&&t.saturation<=1.2f&&t.detail<1&&t.shade.z>t.shade.x&&t.copings==1&&t.posts==1&&t.specular>0&&t.occlusion>0,id+": the style as the stage 2 maps take it (outline faded within the fog, the anime sky, a light grade, cool shade, copings and posts)");
+                Check(t.key.bearing==look.key.bearing&&t.key.elevation==look.key.elevation&&t.sky.variant==look.sky.variant&&t.sky.bearing==look.sky.bearing,id+": the style keeps the stage's own key direction and time of day");
                 foreach(var e in look.blockLooks)
                 {
                     if(e.block.StartsWith("material:",StringComparison.Ordinal))continue;
