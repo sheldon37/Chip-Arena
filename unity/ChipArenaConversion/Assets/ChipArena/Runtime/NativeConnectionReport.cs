@@ -201,6 +201,7 @@ namespace ChipArena.UnityConversion
         // without a message from it), or the source's local labels outside a room.
         private string TransportLabel()
         {
+            if(reconnect.Active)return "RECONNECTING";
             if(HostLost)return "DISCONNECTED";
             if(!Online)return arena==null?"LOCAL ENGINE":arena.Sandbox?"LOCAL SANDBOX":arena.Pve!=null?"LOCAL BOSS TEST":"LOCAL PRACTICE";
             bool lost=!Hosting&&(server==null||server.Closed),stalled=!Hosting&&!lost&&(DateTime.UtcNow-server.LastReceived).TotalSeconds>3;

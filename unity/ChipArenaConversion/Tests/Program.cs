@@ -10,6 +10,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--deploy-sounds"){DeploySoundChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-mutators"){ExpeditionMutatorChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-performance"){DeployPerformanceChecks.Run(ProjectRoot());return 0;}
+            ReconnectChecks.Run();
+            if(args.Length==1&&args[0]=="--reconnect")return 0;
             ControllerChecks.Run();
             if(args.Length==1&&args[0]=="--controller")return 0;
             MenuFocusChecks.Run(ProjectRoot());
