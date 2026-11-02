@@ -18,6 +18,14 @@ class SourcePackageTests(unittest.TestCase):
     def test_current_dependencies_exist_in_official_editor_catalog(self):
         validate_dependencies(self.dependencies, self.catalog)
 
+    def test_controller_backend_survives_builder_prepare(self):
+        project = (ROOT / "ProjectSettings/ProjectSettings.asset").read_text()
+        builder = (ROOT / "Assets/ChipArena/Editor/PrototypeBuild.cs").read_text()
+        self.assertIn("activeInputHandler: 2", project)
+        self.assertIn("input.intValue=2;", builder)
+        self.assertNotIn("input.intValue=0;", builder)
+        self.assertEqual(self.dependencies["com.unity.inputsystem"], "1.17.0")
+
     def test_windows_log_failures_are_rejected(self):
         for module in ('inputlegacy', 'physicscore2d', 'tetgen', 'timelinefoundation'):
             with self.subTest(module=module):

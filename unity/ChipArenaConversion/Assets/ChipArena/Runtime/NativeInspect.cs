@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         private void Inspect(float width,float height)
         {
             var seat=match.Seat(inspectSeat);if(seat==null)return;float w=Math.Min(570,width-40),x=(width-w)/2;GUI.Box(new Rect(x,100,w,height-180),"");
-            GUILayout.BeginArea(new Rect(x+20,115,w-40,height-210));GUILayout.BeginHorizontal();GUILayout.Label(seat.name+" · "+content.Weapon(seat.spec).name,heading);if(GUILayout.Button("Close",button,GUILayout.Width(80)))inspectSeat=0;GUILayout.EndHorizontal();
+            GUILayout.BeginArea(new Rect(x+20,115,w-40,height-210));GUILayout.BeginHorizontal();GUILayout.Label(seat.name+" · "+content.Weapon(seat.spec).name,heading);if(NativeControllerPointer.Button("Close",button,GUILayout.Width(80)))inspectSeat=0;GUILayout.EndHorizontal();
             var p=arena.Pilots.Find(p=>p.Seat==seat);if(p!=null)GUILayout.Label("HP "+p.Hp.ToString("0")+" / "+p.Stats["hp"].ToString("0")+" · Damage ×"+p.Stats["damage"].ToString("0.##")+" · Speed "+p.Stats["speed"].ToString("0.##")+" · Attack rate ×"+p.Stats["attackRate"].ToString("0.##"),small);
             inspectScroll=GUILayout.BeginScrollView(inspectScroll);if(seat.chips.Count==0)GUILayout.Label("No Chips installed yet.",label);foreach(var pair in seat.chips.OrderBy(c=>content.Chip(c.Key).name)){var chip=content.Chip(pair.Key);GUILayout.Label(chip.name+" ×"+pair.Value+" · "+chip.rarity,label);GUILayout.Label(chip.description,small);}GUILayout.EndScrollView();GUILayout.EndArea();
         }

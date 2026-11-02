@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            ControllerChecks.Run();
+            if(args.Length==1&&args[0]=="--controller")return 0;
             CrowdPoseChecks.Run();
             if(args.Length==1&&args[0]=="--new-stages"){NewStagesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--training-look"){TrainingLookChecks.Run(ProjectRoot());return 0;}

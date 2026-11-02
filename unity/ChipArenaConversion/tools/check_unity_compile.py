@@ -3,6 +3,8 @@ No Unity process, license activation, project import or player build is performe
 This is a semantic compile gate, not a replacement for native build/play checks.
 """
 import argparse
+import hashlib
+import json
 from pathlib import Path
 import re
 import shutil
@@ -94,7 +96,7 @@ def compile_assembly(dotnet, csc, output, name, sources, refs, defines):
     if not sources:
         raise RuntimeError(f"No sources found for {name}")
     dll = output / (name + ".dll")
-    args = ["-nologo", "-target:library", "-nostdlib+", "-optimize+", "-langversion:9.0",
+    args = ["-nologo", "-target:library", "-nostdlib+", "-optimize+", "-langversion:9.0", "-unsafe+",
             "-define:" + ";".join(defines), "-out:" + str(dll)]
     args += ["-r:" + str(p) for p in refs] + [str(p) for p in sources]
     # Response files keep large source/reference lists below OS argument limits.
@@ -107,6 +109,31 @@ def compile_assembly(dotnet, csc, output, name, sources, refs, defines):
     result.check_returncode()
     print(f"PASS Unity assembly compile: {name}", flush=True)
     return dll
+
+
+def input_system_sources(output):
+    # Compile the real pinned package API, not locally invented stubs. Unity resolves this same
+    # dependency on import; this lightweight gate excludes its separate InputForUI assembly.
+    version = json.loads((PROJECT / "Packages/manifest.json").read_text())["dependencies"]["com.unity.inputsystem"]
+    if version != "1.17.0":
+        raise RuntimeError("Update the Input System compile gate hash with the manifest pin")
+    package = output / ("input-system-" + version)
+    archive_path = output / ("input-system-" + version + ".tgz")
+    digest = "493b4891a4617d092865b0cb1d3aee1ce60c71f9a89a816e7866ed8136b5e91e"
+    if not archive_path.exists():
+        urllib.request.urlretrieve(f"https://packages.unity.com/com.unity.inputsystem/-/com.unity.inputsystem-{version}.tgz", archive_path)
+    if hashlib.sha256(archive_path.read_bytes()).hexdigest() != digest:
+        raise RuntimeError("Input System package checksum mismatch")
+    with tarfile.open(archive_path) as archive:
+        for member in archive:
+            parts = Path(member.name).parts
+            if not member.isfile() or ".." in parts or Path(member.name).is_absolute() or not member.name.endswith(".cs"):
+                continue
+            target = package / member.name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with archive.extractfile(member) as source, target.open("wb") as destination:
+                shutil.copyfileobj(source, destination)
+    return sorted(p for p in (package / "package/InputSystem").rglob("*.cs") if "InputForUI" not in p.parts)
 
 
 def main():
@@ -133,6 +160,10 @@ def main():
     editor = sorted((source / "Editor").rglob("*.cs"))
     defines = ["UNITY_6000_3_OR_NEWER", "UNITY_6000_0_OR_NEWER", "UNITY_STANDALONE", "UNITY_STANDALONE_WIN", "UNITY_64"]
     player_refs = [p for p in refs if not p.name.startswith("UnityEditor")]
+    package_defines = defines + ["UNITY_2022_3_OR_NEWER", "UNITY_2023_1_OR_NEWER", "UNITY_2023_2_OR_NEWER", "ENABLE_INPUT_SYSTEM", "UNITY_INPUT_SYSTEM_ENABLE_PHYSICS", "UNITY_INPUT_SYSTEM_PLATFORM_SCROLL_DELTA", "UNITY_INPUT_SYSTEM_PLATFORM_POLLING_FREQUENCY"]
+    input_assembly = compile_assembly(args.dotnet, csc, args.output, "Unity.InputSystem", input_system_sources(args.output), player_refs, package_defines)
+    refs.append(input_assembly)
+    player_refs.append(input_assembly)
     compile_assembly(args.dotnet, csc, args.output, "ChipArena.Player", runtime, player_refs, defines)
     compiled = compile_assembly(args.dotnet, csc, args.output, "Assembly-CSharp", runtime, refs, defines + ["UNITY_EDITOR", "UNITY_EDITOR_WIN"])
     compile_assembly(args.dotnet, csc, args.output, "Assembly-CSharp-Editor", editor, refs + [compiled], defines + ["UNITY_EDITOR", "UNITY_EDITOR_WIN"])

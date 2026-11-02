@@ -83,10 +83,10 @@ namespace ChipArena.UnityConversion
             ExpeditionPickStep();
             if(LiveExpedition==null){expeditionScreenOpen=false;return false;}if(GUIUtility.keyboardControl!=0)return false;
             ExpeditionEndingKeys();
-            if(Input.GetKeyDown(KeyCode.J))expeditionScreenOpen=!expeditionScreenOpen;
-            if(expeditionScreenOpen&&Input.GetKeyDown(KeyCode.Escape)){expeditionScreenOpen=false;return true;}
-            if(Input.GetKeyDown(KeyCode.C)){bool fromJ=expeditionScreenOpen;expeditionScreenOpen=false;ExpeditionPickKey(fromJ);}
-            if(ExpeditionPickShown&&Input.GetKeyDown(KeyCode.Escape)&&!StageInputHeld){expeditionPick.Later();return true;}
+            if((Input.GetKeyDown(KeyCode.J)||PadDown(PadAction.Board)))expeditionScreenOpen=!expeditionScreenOpen;
+            if(expeditionScreenOpen&&(Input.GetKeyDown(KeyCode.Escape)||PadBack)){expeditionScreenOpen=false;return true;}
+            if((Input.GetKeyDown(KeyCode.C)||PadDown(PadAction.Chips))){bool fromJ=expeditionScreenOpen;expeditionScreenOpen=false;ExpeditionPickKey(fromJ);}
+            if(ExpeditionPickShown&&(Input.GetKeyDown(KeyCode.Escape)||PadBack)&&!StageInputHeld){expeditionPick.Later();return true;}
             return false;
         }
 

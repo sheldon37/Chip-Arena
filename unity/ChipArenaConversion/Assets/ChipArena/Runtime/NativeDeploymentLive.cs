@@ -47,8 +47,8 @@ namespace ChipArena.UnityConversion
             if(action==DeployIntent.RollDestinations)RollDeploymentInstances(state.revision);
             else if(action==DeployIntent.SkipMutators)SkipDeploymentMutators(state.revision);
             else if(action==DeployIntent.Deploy)DeployExpedition(state.revision);
-            if(server!=null&&!state.deployed&&GUI.Button(new Rect(width-210,height-64,180,36),networkReady?"Not ready":"Ready"))GuestReady(!networkReady);
-            if(GUI.Button(new Rect(width-210,20,180,32),"Leave station")){CloseNetwork();menu=true;}
+            if(server!=null&&!state.deployed&&NativeControllerPointer.Button(new Rect(width-210,height-64,180,36),networkReady?"Not ready":"Ready"))GuestReady(!networkReady);
+            if(NativeControllerPointer.Button(new Rect(width-210,20,180,32),"Leave station")){CloseNetwork();menu=true;}
             if(!string.IsNullOrEmpty(networkStatus))GUI.Label(new Rect(28,height-30,width-56,26),networkStatus);
             return true;
         }

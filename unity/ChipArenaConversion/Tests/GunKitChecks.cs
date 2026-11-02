@@ -235,7 +235,7 @@ namespace ChipArena.UnityConversion
             Check(data.Ads("pistol")==null&&data.Ads("machinegun")==null&&data.Ads("rifle")!=null,"only the rifle has an ADS entry");
             Check(!NativeRangedRules.Scope("pistol")&&!NativeRangedRules.Scope("machinegun")&&NativeRangedRules.Scope("rifle"),"rifle-only scope rule");
             var game=Code(File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ConversionGame.cs")));
-            Check(game.Contains("bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&Input.GetKey(KeyCode.Q);"),"Q aims only with the rifle (look sensitivity, Aim input)");
+            Check(game.Contains("bool aiming=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&(Input.GetKey(KeyCode.Q)||PadHeld(PadAction.Aim));"),"Q and controller Aim scope only with the rifle (look sensitivity, Aim input)");
             Check(game.Contains("bool aim=NativeRangedRules.Scope(p.Seat.spec)&&ads!=null&&pending.Aim&&alive&&!menu;"),"the camera zooms (and forces first person) only for the rifle");
             Check(game.Contains("if(slot==\"q\"&&NativeGunKit.Covers(d.id))return NativeGunKitHud.Status(")&&game.IndexOf("NativeGunKitHud.Status(",StringComparison.Ordinal)<game.IndexOf("return \"Q  Aim (hold)\"",StringComparison.Ordinal),"AbilityStatus routes the kit before the ADS line");
             Check(game.Contains("presentation.GunKitKick(")&&Regex.IsMatch(game,@"prefs\.cameraShake\)presentation\.GunKitKick\("),"the first-person kick is under the camera shake setting");

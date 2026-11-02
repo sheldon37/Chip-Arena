@@ -456,7 +456,7 @@ namespace ChipArena.UnityConversion
                 if(!enabled&&over&&ev.type==EventType.MouseDown&&ev.button==0)Sound?.Invoke(NativeUiSounds.Error);
                 if(enabled&&over&&ev.type==EventType.Repaint)Hovered(p);
             }
-            bool hit=GUI.Button(p,GUIContent.none,GUIStyle.none);GUI.enabled=e;GUI.matrix=m;
+            bool hit=GUI.Button(p,GUIContent.none,GUIStyle.none)||NativeControllerPointer.Click(p);GUI.enabled=e;GUI.matrix=m;
             if(hit&&enabled&&sound!=null)Sound?.Invoke(sound);
             return hit&&enabled;
         }

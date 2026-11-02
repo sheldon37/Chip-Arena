@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
                 int tab=ChoiceRow(new[]{"Log in","Register","Recovery"},accountAction=="register"?1:accountAction=="recover"?2:0);accountAction=tab==1?"register":tab==2?"recover":"login";
                 Field("Username");accountUser=GUILayout.TextField(accountUser,32);Field(accountAction=="login"?"Password":"New password");accountPassword=GUILayout.PasswordField(accountPassword,'●',256);
                 if(accountAction=="recover"){Field("Recovery code");accountRecovery=GUILayout.TextField(accountRecovery,128);}
-                rememberAccount=GUILayout.Toggle(rememberAccount,"Remember sign-in on this Windows account");
+                rememberAccount=NativeControllerPointer.Toggle(rememberAccount,"Remember sign-in on this Windows account");
             }
             else
             {
@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
             int index=0,n=Mathf.Max(1,choiceColumns);foreach(string id in choices)
             {
                 if(index%n==0)GUILayout.BeginHorizontal();string text=labels!=null?labels[index]:id.Replace("-"," ");
-                if(GUILayout.Toggle(id==selected,(id==selected?"✓ ":"")+text,button)&&id!=selected){selected=id;Click();}index++;if(index%n==0)GUILayout.EndHorizontal();
+                if(NativeControllerPointer.Toggle(id==selected,(id==selected?"✓ ":"")+text,button)&&id!=selected){selected=id;Click();}index++;if(index%n==0)GUILayout.EndHorizontal();
             }
             if(index%n!=0)GUILayout.EndHorizontal();return selected;
         }
