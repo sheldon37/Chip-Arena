@@ -347,3 +347,57 @@ None on hit timing, hitboxes, damage, cooldowns, movement speed or networking:
 - The owner's recording repeats 18 of its 131 frames, so the game or the recorder ran under 30 fps. Frame pacing is not
   addressed here.
 - The Unity Editor, Windows and two-client play were not run.
+
+## Under fire on the model, and corpses up on the crowd (2026-11-02)
+
+The owner sent a video of a machine gun on a crowd in an Expedition run: "we still needa fix zombie movement animations, pay
+attention to what happens here". Two things showed in it:
+
+- Zombies under fire dropped into deep squats and wide lunges. One held a leg out at hip height.
+- A corpse hung flat at hip height across two living zombies for over a second, with its blood pool on the ground below.
+
+### Cause (measured: Unity captures with `zshape=1`, an offline probe of the gait on the model's legs)
+
+- **The lunges.** A reeling add is knocked back by the authority (2.2 m/s for .2 s) and then runs on at once, several times a
+  second. The gait read only the root's speed, not its direction. So it kept its forward run cycle and planted each foot ahead
+  along the facing while the root went back. The hips left the feet .5-.7 m behind or ahead. The hips then sank to keep both
+  feet within the legs' reach: a lunge, or a squat with a knee near 90-140 degrees.
+  - Runner under a pistol's staggers: pelvis p5 .44 against a steady run's .65, feet trailing .63 m.
+  - Shambler under the same: .62 against .71, feet trailing .66 m.
+- **The corpse.** A dead add's body lay at its root's height at death less its root height. An add that died up on another
+  add's back in a crowd (or in the air) stayed up there.
+
+### What changed (presentation only)
+
+- `NativeHordeGait` (Core/NativeHordeMotion.cs):
+  - **While it reels** (`NativeHordeReact.Staggering`, and the root has gone backward within `KnockHold` .3 s), the gait reads
+    the root's net motion: its velocity eased over `NetHalfLife` .3 s (`KnockMotion`). The jolts left over carry the planted
+    feet with them: a skid, not a stride. It eases in and out over `KnockEase` .1 s.
+  - **Carried aside or back** of its facing by a shove (`TravelOff`: 0 within about 45 degrees of the facing, 1 at 90 or more),
+    each foot lands the way the body travels, in steps up to `TravelShort` 40% shorter. Running on along the facing is
+    unchanged.
+- **Corpses** (`Runtime/NativeHordeKindPresentation.cs`, `NativeMinionFx.CorpseFloor`): each horde death casts the world's
+  floor under it once (props only, never another add). A body more than 8 cm above that floor falls to it under gravity:
+  about .4 s from hip height.
+
+### Results
+
+- **Offline probe** (`--zombie-knock`):
+  - Runner under staggers: pelvis p5 .59 (steady .65); feet trail at most .38 m.
+  - Shambler: .69 (steady .71); .21 m.
+  - Unhit motion is unchanged.
+- **Unity**, 16 frames of a machine gun on 8 runners and shamblers (brickfall, god mode):
+  - Standing zombies in a deep pose (a knee 75+ degrees with the pelvis under .85 m): 17 before, 8 after.
+  - Pelvis p10: .72 before, .79 after.
+  - These come from two separate fights, so they are indicative only.
+  - The remaining deep poses were mostly one shambler lunging at the pilot for .4 s, likely an attack's.
+
+### Animation impacts
+
+- Feet placement and the hips' height while knocked about or shoved, and where a corpse lies.
+- No change to hit timing, hitboxes, damage, cooldowns, movement, AI or networking.
+
+### Known limits
+
+- A runner restarting into a sprint right after the knocks can take one long first stride (a brief dip).
+- Not yet seen on a guest or in the Windows build.

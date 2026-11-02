@@ -95,6 +95,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The cycle phase (cycles; one cycle is a step of each foot), the smoothed ground speed and the presented yaw (Unity, deg).</summary>
         public float Phase,Speed,Yaw;
         private Vector2 root;private Vector2 velocity;
+        // The way the body travels (eased toward the root's velocity's direction; the facing when it stands): TravelOff.
+        private Vector2 travel;
+        // The root's net motion (its velocity eased over NetHalfLife) and how far the gait reads it instead (0..1, while it reels).
+        private Vector2 net;private float knockW,backAt=float.NegativeInfinity;private Vector2 jolt;
         private struct Foot{public Vector2 W,From,To;public bool Swing,Scrape;public float T0,T1,Lift;public int Cycle;public float Y,Turn,FromTurn;}
         /// <summary>A standing foot twisted this far (degrees) from the body's facing steps round (the turn in place's shuffle), and
         /// a planted one never shows more than <see cref="TwistMost"/>.</summary>
@@ -470,7 +474,7 @@ namespace ChipArena.UnityConversion
             float dt=float.IsNaN(time)?0:f.Time-time;bool fresh=float.IsNaN(time)||id!=f.Id||dt<-.001f||dt>ResetGap;
             if(fresh)
             {
-                id=f.Id;seed=f.Seed;Yaw=f.Yaw;root=new Vector2(f.Root.X,f.Root.Z);velocity=Vector2.Zero;Speed=0;dt=0;sinkNow=0;sinkEase.Reset(0);
+                id=f.Id;seed=f.Seed;Yaw=f.Yaw;root=new Vector2(f.Root.X,f.Root.Z);velocity=Vector2.Zero;travel=Dir(f.Yaw);Speed=0;dt=0;sinkNow=0;sinkEase.Reset(0);
                 float H(int k)=>NativeHordeKinds.Hash(seed,40+k);
                 Phase=H(0);cadence=.94f+.12f*H(1);hunchJitter=(H(2)-.5f)*.12f;tilt=(H(3)-.5f)*.36f;hang=H(4)*.3f;idleRate=.8f+.4f*H(5);limpSide=H(6)<.5f?-1:1;drag=kind==NativeHordeKinds.Shambler?.4f+.6f*H(7):0;
                 if(NativeZombieMotion.Captured(kind)){walkClip=NativeZombieMotion.Walk(kind,seed);runClip=NativeZombieMotion.Run(kind,seed);idleClip=NativeZombieMotion.Idle(kind,seed);idlePhase=H(8)*NativeZombieClips.Duration(idleClip);}
@@ -498,8 +502,16 @@ namespace ChipArena.UnityConversion
                 // (The speed the cycle and the take blends read is eased on a spring as well: a dead stop from a run, which the
                 // root makes in a tenth of a second, turns the take's arms and trunk from the run to the stand over a quarter of
                 // one instead of flinging them across in a few frames.)
-                var fv=new Vector2(f.Velocity.X,f.Velocity.Z);if(!(fv.Length()<12))fv=Vector2.Zero;velocity=fv;root=now;
-                if(fresh)speedEase.Reset(fv.Length());Speed=Math.Max(0,speedEase.Step(fv.Length(),SpeedHalfLife,dt));
+                var fv=new Vector2(f.Velocity.X,f.Velocity.Z);if(!(fv.Length()<12))fv=Vector2.Zero;var moved=fresh?Vector2.Zero:now-root;root=now;
+                // While it reels under hits (NativeHordeReact.Staggering) the authority knocks the root back and lets it run on again
+                // several times a second; the gait reads its net motion then (KnockMotion), so the feet rock under the hips in short
+                // steps instead of running strides flung forward and back that the hips leave behind (owner 2026-11-02).
+                if(fresh){net=fv;knockW=0;backAt=float.NegativeInfinity;}else net+=(fv-net)*(1-(float)Math.Exp(-dt*.6931f/NetHalfLife));
+                if(Vector2.Dot(fv,Forward)<-KnockBack)backAt=f.Time;bool knocked=react!=null&&react.Staggering(f.Time)&&f.Time-backAt<KnockHold;knockW+=((knocked?1:0)-knockW)*(fresh?1:1-(float)Math.Exp(-dt/KnockEase));
+                velocity=KnockMotion(fv,net,knockW,out float sp);
+                // (The rest of the root's motion, its jolts, carries the feet on the ground with it: a skid, not a stride.)
+                jolt=knockW>1e-4f&&moved.Length()<1?(moved-net*dt)*knockW:Vector2.Zero;
+                if(fresh)speedEase.Reset(sp);Speed=Math.Max(0,speedEase.Step(sp,SpeedHalfLife,dt));
             }
             else
             {
@@ -543,11 +555,19 @@ namespace ChipArena.UnityConversion
             // A shove moves the hips off the feet: standing feet step back under them (the stagger-back steps).
             Vector2 shove=react!=null?react.Shove(f.Time):Vector2.Zero;bool staggering=react!=null&&react.Staggering(f.Time);
             int feetCount=quad?4:2;
+            // A knock-back or a shove carries the body backward or aside of its facing: its feet land under it that way, in shorter
+            // steps (TravelOff), instead of reaching ahead along the facing while the hips leave them behind (the hips then sank
+            // into a lunge to keep both feet: owner 2026-11-02, zombies under fire). Running on along the facing is unchanged.
+            Vector2 way=Forward;float off2=0;
+            {float vl=velocity.Length();Vector2 want=vl>.3f?velocity/vl:Forward;travel+=(want-travel)*(stepFresh?1:1-(float)Math.Exp(-dt/TravelEase));}
+            if(!heavy&&!quad){off2=TravelOff(travel,Forward);if(off2>0)way=Vector2.Normalize(Vector2.Lerp(Forward,Vector2.Normalize(travel),off2));}
+            bool skid=!heavy&&!quad&&jolt!=Vector2.Zero;
             for(int i=0;i<feetCount;i++)
             {
                 ref var ft=ref feet[i];
+                if(skid){if(ft.Swing){ft.From+=jolt;ft.To+=jolt;}else ft.W+=jolt;}
                 float off=quad?FootOffset(i):i==1?off1:0,duty=quad?duty0:i==1?duty1:duty0;float u=Frac(Phase+off);int cycle=(int)Math.Floor(Phase+off);
-                Vector2 home=Home(i,now+shove*(staggering?1.15f:.8f)+(!quad?HipsUnder():Vector2.Zero),d),ahead=Forward*(duty*stride*.5f*(heavy?TurnReach(i,d.Width):1));
+                Vector2 home=Home(i,now+shove*(staggering?1.15f:.8f)+(!quad?HipsUnder():Vector2.Zero),d),ahead=way*(duty*stride*.5f*(heavy?TurnReach(i,d.Width):1-TravelShort*off2));
                 // A charge's wind-up scrapes the right foot back once (it then stands braced there until the run).
                 bool braced=heavy&&f.Charging&&f.ChargeAge<NativeHulkMoves.ChargeWind&&!f.ChargeEnded;
                 if(braced&&i==1&&!ft.Swing&&f.ChargeAge>=.24f&&f.ChargeAge<.5f&&!(Math.Abs(scrapedFor-(f.Time-f.ChargeAge))<.05f))
@@ -579,6 +599,22 @@ namespace ChipArena.UnityConversion
                 FootWorld[i]=new Vector3(ft.W.X,f.Ground,ft.W.Y);FootAir[i]=ft.Swing;
             }
         }
+        /// <summary>How quickly the way the body travels follows the root's velocity (s), and how much shorter a step is when it travels
+        /// backward or aside (the stumble's quick steps).</summary>
+        public const float TravelEase=.08f,TravelShort=.4f;
+        /// <summary>The net motion's half-life (s) and how quickly the gait turns to it and back as a stagger starts and ends (s).</summary>
+        public const float NetHalfLife=.3f,KnockEase=.1f;
+        /// <summary>A reeling add is knocked about while its root has run backward (faster than KnockBack m/s against its facing) within the
+        /// last KnockHold s; running on once the knocks stop, it is read as it runs.</summary>
+        public const float KnockBack=.3f,KnockHold=.3f;
+        /// <summary>The motion the gait reads: the root's velocity `v`, or while it reels (`w` 1) its net motion `net`; `speed` the
+        /// matching ground speed.</summary>
+        public static Vector2 KnockMotion(Vector2 v,Vector2 net,float w,out float speed)
+        {if(w<=1e-4f){speed=v.Length();return v;}speed=v.Length()+(net.Length()-v.Length())*w;return Vector2.Lerp(v,net,w);}
+        /// <summary>How far the body's travel (`travel`, eased toward the root's velocity's direction) turns off its facing: 0 within about
+        /// 45 degrees of it (a run on, stepping along the facing as ever), 1 at 90 degrees aside or more (stepping the way it goes).</summary>
+        public static float TravelOff(Vector2 travel,Vector2 forward)
+        {float l=travel.Length();if(l<1e-3f)return 0;return Clamp01((.7f-Vector2.Dot(travel/l,forward))/.7f);}
         // Left 0, right .5; the crawler's hands (2, 3) trot with the opposite feet.
         private static float FootOffset(int i)=>i==0?0:i==1?.5f:i==2?.5f:0;
         /// <summary>The share of a swing over which a low knee's lift eases in after the foot leaves and out before it lands.</summary>
