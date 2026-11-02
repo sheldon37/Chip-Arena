@@ -173,7 +173,7 @@ namespace ChipArena.UnityConversion
         }
         private static void UploadArenaLights()
         {
-            if(kitCount==0||Time.frameCount-kitFrame>1){Shader.SetGlobalVectorArray(ArenaPosId,arenaPos);Shader.SetGlobalVectorArray(ArenaColorId,arenaColor);Shader.SetGlobalInt(ArenaCountId,arenaCount);return;}
+            if(kitCount==0||Time.frameCount-kitFrame>1){Shader.SetGlobalVectorArray(ArenaPosId,arenaPos);Shader.SetGlobalVectorArray(ArenaColorId,SlotColors(arenaColor));Shader.SetGlobalInt(ArenaCountId,arenaCount);return;}
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;int slots=NativeMapLooks.MaxLights;
             for(int i=0;i<slots;i++)
             {
@@ -184,7 +184,7 @@ namespace ChipArena.UnityConversion
             var rgb=kitRgb;if(!linear){for(int k=0;k<kitCount;k++){var g=new Color(kitRgb[k*3],kitRgb[k*3+1],kitRgb[k*3+2]).gamma;kitScratch[k*3]=g.r;kitScratch[k*3+1]=g.g;kitScratch[k*3+2]=g.b;}rgb=kitScratch;}
             NativeKitLightPool.Merge(mergePos,mergeRgb,slots,kitPos,rgb,kitCount,kitEye.x,kitEye.y,kitEye.z,mergeBeam,kitBeam);int count=arenaCount;
             for(int i=0;i<slots;i++){uploadPos[i]=new Vector4(mergePos[i*4],mergePos[i*4+1],mergePos[i*4+2],Math.Max(.0001f,mergePos[i*4+3]));uploadColor[i]=new Vector4(mergeRgb[i*3],mergeRgb[i*3+1],mergeRgb[i*3+2],mergeBeam[i]);if(mergePos[i*4+1]>-5000&&i>=count)count=i+1;}
-            Shader.SetGlobalVectorArray(ArenaPosId,uploadPos);Shader.SetGlobalVectorArray(ArenaColorId,uploadColor);Shader.SetGlobalInt(ArenaCountId,count);
+            Shader.SetGlobalVectorArray(ArenaPosId,uploadPos);Shader.SetGlobalVectorArray(ArenaColorId,SlotColors(uploadColor));Shader.SetGlobalInt(ArenaCountId,count);
         }
         private static readonly float[] kitScratch=new float[NativeKitLightPool.MaxBudget*3];
         /// <summary>
@@ -298,6 +298,7 @@ namespace ChipArena.UnityConversion
             // The advanced lighting (Runtime NativeAdvancedLighting): the look's light volume, scattering, beams and weather on
             // this graphics tier (nothing on the low tier or for a look without them).
             NativeAdvancedLighting.Apply(map,look);
+            applyCount++;
         }
         /// <summary>
         /// The zone boss song's house light (Core NativeZoneBossBeat.House; presentation only): scales the look's ambient and key
@@ -306,11 +307,49 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void ZoneHouse(float scale)
         {
-            scale=Mathf.Clamp(scale,.05f,2f);if(introActive||current==null||Mathf.Abs(scale-zoneHouse)<1e-4f)return;zoneHouse=scale;var s=applied;
-            RenderSettings.ambientSkyColor=C(s.AmbientSky)*scale;RenderSettings.ambientEquatorColor=C(s.AmbientEquator)*scale;RenderSettings.ambientGroundColor=C(s.AmbientGround)*scale;
-            if(moon!=null)moon.intensity=s.KeyIntensity*scale;
+            scale=Mathf.Clamp(scale,.05f,2f);if(introActive||current==null||Mathf.Abs(scale-zoneHouse)<1e-4f)return;zoneHouse=scale;House();
         }
         private static float zoneHouse=1;
+        // The look's ambient and key under the zone boss song's house light and DARKNESS.
+        private static void House()
+        {
+            var s=applied;float k=zoneHouse*(MutatorDark?NativeMutatorLook.DarkAmbient:1);
+            RenderSettings.ambientSkyColor=C(s.AmbientSky)*k;RenderSettings.ambientEquatorColor=C(s.AmbientEquator)*k;RenderSettings.ambientGroundColor=C(s.AmbientGround)*k;
+            if(moon!=null)moon.intensity=s.KeyIntensity*zoneHouse*(MutatorDark?NativeMutatorLook.DarkKey:1);
+        }
+        /// <summary>The run's DARKNESS and WHITEOUT (Core NativeMutatorLook; ArenaPresentation.MutatorFx each frame).</summary>
+        public static bool MutatorDark{get;private set;}public static bool MutatorWhite{get;private set;}
+        private static int applyCount,mutatorApplied=-1;
+        /// <summary>
+        /// Sets the run's DARKNESS (the ambient and moon dimmed, the fog darkened, the look's light slots out) and WHITEOUT (a pale
+        /// linear fog close in, the camera's sky that fog), each written once on a change and again after every Apply (a new map, an
+        /// intro's end). An entrance or the draft stage owning the lights leaves them alone; turning both off gives the look back.
+        /// </summary>
+        public static void Mutators(Camera camera,bool dark,bool white)
+        {
+            if(introActive||current==null||dark==MutatorDark&&white==MutatorWhite&&mutatorApplied==applyCount)return;
+            bool was=MutatorDark||MutatorWhite;MutatorDark=dark;MutatorWhite=white;mutatorApplied=applyCount;var s=applied;House();DarkGrade();
+            if(white){RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=NativeArena.ColorOf(NativeMutatorLook.WhiteHex)*(dark?NativeMutatorLook.DarkFog:1);RenderSettings.fogStartDistance=NativeMutatorLook.WhiteStart;RenderSettings.fogEndDistance=NativeMutatorLook.WhiteEnd;}
+            else if(dark||was){WriteFog(s.Fog);if(dark)RenderSettings.fogColor=C(s.Fog.Color)*NativeMutatorLook.DarkFog;}
+            if(camera!=null){if(white){camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=RenderSettings.fogColor;}else if(was){camera.backgroundColor=C(s.Background);camera.clearFlags=s.Skybox?CameraClearFlags.Skybox:CameraClearFlags.SolidColor;}}
+            UploadArenaLights();
+        }
+        // DARKNESS in the frame's grade (the style's post pass: its shadows far darker, its lights a little, so flashes, fire and
+        // glows still carry) and the sky dimmed; otherwise the look's own.
+        private static void DarkGrade()
+        {
+            if(StyleActive)
+            {
+                Vector4 sh=V(Style.GradeShadow),li=V(Style.GradeLight);
+                if(MutatorDark){sh=new Vector4(sh.x*NativeMutatorLook.DarkShadow,sh.y*NativeMutatorLook.DarkShadow,sh.z*NativeMutatorLook.DarkShadow,sh.w);li=new Vector4(li.x*NativeMutatorLook.DarkLight,li.y*NativeMutatorLook.DarkLight,li.z*NativeMutatorLook.DarkLight,li.w);}
+                Shader.SetGlobalVector(GradeShadowId,sh);Shader.SetGlobalVector(GradeLightId,li);
+            }
+            if(sky!=null){var s=applied;float d=MutatorDark?NativeMutatorLook.DarkSky:1;sky.SetColor(HorizonId,C(s.Horizon)*d);sky.SetColor(ZenithId,C(s.Zenith)*d);}
+        }
+        private static readonly Vector4[] darkColor=new Vector4[NativeMapLooks.MaxLights];
+        // The light slots' colours as uploaded: out under DARKNESS.
+        private static Vector4[] SlotColors(Vector4[] colors)
+        {if(!MutatorDark)return colors;for(int i=0;i<darkColor.Length;i++)darkColor[i]=Vector4.zero;return darkColor;}
         /// <summary>The graphics tier's shadows (NativeSettings): the low tier takes the look's fallback cascades and distance.</summary>
         public static void Graphics(bool low){lowShadows=low;Shadows();}
         private static void Shadows(){if(current==null)return;QualitySettings.shadowCascades=applied.ShadowCascades(lowShadows);QualitySettings.shadowDistance=applied.Shadows(lowShadows);}

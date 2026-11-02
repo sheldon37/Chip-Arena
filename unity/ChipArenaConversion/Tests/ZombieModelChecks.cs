@@ -252,7 +252,7 @@ internal static class ZombieModelChecks
         Check(kp.Contains("if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);"),"the pool made ahead while a horde is about");
         Check(zr.Contains("Graphics.DrawMesh(mesh,m,mats[sub],0,null,sub,c.Blocks[i],false,true)"),"a corpse drawn from its baked meshes, no shadow");
         Check(zr.Contains("var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;")&&zr.IndexOf("var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;",StringComparison.Ordinal)>zr.IndexOf("ZombieBuild(skeleton,v.Build);",StringComparison.Ordinal),"a spitter's sac made on its built rest");
-        Check(zr.Contains("ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);")&&zr.Contains("z.Sac.SetBlendShapeWeight(0,swell*100);")&&zr.Contains("ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);"),"the sac swells with the gait's swell, none in a death");
+        Check(zr.Contains("ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);")&&zr.Contains("z.Sac.SetBlendShapeWeight(0,swell*100);")&&zr.Contains("ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);"),"the sac swells with the gait's swell, none in a death");
         Check(zr.Contains("ws[i]=new BoneWeight{boneIndex0=0,weight0=1-sac.Head[i],boneIndex1=1,weight1=sac.Head[i]};")&&zr.Contains("renderer.bones=new[]{neck,head};"),"skinned on neck_01 and the head");
         Check(zr.Contains("zombieBlock.SetFloat(UseOutlineId,0);r.SetPropertyBlock(zombieBlock);continue;}"),"blank eyes drawn without an outline (a map's tinted line reads as an iris)");
         // The undead look: the decay openings cut in the meshes' rest space, with pits and bones; the wear's blood and gashes.

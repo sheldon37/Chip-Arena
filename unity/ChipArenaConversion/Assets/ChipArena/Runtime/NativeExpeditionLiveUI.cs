@@ -130,6 +130,8 @@ namespace ChipArena.UnityConversion
             // The party list, the join circle panel, the deploy notes and my deploy flash (NativeExpeditionJoinPresentation.cs).
             ExpeditionJoinHud(width,height);
             var hint=new Rect(width-24-150,24,150,28);NativeHudChrome.Tag(hint,C.Cyan(),.9f);U.Text(new Rect(hint.x+12,hint.y,hint.width-12,hint.height),"J · EXPEDITION",11,C.CyanSoft(),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.12f);
+            // The run's mutators, left of it (NativeMutatorPresentation.cs).
+            ExpeditionMutatorChips(presentation.GeneratedRun?.Mutators,hint.x-8);
             ExpeditionChipsTag(v);
             // The reveal of a new stored dice record: not modal in the scene (the pointer stays with play); it closes by itself.
             if(expeditionLiveDice.Open)NativeExpeditionScreen.DiceOverlay(expeditionLiveDice,v,LiveExpeditionControls(),width,height,Time.unscaledTime,prefs.reducedEffects,false);

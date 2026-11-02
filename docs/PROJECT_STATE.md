@@ -1,6 +1,6 @@
 # Chip Arena — current state
 
-2026-11-02 Astra lag-spike recovery (`codex/lag-spike-recovery`, local `bab9813`, includes shared `c7ceb08`): automatic same-seat retries within 75 seconds, stale-replica reset, and scalar intro-stage uploads implemented. Focused recovery/loopback, Unity semantic compile and Python checks pass; full-suite receipt in DEV_LOG. Windows reconnect/FPS verification remains. **Not pushed or published:** automatic approval review blocked GitHub egress pending explicit owner authorization.
+2026-11-02 Astra lag-spike recovery (`codex/lag-spike-recovery`, local `bab9813`, includes shared `c7ceb08`): automatic same-seat retries within 75 seconds, stale-replica reset, and scalar intro-stage uploads implemented. Focused recovery/loopback, Unity semantic compile and Python checks pass; full-suite receipt in DEV_LOG. Windows reconnect/FPS verification remains. Pushed as `ea57981c`, PR #308, after explicit owner authorization. Shared `3837eb3` integrated with both DEV_LOG entries preserved; compiled test-feed release remains unverified.
 
 2026-11-02 Astra station performance (`codex/deployment-performance`, base `b95834e`): fixed the mutator activation regression that supplied a cloned catalog every frame and caused six reel-art jobs per frame. Cached live catalog plus allocation-free equivalent-catalog comparison. Reproduction: 120 strip rebuilds → zero over 120 identical frames; seven regression checks pass. Actual validation/publication receipt in task PR/DEV_LOG; no measured owner-machine FPS claim.
 

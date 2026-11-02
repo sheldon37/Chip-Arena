@@ -4,7 +4,7 @@
 
 The owner requests enabling and publishing #305's mutator rules to the **test** Update channel now, superseding the earlier draft hold. `codex/mutator-activation` integrates those rules with shared `3ab56c4` (slot sparks and sound). The live host can roll three compatible mutators once destination reels settle; guests cannot roll; deployment locks both machines. The selected IDs persist for the run. See the activation PR / newest DEV_LOG entry for actual validation and publication status.
 
-Remaining visual work is not implied complete: DARKNESS/WHITEOUT lighting/fog, BIG HEADS model scale, dedicated STORM warning/strike and blast/death effects, and active HUD. Their existing rule/event contract below is unchanged. DARKNESS/WHITEOUT have no simulation-only substitute. This is a diagnostic test activation; no live/production publication or endpoint migration enablement.
+Remaining visual work: implemented by Claude on 2026-11-02 (see "Mutator looks" below); the Windows build check is still open. Their existing rule/event contract below is unchanged. DARKNESS/WHITEOUT have no simulation-only substitute. This is a diagnostic test activation; no live/production publication or endpoint migration enablement.
 
 
 Owner direction (2026-10-31): party starts together at a Deployment Station, rolls instances on the first machine, can optionally roll a second mutator machine, and then deploys. The first roll generates the outdoor exploration map: approaching an Ironworks entrance gradually gives the surrounding world an Ironworks identity, approaching Central Station gives it a transit identity, etc. Once the Expedition begins, neither machine may roll.
@@ -284,6 +284,49 @@ zombies, etc.' Think fun things, overpowered things, insane difficulty things. C
 ### Station catalog cache — performance fix, 2026-11-02
 
 `NativeExpeditionMutators.Ids` returns a defensive copy. The live adapter must retain one immutable catalog rather than call that accessor each frame: changing the array identity used to invalidate all six reel strips and queue their artwork jobs continuously. The stage now also treats arrays with identical ordered IDs as the same catalog. Real catalog changes and results absent from the strips still invalidate them. The 120-frame regression checks zero rebuilds/allocations with equivalent input copies; it failed with 120 rebuilds on the prior implementation. This changes caching only, not visuals, rolls or sound timing.
+
+### Mutator looks (Claude, 2026-11-02)
+
+The owner approved starting the presentation Astra handed over ("Yes, start them"). Everything below is presentation only. It
+reads the run's own mutators (`ExpeditionRunBundle.Mutators`, which host and guests rebuild from the ticket) and Astra's
+replicated Impact events. No rule, timing, hit volume or network change.
+
+- **STORM** (Core `NativeMutatorFx`, drawn by `Runtime/NativeMutatorPresentation.cs`):
+  - **Warning** (`mutator-storm-warning`, its 2 s): an amber disc over the 3 m radius, pulsing faster toward the strike. A
+    red-orange fill grows from its centre to its edge, and a thin targeting column rises from the sky. The last .2 s strobe
+    red (steady red with reduced effects). The effects quality never thins it.
+  - **Strike** (`mutator-storm`): it takes its warning. A jagged violet-white bolt from 38 m up re-strikes once (one fade
+    with reduced effects). There is a floor flash, a scorch fading over 4 s, and the shared blast sim's Shock blast with
+    its sky bolt (no blue or cyan).
+- **The blasts** (`NativeBlastPresentation.Impacts`): the generic spark burst and surface procs are skipped for mutator events.
+  - HIGH EXPLOSIVE: a small fire blast at a third of the effects quality (one per shot).
+  - MARTYR: a gold-red nova and a floor flash.
+  - BLOATED: the bloater's own gas burst (`NativeHordeFx.Burst`), spread to the 3 m radius.
+  - ROULETTE: Chaos-violet card glints that spiral up round the pilot.
+- **DARKNESS** (Core `NativeMutatorLook`, `NativeLighting.Mutators`), re-applied after every new map; an entrance or the
+  draft keeps its own light:
+  - The ambient drops to 40% and the moon key to 35%. The fog darkens.
+  - The look's light slots go out, and with them the street, district and practical lights.
+  - The town's lamp halos and bulbs go out; its lit windows and signs dim to 12%.
+  - In the toon style's frame grade, the shadows darken to 22% and the lights to 60%. The sky drops to 25%.
+  - Muzzle flashes, blasts, armour and weapon glows still light the streets.
+- **WHITEOUT:**
+  - A pale linear fog from 2 to 25 m, the camera's sky that fog.
+  - World pieces and their labels, quota marks and edge arrows, names, health bars and machine prices are hidden past 25 m.
+  - The Hulk's charge warning stays.
+- **BIG HEADS:** every pilot's and zombie's head is drawn 2.2 times its size (modelled and voxel). A zombie's lost head stays gone.
+  The rules double the head's hit region, so the drawn head is a little larger than the hit region.
+- **HUD and station:**
+  - The run's mutators show as chips in their polarity's colour, left of the J · EXPEDITION tag.
+  - Once the mutator cards land, the station's mutator panel shows `RUN PAYOUT ×1.35` (`NativeExpeditionMutators.Payout`).
+- **Checks:** `--mutator-fx` (`Tests/MutatorFxChecks.cs`).
+- **Seen in Unity** (offline captures of a generated run with the events injected):
+  - the warning, the strike, the gas, the glints and the blasts;
+  - BIG HEADS;
+  - WHITEOUT;
+  - DARKNESS's ambient, key, lamps and windows (the frame 28-37% darker).
+- **Not seen:** the frame grade's part of DARKNESS (these captures may skip the post pass), a live host or guest run with
+  Astra's real events, and the Windows build.
 
 ### Drop pods (Claude, 2026-11-02)
 
