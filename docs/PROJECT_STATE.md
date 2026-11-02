@@ -1,3 +1,5 @@
+2026-11-02 Astra Expedition pods: one initial post-load hub countdown, own-pod delayed extraction through existing ledger rules, replicated fixed anchors/launch state and normalized seat/account looks. Base shared `3837eb3` plus recovery PR #308. No solid pod collision or timing/geometry edits. Validation and merge/test-builder receipts in DEV_LOG; deployed account persistence still requires a separate backend rollout. Windows host/guest/late-join play acceptance remains unrun.
+
 # Chip Arena — current state
 
 2026-11-02 Astra lag-spike recovery (`codex/lag-spike-recovery`, local `bab9813`, includes shared `c7ceb08`): automatic same-seat retries within 75 seconds, stale-replica reset, and scalar intro-stage uploads implemented. Focused recovery/loopback, Unity semantic compile and Python checks pass; full-suite receipt in DEV_LOG. Windows reconnect/FPS verification remains. Pushed as `ea57981c`, PR #308, after explicit owner authorization. Shared `3837eb3` integrated with both DEV_LOG entries preserved; compiled test-feed release remains unverified.

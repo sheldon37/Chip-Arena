@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         // Headwear and backdrop colours (NativeHatLooks: "" Auto, the look every seat had before; bots stay Auto).
         public string hatColor=NativeHatLooks.Auto,backColor=NativeHatLooks.Auto;
         // The per-weapon skin picks (Core/NativeWeaponSkins.cs: normalized, "" = every weapon Standard).
-        public string weaponSkins="";public string look="";
+        public string weaponSkins="";public string look="";public string pod="";
     }
     [Serializable] public class NativeMatchFrame
     {public string completionId;public double completionStarted;public int completionSeconds;public bool hasFinalKillcam;public int finalVictim,finalSeed;public double resultAt;public int[] rematchVotes=Array.Empty<int>();public int rematchRequired;public float lobbyReturnSeconds;public int introSeat;public double introStarted;public string introStyle;public int round,set,winner,setWinner,draftSeat;public string result,chosen;public NativePhase phase;public double time,phaseEnd,fightAt,readyAt,chosenAt;public bool teams,cooperative;}
@@ -71,6 +71,11 @@ namespace ChipArena.UnityConversion
         { FinalVictim=FinalSeed=0;ResultAt=0;HasFinalKillcam=false;Winner=SetWinner=DraftSeat=0;Chosen=null;foreach(var p in Seats)p.alive=p.connected;ResetRound?.Invoke();Phase=NativePhase.Countdown;PhaseEnd=Time+3; }
         private void NextSet()
         { Set++;Round=1;foreach(var p in Seats){p.roundWins=0;p.offers.Clear();}BeginRound(); }
+        public bool BeginExpeditionCountdown()
+        {
+            if(!Cooperative||(Phase!=NativePhase.Lobby&&Phase!=NativePhase.Fight))return false;
+            Phase=NativePhase.Countdown;PhaseEnd=Time+3;FightAt=PhaseEnd;return true;
+        }
         public void SynchronizeExpeditionClock(double elapsed)
         {
             if(!Cooperative||double.IsNaN(elapsed)||double.IsInfinity(elapsed)||elapsed<Time-1e-7)throw new ArgumentException("Monotonic cooperative clock required.");

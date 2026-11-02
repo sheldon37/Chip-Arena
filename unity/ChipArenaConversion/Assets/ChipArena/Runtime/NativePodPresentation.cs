@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
     {
         private sealed class PodView
         {
-            public int Order,Seed,FxSeed;public double End=double.NaN;public Vector3 Spot,Facing;public float Floor;
+            public bool Authority;public NativeSeat AuthoritySeat;public int Order,Seed,FxSeed;public double End=double.NaN;public Vector3 Spot,Facing;public float Floor;
             public string Text;public Texture2D Sign;public bool Scrolls;public float Columns;
             public PodFrame Frame;public double LaunchAt=double.NaN;public Color Paint,Trim,Light;public string LookKey;
         }
@@ -32,8 +32,7 @@ namespace ChipArena.UnityConversion
         private PodEntranceFx podFx;private PodView podNow;private Func<int,Color> podTint;private readonly List<int> podGone=new List<int>();
         private static readonly int PodTexId=Shader.PropertyToID("_MainTex"),PodTintId=Shader.PropertyToID("_Tint"),PodRepId=Shader.PropertyToID("_Rep"),PodScrollId=Shader.PropertyToID("_Scroll"),
             PodBlurId=Shader.PropertyToID("_Blur"),PodGainId=Shader.PropertyToID("_Gain"),PodSweepId=Shader.PropertyToID("_Sweep"),PodChromaId=Shader.PropertyToID("_Chroma"),PodHoloId=Shader.PropertyToID("_Holo");
-        /// <summary>My own pod's look (prefs.pod, NativePodDrop's map): the seats do not carry pod looks yet (Astra), so every
-        /// other pilot's pod draws in its body colour and accent.</summary>
+        /// <summary>Fallback for a preview without a seat look; live pods use the authoritative seat value.</summary>
         public string LocalPodLook="";
         /// <summary>The LED dot size in texture pixels; how long after a countdown-less start a pilot's pod is still parked
         /// where the pilot stands.</summary>
@@ -47,8 +46,19 @@ namespace ChipArena.UnityConversion
         /// pod's floor while it falls; null once the drop is over.</summary>
         private SpawnView PodSpawn(NativeArena arena,NativePilot pilot,Vector3 feet,float age,double end,out float raise)
         {
-            raise=0;if(float.IsNaN(age))return null;int id=pilot.Seat.id;
-            // A run that opens without a countdown (the live split areas today: Astra's hold is pending) still parks each
+            raise=0;SyncAuthorityPods(arena);int id=pilot.Seat.id;
+            if(pods.TryGetValue(id,out var authority)&&authority.Authority)
+            {
+                end=authority.End;age=(float)(PresentationClock(arena)-end);
+                if(!double.IsNaN(authority.LaunchAt))
+                {
+                    if(!spawnViews.TryGetValue(id,out var boarding)){boarding=new SpawnView();spawnViews.Add(id,boarding);}
+                    if(boarding.Arena!=arena||boarding.End!=end)SpawnPlaceView(boarding,arena,pilot,feet,end);
+                    boarding.Pod=true;boarding.Frame=new SpawnInFrame{Active=true,Age=age,Front=-1e4f,Held=true,Land=-1};return boarding;
+                }
+            }
+            if(float.IsNaN(age))return null;
+            // A preview that opens without a countdown still parks each
             // pilot's pod where it starts, seen in its first seconds; the drop itself plays only over a countdown.
             if(age>=NativePodDrop.End)
             {
@@ -99,18 +109,33 @@ namespace ChipArena.UnityConversion
         /// NaN cancels): the door closes and the pod lifts away (NativePodDrop.Launch).</summary>
         public void PodLaunch(int id,double at){if(pods.TryGetValue(id,out var p))p.LaunchAt=at;}
 
+        // Bind authoritative anchors/timestamps to the existing presentation. Late joins and area returns do not replay a drop.
+        private void SyncAuthorityPods(NativeArena arena)
+        {
+            if(!PodRun(arena))return;PodSync();
+            foreach(var record in arena.PodRecords)
+            {
+                if(!pods.TryGetValue(record.seat,out var p)){p=new PodView();pods.Add(record.seat,p);}
+                p.Authority=true;p.Order=record.order;p.End=record.end;p.Seed=NativeSpawnIn.Seed(0,record.end);p.FxSeed=NativeSpawnIn.Seed(record.seat,record.end);
+                p.Spot=new Vector3(record.x,record.y,record.z);p.Floor=record.y;p.Facing=new Vector3(Mathf.Sin(record.yaw),0,Mathf.Cos(record.yaw));
+                if(p.AuthoritySeat==null)p.AuthoritySeat=new NativeSeat{id=record.seat};
+                p.AuthoritySeat.name=record.name;p.AuthoritySeat.bodyColor=record.bodyColor;p.AuthoritySeat.accentColor=record.accentColor;p.AuthoritySeat.pod=record.look;
+                PodLaunch(record.seat,record.launchAt>=0?record.launchAt:double.NaN);
+            }
+        }
+
         // ---- the pods each frame ----
         /// <summary>NativeSourcePresentation: every recorded pod at this moment (falling, landing, parked or leaving) from the
         /// bank, and its LED sign.</summary>
         private void ExpeditionPods(NativeArena arena)
         {
-            PodSync();if(pods.Count==0||sourceModels==null||!PodRun(arena)||arena.Match==null)return;
+            PodSync();SyncAuthorityPods(arena);if(pods.Count==0||sourceModels==null||!PodRun(arena)||arena.Match==null)return;
             var m=arena.Match;float time=PresentationClock(arena),age=NativeSpawnIn.Age(m.Phase,m.PhaseEnd,m.FightAt,time);podGone.Clear();
             foreach(var pair in pods)
             {
-                NativeSeat seat=null;foreach(var s in m.Seats)if(s.id==pair.Key){seat=s;break;}if(seat==null){podGone.Add(pair.Key);continue;}
+                NativeSeat seat=null;foreach(var s in m.Seats)if(s.id==pair.Key){seat=s;break;}if(seat==null)seat=pair.Value.AuthoritySeat;if(seat==null){podGone.Add(pair.Key);continue;}
                 var pod=pair.Value;if(double.IsNaN(pod.End))continue;
-                pod.Frame=!double.IsNaN(pod.LaunchAt)?NativePodDrop.Launch((float)(time-pod.LaunchAt)):Math.Abs(NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt)-pod.End)<.25?NativePodDrop.Evaluate(age,pod.Order,pod.Seed):NativePodDrop.Evaluate(float.NaN,pod.Order,pod.Seed);
+                pod.Frame=!double.IsNaN(pod.LaunchAt)?NativePodDrop.Launch((float)(time-pod.LaunchAt)):pod.Authority?NativePodDrop.Evaluate((float)(time-pod.End),pod.Order,pod.Seed):Math.Abs(NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt)-pod.End)<.25?NativePodDrop.Evaluate(age,pod.Order,pod.Seed):NativePodDrop.Evaluate(float.NaN,pod.Order,pod.Seed);
                 if(pod.Frame.Offset.Y>NativePodDrop.Altitude*2)continue;
                 bool mine=seat.id==arena.LocalId;PodLook(pod,seat,mine);PodDraw(pod,time,mine?PodOpacity(pod,arena.LocalId):1);
             }
@@ -119,7 +144,7 @@ namespace ChipArena.UnityConversion
         // The pod's colours (linear) from its look and the seat's body and accent; its sign texture when the name changes.
         private void PodLook(PodView pod,NativeSeat seat,bool mine)
         {
-            string look=mine?LocalPodLook??"":"";string key=look+"|"+seat.bodyColor+"|"+seat.accentColor;
+            string look=seat.pod??(mine?LocalPodLook??"":"");string key=look+"|"+seat.bodyColor+"|"+seat.accentColor;
             if(pod.LookKey!=key)
             {
                 pod.LookKey=key;NativePodDrop.Colors(look,seat.bodyColor,seat.accentColor,out int paint,out int trim,out int light);

@@ -50,10 +50,15 @@ function lookMap(raw:unknown,developer=false){
  for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const slot=entry.slice(0,i).trim(),id=entry.slice(i+1).trim();if(slot==='skin'&&/^[0-9a-f]{6}$/i.test(id))skin=id.toLowerCase();else if(Object.hasOwn(LOOK_SLOTS,slot)&&LOOK_SLOTS[slot].includes(id))picks.set(slot,id);}
  return Object.keys(LOOK_SLOTS).filter(s=>picks.has(s)&&picks.get(s)!==LOOK_SLOTS[s][0]&&(developer||!DEV_LOOK.has(picks.get(s)!))).map(s=>s+':'+picks.get(s)).concat(skin?['skin:'+skin]:[]).join(',');
 }
+function podLook(raw:unknown){
+ if(typeof raw!=='string'||raw.length>256)return '';const picks=new Map<string,string>();const keys=['paint','trim','light'];
+ for(const entry of raw.split(',')){const i=entry.indexOf(':');if(i<=0)continue;const key=entry.slice(0,i).trim(),value=entry.slice(i+1).trim();if(keys.includes(key)&&/^[0-9a-f]{6}$/i.test(value))picks.set(key,value.toLowerCase());}
+ return keys.filter(k=>picks.has(k)).map(k=>k+':'+picks.get(k)).join(',');
+}
 function accountCosmetics(raw:any,a:Access){
  const clean=cosmetics(raw,a);
  const tint=(value:unknown)=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:'';
- return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&a.developer?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),look:lookMap(raw?.look,a.developer),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
+ return {...clean,lobbyPose:raw?.lobbyPose==='sheldon-idle'&&a.developer?'sheldon-idle':clean.lobbyPose,preferredSpec:raw?.preferredSpec==='bow'?'bow':raw?.preferredSpec==='cyberlord'&&a.developer?'cyberlord':clean.preferredSpec,hatColor:tint(raw?.hatColor),backColor:tint(raw?.backColor),hat:raw?.hat==='sheldon-head'&&a.developer?'sheldon-head':clean.hat,lobbyBack:LOBBY_BACKS.has(raw?.lobbyBack)?raw.lobbyBack:'tick-ring',weaponSkins:weaponSkinMap(raw?.weaponSkins,a.developer),look:lookMap(raw?.look,a.developer),pod:podLook(raw?.pod),intro:(raw?.intro==='sheldon-intro'||raw?.intro==='dev-cyberlord')&&a.developer?raw.intro:NATIVE_INTROS.has(raw?.intro)?raw.intro:clean.intro};
 }
 function savedProfile(raw:any,a:Access){return {name:typeof raw?.name==='string'?raw.name.replace(/[<>\u0000-\u001f]/g,'').slice(0,20)||'Pilot':'Pilot',class:(['ranged','melee','magic'].includes(raw?.class)||raw?.class==='dev'&&a.developer)?raw.class:'ranged',color:/^#[0-9a-f]{6}$/i.test(raw?.color||'')?raw.color:'#ff6b35',cosmetics:accountCosmetics(raw?.cosmetics,a)};}
 function view(row:any){return {id:row.id,username:row.username,profileSchema:2,...access(row),profile:savedProfile(JSON.parse(row.profile),access(row)),hasProfile:row.profile!=='{}',revision:row.revision,grantVersion:row.grant_version};}
