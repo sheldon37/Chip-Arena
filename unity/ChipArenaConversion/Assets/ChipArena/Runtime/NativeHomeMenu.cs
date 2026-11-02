@@ -627,7 +627,7 @@ namespace ChipArena.UnityConversion
             if(pauseScreen==PauseScreen.Sandbox)pauseScreen=PauseScreen.Menu;
             if(!arena.Sandbox)Board(W);
             // A guest whose host is gone keeps a frozen replica: say so and offer the way back to Join Room to reclaim the seat.
-            bool lost=arena.Replica&&server==null;
+            bool lost=arena.Replica&&server==null&&!ExpeditionSplit;
             bool returning=LobbyReturnSeconds>0;
             // main.ts:157 checks the mode first: a local boss test is a room of one there (mode 'online' over a LocalRoom), so it
             // stays "The boss test is paused." while a return runs.

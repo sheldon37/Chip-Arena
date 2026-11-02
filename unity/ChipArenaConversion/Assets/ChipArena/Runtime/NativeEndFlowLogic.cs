@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         private readonly NativeEndFlow endFlow=new NativeEndFlow();private int guestVotes,guestRequired;private float guestReturnUntil=-1;
-        public bool HostLost=>arena?.Replica==true&&server==null;
+        public bool HostLost=>arena?.Replica==true&&server==null&&!ExpeditionSplit;
         public int RematchVotes=>server!=null?guestVotes:endFlow.Votes;
         public int RematchRequired=>server!=null?guestRequired:endFlow.Required;
         public float LobbyReturnSeconds=>Math.Max(0,server!=null?guestReturnUntil-Time.unscaledTime:(float)endFlow.ReturnAt-Time.unscaledTime);
@@ -20,7 +20,7 @@ namespace ChipArena.UnityConversion
         public void ReturnMainMenu()=>LeaveRoom();
         private void EndFlowTick()
         {
-            if(arena==null||arena.Replica)return;
+            if(arena==null||arena.Replica&&!ExpeditionSplit)return;
             if(endFlow.Due(Time.unscaledTime)){endFlow.Reset();ReturnToLobby();return;}
             if(match.Phase!=NativePhase.Match)return;
             endFlow.Reconcile(match.Seats.Where(s=>!s.bot&&s.connected).Select(s=>s.id));

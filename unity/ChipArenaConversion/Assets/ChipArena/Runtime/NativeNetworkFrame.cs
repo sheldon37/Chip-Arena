@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
     {
         public ExpeditionCohortTicket areaIdentity;public NativePodRecord[] pods;
         public float devTimeScale=1;public NativeDevHazardPulse[] devHazards;
-        public int version=NativeConnection.Protocol,generation;public string map,source,contentRevision;public StructureFrame[] segments;public float bossSongAt,bossSongLead;
+        public int expeditionSpectatorSeat;public int version=NativeConnection.Protocol,generation;public string map,source,contentRevision;public StructureFrame[] segments;public float bossSongAt,bossSongLead;
         public NativeShotEnd[] projectileEnds; // Optional exact stopping points for recorded projectile replay.
         public NativeAcidRecord[] devAcid;
         public NativeBreachRecord[] wardBreaches; // Sandbox/replay; PvE retains pve.breaches.
@@ -34,6 +34,7 @@ namespace ChipArena.UnityConversion
         public bool Valid(ConversionContent content)
         {
             RestorePresence();
+            if(expeditionSpectatorSeat<0||expeditionSpectatorSeat>8)return false;
             if(completionSeconds<0||completionSeconds>604800)return false;
             if(completionId!=null&&completionId.Length>0&&(!Guid.TryParseExact(completionId,"N",out _)||double.IsNaN(completionStarted)||double.IsInfinity(completionStarted)||completionStarted<0||completionStarted>time))return false;
             if(rematchVotes==null||rematchVotes.Length>8||rematchVotes.Distinct().Count()!=rematchVotes.Length||rematchRequired<0||rematchRequired>8||float.IsNaN(lobbyReturnSeconds)||float.IsInfinity(lobbyReturnSeconds)||lobbyReturnSeconds<0||lobbyReturnSeconds>3.1f)return false;
@@ -130,7 +131,7 @@ namespace ChipArena.UnityConversion
         }
         public void ApplyFrame(NativeGameFrame f,int localId)
         {
-            PodRecords=f.pods?.Select(r=>r.Copy()).ToArray()??Array.Empty<NativePodRecord>();
+            ExpeditionSpectatorSeat=f.expeditionSpectatorSeat;PodRecords=f.pods?.Select(r=>r.Copy()).ToArray()??Array.Empty<NativePodRecord>();
             f.RestorePresence();
 
             TrainingRemote=f.trainingReadouts??Array.Empty<TrainingReadout>();Replica=true;LocalId=localId;bool reset=replicaFrame==null||replicaFrame.generation!=f.generation;Match.ApplyNetwork(f);

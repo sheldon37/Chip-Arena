@@ -57,6 +57,16 @@ namespace ChipArena.UnityConversion
             commands.Reply(new ExpeditionCommandReply{transaction=sent.transaction,state=ExpeditionCommandState.Pending,areaIdentity=current});Check(!commands.Result(command).Shown,"old-transfer ack ignored");
             commands.Reply(new ExpeditionCommandReply{transaction=sent.transaction,state=ExpeditionCommandState.Pending,areaIdentity=rejoin});Check(commands.Result(command).Shown,"current ack accepted");
             commandView.areaIdentity=host;Check(!commands.Result(command).Shown,"cached reply cannot cross identity boundary");
+            var physical=cohorts.Member("host").Area;
+            Check(cohorts.Observe("host","ward"),"dead host subscribes to guest area");
+            var observing=ExpeditionAreaProjection.Build("host",cohorts,Project,null);
+            Check(observing.Public.area=="ward"&&observing.Public.loading&&observing.Public.members.Single(m=>m.account=="host").area==physical&&observing.Public.members.All(m=>m.pendingArea==null),"spectator projection changes scene, not physical membership or transfer state");
+            var observerReceiver=new ExpeditionViewReceiver("host");
+            Check(observerReceiver.BindArea(observing.Public.areaIdentity)&&!observerReceiver.Public(observing.Public)&&observerReceiver.Private(observing.Private)&&observerReceiver.View.mine.wallet==10,"spectator receives its own private ledger with remote public scene");
+            var watchIdentity=cohorts.Member("host").Ticket;cohorts.Acknowledge("host",watchIdentity);
+            Check(!gate.Accept("host",watchIdentity,2),"acknowledged observer cannot submit remote combat input");
+            cohorts.Disconnect("host");var restored=cohorts.Reconnect("host");
+            Check(restored.area==physical&&!restored.Matches(watchIdentity),"reconnect restores physical area with fresh ticket before spectator reselection");
             Console.WriteLine("PASS Expedition area wire: "+count+" checks");
         }
     }
