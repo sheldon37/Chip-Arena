@@ -9,7 +9,9 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeExpedition
     {
         private ExpeditionSnapshot s;
-        private ExpeditionHandoff handoff;
+        private sealed class MigrationState {public ExpeditionHandoff Handoff;public bool Restored;}
+        private readonly MigrationState migration=new MigrationState();
+        private ExpeditionHandoff handoff {get=>migration.Handoff;set=>migration.Handoff=value;}
         public const double ExitSeconds=10, ExtractSeconds=10; // Initial tuning, not owner-specified balance.
         public NativeExpedition(ExpeditionSnapshot state){ExpeditionValidation.Require(state);s=state.Copy();}
         public static NativeExpedition Create(string run,string world,string host,string weapon,uint seed,ExpeditionInstance[] instances)
@@ -28,7 +30,7 @@ namespace ChipArena.UnityConversion
         private bool Live(ExpeditionMember p)=>p!=null&&p.connected&&p.alive&&!p.extracted&&InArea(p)&&!p.transferring;
         private string[] Living()=>s.members.Where(Live).Select(p=>p.account).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
         private ExpeditionInstance Current=>s.instances.FirstOrDefault(i=>i.id==Area);
-        public void DisableAccountXp(){s.xpDisabled=true;Changed();}
+        public void DisableAccountXp(){if(Migrating)return;s.xpDisabled=true;Changed();}
         private void CompleteAccountXp(ExpeditionMember p,bool victory)
         {
             string id="exp_"+s.run+"_"+s.loop;
@@ -152,7 +154,7 @@ namespace ChipArena.UnityConversion
             // Extraction is collected via ExtractionDue and committed by the adapter after a durable save/handoff.
             Changed();
         }
-        public string[] ExtractionDue()=>(!SplitAreas||Area==s.world)&&s.extractAt>=0&&s.elapsed>=s.extractAt?(string[])s.extractVotes.Clone():Array.Empty<string>();
+        public string[] ExtractionDue()=>!Migrating&&(!SplitAreas||Area==s.world)&&s.extractAt>=0&&s.elapsed>=s.extractAt?(string[])s.extractVotes.Clone():Array.Empty<string>();
         public bool CanExtract(string account)=>Mutable&&ExtractionUnlocked&&Live(Member(account))&&Member(account).safe&&(Phase==ExpeditionPhase.Town||Phase==ExpeditionPhase.Victory);
         public bool Extract(string account)
         {

@@ -266,7 +266,7 @@ namespace ChipArena.UnityConversion
             // Stage starts and returns go through the loading screen.
             // The boss fight and DEV Expedition M1 start from the Expeditions screen (NativeExpeditionsMenu.cs, owner 2026-10-15).
             var expeditions=R("Assets/ChipArena/Runtime/NativeExpeditionsMenu.cs");
-            Check(home.Contains("RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Boss,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Expedition,StartExpeditionM1)")&&home.Contains("private void BossScreen(float age)=>ExpeditionsScreen(age);"),"Play, Wave Defense (the boss fight) and DEV Expedition M1 start under the loading screen");
+            Check(home.Contains("RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Boss,StartMatch)")&&expeditions.Contains("BeginDeploymentStation(K.At(expPick).Id)")&&R("Assets/ChipArena/Runtime/NativeExpeditionDeploymentRoom.cs").Contains("RequestStage(StageLoadKind.Expedition,StartExpeditionM1)")&&home.Contains("private void BossScreen(float age)=>ExpeditionsScreen(age);"),"Play, Wave Defense and station Deploy start under the loading screen");
             Check(home.Contains("RequestStage(StageKindOf(arena),StartMatch)")&&home.Contains("RequestStage(StageLoadKind.Return,"),"restart and return to the main menu under the loading screen");
             Check(R("Assets/ChipArena/Runtime/NativeLobbyUI.cs").Contains("RequestStage(prefs.pve?StageLoadKind.Boss:StageLoadKind.Online,StartMatch)"),"the room's Start under the loading screen");
             var cg=R("Assets/ChipArena/Runtime/ConversionGame.cs");

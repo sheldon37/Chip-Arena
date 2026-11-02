@@ -9,8 +9,7 @@ namespace ChipArena.UnityConversion.Editor
         private static void CheckLegacyMapDefaults(ConversionContent data)
         {
             // This runs after the actual JsonUtility + supplemental-map loader, before any physics scene.
-            if(data.maps.Any(m=>!m.unity)||data.maps.Length!=8)throw new Exception("Legacy map survived Unity catalog filtering");
-            if(!data.maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"brickfall","cybercity","factory"}))throw new Exception("Unity rotation differs");
+            NativeMapRules.ValidateShippedCatalog(data);
             foreach(string id in new[]{"moonlit","foundry","unknown",null})
             {var prefs=JsonUtility.FromJson<ConversionPreferences>(JsonUtility.ToJson(new ConversionPreferences{map=id}));if(NativeMapRules.Selection(data,prefs.map)!=NativeMapRules.DefaultArena)throw new Exception("Saved map migration failed");}
             foreach(var map in data.maps)NativeMapRules.Validate(map);

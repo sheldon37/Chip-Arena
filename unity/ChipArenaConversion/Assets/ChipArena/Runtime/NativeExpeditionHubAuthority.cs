@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         {
             ResetHub();Expedition.Session.Sources.Hub=()=>HubOn?hubAuthority.View():null;
             if(expeditionArea.role!="world")return;
-            var layout=ExpeditionHubLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text,expeditionArea.id);if(layout==null)return;
+            var layout=GeneratedRun?.World.Hub??ExpeditionHubLayout.Parse(Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text,expeditionArea.id);if(layout==null)return;
             hubAuthority=new ExpeditionHubAuthority(layout,HubClock);hubSpawnAt=Time+(float)ExpeditionHubRules.SpawnInterval;hubMaintainAt=Time;
             // Dedicated collision layer: only horde bodies collide, never pilots, scenery or previews.
             const int wardLayer=28;for(int layer=0;layer<32;layer++)Physics.IgnoreLayerCollision(wardLayer,layer,layer!=11);

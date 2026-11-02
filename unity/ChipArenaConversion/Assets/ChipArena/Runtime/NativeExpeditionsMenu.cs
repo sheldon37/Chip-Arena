@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
     /// WAVE DEFENSE with its start row: Wave 1, Wave 2, Wave 3, the Siren) with the loadout row; and the action bar (Solo, Host
     /// Room, Join Room or the room's code and invite; the launch, or a guest's Ready and Send Loadout). The LOADOUT drawer holds
     /// the party bots, mirror weapons and the class and weapon pickers. Presentation only: every action is a call the old
-    /// boss-test screen or room lobby made (RequestStage(Boss, StartMatch), RequestStage(Expedition, StartExpeditionM1),
+    /// boss-test screen or room lobby made (RequestStage(Boss, StartMatch), BeginDeploymentStation (then Deploy uses RequestStage),
     /// Go(Create), Go(Join), ApplyRule, GuestReady, the profile message, LeaveRoom); no room field or message is added, so a
     /// guest sees the default pick and Wave Defense, and Waves 2-3 stay locked (Astra contract in DEV_LOG).
     /// </summary>
@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             if(!go.Enabled)return;
             switch(go.Kind)
             {
-                case X.LaunchKind.ExpeditionM1:RequestStage(StageLoadKind.Expedition,StartExpeditionM1);break;
+                case X.LaunchKind.ExpeditionM1:BeginDeploymentStation(K.At(expPick).Id);break;
                 case X.LaunchKind.WaveMatch:prefs.expedition=false;prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);break;
                 case X.LaunchKind.Ready:GuestReady(!networkReady);break;
             }

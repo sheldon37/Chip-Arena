@@ -137,7 +137,7 @@ namespace ChipArena.UnityConversion
             var calls=new Dictionary<string,string>
             {
                 ["RequestStage(StageLoadKind.Boss,StartMatch)"]="Start Boss Fight / the room's Start (Wave Defense)",
-                ["RequestStage(StageLoadKind.Expedition,StartExpeditionM1)"]="DEV Expedition M1 (Start Expedition)",
+                ["BeginDeploymentStation(K.At(expPick).Id)"]="Expedition enters the authenticated Deployment Station",
                 ["{prefs.pve=true;Go(MenuScreen.Create);}"]="Host Co-op Room (Host Room)",
                 ["Go(MenuScreen.Join)"]="Join Room",
                 ["ApplyRule(RoomOpt.Bots,"]="party bots (add / remove)",

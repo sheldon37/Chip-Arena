@@ -597,3 +597,9 @@ without limit.
   sandbox level. Any theme can be swapped before its blockout is integrated.
 - **Other packs:** banking a Synty or Polyart environment set on the PC would give Skyframe and Polaris richer kits; until
   then they use Toon Harbor's industrial pieces.
+
+## Astra continuation: navigation acceptance (2026-10-31)
+
+PR #301 is verified merged, and its source is present in both shared and builder head `33233109`. The six maps' logic is already integrated; native Windows playtesting and Claude's looks/readout-board presentation remain.
+
+`NewStagesChecks` now requires all six maps exactly once, follows drop links only in their authored direction, and refuses navigation attachments more than 2 m away or more than 0.6 m vertically away. Previously the loop could omit a missing map and choose a distant node or the wrong floor, and it treated drops as two-way. The tightened regression passes 5,076 checks. Geometry, map IDs, hazards, rotation flags, combat and networking are unchanged.

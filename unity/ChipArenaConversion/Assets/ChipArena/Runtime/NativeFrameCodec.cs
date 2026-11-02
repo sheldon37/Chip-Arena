@@ -57,9 +57,9 @@ namespace ChipArena.UnityConversion
         [Serializable] private sealed class FrameEnvelope
         {public int version=NativeConnection.Protocol,epoch;public string type="frame";public NativeGameFrame frame;}
         [Serializable] private sealed class ExpeditionStateEnvelope
-        {public int version=NativeConnection.Protocol,epoch;public string type="expedition-state";public int generation;public ExpeditionView expeditionPublic;public ExpeditionPrivateFrame expeditionPrivate;public NativeGameFrame frame;}
+        {public int version=NativeConnection.Protocol,epoch;public string type="expedition-state";public ExpeditionDeploymentTicket deployment;public int generation;public ExpeditionView expeditionPublic;public ExpeditionPrivateFrame expeditionPrivate;public NativeGameFrame frame;}
         [Serializable] private sealed class LobbyEnvelope
-        {public int version=NativeConnection.Protocol,epoch;public string type="lobby";public NativeSeatFrame[] seats;public NativeRoomOptions options;}
+        {public int version=NativeConnection.Protocol,epoch;public string type="lobby";public ExpeditionDeploymentTicket deployment;public NativeSeatFrame[] seats;public NativeRoomOptions options;}
         [Serializable] private sealed class ExpeditionPublicEnvelope
         {public int version=NativeConnection.Protocol;public int epoch,generation;public string type="expedition-public";public ExpeditionView expeditionPublic;}
         [Serializable] private sealed class ExpeditionPrivateEnvelope
@@ -72,13 +72,16 @@ namespace ChipArena.UnityConversion
         {public int version=NativeConnection.Protocol;public int epoch;public ExpeditionCohortTicket areaIdentity;public string type="expedition-area-ready";public ExpeditionAreaReadyRequest expeditionAreaReady;}
         [Serializable] private sealed class ExpeditionLoadStatusEnvelope
         {public int version=NativeConnection.Protocol;public string type="expedition-party-load";public ExpeditionLoadStatusFrame expeditionLoadStatus;}
+        [Serializable] private sealed class DeploymentEnvelope
+        {public int version=NativeConnection.Protocol,epoch;public string type="deployment-state";public ExpeditionDeploymentTicket deployment;}
         public static string Encode(NativeNetMessage message)
         {
+            if(message.type=="deployment-state")return JsonUtility.ToJson(new DeploymentEnvelope{epoch=message.epoch,deployment=message.deployment});
             if(message.type=="expedition-state")
             {
                 if(message.frame==null||message.expeditionPublic==null||message.expeditionPrivate==null)throw new ArgumentException("Incomplete Expedition state");
                 message.frame.CapturePresence();
-                return JsonUtility.ToJson(new ExpeditionStateEnvelope{epoch=message.epoch,generation=message.frame.generation,expeditionPublic=message.expeditionPublic,expeditionPrivate=message.expeditionPrivate,frame=message.frame});
+                return JsonUtility.ToJson(new ExpeditionStateEnvelope{deployment=message.deployment,epoch=message.epoch,generation=message.frame.generation,expeditionPublic=message.expeditionPublic,expeditionPrivate=message.expeditionPrivate,frame=message.frame});
             }
             if(message.type=="dev-command")return JsonUtility.ToJson(new DevCommandEnvelope{epoch=message.epoch,generation=message.generation,devCommand=message.devCommand});
             if(message.type=="dev-reply")return JsonUtility.ToJson(new DevReplyEnvelope{epoch=message.epoch,devReply=message.devReply});
@@ -88,7 +91,7 @@ namespace ChipArena.UnityConversion
             if(message.type=="expedition-private")return JsonUtility.ToJson(new ExpeditionPrivateEnvelope{expeditionPrivate=message.expeditionPrivate});
             if(message.type=="expedition-command")return JsonUtility.ToJson(new ExpeditionCommandEnvelope{epoch=message.epoch,areaIdentity=message.areaIdentity,expeditionCommand=message.expeditionCommand});
             if(message.type=="expedition-reply")return JsonUtility.ToJson(new ExpeditionReplyEnvelope{expeditionReply=message.expeditionReply});
-            if(message.type=="lobby")return JsonUtility.ToJson(new LobbyEnvelope{epoch=message.epoch,seats=message.seats,options=message.options});
+            if(message.type=="lobby")return JsonUtility.ToJson(new LobbyEnvelope{deployment=message.deployment,epoch=message.epoch,seats=message.seats,options=message.options});
             if(message.type!="frame")return JsonUtility.ToJson(message);
             if(message.frame==null)throw new ArgumentException("Missing match frame");
             message.frame.CapturePresence();
@@ -97,8 +100,9 @@ namespace ChipArena.UnityConversion
         public static NativeNetMessage Decode(string json)
         {
             var message=JsonUtility.FromJson<NativeNetMessage>(json);
+            if(message?.type=="deployment-state")message.deployment=JsonUtility.FromJson<DeploymentEnvelope>(json).deployment;
             if(message?.type=="expedition-state")
-            {var state=JsonUtility.FromJson<ExpeditionStateEnvelope>(json);message.frame=state.frame;message.frame?.RestorePresence();message.expeditionPublic=state.expeditionPublic;message.expeditionPrivate=state.expeditionPrivate;}
+            {var state=JsonUtility.FromJson<ExpeditionStateEnvelope>(json);message.deployment=state.deployment;message.frame=state.frame;message.frame?.RestorePresence();message.expeditionPublic=state.expeditionPublic;message.expeditionPrivate=state.expeditionPrivate;}
             if(message?.type=="dev-command")message.devCommand=JsonUtility.FromJson<DevCommandEnvelope>(json).devCommand;
             if(message?.type=="dev-reply")message.devReply=JsonUtility.FromJson<DevReplyEnvelope>(json).devReply;
             if(message?.type=="expedition-area-ready")message.expeditionAreaReady=JsonUtility.FromJson<ExpeditionAreaReadyEnvelope>(json).expeditionAreaReady;
@@ -109,7 +113,8 @@ namespace ChipArena.UnityConversion
             if(message?.type=="expedition-reply")message.expeditionReply=JsonUtility.FromJson<ExpeditionReplyEnvelope>(json).expeditionReply;
             if(message?.type=="frame")
             {message.frame=JsonUtility.FromJson<FrameEnvelope>(json).frame;message.frame?.RestorePresence();}
-            if(message?.type=="lobby")message.options=JsonUtility.FromJson<LobbyEnvelope>(json).options;
+            if(message?.type=="lobby"){var lobby=JsonUtility.FromJson<LobbyEnvelope>(json);message.options=lobby.options;message.deployment=lobby.deployment;}
+            if(message?.deployment!=null&&string.IsNullOrEmpty(message.deployment.station))message.deployment=null;
             if(message!=null&&string.IsNullOrEmpty(message.areaIdentity?.run))message.areaIdentity=null;
             if(message?.expeditionPublic!=null&&string.IsNullOrEmpty(message.expeditionPublic.areaIdentity?.run))message.expeditionPublic.areaIdentity=null;
             if(message?.expeditionPrivate!=null&&string.IsNullOrEmpty(message.expeditionPrivate.areaIdentity?.run))message.expeditionPrivate.areaIdentity=null;
