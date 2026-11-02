@@ -378,8 +378,8 @@ namespace ChipArena.UnityConversion
 
         // ---- Reprint quotes ----------------------------------------------------------------------------------------------------
         /// <summary>The machine's quote for a downed pilot (Sources.ReprintCost); none reads "price unavailable", never $0.</summary>
-        public static bool HasQuote(ExpeditionViewMember m)=>m!=null&&m.reprintCost>0;
-        public static string Quote(ExpeditionViewMember m)=>HasQuote(m)?Money(m.reprintCost):"price unavailable";
+        public static bool HasQuote(ExpeditionViewMember m)=>m!=null&&(m.reprintCost>0||m.reprintFree);
+        public static string Quote(ExpeditionViewMember m)=>m?.reprintFree==true?"FREE":HasQuote(m)?Money(m.reprintCost):"price unavailable";
         public const string NoQuote="The machine has not quoted a price for this pilot.";
 
         // ---- Host candidates (transport measurements) ----------------------------------------------------------------------------

@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
         public bool ExpeditionVisible(V3 from,V3 to)=>!SceneLinecast(Vec(from)+Vector3.up*.6f,Vec(to)+Vector3.up*.6f,WorldMask);
         public void BindExpeditionCombat(ExpeditionDirector director,ExpeditionAreaLayout area,NativePveContent data)
         {
-            Expedition=director;expeditionArea=area;
+            Expedition=director;expeditionArea=area;boundMutators=director.Session.Run.Mutators;
             director.Session.Installed=(account,chip,count)=>
             {
                 SyncExpeditionInventory();
@@ -107,10 +107,10 @@ namespace ChipArena.UnityConversion
             data=JsonUtility.FromJson<NativePveContent>(JsonUtility.ToJson(data));
             NativeExpeditionLayout.BindContent(area,data);
             if(NativeMapRules.ExpeditionInstance(MapId))BuildPveMachines(data);
-            Pve=new NativePveState{Content=data,Started=true,Stage=area.role=="instance"?"wave":"intermission",Wave=1,Cap=8,Rate=0,Floor=0,Phase=1,
+            Pve=new NativePveState{Content=data,Started=true,Stage=area.role=="instance"?"wave":"intermission",Wave=1,Cap=NativeExpeditionMutators.Cap(ActiveMutators,8),Rate=0,Floor=0,Phase=1,
                 SpawnRandom=new NativePveRandom(director.Session.Run.Snapshot().seed),EconomyRandom=new NativePveRandom(12345)};
             Pve.Boss=Pilots.Single(p=>p.Seat.AuthorityBoss);SetBossHidden(true);
-            foreach(var p in Pilots.Where(p=>!p.Seat.AuthorityBoss))Pve.Rows[p.Seat.id]=new NativePveRow{Pilot=p};
+            foreach(var p in Pilots.Where(p=>!p.Seat.AuthorityBoss)){RefreshLiveStats(p);Pve.Rows[p.Seat.id]=new NativePveRow{Pilot=p};}
             foreach(var c in director.Closures.Where(c=>c.area==area.id))
             {
                 var volume=area.gates.FirstOrDefault(g=>g.id==c.id)?.closure??area.doors.Single(d=>d.anchor==c.id).closure;
@@ -203,7 +203,7 @@ namespace ChipArena.UnityConversion
             var run=Expedition.Session.Run;var row=Pve.Rows[pilot.Seat.id];var state=run.Snapshot();
             // Count personal dispenser purchases from the durable run, not a row reset on area load.
             int bought=state.rewards.Count(r=>r.owner==member.account&&r.source=="chest"&&r.id.Contains(":chest:ward-machine:"));
-            int cost=machine.kind=="chip"?NativePveRules.ChipPrice(bought):machine.kind=="recruit"?300:75;
+            int cost=machine.kind=="chip"?NativeExpeditionMutators.CachePrice(ActiveMutators,NativePveRules.ChipPrice(bought)):machine.kind=="recruit"?300:75;
             string Use(string result,string message)
             {Pve.Machines.RemoveAll(u=>Time-u.at>4);while(Pve.Machines.Count>=32)Pve.Machines.RemoveAt(0);Pve.Machines.Add(new NativeMachineUse{machine=machine.m,owner=pilot.Seat.id,result=result,at=Time});return message;}
             if(member.wallet<cost)return Use("deny","Not enough money · $"+cost+" required");
@@ -234,7 +234,7 @@ namespace ChipArena.UnityConversion
             if(s.phase==ExpeditionPhase.Instance)
             {
                 var instance=s.instances.Single(i=>i.id==s.area);
-                if(NativeZoneCombat.Active(MapId)){Pve.Wave=NativeZoneCombat.Wave(instance.progress,instance.target);Pve.Cap=16;}
+                if(NativeZoneCombat.Active(MapId)){Pve.Wave=NativeZoneCombat.Wave(instance.progress,instance.target);Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,16);}
                 if(instance.progress<instance.target&&Time>=expeditionSpawnAt&&Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<Pve.Cap)
                 {
                     // Lost/out-of-world adds do not count as kills: replenish only enough live enemies to finish the quota.
@@ -245,7 +245,7 @@ namespace ChipArena.UnityConversion
                         var add=SpawnPveAdd(kind,true);if(add!=null&&intro)expeditionZoneWave=Pve.Wave;
                         if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;if(kind=="cinderling")for(int n=0;n<2&&instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target;n++){var pack=SpawnPveAdd(kind,true,add.Pve.Entry.e);if(pack==null)break;pack.MaxHp*=(float)scale.health;pack.Hp=pack.MaxHp;pack.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}}
                     }
-                    expeditionSpawnAt=Time+1;
+                    expeditionSpawnAt=Time+(float)NativeExpeditionMutators.Interval(ActiveMutators);
                 }
                 if(instance.progress>=instance.target&&instance.bosses.Length==0)run.StartBosses(new[]{"m1-ward-siren"});
                 if(instance.progress>=instance.target&&!instance.cleared&&expeditionBoss==null)SpawnExpeditionBoss("m1-ward-siren");
@@ -265,7 +265,7 @@ namespace ChipArena.UnityConversion
         }
         private void SpawnExpeditionBoss(string id)
         {
-            foreach(var mob in Minions.Where(m=>hubMobs.ContainsKey(m.Id)).ToArray())RemoveMinion(mob,false);hubMobs.Clear();Pve.Cap=8;
+            foreach(var mob in Minions.Where(m=>hubMobs.ContainsKey(m.Id)).ToArray())RemoveMinion(mob,false);hubMobs.Clear();Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,8);
             var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,s.phase==ExpeditionPhase.Instance);
             var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.health;
             boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
@@ -283,7 +283,7 @@ namespace ChipArena.UnityConversion
             {
                 if(pilot==null||pilot.Seat.bot||HubOn&&!add.HubCredit)return false;
                 var member=Expedition.Session.Run.Snapshot().members.FirstOrDefault(m=>Expedition.Session.Sources.Seat?.Invoke(m.account)==pilot.Seat.id);
-                int money=NativePveRules.Money(pilot.Seat.chips,reason,amount);
+                int money=NativePveRules.Money(pilot.Seat.chips,reason,amount*(float)NativeExpeditionMutators.Money(ActiveMutators,add.Stats.id));
                 if(member==null||!Expedition.Session.Run.Credit(member.account,"money:"+kill+":"+reason,money))return false;
                 if(Pve.Rows.TryGetValue(pilot.Seat.id,out var row))row.Earned+=money;
                 Emit(EventKind.PveMoney,pilot,pilot.Seat.id,pilot.Body.position,money,reason);return true;
@@ -293,6 +293,7 @@ namespace ChipArena.UnityConversion
             if(credited&&Pve.Rows.TryGetValue(paid.Seat.id,out var owner))owner.Kills++;
             foreach(var hit in add.Dealt)if(hit.Key!=source?.Seat.id&&hit.Key!=paid?.Seat.id&&hit.Value>=minion.MaxHp*.2f)
             {var pilot=Pilots.Find(p=>p.Seat.id==hit.Key);if(Pay(pilot,reward*.4f,"assist")&&Pve.Rows.TryGetValue(hit.Key,out var row))row.Assists++;}
+            if(credited&&Mutator("chip-rain")&&Pve.SpawnRandom.Next()<(add.Stats.id=="hulk"||add.Stats.id=="brute"?.25:.03))Expedition.Session.Run.DropAt("rain-"+kill,minion.Body.position.x,minion.Body.position.y,minion.Body.position.z);
             hubMobs.Remove(minion.Id);
             if(add.Possessed&&!hub)foreach(var pilot in Members())GrantPveMoney(pilot,pilot==paid?300:100,"possessed");
             Emit(EventKind.Death,source,minion.Id,minion.Body.position,0);

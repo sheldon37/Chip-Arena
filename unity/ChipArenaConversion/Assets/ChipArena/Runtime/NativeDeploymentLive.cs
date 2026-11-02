@@ -5,6 +5,8 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        // Ids returns a defensive copy; keep one immutable catalog for the station cache.
+        private static readonly string[] LiveDeployMutators=NativeExpeditionMutators.Ids;
         private readonly NativeDeployClock liveDeployClock=new NativeDeployClock();
         private readonly NativeDeployConsole.Party liveDeployParty=new NativeDeployConsole.Party();
         private readonly DeployPilot[] liveDeployPilots=new DeployPilot[NativeDeployPresentation.Pads];
@@ -28,7 +30,7 @@ namespace ChipArena.UnityConversion
             }
             viewModelCamera.enabled=false;
             var input=new DeployInput{State=state,SinceInstanceRoll=liveDeployClock.SinceInstanceRoll(now),SinceMutatorRoll=liveDeployClock.SinceMutatorRoll(now),SinceDeploy=liveDeployClock.SinceDeploy(now),Time=now,
-                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=DeployPreviewInstances,Mutators=Array.Empty<string>()};
+                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=DeployPreviewInstances,Mutators=LiveDeployMutators};
             presentation.RenderDeployStation(cameraView,input,liveDeployPilots,Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio);
             return true;
         }
@@ -45,6 +47,7 @@ namespace ChipArena.UnityConversion
             var state=DeploymentState;
             var action=NativeDeployConsole.Draw(presentation?.DeployStage,state,liveDeployParty,server==null&&!PromotionBusy,width,height,Time.unscaledTime);
             if(action==DeployIntent.RollDestinations)RollDeploymentInstances(state.revision);
+            else if(action==DeployIntent.RollMutators)RollDeploymentMutators(state.revision);
             else if(action==DeployIntent.SkipMutators)SkipDeploymentMutators(state.revision);
             else if(action==DeployIntent.Deploy)DeployExpedition(state.revision);
             if(server!=null&&!state.deployed&&NativeControllerPointer.Button(new Rect(width-210,height-64,180,36),networkReady?"Not ready":"Ready"))GuestReady(!networkReady);

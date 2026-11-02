@@ -89,8 +89,8 @@ namespace ChipArena.UnityConversion
             // Ordinary drops require authoritative proximity. Reserved personal rewards can be opened anywhere.
             if(r.owner==null&&(CanClaim==null||!CanClaim(account,reward)))return null;
             var random=new NativePveRandom(NativePveRandom.Hash(s.seed,s.run,reward+":"+account));
-            return NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,3,
-                c=>!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="unique").ToArray();
+            return NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,r.id.Contains("drop:rain-")?1:3,
+                c=>r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="unique").ToArray();
         }
         public ExpeditionIntegrationHooks Hooks()=>new ExpeditionIntegrationHooks
         {

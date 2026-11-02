@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         private readonly List<(Vector3 at,float when)> zonePops=new List<(Vector3,float)>();
         private bool ZoneMovementHeld(NativePilot p)=>(ZoneBoss!=null&&ZoneBoss.holdTarget==p.Seat.id&&Time<ZoneBoss.holdUntil)||Minions.Any(m=>m.Hp>0&&m.Pve!=null&&(m.Pve.Zone.grabTarget==p.Seat.id&&Time<m.Pve.Zone.releaseAt||m.Pve.Zone.pullTarget==p.Seat.id&&Time>=m.Pve.Zone.pullAt+.84f&&Time<m.Pve.Zone.pullAt+1.59f));
         private float ZoneTargetPriority(NativeMinion m,NativePilot p)=>m.Pve.Stats.id=="stoker"?Pilots.Count(q=>q!=p&&ZonePilot(q)&&Vector3.Distance(q.Body.position,p.Body.position)<5)*5:m.Pve.Stats.id=="ladleman"?-Pilots.Count(q=>q!=p&&ZonePilot(q)&&Vector3.Distance(q.Body.position,p.Body.position)<4)*3:0;
-        private bool ZoneKindRoom(string kind)=>!NativeZoneCombat.Active(MapId)||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id==kind)<(bossScriptedLadle&&kind=="ladleman"?1:NativeZoneCombat.Cap(kind,Pve?.Wave??1,Pve?.Stage=="boss"));
+        private bool ZoneKindRoom(string kind)=>Mutator("hulkamania")&&kind=="hulk"?Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="hulk")<6:!NativeZoneCombat.Active(MapId)||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id==kind)<(bossScriptedLadle&&kind=="ladleman"?1:NativeZoneCombat.Cap(kind,Pve?.Wave??1,Pve?.Stage=="boss"));
         private bool ZoneEntryAllowed(PveEntry e,string kind)
         {
             if(!NativeWardEntries.Allows(e,kind))return false;
@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             if(d.sqrMagnitude>.001f&&Vector3.Dot(Vec(V3.Forward(m.Yaw)),dir)<Mathf.Cos(cone*.5f*Mathf.Deg2Rad))return 0;
             if(Time<p.BlockEnd){BlockProc(p,m.Owner,p.Body.position,"clash");return 0;}
             float actual=Damage(p,null,damage*m.Pve.DamageScale,dir,0,false,primary:false,melee:true);
-            if(actual>0){p.Knockback+=dir*knock;p.StunEnd=Math.Max(p.StunEnd,Time+stun);}return actual;
+            if(actual>0){p.Knockback+=dir*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}return actual;
         }
         private void ZoneStop(NativeMinion m)
         {if(!m.Body.isKinematic){m.Pve.External*=Mathf.Exp(-6/60f);m.Body.linearVelocity=new Vector3(m.Pve.External.x,m.Body.linearVelocity.y,m.Pve.External.z);}}

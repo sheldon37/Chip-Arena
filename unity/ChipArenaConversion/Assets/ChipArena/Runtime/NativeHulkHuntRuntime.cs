@@ -173,7 +173,7 @@ namespace ChipArena.UnityConversion
             m.Yaw=Mathf.Atan2(a.ChargeHeading.x,a.ChargeHeading.z)*Mathf.Rad2Deg;
             var at=m.Body.position;var heading=Vec(a.ChargeHeading);
             if(a.Spent(Vec(at),Time)){EndHulkCharge(m,3,at);return true;}
-            float speed=NativeHulkMoves.ChargeSpeed*(Time<a.ChargeSlowUntil?NativeHulkMoves.ChargeSlow:1),distance=speed/60f;
+            float speed=NativeHulkMoves.ChargeSpeed*NativeExpeditionMutators.ZombieSpeed(ActiveMutators)*(Time<a.ChargeSlowUntil?NativeHulkMoves.ChargeSlow:1),distance=speed/60f;
             var to=at+heading*distance;NativePilot victim=null;float pilotFraction=2;
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss&&!Invulnerable(p)&&NativeHulkHunt.Sweep(Vec(at),Vec(to),Vec(p.Body.position),m.Collider.radius+p.Collider.radius,out float t)&&t<pilotFraction){victim=p;pilotFraction=t;}
             if(!HulkFloor(m,at+heading*(distance*Math.Min(1,pilotFraction)))){EndHulkCharge(m,2,at);return true;}
@@ -199,7 +199,7 @@ namespace ChipArena.UnityConversion
                 other.Pve.External+=side*NativePveParity.AddImpulse(450);
             }
             // No normal steering, attacks, hit shoves or crowd correction can replace this heading.
-            a.External=Vector3.zero;speed=NativeHulkMoves.ChargeSpeed*(Time<a.ChargeSlowUntil?NativeHulkMoves.ChargeSlow:1);
+            a.External=Vector3.zero;speed=NativeHulkMoves.ChargeSpeed*NativeExpeditionMutators.ZombieSpeed(ActiveMutators)*(Time<a.ChargeSlowUntil?NativeHulkMoves.ChargeSlow:1);
             m.Body.linearVelocity=heading*speed+Vector3.up*m.Body.linearVelocity.y;return true;
         }
     }

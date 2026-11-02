@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
                 foreach(var q in Pilots.Where(q=>q.Hp>0&&CanHit(p,q)&&NativeCyberRules.Cone(Vec(q.Body.position-from),s.Facing,CyberKit2Spec.ComboRange,step==2?CyberKit2Spec.SpinArc:CyberKit2Spec.ComboArc)&&MeleeVisible(from,q.Body.position,p,q.Collider)))
                 {
                     if(step==3&&LaunchMelee(q,p,CyberKit2Spec.RiseLaunch))q.Down.JuggleUntil=Time+CyberKit2Spec.RiseJuggle;
-                    if(step==4&&!SirenArmor(q))q.Knockback+=Vec(s.Facing)*CyberKit2Spec.PalmShove;
+                    if(step==4&&!SirenArmor(q))q.Knockback+=Vec(s.Facing)*CyberKit2Spec.PalmShove*(Mutator("bounce-house")?3:1);
 
                 }
                 if(Time<m.ForkUntil)for(int n=0;n<3;n++){var point=Vec(m.ClonePos[n])+Vector3.up*.865f;var q=CyberNearest(p,point,CyberKit2Spec.CloneReach);if(!q.Alive)continue;m.CloneStrikeAt[n]=Time;m.CloneTarget[n]=q.Id;CyberTargetHit(p,q,CyberKit2Spec.ComboDamage[step]*CyberKit2Spec.CloneShare*(float)p.Stats["damage"]/Math.Max(.001f,CyberScale(p)),"fork-strike");}

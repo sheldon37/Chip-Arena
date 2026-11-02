@@ -333,6 +333,19 @@ namespace ChipArena.UnityConversion
             // Without a state every gate rests open (no collider in the opening until the director's gate authority exists).
             var rest=new NativeExpeditionHubGates();var eye=new ExpeditionEye{X=0,Y=2,Z=0,Rx=1,Uy=1};rest.Build(hub,null,new List<float[]>(),0,eye,false);
             Check(NativeExpeditionHubGates.RestOpen&&rest.GatesDrawn==4&&hub.Gates.All(g=>rest.Pose(g,null,0,hub).Open==1)&&rest.WardQuads==0,"no state: all four gates drawn resting open, no ward");
+            // Wide gates (the generated hub's are 10 m; owner 2026-11-02: "All gates in expedition appear open when they're not
+            // open"): each leaf spans half the opening, so a shut gate closes all of it at waist height and an open one clears it.
+            foreach(double width in new[]{4.0,6,10,12})foreach(bool wood in new[]{false,true})
+            {
+                var g=new ExpeditionHubGate{Id="wide-"+width+(wood?"-wood":"-metal"),Kind=wood?"wood":"metal",Motion=wood?"swing":"slide",Side="north",X=0,Z=25,Yaw=0,Width=(float)width,Height=3.2f,
+                    Closure=new ExpeditionVolume{x=0,y=1.6f,z=25,sx=(float)width,sy=3.2f,sz=.4f}};
+                var wide=new NativeExpeditionHubGates();wide.Parts.Clear();wide.Model(g,new ExpeditionGatePose{Open=0,Latch=0});var spans=new List<(double a,double b)>();
+                foreach(var q in wide.Parts){if(q.Fixed)continue;double lo=double.MaxValue,hi=double.MinValue,vlo=double.MaxValue,vhi=double.MinValue;foreach(var k in Corners(q)){lo=Math.Min(lo,k.x-g.X);hi=Math.Max(hi,k.x-g.X);vlo=Math.Min(vlo,k.y);vhi=Math.Max(vhi,k.y);}if(vlo<1.2&&vhi>1.2)spans.Add((lo,hi));}
+                double bare=0;for(double u=-width/2+.15;u<=width/2-.15;u+=.05)if(!spans.Any(r=>r.a<=u&&r.b>=u))bare+=.05;
+                Check(bare<.11,width+" m "+(wood?"wooden":"metal")+" gate shut: its leaves close the whole opening (bare "+bare.ToString("0.00")+" m)");
+                Check(Walkable(wide,g,new ExpeditionGatePose{Open=1,Latch=1}),width+" m "+(wood?"wooden":"metal")+" gate open: its leaves clear the opening");
+            }
+            Check(hub.Gates.All(g=>NativeExpeditionHubGates.LeafLength(g)==1.98&&(g.Wood?NativeExpeditionHubGates.Logs(g)==5:Math.Abs(NativeExpeditionHubGates.Slide(g)-NativeExpeditionHubGates.SlideOffset)<1e-6)),"the authored 4 m gates' leaves are as they were");
             // The DEV preview: every gate cycles open and shut on its own clock; the ward and holster read on; it says so.
             var pv=new ExpeditionHubView();int opens=0,shuts=0;for(double t=0;t<16;t+=.5){NativeExpeditionHubPreview.Fill(pv,hub,t);opens+=pv.Gates.Take(pv.Count).Count(s=>s.Open);shuts+=pv.Gates.Take(pv.Count).Count(s=>!s.Open);}
             Check(pv.Preview&&pv.Holster&&pv.Ward&&pv.Count==4&&opens>20&&shuts>20,"the DEV preview cycles every gate and turns the ward and holster on, marked as a preview");
