@@ -1,0 +1,36 @@
+{
+ "schema": 1,
+ "bank": "ChipArenaPackBackrooms",
+ "note": "The Backrooms kit (docs/BACKROOMS.md): every piece of the owner's modular Level 0 model as its own prop, its FBX materials mapped to the pack's wallpaper and carpet textures and Level 0 colours. The carpet is the pack's JPEG converted to PNG beside it (the tool reads PNG, TGA and PSD).",
+ "texture_max": 1024,
+ "sources": {
+  "backrooms": "Backrooms"
+ },
+ "props": [
+  {
+   "id": "backrooms",
+   "source": "backrooms",
+   "model": "Models/assets_all.fbx",
+   "split": true,
+   "wind_by_normals": true,
+   "group": "backrooms-kit",
+   "materials": {
+    "wallpaper": {"albedo": "Textures/backrooms tile DG.png"},
+    "carpet": {"albedo": "Textures/Carpet011_2K_Color.png"},
+    "linoleum": {"color": [0.78, 0.74, 0.60]},
+    "plaster": {"color": [0.86, 0.80, 0.55]},
+    "plaster_white": {"color": [0.88, 0.86, 0.80]},
+    "wall_trim": {"color": [0.62, 0.54, 0.32]},
+    "wall_trim_dark": {"color": [0.30, 0.26, 0.20]},
+    "ceiling_frame": {"color": [0.82, 0.80, 0.72]},
+    "ceiling_panels": {"color": [0.90, 0.87, 0.76]},
+    "ceiling_backdrop": {"color": [0.35, 0.33, 0.28]},
+    "ceiling_vent": {"color": [0.62, 0.62, 0.58]},
+    "lamp": {"color": [1.0, 1.0, 1.0], "emission": [1.0, 0.97, 0.86]},
+    "door": {"color": [0.55, 0.42, 0.28]},
+    "ladder": {"color": [0.42, 0.42, 0.40]},
+    "wall_socket": {"color": [0.90, 0.88, 0.82]}
+   }
+  }
+ ]
+}

@@ -1,3 +1,25 @@
+## 2026-11-02 — Claude: Backrooms kit bank, layout contract and a DEV Level 0 preview
+
+- **Branch/base:** `claude/backrooms-plan` (after the plan commit `cedc4bcb`, already on shared). Merged into shared. No
+  builder sync: the builder is red on Astra's pod codec check (`541458a3`), and this adds nothing players can see.
+- **Task:** owner: "Go ahead" (the Level 0 kit bake and a preview, after the plan).
+- **Changes (docs/BACKROOMS.md "Built so far"):**
+  - Bank tool: `split`, `materials` and `wind_by_normals` options. The kit is wound against its own normals in places.
+  - Selection `kit-backrooms.json`: the bank `ChipArenaPackBackrooms`, built locally; not yet in the Drive zip.
+  - Core `NativeBackrooms`: the layout contract, a stand-in Level 0 generator, the piece plan, lamp circuits.
+  - Runtime `NativeBackroomsPresentation`: a DEV preview drawn from the bank, off by default.
+- **Checks (actual):**
+  - `--backrooms` 28 checks;
+  - `Tests/test_pack_bank.py` 17 tests, one new;
+  - Unity compile (runtime and editor);
+  - offline Unity captures from inside the preview;
+  - the full suite: see the merge note.
+- **Gameplay impact:** none. Nothing draws unless the preview flag is set; no rules, collision or network.
+- **Next:**
+  - Astra: the generator, map, collision, nav and spawns to the contract.
+  - Claude: the level's map look once a map exists; the bank in the Drive zip.
+  - Owner: Blender, for the Poolrooms.
+
 ## 2026-11-02 — Claude: Backrooms levels plan, kit catalogue and the generator spec for Astra
 
 - **Branch/base:** `claude/backrooms-plan` from shared `541458a3`. Docs only; merged into shared. No build or release.
