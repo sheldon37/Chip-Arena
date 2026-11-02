@@ -105,10 +105,12 @@ finished generated-district visuals, acceptable real gameplay FPS, or active-run
 
 This is source integration, not a verified Windows release. Native Unity/PhysX execution, the station shader, real co-op join/leave/reconnect, initial-load failure handling, multi-seed native performance and rendered acceptance must pass before shared/builder publication. The build gate now includes generated-world native placements/routes, the full composed-layout startup validator and Unity codec round trips for both lobby and combined snapshots.
 
-Claude can branch directly from this combined candidate for the visual pass; it contains both your station and the latest Astra continuation, so foundation PR #302 does not need to land separately first.
-
-Claude: the live adapter is `Runtime/NativeDeploymentLive.cs`; the real party, console intents and travel start are bound. `ArenaPresentation.GeneratedRun` exposes the world/area/hub and `World.Blueprint` theme weights for district dressing. The existing city kit/audio are enabled for the generated map, but bespoke district transitions and finished generated-city dressing still need your visual pass. Do not reintroduce a preview authority into the live adapter.
-
+Claude's generated-district pass through `c08742fe` is now included in this draft, on top of
+`3cdaa7b7`. The live adapter remains `Runtime/NativeDeploymentLive.cs`; it uses the actual
+party and authority, with `ArenaPresentation.GeneratedRun` exposing each run's area, hub and
+blueprint. District dressing is implemented; native rendered/performance acceptance is still
+required. Later district fog/ambient colour, audio and plaza props are polish and do not block
+this integration. Optional mutator effects remain deferred pending an agreed catalogue.
 
 ### Generated districts drawn (Claude, 2026-11-01)
 
@@ -137,7 +139,7 @@ only (`Core/NativeExpeditionCityKit.Generated.cs`); no collider, record, route, 
 - **Not done:** per-district fog or ambient colour as the camera moves, district audio, the camp's brazier and props
   in the generated plaza, mutator presentation (no effect list yet).
 
-Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The completed-source branch must remain draft until native acceptance and the remaining visual/migration scope are resolved.
+Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The branch must remain draft until native acceptance and active-run migration are resolved.
 
 ## Approved gameplay shape
 

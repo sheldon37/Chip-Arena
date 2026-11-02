@@ -1,3 +1,10 @@
+## 2026-11-01 — Astra: generated districts integrated into deployment draft
+
+- Target draft #303 (`codex/deployment-completion`), previous head `3cdaa7b7`. Task checkout `codex/deployment-district-integration` takes Claude's `c08742fe` directly: verified it contains the prior draft head and adds only the district pass and its receipts. Both agents' histories, intro/deployment bindings and the rooftop-before-DeployOutfit ordering are preserved. Shared/builder refs are not updated; no publication.
+- Integrated generated outdoor district dressing: Ironworks, Central Station and Ward Zero building looks blended by blueprint influence, entrance labels/lights, street details, sanctuary/final-checkpoint dressing and a skyline outside the generated footprint. Existing authored interiors and gameplay geometry/rules are unchanged. Updated the current deployment handoff to remove the obsolete claim that Claude's district pass is still missing.
+- Verification on this source: rebuilt managed suite; `--generated-districts` 2,933,497 assertions (three rolls), `--expedition-dressing` 5,320,503 assertions, `--expedition-hub` 1,225 checks, `--expedition-deployment` 3,681 checks and `--expedition-handoff` 44 checks all exit 0. Pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes with existing warnings; source package 2,909 files; whitespace clean. Claude's full-suite result is in his receipt below; full managed/relay and Python discovery were not independently repeated for this presentation-only integration.
+- Not run here: native Unity/PhysX/GPU, generated-map performance, Windows or co-op. Native deployment acceptance and full active-run combat/session/endpoint migration remain blockers. District fog/ambient colour, district audio and plaza props are later Claude polish, not missing district integration. No hit timing, hitbox, damage, cooldown, movement or networking changes. Keep #303 draft; no merge to shared/builder.
+
 ## 2026-11-01 — Claude: generated districts brought up to #303's head
 
 - **Branch/base:** `claude/generated-districts`, merge `65bbe87` of draft #303's head `3cdaa7b7`
