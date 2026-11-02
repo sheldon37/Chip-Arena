@@ -521,6 +521,12 @@ namespace ChipArena.UnityConversion
             cut.SprintAttack=true;Check(P(cut,10.2f).Clip==set.SprintAttack,"a sprint attack its own clip");
             var roll=Ground();roll.RollAt=5;Check(P(roll,5+roll.VisualRollDuration*.5f).Clip==set.Roll&&Math.Abs(P(roll,5+roll.VisualRollDuration*.5f).Time-roll.VisualRollDuration*.5f*NativeVisualMotion.MaxRollRate)<1e-3f,"a roll plays through the roll at most MaxRollRate times its pace");
             var plunge=new Actor{Grounded=false,AirAttack=true,AttackAt=20,AttackUntil=21,ImpactAt=20.5f};Check(P(plunge,20.5f).Clip==set.AirAttack&&Math.Abs(P(plunge,20.5f).Time-.42f)<1e-4f,"the plunge's Hit on its impact");
+            // The plunging stab (kind "down"): the pack has no take for it, so the model keeps the game's plunge pose (owner
+            // 2026-11-02: "we dont really have a slam attack anymore"); a weapon without plunge keys still plays the jump attack.
+            var stab=new Actor{Grounded=false,AirAttack=true,AttackAt=20,AttackUntil=21,ImpactAt=20.5f,AirKind=NativePlungeFields.DownKind,SourceSpec="sword"};
+            foreach(var spec in new[]{"sword","daggers","shield","greatsword"}){stab.SourceSpec=spec;Check(!NativeVisualMotion.Choose(set,stab,20.3f,new NativeVisualMotion.Memory(),book,false,out _)&&NativeVisualMotion.Declined=="plunge","a "+spec+" plunging stab shows the game's plunge pose, not the forward chop");}
+            stab.SourceSpec="spear";Check(P(stab,20.5f).Clip==set.AirAttack,"a weapon without plunge keys keeps the jump attack");
+            stab.SourceSpec="sword";stab.SprintAttack=true;Check(NativeVisualMotion.Choose(set,stab,20.3f,new NativeVisualMotion.Memory(),book,false,out _),"a sprint attack is never a plunge");
             var air=new Actor{Grounded=false,Velocity=new V3(0,3,0)};Check(P(air,30).Clip==set.Jump,"rising: the jump");
             air.Velocity=new V3(0,-3,0);Check(P(air,30).Clip==set.Fall,"falling: the fall");
             air.AirJumps=1;air.AirJumpAt=30;Check(P(air,30.1f).Clip==set.Flip,"an air jump: the flip");

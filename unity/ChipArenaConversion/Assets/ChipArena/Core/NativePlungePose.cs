@@ -68,28 +68,28 @@ namespace ChipArena.UnityConversion
             Contact=V(0,0,1.28f),Bury=.2f,HeavyBury=.08f,HeavyCrouch=.06f,
             Tuck=AirLegs(new Key{Grip=V(-.14f,.30f,.30f),Blade=U(.03f,-.9f,.42f),Pole=V(-1,.1f,-.3f),LGrip=V(.36f,.02f,.16f),LBlade=U(0,-1,.2f),LPole=V(1,-.6f,-.2f),Body=.02f,Pitch=0,Bow=.12f,Chest=.08f,Head=.25f},0),
             Drop=AirLegs(new Key{Grip=V(-.08f,-.16f,.36f),Blade=U(0,-.93f,.36f),Pole=V(-1,-.4f,-.2f),LGrip=V(.33f,-.02f,-.16f),LBlade=U(0,-1,-.3f),LPole=V(1,-.5f,.3f),Body=0,Pitch=.12f,Bow=.32f,Chest=.18f,Head=.45f},.07f),
-            Plant=Stance(new Key{Grip=V(-.06f,0,.95f),Blade=U(0,-.8f,.6f),Pole=V(-1,-.5f,-.1f),LGrip=V(.30f,-.30f,-.08f),LBlade=U(0,-1,0),LPole=V(1,-.6f,.2f),Body=-.30f,Pitch=.08f,Bow=.36f,Chest=.18f,Head=-.05f},.16f,.24f,-.15f,-.30f,.035f,.5f),
+            Plant=Stance(new Key{Grip=V(-.06f,0,1.12f),Blade=U(0,-.72f,.69f),Pole=V(-1,-.5f,-.1f),LGrip=V(.30f,-.30f,-.08f),LBlade=U(0,-1,0),LPole=V(1,-.6f,.2f),Body=-.30f,Pitch=.06f,Bow=.14f,Chest=.06f,Head=.28f},.16f,.24f,-.15f,-.30f,.035f,.5f),
         };
         public static readonly Keys Daggers=new Keys
         {
             Contact=V(0,0,.84f),Bury=.13f,HeavyBury=.05f,HeavyCrouch=.05f,Dual=true,
             Tuck=AirLegs(new Key{Grip=V(-.18f,.42f,.16f),Blade=U(-.05f,-.75f,.66f),Pole=V(-1,.3f,-.2f),LGrip=V(.18f,.42f,.16f),LBlade=U(.05f,-.75f,.66f),LPole=V(1,.3f,-.2f),Body=.02f,Bow=.05f,Chest=0,Head=.2f},0),
             Drop=AirLegs(new Key{Grip=V(-.13f,-.26f,.30f),Blade=U(-.06f,-.96f,.27f),Pole=V(-1,-.4f,-.2f),LGrip=V(.13f,-.26f,.30f),LBlade=U(.06f,-.96f,.27f),LPole=V(1,-.4f,-.2f),Body=0,Pitch=.15f,Bow=.38f,Chest=.2f,Head=.5f},.08f),
-            Plant=Stance(new Key{Grip=V(-.21f,0,.56f),Blade=U(-.12f,-.93f,.35f),Pole=V(-1,-.5f,-.2f),LGrip=V(.21f,0,.56f),LBlade=U(.12f,-.93f,.35f),LPole=V(1,-.5f,-.2f),Body=-.34f,Pitch=.1f,Bow=.5f,Chest=.25f,Head=.1f},.23f,.08f,-.21f,-.06f,0,0),
+            Plant=Stance(new Key{Grip=V(-.21f,0,.56f),Blade=U(-.12f,-.93f,.35f),Pole=V(-1,-.5f,-.2f),LGrip=V(.21f,0,.56f),LBlade=U(.12f,-.93f,.35f),LPole=V(1,-.5f,-.2f),Body=-.34f,Pitch=.1f,Bow=.3f,Chest=.12f,Head=.25f},.23f,.08f,-.21f,-.06f,0,0),
         };
         public static readonly Keys Shield=new Keys
         {
             Contact=V(0,-.34f,.22f),Bury=.1f,HeavyBury=.05f,HeavyCrouch=.05f,Shield=true,
             Tuck=AirLegs(new Key{Grip=V(-.08f,.20f,.30f),Blade=U(0,.15f,.99f),Up=U(0,.99f,-.15f),Pole=V(-1,0,-.3f),LGrip=V(.33f,.04f,-.04f),LBlade=U(0,-1,.1f),LPole=V(1,-.6f,.2f),Body=.02f,Bow=.1f,Chest=.05f,Head=.2f},0),
             Drop=AirLegs(new Key{Grip=V(-.06f,-.30f,.36f),Blade=U(0,-.30f,.95f),Up=U(0,.95f,.30f),Pole=V(-1,-.5f,-.1f),LGrip=V(.33f,-.06f,-.22f),LBlade=U(0,-1,-.3f),LPole=V(1,-.4f,.4f),Body=0,Pitch=.1f,Bow=.35f,Chest=.15f,Head=.4f},.07f),
-            Plant=Stance(new Key{Grip=V(-.04f,0,.48f),Blade=U(0,-.25f,.97f),Up=U(0,.97f,.25f),Pole=V(-1,-.5f,-.1f),LGrip=V(.30f,-.26f,-.26f),LBlade=U(0,-1,-.2f),LPole=V(1,-.4f,.4f),Body=-.36f,Pitch=.1f,Bow=.5f,Chest=.2f,Head=.05f},.17f,.22f,-.17f,-.28f,.035f,.5f),
+            Plant=Stance(new Key{Grip=V(-.04f,0,.48f),Blade=U(0,-.25f,.97f),Up=U(0,.97f,.25f),Pole=V(-1,-.5f,-.1f),LGrip=V(.30f,-.26f,-.26f),LBlade=U(0,-1,-.2f),LPole=V(1,-.4f,.4f),Body=-.36f,Pitch=.1f,Bow=.28f,Chest=.1f,Head=.2f},.17f,.22f,-.17f,-.28f,.035f,.5f),
         };
         public static readonly Keys Greatsword=new Keys
         {
             Contact=V(0,0,1.69f),Bury=.36f,HeavyBury=.1f,HeavyCrouch=.06f,TwoHand=true,
             Tuck=AirLegs(new Key{Grip=V(-.02f,.50f,.18f),Blade=U(0,-.93f,.37f),Pole=V(-1,.5f,-.1f),Body=.02f,Pitch=-.05f,Bow=.05f,Chest=0,Head=.15f},0),
             Drop=AirLegs(new Key{Grip=V(-.02f,-.02f,.34f),Blade=U(0,-.97f,.24f),Pole=V(-1,-.3f,-.2f),Body=0,Pitch=.12f,Bow=.3f,Chest=.15f,Head=.45f},.06f),
-            Plant=Stance(new Key{Grip=V(0,0,1.02f),Blade=U(0,-.82f,.57f),Pole=V(-1,-.4f,-.1f),Body=-.40f,Pitch=.12f,Bow=.52f,Chest=.2f,Head=.1f},.18f,.26f,-.16f,-.36f,.045f,.6f),
+            Plant=Stance(new Key{Grip=V(0,0,1.45f),Blade=U(0,-.64f,.77f),Pole=V(-1,-.4f,-.1f),Body=-.30f,Pitch=.1f,Bow=.18f,Chest=.06f,Head=.3f},.18f,.26f,-.16f,-.36f,.045f,.6f),
         };
         private static Keys Raised(Keys k,Vector3 blade){k.Raise=k.Tuck;k.Raise.Blade=blade;return k;}
         static NativePlungePose(){Raised(Sword,U(0,.35f,.94f));Raised(Greatsword,U(0,.45f,.89f));Daggers.Raise=Daggers.Tuck;Shield.Raise=Shield.Tuck;}
@@ -206,8 +206,10 @@ namespace ChipArena.UnityConversion
         private static float Need(MeleeRig r,bool left,Vector3 grip)
         {
             Vector3 s=r.ChainPoint(left?CapturedRig.LArm:CapturedRig.RArm,-1),d=grip-s;float len=d.Length(),max=.515f-ReachMargin;if(len<=max)return 0;
-            // Lowering the shoulder by h shortens the reach to sqrt(dx^2+dz^2+(dy+h)^2): solve for the h that makes it max.
-            float flat=d.X*d.X+d.Z*d.Z;if(flat>=max*max)return .1f;return Math.Max(0,-d.Y-(float)Math.Sqrt(max*max-flat));
+            // Lowering the shoulder by h shortens the reach to sqrt(dx^2+dz^2+(dy+h)^2): solve for the h that makes it max. A grip
+            // out of reach across (the greatsword's rock carried its grip past the twisted-back shoulder) gains nothing from it:
+            // dropping there sank the hips for a frame under hands left overhead.
+            float flat=d.X*d.X+d.Z*d.Z;if(flat>=max*max)return 0;return Math.Max(0,-d.Y-(float)Math.Sqrt(max*max-flat));
         }
         private static void Torso(MeleeRig r,MeleeSet set,in Key k,float[] guard,float body)
         {

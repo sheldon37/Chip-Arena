@@ -1,3 +1,29 @@
+## 2026-11-02 — Claude: the plunging stab (the "slam") back on the player model
+
+- **Branch:** `claude/plunge-model`, base shared `905d89dd`.
+- **Task:** owner: "can we fix the 'slam' attacks for melee weapons? Ever since we changed player models, we dont really
+  have a slam attack anymore". Then, on the first captures: "Please evaluate posing on slams before finishing, the pictures
+  looked weird".
+- **Cause:** the model's motion (`Core/NativeVisualMotion.cs`) played the pack's forward jump-attack chop for every air
+  attack. That hid the plunge pose on the model.
+- **Change:**
+  - A plunging stab is declined, so the model takes the game's plunge pose. The jump take fades out over 0.06 s
+    (`PlungeEase`, `Runtime/NativeVisualMotionPresentation.cs`).
+  - The plant keys are retuned (`Core/NativePlungePose.cs`): torso up, head looking down the blade, grips at chest height.
+    The greatsword's blade is angled further ahead so its grips are within reach.
+  - The reach drop only lowers the hips when that helps (it sank the greatsword for a frame during its rock).
+  - Details: docs/MELEE-FEEL.md "On the player model".
+- **Animation impacts:** pose only, on the model and the classic rig. No hit timing, hitbox, ring, damage, cooldown,
+  movement or network change. Contact depths and the phase timeline are unchanged.
+- **Checks:**
+  - `--visual-rig` with 6 new checks;
+  - an offline rig probe of the stuck pose per weapon (not committed);
+  - Unity captures of all four weapons on the model, and sword and greatsword on the classic rig, from the drop through
+    the pull-out;
+  - full suite: see below.
+- **Next:** owner check in the Windows build. The daggers' squat keeps the head low over the blades.
+
+
 ## 2026-11-02 — Astra: generated Backrooms Level 0 and builder recovery
 
 - **Branch/base:** `codex/backrooms-rules`, base `763885cb`, integrated shared `9ae2494c` and the subsequent Level 0 contract rebuild `49281882` including Claude's Backrooms bank/preview and zombie motion work. PR #313; verified source `5d21c2bf`. Final PR carries merge and builder receipts.
