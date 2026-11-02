@@ -1,3 +1,8 @@
+## 2026-11-01 — Astra: expose the next native deployment build failure
+
+- Owner-authorized test update #303 merged at `887f1a0b` and builder synced. Windows picked it up at 2026-11-02 01:00 UTC: the corrected fourteen-map catalogue gate passed; shader import validation then stopped packaging on `NativeDeployScreen`. No new public update was produced.
+- The existing shader guard omitted Unity's compiler messages. Include `ShaderUtil.GetShaderMessages` file/line details for both import and pass failures and distinguish a missing resource, retaining the gate. This diagnostic-only follow-up is needed to identify the native failure without guessing at shader changes. Pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings; Windows retry supplies the actual shader result. Active-run migration remains disabled as the owner selected.
+
 ## 2026-11-01 — Astra: owner-authorized deployment test update and native build gates
 
 - Owner selected "Test update now" with active-run host migration unavailable, explicitly authorizing the generated deployment test update instead of waiting for full migration. This supersedes the prior draft/shared/builder hold for this test scope only; no production release. Task `codex/deployment-test-update`, base #303 `f8be6779` including Claude's generated districts and presentation passes.

@@ -66,10 +66,17 @@ namespace ChipArena.UnityConversion.Editor
                 if(active.IsValid()&&active.isLoaded)SceneManager.SetActiveScene(active);
             }
         }
+        private static Exception DeploymentShaderFailure(Shader shader,string stage)
+        {
+            var messages=ShaderUtil.GetShaderMessages(shader);
+            return new Exception("NativeDeployScreen "+stage+" failed: "+(messages.Length==0?"Unity reported no compiler details.":
+                string.Join(" | ",messages.Select(m=>m.message+" ("+m.file+":"+m.line+")"))));
+        }
         private static void CheckDeploymentShader(bool exercisePass=false)
         {
             var shader=Resources.Load<Shader>("NativeDeployScreen");
-            if(shader==null||ShaderUtil.ShaderHasError(shader))throw new Exception("Native source shader failed: NativeDeployScreen");
+            if(shader==null)throw new Exception("NativeDeployScreen shader resource is missing.");
+            if(ShaderUtil.ShaderHasError(shader))throw DeploymentShaderFailure(shader,"import");
             if(!exercisePass)return;
             bool async=ShaderUtil.allowAsyncCompilation;Material material=null;
             try
@@ -80,7 +87,7 @@ namespace ChipArena.UnityConversion.Editor
                 {
                     material.shaderKeywords=fog?new[]{"FOG_LINEAR"}:Array.Empty<string>();
                     if(!shader.isSupported||!material.SetPass(0)||ShaderUtil.ShaderHasError(shader))
-                        throw new Exception("Deployment screen pass failed, linear fog="+fog);
+                        throw DeploymentShaderFailure(shader,"pass, linear fog="+fog);
                 }
                 Debug.Log("PASS deployment screen shader: no-fog and linear-fog pass on "+SystemInfo.graphicsDeviceType);
             }
