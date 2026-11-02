@@ -96,6 +96,8 @@ namespace ChipArena.UnityConversion
             // The hazard kit (NativeHazardKitPresentation.cs): the map's alarm placements, or the DEV preview gallery.
             HazardKitWorld(arena);
             PveMachinePresentation(arena);
+            // The Expedition drop pods in a generated run's hub (NativePodPresentation.cs).
+            ExpeditionPods(arena);
             // A dead add's rig stays posed until its death effects end (NativeMinionFxPresentation.cs: flames rise off its joints).
             DiagnosticSceneryMs+=PresentationElapsed(sceneryAt);long hordeAt=System.Diagnostics.Stopwatch.GetTimestamp();
             retainedMinionRigs.Clear();expiredMinionRigs.Clear();

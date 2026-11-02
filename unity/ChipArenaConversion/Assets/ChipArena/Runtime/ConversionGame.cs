@@ -28,6 +28,9 @@ namespace ChipArena.UnityConversion
         public string hatColor="",backColor="";
         // DEV tools (NativeDevPanel.cs, docs/DEV-TOOLS.md): Settings · Developer · DEV Abuse (off by default) and the panel's chip favourites.
         public bool devAbuse;public string devChipFavourites="";
+        // The Expedition drop pod's look picked in the Locker (Core/NativePodDrop.cs: paint, trim, lights; absent in older saves:
+        // the pilot's body colour, gunmetal and the accent). Shown on this client's own pod until the seats carry it (Astra).
+        public string pod="";
     }
     public sealed partial class ConversionGame : MonoBehaviour
     {
@@ -182,7 +185,7 @@ namespace ChipArena.UnityConversion
             // A bound Expedition session's world pieces (NativeExpeditionWorldPresentation.cs): one mesh drawn for this frame.
             // Settings · Player model: Classic draws the voxel pilot body in place of the new one, set before any path draws a
             // pilot (previews, replays, the draft and the intros return before the arena renders).
-            NativeUiBlur.Frame();presentation.GeneratedRun=deploymentBundle;ExpeditionWorldFrame();if(cameraView==null)return;if(SplitLocalLoading){viewModelCamera.enabled=false;return;}cinematic.BeginFrame();presentation.ClassicBodies=prefs.playerModel=="Classic";presentation.LocalLook=LookShown();presentation.VisualEye=cameraView;if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();ExpeditionPlantAudio();nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
+            NativeUiBlur.Frame();presentation.GeneratedRun=deploymentBundle;presentation.LocalPodLook=prefs.pod;ExpeditionWorldFrame();if(cameraView==null)return;if(SplitLocalLoading){viewModelCamera.enabled=false;return;}cinematic.BeginFrame();presentation.ClassicBodies=prefs.playerModel=="Classic";presentation.LocalLook=LookShown();presentation.VisualEye=cameraView;if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();ExpeditionPlantAudio();nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
