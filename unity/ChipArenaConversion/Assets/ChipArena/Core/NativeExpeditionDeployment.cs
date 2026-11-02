@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionDeploymentState
     {
-        public int schema=1,revision,instanceRolls,mutatorRolls;
+        public int schema=1,revision,instanceRolls,mutatorRolls,mutatorSkips; public bool mutatorsSkipped;
         public string station,host; public uint seed,worldSeed;
         public bool worldRolled,deployed;
         public string[] instances=Array.Empty<string>(),mutators=Array.Empty<string>();
@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             return true;
         }
         // Second machine: optional independent draw of at most three vetted mutator IDs.
-        // Gameplay effects and rewards are intentionally NOT applied by this foundation.
+        // Effects are applied by the run authority after Deploy.
         public bool RollMutators(string account,string[] catalog)
         {
             if(!Authorized(account)||!state.worldRolled||!MutatorCatalog(catalog)||state.mutatorRolls==int.MaxValue)return false;
@@ -125,14 +125,15 @@ namespace ChipArena.UnityConversion
             var rng=new Roller(Mix(state.seed^unchecked((uint)next*0x85ebca6bu)^0xc2b2ae35u));
             var choices=catalog.OrderBy(x=>x,StringComparer.Ordinal).ToArray();
             Shuffle(choices,ref rng);
-            state.mutators=choices.Take(Math.Min(3,choices.Length)).ToArray();
+            var picked=new List<string>();foreach(var id in choices)if(picked.Count<3&&picked.All(other=>NativeExpeditionMutators.Compatible(id,other)))picked.Add(id);
+            state.mutators=picked.ToArray();state.mutatorsSkipped=false;
             state.mutatorRolls=next;state.revision++;
             return true;
         }
         public bool SkipMutators(string account)
         {
             if(!Authorized(account)||!state.worldRolled)return false;
-            if(state.mutators.Length>0){state.mutators=Array.Empty<string>();state.revision++;}
+            if(state.mutators.Length>0){state.mutators=Array.Empty<string>();state.mutatorsSkipped=true;state.mutatorSkips++;state.revision++;}
             return true;
         }
         // partyReady is verified by the future host room adapter, never taken from the guest.
@@ -149,7 +150,8 @@ namespace ChipArena.UnityConversion
             if(ticket==null||ticket.schema!=1||!ExpeditionValidation.Id(ticket.station)||
                !ExpeditionValidation.Id(ticket.originHost)||ticket.instanceRolls<0||ticket.revision<0||
                ticket.instanceRolls>ticket.revision||ticket.deployed&&ticket.instanceRolls==0||
-               ticket.revision!=(long)ticket.instanceRolls+(ticket.deployed?1:0))
+               ticket.mutatorRolls<0||ticket.mutatorSkips<0||ticket.mutatorSkips>ticket.mutatorRolls||ticket.mutatorsSkipped&&ticket.mutatorSkips==0||
+               ticket.mutatorRolls>0&&ticket.instanceRolls==0||ticket.revision!=(long)ticket.instanceRolls+ticket.mutatorRolls+ticket.mutatorSkips+(ticket.deployed?1:0))
                 throw new ArgumentException("Invalid deployment ticket.");
             var result=new NativeExpeditionDeployment(ticket.station,ticket.originHost,ticket.seed);
             if(ticket.instanceRolls>0)
@@ -157,6 +159,8 @@ namespace ChipArena.UnityConversion
                 result.state.instanceRolls=ticket.instanceRolls-1;
                 if(!result.RollInstances(ticket.originHost,catalog))throw new ArgumentException("Invalid deployment catalog.");
             }
+            if(ticket.mutatorRolls>0){result.state.mutatorRolls=ticket.mutatorRolls-1;if(!result.RollMutators(ticket.originHost,NativeExpeditionMutators.Ids))throw new ArgumentException("Invalid mutator draw.");}
+            result.state.mutatorSkips=ticket.mutatorSkips;result.state.mutatorsSkipped=ticket.mutatorsSkipped;if(ticket.mutatorsSkipped)result.state.mutators=Array.Empty<string>();
             result.state.revision=ticket.revision;result.state.deployed=ticket.deployed;
             return result;
         }

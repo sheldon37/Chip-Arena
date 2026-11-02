@@ -14,8 +14,9 @@ namespace ChipArena.UnityConversion
         public AccountXpCompletion xpCompletion;
         public bool transferring;
         public bool connected, alive=true, safe=true, extracted, choosing;
+        public double vampireAt,vampireUsed;
         public double choosingUntil; // Final Install time + wrist plant duration; cleared on lifecycle transitions.
-        public int wallet, catchup, initialCatchup;
+        public int wallet, catchup, initialCatchup,rouletteCycle;
         public string carriedBy;
         public string[] perks=Array.Empty<string>();
         public ChipCount[] chips=Array.Empty<ChipCount>();
@@ -50,6 +51,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionPhase phase=ExpeditionPhase.Town;
         public double elapsed, exitAt=-1, extractAt=-1;
         public bool loading,xpDisabled;
+        public string[] mutators=Array.Empty<string>();
         public ExpeditionWorldAnchor[] anchors=Array.Empty<ExpeditionWorldAnchor>();
         public ExpeditionChestOffer[] chests=Array.Empty<ExpeditionChestOffer>();
         public ExpeditionMember[] members=Array.Empty<ExpeditionMember>();
@@ -61,7 +63,7 @@ namespace ChipArena.UnityConversion
         {
             var s=(ExpeditionSnapshot)MemberwiseClone();s.anchors=(anchors??Array.Empty<ExpeditionWorldAnchor>()).Select(a=>a.Copy()).ToArray();s.chests=(chests??Array.Empty<ExpeditionChestOffer>()).Select(c=>c.Copy()).ToArray();s.members=members.Select(p=>p.Copy()).ToArray();
             s.instances=instances.Select(i=>i.Copy()).ToArray();s.rewards=rewards.Select(r=>r.Copy()).ToArray();
-            s.dice=dice.Select(d=>d.Copy()).ToArray();s.events=(string[])events.Clone();
+            s.mutators=(string[])(mutators??Array.Empty<string>()).Clone();s.dice=dice.Select(d=>d.Copy()).ToArray();s.events=(string[])events.Clone();
             s.exitVotes=(string[])exitVotes.Clone();s.extractVotes=(string[])extractVotes.Clone();s.continueVotes=(string[])(continueVotes??Array.Empty<string>()).Clone();return s;
         }
     }
@@ -94,7 +96,7 @@ namespace ChipArena.UnityConversion
         private static bool Ids(string[] a,int max)=>a!=null&&a.Length<=max&&a.All(Id)&&a.Distinct(StringComparer.Ordinal).Count()==a.Length;
         public static bool Valid(ExpeditionSnapshot s)
         {
-            if(s==null||s.schema!=1||!Id(s.run)||!Id(s.world)||!Id(s.host)||!Id(s.area)||s.epoch<1||s.revision<0||s.loop<0||s.loop>100000||
+            if(s==null||!NativeExpeditionMutators.Valid(s.mutators??Array.Empty<string>())||s.schema!=1||!Id(s.run)||!Id(s.world)||!Id(s.host)||!Id(s.area)||s.epoch<1||s.revision<0||s.loop<0||s.loop>100000||
                 !Enum.IsDefined(typeof(ExpeditionPhase),s.phase)||!Number(s.elapsed)||s.elapsed<0||s.elapsed>1e10||
                 !Number(s.exitAt)||s.exitAt< -1||!Number(s.extractAt)||s.extractAt< -1)return false;
             if(!ExpeditionWorldRules.Valid(s.anchors??Array.Empty<ExpeditionWorldAnchor>(),s.chests??Array.Empty<ExpeditionChestOffer>()))return false;
@@ -102,7 +104,7 @@ namespace ChipArena.UnityConversion
                 s.rewards==null||s.rewards.Length>MaxRecords||s.dice==null||s.dice.Length>MaxRecords||!Ids(s.events,MaxRecords)||
                 !Ids(s.exitVotes,8)||!Ids(s.extractVotes,8)||!Ids(s.continueVotes??Array.Empty<string>(),8))return false;
             if(s.members.Any(p=>p==null||!Id(p.account)||!Id(p.weapon)||p.wallet<0||p.wallet>1000000000||p.catchup<0||p.catchup>256||p.initialCatchup<p.catchup||p.initialCatchup>256||
-                !Ids(p.perks,3)||p.chips==null||p.chips.Length>2048||p.chips.Any(c=>c==null||!Id(c.id)||c.count<1||c.count>100000)||p.chips.Select(c=>c.id).Distinct().Count()!=p.chips.Length||
+                p.rouletteCycle<0||p.rouletteCycle>s.elapsed/90||!Number(p.vampireAt)||p.vampireAt<0||p.vampireAt>s.elapsed||!Number(p.vampireUsed)||p.vampireUsed<0||p.vampireUsed>15||!Ids(p.perks,3)||p.chips==null||p.chips.Length>2048||p.chips.Any(c=>c==null||!Id(c.id)||c.count<1||c.count>100000)||p.chips.Select(c=>c.id).Distinct().Count()!=p.chips.Length||
                 !string.IsNullOrEmpty(p.carriedBy)&&!Id(p.carriedBy)||p.extracted&&(p.connected||p.alive)))return false;
             var accounts=s.members.Select(p=>p.account).ToArray();
             if(accounts.Distinct().Count()!=accounts.Length||!accounts.Contains(s.host)||s.members.Count(p=>p.connected&&!p.extracted)>8)return false;

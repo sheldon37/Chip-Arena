@@ -182,17 +182,51 @@ every entrance's 3 × 3 forecourt ran to the floor's edge with nothing behind th
 
   `--expedition-deployment` passes unchanged (3,681).
 
-### Mutator catalog (owner request 2026-11-01; cards by Claude, effects for Astra)
+### Mutator rules handoff — Astra, 2026-11-01
+
+Implemented on `codex/expedition-mutators`, based on shared `bfc770a`. Source integration only until the PR/build receipt says otherwise. The 30-ID catalog is `NativeExpeditionMutators.Ids`; the live station now rolls three compatible IDs. DARKNESS and WHITEOUT intentionally have no simulation effect: their gameplay is Claude's lighting/visibility work, still required before the feature is complete.
+
+**Claude: the rules and presentation signals are ready on this branch.** Read active IDs from `NativeArena.ActiveMutators` / `GeneratedRun.Mutators` during the run, or `DeploymentState.mutators` in the station. `NativeExpeditionMutators.Payout(ids)` returns the station payout multiplier. The authenticated ticket reconstructs the draw; never set effects from a local UI choice. IDs persist across city/instance transfers, reconnects and repeat loops. Active endpoint migration remains disabled.
+
+Effects use the catalog's proposed numbers with these explicit interpretations:
+
+- Payout is **additive**: 1 + .25 per Bane + .10 per Chaos, applied to Expedition money earnings (including boss awards). There is no separate end-of-run cash award or account-XP multiplier. Kill-only JACKPOT/BROKE/FRIENDLY FIRE multiply that result; HULKAMANIA adds ×3 for Hulk kills. Cache price rounds up to at least $1.
+- SECOND WIND: free reprints and a **1.5-second reprint channel**, formerly 3 seconds. Existing nearby-body revives are already instant and stay instant, at their existing price. `ExpeditionViewMember.reprintFree` distinguishes a free quote from an unavailable quote. PERMADEATH disables reprints and automatic phase revivals; nearby-body revives remain possible. No new downed/bleedout life stage is introduced.
+- HULKAMANIA converts ordinary add spawns, **not authored bosses**, and uses Hulk-compatible entries. Generated city blockout version 3 now permits Hulks at its entries (including their larger clearance validation); the ordinary unmodified roster is unchanged. Per-area cap 6, interval ×2.5; this cap/rate takes precedence over SWARM. SWARM doubles normal spawn pressure and caps, with an absolute 72-add ceiling. Quotas are unchanged. Boss phase spawners use the same limits.
+- VAMPIRE heals 8% of actual ordinary-zombie damage, capped at 15 HP per one-second authority window. The budget is in the shared run member ledger, so changing areas/reconnecting cannot refill it. Bosses are excluded.
+- CHIP RAIN creates one eligible common-chip choice at the corpse (3%, or 25% for brutes/Hulks). It still requires collection/installation and respects weapon eligibility; DEV monsters and uncredited sanctuary kills do not farm drops.
+- ROULETTE uses the ordinary supported weapon pool (pistol, machine gun, rifle, bow, four melee weapons, arcane/fire/water/lightning). Every 90 run seconds, each living pilot gets a deterministic roll, keeps chips, cancels the old action, and refills the magazine. Transfers/choice installation defer it; a per-member cycle prevents repeats after reconnect. DEV weapons/bosses are excluded.
+- Normal movement modifiers stack multiplicatively. Scripted attacks retain their authored timing; Hulk charge travel speed also scales. BOUNCE HOUSE triples combat pushes/pulls, without changing locomotion attacks' authored self-movement.
+- BIG HEADS adds doubled head regions to projectile sweeps and head classification; body collision, nav clearance and melee reach stay unchanged. Claude draws heads ×2.2.
+- STORM schedules three strikes per occupied area every 20 run seconds, each with 2 seconds' warning, 3 m radius and 60 damage. Sanctuary pilots are excluded. Ordinary walls block damage. BLOATED uses 3 m / 35 pilot damage / 250 impulse. MARTYR uses 4 m / 150 zombie damage / 30 pilot damage. HIGH EXPLOSIVE uses 1.5 m / 35% projectile damage, half self damage; teammates require FRIENDLY FIRE. Blasts are queued, bounded to 128 pending, and cannot recursively grow the call stack or trigger another projectile blast. Glass-cannon and target defenses still apply to eligible damage.
+
+### Claude event contract
+
+Events use the existing replicated `ArenaEvent` stream, `Kind=Impact`, authoritative `Position` and `Time`:
+
+| `Detail` | `Radius` | `Amount` | Presentation |
+|---|---:|---:|---|
+| `mutator-storm-warning` | 3 | 2 (seconds) | Ground telegraph; expire/strike after 2 s |
+| `mutator-storm` | 3 | 3 (radius) | Lightning strike |
+| `mutator-explosive` | 1.5 | 1.5 | Projectile impact blast |
+| `mutator-martyr` | 4 | 4 | Pilot death blast |
+| `mutator-bloated` | 3 | 3 | Zombie death burst |
+| `mutator-roulette` | 0 | completed 90-second cycle | Optional weapon-change cue |
+
+Please implement DARKNESS/WHITEOUT lighting, fog and distant marker suppression; BIG HEADS head scale; the four blast/strike looks and telegraph; the active-mutator HUD and station payout. These effects are area-scoped through the existing frame stream. The warning must be visible before STORM is considered play-ready. No new animation timing is requested; damage, knockback and headshot-region changes above are intentional rules changes.
+
+### Verification boundary
+
+Managed rules/ticket/economy checks and real Unity reference compilation run in the cloud. `NativeArena.ValidateMutatorRules`, called by the existing deployment Windows acceptance gate, exercises pilot stats and refresh, magazines, Vampire, Hulk conversion/caps, Glass Cannon and storm timing. That native gate and physical/co-op/visual playtests need the Windows builder/owner; compilation alone does not prove them. Keep source review separate from a published native build receipt.
+
+## Mutator catalog (owner request 2026-11-01; cards by Claude, effects for Astra)
 
 Owner: "lets add some modifiers to roll for expedition; things like 'More money per kill, faster move speed, ALL hulk
 zombies, etc.' Think fun things, overpowered things, insane difficulty things. Consider like... 30 modifiers?"
 
 - **Drawn:** 30 cards in `NativeDeployPresentation` (`MutatorIds`, `MutatorOf`), 10 Boon, 11 Bane, 9 Chaos. The DEV
   preview rolls from them. Their names use only the card font's letters (checked).
-- **Not applied:** the live room's `RollMutators` still returns false, and `NativeDeploymentLive` passes an empty list.
-- **Astra to apply:** each effect below for the whole run (city and every instance, host and guests), the roll's
-  exclusions, and the reward scaling. Then pass `NativeDeployPresentation.MutatorIds`, or the rules' own list with the
-  same ids, to the live roll.
+- **Rules implemented on `codex/expedition-mutators`:** live roll, exclusions, run effects and payout are wired. See the handoff above for exact semantics and outstanding Claude visuals/native validation.
 - **Numbers are proposals.** Change them freely; if a line on a card no longer fits, tell Claude.
 
 | id | Card | Polarity | Proposed effect |

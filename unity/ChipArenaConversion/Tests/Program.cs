@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--expedition-mutators"){ExpeditionMutatorChecks.Run(ProjectRoot());return 0;}
             ControllerChecks.Run();
             if(args.Length==1&&args[0]=="--controller")return 0;
             MenuFocusChecks.Run(ProjectRoot());
@@ -23,7 +24,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--movement-mods"){MovementModsChecks.Run(ProjectRoot());RoundsCardsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zone-boss-rules"){ZoneBossRulesChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--zone-combat"){ZoneCombatChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--expedition-deployment"){ExpeditionDeploymentChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-deployment"){ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-presentation"){DeployPresentationChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--deploy-models"){DeployModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-handoff"){ExpeditionHandoffChecks.Run();return 0;}
@@ -81,7 +82,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--draft-stage"){foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);foreach(var result in DraftStageChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);DraftBackdropChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
-            ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());DevAbuseChecks.Run();ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
+            ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());DevAbuseChecks.Run();ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);HulkBreachChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);HulkBreachFxChecks.Run(wardRoot);HulkMotionChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}

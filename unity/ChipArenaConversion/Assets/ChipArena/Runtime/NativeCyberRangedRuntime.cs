@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
                 if(!MeleeVisible(at+Vector3.up*.4f,q.Body.position,p,q.Collider))continue;
                 var d=q.Body.position-at;d.y=0;
                 float actual=Damage(q,p,amount*CyberScale(p),d.normalized,0,false,direct:false,primary:false,damageKind:detail);
-                if(actual>0)q.Knockback+=d.normalized*shove;
+                if(actual>0)q.Knockback+=d.normalized*shove*(Mutator("bounce-house")?3:1);
             }
             foreach(var m in Minions.Where(m=>m.Hp>0&&CanHit(p,m)&&inside(m.Body.position)).ToArray())
             {

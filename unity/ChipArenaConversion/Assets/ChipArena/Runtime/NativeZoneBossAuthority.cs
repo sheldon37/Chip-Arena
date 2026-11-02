@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             if(SceneLinecast(center+Vector3.up,p.Body.position,WorldMask))return;
             if(Time<p.BlockEnd){BlockProc(p,Pve.Boss,p.Body.position,"clash");return;}
             float actual=Damage(p,null,amount,p.Body.position-center,0,false,primary:false,rollAvoidable:true);
-            if(actual>0){p.Knockback+=(p.Body.position-center).normalized*knock;p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
+            if(actual>0){p.Knockback+=(p.Body.position-center).normalized*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
         }
         private Vector3 BossLocal(Vector3 world)=>Quaternion.Euler(0,-zoneBossActor.Yaw,0)*(world-zoneBossActor.Body.position);
         private Vector3 BossWorld(float x,float z)=>zoneBossActor.Body.position+Quaternion.Euler(0,ZoneBoss.actionYaw,0)*new Vector3(x,0,z);
@@ -313,7 +313,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitZoneBoss(NativeMinion m,NativePilot source,float damage,Vector3? point,string kind)
         {
-            if(ZoneBoss==null||m.Hp<=0||Pve.Holding)return 0;var z=ZoneBoss;var local=BossLocal(point??m.Body.position);float multiplier=1;bool crit=false;
+            if(ZoneBoss==null||m.Hp<=0||Pve.Holding)return 0;if(PilotMutator(source,"glass-cannon"))damage*=3;var z=ZoneBoss;var local=BossLocal(point??m.Body.position);float multiplier=1;bool crit=false;
             if(z.archetype==NativeZoneBossRules.Station)
             {
                 if(local.y>4.4f&&local.z>1){multiplier=z.phase==3?2.5f:2;crit=true;}

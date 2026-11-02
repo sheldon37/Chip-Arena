@@ -61,6 +61,7 @@ namespace ChipArena.UnityConversion
             layout.compatibility=NativeExpeditionLayout.Compatibility(json,deploymentBaseContent??content);return layout;
         }
         public bool RollDeploymentInstances(int revision)=>DeploymentIntent(ExpeditionDeploymentIntent.RollInstances,revision);
+        public bool RollDeploymentMutators(int revision)=>DeploymentIntent(ExpeditionDeploymentIntent.RollMutators,revision);
         public bool SkipDeploymentMutators(int revision)=>DeploymentIntent(ExpeditionDeploymentIntent.SkipMutators,revision);
         private bool DeploymentIntent(ExpeditionDeploymentIntent intent,int revision)
         {

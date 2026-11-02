@@ -17,10 +17,11 @@ namespace ChipArena.UnityConversion
             Session=session??throw new ArgumentNullException(nameof(session));Layout=layout??throw new ArgumentNullException(nameof(layout));
             this.position=position??throw new ArgumentNullException(nameof(position));this.visible=visible??throw new ArgumentNullException(nameof(visible));
             if(cachePrice<1||reprintCost<1||!ExpeditionValidation.Number(restockSeconds)||restockSeconds<1)throw new ArgumentException("Invalid Expedition economy tuning.");
-            this.cachePrice=cachePrice;this.reprintCost=reprintCost;this.restockSeconds=restockSeconds;
+            cachePrice=NativeExpeditionMutators.CachePrice(session.Run.Mutators,cachePrice);
+            this.cachePrice=cachePrice;this.reprintCost=reprintCost;this.restockSeconds=restockSeconds*(session.Run.HasMutator("windfall")?.5:1);
             var s=session.Run.Snapshot();if(s.world!=layout.world||!s.instances.Select(i=>i.id).OrderBy(i=>i).SequenceEqual(layout.instances.OrderBy(i=>i)))throw new ArgumentException("Run and layout differ.");
             if(s.anchors.Length==0)session.SetWorld(layout.areas.SelectMany(a=>a.anchors).ToArray(),layout.areas.SelectMany(a=>a.anchors).Where(a=>a.kind=="chest").Select(a=>new ExpeditionChestOffer{id=a.id,generation=s.loop+":"+a.id+":0",price=cachePrice}).ToArray());
-            session.CanClaim=CanClaim;session.CanPurchase=CanPurchase;session.Sources.ReprintCost=_=>reprintCost;InitializeState();if(layout.compatibility!=null)BindLayoutIdentity(layout.compatibility);
+            session.CanClaim=CanClaim;session.CanPurchase=CanPurchase;session.Sources.ReprintCost=_=>session.Run.HasMutator("second-wind")?0:reprintCost;InitializeState();if(layout.compatibility!=null)BindLayoutIdentity(layout.compatibility);
         }
         private bool Reach(string account,V3 point,double range)
         {var p=position(account);return p.HasValue&&(p.Value-point).Length<=range&&visible(p.Value,point);}
@@ -45,7 +46,7 @@ namespace ChipArena.UnityConversion
         {
             var s=Session.Run.Snapshot();var area=Layout.Area(s.area);var i=area.interactions.FirstOrDefault(i=>i.anchor==machine&&area.anchors.Any(a=>a.id==machine&&a.kind=="machine"));var p=position(payer);
             if(i==null||!p.HasValue||!CanPurchase(payer,machine))return null;
-            return new ExpeditionReprintEvidence{cost=reprintCost,machine=true,remote=Sanctuary(payer),uninterrupted=uninterrupted,distance=(p.Value-new V3(i.x,i.y,i.z)).Length,range=i.range,channelSeconds=channelSeconds,requiredSeconds=3};
+            return new ExpeditionReprintEvidence{cost=reprintCost,machine=true,remote=Sanctuary(payer),uninterrupted=uninterrupted,distance=(p.Value-new V3(i.x,i.y,i.z)).Length,range=i.range,channelSeconds=channelSeconds,requiredSeconds=Session.Run.HasMutator("second-wind")?1.5:3};
         }
         /// <summary>Call once from an authenticated encounter death, never a DEV monster or UI callback.</summary>
         public bool MonsterDefeated(string spawn,V3 at,int progress,bool drop)

@@ -14,14 +14,18 @@ namespace ChipArena.UnityConversion
         private ExpeditionHandoff handoff {get=>migration.Handoff;set=>migration.Handoff=value;}
         public const double ExitSeconds=10, ExtractSeconds=10; // Initial tuning, not owner-specified balance.
         public NativeExpedition(ExpeditionSnapshot state){ExpeditionValidation.Require(state);s=state.Copy();}
-        public static NativeExpedition Create(string run,string world,string host,string weapon,uint seed,ExpeditionInstance[] instances)
+        public static NativeExpedition Create(string run,string world,string host,string weapon,uint seed,ExpeditionInstance[] instances,string[] mutators=null)
         {
             return new NativeExpedition(new ExpeditionSnapshot{run=run,world=world,area=world,host=host,seed=seed,
-                instances=instances?.Select(i=>i.Copy()).ToArray(),members=new[]{new ExpeditionMember{account=host,weapon=weapon,connected=true}}});
+                mutators=mutators??Array.Empty<string>(),instances=instances?.Select(i=>i.Copy()).ToArray(),members=new[]{new ExpeditionMember{account=host,weapon=weapon,connected=true}}});
         }
         public ExpeditionSnapshot Snapshot()=>ScopedSnapshot();
         public double Elapsed=>s.elapsed;
+        public uint Seed=>s.seed;
+        public string[] Mutators=>(string[])s.mutators.Clone();
+        public bool HasMutator(string id)=>NativeExpeditionMutators.Has(s.mutators,id);
         public bool Migrating=>handoff!=null;
+        public bool CombatRunning=>Mutable;
         public bool FinalUnlocked=>s.instances.All(i=>i.cleared);
         public bool ExtractionUnlocked=>s.instances.Any(i=>i.cleared)||s.loop>0;
         private bool Running=>handoff==null&&Phase!=ExpeditionPhase.Ended;
@@ -187,7 +191,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Adapter validates proximity, uninterrupted channel and machine/medic permission before calling.</summary>
         public bool Reprint(string payer,string victim,int cost,bool remoteSafeRecovery=false)
         {
-            if(!Mutable||cost<1||!Live(Member(payer)))return false;var buyer=Member(payer);var target=Member(victim);
+            if(cost<1||HasMutator("permadeath"))return false;if(HasMutator("second-wind"))cost=0;
+            if(!Mutable||cost<0||cost==0&&!HasMutator("second-wind")||!Live(Member(payer)))return false;var buyer=Member(payer);var target=Member(victim);
             if(target==null||target.alive||target.extracted||!target.connected||buyer.wallet<cost)return false;
             if(remoteSafeRecovery){if(!buyer.safe||Phase!=ExpeditionPhase.Town&&Phase!=ExpeditionPhase.Victory)return false;}
             else if(!InArea(target)||target.carriedBy!=payer)return false;
@@ -201,6 +206,10 @@ namespace ChipArena.UnityConversion
             if(!Mutable||!Live(buyer)||!Key(eventId)||amount<1||buyer.wallet<amount||!CanRecord(key))return false;
             buyer.wallet-=amount;Record(key);Changed();return true;
         }
+        public float VampireHeal(string account,float damage)
+        {var p=Member(account);if(!Mutable||!HasMutator("vampire")||!Live(p)||!ExpeditionValidation.Number(damage)||damage<=0)return 0;if(s.elapsed>=p.vampireAt+1){p.vampireAt=s.elapsed;p.vampireUsed=0;}float heal=(float)Math.Min(Math.Max(0,15-p.vampireUsed),damage*.08);p.vampireUsed+=heal;Changed();return heal;}
+        public bool Roulette(string account,string weapon,int cycle)
+        {var p=Member(account);if(!Mutable||!HasMutator("roulette")||!Live(p)||!Key(weapon)||cycle<=p.rouletteCycle||cycle!=(int)(s.elapsed/90))return false;p.weapon=weapon;p.rouletteCycle=cycle;Changed();return true;}
         public bool Credit(string account,string eventId,int amount)
         {
             string key=EventKey(eventId)+":"+account;if(!Mutable||!Key(eventId)||amount<1||!CanRecord(key))return false;
