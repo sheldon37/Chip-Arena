@@ -35,8 +35,9 @@ namespace ChipArena.UnityConversion
         /// <summary>My own pod's look (prefs.pod, NativePodDrop's map): the seats do not carry pod looks yet (Astra), so every
         /// other pilot's pod draws in its body colour and accent.</summary>
         public string LocalPodLook="";
-        /// <summary>The LED dot size in texture pixels.</summary>
-        private const int PodDot=8;
+        /// <summary>The LED dot size in texture pixels; how long after a countdown-less start a pilot's pod is still parked
+        /// where the pilot stands.</summary>
+        private const int PodDot=8;private const float ParkWindow=1.5f;
 
         /// <summary>Pods fall in this arena: a generated run's hub (its world's map).</summary>
         private bool PodRun(NativeArena arena)=>arena?.Map!=null&&GeneratedRun?.World?.Map!=null&&arena.Map.id==GeneratedRun.World.Map.id;
@@ -46,7 +47,15 @@ namespace ChipArena.UnityConversion
         /// pod's floor while it falls; null once the drop is over.</summary>
         private SpawnView PodSpawn(NativeArena arena,NativePilot pilot,Vector3 feet,float age,double end,out float raise)
         {
-            raise=0;if(float.IsNaN(age)||age>=NativePodDrop.End)return null;int id=pilot.Seat.id;
+            raise=0;if(float.IsNaN(age))return null;int id=pilot.Seat.id;
+            // A run that opens without a countdown (the live split areas today: Astra's hold is pending) still parks each
+            // pilot's pod where it starts, seen in its first seconds; the drop itself plays only over a countdown.
+            if(age>=NativePodDrop.End)
+            {
+                if(age<NativePodDrop.End+ParkWindow&&(!pods.TryGetValue(id,out var seen)||double.IsNaN(seen.End)||Math.Abs(seen.End-end)>=.25))
+                {if(!spawnViews.TryGetValue(id,out var pv)){pv=new SpawnView();spawnViews.Add(id,pv);}if(pv.Arena!=arena||double.IsNaN(pv.End)||Math.Abs(pv.End-end)>.25)SpawnPlaceView(pv,arena,pilot,feet,end);PodPlace(arena,pilot,pv,end);}
+                return null;
+            }
             if(!spawnViews.TryGetValue(id,out var v)){v=new SpawnView();spawnViews.Add(id,v);}
             if(v.Arena!=arena||double.IsNaN(v.End)||Math.Abs(v.End-end)>.25)SpawnPlaceView(v,arena,pilot,feet,end);
             var pod=PodPlace(arena,pilot,v,end);var f=pod.Frame=NativePodDrop.Evaluate(age,pod.Order,pod.Seed);v.Pod=true;
@@ -80,9 +89,9 @@ namespace ChipArena.UnityConversion
             if(f.Dropping&&f.Land<0&&f.Offset.Y<NativePodDrop.Altitude*2)
             {
                 camera.position+=new Vector3(f.Offset.X,f.Offset.Y,f.Offset.Z)+(FirstPerson?Vector3.up*NativePodModels.Floor:Vector3.zero);
-                // third person: pulled back and up off the pod on the way down, easing in over its last .4 s
-                if(!FirstPerson){float pull=Mathf.SmoothStep(0,1,Mathf.Clamp01(-f.Land/.4f));camera.position+=(-camera.forward*3.2f+Vector3.up*1.1f)*pull;}
             }
+            // third person: pulled back and up off the pod from the start of the drop until its door opens, easing in as it does
+            if(!FirstPerson&&f.Dropping){float pull=1-Mathf.SmoothStep(0,1,(f.Age-NativePodDrop.DoorAt)/(NativePodDrop.End-NativePodDrop.DoorAt));camera.position+=(-camera.forward*3.2f+Vector3.up*1.1f)*pull;}
             if(!shake)return;float kick=NativePodDrop.Kick(f,out float pitch)*(reduced?.4f:1);camera.position-=Vector3.up*kick;if(pitch>0)camera.rotation*=Quaternion.Euler(pitch*(reduced?.4f:1),0,0);
         }
         /// <summary>Leaving by pod (Astra's rule calls it when pilot `id` boards its pod to leave at presentation time `at`;
@@ -124,14 +133,14 @@ namespace ChipArena.UnityConversion
             }
         }
         private static Color PodLinear(int rgb){var c=new Color(((rgb>>16)&255)/255f,((rgb>>8)&255)/255f,(rgb&255)/255f,1);return QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c;}
-        // My own pod in third person, landed: dithered down while it stands between my camera and my pilot (inside it, or
-        // walking out of it with the camera behind), so it never walls off my view.
+        // My own pod in third person once its door is open: drawn in see-through glass while it stands between my camera and my
+        // pilot (stepping out of it with the camera behind), so it never walls off my view.
         private float PodOpacity(PodView pod,int me)
         {
-            var f=pod.Frame;if(FirstPerson||f.Dropping&&f.Land<0)return 1;var eye=WorldEye;if(eye==null||!visualPositions.TryGetValue(me,out var pilot))return 1;
+            var f=pod.Frame;if(FirstPerson||!f.Shown)return 1;var eye=WorldEye;if(eye==null||!visualPositions.TryGetValue(me,out var pilot))return 1;
             var cam=eye.transform.position;Vector2 a=new Vector2(cam.x,cam.z),b=new Vector2(pilot.x,pilot.z),c=new Vector2(pod.Spot.x,pod.Spot.z),ab=b-a;
             float t=ab.sqrMagnitude>1e-4f?Mathf.Clamp01(Vector2.Dot(c-a,ab)/ab.sqrMagnitude):0,d=Vector2.Distance(a+ab*t,c);
-            float near=1-Mathf.SmoothStep(0,1,(d-.75f)/.5f);return 1-.75f*near;
+            float near=1-Mathf.SmoothStep(0,1,(d-.75f)/.5f);return 1-.72f*near;
         }
         private void PodDraw(PodView pod,float time,float opacity)
         {
@@ -139,9 +148,9 @@ namespace ChipArena.UnityConversion
             var approach=new Vector3(f.Offset.X,0,f.Offset.Z);var lean=f.Lean>0&&approach.sqrMagnitude>1e-4f?Quaternion.AngleAxis(-f.Lean*Mathf.Rad2Deg,Vector3.Cross(up,approach.normalized)):Quaternion.identity;
             var rot=lean*Quaternion.LookRotation(pod.Facing,up);var root=Matrix4x4.TRS(at,rot,Vector3.one);
             podNow=pod;podTint??=PodTintOf;
-            sourceModels.Queue(NativePodModels.PodId,root,opacity:opacity,partTint:podTint);
-            var hinge=new Vector3(NativePodModels.Hinge.X,NativePodModels.Hinge.Y,NativePodModels.Hinge.Z);
-            sourceModels.Queue(NativePodModels.DoorId,root*Matrix4x4.TRS(hinge,Quaternion.Euler(f.Door*Mathf.Rad2Deg,0,0),Vector3.one),opacity:opacity,partTint:podTint);
+            bool ghost=opacity<.99f;var hinge=new Vector3(NativePodModels.Hinge.X,NativePodModels.Hinge.Y,NativePodModels.Hinge.Z);
+            sourceModels.Queue(ghost?NativePodModels.GhostId:NativePodModels.PodId,root,opacity:ghost?opacity:1,partTint:podTint);
+            sourceModels.Queue(ghost?NativePodModels.DoorGhostId:NativePodModels.DoorId,root*Matrix4x4.TRS(hinge,Quaternion.Euler(f.Door*Mathf.Rad2Deg,0,0),Vector3.one),opacity:ghost?opacity:1,partTint:podTint);
             podNow=null;
             // the LED name over the door (dark until the landing powers it; long names scroll)
             if(f.Sign<=.01f||pod.Sign==null||opacity<.99f||!EnsurePodSign())return;

@@ -25,13 +25,13 @@ internal static class LockerChecks
         var art=new HashSet<string>();using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/ClassIcons.json"))))foreach(var i in doc.RootElement.GetProperty("icons").EnumerateArray())art.Add(i.GetProperty("id").GetString());
 
         // 1. Every category exists, in rail order, with its label, icon and subtitle; only the weapon skins are inert.
-        string[] keys={"appearance","kill-effects","entrance","loadout","weapon-skins"};
-        Check(NativeLocker.Count==5&&NativeLocker.Keys.SequenceEqual(keys),"the five categories in order");
-        Check(NativeLocker.Labels.Length==5&&NativeLocker.Icons.Length==5&&NativeLocker.Subtitles.Length==5,"a label, icon and subtitle per category");
-        Check(NativeLocker.Labels.SequenceEqual(new[]{"Appearance","Kill Effects","Entrance","Loadout","Skins"}),"category labels (the skins tab holds the body and the weapons)");
+        string[] keys={"appearance","kill-effects","entrance","loadout","weapon-skins","pod"};
+        Check(NativeLocker.Count==6&&NativeLocker.Keys.SequenceEqual(keys),"the six categories in order");
+        Check(NativeLocker.Labels.Length==6&&NativeLocker.Icons.Length==6&&NativeLocker.Subtitles.Length==6,"a label, icon and subtitle per category");
+        Check(NativeLocker.Labels.SequenceEqual(new[]{"Appearance","Kill Effects","Entrance","Loadout","Skins","Pod"}),"category labels (the skins tab holds the body and the weapons; the pod is the Expedition drop pod)");
         foreach(var icon in NativeLocker.Icons)Check(icons.Contains(icon),"category icon "+icon+" is in Icons.json");
-        for(int i=0;i<5;i++)Check(NativeLocker.Interactive(i)&&!NativeLocker.Soon(i),"every category is live, none coming soon ("+keys[i]+")");
-        foreach(var tab in new[]{"Appearance","KillEffects","Entrance","Loadout"})Check(Count(ui,"case NativeLocker."+tab+":")==2,"category "+tab+" is laid out and drawn");
+        for(int i=0;i<NativeLocker.Count;i++)Check(NativeLocker.Interactive(i)&&!NativeLocker.Soon(i),"every category is live, none coming soon ("+keys[i]+")");
+        foreach(var tab in new[]{"Appearance","KillEffects","Entrance","Loadout","Pod"})Check(Count(ui,"case NativeLocker."+tab+":")==2,"category "+tab+" is laid out and drawn");
         Check(ui.Contains("default:LkSkinsLayout();break;")&&ui.Contains("default:LkSkins(lockerSlots[0],lockerSlots[1],lockerSlots[2],e);break;"),"the weapon skins category is laid out and drawn");
         Check(ui.Contains("for(int i=0;i<NativeLocker.Count;i++)")&&ui.Contains("NativeLocker.Labels[i]")&&ui.Contains("lockerTabNext=i;"),"the rail offers every category");
 

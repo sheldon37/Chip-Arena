@@ -46,13 +46,13 @@ namespace ChipArena.UnityConversion
         // ---- the drop (seconds from the fight start; the countdown runs from -NativeSpawnIn.Countdown) ----
         public const float Appear=-NativeSpawnIn.Countdown;
         /// <summary>The first pod's landing, and each later pilot's extra delay (Order: 0, 1, 2, ...).</summary>
-        public const float Impact=-1.35f,Stagger=.12f;
+        public const float Impact=-1.35f,Stagger=.06f;
         /// <summary>The fall: from Altitude over the spot, Reach off along the approach, fast then braking (it lands at about a
         /// third of its starting speed); the retros burn its last RetroSeconds.</summary>
         public const float Altitude=48,Reach=20,RetroSeconds=.55f;
         /// <summary>The door: its seam flares from DoorAt - SeamSeconds, it drops open from DoorAt over DoorSeconds (gravity:
         /// slow, then fast) and bounces once at rest; the pilot shows from DoorAt + ShowAfter.</summary>
-        public const float DoorAt=-.14f,DoorSeconds=.38f,SeamSeconds=.35f,ShowAfter=.1f;
+        public const float DoorAt=-.3f,DoorSeconds=.38f,SeamSeconds=.35f,ShowAfter=.1f;
         /// <summary>The drop's end: the door has rested.</summary>
         public const float End=DoorAt+DoorSeconds+.3f;
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
@@ -255,6 +255,22 @@ namespace ChipArena.UnityConversion
                     float dx=px-c,dy=py-c,d=(float)Math.Sqrt(dx*dx+dy*dy);float k=Clamp01((r-d)/1.2f+.5f);if(k<=0)continue;
                     // the texture's x runs across the sign (its rows, top row at x 0), y along it (columns)
                     int x=row*dot+px,y=col*dot+py,i=(y*width+x)*4;o[i]=o[i+1]=o[i+2]=255;o[i+3]=(byte)(a*k);
+                }
+            }
+            return o;
+        }
+        /// <summary>The sign laid along x (the Locker's preview card): the first SignColumns dots of the text, centred when it is
+        /// shorter, RGBA bytes bottom row first; Width SignColumns x dot, height SignRows x dot.</summary>
+        public static byte[] SignPixelsFlat(string text,int dot,out int width,out int height)
+        {
+            text=text??"";int start=Math.Max(0,(SignColumns-TextColumns(text))/2);width=SignColumns*dot;height=SignRows*dot;var o=new byte[width*height*4];float r=dot*.42f,c=(dot-1)*.5f;
+            for(int col=0;col<SignColumns;col++)for(int row=0;row<SignRows;row++)
+            {
+                bool lit=Lit(text,col-start,row-1);byte a=lit?(byte)255:(byte)24;
+                for(int py=0;py<dot;py++)for(int px=0;px<dot;px++)
+                {
+                    float dx=px-c,dy=py-c,d=(float)Math.Sqrt(dx*dx+dy*dy);float k=Clamp01((r-d)/1.2f+.5f);if(k<=0)continue;
+                    int x=col*dot+px,y=(SignRows-1-row)*dot+py,i=(y*width+x)*4;o[i]=o[i+1]=o[i+2]=255;o[i+3]=(byte)(a*k);
                 }
             }
             return o;

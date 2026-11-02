@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class NativeDeployStage
     {
-        public enum Model{Room,Table,Map,Holo,Beacon,Pad,Instance,Lever,DrumBand,DrumRims,Mutator,Card,Quad,Gate,DoorLeft,DoorRight,Lift,Console,Lamp,Beam}
+        public enum Model{Room,Table,Map,Holo,Beacon,Pad,Instance,Lever,DrumBand,DrumRims,Mutator,Card,Quad,Gate,DoorLeft,DoorRight,Lift,Console,Lamp,Beam,Hatch,Well}
         public static readonly int ModelCount=Enum.GetValues(typeof(Model)).Length;
         public enum Blend{Opaque,Additive,Alpha}
         /// <summary>Texture slots: white, the holo map, the stamps, the soft glow (NativeDeployArt.GlowTile), the spark
@@ -106,6 +106,7 @@ namespace ChipArena.UnityConversion
             Models[(int)Model.Quad]=NativeDeployModels.Quad();Models[(int)Model.Gate]=NativeDeployModels.GateFrame();Models[(int)Model.DoorLeft]=NativeDeployModels.DoorLeaf(-1);
             Models[(int)Model.DoorRight]=NativeDeployModels.DoorLeaf(1);Models[(int)Model.Lift]=NativeDeployModels.LiftDeck();Models[(int)Model.Console]=NativeDeployModels.DeployConsole();
             Models[(int)Model.Lamp]=NativeDeployModels.Lamp();Models[(int)Model.Beam]=NativeDeployModels.Beam();
+            Models[(int)Model.Hatch]=NativeDeployModels.HatchLeaf();Models[(int)Model.Well]=NativeDeployModels.Well();
         }
 
         // ---- the strips (allocate only when the catalog or a result changes) ----
@@ -226,16 +227,25 @@ namespace ChipArena.UnityConversion
                 ref var wm=ref Add(Model.Quad,Matrix4x4.CreateScale(NativeDeployModels.WallMapWidth,NativeDeployModels.WallMapHeight,1)*T(NativeDeployModels.WallMapAt(side)));
                 wm.Texture=TexMap;wm.Blend=Blend.Additive;wm.Gain=s!=null&&s.worldRolled?1.3f:.7f;wm.Sweep=deployed?-1:Frac(t*.21f+(side>0?.5f:0));wm.Screen=Vector4.One;wm.Chroma=1.8f;wm.Holo=true;
             }
-            // the floor's light pools: the table, the gate (brightening as it opens)
+            // the floor's light pools: the table, the gate
             Pool(NativeDeployPresentation.Table,5.4f,5.4f,0,Col(0x48d4ff,.32f));
-            Pool(NativeDeployPresentation.Gate+new Vector3(0,0,-1.6f),7.5f,4.4f,0,Col(0xcfe6ff,.16f+.9f*dep.Gate));
-            // the pads and their ready lamps (ready green, waiting amber, empty dim)
-            int seats=Math.Max(0,Math.Min(NativeDeployPresentation.Pads,f.Seats));
+            Pool(NativeDeployPresentation.Gate+new Vector3(0,0,-1.6f),7.5f,4.4f,0,Col(0xcfe6ff,.16f));
+            // the pads and their ready lamps (ready green, waiting amber, empty dim); at Deploy the occupied pads sound the alarm
+            // (red, flashing), split their hatches open over the lit well and drop their pilots through, cyan
+            int seats=Math.Max(0,Math.Min(NativeDeployPresentation.Pads,f.Seats));float since=deployed?(f.SinceDeploy>=0?f.SinceDeploy:NativeDeployPresentation.TravelAt):float.NaN;
+            bool alarmOn=Frac(t*4)<.5f;
             for(int i=0;i<NativeDeployPresentation.Pads;i++)
             {
-                bool here=i<seats,ready=here&&f.Ready!=null&&i<f.Ready.Length&&f.Ready[i];
-                seat[i]=!here?Grey(.12f):ready?Col(0x6dffa8,2.2f):Col(0xffb02e,1.1f+.6f*pulse);if(deployed&&here)seat[i]=Col(0x9ff0ff,2.2f+2*dep.Lift);
-                ref var pad=ref Add(Model.Pad,T(NativeDeployPresentation.Pad(i)));pad.Light=seat[i];if(here)Pool(NativeDeployPresentation.Pad(i),2f,2f,0,seat[i]*.16f);
+                bool here=i<seats,ready=here&&f.Ready!=null&&i<f.Ready.Length&&f.Ready[i];var at=NativeDeployPresentation.Pad(i);
+                seat[i]=!here?Grey(.12f):ready?Col(0x6dffa8,2.2f):Col(0xffb02e,1.1f+.6f*pulse);
+                if(deployed&&here)seat[i]=dep.Alarm?(alarmOn?Col(0xff3a3a,2.8f):Col(0xff3a3a,.5f)):Col(0x9ff0ff,2.2f+2*dep.Hatch);
+                ref var pad=ref Add(Model.Pad,T(at));pad.Light=seat[i];if(here)Pool(at,2f,2f,0,seat[i]*.16f);
+                if(!deployed||!here)continue;
+                float drop=NativeDeployPresentation.PadDrop(i,since),open=dep.Hatch*NativeDeployModels.HatchTravel;
+                var glow=dep.Alarm?(alarmOn?Col(0xff3a3a,2.6f):Col(0xff3a3a,.5f)):Col(0x9ff0ff,1.6f+2.4f*Smooth(1-drop/2));
+                if(dep.Hatch>0){ref var well=ref Add(Model.Well,T(at));well.Light=Col(0x9ff0ff,1.4f+1.6f*dep.Hatch);}
+                ref var leafA=ref Add(Model.Hatch,T(at+new Vector3(open,0,0)));leafA.Light=glow;
+                ref var leafB=ref Add(Model.Hatch,Matrix4x4.CreateRotationY((float)Math.PI)*T(at+new Vector3(-open,0,0)));leafB.Light=glow;
             }
 
             // the INSTANCE MACHINE: cabinet lights at its power, the marquee chase, the approach strip in the districts' colours,
@@ -292,37 +302,40 @@ namespace ChipArena.UnityConversion
                     }
                 }
             }
-            // the DEPLOY GATE: the sign and the header's lamps per seat, the doors parting, the lift rising
+            // the DEPLOY GATE: the sign and the header's lamps per seat; it stays shut (the party drops through the pads), its doors
+            // flashing red while the party goes
             {
                 var at=T(NativeDeployPresentation.Gate);Vector4 sign;
                 switch(Launch)
                 {
                     case NativeDeployPresentation.Launch.NeedDestination:sign=Grey(.35f);break;
                     case NativeDeployPresentation.Launch.WaitingParty:sign=Col(0xffb02e,1.2f+.8f*pulse);break;
-                    case NativeDeployPresentation.Launch.Launching:sign=Col(0xe8fff2,2.2f+3*(1-dep.Gate));break;
+                    case NativeDeployPresentation.Launch.Launching:sign=Col(0xe8fff2,2.2f+3*(1-dep.Drop));break;
                     default:sign=Col(0x6dffa8,1.6f+1.0f*breath);break;
                 }
-                ref var gate=ref Add(Model.Gate,at);gate.Light=Col(0xd4f2ff,1.3f+2.2f*dep.Gate);gate.Extra0=sign;
-                bool warn=deployed&&dep.Gate<1&&Frac(t*3)<.5f;
-                ref var left=ref Add(Model.DoorLeft,T(new Vector3(-NativeDeployModels.DoorTravel*dep.Gate,0,0))*at);left.Light=warn?Col(0xff3a3a,2.4f):Grey(1.4f);
-                ref var right=ref Add(Model.DoorRight,T(new Vector3(NativeDeployModels.DoorTravel*dep.Gate,0,0))*at);right.Light=left.Light;
-                ref var lift=ref Add(Model.Lift,T(NativeDeployModels.LiftAt+new Vector3(0,NativeDeployModels.LiftTravel*dep.Lift,0))*at);lift.Light=Grey(1.8f);
+                ref var gate=ref Add(Model.Gate,at);gate.Light=Col(0xd4f2ff,1.3f);gate.Extra0=sign;
+                bool warn=deployed&&dep.Drop<1&&Frac(t*3)<.5f;
+                ref var left=ref Add(Model.DoorLeft,at);left.Light=warn?Col(0xff3a3a,2.4f):Grey(1.4f);
+                ref var right=ref Add(Model.DoorRight,at);right.Light=left.Light;
+                ref var lift=ref Add(Model.Lift,T(NativeDeployModels.LiftAt)*at);lift.Light=Grey(1.8f);
                 for(int i=0;i<NativeDeployPresentation.Pads;i++){ref var l=ref Add(Model.Lamp,T(NativeDeployModels.GateLampAt(i))*at);l.Light=seat[i];}
                 var ca=T(NativeDeployModels.ConsoleAt);ref var console=ref Add(Model.Console,ca);console.Light=Col(0x7fd6ff,1.2f);console.Extra0=sign;
                 for(int i=0;i<NativeDeployPresentation.Pads;i++){ref var l=ref Add(Model.Lamp,T(NativeDeployModels.ConsoleLampAt(i))*ca);l.Light=seat[i];}
             }
-            // the party: on their pads facing the room's front, lifted away in light columns at Deploy
+            // the party: on their pads facing the room's front; at Deploy each drops through its pad in turn (the well's black
+            // disc and the floor hide what has gone down), a burst of light up its shaft as it goes
             Pilots=seats;
             for(int i=0;i<NativeDeployPresentation.Pads;i++)
             {
-                var pad=NativeDeployPresentation.Pad(i);var front=Vector3.Normalize(new Vector3(-pad.X*.35f,0,-1));var gate=NativeDeployPresentation.Gate-pad;gate.Y=0;
-                var face=Vector3.Normalize(Vector3.Lerp(front,Vector3.Normalize(gate),Smooth(dep.Dim*1.4f-.1f)));if(face.LengthSquared()<.5f)face=front;
-                PilotFeet[i]=pad+new Vector3(0,NativeDeployModels.PadTop+3.2f*dep.Lift*dep.Lift,0);PilotFacing[i]=face;PilotShown[i]=i<seats?1-Smooth((dep.Lift-.25f)/.35f):0;
-                if(i<seats&&dep.Lift>0&&dep.Lift<1)
+                var pad=NativeDeployPresentation.Pad(i);var front=Vector3.Normalize(new Vector3(-pad.X*.35f,0,-1));
+                float drop=deployed?NativeDeployPresentation.PadDrop(i,since):0;
+                PilotFeet[i]=pad+new Vector3(0,NativeDeployModels.PadTop-drop,0);PilotFacing[i]=front;PilotShown[i]=i<seats&&drop<NativeDeployPresentation.DropGone?1:0;
+                float burst=deployed?(since-(NativeDeployPresentation.DropAt+NativeDeployPresentation.DropStagger*i))/.5f:-1;
+                if(i<seats&&burst>0&&burst<1)
                 {
                     // the shaft turns to face the camera about its pad's vertical (a soft ribbon reads as light from any shot)
                     var toEye=Camera.Eye-pad;float yaw=(float)Math.Atan2(toEye.X,toEye.Z);
-                    ref var beam=ref Add(Model.Beam,Matrix4x4.CreateRotationY(yaw)*T(pad));beam.Blend=Blend.Additive;beam.Screen=Col(0x9ff0ff,.8f*(float)Math.Sin(Math.PI*dep.Lift));
+                    ref var beam=ref Add(Model.Beam,Matrix4x4.CreateRotationY(yaw)*T(pad));beam.Blend=Blend.Additive;beam.Screen=Col(0x9ff0ff,1.1f*(float)Math.Sin(Math.PI*burst));
                 }
             }
             // the slot sparks, drawn last (the station's own items always fit), and the rolls' moments heard for sound
@@ -333,7 +346,7 @@ namespace ChipArena.UnityConversion
             moments=NativeDeploySparks.Schedule(schedule,1,cards,cardPolarity);CueCount=NativeDeploySparks.Heard(schedule,moments,heard[1],f.SinceMutatorRoll,Cues,CueCount);heard[1]=f.SinceMutatorRoll;
             // the light: each machine's practical at its power (and its kick), the table, the gate opening, the console's button
             float consoleLevel=Launch==NativeDeployPresentation.Launch.Ready||Launch==NativeDeployPresentation.Launch.HostOnly?.6f+.4f*breath:Launch==NativeDeployPresentation.Launch.Launching?1:.1f;
-            NativeDeployModels.StationLights(Lights,InstanceLook.Power*kickI,MutatorLook.Power*kickM,flicker,1,dep.Gate,consoleLevel,dep.Dim);
+            NativeDeployModels.StationLights(Lights,InstanceLook.Power*kickI,MutatorLook.Power*kickM,flicker,1,0,consoleLevel,dep.Dim);
         }
         // A spark as a camera-facing quad: stretched along its streak as the camera sees it (round when it has none).
         private void Streak(in NativeDeploySparks.Spark sp)

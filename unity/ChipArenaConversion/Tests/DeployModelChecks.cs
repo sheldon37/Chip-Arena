@@ -159,16 +159,25 @@ namespace ChipArena.UnityConversion
             st.Frame(Input(m,9,9,float.NaN,20,false),-1);Check(!st.Controls.Roll&&!st.Controls.Deploy&&!st.Controls.Skip&&!st.Controls.Mutate,"a guest has no buttons");
             int mapBefore=st.MapRevision;Check(mapBefore==m.revision,"the map follows the revision");
             Check(auth.Deploy("host",true),"deploy");var d=auth.Snapshot();
-            float lastGate=-1;
+            float lastOpen=-1;
             for(float t=0;t<=NativeDeployPresentation.TravelAt+.5f;t+=1/30f)
             {
-                st.Frame(Input(d,9,9,t,30+t),1/30f);var left=Of(st,NativeDeployStage.Model.DoorLeft).Single();float gate=-left.World.M41/NativeDeployModels.DoorTravel;
-                Check(gate>=lastGate-1e-5f&&Math.Abs(gate-NativeDeployPresentation.Deploying(t).Gate)<1e-4f,"the doors part with Deploying().Gate");lastGate=gate;
-                Check(st.Shot==NativeDeployPresentation.Shot.Deploy&&!st.Controls.Roll&&st.MapRevision==mapBefore,"deploying frames the gate, locks the console and freezes the map");
+                st.Frame(Input(d,9,9,t,30+t),1/30f);var dep=NativeDeployPresentation.Deploying(t);
+                // the gate stays shut; the occupied pads' hatches part with Deploying().Hatch and each pilot drops through its pad
+                Check(Math.Abs(Of(st,NativeDeployStage.Model.DoorLeft).Single().World.M41-NativeDeployPresentation.Gate.X)<1e-4f,"the gate stays shut: the party leaves through the pads");
+                var leaves=Of(st,NativeDeployStage.Model.Hatch).ToArray();Check(leaves.Length==2*4,"two hatch leaves on each occupied pad");
+                float open=Math.Abs(leaves[0].World.M41-NativeDeployPresentation.Pad(0).X)/NativeDeployModels.HatchTravel;
+                Check(open>=lastOpen-1e-5f&&Math.Abs(open-dep.Hatch)<1e-4f,"the hatches part with Deploying().Hatch");lastOpen=open;
+                Check(Of(st,NativeDeployStage.Model.Well).Count()==(dep.Hatch>0?4:0),"the lit wells show as the hatches open");
+                for(int i=0;i<4;i++){float drop=NativeDeployPresentation.PadDrop(i,t);Check(Math.Abs(st.PilotFeet[i].Y-(NativeDeployModels.PadTop-drop))<1e-4f&&(drop>0)==(t>NativeDeployPresentation.DropAt+NativeDeployPresentation.DropStagger*i),"pilot "+i+" drops through its pad in turn");
+                    Check(drop==0||dep.Hatch>.99f,"nobody drops through a shut hatch");}
+                Check(st.Shot==NativeDeployPresentation.Shot.Deploy&&!st.Controls.Roll&&st.MapRevision==mapBefore,"deploying frames the pads, locks the console and freezes the map");
                 var ph=st.MutatorLook.Phase;var stamp=Of(st,NativeDeployStage.Model.Quad).Where(q=>q.Texture==NativeDeployStage.TexStamp).ToArray();Check(ph==NativeDeployPresentation.Phase.Active&&stamp.Length==3&&stamp.All(q=>q.Scroll==.5f),"ACTIVE after Deploy");
             }
-            Check(st.Deploy.Travel&&st.PilotShown.Take(4).All(x=>x<.01f),"the party is lifted out before travel");
-            Check(Vector3.Dot(st.PilotFacing[0],Vector3.UnitZ)>.9f,"the party turns to the gate");
+            Check(st.Deploy.Travel&&st.PilotShown.Take(4).All(x=>x<.01f),"the party has dropped out before travel");
+            Check(Vector3.Dot(st.PilotFacing[0],-Vector3.UnitZ)>.9f,"the party faces the room's front as it drops");
+            var view=NativeDeployPresentation.ShotOf(NativeDeployPresentation.Shot.Deploy);
+            for(int i=0;i<4;i++){var to=Vector3.Normalize(NativeDeployPresentation.Pad(i)-view.Eye);Check(Vector3.Dot(to,Vector3.Normalize(view.Target-view.Eye))>Math.Cos(view.Fov*.5f*Math.PI/180),"the deploy shot sees pad "+i);}
             // the lights: eight practicals and the key, in the source frame
             Check(st.Lights.Points==8&&st.Lights.Directionals==1&&st.Lights.Point.All(p=>p.R+p.G+p.B>0),"eight practical lights and a key");
             // a skipped machine shows the backs and no stamps

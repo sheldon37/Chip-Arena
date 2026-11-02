@@ -192,14 +192,27 @@ namespace ChipArena.UnityConversion
 
         // ---- the deploy sequence ------------------------------------------------------------------------------------------------
         public const float TravelAt=4f;
-        public struct DeployPose{public float Dim,Clamp,Gate,Lift,Fade;public bool Travel;}
-        /// <summary>After Deploy: the machines dim (.6 s) and clamp (.2–.5 s), the gate opens (.8–2.2 s), the lift carries the
-        /// party out (2.2–3.6 s), the screen fades (3.4–4 s) and the travel hand-off begins at 4 s. Before Deploy, all zero.</summary>
+        /// <summary>The deploy (owner 2026-11-02: "After we start from slot machines, we get 'ejected' down"): the machines dim
+        /// and clamp, the pads sound the alarm (Alarm), their hatches split open (Hatch), each pilot drops through its pad
+        /// (PadDrop; Drop runs over the whole drop), the screen fades and the travel hand-off follows. The gate stays shut.</summary>
+        public struct DeployPose{public float Dim,Clamp,Hatch,Drop,Fade;public bool Alarm,Travel;}
+        /// <summary>The pads' hatches open over HatchAt..+HatchSeconds; pilot on pad i drops from DropAt + i x DropStagger,
+        /// falling at DropGravity (gone below the floor by DropGone).</summary>
+        public const float HatchAt=.9f,HatchSeconds=.35f,DropAt=1.35f,DropStagger=.09f,DropGravity=16,DropGone=2.2f;
+        /// <summary>After Deploy: the machines dim (.6 s) and clamp (.2–.5 s), the pads' alarm (.15–1.23 s), the hatches open
+        /// (.9–1.25 s), the party drops through them (1.35 s on, a pad at a time), the screen fades (3.4–4 s) and the travel
+        /// hand-off begins at 4 s. Before Deploy, all zero.</summary>
         public static DeployPose Deploying(float since)
         {
             if(!(since>=0))return default;
-            return new DeployPose{Dim=Smooth(since/.6f),Clamp=Smooth((since-.2f)/.3f),Gate=Smooth((since-.8f)/1.4f),Lift=Smooth((since-2.2f)/1.4f),
-                Fade=Smooth((since-3.4f)/.6f),Travel=since>=TravelAt};
+            float last=DropAt+DropStagger*(Pads-1)+(float)Math.Sqrt(2*DropGone/DropGravity);
+            return new DeployPose{Dim=Smooth(since/.6f),Clamp=Smooth((since-.2f)/.3f),Alarm=since>=.15f&&since<HatchAt+HatchSeconds-.02f,Hatch=Smooth((since-HatchAt)/HatchSeconds),
+                Drop=Smooth((since-DropAt)/(last-DropAt)),Fade=Smooth((since-3.4f)/.6f),Travel=since>=TravelAt};
+        }
+        /// <summary>How far the pilot on pad `pad` has dropped (m below the pad's top) `since` s after Deploy (0 before its turn).</summary>
+        public static float PadDrop(int pad,float since)
+        {
+            if(!(since>=0))return 0;float t=since-(DropAt+DropStagger*Math.Max(0,Math.Min(Pads-1,pad)));return t<=0?0:Math.Min(4,.5f*DropGravity*t*t);
         }
 
         // ---- the blueprint: theme weights and the holo map ------------------------------------------------------------------------
@@ -300,11 +313,11 @@ namespace ChipArena.UnityConversion
                 case Shot.InstanceMachine:return new View{Eye=new Vector3(-2.4f,2.3f,.6f),Target=InstanceMachineAt+new Vector3(0,1.5f,0),Fov=42};
                 case Shot.MutatorMachine:return new View{Eye=new Vector3(2.4f,2.3f,.6f),Target=MutatorMachineAt+new Vector3(0,1.5f,0),Fov=42};
                 case Shot.Map:return new View{Eye=new Vector3(0,4.6f,-1.2f),Target=Table+new Vector3(0,1,0),Fov=46};
-                case Shot.Deploy:return new View{Eye=new Vector3(0,3.3f,-6.2f),Target=Gate+new Vector3(0,2.5f,0),Fov=46};
+                case Shot.Deploy:return new View{Eye=new Vector3(0,3.6f,-7.6f),Target=new Vector3(0,.4f,-1.3f),Fov=52};
                 default:return new View{Eye=new Vector3(0,5.1f,-9.2f),Target=new Vector3(0,1.5f,3.6f),Fov=48};
             }
         }
-        /// <summary>The shot to frame: the machine that is spinning, the gate while deploying, else the overview.</summary>
+        /// <summary>The shot to frame: the machine that is spinning, the pads while deploying, else the overview.</summary>
         public static Shot Framing(MachineLook instance,MachineLook mutator,ExpeditionDeploymentState s)
         {
             if(s!=null&&s.deployed)return Shot.Deploy;

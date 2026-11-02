@@ -120,15 +120,18 @@ namespace ChipArena.UnityConversion
             var b=new NativeExpeditionDeployment("station","host",778);b.RollInstances("host",Pool);b.Deploy("host",true);
             Check(NativeDeployPresentation.MutatorMachine(b.Snapshot(),Done,2,true).Phase==NativeDeployPresentation.Phase.Locked,"no mutators: simply locked");
             var view=NativeDeployPresentation.Framing(NativeDeployPresentation.InstanceMachine(s,Done,0,true),NativeDeployPresentation.MutatorMachine(s,Done,0,true),s);
-            Check(view==NativeDeployPresentation.Shot.Deploy,"the camera goes to the gate on Deploy");
-            float last=-1;bool travel=false;
+            Check(view==NativeDeployPresentation.Shot.Deploy,"the camera goes to the pads on Deploy");
+            float last=-1,lastDrop=-1;bool travel=false,alarmed=false;
             for(float t=0;t<5;t+=.01f)
             {
                 var d=NativeDeployPresentation.Deploying(t);
-                Check(d.Gate>=last-1e-6,"the gate only opens");last=d.Gate;
-                if(d.Travel&&!travel){travel=true;Check(Math.Abs(t-NativeDeployPresentation.TravelAt)<.011f&&d.Fade>.99f&&d.Lift>.99f,"travel after the lift and the fade");}
+                Check(d.Hatch>=last-1e-6&&d.Drop>=lastDrop-1e-6,"the hatches only open and the drop only goes on");last=d.Hatch;lastDrop=d.Drop;alarmed|=d.Alarm;
+                Check(!d.Alarm||d.Hatch<1,"the alarm sounds before the hatches are open");
+                for(int i=0;i<NativeDeployPresentation.Pads;i++){float now=NativeDeployPresentation.PadDrop(i,t),next=NativeDeployPresentation.PadDrop(i,t+.01f);Check(next>=now&&now>=0&&(now==0||d.Hatch>.99f),"pad "+i+"'s pilot drops only through an open hatch, and only down");}
+                if(d.Travel&&!travel){travel=true;Check(Math.Abs(t-NativeDeployPresentation.TravelAt)<.011f&&d.Fade>.99f&&d.Drop>.99f,"travel after the drop and the fade");
+                    for(int i=0;i<NativeDeployPresentation.Pads;i++)Check(NativeDeployPresentation.PadDrop(i,t)>=NativeDeployPresentation.DropGone,"pad "+i+"'s pilot is gone before travel");}
             }
-            Check(travel&&NativeDeployPresentation.Deploying(float.NaN).Gate==0,"travel happens; nothing before Deploy");
+            Check(alarmed&&travel&&NativeDeployPresentation.Deploying(float.NaN).Hatch==0&&NativeDeployPresentation.PadDrop(0,float.NaN)==0,"the alarm and travel happen; nothing before Deploy");
         }
         private static void Blend()
         {

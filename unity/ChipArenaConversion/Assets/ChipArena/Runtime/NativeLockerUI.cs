@@ -219,6 +219,7 @@ namespace ChipArena.UnityConversion
                 case NativeLocker.Loadout:
                     MenuClasses();MenuWeapons();LkHead(true);LkReserve(LockerClassHeight+6);LkHead();LkReserve(LockerWeaponHeight+6);
                     LkHead();LkReserve(LkAbilityH(lockerQ));GUILayout.Space(LkGap);LkReserve(LkAbilityH(lockerE));LkReserve(40);break;
+                case NativeLocker.Pod:LkPodLayout();break;
                 default:LkSkinsLayout();break;
             }
             GUILayout.EndVertical();if(lockerDraw==null)lockerDraw=LockerDeferred;U.Defer(lockerDraw);GUILayout.Space(10);
@@ -333,6 +334,7 @@ namespace ChipArena.UnityConversion
                     U.Text(new Rect(note.x+24,note.y+8,lockerW-24,24),"More abilities are coming for every slot. Your picks will be saved with your pilot.",12,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft);
                     break;
                 }
+                case NativeLocker.Pod:LkPod(k,e);break;
                 default:LkSkins(lockerSlots[0],lockerSlots[1],lockerSlots[2],e);break;
             }
         }

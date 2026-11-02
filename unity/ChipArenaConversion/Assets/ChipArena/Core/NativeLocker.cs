@@ -10,10 +10,10 @@ namespace ChipArena.UnityConversion
     // intro, intro text, preferred weapon), and which cosmetics a player may see stays NativeCosmeticRules.Allowed.
     public static class NativeLocker
     {
-        public const int Appearance=0,KillEffects=1,Entrance=2,Loadout=3,WeaponSkins=4,Count=5;
-        public static readonly string[] Keys={"appearance","kill-effects","entrance","loadout","weapon-skins"};
-        public static readonly string[] Labels={"Appearance","Kill Effects","Entrance","Loadout","Skins"};
-        public static readonly string[] Icons={"palette","skull","sparkles","swords","gem"};
+        public const int Appearance=0,KillEffects=1,Entrance=2,Loadout=3,WeaponSkins=4,Pod=5,Count=6;
+        public static readonly string[] Keys={"appearance","kill-effects","entrance","loadout","weapon-skins","pod"};
+        public static readonly string[] Labels={"Appearance","Kill Effects","Entrance","Loadout","Skins","Pod"};
+        public static readonly string[] Icons={"palette","skull","sparkles","swords","gem","rocket"};
         public static readonly string[] Subtitles=
         {
             "Callsign, body, colours, headwear, idle pose and backdrop.",
@@ -21,6 +21,7 @@ namespace ChipArena.UnityConversion
             "Your match intro and the line under your name.",
             "Preferred class and weapon, and that weapon's abilities.",
             "A finish for every weapon: Standard or the Prototype Series.",
+            "Your Expedition drop pod: paint, trim and lights, your callsign on its sign.",
         };
         // Every category is live (weapon skins since the Standard models: Core/NativeWeaponSkins.cs); none is coming soon.
         public static bool Interactive(int category)=>category>=0&&category<Count;

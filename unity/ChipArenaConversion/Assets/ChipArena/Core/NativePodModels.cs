@@ -15,6 +15,9 @@ namespace ChipArena.UnityConversion
     public static class NativePodModels
     {
         public const string PodId="expedition-pod",DoorId="expedition-pod-door";
+        /// <summary>The same pod and door in see-through glass (the bank builds them alongside): my own pod while it stands
+        /// between my third-person camera and me.</summary>
+        public const string GhostId="expedition-pod-ghost",DoorGhostId="expedition-pod-door-ghost";
         public const int Body=0,Lights=1,Paint=2,Trim=3,Cabin=4,Retro=5;
         /// <summary>The door: its hinge (the doorway's sill) in the pod's frame; the door stands up from it (y) with its outer
         /// face toward +z, and opens by turning about x, its top falling outward (OpenAngle: resting on the ground as a ramp).</summary>
@@ -24,7 +27,7 @@ namespace ChipArena.UnityConversion
         public static readonly Vector3 SignCentre=new Vector3(0,2.07f,.846f);
         public const float SignWidth=.9f,SignHeight=.135f;
         /// <summary>The pod's footprint radius (fins included) and its height to the beacon.</summary>
-        public const float Radius=.92f,Height=2.9f;
+        public const float Radius=1.12f,Height=2.95f;
         /// <summary>The cabin floor over the base: where the pilot stands.</summary>
         public const float Floor=.18f;
 
