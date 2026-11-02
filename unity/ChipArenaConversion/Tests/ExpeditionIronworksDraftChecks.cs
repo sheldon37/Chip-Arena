@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
             NativeMapRules.Validate(map);count++;
             var content=JsonSerializer.Deserialize<ConversionContent>(R("Assets/Conversion/Resources/GameContent.json"),o);int rotation=unity.maps.Count(m=>m.rotation);
             NativeMapRules.Merge(content,new UnityMapContent{schema=1,materials=unity.materials,maps=unity.maps.Concat(new[]{map}).ToArray()},unityText);
-            Check(content.Map(MapId)==map&&content.maps.Count(m=>m.rotation)==rotation&&content.Map("expedition-city").nav.nodes.Length>0&&content.Map("siren").blocks.Length==unity.maps.Single(m=>m.id=="siren").blocks.Length,"the draft imports beside today's maps (Ward Zero, the town and the rotation unchanged)");
+            Check(content.Map(MapId)==map&&content.maps.Count(m=>m.rotation&&m.id!=NativeBackroomsGenerator.ArenaId)==rotation&&content.Map("expedition-city").nav.nodes.Length>0&&content.Map("siren").blocks.Length==unity.maps.Single(m=>m.id=="siren").blocks.Length,"the draft imports beside today's maps (Ward Zero, the town and the rotation unchanged)");
             var normalized=new NativeRoomOptions{map=MapId};normalized.Normalize(content);Check(normalized.map!=MapId,"room normalization refuses the foundry like every Expedition map");
             // ---------------- Astra's parser and geometry gate on the draft manifest ----------------
             string draftText=R(LayoutPath);var draft=NativeExpeditionLayout.Parse(draftText);

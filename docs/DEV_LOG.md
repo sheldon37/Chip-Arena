@@ -1,3 +1,13 @@
+## 2026-11-02 — Astra: generated Backrooms Level 0 and builder recovery
+
+- **Branch/base:** `codex/backrooms-rules`, base `763885cb`, integrated shared `9ae2494c` and the subsequent Level 0 contract rebuild `49281882` including Claude's Backrooms bank/preview and zombie motion work. Final PR carries source and integration receipts.
+- **Builder recovery:** #312 (`763885cb`) replaces invalid `state` fixtures with real `frame` envelopes, adds null-safe acceptance checks, and checks seat/pod look plus launch state through `expedition-state`. Windows Unity 6000.3.24f1 subsequently passed generated deployment/codec acceptance at shared `9ae2494c`; Drive status reports BUILD SUCCEEDED and Publication succeeded at 2026-11-02 16:03 Eastern. Earlier source syncs were not successful publications. The full log identifies work directory `9ae2494c871b-7a2a333c`.
+- **Rules:** deterministic 40×40 Expedition maze and fixed-seed 16×16 PvP map; connected rooms/corridors, pillar/pit rejection by reachability, collision ceiling/walls/pillars/pit shafts, cell nav, eight spawn slots and remote enemy entrances. Level 0 joins the three-of-four deployment pool; PvP joins Random. Ticket/content compatibility includes the generator version and layout identity. Details and IDs in BACKROOMS.md.
+- **Objective/economy:** existing kill quota followed by authority-verified exit-cache arrival, existing once-only encounter ledger/rewards and return closure. Allowed ordinary enemies fit the 2.7 m ceiling; other areas retain Hulk clearance. No pod timing or combat animation changes.
+- **Presentation boundary:** live run/fixed PvP layouts feed Claude's current procedural mesh builder; ordinary collision blocks remain the missing-bank fallback. Map look/signage/objective polish and hum remain Claude follow-ups. No kit geometry redesign.
+- **Checks so far:** focused generator suite 164 checks across 14 seed/mode layouts, independent collision probes on every nav edge, spawn clearance, culture/repeat identity and exit ledger guards; Unity Player/Runtime/Editor semantic compilation passes with existing warnings. Final clean-LF full-suite and package results will be recorded before merge.
+- **Unrun:** local real Unity/PhysX for the new Backrooms map, GPU/art-bank inspection, human host/guest/late-join/reconnect playtests and navigation performance on Windows. Native builder gates now include the selected generated interior in the validated content clone. Test-channel sync only; no production/live release.
+
 ## 2026-11-02 — Claude: Backrooms Level 0 rebuilt to the owner's reference photo
 
 - **Branch:** `claude/backrooms-level0` from shared `9ae2494c`. Merged into shared. No builder sync needed: DEV preview

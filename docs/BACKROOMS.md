@@ -208,3 +208,46 @@ change. Claude draws whatever it says.
   - lighting and the first Unity captures.
 - **Owner:** whether Blender may be installed on the PC. The Poolrooms and the kit's packed textures are only in `.blend`
   files; Textures.rar needs a RAR reader.
+
+## Seeded Level 0 rules (Astra, 2026-11-02)
+
+Implemented in `Core/NativeBackroomsGenerator.cs` and `NativeBackroomsExpedition.cs`.
+Uses Claude's current `BackroomsLayout` contract from shared `49281882`: 2.4 m cells, 2.7 m ceiling, 0.14 m walls and centred 1 m doorways. His seeded enclosed-room topology is extended with production placement and reachability validation.
+
+- **PvP:** map `backrooms-level-0`, 16 × 16 cells (38.4 × 38.4 m), fixed seed 647031,
+  selectable and in Random rotation. Eight graph-spread spawn cells; no pits in PvP.
+- **Expedition:** area `exp-backrooms`, map `expedition-backrooms-level-0`, 40 × 40
+  cells (96 × 96 m). The deployment pool rolls three destinations from the three
+  authored interiors plus Level 0. Seed is the ticket's reconstructed `worldSeed`
+  XOR `0xbac00001`, interpreted as a signed 32-bit integer. No peer chooses geometry.
+- **Layout:** deterministic enclosed rooms and corridors from the shared topology, with
+  seeded production placement. Pillars and optional pit cells are accepted only if every
+  remaining navigable cell stays connected. Short walls form centred 1 m doorways;
+  pilot/enemy navigation uses these and full-width openings. Entry room holds eight party slots.
+- **Physics/nav:** solid ceiling at 2.7 m; full/short wall boxes, slim pillar
+  boxes, floors and five-metre pit shafts. The kill plane is at -4 m. Cell-centre nav
+  links exclude pillars and pits. Existing Expedition closure boxes supply the
+  return-door collider and follow the replicated encounter state. No new door art
+  contract. Small-enemy and pilot routes are checked; Hulks are excluded because
+  the 2.7 m ceiling cannot accommodate them.
+- **Encounter:** existing 36-kill Expedition quota, shambler/runner/spitter/brute
+  population, then reach the distant exit cache. Authority requires a living,
+  connected pilot in range with line of sight and no load in progress. Completion
+  uses the existing once-only encounter reward ledger (`level0-exit`); the normal
+  cleared-instance return path opens. The exit cache also uses the existing chest
+  interaction/economy. No fake Siren entity is spawned for this objective.
+- **Replication:** ticket reconstruction includes the generator version and full
+  layout identity in the bundle compatibility receipt. Existing area snapshots,
+  closures, rewards and cohort transitions carry progress, completion and reconnect
+  state. PvP content compatibility includes the generator version.
+- **Presentation hook:** the live map feeds Claude's existing procedural mesh builder at world
+  origin. PvP caches its fixed layout; Expedition uses the run bundle's layout.
+  With the bank installed, kit-replaced collision blocks are hidden (pit shafts
+  remain drawn). Without the bank, ordinary visible map blocks are the fallback.
+  The DEV preview is still available separately.
+
+**Claude handoff:** both map IDs above are ready for map looks, exit/entry signage,
+objective guidance and art review. The rules do not change kit piece geometry,
+pod timing or the fluorescent circuit design. The live map uses Claude's existing interior lighting while inside the maze; a dedicated map look remains pending. Fluorescent hum is not implemented. Verify ceiling,
+short-wall gaps, pillar corners and pit edges against the baked bank on Windows;
+no local GPU or two-client playtest was available to Astra.

@@ -32,18 +32,18 @@ namespace ChipArena.UnityConversion
         // includes the five M1 arenas and Training Room; generated run maps are added later.
         public static void ValidateShippedCatalog(ConversionContent content)
         {
-            var expected=new[]{"breakwater","brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","siren","skyframe","training"};
+            var expected=new[]{"backrooms-level-0","breakwater","brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","siren","skyframe","training"};
             var maps=content?.maps;
             if(maps==null||maps.Any(m=>m==null||!m.unity)||!maps.Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(expected))
-                throw new InvalidOperationException("Shipped Unity catalogue must contain exactly the fourteen authored maps (including M1 arenas and Training Room).");
-            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"brickfall","cybercity","factory"}))
+                throw new InvalidOperationException("Shipped Unity catalogue must contain the authored maps plus fixed-seed Level 0 (including M1 arenas and Training Room).");
+            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","brickfall","cybercity","factory"}))
                 throw new InvalidOperationException("Shipped Unity random rotation differs.");
         }
         public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;
         public static string RandomArena(ConversionContent c,uint seed)
         {var maps=c.maps.Where(m=>ArenaSelectable(m)&&m.rotation).ToArray();return maps.Length==0?DefaultArena:maps[(int)(seed%(uint)maps.Length)].id;}
         public static bool WardInstance(string id)=>id=="siren"||id=="expedition-ward-zero";
-        public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-foundry"||id=="expedition-ironworks";
+        public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-foundry"||id=="expedition-ironworks"||id==NativeBackroomsGenerator.InstanceMap;
         public static bool ArenaSelectable(ContentMap map)=>map!=null&&map.id!="training"&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
         public static bool Finite(V3 p)=>MathUtil.Finite(p.x)&&MathUtil.Finite(p.y)&&MathUtil.Finite(p.z);
         public static bool Box(V3 p,V3 size)=>Finite(p)&&Finite(size)&&size.x>0&&size.y>0&&size.z>0;
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
             // Normalize at the shared load boundary so every runtime/build-check consumer agrees.
             // Authored UnityMaps below still require their own validated tables and bounds.
             foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;m.ramps=null;m.navHints=null;}
-            c.contentRevision=Revision(CatalogPolicy+"\n"+text);c.materials=c.materials.Concat(u.materials).ToArray();
+            c.contentRevision=Revision(CatalogPolicy+"/"+NativeBackroomsGenerator.Version+"\n"+text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
             // The Expedition instance shares Ward Zero's authored hazards, including their IDs
             // (used by lights/alarms), so boss-test tuning cannot drift between the two modes.
@@ -68,7 +68,8 @@ namespace ChipArena.UnityConversion
             foreach(var m in u.maps){m.unity=true;Validate(m);}
             // Ward Zero deliberately replaces its exported legacy map, preserving its public ID.
             if(u.maps.GroupBy(m=>m.id).Any(g=>g.Count()>1)||u.maps.Any(m=>m.id!="siren"&&c.maps.Any(old=>old.id==m.id)))throw new InvalidOperationException("Duplicate Unity map");
-            c.maps=u.maps.ToArray();c.Validate();
+            var backrooms=NativeBackroomsGenerator.Build(NativeBackroomsGenerator.ArenaSeed,false).Map;Validate(backrooms);
+            c.maps=u.maps.Concat(new[]{backrooms}).ToArray();c.Validate();
             if(!c.maps.Any(m=>m.id==DefaultArena&&ArenaSelectable(m)))throw new InvalidOperationException("Missing default Unity arena");
         }
         public static V3 Clamp(ContentMap m,V3 p,bool bot=false)

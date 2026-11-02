@@ -45,15 +45,31 @@ namespace ChipArena.UnityConversion
         private static readonly int BrTexId=Shader.PropertyToID("_PackTex"),BrColorId=Shader.PropertyToID("_PackColor"),BrEmitId=Shader.PropertyToID("_PackEmit"),BrCutoffId=Shader.PropertyToID("_PackCutoff");
         private static readonly int BrRestId=Shader.PropertyToID("_BlockRest"),BrLookId=Shader.PropertyToID("_BlockLook"),BrBlockColorId=Shader.PropertyToID("_BlockColor");
 
-        private void BackroomsWorld()
+        private NativeArena backroomsArena;private int backroomsGeneration=-1;private static BackroomsLayout arenaBackrooms;
+        internal static bool BackroomsKitReady=>NativePackBanks.Texture(BackroomsTextures[0])!=null;
+        internal static bool BackroomsKitBlock(string map,string block)=>NativeBackroomsGenerator.IsMap(map)&&block!=null&&block.StartsWith(map+":",StringComparison.Ordinal)&&!block.Contains(":pit-")&&!block.Contains(":door-");
+        private void BackroomsWorld(NativeArena arena)
         {
-            BackroomsBlocksDrawn=0;if(!NativeBackroomsPreview.Active)return;var eye=WorldEye;if(eye==null)return;
+            BackroomsBlocksDrawn=0;bool live=NativeBackroomsGenerator.IsMap(arena?.MapId);if(!live&&!NativeBackroomsPreview.Active)return;var eye=WorldEye;if(eye==null)return;
             if(NativePackBanks.Texture(BackroomsTextures[0])==null)return;
-            var p=NativeBackroomsPreview.Origin;
-            if(backroomsLayout==null||backroomsLayout.Seed!=NativeBackroomsPreview.Seed||backroomsLayout.Width!=NativeBackroomsPreview.Width||backroomsLayout.Depth!=NativeBackroomsPreview.Depth||backroomsOrigin!=p)
+            var p=live?Vector3.zero:NativeBackroomsPreview.Origin;
+            if(live)
+            {
+                BackroomsLayout layout;
+                if(arena.MapId==NativeBackroomsGenerator.ArenaId){if(arenaBackrooms==null)arenaBackrooms=NativeBackroomsGenerator.Build(NativeBackroomsGenerator.ArenaSeed,false).Layout;layout=arenaBackrooms;}
+                else layout=arena.GeneratedRun?.Backrooms?.Layout;
+                if(layout==null)return;if(!ReferenceEquals(layout,backroomsLayout)||backroomsOrigin!=p)BackroomsBuild(layout,p);
+                if(!ReferenceEquals(backroomsArena,arena)||backroomsGeneration!=arena.Generation)
+                {
+                    backroomsArena=arena;backroomsGeneration=arena.Generation;
+                    foreach(var prop in arena.AllBlocks)if(prop!=null&&BackroomsKitBlock(arena.MapId,prop.Definition?.id))
+                        foreach(var renderer in prop.GetComponentsInChildren<Renderer>(true))renderer.forceRenderingOff=true;
+                }
+            }
+            if(!live&&(backroomsLayout==null||backroomsLayout.Seed!=NativeBackroomsPreview.Seed||backroomsLayout.Width!=NativeBackroomsPreview.Width||backroomsLayout.Depth!=NativeBackroomsPreview.Depth||backroomsOrigin!=p))
                 BackroomsBuild(NativeBackrooms.Preview(NativeBackroomsPreview.Seed,NativeBackroomsPreview.Width,NativeBackroomsPreview.Depth),p);
             if(!BackroomsMaterials())return;
-            var e=NativeBackroomsPreview.Eye??eye.transform.position;double time=Time.timeAsDouble;float r2=BackroomsReach*BackroomsReach;
+            var e=live?eye.transform.position:NativeBackroomsPreview.Eye??eye.transform.position;double time=Time.timeAsDouble;float r2=BackroomsReach*BackroomsReach;
             foreach(var b in backroomsBlocks)
             {
                 var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2)continue;BackroomsBlocksDrawn++;

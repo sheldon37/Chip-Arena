@@ -100,9 +100,9 @@ namespace ChipArena.UnityConversion.Editor
             string authored=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
             var bundle=ExpeditionRunBundle.Build(room.Ticket,content,authored);
             var world=bundle.World;
-            var copy=JsonUtility.FromJson<ConversionContent>(JsonUtility.ToJson(content));
-            copy.contentRevision=content.contentRevision;
-            copy.maps=copy.maps.Concat(new[]{world.Map}).ToArray();foreach(var m in copy.maps)m.unity=true;
+            var copy=JsonUtility.FromJson<ConversionContent>(JsonUtility.ToJson(bundle.Content));
+            copy.contentRevision=bundle.Content.contentRevision;
+            foreach(var m in copy.maps)m.unity=true;
             using(var runtime=new NativeExpeditionAreaRuntime("generated-check",copy,world.Map.id,match=>
             {
                 match.Cooperative=match.Teams=true;match.ShowIntros=false;

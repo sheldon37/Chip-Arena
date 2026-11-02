@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             Check(on>0&&on<=8&&deadOut,"the nearest fixtures light the scene, no dead one among them ("+on+")");
             // The DEV preview: off unless asked for, drawn from the bank's Level 0 textures only.
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));var pr=R("Runtime/NativeBackroomsPresentation.cs");
-            Check(pr.Contains("public static bool On;")&&!pr.Contains("public static bool On=true")&&R("Runtime/NativeSourcePresentation.cs").Contains("BackroomsWorld();"),"the preview is off by default and drawn from the world pass when on");
+            Check(pr.Contains("public static bool On;")&&!pr.Contains("public static bool On=true")&&R("Runtime/NativeSourcePresentation.cs").Contains("BackroomsWorld(arena);"),"the preview is off by default and drawn from the world pass when on");
             Check(pr.Contains("if(NativePackBanks.Texture(BackroomsTextures[0])==null)return;"),"without the bank's Level 0 textures nothing is drawn");
             Console.WriteLine("PASS backrooms ("+count+" checks: deterministic Level 0 layouts, enclosed rooms and corridors with doorways, all connected; walls to the low drop ceiling, faces out, fixtures by circuit, the DEV preview off by default)");
         }
