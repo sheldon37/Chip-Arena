@@ -33,6 +33,7 @@ class SourcePackageTests(unittest.TestCase):
         pointer = (runtime / "NativeControllerPointer.cs").read_text()
         # Update runs between MouseDown/MouseUp even without a gamepad. Clearing hotControl
         # there cancels genuine GUI.Button presses and slider drags.
+        self.assertIn("padState.Step(options.bindings,buttons,modifier,ui);", controller)
         self.assertNotIn("GUIUtility.hotControl=", controller)
         self.assertNotIn("Event.current=", controller)
         self.assertNotIn("Event.current=", game)

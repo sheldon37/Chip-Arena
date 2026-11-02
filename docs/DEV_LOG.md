@@ -1,3 +1,7 @@
+## 2026-11-02 — Astra: isolate fixed menu actions from gameplay remaps
+
+- Follow-up to controller menu #304: suppress the gameplay binding state while the controller owns a menu. A/B/directions still use fixed raw menu controls, but a custom Chips/Board/Camera binding on A can no longer fire alongside menu confirmation. Leaving a menu with confirm held still waits for neutral. Two managed regressions added; controller and pinned Unity semantic checks rerun before queueing. No gameplay rules or network changes.
+
 ## 2026-11-02 — Astra: directional controller menu navigation
 
 - Owner confirmed Steam Input detection and requested D-pad/analog menu selection with A confirm/B back. Task `codex/controller-menu-navigation`, base published/shared `c48f6415`. Adds device-independent spatial focus over existing enabled IMGUI buttons/toggles/sliders, D-pad or left-stick repeat (0.35 s delay, 0.12 s repeat), focus border, automatic form scrolling and 5% slider steps on left/right. Up/down leaves sliders; A/Cross and B/Circle remain fixed menu controls independent of gameplay remaps. Draft and results screens now use the UI input context too.

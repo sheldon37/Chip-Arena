@@ -69,7 +69,8 @@ namespace ChipArena.UnityConversion
             }
             bool modifier=pad.selectButton.isPressed;
             uint buttons=0;for(int i=0;i<(int)PadButton.Count;i++)if(PadControl((PadButton)i).isPressed)buttons|=1u<<i;
-            padState.Step(options.bindings,buttons,modifier,false);
+            // Fixed menu controls do not also fire remapped gameplay actions.
+            padState.Step(options.bindings,buttons,modifier,ui);
             padBack=ui?(pad.startButton.wasPressedThisFrame||pad.buttonEast.wasPressedThisFrame):PadDown(PadAction.Pause);
             // Read unprocessed stick values: apply precisely one configurable radial deadzone.
             var left=PadAxis(pad.leftStick.ReadUnprocessedValue());var right=PadAxis(pad.rightStick.ReadUnprocessedValue());

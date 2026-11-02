@@ -31,6 +31,12 @@ internal static class ControllerChecks
         state.Step(p.bindings,up,false,false);Check(state.Up[(int)PadAction.Slot5]&&!state.Held[(int)PadAction.Slot1],"modifier release does not fire base ability");
         state.Step(p.bindings,0,false,false);state.Step(p.bindings,up,false,false);Check(state.Down[(int)PadAction.Slot1],"fresh physical press rearms base ability");
         var defaults=new NativeControllerPreferences();defaults.Normalize();Check(defaults.bindings.SequenceEqual(NativeControllerBindings.Defaults()),"reset returns a fresh independent layout");
+        var remap=new NativeControllerPreferences();remap.Normalize();NativeControllerBindings.Bind(remap,PadAction.Chips,(int)PadButton.South);
+        var menuState=new NativeControllerState();menuState.Step(remap.bindings,0,false,false);
+        menuState.Step(remap.bindings,1u<<(int)PadButton.South,false,true);
+        Check(!menuState.Down.Any(v=>v)&&!menuState.Held.Any(v=>v),"menu confirmation suppresses remapped gameplay actions");
+        menuState.Step(remap.bindings,1u<<(int)PadButton.South,false,false);
+        Check(!menuState.Down.Any(v=>v),"leaving menu with confirm held does not fire a gameplay action");
         var nav=new NativeMenuNavigation();
         nav.BeginFrame();nav.Add(new NativeMenuNavigation.Item{X=0,Y=0,W=100,H=30});nav.Add(new NativeMenuNavigation.Item{X=120,Y=0,W=100,H=30});nav.Add(new NativeMenuNavigation.Item{X=0,Y=50,W=100,H=30,Slider=true});
         Check(nav.Pulse(0,.4f,0)==0,"menu stick drift does not move focus");
