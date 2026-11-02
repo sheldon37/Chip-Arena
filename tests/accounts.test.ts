@@ -178,3 +178,34 @@ test('pod looks normalize, persist across login, and reject malformed or oversiz
   const login:any=await(await f.request('login',{username:'podpilot',password})).json();assert.equal(login.account.profile.cosmetics.pod,'paint:123456');
  }finally{f.db.close();}
 });
+
+test('signed-in invitations: presence, private inbox, recipient authority, expiry and replay',async()=>{
+ const f=await fixture();try{
+  const a:any=await(await f.request('register',{username:'invite_host',password})).json();
+  const b:any=await(await f.request('register',{username:'invite_guest',password})).json();
+  const c:any=await(await f.request('register',{username:'invite_other',password})).json();
+  assert.equal((await f.request('social',{})).status,401);
+  await f.request('social',{},a.session);await f.request('social',{},b.session);
+  const online:any=await(await f.request('social',{},a.session)).json();
+  assert.deepEqual(online.players,[{id:b.account.id,username:'invite_guest'}]);
+  assert.equal((await f.request('invite',{target:b.account.id,code:'ABC234'},a.session)).status,409);
+  f.db.sql.prepare('INSERT INTO online_rooms(code,host_key,creator,origin,expires) VALUES(?,?,?,?,?)').run('ABC234','key','creator','https://example.com',now+1000000);
+  assert.equal((await f.request('invite',{target:b.account.id,code:'https://evil.example'},a.session)).status,400);
+  assert.equal((await f.request('invite',{target:a.account.id,code:'ABC234'},a.session)).status,400);
+  assert.equal((await f.request('invite',{target:b.account.id,code:'ABC234',sender:c.account.id},a.session)).status,200);
+  assert.equal((await f.request('invite',{target:b.account.id,code:'ABC234'},a.session)).status,429);
+  const inbox:any=await(await f.request('social',{},b.session)).json();assert.equal(inbox.invites.length,1);assert.equal(inbox.invites[0].username,'invite_host');assert.equal(inbox.invites[0].code,undefined);
+  const id=inbox.invites[0].id;
+  assert.equal((await f.request('invite-answer',{id,accept:true},c.session)).status,409);
+  assert.deepEqual((await(await f.request('social',{},c.session)).json() as any).invites,[]);
+  const accepted:any=await(await f.request('invite-answer',{id,accept:true},b.session)).json();assert.equal(accepted.code,'ABC234');
+  assert.equal((await f.request('invite-answer',{id,accept:true},b.session)).status,409);
+  assert.equal((await f.request('invite',{target:b.account.id,code:'ABC234'},a.session,now+6000)).status,200);
+  const second:any=await(await f.request('social',{},b.session,now+6000)).json();
+  const declined:any=await(await f.request('invite-answer',{id:second.invites[0].id,accept:false},b.session,now+6000)).json();assert.equal(declined.code,undefined);
+  assert.equal((await f.request('invite',{target:b.account.id,code:'ABC234'},a.session,now+12000)).status,200);
+  const third:any=await(await f.request('social',{},b.session,now+12000)).json();
+  assert.equal((await f.request('invite-answer',{id:third.invites[0].id,accept:true},b.session,now+132001)).status,409);
+  const stale:any=await(await f.request('social',{},a.session,now+132001)).json();assert.deepEqual(stale.players,[]);assert.deepEqual(stale.invites,[]);
+ }finally{f.db.close();}
+});

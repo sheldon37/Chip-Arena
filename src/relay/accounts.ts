@@ -1,3 +1,4 @@
+import {accountSocial} from './account-social.js';
 import {confirmXp,readXp} from './account-xp.js';
 import {scryptAsync} from '@noble/hashes/scrypt.js';
 import {base64url} from '../shared/dev-auth.js';
@@ -111,6 +112,7 @@ export async function accounts(request:Request,env:AuthEnv,now=Date.now()){
   }
   const session=request.headers.get('authorization')?.replace(/^Bearer /,'');if(!session||!/^[-\w]{43}$/.test(session))throw fail('Please log in.',401);
   const hash=await digest(session);let row=await env.DB.prepare('SELECT a.* FROM player_accounts a JOIN player_sessions s ON s.account_id=a.id WHERE s.hash=? AND s.expires>?').bind(hash,now).first();if(!row)throw fail('Session expired. Please log in again.',401);
+  if(['social','invite','invite-answer'].includes(action)){if(request.method!=='POST')throw fail('Method not allowed.',405);return response(await accountSocial(env.DB,row.id,action,input,now));}
   if(action==='xp'&&request.method==='GET')return response({summary:await readXp(env.DB,row.id)});
   if(action==='xp'&&request.method==='POST')return response(await confirmXp(env.DB,row.id,input,now));
   if(action==='me'&&request.method==='GET')return response({account:view(row),token:await sign(row,env,now)});
