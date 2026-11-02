@@ -28,6 +28,18 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static partial class NativeMinionFx
     {
+        /// <summary>
+        /// The floor a horde add's body falls on, `fall` s after its death: where it stood (`stood`, its root less its root height) or,
+        /// when the world's floor under it (`ground`, NaN for none) lies lower (an add that died up on another add's back in a crowd,
+        /// or in the air), dropping there under gravity (owner 2026-11-02: corpses hung at hip height across the living).
+        /// </summary>
+        public static float CorpseFloor(float stood,float ground,float fall)
+        {
+            if(float.IsNaN(ground)||ground>=stood-CorpseDropMin)return stood;float t=Math.Max(0,fall);
+            return Math.Max(ground,stood-.5f*CorpseGravity*t*t);
+        }
+        /// <summary>A gap under a corpse smaller than this (m) is its own floor (a kerb, a step); its fall's gravity (m/s2).</summary>
+        public const float CorpseDropMin=.08f,CorpseGravity=9.8f;
         /// <summary>fx.ts EMERGE_SECONDS, DEATH_SECONDS and DEATH_FX_SECONDS (how long the death effects outlast the body).</summary>
         public const double EmergeSeconds=1.95,DeathSeconds=2.3,DeathFxSeconds=3.1;
         /// <summary>materials.ts CATEGORY flicker and the accent/strip phase lift, per bank flicker class (0 shell, edge and

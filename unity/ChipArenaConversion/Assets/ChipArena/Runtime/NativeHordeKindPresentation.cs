@@ -76,7 +76,16 @@ namespace ChipArena.UnityConversion
         public const int HordeFullRigs=24,HordeFullRigsLow=16;public const float HordeReducedRange=40,HordeTierHysteresis=3;
         // ---- the dead: each add's kind, look and last blow, kept for its death (the authority's record names only horde-N) ----
         private struct HordeDead{public int Kind,Look;public NVector2 Push;public bool Melee;public MeleeBlow Blow;public bool HasBlow;public float At;public uint Seed;public int Slice;public bool Planned;public HordePoseBlend Blend;public bool Handed;
-            public NativeHordeGore.Cause GoreCause;public bool GoreHead,GoreHeavy;public float GoreAt,GoreAmount,GoreBlast,MaxHp;public NativeHordeGore.Fate Fate;public int Fountain;}
+            public NativeHordeGore.Cause GoreCause;public bool GoreHead,GoreHeavy;public float GoreAt,GoreAmount,GoreBlast,MaxHp;public NativeHordeGore.Fate Fate;public int Fountain;
+            /// <summary>The world's floor under where it died (NaN: none found), cast once (HordeGround).</summary>
+            public float Ground;}
+        private readonly RaycastHit[] hordeGroundHits=new RaycastHit[16];
+        // The world's floor (props only: never another add) under a death's spot; NaN without a physics scene or a floor within reach.
+        private float HordeGround(NativeArena arena,Vector3 at)
+        {
+            if(!NativeBlastPresentation.World(arena,out var physics))return float.NaN;double g=NativeBlastPresentation.FloorUnder(physics,at,hordeGroundHits);
+            return g<=NativeBlastSim.NoFloor*.5?float.NaN:(float)g;
+        }
         private readonly Dictionary<int,HordeDead> hordeDead=new Dictionary<int,HordeDead>();private readonly List<int> hordeDeadStale=new List<int>();
         private readonly SlicePlan hordeSlicePlan=new SlicePlan();
 
@@ -598,7 +607,7 @@ namespace ChipArena.UnityConversion
                 // Gone this frame: if it died, keep what its death needs.
                 var deaths=arena.MinionDeaths;bool died=false;for(int i=deaths.Count-1;i>=0;i--)if(deaths[i].id==pair.Key&&now-deaths[i].at<.5f&&s.Kind>=0)
                 {bool melee=s.HasBlow&&Math.Abs(s.BlowAt-deaths[i].at)<.06f;hordeDead[pair.Key]=new HordeDead{Kind=s.Kind,Look=s.Look,Push=s.Push,Melee=melee,Blow=s.Blow,HasBlow=melee,At=deaths[i].at,Seed=NativeHordeKinds.Seed(pair.Key)^(uint)deaths[i].seed,Blend=HordeHandBlend(s),
-                    GoreCause=s.GoreCause,GoreHead=s.GoreHead,GoreHeavy=s.GoreHeavy,GoreAt=s.GoreAt,GoreAmount=s.GoreAmount,GoreBlast=s.GoreBlast,MaxHp=s.MaxHp};died=true;break;}
+                    GoreCause=s.GoreCause,GoreHead=s.GoreHead,GoreHeavy=s.GoreHeavy,GoreAt=s.GoreAt,GoreAmount=s.GoreAmount,GoreBlast=s.GoreBlast,MaxHp=s.MaxHp,Ground=HordeGround(arena,deaths[i].position)};died=true;break;}
                 // An add gone without dying (a dive, a despawn): its wounds go with it.
                 if(!died)hordeGore.Forget(pair.Key);
             }
@@ -626,7 +635,7 @@ namespace ChipArena.UnityConversion
             // (The fall is posed on the horde's clock, as the living add was; its burn and effects keep the field clock.)
             float fall=hordeNow-death.at;
             NativeHordeGait.Death(minionPose,d.Kind,d.Seed,Mathf.Min(Mathf.Max(0,fall),(float)NativeMinionFx.DeathSeconds),push);float stationSink=StationDeathPose(d.Kind,d.Seed,fall);
-            float sc=NativeHordeKinds.Scale[d.Kind],floorY=death.position.y-NativeHordeKinds.RootHeight(d.Kind,false);
+            float sc=NativeHordeKinds.Scale[d.Kind],floorY=NativeMinionFx.CorpseFloor(death.position.y-NativeHordeKinds.RootHeight(d.Kind,false),d.Ground,fall);
             // The living add's last shown pose, root and facing hand over to the fall without a pop (Core/NativeHordeBlend).
             var deathRoot=new Vector3(death.position.x,floorY+NativeHordeKinds.DrawRoot(d.Kind,false)-stationSink,death.position.z);float deathYaw=death.yaw;
             if(d.Blend!=null){if(!d.Handed){d.Handed=true;d.Blend.Mark();hordeDead[death.id]=d;}var hr=ToN(deathRoot);d.Blend.Apply(minionPose,ref hr,ref deathYaw,hordeDt,false,.15f);deathRoot=new Vector3(hr.X,hr.Y,hr.Z);}
