@@ -38,11 +38,11 @@ namespace ChipArena.UnityConversion
         // does (VisualFaceGear: the live body, the draft's seat, the menu's and the Locker's pilots, a corpse and a death scene), in
         // the pilot's body colour with its accent's light. Under the helmet the hair is hidden (VisualHatHair; a corpse's when it
         // is made) and a hat sits on the helmet's shell (VisualHatFit: Core NativeRobotHelm.HatFit). Either one takes the place of
-        // the robot suit's ear modules (VisualSuit).
+        // the robot armour's ear modules (VisualSuit).
         // The face gear pilot `id` wears on the model (NativeWeaponSkins.FaceHelm, the default, .. FaceNone), whatever its body skin.
         private int FaceGearOf(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);
         private bool WearsHelm(int id)=>FaceGearOf(id)==NativeWeaponSkins.FaceHelm;
-        // Whether its face gear brings its own ear modules (the helmet's or the half mask's), in place of the robot suit's.
+        // Whether its face gear brings its own ear modules (the helmet's or the half mask's), in place of the robot armour's.
         private bool HelmEars(int id){int gear=FaceGearOf(id);return gear==NativeWeaponSkins.FaceHelm||gear==NativeWeaponSkins.FaceHalf;}
         // A hat's place on the helmet, in the head bone's frame.
         private static Matrix4x4 HelmHatFit(string hat){NativeRobotHelm.HatFit(hat,out float k,out var move);return Matrix4x4.TRS(new Vector3(move.X,move.Y,move.Z),Quaternion.identity,Vector3.one*k);}

@@ -5,12 +5,14 @@ namespace ChipArena.UnityConversion
 {
     // The model's outfit (owner 2026-10-26: "integrate switching the clothes on the model"; docs/CHARACTER-LOWPOLY.md section i,
     // the client half of the proposed look contract). One compact, normalized map: "slot:id" pairs in Slots order, only the
-    // non-default picks ("upper:hard-jacket,feet:work-boots"), unknown slots and ids dropped, "" for the default outfit (the
-    // concept's: spiky hair, the open hoodie, belted pants, fingerless gloves and mid-top sneakers). Each id names a piece of
-    // the local visual-body bake's wardrobe; the bake's look data maps it onto its meshes (Runtime/NativeVisualBodyPresentation.cs
-    // VisualDress). It is kept in prefs.look; carrying it to other clients and the account is Astra's part of the contract, with
-    // the DEV gate (Gate: Sheldon's clothes and bare feet, NativeSheldonWear, need live DEV access, as the Sheldon Clothes body
-    // skin does). Presentation only: no rule, hit volume, timing or network authority reads it.
+    // non-default picks ("upper:hard-jacket,feet:work-boots"), unknown slots and ids dropped, "" for the default outfit (spiky
+    // hair and the robot's pieces: Core/NativeRobotSuit; owner 2026-10-30: "I think we will make the default outfit the new
+    // designed armor"; owner 2026-11-01: "Can we make the armor portion into clothing? Like separate them like we have other
+    // clothes currently."). Each other id names a piece of the local visual-body bake's wardrobe; the bake's look data maps it
+    // onto its meshes (Runtime/NativeVisualBodyPresentation.cs VisualDress), and a robot piece dresses as the fitted garment it
+    // is worn over (NativeRobotSuit.Dress). It is kept in prefs.look; carrying it to other clients and the account is Astra's
+    // part of the contract, with the DEV gate (Gate: Sheldon's clothes and bare feet, NativeSheldonWear, need live DEV access,
+    // as the Sheldon Clothes body skin does). Presentation only: no rule, hit volume, timing or network authority reads it.
     // The skin tone (owner 2026-10-28: "Give skin color customization, along with a Color selector circle") rides the same map
     // as its last entry, "skin:rrggbb" (six lowercase hex digits, no '#'); absent, the model keeps its own skin. It is not
     // DEV gated. A map that differs only in it is the same outfit (SameOutfit): a body retints in place instead of being made
@@ -21,19 +23,22 @@ namespace ChipArena.UnityConversion
         /// <summary>The slots in canonical order, and their Locker labels.</summary>
         public static readonly string[] Slots={Hair,Upper,Lower,Hands,Feet};
         public static readonly string[] SlotLabels={"Hair","Top","Bottoms","Hands","Shoes"};
-        /// <summary>Each slot's ids in Slots order (the first is the default) and their labels.</summary>
+        /// <summary>Each slot's ids in Slots order (the first is the default: below the hair, the robot's piece) and their labels.</summary>
         public static readonly string[][] Ids={
             new[]{"spiky","wild","side-swept","tied-back","fringe-tail"},
-            new[]{"open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeSheldonWear.Robe},
-            new[]{"belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",NativeSheldonWear.Pants},
-            new[]{"fingerless","gloves","arm-bands","sweat-bands","bare"},
-            new[]{"mid-tops","work-boots","sneakers","lace-ups",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
+            new[]{"robot-armour","open-hoodie","hard-jacket","hoodie","tee","tank","sweater",NativeSheldonWear.Robe},
+            new[]{"robot-legs","belted-pants","baggy-pants","skinny-jeans","cuffed-shorts","khakis",NativeSheldonWear.Pants},
+            new[]{"robot-gauntlets","fingerless","gloves","arm-bands","sweat-bands","bare"},
+            new[]{"robot-boots","mid-tops","work-boots","sneakers","lace-ups",NativeSheldonWear.Boots,NativeSheldonWear.Barefoot}};
         public static readonly string[][] Labels={
             new[]{"Spiky","Wild locks","Side swept","Tied back","Fringe and tail"},
-            new[]{"Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater","Sheldon robe"},
-            new[]{"Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis","Sheldon pants"},
-            new[]{"Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
-            new[]{"Mid-tops","Work boots","Sneakers","Lace-ups","Sheldon boots","Barefoot"}};
+            new[]{"Robot armour","Open hoodie","Hard jacket","Hoodie","T-shirt","Tank top","Sweater","Sheldon robe"},
+            new[]{"Robot legs","Belted pants","Baggy pants","Skinny jeans","Cuffed shorts","Khakis","Sheldon pants"},
+            new[]{"Robot gauntlets","Fingerless gloves","Gloves","Arm bands","Sweat bands","Bare hands"},
+            new[]{"Robot boots","Mid-tops","Work boots","Sneakers","Lace-ups","Sheldon boots","Barefoot"}};
+        /// <summary>The concept's outfit (the open hoodie, belted pants, fingerless gloves and mid-tops; the bake's rest pieces),
+        /// for the bodies that keep their own clothes (the menu rooftop's crowd).</summary>
+        public const string Concept="upper:open-hoodie,lower:belted-pants,hands:fingerless,feet:mid-tops";
         /// <summary>The skin tone's entry, after the slots.</summary>
         public const string Skin="skin";
         /// <summary>The Locker's skin tone presets, light to deep (0xRRGGBB), and their names.</summary>

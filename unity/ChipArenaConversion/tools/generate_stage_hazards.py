@@ -25,9 +25,10 @@ def navigation(m):
             if b[0][0]-.43<x<b[0][1]+.43 and b[2][0]-.43<z<b[2][1]+.43:
                 if b[1][1]>y+.65:return False
         return True
-    nodes=[];grid={};B=m['bounds']
-    for x in range(math.ceil(B['minX']+1),math.floor(B['maxX'])):
-        for z in range(math.ceil(B['minZ']+1),math.floor(B['maxZ'])):
+    nodes=[];grid={};B=m['bounds'];step=.5 if m['id']=='rig' else 1
+    def samples(lo,hi):return [i*step for i in range(math.ceil((lo+1)/step),math.floor(hi/step))]
+    for x in samples(B['minX'],B['maxX']):
+        for z in samples(B['minZ'],B['maxZ']):
             for y in tops(x,z):
                 if clear(x,y,z):
                     n=dict(id=f'{m["id"]}-nav-{x},{z},{y:g}',pos=v(x,y+.9,z),layer=round(y*10));nodes.append(n);grid.setdefault((x,z),[]).append(n)
@@ -54,7 +55,7 @@ def navigation(m):
                 if lo>hi:return False
         return True
     def regions(h):
-        if h['kind'] in ('maglev','grid'):return [(h['center'],h['size'])]
+        if h['kind'] in ('maglev','grid','burner','gas','shutter'):return [(h['center'],h['size'])]
         if h['kind']=='crane':return [(z['center'],z['size']) for z in h['zones']]
         a,b=h['a'],h['b'];s=h['size']
         if h['kind']=='vent':return [(v(a['x'],a['y']+s['y']/2,a['z']),s)]
@@ -62,7 +63,7 @@ def navigation(m):
     links=[]
     for a in nodes:
         x,z=a['pos']['x'],a['pos']['z']
-        for dx,dz in [(1,0),(0,1)]:
+        for dx,dz in [(step,0),(0,step)]:
             for b in grid.get((x+dx,z+dz),[]):
                 if not path(a,b):continue
                 hazards=[h['id'] for h in m['hazards'] if any(crosses(a['pos'],b['pos'],c,s) for c,s in regions(h))]
@@ -74,8 +75,8 @@ def navigation(m):
     print(m['id'],len(m['blocks']),'blocks',len(nodes),'nodes',len(links),'links',sum(bool(l['hazards']) for l in links),'gated')
 path=ROOT/'unity/ChipArenaConversion/Assets/Conversion/Resources/UnityMaps.json'
 content=json.loads(path.read_text())
-for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]:
-    m=draft(name,fn);m['music']=song;m['rotation']=True;navigation(m)
+for name,fn,song in [('factory','unity_json','factory-anvil-loop'),('cybercity','draft','cybercity-neon-riot')]+[(name,'unity_json','factory-anvil-loop' if name in ('harbor','rig','training') else 'cybercity-neon-riot') for name in ('breakwater','harbor','skyframe','rig','polar','training')]:
+    m=draft(name,fn);m.pop('killVolumes',None);m['music']=song;m['rotation']=name in ('factory','cybercity');navigation(m)
     content['maps']=[old for old in content['maps'] if old['id']!=name]+[m]
 path.write_text(json.dumps(content,separators=(',',':'))+'\n')
 

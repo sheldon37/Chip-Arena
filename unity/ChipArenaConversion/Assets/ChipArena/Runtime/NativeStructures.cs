@@ -153,7 +153,8 @@ namespace ChipArena.UnityConversion
         }
         private bool TrySandboxSpawn(NativePilot p,out Vector3 result)
         {
-            result=Vector3.zero;var preferred=NativeMapRules.Spawn(Content,Map,Match.Seats,Math.Max(0,Pilots.IndexOf(p)),Match.Teams);
+            result=Vector3.zero;if(Training){var pad=TrainingPadOf(p);result=pad!=null?Vec(pad.pos):Vec(Map.spawns.ffa[Math.Max(0,Match.Seats.IndexOf(p.Seat))%8].pos);foreach(var q in Pilots)if(q!=p&&q.Hp>0&&Vector3.Distance(q.Body.position,result)<.9f)return false;return true;}
+            var preferred=NativeMapRules.Spawn(Content,Map,Match.Seats,Math.Max(0,Pilots.IndexOf(p)),Match.Teams);
             var points=new[]{preferred.pos}.Concat(Map.spawns?.ffa.Select(x=>x.pos)??Content.spawns);
             foreach(var point in points){var at=Vec(point);if(Map.unity&&(Pilots.Any(q=>q!=p&&q.Hp>0&&Enemy(p,q)&&Vector3.Distance(q.Body.position,at)<8)||UnsafeStructure(at)||UnsafeStagePath(at,at,3)))continue;if(!Map.unity||Walkable(at,out at)){result=at;return true;}}return false;
         }

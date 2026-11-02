@@ -96,23 +96,26 @@ namespace ChipArena.UnityConversion
         private void StartMatch()
         {
             if(PromotionBusy||!ModsReady)return;
-            if(prefs.pve&&prefs.expedition){StartExpeditionM1();return;}
+            if(trainingRoom&&!trainingWanted){StartTraining();return;}
+            if(!trainingWanted&&prefs.pve&&prefs.expedition){StartExpeditionM1();return;}
             expeditionDirector=null;ResetExpeditionNetwork();Time.timeScale=1;sandboxSpeed=1;endFlow.Reset();
+            if(trainingWanted){prefs.pve=false;prefs.bots=0;}
             if(prefs.pve){prefs.map="siren";prefs.bots=Mathf.Clamp(prefs.bots,0,3);}else prefs.bots=Mathf.Clamp(prefs.bots,Online||dedicated?0:1,7);
-            if(server!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
+            if(server!=null||deploymentRoom!=null)return;if(prefs.pve&&peers.Count(p=>p.Seat!=null&&p.Connection?.Closed==false)>(dedicated?4:3)){networkStatus="Siren co-op supports up to four party members.";return;}if(Hosting&&!GuestsReady){networkStatus="Wait for the other pilots to be ready.";return;}
             // Refuse a match that cannot start (a host alone with no bots, or every pilot on one team) before the running arena
             // is touched, so the reason shows in the menu instead of the fatal error screen.
             {var sides=new System.Collections.Generic.HashSet<int>();int n=0;if(!dedicated){sides.Add(prefs.pve?0:prefs.teams?prefs.team:1);n++;}
              foreach(var p in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){sides.Add(prefs.pve?0:prefs.teams?p.Seat.team:p.Seat.id);n++;}
              foreach(var bot in LobbyBots(n)){sides.Add(prefs.pve?0:prefs.teams?bot.team:bot.id);n++;}if(prefs.pve){sides.Add(1);n++;}
-             if(n<2||sides.Count<2){networkStatus=n>=2?"Both teams need a pilot: add a bot or change teams.":"Add a bot or wait for a pilot to join.";return;}}
+             if(!trainingWanted&&(n<2||sides.Count<2)){networkStatus=n>=2?"Both teams need a pilot: add a bot or change teams.":"Add a bot or wait for a pilot to join.";return;}}
+            if(!trainingWanted&&!prefs.pve&&prefs.map=="breakwater"){var seats=new System.Collections.Generic.List<NativeSeat>();if(!dedicated)seats.Add(new NativeSeat{id=1,team=prefs.team});seats.AddRange(peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false).Select(p=>p.Seat));seats.AddRange(LobbyBots(seats.Count));if(!NativeTrainingRules.RoomFits("breakwater",seats,prefs.teams)){networkStatus="Breakwater supports up to 4 pilots: FFA, 1v1 or 2v2.";return;}}
             if(!dedicated)Save();EndPreview();inspectSeat=0;ClearReplay();arena?.Dispose();presentation?.ResetPresentation();networkEpoch++;
-            match=new NativeMatch(content){FinalKillcams=Online,ShowIntros=!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
+            match=new NativeMatch(content){Training=trainingWanted,FinalKillcams=Online&&!trainingWanted,ShowIntros=!trainingWanted&&!prefs.skipPlayerIntros&&!sandboxWanted,Cooperative=prefs.pve,Teams=trainingWanted||prefs.pve||prefs.teams,RoundsPerSet=prefs.rounds,SetsToWin=prefs.sets,SkipBotDrafts=prefs.skipBotDrafts,BothDraft=prefs.bothDraft,Choices=prefs.choices,SelectionSeconds=prefs.selectionSeconds};
             if(!dedicated){var local=SanitizedSeat(1,Profile(),account.Token);local.team=prefs.pve?0:prefs.team;match.Seats.Add(local);}
             foreach(var peer in peers.Where(p=>p.Seat!=null&&p.Connection?.Closed==false)){peer.Seat.devWeaponAccess=null;peer.Seat.devRevealed=peer.Seat.devCommandsRan=false;peer.Seat.devScale=1;peer.Seat.team=prefs.pve?0:peer.Seat.team;match.Seats.Add(peer.Seat);peer.Ready=false;}
-            match.Seats.AddRange(LobbyBots(match.Seats.Count));
+            if(trainingWanted){foreach(var s in match.Seats)s.team=0;NativeTrainingRules.AddDummies(match,content.Map("training"));}else match.Seats.AddRange(LobbyBots(match.Seats.Count));
             if(prefs.pve)match.Seats.Add(new NativeSeat{id=900,name="The Siren",spec="siren",bot=true,team=1,AuthorityBoss=true});
-            arena=new NativeArena(content,match,SelectMatchMap()){RandomizeMapEachSet=prefs.randomizeMap,FriendlyFire=prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
+            arena=new NativeArena(content,match,trainingWanted?"training":SelectMatchMap()){RandomizeMapEachSet=!trainingWanted&&prefs.randomizeMap,FriendlyFire=!trainingWanted&&prefs.friendlyFire,LocalId=dedicated?0:1,StationaryBots=prefs.stationary,Sandbox=trainingWanted||sandboxWanted&&account.Developer&&!Online&&!prefs.pve};
             if(!match.Start()){arena.Dispose();arena=null;match=null;foreach(var peer in peers)peer.Ready=true;networkStatus="A match needs at least two opposing sides.";LobbyBroadcast();return;}
             if(prefs.pve)arena.ConfigurePve(JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text),prefs.skipWaves,NativeMatch.NewSeed());
             if(dedicated){menu=false;return;}generation=arena.Generation;visualClock.Reset(match.Time);pending=new InputFrame();yaw=arena.Local.Yaw;pitch=12;sprint=false;menu=false;NativeLighting.Apply(content.Map(arena.MapId),cameraView);
@@ -179,8 +182,8 @@ namespace ChipArena.UnityConversion
             // A bound Expedition session's world pieces (NativeExpeditionWorldPresentation.cs): one mesh drawn for this frame.
             // Settings · Player model: Classic draws the voxel pilot body in place of the new one, set before any path draws a
             // pilot (previews, replays, the draft and the intros return before the arena renders).
-            NativeUiBlur.Frame();ExpeditionWorldFrame();if(cameraView==null)return;if(SplitLocalLoading){viewModelCamera.enabled=false;return;}cinematic.BeginFrame();presentation.ClassicBodies=prefs.playerModel=="Classic";presentation.LocalLook=LookShown();presentation.VisualEye=cameraView;if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();ExpeditionPlantAudio();nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
-            if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
+            NativeUiBlur.Frame();presentation.GeneratedRun=deploymentBundle;ExpeditionWorldFrame();if(cameraView==null)return;if(SplitLocalLoading){viewModelCamera.enabled=false;return;}cinematic.BeginFrame();presentation.ClassicBodies=prefs.playerModel=="Classic";presentation.LocalLook=LookShown();presentation.VisualEye=cameraView;if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();ExpeditionPlantAudio();nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
+            if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
             var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
             UpdateCamera();
             if(play)
@@ -259,6 +262,9 @@ namespace ChipArena.UnityConversion
         private string backdropMap;private bool rooftopShown;private float rooftopFov,rooftopNear;
         private void MenuBackdrop()
         {
+            // DEV ONLY: the Deployment Station preview draws its station instead (NativeDeployPreview.cs).
+            if(LiveDeploymentBackdrop())return;
+            if(DeployPreviewBackdrop())return;
             if(menuScreen==MenuScreen.Home&&!InRoom&&presentation!=null&&presentation.RooftopSupported)
             {
                 if(!rooftopShown){rooftopShown=true;rooftopFov=cameraView.fieldOfView;rooftopNear=cameraView.nearClipPlane;}
@@ -371,6 +377,9 @@ namespace ChipArena.UnityConversion
             if(error.Length>0){GUI.Box(new Rect(30,30,width-60,height-60),"");GUI.Label(new Rect(45,45,width-90,height-90),error,label);return;}
             // DEV ONLY: the Expedition screens preview (--ca-expedition-preview), in place of the main menu (NativeExpeditionPreviewUI.cs).
             if(ExpeditionPreviewGui(width,height))return;
+            // DEV ONLY: the Deployment Station preview (--ca-deploy-preview), in place of the main menu (NativeDeployPreview.cs).
+            if(LiveDeploymentGui(width,height))return;
+            if(DeployPreviewGui(width,height))return;
             // A bound Expedition session's screen (J), in place of the frame while open; nothing draws without a binding.
             if(ExpeditionLiveGui(width,height))return;
             if(match?.Phase!=NativePhase.Match)matchEndAt=-1;if(arena!=null)menuFromMatch=true;
@@ -387,7 +396,7 @@ namespace ChipArena.UnityConversion
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}
             if(previewArena==null&&SirenRevealActive){SirenReveal();return;}
             // The Last Laugh cutscene hides the HUD behind its letterbox (style.css data-cutscene); the board and pause menu stay.
-            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu)PauseMenu();return;}
+            if(arena!=null&&previewArena==null&&cinematic.Directing){cinematic.Letterbox(width,height);if(cinematic.ZoneArrival)ZoneBossArrivalHud(width,height);else KernelPanicSplash(width,height);if(BoardOpen)Board(width);if(menu){PauseMenu();TrainingControls();}return;}
             if(!cinematic.Private)CombatWorldHud(scale,width,height);
             PveBeaconHud();
             if(arena!=null&&!menu&&match.Phase==NativePhase.Fight&&presentation.ScopeActive)DrawScope(width,height);
@@ -418,7 +427,7 @@ namespace ChipArena.UnityConversion
             if(arena!=null)DevGui(width,height);
             if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);ExpeditionLiveHud(width,height);return;}
             // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
-            if(arena!=null)PauseMenu();else HomeMenu();
+            if(arena!=null){PauseMenu();TrainingControls();}else HomeMenu();
         }
         // Play vs Bots (main.ts:147 practice screen) in the source order: the set line, YOUR CLASS (and the weapon cards),
         // matchOptions() in its box, botLoadouts, the team setup in teams mode, and the "Draft & intro rules" fold (BETWEEN

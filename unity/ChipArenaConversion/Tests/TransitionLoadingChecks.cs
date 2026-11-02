@@ -181,7 +181,7 @@ namespace ChipArena.UnityConversion
         }
         private static void Schematics(List<ContentMap> maps)
         {
-            Check(maps.Count==8&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
+            Check(maps.Count==14&&maps.Any(m=>m.id=="expedition-ward-zero")&&maps.Any(m=>m.id=="cybercity"),"every map ("+maps.Count+")");
             foreach(var m in maps)
             {
                 var s=NativeStageSchematic.Build(m);Check(s!=null&&s.Count>0&&s.Count<=NativeStageSchematic.Max,m.id+" scans ("+(s?.Count??0)+")");
@@ -266,13 +266,13 @@ namespace ChipArena.UnityConversion
             // Stage starts and returns go through the loading screen.
             // The boss fight and DEV Expedition M1 start from the Expeditions screen (NativeExpeditionsMenu.cs, owner 2026-10-15).
             var expeditions=R("Assets/ChipArena/Runtime/NativeExpeditionsMenu.cs");
-            Check(home.Contains("RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Boss,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Expedition,StartExpeditionM1)")&&home.Contains("private void BossScreen(float age)=>ExpeditionsScreen(age);"),"Play, Wave Defense (the boss fight) and DEV Expedition M1 start under the loading screen");
+            Check(home.Contains("RequestStage(sandboxWanted?StageLoadKind.Sandbox:StageLoadKind.Match,StartMatch)")&&expeditions.Contains("RequestStage(StageLoadKind.Boss,StartMatch)")&&expeditions.Contains("BeginDeploymentStation(K.At(expPick).Id)")&&R("Assets/ChipArena/Runtime/NativeExpeditionDeploymentRoom.cs").Contains("RequestStage(StageLoadKind.Expedition,StartExpeditionM1)")&&home.Contains("private void BossScreen(float age)=>ExpeditionsScreen(age);"),"Play, Wave Defense and station Deploy start under the loading screen");
             Check(home.Contains("RequestStage(StageKindOf(arena),StartMatch)")&&home.Contains("RequestStage(StageLoadKind.Return,"),"restart and return to the main menu under the loading screen");
             Check(R("Assets/ChipArena/Runtime/NativeLobbyUI.cs").Contains("RequestStage(prefs.pve?StageLoadKind.Boss:StageLoadKind.Online,StartMatch)"),"the room's Start under the loading screen");
             var cg=R("Assets/ChipArena/Runtime/ConversionGame.cs");
             var ui=R("Assets/ChipArena/Runtime/NativeStageLoadingUI.cs");
             Check(Regex.IsMatch(cg,@"StageInputGate\(\);GuiFrame\(\);.*ExpeditionTransferGui\(\);StageLoadingGui\(\);"),"OnGUI: input gate before every screen, the loading screen over all of them");
-            Check(cg.Contains("try{try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}finally{StageLoadingStep();}")&&ui.Contains("catch(Exception e){Debug.LogException(e);stageLoad.Cancel();")&&cg.Contains("bool escape=Input.GetKeyDown(KeyCode.Escape)&&!StageInputHeld;")&&!Regex.IsMatch(cg,@"if\(Input\.GetKeyDown\(KeyCode\.Escape\)"),"LateUpdate steps the loading screen; Escape waits while it is closed");
+            Check(cg.Contains("try{try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}finally{StageLoadingStep();}")&&ui.Contains("catch(Exception e){Debug.LogException(e);stageLoad.Cancel();")&&cg.Contains("bool escape=(Input.GetKeyDown(KeyCode.Escape)||PadBack)&&!StageInputHeld;")&&!Regex.IsMatch(cg,@"if\(Input\.GetKeyDown\(KeyCode\.Escape\)"),"LateUpdate steps the loading screen; Escape and controller Back wait while it is closed");
             Check(cg.Contains("StageLoadingRelease();"),"released with the game");
             Check(Body(ui,"private void StageObserve()").Contains("!ReferenceEquals(a,stageSeen)")&&Body(ui,"private void StageObserve()").Contains("map,stageSeenMap")&&Body(ui,"private void StageObserve()").Contains("areaBarrier"),"every stage change is observed: a new arena, a map swap, an area barrier");
             var frm=Body(ui,"private void StageLoadingFrame()");Check(frm.IndexOf("TakeAction()",StringComparison.Ordinal)<frm.IndexOf("StageObserve()",StringComparison.Ordinal)&&frm.Contains("stageLoad.Covered&&!stageLoad.ActionPending)StagePreload()"),"the action runs under the cover; the preload only behind the closed screen");
@@ -282,7 +282,7 @@ namespace ChipArena.UnityConversion
             // The preload covers every lazily built stage kit SourceWorld draws.
             var world=Body(R("Assets/ChipArena/Runtime/NativeSourcePresentation.cs"),"private void SourceWorld(NativeArena arena)");var pre=R("Assets/ChipArena/Runtime/NativeStagePrewarm.cs");var warm=Body(pre,"public int PrewarmStage(NativeArena arena)");
             var needs=new Dictionary<string,string[]>{["FactoryScenery"]=new[]{"factoryStage.Prepare(arena)"},["BrickfallScenery"]=new[]{"EnsureBrickfall()"},["CyberCityScenery"]=new[]{"EnsureCyberCity()","MetroRebind(arena)"},
-                ["ExpeditionCityScenery"]=new[]{"EnsureExpeditionCity()","ExpeditionCityBuild(map)"},["WardZeroScenery"]=new[]{"EnsureWardZero()","WardZeroBuild(map)"},["IronworksScenery"]=new[]{"EnsureIronworks()","IronworksBuild(map)"},["StationScenery"]=new[]{"EnsureStation()","StationBuild(map)"},["StationBossScenery"]=new[]{"EnsureStationBoss()"},["IronworksBossScenery"]=new[]{"EnsureIronworksBoss()"},["HazardKitWorld"]=new[]{"EnsureHazardKit()"}};
+                ["ExpeditionCityScenery"]=new[]{"EnsureExpeditionCity()","ExpeditionCityBuild(map)"},["WardZeroScenery"]=new[]{"EnsureWardZero()","WardZeroBuild(map)"},["IronworksScenery"]=new[]{"EnsureIronworks()","IronworksBuild(map)"},["StationScenery"]=new[]{"EnsureStation()","StationBuild(map)"},["StationBossScenery"]=new[]{"EnsureStationBoss()"},["IronworksBossScenery"]=new[]{"EnsureIronworksBoss()"},["TrainingScenery"]=new[]{"TrainingPrepare(arena)"},["NewStageScenery"]=new[]{"PrewarmNewStage(arena)"},["HazardKitWorld"]=new[]{"EnsureHazardKit()"}};
             foreach(Match call in Regex.Matches(world,@"\b([A-Z][A-Za-z]+(Scenery|KitWorld))\(arena\)"))
             {string n=call.Groups[1].Value;Check(needs.ContainsKey(n),"SourceWorld's "+n+" has a prewarm entry");foreach(var tok in needs[n])Check(warm.Contains(tok),n+" prewarms through "+tok);}
             var fac=Body(R("Assets/ChipArena/Runtime/NativeFactoryPresentation.cs"),"public void Render(NativeArena arena,float now,Camera camera,float quality,bool low,bool instancing,NativeDustCoat coat)");var prep=Body(pre,"public bool Prepare(NativeArena arena)");

@@ -72,6 +72,10 @@ back to today's look when the kit bank is missing (CI, cloud builds, the public 
 | Central Station | none | north freight depot: stacks, quay cranes, trucks, lamps, a shed, aprons; 0.10 M / 0.09 M |
 | Expedition town | 20 blocks (20 pieces) | west docks by the Ironworks gate: quay and basin, 3 STS, freighter, tug, stacks, lamps, trucks; 0.43 M / 0.18 M |
 
+The five M1 stages (Breakwater, Pier 9, Skyframe, Deepwell, Polaris) have their own rules and yards, listed with their looks in
+NEW-STAGES.md "Stage looks (presentation)"; their box-built backdrops stand without the bank, and Pier 9's box cranes and
+stacks stand down while its yards draw.
+
 The Ironworks and the station are closed halls: their shells and roofs hide the yards from the floor, so those yards read
 from outside cameras (the overview) only. Opening a door or skylight is collision work (HARBOR_PROPOSAL.md, Astra handoff).
 The Factory's cranes stand over its roof and through its roof gaps. The town's west edge is walled by its buildings and the

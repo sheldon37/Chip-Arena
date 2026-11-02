@@ -329,10 +329,10 @@ namespace ChipArena.UnityConversion
             }
             for(int k=0;k<index.Length&&k<weights.Length;k++)if(index[k]>=0&&!float.IsNaN(weights[k]))skin.SetBlendShapeWeight(index[k],weights[k]);
         }
-        // The feet piece's lift against the default shoes' (bare feet down onto the floor), as a pilot's.
+        // The feet piece's lift against the bake's rest shoes' (the concept's; bare feet down onto the floor), as a pilot's.
         private static float ZombieLift(LookPiece[] worn)
         {
-            var d=VisualLookData();if(d==null)return 0;string first=NativeLook.Ids[NativeLook.SlotIndex(NativeLook.Feet)][0];float rest=0;
+            var d=VisualLookData();if(d==null)return 0;string first=NativeLook.Of(NativeLook.Concept,NativeLook.Feet);float rest=0;
             foreach(var p in d.pieces)if(p!=null&&p.slot==NativeLook.Feet&&p.id==first)rest=p.lift;
             var feet=worn[NativeLook.SlotIndex(NativeLook.Feet)];return feet==null?0:Mathf.Clamp(feet.lift-rest,-.05f,.05f);
         }

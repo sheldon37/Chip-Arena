@@ -38,6 +38,7 @@ namespace ChipArena.UnityConversion
 
         private void Building(int i,string name)
         {
+            if(Starts(name,"g:")){GeneratedBuilding(i,name);return;}
             var b=blocks[i];int kind=KindOf(name);if(!facesOf.TryGetValue(i,out var fs))return;string id=b.id;
             foreach(var f in fs)
             {
@@ -81,7 +82,7 @@ namespace ChipArena.UnityConversion
         }
         private void Facade(Face f,int kind,string name)
         {
-            var b=blocks[f.Block];string id=b.id;double h=f.Top-f.Base;bool brick=b.material=="brick",stone=b.material=="stone";
+            var b=blocks[f.Block];string id=b.id;double h=f.Top-f.Base;string material=facadeMaterial??b.material;bool brick=material=="brick",stone=material=="stone";
             double ground=kind==Shops?4.4:kind==Office||kind==Hotel||kind==Depot||kind==Cinema?4.6:kind==Kiosk?h:4.0;
             double top=h-.9,span=top-ground;double bay=kind==Office?2.0:kind==Civic?2.6:kind==Shops?2.6:2.4;
             int storeys=span<2.4?0:Math.Max(1,(int)Math.Round(span/(kind==Office?3.2:3.0)));double storey=storeys>0?span/storeys:0;
@@ -99,8 +100,9 @@ namespace ChipArena.UnityConversion
                 // A string course under each storey on stone fronts.
                 if(stone&&kind!=Kiosk)foreach(var run in Runs(f,y0-.95,y0-.6,f.U0,f.U1,.02))FBox(f,(run[0]+run[1])/2,y0-.75,.06,run[1]-run[0],.16,.12,With(P(NativeBlockLooks.ConcreteBoard,0xA49C8E,RoleFacade),detail:true));
             }
-            // The cornice and parapet line along the top, and a band over the ground floor.
-            foreach(var run in Runs(f,h-.5,h,f.U0,f.U1,.02,false))FBox(f,(run[0]+run[1])/2,h-.28,.11,run[1]-run[0],.32,.22,With(P(brick?NativeBlockLooks.ConcreteBoard:NativeBlockLooks.ConcreteBoard,brick?0x7A7064:0x9A9286,RoleHigh,NativeMapStyle.Cornice),shadow:true));
+            // The cornice and parapet line along the top (casting in the town; the generated map's hundreds of blocks cast their
+            // own), and a band over the ground floor.
+            foreach(var run in Runs(f,h-.5,h,f.U0,f.U1,.02,false))FBox(f,(run[0]+run[1])/2,h-.28,.11,run[1]-run[0],.32,.22,With(P(brick?NativeBlockLooks.ConcreteBoard:NativeBlockLooks.ConcreteBoard,brick?0x7A7064:0x9A9286,RoleHigh,NativeMapStyle.Cornice),shadow:!generated));
             if(kind!=Kiosk)foreach(var run in Runs(f,ground-.45,ground-.1,f.U0,f.U1,.02))FBox(f,(run[0]+run[1])/2,ground-.28,.08,run[1]-run[0],.24,.16,With(P(NativeBlockLooks.ConcreteBoard,brick?0x6E665C:0x8C8478,RoleFacade),detail:true));
             // The ground floor by kind.
             foreach(var run in Runs(f,.2,ground-.6,f.U0+.3,f.U1-.3))

@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
                 if(h.kind=="shutter"){PoseShutter(h,now,advance);continue;}if(h.kind!="crane")continue;var s=NativeFactoryHazards.State(h,StageRound,NativeFactoryHazards.Clock(Match.Phase,Match.FightAt,now));
                 if(!stageLoads.TryGetValue(h.id,out var box))
                 {var go=new GameObject(h.id+"-landed-collision");go.transform.SetParent(root.transform);go.layer=PropLayer;box=go.AddComponent<BoxCollider>();box.size=Vec(h.size);stageLoads.Add(h.id,box);}
-                box.enabled=NativeStageHazards.Landed(s);if(box.enabled)box.transform.position=new Vector3((float)s.X,h.size.y/2,(float)s.Z);
+                box.enabled=NativeStageHazards.Landed(s);if(box.enabled)box.transform.position=new Vector3((float)s.X,(float)s.LoadY+h.size.y/2,(float)s.Z);
             }
         }
         private void PoseShutter(MapHazard h,double now,bool advance)

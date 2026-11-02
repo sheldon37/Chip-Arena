@@ -51,8 +51,9 @@ namespace ChipArena.UnityConversion
             public Color ChipColor=Color.cyan, AccentLinear=Color.cyan;
             public readonly Vector3[] HandPosition=new Vector3[2]; public readonly Quaternion[] HandRotation=new Quaternion[2];
             // Its own weapons (NativeVisualWeaponPresentation.cs): the bake's entries by spec, the one in hand this frame (Held,
-            // fitted on the right hand bone, whose scale RightScale restores) and the one shown (when).
-            public Dictionary<string,VisualWeapon> Weapons; public VisualWeapon Held, Shown; public int ShownFrame=-1; public Vector3 RightScale=Vector3.one;
+            // fitted on the right hand bone, whose scale RightScale restores) and the one shown (when). LeftScale: the first-person view
+            // rig's left hand scale, which VisualViewRestore puts back (NativeFirstPersonPose.ModelView).
+            public Dictionary<string,VisualWeapon> Weapons; public VisualWeapon Held, Shown; public int ShownFrame=-1; public Vector3 RightScale=Vector3.one, LeftScale=Vector3.one;
             // An arena pilot's own body (its rig the arena poses: the pack bank's weapons draw on it, NativePackWeaponPresentation.cs),
             // those made for it by spec (null: none for that spec), and whether its main dagger is thrown this frame.
             public bool Arena, MainAway; public Dictionary<string,VisualWeapon> Packs;
@@ -79,11 +80,21 @@ namespace ChipArena.UnityConversion
         public string LocalLook="";
         // The arena's camera this frame (the cloth's distance hold).
         public Camera VisualEye;
-        // (A pilot in the robot suit wears its under-suit in place of its clothes: NativeRobotSuitPresentation.)
-        private string VisualLookOf(int id){var look=VisualOutfitOf(id);return WearsSuit(id)?NativeRobotSuit.Look(look):look;}
+        // The look a pilot's body is dressed in: its outfit with each robot piece as the garment under it (Core NativeRobotSuit.Dress;
+        // its plates: NativeRobotSuitPresentation), made once an outfit (read every frame).
+        private readonly Dictionary<string,string> robotDressed=new Dictionary<string,string>(StringComparer.Ordinal);
+        private string VisualLookOf(int id)
+        {
+            var look=VisualOutfitOf(id)??"";
+            if(!robotDressed.TryGetValue(look,out var dressed)){if(robotDressed.Count>64)robotDressed.Clear();robotDressed[look]=dressed=NativeRobotSuit.Dress(look);}
+            return dressed;
+        }
         private string VisualOutfitOf(int id)
         {
             if(id==ViewBodyId||id==RooftopIdTop)return LocalLook??"";
+            // The rooftop's crowd keeps the concept's clothes (Runtime/NativeRooftopPresentation.cs).
+            if(id<RooftopIdTop&&id>RooftopIdTop-8)return NativeLook.Concept;
+            if(DeployOutfit(id,out var deploy))return deploy;
             if(ModelPortraitOf(id,out var portrait))return portrait.Outfit;
             // Use the displayed arena, including replay/guest seats, rather than current local preferences.
             var seat=WeaponLoadout?.Match?.Seat(id);if(seat!=null)return seat.look??"";
@@ -633,8 +644,8 @@ namespace ChipArena.UnityConversion
             }
             if(!first&&!body.Hood)VisualFaceGear(VisualHeadOf(body),a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
             if(!first)VisualSuit(body.Root,a.Id,a.BodyColor,a.AccentColor,layer,camera,reveal,tint,flash);
-            // The back emblem on the chest's model bone, glowing as the core does (under the robot suit's back plate: none).
-            if(!first&&!WearsSuit(a.Id))
+            // The back emblem on the chest's model bone, glowing as the core does (under the robot armour's back plate: none).
+            if(!first&&!WearsArmour(a.Id))
             {
                 var of=body.Binding.Rig.Of;int cv=CapturedRig.Chest<of.Length?of[CapturedRig.Chest]:-1;var chest=cv>=0&&cv<body.Binding.Bones.Length?body.Binding.Bones[cv]:null;
                 if(chest!=null){gearMatrix=chest.localToWorldMatrix*body.Emblem;var e=NativePilotGear.CoreGlow(time,1,time-body.LitAt,a.Id);sourceModels.Queue(NativeSourceModels.GearEmblem,gearMatrix,gearBone,null,layer,camera,Color.white,accent,1,reveal,tint,new Vector4(e,e,e,1),null,flash);}
@@ -785,11 +796,11 @@ namespace ChipArena.UnityConversion
             if(map!=null)wearBlock.SetTexture(TextureId,map);
             r.SetPropertyBlock(wearBlock);
         }
-        // The lift a look's feet piece sets the body's skeleton by (the bake's lift for it against the default shoes'): bare feet
-        // set down onto the floor.
+        // The lift a look's feet piece sets the body's skeleton by (the bake's lift for it against its rest shoes', the concept's:
+        // NativeLook.Concept): bare feet set down onto the floor.
         private static float VisualLiftOf(string look)
         {
-            var d=VisualLookData();if(d==null)return 0;string feet=NativeLook.Of(look,NativeLook.Feet),first=NativeLook.Ids[NativeLook.SlotIndex(NativeLook.Feet)][0];float worn=0,rest=0;
+            var d=VisualLookData();if(d==null)return 0;string feet=NativeLook.Of(look,NativeLook.Feet),first=NativeLook.Of(NativeLook.Concept,NativeLook.Feet);float worn=0,rest=0;
             foreach(var p in d.pieces){if(p==null||p.slot!=NativeLook.Feet)continue;if(p.id==feet)worn=p.lift;if(p.id==first)rest=p.lift;}
             return Mathf.Clamp(worn-rest,-.05f,.05f);
         }
@@ -884,7 +895,7 @@ namespace ChipArena.UnityConversion
         private void VisualViewRestore()
         {
             if(viewBody==null||!viewBody.Moved||viewRig==null)return;
-            var bone=viewRig.Bones[CapturedRig.LHand];bone.localPosition=viewBody.HandPosition[0];bone.localRotation=viewBody.HandRotation[0];
+            var bone=viewRig.Bones[CapturedRig.LHand];bone.localPosition=viewBody.HandPosition[0];bone.localRotation=viewBody.HandRotation[0];bone.localScale=viewBody.LeftScale;
             var right=viewRig.Bones[CapturedRig.RHand];right.localPosition=viewBody.HandPosition[1];right.localRotation=viewBody.HandRotation[1];right.localScale=viewBody.RightScale;viewBody.Moved=false;
         }
         // RenderFirstPerson, once the view rig is placed (aimed, swayed, chip-select layered): pose and place the view body; false
@@ -904,17 +915,29 @@ namespace ChipArena.UnityConversion
             viewBody.Binding.Apply(pose,grasp,false,false);
             if(viewBody.Accent!=a.AccentColor)VisualAccent(viewBody,a.AccentColor);
             if(!viewBody.Root.activeSelf)viewBody.Root.SetActive(true);
-            // The body moves (rigidly) so its right weapon frame lands on the view rig's right hand, where the weapon draws.
-            var root=viewBody.Root.transform;var hand=view.Bones[CapturedRig.RHand];float s=root.lossyScale.x;
+            // The body moves (rigidly) so its right weapon frame lands on the view rig's right hand, where the weapon draws; with a
+            // life-size model in hand, the body, both hands and what draws on them are larger about that frame (ModelView).
+            float enlarge=held!=null?NativeFirstPersonPose.ModelScale(VisualViewGun(a)):1;
+            var root=viewBody.Root.transform;root.localScale=Vector3.one*enlarge;var hand=view.Bones[CapturedRig.RHand];float s=root.lossyScale.x;
             viewBody.Binding.WeaponFrame(pose,out var rp,out var rq);var turn=hand.rotation*Quaternion.Inverse(rq);
             root.SetPositionAndRotation(hand.position-turn*(rp*s),turn);
             viewBody.Binding.LeftWeaponFrame(pose,out var lp,out var lq);var left=view.Bones[CapturedRig.LHand];
-            viewBody.HandPosition[0]=left.localPosition;viewBody.HandRotation[0]=left.localRotation;
-            left.SetPositionAndRotation(root.TransformPoint(lp),root.rotation*lq);
+            viewBody.HandPosition[0]=left.localPosition;viewBody.HandRotation[0]=left.localRotation;viewBody.LeftScale=left.localScale;
+            left.SetPositionAndRotation(root.TransformPoint(lp),root.rotation*lq);left.localScale=viewBody.LeftScale*enlarge;
             // The right hand on the model's fitted frame (VisualWeaponFit), for what draws there.
-            viewBody.HandPosition[1]=hand.localPosition;viewBody.HandRotation[1]=hand.localRotation;viewBody.RightScale=hand.localScale;VisualWeaponFit(hand,held);
+            viewBody.HandPosition[1]=hand.localPosition;viewBody.HandRotation[1]=hand.localRotation;viewBody.RightScale=hand.localScale;hand.localScale=viewBody.RightScale*enlarge;VisualWeaponFit(hand,held);
             viewBody.Moved=true;
             return true;
+        }
+        // A gun's view model (not the bow): ModelView, its sights and its lift (NativeFirstPersonPose).
+        private static bool VisualViewGun(Actor a)=>GunRules.Ranged(a.Weapon)&&!NativeBowWire.Is(a.SourceSpec);
+        // RenderFirstPerson, before the view rig is placed: the hold's rise (camera frame) while the view body holds a model (as
+        // it did last frame; none before it is made, and none for the voxel arms or a scope).
+        private Vector3 VisualViewLift(Actor a,bool magic,bool fighter)
+        {
+            if(viewBody?.Root==null||viewBody.PosedFrame<Time.frameCount-1||ScopeActive||VisualWeaponFor(viewBody,a)==null)return Vector3.zero;
+            bool gun=VisualViewGun(a);
+            return CapturedAnimation.Vec(NativeFirstPersonPose.ModelLift(gun,a.Weapon==WeaponId.Pistol,!gun&&!magic&&!fighter&&!NativeBowWire.Is(a.SourceSpec)));
         }
         private VisualBody CreateViewBody(CapturedAnimation.Player view)
         {
@@ -967,7 +990,7 @@ namespace ChipArena.UnityConversion
         // pinned one flattened by the smash's overlay). A swarm's collapse shrinks it; the soul and frost looks are its own
         // (VisualCorpseLook). It wears its hat (VisualCorpseHat). It hides while the voxel body would be under half opacity and
         // goes with its corpse.
-        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public int Head=-2;
+        private sealed class VisualCorpse{public GameObject Root;public Transform[] Bones;public int[] Part;public Matrix4x4[] Bind;public int Frame=-1;public Renderer[] All;public float Dissolve=-1;public Color Edge;public List<Mesh> Owned;public int Look;public string LookHex;public int Head=-2;
             // A split body's cut (both halves share it; the first half owns its texture), whether it wears the Sheldon hood, and its
             // skeleton (NativeVisualSkeletonPresentation.cs).
             public CutJob Cut;public Texture2D CutTexture;public bool Hood;public Renderer Skeleton;
@@ -1506,13 +1529,19 @@ namespace ChipArena.UnityConversion
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
                 if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
-                corpseFade=alpha;VisualSuit(c.Root,corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);
             }
             // A split corpse keeps the robot's helmet on the half that holds its head (its hair is hidden under it).
             else if(c.Look==0&&!c.Hood&&(corpse.Twin!=null||corpse.Host!=null)&&!corpse.IsCrushed(CapturedRig.Head)&&corpse.Death!=null&&WearsHelm(corpse.Death.id)&&VisualCorpseHead(corpse))
             {
                 if(c.Head==-2)c.Head=Array.FindIndex(c.Bones,b=>b!=null&&b.name=="head");
                 if(c.Head>=0){corpseFade=alpha;VisualFaceGear(c.Bones[c.Head],corpse.Death.id,corpse.Death.actor?.BodyColor,corpse.Death.actor?.AccentColor,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0);}
+            }
+            // The robot pieces' plates stay on the dead body (owner 2026-11-01: "Death is removing suits"): whole, split (each half its
+            // side of the cut), crushed (the head's go) and under Frostbreak (in the ice's colour); not through Soul Drift's ghost.
+            if(c.Look!=1&&corpse.Death!=null)
+            {
+                string body=c.Look==2?c.LookHex:corpse.Death.actor?.BodyColor,accent=c.Look==2?c.LookHex:corpse.Death.actor?.AccentColor;
+                corpseFade=alpha;VisualSuit(c.Root,corpse.Death.id,body,accent,0,null,alpha<1?corpseFadeOf??=_=>corpseFade:null,null,0,VisualCorpseSuit(corpse));
             }
             return true;
         }
@@ -1546,7 +1575,7 @@ namespace ChipArena.UnityConversion
                 foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);lookBlock.SetVector(VisualEchoTint,new Vector4(colour.r,colour.g,colour.b,opacity*VisualEchoShare));r.SetPropertyBlock(lookBlock);}
                 return VisualCorpseShown(corpse,1);
             }
-            if(c.Look!=2){foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);foreach(int id in BodyColours)lookBlock.SetColor(id,colour);lookBlock.SetFloat(AccentGlowId,0);r.SetPropertyBlock(lookBlock);}c.Look=2;}
+            if(c.Look!=2){foreach(var r in c.All){if(r==null)continue;r.GetPropertyBlock(lookBlock);foreach(int id in BodyColours)lookBlock.SetColor(id,colour);lookBlock.SetFloat(AccentGlowId,0);r.SetPropertyBlock(lookBlock);}c.Look=2;c.LookHex="#"+ColorUtility.ToHtmlStringRGB(colour);}
             return VisualCorpseShown(corpse,opacity);
         }
         // A dead body's dissolve (0 whole to 1 gone; NativeVisualBodyFx.cginc DissolveFront) on its renderers, written when it moves.

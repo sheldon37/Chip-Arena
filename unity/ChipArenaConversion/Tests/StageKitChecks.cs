@@ -90,8 +90,11 @@ namespace ChipArena.UnityConversion
             ("harbor-freighter-03a-loaded",-12.712f,-7.184f,-79.22f,12.712f,32.619f,98.909f),
             ("harbor-tugboat-01a",-5.63f,-3.211f,-19.55f,5.718f,22.5f,16.629f),
             ("harbor-tugboat-03a",-5.63f,-3.211f,-19.55f,5.718f,12.6f,16.629f),
-            ("harbor-metal-structure-kit-building-05a",-11.0f,0.0f,-22.3f,9.686f,18.726f,22.3f)};
-        private static NativePackBank.Bank Synthetic(Dictionary<string,string> groups)
+            ("harbor-metal-structure-kit-building-05a",-11.0f,0.0f,-22.3f,9.686f,18.726f,22.3f),
+            ("harbor-liquid-tank-03a",-1.66f,0.0f,-1.72f,1.71f,4.0f,2.0f),("harbor-liquid-tank-03b",-1.66f,0.0f,-1.72f,1.71f,4.0f,2.0f),("harbor-liquid-tank-03c",-1.66f,0.0f,-1.72f,1.71f,4.0f,2.0f),
+            ("harbor-brick-pile-01a",-0.5f,0.0f,-0.51f,0.49f,1.0f,0.51f),("harbor-brick-pile-01b",-0.5f,0.0f,-0.51f,0.49f,1.0f,0.51f),("harbor-brick-pile-02a",-0.49f,0.0f,-0.5f,0.49f,1.0f,0.5f),("harbor-brick-pile-02b",-0.49f,0.0f,-0.5f,0.49f,1.0f,0.5f),
+            ("harbor-concrete-tetrapod-01a",-1.53f,-1.28f,-2.26f,2.48f,2.5f,2.27f),("harbor-concrete-tetrapod-01b",-1.53f,-1.28f,-2.26f,2.48f,2.5f,2.27f)};
+        internal static NativePackBank.Bank Synthetic(Dictionary<string,string> groups)
         {
             var bank=new NativePackBank.Bank();bank.Textures.Add(new NativePackBank.Texture{Name="syn-atlas"});
             bank.Materials.Add(new NativePackBank.Material{Name="syn/Atlas",Albedo=0,Emission=-1,Color=Vector4.One});bank.Materials.Add(new NativePackBank.Material{Name="syn/Lights",Albedo=0,Emission=0,Color=Vector4.One,EmissionColor=new Vector3(1.5f)});
@@ -112,7 +115,7 @@ namespace ChipArena.UnityConversion
             return true;
         }
         // Every dressed block: nothing proud of the box, the box's sides and top reached by the pieces within the gap rule, the base on the floor.
-        private static void Fits(PackPlan plan,ContentMap map,NativePackBank.Bank bank,string label)
+        internal static void Fits(PackPlan plan,ContentMap map,NativePackBank.Bank bank,string label)
         {
             foreach(var d in plan.ById.Values)
             {
@@ -144,7 +147,7 @@ namespace ChipArena.UnityConversion
                 &&Throws(()=>NativePackDressing.Validate(new PackDressingSet{schema=1,kits=Array.Empty<PackKit>(),maps=new[]{new PackMapDressing{map="m",rules=new[]{new PackRule{block="b",kit="none"}}}}})),"a malformed table is refused");
 
             // 2. The plans against the synthetic bank: the expected blocks, inside their colliders, deterministic and varied.
-            var bank=Synthetic(groups);var expected=new Dictionary<string,int>{["factory"]=16,["expedition-foundry"]=5,["expedition-city"]=20,["expedition-transit"]=0};
+            var bank=Synthetic(groups);var expected=new Dictionary<string,int>{["factory"]=16,["expedition-foundry"]=5,["expedition-city"]=20,["expedition-transit"]=0,["breakwater"]=56,["harbor"]=35,["skyframe"]=34,["rig"]=8,["polar"]=24};
             foreach(var e in set.maps)
             {
                 var map=maps.Single(m=>m.id==e.map);var plan=NativePackDressing.Plan(set,map,bank);Check(plan!=null&&plan.Map==map.id&&plan.Glow==e.glow,e.map+": a plan");
@@ -188,7 +191,7 @@ namespace ChipArena.UnityConversion
                 foreach(var p in scene.Props){NativePackDressing.Bounds(bank.Props[p.Prop],p.World,out var lo,out var hi);Check(!NativePackScenery.Enters(scene,lo.X,hi.X,lo.Z,hi.Z),e.map+": "+bank.Props[p.Prop].Name+" stays outside the arena");}
                 foreach(var g in scene.Ground)for(int i=0;i+2<g.Positions.Length;i+=3)Check(g.Positions[i+1]<=.3f||g.Positions[i]<=scene.MinX+.02||g.Positions[i]>=scene.MaxX-.02||g.Positions[i+2]<=scene.MinZ+.02||g.Positions[i+2]>=scene.MaxZ-.02,e.map+": the yard's ground stays outside the arena");
                 foreach(var b in map.blocks)Check(b.pos.x>=scene.MinX&&b.pos.x<=scene.MaxX&&b.pos.z>=scene.MinZ&&b.pos.z<=scene.MaxZ,e.map+": the keep-out holds every block");
-                Check(scene.Props.Any(p=>bank.Props[p.Prop].Group=="crane-sts")||e.map=="expedition-transit",e.map+": ship-to-shore cranes");
+                Check(scene.Props.Any(p=>bank.Props[p.Prop].Group=="crane-sts")||e.map=="expedition-transit"||e.map=="polar",e.map+": ship-to-shore cranes");
                 var baked=NativePackScenery.Bake(bank,scene.Props);int verts=scene.Props.Sum(p=>bank.Props[p.Prop].Parts.Sum(q=>bank.Meshes[q.Mesh].Positions.Length));
                 Check(baked.Sum(m=>m.Vertices)==verts&&baked.All(m=>m.Indices.All(i=>i>=0&&i<m.Vertices)&&m.Indices.Length%3==0),e.map+": the baked yard meshes hold every part");
             }

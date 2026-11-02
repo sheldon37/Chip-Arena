@@ -15,11 +15,21 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,bool> expeditionNavClear=new Dictionary<string,bool>();
         private readonly HashSet<string> expeditionDeaths=new HashSet<string>();
         private int expeditionZoneWave;private string expeditionBoss;private int expeditionEconomySerial;private int expeditionSpawned;private float expeditionSpawnAt;
+        public ExpeditionRunBundle GeneratedRun {get;set;}
         public ExpeditionLayout LoadExpeditionM1Layout(string json,NativePveContent horde)
         {
             string probeMap=null;
             void ProbeMap(string id){if(probeMap==id)return;ExpeditionMap(id);probeMap=id;}
             var looks=JsonUtility.FromJson<MapLookSet>(Resources.Load<TextAsset>("MapLooks").text);
+            if(GeneratedRun!=null)
+            {
+                var layout=GeneratedRun.Layout;
+                foreach(var area in layout.areas)if(!looks.maps.Any(l=>l.look==Content.Map(area.map).look))throw new InvalidOperationException("Missing generated run look.");
+                NativeExpeditionLayout.ValidateGeometry(layout,Content,horde,
+                    (id,p,r,h)=>{ProbeMap(id);return ExpeditionSupported(p,r,h);},
+                    (id,a,b,r,h)=>{ProbeMap(id);return ExpeditionReachable(a,b,r,h);});
+                return layout;
+            }
             return NativeExpeditionLayout.Load(_=>json,Content,horde,id=>looks.maps.Any(l=>l.look==id),
                 (id,p,r,h)=>{ProbeMap(id);if(!ExpeditionSupported(p,r,h))throw new InvalidOperationException($"Expedition placement blocked: {id} ({p.x}, {p.y}, {p.z}), radius {r}, height {h}.");return true;},
                 (id,a,b,r,h)=>{ProbeMap(id);if(!ExpeditionReachable(a,b,r,h))throw new InvalidOperationException($"Expedition route blocked: {id} ({a.x}, {a.y}, {a.z}) to ({b.x}, {b.y}, {b.z}), radius {r}.");return true;});

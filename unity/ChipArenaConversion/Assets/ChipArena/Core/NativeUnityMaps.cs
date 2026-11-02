@@ -28,12 +28,23 @@ namespace ChipArena.UnityConversion
         public const string DefaultArena="brickfall";
         // Only authored Unity maps enter this runtime; exported Electron maps remain source fixtures.
         public const string CatalogPolicy="unity-authored-only-v1";
+        // Shared by the native build gate and managed loader regressions. The shipped catalogue
+        // includes the five M1 arenas and Training Room; generated run maps are added later.
+        public static void ValidateShippedCatalog(ConversionContent content)
+        {
+            var expected=new[]{"breakwater","brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","siren","skyframe","training"};
+            var maps=content?.maps;
+            if(maps==null||maps.Any(m=>m==null||!m.unity)||!maps.Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(expected))
+                throw new InvalidOperationException("Shipped Unity catalogue must contain exactly the fourteen authored maps (including M1 arenas and Training Room).");
+            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"brickfall","cybercity","factory"}))
+                throw new InvalidOperationException("Shipped Unity random rotation differs.");
+        }
         public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;
         public static string RandomArena(ConversionContent c,uint seed)
         {var maps=c.maps.Where(m=>ArenaSelectable(m)&&m.rotation).ToArray();return maps.Length==0?DefaultArena:maps[(int)(seed%(uint)maps.Length)].id;}
         public static bool WardInstance(string id)=>id=="siren"||id=="expedition-ward-zero";
         public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-foundry"||id=="expedition-ironworks";
-        public static bool ArenaSelectable(ContentMap map)=>map!=null&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
+        public static bool ArenaSelectable(ContentMap map)=>map!=null&&map.id!="training"&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
         public static bool Finite(V3 p)=>MathUtil.Finite(p.x)&&MathUtil.Finite(p.y)&&MathUtil.Finite(p.z);
         public static bool Box(V3 p,V3 size)=>Finite(p)&&Finite(size)&&size.x>0&&size.y>0&&size.z>0;
         public static string Revision(string text) { using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-","").ToLowerInvariant(); }
@@ -67,7 +78,9 @@ namespace ChipArena.UnityConversion
         }
         public static MapSpawn Spawn(ConversionContent c,ContentMap m,IReadOnlyList<NativeSeat> seats,int index,bool teams)
         {
+            if(m.id=="training"&&seats[index].id>=1000){var p=m.trainingPads[seats[index].id-1000];return new MapSpawn{pos=p.pos,yaw=p.yaw};}
             if(m.spawns==null){var p=c.spawns[Math.Min(index,c.spawns.Length-1)];return new MapSpawn{pos=p,yaw=(float)(Math.Atan2(-p.x,-p.z)*180/Math.PI)};}
+            if(m.id=="training")return m.spawns.ffa[Math.Min(index,7)];
             var groups=seats.GroupBy(s=>s.team).OrderBy(g=>g.Key).ToArray();
             if(teams&&groups.Length==2&&groups.All(g=>g.Count()<=4))
             {int side=groups[0].Key==seats[index].team?0:1;int seat=seats.Take(index).Count(s=>s.team==seats[index].team);return m.spawns.teams.First(t=>t.side==side).points[seat];}
@@ -95,7 +108,7 @@ namespace ChipArena.UnityConversion
             foreach(var x in m.blocks)Need(!string.IsNullOrEmpty(x.id)&&Box(x.pos,x.size)&&new[]{"static","structural","masonry","carried","cover"}.Contains(x.role)&&MathUtil.Finite(x.hp)&&(!new[]{"structural","masonry","cover"}.Contains(x.role)||x.hp>0),"block geometry/role/hp "+x.id);
             foreach(var x in m.blocks)Need(x.stages==null||x.stages.Length==0||x.stages.Length==2&&MathUtil.Finite(x.stages[0])&&MathUtil.Finite(x.stages[1])&&x.stages[0]<1&&x.stages[0]>x.stages[1]&&x.stages[1]>0,"block stage thresholds "+x.id);
             foreach(var x in m.pilotBlocks??Array.Empty<MapPilotBlock>())Need(!string.IsNullOrEmpty(x.id)&&Finite(x.center)&&Finite(x.size)&&x.size.x>0&&x.size.z>0&&MathUtil.Finite(x.bottom),"pilot exclusion");
-            NativeMapRamps.Validate(m);NativeStructureRules.Validate(m);NativeStageHazards.Validate(m);
+            NativeTrainingRules.Validate(m);NativeMapRamps.Validate(m);NativeStructureRules.Validate(m);NativeStageHazards.Validate(m);
             Need(m.nav?.nodes!=null&&m.nav.links!=null,"nav");var nodes=new HashSet<string>(m.nav.nodes.Select(n=>n.id));Need(nodes.Count==m.nav.nodes.Length,"nav node IDs");
             Need(m.nav.links.Select(l=>l.id).Distinct().Count()==m.nav.links.Length,"nav link IDs");
             var segments=new HashSet<string>((m.segments??Array.Empty<StructureDefinition>()).Select(s=>s.id));var links=new HashSet<string>(m.nav.links.Select(l=>l.id));

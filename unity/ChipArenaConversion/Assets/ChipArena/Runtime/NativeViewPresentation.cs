@@ -66,6 +66,8 @@ namespace ChipArena.UnityConversion
             Vector3 offset=bow?NativeBowView(true):gun?CapturedAnimation.Vec(NativeViewBase.Gun):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):CapturedAnimation.Vec(NativeViewBase.IsFighter(shown.SourceSpec)?NativeViewBase.Fighter:NativeViewBase.Melee);
             float ads=aimMotion.Sample(time,gun&&AimHeld);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
+            // The visual body's view model holds its weapon higher (NativeFirstPersonPose.ModelLift).
+            offset+=VisualViewLift(shown,magic,NativeViewBase.IsFighter(shown.SourceSpec));
             float scale=bow?NativeBowPose.ViewScale:gun?NativeAimPresentation.Scale(ViewCamera.fieldOfView,ads):NativeFirstPersonPose.Scale;
             offset+=HitViewDip(source,time,out float dip);
             viewRig.Root.transform.SetPositionAndRotation(ViewCamera.transform.TransformPoint(offset),ViewCamera.transform.rotation*Quaternion.Euler(dip,0,0));

@@ -107,11 +107,11 @@ namespace ChipArena.UnityConversion
             Check(NativeRobotHelm.HalfTop(MathF.PI*20/180)<.044f&&NativeRobotHelm.HalfFoot(0)<-.055f&&NativeRobotHelm.HalfEar.X-NativeRobotHelm.EarHalf.X>.108f,"under the eyes, under the chin, its ear modules clear of the ears");
             // The picks: the face entry's two more keys, no longer than the visor's (the longest map holds).
             // The helmet is the default (owner 2026-10-30: "I think we will make the default outfit the new designed armor and that
-            // full helmet"): an empty map wears it, with the robot suit.
+            // full helmet"): an empty map wears it, with the robot's clothing pieces (Core NativeLook's defaults).
             Check(NativeWeaponSkins.FaceKeys.SequenceEqual(new[]{"helm","half","both","visor","mask","none"})&&NativeWeaponSkins.FaceKeys.Skip(1).All(k=>k.Length<="visor".Length)
-                &&NativeWeaponSkins.Index("",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceHelm&&NativeWeaponSkins.Index("",NativeWeaponSkins.SuitEntry)==NativeWeaponSkins.SuitRobot
-                &&NativeWeaponSkins.Normalize("face:half,body:prototype")=="body:prototype,face:half"&&NativeWeaponSkins.Normalize("face:helm,suit:robot")==""&&NativeWeaponSkins.Index("face:half",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceHalf
-                &&NativeWeaponSkins.Index("face:helmet",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceHelm&&NativeWeaponSkins.With("",NativeWeaponSkins.FaceEntry,"none")=="face:none","the helmet the default face gear (with the robot suit), the half mask and no mask picked in the face entry");
+                &&NativeWeaponSkins.Index("",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceHelm&&NativeRobotSuit.Shown("",true)!=0
+                &&NativeWeaponSkins.Normalize("face:half,body:prototype")=="body:prototype,face:half"&&NativeWeaponSkins.Normalize("face:helm")==""&&NativeWeaponSkins.Index("face:half",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceHalf
+                &&NativeWeaponSkins.Index("face:helmet",NativeWeaponSkins.FaceEntry)==NativeWeaponSkins.FaceHelm&&NativeWeaponSkins.With("",NativeWeaponSkins.FaceEntry,"none")=="face:none","the helmet the default face gear (with the robot's pieces), the half mask and no mask picked in the face entry");
             // The runtime.
             string Src(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena","Runtime",f)).Replace("\r\n","\n");
             string pres=Src("NativeRobotHelmPresentation.cs"),body=Src("NativeVisualBodyPresentation.cs"),bank=Src("NativeSourceModels.cs"),suit=Src("NativeRobotSuitPresentation.cs"),locker=Src("NativeLockerSkinsUI.cs");
@@ -123,8 +123,8 @@ namespace ChipArena.UnityConversion
             Check(body.Contains("var frame=helm?head.localToWorldMatrix*HelmHatFit(hat):head.localToWorldMatrix;")&&body.Contains("if(head!=null)return VisualHatFit(head,hat,body.Helm);")&&body.Contains("corpseHat=VisualHatFit(c.Bones[c.Head],hat,!c.Hood&&WearsHelm(death.id));"),"a hat on the helmet");
             Check(body.Contains("&&WearsHelm(corpse.Death.id)&&VisualCorpseHead(corpse))")&&body.Contains("VisualSceneHood(s,death,alpha);VisualSceneFace(s,death,alpha);")&&body.Contains("VisualSceneHood(s,death,alpha);if(visible(CapturedRig.Head))VisualSceneFace(s,death,alpha);"),
                 "the helmet on a split corpse's head, the face gear on death scenes and revives");
-            Check(suit.Contains("HelmEars(id)?SuitNoEars:null")&&pres.Contains("private int FaceGearOf(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);"),"the suit's ear modules left off under either; the face pick alone, whatever the body skin");
-            Check(Src("NativeWeaponSkinPresentation.cs").Contains("if(id==RooftopIdTop)return rooftopSkins;if(id<RooftopIdTop&&id>RooftopIdTop-8)return RooftopCrowdSkins;")&&Src("NativeWeaponSkinPresentation.cs").Contains("private const string RooftopCrowdSkins=\"face:none,suit:none\";"),
+            Check(suit.Contains("private int SuitShown(int id)=>NativeRobotSuit.Shown(VisualOutfitOf(id),HelmEars(id));")&&NativeRobotSuit.Shown("",true)==NativeRobotSuit.Shown("",false)-(1<<NativeRobotSuit.Head)&&pres.Contains("private int FaceGearOf(int id)=>NativeWeaponSkins.Index(SeatWeaponSkins(id),NativeWeaponSkins.FaceEntry);"),"the suit's ear modules left off under either; the face pick alone, whatever the body skin");
+            Check(Src("NativeWeaponSkinPresentation.cs").Contains("if(id==RooftopIdTop)return rooftopSkins;if(id<RooftopIdTop&&id>RooftopIdTop-8)return RooftopCrowdSkins;")&&Src("NativeWeaponSkinPresentation.cs").Contains("private const string RooftopCrowdSkins=\"face:none\";"),
                 "the menu rooftop's crowd keeps its own faces and clothes");
             Check(locker.Contains("LkMaskLabels={\"Helmet\",\"Half mask\",\"Mask + visor\",\"Visor\",\"Mask\",\"No mask\"};")&&locker.Contains("if(gear!=NativeWeaponSkins.FaceHelm&&gear!=NativeWeaponSkins.FaceHalf)return;"),"the Locker's MASKS row offers both, with their thumbnails");
             Console.WriteLine("PASS robot helmet ("+count+" checks)");

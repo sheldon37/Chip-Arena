@@ -172,22 +172,23 @@ namespace ChipArena.UnityConversion
             var s=new FactoryHazardState{Zone=-1,From=-1,ImpactAt=double.NaN,Attached=true};bool on=Cycle(h,clock,out int n,out double u);s.Cycle=n;
             CraneTimes(h,out double T,out double W,out double F,out double D,out double G,out double H);double carry=h.carry;
             int zone=on?ZoneOf(h,round,n):-1,from=on&&n>0?ZoneOf(h,round,n-1):-1;s.Zone=zone;s.From=from;ZoneXZ(h,zone,out double zx,out double zz);ZoneXZ(h,from,out double fx,out double fz);
+            double floor=zone>=0?h.zones[zone].center.y:0;
             s.LoadY=carry;s.X=zx;s.Z=zz;
             if(!on){s.Phase=Parked;Park(h,out s.X,out s.Z);}
             else if(u<T){s.Phase=Travelling;double q=Smooth(u/T);s.X=fx+(zx-fx)*q;s.Z=fz+(zz-fz)*q;s.Sway=SwayMax*Math.Sin(Math.PI*u/T)*(fx==zx&&fz==zz?0:1);}
             else if(u<T+W){s.Phase=Warning;s.Warn=(u-T)/W;s.Sway=SwayMax*.6*Math.Sin(u*4.1)*Math.Exp(-(u-T)*1.2);}
-            else if(u<T+W+F){s.Phase=Falling;s.Warn=1;s.Attached=false;double q=(u-T-W)/F;s.LoadY=carry*(1-q*q);}
-            else if(u<T+W+F+D){s.Phase=Landed;s.Landed=true;s.Attached=false;s.LoadY=0;}
-            else if(u<T+W+F+D+G){s.Phase=Regrip;s.Landed=true;s.Attached=false;s.LoadY=0;}
-            else if(u<T+W+F+D+G+H){s.Phase=Hoisting;s.LoadY=carry*Smooth((u-T-W-F-D-G)/H);}
+            else if(u<T+W+F){s.Phase=Falling;s.Warn=1;s.Attached=false;double q=(u-T-W)/F;s.LoadY=floor+(carry-floor)*(1-q*q);}
+            else if(u<T+W+F+D){s.Phase=Landed;s.Landed=true;s.Attached=false;s.LoadY=floor;}
+            else if(u<T+W+F+D+G){s.Phase=Regrip;s.Landed=true;s.Attached=false;s.LoadY=floor;}
+            else if(u<T+W+F+D+G+H){s.Phase=Hoisting;s.LoadY=floor+(carry-floor)*Smooth((u-T-W-F-D-G)/H);}
             else s.Phase=Parked;
             if(on){s.ImpactAt=clock-u+T+W+F;s.Age=u;}
             // The hook rides the load's top plus the gap; released, it stays up, then lowers to the landed load and regrips it.
             double top=h.size.y,up=carry+top+HookGap;
             if(s.Phase==Falling||s.Phase==Landed)s.HookY=up;
-            else if(s.Phase==Regrip)s.HookY=up+(top+HookGap-up)*Smooth((u-T-W-F-D)/G/.75);
+            else if(s.Phase==Regrip)s.HookY=up+(floor+top+HookGap-up)*Smooth((u-T-W-F-D)/G/.75);
             else s.HookY=s.LoadY+top+HookGap;
-            s.Lethal=h.lethal&&zone>=0&&(s.Phase==Falling&&s.LoadY<=h.zones[zone].size.y||s.Phase==Landed&&u-(T+W+F)<ImpactGrace);
+            s.Lethal=h.lethal&&zone>=0&&(s.Phase==Falling&&s.LoadY<=floor+h.zones[zone].size.y||s.Phase==Landed&&u-(T+W+F)<ImpactGrace);
             var zv=zone>=0?h.zones[zone]:null;s.Center=new V3((float)s.X,(float)s.LoadY,(float)s.Z);
             s.BoxSize=zv!=null?zv.size:new V3();s.BoxCenter=zv!=null?new V3(zv.center.x,zv.center.y+zv.size.y/2,zv.center.z):s.Center;return s;
         }
@@ -212,7 +213,7 @@ namespace ChipArena.UnityConversion
                 for(double k=Math.Max(0,first);k<=last;k++)
                 {
                     double c0=origin+k*h.period;int n=(int)k;
-                    void Add(int kind,double at){if(at>from&&at<=to&&count<into.Length){var st=State(h,round,at+1e-6);into[count++]=new FactoryCue{Kind=kind,Hazard=i,Cycle=n,Time=at,At=kind==CueImpact||kind==CueRelease?new V3((float)st.X,0,(float)st.Z):st.Center};}}
+                    void Add(int kind,double at){if(at>from&&at<=to&&count<into.Length){var st=State(h,round,at+1e-6);into[count++]=new FactoryCue{Kind=kind,Hazard=i,Cycle=n,Time=at,At=kind==CueImpact||kind==CueRelease?new V3((float)st.X,st.Zone>=0?h.zones[st.Zone].center.y:0,(float)st.Z):st.Center};}}
                     switch(h.kind)
                     {
                         case SawSlot:Add(CueSpinUp,c0);Add(CueEmerge,c0+h.warn);for(double g=c0+h.warn+h.rise;g<c0+h.warn+h.rise+h.travel;g+=GrindEvery)Add(CueGrind,g);Add(CueSink,c0+h.warn+h.rise+h.travel);break;
@@ -238,7 +239,7 @@ namespace ChipArena.UnityConversion
                 Need(busy<=h.period+1e-6,"its motion ("+busy+" s) exceeds the period");
                 if(h.kind==SawSlot||h.kind==SawRail){Need(h.radius>0&&h.travel>0&&Math.Abs(h.axis.Length-1)<1e-3,"blade radius, travel or axle");}
                 if(h.kind==SawSlot)Need(h.rise>0,"rise");if(h.kind==Press)Need(h.rise>0&&h.travel>0&&h.size.y>0,"press slam, lift or ram");
-                if(h.kind==Crane)Need(h.zones!=null&&h.zones.Length>0&&h.carry>h.zones[0].size.y&&h.rise>0&&h.hoist>0&&h.size.x>0,"crane zones, carry, fall or hoist");
+                if(h.kind==Crane)Need(h.zones!=null&&h.zones.Length>0&&Array.TrueForAll(h.zones,z=>z!=null&&h.carry>z.center.y+z.size.y)&&h.rise>0&&h.hoist>0&&h.size.x>0,"crane zones, carry, fall or hoist");
             }
         }
     }

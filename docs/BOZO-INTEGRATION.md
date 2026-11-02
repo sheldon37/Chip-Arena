@@ -1983,8 +1983,8 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
     - **The fit:** measured in Unity on the rest body in the under-suit (sweater, skinny jeans, gloves, work boots): the
       torso's outline every 15 degrees at 13 heights, each limb's and the neck's cross-sections. The plates sit about a
       centimetre over them.
-    - **The pick:** the skin map's `suit` entry (`robot`, the default since "The default outfit" below and never written, or
-      `none`). It is set by a SUIT row
+    - **The pick (superseded by "The robot armour as clothing" below):** the skin map's `suit` entry (`robot`, the default
+      since "The default outfit" below and never written, or `none`). It is set by a SUIT row
       under the Locker's OUTFIT slots, and is independent of the masks and body skins. Worn, its under-suit takes the clothes'
       place (`VisualLookOf`); the pilot's hair and skin tone stay. The live body, the draft's seat and a corpse wear it; the
       first-person arms wear the under-suit's sleeves. The back emblem stays under the back plate. Classic and older clients
@@ -2025,7 +2025,8 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
     - **On the model the `face` pick alone decides** (`FaceGearOf`), whatever the body skin. The body skin still picks the
       voxel bodies in Classic, whose defaults are unchanged. The Locker's MASKS row lists the face keys in order (Helmet
       first, No mask last) and no longer puts on the Prototype body.
-    - **Suit:** the `suit` default is `robot`; "None" is written as `suit:none`.
+    - **Suit:** the `suit` default is `robot`; "None" is written as `suit:none` (superseded: the suit is four clothing pieces
+      since "The robot armour as clothing" below).
     - **Who gets it:** every pilot without picks, including bots, the draft and a fresh profile. A pilot who had picked
       "Mask + visor" (the old default, never written) now wears the helmet until they pick again.
     - The menu rooftop's crowd keeps its own faces and clothes (`face:none,suit:none`); the rooftop's own pilot wears its
@@ -2041,6 +2042,44 @@ Can we begin utizling those in the game as well? For zombies as well. Characters
     - Unity's Jobs IL post-processor (Mono.Cecil) cannot read an Assembly-CSharp PDB with exactly 65,535 local variables
       ("ILPostProcessor has thrown ... ArgumentOutOfRangeException ... ReadLocalScope"). This change briefly landed there;
       two named locals took it to 65,537. Any later change that lands on 65,535 needs the same nudge.
+  - **The robot armour as clothing (2026-11-01, `claude/robot-clothes`; owner: "It seems the clothes no longer show with this
+    new skin. Can we make the armor portion into clothing? Like separate them like we have other clothes currently."):**
+    the suit's plates are four clothing pieces in the outfit's slots (`Core/NativeLook`), each the slot's first id and
+    default, so any of them goes with any other piece.
+    - **The pieces:**
+      - Top, "Robot armour" (`robot-armour`): the sweater with the chest and back plates, collar, pauldrons, vambraces and
+        ear modules.
+      - Bottoms, "Robot legs" (`robot-legs`): skinny jeans with the belt, thigh plates, knee caps and shin guards.
+      - Hands, "Robot gauntlets" (`robot-gauntlets`): gloves with a plate on the back of each hand (a dark knuckle guard
+        with four studs, a light strip). New; about 1,400 triangles.
+      - Shoes, "Robot boots" (`robot-boots`): work boots with a toe cap round the front of each toe (a light strip across
+        its back) and a heel guard (a light strip along its top). New; about 2,600 triangles. The whole set is about 16,300.
+    - **How a piece is worn:** the body is dressed in each robot piece's garment (`NativeRobotSuit.Dress`, cached per outfit
+      in `VisualLookOf`), and each slot's plates draw only with its piece (`NativeRobotSuit.Shown`, a bit per bone). The
+      vambraces are left off under arm bands, which wrap the forearms they sit on. The ear modules are still left off under
+      the helmet or half mask. The back emblem hides only under the armour's back plate.
+    - **The new plates' fit:** measured on the rest body's gloves and work boots dumped from Unity. The glove backs (the
+      higher of the left glove and the mirrored right one) are on a grid in the hand's frame, with the plate 3.5 mm over
+      them. The toe cap is a shell over the smallest ellipsoid that holds the boot's front. The heel guard follows the heel's
+      reach per height. The gauntlets ride the hand bones, the toe cap and heel guard the foot bones (the stiff boot's toe
+      follows the foot, not the toes). The boots' plates stay under 7.5 cm, below the khakis' hem; baggy and belted pants
+      tuck into the boots.
+    - **Gone:** the skin map's `suit` entry (a saved `suit:none` is dropped as an unknown entry) and the Locker's SUIT row.
+      The longest skin map is now 309 characters.
+    - **The rooftop crowd** wears the concept's clothes (`NativeLook.Concept`: open hoodie, belted pants, fingerless gloves,
+      mid-tops) and no face gear (`face:none`).
+    - **Defaults moved:** a saved outfit never names its default, so the old defaults (open hoodie, belted pants,
+      fingerless gloves, mid-tops) are now written when picked. A pilot who had them, unsaved, now wears the robot pieces.
+      The feet lift still measures against the bake's rest shoes (the concept's mid-tops).
+    - **Older clients** (the last test build) read a missing `suit` entry as the full robot suit, so they draw it over
+      every new-build pilot who has no robot piece; cosmetic only.
+    - **The account server** (`src/relay/accounts.ts`): `LOOK_SLOTS` still lists the old ids with the old defaults first and
+      drops a pick equal to its default. Until Astra updates it, a signed-in pilot who picks the open hoodie, belted pants,
+      fingerless gloves or mid-tops gets the robot piece back at the next sign-in (the robot pieces, never written, and every
+      other pick survive). The update: `robot-armour`, `robot-legs`, `robot-gauntlets` and `robot-boots` first in `upper`,
+      `lower`, `hands` and `feet`. The `suit` entry asked for earlier is no longer needed.
+    - Checks: `Tests/RobotSuitChecks.cs` (`--suit`), with pins in the visual rig, Locker, helmet, body skin and Cyber Lord
+      checks.
   - **Hats that never drew on the model:** the source-model bank kept one draw list per part and layer, holding the camera
     it was first queued for. The menu rooftop's crowd wears the cap, beanie, antenna, cowboy hat and halo for the menu
     camera, so in a match those five drew only to the camera the menu used (other cameras, portraits and captures showed

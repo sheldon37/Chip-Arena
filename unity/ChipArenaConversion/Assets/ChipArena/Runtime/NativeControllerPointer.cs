@@ -32,6 +32,7 @@ namespace ChipArena.UnityConversion
             var screen=ScreenRect(rect);if(!screen.Contains(point)||!screen.Contains(press))return false;
             consumed=Time.frameCount;GUIUtility.keyboardControl=0;return true;
         }
+        public static bool Button(Rect rect,string text)=>GUI.Button(rect,text)||Click(rect);
         public static bool Button(string text,GUIStyle style,params GUILayoutOption[] options)
         {bool hit=GUILayout.Button(text,style,options);return hit||Click(GUILayoutUtility.GetLastRect());}
         public static bool Toggle(bool value,string text,params GUILayoutOption[] options)=>Toggle(value,text,GUI.skin.toggle,options);

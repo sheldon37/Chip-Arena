@@ -10,6 +10,8 @@ internal static class Program
             ControllerChecks.Run();
             if(args.Length==1&&args[0]=="--controller")return 0;
             CrowdPoseChecks.Run();
+            if(args.Length==1&&args[0]=="--new-stages"){NewStagesChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--training-look"){TrainingLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--crowd-pose")return 0;
             SnapshotChecks.Run();
             TransportBacklogChecks.Run();
@@ -19,6 +21,10 @@ internal static class Program
             if(args.Length==1&&args[0]=="--movement-mods"){MovementModsChecks.Run(ProjectRoot());RoundsCardsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zone-boss-rules"){ZoneBossRulesChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--zone-combat"){ZoneCombatChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-deployment"){ExpeditionDeploymentChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--deploy-presentation"){DeployPresentationChecks.Run();return 0;}
+            if(args.Length==1&&args[0]=="--deploy-models"){DeployModelChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--expedition-handoff"){ExpeditionHandoffChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-split"){ExpeditionSplitChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-fresh"){ExpeditionFreshRunChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-area-wire"){ExpeditionAreaWireChecks.Run();return 0;}
@@ -32,6 +38,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--expedition-view"){ExpeditionChecks.Run();ExpeditionPresentationChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-layout"){ExpeditionLayoutChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-dressing"){ExpeditionDressingChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--generated-districts"){GeneratedDistrictChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-hub"){ExpeditionHubChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-city"){ExpeditionCityChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--map-style"){MapStyleChecks.Run(ProjectRoot());return 0;}
@@ -44,6 +51,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--pack-fx-hits"){PackFxHitsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--pack-fx-blasts"){PackFxBlastsChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--stage-kits"){StageKitChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--skin-tone"){SkinToneChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-models"){ZombieModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-posture"){ZombiePostureChecks.Run(ProjectRoot());ZombieGaitChecks.Run(ProjectRoot());return 0;}
@@ -71,7 +79,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--draft-stage"){foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);foreach(var result in DraftStageChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);DraftBackdropChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
-            ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());DevAbuseChecks.Run();ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
+            ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());DevAbuseChecks.Run();ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);HulkBreachChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);HulkBreachFxChecks.Run(wardRoot);HulkMotionChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
@@ -134,7 +142,7 @@ internal static class Program
             PveSpitterChecks.Run(root);NavSearchChecks.Run(root);WardSimulationChecks.Run(root);HulkBreachChecks.Run(root);InteractionChecks.Run(root);
             SirenDropChecks.Run(root);
             ExpeditionStationVisualChecks.Run(root);ZombieLightChecks.Run(root);
-            FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
+            NewStagesChecks.Run(root);TrainingLookChecks.Run(root);FactoryChecks.Run(root);StageHazardChecks.Run(root);SurfaceChecks.Run(root);
             var options=new System.Text.Json.JsonSerializerOptions{IncludeFields=true};
             var data=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
             FinalKillMatchChecks.Run(data);BowInputChecks.Run(root,data);
@@ -182,7 +190,7 @@ internal static class Program
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             PartyLoadingChecks.Run(root);
             AccountXpChecks.Run(root);AccountXpProgressionChecks.RunChecks(root);
             MoveVisualChecks.Run(root);
@@ -213,6 +221,7 @@ internal static class Program
             PackFxHitsChecks.Run(root);
             PackFxBlastsChecks.Run(root);
             StageKitChecks.Run(root);
+            NewStageLookChecks.Run(root);
             AdvancedLightingChecks.Run(root);
             BrickfallSceneryChecks.Run(root);
             foreach(var result in EventFeedbackChecks.Run(root))Console.WriteLine("PASS "+result);

@@ -1310,9 +1310,22 @@ namespace ChipArena.UnityConversion
             string weapons=R("Runtime/NativeVisualWeaponPresentation.cs"),packWeapons=R("Runtime/NativePackWeaponPresentation.cs");
             int vp=body.IndexOf("private bool VisualViewPose(",StringComparison.Ordinal),vpick=body.IndexOf("var held=viewBody.Held=VisualWeaponFor(viewBody,a);",vp,StringComparison.Ordinal),vgrasp=body.IndexOf("if(held!=null)VisualWeaponGrasp(ref grasp,held);",vp,StringComparison.Ordinal),
                 vapply=body.IndexOf("viewBody.Binding.Apply(pose,grasp,false,false);",vp,StringComparison.Ordinal),vplace=body.IndexOf("root.SetPositionAndRotation(hand.position-turn*(rp*s),turn);",vp,StringComparison.Ordinal),
-                vfit=body.IndexOf("viewBody.HandPosition[1]=hand.localPosition;viewBody.HandRotation[1]=hand.localRotation;viewBody.RightScale=hand.localScale;VisualWeaponFit(hand,held);",vp,StringComparison.Ordinal);
+                vfit=body.IndexOf("viewBody.HandPosition[1]=hand.localPosition;viewBody.HandRotation[1]=hand.localRotation;viewBody.RightScale=hand.localScale;hand.localScale=viewBody.RightScale*enlarge;VisualWeaponFit(hand,held);",vp,StringComparison.Ordinal);
             Check(vp>0&&vpick>vp&&vgrasp>vpick&&vapply>vgrasp&&vplace>vapply&&vfit>vplace,"first person: the view body picks its weapon model and grasps it before it poses; the view hand takes the fitted frame once the body is placed");
             Check(body.Contains("right.localPosition=viewBody.HandPosition[1];right.localRotation=viewBody.HandRotation[1];right.localScale=viewBody.RightScale;viewBody.Moved=false;"),"the view hand comes off the fit before the view rig poses again");
+            // The model's view (owner 2026-11-01: "weapons looks super small"): larger about the right hand's weapon frame with a
+            // model in hand, both view hands and the sight with it, the hold raised for the guns; both hands put back.
+            int venlarge=body.IndexOf("float enlarge=held!=null?NativeFirstPersonPose.ModelScale(VisualViewGun(a)):1;",vp,StringComparison.Ordinal),
+                vroot=body.IndexOf("var root=viewBody.Root.transform;root.localScale=Vector3.one*enlarge;var hand=view.Bones[CapturedRig.RHand];float s=root.lossyScale.x;",vp,StringComparison.Ordinal);
+            Check(venlarge>vapply&&vroot>venlarge&&vplace>vroot&&body.IndexOf("left.SetPositionAndRotation(root.TransformPoint(lp),root.rotation*lq);left.localScale=viewBody.LeftScale*enlarge;",vp,StringComparison.Ordinal)>vplace,
+                "first person: a model in hand draws larger about the right hand's weapon frame, the body placed at that size and both view hands scaled with it");
+            Check(body.Contains("bone.localRotation=viewBody.HandRotation[0];bone.localScale=viewBody.LeftScale;"),"the view rig's left hand gets its own scale back before it poses again");
+            Check(weapons.Contains("rear*=NativeFirstPersonPose.ModelScale(VisualViewGun(a));")&&R("Runtime/NativeViewPresentation.cs").Contains("offset+=VisualViewLift(shown,magic,NativeViewBase.IsFighter(shown.SourceSpec));"),
+                "first person: the sight scales with the model and the view rig's hold rises for it");
+            Check(NativeFirstPersonPose.ModelScale(true)==NativeFirstPersonPose.ModelView&&NativeFirstPersonPose.ModelScale(false)==NativeFirstPersonPose.ModelBlade&&
+                NativeFirstPersonPose.ModelView>NativeFirstPersonPose.ModelBlade&&NativeFirstPersonPose.ModelBlade>1&&NativeFirstPersonPose.ModelView<=2,"first person: guns draw larger than blades, both above life size and at most twice it");
+            Check(NativeFirstPersonPose.ModelLift(true,true,false).Y>NativeFirstPersonPose.ModelLift(true,false,false).Y&&NativeFirstPersonPose.ModelLift(true,false,false).Y>0&&
+                NativeFirstPersonPose.ModelLift(false,false,false)==System.Numerics.Vector3.Zero,"first person: the pistol's hold rises the most, a long gun's less, the bow, staffs and fists none");
             Check(body.Contains("body.Root.name=\"Visual view body\";body.Arena=true;"),"the view body holds the pack bank's weapons too");
             Check(weapons.Contains("private VisualBody VisualHolder(CapturedAnimation.Player rig)=>rig==null?null:rig==viewRig?viewBody:visualBodies.TryGetValue(rig,out var body)?body:null;")
                 &&weapons.Contains("var body=VisualHolder(rig);if(body==null||body.Held==null||body.PosedFrame!=Time.frameCount)return false;")&&packWeapons.Contains("var body=VisualHolder(rig);if(body==null||body.Held==null||!body.Held.Pack"),"the models and the pack bow draw on the view body for the view rig");
@@ -1553,7 +1566,7 @@ namespace ChipArena.UnityConversion
             // dressed when made (the live and first-person bodies, corpses and what is made from them), worn renderers only from
             // then on; a changed outfit makes the body again; the gear's anchors and the device's sleeve follow the top.
             Check(NativeLook.Slots.Length==NativeLook.Ids.Length&&NativeLook.Ids.Length==NativeLook.Labels.Length&&NativeLook.Normalize("")==""&&NativeLook.Normalize("upper:hard-jacket,feet:work-boots,hair:wild")=="hair:wild,upper:hard-jacket,feet:work-boots"
-                &&NativeLook.Normalize("upper:open-hoodie,lower:gold,cape:red")==""&&NativeLook.With("",NativeLook.Hands,"bare")=="hands:bare"&&NativeLook.Index("feet:sneakers",NativeLook.Feet)==2&&NativeLook.Of("",NativeLook.Upper)=="open-hoodie"
+                &&NativeLook.Normalize("upper:robot-armour,lower:gold,cape:red")==""&&NativeLook.With("",NativeLook.Hands,"bare")=="hands:bare"&&NativeLook.Index("feet:sneakers",NativeLook.Feet)==3&&NativeLook.Of("",NativeLook.Upper)=="robot-armour"
                 &&System.Linq.Enumerable.All(NativeLook.Ids,ids=>System.Linq.Enumerable.All(ids,id=>System.Text.RegularExpressions.Regex.IsMatch(id,"^[a-z0-9-]{1,24}$"))),"the outfit map: canonical slot order, defaults omitted, unknown slots and ids dropped, contract ids");
             int longest=0;foreach(var ids in NativeLook.Ids){int m=0;foreach(var id in ids)m=Math.Max(m,id.Length);longest+=m;}
             Check(longest+NativeLook.Slots.Length*8<NativeLook.MaxLength,"the longest outfit map fits the contract's limit");

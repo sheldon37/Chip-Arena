@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
             U.Fill(new Rect(r.x,r.y,r.width,1),U.Hex(0x4b414c,e));float y=r.y+21,x=r.x;
             if(Hosting)
             {
-                float w=Mathf.Min(280,r.width*.4f);if(MenuButton(new Rect(x,y,w,56),"play",prefs.pve?"Start Boss Fight":"Start Match",null,true,server==null&&GuestsReady&&!blocked,e,18,true))RequestStage(prefs.pve?StageLoadKind.Boss:StageLoadKind.Online,StartMatch);x+=w+10;
+                float w=Mathf.Min(280,r.width*.4f);if(MenuButton(new Rect(x,y,w,56),"play",trainingRoom?"Enter Training Room":prefs.pve?"Start Boss Fight":"Start Match",null,true,server==null&&GuestsReady&&!blocked,e,18,true))RequestStage(prefs.pve?StageLoadKind.Boss:StageLoadKind.Online,StartMatch);x+=w+10;
             }
             else
             {
@@ -379,10 +379,15 @@ namespace ChipArena.UnityConversion
             var head=GUILayoutUtility.GetRect(0,RoomHeadingHeight(),GUILayout.ExpandWidth(true));if(Event.current.type==EventType.Repaint)lobbyRoomInner=head.width-8;U.Defer(()=>RoomHeading(head,e));
             if(Hosting)
             {
-                // Versus or Boss Test as a select, so the narrow column never wraps the choice.
-                BeginRules(true,lobbyRoomInner+8);RuleField(7476,"MODE");RuleSelect(7472,RoomOpt.Versus,null,VersusLabels,prefs.pve?1:0);
-                choiceColumns=2;if(prefs.pve)BossBody(true);else MatchRulesBody(true);choiceColumns=3;
+                bool train=GUILayout.Toggle(trainingRoom,"Training Room (co-op)");if(train!=trainingRoom){var options=CaptureRoomOptions();options.training=train;SetRoomOptions(options);}
+                if(trainingRoom)GUILayout.Label("Calibration Bay · up to 8 players. Ready up, then enter together. Targets respawn; no match score.",fine);
+                else
+                {
+                    BeginRules(true,lobbyRoomInner+8);RuleField(7476,"MODE");RuleSelect(7472,RoomOpt.Versus,null,VersusLabels,prefs.pve?1:0);
+                    choiceColumns=2;if(prefs.pve)BossBody(true);else MatchRulesBody(true);choiceColumns=3;
+                }
             }
+            else if(trainingRoom)GUILayout.Label("Training Room · Calibration Bay. Ready up to join the co-op sandbox.",fine);
             else if(GuestRules==null){GUILayout.BeginHorizontal();GUILayout.Label(prefs.pve?"The host sets the party bots and where the run starts. Ready up when your loadout is set.":"The host sets the mode, arena and rules. Ready up when your loadout is set.",fine,GUILayout.Width(lobbyRoomInner));GUILayout.EndHorizontal();}
             else if(prefs.pve)BossBody(true);else MatchRulesBody(true);
             GUI.enabled=true;GUILayout.Space(4);if(Event.current.type==EventType.Repaint)lobbyRoomContent=GUILayoutUtility.GetLastRect().yMax;

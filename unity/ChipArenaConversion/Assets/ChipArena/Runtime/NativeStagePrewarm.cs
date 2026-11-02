@@ -19,6 +19,7 @@ namespace ChipArena.UnityConversion
             if(arena==null||sourceModels==null)return 0;var map=arena.Map;string id=arena.MapId;int built=0;
             if(NativeFactoryScenery.Active(id)){if(factoryStage==null)factoryStage=gameObject.AddComponent<NativeFactoryStage>();if(factoryStage.Prepare(arena))built++;}
             if(NativeBrickfallScenery.Active(id)&&EnsureBrickfall())built++;
+            if(TrainingPrepare(arena))built++;
             if(NativeCyberCityLooks.Active(id)&&EnsureCyberCity()){if(!ReferenceEquals(arena,metroArena)||arena.Generation!=metroGeneration)MetroRebind(arena);built++;}
             if(map!=null&&NativeExpeditionCityKit.Active(id)&&EnsureExpeditionCity()){if(!ReferenceEquals(map,townMap))ExpeditionCityBuild(map);built++;}
             if(map!=null&&NativeWardZeroLooks.Active(map)&&EnsureWardZero()){if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);built++;}
@@ -28,6 +29,7 @@ namespace ChipArena.UnityConversion
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworks()){if(!ReferenceEquals(map,iwMap))IronworksBuild(map);built++;}
             // THE CONVERTER's meshes (drawn only once its record is live), so the boss's arrival builds nothing mid-fight.
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworksBoss())built++;
+            if(PrewarmNewStage(arena))built++;
             // The kit bank's plan and the map's harbour yards (NativePackStage.cs; nothing without the bank or an entry).
             var pack=NativePackStage.Entry(id);if(map!=null&&pack!=null){NativePackStage.Plan(map);if(pack.yards!=null&&pack.yards.Length>0)(packYards??=new NativePackYards()).Prepare(map,id);built++;}
             EnsureHazardKit();

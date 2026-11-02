@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
     {
         public const string MapId="expedition-city",Prefix="expedition-city-";
         /// <summary>Whether a map id is the town: every town hook is inert on any other map.</summary>
-        public static bool Active(string mapId)=>mapId==MapId;
+        public static bool Active(string mapId)=>mapId==MapId||mapId==NativeExpeditionGeneratedWorld.MapId;
         public const byte DriveSteady=0,DriveFlicker=1,DriveFire=2,DriveBlink=3,DriveStrobe=4,DriveTv=5,DrivePolice=6,DriveBulbs=7;
         public const byte RoleFacade=0,RoleGround=1,RoleClutter=2,RoleSpawnDoor=3,RoleVent=4,RoleRoof=5,RoleVehicle=6,RoleSanctuary=7,RoleBreach=8,RoleSign=9,RoleLamp=10,RoleGate=11,RoleHigh=12,RoleLandmark=13;
         public const byte GlowLamp=0,GlowLampFlicker=1,GlowFire=2,GlowBrazier=3,GlowNeon=4,GlowCold=5,GlowWarning=6,GlowBeacon=7,GlowPolice=8,GlowBulbs=9,GlowWindowFire=10,GlowFlood=11;
@@ -142,8 +142,14 @@ namespace ChipArena.UnityConversion
         /// <summary>A stable hash in [0, 1) of a block id and two integers.</summary>
         public static double Hash(string s,int a=0,int c=0){unchecked{return Mix(Fnv(s)^Mix((uint)a*0x9E3779B9U+(uint)c*0x85EBCA6BU))/4294967296.0;}}
         private static bool Starts(string s,string p)=>s.StartsWith(p,StringComparison.Ordinal);
-        /// <summary>The id with the town prefix removed, or null for other maps' ids.</summary>
-        public static string Stem(string id)=>id!=null&&id.StartsWith(Prefix,StringComparison.Ordinal)?id.Substring(Prefix.Length):null;
+        /// <summary>The id with the town prefix removed, or null for other maps' ids. The generated map's ids in the town's terms
+        /// (NativeExpeditionCityKit.Generated.cs): a building "bldg-g:x:z", a fence section "sanctuary-fence-...", the rest "gen-...".</summary>
+        public static string Stem(string id)
+        {
+            if(id==null)return null;if(id.StartsWith(Prefix,StringComparison.Ordinal))return id.Substring(Prefix.Length);
+            if(!id.StartsWith(GeneratedPrefix,StringComparison.Ordinal))return null;var s=id.Substring(GeneratedPrefix.Length);
+            return Starts(s,"building-")?"bldg-g:"+s.Substring(9):Starts(s,"fence-")?"sanctuary-"+s:"gen-"+s;
+        }
 
         // ---------------- block glyphs (3 x 5 cells; rows top to bottom, bit 2 the left column) ----------------
         private const string GlyphChars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.!'&>/<=";
@@ -177,10 +183,13 @@ namespace ChipArena.UnityConversion
         {
             var k=this;
             for(int i=0;i<k.blocks.Length;i++){var s=Stem(k.blocks[i]?.id);if(s!=null&&!k.byStem.ContainsKey(s))k.byStem[s]=i;}
-            if(k.byStem.Count==0)return k;
+            if(k.byStem.Count==0)return k;k.generated=k.byStem.ContainsKey("gen-floor");
             k.Faces();k.KeepOuts();k.HubKeepOuts();k.FaceKeeps();
             for(int i=0;i<k.blocks.Length;i++){var s=Stem(k.blocks[i]?.id);if(s==null)continue;k.Dress(i,s);}
-            k.QuarterSquares();k.HubHeaders();k.Spawns();k.Street();k.WildsGround();k.EntranceLights();k.RouteWires();k.Camp();k.Detail();
+            // The generated map: its streets and the hub's gate headers and join lights (the town's squares, spawn doorways, wilds,
+            // wires, camp and detail pass key on the town's own blocks).
+            if(k.generated){k.GeneratedStreets();k.HubHeaders();k.EntranceLights();}
+            else{k.QuarterSquares();k.HubHeaders();k.Spawns();k.Street();k.WildsGround();k.EntranceLights();k.RouteWires();k.Camp();k.Detail();}
             k.Parts=k.parts.ToArray();k.Glows=k.glows.ToArray();k.Keeps=k.keeps.ToArray();k.Lettering=k.lettering.ToArray();k.FaceCulls=k.faceCulls.ToArray();k.parts.Clear();k.glows.Clear();if(layers)Layers(k.Parts,k.blocks);k.BackRatios();return k;
         }
         private static void Layers(NativeCityPart[] parts,ContentBlock[] blocks)
@@ -459,6 +468,7 @@ namespace ChipArena.UnityConversion
             else if(Starts(s,"dumpster-"))Dumpster(i);
             else if(Starts(s,"crate-"))Crate(i);
             else if(Starts(s,"breach-"))Breach(i,s);
+            else if(Starts(s,"gen-"))GeneratedPiece(i,s);
         }
     }
     /// <summary>A world AABB the town kit keeps clear; `Spawn` is the spawn (index in the area's spawns) whose own dressing may
