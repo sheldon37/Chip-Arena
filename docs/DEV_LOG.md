@@ -83,6 +83,13 @@
   - Claude: the level's map look once a map exists; the bank in the Drive zip.
   - Owner: Blender, for the Poolrooms.
 
+## 2026-11-02 — Astra: unblock generated-world pod codec builder check
+
+- **Branch/base:** `codex/pod-codec-builder`, shared `89f7ea84`. Owner supplied the Windows failure at `NativeGeneratedWorldBuildChecks.cs:120`.
+- **Cause/fix:** two fixtures used nonexistent message type `state`; this bypassed `FrameEnvelope` and decode reconstruction. Both now use the live `frame` path. Missing frames/arrays produce explicit acceptance failures instead of NullReferenceException. The actual `expedition-state` envelope also asserts launch time, record look and seat look after a round trip.
+- **Validation:** pinned Unity player/editor semantic compilation passes (existing warnings); diff whitespace check passes. Shared's full managed/local-relay suite already passed at base (938 PASS lines, including the two invitation UI-order pin repairs in #311); this isolated change touches only the Editor fixture and this log. No runtime codec, gameplay or pod timing change.
+- **Not verified here:** real Unity JsonUtility execution and Windows packaging. The corrected pre-build gate now exercises the production serializer and must pass on the Windows builder before claiming the test download is repaired. Owner's report establishes that the last synced refs did not publish; source sync alone is not publication. Merge/builder-ref receipt follows in the task PR. No live/production release.
+
 ## 2026-11-02 — Astra: cross-area Expedition spectating, group join holds, invitation service rollout
 
 - **Branch/base/PR:** `codex/expedition-party-spectate`, shared `ece0aaa3`, PR #311. Source implementation pushed as `96821d8f`; final documentation and integration receipts are in the PR.
