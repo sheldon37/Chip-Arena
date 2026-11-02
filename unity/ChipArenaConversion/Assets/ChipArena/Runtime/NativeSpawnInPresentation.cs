@@ -31,6 +31,8 @@ namespace ChipArena.UnityConversion
         private sealed class SpawnView
         {
             public NativeArena Arena;public double End=double.NaN;public SpawnInPlace Place;public SpawnInFrame Frame;public bool Shown,Built;public float Raise;
+            /// <summary>A generated run's hub: the pilot rides its drop pod (NativePodPresentation.cs) instead of the beam.</summary>
+            public bool Pod;
             public Color Holo,Tint,Display;
             public readonly float[] Solid=new float[CapturedRig.Bones.Length],Ghost=new float[CapturedRig.Bones.Length],Heat=new float[CapturedRig.Bones.Length];
         }
@@ -52,7 +54,7 @@ namespace ChipArena.UnityConversion
         private static readonly Color SpawnDust=new Color(.62f,.66f,.72f,1);
 
         private void ClearSpawnIn(){spawnViews.Clear();spawnGeometry.Clear();spawnNow=null;spawnRig=null;}
-        private void DisposeSpawnIn(){ClearSpawnIn();if(spawnMesh!=null)CapturedAnimation.Release(spawnMesh);if(spawnMaterial!=null)CapturedAnimation.Release(spawnMaterial);spawnMesh=null;spawnMaterial=null;}
+        private void DisposeSpawnIn(){ClearSpawnIn();DisposePods();if(spawnMesh!=null)CapturedAnimation.Release(spawnMesh);if(spawnMaterial!=null)CapturedAnimation.Release(spawnMaterial);spawnMesh=null;spawnMaterial=null;}
         private static NVector SpawnN(Vector3 v)=>new NVector(v.x,v.y,v.z);
         private static NativePilot SpawnPilotOf(NativeArena arena,int id){if(arena==null)return null;foreach(var p in arena.Pilots)if(p?.Seat!=null&&p.Seat.id==id)return p;return null;}
 
@@ -68,11 +70,12 @@ namespace ChipArena.UnityConversion
             // A live guest's own pilot is predicted ahead of the snapshot clock: its drop starts when its controls unlock.
             bool predicted=arena.Replica&&!arena.ReplicaScene.IsValid()&&id==arena.LocalId;
             float age=NativeSpawnIn.Age(m.Phase,m.PhaseEnd,m.FightAt,time+(predicted?NativeSpawnIn.GuestLead:0));
+            if(PodRun(arena))return PodSpawn(arena,pilot,feet,age,NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt),out raise);
             if(float.IsNaN(age)||age>.3f+NativeSpawnIn.LandSeconds)return null;
             double end=NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt);
             if(!spawnViews.TryGetValue(id,out var v)){v=new SpawnView();spawnViews.Add(id,v);}
             if(v.Arena!=arena||double.IsNaN(v.End)||Math.Abs(v.End-end)>.25)SpawnPlaceView(v,arena,pilot,feet,end);
-            v.Frame=NativeSpawnIn.Evaluate(age,v.Place.Mode,v.Place.Hold,v.Place.Drop,v.Place.Seed,WeaponEffectsQuality<.5f);
+            v.Pod=false;v.Frame=NativeSpawnIn.Evaluate(age,v.Place.Mode,v.Place.Hold,v.Place.Drop,v.Place.Seed,WeaponEffectsQuality<.5f);
             if(!v.Frame.Active)return null;
             float target=v.Place.Floor+NativeSpawnIn.RestFeet+v.Frame.Lift;raise=v.Frame.Lift>0&&feet.y<target?target-feet.y:0;
             return v;
@@ -166,15 +169,15 @@ namespace ChipArena.UnityConversion
             look.Front=new Vector4(v.Built?1e5f:feet+f.Front-NativeSpawnIn.SolidLag,NativeSpawnIn.Band,NativeSpawnIn.HeatSpan,NativeSpawnIn.SolidLag+NativeSpawnIn.GhostLead);
             look.Tint=new Vector4(v.Tint.r,v.Tint.g,v.Tint.b,f.Tint);
             look.Glitch=new Vector4(f.Flash,split,split>1e-4f?.42f*Mathf.Clamp01(f.Split/NativeSpawnIn.SplitMax+.4f):0,f.Age);
-            look.Holo=new Vector4(v.Holo.r,v.Holo.g,v.Holo.b,holo&&!v.Built?NativeSpawnIn.GhostOpacity:0);
-            look.Ghost=holo&&(!v.Built||f.Flash>.01f||split>1e-4f);
+            look.Holo=new Vector4(v.Holo.r,v.Holo.g,v.Holo.b,holo&&!v.Built&&!v.Pod?NativeSpawnIn.GhostOpacity:0);
+            look.Ghost=holo&&!v.Pod&&(!v.Built||f.Flash>.01f||split>1e-4f);
             return true;
         }
         /// <summary>SourceCharacter (arena rigs): the hologram slice leading the solid body, the completion's flash silhouette and
         /// the RGB split, in the pilot's own body skin at its tier (the ghost shader; none on the low graphics tier).</summary>
         private void SpawnHologram(CapturedAnimation.Player rig,SpawnView v,int skin,int layer,Camera camera)
         {
-            if(v==null||rig?.Root==null||LowGraphics)return;var f=v.Frame;bool slice=!v.Built,flash=f.Flash>.01f,split=f.Split>1e-4f&&WeaponEffectsQuality>=.5f;
+            if(v==null||rig?.Root==null||LowGraphics||v.Pod)return;var f=v.Frame;bool slice=!v.Built,flash=f.Flash>.01f,split=f.Split>1e-4f&&WeaponEffectsQuality>=.5f;
             if(!slice&&!flash&&!split)return;
             string model=SpawnGhostModel(skin,BodyTier(rig.Root.transform.position,false));if(model==null)return;
             spawnRig=rig;spawnOffset=Vector3.zero;spawnBone??=SpawnBoneOf;var root=rig.Root.transform.localToWorldMatrix;var scan=new Color(1,f.Age,0,0);
@@ -213,7 +216,7 @@ namespace ChipArena.UnityConversion
             var tier=NativeSpawnIn.Tier(WeaponEffectsQuality,LowGraphics);var cam=camera.transform;var eye=SpawnN(cam.position);var right=SpawnN(cam.right);var up=SpawnN(cam.up);int view=arena.ViewPilot?.Seat.id??-1;
             foreach(var pair in spawnViews)
             {
-                var v=pair.Value;if(!v.Shown||v.Arena!=arena)continue;var f=v.Frame;
+                var v=pair.Value;if(!v.Shown||v.Arena!=arena||v.Pod)continue;var f=v.Frame;
                 Vector3 feet=visualPositions.TryGetValue(pair.Key,out var at)?at:new Vector3(v.Place.Centre.X,v.Place.Floor,v.Place.Centre.Z);
                 NativeSpawnIn.Draw(spawnGeometry,f,v.Place,SpawnN(feet),eye,right,up,tier,!(FirstPerson&&pair.Key==view));
                 if(vfx==null||f.Land<0)continue;
@@ -244,13 +247,15 @@ namespace ChipArena.UnityConversion
         {
             if(camera==null||arena?.Local?.Body==null||!shake)return;var p=arena.Local;
             var v=SpawnEvaluate(arena,p,p.Body.transform.position-Vector3.up*NativeSpawnIn.FeetOffset,time,out float raise);if(v==null)return;
+            // A generated run's hub: my view rides my pod down (NativePodPresentation.cs PodCamera).
+            if(v.Pod){PodCamera(camera,p.Seat.id,reduced);return;}
             float kick=NativeSpawnIn.Kick(v.Frame,v.Place.Mode,out float pitch)*(reduced?.4f:1);
             camera.position+=Vector3.up*((FirstPerson?raise:0)-kick);if(pitch>0)camera.rotation*=Quaternion.Euler(pitch*(reduced?.4f:1),0,0);
         }
         /// <summary>My first-person spawn-in screen (ConversionGame.SpawnInScreen) and its tint (display colour).</summary>
         public bool SpawnScreenFor(int id,out SpawnInScreen screen,out Color tint)
         {
-            screen=default;tint=Color.white;if(!FirstPerson||!spawnViews.TryGetValue(id,out var v)||!v.Shown)return false;
+            screen=default;tint=Color.white;if(!FirstPerson||!spawnViews.TryGetValue(id,out var v)||!v.Shown||v.Pod)return false;
             screen=NativeSpawnIn.Screen(v.Frame,WeaponEffectsQuality<.5f);tint=v.Display;return screen.Any;
         }
     }

@@ -285,6 +285,42 @@ zombies, etc.' Think fun things, overpowered things, insane difficulty things. C
 
 `NativeExpeditionMutators.Ids` returns a defensive copy. The live adapter must retain one immutable catalog rather than call that accessor each frame: changing the array identity used to invalidate all six reel strips and queue their artwork jobs continuously. The stage now also treats arrays with identical ordered IDs as the same catalog. Real catalog changes and results absent from the strips still invalidate them. The 120-frame regression checks zero rebuilds/allocations with equivalent input copies; it failed with 120 rebuilds on the prior implementation. This changes caching only, not visuals, rolls or sound timing.
 
+### Drop pods (Claude, 2026-11-02)
+
+Owner: "When all players load in, we essentially drop in to the hub from a pod. (This pod is how players can choose to
+leave as well) using their OWN pod. (Can have an LED sign with the player name) ... We can probably make the pods
+customizable too via customization."
+
+- **The drop** (Core `NativePodDrop`, model `NativePodModels`, draw `Runtime/NativePodPresentation.cs`):
+  - In a generated run's hub, the pods replace the spawn-in beam over the same clock: the match's 3 s opening countdown,
+    which already holds every pilot at its spawn.
+  - Each pilot's pod streaks down out of the sky along one shared approach, burning, and fires its retros. Pods land
+    0.06 s apart, the first at −1.35 s: dust, sparks and a camera kick.
+  - The pod steams, its LED sign flickers on with the pilot's name, the door seam flares, and the door drops open into a
+    ramp from −0.3 s. The pilot rides hidden inside and shows as the door opens; by GO the door is well open.
+  - With camera shake on, my view rides my own pod down: third person pulled back above it, first person in its cabin.
+    With it off, my view stays at my spawn and watches the pods land.
+  - After the door opens, my pod is drawn as see-through glass while it stands between my camera and me.
+  - Pods stay parked where they landed for the run.
+- **The LED sign:** a 5×7 dot font (A–Z, 0–9, `-_.!?'#*+/:`; anything else reads `?`). It fits ten letters, and longer
+  names scroll. It draws in the pod's light colour.
+- **Customization:** the Locker's Pod tab sets paint, trim and lights, each with Auto (body colour, gunmetal, accent).
+  `NativePodDrop` look map in `prefs.pod`. The tab shows a preview card with the real sign.
+- **Station eject:** see the Deploy sequence above.
+- **Needs from Astra (rules/network; nothing here changes them):**
+  1. **A hold for the drop in live runs.** Split-area generated runs start the hub straight in `Fight` (no countdown), so
+     today the pods only appear parked at the spawns. Opening the hub with the match's 3 s countdown after the
+     initial-loading barrier plays the whole drop, with pilots held. The presentation keys on `NativeSpawnIn.Age`.
+  2. **Leaving by pod:** the interaction at a pilot's own pod, and the rule that ends that pilot's run. Then call
+     `ArenaPresentation.PodLaunch(seatId, presentationTime)` (NaN cancels): the door shuts, the retros light and the pod
+     lifts away (`NativePodDrop.Launch`, gone by 3.4 s).
+  3. **Pod looks for everyone:** carry `prefs.pod` (normalized by `NativePodDrop.Normalize`) on the seat and the account,
+     like the outfit look. Until then other pilots' pods use their body colour and accent; mine uses my Locker pick.
+  4. **Optional:** pod collision (radius 1.12 m, 2.95 m tall). The hub's spawn slots are 2 m apart, so the pods stand
+     in a tight row.
+- **Checks:** `--pod-drop` (`Tests/PodDropChecks.cs`). Deploy changes are in `--deploy-presentation` and
+  `--deploy-models`, the tab in `LockerChecks`.
+
 ### Slot sparks and sound cues (Claude, 2026-11-02)
 
 The owner asked for "spark effects when rolling and landing on things", with a different effect when a card helps the players
@@ -415,12 +451,13 @@ either way. Station frame: metres, x right, z away from the default camera, y up
     none.
 - **Deploy console:** "roll destinations to deploy", "waiting for the party", DEPLOY (host only; guests see "waiting for the
   host"), then deploying.
-- **Deploy sequence:**
+- **Deploy sequence** (owner 2026-11-02: "we get 'ejected' down"; the gate no longer opens):
   - the machines dim (0.6 s) and clamp (0.2–0.5 s);
-  - the gate opens (0.8–2.2 s);
-  - the lift carries the party out (2.2–3.6 s);
+  - the occupied pads sound the alarm, flashing red (0.15–1.23 s);
+  - their hatches split open over a lit well (0.9–1.25 s);
+  - each pilot drops through its pad in turn (from 1.35 s, 0.09 s apart), with a burst of light up its shaft;
   - the screen fades (3.4–4 s);
-  - the travel hand-off starts at 4 s.
+  - the travel hand-off starts at 4 s, unchanged.
 - **Display tables:**
   - **Destinations:** Ward Zero (quarantine green), Central Station (transit cyan), City Ironworks (foundry orange). A new
     instance falls back to its theme's look, then to neutral.
@@ -487,9 +524,9 @@ Branch `claude/deployment-station`. Presentation only, built on the rules above;
   - **Machines:** power, banners and the lever from the rules. Dormant reels rest between symbols, and the dials show the
     wild-card back until rolled.
   - **Stamps:** PENDING until Deploy, ACTIVE after.
-  - **Deploy:** the doors part, the lift rises, the party turns to the gate and is lifted out in light columns, and the
-    machines dim. The map freezes at Deploy. Each light shaft is a soft ribbon with a bright core, fading upward, turned
-    to face the camera about its pad, so the close Deploy shot reads as light rather than solid tubes.
+  - **Deploy:** the machines dim and the party is ejected down through its pads (the Deploy sequence above), framed from
+    in front of the pads; the gate stays shut with its doors flashing red. The map freezes at Deploy. Each light burst is
+    a soft ribbon with a bright core, fading upward, turned to face the camera about its pad.
   - **Each frame:** the camera eases between `ShotOf` shots. It sets the lights and floor light pools, and the
     console's host controls (`ControlsOf`).
   - **Allocation:** none per frame (checked).

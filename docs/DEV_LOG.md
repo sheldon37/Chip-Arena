@@ -1,3 +1,58 @@
+## 2026-11-02 — Claude: Expedition drop pods, the station eject, the Locker's Pod tab (Astra: hold, leave, looks)
+
+- **Branch/base:** `claude/drop-pods` from shared `3ab56c4`, with shared `0f37205` merged in. Implementation commits:
+  `d6e713f` (pod work in progress), `e6102252`, `959bbec9`, `3a23ef3f`; then this log. Merged into shared and the builder
+  (test channel). Not a live release.
+- **Task:** owner: "Add drop down animation for expedition. After we start from slot machines, we get 'ejected' down.
+  When all players load in, we essentially drop in to the hub from a pod. (This pod is how players can choose to leave as
+  well) using their OWN pod. (Can have an LED sign with the player name) We can probably make the pods customizable too
+  via customization."
+- **Changes** (presentation only):
+  - **Station eject** (`Core/NativeDeployPresentation.Deploying`/`PadDrop`, `NativeDeployStage`, `NativeDeployModels`
+    `HatchLeaf`/`Well`):
+    - the occupied pads flash red, their chevron hatches slide apart over a lit well, and each pilot drops through in
+      turn with a light burst up its shaft;
+    - the gate stays shut, the Deploy shot frames the pads, and travel is still at 4 s;
+    - `DeployPose` now carries Hatch/Drop/Alarm in place of Gate/Lift.
+  - **Hub drop** (`Core/NativePodDrop`, `Core/NativePodModels`, `Runtime/NativePodPresentation`, the spawn-in's pod path):
+    - in a generated run's hub, over the opening countdown, each pilot's own pod falls from 48 m along one approach,
+      burning, and fires its retros;
+    - pods land 0.06 s apart (first at −1.35 s) with dust, sparks, steam and a camera kick;
+    - the LED name sign flickers on, and the door drops into a ramp from −0.3 s;
+    - the pilot is hidden until the door opens;
+    - with camera shake on, my view rides my pod down;
+    - my own pod draws as see-through glass while it blocks my third-person view;
+    - pods stay parked for the run.
+    - The pod model comes in paint, trim and lights, plus cabin and retro glows.
+    - The LED sign has a 5×7 dot font, and names longer than ten letters scroll.
+  - **Locker Pod tab** (`Runtime/NativeLockerPodUI`, `NativeLocker.Pod`):
+    - paint, trim and lights swatches, each with Auto, kept in `prefs.pod`;
+    - a preview card with the real sign.
+  - **Fix found by the captures:** a `MaterialPropertyBlock` field initializer left `ArenaPresentation` half built, so
+    match start crashed. Now made on first use, and checked across the class.
+  - **Docs:** `docs/EXPEDITION-DEPLOYMENT.md` "Drop pods" and the Deploy sequence.
+- **For Astra (rules/network; details in the doc):**
+  1. **The hold.** Split-area generated runs start the hub straight in `Fight`, so today the pods only appear parked at
+     the spawns. Opening the hub with the match's 3 s countdown after the initial-loading barrier plays the whole drop,
+     with pilots held.
+  2. **Leaving by pod:** the interaction at your own pod and the leave rule, then call
+     `ArenaPresentation.PodLaunch(seatId, time)`. The door shuts and the pod lifts away.
+  3. **Carry `prefs.pod`** on the seat and the account, like the outfit look. Until then others' pods use their body
+     colour and accent.
+  4. **Optional:** pod collision (r 1.12 m, 2.95 m). The hub's slots are 2 m apart.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The drop runs inside the
+  existing countdown, the eject inside the existing 4 s deploy sequence.
+- **Checks:**
+  - `--pod-drop` (new `Tests/PodDropChecks.cs`): 24,572 checks;
+  - `--deploy-presentation` 440,902 and `--deploy-models` 3,496 (the eject); `LockerChecks` (six tabs); the spawn-in
+    whitelist lets the pod files read the spawn-in clock;
+  - full suite on the LF worktree: 933 PASS lines, rc 0 (ExpeditionEndingChecks' path patch there only);
+  - `tools/check_unity_compile.py`: all four assemblies PASS. `git diff --check` clean.
+  - Unity (local BoZo v251 `generated=`/`recount=`/`cam=`, `deploy=`/`dparty=`, `locker=`): the drop from the riding
+    camera and from the front (signs, ramps), the eject sequence, and the Pod tab.
+- **Not checked:** a live split run, which has no countdown yet (item 1); first-person ride; Windows build; co-op with real
+  players.
+
 ## 2026-11-02 — Claude: Expedition hub gates look shut when shut (wide-gate leaves)
 
 - **Branch/base:** `claude/gate-leaves` from shared `b95834e`. Implementation `8bd12ab`, then this log. Merged into shared

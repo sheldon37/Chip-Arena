@@ -563,6 +563,33 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The pad's top (its brass inlay): where a pilot's feet stand.</summary>
         public const float PadTop=.091f;
+        /// <summary>The eject hatch over the pad's centre: two half-disc leaves (HatchLeaf: the +x half; the stage turns one
+        /// about y for the -x half) that slide HatchTravel apart at Deploy, over the well (HatchRadius).</summary>
+        public const float HatchRadius=.37f,HatchTravel=.42f;
+        /// <summary>One hatch leaf (pad local, the +x half; its straight edge on x 0): a steel half-disc with hazard chevrons, a
+        /// grip and a light strip along its meeting edge (bone 1: the stage's alarm and drop light).</summary>
+        public static WeaponMesh HatchLeaf()
+        {
+            var mesh=new WeaponMesh{Spec="deploy-hatch",Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Body);const int n=16;float r=HatchRadius;
+            var half=new Vector3[n+1];for(int k=0;k<=n;k++){double a=-Math.PI/2+Math.PI*k/n;half[k]=V(.004f+r*(float)Math.Cos(a),r*(float)Math.Sin(a),0);}
+            s.Push(WeaponSculpt.Rx(Up)*WeaponSculpt.T(0,.092f,0));s.Slab(_=>SteelDark,GraphiteDark,GraphiteDark,half,0,.014f,.003f);s.Pop();
+            // hazard chevrons across the leaf (yellow on the dark steel), a recessed grip, the meeting edge's lip
+            for(int k=0;k<4;k++){float x=.07f+k*.075f,len=2*(float)Math.Sqrt(Math.Max(0,r*r-(x+.03f)*(x+.03f)))-.04f;if(len<.05f)continue;
+                s.Box(WeaponPaint.Solid(0xffc21a,.05f),V(x,.1066f,0),V(.03f,.002f,len),0,0,.45f,0);}
+            s.Box(Black,V(.18f,.1066f,0),V(.05f,.002f,.12f));s.Box(Steel,V(.008f,.1f,0),V(.012f,.016f,2*r-.02f),.003f);
+            s.Into(Lights);s.Box(Lamp(0xffffff),V(.015f,.1072f,0),V(.008f,.002f,2*r-.06f));
+            return mesh;
+        }
+        /// <summary>The well under the hatch (pad local): a black disc just over the pad's top and inlay (what a pilot drops into: the
+        /// floor hides it below) with a lit rim and fainter rings inside it (bone 1, the stage's drop light), read as a lit shaft.</summary>
+        public static WeaponMesh Well()
+        {
+            var mesh=new WeaponMesh{Spec="deploy-well",Tier=0};var s=new WeaponSculpt(mesh,0);s.Into(Body);
+            Column(s,Black,HatchRadius,0,0,.0855f,.0915f,40);
+            s.Into(Lights);FlatRing(s,Lamp(0xffffff),HatchRadius-.025f,HatchRadius,.0916f,40);
+            foreach(var (r,l) in new[]{(.29f,.45f),(.21f,.25f),(.13f,.12f)})FlatRing(s,Lamp(0xffffff,l),r-.012f,r,.0916f,32);
+            return mesh;
+        }
         /// <summary>The lift platform (gate local, at LiftAt when down): a ribbed deck with rails, guard posts and edge lights.</summary>
         public static WeaponMesh LiftDeck()
         {

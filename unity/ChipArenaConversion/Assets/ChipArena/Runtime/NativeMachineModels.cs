@@ -35,6 +35,16 @@ namespace ChipArena.UnityConversion
             // The directed entrances' stage: the sculpted pylon and dais (NativeIntros' EntranceProps.Model).
             Add(NativeEntranceStageModels.PylonId,NativeEntranceStageModels.Pylon());Add(NativeEntranceStageModels.DaisId,NativeEntranceStageModels.Dais());
             Add(NativeEntranceStageModels.PodId,NativeEntranceStageModels.Pod());Add(NativeEntranceStageModels.PodDoorId,NativeEntranceStageModels.PodDoor());
+            // The Expedition drop pod and its door (Core/NativePodModels.cs; NativePodPresentation.cs tints its parts).
+            Add(NativePodModels.PodId,NativePodModels.Pod());Add(NativePodModels.DoorId,NativePodModels.Door());
+            // and their see-through copies (every part in the glass, its bone kept for the pod's tints, unshadowed)
+            void Ghost(string id,WeaponMesh built)
+            {
+                if(built==null||models.ContainsKey(id))return;var parts=new List<Part>();
+                foreach(var s in built.Sections){var mesh=BodyMesh(s,id+" / "+s.Bone);if(mesh!=null)parts.Add(new Part{Name=id,Bone=s.Bone,Mesh=mesh,Material=glass,NoShadow=true});}
+                if(parts.Count>0){models[id]=parts.ToArray();MachineModels++;}
+            }
+            Ghost(NativePodModels.GhostId,NativePodModels.Pod());Ghost(NativePodModels.DoorGhostId,NativePodModels.Door());
         }
         private readonly Dictionary<string,Vector3> pickupAxes=new Dictionary<string,Vector3>();
         /// <summary>The ring's turn (Epic and up, bone NativeMachineModels.Orbit) of a chip model at `t`: about its core's axis
