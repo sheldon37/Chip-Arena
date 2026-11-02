@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-blockout-2";
+        public const string Version="deployment-world-blockout-3";
         /// <summary>Each instance's building behind its entrance frame, and the walls closing any street at the floor's edge.</summary>
         public const float HallHeight=18,EdgeHeight=6;
         public const string MapId="expedition-generated-city";
@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
                 float x=c.x*10,z=c.z*10;
                 if(Math.Max(Math.Abs(x),Math.Abs(z))<40||z>=45||doors.Any(d=>(new V3(x,0,z)-d.approach.Position).Length<20))continue;
                 int n=spawns.Count;var point=new PvePoint{x=x,z=z};
-                spawns.Add(new ExpeditionSpawnLayout{entry=new PveEntry{e=n,id="generated-spawn-"+I(n),kind="door",from=point,@exit=new PvePoint{x=x,z=z},clear=3},allow=new[]{"shambler","runner","spitter","brute"}});
+                spawns.Add(new ExpeditionSpawnLayout{entry=new PveEntry{e=n,id="generated-spawn-"+I(n),kind="door",from=point,@exit=new PvePoint{x=x,z=z},clear=3,allowed=new[]{"shambler","runner","spitter","brute","hulk"}},allow=new[]{"shambler","runner","spitter","brute","hulk"}});
                 string ring=Math.Max(Math.Abs(x),Math.Abs(z))<55?"near":Math.Max(Math.Abs(x),Math.Abs(z))<85?"mid":"far";
                 zones.Add(new ExpeditionHubZone{Id="generated-zone-"+I(n),Ring=ring,Volume=Volume(x,z,9,9),Spawns=new[]{n}});
                 if(n%7==0)

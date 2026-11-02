@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             bool single=kind=="combo"||kind=="jab",electric=kind=="electric";
             int total=emperor?(electric?1:Has(p,"mishima-pressure")?3:2):kind=="combo"?(Has(p,"arcade-rush")?10:3):kind=="tatsu"?(Has(p,"arcade-cyclone")?7:4):(Has(p,"arcade-rising")?3:1);
             int index=single&&f.Single&&f.LastUntil>f.At&&Time<=f.LastUntil+2.4f?(f.Index+1)%total:0;
-            float cost=(emperor?(electric?0:6f/total):kind=="combo"?(total==10?22f:12f)/total:kind=="tatsu"?22:25)*(float)p.Stats["resourceCost"];if(p.Stamina<cost)return false;p.Stamina-=cost;
+            float cost=(emperor?(electric?0:6f/total):kind=="combo"?(total==10?22f:12f)/total:kind=="tatsu"?22:25)*(float)p.Stats["resourceCost"];if(PilotMutator(p,"adrenaline"))cost=0;if(p.Stamina<cost)return false;p.Stamina-=cost;
             float rate=(float)p.Stats["attackRate"]*(electric&&Has(p,"mishima-godfist")?1.4f:1),gap=(emperor?.17f:kind=="combo"?(total==10?.115f:.25f):kind=="tatsu"?.18f:.16f)/rate;
             float hit=Time+(emperor?(electric?.1f:.075f):kind=="shoryuken"?.08f:kind=="combo"?Math.Min(.12f,gap*rate*.6f):.12f)/rate;
             float until=emperor?(electric?Time+.4f/rate:index==total-1?hit+.14f/rate:Time+gap):kind=="combo"?(index==total-1?hit+.22f:Time+gap):hit+(total-1)*gap+(kind=="shoryuken"?.68f:.22f);
@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
             if(f.Kind!=null&&f.Kind!="charge")
             {
                 while(f.Next<f.Count&&Time>=f.HitAt+f.Next*f.Gap){int index=f.Single?f.Index:f.Next;FighterStrike(p,f.Kind,index,f.Total,f.Id);if(!FighterReady(p)||f.Kind==null)return;f.Next++;}
-                if(f.Kind=="tatsu"&&Has(p,"arcade-cyclone"))foreach(var q in Pilots){Vector3 d=p.Body.position-q.Body.position;if(q.Hp>0&&CanHit(p,q)&&d.magnitude<4.5f&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback+=d.normalized*(7f/60);}
+                if(f.Kind=="tatsu"&&Has(p,"arcade-cyclone"))foreach(var q in Pilots){Vector3 d=p.Body.position-q.Body.position;if(q.Hp>0&&CanHit(p,q)&&d.magnitude<4.5f&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))q.Knockback+=d.normalized*(7f/60)*(PilotMutator(q,"bounce-house")?3:1);}
                 if(Time>=f.Until)f.Kind=null;
             }
             if(p.Input.Shoot)StartFighter(p,emperor?"jab":"combo");
@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
         {var f=p.Fighter;if(f==null)return Vector3.zero;return Vec(V3.Forward(p.Input.Yaw))*(f.Kind=="electric"&&p.Grounded&&Time<f.StepUntil?6:0);}
         private void Hadoken(NativePilot p,bool super)
         {
-            var f=Fighter(p);float cost=(super?30:12)*(float)p.Stats["resourceCost"];if(ProjectileCount>=100||p.Stamina<cost){CancelFighter(p);return;}p.Stamina-=cost;
+            var f=Fighter(p);float cost=(super?30:12)*(float)p.Stats["resourceCost"];if(PilotMutator(p,"adrenaline"))cost=0;if(ProjectileCount>=100||p.Stamina<cost){CancelFighter(p);return;}p.Stamina-=cost;
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)),pos=p.Body.position+Vector3.up*.18f+dir*.72f;
             var b=new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=pos,Velocity=dir*(super?27:23),Damage=(super?22:23)*(float)p.Stats["damage"],Impulse=(super?180:320)*(float)p.Stats["impulse"],Radius=(super?.5f:.24f)*(float)p.Stats["projectileSize"],Life=4,Travel=75,Direct=false,EffectsUsed=true,Pierces=super?7:0,Burn=(Has(p,"arcade-red")?12:4)+(float)p.Stats["burn"],Poison=(float)p.Stats["poison"],Hadoken=true,Super=super,Mods=new Dictionary<string,int>(p.Seat.chips)};Bullets.Add(b);
             f.Kind=super?"shinku":"hadoken";f.At=Time;f.Until=Time+.48f;f.Single=false;f.Charge=0;f.Count=f.Next=0;f.HadokenReady=Time+(super?3.4f:1.1f);p.AttackAt=p.LastAttack=p.LastShot=Time;p.BlockEnd=0;p.AttackEnd=p.Ready=f.Until;p.RegenAt=f.Until+.45f;Emit(EventKind.Shot,p,0,pos,0);
@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
                     var j=old??new NativeJuggle{At=Time,Owner=p,Pickup=pickup||q.Down?.PickupUsed==true};j.Hits++;if(electric&&!echo)j.ElectricHits++;j.LastHit=Time;j.Until=Time+1.25f;j.Owner=p;if(Has(p,"mishima-screw")&&j.Hits%3==0)j.SpinUntil=Time+.65f;CancelMelee(q);q.Juggle=j;q.Down=null;
                     float h=q.Body.position.y-p.Body.position.y,vy=electric?Mathf.Clamp(7.7f-h*3.5f,1.5f,10):Mathf.Clamp(5-h*2,1,6);q.Knockback.y=vy-q.Body.linearVelocity.y;q.Grounded=false;
                     Vector3 dir=Vec(V3.Forward(p.Input.Yaw));float push=(Math.Min(36,3+Math.Max(0,j.ElectricHits-1)*4.5f)+(Has(p,"mishima-wall")?4:0))*(float)(p.Stats["impulse"]*q.Stats["knockbackTaken"]);q.Knockback.x=dir.x*push;q.Knockback.z=dir.z*push;
-                    if(Has(p,"mishima-magnet")){Vector3 d=p.Body.position+dir*1.45f-q.Body.position,lateral=d-dir*Vector3.Dot(d,dir);lateral.y=0;q.Knockback+=lateral.normalized*Math.Min(6,lateral.magnitude*5);}
+                    if(Has(p,"mishima-magnet")){Vector3 d=p.Body.position+dir*1.45f-q.Body.position,lateral=d-dir*Vector3.Dot(d,dir);lateral.y=0;q.Knockback+=lateral.normalized*Math.Min(6,lateral.magnitude*5)*(PilotMutator(q,"bounce-house")?3:1);}
                 }
             }
             if(electric&&p.Hp>0&&Has(p,"mishima-bloodline")){Heal(p,5);p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+12);}

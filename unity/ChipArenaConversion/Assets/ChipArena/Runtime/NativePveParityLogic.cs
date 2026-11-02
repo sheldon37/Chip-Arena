@@ -15,6 +15,7 @@ namespace ChipArena.UnityConversion
         }
         private void RespawnPveParty()
         {
+            if(Mutator("permadeath"))return;
             var occupied=Members().Where(p=>p.Hp>0).Select(p=>p.Body.position).ToList();
             foreach(var p in Members().Where(p=>p.Hp<=0&&p.Seat.connected))
             {var point=Pve.Content.pads.Select(pad=>Vec(pad.Position(.9f))).OrderBy(at=>occupied.Any(q=>Vector3.Distance(q,at)<2)).ThenBy(at=>Minions.Any(m=>m.Pve!=null&&m.Hp>0&&Vector3.Distance(m.Body.position,at)<4)).ThenBy(at=>(at-p.Body.position).sqrMagnitude).First();RevivePve(p,point);occupied.Add(point);}

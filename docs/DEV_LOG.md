@@ -1,3 +1,11 @@
+## 2026-11-02 — Astra: enable live Expedition mutator rolling for the test update
+
+- **Owner direction:** enable and push the mutators now. This supersedes the previous draft-only publication hold for this test scope; no live/production release. The remaining Claude presentation work is explicitly still unfinished.
+- **Integration:** `codex/mutator-activation`, shared/audio base `3ab56c4b8d617f351d7e9b4106a323c945db9be6` plus #305 `ec8ee9b3408181cd7373620e40c2bd9fa9273e65`. Preserves both agents' logs, Claude's slot sparks and all station sounds. Live station uses the 30-ID catalog and dispatches RollMutators to the authority; outcomes, exclusions, payout and run effects travel in the authenticated ticket. Host rolls after destinations settle; guests and deployed runs cannot reroll.
+- **Regression:** added live catalog/command/audio wiring checks plus host/guest/deployed button checks to ExpeditionMutatorChecks. Existing deterministic rolls, wire reconstruction, exclusions, economy, replay and persistence checks retained. Validation: 7,434 focused mutator checks, 3,681 deployment checks, full managed suite with real loopback relay exit 0 (932 PASS lines; all 35 managed-core checks), pinned Unity InputSystem/Player/Runtime/Editor compilation, 2,940-file source package and git diff --check pass. The worktree C# files are LF.
+- **Remaining presentation:** DARKNESS/WHITEOUT currently have no visibility effect; BIG HEADS has its hit-region change but still needs enlarged models; the mutator HUD and dedicated storm/explosion/death looks are not integrated. STORM's warning event exists but its dedicated telegraph is still missing. This owner-requested test activation does not claim visual completion or human co-op acceptance. Active-run endpoint migration stays disabled.
+- **Publication:** shared/builder synchronization and native test build/feed result will be recorded in the activation PR after verification. No new audio assets, cue timing or animation changes in this integration.
+
 ## 2026-11-02 — Astra: Deployment Station procedural slot-machine sound
 
 - **Branch/base:** `codex/deployment-slot-audio` from shared/builder `a75a62c452e7f04c3fb225c62f4e34361444cd84` (Claude slot sparks). Owner explicitly requests shared merge, builder sync and native **test** Update publication. No live release.
@@ -53,6 +61,16 @@
     boon/bane/chaos landings and all three sweeps; the card art loads.
 - **Not checked:** reduced effects seen in Unity (checked in tests only), a Windows build, a live room (the live
   mutator roll is still off until Astra's effects), audio.
+## 2026-11-02 — Astra: Expedition mutator rules and Claude handoff
+
+- **Branch/base:** `codex/expedition-mutators` from shared `bfc770a029bf355dcedc9554ee8c1ebecd99c4e9`. Source handoff; no builder/feed publication. Keep this feature draft until Claude's visibility/telegraph work and Windows acceptance pass.
+- **Owner task:** implement the 30-card catalog for the whole Expedition, city and instances, host and guests; exclusions, payout, live rolling, then hand off presentation to Claude.
+- **Implemented:** canonical versioned 30-ID catalog; deterministic independent compatible rolls; authenticated ticket replay including roll/skip counters, compatibility and generated-layout identity. Run snapshots carry immutable selected IDs through transfers, reconnects and repeat loops. Live deployment now passes the catalog and enables its host roll command.
+- **Rules:** pilot stats/resources, health/damage, magazine/reload, vampire's shared heal budget, common-chip drops, deterministic weapon roulette, spawn kind/health/speed/cap/rate, prices/money, free reprints/permadeath, friendly fire, explosive/death/storm damage and enlarged projectile head regions. Generated city blockout version 3 admits Hulk-compatible spawn entries and their clearance checks without changing the normal roster. Existing migration remains disabled.
+- **Semantics:** exact numbers/limits are in EXPEDITION-DEPLOYMENT.md's Mutator rules handoff. Payout scales money, not account XP. HULKAMANIA replaces ordinary adds, not bosses, caps at six and takes precedence over SWARM. Existing body revives are instant; SECOND WIND gives free 1.5 s reprints. PERMADEATH blocks reprints/automatic phase revivals but does not invent a bleedout stage. ROULETTE uses supported ordinary weapons. Vampire excludes bosses.
+- **Claude — rules ready:** `NativeArena.ActiveMutators` / `GeneratedRun.Mutators`; station `DeploymentState.mutators`; payout `NativeExpeditionMutators.Payout`. Implement DARKNESS/WHITEOUT lighting/fog/marker suppression, BIG HEADS visual scale, STORM/HIGH EXPLOSIVE/MARTYR/BLOATED looks and active-mutator HUD. Replicated Impact event details/amounts/radii are tabulated in the deployment doc. STORM warning must be visible before play-ready; DARKNESS/WHITEOUT intentionally have no simulation-only substitute.
+- **Verification:** focused mutator 7,429 checks and deployment 3,681 checks pass; Python 169 tests OK (one skip); pinned Unity real-reference InputSystem/Player/Runtime/Editor semantic compilation passes with existing warnings; source package 2,932 files and whitespace checks pass. Full managed suite with real loopback relay exits 0 (930 PASS lines; all 35 managed-core checks). An earlier run terminated with signal 11 while assemblies were being rebuilt; the clean final rerun passed.
+- **Not executed:** Windows/PhysX/native player, physical controllers, rendered visuals and human host/guest play. Added `NativeArena.ValidateMutatorRules` to the existing deployment Windows acceptance gate; compilation is not native execution. Source handoff is not a published app.
 
 ## 2026-11-02 — Claude: controller menu focus glow and hover tick
 

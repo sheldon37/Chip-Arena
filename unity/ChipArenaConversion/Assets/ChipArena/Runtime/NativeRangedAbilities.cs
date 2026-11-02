@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
         private bool FireRound(NativePilot p,bool fan=false)
         {
             if(p.Ammo<=0||ProjectileCount>=100||Venting(p))return false;
-            p.Ammo--;Fire(p,fan);return true;
+            if(!PilotMutator(p,"bottomless"))p.Ammo--;Fire(p,fan);return true;
         }
     }
 }
