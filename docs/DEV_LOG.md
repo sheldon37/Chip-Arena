@@ -1,3 +1,12 @@
+## 2026-11-02 — Astra: Deployment Station procedural slot-machine sound
+
+- **Branch/base:** `codex/deployment-slot-audio` from shared/builder `a75a62c452e7f04c3fb225c62f4e34361444cd84` (Claude slot sparks). Owner explicitly requests shared merge, builder sync and native **test** Update publication. No live release.
+- **Implemented:** twelve original procedural clips: destination and mutator lever/motor, brake, clunk; Boon/Bane/Chaos card and sweep stings. Warm metal/brassy destination; cooler electric mutator; rising coin/bell, falling short circuit and swirling FM warble. Slight reel-specific clunk variation and stereo pan.
+- **Integration:** consumes `NativeDeployStage.Cues` immediately after `NativeDeployScene.Draw` through `NativeDeployCast`, for live and DEV preview. Uses existing effects volume, mute, limiter and 24-source/eight-gated-voice pool. Cached clips, one preload per station frame; no audio files or licensed assets. Motor ends with final reel; reroll cancels the machine's old sounds; leave/mute stop them. No cue schedule, visuals, gameplay, animation timing, hitbox or networking changes.
+- **Checks:** `--deploy-sounds` 366 checks pass: every scheduled cue maps to a sound key; once-only delivery, late-join silence and reroll; pan, deterministic finite PCM, click-free ends, signal bounds and limiter/wiring. Full CoreTests suite on the LF worktree with real loopback relay exits 0 (931 PASS lines; all 35 managed-core checks). Unity 6000.3.24f1 InputSystem/Player/Runtime/Editor reference compilation passes; source package has 2,933 files. Worktree C# is LF; `git diff --check` clean. Initial full run caught an existing source check requiring adjacent hover/quota cleanup calls; retained their adjacency and reran.
+- **Scope boundary:** draft #305 (`ec8ee9b`) contains the separate mutator rules implementation and remains unmerged. This release leaves live mutator rolling off, as requested; mutator sound can be checked in the station DEV preview. No native listening or physical host/guest sound acceptance claimed from cloud compilation.
+- **Publication:** pending verified merge/builder sync; actual build/feed result will be recorded on the PR and in a follow-up receipt. A branch update alone is not publication.
+
 ## 2026-11-02 — Claude: slot-machine sparks on rolls and landings (sound cues for Astra)
 
 - **Branch/base:** `claude/slot-sparks` from shared `bfc770a`. Implementation `bcbed4d`, then this log. Merged into

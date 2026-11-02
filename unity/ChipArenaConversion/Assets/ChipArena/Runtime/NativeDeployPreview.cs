@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
             }
             var input=new DeployInput{State=deployState,SinceInstanceRoll=deployClock.SinceInstanceRoll(now),SinceMutatorRoll=deployClock.SinceMutatorRoll(now),SinceDeploy=deployClock.SinceDeploy(now),Time=now,
                 Host=!deployAsGuest,PartyReady=DeployPartyReady,Reduced=prefs.reducedEffects,Seats=deployPartySize,Ready=deployParty.Ready,Instances=DeployPreviewInstances,Mutators=DeployPreviewMutators};
-            if(!presentation.RenderDeployStation(cameraView,input,deployPilots,deployShownFrames++==0?-1:Time.unscaledDeltaTime,prefs.reducedEffects)){DeployPreviewLeave();return false;}
+            if(!presentation.RenderDeployStation(cameraView,input,deployPilots,deployShownFrames++==0?-1:Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio)){DeployPreviewLeave();return false;}
             // the travel hand-off: no generated world exists yet, so the preview closes back to the menu
             if(deployState.deployed&&deployClock.SinceDeploy(now)>NativeDeployPresentation.TravelAt+2.5f){deployPreviewClosed=true;DeployPreviewLeave();}
             return true;

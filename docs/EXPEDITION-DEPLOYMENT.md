@@ -266,7 +266,12 @@ joiner sees none. `NativeDeployStage` draws them as camera-facing additive quads
     - `Sweep`: three of one polarity, carrying it.
   - Each cue also carries `Machine` (0 instance, 1 mutator), `Reel` (-1 for the whole machine) and `At` (seconds after the
     roll was seen).
-  - The schedule is `NativeDeploySparks.Schedule`. Nothing plays yet: the audio side is Astra's.
+  - The schedule is `NativeDeploySparks.Schedule`. Astra's `NativeDeploySounds` / `NativeDeployAudio` now plays it immediately after `NativeDeployScene.Draw`, in live and DEV stations.
+- **Sound implementation (Astra, 2026-11-02):** twelve original 48 kHz procedural clips, cached in memory; no new audio assets. Destination lever/motor/brake/clunk are warm metallic tones; mutator versions use higher electric tones and crackle. Boon rises with bell/coin harmonics, Bane descends with a short-circuit buzz, Chaos uses frequency-modulated warble; each polarity has a longer sweep sting. Stops vary slightly by reel, with left/centre/right stereo pan. The motor bed loses one third as each reel brakes and ends at the last stop. No cue time or visual changed.
+  - Uses `NativeAudio.Effects`, `Muted`, the existing `NativeSoundLimiter`, shared 24 sources and eight gated-voice cap. Active station voices follow effects-volume changes, stop on mute/leave, and a reroll stops that machine's previous sounds. Unmuting does not replay consumed cues.
+  - Keys: `deploy.destination.{spin,brake,stop}`, `deploy.mutator.{spin,brake,stop}`, `deploy.{boon,bane,chaos}.{card,sweep}`. Unknown card polarity falls back to its machine's stop sound; no invented benefit/penalty tone.
+  - `--deploy-sounds` checks all cue routes, late-join/new-roll clock behavior, once-only scheduling, stereo pan, deterministic bounded PCM/envelopes and limiter wiring. Full checks and native test publication receipt: newest DEV_LOG entry / audio PR.
+  - Live mutator rolling remains gated off in this sound-only release; its sounds are available in the DEV preview. Mutator gameplay is separate draft PR #305.
 - **The card faces:** a dial's 31 tiles used to rasterise on one worker per dial (9–14 s in the Editor) and drew white until
   then. `NativeDeployScene` now rasterises each tile once, in parallel. The dials share the jobs, and a strip that isn't
   ready draws a dark blank. All six strips are ready about 2.6 s after the station opens.

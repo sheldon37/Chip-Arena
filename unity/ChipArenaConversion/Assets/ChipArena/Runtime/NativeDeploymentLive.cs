@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             viewModelCamera.enabled=false;
             var input=new DeployInput{State=state,SinceInstanceRoll=liveDeployClock.SinceInstanceRoll(now),SinceMutatorRoll=liveDeployClock.SinceMutatorRoll(now),SinceDeploy=liveDeployClock.SinceDeploy(now),Time=now,
                 Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=DeployPreviewInstances,Mutators=Array.Empty<string>()};
-            presentation.RenderDeployStation(cameraView,input,liveDeployPilots,Time.unscaledDeltaTime,prefs.reducedEffects);
+            presentation.RenderDeployStation(cameraView,input,liveDeployPilots,Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio);
             return true;
         }
         private void LeaveLiveDeployment()
