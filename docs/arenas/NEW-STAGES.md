@@ -60,15 +60,23 @@ These come from ARENA_PROPOSAL §2.1 and the Factory and Cyber City drafts.
   - Alleys are at least 2.4 m (container gaps 3.2 m).
   - Bots jump anything their obstacle ray hits (it starts about 0.45 m up), so every parapet or rail of 1.2 m or less
     over a drop gets a `pilotBlocks` column above it. Unstandable tops (walls, roofs, the lighthouse) get one too.
+  - **Shipped maps (owner playtest, 2026-11-01):** those columns read as invisible walls, so the integration
+    (`tools/generate_stage_hazards.py` `open_tops`) keeps a column only in two cases:
+    - one side opens onto a void (no floor below; the bounds do not count);
+    - no ordinary jump from beside it reaches it (more than 3.4 m over every floor next to it).
+
+    Crates, containers, booths, huts, porches, low walls and rails over a lower floor are now standable and vaultable;
+    no fall damage exists. Rails, parapets, banks and walls at a lethal edge keep their column, as do the tall tops
+    (cranes, masts, the derrick, perimeter walls, the bay roof). That is 129 of the drafts' 376.
 - **Spawns (each draft checks these and exits 1 on a failure):**
   - Every FFA pair and every A–B pair has no line of sight. The check jitters both ends ±1 m and uses eyes at 1.2, 1.6
     and 1.9 m.
   - Spawns keep at least 3 m from any hazard volume. They stay inside the bounds minus the capsule.
   - Every spawn is reachable on foot (the ground raster flood fill, plus the stairs on layered maps).
 - **Falls:**
-  - The sim clamps a pilot to the bounds minus the capsule (`Core/NativeUnityMaps.cs` `Clamp`). A fall only exists where
-    the bounds run past the floor's edge (Pier 9's quay, Skyframe's open sides) or where a notch is cut into a deck inside
-    the bounds (Deepwell's landings).
+  - The sim clamps bots, abilities and teleports to the bounds minus the capsule (`Core/NativeUnityMaps.cs` `Clamp`).
+    It does not clamp a walking pilot, who is held only by geometry and the pilot columns. A fall exists past any
+    edge left open: Pier 9's quay, Skyframe's open sides and Deepwell's landing notches are the intended ones.
   - The void beyond has no standable top, so falling there reaches killY.
 - **Sim data:**
   - Decor never goes into sim data. Every prop is sent in every 20 Hz frame, so blockouts keep each map at about 350

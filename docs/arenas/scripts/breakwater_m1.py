@@ -73,7 +73,8 @@ for e in els:
     if e['id'].startswith('breakwater-parapet') or y1 <= 1.25 or under(e): continue
     PILOT.append(dict(id=e['id'].replace('breakwater-', 'breakwater-top-', 1), center=v(round((x0 + x1) / 2, 3), 0, round((z0 + z1) / 2, 3)),
                       size=v(round(x1 - x0, 3), 0, round(z1 - z0, 3)), bottom=round(y1 - .05, 3)))
-PILOT = [p for p in PILOT if p['bottom'] > 1.2]                       # single crates (1.2 m) stay standable, like the barriers
+PILOT = [p for p in PILOT if p['bottom'] > 1.2 or '-parapet-' in p['id']]   # single crates (1.2 m) stay standable, like the barriers;
+# the parapet keeps its column: walking pilots are not clamped to the bounds (NativeMapRules.Clamp is for bots), the sea is a fall
 HAZ = []
 
 def paint():

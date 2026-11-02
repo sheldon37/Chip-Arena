@@ -63,6 +63,7 @@ for k in range(5):
 add('polar-hall-roof', -6.0, 6.0, H, H + .4, -6.0, 6.0, 'R', mat='metal', mirror=False)
 add('polar-radome', -4.5, 4.5, H + .4, 11.0, -4.5, 4.5, 'R', mat='metal', mirror=False)          # the dome: landmark, unstandable
 pilot('polar-top-hall', -6.4, 6.4, -6.4, 6.4, H - .1, mirror=False)
+pilot('polar-top-radome', -4.5, 4.5, -4.5, 4.5, 10.9, mirror=False)   # the dome's own column: the integration opens the hall roof
 # windbreak porches (2.4) flank each door outside: CQB cover at the doors, and they cut sightlines grazing the hall
 for i_, (a_, b_, c_, d_) in (('w-n', (-8.0, -6.0, 1.6, 2.0)), ('w-s', (-8.0, -6.0, -2.0, -1.6)), ('n-w', (-2.0, -1.6, 6.0, 8.0)), ('n-e', (1.6, 2.0, 6.0, 8.0))):
     add('polar-hall-porch-' + i_, a_, b_, 0, 2.4, c_, d_, 'H', mat='metal'); pilot('polar-top-hall-porch-' + i_, a_, b_, c_, d_, 2.3)
