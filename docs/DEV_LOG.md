@@ -1,7 +1,7 @@
 ## 2026-11-02 — Claude: Expedition mutator looks (STORM, blasts, DARKNESS, WHITEOUT, BIG HEADS, HUD, payout)
 
 - **Branch/base:** `claude/mutator-visuals` from shared `f5fb3fb5`, with shared `c7ceb086` (the zombie stride fix) merged
-  in. Implementation commit `1ade210b`, then the pin updates and this log. Merged into shared and the builder (test channel)
+  in. Implementation commit `1ade210b`; then the pin updates, a comment fix and the full-suite registration (`d5ac890a`). Merged into shared and the builder (test channel)
   after the checks below. Not a live release.
 - **Task:** owner: "Yes, start them" (the presentation Astra handed over with the live mutators; docs/EXPEDITION-DEPLOYMENT.md
   "Mutator rules handoff").
@@ -28,6 +28,8 @@
   - `--pod-drop`, `--deploy-presentation` and `--spawn-in` pass.
   - Unity compile (Input System, Player, runtime, editor) passes.
   - Source-pin scan: two pins updated (`HazardKitChecks` slot upload, `ZombieModelChecks` collapse line).
+  - Full CoreTests on a clean LF worktree of `d5ac890a` (local Windows path patch, not committed): 935 PASS lines, 35
+    managed-core checks, rc 0. Its first run caught a comment naming the station boss's file (`StationBossModelChecks`).
   - Unity captures of a generated run (offline, events injected through the local tool), seen:
     - the warning, the strike, the gas, the glints and the blasts;
     - BIG HEADS;
@@ -41,8 +43,8 @@
 
 ## 2026-11-02 — Claude: zombies under fire keep their feet; corpses fall off the crowd
 
-- **Branch/base:** `claude/zombie-stride-fix` from shared `f5fb3fb5`. Merged into shared and the builder (test channel) after
-  the checks below. Not a live release.
+- **Branch/base:** `claude/zombie-stride-fix` from shared `f5fb3fb5`. Merged into shared and the builder as `c7ceb086`;
+  the builder published it to the test channel (BUILD SUCCEEDED, Publication succeeded, 18:09 UTC). Not a live release.
 - **Task:** the owner sent a video of a machine gun on an Expedition crowd: "we still needa fix zombie movement animations, pay
   attention to what happens here".
 - **Seen and measured** (docs/ZOMBIE-LOCOMOTION.md "Under fire on the model"):
