@@ -1,3 +1,38 @@
+## 2026-11-02 — Claude: zombies under fire keep their feet; corpses fall off the crowd
+
+- **Branch/base:** `claude/zombie-stride-fix` from shared `f5fb3fb5`. Merged into shared and the builder (test channel) after
+  the checks below. Not a live release.
+- **Task:** the owner sent a video of a machine gun on an Expedition crowd: "we still needa fix zombie movement animations, pay
+  attention to what happens here".
+- **Seen and measured** (docs/ZOMBIE-LOCOMOTION.md "Under fire on the model"):
+  - Zombies dropped into deep squats and wide lunges (one leg out at hip height).
+  - A corpse hung at hip height across two living zombies.
+  - Unity `zshape=1` captures: pelvis down to .73 m, a knee bent 80-107 degrees, hips .45-.68 m off the feet.
+  - Offline probe: knock-backs ran the forward cycle with feet planted ahead, so the hips sank to reach them.
+  - The corpse lay at its root's death height, up on the crowd.
+- **Changes (presentation only):**
+  - `Core/NativeHordeMotion.cs`: while an add reels and its root has just gone backward, the gait reads its net motion
+    (`KnockMotion`) and the jolts skid the planted feet. When a shove carries the body aside or back, its feet land the way
+    it travels, in shorter steps (`TravelOff`). Unhit motion is unchanged.
+  - `Core/NativeMinionFx.CorpseFloor` and `Runtime/NativeHordeKindPresentation.cs`: a horde death casts the world's floor
+    under it once; a raised body falls there (about .4 s from hip height).
+  - `Tests/ZombieKnockChecks.cs` (`--zombie-knock`, also in `--zombie-posture` and the full run). Mutation-tested: the old
+    gait fails it at pelvis p5 .44 against .65.
+- **Animation impacts:** feet and hips while knocked about or shoved, and where corpses lie. No hit timing, hitbox, damage,
+  cooldown, movement, AI or network change.
+- **Checks (actual):**
+  - `--zombie-knock` 11 checks.
+  - `--zombie-gait` 6,858 checks, `--zombie-posture`, `--zombie-twitch`, `--hulk-motion`, `--horde-drops`, `--visual-rig`,
+    `--model-poses`, `--zombie-models` and `--zombie-gore` pass in the main checkout.
+  - `--zombie-loco`, `--zombie-flow`, `--horde-roam` and `--hulk-charge` stop there only on the licensed-pack scan; they run
+    in the clean worktree's full suite (see the merge note).
+  - Unity compile (runtime and editor) passes.
+  - Unity capture before/after: deep standing poses 17 → 8 of 86 shape samples.
+- **Risks / next:**
+  - Owner check in the Windows build: the knocked-back skid, a runner's first stride after the knocks, and corpses
+    dropping off the crowd.
+  - Some deep poses remain in the capture, likely attack lunges at a god-mode pilot; not classified.
+
 ## 2026-11-02 — Claude: Expedition drop pods, the station eject, the Locker's Pod tab (Astra: hold, leave, looks)
 
 - **Branch/base:** `claude/drop-pods` from shared `3ab56c4`, with shared `0f37205` merged in. Implementation commits:

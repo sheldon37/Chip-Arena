@@ -61,7 +61,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--new-stage-looks"){NewStageLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--skin-tone"){SkinToneChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-models"){ZombieModelChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--zombie-posture"){ZombiePostureChecks.Run(ProjectRoot());ZombieGaitChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--zombie-posture"){ZombiePostureChecks.Run(ProjectRoot());ZombieGaitChecks.Run(ProjectRoot());ZombieKnockChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--zombie-knock"){ZombieKnockChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--zombie-gait"){ZombieGaitChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--run-arm"){RunArmChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--faces"){FaceChecks.Run(ProjectRoot());return 0;}
@@ -183,7 +184,7 @@ internal static class Program
             BuildLabelChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);ModelHatChecks.Run(root);RobotSuitChecks.Run(root);RobotHelmChecks.Run(root);
-            LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
+            LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
             MovementModsChecks.Run(root);RoundsCardsChecks.Run(root);NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);MeleeBisectChecks.Run(root);GibChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);
