@@ -208,6 +208,15 @@ namespace ChipArena.UnityConversion
             for(int y=0;y<px;y++)for(int x=0;x<px;x++){float dx=(x+.5f)/px*2-1,dy=(y+.5f)/px*2-1,r=Math.Min(1,(float)Math.Sqrt(dx*dx+dy*dy));float a=(1-r)*(1-r)*(1-r*.4f);int i=(y*px+x)*4;o[i]=o[i+1]=o[i+2]=1;o[i+3]=a;}
             return o;
         }
+        public const int SparkPixels=32;
+        /// <summary>A spark (white; alpha a hot core in a soft halo, zero at the edge): the slot sparks' streaks and flashes
+        /// (NativeDeploySparks), stretched along their motion.</summary>
+        public static float[] SparkTile()
+        {
+            int px=SparkPixels;var o=new float[px*px*4];
+            for(int y=0;y<px;y++)for(int x=0;x<px;x++){float dx=(x+.5f)/px*2-1,dy=(y+.5f)/px*2-1,r=Math.Min(1,(float)Math.Sqrt(dx*dx+dy*dy));float a=(1-r)*(1-r)*(.3f+.7f*(float)Math.Exp(-r*r/.05f));int i=(y*px+x)*4;o[i]=o[i+1]=o[i+2]=1;o[i+3]=a;}
+            return o;
+        }
         /// <summary>Tiles stacked into one strip texture (TilePixels wide, the tiles' rows each; tile 0 at the bottom).</summary>
         public static float[] Stack(IReadOnlyList<float[]> tiles)
         {

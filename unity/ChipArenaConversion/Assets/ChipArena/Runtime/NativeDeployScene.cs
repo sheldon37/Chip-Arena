@@ -15,9 +15,9 @@ namespace ChipArena.UnityConversion
     /// NativeLighting.Entrance (the source shaders' stage block), the camera on the stage's eased shot, and every item's sections:
     ///  - lit parts on NativeSourceLit with the stage block on (_StageLit), their light bones scaled by the item's tints;
     ///  - glass on NativeSourceTransparent;
-    ///  - screen faces on NativeDeployScreen: the reel and card strips (rasterised on workers from NativeDeployArt whenever the
-    ///    strips change), the holo maps (Core NativeDeployPresentation.Preview, regenerated on a worker when the state's revision
-    ///    changes, frozen after Deploy), the stamps, the floor's light pools and the light columns.
+    ///  - screen faces on NativeDeployScreen: the reel and card strips (each tile rasterised once on a worker from NativeDeployArt
+    ///    whenever the strips change, a dark blank until its strip is ready), the holo maps (Core NativeDeployPresentation.Preview, regenerated on a worker when the state's revision
+    ///    changes, frozen after Deploy), the stamps, the floor's light pools, the light columns and the slot sparks.
     /// The draw allocates nothing per frame (one reused property block, the stage's fixed item buffer).
     /// </summary>
     public sealed class NativeDeployScene:IDisposable
@@ -25,8 +25,10 @@ namespace ChipArena.UnityConversion
         public readonly NativeDeployStage Stage=new NativeDeployStage();
         private readonly Mesh[][] meshes=new Mesh[NativeDeployStage.ModelCount][];private readonly int[][] bones=new int[NativeDeployStage.ModelCount][];
         private readonly Material lit,glass,strip,additive,alpha;private readonly MaterialPropertyBlock block=new MaterialPropertyBlock();
-        private readonly Texture2D[] textures=new Texture2D[NativeDeployStage.TextureCount];private readonly Texture2D white;
+        private readonly Texture2D[] textures=new Texture2D[NativeDeployStage.TextureCount];private readonly Texture2D white,blank;
         private readonly Task<float[]>[] stripJobs=new Task<float[]>[6];private Task<float[]> stampJob;private Task<int[]> mapJob;
+        // Each tile rasterised once and in parallel (the three dials carry the same thirty cards): a strip stacks its tiles' jobs.
+        private readonly Dictionary<string,Task<float[]>> tileJobs=new Dictionary<string,Task<float[]>>(StringComparer.Ordinal);
         private int stripsBuilt=-1,mapAsked=-1,mapShown=-1;
         private static readonly int SceneTintId=Shader.PropertyToID("_SceneTint"),BodyTintId=Shader.PropertyToID("_BodyTint"),AccentTintId=Shader.PropertyToID("_AccentTint"),GlowTintId=Shader.PropertyToID("_GlowTint"),StageLitId=Shader.PropertyToID("_StageLit");
         private static readonly int MainTexId=Shader.PropertyToID("_MainTex"),TintId=Shader.PropertyToID("_Tint"),RepId=Shader.PropertyToID("_Rep"),ScrollId=Shader.PropertyToID("_Scroll"),BlurId=Shader.PropertyToID("_Blur"),GainId=Shader.PropertyToID("_Gain");
@@ -56,7 +58,9 @@ namespace ChipArena.UnityConversion
                 meshes[m]=list.ToArray();bones[m]=b.ToArray();
             }
             white=Texture(new[]{1f,1f,1f,1f},1,1,"Deploy white",false);textures[NativeDeployStage.TexWhite]=white;
+            blank=Texture(new[]{.03f,.035f,.05f,1f},1,1,"Deploy blank",false);
             textures[NativeDeployStage.TexGlow]=Texture(NativeDeployArt.GlowTile(),NativeDeployArt.GlowPixels,NativeDeployArt.GlowPixels,"Deploy glow",false);
+            textures[NativeDeployStage.TexSpark]=Texture(NativeDeployArt.SparkTile(),NativeDeployArt.SparkPixels,NativeDeployArt.SparkPixels,"Deploy spark",false);
             stampJob=Task.Run(()=>NativeDeployArt.Stack(new[]{NativeDeployArt.StampTile(false),NativeDeployArt.StampTile(true)}));
         }
         private static Material Screen(Shader shader,string name,BlendMode src,BlendMode dst,bool zwrite,int queue,int cull,bool add)
@@ -82,6 +86,10 @@ namespace ChipArena.UnityConversion
             t.SetPixels32(c);t.Apply(true,true);return t;
         }
         private static byte B(float v)=>(byte)Mathf.RoundToInt(Mathf.Clamp01(v)*255);
+        private Task<float[]> TileJob(string id,bool dials,string theme)
+        {
+            string key=(dials?"m|":"i|")+id+"|"+theme;if(!tileJobs.TryGetValue(key,out var job)){job=Task.Run(()=>NativeDeployArt.Tile(id,dials,theme));tileJobs[key]=job;}return job;
+        }
         private void Replace(int slot,Texture2D t){var old=textures[slot];textures[slot]=t;if(old!=null&&old!=white)CapturedAnimation.Release(old);}
 
         // ---- the screens' pictures: built off the frame on workers, uploaded when ready ----
@@ -92,12 +100,15 @@ namespace ChipArena.UnityConversion
                 stripsBuilt=Stage.StripVersion;
                 for(int m=0;m<2;m++)for(int r=0;r<3;r++)
                 {
-                    var ids=(string[])Stage.Strip(m,r).Clone();var themes=new string[ids.Length];for(int i=0;i<ids.Length;i++)themes[i]=Stage.ThemeOf(ids[i]);bool dials=m==1;
-                    stripJobs[m*3+r]=Task.Run(()=>{var tiles=new List<float[]>();for(int i=0;i<ids.Length;i++)tiles.Add(NativeDeployArt.Tile(ids[i],dials,themes[i]));if(dials)tiles.Add(NativeDeployArt.BackTile());return NativeDeployArt.Stack(tiles);});
+                    var ids=Stage.Strip(m,r);bool dials=m==1;var tiles=new List<Task<float[]>>();
+                    foreach(var id in ids)tiles.Add(TileJob(id,dials,Stage.ThemeOf(id)));if(dials)tiles.Add(TileJob(NativeDeployArt.Back,true,null));
+                    stripJobs[m*3+r]=Task.WhenAll(tiles).ContinueWith(all=>NativeDeployArt.Stack(all.Result),TaskScheduler.Default);
                 }
             }
-            for(int k=0;k<6;k++){var job=stripJobs[k];if(job==null||!job.IsCompleted)continue;stripJobs[k]=null;
+            bool pending=false;
+            for(int k=0;k<6;k++){var job=stripJobs[k];if(job==null)continue;if(!job.IsCompleted){pending=true;continue;}stripJobs[k]=null;
                 if(job.Status==TaskStatus.RanToCompletion)Replace(NativeDeployStage.TexStrip+k,Texture(job.Result,NativeDeployArt.TilePixels,job.Result.Length/4/NativeDeployArt.TilePixels,"Deploy strip "+k,true));else Debug.LogWarning("A Deployment Station strip did not rasterise: "+job.Exception?.GetBaseException().Message);}
+            if(!pending&&tileJobs.Count>0)tileJobs.Clear();
             if(stampJob!=null&&stampJob.IsCompleted){if(stampJob.Status==TaskStatus.RanToCompletion)Replace(NativeDeployStage.TexStamp,Texture(stampJob.Result,NativeDeployArt.TilePixels,NativeDeployArt.StampRows*2,"Deploy stamps",true));stampJob=null;}
             // the map: the stage's revision (frozen at Deploy), one job at a time
             if(Stage.MapRevision!=mapAsked&&mapJob==null&&s!=null){mapAsked=Stage.MapRevision;var copy=s.Copy();mapJob=Task.Run(()=>NativeDeployPresentation.Preview(copy,NativeDeployStage.MapWidth,NativeDeployStage.MapHeight));}
@@ -137,7 +148,7 @@ namespace ChipArena.UnityConversion
                     if(bone==NativeDeployModels.Screen)
                     {
                         mat=it.Blend==NativeDeployStage.Blend.Additive?additive:it.Blend==NativeDeployStage.Blend.Alpha?alpha:strip;
-                        block.SetTexture(MainTexId,textures[it.Texture]??white);block.SetVector(TintId,V(it.Screen));block.SetFloat(RepId,it.Rep);block.SetFloat(ScrollId,it.Scroll);block.SetFloat(BlurId,it.Blur);
+                        block.SetTexture(MainTexId,textures[it.Texture]??(it.Texture>=NativeDeployStage.TexStrip?blank:white));block.SetVector(TintId,V(it.Screen));block.SetFloat(RepId,it.Rep);block.SetFloat(ScrollId,it.Scroll);block.SetFloat(BlurId,it.Blur);
                         block.SetFloat(GainId,it.Gain);block.SetFloat(SweepId,it.Sweep);block.SetFloat(ChromaId,it.Chroma);block.SetFloat(HoloId,it.Holo?1:0);block.SetVector(TexelId,new Vector4(1f/NativeDeployStage.MapWidth,1f/NativeDeployStage.MapHeight,0,0));
                     }
                     else if(bone==NativeDeployModels.Glass){mat=glass;block.SetVector(BodyTintId,new Vector4(1,1,1,it.Glass));block.SetVector(SceneTintId,Vector4.one);block.SetVector(AccentTintId,Vector4.one);block.SetVector(GlowTintId,Vector4.one);block.SetFloat(StageLitId,1);}
@@ -150,7 +161,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var list in meshes)if(list!=null)foreach(var m in list)if(m!=null)CapturedAnimation.Release(m);
             foreach(var m in new[]{lit,glass,strip,additive,alpha})if(m!=null)CapturedAnimation.Release(m);
-            for(int i=0;i<textures.Length;i++){if(textures[i]!=null&&textures[i]!=white)CapturedAnimation.Release(textures[i]);textures[i]=null;}if(white!=null)CapturedAnimation.Release(white);
+            for(int i=0;i<textures.Length;i++){if(textures[i]!=null&&textures[i]!=white)CapturedAnimation.Release(textures[i]);textures[i]=null;}if(white!=null)CapturedAnimation.Release(white);if(blank!=null)CapturedAnimation.Release(blank);
         }
     }
 }
