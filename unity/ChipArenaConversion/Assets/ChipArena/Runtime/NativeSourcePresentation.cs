@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
             if(sourceModels==null||string.IsNullOrEmpty(a.SourceSpec))return false;int layer=first?10:0;Camera camera=first?ViewCamera:null;
             // The match-start spawn-in (NativeSpawnInPresentation.cs): the body forms part by part, tinted, while the beam holds it.
             var spawn=SpawnFor(rig,a,first);spawnNow=spawn;reveal=SpawnReveal(spawn,reveal);
-            Matrix4x4 Bone(int b)=>rig.Bones[b].localToWorldMatrix;bool Visible(int b)=>!first||NativeViewRules.ViewModelBone(b);
+            Matrix4x4 Bone(int b)=>BigHeadBone(rig,b);bool Visible(int b)=>!first||NativeViewRules.ViewModelBone(b);
             // The first-person Siren shows inked pilot arms (first-person.ts); a Last Laugh victim chars as it burns (C12).
             // Every other pilot wears its body skin at this rig's tier (NativeBodySkinPresentation.cs); the Siren keeps its own.
             int bodySkin=NativeBodySkins.StandardIndex;string model=a.SourceSpec=="siren"?first?sirenInk??(sirenInk=sourceModels.Ink("pilot")):"siren":sourceModels.WoundedPilot(a.Id,a.Wounds,a.BodyColor,ForceCompatibilityRendering,RigBody(rig,a,first,out bodySkin));

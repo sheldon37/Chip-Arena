@@ -207,8 +207,8 @@ namespace ChipArena.UnityConversion
             float since=(float)(now-m.Born);if(since<0)return;float k=(float)m.Radius/BloaterReach;uint seed=unchecked((uint)m.Seed*2654435761u);int gas=NativeHordeKinds.Seam[NativeHordeKinds.Bloater];
             int step=quality<.5?2:1;
             for(int i=0;i<NativeHordeFx.BurstPieces;i+=step)if(NativeHordeFx.Burst(seed,i,since,out var o,out float size,out float alpha,out bool isGas)&&isGas)
-                Sprite(m.At+new Vector3(o.X*k,o.Y*k*.6f+.4f,o.Z*k),right,up,size*2.2f*k,gas,1,alpha*.8,true);
-            if(since<.25f)Sprite(m.At+new Vector3(0,.5f,0),right,up,2.4f*k*(1-since/.25f),gas,1,.8*(1-since/.25f),true);
+                Sprite(m.At+new Vector3(o.X*k,o.Y*k*.6f+.8f,o.Z*k),right,up,size*2.2f*k,gas,1,alpha*.8,true);
+            if(since<.25f)Sprite(m.At+new Vector3(0,.9f,0),right,up,2.4f*k*(1-since/.25f),gas,1,.8*(1-since/.25f),true);
             BurstsDrawn++;
         }
         // ---- ROULETTE: card glints spiralling up round the pilot ----

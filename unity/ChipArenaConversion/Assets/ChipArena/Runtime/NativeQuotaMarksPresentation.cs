@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
             var eye=cameraView.transform.position;var physics=arena.Root.scene.GetPhysicsScene();quotaArrows.Clear();
             for(int i=0;i<quotaMarks.Count;i++)
             {
-                var mk=quotaMarks.Marks[i];var vp=cameraView.WorldToViewportPoint(new Vector3(mk.Anchor.X,mk.Anchor.Y,mk.Anchor.Z));bool visible=false;
+                var mk=quotaMarks.Marks[i];if(!NativeMutatorLook.Within(mk.Distance*mk.Distance,NativeLighting.MutatorWhite)){quotaMarkers[i]=default;continue;}var vp=cameraView.WorldToViewportPoint(new Vector3(mk.Anchor.X,mk.Anchor.Y,mk.Anchor.Z));bool visible=false;
                 // Plain sight (only near: the close fade is 1 beyond it): nothing of the world between the camera and the add's chest.
                 if(mk.Distance<Q.CloseShow+1&&vp.z>0){var chest=new Vector3(mk.Root.X,mk.Root.Y+.3f,mk.Root.Z);var d=chest-eye;float len=d.magnitude;visible=len<.6f||!physics.Raycast(eye,d/len,out _,len-.5f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);}
                 var marker=Q.Marker(vp.x,vp.y,vp.z,aspect,mk.Distance,visible,t,reduced,level);quotaMarkers[i]=marker;

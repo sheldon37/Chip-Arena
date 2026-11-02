@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
         private static void Mutators(NativeDeployStage stage,ExpeditionDeploymentState s,float W,float a)
         {
             var look=stage.MutatorLook;var ph=look.Phase;int n=s!=null?Mathf.Min(3,s.mutators.Length):0;bool cards=n>0&&(ph==NativeDeployPresentation.Phase.Pending||ph==NativeDeployPresentation.Phase.Active);
-            var r=new Rect(W-380,112,352,58+(cards?n:1)*70);H.Panel(r,a,Hex(0x9d8cff),12,H.Corners.Diagonal,true,.9f);
+            var r=new Rect(W-380,112,352,58+(cards?n:1)*70+(cards?30:0));H.Panel(r,a,Hex(0x9d8cff),12,H.Corners.Diagonal,true,.9f);
             U.Text(new Rect(r.x+18,r.y+12,300,16),"MUTATOR MACHINE",11,Hex(0xb88cff,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);
             U.Text(new Rect(r.x+18,r.y+30,r.width-36,18),look.Banner,12,C.Ink(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.06f);
             if(!cards)
@@ -91,6 +91,10 @@ namespace ChipArena.UnityConversion
                 var pol=new Rect(row.xMax-122,row.y+10,54,18);H.Tag(pol,tone,a);U.Text(pol,NativeDeployPresentation.PolarityLabel(m.Polarity),9,tone,TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);
                 var st=new Rect(row.xMax-64,row.y+10,58,18);var sc=active?C.Good(a):C.Warn(a);H.Tag(st,sc,a);U.Text(st,active?"ACTIVE":"PENDING",9,sc,TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);
             }
+            // The run's payout (NativeExpeditionMutators.Payout: Banes and Chaos pay more; Core NativeMutatorLook.PayoutLabel).
+            var pay=new Rect(r.x+18,r.y+58+n*70,r.width-36,24);
+            U.Text(pay,NativeMutatorLook.PayoutLabel(s.mutators),13,C.Good(a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);
+            U.Text(pay,NativeMutatorLook.PayoutNote,9,C.Muted(a),TextAnchor.MiddleRight,mono:true,tracking:.06f);
         }
         // The console: the party's readiness and the host's buttons (or the guest's status line).
         private static DeployIntent Console(NativeDeployStage stage,ExpeditionDeploymentState s,Party party,bool host,float W,float Hh,float now,float a)

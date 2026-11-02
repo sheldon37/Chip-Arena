@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
         public void Frame(ExpeditionView v,Vector3 eye,double t,bool reduced)
         {
             World.Build(v);sink.Clear();sink.Linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
-            for(int i=0;i<World.Pieces.Count;i++){var p=World.Pieces[i];if(NativeExpeditionWorld.Visible(p,eye.x,eye.y,eye.z))NativeExpeditionWorld.Emit(sink,p,t,reduced);}
+            for(int i=0;i<World.Pieces.Count;i++){var p=World.Pieces[i];if(NativeExpeditionWorld.Visible(p,eye.x,eye.y,eye.z)&&NativeMutatorLook.Within(NativeExpeditionWorld.Distance2(p,eye.x,eye.y,eye.z),NativeLighting.MutatorWhite))NativeExpeditionWorld.Emit(sink,p,t,reduced);}
             mesh.Clear();if(sink.Points.Count==0)return;
             mesh.SetVertices(sink.Points);mesh.SetColors(sink.Colors);mesh.SetUVs(0,sink.Uv);mesh.SetTriangles(sink.Indices,0,false);mesh.bounds=Everywhere;
             material.SetFloat("_Scroll",reduced?0:NativeBeaconRules.MoteScroll(t));
@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
             var physics=arena!=null?arena.Root.scene.GetPhysicsScene():Physics.defaultPhysicsScene;bool reduced=prefs.reducedEffects;int n=0;
             for(int i=0;i<pieces.Count&&n<MaxLabelled;i++)
             {
-                var p=pieces[i];if(!NativeExpeditionWorld.Visible(p,eye.x,eye.y,eye.z))continue;
+                var p=pieces[i];if(!NativeExpeditionWorld.Visible(p,eye.x,eye.y,eye.z)||!NativeMutatorLook.Within(NativeExpeditionWorld.Distance2(p,eye.x,eye.y,eye.z),NativeLighting.MutatorWhite))continue;
                 var centre=new Vector3(p.x,p.y+NativeExpeditionWorld.GlyphHeight(p.kind)+NativeExpeditionWorld.Bob(p,t,reduced),p.z);var s=cameraView.WorldToScreenPoint(centre);if(s.z<=.05f)continue;
                 var at=new Vector2(s.x/U.S,(Screen.height-s.y)/U.S);if(at.x<-200||at.x>U.W+200||at.y<-200||at.y>U.H+200)continue;
                 Vector3 delta=centre-eye;if(physics.Raycast(eye,delta.normalized,out _,delta.magnitude-.1f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;

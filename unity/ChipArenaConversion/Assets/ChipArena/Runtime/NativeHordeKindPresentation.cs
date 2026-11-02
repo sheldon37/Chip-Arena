@@ -309,7 +309,7 @@ namespace ChipArena.UnityConversion
             // The hinged jaw (the spitter's unhinging spit, the Hulk's roar, the flap of its steps) and the mouth the spit leaves from.
             s.RoarAge=roar;float cancelAge=s.CancelFor==m.LastAttack&&!float.IsNaN(s.CancelAt)?now-s.CancelAt:float.NaN;
             s.Jaw=NativeHordeJaw.Open(kind,attack0,jawAge,strike0,cancelAge,roar,now,seed);if(mode==0&&NativeHordeJaw.Hinged(kind))s.Jaw+=s.Gait.JawFlap;if(roamScream>0&&NativeHordeJaw.Hinged(kind))s.Jaw=Mathf.Max(s.Jaw,.95f*roamScream);HordeMouth(s,pos);
-            NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");
+            NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");HordeBigHead(rig);
             rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             float swell=HordeSwellNow(s,m,now);var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);StationGlow(m,kind,now,ref glow);
             // On the player's model (NativeZombieModelPresentation.cs) for a modelled kind on the full tier, else the voxel model.

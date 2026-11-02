@@ -198,6 +198,7 @@ namespace ChipArena.UnityConversion
             VisualStridePose(body,rig,a,time,roll,juggle);
             VisualMotionPose(body,rig,a,time);
             var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            VisualBigHead(body);
             body.Moved=true;
         }
 

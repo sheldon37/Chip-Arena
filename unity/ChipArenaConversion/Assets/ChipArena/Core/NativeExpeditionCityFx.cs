@@ -85,6 +85,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The volumetric beams (Core NativeBeamList; docs/LIGHTING-ADVANCED.md): while set (the medium and high tiers with
         /// the look's beams on), the shafts go here instead of their billboards; null (every other case) draws the billboards.</summary>
         public NativeBeamList Beams;
+        /// <summary>DARKNESS (an Expedition mutator, Core NativeMutatorLook): the lamps' halos, pools and bulbs are out.</summary>
+        public bool LampsOut;
         public const double FogRadius=40,WindX=.55,WindZ=.3;
         private double ex,ey,ez,rx,ry,rz,ux,uy,uz,hx,hz;private NativeFxLight light;
         private readonly double[] key=new double[SortMax],sx=new double[SortMax],sy=new double[SortMax],sz=new double[SortMax],ss=new double[SortMax],sr=new double[SortMax],sg=new double[SortMax],sb=new double[SortMax],sa=new double[SortMax];
@@ -105,7 +107,7 @@ namespace ChipArena.UnityConversion
             Begin();ColumnFx(scene,time,quality,low);Flush();
             Begin();FogFx(scene,time,quality,low);PocketFx(scene,time,quality,low);Flush();
             Begin();SmokeFx(scene,time,quality,low);SteamFx(scene,time,quality,low);AshFx(time,quality,low);Flush();
-            FireFx(scene,time,quality,low);HaloFx(scene,time);BulbFx(scene,time);HeliFx(time,quality,low);
+            FireFx(scene,time,quality,low);if(!LampsOut){HaloFx(scene,time);BulbFx(scene,time);}HeliFx(time,quality,low);
         }
 
         // ---------------- primitives ----------------

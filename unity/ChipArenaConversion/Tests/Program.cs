@@ -30,7 +30,8 @@ internal static class Program
             if(args.Length==1&&args[0]=="--deploy-presentation"){DeployPresentationChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--deploy-models"){DeployModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-sparks"){DeploySparkChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--pod-drop"){PodDropChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--pod-drop"){PodDropChecks.Run(ProjectRoot());MutatorFxChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--mutator-fx"){MutatorFxChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-handoff"){ExpeditionHandoffChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-split"){ExpeditionSplitChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--expedition-fresh"){ExpeditionFreshRunChecks.Run(ProjectRoot());return 0;}

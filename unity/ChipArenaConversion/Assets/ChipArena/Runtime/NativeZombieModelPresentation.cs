@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
             z.Body.Binding.Apply(pose,z.Kind==NativeHordeKinds.Hulk?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy}:default(NativeVisualRig.Grasp),planted,airborne);
             ZombieFace(z,flash,swell,z.PosedFrame<Time.frameCount-1);
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
-            ZombieCollapse(z,lost,hidden);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
+            ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
         }
         // The parts gone (the authority's lost limbs, a slice's or a burst's hidden joints): each root part's bone collapsed to its
