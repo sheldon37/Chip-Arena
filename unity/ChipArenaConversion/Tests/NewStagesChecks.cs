@@ -12,11 +12,12 @@ internal static class NewStagesChecks
         var o=new JsonSerializerOptions{IncludeFields=true};
         var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),o);
         var maps=JsonSerializer.Deserialize<UnityMapContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")),o);
+        NativeMapRules.Merge(content,maps,File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/UnityMaps.json")));
         var required=new[]{"breakwater","harbor","skyframe","rig","polar","training"};
         Check(required.All(id=>maps.maps.Count(m=>m.id==id)==1),"all six integrated maps exist exactly once");
         foreach(var map in maps.maps.Where(m=>required.Contains(m.id)))
         {
-            NativeMapRules.Validate(map);Check(!map.rotation,"rotation "+map.id);
+            NativeMapRules.Validate(map);Check(map.rotation==(map.id!="training"),"rotation "+map.id);
             var nodes=map.nav.nodes.ToDictionary(n=>n.id);var adj=nodes.Keys.ToDictionary(k=>k,k=>new List<string>());
             foreach(var l in map.nav.links){adj[l.a].Add(l.b);if(l.kind!="drop")adj[l.b].Add(l.a);}
             string Near(V3 p)

@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         public const float PilotRadius=.42f;
         public const string DefaultArena="brickfall";
         // Only authored Unity maps enter this runtime; exported Electron maps remain source fixtures.
-        public const string CatalogPolicy="unity-authored-only-v1";
+        public const string CatalogPolicy="unity-authored-only-v2";
         // Shared by the native build gate and managed loader regressions. The shipped catalogue
         // includes the five M1 arenas and Training Room; generated run maps are added later.
         public static void ValidateShippedCatalog(ConversionContent content)
@@ -36,12 +36,15 @@ namespace ChipArena.UnityConversion
             var maps=content?.maps;
             if(maps==null||maps.Any(m=>m==null||!m.unity)||!maps.Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(expected))
                 throw new InvalidOperationException("Shipped Unity catalogue must contain the authored maps plus fixed-seed Level 0 (including M1 arenas and Training Room).");
-            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","brickfall","cybercity","factory"}))
+            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"backrooms-level-0","breakwater","brickfall","cybercity","factory","harbor","polar","rig","skyframe"}))
                 throw new InvalidOperationException("Shipped Unity random rotation differs.");
         }
         public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;
-        public static string RandomArena(ConversionContent c,uint seed)
-        {var maps=c.maps.Where(m=>ArenaSelectable(m)&&m.rotation).ToArray();return maps.Length==0?DefaultArena:maps[(int)(seed%(uint)maps.Length)].id;}
+        // Unknown rosters conservatively omit the small duel map. Match starts and set changes pass actual seats.
+        public static bool RandomEligible(ContentMap map,IEnumerable<NativeSeat> seats=null,bool teams=false)
+        =>ArenaSelectable(map)&&map.rotation&&(map.id!="breakwater"||seats!=null&&NativeTrainingRules.RoomFits(map.id,seats,teams));
+        public static string RandomArena(ConversionContent c,uint seed,IEnumerable<NativeSeat> seats=null,bool teams=false)
+        {var maps=c.maps.Where(m=>RandomEligible(m,seats,teams)).ToArray();return maps.Length==0?DefaultArena:maps[(int)(seed%(uint)maps.Length)].id;}
         public static bool WardInstance(string id)=>id=="siren"||id=="expedition-ward-zero";
         public static bool ExpeditionInstance(string id)=>id=="expedition-ward-zero"||id=="expedition-transit"||id=="expedition-foundry"||id=="expedition-ironworks"||id==NativeBackroomsGenerator.InstanceMap;
         public static bool ArenaSelectable(ContentMap map)=>map!=null&&map.id!="training"&&!map.id.StartsWith("expedition-",StringComparison.Ordinal);
@@ -65,7 +68,8 @@ namespace ChipArena.UnityConversion
             // (used by lights/alarms), so boss-test tuning cannot drift between the two modes.
             var ward=u.maps.SingleOrDefault(m=>m.id=="siren");var instance=u.maps.SingleOrDefault(m=>m.id=="expedition-ward-zero");
             if(instance!=null){if(ward==null)throw new InvalidOperationException("Expedition Ward Zero requires the boss-test map");instance.hazards=ward.hazards;}
-            foreach(var m in u.maps){m.unity=true;Validate(m);}
+            // Runtime rotation policy also applies to existing locked map exports. Geometry need not be regenerated.
+            foreach(var m in u.maps){if(m.id=="breakwater"||m.id=="harbor"||m.id=="skyframe"||m.id=="rig"||m.id=="polar")m.rotation=true;m.unity=true;Validate(m);}
             // Ward Zero deliberately replaces its exported legacy map, preserving its public ID.
             if(u.maps.GroupBy(m=>m.id).Any(g=>g.Count()>1)||u.maps.Any(m=>m.id!="siren"&&c.maps.Any(old=>old.id==m.id)))throw new InvalidOperationException("Duplicate Unity map");
             var backrooms=NativeBackroomsGenerator.Build(NativeBackroomsGenerator.ArenaSeed,false).Map;Validate(backrooms);

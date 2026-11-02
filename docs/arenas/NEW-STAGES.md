@@ -12,8 +12,7 @@ stage).
 Status: **M1 simulation integrated on `codex/unity-m1-stages-training` (base `2066db79`); presentation and Windows playtest pending.**
 - Each stage has a draft generator in `docs/arenas/scripts/<id>_m1.py` that writes the map in the `UnityMaps.json` shape and
   a top-down plan, and checks spawn sightlines, spacing, hazard clearance, bounds and reachability.
-- All six are generated through `unity/ChipArenaConversion/tools/generate_stage_hazards.py`. Five are selectable with
-  `rotation: false`; `training` is sandbox-only and rejected by PvP selection. Draft geometry, IDs and timings are preserved.
+- All six are generated through `unity/ChipArenaConversion/tools/generate_stage_hazards.py`. Five are selectable and enabled in Random (owner request 2026-11-02); `training` is sandbox-only and rejected by PvP selection. Draft geometry, IDs and timings are preserved.
 
 ## At a glance
 
@@ -564,7 +563,7 @@ without limit.
 - Integration: generator, nav, music and the asset lock.
 - Hazard simulation on the existing kinds, and the kill volumes (water, sea, edges).
 - Bots on edges and decks.
-- Selection: maps stay `rotation: false` until playtested; Breakwater is offered for 1v1 and 2v2 rooms.
+- Selection: owner enabled the five arenas in Random on 2026-11-02. Breakwater is filtered by the actual roster (FFA ≤4; teams ≤2v2), including between-set shuffles. Native playtesting remains outstanding.
 - The Training Room mode: sandbox entry, dummy pads, strafing rail, hazard bay triggers, damage readout events.
 
 ## Astra handoff (ready to paste)
@@ -576,7 +575,7 @@ without limit.
 >
 > 1. Integrate each through `tools/generate_stage_hazards.py`: nav, music, asset lock.
 >    - Keep the geometry, ids and hazard timing unless the sim needs a change; note any change in the stage's section.
->    - Set `rotation: false` until playtested.
+>    - Historical M1 hold superseded by owner request 2026-11-02: enable PvP Random, retaining room-size checks.
 > 2. Falls: the bounds deliberately run past Pier 9's quay edge and Skyframe's open sides, because `NativeUnityMaps.Clamp`
 >    would otherwise hold pilots on the slab. Pier 9's draft proposes a `killVolumes` entry (`harbor-water`); it is a new
 >    key, so take it or rely on killY.
