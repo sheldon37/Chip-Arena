@@ -6,6 +6,8 @@ namespace ChipArena.UnityConversion
     public enum ExpeditionPhase { Town, Instance, FinalBoss, Victory, Ended }
 
     // Field-only DTOs: both Unity JsonUtility and the managed test codec can round-trip these.
+    // Unity writes null strings as empty; copies canonicalize optional ids and validation
+    // treats only null/empty as absent. Nonempty invalid ids are still rejected.
     [Serializable] public sealed class ExpeditionMember
     {
         public string account, weapon, area;
@@ -19,7 +21,7 @@ namespace ChipArena.UnityConversion
         public ChipCount[] chips=Array.Empty<ChipCount>();
         public ExpeditionMember Copy()
         {
-            var p=(ExpeditionMember)MemberwiseClone();p.xpCompletion=xpCompletion?.Copy();p.perks=(string[])perks.Clone();
+            var p=(ExpeditionMember)MemberwiseClone();p.carriedBy=string.IsNullOrEmpty(carriedBy)?null:carriedBy;p.area=string.IsNullOrEmpty(area)?null:area;p.xpCompletion=xpCompletion?.Copy();p.perks=(string[])perks.Clone();
             p.chips=chips.Select(c=>new ChipCount{id=c.id,count=c.count}).ToArray();return p;
         }
     }
@@ -33,7 +35,7 @@ namespace ChipArena.UnityConversion
     {
         public string id, owner, source, selected;public bool claimed, consumed, highQuality;
         public string[] offers=Array.Empty<string>();
-        public ExpeditionReward Copy(){var r=(ExpeditionReward)MemberwiseClone();r.offers=(string[])offers.Clone();return r;}
+        public ExpeditionReward Copy(){var r=(ExpeditionReward)MemberwiseClone();r.owner=string.IsNullOrEmpty(owner)?null:owner;r.selected=string.IsNullOrEmpty(selected)?null:selected;r.offers=(string[])offers.Clone();return r;}
     }
     [Serializable] public sealed class ExpeditionDice
     {
@@ -101,10 +103,10 @@ namespace ChipArena.UnityConversion
                 !Ids(s.exitVotes,8)||!Ids(s.extractVotes,8)||!Ids(s.continueVotes??Array.Empty<string>(),8))return false;
             if(s.members.Any(p=>p==null||!Id(p.account)||!Id(p.weapon)||p.wallet<0||p.wallet>1000000000||p.catchup<0||p.catchup>256||p.initialCatchup<p.catchup||p.initialCatchup>256||
                 !Ids(p.perks,3)||p.chips==null||p.chips.Length>2048||p.chips.Any(c=>c==null||!Id(c.id)||c.count<1||c.count>100000)||p.chips.Select(c=>c.id).Distinct().Count()!=p.chips.Length||
-                p.carriedBy!=null&&!Id(p.carriedBy)||p.extracted&&(p.connected||p.alive)))return false;
+                !string.IsNullOrEmpty(p.carriedBy)&&!Id(p.carriedBy)||p.extracted&&(p.connected||p.alive)))return false;
             var accounts=s.members.Select(p=>p.account).ToArray();
             if(accounts.Distinct().Count()!=accounts.Length||!accounts.Contains(s.host)||s.members.Count(p=>p.connected&&!p.extracted)>8)return false;
-            if(s.members.Any(p=>p.carriedBy!=null&&(p.alive||p.extracted||!s.members.Any(c=>c.account==p.carriedBy&&c.alive&&c.connected&&!c.extracted))))return false;
+            if(s.members.Any(p=>!string.IsNullOrEmpty(p.carriedBy)&&(p.alive||p.extracted||!s.members.Any(c=>c.account==p.carriedBy&&c.alive&&c.connected&&!c.extracted))))return false;
             if(s.instances.Any(i=>i==null||!Id(i.id)||i.id==s.world||i.target<1||i.target>1000000||i.progress<0||i.progress>i.target||!Ids(i.bosses,32)||!Ids(i.defeated,32)||
                 i.defeated.Any(b=>!i.bosses.Contains(b))||i.cleared&&(i.bosses.Length==0||i.defeated.Length!=i.bosses.Length)))return false;
             if(s.instances.Select(i=>i.id).Distinct().Count()!=s.instances.Length)return false;
@@ -113,7 +115,7 @@ namespace ChipArena.UnityConversion
             if(s.exitVotes.Length>0&&!s.instances.Any(i=>i.id==s.area&&i.cleared))return false;
             if(s.phase!=ExpeditionPhase.Town&&s.phase!=ExpeditionPhase.Victory&&(s.extractVotes.Length>0||s.extractAt>=0))return false;
             if((s.phase==ExpeditionPhase.Town||s.phase==ExpeditionPhase.Victory)&&s.area!=s.world)return false;
-            if(s.rewards.Any(r=>r==null||!Id(r.id)||!Id(r.source)||r.owner!=null&&!accounts.Contains(r.owner)||r.claimed&&r.owner==null||r.consumed&&!r.claimed||
+            if(s.rewards.Any(r=>r==null||!Id(r.id)||!Id(r.source)||!string.IsNullOrEmpty(r.owner)&&!accounts.Contains(r.owner)||r.claimed&&string.IsNullOrEmpty(r.owner)||r.consumed&&!r.claimed||
                 !Ids(r.offers,12)||!string.IsNullOrEmpty(r.selected)&&(!r.consumed||!r.offers.Contains(r.selected))||!r.claimed&&r.offers.Length>0)||s.rewards.Select(r=>r.id).Distinct().Count()!=s.rewards.Length)return false;
             if(s.dice.Any(d=>d==null||!Id(d.boss)||!Ids(d.eligible,8)||!Ids(d.winners,8)||d.rolls==null||d.rolls.Length!=d.eligible.Length||d.rolls.Any(r=>r<1||r>100)||d.each<0||d.each>256||
                 d.eligible.Any(a=>!accounts.Contains(a))||d.winners.Any(a=>!d.eligible.Contains(a)))||s.dice.Select(d=>d.boss).Distinct().Count()!=s.dice.Length)return false;

@@ -18,6 +18,7 @@ namespace ChipArena.UnityConversion
             Check(root.MoveMembers("hub","ward",new[]{"a","b"})&&root.MoveMembers("hub","station",new[]{"next"}),"split members");
             Check(ward.Progress("kills",2)&&ward.StartBosses(new[]{"boss"})&&ward.DefeatBossAt("boss",3,4,5,3),"reward ledger and anchors");
             Check(ward.Credit("a","credit",100)&&ward.VoteExit("a",true)&&root.SetSafe("host",true),"wallet, scoped countdown, extraction eligibility");
+            Check(ward.Drop("ordinary"),"unowned reward for codec round trip");
             var candidates=new[]{new ExpeditionHostCandidate{account="next",capable=true,reachable=true}};
             Check(station.SetLoading(true)&&root.PrepareHandoff("loading",new[]{"host"},candidates)==null&&station.SetLoading(false),"wait for every area load");
             Check(root.HoldMembers(new[]{"b"},true)&&root.PrepareHandoff("moving",new[]{"host"},candidates)==null&&root.HoldMembers(new[]{"b"},false),"wait for cohort movement");
@@ -28,6 +29,14 @@ namespace ChipArena.UnityConversion
             root.Tick(.25);ward.Tick(.25);station.Tick(.25);ward.DisableAccountXp();
             Check(!ward.Credit("a","frozen",1)&&!ward.VoteExit("b",true)&&!station.SetLoading(true)&&!root.HoldMembers(new[]{"a"},true)&&!root.MoveMembers("ward","hub",new[]{"a"}),"all mutation paths frozen");
             Check(Json(root.PartySnapshot())==before&&Json(ward.Snapshot())==wardBefore&&root.ForArea("ward").Migrating,"freeze preserves state and new facade");
+            // JsonUtility serializes null string fields as empty strings. Preserve absence,
+            // rather than interpreting an empty carrier/owner as a player account.
+            var unityStrings=Copy(h);
+            foreach(var m in unityStrings.state.members)m.carriedBy=m.carriedBy??"";
+            foreach(var r in unityStrings.state.rewards){r.owner=r.owner??"";r.selected=r.selected??"";}
+            var unityRestored=NativeExpedition.RestorePreparedHandoff(unityStrings,"next");
+            Check(Json(unityRestored.PartySnapshot())==before,"Unity empty optional strings restore canonical rules state");
+            Check(unityStrings.state.members[0].carriedBy=="","normalization does not mutate caller DTO");
             var encoded=Copy(h);var restored=NativeExpedition.RestorePreparedHandoff(encoded,"next");
             Check(restored.Migrating&&restored.ForArea("ward").Migrating&&Json(restored.PartySnapshot())==before&&Json(restored.ForArea("ward").Snapshot())==wardBefore,"serialized all-area restore is exact and frozen");
             encoded.state.members[0].wallet=999;encoded.areas.Single(a=>a.id=="ward").exitVotes[0]="bad";
@@ -48,6 +57,8 @@ namespace ChipArena.UnityConversion
                 try{NativeExpedition.RestorePreparedHandoff(bad,"next");}catch(ArgumentException){rejected=true;}
                 Check(rejected,why);
             }
+            Reject(v=>v.state.members[0].carriedBy="missing-account","nonempty invalid carrier still rejected");
+            Reject(v=>{var reward=v.state.rewards.Single(r=>r.source=="monster");reward.owner="";reward.claimed=true;},"claimed reward requires a real owner");
             Reject(v=>v.schema++,"schema");Reject(v=>v.revision++,"revision");Reject(v=>v.nextEpoch++,"epoch");
             Reject(v=>v.oldHost="next","source identity");Reject(v=>v.nextHost="a","authenticated destination");
             Reject(v=>v.leaving=new[]{"host","next"},"target cannot leave");Reject(v=>v.leaving=null,"missing departures");
@@ -61,7 +72,8 @@ namespace ChipArena.UnityConversion
             var flat=NativeExpedition.Create("flat","hub","host","sword",1,new[]{new ExpeditionInstance{id="ward",target=1}});
             Check(flat.Join("next","sword")&&flat.Enter("ward")&&flat.Progress("kill",1)&&flat.StartBosses(new[]{"boss"})&&flat.DefeatBoss("boss")&&flat.VoteExit("host",true)&&flat.VoteExit("next",true),"legacy party setup");
             flat.Tick(.25);Check(flat.SetSafe("host",true),"legacy safe exit");var flatHandoff=flat.PrepareHandoff("flat-transfer",new[]{"host"},candidates);
-            var flatRestore=NativeExpedition.RestorePreparedHandoff(Copy(flatHandoff),"next");Check(!flatRestore.SplitAreas&&flatRestore.Migrating&&flatRestore.CommitHandoff(flatHandoff.id,"next",flatHandoff.nextEpoch,flatHandoff.revision),"legacy control-state round trip");
+            var flatWire=Copy(flatHandoff);foreach(var member in flatWire.state.members){member.area="";member.carriedBy="";}
+            var flatRestore=NativeExpedition.RestorePreparedHandoff(flatWire,"next");Check(!flatRestore.SplitAreas&&flatRestore.Migrating&&flatRestore.CommitHandoff(flatHandoff.id,"next",flatHandoff.nextEpoch,flatHandoff.revision),"legacy control-state round trip");
             Console.WriteLine("PASS Expedition handoff: "+n+" checks");
         }
     }

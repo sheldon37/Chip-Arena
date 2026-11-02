@@ -1,3 +1,9 @@
+## 2026-11-02 — Astra: normalize Unity checkpoint optional IDs
+
+- Native Windows retry `6470763` passed the shader import and reached deployment acceptance, then rejected the handoff checkpoint after a real JsonUtility round trip. Unity represents absent string fields as empty strings; the checkpoint validator previously treated an empty carrier or unowned reward as an invalid non-null ID.
+- On task branch `codex/deployment-native-followup`, accept only null/empty as absent for optional carrier/reward ownership; deep copies canonicalize optional carrier, area, owner and selection IDs. Unknown nonempty carriers and claimed rewards without owners remain invalid. Preserve input DTOs and both split/flat restore behavior. No timing, geometry, animation or network protocol change; active-run migration stays disabled.
+- Verification: 49 handoff checks including empty-string round trips, unowned drops, copy isolation and malformed ownership; full managed/real-loopback-relay suite exit 0 with all 35 managed-core checks; Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passed with existing warnings; source package 2,909 files and whitespace checks passed. Actual Windows codec/build retry and feed publication remain pending at this source receipt; preceding failures published no new update.
+
 ## 2026-11-01 — Astra: fix native Deployment Station shader import
 
 - Windows diagnostic retry `2de0c1d` reports `NativeDeployScreen import failed: undeclared identifier '_DstBlend'` at shader line 58. The ShaderLab property and fixed-function Blend setting existed, but the fragment shader also reads it to choose premultiplied-alpha handling and lacked its HLSL uniform declaration.
