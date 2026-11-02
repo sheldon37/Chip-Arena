@@ -39,6 +39,7 @@ namespace ChipArena.UnityConversion
         private void Building(int i,string name)
         {
             if(Starts(name,"g:")){GeneratedBuilding(i,name);return;}
+            if(Starts(name,"hall:")){InstanceHall(i,name.Substring(5));return;}
             var b=blocks[i];int kind=KindOf(name);if(!facesOf.TryGetValue(i,out var fs))return;string id=b.id;
             foreach(var f in fs)
             {

@@ -143,12 +143,13 @@ namespace ChipArena.UnityConversion
         public static double Hash(string s,int a=0,int c=0){unchecked{return Mix(Fnv(s)^Mix((uint)a*0x9E3779B9U+(uint)c*0x85EBCA6BU))/4294967296.0;}}
         private static bool Starts(string s,string p)=>s.StartsWith(p,StringComparison.Ordinal);
         /// <summary>The id with the town prefix removed, or null for other maps' ids. The generated map's ids in the town's terms
-        /// (NativeExpeditionCityKit.Generated.cs): a building "bldg-g:x:z", a fence section "sanctuary-fence-...", the rest "gen-...".</summary>
+        /// (NativeExpeditionCityKit.Generated.cs): a building "bldg-g:x:z", an instance's hall "bldg-hall:instance", a fence section
+        /// "sanctuary-fence-...", the rest "gen-...".</summary>
         public static string Stem(string id)
         {
             if(id==null)return null;if(id.StartsWith(Prefix,StringComparison.Ordinal))return id.Substring(Prefix.Length);
             if(!id.StartsWith(GeneratedPrefix,StringComparison.Ordinal))return null;var s=id.Substring(GeneratedPrefix.Length);
-            return Starts(s,"building-")?"bldg-g:"+s.Substring(9):Starts(s,"fence-")?"sanctuary-"+s:"gen-"+s;
+            return Starts(s,"building-")?"bldg-g:"+s.Substring(9):Starts(s,"hall-")?"bldg-hall:"+s.Substring(5):Starts(s,"fence-")?"sanctuary-"+s:"gen-"+s;
         }
 
         // ---------------- block glyphs (3 x 5 cells; rows top to bottom, bit 2 the left column) ----------------

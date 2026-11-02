@@ -154,6 +154,34 @@ only (`Core/NativeExpeditionCityKit.Generated.cs`); no collider, record, route, 
 - **Not done:** per-district fog or ambient colour as the camera moves, district audio, the camp's brazier and props
   in the generated plaza, mutator presentation (no effect list yet).
 
+### Instance halls and the closed edge (Claude, 2026-11-01, blockout 2)
+
+Owner playtest of the test update: each entrance "looks like just a gate", and pilots walked round it and fell. Human
+pilots are not clamped to the bounds each tick (only bots, abilities and teleports use `NativeMapRules.Clamp`), and
+every entrance's 3 × 3 forecourt ran to the floor's edge with nothing behind the frame.
+
+- **Collision (`NativeExpeditionGeneratedWorld`, `Version` `deployment-world-blockout-2`):**
+  - `hall-<instance>`: one 18 m block filling the forecourt's outer half from the frame (its face touches the posts'
+    backs) to the floor's edge, 30 m across. The frame is its doorway; the door records, approach, join circle and
+    returns are unchanged (all on the city side).
+  - `edge-<x:z>` / `edge-z-<x:z>`: a 6 m wall along the outer side of any other street cell on the floor's edge (a
+    seeded branch can reach it).
+  - Both are static and carry the generated buildings' exclusion column.
+  - The generator version change fences older staging tickets as before.
+- **Dressing (`NativeExpeditionCityKit.Generated.cs`, stem `bldg-hall:<instance>`):**
+  - The hall gets its district's facade on every face, with the doorway kept clear for the door leaves.
+  - Its name stands about 1.7 m tall over the frame, with an accent strip and floodlights on the parapet.
+  - Each district has its own crown:
+    - Ironworks: two burning stacks over a sawtooth roof.
+    - Central Station: a lit glass roof and a roundel mast.
+    - Ward Zero: air handlers and four strobing beacons.
+  - Edge walls are dressed as the checkpoint walls, unlettered.
+- **Checks:** `--generated-districts` now requires, on every roll:
+  - a hall per instance, at least 12 m tall, with its face on the door's plane and dressed;
+  - every street cell on the floor's edge closed along its outer side.
+
+  `--expedition-deployment` passes unchanged (3,681).
+
 Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The owner-authorized test update may ship with active-run migration disabled; full migration remains separate unfinished work.
 
 ## Approved gameplay shape
