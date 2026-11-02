@@ -1,3 +1,50 @@
+## 2026-11-02 — Claude: slot-machine sparks on rolls and landings (sound cues for Astra)
+
+- **Branch/base:** `claude/slot-sparks` from shared `bfc770a`. Implementation `bcbed4d`, then this log. Merged into
+  shared and the builder (test channel). Not a live release.
+- **Task:** owner: "For the slot machine on expedition, can you add like spark effects when rolling and landing on
+  things? (Maybe a little effect if something benefits the players, or in a sense.. screws them) We can have astra
+  simulate sound effects".
+- **Changes:**
+  - `Core/NativeDeploySparks` (new): every spark is a function of the roll clock, so a late joiner sees none. It draws:
+    - grinder sparks through each reel's spin and brake;
+    - a burst in the destination's colour as a reel lands;
+    - by card polarity: a BOON's gold-green fountain with glints, a BANE's short circuit (falling red sparks, arcs, a
+      stutter), a CHAOS violet vortex;
+    - three of one polarity erupts over the sign.
+  - Reduced effects: about a third of the sparks, no arcs, no strobing.
+  - The cabinets' light kicks with the landings (`Kick`).
+  - `Core/NativeDeployStage`: the sparks are drawn after the station's own items, as camera-facing additive quads
+    (`Capacity` 96 + 160, texture slot `TexSpark`).
+  - `Core/NativeDeployArt.SparkTile`: the spark sprite.
+  - `Runtime/NativeDeployScene`, a fix: the mutator dials drew plain white for 9-14 s after the station opened (each dial
+    rasterised its 31 cards on one worker; this started with the 30-card catalog). Each tile now rasterises once, in
+    parallel; the dials share the jobs; a strip that isn't ready draws a dark blank. All strips are ready at about 2.6 s
+    in the Editor.
+  - Docs: `docs/EXPEDITION-DEPLOYMENT.md` "Slot sparks and sound cues".
+- **For Astra (sound; nothing plays yet):** `NativeDeployStage.Cues[0..CueCount)` lists each frame's roll moments, each
+  heard exactly once:
+  - `Spin`: the lever and motor;
+  - `Brake`: a reel's brake starts biting;
+  - `Stop`: a reel's clunk;
+  - `Card`: a mutator card's sting, with its `Polarity`;
+  - `Sweep`: three of one polarity.
+  - Each cue also carries `Machine` (0 instance, 1 mutator) and `Reel` (for panning).
+  - The schedule is `NativeDeploySparks.Schedule`. Read it after `NativeDeployScene.Draw` (e.g. in `NativeDeployCast`).
+- **Affected systems:** Deployment Station presentation only. No rules, authority, network, timing or save change; the
+  reels' timing is unchanged.
+- **Checks:**
+  - `--deploy-sparks` (new `Tests/DeploySparkChecks.cs`): 12,615 checks. A mutation leaving arcs on under reduced
+    effects fails them.
+  - `--deploy-models` (incl. no per-frame allocation with sparks) and `--deploy-presentation` pass.
+  - Full suite on a clean LF worktree: 929 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch applied there
+    only).
+  - `tools/check_unity_compile.py`: Input System, Player, Runtime and Editor PASS. `git diff --check` clean.
+  - Unity: station DEV-preview captures (local BoZo v247 `deploy=`/`dshots=`): the grinder, destination bursts,
+    boon/bane/chaos landings and all three sweeps; the card art loads.
+- **Not checked:** reduced effects seen in Unity (checked in tests only), a Windows build, a live room (the live
+  mutator roll is still off until Astra's effects), audio.
+
 ## 2026-11-02 — Claude: controller menu focus glow and hover tick
 
 - **Branch/base:** `claude/menu-focus-glow` from shared `1d488cd`. Implementation `e2a805a`, then this log. Merged into
