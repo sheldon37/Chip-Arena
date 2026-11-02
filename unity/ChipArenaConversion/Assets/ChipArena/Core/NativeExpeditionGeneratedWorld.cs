@@ -18,7 +18,9 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeExpeditionGeneratedWorld
     {
-        public const string Version="deployment-world-blockout-1";
+        public const string Version="deployment-world-blockout-2";
+        /// <summary>Each instance's building behind its entrance frame, and the walls closing any street at the floor's edge.</summary>
+        public const float HallHeight=18,EdgeHeight=6;
         public const string MapId="expedition-generated-city";
         private const float NavStep=2;
         private static ExpeditionPoint Point(float x,float z,float yaw=0)=>new ExpeditionPoint{x=x,z=z,yaw=yaw};
@@ -74,6 +76,21 @@ namespace ChipArena.UnityConversion
                 doors.Add(new ExpeditionDoorLayout{anchor=id,interact=Volume(x+ix*2,z+iz*2,5,5),closure=Volume(x,z,ix==0?6:1,ix==0?1:6),
                     approach=Point(x+ix*4,z+iz*4,yaw),join=new ExpeditionJoinCylinder{x=x+ix*8,z=z+iz*8,r=3,h=3},entries=Array.Empty<ExpeditionPoint>(),
                     returns=Enumerable.Range(0,8).Select(i=>Point(x+ix*(6+i/4*2)+iz*((i%4)*2-3),z+iz*(6+i/4*2)-ix*((i%4)*2-3),yaw)).ToArray()});
+                // The instance's building fills its forecourt's outer half to the floor's edge (owner playtest 2026-11-01: the frame
+                // stood alone and pilots walked round it off the floor). The frame is its doorway; its city half stays open.
+                float far=ix>0?-125:ix<0?125:-95,near=(ix!=0?x:z)-(ix+iz)*.5f,h0=Math.Min(far,near),h1=Math.Max(far,near);
+                blocks.Add(ix!=0?Block("hall-"+d.instance,(h0+h1)/2,z,h1-h0,30,HallHeight):Block("hall-"+d.instance,x,(h0+h1)/2,30,h1-h0,HallHeight));
+            }
+            // A wall where any other street meets the floor's edge (a seeded branch can reach it), outside the halls.
+            var halls=blocks.Where(b=>b.id.Contains("-hall-")).ToArray();
+            foreach(var key in roads.OrderBy(k=>k,StringComparer.Ordinal))
+            {
+                var c=key.Split(':');int cx=int.Parse(c[0],CultureInfo.InvariantCulture),cz=int.Parse(c[1],CultureInfo.InvariantCulture);
+                bool Covered(float px,float pz)=>halls.Any(b=>Math.Abs(px-b.pos.x)<b.size.x/2&&Math.Abs(pz-b.pos.z)<b.size.z/2);
+                if(Math.Abs(cx)==12&&!Covered(cx*10+Math.Sign(cx)*4.8f,cz*10))blocks.Add(Block("edge-"+key,cx*10+Math.Sign(cx)*4.8f,cz*10,.4f,10,EdgeHeight));
+                // Along x the corner cell's wall stops short of the one across its end.
+                if(Math.Abs(cz)==9&&!Covered(cx*10,cz*10+Math.Sign(cz)*4.8f)){float trim=Math.Abs(cx)==12?.4f:0;
+                    blocks.Add(Block("edge-z-"+key,cx*10-Math.Sign(cx)*trim/2,cz*10+Math.Sign(cz)*4.8f,10-trim,.4f,EdgeHeight));}
             }
             // A closed north court has one 10 m entrance. Its gate is controlled by the existing final-boss rules.
             blocks.Add(Block("final-west",-25,70,.4f,30,6));blocks.Add(Block("final-east",25,70,.4f,30,6));
@@ -102,7 +119,7 @@ namespace ChipArena.UnityConversion
                 spawns=new MapSpawns{ffa=slots.Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0),yaw=p.yaw}).ToArray(),
                     teams=new[]{0,1}.Select(side=>new MapTeamSpawns{side=side,points=slots.Skip(side*4).Take(4).Select(p=>new MapSpawn{pos=p.Position+new V3(0,1.1f,0)}).ToArray()}).ToArray()},
                 hazards=Array.Empty<MapHazard>(),ramps=Array.Empty<MapRamp>(),segments=Array.Empty<StructureDefinition>(),
-                pilotBlocks=blocks.Where(b=>b.id.Contains("-building-")).Select(b=>new MapPilotBlock{id=b.id+"-column",center=b.pos,size=new V3(b.size.x,40,b.size.z),bottom=0}).ToArray()};
+                pilotBlocks=blocks.Where(b=>b.id.Contains("-building-")||b.id.Contains("-hall-")||b.id.Contains("-edge-")).Select(b=>new MapPilotBlock{id=b.id+"-column",center=b.pos,size=new V3(b.size.x,40,b.size.z),bottom=0}).ToArray()};
             var area=new ExpeditionAreaLayout{id="exp-city",role="world",map=MapId,anchors=anchors.ToArray(),doors=doors.ToArray(),interactions=interactions.ToArray(),
                 gates=new[]{new ExpeditionGateLayout{id="exp-city:final-gate",opens="final",closure=Volume(0,55,10,.4f,6)}},
                 slots=slots,sanctuary=new[]{Volume(0,0,49.6f,49.6f)},spawns=spawns.ToArray(),bossPoints=new[]{Point(0,72,180)},bossTrigger=Volume(0,66,40,18)};

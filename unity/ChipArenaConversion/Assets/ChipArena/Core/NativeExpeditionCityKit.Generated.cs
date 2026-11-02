@@ -21,7 +21,10 @@ namespace ChipArena.UnityConversion
     //  - The streets' paint (flat): centre dashes, kerbs, the district's ground marks (rails set in the road, tactile strips,
     //    decon bands).
     //  - Each entrance frame clad in its district's look, its name over the doorway both ways, its accent lights and beacons.
-    //  - The final court's walls as a checkpoint: blast panels, razor wire, floodlights, its lettering.
+    //  - Each instance's hall behind its frame (blockout 2): the district's facade, its name large over the frame, floodlights,
+    //    the district's crown (the Ironworks' stacks and sawtooth roof, the Station's glass roof and roundel, Ward Zero's beacons).
+    //  - The final court's walls as a checkpoint: blast panels, razor wire, floodlights, its lettering; the walls closing a
+    //    street at the floor's edge the same, unlettered.
     // The town's placement rules hold (Tests/GeneratedDistrictChecks.cs): below 3.1 m nothing stands out more than WallBand
     // from a block except flat paint, and nothing lies in a record's keep-out (spawn exits, slots, doors and their airlock
     // units, join circles, the final gate).
@@ -235,6 +238,84 @@ namespace ChipArena.UnityConversion
             if(s=="gen-floor"){floorBlock=i;return;}
             if(Starts(s,"gen-lintel-"))EntranceLintel(i,s.Substring(11));
             else if(Starts(s,"gen-final-"))FinalWall(i,s.Substring(10));
+            else if(Starts(s,"gen-edge-"))FinalWall(i,"edge");
+        }
+        // ---------------- the instance halls ----------------
+        // Each instance's building behind its entrance frame: its district's facade on every face, the doorway kept clear (the
+        // runtime's door leaves stand in it), its name large over the frame, floodlights on the parapet, the district's crown.
+        private void InstanceHall(int i,string zone)
+        {
+            var b=blocks[i];int d=0;if(blueprint?.districts!=null)for(int k=0;k<blueprint.districts.Length;k++)if(blueprint.districts[k].instance==zone)d=k+1;
+            int look=LookOfDistrict(d);var z=NativeExpeditionJoinZones.Of(zone);if(!facesOf.TryGetValue(i,out var fs))return;
+            double top=b.pos.y+b.size.y/2,x0=b.pos.x-b.size.x/2,z0=b.pos.z-b.size.z/2;
+            // The front: the face its frame stands against (the door's closure on its plane).
+            ExpeditionDoorLayout door=null;foreach(var x in area?.doors??Array.Empty<ExpeditionDoorLayout>())if(x.anchor=="exp-city:door:"+zone)door=x;
+            Face front=null;double du=0;
+            if(door?.closure!=null)foreach(var f in fs){double n=f.Axis==0?door.closure.x:door.closure.z;if(Math.Abs(f.Plane-n)<=.6){front=f;du=U(f,door.closure.x,door.closure.z);f.Keep.Add(new[]{du-5.1,du+5.1,-1,7.2});}}
+            if(front!=null)
+            {
+                // The name over the frame on a dark plate, an accent strip under it (before the facade, which keeps off it).
+                double cell=Math.Min(.34,(front.U1-front.U0-4)/(4*z.Name.Length-1)),y=9.4,w=TextWidth(z.Name,cell)+.8;
+                if(Open(front,du-w/2,du+w/2,y-.9,y+5*cell+.4,.02))
+                {
+                    Begin();FBox(front,du,y+2.5*cell,.07,w,5*cell+.6,.05,P(NativeBlockLooks.Plain,0x141618,RoleSign));
+                    Text(front,z.Name,du,y,.12,cell,.03,Glow(ZoneInk(zone),1.9f,RoleSign));
+                    FBox(front,du,y-.7,.06,w,.16,.05,Glow(z.Accent,1.8f,RoleLandmark));
+                    At(front,du,0,2.4,out double lx,out double lz);if(End()){Use(front,du-w/2,du+w/2,y-.9,y+5*cell+.4);Light(lx,front.Base+y+1,lz,z.Accent,1.1,16,.8,GlowNeon);}
+                }
+            }
+            foreach(var f in fs)
+            {
+                Kerb(f);
+                if(look==LookIndustrial)IronFace(f);else if(look==LookRail)RailFace(f);else if(look==LookQuarantine)WardFace(f);
+                else Skin(f,0,f.Top-f.Base,.016,P(NativeBlockLooks.ConcreteBoard,0x8A867C,RoleFacade));
+                if(f.Front>=1)WallLamps(f,look);
+            }
+            if(front!=null)
+            {
+                // Floodlights on the parapet over the forecourt.
+                foreach(int sign in new[]{-1,1})
+                {
+                    double u=du+sign*Math.Min(9,(front.U1-front.U0)/2-1.5);At(front,u,0,.4,out double fx,out double fz);
+                    Begin();Box(i,fx,top+.8,fz,.14,1.6,.14,P(NativeBlockLooks.SteelGreen,0x2A2C2E,RoleHigh));Box(i,fx,top+1.65,fz,.7,.34,.44,Glow(ColdHex,2.6f,RoleHigh));
+                    if(End())Light(fx,top+1.5,fz,ColdHex,1.1,22,.7,GlowFlood);
+                }
+            }
+            // The crown: the Ironworks' burning stacks over a sawtooth roof, the Station's lit glass roof and roundel, Ward Zero's
+            // beacons and air handlers.
+            double lx0=b.size.x,lz0=b.size.z;bool alongX=lx0>=lz0;double len=Math.Max(lx0,lz0),wid=Math.Min(lx0,lz0);
+            void Along(double a,double c,out double px,out double pz){px=alongX?b.pos.x+a:b.pos.x+c;pz=alongX?b.pos.z+c:b.pos.z+a;}
+            if(look==LookIndustrial)
+            {
+                for(double a=-len/2+2;a<len/2-1.5;a+=3.2){Along(a,0,out double px,out double pz);Begin();Box(i,px,top+1.0,pz,alongX?.3:wid-1.2,2.0,alongX?wid-1.2:.3,With(P(NativeBlockLooks.Corrugated,Pick(RustHexes,Hash(b.id,(int)(a*10),291)*5),RoleRoof),detail:true),AxisRot(alongX?0:1,0,alongX?1:0,alongX?-28:28));End();}
+                foreach(double c in new[]{-.3,.3})
+                {
+                    Along(-len*.3,c*wid,out double px,out double pz);
+                    Begin();Box(i,px,top+4.5,pz,1.8,9,1.8,With(P(NativeBlockLooks.BrickRed,0x5A2E24,RoleRoof),shadow:true));Box(i,px,top+8.85,pz,2.1,.3,2.1,P(NativeBlockLooks.ConcreteBoard,0x3A3430,RoleRoof));
+                    Box(i,px,top+9.02,pz,1.3,.04,1.3,Glow(FireHex,2.6f,RoleRoof,DriveFire,(float)(c+1)*3));if(End())Light(px,top+9.2,pz,FireHex,1.4,16,1.3,GlowFire,(c+1)*3);
+                }
+            }
+            else if(look==LookRail)
+            {
+                foreach(double c in new[]{-.25,0,.25}){Along(0,c*wid,out double px,out double pz);Begin();Box(i,px,top+.12,pz,alongX?len-2:.5,.2,alongX?.5:len-2,Glow(RailLampHex,1.3f,RoleRoof));End();}
+                if(front!=null)
+                {
+                    At(front,du,0,-1.2,out double rx,out double rz);bool fx=front.Axis==0;
+                    Begin();Box(i,rx,top+2.2,rz,fx?.3:.3,4.4,fx?.3:.3,P(NativeBlockLooks.SteelGreen,0x2A3034,RoleRoof));
+                    Box(i,rx,top+4.6,rz,fx?.2:3.2,3.2,fx?3.2:.2,P(NativeBlockLooks.Plain,0xE8E4D8,RoleRoof));Box(i,rx,top+4.6,rz,fx?.26:3.5,.7,fx?3.5:.26,Glow(0x3FD8C8,1.6f,RoleRoof));
+                    if(End())Light(rx,top+4.6,rz,0x7AE8D0,.9,14,.6,GlowNeon);
+                }
+            }
+            else if(look==LookQuarantine)
+            {
+                foreach(double a in new[]{-.3,.3}){Along(a*len,0,out double px,out double pz);Begin();Box(i,px,top+.7,pz,2.6,1.4,2.0,P(NativeBlockLooks.Plain,0xC9CFCC,RoleRoof));Box(i,px,top+1.42,pz,1.8,.04,1.3,With(P(NativeBlockLooks.FactoryGrating,0x5D6B6E,RoleRoof),detail:true));End();}
+                foreach(double a in new[]{-1,1})foreach(double c in new[]{-1,1})
+                {
+                    Along(a*(len/2-.8),c*(wid/2-.8),out double px,out double pz);float ph=(float)((a+1)*.25+(c+1)*.12);
+                    Begin();Box(i,px,top+.2,pz,.36,.4,.36,P(NativeBlockLooks.SteelGreen,0x2F383B,RoleRoof));Box(i,px,top+.55,pz,.32,.3,.32,Glow(RedHex,2.6f,RoleRoof,DriveStrobe,ph));
+                    if(End())Light(px,top+.6,pz,RedHex,.9,12,.9,GlowBeacon,ph);
+                }
+            }
         }
         // The frame over an entrance: clad in its district's look, its zone's name both ways, a light strip under it and its
         // beacons on top.

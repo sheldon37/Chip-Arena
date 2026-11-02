@@ -49,6 +49,24 @@ namespace ChipArena.UnityConversion
                     if(Math.Abs(b.pos.x)<=55&&Math.Abs(b.pos.z)<=55){near[0]+=pick==0?1:0;nearN[0]++;}
                 }
                 Check(streetFacing>0&&dressed==streetFacing,"seed "+seed+": every building on a street is dressed ("+dressed+" of "+streetFacing+")");
+                // ---- the instance halls and the closed edge (owner playtest 2026-11-01: pilots walked round a lone frame off the floor) ----
+                foreach(var d in s.districts)
+                {
+                    int h=Array.FindIndex(blocks,b=>NativeExpeditionCityKit.Stem(b.id)=="bldg-hall:"+d.instance);Check(h>=0,"seed "+seed+": "+d.instance+" has its hall");
+                    var b=blocks[h];var door=area.doors.Single(x=>x.anchor=="exp-city:door:"+d.instance).closure;bool alongX=d.side=="south";
+                    double face=alongX?b.pos.z+b.size.z/2:d.side=="east"?b.pos.x-b.size.x/2:b.pos.x+b.size.x/2;
+                    Check(b.size.y>=12&&Math.Abs(face-(alongX?door.z:door.x))<=.6,"seed "+seed+": "+d.instance+"'s hall stands tall behind its frame");
+                    Check(kit.Parts.Count(p=>p.Parent==h)>=60,"seed "+seed+": "+d.instance+"'s hall is dressed ("+kit.Parts.Count(p=>p.Parent==h)+" parts)");
+                }
+                var walls=blocks.Where(b=>{var st=NativeExpeditionCityKit.Stem(b.id);return st!="gen-floor"&&b.pos.y-b.size.y/2<.01&&b.size.y>=3;}).ToArray();
+                bool Closed(double x,double z)=>walls.Any(b=>Math.Abs(x-b.pos.x)<=b.size.x/2+.01&&Math.Abs(z-b.pos.z)<=b.size.z/2+.01);
+                int edges=0;
+                foreach(var c in s.cells.Where(c=>c.road))for(double t=-4.5;t<=4.5;t+=.5)
+                {
+                    if(Math.Abs(c.x)==12){edges++;Check(Closed(c.x*10+Math.Sign(c.x)*4.85,c.z*10+t),"seed "+seed+": the street at "+c.x+":"+c.z+" is closed at the floor's edge");}
+                    if(Math.Abs(c.z)==9){edges++;Check(Closed(c.x*10+t,c.z*10+Math.Sign(c.z)*4.85),"seed "+seed+": the street at "+c.x+":"+c.z+" is closed at the floor's edge");}
+                }
+                Check(edges>0,"seed "+seed+": some street reaches the floor's edge (the forecourts do)");
                 // ---- signs ----
                 foreach(var d in s.districts)Check(kit.Lettering.Contains(NativeExpeditionJoinZones.Of(d.instance).Name),"seed "+seed+": the "+d.instance+" entrance carries its name");
                 Check(kit.Lettering.Contains("SANCTUARY")&&kit.Lettering.Contains("CHECKPOINT"),"seed "+seed+": the sanctuary's gates and the final court are lettered");
