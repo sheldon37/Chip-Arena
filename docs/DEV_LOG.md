@@ -1,3 +1,22 @@
+## 2026-11-02 — Claude: zombies stop squatting after a push or a jump
+
+- **Branch/base:** `claude/zombie-squat`, on `claude/backrooms-plan`, which carries shared `ece0aaa3`. Merged into shared
+  together with the Backrooms preview.
+- **Task:** owner: "Zombies still seem to be doing this thing" (a screenshot of a zombie squatting by a wall).
+- **Cause:** a planted foot left out of the leg's reach pulled the hips down to their cap until it stepped. One foot stepped
+  at a time, so the squat held after any sudden move of the root.
+- **Change (presentation only, `Core/NativeHordeMotion.cs`):**
+  - no sink toward an unreachable foot;
+  - such a foot steps at once (`FarStep`);
+  - a jump beyond `JumpReset` re-plants both feet.
+- **Measured:** a 2 m teleport's lowest pelvis 0.22 m → 0.84 m (probe); 0.79 m → 0.99 m in Unity.
+- **Animation impacts:** feet and hips after pushes and jumps. No hit timing, hitbox, movement, AI or network change.
+- **Also (tests only):** shared `#310` (online invites) put the social GUI pass between `StageInputGate`/`GuiFrame` and the
+  toast. Two source pins were updated to the new order with the same intent: `BuildLabelChecks` and
+  `TransitionLoadingChecks`. Astra: shared failed its own full suite until then.
+- **Checks:** zombie suites as in docs/ZOMBIE-LOCOMOTION.md. Full suite: see the merge note.
+- **Next:** owner check in the Windows build.
+
 ## 2026-11-02 — Claude: Backrooms kit bank, layout contract and a DEV Level 0 preview
 
 - **Branch/base:** `claude/backrooms-plan` (after the plan commit `cedc4bcb`, already on shared). Merged into shared. No

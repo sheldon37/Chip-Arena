@@ -271,7 +271,7 @@ namespace ChipArena.UnityConversion
             Check(R("Assets/ChipArena/Runtime/NativeLobbyUI.cs").Contains("RequestStage(prefs.pve?StageLoadKind.Boss:StageLoadKind.Online,StartMatch)"),"the room's Start under the loading screen");
             var cg=R("Assets/ChipArena/Runtime/ConversionGame.cs");
             var ui=R("Assets/ChipArena/Runtime/NativeStageLoadingUI.cs");
-            Check(Regex.IsMatch(cg,@"StageInputGate\(\);GuiFrame\(\);.*ExpeditionTransferGui\(\);StageLoadingGui\(\);"),"OnGUI: input gate before every screen, the loading screen over all of them");
+            Check(Regex.IsMatch(cg,@"StageInputGate\(\);.*GuiFrame\(\);.*ExpeditionTransferGui\(\);StageLoadingGui\(\);"),"OnGUI: input gate before every screen, the loading screen over all of them");
             Check(cg.Contains("try{try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}finally{StageLoadingStep();}")&&ui.Contains("catch(Exception e){Debug.LogException(e);stageLoad.Cancel();")&&cg.Contains("bool escape=(Input.GetKeyDown(KeyCode.Escape)||PadBack)&&!StageInputHeld;")&&!Regex.IsMatch(cg,@"if\(Input\.GetKeyDown\(KeyCode\.Escape\)"),"LateUpdate steps the loading screen; Escape and controller Back wait while it is closed");
             Check(cg.Contains("StageLoadingRelease();"),"released with the game");
             Check(Body(ui,"private void StageObserve()").Contains("!ReferenceEquals(a,stageSeen)")&&Body(ui,"private void StageObserve()").Contains("map,stageSeenMap")&&Body(ui,"private void StageObserve()").Contains("areaBarrier"),"every stage change is observed: a new arena, a map swap, an area barrier");

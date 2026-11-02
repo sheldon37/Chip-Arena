@@ -401,3 +401,21 @@ attention to what happens here". Two things showed in it:
 
 - A runner restarting into a sprint right after the knocks can take one long first stride (a brief dip).
 - Not yet seen on a guest or in the Windows build.
+
+### Squatting after a push or a jump (2026-11-02, later)
+
+- **Report:** the owner sent a screenshot of a zombie squatting by a wall, not under fire.
+- **Cause:** a planted foot left beyond the leg's reach across the floor made the hips drop as far as the cap allows (0.18
+  rig m, about 0.3 m on the model) until that foot stepped. Feet stepped one at a time, so the squat held. Any sudden move
+  of the root left feet behind: a push-out by a wall or the crowd, a correction, a teleport.
+- **Change (`NativeHordeGait`):**
+  - A foot beyond the leg's horizontal reach no longer sinks the hips; it rises onto its toe (the model's leg fit) and steps.
+  - A planted foot more than `FarStep` (0.75 rig m × the legs' ratio) from its place steps at once, even while the other
+    foot swings.
+  - A root that jumps more than `JumpReset` (1.2 m) in one update re-plants both feet under it, as at a spawn.
+- **Results:**
+  - Probe, 2 m teleport while standing: lowest pelvis 0.22-0.24 m before, 0.83-0.84 after.
+  - Unity, a shambler moved into place by the capture tool: pelvis 0.79 m with knees at 81-86 degrees before, 0.99 m after.
+  - A 0.9 m push over 0.1 s still dips for about 0.2 s while both feet step (a stumble, as before).
+- **Checks:** `--zombie-knock` adds the jump case. `--zombie-gait`, `--zombie-posture`, `--zombie-twitch`, `--hulk-motion`,
+  `--horde-drops`, `--visual-rig`, `--zombie-models` and `--zombie-gore` pass.
