@@ -152,7 +152,7 @@ namespace ChipArena.UnityConversion
 
 
             Check(room.Snapshot().instances.OrderBy(x=>x).SequenceEqual(layout.instances.OrderBy(x=>x)),"only authored roster selected");
-            Check(!room.Execute("host",1,ExpeditionDeploymentIntent.RollMutators),"unapproved mutators unavailable");
+            Check(!room.Execute("guest",1,ExpeditionDeploymentIntent.RollMutators),"guest mutators unavailable");
             Check(room.Execute("host",1,ExpeditionDeploymentIntent.SkipMutators),"no-mutator start valid");
             var wire=JsonSerializer.Deserialize<ExpeditionDeploymentTicket>(Json(room.Ticket),options);
             var receiver=new ExpeditionDeploymentReceiver();

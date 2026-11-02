@@ -31,10 +31,10 @@ namespace ChipArena.UnityConversion
         private NativeMinion SpawnPveAddCore(string kind,bool force,int forcedEntry)
         {
             var v=Pve??wardSandboxState;if(v==null||kind==null)return null;
-            if(!ZoneKindRoom(kind))return null;
+            kind=NativeExpeditionMutators.Kind(ActiveMutators,kind);if(!ZoneKindRoom(kind))return null;
             if(Minions.Count(m=>m.Pve!=null&&!m.DevMonster)>=v.Cap&&v.Cap>0)return null;
             if(kind=="spitter"&&Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")>=NativeSpitterRules.Cap)return null;
-            if(kind=="hulk"&&Minions.Count(m=>m.Pve?.Stats.id=="hulk")>=Math.Max(1,Math.Min(2,v.Cap/2)))return null;
+            if(kind=="hulk"&&Minions.Count(m=>m.Pve?.Stats.id=="hulk")>=(Mutator("hulkamania")?6:Math.Max(1,Math.Min(2,v.Cap/2))))return null;
             var members=(Pve==null?Pilots.Where(p=>!p.Seat.AuthorityBoss):Members()).Where(p=>p.Hp>0).ToArray();
             var candidates=v.Content.entries.Where(e=>ZoneEntryAllowed(e,kind)&&EntryQueue(e.e)<3&&
                 (e.kind!="vent"||!VentHazard(e.e))&&(e.kind!="breach"||BreachAvailable(e))&&WardLandingClear(e)&&
@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             if(NativeHordeDropRules.UsesDrop(kind,v.Content.entries)&&forcedEntry<0)
             {entry=NativeHordeDropRules.Next(v.Content.entries,ref v.DropCursor,e=>candidates.Any(c=>c.entry==e));if(entry==null)return null;}
             var times=PlanEntry(entry,kind);var stats=v.Content.adds.First(x=>x.id==kind);int wave=v.Stage=="boss"?3:Math.Max(1,v.Wave);float hpScale=1+.12f*(wave-1),damageScale=1+.06f*(wave-1);
-            bool heavy=kind=="hulk";float height=heavy?NativeHordeKinds.HulkHeight:1.7f;
+            hpScale*=Mutator("iron-hide")?2:1;bool heavy=kind=="hulk";float height=heavy?NativeHordeKinds.HulkHeight:1.7f;
             var obj=new GameObject("Siren "+kind);obj.layer=11;obj.transform.SetParent(root.transform);obj.transform.position=Vec(entry.from.Position(height/2));
             var c=obj.AddComponent<CapsuleCollider>();c.radius=heavy?NativeHordeKinds.HulkRadius:.42f;c.height=height;c.enabled=false;c.sharedMaterial=surfaces["pilot"];
             var body=obj.AddComponent<Rigidbody>();body.mass=heavy?160:40;body.constraints=RigidbodyConstraints.FreezeRotation;body.isKinematic=true;body.interpolation=RigidbodyInterpolation.Interpolate;
@@ -82,7 +82,7 @@ namespace ChipArena.UnityConversion
                 var d=p.Body.position-at;float distance=new Vector2(d.x,d.z).magnitude;
                 if(Math.Abs(d.y)>2||distance>profile.SlamRadius||!MeleeVisible(at,p.Body.position,m.Owner,p.Collider,true))continue;
                 var dir=new Vector3(d.x,0,d.z).normalized;bool block=Time<p.BlockEnd;
-                if(block){BlockProc(p,m.Owner,p.Body.position,"clash");p.Knockback+=dir*3;}
+                if(block){BlockProc(p,m.Owner,p.Body.position,"clash");p.Knockback+=dir*(Mutator("bounce-house")?9:3);}
                 else {Damage(p,null,profile.Heavy?Mathf.Lerp(25,10,distance/profile.SlamRadius):Mathf.Lerp(12,5,distance/profile.SlamRadius),dir,profile.Heavy?900:400,false,primary:false,melee:true);p.Knockback.y=Math.Max(p.Knockback.y,profile.Heavy?4:2);}
             }
         }
@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
         {
             int spitters=0,hulks=0;foreach(var m in Minions)if(m.Hp>0){if(m.Pve?.Stats.id=="spitter")spitters++;if(m.Pve?.Stats.id=="hulk")hulks++;}
             bool Allowed(string id)=>id!="spitter"||spitters<NativeSpitterRules.Cap;
-            bool Room(string id)=>ZoneKindRoom(id)&&Allowed(id)&&(id!="hulk"||hulks<Math.Max(1,Math.Min(2,v.Cap/2)));
+            bool Room(string id)=>ZoneKindRoom(id)&&Allowed(id)&&(id!="hulk"||hulks<(Mutator("hulkamania")?6:Math.Max(1,Math.Min(2,v.Cap/2))));
             double total=0;foreach(var row in mix)if(row.value>0&&Room(row.name))total+=row.value;
             double roll=v.SpawnRandom.Next()*total;string last=null;foreach(var row in mix)if(row.value>0&&Room(row.name)){last=row.name;roll-=row.value;if(roll<0)return last;}return last;
         }
@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
                     move=distance>1.1f||a.Possessed||a.Stats.id=="spitter"?dir*speed:Vector3.zero;if(!SupportedStageMove(navAt,move))move=Vector3.zero;
                 }
                 if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor*(a.Zone.aboardUntil>Time?1.25f:1)*(a.Stats.id=="slagback"&&a.Zone.shedAt>=0?1.25f:1);move+=HordeSeparation(m,at);float oldYaw=m.Yaw;m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;if(a.Stats.id=="pileup"||a.Stats.id=="slagback")m.Yaw=Mathf.MoveTowardsAngle(oldYaw,m.Yaw,(a.Stats.id=="pileup"?60:90)*dt);}
-                if(!SupportedStageMove(navAt,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move+=Vector3.ClampMagnitude(a.External,6);if(HubCross(at,at+move*dt,m.Collider.radius))move=Vector3.zero;m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
+                if(!SupportedStageMove(navAt,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move*=NativeExpeditionMutators.ZombieSpeed(ActiveMutators);move+=Vector3.ClampMagnitude(a.External,Mutator("bounce-house")?18:6);if(HubCross(at,at+move*dt,m.Collider.radius))move=Vector3.zero;m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
             }
         }
         private bool TryVentTravel(NativeMinion m,NativePilot target)
@@ -216,7 +216,7 @@ namespace ChipArena.UnityConversion
                 if(Math.Abs(d.y)>(a.Stats.id=="hulk"?2.5f:1.8f)||!MeleeVisible(at+Vector3.up*(a.Crawl?.1f:.45f),q.Body.position,m.Owner,q.Collider,true)||Invulnerable(q))continue;
                 var push=new Vector3(d.x,0,d.z).normalized;
                 if(a.Stats.id=="hulk"){var away=q.Body.position-(at+dir*NativeHordeKinds.HulkSmashAhead);away.y=0;push=away.normalized;}
-                if(Time<q.BlockEnd){BlockProc(q,m.Owner,q.Collider.ClosestPoint(m.Body.position),"clash");if(a.Stats.id=="hulk")q.Knockback+=push*3;else{a.StaggerAt=Time+.6f;a.External=-d.normalized*3;}}
+                if(Time<q.BlockEnd){BlockProc(q,m.Owner,q.Collider.ClosestPoint(m.Body.position),"clash");if(a.Stats.id=="hulk")q.Knockback+=push*(Mutator("bounce-house")?9:3);else{a.StaggerAt=Time+.6f;a.External=-d.normalized*(Mutator("bounce-house")?9:3);}}
                 else if(smash&&a.Stats.id=="brute")
                 {var shove=q.Body.position-(at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Brute));float actual=Damage(q,null,damage,Vec(NativeHordeDropRules.Outward(Vec(shove),Vec(dir))),0,false,primary:false,melee:true);if(actual>0)PveSlamShove(q,shove,dir,impulse,false);}
                 else{Damage(q,null,damage,push,impulse,false,primary:false,melee:true);if(a.Stats.id=="hulk")q.Knockback.y=Math.Max(q.Knockback.y,4);}
@@ -225,6 +225,10 @@ namespace ChipArena.UnityConversion
         private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head,int projectile=0,bool pierced=false,Vector3? from=null)
         {
             var a=m.Pve;if(HubDamageBlocked(source,m.Body.position,from,projectile))return 0;if(source==null||a.Travelling||Time<a.ExposedAt||Pve?.Holding==true)return 0;
+            if(kind!="mutator-storm"&&PilotMutator(source,"glass-cannon"))amount*=3;
+            if(Mutator("big-heads")&&point.HasValue&&!a.Crawl&&(point.Value-(m.Body.position+Vector3.up*(m.Collider.height*.38f))).magnitude<=(a.Stats.id=="hulk"?.65f:.4f))head=true;
+            bool headHit=head||kind!="blast"&&NativeHordeDamage.Part(Vec(m.Body.position),m.Yaw,a.Crawl,point.HasValue?(V3?)Vec(point.Value):null,head)==1;
+            if(headHit&&kind!="mutator-storm"&&PilotMutator(source,"headhunter"))amount*=3;
             var hitData=new NativeHordeHit(amount);
             // The fallback has no limb damage or blast-share rolls. Resolve only deterministic direct-hit anatomy.
             if(Pve==null&&kind!="blast")hitData.Share(NativeHordeDamage.Part(new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,head),amount);
@@ -242,15 +246,15 @@ namespace ChipArena.UnityConversion
             {a.SpitCancelAt=Time;a.Struck=true;a.RecoverAt=NativeSpitterRules.Retry(Time);Emit(EventKind.Impact,source,m.Id,m.Body.position,0,"minion-spit-cancel");}
             a.HubCredit=!HubDamageBlocked(source,m.Body.position,from,projectile);a.LastHit=source;a.LastDamage=Time;a.Dealt.TryGetValue(source.Seat.id,out float dealt);a.Dealt[source.Seat.id]=dealt+actual;
             float zoneStagger=a.StaggerAt;CancelHulkWind(m,actual>0?amount:0);
-            if(!a.Charging)if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse),6);
+            if(!a.Charging)if(NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),amount,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;if(a.Stats.id!="spitter"||actual<=0)a.RecoverAt=Time;}if(Time>=a.ExposedAt)a.External=Vector3.ClampMagnitude(a.External+new Vector3(dir.x,0,dir.z)*NativePveParity.AddImpulse(impulse)*(Mutator("bounce-house")?3:1),Mutator("bounce-house")?18:6);
             if(NativeZoneCombat.Active(MapId))a.StaggerAt=Math.Max(a.StaggerAt,zoneStagger);
             m.LastHitAt=Time;Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,normal:dir.x*dir.x+dir.z*dir.z>1e-12f?dir:Vector3.zero,from:from,projectile:projectile,pierced:pierced,hordeHit:hitData);
-            MinionImpact(m,source,actual,point,kind,dir);
+            MinionImpact(m,source,actual,point,kind,dir);MutatorVampire(source,actual);
             if(m.Hp<=0){Vector3 at=m.Body.position;ZoneEnemyDeath(m,source,kind=="melee"||kind=="slash"||kind=="blunt");PveAddKilled(m,source);RemoveMinion(m,false);if(a.Possessed)FoundPveBoss(at);}return actual;
         }
         private void PveAddKilled(NativeMinion m,NativePilot source)
         {
-            if(Expedition!=null){ExpeditionKilled(m,source);return;}
+            if(Expedition!=null){ExpeditionKilled(m,source);if(Mutator("bloated"))QueueMutatorBlast(source,m.Body.position,3,0,35,"mutator-bloated");return;}
             if(m.DevMonster)return; // Defense in depth: environmental kills can also reach this adapter.
             var a=m.Pve;var recruit=Pve.Recruits.Find(r=>r.Pilot==source);NativePilot paid=recruit?.Owner??source;bool head=(a.Lost&1)!=0;float reward=a.Stats.reward;
             if(recruit!=null)GrantPveMoney(paid,(reward+(head?10:0))*.5f,"recruit");else{GrantPveMoney(paid,reward,"kill");if(head)GrantPveMoney(paid,10,"head");}

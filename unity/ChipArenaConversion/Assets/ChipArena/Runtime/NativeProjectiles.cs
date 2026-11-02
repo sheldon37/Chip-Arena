@@ -24,6 +24,11 @@ namespace ChipArena.UnityConversion
             while((count=scene.SphereCast(from,radius,delta.normalized,shotSweeps,distance,ShotMask,QueryTriggerInteraction.Ignore))==shotSweeps.Length)Array.Resize(ref shotSweeps,shotSweeps.Length*2);
             NativeContact? closest=null;
             for(int i=0;i<count;i++){var hit=shotSweeps[i];if(!accepts(hit.collider)||closest.HasValue&&hit.distance>=closest.Value.Distance)continue;closest=new NativeContact{Collider=hit.collider,Point=from+delta.normalized*hit.distance,Contact=hit.point,Normal=hit.normal,Distance=hit.distance};}
+            if(Mutator("big-heads"))
+            {
+                foreach(var p in Pilots)if(p.Hp>0&&p.Down==null&&p.Juggle==null)MutatorHeadSweep(p.Collider,p.Body.position+Vector3.up*.64f,.34f,from,delta,radius,accepts,ref closest);
+                foreach(var m in Minions)if(m.Hp>0&&m.Pve!=null&&!m.Pve.Crawl)MutatorHeadSweep(m.Collider,m.Body.position+Vector3.up*(m.Collider.height*.38f),m.Pve.Stats.id=="hulk"?.6f:.34f,from,delta,radius,accepts,ref closest);
+            }
             return closest;
         }
         private bool Has(NativePilot p,string chip)=>p!=null&&NativeRoundsCards.Has(p.Seat.chips,chip);
@@ -157,6 +162,7 @@ namespace ChipArena.UnityConversion
                 b.Damage=Math.Min(100,b.Damage*(float)target.Stats["reflectDamage"]);b.Velocity=-b.Velocity.normalized*(b.Pong?b.FixedSpeed:Math.Min(120,b.Velocity.magnitude*(float)target.Stats["reflectSpeed"]));b.Position+=b.Velocity.normalized*.025f;if(b.Pong)b.RallyMark=b.Position;return false;
             }
             if(b.LeetKind=="brain"){if(target!=null)Possess(owner,target);return true;}LeetImpact(owner,b,hit.Point);
+            if(PilotMutator(owner,"high-explosive")&&b.Reflections==0)QueueMutatorBlast(owner,hit.Point,1.5f,b.Damage*.35f,b.Damage*.35f,"mutator-explosive");
             if(b.Pong&&target==null&&minion==null&&b.Bounces>0){b.Contacts[hit.Collider.GetInstanceID()]=Time;return PongBounce(b,owner,hit.Point,Vector3.Reflect(b.Velocity,hit.Normal));}
             if(minion!=null)
             {
@@ -165,7 +171,7 @@ namespace ChipArena.UnityConversion
             }
             else if(target!=null)
             {
-                bool head=!b.CyberPacket&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null);float actual=Damage(target,owner,b.Damage*(head?1.5f*(b.Spec=="bow"&&b.Draw>=1?1.25f:1):1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,projectile:b.Id,pierced:!b.Pong&&b.Pierces>0,damageKind:b.Detail=="plasma-byte"?"plasma-hit":b.Detail=="plasma-overflow"?"plasma-overflow-hit":b.Detail=="bit-bolt"?"bit-bolt":b.CyberPacket?"packet-burst":b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
+                bool head=!b.CyberPacket&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null,Mutator("big-heads")?2:1);float actual=Damage(target,owner,b.Damage*(head?1.5f*(b.Spec=="bow"&&b.Draw>=1?1.25f:1):1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,projectile:b.Id,pierced:!b.Pong&&b.Pierces>0,damageKind:b.Detail=="plasma-byte"?"plasma-hit":b.Detail=="plasma-overflow"?"plasma-overflow-hit":b.Detail=="bit-bolt"?"bit-bolt":b.CyberPacket?"packet-burst":b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
                 if(actual>0&&target.Hp<=0&&target.Death!=null&&Math.Abs(target.Death.at-Time)<.001f)target.Death.projectile=b.Id;
                 if(actual>0&&(b.Detail=="bit-bolt"||b.Detail=="plasma-byte"||b.Detail=="plasma-overflow"))owner.Mana=Math.Min((float)owner.Stats["maxMana"],owner.Mana+CyberRangedSpec.BoltMana);
                 if(actual>0&&b.Detail=="rain"){target.SlowFactor=Math.Min(target.SlowFactor,.8f);target.SlowEnd=Math.Max(target.SlowEnd,Time+1.5f);}

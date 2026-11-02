@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     // Small, versioned wire/handoff record. The blueprint is rebuilt locally and never trusted from a peer.
     [Serializable] public sealed class ExpeditionDeploymentTicket
     {
-        public int schema=1,revision,instanceRolls;
+        public int schema=1,revision,instanceRolls,mutatorRolls,mutatorSkips;public bool mutatorsSkipped;
         public string station,originHost,expedition,compatibility,generatedCompatibility;
         public uint seed;public bool deployed;
         public ExpeditionDeploymentTicket Copy()=>(ExpeditionDeploymentTicket)MemberwiseClone();
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             {
                 var s=authority.Snapshot();
                 return new ExpeditionDeploymentTicket{station=s.station,originHost=s.host,seed=s.seed,
-                    revision=s.revision,instanceRolls=s.instanceRolls,deployed=s.deployed,
+                    revision=s.revision,instanceRolls=s.instanceRolls,mutatorRolls=s.mutatorRolls,mutatorSkips=s.mutatorSkips,mutatorsSkipped=s.mutatorsSkipped,deployed=s.deployed,
                     expedition=expedition,compatibility=compatibility,generatedCompatibility=generatedCompatibility};
             }
         }
@@ -64,8 +64,8 @@ namespace ChipArena.UnityConversion
             {
                 case ExpeditionDeploymentIntent.RollInstances:return authority.RollInstances(s.host,catalog);
                 case ExpeditionDeploymentIntent.SkipMutators:return authority.SkipMutators(s.host);
-                // There are no approved effects. Never broadcast arbitrary IDs as active gameplay.
-                case ExpeditionDeploymentIntent.RollMutators:return false;
+                // Host rolls the versioned rules catalog, never guest-supplied IDs.
+                case ExpeditionDeploymentIntent.RollMutators:return authority.RollMutators(s.host,NativeExpeditionMutators.Ids);
                 case ExpeditionDeploymentIntent.Deploy:
                     if(!Digest(validatedGeneratedCompatibility)||!authority.Deploy(s.host,partyReady))return false;
                     generatedCompatibility=validatedGeneratedCompatibility;return true;
@@ -77,7 +77,7 @@ namespace ChipArena.UnityConversion
         {
             if(string.IsNullOrEmpty(layout.compatibility)||string.IsNullOrEmpty(content.contentRevision))
                 throw new ArgumentException("Validated layout and content compatibility are required.");
-            return NativeMapRules.Revision(GeneratorVersion+"\n"+selected+"\n"+layout.compatibility+"\n"+
+            return NativeMapRules.Revision(GeneratorVersion+"/"+NativeExpeditionMutators.Version+"\n"+selected+"\n"+layout.compatibility+"\n"+
                 content.contentRevision+"\n"+string.Join("\n",pool.Select(p=>p.id+":"+p.theme)));
         }
         private static ExpeditionInstanceTheme[] Catalog(string selected,ExpeditionLayout layout,ConversionContent content)
@@ -111,13 +111,13 @@ namespace ChipArena.UnityConversion
             if(incoming==null)return false;
             if(ticket!=null&&(incoming.station!=ticket.station||incoming.originHost!=ticket.originHost||
                incoming.seed!=ticket.seed||incoming.compatibility!=ticket.compatibility||incoming.revision<ticket.revision||
-               incoming.instanceRolls<ticket.instanceRolls||ticket.deployed&&
+               incoming.instanceRolls<ticket.instanceRolls||incoming.mutatorRolls<ticket.mutatorRolls||incoming.mutatorSkips<ticket.mutatorSkips||ticket.deployed&&
                (incoming.revision!=ticket.revision||incoming.generatedCompatibility!=ticket.generatedCompatibility||!incoming.deployed)))return false;
             try
             {
                 var restored=ExpeditionDeploymentRoom.Restore(incoming,incoming.originHost,layout,content);
                 if(ticket!=null&&incoming.revision==ticket.revision&&
-                   (incoming.instanceRolls!=ticket.instanceRolls||incoming.deployed!=ticket.deployed))return false;
+                   (incoming.instanceRolls!=ticket.instanceRolls||incoming.mutatorRolls!=ticket.mutatorRolls||incoming.mutatorSkips!=ticket.mutatorSkips||incoming.mutatorsSkipped!=ticket.mutatorsSkipped||incoming.deployed!=ticket.deployed))return false;
                 ticket=incoming.Copy();state=restored.Snapshot();return true;
             }
             catch(ArgumentException){return false;}

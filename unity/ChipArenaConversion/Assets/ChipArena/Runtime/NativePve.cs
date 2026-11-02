@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in Members()){var row=new NativePveRow{Pilot=p,Money=p.Seat.bot?0:150,Earned=p.Seat.bot?0:150,SelfRevives=!p.Seat.bot&&v.Solo?1:0};v.Rows[p.Seat.id]=row;GrantPvePick(p,"common",true);}
         }
         private void GrantPveMoney(NativePilot p,float amount,string reason)
-        {if(p==null||p.Seat.bot||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;int n=NativePveRules.Money(p.Seat.chips,reason,amount);if(Expedition!=null){var member=ExpeditionMemberFor(p);if(member==null||n<=0||!Expedition.Session.Run.Credit(member.account,"pve:"+Generation+":"+(++expeditionEconomySerial),n))return;row.Money=ExpeditionMemberFor(p).wallet;}else row.Money=Math.Max(0,row.Money+n);if(n>0){row.Earned+=n;Emit(EventKind.PveMoney,p,p.Seat.id,p.Body.position,n,reason);}}
+        {if(p==null||p.Seat.bot||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;int n=NativePveRules.Money(p.Seat.chips,reason,amount*(float)NativeExpeditionMutators.Payout(ActiveMutators));if(Expedition!=null){var member=ExpeditionMemberFor(p);if(member==null||n<=0||!Expedition.Session.Run.Credit(member.account,"pve:"+Generation+":"+(++expeditionEconomySerial),n))return;row.Money=ExpeditionMemberFor(p).wallet;}else row.Money=Math.Max(0,row.Money+n);if(n>0){row.Earned+=n;Emit(EventKind.PveMoney,p,p.Seat.id,p.Body.position,n,reason);}}
         private void GrantPvePick(NativePilot p,string tier,bool open,string source="start")
         {var row=Pve.Rows[p.Seat.id];var pick=new NativePvePick{Id=nextPick++,Tier=tier,Source=source,At=Time};row.Picks.Add(pick);if(open)OpenPvePick(p,pick.Id);}
         public bool OpenPvePick(NativePilot p,int id=0)
@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
             Emit(EventKind.Install,p,p.Seat.id,p.Body.position,count+1,chip);p.Seat.chips[chip]=count+1;RefreshLiveStats(p);row.Picks.Remove(row.Open);row.Open=null;if(row.Picks.Count>0)OpenPvePick(p);return true;
         }
         private void RefreshLiveStats(NativePilot p)
-        {float hp=(float)p.Stats["hp"];p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);if(p.Hp>0)p.Hp=Math.Min((float)p.Stats["hp"],p.Hp+Math.Max(0,(float)p.Stats["hp"]-hp));p.Mana=Math.Min(p.Mana,(float)p.Stats["maxMana"]);p.Stamina=Math.Min(p.Stamina,(float)p.Stats["maxStamina"]);p.Ammo=Math.Min(p.Ammo,Magazine(p));}
+        {float hp=(float)p.Stats["hp"];p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);if(!p.Seat.AuthorityBoss)NativeExpeditionMutators.PilotStats(ActiveMutators,p.Stats,p.Seat.spec);if(p.Hp>0)p.Hp=Math.Min((float)p.Stats["hp"],p.Hp+Math.Max(0,(float)p.Stats["hp"]-hp));p.Mana=Math.Min(p.Mana,(float)p.Stats["maxMana"]);p.Stamina=Math.Min(p.Stamina,(float)p.Stats["maxStamina"]);p.Ammo=Math.Min(p.Ammo,Magazine(p));}
         private void PveInput(NativePilot p)
         {
             if(Expedition!=null||Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;CollectPvePickups(p);if(p.Input.Interact&&!p.Seat.bot&&p.Hp>0&&row.Open==null)PveInteract(p,row);
@@ -148,7 +148,7 @@ namespace ChipArena.UnityConversion
         private void PveFlow()
         {
             var v=Pve;int h=PartySize;if(v.Stage=="wave"){var data=v.Content.waves[v.Wave-1];v.SpawnBudget=NativePveRules.Budget(data,h);v.WaveTotal=v.SpawnBudget;v.Spawned=0;v.Rate=NativePveRules.Rate(data,h);v.Cap=NativePveRules.Cap(data,h,false);}
-            else if(v.Stage=="boss"){v.SpawnBudget=-1;v.Rate=(.6f+.4f*(h-1))*(v.Hidden?20:1);v.Cap=ZoneBoss!=null?8+2*(h-1):Math.Min(v.Hidden?192:40,(6+4*(h-1))*(v.Hidden?12:1));}else v.Rate=0;v.SpawnAt=Time;
+            else if(v.Stage=="boss"){v.SpawnBudget=-1;v.Rate=(.6f+.4f*(h-1))*(v.Hidden?20:1);v.Cap=ZoneBoss!=null?8+2*(h-1):Math.Min(v.Hidden?192:40,(6+4*(h-1))*(v.Hidden?12:1));}else v.Rate=0;if(Expedition!=null){v.Cap=NativeExpeditionMutators.Cap(ActiveMutators,v.Cap);v.Rate/=(float)NativeExpeditionMutators.Interval(ActiveMutators);if(Mutator("swarm")&&v.SpawnBudget>0)v.SpawnBudget*=2;}v.SpawnAt=Time;
         }
         private void FoundPveBoss(Vector3 at)
         {var v=Pve;if(!v.Hidden||v.Phase!=2)return;SetBossHidden(false);v.Boss.Hp=v.MaxHp*.5f;v.Boss.Body.position=GroundPoint(at)+Vector3.up*.9f;v.Possessed=0;BeginPveHold("reveal",3);}

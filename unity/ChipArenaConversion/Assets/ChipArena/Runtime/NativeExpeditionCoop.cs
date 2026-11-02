@@ -74,6 +74,7 @@ namespace ChipArena.UnityConversion
         }
         private string BeginExpeditionReprint(NativePilot p,ExpeditionMember member,string machine)
         {
+            if(Mutator("permadeath"))return "PERMADEATH: reprints disabled.";
             var dead=Expedition.Session.Run.PartySnapshot().members.FirstOrDefault(m=>!m.alive&&m.connected&&!m.extracted);
             if(dead==null)return "No fallen teammates to reprint.";
             expeditionChannels[member.account]=(dead.account,machine,Expedition.Session.Run.Elapsed,p.Body.position,p.Hp);

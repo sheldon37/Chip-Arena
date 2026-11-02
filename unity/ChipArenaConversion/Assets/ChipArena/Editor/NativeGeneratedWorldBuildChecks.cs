@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion.Editor
                 CheckDeploymentShader(exerciseShaderPass);
                 var asset=Resources.Load<TextAsset>("GameContent");
                 if(asset==null)throw new Exception("Missing deployment GameContent");
-                var content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);content.Validate();
+                var content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);NativeArena.ValidateMutatorRules(content);content.Validate();
                 string authored=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
                 var layout=NativeExpeditionLayout.Parse(authored);layout.compatibility=NativeExpeditionLayout.Compatibility(authored,content);
                 ConversionGame.ValidateLobbyPromotion(content);

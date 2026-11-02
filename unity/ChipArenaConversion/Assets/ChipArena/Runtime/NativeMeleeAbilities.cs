@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
         {
             if(!NativeMeleeRules.Standard(p.Seat.spec))return false;
             var d=Content.Ability(p.Seat.spec,slot);if(d==null||!d.live)return false;
-            float cost=NativeAbilityRules.Cost(d,p.Stats);
+            float cost=PilotMutator(p,"adrenaline")?0:NativeAbilityRules.Cost(d,p.Stats);
             if(p.Hp<=0||!p.Seat.connected||Incapacitated(p)||SpecialBusy(p)||Time<p.Ready||Time<p.AttackEnd||Time<p.BlockEnd||Time<p.RollEnd||p.ReloadEnd>Time||p.CastAt>0||p.AbilityCast!=null||p.Stamina<cost||(slot=="q"?Time<p.QReady:Time<p.EReady))return false;
             if((d.id=="whirlwind"||d.id=="earthsplitter")&&!p.Grounded||(d.id=="aegis-ricochet"||d.id=="kunai-mark")&&ProjectileCount>=100)return false;
             if(slot=="e"&&MeleeRecastOpen(p))return false;
