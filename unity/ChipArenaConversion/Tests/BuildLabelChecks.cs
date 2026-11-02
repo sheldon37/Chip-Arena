@@ -20,7 +20,7 @@ internal static class BuildLabelChecks
         Check(NativeBuildLabel.Text(new NativeBuildIdentity{version=""},"")=="DEV BUILD","empty identity and source");
         Check(!NativeBuildLabel.Stamp(long.MaxValue,out _)&&!NativeBuildLabel.Stamp(-1,out _),"out-of-range ticks rejected");
         string game=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/ConversionGame.cs")),stamp=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeBuildStamp.cs"));
-        Check(game.Contains("GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();"),"drawn after every screen");
+        Check(game.Contains("SocialGui();if(error.Length==0)NoticeToast();BuildCorner();"),"drawn after every screen");
         Check(stamp.Contains("Updater?.Installed")&&stamp.Contains("NativeUpdateRules.IdentityFile")&&stamp.Contains("catch(Exception)"),"identity from the updater or the player folder, failure-safe");
         Console.WriteLine("PASS build label ("+count+" checks)");
     }
