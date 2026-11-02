@@ -1,3 +1,39 @@
+## 2026-11-02 — Claude: the owner's 30 Expedition mutator cards (effects handed to Astra)
+
+- **Branch/base:** `claude/expedition-modifiers`, stacked on `claude/playtest-fixes` (`00b669b`); shared merged in.
+  - Implementation: `1e6f1f0`, then this log.
+  - Merged into shared and the builder. The cards show only in the station's DEV preview until Astra enables the live
+    roll. Not a live release.
+- **Task:** owner: "lets add some modifiers to roll for expedition; things like 'More money per kill, faster move
+  speed, ALL hulk zombies, etc.' Think fun things, overpowered things, insane difficulty things. Consider like... 30
+  modifiers? Add them afterwards (Or unless astra should take this)". Per the role split, Claude drew the cards and
+  wrote the proposed effects; Astra owns the rules.
+- **Changes:**
+  - `NativeDeployPresentation`: 30 cards replace the 6 placeholders (10 Boon, 11 Bane, 9 Chaos), with
+    `MutatorIds`, `MutatorCount` and `MutatorAt`. The DEV preview rolls from `MutatorIds`.
+  - `docs/EXPEDITION-DEPLOYMENT.md` "Mutator catalog": a proposed effect per id with numbers, roll exclusions,
+    reward scaling, and Claude's presentation follow-ups.
+- **Affected systems:** the station's cards and the DEV preview only. No rules, roll authority, network, reward, hit
+  timing, hitbox, damage, cooldown or movement change.
+- **Checks:**
+  - `--deploy-presentation` 436,394 PASS, including the new catalog checks:
+    - 30 unique valid ids and names;
+    - every name letterable in the card font;
+    - lines of at most 40 characters;
+    - at least 9 cards per polarity;
+    - every tile renders;
+    - the authority rolls 3 of the 30.
+  - Full suite on a clean LF worktree (`65bf20d`): 927 PASS lines, rc 0, with ExpeditionEndingChecks' Windows path patch
+    applied there only. `tools/check_unity_compile.py`: Input System, Player, Runtime and Editor PASS.
+- **Next (Astra):**
+  - apply the effects for the whole run (city and instances, host and guests), the exclusions and the reward scaling;
+  - then enable `ExpeditionDeploymentRoom`'s `RollMutators` and pass the ids from `NativeDeploymentLive`.
+  - Numbers are proposals.
+- **Next (Claude, once the rules apply them):**
+  - DARKNESS and WHITEOUT lighting and fog, BIG HEADS head scale;
+  - the STORM, HIGH EXPLOSIVE, MARTYR and BLOATED effects;
+  - the active mutators on the run HUD, and the payout on the station.
+
 ## 2026-11-02 — Claude: instance halls on the generated Expedition; the new stages' invisible walls opened
 
 - **Branch/base:** `claude/playtest-fixes` from shared `1e38cf7`, shared `c48f641` merged in.

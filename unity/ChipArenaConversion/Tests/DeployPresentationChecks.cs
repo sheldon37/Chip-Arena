@@ -25,10 +25,31 @@ namespace ChipArena.UnityConversion
         public static void Run()
         {
             count=0;
-            Reels();Machines();Blend();Map();Set();Tables();
+            Reels();Machines();Blend();Map();Set();Tables();Catalog();
             Console.WriteLine("PASS Deployment presentation: "+count+" checks (reels land on the authority's result from any start, no jumps, "+
                 "overshoot then settle; machine phases host and guest; mutators PENDING until Deploy, ACTIVE only after; the deploy timeline; "+
                 "seamless theme weights equal to the cells at their centres; the holo map; the party pads and the shots)");
+        }
+        // The owner's 30 mutator cards: unique ids the roll authority accepts, unique names its card font can letter, a short
+        // line each, all three polarities with the presentation's own colours, the reel carrying every card.
+        private static void Catalog()
+        {
+            var ids=NativeDeployPresentation.MutatorIds;int n=NativeDeployPresentation.MutatorCount;
+            Check(n==30&&ids.Length==n&&ids.Distinct(StringComparer.Ordinal).Count()==n&&ids.All(ExpeditionValidation.Id),"thirty unique valid mutator ids");
+            var cards=Enumerable.Range(0,n).Select(NativeDeployPresentation.MutatorAt).ToArray();
+            Check(cards.Select(m=>m.Name).Distinct(StringComparer.Ordinal).Count()==n,"thirty unique card names");
+            foreach(var m in cards)
+            {
+                Check(m.Name.Length>0&&m.Name.All(NativeDeployArt.Lettered)&&NativeDeployArt.Lines(m.Name).Length<=2,m.Id+": the card font letters its name");
+                Check(m.Line.Length>0&&m.Line.Length<=40&&m.Line.EndsWith(".",StringComparison.Ordinal),m.Id+": a short line");
+                Check(NativeDeployPresentation.MutatorOf(m.Id).Name==m.Name&&m.Polarity!=NativeDeployPresentation.Polarity.Unknown,m.Id+": known, with a polarity");
+                Check(NativeDeployArt.MutatorTile(m.Id).Length==NativeDeployArt.TilePixels*NativeDeployArt.TilePixels*4,m.Id+": its card tile renders");
+            }
+            foreach(NativeDeployPresentation.Polarity p in new[]{NativeDeployPresentation.Polarity.Boon,NativeDeployPresentation.Polarity.Bane,NativeDeployPresentation.Polarity.Chaos})
+                Check(cards.Count(m=>m.Polarity==p)>=9,p+": at least nine cards");
+            var strip=NativeDeployPresentation.Strip(ids,0);Check(strip.OrderBy(x=>x,StringComparer.Ordinal).SequenceEqual(ids.OrderBy(x=>x,StringComparer.Ordinal)),"the mutator reel carries every card once");
+            var a=new NativeExpeditionDeployment("station","host",7);Check(a.RollInstances("host",Pool)&&a.RollMutators("host",ids),"the authority rolls from all thirty");
+            var s=a.Snapshot();Check(s.mutators.Length==3&&s.mutators.All(ids.Contains),"three of them land");
         }
         private static void Reels()
         {

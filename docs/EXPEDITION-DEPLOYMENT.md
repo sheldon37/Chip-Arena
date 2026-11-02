@@ -182,6 +182,64 @@ every entrance's 3 × 3 forecourt ran to the floor's edge with nothing behind th
 
   `--expedition-deployment` passes unchanged (3,681).
 
+### Mutator catalog (owner request 2026-11-01; cards by Claude, effects for Astra)
+
+Owner: "lets add some modifiers to roll for expedition; things like 'More money per kill, faster move speed, ALL hulk
+zombies, etc.' Think fun things, overpowered things, insane difficulty things. Consider like... 30 modifiers?"
+
+- **Drawn:** 30 cards in `NativeDeployPresentation` (`MutatorIds`, `MutatorOf`), 10 Boon, 11 Bane, 9 Chaos. The DEV
+  preview rolls from them. Their names use only the card font's letters (checked).
+- **Not applied:** the live room's `RollMutators` still returns false, and `NativeDeploymentLive` passes an empty list.
+- **Astra to apply:** each effect below for the whole run (city and every instance, host and guests), the roll's
+  exclusions, and the reward scaling. Then pass `NativeDeployPresentation.MutatorIds`, or the rules' own list with the
+  same ids, to the live roll.
+- **Numbers are proposals.** Change them freely; if a line on a card no longer fits, tell Claude.
+
+| id | Card | Polarity | Proposed effect |
+|---|---|---|---|
+| `jackpot` | JACKPOT | Boon | Kill money ×2. |
+| `overclock` | OVERCLOCK | Boon | Pilot move and sprint speed ×1.33. |
+| `moon-boots` | MOON BOOTS | Boon | Pilot gravity ×0.5 (the `playerGravity` stat): about twice the jump height. |
+| `bottomless` | BOTTOMLESS | Boon | Magazines never empty, no reloads. Stamina and magic costs unchanged. |
+| `second-wind` | SECOND WIND | Boon | Reprints cost $0; downed revives take half the time. |
+| `windfall` | WINDFALL | Boon | Cache prices ×0.5, restock ×2 as fast. |
+| `vampire` | VAMPIRE | Boon | Heal 8% of damage dealt to zombies, at most 15 HP a second. |
+| `adrenaline` | ADRENALINE | Boon | No stamina costs (sprint, rolls, melee). |
+| `chip-rain` | CHIP RAIN | Boon | Each zombie kill: a 3% chance to drop a random common chip; brutes and Hulks 25%. |
+| `headhunter` | HEADHUNTER | Boon | Headshot damage ×3 (pilots on zombies). |
+| `hulkamania` | HULKAMANIA | Bane | Every spawn is a Hulk. Live Hulks capped per area (about 6) and the spawn interval ×2.5 for performance; a Hulk kill pays ×3. |
+| `sprinters` | SPRINTERS | Bane | Shamblers spawn as runners; zombie move speed ×1.15. |
+| `iron-hide` | IRON HIDE | Bane | Zombie health ×2. |
+| `swarm` | SWARM | Bane | Spawn budget and live cap ×2, inside the existing crowd-cost bounds. |
+| `paper-pilots` | PAPER PILOTS | Bane | Pilot maximum health ×0.5. |
+| `permadeath` | PERMADEATH | Bane | No reprints. A downed pilot can still be revived; a dead one stays out until the run ends. |
+| `darkness` | DARKNESS | Bane | Presentation (Claude): street and district lights off, ambient −60%, weapon lights only. Rules: none, or zombies sense pilots 20% farther. |
+| `whiteout` | WHITEOUT | Bane | Presentation (Claude): fog to about 25 m, markers hidden past it. Rules: none. |
+| `broke` | BROKE | Bane | Kill money ×0.5, cache prices ×2. |
+| `bloated` | BLOATED | Bane | Every zombie death bursts like a bloater: damage and knockback to pilots in its radius. |
+| `brittle` | BRITTLE | Bane | Destructible block durability ×0.25. |
+| `surge` | SURGE | Chaos | Pilots ×1.25 and zombies ×1.35 move speed. |
+| `storm` | STORM | Chaos | Every 20 s, 3 strikes near random pilots, telegraphed 2 s: 60 damage within 3 m to anyone, zombies too. |
+| `glass-cannon` | GLASS CANNON | Chaos | Damage dealt by pilots ×3 and taken by pilots ×3. |
+| `high-explosive` | HIGH EXPLOSIVE | Chaos | Every shot's impact makes a 1.5 m blast at 35% of its damage; self-damage at half. |
+| `bounce-house` | BOUNCE HOUSE | Chaos | All knockback ×3, pilots and zombies. |
+| `friendly-fire` | FRIENDLY FIRE | Chaos | Pilots damage teammates (at 50%); kill money ×1.5. |
+| `roulette` | ROULETTE | Chaos | Every 90 s each pilot's weapon becomes a random one from the run's pool, fully loaded. |
+| `martyr` | MARTYR | Chaos | A pilot who goes down explodes: 4 m, 150 damage to zombies, 30 to pilots. |
+| `big-heads` | BIG HEADS | Chaos | Head hitboxes ×2 radius for pilots and zombies. Presentation (Claude): heads drawn ×2.2. |
+
+- **Roll rules (proposal):**
+  - Never draw together: `jackpot` with `broke`; `windfall` with `broke`; `second-wind` with `permadeath`;
+    `darkness` with `whiteout` (both dim the view; it reads as a broken screen).
+  - Three Banes may land: that is the owner's "insane difficulty".
+- **Reward (proposal):** each Bane +25% run payout, each Chaos +10%, Boons none. Show it on the station
+  (Claude, once the rules give a number).
+- **Claude's follow-ups once the rules apply them:**
+  - DARKNESS's and WHITEOUT's lighting and fog;
+  - BIG HEADS' head scale;
+  - STORM's telegraph and strike, the HIGH EXPLOSIVE and MARTYR blasts, BLOATED's burst (reusing the bloater's);
+  - the active mutators on the run HUD.
+
 Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The owner-authorized test update may ship with active-run migration disabled; full migration remains separate unfinished work.
 
 ## Approved gameplay shape
