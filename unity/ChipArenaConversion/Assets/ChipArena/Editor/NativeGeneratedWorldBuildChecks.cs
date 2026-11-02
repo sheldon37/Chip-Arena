@@ -111,6 +111,21 @@ namespace ChipArena.UnityConversion.Editor
             },_=>EditorSceneManager.NewPreviewScene(),s=>EditorSceneManager.ClosePreviewScene(s)))
             {
                 var arena=runtime.Arena;arena.GeneratedRun=bundle;Physics.SyncTransforms();
+                // Real Unity codec acceptance: clocks, remote pod looks and persistent late-join launch state.
+                arena.Match.Seat(1).pod="paint:112233,trim:aabbcc,light:123456";
+                var podRules=new NativePodRun(new[]{new NativePodRecord{seat=1,order=0,name="Generated A",bodyColor="#123456",accentColor="#abcdef",look=arena.Match.Seat(1).pod}});
+                if(!podRules.Start(arena.Match))throw new Exception("Generated pod countdown did not start.");
+                arena.PodRecords=podRules.Snapshot();
+                var landing=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="state",frame=arena.NetworkFrame()})).frame;
+                if(landing.phase!=NativePhase.Countdown||landing.phaseEnd!=3||landing.fightAt!=3||landing.pods.Length!=1||landing.seats[0].pod!=arena.Match.Seat(1).pod)
+                    throw new Exception("Pod countdown or seat look lost in Unity codec.");
+                arena.Match.SynchronizeExpeditionClock(4);
+                if(!podRules.Board(1,new System.Numerics.Vector3(),4,true))throw new Exception("Pod boarding refused.");
+                arena.PodRecords=podRules.Snapshot();
+                var launch=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="state",frame=arena.NetworkFrame()})).frame;
+                if(launch.pods[0].launchAt!=4||launch.pods[0].look!=arena.Match.Seat(1).pod||!NativePodRun.Valid(launch.pods,launch.time))
+                    throw new Exception("Late-join pod launch lost in Unity codec.");
+
                 var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,
                     deployment=room.Ticket,frame=arena.NetworkFrame(),expeditionPublic=new ExpeditionView(),expeditionPrivate=new ExpeditionPrivateFrame()}));
                 if(wire.deployment?.station!=room.Ticket.station||wire.deployment.instanceRolls!=room.Ticket.instanceRolls)

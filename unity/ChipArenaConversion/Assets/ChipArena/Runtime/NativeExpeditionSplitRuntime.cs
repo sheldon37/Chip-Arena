@@ -18,13 +18,13 @@ namespace ChipArena.UnityConversion
         // Readiness is a run-wide barrier, not just a per-pilot input gate. Commands
         // mutate inventory/votes immediately, even while the fixed simulation is held.
         private string SplitCommandBlock=>expeditionError!=null?"Expedition stopped. Leave the run and deploy again.":
-            !deploymentInitialReady?"Waiting for the party to finish loading.":splitRun?.Migrating==true?"Host transfer in progress.":null;
+            !deploymentInitialReady?"Waiting for the party to finish loading.":splitPods!=null&&(!splitPods.Started||splitAreas.Find(expeditionM1Layout.world).Arena.Match.Phase==NativePhase.Countdown)?"Pod deployment in progress.":splitRun?.Migrating==true?"Host transfer in progress.":null;
         private bool SplitLocalLoading=>ExpeditionSplit&&arena?.Local==null;
         private NativeArena SplitPilotArena(string who)=>splitCohorts==null?null:splitAreas.Find(splitCohorts.Member(who)?.Area)?.Arena;
         private int SplitSeat(string who)=>splitSeats?.FirstOrDefault(s=>s.access?.AccountId==who)?.id??0;
         private void DisposeSplitAreas()
         {
-            if(splitAreas==null)return;
+            splitPods=null;if(splitAreas==null)return;
             var old=splitAreas;splitAreas=null;old.Dispose();arena=null;match=null;
             splitCohorts=null;splitTransfers=null;splitRun=null;splitSeats=null;splitSessions.Clear();splitRouters.Clear();
         }
@@ -52,13 +52,14 @@ namespace ChipArena.UnityConversion
                 session.Sources.Seat=SplitSeat;session.Sources.DisplayName=id=>seats.FirstOrDefault(p=>p.access?.AccountId==id)?.name;
                 var director=new ExpeditionDirector(session,expeditionM1Layout,id=>sim.Pilots.FirstOrDefault(p=>p.Seat.id==SplitSeat(id)) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,sim.ExpeditionVisible,100,100,60);
                 session.ReprintEvidence=sim.ExpeditionReprintEvidence;session.Run.ReprintPlacement=SplitReprint;
-                runtime.Ready(a=>{a.Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,cooperative=true,teams=true});a.Match.HoldResolution=()=>true;a.BindExpeditionCombat(director,area,expeditionHorde);});
+                runtime.Ready(a=>{a.Match.ApplyNetwork(new NativeMatchFrame{phase=deploymentBundle!=null&&area.id==expeditionM1Layout.world?NativePhase.Lobby:NativePhase.Fight,cooperative=true,teams=true});a.Match.HoldResolution=()=>true;a.BindExpeditionCombat(director,area,expeditionHorde);});
                 runtime.SetOccupants(sim.Pilots.Count(p=>!p.Seat.bot));
                 splitSessions.Add(area.id,session);splitRouters.Add(area.id,new ExpeditionCommandRouter(session));
             }
             var hub=splitAreas.Find(expeditionM1Layout.world).Arena;
             var assignments=new Dictionary<string,ExpeditionPoint>();for(int i=0;i<seats.Length;i++)assignments.Add(seats[i].access.AccountId,expeditionM1Layout.Area(expeditionM1Layout.world).slots[i]);
             if(!hub.PlaceExpeditionParty(assignments))throw new InvalidOperationException("Hub placement refused.");
+            PrepareSplitPods(hub);
             splitTransfers=new NativeExpeditionAreaTransfers(splitAreas,expeditionM1Layout,splitCohorts,SplitSeat);
             BindSplitLocal(expeditionM1Layout.world);
             expeditionSession=splitSessions[expeditionM1Layout.world];expeditionLocal=new SplitLocalCommands(this,account.Access.AccountId);
@@ -125,6 +126,8 @@ namespace ChipArena.UnityConversion
                     }
                     if(!deploymentInitialReady){pending=new InputFrame();ExpeditionView=SplitView(account.Access.AccountId);return;}
                 }
+                if(StepPodCountdown())return;
+                TickPodDepartures();
                 var before=splitCohorts.Members;
                 splitTransfers.Step(splitRun.Elapsed,id=>splitRun.PartySnapshot().members.FirstOrDefault(m=>m.account==id),id=>splitRun.PartySnapshot().instances.Single(i=>i.id==id).cleared?ExpeditionJoinClosedReason.Cleared:ExpeditionJoinClosedReason.Open);
                 foreach(var group in splitCohorts.Members.Where(m=>before.Single(p=>p.Account==m.Account).Area!=m.Area).GroupBy(m=>(source:before.Single(p=>p.Account==m.Account).Area,destination:m.Area)))
@@ -133,7 +136,8 @@ namespace ChipArena.UnityConversion
                 {
                     splitRun.HoldMembers(new[]{m.Account},m.Pending!=null||!m.Ready);
                     var p=SplitPilotArena(m.Account)?.Pilots.FirstOrDefault(p=>p.Seat.id==SplitSeat(m.Account));
-                    if(p!=null&&p.ExpeditionTransferHeld!=(m.Pending!=null||!m.Ready))SplitPilotArena(m.Account).HoldTransferPilot(p,m.Pending!=null||!m.Ready);
+                    bool held=m.Pending!=null||!m.Ready||PodDeparting(m.Account);
+                    if(p!=null&&p.ExpeditionTransferHeld!=held)SplitPilotArena(m.Account).HoldTransferPilot(p,held);
                 }
                 own=splitCohorts.Member(account.Access.AccountId);BindSplitLocal(own.Ticket.area);
                 if(before.Single(m=>m.Account==own.Account).Area!=own.Area&&arena.Local!=null){yaw=arena.Local.Yaw;pending=new InputFrame();}
@@ -165,7 +169,7 @@ namespace ChipArena.UnityConversion
         }
         private void ResetSplitLoop()
         {
-            splitLoop=splitRun.PartySnapshot().loop;
+            splitLoop=splitRun.PartySnapshot().loop;splitPods?.CancelDepartures();
             foreach(var area in expeditionM1Layout.areas)
             {
                 var sim=splitAreas.Find(area.id).Arena;
@@ -234,9 +238,9 @@ namespace ChipArena.UnityConversion
             {
                 if(member==null||peer.Seat.access.Expires<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()||message.epoch!=networkEpoch||!splitCohorts.Accepts(who,message.areaIdentity))return true;
                 var sim=SplitPilotArena(who);
-                if(message.type=="input"){if(SplitCommandBlock==null&&message.generation==sim.Generation)sim.AcceptInput(peer.Seat.id,message.input);return true;}
+                if(message.type=="input"){if(SplitCommandBlock==null&&!PodDeparting(who)&&message.generation==sim.Generation)sim.AcceptInput(peer.Seat.id,message.input);return true;}
                 if(!peer.Changes.Allow(Time.unscaledTime)||!member.Ticket.Matches(message.expeditionCommand?.areaIdentity))return true;
-                if(SplitCommandBlock is string blocked)
+                if((SplitCommandBlock??(PodDeparting(who)?"Pod departing.":null)) is string blocked)
                 {
                     var request=message.expeditionCommand;
                     if(ExpeditionValidation.Id(request.transaction))peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-reply",expeditionReply=new ExpeditionCommandReply{transaction=request.transaction,areaIdentity=member.Ticket.Copy(),state=ExpeditionCommandState.Refused,reason=blocked}}));
@@ -253,7 +257,7 @@ namespace ChipArena.UnityConversion
             private readonly ConversionGame game;public string Viewer{get;}
             public SplitLocalCommands(ConversionGame game,string viewer){this.game=game;Viewer=viewer;}
             private ExpeditionSession Session=>game.splitSessions[game.splitCohorts.Member(Viewer).Area];
-            public string Blocked(ExpeditionCommand command)=>game.SplitCommandBlock??((game.splitCohorts.Member(Viewer).Pending!=null||!game.splitCohorts.Member(Viewer).Ready)?"Loading area":new ExpeditionHostCommands(Session.Run,Viewer,Session.Hooks()).Blocked(command));
+            public string Blocked(ExpeditionCommand command)=>game.SplitCommandBlock??(game.PodDeparting(Viewer)?"Pod departing.":null)??((game.splitCohorts.Member(Viewer).Pending!=null||!game.splitCohorts.Member(Viewer).Ready)?"Loading area":new ExpeditionHostCommands(Session.Run,Viewer,Session.Hooks()).Blocked(command));
             public ExpeditionCommandResult Send(ExpeditionCommand command)=>Blocked(command) is string why?ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,why):Session.Execute(Viewer,command);
         }
     }

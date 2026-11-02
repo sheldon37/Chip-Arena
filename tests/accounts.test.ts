@@ -161,3 +161,20 @@ test('outfits and face gear persist; DEV clothes cannot be forged or retained af
   const revoked:any=await(await f.request('me',undefined,dev.session)).json();assert.equal(revoked.account.profile.cosmetics.look,'hair:wild,hands:gloves,skin:aa12ff');
  }finally{f.db.close();}
 });
+
+test('pod looks normalize, persist across login, and reject malformed or oversized values',async()=>{
+ const f=await fixture();try{
+  const user:any=await(await f.request('register',{username:'podpilot',password})).json();let revision=0;
+  for(const [pod,expected] of [
+   ['light:ABCDEF,paint:112233,unknown:fff,trim:010203,paint:ZZZZZZ','paint:112233,trim:010203,light:abcdef'],
+   ['paint:ffffff,paint:123456','paint:123456'],['paint:#123456,trim:1234567',''],
+   [' paint:AbCdEf ,light:000000','paint:abcdef,light:000000'],[null,''],[42,''],['x'.repeat(257),''],['','']
+  ] as const){
+   const saved:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{pod}}},user.session)).json();
+   assert.equal(saved.account.profile.cosmetics.pod,expected);
+   const reread:any=await(await f.request('me',undefined,user.session)).json();assert.equal(reread.account.profile.cosmetics.pod,expected);
+  }
+  await f.request('profile',{revision,profile:{cosmetics:{pod:'paint:123456'}}},user.session);
+  const login:any=await(await f.request('login',{username:'podpilot',password})).json();assert.equal(login.account.profile.cosmetics.pod,'paint:123456');
+ }finally{f.db.close();}
+});

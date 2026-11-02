@@ -157,7 +157,7 @@ namespace ChipArena.UnityConversion
             // Under the Expedition chooser shot (NativeChooserCameraPresentation.cs) my own is hidden too: nothing over my pilot.
             foreach(var p in arena.Pilots){if(!p.Seat.connected||(prefs.firstPerson||presentation.FirstPerson)&&p==arena.ViewPilot||ChooserFramed&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true||presentation.SpawnHidesHud(p.Seat.id))continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true,p==arena.Local?p:null);}
             // PvE chip selection: the "SELECTING CHIP" tag over the names (NativeChipSelectHud.cs).
-            ChipSelectTags(scale,height);
+            ChipSelectTags(scale,height);PodUsePrompt(width,height);
             // DEV: the DEV tags over revealed pilots (everyone) and the DEV panel's read-only overlays (NativeDevOverlays.cs).
             DevWorld(scale,height);
             foreach(var m in arena.Minions)if(m.Hp<m.MaxHp)Health(m.Id,m.Body.transform.position+Vector3.up*(m.Kind=="slender"?1.52f:m.Kind=="toy"?.85f:1.2f),m.Hp,m.MaxHp,m.Kind=="toy"?.42f:.6f,m.Owner==arena.Local||match.SameSide(m.Owner.Seat,arena.Local.Seat),null,false,null);
