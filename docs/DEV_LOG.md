@@ -1,3 +1,24 @@
+## 2026-11-02 — Claude: Backrooms levels plan, kit catalogue and the generator spec for Astra
+
+- **Branch/base:** `claude/backrooms-plan` from shared `541458a3`. Docs only; merged into shared. No build or release.
+- **Task:** owner: "Can we begin creating a backrooms levels? We have the assets I believe".
+- **Decisions:**
+  - an Expedition destination and a PvP arena map;
+  - a generated maze;
+  - Level 0 first;
+  - split: Astra builds the generator, collision, nav, spawns and rules; Claude does the art.
+- **Done:**
+  - Found the pack (`G:/My Drive/Chip Arena Work/Unity Assets/Backrooms.zip`, Deflate64), extracted the kit, textures and
+    overlays into the git-ignored `Assets/LocalAssets/Backrooms/`.
+  - Measured every kit piece in Unity: a 3 m grid with 3 m ceilings.
+  - Wrote `docs/BACKROOMS.md`: the asset inventory, the kit table, a proposed Core `BackroomsLayout` contract with the Level
+    0 generator rules (for Astra), and the art plan.
+- **Checks:** docs only; `git diff --check`.
+- **Next:**
+  - Astra: review the contract and build the generator.
+  - Claude: per-submesh materials in the pack bank tool, the kit bank, a DEV layout preview, lighting.
+  - Owner: may Blender be installed? The Poolrooms and packed textures are in `.blend` files only.
+
 ## 2026-11-02 — Astra: Expedition pod countdown, extraction and replicated looks
 
 - **Scope/base:** `codex/expedition-pod-rules`, shared `3837eb3` plus pending recovery PR #308 (`09750192` equivalent tree). Rules/network/state only; presentation edits hydrate authoritative anchors, launch hooks and seat looks. No pod geometry or timing-constant changes.
