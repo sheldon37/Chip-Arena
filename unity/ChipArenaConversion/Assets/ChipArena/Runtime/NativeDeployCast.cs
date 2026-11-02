@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
         // first use, and its cast: one pilot per occupied pad, posed by the lobby poses (NativeLobbyPoses: the hero stance or arms
         // crossed, each pad's breath offset), on the visual body like the rooftop's crowd (rigs DeployIdTop and down, the seat's
         // outfit and weapon skins) or the voxel body where the model does not draw; stage lit; lifted away at Deploy.
-        private NativeDeployScene deployScene;private bool deployFailed;private DeployCast deployCast;private Transform deployHolder;
+        private NativeAudio deployAudio;private NativeDeployScene deployScene;private bool deployFailed;private DeployCast deployCast;private Transform deployHolder;
         public const int DeployIdTop=-500;
         /// <summary>Whether the Deployment Station can draw here (its shaders run, the model bank loaded, no failure this session).</summary>
         public bool DeploySupported=>!deployFailed&&sourceModels!=null&&NativeDeployScene.Supported;
@@ -53,16 +53,16 @@ namespace ChipArena.UnityConversion
         /// room's readiness) with `party` on the pads (party[i] on pad i, the host first). `dt` eases the camera (negative cuts).
         /// False when it cannot draw here (the caller keeps its own backdrop); a failure is logged once and not retried.
         /// </summary>
-        public bool RenderDeployStation(Camera camera,in DeployInput input,DeployPilot[] party,float dt,bool reduced)
+        public bool RenderDeployStation(Camera camera,in DeployInput input,DeployPilot[] party,float dt,bool reduced,NativeAudio audio=null)
         {
             if(!DeploySupported||camera==null)return false;
-            try{deployScene??=new NativeDeployScene();deployScene.Draw(camera,input,dt);DeployCastFrame(camera,input.Time,party,reduced);return true;}
-            catch(Exception e){Debug.LogException(e);deployFailed=true;deployScene?.Dispose();deployScene=null;return false;}
+            try{deployScene??=new NativeDeployScene();deployScene.Draw(camera,input,dt);deployAudio=audio;deployAudio?.DeployFrame(deployScene.Stage);DeployCastFrame(camera,input.Time,party,reduced);return true;}
+            catch(Exception e){Debug.LogException(e);deployFailed=true;deployAudio?.DeployStop();deployScene?.Dispose();deployScene=null;return false;}
         }
         /// <summary>Leaves the station: its pilots' visual bodies hide and the scene is released (built again on the next visit).</summary>
         public void DeployLeave()
         {
-            var cast=deployCast;if(cast!=null)foreach(var rig in cast.Rigs)if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.Root.activeSelf){body.Root.SetActive(false);body.Seen=false;}
+            deployAudio?.DeployStop();deployAudio=null;var cast=deployCast;if(cast!=null)foreach(var rig in cast.Rigs)if(rig!=null&&visualBodies.TryGetValue(rig,out var body)&&body.Root!=null&&body.Root.activeSelf){body.Root.SetActive(false);body.Seen=false;}
             deployScene?.Dispose();deployScene=null;
         }
         private void DeployCastFrame(Camera camera,float time,DeployPilot[] party,bool reduced)
