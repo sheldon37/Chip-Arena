@@ -121,8 +121,11 @@ namespace ChipArena.UnityConversion
         {
             foreach(var d in lists.Values)for(int start=0;start<d.Matrices.Count;start+=512)
             {
-                int count=Math.Min(512,d.Matrices.Count-start);d.Matrices.CopyTo(start,buffer,0,count);d.Bodies.CopyTo(start,bodies,0,count);d.Accents.CopyTo(start,accents,0,count);d.Tints.CopyTo(start,tints,0,count);d.Glows.CopyTo(start,glows,0,count);properties.Clear();properties.SetVectorArray("_BodyTint",bodies);properties.SetVectorArray("_AccentTint",accents);properties.SetVectorArray("_SceneTint",tints);properties.SetVectorArray("_GlowTint",glows);properties.SetFloat(StageLitId,Stage?1:0);
-                bool drawn=false;if(instancing&&SystemInfo.supportsInstancing)try{Graphics.DrawMeshInstanced(d.Part.Mesh,0,d.Part.Material,buffer,count,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true,d.Layer,d.Camera);drawn=true;}catch(InvalidOperationException){instancing=false;}
+                int count=Math.Min(512,d.Matrices.Count-start);d.Matrices.CopyTo(start,buffer,0,count);d.Bodies.CopyTo(start,bodies,0,count);d.Accents.CopyTo(start,accents,0,count);d.Tints.CopyTo(start,tints,0,count);d.Glows.CopyTo(start,glows,0,count);
+                bool drawn=false;if((!Stage||count>1)&&instancing&&SystemInfo.supportsInstancing)try{
+                    // A single stage section needs four vectors, not four 512-element arrays.
+                    // Use the existing scalar draw path for singletons, preserving transparency sorting.
+                    properties.Clear();properties.SetVectorArray("_BodyTint",bodies);properties.SetVectorArray("_AccentTint",accents);properties.SetVectorArray("_SceneTint",tints);properties.SetVectorArray("_GlowTint",glows);properties.SetFloat(StageLitId,Stage?1:0);Graphics.DrawMeshInstanced(d.Part.Mesh,0,d.Part.Material,buffer,count,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true,d.Layer,d.Camera);drawn=true;}catch(InvalidOperationException){instancing=false;}
                 if(!drawn)for(int i=0;i<count;i++){properties.Clear();properties.SetVector("_BodyTint",bodies[i]);properties.SetVector("_AccentTint",accents[i]);properties.SetVector("_SceneTint",tints[i]);properties.SetVector("_GlowTint",glows[i]);properties.SetFloat(StageLitId,Stage?1:0);Graphics.DrawMesh(d.Part.Mesh,buffer[i],d.Part.Material,d.Layer,d.Camera,0,properties,d.Layer==10||d.Part.NoShadow?ShadowCastingMode.Off:ShadowCastingMode.On,true);}
             }
         }
