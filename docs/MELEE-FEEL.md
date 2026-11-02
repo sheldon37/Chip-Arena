@@ -1022,8 +1022,8 @@ stamina or network data.
   - Greatsword: a two-handed reverse grip, point down, planted deep and angled ahead, nearly kneeling.
 
   While planted, the contact (blade point, or the shield's bottom rim) is fixed on the floor at its key and the grip is
-  solved back from it. The hips drop up to 0.16 m further when an arm cannot reach. A bigger fall crouches deeper and buries
-  deeper. The rig owns the legs through the plunge: the jump layer stands aside as for the greatsword's leap
+  solved back from it. The hips drop up to 0.16 m further when an arm cannot reach and lowering the shoulder would bring
+  the grip within reach (see "On the player model" below). A bigger fall crouches deeper and buries deeper. The rig owns the legs through the plunge: the jump layer stands aside as for the greatsword's leap
   (`JumpLayer.Leap`), and the floor guard leaves the planted blade alone until it comes free. The end hands the crouch to
   the guard on planted feet.
 - **First person** (`NativePlungePose.ViewPose`, `CapturedAnimation.PlungeView`). The view model's grips sit low in
@@ -1095,3 +1095,40 @@ The presentation adapts in `NativePlungeFields` only:
 - optionally a Hit Detail that marks the direct victim.
 
 Keep `PlungeAt` as the windup's end, `ImpactAt` as the landing, and the commitment end as the end of the stuck recovery.
+
+### On the player model (owner 2026-11-02: "Ever since we changed player models, we dont really have a slam attack anymore")
+
+The model's motion (`Core/NativeVisualMotion.cs`, `Choose`) played the pack's `Armed-Air-Attack-R1` for every air attack.
+That take is the forward jump attack's overhead chop, so it hid the plunge on the model. A plunging stab (kind `"down"`,
+not a sprint attack, a weapon with plunge keys: `NativePlungeRules.Handles`) is now declined (`Declined` `"plunge"`). The
+model then takes the game's own plunge pose through `NativeVisualRig`: the point-down drop, the plant, stuck, the pull-out.
+The motion leaves the jump take over `PlungeEase` (0.06 s) instead of the usual 0.15 s, so the drop doesn't show a blend of
+the jump's raised blade and the plunge's lowered one. The forward jump attack and the weapons without plunge keys keep the
+pack's take.
+
+The plant keys were retuned for the model (owner: "the pictures looked weird"). The old keys bowed the torso almost flat
+with the sword arm raised overhead relative to it. That reads on the big-headed voxel rig, but on the human model it folded
+the head down to shoulder height and lifted the hands over the helmet. The greatsword's near-upright 1.69 m blade put its
+grip above the kneeling shoulders: out of the rig's 0.49 m reach, the hips dropped to the floor.
+
+| Plant key | Contact ahead | Blade (down, ahead) | Bow / chest / head | Hips |
+|---|---|---|---|---|
+| Sword | 0.95 -> 1.12 m | (0.80, 0.60) -> (0.72, 0.69) | 0.36 / 0.18 / -0.05 -> 0.14 / 0.06 / 0.28 | -0.30 |
+| Greatsword | 1.02 -> 1.45 m | (0.82, 0.57) -> (0.64, 0.77) | 0.52 / 0.20 / 0.10 -> 0.18 / 0.06 / 0.30 | -0.40 -> -0.30 |
+| Daggers | unchanged | unchanged | 0.50 / 0.25 / 0.10 -> 0.30 / 0.12 / 0.25 | -0.34 |
+| Shield | unchanged | unchanged | 0.50 / 0.20 / 0.05 -> 0.28 / 0.10 / 0.20 | -0.36 |
+
+- The torso stays up, the head looks down the blade, and the grips sit at chest height within the arm's reach. Rig,
+  stuck at 3 m, above the sole: sword grip 0.71 m, greatsword grips 0.70 / 0.77 m, kneeling hips 0.56 m. Before, the
+  greatsword's grips were at 0.81 m with the hips at 0.32 m.
+- The reach drop (`Need`) now drops the hips only when lowering the shoulder brings the grip within reach. For a grip out
+  of reach across, it used to drop 0.1 m a pass anyway. The greatsword's rock carried its grip past the twisted-back
+  shoulder and sank the hips 0.16 m for a frame.
+- Seen in play (local captures, Brickfall, pitch -75, the model and the classic rig): the sword and greatsword kneel over
+  the blade planted ahead, hands at chest height. The daggers squat with both blades driven down. The shield kneels behind
+  its slammed rim. Then the pull-out (the greatsword's rock and yank) and back to the guard. The classic rig takes the
+  same keys and keeps its look.
+- Presentation only: no hit timing, hitbox, ring, damage, cooldown, movement or network change. The contact depths and
+  phase timeline are unchanged.
+- Tests: `VisualRigChecks` (each plunging weapon declines; a weapon without keys and a sprint attack keep their clips);
+  `PlungeStabChecks` unchanged (soles planted, contact held in the floor, phases).

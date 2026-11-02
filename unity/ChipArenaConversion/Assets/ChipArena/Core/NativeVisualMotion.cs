@@ -387,7 +387,12 @@ namespace ChipArena.UnityConversion
                 if(!clips.Has(set.Roll))return false;float len=clips.Length(set.Roll),rate=Math.Max(1,Math.Min(MaxRollRate,len/Math.Max(.05f,a.VisualRollDuration)));
                 pick=new Pick{Clip=set.Roll,Time=Math.Min(len,(time-a.RollAt)*rate),Fade=FadeIn};return true;
             }
-            // The plunging air attack: its Hit on the impact (the landing), else on the clip's own.
+            // The plunging stab (an air attack of kind "down": docs/MELEE-FEEL.md "Plunging stab"): the pack has no take for it, so
+            // the model takes the game's own plunge pose (Core NativePlungePose on the rig: blade point-down, the drop, the plant,
+            // stuck, pulled out) rather than the forward jump attack's chop (owner 2026-11-02: "Ever since we changed player
+            // models, we dont really have a slam attack anymore").
+            if(a.AirAttack&&!a.SprintAttack&&a.AttackAt>-90&&time>=a.AttackAt&&NativePlungeFields.Kind(a)==NativePlungeFields.DownKind&&NativePlungeRules.Handles(a.SourceSpec)){Declined="plunge";return false;}
+            // The forward jump attack: its Hit on the impact (the landing), else on the clip's own.
             if(a.AirAttack&&a.AttackAt>-90&&time>=a.AttackAt)
             {
                 if(!clips.Has(set.AirAttack))return false;

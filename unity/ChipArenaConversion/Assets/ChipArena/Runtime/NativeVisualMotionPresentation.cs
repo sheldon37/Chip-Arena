@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
             }
         }
         // The two-handed support fist's place on the handle (the weapon frame, metres along the blade: behind the right fist).
-        private const float SupportAlong=-.10f, SupportReach=.22f, SupportLetGo=.40f, SupportEase=.12f, MotionEase=.15f, UpperEase=.12f, AimTurnLimit=35f, CarryTilt=20f;
+        private const float SupportAlong=-.10f, SupportReach=.22f, SupportLetGo=.40f, SupportEase=.12f, MotionEase=.15f, PlungeEase=.06f, UpperEase=.12f, AimTurnLimit=35f, CarryTilt=20f;
         // The upper body's muscles (a gun's aim, recoil and reload layer): every muscle but the legs'.
         private static bool[] upperMuscles;
         private static bool[] UpperMuscles{get{if(upperMuscles==null){var n=HumanTrait.MuscleName;upperMuscles=new bool[n.Length];for(int i=0;i<n.Length;i++)upperMuscles[i]=!(n[i].Contains("Leg")||n[i].Contains("Foot")||n[i].Contains("Toes"));}return upperMuscles;}}
@@ -365,7 +365,9 @@ namespace ChipArena.UnityConversion
             var local=Quaternion.Inverse(body.Root.transform.rotation)*velocity;float speed=new Vector2(local.x,local.z).magnitude;
             bool moving=a.Grounded&&speed>NativeVisualStride.Moving;
             bool covered=NativeVisualMotion.Choose(m.Set,a,time,m.Memory,VisualMotionBank,moving,out var pick);
-            m.Weight=Mathf.MoveTowards(m.Weight,covered?1:0,dt/MotionEase);
+            // A plunge leaves the pack's jump within its windup: over the usual ease the drop showed a blend of the jump's raised
+            // blade and the plunge's lowered one (the blade swung flat over the head).
+            m.Weight=Mathf.MoveTowards(m.Weight,covered?1:0,dt/(!covered&&NativeVisualMotion.Declined=="plunge"?PlungeEase:MotionEase));
             if(m.Weight<=0&&!covered)
             {
                 // Off the model: what carried its pose over (inertia, the guard's switch, the feet) starts afresh.
