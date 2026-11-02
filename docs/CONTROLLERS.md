@@ -20,7 +20,7 @@ Save layout writes the current layout to this PC's existing preferences file. Sa
 | Camera view | View/Back + right stick click | Create/Share + R3 |
 | Pause | Menu | Options |
 
-Menu pointer: left stick moves, A/Cross activates, B/Circle or Menu/Options goes back, right stick scrolls the form. Sliders respond to holding confirm and moving the pointer. Account names, passwords and other text fields still use keyboard entry (or Steam's on-screen keyboard).
+Menu focus: D-pad or left stick moves between enabled options; A/Cross activates, B/Circle or Menu/Options goes back. Left/right adjusts a focused slider in 5% steps; up/down leaves the slider. Holding a direction repeats after 0.35 seconds, then every 0.12 seconds. Settings scroll to reveal the selected control; right stick also scrolls the form. Mouse input switches back to normal mouse interaction. Account names, passwords and other text fields still use keyboard entry (or Steam's on-screen keyboard).
 
 Uses Unity Input System 1.17.0's standardized Gamepad mappings, with the legacy backend retained for existing keyboard/mouse input. Xbox and supported PlayStation gamepads connect through Unity's native device support. Steam Controller / Steam Deck require Steam Input's **Gamepad** template; right pad should output right stick. Select Steam names manually when emulation reports an Xbox device. Native Steam action sets, independent rear paddles, gyro aiming and rumble are outside this implementation. One active gamepad controls this client's local pilot; this does not add local split-screen multiplayer.
 

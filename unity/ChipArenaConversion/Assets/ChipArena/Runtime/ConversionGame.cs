@@ -367,7 +367,7 @@ namespace ChipArena.UnityConversion
         private void OnGUI()
         {
             // The stage loading screen holds the GUI's input while it closes and while it is closed; it draws over every screen.
-            if(dedicated)return;var original=Event.current;try{ControllerGuiEvent();if(SlenderGUI())return;Styles();StageInputGate();GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();ControllerCursor();}finally{Event.current=original;}
+            if(dedicated)return;var originalMouse=Event.current.mousePosition;try{ControllerGuiEvent();if(SlenderGUI())return;Styles();StageInputGate();GuiFrame();if(error.Length==0)NoticeToast();BuildCorner();ExpeditionTransferGui();StageLoadingGui();ControllerCursor();}finally{Event.current.mousePosition=originalMouse;}
         }
         private void GuiFrame()
         {

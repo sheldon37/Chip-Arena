@@ -26,6 +26,23 @@ class SourcePackageTests(unittest.TestCase):
         self.assertNotIn("input.intValue=0;", builder)
         self.assertEqual(self.dependencies["com.unity.inputsystem"], "1.17.0")
 
+    def test_controller_pointer_preserves_mouse_capture_and_gui_events(self):
+        runtime = ROOT / "Assets/ChipArena/Runtime"
+        controller = (runtime / "NativeController.cs").read_text()
+        game = (runtime / "ConversionGame.cs").read_text()
+        pointer = (runtime / "NativeControllerPointer.cs").read_text()
+        # Update runs between MouseDown/MouseUp even without a gamepad. Clearing hotControl
+        # there cancels genuine GUI.Button presses and slider drags.
+        self.assertIn("padState.Step(options.bindings,buttons,modifier,ui);", controller)
+        self.assertNotIn("GUIUtility.hotControl=", controller)
+        self.assertNotIn("Event.current=", controller)
+        self.assertNotIn("Event.current=", game)
+        self.assertIn("Event.current.type!=EventType.Repaint", controller)
+        self.assertIn("finally{Event.current.mousePosition=originalMouse;}", game)
+        self.assertIn("NativeControllerPointer.BeginGui();", controller)
+        self.assertIn("screenOrigin=GUIUtility.GUIToScreenPoint(Vector2.zero)", pointer)
+        self.assertNotIn("GUIToScreenPoint(Event.current.mousePosition)", pointer)
+
     def test_windows_log_failures_are_rejected(self):
         for module in ('inputlegacy', 'physicscore2d', 'tetgen', 'timelinefoundation'):
             with self.subTest(module=module):

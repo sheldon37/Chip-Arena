@@ -1,3 +1,68 @@
+## 2026-11-02 — Claude: instance halls on the generated Expedition; the new stages' invisible walls opened
+
+- **Branch/base:** `claude/playtest-fixes` from shared `1e38cf7`, shared `c48f641` merged in.
+  - Implementation: `9e07284` (stage columns), `00b669b` (instance halls), `4f9d02a` (a check), then this log.
+  - Merged into shared and the builder (test channel). Not a live release.
+- **Task:** owner playtest: "New expedition layout needs buildings for instances (Currently looks like just a gate, but
+  we can walk past them and fall through the map)" and "New maps have invisible barriers we cant jump past".
+- **Found:**
+  - Each generated entrance was a lone frame in a 3 × 3 forecourt that ran to the floor's edge.
+  - Walking pilots are not clamped to the bounds; only bots, abilities and teleports use `NativeMapRules.Clamp`.
+    NEW-STAGES.md said otherwise and is corrected.
+  - The new stages' drafts put an infinite pilot-only column over every crate, container, booth, porch, rail and roof:
+    376 columns, against 7 to 11 on the old maps, all of those 13 m or higher.
+- **Changes:**
+  - **Generated world** (`NativeExpeditionGeneratedWorld`, `deployment-world-blockout-2`):
+    - an 18 m `hall-<instance>` behind each frame, filling the forecourt's outer half to the edge (the frame is its doorway);
+    - a wall on the outer side of any other street cell at the edge;
+    - both are static and carry the buildings' exclusion column.
+    - Door records, approach, join circle, returns, spawns and routes are unchanged.
+  - **Dressing** (`NativeExpeditionCityKit.Generated.cs`, stem `bldg-hall:`):
+    - the district facade, the zone's name large over the frame, floodlights, and a district crown (Ironworks stacks
+      and sawtooth roof, Station glass roof and roundel, Ward Zero beacons);
+    - edge walls dressed as the checkpoint's.
+  - **Stages** (`tools/generate_stage_hazards.py` `open_tops`, maps regenerated, asset lock updated):
+    - a column stays only where a side opens onto a void, or where no ordinary jump reaches it (more than 3.4 m over
+      every floor beside it);
+    - 129 of 376 remain;
+    - Breakwater's parapet gets the column its draft meant to have, and Polaris's radome gets its own;
+    - the tool now writes LF on Windows.
+- **Affected systems:**
+  - Generated-world collision and its compatibility digest: the version bump fences older staging tickets.
+  - The new stages' pilot columns and navigation (bots may now jump onto low tops and over interior rails; no fall
+    damage exists).
+  - No hit timing, hitbox, damage, cooldown or network schema change.
+- **Checks:**
+  - Full suite on a clean LF worktree (`00b669b`): 913 PASS lines, rc 0, with ExpeditionEndingChecks' Windows path
+    patch applied there only.
+  - After the check commit: `--new-stage-looks` 457,617, `--new-stages` 5,076, `--generated-districts` (new hall and
+    closed-edge checks; they fail with the halls removed), `--expedition-deployment` 3,681.
+  - `tools/check_unity_compile.py`: Input System, Player, Runtime and Editor PASS. The pinned Input System archive was
+    fetched with curl (Python 3.9's certificates have expired) and verified by the script's checksum.
+  - `git diff --check` clean.
+  - Unity (BoZo `generated=123`): the three halls captured from their forecourts.
+- **Not checked:**
+  - the native deployment acceptance against blockout 2 (the builder runs it before packaging);
+  - jumping onto the newly opened tops in play;
+  - Windows build, co-op.
+- **Next:** Astra: confirm the native acceptance on the builder. See the mutator entry above for the modifiers.
+
+## 2026-11-02 — Astra: isolate fixed menu actions from gameplay remaps
+
+- Follow-up to controller menu #304: suppress the gameplay binding state while the controller owns a menu. A/B/directions still use fixed raw menu controls, but a custom Chips/Board/Camera binding on A can no longer fire alongside menu confirmation. Leaving a menu with confirm held still waits for neutral. Two managed regressions added; controller and pinned Unity semantic checks rerun before queueing. No gameplay rules or network changes.
+
+## 2026-11-02 — Astra: directional controller menu navigation
+
+- Owner confirmed Steam Input detection and requested D-pad/analog menu selection with A confirm/B back. Task `codex/controller-menu-navigation`, base published/shared `c48f6415`. Adds device-independent spatial focus over existing enabled IMGUI buttons/toggles/sliders, D-pad or left-stick repeat (0.35 s delay, 0.12 s repeat), focus border, automatic form scrolling and 5% slider steps on left/right. Up/down leaves sliders; A/Cross and B/Circle remain fixed menu controls independent of gameplay remaps. Draft and results screens now use the UI input context too.
+- Context changes/disconnect/loading clear focus and pending presses. Mouse movement/click restores normal mouse navigation, preserving the prior hotfix's native mouse capture and genuine GUI events. Text fields still require keyboard/on-screen keyboard entry. No authority, damage, movement, animation or network schema changes; migration remains disabled.
+- Verification: 29 controller checks including directional neighbors, repeat/drift, slider adjustment, empty/context-reset menus and scroll boundaries; focused transitions/loading and related deployment checks; seven package/backend/mouse-capture checks; pinned Input System and Unity semantic assemblies; source package 2,920 files and whitespace. Native builder also checks directional focus/reset before packaging. Exact compile/build/feed outcomes go in the task PR. Actual rendered menus and physical controller acceptance remain owner play checks; headless tests are not that evidence.
+
+## 2026-11-02 — Astra: controller menu-click hotfix
+
+- Owner reports both mouse and controller menu activation broken after published controller source `1e38cf7`. Task `codex/controller-click-fix` starts from that exact shared/builder commit. Found controller Update clearing GUIUtility.hotControl every blocked frame, including every frame without a gamepad: this cancels native mouse press/drag ownership between MouseDown and MouseUp. Remove that reset; virtual-pointer cancellation still clears only its own state.
+- Preserve the actual IMGUI event and its consumed state instead of replacing/restoring Event.current. Controller hover changes mouse coordinates only during Repaint and restores the coordinates afterward. Controller hit tests now subtract a window origin captured before canvas/group transforms, rather than deriving it repeatedly from mutable event coordinates.
+- Focused package/backend/input-ownership regressions and source packaging pass. Controller/transition-loading managed checks and pinned Input System/Unity semantic assembly checks are run before queueing; exact results and native build/feed receipt are recorded in #300. This is a narrow input integration fix: no combat, network, geometry, animation or migration changes. Real mouse/controller menu interaction is still not verified by the headless builder; owner play confirmation remains necessary.
+
 ## 2026-11-02 — Astra: controller test-channel integration
 
 - Owner requested controller publication after the Expedition update. Task `codex/controller-release` merges #300 `bdbfacc6` with published shared `f5081f4`; both histories and the rooftop-before-DeployOutfit ordering are preserved. Both native deployment acceptance and controller input/JSON gates run before packaging; Both input backends remain enabled.
