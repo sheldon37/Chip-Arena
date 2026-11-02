@@ -365,7 +365,8 @@ namespace ChipArena.UnityConversion
             Check(sim.Contains("Physics.gravity=new Vector3(0,-23,0)")&&sim.Contains("a.Position=Vec(p.Body.position-Vector3.up*.865f)"),"the authority's gravity and the presented feet offset");
             // Presentation only: the Core module and the hooks are referenced by presentation files alone.
             var names=new[]{"NativeSpawnIn","SpawnInFrame","SpawnPlace(","SpawnContact(","SpawnCamera(","SpawnHidesHud(","SpawnInScreen("};
-            var allowed=new HashSet<string>{"Core/NativeSpawnIn.cs","Runtime/NativeSpawnInPresentation.cs","Runtime/ArenaPresentation.cs","Runtime/NativeSourcePresentation.cs","Runtime/NativeViewPresentation.cs","Runtime/NativeCombatHud.cs","Runtime/ConversionGame.cs"};
+            // (the Expedition drop pods ride its clock in a generated run's hub: Core/NativePodDrop.cs, Runtime/NativePodPresentation.cs)
+            var allowed=new HashSet<string>{"Core/NativeSpawnIn.cs","Runtime/NativeSpawnInPresentation.cs","Runtime/ArenaPresentation.cs","Runtime/NativeSourcePresentation.cs","Runtime/NativeViewPresentation.cs","Runtime/NativeCombatHud.cs","Runtime/ConversionGame.cs","Core/NativePodDrop.cs","Runtime/NativePodPresentation.cs"};
             foreach(var file in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena"),"*.cs",SearchOption.AllDirectories))
             {
                 string rel=Path.GetRelativePath(Path.Combine(root,"Assets/ChipArena"),file).Replace('\\','/');string text=File.ReadAllText(file);
