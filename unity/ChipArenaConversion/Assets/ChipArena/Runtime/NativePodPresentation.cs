@@ -80,10 +80,11 @@ namespace ChipArena.UnityConversion
         private void PodSync(){if(!ReferenceEquals(podRun,GeneratedRun)){podRun=GeneratedRun;foreach(var p in pods.Values)if(p.Sign!=null)CapturedAnimation.Release(p.Sign);pods.Clear();}}
         private void DisposePods(){podRun=new object();PodSync();if(podSignMaterial!=null)CapturedAnimation.Release(podSignMaterial);if(podQuad!=null)CapturedAnimation.Release(podQuad);podSignMaterial=null;podQuad=null;}
         /// <summary>
-        /// SpawnCamera in a pod run: my view rides my pod down (its offset along the approach: in third person behind it, in
-        /// first person in its cabin) until the landing, then kicks with it (camera shake on; Reduced .4).
+        /// SpawnCamera in a pod run (camera shake on; off, my view stays at my spawn and watches the pods land): my view rides
+        /// my pod down (its offset along the approach: in third person pulled back above it, in first person in its cabin)
+        /// until the landing, then kicks with it (Reduced .4).
         /// </summary>
-        private void PodCamera(Transform camera,int id,bool shake,bool reduced)
+        private void PodCamera(Transform camera,int id,bool reduced)
         {
             if(!pods.TryGetValue(id,out var pod))return;var f=pod.Frame;
             if(f.Dropping&&f.Land<0&&f.Offset.Y<NativePodDrop.Altitude*2)
@@ -92,7 +93,7 @@ namespace ChipArena.UnityConversion
             }
             // third person: pulled back and up off the pod from the start of the drop until its door opens, easing in as it does
             if(!FirstPerson&&f.Dropping){float pull=1-Mathf.SmoothStep(0,1,(f.Age-NativePodDrop.DoorAt)/(NativePodDrop.End-NativePodDrop.DoorAt));camera.position+=(-camera.forward*3.2f+Vector3.up*1.1f)*pull;}
-            if(!shake)return;float kick=NativePodDrop.Kick(f,out float pitch)*(reduced?.4f:1);camera.position-=Vector3.up*kick;if(pitch>0)camera.rotation*=Quaternion.Euler(pitch*(reduced?.4f:1),0,0);
+            float kick=NativePodDrop.Kick(f,out float pitch)*(reduced?.4f:1);camera.position-=Vector3.up*kick;if(pitch>0)camera.rotation*=Quaternion.Euler(pitch*(reduced?.4f:1),0,0);
         }
         /// <summary>Leaving by pod (Astra's rule calls it when pilot `id` boards its pod to leave at presentation time `at`;
         /// NaN cancels): the door closes and the pod lifts away (NativePodDrop.Launch).</summary>

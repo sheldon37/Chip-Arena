@@ -298,7 +298,8 @@ customizable too via customization."
     0.06 s apart, the first at −1.35 s: dust, sparks and a camera kick.
   - The pod steams, its LED sign flickers on with the pilot's name, the door seam flares, and the door drops open into a
     ramp from −0.3 s. The pilot rides hidden inside and shows as the door opens; by GO the door is well open.
-  - My view rides my own pod down: third person pulled back above it, first person in its cabin.
+  - With camera shake on, my view rides my own pod down: third person pulled back above it, first person in its cabin.
+    With it off, my view stays at my spawn and watches the pods land.
   - After the door opens, my pod is drawn as see-through glass while it stands between my camera and me.
   - Pods stay parked where they landed for the run.
 - **The LED sign:** a 5×7 dot font (A–Z, 0–9, `-_.!?'#*+/:`; anything else reads `?`). It fits ten letters, and longer

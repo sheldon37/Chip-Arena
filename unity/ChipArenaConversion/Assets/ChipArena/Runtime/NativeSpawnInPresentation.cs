@@ -245,11 +245,10 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void SpawnCamera(Transform camera,NativeArena arena,float time,bool shake,bool reduced)
         {
-            if(camera==null||arena?.Local?.Body==null)return;var p=arena.Local;
+            if(camera==null||arena?.Local?.Body==null||!shake)return;var p=arena.Local;
             var v=SpawnEvaluate(arena,p,p.Body.transform.position-Vector3.up*NativeSpawnIn.FeetOffset,time,out float raise);if(v==null)return;
-            // A generated run's hub: my view rides my pod down (NativePodPresentation.cs PodCamera), shake or not.
-            if(v.Pod){PodCamera(camera,p.Seat.id,shake,reduced);return;}
-            if(!shake)return;
+            // A generated run's hub: my view rides my pod down (NativePodPresentation.cs PodCamera).
+            if(v.Pod){PodCamera(camera,p.Seat.id,reduced);return;}
             float kick=NativeSpawnIn.Kick(v.Frame,v.Place.Mode,out float pitch)*(reduced?.4f:1);
             camera.position+=Vector3.up*((FirstPerson?raise:0)-kick);if(pitch>0)camera.rotation*=Quaternion.Euler(pitch*(reduced?.4f:1),0,0);
         }

@@ -139,7 +139,7 @@ internal static class PodDropChecks
         var spawn=R("Runtime/NativeSpawnInPresentation.cs");var pods=R("Runtime/NativePodPresentation.cs");
         Check(spawn.Contains("if(PodRun(arena))return PodSpawn(arena,pilot,feet,age,NativeSpawnIn.End(m.Phase,m.PhaseEnd,m.FightAt),out raise);"),"a pod run's pilots take the pod path");
         Check(spawn.Contains("||v.Pod)return;var f=v.Frame;bool slice")&&spawn.Contains("if(!v.Shown||v.Arena!=arena||v.Pod)continue;")&&spawn.Contains("||!v.Shown||v.Pod)return false;")&&spawn.Contains("look.Ghost=holo&&!v.Pod"),"no beam, hologram or veil for a pod");
-        Check(spawn.Contains("if(v.Pod){PodCamera(camera,p.Seat.id,shake,reduced);return;}"),"my camera rides my pod, shake or not");
+        Check(spawn.Contains("if(v.Pod){PodCamera(camera,p.Seat.id,reduced);return;}"),"my camera rides my pod (only with camera shake on: SpawnInChecks)");
         Check(R("Runtime/NativeMachineModels.cs").Contains("Add(NativePodModels.PodId,NativePodModels.Pod());Add(NativePodModels.DoorId,NativePodModels.Door());"),"the bank builds the pod and its door");
         Check(R("Runtime/NativeSourcePresentation.cs").Contains("ExpeditionPods(arena);")&&R("Runtime/ArenaPresentation.cs").Contains("SpawnInFx(arena,camera);PodFx(arena,camera);"),"the pods and their effects are drawn");
         Check(R("Runtime/ConversionGame.cs").Contains("presentation.LocalPodLook=prefs.pod;")&&R("Runtime/ConversionGame.cs").Contains("public string pod=\"\";"),"my pod wears the Locker's look (prefs.pod)");
