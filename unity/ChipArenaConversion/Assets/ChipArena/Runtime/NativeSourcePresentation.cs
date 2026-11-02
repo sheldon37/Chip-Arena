@@ -85,6 +85,8 @@ namespace ChipArena.UnityConversion
             StationBossScenery(arena);
             CyberCityScenery(arena);
             ExpeditionCityScenery(arena);
+            // DEV: the Backrooms stand-in layout (NativeBackroomsPresentation.cs).
+            BackroomsWorld();
             IronworksScenery(arena);
             IronworksBossScenery(arena);
             NewStageScenery(arena);

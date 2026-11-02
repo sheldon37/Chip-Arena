@@ -7,6 +7,8 @@ import struct
 import sys
 import tempfile
 import unittest
+import os
+import re
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -347,6 +349,35 @@ class Bank(unittest.TestCase):
             for bad in ({'model': 'Missing.fbx'}, {'model': 'Box.fbx', 'albedo': 'Missing.png'}):
                 with self.assertRaises(build_pack_bank.SelectionError):
                     build_pack_bank.Builder(str(root)).build(dict(SELECTION, props=[dict({'id': 'syn-bad', 'source': 'syn'}, **bad)]))
+
+    def test_model_split_named_materials_and_winding(self):
+        # The Backrooms kit's options: each node its own prop at the origin (`split`), a material per FBX material name
+        # (`materials`), and every triangle turned to face its corners' normals (`wind_by_normals`).
+        with tempfile.TemporaryDirectory() as tmp:
+            root = write_pack(tmp)
+            scene = fbx.load(os.path.join(str(root), SELECTION['sources']['syn'], 'Box.fbx'))
+            node = next(m for m in scene.models.values() if m.geometry is not None)
+            name = node.materials[0] if node.materials else None
+            sel = dict(SELECTION, props=[{'id': 'syn-kit', 'source': 'syn', 'model': 'Box.fbx', 'split': True, 'wind_by_normals': True,
+                                          'group': 'kit', 'materials': {name: {'albedo': 'Paint.png', 'color': [0.5, 0.25, 1.0], 'emission': [1, 0.5, 0]}}}])
+            out = build_pack_bank.Builder(str(root)).build(sel)
+            self.assertEqual(len(out.props), 1)
+            prop = out.props[0]
+            self.assertTrue(prop[0].startswith('syn-kit-'))
+            m = prop[4][0][1]
+            self.assertEqual((m[3], m[7], m[11]), (0.0, 0.0, 0.0))  # the node's place without its translation
+            self.assertEqual(out.materials[0][0], 'syn/' + re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-'))
+            self.assertEqual(out.materials[0][3], (0.5, 0.25, 1.0, 1.0))
+            self.assertEqual(out.materials[0][4], (1.0, 0.5, 0.0))
+            mesh = out.meshes[0][1]
+            for sub in mesh.submeshes:
+                for t in range(0, len(sub) - 2, 3):
+                    a, b, c = (mesh.positions[i] for i in sub[t:t + 3])
+                    u = [b[k] - a[k] for k in range(3)]
+                    v = [c[k] - a[k] for k in range(3)]
+                    f = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+                    n = [sum(mesh.normals[i][k] for i in sub[t:t + 3]) for k in range(3)]
+                    self.assertGreaterEqual(f[0] * n[0] + f[1] * n[1] + f[2] * n[2], -1e-9)
 
     def test_no_pack_content_committed(self):
         # The selections name pack files; nothing under tools/pack_bank may be pack content.

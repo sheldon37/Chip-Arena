@@ -242,20 +242,73 @@ class Builder:
                     raise SelectionError('albedo missing: ' + p['albedo'])
                 stem = re.sub(r'[^a-z0-9]+', '-', os.path.splitext(os.path.basename(albedo))[0].lower()).strip('-')
                 albedo = out.material(p['source'] + '/' + stem, tex_of(albedo, p['source']))
+            # `materials` (a model's FBX material name -> {albedo, color, emission, flags}) gives each submesh its own material
+            # where a model's materials carry no textures (the Backrooms kit: wallpaper, carpet and plaster on one wall).
+            named = p.get('materials')
+            named_cache = {}
+
+            def named_mat(name):
+                if name in named_cache:
+                    return named_cache[name]
+                spec = named.get(name) if named and name is not None else None
+                if spec is None:
+                    idx = out.material('none')
+                else:
+                    tex = None
+                    if 'albedo' in spec:
+                        tex = os.path.join(folder.root, spec['albedo'])
+                        if not os.path.isfile(tex):
+                            raise SelectionError('albedo missing: ' + spec['albedo'])
+                    color = tuple(float(c) for c in spec.get('color', (1, 1, 1))[:3]) + (1.0,)
+                    flags = (bankfmt.MAT_TWO_SIDED if spec.get('two_sided') else 0) | (bankfmt.MAT_CUTOUT if spec.get('cutout') else 0)
+                    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+                    idx = out.material(p['source'] + '/' + slug, tex_of(tex, p['source']), -1, color, tuple(float(c) for c in spec.get('emission', (0, 0, 0))[:3]), flags)
+                named_cache[name] = idx
+                return idx
+
             parts = []
             for part in (ua.model_parts(folder, prefab) if 'model' in p else ua.flatten(folder, prefab)):
                 mesh = ua.mesh_for(folder, part)
                 if mesh is None or not mesh.submeshes:
                     continue
-                mats = [albedo if albedo is not None else mat_of(folder, part.materials[i] if i < len(part.materials) else (part.materials[-1] if part.materials else None), p['source'])
-                        for i in range(len(mesh.submeshes))]
+                # `wind_by_normals`: a model whose triangles are wound against their own normals in places (the Backrooms kit: its
+                # floors face down by winding and up by normal, its lamps do not); each triangle facing away from its corners'
+                # normals is turned, so faces cull as their normals point (Unity's front face: (b-a)x(c-a) toward the viewer).
+                if p.get('wind_by_normals') and mesh.normals:
+                    pos, nor = mesh.positions, mesh.normals
+                    for sub in mesh.submeshes:
+                        for t in range(0, len(sub) - 2, 3):
+                            a, b, c = sub[t], sub[t + 1], sub[t + 2]
+                            ux, uy, uz = pos[b][0] - pos[a][0], pos[b][1] - pos[a][1], pos[b][2] - pos[a][2]
+                            vx, vy, vz = pos[c][0] - pos[a][0], pos[c][1] - pos[a][1], pos[c][2] - pos[a][2]
+                            fx, fy, fz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
+                            nx, ny, nz = nor[a][0] + nor[b][0] + nor[c][0], nor[a][1] + nor[b][1] + nor[c][1], nor[a][2] + nor[b][2] + nor[c][2]
+                            if fx * nx + fy * ny + fz * nz < 0:
+                                sub[t + 1], sub[t + 2] = c, b
                 path, scene, model = part.source
+                if named is not None:
+                    names = model.materials
+                    mats = [named_mat(names[i] if i < len(names) else (names[-1] if names else None)) for i in range(len(mesh.submeshes))]
+                else:
+                    mats = [albedo if albedo is not None else mat_of(folder, part.materials[i] if i < len(part.materials) else (part.materials[-1] if part.materials else None), p['source'])
+                            for i in range(len(mesh.submeshes))]
                 mesh_name = '%s/%s/%s' % (p['source'], os.path.splitext(os.path.basename(path))[0], model.name)
                 mi = out.mesh(mesh_name, mesh, mats)
-                parts.append((mi, bankfmt.affine(part.matrix)))
+                parts.append((mi, bankfmt.affine(part.matrix), model.name))
             if not parts:
-                raise SelectionError('prop has no meshes: ' + p['prefab'])
-            out.prop(p['id'], p.get('group', ''), parts)
+                raise SelectionError('prop has no meshes: ' + p.get('model', p.get('prefab', '')))
+            # `split`: each mesh node its own prop, `<id>-<node>` (a kit's pieces laid out side by side in one model file), at
+            # its node's turn and scale about the origin (the translation dropped: callers place pieces by their bounds).
+            if p.get('split'):
+                for mi, m, node in parts:
+                    sub = (p['id'] + '-' + re.sub(r'[^a-z0-9]+', '-', node.lower()).strip('-'))[:80].rstrip('-')
+                    if not ID.match(sub):
+                        raise SelectionError('prop id ' + sub)
+                    m = list(m)
+                    m[3] = m[7] = m[11] = 0.0
+                    out.prop(sub, p.get('group', ''), [(mi, m)])
+            else:
+                out.prop(p['id'], p.get('group', ''), [(mi, m) for mi, m, _ in parts])
             self.provenance.append({'prop': p['id'], 'from': os.path.relpath(prefab, self.packs)})
 
         if name is not None:  # a textures-only selection (effect sheets, loaded by id) writes no bank

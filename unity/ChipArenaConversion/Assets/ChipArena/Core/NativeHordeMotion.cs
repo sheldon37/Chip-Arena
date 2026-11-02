@@ -299,9 +299,13 @@ namespace ChipArena.UnityConversion
                 // them fully), so the hips settle into a long stride's landing instead of dropping on its frame.
                 float hold=1;if(feet[i].Swing){if(heavy)continue;float s=Clamp01((f.Time-feet[i].T0)/Math.Max(1e-3f,feet[i].T1-feet[i].T0));hold=BossMath.Smoother((s-.35f)/.65f);if(hold<=0)continue;}
                 var hipAt=p.WorldPosition[i==0?CapturedRig.LHip:CapturedRig.RHip];Vector3 local=Squeeze(ToLocal(FootWorld[i],f.Root),hipAt);local.Y=f.Ground-f.Root.Y+AnkleHeight+(feet[i].Swing?0:feet[i].Y);
-                float dx=local.X-hipAt.X,dz=local.Z-hipAt.Z,h2=dx*dx+dz*dz,dy=hipAt.Y-local.Y,R=.485f;float need=(h2>=R*R?dy-.05f:dy-(float)Math.Sqrt(R*R-h2))*hold;if(need>sink)sink=need;
+                float dx=local.X-hipAt.X,dz=local.Z-hipAt.Z,h2=dx*dx+dz*dz,dy=hipAt.Y-local.Y,R=.485f;
+                // (A foot beyond the leg's reach across the floor is one no sinking can reach: it steps at once instead (Step) and rises
+                // onto its toe meanwhile, rather than dropping the hips into a squat until it does: owner 2026-11-02, zombies pushed
+                // out by a wall or the crowd sat down on the spot.)
+                if(h2>=R*R)continue;float need=(dy-(float)Math.Sqrt(R*R-h2))*hold;if(need>sink)sink=need;
                 // (A foot that stood planted before this frame must stay in reach now: the take's own hips can rise or lunge off it.)
-                if(!feet[i].Swing&&(Landed&(1<<i))==0){float must=h2>=LegReach*LegReach?dy-.05f:dy-(float)Math.Sqrt(LegReach*LegReach-h2);if(must>hard)hard=must;}
+                if(!feet[i].Swing&&(Landed&(1<<i))==0&&h2<LegReach*LegReach){float must=dy-(float)Math.Sqrt(LegReach*LegReach-h2);if(must>hard)hard=must;}
             }
             // (The Hulk's long stride sits its hips lower: its knees bend deep under the weight.)
             sink=Math.Min(heavy?.26f:.17f,Math.Max(0,sink));
@@ -484,6 +488,13 @@ namespace ChipArena.UnityConversion
                 Forward=Dir(Yaw);Right=new Vector2(Forward.Y,-Forward.X);
                 for(int i=0;i<4;i++){feet[i]=default;feet[i].W=Home(i,new Vector2(f.Root.X,f.Root.Z),d);feet[i].Turn=Yaw;FootWorld[i]=new Vector3(feet[i].W.X,f.Ground,feet[i].W.Y);FootAir[i]=false;if(heavy)feet[i].Cycle=-1;if(i<2){overReach[i]=false;heelLift[i]=0;}}
             }
+            // A root that jumped (a correction, a push-out, a transfer) re-plants the feet under it, as a fresh add does, rather than
+            // leaving them where it was and sinking the hips toward them.
+            else if(Vector2.Distance(new Vector2(f.Root.X,f.Root.Z),root)>JumpReset)
+            {
+                for(int i=0;i<4;i++){feet[i]=default;feet[i].W=Home(i,new Vector2(f.Root.X,f.Root.Z),d);feet[i].Turn=Yaw;FootWorld[i]=new Vector3(feet[i].W.X,f.Ground,feet[i].W.Y);FootAir[i]=false;if(heavy)feet[i].Cycle=-1;if(i<2){overReach[i]=false;heelLift[i]=0;}}
+                sinkNow=0;sinkEase.Reset(0);
+            }
             time=f.Time;dt=Math.Max(0,Math.Min(MaxDt,dt));lastDt=dt;
             // (The health the sag reads, eased: Core/NativeHordeLife.)
             if(fresh)hurtEase.Reset(Clamp01(f.Health));hurtShown=Clamp01(hurtEase.Step(Clamp01(f.Health),HurtHalfLife,dt));roamTake=RoamTakeOf(f);stepFresh=fresh;
@@ -582,7 +593,8 @@ namespace ChipArena.UnityConversion
                     // (Moving, it lands on the stride's own beat, so a foot left behind falls back into step instead of skipping along.)
                     // (A walking foot left out of reach on its ball goes even while the other swings: a moment in the air, never
                     // a slide.)
-                    else if((Vector2.Distance(ft.W,home)>(.45f+(quad?0:.25f*Clamp01(stride/legsNow-1)))*legsNow&&!OtherSwinging(i,feetCount))||moving&&!quad&&overReach[i]){lift=true;swingTime=moving&&!quad?Math.Min(heavy?1.2f:.42f,(1-u)/Math.Max(.3f,rateHz)+.02f):.16f;}
+                    else if((Vector2.Distance(ft.W,home)>(.45f+(quad?0:.25f*Clamp01(stride/legsNow-1)))*legsNow&&!OtherSwinging(i,feetCount))||moving&&!quad&&overReach[i]
+                        ||!quad&&!heavy&&Vector2.Distance(ft.W,home)>FarStep*legsNow){lift=true;swingTime=moving&&!quad?Math.Min(heavy?1.2f:.42f,(1-u)/Math.Max(.3f,rateHz)+.02f):.16f;}
                     if(lift){ft.Swing=true;ft.Scrape=false;ft.From=ft.W;ft.FromTurn=Wrap(ft.Turn-Yaw);ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(heavy?1.2f:.5f,swingTime));ft.Cycle=cycle;ft.Lift=heavy?(moving?HeavyLift(Speed):.06f):(moving?Lerp(d.Lift,d.RunLift,RunBlend(gk,Speed)):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
                 }
                 if(ft.Swing)
@@ -602,6 +614,9 @@ namespace ChipArena.UnityConversion
         /// <summary>How quickly the way the body travels follows the root's velocity (s), and how much shorter a step is when it travels
         /// backward or aside (the stumble's quick steps).</summary>
         public const float TravelEase=.08f,TravelShort=.4f;
+        /// <summary>A planted foot this far from its place (rig metres, times the legs' ratio) steps at once, the other foot swinging
+        /// or not; a root that jumps farther than <see cref="JumpReset"/> m in one update re-plants both feet under it.</summary>
+        public const float FarStep=.75f,JumpReset=1.2f;
         /// <summary>The net motion's half-life (s) and how quickly the gait turns to it and back as a stagger starts and ends (s).</summary>
         public const float NetHalfLife=.3f,KnockEase=.1f;
         /// <summary>A reeling add is knocked about while its root has run backward (faster than KnockBack m/s against its facing) within the

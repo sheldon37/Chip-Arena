@@ -56,6 +56,15 @@ namespace ChipArena.UnityConversion
                 Check(shot.Trail.Max()<=.45f,name+" under a pistol's staggers keeps its feet under it: they trail the hips at most "+shot.Trail.Max().ToString("0.00")+" m (they were left .6 m behind: a lunge)");
                 lines.Add($"{name}: steady pelvis p5 {P(steady.Pelvis,.05):0.00}, trail max {steady.Trail.Max():0.00}; under staggers {P(shot.Pelvis,.05):0.00}, {shot.Trail.Max():0.00}");
             }
+            // Moved 2 m at once while standing (a correction, a push-out, a teleport): the feet re-plant under it; the hips never
+            // sit down into a squat toward where they were (owner 2026-11-02, a screenshot of a zombie squatting by a wall).
+            foreach(int kind in new[]{NativeHordeKinds.Runner,NativeHordeKinds.Shambler})
+            {
+                var stand=Drive(rig,kind,t=>Vector3.Zero,new float[0]);
+                var jumped=Drive(rig,kind,t=>t>=2.5f&&t<2.5f+Dt?new Vector3(120,0,0):Vector3.Zero,new float[0]);
+                Check(jumped.Pelvis.Min()>=P(stand.Pelvis,.05)-.08f,NativeHordeKinds.Ids[kind]+" moved 2 m at once keeps its hips up: lowest pelvis "+jumped.Pelvis.Min().ToString("0.00")+" against standing "+P(stand.Pelvis,.05).ToString("0.00"));
+            }
+            Check(NativeHordeGait.FarStep*.485f>0&&NativeHordeGait.JumpReset>1,"a foot left far away steps at once, and a jump re-plants both");
             // The pieces.
             Check(NativeHordeGait.TravelOff(new Vector2(0,1),new Vector2(0,1))==0&&NativeHordeGait.TravelOff(new Vector2(.6f,.8f),new Vector2(0,1))==0,"running on along the facing (or within about 45 degrees of it) steps along the facing as ever");
             Check(NativeHordeGait.TravelOff(new Vector2(1,0),new Vector2(0,1))==1&&NativeHordeGait.TravelOff(new Vector2(0,-1),new Vector2(0,1))==1,"carried aside or back, it steps the way it goes");

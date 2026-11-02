@@ -1,3 +1,61 @@
+## 2026-11-02 — Claude: the Hulk's charge as a shoulder charge
+
+- **Branch:** `claude/zombie-squat` (with the squat fix and the Backrooms preview). Merged into shared together.
+- **Task:** owner: "can we fix charge animation for hulks? They look kinda derpy at the moment."
+- **Change (`Core/NativeHordeHeavy.cs`):** the charge's wind-up and run poses. The wrist targets sat above the model's
+  lowered shoulder, and the trailing arm was left to the run take. Now the trunk pitches forward from the hips, the
+  forearms guard, the trailing fist sits by the hip and the head is up. Details: docs/ZOMBIE-LOCOMOTION.md "The Hulk's charge".
+- **Animation impacts:** arms and trunk during a charge. No timing, hit, damage, movement or network change.
+- **Checks:** `--hulk-motion`. The station baseline motion lines are rewritten (the squat fix and this). Unity side views of a
+  live charge, before and after.
+- **Next:** owner check in the Windows build. The legs' crouch while charging could still be lighter.
+
+## 2026-11-02 — Claude: zombies stop squatting after a push or a jump
+
+- **Branch/base:** `claude/zombie-squat`, on `claude/backrooms-plan`, which carries shared `ece0aaa3`. Merged into shared
+  together with the Backrooms preview.
+- **Task:** owner: "Zombies still seem to be doing this thing" (a screenshot of a zombie squatting by a wall).
+- **Cause:** a planted foot left out of the leg's reach pulled the hips down to their cap until it stepped. One foot stepped
+  at a time, so the squat held after any sudden move of the root.
+- **Change (presentation only, `Core/NativeHordeMotion.cs`):**
+  - no sink toward an unreachable foot;
+  - such a foot steps at once (`FarStep`);
+  - a jump beyond `JumpReset` re-plants both feet.
+- **Measured:** a 2 m teleport's lowest pelvis 0.22 m → 0.84 m (probe); 0.79 m → 0.99 m in Unity.
+- **Animation impacts:** feet and hips after pushes and jumps. No hit timing, hitbox, movement, AI or network change.
+- **Also (tests only):** shared `#310` (online invites) put the social GUI pass between `StageInputGate`/`GuiFrame` and the
+  toast. Two source pins were updated to the new order with the same intent: `BuildLabelChecks` and
+  `TransitionLoadingChecks`. Astra: shared failed its own full suite until then.
+- **Checks:** zombie suites as in docs/ZOMBIE-LOCOMOTION.md. Full CoreTests on a clean LF worktree of `9c6d7b9b` (this branch
+  with the Hulk charge and the Backrooms preview; local Windows path patch, not committed): 938 PASS lines, rc 0.
+- **Next:** owner check in the Windows build.
+
+## 2026-11-02 — Claude: Backrooms kit bank, layout contract and a DEV Level 0 preview
+
+- **Branch/base:** `claude/backrooms-plan` (after the plan commit `cedc4bcb`, already on shared), carried by
+  `claude/zombie-squat` into shared. No builder sync: the builder is red on Astra's pod codec build check (since `541458a3`),
+  and this adds nothing players can see.
+- **Task:** owner: "Go ahead" (the Level 0 kit bake and a preview, after the plan).
+- **Changes (docs/BACKROOMS.md "Built so far"):**
+  - Bank tool: `split`, `materials` and `wind_by_normals` options. The kit is wound against its own normals in places.
+  - Selection `kit-backrooms.json`: the bank `ChipArenaPackBackrooms`, built locally; not yet in the Drive zip.
+  - Core `NativeBackrooms`: the layout contract, a stand-in Level 0 generator, the piece plan, lamp circuits.
+  - Runtime `NativeBackroomsPresentation`: a DEV preview drawn from the bank, off by default.
+- **Checks (actual):**
+  - `--backrooms` 28 checks;
+  - `Tests/test_pack_bank.py` 17 tests, one new;
+  - Unity compile (runtime and editor);
+  - offline Unity captures from inside the preview;
+  - full CoreTests on a clean LF worktree (local Windows path patch, not committed): 938 PASS lines, rc 0;
+  - the Python suite with `PYTHONUTF8=1` (this PC's default code page is cp932): 170 tests, 2 skipped, 1 failure. The
+    failure is the Windows publish-wrapper test (`'Publish-Native.cmd' is not recognized`), an environment issue; the
+    updater is not touched here.
+- **Gameplay impact:** none. Nothing draws unless the preview flag is set; no rules, collision or network.
+- **Next:**
+  - Astra: the generator, map, collision, nav and spawns to the contract.
+  - Claude: the level's map look once a map exists; the bank in the Drive zip.
+  - Owner: Blender, for the Poolrooms.
+
 ## 2026-11-02 — Astra: unblock generated-world pod codec builder check
 
 - **Branch/base:** `codex/pod-codec-builder`, shared `89f7ea84`. Owner supplied the Windows failure at `NativeGeneratedWorldBuildChecks.cs:120`.

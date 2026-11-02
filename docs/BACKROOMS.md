@@ -12,7 +12,8 @@ Owner decisions (2026-11-02):
   - Astra: the generator, collision, navigation, spawns, objectives and rules.
   - Claude: the art (the kit in the game, materials, lights, atmosphere, the camera filter) and this spec.
 
-Status: planning. Nothing here is in the game yet.
+Status: the kit bank, the layout contract with a stand-in Level 0 generator and a DEV preview drawn from the kit are
+built (Claude, 2026-11-02; "Built so far" below). The level is not in the game: no map, generator, rules or look yet.
 
 ## The assets (licensed: never commit or publish them)
 
@@ -117,6 +118,52 @@ change. Claude draws whatever it says.
 5. **Later:**
    - The Poolrooms (white tile, water) from `poolrooms assets.blend`, once Blender, or an export of it, is available.
    - Entities' looks.
+
+## Built so far (Claude, 2026-11-02)
+
+- **The bank, `ChipArenaPackBackrooms`:** 83 props (one per kit piece), 14 materials, the wallpaper and carpet textures.
+  - Selection: `tools/pack_bank/selections/kit-backrooms.json`. The carpet is the pack's JPEG converted to PNG beside it,
+    since the tool reads PNG, TGA and PSD only.
+  - Build it locally:
+    `python -I tools/pack_bank/build_pack_bank.py --packs Assets/LocalAssets --out Assets/LocalAssets tools/pack_bank/selections/kit-backrooms.json`
+  - It goes into the Drive licensed-assets zip like the other banks. It is not in the zip yet, so the builder has no
+    Backrooms bank.
+- **Three new bank-tool options** (`tools/pack_bank/build_pack_bank.py`, `Tests/test_pack_bank.py`):
+  - `split`: each FBX node becomes its own prop, its translation dropped; callers place pieces by their bounds.
+  - `materials`: an FBX material name maps to an albedo, a colour and an emission.
+  - `wind_by_normals`: turns each triangle to face its corners' normals. The kit's floors and ceiling tiles are wound
+    against their own normals, its lamps are not. Unity culls them inside-out the same way, so the tool corrects it.
+- **Core `NativeBackrooms`:**
+  - `BackroomsLayout`, the contract above, implemented as proposed. Astra may change it.
+  - `Preview(seed, w, d)`: a seeded stand-in Level 0 generator.
+  - `Plan`: the kit pieces within reach of the eye.
+  - `Level`: circuit flicker. `NearLamps`: the lamps that light the scene.
+  - Checks: `--backrooms` (`Tests/BackroomsChecks.cs`).
+- **Runtime `NativeBackroomsPresentation`:**
+  - Draws a layout from the bank, instanced through NativeBlockLit's pack path. The pack path needs an instanced
+    `_BlockColor`, `_BlockRest` and `_BlockLook`; without them it draws black.
+  - Dead lamps draw unlit, and the nearest lit panels feed the 8 practical light slots.
+  - A DEV preview only (`NativeBackroomsPreview`, `--ca-backrooms-preview`), drawn at (1000, 0, 1000) and off by default.
+- **Kit notes:**
+  - Each ceiling panel has an open centre slot for a lamp, vent or the single tile `ceiling_panel2.002`.
+  - `wall7_4` has window openings; Level 0 uses `wall2_1`.
+  - Lamps glow only with `_ArenaPackGlow` at 1.
+- **Seen in Unity:** offline captures from inside the preview.
+  - Right: the wallpaper, carpet, panel rows, pillars, partial walls and vents.
+  - Wrong, and owed to the preview's Brickfall look:
+    - the ceiling reads navy (toon shade on faces away from the map's sun);
+    - it is overexposed near the lamps;
+    - the lamps and vents cast small sun shadows on the floor.
+
+## The level's look (still to do, with its map)
+
+- A map look for each Backrooms map (`Conversion/Resources/MapLooks.json`):
+  - no key light, or one straight down at a low level;
+  - a warm shade tint, so the downward ceiling isn't blue;
+  - a warm trilight ambient;
+  - `_ArenaPackGlow` at 1;
+  - a soft yellow haze or fog.
+- Light levels tuned there.
 
 ## Next steps
 
