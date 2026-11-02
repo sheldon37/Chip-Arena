@@ -53,15 +53,15 @@ namespace ChipArena.UnityConversion
                 if(request.result!=UnityWebRequest.Result.Success){if(request.responseCode==401)Clear();Status=response?.error??"Account service could not be reached.";refreshAt=Time.unscaledTime+60;yield break;}
                 var access=NativeAccess.Verify(response?.token,s=>JsonUtility.FromJson<NativePlayerClaim>(s),DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                 if(response?.account==null||string.IsNullOrEmpty(access.AccountId)||access.AccountId!=response.account.id||response.session!=null&&response.session.Length>0&&!ValidSession(response.session)){Status="Account response could not be verified.";yield break;}
-                bool loadProfile=authenticating||Account==null||reloadProfile&&action=="me";if(action=="me")reloadProfile=false;Access=access;Token=response.token;Account=response.account;if(!string.IsNullOrEmpty(response.recoveryCode))RecoveryCode=response.recoveryCode;if(!string.IsNullOrEmpty(response.session))session=response.session;
+                bool loadProfile=authenticating||Account==null||reloadProfile&&action=="me";if(action=="me")reloadProfile=false;if(Account?.id!=response.account.id)ResetSocial();Access=access;Token=response.token;Account=response.account;if(!string.IsNullOrEmpty(response.recoveryCode))RecoveryCode=response.recoveryCode;if(!string.IsNullOrEmpty(response.session))session=response.session;
                 Status="Signed in as "+Account.username;refreshAt=Time.unscaledTime+300;
                 try{if(remember&&session.Length>0){var protectedBytes=NativeSessionVault.Protect(Encoding.UTF8.GetBytes(session),Origin);Directory.CreateDirectory(ConversionGame.NativeUserDataPath);File.WriteAllBytes(SessionPath+".new",protectedBytes);if(File.Exists(SessionPath))File.Delete(SessionPath);File.Move(SessionPath+".new",SessionPath);}else if(File.Exists(SessionPath))File.Delete(SessionPath);}
                 catch(Exception e)when(e is IOException||e is UnauthorizedAccessException||e is System.Security.Cryptography.CryptographicException||e is NotSupportedException){remember=false;Status+=" · sign-in kept for this session only";}
                 Accepted?.Invoke(Account,loadProfile);
             }
         }
-        private void Update(){TickXp();if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;Save(profile);}else if(Time.unscaledTime>=refreshAt)Refresh();}
-        public void Clear(bool erase=true){ResetXp();pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
+        private void Update(){TickSocial();TickXp();if(Account==null||Busy)return;if(pendingProfile!=null){var profile=pendingProfile;pendingProfile=null;Save(profile);}else if(Time.unscaledTime>=refreshAt)Refresh();}
+        public void Clear(bool erase=true){ResetSocial();ResetXp();pendingProfile=null;reloadProfile=false;Account=null;Token=session=RecoveryCode="";Access=NativeAccess.Guest;Status=OfflineStatus;if(erase)try{if(File.Exists(SessionPath))File.Delete(SessionPath);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){Status="Signed out; saved session could not be removed.";}}
     }
     public static class NativeSessionVault
     {

@@ -33,3 +33,12 @@ export const accountXpAwards=sqliteTable('account_xp_awards',{
  payload:text('payload').notNull(),previousTotal:integer('previous_total').notNull(),newTotal:integer('new_total').notNull(),
  marker:text('marker').notNull(),created:integer('created').notNull()
 },t=>[primaryKey({columns:[t.account,t.completion]})]);
+
+export const playerPresence=sqliteTable('player_presence',{
+ accountId:text('account_id').primaryKey().references(()=>playerAccounts.id,{onDelete:'cascade'}),seen:integer('seen').notNull()
+},t=>[index('player_presence_seen').on(t.seen)]);
+export const playerInvites=sqliteTable('player_invites',{
+ id:text('id').primaryKey(),sender:text('sender').notNull().references(()=>playerAccounts.id,{onDelete:'cascade'}),
+ recipient:text('recipient').notNull().references(()=>playerAccounts.id,{onDelete:'cascade'}),code:text('code').notNull(),
+ created:integer('created').notNull(),expires:integer('expires').notNull(),state:text('state').notNull().default('pending')
+},t=>[index('player_invites_inbox').on(t.recipient,t.state,t.expires),index('player_invites_sender').on(t.sender,t.created)]);
