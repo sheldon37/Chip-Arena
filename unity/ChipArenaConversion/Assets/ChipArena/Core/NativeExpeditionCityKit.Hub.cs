@@ -42,7 +42,8 @@ namespace ChipArena.UnityConversion
                 GateBox(g,-half,half,-.45,.45,3.6);GateBox(g,-half,half,.45,2.6,3.1);GateBox(g,-half,half,-2.6,-.45,3.1);
                 // A wooden leaf folds back to 160 degrees, 0.2 m inside the fence plane at its hinge (inside the post) and deeper
                 // toward its tip: the palisade's logs and inner battens (to 0.27 m) stay, anything deeper is refused.
-                if(g.Wood)GateBox(g,-half-2.12,half+2.12,-2.3,-.28,3.4);else GateBox(g,-half-2.3,half+2.3,-.46,-.2,3.4);
+                double leaf=NativeExpeditionHubGates.LeafLength(g);
+                if(g.Wood)GateBox(g,-half-leaf-.14,half+leaf+.14,-leaf-.32,-.28,3.4);else GateBox(g,-half-NativeExpeditionHubGates.Slide(g)-.22,half+NativeExpeditionHubGates.Slide(g)+.22,-.46,-.2,3.4);
             }
         }
         private void GateBox(ExpeditionHubGate g,double u0,double u1,double d0,double d1,double top)

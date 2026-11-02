@@ -1,3 +1,31 @@
+## 2026-11-02 — Claude: Expedition hub gates look shut when shut (wide-gate leaves)
+
+- **Branch/base:** `claude/gate-leaves` from shared `b95834e`. Implementation `8bd12ab`, then this log. Merged into shared
+  and the builder (test channel). Not a live release.
+- **Task:** owner: "All gates in expedition appear open when they're not open. Can we fix this?" (screenshot: the north
+  gate's corrugated leaves at the sides with the final gate's laser barrier showing through the middle).
+- **Cause:** the generated hub's four gates are 10 m wide, but every leaf was the authored 4 m gates' fixed 2 m one
+  (`MetalLeaf len=1.98`). A shut gate's leaves stopped 3 m short of the middle, leaving 6 m bare. The state, colliders and
+  timing were right; only the drawing was short.
+- **Changes** (presentation only):
+  - `Core/NativeExpeditionHub.cs` (`NativeExpeditionHubGates`):
+    - `LeafLength`: each leaf spans half its opening;
+    - `Slide`: a metal leaf rolls its own length into its pocket;
+    - the top track and end stops match the travel, and a long leaf gets stiles about every 2 m;
+    - `Logs`: wooden leaves get logs enough to reach the middle;
+    - the opening dust starts at the pocket.
+  - `Core/NativeExpeditionCityKit.Hub.cs`: the pocket keep-outs follow `Slide`/`LeafLength`.
+  - Authored 4 m gates are unchanged: 1.98 m leaves, `SlideOffset` travel, five logs.
+- **Affected systems:** hub gate models and their opening dust, and the city kit's dressing keep-outs. No gate state,
+  collider, timing, rule or network change.
+- **Checks:**
+  - `--expedition-hub`: 1,242 checks. New: 4/6/10/12 m metal and wooden gates are shut across the whole opening at waist
+    height and clear it when open; the authored gates are as before. Putting the fixed 2 m leaf back fails it ("6 m metal
+    gate shut ... bare 2.05 m").
+  - Full suite on the LF worktree: 931 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch there only).
+  - `tools/check_unity_compile.py`: all four assemblies PASS. `git diff --check` clean.
+- **Not checked:** a shut 10 m gate seen in Unity. Offline captures have no hub state, so gates draw at rest; the geometry is
+  covered by the checks. Also not checked: a Windows build or a live co-op run.
 ## 2026-11-02 — Astra: stop Deployment Station rebuilding reel art every frame
 
 - **Branch/base:** `codex/deployment-performance` from shared/builder `b95834ea8a44f5a9b4689b827820136d419a6779` (published mutator activation). Owner reports the station screen lags.

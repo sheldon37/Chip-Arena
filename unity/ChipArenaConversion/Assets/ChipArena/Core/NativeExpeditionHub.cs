@@ -172,6 +172,14 @@ namespace ChipArena.UnityConversion
         /// `StepLead` s after the collider is solid again, so a gate is never drawn shut while it can be walked through and
         /// never stands drawn open across a solid opening once its swing ends.</summary>
         public const float WoodOpenDeg=160,LatchLift=.18f,BoltLift=.1f,StepLead=.02f,SlideOffset=2.08f;public const int PartCapacity=640,QuadCapacity=1200;
+        /// <summary>Each leaf spans half its gate's opening (owner 2026-11-02: the generated hub's 10 m gates "appear open when
+        /// they're not open": their leaves were the authored 4 m gates' 2 m ones, leaving 6 m of a shut gate bare); a 4 m gate's
+        /// leaves are as they were (1.98 m).</summary>
+        public static double LeafLength(ExpeditionHubGate g)=>Math.Max(1.98,(g?.Width??4)/2-.02);
+        /// <summary>How far a metal leaf rolls into its pocket: its own length and 0.1 m (SlideOffset on a 4 m gate).</summary>
+        public static double Slide(ExpeditionHubGate g)=>LeafLength(g)+.1;
+        /// <summary>A wooden leaf's logs: enough to reach the middle (five on a 4 m gate).</summary>
+        public static int Logs(ExpeditionHubGate g)=>Math.Max(5,(int)Math.Ceiling((LeafLength(g)-.02)/.39-.1));
         /// <summary>How far out of the fence's outer face the ward's shimmer stands (m): off every face of the fence's outer
         /// dressing (logs and planks, claw marks, scrap sheets, the top rail), so it never shares a plane with one.</summary>
         public const float WardOffset=.035f;
@@ -288,26 +296,26 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                double slide=SlideOffset*p.Open;
+                double travel=Slide(g),slide=travel*p.Open;
                 for(int side=0;side<2;side++){double sg=side==0?1:-1;Frame(g,-sg*(half+slide),-.3,0);MetalLeaf(g,sg,side,p);}
                 // The top track over the opening and the pockets (fixed hardware, above the closure's 3.2 m).
-                Frame(g,0,-.3,0);Part(0,3.3,0,half+2.2,.06,.07,NativeBlockLooks.SteelGreen,FrameHex,fixedPart:true,seed:90);
-                for(int k=-1;k<=1;k+=2)Part(k*(half+2.1),3.3,.12,.06,.12,.12,NativeBlockLooks.SteelGreen,IronHex,fixedPart:true,seed:91+k);
+                Frame(g,0,-.3,0);Part(0,3.3,0,half+travel+.12,.06,.07,NativeBlockLooks.SteelGreen,FrameHex,fixedPart:true,seed:90);
+                for(int k=-1;k<=1;k+=2)Part(k*(half+travel+.02),3.3,.12,.06,.12,.12,NativeBlockLooks.SteelGreen,IronHex,fixedPart:true,seed:91+k);
             }
         }
         // A wooden leaf in its frame: x from the hinge toward the gate's middle (sg flips it for the right leaf), n out of the
         // outer face (the planks n 0..0.12, the battens and brace 0.12..0.17, straps and latch on them).
         private void WoodLeaf(ExpeditionHubGate g,double sg,int side,in ExpeditionGatePose p)
         {
-            const double w=.37,gap=.02,t=.12;int timber=NativeBlockLooks.Timber;
-            for(int k=0;k<5;k++)
+            const double w=.37,gap=.02,t=.12;int timber=NativeBlockLooks.Timber,logs=Logs(g);
+            for(int k=0;k<logs;k++)
             {
                 double x0=.02+k*(w+gap),cx=sg*(x0+w/2),h=2.74+.2*NativeExpeditionStates.Hash(seedBase,side*10+k);int hex=k%3==0?TimberHex:k%3==1?TimberDarkHex:TimberLightHex;
                 Part(cx,.06+h/2,t/2,w/2,h/2,t/2,timber,hex,seed:side*20+k);
                 // A stepped point on every log.
                 Part(cx,.06+h+.05,t/2,w*.32,.05,t/2*.9,timber,hex,seed:side*20+k+5);Part(cx,.06+h+.13,t/2,w*.14,.04,t/2*.8,timber,hex,seed:side*20+k+10);
             }
-            double len=5*(w+gap);
+            double len=logs*(w+gap);
             for(int r=0;r<2;r++){double v=r==0?.55:2.3;Part(sg*(.02+len/2),v,t+.025,len/2-.02,.08,.025,timber,TimberDarkHex,seed:side*20+15+r);}
             // The Z-brace between the battens, from the hinge foot to the latch head.
             double bx0=.18,bv0=.66,bx1=len-.18,bv1=2.19,bl=Math.Sqrt((bx1-bx0)*(bx1-bx0)+(bv1-bv0)*(bv1-bv0)),roll=Math.Atan2(bv1-bv0,bx1-bx0)*180/Math.PI;
@@ -322,14 +330,16 @@ namespace ChipArena.UnityConversion
         // wheels on the bottom; the cane bolt on the left leaf's meeting edge lifts as it unlatches.
         private void MetalLeaf(ExpeditionHubGate g,double sg,int side,in ExpeditionGatePose p)
         {
-            const double len=1.98,fr=.045;int steel=NativeBlockLooks.SteelGreen,corr=NativeBlockLooks.Corrugated;
+            double len=LeafLength(g);const double fr=.045;int steel=NativeBlockLooks.SteelGreen,corr=NativeBlockLooks.Corrugated;
             Part(sg*.05,1.55,0,fr,1.45,fr,steel,FrameHex,seed:side*30);Part(sg*(len-.05),1.55,0,fr,1.45,fr,steel,FrameHex,seed:side*30+1);
+            // A long leaf (a wide gate's) has a stile about every 2 m between its ends.
+            int bays=Math.Max(1,(int)Math.Round(len/1.98));for(int k=1;k<bays;k++)Part(sg*len*k/bays,1.55,0,fr,1.45,fr,steel,FrameHex,seed:side*30+20+k);
             // The rails run between the stiles and stand 7 mm inside their faces: no rail face shares a plane with a stile's.
             for(int r=0;r<4;r++){double v=r==0?.12:r==1?1.05:r==2?2.0:2.96;Part(sg*len/2,v,0,len/2-.095,fr,fr-.007,steel,FrameHex,seed:side*30+2+r);}
             for(int b=0;b<3;b++){double v0=b==0?.16:b==1?1.09:2.04,v1=b==0?1.01:b==1?1.96:2.92;double inset=.05*NativeExpeditionStates.Hash(seedBase,side*7+b);
                 int band=b==0?(side==0?RustHex:GalvHex):b==1?(side==0?PaintBlueHex:RustHex):(side==0?GalvHex:PaintGreenHex);
                 Part(sg*(len/2+inset*.5),(v0+v1)/2,(b%2==0?.02:-.02),len/2-.06-inset*.5,(v1-v0)/2,.012,b==1&&side==0?NativeBlockLooks.Plain:corr,band,seed:side*30+10+b);}
-            double bl=Math.Sqrt(1.9*1.9+1.8*1.8),roll=Math.Atan2(1.8,1.9)*180/Math.PI;Part(sg*len/2,1.55,-.045,bl/2,.03,.02,steel,FrameHex,sg*roll,seed:side*30+14);
+            double run=len-.08,bl=Math.Sqrt(run*run+1.8*1.8),roll=Math.Atan2(1.8,run)*180/Math.PI;Part(sg*len/2,1.55,-.045,bl/2,.03,.02,steel,FrameHex,sg*roll,seed:side*30+14);
             Part(sg*(len-.25),1.15,.06,.025,.18,.03,steel,IronHex,seed:side*30+15);
             for(int r=0;r<2;r++){double x=r==0?.3:len-.3;Part(sg*x,.05,0,.07,.05,.04,steel,IronHex,seed:side*30+16+r);}
             if(side==0){double lift=.18*p.Latch;Part(sg*(len-.1),.55+lift,-.06,.015,.5,.015,steel,GalvHex,seed:50);Part(sg*(len-.1),1.06+lift,-.075,.05,.015,.015,steel,GalvHex,seed:51);}
@@ -366,7 +376,7 @@ namespace ChipArena.UnityConversion
             }
             if(!g.Wood&&sa<.35&&!reduced)for(int k=0;k<6;k++)
             {
-                double u=p.Opening?(k%2==0?-1:1)*(half+SlideOffset):0;World(g,u+(H(seed,k,8)-.5)*.6*sa*4,.08+3.2*sa*H(seed,k,9),-.3+(H(seed,k,10)-.5)*sa*2,out double x,out double y,out double z);
+                double u=p.Opening?(k%2==0?-1:1)*(half+Slide(g)):0;World(g,u+(H(seed,k,8)-.5)*.6*sa*4,.08+3.2*sa*H(seed,k,9),-.3+(H(seed,k,10)-.5)*sa*2,out double x,out double y,out double z);
                 Sprite(e,x,y,z,.035,SparkHex,3,1-sa/.35,true);DustQuads++;
             }
         }
