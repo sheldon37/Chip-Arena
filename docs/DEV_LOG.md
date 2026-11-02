@@ -1,3 +1,8 @@
+## 2026-11-01 — Astra: fix native Deployment Station shader import
+
+- Windows diagnostic retry `2de0c1d` reports `NativeDeployScreen import failed: undeclared identifier '_DstBlend'` at shader line 58. The ShaderLab property and fixed-function Blend setting existed, but the fragment shader also reads it to choose premultiplied-alpha handling and lacked its HLSL uniform declaration.
+- Declare `_DstBlend` alongside the other material uniforms. No visual redesign, blend-mode change, gameplay timing, collision or networking change. Keep the native shader gate and detailed diagnostics. Deployment presentation 436,266 checks, deployment models 1,989 checks and source packaging 2,909 files passed; the queued Windows retry is the actual import/compiler verification. No new update was published by the preceding failed attempts.
+
 ## 2026-11-01 — Astra: expose the next native deployment build failure
 
 - Owner-authorized test update #303 merged at `887f1a0b` and builder synced. Windows picked it up at 2026-11-02 01:00 UTC: the corrected fourteen-map catalogue gate passed; shader import validation then stopped packaging on `NativeDeployScreen`. No new public update was produced.

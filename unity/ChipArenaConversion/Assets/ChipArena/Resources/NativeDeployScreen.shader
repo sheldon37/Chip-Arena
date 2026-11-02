@@ -25,7 +25,7 @@ Shader "ChipArena/NativeDeployScreen"
             #pragma target 3.0
             #pragma multi_compile_fog
             #include "UnityCG.cginc"
-            sampler2D _MainTex;float4 _Tint,_Texel;float _Rep,_Scroll,_Blur,_Gain,_Sweep,_Chroma,_Holo,_Additive;
+            sampler2D _MainTex;float4 _Tint,_Texel;float _Rep,_Scroll,_Blur,_Gain,_Sweep,_Chroma,_Holo,_Additive,_DstBlend;
             struct appdata {float4 vertex:POSITION;float2 uv:TEXCOORD0;float4 color:COLOR;};
             struct v2f {float4 pos:SV_POSITION;float2 uv:TEXCOORD0;float4 color:COLOR;UNITY_FOG_COORDS(1)};
             v2f vert(appdata v){v2f o;o.pos=UnityObjectToClipPos(v.vertex);o.uv=v.uv;o.color=v.color;UNITY_TRANSFER_FOG(o,o.pos);return o;}
