@@ -1,3 +1,30 @@
+## 2026-11-02 — Claude: Backrooms Level 0 rebuilt to the owner's reference photo
+
+- **Branch:** `claude/backrooms-level0` from shared `9ae2494c`. Merged into shared. No builder sync needed: DEV preview
+  only, nothing players see.
+- **Task:** the owner sent the classic Level 0 photo: "The backrooms isn't supposed to be open like the pictures shown ... we
+  need to go EXACTLY for this style".
+- **Changes (docs/BACKROOMS.md "Level 0's look"):**
+  - Core `BackroomsMesh` builds Level 0 procedurally: carpet; the drop ceiling's tiles; papered walls to the ceiling with
+    doorways; baseboards; slim pillars; strip fixtures (lit, dead or flickering by circuit).
+  - `NativeBackrooms.Preview` is now a grid maze of enclosed rooms and corridors with doorways, all connected.
+  - The layout's proportions are Level 0's: 2.4 m cells, 2.7 m ceiling, 0.14 m walls, 1 m doorways.
+  - The bank adds the pack's "yellow offices" textures, toned to the photo.
+  - Runtime: static block meshes drawn near the eye; flickering fixtures one by one. The preview lights its interior flat
+    and warm, with haze, no sun and the toon style off; surfaces cast shadows on both sides so no outside light leaks in.
+- **Checks:**
+  - `--backrooms` 30 checks: deterministic, walled border, all cells connected, rooms with doorways, walls to the
+    ceiling, faces out, fixtures by circuit.
+  - Unity compile.
+  - Unity captures from inside, compared with the photo.
+  - The full suite: see the merge note.
+- **For Astra:** the contract's numbers changed (docs/BACKROOMS.md). The generator should follow the Level 0 rules there
+  (enclosed rooms, corridors, doorways; the pack's archetype numbers).
+- **Next:**
+  - the level's own map look once a map exists;
+  - collision, nav and spawns (Astra);
+  - the bank in the Drive zip.
+
 ## 2026-11-02 — Claude: the Hulk's charge as a shoulder charge
 
 - **Branch:** `claude/zombie-squat` (with the squat fix and the Backrooms preview). Merged into shared together.

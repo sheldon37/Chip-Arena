@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "bank": "ChipArenaPackBackrooms",
- "note": "The Backrooms kit (docs/BACKROOMS.md): every piece of the owner's modular Level 0 model as its own prop, its FBX materials mapped to the pack's wallpaper and carpet textures and Level 0 colours. The carpet is the pack's JPEG converted to PNG beside it (the tool reads PNG, TGA and PSD).",
+ "note": "The Backrooms (docs/BACKROOMS.md): Level 0's surfaces as textures (the pack's 'yellow offices' set, CC0 per its SOURCES.txt, toned to the owner's reference photo beside it as *_pale.png; the carpet converted to PNG), and the modular kit's pieces as props (one per piece, its FBX materials mapped to the pack's wallpaper and carpet and Level 0 colours; the tool reads PNG, TGA and PSD).",
  "texture_max": 1024,
  "sources": {
   "backrooms": "Backrooms"
@@ -15,22 +15,132 @@
    "wind_by_normals": true,
    "group": "backrooms-kit",
    "materials": {
-    "wallpaper": {"albedo": "Textures/backrooms tile DG.png"},
-    "carpet": {"albedo": "Textures/Carpet011_2K_Color.png"},
-    "linoleum": {"color": [0.78, 0.74, 0.60]},
-    "plaster": {"color": [0.86, 0.80, 0.55]},
-    "plaster_white": {"color": [0.88, 0.86, 0.80]},
-    "wall_trim": {"color": [0.62, 0.54, 0.32]},
-    "wall_trim_dark": {"color": [0.30, 0.26, 0.20]},
-    "ceiling_frame": {"color": [0.82, 0.80, 0.72]},
-    "ceiling_panels": {"color": [0.90, 0.87, 0.76]},
-    "ceiling_backdrop": {"color": [0.35, 0.33, 0.28]},
-    "ceiling_vent": {"color": [0.62, 0.62, 0.58]},
-    "lamp": {"color": [1.0, 1.0, 1.0], "emission": [1.0, 0.97, 0.86]},
-    "door": {"color": [0.55, 0.42, 0.28]},
-    "ladder": {"color": [0.42, 0.42, 0.40]},
-    "wall_socket": {"color": [0.90, 0.88, 0.82]}
+    "wallpaper": {
+     "albedo": "Textures/backrooms tile DG.png"
+    },
+    "carpet": {
+     "albedo": "Textures/Carpet011_2K_Color.png"
+    },
+    "linoleum": {
+     "color": [
+      0.78,
+      0.74,
+      0.6
+     ]
+    },
+    "plaster": {
+     "color": [
+      0.86,
+      0.8,
+      0.55
+     ]
+    },
+    "plaster_white": {
+     "color": [
+      0.88,
+      0.86,
+      0.8
+     ]
+    },
+    "wall_trim": {
+     "color": [
+      0.62,
+      0.54,
+      0.32
+     ]
+    },
+    "wall_trim_dark": {
+     "color": [
+      0.3,
+      0.26,
+      0.2
+     ]
+    },
+    "ceiling_frame": {
+     "color": [
+      0.82,
+      0.8,
+      0.72
+     ]
+    },
+    "ceiling_panels": {
+     "color": [
+      0.9,
+      0.87,
+      0.76
+     ]
+    },
+    "ceiling_backdrop": {
+     "color": [
+      0.35,
+      0.33,
+      0.28
+     ]
+    },
+    "ceiling_vent": {
+     "color": [
+      0.62,
+      0.62,
+      0.58
+     ]
+    },
+    "lamp": {
+     "color": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "emission": [
+      1.0,
+      0.97,
+      0.86
+     ]
+    },
+    "door": {
+     "color": [
+      0.55,
+      0.42,
+      0.28
+     ]
+    },
+    "ladder": {
+     "color": [
+      0.42,
+      0.42,
+      0.4
+     ]
+    },
+    "wall_socket": {
+     "color": [
+      0.9,
+      0.88,
+      0.82
+     ]
+    }
    }
+  }
+ ],
+ "textures": [
+  {
+   "id": "backrooms-l0-wallpaper",
+   "source": "backrooms",
+   "path": "Level0/wallpaper_pale.png"
+  },
+  {
+   "id": "backrooms-l0-carpet",
+   "source": "backrooms",
+   "path": "Level0/carpet.png"
+  },
+  {
+   "id": "backrooms-l0-ceiling",
+   "source": "backrooms",
+   "path": "Level0/ceiling.png"
+  },
+  {
+   "id": "backrooms-l0-trim",
+   "source": "backrooms",
+   "path": "Level0/trim_pale.png",
+   "max": 256
   }
  ]
 }

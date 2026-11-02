@@ -14,111 +14,106 @@ namespace ChipArena.UnityConversion
     {
         public const string Argument="--ca-backrooms-preview";
         public static bool On;public static int Seed=7,Width=24,Depth=24;public static Vector3 Origin=new Vector3(1000,0,1000);
-        /// <summary>Where the pieces are planned round (null: the world camera), for a fixed capture camera.</summary>
+        /// <summary>Where the blocks are drawn round (null: the world camera), for a fixed capture camera.</summary>
         public static Vector3? Eye;
         private static int args=-1;
         /// <summary>On, by the flag or the command line.</summary>
         public static bool Active{get{if(args<0){args=0;try{foreach(var a in Environment.GetCommandLineArgs())if(a==Argument)args=1;}catch(Exception){}}return On||args==1;}}
     }
 
-    // Draws a Backrooms layout (Core BackroomsLayout) from the owner's kit bank (ChipArenaPackBackrooms, docs/PACK-BANK.md):
-    // each kit piece placed by its bounds on the 3 m grid, instanced per mesh, submesh and material through NativeBlockLit's pack
-    // path, the cells within reach of the eye only; the dead lamps unlit and the flickering ones lit by their circuit's level; the
-    // nearest lit panels feed the scene's practical light slots. Without the bank nothing is drawn (the preview is DEV only).
+    // Draws a Backrooms layout as Level 0 (the owner's reference photo, 2026-11-02): the layout built in blocks of cells (Core
+    // BackroomsMesh: carpet, the drop ceiling's tiles, papered walls to the ceiling with their doorways and baseboards, slim
+    // pillars, the fluorescent fixtures set in the ceiling), one static mesh per surface per block, drawn through NativeBlockLit's
+    // pack path with the Level 0 textures of the Backrooms bank (ChipArenaPackBackrooms, docs/PACK-BANK.md); the blocks near the
+    // eye only. Flickering fixtures are drawn one by one at their circuit's level; the nearest lit ones light the scene through
+    // the practical slots. Every surface casts shadows on both sides, so the sealed ceiling and walls keep any outside light
+    // out. Without the bank's textures nothing is drawn (the preview is DEV only).
     public sealed partial class ArenaPresentation
     {
-        public const string BackroomsBank="ChipArenaPackBackrooms";
-        private BackroomsLayout backroomsLayout;private readonly NativeBackrooms.Piece[] backroomsPieces=new NativeBackrooms.Piece[16000];
-        private sealed class BackroomsBatch{public Mesh Mesh;public int Sub;public Material Material;public readonly List<Matrix4x4> M=new List<Matrix4x4>(64);}
-        private readonly Dictionary<long,BackroomsBatch> backroomsBatches=new Dictionary<long,BackroomsBatch>();private readonly List<BackroomsBatch> backroomsUsed=new List<BackroomsBatch>();
-        private Material[] backroomsMaterials;private Material backroomsDark;private readonly Matrix4x4[] backroomsChunk=new Matrix4x4[NativeBlockLooks.Chunk];private MaterialPropertyBlock backroomsBlock;
-        private static readonly int BrRestId=Shader.PropertyToID("_BlockRest"),BrLookId=Shader.PropertyToID("_BlockLook"),BrBlockColorId=Shader.PropertyToID("_BlockColor");
+        public const string BackroomsBank="ChipArenaPackBackrooms";public const int BackroomsBlockCells=8;
+        public const float BackroomsReach=44,BackroomsLampRange=6f;public static readonly Vector3 BackroomsLampColor=new Vector3(.5f,.47f,.36f);
+        private static readonly string[] BackroomsTextures={"backrooms-l0-carpet","backrooms-l0-ceiling","backrooms-l0-wallpaper","backrooms-l0-trim",null,null};
+        // Each surface's tint (multipliers over its texture) and glow.
+        private static readonly Color[] BackroomsTint={new Color(1f,.95f,.82f),new Color(1f,.98f,.88f),new Color(1f,.97f,.78f),new Color(1f,.96f,.86f),new Color(1f,1f,.96f),new Color(.62f,.62f,.58f)};
+        private static readonly float[] BackroomsGlow={0,.22f,0,0,2.4f,0};
+        private sealed class BackroomsBlock{public Vector3 Centre;public readonly Mesh[] Meshes=new Mesh[(int)BackroomsMesh.Surface.Count];public readonly List<(Vector3 at,int cell)> Flickers=new List<(Vector3,int)>();}
+        private readonly List<BackroomsBlock> backroomsBlocks=new List<BackroomsBlock>();private BackroomsLayout backroomsLayout;private Vector3 backroomsOrigin;
+        private Material[] backroomsMats;private Mesh backroomsFixture;private MaterialPropertyBlock backroomsProps;
         private readonly float[] backroomsPos=new float[NativeMapLooks.MaxLights*4],backroomsRgb=new float[NativeMapLooks.MaxLights*3];
-        /// <summary>The Backrooms pieces drawn last frame (budget lines).</summary>
-        public int BackroomsPieces{get;private set;}
-        // The kit piece for each Core piece kind (NativeBackrooms.Kind order).
-        private static readonly string[] BackroomsProps={"backrooms-floor-tile-flat","backrooms-ceiling-panel","backrooms-ceiling-lamp","backrooms-ceiling-vent","backrooms-wall2-1","backrooms-wall2-1","backrooms-pillar1-1","backrooms-pillar2-1","backrooms-pillar1-2","backrooms-ceiling-panel2-002"};
-        public const float BackroomsReach=39,BackroomsLampRange=6.5f;public static readonly Vector3 BackroomsLampColor=new Vector3(.95f,.9f,.72f);
+        /// <summary>The Backrooms blocks drawn last frame (budget lines).</summary>
+        public int BackroomsBlocksDrawn{get;private set;}
+        private static readonly int BrTexId=Shader.PropertyToID("_PackTex"),BrColorId=Shader.PropertyToID("_PackColor"),BrEmitId=Shader.PropertyToID("_PackEmit"),BrCutoffId=Shader.PropertyToID("_PackCutoff");
+        private static readonly int BrRestId=Shader.PropertyToID("_BlockRest"),BrLookId=Shader.PropertyToID("_BlockLook"),BrBlockColorId=Shader.PropertyToID("_BlockColor");
 
         private void BackroomsWorld()
         {
-            BackroomsPieces=0;if(!NativeBackroomsPreview.Active)return;var eye=WorldEye;if(eye==null)return;
-            var bank=NativePackBanks.Bank(BackroomsBank);if(bank==null)return;
+            BackroomsBlocksDrawn=0;if(!NativeBackroomsPreview.Active)return;var eye=WorldEye;if(eye==null)return;
+            if(NativePackBanks.Texture(BackroomsTextures[0])==null)return;
             var p=NativeBackroomsPreview.Origin;
-            if(backroomsLayout==null||backroomsLayout.Seed!=NativeBackroomsPreview.Seed||backroomsLayout.Width!=NativeBackroomsPreview.Width||backroomsLayout.Depth!=NativeBackroomsPreview.Depth)
-                backroomsLayout=NativeBackrooms.Preview(NativeBackroomsPreview.Seed,NativeBackroomsPreview.Width,NativeBackroomsPreview.Depth);
-            var e=NativeBackroomsPreview.Eye??eye.transform.position;var origin=new NVector(p.x,p.y,p.z);var at=new NVector(e.x,e.y,e.z);double time=Time.timeAsDouble;
-            int n=NativeBackrooms.Plan(backroomsLayout,origin,at,BackroomsReach,backroomsPieces);BackroomsPieces=n;
-            foreach(var b in backroomsUsed)b.M.Clear();backroomsUsed.Clear();
-            for(int i=0;i<n;i++)
+            if(backroomsLayout==null||backroomsLayout.Seed!=NativeBackroomsPreview.Seed||backroomsLayout.Width!=NativeBackroomsPreview.Width||backroomsLayout.Depth!=NativeBackroomsPreview.Depth||backroomsOrigin!=p)
+                BackroomsBuild(NativeBackrooms.Preview(NativeBackroomsPreview.Seed,NativeBackroomsPreview.Width,NativeBackroomsPreview.Depth),p);
+            if(!BackroomsMaterials())return;
+            var e=NativeBackroomsPreview.Eye??eye.transform.position;double time=Time.timeAsDouble;float r2=BackroomsReach*BackroomsReach;
+            foreach(var b in backroomsBlocks)
             {
-                var piece=backroomsPieces[i];var prop=bank.Find(BackroomsProps[(int)piece.Kind]);if(prop==null)continue;
-                // A lamp of a dead circuit (or a flickering one in a dip) draws unlit.
-                bool dark=piece.Kind==NativeBackrooms.Kind.Lamp&&NativeBackrooms.Level(backroomsLayout.Circuits[backroomsLayout.Circuit[piece.Cell]],piece.Cell,time)<.5f;
-                float y=piece.Y;
-                if(piece.Kind==NativeBackrooms.Kind.Lamp)y-=.06f;else if(piece.Kind==NativeBackrooms.Kind.Vent)y-=.02f;else if(piece.Kind==NativeBackrooms.Kind.Tile)y+=.005f;
-                var scale=piece.Kind==NativeBackrooms.Kind.Post?new Vector3(.26f,1,.26f):new Vector3(piece.Length,1,1);
-                var centre=new Vector3((prop.Min.X+prop.Max.X)*.5f,prop.Min.Y,(prop.Min.Z+prop.Max.Z)*.5f);
-                var place=Matrix4x4.TRS(new Vector3(piece.X,y,piece.Z),Quaternion.Euler(0,piece.Yaw,0),scale)*Matrix4x4.Translate(-centre);
-                foreach(var part in prop.Parts)
+                var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2)continue;BackroomsBlocksDrawn++;
+                for(int s=0;s<b.Meshes.Length;s++)if(b.Meshes[s]!=null)Graphics.DrawMesh(b.Meshes[s],Matrix4x4.identity,backroomsMats[s],0,null,0,backroomsProps,s==(int)BackroomsMesh.Surface.Light||s==(int)BackroomsMesh.Surface.DeadLight?ShadowCastingMode.Off:ShadowCastingMode.TwoSided,true);
+                foreach(var f in b.Flickers)
                 {
-                    var mesh=NativePackBanks.Mesh(BackroomsBank,part.Mesh);if(mesh==null)continue;var src=bank.Meshes[part.Mesh];var m=place*NativePackBanks.Place(part.Place);
-                    for(int s=0;s<src.Submeshes.Length&&s<mesh.subMeshCount;s++)
-                    {
-                        int mat=src.Submeshes[s].Material;long key=((long)part.Mesh<<20)|((long)s<<8)|(dark?1L:0L);
-                        if(!backroomsBatches.TryGetValue(key,out var batch)){batch=new BackroomsBatch{Mesh=mesh,Sub=s,Material=dark?BackroomsDark():BackroomsMaterial(bank,mat)};backroomsBatches[key]=batch;}
-                        if(batch.Material==null)continue;if(batch.M.Count==0)backroomsUsed.Add(batch);batch.M.Add(m);
-                    }
+                    bool lit=NativeBackrooms.Level(backroomsLayout.Circuits[backroomsLayout.Circuit[f.cell]],f.cell,time)>=.5f;
+                    Graphics.DrawMesh(backroomsFixture,Matrix4x4.Translate(f.at),backroomsMats[lit?(int)BackroomsMesh.Surface.Light:(int)BackroomsMesh.Surface.DeadLight],0,null,0,backroomsProps,ShadowCastingMode.Off,false);
                 }
             }
-            // NativeBlockLit's pack path takes each instance's colour (white), rest (its base on the floor) and look (whole, no
-            // dust) from the instanced block (as NativePackStage's), and the lights atlas's glow from _ArenaPackGlow.
-            bool instancing=SystemInfo.supportsInstancing;var block=BackroomsBlock(instancing);
-            foreach(var b in backroomsUsed)
-            {
-                if(!instancing){foreach(var m in b.M)Graphics.DrawMesh(b.Mesh,m,b.Material,0,null,b.Sub,block,ShadowCastingMode.On,true);continue;}
-                for(int k=0;k<b.M.Count;k+=backroomsChunk.Length){int c=Math.Min(backroomsChunk.Length,b.M.Count-k);b.M.CopyTo(k,backroomsChunk,0,c);Graphics.DrawMeshInstanced(b.Mesh,b.Sub,b.Material,backroomsChunk,c,block,ShadowCastingMode.On,true,0,null);}
-            }
-            // The fluorescent panels nearest the eye light the scene (the practical slots), at their circuit's level.
+            var origin=new NVector(p.x,p.y,p.z);var at=new NVector(e.x,e.y,e.z);
             NativeBackrooms.NearLamps(backroomsLayout,origin,at,time,NativeMapLooks.MaxLights,backroomsPos,backroomsRgb,new NVector(BackroomsLampColor.x,BackroomsLampColor.y,BackroomsLampColor.z),BackroomsLampRange);
             NativeLighting.PickedLights(backroomsPos,backroomsRgb);
-            // DEV: inside the preview no sun reaches and the air is Level 0's flat, warm fluorescent wash (the level's own map look
-            // replaces this once its map exists).
+            // DEV: inside the preview no sun reaches; Level 0's flat, warm fluorescent wash and its haze (the level's own map look
+            // replaces this once its map exists). The toon style is off there: its shade band turned every face away from the
+            // map's sun (the whole ceiling) a cool blue.
             float w=backroomsLayout.Width*BackroomsLayout.Cell,d=backroomsLayout.Depth*BackroomsLayout.Cell;
             if(e.x>p.x&&e.x<p.x+w&&e.z>p.z&&e.z<p.z+d&&e.y<p.y+BackroomsLayout.Height)
             {
-                RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=BackroomsAmbient*.8f;RenderSettings.ambientEquatorColor=BackroomsAmbient*.9f;RenderSettings.ambientGroundColor=BackroomsAmbient*1.1f;
-                if(RenderSettings.sun!=null)RenderSettings.sun.intensity=0;NativePackStage.Glow(1);
+                RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=BackroomsAmbient*.9f;RenderSettings.ambientEquatorColor=BackroomsAmbient;RenderSettings.ambientGroundColor=BackroomsAmbient*1.5f;
+                if(RenderSettings.sun!=null){RenderSettings.sun.intensity=0;RenderSettings.sun.shadows=LightShadows.None;}
+                RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=BackroomsHaze;RenderSettings.fogStartDistance=6;RenderSettings.fogEndDistance=70;
+                NativePackStage.Glow(1);if(NativeLighting.StyleActive)NativeLighting.StyleOff();
             }
         }
-        private static readonly Color BackroomsAmbient=new Color(.66f,.6f,.4f);
-        private MaterialPropertyBlock BackroomsBlock(bool instancing)
+        private static readonly Color BackroomsAmbient=new Color(.52f,.48f,.32f),BackroomsHaze=new Color(.55f,.51f,.35f);
+        // Builds every block of the layout once (static meshes).
+        private void BackroomsBuild(BackroomsLayout l,Vector3 origin)
         {
-            if(backroomsBlock!=null)return backroomsBlock;backroomsBlock=new MaterialPropertyBlock();var rest=new Vector4(0,0,0,0);var look=new Vector4(0,1,0,0);var white=new Vector4(1,1,1,1);
-            if(instancing){int n=NativeBlockLooks.Chunk;var r=new Vector4[n];var l=new Vector4[n];var c=new Vector4[n];for(int i=0;i<n;i++){r[i]=rest;l[i]=look;c[i]=white;}backroomsBlock.SetVectorArray(BrRestId,r);backroomsBlock.SetVectorArray(BrLookId,l);backroomsBlock.SetVectorArray(BrBlockColorId,c);}
-            else{backroomsBlock.SetVector(BrRestId,rest);backroomsBlock.SetVector(BrLookId,look);backroomsBlock.SetVector(BrBlockColorId,white);}
-            return backroomsBlock;
+            BackroomsRelease();backroomsLayout=l;backroomsOrigin=origin;var builder=new BackroomsMesh();var o=new NVector(origin.x,origin.y,origin.z);int n=BackroomsBlockCells;float c=BackroomsLayout.Cell;
+            for(int z0=0;z0<l.Depth;z0+=n)for(int x0=0;x0<l.Width;x0+=n)
+            {
+                builder.Build(l,o,x0,z0,x0+n,z0+n);var b=new BackroomsBlock{Centre=origin+new Vector3((x0+n*.5f)*c,0,(z0+n*.5f)*c)};
+                for(int s=0;s<b.Meshes.Length;s++)b.Meshes[s]=BackroomsMeshOf(builder.Parts[s],"Backrooms "+(BackroomsMesh.Surface)s+" "+x0+","+z0);
+                foreach(var f in builder.Flickers)b.Flickers.Add((new Vector3(f.at.X,f.at.Y,f.at.Z),f.cell));
+                backroomsBlocks.Add(b);
+            }
+            builder.Parts[(int)BackroomsMesh.Surface.Light].Clear();builder.Fixture(BackroomsMesh.Surface.Light,NVector.Zero);backroomsFixture=BackroomsMeshOf(builder.Parts[(int)BackroomsMesh.Surface.Light],"Backrooms fixture");
         }
-        private static readonly int BrTexId=Shader.PropertyToID("_PackTex"),BrColorId=Shader.PropertyToID("_PackColor"),BrEmitId=Shader.PropertyToID("_PackEmit"),BrCutoffId=Shader.PropertyToID("_PackCutoff");
-        // A bank material on NativeBlockLit's pack path (as NativePackStage.MaterialFor, for this bank).
-        private Material BackroomsMaterial(NativePackBank.Bank bank,int index)
+        private static Mesh BackroomsMeshOf(BackroomsMesh.Part p,string name)
         {
-            if(index<0||index>=bank.Materials.Count)return null;if(backroomsMaterials==null||backroomsMaterials.Length!=bank.Materials.Count)backroomsMaterials=new Material[bank.Materials.Count];
-            if(backroomsMaterials[index]!=null)return backroomsMaterials[index];
-            var shader=Resources.Load<Shader>("NativeBlockLit");if(shader==null)return null;var bm=bank.Materials[index];
-            var m=new Material(shader){name="Backrooms "+bm.Name,enableInstancing=true};m.EnableKeyword(NativePackStage.Keyword);
-            m.SetTexture(BrTexId,NativePackBanks.Texture(BackroomsBank,bm.Albedo)??Texture2D.whiteTexture);
-            var c=new Color(Mathf.Min(1,bm.Color.X),Mathf.Min(1,bm.Color.Y),Mathf.Min(1,bm.Color.Z),1);m.SetColor(BrColorId,QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c);
-            m.SetFloat(BrEmitId,Mathf.Max(bm.EmissionColor.X,Mathf.Max(bm.EmissionColor.Y,bm.EmissionColor.Z))*2.2f);m.SetFloat(BrCutoffId,-1);
-            return backroomsMaterials[index]=m;
+            if(p.Indices.Count==0)return null;int n=p.Positions.Count;var v=new Vector3[n];var nr=new Vector3[n];var uv=new Vector2[n];
+            for(int i=0;i<n;i++){var q=p.Positions[i];v[i]=new Vector3(q.X,q.Y,q.Z);var m=p.Normals[i];nr[i]=new Vector3(m.X,m.Y,m.Z);uv[i]=new Vector2(p.Uv[i].X,p.Uv[i].Y);}
+            var mesh=new Mesh{name=name};if(n>65535)mesh.indexFormat=IndexFormat.UInt32;mesh.vertices=v;mesh.normals=nr;mesh.uv=uv;mesh.SetTriangles(p.Indices,0,true);mesh.UploadMeshData(true);return mesh;
         }
-        // A dead fluorescent panel: the diffuser grey and unlit.
-        private Material BackroomsDark()
+        private void BackroomsRelease(){foreach(var b in backroomsBlocks)foreach(var m in b.Meshes)if(m!=null)CapturedAnimation.Release(m);backroomsBlocks.Clear();if(backroomsFixture!=null)CapturedAnimation.Release(backroomsFixture);backroomsFixture=null;}
+        // One NativeBlockLit pack material per surface (its Level 0 texture, tint and glow) and the draws' constant block values.
+        private bool BackroomsMaterials()
         {
-            if(backroomsDark!=null)return backroomsDark;var shader=Resources.Load<Shader>("NativeBlockLit");if(shader==null)return null;
-            backroomsDark=new Material(shader){name="Backrooms dead lamp",enableInstancing=true};backroomsDark.EnableKeyword(NativePackStage.Keyword);
-            backroomsDark.SetTexture(BrTexId,Texture2D.whiteTexture);var c=new Color(.55f,.55f,.52f,1);backroomsDark.SetColor(BrColorId,QualitySettings.activeColorSpace==ColorSpace.Linear?c.linear:c);backroomsDark.SetFloat(BrEmitId,0);backroomsDark.SetFloat(BrCutoffId,-1);
-            return backroomsDark;
+            if(backroomsMats!=null)return true;var shader=Resources.Load<Shader>("NativeBlockLit");if(shader==null)return false;bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
+            backroomsMats=new Material[(int)BackroomsMesh.Surface.Count];
+            for(int s=0;s<backroomsMats.Length;s++)
+            {
+                var m=new Material(shader){name="Backrooms "+(BackroomsMesh.Surface)s};m.EnableKeyword(NativePackStage.Keyword);
+                var tex=BackroomsTextures[s]!=null?NativePackBanks.Texture(BackroomsTextures[s]):null;if(tex!=null)tex.wrapMode=TextureWrapMode.Repeat;
+                m.SetTexture(BrTexId,tex!=null?(Texture)tex:Texture2D.whiteTexture);m.SetColor(BrColorId,linear?BackroomsTint[s].linear:BackroomsTint[s]);m.SetFloat(BrEmitId,BackroomsGlow[s]);m.SetFloat(BrCutoffId,-1);
+                backroomsMats[s]=m;
+            }
+            backroomsProps=new MaterialPropertyBlock();backroomsProps.SetVector(BrRestId,Vector4.zero);backroomsProps.SetVector(BrLookId,new Vector4(0,1,0,0));backroomsProps.SetVector(BrBlockColorId,new Vector4(1,1,1,1));
+            return true;
         }
     }
 }

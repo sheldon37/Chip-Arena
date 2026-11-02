@@ -15,6 +15,37 @@ Owner decisions (2026-11-02):
 Status: the kit bank, the layout contract with a stand-in Level 0 generator and a DEV preview drawn from the kit are
 built (Claude, 2026-11-02; "Built so far" below). The level is not in the game: no map, generator, rules or look yet.
 
+## Level 0's look: the owner's reference (2026-11-02, supersedes the kit look below)
+
+The owner sent the classic Level 0 photograph: "The backrooms isn't supposed to be open like the pictures shown ... we need to
+go EXACTLY for this style".
+
+- **The photo:** enclosed rooms and corridors behind thin papered partitions that run up to a low drop ceiling. Doorways are
+  cut through them. Pale cream-yellow wallpaper with fine chevron stripes, a tan carpet, a wooden baseboard rail, white
+  acoustic ceiling tiles on a T-grid with long recessed fluorescent strips, and flat, slightly overexposed yellow light.
+- **So the level is built procedurally** (Core `BackroomsMesh`) instead of from the modular FBX kit: floor, ceiling, walls to
+  the ceiling with doorways and jambs, baseboards, slim pillars and fixtures. The kit's walls, ceiling panels and wallpaper
+  are a stylised take that doesn't match. Its pieces stay in the bank for later dressing (doors, ladder, vents).
+- **Textures:** the pack's "yellow offices" set, inside `backroom_blender-1.0.0.zip` under `assets/textures`. Its
+  `SOURCES.txt` says CC0 (ambientCG Carpet016 and a CC0 studio set); they still stay local like the rest of the pack.
+  - `office_wallpaper` toned paler and warmer to the photo (`Level0/wallpaper_pale.png`);
+  - `carpet`;
+  - `office_ceiling` (2 × 4 acoustic tiles with the grid);
+  - `office_trim` toned to a light wood (`Level0/trim_pale.png`).
+  - They are bank textures `backrooms-l0-*`.
+- **Proportions:**
+  - cells 2.4 m (8 ft); ceiling 2.7 m (9 ft); walls 0.14 m thick;
+  - doorways 1 m, cut to the ceiling;
+  - pillars 0.5 m, only deep in open halls;
+  - fixtures 1.2 × 0.3 m over every other cell in both directions.
+- **Layout (the pack's archetype, `yellow_offices.json`):** a grid maze. Every inner edge starts walled. Then:
+  - rooms of 2-5 cells a side and some long corridors are opened up;
+  - they are joined by a random spanning tree of doorways (a 1 m doorway into a wall that continues on both sides, else
+    the whole cell edge open), plus about 12% more for loops;
+  - pillars appear only in the open halls.
+- **Seen in Unity** (DEV preview, captures from inside at eye height): it matches the photo's structure and palette. Lone wall
+  stubs where doorways meet are rare now.
+
 ## The assets (licensed: never commit or publish them)
 
 - **Source:** `G:/My Drive/Chip Arena Work/Unity Assets/Backrooms.zip` (6.4 GB).
@@ -70,7 +101,9 @@ ceiling_frame, ceiling_panels, ceiling_backdrop, ceiling_vent, lamp, door, ladde
 One shared description that the generator fills and the art draws, so the two stay apart. A proposal for Astra to own and
 change. Claude draws whatever it says.
 
-- **`BackroomsLayout`**, made from a seed and a level id. The same seed gives the same layout on host and guests: the
+- **`BackroomsLayout`** (as built, 2026-11-02: `Cell` 2.4, `Height` 2.7, `Thickness` 0.14, `Doorway` 1.0; per cell `Floor`
+  carpet or pit, `Pillar` none or small, `Light` and its `Circuit`; edges Open, Wall or Short, a wall with a doorway). Made
+  from a seed and a level id. The same seed gives the same layout on host and guests: the
   ticket carries the seed, as the generated city does.
   - `Width` × `Depth` cells of `Cell = 3` m, the origin at a corner; floor at y 0, ceiling at 3.
   - Per cell:
