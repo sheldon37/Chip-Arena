@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
         private void SpectatorControls()
         {
             if(FinalSkipKey())return;
-            if(arena?.Local==null||arena.Local.Hp>0||menu||BoardOpen||ExpeditionScreenOpen)return;if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape))EndReplay();
+            if(arena?.Local==null||arena.Local.Hp>0||menu||BoardOpen||ExpeditionScreenOpen)return;if(Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.Escape))EndReplay();if(SplitSpectatorControls())return;
             var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!ExpeditionReplay||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0){spectatorId=0;return;}
             int at=Array.FindIndex(candidates,p=>p.Seat.id==spectatorId);if(at<0)at=0;else if(Input.GetKeyDown(KeyCode.RightArrow))at=(at+1)%candidates.Length;else if(Input.GetKeyDown(KeyCode.LeftArrow))at=(at+candidates.Length-1)%candidates.Length;spectatorId=candidates[at].Seat.id;
             if(!replayRunning){yaw+=Input.GetAxisRaw("Mouse X")*2*prefs.sensitivity;pitch=Mathf.Clamp(pitch-Input.GetAxisRaw("Mouse Y")*1.5f*prefs.sensitivity,-70,70);}
@@ -187,7 +187,7 @@ namespace ChipArena.UnityConversion
         // main.ts spectator label: who is being watched, their side and HP, and how to cycle.
         private void SpectatorLabel()
         {
-            float W=NativeUi.W,H=NativeUi.H;var p=Spectator;bool pve=arena.Pve!=null;var candidates=arena.Pilots.Count(x=>x!=arena.Local&&x.Hp>0&&x.Seat.connected);
+            float W=NativeUi.W,H=NativeUi.H;var p=Spectator;bool pve=arena.Pve!=null;var candidates=ExpeditionView?.areaIdentity!=null?ExpeditionSpectatorCandidates().Length:arena.Pilots.Count(x=>x!=arena.Local&&x.Hp>0&&x.Seat.connected);
             string title=p!=null?"SPECTATING "+p.Seat.name.ToUpperInvariant():pve?"DOWN":"ELIMINATED",info=p==null?null:(match.Teams&&!pve?NativeMatch.TeamNames[TeamIndex(p.Seat.team)]+" team · ":"")+Mathf.CeilToInt(p.Hp)+" / "+Mathf.RoundToInt((float)p.Stats["hp"])+" HP";
             string hint=candidates>0?"← / → to cycle surviving players":"No surviving players. Waiting for the next round.";
             float w=Mathf.Max(300,Mathf.Max(NativeUi.Measure(title,18,true).x,NativeUi.Measure(hint,14).x)+44),h=12+24+(info!=null?24:0)+(candidates>1?58:0)+20+12,x=(W-w)/2,y=H-32-h;
@@ -199,6 +199,7 @@ namespace ChipArena.UnityConversion
         }
         private void CycleSpectator(int step)
         {
+            if(SplitSpectatorControls(step))return;
             var candidates=arena.Pilots.Where(p=>p!=arena.Local&&p.Hp>0&&p.Seat.connected&&(!ExpeditionReplay||!p.Seat.AuthorityBoss&&!p.ExpeditionTransferHeld)&&!(p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true)).OrderBy(p=>match.SameSide(arena.Local.Seat,p.Seat)?0:1).ThenBy(p=>p.Seat.id).ToArray();if(candidates.Length==0)return;
             int at=Math.Max(0,Array.FindIndex(candidates,p=>p.Seat.id==spectatorId));spectatorId=candidates[(at+step+candidates.Length)%candidates.Length].Seat.id;
         }

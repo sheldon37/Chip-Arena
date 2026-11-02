@@ -22,6 +22,14 @@ internal static class ExpeditionCohortChecks
             foreach(var a in new[]{"host","guest1","guest2","guest3"}){Check(c.Add(a,"hub"),"add member");Check(c.Acknowledge(a,c.Member(a).Ticket),"initial area ack");}
             return c;
         }
+        var observer=Create();var home=observer.Member("guest1").Ticket;
+        Check(observer.Observe("guest1","ward"),"observe remote area");var watch=observer.Member("guest1");
+        Check(watch.Area=="hub"&&watch.Pending==null&&watch.Ticket.area=="ward"&&!watch.Ready,"spectating preserves physical/corpse membership and requires load");
+        Check(!observer.Acknowledge("guest1",home)&&observer.Acknowledge("guest1",watch.Ticket),"old ready rejected, observer scene acknowledged");
+        Check(!observer.Accepts("guest1",watch.Ticket),"observer ticket never authorizes combat input");
+        Check(observer.Observe("guest1","hub")&&observer.Member("guest1").Ticket.serial>watch.Ticket.serial,"revive restores fresh physical-area subscription");
+        Check(!observer.Accepts("guest1",home)&&observer.Acknowledge("guest1",observer.Member("guest1").Ticket)&&observer.Accepts("guest1",observer.Member("guest1").Ticket),"restored actor requires new ready before control");
+        Check(!observer.Observe("guest1","missing")&&!observer.Observe("stranger","ward"),"observer area/account bounded");
         var c=Create();var p=new Placement();var captured=new[]{"guest1","guest2"};int prepares=0;
         var old=c.Member("guest1").Ticket;
         Check(c.Begin("first","hub","ward",captured,30,(s,d,a)=>{prepares++;a[0]="host";return p;}),"prepare subset");captured[0]="host";

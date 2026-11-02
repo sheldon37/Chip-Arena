@@ -64,6 +64,19 @@ namespace ChipArena.UnityConversion
             }
             Step(4);Check(rules.Views.Single().closedReason==ExpeditionJoinClosedReason.Open&&rules.Views.Single().joinStartedAt==4,"reopening starts full countdown");
             Step(7);a.Loading=true;Step(8);Check(rules.Views.Single().deployedAt==7&&rules.Views.Single().deployedAccounts.SequenceEqual(new[]{"a"}),"deploy retained across empty loading snapshots");a.Loading=false;
+            rules.Reset();b.Feet=J(1,0);b.Choosing=true;int before=calls;Step(0);Step(4);
+            Check(calls==before&&rules.Views.Single().joinBlocked==1&&rules.Views.Single().joinStartedAt<0,"occupied chooser blocks partial-party deployment");
+            b.Choosing=false;Step(5);Step(7.99);Check(calls==before,"unblocked party receives full countdown");Step(8);
+            Check(calls==before+1&&moved.SequenceEqual(new[]{"a","b"}),"both ring occupants captured together after blocker clears");
+            foreach(var reason in new[]{"loading","carrying"})
+            {
+                rules.Reset();b.Loading=reason=="loading";b.Carrying=reason=="carrying";before=calls;Step(0);Step(4);
+                Check(calls==before&&rules.Views.Single().joinBlocked==1,"occupied "+reason+" blocks partial deployment");
+                b.Loading=b.Carrying=false;Step(5);Step(8);Check(calls==before+1&&moved.Length==2,"cleared "+reason+" transfers both occupants");
+            }
+            rules.Reset();b.Loading=b.Transferring=true;before=calls;Step(0);Step(3);
+            Check(calls==before+1&&moved.SequenceEqual(new[]{"a"}),"existing captured transfer does not block a later cohort");b.Loading=b.Transferring=false;
+            b.Feet=J(11,0);
             var world=layout.Area(layout.world);var original=world.doors.Single();var anchor=world.anchors.Single(x=>x.id==original.anchor);
             world.doors=world.doors.Concat(new[]{new ExpeditionDoorLayout{anchor="aaa-door",join=original.join}}).ToArray();
             world.anchors=world.anchors.Concat(new[]{new ExpeditionWorldAnchor{id="aaa-door",kind="door",building=anchor.building}}).ToArray();

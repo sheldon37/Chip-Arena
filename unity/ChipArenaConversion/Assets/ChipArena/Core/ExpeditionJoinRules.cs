@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     public enum ExpeditionJoinClosedReason { Open, Cleared, Locked, Reserved }
     [Serializable] public sealed class ExpeditionJoinView
     {
-        public string doorId,area;public float x,y,z,r,h;public int joinInside;public double joinStartedAt=-1,duration=3;
+        public string doorId,area;public float x,y,z,r,h;public int joinInside;public int joinBlocked;public double joinStartedAt=-1,duration=3;
         // Last accepted transfer, retained until the next accepted transfer or reset.
         // An empty ring is not evidence of a deploy. Accounts are the captured cohort.
         public double deployedAt=-1;
@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
     public sealed class ExpeditionJoinMember
     {
         public string Account,Area;public V3 Feet;
-        public bool Alive,Connected,Extracted,Loading,Choosing,Carrying;
+        public bool Alive,Connected,Extracted,Loading,Transferring,Choosing,Carrying;
     }
     // Host measured feet only. Geometry and timers are independent of presentation.
     // The caller enables this only alongside a real subset-transfer implementation.
@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         public ExpeditionJoinView[] Views=>rings.Select(r=>r.View.Copy()).ToArray();
         public bool AtJoin(string account)=>account!=null&&selected.ContainsKey(account);
         public string DoorFor(string account)=>account!=null&&selected.TryGetValue(account,out var door)?door:null;
-        public void Reset(){if(stepping)throw new InvalidOperationException("Join step is active.");selected.Clear();last=-1;foreach(var r in rings){r.View.joinInside=0;r.View.joinStartedAt=-1;r.View.deployedAt=-1;r.View.deployedAccounts=Array.Empty<string>();r.View.closedReason=ExpeditionJoinClosedReason.Open;}}
+        public void Reset(){if(stepping)throw new InvalidOperationException("Join step is active.");selected.Clear();last=-1;foreach(var r in rings){r.View.joinInside=r.View.joinBlocked=0;r.View.joinStartedAt=-1;r.View.deployedAt=-1;r.View.deployedAccounts=Array.Empty<string>();r.View.closedReason=ExpeditionJoinClosedReason.Open;}}
         public void Step(double elapsed,IEnumerable<ExpeditionJoinMember> members,Func<string,bool> admitted,
             Func<string,string,string[],bool> transfer)
         {
@@ -79,11 +79,16 @@ namespace ChipArena.UnityConversion
                     if(ring!=null)selected.Add(m.Account,ring.View.doorId);
                 }
                 var expired=new List<(Ring ring,string[] cohort)>();
+                // A player visibly inside the ring must not silently be left behind because
+                // a chooser, carry, transient combat hold or unsupported hire blocks transfer.
+                foreach(var r in rings)r.View.joinBlocked=roster.Count(m=>m.Area==hub&&m.Alive&&m.Connected&&!m.Extracted&&!m.Transferring&&
+                    (m.Loading||m.Choosing||m.Carrying)&&r.Shape.Contains(m.Feet+new V3(0,CapsuleCentreHeight,0)));
+
                 foreach(var r in rings)
                 {
                     var cohort=selected.Where(p=>p.Value==r.View.doorId).Select(p=>p.Key).OrderBy(a=>a,StringComparer.Ordinal).ToArray();
                     r.View.joinInside=cohort.Length;
-                    if(cohort.Length==0){r.View.joinStartedAt=-1;continue;}
+                    if(cohort.Length==0||r.View.joinBlocked>0){r.View.joinStartedAt=-1;continue;}
                     if(r.View.joinStartedAt<0)r.View.joinStartedAt=elapsed;
                     if(elapsed>=r.View.joinStartedAt+Duration)expired.Add((r,cohort));
                 }
