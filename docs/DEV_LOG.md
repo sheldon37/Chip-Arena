@@ -1,3 +1,11 @@
+## 2026-11-02 — Astra: stop Deployment Station rebuilding reel art every frame
+
+- **Branch/base:** `codex/deployment-performance` from shared/builder `b95834ea8a44f5a9b4689b827820136d419a6779` (published mutator activation). Owner reports the station screen lags.
+- **Root cause:** activation passed `NativeExpeditionMutators.Ids` into every live frame. That accessor intentionally clones its array; `NativeDeployStage.Strips` used catalog reference identity as its invalidation key. Every frame therefore rebuilt all six strips and `NativeDeployScene.Pictures` queued six more texture-stack jobs, even when the catalog/results were unchanged. This is an Astra activation regression, not a change to Claude's visual design.
+- **Fix:** keep one private immutable live catalog; also compare equivalent mutator catalog values without allocations before invalidating the stage cache. Actual catalog changes and newly seen results still rebuild. Defensive copies remain the public rules API contract. No cue timing, appearance, sound, mutator selection or gameplay changes.
+- **Reproduction and regression:** same 120-frame catalog-copy fixture against the old stage produces 120 strip invalidations and 1,617,600 stage allocation bytes and fails the new assertion. Fixed stage: zero invalidations, zero stage allocation bytes; seven checks pass, including real catalog/result invalidation and live cached wiring. These measurements exclude Unity uploads, art workers and GPU; no owner-machine FPS claim. Unity InputSystem/Player/Runtime/Editor reference compilation and whitespace checks pass. Full CoreTests with real loopback relay exits 0 (933 PASS lines; all 35 managed-core checks). Source packaging validates 2,941 files.
+- **Release:** merge and existing native test Update publication after verification; actual builder/feed receipt recorded on the task PR. No live/production release. In-game FPS and human visual acceptance remain to be checked on the owner's machine.
+
 ## 2026-11-02 — Astra: enable live Expedition mutator rolling for the test update
 
 - **Owner direction:** enable and push the mutators now. This supersedes the previous draft-only publication hold for this test scope; no live/production release. The remaining Claude presentation work is explicitly still unfinished.

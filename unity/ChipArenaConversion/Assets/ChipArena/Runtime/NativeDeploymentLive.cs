@@ -5,6 +5,8 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class ConversionGame
     {
+        // Ids returns a defensive copy; keep one immutable catalog for the station cache.
+        private static readonly string[] LiveDeployMutators=NativeExpeditionMutators.Ids;
         private readonly NativeDeployClock liveDeployClock=new NativeDeployClock();
         private readonly NativeDeployConsole.Party liveDeployParty=new NativeDeployConsole.Party();
         private readonly DeployPilot[] liveDeployPilots=new DeployPilot[NativeDeployPresentation.Pads];
@@ -28,7 +30,7 @@ namespace ChipArena.UnityConversion
             }
             viewModelCamera.enabled=false;
             var input=new DeployInput{State=state,SinceInstanceRoll=liveDeployClock.SinceInstanceRoll(now),SinceMutatorRoll=liveDeployClock.SinceMutatorRoll(now),SinceDeploy=liveDeployClock.SinceDeploy(now),Time=now,
-                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=DeployPreviewInstances,Mutators=NativeExpeditionMutators.Ids};
+                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=DeployPreviewInstances,Mutators=LiveDeployMutators};
             presentation.RenderDeployStation(cameraView,input,liveDeployPilots,Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio);
             return true;
         }
