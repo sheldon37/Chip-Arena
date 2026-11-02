@@ -1,3 +1,12 @@
+## 2026-11-02 — Astra: signed-in online-player invitations
+
+- **Branch/base:** `codex/online-player-invites`, shared `cedc4bcb`. Owner requested invites between signed-in Chip Arena players, avoiding manual room codes.
+- **Behavior:** account presence, private invitation inbox, Invite / Accept / Decline in a functional menu panel; existing trusted-directory join path and capacity/version/started-run restrictions retained. No auto-join or interruption of active rooms. Normal online hosting only, not LAN or custom relay overrides.
+- **Authority:** session-derived sender/recipient, 60-second presence TTL, two-minute invite TTL, one send per five seconds, duplicate/inbox bounds, conditional one-use recipient-only answers. No arbitrary connection endpoint or credential in the invitation. New migration/schema/journal are additive.
+- **Validation:** account suite 14/14 passes; final generated migration passes focused invitation integration test; TypeScript no-emit and relay bundle pass. Final Unity semantic compile and Python/source packaging results recorded in the task PR.
+- **Unrun:** Windows GUI/controller pointer/two-client invite-to-join acceptance. No measured network latency claim. Claude UI polish/navigation review remains.
+- **Rollout:** source integration only until the additive migration and account worker are deployed. Production service/database rollout requires explicit authorization under AGENTS.md; not performed. Existing room codes remain usable. See ONLINE-INVITES.md for the deployment sequence and acceptance checklist.
+
 ## 2026-11-02 — Claude: Backrooms levels plan, kit catalogue and the generator spec for Astra
 
 - **Branch/base:** `claude/backrooms-plan` from shared `541458a3`. Docs only; merged into shared. No build or release.
