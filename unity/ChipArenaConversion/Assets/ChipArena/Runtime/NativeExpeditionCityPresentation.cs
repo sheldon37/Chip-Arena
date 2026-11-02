@@ -146,6 +146,7 @@ namespace ChipArena.UnityConversion
                 Matrix4x4 m;if(townMoved[part.Parent]){var t=prop.transform;Quaternion q=t.rotation;m=Matrix4x4.TRS(t.position+townNudge[part.Parent]+q*new Vector3(part.X,part.Y,part.Z),q*new Quaternion(part.Qx,part.Qy,part.Qz,part.Qw),Vector3.one);}else m=townRestMatrix[i];
                 if(fade&&part.Fade&&MetroBetween(from,to,new Vector3(m.m03,m.m13,m.m23),new Vector3(part.Hx+.2f,part.Hy+.2f,part.Hz+.2f)))continue;
                 Vector4 color=townRestColor[i];if(part.Drive!=NativeExpeditionCityKit.DriveSteady){NativeExpeditionCityKit.Drive(part,now,out float r,out float g,out float bl,out float level);color=MetroColor(r,g,bl,level);}
+                if(MutatorDark)color.w*=NativeMutatorLook.DarkGlow;
                 var list=part.Shadow?townCast:townTrim;ref int used=ref part.Shadow?ref townCastUsed:ref townTrimUsed;
                 if(used==0||list[used-1].Count==NativeBlockLooks.Chunk){if(used==list.Count)list.Add(new MetroBatch());list[used].Count=0;used++;}
                 Put(list[used-1],m,new Vector4(part.Hx,part.Hy,part.Hz,NativeBlockLooks.Chamfer),townRestSpot[i],color,new Vector4(part.Look,1,townSeeds[i],part.Flags));

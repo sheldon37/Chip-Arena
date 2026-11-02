@@ -187,6 +187,13 @@ namespace ChipArena.UnityConversion
                 if(e.Id<=lastEvent)continue;lastEvent=e.Id;if(now-e.Time>.4f||e.Kind==EventKind.Break&&MaterialBursts)continue;
                 // A Block is the block effect's clash or deflect (NativeBlockFxPresentation), not event-vfx.ts's 6-spark blockHit burst.
                 if(e.Kind==EventKind.Block)continue;
+                // An Expedition mutator's event (Core NativeMutatorFx) draws its own look: the storm's Shock, HIGH EXPLOSIVE's fire and
+                // MARTYR's nova here with their lights, the warning, bolt, gas and glints in ArenaPresentation.MutatorFx.
+                if(e.Kind==EventKind.Impact&&NativeMutatorFx.Event(e.Detail))
+                {
+                    if(NativeMutatorFx.Blast(e.Detail,out var mStyle,out var mTint,out double mShare)){var mAt=NativeArena.Vec(e.Position);sim.Blast(mStyle,mAt.x,mAt.y,mAt.z,Math.Max(.5,e.Radius),quality*mShare,false,mTint,FloorUnder(mAt));}
+                    continue;
+                }
                 NativePilot source=null,target=null;foreach(var p in arena.Pilots){if(p.Seat.id==e.Source)source=p;if(p.Seat.id==e.Target)target=p;}
                 // The colour the source event carries where Unity's has none: a break's material (none for the Siren's seeker
                 // breaks), an impact's weapon colour.

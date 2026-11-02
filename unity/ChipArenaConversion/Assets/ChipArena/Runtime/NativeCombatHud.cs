@@ -145,7 +145,7 @@ namespace ChipArena.UnityConversion
             if(menu||arena?.Local==null||cameraView==null||IntroActive||ReplayActive)return;
             if(hudGeneration!=arena.Generation){healthLags.Clear();hudGeneration=arena.Generation;}
             var physics=arena.Root.scene.GetPhysicsScene();var old=GUI.color;
-            bool ScreenPoint(Vector3 p,float range,out Vector3 point){point=cameraView.WorldToScreenPoint(p)/scale;if(point.z<=0||Vector3.Distance(cameraView.transform.position,p)>range)return false;Vector3 delta=p-cameraView.transform.position;return !physics.Raycast(cameraView.transform.position,delta.normalized,out _,delta.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);}
+            bool ScreenPoint(Vector3 p,float range,out Vector3 point){point=cameraView.WorldToScreenPoint(p)/scale;if(point.z<=0||Vector3.Distance(cameraView.transform.position,p)>NativeMutatorLook.Sight(NativeLighting.MutatorWhite,range))return false;Vector3 delta=p-cameraView.transform.position;return !physics.Raycast(cameraView.transform.position,delta.normalized,out _,delta.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore);}
             void Health(int id,Vector3 pos,float hp,float max,float worldWidth,bool ally,string name,bool lag,NativePilot self)
             {
                 if(hp<=0||!ScreenPoint(pos,55,out var at))return;float ratio=Mathf.Clamp01(hp/Math.Max(1,max)),pixels=Mathf.Clamp(worldWidth*Screen.height/(2*Mathf.Tan(cameraView.fieldOfView*Mathf.Deg2Rad*.5f)*Math.Max(1,Vector3.Distance(cameraView.transform.position,pos)))/scale,16,85),x=at.x-pixels*.5f,y=height-at.y,trail=ratio;

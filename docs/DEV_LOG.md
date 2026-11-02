@@ -1,7 +1,50 @@
+## 2026-11-02 — Claude: Expedition mutator looks (STORM, blasts, DARKNESS, WHITEOUT, BIG HEADS, HUD, payout)
+
+- **Branch/base:** `claude/mutator-visuals` from shared `f5fb3fb5`, with shared `c7ceb086` (the zombie stride fix) merged
+  in. Implementation commit `1ade210b`; then the pin updates, a comment fix and the full-suite registration (`d5ac890a`). Merged into shared and the builder (test channel)
+  after the checks below. Not a live release.
+- **Task:** owner: "Yes, start them" (the presentation Astra handed over with the live mutators; docs/EXPEDITION-DEPLOYMENT.md
+  "Mutator rules handoff").
+- **Changes (presentation only; docs/EXPEDITION-DEPLOYMENT.md "Mutator looks"):**
+  - Core `NativeMutatorFx`, drawn by `Runtime/NativeMutatorPresentation.cs`:
+    - STORM's warning: an amber disc, a growing fill and a sky column; a red strobe at the end; never thinned.
+    - STORM's strike: a bolt that re-strikes, a floor flash and a scorch.
+    - BLOATED: the bloater's gas.
+    - ROULETTE: card glints.
+  - `NativeBlastPresentation.Impacts`: the storm's Shock, HIGH EXPLOSIVE's fire and MARTYR's nova go through the shared pools.
+    Mutator events no longer draw the generic spark burst.
+  - Core `NativeMutatorLook` with `NativeLighting.Mutators`:
+    - DARKNESS: ambient ×.4, key ×.35, fog darkened, light slots out, lamp halos and bulbs out, windows and signs ×.12.
+      The style's grade drops (shadows ×.22, lights ×.6) and the sky ×.25.
+    - WHITEOUT: linear fog 2-25 m with the sky the fog's colour. Markers past 25 m are hidden: world pieces, quota marks,
+      names, bars and prices.
+  - BIG HEADS: heads ×2.2 on modelled and voxel pilots and zombies; a lost head stays gone.
+  - The run HUD's mutator chips, and the station's `RUN PAYOUT ×N` line.
+  - The looks read `GeneratedRun.Mutators`, the ticket that host and guests both rebuild.
+- **Animation impacts:** heads scaled for drawing only (the rules double the head's hit region). No hit timing, hitbox,
+  damage, cooldown, movement or network change.
+- **Checks (actual):**
+  - `--mutator-fx` 79 checks.
+  - `--pod-drop`, `--deploy-presentation` and `--spawn-in` pass.
+  - Unity compile (Input System, Player, runtime, editor) passes.
+  - Source-pin scan: two pins updated (`HazardKitChecks` slot upload, `ZombieModelChecks` collapse line).
+  - Full CoreTests on a clean LF worktree of `d5ac890a` (local Windows path patch, not committed): 935 PASS lines, 35
+    managed-core checks, rc 0. Its first run caught a comment naming the station boss's file (`StationBossModelChecks`).
+  - Unity captures of a generated run (offline, events injected through the local tool), seen:
+    - the warning, the strike, the gas, the glints and the blasts;
+    - BIG HEADS;
+    - WHITEOUT;
+    - DARKNESS: values confirmed in the log; the frame is 28-37% darker.
+- **Risks / next:**
+  - DARKNESS's grade and sky part was not visible in the offline captures (they may skip the post pass); check the strength
+    in the Windows build.
+  - Not seen with Astra's real events on a live host or guest.
+  - BIG HEADS: the drawn 2.2x head is larger than the rules' 2x head region.
+
 ## 2026-11-02 — Claude: zombies under fire keep their feet; corpses fall off the crowd
 
-- **Branch/base:** `claude/zombie-stride-fix` from shared `f5fb3fb5`. Merged into shared and the builder (test channel) after
-  the checks below. Not a live release.
+- **Branch/base:** `claude/zombie-stride-fix` from shared `f5fb3fb5`. Merged into shared and the builder as `c7ceb086`;
+  the builder published it to the test channel (BUILD SUCCEEDED, Publication succeeded, 18:09 UTC). Not a live release.
 - **Task:** the owner sent a video of a machine gun on an Expedition crowd: "we still needa fix zombie movement animations, pay
   attention to what happens here".
 - **Seen and measured** (docs/ZOMBIE-LOCOMOTION.md "Under fire on the model"):
