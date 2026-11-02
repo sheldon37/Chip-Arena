@@ -25,6 +25,9 @@ namespace ChipArena.UnityConversion
                 Check(!device.buttonSouth.isPressed,"button release");
             }
             finally{InputSystem.RemoveDevice(device);if(previous!=null&&previous.added)previous.MakeCurrent();}
+            var navigation=new NativeMenuNavigation();navigation.BeginFrame();
+            navigation.Add(new NativeMenuNavigation.Item{X=0,Y=0,W=100,H=30});navigation.Add(new NativeMenuNavigation.Item{X=0,Y=50,W=100,H=30});
+            navigation.Move(3);navigation.Move(3);Check(navigation.Focus==1,"menu directional focus");navigation.Reset();Check(!navigation.Current(out _),"menu context clears stale controls");
             Debug.Log("PASS controller native gate: legacy prefs, Unity JSON remap, synthetic gamepad press/release and analog input. Physical hardware and menus require playtest.");
         }
     }

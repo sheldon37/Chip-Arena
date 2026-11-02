@@ -14,11 +14,11 @@ namespace ChipArena.UnityConversion
         private Vector2 padMoveAxis,padLookAxis,padPointer;
         private bool padInputCaptured;
         private bool padNeutral=true,padUi,padPointerActive,padBack,padCaptureArmed;
-        private int padCapture=-1;
+        private int padCapture=-1,padContext=-1;
         private float padCaptureUntil,padScroll;
         private string padMessage="";
         private NativeControllerPreferences ControllerPrefs { get { if(prefs.controller==null)prefs.controller=new NativeControllerPreferences();if(prefs.controller.bindings==null)prefs.controller.Normalize();return prefs.controller; } }
-        private bool ControllerUi=>arena==null||menu||inspectSeat!=0||BoardOpen||ExpeditionScreenOpen||PvePickOpen||ExpeditionPickPointer;
+        private bool ControllerUi=>arena==null||menu||inspectSeat!=0||BoardOpen||ExpeditionScreenOpen||PvePickOpen||ExpeditionPickPointer||arena!=null&&(match.Phase==NativePhase.Draft||match.Phase==NativePhase.Match);
         private bool PadHeld(PadAction a)=>padHeld[(int)a];
         private bool PadDown(PadAction a)=>padDown[(int)a];
         private bool PadUp(PadAction a)=>padUp[(int)a];
@@ -46,8 +46,10 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<padHeld.Length;i++){padUp[i]=false;padDown[i]=false;}
             if(prefs==null||dedicated)return;
             var options=ControllerPrefs;var next=Gamepad.current;
+            int context=(int)MenuTarget+32*(int)pauseScreen+(menu?1024:0)+(BoardOpen?2048:0)+(ExpeditionScreenOpen?4096:0)+(PvePickOpen?8192:0)+(ExpeditionPickPointer?16384:0)+(inspectSeat!=0?32768:0)+(updateOpen?65536:0)+(arena==null?0:((int)match.Phase+1)*131072);
             bool ui=ControllerUi,blocked=!Application.isFocused||StageInputHeld||SplitLocalLoading||!options.enabled||next==null||!next.added||!next.enabled;
-            if(next!=pad||ui!=padUi||blocked){padNeutral=true;NativeControllerPointer.Cancel();}
+            if(next!=pad||ui!=padUi||context!=padContext||blocked){padNeutral=true;NativeControllerPointer.ResetNavigation();}
+            padContext=context;
             if(padNeutral)padState.Step(options.bindings,0,false,true);
             pad=next;padUi=ui;
             if(pad==null||!pad.added||blocked){padPointerActive=false;padCapture=-1;return;}
@@ -72,12 +74,15 @@ namespace ChipArena.UnityConversion
             // Read unprocessed stick values: apply precisely one configurable radial deadzone.
             var left=PadAxis(pad.leftStick.ReadUnprocessedValue());var right=PadAxis(pad.rightStick.ReadUnprocessedValue());
             if(!ui){padMoveAxis=options.swapSticks?right:left;padLookAxis=options.swapSticks?left:right;padPointerActive=false;return;}
-            if(Input.GetAxisRaw("Mouse X")!=0||Input.GetAxisRaw("Mouse Y")!=0||Input.GetMouseButtonDown(0))padPointerActive=false;
-            if(left.sqrMagnitude>.001f||pad.buttonSouth.wasPressedThisFrame||Mathf.Abs(right.y)>.1f)
+            if(Input.GetAxisRaw("Mouse X")!=0||Input.GetAxisRaw("Mouse Y")!=0||Input.GetMouseButtonDown(0))
+            {padPointerActive=false;NativeControllerPointer.Navigating=false;}
+            var direction=pad.dpad.ReadValue();if(direction.sqrMagnitude<.1f)direction=left;
+            bool confirm=pad.buttonSouth.wasPressedThisFrame;
+            var focus=NativeControllerPointer.Navigate(direction.x,-direction.y,confirm,Time.unscaledTime,out float scroll);
+            if(NativeControllerPointer.Navigating)
             {
-                if(!padPointerActive){padPointer=(Vector2)Input.mousePosition;padPointer.y=Screen.height-padPointer.y;padPointerActive=true;}
-                padPointer+=new Vector2(left.x,-left.y)*Mathf.Min(Time.unscaledDeltaTime,.05f)*Screen.height*.8f;
-                padPointer.x=Mathf.Clamp(padPointer.x,0,Screen.width-1);padPointer.y=Mathf.Clamp(padPointer.y,0,Screen.height-1);
+                padPointerActive=true;padPointer=focus;
+                if(menu&&scroll!=0)screenScroll.y=Mathf.Clamp(screenScroll.y+scroll/Mathf.Max(.1f,NativeUi.S),0,Mathf.Max(0,screenContent));
             }
             if(padPointerActive)
             {
@@ -87,6 +92,7 @@ namespace ChipArena.UnityConversion
                 if(menu)screenScroll.y=Mathf.Clamp(screenScroll.y+padScroll,0,Mathf.Max(0,screenContent-200));
             }
         }
+
         private void ControllerLook(float scale)
         {
             float delta=ControllerPrefs.sensitivity*Mathf.Min(Time.unscaledDeltaTime,.05f)*scale;
@@ -104,7 +110,13 @@ namespace ChipArena.UnityConversion
         private void ControllerCursor()
         {
             if(!padPointerActive||!ControllerUi||Event.current.type!=EventType.Repaint)return;
-            var matrix=GUI.matrix;GUI.matrix=Matrix4x4.identity;GUI.Label(new Rect(padPointer.x-7,padPointer.y-10,24,24),"+",GUI.skin.label);GUI.matrix=matrix;
+            var matrix=GUI.matrix;GUI.matrix=Matrix4x4.identity;if(NativeControllerPointer.Navigating&&NativeControllerPointer.Navigation.Current(out var item))
+            {
+                var color=GUI.color;GUI.color=new Color(.2f,1,.95f,1);
+                if(!item.Clipped||item.Y>=item.ClipY&&item.Y+item.H<=item.ClipY+item.ClipH)
+                {GUI.DrawTexture(new Rect(item.X,item.Y,item.W,2),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(item.X,item.Y+item.H-2,item.W,2),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(item.X,item.Y,2,item.H),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(item.X+item.W-2,item.Y,2,item.H),Texture2D.whiteTexture);}
+                GUI.color=color;
+            }GUI.matrix=matrix;
         }
         private void ControllerSettings()
         {
@@ -114,7 +126,7 @@ namespace ChipArena.UnityConversion
             Fine("Steam Controller / Steam Deck: select a Gamepad template in Steam Input. Auto uses Xbox names for emulated gamepads.");
             p.sensitivity=Slider("Controller look speed",p.sensitivity,45,360);p.deadzone=Slider("Stick deadzone",p.deadzone,.05f,.45f);
             p.invertY=NativeControllerPointer.Toggle(p.invertY,"Invert controller look Y");p.swapSticks=NativeControllerPointer.Toggle(p.swapSticks,"Swap movement and look sticks");
-            Fine("Menus: left stick moves pointer, A / Cross selects, B / Circle goes back, right stick scrolls. These menu controls stay fixed. View / Create / Back is the chord modifier.");
+            Fine("Menus: D-pad or left stick selects options; A / Cross confirms, B / Circle goes back. Left/right adjusts sliders; right stick scrolls. These menu controls stay fixed. View / Create / Back is the chord modifier.");
             for(int i=0;i<(int)PadAction.Count;i++)
             {
                 GUILayout.BeginHorizontal();GUILayout.Label(NativeControllerBindings.Actions[i],small,GUILayout.Width(210));
