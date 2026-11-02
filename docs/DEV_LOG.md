@@ -1,3 +1,12 @@
+## 2026-11-02 — Astra: new arenas in Random and stage music briefs
+
+- **Branch/base:** `codex/stage-random-music`, shared `62b00b09`.
+- **Owner request:** music prompts for the new stages including Level 0 and Poolrooms; add the new stages to random selection.
+- **Rules:** enable Breakwater, Pier 9, Skyframe, Deepwell and Polaris in the runtime rotation policy and its generator; update the native catalogue acceptance gate. Level 0 was already enabled. Initial selection and between-set shuffling now share actual-roster eligibility: Breakwater permits FFA up to four or two teams up to two each. Dedicated Random stays unresolved until the roster is known. Training and Expedition-only maps remain excluded; set changes still avoid the current map.
+- **Music:** eight original prompts in `docs/arenas/STAGE-MUSIC-PROMPTS.md`, including Calibration Bay. No generated audio or music assignment changes. Poolrooms is documented as future work: shared source has no playable Poolrooms map to register.
+- **Checks:** managed compilation (zero warnings/errors), 5,076 M1/navigation checks, catalogue/rotation coverage across room sizes and team layouts, runtime selection wiring, pinned Unity Player/Runtime/Editor semantic compilation (existing warnings), source packaging/asset lock and whitespace checks pass. Locked map JSON and its asset lock remain byte-identical; loader policy promotes the five arenas, and the content compatibility policy advances to v2. Geometry, spawns, hazards and existing music are unchanged. Final full-suite/Python and release receipts are recorded in the task PR.
+- **Limits:** no local Windows player build or human multiplayer playtest. The initial unoptimized Debug full-suite attempt was stopped during unrelated deployment checks; Release validation follows. No animation, hit timing, damage, movement or network protocol changes.
+
 ## 2026-11-02 — Claude: the plunging stab (the "slam") back on the player model
 
 - **Branch:** `claude/plunge-model`, base shared `905d89dd`.

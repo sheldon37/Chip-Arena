@@ -20,12 +20,28 @@ internal static class BrickfallChecks
         }
         NativeMapRules.Merge(data,JsonSerializer.Deserialize<UnityMapContent>(text,opts),text);var map=data.Map("brickfall");
         Check(data.maps.All(m=>m.unity)&&data.maps.Length==15,"authored Unity maps and generated Level 0 survive the export merge");
-        Check(data.maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"backrooms-level-0","brickfall","cybercity","factory"}),"modern random rotation");
+        Check(data.maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(x=>x).SequenceEqual(new[]{"backrooms-level-0","breakwater","brickfall","cybercity","factory","harbor","polar","rig","skyframe"}),"modern random rotation");
         Check(data.maps.Where(NativeMapRules.ArenaSelectable).Count()==10&&!data.Map("siren").rotation,"Ward Zero selectable outside Random");
         foreach(string id in legacy.maps.Select(m=>m.id).Where(id=>id!="siren").Concat(new string[]{null,"unknown","expedition-transit"}))
         {var room=new NativeRoomOptions{map=id};room.Normalize(data);Check(room.map==NativeMapRules.DefaultArena,"saved map migration "+id);}
         foreach(string id in new[]{"brickfall","factory","cybercity","siren","random"})Check(NativeMapRules.Selection(data,id)==id,"valid choice retained "+id);
         for(uint seed=0;seed<100;seed++)Check(data.Map(NativeMapRules.RandomArena(data,seed)).rotation,"random uses only rotation");
+        // Enumerate a complete seed cycle for each room shape: no eligible map is silently omitted.
+        foreach(var shape in new[]{(n:2,teams:true),(n:4,teams:true),(n:4,teams:false),(n:5,teams:false),(n:8,teams:true)})
+        {
+            var roster=Enumerable.Range(0,shape.n).Select(i=>new NativeSeat{id=i+1,team=i%2}).ToArray();
+            var allowed=data.maps.Where(m=>m.rotation&&(m.id!="breakwater"||shape.n<=4)).Select(m=>m.id).OrderBy(x=>x).ToArray();
+            var picks=Enumerable.Range(0,allowed.Length).Select(i=>NativeMapRules.RandomArena(data,(uint)i,roster,shape.teams)).OrderBy(x=>x).ToArray();
+            Check(picks.SequenceEqual(allowed),"random roster coverage "+shape);
+        }
+        var uneven=new[]{new NativeSeat{team=0},new NativeSeat{team=0},new NativeSeat{team=0},new NativeSeat{team=1}};
+        Check(!NativeMapRules.RandomEligible(data.Map("breakwater"),uneven,true),"3v1 excludes Breakwater");
+        Check(!NativeMapRules.RandomEligible(data.Map("breakwater")),"unknown roster excludes Breakwater");
+        Check(!NativeMapRules.RandomEligible(data.Map("training"),uneven,false),"training stays out");
+        var runtime=Path.Combine(root,"Assets/ChipArena/Runtime");
+        Check(File.ReadAllText(Path.Combine(runtime,"NativeLobbyLogic.cs")).Contains("NativeMapRules.RandomArena(content,NativeMatch.NewSeed(),match.Seats,match.Teams)"),"initial selection uses final roster including bots");
+        Check(File.ReadAllText(Path.Combine(runtime,"NativeArena.cs")).Contains("NativeMapRules.RandomEligible(m,Match.Seats,Match.Teams)&&m.id!=MapId"),"set shuffle uses same roster filter and avoids repeat");
+        Check(!File.ReadAllText(Path.Combine(runtime,"NativeDedicated.cs")).Contains("NativeMapRules.RandomArena"),"dedicated defers random until roster exists");
         NativeMapRules.ValidateShippedCatalog(data);
         void RejectCatalog(ContentMap[] maps,string why)
         {
