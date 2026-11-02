@@ -12,7 +12,7 @@ Invitations expire after two minutes. The service derives the sender from the au
 2. Deploy the account worker built from `src/relay/worker.ts`, including `account-social.ts` and the accounts router. Preserve the current account database and signing identity. No secrets change. The normal relay build packages the migration directory.
 3. Publish the corresponding Unity test build through the existing Windows builder. Hosts and recipients both need this client version.
 
-The source branch alone does not activate the hosted service. Until steps 1–2 are deployed, the new client displays that updated account service is required and existing room-code joining continues to work. This task does not authorize a production account-service or database deployment. Rollback: revert the client/service changes; leave the additive tables in place until a separately authorized cleanup. No destructive migration is required.
+The source branch alone does not activate the hosted service. Until steps 1–2 are deployed, the new client displays that updated account service is required and existing room-code joining continues to work. The owner subsequently authorized the update on 2026-11-02: account-service Sites version 69 deployed successfully from exact source `95a77ab986812d21f4dd75e5d8ea4537f8abd698`; database overview confirmed `player_presence` and `player_invites`. Deployment `appgdep_6ae8ecefc794819199dfcc2c93fd6dcf`. TypeScript, relay build and the focused SQLite invitation test passed before deploy. No real-player invite/join smoke test was run. Rollback: revert the client/service changes; leave the additive tables in place until a separately authorized cleanup. No destructive migration is required.
 
 ## Verification and remaining acceptance
 

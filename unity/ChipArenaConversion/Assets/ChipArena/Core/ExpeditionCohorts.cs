@@ -84,7 +84,15 @@ namespace ChipArena.UnityConversion
                 Members=(string[])c.Members.Clone(),Required=required.Length,Ready=required.Count(m=>m.Ready)};
         }
         public bool Accepts(string authenticatedAccount,ExpeditionCohortTicket identity)
-        {return !Faulted&&!busy&&authenticatedAccount!=null&&members.TryGetValue(authenticatedAccount,out var m)&&m.Connected&&m.Ready&&m.Pending==null&&m.ticket.Matches(identity);}
+        {return !Faulted&&!busy&&authenticatedAccount!=null&&members.TryGetValue(authenticatedAccount,out var m)&&m.Connected&&m.Ready&&m.Pending==null&&m.ticket.area==m.Area&&m.ticket.Matches(identity);}
+        // Read-only camera subscription; physical membership and corpse ownership never move.
+        // The caller must authorize a dead viewer and a living party target.
+        public bool Observe(string account,string area)
+        {
+            Guard();if(!Area(area)||!members.TryGetValue(account,out var m)||!m.Connected||m.Pending!=null)return false;
+            if(m.ticket.area==area)return true;
+            m.Ready=false;m.ticket=Ticket(area,null);return true;
+        }
         public bool Acknowledge(string authenticatedAccount,ExpeditionCohortTicket identity)
         {
             Guard();if(authenticatedAccount==null||!members.TryGetValue(authenticatedAccount,out var m)||!m.Connected||!m.ticket.Matches(identity))return false;

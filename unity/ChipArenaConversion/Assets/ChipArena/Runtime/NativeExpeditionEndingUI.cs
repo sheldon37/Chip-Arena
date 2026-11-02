@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The ending holds the Expedition screen (else the board shows).</summary>
         private bool ExpeditionEndingShowing=>expeditionEnding.Shown&&!expeditionEndingBoard;
         /// <summary>The pause menu's own conditions for its lobby and main menu actions.</summary>
-        private ExpeditionEndContext ExpeditionEndContextNow()=>new ExpeditionEndContext{Host=Hosting,Offline=!Online,Returning=LobbyReturnSeconds>0,HostLost=arena!=null&&arena.Replica&&server==null};
+        private ExpeditionEndContext ExpeditionEndContextNow()=>new ExpeditionEndContext{Host=Hosting,Offline=!Online,Returning=LobbyReturnSeconds>0,HostLost=arena!=null&&arena.Replica&&server==null&&!ExpeditionSplit};
         /// <summary>An account XP award will show beside the summary (the binding, or the DEV MOCK); its panel builds only when it docks.</summary>
         private bool ExpeditionEndingXp=>AccountXpPreviewShown||AccountXpAwardOf(AccountXpSurface.Expedition)!=null;
 
@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
                     if(!(Hosting||!Online)||LobbyReturnSeconds>0)return;if(!Online)afterMatch=OfflineLobby();RequestLobbyReturn();expeditionScreenOpen=false;break;
                 case ExpeditionEndAction.Menu:
                 {
-                    bool lost=arena!=null&&arena.Replica&&server==null;afterMatch=lost?MenuScreen.Join:MenuScreen.Home;
+                    bool lost=arena!=null&&arena.Replica&&server==null&&!ExpeditionSplit;afterMatch=lost?MenuScreen.Join:MenuScreen.Home;
                     RequestStage(StageLoadKind.Return,()=>{if(Online)LeaveRoom();else ReturnToLobby();});break;
                 }
             }

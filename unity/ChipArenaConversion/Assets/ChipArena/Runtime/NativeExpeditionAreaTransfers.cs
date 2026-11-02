@@ -35,10 +35,16 @@ namespace ChipArena.UnityConversion
                 var state=member(m.Account);var area=runtimes.Find(m.Area);var pilot=area?.Arena.Pilots.SingleOrDefault(p=>p.Seat.id==seat(m.Account));
                 if(state==null||pilot==null)continue;
                 roster.Add(new ExpeditionJoinMember{Account=m.Account,Area=m.Area,Feet=NativeArena.Vec(pilot.Body.position)-new V3(0,.85f,0),
-                    Alive=state.alive&&pilot.Hp>0,Connected=m.Connected&&state.connected,Extracted=state.extracted,Loading=m.Pending!=null||!m.Ready,
+                    Alive=state.alive&&pilot.Hp>0,Connected=m.Connected&&state.connected,Extracted=state.extracted,Loading=m.Pending!=null||!m.Ready,Transferring=m.Pending!=null,
                     Choosing=state.choosing,Carrying=state.carriedBy!=null||Cohorts.Members.Any(other=>member(other.Account)?.carriedBy==m.Account)||!area.Arena.CanTransferPilot(pilot)});
             }
             Joins.Step(elapsed,roster,admission,(door,destination,accounts)=>Begin("join:"+checked(++nextCohort),layout.world,destination,door,accounts));
+            foreach(var ring in Joins.Views.Where(r=>r.joinBlocked>0))foreach(var m in roster.Where(m=>m.Area==layout.world&&m.Alive&&m.Connected))
+            {
+                var shape=new ExpeditionJoinCylinder{x=ring.x,y=ring.y,z=ring.z,r=ring.r,h=ring.h};if(!shape.Contains(m.Feet+new V3(0,NativeLocomotionRules.HalfHeight,0)))continue;
+                var sim=runtimes.Find(m.Area).Arena;if(sim.Pve!=null&&sim.Pve.Rows.TryGetValue(seat(m.Account),out var row))
+                {row.Notice="Waiting for everyone in the circle: finish loading or chip selection; release carries and hires.";row.NoticeUntil=sim.Time+1;}
+            }
         }
         public bool Begin(string id,string source,string destination,string door,string[] accounts)
         {
