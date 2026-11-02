@@ -13,7 +13,10 @@
   - `Tests/test_pack_bank.py` 17 tests, one new;
   - Unity compile (runtime and editor);
   - offline Unity captures from inside the preview;
-  - the full suite: see the merge note.
+  - full CoreTests on a clean LF worktree (local Windows path patch, not committed): 938 PASS lines, rc 0;
+  - the Python suite with `PYTHONUTF8=1` (this PC's default code page is cp932): 170 tests, 2 skipped, 1 failure. The
+    failure is the Windows publish-wrapper test (`'Publish-Native.cmd' is not recognized`), an environment issue; the
+    updater is not touched here.
 - **Gameplay impact:** none. Nothing draws unless the preview flag is set; no rules, collision or network.
 - **Next:**
   - Astra: the generator, map, collision, nav and spawns to the contract.
