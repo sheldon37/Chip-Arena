@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeBackroomsGenerator
     {
-        public const string Version="backrooms-level0-2",ArenaId="backrooms-level-0",InstanceMap="expedition-backrooms-level-0",AreaId="exp-backrooms";
+        public const string Version="backrooms-level0-3",ArenaId="backrooms-level-0",InstanceMap="expedition-backrooms-level-0",AreaId="exp-backrooms";
         public const int ArenaSeed=647031,ExpeditionSize=40,ArenaSize=16;
         private static readonly (int x,int z)[] Directions={(1,0),(0,1),(-1,0),(0,-1)};
         private struct Random
@@ -29,10 +29,11 @@ namespace ChipArena.UnityConversion
         public static bool IsMap(string id)=>id==ArenaId||id==InstanceMap;
         public static V3 Position(BackroomsLayout l,int cell)=>new V3((cell%l.Width+.5f)*BackroomsLayout.Cell,0,(cell/l.Width+.5f)*BackroomsLayout.Cell);
         public static bool Walkable(BackroomsLayout l,int cell)=>cell>=0&&cell<l.Width*l.Depth&&l.Floor[cell]!=BackroomsLayout.Pit&&l.Pillar[cell]==BackroomsLayout.NoPillar;
+        private static bool ReturnDoorEdge(int x,int z,int dx,int dz)=>x==1&&dx==0&&(z==1&&dz==-1||z==0&&dz==1);
         public static bool Link(BackroomsLayout l,int cell,int dx,int dz)
         {
             int x=cell%l.Width,z=cell/l.Width;
-            return l.Inside(x+dx,z+dz)&&Walkable(l,cell)&&Walkable(l,l.Index(x+dx,z+dz))&&l.Between(x,z,dx,dz)!=BackroomsLayout.Wall;
+            return !ReturnDoorEdge(x,z,dx,dz)&&l.Inside(x+dx,z+dz)&&Walkable(l,cell)&&Walkable(l,l.Index(x+dx,z+dz))&&l.Between(x,z,dx,dz)!=BackroomsLayout.Wall;
         }
         public static int[] Distances(BackroomsLayout l,int start)
         {
@@ -48,7 +49,16 @@ namespace ChipArena.UnityConversion
             Array.Clear(l.Pillar,0,l.Pillar.Length);
             for(int z=1;z<4;z++)for(int x=1;x<5;x++){if(x<4)l.Set(x,z,1,0,BackroomsLayout.Open);if(z<3)l.Set(x,z,0,1,BackroomsLayout.Open);}
             l.EntryX=1;l.EntryZ=1;l.Set(1,1,0,-1,BackroomsLayout.Short);
-            int entry=l.Index(1,1);var distances=Distances(l,entry);int exit=Enumerable.Range(0,distances.Length).OrderByDescending(c=>distances[c]).ThenBy(c=>c).First();l.ExitX=exit%size;l.ExitZ=exit/size;
+            int entry=l.Index(1,1);
+            // The return portal shuts during the encounter. Never depend on its edge for navigation.
+            while(true)
+            {
+                var reach=Distances(l,entry);if(reach.All(d=>d>=0))break;bool opened=false;
+                for(int c=0;c<reach.Length&&!opened;c++)if(reach[c]>=0)foreach(var d in Directions)
+                {int x=c%size,z=c/size;if(!l.Inside(x+d.x,z+d.z)||ReturnDoorEdge(x,z,d.x,d.z)||reach[l.Index(x+d.x,z+d.z)]>=0)continue;l.Set(x,z,d.x,d.z,BackroomsLayout.Short);opened=true;break;}
+                if(!opened)throw new InvalidOperationException("Cannot connect Level 0 around its return portal.");
+            }
+            var distances=Distances(l,entry);int exit=Enumerable.Range(0,distances.Length).OrderByDescending(c=>distances[c]).ThenBy(c=>c).First();l.ExitX=exit%size;l.ExitZ=exit/size;
             var reserved=new HashSet<int>(Enumerable.Range(0,8).Select(i=>l.Index(1+i%4,1+i/4))){exit};
             // Optional blocked cells may never sever the playable graph. Pits are expedition-only and never mandatory routes.
             for(int trial=0;trial<size*size/10;trial++)

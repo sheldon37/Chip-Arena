@@ -22,9 +22,12 @@ namespace ChipArena.UnityConversion
                 Check(d[l.Index(l.ExitX,l.ExitZ)]>20,"exit requires a maze route");
                 Check(g.Map.rotation==!expedition&&NativeMapRules.ArenaSelectable(g.Map)==!expedition,"mode selection");
                 // Independent box/circle collision probes at every cell centre and every navigation link.
+                var collision=g.Map.blocks.AsEnumerable();
+                if(expedition){var door=NativeBackroomsExpedition.Area(g).doors[0].closure;collision=collision.Concat(new[]{new ContentBlock{id="closed-return-door",pos=new V3(door.x,door.y,door.z),size=new V3(door.sx,door.sy,door.sz)}});}
+                var obstacles=collision.ToArray();
                 bool Clear(V3 p,float radius)
                 {
-                    foreach(var b in g.Map.blocks)
+                    foreach(var b in obstacles)
                     {
                         if(b.pos.y+b.size.y/2<=.01f||b.pos.y-b.size.y/2>=1.8f)continue;
                         float dx=Math.Max(0,Math.Abs(p.x-b.pos.x)-b.size.x/2),dz=Math.Max(0,Math.Abs(p.z-b.pos.z)-b.size.z/2);

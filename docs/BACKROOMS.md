@@ -227,7 +227,7 @@ Uses Claude's current `BackroomsLayout` contract from shared `49281882`: 2.4 m c
 - **Physics/nav:** solid ceiling at 2.7 m; full/short wall boxes, slim pillar
   boxes, floors and five-metre pit shafts. The kill plane is at -4 m. Cell-centre nav
   links exclude pillars and pits. Existing Expedition closure boxes supply the
-  return-door collider and follow the replicated encounter state. No new door art
+  return-door collider and follow the replicated encounter state. Navigation excludes that doorway and is repaired to remain connected while it is closed. No new door art
   contract. Small-enemy and pilot routes are checked; Hulks are excluded because
   the 2.7 m ceiling cannot accommodate them.
 - **Encounter:** existing 36-kill Expedition quota, shambler/runner/spitter/brute
