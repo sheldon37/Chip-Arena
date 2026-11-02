@@ -248,8 +248,16 @@ namespace ChipArena.UnityConversion
                     }
                     expeditionSpawnAt=Time+(float)NativeExpeditionMutators.Interval(ActiveMutators);
                 }
+                if(s.area==NativeBackroomsGenerator.AreaId)
+                {
+                    if(Expedition.TryBackroomsExit()){KillPveHorde();pveAcid.Clear();Bullets.Clear();Pve.Stage="intermission";}
+                    else if(!instance.cleared&&instance.progress>=instance.target)foreach(var row in Pve.Rows.Values){row.Notice="Quota complete · find the Level 0 exit cache";row.NoticeUntil=Time+1;}
+                }
+                else
+                {
                 if(instance.progress>=instance.target&&instance.bosses.Length==0)run.StartBosses(new[]{"m1-ward-siren"});
                 if(instance.progress>=instance.target&&!instance.cleared&&expeditionBoss==null)SpawnExpeditionBoss("m1-ward-siren");
+                }
             }
             if(s.phase==ExpeditionPhase.FinalBoss&&expeditionBoss==null)SpawnExpeditionBoss("m1-final-siren");
             if(Pve.Holding){if(ZoneHazards!=null)ZoneHazards.trainAt=Math.Max(ZoneHazards.trainAt,Time+4);return;}

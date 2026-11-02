@@ -30,6 +30,7 @@ namespace ChipArena.UnityConversion
             new Destination("exp-ward-zero","WARD ZERO","Quarantine wing","biohazard",0x8dff5a),
             new Destination("exp-transit","CENTRAL STATION","Transit concourse","rail",0x3fd8ff),
             new Destination("exp-foundry","CITY IRONWORKS","Foundry floor","anvil",0xff8a2a),
+            new Destination(NativeBackroomsGenerator.AreaId,"LEVEL 0","Backrooms maze","crypt",0xe6dc8f),
         };
         private static readonly Dictionary<string,(string tag,string emblem,int color)> Themes=new Dictionary<string,(string,string,int)>(StringComparer.Ordinal)
         {

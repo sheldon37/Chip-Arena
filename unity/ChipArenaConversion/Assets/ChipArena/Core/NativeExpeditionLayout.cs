@@ -114,8 +114,9 @@ namespace ChipArena.UnityConversion
                 if(bounds==null)throw new FormatException("Expedition layout: missing map "+area.map);
                 void Check(V3 p,float radius,float height)
                 {if(p.x-radius<bounds.minX||p.x+radius>bounds.maxX||p.z-radius<bounds.minZ||p.z+radius>bounds.maxZ||p.y<=bounds.killY||p.y+height>bounds.ceiling||!supported(area.map,p,radius,height))throw new FormatException("Expedition layout: unsupported or obstructed point in "+area.id+" ("+p.x+", "+p.y+", "+p.z+"), radius "+radius);}
+                float routeRadius=area.id==NativeBackroomsGenerator.AreaId?.45f:NativeHordeKinds.HulkRadius,routeHeight=area.id==NativeBackroomsGenerator.AreaId?1.8f:NativeHordeKinds.HulkHeight;
                 var slots=area.slots.Concat(area.doors.SelectMany(d=>d.entries.Concat(d.returns))).ToArray();
-                foreach(var p in slots){Check(p.Position,.45f,1.8f);Check(p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight);}
+                foreach(var p in slots){Check(p.Position,.45f,1.8f);Check(p.Position,routeRadius,routeHeight);}
                 void VolumeBounds(ExpeditionVolume v)
                 {
                     double angle=v.yaw*Math.PI/180,c=Math.Abs(Math.Cos(angle)),sin=Math.Abs(Math.Sin(angle));
@@ -138,10 +139,10 @@ namespace ChipArena.UnityConversion
                 foreach(var d in area.doors.Where(d=>d.join!=null))
                     if(!reachable(area.map,origin.Position,new V3(d.join.x,d.join.y,d.join.z),.45f,1.8f))throw new FormatException("Expedition layout: unreachable join cylinder.");
                 foreach(var p in slots.Concat(area.bossPoints).Concat(area.doors.Select(d=>d.approach)))
-                    if(!reachable(area.map,origin.Position,p.Position,.45f,1.8f)||!reachable(area.map,origin.Position,p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight))throw new FormatException("Expedition layout: unreachable point in "+area.id);
+                    if(!reachable(area.map,origin.Position,p.Position,.45f,1.8f)||!reachable(area.map,origin.Position,p.Position,routeRadius,routeHeight))throw new FormatException("Expedition layout: unreachable point in "+area.id);
                 foreach(var group in area.doors.Select(d=>d.entries).Concat(area.doors.Select(d=>d.returns)).Concat(new[]{area.slots}))
                     for(int i=0;i<group.Length;i++)for(int j=0;j<i;j++)if((group[i].Position-group[j].Position).Length<1)throw new FormatException("Expedition layout: overlapping party slots.");
-                foreach(var p in area.bossPoints)Check(p.Position,NativeHordeKinds.HulkRadius,NativeHordeKinds.HulkHeight);
+                foreach(var p in area.bossPoints)Check(p.Position,routeRadius,routeHeight);
                 foreach(var machine in area.machines){Check(machine.front.Position(),.45f,1.8f);Check(machine.dispense.Position(),.45f,1.8f);if(!reachable(area.map,origin.Position,machine.front.Position(),.45f,1.8f))throw new FormatException("Expedition layout: unreachable machine "+machine.id);}
                 foreach(var p in area.interactions)Check(new V3(p.x,p.y,p.z),.45f,1.8f);
                 foreach(var d in area.doors)Check(d.approach.Position,.45f,1.8f);

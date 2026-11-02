@@ -135,10 +135,11 @@ namespace ChipArena.UnityConversion
         }
         // Parse afresh to keep every authored interior detached and unchanged. The runtime must still load
         // this manifest plus Hub and Map as one per-run bundle; hardcoded resource readers cannot consume it yet.
-        public static ExpeditionLayout ComposeLayout(ExpeditionGeneratedWorld world,string authoredJson)
+        public static ExpeditionLayout ComposeLayout(ExpeditionGeneratedWorld world,string authoredJson,ExpeditionAreaLayout generatedInstance=null)
         {
             if(world==null||world.Compatibility==null)throw new ArgumentException("Generated world required.");
             var layout=NativeExpeditionLayout.Parse(authoredJson);
+            if(generatedInstance!=null)layout.areas=layout.areas.Concat(new[]{generatedInstance}).ToArray();
             if(layout.world!=world.Area.id||world.Blueprint.instances.Any(id=>layout.Area(id)?.role!="instance"))
                 throw new ArgumentException("Generated roster does not match the authored layout.");
             layout.instances=(string[])world.Blueprint.instances.Clone();

@@ -5,6 +5,7 @@ namespace ChipArena.UnityConversion
     public sealed class ExpeditionRunBundle
     {
         public readonly ExpeditionGeneratedWorld World;
+        public readonly BackroomsGenerated Backrooms;
         public readonly string[] Mutators;
         public readonly ExpeditionLayout Layout;
         public readonly ConversionContent Content;
@@ -13,9 +14,11 @@ namespace ChipArena.UnityConversion
         private ExpeditionRunBundle(ExpeditionDeploymentRoom room,ConversionContent content,string authored)
         {
             Ticket=room.Ticket;Mutators=room.Snapshot().mutators;World=NativeExpeditionGeneratedWorld.Build(room);
-            Layout=NativeExpeditionGeneratedWorld.ComposeLayout(World,authored);
+            if(Array.IndexOf(room.Snapshot().instances,NativeBackroomsGenerator.AreaId)>=0)Backrooms=NativeBackroomsGenerator.Build(unchecked((int)(room.Snapshot().worldSeed^0xbac00001u)),true);
+            Layout=NativeExpeditionGeneratedWorld.ComposeLayout(World,authored,Backrooms==null?null:NativeBackroomsExpedition.Area(Backrooms));
             Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+NativeExpeditionMutators.Version+"\n"+string.Join("\n",Mutators));
             Content=content.WithGeneratedMap(World.Map);
+            if(Backrooms!=null){Content=Content.WithGeneratedMap(Backrooms.Map);Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+Backrooms.Identity);}
             if(Ticket.deployed&&Ticket.generatedCompatibility!=Identity)
                 throw new ArgumentException("Generated run identity does not match its deployment ticket.");
         }
