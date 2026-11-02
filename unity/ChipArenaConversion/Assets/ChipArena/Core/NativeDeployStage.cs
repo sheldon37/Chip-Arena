@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
 
         private readonly string[][] strips={Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>()};
         private readonly Dictionary<string,string> themes=new Dictionary<string,string>(StringComparer.Ordinal);
-        private object instanceSource,mutatorSource;private readonly int[] seenRolls={-1,-1};private readonly int[] from=new int[6],land=new int[6];
+        private object instanceSource;private string[] mutatorSource;private readonly int[] seenRolls={-1,-1};private readonly int[] from=new int[6],land=new int[6];
         private readonly Vector4[] seat=new Vector4[NativeDeployPresentation.Pads];
         private readonly int[] landColor=new int[3];private readonly NativeDeployPresentation.Polarity[] cardPolarity=new NativeDeployPresentation.Polarity[3];
         private readonly NativeDeploySparks.Cue[] schedule=new NativeDeploySparks.Cue[12];private readonly float[] heard={float.NaN,float.NaN};
@@ -109,10 +109,18 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the strips (allocate only when the catalog or a result changes) ----
+        // Equivalent defensive copies must not invalidate six asynchronous texture builds every frame.
+        private static bool SameCatalog(string[] before,string[] next)
+        {
+            if(ReferenceEquals(before,next))return true;
+            if(before==null||next==null||before.Length!=next.Length)return false;
+            for(int i=0;i<before.Length;i++)if(before[i]!=next[i])return false;
+            return true;
+        }
         private bool OnStrip(int k,string id)=>id==null||Array.IndexOf(strips[k],id)>=0;
         private void Strips(in DeployInput f)
         {
-            var s=f.State;bool rebuild=!ReferenceEquals(instanceSource,f.Instances)||!ReferenceEquals(mutatorSource,f.Mutators);
+            var s=f.State;bool rebuild=!ReferenceEquals(instanceSource,f.Instances)||!SameCatalog(mutatorSource,f.Mutators);
             if(s!=null){for(int r=0;r<3;r++){if(r<s.districts.Length&&!OnStrip(r,s.districts[r]?.instance))rebuild=true;if(r<s.mutators.Length&&!OnStrip(3+r,s.mutators[r]))rebuild=true;}}
             if(!rebuild&&StripVersion>0)return;
             instanceSource=f.Instances;mutatorSource=f.Mutators;var ids=new List<string>();var mids=new List<string>();

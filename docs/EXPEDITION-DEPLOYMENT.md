@@ -281,6 +281,10 @@ zombies, etc.' Think fun things, overpowered things, insane difficulty things. C
   - STORM's telegraph and strike, the HIGH EXPLOSIVE and MARTYR blasts, BLOATED's burst (reusing the bloater's);
   - the active mutators on the run HUD.
 
+### Station catalog cache — performance fix, 2026-11-02
+
+`NativeExpeditionMutators.Ids` returns a defensive copy. The live adapter must retain one immutable catalog rather than call that accessor each frame: changing the array identity used to invalidate all six reel strips and queue their artwork jobs continuously. The stage now also treats arrays with identical ordered IDs as the same catalog. Real catalog changes and results absent from the strips still invalidate them. The 120-frame regression checks zero rebuilds/allocations with equivalent input copies; it failed with 120 rebuilds on the prior implementation. This changes caching only, not visuals, rolls or sound timing.
+
 ### Slot sparks and sound cues (Claude, 2026-11-02)
 
 The owner asked for "spark effects when rolling and landing on things", with a different effect when a card helps the players

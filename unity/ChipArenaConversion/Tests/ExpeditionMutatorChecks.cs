@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             var layout=NativeExpeditionLayout.Parse(layoutJson);layout.compatibility=NativeExpeditionLayout.Compatibility(layoutJson,content);
             var ids=NativeExpeditionMutators.Ids;Check(ids.Length==30&&ids.OrderBy(x=>x).SequenceEqual(NativeDeployPresentation.MutatorIds.OrderBy(x=>x)),"rules/card parity");
             string live=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeploymentLive.cs"));
-            Check(live.Contains("Mutators=NativeExpeditionMutators.Ids")&&live.Contains("action==DeployIntent.RollMutators)RollDeploymentMutators(state.revision)"),"live button supplies catalog and dispatches authority command");
+            Check(live.Contains("LiveDeployMutators=NativeExpeditionMutators.Ids")&&live.Contains("Mutators=LiveDeployMutators}")&&live.Contains("action==DeployIntent.RollMutators)RollDeploymentMutators(state.revision)"),"live button supplies catalog and dispatches authority command");
             Check(live.Contains("prefs.reducedEffects,nativeAudio)"),"live mutator roll preserves station sound wiring");
             var controlsState=new ExpeditionDeploymentState{worldRolled=true};
             Check(NativeDeployStage.ControlsOf(controlsState,default,default,NativeDeployPresentation.Launch.Ready,true).Mutate,"host can roll after destination roll");

@@ -1,5 +1,7 @@
 # Chip Arena — current state
 
+2026-11-02 Astra station performance (`codex/deployment-performance`, base `b95834e`): fixed the mutator activation regression that supplied a cloned catalog every frame and caused six reel-art jobs per frame. Cached live catalog plus allocation-free equivalent-catalog comparison. Reproduction: 120 strip rebuilds → zero over 120 identical frames; seven regression checks pass. Actual validation/publication receipt in task PR/DEV_LOG; no measured owner-machine FPS claim.
+
 2026-11-02 Astra mutator activation (`codex/mutator-activation`): owner requested test publication of #305's rules with shared #306's sparks/audio retained. Live host Roll button now supplies the 30-ID catalog and dispatches the authenticated command; guest/post-deploy locks remain. Validation/publication receipt in the activation PR. DARKNESS/WHITEOUT visibility, BIG HEADS models, dedicated storm/blast/death visuals and active HUD remain Claude follow-ups; this test activation does not claim those are complete.
 
 2026-11-02 Astra deployment slot audio (`codex/deployment-slot-audio`, base `a75a62c`): procedural lever/motor/brake/clunk and polarity card/sweep sounds consume Claude's unchanged cue stream. Effects volume/mute/limiter and existing voices; late join stays silent. Focused 366 checks, full managed/real-relay suite (931 PASS lines), Unity compilation and source packaging pass; test-publication receipt in DEV_LOG/task PR. Mutator gameplay/live rollout remains separate draft #305.
