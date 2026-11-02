@@ -28,6 +28,17 @@ namespace ChipArena.UnityConversion
         public const string DefaultArena="brickfall";
         // Only authored Unity maps enter this runtime; exported Electron maps remain source fixtures.
         public const string CatalogPolicy="unity-authored-only-v1";
+        // Shared by the native build gate and managed loader regressions. The shipped catalogue
+        // includes the five M1 arenas and Training Room; generated run maps are added later.
+        public static void ValidateShippedCatalog(ConversionContent content)
+        {
+            var expected=new[]{"breakwater","brickfall","cybercity","expedition-city","expedition-foundry","expedition-transit","expedition-ward-zero","factory","harbor","polar","rig","siren","skyframe","training"};
+            var maps=content?.maps;
+            if(maps==null||maps.Any(m=>m==null||!m.unity)||!maps.Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(expected))
+                throw new InvalidOperationException("Shipped Unity catalogue must contain exactly the fourteen authored maps (including M1 arenas and Training Room).");
+            if(!maps.Where(m=>m.rotation).Select(m=>m.id).OrderBy(id=>id,StringComparer.Ordinal).SequenceEqual(new[]{"brickfall","cybercity","factory"}))
+                throw new InvalidOperationException("Shipped Unity random rotation differs.");
+        }
         public static string Selection(ConversionContent c,string id)=>id=="random"||c.maps.Any(m=>m.id==id&&ArenaSelectable(m))?id:DefaultArena;
         public static string RandomArena(ConversionContent c,uint seed)
         {var maps=c.maps.Where(m=>ArenaSelectable(m)&&m.rotation).ToArray();return maps.Length==0?DefaultArena:maps[(int)(seed%(uint)maps.Length)].id;}

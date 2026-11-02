@@ -8,12 +8,16 @@ namespace ChipArena.UnityConversion.Editor
 {
     public static partial class NativeBuildChecks
     {
-        // Explicit draft acceptance entry point: no player build, publisher, branch movement or live services.
+        // Standalone graphics acceptance; the headless Windows builder runs the same simulation checks below.
         [MenuItem("Chip Arena/Check Expedition deployment acceptance")]
-        public static void CheckDeploymentAcceptance()
+        public static void CheckDeploymentAcceptance()=>RunDeploymentAcceptance(true);
+        // -nographics builders still run native geometry, PhysX, codecs and loopback checks.
+        // A null device cannot prove shader passes or rendered quality; never report it as such.
+        public static void CheckDeploymentBuildAcceptance()=>RunDeploymentAcceptance(SystemInfo.graphicsDeviceType!=UnityEngine.Rendering.GraphicsDeviceType.Null);
+        private static void RunDeploymentAcceptance(bool exerciseShaderPass)
         {
             if(Application.isPlaying)throw new InvalidOperationException("Leave Play mode before checking deployment");
-            if(SystemInfo.graphicsDeviceType==UnityEngine.Rendering.GraphicsDeviceType.Null)
+            if(exerciseShaderPass&&SystemInfo.graphicsDeviceType==UnityEngine.Rendering.GraphicsDeviceType.Null)
                 throw new InvalidOperationException("Deployment shader acceptance requires a graphics device; omit -nographics.");
             var active=SceneManager.GetActiveScene();var gravity=Physics.gravity;var mode=Physics.simulationMode;
             float scale=Time.timeScale;var cursor=Cursor.lockState;bool visible=Cursor.visible;
@@ -23,7 +27,7 @@ namespace ChipArena.UnityConversion.Editor
             Application.logMessageReceived+=Capture;
             try
             {
-                CheckDeploymentShader(true);
+                CheckDeploymentShader(exerciseShaderPass);
                 var asset=Resources.Load<TextAsset>("GameContent");
                 if(asset==null)throw new Exception("Missing deployment GameContent");
                 var content=JsonUtility.FromJson<ConversionContent>(asset.text);NativeUnityMapLoader.Load(content);content.Validate();
@@ -52,7 +56,8 @@ namespace ChipArena.UnityConversion.Editor
                     Debug.Log("PASS deployment seed acceptance: seed="+seed+", roll="+roll+", identity="+locked.Identity+", totalMs="+timer.Elapsed.TotalMilliseconds.ToString("F1")+", simulatedTicks="+(roll==1?1800:0));
                 }
                 if(errors.Count>0)throw new Exception("Deployment acceptance logged native errors: "+string.Join(" | ",errors));
-                Debug.Log("DEPLOYMENT_NATIVE_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; station shader, lobby transfers and loading guards. Automated fixture, not a human co-op or rendered acceptance test.");
+                if(exerciseShaderPass)Debug.Log("DEPLOYMENT_NATIVE_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; station shader, lobby transfers and loading guards. Automated fixture, not a human co-op or rendered acceptance test.");
+                else Debug.Log("DEPLOYMENT_BUILD_ACCEPTANCE_READY: eight generated layouts; four 1800-tick split runs; shader import, lobby transfers and loading guards. GPU passes, rendered performance and human co-op NOT exercised.");
             }
             finally
             {

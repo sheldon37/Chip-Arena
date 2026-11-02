@@ -22,6 +22,7 @@ namespace ChipArena.UnityConversion.Editor
         {
             Prepare();
             NativeBuildChecks.Run();
+            NativeBuildChecks.CheckDeploymentBuildAcceptance();
             foreach(string name in RegressionTests.Run()) Debug.Log("PASS " + name);
             foreach(string name in RangedRegressionTests.Run()) Debug.Log("PASS " + name);
             using(var animations=new CapturedAnimation()) animations.ValidatePlayback();

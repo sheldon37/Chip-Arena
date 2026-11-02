@@ -26,6 +26,19 @@ internal static class BrickfallChecks
         {var room=new NativeRoomOptions{map=id};room.Normalize(data);Check(room.map==NativeMapRules.DefaultArena,"saved map migration "+id);}
         foreach(string id in new[]{"brickfall","factory","cybercity","siren","random"})Check(NativeMapRules.Selection(data,id)==id,"valid choice retained "+id);
         for(uint seed=0;seed<100;seed++)Check(data.Map(NativeMapRules.RandomArena(data,seed)).rotation,"random uses only rotation");
+        NativeMapRules.ValidateShippedCatalog(data);
+        void RejectCatalog(ContentMap[] maps,string why)
+        {
+            bool rejected=false;try{NativeMapRules.ValidateShippedCatalog(new ConversionContent{maps=maps});}catch(InvalidOperationException){rejected=true;}
+            Check(rejected,why);
+        }
+        RejectCatalog(null,"native catalogue gate rejects missing maps");
+        RejectCatalog(data.maps.Take(8).ToArray(),"native catalogue gate rejects the obsolete eight-map set");
+        RejectCatalog(data.maps.Take(13).Concat(new[]{data.maps[0]}).ToArray(),"native catalogue gate detects duplicates even at the expected count");
+        RejectCatalog(data.maps.Concat(new[]{legacy.maps.First()}).ToArray(),"native catalogue gate rejects a surviving legacy map");
+        var training=data.Map("training");training.rotation=true;RejectCatalog(data.maps,"training cannot leak into random rotation");training.rotation=false;
+        training.unity=false;RejectCatalog(data.maps,"native catalogue requires Unity-authored flags");training.unity=true;
+        NativeMapRules.ValidateShippedCatalog(data);
         var emptyRotation=new ConversionContent{maps=new[]{new ContentMap{id="brickfall"}}};Check(NativeMapRules.RandomArena(emptyRotation,1)=="brickfall","empty rotation fallback");
         Check(data.contentRevision!=NativeMapRules.Revision(text),"catalog policy participates in peer compatibility");
         var malformed=JsonSerializer.Deserialize<UnityMapContent>(text,opts).maps[0];malformed.spawns=new MapSpawns();bool rejected=false;

@@ -2,6 +2,21 @@
 
 Owner direction (2026-10-31): party starts together at a Deployment Station, rolls instances on the first machine, can optionally roll a second mutator machine, and then deploys. The first roll generates the outdoor exploration map: approaching an Ironworks entrance gradually gives the surrounding world an Ironworks identity, approaching Central Station gives it a transit identity, etc. Once the Expedition begins, neither machine may roll.
 
+## Test-update scope (owner confirmed 2026-11-01)
+
+The owner selected **test update now with active-run host migration unavailable**, authorizing
+integration into shared and the existing test builder. This supersedes the earlier draft-only
+hold for this limited test scope; it does not claim complete host migration or production readiness.
+The generated station/world/district features are included; active-run transfer remains disabled.
+
+`PrototypeBuild.Validate` now runs `CheckDeploymentBuildAcceptance` before Windows packaging
+(and the cloud pre-export path uses the same validation). Even under `-nographics`, this runs
+eight generated layouts, four 1,800-tick split-area fixtures, native codecs, lobby transfers and
+loading/handoff guards. Failure throws before packaging/publication. The headless marker is
+`DEPLOYMENT_BUILD_ACCEPTANCE_READY`; it explicitly excludes GPU passes and rendered/human co-op
+acceptance. With a graphics device the shader passes run too. The standalone graphics check below
+remains available. Native build results, publication and manual playtesting must be reported separately.
+
 ## Current integration (Astra, 2026-10-31)
 
 Task branch `codex/deployment-completion` combines continuation `c9039362` with Claude's station presentation `654c4f85`. Earlier foundation/dormant notes below are historical; this section describes the combined source.
@@ -103,7 +118,7 @@ finished generated-district visuals, acceptable real gameplay FPS, or active-run
 
 ### Remaining acceptance and presentation work
 
-This is source integration, not a verified Windows release. Native Unity/PhysX execution, the station shader, real co-op join/leave/reconnect, initial-load failure handling, multi-seed native performance and rendered acceptance must pass before shared/builder publication. The build gate now includes generated-world native placements/routes, the full composed-layout startup validator and Unity codec round trips for both lobby and combined snapshots.
+The owner-authorized test update uses the pre-package native simulation gate above. It is not a fully accepted Windows release: station shader passes on a real GPU, real co-op join/leave/reconnect and initial-load failure handling, multi-seed gameplay performance and rendered acceptance remain manual follow-up. The build gate now includes generated-world native placements/routes, the full composed-layout startup validator and Unity codec round trips for both lobby and combined snapshots.
 
 Claude's generated-district pass through `c08742fe` is now included in this draft, on top of
 `3cdaa7b7`. The live adapter remains `Runtime/NativeDeploymentLive.cs`; it uses the actual
@@ -139,7 +154,7 @@ only (`Core/NativeExpeditionCityKit.Generated.cs`); no collider, record, route, 
 - **Not done:** per-district fog or ambient colour as the camera moves, district audio, the camp's brazier and props
   in the generated plaza, mutator presentation (no effect list yet).
 
-Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The branch must remain draft until native acceptance and active-run migration are resolved.
+Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The owner-authorized test update may ship with active-run migration disabled; full migration remains separate unfinished work.
 
 ## Approved gameplay shape
 
