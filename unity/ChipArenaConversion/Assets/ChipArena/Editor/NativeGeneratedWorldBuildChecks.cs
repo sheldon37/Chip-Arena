@@ -116,18 +116,20 @@ namespace ChipArena.UnityConversion.Editor
                 var podRules=new NativePodRun(new[]{new NativePodRecord{seat=1,order=0,name="Generated A",bodyColor="#123456",accentColor="#abcdef",look=arena.Match.Seat(1).pod}});
                 if(!podRules.Start(arena.Match))throw new Exception("Generated pod countdown did not start.");
                 arena.PodRecords=podRules.Snapshot();
-                var landing=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="state",frame=arena.NetworkFrame()})).frame;
-                if(landing.phase!=NativePhase.Countdown||landing.phaseEnd!=3||landing.fightAt!=3||landing.pods.Length!=1||landing.seats[0].pod!=arena.Match.Seat(1).pod)
+                var landing=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=arena.NetworkFrame()})).frame;
+                if(landing==null||landing.pods==null||landing.seats==null||landing.seats.Length<1||landing.phase!=NativePhase.Countdown||landing.phaseEnd!=3||landing.fightAt!=3||landing.pods.Length!=1||landing.seats[0].pod!=arena.Match.Seat(1).pod)
                     throw new Exception("Pod countdown or seat look lost in Unity codec.");
                 arena.Match.SynchronizeExpeditionClock(4);
                 if(!podRules.Board(1,new System.Numerics.Vector3(),4,true))throw new Exception("Pod boarding refused.");
                 arena.PodRecords=podRules.Snapshot();
-                var launch=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="state",frame=arena.NetworkFrame()})).frame;
-                if(launch.pods[0].launchAt!=4||launch.pods[0].look!=arena.Match.Seat(1).pod||!NativePodRun.Valid(launch.pods,launch.time))
+                var launch=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=arena.NetworkFrame()})).frame;
+                if(launch==null||launch.pods==null||launch.pods.Length!=1||launch.seats==null||launch.seats.Length<1||launch.seats[0].pod!=arena.Match.Seat(1).pod||launch.pods[0].launchAt!=4||launch.pods[0].look!=arena.Match.Seat(1).pod||!NativePodRun.Valid(launch.pods,launch.time))
                     throw new Exception("Late-join pod launch lost in Unity codec.");
 
                 var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-state",epoch=7,
                     deployment=room.Ticket,frame=arena.NetworkFrame(),expeditionPublic=new ExpeditionView(),expeditionPrivate=new ExpeditionPrivateFrame()}));
+                if(wire.frame?.pods==null||wire.frame.pods.Length!=1||wire.frame.pods[0].launchAt!=4||wire.frame.pods[0].look!=arena.Match.Seat(1).pod||wire.frame.seats==null||wire.frame.seats.Length<1||wire.frame.seats[0].pod!=arena.Match.Seat(1).pod)
+                    throw new Exception("Pod launch or seat look lost in Expedition Unity snapshot codec.");
                 if(wire.deployment?.station!=room.Ticket.station||wire.deployment.instanceRolls!=room.Ticket.instanceRolls)
                     throw new Exception("Generated run ticket lost in Unity snapshot codec.");
                 var lobby=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="lobby",deployment=room.Ticket}));
