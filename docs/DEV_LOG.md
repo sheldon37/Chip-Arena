@@ -29,7 +29,10 @@
   - an offline rig probe of the stuck pose per weapon (not committed);
   - Unity captures of all four weapons on the model, and sword and greatsword on the classic rig, from the drop through
     the pull-out;
-  - full suite: see below.
+  - full CoreTests on a clean LF checkout of `4256e64d`: exit 0, 939 PASS lines, all plunging-stab and downward-plunge
+    groups included; pin scan clean.
+- **Status:** merged into shared as `62b00b09`. Published to the test channel in builder build `3e9ec012` (Astra's #314 on
+  top), BUILD SUCCEEDED, publication succeeded 23:52 UTC.
 - **Next:** owner check in the Windows build. The daggers' squat keeps the head low over the blades.
 
 
