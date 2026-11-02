@@ -26,13 +26,15 @@
 - **Also (tests only):** shared `#310` (online invites) put the social GUI pass between `StageInputGate`/`GuiFrame` and the
   toast. Two source pins were updated to the new order with the same intent: `BuildLabelChecks` and
   `TransitionLoadingChecks`. Astra: shared failed its own full suite until then.
-- **Checks:** zombie suites as in docs/ZOMBIE-LOCOMOTION.md. Full suite: see the merge note.
+- **Checks:** zombie suites as in docs/ZOMBIE-LOCOMOTION.md. Full CoreTests on a clean LF worktree of `9c6d7b9b` (this branch
+  with the Hulk charge and the Backrooms preview; local Windows path patch, not committed): 938 PASS lines, rc 0.
 - **Next:** owner check in the Windows build.
 
 ## 2026-11-02 — Claude: Backrooms kit bank, layout contract and a DEV Level 0 preview
 
-- **Branch/base:** `claude/backrooms-plan` (after the plan commit `cedc4bcb`, already on shared). Merged into shared. No
-  builder sync: the builder is red on Astra's pod codec check (`541458a3`), and this adds nothing players can see.
+- **Branch/base:** `claude/backrooms-plan` (after the plan commit `cedc4bcb`, already on shared), carried by
+  `claude/zombie-squat` into shared. No builder sync: the builder is red on Astra's pod codec build check (since `541458a3`),
+  and this adds nothing players can see.
 - **Task:** owner: "Go ahead" (the Level 0 kit bake and a preview, after the plan).
 - **Changes (docs/BACKROOMS.md "Built so far"):**
   - Bank tool: `split`, `materials` and `wind_by_normals` options. The kit is wound against its own normals in places.
