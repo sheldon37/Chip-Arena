@@ -52,17 +52,47 @@ namespace ChipArena.UnityConversion
             public Mutator(string id,string name,string line,Polarity polarity){Id=id;Name=name;Line=line;Polarity=polarity;}
             public int Color=>PolarityColor(Polarity);
         }
-        // Display names and tone only: no mutator gameplay is agreed (docs/EXPEDITION-DEPLOYMENT.md). The lines describe the
-        // fiction, never numbers; Astra's catalog decides what each id does. Unknown ids read as UNKNOWN, chaos-toned.
+        // The owner's 30 (2026-11-01: "fun things, overpowered things, insane difficulty things"). Display names and tone only;
+        // the proposed effects are in docs/EXPEDITION-DEPLOYMENT.md "Mutator catalog" and Astra's rules decide what each id
+        // does. Names use the card font's letters (A-Z, 0-9, '-', '.'). Unknown ids read as UNKNOWN, chaos-toned.
         private static readonly Mutator[] KnownMutators=
         {
-            new Mutator("surge","SURGE","Everything moves faster.",Polarity.Chaos),
-            new Mutator("storm","STORM","The weather turns on you.",Polarity.Chaos),
+            new Mutator("jackpot","JACKPOT","Every kill pays double.",Polarity.Boon),
+            new Mutator("overclock","OVERCLOCK","Pilots move a third faster.",Polarity.Boon),
+            new Mutator("moon-boots","MOON BOOTS","Low gravity: jump twice as high.",Polarity.Boon),
+            new Mutator("bottomless","BOTTOMLESS","Infinite ammo. No reloads.",Polarity.Boon),
+            new Mutator("second-wind","SECOND WIND","Free reprints, faster revives.",Polarity.Boon),
+            new Mutator("windfall","WINDFALL","Caches cost half and restock fast.",Polarity.Boon),
+            new Mutator("vampire","VAMPIRE","Every hit heals you a little.",Polarity.Boon),
+            new Mutator("adrenaline","ADRENALINE","Stamina never runs out.",Polarity.Boon),
+            new Mutator("chip-rain","CHIP RAIN","The dead drop chips.",Polarity.Boon),
+            new Mutator("headhunter","HEADHUNTER","Headshots hit three times as hard.",Polarity.Boon),
+            new Mutator("hulkamania","HULKAMANIA","Every zombie is a Hulk.",Polarity.Bane),
+            new Mutator("sprinters","SPRINTERS","Nothing shambles. Everything runs.",Polarity.Bane),
+            new Mutator("iron-hide","IRON HIDE","The horde takes twice the killing.",Polarity.Bane),
+            new Mutator("swarm","SWARM","Twice the horde.",Polarity.Bane),
+            new Mutator("paper-pilots","PAPER PILOTS","Every pilot has half health.",Polarity.Bane),
+            new Mutator("permadeath","PERMADEATH","No reprints. The fallen stay down.",Polarity.Bane),
             new Mutator("darkness","DARKNESS","The city's lights fail.",Polarity.Bane),
+            new Mutator("whiteout","WHITEOUT","Fog so thick you hear them first.",Polarity.Bane),
+            new Mutator("broke","BROKE","Kills pay half. Caches cost double.",Polarity.Bane),
+            new Mutator("bloated","BLOATED","Every zombie bursts when it dies.",Polarity.Bane),
             new Mutator("brittle","BRITTLE","Cover breaks easily.",Polarity.Bane),
-            new Mutator("windfall","WINDFALL","Caches run deeper.",Polarity.Boon),
-            new Mutator("second-wind","SECOND WIND","Revives come quicker.",Polarity.Boon),
+            new Mutator("surge","SURGE","Everything moves faster.",Polarity.Chaos),
+            new Mutator("storm","STORM","Lightning hunts the streets.",Polarity.Chaos),
+            new Mutator("glass-cannon","GLASS CANNON","Triple damage dealt. Triple taken.",Polarity.Chaos),
+            new Mutator("high-explosive","HIGH EXPLOSIVE","Every shot explodes.",Polarity.Chaos),
+            new Mutator("bounce-house","BOUNCE HOUSE","Triple knockback for everyone.",Polarity.Chaos),
+            new Mutator("friendly-fire","FRIENDLY FIRE","Hurt your squad. Earn more.",Polarity.Chaos),
+            new Mutator("roulette","ROULETTE","Your weapon keeps changing.",Polarity.Chaos),
+            new Mutator("martyr","MARTYR","Fall, and take them with you.",Polarity.Chaos),
+            new Mutator("big-heads","BIG HEADS","Huge heads. Easy headshots.",Polarity.Chaos),
         };
+        /// <summary>Every card's id in catalog order: the DEV preview's roll pool and the list a live roll passes once Astra's
+        /// rules apply the effects.</summary>
+        public static readonly string[] MutatorIds=Array.ConvertAll(KnownMutators,m=>m.Id);
+        public static int MutatorCount=>KnownMutators.Length;
+        public static Mutator MutatorAt(int i)=>KnownMutators[i];
         public static Mutator MutatorOf(string id)
         {
             foreach(var m in KnownMutators)if(m.Id==id)return m;

@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         private static int deployPreviewFlag=-1;
         private static bool DeployPreviewRequested{get{if(deployPreviewFlag<0)deployPreviewFlag=Array.IndexOf(Environment.GetCommandLineArgs(),"--ca-deploy-preview")>=0?1:0;return deployPreviewFlag==1;}}
         private static readonly ExpeditionInstanceTheme[] DeployPreviewInstances={new ExpeditionInstanceTheme{id="exp-ward-zero",theme="quarantine"},new ExpeditionInstanceTheme{id="exp-transit",theme="rail"},new ExpeditionInstanceTheme{id="exp-foundry",theme="industrial"}};
-        private static readonly string[] DeployPreviewMutators={"surge","storm","darkness","brittle","windfall","second-wind"};
+        private static readonly string[] DeployPreviewMutators=NativeDeployPresentation.MutatorIds;
         private static readonly string[] DeployStandInNames={"YOU","PILOT 2","PILOT 3","PILOT 4"},DeployStandInSpecs={"pistol","sword","rifle","daggers"},DeployStandInBodies={"#e5e7eb","#2f3644","#cfd5e2","#3a4256"},DeployStandInAccents={"#22e6ff","#ff3dcf","#ffd84a","#6dffa8"},DeployStandInPoses={"weapon","crossed","weapon","crossed"};
         private bool deployPreviewClosed,deployShown,deployAsGuest;private NativeExpeditionDeployment deployAuthority;private ExpeditionDeploymentState deployState;private string deployHost;
         private readonly NativeDeployClock deployClock=new NativeDeployClock();private readonly NativeDeployConsole.Party deployParty=new NativeDeployConsole.Party();
