@@ -1,3 +1,9 @@
+## 2026-11-02 — Astra: controller menu-click hotfix
+
+- Owner reports both mouse and controller menu activation broken after published controller source `1e38cf7`. Task `codex/controller-click-fix` starts from that exact shared/builder commit. Found controller Update clearing GUIUtility.hotControl every blocked frame, including every frame without a gamepad: this cancels native mouse press/drag ownership between MouseDown and MouseUp. Remove that reset; virtual-pointer cancellation still clears only its own state.
+- Preserve the actual IMGUI event and its consumed state instead of replacing/restoring Event.current. Controller hover changes mouse coordinates only during Repaint and restores the coordinates afterward. Controller hit tests now subtract a window origin captured before canvas/group transforms, rather than deriving it repeatedly from mutable event coordinates.
+- Focused package/backend/input-ownership regressions and source packaging pass. Controller/transition-loading managed checks and pinned Input System/Unity semantic assembly checks are run before queueing; exact results and native build/feed receipt are recorded in #300. This is a narrow input integration fix: no combat, network, geometry, animation or migration changes. Real mouse/controller menu interaction is still not verified by the headless builder; owner play confirmation remains necessary.
+
 ## 2026-11-02 — Astra: controller test-channel integration
 
 - Owner requested controller publication after the Expedition update. Task `codex/controller-release` merges #300 `bdbfacc6` with published shared `f5081f4`; both histories and the rooftop-before-DeployOutfit ordering are preserved. Both native deployment acceptance and controller input/JSON gates run before packaging; Both input backends remain enabled.

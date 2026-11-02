@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     public static class NativeControllerPointer
     {
         public static bool Active;
-        private static Vector2 press,point;
+        private static Vector2 press,point,screenOrigin;
         private static bool pressed;
         private static int released=-1,consumed=-1;
         private static Rect? clip;
@@ -16,12 +16,16 @@ namespace ChipArena.UnityConversion
             if(up){if(pressed)released=Time.frameCount;pressed=false;}
         }
         public static void Cancel(){pressed=false;released=-1;Active=false;clip=null;}
+        public static void BeginGui()
+        {
+            var matrix=GUI.matrix;GUI.matrix=Matrix4x4.identity;
+            screenOrigin=GUIUtility.GUIToScreenPoint(Vector2.zero);GUI.matrix=matrix;
+        }
         static Rect ScreenRect(Rect rect)
         {
             var a=GUIUtility.GUIToScreenPoint(rect.min);var b=GUIUtility.GUIToScreenPoint(rect.max);
             // GUIToScreenPoint includes the Editor game-view window origin; subtract that origin.
-            var origin=GUIUtility.GUIToScreenPoint(Event.current.mousePosition)-point;
-            return Rect.MinMaxRect(a.x-origin.x,a.y-origin.y,b.x-origin.x,b.y-origin.y);
+            return Rect.MinMaxRect(a.x-screenOrigin.x,a.y-screenOrigin.y,b.x-screenOrigin.x,b.y-screenOrigin.y);
         }
         public static void SetClip(Rect rect){if(Active)clip=ScreenRect(rect);}
         public static void ClearClip(){clip=null;}

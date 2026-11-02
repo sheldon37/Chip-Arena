@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
             if(prefs==null||dedicated)return;
             var options=ControllerPrefs;var next=Gamepad.current;
             bool ui=ControllerUi,blocked=!Application.isFocused||StageInputHeld||SplitLocalLoading||!options.enabled||next==null||!next.added||!next.enabled;
-            if(next!=pad||ui!=padUi||blocked){padNeutral=true;NativeControllerPointer.Cancel();GUIUtility.hotControl=0;}
+            if(next!=pad||ui!=padUi||blocked){padNeutral=true;NativeControllerPointer.Cancel();}
             if(padNeutral)padState.Step(options.bindings,0,false,true);
             pad=next;padUi=ui;
             if(pad==null||!pad.added||blocked){padPointerActive=false;padCapture=-1;return;}
@@ -94,10 +94,11 @@ namespace ChipArena.UnityConversion
         }
         private void ControllerGuiEvent()
         {
-            if(!padPointerActive||!ControllerUi||padCapture>=0)return;
-            // Override hover coordinates only. Repaint/Layout remain intact; controller activation is
-            // handled by NativeControllerPointer in the existing button and form helpers.
-            var ev=new Event(Event.current);ev.mousePosition=padPointer;Event.current=ev;
+            // Capture the window origin before any canvas matrix or scroll group is applied.
+            // Never replace Event.current: real mouse events must retain their Used state.
+            NativeControllerPointer.BeginGui();
+            if(!padPointerActive||!ControllerUi||padCapture>=0||Event.current.type!=EventType.Repaint)return;
+            Event.current.mousePosition=padPointer;
         }
 
         private void ControllerCursor()
