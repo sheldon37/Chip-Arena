@@ -53,11 +53,12 @@ namespace ChipArena.UnityConversion
         public enum Model{Room,Table,Map,Holo,Beacon,Pad,Instance,Lever,DrumBand,DrumRims,Mutator,Card,Quad,Gate,DoorLeft,DoorRight,Lift,Console,Lamp,Beam}
         public static readonly int ModelCount=Enum.GetValues(typeof(Model)).Length;
         public enum Blend{Opaque,Additive,Alpha}
-        /// <summary>Texture slots: white, the holo map, the stamps, the soft glow (NativeDeployArt.GlowTile), then the strips
-        /// (machine 0 the instance reels, 1 the dials).</summary>
-        public const int TexWhite=0,TexMap=1,TexStamp=2,TexGlow=3,TexStrip=4,TextureCount=TexStrip+6;
+        /// <summary>Texture slots: white, the holo map, the stamps, the soft glow (NativeDeployArt.GlowTile), the spark
+        /// (SparkTile), then the strips (machine 0 the instance reels, 1 the dials).</summary>
+        public const int TexWhite=0,TexMap=1,TexStamp=2,TexGlow=3,TexSpark=4,TexStrip=5,TextureCount=TexStrip+6;
         public static int StripTexture(int machine,int reel)=>TexStrip+machine*3+reel;
-        public const int Capacity=96,MapWidth=200,MapHeight=152;
+        /// <summary>The draw list's size: the station's own items, then the slot sparks (NativeDeploySparks.Limit), drawn last.</summary>
+        public const int Capacity=96+NativeDeploySparks.Limit,MapWidth=200,MapHeight=152;
         /// <summary>One draw: a model at World (station frame, System.Numerics row vectors), its bones' light tints (linear rgb x
         /// level; Light is bone 1, Extra0.. bones 2..), the glass's opacity, and for screen sections the texture, its scroll (uv.y x
         /// Rep + Scroll), motion blur (texture v), HDR gain, blend, tint, the scan sweep (-1 none, else 0..1 up the screen), the chroma boost (1 as drawn) and whether the
@@ -84,11 +85,17 @@ namespace ChipArena.UnityConversion
         public string ThemeOf(string id)=>id!=null&&themes.TryGetValue(id,out var t)?t:null;
         /// <summary>The reels' and dials' strip positions this frame (in symbols) and their speeds.</summary>
         public readonly NativeDeployPresentation.ReelPose[] Poses=new NativeDeployPresentation.ReelPose[6];
+        /// <summary>The slot sparks this frame (NativeDeploySparks; both machines), drawn as the last items.</summary>
+        public readonly NativeDeploySparks.Spark[] Sparks=new NativeDeploySparks.Spark[NativeDeploySparks.Limit];public int SparkCount;
+        /// <summary>The rolls' moments heard this frame, for sound (NativeDeploySparks.Heard; Astra's audio plays them).</summary>
+        public readonly NativeDeploySparks.Cue[] Cues=new NativeDeploySparks.Cue[24];public int CueCount;
 
         private readonly string[][] strips={Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>(),Array.Empty<string>()};
         private readonly Dictionary<string,string> themes=new Dictionary<string,string>(StringComparer.Ordinal);
         private object instanceSource,mutatorSource;private readonly int[] seenRolls={-1,-1};private readonly int[] from=new int[6],land=new int[6];
         private readonly Vector4[] seat=new Vector4[NativeDeployPresentation.Pads];
+        private readonly int[] landColor=new int[3];private readonly NativeDeployPresentation.Polarity[] cardPolarity=new NativeDeployPresentation.Polarity[3];
+        private readonly NativeDeploySparks.Cue[] schedule=new NativeDeploySparks.Cue[12];private readonly float[] heard={float.NaN,float.NaN};
 
         public NativeDeployStage()
         {
@@ -167,6 +174,14 @@ namespace ChipArena.UnityConversion
             Controls=ControlsOf(s,InstanceLook,MutatorLook,Launch,f.Host);
             if(s!=null&&(!s.deployed||MapRevision<0)&&s.revision!=MapRevision)MapRevision=s.revision;
             var P=NativeDeployPresentation.Phase.Spinning;bool deployed=s!=null&&s.deployed;var dep=Deploy;
+            // what each machine's reels landed on (the sparks' colours and polarities) and the cabinets' kick as they land
+            int destinations=s!=null&&s.instanceRolls>0?Math.Min(3,s.districts.Length):0,cards=s!=null&&s.mutatorRolls>0?Math.Min(3,s.mutators.Length):0;
+            for(int r=0;r<3;r++)
+            {
+                var dd=r<destinations?s.districts[r]:null;landColor[r]=dd!=null?NativeDeployPresentation.DestinationOf(dd.instance,dd.theme).Color:NativeDeployPresentation.UnknownColor;
+                cardPolarity[r]=r<cards?NativeDeployPresentation.MutatorOf(s.mutators[r]).Polarity:NativeDeployPresentation.Polarity.Unknown;
+            }
+            float kickI=NativeDeploySparks.Kick(0,f.SinceInstanceRoll,null,destinations,f.Reduced),kickM=NativeDeploySparks.Kick(1,f.SinceMutatorRoll,cardPolarity,cards,f.Reduced);
             float flicker=f.Reduced?.95f:.86f+.14f*(float)Math.Sin(t*23)*(float)Math.Sin(t*7.3f)-(Hash((float)Math.Floor(t*9))>.93f?.45f:0);
             float pulse=.5f+.5f*(float)Math.Sin(t*3.1f),breath=.5f+.5f*(float)Math.Sin(t*1.6f);
 
@@ -220,8 +235,8 @@ namespace ChipArena.UnityConversion
             {
                 var root=NativeDeployModels.Root(NativeDeployPresentation.InstanceMachineAt,NativeDeployPresentation.InstanceYaw);var look=InstanceLook;bool spin=look.Phase==P;
                 float landed=f.SinceInstanceRoll-NativeDeployPresentation.RollDuration,flash=landed>=0&&landed<.8f?1-landed/.8f:0;
-                ref var body=ref Add(Model.Instance,root);body.Light=Grey(1.7f*look.Power);
-                Pool(NativeDeployPresentation.InstanceMachineAt+NativeDeployModels.Facing(NativeDeployPresentation.InstanceYaw)*.9f,4.2f,4.2f,0,Col(0xffa850,.34f*look.Power));
+                ref var body=ref Add(Model.Instance,root);body.Light=Grey(1.7f*look.Power*kickI);
+                Pool(NativeDeployPresentation.InstanceMachineAt+NativeDeployModels.Facing(NativeDeployPresentation.InstanceYaw)*.9f,4.2f,4.2f,0,Col(0xffa850,.34f*look.Power*kickI));
                 float a,b;
                 if(look.Phase==NativeDeployPresentation.Phase.Locked){a=b=.15f*look.Power;}
                 else if(spin){bool on=Frac(t*7)<.5f;a=on?2.6f:.35f;b=on?.35f:2.6f;}
@@ -247,8 +262,8 @@ namespace ChipArena.UnityConversion
             {
                 var root=NativeDeployModels.Root(NativeDeployPresentation.MutatorMachineAt,NativeDeployPresentation.MutatorYaw);var look=MutatorLook;var ph=look.Phase;
                 bool rolled=s!=null&&s.mutatorRolls>0&&s.mutators.Length>0;
-                ref var body=ref Add(Model.Mutator,root);body.Light=Grey(1.5f*look.Power*flicker);
-                Pool(NativeDeployPresentation.MutatorMachineAt+NativeDeployModels.Facing(NativeDeployPresentation.MutatorYaw)*.9f,4.2f,4.2f,0,Col(0x9d8cff,.3f*look.Power*flicker));
+                ref var body=ref Add(Model.Mutator,root);body.Light=Grey(1.5f*look.Power*flicker*kickM);
+                Pool(NativeDeployPresentation.MutatorMachineAt+NativeDeployModels.Facing(NativeDeployPresentation.MutatorYaw)*.9f,4.2f,4.2f,0,Col(0x9d8cff,.3f*look.Power*flicker*kickM));
                 body.Extra3=ph==NativeDeployPresentation.Phase.Skipped?Col(0xffd27a,2.4f):look.Usable&&(ph==NativeDeployPresentation.Phase.Optional||ph==NativeDeployPresentation.Phase.Pending)?Col(0xffd27a,1.1f+.7f*pulse):Grey(.15f);
                 body.Extra4=ph==NativeDeployPresentation.Phase.Optional?Col(0x7fd6ff,1.5f+.9f*pulse):Grey((ph==NativeDeployPresentation.Phase.Unavailable?.3f:.8f)*look.Power*flicker);
                 for(int r=0;r<3;r++)
@@ -302,9 +317,26 @@ namespace ChipArena.UnityConversion
                     ref var beam=ref Add(Model.Beam,Matrix4x4.CreateRotationY(yaw)*T(pad));beam.Blend=Blend.Additive;beam.Screen=Col(0x9ff0ff,.8f*(float)Math.Sin(Math.PI*dep.Lift));
                 }
             }
-            // the light: each machine's practical at its power, the table, the gate opening, the console's button
+            // the slot sparks, drawn last (the station's own items always fit), and the rolls' moments heard for sound
+            SparkCount=NativeDeploySparks.Instance(Sparks,0,f.SinceInstanceRoll,NativeDeployModels.Root(NativeDeployPresentation.InstanceMachineAt,NativeDeployPresentation.InstanceYaw),landColor,destinations,f.Reduced);
+            SparkCount=NativeDeploySparks.Mutator(Sparks,SparkCount,f.SinceMutatorRoll,NativeDeployModels.Root(NativeDeployPresentation.MutatorMachineAt,NativeDeployPresentation.MutatorYaw),cardPolarity,cards,f.Reduced);
+            for(int i=0;i<SparkCount&&Count<Capacity;i++)Streak(Sparks[i]);
+            int moments=NativeDeploySparks.Schedule(schedule,0,destinations,null);CueCount=NativeDeploySparks.Heard(schedule,moments,heard[0],f.SinceInstanceRoll,Cues,0);heard[0]=f.SinceInstanceRoll;
+            moments=NativeDeploySparks.Schedule(schedule,1,cards,cardPolarity);CueCount=NativeDeploySparks.Heard(schedule,moments,heard[1],f.SinceMutatorRoll,Cues,CueCount);heard[1]=f.SinceMutatorRoll;
+            // the light: each machine's practical at its power (and its kick), the table, the gate opening, the console's button
             float consoleLevel=Launch==NativeDeployPresentation.Launch.Ready||Launch==NativeDeployPresentation.Launch.HostOnly?.6f+.4f*breath:Launch==NativeDeployPresentation.Launch.Launching?1:.1f;
-            NativeDeployModels.StationLights(Lights,InstanceLook.Power,MutatorLook.Power,flicker,1,dep.Gate,consoleLevel,dep.Dim);
+            NativeDeployModels.StationLights(Lights,InstanceLook.Power*kickI,MutatorLook.Power*kickM,flicker,1,dep.Gate,consoleLevel,dep.Dim);
+        }
+        // A spark as a camera-facing quad: stretched along its streak as the camera sees it (round when it has none).
+        private void Streak(in NativeDeploySparks.Spark sp)
+        {
+            var d=sp.At-Camera.Eye;float dl=d.Length();if(!(dl>1e-3f))return;d/=dl;
+            var a=sp.Axis-d*Vector3.Dot(sp.Axis,d);float len=a.Length();Vector3 x,y;
+            if(len>sp.Width*.25f){y=a/len;x=Vector3.Normalize(Vector3.Cross(y,d));}
+            else{x=Vector3.Cross(Vector3.UnitY,d);x=x.LengthSquared()<1e-6f?Vector3.UnitX:Vector3.Normalize(x);y=Vector3.Cross(d,x);len=0;}
+            float w=sp.Width,h=sp.Width+len;
+            ref var it=ref Add(Model.Quad,new Matrix4x4(x.X*w,x.Y*w,x.Z*w,0,y.X*h,y.Y*h,y.Z*h,0,d.X,d.Y,d.Z,0,sp.At.X,sp.At.Y,sp.At.Z,1));
+            it.Texture=TexSpark;it.Blend=Blend.Additive;it.Screen=sp.Color;
         }
     }
 }

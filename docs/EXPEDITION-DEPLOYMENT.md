@@ -240,6 +240,38 @@ zombies, etc.' Think fun things, overpowered things, insane difficulty things. C
   - STORM's telegraph and strike, the HIGH EXPLOSIVE and MARTYR blasts, BLOATED's burst (reusing the bloater's);
   - the active mutators on the run HUD.
 
+### Slot sparks and sound cues (Claude, 2026-11-02)
+
+The owner asked for "spark effects when rolling and landing on things", with a different effect when a card helps the players
+or screws them. Core `NativeDeploySparks` derives every spark from this client's roll clock (the reels' own), so a late
+joiner sees none. `NativeDeployStage` draws them as camera-facing additive quads after the station's own items (at most 160).
+
+| Moment | What it looks like |
+|---|---|
+| A reel spinning | Grinder sparks: a thin stream at cruise, a spray while the brake bites (StopTime − Decel to StopTime). The instance machine's are hot orange off each window's lower lip; the mutator dials' are short blue-white crackles off the hubs. |
+| A destination landing | A burst off its window's rim in the destination's colour, a flash in the window and a thump of the cabinet light. |
+| A BOON card | A fountain of gold and green sparks with slow glints rising after it; the cabinet brightens. |
+| A BANE card | A short circuit: red sparks spray out and fall hard, arcs crackle round the card, and the flash and cabinet stutter. |
+| A CHAOS card | A violet vortex spinning out of the dome (alternate cards turn opposite ways), colours cycling violet, magenta, cyan. |
+| All three cards one polarity | The sign over the dome erupts at `SweepAt` (StopTime(2) + .12 s) in that polarity: a jackpot, or a disaster. |
+| Reduced effects | About a third of the sparks; no arcs; no stutter (the bane dip eases out instead). |
+
+- **Sound (Astra, owner 2026-11-02: "We can have astra simulate sound effects"):**
+  - `NativeDeployStage.Cues[0..CueCount)` lists each frame's roll moments, each heard exactly once.
+  - Each cue has a `Kind`:
+    - `Spin`: the lever and motor;
+    - `Brake`: a reel's brake starts biting, at StopTime − Decel;
+    - `Stop`: the reel's clunk;
+    - `Card`: the mutator card's sting, carrying its `Polarity`;
+    - `Sweep`: three of one polarity, carrying it.
+  - Each cue also carries `Machine` (0 instance, 1 mutator), `Reel` (-1 for the whole machine) and `At` (seconds after the
+    roll was seen).
+  - The schedule is `NativeDeploySparks.Schedule`. Nothing plays yet: the audio side is Astra's.
+- **The card faces:** a dial's 31 tiles used to rasterise on one worker per dial (9–14 s in the Editor) and drew white until
+  then. `NativeDeployScene` now rasterises each tile once, in parallel. The dials share the jobs, and a strip that isn't
+  ready draws a dark blank. All six strips are ready about 2.6 s after the station opens.
+- **Checks:** `--deploy-sparks` (`Tests/DeploySparkChecks.cs`).
+
 Active-run endpoint migration remains unsupported by the existing live Expedition transport (candidates remain non-capable); staging host promotion preserves the ticket. This change does not claim or enable active-run migration. The owner-authorized test update may ship with active-run migration disabled; full migration remains separate unfinished work.
 
 ## Approved gameplay shape
