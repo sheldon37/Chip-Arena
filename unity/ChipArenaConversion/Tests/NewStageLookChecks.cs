@@ -59,6 +59,15 @@ namespace ChipArena.UnityConversion
             var set=MapLookChecks.Load(root);NativeMapLooks.Validate(set);
             Check(NativeNewStageLooks.Kinds.Length<=NativeFactoryKit.Kinds.Length&&NativeNewStageLooks.Defaults.Length==NativeNewStageLooks.Kinds.Length&&NativeNewStageLooks.Kinds.Distinct().Count()==NativeNewStageLooks.Kinds.Length,"the kit kinds fit NativeFactoryKit.Looks, each with a default");
             foreach(var (look,_) in NativeNewStageLooks.Defaults)Check(NativeBlockLooks.Id(look)>=0,"a default kit look is a known key: "+look);
+            // Owner playtest (2026-11-01): low tops stand and rails over a lower floor vault (no invisible wall over them), while
+            // rails, parapets and walls at a lethal edge keep their pilot column (tools/generate_stage_hazards.py open_tops).
+            foreach(var (mapId,id,open) in new[]{("breakwater","breakwater-container-a",true),("breakwater","breakwater-booth-n-roof",true),("harbor","harbor-gatehouse-a",true),
+                ("polar","polar-hall-porch-w-n",true),("skyframe","skyframe-rail-atrium-w-0",true),("rig","rig-rail-main-n-0",true),
+                ("breakwater","breakwater-parapet-n",false),("harbor","harbor-wall-e",false),("skyframe","skyframe-rail-edge-w-0",false),("rig","rig-rail-lifeboat-n-w",false)})
+            {
+                var m=content.maps.Single(x=>x.id==mapId);var b=m.blocks.Single(x=>x.id==id);var on=new V3(b.pos.x,b.pos.y+b.size.y/2+.9f,b.pos.z);
+                Check((NativeMapRules.ExcludeTops(m,on)-on).Length>.001f!=open,id+(open?": a pilot stands on it":": its pilot column holds the edge"));
+            }
 
             // 1. Every look resolves, styled, with the advanced lighting; block and kit looks name real blocks and known kinds.
             for(int i=0;i<NativeNewStageLooks.Maps.Length;i++)
