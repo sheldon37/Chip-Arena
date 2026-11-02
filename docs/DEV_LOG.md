@@ -17,7 +17,7 @@
     ceiling, faces out, fixtures by circuit.
   - Unity compile.
   - Unity captures from inside, compared with the photo.
-  - The full suite: see the merge note.
+  - Full CoreTests on a clean LF worktree of `5c1259cc` (local Windows path patch, not committed): 938 PASS lines, rc 0.
 - **For Astra:** the contract's numbers changed (docs/BACKROOMS.md). The generator should follow the Level 0 rules there
   (enclosed rooms, corridors, doorways; the pack's archetype numbers).
 - **Next:**
