@@ -31,5 +31,21 @@ internal static class ControllerChecks
         state.Step(p.bindings,up,false,false);Check(state.Up[(int)PadAction.Slot5]&&!state.Held[(int)PadAction.Slot1],"modifier release does not fire base ability");
         state.Step(p.bindings,0,false,false);state.Step(p.bindings,up,false,false);Check(state.Down[(int)PadAction.Slot1],"fresh physical press rearms base ability");
         var defaults=new NativeControllerPreferences();defaults.Normalize();Check(defaults.bindings.SequenceEqual(NativeControllerBindings.Defaults()),"reset returns a fresh independent layout");
+        var nav=new NativeMenuNavigation();
+        nav.BeginFrame();nav.Add(new NativeMenuNavigation.Item{X=0,Y=0,W=100,H=30});nav.Add(new NativeMenuNavigation.Item{X=120,Y=0,W=100,H=30});nav.Add(new NativeMenuNavigation.Item{X=0,Y=50,W=100,H=30,Slider=true});
+        Check(nav.Pulse(0,.4f,0)==0,"menu stick drift does not move focus");
+        Check(nav.Pulse(0,1,0)==3&&nav.Pulse(0,1,.2f)==0&&nav.Pulse(0,1,.36f)==3&&nav.Pulse(0,1,.4f)==0,"menu hold delays and repeats without frame-rate bursts");
+        Check(nav.Pulse(0,0,.41f)==0&&nav.Pulse(1,0,.42f)==1,"menu release and direction change rearm navigation");
+        nav.Move(3);Check(nav.Focus==0,"first menu input selects an available option");
+        nav.Move(1);Check(nav.Focus==1,"menu right selects neighboring column");
+        nav.Move(2);nav.Move(3);Check(nav.Focus==2,"menu down selects next row");
+        Check(nav.Move(1)==1&&nav.Focus==2&&nav.Move(2)==-1,"menu left/right adjust focused slider without leaving it");
+        nav.Move(4);Check(nav.Focus==0,"menu up leaves slider for previous row");
+        nav.Reset();Check(!nav.Current(out _),"menu context reset removes stale controls and focus");
+        nav.BeginFrame();nav.Add(new NativeMenuNavigation.Item{X=0,Y=100,W=100,H=30,Clipped=true,ClipY=0,ClipH=50});nav.EnsureFocus();
+        Check(nav.ScrollNeeded()==86,"menu focus scrolls lower options into view");
+        nav.BeginFrame();nav.Add(new NativeMenuNavigation.Item{X=0,Y=-30,W=100,H=20,Clipped=true,ClipY=0,ClipH=50});
+        Check(nav.ScrollNeeded()==-36,"menu focus scrolls upper options into view");
+        nav.BeginFrame();Check(!nav.Current(out _)&&nav.Move(3)==0,"empty menu cannot activate stale focus");
     }
 }
