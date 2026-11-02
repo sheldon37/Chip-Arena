@@ -1,3 +1,33 @@
+## 2026-11-02 — Claude: controller menu focus glow and hover tick
+
+- **Branch/base:** `claude/menu-focus-glow` from shared `1d488cd`. Implementation `e2a805a`, then this log. Merged into
+  shared and the builder (test channel). Not a live release.
+- **Task:** owner: "added selecting things with a controller; Can we create a Hover sound with a glow for better menu
+  navigation?" This is presentation on top of Astra's focus navigation (#304); no navigation rules changed.
+- **Changes:**
+  - `Core/NativeMenuFocusMotion`:
+    - the tick is an edge: focus moved to another control, or shown again after the mouse took over; a held focus,
+      or a list scrolling under it, stays quiet;
+    - the pop eases out from 1 to 0 over 0.16 s;
+    - the glow breathes over 1.6 s;
+    - neither with reduced effects.
+  - `Runtime/NativeMenuFocusFx`: a nine-sliced 20 px cyan glow round the control, a faint fill, and a bright edge that
+    pops in from 10 px out. The tick is the existing menu hover sound (`NativeUiSounds.Hover`, procedural, with its
+    0.09 s cooldown), raised through the new `NativeUi.Cue`.
+  - `NativeController.ControllerCursor` (Astra's file, the drawing lines only): it calls the effect instead of the
+    2 px outline, and hides it when no focus is shown.
+- **Affected systems:** controller menu presentation and its UI audio. No input, binding, navigation, network or
+  gameplay change.
+- **Checks:**
+  - `--menu-focus` (new `Tests/MenuFocusChecks.cs`, registered after `--controller`): 256 checks;
+  - full suite on a clean LF worktree: 928 PASS lines, rc 0 (ExpeditionEndingChecks' Windows path patch applied there only);
+  - `tools/check_unity_compile.py`: Input System, Player, Runtime and Editor PASS;
+  - `git diff --check` clean.
+  - Unity: main-menu captures with a virtual Input System gamepad (local BoZo v245 `pad=`). PLAY VS BOTS focused after
+    two d-pad downs; the updater button after a d-pad right.
+- **Not checked:** the tick heard in a capture (no audio capture; the wiring is checked), a physical pad, every menu
+  screen.
+
 ## 2026-11-02 — Claude: the owner's 30 Expedition mutator cards (effects handed to Astra)
 
 - **Branch/base:** `claude/expedition-modifiers`, stacked on `claude/playtest-fixes` (`00b669b`); shared merged in.
