@@ -419,3 +419,23 @@ attention to what happens here". Two things showed in it:
   - A 0.9 m push over 0.1 s still dips for about 0.2 s while both feet step (a stumble, as before).
 - **Checks:** `--zombie-knock` adds the jump case. `--zombie-gait`, `--zombie-posture`, `--zombie-twitch`, `--hulk-motion`,
   `--horde-drops`, `--visual-rig`, `--zombie-models` and `--zombie-gore` pass.
+
+### The Hulk's charge (2026-11-02)
+
+- **Owner:** "can we fix charge animation for hulks? They look kinda derpy at the moment."
+- **Seen in Unity (side views of a live charge):**
+  - wind-up: both arms thrown back over the head;
+  - run: one arm reaching straight up, the other flailing with the run take; knees at 115-135 degrees.
+- **Cause:** the charge's wrist targets (`NativeHordeHeavy` `RunPose`, `ChargeWind`) were set for the small rig, about 0.8
+  rig m up. On the model's lowered shoulder that is overhead. The trailing arm had no target, so it took the run take's swing.
+- **Change (`Core/NativeHordeHeavy.cs`):**
+  - A shoulder charge: the trunk pitched forward from the hips (pelvis, spine and chest pitch up to .16/.18/.2) with less body
+    drop (-.03), and the head up on the target.
+  - The leading forearm guards the lowered shoulder at chest height (-.12, -.32, .3).
+  - The trailing fist is driven back by the hip (.34, -.42, -.16), both at full weight.
+  - The wind-up spreads the arms at chest height, then coils into the same pose.
+- **Result (Unity):** no arm over the head in the wind-up or the run; a forward-pitched rush with forearms leading. The legs
+  still drive from a fairly deep crouch.
+- **Animation impacts:** the Hulk's arms and trunk during a charge only. The charge's timing, lane, speed, damage and collision
+  are unchanged.
+- **Checks:** `--hulk-motion` passes. The station baseline's `kindN.motion` lines are rewritten with this and the squat fix.

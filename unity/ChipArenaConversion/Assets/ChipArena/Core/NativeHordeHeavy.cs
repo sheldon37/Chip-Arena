@@ -273,12 +273,16 @@ namespace ChipArena.UnityConversion
             K(0,KnockEnd)};
         // ---- the proposed charge: its wind-up (rearing, the right foot scraped back, the shoulder lowered and coiled, the lunge
         // forward on its last beat), the run's lowered-shoulder pose over the heavy gait, and its ends ----
-        private static float[] RunPose(int a,float o,int e=0)=>K(a,o,e,by:-.06f,bz:.04f,pp:.06f,py:.12f,sp:.1f,sy:.15f,cp:.12f,cy:.38f,cr:.04f,hp:-.25f,hy:-.34f,rx:-.06f,ry:-.05f,rz:.38f,rw:1);
+        // (Owner 2026-11-02: "They look kinda derpy". A shoulder charge: the trunk pitched well forward from the hips rather than the
+        // knees folded under it, the head up on the target, the leading forearm guarding the lowered shoulder at chest height and
+        // the trailing fist driven back by the hip; the old wrist targets sat above the model's lowered shoulder, so the leading
+        // arm reached up and the trailing one flailed with the take.)
+        private static float[] RunPose(int a,float o,int e=0)=>K(a,o,e,by:-.03f,bz:.06f,pp:.16f,py:.12f,sp:.18f,sy:.15f,cp:.2f,cy:.38f,cr:.04f,hp:-.38f,hy:-.3f,rx:-.12f,ry:-.32f,rz:.3f,rw:1,lx:.34f,ly:-.42f,lz:-.16f,lw:1);
         private static readonly float[][] ChargeWind={
             K(0,0),
-            K(0,.2f,by:.03f,cp:-.12f,hp:-.1f,rx:-.42f,rz:.1f,rw:.5f,lx:.42f,lz:.1f,lw:.5f),
-            K(0,.45f,by:-.06f,bz:-.04f,pp:.06f,py:.12f,sp:.12f,sy:.15f,cp:.16f,cy:.3f,hp:-.18f,hy:-.25f,rx:-.12f,ry:-.1f,rz:.32f,rw:.9f,lx:.45f,ly:-.15f,lz:-.2f,lw:.8f),
-            K(0,.75f,by:-.1f,bz:-.06f,pp:.1f,py:.15f,sp:.16f,sy:.18f,cp:.2f,cy:.42f,cr:.05f,hp:-.28f,hy:-.38f,rx:-.06f,ry:-.08f,rz:.36f,rw:1,lx:.46f,ly:-.22f,lz:-.28f,lw:.9f),
+            K(0,.2f,by:.03f,cp:-.12f,hp:-.1f,rx:-.46f,ry:-.18f,rz:.12f,rw:.7f,lx:.46f,ly:-.18f,lz:.12f,lw:.7f),
+            K(0,.45f,by:-.05f,bz:-.04f,pp:.1f,py:.12f,sp:.14f,sy:.15f,cp:.18f,cy:.3f,hp:-.25f,hy:-.25f,rx:-.14f,ry:-.3f,rz:.28f,rw:1,lx:.4f,ly:-.38f,lz:-.2f,lw:1),
+            K(0,.75f,by:-.07f,bz:-.06f,pp:.14f,py:.15f,sp:.18f,sy:.18f,cp:.22f,cy:.42f,cr:.05f,hp:-.34f,hy:-.36f,rx:-.1f,ry:-.32f,rz:.3f,rw:1,lx:.38f,ly:-.42f,lz:-.24f,lw:1),
             RunPose(0,NativeHulkMoves.ChargeWind,In)};
         private static readonly float[][] ChargeRun={RunPose(0,0)};
         private static readonly float[][] ChargeHit={

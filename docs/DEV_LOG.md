@@ -1,3 +1,15 @@
+## 2026-11-02 — Claude: the Hulk's charge as a shoulder charge
+
+- **Branch:** `claude/zombie-squat` (with the squat fix and the Backrooms preview). Merged into shared together.
+- **Task:** owner: "can we fix charge animation for hulks? They look kinda derpy at the moment."
+- **Change (`Core/NativeHordeHeavy.cs`):** the charge's wind-up and run poses. The wrist targets sat above the model's
+  lowered shoulder, and the trailing arm was left to the run take. Now the trunk pitches forward from the hips, the
+  forearms guard, the trailing fist sits by the hip and the head is up. Details: docs/ZOMBIE-LOCOMOTION.md "The Hulk's charge".
+- **Animation impacts:** arms and trunk during a charge. No timing, hit, damage, movement or network change.
+- **Checks:** `--hulk-motion`. The station baseline motion lines are rewritten (the squat fix and this). Unity side views of a
+  live charge, before and after.
+- **Next:** owner check in the Windows build. The legs' crouch while charging could still be lighter.
+
 ## 2026-11-02 — Claude: zombies stop squatting after a push or a jump
 
 - **Branch/base:** `claude/zombie-squat`, on `claude/backrooms-plan`, which carries shared `ece0aaa3`. Merged into shared
