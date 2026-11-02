@@ -110,14 +110,13 @@ namespace ChipArena.UnityConversion
 
         private void ControllerCursor()
         {
-            if(!padPointerActive||!ControllerUi||Event.current.type!=EventType.Repaint)return;
+            if(Event.current.type!=EventType.Repaint)return;if(!padPointerActive||!ControllerUi){NativeMenuFocusFx.Hide();return;}
             var matrix=GUI.matrix;GUI.matrix=Matrix4x4.identity;if(NativeControllerPointer.Navigating&&NativeControllerPointer.Navigation.Current(out var item))
             {
-                var color=GUI.color;GUI.color=new Color(.2f,1,.95f,1);
+                // The focus glow, with the hover tick on each move (Claude's presentation, NativeMenuFocusFx).
                 if(!item.Clipped||item.Y>=item.ClipY&&item.Y+item.H<=item.ClipY+item.ClipH)
-                {GUI.DrawTexture(new Rect(item.X,item.Y,item.W,2),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(item.X,item.Y+item.H-2,item.W,2),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(item.X,item.Y,2,item.H),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(item.X+item.W-2,item.Y,2,item.H),Texture2D.whiteTexture);}
-                GUI.color=color;
-            }GUI.matrix=matrix;
+                    NativeMenuFocusFx.Draw(new Rect(item.X,item.Y,item.W,item.H),NativeControllerPointer.Navigation.Focus,Time.unscaledTime,prefs.reducedEffects,NativeUi.S);
+            }else NativeMenuFocusFx.Hide();GUI.matrix=matrix;
         }
         private void ControllerSettings()
         {

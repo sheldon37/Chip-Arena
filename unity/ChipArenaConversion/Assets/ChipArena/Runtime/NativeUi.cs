@@ -446,6 +446,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The one UI sound hook (NativeAudio listens; built-in hover, effects bank for the other cues): a press
         /// (click, back or confirm by the button), a press on a disabled button (error) and the pointer entering a button (hover).</summary>
         public static event Action<string> Sound;
+        /// <summary>A UI cue raised outside a button (the controller's focus moving: NativeMenuFocusFx).</summary>
+        public static void Cue(string key)=>Sound?.Invoke(key);
         private static int hoverFrame=-10;private static bool hoverNow,hoverBefore;private static Vector2 hoverAt,hoverWas;
         private static bool Pressed(Rect r,bool enabled,string sound)
         {
