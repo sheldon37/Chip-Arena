@@ -8,8 +8,8 @@ namespace ChipArena.UnityConversion
     /// replicated Impact events (Detail mutator-*, authoritative Position and Time, Radius, Amount):
     ///  - STORM's warning: an amber floor disc over the strike's radius that pulses ever faster while a red-orange fill grows
     ///    from its centre to its edge, and a thin targeting column from the sky, brightening; the last .2 s strobe red. It is
-    ///    never thinned by the effects quality (the danger language of NativeStationBossFx: a warning is amber and pulses, the
-    ///    strike flashes red).
+    ///    never thinned by the effects quality (the game's danger language: a warning is amber and pulses, the strike
+    ///    flashes red).
     ///  - STORM's strike: a jagged bolt from <see cref="BoltHeight"/> m to the floor (a white core in a violet glow, re-striking
     ///    once; one steady fade with reduced effects), a floor flash, and a scorch that fades over <see cref="ScorchSeconds"/> s.
     ///    The shared blast sim adds the Shock blast (<see cref="Blast"/>).
