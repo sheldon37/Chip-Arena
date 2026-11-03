@@ -8,6 +8,22 @@ namespace ChipArena.UnityConversion
     // under a player intro sting. The Siren's boss song (bossSong) silences both.
     public static class NativeStageMusic
     {
+        // Owner uploads, in prompt order. Poolrooms is packaged but has no playable map yet.
+        public const string PoolroomsTrack="poolrooms-untitled";
+        public static string Theme(string map,string fallback)
+        {
+            switch(map)
+            {
+                case "breakwater":return "breakwater-arena-duel";
+                case "harbor":return "harbor-container-terminal";
+                case "skyframe":return "skyframe-rising-motif";
+                case "rig":return "rig-offshore";
+                case "polar":return "polar-pulse-de-la-mort";
+                case "backrooms-level-0":case "expedition-backrooms-level-0":return "backrooms-fluorescent-loop";
+                case "training":return "training-steady-groove";
+                default:return fallback;
+            }
+        }
         public static bool Plays(NativePhase phase,bool pve,bool bossSong)=>!bossSong&&(pve?phase!=NativePhase.Lobby&&phase!=NativePhase.Match:phase==NativePhase.Countdown||phase==NativePhase.Fight||phase==NativePhase.Result);
         public static float Dip(NativePhase phase,bool pve)=>pve&&phase==NativePhase.Intro?.35f:1;
     }
