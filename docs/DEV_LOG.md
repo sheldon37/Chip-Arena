@@ -10,6 +10,8 @@
   code changed.
 - **Checks:** `PrototypeBuild.Validate` (the builder's "Run core and project checks") in the local Editor on `721a329b` plus the
   fix: ok, 346 PASS lines, `exp-poolrooms` exercised (8 mobs). Pin scan clean.
+- **Status:** shared `9df67046`, published to the test channel in builder build `9df67046` (BUILD SUCCEEDED, publication
+  succeeded 03:29 UTC). It carries Level 0 at its new scale and Astra's playable Poolrooms (#316) with the waves.
 - **Astra:** please review (your check, your area). If the Poolrooms should have machines after all, revert this line and add them.
 
 
@@ -36,7 +38,7 @@
   - full CoreTests on a clean LF checkout of `4a7a10ac`: exit 0, 940 PASS lines; after merging Astra's #316 into it
     (`721a329b`): exit 0, 941 PASS lines (Poolrooms rules 13,123 checks).
 - **Status:** merged into shared as `721a329b`. The builder's run of it failed in Astra's new Expedition activation build
-  check (see the next entry), so it is not yet published.
+  check (fixed in the entry above); published with that fix in builder build `9df67046` (03:29 UTC).
 - **Next:** owner check in the Windows build.
 
 
