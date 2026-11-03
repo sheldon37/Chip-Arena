@@ -48,6 +48,35 @@ namespace ChipArena.UnityConversion
             to.World();
             for(int side=0;side<2;side++)Arm(to,side==0);
         }
+        /// <summary>An upright kind's stance (the Smiler's, the Lifeguard's: tall, still figures, not the takes' hunched zombie): the
+        /// spine, chest, neck and head turned `share` of the way back to the rig's rest (upright, the gaze level); the arms ride
+        /// the chest. The caller eases it off while a blow owns the pose.</summary>
+        public static void Upright(CapturedRig.Pose p,float share)
+        {
+            if(share<=0)return;share=Math.Min(1,share);
+            foreach(int j in new[]{CapturedRig.Spine,CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head})p.Rotation[j]=Quaternion.Normalize(Quaternion.Slerp(p.Rotation[j],Quaternion.Identity,share));
+            p.World();
+        }
+        /// <summary>A staff carried upright at the right side (the Lifeguard's hook at rest), weighted `k`: the right hand beside
+        /// the hip and a little ahead (StaffHand from the pelvis, rig frame), its grip's axis (the hand's -x, along which the
+        /// drawn prop runs) straight up, the fingers round it toward the front; the elbow out and back.</summary>
+        public static void StaffCarry(CapturedRig.Pose p,float k)
+        {
+            if(k<=0)return;k=Math.Min(1,k);p.World();
+            var target=p.WorldPosition[CapturedRig.Pelvis]+StaffHand;var r0=p.WorldRotation[CapturedRig.RHand];var up=Vector3.UnitY;
+            var q=CapturedRig.FromTo(Vector3.Normalize(Vector3.Transform(-Vector3.UnitX,r0)),up)*r0;
+            var fingers=Vector3.Transform(-Vector3.UnitY,q);var flat=new Vector3(fingers.X,0,fingers.Z);
+            if(flat.LengthSquared()>1e-4f){flat=Vector3.Normalize(flat);float a=MathF.Atan2(Vector3.Cross(flat,Vector3.UnitZ).Y,Vector3.Dot(flat,Vector3.UnitZ));q=Quaternion.CreateFromAxisAngle(up,a)*q;}
+            for(int i=0;i<3;i++)staffWas[i]=p.Rotation[CapturedRig.RArm+i];
+            var inv=Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]);
+            CapturedRig.Arm(p,false,Vector3.Transform(target-p.WorldPosition[CapturedRig.Chest],inv),Quaternion.Normalize(inv*q),new Vector3(-.8f,-.4f,-.3f));
+            for(int i=0;i<3;i++)p.Rotation[CapturedRig.RArm+i]=Quaternion.Normalize(Quaternion.Slerp(staffWas[i],p.Rotation[CapturedRig.RArm+i],k));
+            p.World();
+        }
+        /// <summary>Where the staff hand rests from the pelvis (rig frame: +x the body's left, +z ahead, m).</summary>
+        public static readonly Vector3 StaffHand=new Vector3(-.31f,.08f,.16f);
+        [ThreadStatic] private static Quaternion[] staffWasStore;
+        private static Quaternion[] staffWas=>staffWasStore??=new Quaternion[3];
         // An arm reached from an inset clavicle, turned about its shoulder to the direction from the shoulder its reach was
         // planned from (the clavicle at the rig's ClavicleX); its elbow and hand keep their own bend.
         private static void Arm(CapturedRig.Pose p,bool left)

@@ -523,6 +523,42 @@ shoulder (`ZombieFusedNeck`, `ZombieFusedShoulder`), swaying a little each pose;
 hunting a pilot, captured from its wind-up to its recovery, its stagger and its death (gear and props follow throughout; the
 Undertow sinks as its voxel did). The four kinds are live (`ZoneLive`).
 
+## 4h. The Backrooms' entities on the model (2026-11-03, `claude/backrooms-entities`)
+
+Owner: "Please start the backroom enemies now" (the designs of docs/EXPEDITION-ENEMY-REWORK.md section 4, on Astra's rules of
+#317, section 6). The four humanoids are live; the Hound is a draft; the Tiler keeps its stand-in body.
+
+| Kind | Variants (Core NativeZombieLooks) | Kit |
+|---|---|---|
+| Faceling | office workers yellowed by the damp: dress shirt or sweater vest, slacks or khakis, loafers, heels or flats | `Faceless`: the eyes, brows, lashes and teeth off; `faceling-mask-skin` (smooth skin over brow to chin, the sockets filled, the nose a soft rise), its lanyard and ID card; stands a little upright (its blank face shows) |
+| Smiler | the kind's 2.2 m, thin, long hands | `Void`: every part black, the head's painted eyes and mouth too; `smiler-grin` (two rows of teeth on glowing gums, the corners past the cheeks) and `smiler-eyes` (two pinpricks); stands upright |
+| Drowned | heavy bathers, waterlogged pallor | `Stripes`: a vintage costume's stripes (the shader's ZombieStripe, 9 cm apart in rest space) on a tank or tube top and shorts; a rubber cap with petals (white or red) and fogged goggles |
+| Lifeguard | the kind's 2.6 m, thin, faded reds, sun-bleached, bucket or sun hat, flip-flops | `lifeguard-whistle` on a red cord; `Carry`: the rescue hook (an aluminium pole with a shepherd's crook) in the right hand, held upright at its side (Core NativeZombiePosture.StaffCarry); stands upright |
+| Hound (draft) | gaunt, hairless, in rags, bare feet | none yet: it runs on two legs until its gait on all fours |
+
+New in the runtime: skin pieces (a gear prop whose id ends "-skin" draws with the head's own material and looks, every vertex
+on a cheek texel, unlined); stripes; a carried prop at the right hand's weapon frame, drawn every frame; the upright stance
+(Core NativeZombiePosture.Upright: the spine, chest, neck and head turned back toward the rest, eased off while a blow owns the
+pose). The bake gained the pieces they wear (sweater vest, office heels, tube top, dolphin and simple shorts, flip-flops, bucket
+and sun hats, bare feet).
+
+Their moves (Runtime/NativeBackroomsKindsPresentation.cs, Core/NativeBackroomsMotion.cs):
+- the authority's names onto the gait: the wake, howl, blink, whistle and hook are not blows; the Hound's pounce (contact .85
+  s), the Smiler's .6 s and the Drowned's .4 s lunges and the Lifeguard's .5 s sweep play the gait's takes at those timings;
+- the Faceling dormant at its wall (bowed toward it, swaying) and its wake (the head snaps round in .08 s, the neck and chest
+  after it, handing back to the body after the .45 s tell); the Hound's howl (the head thrown back, the jaw open); the
+  Lifeguard's whistle (the left hand to the mouth) and rescue hook (the pole raised back over the shoulder through the .6 s
+  wind-up, thrust out at the pilot, hauled back through the drag); the Drowned sunk 1.25 m while submerged, rising .4 s after
+  it surfaces.
+
+Reviewed on the PC (BoZo, brickfall; `zset` sets a zone move on demand, since DEV spawns away from their maps make none):
+turnarounds, head and upper-body close-ups of every kind, and strips of the Faceling's wake, the Hound's howl and the
+Lifeguard's whistle and hook. Not yet seen on their own maps: the Smiler's blink (dark cells only) and the Drowned under water.
+
+Open (the next pass): the Hound on all fours (a quadruped gallop on the model) and its pounce and pin; the Tiler's own body (a
+tile crab on six legs); the Smiler's blink (the fixtures' stutter, smoke at both ends) and its dread; the Drowned's wake and
+bubbles under water and its swim; the hook's line to the pilot through the drag; captures on Level 0 and the Poolrooms.
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).

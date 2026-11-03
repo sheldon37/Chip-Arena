@@ -120,7 +120,16 @@ float ZombieBand(float3 rest)
 }
 // The tape's colour at a cloth shade `k` (the tint's: its folds and seams kept).
 float3 ZombieTapeColour(float k){return float3(0.74,0.77,0.78)*lerp(0.72,1.08,saturate(k));}
-float3 ZombieLook(float3 c,float2 uv,float band)
+// A zombie's stripes (a vintage swimsuit's: Core NativeZombieLooks.Variant.Stripes), per renderer: _ZombieStripe x the period
+// up the rest space (m), y the stripe's share of it, z..w the rest heights they cover; _ZombieStripeTint their colour. Unset, none.
+float4 _ZombieStripe;float4 _ZombieStripeTint;
+float ZombieStripe(float3 rest)
+{
+ if(_ZombieStripe.x<=0.0||rest.y<_ZombieStripe.z||rest.y>_ZombieStripe.w)return 0.0;
+ float f=frac(rest.y/_ZombieStripe.x),e=0.003/_ZombieStripe.x;
+ return smoothstep(0.0,e,f)*(1.0-smoothstep(_ZombieStripe.y-e,_ZombieStripe.y,f));
+}
+float3 ZombieLook(float3 c,float2 uv,float band,float stripe)
 {
  if(_ZombieEye.w>0.5)return _ZombieEye.rgb;
  if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;
@@ -130,6 +139,7 @@ float3 ZombieLook(float3 c,float2 uv,float band)
   float x=luma*_ZombieTint.w,k=x<1.0?x:sqrt(x);
   c=_ZombieTint.rgb*min(k,1.6);c=lerp(c,dot(c,float3(0.299,0.587,0.114))*float3(1.0,0.97,0.9),saturate(k-1.0)*0.6);
   if(band>0.0)c=lerp(c,ZombieTapeColour(k),band);
+  if(stripe>0.0)c=lerp(c,_ZombieStripeTint.rgb*lerp(0.72,1.05,saturate(k)),stripe);
  }
  float2 s=float2(frac(_ZombieWear.w*0.0137)*91.0,frac(_ZombieWear.w*0.0071)*57.0);
  if(_ZombieWear.x>0.0)
@@ -164,7 +174,8 @@ float3 ZombieLook(float3 c,float2 uv,float band)
  }
  return c;
 }
-float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0);}
+float3 ZombieLook(float3 c,float2 uv,float band){return ZombieLook(c,uv,band,0.0);}
+float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0,0.0);}
 // The tape's retroreflection: it shines back toward the eye (the surface pass's emission), brightest facing the view.
 float3 ZombieTapeShine(float band,float3 n,float3 view){return band>0.0?float3(0.5,0.53,0.55)*band*pow(saturate(dot(n,view)),3.0):float3(0.0,0.0,0.0);}
 // A zombie's decay openings (Core NativeZombieDecay; Runtime/NativeZombieModelPresentation.cs), per renderer: _DecayAt xyz an

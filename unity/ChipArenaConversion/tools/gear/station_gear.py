@@ -907,6 +907,8 @@ def main():
         ('pileup-flesh', 'spine_05', CHEST, flesh),
         ('pileup-flesh-f', 'spine_05', CHEST, flesh),
     ]
+    import backrooms_gear
+    props += backrooms_gear.props()
     for i, (prop, bone, frame, build) in enumerate(props):
         if only and prop not in only:
             continue

@@ -59,6 +59,8 @@ namespace ChipArena.UnityConversion
             public Dictionary<string,Transform> Named;
             // A fused commuter's head and arm holders and their rest turns (ZombieFuse; they sway as it is posed).
             public Transform FusedHead,FusedArm;public Quaternion FusedHeadRest,FusedArmRest;
+            // The carried prop's frame on the right hand in the model's root space, as last posed (ZombieCarry).
+            public Matrix4x4 Carry;public bool CarryKnown;
             public readonly NativeCrowdPoseClock PoseClock=new NativeCrowdPoseClock();private int poseLost,poseHidden;
             public bool ChangedParts(int lost,int hidden){bool changed=lost!=poseLost||hidden!=poseHidden;poseLost=lost;poseHidden=hidden;return changed;}
         }
@@ -109,25 +111,29 @@ namespace ChipArena.UnityConversion
             bool visible=eye==null||!crowdFrustumReady||GeometryUtility.TestPlanesAABB(crowdFrustum,new Bounds(t.position+Vector3.up*2*rt.lossyScale.y,Vector3.one*8*Mathf.Max(1,rt.lossyScale.y)));
             bool urgent=z.Dying||z.Crawl||airborne||flash!=1||glow>1||swell>0||z.ChangedParts(lost,hidden);
             if(!z.PoseClock.Due(Time.unscaledTimeAsDouble,distance,visible,urgent,z.Id))
-            {z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;return;}
+            {z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;ZombieCarry(z,t,flash);return;}
             long poseAt=System.Diagnostics.Stopwatch.GetTimestamp();
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
-            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
+            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));if(z.Variant.Carry!=null&&!z.Dying)NativeZombiePosture.StaffCarry(pose,(1-z.Busy)*(1-BackroomsHold(z.Id)));NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
             double now=Time.unscaledTimeAsDouble;z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;
             // (The Hulk's hands are fists, clenched hardest through a blow: owner 2026-10-30, "the punch is open handed still".)
             z.Body.Binding.Apply(pose,ZombieGrasp(z),planted,airborne);
             {var of=z.Body.Binding.Rig.Of;var at=z.Body.Binding.State.Position;for(int b=0;b<z.Shift.Length;b++)z.Shift[b]=of[b]<0?NVector3.Zero:at[of[b]]-minionPose.WorldPosition[b];}
             ZombieFace(z,flash,swell,z.PosedFrame<Time.frameCount-1);ZombieFusedSway(z);
+            if(z.Variant.Carry!=null){z.Body.Binding.WeaponFrame(pose,out var cp,out var cq);z.Carry=Matrix4x4.TRS(cp,cq,Vector3.one);z.CarryKnown=true;}
+            ZombieCarry(z,t,flash);
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
             ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
         }
         // The hands' grip: the Hulk's fists, clenched hardest through a blow (owner 2026-10-30, "the punch is open handed still"); a
-        // station kind's hands closed on what it carries (the Conductor's lantern by its bail, the Pileup's door by its edges).
+        // station kind's hands closed on what it carries (the Conductor's lantern by its bail, the Pileup's door by its edges); a
+        // carried prop's right hand on its shaft (the Lifeguard's hook).
         private NativeVisualRig.Grasp ZombieGrasp(ZombieBody z)
         {
             if(z.Kind==NativeHordeKinds.Hulk)return new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy};
+            if(!z.Dying&&z.Variant.Carry!=null)return new NativeVisualRig.Grasp{RightGrip=1};
             if(z.Dying||!NativeStationKinds.Is(z.Kind)||!stationAdds.TryGetValue(z.Id,out var st)||st.Kind!=z.Kind||!st.Out.Prop)return default;
             return NativeStationKinds.Local(z.Kind)==NativeStationKinds.Pileup?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1}:new NativeVisualRig.Grasp{LeftGrip=1};
         }
@@ -304,6 +310,7 @@ namespace ChipArena.UnityConversion
             if(v.Mutant)ZombieGrowthStart(root,skeleton,v,body.All);
             if(v.Decay!=null&&v.Decay.Length>0)body.All=ZombieDecayMake(root,skeleton,v,body.All);
             if(v.Tape){ZombieRestWrite(root,body.All);ZombieTape(worn[1],body.All);}
+            if(v.Stripes>=0){ZombieRestWrite(root,body.All);ZombieStripes(v,worn,body.All);}
             if(v.Gear.Length>0)body.All=ZombieGear(root,skeleton,v,body.All);
             foreach(var r in body.All){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer s)s.updateWhenOffscreen=false;}
             var z=new ZombieBody{Body=body,Variant=v,Sac=sac,Growing=v.Mutant};
@@ -404,14 +411,21 @@ namespace ChipArena.UnityConversion
             {
                 if(!r.gameObject.activeSelf)continue;
                 if(r is SkinnedMeshRenderer skin)ZombieShapes(skin,v.Shapes);
+                // A void (Variant.Void: the Smiler): every part black, the head's painted eyes and mouth with it, unworn.
+                if(v.Void){ZombieTintOn(r,0x050506,linear);continue;}
                 if(VisualSkinPart(r)){VisualSkinToneOne(r,v.Skin);ZombieWearOn(r,0,0,v.Rot,seed,skinColour,0);continue;}
                 if(ZombieEyePart(r)){var e=WearColor(v.Eyes);if(linear)e=e.linear;zombieBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(zombieBlock);zombieBlock.SetVector(ZombieEyeId,new Vector4(e.r,e.g,e.b,1.35f));zombieBlock.SetFloat(UseOutlineId,0);r.SetPropertyBlock(zombieBlock);continue;}
                 int slot=ZombieSlotOf(worn,r.name);if(slot<0)continue;
                 if(v.Colours[slot]>=0)ZombieTintOn(r,v.Colours[slot],linear);
                 if(slot>0)ZombieWearOn(r,v.Grime,v.Tears,0,seed,skinColour,v.Blood);
             }
+            // No face (Variant.Faceless): the eyes, brows, lashes and teeth left off; the gear covers the face (the Faceling's mask,
+            // the Smiler's grin and eyes).
+            if(v.Faceless)foreach(var r in lookNamed.Values)if(ZombieFacePart(r.name))r.gameObject.SetActive(false);
             lookNamed.Clear();return worn;
         }
+        private static bool ZombieFacePart(string n)=>n.StartsWith("Eyes.",StringComparison.Ordinal)||n.StartsWith("EyeBrows.",StringComparison.Ordinal)||n.StartsWith("EyeLashes.",StringComparison.Ordinal)
+            ||n.StartsWith("Teeth.",StringComparison.Ordinal)||n.StartsWith("EyeShine",StringComparison.Ordinal)||n.StartsWith("Pupil",StringComparison.Ordinal);
         private static int ZombieSlotOf(LookPiece[] worn,string renderer)
         {
             for(int s=0;s<worn.Length;s++)if(worn[s]?.renderers!=null)foreach(var n in worn[s].renderers)if(n==renderer)return s;
@@ -823,7 +837,7 @@ namespace ChipArena.UnityConversion
         public const string ZombieGearBank="ChipArenaPackGear";
         /// <summary>The gear's glowing parts' emission (the shader's _VertexAlbedo share).</summary>
         public const float ZombieGearGlow=1.4f;
-        private sealed class ZombieGearAsset{public Mesh Mesh;public string Bone;}
+        private sealed class ZombieGearAsset{public Mesh Mesh,Source;public string Bone;}
         private static readonly Dictionary<string,ZombieGearAsset> zombieGearAssets=new Dictionary<string,ZombieGearAsset>(StringComparer.Ordinal);
         private static Material[] zombieGearMaterials;private static bool zombieGearMaterialsRead;
         private Renderer[] ZombieGear(GameObject root,Transform skeleton,NativeZombieLooks.Variant v,Renderer[] all)
@@ -835,10 +849,60 @@ namespace ChipArena.UnityConversion
                 var asset=ZombieGearAssetOf(id);if(asset==null)continue;
                 if(named==null){named=new Dictionary<string,Transform>();foreach(var t in skeleton.GetComponentsInChildren<Transform>(true))if(!named.ContainsKey(t.name))named[t.name]=t;}
                 if(!named.TryGetValue(asset.Bone,out var bone))continue;
+                var mesh=asset.Mesh;var use=asset.Mesh.subMeshCount>1?mats:new[]{mats[0]};SkinnedMeshRenderer head=null;
+                // A skin piece ("-skin": the Faceling's mask) shades as the face does: the head's own material and looks, every
+                // vertex on one of the forehead's texels.
+                if(id.EndsWith("-skin",StringComparison.Ordinal))
+                {
+                    foreach(var r in all)if(r is SkinnedMeshRenderer s&&s.gameObject.activeSelf&&s.name.StartsWith("Head.",StringComparison.Ordinal)&&s.sharedMesh!=null&&s.sharedMesh.isReadable){head=s;break;}
+                    mesh=head!=null?ZombieGearSkinMesh(id,asset,head):null;if(mesh==null)continue;use=new[]{head.sharedMaterials[0]};
+                }
                 var go=new GameObject("Gear."+id){layer=root.layer};go.transform.SetParent(bone,false);
-                go.AddComponent<MeshFilter>().sharedMesh=asset.Mesh;var mr=go.AddComponent<MeshRenderer>();mr.sharedMaterials=asset.Mesh.subMeshCount>1?mats:new[]{mats[0]};list.Add(mr);
+                go.AddComponent<MeshFilter>().sharedMesh=mesh;var mr=go.AddComponent<MeshRenderer>();mr.sharedMaterials=use;
+                if(head!=null){zombieBlock??=new MaterialPropertyBlock();head.GetPropertyBlock(zombieBlock);mr.SetPropertyBlock(zombieBlock);}
+                list.Add(mr);
             }
             return list.ToArray();
+        }
+        // A skin piece's mesh for a head mesh (once each): the gear's shape, every vertex given the texture coordinate and colour of
+        // the head's vertex nearest its right cheek (head bone frame: 5.5 cm out, 3 cm up, 10.5 cm ahead), so the face's own
+        // material draws it in the skin's colour, tone and wear, unlined.
+        private static readonly Dictionary<(string,Mesh),Mesh> zombieGearSkins=new Dictionary<(string,Mesh),Mesh>();
+        private static Mesh ZombieGearSkinMesh(string id,ZombieGearAsset asset,SkinnedMeshRenderer head)
+        {
+            var key=(id,head.sharedMesh);if(zombieGearSkins.TryGetValue(key,out var made))return made;made=null;
+            var src=head.sharedMesh;int hb=Array.FindIndex(head.bones,b=>b!=null&&b.name=="head");var vs=src.vertices;var bind=src.bindposes;
+            if(hb>=0&&hb<bind.Length&&asset.Source!=null)
+            {
+                var want=new Vector3(.055f,.03f,.105f);int best=-1;float bd=float.MaxValue;
+                for(int i=0;i<vs.Length;i++){float d=(bind[hb].MultiplyPoint3x4(vs[i])-want).sqrMagnitude;if(d<bd){bd=d;best=i;}}
+                if(best>=0)
+                {
+                    var uv=src.uv;var col=src.colors;made=Instantiate(asset.Source);made.name="Zombie gear "+id+" skin";made.hideFlags=HideFlags.HideAndDontSave;
+                    // (No outline: the vertex alpha under .5, so no line rings the face.)
+                    int n=made.vertexCount;var uvs=new Vector2[n];var cs=new Color[n];var c=best<col.Length?col[best]:Color.white;c.a=0;
+                    for(int i=0;i<n;i++){uvs[i]=best<uv.Length?uv[best]:Vector2.zero;cs[i]=c;}
+                    made.uv=uvs;made.colors=cs;made.subMeshCount=1;var tris=new List<int>();for(int sm=0;sm<asset.Source.subMeshCount;sm++)tris.AddRange(asset.Source.GetTriangles(sm));made.SetTriangles(tris,0);made.UploadMeshData(true);
+                }
+            }
+            zombieGearSkins[key]=made;return made;
+        }
+        // ---- stripes (Variant.Stripes): round the upper and lower pieces, 9 cm apart in the rest space ----
+        private static readonly int ZombieStripeId=Shader.PropertyToID("_ZombieStripe"),ZombieStripeTintId=Shader.PropertyToID("_ZombieStripeTint");
+        public const float ZombieStripePeriod=.09f,ZombieStripeShare=.42f;
+        private static void ZombieStripes(NativeZombieLooks.Variant v,LookPiece[] worn,Renderer[] all)
+        {
+            var c=WearColor(v.Stripes);if(QualitySettings.activeColorSpace==ColorSpace.Linear)c=c.linear;zombieBlock??=new MaterialPropertyBlock();
+            foreach(var r in all)
+            {
+                int s=r==null?-1:ZombieSlotOf(worn,r.name);if(s!=1&&s!=2)continue;
+                r.GetPropertyBlock(zombieBlock);zombieBlock.SetVector(ZombieStripeId,new Vector4(ZombieStripePeriod,ZombieStripeShare,0,3));zombieBlock.SetVector(ZombieStripeTintId,new Vector4(c.r,c.g,c.b,1));r.SetPropertyBlock(zombieBlock);
+            }
+        }
+        // ---- a carried prop (Variant.Carry): the gear bank's, at the model's right-hand weapon frame as last posed ----
+        private void ZombieCarry(ZombieBody z,Transform root,float flash)
+        {
+            if(z.Variant.Carry==null||!z.CarryKnown||z.Dying)return;ZombieGearPropDraw(z.Variant.Carry,root.localToWorldMatrix*z.Carry,1,flash);
         }
         private static Material[] ZombieGearMaterials()
         {
@@ -895,8 +959,10 @@ namespace ChipArena.UnityConversion
             }
             var mesh=new Mesh{name="Zombie gear "+prop.Name,hideFlags=HideFlags.HideAndDontSave};if(vs.Count>65535)mesh.indexFormat=UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.SetVertices(vs);mesh.SetNormals(ns);mesh.SetColors(cs);
-            mesh.subMeshCount=glow.Count>0?2:1;mesh.SetTriangles(solid,0,false);if(glow.Count>0)mesh.SetTriangles(glow,1,false);mesh.RecalculateBounds();mesh.UploadMeshData(true);
-            return new ZombieGearAsset{Mesh=mesh,Bone=prop.Group};
+            mesh.subMeshCount=glow.Count>0?2:1;mesh.SetTriangles(solid,0,false);if(glow.Count>0)mesh.SetTriangles(glow,1,false);mesh.RecalculateBounds();
+            // (A skin piece keeps a readable copy: each head mesh's own is made from it, ZombieGearSkinMesh.)
+            Mesh source=prop.Name.EndsWith("-skin",StringComparison.Ordinal)?Instantiate(mesh):null;if(source!=null)source.hideFlags=HideFlags.HideAndDontSave;mesh.UploadMeshData(true);
+            return new ZombieGearAsset{Mesh=mesh,Source=source,Bone=prop.Group};
         }
 
         private static ZombieDecayPlan ZombieDecayPlanOf(NativeZombieLooks.Variant v,Renderer[] all)

@@ -59,6 +59,9 @@ Ward Zero has no unique kinds (it inherits the Siren's horde).
 
 1. The Backrooms' surroundings (section 5): presentation only, no dependency.
 2. The Backrooms' entities: this spec to Astra now; their looks and motion built against DEV previews while the rules land.
+   **Rules built** by Astra (#317, section 6). **Looks and first moves built 2026-11-03** (`claude/backrooms-entities`;
+   docs/ZOMBIE-MODELS.md 4h): the Faceling, Smiler, Drowned and Lifeguard live on the model; the Hound (on all fours) and the
+   Tiler (its own body) next.
 3. Central Station's four kinds on the model. **Built 2026-11-03** and live (`claude/station-models`; docs/ZOMBIE-MODELS.md 4g:
    the gear modelled in Blender, the tape, the fused commuter; reviewed in turnarounds, close-ups and attack strips on the PC).
 4. City Ironworks' five kinds on the model.

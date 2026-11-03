@@ -268,7 +268,7 @@ namespace ChipArena.UnityConversion
                 // (its follow-through and recovery) instead of being cut off the moment the frame lands.
                 if(m.LastAttack!=s.AttackSeen){s.AttackBefore=s.AttackSeen;s.AttackSeen=m.LastAttack;}attackAt=now<m.LastAttack&&s.AttackBefore>-99?s.AttackBefore:m.LastAttack;
                 float age=now-attackAt;if(age<0||age>recover+.3f||entering)age=float.NaN;
-                StationAttack(m,kind,now,ref age);
+                StationAttack(m,kind,now,ref age);BackroomsAttack(m,kind,now,ref age,ref attack,ref strike,ref recover);
                 bool breach=entering&&NativeBreach.Is(a.Entry),knocking=false;float breakAt=breach?NativeBreach.BreakAt(a.ActiveAt):float.NaN;
                 // A door or cell walks the add in (the authority moves it from behind the opening): the gait plants its steps on that
                 // walk, the wait before it plays the zombie's waking twitch. The floor is the entry's, not the walk's raised centre.
@@ -300,7 +300,7 @@ namespace ChipArena.UnityConversion
                 HordeHulkInput(ref f,m,now,entering,breach);IronworksInput(arena,s,m);StationInput(ref f,kind);
                 // (On the model the stride is planned for its longer legs: fewer, longer steps, the takes nearer their own pace.)
                 s.Gait.Legs=ZombieModelLegs(m.Id,kind,s.Tier);
-                s.Gait.Pose(f,minionPose,s.React);if(cancelled){f.AttackAge=age;f.Cancelled=false;}yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);StationPosed(arena,m,s,kind,now,ground,f,ref pos);
+                s.Gait.Pose(f,minionPose,s.React);if(cancelled){f.AttackAge=age;f.Cancelled=false;}yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);StationPosed(arena,m,s,kind,now,ground,f,ref pos);BackroomsPosed(arena,m,s,kind,now,f,ref pos);
                 HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);
                 if(s.Gait.Landed!=0){HordeDust(s,kind,ground,now);HordeFootfalls(s,m,kind,ground,now);}
                 attack0=attack;strike0=strike;
@@ -317,7 +317,7 @@ namespace ChipArena.UnityConversion
             else s.Blend.Reset();
             // The hinged jaw (the spitter's unhinging spit, the Hulk's roar, the flap of its steps) and the mouth the spit leaves from.
             s.RoarAge=roar;float cancelAge=s.CancelFor==m.LastAttack&&!float.IsNaN(s.CancelAt)?now-s.CancelAt:float.NaN;
-            s.Jaw=NativeHordeJaw.Open(kind,attack0,jawAge,strike0,cancelAge,roar,now,seed);if(mode==0&&NativeHordeJaw.Hinged(kind))s.Jaw+=s.Gait.JawFlap;if(roamScream>0&&NativeHordeJaw.Hinged(kind))s.Jaw=Mathf.Max(s.Jaw,.95f*roamScream);HordeMouth(s,pos);
+            s.Jaw=NativeHordeJaw.Open(kind,attack0,jawAge,strike0,cancelAge,roar,now,seed);if(mode==0&&NativeHordeJaw.Hinged(kind))s.Jaw+=s.Gait.JawFlap;if(roamScream>0&&NativeHordeJaw.Hinged(kind))s.Jaw=Mathf.Max(s.Jaw,.95f*roamScream);BackroomsJaw(m,kind,now,ref s.Jaw);HordeMouth(s,pos);
             NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");HordeBigHead(rig);
             rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             float swell=HordeSwellNow(s,m,now);var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);StationGlow(m,kind,now,ref glow);

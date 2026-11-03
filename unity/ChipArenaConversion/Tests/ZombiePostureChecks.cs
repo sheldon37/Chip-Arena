@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets","ChipArena",f)).Replace("\r\n","\n");
             string zm=R("Runtime/NativeZombieModelPresentation.cs"),rig=R("Core/NativeVisualRig.cs"),fit=R("Core/NativeZombiePosture.cs");
-            Check(zm.Contains("minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);")
+            Check(zm.Contains("minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));")&&zm.Contains("NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);")
                 &&zm.Contains("z.Body.Binding.Apply(pose,ZombieGrasp(z),planted,airborne);"),"the model binds the fitted copy (the rig, its voxel tiers and gore keep the gait's pose)");
             Check(zm.Contains("z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;"),"the carried hips step by the time since the body's last pose (the crowd's clock poses far adds less often)");
             Check(R("Runtime/NativeHordeKindPresentation.cs").Contains("ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,")&&zm.Contains("z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;"),"the add's crawl reaches the model");
