@@ -1,3 +1,7 @@
+## 2026-11-03 — Astra: approved enemy-rule upload
+
+Owner explicitly approved the public GitHub upload. PR #317 targets `claude/sleepy-ritchie-g8ruhv` from `codex/backrooms-entity-rules`; implementation commit `3ba9dae2f6375d370f9641c243530466acf94176` has tree `fb4088e958254567137e5229d226f0c910c2303b`, exactly matching tested local `80a85a1`. Git CLI authentication was unavailable, so upload used the connected GitHub account. This supersedes the pending-approval status below. Merge and builder sync are next; no native build or test-channel publication receipt yet. Validation limits and Claude presentation handoff remain unchanged.
+
 ## 2026-11-02 — Astra: Level 0 and Poolrooms enemy authority
 
 - **Branch/base:** `codex/backrooms-entity-rules`, shared `dac9016068c169488cb314105757ddec7e90e3d1` (includes Claude's `12abd65c` designs).
