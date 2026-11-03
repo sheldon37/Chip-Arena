@@ -181,7 +181,7 @@ namespace ChipArena.UnityConversion
                 }
                 else m.Collider.enabled=mf.hp>0;
                 if(IsZoneBoss(m)){m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);ConfigureZoneBossBody(m);m.Collider.enabled=mf.hp>0;zoneBossActor=m;foreach(var c in m.Body.GetComponentsInChildren<Collider>())if(c!=m.Collider)c.enabled=mf.hp>0;SyncZoneBossArena();}
-                var zoneKind=NativeHordeZones.Of(NativeHordeKinds.Resolve(m.Pve?.Stats.id));if(zoneKind!=null&&!m.Pve.Crawl){m.Collider.radius=zoneKind.Radius;m.Collider.height=zoneKind.Height;}
+                var zoneKind=NativeHordeZones.Of(NativeHordeKinds.Resolve(m.Pve?.Stats.id));if(zoneKind!=null&&!m.Pve.Crawl){m.Collider.radius=zoneKind.Radius;m.Collider.height=m.Pve.Stats.id=="drowned"&&m.Pve.Zone.submerged?.9f:zoneKind.Height;}
                 if(m.Pve?.Stats.id=="hulk"&&!m.Pve.Crawl){m.Collider.radius=NativeHordeKinds.HulkRadius;m.Collider.height=NativeHordeKinds.HulkHeight;}
             }
         }

@@ -235,16 +235,16 @@ namespace ChipArena.UnityConversion
             if(s.phase==ExpeditionPhase.Instance)
             {
                 var instance=s.instances.Single(i=>i.id==s.area);
-                if(NativeZoneCombat.Active(MapId)){Pve.Wave=NativeZoneCombat.Wave(instance.progress,instance.target);Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,16);}
+                if(NativeZoneCombat.Active(MapId)){Pve.Wave=NativeBackroomsKinds.Wave(MapId,instance.progress,instance.target);Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,16);}
                 if(instance.progress<instance.target&&Time>=expeditionSpawnAt&&Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<Pve.Cap)
                 {
                     // Lost/out-of-world adds do not count as kills: replenish only enough live enemies to finish the quota.
                     if(instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target)
                     {
                         string[] kinds={"shambler","runner","spitter","brute"};bool zone=NativeZoneCombat.Active(MapId),intro=zone&&expeditionZoneWave<Pve.Wave;
-                        string kind=intro?(NativeZoneCombat.Station(MapId)?new[]{"conductor","linesman","undertow","pileup"}:new[]{"cinderling","rigger","slagback","ladleman"})[Pve.Wave-1]:zone?PickHordeKind(NativeZoneCombat.Encounter(MapId,Pve.Wave,false),Pve):kinds[expeditionSpawned%kinds.Length];
-                        var add=SpawnPveAdd(kind,true);if(add!=null&&intro)expeditionZoneWave=Pve.Wave;
-                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;if(kind=="cinderling")for(int n=0;n<2&&instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target;n++){var pack=SpawnPveAdd(kind,true,add.Pve.Entry.e);if(pack==null)break;pack.MaxHp*=(float)scale.health;pack.Hp=pack.MaxHp;pack.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}}
+                        string kind=intro?(NativeBackroomsKinds.Active(MapId)?NativeBackroomsKinds.Intro(MapId,Pve.Wave):(NativeZoneCombat.Station(MapId)?new[]{"conductor","linesman","undertow","pileup"}:new[]{"cinderling","rigger","slagback","ladleman"})[Pve.Wave-1]):zone?PickHordeKind(NativeZoneCombat.Encounter(MapId,Pve.Wave,false),Pve):kinds[expeditionSpawned%kinds.Length];
+                        var add=SpawnPveAdd(kind,true);if(add!=null&&intro)expeditionZoneWave=Pve.Wave;if(add==null&&intro&&NativeBackroomsKinds.Active(MapId)){kind=PickHordeKind(NativeZoneCombat.Encounter(MapId,Pve.Wave,false),Pve);add=SpawnPveAdd(kind,true);}
+                        if(add!=null){var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,true);add.MaxHp*= (float)scale.health;add.Hp=add.MaxHp;add.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;if(NativeBackroomsKinds.Pack(kind)>1)for(int n=0;n<NativeBackroomsKinds.Pack(kind)-1&&instance.progress+Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<instance.target;n++){var pack=SpawnPveAdd(kind,true,add.Pve.Entry.e);if(pack==null)break;pack.MaxHp*=(float)scale.health;pack.Hp=pack.MaxHp;pack.Pve.DamageScale*=(float)scale.damage;expeditionSpawned++;}}
                     }
                     expeditionSpawnAt=Time+(float)NativeExpeditionMutators.Interval(ActiveMutators);
                 }

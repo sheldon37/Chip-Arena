@@ -164,3 +164,58 @@ to the neutral town).
 
 Both get their join-zone name, threat line and accent (Core `NativeExpeditionJoinZones`), street lamps in their light and their
 ground marks, under the town's placement rules (nothing stands out more than the wall band below 3.1 m, nothing in a keep-out).
+
+## 6. Authority contract (Astra, 2026-11-02)
+
+Implemented on `codex/backrooms-entity-rules`, based on shared `dac9016`. Section 4 remains the design proposal;
+this section records the implemented tuning. Dedicated models/motion, tells, sounds and screen effects remain Claude's.
+Only Expedition uses these rosters; the PvP maps retain their existing behavior.
+
+| ID | Base HP | Base damage | Movement (m/s) | Alive cap | Intro |
+|---|---:|---:|---|---:|---|
+| `faceling` | 60 | 4 | 1.4 / 4.4 | 12 | Opening |
+| `hound` | 30 | 3 × 3 pin bites | 6 gallop; 10 pounce | 6 | 15% quota |
+| `smiler` | 600 | 30 | 2, dark cells only | 1 | 50% quota |
+| `drowned` | 72 | 6 | Deck 1; wading 1.6; deep 3.2 | 12 | Opening |
+| `tiler` | 23 | 3 | 5.5 | 8 | 15% quota |
+| `lifeguard` | 720 | 15 sweep / 3 hook | 1.4 / 2.2 | 1 | 40% quota |
+
+Existing wave, party/elapsed-time and mutator scaling still applies. Hulkamania falls back to brutes in both areas because their authored entrances do not admit Hulks. The area cap is 16 before mutators. Hounds and Tilers
+request packs of three through the existing entrance queue; caps, occupied landings and remaining quota can reduce a pack.
+Hounds appear in waves 2 and 4; Tilers from wave 2; elites from wave 3. Runners/brutes remain in Level 0, runners/spitters
+in Poolrooms. A temporarily unavailable intro anchor does not stop ordinary quota spawns; the intro retries.
+
+- Facelings face an authored solid wall. Sight within 10 m, damage, or recent gunfire/impact/explosion within 14 m wakes them;
+  turn tell .45 s, claw hit .32 s / .9 s cycle. Noise can carry through walls.
+- Hounds wake on sight within 10 m or damage, howl .8 s to wake hounds within 25 m. Pounce at 3–6 m with sight: crouch .35 s,
+  travel .5 s along the locked heading with body sweep/support checks, contact at .85 s; miss recovery .8 s, cooldown 5 s.
+  A successful hit pins movement for .9 s, bites at contact / +.3 / +.6 (9 base total); weapons remain usable. Victim damage
+  40, teammate damage 25, heavy impulse or CC breaks the pin. Death, lost visibility, range, disconnect and area departure release it.
+- Smilers spawn in walkable Dead/Flicker cells. Both travel and blink paths must stay dark, unblocked and supported; no jumping
+  across lit corridors. Blink attempts every 4–6 s: destination at most 12 m away, unoccupied and outside every living pilot's
+  view, .5 s warning, conditions rechecked on completion. Lunge reach 2.6, windup .6, cooldown 2.5; dread lasts 1.5 s and is
+  presentation only. External placement in light immobilizes it and makes incoming damage 1.5×. Shot-out fixtures are not added.
+- Drowned use deep-pool anchors. A hittable .9 m capsule submerges them (the floor is only 1.3 m below the deck); surfacing
+  restores 1.7 m. Water speed bypasses ordinary zombie wading drag. Lunge at 2.2 m: .4 s tell/contact, short swept advance
+  during the last .15 s, 1.4 s cooldown. The existing water steps/nav provide their route onto deck.
+- Tilers start at solid tiled walls, wake at 4 m with sight or on damage, peel for .6 s, then use a 2.5 m leaping bite
+  (.4 s hit, 1.2 s cycle). Tile shards do no damage. Ground capsule .65 m × .3 m radius.
+- Lifeguards spawn on deck beside deep water. The 2.6 m visual uses a 2.2 m capsule (stooped posture) to clear the one-cell arches; Claude should preserve this clearance. Whistle has 1 s windup, 12 s cooldown, surfaces nearby Drowned within 20 m
+  for 6 s and gives them the target. Hook has .6 s windup, 7 m range, 7 s cooldown; pulls up to 4 m over .5 s toward nearby
+  deep water (or the Lifeguard if no clear pool point), with a swept pilot body, no wall crossing and no overlapping hold.
+  Pole sweep: .5 s windup, 2.6 m / 120° arc, 15 base damage, 2 s cooldown. CC cancels specials and releases holds.
+
+Collision capsules (height/radius, metres): Faceling 1.7/.4; Hound .85/.35; Smiler 2.2/.4; Drowned 1.7/.42 (submerged .9/.42); Tiler .65/.3; Lifeguard 2.2/.42. Base rewards are 20 for the four common/pack kinds and 100 for the two elites, before existing reward modifiers.
+
+**Claude/network hooks:** append-only horde IDs follow the Station's four, via `NativeBackroomsKinds.Kinds`; indices of
+existing kinds stay fixed. The existing per-minion `zone` record now carries `dormant`, `wakeAt`, `actionTarget`, `blinkAt`,
+`blinkX/Y/Z`, `dreadTarget`, `dreadUntil`; finite sentinel -100 for inactive times. `attack` adds `wake/howl/pounce/blink/lunge/hook/sweep`.
+Reuse `lastAttack`, `grabTarget/grabAt/releaseAt` for pin, `pullTarget/pullAt/lockX/lockZ` for hook (`pullAt` is the windup start),
+`lastCallAt` for whistle, `submerged/surfaceAt/aboardUntil` for Drowned. Smiler light stutter consumes `blinkAt` and the destination;
+dread is local only when `dreadTarget` matches the pilot. Replica, late join and corpse frames copy this record.
+Map identity versions were bumped so older manifests cannot join these rules. No new event enum or player save fields.
+
+**Pending motion acceptance:** the borrowed biped Hound fallback slips a planted foot by 9.2 cm at the new gallop speed, and the generic Faceling mesh has a 2.6 cm shoulder gap.
+The six new kinds are excluded from the existing captured-biped locomotion/shoulder quality certification until Claude supplies
+their dedicated motion. Registration, finite fallback models and other existing enemy animation checks remain active.
+This is an explicit unfinished presentation dependency, not a claim of animation acceptance.
