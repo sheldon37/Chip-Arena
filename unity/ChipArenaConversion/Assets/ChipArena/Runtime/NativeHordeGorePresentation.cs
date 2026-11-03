@@ -73,6 +73,8 @@ namespace ChipArena.UnityConversion
         /// </summary>
         private void HordeGoreHit(NativeArena arena,NativeMinion m,HordeKindState s,in ArenaEvent e,Vector3 at,Vector3 dir,bool melee,string spec,bool heavy)
         {
+            // The Smiler is smoke: a hit tears smoke off it (NativeSmilerPresentation.cs), no wound and no blood.
+            if(SmilerHit(m,s,e,at,dir))return;
             var cause=NativeHordeGore.Classify(e.Detail,spec,melee,e.DamageKind);if(cause==NativeHordeGore.Cause.None)return;
             bool blast=cause==NativeHordeGore.Cause.Blast||cause==NativeHordeGore.Cause.Crush;if(dir.sqrMagnitude<.5f&&!blast)return;
             int id=e.Target;int kind=s!=null&&s.Kind>=0?s.Kind:m!=null?NativeHordeKinds.Resolve(m.Pve?.Stats?.id):NativeHordeKinds.Shambler;float maxHp=m!=null?m.MaxHp:s!=null?s.MaxHp:100;

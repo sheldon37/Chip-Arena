@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
         {
             var crowdCamera=WorldEye;crowdFrustumReady=crowdCamera!=null;
             if(crowdFrustumReady)GeometryUtility.CalculateFrustumPlanes(crowdCamera,crowdFrustum);
-            hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);float now=arena.Time;
+            hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);SmilerNoiseStart();float now=arena.Time;
             if(arena!=hordeKindArena||arena.Generation!=hordeKindGeneration||!float.IsNaN(hordeKindTime)&&now<hordeKindTime-.25f)ClearHordeKinds(arena);
             hordeKindTime=now;
             // The clock every add is posed on: the field clock (the replica render time on a guest, the visual clock on the host),
@@ -226,7 +226,7 @@ namespace ChipArena.UnityConversion
             // A big kind (the Hulk) is its rig drawn at its scale: the gait runs in the rig's metres (the world over the scale).
             float sc=NativeHordeKinds.Scale[kind];s.Scale=sc;
             // The authority severs limbs (PveGib): the lost part flies off as the model's own part.
-            if(s.Lost>=0){int fresh=a.Lost&~s.Lost;if(fresh!=0)HordeSever(rig,s,fresh,now,pos.y-NativeHordeKinds.RootHeight(real,a.Crawl));}s.Lost=a.Lost;
+            if(s.Lost>=0){int fresh=a.Lost&~s.Lost;if(fresh!=0&&!SmilerIs(kind))HordeSever(rig,s,fresh,now,pos.y-NativeHordeKinds.RootHeight(real,a.Crawl));}s.Lost=a.Lost;
             // The presented root, stepped every frame whatever the add is doing (so it is settled when the gait takes over).
             {var stF=a.Stats;float wa=now-m.LastAttack;HordeFlowStep(arena,m,s,kind,pos,now,stF!=null&&wa>=0&&wa<NativeHordeKinds.Strike(stF,a.Crawl,a.Lost));}
             GoreWoundsJob(m.Id,rig,s.Tier);if(IronworksAdd(arena,m,rig,s,kind,now))return true;
@@ -301,8 +301,9 @@ namespace ChipArena.UnityConversion
                 // (On the model the stride is planned for its longer legs: fewer, longer steps, the takes nearer their own pace.)
                 s.Gait.Legs=ZombieModelLegs(m.Id,kind,s.Tier);
                 s.Gait.Pose(f,minionPose,s.React);if(cancelled){f.AttackAge=age;f.Cancelled=false;}yaw=s.Gait.Yaw;pos.y=ground+NativeHordeKinds.DrawRoot(kind,a.Crawl);HordeHulkPosed(s,now);StationPosed(arena,m,s,kind,now,ground,f,ref pos);BackroomsPosed(arena,m,s,kind,now,f,ref pos);
-                HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);
-                if(s.Gait.Landed!=0){HordeDust(s,kind,ground,now);HordeFootfalls(s,m,kind,ground,now);}
+                // (The Smiler is smoke: its own wind-up is its telegraph, and it has no feet: NativeSmilerPresentation.cs.)
+                if(!SmilerIs(kind))HordeKindJob(s,m.Id,kind,attack,knocking?float.NaN:age,strike,recover,pos,m.Yaw,ground,st,target,rig,arena.Time,f.Side);
+                if(s.Gait.Landed!=0&&!SmilerIs(kind)){HordeDust(s,kind,ground,now);HordeFootfalls(s,m,kind,ground,now);}
                 attack0=attack;strike0=strike;
             }
             // A switch between the zombie's sources (a climb, a jump-down or a dive handing over to the gait, the door's wake to the
@@ -321,9 +322,11 @@ namespace ChipArena.UnityConversion
             NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");HordeBigHead(rig);
             rig.Root.transform.SetPositionAndRotation(pos,Quaternion.Euler(0,yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             float swell=HordeSwellNow(s,m,now);var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);StationGlow(m,kind,now,ref glow);
-            // On the player's model (NativeZombieModelPresentation.cs) for a modelled kind on the full tier, else the voxel model.
+            // On the player's model (NativeZombieModelPresentation.cs) for a modelled kind on the full tier, else the voxel model;
+            // the Smiler as its apparition on every tier (NativeSmilerPresentation.cs: its rig posed, not drawn).
             bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;
-            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell,s.Jaw)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
+            if(SmilerIs(kind))SmilerAdd(m,pos,yaw,velocity,ground,now);
+            else if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell,s.Jaw)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}IronworksQueue(arena,rig,s,m,ground,glow,flash);StationQueue(rig,m,kind,s.Tier,a.Lost,glow,flash,now);
             bool vent=a.Entry.kind=="vent";
             HordeAdd(rig,m.Id,a.Travelling?float.NaN:(float)NativeMinionFx.VentAge(vent,a.ActiveAt,hordeClock),float.NaN,vent?NativeArena.Vec(a.Entry.@exit.Position(.9f)).y-.9f:ground,ground,a.Possessed?a.PossessedAt:float.NaN,velocity,a.Lost,true,kind*8+s.Look);
             return true;
@@ -429,7 +432,7 @@ namespace ChipArena.UnityConversion
             HordeKindsCamera(camera);if(fxDraw==null||camera==null||arena==null){hordeJobCount=0;HordeChargesSkip();return;}
             var draw=fxDraw;float quality=Mathf.Clamp01(EffectsQuality),now=hordeClock;Vector3 eye=camera.transform.position,right=camera.transform.right,up=camera.transform.up;bool low=quality<.5f;
             // The acid and the impacts' high-quality pass (NativeZombieFxDraw: the shared effects renderer and its decal layer).
-            zombieFx??=new NativeZombieFxDraw();var zfx=zombieFx;zfx.Begin(vfx,eye,right,up,NativeZombieFx.Tier(LowGraphics,quality));
+            zombieFx??=new NativeZombieFxDraw();var zfx=zombieFx;zfx.Begin(vfx,eye,right,up,NativeZombieFx.Tier(LowGraphics,quality));SmilerFx(now);
             HordeSpitEvents(arena,now);HordeLocal(arena);HordeChargesFx(draw,arena,now,eye,right,up,low);
             for(int n=0;n<hordeJobCount;n++){hordeJobOrder[n]=n;hordeJobRank[n]=Vector3.Distance(hordeJobs[n].Root,eye);}
             Array.Sort(hordeJobRank,hordeJobOrder,0,hordeJobCount);int budget=NativeMinionFx.FullRigs;
@@ -630,6 +633,8 @@ namespace ChipArena.UnityConversion
         private bool HordeKindDeath(NativeDeath death,CapturedAnimation.Player rig,float age)
         {
             if(!HordeKindsReady||!hordeDead.TryGetValue(death.id,out var d))return false;float fx=hordeClock-death.at;
+            // The Smiler thins and rises away (NativeSmilerPresentation.cs): no fall, no corpse, no gore.
+            if(SmilerIs(d.Kind)){SmilerDeath(death,hordeNow-death.at);return true;}
             // The killing blow's push in the rig's frame (source axes) for the fall.
             float yr=death.yaw*Mathf.Deg2Rad;Vector2 fw=new Vector2(Mathf.Sin(yr),Mathf.Cos(yr)),rt=new Vector2(fw.y,-fw.x);var push=new NVector2(-(d.Push.X*rt.x+d.Push.Y*rt.y),d.Push.X*fw.x+d.Push.Y*fw.y);
             // (The fall is posed on the horde's clock, as the living add was; its burn and effects keep the field clock.)
@@ -779,7 +784,7 @@ namespace ChipArena.UnityConversion
         private void ClearHordeKinds(NativeArena arena)
         {
             foreach(var s in hordeKindStates.Values)hordeKindSpare.Push(s);hordeKindStates.Clear();foreach(var d in hordeDead.Values)if(d.Blend!=null)hordeBlendSpare.Push(d.Blend);hordeDead.Clear();hordeSnapshotAt=double.NegativeInfinity;ClearHordeHulkMoves();hordeKindArena=arena;hordeKindGeneration=arena?.Generation??-1;hordeKindEvent=0;hordeSpitEvent=0;hordeSpitEvents.Clear();hordeSpat.Clear();
-            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;ClearHordeGore();ClearZombieModels();ClearHordeAcid();ClearHordeBreaches();for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();ClearIronworks();ClearStationKinds();
+            for(int i=0;i<hordeParts.Length;i++)hordeParts[i].Live=false;ClearHordeGore();ClearZombieModels();ClearHordeAcid();ClearHordeBreaches();for(int i=0;i<hordeDust.Length;i++)hordeDust[i].Power=0;hordeJobCount=0;hordeBurstCount=0;ClearHordeZombieFx();ClearIronworks();ClearStationKinds();ClearSmilers();
         }
     }
 
@@ -829,7 +834,9 @@ namespace ChipArena.UnityConversion
                 var attack=NativeHordeKinds.AttackOf(kind,a.Stats.attack,a.Crawl);float strike=NativeHordeKinds.Strike(a.Stats,a.Crawl,a.Lost);Vector3 pos=m.Body.position;
                 // The add's voice (NativeZombieAudio.cs): a town zombie's moans while calm and its shriek on its alert
                 // (NativeHordeRoamPresentation.cs), else its hunting calls; every add's wind-up call and the spitter's spit.
-                bool calm=HordeRoamCue(arena,m,kind,pos,t);ZombieCues(m,kind,attack,strike,pos,t,calm);StationCues(m,kind,pos,t);
+                // (The Smiler has no voice; its lunge's strike is the rush and its blink is silent: NativeSmilerPresentation.cs.)
+                bool smiler=kind==NativeSmilerLook.Kind;if(smiler){if(a.Zone?.attack=="blink")continue;attack=NativeHordeKinds.Attack.Lunge;}
+                bool calm=HordeRoamCue(arena,m,kind,pos,t);if(!smiler)ZombieCues(m,kind,attack,strike,pos,t,calm);StationCues(m,kind,pos,t);
                 // The cue keys are only built inside a cue's window (no string per add per frame).
                 IronworksCues(arena,m,kind,strike,pos,t);
                 string wind=NativeHordeKinds.WindupCue(attack);if(wind!=null&&t>=m.LastAttack&&t-m.LastAttack<.15f&&Once("add"+m.Id+"w",m.LastAttack))BankPlay(wind,pos,NativeHordeKinds.WindupGain);

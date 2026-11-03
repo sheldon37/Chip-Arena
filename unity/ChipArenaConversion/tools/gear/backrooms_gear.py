@@ -27,9 +27,6 @@ def finishes():
     finish('card-red', 0xB8322A, 'sticker', outline=False)
     finish('sleeve-clear', 0xC8D4D8, 'plastic')
     finish('clip', 0x9AA0A4, 'metal', outline=False)
-    finish('grin-teeth', 0xF4EEDC, 'glow')
-    finish('grin-gum', 0x5A0E14, 'glow')
-    finish('eye-light', 0xFFFFFF, 'glow')
     finish('void', 0x050506, 'cloth', outline=False, dirt=0)
     finish('cap-white', 0xE8E6DC, 'rubber')
     finish('cap-red', 0xB83A32, 'rubber')
@@ -146,45 +143,6 @@ def lanyard():
     decal(pc, centre + n * .0024, Vector((1, 0, 0)), tilt @ Vector((0, 0, 1)), .052, .08, .003, card)
     out.append(pc.make(recalc=False))
     return out
-
-
-# ===========================================================================================================================
-# The Smiler (head): a grin far too wide, two rows of teeth on glowing gums, the corners turned up past the cheeks; two
-# pinprick eyes. Its body is a void (Core: black, no wear); these are what show in the dark.
-# ===========================================================================================================================
-def _smile(x, open_):
-    y = -.014 + 4.2 * x * x + open_
-    z = .139 - 4.6 * x * x
-    return Vector((x, z, y))
-
-
-def grin():
-    out = []
-    pc = Piece('grin-gums')
-    for open_, sign in ((.007, 1), (-.006, -1)):
-        pts = [_smile(-.088 + i * .0088, open_ * (1 - (abs(-.088 + i * .0088) / .095) ** 2) + sign * .006) for i in range(21)]
-        ribbon(pc, pts, [Vector((0, 1, 0))] * len(pts), .012, .004, 'grin-gum', widths=[.006 + .008 * (1 - abs(-.088 + i * .0088) / .09) for i in range(21)])
-    out.append(pc.make())
-    pc = Piece('grin-teeth')
-    for row, (open_, sign) in enumerate(((.007, -1), (-.006, 1))):
-        n = 17
-        for k in range(n):
-            x = -.08 + k * .16 / (n - 1)
-            shrink = 1 - (abs(x) / .095) ** 2
-            base = _smile(x, open_ * shrink + (-sign) * .004)
-            big = 1.5 if k in (3, n - 4) else 1.0
-            length = (.0105 + .004 * shrink) * big
-            tip = base + Vector((0, .0015, sign * length))
-            cyl(pc, base, tip, .0042 * (.7 + .3 * shrink) * big, 'grin-teeth', segs=6, r1=.0006)
-    out.append(pc.make())
-    return out
-
-
-def eyes():
-    pc = Piece('smiler-eyes')
-    for sx in (-1, 1):
-        sphere(pc, (sx * .034, .118, .063), (.0045, .003, .0045), 'eye-light', u=10, v=6)
-    return [pc.make()]
 
 
 # ===========================================================================================================================
@@ -314,8 +272,6 @@ def props():
     return [
         ('faceling-mask-skin', 'head', HEAD, mask),
         ('faceling-lanyard', 'spine_05', CHEST, lanyard),
-        ('smiler-grin', 'head', HEAD, grin),
-        ('smiler-eyes', 'head', HEAD, eyes),
         ('drowned-cap-white', 'head', HEAD, lambda: cap('cap-white')),
         ('drowned-cap-red', 'head', HEAD, lambda: cap('cap-red')),
         ('drowned-goggles', 'head', HEAD, goggles),

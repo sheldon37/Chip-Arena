@@ -6,8 +6,8 @@ namespace ChipArena.UnityConversion
 {
     // The Backrooms' entities in the horde's draw (docs/EXPEDITION-ENEMY-REWORK.md section 4; the authority: Core
     // NativeBackroomsKinds and the zone frame's attack name and times, section 6). Their looks are the player's model's
-    // (Core NativeZombieLooks: the Faceling's blank face, the Smiler's void and grin, the Drowned's striped costume, the
-    // Lifeguard's hook); here their moves:
+    // (Core NativeZombieLooks: the Faceling's blank face, the Drowned's striped costume, the Lifeguard's hook; the Smiler is its
+    // own apparition, NativeSmilerPresentation.cs, over the same gait); here their moves:
     // - (a) BackroomsAttack: the authority's names onto the gait. The wake, howl, blink, whistle and hook are their own motion
     //   (b), never the claw; the pounce, the lunges and the pole's sweep play the gait's takes at the authority's timings (the
     //   Hound's .35 s crouch and .5 s leap to contact at .85 s, the Smiler's .6 s and the Drowned's .4 s lunges, the sweep's .5 s);

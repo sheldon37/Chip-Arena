@@ -411,16 +411,13 @@ namespace ChipArena.UnityConversion
             {
                 if(!r.gameObject.activeSelf)continue;
                 if(r is SkinnedMeshRenderer skin)ZombieShapes(skin,v.Shapes);
-                // A void (Variant.Void: the Smiler): every part black, the head's painted eyes and mouth with it, unworn.
-                if(v.Void){ZombieTintOn(r,0x050506,linear);continue;}
                 if(VisualSkinPart(r)){VisualSkinToneOne(r,v.Skin);ZombieWearOn(r,0,0,v.Rot,seed,skinColour,0);continue;}
                 if(ZombieEyePart(r)){var e=WearColor(v.Eyes);if(linear)e=e.linear;zombieBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(zombieBlock);zombieBlock.SetVector(ZombieEyeId,new Vector4(e.r,e.g,e.b,1.35f));zombieBlock.SetFloat(UseOutlineId,0);r.SetPropertyBlock(zombieBlock);continue;}
                 int slot=ZombieSlotOf(worn,r.name);if(slot<0)continue;
                 if(v.Colours[slot]>=0)ZombieTintOn(r,v.Colours[slot],linear);
                 if(slot>0)ZombieWearOn(r,v.Grime,v.Tears,0,seed,skinColour,v.Blood);
             }
-            // No face (Variant.Faceless): the eyes, brows, lashes and teeth left off; the gear covers the face (the Faceling's mask,
-            // the Smiler's grin and eyes).
+            // No face (Variant.Faceless): the eyes, brows, lashes and teeth left off; the gear covers the face (the Faceling's mask).
             if(v.Faceless)foreach(var r in lookNamed.Values)if(ZombieFacePart(r.name))r.gameObject.SetActive(false);
             lookNamed.Clear();return worn;
         }

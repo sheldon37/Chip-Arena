@@ -39,19 +39,21 @@ internal static class ZombieModelChecks
             Check(mine.All(v=>v.Gear.Length>0&&v.Gear.All(g=>GearScript.Contains("('"+g+"',")))&&mine.All(v=>v.Tape==(local==NativeStationKinds.Linesman)&&v.Fused==(local==NativeStationKinds.Pileup)),
                 "station kind "+local+": its kit (gear the Blender script builds, the Linesman's tape, the Pileup's fused commuter)");
         }
-        // The Backrooms' entities (docs/EXPEDITION-ENEMY-REWORK.md section 4): the four humanoids live with their kit, the Hound a
-        // draft (it runs on two legs until its gait on all fours); the Tiler has no variants (not a person).
-        string[] kit={"faceling","hound","smiler","drowned","lifeguard"};
+        // The Backrooms' entities (docs/EXPEDITION-ENEMY-REWORK.md section 4): the three humanoids live with their kit, the Hound a
+        // draft (it runs on two legs until its gait on all fours); the Tiler and the Smiler have no variants (not people: the
+        // Smiler's apparition, owner 2026-11-03: below).
+        string[] kit={"faceling","hound","drowned","lifeguard"};
         foreach(var name in kit)
         {
             int kind=NativeHordeKinds.Resolve(name);var mine=all.Where(v=>v.Kind==kind).ToArray();
             Check(NativeHordeZones.Of(kind)?.Id==name&&mine.Length==NativeZombieLooks.Variants&&mine.Count(v=>v.Female)==2&&mine.All(v=>v.Id.StartsWith(name+"-",StringComparison.Ordinal)),name+": four variants, two male and two female");
             Check(NativeZombieLooks.ZoneLive.Contains(kind)==(name!="hound"),name+(name=="hound"?": a draft until it runs on all fours":": on the model in shipped builds after its review"));
             Check(mine.All(v=>v.Gear.All(g=>GearScript.Contains("('"+g+"',"))&&(v.Carry==null||GearScript.Contains("('"+v.Carry+"',"))),name+": its gear is the Blender scripts'");
-            Check(mine.All(v=>v.Faceless==(name=="faceling")&&v.Void==(name=="smiler")&&(v.Stripes>=0)==(name=="drowned")&&(v.Carry!=null)==(name=="lifeguard")&&(v.Upright>0)==(name!="hound")),name+": its kit (the blank face, the void, the stripes, the hook, its stance)");
+            Check(mine.All(v=>v.Faceless==(name=="faceling")&&(v.Stripes>=0)==(name=="drowned")&&(v.Carry!=null)==(name=="lifeguard")&&(v.Upright>0)==(name!="hound")),name+": its kit (the blank face, the stripes, the hook, its stance)");
         }
         Check(NativeZombieLooks.Of(NativeHordeKinds.Resolve("tiler"),1)==null,"the Tiler keeps its own body (no variants)");
-        Check(NativeZombieLooks.Kitted&&all.Where(v=>v.Kind<NativeHordeKinds.Count).All(v=>v.Gear.Length==0&&!v.Tape&&!v.Fused&&!v.Faceless&&!v.Void&&v.Stripes<0&&v.Carry==null&&v.Upright==0),"the base kinds wear no kit");
+        Check(!NativeZombieLooks.Has(NativeSmilerLook.Kind)&&!NativeZombieLooks.Modelled(NativeSmilerLook.Kind)&&!GearScript.Contains("'smiler-"),"the Smiler is no person: no variants, no gear (its own apparition)");
+        Check(NativeZombieLooks.Kitted&&all.Where(v=>v.Kind<NativeHordeKinds.Count).All(v=>v.Gear.Length==0&&!v.Tape&&!v.Fused&&!v.Faceless&&v.Stripes<0&&v.Carry==null&&v.Upright==0),"the base kinds wear no kit");
         // Their moves over the gait (Core NativeBackroomsMotion): each holds the pose finite and hands it back after its time.
         var pose=new CapturedRig.Pose();pose.World();
         NativeBackroomsMotion.Dormant(pose,7,1.3f);float w=NativeBackroomsMotion.Wake(pose,.1f,new System.Numerics.Vector3(1,0,.2f));NativeBackroomsMotion.HowlPose(pose,.4f);
@@ -61,6 +63,23 @@ internal static class ZombieModelChecks
             &&NativeBackroomsMotion.HookPose(pose,NativeBackroomsMotion.HookWindup+NativeBackroomsMotion.HookDrag+.5f,System.Numerics.Vector3.UnitZ)==0,"each move hands the pose back after its time");
         Check(NativeBackroomsMotion.Sink(true,float.NaN)==NativeBackroomsMotion.DrownedSink&&NativeBackroomsMotion.Sink(false,NativeBackroomsMotion.Surface*.5f)>0&&NativeBackroomsMotion.Sink(false,NativeBackroomsMotion.Surface+.1f)==0&&NativeBackroomsMotion.Sink(false,float.NaN)==0,
             "the Drowned sinks while submerged and rises after surfacing");
+        // The Smiler's apparition (Core NativeSmilerLook; owner 2026-11-03, "the smiler shouldn't be a player model"): at rest it is
+        // whole; the blink empties it by the move and gathers it again; the lunge gathers, throws its lobe and hauls it back; a
+        // spawn and a death fade it in and out (the eyes first out, the grin last); the billows' noise tiles.
+        uint ss=NativeHordeKinds.Seed(10077);bool Fin(NativeSmilerLook.Pose q)=>new[]{q.Presence,q.Spread,q.Rise,q.Gather,q.Surge,q.Churn,q.Bob,q.Eyes,q.Squint,q.Grin,q.Open,q.Face,q.Glow}.All(float.IsFinite);
+        var rest=NativeSmilerLook.Living(ss,40,null,float.NaN,-1,float.NaN);
+        Check(NativeSmilerLook.Kind>=0&&Fin(rest)&&rest.Presence==1&&rest.Face==1&&rest.Surge==0&&rest.Gather==0&&Math.Abs(rest.Bob)<.07f,"the Smiler at rest: whole, its face on, floating");
+        var gone=NativeSmilerLook.Living(ss,40,"blink",NativeSmilerLook.BlinkWind,-1,float.NaN);var back=NativeSmilerLook.Living(ss,40,"blink",NativeSmilerLook.BlinkWind+NativeSmilerLook.Reform+.3f,-1,float.NaN);
+        Check(Fin(gone)&&gone.Presence<.02f&&gone.Eyes<.02f&&gone.Face<.02f&&back.Presence>.99f&&back.Face>.99f&&back.Spread<.01f,"the blink: gone by the move, whole again after its reform");
+        var wind=NativeSmilerLook.Living(ss,40,"lunge",NativeSmilerLook.LungeWind*.8f,-1,float.NaN);var peak=NativeSmilerLook.Living(ss,40,"lunge",NativeSmilerLook.LungeWind+.12f,-1,float.NaN);var after=NativeSmilerLook.Living(ss,40,"lunge",NativeSmilerLook.LungeWind+.85f,-1,float.NaN);
+        Check(wind.Gather>.5f&&wind.Surge==0&&wind.Grin>rest.Grin&&peak.Surge>.9f&&peak.Open>.9f&&after.Surge<.01f&&after.Gather==0&&after.Open<.01f,"the lunge: gathered through the wind-up, thrown at the strike, hauled back");
+        var hit=NativeSmilerLook.Living(ss,40,null,float.NaN,-1,.05f);var born=NativeSmilerLook.Living(ss,40,null,float.NaN,0,float.NaN);
+        Check(hit.Churn>2&&born.Presence==0&&born.Face==0&&NativeSmilerLook.Living(ss,40,null,float.NaN,NativeSmilerLook.Appear+.5f,float.NaN).Presence==1,"a hit roils it; it appears from nothing");
+        var d0=NativeSmilerLook.Dying(ss,40,0);var d1=NativeSmilerLook.Dying(ss,40,.5f);var d2=NativeSmilerLook.Dying(ss,40,NativeSmilerLook.Dissipate*.9f);
+        Check(Fin(d0)&&Fin(d2)&&d0.Presence>.99f&&d1.Eyes<.01f&&d1.Face>.9f&&d2.Presence<.01f&&d2.Face<.05f&&d2.Rise>.4f&&!NativeSmilerLook.Gone(1)&&NativeSmilerLook.Gone(NativeSmilerLook.Dissipate),"its death: the eyes out first, the grin last, the smoke risen away");
+        var s0=NativeSmilerLook.Sample(.13f,.71f,.42f);var s1=NativeSmilerLook.Sample(1.13f,.71f,-.58f);var tex=NativeSmilerLook.Noise(8);
+        Check((s0-s1).Length()<1e-4f&&tex.Length==8*8*8*4&&Enumerable.Range(0,3).All(c=>Enumerable.Range(0,512).Min(i=>tex[i*4+c])==0&&Enumerable.Range(0,512).Max(i=>tex[i*4+c])==255)&&Enumerable.Range(0,512).All(i=>tex[i*4+3]==255),
+            "the billows' noise tiles and spans each channel");
         foreach(int kind in Kinds)
         {
             var mine=all.Where(v=>v.Kind==kind).ToArray();string name=NativeHordeKinds.Ids[kind];
