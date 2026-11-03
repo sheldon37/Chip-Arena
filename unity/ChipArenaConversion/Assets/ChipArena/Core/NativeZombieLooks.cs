@@ -77,6 +77,17 @@ namespace ChipArena.UnityConversion
             /// <summary>How upright it stands (0..1: the takes' hunch straightened, Core NativeZombiePosture.Upright): the Lifeguard's
             /// tall, still figure, the Faceling's and the Drowned's a little.</summary>
             public float Upright;
+            /// <summary>A fallen pilot's (owner 2026-11-03: "zombies to use the player default suit ... broken up and damaged full
+            /// helmet + suit"): the robot suit's plates it still wears (Core NativeRobotSuit.Bones, a bit each; the rest torn off), 0
+            /// none; their shell's and their accent's colour (0xRRGGBB: grimy, the light dead); its smashed helmet (Core
+            /// NativeRobotHelm.Broken), -1 none.</summary>
+            public int SuitShown,SuitShell=-1,SuitAccent=-1,Helm=-1;
+            /// <summary>How much brighter its pieces show against their own shade (1 as they are): the pack's pieces are dark under
+            /// the bake's palette, so pale clothes (a gown, a white coat, scrubs) are lifted to read pale.</summary>
+            public float Lift=1;
+            /// <summary>The area it was dressed for (a Theme), or null: the everyday clothes.</summary>
+            public string Theme;
+            public Variant Clone()=>(Variant)MemberwiseClone();
         }
 
         private static float[] Body(float type,float weight,float muscle,float belly,float chest,float neck,float curvy,float butt,float waist,float maturity=float.NaN,float sharp=float.NaN,float round=float.NaN)
@@ -273,11 +284,187 @@ namespace ChipArena.UnityConversion
         public static bool Modelled(int kind)=>kind>=0&&(kind<NativeHordeKinds.Count?Live[kind]||Drafts:NativeHordeZones.Of(kind)!=null&&(ZoneLive.Contains(kind)||Drafts))&&Has(kind);
         /// <summary>The variant an add of `kind` wears, by its id (stable for its life, the same on every peer); null for a kind
         /// without variants. Allocation free.</summary>
-        public static Variant Of(int kind,int id)
+        public static Variant Of(int kind,int id)=>Of(kind,id,null);
+        /// <summary>The variant an add of `kind` wears in an area (`theme`: Theme(map), null the everyday clothes): a base kind
+        /// dressed for its area, or now and then (PilotShare) a fallen pilot in the player's broken suit. Allocation free.</summary>
+        public static Variant Of(int kind,int id,string theme)
         {
             int pick=Math.Min(Variants-1,(int)(NativeHordeKinds.Hash(NativeHordeKinds.Seed(id),23)*Variants)),n=0;
-            foreach(var v in All)if(v.Kind==kind){if(n==pick)return v;n++;}
+            for(int i=0;i<All.Length;i++)
+            {
+                var v=All[i];if(v.Kind!=kind)continue;if(n++!=pick)continue;
+                if(kind>=NativeHordeKinds.Count)return v;
+                if(Pilots[i]!=null&&(ForcePilots||NativeHordeKinds.Hash(NativeHordeKinds.Seed(id),41)<PilotShare))return Pilots[i];
+                theme=ForceTheme??theme;
+                if(theme!=null)for(int t=0;t<Themes.Length;t++)if(Themes[t]==theme)return Themed[t][i]??v;
+                return v;
+            }
             return null;
+        }
+
+        // ================================================================================================================
+        // Areas and fallen pilots (owner 2026-11-03: "lets theme the zombie clothes for the areas they are in! Like in ward zero,
+        // give them lab clothes, patient clothes, etc."; "Can we model some zombies to use the player default suit? (Like broken
+        // up and damaged full helmet + suit.)")
+        // ================================================================================================================
+        // The base kinds' four looks keep their bodies, faces, wear and decay and change their clothes for the area they walk in
+        // (null below: the everyday clothes there too):
+        //  - Ward Zero (Meridian Biocontainment, the quarantine wing): patients in pale gowns over pyjama trousers, barefoot or in
+        //    socks; nurses and orderlies in scrubs with their caps; doctors and scientists in white coats with their ID lanyards;
+        //    security in navy jackets and caps;
+        //  - Central Station: commuters (suits, raincoats and caps, blouses and skirts, cardigans) and transit staff in hi-vis;
+        //  - City Ironworks: workers in bib overalls and beanies, hi-vis jackets with hard hats, work shirts and boots, gloves;
+        //  - the Backrooms' Level 0: office clothes, yellowed; the Poolrooms: swimwear and flip-flops.
+        // On any map about one in eight of the four common kinds (not the Hulk) is a fallen pilot: the robot suit's garments and
+        // its plates (a few torn off, the shell grimy, its light dead) and the full helmet smashed open on its face (Runtime
+        // ZombieSuit; Core NativeRobotSuit, NativeRobotHelm.Broken). Presentation only, seeded by the add's id as the rest.
+        public const string Ward="ward",Station="station",Foundry="foundry",Office="office",Pool="pool";
+        public static readonly string[] Themes={Ward,Station,Foundry,Office,Pool};
+        /// <summary>The area a map dresses its zombies for, or null (the everyday clothes).</summary>
+        public static string Theme(string map)
+        {
+            switch(map)
+            {
+                case "expedition-ward-zero":return Ward;
+                case "expedition-transit":return Station;
+                case "expedition-foundry":case "expedition-ironworks":return Foundry;
+                case NativeBackroomsGenerator.InstanceMap:return Office;
+                case NativePoolroomsGenerator.InstanceMap:return Pool;
+                default:return null;
+            }
+        }
+        /// <summary>DEV review (the local tool): an area's clothes on every map, and every common add a fallen pilot.</summary>
+        public static string ForceTheme;public static bool ForcePilots;
+        /// <summary>The share of the common kinds' adds that are fallen pilots.</summary>
+        public const float PilotShare=.12f;
+
+        private sealed class Outfit{public string Hair,Upper,Lower,Hands,Feet,Gear;public int HairColour=Keep,UpperColour,LowerColour,FeetColour;public bool Tape;public float Lift=1;}
+        private static Outfit O(string upper,string lower,string feet,int uc,int lc,int fc,string hair=null,int hc=Keep,string hands=null,string gear=null,bool tape=false,float lift=1)
+            =>new Outfit{Upper=upper,Lower=lower,Feet=feet,UpperColour=uc,LowerColour=lc,FeetColour=fc,Hair=hair,HairColour=hc,Hands=hands,Gear=gear,Tape=tape,Lift=lift};
+        // The pieces (the zombies' own first, then a Locker piece every bake has).
+        private const string Gown="z-gown|sweater",Pyjamas="z-scrub-pants|baggy-pants",Scrubs="z-scrubs-top|tee",ScrubPants="z-scrub-pants|baggy-pants",
+            Coat="z-suit-jacket|hard-jacket",Slacks="z-dress-pants|khakis",Loafers="z-loafers|lace-ups",Barefoot="z-bare|sneakers",Socks="z-socks|z-bare|sneakers",
+            Coveralls="z-coveralls|z-work-shirt|tee",Cargo="z-cargo-pants|baggy-pants",HiVis="z-work-jacket|hard-jacket",Blouse="z-blouse|tee",Skirt="z-skirt|khakis",
+            Heels="z-heels|z-flats|lace-ups",Flats="z-flats|lace-ups",Cardigan="z-cardigan|sweater",Shirt="z-work-shirt|tee",ShortShirt="z-short-shirt|z-work-shirt|tee",
+            Vest="z-sweater-vest|sweater",Trunks="z-shorts|cuffed-shorts",Dolphins="z-dolphin-shorts|z-shorts|cuffed-shorts",TubeTop="z-tube-top|tank",FlipFlops="z-flip-flops|z-bare|sneakers";
+        // (A cap or hat over the look's own hair, which it falls back on: "+" is replaced by the base's hair.)
+        private const string Cap="z-ball-cap|+",ScrubCap="z-beanie|+",Beanie="z-beanie|+",Newsboy="z-newsboy|+";
+        private const string Lanyard="faceling-lanyard",HardHat="linesman-hardhat-yellow",WhiteHat="linesman-hardhat-white";
+        // Per theme (Themes order), per base kind (Shambler, Runner, Spitter, Brute, Hulk), its four looks' outfits (male A, male B,
+        // female A, female B); null keeps the everyday clothes. The Hulk changes its trousers only (its grown flesh is its top).
+        private static readonly int[] ThemedKinds={NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute,NativeHordeKinds.Hulk};
+        private static Outfit[][][] Outfits()=>new[]{
+            // ---- Ward Zero ----
+            new[]{
+                new[]{O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f),O(Coat,Slacks,Loafers,0xE4E4DC,0x44464C,0x2A2522,gear:Lanyard,lift:2.6f),
+                    O(Gown,Pyjamas,Socks,0xB2C6D6,0xC4D2DC,0xD6D4CC,lift:2.4f),O(Scrubs,ScrubPants,"sneakers",0x3E8C86,0x3E8C86,0xE2E2E2,ScrubCap,0x3E8C86,gear:Lanyard,lift:1.6f)},
+                new[]{O(Scrubs,ScrubPants,"sneakers",0x2E4D7C,0x2E4D7C,0xE0E0E0,ScrubCap,0x2E4D7C,lift:1.6f),O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f),
+                    O(Scrubs,ScrubPants,"sneakers",0x5A8C60,0x5A8C60,0xDADADA,lift:1.6f),O(Gown,Pyjamas,Socks,0xB2C6D6,0xC4D2DC,0xD6D4CC,lift:2.4f)},
+                new[]{O(Gown,Pyjamas,Barefoot,0xA9BFB2,0xC0CEC4,Keep,lift:2.4f),O(Coat,Slacks,Loafers,0xDCDCD2,0x3C3E44,0x2A2522,gear:Lanyard,lift:2.6f),
+                    O(Gown,Pyjamas,Socks,0xBCC9D4,0xCAD4DC,0xD6D4CC,lift:2.4f),O(Scrubs,ScrubPants,"sneakers",0x7E9CC8,0x2F4470,0xE0E0E0,gear:Lanyard,lift:1.6f)},
+                new[]{O("hard-jacket","belted-pants","work-boots",0x1E2633,0x232833,0x1C1C1E,Cap,0x1E2633),O("tee",ScrubPants,"sneakers",0xDCDDD6,0xBCCAD6,0xD0D0D0,lift:2.4f),
+                    O("hard-jacket","belted-pants","work-boots",0x1E2633,0x232833,0x1C1C1E,Cap,0x1E2633),O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f)},
+                new[]{O(null,Pyjamas,Barefoot,Keep,0xA8BCC8,Keep),O(null,ScrubPants,"sneakers",Keep,0x3E8C86,0xD0D0D0),O(null,Pyjamas,Barefoot,Keep,0xB2C6D6,Keep),O(null,ScrubPants,"sneakers",Keep,0x2E4D7C,0xD0D0D0)}},
+            // ---- Central Station ----
+            new[]{
+                new[]{O(Coat,Slacks,Loafers,0x2C2E35,0x2C2E35,0x1E1A18),O("hard-jacket","khakis","lace-ups",0x8B7A56,0x4A4A4E,0x3A2E26,Newsboy,0x4A4036),
+                    O(Blouse,Skirt,Heels,0xD8D2C8,0x2B3247,0x1E1E22,lift:1.8f),O(Cardigan,Slacks,Flats,0x8A5A48,0x3A3A40,0x2A2A2C)},
+                new Outfit[4],
+                new[]{O(Shirt,Slacks,Loafers,0xCFD6DE,0x3A3C44,0x231F1C,lift:1.8f),O("hard-jacket","khakis","lace-ups",0x7E7058,0x4A4A4E,0x3A2E26),
+                    O(Blouse,Skirt,Heels,0xC9C3D6,0x3A3A3E,0x1E1E22,lift:1.8f),O(Cardigan,"khakis",Flats,0x5A6A4A,0x5A5246,0x2A2A2C)},
+                new[]{O(HiVis,Cargo,"work-boots",0xD8641E,0x2E3440,0x2A2420,Cap,0x2E3440,tape:true,lift:1.7f),O(Coat,Slacks,Loafers,0x23252B,0x23252B,0x1A1716),
+                    O(HiVis,Cargo,"work-boots",0xD8641E,0x2E3440,0x2A2420,tape:true,lift:1.7f),O("hard-jacket","khakis","lace-ups",0x6E6248,0x3E3E44,0x2E2622)},
+                new[]{O(null,Slacks,Loafers,Keep,0x2C2E35,0x1E1A18),null,O(null,Slacks,Flats,Keep,0x3A3A40,0x2A2A2C),null}},
+            // ---- City Ironworks ----
+            new[]{
+                new[]{O(Coveralls,Cargo,"work-boots",0x2E3B55,0x2E3B55,0x3A2C22,Beanie,0x3A3A3A,"gloves"),O(HiVis,Cargo,"work-boots",0xD9C021,0x3A3530,0x3A2C22,hands:"gloves",gear:HardHat,tape:true,lift:1.7f),
+                    O(Coveralls,Cargo,"work-boots",0x5A6066,0x5A6066,0x3A2C22,hands:"gloves"),O(Shirt,Cargo,"work-boots",0x5E6B7A,0x3A3530,0x3A2C22,Beanie,0x6A2A2A)},
+                new[]{O(Shirt,Cargo,"work-boots",0x6E5A44,0x3A3530,0x3A2C22),null,O("tank",Cargo,"work-boots",0x5A5A5E,0x4A4438,0x3A2C22,lift:1.4f),null},
+                new[]{O(Coveralls,Cargo,"work-boots",0xB05A2C,0xB05A2C,0x3A2C22,hands:"gloves"),null,O(Shirt,Cargo,"work-boots",0x6A6A58,0x3A3530,0x3A2C22,Beanie,0x3A3A3A),
+                    O(Coveralls,Cargo,"work-boots",0x2E3B55,0x2E3B55,0x3A2C22)},
+                new[]{null,O(HiVis,Cargo,"work-boots",0xD8641E,0x3A3530,0x3A2C22,hands:"gloves",gear:WhiteHat,tape:true,lift:1.7f),O(Coveralls,Cargo,"work-boots",0x4A5A3A,0x4A5A3A,0x3A2C22,hands:"gloves"),null},
+                new Outfit[4]},
+            // ---- the Backrooms' Level 0 ----
+            new[]{
+                new[]{O(Shirt,"khakis",Loafers,0xA9BDD3,0x8A7C62,0x2A2420,lift:1.8f),O(Vest,Slacks,Loafers,0x6E6A5A,0x3E3E44,0x2A2420),
+                    O(Blouse,Skirt,Heels,0xD6CFA8,0x4A4A52,0x1E1E22,lift:1.8f),O(Cardigan,Slacks,Flats,0x8A7A4A,0x3A3A40,0x2A2A2C)},
+                new Outfit[4],
+                new[]{O(ShortShirt,"khakis",Loafers,0xD8D0A8,0x7A6E58,0x2A2420,lift:1.8f),null,O(Blouse,Skirt,Heels,0xC8C0A0,0x3A3A40,0x1E1E22,lift:1.8f),null},
+                new[]{O(ShortShirt,"khakis",Loafers,0xC8D4E0,0x6E6650,0x2A2420,lift:1.8f),null,O(Shirt,Slacks,Flats,0xD8D2B8,0x3A3A40,0x2A2A2C,lift:1.8f),null},
+                new Outfit[4]},
+            // ---- the Poolrooms ----
+            new[]{
+                new[]{O("tank",Trunks,FlipFlops,0xE0E0DA,0x2E5E9A,0x3A3A3A,lift:1.4f),O("tank",Dolphins,Barefoot,0x3A6A8A,0xC23A3A,Keep,lift:1.4f),
+                    O(TubeTop,Dolphins,FlipFlops,0x2A6E8A,0x2A6E8A,0x3A3A3A,lift:1.4f),O("tank",Trunks,Barefoot,0xD86A8A,0x3A3A6A,Keep,lift:1.4f)},
+                new[]{O("tank",Trunks,Barefoot,0xD8A020,0x2A2A2E,Keep,lift:1.4f),O("tank",Dolphins,FlipFlops,0xE0E0DA,0x2A6E8A,0x3A3A3A,lift:1.4f),
+                    O(TubeTop,Trunks,Barefoot,0xC23A3A,0x2A2A2E,Keep,lift:1.4f),O("tank",Dolphins,FlipFlops,0x6A2A8A,0x6A2A8A,0x3A3A3A,lift:1.4f)},
+                new[]{O("tank",Trunks,Barefoot,0xC8C8C0,0x4A6A3A,Keep,lift:1.4f),null,O(TubeTop,Dolphins,Barefoot,0x8A2A4A,0x8A2A4A,Keep,lift:1.4f),null},
+                new[]{O("tank",Trunks,FlipFlops,0x1E3A6E,0x1E3A6E,0x3A3A3A,lift:1.4f),O("tank",Dolphins,Barefoot,0xE0E0DA,0xC23A3A,Keep,lift:1.4f),null,null},
+                new[]{O(null,Trunks,Barefoot,Keep,0x2E5E9A,Keep),O(null,Trunks,Barefoot,Keep,0xC23A3A,Keep),O(null,Trunks,Barefoot,Keep,0x2A6E8A,Keep),O(null,Trunks,Barefoot,Keep,0x3A3A6A,Keep)}}};
+
+        /// <summary>Every base look dressed for each area (Themes order; aligned with All, null where the area keeps its everyday
+        /// clothes or for a kind not themed) and as a fallen pilot (aligned with All, null for the Hulk and the zone kinds).</summary>
+        public static readonly Variant[][] Themed=MakeThemed();
+        public static readonly Variant[] Pilots=MakePilots();
+        /// <summary>Every themed and pilot look (their bodies are made ahead and checked as the base ones are).</summary>
+        public static readonly Variant[] Dressed=Gather();
+        private static Variant[][] MakeThemed()
+        {
+            var table=Outfits();var r=new Variant[Themes.Length][];
+            for(int t=0;t<Themes.Length;t++)
+            {
+                r[t]=new Variant[All.Length];
+                for(int k=0;k<ThemedKinds.Length;k++)
+                {
+                    int n=0;
+                    for(int i=0;i<All.Length;i++)
+                    {
+                        var b=All[i];if(b.Kind!=ThemedKinds[k])continue;var o=table[t][k][n++];if(o==null)continue;
+                        var v=b.Clone();v.Id=b.Id+"@"+Themes[t];v.Theme=Themes[t];v.Pieces=(string[])b.Pieces.Clone();v.Colours=(int[])b.Colours.Clone();
+                        if(o.Hair!=null){v.Pieces[0]=o.Hair.Replace("+",b.Pieces[0]);v.Colours[0]=o.HairColour;}
+                        if(o.Upper!=null&&!b.Mutant){v.Pieces[1]=o.Upper;v.Colours[1]=o.UpperColour;}
+                        if(o.Lower!=null){v.Pieces[2]=o.Lower;v.Colours[2]=o.LowerColour;}
+                        if(o.Hands!=null)v.Pieces[3]=o.Hands;
+                        if(o.Feet!=null){v.Pieces[4]=o.Feet;v.Colours[4]=o.FeetColour;}
+                        v.Gear=o.Gear==null?Array.Empty<string>():o.Gear.Split(',');v.Tape=o.Tape;v.Lift=o.Lift;
+                        r[t][i]=v;
+                    }
+                }
+            }
+            return r;
+        }
+        // The fallen pilots: the robot suit's garments (Core NativeRobotSuit.Under) in the pilots' dark slate, the plates with a
+        // few torn off (each look its own; the ear modules are the helmet's), the shell grimy and scorched, the light dead, and
+        // one of the smashed helmets; no hair under the helmet, worse wear.
+        private static Variant[] MakePilots()
+        {
+            // (Here, not in fields: Pilots is made before any field declared below it.)
+            int[][] PilotTorn={new[]{NativeRobotSuit.ForearmR,NativeRobotSuit.ShinL,NativeRobotSuit.ArmL},new[]{NativeRobotSuit.ThighR,NativeRobotSuit.ForearmL,NativeRobotSuit.Chest},
+                new[]{NativeRobotSuit.ArmR,NativeRobotSuit.ShinR,NativeRobotSuit.HandL},new[]{NativeRobotSuit.Hips,NativeRobotSuit.ForearmR,NativeRobotSuit.ThighL}};
+            int[] PilotShells={0x77725F,0x6B675C,0x7D7262,0x5E5C57};
+            var r=new Variant[All.Length];
+            for(int k=0;k<ThemedKinds.Length-1;k++)
+            {
+                int n=0;
+                for(int i=0;i<All.Length;i++)
+                {
+                    var b=All[i];if(b.Kind!=ThemedKinds[k])continue;int look=n++;
+                    var v=b.Clone();v.Id=b.Id+"@pilot";v.Pieces=new[]{None,NativeRobotSuit.Under[1],NativeRobotSuit.Under[2],NativeRobotSuit.Under[3],NativeRobotSuit.Under[4]};
+                    v.Colours=new[]{Keep,0x2B3038,0x2E333C,0x22252A,0x2A2826};v.Gear=Array.Empty<string>();v.Tape=false;
+                    int shown=(1<<NativeRobotSuit.Bones.Length)-1;shown&=~(1<<NativeRobotSuit.Head);foreach(int b2 in PilotTorn[look])shown&=~(1<<b2);
+                    v.SuitShown=shown;v.SuitShell=PilotShells[look];v.SuitAccent=0x3A1A16;v.Helm=(look+k)%NativeRobotHelm.BrokenCount;
+                    v.Grime=Math.Max(v.Grime,.7f);v.Tears=Math.Max(v.Tears,.6f);v.Blood=Math.Max(v.Blood,.6f);
+                    r[i]=v;
+                }
+            }
+            return r;
+        }
+        private static Variant[] Gather()
+        {
+            var list=new System.Collections.Generic.List<Variant>();
+            foreach(var t in Themed)foreach(var v in t)if(v!=null)list.Add(v);
+            foreach(var v in Pilots)if(v!=null)list.Add(v);
+            return list.ToArray();
         }
         /// <summary>Whether a mesh's blendshape `name` is the shape `want` ("Shape_Muscle", "Body.Muscle", "Muscle"; any case), never a
         /// tag or an expression shape.</summary>

@@ -47,6 +47,7 @@ namespace ChipArena.UnityConversion
             // (Stride: how far the gait drew this pose's ankles in about the hips, its stride planned for the model's legs:
             // NativeHordeGait.LegsNow.)
             public bool Crawl;public float Sunk,Crouch,Busy,Stride=1,Reach;
+            public Transform HelmHead;public bool HelmLooked;
             // A mutant's growth not on it yet (ZombieGrowthAttach: it draws voxel until its variant's growth is made), and when it
             // was last posed (the Hulk's carried hips step by it: NativeVisualRig.State.Dt).
             public bool Growing;public double PoseTime;
@@ -113,7 +114,7 @@ namespace ChipArena.UnityConversion
             bool visible=eye==null||!crowdFrustumReady||GeometryUtility.TestPlanesAABB(crowdFrustum,new Bounds(t.position+Vector3.up*2*rt.lossyScale.y,Vector3.one*8*Mathf.Max(1,rt.lossyScale.y)));
             bool urgent=z.Dying||z.Crawl||airborne||flash!=1||glow>1||swell>0||z.ChangedParts(lost,hidden);
             if(!z.PoseClock.Due(Time.unscaledTimeAsDouble,distance,visible,urgent,z.Id))
-            {z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;ZombieCarry(z,t,flash);return;}
+            {z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;ZombieCarry(z,t,flash);ZombieSuit(z,flash);return;}
             long poseAt=System.Diagnostics.Stopwatch.GetTimestamp();
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
@@ -124,7 +125,7 @@ namespace ChipArena.UnityConversion
             {var of=z.Body.Binding.Rig.Of;var at=z.Body.Binding.State.Position;for(int b=0;b<z.Shift.Length;b++)z.Shift[b]=of[b]<0?NVector3.Zero:at[of[b]]-minionPose.WorldPosition[b];}
             ZombieFace(z,flash,swell,z.PosedFrame<Time.frameCount-1);ZombieFusedSway(z);ZombieBeastJaw(z);
             if(z.Variant.Carry!=null){z.Body.Binding.WeaponFrame(pose,out var cp,out var cq);z.Carry=Matrix4x4.TRS(cp,cq,Vector3.one);z.CarryKnown=true;}
-            ZombieCarry(z,t,flash);
+            ZombieCarry(z,t,flash);ZombieSuit(z,flash);
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
             ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
@@ -282,7 +283,7 @@ namespace ChipArena.UnityConversion
                 if(z.Body.Root!=null&&z.Kind==kind)return z;
                 ZombieModelSpare(z);zombieBodies.Remove(id);
             }
-            var v=NativeZombieLooks.Of(kind,id);if(v==null)return null;
+            var v=NativeZombieLooks.Of(kind,id,zombieTheme);if(v==null)return null;
             if(zombieSpares.TryGetValue(v,out var spares))while(spares.Count>0){var s=spares.Pop();if(s.Body.Root==null)continue;z=s;break;}
             if(z==null||z.Body.Root==null)
             {
@@ -340,7 +341,7 @@ namespace ChipArena.UnityConversion
             }
             // (In a horde, each mutant variant's first body is made ahead, one a frame, so its growth is built before a Hulk needs it.)
             if(arena!=null&&arena.Pve!=null&&ZombieModelsOn&&zombiePool.Count>0)
-                foreach(var v in NativeZombieLooks.All)if(v.Mutant&&NativeZombieLooks.Modelled(v.Kind)&&!zombieGrowths.ContainsKey(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);break;}
+                {bool grew=false;foreach(var looks in ZombieAllLooks){foreach(var v in looks)if(v.Mutant&&(v.Theme==null||v.Theme==zombieTheme)&&NativeZombieLooks.Modelled(v.Kind)&&!zombieGrowths.ContainsKey(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);grew=true;break;}if(grew)break;}}
             if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
             if(zombieHolder==null){zombieHolder=new GameObject("Zombie model pool");zombieHolder.SetActive(false);DontDestroyOnLoad(zombieHolder);}
             zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);
@@ -417,7 +418,7 @@ namespace ChipArena.UnityConversion
                 if(VisualSkinPart(r)){VisualSkinToneOne(r,v.Skin);ZombieWearOn(r,0,0,v.Rot,seed,skinColour,0);if(v.Ribs>0)ZombieLeanOn(r,v.Ribs);continue;}
                 if(ZombieEyePart(r)){var e=WearColor(v.Eyes);if(linear)e=e.linear;zombieBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(zombieBlock);zombieBlock.SetVector(ZombieEyeId,new Vector4(e.r,e.g,e.b,1.35f));zombieBlock.SetFloat(UseOutlineId,0);r.SetPropertyBlock(zombieBlock);continue;}
                 int slot=ZombieSlotOf(worn,r.name);if(slot<0)continue;
-                if(v.Colours[slot]>=0)ZombieTintOn(r,v.Colours[slot],linear);
+                if(v.Colours[slot]>=0)ZombieTintOn(r,v.Colours[slot],linear,v.Lift);
                 if(slot>0)ZombieWearOn(r,v.Grime,v.Tears,0,seed,skinColour,v.Blood);
             }
             // No face (Variant.Faceless): the eyes, brows, lashes and teeth left off; the gear covers the face (the Faceling's mask).
@@ -501,13 +502,13 @@ namespace ChipArena.UnityConversion
         // map's tinted line round a blank eye reads as an iris: Brickfall's red).
         private static bool ZombieEyePart(Renderer r)=>r!=null&&r.name.StartsWith("Eyes.",StringComparison.Ordinal);
         // A piece's colour: rgb in the shader's space, w one over the piece's own main brightness (its layers' first colours).
-        private static void ZombieTintOn(Renderer r,int rgb,bool linear)
+        private static void ZombieTintOn(Renderer r,int rgb,bool linear,float lift=1)
         {
             var m=r.sharedMaterial;float main=0;int seen=0;
             if(m!=null)foreach(int id in ZombieMainColours)if(m.HasProperty(id)){var c=m.GetColor(id);if(linear)c=c.linear;main+=.299f*c.r+.587f*c.g+.114f*c.b;seen++;}
             main=seen>0?Mathf.Max(main/seen,.04f):.5f;var tint=WearColor(rgb);if(linear)tint=tint.linear;
             zombieBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(zombieBlock);
-            zombieBlock.SetVector(ZombieTintId,new Vector4(tint.r,tint.g,tint.b,1/main));
+            zombieBlock.SetVector(ZombieTintId,new Vector4(tint.r,tint.g,tint.b,lift/main));
             // The accent channels (a pilot's colour) dulled to the piece's shade: a zombie wears no team trim.
             var dull=new Color(tint.r*.55f,tint.g*.55f,tint.b*.55f);foreach(int id in AccentChannels)zombieBlock.SetColor(id,linear?dull.gamma:dull);
             r.SetPropertyBlock(zombieBlock);
@@ -966,6 +967,47 @@ namespace ChipArena.UnityConversion
             }
         }
         // ---- a carried prop (Variant.Carry): the gear bank's, at the model's right-hand weapon frame as last posed ----
+        // ---- the area the horde walks in (Core NativeZombieLooks.Theme: its zombies' clothes), set each frame from the arena ----
+        private string zombieTheme;private static readonly NativeZombieLooks.Variant[][] ZombieAllLooks={NativeZombieLooks.All,NativeZombieLooks.Dressed};
+        private void ZombieThemeOf(NativeArena arena)=>zombieTheme=NativeZombieLooks.Theme(arena?.MapId);
+        // ---- a fallen pilot's suit and smashed helmet (Variant.SuitShown, Helm; owner 2026-11-03: "zombies to use the player
+        // default suit ... broken up and damaged full helmet + suit"): the robot suit's plates still on it and the helmet on its
+        // head, the pilots' own models from the source-model bank (NativeRobotSuitPresentation.cs, NativeRobotHelmPresentation.cs)
+        // on the model's own bones (each plate with its bone's matrix times its bind pose), the shell grimy, the light dead. Queued
+        // every frame (the bank draws what is queued), struck by the add's flash; a lost limb's bones are collapsed, so are its
+        // plates. ----
+        private readonly Matrix4x4[] zombieSuitMatrices=new Matrix4x4[NativeRobotSuit.Bones.Length];private int zombieSuitShown;
+        private Func<int,Matrix4x4> zombieSuitBone;private Func<int,bool> zombieSuitVisible;
+        private static readonly Dictionary<int,Color> zombieSuitTints=new Dictionary<int,Color>();
+        private static Color ZombieSuitTint(int rgb,bool accent)
+        {
+            int key=accent?rgb|1<<24:rgb;if(zombieSuitTints.TryGetValue(key,out var c))return c;
+            // (The accent as a straight ratio to the trims' ember, #70e1d0: the pilots' accent tint lifts any colour to a glow, and
+            // this light is dead.)
+            if(accent){var want=WearColor(rgb).linear;var ember=new Color(.439f,.882f,.816f).linear;c=new Color(want.r/ember.r,want.g/ember.g,want.b/ember.b);}
+            else c=BodyTint("#"+(rgb&0xffffff).ToString("x6"));
+            zombieSuitTints[key]=c;return c;
+        }
+        private void ZombieSuit(ZombieBody z,float flash)
+        {
+            var v=z.Variant;if(v.SuitShown==0&&v.Helm<0||sourceModels==null)return;var root=z.Body.Root;if(root==null)return;
+            var body=ZombieSuitTint(v.SuitShell,false);var accent=ZombieSuitTint(v.SuitAccent,true);var lit=new Vector4(1,1,1,1);
+            if(v.SuitShown!=0&&sourceModels.Has(NativeSourceModels.Suit)&&SuitRigOf(root) is SuitRig rig)
+            {
+                for(int i=0;i<zombieSuitMatrices.Length;i++)zombieSuitMatrices[i]=rig.Bones[i]!=null?rig.Bones[i].localToWorldMatrix*rig.Bind[i]:Matrix4x4.identity;
+                zombieSuitShown=v.SuitShown&rig.Found;zombieSuitBone??=i=>zombieSuitMatrices[i];zombieSuitVisible??=b=>(zombieSuitShown>>b&1)!=0;
+                sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,zombieSuitBone,zombieSuitVisible,root.layer,null,body,accent,1,null,null,lit,null,flash);
+            }
+            if(v.Helm>=0)
+            {
+                if(z.HelmHead==null){if(z.HelmLooked)return;z.HelmLooked=true;foreach(var t in root.GetComponentsInChildren<Transform>(true))if(t.name=="head"){z.HelmHead=t;break;}if(z.HelmHead==null)return;}
+                string model=ZombieHelmModels[v.Helm%ZombieHelmModels.Length];if(!sourceModels.Has(model))return;
+                gearBone??=GearBoneOf;gearMatrix=z.HelmHead.localToWorldMatrix;
+                sourceModels.Queue(model,gearMatrix,gearBone,null,root.layer,null,body,accent,1,null,null,lit,null,flash);
+            }
+        }
+        private static readonly string[] ZombieHelmModels=MakeHelmModels();
+        private static string[] MakeHelmModels(){var r=new string[NativeRobotHelm.BrokenCount];for(int i=0;i<r.Length;i++)r[i]=NativeSourceModels.BrokenHelm+i;return r;}
         private void ZombieCarry(ZombieBody z,Transform root,float flash)
         {
             if(z.Variant.Carry==null||!z.CarryKnown||z.Dying)return;ZombieGearPropDraw(z.Variant.Carry,root.localToWorldMatrix*z.Carry,1,flash);

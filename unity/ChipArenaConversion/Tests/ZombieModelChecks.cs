@@ -19,7 +19,7 @@ internal static class ZombieModelChecks
     public static void Run(string root)
     {
         GearScript=File.ReadAllText(Path.Combine(root,"tools/gear/station_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/backrooms_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/hound_gear.py"));
-        Table();Pick();Shapes();Sac();Decay();Mutation();Sources(root);
+        Table();Pick();Dressed(root);Shapes();Sac();Decay();Mutation();Sources(root);
         Console.WriteLine("PASS zombie models: "+count+" checks (20 variants over five kinds, two male and two female each; wardrobe fallbacks; silhouettes by build; the pick by id; the shape names; the shader's zombie look; the horde's draw, death, corpses and wounds on the model; presentation only)");
     }
 
@@ -104,7 +104,8 @@ internal static class ZombieModelChecks
             Check(mine.All(v=>v.Sac==(kind==NativeHordeKinds.Spitter)),name+": the throat sac is the spitter's alone");
             Check(mine.Where(v=>v.Female).All(f=>mine.Where(v=>!v.Female).All(m=>f.Shapes[0]<m.Shapes[0])),name+": each female body type under each male's (the pack's male/female shape)");
         }
-        foreach(var v in all)
+        // (The looks dressed for an area and the fallen pilots are held to the same rules: Dressed.)
+        foreach(var v in all.Concat(NativeZombieLooks.Dressed))
         {
             Check(v.Pieces.Length==NativeLook.Slots.Length&&v.Colours.Length==NativeLook.Slots.Length,v.Id+": a piece and a colour per slot");
             for(int s=0;s<v.Pieces.Length;s++)
@@ -140,13 +141,75 @@ internal static class ZombieModelChecks
         {var a=Sig(Kinds[i]);var c=Sig(Kinds[j]);float d=(float)Math.Sqrt(a.Zip(c,(x,y)=>(x-y)*(x-y)).Sum());Check(d>=.2f,"silhouettes apart: "+NativeHordeKinds.Ids[Kinds[i]]+" and "+NativeHordeKinds.Ids[Kinds[j]]+" "+d.ToString("0.00"));}
     }
 
+    // ---- areas and fallen pilots (owner 2026-11-03: "lets theme the zombie clothes for the areas they are in! Like in ward zero,
+    // give them lab clothes, patient clothes"; "zombies to use the player default suit ... broken up and damaged full helmet +
+    // suit") ----
+    private static void Dressed(string root)
+    {
+        Check(NativeZombieLooks.Theme("expedition-ward-zero")==NativeZombieLooks.Ward&&NativeZombieLooks.Theme("expedition-transit")==NativeZombieLooks.Station&&NativeZombieLooks.Theme("expedition-foundry")==NativeZombieLooks.Foundry
+            &&NativeZombieLooks.Theme(NativeBackroomsGenerator.InstanceMap)==NativeZombieLooks.Office&&NativeZombieLooks.Theme(NativePoolroomsGenerator.InstanceMap)==NativeZombieLooks.Pool
+            &&NativeZombieLooks.Theme("brickfall")==null&&NativeZombieLooks.Theme("expedition-city")==null&&NativeZombieLooks.Theme(null)==null,"each area's map dresses for it; the city and the arenas keep the everyday clothes");
+        var dressed=NativeZombieLooks.Dressed;
+        Check(dressed.Select(v=>v.Id).Distinct().Count()==dressed.Length&&dressed.All(v=>!NativeZombieLooks.All.Any(b=>b.Id==v.Id)),"every dressed look its own id");
+        // A dressed look is its base look in other clothes: the same body, face, skin, eyes, decay and build.
+        foreach(var v in dressed)
+        {
+            var b=NativeZombieLooks.All.Single(x=>x.Id==v.Id.Split('@')[0]);
+            Check(v.Kind==b.Kind&&v.Female==b.Female&&v.Skin==b.Skin&&v.Eyes==b.Eyes&&v.Shapes==b.Shapes&&v.Build==b.Build&&v.Decay==b.Decay&&v.Sac==b.Sac&&v.Mutant==b.Mutant,v.Id+": its base look's body, face, decay and build");
+            Check(v.Kind<NativeHordeKinds.Count&&v.Gear.All(g=>GearScript.Contains("('"+g+"',"))&&v.Lift>=1&&v.Lift<=3,v.Id+": a base kind; its gear the Blender scripts'; its pale pieces lifted at most threefold");
+        }
+        // The pick: about one in eight of the four common kinds a fallen pilot, everywhere; the rest dressed for the area.
+        int[] common={NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute};
+        foreach(string theme in new string[]{null}.Concat(NativeZombieLooks.Themes))
+        {
+            int pilots=0,adds=0,themed=0,hulkPilots=0;
+            foreach(int kind in common)for(int id=20000;id<22000;id++){var v=NativeZombieLooks.Of(kind,id,theme);adds++;if(v.SuitShown!=0)pilots++;else if(v.Theme!=null){themed++;Check(v.Theme==theme,v.Id+": dressed for its own area");}
+                Check(ReferenceEquals(v,NativeZombieLooks.Of(kind,id,theme))&&v.Kind==kind,"the same look each time");}
+            for(int id=20000;id<22000;id++)if(NativeZombieLooks.Of(NativeHordeKinds.Hulk,id,theme).SuitShown!=0)hulkPilots++;
+            Check(pilots>adds*.09f&&pilots<adds*.15f&&hulkPilots==0,(theme??"everyday")+": about one in eight a fallen pilot ("+pilots+" of "+adds+"), never a Hulk");
+            Check(theme==null?themed==0:themed>adds*.4f,(theme??"everyday")+": the area's clothes on most of the rest ("+themed+")");
+        }
+        // Ward Zero: patients in gowns, nurses and orderlies in scrubs, doctors in white coats with their lanyards, security in caps.
+        var ward=dressed.Where(v=>v.Theme==NativeZombieLooks.Ward).ToArray();
+        Check(ward.Where(v=>v.Pieces[1].StartsWith("z-gown")||v.Pieces[1].StartsWith("z-suit-jacket")).All(v=>v.Lift>=2)&&ward.Count(v=>v.Pieces[1].StartsWith("z-gown"))>=7&&ward.Count(v=>v.Pieces[1].StartsWith("z-scrubs-top"))>=4&&ward.Count(v=>v.Pieces[1].StartsWith("z-suit-jacket")&&v.Gear.Contains("faceling-lanyard"))>=2
+            &&ward.Count(v=>v.Pieces[0].StartsWith("z-ball-cap"))>=2&&ward.Where(v=>v.Pieces[1].StartsWith("z-gown")).All(v=>v.Pieces[4].StartsWith("z-bare")||v.Pieces[4].StartsWith("z-socks")),
+            "Ward Zero: patients in gowns (barefoot or in socks), nurses in scrubs, doctors in white coats with their lanyards, security in caps");
+        Check(dressed.Where(v=>v.Theme==NativeZombieLooks.Foundry).Count(v=>v.Pieces[1].StartsWith("z-coveralls"))>=4&&dressed.Any(v=>v.Theme==NativeZombieLooks.Foundry&&v.Tape&&v.Gear.Any(g=>g.Contains("hardhat")))
+            &&dressed.Where(v=>v.Theme==NativeZombieLooks.Pool).All(v=>v.Mutant||v.Pieces[2].StartsWith("z-shorts")||v.Pieces[2].StartsWith("z-dolphin-shorts"))
+            &&dressed.Where(v=>v.Theme==NativeZombieLooks.Station).Count(v=>v.Pieces[1].StartsWith("z-suit-jacket"))>=2,"the foundry's overalls and hard hats, the pool's swimwear, the station's suits");
+        Check(dressed.Where(v=>v.Mutant).All(v=>v.Pieces[1]==NativeZombieLooks.None),"a dressed Hulk still wears no top");
+        // The fallen pilots: the robot suit's garments and its plates (three torn off each, the ear modules the helmet's), no hair,
+        // a smashed helmet, the shell grimy and the light dead.
+        var pilotsAll=dressed.Where(v=>v.SuitShown!=0).ToArray();int all16=(1<<NativeRobotSuit.Bones.Length)-1;
+        Check(pilotsAll.Length==16&&pilotsAll.All(v=>v.Pieces[0]==NativeZombieLooks.None&&v.Pieces.Skip(1).SequenceEqual(NativeRobotSuit.Under.Skip(1))&&(v.SuitShown&1<<NativeRobotSuit.Head)==0
+            &&System.Numerics.BitOperations.PopCount((uint)(all16&~v.SuitShown))==4&&v.Helm>=0&&v.Helm<NativeRobotHelm.BrokenCount&&v.SuitShell>=0&&(v.SuitAccent>>16&255)<80&&v.Gear.Length==0),
+            "the fallen pilots: the suit's garments and plates, three plates torn off, no hair, a smashed helmet, grimy, the light dead");
+        Check(pilotsAll.Select(v=>v.Helm).Distinct().Count()==NativeRobotHelm.BrokenCount&&pilotsAll.Select(v=>v.SuitShown).Distinct().Count()==4,"every smashed helmet and every torn suit worn");
+        // The smashed helmets: the whole helmet less its holes (no stray hole), the edges sooted, every light dead.
+        var whole=NativeRobotHelm.Helm();int wholeTris=whole.Sum(s=>s.Indices.Count/3);
+        for(int i=0;i<NativeRobotHelm.BrokenCount;i++)
+        {
+            var b=NativeRobotHelm.Broken(i);int tris=b.Sum(s=>s.Indices.Count/3);
+            Check(tris<wholeTris*.95f&&tris>wholeTris*.6f&&b.All(s=>s.Emission.All(e=>e==System.Numerics.Vector4.Zero))&&b.SelectMany(s=>s.Colors).Count(c=>c.X+c.Y+c.Z<.35f)>b.SelectMany(s=>s.Colors).Count()*.02f,
+                "smashed helmet "+i+": a hole through it ("+(wholeTris-tris)+" of "+wholeTris+" triangles gone), its edges sooted, its light dead");
+        }
+        // The face plate's gone on helmet 1: the eyes and mouth show (no triangle ahead of the face between the brow and the chin).
+        Check(NativeRobotHelm.Broken(1).All(s=>Enumerable.Range(0,s.Indices.Count/3).All(t=>{var c=(s.Positions[s.Indices[t*3]]+s.Positions[s.Indices[t*3+1]]+s.Positions[s.Indices[t*3+2]])/3;return !(c.Z>.09f&&c.Y>.0f&&c.Y<.075f&&Math.Abs(c.X)<.045f);})),
+            "smashed helmet 1: the face open from the brow to the chin");
+        // The runtime: the area each frame, the dressed look by it, the suit and helmet on the model's bones with the bank's models.
+        string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime",f));string zm=R("NativeZombieModelPresentation.cs"),kp=R("NativeHordeKindPresentation.cs"),hp=R("NativeRobotHelmPresentation.cs");
+        Check(zm.Contains("var v=NativeZombieLooks.Of(kind,id,zombieTheme);")&&kp.Contains("ZombieThemeOf(arena);ZombieModelsPrewarm(arena);")&&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);return;}")
+            &&zm.Contains("ZombieCarry(z,t,flash);ZombieSuit(z,flash);\n            DiagnosticZombiePoseMs")&&zm.Contains("sourceModels.Queue(NativeSourceModels.Suit,Matrix4x4.identity,zombieSuitBone,zombieSuitVisible,")&&hp.Contains("models[BrokenHelm+b]=HelmParts(NativeRobotHelm.Broken(b),"),
+            "wired: the area each frame, the look by it, the suit's plates and the smashed helmet from the bank on the model's bones");
+    }
+
     // ---- the pick: by id, stable, every variant and both sexes worn ----
     private static void Pick()
     {
         foreach(int kind in Kinds)
         {
             var seen=new int[4];int women=0;var mine=NativeZombieLooks.All.Where(v=>v.Kind==kind).ToList();
-            for(int id=10000;id<14000;id++){var v=NativeZombieLooks.Of(kind,id);Check(v!=null&&v.Kind==kind&&ReferenceEquals(v,NativeZombieLooks.Of(kind,id)),"a variant of its own kind, the same each time");seen[mine.IndexOf(v)]++;if(v.Female)women++;}
+            for(int id=10000;id<14000;id++){var v=NativeZombieLooks.Of(kind,id);Check(v!=null&&v.Kind==kind&&ReferenceEquals(v,NativeZombieLooks.Of(kind,id)),"a variant of its own kind, the same each time");seen[mine.FindIndex(b=>b.Id==v.Id.Split('@')[0])]++;if(v.Female)women++;}
             Check(seen.All(n=>n>=800&&n<=1200),NativeHordeKinds.Ids[kind]+": each variant worn by about a quarter ("+string.Join(",",seen)+")");
             Check(women>=1800&&women<=2200,NativeHordeKinds.Ids[kind]+": about half female");
         }
@@ -331,7 +394,7 @@ internal static class ZombieModelChecks
         Check(zr.Contains("if(t.childCount==0&&n.IndexOf(\"twist\",StringComparison.OrdinalIgnoreCase)>=0)"),"girth only on the twist leaves (no child moves)");
         Check(zr.Contains("z.Body.Binding.Apply(pose,ZombieGrasp(z),planted,airborne);")&&!zr.Contains("Right=NativeVisualRig."),"posed from the gait's own pose, no weapon grasp (the Hulk's fists closed on nothing, a station kind's hands on its prop)");
         Check(zr.Contains("if(zombieMakes>=ZombieMakesPerFrame||zombiePool.Count==0)return null;")&&zr.Contains("ZombieMakesPerFrame=3,ZombieSparesPerVariant=6")&&zr.Contains("zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);")&&!zr.Contains("VisualCorpseInstance()")&&!zr.Contains("Instantiate(visualBodyPrefab)"),"a few new bodies a frame from their own pool, made ahead off the main thread (never at once, never the pilots' corpse pool); spares kept per variant");
-        Check(kp.Contains("if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);"),"the pool made ahead while a horde is about");
+        Check(kp.Contains("if(!HordeKindsReady)return;ZombieThemeOf(arena);ZombieModelsPrewarm(arena);"),"the pool made ahead while a horde is about (its area known first)");
         Check(zr.Contains("Graphics.DrawMesh(mesh,m,mats[sub],0,null,sub,c.Blocks[i],false,true)"),"a corpse drawn from its baked meshes, no shadow");
         Check(zr.Contains("var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;")&&zr.IndexOf("var sac=v.Sac?ZombieSacMake(root,skeleton,v):null;",StringComparison.Ordinal)>zr.IndexOf("ZombieBuild(skeleton,v.Build);",StringComparison.Ordinal),"a spitter's sac made on its built rest");
         Check(zr.Contains("ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);")&&zr.Contains("z.Sac.SetBlendShapeWeight(0,swell*100);")&&zr.Contains("ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);"),"the sac swells with the gait's swell, none in a death");

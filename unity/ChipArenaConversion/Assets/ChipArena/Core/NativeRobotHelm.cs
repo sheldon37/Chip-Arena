@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Kit=ChipArena.UnityConversion.NativeModelHatMeshes.Kit;
 using Paint=ChipArena.UnityConversion.NativeModelHatMeshes.Paint;
@@ -138,6 +139,65 @@ namespace ChipArena.UnityConversion
         }
 
         /// <summary>The helmet's parts (one, on the head).</summary>
+        // ---- a fallen pilot's smashed helmet (Core NativeZombieLooks: the zombies in the player's broken suit) ----
+        /// <summary>How many smashed helmets there are.</summary>
+        public const int BrokenCount=3;
+        /// <summary>The helmet smashed open: `variant` 0, the visor and the right of the face caved in; 1, the face plate gone (the
+        /// visor, the grille and the jaw); 2, the back of the skull burst and a hole through the left of the visor. Its parts with
+        /// each hole's triangles gone (its edge as jagged as the shell's triangles and a seeded star of a rim), the shell round
+        /// each hole sooted dark and split by dark cracks running out from it, every light dead.</summary>
+        public static SheldonSection[] Broken(int variant)
+        {
+            variant=((variant%BrokenCount)+BrokenCount)%BrokenCount;
+            var holes=variant==0?new[]{new Vector3(D(30),.07f,.07f)}:variant==1?new[]{new Vector3(0,.035f,.09f)}:new[]{new Vector3(D(195),.125f,.068f),new Vector3(D(-16),.066f,.03f)};
+            uint seed=0xB40Bu+(uint)variant*977u;var result=new List<SheldonSection>();
+            foreach(var s in Helm())
+            {
+                var o=new SheldonSection{Part=s.Part,Bone=s.Bone,Transparent=s.Transparent,DoubleSide=s.DoubleSide};
+                for(int i=0;i<s.Positions.Count;i++)
+                {
+                    var p=s.Positions[i];float gap=BrokenGap(p,holes,seed,out float round,out int hole);
+                    float k=(1-.7f*(1-Smooth((gap-1)/.55f)))*(BrokenCrack(gap,round,seed+(uint)hole*131u)?.3f:1);
+                    var c=s.Colors[i];o.Add(p,s.Normals[i],new Vector4(c.X*k,c.Y*k,c.Z*k,c.W),Vector4.Zero);
+                }
+                for(int t=0;t+2<s.Indices.Count;t+=3)
+                {
+                    int a=s.Indices[t],b=s.Indices[t+1],c=s.Indices[t+2];
+                    if(BrokenGap((s.Positions[a]+s.Positions[b]+s.Positions[c])/3,holes,seed,out _,out _)<1)continue;
+                    o.Tri(a,b,c);
+                }
+                if(o.Indices.Count>0)result.Add(o);
+            }
+            return result.ToArray();
+        }
+        /// <summary>How far `p` (head frame) lies from the nearest hole (bearing, height, radius), in that hole's jagged radii (under 1:
+        /// inside it), the bearing round that hole it lies at, and which hole.</summary>
+        public static float BrokenGap(Vector3 p,Vector3[] holes,uint seed,out float round,out int nearest)
+        {
+            float best=float.MaxValue;round=0;nearest=0;float ph=MathF.Atan2(p.X,p.Z-AxisZ);
+            for(int h=0;h<holes.Length;h++)
+            {
+                float d=ph-holes[h].X;while(d>MathF.PI)d-=2*MathF.PI;while(d<-MathF.PI)d+=2*MathF.PI;
+                float across=d*Side,up=p.Y-holes[h].Y,a=MathF.Atan2(up,across),u=(a/(2*MathF.PI)+.5f)*9;int i0=(int)MathF.Floor(u);float f=Smooth(u-i0);
+                float jag=1+.32f*((1-f)*(BrokenHash(seed+(uint)h*53u,i0%9)-.5f)+f*(BrokenHash(seed+(uint)h*53u,(i0+1)%9)-.5f))*2;
+                float g=MathF.Sqrt(across*across+up*up)/(holes[h].Z*jag);if(g<best){best=g;round=a;nearest=h;}
+            }
+            return best;
+        }
+        // A crack: one of seven seeded rays out from the hole, narrowing as it runs out and ending at its own length.
+        private static bool BrokenCrack(float gap,float round,uint seed)
+        {
+            if(gap<1||gap>2.4f)return false;
+            for(int j=0;j<7;j++)
+            {
+                float at=BrokenHash(seed,20+j)*2*MathF.PI-MathF.PI,reach=1.35f+1.05f*BrokenHash(seed,40+j),d=round-at;
+                while(d>MathF.PI)d-=2*MathF.PI;while(d<-MathF.PI)d+=2*MathF.PI;
+                if(gap<reach&&MathF.Abs(d)<.07f*(1-(gap-1)/(reach-1)+.15f))return true;
+            }
+            return false;
+        }
+        private static float BrokenHash(uint seed,int i){uint h=seed^(uint)(i*0x9E3779B1);h^=h>>15;h*=0x2C1B3C6Du;h^=h>>12;h*=0x297A2D39u;h^=h>>15;return (h&0xFFFFFF)/16777216f;}
+
         public static SheldonSection[] Helm()
         {
             var k=new Kit();var s=k.Part("helmet");var centre=new Vector3(0,Mid,AxisZ);

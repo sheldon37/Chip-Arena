@@ -107,7 +107,7 @@ namespace ChipArena.UnityConversion
         {
             var crowdCamera=WorldEye;crowdFrustumReady=crowdCamera!=null;
             if(crowdFrustumReady)GeometryUtility.CalculateFrustumPlanes(crowdCamera,crowdFrustum);
-            hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);SmilerNoiseStart();float now=arena.Time;
+            hordeKindFrame++;HordeGoreBegin();IronworksZone(arena);if(!HordeKindsReady)return;ZombieThemeOf(arena);ZombieModelsPrewarm(arena);SmilerNoiseStart();float now=arena.Time;
             if(arena!=hordeKindArena||arena.Generation!=hordeKindGeneration||!float.IsNaN(hordeKindTime)&&now<hordeKindTime-.25f)ClearHordeKinds(arena);
             hordeKindTime=now;
             // The clock every add is posed on: the field clock (the replica render time on a guest, the visual clock on the host),

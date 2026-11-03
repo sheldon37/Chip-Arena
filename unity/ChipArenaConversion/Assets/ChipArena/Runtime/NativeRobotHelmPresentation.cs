@@ -8,12 +8,14 @@ namespace ChipArena.UnityConversion
     // NativeSourceLit material, its part on the head (authored in the head bone's frame, Unity's: no mirror).
     public sealed partial class NativeSourceModels
     {
-        public const string Helm="pilot-helm",HalfMask="pilot-half-mask";
+        public const string Helm="pilot-helm",HalfMask="pilot-half-mask",BrokenHelm="pilot-helm-broken-";
         private void HelmModels()
         {
             var lit=Resources.Load<Shader>("NativeSourceLit");if(lit==null)return;
             var material=new Material(lit){enableInstancing=true,name="Robot helmet"};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);materials.Add(material);
             models[Helm]=HelmParts(NativeRobotHelm.Helm(),material,"Robot helmet");models[HalfMask]=HelmParts(NativeRobotHelm.Half(),material,"Robot half mask");
+            // (A fallen pilot's smashed helmets: Core NativeZombieLooks, Runtime ZombieSuit.)
+            for(int b=0;b<NativeRobotHelm.BrokenCount;b++)models[BrokenHelm+b]=HelmParts(NativeRobotHelm.Broken(b),material,"Robot helmet smashed "+b);
         }
         private Part[] HelmParts(SheldonSection[] sections,Material material,string name)
         {
