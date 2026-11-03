@@ -664,6 +664,47 @@ for the hit and the death; local tool additions `zframe=W,H` to frame a body off
 leap in a wide shot), the death frame by frame. Not seen yet: a wall patch on the Poolrooms (checked offline only), the hit's
 chips (occluded in the capture), a Windows build. Open: a ceramic skitter for its feet.
 
+## 4l. Dressed for their area, bespoke garments, and fallen pilots (2026-11-03, `claude/zombie-outfits`)
+
+Owner: "Can we model some zombies to use the player default suit? (Like broken up and damaged full helmet + suit.)", "lets theme
+the zombie clothes for the areas they are in! Like in ward zero, give them lab clothes, patient clothes, etc.", then "May have to
+create the outfits, kimono doesnt work for those well" and "Utilize magica cloth for the farbric on the clothes".
+
+- Areas (Core NativeZombieLooks.Theme by the map; Variant.Theme): the five base kinds' twenty looks re-dressed per area, their
+  bodies, faces, wear and decay their base looks' (null outfits keep the everyday clothes there):
+  - Ward Zero: patients in hospital gowns over pale pyjama trousers, barefoot or in socks; nurses and orderlies in scrubs with
+    caps; doctors in white lab coats with ID lanyards; security in navy jackets and caps; the Hulk in pyjama or scrub trousers;
+  - Central Station: commuters (suits, raincoats with newsboy caps, blouses with long skirts, cardigans) and transit staff in
+    orange hi-vis with tape and caps (the runners keep their sportswear);
+  - City Ironworks: bib overalls with beanies and gloves, yellow or orange hi-vis with hard hats, work shirts, boots;
+  - the Backrooms' Level 0: office shirts, sweater vests, blouses and skirts, yellowed; the Poolrooms: tanks, tube tops, swim
+    shorts, flip-flops or bare feet.
+  Pale clothes on the pack's dark pieces are lifted (Variant.Lift: the tint's brightness against the piece's own). New pack
+  pieces in the bake's wardrobe: the gown fallback (the Nagagi wrap top), socks, the bib overall, beanie, newsboy cap, long skirt
+  and short-sleeved shirt.
+- Bespoke garments (Variant.Garments; `tools/gear/garments.py`, the local bank `Resources/ChipArenaGarments`, made from the
+  pack's body so kept local): the hospital gown (short sleeves, knee-length skirt, ties at the back, a faint print), the lab coat
+  (collar and lapels, six buttons, hip and breast pockets, long sleeves, past the knee) and the scrubs (V-neck top with a breast
+  pocket and short sleeves; trousers with a waistband and drawstring). Each is made on the pack body's bind pose: the skin it
+  covers eased out and relaxed into fabric (pushed back out wherever it nears the skin, so it bridges the body's hollows), the
+  skirts grown from the waist in rings that clear the legs, a lining joined round every opening; the nearest skin's weights and
+  the body's nine shapes carried over (it follows each zombie's build). At runtime (Runtime NativeZombieGarments.cs) a garment is
+  a skinned mesh on the model's bones in its slot (that slot's pack piece left off, and kept as the fallback without the bank),
+  in the variant's colour and wear (the toon shader's vertex-colour path now takes a zombie's tint when one is set). Its loose
+  fabric (the gown's and coat's skirts) is Magica Cloth through the local bridge (NativeVisualCloth: a paint map per garment,
+  pinned above the waist, free below) on the nearest four zombies within 8 m.
+- Fallen pilots (Variant.SuitShown, SuitShell, SuitAccent, Helm): about one in eight of the shambler, runner, spitter and brute
+  adds on any map wear the player's default suit: the robot suit's garments and plates (Core NativeRobotSuit; three plates torn
+  off per look), the shell grimy and dark, its light dead, and one of three smashed helmets (Core NativeRobotHelm.Broken: the
+  visor and the right of the face caved in; the face plate gone; the back of the skull burst and a hole through the visor), each
+  hole jagged with soot and cracks running out from it, the zombie's face through it. Drawn from the source-model bank on the
+  model's own bones (Runtime ZombieSuit). The Hulk is never one.
+
+Reviewed on the PC (BoZo, Cybercity; local tool `ztheme=area`, `zpilots=1`, `binddump` with `bindall=1`): every area's looks
+across the four kinds and the Hulk, Ward Zero's staff up close, the garments in Ward Zero (colours, wear, cloth on the nearest),
+the pilots' turnarounds and helmet close-ups. Not seen yet: the areas' own maps and lighting, the garments on a female and a heavy
+body in motion (their shapes are carried, not reviewed), a crowd's cost with cloth on, a Windows build.
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).

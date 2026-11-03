@@ -1,3 +1,32 @@
+## 2026-11-03 — Claude: zombies dressed for their area, bespoke garments with Magica Cloth, and fallen pilots
+
+- **Branch:** `claude/zombie-outfits`, base shared `0bcdaf45`; implementation `457fccd0` (areas and pilots), `fa1e48b5` (garments).
+- **Task:** owner: "Can we model some zombies to use the player default suit? (Like broken up and damaged full helmet + suit.)",
+  "lets theme the zombie clothes for the areas they are in! Like in ward zero, give them lab clothes, patient clothes, etc.",
+  "May have to create the outfits, kimono doesnt work for those well", "Utilize magica cloth for the farbric on the clothes".
+- **Changed (presentation only; docs/ZOMBIE-MODELS.md 4l):** Core NativeZombieLooks dresses the base kinds' looks per area by the
+  map (Ward Zero, Central Station, City Ironworks, Level 0, the Poolrooms) and makes about one in eight common adds a fallen pilot
+  (the robot suit's plates, a few torn off, and a smashed helmet: Core NativeRobotHelm.Broken; Runtime ZombieSuit). Ward Zero's
+  gowns, lab coats and scrubs are bespoke garments made in Blender (`tools/gear/garments.py` into the local bank
+  `ChipArenaGarments`), skinned on the model with its shapes, colour and wear (Runtime NativeZombieGarments.cs; the toon shader's
+  vertex-colour path takes a zombie's tint when set), their skirts Magica Cloth through the local bridge on the nearest four.
+  The bake's wardrobe gained seven pack pieces (the gown fallback, socks, bib overall, beanie, newsboy cap, skirt, short-sleeved
+  shirt). Local tool: `ztheme=`, `zpilots=1`, `binddump` with `bindall=1` (all four weights and the body shapes' deltas).
+- **Animation impact:** none: no rule, hit volume, timing or network state reads a look; the garments and plates ride the model's
+  bones; the cloth is drawn only. Cost: each garment is about 2,000 to 3,300 skinned vertices on the CPU; cloth on four at most.
+- **Checks:** `--zombie-models` (the areas' map mapping; every dressed look its base's body and decay; about one in eight a pilot,
+  never a Hulk; Ward Zero's patients, nurses, doctors and security; the garments the script makes; the pilots' suits and
+  helmets; the smashed helmets' holes, soot and dead light; the wiring); `--helm`; full `CoreTests` in a clean LF worktree on
+  `fa1e48b5`: passed (exit 0, 944 groups); pin scan: 7 files, 0 broken; `git diff --check` clean. PC (BoZo, Cybercity): each area's looks, Ward
+  Zero's staff, the garments in colour with cloth, the pilots' turnarounds and helmets. Not run: the areas' own maps, the garments
+  on heavy and female bodies in motion, a crowd's cost with cloth, a Windows build.
+- **Local assets:** the Drive zip carries the re-baked visual body (the new pieces) and `ChipArenaGarments`; the previous zip is
+  kept beside it as `LocalAssets-before-outfits.zip`.
+- **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
+- **Next (Claude):** bespoke garments for the other areas where the pack's pieces fall short (the station's coats, the foundry's
+  coveralls and aprons); surgical masks and stethoscopes as gear; the garments on more body types in motion.
+
+
 ## 2026-11-03 — Claude: the Tiler, its own body (a crab of the pool's tiles)
 
 - **Branch:** `claude/hound-tiler`, base shared `9ef4f826`; implementation `8b3ac962`.
