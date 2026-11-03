@@ -619,8 +619,9 @@ be more doglike". It stays on the pack's skeleton (its hits, gore and effects fi
   NativeZombiePosture.Stance's hound branch carries its pelvis): a walk's lateral sequence at its stalk into a rotary gallop at
   its 6 m/s (hind left, hind right, fore right, fore left), a short stance and a moment in the air; its back arching as the hind
   feet come under and stretching as they push off; the head held level and ahead.
-- Its moves on the authority's timings: the pounce (a .35 s crouch coiled on its haunches, a .5 s leap with the forelimbs reaching,
-  contact at .85 s, landing low; NativeHordeGait.HoundPounce), the pin (Core NativeBackroomsMotion.HoundPin: its front reared onto
+- Its moves on the authority's timings: the pounce (a .35 s crouch coiled on its haunches, a .5 s leap stretched out flat, its
+  forelimbs reaching ahead at the model's own arm length (NativeVisualRig.State.HandReach) and its hind legs trailing, its front
+  tipping up off the push and down into the landing, contact at .85 s, landing low; NativeHordeGait.HoundPounce), the pin (Core NativeBackroomsMotion.HoundPin: its front reared onto
   the pilot, forelimbs on their chest, the head driving in on the bites at 0, .3 and .6 s of the .9 s hold), the howl (4h).
 - Drawn at a person's size: its kind's presentation scale is 1 (Core NativeBackroomsKinds, `Scale`, was its .85 m capsule's height
   over 1.7, which drew a half-size person); its capsule, reach and every rule unchanged.

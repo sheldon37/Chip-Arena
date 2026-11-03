@@ -1,6 +1,8 @@
 ## 2026-11-03 — Claude: the Hound as a starved beast on all fours, its own doglike head
 
-- **Branch:** `claude/hound-tiler`, base shared `690f4695`; implementation `f756a776`.
+- **Branch:** `claude/hound-tiler`, base shared `690f4695`; implementation `f756a776`; the leap's follow-up `36853101` (reviewed
+  on the PC: mid-leap its hind legs hung to the floor and its long arms folded double; now stretched out, forelimbs reaching at
+  the model's arm length, hind legs trailing; full `CoreTests` on it passed, exit 0, 943 groups).
 - **Task:** owner: "Yes, continue" (the Hound on all fours), then with a reference "Make the hound model different ... much better
   quality and detail", "Make more monster like, modify model with blender if needed (still looks too much like player model)",
   "Change head to be more doglike".
