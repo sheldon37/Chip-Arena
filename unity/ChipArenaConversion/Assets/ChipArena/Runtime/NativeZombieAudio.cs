@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
             {
                 var e=events[i];if(e.Id<=zombieEvent||t-e.Time>.3f||t<e.Time)continue;
                 if((e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot)||e.Target<10000||!(e.Amount>0))continue;
-                var m=ZombieOf(arena,e.Target);if(m?.Pve==null||m.Hp<=0||m.Body==null||m.Pve.Stats?.id=="smiler")continue;int kind=zombieVoices.KindOf(m.Id);
+                var m=ZombieOf(arena,e.Target);if(m?.Pve==null||m.Hp<=0||m.Body==null||m.Pve.Stats?.id=="smiler"||m.Pve.Stats?.id=="tiler")continue;int kind=zombieVoices.KindOf(m.Id);
                 ZombieCall(m.Id,NativeZombieCall.Hurt,m.Body.position,NativeHordeKinds.Seed(m.Id),kind<0?NativeHordeKinds.Shambler:kind,t);
             }
             zombieEvent=newest;
