@@ -354,10 +354,12 @@ namespace ChipArena.UnityConversion
         // from ConnectionMetrics (a room is main.ts mode online; the host's own reading is 0, as the source host's is),
         // in 12 px mono #c3c4ce on #18191ee8 with a #45464f edge and 10 / 14 px padding, right-aligned at `right`.
         // The text comes cached from ConnectionPillText (NativeConnectionReport.cs).
+        // (Its width, which the Online Players chip keeps clear of: NativeSocialPanelUI.cs.)
+        private static float ConnectionPillWidth(string text)=>14+6+8+U.Measure(text,12,false,true).x+14;
         private void ConnectionPill(float right,float top)
         {
             string text=ConnectionPillText(out bool lost);
-            float w=14+6+8+U.Measure(text,12,false,true).x+14;var r=new Rect(right-w,top,w,36);
+            float w=ConnectionPillWidth(text);var r=new Rect(right-w,top,w,36);
             // Cyber chrome: a chamfered navy tag, the light good (danger once disconnected) with its glow.
             NativeHudChrome.Cut(r,NativeCyberTheme.Navy(.91f),NativeHudCyber.TagCut);NativeHudChrome.Outline(r,NativeCyberTheme.Edge(),NativeHudCyber.TagCut);
             var light=new Rect(r.x+14,r.center.y-3,6,6);Color tone=lost?NativeCyberTheme.Danger():NativeCyberTheme.Good();U.Glow(light,U.A(tone,.5f),4);U.Round(light,tone,3);

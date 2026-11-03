@@ -138,7 +138,7 @@ namespace ChipArena.UnityConversion
             if(ExpeditionLiveKeys())return;
             // Escape waits while the stage loading screen closes or is closed (NativeStageLoadingUI.cs).
             bool escape=(Input.GetKeyDown(KeyCode.Escape)||PadBack)&&!StageInputHeld;
-            if(escape&&previewArena!=null){EndPreview();return;}if(escape&&inspectSeat!=0){inspectSeat=0;return;}if(escape&&ReplayActive){EndReplay();return;}if(escape){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
+            if(escape&&SocialEscape())return;if(escape&&previewArena!=null){EndPreview();return;}if(escape&&inspectSeat!=0){inspectSeat=0;return;}if(escape&&ReplayActive){EndReplay();return;}if(escape){if(arena==null)MenuBack();else if(PvePickOpen)PveOpen(false);else if(menu&&pauseScreen!=PauseScreen.Menu){if(pauseScreen==PauseScreen.Settings){ApplySettings();Save();}pauseScreen=PauseScreen.Menu;}else menu=!menu;pending=new InputFrame();pending.CancelAbilities=true;if(server==null)arena?.CancelLocalAbilities();}
             // M mutes anywhere and V switches the camera during a match (main.ts keydown), neither while a text field has focus
             // or the board is open; both confirm with a notice. V toggles first person and the chosen third-person camera; X
             // swaps the shoulder (NativeShoulderCamera.cs).

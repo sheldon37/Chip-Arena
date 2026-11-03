@@ -44,39 +44,4 @@ namespace ChipArena.UnityConversion
             }
         }
     }
-    public sealed partial class ConversionGame
-    {
-        private bool socialOpen;private Vector2 socialScroll;
-        private bool CanAcceptInvite=>arena==null&&!Hosting&&server==null&&connecting==null&&relayConnecting==null&&!StageInputHeld;
-        private void SocialGui()
-        {
-            if(account?.Account==null||dedicated||prefs==null||!menu||StageInputHeld)return;
-            var saved=GUI.matrix;GUI.matrix=Matrix4x4.identity;
-            try{
-                if(NativeControllerPointer.Button(new Rect(Screen.width-200,70,185,28),"Online players · "+account.Invitations.Length+" invites"))socialOpen=!socialOpen;
-                if(!socialOpen)return;
-                var panel=new Rect(Mathf.Max(10,Screen.width-430),105,415,Mathf.Min(480,Screen.height-120));GUI.Box(panel,"");
-                GUILayout.BeginArea(new Rect(panel.x+12,panel.y+10,panel.width-24,panel.height-20));
-                GUILayout.Label("ONLINE PLAYERS");GUILayout.Label(account.SocialStatus);
-                socialScroll=GUILayout.BeginScrollView(socialScroll);
-                foreach(var invite in account.Invitations){
-                    if(invite==null||string.IsNullOrEmpty(invite.id))continue;
-                    GUILayout.Label(invite.username+" invited you to a room");GUILayout.BeginHorizontal();
-                    GUI.enabled=!account.SocialBusy&&CanAcceptInvite;
-                    if(GUILayout.Button("Accept"))account.AnswerInvite(invite.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;socialOpen=false;JoinRoom();});
-                    GUI.enabled=!account.SocialBusy;if(GUILayout.Button("Decline"))account.AnswerInvite(invite.id,false,null);GUI.enabled=true;GUILayout.EndHorizontal();
-                }
-                if(account.Invitations.Length>0&&!CanAcceptInvite)GUILayout.Label("Leave your current room or match before accepting.");
-                bool canInvite=relayHost!=null&&!relayHost.Closed&&!UseManagedRelay&&arena==null&&!deploymentLocked;
-                if(!canInvite)GUILayout.Label("Host an online room to invite players.");
-                foreach(var player in account.OnlinePlayers){
-                    if(player==null||string.IsNullOrEmpty(player.id))continue;
-                    GUILayout.BeginHorizontal();GUILayout.Label(player.username);GUI.enabled=canInvite&&!account.SocialBusy;
-                    if(GUILayout.Button("Invite",GUILayout.Width(80)))account.InvitePlayer(player.id,roomCode);
-                    GUI.enabled=true;GUILayout.EndHorizontal();
-                }
-                GUILayout.EndScrollView();GUILayout.EndArea();
-            }finally{GUI.enabled=true;GUI.matrix=saved;}
-        }
-    }
 }

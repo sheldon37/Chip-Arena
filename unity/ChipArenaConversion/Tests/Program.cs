@@ -192,7 +192,7 @@ internal static class Program
             ClassIconChecks.Run(root,data);
             RooftopChecks.Run(root);
             PortraitBackChecks.Run(root);
-            BuildLabelChecks.Run(root);
+            BuildLabelChecks.Run(root);SocialPanelChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);ModelHatChecks.Run(root);RobotSuitChecks.Run(root);RobotHelmChecks.Run(root);
             LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);

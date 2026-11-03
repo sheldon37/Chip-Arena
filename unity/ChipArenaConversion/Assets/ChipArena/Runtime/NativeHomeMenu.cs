@@ -269,7 +269,8 @@ namespace ChipArena.UnityConversion
         private void UpdateDropdown(){if(Updater!=null&&updateOpen)UpdatePanel(updateAnchor.x,updateAnchor.y);else updateCard=Rect.zero;}
         // While the update card is open, controls underneath it ignore the pointer (IMGUI gives clicks to the first control).
         // Computed once per event at the top of HomeMenu, untransformed, from the card drawn last frame.
-        private bool MenuBlocked()=>menuBlockedNow;
+        // (The Online Players chip and its open panel cover what is under them: NativeSocialPanelUI.cs.)
+        private bool MenuBlocked()=>menuBlockedNow||SocialCovers();
 
         // ---- Home screen ---------------------------------------------------------------------------------------------
         // The redesigned home (owner 2026-10-12, Duelyst-style reference) over the rooftop: the wordmark and its pin rule; the
