@@ -577,7 +577,8 @@ namespace ChipArena.UnityConversion
             if(edit){U.Text(new Rect(rx-60,lr.y,60,lh),"SWITCH",9.5f,C.Muted(.85f*a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);rx-=U.Measure("SWITCH",9.5f,true,true,.16f).x+8;float kw=H.KeyWidth("TAB",18);rx-=kw;H.Key(new Rect(rx,lr.y+(lh-18)/2,kw,18),"TAB",.9f*a);rx-=12;}
             U.Fill(new Rect(lx,lr.y+lh/2,Mathf.Max(0,rx-lx),H.Px),C.Edge(.7f*a));
             string runChip=pick.Locked?K.ComingSoon:"1–4 PLAYERS";Color runTone=pick.Locked?C.Muted():C.Violet();
-            string waveChip=pick.Locked||!pick.WaveDefense?K.ComingSoon:"CO-OP · UP TO 4";Color waveTone=pick.Locked?C.Muted():C.Good();
+            // (Wave Defense plays its own arena, whichever expedition the carousel stands on.)
+            const string waveChip="CO-OP · UP TO 4";Color waveTone=C.Good();
             if(ExpModeTile(ExpRect(m.Expedition),0,"route",X.ExpeditionLabel,compact?X.ExpeditionLineShort:X.ExpeditionLine,runChip,runTone,expMode==X.Mode.Expedition,edit,a,now,compact))ExpSetMode(X.Mode.Expedition);
             if(ExpModeTile(ExpRect(m.Waves),1,"waves",X.WavesLabel,compact?X.WavesLineShort:X.WavesLine,waveChip,waveTone,expMode==X.Mode.Waves,edit,a,now,compact))ExpSetMode(X.Mode.Waves);
             var d=ExpRect(m.Detail);if(expMode==X.Mode.Waves)ExpWaveRow(d,pick,start,edit,a,now,compact);else ExpRunNotes(d,pick,go,a,compact);
