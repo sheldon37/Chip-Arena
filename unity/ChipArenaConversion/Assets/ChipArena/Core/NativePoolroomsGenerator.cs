@@ -13,13 +13,13 @@ namespace ChipArena.UnityConversion
     }
     public static class NativePoolroomsGenerator
     {
-        public const string Version="poolrooms-rules-1-entities1",ArenaId="backrooms-poolrooms",InstanceMap="expedition-backrooms-poolrooms",AreaId="exp-poolrooms";
+        public const string Version="poolrooms-rules-2-entities1",ArenaId="backrooms-poolrooms",InstanceMap="expedition-backrooms-poolrooms",AreaId="exp-poolrooms";
         public const int ArenaSeed=647032,ArenaSize=24,ExpeditionSize=32;
         private static bool ReturnEdge(int x,int z,int dx,int dz)=>x==1&&dx==0&&(z==1&&dz==-1||z==0&&dz==1);
         private static readonly (int x,int z)[] Directions={(1,0),(0,1),(-1,0),(0,-1)};
         public static string SpawnKind(string map,string kind)=>IsMap(map)&&kind=="hulk"?"brute":kind;
         public static bool IsMap(string id)=>id==ArenaId||id==InstanceMap;
-        public static V3 Position(PoolroomsLayout l,int cell)=>new V3((cell%l.Width+.5f)*2,l.FloorAt(cell,.5f,.5f),(cell/l.Width+.5f)*2);
+        public static V3 Position(PoolroomsLayout l,int cell)=>new V3((cell%l.Width+.5f)*2,(l.Floor[cell]==PoolroomsLayout.Steps?-PoolroomsLayout.DeepDepth/2:l.FloorAt(cell,.5f,.5f)),(cell/l.Width+.5f)*2);
         public static PoolroomsGenerated Build(int seed,bool expedition)
         {
             int size=expedition?ExpeditionSize:ArenaSize;var l=NativePoolrooms.Preview(seed,size,size);
@@ -49,13 +49,22 @@ namespace ChipArena.UnityConversion
         }
         private static ContentMap Map(PoolroomsGenerated g,bool expedition)
         {
-            var l=g.Layout;string id=expedition?InstanceMap:ArenaId;var blocks=new List<ContentBlock>();
+            var l=g.Layout;string id=expedition?InstanceMap:ArenaId;var blocks=new List<ContentBlock>();var ramps=new List<MapRamp>();
             void Box(string key,float x,float y,float z,float sx,float sy,float sz)=>blocks.Add(new ContentBlock{id=id+":"+key,role="static",material="stone",pos=new V3(x,y,z),size=new V3(sx,sy,sz),rotation=new ContentRotation()});
             for(int z=0;z<l.Depth;z++)for(int x=0;x<l.Width;x++)
             {
                 int c=l.Index(x,z);float h=l.Ceiling[c];Box("ceiling-"+c,x*2+1,h+.15f,z*2+1,2,.3f,2);
                 if(l.Floor[c]!=PoolroomsLayout.Steps){float y=PoolroomsLayout.FloorY(l.Floor[c]);Box("floor-"+c,x*2+1,(y-1.6f)/2,z*2+1,2,y+1.6f,2);}
                 else for(int k=0;k<4;k++){byte dir=l.StepDir[c];bool alongX=dir<2;float t=(dir==PoolroomsLayout.DownNegX||dir==PoolroomsLayout.DownNegZ)?3-k:k;float y=-(k+1)*PoolroomsLayout.DeepDepth/4;Box("step-"+c+"-"+k,x*2+(alongX?t*.5f+.25f:1),(y-1.6f)/2,z*2+(alongX?1:t*.5f+.25f),alongX?.5f:2,y+1.6f,alongX?2:.5f);}
+            }
+            // Keep the four rendered treads, but use the same closed collision wedges as the other
+            // authored stairs. A .45 m capsule overlaps the next .325 m riser on a .5 m tread.
+            for(int c=0;c<l.Floor.Length;c++)if(l.Floor[c]==PoolroomsLayout.Steps)
+            {
+                byte d=l.StepDir[c];var down=new V3(d==0?1:d==1?-1:0,0,d==2?1:d==3?-1:0);
+                var centre=new V3(c%l.Width*2+1,0,c/l.Width*2+1);
+                ramps.Add(new MapRamp{id=id+":pool-stair-"+c,kind="stair",high=centre-down,low=centre+down-new V3(0,PoolroomsLayout.DeepDepth,0),width=2,bottom=-1.6f,
+                    blocks=Enumerable.Range(0,4).Select(k=>id+":step-"+c+"-"+k).ToArray()});
             }
             // Match the mesh's 8-cell block boundaries and opening runs. Thin slabs conservatively approximate its 14-sided arch.
             void Line(int line,int from,int to,bool xLine)
@@ -76,14 +85,16 @@ namespace ChipArena.UnityConversion
             for(int z=0;z<=l.Depth;z++)for(int x=0;x<l.Width;x+=8)Line(z,x,Math.Min(x+8,l.Width),false);
             var nodes=new List<MapNavNode>();var links=new List<MapNavLink>();
             string Key(int c,int k=0)=>"pool:"+c+":"+k;
-            V3 Point(int c,int k){var p=Position(l,c);if(l.Floor[c]!=PoolroomsLayout.Steps)return p;byte d=l.StepDir[c];float t=(d==1||d==3)?3-k:k;return new V3(c%l.Width*2+(d<2?t*.5f+.25f:1),-(k+1)*1.3f/4,c/l.Width*2+(d<2?1:t*.5f+.25f));}
+            // Put the lower waypoint near the landing so its outgoing chord does not sample the
+            // concave ramp/floor seam with a flat-floor capsule embedded in the slope.
+            V3 Point(int c,int k){var p=Position(l,c);if(l.Floor[c]!=PoolroomsLayout.Steps)return p;byte d=l.StepDir[c];float along=k==3?1.85f:k*.5f+.25f,t=(d==1||d==3)?2-along:along;return new V3(c%l.Width*2+(d<2?t:1),-along*PoolroomsLayout.DeepDepth/2,c/l.Width*2+(d<2?1:t));}
             void Link(int c,int k,int n,int j){var a=Point(c,k);var b=Point(n,j);if(Math.Abs(a.y-b.y)>.401f)return;links.Add(new MapNavLink{id=Key(c,k)+"/"+Key(n,j),a=Key(c,k),b=Key(n,j)});}
             for(int c=0;c<l.Floor.Length;c++){int count=l.Floor[c]==PoolroomsLayout.Steps?4:1;for(int k=0;k<count;k++){nodes.Add(new MapNavNode{id=Key(c,k),pos=Point(c,k)+new V3(0,.85f,0)});if(k>0)Link(c,k-1,c,k);}
                 foreach(var v in Directions.Take(2)){int x=c%l.Width,z=c/l.Width;if(ReturnEdge(x,z,v.x,v.z)||!l.Passable(x,z,v.x,v.z))continue;int n=l.Index(x+v.x,z+v.z);int nc=l.Floor[n]==PoolroomsLayout.Steps?4:1;for(int k=0;k<count;k++)for(int j=0;j<nc;j++){bool End(int cell,int tread,int dx,int dz){if(l.Floor[cell]!=PoolroomsLayout.Steps)return true;byte dir=l.StepDir[cell];int ax=dir==0?1:dir==1?-1:0,az=dir==2?1:dir==3?-1:0;return (dx==ax&&dz==az&&tread==3)||(dx==-ax&&dz==-az&&tread==0);}if(!End(c,k,v.x,v.z)||!End(n,j,-v.x,-v.z))continue;Link(c,k,n,j);}}
             }
             MapSpawn Spawn(int c)=>new MapSpawn{pos=Position(l,c)+new V3(0,.85f,0)};
             return new ContentMap{id=id,name="Poolrooms",tag="Generated pools",theme="poolrooms",look="training-studio",unity=true,rotation=!expedition,sky=0xc8dddd,floor=0xc8dddd,accent=0x73c8cd,
-                blocks=blocks.ToArray(),bounds=new MapBounds{minX=0,maxX=l.Width*2,minZ=0,maxZ=l.Depth*2,ceiling=l.Ceiling.Max(),killY=-4},spawns=new MapSpawns{ffa=g.Players.Select(Spawn).ToArray(),teams=new[]{new MapTeamSpawns{side=0,points=g.Players.Take(4).Select(Spawn).ToArray()},new MapTeamSpawns{side=1,points=g.Players.Skip(4).Select(Spawn).ToArray()}}},nav=new MapNav{nodes=nodes.ToArray(),links=links.ToArray()},segments=Array.Empty<StructureDefinition>(),pilotBlocks=Array.Empty<MapPilotBlock>(),hazards=Array.Empty<MapHazard>(),ramps=Array.Empty<MapRamp>()};
+                blocks=blocks.ToArray(),bounds=new MapBounds{minX=0,maxX=l.Width*2,minZ=0,maxZ=l.Depth*2,ceiling=l.Ceiling.Max(),killY=-4},spawns=new MapSpawns{ffa=g.Players.Select(Spawn).ToArray(),teams=new[]{new MapTeamSpawns{side=0,points=g.Players.Take(4).Select(Spawn).ToArray()},new MapTeamSpawns{side=1,points=g.Players.Skip(4).Select(Spawn).ToArray()}}},nav=new MapNav{nodes=nodes.ToArray(),links=links.ToArray()},segments=Array.Empty<StructureDefinition>(),pilotBlocks=Array.Empty<MapPilotBlock>(),hazards=Array.Empty<MapHazard>(),ramps=ramps.ToArray()};
         }
     }
     public static class NativePoolroomsWater

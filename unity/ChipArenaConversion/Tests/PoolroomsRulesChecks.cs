@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
                 {
                     var feet=NativePoolroomsGenerator.Position(l,c);float depth=NativePoolroomsWater.Depth(l,feet);
                     Check(Math.Abs(depth-Math.Max(0,-.15f-feet.y))<.0001f,"water depth matches collision floor");
-                    if(l.Floor[c]==PoolroomsLayout.Steps)Check(g.Map.blocks.Count(b=>b.id.Contains(":step-"+c+"-"))==4,"four collision treads");
+                    if(l.Floor[c]==PoolroomsLayout.Steps)Check(g.Map.blocks.Count(b=>b.id.Contains(":step-"+c+"-"))==4,"four retained visual treads");
                 }
                 var area=NativePoolroomsExpedition.Area(g);Check(area.spawns.All(s=>!s.allow.Contains("hulk")),"uncertified Hulk routes excluded");
                 Check(g.Players.All(c=>Clear(NativePoolroomsGenerator.Position(l,c))),"party slots clear");
