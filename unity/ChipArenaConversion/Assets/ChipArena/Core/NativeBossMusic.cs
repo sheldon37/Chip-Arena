@@ -19,6 +19,7 @@ namespace ChipArena.UnityConversion
                 case "skyframe":return "skyframe-rising-motif";
                 case "rig":return "rig-offshore";
                 case "polar":return "polar-pulse-de-la-mort";
+                case NativePoolroomsGenerator.ArenaId:case NativePoolroomsGenerator.InstanceMap:return PoolroomsTrack;
                 case "backrooms-level-0":case "expedition-backrooms-level-0":return "backrooms-fluorescent-loop";
                 case "training":return "training-steady-groove";
                 default:return fallback;

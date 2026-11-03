@@ -6,6 +6,7 @@ namespace ChipArena.UnityConversion
     {
         public readonly ExpeditionGeneratedWorld World;
         public readonly BackroomsGenerated Backrooms;
+        public readonly PoolroomsGenerated Poolrooms;
         public readonly string[] Mutators;
         public readonly ExpeditionLayout Layout;
         public readonly ConversionContent Content;
@@ -15,10 +16,12 @@ namespace ChipArena.UnityConversion
         {
             Ticket=room.Ticket;Mutators=room.Snapshot().mutators;World=NativeExpeditionGeneratedWorld.Build(room);
             if(Array.IndexOf(room.Snapshot().instances,NativeBackroomsGenerator.AreaId)>=0)Backrooms=NativeBackroomsGenerator.Build(unchecked((int)(room.Snapshot().worldSeed^0xbac00001u)),true);
-            Layout=NativeExpeditionGeneratedWorld.ComposeLayout(World,authored,Backrooms==null?null:NativeBackroomsExpedition.Area(Backrooms));
+            if(Array.IndexOf(room.Snapshot().instances,NativePoolroomsGenerator.AreaId)>=0)Poolrooms=NativePoolroomsGenerator.Build(unchecked((int)(room.Snapshot().worldSeed^0xbac00002u)),true);
+            Layout=NativeExpeditionGeneratedWorld.ComposeLayout(World,authored,Backrooms==null?null:NativeBackroomsExpedition.Area(Backrooms),Poolrooms==null?null:NativePoolroomsExpedition.Area(Poolrooms));
             Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+NativeExpeditionMutators.Version+"\n"+string.Join("\n",Mutators));
             Content=content.WithGeneratedMap(World.Map);
             if(Backrooms!=null){Content=Content.WithGeneratedMap(Backrooms.Map);Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+Backrooms.Identity);}
+            if(Poolrooms!=null){Content=Content.WithGeneratedMap(Poolrooms.Map);Layout.compatibility=NativeMapRules.Revision(Layout.compatibility+"\n"+Poolrooms.Identity);}
             if(Ticket.deployed&&Ticket.generatedCompatibility!=Identity)
                 throw new ArgumentException("Generated run identity does not match its deployment ticket.");
         }

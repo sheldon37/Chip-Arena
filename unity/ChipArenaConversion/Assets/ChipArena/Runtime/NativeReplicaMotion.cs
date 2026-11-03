@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         {
             if(Match.ResultMovement||BossVictoryWalk)return new NativePredictionState{Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),Time=Time,
                 CanMove=frame.hp>0,CanSprint=frame.hp>0&&frame.stamina>0,Grounded=Local?.Pose.Grounded??false,Stamina=frame.stamina,
-                Speed=Local==null?6.8f:(float)(6.8*Local.Stats["speed"]),Gravity=Local==null?23:(float)(23*Local.Stats["playerGravity"]),
+                Speed=(Local==null?6.8f:(float)(6.8*Local.Stats["speed"]))*PoolMove(frame.position),Gravity=Local==null?23:(float)(23*Local.Stats["playerGravity"]),
                 JumpSpeed=Local==null?8.5f:(float)(Rules.JumpSpeed*Local.Stats["jumpPower"]),ExtraAirJumps=Local?.Stats.Get("extraAirJumps")??0,JumpSpec=Local?.Seat.spec,AirJumps=Local?.Pose.AirJumps??0};
             var p=Local;bool unlocked=p!=null&&!(p.Pose.Kernel?.Busy(Time)??false)&&frame.hp>0&&p.Pose.GrabOwner==0&&Match.Phase==NativePhase.Fight&&frame.stunEnd<=Time&&frame.frozenUntil<=Time&&frame.scareUntil<=Time&&frame.rollEnd<=Time&&frame.down==null&&string.IsNullOrEmpty(frame.fighter?.Kind)&&(p.Pose.AttackUntil<=Time||p.Pose.CommitUntil>Time||p.Seat.spec=="cyberlord"||NativeWhirlwindRules.Busy(p.Pose.MeleeKit,Time));
             var a=p?.Pose;NativeMeleeSwing swing=null;
@@ -35,14 +35,14 @@ namespace ChipArena.UnityConversion
             bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;
             return new NativePredictionState{Bow=p?.Seat.spec=="bow",BowDrawAt=a?.BowDrawAt??-1,Cyber=p!=null&&CyberAllowed(p)?a.Cyber?.ViewCopy():null,CyberStep=NativeCyberStep.Restore(a?.Cyber,a?.StepAt??0,a?.StepUntil??0,a?.StepDistance??0,Time),CyberMana=frame.mana,CyberUltimateCost=p==null?1:(float)p.Stats["resourceCost"],CyberRate=p==null?1:(float)p.Stats["attackRate"],CyberCost=p==null?1:(float)(p.Stats["abilityCost"]*p.Stats["resourceCost"]),CyberCooldown=p==null?1:(float)p.Stats["abilityCooldown"],AirborneAt=a?.AirborneAt??-1,AirAttackUsed=a?.AirAttackUsed??false,ExtraAirJumps=p?.Stats.Get("extraAirJumps")??0,JumpSpec=p?.Seat.spec,AirJumps=a?.AirJumps??0,AirJumpAt=a?.AirJumpAt??-100,Swimming=NativeHazards.InLava(MapId,Vec(frame.position)),Time=Time,RollUntil=frame.rollEnd,Ready=p?.Seat.spec=="cyberlord"?Math.Max(frame.ready,frame.blockEnd):frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
                 OverdriveAt=frame.overdriveAt,OverdriveUntil=frame.overdriveUntil,MeleeKit=a?.MeleeKit?.ViewCopy(),MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
-                Speed=p==null?6.8f:(float)(6.8*p.Stats["speed"])*(p.Input.Aim&&NativeRangedRules.Scope(p.Seat.spec)?(float)Content.Ads(p.Seat.spec).move:1),
+                Speed=(p==null?6.8f:(float)(6.8*p.Stats["speed"]))*PoolMove(frame.position)*(p!=null&&p.Input.Aim&&NativeRangedRules.Scope(p.Seat.spec)?(float)Content.Ads(p.Seat.spec).move:1),
                 Gravity=p==null?23:(float)(23*p.Stats["playerGravity"]),JumpSpeed=p==null?8.5f:(float)(8.5*p.Stats["jumpPower"]),
                 Sprinting=p?.Pose.Sprinting??false,Grounded=p?.Pose.Grounded??false,CanMove=unlocked,CanSprint=unlocked&&frame.stamina>0&&frame.reloadEnd<=Time&&frame.blockEnd<=Time};
         }
         private V3 ConstrainPrediction(V3 old,V3 desired)
         {
             desired=NativeMapRules.ExcludeTops(Map,desired);
-            return Vec(NativeGroundMotor.Constrain(root.scene.GetPhysicsScene(),Vec(old),Vec(desired)));
+            return Vec(NativeGroundMotor.Constrain(root.scene.GetPhysicsScene(),Vec(old),Vec(desired),PoolStep));
         }
         private bool PredictionGrounded(V3 position)=>NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),Vec(position)).Found;
         private void BufferReplica(NativeGameFrame frame,bool reset)

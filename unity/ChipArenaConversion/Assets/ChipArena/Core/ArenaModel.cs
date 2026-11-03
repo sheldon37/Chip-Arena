@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
     public class Actor
     {
         public int VisualSet,MagicVisual;
+        // Derived from the deterministic Poolrooms layout and rendered feet, on authority and guests.
+        public bool Swimming,Wading;public float WaterDepth,Waterline;
         // Last Laugh victim identity/timeline, consumed by animation, flames and both participant cameras on every peer.
         public int GrabOwner;public float GrabAt,GrabCrushAt,GrabUntil;
         public NativeWound[] Wounds=Array.Empty<NativeWound>();public string SourceSpec,SourceAction,BodyColor="#e5e7eb",AccentColor="#70e1d0",Hat="none";public float SourceModeAt=-100;public float SourceAt,SourceUntil,RigScale=1;public int SourceIndex,SourceTotal,SourceSide=1;public bool SourceRanged;

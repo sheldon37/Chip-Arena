@@ -248,10 +248,10 @@ namespace ChipArena.UnityConversion
                     }
                     expeditionSpawnAt=Time+(float)NativeExpeditionMutators.Interval(ActiveMutators);
                 }
-                if(s.area==NativeBackroomsGenerator.AreaId)
+                if(s.area==NativeBackroomsGenerator.AreaId||s.area==NativePoolroomsGenerator.AreaId)
                 {
                     if(Expedition.TryBackroomsExit()){KillPveHorde();pveAcid.Clear();Bullets.Clear();Pve.Stage="intermission";}
-                    else if(!instance.cleared&&instance.progress>=instance.target)foreach(var row in Pve.Rows.Values){row.Notice="Quota complete · find the Level 0 exit cache";row.NoticeUntil=Time+1;}
+                    else if(!instance.cleared&&instance.progress>=instance.target)foreach(var row in Pve.Rows.Values){row.Notice="Quota complete · find the exit cache";row.NoticeUntil=Time+1;}
                 }
                 else
                 {

@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
         private NativeMinion SpawnPveAddCore(string kind,bool force,int forcedEntry)
         {
             var v=Pve??wardSandboxState;if(v==null||kind==null)return null;
-            kind=NativeExpeditionMutators.Kind(ActiveMutators,kind);if(!ZoneKindRoom(kind))return null;
+            kind=NativePoolroomsGenerator.SpawnKind(MapId,NativeExpeditionMutators.Kind(ActiveMutators,kind));if(!ZoneKindRoom(kind))return null;
             if(Minions.Count(m=>m.Pve!=null&&!m.DevMonster)>=v.Cap&&v.Cap>0)return null;
             if(kind=="spitter"&&Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="spitter")>=NativeSpitterRules.Cap)return null;
             if(kind=="hulk"&&Minions.Count(m=>m.Pve?.Stats.id=="hulk")>=(Mutator("hulkamania")?6:Math.Max(1,Math.Min(2,v.Cap/2))))return null;
@@ -189,7 +189,8 @@ namespace ChipArena.UnityConversion
                     move=distance>1.1f||a.Possessed||a.Stats.id=="spitter"?dir*speed:Vector3.zero;if(!SupportedStageMove(navAt,move))move=Vector3.zero;
                 }
                 if(move.sqrMagnitude>.001f){float factor=Time<a.SlowUntil?a.SlowFactor:1;foreach(var f in ChipFields)if(CanHit(f.Owner,m)&&Vector3.Distance(f.Position,at)<f.Radius)factor=Math.Min(factor,f.Kind=="frost"?.45f:f.Kind=="time"?.6f:1);move*=factor*(a.Zone.aboardUntil>Time?1.25f:1)*(a.Stats.id=="slagback"&&a.Zone.shedAt>=0?1.25f:1);move+=HordeSeparation(m,at);float oldYaw=m.Yaw;m.Yaw=Mathf.Atan2(move.x,move.z)*Mathf.Rad2Deg;if(a.Stats.id=="pileup"||a.Stats.id=="slagback")m.Yaw=Mathf.MoveTowardsAngle(oldYaw,m.Yaw,(a.Stats.id=="pileup"?60:90)*dt);}
-                if(!SupportedStageMove(navAt,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move*=NativeExpeditionMutators.ZombieSpeed(ActiveMutators);move+=Vector3.ClampMagnitude(a.External,Mutator("bounce-house")?18:6);if(HubCross(at,at+move*dt,m.Collider.radius))move=Vector3.zero;m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
+                if(!SupportedStageMove(navAt,move))move=Vector3.zero;a.External*=Mathf.Exp(-6*dt);move*=NativeExpeditionMutators.ZombieSpeed(ActiveMutators)*PoolMove(m.Body.position,m.Collider.height/2);
+                if(Poolrooms!=null&&move.sqrMagnitude>0&&m.Pve.Stats.id!="hulk"){var centre=m.Body.position+Vector3.up*(.85f-m.Collider.height/2);if(NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),centre).Found){if(NativeGroundMotor.StepUp(root.scene.GetPhysicsScene(),centre,move*dt,out float rise,out var allowed,PoolStep))m.Body.position+=Vector3.up*rise;move=allowed/dt;}}move+=Vector3.ClampMagnitude(a.External,Mutator("bounce-house")?18:6);if(HubCross(at,at+move*dt,m.Collider.radius))move=Vector3.zero;m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);
             }
         }
         private bool TryVentTravel(NativeMinion m,NativePilot target)

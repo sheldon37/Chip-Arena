@@ -277,7 +277,7 @@ pod timing or the fluorescent circuit design. The live map uses Claude's existin
 short-wall gaps, pillar corners and pit edges against the baked bank on Windows;
 no local GPU or two-client playtest was available to Astra.
 
-## The Poolrooms (Claude, 2026-11-02; DEV preview)
+## The Poolrooms (Claude, 2026-11-02; presentation contract)
 
 The add-on's "poolrooms" archetype rebuilt as our generated level: white tile, still water, wide quiet halls.
 
@@ -377,3 +377,56 @@ climbing out) is Astra's rules (the handoff below).
 and navigation, spawns, and the water's rules. Wading (0.15-0.25 m of water), deep water (swim or sink, climbing out by the
 steps or the pool's edge), what water does to movement, weapons and enemies, and whether Hulks fit under the 3.6 m ceilings are
 all the rules' call. The presentation only needs the layout. A map look and the level's sounds come after the map.
+
+
+## Poolrooms production rules (Astra, 2026-11-03)
+
+`NativePoolroomsGenerator` builds the production collision and navigation from `PoolroomsLayout`.
+The fixed PvP map is `backrooms-poolrooms` (seed 647032, 24 × 24 cells), included in Random.
+Expedition can select `exp-poolrooms` / `expedition-backrooms-poolrooms` (32 × 32 cells,
+seed `worldSeed xor 0xbac00002`) among its three destinations. It uses the existing quota
+then exit-cache encounter, with the separate `poolrooms-exit` once-only reward objective.
+The catalogue now offers five destinations. Authenticated tickets reconstruct the layout on
+both peers; generator version and generated identity participate in compatibility checks.
+Both map IDs use the owner's `poolrooms-untitled` music.
+
+- **Geometry:** 2 m cells, room ceilings at 3.6 m or higher, 0.3 m walls, 0.4 m shallow basins,
+  1.3 m deep basins, and the surface at −0.15 m. Four 0.325 m risers match each deep flight.
+  Collision uses solid basin/deck blocks and real ceilings. Arch collision conservatively
+  subdivides the presentation's polygonal soffit into thin boxes; the edge can feel slightly
+  tighter than the visible curve. All shells are indestructible. Production halls omit the
+  preview's optional pillars so cell-centre navigation never targets a pillar's centre.
+- **Navigation/spawns:** eight distinct dry player positions; Expedition's entry slots are
+  grouped near its entry. Enemies spawn on dry decks at least 12 m from every player slot.
+  Deck routes reach the exit without crossing a pool and avoid the return door’s closed edge. Pool routes include all four treads;
+  no navigation edge tells an actor to climb a 1.3 m vertical basin wall. In this map only,
+  the ground motor permits a 0.42 m step, allowing the shallow pool's 0.4 m lip; other maps
+  retain their 0.35 m limit. Normal zombies use the same step clearance checks.
+- **Movement decision: chest-deep wading.** These basins hold only 1.15 m of water, so bodies
+  remain grounded. The speed multiplier is `1 − 0.5 × clamp(depth / 1.15, 0, 1)`: 0.8913 in
+  shallow water and 0.5 on a deep floor (ordinary 6.8 m/s walking becomes 6.06 / 3.4 m/s).
+  Steps progressively reduce immersion. The same rule feeds authority and guest prediction,
+  ordinary zombie movement and lunges. Gravity, jumps, roll/ability bursts and knockback
+  retain their existing rules. Steps provide the reliable deep exit; a normal jump can also
+  clear the ledge. There is no swim mode, buoyancy, oxygen meter, drowning or pull-up action.
+- **Combat:** water is not a collider or cover. Shots retain their speed, gravity, ricochets
+  and damage; blasts retain their radius, falloff, impulses and ordinary solid obstruction.
+  Tile walls, steps and basin lips still obstruct hits normally. Water grants no electrical
+  bonus, fire immunity, damage reduction or automatic status cleansing. Existing impact and
+  explosion events continue to drive Claude's waves and spray, without changing gameplay.
+- **Enemies/Hulks:** shamblers, runners, spitters and brutes wade with depth-based slowdown;
+  water does not kill or pacify them. The 3.06 m Hulk capsule fits under a 3.6 m flat ceiling,
+  but its 0.954 m radius and low arch edges are not certified by these routes. Hulks are
+  excluded from this destination's spawn allowlist. Hulkamania substitutes brutes here so it
+  cannot stall the quota; its spawn cap/interval remain, without Hulk kill payouts. No
+  wall-breaking exception is added.
+- **Presentation hook:** `Actor.Wading`, `WaterDepth` (metres above feet), `Waterline` (world y)
+  and `Swimming` are available. `Swimming` is false for this grounded ruleset. Authority and
+  guest render snapshots derive the hook from the same layout and body position; no new wire
+  payload is needed. The live renderer consumes `arena.Poolrooms` at the world origin; the DEV
+  preview remains separate. Claude retains ownership of body bob, waterline shading and audio
+  polish. Wave displacement is visual and never changes collision depth or movement speed.
+
+Managed layout/route checks and pinned Unity compilation are required below; native Windows
+step traversal, underwater cameras, visual arch alignment and two-client play remain separate
+acceptance checks. Passing managed tests does not establish those results.

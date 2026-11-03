@@ -1,3 +1,43 @@
+## 2026-11-03 — Astra: playable Poolrooms and grounded water rules
+
+- **Branch/base:** `codex/poolrooms-rules`, shared `1b0c5ce10fff0db18b98e615c915bf7c43c4c48e`
+  (includes Claude’s published wave work at `c98797b0`).
+- **Implementation:** fixed-seed `backrooms-poolrooms` in PvP/Random and seeded
+  `expedition-backrooms-poolrooms` / `exp-poolrooms` in the five-destination Expedition pool.
+  Collision follows the tiled basins, four deep treads, room ceilings and arched openings;
+  navigation reaches every pool via a flight and keeps dry entry/exit routes clear of the
+  closed return door. Eight dry player slots, separated enemy slots, generated identity and
+  locked-ticket reconstruction. The existing quota/exit ledger uses `poolrooms-exit`.
+- **Rules decision:** chest-deep wading, not swimming, for 1.15 m of water. Walk speed scales
+  from 1 to 0.5 by immersion (shallow 0.8913); authority, guest prediction and ordinary
+  zombies share the rule. Poolrooms alone permits a 0.42 m step for shallow lips. Jumps,
+  gravity, rolls/ability bursts, impulses and weapon damage retain their existing rules.
+  Water does not obstruct shots/blasts, apply elemental modifiers or cleanse statuses.
+- **Hulks:** the flat 3.6 m ceiling fits their 3.06 m capsule, but the low arches are not
+  certified for their radius. The pool spawn list excludes them; Hulkamania substitutes
+  brutes here instead of hanging the encounter. Existing cap/interval remain; no Hulk payout.
+- **Presentation handoff:** `Actor.Wading`, `WaterDepth`, `Waterline`, and `Swimming` (false
+  for these grounded rules). Both peers derive them from position/layout, without a wire
+  change. Claude’s mesh/wave renderer now consumes the live layout at origin, with fallback
+  collision-block rendering when the bank is absent. Body bob/waterline shading remains
+  Claude’s work. Owner’s Poolrooms song is routed for both new map IDs. No animation timing,
+  attack hitboxes, damage windows or cooldowns changed.
+- **Checks:** 13,123 final Poolrooms checks over 16 seed/mode layouts; 3,679 final deployment
+  checks plus 7,434 mutator checks. Managed/real-loopback-relay regression coverage completed
+  in the primary run and two continuations (434 + 198 + 310 = 942 PASS lines, all 35 managed-core
+  checks). The new map required catalogue/count expectation updates; the continuation harness
+  used sorted source inputs, matching the normal build. Final Unity 6000.3.24f1 Player/Runtime/
+  Editor semantic compilation succeeds (existing warnings; InputSystem 1.17.0 also compiled).
+  Python component/source-package checks: 9 pass. Source structure: 3,013 files; whitespace
+  check passes. Independent dry-route/spawn collision tests include the closed return door;
+  final generation tests check locale-independent identity.
+- **Limits/next:** native Windows/PhysX stair and shallow-lip traversal, GPU/underwater camera,
+  arch-edge feel and two-client latency acceptance have not run here. Production halls omit
+  optional preview pillars; narrow arch colliders conservatively approximate the visible
+  soffit. Full details and the swimming decision are in `docs/BACKROOMS.md`.
+- **Status:** implemented on task branch; PR/shared/builder receipt follows. No binary
+  publication claimed, and no production Site/live release requested.
+
 ## 2026-11-03 — Claude: the Poolrooms' water moves (waves, wakes, splashes, spray)
 
 - **Branch:** `claude/backrooms-addon-look`, base shared `a1d72593`.

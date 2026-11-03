@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
                 if(bounds==null)throw new FormatException("Expedition layout: missing map "+area.map);
                 void Check(V3 p,float radius,float height)
                 {if(p.x-radius<bounds.minX||p.x+radius>bounds.maxX||p.z-radius<bounds.minZ||p.z+radius>bounds.maxZ||p.y<=bounds.killY||p.y+height>bounds.ceiling||!supported(area.map,p,radius,height))throw new FormatException("Expedition layout: unsupported or obstructed point in "+area.id+" ("+p.x+", "+p.y+", "+p.z+"), radius "+radius);}
-                float routeRadius=area.id==NativeBackroomsGenerator.AreaId?.45f:NativeHordeKinds.HulkRadius,routeHeight=area.id==NativeBackroomsGenerator.AreaId?1.8f:NativeHordeKinds.HulkHeight;
+                float routeRadius=(area.id==NativeBackroomsGenerator.AreaId||area.id==NativePoolroomsGenerator.AreaId)?.45f:NativeHordeKinds.HulkRadius,routeHeight=(area.id==NativeBackroomsGenerator.AreaId||area.id==NativePoolroomsGenerator.AreaId)?1.8f:NativeHordeKinds.HulkHeight;
                 var slots=area.slots.Concat(area.doors.SelectMany(d=>d.entries.Concat(d.returns))).ToArray();
                 foreach(var p in slots){Check(p.Position,.45f,1.8f);Check(p.Position,routeRadius,routeHeight);}
                 void VolumeBounds(ExpeditionVolume v)
