@@ -129,24 +129,29 @@ namespace ChipArena.UnityConversion
                 NativePveRow row=null;if(source.Arena.Pve!=null)source.Arena.Pve.Rows.TryGetValue(pair.Key,out row);
                 return new Entry{Pilot=pilot,Row=row,Slot=new ExpeditionPoint{x=slot.x,y=slot.y,z=slot.z,yaw=slot.yaw},Origin=pilot.Body.position,Yaw=pilot.Yaw};
             }).ToArray();
-            if(!Validate())throw new InvalidOperationException("Cohort placement is not safe.");
+            if(BlockedReason() is string reason)throw new InvalidOperationException(reason);
             foreach(var entry in entries)source.Arena.HoldTransferPilot(entry.Pilot,true);
         }
-        public bool Validate()
+        public bool Validate()=>BlockedReason()==null;
+        public string BlockedReason()
         {
-            if(rolledBack||applied||source.Load!=ExpeditionRuntimeLoad.Ready||destination.Load!=ExpeditionRuntimeLoad.Ready||
-                source.Arena.Pve?.Holding==true||destination.Arena.Pve?.Holding==true||source.Scene==destination.Scene)return false;
-            // Pilot state holds arena-clock deadlines. Until clock conversion is
-            // implemented, unequal clocks must refuse instead of refreshing cooldowns.
-            if(Math.Abs(source.Arena.Time-destination.Arena.Time)>.0001f)return false;
-            if(destination.Arena.Pilots.Count(p=>!p.Seat.bot)+entries.Length>NativeExpeditionParty.Capacity)return false;
+            if(rolledBack||applied)return "Transfer has already finished.";
+            if(source.Load!=ExpeditionRuntimeLoad.Ready||destination.Load!=ExpeditionRuntimeLoad.Ready)return "An area is not ready.";
+            if(source.Arena.Pve?.Holding==true||destination.Arena.Pve?.Holding==true)return "An area cinematic is still playing.";
+            if(source.Scene==destination.Scene)return "Source and destination scenes are the same.";
+            // Pilot state holds arena-clock deadlines; never refresh cooldowns by crossing clocks.
+            if(Math.Abs(source.Arena.Time-destination.Arena.Time)>.0001f)return "Area clocks differ: "+source.Arena.Time+" / "+destination.Arena.Time+".";
+            if(destination.Arena.Pilots.Count(p=>!p.Seat.bot)+entries.Length>NativeExpeditionParty.Capacity)return "Destination player capacity is full.";
             for(int i=0;i<entries.Length;i++)
             {
-                var e=entries[i];if(!source.Arena.CanTransferPilot(e.Pilot)||e.Pilot.Body.gameObject.scene!=source.Scene||
-                    destination.Arena.Match.Seat(e.Pilot.Seat.id)!=null||!destination.Arena.TransferSlotClear(e.Slot))return false;
-                for(int j=0;j<i;j++)if((e.Slot.Position-entries[j].Slot.Position).Length<2*NativeLocomotionRules.Radius+.1f)return false;
+                var e=entries[i];
+                if(!source.Arena.CanTransferPilot(e.Pilot))return "Pilot "+e.Pilot.Seat.id+" cannot transfer (carry/control, crowd control, death or active hire).";
+                if(e.Pilot.Body.gameObject.scene!=source.Scene)return "Pilot "+e.Pilot.Seat.id+" is in the wrong source scene.";
+                if(destination.Arena.Match.Seat(e.Pilot.Seat.id)!=null)return "Destination already contains pilot "+e.Pilot.Seat.id+".";
+                if(!destination.Arena.TransferSlotClear(e.Slot))return "Reserved arrival slot is blocked for pilot "+e.Pilot.Seat.id+".";
+                for(int j=0;j<i;j++)if((e.Slot.Position-entries[j].Slot.Position).Length<2*NativeLocomotionRules.Radius+.1f)return "Arrival slots overlap.";
             }
-            return true;
+            return null;
         }
         public void Apply()
         {

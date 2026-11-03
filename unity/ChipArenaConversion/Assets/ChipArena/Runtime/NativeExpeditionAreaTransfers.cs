@@ -15,6 +15,7 @@ namespace ChipArena.UnityConversion
         private readonly ExpeditionLayout layout;private readonly Func<string,int> seat;
         private readonly Dictionary<string,List<ExpeditionPoint>> reservations=new Dictionary<string,List<ExpeditionPoint>>(StringComparer.Ordinal);
         private long nextCohort;
+        public string LastFailure {get;private set;}
         public NativeExpeditionAreaTransfers(ExpeditionAreaRegistry<NativeExpeditionAreaRuntime> runtimes,ExpeditionLayout layout,
             ExpeditionCohorts cohorts,Func<string,int> seat)
         {
@@ -48,38 +49,43 @@ namespace ChipArena.UnityConversion
         }
         public bool Begin(string id,string source,string destination,string door,string[] accounts)
         {
+            LastFailure=null;
             var from=layout.Area(source);var to=layout.Area(destination);
-            if(from==null||to==null)return false;
+            if(from==null||to==null){LastFailure="Unknown transfer area.";return false;}
             ExpeditionPoint[] slots;
             if(source==layout.world)
             {
                 var anchor=from.anchors.SingleOrDefault(a=>a.id==door&&a.kind=="door"&&a.building==destination);
-                if(anchor==null)return false;slots=to.doors.Single().entries;
+                if(anchor==null){LastFailure="Entrance anchor missing.";return false;}slots=to.doors.Single().entries;
             }
             else
             {
-                if(destination!=layout.world)return false;
+                if(destination!=layout.world){LastFailure="Return destination is not the outdoor world.";return false;}
                 var entry=to.doors.SingleOrDefault(d=>to.anchors.Any(a=>a.id==d.anchor&&a.building==source));
-                if(entry==null)return false;slots=entry.returns;
+                if(entry==null){LastFailure="Outdoor return door missing.";return false;}slots=entry.returns;
             }
-            return Cohorts.Begin(id,source,destination,accounts,30,(s,d,cohort)=>Prepare(s,d,cohort,slots));
+            bool begun=Cohorts.Begin(id,source,destination,accounts,30,(s,d,cohort)=>Prepare(s,d,cohort,slots));
+            if(!begun&&LastFailure==null)LastFailure="Cohort refused: check connection, readiness, pending transfer and source membership.";
+            return begun;
         }
         private IExpeditionCohortPlacement Prepare(string source,string destination,string[] accounts,ExpeditionPoint[] slots)
         {
             var from=runtimes.Find(source);var to=runtimes.Find(destination);
-            if(from?.Load!=ExpeditionRuntimeLoad.Ready||to?.Load!=ExpeditionRuntimeLoad.Ready)return null;
+            if(from?.Load!=ExpeditionRuntimeLoad.Ready||to?.Load!=ExpeditionRuntimeLoad.Ready){LastFailure="Source or destination runtime is not ready.";return null;}
             if(!reservations.TryGetValue(destination,out var reserved))reservations[destination]=reserved=new List<ExpeditionPoint>();
             var chosen=new List<ExpeditionPoint>();var assignments=new Dictionary<int,ExpeditionPoint>();
             foreach(var account in accounts)
             {
                 var slot=slots.FirstOrDefault(p=>reserved.Concat(chosen).All(q=>(p.Position-q.Position).Length>=2*NativeLocomotionRules.Radius+.1f)&&to.Arena.TransferSlotClear(p));
-                int id=seat(account);if(slot==null||id<1||assignments.ContainsKey(id))return null;
+                int id=seat(account);
+                if(slot==null){LastFailure="No clear arrival slot for pilot "+id+" ("+chosen.Count+" of "+accounts.Length+" reserved).";return null;}
+                if(id<1||assignments.ContainsKey(id)){LastFailure="Invalid or duplicate transfer seat.";return null;}
                 var copy=new ExpeditionPoint{x=slot.x,y=slot.y,z=slot.z,yaw=slot.yaw};chosen.Add(copy);assignments.Add(id,copy);
             }
             reserved.AddRange(chosen);
             void Release(){foreach(var slot in chosen)reserved.Remove(slot);}
             try{return new NativeExpeditionCohortPlacement(from,to,assignments,Release);}
-            catch(InvalidOperationException){Release();return null;}
+            catch(InvalidOperationException e){LastFailure=e.Message;Release();return null;}
             catch{Release();throw;}
         }
     }

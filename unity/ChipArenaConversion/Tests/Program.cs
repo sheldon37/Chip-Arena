@@ -22,7 +22,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--training-look"){TrainingLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--crowd-pose")return 0;
             SnapshotChecks.Run();
-            TransportBacklogChecks.Run();
+            TransportBacklogChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--transport-backlog")return 0;
             if(args.Length==1&&args[0]=="--chip-perf")return 0;
             if(args.Length==1&&args[0]=="--killcam"){FinalKillcamChecks.Run(ProjectRoot());return 0;}

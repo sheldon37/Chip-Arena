@@ -101,6 +101,7 @@ namespace ChipArena.UnityConversion
         {
             var value=SplitRecipient(who);value.Public.viewer=who;value.Public.mine=value.Private.mine;return value.Public;
         }
+        private float nextReturnWarning;
         private void SplitFixedFrame()
         {
             if(expeditionError!=null||splitRun.Migrating)return;
@@ -158,7 +159,11 @@ namespace ChipArena.UnityConversion
                     var session=splitSessions[area.id];if(area.id!=expeditionM1Layout.world)session.Tick(1d/60);
                     runtime.Arena.ExpeditionSyncClosures();runtime.Arena.SyncExpeditionInventory();
                     var returning=session.Run.DueReturns().Where(a=>splitCohorts.Member(a)?.Pending==null).ToArray();
-                    if(returning.Length>0)splitTransfers.Begin("return:"+(++splitReturn),area.id,expeditionM1Layout.world,null,returning);
+                    if(returning.Length>0&&!splitTransfers.Begin("return:"+(++splitReturn),area.id,expeditionM1Layout.world,null,returning)&&Time.unscaledTime>=nextReturnWarning)
+                    {
+                        nextReturnWarning=Time.unscaledTime+5;
+                        Debug.LogWarning("Expedition return blocked ["+area.id+" -> "+expeditionM1Layout.world+", party="+returning.Length+"]: "+splitTransfers.LastFailure);
+                    }
                 }
                 if(splitRun.PartySnapshot().loop!=splitLoop)ResetSplitLoop();
                 splitSessions[expeditionM1Layout.world].Sources.Director.TryBeginFinal();
@@ -209,9 +214,13 @@ namespace ChipArena.UnityConversion
             foreach(var peer in peers.Where(p=>p.Connection?.Closed==false&&p.Seat?.access!=null))
             {
                 var who=peer.Seat.access.AccountId;var member=splitCohorts.Member(who);if(member==null)continue;
-                foreach(var update in updates)
-                    peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-party-load",expeditionLoadStatus=update}));
+                // A loading Unity main thread cannot drain reliable reports. Keep these on the
+                // same bounded retry cadence as its state bundle (including both eight-pilot chunks).
+                // Ready peers still receive live progress at 4 Hz while they wait for the others.
                 if(!member.Ready){var ticket=member.Ticket;peer.Loading.Begin(ticket.run+":"+ticket.epoch+":"+ticket.area+":"+ticket.serial,NetworkNow);if(!peer.Loading.Send(NetworkNow))continue;}else peer.Loading.Complete();
+                var reports=!member.Ready&&updates.Length==0?expeditionLoadReports.Frames(splitRun.PartySnapshot().run,splitRun.PartySnapshot().epoch,splitCohorts.Members):updates;
+                foreach(var update in reports)
+                    peer.Connection.Send(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-party-load",expeditionLoadStatus=update}));
                 var view=SplitRecipient(who);var frame=SplitFrame(who);
                 // One replaceable recipient snapshot keeps public/private/arena state coherent
                 // and cannot fill the reliable command queue during a slow write.
