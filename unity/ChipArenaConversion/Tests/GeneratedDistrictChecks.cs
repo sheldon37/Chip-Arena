@@ -20,12 +20,24 @@ namespace ChipArena.UnityConversion
             var content=new ConversionContent{maps=JsonSerializer.Deserialize<UnityMapContent>(mapsJson,o).maps,contentRevision=NativeMapRules.Revision(mapsJson)};
             var layout=NativeExpeditionLayout.Parse(layoutJson);layout.compatibility=NativeExpeditionLayout.Compatibility(layoutJson,content);
             Check(NativeExpeditionCityKit.LookOf("industrial")==NativeExpeditionCityKit.LookIndustrial&&NativeExpeditionCityKit.LookOf("rail")==NativeExpeditionCityKit.LookRail&&
-                NativeExpeditionCityKit.LookOf("quarantine")==NativeExpeditionCityKit.LookQuarantine&&NativeExpeditionCityKit.LookOf("catacombs")==NativeExpeditionCityKit.LookTown,"the authority's themes name their looks; an unknown theme dresses as the town");
+                NativeExpeditionCityKit.LookOf("quarantine")==NativeExpeditionCityKit.LookQuarantine&&NativeExpeditionCityKit.LookOf("backrooms")==NativeExpeditionCityKit.LookLiminal&&NativeExpeditionCityKit.LookOf("poolrooms")==NativeExpeditionCityKit.LookBaths&&NativeExpeditionCityKit.LookOf("catacombs")==NativeExpeditionCityKit.LookTown,"the authority's themes name their looks; an unknown theme dresses as the town");
             Check(NativeExpeditionCityKit.Stem("expedition-city-bldg-ne-shops")=="bldg-ne-shops"&&NativeExpeditionCityKit.Stem(NativeExpeditionCityKit.GeneratedPrefix+"building-3:-2")=="bldg-g:3:-2"&&
                 NativeExpeditionCityKit.Stem(NativeExpeditionCityKit.GeneratedPrefix+"fence-north1")=="sanctuary-fence-north1"&&NativeExpeditionCityKit.Stem(NativeExpeditionCityKit.GeneratedPrefix+"floor")=="gen-floor"&&
                 NativeExpeditionCityKit.Stem("brickfall-wall-1")==null,"the generated ids read in the town's terms; other maps' ids stay unnamed");
             var near=new double[4];var nearN=new int[4];int rolls=0;var bins=new double[3,4];var binN=new int[3,4];
-            foreach(uint seed in new uint[]{123,17,0x80000000u})
+            // Besides the fixed rolls, the first roll that brings each of the Backrooms' districts (the office park, the baths), so
+            // their looks always go through the placement rules below.
+            var seeds=new List<uint>{123,17,0x80000000u};var themesSeen=new HashSet<string>();
+            foreach(uint seed in seeds.ToArray()){var r0=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",layout,content);r0.Execute("host",0,ExpeditionDeploymentIntent.RollInstances);foreach(var d in ExpeditionRunBundle.Build(r0.Ticket,content,layoutJson).World.Blueprint.districts)themesSeen.Add(d.theme);}
+            foreach(string want in new[]{"backrooms","poolrooms"})
+                for(uint seed=1;seed<200&&!themesSeen.Contains(want);seed++)
+                {
+                    var r0=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",layout,content);if(!r0.Execute("host",0,ExpeditionDeploymentIntent.RollInstances))continue;
+                    var ds=ExpeditionRunBundle.Build(r0.Ticket,content,layoutJson).World.Blueprint.districts;if(!ds.Any(d=>d.theme==want))continue;
+                    seeds.Add(seed);foreach(var d in ds)themesSeen.Add(d.theme);
+                }
+            Check(themesSeen.Contains("backrooms")&&themesSeen.Contains("poolrooms"),"some roll brings the office park and some the baths");
+            foreach(uint seed in seeds)
             {
                 var room=new ExpeditionDeploymentRoom("room","host",seed,"black-siren",layout,content);Check(room.Execute("host",0,ExpeditionDeploymentIntent.RollInstances),"seed "+seed+" rolls");
                 var world=ExpeditionRunBundle.Build(room.Ticket,content,layoutJson).World;var s=world.Blueprint;var map=world.Map;var blocks=map.blocks;var area=world.Area;rolls++;
