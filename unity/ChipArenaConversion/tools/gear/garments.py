@@ -299,13 +299,22 @@ def extend_skirt(body, V, F, loop, hem_y, flare, rings=10, front_gap=0.0):
 
 class Garment:
     def __init__(self, name, slot):
-        self.name, self.slot = name, slot
+        """slot: the pack slot it takes (1 the top, 2 the bottoms), a tuple of them (a one-piece), or () (an overlay, over
+        the pack's pieces)."""
+        self.name = name
+        self.slots = tuple(slot) if isinstance(slot, (tuple, list)) else (slot,)
+        self.slot = self.slots[0] if self.slots else 0
         self.V = np.zeros((0, 3))
         self.F = np.zeros((0, 3), dtype=np.int64)
         self.C = np.zeros((0, 3))
         self.free_y = None
+        # (A skirt, which eases toward the pelvis as it falls: not a pair of legs.)
+        self.skirted = False
 
     def add(self, V, F, colour=GREY, colours=None):
+        # (A part's own per-vertex colours may come third: box and strip return them so.)
+        if colours is None and np.asarray(colour).ndim == 2:
+            colour, colours = GREY, np.asarray(colour)
         base = len(self.V)
         self.V = np.concatenate([self.V, V])
         self.F = np.concatenate([self.F, F + base])
@@ -372,7 +381,13 @@ def box(c, size, frame, colour):
 def cloth_frame(V, F, x, y, front=True):
     """On the garment's own outer surface at (x, y), its front (or back): the point, its normal, up and across."""
     N = normals(V, F)
-    pick = np.where((np.abs(V[:, 0] - x) < .025) & (np.abs(V[:, 1] - y) < .025))[0]
+    # (Widening till it finds the cloth: a lapel near the V, an epaulette at the shoulder's top.)
+    for reach in (.025, .045, .08, .15):
+        pick = np.where((np.abs(V[:, 0] - x) < reach) & (np.abs(V[:, 1] - y) < reach))[0]
+        if len(pick):
+            break
+    if not len(pick):
+        pick = np.array([int(np.argmin(np.hypot(V[:, 0] - x, V[:, 1] - y)))])
     i = pick[np.argmax(V[pick, 2])] if front else pick[np.argmin(V[pick, 2])]
     n = N[i]
     up = np.array([0, 1.0, 0]) - n * n[1]
@@ -472,6 +487,7 @@ def make_gown(body):
             Vb, Fb, Cb = box(c + r * s * .025 - up * .03, (.012, .07, .004), (r, up, n), (.42, .42, .42))
             g.add(Vb, Fb, colours=Cb)
     g.free_y = hips_y(body) - .02
+    g.skirted = True
     return g
 
 
@@ -504,6 +520,7 @@ def make_coat(body):
         Vb, Fb, Cb = box(q + n * .004, (.05, .11, .005), (r, up, n), (.46, .46, .46))
         g.add(Vb, Fb, colours=Cb)
     g.free_y = hips_y(body) - .06
+    g.skirted = True
     return g
 
 
@@ -539,7 +556,230 @@ def make_scrubs_pants(body):
     return g
 
 
-GARMENTS = {'g-gown': make_gown, 'g-lab-coat': make_coat, 'g-scrubs-top': make_scrubs_top, 'g-scrubs-pants': make_scrubs_pants}
+
+def band(V, F, y, height, out=.004, centre=(0.0, 0.0), sectors=48):
+    """A band round the garment at height y (a belt, a waistband): the outer surface sampled round its centre, stood `out` off
+    it, `height` tall."""
+    N = normals(V, F)
+    cx, cz = centre
+    # (The trunk's only: the sleeves hang at the waist's height beside it.)
+    near = np.where((np.abs(V[:, 1] - y) < .02) & (np.hypot(V[:, 0] - cx, V[:, 2] - cz) < .27))[0]
+    ang = np.arctan2(V[near, 0] - cx, V[near, 2] - cz)
+    rad = np.hypot(V[near, 0] - cx, V[near, 2] - cz)
+    ring = []
+    for k in range(sectors):
+        a = -np.pi + 2 * np.pi * k / sectors
+        d = np.abs((ang - a + np.pi) % (2 * np.pi) - np.pi)
+        pick = d < np.pi / sectors * 1.6
+        r = rad[pick].max() if pick.any() else (rad.max() if len(rad) else .15)
+        ring.append((cx + np.sin(a) * (r + out), cz + np.cos(a) * (r + out)))
+    Vb = []
+    for (x, z) in ring:
+        Vb.append([x, y - height / 2, z])
+    for (x, z) in ring:
+        Vb.append([x, y + height / 2, z])
+    Vb = np.array(Vb)
+    Fb = []
+    n = sectors
+    for i in range(n):
+        j = (i + 1) % n
+        Fb += [[i, j, j + n], [i, j + n, i + n]]
+    Fb = orient(Vb, np.array(Fb), lambda p: np.array([p[0] - cx, 0, p[2] - cz]))
+    return Vb, Fb
+
+
+def strip(points, width, normal_of, colour, thick=.004):
+    """A flat strip along `points` (a zip, a lapel's edge, a strap), `width` wide, facing normal_of(point)."""
+    V, F = [], []
+    for i, p in enumerate(points):
+        n = normal_of(p)
+        t = points[min(i + 1, len(points) - 1)] - points[max(i - 1, 0)]
+        t /= max(np.linalg.norm(t), 1e-9)
+        side = np.cross(n, t)
+        side /= max(np.linalg.norm(side), 1e-9)
+        V += [p + side * width / 2 + n * thick, p - side * width / 2 + n * thick]
+    V = np.array(V)
+    for i in range(len(points) - 1):
+        a, b = 2 * i, 2 * i + 2
+        F += [[a, b, b + 1], [a, b + 1, a + 1]]
+    F = orient(V, np.array(F), lambda q: normal_of(q))
+    return V, F, np.tile(np.array(colour), (len(V), 1))
+
+
+def front_line(V, F, x, ys):
+    """The garment's outer front at x for each height: points and the normal there."""
+    pts = []
+    for y in ys:
+        q, n, up, r = cloth_frame(V, F, x, y)
+        pts.append(q)
+    return np.array(pts)
+
+
+def make_long_coat(body, name, sleeve, hem_y, flare, neck_v, ease_top=.024, ease_low=.03):
+    """The common long coat: its sleeves to `sleeve` of the arm, a skirt from the waist to hem_y, a V at the neck."""
+    g = Garment(name, 1)
+    V, F = torso_top(body, sleeve, waist_y(body), neck_v=neck_v)
+    ease = lambda p: ease_low if p[1] < 1.15 else ease_top
+    V = drape(body, V, F, ease, rounds=30)
+    loop = lowest_loop(V, F)
+    V, F, _ = extend_skirt(body, V, F, loop, hem_y, flare)
+    V = drape(body, V, F, ease, rounds=10)
+    V, F = lined(V, F)
+    g.add(V, F)
+    g.skirted = True
+    g.free_y = hips_y(body) - .06
+    return g, (V.copy(), F.copy())
+
+
+def make_trench(body):
+    """The commuter's trench coat: double-breasted, a belt with its buckle at the waist, wide lapels, epaulettes, a storm flap
+    on the right of the chest, long sleeves with straps, its hem below the knee."""
+    g, shell = make_long_coat(body, 'g-trench', .97, body.bone('calf_l')[1] - .14, .1, .1)
+    dark, belt = (.18, .17, .16), (.4, .4, .4)
+    for x in (-.06, .06):
+        for k in range(4):
+            q, n, up, r = cloth_frame(*shell, x, 1.24 - k * .075)
+            g.add(*box(q + n * .004, (.018, .018, .007), (r, up, n), dark))
+    wy = waist_y(body) + .01
+    Vb, Fb = band(*shell, wy, .05)
+    g.add(Vb, Fb, colour=belt)
+    q, n, up, r = cloth_frame(*shell, 0, wy)
+    g.add(*box(q + n * .01, (.05, .04, .008), (r, up, n), dark))
+    neck = body.bone('neck_01')
+    for s in (-1, 1):
+        q, n, up, r = cloth_frame(*shell, s * .075, neck[1] - .1)
+        g.add(*box(q + n * .005, (.07, .14, .006), (r, up, n), (.45, .45, .45)))
+        sh = body.bone('upperarm_' + ('l' if s < 0 else 'r'))
+        q, n, up, r = cloth_frame(*shell, sh[0] * .7, sh[1] + .04)
+        g.add(*box(q + n * .004, (.09, .03, .006), (r, up, n), (.45, .45, .45)))
+    q, n, up, r = cloth_frame(*shell, .09, 1.33)
+    g.add(*box(q + n * .004, (.11, .12, .005), (r, up, n), (.46, .46, .46)))
+    for x, y in ((.15, hips_y(body) - .02), (-.15, hips_y(body) - .02)):
+        q, n, up, r = cloth_frame(*shell, x, y)
+        g.add(*box(q + n * .003, (.12, .03, .004), (r, up, n), (.42, .42, .42)))
+    return g
+
+
+def make_bathrobe(body):
+    """The pool's bathrobe: a deep shawl collar down to the belt, loose sleeves to the forearm, a belt tied at the front with its
+    ends hanging, two patch pockets, to the knee."""
+    g, shell = make_long_coat(body, 'g-bathrobe', .78, body.bone('calf_l')[1] - .02, .1, .22, ease_top=.03, ease_low=.035)
+    neck = body.bone('neck_01')
+    for s in (-1, 1):
+        ys = np.linspace(neck[1] - .02, waist_y(body) + .02, 9)
+        xs = [s * (.055 - .045 * (i / 8)) for i in range(9)]
+        pts = np.array([cloth_frame(*shell, x, y)[0] for x, y in zip(xs, ys)])
+        n_of = lambda p: np.array([0, 0, 1.0]) if p[2] > 0 else np.array([0, 0, -1.0])
+        g.add(*strip(pts, .05, n_of, (.55, .55, .55), thick=.008))
+    wy = waist_y(body) + .01
+    Vb, Fb = band(*shell, wy, .045, out=.006)
+    g.add(Vb, Fb, colour=(.47, .47, .47))
+    q, n, up, r = cloth_frame(*shell, -.05, wy)
+    g.add(*box(q + n * .012, (.05, .045, .02), (r, up, n), (.47, .47, .47)))
+    for s, l in ((-1, .26), (1, .21)):
+        g.add(*box(q + n * .016 + r * s * .02 - up * (l / 2 + .02), (.04, l, .008), (r, up, n), (.47, .47, .47)))
+    for x in (.14, -.14):
+        q2, n2, up2, r2 = cloth_frame(*shell, x, hips_y(body) - .06)
+        g.add(*box(q2 + n2 * .004, (.12, .13, .005), (r2, up2, n2), (.52, .52, .52)))
+    return g
+
+
+def make_coveralls(body):
+    """The foundry's coveralls (a boiler suit): one piece from the collar to the ankles, long sleeves, a zip down the front to the
+    crotch, a collar's points, two chest pockets with flaps, a belt at the waist, patches on the knees."""
+    g = Garment('g-coveralls', (1, 2))
+    neck = body.bone('neck_01')
+    ankle = body.bone('foot_l')[1] + .07
+    clav = (body.bone('clavicle_l') + body.bone('clavicle_r')) / 2
+    bad = ('hand', 'thumb', 'index', 'middle', 'ring', 'pinky', 'foot', 'ball', 'neck', 'head')
+
+    def keep(i, p):
+        if p[1] < ankle or p[1] > neck[1] - .005:
+            return False
+        if any(body.dominant(i).startswith(b) for b in bad):
+            return False
+        if abs(p[0]) > .13 and p[1] < clav[1] + .05 and p[1] > hips_y(body) + .05 and arm_t(body, p, side_of(p)) > .96:
+            return False
+        return True
+    V, F = region_i(body, keep)
+    V = drape(body, V, F, lambda p: .02 + .015 * max(0, min(1, (hips_y(body) - p[1]) / .5)), rounds=30)
+    V, F = lined(V, F)
+    g.add(V, F)
+    shell = (V.copy(), F.copy())
+    dark = (.2, .2, .21)
+    ys = np.linspace(neck[1] - .05, hips_y(body) - .03, 14)
+    pts = front_line(*shell, 0, ys)
+    g.add(*strip(pts, .012, lambda p: np.array([0, 0, 1.0]), dark))
+    for s in (-1, 1):
+        q, n, up, r = cloth_frame(*shell, s * .045, neck[1] - .04)
+        g.add(*box(q + n * .004, (.05, .05, .005), (r, up, n), (.45, .45, .45)))
+        q, n, up, r = cloth_frame(*shell, s * .09, 1.3)
+        g.add(*box(q + n * .003, (.08, .085, .004), (r, up, n), (.46, .46, .46)))
+        g.add(*box(q + n * .006 + up * .045, (.085, .025, .005), (r, up, n), (.42, .42, .42)))
+        knee = body.bone('calf_' + ('l' if s < 0 else 'r'))
+        q, n, up, r = cloth_frame(*shell, knee[0], knee[1] + .01)
+        g.add(*box(q + n * .004, (.1, .11, .005), (r, up, n), (.4, .4, .4)))
+    Vb, Fb = band(*shell, waist_y(body) - .005, .04)
+    g.add(Vb, Fb, colour=(.38, .38, .38))
+    return g
+
+
+def make_apron(body):
+    """The foundry's leather bib apron, over the clothes: from the chest to below the knee, broad over the legs, a strap round
+    the neck and ties at the waist, its lower half hanging free (stiffly)."""
+    g = Garment('g-apron', ())
+    top = body.bone('spine_05')[1] - .04
+    low = body.bone('calf_l')[1] - .08
+    torso = [i for i in range(len(body.V)) if not any(body.dominant(i).startswith(b) for b in ('upperarm', 'lowerarm', 'hand', 'clavicle', 'thumb', 'index', 'middle', 'ring', 'pinky'))]
+    TV = body.V[torso]
+    rows, cols = 26, 15
+    hy = hips_y(body)
+    P = np.zeros((rows, cols, 3))
+    hang = None
+    for r in range(rows):
+        y = top + (low - top) * r / (rows - 1)
+        half = .11 + .13 * min(1, max(0, (top - .12 - y) / .3))
+        band_pts = TV[np.abs(TV[:, 1] - y) < .025]
+        for c in range(cols):
+            x = -half + 2 * half * c / (cols - 1)
+            near = band_pts[np.abs(band_pts[:, 0] - x) < .035]
+            z = near[:, 2].max() if len(near) else .1
+            P[r, c] = (x, y, z + .025)
+        if y < hy:
+            # (Below the hips it hangs straight from its front: never between the legs.)
+            front = P[r, :, 2].max()
+            hang = front if hang is None else max(hang, front)
+            P[r, :, 2] = np.maximum(hang, front) - .01 * (np.linspace(-1, 1, cols) ** 2)
+    for _ in range(12):
+        Q = P.copy()
+        Q[1:-1, 1:-1] = (P[:-2, 1:-1] + P[2:, 1:-1] + P[1:-1, :-2] + P[1:-1, 2:]) / 4
+        P[1:-1, 1:-1] = P[1:-1, 1:-1] * .3 + Q[1:-1, 1:-1] * .7
+    V = P.reshape(-1, 3)
+    F = []
+    for r in range(rows - 1):
+        for c in range(cols - 1):
+            a, b, d, e = r * cols + c, r * cols + c + 1, (r + 1) * cols + c, (r + 1) * cols + c + 1
+            F += [[a, d, e], [a, e, b]]
+    F = orient(V, np.array(F), lambda p: np.array([0, 0, 1.0]))
+    V, F = lined(V, F, inset=.006)
+    g.add(V, F)
+    strap = (.3, .3, .3)
+    neck = body.bone('neck_01')
+    for s in (-1, 1):
+        a = np.array([s * .1, top, P[0, 0, 2]])
+        b = np.array([s * .06, neck[1] - .01, -.02])
+        pts = np.array([a + (b - a) * t for t in np.linspace(0, 1, 8)])
+        g.add(*strip(pts, .02, lambda p: np.array([0, .3, 1.0]) / np.linalg.norm([0, .3, 1.0]), strap, thick=.002))
+        wy = waist_y(body)
+        q, n, up, r = surface_frame(body, np.array([s * .2, wy, .05]))
+        g.add(*box(q + n * .02, (.02, .02, .14), (r, up, n), strap))
+    g.free_y = hy - .04
+    g.skirted = True
+    return g
+
+
+GARMENTS = {'g-gown': make_gown, 'g-lab-coat': make_coat, 'g-scrubs-top': make_scrubs_top, 'g-scrubs-pants': make_scrubs_pants,
+            'g-trench': make_trench, 'g-coveralls': make_coveralls, 'g-apron': make_apron, 'g-bathrobe': make_bathrobe}
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -564,7 +804,7 @@ def skin(body, g):
         for s in SHAPES:
             S[s][i] /= tot
         acc = {b: w / tot for b, w in acc.items()}
-        if g.slot == 1 and p[1] < hy - .05 and abs(p[0]) < .3:
+        if g.skirted and p[1] < hy - .05 and abs(p[0]) < .3:
             fall = min(1.0, (hy - .05 - p[1]) / .35) * .6
             acc = {b: w * (1 - fall) for b, w in acc.items()}
             acc['pelvis'] = acc.get('pelvis', 0) + fall
@@ -585,7 +825,7 @@ def write_bank(path, garments, body):
     bones = sorted({b for g in garments for row in g.W for b, _ in row})
     bi = {b: i for i, b in enumerate(bones)}
     out = bytearray(b'GARM')
-    out += struct.pack('<ii', 1, len(bones))
+    out += struct.pack('<ii', 2, len(bones))
     for b in bones:
         e = b.encode()
         out += struct.pack('<H', len(e)) + e
@@ -597,7 +837,10 @@ def write_bank(path, garments, body):
         free = -1.0 if g.free_y is None else (top - g.free_y) / max(1e-6, top - low)
         n = len(g.V)
         N = normals(g.V, g.F)
-        out += struct.pack('<Bfi', g.slot, free, n)
+        mask = 0
+        for sl in g.slots:
+            mask |= 1 << sl
+        out += struct.pack('<Bfi', mask, free, n)
         out += np.asarray(g.V, '<f4').tobytes() + np.asarray(N, '<f4').tobytes() + np.asarray(uv, '<f4').tobytes()
         # (RGBA: the alpha 1, outlined.)
         rgba = np.concatenate([np.asarray(g.C), np.ones((n, 1))], axis=1)
@@ -649,7 +892,8 @@ def preview(body, garments, out_dir):
     def bl(V):
         return np.stack([V[:, 0], -V[:, 2], V[:, 1]], axis=1)
     mesh('body', bl(body.V), body.F, (.78, .62, .56))
-    cols = {'g-gown': (.62, .78, .8), 'g-lab-coat': (.92, .92, .9), 'g-scrubs-top': (.25, .55, .55), 'g-scrubs-pants': (.25, .55, .55)}
+    cols = {'g-gown': (.62, .78, .8), 'g-lab-coat': (.92, .92, .9), 'g-scrubs-top': (.25, .55, .55), 'g-scrubs-pants': (.25, .55, .55),
+            'g-trench': (.6, .5, .34), 'g-coveralls': (.2, .27, .42), 'g-apron': (.38, .25, .15), 'g-bathrobe': (.9, .82, .84)}
     obs = [mesh(g.name, bl(g.V), g.F, cols.get(g.name, (.6, .6, .6))) for g in garments]
     scene.render.engine = 'BLENDER_WORKBENCH'
     scene.display.shading.light = 'STUDIO'

@@ -21,7 +21,8 @@ namespace ChipArena.UnityConversion
         public const string ZombieGarmentBank="ChipArenaGarments";
         /// <summary>The cloth on zombies: within this distance (m) and at most this many at once.</summary>
         public const float ZombieClothNear=8f;public const int ZombieClothMost=4;
-        private sealed class ZombieGarment{public string Id;public int Slot;public float FreeV;public Mesh Mesh;public string[] Bones;public bool Bound,Failed;public Texture2D Paint;}
+        // (Mask: the pack slots it takes, a bit each: the coveralls two, the apron none, worn over the pack's pieces.)
+        private sealed class ZombieGarment{public string Id;public int Mask;public float FreeV;public Mesh Mesh;public string[] Bones;public bool Bound,Failed;public Texture2D Paint;}
         private static Dictionary<string,ZombieGarment> zombieGarments;
         private static Dictionary<string,ZombieGarment> ZombieGarmentBankRead()
         {
@@ -33,12 +34,12 @@ namespace ChipArena.UnityConversion
                 int I(){int v=BitConverter.ToInt32(b,at);at+=4;return v;}float Fl(){float v=BitConverter.ToSingle(b,at);at+=4;return v;}
                 string S(){int n=BitConverter.ToUInt16(b,at);at+=2;var t=System.Text.Encoding.UTF8.GetString(b,at,n);at+=n;return t;}
                 if(b.Length<12||b[0]!='G'||b[1]!='A'||b[2]!='R'||b[3]!='M'){Debug.LogWarning("Zombie garments: the bank is not one; the pack's pieces stay.");return zombieGarments;}
-                at=4;if(I()!=1){Debug.LogWarning("Zombie garments: an unknown bank version; the pack's pieces stay.");return zombieGarments;}
+                at=4;if(I()!=2){Debug.LogWarning("Zombie garments: an unknown bank version; the pack's pieces stay.");return zombieGarments;}
                 var names=new string[I()];for(int i=0;i<names.Length;i++)names[i]=S();
                 int count=I();bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;
                 for(int k=0;k<count;k++)
                 {
-                    var g=new ZombieGarment{Id=S(),Slot=b[at++]};g.FreeV=Fl();int n=I();
+                    var g=new ZombieGarment{Id=S(),Mask=b[at++]};g.FreeV=Fl();int n=I();
                     var pos=new Vector3[n];var nor=new Vector3[n];var uv=new Vector2[n];var col=new Color32[n];
                     for(int i=0;i<n;i++)pos[i]=new Vector3(Fl(),Fl(),Fl());for(int i=0;i<n;i++)nor[i]=new Vector3(Fl(),Fl(),Fl());for(int i=0;i<n;i++)uv[i]=new Vector2(Fl(),Fl());
                     for(int i=0;i<n;i++){col[i]=new Color32(b[at],b[at+1],b[at+2],b[at+3]);at+=4;}
@@ -67,7 +68,7 @@ namespace ChipArena.UnityConversion
         private static int ZombieGarmentSlots(NativeZombieLooks.Variant v)
         {
             if(v.Garments.Length==0)return 0;var bank=ZombieGarmentBankRead();int slots=0;
-            foreach(var id in v.Garments)if(bank.TryGetValue(id,out var g)&&!g.Failed)slots|=1<<g.Slot;
+            foreach(var id in v.Garments)if(bank.TryGetValue(id,out var g)&&!g.Failed)slots|=g.Mask;
             return slots;
         }
         // A garment's bind poses: the body's own for the bones it names (one bind for every body made from the bake).
@@ -92,18 +93,22 @@ namespace ChipArena.UnityConversion
             bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;var skin=WearColor(v.Skin);if(linear)skin=skin.linear;float seed=NativeHordeKinds.Hash(NativeGoreRules.Fnv(v.Id),5)*997+1;
             // (Its vertex colour's brightness in the shader's colour space: the tint takes each pixel against it.)
             float main=linear?Mathf.GammaToLinearSpace(.5f):.5f;
-            foreach(var id in v.Garments)
+            for(int k=0;k<v.Garments.Length;k++)
             {
-                if(!bank.TryGetValue(id,out var g)||!ZombieGarmentBind(g,body))continue;
+                string id=v.Garments[k];if(!bank.TryGetValue(id,out var g)||!ZombieGarmentBind(g,body))continue;
                 var bones=new Transform[g.Bones.Length];bool ok=true;for(int i=0;i<bones.Length;i++)if(!named.TryGetValue(g.Bones[i],out bones[i])){ok=false;break;}if(!ok)continue;
                 var go=new GameObject("Garment."+id){layer=body.gameObject.layer};var t=go.transform;t.SetParent(body.transform.parent,false);
                 t.localPosition=body.transform.localPosition;t.localRotation=body.transform.localRotation;t.localScale=body.transform.localScale;
                 var r=go.AddComponent<SkinnedMeshRenderer>();r.sharedMesh=g.Mesh;r.bones=bones;r.rootBone=body.rootBone;r.localBounds=body.localBounds;r.sharedMaterial=mats[0];r.updateWhenOffscreen=false;
                 ZombieShapes(r,v.Shapes);
-                int slot=Mathf.Clamp(g.Slot,0,v.Colours.Length-1);if(v.Colours[slot]>=0)ZombieTintOn(r,v.Colours[slot],linear,1,main);
+                // (Its own colour, else its slot's: the top's for a one-piece or an overlay.)
+                int colour=k<v.GarmentColours.Length&&v.GarmentColours[k]>=0?v.GarmentColours[k]:v.Colours[ZombieGarmentSlot(g.Mask,v.Colours.Length)];
+                if(colour>=0)ZombieTintOn(r,colour,linear,1,main);
                 ZombieWearOn(r,v.Grime,v.Tears,0,seed,skin,v.Blood);
             }
         }
+        // The slot whose colour a garment takes: the top's when it takes the top or none, else its lowest.
+        private static int ZombieGarmentSlot(int mask,int slots){if((mask&2)!=0||mask==0)return Mathf.Min(1,slots-1);for(int s=0;s<slots;s++)if((mask>>s&1)!=0)return s;return Mathf.Min(1,slots-1);}
         // ---- the cloth (the local Magica bridge) on the nearest few ----
         private int zombieClothFrame=-1,zombieClothOn;
         private static Texture2D ZombieGarmentPaint(ZombieGarment g)

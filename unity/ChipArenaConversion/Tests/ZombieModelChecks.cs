@@ -182,11 +182,15 @@ internal static class ZombieModelChecks
         // the gown, its doctors in the lab coat, its nurses and orderlies in the scrubs; each a garment the Blender script makes,
         // its pack piece kept as the fallback; nowhere else.
         string garmentScript=File.ReadAllText(Path.Combine(root,"tools/gear/garments.py"));
-        string[] garmentIds={NativeZombieLooks.GownGarment,NativeZombieLooks.CoatGarment,NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants};
+        string[] garmentIds=NativeZombieLooks.AllGarments;
         Check(garmentIds.All(g=>garmentScript.Contains("'"+g+"': make_")||garmentScript.Contains("'"+g+"': "))&&dressed.All(v=>v.Garments.All(g=>garmentIds.Contains(g))),"every garment one the Blender script makes");
         Check(ward.Where(v=>v.Pieces[1].StartsWith("z-gown")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.GownGarment}))&&ward.Where(v=>v.Pieces[1].StartsWith("z-suit-jacket")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.CoatGarment}))
-            &&ward.Where(v=>v.Pieces[1].StartsWith("z-scrubs-top")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants}))&&dressed.Where(v=>v.Theme!=NativeZombieLooks.Ward).All(v=>v.Garments.Length==0)&&NativeZombieLooks.All.All(v=>v.Garments.Length==0),
-            "Ward Zero's gowns, lab coats and scrubs are the bespoke garments (their pack pieces the fallback); nowhere else");
+            &&ward.Where(v=>v.Pieces[1].StartsWith("z-scrubs-top")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants}))&&NativeZombieLooks.All.All(v=>v.Garments.Length==0)&&dressed.All(v=>v.GarmentColours.Length==v.Garments.Length),
+            "Ward Zero's gowns, lab coats and scrubs are the bespoke garments (their pack pieces the fallback); none on the everyday looks");
+        Check(dressed.Count(v=>v.Theme==NativeZombieLooks.Station&&v.Garments.Contains(NativeZombieLooks.TrenchGarment))>=3&&dressed.Count(v=>v.Theme==NativeZombieLooks.Foundry&&v.Garments.Contains(NativeZombieLooks.CoverallsGarment))>=5
+            &&dressed.Count(v=>v.Theme==NativeZombieLooks.Foundry&&v.Garments.Contains(NativeZombieLooks.ApronGarment)&&v.GarmentColours[0]>=0)>=2&&dressed.Count(v=>v.Theme==NativeZombieLooks.Pool&&v.Garments.Contains(NativeZombieLooks.BathrobeGarment))>=3
+            &&dressed.Where(v=>v.Theme==NativeZombieLooks.Office).All(v=>v.Garments.Length==0),
+            "the station's commuters in trench coats, the foundry's coveralls and leather aprons (their own colour), the pool's bathrobes");
         {
             string gz=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeZombieGarments.cs")),toon=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeVisualBodyToon.shader"));
             string zr=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeZombieModelPresentation.cs"));
