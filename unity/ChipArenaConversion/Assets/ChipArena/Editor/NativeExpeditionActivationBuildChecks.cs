@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion.Editor
                     var arrival=NativeArena.Vec(area.doors.Single().entries[0].Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);
                     Check((arriving.Body.position-arrival).sqrMagnitude<.0001f&&(arriving.Body.transform.position-arrival).sqrMagnitude<.0001f,"physics and transform arrive inside "+area.id);
                     Check(frame.pilots.Any(p=>p.id==Seat(who))&&!frame.pilots.Any(p=>p.id==1),"destination frame owns only local pilot");
-                    Check(sim.Pve.Content.entries.Length>0&&(area.id==NativeBackroomsGenerator.AreaId?area.interactions.Any(i=>area.anchors.Any(a=>a.id==i.anchor&&a.kind=="chest")):sim.Pve.Content.machines.Length>0),"playable encounter services "+area.id);
+                    Check(sim.Pve.Content.entries.Length>0&&(area.id==NativeBackroomsGenerator.AreaId||area.id==NativePoolroomsGenerator.AreaId?area.interactions.Any(i=>area.anchors.Any(a=>a.id==i.anchor&&a.kind=="chest")):sim.Pve.Content.machines.Length>0),"playable encounter services "+area.id);
                     var scene=EditorSceneManager.NewPreviewScene();NativeArena replica=null;
                     try
                     {

@@ -1,3 +1,18 @@
+## 2026-11-03 — Claude: unblock the builder (Poolrooms' exit in the activation build check)
+
+- **Branch:** `claude/poolrooms-build-check`, base shared `721a329b`.
+- **Failure:** builder run of `721a329b` (02:48 UTC), Unity build validation:
+  `Exception: Expedition activation: playable encounter services exp-poolrooms` (`Editor/NativeExpeditionActivationBuildChecks.cs`).
+  The check wants machines in every Expedition area except Level 0, whose objective is an exit cache (a chest interaction).
+  Astra's Poolrooms (#316) uses the same exit-cache objective (`exp-poolrooms:exit-cache`, kind `chest`) and has no machines.
+  The managed suite does not run this Editor check, so #316's checks passed.
+- **Fix:** the check accepts the Poolrooms' area like Level 0's (`NativePoolroomsGenerator.AreaId`), one condition. No game
+  code changed.
+- **Checks:** `PrototypeBuild.Validate` (the builder's "Run core and project checks") in the local Editor on `721a329b` plus the
+  fix: ok, 346 PASS lines, `exp-poolrooms` exercised (8 mobs). Pin scan clean.
+- **Astra:** please review (your check, your area). If the Poolrooms should have machines after all, revert this line and add them.
+
+
 ## 2026-11-03 — Claude: Level 0 scaled up round the pilots
 
 - **Branch:** `claude/backrooms-scale`, base shared `1b0c5ce1`.
@@ -18,7 +33,10 @@
 - **Checks:**
   - `--backrooms` (30), `--backrooms-rules` (Astra's, 164: collision routes, spawns, identity), `--poolrooms`;
   - Unity captures of the live `backrooms-level-0` from the pilot's camera and at eye height, before and after;
-  - full suite: see below.
+  - full CoreTests on a clean LF checkout of `4a7a10ac`: exit 0, 940 PASS lines; after merging Astra's #316 into it
+    (`721a329b`): exit 0, 941 PASS lines (Poolrooms rules 13,123 checks).
+- **Status:** merged into shared as `721a329b`. The builder's run of it failed in Astra's new Expedition activation build
+  check (see the next entry), so it is not yet published.
 - **Next:** owner check in the Windows build.
 
 
