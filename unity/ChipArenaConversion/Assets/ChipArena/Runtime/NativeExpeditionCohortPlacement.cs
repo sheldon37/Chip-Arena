@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativePilot { public readonly HashSet<string> TransferProcs=new HashSet<string>();public bool ExpeditionTransferHeld;public readonly Dictionary<string,float> TransferCooldowns=new Dictionary<string,float>(); }
     public sealed partial class NativeArena
     {
-        internal bool CanTransferPilot(NativePilot p)=>p!=null&&Pilots.Contains(p)&&!p.Seat.bot&&!p.Seat.AuthorityBoss&&p.Hp>0&&p.Death==null&&
+        // RevivePve retains Death for presentation; current life state governs transfers.
+        internal bool CanTransferPilot(NativePilot p)=>p!=null&&Pilots.Contains(p)&&!p.Seat.bot&&!p.Seat.AuthorityBoss&&p.Hp>0&&p.Seat.alive&&
             p.HeldBy==null&&p.Controlling==null&&p.ControlledBy==null&&p.Kernel?.Active!=true&&p.Juggle==null&&p.ScareBy==null&&Time>=p.FrozenUntil&&Time>=p.LaunchUntil&&Pve?.Hires.Any(h=>h.owner==p)!=true;
         internal void HoldTransferPilot(NativePilot p,bool hold)
         {
