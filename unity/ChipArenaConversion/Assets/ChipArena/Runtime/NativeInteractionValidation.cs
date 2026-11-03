@@ -77,6 +77,7 @@ namespace ChipArena.UnityConversion
                 var actor=victim.Pose.ViewCopy();actor.Wounds=wound==null?Array.Empty<NativeWound>():new[]{wound};
                 victim.Death=new NativeDeath{id=victim.Seat.id,seed=seed++,kept=true,model="pilot",at=Time-5,position=new Vector3(0,1,0),style=style=="pad"?"impact-ragdoll":style,actor=actor,wound=wound};
                 victim.Hp=0;victim.Body.position=victim.Death.position;victim.Seat.alive=false;RevivePve(victim,style=="pad"?(Vector3?)new Vector3(5,1,0):null);
+                Check(CanTransferPilot(victim),"revived player cannot transfer: "+style);
                 var revived=NativeFrameCodec.Clone(NetworkFrame());Check(revived.Valid(Content),"revive frame invalid: "+style);guest.ApplyFrame(revived,victim.Seat.id);
                 Check((guest.Local.Body.position-victim.Body.position).sqrMagnitude<.001f,"revive placement retained local smoothing: "+style);guest.InterpolateReplica(1);
                 Check(guest.Local.RevivedAt==victim.RevivedAt&&guest.Local.Death?.seed==victim.Death.seed,"revive identity lost: "+style);
