@@ -171,13 +171,30 @@ internal static class ZombieModelChecks
         }
         // Ward Zero: patients in gowns, nurses and orderlies in scrubs, doctors in white coats with their lanyards, security in caps.
         var ward=dressed.Where(v=>v.Theme==NativeZombieLooks.Ward).ToArray();
-        Check(ward.Where(v=>v.Pieces[1].StartsWith("z-gown")||v.Pieces[1].StartsWith("z-suit-jacket")).All(v=>v.Lift>=2)&&ward.Count(v=>v.Pieces[1].StartsWith("z-gown"))>=7&&ward.Count(v=>v.Pieces[1].StartsWith("z-scrubs-top"))>=4&&ward.Count(v=>v.Pieces[1].StartsWith("z-suit-jacket")&&v.Gear.Contains("faceling-lanyard"))>=2
+        Check(ward.Where(v=>v.Pieces[1].StartsWith("z-gown")).All(v=>v.Lift>=2)&&ward.Count(v=>v.Pieces[1].StartsWith("z-gown"))>=7&&ward.Count(v=>v.Pieces[1].StartsWith("z-scrubs-top"))>=4&&ward.Count(v=>v.Pieces[1].StartsWith("z-suit-jacket")&&v.Gear.Contains("faceling-lanyard"))>=2
             &&ward.Count(v=>v.Pieces[0].StartsWith("z-ball-cap"))>=2&&ward.Where(v=>v.Pieces[1].StartsWith("z-gown")).All(v=>v.Pieces[4].StartsWith("z-bare")||v.Pieces[4].StartsWith("z-socks")),
             "Ward Zero: patients in gowns (barefoot or in socks), nurses in scrubs, doctors in white coats with their lanyards, security in caps");
         Check(dressed.Where(v=>v.Theme==NativeZombieLooks.Foundry).Count(v=>v.Pieces[1].StartsWith("z-coveralls"))>=4&&dressed.Any(v=>v.Theme==NativeZombieLooks.Foundry&&v.Tape&&v.Gear.Any(g=>g.Contains("hardhat")))
             &&dressed.Where(v=>v.Theme==NativeZombieLooks.Pool).All(v=>v.Mutant||v.Pieces[2].StartsWith("z-shorts")||v.Pieces[2].StartsWith("z-dolphin-shorts"))
             &&dressed.Where(v=>v.Theme==NativeZombieLooks.Station).Count(v=>v.Pieces[1].StartsWith("z-suit-jacket"))>=2,"the foundry's overalls and hard hats, the pool's swimwear, the station's suits");
         Check(dressed.Where(v=>v.Mutant).All(v=>v.Pieces[1]==NativeZombieLooks.None),"a dressed Hulk still wears no top");
+        // The bespoke garments (tools/gear/garments.py; owner 2026-11-03: "May have to create the outfits"): Ward Zero's patients in
+        // the gown, its doctors in the lab coat, its nurses and orderlies in the scrubs; each a garment the Blender script makes,
+        // its pack piece kept as the fallback; nowhere else.
+        string garmentScript=File.ReadAllText(Path.Combine(root,"tools/gear/garments.py"));
+        string[] garmentIds={NativeZombieLooks.GownGarment,NativeZombieLooks.CoatGarment,NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants};
+        Check(garmentIds.All(g=>garmentScript.Contains("'"+g+"': make_")||garmentScript.Contains("'"+g+"': "))&&dressed.All(v=>v.Garments.All(g=>garmentIds.Contains(g))),"every garment one the Blender script makes");
+        Check(ward.Where(v=>v.Pieces[1].StartsWith("z-gown")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.GownGarment}))&&ward.Where(v=>v.Pieces[1].StartsWith("z-suit-jacket")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.CoatGarment}))
+            &&ward.Where(v=>v.Pieces[1].StartsWith("z-scrubs-top")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants}))&&dressed.Where(v=>v.Theme!=NativeZombieLooks.Ward).All(v=>v.Garments.Length==0)&&NativeZombieLooks.All.All(v=>v.Garments.Length==0),
+            "Ward Zero's gowns, lab coats and scrubs are the bespoke garments (their pack pieces the fallback); nowhere else");
+        {
+            string gz=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeZombieGarments.cs")),toon=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Resources/NativeVisualBodyToon.shader"));
+            string zr=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeZombieModelPresentation.cs"));
+            Check(zr.Contains("var worn=ZombieDress(root,v);ZombieGarmentsMake(root,v);")&&zr.Contains("if((garmentSlots>>s&1)==0)foreach(var id in NativeZombieLooks.Candidates(v.Pieces[s]))")&&zr.Contains("ZombieGarmentCloth(z,distance);")
+                &&gz.Contains("Resources.Load<TextAsset>(ZombieGarmentBank)")&&gz.Contains("ZombieShapes(r,v.Shapes);")&&gz.Contains("NativeVisualCloth.PaintMaps[\"Garment.\"+id]=paint;")&&gz.Contains("ZombieClothNear=8f")&&gz.Contains("ZombieClothMost=4")
+                &&toon.Contains("if(_VertexAlbedo>0&&_ZombieTint.w>0)o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,0,0);"),
+                "the garments: their slot's pack piece left off, skinned on the model with its shapes, tint and wear, Magica Cloth on the nearest four within 8 m, the pack's pieces without the bank");
+        }
         // The fallen pilots: the robot suit's garments and its plates (three torn off each, the ear modules the helmet's), no hair,
         // a smashed helmet, the shell grimy and the light dead.
         var pilotsAll=dressed.Where(v=>v.SuitShown!=0).ToArray();int all16=(1<<NativeRobotSuit.Bones.Length)-1;
@@ -374,8 +391,8 @@ internal static class ZombieModelChecks
         string look=fx.Substring(fx.IndexOf("float3 ZombieLook(float3 c,float2 uv,float band,float stripe)",StringComparison.Ordinal));look=look.Substring(0,look.IndexOf("\n}\n",StringComparison.Ordinal));
         Check(look.Contains("if(_ZombieEye.w>0.5)return _ZombieEye.rgb;")&&look.Contains("if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;"),"the zombie look: blank eyes, and nothing changed with it unset (every pilot)");
         Check(Regex.Matches(toon,@"_Zombie(Tint|Wear|Eye|Skin)\(""[^""]*"",Vector\)=\(0,0,0,0\)").Count==4,"its four properties off by default");
-        Check(toon.Contains("if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band,ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv_Texture2D);")&&toon.Contains("albedo=_VertexAlbedo>0?i.color.rgb:ZombieLook(albedo,i.uv,ZombieBand(i.rest),ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv);"),
-            "the surface and its outline take the zombie look with its tape and a starved body's ribs (never a cut's cap or the gear, in their vertex colours)");
+        Check(toon.Contains("if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band,ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv_Texture2D);")&&toon.Contains("albedo=_VertexAlbedo>0?(_ZombieTint.w>0?ZombieLook(i.color.rgb,i.uv,0,0):i.color.rgb):ZombieLook(albedo,i.uv,ZombieBand(i.rest),ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv);"),
+            "the surface and its outline take the zombie look with its tape and a starved body's ribs (a cut's cap and the gear, untinted, keep their vertex colours; a garment, tinted, takes the look)");
         Check(fx.Contains("float ZombieLean(float3 rest,float2 uv)")&&fx.Contains("if(_ZombieRibs.x>0.0)")&&fx.Contains("if(_ZombieRibs.y>0.0)")&&toon.Contains("_ZombieRibs(\"A starved zombie's creases, ribs and spine: age, ribs, the ribs' rest heights\",Vector)=(0,0,0,0)"),
             "a starved body's creases, ribs and spine: off unless set (every pilot and every other zombie)");
         Check(fx.Contains("float ZombieBand(float3 rest)")&&fx.Contains("if(band>0.0)c=lerp(c,ZombieTapeColour(k),band);")&&fx.Contains("float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0,0.0);}")&&fx.Contains("if(stripe>0.0)c=lerp(c,_ZombieStripeTint.rgb*lerp(0.72,1.05,saturate(k)),stripe);"),

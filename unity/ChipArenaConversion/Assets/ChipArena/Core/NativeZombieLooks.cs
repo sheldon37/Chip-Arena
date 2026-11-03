@@ -85,6 +85,9 @@ namespace ChipArena.UnityConversion
             /// <summary>How much brighter its pieces show against their own shade (1 as they are): the pack's pieces are dark under
             /// the bake's palette, so pale clothes (a gown, a white coat, scrubs) are lifted to read pale.</summary>
             public float Lift=1;
+            /// <summary>Its bespoke garments (tools/gear/garments.py's, the local bank Resources/ChipArenaGarments: the gown, the lab coat,
+            /// the scrubs), each worn in place of its slot's pack piece; without the bank (or the garment) the pack piece stays.</summary>
+            public string[] Garments=Array.Empty<string>();
             /// <summary>The area it was dressed for (a Theme), or null: the everyday clothes.</summary>
             public string Theme;
             public Variant Clone()=>(Variant)MemberwiseClone();
@@ -338,9 +341,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The share of the common kinds' adds that are fallen pilots.</summary>
         public const float PilotShare=.12f;
 
-        private sealed class Outfit{public string Hair,Upper,Lower,Hands,Feet,Gear;public int HairColour=Keep,UpperColour,LowerColour,FeetColour;public bool Tape;public float Lift=1;}
-        private static Outfit O(string upper,string lower,string feet,int uc,int lc,int fc,string hair=null,int hc=Keep,string hands=null,string gear=null,bool tape=false,float lift=1)
-            =>new Outfit{Upper=upper,Lower=lower,Feet=feet,UpperColour=uc,LowerColour=lc,FeetColour=fc,Hair=hair,HairColour=hc,Hands=hands,Gear=gear,Tape=tape,Lift=lift};
+        private sealed class Outfit{public string Hair,Upper,Lower,Hands,Feet,Gear,Garments;public int HairColour=Keep,UpperColour,LowerColour,FeetColour;public bool Tape;public float Lift=1;}
+        private static Outfit O(string upper,string lower,string feet,int uc,int lc,int fc,string hair=null,int hc=Keep,string hands=null,string gear=null,bool tape=false,float lift=1,string garments=null)
+            =>new Outfit{Upper=upper,Lower=lower,Feet=feet,UpperColour=uc,LowerColour=lc,FeetColour=fc,Hair=hair,HairColour=hc,Hands=hands,Gear=gear,Tape=tape,Lift=lift,Garments=garments};
         // The pieces (the zombies' own first, then a Locker piece every bake has).
         private const string Gown="z-gown|sweater",Pyjamas="z-scrub-pants|baggy-pants",Scrubs="z-scrubs-top|tee",ScrubPants="z-scrub-pants|baggy-pants",
             Coat="z-suit-jacket|hard-jacket",Slacks="z-dress-pants|khakis",Loafers="z-loafers|lace-ups",Barefoot="z-bare|sneakers",Socks="z-socks|z-bare|sneakers",
@@ -350,20 +353,23 @@ namespace ChipArena.UnityConversion
         // (A cap or hat over the look's own hair, which it falls back on: "+" is replaced by the base's hair.)
         private const string Cap="z-ball-cap|+",ScrubCap="z-beanie|+",Beanie="z-beanie|+",Newsboy="z-newsboy|+";
         private const string Lanyard="faceling-lanyard",HardHat="linesman-hardhat-yellow",WhiteHat="linesman-hardhat-white";
+        /// <summary>The bespoke garments (Variant.Garments): the hospital gown, the lab coat, the scrubs' top and trousers.</summary>
+        public const string GownGarment="g-gown",CoatGarment="g-lab-coat",ScrubsTop="g-scrubs-top",ScrubsPants="g-scrubs-pants";
+        private const string ScrubSet=ScrubsTop+","+ScrubsPants;
         // Per theme (Themes order), per base kind (Shambler, Runner, Spitter, Brute, Hulk), its four looks' outfits (male A, male B,
         // female A, female B); null keeps the everyday clothes. The Hulk changes its trousers only (its grown flesh is its top).
         private static readonly int[] ThemedKinds={NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute,NativeHordeKinds.Hulk};
         private static Outfit[][][] Outfits()=>new[]{
             // ---- Ward Zero ----
             new[]{
-                new[]{O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f),O(Coat,Slacks,Loafers,0xE4E4DC,0x44464C,0x2A2522,gear:Lanyard,lift:2.6f),
-                    O(Gown,Pyjamas,Socks,0xB2C6D6,0xC4D2DC,0xD6D4CC,lift:2.4f),O(Scrubs,ScrubPants,"sneakers",0x3E8C86,0x3E8C86,0xE2E2E2,ScrubCap,0x3E8C86,gear:Lanyard,lift:1.6f)},
-                new[]{O(Scrubs,ScrubPants,"sneakers",0x2E4D7C,0x2E4D7C,0xE0E0E0,ScrubCap,0x2E4D7C,lift:1.6f),O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f),
-                    O(Scrubs,ScrubPants,"sneakers",0x5A8C60,0x5A8C60,0xDADADA,lift:1.6f),O(Gown,Pyjamas,Socks,0xB2C6D6,0xC4D2DC,0xD6D4CC,lift:2.4f)},
-                new[]{O(Gown,Pyjamas,Barefoot,0xA9BFB2,0xC0CEC4,Keep,lift:2.4f),O(Coat,Slacks,Loafers,0xDCDCD2,0x3C3E44,0x2A2522,gear:Lanyard,lift:2.6f),
-                    O(Gown,Pyjamas,Socks,0xBCC9D4,0xCAD4DC,0xD6D4CC,lift:2.4f),O(Scrubs,ScrubPants,"sneakers",0x7E9CC8,0x2F4470,0xE0E0E0,gear:Lanyard,lift:1.6f)},
-                new[]{O("hard-jacket","belted-pants","work-boots",0x1E2633,0x232833,0x1C1C1E,Cap,0x1E2633),O("tee",ScrubPants,"sneakers",0xDCDDD6,0xBCCAD6,0xD0D0D0,lift:2.4f),
-                    O("hard-jacket","belted-pants","work-boots",0x1E2633,0x232833,0x1C1C1E,Cap,0x1E2633),O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f)},
+                new[]{O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f,garments:GownGarment),O(Coat,Slacks,Loafers,0xE4E4DC,0x44464C,0x2A2522,gear:Lanyard,lift:1.4f,garments:CoatGarment),
+                    O(Gown,Pyjamas,Socks,0xB2C6D6,0xC4D2DC,0xD6D4CC,lift:2.4f,garments:GownGarment),O(Scrubs,ScrubPants,"sneakers",0x3E8C86,0x3E8C86,0xE2E2E2,ScrubCap,0x3E8C86,gear:Lanyard,lift:1.6f,garments:ScrubSet)},
+                new[]{O(Scrubs,ScrubPants,"sneakers",0x2E4D7C,0x2E4D7C,0xE0E0E0,ScrubCap,0x2E4D7C,lift:1.6f,garments:ScrubSet),O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f,garments:GownGarment),
+                    O(Scrubs,ScrubPants,"sneakers",0x5A8C60,0x5A8C60,0xDADADA,lift:1.6f,garments:ScrubSet),O(Gown,Pyjamas,Socks,0xB2C6D6,0xC4D2DC,0xD6D4CC,lift:2.4f,garments:GownGarment)},
+                new[]{O(Gown,Pyjamas,Barefoot,0xA9BFB2,0xC0CEC4,Keep,lift:2.4f,garments:GownGarment),O(Coat,Slacks,Loafers,0xDCDCD2,0x3C3E44,0x2A2522,gear:Lanyard,lift:1.4f,garments:CoatGarment),
+                    O(Gown,Pyjamas,Socks,0xBCC9D4,0xCAD4DC,0xD6D4CC,lift:2.4f,garments:GownGarment),O(Scrubs,ScrubPants,"sneakers",0x7E9CC8,0x2F4470,0xE0E0E0,gear:Lanyard,lift:1.6f,garments:ScrubSet)},
+                new[]{O("hard-jacket","belted-pants","work-boots",0x1E2633,0x232833,0x1C1C1E,Cap,0x1E2633),O("tee",ScrubPants,"sneakers",0xDCDDD6,0xBCCAD6,0xD0D0D0,lift:2.4f,garments:ScrubSet),
+                    O("hard-jacket","belted-pants","work-boots",0x1E2633,0x232833,0x1C1C1E,Cap,0x1E2633),O(Gown,Pyjamas,Barefoot,0xA8C2BE,0xBFCFCB,Keep,lift:2.4f,garments:GownGarment)},
                 new[]{O(null,Pyjamas,Barefoot,Keep,0xA8BCC8,Keep),O(null,ScrubPants,"sneakers",Keep,0x3E8C86,0xD0D0D0),O(null,Pyjamas,Barefoot,Keep,0xB2C6D6,Keep),O(null,ScrubPants,"sneakers",Keep,0x2E4D7C,0xD0D0D0)}},
             // ---- Central Station ----
             new[]{
@@ -426,7 +432,7 @@ namespace ChipArena.UnityConversion
                         if(o.Lower!=null){v.Pieces[2]=o.Lower;v.Colours[2]=o.LowerColour;}
                         if(o.Hands!=null)v.Pieces[3]=o.Hands;
                         if(o.Feet!=null){v.Pieces[4]=o.Feet;v.Colours[4]=o.FeetColour;}
-                        v.Gear=o.Gear==null?Array.Empty<string>():o.Gear.Split(',');v.Tape=o.Tape;v.Lift=o.Lift;
+                        v.Gear=o.Gear==null?Array.Empty<string>():o.Gear.Split(',');v.Tape=o.Tape;v.Lift=o.Lift;v.Garments=o.Garments==null?Array.Empty<string>():o.Garments.Split(',');
                         r[t][i]=v;
                     }
                 }
