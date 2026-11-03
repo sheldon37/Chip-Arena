@@ -52,6 +52,15 @@ namespace ChipArena.UnityConversion
             public bool Sac;
             /// <summary>A mutant (the Hulk's): grown flesh, bone spurs and pustules over its build (Core NativeZombieMutation).</summary>
             public bool Mutant;
+            /// <summary>Reflective tape on its upper piece: a hi-vis jacket's rings round the chest, the waist and both sleeves
+            /// (Runtime ZombieTape; the shader's ZombieBand).</summary>
+            public bool Tape;
+            /// <summary>The gear it wears: the gear bank's props by id (Resources/ChipArenaPackGear, tools/gear), each on the model's
+            /// bone its group names (Runtime ZombieGear). A prop the bank lacks is left off.</summary>
+            public string[] Gear=Array.Empty<string>();
+            /// <summary>A second commuter fused into its right shoulder: its own head, screaming, and a second right arm, raised
+            /// (Runtime ZombieFuse; the gear's flesh joins them).</summary>
+            public bool Fused;
         }
 
         private static float[] Body(float type,float weight,float muscle,float belly,float chest,float neck,float curvy,float butt,float waist,float maturity=float.NaN,float sharp=float.NaN,float round=float.NaN)
@@ -59,6 +68,8 @@ namespace ChipArena.UnityConversion
         private static Variant V(string id,int kind,bool female,string hair,string upper,string lower,string hands,string feet,int[] colours,int skin,float[] shapes,Build build,float grime,float tears,float rot,bool sac=false,int eyes=0xe9ece4,string decay=null,float blood=0,bool mutant=false)
             =>new Variant{Id=id,Kind=kind,Female=female,Pieces=new[]{hair,upper,lower,hands,feet},Colours=colours,Skin=skin,Eyes=eyes,Shapes=shapes,Build=build,Grime=grime,Tears=tears,Rot=rot,Sac=sac,Mutant=mutant,Decay=string.IsNullOrEmpty(decay)?Array.Empty<string>():decay.Split(','),Blood=blood};
         private const int Keep=-1;
+        private static readonly int LinesmanKind=NativeStationKinds.Kind(NativeStationKinds.Linesman),ConductorKind=NativeStationKinds.Kind(NativeStationKinds.Conductor),
+            UndertowKind=NativeStationKinds.Kind(NativeStationKinds.Undertow),PileupKind=NativeStationKinds.Kind(NativeStationKinds.Pileup);
 
         /// <summary>Every variant, by kind then male A, male B, female A, female B (the owner's sheets).</summary>
         public static readonly Variant[] All={
@@ -110,7 +121,72 @@ namespace ChipArena.UnityConversion
                 Body(65,30,100,0,70,100,0,30,10,50,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-r,thigh-l",blood:0.55f,mutant:true),
             V("hulk-female-b",NativeHordeKinds.Hulk,true,"wild",None,"baggy-pants","bare","work-boots",new[]{0xa9a9a6,0x6b2a2c,0x28282b,Keep,0x5a3d28},0xaaa39c,
                 Body(65,35,100,10,70,100,0,30,10,70,45),new Build{Arm=1.62f,Forearm=1.85f,Thigh=1.28f,Calf=1.22f,Hand=1.85f,Shoulder=1.36f,Head=.85f,Right=1.06f,Neck=.65f,Reach=1.26f},.6f,.62f,.7f,false,0xe9ece4,decay:"cheek-r,shin-l",blood:0.55f,mutant:true),
+            // ---- Central Station (owner 2026-11-03: the instance kinds off voxels; docs/EXPEDITION-ENEMY-REWORK.md): each on its kind's
+            // base build at the kind's scale, its signature gear riding the bones (Runtime NativeZombieGear) ----
+            // Linesman: the brute's body in hi-vis workwear, red insulated gloves, pale skin gone bluish, cold blue eyes.
+            V("linesman-male-a",LinesmanKind,false,None,"z-work-jacket|hard-jacket","belted-pants","gloves","work-boots",new[]{Keep,0xFF6A10,0x2A3247,0xB8341C,0x3B2E24},0x9aa3a6,
+                Body(100,30,90,15,40,100,0,0,10,50),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.12f,Calf=1.12f,Hand=1.16f,Shoulder=1.07f,Head=1.02f},.4f,.38f,.48f,false,NativeStationKinds.LinesmanBlue,decay:"cheek-l,forearm-l",blood:0.22f),
+            V("linesman-male-b",LinesmanKind,false,None,"z-utility-jacket|hard-jacket","khakis","gloves","work-boots",new[]{Keep,0xE8D21A,0x3E4436,0xB8341C,0x2E241C},0x98a0a4,
+                Body(90,70,60,60,30,100,0,0,30,60),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.14f,Calf=1.12f,Hand=1.15f,Shoulder=1.05f,Head=1.02f},.42f,.36f,.45f,false,NativeStationKinds.LinesmanBlue,decay:"ribs-r,shin-l",blood:0.22f),
+            V("linesman-female-a",LinesmanKind,true,None,"z-work-jacket|hard-jacket","belted-pants","gloves","work-boots",new[]{Keep,0xFF6A10,0x2A3247,0xB8341C,0x3B2E24},0x9ca5a8,
+                Body(15,35,80,10,40,70,15,25,10,45),new Build{Arm=1.15f,Forearm=1.18f,Thigh=1.1f,Calf=1.08f,Hand=1.1f,Shoulder=1.04f},.38f,.38f,.46f,false,NativeStationKinds.LinesmanBlue,decay:"forearm-r,thigh-l",blood:0.22f),
+            V("linesman-female-b",LinesmanKind,true,None,"z-utility-jacket|hard-jacket","khakis","gloves","work-boots",new[]{Keep,0xE8D21A,0x3E4436,0xB8341C,0x2E241C},0x9aa2a6,
+                Body(15,45,75,20,45,70,15,25,15,60),new Build{Arm=1.15f,Forearm=1.18f,Thigh=1.1f,Calf=1.08f,Hand=1.1f,Shoulder=1.04f},.4f,.36f,.45f,false,NativeStationKinds.LinesmanBlue,decay:"upperarm-l,ribs-l",blood:0.22f),
+            // Conductor: tall and thin, old, in the long navy coat to the knees, white gloves, grey hair under the cap, cold white eyes.
+            V("conductor-male-a",ConductorKind,false,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x8a8a88,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xaab0aa,
+                Body(50,0,10,0,10,10,0,0,0,95,70),new Build{Arm=.94f,Forearm=.94f,Thigh=.95f,Calf=.95f,Shoulder=.97f},.5f,.35f,.5f,false,NativeStationKinds.ConductorWhite,decay:"cheek-r,forearm-l",blood:0.3f),
+            V("conductor-male-b",ConductorKind,false,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{Keep,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xa7ada6,
+                Body(55,25,5,20,10,20,0,0,10,100,60),new Build{Arm=.95f,Forearm=.95f,Thigh=.96f,Calf=.96f,Shoulder=.98f},.55f,.35f,.52f,false,NativeStationKinds.ConductorWhite,decay:"ribs-l,shin-r",blood:0.3f),
+            V("conductor-female-a",ConductorKind,true,"z-military-cap|tied-back","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x9a9894,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xacb1ab,
+                Body(-15,0,5,0,20,5,10,10,0,90,65),new Build{Arm=.92f,Forearm=.92f,Thigh=.94f,Calf=.94f,Shoulder=.95f},.5f,.35f,.5f,false,NativeStationKinds.ConductorWhite,decay:"forearm-r,cheek-l",blood:0.3f),
+            V("conductor-female-b",ConductorKind,true,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x6e6c6a,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xa9aea8,
+                Body(-10,20,5,10,25,10,15,15,10,100,55),new Build{Arm=.93f,Forearm=.93f,Thigh=.95f,Calf=.95f,Shoulder=.96f},.52f,.35f,.52f,false,NativeStationKinds.ConductorWhite,decay:"upperarm-r,ribs-r",blood:0.3f),
+            // Undertow: the runner's body drowned in the flooded lines, a torn glossy slicker, grey-green waterlogged skin, aqua eyes.
+            V("undertow-male-a",UndertowKind,false,"wild","hard-jacket","skinny-jeans","bare","sneakers",new[]{0x1A1F1C,0x3E5C52,0x23302A,Keep,0x2A2E2A},0x5e6e62,
+                Body(50,0,35,0,10,20,0,0,0,30,60),new Build{Arm=.98f,Forearm=.98f},.72f,.6f,.82f,false,NativeStationKinds.UndertowAqua,decay:"cheek-l,ribs-r,forearm-r",blood:0.15f),
+            V("undertow-male-b",UndertowKind,false,None,"hard-jacket","baggy-pants","bare","work-boots",new[]{Keep,0x4E5C3C,0x2A2E30,Keep,0x24221E},0x596a5f,
+                Body(55,10,30,10,10,25,0,0,0,40,55),new Build{Arm=.98f,Forearm=.98f},.72f,.62f,.85f,false,NativeStationKinds.UndertowAqua,decay:"back,shin-l,upperarm-l",blood:0.15f),
+            V("undertow-female-a",UndertowKind,true,"side-swept","hard-jacket","skinny-jeans","bare","sneakers",new[]{0x1A1F1C,0x3E5C52,0x23302A,Keep,0x2A2E2A},0x5f6f63,
+                Body(-10,0,25,0,30,5,15,20,0,30,60),new Build{Arm=.95f,Forearm=.95f,Shoulder=.97f},.72f,.6f,.82f,false,NativeStationKinds.UndertowAqua,decay:"forearm-l,ribs-l",blood:0.15f),
+            V("undertow-female-b",UndertowKind,true,"tied-back","hard-jacket","baggy-pants","bare","sneakers",new[]{0x14181a,0x4E5C3C,0x2A2E30,Keep,0x2A2E2A},0x5a6a60,
+                Body(-10,10,20,0,30,5,15,20,0,35,55),new Build{Arm=.95f,Forearm=.95f,Shoulder=.97f},.72f,.62f,.85f,false,NativeStationKinds.UndertowAqua,decay:"cheek-r,thigh-r",blood:0.15f),
+            // Pileup: the brute's frame drawn wide, three commuters fused (the second head and arm grown out of the right shoulder:
+            // NativeZombieGear's fused growth), torn office clothes.
+            V("pileup-male-a",PileupKind,false,"wild","z-suit-jacket|hard-jacket","z-dress-pants|khakis","bare","z-loafers|lace-ups",new[]{0x2a2420,0x9C9A92,0x4A4D55,Keep,0x1c1a18},0x9a9488,
+                Body(100,70,70,60,40,100,0,0,30,55),new Build{Arm=1.22f,Forearm=1.24f,Thigh=1.15f,Calf=1.12f,Hand=1.15f,Shoulder=1.12f,Head=1.02f},.7f,.6f,.62f,false,0xe9ece4,decay:"ribs-l,cheek-r,forearm-l",blood:0.7f),
+            V("pileup-male-b",PileupKind,false,"z-ball-cap|wild","z-work-shirt|tee","z-dress-pants|belted-pants","bare","z-loafers|lace-ups",new[]{Keep,0x5A4A3A,0x7B6D58,Keep,0x2a221c},0x968e84,
+                Body(95,90,50,80,35,100,0,0,40,65),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.16f,Calf=1.12f,Hand=1.14f,Shoulder=1.1f,Head=1.02f},.72f,.62f,.6f,false,0xe9ece4,decay:"back,shin-r,upperarm-l",blood:0.7f),
+            V("pileup-female-a",PileupKind,true,"side-swept","z-blouse|tee","z-dress-pants|khakis","bare","z-flats|lace-ups",new[]{0x1f1c1a,0xC9C2B0,0x4A4D55,Keep,0x1c1a18},0x9c958a,
+                Body(20,60,70,40,45,80,15,25,25,50),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.1f,Shoulder=1.08f},.7f,.6f,.62f,false,0xe9ece4,decay:"ribs-r,forearm-r",blood:0.7f),
+            V("pileup-female-b",PileupKind,true,"tied-back","z-suit-jacket|sweater","z-dress-pants|belted-pants","bare","z-loafers|lace-ups",new[]{0x4a3a2c,0x3f6a6a,0x7B6D58,Keep,0x2a221c},0x9a9389,
+                Body(20,75,60,55,45,80,15,25,30,60),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.1f,Shoulder=1.08f},.72f,.62f,.6f,false,0xe9ece4,decay:"cheek-l,thigh-l",blood:0.7f),
         };
+
+        // The zone kinds' kit (docs/EXPEDITION-ENEMY-REWORK.md section 2: their signature gear modelled in Blender):
+        //  - Linesman: the hi-vis jacket's tape, a hard hat with its headlamp (yellow, or white on the B looks), the battery pack
+        //    on its harness (fitted to each build's back), the jumper cables coiled round the right forearm;
+        //  - Conductor: the cap's brass badge, the whistle on its chain;
+        //  - Undertow: kelp and weed draped over its shoulders with a drowned cable, weed wound round its forearms;
+        //  - Pileup: a carriage grab pole bent across its chest (its door is its carried prop: Runtime StationGearProp).
+        /// <summary>Where the gear's lights are, in their bones' frames (tools/gear/station_gear.py builds them there): the
+        /// Linesman's headlamp lens on `head` and its aim, the battery pack's vents on `spine_05` (the brute's and the women's
+        /// fits). The station's effects (its lamp's halo and beam, the pack's glow) are drawn from them on the model.</summary>
+        public static readonly System.Numerics.Vector3 LinesmanLamp=new System.Numerics.Vector3(0,.1453f,.1944f),LinesmanLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
+            LinesmanVents=new System.Numerics.Vector3(.068f,.2715f,0),LinesmanVentsWoman=new System.Numerics.Vector3(.068f,.2515f,0);
+        /// <summary>The kit given (the table above first: field initializers run in order).</summary>
+        public static readonly bool Kitted=Kit();
+        private static bool Kit()
+        {
+            foreach(var v in All)
+            {
+                bool b=v.Id.EndsWith("-b",StringComparison.Ordinal);
+                if(v.Kind==LinesmanKind){v.Tape=true;v.Gear=new[]{b?"linesman-hardhat-white":"linesman-hardhat-yellow",v.Female?"linesman-pack-f":"linesman-pack","linesman-coil"};}
+                else if(v.Kind==ConductorKind)v.Gear=new[]{"conductor-badge","conductor-whistle"};
+                else if(v.Kind==UndertowKind)v.Gear=new[]{"undertow-weed-back","undertow-weed-arm-l","undertow-weed-arm-r"};
+                else if(v.Kind==PileupKind){v.Fused=true;v.Gear=new[]{v.Female?"pileup-handrail-f":"pileup-handrail",v.Female?"pileup-flesh-f":"pileup-flesh"};}
+            }
+            return true;
+        }
 
         /// <summary>The kinds drawn on the model in shipped builds (the owner's order: one male and one female shambler end to end first,
         /// then the other kinds once the pipeline is reviewed). All five are live since the PC captures of 2026-10-29 (each kind's
@@ -121,8 +197,12 @@ namespace ChipArena.UnityConversion
         public static bool Drafts;
         /// <summary>Whether a kind has variants on the model.</summary>
         public static bool Has(int kind){foreach(var v in All)if(v.Kind==kind)return true;return false;}
+        /// <summary>The zone kinds drawn on the model in shipped builds, each once it passed its review (docs/EXPEDITION-ENEMY-REWORK.md
+        /// section 2): the Central Station's four since 2026-11-03 (turnarounds, close-ups of their gear, their moves at the
+        /// authority's timings on the PC); drafts draw them all.</summary>
+        public static readonly System.Collections.Generic.HashSet<int> ZoneLive=new System.Collections.Generic.HashSet<int>{LinesmanKind,ConductorKind,UndertowKind,PileupKind};
         /// <summary>Whether adds of `kind` draw on the model now.</summary>
-        public static bool Modelled(int kind)=>kind>=0&&kind<NativeHordeKinds.Count&&(Live[kind]||Drafts)&&Has(kind);
+        public static bool Modelled(int kind)=>kind>=0&&(kind<NativeHordeKinds.Count?Live[kind]||Drafts:NativeHordeZones.Of(kind)!=null&&(ZoneLive.Contains(kind)||Drafts))&&Has(kind);
         /// <summary>The variant an add of `kind` wears, by its id (stable for its life, the same on every peer); null for a kind
         /// without variants. Allocation free.</summary>
         public static Variant Of(int kind,int id)

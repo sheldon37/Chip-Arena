@@ -95,12 +95,22 @@ namespace ChipArena.UnityConversion
         }
         private void StationQueueProp(CapturedAnimation.Player rig,StationAdd st,int tier,int lost,Vector4 glow,float flash,float now,float k)
         {
-            var world=rig.Root.transform.localToWorldMatrix*Matrix4x4.TRS(V(st.Out.PropAt),Q(st.Out.PropTurn),Vector3.one);
+            var world=rig.Root.transform.localToWorldMatrix*Matrix4x4.TRS(V(st.Out.PropAt)+StationPropShift(st),Q(st.Out.PropTurn),Vector3.one);
             // A severed hand lets go: the prop falls from where it was (once).
             if(!HordeJointShown(lost,st.Out.PropJoint)){if(!st.PropDropped&&st.PropKnown){st.PropDropped=true;StationDrop(st.PropKind,st.PropWorld,now,NativeHordeKinds.Seed(st.Id));}return;}
             st.PropWorld=world;st.PropKnown=true;st.PropKind=st.Out.PropKind;
+            // On the model, the gear bank's (modelled in Blender: tools/gear/station_gear.py); the voxel prop beside a voxel body.
+            if(ZombieModelShift(st.Id,st.Kind,CapturedRig.LHand,out _)&&ZombieGearPropDraw(StationGearProp(st.Out.PropKind),world,k,flash))return;
             string id=NativeHordeModels.StationPropId(st.Out.PropKind,Math.Min(tier<0?1:tier,NativeHordeModels.Impostor));if(!sourceModels.Has(id))return;
             sourceModels.Queue(id,world,null,null,glow:new Vector4(k,k,k,glow.w),hitFlash:flash);
+        }
+        // On the model, the prop moves with the model's hands (their own reach, off the rig's): the lantern with its left hand, the
+        // door with both (the rig's root frame, Unity axes).
+        private Vector3 StationPropShift(StationAdd st)
+        {
+            if(!ZombieModelShift(st.Id,st.Kind,CapturedRig.LHand,out var l))return Vector3.zero;
+            if(NativeStationKinds.Local(st.Kind)==NativeStationKinds.Pileup&&ZombieModelShift(st.Id,st.Kind,CapturedRig.RHand,out var r))l=(l+r)*.5f;
+            return new Vector3(-l.X,l.Y,l.Z);
         }
         // The lantern's flare (the whistle's inhale and blast, the last call's ringing), the window's dying tube (a hit stutters it).
         private static float StationPropGlow(StationAdd st,int kind,float whistleAge,float lastCallAge,float now)
@@ -121,7 +131,9 @@ namespace ChipArena.UnityConversion
         {
             // (Drawn and emptied each frame by DrawStationFx; a frame without effects keeps at most 128.)
             if(stationJobCount==stationJobs.Length){if(stationJobs.Length>=128)return;Array.Resize(ref stationJobs,stationJobCount*2);}
-            var p=minionPose;p.World();var g=s.Gait;float sc=s.Scale;Vector3 W(int b,NVector local){var l=p.WorldPosition[b]+System.Numerics.Vector3.Transform(local,p.WorldRotation[b]);var w=g.ToWorld(l*sc,ToN(root));return new Vector3(w.X,w.Y,w.Z);}
+            // (On the model, each joint where the model's stands: its reach and height, last pose's; ZombieModelShift.)
+            var p=minionPose;p.World();var g=s.Gait;float sc=s.Scale;
+            Vector3 W(int b,NVector local){var l=p.WorldPosition[b]+System.Numerics.Vector3.Transform(local,p.WorldRotation[b]);if(ZombieModelShift(id,kind,b,out var sh))l+=sh;var w=g.ToWorld(l*sc,ToN(root));return new Vector3(w.X,w.Y,w.Z);}
             Vector3 Dir(int b,NVector local){var a=W(b,NVector.Zero);return (W(b,local)-a).normalized;}
             float yr=g.Yaw*Mathf.Deg2Rad;var fwd=new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr));
             // (Source-frame joint offsets: +x the add's left.)
@@ -131,10 +143,12 @@ namespace ChipArena.UnityConversion
                 Hand=W(CapturedRig.RHand,new NVector(0,-.12f,.04f)),Coil=W(CapturedRig.RElbow,new NVector(-.12f,-.05f,0)),Elbow=W(CapturedRig.RElbow,NVector.Zero),Shoulder=W(CapturedRig.RArm,new NVector(0,-.05f,.05f)),
                 Pack=W(CapturedRig.Chest,new NVector(0,.15f,-.34f)),Lamp=W(CapturedRig.Head,new NVector(0,.305f+NativeStationKinds.HeadDrop[NativeStationKinds.Linesman],.18f)),LampDir=Dir(CapturedRig.Head,new NVector(0,-.1f,1)),
                 Eyes=W(CapturedRig.Head,new NVector(0,.176f,.18f)),Mouth=W(CapturedRig.Head,new NVector(0,.075f,.2f)),Chest=W(CapturedRig.Chest,new NVector(0,.15f,0))};
+            // On the model, the pack's vents where the gear has them (the arcs reach for them; last pose's bones).
+            if(NativeStationKinds.Local(kind)==NativeStationKinds.Linesman&&ZombieModelSocket(id,kind,"spine_05",ZombieModelWoman(id)?NativeZombieLooks.LinesmanVentsWoman:NativeZombieLooks.LinesmanVents,System.Numerics.Vector3.UnitY,out var vents,out _))j.Pack=vents;
             if(st.Out.Prop)
             {
                 // The prop's points in the world: the lantern's glass, the window's centre and the door's foot.
-                var pm=Matrix4x4.TRS(V(st.Out.PropAt),Q(st.Out.PropTurn),Vector3.one);NVector Rig(Vector3 l){var u=pm.MultiplyPoint3x4(l);var src=new NVector(-u.x,u.y,u.z);var w=g.ToWorld(src*sc,ToN(root));return w;}
+                var pm=Matrix4x4.TRS(V(st.Out.PropAt)+StationPropShift(st),Q(st.Out.PropTurn),Vector3.one);NVector Rig(Vector3 l){var u=pm.MultiplyPoint3x4(l);var src=new NVector(-u.x,u.y,u.z);var w=g.ToWorld(src*sc,ToN(root));return w;}
                 var c=NativeStationKinds.Local(kind)==NativeStationKinds.Conductor?new Vector3(0,-NativeHordeModels.LanternDrop,0):new Vector3(0,NativeHordeModels.DoorWindowY,.04f);var cw=Rig(c);j.Prop=new Vector3(cw.X,cw.Y,cw.Z);
                 var foot=Rig(new Vector3(0,-NativeHordeModels.DoorHeight*.5f,0));j.DoorFoot=new Vector3(foot.X,foot.Y,foot.Z);var up=Rig(c+Vector3.up);j.PropUp=(new Vector3(up.X,up.Y,up.Z)-j.Prop).normalized;
             }
@@ -165,7 +179,7 @@ namespace ChipArena.UnityConversion
             {NativeStationMotion.DoorFall(fx,out var at,out var turn);StationPropAt(NativeHordeModels.StationProp.Door,root*Matrix4x4.TRS(new Vector3(-at.X,at.Y,at.Z),Q(CapturedRig.Mirror(turn)),Vector3.one),1-Mathf.Clamp01((fx-(float)NativeMinionFx.DeathSeconds)/.6f));}
             if(NativeStationKinds.Local(kind)==NativeStationKinds.Conductor&&st!=null&&!st.PropDropped&&fx<NativeMinionFx.DeathSeconds+.6f)
             {
-                var from=st.Out.Prop?st.Out.PropAt:new NVector(-.36f,-.25f,.2f);NativeStationMotion.LanternFall(fx,from,out var at,out var turn);bool whole=fx<NativeStationMotion.LanternShatterAt&&!st.Out.PropKind.Equals(NativeHordeModels.StationProp.BrokenLantern);
+                var shift=StationPropShift(st);var from=st.Out.Prop?st.Out.PropAt+new NVector(shift.x,shift.y,shift.z):new NVector(-.36f,-.25f,.2f);NativeStationMotion.LanternFall(fx,from,out var at,out var turn);bool whole=fx<NativeStationMotion.LanternShatterAt&&!st.Out.PropKind.Equals(NativeHordeModels.StationProp.BrokenLantern);
                 StationPropAt(whole?NativeHordeModels.StationProp.Lantern:NativeHordeModels.StationProp.BrokenLantern,root*Matrix4x4.TRS(V(at),Q(turn),Vector3.one),whole?1:0);
             }
             if(stationDeadCount>=stationDead.Length||fx>NativeMinionFx.DeathFxSeconds)return;var p=minionPose;p.World();
@@ -174,8 +188,12 @@ namespace ChipArena.UnityConversion
             stationDead[stationDeadCount++]=new StationDeadJob{Id=death.id,Kind=kind,Seed=seed,Age=fx,Root=death.position,Floor=new Vector3(death.position.x,floorY,death.position.z),Forward=new Vector3(Mathf.Sin(yr),0,Mathf.Cos(yr)),
                 Chest=Wr(CapturedRig.Chest,new NVector(0,.15f,-.3f)),Hand=Wr(CapturedRig.RHand,NVector.Zero),Rig=root,SplitAge=fx};
         }
+        /// <summary>The gear bank's model of a carried prop.</summary>
+        private static string StationGearProp(NativeHordeModels.StationProp prop)=>prop==NativeHordeModels.StationProp.Door?"pileup-door":prop==NativeHordeModels.StationProp.BrokenLantern?"conductor-lantern-broken":"conductor-lantern";
         private void StationPropAt(NativeHordeModels.StationProp prop,Matrix4x4 world,float glow)
         {
+            // (The modelled prop where the bank has it: a death's or a severed hand's prop is near the eye.)
+            if(ZombieModelsOn&&ZombieGearPropDraw(StationGearProp(prop),world,glow,1))return;
             string id=NativeHordeModels.StationPropId(prop,NativeHordeModels.Full);if(sourceModels==null||!sourceModels.Has(id))return;sourceModels.Queue(id,world,null,null,glow:new Vector4(glow,glow,glow,1));
         }
         // ---- props dropped by a severed hand: they fall, tumble and rest (the lantern shatters), then fade with the body ----
@@ -262,13 +280,17 @@ namespace ChipArena.UnityConversion
             {
                 case NativeStationKinds.Linesman:
                 {
-                    int hex=j.Charge>.15f?NativeStationKinds.LinesmanBlue:0xEAF4FF;NativeStationFx.Lamp(j.Charge,far,out size,out gain);vfx.Glow(j.Lamp,Lin(hex,gain),size,NativeVfxDraw.CoreGlow);
+                    // On the model, from the gear's own lens and vents as posed now (the voxel hat's and pack's places otherwise).
+                    var lamp=j.Lamp;var lampDir=j.LampDir;var pack=j.Pack;
+                    if(ZombieModelSocket(j.Id,j.Kind,"head",NativeZombieLooks.LinesmanLamp,NativeZombieLooks.LinesmanLampAim,out var lens,out var aim)){lamp=lens;lampDir=aim;}
+                    if(ZombieModelSocket(j.Id,j.Kind,"spine_05",ZombieModelWoman(j.Id)?NativeZombieLooks.LinesmanVentsWoman:NativeZombieLooks.LinesmanVents,System.Numerics.Vector3.UnitY,out var vents,out _))pack=vents;
+                    int hex=j.Charge>.15f?NativeStationKinds.LinesmanBlue:0xEAF4FF;NativeStationFx.Lamp(j.Charge,far,out size,out gain);vfx.Glow(lamp,Lin(hex,gain),size,NativeVfxDraw.CoreGlow);
                     // The beam: a cone of camera-facing strips widening ahead of the lamp, fading out by its length.
                     // It stops at the floor (a pool of light where it lands) and fades as the camera looks down it.
-                    float L=NativeStationFx.BeamReach(j.Lamp.y-j.Floor.y,-j.LampDir.y,out bool lands),al=NativeStationFx.BeamAlpha(j.Charge,Vector3.Dot(j.LampDir,(eye-j.Lamp).normalized));
-                    if(al>.004f)for(int k=0;k<6;k++){float u0=k/6f,u1=(k+1)/6f;var a=j.Lamp+j.LampDir*(.12f+u0*L);var b=j.Lamp+j.LampDir*(.12f+u1*L);StationSoftStrip(draw,a,b,.05f+NativeStationFx.BeamWidth*u0,.05f+NativeStationFx.BeamWidth*u1,FxC(hex,al*(1-u0)*(1-u0)),FxC(hex,al*(1-u1)*(1-u1)),eye);}
-                    if(lands){NativeStationFx.BeamPool(j.Charge,L,out size,out gain);vfx.Glow(j.Lamp+j.LampDir*L+Vector3.up*.03f,Lin(hex,gain),size,NativeVfxDraw.CoreGlow);}
-                    NativeStationFx.Pack(j.Grounded,j.Charge,far,out size,out gain);vfx.Glow(j.Pack,Lin(NativeStationKinds.LinesmanBlue,gain),size,NativeVfxDraw.CoreGlow);
+                    float L=NativeStationFx.BeamReach(lamp.y-j.Floor.y,-lampDir.y,out bool lands),al=NativeStationFx.BeamAlpha(j.Charge,Vector3.Dot(lampDir,(eye-lamp).normalized));
+                    if(al>.004f)for(int k=0;k<6;k++){float u0=k/6f,u1=(k+1)/6f;var a=lamp+lampDir*(.12f+u0*L);var b=lamp+lampDir*(.12f+u1*L);StationSoftStrip(draw,a,b,.05f+NativeStationFx.BeamWidth*u0,.05f+NativeStationFx.BeamWidth*u1,FxC(hex,al*(1-u0)*(1-u0)),FxC(hex,al*(1-u1)*(1-u1)),eye);}
+                    if(lands){NativeStationFx.BeamPool(j.Charge,L,out size,out gain);vfx.Glow(lamp+lampDir*L+Vector3.up*.03f,Lin(hex,gain),size,NativeVfxDraw.CoreGlow);}
+                    NativeStationFx.Pack(j.Grounded,j.Charge,far,out size,out gain);vfx.Glow(pack,Lin(NativeStationKinds.LinesmanBlue,gain),size,NativeVfxDraw.CoreGlow);
                     break;
                 }
                 case NativeStationKinds.Conductor:

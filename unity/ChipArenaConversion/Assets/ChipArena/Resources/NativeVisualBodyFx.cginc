@@ -99,7 +99,28 @@ float ZombieNoise(float2 p)
  float2 i=floor(p),f=frac(p);f=f*f*(3.0-2.0*f);
  return lerp(lerp(ZombieHash(i),ZombieHash(i+float2(1.0,0.0)),f.x),lerp(ZombieHash(i+float2(0.0,1.0)),ZombieHash(i+float2(1.0,1.0)),f.x),f.y);
 }
-float3 ZombieLook(float3 c,float2 uv)
+// A zombie's reflective tape (a hi-vis jacket's rings: Core NativeZombieLooks.Variant.Tape, Runtime ZombieTape), per renderer:
+//  _ZombieBands the rings set (0 on every other renderer); _ZombieBandAt[k] xyz a ring's centre, w how far from its axis it
+//  reaches (the torso's or the limb's girth, so a ring round the chest stops short of the arms); _ZombieBandIn[k] xyz its axis,
+//  w the tape's half-width. All in the meshes' rest space (their fourth texture coordinates), so a ring rides the cloth as it
+//  folds and stretches. The tape is silver over the piece's colour, under its grime and tears, keeping the cloth's shading.
+float _ZombieBands;float4 _ZombieBandAt[6];float4 _ZombieBandIn[6];
+float ZombieBand(float3 rest)
+{
+ if(_ZombieBands<0.5)return 0.0;
+ float b=0.0;
+ for(int k=0;k<6;k++)
+ {
+  if(k>=_ZombieBands)break;
+  float3 v=rest-_ZombieBandAt[k].xyz;float t=dot(v,_ZombieBandIn[k].xyz);float3 w=v-_ZombieBandIn[k].xyz*t;
+  if(dot(w,w)>_ZombieBandAt[k].w*_ZombieBandAt[k].w)continue;
+  b=max(b,1.0-smoothstep(_ZombieBandIn[k].w-0.004,_ZombieBandIn[k].w,abs(t)));
+ }
+ return b;
+}
+// The tape's colour at a cloth shade `k` (the tint's: its folds and seams kept).
+float3 ZombieTapeColour(float k){return float3(0.74,0.77,0.78)*lerp(0.72,1.08,saturate(k));}
+float3 ZombieLook(float3 c,float2 uv,float band)
 {
  if(_ZombieEye.w>0.5)return _ZombieEye.rgb;
  if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;
@@ -108,6 +129,7 @@ float3 ZombieLook(float3 c,float2 uv)
  {
   float x=luma*_ZombieTint.w,k=x<1.0?x:sqrt(x);
   c=_ZombieTint.rgb*min(k,1.6);c=lerp(c,dot(c,float3(0.299,0.587,0.114))*float3(1.0,0.97,0.9),saturate(k-1.0)*0.6);
+  if(band>0.0)c=lerp(c,ZombieTapeColour(k),band);
  }
  float2 s=float2(frac(_ZombieWear.w*0.0137)*91.0,frac(_ZombieWear.w*0.0071)*57.0);
  if(_ZombieWear.x>0.0)
@@ -142,6 +164,9 @@ float3 ZombieLook(float3 c,float2 uv)
  }
  return c;
 }
+float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0);}
+// The tape's retroreflection: it shines back toward the eye (the surface pass's emission), brightest facing the view.
+float3 ZombieTapeShine(float band,float3 n,float3 view){return band>0.0?float3(0.5,0.53,0.55)*band*pow(saturate(dot(n,view)),3.0):float3(0.0,0.0,0.0);}
 // A zombie's decay openings (Core NativeZombieDecay; Runtime/NativeZombieModelPresentation.cs), per renderer: _DecayAt xyz an
 // opening's centre on the surface and w its radius, _DecayIn xyz inward and w how deep it reaches, both in the meshes' own rest
 // space (root space at rest, written to their fourth texture coordinates), so an opening rides the skin as it deforms and cuts

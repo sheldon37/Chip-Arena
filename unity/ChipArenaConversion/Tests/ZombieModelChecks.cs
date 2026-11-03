@@ -11,11 +11,14 @@ internal static class ZombieModelChecks
 {
     private static int count;
     private static void Check(bool ok,string what){if(!ok)throw new Exception("Zombie models: "+what);count++;}
+    // The Blender script that makes the gear bank (its props by id).
+    private static string GearScript="";
     private static readonly int[] Kinds={NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute,NativeHordeKinds.Hulk};
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
     private static int Picks(){int sink=0;for(int i=0;i<4000;i++){var v=NativeZombieLooks.Of(Kinds[i%Kinds.Length],10000+i);sink+=v.Female?1:0;}return sink;}
     public static void Run(string root)
     {
+        GearScript=File.ReadAllText(Path.Combine(root,"tools/gear/station_gear.py"));
         Table();Pick();Shapes();Sac();Decay();Mutation();Sources(root);
         Console.WriteLine("PASS zombie models: "+count+" checks (20 variants over five kinds, two male and two female each; wardrobe fallbacks; silhouettes by build; the pick by id; the shape names; the shader's zombie look; the horde's draw, death, corpses and wounds on the model; presentation only)");
     }
@@ -24,7 +27,19 @@ internal static class ZombieModelChecks
     private static void Table()
     {
         var all=NativeZombieLooks.All;
-        Check(all.Length==Kinds.Length*NativeZombieLooks.Variants&&all.Select(v=>v.Id).Distinct().Count()==all.Length,"twenty variants, each its own id");
+        Check(all.Count(v=>v.Kind<NativeHordeKinds.Count)==Kinds.Length*NativeZombieLooks.Variants&&all.Select(v=>v.Id).Distinct().Count()==all.Length,"twenty zombie variants, every variant its own id");
+        // The Central Station's kinds (docs/EXPEDITION-ENEMY-REWORK.md): four each, two male and two female, live since their review
+        // (2026-11-03), each with its kit: the gear bank's props (tools/gear/station_gear.py makes every one), the Linesman's tape,
+        // the Pileup's fused commuter.
+        for(int local=0;local<NativeStationKinds.KindCount;local++)
+        {
+            int kind=NativeStationKinds.Kind(local);var mine=all.Where(v=>v.Kind==kind).ToArray();
+            Check(NativeHordeZones.Of(kind)!=null&&mine.Length==NativeZombieLooks.Variants&&mine.Count(v=>v.Female)==2&&mine.All(v=>v.Id.StartsWith(NativeHordeZones.Of(kind).Id+"-",StringComparison.Ordinal)),"station kind "+local+": four variants, two male and two female");
+            Check(NativeZombieLooks.ZoneLive.Contains(kind)&&NativeZombieLooks.Modelled(kind),"station kind "+local+": on the model in shipped builds after its review");
+            Check(mine.All(v=>v.Gear.Length>0&&v.Gear.All(g=>GearScript.Contains("('"+g+"',")))&&mine.All(v=>v.Tape==(local==NativeStationKinds.Linesman)&&v.Fused==(local==NativeStationKinds.Pileup)),
+                "station kind "+local+": its kit (gear the Blender script builds, the Linesman's tape, the Pileup's fused commuter)");
+        }
+        Check(NativeZombieLooks.Kitted&&all.Where(v=>v.Kind<NativeHordeKinds.Count).All(v=>v.Gear.Length==0&&!v.Tape&&!v.Fused),"the base kinds wear no kit");
         foreach(int kind in Kinds)
         {
             var mine=all.Where(v=>v.Kind==kind).ToArray();string name=NativeHordeKinds.Ids[kind];
@@ -53,7 +68,8 @@ internal static class ZombieModelChecks
             Check(v.Grime>=0&&v.Grime<=1&&v.Tears>=0&&v.Tears<=.62f&&v.Rot>=0&&v.Rot<=1,v.Id+": wear within 0..1 (torn, not shredded: the owner's \"torn clothes\", 2026-10-29)");
             // Pale skin and blank eyes: every zombie's skin is greyed (low saturation), its eyes near white.
             float Sat(int rgb){float r=(rgb>>16&255)/255f,g=(rgb>>8&255)/255f,bl=(rgb&255)/255f,hi=Math.Max(r,Math.Max(g,bl)),lo=Math.Min(r,Math.Min(g,bl));return hi>0?(hi-lo)/hi:0;}
-            Check(Sat(v.Skin)<.22f&&Sat(v.Eyes)<.1f&&(v.Eyes>>16&255)>200,v.Id+": greyed skin, blank eyes");
+            // (A zone kind's eyes are its identity light: the Linesman's blue, the Undertow's aqua.)
+            Check(Sat(v.Skin)<.22f&&(v.Kind>=NativeHordeKinds.Count||Sat(v.Eyes)<.1f&&(v.Eyes>>16&255)>200),v.Id+": greyed skin, blank eyes");
         }
         // Silhouettes by build, not colour: the kinds' means apart, heavy ones heavier, the spitter the thinnest.
         float[] Sig(int kind){var m=all.Where(v=>v.Kind==kind).ToArray();float Mean(Func<NativeZombieLooks.Variant,float> f)=>m.Average(f);
@@ -198,7 +214,9 @@ internal static class ZombieModelChecks
         foreach(var v in NativeZombieLooks.All)
         {
             Check(v.Decay!=null&&v.Decay.Length>=2&&v.Decay.Length<=NativeZombieDecay.Max&&v.Decay.All(n=>NativeZombieDecay.Find(n)!=null)&&v.Decay.Distinct().Count()==v.Decay.Length,v.Id+": two to four decay openings, each a known site");
-            Check(v.Tears>=.35f&&v.Tears<=.62f&&v.Rot>=.35f&&v.Rot<=.75f&&v.Blood>=.4f&&v.Blood<=.6f&&v.Grime>0,v.Id+": torn, rotting and bloodied");
+            // (A zone kind keeps the torn-not-shredded limit; its rot and blood follow its story: the drowned rot more and bleed less.)
+            bool zone=v.Kind>=NativeHordeKinds.Count;
+            Check(v.Tears>=.35f&&v.Tears<=.62f&&v.Rot>=.35f&&v.Rot<=(zone?.9f:.75f)&&v.Blood>=(zone?.1f:.4f)&&v.Blood<=(zone?.8f:.6f)&&v.Grime>0,v.Id+": torn, rotting and bloodied");
         }
         Check(NativeZombieDecay.All.Select(x=>x.Name).Distinct().Count()==NativeZombieDecay.All.Length&&NativeZombieDecay.All.All(x=>x.Radius>.02f&&x.Radius<.08f&&x.Depth>0&&x.Depth<.06f),"every site named once, a few centimetres wide");
         foreach(var x in NativeZombieDecay.All.Where(x=>x.Name.EndsWith("-l",StringComparison.Ordinal)))Check(NativeZombieDecay.Find(x.Name.Substring(0,x.Name.Length-2)+"-r") is NativeZombieDecay.Site r&&r.Radius==x.Radius&&r.Bone==x.Bone.Replace("_l","_r")&&r.Limb==x.Limb,x.Name+": its right twin");
@@ -231,10 +249,13 @@ internal static class ZombieModelChecks
         string A(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));
         string fx=A("Resources/NativeVisualBodyFx.cginc"),toon=A("Resources/NativeVisualBodyToon.shader"),zr=A("Runtime/NativeZombieModelPresentation.cs"),kp=A("Runtime/NativeHordeKindPresentation.cs"),
             gp=A("Runtime/NativeHordeGorePresentation.cs"),dp=A("Runtime/NativeDeathPresentation.cs"),core=A("Core/NativeZombieLooks.cs");
-        string look=fx.Substring(fx.IndexOf("float3 ZombieLook(float3 c,float2 uv)",StringComparison.Ordinal));look=look.Substring(0,look.IndexOf("\n}\n",StringComparison.Ordinal));
+        string look=fx.Substring(fx.IndexOf("float3 ZombieLook(float3 c,float2 uv,float band)",StringComparison.Ordinal));look=look.Substring(0,look.IndexOf("\n}\n",StringComparison.Ordinal));
         Check(look.Contains("if(_ZombieEye.w>0.5)return _ZombieEye.rgb;")&&look.Contains("if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;"),"the zombie look: blank eyes, and nothing changed with it unset (every pilot)");
         Check(Regex.Matches(toon,@"_Zombie(Tint|Wear|Eye|Skin)\(""[^""]*"",Vector\)=\(0,0,0,0\)").Count==4,"its four properties off by default");
-        Check(toon.Contains("if(_VertexAlbedo<=0){o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D);")&&toon.Contains("albedo=ZombieLook(albedo,i.uv);"),"the surface and its outline take the zombie look (never a cut's cap)");
+        Check(toon.Contains("if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band);")&&toon.Contains("albedo=_VertexAlbedo>0?i.color.rgb:ZombieLook(albedo,i.uv,ZombieBand(i.rest));"),
+            "the surface and its outline take the zombie look with its tape (never a cut's cap or the gear, in their vertex colours)");
+        Check(fx.Contains("float ZombieBand(float3 rest)")&&fx.Contains("if(band>0.0)c=lerp(c,ZombieTapeColour(k),band);")&&fx.Contains("float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0);}"),
+            "the tape: rings in the rest space, silver over the piece's colour under its wear; other callers untaped");
         Check(look.Contains("edge=1.0-0.45*_ZombieWear.y")&&look.Contains("ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3"),"torn patches on the part's own texture coordinates (they stay on the cloth), a few at the table's tears");
         // The horde: the model in place of the voxel model on the full tier; the voxel draw kept as the fallback.
         Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell,s.Jaw)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}"),"a living add: its model (its face's jaw the voxel jaw's), else its voxel model and jaw");
@@ -247,7 +268,7 @@ internal static class ZombieModelChecks
         int build=zr.IndexOf("ZombieBuild(skeleton,v.Build);",StringComparison.Ordinal),binding=zr.IndexOf("Binding=new NativeVisualRigBinding(root.transform,skeleton)",StringComparison.Ordinal);
         Check(build>0&&binding>build,"the build set before the binding reads the rest pose");
         Check(zr.Contains("if(t.childCount==0&&n.IndexOf(\"twist\",StringComparison.OrdinalIgnoreCase)>=0)"),"girth only on the twist leaves (no child moves)");
-        Check(zr.Contains("z.Body.Binding.Apply(pose,z.Kind==NativeHordeKinds.Hulk?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy}:default(NativeVisualRig.Grasp),planted,airborne);")&&!zr.Contains("Right=NativeVisualRig."),"posed from the gait's own pose, no weapon grasp (the Hulk's fists closed on nothing)");
+        Check(zr.Contains("z.Body.Binding.Apply(pose,ZombieGrasp(z),planted,airborne);")&&!zr.Contains("Right=NativeVisualRig."),"posed from the gait's own pose, no weapon grasp (the Hulk's fists closed on nothing, a station kind's hands on its prop)");
         Check(zr.Contains("if(zombieMakes>=ZombieMakesPerFrame||zombiePool.Count==0)return null;")&&zr.Contains("ZombieMakesPerFrame=3,ZombieSparesPerVariant=6")&&zr.Contains("zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);")&&!zr.Contains("VisualCorpseInstance()")&&!zr.Contains("Instantiate(visualBodyPrefab)"),"a few new bodies a frame from their own pool, made ahead off the main thread (never at once, never the pilots' corpse pool); spares kept per variant");
         Check(kp.Contains("if(!HordeKindsReady)return;ZombieModelsPrewarm(arena);"),"the pool made ahead while a horde is about");
         Check(zr.Contains("Graphics.DrawMesh(mesh,m,mats[sub],0,null,sub,c.Blocks[i],false,true)"),"a corpse drawn from its baked meshes, no shadow");
@@ -262,7 +283,9 @@ internal static class ZombieModelChecks
         Check(zr.Contains("private static bool ZombieDecayCut(Renderer r)=>r!=null&&!ZombieEyePart(r)&&!r.name.StartsWith(\"Teeth.\",StringComparison.Ordinal)&&r.name!=\"Sac.Spitter\"&&r.name!=\"Growth.Hulk\";"),"eyes, teeth, the sac and a mutant's growth never cut");
         Check(zr.Contains("if(v.Mutant)ZombieGrowthStart(root,skeleton,v,body.All);")&&zr.Contains("e.Build=System.Threading.Tasks.Task.Run(()=>NativeZombieMutation.Build(")&&zr.Contains("boneIndex3=g.Bone4[i],weight3=g.Weight4[i]")&&zr.Contains("float h=n==\"hand_r\"?b.Hand*b.Right:b.Hand;"),"a mutant's growth built off the main thread on its rest after the build, on four bones; its right arm grown");
         Check(zr.Contains("if(z.Growing&&!ZombieGrowthAttach(z)){z.SeenAt=Time.unscaledTime;return false;}")&&zr.Contains("if(covered[t[i]]&&covered[t[i+1]]&&covered[t[i+2]]){dropped++;any=true;continue;}")&&zr.Contains("covered[i]=g.Covers("),"a growing body draws voxel until its growth is on; the worn triangles the flesh covers are dropped");
-        Check(zr.Contains("z.Kind==NativeHordeKinds.Hulk?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy}:default(NativeVisualRig.Grasp)"),"the Hulk's hands are fists, clenched hardest through a blow");
+        Check(zr.Contains("if(z.Kind==NativeHordeKinds.Hulk)return new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy};"),"the Hulk's hands are fists, clenched hardest through a blow");
+        Check(zr.Contains("go.transform.SetParent(bone,false);")&&zr.Contains("go.AddComponent<MeshFilter>().sharedMesh=asset.Mesh;var mr=go.AddComponent<MeshRenderer>();")&&!zr.Contains("skin.bones=new[]{bone}"),
+            "the gear rides its bone as a rigid renderer (the project skins on the CPU)");
         // Flying parts from the model, not the voxel parts; their meshes pooled.
         Check(kp.Contains("p.Pieces=ZombiePartPieces(id,joint,p.Pieces);")&&kp.Contains("if(!ZombiePartDrawn(p,age,sink))sourceModels.Queue(p.Model,")&&kp.Contains("p.Live=false;ZombiePiecesFree(p.Pieces);continue;"),"a modelled zombie's severed, sliced and gibbed parts are its own model's");
         Check(zr.Contains("if((mine[t[i]]?1:0)+(mine[t[i+1]]?1:0)+(mine[t[i+2]]?1:0)<2)continue;")&&zr.Contains("skin.BakeMesh(baked,true);zombieBakedNow[skin]=baked;"),"a part keeps the triangles skinned mostly to its bones, each renderer baked once a frame");
