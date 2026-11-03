@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The cloud's core over the floor (m; the kind is 2.2 m tall) and the proxy box round the cloud in its own space
         /// (x right, y up, z ahead, the core at the origin), before the lunge's reach.</summary>
         public const float Core=1.42f;
-        public static readonly Vector3 BoxMin=new Vector3(-1.3f,-1.42f,-1.3f),BoxMax=new Vector3(1.3f,1.05f,1.3f);
+        public static readonly Vector3 BoxMin=new Vector3(-1.55f,-1.42f,-1.55f),BoxMax=new Vector3(1.55f,1.25f,1.55f);
         /// <summary>How far ahead the lunge throws its lobe of smoke at the peak (m; the authority's reach is 2.5 m from the body).</summary>
         public const float Reach=1.55f;
         /// <summary>The authority's wind-ups (the zone frame's), the reform after a blink, the spawn's and the death's lengths (s).</summary>

@@ -63,17 +63,17 @@ Shader "ChipArena/NativeSmiler"
                 // Its own frame: bobbing, risen as it dies, drawn back through the lunge's wind-up.
                 float3 q=p-float3(0.0,_SmilerC.w+_SmilerB.z,-0.18*gather);
                 float grow=1.0+0.12*gather+0.9*spread;
-                float d=length(q*float3(1.0,0.9,1.0))-0.5*grow;
+                float d=length(q*float3(1.0,0.94,1.0))-0.6*grow;
                 // Six lobes turning about the core, rising and sinking, trailing behind its drift.
                 [unroll] for(int k=0;k<6;k++)
                 {
                     float a=k*1.0472+seed+time*(0.17+0.05*k)*((k&1)==0?1.0:-1.0);
-                    float3 c=float3(cos(a)*0.37,sin(time*0.41+k*1.9+seed)*0.2+0.04,sin(a)*0.37)*grow-drift*(0.05+0.03*k);
-                    float r=(0.31+0.06*sin(time*0.57+k*2.3))*(1.0+0.35*spread);
+                    float3 c=float3(cos(a)*0.44,sin(time*0.41+k*1.9+seed)*0.24+0.06,sin(a)*0.44)*grow-drift*(0.05+0.03*k);
+                    float r=(0.36+0.06*sin(time*0.57+k*2.3))*(1.0+0.35*spread);
                     d=SmilerMin(d,length(q-c)-r,0.2);
                 }
                 // The tail: tapering down toward the floor, swaying, trailing its drift.
-                float3 a0=float3(0.0,-0.3,0.0),b0=float3(sin(time*0.6+seed)*0.13-drift.x*0.3,-1.25+0.35*spread,-0.12-drift.z*0.3+cos(time*0.47+seed)*0.08);
+                float3 a0=float3(0.0,-0.45,0.0),b0=float3(sin(time*0.6+seed)*0.13-drift.x*0.3,-1.25+0.35*spread,-0.12-drift.z*0.3+cos(time*0.47+seed)*0.08);
                 float3 ba=b0-a0;float h=saturate(dot(q-a0,ba)/dot(ba,ba));
                 d=SmilerMin(d,length(q-a0-ba*h)-lerp(0.33,0.05,h)*(1.0+0.3*spread),0.25);
                 // The lunge's lobe, thrown ahead on its neck of smoke.
@@ -126,12 +126,12 @@ Shader "ChipArena/NativeSmiler"
                 float tooth=max(toothU,toothL),gums=saturate(1.0-tooth)*max(saturate((-du)/px+0.5),saturate((-dl)/px+0.5));
                 // Enamel: yellowed, pale at the tip, browning and reddened toward the gum, streaked; deep red toward the corners.
                 float tipward=toothU>toothL?saturate(du/max(tipU,1e-3)):saturate(dl/max(tipL,1e-3)),tone=toothU>toothL?u1:l1;
-                float3 enamel=lerp(float3(0.6,0.24,0.07),float3(1.0,0.87,0.64),saturate(tipward*1.3))*(0.78+0.3*tone)*(0.82+0.18*SmilerHash(toothU>toothL?cu:cl,floor(f.y*95.0)));
-                enamel=lerp(enamel,float3(1.0,0.2,0.05),smoothstep(0.55,1.0,abs(t)));
-                float3 gumLight=float3(2.6,0.36,0.07),mouth=float3(0.32,0.025,0.008)*(0.6+1.6*open)*(0.6+0.4*c);
-                float3 grinLight=lerp(lerp(mouth,gumLight,gums),enamel*1.7,tooth)*inside;
+                float3 enamel=lerp(float3(0.55,0.16,0.05),float3(0.95,0.8,0.52),saturate(tipward*1.3))*(0.78+0.3*tone)*(0.82+0.18*SmilerHash(toothU>toothL?cu:cl,floor(f.y*95.0)));
+                enamel=lerp(enamel,float3(0.95,0.12,0.04),smoothstep(0.5,1.0,abs(t)));
+                float3 gumLight=float3(2.3,0.16,0.04),mouth=float3(0.32,0.025,0.008)*(0.6+1.6*open)*(0.6+0.4*c);
+                float3 grinLight=lerp(lerp(mouth,gumLight,gums),enamel*1.4,tooth)*inside;
                 // The lips' glow outside the mouth.
-                float o=max(outside,0.0);grinLight+=float3(1.0,0.16,0.04)*(exp(-o/0.016)*0.9+exp(-o/0.06)*0.1)*(1.0-inside);
+                float o=max(outside,0.0);grinLight+=float3(1.0,0.08,0.03)*(exp(-o/0.016)*0.9+exp(-o/0.06)*0.1)*(1.0-inside);
                 rgb+=grinLight*glow*face;a=max(a,inside*face);
                 return float4(rgb,a);
             }
@@ -148,7 +148,7 @@ Shader "ChipArena/NativeSmiler"
                 // The face's plane: on the cloud's side toward the camera (its height kept near the core's), facing the camera.
                 float3 anchor=float3(0.0,_SmilerC.w+_SmilerB.z,-0.18*_SmilerB.x+_SmilerB.y*_SmilerE.z);
                 float3 toward=ro-anchor;toward.y*=0.35;toward=normalize(toward+float3(0.0,0.0,1e-4));
-                float3 faceC=anchor+toward*0.44+float3(0.0,0.03,0.0),n=normalize(ro-faceC+float3(0.0,0.0,1e-4));
+                float3 faceC=anchor+toward*0.52+float3(0.0,0.03,0.0),n=normalize(ro-faceC+float3(0.0,0.0,1e-4));
                 float3 right=normalize(cross(float3(0.0,1.0,0.0),-n)+float3(1e-4,0.0,0.0)),up=cross(-n,right);
                 float facing=dot(rd,n),tFace=facing<-1e-3?dot(faceC-ro,n)/facing:-1.0;
                 float3 hit=ro+rd*tFace-faceC;float2 f=float2(dot(hit,right),dot(hit,up));
@@ -179,7 +179,7 @@ Shader "ChipArena/NativeSmiler"
                         float along=dot(p-faceC,n),across=length(p-faceC-n*along);
                         dens*=lerp(1.0,0.04+0.9*smoothstep(0.7,0.92,curls),smoothstep(-0.03,0.02,along)*smoothstep(0.5,0.34,across));
                         float3 m=p-mouthAt,el=p-eyeL,er=p-eyeR;
-                        float3 light=lightBase+(float3(1.0,0.14,0.03)*0.42*exp(-dot(m,m)/0.035)*face+float3(0.9,0.95,1.0)*0.25*(exp(-dot(el,el)/0.006)+exp(-dot(er,er)/0.006))*eyes)*glow;
+                        float3 light=lightBase+(float3(1.0,0.07,0.02)*0.36*exp(-dot(m,m)/0.035)*face+float3(0.9,0.95,1.0)*0.25*(exp(-dot(el,el)/0.006)+exp(-dot(er,er)/0.006))*eyes)*glow;
                         float a=1.0-exp(-dens*ds);col+=T*a*light;T*=1.0-a;
                     }
                     if(faceDue&&t+ds>=tFace){faceDue=false;col+=T*faceLight.rgb;T*=1.0-faceLight.a;}
