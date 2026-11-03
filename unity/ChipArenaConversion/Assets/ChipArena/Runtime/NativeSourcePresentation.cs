@@ -85,8 +85,10 @@ namespace ChipArena.UnityConversion
             StationBossScenery(arena);
             CyberCityScenery(arena);
             ExpeditionCityScenery(arena);
-            // DEV: the Backrooms stand-in layout (NativeBackroomsPresentation.cs).
+            // The Backrooms: Level 0 (its live map, or the DEV preview) and the DEV Poolrooms preview (NativeBackroomsPresentation.cs,
+            // NativePoolroomsPresentation.cs).
             BackroomsWorld(arena);
+            PoolroomsWorld();
             IronworksScenery(arena);
             IronworksBossScenery(arena);
             NewStageScenery(arena);

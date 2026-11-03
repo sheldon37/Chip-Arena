@@ -1,3 +1,35 @@
+## 2026-11-02 — Claude: Level 0 in the add-on's textures; the Poolrooms (DEV preview)
+
+- **Branch:** `claude/backrooms-addon-look`, base shared `97099d38`.
+- **Task:** the owner installed Blender to use the Backrooms Pro Generator add-on for Level 0 and the Poolrooms, then chose
+  "Generated + its textures": our generated layouts with the add-on's textures, not fixed exported levels.
+- **Change:**
+  - The add-on runs headless in Blender 5.2 from a local driver script (it needs a runtime patch for 5.2's Geometry Nodes
+    modifier inputs). Only its exported textures are used, kept local. Its GPL code and generated scripts stay out.
+  - Level 0 (live map and Expedition destination): the bank's `backrooms-l0-*` textures are now the add-on's baked colour maps
+    (olive striped wallpaper, golden carpet, ceiling grid, red-brown trim), at its repeats (`Core/NativeBackrooms.cs`), with
+    white tints. The wallpaper bake's darker bottom rows are faded into its top in the local copy, so it tiles up the wall.
+  - The Poolrooms, new and DEV only:
+    - the layout contract `PoolroomsLayout`, a stand-in generator and `PoolroomsMesh` (`Core/NativePoolrooms.cs`): tiled
+      decks, deep and wading pools with steps, the water's sheet, walls with arched openings, round pillars and lights;
+    - `Resources/NativePoolWater.shader`: transparent rippled water with highlights from the pool lights;
+    - the preview `Runtime/NativePoolroomsPresentation.cs` (`--ca-poolrooms-preview`, off by default), with the bank's
+      `backrooms-pool-*` textures.
+  - The Backrooms bank now ships in the builder's licensed-assets zip (beside the visual body), so the live Level 0 shows its
+    textures in the Windows build instead of plain blocks.
+  - Docs: docs/BACKROOMS.md "The add-on's textures" and "The Poolrooms" (with the Astra handoff for its rules).
+- **Animation impacts:** none. No rule, collision, nav, hit, damage, movement or network change (Level 0's geometry and
+  contract unchanged).
+- **Checks:**
+  - `--poolrooms` (201 checks, new; also in the full run), `--backrooms`;
+  - Unity captures: the live `backrooms-level-0` map in the new textures; the Poolrooms preview (a deep pool and its steps,
+    a pillared hall, arches between rooms);
+  - full suite: see below.
+- **Astra:** the Poolrooms need a map, a production generator, collision and nav, spawns, and the water's rules (wading, deep
+  water, climbing out, what water does to movement and weapons, Hulks under 3.6 m). See docs/BACKROOMS.md "The Poolrooms".
+- **Next:** owner check of Level 0 in the Windows build; the Backrooms map looks; the Poolrooms once its map exists.
+
+
 ## 2026-11-02 — Astra: owner recordings for the eight new-stage music prompts
 
 - **Branch/base:** `codex/new-stage-songs`, shared `97099d38`. Owner supplied tracks 1–8 and requested Update publication.

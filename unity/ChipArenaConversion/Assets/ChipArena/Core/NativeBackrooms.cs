@@ -181,9 +181,10 @@ namespace ChipArena.UnityConversion
     public sealed class BackroomsMesh
     {
         public enum Surface{Carpet,Ceiling,Wallpaper,Trim,Light,DeadLight,Count}
-        /// <summary>The metres one texture repeat covers: the carpet's, the ceiling grid's (its 4 x 2 tiles on one cell), the
-        /// wallpaper's, the baseboard's.</summary>
-        public const float CarpetRepeat=2f,WallpaperRepeat=.9f,TrimRepeat=1f;
+        /// <summary>The metres one texture repeat covers: the carpet's, the wallpaper's and the baseboard's as the owner's Backrooms
+        /// add-on lays its baked textures (docs/BACKROOMS.md "The add-on's textures"); the ceiling grid repeats once per cell, so
+        /// its tiles line up with the fixtures.</summary>
+        public const float CarpetRepeat=1.82f,WallpaperRepeat=1.5f,TrimRepeat=1f;
         /// <summary>The baseboard's height and how far it stands off the wall; a fixture's size (along x, along z) and its drop.</summary>
         public const float TrimHeight=.09f,TrimOut=.012f,FixtureLength=1.2f,FixtureWidth=.3f,FixtureDrop=.012f;
         public sealed class Part{public readonly List<Vector3> Positions=new List<Vector3>(),Normals=new List<Vector3>();public readonly List<Vector2> Uv=new List<Vector2>();public readonly List<int> Indices=new List<int>();public void Clear(){Positions.Clear();Normals.Clear();Uv.Clear();Indices.Clear();}}

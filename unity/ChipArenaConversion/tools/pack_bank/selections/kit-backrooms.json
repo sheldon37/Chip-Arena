@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "bank": "ChipArenaPackBackrooms",
- "note": "The Backrooms (docs/BACKROOMS.md): Level 0's surfaces as textures (the pack's 'yellow offices' set, CC0 per its SOURCES.txt, toned to the owner's reference photo beside it as *_pale.png; the carpet converted to PNG), and the modular kit's pieces as props (one per piece, its FBX materials mapped to the pack's wallpaper and carpet and Level 0 colours; the tool reads PNG, TGA and PSD).",
+ "note": "The Backrooms (docs/BACKROOMS.md): Level 0's and the Poolrooms' surfaces as textures, the colour maps the owner's Backrooms Pro Generator add-on bakes for its yellow_offices and poolrooms materials (its assets are CC0 per its SOURCES.txt; run headless in Blender, only its exported textures are used, converted to PNG), and the modular kit's pieces as props (one per piece, its FBX materials mapped to the pack's wallpaper and carpet and Level 0 colours; the tool reads PNG, TGA and PSD).",
  "texture_max": 1024,
  "sources": {
   "backrooms": "Backrooms"
@@ -124,23 +124,54 @@
   {
    "id": "backrooms-l0-wallpaper",
    "source": "backrooms",
-   "path": "Level0/wallpaper_pale.png"
+   "path": "Addon/Level0/wallpaper.png"
   },
   {
    "id": "backrooms-l0-carpet",
    "source": "backrooms",
-   "path": "Level0/carpet.png"
+   "path": "Addon/Level0/carpet.png"
   },
   {
    "id": "backrooms-l0-ceiling",
    "source": "backrooms",
-   "path": "Level0/ceiling.png"
+   "path": "Addon/Level0/ceiling.png"
   },
   {
    "id": "backrooms-l0-trim",
    "source": "backrooms",
-   "path": "Level0/trim_pale.png",
+   "path": "Addon/Level0/trim.png",
    "max": 256
+  },
+  {
+   "id": "backrooms-pool-wall",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/poolwall.png",
+   "max": 256
+  },
+  {
+   "id": "backrooms-pool-floor",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/poolfloor.png",
+   "max": 512
+  },
+  {
+   "id": "backrooms-pool-basin",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/basintile.png",
+   "max": 512
+  },
+  {
+   "id": "backrooms-pool-plaster",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/plaster.png"
+  },
+  {
+   "id": "backrooms-pool-water",
+   "source": "backrooms",
+   "path": "Addon/Poolrooms/water_normal.png",
+   "max": 512,
+   "normal": true,
+   "linear": true
   }
  ]
 }
