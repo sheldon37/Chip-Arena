@@ -1,3 +1,24 @@
+## 2026-11-03 — Claude: the Online Players (invite) chip and panel restyled and animated
+
+- **Branch:** `claude/online-players-panel`, base shared `c289fdad`; implementation `3e128a35`.
+- **Task:** owner: "can we fix the online players button? (Used for inviting) Style it a lot better and apply animations"
+  (Astra's presentation handoff in docs/ONLINE-INVITES.md).
+- **Changed (presentation only; `Runtime/NativeSocialPanelUI.cs`; `NativeAccountSocial.cs` keeps the logic):** the default-skin
+  button at a fixed physical-pixel spot (under the home hexagons, clipped by their labels) and its grey panel replaced by a
+  kit-drawn chip and glass panel on the virtual canvas, placed clear of the hexagons and the lobby's connection pill, animated
+  (chip drop-in, presence light and sonar ring, the invitations' beating badge and arrival burst, turning chevron, panel slide,
+  staggered rows, invitation countdowns, Invite to SENT pop, busy spinner); Escape (ConversionGame Update, before the menu's
+  Back), its close button or a click outside close it; MenuBlocked covers it.
+- **Unchanged:** the account service, requests, who may invite (an online relay room's host, outside a match) and who may
+  accept (outside rooms and matches); the actions call the same methods.
+- **Checks:** full `CoreTests` in a clean LF worktree on `3e128a35`: passed (exit 0, 943 groups); new `SocialPanelChecks` (source pins: kit-drawn, the
+  same actions and rules, placement, animation, Escape order, menu blocking). PC (BoZo `social=` and `socialpause=`, local-tool
+  options with a stub account, sample players and invitations, no requests): before/after on the home screen, the opening
+  frames, the Create screen, the Locker and the pause menu. Not run: hover (the tool does not move the pointer), a real
+  two-account invite and join, a room's lobby (needs a hosted relay room), a Windows build.
+- **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
+
+
 ## 2026-11-03 — Claude: the Backrooms' entities on the model (first pass)
 
 - **Branch:** `claude/backrooms-entities`, base shared `268a9ba7` (includes Astra's #317 rules); implementation `5ec50e96`.
