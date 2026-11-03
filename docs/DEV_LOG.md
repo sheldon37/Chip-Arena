@@ -30,7 +30,7 @@
 
 ## 2026-11-03 — Claude: the zombie run: the pack's own stride, not a lunge
 
-- **Branch:** `claude/zombie-run-pace`, base shared `67d1f769`.
+- **Branch:** `claude/zombie-run-pace`, base shared `67d1f769`, merged with shared `7d558955` at `05ea90e4`; implementation `f48accda`.
 - **Task:** owner: "they are still doing awkward lunges when running. The animation pack doesn't look like that at all."
 - **Changed (presentation only; docs/ZOMBIE-MODELS.md 4m):** kinds that run at a real speed run on the clean sprints (sprint-2,
   sprint-3; zone kinds too, `NativeStationKinds`, `NativeIronworksKinds`), not walking chases. On the model's legs a sprint plays at
@@ -40,7 +40,10 @@
   motion, on purpose.
 - **Animation impact:** drawn feet and take names only. Hit timing, hitboxes, damage, cooldowns, movement speeds and networking are
   unchanged; the run's cadence rises (the runner from 3 to 4 steps a second), its steps shorten (1.5 m to 1.1 m).
-- **Checks:** `--zombie-gait` (a new own-stride check over 11 kinds), `--zombie-posture`, `--zombie-twitch` (twitch, locomotion, flow) pass in the working checkout; full `CoreTests` pending.
+- **Checks:** full `CoreTests` in a clean LF worktree on `05ea90e4` (this work merged with shared `7d558955`): passed (exit 0, 947 groups), among them
+  `--zombie-gait`'s new own-stride check (15 runs of 11 kinds: ankles .49 to -.66 of a leg about the hip at worst, was .77 to -.74; never both
+  feet down; the rolling ball within 6.1 mm a frame). Pin scan: 5 files, 1 hit, a false positive (the scan's regex matching the `,` and indent
+  between two adjacent test strings). `git diff --check` clean, LF on every changed file.
   PC (BoZo, Cybercity, side view): the runner, shambler, brute and spitter at their run speeds, against the old code. Not run: the run in
   motion in a crowd, the zone kinds on their own maps, a Windows build.
 
