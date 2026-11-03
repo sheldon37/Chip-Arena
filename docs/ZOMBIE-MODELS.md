@@ -467,9 +467,69 @@ the rise (carrying them sank them into a squat).
 In Unity the walking male Hulk's fastest hip drop fell from 3.1 to 1.6 m/s (a noisier measure: the capture's shots slow the
 Editor to about 20 fps).
 
+## 4g. Zone kinds' kit: gear, tape and the fused commuter (2026-11-03, `claude/station-models`)
+
+Owner (2026-11-03): rework the instance-unique Expedition enemies off voxels in very detailed designs, reviewing detail and
+animation before done (docs/EXPEDITION-ENEMY-REWORK.md). The Central Station's four kinds are the first: variants in
+`Core/NativeZombieLooks` (four each, on the bake's pieces), and each variant's kit (`Variant.Tape`, `Gear`, `Fused`, given in `Kit`).
+
+**Gear, modelled in Blender** (`tools/gear/`, committed code; its output is local like the pack banks):
+- `station_gear.py` models every piece with `gearkit.py`'s helpers (bmesh boxes, cylinders, tubes on rotation-minimizing
+  frames, flat straps along a path, gridded decals projected onto curved surfaces, metaballs for flesh) and modifiers (bevel,
+  solidify), in a design frame (Blender's X right, Y forward, Z up) at the bone it rides.
+- `gearkit.bake` writes each prop into that bone's own frame (Unity's axes; a reflection, so the winding turns over), every
+  vertex coloured (sRGB bytes) with its finish's dirt and wear baked in: creases and undersides darker, soft grime patches,
+  paint chipped to its primer or metal on convex edges, worn bright edges on bare metal, raw red creases on flesh. Vertex alpha
+  is the toon's outline (off on screws, lights and decals). Glowing finishes (lenses, vents, the lantern's globe, the door's
+  window) are a second sub-mesh on a material with an emission colour.
+- The fits are numbers in the script, measured from the local tool's `zdump` (the zombies' worn meshes and bones in root space,
+  each vertex's heaviest bone): the skull in the head bone's frame (every variant wears the same head piece), the jacket's back
+  and the shoulders' outline behind and over `spine_05` per build (the brute's and the women's), the sleeves round the forearms.
+- Run: `blender --background --factory-startup --python tools/gear/station_gear.py -- --out unity/ChipArenaConversion/Assets/LocalAssets`
+  (`--preview DIR` renders each prop with its vertex colours; `--only id,...`). It writes `ChipArenaLocal/Resources/ChipArenaPackGear.bytes`
+  (docs/PACK-BANK.md's format), which `tools/pack_visual_body.py` packs into the licensed-assets zip beside the body.
+
+| Prop | Bone | Triangles | What |
+|---|---|---:|---|
+| `linesman-hardhat-yellow`, `-white` | head | 10,300 | moulded shell on its suspension band, three ribs, brim with a front peak and rain lip, elastic strap, the headlamp (cracked lens, bezel, switch, cable round to the back), high-voltage triangle, the station's roundel, reflective strip |
+| `linesman-pack`, `-pack-f` | spine_05 | 10,200 | case on two pads, rubber corner guards, the vent unit glowing blue through seven louvres (the weak point), a dial and three status lights, terminals in red and black boots with their cables into the sides, carry handle, hazard stripes, a high-voltage plate; the harness over the shoulders to a sternum strap and buckle, adjusters, D-rings, foot straps |
+| `linesman-coil` | lowerarm_r | 3,300 | red and black jumper cables wound together, crocodile clamps bitten onto the coil |
+| `conductor-badge` | head | 480 | the railway's winged wheel in brass on red enamel, on the peaked cap's crown |
+| `conductor-whistle` | spine_05 | 2,900 | link chain round the neck over the lapels, the nickel whistle |
+| `conductor-lantern`, `-broken` | prop | 3,300 | railway hand lamp: wire bail, chimney, vented bell, the red globe in its guard wires, the fount and its brass plate; broken, a jagged ring of dark glass |
+| `undertow-weed-back`, `-arm-l`, `-arm-r` | spine_05, forearms | 5,100, 440 | kelp ribbons and stringy weed draped over the shoulders, a drowned cable with a frayed copper end; weed wound round each forearm, its tails past the wrist |
+| `pileup-handrail`, `-f` | spine_05 | 1,200 | the carriage's grab pole bent across the chest, its flange still bolted, the bottom sheared |
+| `pileup-door` | prop | 2,000 | stainless panels in their seal, livery stripe, the window lit by a dying tube behind cracked glass, kick plate, scratches, release handle, the inside handrail, the third commuter's arm clawing down the face |
+| `pileup-flesh`, `-f` | spine_05 | 4,400 | the fused commuter's flesh over the second head's neck and arm: lumps, raw creases, veins, a broken collarbone, the suit torn round its foot |
+
+**Runtime** (`Runtime/NativeZombieModelPresentation.cs`): `ZombieGear` hangs each worn prop on its bone as a plain mesh
+renderer (no skinning: the project skins on the CPU), in the body's renderers, so it flashes, collapses with a lost part, flies
+off with a severed one and settles with the corpse as the decay pits do. Carried props (the lantern, the door) are drawn by
+`ZombieGearPropDraw` at the prop's matrix while the add is on the model (its glow by the lantern's flare and the window's
+flicker), the voxel props beside a voxel body. The props follow the model's hands (`ZombieModelShift`: each game joint's place
+on the model against the rig's), which close on them (`ZombieGrasp`); the Linesman's beam, halo and pack glow come from the
+gear's lens and vents (`NativeZombieLooks.LinesmanLamp`, `LinesmanVents`).
+
+**Tape**: the Linesman's jacket wears reflective tape drawn by the shader (`ZombieBand` in NativeVisualBodyFx.cginc): six
+rings (below the chest and above the hem, round each upper arm and forearm) placed in the meshes' rest space from the rest
+joints (`ZombieTapeRings`), so they fit every jacket and build and ride the cloth; silver over the piece's colour under its
+grime, shining back toward the eye.
+
+**The fused commuter** (the Pileup): `ZombieFuse` bakes, once as a body is made, its own head and face (bald, the scream's
+shapes set) and its right arm posed raised and clawing (cut as a severed arm is), and carries both on `spine_05` at the right
+shoulder (`ZombieFusedNeck`, `ZombieFusedShoulder`), swaying a little each pose; the gear's flesh covers the joins.
+
+**Reviewed on the PC** (BoZo, brickfall): turnarounds of every kind, close-ups of the head and upper body, and each kind
+hunting a pilot, captured from its wind-up to its recovery, its stagger and its death (gear and props follow throughout; the
+Undertow sinks as its voxel did). The four kinds are live (`ZoneLive`).
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
+- The zone kinds' gear is dense for a crowd (the hard hat and the pack about 10,000 triangles each, the Linesman's kit 24,000;
+  rigid renderers, so it costs drawing, not skinning); a lighter cut for the farther adds is open. The weeds, cables and clamps
+  are rigid on their bones (they swing with the limb, not with gravity). The Pileup women wear the brute's flesh fit
+  (`pileup-flesh-f` is the same piece); the fused head's face is fixed (it does not blink or move its jaw).
 - Wounds fitted to the model's surface during life (a living add's bullet marks; the decay openings are fixed per variant).
 - Arrows lodging on the model's surface, not the voxel joints.
 - A reduced model for the Reduced tier, replacing the voxel style at distance.
