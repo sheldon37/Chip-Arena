@@ -19,7 +19,9 @@
 - **Checks:**
   - `--poolrooms` now 220 checks (the field, the sources, the spray);
   - Unity captures of the DEV preview: a stand-in wader's V-wake, splash rings, spray;
-  - full suite: see below.
+  - full CoreTests on a clean LF checkout of `5b42c17d`: exit 0, 940 PASS lines; pin scan clean.
+- **Status:** merged into shared as `c98797b0`. Published to the test channel in builder build `c98797b0` (BUILD SUCCEEDED,
+  publication succeeded 01:48 UTC). The Poolrooms are still a DEV preview, so players see no change until its map exists.
 - **Astra:** water rules (wading, swimming or chest-deep in the deep pools, buoyancy, climbing out, water and weapons and
   enemies, Hulks under 3.6 m), and a swimming state on `Actor` when there is one.
 - **Next:** with the Poolrooms' map: an underwater view, bodies bobbing at the surface, splash and wading sounds.
