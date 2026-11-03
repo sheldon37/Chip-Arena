@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         }
         private void StepZoneHazards()
         {
-            if(!NativeZoneCombat.Active(MapId)||Pve==null)return;
+            if(!(NativeZoneCombat.Station(MapId)||NativeZoneCombat.Ironworks(MapId))||Pve==null)return;
             if(ZoneHazards==null)ZoneHazards=new NativeZoneHazardFrame{start=Time,trainAt=Time+60};
             var h=ZoneHazards;h.running=Pve.Stage=="wave"||Pve.Stage=="boss";int wave=Math.Max(1,Math.Min(4,Pve.Wave));if(h.wave!=wave){h.wave=wave;h.clock=0;}
             if(!h.running||Pve.Holding)return;if(Time-zoneLastAt>.1f)h.trainAt=Math.Max(h.trainAt,Time+4);zoneLastAt=Time;h.clock+=1f/60;

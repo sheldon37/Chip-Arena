@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
         // ---- the five as kinds: after the seven, resolved and known, no content row, their capsules and bodies ----
         private static void Registration(string root)
         {
-            Check(NativeHordeKinds.Count==7&&NativeHordeKinds.All==NativeHordeKinds.Count+NativeHordeZones.Count&&NativeHordeZones.Count==5+NativeStationKinds.KindCount,"the Siren's seven stay Count; the five follow them (All "+NativeHordeKinds.All+")");
+            Check(NativeHordeKinds.Count==7&&NativeHordeKinds.All==NativeHordeKinds.Count+NativeHordeZones.Count&&NativeHordeZones.Count==5+NativeStationKinds.KindCount+NativeBackroomsKinds.Kinds.Length,"the Siren's seven stay Count; the five follow them (All "+NativeHordeKinds.All+")");
             Check(NativeIronworksKinds.First==NativeHordeKinds.Count,"the cinderling is the first kind after the Siren's");
             for(int z=0;z<5;z++)
             {

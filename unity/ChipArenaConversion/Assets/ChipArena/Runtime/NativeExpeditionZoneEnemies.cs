@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         private readonly List<(Vector3 at,float when)> zonePops=new List<(Vector3,float)>();
-        private bool ZoneMovementHeld(NativePilot p)=>(ZoneBoss!=null&&ZoneBoss.holdTarget==p.Seat.id&&Time<ZoneBoss.holdUntil)||Minions.Any(m=>m.Hp>0&&m.Pve!=null&&(m.Pve.Zone.grabTarget==p.Seat.id&&Time<m.Pve.Zone.releaseAt||m.Pve.Zone.pullTarget==p.Seat.id&&Time>=m.Pve.Zone.pullAt+.84f&&Time<m.Pve.Zone.pullAt+1.59f));
+        private bool ZoneMovementHeld(NativePilot p)=>(ZoneBoss!=null&&ZoneBoss.holdTarget==p.Seat.id&&Time<ZoneBoss.holdUntil)||Minions.Any(m=>m.Hp>0&&m.Pve!=null&&(m.Pve.Zone.grabTarget==p.Seat.id&&Time<m.Pve.Zone.releaseAt||m.Pve.Zone.pullTarget==p.Seat.id&&Time>=m.Pve.Zone.pullAt+(m.Pve.Stats.id=="lifeguard"?.6f:.84f)&&Time<m.Pve.Zone.pullAt+(m.Pve.Stats.id=="lifeguard"?1.1f:1.59f)));
         private float ZoneTargetPriority(NativeMinion m,NativePilot p)=>m.Pve.Stats.id=="stoker"?Pilots.Count(q=>q!=p&&ZonePilot(q)&&Vector3.Distance(q.Body.position,p.Body.position)<5)*5:m.Pve.Stats.id=="ladleman"?-Pilots.Count(q=>q!=p&&ZonePilot(q)&&Vector3.Distance(q.Body.position,p.Body.position)<4)*3:0;
         private bool ZoneKindRoom(string kind)=>Mutator("hulkamania")&&kind=="hulk"?Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id=="hulk")<6:!NativeZoneCombat.Active(MapId)||Minions.Count(m=>m.Hp>0&&m.Pve?.Stats.id==kind)<(bossScriptedLadle&&kind=="ladleman"?1:NativeZoneCombat.Cap(kind,Pve?.Wave??1,Pve?.Stage=="boss"));
         private bool ZoneEntryAllowed(PveEntry e,string kind)
@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         }
         private void InitZoneEnemy(NativeMinion m)
         {
-            var a=m.Pve;var k=NativeHordeZones.Of(NativeHordeKinds.Resolve(a.Stats.id));
+            InitBackroomsEnemy(m);var a=m.Pve;var k=NativeHordeZones.Of(NativeHordeKinds.Resolve(a.Stats.id));
             if(k!=null){m.Collider.height=k.Height;m.Collider.radius=k.Radius;m.Body.mass=40*k.Mass;}
             if(a.Stats.id=="undertow"){var head=new GameObject("Undertow surfaced head");head.layer=11;head.transform.SetParent(m.Body.transform,false);head.transform.localPosition=Vector3.up*.55f;a.ZoneHead=head.AddComponent<CapsuleCollider>();a.ZoneHead.radius=.22f;a.ZoneHead.height=.45f;a.ZoneHead.enabled=false;head.AddComponent<NativeMinionBody>().Minion=m;}
             if(a.Stats.id=="rigger")
@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         private void ZoneStop(NativeMinion m)
         {if(!m.Body.isKinematic){m.Pve.External*=Mathf.Exp(-6/60f);m.Body.linearVelocity=new Vector3(m.Pve.External.x,m.Body.linearVelocity.y,m.Pve.External.z);}}
         private void ZoneStart(NativeMinion m,string attack,float wind,float cooldown)
-        {var a=m.Pve;a.Zone.attack=attack;m.LastAttack=Time;m.StrikeAt=Time+wind;a.ZoneStrike=m.StrikeAt;a.ZoneReady=Time+cooldown;a.ZoneBusy=m.StrikeAt+.6f;a.Struck=true;a.RecoverAt=a.ZoneBusy;if(a.Target!=null){var d=a.Target.Body.position-m.Body.position;m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}}
+        {var a=m.Pve;a.Zone.attack=attack;if(NativeBackroomsKinds.Own(a.Stats.id))a.Zone.actionTarget=a.Target?.Seat.id??-1;m.LastAttack=Time;m.StrikeAt=Time+wind;a.ZoneStrike=m.StrikeAt;a.ZoneReady=Time+cooldown;a.ZoneBusy=m.StrikeAt+.6f;a.Struck=true;a.RecoverAt=a.ZoneBusy;if(a.Target!=null){var d=a.Target.Body.position-m.Body.position;m.Yaw=Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg;}}
         private void ZoneRelease(NativeMinion m)
         {var a=m.Pve;if(a.Zone.grabTarget<0)return;a.Zone.releaseAt=Time;a.Zone.grabTarget=-1;a.ZoneReady=Time+5;a.ZoneBusy=Time+.4f;a.HoldDamage=a.ZoneOtherDamage=0;}
         private void ZoneDrag(NativePilot p,Vector3 direction,float speed)
@@ -55,6 +55,7 @@ namespace ChipArena.UnityConversion
             var a=m.Pve;var z=a.Zone;string kind=a.Stats.id;
             if(!NativeZoneCombat.Active(MapId))return false;
 
+            if(NativeBackroomsKinds.Own(kind))return StepBackroomsEnemy(m,target);
             if(kind=="rigger")return StepRigger(m,target);
             if(kind=="linesman")
             {
@@ -171,6 +172,7 @@ namespace ChipArena.UnityConversion
         private float ZoneIncoming(NativeMinion m,NativePilot source,float amount,Vector3 dir,Vector3? point,bool head,float impulse,string kind)
         {
             var a=m.Pve;var z=a.Zone;if(!NativeZoneCombat.Active(MapId))return amount;
+            if(NativeBackroomsKinds.Own(a.Stats.id)){WakeEntity(m);if(a.Stats.id=="smiler"&&!NativeBackroomsKinds.Dark(EntityDarkLayout,Vec(m.Body.position)))amount*=1.5f;}
             var forward=Vec(V3.Forward(m.Yaw));float facing=dir.sqrMagnitude>0?Vector3.Dot(-dir.normalized,forward):0;
             bool upper=point.HasValue&&point.Value.y>m.Body.position.y+.35f;
             switch(a.Stats.id)

@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativePoolroomsGenerator
     {
-        public const string Version="poolrooms-rules-1",ArenaId="backrooms-poolrooms",InstanceMap="expedition-backrooms-poolrooms",AreaId="exp-poolrooms";
+        public const string Version="poolrooms-rules-1-entities1",ArenaId="backrooms-poolrooms",InstanceMap="expedition-backrooms-poolrooms",AreaId="exp-poolrooms";
         public const int ArenaSeed=647032,ArenaSize=24,ExpeditionSize=32;
         private static bool ReturnEdge(int x,int z,int dx,int dz)=>x==1&&dx==0&&(z==1&&dz==-1||z==0&&dz==1);
         private static readonly (int x,int z)[] Directions={(1,0),(0,1),(-1,0),(0,-1)};

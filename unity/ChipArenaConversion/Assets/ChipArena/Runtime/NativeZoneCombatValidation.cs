@@ -9,7 +9,8 @@ namespace ChipArena.UnityConversion
         // Real-Unity gate: authority hits and finite wire state, after the split-area perf fixture.
         public void ValidateZoneCombat(Action<NativeGameFrame> replicaCheck=null)
         {
-            if(!NativeZoneCombat.Active(MapId))return;
+            if(NativeBackroomsKinds.Active(MapId)){ValidateBackroomsEntities(replicaCheck);return;}
+            if(!(NativeZoneCombat.Station(MapId)||NativeZoneCombat.Ironworks(MapId)))return;
             void Check(bool ok,string why){if(!ok)throw new Exception("Native zone combat "+MapId+": "+why);}
             void Clock(float at)=>Match.SynchronizeExpeditionClock(at);
             foreach(var m in Minions.ToArray())RemoveMinion(m,false);

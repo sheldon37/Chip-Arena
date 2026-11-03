@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
     public static class NativeHordeZones
     {
         /// <summary>Every zone kind in index order (the registration line: one entry per zone).</summary>
-        public static readonly HordeZoneKind[] Kinds=Join(NativeIronworksKinds.Kinds,NativeStationKinds.Kinds);
+        public static readonly HordeZoneKind[] Kinds=Join(NativeIronworksKinds.Kinds,NativeStationKinds.Kinds,NativeBackroomsKinds.Kinds);
         public static int Count=>Kinds.Length;
         /// <summary>The zone kind at a horde kind index (null for the Siren's kinds or an index out of range).</summary>
         public static HordeZoneKind Of(int kind){int i=kind-NativeHordeKinds.Count;return i>=0&&i<Kinds.Length?Kinds[i]:null;}
