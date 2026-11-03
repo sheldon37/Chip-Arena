@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             // Crouch, Busy).
             // (Stride: how far the gait drew this pose's ankles in about the hips, its stride planned for the model's legs:
             // NativeHordeGait.LegsNow.)
-            public bool Crawl;public float Sunk,Crouch,Busy,Stride=1;
+            public bool Crawl;public float Sunk,Crouch,Busy,Stride=1,Reach;
             // A mutant's growth not on it yet (ZombieGrowthAttach: it draws voxel until its variant's growth is made), and when it
             // was last posed (the Hulk's carried hips step by it: NativeVisualRig.State.Dt).
             public bool Growing;public double PoseTime;
@@ -93,13 +93,13 @@ namespace ChipArena.UnityConversion
         {
             if(rig==null||!ZombieModelled(kind,tier))return false;var z=ZombieModelOf(id,kind);if(z==null)return false;
             if(z.Growing&&!ZombieGrowthAttach(z)){z.SeenAt=Time.unscaledTime;return false;}
-            z.Dying=false;z.Jaw=jaw;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;z.Stride=gait?.LegsNow??1;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
+            z.Dying=false;z.Jaw=jaw;z.Crawl=crawl;z.Sunk=gait?.Sunk??0;z.Crouch=gait?.Crouch??0;z.Busy=gait?.Busy??0;z.Stride=gait?.LegsNow??1;z.Reach=gait?.Outreach??0;ZombieModelBind(z,rig,planted,airborne,lost,hidden,flash,glow,swell);return true;
         }
         /// <summary>A dying add's fall (HordeKindDeath, its rig posed from minionPose): its model, true; false: the voxel body falls.</summary>
         private bool ZombieModelDeath(CapturedAnimation.Player rig,int id,int kind,int lost,int hidden)
         {
             if(rig==null||!zombieBodies.TryGetValue(id,out var z)||z.Body.Root==null||z.Kind!=kind||z.Growing||!ZombieModelsOn)return false;
-            z.Dying=true;z.Sunk=z.Crouch=z.Busy=0;z.Stride=1;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
+            z.Dying=true;z.Sunk=z.Crouch=z.Busy=0;z.Stride=1;z.Reach=0;ZombieModelBind(z,rig,false,false,lost,hidden,1,0,0);return true;
         }
         private void ZombieModelBind(ZombieBody z,CapturedAnimation.Player rig,bool planted,bool airborne,int lost,int hidden,float flash,float glow,float swell)
         {
@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             long poseAt=System.Diagnostics.Stopwatch.GetTimestamp();
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
-            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose,!NativeBackroomsMotion.Quad(z.Kind));NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));if(z.Variant.Carry!=null&&!z.Dying)NativeZombiePosture.StaffCarry(pose,(1-z.Busy)*(1-BackroomsHold(z.Id)));NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
+            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose,!NativeBackroomsMotion.Quad(z.Kind));NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));if(z.Variant.Carry!=null&&!z.Dying)NativeZombiePosture.StaffCarry(pose,(1-z.Busy)*(1-BackroomsHold(z.Id)));NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride,z.Reach);
             double now=Time.unscaledTimeAsDouble;z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;
             // (The Hulk's hands are fists, clenched hardest through a blow: owner 2026-10-30, "the punch is open handed still".)
             z.Body.Binding.Apply(pose,ZombieGrasp(z),planted,airborne);

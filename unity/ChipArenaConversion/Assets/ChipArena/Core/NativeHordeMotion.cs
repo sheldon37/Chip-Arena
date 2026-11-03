@@ -142,6 +142,9 @@ namespace ChipArena.UnityConversion
         /// <summary>How much of this pose a blow, a reel, a roar or a keyed move owns (0 to 1): their crouches are the gait's to show
         /// on the model too (Core/NativeZombiePosture.Stance lifts only the rest).</summary>
         public float Busy{get;private set;}
+        /// <summary>How far this pose's forelimbs reach out (0 to 1: the Hound's leap): the model lays its own longer arms along the
+        /// gait's at their length (Core/NativeVisualRig.State.HandReach) instead of folding them to the gait's short reach.</summary>
+        public float Outreach{get;private set;}
         private readonly float[] rowW=new float[CapturedClip.Channels],rowR=new float[CapturedClip.Channels],rowI=new float[CapturedClip.Channels],rowA=new float[CapturedClip.Channels],row=new float[CapturedClip.Channels];
         private readonly float[] retimeAt=new float[4],retimeMarks=new float[4];
         private readonly Vector3[] mocapAnkle=new Vector3[2],mocapKnee=new Vector3[2],mocapHip=new Vector3[2];private readonly Quaternion[] mocapFoot=new Quaternion[2];
@@ -180,7 +183,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public void Pose(in HordeMotionInput f,CapturedRig.Pose p,NativeHordeReact react=null)
         {
-            NativeZombieMotion.Warm();Step(f,react);LifeStep(f,react,stepFresh);p.Reset();AttackClip=-1;armLayers=0;Sunk=0;Crouch=0;Busy=0;
+            NativeZombieMotion.Warm();Step(f,react);LifeStep(f,react,stepFresh);p.Reset();AttackClip=-1;armLayers=0;Sunk=0;Crouch=0;Busy=0;Outreach=0;
             // A blow the authority cancelled (a stagger in the wind-up) stops where it was and lets go over CancelFade: it never
             // strikes, and it never snaps off.
             float age=f.AttackAge,keep=1;
@@ -800,8 +803,8 @@ namespace ChipArena.UnityConversion
         // rotary gallop at its 6 m/s (hind left, hind right, fore right, fore left; HoundOffset), a short stance and a moment in the
         // air. The body: an arched back that gathers as the hind feet come under and stretches as they push off, a bound up through
         // the suspension, the head held level ahead of it all. The pounce (the authority's: a .35 s crouch, a .5 s leap to contact at
-        // .85 s, 1.65 s busy): coiled low on its haunches, launched in an arc (HoundLeap high at mid-flight) with its forelimbs
-        // reaching and its hind legs trailing, landing low; the pin and the sprawl that follow are the presentation's
+        // .85 s, 1.65 s busy): coiled low on its haunches, launched in an arc (HoundLeap high at mid-flight), its front tipping up off
+        // the push and down into the landing, stretched out from its forelimbs reaching ahead to its hind legs trailing, landing low; the pin and the sprawl that follow are the presentation's
         // (NativeBackroomsMotion). Presentation only.
         /// <summary>The Hound's rig root over the floor (rig metres; its pelvis .24 under it), its hands' place ahead of its root, its
         /// hind feet's behind it, and its leap's height at mid-flight.</summary>
@@ -835,7 +838,7 @@ namespace ChipArena.UnityConversion
             // through the suspension; a walk bobs on each footfall.
             float gather=(float)Math.Sin(ph+.9f),bound=(float)Math.Sin(ph-.5f);
             float bob=moving*(d.Bob*(1-gallop)*(float)Math.Cos(ph*2)+d.RunBob*gallop*bound)+.008f*(1-moving)*(float)Math.Sin(t*2.1f*idleRate);
-            float pitch=1.55f+.06f*g*(float)Math.Cos(ph)+.12f*coil-.16f*air+alert*.03f;
+            float pitch=1.55f+.06f*g*(float)Math.Cos(ph)+.12f*coil-.2f*air*(float)Math.Cos(Math.PI*Clamp01(flight))+alert*.03f;
             p.Position[CapturedRig.Body]=new Vector3(d.Sway*moving*(float)Math.Sin(ph),f.Ground-f.Root.Y+HoundTrunk+bob-.2f*coil+arc-.14f*landed,-.08f-.12f*coil+.1f*air);
             p.Rotation[CapturedRig.Pelvis]=CapturedRig.Euler(pitch,d.Twist*moving*(float)Math.Sin(ph),d.Roll*moving*(float)Math.Cos(ph));
             // An arched back over the long gaunt trunk: the spine bends up off the hips, the chest down to the shoulders.
@@ -851,26 +854,28 @@ namespace ChipArena.UnityConversion
             react?.Trunk(p,f.Time,Forward,Right);
             {float cx=Math.Min(.2f,ClavicleX-ShoulderInset(kind,f.Look));p.Position[CapturedRig.LClav]=new Vector3(cx,.18f,.02f);p.Position[CapturedRig.RClav]=new Vector3(-cx,.18f,.02f);}
             p.World();
-            // The hind legs: on the planner's feet; in the leap stretched out behind (pushing off), landing tucked under.
+            // The hind legs: on the planner's feet; in the leap stretched out behind (pushing off), landing tucked under. (Back more
+            // than down: on the model's longer legs a foot hung under the hips reached the floor and the leap read as standing.)
             float floor=f.Ground-f.Root.Y;
             for(int i=0;i<2;i++)
             {
                 Vector3 local=ToLocal(FootWorld[i],f.Root);local.Y=floor+AnkleHeight+.04f+feet[i].Y;
-                if(air>0){var hip=p.WorldPosition[i==0?CapturedRig.LHip:CapturedRig.RHip];var back=Vector3.Transform(new Vector3(0,-.36f,-.3f),p.WorldRotation[CapturedRig.Body]);local=Vector3.Lerp(local,hip+back,air);}
+                if(air>0){var hip=p.WorldPosition[i==0?CapturedRig.LHip:CapturedRig.RHip];var back=Vector3.Transform(new Vector3(0,-.16f,-.44f),p.WorldRotation[CapturedRig.Body]);local=Vector3.Lerp(local,hip+back,air);}
                 LegKept(p,i==0,local,HoundHindPole,i);
             }
-            // The forelimbs: hands to their planted targets (chest frame), reaching ahead and up in the leap.
+            // The forelimbs: hands to their planted targets (chest frame), reaching out ahead in the leap (the model's arms laid along
+            // the gait's at their own length: Outreach).
             p.World();var chest=p.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var cpos=p.WorldPosition[CapturedRig.Chest];
             for(int i=0;i<2;i++)
             {
                 bool left=i==0;int h=2+i;Vector3 local=ToLocal(FootWorld[h],f.Root);local.Y=floor+.09f+feet[h].Y;
-                if(air>0){var sh=p.WorldPosition[left?CapturedRig.LArm:CapturedRig.RArm];var reach=sh+new Vector3(left?.06f:-.06f,-.05f,.48f);local=Vector3.Lerp(local,reach,air);}
+                if(air>0){var sh=p.WorldPosition[left?CapturedRig.LArm:CapturedRig.RArm];var reach=sh+new Vector3(left?.06f:-.06f,-.1f,.5f);local=Vector3.Lerp(local,reach,air);}
                 local.Y=Math.Max(local.Y,floor+.05f);
                 Vector3 inChest=Vector3.Transform(local-cpos,inv);Vector3 pole=Vector3.Transform(new Vector3(left?.25f:-.25f,.3f,-.9f),inv);
                 var wrist=Quaternion.Normalize(CapturedRig.Euler(-1.5f+.6f*air,0,0));
                 CapturedRig.Arm(p,left,inChest,inv*wrist,pole);
             }
-            react?.Arms(p,f.Time);
+            Outreach=air;react?.Arms(p,f.Time);
             p.World();
         }
 

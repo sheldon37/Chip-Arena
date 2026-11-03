@@ -249,6 +249,9 @@ namespace ChipArena.UnityConversion
             // Hands (a zombie on all fours, the Hound): each visual wrist planted where the game's hand is (Hand); GameFloor, the game
             // floor's height in the Pose's body space; GameHand, the game wrist's height over it when planted.
             public bool Hands; public float GameFloor, GameHand=.09f;
+            // HandReach (0..1, the Hound's leap): the visual arm laid along the game's (shoulder to wrist) at ReachLength of its own
+            // length, the visual shoulder its root, instead of reaching for the game's wrist (the long visual arms folded double there).
+            public float HandReach;
             // Ease (a followed stance's, the Hulk's: Carry): the pelvis carried toward Stand on a critically damped spring of this
             // time (seconds; 0: the rise by RaiseStep a pose), stepped by Dt (the frame's seconds, the presentation's). Hip, HipSpeed:
             // the carried height and its speed; LastCap, CapFall: the legs' reach last pose and how fast it has been falling.
@@ -916,7 +919,7 @@ namespace ChipArena.UnityConversion
         // game's metres across (as Across has the pelvis) and HandOver over the visual floor, raised by the legs' ratio as the game
         // hand lifts in its stride; the elbow bends back along the body and out to its side (a forelimb's), the hand keeping the
         // game hand's turn (laid flat). The model's longer arms (a Reach build) bend at the elbow where the game's run straight.
-        public const float HandOver=.045f, AnkleOver=.08f;
+        public const float HandOver=.045f, AnkleOver=.08f, ReachLength=.94f;
         private static void Hand(State s,CapturedRig.Pose pose,bool left)
         {
             var r=s.Rig; int ga=left?CapturedRig.LArm:CapturedRig.RArm, va=r.Of[ga], ve=r.Of[ga+1], vh=r.Of[ga+2], vc=r.Of[CapturedRig.Chest];
@@ -925,6 +928,11 @@ namespace ChipArena.UnityConversion
             // (The visual floor: under the model's rest ankle, where a planted foot stands: Foot.)
             int ankle=r.Of[CapturedRig.LHip+2]; float floor=ankle<0?0:r.AlignedPosition[ankle].Y-AnkleOver;
             var target=new Vector3(game.X,floor+HandOver+lift*r.LegRatio,game.Z);
+            if(s.HandReach>0)
+            {
+                Vector3 along=game-pose.WorldPosition[ga]; float n=along.Length();
+                if(n>1e-4f) target=Vector3.Lerp(target,s.Position[va]+along*((r.ArmUpper+r.ArmLower)*ReachLength/n),Math.Min(1,s.HandReach));
+            }
             Vector3 back=Vector3.Transform(-CapturedRig.Z,pose.WorldRotation[CapturedRig.Chest]); back.Y=0; back=CapturedRig.Unit(back,-CapturedRig.Z);
             Vector3 outward=s.Position[va]-s.Position[vc]; outward.Y=0; outward=CapturedRig.Unit(outward,left?CapturedRig.X:-CapturedRig.X);
             Vector3 pole=back+outward*.45f;
