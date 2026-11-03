@@ -8,6 +8,22 @@
 - **Animation impact:** none; authored mesh/treads, enemy motion, attack timings, capsules and network IDs retained. Capsule locomotion uses continuous stair collision.
 - **Release state at commit:** tested on task branch; merge/shared and builder sync next. Windows build/PhysX and publication remain unverified until the builder reports success for the resulting commit. The last read Drive status still reports the old failed `f57a34a7` build; it is not a receipt for this fix.
 
+## 2026-11-03 — Claude: the zombie run: the pack's own stride, not a lunge
+
+- **Branch:** `claude/zombie-run-pace`, base shared `67d1f769`.
+- **Task:** owner: "they are still doing awkward lunges when running. The animation pack doesn't look like that at all."
+- **Changed (presentation only; docs/ZOMBIE-MODELS.md 4m):** kinds that run at a real speed run on the clean sprints (sprint-2,
+  sprint-3; zone kinds too, `NativeStationKinds`, `NativeIronworksKinds`), not walking chases. On the model's legs a sprint plays at
+  its own captured pace (`NativeZombieMotion.Rate`), lands a foot near under the body and stands for the take's planted stretch
+  (`Touch`, `OwnDuty`, `LandAhead`), swings on the take's own path about the hip (`SwingAhead`, `OwnSwing`), and rolls onto its ball
+  (`OwnRoll`). The voxel model and the walks keep their stride. `Tests/station-enemies-baseline.txt` rewritten for the takes and the
+  motion, on purpose.
+- **Animation impact:** drawn feet and take names only. Hit timing, hitboxes, damage, cooldowns, movement speeds and networking are
+  unchanged; the run's cadence rises (the runner from 3 to 4 steps a second), its steps shorten (1.5 m to 1.1 m).
+- **Checks:** `--zombie-gait` (a new own-stride check over 11 kinds), `--zombie-posture`, `--zombie-twitch` (twitch, locomotion, flow) pass in the working checkout; full `CoreTests` pending.
+  PC (BoZo, Cybercity, side view): the runner, shambler, brute and spitter at their run speeds, against the old code. Not run: the run in
+  motion in a crowd, the zone kinds on their own maps, a Windows build.
+
 ## 2026-11-03 — Claude: bespoke garments for the other areas (trench coats, coveralls, aprons, bathrobes)
 
 - **Branch:** `claude/area-garments`, base shared `a1cd84bb`; implementation `c99e80d6`.
