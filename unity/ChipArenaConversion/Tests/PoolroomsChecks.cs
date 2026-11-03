@@ -33,6 +33,57 @@ namespace ChipArena.UnityConversion
             }
             return sb.ToString();
         }
+        // The wave field over layout `l` at `origin`: wet only over the pools, splashes that spread and die away, never across a
+        // deck into another pool, the same waves for the same calls, carried when the field moves, a hitch capped; and what
+        // disturbs it (wakes, entries, shots, blasts) by its thresholds.
+        private static void Waves(PoolroomsLayout l,Vector3 origin)
+        {
+            float c=PoolroomsLayout.Cell;int deep=-1,other=-1;
+            for(int i=0;i<l.Floor.Length&&other<0;i++){if(!PoolroomsLayout.Pool(l.Floor[i]))continue;if(deep<0)deep=i;else if(l.Room[i]!=l.Room[deep])other=i;}
+            Check(deep>=0&&other>=0,"the layout has two pools in different rooms");
+            Vector3 Mid(int i)=>new Vector3(origin.X+(i%l.Width+.5f)*c,origin.Y,origin.Z+(i/l.Width+.5f)*c);
+            var at=Mid(deep);var far=Mid(other);
+            var w=new PoolWaves();w.Follow(l,origin,at);
+            bool wet=true;for(int z=0;z<PoolWaves.Size;z+=7)for(int x=0;x<PoolWaves.Size;x+=7){float wx=origin.X+(w.CornerX+x+.5f)*PoolWaves.Texel,wz=origin.Z+(w.CornerZ+z+.5f)*PoolWaves.Texel;wet&=w.Wet[x+PoolWaves.Size*z]==PoolWaves.WaterAt(l,origin,wx,wz);}
+            Check(wet,"only the texels over the pools are wet");
+            Check(!w.Disturb(origin.X+(l.EntryX+.5f)*c,origin.Z+(l.EntryZ+.5f)*c,.5f,-.1f)&&w.Energy()==0,"the deck is never disturbed");
+            Check(NativePoolWaves.Entry(w,at+new Vector3(0,.5f,0),at+new Vector3(0,-.6f,0),-1f)==0,"a slow step into a pool does not splash");
+            float k=NativePoolWaves.Entry(w,at+new Vector3(0,.5f,0),at+new Vector3(0,-.6f,0),-7f);
+            Check(k>.5f&&k<=1&&w.Energy()>0,"a body dropping in fast splashes ("+k.ToString("0.00")+")");
+            w.Step(.1);double e0=w.Energy();
+            // Its rings spread: a texel 1.5 m off the splash moves within a second.
+            float ring=0;for(int s=0;s<60;s++){w.Step(1/60.0);ring=Math.Max(ring,Math.Abs(w.HeightAt(at.X+1.5f,at.Z)));}
+            Check(ring>.002f,"the splash's ring travels out ("+ring.ToString("0.0000")+" m at 1.5 m)");
+            for(int s=0;s<120;s++)w.Step(1/60.0);double e3=w.Energy();for(int s=0;s<300;s++)w.Step(1/60.0);
+            Check(e3<e0*.25&&w.Energy()<e0*.01,"the waves die away over seconds ("+(e3/e0).ToString("0.000")+" of their energy left after 3 s, "+(w.Energy()/e0).ToString("0.0000")+" after 8 s)");
+            bool dry=true;for(int i=0;i<w.Height.Length;i++)dry&=w.Wet[i]||w.Height[i]==0;
+            Check(dry&&Math.Abs(w.HeightAt(far.X,far.Z))<1e-6f,"no wave crosses a deck: the dry texels and the other room's pool stay still");
+            // The same calls, the same waves.
+            var w2=new PoolWaves();w2.Follow(l,origin,at);NativePoolWaves.Entry(w2,at+new Vector3(0,.5f,0),at+new Vector3(0,-.6f,0),-7f);w2.Step(.1);for(int s=0;s<480;s++)w2.Step(1/60.0);
+            Check(w.Height.SequenceEqual(w2.Height),"the same calls give the same waves");
+            // Carried when the field moves.
+            var w3=new PoolWaves();w3.Follow(l,origin,at);w3.Disturb(at.X,at.Z,.8f,-.1f);w3.Step(.2);float before=w3.HeightAt(at.X+.4f,at.Z);int cx=w3.CornerX;
+            w3.Follow(l,origin,at+new Vector3(PoolWaves.Texel*(PoolWaves.Slack+4),0,0));
+            Check(w3.CornerX==cx+PoolWaves.Slack+4&&Math.Abs(w3.HeightAt(at.X+.4f,at.Z)-before)<1e-6f&&before!=0,"the waves are carried when the field follows the eye");
+            long steps=w3.Steps;w3.Step(1.0);Check(w3.Steps-steps==PoolWaves.MaxSteps,"a hitch runs at most "+PoolWaves.MaxSteps+" steps");
+            var b=w3.Height.Max();Check(b<=PoolWaves.Limit&&w3.Height.Min()>=-PoolWaves.Limit,"no wave stands past the limit");
+            // Wakes: only a body in the water and moving.
+            var w4=new PoolWaves();w4.Follow(l,origin,at);
+            NativePoolWaves.Wake(w4,at+new Vector3(0,-.9f,0),Vector3.Zero,1/60f);NativePoolWaves.Wake(w4,new Vector3(origin.X+(l.EntryX+.5f)*c,origin.Y,origin.Z+(l.EntryZ+.5f)*c),new Vector3(5,0,0),1/60f);
+            NativePoolWaves.Wake(w4,at+new Vector3(0,.5f,0),new Vector3(5,0,0),1/60f);
+            Check(w4.Energy()==0,"standing still, on the deck or above the water leaves no wake");
+            NativePoolWaves.Wake(w4,at+new Vector3(0,-.9f,0),new Vector3(4,0,0),1/60f);Check(w4.Energy()>0,"wading leaves a wake");
+            // Shots and blasts.
+            var w5=new PoolWaves();w5.Follow(l,origin,at);
+            Check(NativePoolWaves.Shot(w5,at+new Vector3(0,2,0))==0&&NativePoolWaves.Shot(w5,new Vector3(origin.X+(l.EntryX+.5f)*c,origin.Y,origin.Z+(l.EntryZ+.5f)*c))==0,"a shot well above the water or on the deck does not splash");
+            Check(NativePoolWaves.Shot(w5,at+new Vector3(0,-1f,0))>0&&NativePoolWaves.Blast(w5,at+new Vector3(0,.4f,0),3)==1,"a shot into a pool and a blast over it splash");
+            // The spray: thrown up, falling back within seconds, landing as ripples; never past its cap.
+            var sp=new PoolSpray();float surface=origin.Y+PoolroomsLayout.WaterY;sp.Splash(new Vector3(at.X,surface,at.Z),1);
+            bool up=sp.Count==PoolSpray.Drops;for(int i=0;i<sp.Count;i++)up&=sp.Live[i].Velocity.Y>0;Check(up,"a full splash throws its "+PoolSpray.Drops+" drops up");
+            var ws=new PoolWaves();ws.Follow(l,origin,at);for(int s=0;s<180&&sp.Count>0;s++)sp.Step(1/60f,ws,surface);
+            Check(sp.Count==0&&ws.Energy()>0,"the drops fall back within 3 s, landing as ripples");
+            for(int i=0;i<40;i++)sp.Splash(new Vector3(at.X,surface,at.Z),1);Check(sp.Count==PoolSpray.Most,"the spray keeps to its cap");
+        }
         public static void Run(string root)
         {
             count=0;
@@ -106,13 +157,15 @@ namespace ChipArena.UnityConversion
             var eye=new Vector3(origin.X+3,1.6f,origin.Z+3);var pos=new float[32];var rgb=new float[24];int on=NativePoolrooms.NearLamps(a,origin,eye,8,pos,rgb,new Vector3(1,1,1),9);
             bool under=true;for(int k=0;k<on;k++){int x=(int)((pos[k*4]-origin.X)/PoolroomsLayout.Cell),z=(int)((pos[k*4+2]-origin.Z)/PoolroomsLayout.Cell);under&=a.Light[a.Index(x,z)]&&pos[k*4+1]<origin.Y+a.Ceiling[a.Index(x,z)];}
             Check(on>0&&on<=8&&under,"the nearest lights light the scene from just under their ceilings ("+on+")");
+            // The water's waves (Core PoolWaves, NativePoolWaves; owner 2026-11-02: "fluid water physics").
+            Waves(a,origin);
             // The DEV preview: off unless asked for, drawn from the world pass, the water through its own shader.
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena/"+f));var pr=R("Runtime/NativePoolroomsPresentation.cs");
-            Check(pr.Contains("public static bool On;")&&!pr.Contains("public static bool On=true")&&R("Runtime/NativeSourcePresentation.cs").Contains("PoolroomsWorld();"),"the preview is off by default and drawn from the world pass when on");
+            Check(pr.Contains("public static bool On;")&&!pr.Contains("public static bool On=true")&&R("Runtime/NativeSourcePresentation.cs").Contains("PoolroomsWorld(arena);"),"the preview is off by default and drawn from the world pass when on");
             Check(pr.Contains("if(NativePackBanks.Texture(PoolroomsTextures[0])==null)return;")&&pr.Contains("Resources.Load<Shader>(\"NativePoolWater\")"),"without the bank's textures nothing is drawn; the water has its own shader");
             var ws=R("Resources/NativePoolWater.shader");
             Check(ws.Contains("ZWrite Off")&&ws.Contains("\"Queue\"=\"Transparent\"")&&ws.Contains("_ArenaLightPos[8]"),"the water is a transparent sheet lit by the practical lights");
-            Console.WriteLine("PASS poolrooms ("+count+" checks: deterministic layouts, rooms joined by arched openings, all connected; pools inside decks with steps into the deep ones; water "+PoolroomsLayout.Freeboard+" m below the deck; faces out; lights; the DEV preview off by default)");
+            Console.WriteLine("PASS poolrooms ("+count+" checks: deterministic layouts, rooms joined by arched openings, all connected; pools inside decks with steps into the deep ones; water "+PoolroomsLayout.Freeboard+" m below the deck; faces out; lights; the water's waves: wet only over pools, splashes that spread and die, wakes; the DEV preview off by default)");
         }
     }
 }

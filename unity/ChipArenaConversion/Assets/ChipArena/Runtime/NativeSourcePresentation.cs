@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
             // The Backrooms: Level 0 (its live map, or the DEV preview) and the DEV Poolrooms preview (NativeBackroomsPresentation.cs,
             // NativePoolroomsPresentation.cs).
             BackroomsWorld(arena);
-            PoolroomsWorld();
+            PoolroomsWorld(arena);
             IronworksScenery(arena);
             IronworksBossScenery(arena);
             NewStageScenery(arena);
