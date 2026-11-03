@@ -1,3 +1,5 @@
+2026-11-03 Claude: the Smiler is its own smoke apparition (owner; `claude/smiler-apparition`, merged into shared; docs/ZOMBIE-MODELS.md 4i), and the Online Players invite chip and panel are restyled and animated (docs/ONLINE-INVITES.md). Not published: #317's build failure (Astra).
+
 2026-11-03 Claude Backrooms entities, first pass (`claude/backrooms-entities`, merged into shared; presentation only; docs/ZOMBIE-MODELS.md 4h): Faceling, Smiler, Drowned and Lifeguard live on the model with their gear and first moves; Hound draft, Tiler next. Not published: the build still fails #317's pool-spawn validation (Astra).
 
 2026-11-03 Claude Central Station kinds on the model (`claude/station-models`, merged into shared; presentation only; docs/ZOMBIE-MODELS.md 4g): Linesman, Conductor, Undertow and Pileup live on the model with gear modelled in Blender (`tools/gear`, local bank in the Drive zip), tape and the Pileup's fused commuter. Not published: shared `f57a34a7` (#317) fails the build's layout validation (`unreachable spawn pool-deep-0:32`), handed to Astra in DEV_LOG.

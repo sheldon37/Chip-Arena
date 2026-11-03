@@ -531,7 +531,7 @@ Owner: "Please start the backroom enemies now" (the designs of docs/EXPEDITION-E
 | Kind | Variants (Core NativeZombieLooks) | Kit |
 |---|---|---|
 | Faceling | office workers yellowed by the damp: dress shirt or sweater vest, slacks or khakis, loafers, heels or flats | `Faceless`: the eyes, brows, lashes and teeth off; `faceling-mask-skin` (smooth skin over brow to chin, the sockets filled, the nose a soft rise), its lanyard and ID card; stands a little upright (its blank face shows) |
-| Smiler | the kind's 2.2 m, thin, long hands | `Void`: every part black, the head's painted eyes and mouth too; `smiler-grin` (two rows of teeth on glowing gums, the corners past the cheeks) and `smiler-eyes` (two pinpricks); stands upright |
+| Smiler | not on the model since 2026-11-03: its own apparition (4i) | |
 | Drowned | heavy bathers, waterlogged pallor | `Stripes`: a vintage costume's stripes (the shader's ZombieStripe, 9 cm apart in rest space) on a tank or tube top and shorts; a rubber cap with petals (white or red) and fogged goggles |
 | Lifeguard | the kind's 2.6 m, thin, faded reds, sun-bleached, bucket or sun hat, flip-flops | `lifeguard-whistle` on a red cord; `Carry`: the rescue hook (an aluminium pole with a shepherd's crook) in the right hand, held upright at its side (Core NativeZombiePosture.StaffCarry); stands upright |
 | Hound (draft) | gaunt, hairless, in rags, bare feet | none yet: it runs on two legs until its gait on all fours |
@@ -556,8 +556,42 @@ turnarounds, head and upper-body close-ups of every kind, and strips of the Face
 Lifeguard's whistle and hook. Not yet seen on their own maps: the Smiler's blink (dark cells only) and the Drowned under water.
 
 Open (the next pass): the Hound on all fours (a quadruped gallop on the model) and its pounce and pin; the Tiler's own body (a
-tile crab on six legs); the Smiler's blink (the fixtures' stutter, smoke at both ends) and its dread; the Drowned's wake and
+tile crab on six legs); the Smiler's dread on the pilot it struck and the fixtures' stutter round its blink (its body is 4i); the Drowned's wake and
 bubbles under water and its swim; the hook's line to the pilot through the drag; captures on Level 0 and the Poolrooms.
+
+## 4i. The Smiler as an apparition, not a person (2026-11-03, `claude/smiler-apparition`)
+
+Owner, with a reference image: "I think the smiler shouldn't be a player model. Keep in mind enemies dont have to always use
+the player model. The smiler is usually an black ghostly apparition like this" (a billowing cloud of black smoke, two glowing
+white eyes, a wide grin of yellowed teeth glowing red at the gums). Its variants and gear left the model (NativeZombieLooks,
+`tools/gear/backrooms_gear.py`; the local gear bank keeps the two old props until its next rebuild, unused).
+
+- Body (Runtime/NativeSmilerPresentation.cs, Resources/NativeSmiler.shader): one box round the cloud, raymarched. A signed
+  field in the cloud's own space (a core, six lobes turning about it, a tail tapering to a wisp toward the floor and trailing its
+  drift, the lunge's lobe on a neck of smoke) pushed in and out by a tileable 3D noise (Core NativeSmilerLook.Noise, 48^3, built
+  off the main thread: big billows and fine curls boiling through it); a soft edge over a few centimetres with wisps outside it;
+  near-black smoke lit a little by the scene and by its own face (red round the grin, white by the eyes). The march stops at the
+  scene's depth (soft against walls and floor; the low tier has no depth texture and runs to the box); from inside the box (a
+  pilot it lunges at) the back faces draw. Scene fog at the core's distance.
+- Face: drawn in the march where the ray crosses a plane facing the camera on the cloud's near side, so it always turns to
+  whoever looks at it; the smoke in front of it thins to wisps that drift across it. Two white eyes with halos (lids slanting
+  in as they narrow), a crescent grin (two rows of uneven, partly pointed teeth, a few missing, yellowed and reddening toward
+  the gums and corners, on glowing gums; parting on the lunge), the lips' red glow; bloom takes the eyes and teeth.
+- Moves (Core NativeSmilerLook, on the authority's zone frame): at rest it floats and boils, its grin breathing, its eyes
+  stuttering now and then like the dying fixtures; the blink (.5 s): the eyes shut, the smoke thins and spreads to nothing by the
+  move, the grin last, then it gathers again (eyes, then grin) where the authority put it; the lunge (.6 s): drawn back and
+  swollen, the grin widening and parting, the eyes narrowing and flaring, then a lobe thrown 1.55 m ahead with the face riding
+  it and hauled back; a stagger's cancel eases back instead of snapping; spawn: gathers from nothing over .9 s.
+- Hits tear black smoke off it along the shot (soft puffs in the effects pass) and roil it, the face stuttering; no wounds, no
+  blood, no severed limbs. Death (2.2 s): the smoke thins, spreads and rises, a burst torn off, the eyes out first, the grin
+  lingering and widening as it fades; no fall, no corpse, no gore. No footfalls and no zombie voice (its lunge's strike plays the
+  rush, its blink is silent). Its rig is still posed on the gait (hits, arrows and effects find its body there), never drawn.
+
+Reviewed on the PC (BoZo, brickfall, a DEV Smiler; `zset` for its moves): turnarounds (the face turns to every camera), the
+lunge, blink, a hit and the death, frame by frame. Frame time with it 2 m ahead: mean 11.2 ms against 10.8 ms without, in the
+Editor with other effects on screen (indicative, measured before the cloud was enlarged; the GPU cost on low-end hardware is
+not measured). Not run: Level 0's dark
+cells (lighting, the real blink move), a Windows build.
 
 ## 5. Not done yet (open)
 

@@ -1,3 +1,26 @@
+## 2026-11-03 — Claude: the Smiler as a smoke apparition, off the player's model
+
+- **Branch:** `claude/smiler-apparition`, base shared `c289fdad` (shared `b337d1b6` merged in); implementation `58adef6e`..`8c64c7c2`, a pin update `148d10ee`.
+- **Task:** owner, with a reference: "I think the smiler shouldn't be a player model. Keep in mind enemies dont have to always use
+  the player model. The smiler is usually an black ghostly apparition like this".
+- **Changed (presentation only; docs/ZOMBIE-MODELS.md 4i):** the Smiler's variants, gear and void tint left the model; it draws as
+  a raymarched black smoke volume (Resources/NativeSmiler.shader, Runtime/NativeSmilerPresentation.cs) with its face (eyes, a
+  grin of teeth on glowing gums) turned to whoever looks at it; its moves on the zone frame (Core NativeSmilerLook: rest, spawn,
+  blink, lunge, hit, death). Hits tear smoke off it (no wounds, blood or severed limbs); its death thins and rises away (no
+  corpse or gore); no footfalls or zombie voice (the lunge's strike plays the rush, the blink is silent). Its rig is still posed.
+- **Animation impact:** none on rules: hit timing, the 2.2 m capsule, damage, cooldowns, movement, the blink's move and
+  networking unchanged; the lunge's thrown lobe (1.55 m) is drawn only, inside the authority's 2.5 m reach; the cloud (about 2 m
+  across) is wider than its capsule (.4 m radius), so shots at its outer smoke pass through.
+- **Checks:** full `CoreTests` in a clean LF worktree on `148d10ee`: passed (exit 0, 943 groups) (`FootfallAudioChecks`' horde-voice pin updated: the Smiler has none); `--zombie-models` (new: the Smiler has no variants or gear;
+  its rest, blink, lunge, hit, spawn and death poses; the noise tiles). PC (BoZo, brickfall, a DEV Smiler, `zset`): turnarounds,
+  the lunge, blink, hit and death frame by frame; frame time with it 2 m ahead: mean 11.2 ms against 10.8 ms without (Editor,
+  indicative). Local tool: `zattack` now also arms with `zrigs=1` for an add off the model. Not run: Level 0's dark cells, a
+  Windows build.
+- **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
+- **Next (Claude):** the Smiler's dread on the pilot it struck and the fixtures' stutter round its blink; the Hound on all
+  fours; the Tiler's own body.
+
+
 ## 2026-11-03 — Claude: the Online Players (invite) chip and panel restyled and animated
 
 - **Branch:** `claude/online-players-panel`, base shared `c289fdad`; implementation `3e128a35`.
