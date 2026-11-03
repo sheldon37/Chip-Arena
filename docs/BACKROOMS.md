@@ -32,11 +32,17 @@ go EXACTLY for this style".
   are a stylised take that doesn't match. Its pieces stay in the bank for later dressing (doors, ladder, vents).
 - **Textures:** since 2026-11-02 the add-on's own baked colour maps (see "The add-on's textures"). Before that, the pack's
   "yellow offices" source images toned paler to the photo (`Level0/*_pale.png`, kept locally).
-- **Proportions:**
-  - cells 2.4 m (8 ft); ceiling 2.7 m (9 ft); walls 0.14 m thick;
-  - doorways 1 m, cut to the ceiling;
-  - pillars 0.5 m, only deep in open halls;
-  - fixtures 1.2 × 0.3 m over every other cell in both directions.
+- **Proportions** (scaled up 2026-11-03, owner: "We need to make the backrooms walls and ceiling higher, we seem like giants
+  currently"). The photo's real sizes (2.4 m cells, a 2.7 m ceiling) were too small for the game's pilots: a 1.8 m pilot jumps
+  1.57 m (8.5 m/s against 23 m/s²), so its head passed the ceiling, and the third-person camera rides 4.4 m behind, so it was
+  pushed in against the corridor walls. The level now scales round the pilot, the photo's proportions kept:
+  - cells 3.2 m; ceiling 4.0 m (clears a full jump); walls 0.18 m thick;
+  - doorways 1.4 m, cut to the ceiling;
+  - pillars 0.6 m, only deep in open halls;
+  - fixtures 1.6 × 0.4 m over every other cell in both directions; baseboards 0.12 m.
+  - The textures keep the add-on's repeats (real-world sizes round the pilot); the ceiling grid stays one repeat per cell.
+  - Collision, nav and the return door are built from the same constants, so they follow. The layout's identity version is
+    `backrooms-level0-4` (it was `-3`): builds with the old sizes can't share a game with the new.
 - **Layout (the pack's archetype, `yellow_offices.json`):** a grid maze. Every inner edge starts walled. Then:
   - rooms of 2-5 cells a side and some long corridors are opened up;
   - they are joined by a random spanning tree of doorways (a 1 m doorway into a wall that continues on both sides, else
@@ -237,24 +243,24 @@ change. Claude draws whatever it says.
 ## Seeded Level 0 rules (Astra, 2026-11-02)
 
 Implemented in `Core/NativeBackroomsGenerator.cs` and `NativeBackroomsExpedition.cs`.
-Uses Claude's current `BackroomsLayout` contract from shared `49281882`: 2.4 m cells, 2.7 m ceiling, 0.14 m walls and centred 1 m doorways. His seeded enclosed-room topology is extended with production placement and reachability validation.
+Uses Claude's current `BackroomsLayout` contract from shared `49281882`: then 2.4 m cells, a 2.7 m ceiling, 0.14 m walls and centred 1 m doorways (since 2026-11-03: 3.2 m, 4.0 m, 0.18 m and 1.4 m, "Level 0's look" above; the sizes below follow). His seeded enclosed-room topology is extended with production placement and reachability validation.
 
-- **PvP:** map `backrooms-level-0`, 16 × 16 cells (38.4 × 38.4 m), fixed seed 647031,
+- **PvP:** map `backrooms-level-0`, 16 × 16 cells (51.2 × 51.2 m since the 2026-11-03 scale; 38.4 m before), fixed seed 647031,
   selectable and in Random rotation. Eight graph-spread spawn cells; no pits in PvP.
 - **Expedition:** area `exp-backrooms`, map `expedition-backrooms-level-0`, 40 × 40
-  cells (96 × 96 m). The deployment pool rolls three destinations from the three
+  cells (128 × 128 m since the 2026-11-03 scale; 96 m before). The deployment pool rolls three destinations from the three
   authored interiors plus Level 0. Seed is the ticket's reconstructed `worldSeed`
   XOR `0xbac00001`, interpreted as a signed 32-bit integer. No peer chooses geometry.
 - **Layout:** deterministic enclosed rooms and corridors from the shared topology, with
   seeded production placement. Pillars and optional pit cells are accepted only if every
-  remaining navigable cell stays connected. Short walls form centred 1 m doorways;
+  remaining navigable cell stays connected. Short walls form centred 1.4 m doorways;
   pilot/enemy navigation uses these and full-width openings. Entry room holds eight party slots.
-- **Physics/nav:** solid ceiling at 2.7 m; full/short wall boxes, slim pillar
+- **Physics/nav:** solid ceiling at 4.0 m (2.7 m before 2026-11-03); full/short wall boxes, slim pillar
   boxes, floors and five-metre pit shafts. The kill plane is at -4 m. Cell-centre nav
   links exclude pillars and pits. Existing Expedition closure boxes supply the
   return-door collider and follow the replicated encounter state. Navigation excludes that doorway and is repaired to remain connected while it is closed. No new door art
   contract. Small-enemy and pilot routes are checked; Hulks are excluded because
-  the 2.7 m ceiling cannot accommodate them.
+  the 2.7 m ceiling cannot accommodate them (decided at 2.7 m; the ceiling is now 4.0 m, Astra to revisit).
 - **Encounter:** existing 36-kill Expedition quota, shambler/runner/spitter/brute
   population, then reach the distant exit cache. Authority requires a living,
   connected pilot in range with line of sight and no load in progress. Completion

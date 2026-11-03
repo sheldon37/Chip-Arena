@@ -12,9 +12,11 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class BackroomsLayout
     {
-        /// <summary>Level 0's proportions (the owner's reference photo, 2026-11-02): 8 ft cells, a 9 ft drop ceiling, thin
-        /// partition walls, 1 m doorways cut to the ceiling.</summary>
-        public const float Cell=2.4f,Height=2.7f,Thickness=.14f,Doorway=1.0f,PillarSize=.5f;
+        /// <summary>Level 0's proportions: the owner's reference photo (2026-11-02; thin partition walls to a drop ceiling,
+        /// doorways cut to it) scaled up to the game's pilots (owner 2026-11-03: "we seem like giants currently"): a 1.8 m pilot
+        /// jumps 1.57 m and its camera rides 4.4 m behind, so the ceiling clears a jump at 4 m and the cells (3.2 m, a corridor's
+        /// width) and doorways (1.4 m) widen by about a third. Collision and nav are built from these (NativeBackroomsGenerator).</summary>
+        public const float Cell=3.2f,Height=4.0f,Thickness=.18f,Doorway=1.4f,PillarSize=.6f;
         public const byte Carpet=0,Pit=2;
         public const byte Open=0,Wall=1,Short=2;
         public const byte NoPillar=0,SmallPillar=1;
@@ -186,7 +188,7 @@ namespace ChipArena.UnityConversion
         /// its tiles line up with the fixtures.</summary>
         public const float CarpetRepeat=1.82f,WallpaperRepeat=1.5f,TrimRepeat=1f;
         /// <summary>The baseboard's height and how far it stands off the wall; a fixture's size (along x, along z) and its drop.</summary>
-        public const float TrimHeight=.09f,TrimOut=.012f,FixtureLength=1.2f,FixtureWidth=.3f,FixtureDrop=.012f;
+        public const float TrimHeight=.12f,TrimOut=.014f,FixtureLength=1.6f,FixtureWidth=.4f,FixtureDrop=.012f;
         public sealed class Part{public readonly List<Vector3> Positions=new List<Vector3>(),Normals=new List<Vector3>();public readonly List<Vector2> Uv=new List<Vector2>();public readonly List<int> Indices=new List<int>();public void Clear(){Positions.Clear();Normals.Clear();Uv.Clear();Indices.Clear();}}
         public readonly Part[] Parts=new Part[(int)Surface.Count];
         /// <summary>The flickering fixtures of the block (centre, circuit, cell): drawn one by one at their level.</summary>

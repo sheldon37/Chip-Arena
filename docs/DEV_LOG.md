@@ -1,3 +1,27 @@
+## 2026-11-03 — Claude: Level 0 scaled up round the pilots
+
+- **Branch:** `claude/backrooms-scale`, base shared `1b0c5ce1`.
+- **Task:** owner: "We need to make the backrooms walls and ceiling higher, we seem like giants currently lol".
+- **Cause:** Level 0 used the photo's real sizes: 2.4 m cells, a 2.7 m ceiling, 1 m doorways. A 1.8 m pilot jumps 1.57 m
+  (its head passed the ceiling), and the third-person camera rides 4.4 m behind (pushed in against 2.4 m corridors).
+- **Change** (`Core/NativeBackrooms.cs`, `BackroomsLayout` and `BackroomsMesh`):
+  - cells 3.2 m, ceiling 4.0 m, walls 0.18 m, doorways 1.4 m, pillars 0.6 m;
+  - fixtures 1.6 × 0.4 m, baseboards 0.12 m; the textures keep their repeats.
+  - The preview draws 56 m round the eye; lamps reach 8 m.
+  - The layout's identity version `NativeBackroomsGenerator.Version` is now `backrooms-level0-4` (Astra's file, that token
+    only), so builds with the old sizes refuse to share a game.
+- **Rules impact** (Astra please review): collision, nav and the return door are built from these constants and follow.
+  - The PvP map grows to 51.2 m a side and the Expedition level to 128 m (cell counts unchanged); trim the counts if the pace
+    suffers.
+  - The Hulk exclusion was decided at 2.7 m; the ceiling is now 4.0 m.
+  - Not changed: hit timing, damage, movement speeds, network data beyond the version.
+- **Checks:**
+  - `--backrooms` (30), `--backrooms-rules` (Astra's, 164: collision routes, spawns, identity), `--poolrooms`;
+  - Unity captures of the live `backrooms-level-0` from the pilot's camera and at eye height, before and after;
+  - full suite: see below.
+- **Next:** owner check in the Windows build.
+
+
 ## 2026-11-03 — Astra: playable Poolrooms and grounded water rules
 
 - **Branch/base:** `codex/poolrooms-rules`, shared `1b0c5ce10fff0db18b98e615c915bf7c43c4c48e`
