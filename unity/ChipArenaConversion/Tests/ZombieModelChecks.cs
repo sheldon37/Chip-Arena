@@ -18,7 +18,7 @@ internal static class ZombieModelChecks
     private static int Picks(){int sink=0;for(int i=0;i<4000;i++){var v=NativeZombieLooks.Of(Kinds[i%Kinds.Length],10000+i);sink+=v.Female?1:0;}return sink;}
     public static void Run(string root)
     {
-        GearScript=File.ReadAllText(Path.Combine(root,"tools/gear/station_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/backrooms_gear.py"));
+        GearScript=File.ReadAllText(Path.Combine(root,"tools/gear/station_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/backrooms_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/hound_gear.py"));
         Table();Pick();Shapes();Sac();Decay();Mutation();Sources(root);
         Console.WriteLine("PASS zombie models: "+count+" checks (20 variants over five kinds, two male and two female each; wardrobe fallbacks; silhouettes by build; the pick by id; the shape names; the shader's zombie look; the horde's draw, death, corpses and wounds on the model; presentation only)");
     }
@@ -39,21 +39,37 @@ internal static class ZombieModelChecks
             Check(mine.All(v=>v.Gear.Length>0&&v.Gear.All(g=>GearScript.Contains("('"+g+"',")))&&mine.All(v=>v.Tape==(local==NativeStationKinds.Linesman)&&v.Fused==(local==NativeStationKinds.Pileup)),
                 "station kind "+local+": its kit (gear the Blender script builds, the Linesman's tape, the Pileup's fused commuter)");
         }
-        // The Backrooms' entities (docs/EXPEDITION-ENEMY-REWORK.md section 4): the three humanoids live with their kit, the Hound a
-        // draft (it runs on two legs until its gait on all fours); the Tiler and the Smiler have no variants (not people: the
-        // Smiler's apparition, owner 2026-11-03: below).
+        // The Backrooms' entities (docs/EXPEDITION-ENEMY-REWORK.md section 4): the four on the model live with their kit, the Hound a
+        // beast on all fours (owner 2026-11-03: its own doglike skull and jaw, a starved body); the Tiler and the Smiler have no
+        // variants (not people: the Smiler's apparition, owner 2026-11-03: below).
         string[] kit={"faceling","hound","drowned","lifeguard"};
         foreach(var name in kit)
         {
             int kind=NativeHordeKinds.Resolve(name);var mine=all.Where(v=>v.Kind==kind).ToArray();
             Check(NativeHordeZones.Of(kind)?.Id==name&&mine.Length==NativeZombieLooks.Variants&&mine.Count(v=>v.Female)==2&&mine.All(v=>v.Id.StartsWith(name+"-",StringComparison.Ordinal)),name+": four variants, two male and two female");
-            Check(NativeZombieLooks.ZoneLive.Contains(kind)==(name!="hound"),name+(name=="hound"?": a draft until it runs on all fours":": on the model in shipped builds after its review"));
+            Check(NativeZombieLooks.ZoneLive.Contains(kind),name+": on the model in shipped builds after its review");
             Check(mine.All(v=>v.Gear.All(g=>GearScript.Contains("('"+g+"',"))&&(v.Carry==null||GearScript.Contains("('"+v.Carry+"',"))),name+": its gear is the Blender scripts'");
-            Check(mine.All(v=>v.Faceless==(name=="faceling")&&(v.Stripes>=0)==(name=="drowned")&&(v.Carry!=null)==(name=="lifeguard")&&(v.Upright>0)==(name!="hound")),name+": its kit (the blank face, the stripes, the hook, its stance)");
+            Check(mine.All(v=>v.Faceless==(name=="faceling")&&(v.Stripes>=0)==(name=="drowned")&&(v.Carry!=null)==(name=="lifeguard")&&(v.Upright>0)==(name!="hound")
+                &&v.Beast==(name=="hound")&&(v.Ribs>0)==(name=="hound")),name+": its kit (the blank face, the stripes, the hook, its stance, the beast's head and ribs)");
         }
         Check(NativeZombieLooks.Of(NativeHordeKinds.Resolve("tiler"),1)==null,"the Tiler keeps its own body (no variants)");
         Check(!NativeZombieLooks.Has(NativeSmilerLook.Kind)&&!NativeZombieLooks.Modelled(NativeSmilerLook.Kind)&&!GearScript.Contains("'smiler-"),"the Smiler is no person: no variants, no gear (its own apparition)");
-        Check(NativeZombieLooks.Kitted&&all.Where(v=>v.Kind<NativeHordeKinds.Count).All(v=>v.Gear.Length==0&&!v.Tape&&!v.Fused&&!v.Faceless&&v.Stripes<0&&v.Carry==null&&v.Upright==0),"the base kinds wear no kit");
+        Check(NativeZombieLooks.Kitted&&all.Where(v=>v.Kind<NativeHordeKinds.Count).All(v=>v.Gear.Length==0&&!v.Tape&&!v.Fused&&!v.Faceless&&v.Stripes<0&&v.Carry==null&&v.Upright==0&&!v.Beast&&v.Ribs==0),"the base kinds wear no kit");
+        // The Hound (owner 2026-11-03, a reference, then "more monster like", "more doglike"): bare, a beast's head (the gear's skull
+        // and jaw), long arms; on all fours (the gait's quadruped, its own gallop), its pounce's crouch, leap and landing on the
+        // authority's .35 s and .85 s, its pin's bites on its .3 s beats, its jaw hanging and snapping.
+        {
+            int houndKind=NativeHordeKinds.Resolve("hound");var hv=all.Where(v=>v.Kind==houndKind).ToArray();
+            Check(hv.All(v=>v.Pieces[0]==NativeZombieLooks.None&&v.Pieces[1]==NativeZombieLooks.None&&v.Pieces[2]==NativeZombieLooks.None&&v.Pieces[4]==NativeZombieLooks.None&&v.Gear.SequenceEqual(new[]{"hound-skull","hound-jaw"})&&v.Build.Reach>1.4f),
+                "the Hound: bare, its skull and jaw the gear's, its arms near half again as long");
+            Check(NativeBackroomsMotion.Quad(houndKind)&&!NativeBackroomsMotion.Quad(NativeHordeKinds.Runner)&&!NativeBackroomsMotion.Quad(NativeHordeKinds.Resolve("faceling")),"only the Hound runs on all fours");
+            NativeHordeGait.HoundPounce(.2f,out float c0,out float a0,out float l0);NativeHordeGait.HoundPounce(.6f,out float c1,out float a1,out float l1);NativeHordeGait.HoundPounce(1.0f,out float c2,out float a2,out float l2);NativeHordeGait.HoundPounce(2.5f,out float c3,out float a3,out float l3);
+            Check(c0>.5f&&a0==0&&a1==1&&c1==0&&a2==0&&l2>.9f&&c3+a3+l3==0&&NativeHordeGait.HoundCrouch==.35f&&NativeHordeGait.HoundLand==.85f,"the pounce: coiled through the crouch, in the air through the leap, landed low after contact, then gone");
+            float j0=NativeBackroomsMotion.HoundJaw(1,0,float.NaN),j1=NativeBackroomsMotion.HoundJaw(1,0,.28f),j2=NativeBackroomsMotion.HoundJaw(1,0,.32f);
+            Check(j0>.2f&&j0<.3f&&j1>.9f&&j2<.2f,"its jaw hangs open, wide before a bite and snapped shut on it");
+            var pp=new CapturedRig.Pose();pp.World();float pin=NativeBackroomsMotion.HoundPin(pp,.3f,new System.Numerics.Vector3(0,1.1f,.9f));pp.World();
+            Check(pin>.9f&&pp.WorldPosition.All(p=>float.IsFinite(p.X)&&float.IsFinite(p.Y)&&float.IsFinite(p.Z))&&NativeBackroomsMotion.HoundPin(pp,NativeBackroomsMotion.PinHold+.4f,System.Numerics.Vector3.UnitZ)==0,"its pin rears onto the pilot, finite, and hands back after the hold");
+        }
         // Their moves over the gait (Core NativeBackroomsMotion): each holds the pose finite and hands it back after its time.
         var pose=new CapturedRig.Pose();pose.World();
         NativeBackroomsMotion.Dormant(pose,7,1.3f);float w=NativeBackroomsMotion.Wake(pose,.1f,new System.Numerics.Vector3(1,0,.2f));NativeBackroomsMotion.HowlPose(pose,.4f);
@@ -95,7 +111,8 @@ internal static class ZombieModelChecks
             {
                 var c=NativeZombieLooks.Candidates(v.Pieces[s]);string last=c.Last();
                 Check(c.Length>0,v.Id+": a candidate in slot "+NativeLook.Slots[s]);
-                Check(last==NativeZombieLooks.None&&(s==0||s==1&&v.Mutant)||NativeLook.Ids[s].Contains(last)&&!NativeLook.DevOnly(last),v.Id+": slot "+NativeLook.Slots[s]+" falls back on one of today's pieces (every bake dresses it): "+last);
+                // (Bare: the hair, a mutant's torn top, and a beast's every slot but its hands: the Hound is naked, the body's own skin.)
+                Check(last==NativeZombieLooks.None&&(s==0||s==1&&v.Mutant||v.Beast&&s!=3)||NativeLook.Ids[s].Contains(last)&&!NativeLook.DevOnly(last),v.Id+": slot "+NativeLook.Slots[s]+" falls back on one of today's pieces (every bake dresses it): "+last);
                 foreach(var id in c.Take(c.Length-1))Check(id.StartsWith(NativeZombieLooks.Own,StringComparison.Ordinal)&&!NativeLook.Ids.Any(ids=>ids.Contains(id)),v.Id+": a preferred piece is the zombies' own, never a Locker id: "+id);
                 Check(v.Colours[s]==-1||v.Colours[s]>=0&&v.Colours[s]<=0xffffff,v.Id+": colour in range");
             }
@@ -104,6 +121,8 @@ internal static class ZombieModelChecks
             var b=v.Build;
             // (A mutant, the Hulk's, swells past a person's: its limbs to twice, its head small; its right arm grown past the left.)
             if(v.Mutant)Check(v.Kind==NativeHordeKinds.Hulk&&new[]{b.Arm,b.Forearm,b.Thigh,b.Calf,b.Hand}.All(g=>g>=1.2f&&g<=2.1f)&&b.Head>=.8f&&b.Head<.9f&&b.Shoulder>=1.2f&&b.Shoulder<=1.5f&&b.Right>1&&b.Right<=1.2f&&b.Neck>=.4f&&b.Neck<=.8f&&b.Reach>1&&b.Reach<=1.35f,v.Id+": a mutant's build, swollen within the rig's limits (the head sunk, the arms long)");
+            // (A beast, the Hound, starves within them: thin limbs, big hands, a long neck and arms near half again as long.)
+            else if(v.Beast)Check(new[]{b.Arm,b.Forearm,b.Thigh,b.Calf}.All(g=>g>=.6f&&g<=.9f)&&b.Hand>=1.1f&&b.Hand<=1.4f&&b.Head>=.9f&&b.Head<=1.1f&&b.Shoulder>=.85f&&b.Shoulder<=1&&b.Right==1&&b.Neck>=1.1f&&b.Neck<=1.4f&&b.Reach>=1.3f&&b.Reach<=1.5f,v.Id+": a beast's starved build within the rig's limits");
             else Check(new[]{b.Arm,b.Forearm,b.Thigh,b.Calf,b.Hand}.All(g=>g>=.8f&&g<=1.6f)&&b.Head>=.9f&&b.Head<=1.1f&&b.Shoulder>=.9f&&b.Shoulder<=1.2f&&b.Right==1&&b.Neck==1&&b.Reach==1,v.Id+": the build within the rig's limits");
             Check(v.Grime>=0&&v.Grime<=1&&v.Tears>=0&&v.Tears<=.62f&&v.Rot>=0&&v.Rot<=1,v.Id+": wear within 0..1 (torn, not shredded: the owner's \"torn clothes\", 2026-10-29)");
             // Pale skin and blank eyes: every zombie's skin is greyed (low saturation), its eyes near white.
@@ -292,8 +311,10 @@ internal static class ZombieModelChecks
         string look=fx.Substring(fx.IndexOf("float3 ZombieLook(float3 c,float2 uv,float band,float stripe)",StringComparison.Ordinal));look=look.Substring(0,look.IndexOf("\n}\n",StringComparison.Ordinal));
         Check(look.Contains("if(_ZombieEye.w>0.5)return _ZombieEye.rgb;")&&look.Contains("if(_ZombieTint.w<=0.0&&_ZombieWear.x+_ZombieWear.y+_ZombieWear.z<=0.0)return c;"),"the zombie look: blank eyes, and nothing changed with it unset (every pilot)");
         Check(Regex.Matches(toon,@"_Zombie(Tint|Wear|Eye|Skin)\(""[^""]*"",Vector\)=\(0,0,0,0\)").Count==4,"its four properties off by default");
-        Check(toon.Contains("if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band,ZombieStripe(i.rest));")&&toon.Contains("albedo=_VertexAlbedo>0?i.color.rgb:ZombieLook(albedo,i.uv,ZombieBand(i.rest),ZombieStripe(i.rest));"),
-            "the surface and its outline take the zombie look with its tape (never a cut's cap or the gear, in their vertex colours)");
+        Check(toon.Contains("if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band,ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv_Texture2D);")&&toon.Contains("albedo=_VertexAlbedo>0?i.color.rgb:ZombieLook(albedo,i.uv,ZombieBand(i.rest),ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv);"),
+            "the surface and its outline take the zombie look with its tape and a starved body's ribs (never a cut's cap or the gear, in their vertex colours)");
+        Check(fx.Contains("float ZombieLean(float3 rest,float2 uv)")&&fx.Contains("if(_ZombieRibs.x>0.0)")&&fx.Contains("if(_ZombieRibs.y>0.0)")&&toon.Contains("_ZombieRibs(\"A starved zombie's creases, ribs and spine: age, ribs, the ribs' rest heights\",Vector)=(0,0,0,0)"),
+            "a starved body's creases, ribs and spine: off unless set (every pilot and every other zombie)");
         Check(fx.Contains("float ZombieBand(float3 rest)")&&fx.Contains("if(band>0.0)c=lerp(c,ZombieTapeColour(k),band);")&&fx.Contains("float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0,0.0);}")&&fx.Contains("if(stripe>0.0)c=lerp(c,_ZombieStripeTint.rgb*lerp(0.72,1.05,saturate(k)),stripe);"),
             "the tape: rings in the rest space, silver over the piece's colour under its wear; other callers untaped");
         Check(look.Contains("edge=1.0-0.45*_ZombieWear.y")&&look.Contains("ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3"),"torn patches on the part's own texture coordinates (they stay on the cloth), a few at the table's tears");

@@ -16,6 +16,9 @@ namespace ChipArena.UnityConversion
     // (BackroomsAttack in the presentation). Presentation only: nothing here is read by a rule, a hit volume or the network.
     public static class NativeBackroomsMotion
     {
+        /// <summary>The Hound's kind: it runs on all fours (the gait's quadruped).</summary>
+        public static readonly int HoundKind=NativeHordeKinds.Resolve("hound");
+        public static bool Quad(int kind)=>kind>=0&&kind==HoundKind;
         /// <summary>The Faceling's wake tell (the authority's .45 s) and how long its head stays ahead of the body after it.</summary>
         public const float WakeTell=.45f,WakeSettle=.35f;
         /// <summary>The Hound's howl, the Lifeguard's whistle wind-up and hook wind-up and drag (the authority's).</summary>
@@ -74,6 +77,27 @@ namespace ChipArena.UnityConversion
             Reach(p,false,at,new Vector3(-.8f,-.3f,-.4f),k);
             float lean=age<HookWindup?-.12f*S(age/HookWindup):age<HookWindup+HookDrag?.18f:.18f*(1-S((age-HookWindup-HookDrag)/.4f));
             Bend(p,CapturedRig.Spine,lean,0,0);p.World();return k;
+        }
+        /// <summary>The Hound's pin (the authority's: held .9 s from the grab, bites at .3 and .6 s after the pounce's own): its bites'
+        /// times from the grab, how long it holds.</summary>
+        public static readonly float[] HoundBites={0,.3f,.6f};public const float PinHold=.9f;
+        /// <summary>The Hound on the pilot it pinned, `age` s after the grab, at `target` (the pilot's chest, rig frame): its front reared
+        /// up onto them, its forelimbs on their chest, its head driving in on each bite; its weight.</summary>
+        public static float HoundPin(CapturedRig.Pose p,float age,Vector3 target)
+        {
+            if(!(age>=0)||age>PinHold+.3f)return 0;float k=S(age/.12f)*(1-S((age-PinHold)/.3f));if(k<=0)return 0;
+            float bite=0;foreach(float b in HoundBites){float x=(age-b)/.07f;bite=Math.Max(bite,(float)Math.Exp(-x*x));}
+            Bend(p,CapturedRig.Spine,-.25f*k,0,0);Bend(p,CapturedRig.Chest,-.45f*k,0,0);p.World();
+            for(int i=0;i<2;i++){bool left=i==0;var at=target+new Vector3(left?.16f:-.16f,-.05f,-.12f);Reach(p,left,at,new Vector3(left?.6f:-.6f,-.3f,-.7f),k);}
+            Bend(p,CapturedRig.Neck,(.3f+.35f*bite)*k,0,0);Bend(p,CapturedRig.Head,(.15f+.3f*bite)*k,0,0);p.World();return k;
+        }
+        /// <summary>The Hound's jaw (0..1): hanging open, panting as it runs (`running` 0..1), wide before each bite of a pin and snapped
+        /// shut on it (`pinAge` s after the grab, NaN none).</summary>
+        public static float HoundJaw(float time,float running,float pinAge)
+        {
+            float jaw=.26f+.14f*running*(.5f+.5f*(float)Math.Sin(time*13));
+            if(pinAge>=0&&pinAge<PinHold+.2f)foreach(float b in HoundBites){float x=pinAge-b;if(x>-.22f&&x<0)jaw=Math.Max(jaw,S((x+.22f)/.16f));else if(x>=0&&x<.12f)jaw=Math.Min(jaw,.05f+.5f*S(x/.12f));}
+            return jaw;
         }
         /// <summary>How far the Drowned's body sinks now: all the way while submerged, rising over Surface after `surfaceAge`.</summary>
         public static float Sink(bool submerged,float surfaceAge)

@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
             Kind("tiler","Tiler",true,1,23,3,5.5f,5.5f,2.5f,.4f,1.2f,.65f,.3f),
             Kind("lifeguard","Lifeguard",true,2,720,15,1.4f,2.2f,2.6f,.5f,2,2.2f,.42f)};
         private static HordeZoneKind Kind(string id,string name,bool pool,int body,float hp,float damage,float walk,float run,float reach,float hit,float cycle,float height,float radius)
-            =>new HordeZoneKind{Shipped=true,Id=id,Name=name,Zone=pool?NativePoolroomsGenerator.InstanceMap:NativeBackroomsGenerator.InstanceMap,Body=body,Height=height,Radius=radius,Scale=(id=="lifeguard"?2.6f:height)/1.7f,Mass=body==2?2:1,Attack=NativeHordeKinds.Attack.Swipe,
+            =>new HordeZoneKind{Shipped=true,Id=id,Name=name,Zone=pool?NativePoolroomsGenerator.InstanceMap:NativeBackroomsGenerator.InstanceMap,Body=body,Height=height,Radius=radius,Scale=(id=="lifeguard"?2.6f:id=="hound"?1.7f:height)/1.7f,Mass=body==2?2:1,Attack=NativeHordeKinds.Attack.Swipe,
                 Proposed=new PveAddStats{id=id,attack="swipe",hp=hp,damage=damage,walk=walk,run=run,reach=reach,startRange=reach-.25f,hit=hit,cycle=cycle,lunge=.3f,impulse=60,reward=body==2?100:20,limbFrac=.45f,headFrac=.5f,stagger=.4f}};
         public static HordeZoneKind[] For(string map)=>Kinds.Where(k=>k.Zone==map).ToArray();
         public static int Wave(string map,int progress,int target)=>Pool(map)?progress<target*.15?1:progress<target*.4?2:progress<target*.85?3:4:NativeZoneCombat.Wave(progress,target);

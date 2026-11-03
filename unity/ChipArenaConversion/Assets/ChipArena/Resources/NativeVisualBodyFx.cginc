@@ -129,6 +129,27 @@ float ZombieStripe(float3 rest)
  float f=frac(rest.y/_ZombieStripe.x),e=0.003/_ZombieStripe.x;
  return smoothstep(0.0,e,f)*(1.0-smoothstep(_ZombieStripe.y-e,_ZombieStripe.y,f));
 }
+// A starved body's (the Hound's: Core NativeZombieLooks.Variant.Ribs), per renderer, a shade over the zombie look: _ZombieRibs x the
+// age creases on a head (the pack's age mask, _ZombieAge, in the head's UVs: low red where a crease lies), y the ribs and the
+// spine on a body over the rest space (z..w the ribs' rest heights): six grooves down each flank falling toward the front with a
+// lit ridge over each, the spine's knuckles down the back. Unset (zeros), 1.
+sampler2D _ZombieAge;float4 _ZombieRibs;
+float ZombieLean(float3 rest,float2 uv)
+{
+ float k=1.0;
+ if(_ZombieRibs.x>0.0){float a=saturate((1.0-tex2D(_ZombieAge,uv).r)*1.8);k*=1.0-_ZombieRibs.x*a*0.42;}
+ if(_ZombieRibs.y>0.0)
+ {
+  float ax=abs(rest.x),flank=smoothstep(0.04,0.08,ax)*(1.0-smoothstep(0.16,0.2,ax));
+  float span=smoothstep(_ZombieRibs.z-0.03,_ZombieRibs.z,rest.y)*(1.0-smoothstep(_ZombieRibs.w-0.02,_ZombieRibs.w+0.02,rest.y));
+  float f=frac((rest.y+0.3*rest.z)/0.032),g=(f-0.55)/0.11,h=(f-0.25)/0.13;
+  k*=1.0-_ZombieRibs.y*flank*span*(0.32*exp(-g*g)-0.1*exp(-h*h));
+  float spine=(1.0-smoothstep(0.012,0.028,ax))*smoothstep(-0.03,-0.08,rest.z)*smoothstep(0.92,0.98,rest.y)*(1.0-smoothstep(1.42,1.48,rest.y));
+  float v=frac(rest.y/0.027),n=(v-0.5)/0.16;
+  k*=1.0-_ZombieRibs.y*spine*(0.3*exp(-n*n)-0.08);
+ }
+ return k;
+}
 float3 ZombieLook(float3 c,float2 uv,float band,float stripe)
 {
  if(_ZombieEye.w>0.5)return _ZombieEye.rgb;

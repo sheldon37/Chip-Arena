@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
             // The model bone of each game joint and its rest scale (a lost part's bone collapses).
             public readonly Transform[] Joint=new Transform[CapturedRig.Bones.Length];public readonly Vector3[] JointScale=new Vector3[CapturedRig.Bones.Length];
             public bool Dying;
+            // A beast's jaw (Variant.Beast: the gear's, ZombieBeastJaw), found once.
+            public Transform BeastJaw;public bool BeastJawLooked;
             // Whether it crawls (its legs gone: the model's pelvis at the gait's height, NativeZombiePosture.Stance), how far its gait
             // sank its hips and its takes crouch them this pose, and how much of it a blow or a reel owns (NativeHordeGait Sunk,
             // Crouch, Busy).
@@ -115,12 +117,12 @@ namespace ChipArena.UnityConversion
             long poseAt=System.Diagnostics.Stopwatch.GetTimestamp();
             // The gait's pose fitted for the model's body (Core/NativeZombiePosture: the hunch up the back, the arms from their
             // shoulders, the hips at the game's distance and standing on the model's legs); the rig keeps the gait's own.
-            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose);NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));if(z.Variant.Carry!=null&&!z.Dying)NativeZombiePosture.StaffCarry(pose,(1-z.Busy)*(1-BackroomsHold(z.Id)));NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
+            minionPose.World();var pose=zombieFitPose;NativeZombiePosture.Fit(minionPose,pose,!NativeBackroomsMotion.Quad(z.Kind));NativeZombiePosture.Upright(pose,z.Variant.Upright*(1-z.Busy));if(z.Variant.Carry!=null&&!z.Dying)NativeZombiePosture.StaffCarry(pose,(1-z.Busy)*(1-BackroomsHold(z.Id)));NativeZombiePosture.Stance(z.Body.Binding.State,z.Kind,z.Crawl,z.Sunk,z.Crouch,z.Busy,z.Stride);
             double now=Time.unscaledTimeAsDouble;z.Body.Binding.State.Dt=(float)Math.Max(1e-4,Math.Min(.1,now-z.PoseTime));z.PoseTime=now;
             // (The Hulk's hands are fists, clenched hardest through a blow: owner 2026-10-30, "the punch is open handed still".)
             z.Body.Binding.Apply(pose,ZombieGrasp(z),planted,airborne);
             {var of=z.Body.Binding.Rig.Of;var at=z.Body.Binding.State.Position;for(int b=0;b<z.Shift.Length;b++)z.Shift[b]=of[b]<0?NVector3.Zero:at[of[b]]-minionPose.WorldPosition[b];}
-            ZombieFace(z,flash,swell,z.PosedFrame<Time.frameCount-1);ZombieFusedSway(z);
+            ZombieFace(z,flash,swell,z.PosedFrame<Time.frameCount-1);ZombieFusedSway(z);ZombieBeastJaw(z);
             if(z.Variant.Carry!=null){z.Body.Binding.WeaponFrame(pose,out var cp,out var cq);z.Carry=Matrix4x4.TRS(cp,cq,Vector3.one);z.CarryKnown=true;}
             ZombieCarry(z,t,flash);
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
@@ -302,7 +304,7 @@ namespace ChipArena.UnityConversion
             root.transform.SetParent(null,false);root.SetActive(true);root.name="Zombie model "+v.Id;
             var skeleton=root.transform.Find("VisualSkeleton");
             if(skeleton==null){Destroy(root);zombieModelsFailed=true;Debug.LogWarning("Zombie models: "+VisualBodyResource+" has no VisualSkeleton; zombies draw voxel.");return null;}
-            var worn=ZombieDress(root,v);float lift=ZombieLift(worn);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
+            ZombieBeastBody(root,v.Beast);var worn=ZombieDress(root,v);float lift=ZombieLift(worn);if(lift!=0)skeleton.localPosition+=new Vector3(0,lift,0);
             ZombieBuild(skeleton,v.Build);
             var body=new VisualBody{Root=root,Binding=new NativeVisualRigBinding(root.transform,skeleton),Block=new MaterialPropertyBlock(),Look=v.Id,Lift=lift};
             body.All=VisualWorn(root);body.Cloth=Array.Empty<Renderer>();body.Weapons=VisualWeaponsOf(root.transform);
@@ -311,6 +313,7 @@ namespace ChipArena.UnityConversion
             if(v.Decay!=null&&v.Decay.Length>0)body.All=ZombieDecayMake(root,skeleton,v,body.All);
             if(v.Tape){ZombieRestWrite(root,body.All);ZombieTape(worn[1],body.All);}
             if(v.Stripes>=0){ZombieRestWrite(root,body.All);ZombieStripes(v,worn,body.All);}
+            if(v.Ribs>0)ZombieRestWrite(root,body.All);
             if(v.Gear.Length>0)body.All=ZombieGear(root,skeleton,v,body.All);
             foreach(var r in body.All){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer s)s.updateWhenOffscreen=false;}
             var z=new ZombieBody{Body=body,Variant=v,Sac=sac,Growing=v.Mutant};
@@ -411,7 +414,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!r.gameObject.activeSelf)continue;
                 if(r is SkinnedMeshRenderer skin)ZombieShapes(skin,v.Shapes);
-                if(VisualSkinPart(r)){VisualSkinToneOne(r,v.Skin);ZombieWearOn(r,0,0,v.Rot,seed,skinColour,0);continue;}
+                if(VisualSkinPart(r)){VisualSkinToneOne(r,v.Skin);ZombieWearOn(r,0,0,v.Rot,seed,skinColour,0);if(v.Ribs>0)ZombieLeanOn(r,v.Ribs);continue;}
                 if(ZombieEyePart(r)){var e=WearColor(v.Eyes);if(linear)e=e.linear;zombieBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(zombieBlock);zombieBlock.SetVector(ZombieEyeId,new Vector4(e.r,e.g,e.b,1.35f));zombieBlock.SetFloat(UseOutlineId,0);r.SetPropertyBlock(zombieBlock);continue;}
                 int slot=ZombieSlotOf(worn,r.name);if(slot<0)continue;
                 if(v.Colours[slot]>=0)ZombieTintOn(r,v.Colours[slot],linear);
@@ -419,7 +422,73 @@ namespace ChipArena.UnityConversion
             }
             // No face (Variant.Faceless): the eyes, brows, lashes and teeth left off; the gear covers the face (the Faceling's mask).
             if(v.Faceless)foreach(var r in lookNamed.Values)if(ZombieFacePart(r.name))r.gameObject.SetActive(false);
+            // A beast's head (Variant.Beast): the pack's head and face off; its gear's skull and jaw are the head (ZombieGear).
+            if(v.Beast)foreach(var r in lookNamed.Values)if(r.name.StartsWith("Head.",StringComparison.Ordinal)||ZombieFacePart(r.name))r.gameObject.SetActive(false);
             lookNamed.Clear();return worn;
+        }
+        // A starved body (Variant.Ribs, the Hound's): the head's age creases (the pack's age mask, kept local: Resources
+        // ChipArenaZombieAge, none without it) and the body's ribs and spine (the shader's ZombieLean).
+        private static readonly int ZombieAgeId=Shader.PropertyToID("_ZombieAge"),ZombieRibsId=Shader.PropertyToID("_ZombieRibs");
+        private static Texture2D zombieAge;private static bool zombieAgeTried;
+        public const float ZombieRibsLow=1.02f,ZombieRibsHigh=1.33f;
+        private static void ZombieLeanOn(Renderer r,float k)
+        {
+            if(!zombieAgeTried){zombieAgeTried=true;zombieAge=Resources.Load<Texture2D>("ChipArenaZombieAge");}
+            bool head=r.name.StartsWith("Head.",StringComparison.Ordinal),body=r.name.StartsWith("Body.",StringComparison.Ordinal);if(!head&&!body)return;
+            zombieBlock??=new MaterialPropertyBlock();r.GetPropertyBlock(zombieBlock);
+            if(head&&zombieAge!=null)zombieBlock.SetTexture(ZombieAgeId,zombieAge);
+            zombieBlock.SetVector(ZombieRibsId,new Vector4(head&&zombieAge!=null?k:0,body?k:0,ZombieRibsLow,ZombieRibsHigh));r.SetPropertyBlock(zombieBlock);
+        }
+        // A beast's body (Variant.Beast: the Hound's): its body parts' meshes swapped for copies carrying the sculpted places and
+        // normals (tools/gear/hound_body.py: the local bank Resources/ChipArenaHoundBody, kept local like the pack it is made from;
+        // the pack's body without it), their skinning and blend shapes as they were; any other variant on a pooled model gets the
+        // pack's meshes back. Once per mesh, shared by every Hound.
+        private static Dictionary<string,(Vector3[] pos,Vector3[] nor)> beastBody;private static bool beastBodyTried;
+        private static readonly Dictionary<Mesh,Mesh> beastShaped=new Dictionary<Mesh,Mesh>(),beastSource=new Dictionary<Mesh,Mesh>();
+        private static void ZombieBeastBody(GameObject root,bool on)
+        {
+            foreach(var s in root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var m=s.sharedMesh;if(m==null)continue;
+                if(!on){if(beastSource.TryGetValue(m,out var src))s.sharedMesh=src;continue;}
+                if(beastSource.ContainsKey(m))continue;
+                if(!beastShaped.TryGetValue(m,out var shaped)){shaped=ZombieBeastShape(s.name,m);beastShaped[m]=shaped;if(shaped!=null)beastSource[shaped]=m;}
+                if(shaped!=null)s.sharedMesh=shaped;
+            }
+        }
+        private static Mesh ZombieBeastShape(string name,Mesh m)
+        {
+            if(!beastBodyTried){beastBodyTried=true;beastBody=ZombieBeastLoad();}
+            if(beastBody==null||!beastBody.TryGetValue(name,out var d)||d.pos.Length!=m.vertexCount||!m.isReadable)return null;
+            var c=Instantiate(m);c.name=m.name+" (hound)";c.vertices=d.pos;c.normals=d.nor;c.RecalculateBounds();return c;
+        }
+        private static Dictionary<string,(Vector3[] pos,Vector3[] nor)> ZombieBeastLoad()
+        {
+            var asset=Resources.Load<TextAsset>("ChipArenaHoundBody");if(asset==null)return null;
+            try
+            {
+                var b=asset.bytes;if(b.Length<12||b[0]!='H'||b[1]!='B'||b[2]!='D'||b[3]!='Y'||BitConverter.ToInt32(b,4)!=1)return null;
+                int count=BitConverter.ToInt32(b,8),at=12;var map=new Dictionary<string,(Vector3[] pos,Vector3[] nor)>();
+                for(int k=0;k<count;k++)
+                {
+                    int nl=BitConverter.ToUInt16(b,at);at+=2;string name=System.Text.Encoding.UTF8.GetString(b,at,nl);at+=nl;int n=BitConverter.ToInt32(b,at);at+=4;
+                    var pos=new Vector3[n];var nor=new Vector3[n];
+                    for(int i=0;i<n;i++,at+=12)pos[i]=new Vector3(BitConverter.ToSingle(b,at),BitConverter.ToSingle(b,at+4),BitConverter.ToSingle(b,at+8));
+                    for(int i=0;i<n;i++,at+=12)nor[i]=new Vector3(BitConverter.ToSingle(b,at),BitConverter.ToSingle(b,at+4),BitConverter.ToSingle(b,at+8));
+                    map[name]=(pos,nor);
+                }
+                return map;
+            }
+            catch(Exception e){Debug.LogWarning("The Hound's body bank is unreadable ("+e.Message+"): the pack's body.");return null;}
+        }
+        // A beast's jaw (Variant.Beast: the Hound's gear jaw): turned open about its hinge by the add's jaw (hanging, panting, its
+        // bites, its howl), the hinge where tools/gear/hound_gear.py models it (JAW_HINGE, here in the head bone's frame).
+        public const float ZombieBeastJawOpen=38f;private static readonly Vector3 ZombieBeastHinge=new Vector3(0,.018f,.005f);
+        private static void ZombieBeastJaw(ZombieBody z)
+        {
+            if(!z.Variant.Beast)return;
+            if(z.BeastJaw==null){if(z.BeastJawLooked)return;z.BeastJawLooked=true;foreach(var t in z.Body.Root.GetComponentsInChildren<Transform>(true))if(t.name=="Gear.hound-jaw"){z.BeastJaw=t;break;}if(z.BeastJaw==null)return;}
+            var turn=Quaternion.AngleAxis(Mathf.Clamp01(z.Jaw)*ZombieBeastJawOpen,Vector3.right);z.BeastJaw.localRotation=turn;z.BeastJaw.localPosition=ZombieBeastHinge-turn*ZombieBeastHinge;
         }
         private static bool ZombieFacePart(string n)=>n.StartsWith("Eyes.",StringComparison.Ordinal)||n.StartsWith("EyeBrows.",StringComparison.Ordinal)||n.StartsWith("EyeLashes.",StringComparison.Ordinal)
             ||n.StartsWith("Teeth.",StringComparison.Ordinal)||n.StartsWith("EyeShine",StringComparison.Ordinal)||n.StartsWith("Pupil",StringComparison.Ordinal);

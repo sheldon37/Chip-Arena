@@ -246,6 +246,9 @@ namespace ChipArena.UnityConversion
             // Stride: how far the game's ankles sit drawn in fore and aft of their hips (NativeHordeGait.LegsNow: a stride planned for
             // the model's legs, posed on the game's shorter ones): the game ankle's offset from its hip is spread back out by it.
             public bool Across, Level, Follow; public float Stand, Raise, Room=KneeRoom, Stride=1;
+            // Hands (a zombie on all fours, the Hound): each visual wrist planted where the game's hand is (Hand); GameFloor, the game
+            // floor's height in the Pose's body space; GameHand, the game wrist's height over it when planted.
+            public bool Hands; public float GameFloor, GameHand=.09f;
             // Ease (a followed stance's, the Hulk's: Carry): the pelvis carried toward Stand on a critically damped spring of this
             // time (seconds; 0: the rise by RaiseStep a pose), stepped by Dt (the frame's seconds, the presentation's). Hip, HipSpeed:
             // the carried height and its speed; LastCap, CapFall: the legs' reach last pose and how fast it has been falling.
@@ -415,6 +418,7 @@ namespace ChipArena.UnityConversion
             {
                 s.LeftFootWeight=Foot(s,pose,true); s.RightFootWeight=Foot(s,pose,false);
             }
+            if(s.Hands) { Positions(s,pose); Hand(s,pose,true); Hand(s,pose,false); }
             // The weapons ride the hands the arms put there (P1); a held one is placed so its handle sits in the closed fist.
             Positions(s,pose);
             int lh=r.Of[CapturedRig.LHand],rh=r.Of[CapturedRig.RHand],le=r.Of[CapturedRig.LElbow],re=r.Of[CapturedRig.RElbow];
@@ -906,6 +910,25 @@ namespace ChipArena.UnityConversion
             float reach=TwoBone(s,vh,vk,va,target,pole,fallback,r.LegUpper,r.LegLower);
             if(left) s.LeftLegReach=reach; else s.RightLegReach=reach;
             return Math.Max(0,weight);
+        }
+
+        // Planted hands (State.Hands: a person on all fours, the Hound): the visual wrist goes to the game wrist's floor point at the
+        // game's metres across (as Across has the pelvis) and HandOver over the visual floor, raised by the legs' ratio as the game
+        // hand lifts in its stride; the elbow bends back along the body and out to its side (a forelimb's), the hand keeping the
+        // game hand's turn (laid flat). The model's longer arms (a Reach build) bend at the elbow where the game's run straight.
+        public const float HandOver=.045f, AnkleOver=.08f;
+        private static void Hand(State s,CapturedRig.Pose pose,bool left)
+        {
+            var r=s.Rig; int ga=left?CapturedRig.LArm:CapturedRig.RArm, va=r.Of[ga], ve=r.Of[ga+1], vh=r.Of[ga+2], vc=r.Of[CapturedRig.Chest];
+            if(va<0||ve<0||vh<0||vc<0||r.ArmUpper<=0||r.ArmLower<=0) return;
+            Vector3 game=pose.WorldPosition[ga+2]; float lift=Math.Max(0,game.Y-s.GameFloor-s.GameHand);
+            // (The visual floor: under the model's rest ankle, where a planted foot stands: Foot.)
+            int ankle=r.Of[CapturedRig.LHip+2]; float floor=ankle<0?0:r.AlignedPosition[ankle].Y-AnkleOver;
+            var target=new Vector3(game.X,floor+HandOver+lift*r.LegRatio,game.Z);
+            Vector3 back=Vector3.Transform(-CapturedRig.Z,pose.WorldRotation[CapturedRig.Chest]); back.Y=0; back=CapturedRig.Unit(back,-CapturedRig.Z);
+            Vector3 outward=s.Position[va]-s.Position[vc]; outward.Y=0; outward=CapturedRig.Unit(outward,left?CapturedRig.X:-CapturedRig.X);
+            Vector3 pole=back+outward*.45f;
+            TwoBone(s,va,ve,vh,target,pole,pole,r.ArmUpper,r.ArmLower);
         }
 
         // Finger curl per joint (radians): relaxed when the hand is open, closed round a weapon's grip (about 3-4 cm across).

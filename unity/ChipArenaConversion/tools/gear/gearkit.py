@@ -276,6 +276,12 @@ def shade(f, p, n, cav, seed):
         c = c.lerp(Vector((.42, .3, .4)), .35 * patch)
         c = c.lerp(c * 1.18, _smooth(.05, .3, -cav) * .6)
         return Vector((max(0, min(1, c.x)), max(0, min(1, c.y)), max(0, min(1, c.z))))
+    if f.kind == 'skin':
+        # Skin over bone (the Hound's): creases deepened toward a dull red-brown, a faint mottling, the bony ridges paler.
+        c = c.lerp(Vector((.44, .27, .25)), min(.7, crease * 1.25))
+        c = c * (1.0 - .1 * patch - .1 * max(0.0, -n.z))
+        c = c.lerp(c * 1.08, _smooth(.05, .3, -cav) * .5)
+        return Vector((max(0, min(1, c.x)), max(0, min(1, c.y)), max(0, min(1, c.z))))
     if f.kind == 'sticker':
         dark = .25 * crease + .18 * patch
     elif f.kind == 'rubber':

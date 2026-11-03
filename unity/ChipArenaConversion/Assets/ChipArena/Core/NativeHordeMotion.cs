@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
         /// <summary>Whether foot `foot` is the shambler's dragged one (its toe trails through the swing; its plant scrapes).</summary>
         public bool Dragged(int foot)=>kind==NativeHordeKinds.Shambler&&foot<2&&(foot==0)==(limpSide<0)&&drag>.55f;
         // per-add variety, set from the seed
-        private float cadence=1,hunchJitter,tilt,hang,idleRate=1,limpSide=1,drag;private int kind;private bool quad;
+        private float cadence=1,hunchJitter,tilt,hang,idleRate=1,limpSide=1,drag;private int kind;private bool quad,hound;
         // the add's takes (Core/NativeZombieMotion: -1 for the procedural crawl), this frame's blended stride shape, the rows
         private int walkClip=-1,runClip=-1,idleClip=-1;private float idlePhase,duty0=.6f,duty1=.6f,off1=.5f,lastDt,sinkNow;
         /// <summary>How far (rig metres) this pose's hips were sunk so the short voxel legs reach the stride's feet (0 while they
@@ -203,6 +203,7 @@ namespace ChipArena.UnityConversion
                 alert=Clamp01((14-dist)/6)*(1-moving*.6f);
             }
             RoamPrepare(f,moving,lookYaw,lookPitch);
+            if(hound){HoundPose(f,p,v,moving,alert,lookYaw,cock,swing,follow,settle,react,age);return;}
             if(quad){CrawlerPose(f,p,defs[NativeHordeKinds.Crawler],v,RunBlend(NativeHordeKinds.Crawler,v),moving,alert,lookYaw,cock,swing,follow,settle,attackW,react,age);return;}
             float run=heavy?RunBlend(kind,v):runNow,hurt=1-Clamp01(hurtShown*1.6f),t=f.Time,sprint=heavy?Sprint(v):0;var d=defs[NativeHordeKinds.Base(kind)];
             // ---- the capture: the walk and run takes at the stride's phase, the idle (the door's wake while it waits) ----
@@ -471,8 +472,8 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         private void Step(in HordeMotionInput f,NativeHordeReact react)
         {
-            kind=NativeHordeKinds.Index(f.Kind);quad=kind==NativeHordeKinds.Crawler||f.Crawl||!NativeZombieMotion.Captured(kind);
-            int gk=quad?NativeHordeKinds.Crawler:kind;var d=defs[NativeHordeKinds.Base(gk)];heavy=kind==NativeHordeKinds.Hulk&&!quad;
+            kind=NativeHordeKinds.Index(f.Kind);hound=NativeBackroomsMotion.Quad(f.Kind)&&!f.Crawl;quad=kind==NativeHordeKinds.Crawler||f.Crawl||!NativeZombieMotion.Captured(kind)||hound;
+            int gk=quad?NativeHordeKinds.Crawler:kind;var d=hound?HoundDef:defs[NativeHordeKinds.Base(gk)];heavy=kind==NativeHordeKinds.Hulk&&!quad;
             // (The legs the stride is planned for: the model's while it draws on them, NativeHordeLoco.Legs; never the Hulk's or a crawl's.)
             legsNow=heavy||quad||!(Legs>1)?1:Math.Min(LegsMost,Legs);
             float dt=float.IsNaN(time)?0:f.Time-time;bool fresh=float.IsNaN(time)||id!=f.Id||dt<-.001f||dt>ResetGap;
@@ -554,6 +555,7 @@ namespace ChipArena.UnityConversion
                 off1=NativeZombieMotion.Offset(runClip,1);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
                 if(!moving)rateHz=0;
             }
+            else if(hound){float hr=RunBlendOf(HoundDef,Speed);stride=Lerp(HoundDef.WalkStride,HoundDef.RunStride,hr)*(.75f+.25f*Clamp01(Speed/HoundDef.WalkSpeed));duty0=duty1=Lerp(HoundDef.Duty,HoundDef.RunDuty,hr);off1=.5f;gallop=hr;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
             else{stride=ProceduralStride(gk,Speed);duty0=duty1=Duty(gk,Speed);off1=.5f;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
             // A heavy body setting off from a stand starts its cycle on the left foot's mid-stance (both feet are side by side there,
             // the right swinging first), so the long strides start in step instead of catching up over several.
@@ -577,7 +579,7 @@ namespace ChipArena.UnityConversion
             {
                 ref var ft=ref feet[i];
                 if(skid){if(ft.Swing){ft.From+=jolt;ft.To+=jolt;}else ft.W+=jolt;}
-                float off=quad?FootOffset(i):i==1?off1:0,duty=quad?duty0:i==1?duty1:duty0;float u=Frac(Phase+off);int cycle=(int)Math.Floor(Phase+off);
+                float off=hound?HoundOffset(i,gallop):quad?FootOffset(i):i==1?off1:0,duty=quad?duty0:i==1?duty1:duty0;float u=Frac(Phase+off);int cycle=(int)Math.Floor(Phase+off);
                 Vector2 home=Home(i,now+shove*(staggering?1.15f:.8f)+(!quad?HipsUnder():Vector2.Zero),d),ahead=way*(duty*stride*.5f*(heavy?TurnReach(i,d.Width):1-TravelShort*off2));
                 // A charge's wind-up scrapes the right foot back once (it then stands braced there until the run).
                 bool braced=heavy&&f.Charging&&f.ChargeAge<NativeHulkMoves.ChargeWind&&!f.ChargeEnded;
@@ -595,7 +597,7 @@ namespace ChipArena.UnityConversion
                     // a slide.)
                     else if((Vector2.Distance(ft.W,home)>(.45f+(quad?0:.25f*Clamp01(stride/legsNow-1)))*legsNow&&!OtherSwinging(i,feetCount))||moving&&!quad&&overReach[i]
                         ||!quad&&!heavy&&Vector2.Distance(ft.W,home)>FarStep*legsNow){lift=true;swingTime=moving&&!quad?Math.Min(heavy?1.2f:.42f,(1-u)/Math.Max(.3f,rateHz)+.02f):.16f;}
-                    if(lift){ft.Swing=true;ft.Scrape=false;ft.From=ft.W;ft.FromTurn=Wrap(ft.Turn-Yaw);ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(heavy?1.2f:.5f,swingTime));ft.Cycle=cycle;ft.Lift=heavy?(moving?HeavyLift(Speed):.06f):(moving?Lerp(d.Lift,d.RunLift,RunBlend(gk,Speed)):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
+                    if(lift){ft.Swing=true;ft.Scrape=false;ft.From=ft.W;ft.FromTurn=Wrap(ft.Turn-Yaw);ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(heavy?1.2f:.5f,swingTime));ft.Cycle=cycle;ft.Lift=heavy?(moving?HeavyLift(Speed):.06f):(moving?Lerp(d.Lift,d.RunLift,hound?gallop:RunBlend(gk,Speed))*(hound&&i>=2?1.3f:1):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
                 }
                 if(ft.Swing)
                 {
@@ -651,10 +653,10 @@ namespace ChipArena.UnityConversion
         {
             float side=SideOf(i);var right=Right.LengthSquared()<.5f?new Vector2(1,0):Right;var fwd=Forward.LengthSquared()<.5f?new Vector2(0,1):Forward;
             // The crawler's hands stand ahead of its shoulders; a seed staggers the idle stance a little.
-            float ahead=i>=2?.62f:i==0?.03f*(NativeHordeKinds.Hash(seed,70)-.5f):-.03f*(NativeHordeKinds.Hash(seed,70)-.5f);
+            float ahead=i>=2?(hound?HoundHands:.62f):i==0?.03f*(NativeHordeKinds.Hash(seed,70)-.5f):-.03f*(NativeHordeKinds.Hash(seed,70)-.5f);
             // (A trotting crawler's hind feet keep behind its hips, so a stride seldom carries one through under them, where its
             // hips, a hand's breadth over its ankles, fold the leg shut; standing they tuck in as before, inside its hit volume.)
-            float width=i>=2?d.Width*1.3f:d.Width;return at+right*(side*width)+fwd*(ahead-(i<2&&quad?.1f+.3f*Clamp01(Speed/1.2f):0));
+            float width=i>=2?(hound?HoundHandWidth:d.Width*1.3f):d.Width;return at+right*(side*width)+fwd*(ahead-(i<2&&quad?(hound?HoundHind:.1f+.3f*Clamp01(Speed/1.2f)):0));
         }
         /// <summary>A Unity world point in the rig's source frame (root at the body, +x the add's left, +z forward).</summary>
         public Vector3 ToLocal(Vector3 w,Vector3 at){float dx=w.X-at.X,dz=w.Z-at.Z;return new Vector3(-(dx*Right.X+dz*Right.Y),w.Y-at.Y,dx*Forward.X+dz*Forward.Y);}
@@ -783,6 +785,89 @@ namespace ChipArena.UnityConversion
                 local+=new Vector3(0,.25f*hit*(1-swing*.5f),.35f*hit);
                 Vector3 inChest=Vector3.Transform(local-cpos,inv);Vector3 pole=Vector3.Transform(new Vector3(left?.15f:-.15f,.8f,-.55f),inv);
                 var wrist=Quaternion.Normalize(CapturedRig.Euler(-1.5f+.5f*hold,0,0));
+                CapturedRig.Arm(p,left,inChest,inv*wrist,pole);
+            }
+            react?.Arms(p,f.Time);
+            p.World();
+        }
+
+        // ================================================================================================================
+        // The Hound (the Backrooms; docs/EXPEDITION-ENEMY-REWORK.md section 4): a gaunt person on all fours, at a gallop
+        // ================================================================================================================
+        // Drawn at a person's size (its kind's scale is 1; the authority's capsule is .85 m), its hips carried at HoundTrunk - .24
+        // over the floor (on the model, by the legs' ratio, about .7 m: NativeZombiePosture.Stance), its long arms planted under its
+        // chest (on the model by NativeVisualRig.State.Hands). The quad planner's feet, on its own stride: a walk at its stalk, a
+        // rotary gallop at its 6 m/s (hind left, hind right, fore right, fore left; HoundOffset), a short stance and a moment in the
+        // air. The body: an arched back that gathers as the hind feet come under and stretches as they push off, a bound up through
+        // the suspension, the head held level ahead of it all. The pounce (the authority's: a .35 s crouch, a .5 s leap to contact at
+        // .85 s, 1.65 s busy): coiled low on its haunches, launched in an arc (HoundLeap high at mid-flight) with its forelimbs
+        // reaching and its hind legs trailing, landing low; the pin and the sprawl that follow are the presentation's
+        // (NativeBackroomsMotion). Presentation only.
+        /// <summary>The Hound's rig root over the floor (rig metres; its pelvis .24 under it), its hands' place ahead of its root, its
+        /// hind feet's behind it, and its leap's height at mid-flight.</summary>
+        public const float HoundTrunk=.64f,HoundHands=.58f,HoundHind=.06f,HoundLeap=.42f,HoundHandWidth=.19f;
+        /// <summary>The pounce's crouch and leap (the authority's: contact at .85 s).</summary>
+        public const float HoundCrouch=.35f,HoundLand=.85f;
+        private static readonly Def HoundDef=new Def{WalkStride=.85f,RunStride=2.1f,WalkSpeed=1.6f,RunSpeed=5.4f,Duty=.6f,RunDuty=.3f,Lift=.07f,RunLift=.17f,Bob=.015f,RunBob=.06f,
+            Crouch=0,RunCrouch=0,Hunch=0,RunLean=0,Width=.1f,ArmSwing=0,RunArm=0,Hang=0,Sway=.012f,Roll=.05f,Twist=.08f};
+        private float gallop;
+        // A person's knees on all fours: forward and a little down (not the crawler's folded haunch, which points them up).
+        private static readonly Vector3 HoundHindPole=Vector3.Normalize(new Vector3(0,-.25f,1));
+        private static float RunBlendOf(in Def d,float v)=>Clamp01((v-d.WalkSpeed*1.05f)/Math.Max(.1f,d.RunSpeed*.8f-d.WalkSpeed*1.05f));
+        // A walk's lateral sequence (hind left, fore left, hind right, fore right) into the gallop's rotary one.
+        private static float HoundOffset(int i,float g)=>Lerp(i==0?0:i==2?.25f:i==1?.5f:.75f,i==0?0:i==1?.1f:i==3?.42f:.52f,g);
+        /// <summary>The pounce's shape at `age` s: how coiled (0..1, through the crouch), airborne (0..1, the leap) and landed (0..1,
+        /// low after contact, easing back over the busy time).</summary>
+        public static void HoundPounce(float age,out float coil,out float air,out float landed)
+        {
+            coil=air=landed=0;if(!(age>=0)||age>1.9f)return;
+            coil=age<HoundCrouch?Sm(age/(HoundCrouch*.8f)):1-Sm((age-HoundCrouch)/.08f);
+            air=age<HoundCrouch-.04f?0:age<HoundCrouch+.06f?Sm((age-HoundCrouch+.04f)/.1f):age<HoundLand-.06f?1:1-Sm((age-HoundLand+.06f)/.1f);
+            landed=age<HoundLand-.05f?0:age<HoundLand+.1f?Sm((age-HoundLand+.05f)/.15f):1-Sm((age-HoundLand-.5f)/.55f);
+        }
+        private void HoundPose(in HordeMotionInput f,CapturedRig.Pose p,float v,float moving,float alert,float lookYaw,float cock,float swing,float follow,float settle,NativeHordeReact react,float age)
+        {
+            var d=HoundDef;float ph=Phase*(float)Math.PI*2,t=f.Time,g=moving*gallop;
+            float coil=0,air=0,landed=0;if(f.Attack==NativeHordeKinds.Attack.Pounce&&!f.Cancelled)HoundPounce(age,out coil,out air,out landed);
+            else{coil=cock*.6f;landed=Math.Max(swing,follow*(1-settle))*.5f;}
+            float flight=age>=HoundCrouch&&age<HoundLand?(age-HoundCrouch)/(HoundLand-HoundCrouch):0;float arc=air*HoundLeap*(float)Math.Sin(Math.PI*Clamp01(flight));
+            // The gallop: the spine gathers (arched) as the hind feet reach under and stretches as they push off; the body bounds up
+            // through the suspension; a walk bobs on each footfall.
+            float gather=(float)Math.Sin(ph+.9f),bound=(float)Math.Sin(ph-.5f);
+            float bob=moving*(d.Bob*(1-gallop)*(float)Math.Cos(ph*2)+d.RunBob*gallop*bound)+.008f*(1-moving)*(float)Math.Sin(t*2.1f*idleRate);
+            float pitch=1.55f+.06f*g*(float)Math.Cos(ph)+.12f*coil-.16f*air+alert*.03f;
+            p.Position[CapturedRig.Body]=new Vector3(d.Sway*moving*(float)Math.Sin(ph),f.Ground-f.Root.Y+HoundTrunk+bob-.2f*coil+arc-.14f*landed,-.08f-.12f*coil+.1f*air);
+            p.Rotation[CapturedRig.Pelvis]=CapturedRig.Euler(pitch,d.Twist*moving*(float)Math.Sin(ph),d.Roll*moving*(float)Math.Cos(ph));
+            // An arched back over the long gaunt trunk: the spine bends up off the hips, the chest down to the shoulders.
+            float flex=.2f*g*gather;
+            p.Rotation[CapturedRig.Spine]=CapturedRig.Euler(-.2f-flex-.1f*coil+.12f*air,-d.Twist*.5f*moving*(float)Math.Sin(ph),0);
+            p.Rotation[CapturedRig.Chest]=CapturedRig.Euler(.16f+.6f*flex+.12f*coil-.08f*air+.1f*landed,-d.Twist*.5f*moving*(float)Math.Sin(ph),0);
+            // The head held level and ahead whatever the trunk does (the pitch's sway and the back's flex taken back out), hanging a
+            // little at rest, up and forward in the leap.
+            float twitch=Twitch(t),steady=(pitch-1.55f)+(-.2f-flex)+(.16f+.6f*flex)+.2f-.16f;
+            p.Rotation[CapturedRig.Neck]=CapturedRig.Euler(.25f-.1f*alert-.5f*steady+.1f*(1-moving)+.1f*coil,lookYaw*.45f+twitch*.3f,tilt*.4f);
+            p.Rotation[CapturedRig.Head]=CapturedRig.Euler(-1.5f-.08f*alert-.5f*steady-.2f*air,lookYaw*.55f+twitch*.5f,tilt*.6f+twitch*.6f);
+            LifeTrunk(p,f,moving);LifeHead(p,f,alert);
+            react?.Trunk(p,f.Time,Forward,Right);
+            {float cx=Math.Min(.2f,ClavicleX-ShoulderInset(kind,f.Look));p.Position[CapturedRig.LClav]=new Vector3(cx,.18f,.02f);p.Position[CapturedRig.RClav]=new Vector3(-cx,.18f,.02f);}
+            p.World();
+            // The hind legs: on the planner's feet; in the leap stretched out behind (pushing off), landing tucked under.
+            float floor=f.Ground-f.Root.Y;
+            for(int i=0;i<2;i++)
+            {
+                Vector3 local=ToLocal(FootWorld[i],f.Root);local.Y=floor+AnkleHeight+.04f+feet[i].Y;
+                if(air>0){var hip=p.WorldPosition[i==0?CapturedRig.LHip:CapturedRig.RHip];var back=Vector3.Transform(new Vector3(0,-.36f,-.3f),p.WorldRotation[CapturedRig.Body]);local=Vector3.Lerp(local,hip+back,air);}
+                LegKept(p,i==0,local,HoundHindPole,i);
+            }
+            // The forelimbs: hands to their planted targets (chest frame), reaching ahead and up in the leap.
+            p.World();var chest=p.WorldRotation[CapturedRig.Chest];var inv=Quaternion.Inverse(chest);var cpos=p.WorldPosition[CapturedRig.Chest];
+            for(int i=0;i<2;i++)
+            {
+                bool left=i==0;int h=2+i;Vector3 local=ToLocal(FootWorld[h],f.Root);local.Y=floor+.09f+feet[h].Y;
+                if(air>0){var sh=p.WorldPosition[left?CapturedRig.LArm:CapturedRig.RArm];var reach=sh+new Vector3(left?.06f:-.06f,-.05f,.48f);local=Vector3.Lerp(local,reach,air);}
+                local.Y=Math.Max(local.Y,floor+.05f);
+                Vector3 inChest=Vector3.Transform(local-cpos,inv);Vector3 pole=Vector3.Transform(new Vector3(left?.25f:-.25f,.3f,-.9f),inv);
+                var wrist=Quaternion.Normalize(CapturedRig.Euler(-1.5f+.6f*air,0,0));
                 CapturedRig.Arm(p,left,inChest,inv*wrist,pole);
             }
             react?.Arms(p,f.Time);

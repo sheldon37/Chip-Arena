@@ -69,6 +69,11 @@ namespace ChipArena.UnityConversion
             public int Stripes=-1;
             /// <summary>A gear bank prop carried in its right hand (the Lifeguard's rescue hook), or null.</summary>
             public string Carry;
+            /// <summary>A beast's head (the Hound's): the pack's head, face and hair left off, its gear's skull and jaw in their place (Runtime
+            /// ZombieDress; the jaw hinged open by ZombieBeastJaw).</summary>
+            public bool Beast;
+            /// <summary>Ribs and a spine showing through the skin (the Hound's, 0..1: the shader's ZombieRibs over the rest space).</summary>
+            public float Ribs;
             /// <summary>How upright it stands (0..1: the takes' hunch straightened, Core NativeZombiePosture.Upright): the Lifeguard's
             /// tall, still figure, the Faceling's and the Drowned's a little.</summary>
             public float Upright;
@@ -183,15 +188,19 @@ namespace ChipArena.UnityConversion
                 Body(-20,30,20,20,40,40,20,20,30,45),new Build(),.58f,.38f,.4f,false,0xE8E2D0,decay:"upperarm-r,thigh-l",blood:.12f),
             V("faceling-female-b",FacelingKind,true,"fringe-tail","z-sweater-vest|sweater","khakis","bare","z-flats|lace-ups",new[]{0x6A5038,0x6E6E5C,0x8A7E66,Keep,0x3A3028},0xBBB2A2,
                 Body(-10,45,15,35,40,40,25,25,40,55),new Build(),.6f,.4f,.42f,false,0xE8E2D0,decay:"forearm-r,shin-l",blood:.12f),
-            // Hound: gaunt and hairless, in rags (on all fours: the gait's own, NativeHordeKinds' hound).
-            V("hound-male-a",HoundKind,false,None,"tank","z-shorts|cuffed-shorts","bare","z-bare|sneakers",new[]{Keep,0x4A4642,0x3A3632,Keep,0x2A2622},0xA89C94,
-                Body(60,0,40,0,0,20,0,0,0,40),new Build{Arm=.9f,Forearm=.9f,Thigh=.9f,Calf=.9f,Hand=1.25f,Head=.95f},.8f,.6f,.7f,false,0xF0F0E8,decay:"ribs-r,thigh-l",blood:.5f),
-            V("hound-male-b",HoundKind,false,None,"tank","z-shorts|cuffed-shorts","bare","z-bare|sneakers",new[]{Keep,0x5A4E44,0x2E2A28,Keep,0x2A2622},0x9E948E,
-                Body(50,0,30,0,0,15,0,0,0,50),new Build{Arm=.88f,Forearm=.88f,Thigh=.9f,Calf=.88f,Hand=1.25f,Head=.95f},.82f,.62f,.72f,false,0xF0F0E8,decay:"back,forearm-r",blood:.55f),
-            V("hound-female-a",HoundKind,true,None,"tank","z-shorts|cuffed-shorts","bare","z-bare|sneakers",new[]{Keep,0x48443E,0x3A3430,Keep,0x2A2622},0xA69A94,
-                Body(-40,0,30,0,10,15,0,0,0,40),new Build{Arm=.86f,Forearm=.86f,Thigh=.88f,Calf=.86f,Hand=1.2f,Head=.95f},.8f,.6f,.7f,false,0xF0F0E8,decay:"thigh-l,upperarm-r",blood:.5f),
-            V("hound-female-b",HoundKind,true,None,"tank","z-shorts|cuffed-shorts","bare","z-bare|sneakers",new[]{Keep,0x524840,0x302C28,Keep,0x2A2622},0x9C928C,
-                Body(-30,0,25,0,10,15,0,0,0,50),new Build{Arm=.86f,Forearm=.86f,Thigh=.88f,Calf=.86f,Hand=1.2f,Head=.95f},.82f,.62f,.72f,false,0xF0F0E8,decay:"shin-l,ribs-l",blood:.55f),
+            // Hound (owner 2026-11-03, with a reference: a pale, emaciated thing on all fours, a bald crown with long grey strands,
+            // pointed ears, a grin of small sharp teeth, a white ruff at the throat; then "more monster like", "more doglike"): no
+            // clothes, pale pink skin over its ribs and spine (Ribs), a beast's head (Beast: the gear's doglike skull and jaw,
+            // tools/gear/hound_gear.py), arms near half again as long (Reach), thin limbs, big hands; on all fours (Core
+            // NativeHordeMotion.HoundPose).
+            V("hound-male-a",HoundKind,false,None,None,None,"bare",None,new[]{0xB4B0A8,Keep,Keep,Keep,Keep},0xE2CCC4,
+                Body(30,0,5,0,0,0,0,0,0,95,85,0),new Build{Arm=.72f,Forearm=.7f,Thigh=.78f,Calf=.74f,Hand=1.3f,Head=.96f,Neck=1.3f,Reach=1.45f,Shoulder=.92f},.3f,.4f,.38f,false,0x3A0E0C,decay:"ribs-r,thigh-l",blood:.15f),
+            V("hound-male-b",HoundKind,false,None,None,None,"bare",None,new[]{0xA29E96,Keep,Keep,Keep,Keep},0xD8C0B6,
+                Body(20,0,8,0,0,0,0,0,0,100,90,0),new Build{Arm=.7f,Forearm=.68f,Thigh=.76f,Calf=.72f,Hand=1.32f,Head=.95f,Neck=1.32f,Reach=1.47f,Shoulder=.9f},.34f,.4f,.42f,false,0x320A0A,decay:"back,forearm-r",blood:.18f),
+            V("hound-female-a",HoundKind,true,None,None,None,"bare",None,new[]{0xC0BCB4,Keep,Keep,Keep,Keep},0xE6D0C8,
+                Body(10,0,5,0,0,0,0,0,0,95,85,0),new Build{Arm=.7f,Forearm=.68f,Thigh=.76f,Calf=.72f,Hand=1.28f,Head=.95f,Neck=1.3f,Reach=1.45f,Shoulder=.9f},.3f,.4f,.38f,false,0x3A0E0C,decay:"thigh-l,upperarm-r",blood:.15f),
+            V("hound-female-b",HoundKind,true,None,None,None,"bare",None,new[]{0xACA8A0,Keep,Keep,Keep,Keep},0xDCC6BE,
+                Body(5,0,8,0,0,0,0,0,0,100,90,0),new Build{Arm=.68f,Forearm=.66f,Thigh=.74f,Calf=.7f,Hand=1.3f,Head=.94f,Neck=1.32f,Reach=1.47f,Shoulder=.88f},.34f,.4f,.42f,false,0x320A0A,decay:"shin-l,ribs-l",blood:.18f),
             // Drowned: bloated bathers in striped vintage costumes, rubber caps and goggles (their gear), waterlogged pallor.
             V("drowned-male-a",DrownedKind,false,None,"tank","z-dolphin-shorts|cuffed-shorts","bare","z-flip-flops|sneakers",new[]{Keep,0x2A4A7A,0x2A4A7A,Keep,0x3A6A8A},0xC6CBC2,
                 Body(90,90,20,85,40,70,0,30,80,60),new Build{Arm=1.15f,Forearm=1.1f,Thigh=1.2f,Calf=1.15f,Hand=1.1f},.5f,.4f,.75f,false,0xD8E4E0,decay:"cheek-l,thigh-r",blood:.1f),
@@ -237,6 +246,7 @@ namespace ChipArena.UnityConversion
                 else if(v.Kind==ConductorKind)v.Gear=new[]{"conductor-badge","conductor-whistle"};
                 else if(v.Kind==UndertowKind)v.Gear=new[]{"undertow-weed-back","undertow-weed-arm-l","undertow-weed-arm-r"};
                 else if(v.Kind==FacelingKind){v.Faceless=true;v.Upright=.45f;v.Gear=new[]{"faceling-mask-skin","faceling-lanyard"};}
+                else if(v.Kind==HoundKind){v.Beast=true;v.Ribs=1;v.Gear=new[]{"hound-skull","hound-jaw"};}
                 else if(v.Kind==DrownedKind){v.Stripes=0xE8E4D8;v.Upright=.35f;v.Gear=new[]{b?"drowned-cap-red":"drowned-cap-white","drowned-goggles"};}
                 else if(v.Kind==LifeguardKind){v.Upright=.75f;v.Gear=new[]{"lifeguard-whistle"};v.Carry="lifeguard-hook";}
                 else if(v.Kind==PileupKind){v.Fused=true;v.Gear=new[]{v.Female?"pileup-handrail-f":"pileup-handrail",v.Female?"pileup-flesh-f":"pileup-flesh"};}
@@ -256,9 +266,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The zone kinds drawn on the model in shipped builds, each once it passed its review (docs/EXPEDITION-ENEMY-REWORK.md
         /// section 2): the Central Station's four since 2026-11-03 (turnarounds, close-ups of their gear, their moves at the
         /// authority's timings on the PC); the Backrooms' Faceling, Drowned and Lifeguard the same day (their looks and moves on the
-        /// PC; the Hound stays a draft until it runs on all fours; the Smiler is its own apparition, not on the model); drafts
-        /// draw them all.</summary>
-        public static readonly System.Collections.Generic.HashSet<int> ZoneLive=new System.Collections.Generic.HashSet<int>{LinesmanKind,ConductorKind,UndertowKind,PileupKind,FacelingKind,DrownedKind,LifeguardKind};
+        /// PC; the Smiler is its own apparition, not on the model) and the Hound once it ran on all fours as a beast (its gallop,
+        /// pounce and head on the PC); drafts draw them all.</summary>
+        public static readonly System.Collections.Generic.HashSet<int> ZoneLive=new System.Collections.Generic.HashSet<int>{LinesmanKind,ConductorKind,UndertowKind,PileupKind,FacelingKind,HoundKind,DrownedKind,LifeguardKind};
         /// <summary>Whether adds of `kind` draw on the model now.</summary>
         public static bool Modelled(int kind)=>kind>=0&&(kind<NativeHordeKinds.Count?Live[kind]||Drafts:NativeHordeZones.Of(kind)!=null&&(ZoneLive.Contains(kind)||Drafts))&&Has(kind);
         /// <summary>The variant an add of `kind` wears, by its id (stable for its life, the same on every peer); null for a kind

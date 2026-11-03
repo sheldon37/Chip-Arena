@@ -36,8 +36,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The share of the gait's Spine-joint bend the model carries in its upper back (spine_03 to spine_05).</summary>
         public const float SpineUp=.6f;
 
-        /// <summary>The gait's pose `from` (world positions current) fitted for the model into `to`.</summary>
-        public static void Fit(CapturedRig.Pose from,CapturedRig.Pose to)
+        /// <summary>The gait's pose `from` (world positions current) fitted for the model into `to`; `arms` off keeps the gait's own
+        /// arms (the Hound's: its hands are planted where the gait put them, NativeVisualRig.State.Hands).</summary>
+        public static void Fit(CapturedRig.Pose from,CapturedRig.Pose to,bool arms=true)
         {
             int n=CapturedRig.Bones.Length;
             for(int i=0;i<n;i++){to.Position[i]=from.Position[i];to.Rotation[i]=from.Rotation[i];}
@@ -46,7 +47,7 @@ namespace ChipArena.UnityConversion
             to.Rotation[CapturedRig.Spine]=Quaternion.Normalize(Quaternion.Slerp(Quaternion.Identity,spine,1-SpineUp));
             to.Rotation[CapturedRig.Chest]=Quaternion.Normalize(Quaternion.Slerp(Quaternion.Identity,spine,SpineUp)*from.Rotation[CapturedRig.Chest]);
             to.World();
-            for(int side=0;side<2;side++)Arm(to,side==0);
+            if(arms)for(int side=0;side<2;side++)Arm(to,side==0);
         }
         /// <summary>An upright kind's stance (the Smiler's, the Lifeguard's: tall, still figures, not the takes' hunched zombie): the
         /// spine, chest, neck and head turned `share` of the way back to the rig's rest (upright, the gaze level); the arms ride
@@ -102,6 +103,10 @@ namespace ChipArena.UnityConversion
         /// Sunk, Crouch, Busy and LegsNow, `stride`; none for a pose the gait did not make) on its binding's state.</summary>
         public static void Stance(NativeVisualRig.State s,int kind,bool crawl,float sunk,float crouch,float busy,float stride=1)
         {
+            // The Hound on all fours: its hips at the gait's height times the legs' ratio (not raised over its planted feet), its
+            // feet and hands planted where the gait has them (NativeVisualRig.State.Hands).
+            s.Hands=NativeBackroomsMotion.Quad(kind);s.GameFloor=-NativeHordeKinds.Root[NativeHordeKinds.Index(kind)];
+            if(s.Hands){s.Across=true;s.Level=false;s.Follow=true;s.Ease=0;s.Stride=1;s.Room=NativeVisualRig.KneeRoom;s.Stand=0;return;}
             s.Across=true;s.Level=crawl;s.Follow=!crawl;s.Ease=kind==NativeHordeKinds.Hulk?HulkCarry:0;s.Stride=crawl||!(stride>1)?1:stride;s.Room=kind==NativeHordeKinds.Hulk?HulkRoom:NativeVisualRig.KneeRoom;
             // (The gait's floor sits Root under the rig root; the model's soles NativeVisualRig.Floor under it.)
             float gap=Math.Max(0,-NativeVisualRig.Floor-NativeHordeKinds.Root[NativeHordeKinds.Index(kind)]);

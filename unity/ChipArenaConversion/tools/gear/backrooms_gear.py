@@ -277,4 +277,4 @@ def props():
         ('drowned-goggles', 'head', HEAD, goggles),
         ('lifeguard-whistle', 'spine_05', CHEST, whistle_cord),
         ('lifeguard-hook', 'prop', PROP, hook),
-    ]
+    ] + __import__('hound_gear').props(HEAD)

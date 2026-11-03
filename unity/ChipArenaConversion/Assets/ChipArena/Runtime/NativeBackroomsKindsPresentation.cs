@@ -34,9 +34,14 @@ namespace ChipArena.UnityConversion
             float a=now-m.LastAttack;age=a>=0&&a<=recover+.3f?a:float.NaN;
         }
 
-        /// <summary>A Backrooms entity's jaw over the gait's (the Hound's howl wide open).</summary>
-        private static void BackroomsJaw(NativeMinion m,int kind,float now,ref float jaw)
-        {if(BackroomsId(kind)=="hound"&&m.Pve?.Zone.attack=="howl")jaw=Mathf.Max(jaw,NativeBackroomsMotion.HowlJaw(now-m.LastAttack));}
+        /// <summary>A Backrooms entity's jaw over the gait's: the Hound's hanging and panting as it runs, snapping on its pin's bites,
+        /// wide open through its howl.</summary>
+        private static void BackroomsJaw(NativeMinion m,HordeKindState s,int kind,float now,ref float jaw)
+        {
+            if(BackroomsId(kind)!="hound")return;var z=m.Pve?.Zone;if(z==null)return;
+            float running=Mathf.Clamp01((s.Gait.Speed-1)/3);jaw=Mathf.Max(jaw,NativeBackroomsMotion.HoundJaw(now,running,z.grabTarget>=0?now-NativeZoneCombat.View(z.grabAt):float.NaN));
+            if(z.attack=="howl")jaw=Mathf.Max(jaw,NativeBackroomsMotion.HowlJaw(now-m.LastAttack));
+        }
         // ---- (b) their own motion over the gait's pose ----
         private readonly Dictionary<int,float> backroomsHold=new Dictionary<int,float>();
         /// <summary>How much of the Lifeguard's arms its own move holds now (its staff carry on the model eases off by it).</summary>
@@ -52,6 +57,12 @@ namespace ChipArena.UnityConversion
                     break;
                 case "hound":
                     if(z.attack=="howl")NativeBackroomsMotion.HowlPose(minionPose,age);
+                    // Pinned on a pilot: reared up onto their chest, biting on the authority's beats.
+                    else if(z.grabTarget>=0)
+                    {
+                        var pilot=arena!=null?HordePilot(arena,z.grabTarget):null;
+                        if(pilot!=null)NativeBackroomsMotion.HoundPin(minionPose,now-NativeZoneCombat.View(z.grabAt),s.Gait.ToLocal(ToN(pilot.Body.position+Vector3.up*.3f)/s.Scale,f.Root));
+                    }
                     break;
                 case "lifeguard":
                     if(z.attack=="whistle")hold=NativeBackroomsMotion.WhistlePose(minionPose,age);
