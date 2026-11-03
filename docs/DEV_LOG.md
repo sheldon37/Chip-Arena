@@ -1,3 +1,32 @@
+## 2026-11-03 — Claude: the Backrooms' entities on the model (first pass)
+
+- **Branch:** `claude/backrooms-entities`, base shared `268a9ba7` (includes Astra's #317 rules); implementation `5ec50e96`.
+- **Task:** owner: "Please start the backroom enemies now" (docs/EXPEDITION-ENEMY-REWORK.md section 4; Astra's section 6).
+- **Built (presentation only; docs/ZOMBIE-MODELS.md 4h):**
+  - live on the model: the Faceling (office clothes, no face: a skin piece over brow to chin, a lanyard), the Smiler (a void
+    with a glowing grin and pinprick eyes, upright), the Drowned (striped vintage costumes via shader stripes, petal swim caps,
+    goggles), the Lifeguard (tall, faded reds, whistle cord, the rescue hook carried upright);
+  - the Hound's variants as drafts (it walks on two legs until its gait on all fours); the Tiler unchanged (its own body next);
+  - the authority's moves onto the gait: wake, howl, blink, whistle and hook are not blows; the pounce (contact .85 s), the
+    lunges (.6 s Smiler, .4 s Drowned) and the sweep (.5 s) play the gait's takes at those timings;
+  - their own motion (Core NativeBackroomsMotion): the Faceling dormant at its wall and its head snapping round on the wake,
+    the Hound's howl, the Lifeguard's whistle and hook throw, the Drowned sunk while submerged;
+  - new runtime pieces: skin gear, stripes, carried props, an upright stance; the bake gained eight pieces and bare feet;
+    gear modelled in Blender (`tools/gear/backrooms_gear.py`) into the local bank; Drive zip repacked (previous:
+    `LocalAssets-before-backrooms-entities.zip`).
+- **Animation impact:** none on rules: hit timing, hit volumes, damage, cooldowns, movement and networking unchanged; the
+  takes are retimed to the authority's numbers in the presentation only; the Drowned's sink and the Lifeguard's hook are drawn.
+- **Checks:** full `CoreTests` in a clean LF worktree on `5ec50e96`: passed (exit 0, 942 groups); `--zombie-models` 21708 checks (new: the
+  Backrooms' variants and kits, their moves pose finite and hand back, the Drowned's sink); `--zombie-posture`; pin scan clean.
+  PC (BoZo, brickfall): turnarounds and close-ups of the four humanoids, strips of the Faceling's wake, the Hound's howl,
+  the Lifeguard's whistle and hook (`zset`, a local-tool option, sets a zone move: DEV spawns away from their maps make none).
+  Not run: Level 0 and the Poolrooms (the Smiler's blink needs dark cells, the Drowned's dive deep water), a Windows build.
+- **Publication:** blocked as before: shared fails the build's validation on #317's `unreachable spawn pool-deep-0:32`
+  (Astra, see the entry below). The builder branch was not pushed.
+- **Next (Claude):** the Hound on all fours (quadruped gallop, pounce, pin), the Tiler's tile-crab body, the Smiler's blink
+  and dread, the Drowned's water effects and swim, the hook's line; captures on Level 0 and the Poolrooms.
+
+
 ## 2026-11-03 — Claude: Central Station's kinds on the model, their gear modelled in Blender
 
 - **Branch:** `claude/station-models`, base shared `dac90160`, shared `f57a34a7` (#317) merged in; implementation `a47dd553`,
