@@ -42,7 +42,7 @@
 - **Animation impact:** none. No room field, message or launch path changes.
 - **Checks:** `--expeditions-menu` passes (340,149 checks, the sample's shape over seven seeds among them). PC (BoZo, Cybercity,
   local tool `expmenu=T`): the full run mid-roll and held, Wave Defense from Wave 1 and from the Siren, a placeholder expedition. Full
-  `CoreTests`: pending. Not run: a guest's view in a real room, compact canvases on screen (the fit check covers them), a Windows build.
+  `CoreTests` in a clean LF worktree on `c235c14a`: passed (exit 0, 947 groups); pin scan clean. Not run: a guest's view in a real room, compact canvases on screen (the fit check covers them), a Windows build.
 
 ## 2026-11-03 — Claude: bespoke garments for the other areas (trench coats, coveralls, aprons, bathrobes)
 
