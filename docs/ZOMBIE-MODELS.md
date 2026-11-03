@@ -711,6 +711,68 @@ across the four kinds and the Hulk, Ward Zero's staff up close, the garments in 
 the pilots' turnarounds and helmet close-ups. Not seen yet: the areas' own maps and lighting, the garments on a female and a heavy
 body in motion (their shapes are carried, not reviewed), a crowd's cost with cloth on, a Windows build.
 
+## 4m. The run: the pack's own stride, not a lunge (2026-11-03, `claude/zombie-run-pace`)
+
+Owner: "they are still doing awkward lunges when running. The animation pack doesn't look like that at all." The takes never
+drew the legs: the gait plans its feet and only the trunk and arms come from the take (section 4d). Three things in that plan made
+the lunge, on top of the longer steps of section 4e (a cadence by speed alone, which made the steps up to 1.5 m). Drawn beside the
+pack's own pose phase by phase on the measured skeleton:
+
+- A stance shared evenly about the hip reaches far out in front. The pack lands a foot near under the body (about .2 rig metres
+  ahead of the hip) and drives it back behind.
+- A swing eased off the spot the foot stood on leaves that foot behind while the hips run on. The pack's foot turns forward within
+  a few hundredths of a second of leaving the floor.
+- A planted foot flat until the leg ran out of reach straightens the leg behind. The pack's heel peels from about a third of the
+  stance, the ankle about .08 over the toe at the lift, the knee bent through the push.
+
+The run takes also held walking chases, captured under 1 m/s and played at up to 2.2 times that, whose stance is a walk's.
+
+What changed, for a sprint on the model's legs (`NativeZombieMotion.OwnStride`; the voxel model and the walking takes keep their
+stride):
+
+- **The takes.** Every kind that runs at a real speed runs on the clean sprints, `sprint-2` and `sprint-3`. Walking stays on the
+  takes it had; sprint-1 (the jerkiest: the hands' and blends' checks catch it) and sprint-4 (the shoulders) stay out, but for the
+  Cinderling's own set.
+
+  | kind | run takes (was) |
+  | --- | --- |
+  | shambler | sprint-2, sprint-3 (sprint-3, chase-2) |
+  | runner | sprint-3, sprint-2 (unchanged) |
+  | brute | sprint-2 (chase-2, chase-5-full) |
+  | spitter | sprint-2, sprint-3 (chase-2, sprint-3) |
+  | Linesman, Stoker | sprint-2 (chase-2) |
+  | Conductor, Rigger | sprint-2 (chase-1) |
+  | Slagback | sprint-2 (chase-5) |
+  | Undertow | sprint-2 (chase-5, sprint-1) |
+  | bloater, Hulk, Pileup, Ladleman, Cinderling | unchanged (their speeds suit, or their own stride) |
+
+- **The pace** (`Rate`): a sprint plays at the rate that makes its captured speed, on the model's legs, the add's, kept within
+  OwnPaceLow to OwnPaceHigh (.75 to 1.3) of it. Its cadence is the take's own, not one by speed alone.
+- **The stance** (`OwnDuty`, `LandAhead`): the foot lands where the take lands it (`Touch`) and stands for the take's planted
+  stretch, at least OwnDutyLow (.3) of the cycle: so the body is in the air between steps and never on both feet.
+- **The swing** (`SwingAhead`, `NativeHordeGait.OwnSwing`): the foot follows the take's own path about the hip, from where it left
+  the floor to where it lands.
+- **The roll** (`OwnRoll`): a planted foot rolls onto its ball through the stance as the take's does, its ball holding its spot.
+
+Measured on the model's stride at each kind's run, the same way before and after (steps a second, step length, the ankle's furthest
+ahead of and behind its hip in leg lengths, how far the hips rise and fall):
+
+| kind (m/s) | take | before | after |
+| --- | --- | --- | --- |
+| runner (4.6) | sprint-3 | 3.0, 1.51 m, +.75 / -.63, 12 cm | 4.0, 1.11 m, +.42 / -.27, 5 cm |
+| runner (4.6) | sprint-2 | 3.0, 1.53 m, +.77 / -.66, 15 cm | 4.0, 1.11 m, +.39 / -.43, 8 cm |
+| shambler (3.4) | sprint-2 (was chase-2) | 2.75, 1.26 m, +.68 / -.61, 14 cm | 3.0, 1.09 m, +.39 / -.44, 8 cm |
+| spitter (2.9) | sprint-2 (was chase-2) | 2.25, 1.18 m, +.66 / -.61, 13 cm | 2.75, 1.10 m, +.40 / -.55, 8 cm |
+| brute (2.4) | sprint-2 (was chase-2) | 2.25, 1.10 m, +.65 / -.68, 14 cm | 2.5, .96 m, +.40 / -.51, 9 cm |
+
+**Animation impact:** drawn feet and the kinds' take names only. Hit timing, hitboxes, damage, cooldowns, movement speeds and
+networking are unchanged: the blow, the trunk's weight and the authority's rules read none of this. The walks are unchanged. The
+cadence at a run rises a little (the runner from 3 to 4 steps a second, as the pack runs).
+
+Reviewed on the PC (BoZo, Cybercity, the side view at each speed; local tool `zclip=M`, near clip) in stills, against the old code at
+the same speeds, for the runner, shambler, brute and spitter; offline, the pack's pose beside the drawn one on the measured
+skeleton through a cycle. Not seen yet: the run in motion in a crowd, the zone kinds on their own maps, a Windows build.
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).
@@ -731,11 +793,9 @@ body in motion (their shapes are carried, not reviewed), a crowd's cost with clo
 - The Hulk's skin tone against its head is matched by a constant (`SkinMatch`) measured under Brickfall's moonlight; other maps'
   light may show a difference.
 - A head burst (`HeadGib`) still leaves the gore's own stump and fountain on the model's collapsed neck.
-- The sprints play at .62 to .91 of their pace on the model's stride (4e); a faster tempo for the runner on the model is open
-  until the owner sees it.
-- The run sets still include walking chases (chase-2, chase-1, chase-5) played fast. Their feet now lift on their own arcs, but
-  their trunk keeps the walk's rhythm (section 4d). A run set of the sprints alone would change the kinds' character: the owner's
-  call.
+- The sprints' own pace and stride (4m) are seen in stills on the PC; the owner has not yet seen them in motion. The bloater still
+  runs on its walking chases (its run suits them), and sprint-2's trailing foot reaches furthest of the two (-.6 of a leg at the
+  runner's walk).
 
 ## 6. Checks
 

@@ -99,7 +99,7 @@ namespace ChipArena.UnityConversion
         private Vector2 travel;
         // The root's net motion (its velocity eased over NetHalfLife) and how far the gait reads it instead (0..1, while it reels).
         private Vector2 net;private float knockW,backAt=float.NegativeInfinity;private Vector2 jolt;
-        private struct Foot{public Vector2 W,From,To;public bool Swing,Scrape;public float T0,T1,Lift;public int Cycle;public float Y,Turn,FromTurn;}
+        private struct Foot{public Vector2 W,From,To,Off;public bool Swing,Scrape;public float T0,T1,Lift;public int Cycle;public float Y,Turn,FromTurn;}
         /// <summary>A standing foot twisted this far (degrees) from the body's facing steps round (the turn in place's shuffle), and
         /// a planted one never shows more than <see cref="TwistMost"/>.</summary>
         public const float TwistStep=34,TwistMost=48;
@@ -550,12 +550,13 @@ namespace ChipArena.UnityConversion
                 // (The cadence follows the eased speed, but never lags far behind a burst of speed: a body that sets off takes
                 // quick steps, not long ones.)
                 float run=runNow,cv=Math.Max(gaitSpeed,.8f*Speed);rateHz=Lerp(WalkCadence(cv),NativeZombieMotion.Cadence(runClip,cv,kind,legsNow),run)*cadence;
+                stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
                 // A run's stance is short (a walking take run fast keeps its feet down no more than half the cycle), and no stance
                 // carries the hips past the legs' reach (NativeHordeLoco.StanceMost).
-                duty0=Lerp(WalkDuty(0),Math.Min(.55f,NativeZombieMotion.Duty(runClip,0)),run);duty1=Lerp(WalkDuty(1),Math.Min(.55f,NativeZombieMotion.Duty(runClip,1)),run);
+                duty0=Lerp(WalkDuty(0,stride),Math.Min(.55f,StanceOf(runClip,0,stride)),run);duty1=Lerp(WalkDuty(1,stride),Math.Min(.55f,StanceOf(runClip,1,stride)),run);
                 duty0=Reachable(duty0,rateHz,Speed,legsNow);duty1=Reachable(duty1,rateHz,Speed,legsNow);
                 // (The right foot strikes half a cycle after the left on every take: the takes are warped to it, NativeZombieMotion.Warp.)
-                off1=NativeZombieMotion.Offset(runClip,1);stride=Math.Max(.2f,Speed)/Math.Max(.2f,rateHz);
+                off1=NativeZombieMotion.Offset(runClip,1);
                 if(!moving)rateHz=0;
             }
             else if(hound){float hr=RunBlendOf(HoundDef,Speed);stride=Lerp(HoundDef.WalkStride,HoundDef.RunStride,hr)*(.75f+.25f*Clamp01(Speed/HoundDef.WalkSpeed));duty0=duty1=Lerp(HoundDef.Duty,HoundDef.RunDuty,hr);off1=.5f;gallop=hr;rateHz=moving?Speed/Math.Max(.2f,stride)*cadence:0;}
@@ -583,7 +584,7 @@ namespace ChipArena.UnityConversion
                 ref var ft=ref feet[i];
                 if(skid){if(ft.Swing){ft.From+=jolt;ft.To+=jolt;}else ft.W+=jolt;}
                 float off=hound?HoundOffset(i,gallop):quad?FootOffset(i):i==1?off1:0,duty=quad?duty0:i==1?duty1:duty0;float u=Frac(Phase+off);int cycle=(int)Math.Floor(Phase+off);
-                Vector2 home=Home(i,now+shove*(staggering?1.15f:.8f)+(!quad?HipsUnder():Vector2.Zero),d),ahead=way*(duty*stride*.5f*(heavy?TurnReach(i,d.Width):1-TravelShort*off2));
+                Vector2 home=Home(i,now+shove*(staggering?1.15f:.8f)+(!quad?HipsUnder():Vector2.Zero),d),ahead=way*(heavy?duty*stride*.5f*TurnReach(i,d.Width):LandAhead(duty,stride,quad)*(1-TravelShort*off2));
                 // A charge's wind-up scrapes the right foot back once (it then stands braced there until the run).
                 bool braced=heavy&&f.Charging&&f.ChargeAge<NativeHulkMoves.ChargeWind&&!f.ChargeEnded;
                 if(braced&&i==1&&!ft.Swing&&f.ChargeAge>=.24f&&f.ChargeAge<.5f&&!(Math.Abs(scrapedFor-(f.Time-f.ChargeAge))<.05f))
@@ -600,7 +601,7 @@ namespace ChipArena.UnityConversion
                     // a slide.)
                     else if((Vector2.Distance(ft.W,home)>(.45f+(quad?0:.25f*Clamp01(stride/legsNow-1)))*legsNow&&!OtherSwinging(i,feetCount))||moving&&!quad&&overReach[i]
                         ||!quad&&!heavy&&Vector2.Distance(ft.W,home)>FarStep*legsNow){lift=true;swingTime=moving&&!quad?Math.Min(heavy?1.2f:.42f,(1-u)/Math.Max(.3f,rateHz)+.02f):.16f;}
-                    if(lift){ft.Swing=true;ft.Scrape=false;ft.From=ft.W;ft.FromTurn=Wrap(ft.Turn-Yaw);ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(heavy?1.2f:.5f,swingTime));ft.Cycle=cycle;ft.Lift=heavy?(moving?HeavyLift(Speed):.06f):(moving?Lerp(d.Lift,d.RunLift,hound?gallop:RunBlend(gk,Speed))*(hound&&i>=2?1.3f:1):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
+                    if(lift){if(!heavy&&!quad){OwnSwing(i,0,out float z0);ft.Off=ft.W-home-way*(z0*OwnSpan(stride));}ft.Swing=true;ft.Scrape=false;ft.From=ft.W;ft.FromTurn=Wrap(ft.Turn-Yaw);ft.T0=f.Time;ft.T1=f.Time+Math.Max(.08f,Math.Min(heavy?1.2f:.5f,swingTime));ft.Cycle=cycle;ft.Lift=heavy?(moving?HeavyLift(Speed):.06f):(moving?Lerp(d.Lift,d.RunLift,hound?gallop:RunBlend(gk,Speed))*(hound&&i>=2?1.3f:1):d.Lift*.7f)*(kind==NativeHordeKinds.Shambler&&(i==0)==(limpSide<0)?1-.6f*drag:1);}
                 }
                 if(ft.Swing)
                 {
@@ -609,12 +610,46 @@ namespace ChipArena.UnityConversion
                     Vector2 land=ft.Scrape?ft.To:home+velocity*Math.Max(0,ft.T1-f.Time)+(moving?ahead:Vector2.Zero);
                     // A heavy foot is carried there and stamped down (it arrives over its spot, then drops); a scrape drags low.
                     if(heavy&&!ft.Scrape){ft.W=Vector2.Lerp(ft.From,land,Sm(Math.Min(1,s/.85f)));ft.Y=ft.Lift*Stamp(s);}
-                    else{ft.W=Vector2.Lerp(ft.From,land,Sm(s));ft.Y=ft.Lift*(float)Math.Sin(Math.PI*s);}
+                    else
+                    {
+                        ft.W=Vector2.Lerp(ft.From,land,Sm(s));ft.Y=ft.Lift*(float)Math.Sin(Math.PI*s);
+                        // A sprint's foot on the take's own path about the body (OwnSwing), from where it left the floor to where it lands.
+                        float z=0,own=moving&&!ft.Scrape&&!heavy&&!quad?OwnSwing(i,s,out z):0;
+                        if(own>0){float span=OwnSpan(stride);OwnSwing(i,1,out float end);ft.W=Vector2.Lerp(ft.W,home+way*(z*span)+Vector2.Lerp(ft.Off,ahead-way*(end*span),Sm(s)),own);}
+                    }
                     if(s>=1){ft.Swing=false;ft.Scrape=false;ft.W=land;ft.Y=0;ft.Turn=Yaw;Landed|=1<<i;if(heavy)lastLand=f.Time;}
                 }
                 else{ft.Y=0;if(!moving)ft.Cycle=cycle;}
+                // (A planted sprint foot rolls onto its ball through the stance; a foot that landed a little early stands flat till its beat.)
+                if(!heavy&&!quad){float q=u<duty?u/Math.Max(.05f,duty):u<.5f*(1+duty)?1:0,want=!ft.Swing&&moving?OwnWeight()*NativeZombieMotion.OwnRoll(q):0,most=OwnRollSlew*gdt;rollNow[i]+=Math.Max(-most,Math.Min(most,want-rollNow[i]));}
                 FootWorld[i]=new Vector3(ft.W.X,f.Ground,ft.W.Y);FootAir[i]=ft.Swing;
             }
+        }
+        // The sprint's own path: how much of this add's stride runs on it (the walk's take if that is a sprint, the run's by the
+        // blend), and the foot's place on it at `s` of its swing (rig metres ahead of the hip).
+        private float OwnWeight(){float w0=NativeZombieMotion.OwnStride(walkClip,legsNow)?1-roamTake:0,w1=NativeZombieMotion.OwnStride(runClip,legsNow)?1:0;return Lerp(w0,w1,runNow);}
+        private float OwnSwing(int foot,float s,out float z)
+        {
+            bool a=NativeZombieMotion.OwnStride(walkClip,legsNow),b=NativeZombieMotion.OwnStride(runClip,legsNow);
+            z=a&&b?Lerp(NativeZombieMotion.SwingAhead(walkClip,foot,s),NativeZombieMotion.SwingAhead(runClip,foot,s),runNow):b?NativeZombieMotion.SwingAhead(runClip,foot,s):a?NativeZombieMotion.SwingAhead(walkClip,foot,s):0;
+            return OwnWeight();
+        }
+        // Rig metres on that path to metres on this add's legs at `stride` a cycle.
+        private float OwnSpan(float stride)=>legsNow*(NativeZombieMotion.OwnStride(runClip,legsNow)?NativeZombieMotion.OwnScale(runClip,stride,legsNow):NativeZombieMotion.OwnStride(walkClip,legsNow)?NativeZombieMotion.OwnScale(walkClip,stride,legsNow):1);
+        /// <summary>The most a planted foot's roll changes a second (rad): quicker than the shortest stance's, so a stop or a stagger
+        /// lays the foot down over a frame or two rather than in one.</summary>
+        public const float OwnRollSlew=14;private readonly float[] rollNow=new float[2];
+        /// <summary>A take's stance share at `stride` a cycle: a sprint's on the model's legs its own stretch's, others' their own.</summary>
+        private float StanceOf(int clip,int foot,float stride)=>NativeZombieMotion.OwnStride(clip,legsNow)?NativeZombieMotion.OwnDuty(clip,stride/legsNow):NativeZombieMotion.Duty(clip,foot);
+        /// <summary>How far ahead of the hip a stepping foot lands (owner 2026-11-03, "awkward lunges when running"): half its stance, which
+        /// shares a walk's about the hip, or on a sprint on the model's legs near under the body where the take lands it, so the leg
+        /// drives back behind the hips as a runner's does and no step splits the legs out in front. (Never past half the stance: a body
+        /// setting off on a sprint keeps its short steps under it.)</summary>
+        private float LandAhead(float duty,float stride,bool fours)
+        {
+            float half=duty*stride*.5f;if(fours)return half;
+            float Of(int clip)=>NativeZombieMotion.OwnStride(clip,legsNow)?Math.Min(half,NativeZombieMotion.Touch(clip)*legsNow):half;
+            return Lerp(Lerp(Of(walkClip),half,roamTake),Of(runClip),runNow);
         }
         /// <summary>How quickly the way the body travels follows the root's velocity (s), and how much shorter a step is when it travels
         /// backward or aside (the stumble's quick steps).</summary>
@@ -942,15 +977,15 @@ namespace ChipArena.UnityConversion
                     var w=ToWorld(Spread(target,hipAt),f.Root);feet[i].W=new Vector2(w.X,w.Z);FootWorld[i]=new Vector3(w.X,f.Ground,w.Z);
                 }
             }
-            float heel=0;
-            if(Vector3.DistanceSquared(hipAt,target)>LegReach*LegReach)
+            float heel=0,roll=heavy?0:rollNow[i];bool beyond=Vector3.DistanceSquared(hipAt,target)>LegReach*LegReach;
+            if(beyond||roll>1e-4f)
             {
                 float tw=FootTwist(i,f.Time);var fwd=new Vector3((float)Math.Sin(tw),0,(float)Math.Cos(tw));
-                if(!heavy&&Vector3.Dot(target-hipAt,fwd)<0)
+                if(!heavy&&(roll>1e-4f||Vector3.Dot(target-hipAt,fwd)<0))
                 {
-                    var ball=target+fwd*BallAhead-Vector3.UnitY*BallDrop;float lo=0,hi=HeelMost;
-                    if(Vector3.DistanceSquared(hipAt,HeelAnkle(ball,fwd,hi))<=LegReach*LegReach)for(int n=0;n<10;n++){float m=(lo+hi)*.5f;if(Vector3.DistanceSquared(hipAt,HeelAnkle(ball,fwd,m))<=LegReach*LegReach)hi=m;else lo=m;}
-                    heel=hi;target=HeelAnkle(ball,fwd,heel);
+                    var ball=target+fwd*BallAhead-Vector3.UnitY*BallDrop;float lo=0,hi=beyond&&Vector3.Dot(target-hipAt,fwd)<0?HeelMost:0;
+                    if(hi>0&&Vector3.DistanceSquared(hipAt,HeelAnkle(ball,fwd,hi))<=LegReach*LegReach)for(int n=0;n<10;n++){float m=(lo+hi)*.5f;if(Vector3.DistanceSquared(hipAt,HeelAnkle(ball,fwd,m))<=LegReach*LegReach)hi=m;else lo=m;}
+                    heel=Math.Max(hi,roll);target=HeelAnkle(ball,fwd,heel);
                 }
                 // (Still out of reach on its ball, or out of reach ahead: the foot steps next frame rather than slide. A heel peeled
                 // (nearly) all the way goes too: the hips carry on, and the ball slid 3 cm the next frame as an add broke into a run.)

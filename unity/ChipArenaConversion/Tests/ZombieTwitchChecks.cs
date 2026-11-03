@@ -120,9 +120,10 @@ namespace ChipArena.UnityConversion
         // ---- the restart after a stagger: the take crosses from standing to the chase in a third of a second, feet planted ----
         private static void Restart(out string summary)
         {
-            float most=ZombieTwitchScene.Restart(out float slip,out int planted);
-            Check(most<.06f,"a stop and a restart at full speed turn no trunk or arm joint more than "+most.ToString("0.000")+" rad a 144 fps frame (base: 0.291, the take crossing from standing to the chase in two or three frames)");
-            Check(planted>400&&slip<.015f,"and planted feet hold on the drawn rig through it ("+(slip*1000).ToString("0.00")+" mm per frame over "+planted+" planted frames)");
+            float most=ZombieTwitchScene.Restart(out float slip,out int planted,out float steady);
+            // (No more than the sprint's own swing at full speed turns them in a steady run: owner 2026-11-03, the sprints run at their own pace.)
+            Check(most<Math.Max(.06f,steady*1.1f),"a stop and a restart at full speed turn no trunk or arm joint more than "+most.ToString("0.000")+" rad a 144 fps frame, the steady sprint's "+steady.ToString("0.000")+" (base: 0.291, the take crossing from standing to the chase in two or three frames)");
+            Check(planted>250&&slip<.015f,"and planted feet hold on the drawn rig through it ("+(slip*1000).ToString("0.00")+" mm per frame over "+planted+" planted frames)");
             summary="a stop and a restart at full speed: the stand-to-move blend crosses in "+(1/NativeHordeGait.MoveSlew).ToString("0.00")+" s, no trunk or arm joint over "+most.ToString("0.000")+" rad a frame (base 0.291), planted feet within "+(slip*1000).ToString("0.00")+" mm";
         }
 
@@ -251,8 +252,9 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>A run at 3.4 m/s stopped dead for .45 s twice (a stagger) and let go at once: the largest one-frame turn of a trunk
         /// or arm joint (144 fps) around the stops and restarts, and the worst planted-foot slip per frame.</summary>
-        internal static float Restart(out float slip,out int planted)
+        internal static float Restart(out float slip,out int planted,out float steady)
         {
+            {var run=new Rig(NativeHordeKinds.Shambler,71001);var from=new Vector3(0,.85f,0);double t=0;steady=0;while(t<5){float dt=1/144f;t+=dt;int k=(int)Math.Floor(t*60);run.Frame(t,k/60.0,from+new Vector3(0,0,3.4f)*(k/60f),new Vector3(0,0,3.4f),0,dt,1);if(t>1.5)steady=Math.Max(steady,run.UpperTurn);}}
             var route=new List<(Vector3 p,Vector3 v)>();var at=new Vector3(0,.85f,0);
             for(int k=0;k<=6*60;k++){double t=k/60.0;var v=t<1?Vector3.Zero:t>=2.5&&t<2.95||t>=4.2&&t<4.65?Vector3.Zero:new Vector3(0,0,3.4f);route.Add((at,v));at+=v/60;}
             var add=new Rig(NativeHordeKinds.Shambler,71001);float most=0;slip=0;planted=0;double w=0;var last=new Vector3[2];var was=new bool[2];

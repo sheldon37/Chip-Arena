@@ -315,7 +315,7 @@ timings here are the presentation's proposal.
 - **Look:** an aluminised heat suit, silver (it catches every light as a bright edge), a square hood with one cyan visor slit,
   a coat to the knees, a 3 m rake with a hooked iron tip. Taller than a shambler (1.07 scale). Silhouette: tall, narrow, a long
   pole.
-- **Animation:** idle `idle-3` with the rake planted (procedural hand lock); move `walk-6`, `chase-2` with the pole carried (new
+- **Animation:** idle `idle-3` with the rake planted (procedural hand lock); move `walk-6`, `sprint-2` with the pole carried (new
   left-hand IK layer); rake sweep `swipe-r1` (the rake follows the right hand); hits `knock-*`; deaths `back-*`, `front-*` (the
   rake falls, procedural). **New mocap wanted:** a two-handed pole thrust and yank (about 1.2 s) for the pull.
 - **Attacks:**
@@ -333,7 +333,7 @@ timings here are the presentation's proposal.
 - **Role:** a slow tank that refuses frontal fire: it forces flanking.
 - **Look:** a brute crusted in black, glassy slag plates (chest, shoulders, forearms, head), dim orange cracks between them, a
   bright fissure down its back (the weak point). Silhouette: lumpy and asymmetric.
-- **Animation:** idle `idle-3`; move `walk-4`, `chase-5`; slam `smash-1`, `smash-2` with a longer hold; emerge from slag: the
+- **Animation:** idle `idle-3`; move `walk-4`, `sprint-2`; slam `smash-1`, `smash-2` with a longer hold; emerge from slag: the
   vent climb with slag dripping (procedural); hits `knock-*`; deaths the brute's. **New:** the crust shedding (procedural plates
   flying off on `knock-3`).
 - **Attacks:** slam: 1.6 m disc 1.2 m ahead (the brute's), wind-up 0.55 s (a cream dashed ring appears on the floor, a

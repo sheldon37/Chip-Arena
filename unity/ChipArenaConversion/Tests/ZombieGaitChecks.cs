@@ -43,9 +43,10 @@ namespace ChipArena.UnityConversion
             NativeZombieMotion.Warm();
             Takes(out string takes);
             Model(out string model);
+            OwnStride(out string own);
             Rules();
             Wiring(root);
-            Console.WriteLine("PASS zombie gait: "+count+" checks ("+takes+"; "+model+"; presentation only)");
+            Console.WriteLine("PASS zombie gait: "+count+" checks ("+takes+"; "+model+"; "+own+"; presentation only)");
         }
 
         // ---- the takes: the warp, the right foot's offset, the stances, the swing arcs ----
@@ -131,7 +132,8 @@ namespace ChipArena.UnityConversion
                                 Vector3 ga=fit.WorldPosition[hip+2],ma=s.Position[va];ga.Z=fit.WorldPosition[hip].Z+(ga.Z-fit.WorldPosition[hip].Z)*g.LegsNow;
                                 gap=Math.Max(gap,new Vector2(ma.X-ga.X,ma.Z-ga.Z).Length());
                                 // A planted foot stands where it landed in the world (the rig frame's +z is the travel, its +x the add's left).
-                                var mw=new Vector2(at.X-ma.X,at.Z+ma.Z);bool down=!g.FootAir[side]&&(g.Landed&(1<<side))==0;
+                                // (A sprint's foot rolling onto its ball moves its ankle round the ball: OwnStride measures the ball.)
+                                var mw=new Vector2(at.X-ma.X,at.Z+ma.Z);bool down=!g.FootAir[side]&&(g.Landed&(1<<side))==0&&g.Heel[side]<=0;
                                 if(down&&planted[side])slide=Math.Max(slide,(mw-lastWorld[side]).Length());planted[side]=down;lastWorld[side]=mw;
                                 if(has)pop=Math.Max(pop,(ma-last[side]).Length()/Dt);last[side]=ma;
                                 float k=Side(s.Position[vh],s.Position[vk],ma,.02f);if(k>=0)knee.Add(k);
@@ -149,8 +151,10 @@ namespace ChipArena.UnityConversion
                         // (The Hulk keeps its own heavy stride: NativeHordeHeavy.)
                         bool heavy=kind==NativeHordeKinds.Hulk;
                         Check(Math.Abs(legs-(heavy?1:rig.LegRatio))<1e-4f,name+": the stride is planned for the model's legs, the Hulk's its own ("+legs.ToString("0.00")+")");
-                        float want=NativeHordeGait.StepRate(kind,speed,legs)*.5f;
-                        if(!heavy)Check(Math.Abs(hz/want-1)<.08f&&hz<rigHz*.8f,name+": the model steps at its legs' cadence, slower than the rig's ("+(2*hz).ToString("0.00")+" steps/s, "+(2*want).ToString("0.00")+" planned, the rig's "+(2*rigHz).ToString("0.00")+")");
+                        // (A sprint on the model's legs steps at its own captured pace: NativeZombieMotion.Rate.)
+                        int plays=g.RunNow>.5f?r:w;bool own=!heavy&&NativeZombieMotion.OwnStride(plays,legs);
+                        float want=own?NativeZombieMotion.Cadence(plays,speed,kind,legs):NativeHordeGait.StepRate(kind,speed,legs)*.5f;
+                        if(!heavy)Check(Math.Abs(hz/want-1)<.08f&&(own||hz<rigHz*.8f),name+": the model steps at "+(own?"the sprint's own pace":"its legs' cadence, slower than the rig's")+" ("+(2*hz).ToString("0.00")+" steps/s, "+(2*want).ToString("0.00")+" planned, the rig's "+(2*rigHz).ToString("0.00")+")");
                         Check(Math.Abs(steps-2*hz*secs)<=2.5f,name+": a footfall each step ("+steps+" in "+secs.ToString("0.0")+" s at "+(2*hz).ToString("0.00")+" a second)");
                         Check(slide<.002f,name+": a planted model foot stands where it landed ("+(slide*1000).ToString("0.0")+" mm a frame)");
                         // (The take the gait plays at the speed: the walk's at the walk, the run's at the run.)
@@ -174,6 +178,53 @@ namespace ChipArena.UnityConversion
             Check(syncN>0&&syncSum/syncN>.85f,"the takes' feet step with the gait's at the walk on average ("+(syncSum/Math.Max(1,syncN)).ToString("0.00")+")");
             Check(paceMost<1.6f,"on the model's legs no take plays faster than 1.6 times its own pace ("+paceLeast.ToString("0.00")+" to "+paceMost.ToString("0.00")+")");
             summary=runs+" walks and runs of five kinds on the measured skeleton: model ankles within "+(worstGap*100).ToString("0.0")+" cm of the gait's, the fastest foot at most "+(worstPop*100).ToString("0")+"% of a swing's 2.2 times the ground speed and 3.2 m/s, knees "+worstKnee.ToString("0")+" deg aside p95 (the gait's "+worstGameKnee.ToString("0")+"), the feet alternating ("+worstAlt.ToString("0.00")+" at worst), the takes in step at the walk ("+worstSync.ToString("0.00")+" worst, "+(syncSum/Math.Max(1,syncN)).ToString("0.00")+" mean), the stride on the model's legs (planted feet within "+(worstSlide*1000).ToString("0.0")+" mm a frame, the takes at "+paceLeast.ToString("0.00")+" to "+paceMost.ToString("0.00")+" times their pace)";
+        }
+
+        // ---- a sprint on the model's legs: the pack's own stride, not a lunge (owner 2026-11-03, "awkward lunges when running") ----
+        private static void OwnStride(out string summary)
+        {
+            var rig=ModelPoseChecks.Measured();var fit=new CapturedRig.Pose();float leg=rig.LegUpper+rig.LegLower,mostFore=0,leastAft=0,worstBall=0,leastRoll=9,worstBoth=0;int runs=0;
+            Check(!NativeZombieMotion.OwnStride(NativeZombieClips.Need("sprint-1"),1)&&!NativeZombieMotion.OwnStride(NativeZombieClips.Need("chase-1"),rig.LegRatio)&&NativeZombieMotion.OwnStride(NativeZombieClips.Need("sprint-1"),rig.LegRatio),"only a sprint on the model's legs runs on its own stride (the voxel model and the walking takes as they were)");
+            // (The Siren's four that run at a real speed and every zone kind that does, the lumbering Pileup and Ladleman walking theirs,
+            // at their speed on their own scale.)
+            var running=new List<(int kind,float speed)>{(NativeHordeKinds.Shambler,3.4f),(NativeHordeKinds.Runner,4.6f),(NativeHordeKinds.Spitter,2.9f),(NativeHordeKinds.Brute,2.4f)};
+            for(int k=NativeHordeKinds.Count;k<NativeHordeKinds.All;k++)
+            {
+                var zone=NativeHordeZones.Of(k);if(zone==null||zone.Runs==null||zone.Runs.Length==0||!NativeZombieMotion.Captured(k)||zone.Proposed==null)continue;float at=zone.Proposed.run/NativeHordeKinds.Scale[NativeHordeKinds.Index(k)];
+                if(at>=1.6f)running.Add((k,at));
+            }
+            Check(running.Count>=10,"the kinds that run at a real speed ("+running.Count+")");
+            foreach(var (kind,speed) in running)
+            foreach(int clip in NativeZombieMotion.Runs(kind))
+            {
+                string name=(kind<NativeHordeKinds.Count?NativeHordeKinds.Ids[kind]:NativeHordeZones.Of(kind).Id)+" at "+speed.ToString("0.0")+" m/s on "+NativeZombieClips.Key(clip);
+                Check(NativeZombieClips.Speed(clip)>1,name+": a kind running at a real speed runs on a sprint take");
+                float own=speed/(NativeZombieClips.Speed(clip)*rig.LegRatio),rate=NativeZombieMotion.Rate(clip,speed,kind,rig.LegRatio);
+                Check(Math.Abs(rate-Math.Max(NativeZombieMotion.OwnPaceLow,Math.Min(NativeZombieMotion.OwnPaceHigh,own)))<1e-4f,name+": plays at its captured pace on the model's legs ("+rate.ToString("0.00")+")");
+                int id=40000;while(NativeZombieMotion.Run(kind,NativeHordeKinds.Seed(id))!=clip)id++;
+                var g=new NativeHordeGait{Legs=rig.LegRatio};var p=new CapturedRig.Pose();var f=new HordeMotionInput{Kind=kind,Id=id,Seed=NativeHordeKinds.Seed(id),Health=1,AttackAge=float.NaN,Flow=true,Tier=NativeHordeModels.Full};var at=new Vector3(0,.85f,0);
+                var s=new NativeVisualRig.State(rig);float fore=0,aft=0,ball=0,roll=9;int both=0,frames=0;var lastToe=new Vector2[2];var rolled=new bool[2];var heel=new float[2];
+                for(int i=0;i<720;i++)
+                {
+                    const float dt=1/120f;var v=new Vector3(0,0,speed);at+=v*dt;f.Time=i*dt;f.Root=at;f.Velocity=v;f.Yaw=0;f.Ground=0;g.Pose(f,p);p.World();
+                    NativeZombiePosture.Fit(p,fit);NativeZombiePosture.Stance(s,kind,false,g.Sunk,g.Crouch,g.Busy,g.LegsNow);NativeVisualRig.Pose(s,fit,default(NativeVisualRig.Grasp),true,false);
+                    if(i<240)continue;frames++;if(!g.FootAir[0]&&!g.FootAir[1])both++;
+                    for(int side=0;side<2;side++)
+                    {
+                        int hip=side==0?CapturedRig.LHip:CapturedRig.RHip,ah=rig.Of[hip+2],bh=rig.Of[hip+3];float rel=s.Position[ah].Z-s.Position[rig.Of[hip]].Z;fore=Math.Max(fore,rel);aft=Math.Min(aft,rel);
+                        var toe=new Vector2(at.X-s.Position[bh].X,at.Z+s.Position[bh].Z);bool on=!g.FootAir[side]&&g.Heel[side]>0&&(g.Landed&(1<<side))==0;
+                        if(on&&rolled[side])ball=Math.Max(ball,(toe-lastToe[side]).Length());rolled[side]=on;lastToe[side]=toe;
+                        if(g.FootAir[side]&&heel[side]>0){roll=Math.Min(roll,heel[side]);heel[side]=0;}else if(!g.FootAir[side])heel[side]=g.Heel[side];
+                    }
+                }
+                fore/=leg;aft/=leg;mostFore=Math.Max(mostFore,fore);leastAft=Math.Min(leastAft,aft);worstBall=Math.Max(worstBall,ball);leastRoll=Math.Min(leastRoll,roll);worstBoth=Math.Max(worstBoth,both/(float)frames);runs++;
+                // (The stride this replaces: an ankle up to .77 of a leg ahead of the hip and .74 behind, flat on the floor.)
+                Check(fore<.55f&&aft>-.66f,name+": the feet stay under the body as the take's do ("+fore.ToString("0.00")+" to "+aft.ToString("0.00")+" legs about the hip)");
+                Check(both==0,name+": never both feet down, a run's and not a lunge's ("+both+" of "+frames+" frames)");
+                Check(roll>.45f*g.RunNow,name+": a foot leaves the floor rolled onto its ball, the knee bent ("+roll.ToString("0.00")+" rad)");
+                Check(ball<.016f,name+": the rolling foot's ball holds its spot ("+(ball*1000).ToString("0.0")+" mm a frame)");
+            }
+            summary=runs+" runs of "+running.Count+" kinds on their own stride: ankles "+mostFore.ToString("0.00")+" to "+leastAft.ToString("0.00")+" legs about the hip at worst (was .77 to -.74), never both down, rolled "+leastRoll.ToString("0.00")+" rad at the lift, the ball within "+(worstBall*1000).ToString("0.0")+" mm a frame";
         }
 
         // ---- the runtime: the stride planned for the model's legs while an add draws on the model, the binding spreading it ----

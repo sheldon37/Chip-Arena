@@ -297,9 +297,9 @@ namespace ChipArena.UnityConversion
         // ---- motion: the takes, the props in the hands, the strikes on the authority's time ----
         private static void Motion()
         {
-            Check(NativeZombieMotion.Walks(NativeIronworksKinds.Kind(1)).SequenceEqual(new[]{NativeZombieClips.Need("walk-6")})&&NativeZombieMotion.Runs(NativeIronworksKinds.Kind(1)).SequenceEqual(new[]{NativeZombieClips.Need("chase-2")}),"the stoker walks walk-6, chases chase-2 (doc 6.2)");
+            Check(NativeZombieMotion.Walks(NativeIronworksKinds.Kind(1)).SequenceEqual(new[]{NativeZombieClips.Need("walk-6")})&&NativeZombieMotion.Runs(NativeIronworksKinds.Kind(1)).SequenceEqual(new[]{NativeZombieClips.Need("sprint-2")}),"the stoker walks walk-6, chases on sprint-2 (doc 6.2)");
             Check(NativeZombieMotion.Walks(NativeIronworksKinds.Kind(0)).SequenceEqual(new[]{NativeZombieClips.Need("sprint-1"),NativeZombieClips.Need("sprint-3")})&&NativeZombieMotion.Idles(NativeIronworksKinds.Kind(0)).Contains(NativeZombieClips.Need("idle-3")),"the cinderling sprints (6.1)");
-            Check(NativeZombieMotion.Walks(NativeIronworksKinds.Kind(2)).SequenceEqual(new[]{NativeZombieClips.Need("walk-4")})&&NativeZombieMotion.Runs(NativeIronworksKinds.Kind(2)).SequenceEqual(new[]{NativeZombieClips.Need("chase-5")}),"the slagback walk-4, chase-5 (6.3)");
+            Check(NativeZombieMotion.Walks(NativeIronworksKinds.Kind(2)).SequenceEqual(new[]{NativeZombieClips.Need("walk-4")})&&NativeZombieMotion.Runs(NativeIronworksKinds.Kind(2)).SequenceEqual(new[]{NativeZombieClips.Need("sprint-2")}),"the slagback walk-4, sprint-2 (6.3)");
             int lk=NativeIronworksKinds.Kind(3);Check(NativeZombieMotion.Rate(NativeZombieClips.Need("walk-4"),1,lk)<NativeZombieMotion.Rate(NativeZombieClips.Need("walk-4"),1,NativeHordeKinds.Brute)&&Near(NativeHordeZones.Tempo(lk,NativeZombieMotion.Tempo),.7f),"the ladleman walks at tempo .7 (6.4)");
             for(int z=0;z<5;z++)Check(NativeZombieMotion.Captured(NativeIronworksKinds.Kind(z)),Five[z]+" walks on the capture");
             var pose=new CapturedRig.Pose();

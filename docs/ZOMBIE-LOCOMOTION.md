@@ -127,6 +127,9 @@ The new file is `Core/NativeHordeLoco.cs` (a partial of `NativeHordeGait`). The 
 | Hulk | unchanged | unchanged | its own heavy stride (`NativeHordeHeavy`) already plods at 0.9 to 1.2 steps a second |
 | crawler | procedural | procedural | unchanged gait; only its shoulders |
 
+(The run takes above were replaced 2026-11-03: the kinds that run at a real speed run on sprint-2 and sprint-3, on the sprint's own
+pace and stride on the model's legs. docs/ZOMBIE-MODELS.md 4m.)
+
 The zone kinds (`NativeIronworksKinds`, `NativeStationKinds`) keep the takes they name. They get the body's cadence, the calm,
 the stance and the shoulders.
 

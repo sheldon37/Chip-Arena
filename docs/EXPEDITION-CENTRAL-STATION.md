@@ -484,7 +484,7 @@ The concept sheet (section 13) poses them beside a pilot and a shambler in the s
   | State | Clip | Notes |
   | --- | --- | --- |
   | idle | `idle-3` | with an electric twitch: export `Zombie_OnFire_1_SHORT` as an additive writhe |
-  | move | `walk-6` (stiff) | chase: `chase-2` at 0.8 speed |
+  | move | `walk-6` (stiff) | chase: `sprint-2` (docs/ZOMBIE-MODELS.md 4m) |
   | melee | `swipe-r2` (wind-up and strike) | |
   | arc wind-up | `Zombie_Reach_1_Loop` | export; arm raised |
   | arc strike | new | 0.25 s whip forward, from the end of `swipe-r1` |
