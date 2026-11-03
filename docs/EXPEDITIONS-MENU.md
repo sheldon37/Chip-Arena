@@ -35,17 +35,29 @@ a slow scan band. From top to bottom:
    bot has × for whoever sets the party.
    - Open seats: the first one offers ADD BOT, plus HOST ROOM when not in a room, or the invite (Copy
      Invite or Copy Code) in a room.
-3. **SELECT EXPEDITION.** A carousel with the counter, ‹ › and the Q/E keys. The neighbours show as spines
-   with their titles running up them. A selected card shows:
-   - **Key art:** the stage scan of the previewed area (`NativeStageSchematic`), with a sweep, and the
-     Siren's face above it for her expedition. Hovering a route row previews that area; an area with no map
-     shows NO SCAN YET.
+3. **The left side follows the mode** (owner 2026-11-03: "it shares the same thing as wave defense", "the map
+   showing is inaccurate as expedition is procedurally generated"). The header's title follows it too.
+   **Full run: SELECT EXPEDITION.** A carousel with the counter, ‹ › and the Q/E keys. The neighbours show as
+   spines with their titles running up them. A selected card shows:
+   - **Key art:** no map, because a run has none until it is rolled at the Deployment Station. GENERATED EVERY
+     RUN over a sample plan (`Core/NativeRunPreview`, made up, reads no layout): blocks rise outward from the
+     hub, the route runs ahead of them through the three areas to the final boss, it holds labelled SAMPLE, then
+     fades and rolls again with a new seed (a single still roll with Reduced effects). The Siren's face sits above
+     it for her expedition. Hovering a route row lights that row's node.
    - **Details:** the kicker and threat tags, the title, the tag line, and the hub, party and length.
    - **The route:** HUB, then 01–03, then FINAL. Each row is LIVE or IN DEVELOPMENT.
    - **Placeholders:** a skyline silhouette with SIGNAL LOST, COMING SOON and UNCHARTED rows.
    - When the pick changes, the card turns: the old card narrows and slides out under the spines as the new
      one widens in. With Reduced effects it is a cross-fade instead.
    - Dots under the card show each expedition.
+
+   **Wave Defense: THE ARENA**, tagged ALWAYS THIS MAP. No carousel: it plays one map, whichever expedition the
+   carousel stood on. One card across the whole browser:
+   - **Key art:** the true stage scan of the map it plays (`NativeExpeditionsMenu.WaveMap`, the room's PvE map),
+     with the Siren's face.
+   - **Details:** the arena's name and line, the party, bots and length chips, and THE FIGHT in order: the three
+     waves with their size and who is in them (from `PveContent`), then the Siren. The chosen start is marked START
+     HERE; what it skips is dimmed and marked SKIPPED.
 4. **MODE** (TAB switches). Two tiles:
    - **START EXPEDITION**, the full run.
    - **PLAY WAVE DEFENSE**. Selecting it shows the START AT row: WAVE 1, WAVE 2, WAVE 3, SIREN. Keys 1–4

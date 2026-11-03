@@ -18,6 +18,36 @@ namespace ChipArena.UnityConversion
     {
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Expeditions menu: "+what);count++;}
+        // A run's map is generated, so the screen shows a sample of one and no scan; Wave Defense shows the one map it plays (owner 2026-11-03).
+        private static void RunPreview(string root)
+        {
+            string source=System.IO.File.ReadAllText(System.IO.Path.Combine(root,"Assets","ChipArena","Runtime","NativeExpeditionsMenu.cs")).Replace("\r\n","\n");
+            int art=source.IndexOf("private void ExpArt(",StringComparison.Ordinal),plan=source.IndexOf("private void ExpRunPlan(",StringComparison.Ordinal),scan=source.IndexOf("// The stage scan as a hologram",StringComparison.Ordinal);
+            Check(art>0&&plan>art&&scan>plan&&!source.Substring(art,scan-art).Contains("NativeStageSchematic"),"the full run's art draws the sample, no map's scan");
+            int waves=source.IndexOf("private void ExpWaveArt(",StringComparison.Ordinal);Check(waves>0&&source.IndexOf("ExpMapOf(X.WaveMap)",waves,StringComparison.Ordinal)>waves,"Wave Defense's art is its own map's scan");
+            Check(X.WaveMap==NativeLobbyRules.PreviewMap("random",true),"the map Wave Defense names is the one a co-op room plays ("+X.WaveMap+")");
+            Check(source.Contains("var pick=expMode==X.Mode.Waves?K.At(K.Default):K.At(expPick);"),"Wave Defense plays whichever expedition the carousel stood on");
+            var b=X.Measure(1600,900).Browser;var single=X.Single(b,false);Check(b.Contains(single.Card)&&single.Card.W==b.W&&single.Prev.W==0&&single.Dots.W==0,"Wave Defense's card takes the whole browser: one arena, no neighbours");
+            Check(K.WaveMix(new[]{new NumberValue{name="runner",value=.3},new NumberValue{name="shambler",value=.7},new NumberValue{name="hulk",value=.06},new NumberValue{name="spitter",value=.15}})=="shamblers, runners, spitters"&&K.WaveMix(null)=="","a wave's mix reads the commonest three");
+            uint[] seeds={1,17,0x80000000,0xffffffff,NativeRunPreview.SeedOf(0),NativeRunPreview.SeedOf(1),NativeRunPreview.SeedOf(99)};string last=null;
+            foreach(uint seed in seeds)
+            {
+                var p=NativeRunPreview.Roll(seed);var q=NativeRunPreview.Roll(seed);string n="roll "+seed;
+                Check(p.Box.SequenceEqual(q.Box)&&p.Path.SequenceEqual(q.Path)&&p.Kind.SequenceEqual(q.Kind),n+": the same seed rolls the same sample");
+                string shape=string.Join(",",p.Box.Take(40));Check(shape!=last,n+": another seed rolls another");last=shape;
+                Check(p.Count>=60&&p.Count<=NativeRunPreview.Columns*NativeRunPreview.Rows&&p.Box.Length==p.Count*4&&p.Level.Length==p.Count&&p.Arrive.Length==p.Count,n+": a city of blocks ("+p.Count+")");
+                for(int i=0;i<p.Count;i++){float u=p.Box[i*4],v=p.Box[i*4+1],w=p.Box[i*4+2],h=p.Box[i*4+3];Check(u>=0&&v>=0&&w>0&&h>0&&u+w<=1.0001f&&v+h<=1.0001f,n+": block "+i+" inside the plan");Check(p.Level[i]>=0&&p.Level[i]<=1&&p.Arrive[i]>=0&&p.Arrive[i]<=1,n+": block "+i+"'s height and arrival");}
+                Check(p.Node.Length==NativeRunPreview.Nodes*2&&p.Node[1]>p.Node[NativeRunPreview.Nodes*2-1],n+": the hub at the foot, the final boss at the top");
+                for(int i=1;i<p.PathAt.Length;i++){Check(p.PathAt[i]>p.PathAt[i-1],n+": the route runs forward");Check(p.Path[i*2]==p.Path[i*2-2]||p.Path[i*2+1]==p.Path[i*2-1],n+": each leg runs along a street");}
+                Check(p.PathAt[0]==0&&Math.Abs(p.PathAt[p.PathAt.Length-1]-1)<1e-5f,n+": the route's length");
+                for(int i=1;i<NativeRunPreview.Nodes;i++)Check(p.NodeAt[i]>p.NodeAt[i-1],n+": the route reaches the nodes in order");
+                for(int i=0;i<NativeRunPreview.Nodes;i++){p.Along(p.NodeAt[i],out float nu,out float nv);Check(Math.Abs(nu-p.Node[i*2])<1e-3f&&Math.Abs(nv-p.Node[i*2+1])<1e-3f,n+": node "+i+" on the route");}
+                // No block stands on the route.
+                for(int s=0;s<=400;s++){p.Along(s/400f,out float ru,out float rv);for(int i=0;i<p.Count;i++){float u=p.Box[i*4],v=p.Box[i*4+1],w=p.Box[i*4+2],h=p.Box[i*4+3];Check(!(ru>u+.001f&&ru<u+w-.001f&&rv>v+.001f&&rv<v+h-.001f),n+": the route keeps to the streets (block "+i+")");}}
+            }
+            NativeRunPreview.Cycle(0,out float b0,out float f0);NativeRunPreview.Cycle(NativeRunPreview.Period*.6,out float b1,out float f1);NativeRunPreview.Cycle(NativeRunPreview.Period*.999,out float b2,out float f2);
+            Check(b0==0&&f0==1&&b1==1&&f1==1&&b2==1&&f2<.05f,"a roll builds, holds and fades");Check(NativeRunPreview.RollAt(NativeRunPreview.Period*2.5)==2,"then the next takes over");
+        }
         public static void Run(string root)
         {
             count=0;Catalogue(root);Mapping();Gates();Fit();Sources(root);
@@ -55,6 +85,7 @@ namespace ChipArena.UnityConversion
                 }
                 Check(x.LiveAreas>=1,n+": at least one live area");
             }
+            RunPreview(root);
             var siren=K.All.Single(x=>x.WaveDefense);Check(siren.Id=="black-siren"&&siren.Areas[0].Name=="WARD ZERO"&&siren.Areas[0].State==K.AreaState.Live&&siren.Areas[3].Name=="THE SIREN","Wave Defense belongs to the current expedition (Ward Zero, then the Siren)");
             Check(siren.Areas[1].Name=="CENTRAL STATION"&&siren.Areas[2].Name=="CITY IRONWORKS"&&siren.Areas[3].Place.StartsWith("City Hall",StringComparison.Ordinal),"the owner's areas: Central Station, City Ironworks, the Siren at City Hall");
             Check(K.StateLabel(K.AreaState.Live)=="LIVE"&&K.StateLabel(K.AreaState.InDevelopment)=="IN DEVELOPMENT"&&K.ShortLabel(K.AreaState.InDevelopment)=="IN DEV","state labels");
@@ -162,7 +193,7 @@ namespace ChipArena.UnityConversion
             Check(home.Contains("if(expDrawer&&(at==MenuScreen.Boss||at==MenuScreen.Lobby)){ExpToggleDrawer();return;}"),"Escape closes the loadout drawer first");
             // A guest is read-only: the shown pick and mode are the room's; turns, modes, waves and bots need Editable.
             Check(exp.Contains("if(seat==X.Seat.Guest){expPick=K.Default;expMode=receivedOptions?.expedition==true?X.Mode.Expedition:X.Mode.Waves;}"),"a guest sees the room's run: the default expedition in Wave Defense");
-            Check(Regex.Matches(exp,@"if\(edit\)ExpTurnTo").Count==2&&exp.Contains("if(!edit)return;if(!X.WaveSupported(start))")&&exp.Contains("bool live=ExpLive(a)&&edit;float h=U.HoverAmount(9500+index")&&exp.Contains("ExpPartyCard(slot,party[i],i,ce,now,seat,edit&&i==newest,bots)")&&exp.Contains("bool canAdd=edit&&"),"a guest's keys, mode tiles, wave row and bot buttons do nothing");
+            Check(Regex.Matches(exp,@"if\(edit&&expMode==X\.Mode\.Expedition\)ExpTurnTo").Count==2&&exp.Contains("if(!edit)return;if(!X.WaveSupported(start))")&&exp.Contains("bool live=ExpLive(a)&&edit;float h=U.HoverAmount(9500+index")&&exp.Contains("ExpPartyCard(slot,party[i],i,ce,now,seat,edit&&i==newest,bots)")&&exp.Contains("bool canAdd=edit&&"),"a guest's keys, mode tiles, wave row and bot buttons do nothing");
             Check(exp.Contains("BeginRules(false,width);var o=rules;"),"the drawer's party rows go through BeginRules (read-only on a guest connection)");
             // Expedition presentation adds no fields; Astra's M1 integration adds the separate training room mode.
             var fields=typeof(NativeRoomOptions).GetFields().Select(f=>f.Name).OrderBy(s=>s,StringComparer.Ordinal).ToArray();
