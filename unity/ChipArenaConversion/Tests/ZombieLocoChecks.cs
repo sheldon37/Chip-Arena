@@ -28,9 +28,11 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             Cadence(out string cadence);Fluid(out string fluid);Blends(out string blends);Feet(out string feet);Shoulders(out string shoulders);Allocation();Source(root);
-            Console.WriteLine("PASS zombie locomotion ("+count+" checks: "+cadence+"; "+fluid+"; "+blends+"; "+feet+"; "+shoulders+"; no allocation; presentation only)");
+            Console.WriteLine("PASS zombie locomotion ("+count+" checks: "+cadence+"; "+fluid+"; "+blends+"; "+feet+"; "+shoulders+"; no allocation; presentation only; six Backrooms placeholder motions await Claude acceptance)");
         }
-        private static IEnumerable<int> Captured()=>Enumerable.Range(0,NativeHordeKinds.All).Where(k=>k!=NativeHordeKinds.Crawler&&k!=NativeHordeKinds.Hulk&&NativeZombieMotion.Captured(k));
+        // Backrooms authority kinds currently borrow placeholder biped takes; Claude has not authored their motion.
+        // Keep registration/build coverage, but do not certify placeholder gallop/swim/scuttle foot planting as finished art.
+        private static IEnumerable<int> Captured()=>Enumerable.Range(0,NativeHordeKinds.All).Where(k=>!NativeBackroomsKinds.Own(NativeHordeKinds.Ids[k])&&k!=NativeHordeKinds.Crawler&&k!=NativeHordeKinds.Hulk&&NativeZombieMotion.Captured(k));
         private static float Rig(int k,float v)=>v/NativeHordeKinds.Scale[NativeHordeKinds.Index(k)];
 
         // ---- the body's cadence, whatever take it walks on ----
@@ -245,7 +247,7 @@ namespace ChipArena.UnityConversion
         private static void Shoulders(out string summary)
         {
             float worstRest=0,worstMove=0,worstSlit=0,shippedMost=0;int shippedApart=0;
-            for(int k=0;k<NativeHordeKinds.All;k++)for(int l=0;l<NativeHordeKinds.Looks[k];l++)
+            for(int k=0;k<NativeHordeKinds.All;k++)if(!NativeBackroomsKinds.Own(NativeHordeKinds.Ids[k]))for(int l=0;l<NativeHordeKinds.Looks[k];l++)
             {
                 bool varies=k<NativeHordeKinds.Count;string what=NativeHordeKinds.Ids[k]+" look "+l;float inset=NativeHordeGait.ShoulderInset(k,l),shipped=0;
                 foreach(int id in varies?Enumerable.Range(0,12).Select(i=>1000+i*37):new[]{1000})

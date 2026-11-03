@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     {
         public static bool Station(string map)=>map==NativeStationKinds.Map;
         public static bool Ironworks(string map)=>NativeIronworksKit.Active(map);
-        public static bool Active(string map)=>Station(map)||Ironworks(map);
+        public static bool Active(string map)=>Station(map)||Ironworks(map)||NativeBackroomsKinds.Active(map);
         public static int Wave(int progress,int target)=>progress<target*.15?1:progress<target*.5?2:progress<target*.85?3:4;
         private static NumberValue[] Mix(string ids,params double[] weights)=>ids.Split(',').Select((id,i)=>new NumberValue{name=id,value=weights[i]}).ToArray();
         private static readonly NumberValue[][] StationMix={
@@ -23,13 +23,13 @@ namespace ChipArena.UnityConversion
         private static readonly NumberValue[] IronBoss=Mix("cinderling,stoker,slagback,rigger,shambler",.45,.15,.2,.1,.1),StationBoss=Mix("shambler,runner,linesman,conductor",.5,.3,.1,.1);
         private static readonly NumberValue[][] StationBossPhases={Mix("shambler,runner,conductor",.6,.3,.1),Mix("shambler,runner,linesman,conductor,undertow",.45,.25,.15,.1,.05),Mix("shambler,runner,linesman,conductor,undertow,pileup",.4,.3,.1,.1,.05,.05)};
         public static NumberValue[] BossEncounter(string map,int phase)=>Station(map)?StationBossPhases[Math.Max(0,Math.Min(2,phase-1))]:IronBoss;
-        public static NumberValue[] Encounter(string map,int wave,bool boss)=>Station(map)?boss?StationBoss:StationMix[Math.Max(0,Math.Min(3,wave-1))]:boss?IronBoss:IronMix[Math.Max(0,Math.Min(3,wave-1))];
+        public static NumberValue[] Encounter(string map,int wave,bool boss)=>NativeBackroomsKinds.Active(map)?NativeBackroomsKinds.Mix(map,wave):Station(map)?boss?StationBoss:StationMix[Math.Max(0,Math.Min(3,wave-1))]:boss?IronBoss:IronMix[Math.Max(0,Math.Min(3,wave-1))];
         public static int Cap(string kind,int wave,bool boss)
-        {switch(kind){case "linesman":case "undertow":return 2;case "conductor":return wave>=3||boss?2:1;case "pileup":case "hulk":return 1;case "rigger":return boss||wave>=3?2:wave==2?1:0;case "ladleman":return boss?0:wave>=4?2:wave==3?1:0;default:return 40;}}
+        {if(NativeBackroomsKinds.Own(kind))return NativeBackroomsKinds.Cap(kind);switch(kind){case "linesman":case "undertow":return 2;case "conductor":return wave>=3||boss?2:1;case "pileup":case "hulk":return 1;case "rigger":return boss||wave>=3?2:wave==2?1:0;case "ladleman":return boss?0:wave>=4?2:wave==3?1:0;default:return 40;}}
         public static void Bind(ExpeditionAreaLayout area,NativePveContent data)
         {
             if(!Active(area.map))return;
-            var kinds=Station(area.map)?NativeStationKinds.Kinds:NativeIronworksKinds.Kinds;
+            var kinds=NativeBackroomsKinds.Active(area.map)?NativeBackroomsKinds.For(area.map):Station(area.map)?NativeStationKinds.Kinds:NativeIronworksKinds.Kinds;
             data.adds=(data.adds??Array.Empty<PveAddStats>()).Concat(kinds.Where(k=>!(data.adds??Array.Empty<PveAddStats>()).Any(a=>a.id==k.Id)).Select(k=>k.Proposed)).ToArray();
             foreach(var s in area.spawns)s.entry.allowed=s.allow.ToArray();
         }
@@ -47,6 +47,7 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeZoneEnemyFrame
     {
         public string attack;
+        public int actionTarget=-1,dreadTarget=-1;public bool dormant;public float wakeAt=-100,blinkAt=-100,blinkX,blinkY,blinkZ,dreadUntil=-100;
         public int[] arcTargets=Array.Empty<int>(),childIds=Array.Empty<int>();
         public int grabTarget=-1,pullTarget=-1,hang=-1,climbTo=-1;
         public bool grounded,lanternBroken,submerged;
@@ -54,10 +55,10 @@ namespace ChipArena.UnityConversion
         public float pullAt=-100,shedAt=-100,pourAt=-100,pourYaw,spilledAt=-100,lockAt=-100,lockX,lockZ,climbAt=-100,chainCutAt=-100;
         public bool Valid()
         {
-            if(attack!=null&&attack!="arc"&&attack!="whistle"&&attack!="grab"&&attack!="shove")return false;
+            if(attack!=null&&attack!="arc"&&attack!="whistle"&&attack!="grab"&&attack!="shove"&&attack!="wake"&&attack!="howl"&&attack!="pounce"&&attack!="blink"&&attack!="lunge"&&attack!="hook"&&attack!="sweep")return false;
             if(arcTargets==null||arcTargets.Length>3||arcTargets.Any(i=>i<1)||arcTargets.Distinct().Count()!=arcTargets.Length||childIds==null||childIds.Length>3||childIds.Any(i=>i<10000)||childIds.Distinct().Count()!=childIds.Length)return false;
-            if(grabTarget< -1||grabTarget>1000000||pullTarget< -1||pullTarget>1000000||hang< -1||hang>=256||climbTo< -1||climbTo>=256)return false;
-            return new[]{arcAt,lastCallAt,aboardUntil,surfaceAt,grabAt,releaseAt,splitAt,pullAt,shedAt,pourAt,pourYaw,spilledAt,lockAt,lockX,lockZ,climbAt,chainCutAt}.All(NativeZoneCombat.Finite)&& (grabAt<0||releaseAt>=grabAt);
+            if(actionTarget< -1||actionTarget>1000000||dreadTarget< -1||dreadTarget>1000000||grabTarget< -1||grabTarget>1000000||pullTarget< -1||pullTarget>1000000||hang< -1||hang>=256||climbTo< -1||climbTo>=256)return false;
+            return new[]{wakeAt,blinkAt,blinkX,blinkY,blinkZ,dreadUntil,arcAt,lastCallAt,aboardUntil,surfaceAt,grabAt,releaseAt,splitAt,pullAt,shedAt,pourAt,pourYaw,spilledAt,lockAt,lockX,lockZ,climbAt,chainCutAt}.All(NativeZoneCombat.Finite)&& (grabAt<0||releaseAt>=grabAt);
         }
         public NativeZoneEnemyFrame Copy(){var f=(NativeZoneEnemyFrame)MemberwiseClone();f.arcTargets=(int[])arcTargets.Clone();f.childIds=(int[])childIds.Clone();return f;}
         public StationView Station=>new StationView{attack=attack,arcTargets=arcTargets,arcAt=NativeZoneCombat.View(arcAt),grounded=grounded,lanternBroken=lanternBroken,lastCallAt=NativeZoneCombat.View(lastCallAt),aboardUntil=NativeZoneCombat.View(aboardUntil),submerged=submerged,surfaceAt=NativeZoneCombat.View(surfaceAt),grabTarget=grabTarget,grabAt=NativeZoneCombat.View(grabAt),releaseAt=NativeZoneCombat.View(releaseAt),splitAt=NativeZoneCombat.View(splitAt),childIds=childIds};

@@ -1,3 +1,43 @@
+## 2026-11-02 — Astra: Level 0 and Poolrooms enemy authority
+
+- **Branch/base:** `codex/backrooms-entity-rules`, shared `dac9016068c169488cb314105757ddec7e90e3d1` (includes Claude's `12abd65c` designs).
+- **Implemented:** Faceling wall dormancy/noise wake; Hound pack howl, swept pounce, timed pin/bites and escape;
+  dark-only Smiler movement/blink/strike; submerged Drowned capsule/speed/surfacing lunge; tiled-wall Tiler packs;
+  Lifeguard whistle, swept rescue-hook drag and pole sweep. New dedicated anchors, quota intro waves, caps and append-only
+  network IDs. Existing zombie indices, player saves, PvP maps and other zone hazards/bosses preserved.
+- **Decisions:** final numbers and motion/network hooks in `EXPEDITION-ENEMY-REWORK.md` section 6. Area cap 16 before
+  mutators; Hounds 6, Tilers 8, common kinds 12, one of each elite. Smiler intro 50%, Lifeguard 40%; packs request 3.
+  Pin lasts .9 s with 9 base total damage and allows weapon escape; hook pulls at most 4 m and sweeps the pilot body.
+  Smiler cannot cross a lit corridor, even by blinking; forcibly placed in light it freezes/takes 1.5x damage.
+  Drowned keeps a hittable .9 m submerged capsule; Lifeguard uses a 2.2 m collision capsule beneath its proposed 2.6 m
+  stooped visual so it clears the Poolrooms arches. No damaging tile shards or destructible-light rules.
+- **Integration:** own rule file and finite Zone state; guest capsule sizing follows submerged state. Locked special target
+  IDs and bounded timing survive the existing frame codec, corpses and late join. Both generated identity versions bumped.
+  Intro spawn failure retries without stalling ordinary quota spawning. Separate dark/wall anchor budgets fix seed 18's
+  missing Smiler anchor. No model, shader, audio or animation implementation taken from Claude's scope.
+- **Final verification:** focused entities suite passes 12,215,638 assertions across 32 seeds (IDs, quota gates, caps/mixes,
+  dark-only paths, finite JSON, capsule clearance against generated collision boxes, and Hulkamania's brute fallback in
+  Level 0). Managed suite coverage completed in segments: 353 PASS lines through HordeKindChecks, then all remaining
+  original calls from HordeDropChecks through the final 35 managed-core checks pass in a separate output (592 PASS lines;
+  two overlapping checks, 943 combined). Final Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes with
+  existing warnings; source-package validation passes (3,022 files); whitespace checks pass.
+- **Validation limits:** not one uninterrupted full-suite run. Local CLI process-stat failure required direct SDK Roslyn;
+  a concurrent transport run timed out; an unsorted fallback source list exposed existing partial-class initializer ordering;
+  a test output was reused during a follow-up compile, interrupting that run. Sorted, separate-output compilation and the
+  completed remainder above establish the final coverage. Legacy two-zone registration assertions now account for the six
+  appended kinds while checking unchanged old indices. The new kinds retain registration/finite-fallback coverage, but their
+  placeholder biped locomotion/shoulder certification is explicitly deferred to Claude: observed Hound foot slip 9.2 cm and
+  Faceling shoulder gap 2.6 cm. Existing enemies retain every animation assertion. No claim of finished new animation quality.
+  A native Editor gate exercises wake, contact/pin, break/CC release and actual `type="frame"` JsonUtility/guest state on the
+  existing generated-area fixture; it is compiled here but has NOT been executed in native Unity.
+- **Unrun/Claude handoff:** native Windows/PhysX, human multiplayer and performance acceptance remain unrun here. Claude owns
+  the dedicated six models/motion, howl/whistle/peel tells, blink fixture stutter and local dread screen effect. Consume the
+  new Zone fields described in section 6; ordinary zombie fallback presentation remains until that work lands.
+- **Release:** implementation commit `ca4a24c`, with validation/Hulkamania follow-up on the same local task branch.
+  Automatic approval review rejected the push to the public `sheldon37/Chip-Arena` destination, requiring explicit owner
+  authorization for that destination. Read-only branch lookup confirms no remote task branch. No PR, shared merge, builder
+  synchronization or compiled test publication occurred. Ready for owner push authorization; refresh shared before integration.
+
 ## 2026-11-03 — Claude: enemy rework plan, the Backrooms' entities for Astra, and their surroundings
 
 - **Branch:** `claude/backrooms-surroundings`, base shared `47edc019`.

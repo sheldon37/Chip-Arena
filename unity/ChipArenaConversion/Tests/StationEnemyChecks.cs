@@ -34,13 +34,13 @@ namespace ChipArena.UnityConversion
         // ---- the four registered as zone kinds after the Ironworks' (Core/NativeHordeZones) ----
         private static void Registration(string root)
         {
-            Check(NativeHordeKinds.Count==7&&NativeHordeKinds.All==NativeHordeKinds.Count+NativeHordeZones.Count&&NativeHordeZones.Count==NativeIronworksKinds.KindCount+NativeStationKinds.KindCount,"the Siren's seven stay Count; the zones' kinds follow them (All "+NativeHordeKinds.All+")");
+            Check(NativeHordeKinds.Count==7&&NativeHordeKinds.All==NativeHordeKinds.Count+NativeHordeZones.Count&&NativeHordeZones.Count==NativeIronworksKinds.KindCount+NativeStationKinds.KindCount+NativeBackroomsKinds.Kinds.Length,"the Siren's seven stay Count; the zones' kinds follow them (All "+NativeHordeKinds.All+")");
             // Both zones registered side by side (Core/NativeHordeZones): the City Ironworks' five first, then the station's four.
-            Check(NativeIronworksKinds.First==NativeHordeKinds.Count&&NativeStationKinds.First==NativeHordeZones.First(NativeStationKinds.Kinds)&&NativeStationKinds.First==NativeIronworksKinds.First+NativeIronworksKinds.KindCount&&NativeStationKinds.First+NativeStationKinds.KindCount==NativeHordeKinds.All,"the station's four follow the Ironworks' five");
+            Check(NativeIronworksKinds.First==NativeHordeKinds.Count&&NativeStationKinds.First==NativeHordeZones.First(NativeStationKinds.Kinds)&&NativeStationKinds.First==NativeIronworksKinds.First+NativeIronworksKinds.KindCount&&NativeStationKinds.First+NativeStationKinds.KindCount==NativeHordeZones.First(NativeBackroomsKinds.Kinds),"the station's four follow the Ironworks' five");
             for(int k=0;k<NativeHordeKinds.All;k++)
             {
-                bool iron=NativeIronworksKinds.Is(k),station=NativeStationKinds.Is(k);var z=NativeHordeZones.Of(k);
-                Check(k<NativeHordeKinds.Count?z==null&&!iron&&!station:z!=null&&iron!=station&&z.Id==NativeHordeKinds.Ids[k]&&NativeHordeKinds.Resolve(z.Id)==k&&NativeHordeKinds.Known(z.Id)&&NativeHordeKinds.Shipped[k],"kind "+k+" ("+NativeHordeKinds.Ids[k]+") belongs to exactly one zone or to the Siren");
+                bool iron=NativeIronworksKinds.Is(k),station=NativeStationKinds.Is(k),backrooms=NativeBackroomsKinds.Own(NativeHordeKinds.Ids[k]);var z=NativeHordeZones.Of(k);
+                Check(k<NativeHordeKinds.Count?z==null&&!iron&&!station&&!backrooms:z!=null&&(Convert.ToInt32(iron)+Convert.ToInt32(station)+Convert.ToInt32(backrooms)==1)&&z.Id==NativeHordeKinds.Ids[k]&&NativeHordeKinds.Resolve(z.Id)==k&&NativeHordeKinds.Known(z.Id)&&NativeHordeKinds.Shipped[k],"kind "+k+" ("+NativeHordeKinds.Ids[k]+") belongs to exactly one zone or to the Siren");
                 Check(k>=NativeHordeKinds.Count||NativeHordeKinds.Base(k)==k&&NativeHordeKinds.Index(k)==k,"a Siren kind is its own base");
             }
             foreach(var len in new[]{NativeHordeKinds.Ids.Length,NativeHordeKinds.Names.Length,NativeHordeKinds.Shipped.Length,NativeHordeKinds.Looks.Length,NativeHordeKinds.Radius.Length,NativeHordeKinds.Height.Length,NativeHordeKinds.Axis.Length,NativeHordeKinds.Root.Length,NativeHordeKinds.CenterAhead.Length,NativeHordeKinds.Scale.Length,NativeHordeKinds.Mass.Length,NativeHordeKinds.Default.Length,NativeHordeKinds.Seam.Length,NativeHordeKinds.SeamClass.Length})
