@@ -1,3 +1,5 @@
+2026-11-03 Claude: the Hound is a starved beast on all fours with its own doglike head (owner; `claude/hound-tiler`, merged into shared; docs/ZOMBIE-MODELS.md 4j): its gallop, pounce and pin on the authority's timings, its body sculpted into a local bank. Tiler's own body next. Not published: #317's build failure (Astra).
+
 2026-11-03 Claude: the Smiler is its own smoke apparition (owner; `claude/smiler-apparition`, merged into shared; docs/ZOMBIE-MODELS.md 4i), and the Online Players invite chip and panel are restyled and animated (docs/ONLINE-INVITES.md). Not published: #317's build failure (Astra).
 
 2026-11-03 Claude Backrooms entities, first pass (`claude/backrooms-entities`, merged into shared; presentation only; docs/ZOMBIE-MODELS.md 4h): Faceling, Smiler, Drowned and Lifeguard live on the model with their gear and first moves; Hound draft, Tiler next. Not published: the build still fails #317's pool-spawn validation (Astra).

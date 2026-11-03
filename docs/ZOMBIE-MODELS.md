@@ -534,7 +534,7 @@ Owner: "Please start the backroom enemies now" (the designs of docs/EXPEDITION-E
 | Smiler | not on the model since 2026-11-03: its own apparition (4i) | |
 | Drowned | heavy bathers, waterlogged pallor | `Stripes`: a vintage costume's stripes (the shader's ZombieStripe, 9 cm apart in rest space) on a tank or tube top and shorts; a rubber cap with petals (white or red) and fogged goggles |
 | Lifeguard | the kind's 2.6 m, thin, faded reds, sun-bleached, bucket or sun hat, flip-flops | `lifeguard-whistle` on a red cord; `Carry`: the rescue hook (an aluminium pole with a shepherd's crook) in the right hand, held upright at its side (Core NativeZombiePosture.StaffCarry); stands upright |
-| Hound (draft) | gaunt, hairless, in rags, bare feet | none yet: it runs on two legs until its gait on all fours |
+| Hound | a beast on all fours since 2026-11-03 (4j) | |
 
 New in the runtime: skin pieces (a gear prop whose id ends "-skin" draws with the head's own material and looks, every vertex
 on a cheek texel, unlined); stripes; a carried prop at the right hand's weapon frame, drawn every frame; the upright stance
@@ -592,6 +592,43 @@ lunge, blink, a hit and the death, frame by frame. Frame time with it 2 m ahead:
 Editor with other effects on screen (indicative, measured before the cloud was enlarged; the GPU cost on low-end hardware is
 not measured). Not run: Level 0's dark
 cells (lighting, the real blink move), a Windows build.
+
+## 4j. The Hound: a starved beast on all fours (2026-11-03, `claude/hound-tiler`)
+
+Owner: "Make the hound model different; Reference this- but of course, much better quality and detail" (a pale, emaciated
+thing on all fours: a bald crown with long grey strands, pointed ears, a grin of small sharp teeth, a white ruff at the throat),
+then "Make more monster like, modify model with blender if needed (still looks too much like player model)" and "Change head to
+be more doglike". It stays on the pack's skeleton (its hits, gore and effects find it there) but nothing of the person shows.
+
+- Head (`tools/gear/hound_gear.py`, in the local gear bank; Variant.Beast): the pack's head, face and hair off; its own skull and
+  hinged jaw on the head bone, modelled in Blender as metaballs (negative ones carve the sockets, nostrils and the creases across
+  the muzzle) polygonised, decimated and coloured by the kit's finishes: a long low cranium, a heavy brow over small sunken eyes
+  glinting red, a muzzle reaching .24 m ahead to a dark nose, lips drawn back off fangs and small sharp teeth on dark gums, tall
+  pointed ears cupped forward, thin grey strands off the crown, a white ruff at the throat and a beard of it under the chin. The
+  jaw turns about its hinge (Runtime ZombieBeastJaw, up to 38 degrees) on the add's jaw: hanging open, panting as it runs, wide
+  before each bite of its pin and snapped shut on it (Core NativeBackroomsMotion.HoundJaw), thrown open in the howl.
+- Body (`tools/gear/hound_body.py`, the local bank `Resources/ChipArenaHoundBody`, made from the pack's meshes and kept local like
+  it): the pack body's own meshes sculpted in their bind pose (the local tool's `binddump`): stick limbs with knobbed elbows,
+  wrists, knees and ankles, a pinched waist and a belly sucked in under the ribs, flat chest and seat, the spine's ridge, shoulder
+  blades, hip crests and collarbones standing out, a thin neck; each vertex moved by its two heaviest bones' fields, the moves
+  smoothed over the welded mesh so the parts' seams stay shut. Runtime ZombieBeastBody swaps the Hound's meshes for copies with
+  the sculpted places and normals (skinning and blend shapes as they were), once per mesh; without the bank it draws the pack's
+  body. Ribs and the spine are shaded on top (the toon shader's ZombieLean, in rest space: Variant.Ribs). Bare, pale pink skin,
+  dark red eyes, grime and tears, two decay openings per variant; arms near half again as long (Reach 1.45).
+- On all fours (Core NativeHordeMotion, the gait's quadruped; NativeVisualRig.State.Hands plants the model's hands by two-bone IK,
+  NativeZombiePosture.Stance's hound branch carries its pelvis): a walk's lateral sequence at its stalk into a rotary gallop at
+  its 6 m/s (hind left, hind right, fore right, fore left), a short stance and a moment in the air; its back arching as the hind
+  feet come under and stretching as they push off; the head held level and ahead.
+- Its moves on the authority's timings: the pounce (a .35 s crouch coiled on its haunches, a .5 s leap with the forelimbs reaching,
+  contact at .85 s, landing low; NativeHordeGait.HoundPounce), the pin (Core NativeBackroomsMotion.HoundPin: its front reared onto
+  the pilot, forelimbs on their chest, the head driving in on the bites at 0, .3 and .6 s of the .9 s hold), the howl (4h).
+- Drawn at a person's size: its kind's presentation scale is 1 (Core NativeBackroomsKinds, `Scale`, was its .85 m capsule's height
+  over 1.7, which drew a half-size person); its capsule, reach and every rule unchanged.
+
+Reviewed on the PC (BoZo; `mrun` to run it on a line, `idlebots`, Cybercity for side views where Brickfall's alley blocks them):
+standing turnarounds, the head close up, the gallop's side frames, the pounce frame by frame (a female variant too). Not seen yet:
+the howl on the new head, the pin on a live pilot, Level 0's own lighting, a Windows build. Open: claws; a lighter cut of its head
+for the farther adds (the skull and jaw 14,338 triangles together).
 
 ## 5. Not done yet (open)
 

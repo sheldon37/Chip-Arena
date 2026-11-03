@@ -1,3 +1,35 @@
+## 2026-11-03 — Claude: the Hound as a starved beast on all fours, its own doglike head
+
+- **Branch:** `claude/hound-tiler`, base shared `690f4695`; implementation `f756a776`.
+- **Task:** owner: "Yes, continue" (the Hound on all fours), then with a reference "Make the hound model different ... much better
+  quality and detail", "Make more monster like, modify model with blender if needed (still looks too much like player model)",
+  "Change head to be more doglike".
+- **Changed (presentation only; docs/ZOMBIE-MODELS.md 4j):** the gait's quadruped for the Hound (Core NativeHordeMotion: a walk
+  into a rotary gallop, an arching back, the pounce's crouch, leap and landing), its hands planted on the model by two-bone IK
+  (NativeVisualRig.State.Hands) and its pelvis carried low (NativeZombiePosture.Stance); its pin and jaw (Core
+  NativeBackroomsMotion.HoundPin, HoundJaw); a beast's head instead of the pack's (`tools/gear/hound_gear.py`: a skull and hinged
+  jaw in the local gear bank, Runtime ZombieBeastJaw); its body the pack's meshes sculpted starved (`tools/gear/hound_body.py`
+  into the new local bank `ChipArenaHoundBody`, Runtime ZombieBeastBody; the pack's body without it); ribs and spine shaded in
+  rest space (the toon shader's ZombieLean). Variants: bare, pale, dark red eyes, long arms.
+- **Astra's file:** Core/NativeBackroomsKinds.cs `Scale` for the Hound is 1 (was its .85 m capsule height over 1.7, so the model
+  drew half a person's size). `Scale` is read by the presentation only; the capsule, radius and every rule are unchanged.
+- **Animation impact:** none on rules: the pounce's contact lands on the authority's .85 s (crouch .35 s), the pin's bites on its
+  0/.3/.6 s beats inside the .9 s hold, damage, cooldowns, movement speed (6 m/s), the capsule (.85 m, .35 m radius) and
+  networking unchanged. The drawn body (a person's length on all fours, its hips about .7 m up) reaches past its capsule's
+  .35 m radius ahead and behind, so shots at its head and rump outside the capsule pass through.
+- **Checks:** full `CoreTests` in a clean LF worktree on `f756a776`: passed (exit 0, 943 groups); `--zombie-models` (the Hound's kit: bare, its skull
+  and jaw, long arms; only it runs on all fours; the pounce's phases on the authority's times; its jaw; its pin finite and handed
+  back), `--zombie-posture` (the Fit's arms flag pinned); pin scan: 11 files, 0 broken; `git diff --check` clean. PC (BoZo;
+  `mrun`, `idlebots`, Cybercity for side views): standing turnarounds, the head close up, the gallop's side frames, the pounce
+  frame by frame. Local tool: `mrun`, `socialpause`, `bindroot` (binddump writes the weights too). Not run: the howl on the new
+  head, the pin on a live pilot, Level 0's lighting, a Windows build.
+- **Local assets:** the Drive zip carries the rebuilt gear bank (26 props: the Hound's two added, the Smiler's two retired ones
+  dropped) and `ChipArenaHoundBody`; the previous zip is kept beside it as `LocalAssets-before-hound.zip`.
+- **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
+- **Next (Claude):** the Tiler's own body (a tile crab on six legs); the Hound's claws and a lighter head for the farther adds;
+  the Smiler's dread and fixture stutter.
+
+
 ## 2026-11-03 — Claude: the Smiler as a smoke apparition, off the player's model
 
 - **Branch:** `claude/smiler-apparition`, base shared `c289fdad` (shared `b337d1b6` merged in); implementation `58adef6e`..`8c64c7c2`, a pin update `148d10ee`.
