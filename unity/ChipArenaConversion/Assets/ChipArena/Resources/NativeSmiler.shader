@@ -2,7 +2,7 @@
 // cloud of black smoke with two glowing white eyes and a wide grin of yellowed teeth glowing red at the gums; Core
 // NativeSmilerLook, Runtime NativeSmilerPresentation). One draw: a box round the cloud, raymarched. The cloud is a signed
 // field in its own space (metres, x right, y up, z ahead, the core at the origin): a core and six lobes turning slowly about
-// it, a tail tapering down toward the floor and trailing its drift, the lunge's lobe thrown ahead on a neck of smoke; the
+// it, a tail tapering down toward the floor (thinning to a wisp) and trailing its drift, the lunge's lobe thrown ahead on a neck of smoke; the
 // field is pushed out and in by a tileable 3D noise (big billows, fine curls) boiling through it, so its edge is billowy,
 // soft over a few centimetres, with wisps outside it. The smoke is near black (a little scene light and the face's own glow:
 // red round the grin, white by the eyes). The face is drawn where the ray crosses a plane facing the camera on the cloud's
@@ -75,7 +75,7 @@ Shader "ChipArena/NativeSmiler"
                 // The tail: tapering down toward the floor, swaying, trailing its drift.
                 float3 a0=float3(0.0,-0.3,0.0),b0=float3(sin(time*0.6+seed)*0.13-drift.x*0.3,-1.25+0.35*spread,-0.12-drift.z*0.3+cos(time*0.47+seed)*0.08);
                 float3 ba=b0-a0;float h=saturate(dot(q-a0,ba)/dot(ba,ba));
-                d=SmilerMin(d,length(q-a0-ba*h)-lerp(0.4,0.07,h)*(1.0+0.3*spread),0.25);
+                d=SmilerMin(d,length(q-a0-ba*h)-lerp(0.33,0.05,h)*(1.0+0.3*spread),0.25);
                 // The lunge's lobe, thrown ahead on its neck of smoke.
                 float L=surge*_SmilerE.z;
                 if(L>0.01)
@@ -131,7 +131,7 @@ Shader "ChipArena/NativeSmiler"
                 float3 gumLight=float3(2.6,0.36,0.07),mouth=float3(0.32,0.025,0.008)*(0.6+1.6*open)*(0.6+0.4*c);
                 float3 grinLight=lerp(lerp(mouth,gumLight,gums),enamel*1.7,tooth)*inside;
                 // The lips' glow outside the mouth.
-                float o=max(outside,0.0);grinLight+=float3(1.0,0.16,0.04)*(exp(-o/0.016)*0.9+exp(-o/0.06)*0.16)*(1.0-inside);
+                float o=max(outside,0.0);grinLight+=float3(1.0,0.16,0.04)*(exp(-o/0.016)*0.9+exp(-o/0.06)*0.1)*(1.0-inside);
                 rgb+=grinLight*glow*face;a=max(a,inside*face);
                 return float4(rgb,a);
             }
@@ -173,11 +173,13 @@ Shader "ChipArena/NativeSmiler"
                     else
                     {
                         float dens=(saturate(-dd*8.0)*34.0+saturate(1.0-dd/0.22)*smoothstep(0.5,0.85,curls)*(dd>0.0?3.0:0.0))*presence;
+                        // The tail thins to a ghostly wisp toward the floor.
+                        dens*=lerp(0.18,1.0,smoothstep(-1.3,-0.45,p.y-_SmilerC.w-_SmilerB.z));
                         // In front of the face only wisps drift across it.
                         float along=dot(p-faceC,n),across=length(p-faceC-n*along);
                         dens*=lerp(1.0,0.04+0.9*smoothstep(0.7,0.92,curls),smoothstep(-0.03,0.02,along)*smoothstep(0.5,0.34,across));
                         float3 m=p-mouthAt,el=p-eyeL,er=p-eyeR;
-                        float3 light=lightBase+(float3(1.0,0.14,0.03)*0.6*exp(-dot(m,m)/0.035)*face+float3(0.9,0.95,1.0)*0.25*(exp(-dot(el,el)/0.006)+exp(-dot(er,er)/0.006))*eyes)*glow;
+                        float3 light=lightBase+(float3(1.0,0.14,0.03)*0.42*exp(-dot(m,m)/0.035)*face+float3(0.9,0.95,1.0)*0.25*(exp(-dot(el,el)/0.006)+exp(-dot(er,er)/0.006))*eyes)*glow;
                         float a=1.0-exp(-dens*ds);col+=T*a*light;T*=1.0-a;
                     }
                     if(faceDue&&t+ds>=tFace){faceDue=false;col+=T*faceLight.rgb;T*=1.0-faceLight.a;}
