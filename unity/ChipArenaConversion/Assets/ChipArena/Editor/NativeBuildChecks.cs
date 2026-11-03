@@ -171,6 +171,24 @@ namespace ChipArena.UnityConversion.Editor
             if(brickfallMusic==null||brickfallMusic.channels!=2||Mathf.Abs(brickfallMusic.length-199.944f)>.5f)
                 throw new Exception("Brickfall Run is missing or did not import as the complete stereo stage track.");
             Debug.Log("PASS Brickfall stage music: Brickfall Run, complete stereo clip at the map's runtime resource path");
+            // Verify every owner upload survived the actual Unity import, including reserved Poolrooms.
+            var stageSong0=Resources.Load<AudioClip>("Audio/music/breakwater-arena-duel");
+            if(stageSong0==null||stageSong0.channels!=2||Mathf.Abs(stageSong0.length-223.344f)>.5f)throw new Exception("Stage music import incomplete: breakwater-arena-duel");
+            var stageSong1=Resources.Load<AudioClip>("Audio/music/harbor-container-terminal");
+            if(stageSong1==null||stageSong1.channels!=2||Mathf.Abs(stageSong1.length-198.432f)>.5f)throw new Exception("Stage music import incomplete: harbor-container-terminal");
+            var stageSong2=Resources.Load<AudioClip>("Audio/music/skyframe-rising-motif");
+            if(stageSong2==null||stageSong2.channels!=2||Mathf.Abs(stageSong2.length-164.304f)>.5f)throw new Exception("Stage music import incomplete: skyframe-rising-motif");
+            var stageSong3=Resources.Load<AudioClip>("Audio/music/rig-offshore");
+            if(stageSong3==null||stageSong3.channels!=2||Mathf.Abs(stageSong3.length-197.232f)>.5f)throw new Exception("Stage music import incomplete: rig-offshore");
+            var stageSong4=Resources.Load<AudioClip>("Audio/music/polar-pulse-de-la-mort");
+            if(stageSong4==null||stageSong4.channels!=2||Mathf.Abs(stageSong4.length-174.144f)>.5f)throw new Exception("Stage music import incomplete: polar-pulse-de-la-mort");
+            var stageSong5=Resources.Load<AudioClip>("Audio/music/backrooms-fluorescent-loop");
+            if(stageSong5==null||stageSong5.channels!=2||Mathf.Abs(stageSong5.length-179.784f)>.5f)throw new Exception("Stage music import incomplete: backrooms-fluorescent-loop");
+            var stageSong6=Resources.Load<AudioClip>("Audio/music/poolrooms-untitled");
+            if(stageSong6==null||stageSong6.channels!=2||Mathf.Abs(stageSong6.length-239.952f)>.5f)throw new Exception("Stage music import incomplete: poolrooms-untitled");
+            var stageSong7=Resources.Load<AudioClip>("Audio/music/training-steady-groove");
+            if(stageSong7==null||stageSong7.channels!=2||Mathf.Abs(stageSong7.length-180.024f)>.5f)throw new Exception("Stage music import incomplete: training-steady-groove");
+            Debug.Log("PASS eight owner stage songs: complete imported clips at runtime resource paths");
             CheckExpeditionAreaRuntimes(data);
             CheckExpeditionCohortPlacement(data);
             CheckDeploymentShader();

@@ -13,6 +13,24 @@ internal static class ZoneMusicChecks
     static void Check(bool ok,string what){if(!ok)throw new Exception("Zone music: "+what);count++;}
     public static void Run(string root)
     {
+        Check(NativeStageMusic.Theme("breakwater","old")=="breakwater-arena-duel","owner stage song: breakwater");
+        Check(NativeStageMusic.Theme("harbor","old")=="harbor-container-terminal","owner stage song: harbor");
+        Check(NativeStageMusic.Theme("skyframe","old")=="skyframe-rising-motif","owner stage song: skyframe");
+        Check(NativeStageMusic.Theme("rig","old")=="rig-offshore","owner stage song: rig");
+        Check(NativeStageMusic.Theme("polar","old")=="polar-pulse-de-la-mort","owner stage song: polar");
+        Check(NativeStageMusic.Theme("backrooms-level-0","old")=="backrooms-fluorescent-loop","owner stage song: backrooms-level-0");
+        Check(NativeStageMusic.Theme("training","old")=="training-steady-groove","owner stage song: training");
+        Check(NativeStageMusic.Theme("expedition-backrooms-level-0","old")=="backrooms-fluorescent-loop","Expedition Level 0 uses its own track");
+        Check(NativeStageMusic.PoolroomsTrack=="poolrooms-untitled","Poolrooms resource reserved without inventing a playable map");
+        foreach(string map in new[]{"brickfall","siren","factory","cybercity","expedition-city","expedition-transit","expedition-foundry","unknown",null})Check(NativeStageMusic.Theme(map,"existing")=="existing","existing theme retained: "+map);
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/breakwater-arena-duel.mp3")),"packaged owner song: breakwater-arena-duel");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/harbor-container-terminal.mp3")),"packaged owner song: harbor-container-terminal");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/skyframe-rising-motif.mp3")),"packaged owner song: skyframe-rising-motif");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/rig-offshore.mp3")),"packaged owner song: rig-offshore");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/polar-pulse-de-la-mort.mp3")),"packaged owner song: polar-pulse-de-la-mort");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/backrooms-fluorescent-loop.mp3")),"packaged owner song: backrooms-fluorescent-loop");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/poolrooms-untitled.mp3")),"packaged owner song: poolrooms-untitled");
+        Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/Audio/music/training-steady-groove.mp3")),"packaged owner song: training-steady-groove");
         Func<string,bool> all=id=>true,none=id=>false;
         Check(NativeZoneMusic.ZoneBoss("expedition-transit")=="music/central-station-boss","Central Station names its boss track");
         Check(NativeZoneMusic.ZoneBoss("expedition-foundry")=="music/city-ironworks-boss"&&NativeZoneMusic.ZoneBoss("expedition-ironworks")=="music/city-ironworks-boss","City Ironworks names its boss track under the live id and the draft name");
@@ -28,6 +46,7 @@ internal static class ZoneMusicChecks
         Check(audio.Contains("string boss=NativeZoneMusic.BossTrack(arena.MapId,id=>Clip(id)!=null);"),"the boss branch routes through NativeZoneMusic");
         Check(audio.Contains("if(boss==NativeZoneMusic.SirenSong)Track(boss,Music*.55f,hold,arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);"),"the Siren's song keeps its intro/loop map and clock");
         Check(audio.Contains("double clip=song!=null?song.Clip(arena.BossSongTime):NativeZoneMusic.LoopClock(arena.BossSongTime,Clip(boss).length);")&&audio.Contains("Track(boss,Music*.55f,hold||clip<0,Math.Max(0,clip),arena,arena.BossSongAt);"),"a zone track plays its intro edit and loop map (a plain loop without one) on the shared boss clock");
+        Check(audio.Contains("NativeStageMusic.Theme(arena.MapId,\"restricted-zone-pulse\")")&&audio.Contains("string theme=NativeStageMusic.Theme(arena.MapId,"),"PvE and PvP route owner music through the shared resolver");
         int boss=audio.IndexOf("else if(arena.BossSongTime>=0)",StringComparison.Ordinal),foundry=audio.IndexOf("Track(\"music/foundry-of-the-dead\"",StringComparison.Ordinal),transit=audio.IndexOf("Track(\"music/subway-arrival-chime\"",StringComparison.Ordinal);
         Check(boss>0&&foundry>boss&&transit>boss,"the boss branch still comes before the zones' normal-play tracks (PR #263)");
         Console.WriteLine("PASS zone music ("+count+" checks: Central Station and City Ironworks boss tracks when installed, Siren's song otherwise, shared-clock loop, NativeAudio routing)");

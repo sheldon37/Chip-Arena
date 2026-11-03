@@ -1,3 +1,10 @@
+## 2026-11-02 — Astra: owner recordings for the eight new-stage music prompts
+
+- **Branch/base:** `codex/new-stage-songs`, shared `97099d38`. Owner supplied tracks 1–8 and requested Update publication.
+- **Change:** original MP3s copied byte-for-byte into native Resources with streaming/background import metadata and asset-lock receipts. Shared theme resolver routes the five new arenas, Training and both Level 0 modes; Poolrooms is packaged/reserved until its playable map exists. Existing boss/menu precedence, music volume, ordinary full-track loops and phase gates remain. No gameplay, geometry, animation, hit timing or network changes.
+- **Mapping:** `docs/arenas/STAGE-MUSIC-PROMPTS.md`. New native build gate requires all eight Unity clips with stereo channels and original duration; focused routing/resource tests added.
+- **Validation/release:** MP3 decode and probe verification pass for all eight. Focused managed, Unity semantic compile and package checks plus PR/shared/builder receipts recorded in the task PR. Real Windows import, in-game listening and successful compiled feed publication require the builder result; not claimed locally.
+
 ## 2026-11-02 — Astra: new arenas in Random and stage music briefs
 
 - **Branch/base:** `codex/stage-random-music`, shared `62b00b09`.

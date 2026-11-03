@@ -42,4 +42,15 @@ Calibration Bay remains a training-only sandbox and does not enter PvP Random.
 
 ## Integration status
 
-Prompts only: no generated audio is added by this change. Existing temporary music assignments remain until the owner supplies approved tracks. Random includes the five new PvP arenas plus the already-enabled Level 0; Breakwater is filtered by the actual match roster (FFA up to four, teams up to 2v2). Poolrooms has no map ID to register yet.
+Owner supplied all eight recordings on 2026-11-02. The original MP3 bytes are packaged with streaming import settings and ordinary full-track looping; no trimming, recompression or seamless-loop claim. Stage volume, phase gating, menu music and boss precedence are preserved. Level 0 uses its recording in both PvP and Expedition. Poolrooms has no playable map yet: its recording is packaged as `NativeStageMusic.PoolroomsTrack`, ready for future integration.
+
+| Stage | Owner file | Resource key | Duration |
+|---|---|---|---|
+| breakwater | Arena Duel.mp3 | `breakwater-arena-duel` | 223.344 s |
+| harbor | Container Terminal.mp3 | `harbor-container-terminal` | 198.432 s |
+| skyframe | Rising Motif.mp3 | `skyframe-rising-motif` | 164.304 s |
+| rig | Offshore Rig.mp3 | `rig-offshore` | 197.232 s |
+| polar | Pulse de la Mort.mp3 | `polar-pulse-de-la-mort` | 174.144 s |
+| backrooms-level-0 | fluorescent loop.mp3 | `backrooms-fluorescent-loop` | 179.784 s |
+| Poolrooms (reserved) | Untitled.mp3 | `poolrooms-untitled` | 239.952 s |
+| training | Steady Groove.mp3 | `training-steady-groove` | 180.024 s |
