@@ -33,8 +33,8 @@ namespace ChipArena.UnityConversion
         public const string BackroomsBank="ChipArenaPackBackrooms";public const int BackroomsBlockCells=8;
         public const float BackroomsReach=44,BackroomsLampRange=6f;public static readonly Vector3 BackroomsLampColor=new Vector3(.5f,.47f,.36f);
         private static readonly string[] BackroomsTextures={"backrooms-l0-carpet","backrooms-l0-ceiling","backrooms-l0-wallpaper","backrooms-l0-trim",null,null};
-        // Each surface's tint (multipliers over its texture) and glow.
-        private static readonly Color[] BackroomsTint={new Color(1f,.95f,.82f),new Color(1f,.98f,.88f),new Color(1f,.97f,.78f),new Color(1f,.96f,.86f),new Color(1f,1f,.96f),new Color(.62f,.62f,.58f)};
+        // Each surface's tint (multipliers over its texture: the add-on's baked colours as they are) and glow.
+        private static readonly Color[] BackroomsTint={Color.white,Color.white,Color.white,Color.white,new Color(1f,1f,.96f),new Color(.62f,.62f,.58f)};
         private static readonly float[] BackroomsGlow={0,.22f,0,0,2.4f,0};
         private sealed class BackroomsBlock{public Vector3 Centre;public readonly Mesh[] Meshes=new Mesh[(int)BackroomsMesh.Surface.Count];public readonly List<(Vector3 at,int cell)> Flickers=new List<(Vector3,int)>();}
         private readonly List<BackroomsBlock> backroomsBlocks=new List<BackroomsBlock>();private BackroomsLayout backroomsLayout;private Vector3 backroomsOrigin;

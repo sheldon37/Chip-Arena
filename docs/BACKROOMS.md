@@ -12,8 +12,12 @@ Owner decisions (2026-11-02):
   - Astra: the generator, collision, navigation, spawns, objectives and rules.
   - Claude: the art (the kit in the game, materials, lights, atmosphere, the camera filter) and this spec.
 
-Status: the kit bank, the layout contract with a stand-in Level 0 generator and a DEV preview drawn from the kit are
-built (Claude, 2026-11-02; "Built so far" below). The level is not in the game: no map, generator, rules or look yet.
+Status:
+- **Level 0** is in the game (Astra's rules below): the PvP map `backrooms-level-0` and the Expedition destination. It is drawn
+  by Claude's procedural builder with the owner's add-on's textures (owner 2026-11-02: "Generated + its textures"; "The
+  add-on's textures" below). A dedicated map look is still to do.
+- **The Poolrooms:** the layout contract, a stand-in generator, the geometry, the water and a DEV preview are built (Claude,
+  2026-11-02; "The Poolrooms" below). No map, generator or rules yet (Astra's).
 
 ## Level 0's look: the owner's reference (2026-11-02, supersedes the kit look below)
 
@@ -26,13 +30,8 @@ go EXACTLY for this style".
 - **So the level is built procedurally** (Core `BackroomsMesh`) instead of from the modular FBX kit: floor, ceiling, walls to
   the ceiling with doorways and jambs, baseboards, slim pillars and fixtures. The kit's walls, ceiling panels and wallpaper
   are a stylised take that doesn't match. Its pieces stay in the bank for later dressing (doors, ladder, vents).
-- **Textures:** the pack's "yellow offices" set, inside `backroom_blender-1.0.0.zip` under `assets/textures`. Its
-  `SOURCES.txt` says CC0 (ambientCG Carpet016 and a CC0 studio set); they still stay local like the rest of the pack.
-  - `office_wallpaper` toned paler and warmer to the photo (`Level0/wallpaper_pale.png`);
-  - `carpet`;
-  - `office_ceiling` (2 × 4 acoustic tiles with the grid);
-  - `office_trim` toned to a light wood (`Level0/trim_pale.png`).
-  - They are bank textures `backrooms-l0-*`.
+- **Textures:** since 2026-11-02 the add-on's own baked colour maps (see "The add-on's textures"). Before that, the pack's
+  "yellow offices" source images toned paler to the photo (`Level0/*_pale.png`, kept locally).
 - **Proportions:**
   - cells 2.4 m (8 ft); ceiling 2.7 m (9 ft); walls 0.14 m thick;
   - doorways 1 m, cut to the ceiling;
@@ -45,6 +44,33 @@ go EXACTLY for this style".
   - pillars appear only in the open halls.
 - **Seen in Unity** (DEV preview, captures from inside at eye height): it matches the photo's structure and palette. Lone wall
   stubs where doorways meet are rare now.
+
+## The add-on's textures (owner 2026-11-02: generated layouts with the add-on's textures)
+
+The owner asked to use the Backrooms Pro Generator add-on (`backroom_blender-1.0.0.zip`, GPL-3.0, made for Blender 4.5) and
+installed Blender (Steam, 5.2.3). The owner chose our generated layouts with the add-on's textures over fixed levels exported
+from it: every run stays a fresh layout and Astra's Level 0 rules keep working.
+
+- **Running it:** headless, from a driver script outside the repository: `blender --background --factory-startup --python`
+  (no user preferences touched). It registers the add-on for that process only, generates an archetype at a seed and exports it
+  for Unity (FBX tiles, 2K PBR bakes, a JSON sidecar).
+  - On 5.2 the add-on needs one patch at runtime: a Geometry Nodes modifier's inputs are
+    `mod.properties.inputs.<identifier>.value`, no longer `mod[identifier]`.
+  - Only its exported textures are used. Its code and the generated `*Setup.cs` stay out of the game. The textures stay local
+    like the packs (its assets are CC0 per its `SOURCES.txt`).
+- **Level 0** (`yellow_offices`): its baked colour maps for the wallpaper (olive, fine striped chevrons), the carpet (golden
+  tan), the ceiling grid and the trim (red-brown wood), as the bank textures `backrooms-l0-*`.
+  - Repeats as the add-on lays them (measured on its exported meshes): carpet 1.82 m, wallpaper 1.5 m, trim 1 m. The ceiling
+    grid stays at one repeat per cell, so its tiles line up with the fixtures.
+  - Tints are white: the add-on's colours as they are.
+  - The wallpaper bake darkens its bottom rows, which showed as a band at each vertical repeat. In the local copy, its bottom 84
+    rows fade into the rows that continue its top (the stripes repeat every 14 rows).
+- **The Poolrooms** (`poolrooms`): wall tile (0.48 m), floor tile (1.12 m), turquoise basin tile (0.8 m), ceiling plaster
+  (2 m) and the water's normal map, as `backrooms-pool-*`.
+- **Files:** `Assets/LocalAssets/Backrooms/Addon/` (PNG, with `SOURCES.txt`); the selection
+  `tools/pack_bank/selections/kit-backrooms.json`.
+- **Shipping:** the Backrooms bank rides in the builder's licensed-assets zip beside the visual body (`tools/pack_visual_body.py`
+  packs the `.bytes` and `PackBank/*.png` there). Without it, the live Level 0 falls back to plain map blocks.
 
 ## The assets (licensed: never commit or publish them)
 
@@ -206,8 +232,7 @@ change. Claude draws whatever it says.
   - extend the bank tool for per-submesh materials and bake the kit;
   - a DEV preview of a layout, standing in for the generator until it lands (as the hub preview did), drawn with the kit;
   - lighting and the first Unity captures.
-- **Owner:** whether Blender may be installed on the PC. The Poolrooms and the kit's packed textures are only in `.blend`
-  files; Textures.rar needs a RAR reader.
+- **Owner (done 2026-11-02):** Blender is installed. The add-on's exports provide Level 0's and the Poolrooms' textures.
 
 ## Seeded Level 0 rules (Astra, 2026-11-02)
 
@@ -251,3 +276,55 @@ objective guidance and art review. The rules do not change kit piece geometry,
 pod timing or the fluorescent circuit design. The live map uses Claude's existing interior lighting while inside the maze; a dedicated map look remains pending. Fluorescent hum is not implemented. Verify ceiling,
 short-wall gaps, pillar corners and pit edges against the baked bank on Windows;
 no local GPU or two-client playtest was available to Astra.
+
+## The Poolrooms (Claude, 2026-11-02; DEV preview)
+
+The add-on's "poolrooms" archetype rebuilt as our generated level: white tile, still water, wide quiet halls.
+
+- **Proportions:**
+  - 2 m cells; a 3.6 m ceiling at its lowest, rising 1.2 m a step by room (a deep pool's room at least one step);
+  - 0.3 m tiled walls;
+  - round 0.7 m pillars on a 2-cell pitch in the halls;
+  - round 0.9 m lights over every third cell both ways.
+  - Openings between rooms are 2 or 3 cells wide, under elliptical arches springing at 1.5 m below the lower ceiling.
+  - Pools: deep 1.3 m, wading 0.4 m, the water 0.15 m below the deck. A deep pool's steps are four treads from the deck to its
+    floor.
+- **The layout contract** (Core `PoolroomsLayout`, pure):
+  - per cell: its floor (`Deck`, `Shallow`, `Deep`, `Steps`), which way its steps descend, its ceiling's height, a pillar,
+    a light and its room;
+  - walls on the cell edges (`Open` or `Wall`; the outer border always walled);
+  - the entry cell.
+  - `FloorAt` gives the floor's height anywhere in a cell (a tread on a steps cell); `WaterY` is the surface.
+  - An open edge between two rooms is an opening, arched by the presentation.
+- **The stand-in generator** (`NativePoolrooms.Preview`, deterministic from the seed):
+  - the grid split again and again along its longer side into rooms of 4 to 10 cells a side;
+  - each room a deep pool (about 38%), a wading pool (18%) or a hall (the entry's always a hall);
+  - a pool inside a deck one cell wide, never touching a wall or an opening; a deep pool's steps on one of its sides, off
+    its corners, descending inward;
+  - the rooms joined by a random spanning tree of openings, plus about 35% more for loops.
+- **The geometry** (`PoolroomsMesh`):
+  - tiled decks; pools lined in turquoise tile, with walls from the deck down to the floor, tread by tread beside the steps;
+  - the water's sheet over every pool cell;
+  - wall runs to the higher ceiling; an arch's soffit and both spandrels;
+  - plaster ceilings; round pillars; round lights.
+  - It builds in blocks of 8 × 8 cells, each edge owned by one block.
+- **The water** (`Resources/NativePoolWater.shader`):
+  - transparent;
+  - two drifting samples of the add-on's water normal map;
+  - a Fresnel reflection of the room;
+  - a sharp highlight from each of the practical lights (the nearest pool lights);
+  - the ground haze and fog.
+- **The DEV preview** (`Runtime/NativePoolroomsPresentation.cs`): off by default (`--ca-poolrooms-preview`), drawn at
+  (-1000, 0, 1000), 30 × 30 cells. It draws only the blocks near the eye, and nothing without the bank's textures.
+  - Inside, until the level has its own map look: a cool-white trilight ambient, a pale haze, the nearest lights in the
+    practical slots, the sun and the toon style off.
+- **Checks:** `--poolrooms` covers determinism, a walled border, connectivity, pools inside their decks, steps leading in, one
+  flight per deep pool, one ceiling per room, faces wound out, the water's level, arches under the ceiling, blocks, the lights
+  and the preview's wiring. `--poolrooms-map SEED W D` prints a layout as text.
+- **Seen in Unity** (DEV captures at eye height, seed 7): tiled halls and pillars, arches between rooms, rippled turquoise
+  pools with the steps visible under the water.
+
+**Astra handoff (rules):** the Poolrooms need a map and a production generator (this contract, or an extension of it), collision
+and navigation, spawns, and the water's rules. Wading (0.15-0.25 m of water), deep water (swim or sink, climbing out by the
+steps or the pool's edge), what water does to movement, weapons and enemies, and whether Hulks fit under the 3.6 m ceilings are
+all the rules' call. The presentation only needs the layout. A map look and the level's sounds come after the map.
