@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         public const string BackroomsBank="ChipArenaPackBackrooms";public const int BackroomsBlockCells=8;
-        public const float BackroomsReach=44,BackroomsLampRange=6f;public static readonly Vector3 BackroomsLampColor=new Vector3(.5f,.47f,.36f);
+        public const float BackroomsReach=56,BackroomsLampRange=8f;public static readonly Vector3 BackroomsLampColor=new Vector3(.5f,.47f,.36f);
         private static readonly string[] BackroomsTextures={"backrooms-l0-carpet","backrooms-l0-ceiling","backrooms-l0-wallpaper","backrooms-l0-trim",null,null};
         // Each surface's tint (multipliers over its texture: the add-on's baked colours as they are) and glow.
         private static readonly Color[] BackroomsTint={Color.white,Color.white,Color.white,Color.white,new Color(1f,1f,.96f),new Color(.62f,.62f,.58f)};
