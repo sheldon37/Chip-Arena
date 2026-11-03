@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
             }
             return safe;
         }
-        public static bool StepUp(PhysicsScene physics,Vector3 from,Vector3 horizontal,out float rise,out Vector3 allowed)
+        public static bool StepUp(PhysicsScene physics,Vector3 from,Vector3 horizontal,out float rise,out Vector3 allowed,float maxStep=Step)
         {
             rise=0;horizontal.y=0;allowed=horizontal;if(horizontal.sqrMagnitude<.000001f||!Cast(physics,from,horizontal,out var obstruction))return false;
             if(NativeLocomotionRules.RampContact(NativeArena.Vec(obstruction.normal),NativeArena.Vec(SurfaceNormal(obstruction))))return false;
@@ -65,13 +65,13 @@ namespace ChipArena.UnityConversion
             if(obstruction.rigidbody==null||obstruction.rigidbody.isKinematic)
                 allowed=NativeArena.Vec(NativeLocomotionRules.BlockedStep(NativeArena.Vec(horizontal),NativeArena.Vec(obstruction.normal),obstruction.distance));
             // Up, forward, down. Never teleport through a ceiling, wall, or unsupported gap.
-            float lift=Step;if(Cast(physics,from,Vector3.up*lift,out var ceiling))lift=Math.Max(0,ceiling.distance-Skin);
+            float lift=maxStep;if(Cast(physics,from,Vector3.up*lift,out var ceiling))lift=Math.Max(0,ceiling.distance-Skin);
             if(lift<Skin*2)return false;var raised=from+Vector3.up*lift;
             if(!Clear(physics,raised)||Cast(physics,raised,horizontal,out _))return false;
             var ahead=raised+horizontal;
             if(!physics.CapsuleCast(ahead+Vector3.up*Pole,ahead-Vector3.up*Pole,Radius-Skin,Vector3.down,out var floor,lift+Reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore)||!Walkable(SurfaceNormal(floor)))return false;
             rise=lift-floor.distance+Skin;
-            if(rise<=Skin||rise>Step+.001f||!Clear(physics,from+Vector3.up*rise)||!Clear(physics,from+horizontal+Vector3.up*rise)){rise=0;return false;}
+            if(rise<=Skin||rise>maxStep+.001f||!Clear(physics,from+Vector3.up*rise)||!Clear(physics,from+horizontal+Vector3.up*rise)){rise=0;return false;}
             allowed=horizontal;return true;
         }
         public static Vector3 Slide(PhysicsScene physics,Vector3 from,Vector3 delta)
@@ -82,12 +82,12 @@ namespace ChipArena.UnityConversion
             if(Cast(physics,from,slide,out var second))slide=slide.normalized*Math.Max(0,second.distance-Skin);
             return from+slide;
         }
-        public static Vector3 Constrain(PhysicsScene physics,Vector3 from,Vector3 desired)
+        public static Vector3 Constrain(PhysicsScene physics,Vector3 from,Vector3 desired,float maxStep=Step)
         {
             var delta=desired-from;var ground=Probe(physics,from);bool supported=ground.Found&&delta.y<=.00001f;
             if(supported)
             {
-                if(StepUp(physics,from,delta,out float rise,out var allowed)){from.y+=rise;delta=allowed;}
+                if(StepUp(physics,from,delta,out float rise,out var allowed,maxStep)){from.y+=rise;delta=allowed;}
                 else delta=NativeArena.Vec(NativeLocomotionRules.AlongGround(NativeArena.Vec(allowed),NativeArena.Vec(ground.Normal)));
             }
             var result=Slide(physics,from,delta);
@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
             bool attach=NativeLocomotionRules.Attach(p.Grounded,p.GroundAttached,Vector3.Dot(velocity,p.Ground.Normal),jump,swimming,Time<p.LaunchUntil,impulseY);
             p.GroundAttached=attach;if(!attach)return false;
             var physics=root.scene.GetPhysicsScene();var position=p.Body.position;var horizontal=new Vector3(velocity.x,0,velocity.z);
-            if(NativeGroundMotor.StepUp(physics,position,horizontal/60,out float rise,out var allowed)){position.y+=rise;p.Body.position=position;p.Ground=NativeGroundMotor.Probe(physics,position);}
+            if(NativeGroundMotor.StepUp(physics,position,horizontal/60,out float rise,out var allowed,PoolStep)){position.y+=rise;p.Body.position=position;p.Ground=NativeGroundMotor.Probe(physics,position);}
             else if(p.Ground.Gap>NativeLocomotionRules.Skin){position.y-=p.Ground.Gap-NativeLocomotionRules.Skin;p.Body.position=position;}
             horizontal=allowed*60;
             velocity=Vec(NativeLocomotionRules.AlongGround(Vec(horizontal),Vec(p.Ground.Found?p.Ground.Normal:Vector3.up)));

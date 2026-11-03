@@ -45,16 +45,20 @@ namespace ChipArena.UnityConversion
         private readonly float[] poolroomsPos=new float[NativeMapLooks.MaxLights*4],poolroomsRgb=new float[NativeMapLooks.MaxLights*3];
         /// <summary>The Poolrooms blocks drawn last frame (budget lines).</summary>
         public int PoolroomsBlocksDrawn{get;private set;}
+        private NativeArena poolroomsArena;private int poolroomsGeneration=-1;
+        internal static bool PoolroomsKitBlock(string map,string id)=>id!=null&&id.StartsWith(map+":",StringComparison.Ordinal)&&!id.Contains(":door-");
+        public static bool PoolroomsKitReady=>NativePackBanks.Texture(PoolroomsTextures[0])!=null;
 
         private void PoolroomsWorld(NativeArena arena)
         {
-            PoolroomsBlocksDrawn=0;if(!NativePoolroomsPreview.Active)return;var eye=WorldEye;if(eye==null)return;
+            PoolroomsBlocksDrawn=0;bool live=NativePoolroomsGenerator.IsMap(arena?.MapId);if(!live&&!NativePoolroomsPreview.Active)return;var eye=WorldEye;if(eye==null)return;
             if(NativePackBanks.Texture(PoolroomsTextures[0])==null)return;
-            var p=NativePoolroomsPreview.Origin;
-            if(poolroomsLayout==null||poolroomsLayout.Seed!=NativePoolroomsPreview.Seed||poolroomsLayout.Width!=NativePoolroomsPreview.Width||poolroomsLayout.Depth!=NativePoolroomsPreview.Depth||poolroomsOrigin!=p)
+            var p=live?Vector3.zero:NativePoolroomsPreview.Origin;
+            if(live){var layout=arena.Poolrooms;if(layout==null)return;if(!ReferenceEquals(layout,poolroomsLayout)||poolroomsOrigin!=p)PoolroomsBuild(layout,p);if(!ReferenceEquals(poolroomsArena,arena)||poolroomsGeneration!=arena.Generation){poolroomsArena=arena;poolroomsGeneration=arena.Generation;foreach(var prop in arena.AllBlocks)if(prop!=null&&PoolroomsKitBlock(arena.MapId,prop.Definition?.id))foreach(var renderer in prop.GetComponentsInChildren<Renderer>(true))renderer.forceRenderingOff=true;}}
+            if(!live&&(poolroomsLayout==null||poolroomsLayout.Seed!=NativePoolroomsPreview.Seed||poolroomsLayout.Width!=NativePoolroomsPreview.Width||poolroomsLayout.Depth!=NativePoolroomsPreview.Depth||poolroomsOrigin!=p))
                 PoolroomsBuild(NativePoolrooms.Preview(NativePoolroomsPreview.Seed,NativePoolroomsPreview.Width,NativePoolroomsPreview.Depth),p);
             if(!PoolroomsMaterials())return;
-            var e=NativePoolroomsPreview.Eye??eye.transform.position;float r2=PoolroomsReach*PoolroomsReach;
+            var e=live?eye.transform.position:NativePoolroomsPreview.Eye??eye.transform.position;float r2=PoolroomsReach*PoolroomsReach;
             foreach(var b in poolroomsBlocks)
             {
                 var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2)continue;PoolroomsBlocksDrawn++;

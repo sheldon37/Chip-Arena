@@ -15,7 +15,7 @@ namespace ChipArena.UnityConversion
 
     public sealed class ExpeditionDeploymentRoom
     {
-        public const string GeneratorVersion="deployment-blueprint-1/"+NativeExpeditionGeneratedWorld.Version+"/"+NativeBackroomsGenerator.Version;
+        public const string GeneratorVersion="deployment-blueprint-1/"+NativeExpeditionGeneratedWorld.Version+"/"+NativeBackroomsGenerator.Version+"/"+NativePoolroomsGenerator.Version;
         private readonly ExpeditionInstanceTheme[] catalog;
         private readonly string expedition,compatibility,owner;
         private NativeExpeditionDeployment authority;
@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
                    map.nav?.nodes==null||map.nav.nodes.Length==0||area.bossPoints==null||area.bossPoints.Length==0)
                     throw new ArgumentException("Authored instance is incomplete: "+a.LayoutArea);
                 return new ExpeditionInstanceTheme{id=area.id,theme=area.id=="exp-foundry"?"industrial":area.id=="exp-transit"?"rail":"quarantine"};
-            }).Concat(new[]{new ExpeditionInstanceTheme{id=NativeBackroomsGenerator.AreaId,theme="backrooms"}}).OrderBy(p=>p.id,StringComparer.Ordinal).ToArray();
+            }).Concat(new[]{new ExpeditionInstanceTheme{id=NativeBackroomsGenerator.AreaId,theme="backrooms"},new ExpeditionInstanceTheme{id=NativePoolroomsGenerator.AreaId,theme="poolrooms"}}).OrderBy(p=>p.id,StringComparer.Ordinal).ToArray();
             if(pool.Length<3||pool.Select(p=>p.id).Distinct().Count()!=pool.Length)
                 throw new ArgumentException("Three distinct authored instances are required.");
             return pool;

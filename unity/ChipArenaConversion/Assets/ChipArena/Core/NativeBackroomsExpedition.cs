@@ -26,12 +26,12 @@ namespace ChipArena.UnityConversion
     {
         public bool TryBackroomsExit()
         {
-            var s=Session.Run.Snapshot();if(s.area!=NativeBackroomsGenerator.AreaId)return false;var exit=Layout.Area(s.area).bossPoints[0].Position;
-            if(!s.members.Any(m=>m.connected&&m.alive&&!m.extracted&&position(m.account) is V3 p&&NativeBackroomsExpedition.AtExit(s,p,exit,visible(p,exit))))return false;
+            var s=Session.Run.Snapshot();bool pool=s.area==NativePoolroomsGenerator.AreaId;if(s.area!=NativeBackroomsGenerator.AreaId&&!pool)return false;string objective=pool?NativePoolroomsExpedition.Objective:NativeBackroomsExpedition.Objective;var exit=Layout.Area(s.area).bossPoints[0].Position;
+            if(!s.members.Any(m=>m.connected&&m.alive&&!m.extracted&&position(m.account) is V3 p&&(pool?NativePoolroomsExpedition.AtExit(s,p,exit,visible(p,exit)):NativeBackroomsExpedition.AtExit(s,p,exit,visible(p,exit)))))return false;
             var instance=s.instances.Single(i=>i.id==s.area);
-            if(instance.bosses.Length==0&&!Session.Run.StartBosses(new[]{NativeBackroomsExpedition.Objective}))return false;
+            if(instance.bosses.Length==0&&!Session.Run.StartBosses(new[]{objective}))return false;
             // Reuse the existing once-only encounter reward/cleared ledger; no boss entity is spawned for Level 0.
-            return BossDefeated(NativeBackroomsExpedition.Objective,exit);
+            return BossDefeated(objective,exit);
         }
     }
 }

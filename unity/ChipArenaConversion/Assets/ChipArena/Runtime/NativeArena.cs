@@ -137,7 +137,7 @@ namespace ChipArena.UnityConversion
                 p.Yaw=raw.Yaw;p.Pitch=raw.Pitch;ProbePilotGround(p);
                 var move=new Vector3(raw.X,0,raw.Z);bool sprint=raw.Sprint&&p.Stamina>0&&move.magnitude>.5f&&Vector3.Dot(move.normalized,Quaternion.Euler(0,p.Yaw,0)*Vector3.forward)>=.6f;
                 if(sprint)p.Stamina=Math.Max(0,p.Stamina-(PilotMutator(p,"adrenaline")?0:12*dt));
-                float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1);
+                float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1)*PoolMove(p.Body.position);
                 p.MoveVelocity=new Vector3(Mathf.MoveTowards(p.MoveVelocity.x,move.x*speed,35*dt),0,Mathf.MoveTowards(p.MoveVelocity.z,move.z*speed,35*dt));
                 var velocity=new Vector3(p.MoveVelocity.x,p.Body.linearVelocity.y,p.MoveVelocity.z);
                 var jump=NativeJumpSimulation.Try(p.Seat.spec,raw.Jump,p.Grounded,false,false,velocity.y,(float)(Rules.JumpSpeed*p.Stats["jumpPower"]),ref p.AirJumps,out float launch,p.Stats.Get("extraAirJumps"));
@@ -180,7 +180,7 @@ namespace ChipArena.UnityConversion
             if(Time>=p.RegenAt&&!sprint)p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+(float)(24*p.Stats["staminaRegen"]*dt));
             p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+(float)(12*p.Stats["manaRegen"]*dt));
             if(Time-p.LastDamage>=3)Heal(p,(float)(p.Stats["regeneration"]*dt));
-            float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1)*(aim?(float)Content.Ads(p.Seat.spec).move:1)*Math.Max(.4f,Math.Min(Time<p.SlowEnd?p.SlowFactor:1,ChipFieldSpeed(p)))*(swimming?.6f:1);
+            float speed=(float)(6.8*p.Stats["speed"])*(sprint?1.35f:1)*(aim?(float)Content.Ads(p.Seat.spec).move:1)*Math.Max(.4f,Math.Min(Time<p.SlowEnd?p.SlowFactor:1,ChipFieldSpeed(p)))*(swimming?.6f:1)*PoolMove(p.Body.position);
             if(p.Seat.spec=="cyberlord")speed*=NativeCyberKit2Rules.Move(p.Cyber,Time)*(NativeCyberKit2Rules.Overclock(p.Cyber,Time)?1+CyberKit2Spec.OverclockMove:1);
             if(p.BowDrawAt>=0)speed*=NativeBowRules.Move;
             if(whirling)speed*=NativeWhirlwindRules.MoveScale;
@@ -319,7 +319,7 @@ namespace ChipArena.UnityConversion
                 a.SpecialKind=special?.Kind;a.SpecialAt=special?.At??-100;a.SpecialRelease=special?.Release??0;a.SpecialUntil=NativeMeleeKitRules.End(special);a.SpecialLanded=special?.Landed??-1;a.SpecialReleased=special?.Released??false;
                 a.WeaponAway=p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p);a.MainWeaponAway=special!=null&&special.Kind=="dagger-throw"&&special.Released&&Time<special.Until-.12f;
                 a.DownAt=down?.At??-100;a.DownUntil=down?.Until??0;a.DownLanded=down?.Landed??-1;a.DownPickup=down?.PickupUntil??0;a.DownUsed=down?.PickupUsed??false;a.DownRoll=down?.RollAt??-1;a.DownRollEnd=down?.RollUntil??-1;a.DownDirection=down?.Direction??new V3();
-                MeleePresentation(p,a);CyberStepSnapshot(p,a);a.CastRate=(float)p.Stats["attackRate"];a.Grounded=p.Grounded;a.AirJumps=p.AirJumps;a.AirJumpAt=p.AirJumpAt;a.VisualWindup=p.Swing!=null?p.Swing.HitAt-p.Swing.At:(float)(p.Weapon.windup/p.Stats["attackRate"]);a.VisualActive=p.Swing!=null?p.Swing.HitUntil-p.Swing.HitAt:(float)(.16/p.Stats["attackRate"]);a.VisualDuration=p.AttackEnd-p.AttackAt;a.VisualRollDuration=p.RollEnd-p.RollAt;
+                MeleePresentation(p,a);CyberStepSnapshot(p,a);a.CastRate=(float)p.Stats["attackRate"];a.Grounded=p.Grounded;NativePoolroomsWater.Pose(a,Poolrooms,Vec(p.Body.position-Vector3.up*.85f));a.AirJumps=p.AirJumps;a.AirJumpAt=p.AirJumpAt;a.VisualWindup=p.Swing!=null?p.Swing.HitAt-p.Swing.At:(float)(p.Weapon.windup/p.Stats["attackRate"]);a.VisualActive=p.Swing!=null?p.Swing.HitUntil-p.Swing.HitAt:(float)(.16/p.Stats["attackRate"]);a.VisualDuration=p.AttackEnd-p.AttackAt;a.VisualRollDuration=p.RollEnd-p.RollAt;
             }
             return new Snapshot{Tick=(int)Math.Round(Match.Time*60),Actors=Pilots.Where(p=>p.Seat.connected).Select(p=>{if(!interpolated)return p.Pose;var shown=p.Pose.ViewCopy();shown.Position=Vec(p.Body.transform.position-Vector3.up*.865f);return shown;}).ToArray(),Covers=Array.Empty<Cover>(),Shots=Bullets.Select(b=>new Shot{Id=b.Id,Owner=b.Owner,Original=b.Original,Spec=b.Spec,Draw=b.Draw,Detail=b.Detail,SirenKind=b.SirenKind,SirenTarget=b.SirenTarget,LeetKind=b.LeetKind,Born=b.Born,Burn=b.Burn,Poison=b.Poison,Hadoken=b.Hadoken,Super=b.Super,Direct=b.Direct,ChipImpact=b.ChipImpact,WeaponFx=b.WeaponFx,Pong=b.Pong,Boomerang=b.Boomerang,Zigzag=b.Zigzag,Mods=b.Mods.Select(c=>new ChipCount{id=c.Key,count=c.Value}).ToArray(),Position=Vec(b.Position),Velocity=Vec(b.Velocity),Radius=b.Radius,MagicVisual=b.Spec=="fire"?1:b.Spec=="water"?2:b.Spec=="lightning"?3:b.Spec=="darkness"?4:0,Weapon=Content.Weapon(b.Spec).@class=="ranged"?WeaponId.Pistol:WeaponId.Sword}).ToArray(),Events=Events.ToArray()};
         }

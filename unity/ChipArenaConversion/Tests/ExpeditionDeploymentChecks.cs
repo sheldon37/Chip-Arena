@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
             var originalMaps=content.maps;
             var bundle=ExpeditionRunBundle.Build(room.Ticket,content,layoutJson);
             Check(ReferenceEquals(content.maps,originalMaps)&&!content.maps.Any(m=>m.id==NativeExpeditionGeneratedWorld.MapId),"bundle leaves shipped map catalogue unchanged");
-            Check(!ReferenceEquals(bundle.Content,content)&&bundle.Content.maps.Length==content.maps.Length+1+(bundle.Backrooms==null?0:1),"run owns a detached map catalogue");
+            Check(!ReferenceEquals(bundle.Content,content)&&bundle.Content.maps.Length==content.maps.Length+1+(bundle.Backrooms==null?0:1)+(bundle.Poolrooms==null?0:1),"run owns a detached map catalogue");
             Check(bundle.Identity==ExpeditionRunBundle.Build(room.Ticket,content,layoutJson).Identity,"host and guest reconstruct identical full run identity");
             var lockRoom=ExpeditionDeploymentRoom.Restore(room.Ticket,"host",layout,content);
             Check(lockRoom.Execute("host",lockRoom.Snapshot().revision,ExpeditionDeploymentIntent.Deploy,true,bundle.Identity),"deploy binds actual generated bundle identity");
@@ -127,9 +127,9 @@ namespace ChipArena.UnityConversion
             Check(generated.Area.doors.Length==3&&generated.Hub.Gates.Length==4&&generated.Area.gates.Single().opens=="final","three instances and separate final court");
             Check(NativeExpeditionGeneratedWorld.Build(room).Compatibility==generated.Compatibility,"deterministic generated geometry receipt");
             Check(generated.Hub.Routes.Length==3&&generated.Hub.Routes.All(r=>r.Path>=r.Straight),"street routes and measured distances");
-            var composed=NativeExpeditionGeneratedWorld.ComposeLayout(generated,layoutJson,bundle.Backrooms==null?null:NativeBackroomsExpedition.Area(bundle.Backrooms));
+            var composed=NativeExpeditionGeneratedWorld.ComposeLayout(generated,layoutJson,bundle.Backrooms==null?null:NativeBackroomsExpedition.Area(bundle.Backrooms),bundle.Poolrooms==null?null:NativePoolroomsExpedition.Area(bundle.Poolrooms));
             Check(composed.Area(composed.world).map==generated.Map.id&&composed.instances.SequenceEqual(room.Snapshot().instances),"generated manifest selects the rolled roster");
-            foreach(string id in composed.instances.Where(id=>id!=NativeBackroomsGenerator.AreaId))Check(Json(composed.Area(id))==Json(layout.Area(id)),"authored interior remains unchanged");
+            foreach(string id in composed.instances.Where(id=>id!=NativeBackroomsGenerator.AreaId&&id!=NativePoolroomsGenerator.AreaId))Check(Json(composed.Area(id))==Json(layout.Area(id)),"authored interior remains unchanged");
             var migratedWorld=NativeExpeditionGeneratedWorld.Build(ExpeditionDeploymentRoom.Restore(room.Ticket,"next",layout,content));
             Check(migratedWorld.Compatibility==generated.Compatibility,"host migration reconstructs identical map");
             var culture=System.Globalization.CultureInfo.CurrentCulture;
@@ -151,7 +151,7 @@ namespace ChipArena.UnityConversion
             }
 
 
-            Check(room.Snapshot().instances.Length==3&&room.Snapshot().instances.All(id=>layout.instances.Contains(id)||id==NativeBackroomsGenerator.AreaId),"three destinations selected from authored interiors and Level 0");
+            Check(room.Snapshot().instances.Length==3&&room.Snapshot().instances.All(id=>layout.instances.Contains(id)||id==NativeBackroomsGenerator.AreaId||id==NativePoolroomsGenerator.AreaId),"three destinations selected from authored interiors and Level 0");
             Check(!room.Execute("guest",1,ExpeditionDeploymentIntent.RollMutators),"guest mutators unavailable");
             Check(room.Execute("host",1,ExpeditionDeploymentIntent.SkipMutators),"no-mutator start valid");
             var wire=JsonSerializer.Deserialize<ExpeditionDeploymentTicket>(Json(room.Ticket),options);
