@@ -31,12 +31,14 @@ namespace ChipArena.UnityConversion
         public const string Hub="HUB";
         /// <summary>The hub's chip in the party list: the sanctuary's ward green.</summary>
         public const int HubHex=0x8AE89A,FallbackHex=0x22E6FF;
-        public const string WardZero="exp-ward-zero",Station="exp-transit",Ironworks="exp-foundry";
+        public const string WardZero="exp-ward-zero",Station="exp-transit",Ironworks="exp-foundry",Level0=NativeBackroomsGenerator.AreaId,Poolrooms=NativePoolroomsGenerator.AreaId;
         private static readonly ExpeditionJoinZone[] Known=
         {
             new ExpeditionJoinZone{Area=WardZero,Name="WARD ZERO",Short="WARD ZERO",Threat="QUARANTINE BREACH",Accent=0xFF4A3A},
             new ExpeditionJoinZone{Area=Station,Name="CENTRAL STATION",Short="STATION",Threat="LIVE RAILS / FLOODED LINES",Accent=0x7AE8D0},
             new ExpeditionJoinZone{Area=Ironworks,Name="CITY IRONWORKS",Short="IRONWORKS",Threat="MOLTEN METAL / FURNACE HEAT",Accent=0xFFA040},
+            new ExpeditionJoinZone{Area=Level0,Name="LEVEL 0",Short="LEVEL 0",Threat="NO WAY OUT / ENTITIES",Accent=0xF2D35A},
+            new ExpeditionJoinZone{Area=Poolrooms,Name="THE POOLROOMS",Short="POOLROOMS",Threat="DEEP WATER / ENTITIES",Accent=0x5FE0D8},
         };
         private static readonly Dictionary<string,ExpeditionJoinZone> other=new Dictionary<string,ExpeditionJoinZone>(StringComparer.Ordinal);
         /// <summary>The zone of an area id (an unknown one: its manifest name, the HUD cyan; cached).</summary>

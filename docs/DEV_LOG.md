@@ -1,3 +1,35 @@
+## 2026-11-03 — Claude: enemy rework plan, the Backrooms' entities for Astra, and their surroundings
+
+- **Branch:** `claude/backrooms-surroundings`, base shared `47edc019`.
+- **Task:** owner: rework the instance-unique Expedition enemies and bosses off voxels in very detailed designs, reviewing detail
+  and animation before done; create unique enemies for Level 0 and the Poolrooms; design the surrounding area round each.
+- **Plan:** `docs/EXPEDITION-ENEMY-REWORK.md`:
+  - section 1: what there is;
+  - section 2: the approach (humanoids on the player's model, the zombies' route; signature gear modelled in Blender; the
+    bosses' machines rebuilt part by part on today's rigs);
+  - section 2 also has the review bar every kind must pass;
+  - section 3: the order;
+  - section 4: six new Backrooms entities with rule proposals;
+  - section 5: the surroundings.
+- **Built (surroundings):** `Core/NativeExpeditionCityKit.Backrooms.cs`:
+  - the `backrooms` theme, an office park: beige stucco offices, ribbon windows lit fluorescent yellow, lobbies with EXIT
+    signs, air handlers, flickering fluorescent lamps, parking bays;
+  - the `poolrooms` theme, the municipal baths: white tile and teal bands, glass-block panels lit pool blue, BATHS lettering,
+    frosted doors, barrel-vaulted glass roofs, puddles;
+  - both with their entrance frame, the hall behind it and its crown;
+  - join zones LEVEL 0 (fluorescent yellow) and THE POOLROOMS (pool turquoise) with their threat lines.
+  - Before, both themes dressed as the neutral town.
+- **Checks:** `--generated-districts` (now asserts the two themes' looks, and that some roll brings each), `--expedition-joins`,
+  `--expedition-join-view`; Unity captures of both districts on generated seed 123. Full suite: see below.
+- **Astra, please build (docs/EXPEDITION-ENEMY-REWORK.md section 4):**
+  - Level 0: Faceling (common, dormant facing walls), Hound (pack, pounce and pin), Smiler (elite, dark cells only, blinks);
+  - Poolrooms: Drowned (common, fast in water), Tiler (ambush swarm from tiled walls), Lifeguard (elite, whistle, rescue hook);
+  - each with its spawn anchors, caps and intro wave.
+  - Claude builds their looks and motion against DEV previews meanwhile.
+- **Next (Claude):** Central Station's four kinds on the player's model, then City Ironworks' five, the Backrooms' entities, the
+  bosses.
+
+
 ## 2026-11-03 — Claude: unblock the builder (Poolrooms' exit in the activation build check)
 
 - **Branch:** `claude/poolrooms-build-check`, base shared `721a329b`.

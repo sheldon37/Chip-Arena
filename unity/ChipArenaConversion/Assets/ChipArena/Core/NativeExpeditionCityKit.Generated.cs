@@ -32,9 +32,10 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The generated map's block id prefix.</summary>
         public const string GeneratedPrefix=NativeExpeditionGeneratedWorld.MapId+"-";
-        /// <summary>The district looks: the town's (neutral and any theme it does not know) and the three the authority rolls.</summary>
+        /// <summary>The district looks: the town's (neutral and any theme it does not know) and the ones the authority rolls (the
+        /// Backrooms' two in NativeExpeditionCityKit.Backrooms).</summary>
         public const int LookTown=0,LookIndustrial=1,LookRail=2,LookQuarantine=3;
-        public static int LookOf(string theme)=>theme=="industrial"?LookIndustrial:theme=="rail"?LookRail:theme=="quarantine"?LookQuarantine:LookTown;
+        public static int LookOf(string theme)=>theme=="industrial"?LookIndustrial:theme=="rail"?LookRail:theme=="quarantine"?LookQuarantine:theme=="backrooms"?LookLiminal:theme=="poolrooms"?LookBaths:LookTown;
         /// <summary>For the checks: each block's district (0 neutral, 1 + the blueprint's district index), -1 for anything but a
         /// generated building.</summary>
         public int[] Districts=Array.Empty<int>();
@@ -61,17 +62,19 @@ namespace ChipArena.UnityConversion
             var b=blocks[i];if(Districts.Length!=blocks.Length)Districts=new int[blocks.Length];
             int d=DistrictAt(blueprint,b.id,b.pos.x,b.pos.z);Districts[i]=d+1;int look=LookOfDistrict(d);string id=b.id;
             if(!facesOf.TryGetValue(i,out var fs))return;double h=b.size.y;
-            int kind=look==LookIndustrial?Depot:look==LookRail?(h>=12?Office:Civic):h>=12&&Hash(id,0,11)<.35?Office:Hash(id,0,12)<.55?Shops:Residential;
+            int kind=look==LookIndustrial?Depot:look==LookRail?(h>=12?Office:Civic):look==LookLiminal?Office:h>=12&&Hash(id,0,11)<.35?Office:Hash(id,0,12)<.55?Shops:Residential;
             foreach(var f in fs)
             {
                 Kerb(f);
                 if(look==LookIndustrial){IronFace(f);facadeMaterial="brick";Facade(f,Depot,name);facadeMaterial=null;}
                 else if(look==LookRail){RailFace(f);Facade(f,kind,name);}
                 else if(look==LookQuarantine)WardFace(f);
+                else if(look==LookLiminal)LiminalFace(f);
+                else if(look==LookBaths)BathsFace(f);
                 else Facade(f,kind==Shops&&f.Front<2?Residential:kind,name);
                 if(f.Front==2)WallLamps(f,look);
             }
-            if(look==LookIndustrial)IronRoof(i);else if(look==LookQuarantine)WardRoof(i);else Roof(i,name,kind);
+            if(look==LookIndustrial)IronRoof(i);else if(look==LookQuarantine)WardRoof(i);else if(look==LookLiminal)LiminalRoof(i);else if(look==LookBaths)BathsRoof(i);else Roof(i,name,kind);
         }
         /// <summary>A face's facade material for Facade (null: its block's own).</summary>
         private string facadeMaterial;
@@ -196,11 +199,11 @@ namespace ChipArena.UnityConversion
         private void WallLamps(Face f,int look)
         {
             string id=blocks[f.Block].id;double len=f.U1-f.U0;int n=len>=9?2:len>=4?1:0;
-            int hex=look==LookIndustrial?SodiumHex:look==LookRail?RailLampHex:look==LookQuarantine?ColdHex:SodiumHex;
+            int hex=look==LookIndustrial?SodiumHex:look==LookRail?RailLampHex:look==LookQuarantine?ColdHex:look==LookLiminal?LiminalLampHex:look==LookBaths?BathsLampHex:SodiumHex;
             for(int k=0;k<n;k++)
             {
                 double u=n==1?(f.U0+f.U1)/2:f.U0+len*(k==0?.25:.75),s=Hash(id,f.Index*7+k,261);if(!Open(f,u-.35,u+.35,4.2,5.2,.02))continue;
-                bool dead=look==LookTown&&s<.2,flicker=!dead&&s<.38;int lamp=look==LookQuarantine&&s>.8?RedHex:hex;
+                bool dead=(look==LookTown||look==LookLiminal)&&s<.2,flicker=!dead&&s<(look==LookLiminal?.55:.38);int lamp=look==LookQuarantine&&s>.8?RedHex:hex;
                 Begin();FBox(f,u,4.65,.3,.1,.1,.6,P(NativeBlockLooks.SteelGreen,0x2A2C2E,RoleLamp));
                 FBox(f,u,4.55,.62,.36,.14,.3,P(NativeBlockLooks.SteelGreen,0x3A3C3E,RoleLamp));
                 FBox(f,u,4.46,.62,.3,.04,.24,dead?P(NativeBlockLooks.Plain,0x2A2622,RoleLamp):Glow(lamp,2.2f,RoleLamp,flicker?DriveFlicker:DriveSteady,(float)s*11));
@@ -228,6 +231,12 @@ namespace ChipArena.UnityConversion
                 else if(look==LookQuarantine)
                     // A decon band across the street.
                     Box(floorBlock,cx,.005,cz,ew&&!ns?.8:9.6,.01,ew&&!ns?9.6:.8,P(NativeBlockLooks.Demolition,0,RoleGround));
+                else if(look==LookLiminal&&ew!=ns)
+                    // Faded parking bays along one side: angled lines every 2.5 m.
+                    for(double a=-3.75;a<=3.76;a+=2.5)Box(floorBlock,ew?cx+a:cx+3.2,.004,ew?cz+3.2:cz+a,ew?.1:2.0,.008,ew?2.0:.1,With(P(NativeBlockLooks.Plain,0xB8B4A6,RoleGround),detail:true),AxisRot(0,1,0,ew?30:-30));
+                else if(look==LookBaths)
+                    // Puddles, a wet sheen on the dark.
+                    for(int k=0;k<1+(int)(Hash(key,0,277)*3);k++)Box(floorBlock,cx+(Hash(key,k,278)-.5)*7,.004,cz+(Hash(key,k,279)-.5)*7,.8+1.6*Hash(key,k,280),.008,.6+1.2*Hash(key,k,281),With(P(NativeBlockLooks.Plain,0x1E2A2E,RoleGround),detail:true),AxisRot(0,1,0,Hash(key,k,282)*90));
                 else if(Hash(key,0,271)<.35)
                     Box(floorBlock,cx+(Hash(key,0,272)-.5)*6,.004,cz+(Hash(key,0,273)-.5)*6,1.2+1.5*Hash(key,0,274),.008,1.0+1.2*Hash(key,0,275),With(P(NativeBlockLooks.Plain,0x1A1614,RoleGround),detail:true),AxisRot(0,1,0,Hash(key,0,276)*90));
             }
@@ -268,6 +277,7 @@ namespace ChipArena.UnityConversion
             {
                 Kerb(f);
                 if(look==LookIndustrial)IronFace(f);else if(look==LookRail)RailFace(f);else if(look==LookQuarantine)WardFace(f);
+                else if(look==LookLiminal)LiminalFace(f);else if(look==LookBaths)BathsFace(f);
                 else Skin(f,0,f.Top-f.Base,.016,P(NativeBlockLooks.ConcreteBoard,0x8A867C,RoleFacade));
                 if(f.Front>=1)WallLamps(f,look);
             }
@@ -306,6 +316,14 @@ namespace ChipArena.UnityConversion
                     if(End())Light(rx,top+4.6,rz,0x7AE8D0,.9,14,.6,GlowNeon);
                 }
             }
+            else if(look==LookLiminal)
+            {
+                // A row of air handlers down the roof and a cooling tower: the office block's hum.
+                for(double a=-len/2+2.5;a<len/2-2;a+=4.2){Along(a,0,out double px,out double pz);Begin();Box(i,px,top+.75,pz,2.8,1.5,2.0,P(NativeBlockLooks.Plain,0xB8AC8E,RoleRoof));Box(i,px,top+1.52,pz,2.0,.04,1.4,With(P(NativeBlockLooks.FactoryGrating,0x5E5A50,RoleRoof),detail:true));End();}
+                Along(len*.32,wid*.25,out double tx,out double tz);
+                Begin();Box(i,tx,top+1.8,tz,3.2,3.6,3.2,With(P(NativeBlockLooks.Plain,0xA89C80,RoleRoof),shadow:true));Box(i,tx,top+3.65,tz,2.6,.1,2.6,With(P(NativeBlockLooks.FactoryGrating,0x4E4A42,RoleRoof),detail:true));End();
+            }
+            else if(look==LookBaths)BathsVault(i,1.35,true);
             else if(look==LookQuarantine)
             {
                 foreach(double a in new[]{-.3,.3}){Along(a*len,0,out double px,out double pz);Begin();Box(i,px,top+.7,pz,2.6,1.4,2.0,P(NativeBlockLooks.Plain,0xC9CFCC,RoleRoof));Box(i,px,top+1.42,pz,1.8,.04,1.3,With(P(NativeBlockLooks.FactoryGrating,0x5D6B6E,RoleRoof),detail:true));End();}
@@ -324,7 +342,8 @@ namespace ChipArena.UnityConversion
             var b=blocks[i];int d=0;if(blueprint?.districts!=null)for(int k=0;k<blueprint.districts.Length;k++)if(blueprint.districts[k].instance==zone)d=k+1;
             int look=LookOfDistrict(d);var z=NativeExpeditionJoinZones.Of(zone);int accent=z.Accent;bool alongX=b.size.x>b.size.z;
             var skin=look==LookIndustrial?P(NativeBlockLooks.Corrugated,0x5A3420,RoleLandmark):look==LookRail?P(NativeWardZeroLooks.Tile,TileHex,RoleLandmark,NativeCyberCityLooks.Bank):
-                look==LookQuarantine?P(NativeBlockLooks.Plain,MeridianHex,RoleLandmark):P(NativeBlockLooks.SteelGreen,0x3A3C3E,RoleLandmark);
+                look==LookQuarantine?P(NativeBlockLooks.Plain,MeridianHex,RoleLandmark):look==LookLiminal?P(NativeBlockLooks.Plain,0xC2AE62,RoleLandmark):
+                look==LookBaths?P(NativeWardZeroLooks.Tile,BathsTileHex,RoleLandmark,NativeCyberCityLooks.Bank):P(NativeBlockLooks.SteelGreen,0x3A3C3E,RoleLandmark);
             double top=b.pos.y+b.size.y/2,bottom=b.pos.y-b.size.y/2,len=alongX?b.size.x:b.size.z;
             Begin();Box(i,b.pos.x,b.pos.y,b.pos.z,b.size.x+.06,b.size.y+.06,b.size.z+.06,With(skin,shadow:true));End();
             // A hazard or teal band along its foot, the light strip under it.
@@ -341,9 +360,10 @@ namespace ChipArena.UnityConversion
             foreach(int sign in new[]{-1,1})
             {
                 double bx=b.pos.x+(alongX?sign*(len/2-.5):0),bz=b.pos.z+(alongX?0:sign*(len/2-.5));float ph=sign>0?.5f:0;
-                int hex=look==LookQuarantine?RedHex:look==LookRail?0x7AE8D0:AmberHex;byte drive=look==LookRail?DriveSteady:DriveStrobe;
+                int hex=look==LookQuarantine?RedHex:look==LookRail?0x7AE8D0:look==LookLiminal?LiminalLampHex:look==LookBaths?BathsGlowHex:AmberHex;
+                byte drive=look==LookRail||look==LookBaths?DriveSteady:look==LookLiminal?DriveFlicker:DriveStrobe;
                 Begin();Box(i,bx,top+.15,bz,.34,.3,.34,P(NativeBlockLooks.SteelGreen,0x2A2A28,RoleLandmark));Box(i,bx,top+.42,bz,.26,.24,.26,Glow(hex,2.2f,RoleLandmark,drive,ph));
-                if(End())Light(bx,top+.45,bz,hex,.7,9,.9,look==LookRail?GlowNeon:GlowBeacon,ph);
+                if(End())Light(bx,top+.45,bz,hex,.7,9,.9,look==LookRail||look==LookLiminal||look==LookBaths?GlowNeon:GlowBeacon,ph);
             }
         }
         // The final court's walls: blast panels with seams, razor wire along the top, floodlights, the checkpoint's name.
