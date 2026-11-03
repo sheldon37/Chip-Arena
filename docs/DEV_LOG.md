@@ -28,6 +28,22 @@
 - **Animation impact:** none; authored mesh/treads, enemy motion, attack timings, capsules and network IDs retained. Capsule locomotion uses continuous stair collision.
 - **Release state at commit:** tested on task branch; merge/shared and builder sync next. Windows build/PhysX and publication remain unverified until the builder reports success for the resulting commit. The last read Drive status still reports the old failed `f57a34a7` build; it is not a receipt for this fix.
 
+## 2026-11-03 — Claude: the Expeditions screen splits the full run from Wave Defense
+
+- **Branch:** `claude/expedition-screen`, base shared `7d558955`.
+- **Task:** owner: "for expedition selection~ May need to rework the screen as it shares the same thing as wave defense (Therefore
+  the map showing is inaccurate as expedition is procedurally generated)".
+- **Changed (presentation only; docs/EXPEDITIONS-MENU.md):** the left of the screen and its title follow the mode. The full run shows
+  no map: a sample plan (`Core/NativeRunPreview`, made up, reads no layout) builds out from the hub, runs its route through the three
+  areas to the final boss, holds labelled SAMPLE and rolls again; a hovered route row lights its node. Wave Defense loses the
+  carousel: one card with the true scan of the map it plays, and THE FIGHT in order (each wave's size and who is in it, from
+  `PveContent`, then the Siren), marking START HERE and what a start skips. It plays whichever expedition the carousel stood on. The
+  screen's reopening test goes by frames, so a hitch no longer resets the mode to the saved one.
+- **Animation impact:** none. No room field, message or launch path changes.
+- **Checks:** `--expeditions-menu` passes (340,149 checks, the sample's shape over seven seeds among them). PC (BoZo, Cybercity,
+  local tool `expmenu=T`): the full run mid-roll and held, Wave Defense from Wave 1 and from the Siren, a placeholder expedition. Full
+  `CoreTests`: pending. Not run: a guest's view in a real room, compact canvases on screen (the fit check covers them), a Windows build.
+
 ## 2026-11-03 — Claude: bespoke garments for the other areas (trench coats, coveralls, aprons, bathrobes)
 
 - **Branch:** `claude/area-garments`, base shared `a1cd84bb`; implementation `c99e80d6`.

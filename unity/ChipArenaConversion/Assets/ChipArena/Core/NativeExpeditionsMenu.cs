@@ -48,6 +48,10 @@ namespace ChipArena.UnityConversion
         public const string ExpeditionLabel="START EXPEDITION",WavesLabel="PLAY WAVE DEFENSE";
         public const string Placeholder="Coming soon: this expedition is a placeholder.";
         public const string WaveLocked="Waves 2 and 3 start once rooms carry a start wave.";
+        /// <summary>What each mode's tile says: a run rolls a new map every time, the waves always play the one arena.</summary>
+        public const string ExpeditionLine="A new map every run · hub, three areas, the final boss",ExpeditionLineShort="A new map every run",WavesLine="One fixed arena · Ward Zero's waves, then the Siren",WavesLineShort="One fixed arena";
+        /// <summary>The map Wave Defense plays (NativeRoomOptions.PreviewMap), named Ward Zero in the content.</summary>
+        public const string WaveMap="siren";
         public const string GuestsWaiting="Waiting for every pilot to ready up.";
         public const string HostStarts="The host picks the run and starts it. Ready up when your loadout is set.";
         /// <summary>
@@ -125,6 +129,11 @@ namespace ChipArena.UnityConversion
             var r=new Browser{Label=new Box(b.X,b.Y,b.W,label),Dots=new Box(b.X,b.Bottom-dots,b.W,dots)};
             float y=b.Y+label,h=b.H-label-dots;r.Prev=new Box(b.X,y+h*.06f,spine,h*.88f);r.Next=new Box(b.Right-spine,y+h*.06f,spine,h*.88f);
             r.Card=new Box(b.X+spine+gap,y,b.W-2*(spine+gap),h);return r;
+        }
+        /// <summary>Wave Defense's one arena: the label row and its card across the whole browser (no neighbours, no dots: it has one map).</summary>
+        public static Browser Single(Box b,bool compact)
+        {
+            float label=compact?26:BrowserLabel;return new Browser{Label=new Box(b.X,b.Y,b.W,label),Card=new Box(b.X,b.Y+label,b.W,b.H-label)};
         }
         // The selected card: the key art at the left, the details at the right; route rows from RouteTop down.
         public struct Card{public Box Art,Info;public float Title,Tagline,RouteRow;public int TaglineLines;}

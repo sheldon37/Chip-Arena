@@ -55,6 +55,17 @@ namespace ChipArena.UnityConversion
         public const string ComingSoon="COMING SOON";
         public const string InDevelopment="IN DEVELOPMENT";
         public const string LiveLabel="LIVE";
+        /// <summary>A run has no fixed map to show: it is rolled at the Deployment Station (owner 2026-11-03).</summary>
+        public const string Generated="GENERATED EVERY RUN";
+        /// <summary>Wave Defense's line: unlike a run, its arena is always the same.</summary>
+        public const string WaveTagline="The same arena every time. Hold it through three waves, then face the Siren.";
+        public const string WaveParty="UP TO 4 PILOTS",WaveBots="BOTS FILL SEATS",WaveStartsLine="3 WAVES + BOSS";
+        /// <summary>Who a wave sends, the most common first, at most three ("shamblers, runners, spitters"); empty with no mix.</summary>
+        public static string WaveMix(NumberValue[] mix)
+        {
+            if(mix==null||mix.Length==0)return "";var sorted=(NumberValue[])mix.Clone();Array.Sort(sorted,(a,b)=>b.value.CompareTo(a.value));
+            var names=new string[Math.Min(3,sorted.Length)];for(int i=0;i<names.Length;i++)names[i]=sorted[i].name+"s";return string.Join(", ",names);
+        }
 
         private static Area Uncharted(int i)=>new Area{Name="UNCHARTED",Place="Signal lost · area "+(i+1).ToString("00"),State=AreaState.Uncharted};
         private static Area UnknownBoss()=>new Area{Name="???",Place="Final boss · unknown",State=AreaState.Uncharted,Boss=true};
