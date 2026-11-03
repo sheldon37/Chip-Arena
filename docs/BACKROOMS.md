@@ -324,6 +324,55 @@ The add-on's "poolrooms" archetype rebuilt as our generated level: white tile, s
 - **Seen in Unity** (DEV captures at eye height, seed 7): tiled halls and pillars, arches between rooms, rippled turquoise
   pools with the steps visible under the water.
 
+### The water's waves (owner 2026-11-02: "can we make sure to add fluid water physics?")
+
+Split as usual. The water's motion and look are Claude's (built, below). What water does to bodies (wading, swimming, buoyancy,
+climbing out) is Astra's rules (the handoff below).
+
+- **The wave field** (Core `PoolWaves`, pure):
+  - a 128 × 128 grid of 0.25 m texels (32 m) that follows the eye in whole texels, carrying its waves;
+  - a damped wave equation stepped at 60 Hz (at most 4 steps a frame), waves moving 1.5 m/s and losing about half their
+    height a second, no wave over 0.16 m;
+  - only texels over pool cells are wet. A dry neighbour mirrors the wet one, so a pool's sides reflect the waves and no wave
+    crosses a deck.
+- **What disturbs it** (`NativePoolWaves`):
+  - a body standing in the water (feet under the surface, within 1.8 m of it) and moving leaves a wake;
+  - a body dropping through the surface faster than 1.5 m/s splashes, harder up to 8 m/s;
+  - a shot striking a pool (an `Impact` or `Ricochet` event on or under the surface) splashes a little;
+  - a blast over a pool (an `Explosion` event) splashes hard, wider with its radius.
+  - Bodies are the arena's pilots and minions, read from their positions each frame. No new replicated data: every client
+    makes the same waves from what it already sees.
+- **The spray** (`PoolSpray`): each splash throws a crown of up to 34 drops up to 4.2 m/s, falling under gravity; a drop that
+  falls back through the surface lands as a small ripple. At most 320 drops. They are drawn as small water-coloured
+  diamonds stretched along their flight.
+- **The surface** (`NativePoolWater`): the heights arrive each frame as a float texture over the field's square. Their slopes
+  tilt the surface, which carries the room's reflection and the lights' highlights. Steep or raised crests turn to foam.
+  The add-on's normal map adds a calmer base ripple.
+- **DEV:** the preview takes pokes (`NativePoolroomsPreview.Pokes`) and a stand-in wader walking between two points, for
+  captures before the map exists.
+- **Checks** (`--poolrooms`):
+  - wet texels only over pools; the deck never disturbed;
+  - an entry's speed threshold; rings travelling out and dying away over seconds;
+  - no wave crossing a deck into another pool; the same calls giving the same waves; waves carried when the field moves;
+  - a hitch capped; the height limit;
+  - wakes only when wading and moving; shots and blasts;
+  - the spray falling back as ripples and keeping to its cap.
+- **Seen in Unity** (DEV, seed 7): a stand-in wader's V-shaped wake, rings spreading from two splashes and reflecting off the
+  pool's sides, the spray's drops.
+- **Not yet:** an underwater view (a camera below the surface) and bodies bobbing at the surface wait for the swim rules. So do
+  the splash sounds (existing `impact.water`, a wading loop).
+
+**Astra handoff (water rules), from the owner's "fluid water physics":**
+- Wading in a wading pool (0.25 m of water over its 0.4 m basin) or on a deep pool's steps: slower movement, no change to
+  jumping or weapons.
+- Deep pools (1.3 m basin, the water 1.15 m deep): the rules choose between wading chest-deep and swimming at the surface. If
+  swimming: buoyancy holding the body at the surface, slow strokes, sinking when it stops, the steps or the edge to climb out
+  (a ledge pull-up at the deck).
+- Whether shots and blasts travel through water, and what water does to enemies (the Expedition's zombies) and to Hulks
+  (the 3.6 m ceilings).
+- The presentation already reads positions and the existing `Impact`, `Ricochet` and `Explosion` events. A swimming state on
+  `Actor`, when it exists, would let it bob the body and draw the surface line on it.
+
 **Astra handoff (rules):** the Poolrooms need a map and a production generator (this contract, or an extension of it), collision
 and navigation, spawns, and the water's rules. Wading (0.15-0.25 m of water), deep water (swim or sink, climbing out by the
 steps or the pool's edge), what water does to movement, weapons and enemies, and whether Hulks fit under the 3.6 m ceilings are

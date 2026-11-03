@@ -1,3 +1,30 @@
+## 2026-11-03 — Claude: the Poolrooms' water moves (waves, wakes, splashes, spray)
+
+- **Branch:** `claude/backrooms-addon-look`, base shared `a1d72593`.
+- **Task:** owner: "For the poolrooms, can we make sure to add fluid water physics?" Split: the water's motion and look
+  (Claude, this); what water does to bodies (Astra, the handoff in docs/BACKROOMS.md "The water's waves").
+- **Change:**
+  - `Core/NativePoolWaves.cs`:
+    - `PoolWaves`: a 32 m damped wave field round the eye. Only pool texels are wet; the pools' sides reflect, and no wave
+      crosses a deck.
+    - `NativePoolWaves`: wakes from bodies wading and moving; splashes from bodies dropping in, shots striking the water and
+      blasts over it.
+    - `PoolSpray`: drops thrown up that fall back as ripples.
+  - `Runtime/NativePoolroomsPresentation.cs`: drives the field from the arena's pilots, minions and `Impact` / `Ricochet` /
+    `Explosion` events, draws the spray, and hands the heights to the water. It also has the DEV pokes and the stand-in wader.
+  - `Resources/NativePoolWater.shader`: the waves' slopes tilt the surface (reflection and highlights), crests foam, a calmer
+    base ripple.
+- **Animation impacts:** none. No rule, hit, damage, movement or network change; no new replicated data (every client makes
+  the waves from what it already sees).
+- **Checks:**
+  - `--poolrooms` now 220 checks (the field, the sources, the spray);
+  - Unity captures of the DEV preview: a stand-in wader's V-wake, splash rings, spray;
+  - full suite: see below.
+- **Astra:** water rules (wading, swimming or chest-deep in the deep pools, buoyancy, climbing out, water and weapons and
+  enemies, Hulks under 3.6 m), and a swimming state on `Actor` when there is one.
+- **Next:** with the Poolrooms' map: an underwater view, bodies bobbing at the surface, splash and wading sounds.
+
+
 ## 2026-11-02 — Claude: Level 0 in the add-on's textures; the Poolrooms (DEV preview)
 
 - **Branch:** `claude/backrooms-addon-look`, base shared `97099d38`.
@@ -24,7 +51,11 @@
   - `--poolrooms` (201 checks, new; also in the full run), `--backrooms`;
   - Unity captures: the live `backrooms-level-0` map in the new textures; the Poolrooms preview (a deep pool and its steps,
     a pillared hall, arches between rooms);
-  - full suite: see below.
+  - full CoreTests on a clean LF checkout of `ce29d291`: exit 0, 940 PASS lines (the new `poolrooms` group included); pin
+    scan clean.
+- **Status:** merged into shared as `a1d72593` (after Astra's #315; DEV_LOG kept both). The licensed-assets zip on Drive now
+  carries the Backrooms bank (previous zip kept as `LocalAssets-2026-10-29.zip`). Published to the test channel in builder
+  build `a1d72593` (BUILD SUCCEEDED, publication succeeded 01:29 UTC); its build report lists the bank.
 - **Astra:** the Poolrooms need a map, a production generator, collision and nav, spawns, and the water's rules (wading, deep
   water, climbing out, what water does to movement and weapons, Hulks under 3.6 m). See docs/BACKROOMS.md "The Poolrooms".
 - **Next:** owner check of Level 0 in the Windows build; the Backrooms map looks; the Poolrooms once its map exists.
