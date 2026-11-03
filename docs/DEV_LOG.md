@@ -1,3 +1,11 @@
+## 2026-11-03 — Astra: loading screen handoff
+
+- **Branch/base:** `codex/loading-screen-handoff`, shared `c289fdad`.
+- **Fix:** deferred stage construction and presentation prewarm now wait until an OnGUI repaint has drawn the loading details at full opacity. Previously the action ran on the first Hold frame, when the loading content alpha was still zero; a synchronous build could therefore leave only the transition shutters on screen. The acknowledgement resets for each new load and cancellation.
+- **Waits:** Expedition loading keeps its progress panel through the authority's 60-second load window (65-second presentation fallback, instead of 20); host initial-party readiness also holds it after the host's own cohort becomes ready. Ordinary stage waits retain 20 seconds. No readiness/network protocol or art changes.
+- **Validation:** managed compilation with warnings as errors; party loading 3,847 and transitions/loading 3,809 checks passed. Unity 6000.3.24f1 Player, Runtime and Editor semantic compilation passed (existing warnings). SDK CLI process-stat lookup failed, so managed tests used the installed SDK Roslyn compiler directly. Windows rendering, real GPU stalls and host/guest playtest unrun here. The synchronous build can still stall progress updates; this change ensures loading details are painted first.
+- **Release:** local task branch only. Automatic approval review rejected the GitHub push, stating that explicit authorization for source upload to this destination is required; no workaround attempted. Await owner approval to push to `sheldon37/Chip-Arena`, open/merge the task PR and sync the test builder. Shared already reports a separate Poolrooms spawn-validation blocker; no successful native release claimed.
+
 ## 2026-11-03 — Claude: the Backrooms' entities on the model (first pass)
 
 - **Branch:** `claude/backrooms-entities`, base shared `268a9ba7` (includes Astra's #317 rules); implementation `5ec50e96`.

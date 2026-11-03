@@ -153,6 +153,22 @@ namespace ChipArena.UnityConversion
             // A request while covered merges into the same screen.
             m.Request(StageLoadKind.Return,false);Check(m.Serial==serial+1&&m.ActionPending&&m.Kind==StageLoadKind.Return,"a request while covered merges, its action pending");
             m.Step(.1f,Sig(ready:true),1);Check(m.Covered,"never opens with an action pending");Check(m.TakeAction(),"the merged action runs");
+            // Synchronous builds must leave a fully visible loading frame on screen, not bare shutters.
+            m=new NativeStageLoading();m.Request(StageLoadKind.Expedition,false);
+            m.ContentPresented();Check(!m.CanBuild,"cover repaint cannot unlock a build");
+            m.Step(.25f,Sig(stage:false),0);m.Step(.1f,Sig(stage:false),0);
+            m.ContentPresented();Check(!m.CanBuild,"zero-alpha hold repaint cannot unlock a build");
+            m.Step(.25f,Sig(stage:false),0);Check(!m.CanBuild,"elapsed time without repaint cannot unlock a build");
+            m.ContentPresented();Check(m.CanBuild&&m.TakeAction(),"visible loading details unlock the requested build");
+            m.Cover(StageLoadKind.Expedition,false);Check(m.CanBuild,"observed result of the same request retains its painted cover");
+            m.Cancel();m.Cover(StageLoadKind.Area,false);Check(!m.CanBuild,"new transfer requires its own painted loading screen");
+            var slow=Sig(ready:true,waiting:true);slow.WaitBudget=NativeStageLoading.ExpeditionWaitTimeout;
+            for(int i=0;i<240;i++)m.Step(.25f,slow,1);
+            Check(m.Covered,"party progress stays visible through the authority's 60-second loading window");
+            slow.Waiting=false;m.Step(.05f,slow,1);Check(m.Reason==NativeStageLoading.Ready,"authority release reveals immediately after a long load");
+            m=new NativeStageLoading();m.Cover(StageLoadKind.Area,false);slow.Waiting=true;
+            for(int i=0;i<261;i++)m.Step(.25f,slow,1);
+            Check(m.Reason==NativeStageLoading.Waited,"lost authority still has a bounded loading fallback");
             // Reduced: shorter cover and reveal.
             m=new NativeStageLoading();m.Request(StageLoadKind.Boss,true);Check(m.CoverTime<NativeStageLoading.CoverSeconds&&m.Reduced,"reduced: a shorter cover");
             // Coverage: 0 idle, eased in, 1 covered, eased out.
@@ -275,7 +291,10 @@ namespace ChipArena.UnityConversion
             Check(cg.Contains("try{try{LateFrame();DamageScreen();GlitchScreen();}finally{FinishHitchFrame(HitchMs(at));}}finally{StageLoadingStep();}")&&ui.Contains("catch(Exception e){Debug.LogException(e);stageLoad.Cancel();")&&cg.Contains("bool escape=(Input.GetKeyDown(KeyCode.Escape)||PadBack)&&!StageInputHeld;")&&!Regex.IsMatch(cg,@"if\(Input\.GetKeyDown\(KeyCode\.Escape\)"),"LateUpdate steps the loading screen; Escape and controller Back wait while it is closed");
             Check(cg.Contains("StageLoadingRelease();"),"released with the game");
             Check(Body(ui,"private void StageObserve()").Contains("!ReferenceEquals(a,stageSeen)")&&Body(ui,"private void StageObserve()").Contains("map,stageSeenMap")&&Body(ui,"private void StageObserve()").Contains("areaBarrier"),"every stage change is observed: a new arena, a map swap, an area barrier");
-            var frm=Body(ui,"private void StageLoadingFrame()");Check(frm.IndexOf("TakeAction()",StringComparison.Ordinal)<frm.IndexOf("StageObserve()",StringComparison.Ordinal)&&frm.Contains("stageLoad.Covered&&!stageLoad.ActionPending)StagePreload()"),"the action runs under the cover; the preload only behind the closed screen");
+            var frm=Body(ui,"private void StageLoadingFrame()");Check(frm.IndexOf("TakeAction()",StringComparison.Ordinal)<frm.IndexOf("StageObserve()",StringComparison.Ordinal)&&frm.Contains("stageLoad.CanBuild&&!stageLoad.ActionPending)StagePreload()"),"the action runs under the cover; the preload only behind the closed screen");
+            Check(frm.Contains("stageLoad.CanBuild&&stageLoad.TakeAction()"),"deferred construction waits for a painted loading screen");
+            var draw=Body(ui,"private void StageLoadingGui()");
+            Check(draw.Contains("EventType.Repaint")&&draw.IndexOf("NativeStageLoadingHud.Draw(",StringComparison.Ordinal)<draw.IndexOf("stageLoad.ContentPresented()",StringComparison.Ordinal),"only the loading HUD repaint acknowledges visible content");
             var sig=Body(ui,"private StageLoadSignals StageSignals()");Check(sig.Contains("StageGate.Waiting")&&sig.Contains("areaBarrier?.active")&&sig.Contains("NativePhase.Fight")&&sig.Contains("NativeStageLoading.Budget(")&&sig.Contains("ReferenceEquals(arena,stageFrom)"),"signals: the gate, the barrier, live play, the clock's budget, a refused start");
             Check(ui.Contains("internal StageReadiness StagePresentation")&&ui.Contains("internal bool StagePresentationReady")&&ui.Contains("internal readonly StageLoadGate StageGate"),"the readiness and gate API for the network side");
             Check(R("Assets/ChipArena/Runtime/NativeExpeditionStatesPresentation.cs").Contains("||StageLoadingShown)return;"),"the Expedition transfer screen stands behind the loading screen");
