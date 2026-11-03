@@ -693,6 +693,12 @@ create the outfits, kimono doesnt work for those well" and "Utilize magica cloth
   in the variant's colour and wear (the toon shader's vertex-colour path now takes a zombie's tint when one is set). Its loose
   fabric (the gown's and coat's skirts) is Magica Cloth through the local bridge (NativeVisualCloth: a paint map per garment,
   pinned above the waist, free below) on the nearest four zombies within 8 m.
+- The other areas' garments (owner: "Yes, other areas"): Central Station's commuters in trench coats (double-breasted, belt and
+  buckle, lapels, epaulettes, a storm flap, below the knee: its skirt cloth), City Ironworks' boiler-suit coveralls (one piece
+  over the top and bottoms: zip, collar points, chest pockets with flaps, a belt, knee patches) and leather bib aprons worn over
+  the work clothes (a neck strap and waist ties; its own leather colour, Variant.GarmentColours), the Poolrooms' bathrobes over
+  the swimwear (a shawl collar, a tied belt, patch pockets). The bank is v2: each garment's slots as a mask (the coveralls two,
+  the apron none: worn over the pack's pieces). Level 0's office clothes stay the pack's.
 - Fallen pilots (Variant.SuitShown, SuitShell, SuitAccent, Helm): about one in eight of the shambler, runner, spitter and brute
   adds on any map wear the player's default suit: the robot suit's garments and plates (Core NativeRobotSuit; three plates torn
   off per look), the shell grimy and dark, its light dead, and one of three smashed helmets (Core NativeRobotHelm.Broken: the

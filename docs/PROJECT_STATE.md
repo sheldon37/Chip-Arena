@@ -1,3 +1,5 @@
+2026-11-03 Claude: bespoke garments for the other areas: the station's trench coats, the foundry's coveralls and leather aprons, the pool's bathrobes (`claude/area-garments`; docs/ZOMBIE-MODELS.md 4l). Not published: #317's build failure (Astra).
+
 2026-11-03 Claude: zombies dressed for their area (Ward Zero's patients, nurses, doctors and security; commuters; foundry workers; office; swimwear), Ward Zero's gowns, lab coats and scrubs as bespoke Blender garments with Magica Cloth, and fallen pilots in the broken default suit (`claude/zombie-outfits`; docs/ZOMBIE-MODELS.md 4l). Not published: #317's build failure (Astra).
 
 2026-11-03 Claude: the Tiler is a crab of the pool's tiles, its body made in code (`claude/hound-tiler`, merged into shared; docs/ZOMBIE-MODELS.md 4k): dormant in its wall, the peel, a tripod scuttle, the leaping bite, its plates bursting on death. Next: suit zombies and area-themed zombie clothes (owner). Not published: #317's build failure (Astra).

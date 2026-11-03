@@ -1,3 +1,24 @@
+## 2026-11-03 — Claude: bespoke garments for the other areas (trench coats, coveralls, aprons, bathrobes)
+
+- **Branch:** `claude/area-garments`, base shared `a1cd84bb`; implementation `c99e80d6`.
+- **Task:** owner: "Yes, other areas" (bespoke garments beyond Ward Zero's).
+- **Changed (presentation only; docs/ZOMBIE-MODELS.md 4l):** `tools/gear/garments.py` makes the commuters' trench coat, the
+  foundry's coveralls and leather bib apron and the pool's bathrobe (the local bank `ChipArenaGarments`, now GARM v2: slots as a
+  mask, so a one-piece takes two and an overlay none); Core NativeZombieLooks gives Central Station's raincoats, the foundry's
+  coveralls, two foundry workers' aprons (Variant.GarmentColours: their leather) and three swimmers' robes; Runtime
+  NativeZombieGarments reads v2 and the garment's own colour.
+- **Animation impact:** none (presentation only; the skirts' cloth is drawn only).
+- **Checks:** `--zombie-models` (every garment the script makes; the areas' garments and the aprons' own colour; none on the
+  everyday looks); full `CoreTests` in a clean LF worktree on `c99e80d6`: passed (exit 0, 944 groups); pin scan: 2 files, 0 broken; `git diff --check`
+  clean. PC (BoZo, Cybercity, `ztheme`): the trench coats, the coveralls in three colours, the aprons over a tank and a work
+  shirt, the bathrobes in three colours. Not run: the areas' own maps, the garments on more builds in motion, a crowd's cost, a
+  Windows build.
+- **Local assets:** the Drive zip carries the eight-garment bank; the previous zip is kept beside it as
+  `LocalAssets-before-area-garments.zip`.
+- **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
+- **Next (Claude):** Ward Zero's props (surgical masks, stethoscopes) as gear; the garments reviewed on their own maps.
+
+
 ## 2026-11-03 — Claude: zombies dressed for their area, bespoke garments with Magica Cloth, and fallen pilots
 
 - **Branch:** `claude/zombie-outfits`, base shared `0bcdaf45`; implementation `457fccd0` (areas and pilots), `fa1e48b5` (garments).
