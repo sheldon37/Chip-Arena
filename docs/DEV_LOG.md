@@ -1,3 +1,39 @@
+## 2026-11-03 — Claude: Central Station's kinds on the model, their gear modelled in Blender
+
+- **Branch:** `claude/station-models`, base shared `dac90160`, shared `f57a34a7` (#317) merged in; implementation `a47dd553`,
+  docs `1c136402`.
+- **Task:** owner: rework the instance-unique Expedition enemies off voxels in very detailed designs, reviewing detail and
+  animation before done (docs/EXPEDITION-ENEMY-REWORK.md section 3, step 3).
+- **Built (presentation only):**
+  - The Linesman, Conductor, Undertow and Pileup on the player's model, four variants each, **live** (`NativeZombieLooks.ZoneLive`).
+  - Their gear modelled in Blender: `tools/gear/station_gear.py` (run headless; `gearkit.py` bakes dirt and wear into vertex
+    colours and writes `Resources/ChipArenaPackGear.bytes`, local, now in the Drive zip). 17 props: hard hats with a cracked
+    headlamp, the battery pack and harness, the jumper-cable coil, the winged-wheel cap badge, the whistle on its chain, the
+    railway lantern (and broken), kelp and a drowned cable, the bent grab pole, the carriage door, the fused commuter's flesh.
+  - Gear rides its bone as a rigid renderer (the project skins on the CPU); severs, flashes and settles with the corpse.
+  - Reflective tape on the Linesman's jacket, drawn by the shader in rest space (`ZombieBand`).
+  - The lantern and door follow the model's hands, which close on them; the lamp beam and pack glow come from the gear.
+  - The Pileup's fused commuter: its own head (bald, screaming) and a raised arm, baked once, swaying on its right shoulder.
+  - Details and the fits: docs/ZOMBIE-MODELS.md 4g; the bank: docs/PACK-BANK.md.
+- **Animation impact:** none on rules. Hit timing, hit volumes, damage, cooldowns, movement and networking are unchanged; the
+  Pileup's second head is drawn only (its weak point stays the authority's direction cone). The models play the existing gait
+  and station overlays (`NativeStationMotion`) on the model.
+- **Checks:** `CoreTests` full suite in a clean LF worktree on `1c136402`: passed (exit 0, 942 groups); `--zombie-models` 21187 checks (new: each
+  kind's kit, the gear ids against the Blender script, the tape and gear wiring); `git diff --check`; pin scan clean.
+  On the PC (BoZo, brickfall): turnarounds, head and upper-body close-ups of every kind, each kind hunting a pilot captured
+  from its wind-up to recovery, its stagger and its death; gear previews rendered from the bank.
+  Not run: a Windows player build (see below), a crowd performance measurement with the gear.
+- **Assets:** Drive `LocalAssets.zip` repacked (the bake's new pieces and the gear bank; the motion bank unchanged; checked with
+  `install_local_assets.py --check`); the previous zip is `LocalAssets-before-station-models.zip`.
+- **Blocked publication (Astra, please):** shared `f57a34a7` (#317) fails the build's Editor validation on the builder and on
+  this PC: `FormatException: Expedition layout: unreachable spawn pool-deep-0:32` (`NativeBuildChecks.CheckExpeditionActivation`
+  -> `CheckGeneratedDeploymentWorld` -> `ValidateGeometry`, seed 0xffffffff). The log shows the pool steps' nav links blocked
+  for the Drowned's capsule (`pool:140:0/pool:140:1 ... endpoints=False/False`). Nothing publishes from shared until it passes;
+  I left the check as it is (the Drowned's route out of the water is a rule). The builder branch was not pushed.
+- **Next (Claude):** the Backrooms' six entities on their dedicated looks and motion against #317's rules (Astra's section 6
+  lists the hooks and the pending motion acceptance); then City Ironworks' five kinds; the bosses. Lighter gear cuts for far adds.
+
+
 ## 2026-11-03 — Astra: approved enemy-rule upload
 
 Owner explicitly approved the public GitHub upload. PR #317 targets `claude/sleepy-ritchie-g8ruhv` from `codex/backrooms-entity-rules`; implementation commit `3ba9dae2f6375d370f9641c243530466acf94176` has tree `fb4088e958254567137e5229d226f0c910c2303b`, exactly matching tested local `80a85a1`. Git CLI authentication was unavailable, so upload used the connected GitHub account. This supersedes the pending-approval status below. Merge and builder sync are next; no native build or test-channel publication receipt yet. Validation limits and Claude presentation handoff remain unchanged.
