@@ -631,6 +631,39 @@ standing turnarounds, the head close up, the gallop's side frames, the pounce fr
 the howl on the new head, the pin on a live pilot, Level 0's own lighting, a Windows build. Open: claws; a lighter cut of its head
 for the farther adds (the skull and jaw 14,338 triangles together).
 
+## 4k. The Tiler: a crab of the pool's own tiles (2026-11-03, `claude/hound-tiler`)
+
+Owner: "Yes, continue" (the Tiler's own body; docs/EXPEDITION-ENEMY-REWORK.md section 4: a patch of white tile that peels away
+and scuttles, a crab of tile plates and grout on six thin jointed legs). Not the player's model and not a pack's rig: its body
+is made in code (Core NativeTilerLook), so it ships without the local assets, and drawn with the zone gear's toon material
+(Runtime NativeTilerPresentation.cs). Its rig is still posed on the gait (hits, arrows and effects find its body there), never
+drawn.
+
+- Body: about 36 glazed plates (8.5 cm cells) wrapping a dome of wet teal grout to its rim, cut round the edge as tiles are,
+  thin grout lines between, their edges rounded; a few chipped at a corner to the biscuit, one dark depth-marker tile, a few
+  sitting loose (three carapace variants by seed). Six long legs of grout (coxa, femur with a glazed sliver, tibia) ending in
+  tile-shard claws, their knees up over its back; two mandibles of broken tile, stained at the tips; four black glass eyes under
+  the front lip.
+- Dormant: a patch of tiles flat in its wall, 4 mm to 2 cm proud of it, its legs folded inside (the Poolrooms layout's nearest
+  wall to it; off the Poolrooms, flat in the deck); pack mates side by side along the wall. The wake (.6 s on the authority's
+  wake time): the patch pushes out and shudders, pulls free and drops onto the deck as its legs unfold, landing on its feet. The
+  hole it leaves (bare dark grout with broken plate edges) stays 90 s.
+- Scuttle: a tripod gait (left front, right middle, left back against the other three) on the presented root's motion, its feet
+  planted (under 4 mm a frame at 5.5 m/s, checked) and swung forward in arcs, its body bobbing on each tripod and rolling, nosing
+  down as it runs, banking into turns; at rest it breathes and now and then a leg twitches.
+- The bite (the authority's swipe at 2.5 m, .4 s contact): reared and crouched through the first half of the wind-up, mandibles
+  wide; a leap at the pilot (up to 2.1 m drawn, inside the authority's reach) with its legs swept forward; the mandibles snap
+  shut on contact; a hop back to where it stands.
+- Hits: a jolt along the push and three chips of tile off it (no blood, no wounds, no severed limbs). Death (3.3 s): its plates
+  burst up off the shell, spin, bounce once and settle over the floor, then sink away; the grout slumps under its splayed legs
+  and crumbles; a puff of grout dust. No corpse, no gore. No zombie voice or footfalls (its leap's strike plays the lunge's rush).
+
+Reviewed on the PC (BoZo, Brickfall and Cybercity, a DEV Tiler: `zset` dormant, wake and bite; `mrun` for the scuttle; `mhurt`
+for the hit and the death; local tool additions `zframe=W,H` to frame a body off the person's proportions and `zcorpse=1` with
+`zrigs` to keep a dead add's mark): the deck patch and the peel, standing turnarounds, the scuttle's side frames, the bite (the
+leap in a wide shot), the death frame by frame. Not seen yet: a wall patch on the Poolrooms (checked offline only), the hit's
+chips (occluded in the capture), a Windows build. Open: a ceramic skitter for its feet.
+
 ## 5. Not done yet (open)
 
 - A Windows player measurement of the crowd (the Editor's numbers above are the only ones).

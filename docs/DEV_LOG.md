@@ -1,3 +1,28 @@
+## 2026-11-03 — Claude: the Tiler, its own body (a crab of the pool's tiles)
+
+- **Branch:** `claude/hound-tiler`, base shared `9ef4f826`; implementation `8b3ac962`.
+- **Task:** owner: "Yes, continue" (the Hound on all fours, then the Tiler's own body), with the standing direction that the
+  Backrooms' entities need not be the player's model.
+- **Changed (presentation only; docs/ZOMBIE-MODELS.md 4k):** Core/NativeTilerLook.cs builds its body in code (glazed plates over
+  a grout dome, six jointed legs with tile-shard claws, mandibles, eyes; three variants) and poses it on the authority's frame
+  (dormant patch in its wall or the deck, the .6 s peel, a tripod scuttle, the bite's leap and snap, a hit's jolt, the death's
+  plate burst); Runtime/NativeTilerPresentation.cs draws it with the zone gear's toon material (no local assets), leaves the
+  peel's hole, chips tile on hits, bursts and crumbles on death. Horde hooks: no severed limbs, no claw job, no dust or
+  footfalls, no zombie voice, its own death and hit.
+- **Animation impact:** none on rules: its capsule (.65 m, .3 m radius), speed, the wake's .6 s, the bite's .4 s contact and
+  1.2 s cycle, damage and networking unchanged. The drawn leap carries its body up to 2.1 m toward the pilot (inside the
+  authority's 2.5 m reach) and back; its legs span about .8 m, wider than the capsule. Peers pose it the same (seeded, checked).
+- **Checks:** `--tiler` (new, 386 checks: the shapes closed and outward, inside the footprint; planted feet at 1.5 and 5.5 m/s;
+  the dormant patch in its wall and the peel; the bite; the death's plates settling; determinism; no allocation; wiring); full
+  `CoreTests` in a clean LF worktree on `8b3ac962`: passed (exit 0, 944 groups); pin scan: 5 files, 0 broken; `git diff --check` clean. PC (BoZo,
+  Brickfall and Cybercity): the deck patch and peel, turnarounds, the scuttle, the bite (wide), the death frame by frame. Local
+  tool: `zframe=W,H`, `zcorpse=1` with `zrigs`, `zset` wake stamps the wake time. Not run: a Poolrooms wall patch on screen, the
+  hit's chips on screen, a Windows build.
+- **Publication:** waits with the rest of shared on #317's build failure (Astra); the builder branch was not pushed.
+- **Next (Claude):** the owner's new request: zombies in the player's default suit (broken helmet and suit), and zombie clothes
+  themed to their areas (Ward Zero: lab coats, patient gowns).
+
+
 ## 2026-11-03 — Claude: the Hound as a starved beast on all fours, its own doglike head
 
 - **Branch:** `claude/hound-tiler`, base shared `690f4695`; implementation `f756a776`; the leap's follow-up `36853101` (reviewed

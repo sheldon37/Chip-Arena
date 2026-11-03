@@ -1,3 +1,5 @@
+2026-11-03 Claude: the Tiler is a crab of the pool's tiles, its body made in code (`claude/hound-tiler`, merged into shared; docs/ZOMBIE-MODELS.md 4k): dormant in its wall, the peel, a tripod scuttle, the leaping bite, its plates bursting on death. Next: suit zombies and area-themed zombie clothes (owner). Not published: #317's build failure (Astra).
+
 2026-11-03 Claude: the Hound is a starved beast on all fours with its own doglike head (owner; `claude/hound-tiler`, merged into shared; docs/ZOMBIE-MODELS.md 4j): its gallop, pounce and pin on the authority's timings, its body sculpted into a local bank. Tiler's own body next. Not published: #317's build failure (Astra).
 
 2026-11-03 Claude: the Smiler is its own smoke apparition (owner; `claude/smiler-apparition`, merged into shared; docs/ZOMBIE-MODELS.md 4i), and the Online Players invite chip and panel are restyled and animated (docs/ONLINE-INVITES.md). Not published: #317's build failure (Astra).
