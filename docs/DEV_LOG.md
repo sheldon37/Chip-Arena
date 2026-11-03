@@ -20,7 +20,10 @@
   - join zones LEVEL 0 (fluorescent yellow) and THE POOLROOMS (pool turquoise) with their threat lines.
   - Before, both themes dressed as the neutral town.
 - **Checks:** `--generated-districts` (now asserts the two themes' looks, and that some roll brings each), `--expedition-joins`,
-  `--expedition-join-view`; Unity captures of both districts on generated seed 123. Full suite: see below.
+  `--expedition-join-view`; Unity captures of both districts on generated seed 123; full CoreTests on a clean LF checkout of
+  `a159401b`: exit 0, 941 PASS lines; pin scan clean.
+- **Status:** merged into shared as `12abd65c`; published to the test channel in builder build `12abd65c` (BUILD SUCCEEDED,
+  publication succeeded 04:10 UTC).
 - **Astra, please build (docs/EXPEDITION-ENEMY-REWORK.md section 4):**
   - Level 0: Faceling (common, dormant facing walls), Hound (pack, pounce and pin), Smiler (elite, dark cells only, blinks);
   - Poolrooms: Drowned (common, fast in water), Tiler (ambush swarm from tiled walls), Lifeguard (elite, whistle, rescue hook);
