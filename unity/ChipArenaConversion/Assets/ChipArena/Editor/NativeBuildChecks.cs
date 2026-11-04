@@ -74,7 +74,8 @@ namespace ChipArena.UnityConversion.Editor
                 void Expect(int marks,int traces,string stage)
                 {if(glow.LiveMarks!=marks||glow.LiveTraces!=traces)throw new Exception($"Combat glow {stage}: marks={glow.LiveMarks}/{marks}, traces={glow.LiveTraces}/{traces}, accepted events={arena.Events.Count}");}
                 void AdvanceTo(double time){while(match.Time<time)match.Tick(Math.Min(.2,time-match.Time));Sample();}
-                Sample();Expect(impactCount,3,"initial burst");
+                // The pistol round draws its own needle (NativeTracerPresentation.cs): the ability shot and the thrown weapon keep a glow trace.
+                Sample();Expect(impactCount,2,"initial burst");
                 if(host.GetComponentsInChildren<Light>().Length!=7)throw new Exception("Combat lights must use exactly seven pooled objects");
                 arena.Bullets.Clear();arena.AbilityShots.Clear();arena.MeleeShots.Clear();match.Tick(.2);Sample();
                 Expect(impactCount,0,"trail expiry");
