@@ -5,19 +5,33 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     internal sealed class BombFlight
-    {public NativeBomb Record;public float Hp=15,Expires;public int Bounces;public bool Landed,Detached;public Vector3 Offset;public V3 Handoff;public bool Handed;}
+    {public NativeBomb Record;public float Hp=15,Expires,DamageOverride;public bool Encore;public int Bounces;public bool Landed,Detached;public Vector3 Offset;public V3 Handoff;public bool Handed;}
     public sealed partial class NativePilot
     {
         public NativeBombKit Bomb=new NativeBombKit{MineCharges=2,Ready=new float[6]};
         internal readonly List<BombFlight> BombFlights=new List<BombFlight>();
         internal readonly Dictionary<int,NativeBombChain> BombChains=new Dictionary<int,NativeBombChain>();
         internal bool BombReleased,BombStruck;internal int BombLineIndex;internal Vector3 BombAim,BombPoint,BombFacing;
-        public float BombNoSteerUntil;internal float BombMineReady;
+        public float BombNoSteerUntil;internal float BombMineReady;internal int BombMineCapacity=2;
     }
     public sealed partial class NativeArena
     {
+        private int BombStacks(NativePilot p,string id)=>Has(p,id)&&p.Seat.chips.TryGetValue(id,out int n)?Math.Min(2,Math.Max(0,n)):0;
+        private float BombMeterRate(NativePilot p)=>Has(p,NativeBombChips.Encore)?1.25f:1;
+        private NativeBombChain BombChain(NativePilot p,int id)
+        {
+            if(!p.BombChains.TryGetValue(id,out var c))p.BombChains[id]=c=new NativeBombChain();
+            c.Daisy=Has(p,NativeBombChips.DaisyChain);c.Window=c.Daisy?1.6f:1.2f;c.Prepare(Time);return c;
+        }
+        private void BombMineCapacity(NativePilot p)
+        {
+            int capacity=2+BombStacks(p,NativeBombChips.BouncingBetty);
+            p.Bomb.MineCharges=Math.Min(capacity,p.Bomb.MineCharges+Math.Max(0,capacity-p.BombMineCapacity));p.BombMineCapacity=capacity;
+            if(p.Bomb.MineCharges>=capacity)p.BombMineReady=0;
+            p.Bomb.Ready[2]=p.Bomb.MineCharges>0?0:p.BombMineReady;
+        }
         private bool BombAllowed(NativePilot p)=>p.Seat.spec==NativeBombs.Spec&&(p.Seat.access.DeveloperWeapon(NativeBombs.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())||p.Seat.devWeaponAccess?.DeveloperWeapon(NativeBombs.Spec,DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())==true);
-        private bool BombPending()=>Pilots.Any(p=>p.Bomb.Finale!=null&&!p.BombStruck);
+        private bool BombPending()=>Pilots.Any(p=>(p.Bomb.Finale!=null&&!p.BombStruck)||p.BombFlights.Any(b=>b.Encore));
         private bool BombRooted(NativePilot p)=>p.Seat.spec==NativeBombs.Spec&&p.Bomb.Finale!=null&&Time<p.Bomb.Finale.Until;
         private bool BombBusy(NativePilot p)=>p.Seat.spec==NativeBombs.Spec&&(Time<p.Bomb.CastUntil||BombRooted(p));
         private void BombMotion(NativePilot p,ref Vector3 v)
@@ -37,7 +51,7 @@ namespace ChipArena.UnityConversion
         private void StepBombInput(NativePilot p)
         {
             if(!BombAllowed(p)||p.Hp<=0||BombBusy(p)||Incapacitated(p)||Time<p.RollEnd||Time<p.BlockEnd||p.ReloadEnd>0||Time<p.Ready||HubInside(p.Body.position))return;
-            var k=p.Bomb;string kind=null;int slot=-1;
+            BombMineCapacity(p);var k=p.Bomb;string kind=null;int slot=-1;
             if(p.Input.SirenAbility==5&&k.Meter>=1)kind=NativeBombs.GrandFinale;
             else {slot=p.Input.AbilityQ?0:p.Input.AbilityE?1:p.Input.SirenAbility>=1&&p.Input.SirenAbility<=4?p.Input.SirenAbility+1:-1;if(slot>=0&&Time>=k.Ready[slot]&&(slot!=2||k.MineCharges>0))kind=NativeBombs.Slot[slot];}
             if(kind==null&&p.Input.Shoot){if(p.Ammo<=0){Reload(p);return;}kind=NativeBombs.PopBomb;slot=-1;}
@@ -51,7 +65,7 @@ namespace ChipArena.UnityConversion
                 k.Finale=new NativeBombFinale{At=Time,Lock=Time+2.1f,Strike=Time+2.6f,Until=Time+3.6f,Box=new V3(box.X,box.Y,box.Z),Dir=Vec(p.BombFacing),Circles=BombTargets(p).Where(t=>Vector3.Distance(t.at,p.Body.position)<=40).OrderBy(t=>Vector3.Distance(t.at,p.Body.position)).Take(NativeBombs.MaxCircles).Select(t=>new NativeBombCircle{Id=t.id,Pos=Vec(GroundPoint(t.at))}).ToArray()};k.CastUntil=k.Finale.Until;
             }
             else if(slot==2){k.MineCharges--;if(p.BombMineReady<=0)p.BombMineReady=Time+7;k.Ready[2]=k.MineCharges>0?0:p.BombMineReady;}
-            else if(slot>=0)k.Ready[slot]=Time+new[]{8f,2,7,9,11,12}[slot];
+            else if(slot>=0)k.Ready[slot]=Time+(slot==0?NativeBombChipRules.JumpCooldown(BombStacks(p,NativeBombChips.NitroBoots)):slot==4&&Has(p,NativeBombChips.ClusterFun)?8.8f:new[]{8f,2,7,9,11,12}[slot]);
             Emit(EventKind.AbilityCast,p,0,p.Body.position,0,kind);
         }
         private IEnumerable<(int id,Vector3 at)> BombTargets(NativePilot p)
@@ -59,25 +73,27 @@ namespace ChipArena.UnityConversion
             foreach(var q in Pilots)if(q.Hp>0&&q.Seat.connected&&Enemy(p,q))yield return(q.Seat.id,q.Body.position);
             foreach(var m in Minions)if(m.Hp>0&&Enemy(p,m))yield return(m.Id,m.Body.position);
         }
-        private void AddBomb(NativePilot p,string kind,Vector3 pos,Vector3 velocity,float at,float fuse)
+        private BombFlight AddBomb(NativePilot p,string kind,Vector3 pos,Vector3 velocity,float at,float fuse)
         {
-            if(p.BombFlights.Count>=NativeBombs.MaxBombs)return;
-            p.BombFlights.Add(new BombFlight{Expires=at+20,Record=new NativeBomb{Id=nextBullet++,Kind=kind,Pos=Vec(pos),Vel=Vec(velocity),At=at,ArmAt=at+(kind==NativeBombs.Mine?.5f:0),BlowAt=fuse<0?-100:at+fuse,Normal=new V3(0,1,0)}});
+            if(p.BombFlights.Count>=NativeBombs.MaxBombs)return null;
+            var flight=new BombFlight{Expires=at+20,Record=new NativeBomb{Id=nextBullet++,Kind=kind,Pos=Vec(pos),Vel=Vec(velocity),At=at,ArmAt=at+(kind==NativeBombs.Mine?.5f:0),BlowAt=fuse<0?-100:at+fuse,Normal=new V3(0,1,0)}};p.BombFlights.Add(flight);return flight;
         }
         private void BombRelease(NativePilot p)
         {
             var k=p.Bomb;var feet=p.Body.position-Vector3.up*.865f;var hand=p.Body.position+Vector3.up*.4f;float at=k.CastRelease;
             switch(k.CastKind)
             {
-                case NativeBombs.PopBomb:AddBomb(p,NativeBombs.Pop,hand,p.BombAim*(float)p.Weapon.speed,at,.9f);break;
+                case NativeBombs.PopBomb:AddBomb(p,NativeBombs.Pop,hand,p.BombAim*(float)p.Weapon.speed*NativeBombChipRules.PopSpeed(BombStacks(p,NativeBombChips.ShortFuse)),at,NativeBombChipRules.PopFuse(BombStacks(p,NativeBombChips.ShortFuse)));break;
                 case NativeBombs.BounceMine:
-                    var mines=p.BombFlights.Where(b=>b.Record.Kind==NativeBombs.Mine).OrderBy(b=>b.Record.At).ToArray();if(mines.Length>=3)p.BombFlights.Remove(mines[0]);
+                    var mines=p.BombFlights.Where(b=>b.Record.Kind==NativeBombs.Mine).OrderBy(b=>b.Record.At).ToArray();if(mines.Length>=3+BombStacks(p,NativeBombChips.BouncingBetty))p.BombFlights.Remove(mines[0]);
                     AddBomb(p,NativeBombs.Mine,hand,(p.BombPoint-hand)/.65f+Vector3.up*(23*.65f/2),at,-1);break;
                 case NativeBombs.StickyFuse:AddBomb(p,NativeBombs.Sticky,hand,p.BombAim*25,at,1.2f);break;
                 case NativeBombs.ClusterLob:
                     AddBomb(p,NativeBombs.Lob,hand,(p.BombPoint+Vector3.up*4-hand)/.72f+Vector3.up*(23*.72f/2),at,.72f);break;
                 case NativeBombs.BlastJump:
-                    BombBlast(p,NativeBombs.Jump,feet,2.5f,8,5,skipOwner:true);BombLaunch(p,p,p.BombFacing*8,Mathf.Sqrt(2*23*9),0);break;
+                    BombBlast(p,NativeBombs.Jump,feet,2.5f,8,5,skipOwner:true);float distance=NativeBombChipRules.JumpDistance(BombStacks(p,NativeBombChips.NitroBoots));
+                    BombLaunch(p,p,p.BombFacing*(8*Mathf.Sqrt(distance)),Mathf.Sqrt(2*23*9*distance),0);
+                    if(Has(p,NativeBombChips.NitroBoots))AddBomb(p,NativeBombs.Bomblet,feet+Vector3.up*.2f,Vector3.up*2,at,.45f);break;
                 case NativeBombs.DeadMansSwitch:
                     int n=0;V3 prev=Vec(feet);foreach(var b in p.BombFlights.OrderBy(b=>(b.Record.Pos-Vec(feet)).Length)){b.Record.BlowAt=Time+n++*.12f;b.Handoff=prev;b.Handed=true;prev=b.Record.Pos;}break;
                 case NativeBombs.FirecrackerLine:
@@ -91,8 +107,8 @@ namespace ChipArena.UnityConversion
             {
                 if(p.Seat.spec!=NativeBombs.Spec)continue;var k=p.Bomb;
                 if(k.Ready==null||k.Ready.Length!=6)k.Ready=new float[6];
-                if(p.BombMineReady>0&&Time>=p.BombMineReady){k.MineCharges=Math.Min(2,k.MineCharges+1);p.BombMineReady=k.MineCharges<2?p.BombMineReady+7:0;k.Ready[2]=0;}
-                if(p.Hp>0&&p.Seat.connected&&BombAllowed(p))k.Meter=Math.Min(1,k.Meter+1f/6000);
+                BombMineCapacity(p);while(p.BombMineReady>0&&Time>=p.BombMineReady){k.MineCharges=Math.Min(p.BombMineCapacity,k.MineCharges+1);p.BombMineReady=k.MineCharges<p.BombMineCapacity?p.BombMineReady+7:0;k.Ready[2]=0;}
+                if(p.Hp>0&&p.Seat.connected&&BombAllowed(p))k.Meter=Math.Min(1,k.Meter+BombMeterRate(p)/6000);
                 if(!p.BombReleased&&k.CastKind!=null&&Time>=k.CastRelease)
                 {p.BombReleased=true;if(p.Hp>0&&p.Seat.connected&&!Incapacitated(p)&&Time>=p.RollEnd)BombRelease(p);}
                 foreach(var b in p.BombFlights.ToArray())
@@ -136,12 +152,12 @@ namespace ChipArena.UnityConversion
                     // Finish the dead man's switch even when the owner dies. Circles never follow past Lock.
                     float follow=Math.Max(0,Math.Min(1f/60,f.Lock-(Time-1f/60)));
                     if(follow>0&&!p.BombStruck)foreach(var c in f.Circles){var t=BombTargets(p).FirstOrDefault(t=>t.id==c.Id);if(t.id!=0)c.Pos=Vec(Vector3.MoveTowards(Vec(c.Pos),GroundPoint(t.at),3*follow));}
-                    if(!p.BombStruck&&Time>=f.Strike){p.BombStruck=true;var hit=new HashSet<int>();foreach(var c in f.Circles)BombBlast(p,NativeBombs.Column,Vec(c.Pos),4,40,12,ignoreCover:true,once:hit);}
+                    if(!p.BombStruck&&Time>=f.Strike){p.BombStruck=true;var hit=new HashSet<int>();foreach(var c in f.Circles)BombBlast(p,NativeBombs.Column,Vec(c.Pos),4,40,12,ignoreCover:true,once:hit);if(Has(p,NativeBombChips.Encore))BombEncore(p,f);}
                     if(Time>=f.Until)k.Finale=null;
                 }
                 k.Bombs=p.BombFlights.Select(b=>b.Record).ToArray();k.Blasts=(k.Blasts??Array.Empty<NativeBlast>()).Where(b=>Time-b.At<1.5f).TakeLast(NativeBombs.MaxBlasts).ToArray();
                 k.Scorched=p.BombChains.Where(t=>t.Value.Scorched(Time)).Take(NativeBombs.MaxCircles).Select(t=>new NativeBombScorch{Id=t.Key,At=t.Value.ScorchUntil-NativeBombs.ScorchSeconds,Until=t.Value.ScorchUntil}).ToArray();
-                foreach(var id in p.BombChains.Where(t=>Time>=t.Value.ScorchUntil&&Time-t.Value.Last>3).Select(t=>t.Key).ToArray())p.BombChains.Remove(id);
+                foreach(var id in p.BombChains.Where(t=>Time>=t.Value.ScorchUntil&&Time-Math.Max(t.Value.Last,t.Value.LastDamage)>3).Select(t=>t.Key).ToArray())p.BombChains.Remove(id);
                 if(Time>=k.ChainUntil)k.Chain=0;
             }
         }
@@ -150,11 +166,11 @@ namespace ChipArena.UnityConversion
             if(!p.BombFlights.Remove(b))return;var r=b.Record;var at=Vec(r.Pos);
             if(r.Kind==NativeBombs.Lob)
             {
-                for(int i=0;i<6;i++){float angle=i*Mathf.PI/3;var dest=GroundPoint(at)+new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle))*3.6f;float life=.28f+i*.07f;AddBomb(p,NativeBombs.Bomblet,at,(dest-at)/life+Vector3.up*(23*life/2),Time,life);}BombRecord(p,NativeBombs.Lob,at,1.2f);return;
+                int count=Has(p,NativeBombChips.ClusterFun)?9:6;for(int i=0;i<count;i++){float angle=i*Mathf.PI*2/count;var dest=GroundPoint(at)+new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle))*3.6f;float life=.28f+i*.35f/(count-1);AddBomb(p,NativeBombs.Bomblet,at,(dest-at)/life+Vector3.up*(23*life/2),Time,life);}BombRecord(p,NativeBombs.Lob,at,1.2f);return;
             }
-            float damage=r.Kind==NativeBombs.Pop?12:r.Kind==NativeBombs.Mine?6:r.Kind==NativeBombs.Sticky?16:8;
+            float damage=b.DamageOverride>0?b.DamageOverride:r.Kind==NativeBombs.Pop?12:r.Kind==NativeBombs.Mine?6:r.Kind==NativeBombs.Sticky?16:8;
             float radius=r.Kind==NativeBombs.Pop?2.4f:r.Kind==NativeBombs.Mine?2.6f:r.Kind==NativeBombs.Sticky?3:1.9f;
-            BombBlast(p,r.Kind,at,radius,damage,r.Kind==NativeBombs.Mine?Mathf.Sqrt(2*23*8):5,from:b.Handed?(V3?)b.Handoff:null);
+            BombBlast(p,r.Kind,at,radius,damage,r.Kind==NativeBombs.Mine?NativeBombChipRules.MineLift(BombStacks(p,NativeBombChips.BouncingBetty)):5,from:b.Handed?(V3?)b.Handoff:null);
         }
         private NativeBlast BombRecord(NativePilot p,string kind,Vector3 at,float radius)
         {
@@ -169,16 +185,18 @@ namespace ChipArena.UnityConversion
         {
             var blast=BombRecord(p,kind,at,radius);if(from.HasValue){blast.Handed=true;blast.FromPos=from.Value;}
             if(HubInside(at))return;
+            if(Has(p,NativeBombChips.ScorchedEarth))BombFire(p,at,radius);
             foreach(var q in Pilots.ToArray())
             {
                 if(q.Hp<=0||!q.Seat.connected||q==p&&skipOwner||q!=p&&!CanHit(p,q)||HubInside(q.Body.position))continue;
                 var delta=q.Body.position-at;bool inside=kind==NativeBombs.Column?new Vector2(delta.x,delta.z).magnitude<=radius:delta.magnitude<=radius;
                 if(!inside||once?.Contains(q.Seat.id)==true||!ignoreCover&&!MeleeVisible(at+Vector3.up*.12f,q.Body.position,p,q.Collider))continue;
                 bool self=q==p;NativeBombChain chain=null;float cap=float.PositiveInfinity,scale=self?.25f:1;
-                if(!self){if(!p.BombChains.TryGetValue(q.Seat.id,out chain))p.BombChains[q.Seat.id]=chain=new NativeBombChain();chain.Prepare(Time);cap=chain.Budget((float)q.Stats["hp"]);scale=chain.Scale(Time);}
-                float actual=Damage(q,p,damage*scale*(float)p.Stats["damage"],delta,0,false,direct:false,primary:false,damageKind:"bomb-"+kind,finalCap:cap,selfDamage:self);
-                if(actual<=0)continue;once?.Add(q.Seat.id);int link=-1;V3 old=chain?.From??default;
-                if(!self){link=chain.Hit(Time,actual,Vec(at));p.Bomb.Meter=Math.Min(1,p.Bomb.Meter+.08f+(link>0?.06f:0));if(link>=0){p.Bomb.Chain=link;p.Bomb.ChainUntil=Time+1.2f;if(link>blast.Link){blast.Link=link;blast.FromPos=old;blast.Handed=true;}}}
+                if(!self){chain=BombChain(p,q.Seat.id);cap=chain.Budget((float)q.Stats["hp"]);scale=chain.Scale(Time);}
+                bool shield=self&&Has(p,NativeBombChips.BlastShield);
+                float actual=shield?0:Damage(q,p,damage*scale*(float)p.Stats["damage"],delta,0,false,direct:false,primary:false,damageKind:"bomb-"+kind,finalCap:cap,selfDamage:self);
+                if(actual<=0&&!shield)continue;once?.Add(q.Seat.id);int link=-1;V3 old=chain?.From??default;
+                if(!self){link=chain.Hit(Time,actual,Vec(at));p.Bomb.Meter=Math.Min(1,p.Bomb.Meter+(.08f+(link>0?.06f:0))*BombMeterRate(p));if(link>=0){p.Bomb.Chain=link;p.Bomb.ChainUntil=Time+chain.Window;if(link>blast.Link){blast.Link=link;blast.FromPos=old;blast.Handed=true;}}}
                 if(chain?.Scorched(Time)==true){q.BombNoSteerUntil=Time;q.Down=null;continue;}
                 var push=forward;if(kind==NativeBombs.Sticky){var near=p.BombFlights.OrderBy(b=>Vector3.Distance(Vec(b.Record.Pos),q.Body.position)).FirstOrDefault(b=>Vector3.Distance(Vec(b.Record.Pos),q.Body.position)<=12);if(near!=null){push=Vec(near.Record.Pos)-q.Body.position;push.y=0;push=push.normalized*12;}}
                 BombLaunch(q,p,push,kind==NativeBombs.Bomblet&&!q.Grounded?lift*2:lift,kind==NativeBombs.Mine?.5f:0);
@@ -187,12 +205,49 @@ namespace ChipArena.UnityConversion
             {
                 if(m.Hp<=0||!CanHit(p,m)||once?.Contains(m.Id)==true||HubInside(m.Body.position))continue;var d=m.Body.position-at;
                 if((kind==NativeBombs.Column?new Vector2(d.x,d.z).magnitude:d.magnitude)>radius||!ignoreCover&&!MeleeVisible(at+Vector3.up*.12f,m.Body.position,p,m.Collider))continue;
-                if(!p.BombChains.TryGetValue(m.Id,out var c))p.BombChains[m.Id]=c=new NativeBombChain();c.Prepare(Time);
-                float actual=HitMinion(m,p,damage*c.Scale(Time)*(float)p.Stats["damage"],d,0,m.Body.position,"bomb-"+kind);if(actual<=0)continue;once?.Add(m.Id);V3 previous=c.From;int link=c.Hit(Time,actual,Vec(at));if(link>=0){p.Bomb.Chain=link;p.Bomb.ChainUntil=Time+1.2f;if(link>blast.Link){blast.Link=link;blast.FromPos=previous;blast.Handed=true;}}p.Bomb.Meter=Math.Min(1,p.Bomb.Meter+.08f+(link>0?.06f:0));
+                var c=BombChain(p,m.Id);
+                float actual=HitMinion(m,p,damage*c.Scale(Time)*(float)p.Stats["damage"],d,0,m.Body.position,"bomb-"+kind);if(actual<=0)continue;once?.Add(m.Id);V3 previous=c.From;int link=c.Hit(Time,actual,Vec(at));if(link>=0){p.Bomb.Chain=link;p.Bomb.ChainUntil=Time+c.Window;if(link>blast.Link){blast.Link=link;blast.FromPos=previous;blast.Handed=true;}}p.Bomb.Meter=Math.Min(1,p.Bomb.Meter+(.08f+(link>0?.06f:0))*BombMeterRate(p));
                 if(c.Scorched(Time)){m.BombPushUntil=Time;m.BombPush=Vector3.zero;}
                 if(!c.Scorched(Time)&&m.Hp>0&&!m.Body.isKinematic&&!IsZoneBoss(m)){var v=m.Body.linearVelocity;v.y=Math.Max(v.y,kind==NativeBombs.Bomblet&&m.Body.position.y-GroundPoint(m.Body.position).y>m.Collider.height*.5f+.15f?lift*2:lift);m.Body.linearVelocity=v;m.BombPush=forward;if(kind==NativeBombs.Sticky){var near=p.BombFlights.OrderBy(b=>Vector3.Distance(Vec(b.Record.Pos),m.Body.position)).FirstOrDefault(b=>Vector3.Distance(Vec(b.Record.Pos),m.Body.position)<=12);if(near!=null){var push=Vec(near.Record.Pos)-m.Body.position;push.y=0;m.BombPush=push.normalized*12;}}m.BombPushUntil=Time+.5f;SlowMinion(m,kind==NativeBombs.Mine?.5f:.15f,.1f);}
             }
             BombTouchMines(p,at,radius);
+        }
+        private void BombEncore(NativePilot p,NativeBombFinale finale)
+        {
+            // Eight visible falling charges, spread around locked circles (or the crate with no targets).
+            for(int i=0;i<8;i++)
+            {
+                var center=finale.Circles.Length>0?Vec(finale.Circles[i%finale.Circles.Length].Pos):Vec(finale.Box);
+                float angle=i*Mathf.PI/4,life=.1f*(i+1);var dest=center+new Vector3(Mathf.Cos(angle),0,Mathf.Sin(angle))*2;
+                var origin=dest+Vector3.up*4;
+                if(p.BombFlights.Count>=NativeBombs.MaxBombs)p.BombFlights.RemoveAt(0);
+                var b=AddBomb(p,NativeBombs.Bomblet,origin,(dest-origin)/life+Vector3.up*(23*life/2),Time,life);
+                b.DamageOverride=10;b.Encore=true;
+            }
+        }
+        private void BombFire(NativePilot p,Vector3 at,float radius)
+        {
+            var floor=GroundPoint(at);if(HubInside(floor))return;
+            var fields=ChipFields.Where(f=>f.Owner==p&&f.Effect==NativeBombChips.ScorchedEarth).ToArray();
+            if(fields.Length>=NativeBombChipRules.MaxFireFields)ChipFields.Remove(fields[0]);
+            Field(p,"fire",floor,Math.Min(3,radius),2,6,NativeBombChips.ScorchedEarth);
+        }
+        private void BombFireTick(NativeChipField f,HashSet<(int owner,int victim)> hit)
+        {
+            var owner=f.Owner;if(owner==null||HubInside(f.Position))return;
+            bool Inside(Vector3 point)
+            {var d=point-f.Position;return Math.Abs(d.y)<=1.6f&&new Vector2(d.x,d.z).magnitude<=f.Radius&&!HubInside(point);}
+            foreach(var q in NativeSnapshots.Capture(Pilots))
+            {
+                if(q.Hp<=0||q==owner||!q.Seat.connected||!CanHit(owner,q)||!Inside(q.Body.position)||!MeleeVisible(f.Position+Vector3.up*.2f,q.Body.position,owner,q.Collider)||!hit.Add((owner.Seat.id,q.Seat.id)))continue;
+                var chain=BombChain(owner,q.Seat.id);float actual=Damage(q,owner,f.Damage/60*(float)owner.Stats["damage"]*(chain.Scorched(Time)?.5f:1),Vector3.zero,0,false,direct:false,primary:false,damageKind:NativeBombChips.ScorchedEarth,finalCap:chain.Budget((float)q.Stats["hp"]));
+                if(actual>0){chain.Spent+=actual;chain.LastDamage=Time;}
+            }
+            foreach(var m in NativeSnapshots.Capture(Minions))
+            {
+                if(m.Hp<=0||!CanHit(owner,m)||!Inside(m.Body.position)||!MeleeVisible(f.Position+Vector3.up*.2f,m.Body.position,owner,m.Collider)||!hit.Add((owner.Seat.id,m.Id)))continue;
+                var chain=BombChain(owner,m.Id);HitMinion(m,owner,f.Damage/60*(float)owner.Stats["damage"]*(chain.Scorched(Time)?.5f:1),Vector3.zero,0,kind:NativeBombChips.ScorchedEarth);
+            }
         }
         private void StepBombMinionMotion()
         {foreach(var m in Minions)if(m.Hp>0&&!m.Body.isKinematic&&Time<m.BombPushUntil){var v=m.Body.linearVelocity;v.x=m.BombPush.x;v.z=m.BombPush.z;m.Body.linearVelocity=v;m.BombPush*=Mathf.Exp(-3.1f/60);}}

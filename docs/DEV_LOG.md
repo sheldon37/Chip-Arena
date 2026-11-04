@@ -9,6 +9,27 @@
 - **Not checked:** the Pinball mod itself on screen (the same check reproduced with Kinetic); a Windows build's play; online.
 - **Astra:** nothing needed.
 
+## 2026-11-04 — Claude: THE CONVERTER on a real model
+
+- **Owner request:** the Ironworks' voxel enemies off voxels, with fixes to their animation where needed; this is its boss, shipped after the five kinds.
+- **Branch/base:** `claude/ironworks-models`, on shared at the five's merge `2cf7c9f2` and later. Release line below.
+- **What it is now:** an 8 m Bessemer on four crab legs, modelled joint by joint in Blender (`tools/gear/converter_gear.py`, three tiers, in the local `ChipArenaPackIronworks` bank): rams and bolted plate, a toothed trunnion wheel, a white-hot bath, slag slabs that are closed solids with hot torn backs, and a dead foreman in the Stoker's family. docs/EXPEDITION-BOSS-CITY-IRONWORKS.md section 14.
+- **Affected systems:** the bank and the zip; `tools/gear`. The route in `NativeIronworksBossPresentation` shipped with the five; a build without the bank draws the code sculpt.
+- **Animation impact:** none. Same joints, rig, poses and timing. `NativeIronworksBoss.Actions` kept; hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; `NativeZoneBossAuthority` not touched. The model is at the sculpt's numbers, so it fits the colliders (checked part by part in Blender).
+- **Checks run:** full `CoreTests` in a clean LF worktree (count in the release line); `git diff --check`. In Unity on `expedition-foundry`, on the DEV preview's record: arrival, walk, pour, blow, stomp, grab, crust break, kneel, shed, slam, deslag, call, break, charge, crash, death; all three tiers; a log line shows all 50 meshes from the bank. Cost with the full tier in view, in the Editor: mean 11.1 ms, p95 13.6 ms, worst 59.9 ms.
+- **Fixed after looking:** slabs were open shells (twigs once they fell); glassy facets too bright; the mouth's trickles zigzagged like lightning; far tiers collapsed hubs into black spikes; a boxy foreman. My first two batches of frames showed the old sculpt, because a bank copied after the batch's one refresh is never imported: judged again on the real model.
+- **Not run:** the fight with the real rules (the preview's record stands in), two clients, a Windows build's play.
+- **Risks:** 108,000 triangles at the full tier against the sculpt's 40,000 budget (44,000 and 31,000 against 26,000 and 9,000), measured above with one boss and no crowd. Those budgets are the owner's doc numbers and still bind the sculpt: say if the model should come down to them. The foreman-collider mismatch noted under the five kinds still stands, for Astra.
+- **Next:** the owner plays it; Astra rules on the Foreman collider.
+
+## 2026-11-04 — Astra: Bombadier chip authority
+
+- **Branch/base:** `codex/bombadier-chips`, shared `2cf7c9f2`, integrated shared `9ba6872a`; newer shared integration and remote receipts in the task PR.
+- **Implemented:** eight `NativeBombChips` mechanics in host rules, all ten live content rows, `SupportedMechanics`, DEV PvE choice gate, projectile-tag exclusions, four-charge wire validation, native cast/stack/PvE/codec/fire/Encore acceptance checks. Black Powder/Bandolier reuse stats; exact 4/3 capacity fixes ceiling from nine sticks to eight. No new presentation assets or wire fields.
+- **Counterplay/tuning:** Daisy retains third-link Scorched; floor fire and Encore share the pilot budget. Same-owner fire overlaps are 6/s total, last 2 s, create no recursive fire/meter/links, and cap at 32 fields. Encore is eight 10-damage falling charges after strike and survives death. Stack numbers and full decisions in BOMBADIER.md. Timings of original casts/hits unchanged except requested fuse/cooldown/launch/chip effects.
+- **Checks:** 62 focused Bomb rules checks, 8,040 Bombadier presentation checks, warnings-as-errors managed build, pinned Unity 6000.3.24f1 InputSystem/Player/Runtime/Editor semantic compilation and source structure pass. Full managed suite passes (955 PASS groups, exit 0); integrated shared `9ba6872a`, then rebuilt and passed 62 focused rules plus 338,967 instance-machine checks. Final native compilation/source checks and remote receipts in the task PR. New Unity/PhysX acceptance gates compile but cannot execute on this Linux host. Windows gameplay, multiplayer playtest, balance feel and test publication remain unverified.
+- **Delivery:** implemented on task branch; merge, builder sync and publication receipts follow in PR. Ordinary Expedition picks use the existing signature odds; high-quality/rainbow reward rarity filters are preserved.
+
 ## 2026-11-04 — Claude: chip, recruit and mending machines in the generated instances
 
 - **Owner request:** "lets add machines to new expedition instances (chip machine, recruit machine, mending machine)".
@@ -17,10 +38,11 @@
 - **Split:** placement and presentation. No rule changed: a machine on an area's `machines` list is built and served as the authored ones are, at the same prices. The generator touches are additive and listed for Astra's review in that doc: the `Machines` picks, the `machines` list on both areas, no spawn anchor in a machine's cell, a Poolrooms machine's cell off the navigation (only where the level's real nav still reaches every other node), and both `Identity` strings.
 - **Affected systems:** `Core/NativeInstanceMachines.cs`, `Core/NativeInstanceMachineDress.cs` (new); `NativeBackroomsGenerator`, `NativePoolroomsGenerator`, `NativeBackroomsExpedition`, `NativePoolroomsExpedition`, `NativeBackroomsKinds`; `Runtime/NativeMachineModels`, `NativeMachinePresentation`. Layout identity changes, so a mismatched build refuses as for any layout change.
 - **Animation impact:** none. Hit timing, hitboxes, damage, cooldowns and movement unchanged. New collision: the machines' existing hidden block, in these two maps.
-- **Checks run:** `CoreTests --instance-machines`, 24 seeds of each level, about 339k checks; the full CoreTests in a clean LF worktree at `d57c3b84`, 956 PASS groups, exit 0; pin scan 0 broken; `git diff --check` clean. Reviewed in the Unity Editor from the game's camera on the merged commit: all three kinds in both levels on seed 5, with the real generated map and content bound.
+- **Checks run:** `CoreTests --instance-machines`, 24 seeds of each level, about 339k checks; the full CoreTests in a clean LF worktree at `d57c3b84`, 956 PASS groups, exit 0; pin scan 0 broken; `git diff --check` clean. Reviewed in the Unity Editor from the game's camera: all three kinds in both levels on seed 5, with the real generated map and content bound (chip and mending at `f76005de`, recruit at `82887f97`; the later merge of shared, which brought other sessions' enemy models, was not re-captured).
 - **Not run:** a purchase, a recruit or a heal inside these two levels with a real director and two clients (the path is the authored machines'); native Windows play; a controller. One seed was looked at in Unity; the other seeds have the managed placement checks only.
 - **Risks:** the Poolrooms' nav loses up to four nodes; the checks hold that every remaining node and spawn anchor still reaches the party, but enemy routing round a mat was not watched in a live fight.
 - **Next:** Astra reviews the generator touches.
+- **Release:** merged `9ba6872a` into shared and the builder branch; the builder reported BUILD SUCCEEDED for that source and `Publication: succeeded` to the test channel (build started 2026-11-04 23:00 UTC). No live or Site release.
 
 ## 2026-11-04 — Claude: the City Ironworks' five kinds on real models
 
@@ -34,6 +56,7 @@
 - **Not run:** the real zone AI playing the specials end to end (DEV monsters run no specials, so they were driven by hand), two clients, a Windows build's gameplay. Sound unchanged.
 - **Risks:** gear is drawn at full detail at every distance; twelve adds were measured, a full map's worst case was not. Corpses keep the props by the old timeline.
 - **For Astra (found, not changed):** `NativeZoneBossAuthority.cs:70` puts the Foreman collider at z -.6, but the foreman stands at z about -3.5 (`PulpitRest` plus `ForemanFeet`, as the old sculpt did): from the side, a shot at the figure misses and a shot past it can hit. Yours to rule on.
+- **Release:** merged into shared and the builder at `2cf7c9f2`; full `CoreTests` on the merged branch `8dbba551`, exit 0, 955 groups; Windows build and package validation passed; test channel publication succeeded (source `2cf7c9f2`). The Drive zip holds the new bank, with the old one at `LocalAssets-before-ironworks.zip`. No live, production or Site release.
 - **Next:** THE CONVERTER's review, fixes and merge.
 
 ## 2026-11-04 — Claude: Central Station's enemies off voxels, THE 6:47 as a real model
@@ -76,10 +99,11 @@
 - **Split:** presentation only, with the rules contract in that doc. In a real run the machine stands, E opens the screen and lists who's down with their area, and REVIVE says it isn't connected. **The charge, the revive, full HP, leaving the instance, the live show, cause of death and the body's spot all wait on Astra** (three hooks: `ConversionGame.ReviveMachineRequest`, `NativeReviveMachine.LiveSpits`, `NativeReviveMachine.Fill`).
 - **Affected systems:** `Runtime/ArenaPresentation.cs` (three calls), `NativeSourcePresentation`, `NativeTechniquePresentation`, `NativeMachineModels`, `IsReviving` (the holo stands aside for a spit), `ExpeditionScreenOpen` (the screen holds play and frees the cursor), `NativeCinematicCamera` (the spat viewer's camera), the DEV panel (two buttons), `NativeAudio`. One simulation touch: `NativeArena.ReviveMachineCollision`, two box colliders on host and guests in the two hubs, no navigation change.
 - **Animation impact:** the spat pilot's flight and tumble are the drawn rig's root only, on the game's knockdown poses; the capsule stands on the landing. Hit timing, hitboxes, damage, cooldowns and movement unchanged.
-- **Checks run:** `CoreTests --revive-machine` 2,497 checks; the full CoreTests in a clean LF worktree (result in the merge's report); `git diff --check`; Unity compile of Player, Assembly-CSharp and Editor. Reviewed in the Unity Editor with captures: the machine in the generated hub; the Dev Sandbox preview end to end on the game's camera (list, pay, wind-up, gulp, spit, flight, splat, get-up, door); every screen state (three dead, two, too poor, nobody dead).
+- **Checks run:** `CoreTests --revive-machine` 2,497 checks; the full CoreTests in a clean LF worktree at `94104289`, 953 PASS groups, exit 0; `git diff --check`; Unity compile of Player, Assembly-CSharp and Editor. Reviewed in the Unity Editor with captures: the machine in the generated hub; the Dev Sandbox preview end to end on the game's camera (list, pay, wind-up, gulp, spit, flight, splat, get-up, door); every screen state (three dead, two, too poor, nobody dead).
 - **Not run:** the sound has not been heard by anyone; the machine in the authored town (managed placement checks only); a real run, two clients, a controller on the screen, Windows. The capsule's collider was not walked into.
 - **Risks:** E is the machine's key while every other machine is F (owner's choice; F still runs the old reprint at the authored town's anchor until the rules retire it). 66k triangles drawn wherever the hub is in view: well under the town's millions, but not measured on the low tier.
 - **Next:** Astra wires the three hooks; the owner hears it and rules on Second Wind and PERMADEATH (`docs/REVIVE-MACHINE.md`, questions).
+- **Release:** merged `a395de04` into shared and the builder branch; the builder reported BUILD SUCCEEDED and `Publication: succeeded` to the test channel. No live or Site release.
 
 ## 2026-11-04 — Astra: Sticky Fuse dodge release and test publication
 

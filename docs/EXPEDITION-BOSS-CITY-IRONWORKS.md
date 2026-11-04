@@ -916,3 +916,13 @@ at the metal's own speed, crust plates, bubbles, a hot rim); the particles with 
 `Fireball` wrapper added). Costs: the molten mesh is one draw (it replaces the instanced cube draw), the particles two (a
 NativeVfxDraw of the boss's own); counts scale with the effects quality and the low tier (the low tier's molten mesh about a
 third of the vertices), never the telegraphs. Zero allocation per frame.
+
+### The real model (2026-11-04, `claude/ironworks-models`)
+
+THE CONVERTER draws a model built in Blender (`tools/gear/converter_gear.py`) instead of the code sculpt: one prop per joint and tier, `conv-<joint>-<tier>` in the local `ChipArenaPackIronworks` bank (`Runtime IronworksBossPart`). The joints, the rig, the action table and the colliders are as they were, and the model is at the sculpt's numbers, so it fits them. Without the bank (a cloud build) the sculpt still draws.
+
+- **What changed to look at:** rams, pistons and bolted plate on the legs; a toothed trunnion wheel; a white-hot bath in the mouth (the sculpt's mouth showed only seven white squares in the capture); slag slabs that are closed solids with hot, torn backs, so they read as lumps when they fly and lie on the floor; the foreman as the Stoker's family, with a quilted hood, a cyan slit, a torn respirator, a brass whistle, an air pack and a dented hard hat with a dead cap lamp.
+- **Triangles:** 108,000 / 44,000 / 31,000 by tier, over `Budget` (40,000 / 26,000 / 9,000, which still binds the sculpt). Each object keeps at least 70 faces at the far tiers, because a small hub collapses into spikes below that. With the full tier in view in the Editor: mean 11.1 ms, p95 13.6 ms, worst 59.9 ms (one spike).
+- **Reviewed in Unity on the map, on the DEV preview's record:** the arrival, walk, pour, blow, stomp, grab, crust break, kneel, shed, slam, deslag, call, break, charge, crash and death, and the three tiers. The log line proves all 50 meshes came from the bank. An earlier batch of frames did not (a bank copied after the batch's one refresh is never imported), so copy it before the first job.
+- **Left as it is:** the charge's first steps stretch a rear leg flat along the floor: it is the push-off of a planted foot. Hit flashes are the shared flash.
+- **Not seen:** the fight driven by the real rules (the preview's record stands in for them), a guest's view, a Windows build's play.

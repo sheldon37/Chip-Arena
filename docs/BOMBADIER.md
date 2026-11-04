@@ -91,7 +91,7 @@ Owner: "a set of 10 bombadier chips? Make them highly likely to show in their ch
 
 The look: a scorched body, torn hazard tape along the foot, a fuse burning round the card's edge, three sticks for a crest, its own emblem in the core and large behind the text, and a small live scene of its own (`Runtime/NativeBombChipArt.cs`, `Face`). Taking one plays its effect over the "INSTALLED" card with its own line (`Reveal`, `Shake`, `NativeBombChips.Confirm`), and a pop and flourish at the fist or chest as it seats, which everyone can see and which also covers the Expedition and PvE picks (`NativeTechniqueFx.BombChipInstall`). Reduced effects keep the card and one quiet glow.
 
-To see them today: Dev Sandbox, with the Bombadier in hand, Preview Rarities, Bombadier. The rows are not in the content until the rules exist, because a row with a mechanic the authority lacks would fail the build's "every chip implemented" check, and an offered chip must do what it says.
+To see them today: Dev Sandbox, with the Bombadier in hand, Preview Rarities, Bombadier. The native content overlay installs the rows with the authority mechanics. Ordinary drafts and PvE picks use the signature odds; existing high-quality Expedition and rainbow rarity filters are preserved.
 
 ## Presentation (Claude)
 
@@ -141,3 +141,16 @@ Needs from you: the DEV weapon row and access (`bombadier`, as the Cyber Lord), 
 - Mines have 15 shot HP, arm .5 s after sticking, expire 20 s after release, recharge serially at 7 s, and are capped at three (a fourth replaces the oldest). Any armed mine touched by a visible blast schedules a .12 s handoff. The switch orders charges by distance. All shots use nearest-hit arbitration with world, pilot and technique obstacles.
 - The kit is deep-copied, validated in snapshots and death records, and uses explicit null-presence flags for Unity's real frame codec. `NativeBombs.Source` reads the rendered snapshot except while the sandbox preview owns it. Native gates exercise the real codec, cast timing, self damage, chains, charge destruction, dodge removal, the Finale and death persistence.
 - Parting Line separately requires `Phase=="hop"` for movement. Descending floor contact does not terminate its horizontal retreat; a wall still can. Regression gates cover a complete hop and early/completed movement without the anchor-throw fallback.
+
+## Chip authority decisions (Astra, 2026-11-04)
+
+The native content overlay now installs all ten rows and excludes ordinary projectile-tagged chips for Bombadier: its charge flights do not run their projectile motion/impact handlers. Generic damage, ammo capacity and restock stats stay on the existing stat path. Bandolier uses exactly 4/3, rather than 1.34, because magazine capacity rounds up (6 becomes 8, not 9).
+
+- Short Fuse stacks: fuse .9 → .65 → .4 s, speed 28 → 32.2 → 37.03 m/s; release timing is unchanged.
+- Bouncing Betty stacks: live mines 3 → 4 → 5, held charges 2 → 3 → 4, apex 8 → 10 → 12.5 m. New capacity grants its extra charge immediately; spent charges refill serially every 7 s. The kit validator accepts up to four charges.
+- Daisy Chain extends the gap to 1.6 s and uses 1/.9/.75/.6. Four 16-damage hits total 52 before modifiers. Third-link Scorched and the post-modifier pilot damage budget still apply.
+- Scorched Earth creates a replicated fire field at the floor under each damaging blast, lasting 2 s, radius equal to the blast capped at 3 m. Ground contact is a 1.6 m vertical band. Base damage is 6/s, modified by damage and halved against Scorched victims. Same-owner overlaps do not stack; 32 fields per owner, oldest replaced. Fire respects cover, teams and sanctuary; it grants no meter, advances no links, does not launch, and shares the pilot damage budget. Continuous fire keeps that budget spent until a damage-free chain-window gap. It does not ignite further fields or mines.
+- Nitro Boots stacks: Q cooldown 8 → 5.6 → 3.92 s; apex and ideal horizontal travel ×1.2 per stack (both velocity components use the square root). Each jump drops one ordinary 8-damage firecracker. Cluster Fun uses nine children staggered across the same .35 s and an 8.8 s cooldown.
+- Blast Shield removes self damage without removing the own-blast launch. Encore multiplies passive, hit and link meter by 1.25, then drops eight visible 10-damage bomblets during the .8 s after the Finale strike. They are spread around the locked circles (the crate if no targets), use ordinary cover/chain rules, survive the caster's death, and keep round resolution pending until finished. At the 32-charge bound they replace oldest charges.
+
+Existing bomb/field snapshots carry the new effects through guests, late join and replay; no new wire fields or presentation assets. Native checks cover casts, stacks, real codec, PvE access, fire overlap/budget and Encore death persistence. Windows gameplay and subjective tuning still require playtesting.
