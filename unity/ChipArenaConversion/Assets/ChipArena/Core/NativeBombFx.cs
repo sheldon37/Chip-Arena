@@ -142,8 +142,8 @@ namespace ChipArena.UnityConversion
             float after=t-f.Strike;if(after<.25f)return;var centre=N(f.Box)+N(f.Dir)*7;int shells=low?4:7;
             for(int j=0;j<shells;j++)
             {
-                float born=.25f+j*.12f,a=after-born;if(a<0||a>1)continue;long k=seed+100+j*17;var at=centre+new Vector3((R(k,1)-.5f)*14,8+4*R(k,2),(R(k,3)-.5f)*14);var color=j%3==0?new Vector3(1,.3f,.12f):j%3==1?new Vector3(1,.8f,.25f):new Vector3(.9f,.25f,.5f);
-                Flash(s,at,a,.18f,color,1.8f,k);int n=Count(24,q,low);for(int i=0;i<n;i++){var d=RandomDir(k,i+10);float sp=6*(.75f+.25f*R(k,i+40)),move=sp*(1-(float)Math.Exp(-a*3))/3;var p=at+d*move-Vector3.UnitY*(1.6f*a*a);s.Streak(p,d*(sp*(float)Math.Exp(-a*3))-Vector3.UnitY*(3.2f*a),color*(1.9f*(1-a)),.03f,.05f,.04f,.5f,a,k+i);}
+                float born=.25f+j*.12f,a=after-born;if(a<0||a>1)continue;long k=seed+100+j*17;var at=centre+new Vector3((R(k,1)-.5f)*12,6+3.5f*R(k,2),(R(k,3)-.5f)*10);var color=j%3==0?new Vector3(1,.3f,.12f):j%3==1?new Vector3(1,.8f,.25f):new Vector3(.9f,.25f,.5f);
+                Flash(s,at,a,.18f,color,1.8f,k);int n=Count(24,q,low);for(int i=0;i<n;i++){var d=RandomDir(k,i+10);float sp=6*(.75f+.25f*R(k,i+40)),move=sp*(1-(float)Math.Exp(-a*3))/3;var p=at+d*move-Vector3.UnitY*(1.6f*a*a);s.Streak(p,d*(sp*(float)Math.Exp(-a*3))-Vector3.UnitY*(3.2f*a),color*(3.2f*(1-a)),.04f,.08f,.05f,.5f,a,k+i);}
             }
         }
     }
@@ -161,7 +161,7 @@ namespace ChipArena.UnityConversion
             if(t<.6f){float u=Smooth(t/.6f);s.Position=box+d*(1.7f-.3f*u)+r*(.9f-.2f*u)+Vector3.UnitY*(.42f+.1f*u);s.Look=box+Vector3.UnitY*(.18f+.3f*u);s.Fov=46-6*u;s.Index=0;}
             else if(t<lk-.25f){float u=Smooth((t-.6f)/Math.Max(.1f,lk-.25f-.6f));s.Position=box+d*(1.1f+.3f*u)-r*(.75f+.2f*u)+Vector3.UnitY*(.9f+.3f*u);s.Look=box-d*.2f+Vector3.UnitY*(.72f+.18f*u);s.Fov=34;s.Index=1;}
             else if(t<st){float u=Smooth((t-(lk-.25f))/Math.Max(.1f,st-(lk-.25f)));s.Position=feet-d*(2.8f+2.6f*u)+r*(1.2f*u)+Vector3.UnitY*(1.7f+5.5f*u);s.Look=feet+d*(3+4*u)+Vector3.UnitY*(1-.4f*u);s.Fov=46+10*u;s.Index=2;s.Shake=shake?.02f*u:0;}
-            else{float u=Smooth((t-st)/.7f);s.Position=feet-d*5.4f+r*1.2f+Vector3.UnitY*(7.2f-.8f*u);s.Look=feet+d*7+Vector3.UnitY*(.6f+4*u);s.Fov=56+4*u;s.Index=3;s.Shake=shake?.08f*(1-u):0;}
+            else{float u=Smooth((t-st)/.7f);s.Position=feet-d*5.4f+r*1.2f+Vector3.UnitY*(7.2f-1.6f*u);s.Look=feet+d*7+Vector3.UnitY*(.6f+6.5f*u);s.Fov=56+4*u;s.Index=3;s.Shake=shake?.08f*(1-u):0;}
             if(reduced){s.Fov=Math.Max(s.Fov,48);s.Shake=0;}
             s.Blend=Smooth(t/BlendIn)*(1-Smooth((t-(end-BlendOut))/BlendOut));return s;
         }
