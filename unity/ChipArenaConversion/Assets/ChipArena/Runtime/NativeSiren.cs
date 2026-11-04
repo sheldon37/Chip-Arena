@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
     {
         public readonly List<NativeSirenField> SirenFields=new List<NativeSirenField>();private float sirenFieldAt;
         private NativeSirenState Siren(NativePilot p)=>p.Siren??(p.Siren=new NativeSirenState());
-        private bool SirenArmor(NativePilot p)=>Dev(p,"siren")&&p.Hp>0&&p.Siren?.Move!=null&&p.Siren.Move.Rule.Id!="swipe"&&p.Siren.Move.Rule.Id!="hellfire"&&Time<p.Siren.Move.Until;
+        private bool SirenArmor(NativePilot p)=>TechniqueBrace(p)||Dev(p,"siren")&&p.Hp>0&&p.Siren?.Move!=null&&p.Siren.Move.Rule.Id!="swipe"&&p.Siren.Move.Rule.Id!="hellfire"&&Time<p.Siren.Move.Until;
         private void CancelSiren(NativePilot p)
         {var m=p.Siren?.Move;if(m?.Caught!=null&&m.Caught.HeldBy==p){m.Caught.HeldBy=null;m.Caught.Body.useGravity=true;m.Caught.Knockback=m.Caught.MoveVelocity=m.Caught.Body.linearVelocity=Vector3.zero;}if(p.Siren!=null)p.Siren.Move=null;if(p.HeldBy!=null){var owner=p.HeldBy;p.HeldBy=null;CancelSiren(owner);}p.Body.useGravity=true;}
         private NativePilot SirenTarget(NativePilot p,float range,bool aimed=false)=>Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&Vector3.Distance(q.Body.position,p.Body.position+Vector3.up*.45f)<=range&&(!aimed||Vector3.Dot((q.Body.position-p.Body.position-Vector3.up*.45f).normalized,Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)))>.7f)&&MeleeVisible(p.Body.position+Vector3.up*.45f,q.Body.position,p,q.Collider,Pve!=null)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();

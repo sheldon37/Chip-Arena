@@ -8,19 +8,29 @@ namespace ChipArena.UnityConversion
         // Virtual shot-only obstacles: players can walk through Bastion and a sentry without a solid capsule collider.
         private bool TechniqueObstacle(NativePilot shooter,Vector3 from,Vector3 delta,float radius,float damage,out Vector3 contact)
         {
-            contact=from+delta;bool any=false;foreach(var p in Pilots)if(p.TechniqueHealth>0&&NativeTechniqueRules.Live(p.Technique,Time)&&(p.Technique.Kind=="bastion"||p.Technique.Kind=="sentry-drop")){any=true;break;}if(!any)return false;NativePilot best=null;float nearest=1.001f;
+            contact=from+delta;bool any=false;foreach(var p in Pilots)if(p.TechniqueHealth>0&&NativeTechniqueRules.Live(p.Technique,Time)&&(p.Technique.Kind=="bastion"||TechniqueObject(p.Technique))){any=true;break;}if(!any)return false;NativePilot best=null;float nearest=1.001f;
             // Geometry and actors must win when closer; do not let a wall behind a victim consume its shot.
             var solid=SweepNative(from,delta,radius,c=>c!=shooter?.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?q.Hp>0&&CanHit(shooter,q)&&!Invulnerable(q):c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?m.Hp>0&&CanHit(shooter,m):true));
             if(solid.HasValue)nearest=solid.Value.Distance/Math.Max(.00001f,delta.magnitude);
             foreach(var p in Pilots)
             {
                 var k=p.Technique;if(p.Hp<=0||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0)continue;float f;
-                bool hit=k.Kind=="bastion"?NativeTechniqueRules.Wall(Vec(from),Vec(delta),k,radius,out f):k.Kind=="sentry-drop"&&p!=shooter&&CanHit(shooter,p)?NativeTechniqueRules.SegmentSphere(Vec(from),Vec(delta),k.Point+new V3(0,.65f,0),.55f+radius,out f):NoTechniqueContact(out f);
-                if(hit&&f<nearest){nearest=f;best=p;}
+                bool hit=k.Kind=="bastion"?NativeTechniqueRules.Wall(Vec(from),Vec(delta),k,radius,out f):TechniqueObject(k)&&p!=shooter&&CanHit(shooter,p)&&Time>=k.Release&&(k.Kind!="lightning-rod"||Time>=k.Arm)?NativeTechniqueRules.SegmentSphere(Vec(from),Vec(delta),k.Point+new V3(0,TechniqueObjectHeight(k),0),(k.Kind=="lightning-rod"?3:k.Kind=="sentry-drop"?.55f:.25f)+radius,out f):NoTechniqueContact(out f);
+                if(hit&&f<nearest&&(k.Kind!="lightning-rod"||Enemy(shooter,p)&&MeleeVisible(from+delta*f,Vec(k.Point)+Vector3.up*.6f,shooter,null))){nearest=f;best=p;}
             }
-            if(best==null)return false;contact=from+delta*nearest;best.TechniqueHealth=Math.Max(0,best.TechniqueHealth-damage);best.Technique.HitAt=Time;
-            if(best.Technique.Kind=="bastion"){best.Technique.Arm=best.TechniqueHealth/120;best.Technique.To=Vec(contact);}
-            if(best.TechniqueHealth<=0)EndTechnique(best);return true;
+            if(best==null)return false;contact=from+delta*nearest;DamageTechniqueObject(best,damage,contact,true);return true;
+        }
+        private static bool TechniqueObject(NativeTechnique k)=>k!=null&&(k.Kind=="sentry-drop"||k.Kind=="tripwire"||k.Kind=="sonar-dart"||k.Kind=="lightning-rod");
+        private static float TechniqueObjectHeight(NativeTechnique k)=>k.Kind=="sentry-drop"?.65f:k.Kind=="lightning-rod"?.6f:0;
+        private void DamageTechniqueObject(NativePilot p,float damage,Vector3 contact,bool shot=false)
+        {
+            var k=p.Technique;p.TechniqueHealth=Math.Max(0,p.TechniqueHealth-damage);
+            if(k.Kind=="bastion"){k.Arm=p.TechniqueHealth/120;k.To=Vec(contact);k.HitAt=Time;}
+            if(k.Kind=="sentry-drop")k.HitAt=Time;
+            if(k.Kind=="lightning-rod"&&shot){k.To=Vec(contact);k.HitAt=Time;}
+            if(p.TechniqueHealth>0)return;
+            if(k.Kind=="tripwire"){k.HitAt=Time;k.To=k.Point;k.Phase="snap";k.Until=Time+.85f;}
+            else{EndTechnique(p);if(k.Kind=="sonar-dart")k.HitAt=k.Until=Time;}
         }
         private static bool NoTechniqueContact(out float f){f=0;return false;}
         private bool TechniqueBullet(NativeBullet b,NativePilot owner,Vector3 delta)
@@ -43,12 +53,12 @@ namespace ChipArena.UnityConversion
         private void TechniqueMeleeObjects(NativePilot p,NativeMeleeSwing swing,Vector3 origin)
         {
             foreach(var q in Pilots)
-            {var k=q.Technique;if(q==p||k?.Kind!="sentry-drop"||!NativeTechniqueRules.Live(k,Time)||q.TechniqueHealth<=0||!CanHit(p,q))continue;var at=Vec(k.Point)+Vector3.up*.6f;var delta=at-origin;if(!swing.Contact("sentry:"+q.Seat.id,Time,Vec(delta),.55f,MeleeVisible(origin,at,p,null),p.Grounded))continue;q.TechniqueHealth-=TechniqueAway(p)?6:(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale);k.HitAt=Time;if(q.TechniqueHealth<=0)EndTechnique(q);}
+            {var k=q.Technique;if(q==p||!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||q.TechniqueHealth<=0||!CanHit(p,q))continue;var at=Vec(k.Point)+Vector3.up*TechniqueObjectHeight(k);var delta=at-origin;if(!swing.Contact("sentry:"+q.Seat.id,Time,Vec(delta),.55f,MeleeVisible(origin,at,p,null),p.Grounded))continue;DamageTechniqueObject(q,TechniqueAway(p)?6:(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),at);}
         }
         private void TechniqueBlastObjects(NativePilot owner,Vector3 at,float radius,float damage)
         {
             foreach(var p in Pilots)
-            {var k=p.Technique;if(k?.Kind!="sentry-drop"||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0||!CanHit(owner,p))continue;var point=Vec(k.Point)+Vector3.up*.65f;float fall=NativeAbilityRules.BlastFalloff(Vector3.Distance(at,point),radius);if(fall<=0||!MeleeVisible(at,point,owner,null))continue;p.TechniqueHealth-=damage*fall;k.HitAt=Time;if(p.TechniqueHealth<=0)EndTechnique(p);}
+            {var k=p.Technique;if(!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0||!CanHit(owner,p))continue;var point=Vec(k.Point)+Vector3.up*TechniqueObjectHeight(k);float fall=NativeAbilityRules.BlastFalloff(Vector3.Distance(at,point),radius);if(fall<=0||!MeleeVisible(at,point,owner,null))continue;DamageTechniqueObject(p,damage*fall,point);}
         }
         private bool BotSentry(NativePilot p,out InputFrame input)
         {

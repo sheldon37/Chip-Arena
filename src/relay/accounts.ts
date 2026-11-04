@@ -57,10 +57,15 @@ function podLook(raw:unknown){
  return keys.filter(k=>picks.has(k)).map(k=>k+':'+picks.get(k)).join(',');
 }
 const TECHNIQUE_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','bow'];
+const TECHNIQUES:Record<string,string[]>={pistol:['ricochet-coin','bounty-round'],rifle:['grapple-line','sonar-dart'],machinegun:['sentry-drop','recoil-burst'],fire:['ignition-leap','wildfire-run'],water:['healing-spring','slipstream'],lightning:['static-recall','lightning-rod'],darkness:['shade-swap','grave-walk'],sword:['riposte','parting-line'],daggers:['smoke-veil','tripwire'],shield:['bastion','shield-surf'],greatsword:['anchor-throw','iron-vow'],bow:['gale-arrow','spirit-hawk']};
 function weaponTechniqueMap(raw:unknown){
- if(typeof raw!=='string'||raw.length>256)return '';const picks=new Map<string,string>();
- for(const entry of raw.split(',')){const pair=entry.split(':');if(pair.length!==2)continue;const spec=pair[0].trim(),slot=pair[1].trim();if(TECHNIQUE_WEAPONS.includes(spec)&&(slot==='e'||slot==='q'&&spec!=='rifle'))picks.set(spec,slot);else if(slot==='default')picks.delete(spec);}
- return TECHNIQUE_WEAPONS.filter(s=>picks.has(s)).map(s=>s+':'+picks.get(s)).join(',');
+ if(typeof raw!=='string'||raw.length>2048)return '';const picks=new Map<string,string>();
+ for(const entry of raw.split(',')){const pair=entry.split(':');if(pair.length!==2)continue;const spec=pair[0].trim(),choice=pair[1].split('=');if(choice.length>2)continue;const slot=choice[0].trim();
+  if(slot==='default'){picks.delete(spec+':q');picks.delete(spec+':e');continue;}if(!TECHNIQUE_WEAPONS.includes(spec)||!(slot==='e'||slot==='q'&&spec!=='rifle'))continue;
+  const id=choice.length===1?TECHNIQUES[spec][0]:choice[1].trim();if(!id){picks.delete(spec+':'+slot);continue;}if(!TECHNIQUES[spec].includes(id))continue;
+  const other=spec+':'+(slot==='q'?'e':'q');if(picks.get(other)===id)picks.delete(other);picks.set(spec+':'+slot,id);
+ }
+ return TECHNIQUE_WEAPONS.flatMap(s=>[s+':q',s+':e']).filter(s=>picks.has(s)).map(s=>s+'='+picks.get(s)).join(',');
 }
 function accountCosmetics(raw:any,a:Access){
  const clean=cosmetics(raw,a);

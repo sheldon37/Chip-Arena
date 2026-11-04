@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
         {
             if(!ZoneTouch(p.Seat.id,id,interval)||!lethal&&Invulnerable(p))return;
             float actual=Damage(p,null,lethal?p.Hp:amount,push.normalized,0,false,forced:lethal,direct:false,primary:false,stage:true,rollAvoidable:!lethal,damageKind:kind,stageHazard:"zone-"+id,stageLethal:lethal);
-            if(actual>0){p.Knockback+=push*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
+            if(actual>0&&!TechniqueBrace(p)){p.Knockback+=push*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
         }
         private void ZoneHazardMinion(NativeMinion m,int id,float amount,float interval,bool fire=false)
         {
