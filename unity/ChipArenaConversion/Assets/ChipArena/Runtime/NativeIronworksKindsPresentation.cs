@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         internal static IronworksView IronworksViewOf(NativeMinion m)=>m.Pve?.Zone.Ironworks??IronworksView.None;
 
         // ---- the zone tint: the brute's cream seams while the City Ironworks is the map (NativeHordeKinds.SeamOf, the cream models) ----
-        private void IronworksZone(NativeArena arena){NativeIronworksKinds.Zone=arena!=null&&NativeIronworksKinds.ZoneOf(arena.MapId);}
+        private void IronworksZone(NativeArena arena){NativeIronworksKinds.Zone=arena!=null&&NativeIronworksKinds.ZoneOf(arena.MapId);IronworksPrewarm();}
 
         private static Vector3 IronU(NVector v)=>new Vector3(v.X,v.Y,v.Z);
         private static Quaternion IronU(NQuaternion q)=>new Quaternion(q.X,q.Y,q.Z,q.W);

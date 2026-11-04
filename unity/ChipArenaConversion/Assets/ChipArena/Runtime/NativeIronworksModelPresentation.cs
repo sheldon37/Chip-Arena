@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using NVector=System.Numerics.Vector3;
 
@@ -26,6 +27,19 @@ namespace ChipArena.UnityConversion
             var gear=prop>=0&&prop<IronworksGearProps.Length?IronworksGearProps[prop]:null;
             if(gear!=null&&ZombieModelsOn&&ZombieGearPropDraw(gear,world,1,flash))return;
             sourceModels.Queue(NativeHordeModels.PropId(prop,tier),world,glow:glow,hitFlash:flash);
+        }
+        // ---- the gear's meshes made ahead, one a frame while the Ironworks is the map: a first Ladleman or Rigger builds nothing in the fight ----
+        private static string[] ironGearIds;private int ironGearReady;
+        private void IronworksPrewarm()
+        {
+            if(!NativeIronworksKinds.Zone||!ZombieModelsOn)return;
+            if(ironGearIds==null)
+            {
+                var ids=new HashSet<string>();foreach(var g in IronworksGearProps)if(g!=null)ids.Add(g);
+                foreach(var v in NativeZombieLooks.All)if(NativeIronworksKinds.Is(v.Kind))foreach(var g in v.Gear)ids.Add(g);
+                ironGearIds=new string[ids.Count];ids.CopyTo(ironGearIds);
+            }
+            if(ironGearReady<ironGearIds.Length)ZombieGearAssetOf(ironGearIds[ironGearReady++]);
         }
         // ---- the props in the model's hands ----
         /// <summary>Before PlaceProps: its props go to the model's hands, not the gait's (false while it draws voxel).</summary>
