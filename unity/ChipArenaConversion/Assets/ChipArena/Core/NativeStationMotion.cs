@@ -304,7 +304,28 @@ namespace ChipArena.UnityConversion
                 case NativeStationKinds.Undertow:{c=standCrawl;t=.35f+Math.Min(a,.95f)*1.45f;sink=NativeStationKinds.DeathSink*Sm((a-.3f)/NativeStationKinds.DeathSinkSeconds);break;}
                 default:{c=deathFront1;var m=NativeZombieClips.Clip(c).Marks;t=a<NativeHordeGait.DownAt?a/NativeHordeGait.DownAt*m[1]:m[1]+(m[2]-m[1])*C01((a-NativeHordeGait.DownAt)/1.3f);break;}
             }
-            NativeZombieClips.Sample(c,t,deathRow);NativeZombieClips.Pose(deathRow,p);float low=p.Lowest();var b=p.Position[CapturedRig.Body];b.Y+=NativeHordeGait.Floor-low;p.Position[CapturedRig.Body]=b;p.World();return true;
+            NativeZombieClips.Sample(c,t,deathRow);NativeZombieClips.Pose(deathRow,p);float low=p.Lowest();var b=p.Position[CapturedRig.Body];b.Y+=NativeHordeGait.Floor-low;p.Position[CapturedRig.Body]=b;p.World();
+            if(c==deathFront1||c==deathFront2)Prone(p,Sm((a-ProneFrom)/ProneOver));return true;
+        }
+        /// <summary>When a front fall starts laying the body down, and over how long (seconds of its age).</summary>
+        public const float ProneFrom=.6f,ProneOver=.45f,ProneHips=.2f;
+        // The pack's front falls end propped on straight arms, the body half a metre off the floor (seen on the model, on the
+        // station's floor, 2026-11-04): the body comes down onto its front, the hips ProneHips over the floor, the hands on the
+        // floor out beside the shoulders, as it lands.
+        private static readonly Quaternion[] proneArm=new Quaternion[3];
+        private static void Prone(CapturedRig.Pose p,float k)
+        {
+            if(k<=0)return;float floor=NativeHordeGait.Floor,over=p.WorldPosition[CapturedRig.Pelvis].Y-(floor+ProneHips);
+            if(over>0){var d=p.Position[CapturedRig.Body];d.Y-=over*k;p.Position[CapturedRig.Body]=d;p.World();}
+            for(int side=0;side<2;side++)
+            {
+                bool left=side==0;int arm=left?CapturedRig.LArm:CapturedRig.RArm;float sx=left?1:-1;var sh=p.WorldPosition[arm];
+                var hand=new Vector3(sh.X+sx*.3f,floor+.07f,sh.Z+.06f);for(int i=0;i<3;i++)proneArm[i]=p.Rotation[arm+i];
+                var inv=Quaternion.Inverse(p.WorldRotation[CapturedRig.Chest]);CapturedRig.Arm(p,left,Vector3.Transform(hand-p.WorldPosition[CapturedRig.Chest],inv),inv*p.WorldRotation[arm+2],new Vector3(sx*.8f,.5f,-.3f));
+                for(int i=0;i<3;i++)p.Rotation[arm+i]=Quaternion.Slerp(proneArm[i],p.Rotation[arm+i],k);p.World();
+            }
+            // (Its lowest part on the floor, as every fall ends.)
+            {float low=p.Lowest();var b=p.Position[CapturedRig.Body];b.Y+=floor-low;p.Position[CapturedRig.Body]=b;p.World();}
         }
         private static readonly float[] deathRow=new float[NativeZombieClips.Channels];
         /// <summary>The Pileup's door in its death (Unity-axes rig frame, the death pose's root): it tips forward off the falling
