@@ -144,12 +144,14 @@ namespace ChipArena.UnityConversion
         private static string Title(string spec)=>spec=="machinegun"?"Machine gun":spec=="greatsword"?"Greatsword":string.IsNullOrEmpty(spec)?"":char.ToUpperInvariant(spec[0])+spec.Substring(1);
 
         // ---- Ability slots -----------------------------------------------------------------------------------------
-        // One choice in a weapon's Q or E slot. Strings are built once per weapon (SlotOptions), never per frame.
+        // One choice in a weapon's Q or E slot. Strings are built once per weapon (SlotOptions, AddTechnique), never per frame.
         public sealed class AbilityOption
         {
             public string Id,Name,Text,Icon,Meta;public double Cooldown,Cost;
             // True for a slot read from the weapon itself (a melee special or a DEV kit's move), not from content abilities.
             public bool FromWeapon;
+            // The weapon's technique, offered in this slot's place (docs/WEAPON-TECHNIQUES.md); null for the slot's own ability.
+            public NativeTechniques.Def Technique;
         }
         // The options for `slot` ("q" or "e") of weapon `w`: every content ability for that spec and slot, in content order
         // (today exactly one per slot for ranged and magic). Without content abilities, the weapon's own move for that key
@@ -166,6 +168,12 @@ namespace ChipArena.UnityConversion
             if(name!=null){o.Name=name;o.Text=move;}else if(words<=3){o.Name=move.TrimEnd('.');o.Text="Signature move of this kit.";}else{o.Name="Signature move";o.Text=move;}
             if(e){o.Cooldown=w.secondaryCooldown;o.Cost=w.secondaryCost;}
             o.Meta=Meta(o.Cooldown,o.Cost,w.@class=="melee"?"stamina":"mana",false);into.Add(o);return 1;
+        }
+        // The weapon's technique as one more choice for this slot: picking it replaces the slot's own ability.
+        public static bool AddTechnique(ContentWeapon w,string slot,List<AbilityOption> into)
+        {
+            if(w==null||!NativeTechniqueLoadout.Allowed(w.id,slot))return false;var d=NativeTechniques.For(w.id);if(d==null)return false;
+            into.Add(new AbilityOption{Id=d.Id,Name=d.Name,Text=NativeTechniques.Text(d.Id),Icon=d.Icon,Cooldown=d.Cooldown,Cost=d.Cost,Meta=Meta(d.Cooldown,d.Cost,CostUnit(w),false),Technique=d});return true;
         }
         // Why a slot is empty: melee Q abilities are planned (docs/MELEE-ABILITIES.md); a DEV kit binds its own keys.
         public static string EmptySlot(ContentWeapon w,string slot)

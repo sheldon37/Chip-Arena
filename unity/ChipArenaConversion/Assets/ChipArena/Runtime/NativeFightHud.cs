@@ -98,21 +98,31 @@ namespace ChipArena.UnityConversion
             float t=arena.Time,remaining=(slot=="q"?p.QReady:p.EReady)-t,span=(slot=="q"?qSpan:eSpan).Update(remaining,(float)NativeAbilityRules.Cooldown(d,p.Stats));
             return NativeMeleeKitHud.Of(slot,d.id,p.MeleeKit,remaining,span,p.Stamina,(float)NativeAbilityRules.Cost(d,p.Stats),t);
         }
+        // A technique's card in the slot it replaced (docs/WEAPON-TECHNIQUES.md): the slot's replicated deadline and the cooldown as this
+        // pilot's chips scale it, the recast first.
+        private Card TechniqueCard(NativePilot p,NativeTechniques.Def td,string slot)
+        {
+            float t=arena.Time;var d=content.Ability(p.Seat.spec,"technique");bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic";float cost=d!=null?(float)NativeAbilityRules.Cost(d,p.Stats):td.Cost;
+            var c=NativeTechniques.Card(NativeTechniques.Source?.Of(p.Seat.id),t,(slot=="q"?p.QReady:p.EReady)-t,d!=null?(float)NativeAbilityRules.Cooldown(d,p.Stats):td.Cooldown,melee?p.Stamina<cost:magic&&p.Mana<cost,melee?"LOW STAMINA":"LOW MANA");
+            return new Card{Key=slot.ToUpperInvariant()+" · "+td.Name.ToUpperInvariant(),State=c.State,Icon=td.Icon,Ready=c.Ready,Active=c.Active,Recast=c.Recast,Low=c.Low,Dial=c.Dial};
+        }
         private readonly System.Collections.Generic.List<Card> cards=new System.Collections.Generic.List<Card>();
         // .cooldowns: RMB block, SHIFT roll and the Q / E cards, right to left from the corner.
         private void Cooldowns(NativePilot p,float right,float bottom)
         {
             float t=arena.Time;cards.Clear();
-            bool away=NativeMeleeKitHud.ShieldAway(p.Seat.spec,p.MeleeKit);
+            bool thrown=NativeTechniques.WeaponAway(NativeTechniques.Source?.Of(p.Seat.id),t),away=NativeMeleeKitHud.ShieldAway(p.Seat.spec,p.MeleeKit)||thrown&&p.Seat.spec=="shield";
             cards.Add(new Card{Key="RMB · "+(p.Seat.spec=="ansatsuken"?"PARRY":"BLOCK"),State=away?"SHIELD OUT":t<p.BlockEnd?"ACTIVE":p.BlockReady>t?(p.BlockReady-t).ToString("0.0")+"s":"READY",Ready=!away&&t>=p.BlockEnd&&p.BlockReady<=t,Active=!away&&t<p.BlockEnd,Low=away,Dial=away?-1:SpanDial(blockSpan,p.BlockReady-t)});
             bool roll=p.Weapon.@class=="melee";string rollState=t<p.RollEnd?"ROLLING":p.RollReady>t?(p.RollReady-t).ToString("0.0")+"s":"READY";cards.Add(new Card{Key="SHIFT · "+(roll?"ROLL":"DODGE"),State=rollState,Ready=rollState=="READY",Active=t<p.RollEnd,Dial=SpanDial(rollSpan,p.RollReady-t)});
             // The DEV Cyber Lord's Q, E and 1-4 cards (NativeCyberLordScreen.cs) in place of the content Q / E cards.
             if(CyberLordFeed.Handles(p.Seat.spec))CyberLordCards(p);
             else foreach(var slot in new[]{"q","e"})
             {
+                // A technique swapped into this slot takes its card.
+                if(NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)==slot&&NativeTechniques.For(p.Seat.spec) is var swapped&&swapped!=null){cards.Add(TechniqueCard(p,swapped,slot));continue;}
                 var d=content.Ability(p.Seat.spec,slot);
                 // Standard melee Q/E (Core/NativeMeleeKitHud): the recast window, the cast, the cooldown actually started, stamina.
-                if(d!=null&&NativeMeleeRules.Standard(p.Seat.spec)){var kc=MeleeCard(p,slot,d);cards.Add(new Card{Key=slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),State=kc.State,Ready=kc.Ready,Active=kc.Active,Dial=kc.Dial,Recast=kc.Recast,Low=kc.Low&&!kc.Recast});continue;}
+                if(d!=null&&NativeMeleeRules.Standard(p.Seat.spec)){var kc=MeleeCard(p,slot,d);if(thrown){kc.State=p.Seat.spec=="shield"?"SHIELD OUT":"BLADE OUT";kc.Low=true;kc.Ready=kc.Active=kc.Recast=false;}cards.Add(new Card{Key=slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),State=kc.State,Ready=kc.Ready,Active=kc.Active,Dial=kc.Dial,Recast=kc.Recast,Low=kc.Low&&!kc.Recast});continue;}
                 // The pistol / machine-gun Q kit (Core/NativeGunKitHud): its icon, fanning, Overdrive's active time and vent, cooldown, ammo.
                 if(d!=null&&slot=="q"&&NativeGunKit.Covers(d.id))
                 {
@@ -131,12 +141,6 @@ namespace ChipArena.UnityConversion
                 }
                 float left=d==null?Math.Max(0,p.EReady-t):slot=="q"?p.QReady-t:p.ECharges>0?0:p.EReady-t,cd=d!=null&&d.cooldown>0?(float)d.cooldown:1;
                 cards.Add(new Card{Key=name,State=state.Length>0&&char.IsDigit(state[0])?state:state.ToUpperInvariant(),Ready=state=="ready",Active=state=="casting"||state=="active",Low=state=="low mana"||state=="low stamina",Dial=d!=null&&d.kind!="ads"?1-Mathf.Clamp01(left/cd):-1});
-            }
-            // The technique's card on key 1 (docs/WEAPON-TECHNIQUES.md), once something holds the records.
-            if(NativeTechniques.Source!=null&&NativeTechniques.For(p.Seat.spec) is var td&&td!=null)
-            {
-                var tk=NativeTechniques.Source.Of(p.Seat.id);bool busy=tk?.Kind!=null&&t>=tk.At&&t<tk.End;float left=tk?.Kind!=null?tk.At+td.Cooldown-t:0;
-                cards.Add(new Card{Key="1 · "+td.Name.ToUpperInvariant(),State=busy?"ACTIVE":left>0?left.ToString("0.0")+"s":"READY",Icon=td.Icon,Ready=!busy&&left<=0,Active=busy,Dial=left>0?1-Mathf.Clamp01(left/td.Cooldown):1});
             }
             float x=right;for(int i=cards.Count-1;i>=0;i--){var c=cards[i];float since=hudEvents.Rise(CardSlot+i,t,c.Ready);x=CardAt(c,x,bottom,since)-6;}
         }

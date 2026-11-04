@@ -1,3 +1,17 @@
+## 2026-11-03 — Claude: weapon techniques in Customize and on the HUD (swap Q or E)
+
+- **Branch/base:** `claude/technique-swap`, shared `456bd1cc`, on Astra's contract (#321, #322: `weaponTechniques`, `NativeTechniqueLoadout`).
+- **Task:** owner: "we are making these additional abilities right? (Ones we can change in customization)", then chose swapping into Q or E over a third slot.
+- **Picker (`Runtime/NativeLockerUI.cs`, `Core/NativeLocker.cs`):** Customize, Loadout: each slot's row shows its own ability and the weapon's technique with an OR between them;
+  the equipped card has the edge and tick, a technique's in its own accent; a click swaps with a short flash; ON Q / ON E says where it is, and picking it here moves it; the rifle's Q says the scope stays.
+  Part of the look: dirty state, Revert, Save Pilot.
+- **HUD (`Runtime/NativeFightHud.cs`, `NativeTechniques.Card`):** the key-1 card is gone; the technique takes its slot's card on `QReady`/`EReady` with the scaled cooldown: RECAST, ACTIVE, the count, LOW STAMINA/MANA.
+  While the shield stands or the greatsword flies, block and the other slot say SHIELD OUT / BLADE OUT. A swapped E draws no field preview. Astra's handoff: smoke hides a name from outside the cloud.
+- **Found by playing it (`Core/NativeTechniqueFx.cs`):** Riposte's arcs drew behind the pilot (the rules' `Dir` is the aim until a parry), now on the pilot's facing, also dimly in first person; Ignition Leap's wings read as a stripe across the screen, now a short swept V.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Presentation only.
+- **Checks:** CHECKS_PLACEHOLDER
+- **For Astra (not changed):** a refused press gives no feedback, so the key seems dead: Grapple Line with no surface in 20 m, Static Recall with anything on the line (`cybercity-lantern-counter`, a low counter, refused three walks in a row). A public "would the recast work" query would let the HUD say BLOCKED.
+
 ## 2026-11-03 — Astra: techniques replace the selected Q or E
 
 - **Branch/base:** `codex/weapon-technique-slots`, current shared `04d7333c` / PR #321. Owner changed the design from a third ability to a per-weapon optional replacement; rifle permits E only. Existing saves and bots retain their original Q/E.

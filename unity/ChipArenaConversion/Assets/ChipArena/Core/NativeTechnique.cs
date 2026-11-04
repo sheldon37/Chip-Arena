@@ -44,6 +44,39 @@ namespace ChipArena.UnityConversion
             D(RicochetCoin,"pistol","Ricochet Coin","coins",9,0,0xffcf5a),D(SentryDrop,"machinegun","Sentry Drop","crosshair",20,0,0xff5a4a),D(GrappleLine,"rifle","Grapple Line","spline",12,0,0x4fe6ff),D(GaleArrow,"bow","Gale Arrow","wind",10,0,0xbff5e4),
             D(IgnitionLeap,"fire","Ignition Leap","flame",11,22,0xff7a22),D(HealingSpring,"water","Healing Spring","droplets",18,30,0x4ff0c8),D(StaticRecall,"lightning","Static Recall","zap",13,20,0x9ec4ff),D(ShadeSwap,"darkness","Shade Swap","repeat",15,24,0xa050ff),
         };
+        /// <summary>The Locker card's sentence.</summary>
+        public static string Text(string id)
+        {
+            switch(id)
+            {
+                case Riposte:return "A short guard that counters a melee hit and returns shots. Miss it and you are open.";
+                case SmokeVeil:return "A smoke pellet at your feet. Anyone inside is hidden from outside the cloud.";
+                case Bastion:return "Plant your shield as a wall that stops shots from both sides. No blocking while it stands.";
+                case AnchorThrow:return "Hurl your blade, then press again to leap to it. You only punch until it returns.";
+                case RicochetCoin:return "Flip a coin and shoot it: the bullet turns to the nearest enemy for bonus damage.";
+                case SentryDrop:return "Drop a tripod gun that fires at the nearest enemy for six seconds. It can be shot down.";
+                case GrappleLine:return "Fire a line at a surface and reel yourself to it. No shooting on the way.";
+                case GaleArrow:return "An arrow that bursts into wind, shoving everything away. Shoot your feet to launch.";
+                case IgnitionLeap:return "A burst under your feet throws you high and burns the ground you left.";
+                case HealingSpring:return "A healing pool on the floor you aim at. Allies heal inside it, enemies slow down.";
+                case StaticRecall:return "Leave an anchor, then press again to bolt back to it, shocking anyone in the line.";
+                case ShadeSwap:return "A slow orb. If it touches an enemy, the two of you trade places.";
+                default:return "";
+            }
+        }
+        /// <summary>A technique's HUD card in the slot it replaced. The recast comes first: it is the one state that asks for a press.
+        /// `left` is the slot's deadline less the clock, `cooldown` as this pilot's chips scale it.</summary>
+        public struct CardState{public string State;public bool Ready,Active,Recast,Low;public float Dial;}
+        public static CardState Card(NativeTechnique k,float now,float left,float cooldown,bool low,string lowText)
+        {
+            var c=new CardState{Dial=left>0?1-Math.Min(1,left/Math.Max(.01f,cooldown)):1};
+            if(NativeTechniqueRules.Recast(k,now)){c.State="RECAST";c.Recast=true;}
+            else if(k?.Kind!=null&&now>=k.At&&now<k.End){c.State="ACTIVE";c.Active=true;}
+            else if(left>0)c.State=left.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+"s";
+            else if(low){c.State=lowText;c.Low=true;}
+            else{c.State="READY";c.Ready=true;}
+            return c;
+        }
         /// <summary>The weapon's technique (null: a DEV class, or none).</summary>
         public static Def For(string spec){foreach(var d in All)if(d.Spec==spec)return d;return null;}
         public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;return null;}

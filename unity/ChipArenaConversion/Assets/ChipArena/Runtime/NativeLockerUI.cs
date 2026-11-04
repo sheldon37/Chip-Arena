@@ -24,16 +24,16 @@ namespace ChipArena.UnityConversion
         private string lockerHat,lockerPose,lockerBody,lockerAccent,lockerWeapon,lockerKill,lockerBack;
         private readonly List<string> lockerHats=new List<string>(16),lockerKills=new List<string>(32),lockerIntros=new List<string>(32),lockerSkins=new List<string>(16);
         private readonly Dictionary<string,ContentWeapon> lockerIntroWeapon=new Dictionary<string,ContentWeapon>();private NativeAccess lockerAccess;private int lockerPoses=NativeLobbyPoses.Count(false);private string lockerAbilitySpec,lockerNameRaw,lockerName="Pilot";
-        private readonly List<NativeLocker.AbilityOption> lockerQ=new List<NativeLocker.AbilityOption>(4),lockerE=new List<NativeLocker.AbilityOption>(4);
+        private readonly List<NativeLocker.AbilityOption> lockerQ=new List<NativeLocker.AbilityOption>(4),lockerE=new List<NativeLocker.AbilityOption>(4);private float lockerSwapAt=-9;private int lockerSwapKey=-1;
         private readonly Dictionary<(int,string),string> lockerText=new Dictionary<(int,string),string>();private GUIStyle lockerField,lockerHex;private string lockerKillsLabel="",lockerSkinsLabel="",lockerAbilityHint;
-        private struct LockerLook{public string Name,Weapon,Pose,Body,Accent,Hat,Kill,Intro,IntroText;public bool Override;public string Back,Skins,HatColor,BackColor,Look;}
+        private struct LockerLook{public string Name,Weapon,Pose,Body,Accent,Hat,Kill,Intro,IntroText;public bool Override;public string Back,Skins,HatColor,BackColor,Look,Techniques;}
         private LockerLook lockerBase;
         private static readonly float[] LkGlowAt={0f,.6f,1f},LkGlowA={1f,.25f,0f},LkRingAt={0f,.9f,.955f,1f},LkRingA={0f,0f,1f,0f},LkDiscAt={0f,.96f,1f},LkDiscA={1f,1f,0f};
 
         // ---- Baseline, Save, Revert, leaving -------------------------------------------------------------------------
-        private LockerLook LockerNow()=>new LockerLook{Name=prefs.name,Weapon=prefs.weapon,Pose=prefs.lobbyPose,Body=prefs.bodyColor,Accent=prefs.accentColor,Hat=prefs.hat,Kill=prefs.killEffect,Intro=prefs.intro,IntroText=prefs.introText,Override=prefs.overrideIntro,Skins=prefs.weaponSkins,Back=prefs.lobbyBack,HatColor=prefs.hatColor,BackColor=prefs.backColor,Look=prefs.look};
+        private LockerLook LockerNow()=>new LockerLook{Name=prefs.name,Weapon=prefs.weapon,Pose=prefs.lobbyPose,Body=prefs.bodyColor,Accent=prefs.accentColor,Hat=prefs.hat,Kill=prefs.killEffect,Intro=prefs.intro,IntroText=prefs.introText,Override=prefs.overrideIntro,Skins=prefs.weaponSkins,Techniques=prefs.weaponTechniques,Back=prefs.lobbyBack,HatColor=prefs.hatColor,BackColor=prefs.backColor,Look=prefs.look};
         private bool LockerDirty()
-        {var b=lockerBase;return b.Name!=prefs.name||b.Weapon!=prefs.weapon||b.Pose!=prefs.lobbyPose||b.Body!=prefs.bodyColor||b.Accent!=prefs.accentColor||b.Hat!=prefs.hat||b.Kill!=prefs.killEffect||b.Intro!=prefs.intro||b.IntroText!=prefs.introText||b.Override!=prefs.overrideIntro||b.Back!=prefs.lobbyBack||b.Skins!=prefs.weaponSkins||b.HatColor!=prefs.hatColor||b.BackColor!=prefs.backColor||b.Look!=prefs.look;}
+        {var b=lockerBase;return b.Name!=prefs.name||b.Weapon!=prefs.weapon||b.Pose!=prefs.lobbyPose||b.Body!=prefs.bodyColor||b.Accent!=prefs.accentColor||b.Hat!=prefs.hat||b.Kill!=prefs.killEffect||b.Intro!=prefs.intro||b.IntroText!=prefs.introText||b.Override!=prefs.overrideIntro||b.Back!=prefs.lobbyBack||b.Skins!=prefs.weaponSkins||b.Techniques!=prefs.weaponTechniques||b.HatColor!=prefs.hatColor||b.BackColor!=prefs.backColor||b.Look!=prefs.look;}
         // An account profile loaded while the Locker is open becomes its baseline (it is the saved look).
         private void LockerRebase(){if(menuScreen==MenuScreen.Customize)lockerBase=LockerNow();}
         // Go(Customize) from another screen (Preview Intro's way back keeps the session).
@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         private void LockerRevert()
         {
             var b=lockerBase;bool weapon=prefs.weapon!=b.Weapon;
-            prefs.name=b.Name;prefs.weapon=b.Weapon;prefs.lobbyPose=b.Pose;prefs.bodyColor=b.Body;prefs.accentColor=b.Accent;prefs.hat=b.Hat;prefs.killEffect=b.Kill;prefs.intro=b.Intro;prefs.introText=b.IntroText;prefs.overrideIntro=b.Override;prefs.lobbyBack=b.Back;prefs.weaponSkins=b.Skins;prefs.hatColor=b.HatColor;prefs.backColor=b.BackColor;prefs.look=b.Look;
+            prefs.name=b.Name;prefs.weapon=b.Weapon;prefs.lobbyPose=b.Pose;prefs.bodyColor=b.Body;prefs.accentColor=b.Accent;prefs.hat=b.Hat;prefs.killEffect=b.Kill;prefs.intro=b.Intro;prefs.introText=b.IntroText;prefs.overrideIntro=b.Override;prefs.lobbyBack=b.Back;prefs.weaponSkins=b.Skins;prefs.hatColor=b.HatColor;prefs.backColor=b.BackColor;prefs.look=b.Look;prefs.weaponTechniques=b.Techniques;
             GUIUtility.keyboardControl=0;
             // A host's weapon pick re-broadcasts its seat (SetWeapon); putting the weapon back does the same.
             if(weapon&&Hosting&&arena==null)LobbyBroadcast();
@@ -83,13 +83,14 @@ namespace ChipArena.UnityConversion
         private void LockerAbilities()
         {
             if(Event.current.type!=EventType.Layout&&lockerAbilitySpec!=null)return;var w=MenuWeapon();string id=w?.id??"";if(id==lockerAbilitySpec)return;lockerAbilitySpec=id;
-            NativeLocker.SlotOptions(content,w,"q",lockerQ);NativeLocker.SlotOptions(content,w,"e",lockerE);lockerAbilityHint=w==null?null:w.name+" · Q and E";
+            NativeLocker.SlotOptions(content,w,"q",lockerQ);NativeLocker.SlotOptions(content,w,"e",lockerE);NativeLocker.AddTechnique(w,"q",lockerQ);NativeLocker.AddTechnique(w,"e",lockerE);lockerAbilityHint=w==null?null:w.name+" · Q and E";
         }
-        // Hook for Astra's loadout field: the option equipped in a weapon slot. Ability choices are not stored anywhere yet (no
-        // profile, account or seat field and no host validation), so each slot shows its first content option as equipped and
-        // the others cannot be picked. When the field exists, read it here and set LockerAbilityPicks to let a click store it.
-        private int LockerEquippedAbility(ContentWeapon w,string slot,List<NativeLocker.AbilityOption> options)=>0;
-        private static bool LockerAbilityPicks=>false;
+        // The option equipped in a weapon slot: its technique when the pilot swapped it in (prefs.weaponTechniques, Core/NativeTechniqueLoadout.cs),
+        // else the slot's own ability. A pick is one more part of the look: Save Pilot stores and sends it, Revert restores it.
+        private int LockerEquippedAbility(ContentWeapon w,string slot,List<NativeLocker.AbilityOption> options)
+        {if(w!=null&&NativeTechniqueLoadout.Slot(prefs.weaponTechniques,w.id)==slot)for(int i=1;i<options.Count;i++)if(options[i].Technique!=null)return i;return 0;}
+        private void LockerPickAbility(ContentWeapon w,NativeLocker.AbilityOption pick,string slot,int key)
+        {prefs.weaponTechniques=NativeTechniqueLoadout.With(prefs.weaponTechniques,w.id,pick.Technique!=null?slot:"");lockerSwapAt=Time.unscaledTime;lockerSwapKey=key;}
         // Cached display strings, keyed by value (no per-frame concatenation): 0 a cosmetic's name, 1 an entrance's name, 2 a
         // weapon's name in capitals, 3 its stat line, 4 its signature entrance's card text, 5 that entrance's name.
         private string LockerString(int kind,string id)
@@ -330,8 +331,8 @@ namespace ChipArena.UnityConversion
                     LockerWeaponTiles(new Rect(grid.x,grid.y+6,lockerW,grid.height-6),e);
                     var weapon=MenuWeapon();LkHeading(lockerSlots[k++],"ABILITIES",lockerAbilityHint);
                     LkAbilityRow(lockerSlots[k++],"q",lockerQ,weapon,e);LkAbilityRow(lockerSlots[k++],"e",lockerE,weapon,e);
-                    var note=lockerSlots[k++];NativeIcons.Draw(new Rect(note.x+2,note.y+13,14,14),"circle-help",U.Hex(0x8f909a,e));
-                    U.Text(new Rect(note.x+24,note.y+8,lockerW-24,24),"More abilities are coming for every slot. Your picks will be saved with your pilot.",12,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft);
+                    var note=lockerSlots[k++];NativeIcons.Draw(new Rect(note.x+2,note.y+10,14,14),"circle-help",U.Hex(0x8f909a,e));
+                    var said=U.Wrap(LkAbilityNote(weapon),12,lockerW-24,false,2);for(int i=0;i<said.Count;i++)U.Text(new Rect(note.x+24,note.y+8+i*16,lockerW-24,16),said[i],12,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft);
                     break;
                 }
                 case NativeLocker.Pod:LkPod(k,e);break;
@@ -607,6 +608,7 @@ namespace ChipArena.UnityConversion
         // The class switcher (MenuClass / NativeLoadoutText.Pick as the class cards do: a weapon outside the class gives way to
         // the class default).
         private void LkClassRow(Rect r,float e)=>LockerClassTiles(new Rect(r.x,r.y+6,lockerW,r.height-6),e);
+        private static string LkAbilityNote(ContentWeapon w)=>NativeTechniques.For(w?.id)!=null?"Swap in this weapon's technique and it takes that ability's place. Saved with your pilot.":"More abilities are coming for every slot.";
         // A slot's row: the key, its option cards (several per slot are laid out side by side) and, with a single option, the
         // "more coming" placeholder beside it; an empty slot says why.
         private const float LkKey=56;
@@ -623,21 +625,35 @@ namespace ChipArena.UnityConversion
             if(options.Count==0){LkDashed(new Rect(x,r.y,avail,r.height),e);NativeIcons.Draw(new Rect(x+18,r.center.y-10,20,20),"clock-3",U.Hex(0x8f909a,e));
                 U.Text(new Rect(x+48,r.center.y-20,avail-60,20),slot=="q"?"No Q ability yet":"No E ability yet",15,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true);U.Text(new Rect(x+48,r.center.y+2,avail-60,18),NativeLocker.EmptySlot(w,slot),12,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft);return;}
             int equipped=LockerEquippedAbility(w,slot,options);float ow=LkOptionW(options.Count);
-            for(int i=0;i<options.Count;i++)LkAbilityCard(new Rect(x+i*(ow+LkGap),r.y,ow,r.height),options[i],i==equipped,9000+(slot=="q"?0:16)+i,e);
+            for(int i=0;i<options.Count;i++){int cardKey=9000+(slot=="q"?0:16)+i;if(LkAbilityCard(new Rect(x+i*(ow+LkGap),r.y,ow,r.height),options[i],i==equipped,cardKey,w,options[equipped].Technique!=null,e))LockerPickAbility(w,options[i],slot,cardKey);}
+            // The two cards are alternatives: say so where they meet.
+            if(options.Count==2){float cx=x+ow+LkGap*.5f;var or=new Rect(cx-12,r.center.y-12,24,24);U.Round(or,U.Hex(0x15161b,e),12,U.Hex(0x5a5b66,e));U.Text(or,"OR",9,U.Hex(0xc0c1ca,e),TextAnchor.MiddleCenter,bold:true,mono:true);}
             if(options.Count==1&&avail>=520){var more=new Rect(x+ow+LkGap,r.y,avail-ow-LkGap,r.height);LkDashed(more,e);NativeIcons.Draw(new Rect(more.center.x-10,more.center.y-24,20,20),"layers",U.Hex(0x8f909a,e));
-                U.Text(new Rect(more.x+8,more.center.y,more.width-16,18),"More abilities coming",12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleCenter,bold:true);}
+                U.Text(new Rect(more.x+8,more.center.y,more.width-16,18),NativeTechniques.For(w?.id)!=null?"The scope stays on Q":"More abilities coming",12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleCenter,bold:true);}
         }
-        private void LkAbilityCard(Rect r,NativeLocker.AbilityOption o,bool on,int key,float e)
+        // One choice in a slot. A technique card carries its own accent (the colour of its effects); the slot's own ability keeps the
+        // warm equipped edge. Picking flashes the card and pops its icon for .45 s; a technique already in the other slot says so,
+        // and picking it here moves it. An option with no way to pick it yet (future content) shows the lock. Returns the click.
+        private bool LkAbilityCard(Rect r,NativeLocker.AbilityOption o,bool on,int key,ContentWeapon w,bool swapped,float e)
         {
-            bool pickable=LockerAbilityPicks&&!on;bool hot=pickable&&lockerViewHot&&U.Hover(r);float h=pickable?U.HoverAmount(key,r,hot):0;
-            U.Round(r,on?U.Hex(0x2a2124,e):U.A(U.Mix(U.Hex(0x1d1e24),U.Hex(0x26272e),h),e),10,on?U.Hex(0xc2714e,e):U.Hex(0x3b3c45,e),on?2:1);
-            var well=new Rect(r.x+14,r.y+16,28,28);U.Round(well,U.Hex(0x15161b,e),8,U.Hex(0x4c4653,e));NativeIcons.Draw(new Rect(well.x+5,well.y+5,18,18),o.Icon,U.Hex(0xffc1a5,e));
-            float tx=well.xMax+12,tw=r.xMax-tx-(on?36:14);var on1=U.Wrap(o.Name,15,tw,true,1);U.Text(new Rect(tx,r.y+12,tw,20),on1.Count>0?on1[0]:o.Name,15,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
-            U.Text(new Rect(tx,r.y+32,tw+20,14),o.Meta,10,U.Hex(0xff996f,e),TextAnchor.MiddleLeft,mono:true);
-            var lines=U.Wrap(o.Text,12,r.width-30,false,3);for(int i=0;i<lines.Count;i++)U.Text(new Rect(r.x+16,r.y+56+i*16,r.width-30,16),lines[i],12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
-            if(on)LkTick(new Vector2(r.xMax-20,r.y+24),e);
-            if(o.FromWeapon)LkBadge(new Rect(r.xMax-(on?110:84),r.y+15,74,17),"WEAPON E",U.Hex(0x1f2026,e),U.Hex(0x5a5b66,e),U.Hex(0xc0c1ca,e));
-            if(!on&&!LockerAbilityPicks){var lk=new Rect(r.xMax-24,r.y+14,14,14);NativeIcons.DrawMarkup(lk,"locker-lock",LockMarkup,24,U.Hex(0x8f909a,e));}
+            bool tech=o.Technique!=null,pickable=!on&&(tech||swapped),hot=pickable&&lockerViewHot&&U.Hover(r);float h=pickable?U.HoverAmount(key,r,hot):0;
+            float pop=key==lockerSwapKey&&!prefs.reducedEffects?Mathf.Clamp01(1-(Time.unscaledTime-lockerSwapAt)/.45f):0;
+            Color tone=tech?U.Hex(o.Technique.Accent):U.Hex(0xc2714e),meta=tech?U.Mix(tone,Color.white,.2f):U.Hex(0xff996f);var d=new Rect(r.x,r.y-2*h,r.width,r.height);
+            if(on)U.Glow(new Rect(d.x+10,d.y+10,d.width-20,d.height-10),U.A(tone,(.13f+.4f*pop)*e),12+10*pop);
+            Color fill=on?(tech?U.Mix(U.Hex(0x1d1e24),tone,.1f+.25f*pop):U.Mix(U.Hex(0x2a2124),tone,.25f*pop)):U.Mix(U.Hex(0x1d1e24),U.Hex(0x26272e),h);
+            U.Round(d,U.A(fill,e),10,on?U.A(tone,e):U.A(U.Mix(U.Hex(0x3b3c45),tech?tone:U.Hex(0x9a8a9e),h),e),on?2:1);
+            if(tech)U.Fill(new Rect(d.x+14,d.y,d.width-28,on?2:1),U.A(tone,(on?1:.45f+.55f*h)*e));
+            var well=new Rect(d.x+14,d.y+16,28,28);U.Round(well,U.Hex(0x15161b,e),8,tech?U.A(U.Mix(U.Hex(0x4c4653),tone,on?.8f:.35f+.45f*h),e):U.Hex(0x4c4653,e));float ic=18+5*pop;
+            NativeIcons.Draw(new Rect(well.center.x-ic/2,well.center.y-ic/2,ic,ic),o.Icon,U.A(tech?U.Mix(tone,Color.white,.15f):U.Hex(0xffc1a5),e));
+            float tx=well.xMax+12,tw=d.xMax-tx-(on?36:14);var on1=U.Wrap(o.Name,15,tw,true,1);U.Text(new Rect(tx,d.y+12,tw,20),on1.Count>0?on1[0]:o.Name,15,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
+            U.Text(new Rect(tx,d.y+32,tw+20,14),o.Meta,10,U.A(meta,e),TextAnchor.MiddleLeft,mono:true);
+            var lines=U.Wrap(o.Text,12,d.width-30,false,3);for(int i=0;i<lines.Count;i++)U.Text(new Rect(d.x+16,d.y+56+i*16,d.width-30,16),lines[i],12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
+            if(on)LkTick(new Vector2(d.xMax-20,d.y+24),e);
+            if(o.FromWeapon)LkBadge(new Rect(d.xMax-(on?110:84),d.y+15,74,17),"WEAPON E",U.Hex(0x1f2026,e),U.Hex(0x5a5b66,e),U.Hex(0xc0c1ca,e));
+            string elsewhere=tech&&!on&&w!=null?NativeTechniqueLoadout.Slot(prefs.weaponTechniques,w.id):"";
+            if(elsewhere!="")LkBadge(new Rect(d.xMax-52,d.y+13,42,17),elsewhere=="q"?"ON Q":"ON E",U.Hex(0x1f2026,e),U.A(tone,e),U.Hex(0xf4f4f5,e));
+            else if(!on&&!pickable){var lk=new Rect(d.xMax-24,d.y+14,14,14);NativeIcons.DrawMarkup(lk,"locker-lock",LockMarkup,24,U.Hex(0x8f909a,e));}
+            bool click=pickable&&!lockerBlocked&&lockerViewHot&&U.Button(r);if(click)Click();return click;
         }
         private static void LkDashed(Rect r,float e)
         {

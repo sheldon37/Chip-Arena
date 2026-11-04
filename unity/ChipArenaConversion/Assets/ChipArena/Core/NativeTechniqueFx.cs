@@ -116,12 +116,12 @@ namespace ChipArena.UnityConversion
         // sparks thrown off it, the crescent flaring white, and the counter thrust as a hard line toward the attacker.
         private static void Riposte(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var feet=scene.Feet(a);var chest=scene.Chest(a,out var c)?c:feet+Up*1.25f;var at=N(k.Dir);var f=-Flat(at,Vector3.UnitZ);var r=RightOf(f);bool view=scene.Viewer==a.Id;bool hit=k.Hit(t);
+            var feet=scene.Feet(a);var chest=scene.Chest(a,out var c)?c:feet+Up*1.25f;var at=N(k.Dir);bool hit=k.Hit(t);var f=hit?-Flat(at,Vector3.UnitZ):Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);var r=RightOf(f);bool view=scene.Viewer==a.Id;
             float until=hit?k.HitAt:k.Until;float env=Smooth((t-k.At)/.08f)*(1-Smooth((t-until)/.1f));
             if(env>0)
             {
                 float breathe=.75f+.25f*(float)Math.Sin(t*30);
-                if(!view)for(int j=0;j<3;j++)GuardArc(s,chest,f,r,-.3f+.3f*j,.72f+.05f*(j==1?1:0),j==1?.035f:.02f,env*breathe*(j==1?1:.6f),Steel*2.2f,low?8:14);
+                for(int j=0;j<3;j++)GuardArc(s,chest,f,r,-.3f+.3f*j,.72f+.05f*(j==1?1:0),j==1?.035f:.02f,env*breathe*(j==1?1:.6f)*(view?.45f:1),Steel*2.2f,low?8:14);
                 bool has=view?scene.ViewBlade(false,out var b0,out var b1):scene.Blade(a,false,out b0,out b1);
                 if(has){float run=(t*2.6f)%1;s.Sprite(view,Vector3.Lerp(b0,b1,run),(Steel+Vector3.One)*(2.2f*env),view?.06f:.16f,Sparkle);s.Sprite(view,b1,Steel*(2.4f*env),view?.08f:.22f,Hot);}
             }
@@ -376,7 +376,7 @@ namespace ChipArena.UnityConversion
             if(age<k.Until-k.Release&&scene.Viewer!=a.Id)
             {
                 var chest=scene.Chest(a,out var ch)?ch:feet+Up*1.25f;var f=Flat(N(k.Dir),Vector3.UnitZ);var r=RightOf(f);float env=Smooth(age/.12f)*(1-Smooth((age-.75f)/.5f));
-                if(env>0)for(int side=-1;side<=1;side+=2){int n=low?4:7;for(int i=0;i<n;i++){float u0=i/(float)n,u1=(i+1)/(float)n,flap=.3f*(float)Math.Sin(age*16+i*.4f);Vector3 P(float w,float dn)=>chest+r*(side*(.15f+1.25f*w))-f*(.15f+.6f*w)+Up*(.25f+flap*w+.3f*w-dn*(1-w*.5f));s.Band(false,P(u0,.0f),P(u1,.0f),P(u1,.6f*(1-u1)+.05f),P(u0,.6f*(1-u0)+.05f),(1-u0)*env,(1-u1)*env,Flame*1.8f);}}
+                if(env>0)for(int side=-1;side<=1;side+=2){int n=low?5:12;for(int i=0;i<n;i++){float u0=i/(float)n,u1=(i+1)/(float)n;Vector3 P(float w,float dn)=>chest+r*(side*(.12f+.85f*w))-f*(.2f+.75f*w)+Up*(.2f+(.75f+.12f*(float)Math.Sin(age*14))*w-dn*(1-w*.6f));s.Band(false,P(u0,.0f),P(u1,.0f),P(u1,.5f*(1-u1)+.03f),P(u0,.5f*(1-u0)+.03f),(1-u0*u0)*env,(1-u1*u1)*env,Flame*1.15f);}}
                 Sparks(s,feet+Up*.4f,(t*6)%.4f,.4f,low?3:6,2,FlameCore,seed+(long)(t*6),5,.022f,-Up);
             }
         }

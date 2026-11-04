@@ -241,7 +241,7 @@ namespace ChipArena.UnityConversion
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
             // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
-            var held=play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=NativeFieldRules.HoldAimSeconds?content.Ability(p.Seat.spec,"e"):null;
+            var held=play&&p.HoldAt>=0&&arena.Time-p.HoldAt>=NativeFieldRules.HoldAimSeconds&&NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)!="e"?content.Ability(p.Seat.spec,"e"):null;
             if(held!=null&&NativeFieldRules.PreviewOn(p.Pose.AbilityId==held.id&&arena.Time<p.Pose.AbilityRelease,p.ECharges>0?0:p.EReady-arena.Time,p.Weapon.@class=="magic",p.Mana,NativeAbilityRules.Cost(held,p.Stats),p.Seat.chips.TryGetValue("necronomicon",out int tome)&&tome>0,arena.Time-p.HoldAt))
             {
                 Vector3 point=NativeArena.Vec(pending.AbilityTarget);

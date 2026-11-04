@@ -191,7 +191,7 @@ internal static class LockerChecks
         }
         Check(NativeLocker.Move(data.Weapon("sword").description,"E: ")=="Rising slash launches enemies for a brief aerial juggle.","the E sentence of a description");
         Check(NativeLocker.SlotOptions(data,data.Weapon("emperor"),"q",options)==1&&NativeLocker.SlotOptions(data,data.Weapon("ansatsuken"),"q",options)==0&&NativeLocker.EmptySlot(data.Weapon("ansatsuken"),"q").Contains("DEV"),"DEV kits show their own keys");
-        Check(ui.Contains("private int LockerEquippedAbility(")&&ui.Contains("private static bool LockerAbilityPicks=>false;"),"ability picks wait for the loadout field (no invented persistence)");
+        Check(ui.Contains("private int LockerEquippedAbility(")&&ui.Contains("prefs.weaponTechniques=NativeTechniqueLoadout.With(prefs.weaponTechniques,w.id,pick.Technique!=null?slot:\"\");"),"an ability pick is the technique swap: the slot, or back to the slot's own ability");
 
         Console.WriteLine("PASS Locker: "+count+" checks (five categories, gated cosmetic lists, the Save Pilot path and unsaved-changes prompt, the weapon skin selector, the Appearance BODY SKIN row sharing the Skins card's setter and DEV gate, content ability slots)");
     }
