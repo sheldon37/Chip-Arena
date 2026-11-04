@@ -8,7 +8,8 @@
 - **Checks:** full `CoreTests` in a clean LF checkout of `95b6f5a5`: exit 0, 951 PASS groups, `--bombadier` 4012 checks; no source pin broken; `git diff --check` clean; `check_unity_compile.py` passes all four assemblies. Unity (this branch, BoZo tool): the intro reviewed frame by frame over seven captures on Cybercity; the kit in third and first person on Cybercity and Moonlit through the Sandbox preview, on a stand-in row (the rifle's rules under the id, in the local tool only); Customize lists it.
 - **Not checked:** the intro or kit played live at speed by a person, their sound by ear, the kit with real rules, victims flying, bots, online, Reduced effects by eye (thinning is checked in `--bombadier`).
 - **Known:** a stuck charge's blast shows no ring or dust, on purpose. The hands do not grip the plunger; the launcher comes down on it instead. The sim's blast smoke stays the toon slate rather than warm, which is shared with every blast.
-- **Released:** see the entry's follow-up line, and GitHub for merge status.
+- **Merged and published:** shared and builder `abd6973f`. The first build (`de86f832`) stopped before publication at `NativeBuildChecks`' Standard weapon model count, a build-only check; fixed in `d416336c`. Second build: BUILD SUCCEEDED. The upload then failed twice on GitHub's side ("Internal Server Error" on the push), and the saved build went up on a retry: PUBLISH SUCCEEDED, build `7f7e85f9`, channel commit `e8839b2e`. The Drive zip was repacked first (old copy `LocalAssets-before-bombadier.zip`). The test channel only; no Site or live release.
+- **Seen, not from this work:** the build log shows `Shader error in 'ChipArena/VisualBodyToon'` ("UnitySetupInstanceID", lines 130 and 202, d3d11), four lines, the same in the previous build `262f6cdd`.
 
 ## 2026-11-04 — Claude: the second twelve in Unity, a picker for many abilities
 
