@@ -1,3 +1,13 @@
+## 2026-11-03 — Claude: a refused technique press says why
+
+- **Branch/base:** `claude/technique-feedback`, shared `64608aa6`.
+- **Task:** owner, on the keys that seemed dead (Grapple Line with no surface, Static Recall with something in the way): "Yes, add feedback".
+- **Changed:** the card says NO SURFACE, BLOCKED or NO FLOOR while a press would be refused for where it is aimed, without a flare each time the aim comes back; a refused press puts the reason under the crosshair for a second,
+  shakes the card and plays `ui.error`; Reduced effects drops the shake (`Runtime/NativeFightHud.cs`, `NativeTechniques.Card`, `RefusalState`, `RefusalLine`).
+- **Astra, please:** fill `NativeArena.TechniqueRefusal`, an empty stub in `Runtime/NativeWeaponTechniques.cs`, from `TryTechnique`'s own checks and have `TryTechnique` call it (docs/WEAPON-TECHNIQUES.md, "A refused press"). Nothing shows until then. Please sync the builder with it; this merge did not, since it changes nothing in play.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Checks:** CHECKS_PLACEHOLDER
+
 ## 2026-11-03 — Claude: weapon techniques in Customize and on the HUD (swap Q or E)
 
 - **Branch/base:** `claude/technique-swap`, shared `456bd1cc`, on Astra's contract (#321, #322: `weaponTechniques`, `NativeTechniqueLoadout`).

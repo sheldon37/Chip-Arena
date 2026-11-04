@@ -1,3 +1,5 @@
+2026-11-03 Claude: a refused technique press says why, on the card and under the crosshair (`claude/technique-feedback`; docs/WEAPON-TECHNIQUES.md). Waits on Astra to fill `NativeArena.TechniqueRefusal`, an empty stub; nothing shows until then.
+
 2026-11-03 Claude: weapon techniques in Customize and on the HUD (`claude/technique-swap`; docs/WEAPON-TECHNIQUES.md): the Loadout page offers each weapon's technique beside that slot's own ability, the technique takes that slot's HUD card, smoke hides names from outside the cloud. All twelve reviewed with Astra's rules on the host, third and first person. Guest, replay, crowd and Windows unseen. A refused press (no grapple surface, a blocked recall) gives no feedback yet.
 
 2026-11-03 Astra Level 0 spawn correction (`codex/backroom-spawn-activation`, base `cc1b53f8`): distributed wall/dark anchors, corridor-distance spawn selection near players, and bounded recycling of distant untouched sleepers. Fixes cap occupancy far from the route; enemy stats, art and Poolrooms unchanged. Managed placement/collision/generator checks pass; native builder and human pacing acceptance pending.

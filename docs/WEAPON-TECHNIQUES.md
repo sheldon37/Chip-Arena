@@ -88,7 +88,7 @@ Revert restores it. The rifle's Q row keeps only the scope.
 
 **The HUD.** The technique takes the card of the slot it replaced: RECAST in amber while a press would recast it, ACTIVE while it runs, then that
 slot's cooldown as this pilot's chips scale it, and LOW STAMINA or LOW MANA. While the shield stands as a wall or the greatsword is thrown, the rules refuse
-block and the other slot, so those cards say SHIELD OUT or BLADE OUT. A swapped E draws no field preview for the ability it replaced. Smoke hides a
+block and the other slot, so those cards say SHIELD OUT or BLADE OUT. A press refused for where it is aimed is below. A swapped E draws no field preview for the ability it replaced. Smoke hides a
 pilot's name and health bar from anyone outside the cloud.
 
 To see one: the Dev Sandbox, Preview Techniques, with the weapon in hand. The preview loops the weapon's technique from just in front of
@@ -103,8 +103,21 @@ key and the old ability stays away, with Anchor Throw's leap and landing, Grappl
 person Anchor Throw, Ignition Leap, Smoke Veil and Riposte; the picker by real clicks through the Game view (a swap, a move from E to Q, Save Pilot lighting up). Two
 fixes came of it: the guard's arcs drew behind the pilot (`Dir` is the aim until a parry) and now face where the pilot faces, also dimly in first person; Ignition Leap's wings read as a stripe across the
 screen and are now shorter and swept back into a V. Not seen yet: Riposte's actual parry, a shot on the coin, Static Recall's damage on the line, a crowd, a guest or replay, a low
-graphics tier in Unity (the checks cover the thinning), a Windows build. A press the rules refuse gives no feedback yet: Grapple Line with no surface in 20 m, Static Recall with something on
-the line (a low counter is enough), so the key seems dead.
+graphics tier in Unity (the checks cover the thinning), a Windows build. 
+
+**A refused press.** A press the rules refuse for where it is aimed must not feel like a dead key (Grapple Line with no surface in 20 m, Static Recall with something on the line: a low
+counter is enough). While that holds the card says NO SURFACE, BLOCKED or NO FLOOR instead of READY or RECAST, without flaring each time the aim comes back; a press then puts the reason under the crosshair
+for a second, shakes the card and plays `ui.error`. A press on cooldown stays quiet: the card's count says it. Built and seen on the PC against a temporary copy of the check below.
+
+**For Astra: `NativeArena.TechniqueRefusal(NativePilot p,in InputFrame aim)`** (`Runtime/NativeWeaponTechniques.cs`) is an empty stub, so none of that shows yet. Fill it from `TryTechnique`'s own checks and have
+`TryTechnique` call it (`TechniqueRefusal(p,p.Input)`), so the HUD and the rules cannot disagree. No change to what is refused:
+
+- `NativeTechniques.NoSurface`: Grapple Line, nothing within 20 m along `aim`'s look, or the hit crosses the hub.
+- `NativeTechniques.Blocked`: Static Recall inside its recast window, when `TechniqueDestination` or `RoomFor` fails or the capsule cast hits something on the line. Outside the window, null.
+- `NativeTechniques.NoFloor`: Healing Spring, no walkable floor at the aimed point within 14.5 m, or the hub. `AimedAbilityPoint` reads `p.Input`, so it needs the passed `aim`.
+- null for everything else: cooldown, cost, a stun and the like already show on the card.
+
+The HUD passes `pending` (the look about to be sent) once a frame for the local pilot, on the host and on a guest, so it must be read-only, work on a replica, and stay cheap.
 
 
 ## Simulation implementation and presentation handoff (Astra, 2026-11-03)
