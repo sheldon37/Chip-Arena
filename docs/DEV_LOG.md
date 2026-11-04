@@ -10,6 +10,7 @@
 - **Not run:** a purchase, a recruit or a heal inside these two levels with a real director and two clients (the path is the authored machines'); native Windows play; a controller. One seed was looked at in Unity; the other seeds have the managed placement checks only.
 - **Risks:** the Poolrooms' nav loses up to four nodes; the checks hold that every remaining node and spawn anchor still reaches the party, but enemy routing round a mat was not watched in a live fight.
 - **Next:** Astra reviews the generator touches.
+- **Release:** merged `9ba6872a` into shared and the builder branch; the builder reported BUILD SUCCEEDED for that source and `Publication: succeeded` to the test channel (build started 2026-11-04 23:00 UTC). No live or Site release.
 
 ## 2026-11-04 — Claude: the City Ironworks' five kinds on real models
 
@@ -65,10 +66,11 @@
 - **Split:** presentation only, with the rules contract in that doc. In a real run the machine stands, E opens the screen and lists who's down with their area, and REVIVE says it isn't connected. **The charge, the revive, full HP, leaving the instance, the live show, cause of death and the body's spot all wait on Astra** (three hooks: `ConversionGame.ReviveMachineRequest`, `NativeReviveMachine.LiveSpits`, `NativeReviveMachine.Fill`).
 - **Affected systems:** `Runtime/ArenaPresentation.cs` (three calls), `NativeSourcePresentation`, `NativeTechniquePresentation`, `NativeMachineModels`, `IsReviving` (the holo stands aside for a spit), `ExpeditionScreenOpen` (the screen holds play and frees the cursor), `NativeCinematicCamera` (the spat viewer's camera), the DEV panel (two buttons), `NativeAudio`. One simulation touch: `NativeArena.ReviveMachineCollision`, two box colliders on host and guests in the two hubs, no navigation change.
 - **Animation impact:** the spat pilot's flight and tumble are the drawn rig's root only, on the game's knockdown poses; the capsule stands on the landing. Hit timing, hitboxes, damage, cooldowns and movement unchanged.
-- **Checks run:** `CoreTests --revive-machine` 2,497 checks; the full CoreTests in a clean LF worktree (result in the merge's report); `git diff --check`; Unity compile of Player, Assembly-CSharp and Editor. Reviewed in the Unity Editor with captures: the machine in the generated hub; the Dev Sandbox preview end to end on the game's camera (list, pay, wind-up, gulp, spit, flight, splat, get-up, door); every screen state (three dead, two, too poor, nobody dead).
+- **Checks run:** `CoreTests --revive-machine` 2,497 checks; the full CoreTests in a clean LF worktree at `94104289`, 953 PASS groups, exit 0; `git diff --check`; Unity compile of Player, Assembly-CSharp and Editor. Reviewed in the Unity Editor with captures: the machine in the generated hub; the Dev Sandbox preview end to end on the game's camera (list, pay, wind-up, gulp, spit, flight, splat, get-up, door); every screen state (three dead, two, too poor, nobody dead).
 - **Not run:** the sound has not been heard by anyone; the machine in the authored town (managed placement checks only); a real run, two clients, a controller on the screen, Windows. The capsule's collider was not walked into.
 - **Risks:** E is the machine's key while every other machine is F (owner's choice; F still runs the old reprint at the authored town's anchor until the rules retire it). 66k triangles drawn wherever the hub is in view: well under the town's millions, but not measured on the low tier.
 - **Next:** Astra wires the three hooks; the owner hears it and rules on Second Wind and PERMADEATH (`docs/REVIVE-MACHINE.md`, questions).
+- **Release:** merged `a395de04` into shared and the builder branch; the builder reported BUILD SUCCEEDED and `Publication: succeeded` to the test channel. No live or Site release.
 
 ## 2026-11-04 — Astra: Sticky Fuse dodge release and test publication
 
