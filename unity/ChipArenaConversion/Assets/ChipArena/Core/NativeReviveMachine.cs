@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
 
         // ---- the performance, in seconds from the money landing ------------------------------------------------------------------
         /// <summary>Coins up the tube; the flywheel starts; it starts to shake; it holds its breath; PTOOEY; the pilot's first touch; the second; the skid stops; on their feet; the doors shut; over.</summary>
-        public const float CoinsEnd=1.15f,SpinFrom=.3f,ShakeFrom=.55f,ShakePeak=2.4f,Gulp=2.42f,Spit=3f,Flight=.85f,Bounce=.46f,Touch=Spit+Flight,Touch2=Touch+Bounce,SkidEnd=Touch2+.42f,RollAt=SkidEnd+.18f,RollEnd=RollAt+.42f,UpAt=RollEnd+.3f,ShutFrom=5.5f,Shut=5.95f,End=6.6f;
+        public const float CoinsEnd=1.25f,SpinFrom=.3f,ShakeFrom=.55f,ShakePeak=2.4f,Gulp=2.42f,Spit=3f,Flight=.85f,Bounce=.46f,Touch=Spit+Flight,Touch2=Touch+Bounce,SkidEnd=Touch2+.42f,RollAt=SkidEnd+.18f,RollEnd=RollAt+.42f,UpAt=RollEnd+.3f,ShutFrom=5.5f,Shut=5.95f,End=6.6f;
         /// <summary>The rules hold the pilot's input until here (the get-up ends): the pose is the machine's until then.</summary>
         public const float HoldUntil=UpAt;
 
@@ -313,7 +313,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The solid boxes: the machine and its console (machine frame: centre, size, yaw about y). The mat and the lane are flat and do not collide.</summary>
         public static readonly (Vector3 centre,Vector3 size,float yaw)[] Solids=
         {
-            (new Vector3(.1f,1.75f,-.08f),new Vector3(3.84f,3.5f,3.42f),0),
+            (new Vector3(.115f,1.75f,-.08f),new Vector3(4.14f,3.5f,3.66f),0),
             (NativeReviveMachineModels.ConsoleAt+new Vector3(0,.7f,0),new Vector3(1.3f,1.4f,.96f),NativeReviveMachineModels.ConsoleYaw),
         };
         /// <summary>Where the pilot stands to use it: in front of the console (machine frame), and how far from there the prompt shows.</summary>

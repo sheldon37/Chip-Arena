@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
             else
             {
                 if(reviveWasGallery){ReviveMachinePreview.Placed=false;reviveLastSpit=null;reviveStandIn=null;if(ReferenceEquals(NativeReviveMachine.Board,ReviveMachinePreview.Board))NativeReviveMachine.Board=null;}
-                if(NativeReviveMachine.Spot(arena.MapId,out var at,out float yaw)&&arena.Expedition!=null){ReviveMachineAt=new Vector3(at.X,at.Y,at.Z);ReviveMachineYaw=yaw;ReviveMachineStands=true;}
+                if(NativeReviveMachine.Spot(arena.MapId,out var at,out float yaw)){ReviveMachineAt=new Vector3(at.X,at.Y,at.Z);ReviveMachineYaw=yaw;ReviveMachineStands=true;}
             }
             reviveWasGallery=gallery;
             if(ReviveMachineStands){reviveMachineSpit=NativeReviveMachine.Current(NativeReviveMachine.Board,time);if(reviveMachineSpit!=null)ReviveMachineSeq=time-reviveMachineSpit.At;}

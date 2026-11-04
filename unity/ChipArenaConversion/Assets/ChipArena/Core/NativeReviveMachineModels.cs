@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The mouth's opening (model space): its bottom and top, its middle where the teeth meet, its width and corner.</summary>
         public const float MouthBottom=.88f,MouthTop=1.76f,MouthMid=(MouthBottom+MouthTop)/2,MouthWidth=1.46f,MouthCorner=.3f;
         public const float TongueLink=.27f;public const int TongueLinks=8;
-        public static readonly Vector3 WheelAxle=new Vector3(1.68f,1.3f,-.78f);public const float CrankRadius=.46f,RodLength=1.2f,RodX=1.92f,WheelRadius=.78f;
+        public static readonly Vector3 WheelAxle=new Vector3(1.68f,1.3f,-.78f);public const float CrankRadius=.32f,RodLength=1.2f,RodX=1.92f,WheelRadius=.78f;
         /// <summary>The eyes and brows, seen from the front: 0 on the viewer's left (+x).</summary>
         public static readonly Vector3[] EyeAt={new Vector3(.45f,2.52f,.755f),new Vector3(-.45f,2.52f,.755f)},BrowAt={new Vector3(.45f,2.9f,.74f),new Vector3(-.45f,2.9f,.74f)};
         public static readonly Vector3[] CheekAt={new Vector3(1.04f,1.74f,.3f),new Vector3(-1.04f,1.74f,.3f)};
@@ -447,7 +447,7 @@ namespace ChipArena.UnityConversion
         // The crosshead on the slide bars and the piston rod into the cylinder, from the crosshead at the origin along +z.
         private static WeaponMesh BuildPiston()=>New(Piston,(s,mesh)=>
         {
-            s.Box(GraphiteLight,V(0,0,0),V(.13f,.16f,.2f),.02f);s.Cylinder(Chrome,.04f,0,1.08f,12,.004f);
+            s.Box(GraphiteLight,V(0,0,0),V(.13f,.16f,.2f),.02f);s.Cylinder(Chrome,.04f,0,.86f,12,.004f);
         });
         // A gauge's needle about its hub at the origin, pointing +y.
         private static WeaponMesh BuildNeedle()=>New(Needle,(s,mesh)=>
