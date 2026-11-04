@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
                 if(distance<=(stats.id=="hulk"?NativeHulkMoves.PunchReach:stats.startRange)&&Time>=m.NextAttack&&SummonVisible(m,at,target.Body.position,target.Collider)){float hit=stats.id=="hulk"?ChooseHulkMove(m,target,stats.hit):stats.hit;m.LastAttack=Time;m.StrikeAt=Time+Math.Max(.1f,hit);m.Pve.Struck=false;m.Body.linearVelocity=Vector3.up*velocity.y;continue;}
                 // Bounded direct chase on every map. Never request Ward graph state or walk blindly over a ledge/hazard.
                 var next=at+direction*Math.Max(.8f,m.Collider.radius*2);bool clear=SummonVisible(m,at,next,null)&&!UnsafeStagePath(at,next)&&root.scene.GetPhysicsScene().Raycast(next,Vector3.down,out var floor,m.Collider.height/2+1,WorldMask,QueryTriggerInteraction.Ignore)&&floor.normal.y>.65f;
-                float speed=clear?Math.Max(0,stats.run)*(Time<m.SlowUntil?m.SlowFactor:1):0;m.Body.linearVelocity=direction*speed+Vector3.up*velocity.y;
+                float speed=clear?Math.Max(0,stats.run)*(Time<m.SlowUntil?m.SlowFactor:1)*TechniqueCurrentSpeed(m.Body.position-Vector3.up*(m.Collider.height*.5f),direction):0;m.Body.linearVelocity=direction*speed+Vector3.up*velocity.y;
             }
         }
     }

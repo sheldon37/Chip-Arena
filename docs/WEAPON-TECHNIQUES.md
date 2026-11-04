@@ -39,6 +39,65 @@ Use the selected slot's existing keyboard/controller binding: `InputFrame.Abilit
 | Lightning | Static Recall (`static-recall`) | Leave a crackling anchor where you stand for 4 s. Recast to bolt back to it, 12 to anyone on the line. Everyone can see the anchor | 12 | 13 s / 20 mana | Camp the anchor |
 | Darkness | Shade Swap (`shade-swap`) | A slow orb (22 m/s, 18 m). On an enemy, you trade places after .25 s. Bosses and stunned targets are immune | 0 | 15 s / 24 mana | Slow and visible; a roll dodges it |
 
+## The second set (owner 2026-11-04)
+
+"Add additional abilities for each weapon, again same concept. Creative, good animations and effects", with more to come ("6+ more"). Same rules of the set as above: a trade, utility first, a visible counter. Each does something its
+weapon cannot already do. The presentation is built and in the Dev Sandbox; **rules are Astra's** (the contract is below). Until a content row is live the Locker does not offer it.
+
+| Weapon | Technique (`id`) | What it does | Damage | Cd / cost | The counter |
+| --- | --- | --- | --- | --- | --- |
+| Sword | Parting Line (`parting-line`) | Hop back 4.5 m in .28 s. A cut hangs where you stood, 3 m wide across your facing, and bursts .7 s later: damage and a shove within 1.2 m of it | 14 | 11 s / 18 st | The line is plain to see: stop, or go round |
+| Daggers | Tripwire (`tripwire`) | Throw a dagger at a surface within 14 m: a wire strings from the spot you threw from to where it stuck, armed .32 s after release, for 8 s. The first enemy through it takes damage and a .8 s snare, and it snaps. One at a time | 8 | 13 s / 20 st | It glints. Jump it, go round, or shoot its dagger (10 HP) |
+| Shield | Shield Surf (`shield-surf`) | Drop on your shield and ride 2.6 s at 11 m/s along your look, steering. No attacks, no block. A jump or a recast hops off; a wall stops you | 0 | 12 s / 20 st | No shield up, and you make a lot of noise and sparks |
+| Greatsword | Iron Vow (`iron-vow`) | Plant the blade and brace for 2.4 s: 40% less damage, no stagger or knockdown, no moving, no attacks. Recast ends it. It ends in a shove within 3.5 m | 0 | 14 s / 25 st | Walk away, or wait with something big |
+| Pistol | Bounty Round (`bounty-round`) | One fast round, 60 m. An enemy hit is marked for 6 s, shown through walls to you and your allies. If the mark dies in that time the cooldown refunds | 6 | 14 s / none | It has to hit; a miss spends it. The marked pilot sees the mark |
+| Machine gun | Recoil Burst (`recoil-burst`) | Dump what is left in the magazine (at least 1 round) to be thrown 12 m/s opposite your aim for .45 s; look down to jump. Enemies within 6 m along the aim take the damage. You land with an empty gun and reload | 10 | 10 s / none | You land empty: punish the reload |
+| Rifle | Sonar Dart (`sonar-dart`) | A dart to a surface within 40 m. .5 s later it pings every 1.2 s, three pings: each shows enemies within 12 m through walls for 1.2 s to you and your allies. 10 HP | 0 | 16 s / none | It beeps and blinks. Shoot it, or leave the radius |
+| Bow | Spirit Hawk (`spirit-hawk`) | A hawk of light flies your aim at 20 m/s up to 30 m and turns on the first enemy within 6 m of its line: damage and ×.8 speed for 1.5 s | 10 | 12 s / none | Slow and bright: a roll dodges the dive |
+| Fire | Wildfire Run (`wildfire-run`) | 3 s at ×1.35 speed, no Q or E. Flames on your path last 3 s and burn enemies standing in them, 3 a second | 3 a second | 13 s / 25 mana | Don't follow through the fire; it draws your route for everyone |
+| Water | Slipstream (`slipstream`) | A 14 m long, 2.4 m wide current on the floor along your aim, for 5 s. Anyone on it moves ×1.4 along it and ×.7 against it, enemies too | 0 | 15 s / 22 mana | Use it yourself, or make them fight against it |
+| Lightning | Lightning Rod (`lightning-rod`) | Throw a rod to the floor within 12 m. It stands 5 s or 60 damage. Enemy projectiles passing within 3 m arc into it and are gone | 0 | 16 s / 24 mana | Walk round it, or break it up close: melee and blasts are not drawn |
+| Darkness | Grave Walk (`grave-walk`) | Sink into your shadow for 1.5 s: nothing can hit you, you move at 7 m/s and cannot act. A recast rises early. The pool shows where you are the whole time | 0 | 17 s / 26 mana | Stand on the pool and wait for what comes up |
+
+### Rules contract for the second set (Astra)
+
+**More than one technique per weapon.** `NativeTechniqueLoadout` holds one per weapon (`sword:q`). It needs the technique's id: canonical `sword:q=riposte,sword:e=parting-line`, in fixed weapon then slot order. An old `sword:q` still reads as the weapon's first
+technique. A slot holds at most one technique, and a technique at most one slot (picking it moves it). Rifle Q stays the scope. Proposed API: `In(map,spec,slot)` returns the id or "" and `With(map,spec,slot,id)` ("" restores the slot's own ability). Please update the account sanitizer the same way.
+`NativeTechniques.Equipped(map,spec,slot)` and `Equip(map,spec,slot,id)` are the one place the presentation reads and writes this: change their bodies to your `In` and `With`. Both slots can now hold techniques, so `TechniqueRefusal` needs to know which: `TechniqueRefusal(p,slot,in aim)`, and `TechniqueAimCheck` in `Runtime/NativeFightHud.cs` should ask per slot (say so in your PR and Claude will follow, or change it). `Content.Ability(spec,"technique")` becomes a lookup by id.
+`NativeTechniques.More` holds the twelve new rows; move them into `All` and drop `For` when your rules are in, or tell me to. The Locker offers a technique once its content row is `live`.
+
+Records, on the same `NativeTechnique` (one new field: `Path`). Everything is in `Core/NativeTechnique.cs`'s preview `Write`, which is the worked example of each. Fill `TechniqueRefusal` for the new ones where a press can be refused (Tripwire and Sonar Dart: no surface).
+
+| Kind | Phases | `From` | `Point` | `To` / `Dir` / `Arm` / `Path` | Triggered moment |
+| --- | --- | --- | --- | --- | --- |
+| `parting-line` | hop, line, burst | where it hopped from | the line's centre on the floor | `Dir` the facing (the line lies across it); `Arm` the burst | |
+| `tripwire` | throw, armed, snap | the near anchor | the far anchor | `Arm` armed; `To` where it snapped | `HitAt`: it snapped; `Until` .85 s later, or the wire's end |
+| `shield-surf` | mount, ride, hop | | | `Dir` the heading, kept current | `RecastAt`: the hop off, `Until` and `RecoverUntil` .25 s later |
+| `iron-vow` | plant, brace, release | | the blade's spot on the floor | `Dir` the facing; `To` the last hit's point | `HitAt`: the last hit absorbed |
+| `bounty-round` | shot, marked | hand at release | where the round ended | `To` the mark's place when hit; `Target` the marked id | `HitAt`: it hit; `Until` the mark's end, or the round's |
+| `recoil-burst` | brace, blast | hand at release | | `Dir` the aim, 3D | |
+| `sonar-dart` | fire, ping | hand at release | the dart | `Dir` the surface's normal; `Arm` the first ping (then every 1.2 s) | `HitAt`: the dart destroyed, `Until` the same |
+| `spirit-hawk` | draw, flight, dive | hand at release | where the flight ended or the dive began | `Arm` when it got there; `To` the strike, kept current | `HitAt`: it struck; `Until` .3 s after, or Arm + .9 if it found no one |
+| `wildfire-run` | ignite, run | | | `Arm` the run's end; `Until` the last flame's end; `Path` a floor point every `PathStep` from Release | |
+| `slipstream` | cast, stream | the near end on the floor | | `To` the far end on the floor | |
+| `lightning-rod` | throw, rod, zap | hand at release | the rod's foot on the floor | `Arm` when it landed; `To` the last shot drawn | `HitAt`: the last shot drawn |
+| `grave-walk` | sink, walk, rise | where it sank | | `Until` when it starts to rise; `RecoverUntil` risen, .34 s later | `Release`: fully under. Untouchable from Release to `Until` |
+
+`NativeTechniques.WeaponAway` now includes Shield Surf and Iron Vow, so `TechniqueAway` refuses Q/E and the shield's block during them. Bounty Round's mark and Sonar Dart's reveal are presentation (both read the record and live positions), so the rules only need to keep the record right.
+
+### Second-set implementation and presentation handoff (Astra, 2026-11-04)
+
+Rules on `codex/more-technique-rules`, based on shared `6bfd311f`, with `claude/more-techniques` through `d759e612` merged. All 24 definitions now live in `NativeTechniques.All`; `Of(spec)` enumerates however many that weapon has. `More` is removed. `For(spec)` remains only as a compatibility/legacy-first selector; new code must use `Of`, `Find` or `Equipped`.
+
+- `NativeTechniqueLoadout.In(map,spec,slot)` returns an id or empty. `With(map,spec,slot,id)` replaces/restores only that slot and moves an id already used in the other slot. `NativeTechniques.Equipped` and `Equip` delegate to these (Equip's null restores the slot). Canonical weapon order is `Weapons`, then Q/E. Legacy `weapon:slot` selects its first definition. Defaults remain empty. The 2,048-character wire limit accommodates every slot; unknown/foreign ids and rifle Q are rejected. Account sanitizer mirrors this; source updated, live account service **not deployed**.
+- Content resolution is by id; both slots use their own input and QReady/EReady deadline. Only one active record per actor: a second technique cannot overwrite an active effect. Recasts act only through the slot holding that record's id. Bots retain defaults.
+- `TechniqueRefusal(p,slot,in aim)` is the slot-aware public query; the old `(p,in aim)` overload remains compatible. Tripwire (14 m) and Sonar Dart (40 m) share their cast's read-only world-surface/hub check and return `NoSurface`. All queries use passed aim. No new record fields beyond the agreed `Path`; path arrays are deep-copied and validated (32 finite points maximum).
+- Final unspecified rule choices: Parting Line uses a .55 m hop arc; Tripwire is a .65 m contact tube, .8 s slow to x.4, with a .25 m dagger shot target; Iron Vow and Parting Line shoves are 5 m/s; Bounty Round travels at 120 m/s; Recoil Burst's 6 m cone requires aim dot >=.65, travels for .45 s then starts an ordinary reload (also after Bottomless, so it cannot leave an unusable empty gun); Hawk's dive travels at 20 m/s with a .9 s timeout, respects walls/rolls; wildfire uses 24 fixed .125 s samples, .75 damage per .25 s, no overlapping-patch stacking, and expires with the last sample at Release+5.875. Slipstream affects normal pilot and minion locomotion, does not stack with another current, and leaves committed enemy attacks alone. Rod redirects hostile shots only, requires sight to the rod, loses their damage from its 60 HP, and can also be damaged directly by melee/blasts. Death refunds Bounty's owning slot only while its mark is live; despawning a living minion does not refund.
+
+**Claude follow-up (presentation files preserved):** `d759e612`'s picker now reads/writes the correct ids through the adapters, and its HUD resolves row numbers by id. `TechniqueAimCheck` still asks one shared reason: call `TechniqueRefusal(p,slot,in pending)` independently per equipped slot and give each card only its own reason. When calling `NativeTechniques.Card`, pass the live record only if its `Kind==td.Id`, otherwise the other slot falsely says ACTIVE/RECAST. `NativeTechniqueFx.HawkAt` currently starts a dive only when `HitAt>-50`; live authority cannot know a future hit. During `Phase=="dive"`, `Arm` is the dive start and `Point`/`To` are its start/current target; `HitAt` stays -100 until actual collision. Render that live phase without inventing a future hit. These require no record-field changes. Visuals/poses/sounds/models were merged unchanged; the only added presentation-side asset is the missing `.meta` for Claude's new FX source.
+
+Native builder fixtures cover every new technique, per-slot routing, refusal, refund, movement and damage/counters; codec fixtures cover Path and isolated copies. They are compiled here, not executed in Unity/PhysX. Managed/account/source and compilation receipts are recorded in the task PR and DEV_LOG.
+
 ## Simulation contract (for Astra)
 
 Presentation reads one authority-owned record per actor, `NativeTechnique` (`Core/NativeTechnique.cs`, already in the tree). Replicate

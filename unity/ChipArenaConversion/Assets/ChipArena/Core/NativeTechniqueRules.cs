@@ -16,8 +16,9 @@ namespace ChipArena.UnityConversion
         {if(k==null)return;k.Until=Math.Max(k.Release,Math.Min(k.Until,now));k.RecoverUntil=Math.Min(k.RecoverUntil,now);k.Phase="recovery";}
         public static bool Live(NativeTechnique k,float now)=>k?.Kind!=null&&now>=k.Release&&now<k.Until;
         public static bool Busy(NativeTechnique k,float now)=>k?.Kind!=null&&now<k.RecoverUntil;
-        public static bool Moving(NativeTechnique k,float now)=>Live(k,now)&&(k.Kind==NativeTechniques.GrappleLine&&now>=k.Arm||k.Kind==NativeTechniques.AnchorThrow&&k.Recast(now));
-        public static bool Recast(NativeTechnique k,float now)=>Live(k,now)&&(k.Kind==NativeTechniques.Bastion||k.Kind==NativeTechniques.StaticRecall&&!k.Recast(now)||k.Kind==NativeTechniques.AnchorThrow&&now>=k.Arm&&now<k.Arm+3&&!k.Recast(now));
+        public static bool Moving(NativeTechnique k,float now)=>Live(k,now)&&(k.Kind=="parting-line"&&now<k.Release+.28f||k.Kind=="shield-surf"&&!k.Recast(now)||k.Kind=="recoil-burst"||k.Kind=="grave-walk"||k.Kind=="iron-vow"||k.Kind==NativeTechniques.GrappleLine&&now>=k.Arm||k.Kind==NativeTechniques.AnchorThrow&&k.Recast(now));
+        public static bool Recast(NativeTechnique k,float now)=>Live(k,now)&&((k.Kind=="shield-surf"||k.Kind=="iron-vow"||k.Kind=="grave-walk")&&!k.Recast(now)||k.Kind==NativeTechniques.Bastion||k.Kind==NativeTechniques.StaticRecall&&!k.Recast(now)||k.Kind==NativeTechniques.AnchorThrow&&now>=k.Arm&&now<k.Arm+3&&!k.Recast(now));
+        public static bool Rooted(NativeTechnique k,float now)=>k!=null&&now>=k.Release&&now<k.RecoverUntil&&(k.Kind=="iron-vow"||k.Kind=="grave-walk"&&now>=k.Until);
         public static bool Front(V3 facing,V3 incoming)=>V3.Dot(facing.Normalized,(incoming*-1).Normalized)>.25f;
         public static bool Hidden(V3 observer,V3 target,NativeTechnique cloud,float now)=>Live(cloud,now)&&cloud.Kind==NativeTechniques.SmokeVeil&&Horizontal(target-cloud.Point)<=SmokeRadius&&Math.Abs(target.y-cloud.Point.y)<3&&!(Horizontal(observer-cloud.Point)<=SmokeRadius&&Math.Abs(observer.y-cloud.Point.y)<3);
         private static float Horizontal(V3 v)=>(float)Math.Sqrt(v.x*v.x+v.z*v.z);

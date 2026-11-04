@@ -113,7 +113,7 @@ namespace ChipArena.UnityConversion
             if(brain.SearchInPlace)brain.View.LookYaw=Mathf.Repeat(brain.View.LookYaw+45f/60,360);
             m.Yaw=Mathf.MoveTowardsAngle(m.Yaw,brain.View.LookYaw,180f/60);
             float factor=Time<a.SlowUntil?a.SlowFactor:1;
-            foreach(var field in ChipFields)if(CanHit(field.Owner,m)&&(field.Position-at).sqrMagnitude<field.Radius*field.Radius)factor=Math.Min(factor,field.Kind=="frost"?.45f:field.Kind=="time"?.6f:1);move*=factor*NativeExpeditionMutators.ZombieSpeed(ActiveMutators);
+            foreach(var field in ChipFields)if(CanHit(field.Owner,m)&&(field.Position-at).sqrMagnitude<field.Radius*field.Radius)factor=Math.Min(factor,field.Kind=="frost"?.45f:field.Kind=="time"?.6f:1);move*=factor*TechniqueCurrentSpeed(at-Vector3.up*(m.Collider.height*.5f),move)*NativeExpeditionMutators.ZombieSpeed(ActiveMutators);
             a.External*=Mathf.Exp(-6f/60);move+=Vector3.ClampMagnitude(a.External,Mutator("bounce-house")?18:6);
             if(!SupportedStageMove(navAt,move)||HubCross(at,at+move/60,m.Collider.radius))move=Vector3.zero;
             m.Body.linearVelocity=new Vector3(move.x,m.Body.linearVelocity.y,move.z);return true;

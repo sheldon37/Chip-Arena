@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
         }
         private void RemoveMinion(NativeMinion m,bool explode=true)
         {
-            if(!Minions.Remove(m))return;hubMobs.Remove(m.Id);ClearHulkCollisions(m);navRoutes.Remove(m.Id);crowdRoutes.Remove(-m.Id);RecordMinionDeath(m);Vector3 pos=m.Body.position;m.Hp=0;m.Collider.enabled=false;CapturedAnimation.Release(m.Body.gameObject);
+            if(!Minions.Remove(m))return;if(m.Hp<=0)TechniqueMarkedDeath(m.Id);hubMobs.Remove(m.Id);ClearHulkCollisions(m);navRoutes.Remove(m.Id);crowdRoutes.Remove(-m.Id);RecordMinionDeath(m);Vector3 pos=m.Body.position;m.Hp=0;m.Collider.enabled=false;CapturedAnimation.Release(m.Body.gameObject);
             if(explode&&!m.DevMonster&&m.Kind=="zombie"&&Has(m.Owner,"corpse-party")&&Match.Phase==NativePhase.Fight)ChipBlast(m.Owner,pos,3.5f,30,300,effect:"corpse-party");
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
                 if(distance<(toy?7:1.75f)&&Time>=m.NextAttack&&SummonVisible(m,at+Vector3.up*.3f,destination+Vector3.up*.3f,end)){m.LastAttack=Time;m.StrikeAt=Time+windup;m.Yaw=Mathf.Atan2(diff.x,diff.z)*Mathf.Rad2Deg;m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                 Vector3 dir=new Vector3(diff.x,0,diff.z).normalized;
                 if(!SummonVisible(m,at+Vector3.up*.15f,at+Vector3.up*.15f+dir,end))dir=Quaternion.Euler(0,Mathf.Sin(Time*.9f+m.Id)>0?90:-90,0)*dir;
-                m.Yaw=Mathf.Atan2(dir.x,dir.z)*Mathf.Rad2Deg;float speed=distance>(toy?5:1.25f)?m.Speed*(Time<m.SlowUntil?m.SlowFactor:1):0;m.Body.linearVelocity=dir*speed+Vector3.up*velocity.y;
+                m.Yaw=Mathf.Atan2(dir.x,dir.z)*Mathf.Rad2Deg;float speed=distance>(toy?5:1.25f)?m.Speed*(Time<m.SlowUntil?m.SlowFactor:1)*TechniqueCurrentSpeed(m.Body.position-Vector3.up*(m.Collider.height*.5f),dir):0;m.Body.linearVelocity=dir*speed+Vector3.up*velocity.y;
             }
         }
         private bool TryNecromancy(NativePilot p)

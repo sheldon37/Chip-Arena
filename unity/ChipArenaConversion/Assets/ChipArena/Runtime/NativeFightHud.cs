@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
         // pilot's chips scale it, the recast first.
         private Card TechniqueCard(NativePilot p,NativeTechniques.Def td,string slot)
         {
-            float t=arena.Time;var d=content.Ability(p.Seat.spec,"technique");bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic";float cost=d!=null?(float)NativeAbilityRules.Cost(d,p.Stats):td.Cost;
+            float t=arena.Time;var d=NativeTechniques.Row(content,td.Id);bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic";float cost=d!=null?(float)NativeAbilityRules.Cost(d,p.Stats):td.Cost;
             var c=NativeTechniques.Card(NativeTechniques.Source?.Of(p.Seat.id),t,(slot=="q"?p.QReady:p.EReady)-t,d!=null?(float)NativeAbilityRules.Cooldown(d,p.Stats):td.Cooldown,melee?p.Stamina<cost:magic&&p.Mana<cost,melee?"LOW STAMINA":"LOW MANA",p==arena.Local?techniqueRefused:null);
             float denied=Time.unscaledTime-techniqueDeniedAt,shake=prefs.reducedEffects||denied>=.3f?0:Mathf.Sin(denied*60)*(1-denied/.3f)*4;
             return new Card{Key=slot.ToUpperInvariant()+" · "+td.Name.ToUpperInvariant(),State=c.State,Icon=td.Icon,Ready=c.Ready,Active=c.Active,Recast=c.Recast,Low=c.Low,Held=c.Held,Dial=c.Dial,Shake=shake};
@@ -141,7 +141,7 @@ namespace ChipArena.UnityConversion
             else foreach(var slot in new[]{"q","e"})
             {
                 // A technique swapped into this slot takes its card.
-                if(NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)==slot&&NativeTechniques.For(p.Seat.spec) is var swapped&&swapped!=null){cards.Add(TechniqueCard(p,swapped,slot));continue;}
+                if(NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,slot) is var swapped&&swapped!=null){cards.Add(TechniqueCard(p,swapped,slot));continue;}
                 var d=content.Ability(p.Seat.spec,slot);
                 // Standard melee Q/E (Core/NativeMeleeKitHud): the recast window, the cast, the cooldown actually started, stamina.
                 if(d!=null&&NativeMeleeRules.Standard(p.Seat.spec)){var kc=MeleeCard(p,slot,d);if(thrown){kc.State=p.Seat.spec=="shield"?"SHIELD OUT":"BLADE OUT";kc.Low=true;kc.Ready=kc.Active=kc.Recast=false;}cards.Add(new Card{Key=slot.ToUpperInvariant()+" · "+d.name.ToUpperInvariant(),State=kc.State,Ready=kc.Ready,Active=kc.Active,Dial=kc.Dial,Recast=kc.Recast,Low=kc.Low&&!kc.Recast});continue;}

@@ -9,12 +9,14 @@ namespace ChipArena.UnityConversion
         public NativeTechnique Technique;
         internal bool TechniqueReleased;internal float TechniqueNext,TechniqueHealth,TechniqueScale=1;
         internal Vector3 TechniquePosition,TechniqueMoveFrom;
+        internal string TechniqueCastSlot;
     }
     public sealed partial class NativeArena
     {
         private ExpeditionAreaLayout techniqueReplicaArea;
         private bool TechniqueHubInside(Vector3 point)=>Replica?ExpeditionCollisionReady&&techniqueReplicaArea?.map==MapId&&techniqueReplicaArea.role=="world"&&ExpeditionHubRules.Inside(techniqueReplicaArea.sanctuary,Vec(point)):HubInside(point);
         private bool TechniqueHubCross(Vector3 from,Vector3 to)=>Replica?ExpeditionCollisionReady&&techniqueReplicaArea?.map==MapId&&techniqueReplicaArea.role=="world"&&ExpeditionHubRules.Crosses(techniqueReplicaArea.sanctuary,Vec(from),Vec(to),0):HubCross(from,to);
+        private string TechniqueId(NativePilot p,string slot)=>p.Seat.bot?"":NativeTechniqueLoadout.In(p.Seat.weaponTechniques,p.Seat.spec,slot);
         private string TechniqueSlot(NativePilot p)=>p.Seat.bot?"":NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec);
         private float TechniqueCooldown(NativePilot p)=>TechniqueSlot(p)=="q"?p.QReady:p.EReady;
         private bool TechniqueBusy(NativePilot p)=>NativeTechniqueRules.Busy(p.Technique,Time);
@@ -28,31 +30,37 @@ namespace ChipArena.UnityConversion
             var k=p.Technique;
             if(k!=null&&Time<k.End&&(p.Input.CancelAbilities||TechniqueBlocked(p))&&(Time<k.Release||TechniqueBusy(p)||NativeTechniqueRules.Moving(k,Time)))EndTechnique(p);
             if(k?.Kind==NativeTechniques.GrappleLine&&(p.Input.Jump||p.Input.Roll))EndTechnique(p);
-            string slot=TechniqueSlot(p);bool press=slot=="q"?p.Input.AbilityQ:slot=="e"&&p.Input.AbilityE;
-            if(slot=="q")p.Input.AbilityQ=false;else if(slot=="e"){p.Input.AbilityE=p.Input.AbilityEReleased=false;p.HoldAt=-1;}
-            if(p.BufferedSlot==slot)p.BufferedSlot=null;
-            if(press&&!p.Input.CancelAbilities)TryTechnique(p);
+            if(p.Technique?.Kind=="shield-surf"&&p.Input.Jump&&NativeTechniqueRules.Live(p.Technique,Time))FinishMoreTechnique(p);
+            foreach(string slot in new[]{"q","e"})
+            {
+                if(TechniqueId(p,slot)=="")continue;bool press=slot=="q"?p.Input.AbilityQ:p.Input.AbilityE;
+                if(slot=="q")p.Input.AbilityQ=false;else{p.Input.AbilityE=p.Input.AbilityEReleased=false;p.HoldAt=-1;}
+                if(p.BufferedSlot==slot)p.BufferedSlot=null;
+                if(press&&!p.Input.CancelAbilities)TryTechnique(p,slot);
+            }
             if(p.Technique!=null&&!p.TechniqueReleased&&Time>=p.Technique.Release&&Time<p.Technique.Until)ReleaseTechnique(p);
         }
         // Geometric refusals only. No pilot/input/physics mutation; valid on guest scenes as well as authority.
         // The out-point overload lets the cast use the same query result without repeating the rays.
-        public string TechniqueRefusal(NativePilot p,in InputFrame aim)=>TechniqueRefusal(p,in aim,out _);
-        private string TechniqueRefusal(NativePilot p,in InputFrame aim,out Vector3 point)
+        public string TechniqueRefusal(NativePilot p,in InputFrame aim)=>TechniqueRefusal(p,RefusalSlot(p,in aim),in aim);
+        public string TechniqueRefusal(NativePilot p,string slot,in InputFrame aim)=>TechniqueRefusal(p,in aim,out _,slot);
+        private string RefusalSlot(NativePilot p,in InputFrame aim)=>p==null?"":aim.AbilityQ&&TechniqueId(p,"q")!=""?"q":aim.AbilityE&&TechniqueId(p,"e")!=""?"e":p.Technique!=null&&NativeTechniqueRules.Recast(p.Technique,Time)?NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec,p.Technique.Kind):TechniqueSlot(p);
+        private string TechniqueRefusal(NativePilot p,in InputFrame aim,out Vector3 point,string slot)
         {
-            point=default;if(p==null||TechniqueSlot(p)=="")return null;
+            point=default;if(p==null||TechniqueId(p,slot)=="")return null;
             var old=p.Technique;Vector3 origin=p.Body.position,feet=origin-Vector3.up*.865f;point=feet;
-            if(old?.Kind==NativeTechniques.StaticRecall&&NativeTechniqueRules.Recast(old,Time))
+            if(old?.Kind==TechniqueId(p,slot)&&old.Kind==NativeTechniques.StaticRecall&&NativeTechniqueRules.Recast(old,Time))
             {
                 point=Vec(old.Point)+Vector3.up*.865f;
                 if(!TechniqueDestination(p,point)||!RoomFor(p,point))return NativeTechniques.Blocked;
                 var line=point-origin;
                 return root.scene.GetPhysicsScene().CapsuleCast(origin+Vector3.up*.43f,origin-Vector3.up*.43f,.42f,line.normalized,out _,line.magnitude,WorldMask,QueryTriggerInteraction.Ignore)?NativeTechniques.Blocked:null;
             }
-            var kind=NativeTechniques.For(p.Seat.spec)?.Id;
-            if(kind==NativeTechniques.GrappleLine)
+            var kind=TechniqueId(p,slot);
+            if(kind==NativeTechniques.GrappleLine||kind==NativeTechniques.Tripwire||kind==NativeTechniques.SonarDart)
             {
                 var direction=Vec(GunRules.Direction(aim.Yaw,aim.Pitch));
-                if(!root.scene.GetPhysicsScene().Raycast(origin+Vector3.up*.3f,direction,out var hit,20,WorldMask,QueryTriggerInteraction.Ignore))return NativeTechniques.NoSurface;
+                if(!root.scene.GetPhysicsScene().Raycast(origin+Vector3.up*.3f,direction,out var hit,kind==NativeTechniques.Tripwire?14:kind==NativeTechniques.SonarDart?40:20,WorldMask,QueryTriggerInteraction.Ignore))return NativeTechniques.NoSurface;
                 point=hit.point;return TechniqueHubCross(origin,point)?NativeTechniques.NoSurface:null;
             }
             if(kind==NativeTechniques.HealingSpring)
@@ -63,12 +71,13 @@ namespace ChipArena.UnityConversion
             }
             return null;
         }
-        private bool TryTechnique(NativePilot p)
+        private bool TryTechnique(NativePilot p,string selectedSlot=null)
         {
-            string slot=TechniqueSlot(p);if(slot==""||Replica||p.Input.CancelAbilities||TechniqueBlocked(p))return false;
+            string slot=selectedSlot??TechniqueSlot(p);string id=TechniqueId(p,slot);if(id==""||Replica||p.Input.CancelAbilities||TechniqueBlocked(p))return false;
             var old=p.Technique;
-            if(NativeTechniqueRules.Recast(old,Time))
+            if(old?.Kind==id&&NativeTechniqueRules.Recast(old,Time))
             {
+                if(id=="shield-surf"||id=="iron-vow"||id=="grave-walk"){FinishMoreTechnique(p);return true;}
                 if(TechniqueBusy(p)||Time<p.AttackEnd||SpecialBusy(p)||p.AbilityCast!=null||p.CastAt>0||p.ReloadEnd>Time)return false;
                 if(old.Kind==NativeTechniques.Bastion){EndTechnique(p);old.Phase="recall";return true;}
                 if(old.Kind==NativeTechniques.AnchorThrow)
@@ -76,32 +85,34 @@ namespace ChipArena.UnityConversion
                 if(old.Kind==NativeTechniques.StaticRecall)
                 {
                     Vector3 origin=p.Body.position;
-                    if(TechniqueRefusal(p,in p.Input,out var destination)!=null)return false;
+                    if(TechniqueRefusal(p,in p.Input,out var destination,slot)!=null)return false;
                     if(!MeleeTeleport(p,destination,old.Kind))return false;
                     old.From=Vec(origin-Vector3.up*.865f);old.RecastAt=Time;old.Phase="bolt";old.Until=old.RecoverUntil=Time+.3f;
                     foreach(var t in MeleeTargets(p).ToArray())if(NativeTechniqueRules.LineDistance(Vec(t.at),Vec(origin),Vec(p.Body.position))<=.85f&&MeleeVisible(origin,t.at,p,t.collider))TechniqueHit(p,t.id,12,t.at,(p.Body.position-origin).normalized);
                     return true;
                 }
             }
-            var d=Content.Ability(p.Seat.spec,"technique");if(d==null||!d.live||NativeTechniques.For(p.Seat.spec)?.Id!=d.id||Time<TechniqueCooldown(p)||TechniqueBusy(p)||NativeTechniqueRules.Live(old,Time)||Time<p.Ready||Time<p.AttackEnd||SpecialBusy(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||p.ReloadEnd>Time)return false;
+            var d=NativeTechniqueLoadout.Ability(Content,p.Seat.weaponTechniques,p.Seat.spec,slot);if(d==null||!d.live||id!=d.id||Time<(slot=="q"?p.QReady:p.EReady)||TechniqueBusy(p)||NativeTechniqueRules.Live(old,Time)||Time<p.Ready||Time<p.AttackEnd||SpecialBusy(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||p.ReloadEnd>Time)return false;
+            if(id=="recoil-burst"&&p.Ammo<1)return false;
             bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic";float cost=melee&&PilotMutator(p,"adrenaline")?0:NativeAbilityRules.Cost(d,p.Stats);
             if(melee&&p.Stamina<cost||magic&&p.Mana<cost||HubInside(p.Body.position))return false;
-            if(TechniqueRefusal(p,in p.Input,out var point)!=null)return false;
+            if(TechniqueRefusal(p,in p.Input,out var point,slot)!=null)return false;
             Vector3 direction=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             if(melee)p.Stamina-=cost;if(magic)p.Mana-=cost;p.RegenAt=Time+.45f;
             float ready=Time+(p.DevNoCooldowns?0:NativeAbilityRules.Cooldown(d,p.Stats));if(slot=="q")p.QReady=ready;else{p.EReady=ready;p.ECharges=0;}
             float release=Time+NativeAbilityRules.CastTime(d.windup,p.Stats);
             p.Technique=new NativeTechnique{Kind=d.id,Phase=TechniqueFirstPhase(d.id),At=Time,Release=release,Until=release+(float)d.duration,RecoverUntil=release+NativeAbilityRules.CastTime(d.lockout,p.Stats),From=Vec(p.Body.position+Vector3.up*.3f),Point=Vec(point),Dir=Vec(direction)};
-            p.TechniqueReleased=false;p.TechniqueNext=release;p.TechniqueHealth=0;
+            p.TechniqueCastSlot=slot;p.TechniqueReleased=false;p.TechniqueNext=release;p.TechniqueHealth=0;
             p.TechniqueScale=magic?NativeAbilityRules.Scale(p.Stats,p.Mana+cost>=.75f*p.Stats["maxMana"]):(float)p.Stats["damage"];
             p.Ready=Math.Max(p.Ready,p.Technique.RecoverUntil);return true;
         }
         private static string TechniqueFirstPhase(string id)
-        {switch(id){case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
+        {switch(id){case "parting-line":return "hop";case "tripwire":case "lightning-rod":return "throw";case "shield-surf":return "mount";case "iron-vow":return "plant";case "bounty-round":return "shot";case "recoil-burst":return "brace";case "sonar-dart":return "fire";case "spirit-hawk":return "draw";case "wildfire-run":return "ignite";case "grave-walk":return "sink";case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
         private void ReleaseTechnique(NativePilot p)
         {
             p.TechniqueReleased=true;var k=p.Technique;if(TechniqueBlocked(p)){EndTechnique(p);return;}
             Vector3 feet=p.Body.position-Vector3.up*.865f,forward=Vec(V3.Forward(p.Input.Yaw));k.From=Vec(p.Body.position+Vector3.up*.3f);p.TechniquePosition=Vec(k.From);
+            if(ReleaseMoreTechnique(p,feet,forward))return;
             switch(k.Kind)
             {
                 case "riposte":k.Until=k.Release+.5f;k.RecoverUntil=k.Until+.45f;k.Phase="guard";break;
@@ -129,6 +140,7 @@ namespace ChipArena.UnityConversion
                 // Sweep the final travel segment even when this fixed tick reaches the expiry clock.
                 if(k.Phase=="flight"&&(k.Kind=="anchor-throw"||k.Kind=="gale-arrow"||k.Kind=="shade-swap"))
                 {TechniqueFlight(p,k.Kind=="anchor-throw"?26:k.Kind=="gale-arrow"?30:22,k.Kind=="anchor-throw"?16:k.Kind=="gale-arrow"?30:18);continue;}
+                if(StepMoreTechnique(p))continue;
                 if(Time>=k.Until)continue;
                 switch(k.Kind)
                 {
@@ -197,7 +209,7 @@ namespace ChipArena.UnityConversion
         }
         private void TechniqueMotion(NativePilot p,ref Vector3 velocity)
         {
-            var k=p.Technique;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p))return;
+            var k=p.Technique;if(MoreTechniqueMotion(p,ref velocity))return;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p))return;
             Vector3 destination;
             if(k.Kind=="grapple-line")destination=Vec(k.Point)-(Vec(k.Point)-p.Body.position).normalized*.7f;
             else {float u=Mathf.Clamp01((Time+1f/60-k.RecastAt)/.45f);destination=Vector3.Lerp(p.TechniqueMoveFrom,Vec(k.Point)+Vector3.up*.9f,u)+Vector3.up*(Mathf.Sin(u*Mathf.PI)*2);}

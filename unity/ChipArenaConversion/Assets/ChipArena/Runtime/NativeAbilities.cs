@@ -42,12 +42,12 @@ namespace ChipArena.UnityConversion
         private bool AbilityBusy(NativePilot p)=>p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
-            if(TechniqueBusy(p)||TechniqueAway(p))return;
+            if(TechniqueBusy(p)||TechniqueAway(p)||TechniqueRunning(p))return;
             if(p.Seat.spec=="bow"){StepBowAbilities(p);return;}
             if(p.Seat.spec=="cyberlord"){StepCyberInput(p);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){StepMeleeAbilityInput(p);return;}
             int max=NativeAbilityRules.Charges(p.Stats);
-            if(TechniqueSlot(p)!="e"&&Content.Ability(p.Seat.spec,"e")!=null&&p.ECharges<max&&Time>=p.EReady){p.ECharges++;if(p.ECharges<max)p.EReady=Time+NativeAbilityRules.Cooldown(Content.Ability(p.Seat.spec,"e"),p.Stats);}
+            if(TechniqueId(p,"e")==""&&Content.Ability(p.Seat.spec,"e")!=null&&p.ECharges<max&&Time>=p.EReady){p.ECharges++;if(p.ECharges<max)p.EReady=Time+NativeAbilityRules.Cooldown(Content.Ability(p.Seat.spec,"e"),p.Stats);}
             if(p.Input.CancelAbilities||Time<p.BlockEnd){CancelAbilities(p);return;}
             bool interrupted=Time<p.RollEnd||Incapacitated(p);
             if(interrupted){CancelWindup(p);p.HoldAt=-1;}
@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
         }
         private void PressAbility(NativePilot p,string slot,bool retry=false)
         {
-            if(TechniqueSlot(p)==slot){TryTechnique(p);return;}
+            if(TechniqueId(p,slot)!=""){TryTechnique(p,slot);return;}
             var d=Content.Ability(p.Seat.spec,slot);
             if(NativeRangedRules.Q(d?.id)){TryRangedQ(p,d);return;}
             float cooldown=slot=="q"?p.QReady-Time:p.ECharges>0?0:p.EReady-Time;
