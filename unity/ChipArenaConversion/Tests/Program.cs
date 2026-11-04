@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--projectile-rules"){ProjectileRuleChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==0)ProjectileRuleChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--revive-machine"){ReviveMachineChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--bomb-rules"){BombRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0)BombRulesChecks.Run(ProjectRoot());
