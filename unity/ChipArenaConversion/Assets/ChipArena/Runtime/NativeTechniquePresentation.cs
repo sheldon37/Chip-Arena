@@ -30,6 +30,8 @@ namespace ChipArena.UnityConversion
             else
             {
                 NativeTechniques.Source=techniquePreview;var feet=visualPositions.TryGetValue(me.Id,out var v)?v:Vec(me.Position);
+                Actor nearest=null;float best=float.MaxValue;foreach(var o in s.Actors)if(o!=null&&o!=me&&o.Alive){float dist=(Vec(o.Position)-feet).sqrMagnitude;if(dist<best){best=dist;nearest=o;}}
+                techniquePreview.TargetId=nearest?.Id??0;if(nearest!=null){var at=Vec(nearest.Position);techniquePreview.TargetAt=new NVector(at.x,at.y,at.z);}
                 techniquePreview.Step(me,new NVector(feet.x,feet.y-TechniqueShiftOf(me.Id),feet.z),me.Yaw*Mathf.Deg2Rad,time,TechniquePreviewOnly);
             }
             if(NativeTechniques.Source==null||s?.Actors==null)return;
@@ -41,7 +43,8 @@ namespace ChipArena.UnityConversion
             if(s?.Actors==null||NativeTechniques.Source==null||sourceModels==null)return;
             foreach(var a in s.Actors)
             {
-                var k=NativeTechniques.Of(a);if(k?.Kind==null||time<k.Release||time>k.Until+.25f)continue;
+                var k=NativeTechniques.Of(a);
+                if(k?.Kind==null||time<k.Release||time>k.Until+.25f)continue;
                 switch(k.Kind)
                 {
                     case NativeTechniques.Bastion:if(time<k.Until)PlantedShield(a,k,time);break;
@@ -114,7 +117,7 @@ namespace ChipArena.UnityConversion
         // The greatsword standing in the floor before the pilot, ringing as it lands.
         private void PlantedBlade(Actor a,NativeTechnique k,float time)
         {
-            float age=time-k.Release,settle=Mathf.Exp(-age*14)*Mathf.Sin(age*46)*.09f;var f=Flat(k.Dir);var side=Vector3.Cross(Vector3.up,f).normalized;var q=Quaternion.LookRotation((-Vector3.up+f*.12f+side*settle).normalized,f);var pos=U(k.Point)-(q*Vector3.forward)*1.28f;WeaponAt(a,Matrix4x4.TRS(pos,q,Vector3.one));
+            float age=time-k.Release,settle=Mathf.Exp(-age*14)*Mathf.Sin(age*46)*.09f;var f=Flat(k.Dir);var side=Vector3.Cross(Vector3.up,f).normalized;var q=Quaternion.LookRotation((-Vector3.up+f*.12f+side*settle).normalized,f);var pos=U(k.Point)-(q*Vector3.forward)*1.06f;WeaponAt(a,Matrix4x4.TRS(pos,q,Vector3.one));
         }
         // The dart in the wall: a sliver and two fins.
         private void SonarModel(NativeTechnique k,float time)
