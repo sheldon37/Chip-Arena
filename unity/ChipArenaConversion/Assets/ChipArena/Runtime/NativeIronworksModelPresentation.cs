@@ -19,8 +19,6 @@ namespace ChipArena.UnityConversion
         private bool IronworksOnModel(int kind)=>NativeIronworksKinds.Is(kind)&&ZombieModelsOn&&NativeZombieLooks.Modelled(kind);
         /// <summary>An Ironworks add holds the full tier: the model at every distance (the far ones' poses thinned by their crowd clock).</summary>
         private void IronworksTier(HordeKindState s,int kind){if(IronworksOnModel(kind))s.Tier=NativeHordeModels.Full;}
-        /// <summary>The body not made yet (the first frames of a spawn past the pool): nothing drawn, not the voxel model.</summary>
-        private bool IronworksWaits(int kind)=>IronworksOnModel(kind);
         /// <summary>Queues a prop: the gear bank's where it has it and the add wears the model, else the code model.</summary>
         private void IronworksPropDraw(int prop,int tier,Matrix4x4 world,Vector4 glow,float flash)
         {
