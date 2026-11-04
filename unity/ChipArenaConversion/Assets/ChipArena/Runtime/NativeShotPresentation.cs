@@ -152,8 +152,11 @@ namespace ChipArena.UnityConversion
         public bool PackHeads;
         /// <summary>A gun round is its tracer (Core NativeTracers): its source box is skipped, its chip modules stay.</summary>
         public bool TracerRounds;
+        /// <summary>The weapon-effects drawer the chips' parts draw into (Core NativeChipLooks), and with it the smooth models in place of the source's
+        /// boxes: Bowling Club's ball, a heavy round's slug, the frag, rocket, orbital mark and ball lightning. Null: the source's meshes.</summary>
+        public NativeWeaponFxDraw ChipFx;
         // The draws skipped this frame (by index into the scene's draw list), reused.
-        private bool[] packHidden=new bool[64];private int packHiddenCount;private int tracerModuleRounds;
+        private bool[] packHidden=new bool[64];private int packHiddenCount;private int tracerModuleRounds;private int chipParts;private float chipQuality;private Vector3 chipEye;
         public int Parts=>scene.Draws.Count;public int Sparks=>scene.Bursts.Count;public int Beams=>scene.Bursts.Beams;public int Live=>scene.Live;
         /// <summary>The source BurstPool port (renderer.burst/beam) these visuals draw and step each frame; event effects spawn
         /// into it (NativeBlastPresentation via NativeImpactCues).</summary>
@@ -196,8 +199,8 @@ namespace ChipArena.UnityConversion
             scene.Begin(now,arena.Replica?now:arena.Time,dt,Math.Max(0,quality));
             // Siren shots are the Siren effects' own orbs and flame trails (ArenaPresentation.DevEffects, C12); the Cyber Lord's
             // ranged bolts its own hardlight shots (Core/NativeCyberLordRangedFx.cs; its Data Packets stay here).
-            packHiddenCount=0;tracerModuleRounds=0;
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec)&&CyberLordFeed.ShotSlot(b.Spec,b.Detail)<0){int first=scene.Draws.Count;scene.Shot(v);if(PackHeads&&NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None&&scene.Draws.Count>first)HidePackHead(first);else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first){HidePackHead(first);if(!(v.Modules.Pong>0))TracerParts(first+1,v);}}}
+            packHiddenCount=0;tracerModuleRounds=0;chipQuality=Math.Max(0,quality);
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec)&&CyberLordFeed.ShotSlot(b.Spec,b.Detail)<0){int first=scene.Draws.Count;scene.Shot(v);if(PackHeads&&NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None&&scene.Draws.Count>first)HidePackHead(first);else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first){if(ChipFx!=null&&NativeChipLooks.Heavy(v.Radius)&&!(v.Modules.Pong>0))Relook(first,NativeShotLook.Slug);else HidePackHead(first);if(!(v.Modules.Pong>0))TracerParts(first+1,v);}else if(ChipFx!=null&&v.SwordBeam&&scene.Draws.Count>first)HidePackHead(first);else if(ChipFx!=null&&v.Bowling&&scene.Draws.Count>first)BallLook(first,v,now);}}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,tracker,now,out var v);scene.Shot(v);}
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
             scene.End(dt);Fill(camera);
@@ -224,13 +227,71 @@ namespace ChipArena.UnityConversion
             tracerModuleRounds++;float k=NativeTracers.ModuleShare,px=(float)v.X,py=(float)v.Y,pz=(float)v.Z;
             for(int i=from;i<draws.Count;i++){var d=draws[i];var m=d.M;m.M00*=k;m.M01*=k;m.M02*=k;m.M10*=k;m.M11*=k;m.M12*=k;m.M20*=k;m.M21*=k;m.M22*=k;m.M03=px+(m.M03-px)*k;m.M13=py+(m.M13-py)*k;m.M23=pz+(m.M23-pz)*k;d.M=m;draws[i]=d;}
         }
+        private void Relook(int index,NativeShotLook look){var d=scene.Draws[index];d.Look=look;scene.Draws[index]=d;}
+        // Bowling Club's ball: its own colour, and turned about the flight's side axis, so its finger holes roll.
+        private void BallLook(int index,in NativeShotView v,float now)
+        {
+            var d=scene.Draws[index];d.Look=NativeShotLook.Bowling;NativeShotRules.Linear(NativeChipLooks.BallColor,false,out d.R,out d.G,out d.B);
+            float a=NativeChipLooks.BallSpin(v.Id,now),c=Mathf.Cos(a),s=Mathf.Sin(a);var m=d.M;
+            float y0=m.M01,y1=m.M11,y2=m.M21,z0=m.M02,z1=m.M12,z2=m.M22;
+            m.M01=y0*c+z0*s;m.M11=y1*c+z1*s;m.M21=y2*c+z2*s;m.M02=z0*c-y0*s;m.M12=z1*c-y1*s;m.M22=z2*c-y2*s;d.M=m;scene.Draws[index]=d;
+        }
+        // One smooth model into the solid layer: unlit like the source's, with a shade from the sky above it (and the mesh's own paint), so it reads round.
+        private void SmoothAdd(NativeChipMesh mesh,in NativeShotAffine m,Color color)
+        {
+            var p=mesh.Positions;var n=mesh.Normals;var paint=mesh.Paint;int start=solid.Vertices.Count;float up=Mathf.Sqrt(m.M10*m.M10+m.M11*m.M11+m.M12*m.M12);up=up>1e-6f?1/up:0;
+            for(int k=0,v=0;k<p.Length;k+=3,v++)
+            {
+                m.Apply(p[k],p[k+1],p[k+2],out float x,out float y,out float z);solid.Vertices.Add(new Vector3(x,y,z));
+                float shade=NativeChipLooks.Shade((m.M10*n[k]+m.M11*n[k+1]+m.M12*n[k+2])*up)*paint[v];solid.Colors.Add(new Color(color.r*shade,color.g*shade,color.b*shade,color.a));
+            }
+            var tris=mesh.Indices;for(int k=0;k<tris.Length;k++)solid.Indices.Add(start+tris[k]);
+        }
+        // A model's smooth mesh in place of the source's boxes; false: the source's.
+        private bool SmoothModel(in NativeShotDraw d,Color color)
+        {
+            NativeChipMesh mesh;
+            if(d.Look==NativeShotLook.Slug)mesh=NativeChipLooks.Slug;
+            else if(d.Look==NativeShotLook.Bowling)mesh=(new Vector3(d.M.M03,d.M.M13,d.M.M23)-chipEye).sqrMagnitude>NativeChipLooks.BallFar*NativeChipLooks.BallFar?NativeChipLooks.BallAway:NativeChipLooks.Ball;
+            else mesh=NativeChipLooks.Smooth(d.Shape);
+            if(mesh==null)return false;SmoothAdd(mesh,d.M,color);return true;
+        }
+        // A chip part as a soft effect on the part's own transform (Core NativeChipLooks): thinned by the tiers, held by the frame's budget, faded at the eye.
+        private void ChipPart(in NativeShotDraw d)
+        {
+            var draw=ChipFx;bool low=draw.Low;if(!NativeChipLooks.Keep(d.PartIndex,chipQuality,low)||chipParts>=NativeChipLooks.Budget(chipQuality,low))return;
+            var m=d.M;Vector3 c=new Vector3(m.M03,m.M13,m.M23),ax=new Vector3(m.M00,m.M10,m.M20),ay=new Vector3(m.M01,m.M11,m.M21),az=new Vector3(m.M02,m.M12,m.M22);
+            float near=NativeChipLooks.Near((c-chipEye).magnitude);if(!(near>.02f))return;float lx=ax.magnitude;chipParts++;
+            var part=NativeChipLooks.Part(d.Shape,d.Anim,lx,d.R,d.G,d.B);float gain=NativeChipLooks.Gain(part)*near;var tint=new Color(d.R*gain,d.G*gain,d.B*gain,0);
+            switch(part)
+            {
+                case NativeChipPart.Streak:
+                {
+                    float ly=ay.magnitude,lz=az.magnitude,longest=Mathf.Max(lx,Mathf.Max(ly,lz)),across=lx+ly+lz-longest-Mathf.Min(lx,Mathf.Min(ly,lz));
+                    Vector3 axis=lz>=longest?az:lx>=longest?ax:ay;draw.Axis(false,c-axis*.5f,c+axis*.5f,tint,Mathf.Max(NativeChipLooks.StreakMin,across*NativeChipLooks.StreakWidth),NativeWeaponFxDraw.StreakMode,.45f);break;
+                }
+                case NativeChipPart.Flame:draw.Axis(false,c-ay*.5f,c+ay*.5f,tint,lx*NativeChipLooks.FlameWidth,NativeWeaponFxDraw.FlameMode,d.PartIndex*.37f);break;
+                case NativeChipPart.Shard:draw.Axis(false,c-ay*.5f,c+ay*.5f,tint,lx*NativeChipLooks.ShardWidth,NativeWeaponFxDraw.ShardMode,0);break;
+                case NativeChipPart.Glint:draw.Glow(false,c,tint,lx*NativeChipLooks.GlintSize,NativeWeaponFxDraw.HotCore);break;
+                case NativeChipPart.Dark:{float k=.9f*near;draw.Glow(false,c,new Color(d.R*k,d.G*k,d.B*k,k),lx*NativeChipLooks.DarkSize,NativeWeaponFxDraw.Soft);break;}
+                case NativeChipPart.Ball:{var ball=m;ball.M00*=2;ball.M10*=2;ball.M20*=2;ball.M01*=2;ball.M11*=2;ball.M21*=2;ball.M02*=2;ball.M12*=2;ball.M22*=2;SmoothAdd(NativeChipLooks.BallPlain,ball,Shade(d.R,d.G,d.B,1));break;}
+                default:
+                {
+                    float reach=1/NativeChipLooks.RingShare;Vector3 x=ax*reach,y=ay*reach;
+                    draw.Quad(false,c-x-y,c+x-y,c+x+y,c-x+y,new Vector2(-1,-1),new Vector2(1,-1),new Vector2(1,1),new Vector2(-1,1),tint,NativeWeaponFxDraw.Petal,NativeWeaponFxDraw.RingCard);break;
+                }
+            }
+        }
         private void Fill(Camera camera)
         {
-            solid.Clear();beams.Clear();
+            solid.Clear();beams.Clear();chipParts=0;if(camera!=null)chipEye=camera.transform.position;
             var draws=scene.Draws;
             for(int i=0;i<draws.Count;i++)
             {
-                var d=draws[i];if(MagicLooks&&MagicOwned(d.Shape))continue;if(i<packHiddenCount&&packHidden[i])continue;var color=Shade(d.R,d.G,d.B,d.A);if(d.A<.999f){DrawTranslucent(d,color,camera);continue;}
+                var d=draws[i];if(MagicLooks&&MagicOwned(d.Shape))continue;if(i<packHiddenCount&&packHidden[i])continue;
+                if(ChipFx!=null&&d.Look==NativeShotLook.Part){ChipPart(d);continue;}
+                var color=Shade(d.R,d.G,d.B,d.A);if(d.A<.999f){DrawTranslucent(d,color,camera);continue;}
+                if(ChipFx!=null&&SmoothModel(d,color))continue;
                 var mesh=NativeShotShapes.Mesh(d.Shape);var p=mesh.Positions;int start=solid.Vertices.Count;
                 for(int k=0;k<p.Length;k+=3){d.M.Apply(p[k],p[k+1],p[k+2],out float x,out float y,out float z);solid.Vertices.Add(new Vector3(x,y,z));solid.Colors.Add(color);}
                 var tris=mesh.Indices;for(int k=0;k<tris.Length;k++)solid.Indices.Add(start+tris[k]);

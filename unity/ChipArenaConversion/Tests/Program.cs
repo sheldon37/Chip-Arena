@@ -8,6 +8,7 @@ internal static class Program
         try
         {
             if(args.Length==1&&args[0]=="--tracers"){TracerChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--chip-looks"){ChipLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--projectile-rules"){ProjectileRuleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0)ProjectileRuleChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--revive-machine"){ReviveMachineChecks.Run(ProjectRoot());return 0;}
@@ -240,6 +241,7 @@ internal static class Program
             MenuStyleChecks.Run(root);
             WeaponFxChecks.Run(root,data);
             TracerChecks.Run(root);
+            ChipLookChecks.Run(root);
             MuzzleFlashChecks.Run(root);
             WeaponSkinChecks.Run(root,data);
             WeaponSocketChecks.Run(root,data);

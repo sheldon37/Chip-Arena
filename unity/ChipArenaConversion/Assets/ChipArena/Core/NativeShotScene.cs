@@ -100,6 +100,7 @@ namespace ChipArena.UnityConversion
             {
                 var p=NativeShotRules.Animate(s.Parts[i],time);NativeShotMath.Euler(p.EX,p.EY,p.EZ,out double qx,out double qy,out double qz,out double qw);
                 Add(p.Shape,NativeShotAffine.Grouped(v.X,v.Y,v.Z,gx,gy,gz,gw,p.X,p.Y,p.Z,qx,qy,qz,qw,p.SX,p.SY,p.SZ),p.Color,false);
+                var part=Draws[Draws.Count-1];part.Look=NativeShotLook.Part;part.Anim=p.Anim;part.PartIndex=(byte)Math.Min(i,255);Draws[Draws.Count-1]=part;
             }
         }
         /// <summary>Ends a frame: forgets ids not seen this frame and steps the sparks and beams by dt (after this frame's spawns).</summary>

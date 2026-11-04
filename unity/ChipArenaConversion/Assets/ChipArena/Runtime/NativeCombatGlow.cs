@@ -121,10 +121,10 @@ namespace ChipArena.UnityConversion
         private static NativePropBody PropById(NativeArena arena,string id){var props=arena.Props;for(int i=0;i<props.Count;i++){var p=props[i];if(p!=null&&p.Definition.id==id)return p;}return null;}
         private void AddShot(in NativeShotView v,float clock,Vector3 camera)
         {
-            if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);bool round=v.Kind==NativeShotKind.Bullet&&(NativeTracerFx.Traced(v)||NativeBowWire.Is(v.Spec));
+            if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);bool round=v.Kind==NativeShotKind.Bullet&&(NativeTracerFx.Traced(v)||NativeBowWire.Is(v.Spec)||v.SwordBeam||v.Bowling);
             // A gun round or an arrow draws its own needle (NativeTracerPresentation.cs); the spill lights go to the shots that glow first.
             glowDistances.Add((position-camera).sqrMagnitude+(round?1e6:0));
-            glowShots.Add(new ShotGlow{Key=NativeShotScene.Key(v.Kind,v.Id),Position=position,Radius=(float)v.Radius,Halo=NativeShotRules.HaloColor(v,clock),Trail=NativeShotRules.TrailColor(v,clock),Width=(float)NativeShotRules.TrailWidth(v),Traced=!round&&NativeShotRules.HasTrail(v)&&!(MagicLooks&&NativeMagicFx.Owns(v)),NoHalo=round||MagicLooks&&NativeMagicFx.Owns(v),Intensity=(float)NativeShotRules.LightIntensity(v)*(round?.4f:1),Range=(float)NativeShotRules.LightRange(v),HaloShare=NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None?.6f:1});
+            glowShots.Add(new ShotGlow{Key=NativeShotScene.Key(v.Kind,v.Id),Position=position,Radius=(float)v.Radius,Halo=NativeShotRules.HaloColor(v,clock),Trail=NativeShotRules.TrailColor(v,clock),Width=(float)NativeShotRules.TrailWidth(v),Traced=!round&&NativeShotRules.HasTrail(v)&&!(MagicLooks&&NativeMagicFx.Owns(v)),NoHalo=round||MagicLooks&&NativeMagicFx.Owns(v),Intensity=(float)NativeShotRules.LightIntensity(v)*(round?.4f:1),Range=(float)NativeShotRules.LightRange(v),HaloShare=NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None?.6f:v.Kind==NativeShotKind.Ability?NativeChipLooks.HaloShare(v.Ability):1});
         }
         public void Render(NativeArena arena,Camera camera,Camera viewCamera,bool first,Dictionary<int,CapturedAnimation.Player> rigs,CapturedAnimation.Player viewRig,Matrix4x4? viewStaff,bool submitDraws=true)
         {

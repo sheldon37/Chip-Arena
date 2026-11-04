@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Shader modes (NativeWeaponFx.shader TEXCOORD0.z) and glow profiles (TEXCOORD0.w).</summary>
         public const float Petal=0,Crescent=1,Ribbon=2,GlowMode=3,WispMode=4,StreakMode=5,FlameMode=6,ShardMode=7;
         public const float Soft=0,HotCore=1,RingProfile=2,Sparkle=3;
+        /// <summary>The petal mode's other oriented cards (TEXCOORD0.w): a chip part's ring (x, y -1..1) and a flying blade's crescent (x tip to tip, y inner to outer).</summary>
+        public const float RingCard=1,BladeCard=2;
         /// <summary>The pack muzzle flash's modes (Core NativeMuzzleFx sheets): the flipbook flame card along the barrel (an axis
         /// card, TEXCOORD0.w the frame, negative mirrored) and the burst sprite (a billboard), drawn only by a family's material.</summary>
         public const float SheetFlameMode=8,SheetBurstMode=9;

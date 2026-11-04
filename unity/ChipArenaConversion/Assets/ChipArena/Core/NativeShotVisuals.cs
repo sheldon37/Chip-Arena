@@ -118,7 +118,9 @@ namespace ChipArena.UnityConversion
     /// <summary>The statsFor(p.mods) values chip-effects.ts reads, plus the raw velocity and meteor stacks.</summary>
     public struct NativeShotModules{public double Bounces,Homing,Split,Pierces,Impulse,Shrapnel,Pong,Boomerang,Zigzag,Vacuum,LifeSteal;public int Velocity,Meteor;}
     /// <summary>One opaque (A=1) or translucent part to draw: a shape, its world transform and its linear colour.</summary>
-    public struct NativeShotDraw{public NativeShotShape Shape;public NativeShotAffine M;public float R,G,B,A;}
+    public struct NativeShotDraw{public NativeShotShape Shape;public NativeShotAffine M;public float R,G,B,A;
+        /// <summary>What the presentation makes of it (NativeChipLooks): a chip part's animation and its index among its shot's parts.</summary>
+        public NativeShotLook Look;public NativeShotRules.PartAnim Anim;public byte PartIndex;}
 
     /// <summary>Pure colour, timing and shape rules of the source projectile visuals (renderer.ts, projectile-glow.ts, chip-effects.ts).</summary>
     public static class NativeShotRules

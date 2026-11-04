@@ -357,6 +357,7 @@ namespace ChipArena.UnityConversion
             // A school bolt's model gives way to its pack head (drawn in ShotFx) from the next frame.
             if(shots!=null)shots.PackHeads=PackLooks;
             if(shots!=null)shots.TracerRounds=true;
+            if(shots!=null)shots.ChipFx=draw;
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
             // The muzzle lights: the nearest shooters the tier, Combat glow, Reduced effects and Alarm lights allow.
             NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);muzzleLights.Resolve(new NVector3(eye.x,eye.y,eye.z),lights,gain);NativeMuzzleLights.Upload(muzzleLights);
@@ -370,7 +371,7 @@ namespace ChipArena.UnityConversion
             if(!emitters.TryGetValue(key,out var e))
             {
                 e=spareEmitters.Count>0?spareEmitters.Pop():new Emitter();e.Origin=e.Last=at;e.LastAt=now;e.Carry=0;e.Emitted=0;e.Count=0;e.Seed=key*2654435761L+17;e.Round=false;e.Bolt=v.Kind==NativeShotKind.Bullet;e.Id=v.Id;e.Spec=v.Spec;e.Key=key;
-                e.Halo=NativeWeaponFxShapes.Lin(NativeShotRules.HaloColor(v,now));e.Radius=NativeTrailFx.Radius(v.Radius);emitters.Add(key,e);
+                e.Halo=NativeWeaponFxShapes.Lin(NativeShotRules.HaloColor(v,now));e.Radius=NativeTrailFx.Radius(v.Ability=="ball-lightning"?Math.Min(v.Radius,NativeChipLooks.LightningGlow):v.Radius);emitters.Add(key,e);
             }
             e.Frame=weaponFrame;var velocity=new Vector3((float)v.VX,(float)v.VY,(float)v.VZ);
             e.Head=at;if(velocity.sqrMagnitude>1e-4f)e.Dir=velocity.normalized;e.Speed=velocity.magnitude;

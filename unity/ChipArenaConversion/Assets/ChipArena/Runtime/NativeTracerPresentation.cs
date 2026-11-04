@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         // ---- each frame ----
         private void TracersBegin(NativeArena arena,Camera camera)
         {
-            tracerViewer=ViewSeat(arena);tracerSheaths=tracerHeads=roundRays=0;tracerEye=camera!=null?camera.transform.position:Vector3.zero;tracerPixel=camera!=null&&camera.pixelHeight>0?2*Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad)/camera.pixelHeight:.001f;
+            tracerViewer=ViewSeat(arena);tracerSheaths=tracerHeads=roundRays=chipBlades=0;tracerEye=camera!=null?camera.transform.position:Vector3.zero;tracerPixel=camera!=null&&camera.pixelHeight>0?2*Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad)/camera.pixelHeight:.001f;
             // The rounds an event has already landed (a body's or a prop's): its own effects answer them.
             if(!ReferenceEquals(roundHitArena,arena)||roundHitGeneration!=arena.Generation){roundHits.Clear();roundHitEvent=0;roundHitArena=arena;roundHitGeneration=arena.Generation;roundDrawn.Clear();hitscanEvent=0;}
             int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest<roundHitEvent)roundHitEvent=0;
@@ -151,12 +151,55 @@ namespace ChipArena.UnityConversion
         /// <summary>One gun round or arrow this frame (a first sight fixes its look and its path's start), or any other shot (ShotFx).</summary>
         private void RoundFx(NativeWeaponFxDraw draw,NativeArena arena,NativeBullet b,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye)
         {
+            if(v.SwordBeam||v.Bowling){ChipShotFx(draw,arena,b,v,now,q,low,trails,eye);return;}
             bool arrow=NativeBowWire.Is(v.Spec);if(!arrow&&!NativeTracerFx.Traced(v)){ShotFx(draw,v,now,q,low,trails,eye);return;}
             long key=NativeShotScene.Key(v.Kind,v.Id);var at=new Vector3((float)v.X,(float)v.Y,(float)v.Z);var velocity=new Vector3((float)v.VX,(float)v.VY,(float)v.VZ);
             if(!emitters.TryGetValue(key,out var e)){e=spareEmitters.Count>0?spareEmitters.Pop():new Emitter();RoundBegin(e,arena,b,v,at,velocity,arrow,now,q,low);emitters.Add(key,e);}
             // A guest past its newest frame carries a round on by its velocity (NativeShotTracker.Present): never through a wall.
             if(arena.Replica&&!arena.ReplaySampledShots&&now>arena.Time&&roundRays<RoundRaysPerFrame){var step=at-e.Head;float reach=step.magnitude;if(reach>.01f){roundRays++;if(arena.PhysicsWorld.Raycast(e.Head,step/reach,out var wall,reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))at=wall.point;}}
             e.Frame=weaponFrame;e.Spent=false;RoundStep(e,key,v,at,velocity,b.Velocity,now,q,low);RoundDraw(draw,e,eye,now,trails,1,velocity.magnitude);
+        }
+        // Blade Runner's blade (all of it here, its source box hidden) and what Bowling Club's ball adds to its model (NativeShotPresentation draws the ball):
+        // the shot's colour, quiet on a friend's and running red on a foe's in team modes (Core NativeChipLooks).
+        private int chipBlades;
+        private void ChipShotFx(NativeWeaponFxDraw draw,NativeArena arena,NativeBullet b,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye)
+        {
+            var at=new Vector3((float)v.X,(float)v.Y,(float)v.Z);var velocity=new Vector3((float)v.VX,(float)v.VY,(float)v.VZ);float speed=velocity.magnitude;if(!(speed>.01f))return;
+            Vector3 dir=velocity/speed;float near=NativeChipLooks.Near((at-eye).magnitude);if(!(near>.02f))return;float flown=Mathf.Max(0,(now-b.Born)*speed);
+            int firer=b.Original!=0?b.Original:b.Owner;var side=NativeTracers.Side(tracerViewer,NativeShotViews.Seat(arena,firer),arena.Match.Teams,arena.Match.Cooperative);
+            var hue=NativeWeaponFx.Linear(NativeShotRules.HaloColor(v,now));if(side==NativeTracerSide.Enemy)hue=FxColor.Lerp(hue,NativeWeaponFx.Linear(NativeTracers.HostileEdge),.5f);float loud=near*(side==NativeTracerSide.Ally?.55f:1);
+            var tint=new Color(hue.R,hue.G,hue.B,0);
+            if(v.SwordBeam)
+            {
+                NativeChipLooks.BladeFrame(TN(dir),v.Id,out var s,out var l);NVector3 d0=TN(dir);int segments=NativeChipLooks.BladeSegments(q,low),echoes=chipBlades<NativeChipLooks.BladeEchoLimit?NativeChipLooks.BladeEchoes(q,low):0;chipBlades++;
+                for(int k=0;k<=echoes;k++)
+                {
+                    NativeChipLooks.BladeEcho(k,out float back,out float size,out float gain);if(back>flown)break;
+                    var c=at-dir*back;var col=tint*(NativeChipLooks.BladeGain*gain*loud);col.a=0;int n=k==0?segments:Mathf.Max(4,segments-4);float u0=0;
+                    Vector3 i0=c+TU(NativeChipLooks.BladePoint(0,0,s,l,d0,size)),o0=c+TU(NativeChipLooks.BladePoint(0,1,s,l,d0,size));
+                    for(int j=1;j<=n;j++)
+                    {
+                        float u=j/(float)n;Vector3 i1=c+TU(NativeChipLooks.BladePoint(u,0,s,l,d0,size)),o1=c+TU(NativeChipLooks.BladePoint(u,1,s,l,d0,size));
+                        draw.Quad(false,i0,i1,o1,o0,new Vector2(u0,0),new Vector2(u,0),new Vector2(u,1),new Vector2(u0,1),col,NativeWeaponFxDraw.Petal,NativeWeaponFxDraw.BladeCard);
+                        i0=i1;o0=o1;u0=u;
+                    }
+                }
+                // Each tip draws a thin wake along the way it came: the blade's direction, without a glow.
+                if(trails)
+                {
+                    var wake=tint*(NativeChipLooks.BladeWake*loud);wake.a=0;float reach=Mathf.Min(flown,NativeChipLooks.BladeWakeLength);
+                    if(reach>.05f)for(int t=0;t<2;t++){var tip=at+TU(NativeChipLooks.BladePoint(t,1,s,l,d0,1));draw.Axis(false,tip-dir*reach,tip,wake,.035f,NativeWeaponFxDraw.StreakMode,.95f);}
+                }
+                return;
+            }
+            float radius=(float)v.Radius;var rim=tint*(NativeChipLooks.BallRim*loud);rim.a=0;draw.Glow(false,at,rim,2*radius/.62f,NativeWeaponFxDraw.RingProfile);
+            // The highlight on the side toward the eye and the sky.
+            var toward=(eye-at).normalized+Vector3.up*.7f;draw.Glow(false,at+toward.normalized*(radius*1.04f),new Color(NativeChipLooks.BallGlint*near,NativeChipLooks.BallGlint*near,NativeChipLooks.BallGlint*near,0),radius*.8f,NativeWeaponFxDraw.HotCore);
+            if(trails&&q>=.5f)
+            {
+                float reach=Mathf.Min(flown,speed*NativeChipLooks.BallWakeTail);var wake=tint*(NativeChipLooks.BallWake*loud);wake.a=0;
+                if(reach>.05f)draw.Axis(false,at-dir*reach,at-dir*radius,wake,radius*1.3f,NativeWeaponFxDraw.StreakMode,.98f);
+            }
         }
         private void RoundBegin(Emitter e,NativeArena arena,NativeBullet b,in NativeShotView v,Vector3 at,Vector3 velocity,bool arrow,float now,float q,bool low)
         {
@@ -171,7 +214,7 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                var w=NativeShotViews.Weapon(arena,v.Spec);e.Style=NativeTracers.Of(v.Spec,GunKitTracer(b,v),v.Id,speed,w!=null?(float)w.speed:0,v.Modules,v.Fire,v.Poison,side,q,low);e.Impact=NativeRoundImpacts.Gun(v.Spec);
+                var w=NativeShotViews.Weapon(arena,v.Spec);e.Style=NativeTracers.Of(v.Spec,GunKitTracer(b,v),v.Id,speed,w!=null?(float)w.speed:0,v.Modules,v.Fire,v.Poison,side,q,low);NativeChipLooks.HeavyTracer(ref e.Style,v.Radius);e.Impact=NativeRoundImpacts.Gun(v.Spec);
                 // A split fragment's tail starts where the round split (its Split event), so the fork shows.
                 if(v.Modules.Split>0)foreach(var ev in arena.Events)if(ev.Kind==EventKind.Split&&ev.Source==firer&&Mathf.Abs(ev.Time-now)<.2f&&(NativeArena.Vec(ev.Position)-at).sqrMagnitude<4){e.Path.Push(TN(NativeArena.Vec(ev.Position)));e.Boost=now;break;}
             }
