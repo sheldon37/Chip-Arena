@@ -254,7 +254,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The Central Station boss's Stationmaster on the model (its Runtime body file; no add wears him): a black frock coat, white
         /// gloves, grey hair, sunken pale skin, the eyes the windows' amber; his hat, watch and bell are the machine's bank's.</summary>
         public static readonly Variant Stationmaster=V("stationmaster",-1,false,"side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x8E8C86,0x14161C,0x0E1014,0xDCD6C4,0x0B0B0D},0xA2A698,
-            Body(70,0,20,10,25,40,0,0,0,100,75),new Build{Arm=1.05f,Forearm=1.05f,Shoulder=1.04f,Hand=1.08f},.2f,.04f,.3f,false,0xFFC070,decay:"cheek-l",blood:.1f);
+            Body(70,0,20,10,25,40,0,0,0,100,75),new Build{Arm=1.05f,Forearm=1.05f,Shoulder=1.04f,Hand=1.08f},.15f,.02f,.3f,false,0xFFC070,decay:"cheek-l");
         /// <summary>The kit given (the table above first: field initializers run in order).</summary>
         public static readonly bool Kitted=Kit();
         private static bool Kit()

@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // The Stationmaster on the player's model
         // ================================================================================================================
-        private ZombieBody stationBossRider;private bool stationBossRiderTried;private Vector3 stationBossRiderHandL,stationBossRiderHandR,stationBossRiderHead;private bool stationBossRiderShown;
+        private ZombieBody stationBossRider;private bool stationBossRiderTried;private Vector3 stationBossRiderHandL,stationBossRiderHandR,stationBossRiderHead,stationBossRiderChest;private bool stationBossRiderShown;
         private struct RiderBone{public Transform Bone;public Quaternion Rest;public int Joint,Toward;public float Share;}
         private RiderBone[] stationBossRiderBones;
         /// <summary>His size over the player's (the concept's: swollen, fused into the cab), and the pelvis's drop under the hips joint.</summary>
@@ -80,6 +80,7 @@ namespace ChipArena.UnityConversion
             if(!stationBossRiderShown)return Vector3.zero;
             if(j==NativeStationBossModel.SmRHand||j==NativeStationBossLook.WatchAt47||j==NativeStationBossLook.WatchAt48)return stationBossRiderHandR-NativeBossPoseApply.ToUnity(pose.Position[NativeStationBossModel.SmRHand]);
             if(j==NativeStationBossModel.SmLHand)return stationBossRiderHandL-NativeBossPoseApply.ToUnity(pose.Position[NativeStationBossModel.SmLHand]);
+            if(j==NativeStationBossModel.SmChest)return stationBossRiderChest-NativeBossPoseApply.ToUnity(pose.Position[NativeStationBossModel.SmChest]);
             if(j==NativeStationBossModel.SmHat)
             {
                 var head=NativeBossPoseApply.ToUnity(pose.Position[NativeStationBossModel.SmHead]);var hat=NativeBossPoseApply.ToUnity(pose.Position[NativeStationBossModel.SmHat]);
@@ -107,7 +108,7 @@ namespace ChipArena.UnityConversion
                 if(b.Toward>=0)q=NQuaternion.Slerp(q,pose.Rotation[b.Toward],b.Share);
                 b.Bone.rotation=NativeBossPoseApply.ToUnity(q)*b.Rest;
             }
-            stationBossRiderHandL=stationBossRiderBoneOf("hand_l",t);stationBossRiderHandR=stationBossRiderBoneOf("hand_r",t);stationBossRiderHead=stationBossRiderBoneOf("head",t);stationBossRiderShown=true;
+            stationBossRiderHandL=stationBossRiderBoneOf("hand_l",t);stationBossRiderHandR=stationBossRiderBoneOf("hand_r",t);stationBossRiderHead=stationBossRiderBoneOf("head",t);stationBossRiderChest=stationBossRiderBoneOf("spine_05",t);stationBossRiderShown=true;
             ZombieFlash(z,flash,eyes>0?1+eyes:0);
         }
         private readonly Dictionary<string,Transform> stationBossRiderNamed=new Dictionary<string,Transform>(StringComparer.Ordinal);

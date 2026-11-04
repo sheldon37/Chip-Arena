@@ -51,7 +51,7 @@ WINDOW_Z = (-3.45, -2.35, .95, 2.05)
 LEGS = 6
 CHAIN_LINKS, CABLE_LINKS, WINDOW_ARMS, TAIL_LINKS = 4, 3, 4, 3
 TAIL_LENGTH = .3
-WATCH_PIVOT = (.0052, -.2348, .1625)
+WATCH_PIVOT = (.0066, -.2412, .1586)
 PALM_LIFT = .14
 
 
@@ -572,8 +572,8 @@ def cab(t):
     bx(d, (0, .5, 5.36), (.32, .22, .24), 'iron')
     if t.mid:
         # The screw coupling hanging from its hook.
-        cy(d, (0, .5, 5.48), (0, .45, 5.68), .035, 'iron-mid', 6)
-        rg(d, (0, .42, 5.72), (1, 0, 0), .06, .016, 'iron-mid', t.s(10), 4)
+        cy(d, (0, .5, 5.48), (0, .45, 5.6), .035, 'iron-mid', 6)
+        rg(d, (0, .42, 5.64), (1, 0, 0), .06, .016, 'iron-mid', t.s(10), 4)
     for s in (-1, 1):
         ca, sa = math.cos(math.radians(24)), math.sin(math.radians(24))
         along = Vector((s * ca, 0, -sa))
@@ -600,7 +600,7 @@ def cab(t):
             # Bars of the jaw along the foot, bent like teeth.
             for k in range(8):
                 u = .08 + k * .2
-                bx(d, tip + along * u - lean * .4, (.05, .14 + .05 * (k % 2), .05), 'steel', tilted(rx=-18 + 12 * (k % 3), rz=s * (k * 7 - 10)))
+                bx(d, tip + along * u - lean * .35, (.05, .11 + .04 * (k % 2), .05), 'steel', tilted(rx=-18 + 12 * (k % 3), rz=s * (k * 7 - 10)))
     bx(d, (0, -.24, 5.0), (2.4, .08, .8), 'iron')
     if t.mid:
         # The suitcase crushed into the plough, its strap trailing.
@@ -691,11 +691,11 @@ def underframe(t):
                     cy(pc, (s * (xf + .03), y + .24, z + dz), (s * (xf + .03), y + .45, z + dz), .03, 'steel', 6)
     if t.mid:
         # Luggage lashed under the floor: a trunk and a suitcase in their straps, a pram's wheel: what they brought with them.
-        bx(pc, (.5, -.44, .55), (.7, .3, .42), 'case', tilted(ry=14, rz=-6))
-        bx(pc, (.5, -.28, .55), (.74, .03, .05), 'leather', tilted(ry=14, rz=-6))
-        bx(pc, (-.55, -.45, -.5), (.5, .26, .36), 'case-blue', tilted(ry=-22, rz=8))
+        bx(pc, (.5, -.25, .55), (.7, .3, .42), 'case', tilted(ry=14, rz=-6))
+        bx(pc, (.5, -.09, .55), (.74, .03, .05), 'leather', tilted(ry=14, rz=-6))
+        bx(pc, (-.55, -.28, -.5), (.5, .26, .36), 'case-blue', tilted(ry=-22, rz=8))
         for x0, z0 in ((.2, .55), (.8, .55), (-.7, -.5), (-.4, -.5)):
-            bx(pc, (x0, -.12, z0), (.03, .5, .05), 'leather')
+            bx(pc, (x0, -.02, z0), (.03, .42, .05), 'leather')
         # Flesh sagging out of the floor between the frames.
         fl = Piece('under-flesh')
         for c, r in (((-.3, -.02, -3.1), (.5, .16, .42)), ((.42, .0, -.2), (.4, .15, .5)), ((-.5, .0, 2.65), (.34, .13, .3))):
@@ -988,6 +988,31 @@ def wristwatch(pc, centre, axis, radius, t, out):
     cy(pc, f + o * .012, f + o * .018, .04, 'amber', t.s(10))
 
 
+def passenger_arm(d, base_r, y, a, length, size, t, fin='flesh', curl=.8):
+    """A passenger's arm out of the bundle at height y and angle a round the limb: reaching and clawing, a sleeve at its root."""
+    base = Vector((base_r * math.cos(a), y, base_r * math.sin(a)))
+    out = Vector((math.cos(a), -.25, math.sin(a))).normalized()
+    side = Vector((-math.sin(a), 0, math.cos(a)))
+    wrist = base + out * length + side * .06 + Vector((0, -.05, 0))
+    tu(d, [base - out * .05, base + out * length * .5 + Vector((0, .04, 0)), wrist], 0, fin, t.s(7, 4), radii=[size * .62, size * .52, size * .38])
+    tu(d, [base - out * .03, base + out * length * .32 + Vector((0, .025, 0))], 0, 'cloth%d' % (int(a * 3) % 6), t.s(7, 4), radii=[size * .74, size * .68])
+    hand(d, wrist, (out + Vector((0, -.2, 0))).normalized(), side, size, fin, t, curl=curl)
+
+
+def passenger_face(d, base_r, y, a, size, t):
+    """A face pushing out through the bundle, its eyes shut and its mouth open; a fold of flesh round it."""
+    n = Vector((math.cos(a), 0, math.sin(a)))
+    c = Vector((base_r * math.cos(a), y, base_r * math.sin(a)))
+    side = Vector((-math.sin(a), 0, math.cos(a)))
+    sp(d, c, (size, size * 1.22, size), 'flesh-pale', t.s(12), t.s(8))
+    rg(d, c - n * size * .15, n, size * 1.0, size * .22, 'flesh-dark', t.s(14), t.s(6, 4))
+    if t.fine:
+        sp(d, c + n * size * .92 + Vector((0, -size * .42, 0)), (size * .34, size * .42, size * .14), 'black', 8, 5)
+        for sg in (-1, 1):
+            sp(d, c + n * size * .86 + side * sg * size * .38 + Vector((0, size * .24, 0)), (size * .17, size * .1, size * .08), 'black', 6, 4)
+        sp(d, c + n * size * 1.0, (size * .1, size * .16, size * .1), 'flesh', 6, 4)
+
+
 def leg_wheel(i, t):
     """The bogie wheel the leg grows from: a spoked iron wheel with a bright worn tread and flange, turned about x (the joint spins it)."""
     s = side_of(i)
@@ -1058,13 +1083,14 @@ def leg_thigh(i, t):
         for k in range(3):
             a = 2.2 + k * .22
             cy(d, (w * 1.0 * math.cos(a), -L * .32, w * 1.0 * math.sin(a)), (w * 1.02 * math.cos(a), -L * .32, w * 1.02 * math.sin(a)), .02, 'brass', 6)
-    if t.fine:
+    if t.mid:
+        # What the limb is made of, coming apart: an arm reaching out of it, a face in it.
         a = 1.2 + i * 1.1
-        base = Vector((w * .6 * math.cos(a), -L * .56, w * .6 * math.sin(a)))
-        out = Vector((math.cos(a), -.3, math.sin(a))).normalized()
-        wrist = base + out * .34
-        tu(d, [base, base + out * .17, wrist], 0, 'flesh', 7, radii=[.07, .06, .045])
-        hand(d, wrist, out, Vector((-math.sin(a), 0, math.cos(a))), .12, 'flesh', t, curl=.8)
+        passenger_arm(d, w * .62, -L * .56, a, .36, .13, t)
+        passenger_face(d, w * .66, -L * .3, a + 2.4, .13, t)
+    if t.fine:
+        passenger_arm(d, w * .6, -L * .72, a + 3.6, .3, .11, t, 'flesh-pale')
+        passenger_face(d, w * .58, -L * .8, a + 1.3, .1, t)
     return [pc.make(), d.make()]
 
 
@@ -1103,6 +1129,9 @@ def leg_shin(i, t):
             a = k * 2.2 + i * .7
             pts = cm([(w * .6 * math.cos(a), -L * .24, w * .6 * math.sin(a)), (w * .52 * math.cos(a + .5), -L * .55, w * .52 * math.sin(a + .5)), (w * .38 * math.cos(a), -L * .84, w * .38 * math.sin(a))], 3)
             tu(d, pts, .011, 'vein', 4)
+        passenger_arm(d, w * .52, -L * .42, .7 + i * 1.9, .3, .1, t, 'flesh-pale')
+    if t.fine:
+        passenger_face(d, w * .46, -L * .5, 2.8 + i * 1.4, .085, t)
     return [pc.make(), d.make()]
 
 
@@ -1489,8 +1518,8 @@ def top_hat(t):
 
 
 def hatch(t):
-    """He is grown into the roof here: an iron hatch ring, its lid thrown back, torn roof round it, flesh rising round his waist, the frock
-    coat's skirt spread over it, cables down into the cab."""
+    """He is grown into the roof here: an iron hatch ring, its lid thrown back, torn roof round it, flesh rising round his waist in lumps
+    with passengers' hands gripping him, the frock coat's skirt spread over it, cables down into the cab."""
     r = RIDER
     pc = Piece('hatch')
     pc.sharp = 35
@@ -1502,23 +1531,60 @@ def hatch(t):
             cy(pc, (.56 * r * math.cos(a), .04, .56 * r * math.sin(a)), (.56 * r * math.cos(a), .1, .56 * r * math.sin(a)), .03, 'rivet', 6)
     fl = Piece('hatch-flesh')
     fl.sharp = 80
-    sp(fl, (0, .12 * r, 0), (.48 * r, .32 * r, .38 * r), 'flesh-dark', t.s(16), t.s(9))
+    sp(fl, (0, .06 * r, 0), (.42 * r, .22 * r, .36 * r), 'flesh-dark', t.s(16), t.s(9))
     if t.mid:
-        sp(fl, (.38 * r, .02, -.26 * r), (.22 * r, .16 * r, .24 * r), 'flesh', t.s(10), t.s(6))
-        sp(fl, (-.34 * r, .02, .26 * r), (.2 * r, .14 * r, .2 * r), 'flesh-dark', t.s(10), t.s(6))
+        rng = random.Random(47)
+        for k in range(9 if t.fine else 4):
+            a = rng.random() * 6.283
+            d = .3 + rng.random() * .14
+            sp(fl, (d * r * math.cos(a), .1 * r + rng.random() * .1, d * r * math.sin(a)), (.13 * r, .1 * r + rng.random() * .05, .13 * r), 'flesh' if k % 3 else 'flesh-pale', t.s(9), t.s(6))
         for a in (.8, 2.5, 4.0, 5.4):
-            tu(fl, cm([(.3 * r * math.cos(a), .32 * r, .24 * r * math.sin(a)), (.46 * r * math.cos(a + .2), .08 * r, .36 * r * math.sin(a + .2)), (.62 * r * math.cos(a + .3), -.02, .5 * r * math.sin(a + .3))], 3), .013, 'vein', 4)
-        tu(fl, cm([(-.2 * r, .3 * r, -.26 * r), (-.42 * r, .1 * r, -.5 * r), (-.56 * r, -.05, -.86 * r)], 4), .045, 'hose', t.s(6))
-        tu(fl, cm([(.18 * r, .34 * r, -.26 * r), (.36 * r, .1 * r, -.56 * r), (.42 * r, -.05, -.96 * r)], 4), .04, 'hose', t.s(6))
+            tu(fl, cm([(.24 * r * math.cos(a), .26 * r, .2 * r * math.sin(a)), (.42 * r * math.cos(a + .2), .1 * r, .34 * r * math.sin(a + .2)), (.6 * r * math.cos(a + .3), -.02, .48 * r * math.sin(a + .3))], 3), .013, 'vein', 4)
+        tu(fl, cm([(-.2 * r, .24 * r, -.26 * r), (-.42 * r, .1 * r, -.5 * r), (-.56 * r, -.05, -.86 * r)], 4), .045, 'hose', t.s(6))
+        tu(fl, cm([(.18 * r, .26 * r, -.26 * r), (.36 * r, .1 * r, -.56 * r), (.42 * r, -.05, -.96 * r)], 4), .04, 'hose', t.s(6))
+    if t.fine:
+        # Hands out of the mass, closing on his coat.
+        for a in (.5, 2.1, 3.7, 5.1):
+            c = Vector((.44 * r * math.cos(a), .12 * r, .38 * r * math.sin(a)))
+            u = Vector((-math.cos(a), .45, -math.sin(a))).normalized()
+            hand(fl, c, u, Vector((-math.cos(a), -.1, -math.sin(a))), .12, 'flesh-pale', t, curl=.9)
     # The coat's skirt laid out round the waist, a fold at a time.
     sk = Piece('hatch-coat')
     sk.sharp = 55
     n = 10 if t.fine else 6
     for k in range(n):
         a = 360.0 * k / n
-        x, z = math.sin(math.radians(a)) * .46 * r, math.cos(math.radians(a)) * .42 * r
-        bx(sk, (x, .1 * r, z), (.32 * r, .36 * r, .08 * r), 'coat' if k % 3 else 'coat-dark', tilted(ry=a, rx=26))
+        x, z = math.sin(math.radians(a)) * .34 * r, math.cos(math.radians(a)) * .3 * r
+        bx(sk, (x, .2 * r, z), (.26 * r, .3 * r, .05 * r), 'coat' if k % 3 else 'coat-dark', tilted(ry=a, rx=22))
     return [pc.make(), fl.make(), sk.make()]
+
+
+def uniform(t):
+    """What the Stationmaster wears over his frock coat, on his chest joint (Runtime: at his own spine_05, his model 1.8 times a pilot):
+    gold epaulettes with their fringes, a braid across the chest from the shoulder, brass buttons, the watch's chain, a lapel badge."""
+    k = 1.8
+    pc = Piece('uniform')
+    pc.sharp = 40
+    for s_ in (-1, 1):
+        at = Vector((s_ * .165 * k, .135 * k, -.005 * k))
+        bx(pc, at, (.115 * k, .016 * k, .085 * k), 'gold', tilted(rz=-s_ * 8))
+        if t.mid:
+            sp(pc, at + Vector((-s_ * .06 * k, .004, 0)), (.022 * k, .012 * k, .035 * k), 'brass', t.s(8), t.s(5))
+        n = 9 if t.fine else 4 if t.mid else 0
+        for f in range(n):
+            u = (f + .5) / n - .5
+            top = at + Vector((s_ * .056 * k, -.006, u * .08 * k))
+            tu(pc, cm([top, top + Vector((s_ * .012 * k, -.022 * k, 0)), top + Vector((s_ * .015 * k, -.045 * k, u * .006))], 2), .0052 * k, 'gold', t.s(5, 3))
+        for b in range(5 if t.mid else 0):
+            cy(pc, (s_ * .052 * k, (.085 - b * .046) * k, .118 * k), (s_ * .052 * k, (.085 - b * .046) * k, .124 * k), .0085 * k, 'brass', t.s(8, 4))
+    if t.mid:
+        # The braid: looped from the right shoulder across the chest to the third button.
+        rope = cm([(.14 * k, .118 * k, .07 * k), (.09 * k, .07 * k, .116 * k), (.0, .03 * k, .128 * k), (-.052 * k, -.008 * k, .124 * k)], 5)
+        tu(pc, rope, .0062 * k, 'gold', t.s(5, 3))
+        rope2 = cm([(.15 * k, .108 * k, .06 * k), (.1 * k, .04 * k, .112 * k), (.01 * k, -.012 * k, .126 * k), (-.052 * k, -.008 * k, .124 * k)], 5)
+        tu(pc, rope2, .005 * k, 'gold', t.s(5, 3))
+        bx(pc, (-.075 * k, .086 * k, .114 * k), (.032 * k, .022 * k, .006 * k), 'gold')
+    return [pc.make()]
 
 
 def tail_link(side, k, t):
@@ -1612,7 +1678,7 @@ def left_hand(t):
 def parts(t):
     """Every drawn joint and what makes it. Joints without one are only frames (the root, the Stationmaster's own body, which is the
     player's model)."""
-    table = {'body': body_parts, 'lamp': lamp_part, 'heart': heart_part, 'roof': roof_panel, 'markers': markers_part, 'cab-glow': cab_glow, 'sm-hips': hatch, 'sm-hat': top_hat, 'sm-r-hand': right_hand, 'sm-l-hand': left_hand,
+    table = {'body': body_parts, 'lamp': lamp_part, 'heart': heart_part, 'roof': roof_panel, 'markers': markers_part, 'cab-glow': cab_glow, 'sm-hips': hatch, 'sm-hat': top_hat, 'sm-r-hand': right_hand, 'sm-l-hand': left_hand, 'sm-chest': uniform,
              'watch-647': (lambda t: watch_hand(47, t)), 'watch-648': (lambda t: watch_hand(48, t))}
     for name in ('panto-low', 'panto-high', 'panto-head'):
         table[name] = (lambda t, n=name: pantograph(n, t))
