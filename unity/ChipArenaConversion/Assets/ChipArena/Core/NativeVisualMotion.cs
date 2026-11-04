@@ -110,11 +110,11 @@ namespace ChipArena.UnityConversion
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",
             AbilityIds=new[]{"frag-grenade"},AbilityStarts=new[]{"Armed-Cast-L-Attack2_start"},AbilityEnds=new[]{"Armed-Cast-L-Attack2_end"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // The Bombadier: a bundle of TNT in each fist (owner 2026-11-04: "holding TNTs instead of a grenade launcher. Modify animations however needed"), so the pack's bare-handed set (upright, the fists up by the chest, so the TNT
-        // shows from behind), its casts from the one-handed set. Held fire throws overhand, a hand at a time; the fists stay up by the chest (BombHold) on the run when it aims or has just thrown; a reload is the right hand going to the satchel on the hip.
+        // shows from behind), its casts from the one-handed set. Held fire throws overhand, a hand at a time; nothing is raised to aim (Layer: the stance's own arms carry on, so its Aim is only there to make the reload layer run); a reload is the right hand going to the satchel on the hip.
         // Its abilities are in BombUpper (thrown on the move, the arms only) and BombCast (the whole body).
         private static readonly Set Bomb=Build(new Set{Spec=NativeBombs.Spec,TechClips=new[]{BombThrowStart,BombThrowEnd,BombThrowStart+Mirror,BombThrowEnd+Mirror,TechThrowStart,TechThrowEnd,TechFlickStart,TechFlickEnd,BombHeaveStart,BombHeaveEnd,BombLay,BombClick,BombStoop,BombSlam},
             Idle="Unarmed-Idle",Jump="Unarmed-Jump",Flip="Unarmed-Jump-Flip",Fall="Unarmed-Fall",Land="Unarmed-Land",Block="Unarmed-Block",BlockHit="Unarmed-Block-GetHit1",Stunned="Unarmed-Stunned",Roll="Unarmed-Roll-Forward",
-            AirAttack="Unarmed-Fall",SprintAttack="Unarmed-Sprint",Attacks=new[]{BombThrowEnd},Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Aim=new[]{BombHold,BombHold,BombHold},Reload=BombReload,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward"},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
+            AirAttack="Unarmed-Fall",SprintAttack="Unarmed-Sprint",Attacks=new[]{BombThrowEnd},Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Aim=new[]{"Unarmed-Idle","Unarmed-Idle","Unarmed-Idle"},Reload=BombReload,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward"},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
         // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
         // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
         // cast likewise, on the upper body. Mirrored reactions swap sides.
@@ -249,6 +249,7 @@ namespace ChipArena.UnityConversion
             {
                 float len=clips.Length(s.Reload);up=new Upper{A=s.Reload,TimeA=len*Clamp01((time-a.ReloadAt)/Math.Max(.05f,a.ReloadUntil-a.ReloadAt)),Raised=true};return true;
             }
+            if(s.Spec==NativeBombs.Spec)return false;
             // A gun's Q/E: its own clip (a throw's wind-up to the release, then the throw; a flourish at its own pace), or held on
             // the aim (AbilityRaise) for its cast and a little after.
             bool casting=false;
@@ -500,7 +501,7 @@ namespace ChipArena.UnityConversion
             }
             return false;
         }
-        private const string BombThrowStart="Armed-Cast-R-Attack3_start",BombThrowEnd="Armed-Cast-R-Attack3_end",BombHold="Unarmed-Idle-Static",BombReload="Armed-Unsheath-R-FromArmed-Hips",BombHeaveStart="Unarmed-Cast-Dual-Attack1_start",BombHeaveEnd="Unarmed-Cast-Dual-Attack1_end",
+        private const string BombThrowStart="Armed-Cast-R-Attack3_start",BombThrowEnd="Armed-Cast-R-Attack3_end",BombReload="Armed-Unsheath-R-FromArmed-Hips",BombHeaveStart="Unarmed-Cast-Dual-Attack1_start",BombHeaveEnd="Unarmed-Cast-Dual-Attack1_end",
             BombLay="Armed-Pickup-Right",BombClick="Armed-Activate-Left",BombStoop="2Hand-Sword-Crouch-Idle",BombSlam="2Hand-Sword-Attack11";
         private const float BombSlamIn=.2f,BombSlamFrom=.46f,BombSlamHit=.9f;
         /// <summary>What the Bombadier throws on the move: the arms only, the legs carrying on. Held fire goes overhand from each fist in turn (the left is the bake's mirror), a sticky fuse is a snap of the right, a mine a flick of the left, and the switch a press of the left thumb.</summary>
