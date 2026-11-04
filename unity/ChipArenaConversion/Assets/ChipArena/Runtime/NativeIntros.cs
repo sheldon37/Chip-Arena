@@ -86,6 +86,8 @@ namespace ChipArena.UnityConversion
             entranceReveal??=b=>entranceScript.Solid(entranceTime,b);bool solid=script.Solid(t,CapturedRig.Chest)>.5f;
             // On its visual body once built in (the Sheldon intro's hood and face over the model's head).
             string keepAccent=actor.AccentColor,scriptAccent=script.AccentAt(t);if(scriptAccent!=null)actor.AccentColor=scriptAccent;
+            // The Last Warning holds TNT whatever the pilot carries into the match, so the fists close on that (VisualHold).
+            string keepSpec=actor.SourceSpec;if(script is NativeBombadierIntro)actor.SourceSpec=NativeBombs.Spec;
             VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
@@ -93,7 +95,7 @@ namespace ChipArena.UnityConversion
             EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
-            VisualBodiesShown();actor.AccentColor=keepAccent;
+            VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }

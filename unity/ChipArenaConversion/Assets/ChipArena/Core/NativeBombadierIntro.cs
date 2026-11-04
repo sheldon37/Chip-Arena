@@ -224,7 +224,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The stick: in the palm, or on its way from the palm at the toss to the palm at the catch, a high arc.</summary>
         private Vector3 BallAt(float t)
         {
-            var lift=new Vector3(0,.1f,0);if(t<TossAt||t>=CatchAt)return Hand(t,t)+lift;float u=(t-TossAt)/(CatchAt-TossAt);return Vector3.Lerp(Hand(TossAt,t),Hand(CatchAt,t),u)+lift+new Vector3(0,.52f*4*u*(1-u),0);
+            var lift=new Vector3(0,.1f,0);if(t<TossAt||t>=CatchAt)return Hand(t,t)+lift;float u=(t-TossAt)/(CatchAt-TossAt);return Vector3.Lerp(Hand(TossAt,t),Hand(CatchAt,t),u)+lift+new Vector3(0,.4f*4*u*(1-u),0);
         }
         /// <summary>One stick of TNT from NativeTnt's pieces, its axis q's y.</summary>
         private static void Stick(INativeEntranceProps props,NativeTntPiece[] pieces,Vector3 at,Quaternion q,float length){foreach(var p in pieces)props.Piece(p.Shape,p.Glow,at+Vector3.Transform(p.At*length,q),q,p.Size*length,p.Tint);}
