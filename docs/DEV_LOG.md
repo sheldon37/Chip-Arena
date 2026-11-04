@@ -26,7 +26,7 @@
 - **Checks:** full `CoreTests` in a clean LF checkout of `6cf31aa3`: exit 0, 955 PASS groups, new `--station-boss-body` (the script's joints against Core, the bank before the sculpt, the kinds' guards; on the local bank also budgets and the hull inside the carriage's box); no source pin broken; `git diff --check` clean; Unity assembly compile passes.
 - **Not checked:** played live at speed by a person; a real Expedition boss fight against the authority (only the DEV preview); the boss's moves on tier 1 (seen standing and walking only); tier 2, past 60 m, seen only in Blender, because my capture placed the pilot somewhere it did not stay; online, guests or the killcam; the Undertow's full hold and drag with a real target; Classic mode; sound.
 - **Known:** the commons' front falls have the same floating plank (about one fall in four: `NativeHordeGait.Death`), left alone here as not this task's. The commons past 43 m are still voxel. The Stationmaster's braid is fitted by eye.
-- **Merged and published:** being merged and built with this entry; the result is added here once the build reports.
+- **Merged and published:** shared and builder `1d1709a9`: BUILD SUCCEEDED, Publication: succeeded, build `ed7bc618` (revision 639294282872359499, 222.7 MiB) on the test channel; the build report lists `ChipArenaPackBoss647.bytes` (9.3 MB). The Drive zip gained only that bank and its listing; the old zip is `LocalAssets-before-647.zip`. No live, production or Site release.
 
 ## 2026-11-04 — Astra: straight projectiles and selective rifle hitscan
 
