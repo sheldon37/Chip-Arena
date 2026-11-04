@@ -6,7 +6,7 @@ afterwards to make sure things look great."
 
 Owner revision, 2026-11-03: techniques replace either Q or E, selected per weapon in Customize; rifle permits E only because Q is scope. Both original abilities remain the default. There is no third slot or separate technique cooldown. This revision supersedes the original key-1 proposal.
 
-Status: playable. Astra's rules and saved choice (PRs #321 and #322), Claude's Customize picker, HUD cards and presentation. Receipts are in DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
+Status: playable, both sets. Astra's rules and saved choice (PRs #321, #322 and #325), Claude's Customize picker, HUD cards and presentation. One open rules bug: Parting Line (see "The second set, reviewed"). Receipts are in DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
 
 ## Why it isn't power creep
 
@@ -42,7 +42,7 @@ Use the selected slot's existing keyboard/controller binding: `InputFrame.Abilit
 ## The second set (owner 2026-11-04)
 
 "Add additional abilities for each weapon, again same concept. Creative, good animations and effects", with more to come ("6+ more"). Same rules of the set as above: a trade, utility first, a visible counter. Each does something its
-weapon cannot already do. The presentation is built and in the Dev Sandbox; **rules are Astra's** (the contract is below). Until a content row is live the Locker does not offer it.
+weapon cannot already do. **Rules are Astra's** (#325, the contract is below), the presentation Claude's; all twelve are offered in Customize. A technique whose content row is not live is not offered.
 
 | Weapon | Technique (`id`) | What it does | Damage | Cd / cost | The counter |
 | --- | --- | --- | --- | --- | --- |
@@ -132,23 +132,34 @@ rule, hit timing, damage, cooldown or movement.
 | Piece | File |
 | --- | --- |
 | The record, the table, the preview loop | `Core/NativeTechnique.cs` |
-| The effects, pure functions of the record | `Core/NativeTechniqueFx.cs` |
+| The effects, pure functions of the record | `Core/NativeTechniqueFx.cs`, `Core/NativeTechniqueFxSecond.cs` |
 | Poses on the model's pack clips | `Core/NativeVisualMotion.cs` (`Technique`) |
 | Sounds | `Core/NativeTechniqueSounds.cs` |
-| The picker in Customize (Loadout) | `Runtime/NativeLockerUI.cs`, `Core/NativeLocker.cs` (`AddTechnique`) |
+| The picker in Customize (Loadout) | `Runtime/NativeLockerUI.cs`, `Core/NativeLocker.cs` (`AddTechniques`) |
 | The card sentence and the HUD card's state | `Core/NativeTechnique.cs` (`Text`, `Card`) |
-| HUD card, drawing, models | `Runtime/NativeFightHud.cs`, `Runtime/NativeTechniquePresentation.cs` |
+| HUD card, through-walls markers, drawing, models | `Runtime/NativeFightHud.cs`, `Runtime/NativeCombatHud.cs`, `Runtime/NativeTechniquePresentation.cs` |
 | Checks | `Tests/TechniqueChecks.cs` (`CoreTests --techniques`) |
 
-**The picker.** Customize, Loadout: each slot's row shows that slot's own ability and, beside it, the weapon's technique, with an OR between them.
-The equipped card has the bright edge and the tick (a technique's in its own accent, the colour of its effects). A click swaps, flashing the card; a
+**The picker.** Customize, Loadout, Abilities: two slot tiles, Q and E, each with its key and what the slot holds now. Clicking a tile chooses the slot; under the tiles a library shows everything that slot can hold: its own ability and each of the weapon's techniques.
+The equipped card has the bright edge and the tick (a technique's in its own accent, the colour of its effects). A click swaps with a short pop; a
 technique already in the other slot says ON Q or ON E, and picking it here moves it. A swap is part of the look: Save Pilot stores and sends it,
-Revert restores it. The rifle's Q row keeps only the scope.
+Revert restores it. The rifle's Q tile says FIXED: it can still be opened to read the scope, and nothing there can be picked.
+
+Built for more abilities: the library has no fixed count. A few options share the full row; past that the cards keep `LkAbilityMin` (224 px) and wrap onto new rows, and the page scrolls. A card grows to fit up to five lines of its text. Seen with 2, 3 and 8+ options on a sized-down Game view; a very narrow window has only been worked out, not captured (about two columns at 1280 wide).
+
+**Adding an ability.** Nothing in the picker or the HUD names one:
+
+1. `Core/NativeTechnique.cs`: the id, a `Def` row in `All`, and its case in the preview's `Write` (the record's worked example). `Of(spec)` then offers it.
+2. The effect as a pure function of the record, in a partial of `NativeTechniqueFx`, with its case in the dispatch; its moments in `Core/NativeTechniqueSounds.cs`; its pose in `Core/NativeVisualMotion.cs`. A clip new to `TechClips` needs the motion bank rebaked and the Drive zip repacked before the builder sees it.
+3. Rules (Astra): the handler and a content row by id with `slot:"technique"`. The Locker offers it once the row is live.
+4. `Tests/TechniqueChecks.cs` loops over `All`, so its effect, card and text are checked with no new test. Add a pin for whatever it does differently.
 
 **The HUD.** The technique takes the card of the slot it replaced: RECAST in amber while a press would recast it, ACTIVE while it runs, then that
 slot's cooldown as this pilot's chips scale it, and LOW STAMINA or LOW MANA. While the shield stands as a wall or the greatsword is thrown, the rules refuse
 block and the other slot, so those cards say SHIELD OUT or BLADE OUT. A press refused for where it is aimed is below. A swapped E draws no field preview for the ability it replaced. Smoke hides a
 pilot's name and health bar from anyone outside the cloud.
+
+Each card asks only about its own slot: its own refusal, and the live record only when the record's `Kind` is its own id, so the other slot never claims ACTIVE. Bounty Round's marked target and, during each ping, the enemies within Sonar Dart's reach get a round icon with the distance, through walls, for the owner's side only (pilots and minions). Grave Walk hides the walker's name and bar, and closes the walker's own view in with a dark veil that follows the depth (`GraveDepth`).
 
 To see one: the Dev Sandbox, Preview Techniques, with the weapon in hand. The preview loops the weapon's technique from just in front of
 the pilot, since it does not know the world's surfaces or move anyone.
@@ -163,6 +174,13 @@ person Anchor Throw, Ignition Leap, Smoke Veil and Riposte; the picker by real c
 fixes came of it: the guard's arcs drew behind the pilot (`Dir` is the aim until a parry) and now face where the pilot faces, also dimly in first person; Ignition Leap's wings read as a stripe across the
 screen and are now shorter and swept back into a V. Not seen yet: Riposte's actual parry, a shot on the coin, Static Recall's damage on the line, a crowd, a guest or replay, a low
 graphics tier in Unity (the checks cover the thinning), a Windows build. 
+
+**The second set, reviewed (2026-11-04).** First the previews, in slow motion from the game's camera: all twelve in third person, and Shield Surf, Iron Vow, Recoil Burst, Slipstream and Grave Walk in first person. Then Astra's rules (`swaps=`, a real Q or E press on the arena clock, slow motion): all twelve fire from the swapped key with the right record and no exceptions, and their effects land where the rules put them.
+Fixes from it: Shield Surf's sparks moved to the board's sides, since behind the pilot is off-frame from the low camera. Slipstream rewritten: flat strips went white, now water on the floor with a tint and thin lines. Wildfire's burning line down from neon. A bigger hawk, which now also dives on the live record (`HitAt` is unknown until it strikes). Grave Walk's pool without its plate, as dark smoke raised off the floor with a violet rim. Recoil Burst's glare down with shock rings added. Sonar's ring at dart height removed, since it went edge-on as a line across the screen. A thicker wire, a stronger mark, and Iron Vow's blade seated in the hand.
+
+**Open, for Astra: Parting Line snaps the pilot back on every cast.** Seen on open floor and with a pillar behind (arena clock, `body` from the log): 5.32 hopping at 3.1 m, 5.50 back at `Point+up*.9`, standing in the burst. The hop's `wall` flag sets `Phase="line"` before `Release+.28` (`NativeMoreTechniques.MoreTechniqueMotion`; most likely the arc's descent meeting the floor, not confirmed). `MoreTechniqueMotion` then returns false, `NativeTechniqueRules.Moving` is still true, and `TechniqueMotion` falls into its anchor-throw branch, whose `RecastAt` of -100 puts the destination at `Point+up*.9` at once. The fix is `k.Kind=="parting-line"&&k.Phase=="hop"&&now<k.Release+.28f` in `Moving`, which guest prediction also reads; and the arc should not count the floor as a wall, or the hop ends short. The effect itself is right; it just needs the pilot to stay out of it.
+
+Not seen: a shot actually drawn into a real rod, a real mark's refund, Wildfire and Slipstream on a moving enemy, a real wire waiting armed (it snapped on the bot at once; seen armed in the preview), a guest or replay, a crowd, a low graphics tier in Unity, a Windows build.
 
 **A refused press.** A press the rules refuse for where it is aimed must not feel like a dead key (Grapple Line with no surface in 20 m, Static Recall with something on the line: a low
 counter is enough). While that holds the card says NO SURFACE, BLOCKED or NO FLOOR instead of READY or RECAST, without flaring each time the aim comes back; a press then puts the reason under the crosshair

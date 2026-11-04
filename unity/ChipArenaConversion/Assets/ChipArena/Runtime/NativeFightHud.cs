@@ -103,22 +103,26 @@ namespace ChipArena.UnityConversion
         private Card TechniqueCard(NativePilot p,NativeTechniques.Def td,string slot)
         {
             float t=arena.Time;var d=NativeTechniques.Row(content,td.Id);bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic";float cost=d!=null?(float)NativeAbilityRules.Cost(d,p.Stats):td.Cost;
-            var c=NativeTechniques.Card(NativeTechniques.Source?.Of(p.Seat.id),t,(slot=="q"?p.QReady:p.EReady)-t,d!=null?(float)NativeAbilityRules.Cooldown(d,p.Stats):td.Cooldown,melee?p.Stamina<cost:magic&&p.Mana<cost,melee?"LOW STAMINA":"LOW MANA",p==arena.Local?techniqueRefused:null);
-            float denied=Time.unscaledTime-techniqueDeniedAt,shake=prefs.reducedEffects||denied>=.3f?0:Mathf.Sin(denied*60)*(1-denied/.3f)*4;
+            var live=NativeTechniques.Source?.Of(p.Seat.id);if(live?.Kind!=td.Id)live=null;
+            var c=NativeTechniques.Card(live,t,(slot=="q"?p.QReady:p.EReady)-t,d!=null?(float)NativeAbilityRules.Cooldown(d,p.Stats):td.Cooldown,melee?p.Stamina<cost:magic&&p.Mana<cost,melee?"LOW STAMINA":"LOW MANA",p==arena.Local?(slot=="q"?techniqueRefusedQ:techniqueRefusedE):null);
+            float denied=Time.unscaledTime-techniqueDeniedAt,shake=prefs.reducedEffects||denied>=.3f||techniqueDeniedSlot!=slot?0:Mathf.Sin(denied*60)*(1-denied/.3f)*4;
             return new Card{Key=slot.ToUpperInvariant()+" · "+td.Name.ToUpperInvariant(),State=c.State,Icon=td.Icon,Ready=c.Ready,Active=c.Active,Recast=c.Recast,Low=c.Low,Held=c.Held,Dial=c.Dial,Shake=shake};
         }
         // A press the rules would refuse must not feel like a dead key. Once a frame, for my own pilot with a technique swapped in: why a press
         // would be refused for where it is aimed (the rules' own answer), which the card shows; and when a press lands anyway, the reason under
         // the crosshair, the card's shake and the error cue. A press still on cooldown says nothing: the card's count already does.
-        private string techniqueRefused,techniqueDeniedWhy;private float techniqueDeniedAt=-9;private bool techniquePressHeld;
+        private string techniqueRefusedQ,techniqueRefusedE,techniqueDeniedWhy,techniqueDeniedSlot;private float techniqueDeniedAt=-9;private bool techniqueHeldQ,techniqueHeldE;
         private void TechniqueAimCheck(NativePilot p)
         {
-            string slot=p==arena.Local?NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec):"";
-            techniqueRefused=slot==""?null:arena.TechniqueRefusal(p,in pending);
-            bool down=slot=="q"?pending.AbilityQ:slot=="e"&&pending.AbilityE,press=down&&!techniquePressHeld;techniquePressHeld=down;
-            if(!press||techniqueRefused==null)return;float t=arena.Time;
-            if(!NativeTechniqueRules.Recast(p.Technique,t)&&(slot=="q"?p.QReady:p.EReady)>t)return;
-            techniqueDeniedAt=Time.unscaledTime;techniqueDeniedWhy=techniqueRefused;nativeAudio?.UiCue(NativeUiSounds.Error,"ui",.5f);
+            bool mine=p==arena.Local;
+            techniqueRefusedQ=TechniqueSlotCheck(p,mine,"q",pending.AbilityQ,ref techniqueHeldQ);techniqueRefusedE=TechniqueSlotCheck(p,mine,"e",pending.AbilityE,ref techniqueHeldE);
+        }
+        private string TechniqueSlotCheck(NativePilot p,bool mine,string slot,bool down,ref bool held)
+        {
+            bool press=down&&!held;held=down;var td=mine?NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,slot):null;if(td==null)return null;
+            string why=arena.TechniqueRefusal(p,slot,in pending);if(!press||why==null)return why;float t=arena.Time;
+            if(!(p.Technique?.Kind==td.Id&&NativeTechniqueRules.Recast(p.Technique,t))&&(slot=="q"?p.QReady:p.EReady)>t)return why;
+            techniqueDeniedAt=Time.unscaledTime;techniqueDeniedWhy=why;techniqueDeniedSlot=slot;nativeAudio?.UiCue(NativeUiSounds.Error,"ui",.5f);return why;
         }
         // Under the floor in Grave Walk the edges of the view close in, so the pilot knows it is out of the fight, in any camera.
         private static readonly float[] UnderAt={0f,.5f,.8f,1f},UnderA={0f,.12f,.6f,.92f};

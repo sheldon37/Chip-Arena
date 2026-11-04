@@ -175,10 +175,11 @@ namespace ChipArena.UnityConversion
 
         // ---- Bow: Spirit Hawk ------------------------------------------------------------------------------------------
         /// <summary>Where the hawk is at `t`: out along the line, then down the curve to its strike, or on and up if it found no one.</summary>
+        public static bool HawkDives(NativeTechnique k)=>k.HitAt>-50||k.Phase=="dive";
         public static Vector3 HawkAt(NativeTechnique k,float t)
         {
             var from=N(k.From);var to=N(k.Point);if(t<k.Arm)return Vector3.Lerp(from,to,Clamp01((t-k.Release)/Math.Max(.05f,k.Arm-k.Release)));
-            if(k.HitAt>-50){float u=Clamp01((t-k.Arm)/Math.Max(.05f,k.HitAt-k.Arm));var strike=N(k.To);var mid=(to+strike)*.5f+Up*1.2f;return to*((1-u)*(1-u))+mid*(2*u*(1-u))+strike*(u*u);}
+            if(HawkDives(k)){var strike=N(k.To);float span=k.HitAt>-50?k.HitAt-k.Arm:Vector3.Distance(to,strike)/20f,u=Clamp01((t-k.Arm)/Math.Max(.05f,span));var mid=(to+strike)*.5f+Up*1.2f;return to*((1-u)*(1-u))+mid*(2*u*(1-u))+strike*(u*u);}
             var d=to-from;d=d.LengthSquared()>1e-5f?Vector3.Normalize(d):Vector3.UnitZ;float over=t-k.Arm;return to+d*(over*14)+Up*(over*over*3);
         }
         // Two wings of light, flapping and folding for the dive, a body, a ribbon of tail, feathers shed behind it; a burst of them where it strikes.
@@ -188,7 +189,7 @@ namespace ChipArena.UnityConversion
             bool struck=k.Hit(t);float last=struck?k.HitAt:k.Until;
             if(t<last)
             {
-                float fade=struck||k.HitAt>-50?1:1-Smooth((t-(k.Until-.3f))/.3f),flap=(float)Math.Sin(t*24),fold=t>=k.Arm&&k.HitAt>-50?.5f:1;var p=HawkAt(k,t);var d=p-HawkAt(k,t-.03f);d=d.LengthSquared()>1e-6f?Vector3.Normalize(d):Vector3.UnitZ;
+                bool dives=HawkDives(k);float fade=struck||k.HitAt>-50?1:1-Smooth((t-(k.Until-.3f))/.3f),flap=(float)Math.Sin(t*24),fold=t>=k.Arm&&dives?.5f:1;var p=HawkAt(k,t);var d=p-HawkAt(k,t-.03f);d=d.LengthSquared()>1e-6f?Vector3.Normalize(d):Vector3.UnitZ;
                 var cross=Vector3.Cross(d,Up);var side=cross.LengthSquared()>1e-5f?Vector3.Normalize(cross):Vector3.UnitX;var up=Vector3.Normalize(Vector3.Cross(side,d));
                 for(int sd=-1;sd<=1;sd+=2)
                 {
