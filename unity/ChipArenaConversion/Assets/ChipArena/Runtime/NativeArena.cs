@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeDot { public bool HubNoReward;public int Source;public double Dps,Next,Until; }
     public sealed class NativeBullet
     {
-        public float Draw;public string Detail;public int Id,Owner,Reflections;public Vector3 Position,Velocity;public float Damage,Gravity,Radius,Life=3,Travel=160,Impulse;
+        public bool Instant;public float ImpactSpeedScale=1;public float Draw;public string Detail;public int Id,Owner,Reflections;public Vector3 Position,Velocity;public float Damage,Gravity,Radius,Life=3,Travel=160,Impulse;
         public string SirenKind;public int SirenTarget;public string LeetKind;public Vector3? LockTarget;public float ReleaseAt;public bool LeetLaunched;public string Spec;public HashSet<int> Hit=new HashSet<int>();
         public int Original,Attack,Bounces,Pierces;public float Born,Travelled,FixedSpeed,BounceRetention= .7f,Homing,Burn,Poison,Demolition=1,ReturnAt=-1,RallyCap,RallyBonus;public NativeShotScale Motion=new NativeShotScale();public float MotionScale{get=>Motion.Value;set=>Motion.Value=value;}
         public bool TechniqueNoHead,TechniqueCoinUsed;public bool CyberPacket;public bool Hadoken,Super;public bool Direct=true,ChipImpact,WeaponFx,EffectsUsed,Pong,Boomerang,Zigzag,Relaunched;public Vector3 RallyMark,BaseVelocity;

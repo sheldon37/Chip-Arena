@@ -28,7 +28,7 @@ namespace ChipArena.UnityConversion
             int level=NativeBotRules.Level(p.Seat.difficulty);var pos=p.Body.position;var eye=pos+Vector3.up*.5f;var delta=target-pos;float distance=delta.magnitude;
             Vector3 aimAt=Vec(p.BotBrain.Observe(Time,p.Seat.difficulty,Vec(target),random.NextDouble)),aim=aimAt-eye;bool visible=!TechniqueSmokeHidden(eye,target)&&MeleeVisible(eye,target,p,collider),melee=p.Weapon.@class=="melee";
             var input=new InputFrame{Yaw=Mathf.Atan2(aim.x,aim.z)*Mathf.Rad2Deg,Pitch=Mathf.Atan2(aim.y,new Vector2(aim.x,aim.z).magnitude)*Mathf.Rad2Deg,AimTarget=Vec(aimAt),AbilityTarget=Vec(aimAt),Aim=visible&&NativeBotRules.Ads(p.Seat.spec,distance)};
-            if(!melee&&!input.Aim){float pitch=GunRules.BallisticPitch(new Vector2(aim.x,aim.z).magnitude,aim.y,(float)(p.Weapon.speed*p.Stats["projectileSpeed"]),(float)(p.Weapon.gravity*p.Stats["projectileGravity"]));input.Pitch=Mathf.Lerp(input.Pitch,pitch,level==2?.95f:level==1?.85f:.65f);}
+            if(!melee&&!input.Aim){float pitch=GunRules.BallisticPitch(new Vector2(aim.x,aim.z).magnitude,aim.y,(float)(p.Weapon.speed*p.Stats["projectileSpeed"]),NativeProjectileRules.Gravity(p.Weapon,p.Stats));input.Pitch=Mathf.Lerp(input.Pitch,pitch,level==2?.95f:level==1?.85f:.65f);}
             float desired=NativeWhirlwindRules.Active(p.Special,Time)?1:NativeBotRules.Desired(p.Weapon);var flat=new Vector3(delta.x,0,delta.z).normalized;Vector3 move=distance>desired+1?flat:distance<desired-1?-flat*.8f:Vector3.zero;
             if(level>0&&!melee&&visible)move+=Quaternion.Euler(0,input.Yaw+90,0)*Vector3.forward*(Mathf.Sin(Time*1.1f+p.Seat.id)>0?.65f:-.65f);
             if(level>0&&!melee&&(p.ReloadEnd>Time||p.Weapon.ammo>0&&p.Ammo<=1||p.Mana<18))

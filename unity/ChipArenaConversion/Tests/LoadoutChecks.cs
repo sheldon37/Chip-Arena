@@ -34,7 +34,7 @@ internal static class LoadoutChecks
         finally{CultureInfo.CurrentCulture=previous;}
         yield return "Weapon card stat lines match the source's specialization chips for all 15 weapons, the Bow's draw range and the DEV Cyber Lord's jab, in any locale";
         var hinted=data.weapons.Where(w=>NativeLoadoutText.Description(w).EndsWith(" Projectiles fall; aim higher at range.",StringComparison.Ordinal)).Select(w=>w.id).ToArray();
-        if(string.Join(",",hinted)!="pistol,rifle,machinegun,fire,water,lightning,darkness,bow,bombadier")throw new Exception("Gravity hint weapons: "+string.Join(",",hinted));
+        if(string.Join(",",hinted)!="bow,bombadier")throw new Exception("Gravity hint weapons: "+string.Join(",",hinted));
         // Verbatim, except the DEV Cyber Lord's: its content still names the v1 kit, so the menus show Kit v2's (NativeCyberLordText).
         if(data.weapons.Any(w=>w.id!=CyberLordSpec.Id&&!NativeLoadoutText.Description(w).StartsWith(w.description,StringComparison.Ordinal)))throw new Exception("Descriptions must stay verbatim");
         if(NativeLoadoutText.Description(data.Weapon(CyberLordSpec.Id))!=NativeCyberLordText.Description||!NativeCyberLordText.Description.Contains("Q Uplink; E Overclock"))throw new Exception("The Cyber Lord's description shows Kit v2: "+NativeLoadoutText.Description(data.Weapon(CyberLordSpec.Id)));

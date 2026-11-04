@@ -1,8 +1,39 @@
 using System;
+using System.Globalization;
+using System.Text;
 namespace ChipArena.UnityConversion
 {
     public static class NativeProjectileRules
     {
+        public const int MaxInstantContacts=32;
+        public static string ContentKey(ContentWeapon[] weapons)
+        {
+            var key=new StringBuilder("straight-hitscan-v1");
+            if(weapons!=null)foreach(var w in weapons)
+            {
+                key.Append('|').Append(w.id).Append(':').Append(w.projectileMode);
+                foreach(double value in new[]{w.speed,w.gravity,w.gravityMultiplier,w.projectileRange,w.projectileLifetime,w.shotRadius,w.projectileBounces,w.projectileBounceRetention,w.projectileImpactSpeed})
+                    key.Append(':').Append(value.ToString("R",CultureInfo.InvariantCulture));
+            }
+            return key.ToString();
+        }
+        public static void ValidateProfile(ContentWeapon w)
+        {
+            bool Finite(double v)=>!double.IsNaN(v)&&!double.IsInfinity(v);
+            if((!string.IsNullOrEmpty(w.projectileMode)&&w.projectileMode!="simulated"&&w.projectileMode!="hitscan")||
+                !Finite(w.gravityMultiplier)||Math.Abs(w.gravityMultiplier)>100||!Finite(w.projectileRange)||w.projectileRange<0||w.projectileRange>10000||
+                !Finite(w.projectileLifetime)||w.projectileLifetime<0||w.projectileLifetime>60||w.projectileBounces<0||w.projectileBounces>32||
+                !Finite(w.projectileImpactSpeed)||w.projectileImpactSpeed<0||!Finite(w.projectileBounceRetention)||w.projectileBounceRetention<0||w.projectileBounceRetention>10)
+                throw new InvalidOperationException("Invalid projectile profile: "+w.id);
+        }
+        public static float Gravity(ContentWeapon weapon,ChipStats stats)=>
+            (float)((weapon.gravity*(weapon.gravityMultiplier==0&&stats.Get("projectileGravityEnabled")>0?1:weapon.gravityMultiplier)+stats.Get("projectileGravityAdd"))*stats["projectileGravity"]);
+        public static float Lifetime(ContentWeapon weapon)=>(float)(weapon.projectileLifetime>0?weapon.projectileLifetime:3);
+        public static float Range(ContentWeapon weapon)=>(float)(weapon.projectileRange>0?weapon.projectileRange:160);
+        // Time-dependent modifiers must retain a travelling body. Check after spawn modifiers too.
+        public static bool Instant(ContentWeapon weapon,ChipStats stats,bool travelEffect)=>
+            weapon.projectileMode=="hitscan"&&!travelEffect&&Math.Abs(Gravity(weapon,stats))<.00001f&&
+            Math.Abs(stats["projectileSpeed"]-1)<.00001&&stats["homing"]<=0&&stats["boomerang"]<=0&&stats["zigzag"]<=0&&stats["pong"]<=0;
         public static float Damage(float amount,ChipStats stats,float health,float maxHealth,float distance,bool melee,float behind,float chaosRoll,float criticalRoll)
         {
             amount*=1+(health<maxHealth*.3f?(float)stats["execute"]:0)+(distance<5?(float)stats["closeDamage"]:0)+(distance>=20?(float)stats["farDamage"]:0)+(melee&&behind<-.35f?(float)stats["backstab"]:0);

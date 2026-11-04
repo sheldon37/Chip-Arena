@@ -62,7 +62,7 @@ namespace ChipArena.UnityConversion
             // Normalize at the shared load boundary so every runtime/build-check consumer agrees.
             // Authored UnityMaps below still require their own validated tables and bounds.
             foreach(var m in c.maps){m.bounds=null;m.spawns=null;m.nav=null;m.segments=null;m.pilotBlocks=null;m.hazards=null;m.ramps=null;m.navHints=null;}
-            c.contentRevision=Revision(CatalogPolicy+"/"+NativeBackroomsGenerator.Version+"/"+NativePoolroomsGenerator.Version+"\n"+text);c.materials=c.materials.Concat(u.materials).ToArray();
+            c.contentRevision=Revision(CatalogPolicy+"/"+NativeBackroomsGenerator.Version+"/"+NativePoolroomsGenerator.Version+"/"+NativeProjectileRules.ContentKey(c.weapons)+"\n"+text);c.materials=c.materials.Concat(u.materials).ToArray();
             if(c.materials.Select(m=>m.id).Distinct().Count()!=c.materials.Length)throw new InvalidOperationException("Duplicate material");
             // The Expedition instance shares Ward Zero's authored hazards, including their IDs
             // (used by lights/alarms), so boss-test tuning cannot drift between the two modes.

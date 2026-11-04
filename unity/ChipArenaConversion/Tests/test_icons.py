@@ -53,7 +53,14 @@ class ClassIconChecks(unittest.TestCase):
         # The Bow's and the DEV Cyber Lord's art ship ahead of their content entries (docs/NEW-KITS.md sections 2 and 3; the
         # rules are Astra's).
         weapons={w['id'] for w in self.content['weapons']}
-        self.assertEqual(set(specs),weapons|({'bow','cyberlord'}-weapons))
+        # Bombadier uses the existing Lucide bomb until Claude supplies bespoke art,
+        # matching ClassIconChecks.cs and NativeIconRaster.Resolve's lookup order.
+        expected=weapons|{'bow','cyberlord'}
+        if 'bombadier' not in specs: expected.discard('bombadier')
+        self.assertEqual(set(specs),expected)
+        if 'bombadier' not in specs:
+            self.assertEqual({p['id']:p['icon'] for p in self.lucide['specs']}['bombadier'],'bomb')
+            self.assertIn('bomb',{p['id'] for p in self.lucide['icons']})
         for icon in [*classes.values(),*specs.values(),self.art['fallback']]:
             self.assertIn(icon,self.icons)
         self.assertEqual(len(set(specs.values())),len(specs))

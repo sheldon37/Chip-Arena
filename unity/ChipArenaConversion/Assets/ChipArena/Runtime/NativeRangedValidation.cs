@@ -7,6 +7,58 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
+        private void ValidateProjectileRework(Action<string> setup,Action<float> advance,NativePilot a,NativePilot b,GameObject wall)
+        {
+            int checks=0;void Check(bool ok,string why){if(!ok)throw new Exception("Native projectile rework: "+why);checks++;}
+            var legacy=JsonUtility.FromJson<ContentWeapon>("{\"id\":\"legacy\",\"gravity\":30}");
+            Check(legacy.gravityMultiplier==1&&legacy.projectileBounceRetention==1&&NativeProjectileRules.Range(legacy)==160,"real JSON missing profile fields retain legacy defaults");
+            void Reset(string spec){setup(spec);Events.Clear();instantBudgetAt=Time;instantContacts=0;}
+            void Aim(){a.Input.AimTarget=Vec(b.Body.position);Physics.SyncTransforms();}
+            foreach(string spec in new[]{"pistol","machinegun","fire","water","lightning","darkness"})
+            {
+                Reset(spec);b.Body.position+=Vector3.forward*20;Aim();Fire(a);var shot=Bullets.Single();
+                Check(shot.Gravity==0&&Math.Abs(shot.Velocity.magnitude-a.Weapon.speed)<.01,"straight speed "+spec);
+                Check(Math.Abs(shot.Velocity.magnitude*shot.ImpactSpeedScale-a.Weapon.projectileImpactSpeed)<.01,"wound energy baseline "+spec);
+                float y=shot.Position.y,vy=shot.Velocity.y;StepBullets();Check(Math.Abs(shot.Position.y-y-vy/60)<.001,"no drop "+spec);
+            }
+            Reset("rifle");Fire(a);Check(b.Hp<100&&Bullets.Count==0,"same-call hit and no lingering body");
+            float hp=b.Hp;StepBullets();Check(b.Hp==hp,"no duplicate tick damage");
+            var frame=NativeFrameCodec.Clone(NetworkFrame());var trace=frame.snapshot.Events.Single(e=>e.Kind==EventKind.Hitscan);
+            Check(trace.Projectile>0&&trace.Detail=="rifle"&&trace.Radius>0&&trace.From.z<trace.Position.z&&frame.projectileEnds.Any(e=>e.Id==trace.Projectile),"real JSON segment and endpoint for guest/late join/replay");
+            Reset("rifle");wall.SetActive(true);Physics.SyncTransforms();Fire(a);Check(b.Hp==100&&Bullets.Count==0,"cover occlusion");
+            Reset("rifle");b.Body.position+=Vector3.right*5;Physics.SyncTransforms();Fire(a);Check(b.Hp==100,"old target position does not hit moved target");
+            Aim();Fire(a);Check(b.Hp<100,"current authority target position hits");
+            Reset("rifle");b.BlockEnd=Time+1;Fire(a);Check(b.Hp==100&&Bullets.Count==1&&Bullets[0].Owner==b.Seat.id&&!Bullets[0].Instant,"block returns simulated shot");
+            foreach(string stat in new[]{"homing","boomerang","zigzag","projectileGravityAdd","projectileSpeed"})
+            {
+                Reset("rifle");a.Stats[stat]=stat=="projectileSpeed"?.5:1;Fire(a);
+                Check(b.Hp==100&&Bullets.Count==1,"travel fallback "+stat);
+            }
+            foreach(string chip in new[]{"lobber","meteor"})
+            {Reset("rifle");a.Seat.chips[chip]=1;RefreshLiveStats(a);Fire(a);Check(Bullets.Count==1&&Bullets[0].Gravity>0,"ballistic chip fallback "+chip);}
+            foreach(string chip in TravelMods)
+            {
+                Reset("rifle");var shot=new NativeBullet{Owner=a.Seat.id,Spec="rifle"};shot.Mods[chip]=1;
+                Check(NeedsTravel(shot,a),"time-dependent modifier "+chip);
+            }
+            Reset("rifle");a.Stats["extraProjectiles"]=3;Fire(a);Check(Events.Count(e=>e.Kind==EventKind.Hitscan)>=4,"instant multishot");
+            Reset("rifle");a.Stats["split"]=2;Fire(a);Check(Bullets.Count==4&&Bullets.All(x=>!x.Direct&&x.EffectsUsed&&!x.Instant),"impact splits keep simulated travel and recursion guard");
+            Reset("rifle");a.Stats["bounces"]=1;wall.SetActive(true);Physics.SyncTransforms();Fire(a);
+            Check(b.Hp==100&&Events.Count(e=>e.Kind==EventKind.Hitscan)==2,"same-shot reflected cover segment");
+            Reset("rifle");a.Stats["pierces"]=1;Fire(a);Check(b.Hp<100&&Events.Count(e=>e.Kind==EventKind.Hitscan)==2,"pierce continues without duplicate target hit");
+            Reset("rifle");b.Hp=1;Fire(a);Check(b.Death!=null&&b.Death.projectile==0,"instant kill uses victim camera, never nonexistent flight");
+            Reset("rifle");bool replica=Replica;try{Replica=true;Fire(a);StepBullets();Check(b.Hp==100&&Bullets.Count==0,"replica cannot deal damage");}finally{Replica=replica;}
+            Reset("rifle");a.Stats["extraProjectiles"]=11;a.Stats["bounces"]=1;wall.SetActive(true);Physics.SyncTransforms();
+            for(int player=0;player<8;player++)Fire(a);
+            Check(Events.Count(e=>e.Kind==EventKind.Hitscan)<=InstantContactsPerTick&&Bullets.Count>0,"shared ray budget falls back without discarding shots");
+            // CPU/PhysX benchmark is reported by the real builder, not inferred from managed maths.
+            Reset("machinegun");a.Stats["extraProjectiles"]=11;a.Stats["projectileSpeed"]=4;a.Stats["split"]=6;a.OverdriveAt=Time;a.OverdriveUntil=Time+4;
+            wall.SetActive(true);a.Input.AimTarget=Vec(wall.transform.position);Physics.SyncTransforms();
+            var watch=System.Diagnostics.Stopwatch.StartNew();int peak=0;
+            for(int tick=0;tick<120;tick++){if(tick%3==0)for(int player=0;player<8;player++)Fire(a);peak=Math.Max(peak,ProjectileCount);StepBullets();advance(1f/60);}
+            watch.Stop();Check(peak<=100&&Bullets.All(x=>!float.IsNaN(x.Position.x)),"eight-source Overdrive/multishot stress stays bounded");
+            Debug.Log("PASS native projectile rework: "+checks+" checks; 120 stress ticks, peak "+peak+", CPU ms "+watch.Elapsed.TotalMilliseconds);
+        }
         // Called by the existing real-Unity ranged gate; API compilation alone does not execute these contacts.
         private void ValidateRangedQ(Action<string> setup,Action<float> advance,NativePilot a,NativePilot b,GameObject wall)
         {
