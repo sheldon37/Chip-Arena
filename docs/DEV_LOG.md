@@ -19,6 +19,7 @@ Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironwork
 - **Fixed after looking:** slabs were open shells (twigs once they fell); glassy facets too bright; the mouth's trickles zigzagged like lightning; far tiers collapsed hubs into black spikes; a boxy foreman. My first two batches of frames showed the old sculpt, because a bank copied after the batch's one refresh is never imported: judged again on the real model.
 - **Not run:** the fight with the real rules (the preview's record stands in), two clients, a Windows build's play.
 - **Risks:** 108,000 triangles at the full tier against the sculpt's 40,000 budget (44,000 and 31,000 against 26,000 and 9,000), measured above with one boss and no crowd. Those budgets are the owner's doc numbers and still bind the sculpt: say if the model should come down to them. The foreman-collider mismatch noted under the five kinds still stands, for Astra.
+- **Release:** merged into shared and the builder at `acbb6831`; full `CoreTests` on the branch at `e028d4bc`, exit 0, 956 groups; Windows build and package validation passed; test channel publication succeeded (source `acbb6831`). The Drive zip holds the whole bank, with the old one at `LocalAssets-before-converter.zip`. No live, production or Site release.
 - **Next:** the owner plays it; Astra rules on the Foreman collider.
 
 ## 2026-11-04 — Astra: Bombadier chip authority
