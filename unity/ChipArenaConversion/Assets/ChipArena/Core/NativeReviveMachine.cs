@@ -325,6 +325,24 @@ namespace ChipArena.UnityConversion
             if(m==null)return null;
             return new NativeReviveDead{Account=m.account,Name=string.IsNullOrEmpty(m.name)?m.account:m.name,Weapon=m.weapon,Seat=m.seat,Area=m.area,AreaName=AreaName(m.area),Connected=m.connected};
         }
+        /// <summary>The screen's words for a death, from what the rules know of it: `kind` the enemy that did it (a zone or horde kind id; null: none), `killer` a pilot's name, `damage` NativeDeath.damageKind. The rules replicate those; the wording is the presentation's. Null: nothing reported.</summary>
+        public static string CauseLine(string kind,string killer,string damage)
+        {
+            if(!string.IsNullOrEmpty(killer))return damage=="blast"||damage=="bomb"?"Blown up by "+killer:damage=="ability"||damage=="field"?"Worked over by "+killer:"Killed by "+killer+", who should feel bad";
+            switch(kind)
+            {
+                case "shambler":return "Bitten by a shambler. Repeatedly.";case "runner":return "Run down by a runner";case "brute":return "Flattened by a brute";case "spitter":return "Spat on by a spitter, fatally";case "crawler":return "Ankle-bitten by a crawler";case "bloater":return "Stood too close to a bloater";case "hulk":return "Folded in half by a Hulk";
+                case "faceling":return "Stared down by a Faceling";case "hound":return "Lost an argument with a Hound";case "smiler":return "Smiled at, by a Smiler";case "drowned":return "Pulled under by the Drowned";case "tiler":return "Grouted by a Tiler";case "lifeguard":return "Not saved by the Lifeguard";
+                case "linesman":return "Electrocuted by a Linesman";case "conductor":return "Ticket checked by a Conductor";case "undertow":return "Dragged off by an Undertow";case "pileup":return "Became part of a Pileup";
+                case "cinderling":return "Burned by a cinderling";case "stoker":return "Shovelled by a stoker";case "slagback":return "Crushed by a slagback";case "ladleman":return "Ladled by a ladleman";case "rigger":return "Hooked by a rigger";
+            }
+            if(!string.IsNullOrEmpty(kind))return "Killed by a "+kind;
+            switch(damage)
+            {
+                case "collapse":return "Had a building fall on them";case "hazard":return "Walked into something clearly marked";case "blast":return "Blown up";case "debris":return "Hit by flying debris";case "thorns":return "Hit something that hit back";case "field":return "Stood in the wrong place";case "stage-vent":return "Fell in a vent";
+            }
+            return string.IsNullOrEmpty(damage)?null:"Died of "+damage;
+        }
         /// <summary>An area's display name, the HUD's own.</summary>
         public static string AreaName(string area)=>string.IsNullOrEmpty(area)?"SOMEWHERE OUT THERE":area=="exp-city"?NativeExpeditionJoinZones.Hub:NativeExpeditionJoinZones.KnownName(area)??area.ToUpperInvariant();
         /// <summary>A point in the machine's frame in the console's frame.</summary>

@@ -147,6 +147,8 @@ namespace ChipArena.UnityConversion
             var row=NativeReviveMachine.FromMember(new ExpeditionViewMember{account="a",name="Ann",weapon="pistol",area="exp-ward-zero",seat=3,connected=false});
             Check(row.Name=="Ann"&&row.Seat==3&&!row.Connected&&!row.Located&&string.IsNullOrEmpty(row.Cause)&&row.AreaName==NativeReviveMachine.AreaName("exp-ward-zero")&&row.AreaName.Length>0,"a live row is what the view says, no invented cause");
             Check(NativeReviveMachine.FromMember(null)==null&&NativeReviveMachine.AreaName(null).Length>0,"an unknown area still reads");
+            foreach(var id in NativeHordeKinds.Ids.Concat(NativeBackroomsKinds.Kinds.Select(k=>k.Id)).Concat(NativeStationKinds.Kinds.Select(k=>k.Id)).Concat(NativeIronworksKinds.Ids)){string line=NativeReviveMachine.CauseLine(id,null,null);Check(!string.IsNullOrEmpty(line)&&!line.StartsWith("Killed by a "),"a line for what killed them: "+id);}
+            Check(NativeReviveMachine.CauseLine(null,null,null)==null,"nothing reported stays nothing");Check(NativeReviveMachine.CauseLine("hulk","Ann",null).Contains("Ann"),"a pilot's kill names them");Check(NativeReviveMachine.CauseLine(null,null,"collapse")!=null&&NativeReviveMachine.CauseLine("someone-new",null,null)!=null,"any other cause still reads");
         }
         private static void Fx()
         {

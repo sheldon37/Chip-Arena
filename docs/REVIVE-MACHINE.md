@@ -69,7 +69,7 @@ Its states: nobody dead (a bored face), YOU'RE $n SHORT, THEY HAVE TO BE CONNECT
 - A dead pilot in another area: your `SplitReprint`/`ReprintFrom` already moves them, cancelling the corpse. Their client will load in late and join the show wherever it has got to; nothing in it depends on them having seen the start.
 
 **3. `NativeReviveMachine.Fill`**, `Action<NativeReviveBoard,ExpeditionView>`: called once a frame after the board is built from the view. Add what isn't on the wire yet to each row (`NativeReviveDead`):
-- `Cause` a line a person would say, and `Killer` a person's name if it was one: `ExpeditionViewMember` has neither. `NativeDeath` already has `damageKind`, `hazardId`, `owner` and the like on the authority; turn them into words where it dies. Suggested wording: "Bitten by a shambler", "Hit by the express", and for a pilot's kill "Shot by " + name. Replicate the text, or an id the client can say.
+- `Cause`: `ExpeditionViewMember` has no death on it. Replicate what the authority already knows when it records the death (the enemy's kind if an add did it, `NativeDeath.damageKind`, the killer's name if a pilot did), and set `Cause=NativeReviveMachine.CauseLine(kind,killer,damage)`: the wording is here, with a line for every enemy kind.
 - `Body` and `Located` the body's point in its area, `Place` a room or street if you have one, `DiedAt`. `Area` and `AreaName` already come from `member.area`.
 - `Blocked` for the whole list if something else forbids it (out of the sanctuary, say). `Cost`: leave it 250.
 
