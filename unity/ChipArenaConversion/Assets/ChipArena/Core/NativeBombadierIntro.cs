@@ -44,10 +44,10 @@ namespace ChipArena.UnityConversion
             k.Key(TiltFrom+.22f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(Sp,.06f).J(Hd,.34f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-.12f,0,.2f).J(LE,-.32f);
             k.Key(RaiseFrom,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(C,-.04f).J(Hd,-.04f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-.2f,0,.26f).J(LE,-.5f);
             // The detonator held up beside the head, which tilts to look at it, then at you.
-            k.Key(RaiseFrom+.32f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(C,-.08f,.12f,0).J(Hd,-.08f,.12f,.2f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.62f,.3f,.5f).J(LE,-1.22f);
-            k.Key(Click-.03f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(C,-.08f,.12f,0).J(Hd,-.06f,.02f,.26f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.66f,.3f,.5f).J(LE,-1.28f);
-            k.Key(Click+.03f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(C,-.06f,.12f,0).J(Hd,-.04f,.02f,.26f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.56f,.3f,.5f).J(LE,-1.16f).ImpactKey();
-            k.Key(FirstBlast-.04f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(C,-.05f,.1f,0).J(Hd,-.04f,.02f,.22f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.56f,.3f,.5f).J(LE,-1.16f);
+            k.Key(RaiseFrom+.32f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(C,-.08f,.12f,0).J(Hd,-.08f,.12f,.2f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.24f,.3f,.5f).J(LE,-1.46f);
+            k.Key(Click-.03f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.02f).J(C,-.08f,.12f,0).J(Hd,-.06f,.02f,.26f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.28f,.3f,.5f).J(LE,-1.52f);
+            k.Key(Click+.03f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(C,-.06f,.12f,0).J(Hd,-.04f,.02f,.26f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.18f,.3f,.5f).J(LE,-1.4f).ImpactKey();
+            k.Key(FirstBlast-.04f,stand).Root(r0.X,r0.Y,r0.Z,Facing).Drop(-.03f).J(C,-.05f,.1f,0).J(Hd,-.04f,.02f,.22f).J(RA,-.42f,0,-.12f).J(RE,-.75f).J(LA,-1.18f,.3f,.5f).J(LE,-1.4f);
             // The walk: the left arm falling to its side as the arena goes up behind.
             var w0=Local(0,.88f,.28f);var w1=Local(0,.88f,.82f);var w2=Local(0,.88f,1.34f);var w3=Local(0,.88f,1.9f);
             k.Key(WalkFrom+.3f,stand).Root(w0.X,w0.Y,w0.Z,Facing).Drop(-.02f).J(C,-.02f,.02f,0).J(Hd,-.03f).J(RA,-.2f,0,-.1f).J(RE,-.55f).J(LA,-.5f,0,.2f).J(LE,-.7f).PassKey();
@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
                 // The slow tilt from the boots to the visor.
                 Shot(TiltFrom,NativeEntranceCut.Cut,34,30,V(.42f,.2f,1.32f),V(.34f,1.02f,1.38f),V(0,.14f,0),V(0,1.52f,0),2,0),
                 // Close on the thumb.
-                Follow(Shot(RaiseFrom+.2f,NativeEntranceCut.Cut,30,25,V(.92f,1.22f,1.28f),V(.82f,1.26f,1.12f),V(-.05f,.03f,0),V(-.04f,.05f,0),1,0),NativeEntranceAnchor.LeftHand),
+                Shot(RaiseFrom+.2f,NativeEntranceCut.Cut,31,26,V(.98f,1.26f,1.42f),V(.84f,1.3f,1.2f),V(.15f,1.36f,.1f),V(.17f,1.38f,.1f),1,0),
                 // The visor, and the lights going out in it.
                 Shot(Click+.02f,NativeEntranceCut.Cut,28,26,V(.14f,1.6f,.98f),V(.12f,1.6f,.94f),V(0,1.58f,0),V(0,1.58f,0),1,0),
                 // The pilot coming at the lens, the arena going up behind.
@@ -142,8 +142,10 @@ namespace ChipArena.UnityConversion
             float redAll=0;for(int i=0;i<order.Length;i++)redAll+=LedLevel(i,t);redAll/=order.Length;
             if(redAll>.001f){l.Add(new Vector3(5,2.4f,-4.5f),Led*(3.4f*redAll),15);l.Add(new Vector3(-5,2.4f,-4.5f),Led*(3.4f*redAll),15);l.Add(new Vector3(0,3,5.5f),Led*(1.6f*redAll),13);}
             // The pale fuse-glow on the pilot from below as it reaches the boots, and the click's single red spark.
-            float boot=NativeEntranceMath.Pulse(t,Stomp,.02f,.3f);if(boot>.01f&&t<BlackAt)l.Add(new Vector3(0,.2f,.3f),Hot*(3*boot),3.2f);
+            float boot=NativeEntranceMath.Pulse(t,Stomp,.02f,.3f);if(boot>.01f&&t<BlackAt)l.Add(new Vector3(0,.2f,.3f),Hot*(1.5f*boot),3.2f);
             if(t>=RaiseFrom&&t<BlackAt){float c=.7f+1.2f*Tick(t);l.Add(Hand(t,t)+new Vector3(0,.12f,0),Led*(.9f*c),2.4f);}
+            // The tossed bomb's fuse, lighting it and the visor as it goes by.
+            if(t>=CardAt-.1f){l.Add(BallAt(t)+new Vector3(0,.12f,0),Hot*1.7f,2.2f);}
             // The wall of fire behind the walk.
             if(t>=FirstBlast){float g=up*(1-.35f*NativeEntranceMath.Ramp(t,CardAt,Total));var at=Anchor(NativeEntranceAnchor.Chest,t);l.Add(at+new Vector3(-.3f,.5f,-2.4f),FlameColor*(16*g),10);l.Add(new Vector3(-5,1.6f,-3),FlameColor*(10*g),14);l.Add(new Vector3(5,1.6f,-3),Ember*(10*g),14);l.Fog=NativeEntranceFx.Hex(0x2a0f07,.4f+.6f*g);l.Background=l.Fog;l.Sky=NativeEntranceFx.Hex(0xb06a3c,.32f+.34f*g);l.Ground=NativeEntranceFx.Hex(0x5a2410,.5f+.4f*g);}
         }
@@ -194,8 +196,7 @@ namespace ChipArena.UnityConversion
             // The bomb under the name: tossed, spinning, and caught.
             if(t>=CardAt-.1f)
             {
-                var h=Hand(t,t)+new Vector3(0,.07f,0);var ball=h;float spin=(t-TossAt)*11;
-                if(t>=TossAt&&t<CatchAt){float u=(t-TossAt)/(CatchAt-TossAt);var from=Hand(TossAt,t)+new Vector3(0,.07f,0);var to=Hand(CatchAt,t)+new Vector3(0,.07f,0);ball=Vector3.Lerp(from,to,u)+new Vector3(0,.62f*4*u*(1-u),0);}
+                var ball=BallAt(t);float spin=(t-TossAt)*11;
                 if(t>=CatchAt)spin=(CatchAt-TossAt)*11+(t-CatchAt)*4;var q0=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.3f,.8f,.5f)),spin);
                 BombModel(props,ball,q0,.058f);
             }
@@ -217,10 +218,16 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        /// <summary>A round black bomb: the sphere, its brass collar and a stub of fuse.</summary>
+        /// <summary>The bomb: in the palm, or on its way from the palm at the toss to the palm at the catch, a high arc.</summary>
+        private Vector3 BallAt(float t)
+        {
+            var lift=new Vector3(0,.07f,0);if(t<TossAt||t>=CatchAt)return Hand(t,t)+lift;float u=(t-TossAt)/(CatchAt-TossAt);return Vector3.Lerp(Hand(TossAt,t),Hand(CatchAt,t),u)+lift+new Vector3(0,.86f*4*u*(1-u),0);
+        }
+        /// <summary>A round black bomb: the sphere, a hazard band, its brass collar and a stub of fuse.</summary>
         public static void BombModel(INativeEntranceProps props,Vector3 at,Quaternion q,float radius)
         {
-            props.Piece(WeaponShape.Sphere,false,at,q,new Vector3(radius),new Vector3(.03f,.03f,.035f));var up=Vector3.Transform(Vector3.UnitY,q);
+            props.Piece(WeaponShape.Sphere,false,at,q,new Vector3(radius),new Vector3(.09f,.09f,.1f));var up=Vector3.Transform(Vector3.UnitY,q);
+            props.Piece(WeaponShape.Cube,false,at,q,new Vector3(radius*2.02f,radius*.3f,radius*2.02f),new Vector3(.8f,.6f,.05f));
             props.Piece(WeaponShape.Cube,false,at+up*(radius*.96f),q,new Vector3(radius*.62f,radius*.2f,radius*.62f),new Vector3(.55f,.38f,.14f));props.Piece(WeaponShape.Cube,false,at+up*(radius*1.3f),q,new Vector3(radius*.14f,radius*.5f,radius*.14f),new Vector3(.09f,.075f,.06f));
         }
         // ---- effects ----
@@ -293,7 +300,7 @@ namespace ChipArena.UnityConversion
             // Heat on the toss: the bomb's fuse spitting under the name.
             if(t>=TossAt-.2f)
             {
-                var h=Hand(t,t)+new Vector3(0,.16f,0);float u=t>=TossAt&&t<CatchAt?(t-TossAt)/(CatchAt-TossAt):0;if(u>0){var from=Hand(TossAt,t)+new Vector3(0,.16f,0);var to=Hand(CatchAt,t)+new Vector3(0,.16f,0);h=Vector3.Lerp(from,to,u)+new Vector3(0,.62f*4*u*(1-u),0);}
+                var h=BallAt(t)+new Vector3(0,.09f,0);
                 float fl=.8f+.2f*(float)Math.Sin(t*51);fx.Glow(h,Hot*(1.8f*fl),0,.08f,1,0,9400);int n=q<.5f?4:10;for(int i=0;i<n;i++){float a=((t*20+i*.41f)%1)*.3f;int k=(int)(t*20)+i*53;var v=new Vector3(NativeEntranceMath.Signed(k,1)*.8f,.7f+.8f*NativeEntranceMath.Rand(k,2),NativeEntranceMath.Signed(k,3)*.8f);fx.Streak(h+v*a,v,Hot*(2*(1-a/.3f)),.006f,.01f,.02f,.6f,a/.3f,k);}
             }
         }

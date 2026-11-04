@@ -89,12 +89,11 @@ namespace ChipArena.UnityConversion
             VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
-            actor.AccentColor=keepAccent;
             if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);}
             EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
-            VisualBodiesShown();
+            VisualBodiesShown();actor.AccentColor=keepAccent;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }
@@ -183,8 +182,7 @@ namespace ChipArena.UnityConversion
             if(style==NativeBombs.Entrance)
             {
                 bombHand??=b=>{var bone=introRig.Bones[b];return Matrix4x4.TRS(bone.position,bone.rotation,Vector3.one);};
-                if(Time.frameCount%30==0){var l=introRig.Bones[CapturedRig.LHand];var r=introRig.Bones[CapturedRig.RHand];var h=introRig.Bones[CapturedRig.Head];Debug.Log("[bombdbg] age="+age.ToString("0.00")+" L="+l.position+" R="+r.position+" head="+h.position+" Rfwd="+r.forward);}
-                sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bombHand,accent:introAccent);return;
+                string lit=entranceScript?.AccentAt(entranceTime);sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bombHand,accent:lit!=null?AccentTint(lit):introAccent);return;
             }
             if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
