@@ -1,3 +1,19 @@
+## 2026-11-03 — Claude: weapon techniques in Customize and on the HUD (swap Q or E)
+
+- **Branch/base:** `claude/technique-swap`, shared `456bd1cc`, on Astra's contract (#321, #322: `weaponTechniques`, `NativeTechniqueLoadout`).
+- **Task:** owner: "we are making these additional abilities right? (Ones we can change in customization)", then chose swapping into Q or E over a third slot.
+- **Picker (`Runtime/NativeLockerUI.cs`, `Core/NativeLocker.cs`):** Customize, Loadout: each slot's row shows its own ability and the weapon's technique with an OR between them;
+  the equipped card has the edge and tick, a technique's in its own accent; a click swaps with a short flash; ON Q / ON E says where it is, and picking it here moves it; the rifle's Q says the scope stays.
+  Part of the look: dirty state, Revert, Save Pilot.
+- **HUD (`Runtime/NativeFightHud.cs`, `NativeTechniques.Card`):** the key-1 card is gone; the technique takes its slot's card on `QReady`/`EReady` with the scaled cooldown: RECAST, ACTIVE, the count, LOW STAMINA/MANA.
+  While the shield stands or the greatsword flies, block and the other slot say SHIELD OUT / BLADE OUT. A swapped E draws no field preview. Astra's handoff: smoke hides a name from outside the cloud.
+- **Found by playing it (`Core/NativeTechniqueFx.cs`):** Riposte's arcs drew behind the pilot (the rules' `Dir` is the aim until a parry), now on the pilot's facing, also dimly in first person; Ignition Leap's wings read as a stripe across the screen, now a short swept V.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. Presentation only.
+- **Checks:** full `CoreTests` in a clean LF checkout of `32a8dce1` (shared `456bd1cc` merged): exit 0, 950 PASS groups, with `--techniques` now covering the cards' text, the numbers against the rules' rows and the HUD card's states.
+  PC (BoZo, Cybercity, Astra's rules): all twelve from a swapped Q or E in slow motion and two at full speed, Anchor Throw's leap, Grapple Line up a wall, Static Recall's bolt, Shade Swap on a bot, the sentry firing; first person for
+  Anchor Throw, Ignition Leap, Smoke Veil, Riposte; real clicks on the picker through the Game view. Not run: Riposte's actual parry, a shot on the coin, Static Recall's damage on the line, a guest or replay, a crowd, a low tier in Unity, a Windows build's play.
+- **For Astra (not changed):** a refused press gives no feedback, so the key seems dead: Grapple Line with no surface in 20 m, Static Recall with anything on the line (`cybercity-lantern-counter`, a low counter, refused three walks in a row). A public "would the recast work" query would let the HUD say BLOCKED.
+
 ## 2026-11-03 — Astra: Level 0 encounter proximity, not just a nonzero population
 
 - **Branch/base:** `codex/backroom-spawn-activation`, shared `cc1b53f8`; owner on packaged build `c72f9675f1ce` reports only one zombie encountered. That packaged ID differs from its source commit. Earlier native checks proved 12 spawned entities, not that the party would encounter them.

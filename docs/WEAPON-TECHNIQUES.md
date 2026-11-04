@@ -6,11 +6,12 @@ afterwards to make sure things look great."
 
 Owner revision, 2026-11-03: techniques replace either Q or E, selected per weapon in Customize; rifle permits E only because Q is scope. Both original abilities remain the default. There is no third slot or separate technique cooldown. This revision supersedes the original key-1 proposal.
 
-Status: Claude owns the Customize picker and HUD; Astra implements the revised save/profile/authority contract on `codex/weapon-technique-slots`, based on shared `04d7333c` (PR #321). The earlier simulation status follows for history: Astra simulation is implemented on `codex/weapon-technique-rules`, based on shared `b794f9c5`. Verification/push receipts are in the task PR and DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
+Status: playable. Astra's rules and saved choice (PRs #321 and #322), Claude's Customize picker, HUD cards and presentation. Receipts are in DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
 
 ## Why it isn't power creep
 
-Every weapon already has its damage on LMB, Q and E, so a technique is not more damage. The rules of the set:
+A technique is a trade, never an extra: a weapon keeps two abilities, and swapping its technique in gives up that slot's ability. Every
+weapon already has its damage on LMB, Q and E, so the trade is damage for utility. The rules of the set:
 
 - **Utility first.** A technique changes where someone stands or what they can see or do. The most any deals is 22, under a Q's
   budget (30), and most deal none.
@@ -50,7 +51,7 @@ earlier on a recast), `RecoverUntil` (the pilot's own lock), `HitAt` (-100 until
 
 | Kind | Phases | `From` | `Point` | `To` / `Dir` / `Arm` | Triggered moment |
 | --- | --- | --- | --- | --- | --- |
-| `riposte` | guard, counter, recovery | | the contact point | `Dir` attacker to you | `HitAt`: the parry |
+| `riposte` | guard, counter, recovery | | the contact point | `Dir` the aim until a parry, then attacker to you | `HitAt`: the parry |
 | `smoke-veil` | throw, cloud | hand at release | the cloud's centre on the floor | | |
 | `bastion` | plant, wall, recall | | the shield's foot on the floor | `Dir` the wall's facing; `Arm` its health 1 to 0 | `HitAt`: the last stopped shot, `To` where |
 | `anchor-throw` | throw, flight, stuck, leap, return | hand at release | where the blade stuck | `Arm` when it stuck; `Dir` its flight | `RecastAt`: the leap |
@@ -75,16 +76,35 @@ rule, hit timing, damage, cooldown or movement.
 | The effects, pure functions of the record | `Core/NativeTechniqueFx.cs` |
 | Poses on the model's pack clips | `Core/NativeVisualMotion.cs` (`Technique`) |
 | Sounds | `Core/NativeTechniqueSounds.cs` |
+| The picker in Customize (Loadout) | `Runtime/NativeLockerUI.cs`, `Core/NativeLocker.cs` (`AddTechnique`) |
+| The card sentence and the HUD card's state | `Core/NativeTechnique.cs` (`Text`, `Card`) |
 | HUD card, drawing, models | `Runtime/NativeFightHud.cs`, `Runtime/NativeTechniquePresentation.cs` |
 | Checks | `Tests/TechniqueChecks.cs` (`CoreTests --techniques`) |
+
+**The picker.** Customize, Loadout: each slot's row shows that slot's own ability and, beside it, the weapon's technique, with an OR between them.
+The equipped card has the bright edge and the tick (a technique's in its own accent, the colour of its effects). A click swaps, flashing the card; a
+technique already in the other slot says ON Q or ON E, and picking it here moves it. A swap is part of the look: Save Pilot stores and sends it,
+Revert restores it. The rifle's Q row keeps only the scope.
+
+**The HUD.** The technique takes the card of the slot it replaced: RECAST in amber while a press would recast it, ACTIVE while it runs, then that
+slot's cooldown as this pilot's chips scale it, and LOW STAMINA or LOW MANA. While the shield stands as a wall or the greatsword is thrown, the rules refuse
+block and the other slot, so those cards say SHIELD OUT or BLADE OUT. A swapped E draws no field preview for the ability it replaced. Smoke hides a
+pilot's name and health bar from anyone outside the cloud.
 
 To see one: the Dev Sandbox, Preview Techniques, with the weapon in hand. The preview loops the weapon's technique from just in front of
 the pilot, since it does not know the world's surfaces or move anyone.
 
 Reviewed in Unity, in slow motion from the game's own camera (Cybercity, local tool: `gallery=T,TechniquePreviewOn`, `slowmo=T,.2`, `screen=1`), all twelve,
 with two rounds of fixes: the guard from a glowing panel to thin arcs, the wall from a framed rectangle to a honeycomb, the planted shield and
-the thrown blade onto the pilot's own weapon model, the coin's glow down so the coin reads, the fire from washed-out to hot, the wind burst stronger. Not seen yet: any of it in
-real play with the rules, in first person, in a crowd, on a guest, or on a low graphics tier in Unity (the checks cover the thinning).
+the thrown blade onto the pilot's own weapon model, the coin's glow down so the coin reads, the fire from washed-out to hot, the wind burst stronger.
+
+Reviewed again with the rules (2026-11-03, the same tool: `swaps=`, a real Q or E press at an arena time, full speed and slow motion): all twelve fire from the swapped
+key and the old ability stays away, with Anchor Throw's leap and landing, Grapple Line up a wall, Static Recall's bolt back, Shade Swap on a bot and the sentry firing at one; in first
+person Anchor Throw, Ignition Leap, Smoke Veil and Riposte; the picker by real clicks through the Game view (a swap, a move from E to Q, Save Pilot lighting up). Two
+fixes came of it: the guard's arcs drew behind the pilot (`Dir` is the aim until a parry) and now face where the pilot faces, also dimly in first person; Ignition Leap's wings read as a stripe across the
+screen and are now shorter and swept back into a V. Not seen yet: Riposte's actual parry, a shot on the coin, Static Recall's damage on the line, a crowd, a guest or replay, a low
+graphics tier in Unity (the checks cover the thinning), a Windows build. A press the rules refuse gives no feedback yet: Grapple Line with no surface in 20 m, Static Recall with something on
+the line (a low counter is enough), so the key seems dead.
 
 
 ## Simulation implementation and presentation handoff (Astra, 2026-11-03)
@@ -96,7 +116,7 @@ real play with the rules, in first person, in a crowd, on a guest, or on a low g
 - Coin contract correction: `CoinAir` is **1.4 s** as specified (was 1.1 in the preview helper); `CoinLift` is **6.1 m/s** so the existing parabola stays above the floor for that interval. No field meaning changed. A swept .6 m hit consumes one coin, turns the round toward the nearest visible enemy within 22 m, multiplies its damage by 1.6 and disables headshot bonuses. With no visible enemy it continues without amplification.
 - Bastion and sentry use shot-only intersections, so actors can walk through them. Standard bullet, ability-shot and melee-projectile paths respect nearest collision ordering. Bastion intercepts both teams; sentries take hostile/friendly-fire projectile, primary melee and blast damage. The sentry deals fixed 5 damage per round at .5 s intervals, arms after .6 s and expires after six armed seconds. Bots prioritize visible hostile sentries but retain their default Q/E abilities. Smoke prevents target acquisition from outside the cloud; entering the cloud restores targeting. Healing Spring ticks 1.5 HP every .25 s (30 maximum per pool) and slows enemies to .85.
 
-**Claude follow-ups (presentation files intentionally unchanged):**
+**Claude follow-ups, done (2026-11-03) except where item 3 says:**
 
 1. `Runtime/NativeCombatHud.cs`, pilot health/nameplate loop: skip a pilot when `arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position, p.Body.position)` is true. The query also works on replicas because it reads replicated technique records. The simulation's bot concealment is active; human nameplate concealment awaits this hook.
 2. `Runtime/NativeFightHud.cs`: remove the standard-weapon key-1 card. Resolve each Q/E card with `NativeTechniqueLoadout.Ability(content, p.Seat.weaponTechniques, p.Seat.spec, slot)`, then use that slot's `p.QReady` / `p.EReady` and `NativeAbilityRules.Cooldown(row,p.Stats)`. A technique on E uses the single deadline (no extra-charge display); recasts use the same key without spending again. Rifle Q always remains scope. Icons can use `NativeTechniques.Find(row.id)?.Icon` for technique rows.
@@ -113,6 +133,6 @@ real play with the rules, in first person, in a crowd, on a guest, or on a low g
 - **Persistence:** local preferences and account profile save/load wired. The account-service sanitizer source also retains the field; deployment of that service change is required for cross-device persistence. No live service deployment is claimed by this source PR.
 - `Actor.Technique` and all fields in the animation contract above are unchanged. The Dev Sandbox preview remains available independently of loadout.
 
-3. Inspect first-person, guest and replay movement/poses in Unity, especially the collision-shortened leap/grapple and Shade's delayed exchange. The implementation adds real movement and hit timing; the prior preview review does not validate that integration.
+3. Inspect first-person, guest and replay movement/poses in Unity, especially the collision-shortened leap/grapple and Shade's delayed exchange. The implementation adds real movement and hit timing; the prior preview review does not validate that integration. Done for third and first person on the host (see the review above); guest and replay still open.
 
 Regression gates: `CoreTests --technique-rules` (simulation contracts), `CoreTests --techniques` (existing presentation plus rule checks), full CoreTests; `NativeArena.ValidateTechniques` and the extended native network gate run in the Unity builder. Semantic compilation in a managed environment does not execute those native PhysicsScene/JsonUtility gates.
