@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
             if(a!=null){foreach(var x in a.icons??new IconEntry[0])art[x.id]=x;artBox=a.box>0?a.box:24;artSmallPx=a.smallPx>0?a.smallPx:NativeIconRaster.SmallPx;artFallback=art.ContainsKey(a.fallback??"")?a.fallback:null;}
             artClasses=Map(a?.classes,false);artSpecs=Map(a?.specs,false);
         }
-        public static bool Has(string id){Ensure();return markup.ContainsKey(id??"")||art.ContainsKey(id??"");}
+        public static bool Has(string id){Ensure();return markup.ContainsKey(id??"")||art.ContainsKey(id??"")||NativeBombChips.Glyph(id)!=null;}
         // icon-map.ts lookups; unmapped ids fall back to cpu as icons.ts does (actions have no fallback). Native-only chips the
         // source map lacks take their Core/NativeChipIcons icon first. Classes and specs resolve to the game's own art first, and
         // an unmapped one to its fallback (the DEV chip, as cpu was).
@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
         // drawing at or below the set's small size (physical pixels).
         public static void Draw(Rect r,string id,Color c)
         {
-            if(c.a<=0||Event.current.type!=EventType.Repaint)return;Ensure();int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);var key=(id,false,px);
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;var bomb=NativeBombChips.Glyph(id);if(bomb!=null){DrawMarkup(r,id,bomb,NativeBombChips.GlyphBox,c);return;}Ensure();int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,512);var key=(id,false,px);
             if(art.TryGetValue(id??"",out var e))
             {
                 if(!textures.TryGetValue(key,out var at)){if(textures.Count>256)Clear();bool small=NativeIconRaster.UseSmall(e.small,px,artSmallPx);at=Texture(NativeIconRaster.Raster(Shapes("art:"+id+(small?"#small":""),small?e.small:e.markup,NativeIconRaster.Mode.Art),px,artBox),px);textures[key]=at;}

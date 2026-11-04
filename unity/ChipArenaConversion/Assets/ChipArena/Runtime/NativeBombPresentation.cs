@@ -155,6 +155,20 @@ namespace ChipArena.UnityConversion
         {
             bombViewActor=a;bombViewTime=time;bombViewLayer??=p=>{NativeBombView.Apply(p,NativeBombs.Of(bombViewActor),bombViewTime,bombViewActor.ReloadAt,bombViewActor.ReloadUntil,bombViewActor.BlockUntil);return true;};view.Overlay(bombViewLayer);
         }
+        // A chip of the set seating, for whoever can see it: the Install event, held here because the arena lets its events go after a second and the chip seats a little later (NativeDraftPlant).
+        private readonly System.Collections.Generic.List<(int id,int chip,float at)> bombInstalls=new System.Collections.Generic.List<(int,int,float)>();
+        private void BombChipInstalls(float q)
+        {
+            var arena=WeaponLoadout;var events=arena?.Events;if(events==null)return;float now=(float)arena.Time;
+            for(int i=events.Count-1;i>=0;i--){var e=events[i];if(e.Kind!=EventKind.Install||!NativeBombChips.Is(e.Detail))continue;bool seen=false;foreach(var b in bombInstalls)if(b.id==e.Target&&Mathf.Abs(b.at-(float)e.Time)<.001f)seen=true;if(!seen)bombInstalls.Add((e.Target,NativeBombChips.Index(e.Detail),(float)e.Time));}
+            for(int i=bombInstalls.Count-1;i>=0;i--)
+            {
+                var b=bombInstalls[i];float age=now-b.at-NativeDraftPlant.SoundAt;if(age>1.5f||age<-5){bombInstalls.RemoveAt(i);continue;}if(age<0)continue;
+                Actor pilot=null;foreach(var a in kitScene.Actors)if(a!=null&&a.Id==b.id){pilot=a;break;}if(pilot==null)continue;
+                bool view=kitScene.Viewer==b.id;NVector at;if(view){if(viewRig?.Bones==null)continue;var fist=viewRig.Bones[CapturedRig.LHand].position;at=new NVector(fist.x,fist.y,fist.z);}else if(!kitScene.Chest(pilot,out at))continue;
+                techniqueFx.BombChipInstall(techSink,view,at,b.chip,age,b.id*31L+b.chip*7L,q,LowGraphics);
+            }
+        }
         // The lit fuse on what each fist holds.
         private void BombHeldFuses(float q)
         {
@@ -173,7 +187,7 @@ namespace ChipArena.UnityConversion
         private void BombFx(float now)
         {
             if(kitScene==null||vfx==null)return;var draw=WeaponFxDraw;if(draw==null)return;techSink??=new TechSink();techSink.Bind(vfx,draw,FirstPerson&&!ScopeActive&&ViewCamera!=null);
-            float q=Mathf.Clamp01(WeaponEffectsQuality);BombHeldFuses(q);if(NativeBombs.Source!=null)techniqueFx.DrawBombs(techSink,kitScene,kitClock,q,LowGraphics);
+            float q=Mathf.Clamp01(WeaponEffectsQuality);BombHeldFuses(q);BombChipInstalls(q);if(NativeBombs.Source!=null)techniqueFx.DrawBombs(techSink,kitScene,kitClock,q,LowGraphics);
         }
         /// <summary>The Grand Finale on the local pilot's own camera (NativeCinematicCamera.Direct). False when it is not this pilot's cutscene.</summary>
         internal bool BombFinaleDirect(NativeArena arena,Camera view,float time,bool shake,bool reduced)

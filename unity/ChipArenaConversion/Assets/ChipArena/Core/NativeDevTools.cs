@@ -175,6 +175,8 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("gallery-cyber-kit2-melee",Pr,P,"Cyber Kit v2 melee"),
             new NativeDevAction("gallery-techniques",Pr,P,"Weapon techniques"),
             new NativeDevAction("gallery-bombadier",Pr,P,"Bombadier kit"),
+            new NativeDevAction("gallery-revive-machine",Pr,P,"Revive machine"),
+            new NativeDevAction("gallery-revive-machine-auto",Pr,P,"Revive machine, run by itself"),
             new NativeDevAction("preview-reveal",Pr,P,"Preview DEV Reveal"),
             new NativeDevAction("preview-account-xp",Pr,V,"Account XP preview (MOCK)"),
             new NativeDevAction("preview-expedition-ui",Pr,V,"Expedition quota & ending preview (MOCK)"),
@@ -568,7 +570,7 @@ namespace ChipArena.UnityConversion
     {
         public const int SortRarity=0,SortName=1,SortInstalled=2,FilterAll=0,FilterFavourites=1,FilterInstalled=2,FilterRecent=3,RecentMax=8;
         public static readonly string[] SortNames={"RARITY","NAME","INSTALLED"},FilterNames={"ALL","FAVOURITES","INSTALLED","RECENT"};
-        private static readonly string[] Ranks={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren"};
+        private static readonly string[] Ranks={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier"};
         public readonly List<int> Shown=new List<int>(256);public readonly HashSet<string> Favourites=new HashSet<string>(StringComparer.Ordinal);public readonly List<string> Recent=new List<string>(RecentMax);
         public string Search="";public int Sort,Filter;private int revision;
         private string keySearch;private int keySort=-1,keyFilter=-1,keyRevision=-1,keyInstalled=int.MinValue,keyLength=-1;private ContentChip[] keyChips;
