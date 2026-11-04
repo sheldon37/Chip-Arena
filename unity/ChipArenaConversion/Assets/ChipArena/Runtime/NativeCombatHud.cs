@@ -140,6 +140,34 @@ namespace ChipArena.UnityConversion
             if(arena.Expedition==null)return Math.Abs(front.y-body.y)<=1.7f&&new Vector2(front.x-body.x,front.z-body.z).magnitude<=2.2f;
             var feet=body-Vector3.up*NativeLocomotionRules.HalfHeight;return (front-feet).magnitude<=2.2f&&arena.ExpeditionVisible(NativeArena.Vec(feet),m.front.Position());
         }
+        // Bounty Round's mark and what Sonar Dart's ping shows, through walls, for the record owner's side only: nothing here reaches the rules,
+        // and the positions are the ones every client already holds.
+        private void TechniqueMarkers(float scale,float height)
+        {
+            if(Event.current.type!=EventType.Repaint||NativeTechniques.Source==null||arena.Local==null)return;float t=arena.Time;
+            foreach(var owner in arena.Pilots)
+            {
+                if(owner==null||owner!=arena.Local&&!match.SameSide(owner.Seat,arena.Local.Seat))continue;var k=NativeTechniques.Source.Of(owner.Seat.id);if(k?.Kind==null)continue;var d=NativeTechniques.Find(k.Kind);if(d==null)continue;
+                int marked=NativeTechniques.Marked(k,t);
+                if(marked!=0)
+                {
+                    float left=k.Until-t,a=Mathf.Clamp01(left/.3f)*Mathf.Clamp01((t-k.HitAt)/.15f),pop=Mathf.Clamp01(1-(t-k.HitAt)/.25f);
+                    foreach(var q in arena.Pilots)if(q!=null&&q.Seat.id==marked&&q.Hp>0&&q!=arena.Local)TechniqueMarker(q.Body.transform.position,d,a,pop,scale,height);
+                    foreach(var m in arena.Minions)if(m!=null&&m.Id==marked&&m.Hp>0)TechniqueMarker(m.Body.transform.position,d,a,pop,scale,height);
+                    continue;
+                }
+                float ping=NativeTechniques.PingAge(k,t);if(ping<0)continue;
+                float show=Mathf.Clamp01(ping/.08f)*Mathf.Clamp01((NativeTechniqueFx.SonarEvery-ping)/.35f),pulse=Mathf.Clamp01(1-ping/.25f);var dart=NativeArena.Vec(k.Point);float reach=NativeTechniqueFx.SonarReach;
+                foreach(var q in arena.Pilots)if(q!=null&&q!=owner&&q.Hp>0&&q.Seat.connected&&!match.SameSide(q.Seat,owner.Seat)&&!NativeTechniques.Under(NativeTechniques.Source.Of(q.Seat.id),t)&&Vector3.Distance(q.Body.transform.position,dart)<=reach)TechniqueMarker(q.Body.transform.position,d,show,pulse,scale,height);
+                foreach(var m in arena.Minions)if(m!=null&&m.Hp>0&&m.Owner!=owner&&(m.Owner==null||!match.SameSide(m.Owner.Seat,owner.Seat))&&Vector3.Distance(m.Body.transform.position,dart)<=reach)TechniqueMarker(m.Body.transform.position,d,show,pulse,scale,height);
+            }
+        }
+        private void TechniqueMarker(Vector3 body,NativeTechniques.Def d,float a,float pop,float scale,float height)
+        {
+            if(a<=0||cameraView==null)return;var at=cameraView.WorldToScreenPoint(body+Vector3.up*1.35f)/scale;if(at.z<=0)return;float x=at.x,y=height-at.y,s=26+10*pop;var tone=NativeUi.Hex(d.Accent);
+            NativeUi.Round(new Rect(x-s/2,y-s/2,s,s),NativeCyberTheme.Navy(.72f*a),s/2,NativeUi.A(tone,.9f*a));float ic=14+5*pop;NativeIcons.Draw(new Rect(x-ic/2,y-ic/2,ic,ic),d.Icon,NativeUi.A(tone,a));
+            NativeUi.Text(new Rect(x-40,y+s/2+1,80,14),Mathf.RoundToInt(Vector3.Distance(cameraView.transform.position,body)).ToString()+" m",10,NativeUi.A(tone,a),TextAnchor.MiddleCenter,bold:true,mono:true);
+        }
         private void CombatWorldHud(float scale,float width,float height)
         {
             if(menu||arena?.Local==null||cameraView==null||IntroActive||ReplayActive)return;
@@ -155,7 +183,8 @@ namespace ChipArena.UnityConversion
             // Every pilot's health; only this client's own pilot (third person: the first-person view has no body to sit on)
             // also carries its resources, so another player's screen never shows mine and mine never shows theirs.
             // Under the Expedition chooser shot (NativeChooserCameraPresentation.cs) my own is hidden too: nothing over my pilot.
-            foreach(var p in arena.Pilots){if(!p.Seat.connected||(prefs.firstPerson||presentation.FirstPerson)&&p==arena.ViewPilot||ChooserFramed&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true||arena.ViewPilot!=null&&p!=arena.ViewPilot&&arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position,p.Body.position)||presentation.SpawnHidesHud(p.Seat.id))continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true,p==arena.Local?p:null);}
+            foreach(var p in arena.Pilots){if(!p.Seat.connected||(prefs.firstPerson||presentation.FirstPerson)&&p==arena.ViewPilot||ChooserFramed&&p==arena.ViewPilot||p.Seat.AuthorityBoss&&arena.Pve?.Hidden==true||NativeTechniques.Under(NativeTechniques.Source?.Of(p.Seat.id),arena.Time)||arena.ViewPilot!=null&&p!=arena.ViewPilot&&arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position,p.Body.position)||presentation.SpawnHidesHud(p.Seat.id))continue;bool ally=p==arena.Local||match.SameSide(p.Seat,arena.Local.Seat);Health(p.Seat.id,p.Body.transform.position+Vector3.up*1.3f*(p.Seat.spec=="siren"?p.Pose.RigScale:p.Seat.devScale),p.Hp,(float)p.Stats["hp"],.72f,ally,match.Teams?(ally?"ALLY · ":"ENEMY · ")+p.Seat.name:p.Seat.name,true,p==arena.Local?p:null);}
+            TechniqueMarkers(scale,height);
             // PvE chip selection: the "SELECTING CHIP" tag over the names (NativeChipSelectHud.cs).
             ChipSelectTags(scale,height);PodUsePrompt(width,height);
             // DEV: the DEV tags over revealed pilots (everyone) and the DEV panel's read-only overlays (NativeDevOverlays.cs).

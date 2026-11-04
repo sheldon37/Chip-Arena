@@ -614,11 +614,16 @@ namespace ChipArena.UnityConversion
         // the weapon has (LkGrid wraps them and the page scrolls). A technique is one row in NativeTechniques and one content row: nothing here counts them.
         private const float LkTileH=84,LkAbilityMin=224;
         private List<NativeLocker.AbilityOption> LkSlotOptions=>lockerAbilitySlot=="e"?lockerE:lockerQ;
+        private int LkAbilityCols(int count)=>Mathf.Clamp(count,1,LkCols(lockerW,LkAbilityMin));
+        private float LkAbilityW(int cols)=>(lockerW-(cols-1)*LkGap)/cols;
         private float LkAbilityCardH(List<NativeLocker.AbilityOption> options)
         {
-            int cols=LkCols(lockerW,LkAbilityMin);float w=(lockerW-(cols-1)*LkGap)/cols,h=118;foreach(var o in options){int lines=U.Wrap(o.Text,12,w-30,false,4).Count;h=Mathf.Max(h,56+lines*16+30);}return h;
+            float w=LkAbilityW(Mathf.Max(LkAbilityCols(options.Count),options.Count==1?2:1)),h=118;foreach(var o in options){int lines=U.Wrap(o.Text,12,w-30,false,5).Count;h=Mathf.Max(h,56+lines*16+30);}return h;
         }
-        private float LkAbilityGridH(){var o=LkSlotOptions;return o.Count==0?92:LkGrid(lockerW,o.Count,LkAbilityMin,LkAbilityCardH(o));}
+        private float LkAbilityGridH()
+        {
+            var o=LkSlotOptions;if(o.Count==0)return 92;int cols=LkAbilityCols(o.Count),rows=(o.Count+cols-1)/cols;float h=LkAbilityCardH(o);return rows*h+(rows-1)*LkGap;
+        }
         private void LkAbilityTiles(Rect r,ContentWeapon w,float e)
         {
             float tw=(lockerW-LkGap)/2;LkSlotTile(new Rect(r.x,r.y,tw,r.height),"q",lockerQ,w,e);LkSlotTile(new Rect(r.x+tw+LkGap,r.y,tw,r.height),"e",lockerE,w,e);
@@ -626,7 +631,7 @@ namespace ChipArena.UnityConversion
         // A slot: its key, what is in it now, and that it is the one being chosen for. A slot with one choice (the rifle's scope, a DEV kit's key) says it is fixed.
         private void LkSlotTile(Rect r,string slot,List<NativeLocker.AbilityOption> options,ContentWeapon w,float e)
         {
-            bool chosen=lockerAbilitySlot==slot,can=options.Count>1,pickable=can&&!chosen,hot=pickable&&lockerViewHot&&U.Hover(r);int key=8950+(slot=="q"?0:1);float h=pickable?U.HoverAmount(key,r,hot):0;
+            bool chosen=lockerAbilitySlot==slot,can=options.Count>1,pickable=options.Count>0&&!chosen,hot=pickable&&lockerViewHot&&U.Hover(r);int key=8950+(slot=="q"?0:1);float h=pickable?U.HoverAmount(key,r,hot):0;
             int eq=options.Count>0?LockerEquippedAbility(w,slot,options):-1;var o=eq>=0?options[eq]:null;bool tech=o?.Technique!=null;Color tone=tech?U.Hex(o.Technique.Accent):U.Hex(0xc2714e);
             U.Round(r,U.A(chosen?U.Mix(U.Hex(0x1d1e24),tone,.13f):U.Mix(U.Hex(0x15161b),U.Hex(0x1d1e24),h),e),10,chosen?U.A(tone,e):U.A(U.Mix(U.Hex(0x3b3c45),U.Hex(0x9a8a9e),h),e),chosen?2:1);
             var cap=new Rect(r.x+12,r.center.y-22,44,44);U.Round(cap,U.Hex(0x15161b,e),8,U.A(chosen?tone:U.Hex(0x45464e),e));U.Text(cap,slot=="q"?"Q":"E",22,U.A(chosen?U.Mix(tone,Color.white,.35f):U.Hex(0xc0c1ca),e),TextAnchor.MiddleCenter,bold:true,mono:true);
@@ -635,9 +640,9 @@ namespace ChipArena.UnityConversion
             var ic=new Rect(tx,r.y+15,18,18);NativeIcons.Draw(ic,o.Icon,U.A(tech?U.Mix(tone,Color.white,.15f):U.Hex(0xffc1a5),e));
             var nm=U.Wrap(o.Name,15,tw-26,true,1);U.Text(new Rect(tx+26,r.y+14,tw-26,20),nm.Count>0?nm[0]:o.Name,15,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
             U.Text(new Rect(tx,r.y+38,tw,14),o.Meta,10,U.A(tech?U.Mix(tone,Color.white,.2f):U.Hex(0xff996f),e),TextAnchor.MiddleLeft,mono:true);
-            string state=!can?"FIXED":chosen?"CHOOSING":"CHANGE";U.Text(new Rect(tx,r.y+56,tw,14),state,10,U.A(chosen?U.Mix(tone,Color.white,.4f):U.Mix(U.Hex(0x8f909a),Color.white,.5f*h),e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+            string state=!can?(chosen?"FIXED · SHOWING":"FIXED"):chosen?"CHOOSING":"CHANGE";U.Text(new Rect(tx,r.y+56,tw,14),state,10,U.A(chosen?U.Mix(tone,Color.white,.4f):U.Mix(U.Hex(0x8f909a),Color.white,.5f*h),e),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
             // The notch that points down at the choices.
-            if(chosen&&can){var n=new Rect(r.center.x-7,r.yMax-1,14,3);U.Fill(n,U.A(tone,e));U.Fill(new Rect(r.center.x-4,r.yMax+2,8,2),U.A(tone,e));U.Fill(new Rect(r.center.x-2,r.yMax+4,4,2),U.A(tone,e));}
+            if(chosen){var n=new Rect(r.center.x-7,r.yMax-1,14,3);U.Fill(n,U.A(tone,e));U.Fill(new Rect(r.center.x-4,r.yMax+2,8,2),U.A(tone,e));U.Fill(new Rect(r.center.x-2,r.yMax+4,4,2),U.A(tone,e));}
             if(pickable&&!lockerBlocked&&lockerViewHot&&U.Button(r)){Click();lockerAbilitySlot=slot;lockerSlotAt=Time.unscaledTime;}
         }
         // Everything that can go in the slot being chosen for. Cards settle in one after another when the slot changes.
@@ -646,12 +651,13 @@ namespace ChipArena.UnityConversion
             string slot=lockerAbilitySlot;var options=LkSlotOptions;
             if(options.Count==0){var box=new Rect(grid.x,grid.y,lockerW,grid.height);LkDashed(box,e);NativeIcons.Draw(new Rect(box.x+18,box.center.y-10,20,20),"clock-3",U.Hex(0x8f909a,e));U.Text(new Rect(box.x+48,box.center.y-20,lockerW-60,20),slot=="q"?"No Q ability yet":"No E ability yet",15,U.Hex(0xc0c1ca,e),TextAnchor.MiddleLeft,bold:true);U.Text(new Rect(box.x+48,box.center.y+2,lockerW-60,18),NativeLocker.EmptySlot(w,slot),12,U.Hex(0x8f909a,e),TextAnchor.MiddleLeft);return;}
             int equipped=LockerEquippedAbility(w,slot,options);float ch=LkAbilityCardH(options),age=prefs.reducedEffects?9:Time.unscaledTime-lockerSlotAt;bool swapped=options[equipped].Technique!=null;
+            int cols=Mathf.Max(LkAbilityCols(options.Count),options.Count==1?2:1);float cw=LkAbilityW(cols);
             for(int i=0;i<options.Count;i++)
             {
-                var r=LkCell(grid,i,LkAbilityMin,ch);float settle=Mathf.Clamp01((age-i*.025f)/.16f);settle=settle*settle*(3-2*settle);r.y+=(1-settle)*8;int cardKey=9000+(slot=="q"?0:64)+i;
+                var r=new Rect(grid.x+(i%cols)*(cw+LkGap),grid.y+(i/cols)*(ch+LkGap),cw,ch);float settle=Mathf.Clamp01((age-i*.025f)/.16f);settle=settle*settle*(3-2*settle);r.y+=(1-settle)*8;int cardKey=9000+(slot=="q"?0:64)+i;
                 if(LkAbilityCard(r,options[i],i==equipped,cardKey,w,slot,swapped,e*settle))LockerPickAbility(w,options[i],slot,cardKey);
             }
-            if(options.Count==1&&NativeTechniques.Of(w?.id).Length>0&&lockerW>=LkAbilityMin*2){var more=LkCell(grid,1,LkAbilityMin,ch);LkDashed(more,e);NativeIcons.Draw(new Rect(more.center.x-10,more.center.y-24,20,20),"layers",U.Hex(0x8f909a,e));U.Text(new Rect(more.x+8,more.center.y,more.width-16,18),"The scope stays on Q",12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleCenter,bold:true);}
+            if(options.Count==1&&NativeTechniques.Of(w?.id).Length>0){var more=new Rect(grid.x+cw+LkGap,grid.y,cw,ch);LkDashed(more,e);NativeIcons.Draw(new Rect(more.center.x-10,more.center.y-24,20,20),"layers",U.Hex(0x8f909a,e));U.Text(new Rect(more.x+8,more.center.y,more.width-16,18),"The scope stays on Q",12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleCenter,bold:true);}
         }
         // One choice. A technique card carries its own accent (the colour of its effects) and what it is for; the slot's own ability keeps the warm
         // edge and says it is the default. Picking flashes the card and pops its icon for .45 s; a technique already in the other slot says so, and
@@ -669,7 +675,7 @@ namespace ChipArena.UnityConversion
             NativeIcons.Draw(new Rect(well.center.x-ic/2,well.center.y-ic/2,ic,ic),o.Icon,U.A(tech?U.Mix(tone,Color.white,.15f):U.Hex(0xffc1a5),e));
             float tx=well.xMax+12,tw=d.xMax-tx-(on?36:14);var on1=U.Wrap(o.Name,15,tw,true,1);U.Text(new Rect(tx,d.y+12,tw,20),on1.Count>0?on1[0]:o.Name,15,U.Hex(0xf4f4f5,e),TextAnchor.MiddleLeft,bold:true);
             U.Text(new Rect(tx,d.y+32,tw+20,14),o.Meta,10,U.A(meta,e),TextAnchor.MiddleLeft,mono:true);
-            var lines=U.Wrap(o.Text,12,d.width-30,false,4);for(int i=0;i<lines.Count;i++)U.Text(new Rect(d.x+16,d.y+56+i*16,d.width-30,16),lines[i],12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
+            var lines=U.Wrap(o.Text,12,d.width-30,false,5);for(int i=0;i<lines.Count;i++)U.Text(new Rect(d.x+16,d.y+56+i*16,d.width-30,16),lines[i],12,U.Hex(0xa6a7ad,e),TextAnchor.MiddleLeft);
             if(on)LkTick(new Vector2(d.xMax-20,d.y+24),e);
             // The foot: what it is, and where it already sits.
             var foot=new Rect(d.x+16,d.yMax-24,70,15);string tag=tech?o.Technique.Tag:o.FromWeapon?"WEAPON "+slot.ToUpperInvariant():"DEFAULT";float fw=U.Measure(tag,9,true,true,.12f).x+14;foot.width=fw;
