@@ -42,24 +42,10 @@ namespace ChipArena.UnityConversion
         public static HashSet<int> Cells(InstanceMachineSpot[] spots){var s=new HashSet<int>();if(spots!=null)foreach(var m in spots)s.Add(m.Cell);return s;}
         private static readonly (int x,int z)[] Sides={(1,0),(0,1),(-1,0),(0,-1)};
         // The route's picks: for each share, the valid (cell, wall side) nearest that far along, the lit and the sheltered ones first. `valid` says whether a machine can stand there; `score` adds to the distance from the target.
-        private static InstanceMachineSpot[] Pick(int cells,int width,int[] distance,Func<int,V3> centre,Func<int,int,int,bool> valid,Func<int,int,int,float> score,float cellSize)
+        private static InstanceMachineSpot[] Pick(int cells,int[] distance,Func<int,V3> centre,Func<int,int,int,bool> valid,Func<int,int,int,float> score)
         {
             int far=distance.Max();var chosen=new List<InstanceMachineSpot>();
-            foreach(var (kind,share) in Route)
-            {
-                float target=far*share,best=float.MaxValue;InstanceMachineSpot? pick=null;
-                for(int c=0;c<cells;c++)
-                {
-                    if(distance[c]<0)continue;var at=centre(c);
-                    if(chosen.Any(m=>Distance(centre(m.Cell),at)<Apart))continue;
-                    foreach(var d in Sides)
-                    {
-                        if(!valid(c,d.x,d.z))continue;float s=Math.Abs(distance[c]-target)+score(c,d.x,d.z);
-                        if(s<best){best=s;pick=new InstanceMachineSpot(c,d.x,d.z,kind);}
-                    }
-                }
-                if(pick.HasValue)chosen.Add(pick.Value);
-            }
+            foreach(var (kind,share) in Route){var one=PickOne(cells,distance,centre,valid,score,chosen,far*share,kind);if(one.HasValue)chosen.Add(one.Value);}
             return chosen.ToArray();
         }
         private static float Distance(V3 a,V3 b){float dx=a.x-b.x,dz=a.z-b.z;return (float)Math.Sqrt(dx*dx+dz*dz);}
@@ -69,7 +55,7 @@ namespace ChipArena.UnityConversion
             var distance=NativeBackroomsGenerator.Distances(l,entry);var no=new HashSet<int>(players);no.UnionWith(enemies);no.Add(exit);var door=NativeBackroomsGenerator.Position(l,entry);var end=NativeBackroomsGenerator.Position(l,exit);
             bool Valid(int c,int dx,int dz)
             {
-                int x=c%l.Width,z=c/l.Width;if(no.Contains(c)||!NativeBackroomsGenerator.Walkable(l,c)||l.Between(x,z,dx,dz)!=BackroomsLayout.Wall||!l.Inside(x+dx,z+dz)&&false)return false;
+                int x=c%l.Width,z=c/l.Width;if(no.Contains(c)||!NativeBackroomsGenerator.Walkable(l,c)||l.Between(x,z,dx,dz)!=BackroomsLayout.Wall)return false;
                 // A real wall behind it, an open cell in front of it, room either side.
                 if(!NativeBackroomsGenerator.Link(l,c,-dx,-dz))return false;var at=NativeBackroomsGenerator.Position(l,c);return Distance(at,door)>=FromDoor&&Distance(at,end)>=FromExit;
             }
@@ -79,32 +65,64 @@ namespace ChipArena.UnityConversion
                 // A lit cell reads from down the corridor; a dead end or a room's edge is out of the way of a running fight.
                 return (lit?0:2.5f)+(links==2?1.5f:0);
             }
-            return Pick(l.Width*l.Depth,l.Width,distance,c=>NativeBackroomsGenerator.Position(l,c),Valid,Score,BackroomsLayout.Cell);
+            return Pick(l.Width*l.Depth,distance,c=>NativeBackroomsGenerator.Position(l,c),Valid,Score);
         }
-        /// <summary>The Poolrooms' picks. A 2 m cell's centre is inside a machine against its wall, so a machine takes its cell off the navigation (the generator's Map): only a deck corner whose going leaves every cell reached, with deck in front.</summary>
-        public static InstanceMachineSpot[] Poolrooms(PoolroomsLayout l,int[] players,int[] enemies,int entry,int exit,Func<int,int,int,bool> link)
+        /// <summary>The Poolrooms' picks. A 2 m cell's centre is inside a machine against its wall, so a machine takes its cell off the navigation (the generator's Map): only a deck corner with deck in front, and only if the level's own
+        /// navigation (`nav`, built without the machines) still reaches everything it reached without that cell and the ones already taken.</summary>
+        public static InstanceMachineSpot[] Poolrooms(PoolroomsLayout l,int[] players,int[] enemies,int entry,int exit,MapNav nav)
         {
-            var distance=NativePoolroomsGenerator.Distances(l,entry);var no=new HashSet<int>(players);no.UnionWith(enemies);no.Add(exit);var door=NativePoolroomsGenerator.Position(l,entry);var end=NativePoolroomsGenerator.Position(l,exit);var taken=new HashSet<int>();
+            var distance=NativePoolroomsGenerator.Distances(l,entry);var no=new HashSet<int>(players);no.UnionWith(enemies);no.Add(exit);var door=NativePoolroomsGenerator.Position(l,entry);var end=NativePoolroomsGenerator.Position(l,exit);
             bool Deck(int x,int z)=>l.Inside(x,z)&&l.Floor[l.Index(x,z)]==PoolroomsLayout.Deck;
-            int reached=Reach(l,entry,taken,link);
+            var graph=new NavGraph(nav);string start=NavGraph.Id(entry);var taken=new HashSet<int>();var whole=new Dictionary<int,bool>();int count=0;
             bool Valid(int c,int dx,int dz)
             {
                 int x=c%l.Width,z=c/l.Width;if(no.Contains(c)||l.Floor[c]!=PoolroomsLayout.Deck||l.Between(x,z,dx,dz)!=PoolroomsLayout.Wall)return false;
                 if(!l.Passable(x,z,-dx,-dz)||!Deck(x-dx,z-dz))return false;
                 // A corner: a wall on a side too, so that nobody's way along the wall runs through it.
                 bool corner=l.Between(x,z,dz,dx)==PoolroomsLayout.Wall||l.Between(x,z,-dz,-dx)==PoolroomsLayout.Wall;if(!corner)return false;
-                var at=NativePoolroomsGenerator.Position(l,c);return Distance(at,door)>=FromDoor&&Distance(at,end)>=FromExit;
+                var at=NativePoolroomsGenerator.Position(l,c);if(Distance(at,door)<FromDoor||Distance(at,end)<FromExit)return false;
+                // The picks so far decide what going without this cell costs: asked again once one is taken.
+                if(whole.Count>0&&count!=taken.Count){whole.Clear();}count=taken.Count;
+                if(!whole.TryGetValue(c,out bool keeps))whole[c]=keeps=graph.KeepsAll(start,taken,c);return keeps;
             }
             float Score(int c,int dx,int dz)=>l.Light[c]?0:2.5f;
-            var picks=Pick(l.Floor.Length,l.Width,distance,c=>NativePoolroomsGenerator.Position(l,c),(c,dx,dz)=>{if(!Valid(c,dx,dz))return false;taken.Add(c);bool whole=Reach(l,entry,taken,link)==reached-1;taken.Remove(c);return whole;},Score,PoolroomsLayout.Cell);
-            return picks;
+            // Pick chooses one at a time: each chosen cell comes off before the next is asked about.
+            var chosen=new List<InstanceMachineSpot>();int far=distance.Max();
+            foreach(var (kind,share) in Route)
+            {
+                var one=PickOne(l.Floor.Length,distance,c=>NativePoolroomsGenerator.Position(l,c),Valid,Score,chosen,far*share,kind);if(one.HasValue){chosen.Add(one.Value);taken.Add(one.Value.Cell);}
+            }
+            return chosen.ToArray();
         }
-        // How many cells the walk from `start` reaches, keeping out of `skip`.
-        private static int Reach(PoolroomsLayout l,int start,HashSet<int> skip,Func<int,int,int,bool> link)
+        private static InstanceMachineSpot? PickOne(int cells,int[] distance,Func<int,V3> centre,Func<int,int,int,bool> valid,Func<int,int,int,float> score,List<InstanceMachineSpot> chosen,float target,string kind)
         {
-            var seen=new bool[l.Floor.Length];var q=new Queue<int>();seen[start]=true;q.Enqueue(start);int n=1;
-            while(q.Count>0){int c=q.Dequeue();int x=c%l.Width,z=c/l.Width;foreach(var d in Sides){if(!link(c,d.x,d.z))continue;int o=l.Index(x+d.x,z+d.z);if(seen[o]||skip.Contains(o))continue;seen[o]=true;n++;q.Enqueue(o);}}
-            return n;
+            float best=float.MaxValue;InstanceMachineSpot? pick=null;
+            for(int c=0;c<cells;c++)
+            {
+                if(distance[c]<0)continue;var at=centre(c);bool close=false;foreach(var m in chosen)if(Distance(centre(m.Cell),at)<Apart){close=true;break;}if(close)continue;
+                foreach(var d in Sides){if(!valid(c,d.x,d.z))continue;float s=Math.Abs(distance[c]-target)+score(c,d.x,d.z);if(s<best){best=s;pick=new InstanceMachineSpot(c,d.x,d.z,kind);}}
+            }
+            return pick;
+        }
+        // The level's navigation by cell (node ids "pool:cell:tread").
+        private sealed class NavGraph
+        {
+            private readonly Dictionary<string,List<string>> links=new Dictionary<string,List<string>>();
+            public static string Id(int cell)=>"pool:"+cell.ToString(System.Globalization.CultureInfo.InvariantCulture)+":0";
+            private static int CellOf(string id){int a=id.IndexOf(':')+1,b=id.IndexOf(':',a);return int.Parse(id.Substring(a,b-a),System.Globalization.CultureInfo.InvariantCulture);}
+            public NavGraph(MapNav nav){foreach(var n in nav.nodes)links[n.id]=new List<string>();foreach(var k in nav.links){links[k.a].Add(k.b);links[k.b].Add(k.a);}}
+            private int Reached(string start,HashSet<int> skip,int also,out HashSet<string> seen)
+            {
+                seen=new HashSet<string>{start};var q=new Queue<string>();q.Enqueue(start);
+                while(q.Count>0)foreach(var o in links[q.Dequeue()]){int c=CellOf(o);if(c==also||skip.Contains(c))continue;if(seen.Add(o))q.Enqueue(o);}
+                return seen.Count;
+            }
+            /// <summary>Whether, with `taken` off the navigation, also taking `cell` leaves everything reached but that cell's own nodes.</summary>
+            public bool KeepsAll(string start,HashSet<int> taken,int cell)
+            {
+                Reached(start,taken,-1,out var before);if(!before.Contains(Id(cell)))return false;int own=0;foreach(var id in before)if(CellOf(id)==cell)own++;
+                return Reached(start,taken,cell,out _)==before.Count-own;
+            }
         }
     }
 }

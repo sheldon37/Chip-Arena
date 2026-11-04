@@ -80,6 +80,8 @@ namespace ChipArena.UnityConversion
             var adj=new Dictionary<string,List<string>>();foreach(var n in g.Map.nav.nodes)adj[n.id]=new List<string>();foreach(var k in g.Map.nav.links){Check(adj.ContainsKey(k.a)&&adj.ContainsKey(k.b),"Poolrooms: every link has both its nodes");adj[k.a].Add(k.b);adj[k.b].Add(k.a);}
             var start="pool:"+g.Players[0]+":0";Check(adj.ContainsKey(start),"Poolrooms: the party's cell is on the navigation");var seen=new HashSet<string>{start};var q=new Queue<string>();q.Enqueue(start);while(q.Count>0)foreach(var o in adj[q.Dequeue()])if(seen.Add(o))q.Enqueue(o);
             foreach(int c in g.Enemies.Concat(new[]{g.ExitCell}))Check(seen.Contains("pool:"+c+":0"),"Poolrooms: enemies and the exit still reached");
+            // And every spawn anchor the level has: the machines cost none of them their way to the party.
+            foreach(var s in area.spawns){var e=s.entry.@exit;int cell=l.Index((int)Math.Floor(e.x/PoolroomsLayout.Cell),(int)Math.Floor(e.z/PoolroomsLayout.Cell));Check(!g.Machines.Any(m=>m.Cell==cell),"Poolrooms: no spawn anchor in a machine's cell");Check(seen.Contains("pool:"+cell+":0"),"Poolrooms: spawn "+s.entry.id+" still reaches the party");}
             bool Standable(V3 p){int x=(int)Math.Floor(p.x/PoolroomsLayout.Cell),z=(int)Math.Floor(p.z/PoolroomsLayout.Cell);return l.Inside(x,z)&&l.Floor[l.Index(x,z)]==PoolroomsLayout.Deck;}
             Common("Poolrooms",seed,area,g.Map,g.Entry,g.Exit,Standable);
         }

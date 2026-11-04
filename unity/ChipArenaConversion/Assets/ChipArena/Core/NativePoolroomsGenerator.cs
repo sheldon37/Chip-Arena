@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             while(players.Count<8){int c=expedition?decks.Where(n=>!players.Contains(n)).OrderBy(n=>reach[n]).ThenBy(n=>n).First():decks.Where(n=>!players.Contains(n)).OrderByDescending(n=>best[n]).ThenBy(n=>n).First();players.Add(c);var d=Distances(l,c);for(int i=0;i<best.Length;i++)best[i]=Math.Min(best[i],d[i]);}
             int exit=decks.OrderByDescending(c=>reach[c]).ThenBy(c=>c).First();
             var enemies=decks.Where(c=>c!=exit&&players.All(p=>(Position(l,p)-Position(l,c)).Length>=12)).OrderByDescending(c=>reach[c]).Where((c,i)=>i%4==0).Take(32).ToArray();
-            var g=new PoolroomsGenerated{Layout=l,Players=players.ToArray(),Enemies=enemies,ExitCell=exit};if(expedition)g.Machines=NativeInstanceMachines.Poolrooms(l,g.Players,enemies,entry,exit,(c,dx,dz)=>{int cx=c%l.Width,cz=c/l.Width;return !ReturnEdge(cx,cz,dx,dz)&&l.Passable(cx,cz,dx,dz);});g.Map=Map(g,expedition);
+            var g=new PoolroomsGenerated{Layout=l,Players=players.ToArray(),Enemies=enemies,ExitCell=exit};g.Map=Map(g,expedition);if(expedition){g.Machines=NativeInstanceMachines.Poolrooms(l,g.Players,enemies,entry,exit,g.Map.nav);g.Map=Map(g,expedition);}
             var s=new StringBuilder(Version).Append('|').Append(seed.ToString(CultureInfo.InvariantCulture)).Append('|').Append(size.ToString(CultureInfo.InvariantCulture));
             foreach(var a in new[]{l.Floor,l.StepDir,l.WallX,l.WallZ}){s.Append('|');foreach(byte b in a)s.Append((char)('a'+b));}
             foreach(float h in l.Ceiling)s.Append('|').Append(h.ToString("R",CultureInfo.InvariantCulture));
