@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
         public bool Valid()
         {
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;
-            if(MineCharges<0||MineCharges>2||!F(Meter)||Meter<0||Meter>1||Chain<0||Chain>64||!F(ChainUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil))return false;
+            if(MineCharges<0||MineCharges>NativeBombChipRules.MaxMineCharges||!F(Meter)||Meter<0||Meter>1||Chain<0||Chain>64||!F(ChainUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil))return false;
             if(Bombs!=null){if(Bombs.Length>NativeBombs.MaxBombs)return false;foreach(var b in Bombs)if(b==null||!NativeBombs.IsKind(b.Kind)||!V(b.Pos)||!V(b.Vel)||!V(b.Normal)||!F(b.At)||!F(b.ArmAt)||!F(b.BlowAt))return false;}
             if(Blasts!=null){if(Blasts.Length>NativeBombs.MaxBlasts)return false;foreach(var b in Blasts)if(b==null||!V(b.Pos)||!V(b.FromPos)||!F(b.At)||!F(b.Radius)||b.Radius<0||b.Radius>64||b.Link<0||b.Link>64||b.Kind!=null&&b.Kind.Length>24)return false;}
             if(Line!=null&&(!F(Line.At)||!F(Line.Speed)||!V(Line.From)||!V(Line.To)))return false;

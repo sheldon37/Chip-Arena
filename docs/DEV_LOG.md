@@ -1,3 +1,11 @@
+## 2026-11-04 — Astra: Bombadier chip authority
+
+- **Branch/base:** `codex/bombadier-chips`, shared `2cf7c9f2`, integrated shared `9ba6872a`; newer shared integration and remote receipts in the task PR.
+- **Implemented:** eight `NativeBombChips` mechanics in host rules, all ten live content rows, `SupportedMechanics`, DEV PvE choice gate, projectile-tag exclusions, four-charge wire validation, native cast/stack/PvE/codec/fire/Encore acceptance checks. Black Powder/Bandolier reuse stats; exact 4/3 capacity fixes ceiling from nine sticks to eight. No new presentation assets or wire fields.
+- **Counterplay/tuning:** Daisy retains third-link Scorched; floor fire and Encore share the pilot budget. Same-owner fire overlaps are 6/s total, last 2 s, create no recursive fire/meter/links, and cap at 32 fields. Encore is eight 10-damage falling charges after strike and survives death. Stack numbers and full decisions in BOMBADIER.md. Timings of original casts/hits unchanged except requested fuse/cooldown/launch/chip effects.
+- **Checks:** 62 focused Bomb rules checks, 8,040 Bombadier presentation checks, warnings-as-errors managed build, pinned Unity 6000.3.24f1 InputSystem/Player/Runtime/Editor semantic compilation and source structure pass. Full managed suite passes (955 PASS groups, exit 0); integrated shared `9ba6872a`, then rebuilt and passed 62 focused rules plus 338,967 instance-machine checks. Final native compilation/source checks and remote receipts in the task PR. New Unity/PhysX acceptance gates compile but cannot execute on this Linux host. Windows gameplay, multiplayer playtest, balance feel and test publication remain unverified.
+- **Delivery:** implemented on task branch; merge, builder sync and publication receipts follow in PR. Ordinary Expedition picks use the existing signature odds; high-quality/rainbow reward rarity filters are preserved.
+
 ## 2026-11-04 — Claude: chip, recruit and mending machines in the generated instances
 
 - **Owner request:** "lets add machines to new expedition instances (chip machine, recruit machine, mending machine)".
