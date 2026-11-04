@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
             // The model bone of each game joint and its rest scale (a lost part's bone collapses).
             public readonly Transform[] Joint=new Transform[CapturedRig.Bones.Length];public readonly Vector3[] JointScale=new Vector3[CapturedRig.Bones.Length];
             public bool Dying;
+            // A Central Station kind past the crowd's reach, drawn cheaper (ZombieFarDetail).
+            public bool Far;
             // A beast's jaw (Variant.Beast: the gear's, ZombieBeastJaw), found once.
             public Transform BeastJaw;public bool BeastJawLooked;
             // Whether it crawls (its legs gone: the model's pelvis at the gait's height, NativeZombiePosture.Stance), how far its gait
@@ -111,7 +113,7 @@ namespace ChipArena.UnityConversion
             t.SetPositionAndRotation(rt.TransformPoint(0,NativeVisualRig.Floor,0),rt.rotation);t.localScale=rt.lossyScale;
             if(!root.activeSelf)root.SetActive(true);
             if(z.PosedFrame<Time.frameCount-1){z.Body.Binding.State.Forget();z.PoseClock.Reset();}
-            var eye=WorldEye;float distance=eye==null?0:(t.position-eye.transform.position).sqrMagnitude;ZombieGarmentCloth(z,distance);
+            var eye=WorldEye;float distance=eye==null?0:(t.position-eye.transform.position).sqrMagnitude;ZombieGarmentCloth(z,distance);if(NativeStationKinds.Is(z.Kind))ZombieFarDetail(z,distance>(z.Far?ZombieFarFrom-ZombieFarSlack:ZombieFarFrom));
             // Conservative bounds include the complete gait, long arms and Hulk scale; close shadows stay full-rate.
             bool visible=eye==null||!crowdFrustumReady||GeometryUtility.TestPlanesAABB(crowdFrustum,new Bounds(t.position+Vector3.up*2*rt.lossyScale.y,Vector3.one*8*Mathf.Max(1,rt.lossyScale.y)));
             bool urgent=z.Dying||z.Crawl||airborne||flash!=1||glow>1||swell>0||z.ChangedParts(lost,hidden);
@@ -131,6 +133,18 @@ namespace ChipArena.UnityConversion
             DiagnosticZombiePoseMs+=PresentationElapsed(poseAt);
             ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
+        }
+        // A Central Station kind stays on its model at any distance (HordeNoVoxel); past the distance the voxel tiers began it casts no
+        // shadow (they cast none), skins one bone a vertex (the project skins on the CPU) and leaves off what no one can see from there.
+        public const float ZombieFarFrom=(HordeReducedRange+HordeTierHysteresis)*(HordeReducedRange+HordeTierHysteresis),ZombieFarSlack=240;
+        private static void ZombieFarDetail(ZombieBody z,bool far)
+        {
+            if(z.Far==far)return;z.Far=far;
+            foreach(var r in z.Body.All)
+            {
+                if(r==null)continue;r.shadowCastingMode=far?UnityEngine.Rendering.ShadowCastingMode.Off:UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer m)m.quality=far?SkinQuality.Bone1:SkinQuality.Auto;
+                if(r.name.StartsWith("EyeLashes.",StringComparison.Ordinal)||r.name.StartsWith("EyeBrows.",StringComparison.Ordinal)||r.name.StartsWith("Teeth.",StringComparison.Ordinal)||r.name.StartsWith("Decay pit",StringComparison.Ordinal))r.forceRenderingOff=far;
+            }
         }
         // The hands' grip: the Hulk's fists, clenched hardest through a blow (owner 2026-10-30, "the punch is open handed still"); a
         // station kind's hands closed on what it carries (the Conductor's lantern by its bail, the Pileup's door by its edges); a
@@ -362,6 +376,7 @@ namespace ChipArena.UnityConversion
         {
             if(z?.Body?.Root==null)return;
             if(z.Cloth!=null&&z.ClothOn){NativeVisualCloth.Enable(z.Cloth,false);z.ClothOn=false;}
+            ZombieFarDetail(z,false);
             if(!zombieSpares.TryGetValue(z.Variant,out var spares)){spares=new Stack<ZombieBody>();zombieSpares[z.Variant]=spares;}
             if(spares.Count>=ZombieSparesPerVariant){VisualBodyGone(z.Body.Root);z.Body.Root=null;return;}
             z.Body.Root.SetActive(false);ZombieCollapse(z,0,0);ZombieFlash(z,1,0);ZombieSacSwell(z,0);z.Id=0;z.Dying=false;spares.Push(z);
