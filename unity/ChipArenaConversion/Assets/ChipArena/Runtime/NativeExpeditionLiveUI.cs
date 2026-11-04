@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The bound session's view, or null (nothing bound, or the DEV preview is showing).</summary>
         private ExpeditionView LiveExpedition=>ExpeditionPreviewShown?null:ExpeditionView;
         /// <summary>The Expedition screen is open (it takes the pointer and pauses local play input, as the PvE chip screen does).</summary>
-        private bool ExpeditionScreenOpen=>expeditionScreenOpen&&LiveExpedition!=null;
+        private bool ExpeditionScreenOpen=>expeditionScreenOpen&&LiveExpedition!=null||ReviveMachineScreenOpen;
 
         /// <summary>The viewer's command path, made once per binding (host: the session's commands; guest: the channel sender).</summary>
         private IExpeditionCommands LiveExpeditionCommands()
@@ -80,6 +80,7 @@ namespace ChipArena.UnityConversion
         {
             // Resolve completion/XP screen changes before Update chooses cursor ownership, not first during OnGUI.
             ExpeditionLiveSync();
+            if(ReviveMachineKeys())return true;
             ExpeditionPickStep();
             if(LiveExpedition==null){expeditionScreenOpen=false;return false;}if(GUIUtility.keyboardControl!=0)return false;
             ExpeditionEndingKeys();
