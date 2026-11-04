@@ -66,7 +66,7 @@ Ward Zero has no unique kinds (it inherits the Siren's horde).
    body made in code (4k).
 3. Central Station's four kinds on the model. **Built 2026-11-03** and live (`claude/station-models`; docs/ZOMBIE-MODELS.md 4g:
    the gear modelled in Blender, the tape, the fused commuter; reviewed in turnarounds, close-ups and attack strips on the PC).
-4. City Ironworks' five kinds on the model.
+4. City Ironworks' five kinds on the model. **Built 2026-11-04** and live (`claude/ironworks-models`; docs/ZOMBIE-MODELS.md 4n: on every tier of the map; their gear in Blender, `tools/gear/ironworks_gear.py`, its own local bank).
 5. The bosses: the Siren on the model; THE 6:47 and THE CONVERTER rebuilt part by part. **THE 6:47 built 2026-11-04** (docs/EXPEDITION-BOSS-CENTRAL-STATION.md section 14).
 
 ## 4. The Backrooms' own entities (rule proposals for Astra)

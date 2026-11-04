@@ -25,6 +25,9 @@ Shader "ChipArena/VisualBodyToon" {
   _ZombieStripe("A zombie's stripes: period (m, rest up), the stripe's share, the rest heights covered",Vector)=(0,0,0,0)
   _ZombieAge("A starved zombie's age creases (the pack's mask, head UVs)",2D)="white"{}
   _ZombieRibs("A starved zombie's creases, ribs and spine: age, ribs, the ribs' rest heights",Vector)=(0,0,0,0)
+  _ZombieChar("A burned zombie: how far, the cracks' glow, ash, a seed",Vector)=(0,0,0,0)
+  _ZombieCharGlow("A burned zombie's cracks' colour",Vector)=(0,0,0,0)
+  _ZombieFoil("A heat suit's foil: its share",Float)=0
   _ZombieStripeTint("A zombie's stripes' colour",Vector)=(1,1,1,1)
  }
  // The visual body's toon (docs/BOZO-INTEGRATION.md step 4; Runtime/NativeVisualBodyPresentation.cs): a modular character's
@@ -98,6 +101,7 @@ Shader "ChipArena/VisualBodyToon" {
   if(_VertexAlbedo<=0){float band=ZombieBand(i.rest);o.Albedo=ZombieLook(o.Albedo,i.uv_Texture2D,band,ZombieStripe(i.rest))*ZombieLean(i.rest,i.uv_Texture2D);if(_ZombieEye.w>1)o.Emission+=_ZombieEye.rgb*(_ZombieEye.w-1);o.Emission+=ZombieTapeShine(band,normalize(i.worldNormal),normalize(i.viewDir));}
   if(_VertexAlbedo>0)o.Emission+=i.color.rgb*_VertexAlbedo*i.color.a;else if(_UseCustomTexture>.5)o.Emission+=SpawnTinted(VisualAccentPart(map.rgb,i.color.rgb),i.worldPos.y)*_AccentGlow;
   float3 n=normalize(i.worldNormal);
+  ZombieChar(i.rest,o.Albedo,o.Emission);ZombieFoil(n,normalize(i.viewDir),o.Albedo,o.Emission);
   if(_ArenaActorLit>.5)o.Emission+=o.Albedo*ToonPoints(ActorLights(i.worldPos,n));
   o.Emission+=o.Albedo*ToonPoints(MuzzleLights(i.worldPos,n,.35));
   o.Emission+=o.Albedo*ArenaGIBody(i.worldPos,n);

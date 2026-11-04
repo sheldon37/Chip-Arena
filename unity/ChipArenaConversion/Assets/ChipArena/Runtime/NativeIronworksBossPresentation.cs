@@ -181,14 +181,37 @@ namespace ChipArena.UnityConversion
                 for(int tier=0;tier<3;tier++)
                 {
                     var built=NativeIronworksBossLook.Build(tier);var body=built.Body;var meshes=new Mesh[body.Sections.Count];var joints=new int[body.Sections.Count];
-                    for(int i=0;i<body.Sections.Count;i++){var s=body.Sections[i];joints[i]=s.Bone;meshes[i]=IronworksBossMesh(s,"THE CONVERTER / tier "+tier+" / "+NativeIronworksBossLook.Names[s.Bone]);}
+                    for(int i=0;i<body.Sections.Count;i++){var s=body.Sections[i];joints[i]=s.Bone;meshes[i]=IronworksBossPart(NativeIronworksBossLook.Names[s.Bone]+"-"+tier,s.Bone)??IronworksBossMesh(s,"THE CONVERTER / tier "+tier+" / "+NativeIronworksBossLook.Names[s.Bone]);}
                     iwbMeshes[tier]=meshes;iwbJoints[tier]=joints;
                     if(tier==1){iwbLink=IronworksBossMesh(built.Link.Sections[0],"THE CONVERTER / link");iwbHook=IronworksBossMesh(built.Hook.Sections[0],"THE CONVERTER / hook");iwbShackle=IronworksBossMesh(built.Shackle.Sections[0],"THE CONVERTER / shackle");}
                 }
+                iwbLink=IronworksBossPart("link",-1)??iwbLink;iwbHook=IronworksBossPart("hook",-1)??iwbHook;iwbShackle=IronworksBossPart("shackle",-1)??iwbShackle;
                 iwbDraw=new NativeFxDraw();iwbBlock=new MaterialPropertyBlock();
                 var life=gameObject.GetComponent<NativeIronworksBossLifetime>();if(life==null)life=gameObject.AddComponent<NativeIronworksBossLifetime>();life.Gone=DisposeIronworksBoss;return true;
             }
             catch(Exception e){Debug.LogWarning("THE CONVERTER disabled: "+e.Message);DisposeIronworksBoss();iwbFailed=true;return false;}
+        }
+        // A part modelled in Blender (tools/gear/converter_gear.py; the local bank Resources/ChipArenaPackIronworks, its props in the joints' own frames), or null without it: the code
+        // sculpt then draws, as in cloud builds. Its vertex colours the albedo, its glowing sub-mesh the emission at that joint's strength (the sculpt's WeaponPaint.Glow's), scaled by the rig's Glow[joint] as the sculpt's.
+        private static Mesh IronworksBossPart(string id,int joint)
+        {
+            var bank=NativePackBanks.Bank(IronworksGearBank);var prop=bank?.Find("conv-"+id);if(prop==null||prop.Parts.Length==0)return null;
+            float strength=joint==NativeIronworksBossLook.Metal?6f:joint==NativeIronworksBossModel.VesselHeat?2.6f:joint==NativeIronworksBossModel.WindBox?3.4f:joint==NativeIronworksBossModel.Seams?4.2f:NativeIronworksBossLook.IsCrust(joint)?1.7f
+                :joint>=NativeIronworksBossModel.JawBase&&joint<NativeIronworksBossModel.Count?1.2f:joint==NativeIronworksBossLook.Visor?3.4f:joint==NativeIronworksBossLook.LampL||joint==NativeIronworksBossLook.LampR?5f:2.4f;
+            var s=new WeaponSection{Bone=joint};
+            foreach(var part in prop.Parts)
+            {
+                var src=bank.Meshes[part.Mesh];int at=s.Positions.Count;var glowing=new bool[src.Positions.Length];
+                foreach(var sub in src.Submeshes){var mat=sub.Material>=0&&sub.Material<bank.Materials.Count?bank.Materials[sub.Material]:null;bool glow=mat!=null&&mat.EmissionColor.LengthSquared()>0;foreach(int i in sub.Indices){s.Indices.Add(at+i);if(glow)glowing[i]=true;}}
+                for(int i=0;i<src.Positions.Length;i++)
+                {
+                    s.Positions.Add(NVector.Transform(src.Positions[i],part.Place));s.Normals.Add(NVector.Normalize(NVector.TransformNormal(src.Normals[i],part.Place)));
+                    float r=Mathf.GammaToLinearSpace(src.Colors[i*4]/255f),g=Mathf.GammaToLinearSpace(src.Colors[i*4+1]/255f),b=Mathf.GammaToLinearSpace(src.Colors[i*4+2]/255f);
+                    if(glowing[i]){s.Colors.Add(new System.Numerics.Vector4(r*.08f,g*.08f,b*.08f,1));s.Emission.Add(new System.Numerics.Vector4(r*strength,g*strength,b*strength,0));}
+                    else{s.Colors.Add(new System.Numerics.Vector4(r,g,b,1));s.Emission.Add(System.Numerics.Vector4.Zero);}
+                }
+            }
+            return IronworksBossMesh(s,"THE CONVERTER / "+id);
         }
         // A joint's geometry as a mesh (Core already in Unity's frame: no mirror, no winding turn), emission in uv1 as the bank's.
         private static Mesh IronworksBossMesh(WeaponSection s,string name)

@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
         /// voxel body (owner 2026-11-04, on the Central Station's unique enemies: they are few, so they keep their bodies; their
         /// caps are NativeZoneCombat.Cap's, at most seven alive). A frame without a body draws nothing rather than a voxel. The
         /// voxel model is left to a client without the bake and to Settings · Player model Classic.</summary>
-        private bool HordeNoVoxel(int kind)=>NativeStationKinds.Is(kind)&&NativeZombieLooks.Modelled(kind)&&ZombieModelsOn;
+        private bool HordeNoVoxel(int kind)=>(NativeStationKinds.Is(kind)||NativeIronworksKinds.Is(kind))&&NativeZombieLooks.Modelled(kind)&&ZombieModelsOn;
         /// <summary>Whether this presentation draws the add with a kind model (the gore then throws the model's own parts).</summary>
         private bool HordeKindDrawn(int id)=>hordeKindStates.ContainsKey(id)||hordeDead.ContainsKey(id);
         private bool HordeKindsReady=>sourceModels!=null&&sourceModels.HordeKindModelCount>0;
@@ -228,6 +228,7 @@ namespace ChipArena.UnityConversion
             int real=NativeHordeKinds.Resolve(a.Stats?.id),kind=HordeDrawKind(real,m.Id);
             if(kind!=s.Kind){if(s.Kind>=0)s.Blend.Mark();s.Kind=kind;s.Look=NativeHordeKinds.Look(kind,m.Id);s.React.Bind(kind);s.Gait.Reset();}s.Real=real;s.MaxHp=m.MaxHp;
             if(s.Tier<0)s.Tier=NativeHordeModels.Reduced;
+            IronworksTier(s,kind);
             // A big kind (the Hulk) is its rig drawn at its scale: the gait runs in the rig's metres (the world over the scale).
             float sc=NativeHordeKinds.Scale[kind];s.Scale=sc;
             // The authority severs limbs (PveGib): the lost part flies off as the model's own part.
@@ -682,7 +683,7 @@ namespace ChipArena.UnityConversion
             {
                 // The lost and sliced joints left out through the cached visibility test (no closure per frame).
                 hordeQueueLost=death.lost;hordeQueueHidden=d.Slice;hordeQueueVisible??=b=>HordeJointShown(hordeQueueLost,b)&&(hordeQueueHidden==0||!HordeHiddenJoint(hordeQueueHidden,b));
-                if(burn||HordeGoreSettle(death.id,death.at,fall,rig,death.lost,d.Slice,floorY)){if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)&&!HordeNoVoxel(d.Kind)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);}GoreWoundsJob(death.id,rig);}
+                if(burn||HordeGoreSettle(death.id,death.at,fall,rig,death.lost,d.Slice,floorY)){if(burn&&HordeNoVoxel(d.Kind)){if(ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice))IronworksBurn(death.id,d.Kind,fx);}else if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)&&!HordeNoVoxel(d.Kind)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);HordeDeathJaw(rig,d.Kind,d.Look,death.id,hordeQueueVisible);}GoreWoundsJob(death.id,rig);}
             }
             if(d.Fate==NativeHordeGore.Fate.HeadGib){int f=d.Fountain;HordeGoreFountain(death.id,death.at,hordeClock,rig,ref f);if(f!=d.Fountain){d.Fountain=f;hordeDead[death.id]=d;}}
             HordeAdd(rig,death.id,float.NaN,Mathf.Max(0,fx),floorY,floorY,float.NaN,Vector3.zero,death.lost,body,d.Kind*8+d.Look);IronworksDeath(death,d.Kind,d.Melee,rig,fx,floorY);StationDeathFx(death,d.Kind,d.Seed,fx,rig,floorY);

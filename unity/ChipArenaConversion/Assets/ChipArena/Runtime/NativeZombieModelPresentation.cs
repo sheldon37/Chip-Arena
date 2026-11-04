@@ -50,6 +50,8 @@ namespace ChipArena.UnityConversion
             // NativeHordeGait.LegsNow.)
             public bool Crawl;public float Sunk,Crouch,Busy,Stride=1,Reach;
             public Transform HelmHead;public bool HelmLooked;
+            // The Slagback's crust on it (NativeIronworksModelPresentation.cs IronworksCrustGear).
+            public bool CrustOn=true;
             // Its garments' cloth (the local Magica bridge's handle: NativeZombieGarments.cs), and whether it is on.
             public object Cloth;public bool ClothTried,ClothOn;
             // A mutant's growth not on it yet (ZombieGrowthAttach: it draws voxel until its variant's growth is made), and when it
@@ -153,6 +155,7 @@ namespace ChipArena.UnityConversion
         {
             if(z.Kind==NativeHordeKinds.Hulk)return new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy};
             if(!z.Dying&&z.Variant.Carry!=null)return new NativeVisualRig.Grasp{RightGrip=1};
+            if(NativeIronworksKinds.Is(z.Kind))return IronworksGrasp(z,hordeNow);
             if(z.Dying||!NativeStationKinds.Is(z.Kind)||!stationAdds.TryGetValue(z.Id,out var st)||st.Kind!=z.Kind||!st.Out.Prop)return default;
             return NativeStationKinds.Local(z.Kind)==NativeStationKinds.Pileup?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1}:new NativeVisualRig.Grasp{LeftGrip=1};
         }
@@ -332,6 +335,7 @@ namespace ChipArena.UnityConversion
             if(v.Stripes>=0){ZombieRestWrite(root,body.All);ZombieStripes(v,worn,body.All);}
             if(v.Ribs>0)ZombieRestWrite(root,body.All);
             if(v.Gear.Length>0)body.All=ZombieGear(root,skeleton,v,body.All);
+            IronworksDress(v,root,body.All);
             foreach(var r in body.All){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer s)s.updateWhenOffscreen=false;}
             var z=new ZombieBody{Body=body,Variant=v,Sac=sac,Growing=v.Mutant};
             var of=body.Binding.Rig.Of;
@@ -1058,6 +1062,7 @@ namespace ChipArena.UnityConversion
         {
             if(zombieGearAssets.TryGetValue(id,out var asset))return asset;
             asset=null;var bank=NativePackBanks.Bank(ZombieGearBank);var prop=bank?.Find(id);
+            if(prop==null){bank=NativePackBanks.Bank(IronworksGearBank);prop=bank?.Find(id);}
             if(prop!=null&&prop.Parts.Length>0)
             {
                 try{asset=ZombieGearBuild(bank,prop);}
