@@ -326,6 +326,7 @@ namespace ChipArena.UnityConversion
                 case EventKind.Install:
                     if(e.Detail!=null&&e.Detail.StartsWith("mishima-",StringComparison.Ordinal)){n=Add(o,n,"lightning",.9f,false);n=Add(o,n,"arcade-heavy",.8f,false);}
                     else if(e.Detail!=null&&e.Detail.StartsWith("arcade-",StringComparison.Ordinal)){if(n<o.Length)o[n]=new Sound{Clip="arcade-tone",Tone=true,Gain=1};n++;n=Add(o,n,"arcade-heavy",.7f,false);}
+                    else if(NativeBombChips.Is(e.Detail)){n=Add(o,n,"explosion",.7f,false);n=Add(o,n,"parry",.35f,false);}
                     break;
                 // pveCue: buy (my own), gib, the reveal cinematic's phase, and my revive.
                 case EventKind.PveBuy:if(e.SourceMe)n=Add(o,n,"ui",.6f,false);break;

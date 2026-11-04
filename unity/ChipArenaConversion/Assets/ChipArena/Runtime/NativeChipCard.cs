@@ -45,11 +45,11 @@ namespace ChipArena.UnityConversion
         public static Color Rarity(string r)=>U.Hex(Cart.Rarity(r));
         public static string RarityName(string r)=>r=="l44t"?"L44T":string.IsNullOrEmpty(r)?"Common":char.ToUpperInvariant(r[0])+r.Substring(1);
         // The grade's label (constants, so a frame builds no string), its colour, tracking and glow.
-        private static string Grade(string r)=>r=="uncommon"?"UNCOMMON":r=="rare"?"RARE":r=="epic"?"EPIC":r=="legendary"?"LEGENDARY":r=="mythic"?"MYTHIC":r=="mishima"?"MISHIMA":r=="ansatsuken"?"ANSATSUKEN":r=="l44t"?"L44T":r=="siren"?"SIREN":"COMMON";
-        private static Color LabelOf(string r,Color rare)=>r=="mishima"?U.Hex(0xd6d7df):r=="ansatsuken"?U.Hex(0xff8a97):r=="l44t"?U.Hex(0xa0ffc0):r=="siren"?U.Hex(0xc9bfff):U.Mix(Color.white,rare,.82f);
-        private static float Tracking(string r)=>r=="l44t"?.22f:r=="siren"?.18f:r=="mishima"?.14f:.12f;
-        private static int Particles(string r)=>r=="mishima"?18:r=="ansatsuken"?20:r=="l44t"?24:r=="siren"?16:0;
-        public static bool Exclusive(string r)=>r=="mishima"||r=="ansatsuken"||r=="l44t"||r=="siren";
+        private static string Grade(string r)=>r=="uncommon"?"UNCOMMON":r=="rare"?"RARE":r=="epic"?"EPIC":r=="legendary"?"LEGENDARY":r=="mythic"?"MYTHIC":r=="mishima"?"MISHIMA":r=="ansatsuken"?"ANSATSUKEN":r=="l44t"?"L44T":r=="siren"?"SIREN":r=="bombadier"?"LIVE ORDNANCE":"COMMON";
+        private static Color LabelOf(string r,Color rare)=>r=="bombadier"?U.Hex(0xf2b90f):r=="mishima"?U.Hex(0xd6d7df):r=="ansatsuken"?U.Hex(0xff8a97):r=="l44t"?U.Hex(0xa0ffc0):r=="siren"?U.Hex(0xc9bfff):U.Mix(Color.white,rare,.82f);
+        private static float Tracking(string r)=>r=="bombadier"?.18f:r=="l44t"?.22f:r=="siren"?.18f:r=="mishima"?.14f:.12f;
+        private static int Particles(string r)=>r=="bombadier"?22:r=="mishima"?18:r=="ansatsuken"?20:r=="l44t"?24:r=="siren"?16:0;
+        public static bool Exclusive(string r)=>r=="bombadier"||r=="mishima"||r=="ansatsuken"||r=="l44t"||r=="siren";
         private static readonly Dictionary<string,string> tags=new Dictionary<string,string>();
         private static string Tag(ContentChip c)
         {
@@ -119,10 +119,10 @@ namespace ChipArena.UnityConversion
             // The board's circuit under the face: faint under the text, clearer between the content and the footer.
             float fy=r.y+Mathf.Max(l.FootTop,r.height-(l.Height-l.FootTop));NativeChipArt.Board(r,s.Radius,rare,a,r.y+l.FootTop-4,fy-2);
             // Kit sparks drifting off the long edges (2.8 s; Siren 3.4 s) in the kits' colours, and the kits' card art.
-            int sparks=calm?0:Particles(tier);float period=siren?3.4f:2.8f;Color spark=tier=="mishima"?U.Hex(0xff234a):tier=="ansatsuken"?U.Hex(0xff6071):siren?U.Hex(0xd9d0ff):rare,sparkGlow=tier=="mishima"?U.Hex(0xf30035):tier=="ansatsuken"?U.Hex(0xff294f):siren?U.Hex(0x9b87ff):rare;
+            int sparks=calm?0:Particles(tier);float period=siren?3.4f:2.8f;Color spark=tier=="bombadier"?U.Hex(0xffc24d):tier=="mishima"?U.Hex(0xff234a):tier=="ansatsuken"?U.Hex(0xff6071):siren?U.Hex(0xd9d0ff):rare,sparkGlow=tier=="bombadier"?U.Hex(0xff4a10):tier=="mishima"?U.Hex(0xf30035):tier=="ansatsuken"?U.Hex(0xff294f):siren?U.Hex(0x9b87ff):rare;
             for(int n=0;n<sparks;n++){float k=Mathf.Repeat(t/period+n*.31f/period,1),op=k<.2f?k/.2f*.9f:.9f*(1-(k-.2f)/.8f);bool even=n%2==0;float px=r.x+r.width*((n*37+11)%100)/100f+(n-6)*3*k,py=even?r.y+2+3-35*k:r.yMax-3-3+35*k;
                 float sw=3*(1-.6f*k),sh=(siren?5:3)*(1-.6f*k);var sp=new Rect(px,py,sw,sh);bool dark=siren&&n%3==2;U.Glow(sp,A(dark?U.Hex(0xb7a8ff):sparkGlow,.5f*op),3);U.Fill(sp,A(dark?U.Hex(0x050409):spark,op));}
-            NativeChipArt.Aura(r,s.Radius,tier,t,a,look.Plain);
+            NativeChipArt.Aura(r,s.Radius,tier,t,a,look.Plain);if(tier==NativeBombChips.Tier)NativeBombChipArt.Face(r,s.Radius,c.id,t,a,look.Plain,calm);
             // The footer's well (a darker band inside the bezel) and the etched divider under the header, its glint in the tier.
             float p1=NativeHudChrome.Px;NativeHudChrome.Cut(Rect.MinMaxRect(r.x+bw,fy,r.xMax-bw,r.yMax-bw),A(new Color(0,0,0,siren?.3f:.26f)),NativeChipArt.BottomCut(s.Radius)*.55f,NativeHudChrome.Corners.BL|NativeHudChrome.Corners.BR);
             float dy=r.y+l.Head;U.Fill(new Rect(r.x+bw+2,dy,r.width-2*bw-4,p1),A(new Color(0,0,0,.55f)));U.Fill(new Rect(r.x+bw+2,dy+p1,r.width-2*bw-4,p1),A(new Color(1,1,1,.06f)));
