@@ -6,7 +6,7 @@ introduce a much higher detail of intros going forward. Very beautiful animation
 
 Owner, the same day: "can we [have] them holding TNTs instead of a grenade launcher? Modify animations however needed with this in mind." So there is no launcher: a bundle of TNT in each fist, thrown by hand.
 
-Status: presentation by Claude, reviewed in Unity; the intro plays today with DEV access. The kit has no rules yet: they, the weapon row and access are Astra's (AGENTS.md role split), and the Sandbox preview waits on that row. DEV access only, like the Cyber Lord.
+Status: presentation by Claude, reviewed in Unity; the intro plays today with DEV access. Authority, the DEV row/access, bots, snapshot/late-join/replay integration and native gates are implemented on `codex/bombadier-rules` (2026-11-04). Native Windows gameplay acceptance remains pending. DEV access only, like the Cyber Lord.
 
 ## The idea
 
@@ -107,3 +107,14 @@ The hold is keyed on `SourceSpec`, not the weapon row: whatever `WeaponId` the r
 Input: LMB `Shoot`, Q `AbilityQ`, E `AbilityE`, 1 to 5 `SirenAbility` (extend the key loop in `ConversionGame` to 5 for this spec, as for the Cyber Lord).
 
 Needs from you: the DEV weapon row and access (`bombadier`, as the Cyber Lord), content rows, the authority, bots, the chain and Scorched rules, the numbers above (tune what plays badly and tell me), `NativeIntroRules.Duration`/`NameAt` already carry `dev-bombadier`, and native checks. Q on the keyboard: `NativeRangedRules.KeyboardQ` needs this spec beside the Cyber Lord's if the row's own Q does not qualify.
+
+## Authority decisions (Astra, 2026-11-04)
+
+- Damage and cooldown proposals are retained. Pop cadence is 2/3 s; ordinary throws release at +.16 s, the cluster at +.28 s, with .4 s recovery after release. Bomb `At` is the release; Finale uses `BoxSpot`.
+- A first hit is link 0, then links 1/2/3 use .8/.6/.45. Four Sticky-strength hits total 45.6 HP before modifiers. The third link starts Scorched immediately, adds no launch, and clears this kit's mine steering lock. Scorched hits deal half damage and cannot relaunch. Histories are per owner/victim.
+- **Pilot safety budget:** at most min(60 HP, 60% of maximum HP) actual damage from that owner's chain, including follow-ups during Scorched. The cap is applied after damage modifiers. It resets after Scorched expires (or after a 1.2 s gap without an active Scorched window). PvE minions retain normal lethal damage; their launch immunity window still applies. This prevents a damage-chip/overlapping-bomb burst from defeating the promised pilot counterplay.
+- Overlapping Finale circles hit a target only once, follow at 3 m/s until lock, ignore cover at strike, and retain ordinary immunity/sanctuary rules. Up to 16 nearest enemies receive circles (the record's bound). Death does not cancel it, and PvP resolution waits for its pending strike. Caster alone is rooted; the existing presentation owns the camera.
+- Jump/mine launch speeds use gravity 23 m/s² to reach their proposed 9/8 m rise. Sticky handoffs use 12 m/s horizontally toward the nearest live charge within 12 m. The line shoves at 7 m/s. Cluster children follow the preview's 3.6 m ring with 1.9 m blasts, staggered across .35 s. Ordinary explosions respect cover; the Finale is the exception.
+- Mines have 15 shot HP, arm .5 s after sticking, expire 20 s after release, recharge serially at 7 s, and are capped at three (a fourth replaces the oldest). Any armed mine touched by a visible blast schedules a .12 s handoff. The switch orders charges by distance. All shots use nearest-hit arbitration with world, pilot and technique obstacles.
+- The kit is deep-copied, validated in snapshots and death records, and uses explicit null-presence flags for Unity's real frame codec. `NativeBombs.Source` reads the rendered snapshot except while the sandbox preview owns it. Native gates exercise the real codec, cast timing, self damage, chains, charge destruction, dodge removal, the Finale and death persistence.
+- Parting Line separately requires `Phase=="hop"` for movement. Descending floor contact does not terminate its horizontal retreat; a wall still can. Regression gates cover a complete hop and early/completed movement without the anchor-throw fallback.

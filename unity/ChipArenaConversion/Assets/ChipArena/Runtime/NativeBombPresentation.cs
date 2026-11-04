@@ -10,14 +10,15 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The Dev Sandbox's Preview Bombadier: the whole kit on a loop. Off everywhere else.</summary>
         public bool BombPreviewOn;
+        private readonly NativeBombSnapshot bombSnapshot=new NativeBombSnapshot();
         private readonly NativeBombPreview bombPreview=new NativeBombPreview();
         private void BombBegin(Snapshot s,float time)
         {
-            Actor me=null;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==LocalId){me=a;break;}
-            if(!BombPreviewOn||me==null||!me.Alive){if(bombPreview.Any)bombPreview.Clear();if(ReferenceEquals(NativeBombs.Source,bombPreview))NativeBombs.Source=null;return;}
+            bombSnapshot.Snapshot=s;NativeBombs.Source=bombSnapshot;Actor me=null;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==LocalId){me=a;break;}
+            if(!BombPreviewOn||me==null||!me.Alive){if(bombPreview.Any)bombPreview.Clear();return;}
             NativeBombs.Source=bombPreview;var feet=visualPositions.TryGetValue(me.Id,out var v)?v:Vec(me.Position);bombPreview.Step(me,new NVector(feet.x,feet.y,feet.z),me.Yaw*Mathf.Deg2Rad,time);
         }
-        private void ClearBomb(){bombPreview.Clear();if(ReferenceEquals(NativeBombs.Source,bombPreview))NativeBombs.Source=null;}
+        private void ClearBomb(){bombPreview.Clear();if(ReferenceEquals(NativeBombs.Source,bombPreview)||ReferenceEquals(NativeBombs.Source,bombSnapshot))NativeBombs.Source=null;}
         private static readonly Color BombBlack=new Color(.03f,.03f,.035f),BombBrass=new Color(.55f,.38f,.14f),BombSteel=new Color(.16f,.16f,.18f),BombHazard=new Color(.8f,.6f,.05f),BombLeather=new Color(.3f,.18f,.08f),BombOlive=new Color(.085f,.09f,.065f),BombLed=new Color(5,.3f,.2f);
         // Where the next piece goes: the world, or (for what a fist holds this moment) the frame of that fist, on the first-person layer when it is the view rig's.
         private Matrix4x4 bombFrame=Matrix4x4.identity;private int bombLayer;private Camera bombCamera;

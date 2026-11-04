@@ -98,7 +98,8 @@ internal static class ChooserCameraChecks
     // ---- the side: the screen on every class's display wrist, the camera in the other front quarter ----
     private static void Sides(ConversionContent data,List<string> log)
     {
-        var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren").ToArray();Check(specs.Length>=16&&specs.Contains("cyberlord"),"the class list");
+        // This fixture samples the legacy Core motion routes. Bombadier uses NativeVisualMotion (BombadierChecks); its live chooser needs native visual acceptance.
+        var specs=data.weapons.Select(w=>w.id).Where(id=>id!="siren"&&id!=NativeBombs.Spec).ToArray();Check(specs.Length>=16&&specs.Contains("cyberlord"),"the class list");
         var layer=new NativeChipSelectPose();var shown=new CapturedRig.Pose();var notes=new List<string>();
         foreach(var spec in specs)
         {

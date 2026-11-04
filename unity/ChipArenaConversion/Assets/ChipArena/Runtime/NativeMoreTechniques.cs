@@ -150,6 +150,8 @@ namespace ChipArena.UnityConversion
                 default:return false;
             }
             var delta=travel/60;bool wall=false;float allowed=delta.magnitude>1e-5f?ForwardAbilityStep(p.Body.position,delta.normalized,delta.magnitude,out wall):0;
+            if(k.Kind=="parting-line"&&wall&&delta.y<0&&root.scene.GetPhysicsScene().CapsuleCast(p.Body.position+Vector3.up*.43f,p.Body.position-Vector3.up*.43f,.42f,delta.normalized,out var floorHit,delta.magnitude+.03f,WorldMask,QueryTriggerInteraction.Ignore)&&floorHit.normal.y>.65f)
+            {delta.y=0;allowed=delta.magnitude>1e-5f?ForwardAbilityStep(p.Body.position,delta.normalized,delta.magnitude,out wall):0;}
             if(!TechniqueDestination(p,p.Body.position+delta.normalized*allowed)){allowed=0;wall=true;}
             var result=delta.normalized*allowed*60;velocity.x=result.x;velocity.z=result.z;
             if(k.Kind=="recoil-burst"||k.Kind=="parting-line"){velocity.y=result.y;p.Body.useGravity=false;p.Grounded=false;}
