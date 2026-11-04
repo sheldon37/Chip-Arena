@@ -323,10 +323,10 @@ namespace ChipArena.UnityConversion
             draw.Quad(false,a-sa,b-sb,b+sb,a+sa,new Vector2(ta,-1),new Vector2(tb,-1),new Vector2(tb,1),new Vector2(ta,1),c,NativeWeaponFxDraw.Ribbon,tail);
         }
         /// <summary>A round's fading line from A to B (each end's strength 0..1, its life left), thinning as it fades.</summary>
-        public static void Line(NativeWeaponFxDraw draw,Vector3 a,Vector3 b,float ka,float kb,Vector3 eye,float pixel,Color color,float width)
+        public static void Line(NativeWeaponFxDraw draw,Vector3 a,Vector3 b,float ka,float kb,Vector3 eye,float pixel,Color color,float width,float minPixels=1.2f)
         {
             Vector3 mid=(a+b)*.5f,toEye=eye-mid,s=Vector3.Cross(b-a,toEye);if(s.sqrMagnitude<1e-8f)return;s=s.normalized;color.a=0;
-            Vector3 sa=s*(.5f*NativeTracers.Width(width,1.2f,(eye-a).magnitude,pixel)),sb=s*(.5f*NativeTracers.Width(width,1.2f,(eye-b).magnitude,pixel));
+            Vector3 sa=s*(.5f*NativeTracers.Width(width,minPixels,(eye-a).magnitude,pixel)),sb=s*(.5f*NativeTracers.Width(width,minPixels,(eye-b).magnitude,pixel));
             Span(draw,a,b,sa,sb,Mathf.Clamp(ka,0,1)*.94f,Mathf.Clamp(kb,0,1)*.94f,color,1,2);
         }
         /// <summary>A gun round's landing at `age` (Core NativeRoundImpacts): the quick glow, the star, the spike along the rebound, the sparks and the dust.</summary>

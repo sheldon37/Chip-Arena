@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
         public const int Max=1024;public const float Keep=1;
         private readonly List<NativeShotEnd> ends=new List<NativeShotEnd>(Max);
         public int Count=>ends.Count;
+        public NativeShotEnd this[int i]=>ends[i];
         public void Clear()=>ends.Clear();
         private void Prune(float now)
         {int n=0;while(n<ends.Count&&now-ends[n].At>Keep)n++;if(n>0)ends.RemoveRange(0,n);}

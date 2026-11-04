@@ -107,6 +107,16 @@ namespace ChipArena.UnityConversion
         public const float StraightCos=.998f;
         /// <summary>The head's glint fades out close to the eye (0 within half a metre, full from 3.5 m): a round passing the camera is not a flash in the face.</summary>
         public static float HeadNear(float distance)=>Math.Max(0,Math.Min(1,(distance-.5f)/3));
+        /// <summary>A drawn line's parts: the hitscan rifle's and a round that came and went between frames: the hot line and its sheath, each its own
+        /// life (s); how far ahead of the far end the near end fades (so the line reads as leaving the gun); how long after its authority time a
+        /// stale one is skipped (a late join, a long frame).</summary>
+        public const float FlashLife=.11f,SheathLife=.14f,LineLead=.05f,LineStale=.45f;
+        /// <summary>Whether a round that came and went between frames can belong to a shot `age` seconds old from `distance` metres away.</summary>
+        public static bool Reached(float distance,float age,float speed)=>age>=-.02f&&age<.2f&&distance<=Math.Max(4,speed*(age+.05f));
+        /// <summary>The first-person pilot's own round: its tail is longer, so the line runs back to the barrel for most of the flight (seen from behind the
+        /// gun a round's length is all foreshortened), and falls off slower (OwnFade).</summary>
+        public static void Own(ref NativeTracerStyle s){s.Fade=OwnFade;s.Tail*=OwnReach;s.MaxLength*=OwnReach;s.CoreGain*=1.2f;}
+        public const float OwnReach=2.5f;
         /// <summary>The tail with the Projectile trails setting off.</summary>
         public const float PlainLength=.4f;
         /// <summary>A turn this sharp in one step (cos 41 degrees) is a corner: a bounce or a reflect, not a homing curve.</summary>
@@ -121,9 +131,9 @@ namespace ChipArena.UnityConversion
 
         private static FxColor L(int hex)=>NativeWeaponFx.Linear(hex);
         // Each gun's look, read once (a burst of chip-multiplied rounds fixes hundreds of looks a second).
-        private static readonly NativeTracerStyle GunStyle=new NativeTracerStyle{Core=.02f,Sheath=.065f,CoreGain=3f,SheathGain=.55f,CoreColor=L(GunCore),Edge=L(GunEdge),Tail=.034f,MinLength=.6f,MaxLength=6,Fade=1.1f,HeadSize=.06f,HeadGain=1.4f},
+        private static readonly NativeTracerStyle GunStyle=new NativeTracerStyle{Core=.022f,Sheath=.065f,CoreGain=3.2f,SheathGain=.55f,CoreColor=L(GunCore),Edge=L(GunEdge),Tail=.04f,MinLength=.6f,MaxLength=8,Fade=1.1f,HeadSize=.06f,HeadGain=1.4f},
             RifleStyle=new NativeTracerStyle{Core=.028f,Sheath=.09f,CoreGain=5,SheathGain=.65f,CoreColor=L(RifleCore),Edge=L(RifleEdge),Full=true,Tail=.07f,MinLength=2,MaxLength=20,Fade=1,HeadSize=.1f,HeadGain=2.4f,LingerLife=.32f,LingerWidth=.02f,LingerGain=.7f,LingerColor=L(RifleLine)},
-            PistolStyle=new NativeTracerStyle{Core=.024f,Sheath=.08f,CoreGain=3.6f,SheathGain=.6f,CoreColor=L(PistolCore),Edge=L(PistolEdge),Full=true,Tail=.04f,MinLength=.6f,MaxLength=7,Fade=1.1f,HeadSize=.07f,HeadGain=1.6f};
+            PistolStyle=new NativeTracerStyle{Core=.024f,Sheath=.08f,CoreGain=3.6f,SheathGain=.6f,CoreColor=L(PistolCore),Edge=L(PistolEdge),Full=true,Tail=.04f,MinLength=.6f,MaxLength=9,Fade=1.1f,HeadSize=.07f,HeadGain=1.6f};
         /// <summary>The side of a round fired from seat `firer`, seen from seat `viewer`.</summary>
         public static NativeTracerSide Side(NativeSeat viewer,NativeSeat firer,bool teams,bool cooperative)
         {
@@ -158,7 +168,7 @@ namespace ChipArena.UnityConversion
             if(side==NativeTracerSide.Ally){s.CoreGain*=.6f;s.SheathGain*=.5f;s.HeadGain*=.5f;s.Sheath*=.75f;}
             else if(side==NativeTracerSide.Enemy){s.Edge=FxColor.Lerp(s.Edge,L(HostileEdge),.5f);s.SheathGain*=1.3f;}
             if(quality<.5f){s.Sheath=0;s.LingerLife=0;s.HeadSize=0;}else if(low){s.LingerLife*=.6f;if(!s.Full){s.Sheath=0;s.HeadSize=0;}}
-            if(!s.Full){s.Sheath=0;s.HeadSize=0;s.CoreGain*=.85f;}
+            if(!s.Full){s.Sheath=0;s.HeadSize=0;}
             return s;
         }
         /// <summary>The look of an arrow's trail, from NativeBowFx.TrailLook: the arrow's own colour, draw and length; its shaft is the model.</summary>

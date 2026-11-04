@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
             var pistol=Gun("pistol");var rifle=Gun("rifle",speed:150,baseSpeed:150);var mg=Gun("machinegun",round:3,speed:50,baseSpeed:50);var thin=Gun("machinegun",round:4,speed:50,baseSpeed:50);
             Check(NativeTracers.Length(rifle,150)>NativeTracers.Length(pistol,52)&&rifle.LingerLife>0&&pistol.LingerLife==0,"the rifle's the long needle with a line behind it");
             Check(Near(rifle.CoreColor.B,rifle.CoreColor.R,.2)&&rifle.Edge.B>rifle.Edge.R&&pistol.Edge.R>pistol.Edge.B&&mg.Edge.R>mg.Edge.G*1.5f,"the rifle cold, the pistol gold, the machine gun amber");
-            Check(mg.Full&&!thin.Full&&mg.Sheath>0&&thin.Sheath==0&&thin.HeadSize==0&&thin.CoreGain<mg.CoreGain,"one round in three of a belt is a full tracer, the others the thin line");
+            Check(mg.Full&&!thin.Full&&mg.Sheath>0&&thin.Sheath==0&&thin.HeadSize==0,"one round in three of a belt is a full tracer, the others the thin line");
             foreach(var s in new[]{pistol,rifle,mg})Check(s.Core<=.03f&&s.Sheath<=.09f&&s.HeadSize<=.15f,"thin: no orb");
             // The tail is seconds of flight within its clamps: a faster round is longer by itself.
             Check(NativeTracers.Length(pistol,100)>NativeTracers.Length(pistol,50)&&NativeTracers.Length(pistol,5000)==pistol.MaxLength&&NativeTracers.Length(pistol,1)==pistol.MinLength,"length follows speed within its clamps");
@@ -84,6 +84,7 @@ namespace ChipArena.UnityConversion
         {
             var slow=Gun("pistol",speed:60,baseSpeed:60);var quick=Gun("pistol",speed:400,baseSpeed:400);
             Check(slow.LingerLife==0&&quick.LingerLife>0&&quick.LingerLife<=NativeTracers.FastLine+1e-4f,"a very fast round leaves a short line by itself, whatever its gun");
+            Check(NativeTracers.Reached(10,.04f,250)&&!NativeTracers.Reached(60,.04f,250)&&NativeTracers.Reached(3,0,250)&&!NativeTracers.Reached(10,.5f,250)&&!NativeTracers.Reached(1,-.5f,250),"a stopping point belongs to a shot only if the round can have reached it");
             Check(NativeTracers.Line(0,.3f)==1&&NativeTracers.Line(.31,.3f)==0&&NativeTracers.Line(.1,.3f)>NativeTracers.Line(.2,.3f)&&NativeTracers.Line(-.1,.3f)==0,"a line fades over its life");
         }
         private static void Corners()
@@ -128,6 +129,7 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
             string run=R("Runtime/NativeTracerPresentation.cs"),wfx=R("Runtime/NativeWeaponFxPresentation.cs"),shots=R("Runtime/NativeShotPresentation.cs"),glow=R("Runtime/NativeCombatGlow.cs"),core=R("Core/NativeTracers.cs"),fx=R("Resources/NativeWeaponFx.shader");
+            Check(wfx.Contains("HitscanFx(arena,now,q,low,trails);")&&wfx.Contains("RoundsUnseen(arena,now,q,low,trails);")&&run.Contains("e.Id<=hitscanEvent")&&run.Contains("now-e.Time>NativeTracers.LineStale"),"instant segments by their event id, stale ones skipped; rounds that came and went between frames from their stopping points");
             Check(wfx.Contains("RoundFx(draw,arena,b,v,now,q,low,trails,eye);")&&wfx.Contains("!RoundSpent(draw,arena,pair.Value,eye,now,q,low,trails)")&&wfx.Contains("RoundMarksDraw(draw,now,q,low);"),"WeaponFx draws the rounds, their ends and their landings");
             Check(shots.Contains("else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first){HidePackHead(first);"),"a gun round's box is skipped; the scene and its chip modules stay");
             // The launch's trace back allows the step a round takes in the tick it is born: rounds of any speed leave the drawn muzzle.

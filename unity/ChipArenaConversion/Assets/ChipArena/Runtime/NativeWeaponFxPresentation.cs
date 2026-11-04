@@ -336,7 +336,9 @@ namespace ChipArena.UnityConversion
             if(!ReferenceEquals(emitterArena,arena)||emitterGeneration!=arena.Generation||now<emitterClock-.25f){ClearEmitters();emitterArena=arena;emitterGeneration=arena.Generation;}
             emitterClock=Math.Max(emitterClock,now);
             float q=BlastQuality;bool low=LowGraphics,trails=TrailsEnabled;Vector3 eye=camera!=null?camera.transform.position:Vector3.zero;TracersBegin(arena,camera);
+            HitscanFx(arena,now,q,low,trails);
             foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);RoundFx(draw,arena,b,v,now,q,low,trails,eye);}
+            RoundsUnseen(arena,now,q,low,trails);
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye);}
             // A round gone from the frame's shots stops where the authority stopped it, its tail catching up (NativeTracerPresentation.cs).
             staleEmitters.Clear();foreach(var pair in emitters)if(pair.Value.Frame!=weaponFrame&&!RoundSpent(draw,arena,pair.Value,eye,now,q,low,trails))staleEmitters.Add(pair.Key);
@@ -380,6 +382,8 @@ namespace ChipArena.UnityConversion
             if(trails)
             {
                 float spacing=NativeTrailFx.Spacing(q,low);Vector3 step=at-e.Last;float distance=step.magnitude;
+                // A faster bolt (the schools now fly 80-120 m/s) sheds its sprites further apart: the same number a second, not twenty sprites a tick.
+                spacing*=NativeTrailFx.SpacingAt(e.Speed);
                 if(distance>1e-4f&&distance<20)
                 {
                     float travelled=-e.Carry;var color=NativeWeaponFxShapes.SpriteColor(e.Halo);

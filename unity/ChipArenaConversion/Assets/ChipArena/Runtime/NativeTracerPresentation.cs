@@ -9,6 +9,8 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Where the authority stopped a projectile (its replicated stopping point and time), for the presentation only.</summary>
         public bool ShotEndOf(int id,out NativeShotEnd end)=>shotEnds.Find(id,out end);
+        /// <summary>The replicated stopping points (presentation only).</summary>
+        public NativeShotEnds ShotEnds=>shotEnds;
     }
 
     // The gun rounds' and arrows' tracers in the arena (Core/NativeTracers.cs): each round's drawn path (its replicated place on the
@@ -18,9 +20,13 @@ namespace ChipArena.UnityConversion
     // the match. Hit timing, hitboxes, damage, cooldowns, movement and the network frame are untouched.
     public sealed partial class ArenaPresentation
     {
-        private struct LingerLine{public long Key;public Vector3 A,B;public float BornA,BornB,Life,Width;public Color Color;}
+        private struct LingerLine{public long Key;public Vector3 A,B;public float BornA,BornB,Life,Width,Pixels;public Color Color;}
         private struct RoundMark{public Vector3 At,Normal,Flight;public float Born;public long Seed;public NativeRoundImpact Kind;}
-        private const int LingerLines=96,RoundMarks=48;
+        private const int LingerLines=160,RoundMarks=48,RoundFlights=32;
+        // Each drawn hitscan shot's and unseen round's heading, for the landing its own event makes this frame.
+        private readonly int[] flightIds=new int[RoundFlights];private readonly Vector3[] flightDirs=new Vector3[RoundFlights];private int flightNext;
+        // The rounds a tracer has been made for (live, hitscan or reconstructed), and how far the Hitscan events have been read.
+        private readonly HashSet<int> roundDrawn=new HashSet<int>();private int hitscanEvent;
         private readonly LingerLine[] lingers=new LingerLine[LingerLines];private int lingerNext;
         private readonly RoundMark[] roundMarks=new RoundMark[RoundMarks];private int roundMarkNext;
         private readonly NVector3[] tracerWalk=new NVector3[NativeTracerPath.Capacity+1];private readonly Vector3[] tracerPoints=new Vector3[NativeTracerPath.Capacity+1];private readonly float[] tracerAlong=new float[NativeTracerPath.Capacity+1];
@@ -35,11 +41,107 @@ namespace ChipArena.UnityConversion
         {
             tracerViewer=ViewSeat(arena);tracerSheaths=tracerHeads=roundRays=0;tracerEye=camera!=null?camera.transform.position:Vector3.zero;tracerPixel=camera!=null&&camera.pixelHeight>0?2*Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad)/camera.pixelHeight:.001f;
             // The rounds an event has already landed (a body's or a prop's): its own effects answer them.
-            if(!ReferenceEquals(roundHitArena,arena)||roundHitGeneration!=arena.Generation){roundHits.Clear();roundHitEvent=0;roundHitArena=arena;roundHitGeneration=arena.Generation;}
+            if(!ReferenceEquals(roundHitArena,arena)||roundHitGeneration!=arena.Generation){roundHits.Clear();roundHitEvent=0;roundHitArena=arena;roundHitGeneration=arena.Generation;roundDrawn.Clear();hitscanEvent=0;}
             int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest<roundHitEvent)roundHitEvent=0;
             if(roundHits.Count>2048)roundHits.Clear();
             foreach(var e in arena.Events)if(e.Id>roundHitEvent&&e.Projectile>0&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Impact))roundHits.Add(e.Projectile);
             roundHitEvent=Math.Max(roundHitEvent,newest);
+            if(hitscanEvent>newest)hitscanEvent=0;if(roundDrawn.Count>4096)roundDrawn.Clear();
+        }
+        private void FlightAdd(int id,Vector3 dir){flightIds[flightNext]=id;flightDirs[flightNext]=dir;flightNext=(flightNext+1)%RoundFlights;}
+        private bool FlightOf(int id,out Vector3 dir){for(int i=0;i<RoundFlights;i++)if(flightIds[i]==id&&id!=0){dir=flightDirs[i];return true;}dir=default;return false;}
+        // A drawn line for a shot with no body to follow: its hot line and sheath in its look, and the look's longer line where it has one.
+        private void ShotLine(in NativeTracerStyle s,long key,Vector3 a,Vector3 b,float born,bool trails)
+        {
+            float lead=NativeTracers.LineLead;
+            LineAdd(key,a,b,born-lead*.6f,born,NativeTracers.FlashLife,s.Core,NativeTracers.CorePixels,new Color(s.CoreColor.R*s.CoreGain,s.CoreColor.G*s.CoreGain,s.CoreColor.B*s.CoreGain,0));
+            if(!trails)return;
+            if(s.Sheath>0)LineAdd(key,a,b,born-lead,born,NativeTracers.SheathLife,s.Sheath,NativeTracers.SheathPixels,new Color(s.Edge.R*s.SheathGain,s.Edge.G*s.SheathGain,s.Edge.B*s.SheathGain,0));
+            if(s.LingerLife>0)LineAdd(key,a,b,born-lead,born,s.LingerLife,s.LingerWidth,1.2f,new Color(s.LingerColor.R*s.LingerGain,s.LingerColor.G*s.LingerGain,s.LingerColor.B*s.LingerGain,0));
+        }
+        private void LineAdd(long key,Vector3 a,Vector3 b,float bornA,float bornB,float life,float width,float pixels,Color color)
+        {
+            lingers[lingerNext]=new LingerLine{Key=key,A=a,B=b,BornA=bornA,BornB=bornB,Life=life,Width=width,Pixels=pixels,Color=color};lingerNext=(lingerNext+1)%LingerLines;
+        }
+        // Whose round this is, as a tracer sees it: its look's inputs from the firer's seat (the firer's chips, the frame's viewer).
+        private NativeTracerStyle ShotStyle(NativeArena arena,string spec,int firer,int id,float speed,float q,bool low)
+        {
+            var seat=NativeShotViews.Seat(arena,firer);var w=NativeShotViews.Weapon(arena,spec);var mods=NativeShotViews.Modules(arena,seat?.chips,shotTracker.ModuleCache);
+            Actor owner=null;var actors=weaponSnapshot?.Actors;if(actors!=null)for(int i=0;i<actors.Length;i++)if(actors[i]!=null&&actors[i].Id==firer){owner=actors[i];break;}
+            float base0=w!=null?(float)w.speed:0;return NativeTracers.Of(spec,NativeTracerLook.Of(owner,kitClock,spec,kitClock),id,speed>0?speed:base0,base0,mods,false,false,NativeTracers.Side(tracerViewer,seat,arena.Match.Teams,arena.Match.Cooperative),q,low);
+        }
+        // A world collider a shot ended on raises no event: its own cast along the shot's last heading, and the gun's landing there.
+        private void WorldLanding(NativeArena arena,NativeRoundImpact kind,string spec,int id,Vector3 end,Vector3 dir,float reach,float born)
+        {
+            if(kind==NativeRoundImpact.None||roundRays>=RoundRaysPerFrame*2)return;roundRays++;
+            if(!arena.PhysicsWorld.Raycast(end-dir*.12f,dir,out var hit,reach+.12f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))return;
+            RoundMarkAdd(kind,hit.point,hit.normal,dir,born,id*2654435761L+37);SurfaceWorldHit(arena,hit.point,hit.normal,id,born,NativeRoundImpacts.Debris(spec,id));
+        }
+        private static bool LandedOnEvent(NativeArena arena,int id,Vector3 end)
+        {
+            var events=arena.Events;
+            for(int i=events.Count-1;i>=0;i--){var e=events[i];if(e.Projectile!=id||e.Kind!=EventKind.Hit&&e.Kind!=EventKind.Headshot&&e.Kind!=EventKind.Impact)continue;if((NativeArena.Vec(e.Position)-end).sqrMagnitude<4)return true;}
+            return false;
+        }
+        /// <summary>
+        /// The instant rifle (docs/PROJECTILE-REWORK.md): every fresh Hitscan event is a straight segment of a shot at its authority time, once by its
+        /// event id: a hit, a miss or a ricochet's leg. The shot's first leg leaves the firer's drawn muzzle (a scoped pilot's own, the scope's clear
+        /// distance on), a later leg throws the ricochet's fan at its corner, the last lands on the world when no event landed it.
+        /// </summary>
+        private void HitscanFx(NativeArena arena,float now,float q,bool low,bool trails)
+        {
+            var events=arena.Events;int newest=hitscanEvent;
+            for(int i=0;i<events.Count;i++)
+            {
+                var e=events[i];if(e.Id<=hitscanEvent)continue;newest=Math.Max(newest,e.Id);if(e.Kind!=EventKind.Hitscan||now-e.Time>NativeTracers.LineStale)continue;
+                Vector3 a=NativeArena.Vec(e.From),b=NativeArena.Vec(e.Position),line=b-a;float length=line.magnitude;if(!(length>.01f))continue;var dir=line/length;
+                bool again=FlightOf(e.Projectile,out var before);
+                if(again&&Vector3.Dot(before,dir)<NativeTracers.TurnCos)RoundMarkAdd(NativeRoundImpact.Ricochet,a,NormalOf(before,dir),before,e.Time,e.Id*1000003L+23);
+                bool scoped=ScopeActive&&e.Source==LocalId;
+                if(!again)
+                {
+                    if(scoped){float clear=Vector3.Dot(a-tracerEye,dir);a+=dir*Mathf.Max(0,ScopedClear-clear);if(Vector3.Dot(b-a,dir)<=0)a=b;}
+                    else if(shotTracker.Muzzles.TryGetValue(e.Source,out var m)&&(TU(m)-a).sqrMagnitude<9)a=TU(m);
+                }
+                FlightAdd(e.Projectile,dir);roundDrawn.Add(e.Projectile);
+                if((b-a).sqrMagnitude>.01f){var s=ShotStyle(arena,e.Detail,e.Source,e.Projectile,0,q,low);ShotLine(s,(long)e.Id<<20,a,b,e.Time,trails);}
+                bool last=true;for(int k=i+1;k<events.Count;k++)if(events[k].Kind==EventKind.Hitscan&&events[k].Projectile==e.Projectile){last=false;break;}
+                if(last&&!LandedOnEvent(arena,e.Projectile,b))WorldLanding(arena,NativeRoundImpacts.Gun(e.Detail),e.Detail,e.Projectile,b,dir,e.Radius+.45f,e.Time);
+            }
+            hitscanEvent=newest;
+        }
+        /// <summary>
+        /// A round that came and went between frames (a fast round at close range, more so on a guest's 20 Hz frames) was never in a frame's shots: its
+        /// stopping point is. Its firer is the event that landed it or, on the world, the newest Shot that can have reached there; it is drawn as a
+        /// line from that firer's drawn muzzle to the stopping point at its authority time. Only the guns' rounds.
+        /// </summary>
+        private void RoundsUnseen(NativeArena arena,float now,float q,bool low,bool trails)
+        {
+            var ends=arena.ShotEnds;var events=arena.Events;
+            for(int n=ends.Count-1;n>=0;n--)
+            {
+                var end=ends[n];if(now-end.At>NativeTracers.LineStale)break;if(roundDrawn.Contains(end.Id))continue;roundDrawn.Add(end.Id);
+                Vector3 at=NativeArena.Vec(end.Position);int firer=0;string spec=null;bool landed=false;var start=Vector3.zero;bool hasStart=false;
+                for(int i=events.Count-1;i>=0;i--)
+                {
+                    var e=events[i];if(e.Projectile!=end.Id)continue;
+                    if(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Impact){firer=e.Source;landed=true;break;}
+                }
+                float bestAge=float.MaxValue;
+                for(int i=events.Count-1;i>=0;i--)
+                {
+                    var e=events[i];if(e.Kind!=EventKind.Shot||firer!=0&&e.Source!=firer)continue;float age=end.At-e.Time;if(!(age>=-.02f&&age<bestAge))continue;
+                    var seat=NativeShotViews.Seat(arena,e.Source);if(seat==null||NativeRoundImpacts.Gun(seat.spec)==NativeRoundImpact.None)continue;var w=NativeShotViews.Weapon(arena,seat.spec);
+                    var from=NativeArena.Vec(e.Position);if(!NativeTracers.Reached((at-from).magnitude,age,w!=null?(float)w.speed:100))continue;
+                    bestAge=age;firer=e.Source;spec=seat.spec;start=from;hasStart=true;
+                }
+                if(!hasStart)continue;
+                if(shotTracker.Muzzles.TryGetValue(firer,out var m)&&(TU(m)-start).sqrMagnitude<9)start=TU(m);
+                var line=at-start;float length=line.magnitude;if(!(length>.05f))continue;var dir=line/length;FlightAdd(end.Id,dir);
+                if(ScopeActive&&firer==LocalId)continue;
+                var look=ShotStyle(arena,spec,firer,end.Id,0,q,low);ShotLine(look,(long)end.Id<<20,start,at,end.At,trails);
+                if(!landed)WorldLanding(arena,NativeRoundImpacts.Gun(spec),spec,end.Id,at,dir,.5f,end.At);
+            }
         }
         // The seat the frame is seen from (arena.ViewPilot, without its Find's closures).
         private static NativeSeat ViewSeat(NativeArena arena)
@@ -61,7 +163,7 @@ namespace ChipArena.UnityConversion
             e.Path.Clear();e.Origin=e.Last=e.Head=at;e.LastAt=now;e.Carry=0;e.Emitted=0;e.Count=0;e.Id=v.Id;e.Round=true;e.Bolt=false;e.Spent=false;e.Arrived=false;e.Boost=-10;e.Spec=v.Spec;e.Chips=v.Modules;e.Fire=v.Fire;e.Poison=v.Poison;e.Key=NativeShotScene.Key(v.Kind,v.Id);
             float speed=velocity.magnitude;e.Dir=speed>.01f?velocity/speed:Vector3.forward;e.Speed=speed;e.FirstDir=b.Velocity.sqrMagnitude>.01f?b.Velocity.normalized:e.Dir;e.Straight=true;
             int firer=b.Original!=0?b.Original:b.Owner;var side=NativeTracers.Side(tracerViewer,NativeShotViews.Seat(arena,firer),arena.Match.Teams,arena.Match.Cooperative);
-            e.Scoped=ScopeActive&&firer==LocalId;
+            e.Scoped=ScopeActive&&firer==LocalId;roundDrawn.Add(v.Id);
             if(arrow)
             {
                 float d;NativeBow.Arrow kind;if(!NativeBowWire.Arrow(b.Detail,b.Draw,out kind,out d)){if(bowShots.TryGetValue(b.Id,out var shot)){d=shot.draw;kind=shot.kind;}else{d=NativeBowWire.SpeedDraw(b.BaseVelocity.sqrMagnitude>.01f?b.BaseVelocity.magnitude:speed);kind=d>=.999f?NativeBow.Arrow.Full:NativeBow.Arrow.Quick;}}
@@ -74,7 +176,7 @@ namespace ChipArena.UnityConversion
                 if(v.Modules.Split>0)foreach(var ev in arena.Events)if(ev.Kind==EventKind.Split&&ev.Source==firer&&Mathf.Abs(ev.Time-now)<.2f&&(NativeArena.Vec(ev.Position)-at).sqrMagnitude<4){e.Path.Push(TN(NativeArena.Vec(ev.Position)));e.Boost=now;break;}
             }
             // First person: the tail runs from far off back to the eye's own barrel, nearly all its screen length in its last metres, so it falls off slower.
-            if(FirstPerson&&firer==LocalId)e.Style.Fade=NativeTracers.OwnFade;
+            if(!arrow&&FirstPerson&&firer==LocalId)NativeTracers.Own(ref e.Style);
             // The round leaves the muzzle it was drawn from (a first sight a tick past it still reaches back to it).
             if(v.Launched&&e.Path.Count==0&&shotTracker.Muzzles.TryGetValue(firer,out var m)){var from=new Vector3(m.X,m.Y,m.Z);e.Path.Push(TN(from));e.Head=from;}
         }
@@ -112,15 +214,16 @@ namespace ChipArena.UnityConversion
                 ref var l=ref lingers[(lingerNext+LingerLines-back)%LingerLines];if(l.Key!=key)continue;
                 if(l.B==from&&(e.Straight||Vector3.Dot((l.B-l.A).normalized,(to-from).normalized)>NativeTracerPath.Straight)){l.B=to;l.BornB=now;return;}break;
             }
-            lingers[lingerNext]=new LingerLine{Key=key,A=from,B=to,BornA=now,BornB=now,Life=s.LingerLife,Width=s.LingerWidth,Color=new Color(s.LingerColor.R*s.LingerGain,s.LingerColor.G*s.LingerGain,s.LingerColor.B*s.LingerGain,0)};
-            lingerNext=(lingerNext+1)%LingerLines;
+            LineAdd(key,from,to,now,now,s.LingerLife,s.LingerWidth,1.2f,new Color(s.LingerColor.R*s.LingerGain,s.LingerColor.G*s.LingerGain,s.LingerColor.B*s.LingerGain,0));
         }
         private void LingerDraw(NativeWeaponFxDraw draw,Vector3 eye,float now)
         {
             for(int i=0;i<LingerLines;i++)
             {
-                ref var l=ref lingers[i];if(l.Life<=0)continue;float a=NativeTracers.Line(now-l.BornA,l.Life),b=NativeTracers.Line(now-l.BornB,l.Life);if(a<=0&&b<=0){l.Life=0;l.Key=0;continue;}
-                NativeWeaponFxShapes.Line(draw,l.A,l.B,a,b,eye,tracerPixel,l.Color,l.Width);
+                ref var l=ref lingers[i];if(l.Life<=0)continue;float a=NativeTracers.Line(now-l.BornA,l.Life),b=NativeTracers.Line(now-l.BornB,l.Life);
+                // Gone once its newer end is; a guest's line waits for its authority time (now behind it, on the render clock).
+                if(now-l.BornB>=l.Life||now<l.BornB-1){l.Life=0;l.Key=0;continue;}if(now<l.BornB)continue;
+                NativeWeaponFxShapes.Line(draw,l.A,l.B,a,b,eye,tracerPixel,l.Color,l.Width,l.Pixels);
             }
         }
         // The needle along the path, its sheath and the bright head. `gain`: the fade of a spent round's tail.
@@ -195,7 +298,7 @@ namespace ChipArena.UnityConversion
         private void RoundEventMark(in ArenaEvent e,Vector3 at,Vector3 normal,string spec)
         {
             var kind=NativeRoundImpacts.Gun(spec);if(kind==NativeRoundImpact.None)return;var flight=normal.sqrMagnitude>.25f?-normal.normalized:Vector3.zero;
-            if(emitters.TryGetValue(NativeShotScene.Key(NativeShotKind.Bullet,e.Projectile),out var r))flight=r.Dir;
+            if(emitters.TryGetValue(NativeShotScene.Key(NativeShotKind.Bullet,e.Projectile),out var r))flight=r.Dir;else if(FlightOf(e.Projectile,out var known))flight=known;
             bool body=e.Kind!=EventKind.Impact;if(flight.sqrMagnitude>.25f&&(body||normal.sqrMagnitude<.25f))normal=-flight.normalized;if(normal.sqrMagnitude<.25f)normal=Vector3.up;
             RoundMarkAdd(body?NativeRoundImpact.Body:kind,at,normal,flight,e.Time,e.Id*1000003L+13);
         }
@@ -216,7 +319,7 @@ namespace ChipArena.UnityConversion
         private void ClearTracers()
         {
             for(int i=0;i<lingers.Length;i++){lingers[i].Life=0;lingers[i].Key=0;}for(int i=0;i<roundMarks.Length;i++)roundMarks[i].Kind=NativeRoundImpact.None;
-            roundHits.Clear();roundHitArena=null;roundHitGeneration=-1;roundHitEvent=0;
+            roundHits.Clear();roundHitArena=null;roundHitGeneration=-1;roundHitEvent=0;roundDrawn.Clear();hitscanEvent=0;for(int i=0;i<RoundFlights;i++)flightIds[i]=0;
         }
     }
 }
