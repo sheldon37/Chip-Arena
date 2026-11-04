@@ -758,6 +758,17 @@ board and express states. They are concept frames and do not show runtime timing
 - the arrival and death sequences beyond their key poses;
 - Unity Editor, Windows, and solo or multiplayer play: not run.
 
+## 14. The real model (2026-11-04)
+
+Owner, on the expedition enemies: "They still use voxel models". The concept's sculpt (about 190 boxes) was the clearest voxel left on the map. The machine is now modelled in Blender on the same joints, so the rig, the moves, the effects, the colliders and the rules are unchanged; only the geometry is new.
+
+- **The bank:** `tools/gear/station_boss.py` (and `station_boss_sheet.py`, a Blender review sheet) writes `Resources/ChipArenaPackBoss647`, local like every bank (docs/PACK-BANK.md): one prop per joint and tier, `647-<joint>-<tier>`, each mesh in its joint's own frame, its finishes' dirt and wear baked in the vertex colours, the lit parts a second sub-mesh. About 147,000, 43,000 and 10,000 triangles (`Tests/StationBossBodyChecks` holds a budget and the hull's place in the carriage's hit box against the bank where it is at hand). Build: `blender --background --factory-startup --python tools/gear/station_boss.py -- --out unity/ChipArenaConversion/Assets/LocalAssets` (about 20 s).
+- **The draw:** `Runtime/NativeStationBossBody.cs`, on the model's toon materials, so it sits with the pilots and zombies. Each joint's light is the effects' as before, on its glowing sub-mesh.
+- **The Stationmaster:** the player's model (`Core/NativeZombieLooks.Stationmaster`) 1.8 times a pilot, its bones turned straight from the rig's joints, waist deep in the hatch. His hat, watch, bell and braid are the bank's and follow his own head and hands.
+- **What it looks like:** station green with the cream band and brass lining, its panels riveted and bulged from inside; a crush of passengers against each lit window; the yellow nose with its plough for a jaw, the cracked windscreen, the blind reading 6.47 EVAC; six legs that are bundles of arms in torn coat sleeves, stopped watches on them, passengers' arms and faces coming out of them, hands for feet.
+- **Without the bank or the bake** (CI, other checkouts, Settings · Player model Classic) the concept's sculpt draws as before, so `Core/NativeStationBossModel.cs`, its hit volumes and its checks stay.
+- **Rules:** none changed. The moves' table, hit timing, colliders and weak points are as they were; the drawn parts stay inside them.
+
 ## 13. Presentation build
 
 Claude, 2026-10-17, branch `claude/boss-station-presentation` (from shared `535b42c`). **On branch, not merged, not live.**

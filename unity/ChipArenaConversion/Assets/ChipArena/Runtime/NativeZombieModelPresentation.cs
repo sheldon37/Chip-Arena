@@ -39,6 +39,8 @@ namespace ChipArena.UnityConversion
             // The model bone of each game joint and its rest scale (a lost part's bone collapses).
             public readonly Transform[] Joint=new Transform[CapturedRig.Bones.Length];public readonly Vector3[] JointScale=new Vector3[CapturedRig.Bones.Length];
             public bool Dying;
+            // A Central Station kind past the crowd's reach, drawn cheaper (ZombieFarDetail).
+            public bool Far;
             // A beast's jaw (Variant.Beast: the gear's, ZombieBeastJaw), found once.
             public Transform BeastJaw;public bool BeastJawLooked;
             // Whether it crawls (its legs gone: the model's pelvis at the gait's height, NativeZombiePosture.Stance), how far its gait
@@ -48,6 +50,8 @@ namespace ChipArena.UnityConversion
             // NativeHordeGait.LegsNow.)
             public bool Crawl;public float Sunk,Crouch,Busy,Stride=1,Reach;
             public Transform HelmHead;public bool HelmLooked;
+            // The Slagback's crust on it (NativeIronworksModelPresentation.cs IronworksCrustGear).
+            public bool CrustOn=true;
             // Its garments' cloth (the local Magica bridge's handle: NativeZombieGarments.cs), and whether it is on.
             public object Cloth;public bool ClothTried,ClothOn;
             // A mutant's growth not on it yet (ZombieGrowthAttach: it draws voxel until its variant's growth is made), and when it
@@ -111,7 +115,7 @@ namespace ChipArena.UnityConversion
             t.SetPositionAndRotation(rt.TransformPoint(0,NativeVisualRig.Floor,0),rt.rotation);t.localScale=rt.lossyScale;
             if(!root.activeSelf)root.SetActive(true);
             if(z.PosedFrame<Time.frameCount-1){z.Body.Binding.State.Forget();z.PoseClock.Reset();}
-            var eye=WorldEye;float distance=eye==null?0:(t.position-eye.transform.position).sqrMagnitude;ZombieGarmentCloth(z,distance);
+            var eye=WorldEye;float distance=eye==null?0:(t.position-eye.transform.position).sqrMagnitude;ZombieGarmentCloth(z,distance);if(NativeStationKinds.Is(z.Kind))ZombieFarDetail(z,distance>(z.Far?ZombieFarFrom-ZombieFarSlack:ZombieFarFrom));
             // Conservative bounds include the complete gait, long arms and Hulk scale; close shadows stay full-rate.
             bool visible=eye==null||!crowdFrustumReady||GeometryUtility.TestPlanesAABB(crowdFrustum,new Bounds(t.position+Vector3.up*2*rt.lossyScale.y,Vector3.one*8*Mathf.Max(1,rt.lossyScale.y)));
             bool urgent=z.Dying||z.Crawl||airborne||flash!=1||glow>1||swell>0||z.ChangedParts(lost,hidden);
@@ -132,6 +136,18 @@ namespace ChipArena.UnityConversion
             ZombieCollapse(z,lost,hidden);ZombieBigHead(z);ZombieFlash(z,flash,glow);ZombieSacSwell(z,swell);
             z.PosedFrame=Time.frameCount;z.SeenAt=Time.unscaledTime;
         }
+        // A Central Station kind stays on its model at any distance (HordeNoVoxel); past the distance the voxel tiers began it casts no
+        // shadow (they cast none), skins one bone a vertex (the project skins on the CPU) and leaves off what no one can see from there.
+        public const float ZombieFarFrom=(HordeReducedRange+HordeTierHysteresis)*(HordeReducedRange+HordeTierHysteresis),ZombieFarSlack=240;
+        private static void ZombieFarDetail(ZombieBody z,bool far)
+        {
+            if(z.Far==far)return;z.Far=far;
+            foreach(var r in z.Body.All)
+            {
+                if(r==null)continue;r.shadowCastingMode=far?UnityEngine.Rendering.ShadowCastingMode.Off:UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer m)m.quality=far?SkinQuality.Bone1:SkinQuality.Auto;
+                if(r.name.StartsWith("EyeLashes.",StringComparison.Ordinal)||r.name.StartsWith("EyeBrows.",StringComparison.Ordinal)||r.name.StartsWith("Teeth.",StringComparison.Ordinal)||r.name.StartsWith("Decay pit",StringComparison.Ordinal))r.forceRenderingOff=far;
+            }
+        }
         // The hands' grip: the Hulk's fists, clenched hardest through a blow (owner 2026-10-30, "the punch is open handed still"); a
         // station kind's hands closed on what it carries (the Conductor's lantern by its bail, the Pileup's door by its edges); a
         // carried prop's right hand on its shaft (the Lifeguard's hook).
@@ -139,6 +155,7 @@ namespace ChipArena.UnityConversion
         {
             if(z.Kind==NativeHordeKinds.Hulk)return new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1,Clench=ZombieClench+(1-ZombieClench)*z.Busy};
             if(!z.Dying&&z.Variant.Carry!=null)return new NativeVisualRig.Grasp{RightGrip=1};
+            if(NativeIronworksKinds.Is(z.Kind))return IronworksGrasp(z,hordeNow);
             if(z.Dying||!NativeStationKinds.Is(z.Kind)||!stationAdds.TryGetValue(z.Id,out var st)||st.Kind!=z.Kind||!st.Out.Prop)return default;
             return NativeStationKinds.Local(z.Kind)==NativeStationKinds.Pileup?new NativeVisualRig.Grasp{RightGrip=1,LeftGrip=1}:new NativeVisualRig.Grasp{LeftGrip=1};
         }
@@ -290,7 +307,7 @@ namespace ChipArena.UnityConversion
             if(z==null||z.Body.Root==null)
             {
                 if(zombieMakesFrame!=Time.frameCount){zombieMakesFrame=Time.frameCount;zombieMakes=0;}
-                if(zombieMakes>=ZombieMakesPerFrame||zombiePool.Count==0)return null;
+                if(zombieMakes>=ZombieMakesPerFrame&&!NativeStationKinds.Is(kind)||zombiePool.Count==0)return null;
                 zombieMakes++;z=ZombieModelMake(v);if(z==null)return null;
             }
             z.Id=id;z.Kind=kind;z.PosedFrame=-10;z.Dying=false;zombieBodies[id]=z;ZombieReseed(z,id);return z;
@@ -318,6 +335,7 @@ namespace ChipArena.UnityConversion
             if(v.Stripes>=0){ZombieRestWrite(root,body.All);ZombieStripes(v,worn,body.All);}
             if(v.Ribs>0)ZombieRestWrite(root,body.All);
             if(v.Gear.Length>0)body.All=ZombieGear(root,skeleton,v,body.All);
+            IronworksDress(v,root,body.All);
             foreach(var r in body.All){r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;if(r is SkinnedMeshRenderer s)s.updateWhenOffscreen=false;}
             var z=new ZombieBody{Body=body,Variant=v,Sac=sac,Growing=v.Mutant};
             var of=body.Binding.Rig.Of;
@@ -329,7 +347,7 @@ namespace ChipArena.UnityConversion
         }
         // The bake's instances the zombies are made from, made ahead off the main thread (InstantiateAsync, under an inactive holder)
         // while a horde is about, never at once (about 8 ms each); the pilots' corpse pool is left to the pilots.
-        private const int ZombiePoolTarget=8,ZombiePoolBatch=4;
+        private const int ZombiePoolTarget=8,ZombiePoolBatch=4;private static readonly HashSet<NativeZombieLooks.Variant> zombieStationAhead=new HashSet<NativeZombieLooks.Variant>();
         private static readonly Stack<GameObject> zombiePool=new Stack<GameObject>();private static AsyncInstantiateOperation<GameObject> zombieFill;private static GameObject zombieHolder;
         /// <summary>HordeKindsBegin: the pool topped up while the arena has a horde (or adds) and the models are on; in a horde, the
         /// mutants' first bodies made ahead.</summary>
@@ -344,7 +362,10 @@ namespace ChipArena.UnityConversion
             // (In a horde, each mutant variant's first body is made ahead, one a frame, so its growth is built before a Hulk needs it.)
             if(arena!=null&&arena.Pve!=null&&ZombieModelsOn&&zombiePool.Count>0)
                 {bool grew=false;foreach(var looks in ZombieAllLooks){foreach(var v in looks)if(v.Mutant&&(v.Theme==null||v.Theme==zombieTheme)&&NativeZombieLooks.Modelled(v.Kind)&&!zombieGrowths.ContainsKey(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);grew=true;break;}if(grew)break;}}
-            if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
+            // (On the Central Station each of its four kinds' variants has a body made ahead, one a frame, so none waits for one.)
+            if(arena!=null&&NativeExpeditionStation.Active(arena.MapId)&&ZombieModelsOn&&zombiePool.Count>0)
+                foreach(var v in NativeZombieLooks.All)if(NativeStationKinds.Is(v.Kind)&&NativeZombieLooks.Modelled(v.Kind)&&zombieStationAhead.Add(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);break;}
+            if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)&&!NativeExpeditionStation.Active(arena.MapId)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
             if(zombieHolder==null){zombieHolder=new GameObject("Zombie model pool");zombieHolder.SetActive(false);DontDestroyOnLoad(zombieHolder);}
             zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);
         }
@@ -359,6 +380,7 @@ namespace ChipArena.UnityConversion
         {
             if(z?.Body?.Root==null)return;
             if(z.Cloth!=null&&z.ClothOn){NativeVisualCloth.Enable(z.Cloth,false);z.ClothOn=false;}
+            ZombieFarDetail(z,false);
             if(!zombieSpares.TryGetValue(z.Variant,out var spares)){spares=new Stack<ZombieBody>();zombieSpares[z.Variant]=spares;}
             if(spares.Count>=ZombieSparesPerVariant){VisualBodyGone(z.Body.Root);z.Body.Root=null;return;}
             z.Body.Root.SetActive(false);ZombieCollapse(z,0,0);ZombieFlash(z,1,0);ZombieSacSwell(z,0);z.Id=0;z.Dying=false;spares.Push(z);
@@ -1040,6 +1062,7 @@ namespace ChipArena.UnityConversion
         {
             if(zombieGearAssets.TryGetValue(id,out var asset))return asset;
             asset=null;var bank=NativePackBanks.Bank(ZombieGearBank);var prop=bank?.Find(id);
+            if(prop==null){bank=NativePackBanks.Bank(IronworksGearBank);prop=bank?.Find(id);}
             if(prop!=null&&prop.Parts.Length>0)
             {
                 try{asset=ZombieGearBuild(bank,prop);}

@@ -23,8 +23,30 @@ namespace ChipArena.UnityConversion
         public const float HoldBound=.03f,LadleBound=.04f,GripBound=.01f;
         public static void Run(string root)
         {
-            string clock=HandOver(root,out string guard);Clocks(clock,guard,out int hostSkipped,out int guestSkipped);Live();Gallery();PresentationOnly(root);
+            string clock=HandOver(root,out string guard);Clocks(clock,guard,out int hostSkipped,out int guestSkipped);Live();Gallery();OnModel();PresentationOnly(root);
             Console.WriteLine("PASS ironworks props ("+count+" checks: the hand-over matches the gait input on "+clock+", the clock HordeKindAdd poses on, for host, guest, killcam and the DEV preview (arena.Time skipped "+hostSkipped+"/600 host and "+guestSkipped+"/600 guest frames); the rake and the ladle's shank within "+HoldBound+" and "+LadleBound+" m of both fists, the hook's chain on its fist, through the gait, attacks and specials, live and in the gallery; presentation only)");
+        }
+
+        // ---- on the player's model: the pole through its two real fists, the chain out of its real fist; nothing moves without the model ----
+        private static void OnModel()
+        {
+            int st=NativeIronworksKinds.Kind(NativeIronworksKinds.Stoker),la=NativeIronworksKinds.Kind(NativeIronworksKinds.Ladleman),ri=NativeIronworksKinds.Kind(NativeIronworksKinds.Rigger);
+            var shiftL=new Vector3(.03f,.05f,.04f);var shiftR=new Vector3(-.02f,.06f,.03f);
+            foreach(int kind in new[]{st,la,ri})
+            {
+                var g=new NativeHordeGait();var p=new CapturedRig.Pose();var r=new NativeHordeReact();r.Bind(kind);
+                var f=new HordeMotionInput{Kind=kind,Id=7,Seed=NativeHordeKinds.Seed(7),Time=5,Yaw=0,Ground=-.85f,Root=Vector3.Zero,Health=1,AttackAge=float.NaN,Flow=true,Tier=NativeHordeModels.Full};
+                for(int i=0;i<4;i++){f.Time=5+i/30f;g.Pose(f,p,r);}
+                g.PlaceProps(f,p);var at=g.Props[0].At;var from=g.ChainCount>0?g.Chains[0].From:Vector3.Zero;Check(g.PropCount>0,"its prop is placed");
+                g.ModelHands=true;g.ModelShiftL=shiftL;g.ModelShiftR=shiftR;g.PlaceProps(f,p);
+                var fistL=p.WorldPosition[CapturedRig.LHand]+Vector3.Transform(new Vector3(0,-.075f,0),p.WorldRotation[CapturedRig.LHand])+shiftL;
+                var fistR=p.WorldPosition[CapturedRig.RHand]+Vector3.Transform(new Vector3(0,-.075f,0),p.WorldRotation[CapturedRig.RHand])+shiftR;
+                if(kind==st){Check(Vector3.Distance(g.Props[0].At,fistR)<1e-4f,"the rake's grip on the model's right fist");var d=Vector3.Transform(Vector3.UnitZ,g.Props[0].Turn);var off=fistL-fistR;off-=d*Vector3.Dot(off,d);Check(off.Length()<.01f,"the rake runs through the model's left fist too ("+off.Length()+")");}
+                if(kind==la){Check(Vector3.Distance(g.Props[0].At,fistL)<1e-4f,"the shank's front grip on the model's left fist");var d=Vector3.Transform(Vector3.UnitZ,g.Props[0].Turn);var off=fistR-fistL;off-=d*Vector3.Dot(off,d);Check(off.Length()<.01f,"the shank runs through the model's right fist too ("+off.Length()+")");}
+                if(kind==ri){Check(Vector3.Distance(g.Chains[0].From,fistR)<1e-4f,"the chain leaves the model's right fist");Check(Vector3.Distance(g.Props[0].At,at+shiftR)<1e-3f,"the carried hook follows that hand");}
+                g.ModelHands=false;g.PlaceProps(f,p);Check(Vector3.Distance(g.Props[0].At,at)<1e-5f,"without the model the prop stays in the gait's hand");
+            }
+            count++;
         }
 
         // ---- the hand-over: the guard compares the gait input with the clock the add is posed on, on every path ----
@@ -47,7 +69,7 @@ namespace ChipArena.UnityConversion
             // Host, guests and the killcam's replay world draw their adds through SourceWorld into HordeKindAdd.
             Check(R(root,"Assets/ChipArena/Runtime/NativeSourcePresentation.cs").Contains("if(add!=null&&HordeKindAdd(arena,m,rig,pos))continue;",StringComparison.Ordinal),"every peer's adds (host, guest, killcam) are drawn by HordeKindAdd");
             // The Rigger on its chain queues its hook and chain itself; the DEV gallery queues the props of its own rigs.
-            var hang=Between(iron,"private bool IronworksAdd(","// ====");Check(hang.Contains("sourceModels.Queue(NativeHordeModels.PropId(NativeHordeModels.PropHook,tier)",StringComparison.Ordinal)&&hang.Contains("IronworksChain(anchor,fists+Vector3.up*.05f,0,tier);",StringComparison.Ordinal),"the hanging Rigger queues its chain and hook");
+            var hang=Between(iron,"private bool IronworksAdd(","// ====");Check(hang.Contains("IronworksPropDraw(NativeHordeModels.PropHook,tier,",StringComparison.Ordinal)&&hang.Contains("IronworksChain(anchor,fists+Vector3.up*.05f,0,tier);",StringComparison.Ordinal),"the hanging Rigger queues its chain and hook");
             var gal=Between(iron,"private void IronworksGallery(","private void ClearIronworksGallery(");Check(gal.Contains("s.Gait.PlaceProps(f,minionPose);IronworksProps(rig,s.Gait,NativeHordeModels.Full,gl,1,sc);",StringComparison.Ordinal),"the DEV gallery queues its rigs' props");
             Check(horde.Contains("if(MinionGallery)IronworksGallery(arena);",StringComparison.Ordinal),"the gallery runs in the Dev Sandbox's minion gallery");
             return clock;

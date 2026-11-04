@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             if(!HordeJointShown(lost,st.Out.PropJoint)){if(!st.PropDropped&&st.PropKnown){st.PropDropped=true;StationDrop(st.PropKind,st.PropWorld,now,NativeHordeKinds.Seed(st.Id));}return;}
             st.PropWorld=world;st.PropKnown=true;st.PropKind=st.Out.PropKind;
             // On the model, the gear bank's (modelled in Blender: tools/gear/station_gear.py); the voxel prop beside a voxel body.
-            if(ZombieModelShift(st.Id,st.Kind,CapturedRig.LHand,out _)&&ZombieGearPropDraw(StationGearProp(st.Out.PropKind),world,k,flash))return;
+            if(ZombieModelShift(st.Id,st.Kind,CapturedRig.LHand,out _)&&ZombieGearPropDraw(StationGearProp(st.Out.PropKind),world,k,flash)||HordeNoVoxel(st.Kind))return;
             string id=NativeHordeModels.StationPropId(st.Out.PropKind,Math.Min(tier<0?1:tier,NativeHordeModels.Impostor));if(!sourceModels.Has(id))return;
             sourceModels.Queue(id,world,null,null,glow:new Vector4(k,k,k,glow.w),hitFlash:flash);
         }
