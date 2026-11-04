@@ -1,3 +1,33 @@
+## 2026-11-04 — Astra: longer normal TNT throws
+
+- **Branch/base:** `codex/bombadier-throw-range`, shared `f18848bc`. Owner reports the primary throw is too short.
+- **Tuning:** Pop Bomb launch speed 17 → 28 m/s (+64.7%); authority now reads the weapon content speed. Content range 18 → 25 m matches the approximate 25.2 m straight-line travel ceiling over its .9 s fuse. Gravity and bounce shorten practical horizontal throws; this is not a guaranteed 25 m ground range. Damage, fuse, fire rate, restock, cast/hand timing and ability throws unchanged.
+- **Checks/release:** content validated and pinned Unity semantic compilation run before upload; exact results and merge/builder receipts in the PR. Human range feel and native Windows publication still need confirmation.
+
+## 2026-11-04 — Astra: Sticky Fuse dodge release and test publication
+
+- **Branch/base:** `codex/bombadier-sticky-release`, shared `1450e5df`. Windows now passes generic combat and all 497 technique checks, then fails Bombadier dodge removal.
+- **Fix:** a detached Sticky Fuse ignores actor collision so it cannot immediately stick back onto the rolling victim. It drops from the victim's current position, collides with the world and keeps its original fuse on landing. Host-only detached state leaves the replicated record unchanged. Native checks cover release, post-roll overlap and landing without extending the fuse.
+- **Verification/release:** pinned Unity semantic compile and managed Bombadier checks run before upload; exact results and source/builder receipts in the PR. The native builder remains the authority on Windows acceptance and test publication. No gate removed or bypassed.
+
+## 2026-11-04 — Astra: Bombadier DEV picker publication blocker
+
+- **Branch/base:** `codex/bombadier-dev-picker`, shared `2dfdf1cf` (#326). Owner could not select Bombadier under `???`.
+- **Verified cause:** the merged content already offers Bombadier through the shared DEV picker and authenticated DEV access. The Windows builder failed on `Native combat gate: ability did not release blast-jump` at 2026-11-04 15:50 UTC; the test feed still served `cdcb1df5` (the earlier presentation-only build).
+- **Fix:** the generic AbilityCast validation now routes Bombadier to its existing `ValidateBombadier` gate, as it already does for other specialized dispatchers. Added native acceptance assertions for the `???` DEV row, permitted DEV selection and denied guest selection. No menu redesign, access relaxation or gameplay tuning.
+- **Verification:** focused managed loadout/grouping checks and pinned Unity semantic compilation; exact results and merge/builder queue receipt in the task PR. Windows gate execution and publication must be confirmed by the builder; not claimed from Linux.
+
+## 2026-11-04 — Astra: DEV Bombadier authority and Parting Line recovery
+
+- **Branch/base:** `codex/bombadier-rules`, requested shared `197ef975`, merged shared documentation `c6f86fb5`. Local implementation `0739006`; remote exact-tree/merge/builder receipts belong to the task PR.
+- **Rules/content:** DEV-only `bombadier` gate (including scoped DEV bots), weapon and seven live ability rows, held-fire TNT, six-round restock, mines, sticky/dodge handoff, clusters, wall-limited line, Blast Jump and ordered switch, bots and meter. Uses the current TNT record, .16/.28 s releases, +.4 s recovery and `BoxSpot`. Existing key-5 input retained; keyboard Q added. No launcher, sights, muzzle flash, model or animation redesign.
+- **Counterplay:** baseline damage/cooldowns retained. Per-owner/per-victim links 0/1/2/3 scale 1/.8/.6/.45; third starts 2.5 s Scorched without another launch. Pilot chain plus Scorched follow-ups capped after modifiers to min(60, 60% max HP). Ordinary PvE enemies remain killable. Self damage is .25 with full launch, except Blast Jump. Other numeric decisions are in BOMBADIER.md.
+- **Finale/wire:** follows/locks/strikes on authority time, hits once per target even under overlapping circles, remains hittable/rooted, survives caster death; pending strike holds PvP resolution. Deep-owned `Actor.Bomb`, snapshot/late join/death/replay validation, real JsonUtility presence restoration and rendered-snapshot source. Mines join nearest shot interception and ordinary blast handoffs; sanctuary/teams/immunity remain enforced.
+- **Parting Line:** `Moving` now requires the hop phase. Descending floor contact keeps horizontal retreat; actual walls end it. Native fixture covers the entire hop plus early/completed phases instead of only the first motion sample.
+- **Verification:** focused Bombadier rules 36 checks and existing Bombadier presentation 7,603 checks pass; Release compilation has no warnings/errors. Complete managed coverage is run in ordered segments (expensive earlier groups retained when later inventory fixtures failed). Original prototype digest stays pinned; inventory/loadout fixtures include the added weapon. Pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation and source structure (3,101 files) pass. Native Bombadier/real-codec and full-hop fixtures compile, but cannot execute in this Linux environment. No Windows PhysX, rendered host/guest/late-join gameplay, measured balance or publication success is claimed here.
+- **Claude handoff:** the weapon uses the existing `bomb` icon until bespoke class art is supplied. Legacy Core chooser fixture excludes Bombadier's new NativeVisualMotion route rather than substituting a sword/gun pose; its live chooser remains a native visual acceptance item. Only row/icon integration and snapshot-source plumbing touched presentation. All visuals otherwise preserved.
+- **Release:** source integration and test-builder queue receipts follow in the task PR; no Site/live-channel release.
+
 ## 2026-11-04 — Claude: the Bombadier holds TNT
 
 - **Branch:** `claude/bombadier`, base shared `db2ce2dd`. Owner: "can we [have] them holding TNTs instead of a grenade launcher? Modify animations however needed with this in mind."

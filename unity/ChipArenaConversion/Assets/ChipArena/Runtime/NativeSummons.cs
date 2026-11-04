@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeMinionBody:MonoBehaviour { public NativeMinion Minion; }
     public sealed class NativeMinion
     {
-        public bool DevMonster;public string DevBehaviour;public int DevHunt;
+        public Vector3 BombPush;public float BombPushUntil;public bool DevMonster;public string DevBehaviour;public int DevHunt;
         public float LastHitAt=-100;public Vector3 NetworkVelocity;public NativePveAdd Pve;public int Id;public NativePilot Owner,Foe;public NativeMinion Other;public string Kind;
         public float SlowUntil,SlowFactor=1,SoakAt=-10;public Rigidbody Body;public CapsuleCollider Collider;public float Hp,MaxHp,Speed,Until,Yaw,LastAttack=-10,NextAttack,StrikeAt=-1;
         public readonly Dictionary<string,NativeDot> Dots=new Dictionary<string,NativeDot>();
