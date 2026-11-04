@@ -5,9 +5,10 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
-        private Vector3 AuthorityAim(NativePilot p,float range)
+        private Vector3 AuthorityAim(NativePilot p,float range)=>AuthorityAim(p,range,in p.Input);
+        private Vector3 AuthorityAim(NativePilot p,float range,in InputFrame aim)
         {
-            var eye=p.Body.position+Vector3.up*.52f;var direction=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
+            var eye=p.Body.position+Vector3.up*.52f;var direction=Vec(GunRules.Direction(aim.Yaw,aim.Pitch));
             if(root.scene.GetPhysicsScene().Raycast(eye,direction,out var hit,range,WorldMask,QueryTriggerInteraction.Ignore))return hit.point-direction*.03f;
             return eye+direction*range;
         }

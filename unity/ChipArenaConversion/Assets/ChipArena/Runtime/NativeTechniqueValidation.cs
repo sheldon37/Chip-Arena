@@ -30,6 +30,44 @@ namespace ChipArena.UnityConversion
             void Release(){Advance(a.Technique.Release-Time+.001f);a.Input.AbilityQ=a.Input.AbilityE=false;StepTechniqueInput(a);Check(a.TechniqueReleased,"release executes");}
             try
             {
+                // Pending look must win over stale pilot input, without casting or mutating a replica.
+                Setup("rifle");wall.SetActive(true);Physics.SyncTransforms();
+                var pendingAim=new InputFrame{Yaw=0,Pitch=0};a.Input.Pitch=90;
+                Check(TechniqueRefusal(a,in pendingAim)==null,"pending aim finds grapple surface despite stale sky input");
+                Check(TechniqueRefusal(a,in a.Input)==NativeTechniques.NoSurface&&!TryTechnique(a),"sky refusal matches cast");
+                Check(a.Technique==null&&a.EReady==0&&a.Stamina==100&&a.Mana==100,"refused press costs nothing");
+                string unchanged=JsonUtility.ToJson(a.Input);var position=a.Body.position;var previewVelocity=a.Body.linearVelocity;int events=Events.Count;
+                bool wasReplica=Replica;try{Replica=true;for(int i=0;i<100;i++)Check(TechniqueRefusal(a,in pendingAim)==null,"replica query accepts pending look");}finally{Replica=wasReplica;}
+                Check(JsonUtility.ToJson(a.Input)==unchanged&&a.Body.position==position&&a.Body.linearVelocity==previewVelocity&&Events.Count==events&&a.Technique==null&&a.EReady==0,"query is read-only");
+                var oldArea=techniqueReplicaArea;int oldGeneration=expeditionCollisionGeneration;
+                try
+                {
+                    Replica=true;expeditionCollisionGeneration=Generation;techniqueReplicaArea=new ExpeditionAreaLayout{map=MapId,role="world",sanctuary=new[]{new ExpeditionVolume{x=1000,y=100,z=1005,sx=4,sy=8,sz=2}}};
+                    Check(TechniqueRefusal(a,in pendingAim)==NativeTechniques.NoSurface,"guest grapple respects loaded sanctuary crossing");
+                    techniqueReplicaArea.role="instance";Check(TechniqueRefusal(a,in pendingAim)==null,"instance does not inherit hub refusal");
+                }
+                finally{Replica=wasReplica;techniqueReplicaArea=oldArea;expeditionCollisionGeneration=oldGeneration;}
+                wall.transform.position+=Vector3.forward*11;Physics.SyncTransforms();Check(TechniqueRefusal(a,in pendingAim)==NativeTechniques.NoSurface,"surface beyond 20 m refused");
+                wall.transform.position=new Vector3(1000,103,1010);a.Input=pendingAim;Physics.SyncTransforms();Check(TryTechnique(a)&&a.Technique.Point.z<1010,"cast uses the queried surface");
+                Setup("water");pendingAim=new InputFrame{Yaw=90,Pitch=-30};a.Input.Yaw=-90;a.Input.Pitch=0;
+                Check(TechniqueRefusal(a,in pendingAim,out var spring)==null&&spring.x>a.Body.position.x,"spring follows pending look");
+                Check(AimedAbilityPoint(a,14)==AimedAbilityPoint(a,14,in a.Input),"legacy aim wrapper unchanged");
+                pendingAim=new InputFrame{Yaw=0,Pitch=0,AbilityTarget=new V3(1000,100.52f,1004.6f)};a.Input=new InputFrame{Yaw=0,Pitch=0};
+                Check(AimedAbilityPoint(a,14,in pendingAim).z<1006&&AimedAbilityPoint(a,14).z>1010,"pending AbilityTarget confirms body depth without borrowing stale input");
+                floor.SetActive(false);Physics.SyncTransforms();Check(TechniqueRefusal(a,in pendingAim)==NativeTechniques.NoFloor,"missing spring floor");a.Input=pendingAim;
+                Check(!TryTechnique(a)&&a.Mana==100&&a.EReady==0&&a.Technique==null,"no-floor press refuses without charge");floor.SetActive(true);Physics.SyncTransforms();
+                a.Body.position+=Vector3.up*20;Physics.SyncTransforms();Check(TechniqueRefusal(a,in pendingAim)==NativeTechniques.NoFloor,"spring floor beyond 14.5 m refused");
+                Setup("lightning");TryTechnique(a);Release();Advance(.3f);var recall=a.Body.position;a.Body.position+=Vector3.right*5;Physics.SyncTransforms();
+                Check(TechniqueRefusal(a,in pendingAim)==null,"clear recall path");
+                b.Body.position=recall;Physics.SyncTransforms();Check(TechniqueRefusal(a,in pendingAim)==NativeTechniques.Blocked,"occupied recall destination");b.Body.position=recall+Vector3.forward*5;
+                wall.transform.position=recall+Vector3.right*2.5f;wall.transform.localScale=new Vector3(.2f,2,3);wall.SetActive(true);Physics.SyncTransforms();
+                float deadline=a.EReady;position=a.Body.position;var before=a.Technique.ViewCopy();
+                Check(TechniqueRefusal(a,in pendingAim)==NativeTechniques.Blocked&&!TryTechnique(a),"capsule-obstructed recall refused by HUD and cast");
+                Check(a.Body.position==position&&a.EReady==deadline&&a.Technique.RecastAt==before.RecastAt&&a.Technique.Phase==before.Phase,"blocked recast leaves record/deadline untouched");
+                a.Technique.Point=new V3(900,99.135f,1000);Check(TechniqueRefusal(a,in pendingAim)==NativeTechniques.Blocked,"out-of-bounds recall destination");
+                a.Technique.Until=Time;Check(TechniqueRefusal(a,in pendingAim)==null,"no recall refusal outside recast window");
+                wall.transform.position=new Vector3(1000,103,1010);wall.transform.localScale=new Vector3(10,10,.2f);
+                Setup("sword");a.StunEnd=Time+1;a.Mana=a.Stamina=0;a.EReady=Time+10;Check(TechniqueRefusal(a,in pendingAim)==null,"nongeometric refusals have no aim reason");
                 foreach(var d in NativeTechniques.All)
                 {
                     Setup(d.Spec);if(d.Spec=="rifle"){wall.SetActive(true);Physics.SyncTransforms();}

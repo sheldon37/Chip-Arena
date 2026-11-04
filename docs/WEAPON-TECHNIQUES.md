@@ -109,15 +109,14 @@ graphics tier in Unity (the checks cover the thinning), a Windows build.
 counter is enough). While that holds the card says NO SURFACE, BLOCKED or NO FLOOR instead of READY or RECAST, without flaring each time the aim comes back; a press then puts the reason under the crosshair
 for a second, shakes the card and plays `ui.error`. A press on cooldown stays quiet: the card's count says it. Built and seen on the PC against a temporary copy of the check below.
 
-**For Astra: `NativeArena.TechniqueRefusal(NativePilot p,in InputFrame aim)`** (`Runtime/NativeWeaponTechniques.cs`) is an empty stub, so none of that shows yet. Fill it from `TryTechnique`'s own checks and have
-`TryTechnique` call it (`TechniqueRefusal(p,p.Input)`), so the HUD and the rules cannot disagree. No change to what is refused:
+**Implemented by Astra (2026-11-04): `NativeArena.TechniqueRefusal(NativePilot p,in InputFrame aim)`** (`Runtime/NativeWeaponTechniques.cs`) shares the original geometric checks with `TryTechnique`. The public HUD method and casting use the same private overload; casting receives its resolved point to avoid repeating the queries. No change to what is refused:
 
 - `NativeTechniques.NoSurface`: Grapple Line, nothing within 20 m along `aim`'s look, or the hit crosses the hub.
 - `NativeTechniques.Blocked`: Static Recall inside its recast window, when `TechniqueDestination` or `RoomFor` fails or the capsule cast hits something on the line. Outside the window, null.
 - `NativeTechniques.NoFloor`: Healing Spring, no walkable floor at the aimed point within 14.5 m, or the hub. `AimedAbilityPoint` reads `p.Input`, so it needs the passed `aim`.
 - null for everything else: cooldown, cost, a stun and the like already show on the card.
 
-The HUD passes `pending` (the look about to be sent) once a frame for the local pilot, on the host and on a guest, so it must be read-only, work on a replica, and stay cheap.
+The HUD passes `pending` (the look about to be sent) once a frame for the local pilot. The query uses the supplied yaw, pitch and AbilityTarget through explicit-aim overloads of AimedAbilityPoint/AuthorityAim; it never swaps p.Input, casts, spends resources, changes cooldowns, moves bodies or emits events. Other abilities retain wrappers using p.Input. It uses the existing nonalloc physics query buffers (growing only on saturation), and ordinary techniques do no physics queries. Guest sanctuary checks read the already-loaded collision area, because HubOn is authority-only; host sanctuary predicates are unchanged. Native tests cover pending vs stale aim, confirmed body depth, replica immutability/sanctuary, surface range, missing/out-of-range floor, blocked/occupied/out-of-bounds recall, recast expiry and refusal without state/cost changes.
 
 
 ## Simulation implementation and presentation handoff (Astra, 2026-11-03)
