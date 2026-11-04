@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeBackroomsGenerator
     {
-        public const string Version="backrooms-level0-4-entities1",ArenaId="backrooms-level-0",InstanceMap="expedition-backrooms-level-0",AreaId="exp-backrooms";
+        public const string Version="backrooms-level0-4-entities2",ArenaId="backrooms-level-0",InstanceMap="expedition-backrooms-level-0",AreaId="exp-backrooms";
         public const int ArenaSeed=647031,ExpeditionSize=40,ArenaSize=16;
         private static readonly (int x,int z)[] Directions={(1,0),(0,1),(-1,0),(0,-1)};
         private struct Random

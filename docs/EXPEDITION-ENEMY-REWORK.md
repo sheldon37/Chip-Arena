@@ -224,3 +224,13 @@ Map identity versions were bumped so older manifests cannot join these rules. No
 The six new kinds are excluded from the existing captured-biped locomotion/shoulder quality certification until Claude supplies
 their dedicated motion. Registration, finite fallback models and other existing enemy animation checks remain active.
 This is an explicit unfinished presentation dependency, not a claim of animation acceptance.
+
+### Level 0 encounter placement correction (2026-11-03, Astra)
+
+Owner reports only encountering one zombie despite the native population check passing. That gate proved population, not proximity: Level 0's first 64 wall cells concentrated dormant Facelings along the north edge, while forced Expedition spawns gave every anchor the same distance weight. Sleeping enemies could fill the cap far from the explored route.
+
+Level 0 now samples up to 160 wall anchors and 64 dark anchors across the complete maze (plus at most 24 existing roam anchors; total below the 256-entry wire bound). No geometry or enemy stats changed. Spawn candidates must be reachable from a living party member, at least 8 m away, and prefer unseen positions. If all eligible positions are visible, the minimum rises to 16 m. Selection is restricted to within two cells (6.4 m) of the closest candidate's walking-route distance, through the generated doors and corridors. Split parties use distance from the nearest member.
+
+Every two seconds, at most two untouched, unseen, still-dormant enemies older than 20 seconds and farther than 48 walking metres from all players are removed alive. This gives no deaths, rewards or quota credit; ordinary spawn limits replenish the freed slots. Damaged, awakened, possessed and DEV enemies are retained. Poolrooms placement is unchanged. Level 0 identity is `backrooms-level0-4-entities2`.
+
+Managed gates cover quadrant distribution, nav-distance equivalence, split-party routes, wall detours, cleanup exclusions, all anchors' collision routes and the objective ledger. The native builder additionally checks cleanup without quota/death credit and nearer replenishment; native execution and human encounter pacing are not claimed from offline tests.
