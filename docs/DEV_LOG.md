@@ -12,6 +12,7 @@
 - **Checks:** full `CoreTests` in a clean LF checkout of `32a8dce1` (shared `456bd1cc` merged): exit 0, 950 PASS groups, with `--techniques` now covering the cards' text, the numbers against the rules' rows and the HUD card's states.
   PC (BoZo, Cybercity, Astra's rules): all twelve from a swapped Q or E in slow motion and two at full speed, Anchor Throw's leap, Grapple Line up a wall, Static Recall's bolt, Shade Swap on a bot, the sentry firing; first person for
   Anchor Throw, Ignition Leap, Smoke Veil, Riposte; real clicks on the picker through the Game view. Not run: Riposte's actual parry, a shot on the coin, Static Recall's damage on the line, a guest or replay, a crowd, a low tier in Unity, a Windows build's play.
+- **Status:** merged into shared as `17062d43`; published to the test channel (builder build of `17062d43`: BUILD SUCCEEDED, publication succeeded 04:31 UTC). Picks follow an account across computers only once the account-service change in #322 is deployed; not deployed, not claimed.
 - **For Astra (not changed):** a refused press gives no feedback, so the key seems dead: Grapple Line with no surface in 20 m, Static Recall with anything on the line (`cybercity-lantern-counter`, a low counter, refused three walks in a row). A public "would the recast work" query would let the HUD say BLOCKED.
 
 ## 2026-11-03 — Astra: Level 0 encounter proximity, not just a nonzero population
