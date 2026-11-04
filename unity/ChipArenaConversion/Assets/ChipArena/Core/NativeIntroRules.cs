@@ -14,9 +14,9 @@ namespace ChipArena.UnityConversion
             if(seat.overrideIntro&&Pickable(seat.intro)&&(seat.intro=="sheldon-intro"?access.Developer&&access.Expires>now:!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
             if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";if(seat.spec==CyberLordSpec.Id)return CyberLordSpec.Entrance;return Signature(seat.spec);
         }
-        public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:4.8;
+        public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:style==NativeBombs.Entrance?7.6:4.8;
         // Presentation only (the HUD's name card): shared/intros.ts introNameAt, SIREN_INTRO.nameAt 6.4261 for the Siren.
-        public static double NameAt(string style)=>style=="dev-siren"?6.4261:style=="dev-emperor"?5.95:style=="dev-matrix"?6.25:style=="dev-ansatsuken"?5.45:3.2;
+        public static double NameAt(string style)=>style=="dev-siren"?6.4261:style=="dev-emperor"?5.95:style=="dev-matrix"?6.25:style=="dev-ansatsuken"?5.45:style==NativeBombs.Entrance?6:3.2;
         // The overlay's own clock length (shared/intros.ts introDuration). The Siren's source intro is 7.2678 s; Duration keeps the
         // native phase length unchanged (9.0678 s for a PvP Siren intro), which is a gameplay-timing difference left for review.
         public static double OverlayDuration(string style)=>style=="dev-siren"?7.2678:Duration(style);

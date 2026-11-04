@@ -1,0 +1,145 @@
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
+namespace ChipArena.UnityConversion
+{
+    /// <summary>One live charge (docs/BOMBADIER.md).</summary>
+    [Serializable] public sealed class NativeBomb
+    {
+        public int Id,Stuck;public string Kind;public V3 Pos,Vel,Normal;public float At,ArmAt,BlowAt=-100;
+        public bool Armed(float time)=>time>=ArmAt;
+    }
+    /// <summary>One blast of the last moments. `Link` is the chain link it made (0: none); `FromPos` the blast that handed on to it.</summary>
+    [Serializable] public sealed class NativeBlast
+    {
+        public int Id,Link;public string Kind;public float At,Radius;public V3 Pos,FromPos;public bool Handed;
+    }
+    /// <summary>The Firecracker Line while it burns.</summary>
+    [Serializable] public sealed class NativeBombLine{public float At,Speed;public V3 From,To;public float End=>At+Length/Math.Max(.1f,Speed)+1.2f;public float Length=>(To-From).Length;}
+    /// <summary>One enemy's circle in the Grand Finale.</summary>
+    [Serializable] public sealed class NativeBombCircle{public int Id;public V3 Pos;}
+    /// <summary>The Grand Finale: cut-in to At+.6, plunger down at Lock, columns at Strike, over at Until.</summary>
+    [Serializable] public sealed class NativeBombFinale{public float At=-100,Lock,Strike,Until;public V3 Box,Dir;public NativeBombCircle[] Circles;}
+    /// <summary>
+    /// The Bombadier's replicated kit (docs/BOMBADIER.md): the contract between the rules (Astra's) and the presentation. Everything the pose, the
+    /// effects, the sound and the HUD read. <see cref="NativeBombPreview"/> writes it the way the host would, for the Dev Sandbox and as the worked example.
+    /// </summary>
+    [Serializable] public sealed class NativeBombKit
+    {
+        public NativeBomb[] Bombs;public NativeBlast[] Blasts;public NativeBombLine Line;public NativeBombFinale Finale;
+        public int Chain,MineCharges;public float ChainUntil,Meter;
+        /// <summary>Absolute ready times in NativeBombs.Slot order: Q, E, 1, 2, 3, 4.</summary>
+        public float[] Ready;
+        /// <summary>What the pilot is doing, for the pose: the ability's id and its times.</summary>
+        public string CastKind;public float CastAt=-100,CastRelease,CastUntil;
+        public NativeBombKit ViewCopy()=>(NativeBombKit)MemberwiseClone();
+        public bool Valid()
+        {
+            bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;
+            if(!F(Meter)||Meter<0||Meter>1||Chain<0||Chain>64||!F(ChainUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil))return false;
+            if(Bombs!=null){if(Bombs.Length>NativeBombs.MaxBombs)return false;foreach(var b in Bombs)if(b==null||!NativeBombs.IsKind(b.Kind)||!V(b.Pos)||!V(b.Vel)||!V(b.Normal)||!F(b.At)||!F(b.ArmAt)||!F(b.BlowAt))return false;}
+            if(Blasts!=null){if(Blasts.Length>NativeBombs.MaxBlasts)return false;foreach(var b in Blasts)if(b==null||!V(b.Pos)||!V(b.FromPos)||!F(b.At)||!F(b.Radius)||b.Radius<0||b.Radius>64||b.Link<0||b.Link>64||b.Kind!=null&&b.Kind.Length>24)return false;}
+            if(Line!=null&&(!F(Line.At)||!F(Line.Speed)||!V(Line.From)||!V(Line.To)))return false;
+            if(Finale!=null){if(!F(Finale.At)||!F(Finale.Lock)||!F(Finale.Strike)||!F(Finale.Until)||!V(Finale.Box)||!V(Finale.Dir))return false;if(Finale.Circles!=null){if(Finale.Circles.Length>NativeBombs.MaxCircles)return false;foreach(var c in Finale.Circles)if(c==null||!V(c.Pos))return false;}}
+            if(Ready!=null&&Ready.Length>NativeBombs.Slots)return false;if(Ready!=null)foreach(var r in Ready)if(!F(r))return false;
+            return CastKind==null||CastKind.Length<=24;
+        }
+    }
+    /// <summary>Where the presentation reads a pilot's kit: the snapshot's once the rules replicate it, or the preview's.</summary>
+    public interface IBombSource{NativeBombKit Of(int actor);}
+
+    /// <summary>The Bombadier's names and numbers (docs/BOMBADIER.md).</summary>
+    public static class NativeBombs
+    {
+        public const string Spec="bombadier",Entrance="dev-bombadier";
+        public const string Pop="pop",Mine="mine",Sticky="sticky",Lob="lob",Bomblet="bomblet",Jump="jump",Spark="spark",Column="column";
+        public const string PopBomb="pop-bomb",BlastJump="blast-jump",DeadMansSwitch="dead-mans-switch",BounceMine="bounce-mine",StickyFuse="sticky-fuse",ClusterLob="cluster-lob",FirecrackerLine="firecracker-line",GrandFinale="grand-finale";
+        public const int MaxBombs=32,MaxBlasts=48,MaxCircles=16,Slots=6;
+        public const float CircleRadius=4,PlungeAt=.6f,MineArm=.5f,MineReach=1.6f,RingReach=5,LineReach=16;
+        /// <summary>The ability cards, in their HUD order, with the key each shows.</summary>
+        public static readonly string[] Slot={BlastJump,DeadMansSwitch,BounceMine,StickyFuse,ClusterLob,FirecrackerLine};
+        public static readonly string[] SlotKeys={"Q","E","1","2","3","4"};
+        public static string Name(string id)
+        {
+            switch(id){case PopBomb:return "Pop Bomb";case BlastJump:return "Blast Jump";case DeadMansSwitch:return "Dead Man's Switch";case BounceMine:return "Bounce Mine";case StickyFuse:return "Sticky Fuse";case ClusterLob:return "Cluster Lob";case FirecrackerLine:return "Firecracker Line";case GrandFinale:return "Grand Finale";default:return "";}
+        }
+        public static string Icon(string id)
+        {
+            switch(id){case BlastJump:return "rocket";case DeadMansSwitch:return "zap";case BounceMine:return "circle-dot";case StickyFuse:return "activity";case ClusterLob:return "bomb";case FirecrackerLine:return "flame";case GrandFinale:return "skull";default:return "bomb";}
+        }
+        public static bool IsKind(string k)=>k==Pop||k==Mine||k==Sticky||k==Lob||k==Bomblet;
+        /// <summary>Who holds the records (null: nothing to draw). Set from the rendered snapshot; the sandbox preview may override it.</summary>
+        public static IBombSource Source;
+        public static NativeBombKit Of(Actor a)=>a==null||Source==null?null:Source.Of(a.Id);
+    }
+
+    /// <summary>
+    /// The Dev Sandbox's "Preview Bombadier": the whole kit on a loop, written as the host would write the record, so the pose, the effects, the sound
+    /// and the HUD all show it. It reaches nothing else: not the authority, the network frame, damage or movement, so a victim's flight is not shown here.
+    /// One combo, on a fixed script: two mines, a sticky fuse, the switch, a cluster, a line, then the Finale.
+    /// </summary>
+    public sealed class NativeBombPreview:IBombSource
+    {
+        public const float Loop=17;
+        private readonly Dictionary<int,NativeBombKit> kits=new Dictionary<int,NativeBombKit>();private float started=-100,last;
+        public NativeBombKit Of(int actor)=>kits.TryGetValue(actor,out var k)?k:null;
+        public bool Any=>kits.Count>0;
+        public void Clear(){kits.Clear();started=-100;}
+        public void Step(Actor a,Vector3 feet,float yaw,float time)
+        {
+            if(a==null||a.SourceSpec!=NativeBombs.Spec){kits.Clear();started=-100;return;}
+            if(time<last-.25f||started<-50)started=(float)Math.Ceiling(time+.3f);last=time;if(time-started>=Loop)started=time;
+            if(!kits.TryGetValue(a.Id,out var k)){k=new NativeBombKit();kits[a.Id]=k;}
+            Write(k,feet,yaw,started,time);
+        }
+        private static V3 V(Vector3 v)=>new V3(v.X,v.Y,v.Z);
+        private static Vector3 Lob(Vector3 from,Vector3 to,float u,float arc)=>Vector3.Lerp(from,to,u)+Vector3.UnitY*(arc*4*u*(1-u));
+        /// <summary>The record at `time` of a loop that began at `t0` for a pilot at `feet` facing `yaw`. Pure: the same clock writes the same record.</summary>
+        public static void Write(NativeBombKit k,Vector3 feet,float yaw,float t0,float time)
+        {
+            var f=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));var r=new Vector3(f.Z,0,-f.X);var up=Vector3.UnitY;var hand=feet+up*1.3f+f*.5f;float t=time-t0;
+            var bombs=new List<NativeBomb>();var blasts=new List<NativeBlast>();k.CastKind=null;k.CastAt=-100;k.Line=null;k.Finale=null;k.Chain=0;k.ChainUntil=-100;k.MineCharges=2;
+            void Cast(string id,float at,float release,float until){if(t>=at&&t<until){k.CastKind=id;k.CastAt=t0+at;k.CastRelease=t0+release;k.CastUntil=t0+until;}}
+            void Blast(int id,string kind,float at,Vector3 pos,float radius,int link,Vector3? from){if(t>=at&&t<at+1.5f)blasts.Add(new NativeBlast{Id=id,Kind=kind,At=t0+at,Pos=V(pos),Radius=radius,Link=link,Handed=from!=null,FromPos=V(from??pos)});}
+            void Thrown(int id,string kind,float at,float land,float blow,Vector3 from,Vector3 to,float arc,Vector3 normal)
+            {
+                if(t<at||t>=blow)return;float u=Math.Min(1,(t-at)/Math.Max(.05f,land-at));var p=Lob(from,to,u,arc);var v=t<land?(Lob(from,to,Math.Min(1,u+.01f),arc)-p)/Math.Max(.0005f,.01f*(land-at)):Vector3.Zero;
+                bombs.Add(new NativeBomb{Id=id,Kind=kind,At=t0+at,ArmAt=t0+land+(kind==NativeBombs.Mine?NativeBombs.MineArm:0),BlowAt=t0+blow,Pos=V(p),Vel=V(v),Normal=V(normal)});
+            }
+            // Pop bombs off the hip.
+            var pop0=feet+f*7+r*-2.2f;var pop1=feet+f*8.5f+r*1.4f;
+            Cast(NativeBombs.PopBomb,.0f,.12f,.5f);Thrown(1,NativeBombs.Pop,.12f,.72f,1.02f,hand,pop0,1.3f,up);Blast(101,NativeBombs.Pop,1.02f,pop0+up*.2f,2.4f,0,null);
+            Cast(NativeBombs.PopBomb,.66f,.78f,1.16f);Thrown(2,NativeBombs.Pop,.78f,1.38f,1.68f,hand,pop1,1.3f,up);Blast(102,NativeBombs.Pop,1.68f,pop1+up*.2f,2.4f,1,pop0+up*.2f);
+            // Two mines on the floor.
+            var mine0=feet+f*9+r*3;var mine1=feet+f*11-r*2.5f;
+            Cast(NativeBombs.BounceMine,2.2f,2.42f,2.9f);Thrown(3,NativeBombs.Mine,2.42f,2.92f,7,hand,mine0,1.1f,up);
+            Cast(NativeBombs.BounceMine,3,3.22f,3.7f);Thrown(4,NativeBombs.Mine,3.22f,3.72f,7.12f,hand,mine1,1.1f,up);
+            // A sticky fuse on a wall out front, burning.
+            var stick=feet+f*10+up*1.4f;
+            Cast(NativeBombs.StickyFuse,4.4f,4.55f,5);Thrown(5,NativeBombs.Sticky,4.55f,4.75f,5.95f,hand,stick,.05f,-f);
+            Blast(103,NativeBombs.Sticky,5.95f,stick,3,1,mine0+up*.2f);
+            // The switch: nearest first, one chasing the next.
+            Cast(NativeBombs.DeadMansSwitch,6.7f,6.82f,7.2f);Blast(104,NativeBombs.Mine,7,mine0+up*.2f,2.6f,2,stick);Blast(105,NativeBombs.Mine,7.12f,mine1+up*.2f,2.6f,3,mine0+up*.2f);
+            if(t>=5.95f&&t<7.6f){k.Chain=t>=7.12f?3:t>=7?2:1;k.ChainUntil=t0+8.3f;}
+            // The cluster.
+            var over=feet+f*9.5f;Cast(NativeBombs.ClusterLob,8.2f,8.48f,9);Thrown(6,NativeBombs.Lob,8.48f,9.2f,9.2f,hand,over+up*4.2f,1,up);
+            if(t>=9.2f)for(int i=0;i<6;i++){float ang=i*1.0471976f+.3f;var at=over+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*(NativeBombs.RingReach*.72f);float land=9.48f+i*.07f;Thrown(7+i,NativeBombs.Bomblet,9.2f,land,land,over+up*4.2f,at,.2f,up);Blast(106+i,NativeBombs.Bomblet,land,at+up*.1f,1.9f,0,null);}
+            if(t>=9.2f&&t<10.7f)blasts.Add(new NativeBlast{Id=112,Kind=NativeBombs.Lob,At=t0+9.2f,Pos=V(over+up*4.2f),Radius=1.2f,FromPos=V(over+up*4.2f)});
+            // The line.
+            float la=10.9f;if(t>=la&&t<la+2.6f){k.Line=new NativeBombLine{At=t0+la,Speed=14,From=V(feet+f*1.5f),To=V(feet+f*1.5f+f*NativeBombs.LineReach)};}
+            Cast(NativeBombs.FirecrackerLine,la-.14f,la,la+.4f);for(int i=0;i<8;i++){float w=(i+.5f)/8;Blast(120+i,NativeBombs.Spark,la+w*NativeBombs.LineReach/14+.16f,feet+f*(1.5f+w*NativeBombs.LineReach)+up*.08f,1.4f,0,null);}
+            // The Finale.
+            float fa=13;
+            if(t>=fa&&t<fa+3.8f)
+            {
+                float lk=fa+2.1f,st=fa+2.6f;var box=feet+f*.75f;Vector3 C(int i){float ang=i*2.0943951f+.5f;return feet+f*10+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*5.2f;}
+                var circles=new NativeBombCircle[3];for(int i=0;i<3;i++){float roam=Math.Min(t,lk)-fa;circles[i]=new NativeBombCircle{Id=1000+i,Pos=V(C(i)+r*(float)Math.Sin(roam*1.6f+i)*1.1f)};}
+                k.Finale=new NativeBombFinale{At=t0+fa,Lock=t0+lk,Strike=t0+st,Until=t0+fa+3.6f,Box=V(box),Dir=V(f),Circles=circles};Cast(NativeBombs.GrandFinale,fa,fa+.6f,fa+3.6f);
+                if(t>=st)for(int i=0;i<3;i++)blasts.Add(new NativeBlast{Id=140+i,Kind=NativeBombs.Column,At=t0+st,Pos=circles[i].Pos,Radius=NativeBombs.CircleRadius,FromPos=circles[i].Pos});
+            }
+            k.Bombs=bombs.ToArray();k.Blasts=blasts.ToArray();k.Meter=t<fa?Math.Min(1,t/fa):Math.Max(0,1-(t-fa)/.6f);
+            k.Ready=new float[NativeBombs.Slots];k.Ready[2]=t>=2.42f&&t<9.42f?t0+9.42f:0;k.Ready[3]=t>=4.55f&&t<13.55f?t0+13.55f:0;k.Ready[4]=t>=8.48f&&t<16?t0+16:0;k.Ready[5]=t>=la?t0+la+12:0;k.Ready[1]=t>=6.82f&&t<8.82f?t0+8.82f:0;
+        }
+    }
+}
