@@ -53,6 +53,27 @@ namespace ChipArena.UnityConversion
             float fl=.8f+.2f*(float)Math.Sin(t*47+seed);s.Sprite(view,tip,BombHot*(2.4f*fl),.05f,Hot);s.Sprite(view,tip,Vector3.One*(1.3f*fl),.018f,Hot);
             int n=Count(4,q,low);for(int i=0;i<n;i++){float clock=t*(2.6f+R(seed,i+1))+R(seed,i+2),ph=clock%1;var d=RandomDir(seed+(long)clock*97,i+3);s.Sprite(view,tip+d*(.14f*ph)+Vector3.UnitY*(.1f*ph-.16f*ph*ph),BombHot*(2.6f*(1-ph)),.011f,Hot);}
         }
+        // ---- one of the set's chips going in ----------------------------------------------------------------------------
+        /// <summary>A chip of the Bombadier's set seating (NativeBombChips): a pop at the pilot's fist in their own view, at the chest for everyone else, then that chip's own flourish. `age` from the seat. `view`: on the first-person layer.</summary>
+        public void BombChipInstall(ITechniqueFxSink s,bool view,Vector3 at,int index,float age,long seed,float q,bool low)
+        {
+            if(age<0||age>1.5f)return;float r=view?.45f:1;
+            if(age<.12f){float w=1-age/.12f;s.Sprite(view,at,Vector3.One*(3*w),.3f*r,Hot);s.Sprite(view,at,BombFlame*(2*w),.6f*r,Hot);}
+            int n=Count(18,q,low);float ph=Clamp01(age/.65f);for(int i=0;i<n;i++){var d=RandomDir(seed,i+1);var p=at+d*(.55f*r*OutCubic(ph))-Vector3.UnitY*(.45f*r*ph*ph);s.Sprite(view,p,BombHot*(2.4f*(1-ph)),.016f*(.6f+r*.4f),Hot);}
+            switch(index)
+            {
+                // Scorched Earth and Black Powder: fire and soot climbing off it.
+                case 1:case 5:{int m=Count(12,q,low);for(int i=0;i<m;i++){float k=(age*1.1f+R(seed,i+30))%1;var p=at+new Vector3((R(seed,i+31)-.5f)*.3f*r,.9f*r*k,(R(seed,i+32)-.5f)*.3f*r);s.Sprite(view,p,(index==5?BombFlame:BombHot*.4f)*(1.6f*(1-k)*(1-age/1.5f)),.05f*r,Hot);}break;}
+                // Nitro Boots: two jets, straight down.
+                case 6:{float w=1-Clamp01(age/.6f);for(int side=-1;side<=1;side+=2){var o=at+new Vector3(side*.1f*r,0,0);s.Line(view,o,o-Vector3.UnitY*(.8f*r*w),BombFlame*(2*w),.05f*r,true);s.Line(view,o,o-Vector3.UnitY*(.4f*r*w),BombHot*(2.4f*w),.022f*r,true);}break;}
+                // Cluster Fun: small pops in a stutter round it.
+                case 7:{for(int i=0;i<5;i++){float a=age-.12f-i*.1f;if(a<0||a>.2f)continue;var d=RandomDir(seed,i+50);s.Sprite(view,at+d*(.32f*r),BombHot*(2.6f*(1-a/.2f)),.09f*r,Hot);}break;}
+                // Blast Shield: a blue ripple that holds.
+                case 8:{float w=Clamp01(age/.5f);int seg=low?10:20;for(int i=0;i<seg;i++){float a0=i*6.2831853f/seg,a1=(i+1)*6.2831853f/seg,rd=.5f*r*OutCubic(w);s.Line(view,at+new Vector3((float)Math.Cos(a0)*rd,(float)Math.Sin(a0)*rd,0),at+new Vector3((float)Math.Cos(a1)*rd,(float)Math.Sin(a1)*rd,0),new Vector3(.45f,.9f,1)*(1.6f*(1-w)),.02f*r,true);}break;}
+                // Encore: three tiny shells of fireworks.
+                case 9:{Vector3[] hue={BombHot,new Vector3(1,.3f,.2f),new Vector3(1,.45f,.8f)};for(int j=0;j<3;j++){float a=age-.1f-j*.16f;if(a<0||a>.6f)continue;float w=a/.6f;var c=at+new Vector3((j-1)*.4f*r,.5f*r,0);int m=Count(10,q,low);for(int i=0;i<m;i++){var d=RandomDir(seed+j*7,i+70);s.Sprite(view,c+d*(.35f*r*OutCubic(w))-Vector3.UnitY*(.2f*r*w*w),hue[j]*(2.6f*(1-w)),.022f*r,Hot);}}break;}
+            }
+        }
         // ---- the charges ----------------------------------------------------------------------------------------------
         private static void Charge(ITechniqueFxSink s,IKitFxScene scene,NativeBomb b,float t,long seed,float q,bool low)
         {

@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeShotScale {public float Value=1;}
     public static class NativeChipRanks
     {
-        public static int RarityRank(string rarity){int rank=System.Array.IndexOf(new[]{"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren"},rarity);return rank<0?10:rank;}
+        public static int RarityRank(string rarity){int rank=System.Array.IndexOf(new[]{"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier"},rarity);return rank<0?11:rank;}
         public static int BotRank(string rarity)=>System.Math.Min(5,RarityRank(rarity));
     }
 }

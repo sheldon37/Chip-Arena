@@ -1,8 +1,10 @@
+2026-11-04 Astra (`codex/projectile-rework`, shared `a395de04`): straight pistol/MG and four magic primaries, selective host rifle hitscan, chip fallbacks, configurable profiles, compatibility revision and native gates implemented locally. Full managed/Unity semantic checks pass. Owner approved public upload; integrated shared `cdae8447`. Upload/merge/builder/test-publication receipts follow in the task PR. Claude hooks and tuning: `docs/PROJECTILE-REWORK.md`. Windows contacts, latency and FPS acceptance pending.
+
 2026-11-04 Claude (`claude/revive-machine`): the hub's REVIVE-O-MATIC stands in both hubs: model, E prompt, screen, the whole spit-out show and sound, reviewed in the Unity Editor through the Dev Sandbox preview. Pressing REVIVE does nothing in a real run yet: the charge, the revive and cause of death wait on Astra (`docs/REVIVE-MACHINE.md`).
 
 2026-11-04 Astra (`codex/bombadier-rules`, base `197ef975`, shared docs through `c6f86fb5`): Bombadier authority, DEV access/content, bots, chains/Scorched, Finale, snapshot/late-join/replay and native gates implemented; Parting Line hop recovery fixed. Pilot chain budget and final decisions in BOMBADIER.md. Verification/integration receipts in DEV_LOG/task PR; Windows gameplay acceptance pending.
 
-2026-11-04 Claude (`claude/bombadier`): the Bombadier holds TNT now, not a launcher; its presentation and the Last Warning intro reviewed in Unity; the intro plays with DEV access; the kit waits on Astra's rules and row (`docs/BOMBADIER.md`).
+2026-11-04 Claude (`claude/bombadier`): the Bombadier holds TNT now, not a launcher; its presentation and the Last Warning intro reviewed in Unity; the intro plays with DEV access; its ten chips' look is in and their rows wait on Astra's mechanics (`docs/BOMBADIER.md`).
 
 2026-11-04 Claude (`claude/more-techniques`, shared `f1e3967b`): the second twelve techniques' effects, poses, sounds and models reviewed in Unity against Astra's rules; the Customize picker is slot tiles over a library that wraps for more abilities; through-walls markers; Grave Walk's veil. Parting Line snaps the pilot back on every cast: rules fix for Astra in docs/WEAPON-TECHNIQUES.md. Guest, replay, crowd and Windows unseen.
 
