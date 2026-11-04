@@ -5,7 +5,7 @@
 - **Cause and fix:** the Bombadier was the only weapon still drawing the Prototype Series' chip pieces on the default skin (`NativeChipModules.Designed` is false for it). `NativeWeaponDressing.Modules` draws two glowing orange bars when `stats["impulse"]>1.3`, and the Pinball mod doubles the base impulse, so they showed with no chips; Kinetic and the other knockback chips do the same. `WeaponDressing` now returns before those pieces for the TNT. The Necronomicon wasn't in `ZombieSummoner`, so no model bodies were made ahead for it and its first raise stood up as voxel zombies; it is in the list now.
 - **Animation impact:** none. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
 - **Voxel audit, for the record:** on the default skin the chips' remaining voxel look is on projectiles: `NativeShotVisuals` parts, Bowling Club's cube, Blade Runner's flat box, the enlarged gun rounds. Those went to the ranged polish pass (`claude/ranged-polish`), which is already in those files. The Prototype Series skin and Classic bodies stay voxel by choice (docs/BOZO-INTEGRATION.md).
-- **Checks:** CHECKS_PLACEHOLDER
+- **Checks:** full `CoreTests` in a clean LF checkout of `76adb186`: exit 0, 956 PASS groups, with the new pins (the TNT's skip in `BombadierChecks`, the Necronomicon in `BodyChipModelChecks`); no source pin broken; `git diff --check` clean. In Unity (BoZo, Cybercity): the bars reproduced on shared with Kinetic x2 and gone on this branch in third person; first person clean; the Necronomicon's first raise (fire staff, chip added, E) stood up a `Zombie model`.
 - **Not checked:** the Pinball mod itself on screen (the same check reproduced with Kinetic); a Windows build's play; online.
 - **Astra:** nothing needed.
 
