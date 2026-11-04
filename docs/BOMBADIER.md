@@ -80,7 +80,7 @@ Owner: "a set of 10 bombadier chips? Make them highly likely to show in their ch
 | --- | --- | --- | --- | --- | --- |
 | Short Fuse | `bomb-short-fuse` | Pop Bombs go off .25 s sooner and fly 15% faster | 2 | Yes | A fuse burns round the whole card in under half a second, and the card goes up |
 | Black Powder | `bomb-black-powder` | +15% blast damage | 3 | No: `damage` | Powder pours down the card and heaps under it, one spark runs along it, a black mushroom |
-| Bandolier | `bomb-bandolier` | +2 sticks on the belt, 20% faster restock | 3 | No: `ammoCapacity`, `reloadSpeed` | Seven sticks slam in under the card one by one, then go off in order |
+| Bandolier | `bomb-bandolier` | A third more sticks on the belt, 20% faster restock | 3 | No: `ammoCapacity`, `reloadSpeed` | Seven sticks slam in under the card one by one, then go off in order |
 | Bouncing Betty | `bomb-bouncing-betty` | +1 mine out and +1 charge; mines throw 25% higher | 2 | Yes | A mine clanks onto the card, blinks three times, the card ducks, it springs and bursts |
 | Daisy Chain | `bomb-daisy-chain` | Chain window +.4 s; links x1, x.9, x.75, x.6 | 1 | Yes | Blasts go round the card, each lighting the next along a burning line |
 | Scorched Earth | `bomb-scorched-earth` | Blasts leave 2 s of floor fire, 6 a second | 1 | Yes | Fire climbs out of the floor and chars the bottom of the card |

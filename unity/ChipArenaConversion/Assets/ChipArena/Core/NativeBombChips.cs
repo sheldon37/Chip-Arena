@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         public static ContentChip[] Chips()=>new[]{
             Chip(0,"Short Fuse",2,"Pop Bombs go off .25 s sooner and fly 15% faster. Less time to get out of the way."),
             Chip(1,"Black Powder",3,"+15% damage on every blast.",NativeMovementContent.Effect("damage","mul",1.15)),
-            Chip(2,"Bandolier",3,"+2 sticks on the belt, and restocking takes 20% less time.",NativeMovementContent.Effect("ammoCapacity","add",2),NativeMovementContent.Effect("reloadSpeed","mul",.8)),
+            Chip(2,"Bandolier",3,"A third more sticks on the belt, and restocking takes 20% less time.",NativeMovementContent.Effect("ammoCapacity","mul",1.34),NativeMovementContent.Effect("reloadSpeed","mul",.8)),
             Chip(3,"Bouncing Betty",2,"+1 mine out at once and +1 charge. Mines throw their victim 25% higher."),
             Chip(4,"Daisy Chain",1,"The chain stays open .4 s longer, and links keep more damage: x1, x.9, x.75, x.6."),
             Chip(5,"Scorched Earth",1,"Your blasts leave fire on the floor for 2 s, burning enemies in it for 6 a second."),
