@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
         public WeaponId Weapon;
     }
 
-    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact, Explosion, BlockPulse, Vacuum, Arc, Freeze, Teleport, Critical, Catch, Split, Ricochet, Pong, CeilingHit, HazardHit, BurnTick, PoisonTick, Collapse, Leet, Emperor, Arcade, Siren, PveBuy, PveGib, PvePhase, PveRevive, PveMoney, Install, Field, Summon, Heal, StructureStress, StructureFall, StructureLand, AbilityCast, AbilityHit, Mark, Recast, Absorb, Bounce, Land, FissureStart }
+    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact, Explosion, BlockPulse, Vacuum, Arc, Freeze, Teleport, Critical, Catch, Split, Ricochet, Pong, CeilingHit, HazardHit, BurnTick, PoisonTick, Collapse, Leet, Emperor, Arcade, Siren, PveBuy, PveGib, PvePhase, PveRevive, PveMoney, Install, Field, Summon, Heal, StructureStress, StructureFall, StructureLand, AbilityCast, AbilityHit, Mark, Recast, Absorb, Bounce, Land, FissureStart, Hitscan }
     [Serializable]
     public struct ArenaEvent
     {
