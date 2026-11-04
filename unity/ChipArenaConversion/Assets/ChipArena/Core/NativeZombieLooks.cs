@@ -310,6 +310,9 @@ namespace ChipArena.UnityConversion
         /// fits). The station's effects (its lamp's halo and beam, the pack's glow) are drawn from them on the model.</summary>
         public static readonly System.Numerics.Vector3 LinesmanLamp=new System.Numerics.Vector3(0,.1453f,.1944f),LinesmanLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
             LinesmanVents=new System.Numerics.Vector3(.068f,.2715f,0),LinesmanVentsWoman=new System.Numerics.Vector3(.068f,.2515f,0);
+        /// <summary>Where the Ironworks gear's lights are, in their bones' frames (tools/gear/ironworks_gear.py builds them there; the frames as LinesmanLamp's).</summary>
+        public static readonly System.Numerics.Vector3 RiggerLamp=new System.Numerics.Vector3(0,.1453f,.1944f),RiggerLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
+            StokerVisor=new System.Numerics.Vector3(0,.118f,.179f),LadleLens=new System.Numerics.Vector3(0,.132f,.178f),CinderCoal=new System.Numerics.Vector3(-.05f,.17f,.05f),SlagFissure=new System.Numerics.Vector3(-.1f,.17f,0);
         /// <summary>The kit given (the table above first: field initializers run in order).</summary>
         public static readonly bool Kitted=Kit();
         private static bool Kit()

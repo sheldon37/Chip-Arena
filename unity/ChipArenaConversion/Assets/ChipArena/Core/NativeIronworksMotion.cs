@@ -303,6 +303,39 @@ namespace ChipArena.UnityConversion
             }
         }
 
+        /// <summary>
+        /// The props the last <see cref="PlaceProps"/> placed, carried onto the player's model (the source frame; `shiftL` and `shiftR` how far the model's hands stand from
+        /// the gait's: Runtime ZombieModelShift). The model's own arms put its hands a little off the gait's, so a pole runs through its two real fists (the Stoker's rake
+        /// from the right, the Ladleman's shank from the back one through the front one: never through its wrists' old line), and a chain leaves its real fist. Nothing here
+        /// is read by a rule; the hook's and the lip's places follow for the effects.
+        /// </summary>
+        public void PropsOnModel(in HordeMotionInput f,CapturedRig.Pose p,Vector3 shiftL,Vector3 shiftR)
+        {
+            int z=NativeIronworksKinds.Local(kind);if(z<0)return;p.World();Vector3 l=Fist(p,true)+shiftL,r=Fist(p,false)+shiftR;
+            // The pole's line through both fists, as long as they hold it where the gait meant (not crossed, not on one spot).
+            Vector3 Line(Vector3 from,Vector3 to,Vector3 meant){var d=to-from;float n=d.Length();if(n<.08f)return meant;d/=n;return Vector3.Dot(d,meant)>.35f?d:meant;}
+            switch(z)
+            {
+                case NativeIronworksKinds.Stoker:
+                {
+                    if(PropCount==0||Props[0].Prop!=NativeHordeModels.PropRake)break;var dir=Line(r,l,poleDir);Props[0].At=r;Props[0].Turn=CapturedRig.Look(dir,Vector3.UnitY);var tip=r+dir*NativeHordeModels.RakeTip;
+                    if(ChainCount>0)Chains[0].From=tip;else HookTip=tip;break;
+                }
+                case NativeIronworksKinds.Ladleman:
+                {
+                    if(PropCount==0||Props[0].Prop!=NativeHordeModels.PropLadle)break;var dir=Line(r,l,poleDir);Props[0].At=l;Props[0].Turn=CapturedRig.Look(dir,Vector3.UnitY);
+                    Lip=l+Vector3.Transform(new Vector3(0,.125f,NativeHordeModels.LadleBowl+NativeHordeModels.LadleBowlRadius+.05f),Props[0].Turn);break;
+                }
+                case NativeIronworksKinds.Rigger:
+                {
+                    if(ChainCount==0)break;Chains[0].From=r;
+                    // Carried (not swung): the hook moves with the hand; swung, it keeps its line round the body, the chain from the real fist.
+                    if(float.IsNaN(f.AttackAge)||f.AttackAge<0||f.AttackAge>=f.Recover+.25f){Chains[0].To+=shiftR;if(PropCount>0)Props[0].At+=shiftR;HookTip+=shiftR;}
+                    break;
+                }
+            }
+        }
+
         // ================================================================================================================
         // The Rigger off the ground (static poses: the presentation places the root on the chain)
         // ================================================================================================================

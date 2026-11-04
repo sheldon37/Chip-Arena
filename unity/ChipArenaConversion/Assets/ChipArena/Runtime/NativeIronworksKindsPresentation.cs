@@ -60,18 +60,18 @@ namespace ChipArena.UnityConversion
             // HordeKindAdd poses on, hordeNow; matched against arena.Time this skipped every live add on the host, guests and the
             // killcam, which then drew no rake, ladle, hook, crust, lamp or effects.)
             int z=NativeIronworksKinds.Local(s.Kind);ref var f=ref hordeInput[0];if(z<0||f.Id!=m.Id||f.Time!=hordeNow)return;
-            s.Gait.PlaceProps(f,minionPose);IronworksProps(rig,s.Gait,s.Tier,glow,flash,s.Scale);bool crusted=z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(s.Gait.Iron.shedAt,f.Time);
-            if(crusted)IronworksCrust(rig,s.Look,s.Tier,m.Pve?.Lost??0,glow,flash);
+            s.Gait.PlaceProps(f,minionPose);bool onModel=IronworksPropsOnModel(f,s,m.Id);IronworksProps(rig,s.Gait,s.Tier,glow,flash,s.Scale);bool crusted=z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(s.Gait.Iron.shedAt,f.Time);
+            if(onModel&&zombieBodies.TryGetValue(m.Id,out var body))IronworksCrustGear(body,crusted);else if(crusted&&!IronworksWaits(s.Kind))IronworksCrust(rig,s.Look,s.Tier,m.Pve?.Lost??0,glow,flash);
             // What it carries, for its death: the held prop where it is now, the crust still on.
             var g=s.Gait;ironCarry[m.Id]=new IronCarry{Has=g.PropCount>0,Prop=g.PropCount>0?g.Props[0].Prop:-1,M=g.PropCount>0?IronMatrix(rig,g.Props[0].At,g.Props[0].Turn,g.Props[0].Scale):Matrix4x4.identity,Crusted=crusted,Look=s.Look,Seen=f.Time};
-            if(z==NativeIronworksKinds.Rigger&&NativeIronworksKinds.Lamp(s.Gait.Iron.lockAt,f.Time,false))IronworksLamp(rig);
+            if(z==NativeIronworksKinds.Rigger&&NativeIronworksKinds.Lamp(s.Gait.Iron.lockAt,f.Time,false)&&!IronworksLampOnModel(m.Id,s.Kind))IronworksLamp(rig);
             var target=HordeTarget(arena,rig.Root.transform.position);var hooked=s.Gait.Iron.pullTarget>=0?HordePilot(arena,s.Gait.Iron.pullTarget):null;
             IronworksJob(rig,s,z,f,ground,(hooked??target)?.Body!=null?(hooked??target).Body.position:rig.Root.transform.position,(hooked??target)?.Body!=null,false,Vector3.zero,Vector3.zero);
         }
         private void IronworksProps(CapturedAnimation.Player rig,NativeHordeGait g,int tier,Vector4 glow,float flash,float scale)
         {
             int t=tier==NativeHordeModels.Full?0:1;
-            for(int i=0;i<g.PropCount;i++){var p=g.Props[i];sourceModels.Queue(NativeHordeModels.PropId(p.Prop,t),IronMatrix(rig,p.At,p.Turn,p.Scale),glow:glow,hitFlash:flash);}
+            for(int i=0;i<g.PropCount;i++){var p=g.Props[i];IronworksPropDraw(p.Prop,t,IronMatrix(rig,p.At,p.Turn,p.Scale),glow,flash);}
             for(int i=0;i<g.ChainCount;i++){var c=g.Chains[i];IronworksChain(IronWorld(rig,c.From),IronWorld(rig,c.To),c.Sag*scale,t);}
         }
         /// <summary>A chain of links from a to b (world), sagging at its middle: at most 48 links (a long chain's links stretched).</summary>
@@ -144,9 +144,9 @@ namespace ChipArena.UnityConversion
             if(!posed)NativeHordeGait.RiggerHang(minionPose,seed,state,u,now,state==NativeHordeGait.RiggerState.Hang?sway:sway*.4f);
             s.Gait.Reset();NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");rig.Root.transform.SetPositionAndRotation(root,Quaternion.Euler(0,yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);
-            HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,0,glow,flash);if(lampOn)IronworksLamp(rig);
+            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,onFloor,!onFloor,false,s.Gait,a.Lost,0,flash,glow.x,0)&&!IronworksWaits(kind))HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,0,glow,flash);if(lampOn&&!IronworksLampOnModel(m.Id,kind))IronworksLamp(rig);
             // the chain from the girder through its fists; in the drop on down to the hook over its spot (swaying), the hook
-            var fists=(rig.Bones[CapturedRig.LHand].position+rig.Bones[CapturedRig.RHand].position)*.5f;int tier=s.Tier==NativeHordeModels.Full?0:1;
+            var fists=(IronworksJoint(rig,m.Id,kind,CapturedRig.LHand)+IronworksJoint(rig,m.Id,kind,CapturedRig.RHand))*.5f;int tier=s.Tier==NativeHordeModels.Full?0:1;
             if(!onFloor&&state!=NativeHordeGait.RiggerState.Fall)IronworksChain(anchor,fists+Vector3.up*.05f,0,tier);
             Vector3 hook;
             if(ph==NativeIronworksKinds.DropPhase.Lowered||ph==NativeIronworksKinds.DropPhase.Slide)
@@ -156,7 +156,7 @@ namespace ChipArena.UnityConversion
             }
             else if(state==NativeHordeGait.RiggerState.Throw||state==NativeHordeGait.RiggerState.Climb){hook=anchor;}
             else hook=fists+Vector3.down*(onFloor?.3f:1.3f);
-            if(state!=NativeHordeGait.RiggerState.Fall&&state!=NativeHordeGait.RiggerState.Stun)sourceModels.Queue(NativeHordeModels.PropId(NativeHordeModels.PropHook,tier),Matrix4x4.TRS(hook,Quaternion.Euler(0,yaw,0),Vector3.one));
+            if(state!=NativeHordeGait.RiggerState.Fall&&state!=NativeHordeGait.RiggerState.Stun)IronworksPropDraw(NativeHordeModels.PropHook,tier,Matrix4x4.TRS(hook,Quaternion.Euler(0,yaw,0),Vector3.one),Vector4.one,flash);
             HordeAdd(rig,m.Id,float.NaN,float.NaN,spot.y,spot.y,float.NaN,Vector3.zero,a.Lost,true,kind*8+s.Look);
             ref var f=ref hordeInput[0];f=new HordeMotionInput{Kind=kind,Look=s.Look,Id=m.Id,Seed=seed,Time=now,Yaw=yaw,Ground=spot.y/sc,Root=new NVector(root.x,root.y,root.z)/sc,Health=m.MaxHp>0?m.Hp/m.MaxHp:1,AttackAge=float.NaN};
             IronworksJob(rig,s,NativeIronworksKinds.Rigger,f,spot.y,land,false,!onFloor,anchor,land,hook);
@@ -171,9 +171,10 @@ namespace ChipArena.UnityConversion
         private void IronworksJob(CapturedAnimation.Player rig,HordeKindState s,int z,in HordeMotionInput f,float ground,Vector3 target,bool hasTarget,bool hanging,Vector3 anchor,Vector3 landing,Vector3? hookAt=null)
         {
             if(ironJobCount==ironJobs.Length)Array.Resize(ref ironJobs,ironJobCount*2);var g=s.Gait;
-            Vector3 B(int b)=>rig.Bones[b].position;var floor=new Vector3(rig.Root.transform.position.x,ground,rig.Root.transform.position.z);
+            int fxId=f.Id,fxKind=s.Kind;Vector3 B(int b)=>IronworksJoint(rig,fxId,fxKind,b);var floor=new Vector3(rig.Root.transform.position.x,ground,rig.Root.transform.position.z);
             var hook=hookAt??(g.PropCount>0||g.ChainCount>0?IronWorld(rig,g.HookTip):B(CapturedRig.RHand));var lip=z==NativeIronworksKinds.Ladleman&&g.PropCount>0?IronWorld(rig,g.Lip):B(CapturedRig.Chest);
-            ironJobs[ironJobCount++]=new IronJob{Id=f.Id,Distance=s.Distance,In=new IronFxInput{Kind=z,Seed=f.Seed,Time=f.Time,Yaw=hanging?f.Yaw:g.Yaw,Scale=s.Scale,Speed=g.Speed*s.Scale,Floor=ToN(floor),Chest=ToN(B(CapturedRig.Chest)),Head=ToN(B(CapturedRig.Head)),
+            var fxChest=ToN(B(CapturedRig.Chest));var fxHead=ToN(B(CapturedRig.Head));IronworksSockets(rig,fxId,fxKind,z,s.Scale,hanging?f.Yaw:g.Yaw,ref fxChest,ref fxHead);
+            ironJobs[ironJobCount++]=new IronJob{Id=f.Id,Distance=s.Distance,In=new IronFxInput{Kind=z,Seed=f.Seed,Time=f.Time,Yaw=hanging?f.Yaw:g.Yaw,Scale=s.Scale,Speed=g.Speed*s.Scale,Floor=ToN(floor),Chest=fxChest,Head=fxHead,
                 HandL=ToN(B(CapturedRig.LHand)),HandR=ToN(B(CapturedRig.RHand)),Hook=ToN(hook),Lip=ToN(lip),Target=ToN(target),HasTarget=hasTarget,Hanging=hanging,AttackAge=f.AttackAge,Strike=f.Strike,Recover=f.Recover,View=g.Iron,Anchor=ToN(anchor),Landing=ToN(landing)}};
             // The Slagback's slam lands as the zombie impact (debris, cracks, dust) at the authority's disc, its ink the fissure's.
             if(z==NativeIronworksKinds.Slagback&&!float.IsNaN(f.AttackAge)&&f.AttackAge>=f.Strike&&f.AttackAge<f.Strike+.5f)
@@ -264,10 +265,10 @@ namespace ChipArena.UnityConversion
             // The corpse keeps the crust and what it dropped (NativeHordeGorePresentation.cs HordeCorpsesDraw), once it has settled.
             var remains=hordeGore.RemainsOf(death.id);if(remains!=null&&Mathf.Abs(remains.At-death.at)<.05f){remains.Extra=drop.Crusted?drop.Look:-1;remains.Prop=drop.Prop;if(drop.Prop>=0)remains.PropMatrix=GoreN(Matrix4x4.TRS(drop.To,drop.ToRot,Vector3.one));}
             bool body=!NativeMinionFx.Gone(fx)&&(remains==null||!remains.Posed||remains.Frame>=hordeKindFrame);if(!body)return;
-            if(drop.Crusted){HordeDeathBody(rig,IronworksCrustId(drop.Look,NativeHordeModels.Full),death.id,death.lost,fx,hordeQueueVisible);}
+            if(drop.Crusted&&!ZombieModelDrawn(death.id)){HordeDeathBody(rig,IronworksCrustId(drop.Look,NativeHordeModels.Full),death.id,death.lost,fx,hordeQueueVisible);}
             if(drop.Prop>=0){float u=Mathf.Clamp01(fx/.45f);float bounce=u<1?0:Mathf.Max(0,.06f*Mathf.Sin((fx-.45f)*18)*Mathf.Exp(-(fx-.45f)*6));
-                sourceModels.Queue(NativeHordeModels.PropId(drop.Prop,0),Matrix4x4.TRS(Vector3.Lerp(drop.From,drop.To,u*u)+Vector3.up*bounce,Quaternion.Slerp(drop.FromRot,drop.ToRot,Mathf.SmoothStep(0,1,u)),Vector3.one));}
-            if(z==NativeIronworksKinds.Rigger&&fx<.5f&&((int)(fx*23)&1)==0)IronworksLamp(rig);
+                IronworksPropDraw(drop.Prop,0,Matrix4x4.TRS(Vector3.Lerp(drop.From,drop.To,u*u)+Vector3.up*bounce,Quaternion.Slerp(drop.FromRot,drop.ToRot,Mathf.SmoothStep(0,1,u)),Vector3.one),Vector4.one,1);}
+            if(z==NativeIronworksKinds.Rigger&&fx<.5f&&((int)(fx*23)&1)==0&&!IronworksLampOnModel(death.id,kind))IronworksLamp(rig);
         }
         /// <summary>HordeKindDeath: a cinderling killed by a melee blow is gone once its fuse pops (its embers fly instead).</summary>
         private static bool IronworksPopped(int kind,bool melee,float fx)=>melee&&NativeIronworksKinds.Local(kind)==NativeIronworksKinds.Cinderling&&fx>=NativeIronworksKinds.PopFuse;
@@ -299,7 +300,7 @@ namespace ChipArena.UnityConversion
                 if(fr.State==NativeIronworksGallery.State.Death)
                 {
                     NativeHordeGait.Death(minionPose,kind,seed,Mathf.Min(fr.DeathAge,2.3f),new System.Numerics.Vector2(0,-1));NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(slot+Vector3.up*NativeHordeKinds.DrawRoot(kind,false),Quaternion.Euler(0,yawToMe,0));rig.Root.transform.localScale=Vector3.one*sc;
-                    bool body=!NativeMinionFx.Gone(fr.DeathAge);if(body)HordeDeathBody(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,fr.DeathAge,null,z==NativeIronworksKinds.Cinderling);HordeAdd(rig,id,float.NaN,fr.DeathAge,ground,ground,float.NaN,Vector3.zero,0,body,kind*8);
+                    bool body=!NativeMinionFx.Gone(fr.DeathAge);if(body&&!ZombieModelDeath(rig,id,kind,0,0))HordeDeathBody(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,fr.DeathAge,null,z==NativeIronworksKinds.Cinderling);HordeAdd(rig,id,float.NaN,fr.DeathAge,ground,ground,float.NaN,Vector3.zero,0,body,kind*8);
                     if(z==NativeIronworksKinds.Cinderling)IronworksLate(0,id,rig.Bones[CapturedRig.Chest].position,slot,Vector3.up,start+NativeIronworksGallery.DeathAt,seed,true);s.Gait.Reset();continue;
                 }
                 if(fr.State!=NativeIronworksGallery.State.Ground)
@@ -307,11 +308,11 @@ namespace ChipArena.UnityConversion
                     var stt=fr.State==NativeIronworksGallery.State.Slide?NativeHordeGait.RiggerState.Slide:fr.State==NativeIronworksGallery.State.Throw?NativeHordeGait.RiggerState.Throw:fr.State==NativeIronworksGallery.State.Climb?NativeHordeGait.RiggerState.Climb:NativeHordeGait.RiggerState.Hang;
                     NativeHordeGait.RiggerHang(minionPose,seed,stt,stt==NativeHordeGait.RiggerState.Slide?fr.SlideU:g,now,.12f*Mathf.Sin(now*Mathf.PI*2/NativeIronworksKinds.SwayPeriod));
                     var at=slot+Vector3.up*(fr.Height+NativeHordeKinds.DrawRoot(kind,false));NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(at,Quaternion.Euler(0,yawToMe,0));rig.Root.transform.localScale=Vector3.one*sc;
-                    HordeQueue(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,0,0,HordeGlow(id),1);if(NativeIronworksKinds.Lamp(fr.View.lockAt,now,true))IronworksLamp(rig);
+                    if(!ZombieModelPose(rig,id,kind,NativeHordeModels.Full,false,true,false,s.Gait,0,0,1,1,0))HordeQueue(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,0,0,HordeGlow(id),1);if(NativeIronworksKinds.Lamp(fr.View.lockAt,now,true)&&!IronworksLampOnModel(id,kind))IronworksLamp(rig);
                     var anchor=slot+Vector3.up*(5+NativeIronworksKinds.GirderAbove);var fists=(rig.Bones[CapturedRig.LHand].position+rig.Bones[CapturedRig.RHand].position)*.5f;IronworksChain(anchor,fists,0,0);
                     var ph=NativeIronworksKinds.Drop(fr.View.lockAt,now,out _);Vector3 hook=fists+Vector3.down*1.3f;
                     if(ph==NativeIronworksKinds.DropPhase.Lowered||ph==NativeIronworksKinds.DropPhase.Slide){hook=Vector3.Lerp(fists,slot+Vector3.up*(NativeIronworksKinds.HookHeight+NativeHordeModels.HookDrop),NativeIronworksKinds.HookLowered(now-fr.View.lockAt))+across*NativeIronworksKinds.Sway(now-fr.View.lockAt,seed);IronworksChain(fists,hook,0,0);}
-                    sourceModels.Queue(NativeHordeModels.PropId(NativeHordeModels.PropHook,0),Matrix4x4.TRS(hook,Quaternion.Euler(0,yawToMe,0),Vector3.one));HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,Vector3.zero,0,true,kind*8);
+                    IronworksPropDraw(NativeHordeModels.PropHook,0,Matrix4x4.TRS(hook,Quaternion.Euler(0,yawToMe,0),Vector3.one),Vector4.one,1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,Vector3.zero,0,true,kind*8);
                     ref var fh=ref hordeInput[0];fh=new HordeMotionInput{Kind=kind,Id=id,Seed=seed,Time=now,Yaw=yawToMe,Ground=ground/sc,Root=new NVector(at.x,at.y,at.z)/sc,Health=1,AttackAge=float.NaN};
                     IronworksJob(rig,s,z,fh,ground,me.Body.position,true,true,anchor,slot,hook);s.Gait.Reset();continue;
                 }
@@ -321,10 +322,10 @@ namespace ChipArena.UnityConversion
                 f=new HordeMotionInput{Kind=kind,Look=0,Id=id,Seed=seed,Time=now,Yaw=yaw,Ground=ground/sc,Root=new NVector(pos.x,rootY,pos.z)/sc,Velocity=new NVector(vel.x,vel.y,vel.z)/sc,AttackAge=fr.AttackAge,Strike=strike,Recover=recover,Attack=attack,Side=1,Health=1,HasTarget=!fr.Entering,Target=new NVector(me.Body.position.x,me.Body.position.y,me.Body.position.z)/sc,Entering=fr.Entering,EntryAge=g,EntryWalk=NativeIronworksGallery.Entrance};
                 s.Gait.Pose(f,minionPose,s.React);NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(new Vector3(pos.x,rootY,pos.z),Quaternion.Euler(0,s.Gait.Yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
                 float gk=NativeHordeFx.Brighten(fr.AttackAge,strike,recover);var glow=HordeGlow(id);var gl=new Vector4(gk,gk,gk,glow.w);
-                HordeQueue(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,0,0,gl,1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,vel,0,true,kind*8);
-                s.Gait.PlaceProps(f,minionPose);IronworksProps(rig,s.Gait,NativeHordeModels.Full,gl,1,sc);
-                if(z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(fr.View.shedAt,now))IronworksCrust(rig,0,NativeHordeModels.Full,0,gl,1);
-                if(z==NativeIronworksKinds.Rigger)IronworksLamp(rig);
+                if(!ZombieModelPose(rig,id,kind,NativeHordeModels.Full,true,false,false,s.Gait,0,0,1,gl.x,0))HordeQueue(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,0,0,gl,1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,vel,0,true,kind*8);
+                s.Gait.PlaceProps(f,minionPose);bool galleryModel=IronworksPropsOnModel(f,s,id);IronworksProps(rig,s.Gait,NativeHordeModels.Full,gl,1,sc);
+                if(galleryModel&&zombieBodies.TryGetValue(id,out var galleryBody))IronworksCrustGear(galleryBody,NativeIronworksKinds.Crusted(fr.View.shedAt,now));else if(z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(fr.View.shedAt,now))IronworksCrust(rig,0,NativeHordeModels.Full,0,gl,1);
+                if(z==NativeIronworksKinds.Rigger&&!IronworksLampOnModel(id,kind))IronworksLamp(rig);
                 IronworksJob(rig,s,z,f,ground,me.Body.position,true,false,Vector3.zero,slot);
             }
         }
