@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
         // shoulder, the new default); firstPerson above stays the first-person choice that V toggles.
         public string cameraMode=NativeCameraModes.Default;public bool shoulderLeft;
         // The Locker's per-weapon skins (NativeWeaponSkins map; absent in older saves: every weapon Standard).
-        public string weaponSkins="";
+        public string weaponTechniques="";public string weaponSkins="";
         // The model's outfit (Core/NativeLook.cs): kept here and shown on this client's own pilot until the look contract
         // carries it to the seat (Astra).
         public string look="";

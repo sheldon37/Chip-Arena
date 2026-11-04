@@ -1,10 +1,12 @@
-# Weapon techniques (key 1): a third ability for the twelve standard weapons
+# Weapon techniques: optional Q/E replacements for the twelve standard weapons
 
 Owner request, 2026-11-03: "Lets add more abilities now for the weapons. Think creatively, integrate more skills that aren't too
 much of a "powercreep" but still useful and fun. Ensure the animation and effects are high-quality; Make sure you evaluate
 afterwards to make sure things look great."
 
-Status: Claude owns presentation; Astra simulation is implemented on `codex/weapon-technique-rules`, based on shared `b794f9c5`. Verification/push receipts are in the task PR and DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
+Owner revision, 2026-11-03: techniques replace either Q or E, selected per weapon in Customize; rifle permits E only because Q is scope. Both original abilities remain the default. There is no third slot or separate technique cooldown. This revision supersedes the original key-1 proposal.
+
+Status: Claude owns the Customize picker and HUD; Astra implements the revised save/profile/authority contract on `codex/weapon-technique-slots`, based on shared `04d7333c` (PR #321). The earlier simulation status follows for history: Astra simulation is implemented on `codex/weapon-technique-rules`, based on shared `b794f9c5`. Verification/push receipts are in the task PR and DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
 
 ## Why it isn't power creep
 
@@ -19,7 +21,7 @@ Every weapon already has its damage on LMB, Q and E, so a technique is not more 
 
 ## The set
 
-Key **1** on keyboard, the existing `PadAction.Slot1` on a controller. `InputFrame.SirenAbility` already carries the press on the wire.
+Use the selected slot's existing keyboard/controller binding: `InputFrame.AbilityQ` or `AbilityE`. The same slot performs recasts. Standard weapons ignore `SirenAbility` for techniques; DEV abilities are unchanged.
 
 | Weapon | Technique (`id`) | What it does | Damage | Cd / cost | The counter |
 | --- | --- | --- | --- | --- | --- |
@@ -40,8 +42,7 @@ Key **1** on keyboard, the existing `PadAction.Slot1` on a controller. `InputFra
 
 Presentation reads one authority-owned record per actor, `NativeTechnique` (`Core/NativeTechnique.cs`, already in the tree). Replicate
 it the way `Actor.MeleeKit` is: `Actor.Technique`, copied in snapshots, late join and the killcam, validated with `Valid()`. All times
-are on the presentation clock. Add the content rows (`slot: "1"`, `tools/native-content.json`), a `TechniqueReady` next to
-`QReady`/`EReady` on `NativePilot`, the bot use, and the checks. Set `NativeTechniques.Source` from the snapshot and presentation takes
+are on the presentation clock. Content rows use `slot: "technique"` as a catalog entry, never an input slot; `QReady`/`EReady` track the chosen slot. Bots retain the default abilities. Set `NativeTechniques.Source` from the snapshot and presentation takes
 it from there. Drop the preview when it is done, or leave it behind the sandbox flag.
 
 Common fields: `Kind` (the id), `Phase`, `At` (the press), `Release` (when the move leaves the pilot), `Until` (the effect's end, moved
@@ -88,18 +89,29 @@ real play with the rules, in first person, in a crowd, on a guest, or on a low g
 
 ## Simulation implementation and presentation handoff (Astra, 2026-11-03)
 
-- All twelve standard weapons now have authority slot-1 content rows. The host consumes the existing `SirenAbility == 1` edge; no new input packet. Costs use `NativeAbilityRules.Cost`, cooldowns use `NativeAbilityRules.Cooldown`, and `NativePilot.TechniqueReady` is a replicated absolute deadline. Recasts do not charge twice or restart cooldowns. No new mechanic grants damage invulnerability.
+- All twelve standard weapons have authority technique catalog rows. The host consumes the selected Q/E edge; no new input packet. Costs use `NativeAbilityRules.Cost`, cooldowns use `NativeAbilityRules.Cooldown`, and the selected slot's `QReady` or `EReady` is its replicated absolute deadline. `TechniqueReady` was removed. Recasts do not charge twice or restart cooldowns. No new mechanic grants damage invulnerability.
 - `Actor.Technique` is copied by `ViewCopy`, carried by the frame/late-join/replay path, presence-tagged for Unity JsonUtility, and checked by `Valid()`. Live render and replay select `NativeTechniqueSnapshotSource`. No presentation files were edited; the existing sandbox preview can still override the source for its own render.
 - Authoritative movement: Anchor Throw sweeps its 16 m flight at 26 m/s, accepts one recast for three seconds after sticking, then uses a .45 s collision-limited leap. Grapple flies its hook at 60 m/s and reels at 16 m/s for at most 1.1 s, with jump/roll release. Ignition uses `sqrt(2*g*7)` upward velocity and normal steering/gravity. Static Recall refuses obstructed/occupied destinations and damages each line target once. Shade's orb travels 22 m/s for at most 18 m; after .25 s both destinations and the target's immunity are rechecked before an atomic exchange. These moves respect the current area and sanctuary boundary.
 - Runtime choices where the table left a number open: Ignition burn is 3 DPS for two seconds before ability scaling; Gale's push impulse is 650, including self/allies and movable props (damage stays on normal hostile/friendly-fire rules). Weapon-away primary punches have 1.4 m reach and 6 base damage; Q/E and shield blocking cannot use the absent weapon. Reeling forbids shooting. Stuns, knockdowns, rolls and control/carry states refuse new casts; owner death/disconnect ends deployed effects. Active techniques delay cross-area transfers until their short lifetime ends, preserving area ownership.
 - Coin contract correction: `CoinAir` is **1.4 s** as specified (was 1.1 in the preview helper); `CoinLift` is **6.1 m/s** so the existing parabola stays above the floor for that interval. No field meaning changed. A swept .6 m hit consumes one coin, turns the round toward the nearest visible enemy within 22 m, multiplies its damage by 1.6 and disables headshot bonuses. With no visible enemy it continues without amplification.
-- Bastion and sentry use shot-only intersections, so actors can walk through them. Standard bullet, ability-shot and melee-projectile paths respect nearest collision ordering. Bastion intercepts both teams; sentries take hostile/friendly-fire projectile, primary melee and blast damage. The sentry deals fixed 5 damage per round at .5 s intervals, arms after .6 s and expires after six armed seconds. Bots prioritize visible hostile sentries and use/recast techniques. Smoke prevents target acquisition from outside the cloud; entering the cloud restores targeting. Healing Spring ticks 1.5 HP every .25 s (30 maximum per pool) and slows enemies to .85.
+- Bastion and sentry use shot-only intersections, so actors can walk through them. Standard bullet, ability-shot and melee-projectile paths respect nearest collision ordering. Bastion intercepts both teams; sentries take hostile/friendly-fire projectile, primary melee and blast damage. The sentry deals fixed 5 damage per round at .5 s intervals, arms after .6 s and expires after six armed seconds. Bots prioritize visible hostile sentries but retain their default Q/E abilities. Smoke prevents target acquisition from outside the cloud; entering the cloud restores targeting. Healing Spring ticks 1.5 HP every .25 s (30 maximum per pool) and slows enemies to .85.
 
 **Claude follow-ups (presentation files intentionally unchanged):**
 
 1. `Runtime/NativeCombatHud.cs`, pilot health/nameplate loop: skip a pilot when `arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position, p.Body.position)` is true. The query also works on replicas because it reads replicated technique records. The simulation's bot concealment is active; human nameplate concealment awaits this hook.
-2. `Runtime/NativeFightHud.cs`, key-1 card: read `p.TechniqueReady - arena.Time` and the content row's scaled cooldown instead of `tk.At + td.Cooldown`. The current preview-derived countdown does not account for cooldown chips. No additional record field is needed.
-The existing locker only renders Q/E for these weapons; adding a slot-1 locker panel would also need `NativeLocker.AbilityIcon` to use `NativeTechniques.Find(id).Icon`. That optional presentation expansion is not part of this simulation change.
+2. `Runtime/NativeFightHud.cs`: remove the standard-weapon key-1 card. Resolve each Q/E card with `NativeTechniqueLoadout.Ability(content, p.Seat.weaponTechniques, p.Seat.spec, slot)`, then use that slot's `p.QReady` / `p.EReady` and `NativeAbilityRules.Cooldown(row,p.Stats)`. A technique on E uses the single deadline (no extra-charge display); recasts use the same key without spending again. Rifle Q always remains scope. Icons can use `NativeTechniques.Find(row.id)?.Icon` for technique rows.
+
+### Customize and saved-loadout contract (Claude)
+
+- **Field:** `string weaponTechniques` on `ConversionPreferences`, `NativeCosmetics` (inside the existing seat `NativeProfile.cosmetics`), `NativeSeat`, and `NativeSeatFrame`.
+- **Format:** canonical comma-separated `weapon:slot` entries; e.g. `rifle:e,sword:q`. Empty/null means both existing Q and E. One replacement at most per weapon. Slots are lower-case `q` / `e`; rifle accepts only `e`. Standard weapon IDs only; no DEV IDs.
+- **Read picker:** `NativeTechniqueLoadout.Slot(prefs.weaponTechniques, spec)` returns `""`, `"q"`, or `"e"`.
+- **Write picker:** `prefs.weaponTechniques = NativeTechniqueLoadout.With(prefs.weaponTechniques, spec, slot)`; use `""` to restore both defaults. Hook this field into Customize's `LockerLook` baseline, dirty comparison and discard restore, then existing `Save()`/profile send on Apply. These picker/dirty-state presentation changes belong to Claude.
+- **Read actual ability:** `NativeTechniqueLoadout.Ability(content, map, spec, "q"/"e")` returns the technique catalog row only for the selected slot; otherwise the unchanged original row. Its catalog `row.slot` is `"technique"`; the HUD/input slot comes from the query, not that property.
+- **Validation:** `Allowed(spec,slot)` for the picker; `Normalize(map)` bounds and allowlists stored/profile input, de-duplicates in fixed weapon order. Oversized incoming host profiles are refused; frame `Valid` rejects noncanonical/unknown choices. Choices can change only through the existing lobby profile path, never during combat.
+- **Cooldown/cost:** no `TechniqueReady`, no key 1, no additional charge pool. The selected slot keeps the technique's own table cooldown and cost, with the existing cost/cooldown chip multipliers. Recasts never reset the deadline or pay again. The unselected ability remains intact. Bots always use defaults.
+- **Persistence:** local preferences and account profile save/load wired. The account-service sanitizer source also retains the field; deployment of that service change is required for cross-device persistence. No live service deployment is claimed by this source PR.
+- `Actor.Technique` and all fields in the animation contract above are unchanged. The Dev Sandbox preview remains available independently of loadout.
 
 3. Inspect first-person, guest and replay movement/poses in Unity, especially the collision-shortened leap/grapple and Shade's delayed exchange. The implementation adds real movement and hit timing; the prior preview review does not validate that integration.
 

@@ -209,3 +209,19 @@ test('signed-in invitations: presence, private inbox, recipient authority, expir
   const stale:any=await(await f.request('social',{},a.session,now+132001)).json();assert.deepEqual(stale.players,[]);assert.deepEqual(stale.invites,[]);
  }finally{f.db.close();}
 });
+
+
+test('native weapon techniques persist per weapon and reject scope, DEV and malformed choices',async()=>{
+ const f=await fixture();try{
+  const first:any=await(await f.request('register',{username:'techniquepilot',password})).json();
+  assert.equal(first.account.profile.cosmetics.weaponTechniques,'');let revision=0;
+  const picks='rifle:e,fire:e,sword:q';
+  const saved:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{weaponTechniques:' sword : q ,rifle:q,rifle:e,fire:e,siren:q,unknown:e'}}},first.session)).json();
+  assert.equal(saved.account.profile.cosmetics.weaponTechniques,picks);
+  const read:any=await(await f.request('me',undefined,first.session)).json();assert.equal(read.account.profile.cosmetics.weaponTechniques,picks);
+  const login:any=await(await f.request('login',{username:'techniquepilot',password})).json();assert.equal(login.account.profile.cosmetics.weaponTechniques,picks);
+  for(const [raw,expected] of [['sword:q,sword:e','sword:e'],['sword:e,sword:default',''],['rifle:q',''],['sword:q:extra',''],['x'.repeat(257),''],[null,''],[42,'']]){
+   const result:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{weaponTechniques:raw}}},first.session)).json();assert.equal(result.account.profile.cosmetics.weaponTechniques,expected);
+  }
+ }finally{f.db.close();}
+});

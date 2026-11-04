@@ -10,10 +10,27 @@ internal static class TechniqueRulesChecks
         int count=0;void Check(bool ok,string why){if(!ok)throw new Exception("Technique rules: "+why);count++;}
         var options=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
         var native=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/native-content.json"))).RootElement.GetProperty("abilities");
+        Check(NativeTechniqueLoadout.Normalize(null)==""&&NativeTechniqueLoadout.Slot(null,"sword")=="","old saves preserve defaults");
+        Check(NativeTechniqueLoadout.Normalize(" sword : q ,rifle:q,rifle:e,fire:e,siren:q,sword:e")=="rifle:e,fire:e,sword:e","host normalization and duplicate picks");
+        Check(!NativeTechniqueLoadout.Valid("rifle:q")&&!NativeTechniqueLoadout.Valid("siren:e")&&!NativeTechniqueLoadout.Valid(new string('x',257)),"invalid wire choices rejected");
+        Check(NativeTechniqueLoadout.With("sword:q,rifle:e","sword","e")=="rifle:e,sword:e","move replacement between slots");
+        Check(NativeTechniqueLoadout.With("sword:q,rifle:e","sword","")=="rifle:e","restore both defaults");
+        foreach(var spec in NativeTechniqueLoadout.Weapons)
+        {
+            foreach(string slot in new[]{"q","e"})
+            {
+                bool allowed=spec!="rifle"||slot=="e";string map=NativeTechniqueLoadout.With("",spec,slot);
+                Check(NativeTechniqueLoadout.Slot(map,spec)==(allowed?slot:""),"legal choice "+spec+slot);
+                Check(NativeTechniqueLoadout.Ability(content,map,spec,slot)?.id==(allowed?NativeTechniques.For(spec).Id:content.Ability(spec,slot)?.id),"resolved slot "+spec+slot);
+                string other=slot=="q"?"e":"q";Check(ReferenceEquals(NativeTechniqueLoadout.Ability(content,map,spec,other),content.Ability(spec,other)),"other ability preserved "+spec+slot);
+                var seat=new NativeSeat{spec=spec,weaponTechniques=map};var saved=JsonSerializer.Deserialize<NativeSeat>(JsonSerializer.Serialize(seat,options),options);
+                Check(saved.weaponTechniques==map,"seat save roundtrip "+spec+slot);
+            }
+        }
         foreach(var def in NativeTechniques.All)
         {
-            var rows=content.abilities.Where(a=>a.spec==def.Spec&&a.slot=="1").ToArray();Check(rows.Length==1,"one slot per weapon "+def.Spec);var row=rows[0];Check(row.id==def.Id&&row.live&&row.kind=="technique"&&row.cost==def.Cost&&row.cooldown==def.Cooldown,"content numbers "+def.Id);
-            Check(native.EnumerateArray().Count(a=>a.GetProperty("id").GetString()==def.Id&&a.GetProperty("slot").GetString()=="1")==1,"export source row "+def.Id);
+            var rows=content.abilities.Where(a=>a.spec==def.Spec&&a.slot=="technique").ToArray();Check(rows.Length==1,"one slot per weapon "+def.Spec);var row=rows[0];Check(row.id==def.Id&&row.live&&row.kind=="technique"&&row.cost==def.Cost&&row.cooldown==def.Cooldown,"content numbers "+def.Id);
+            Check(native.EnumerateArray().Count(a=>a.GetProperty("id").GetString()==def.Id&&a.GetProperty("slot").GetString()=="technique")==1,"export source row "+def.Id);
             var stats=NativeContentRules.Stats(content,def.Spec,new System.Collections.Generic.Dictionary<string,int>());stats["abilityCooldown"]=.5;stats["abilityCost"]=.8;stats["resourceCost"]=.5;
             Check(Math.Abs(NativeAbilityRules.Cooldown(row,stats)-def.Cooldown*.5f)<.001,"cooldown chips "+def.Id);Check(Math.Abs(NativeAbilityRules.Cost(row,stats)-def.Cost*.4f)<.001,"cost chips "+def.Id);
             var k=new NativeTechnique{Kind=def.Id,Phase="active",At=10,Release=10.2f,Until=14,RecoverUntil=10.5f,Point=new V3(1,2,3)};Check(k.Valid(),"valid "+def.Id);
@@ -26,7 +43,7 @@ internal static class TechniqueRulesChecks
         Check(!new NativeTechnique{Kind="riposte",Phase="unknown",At=0,Release=0,Until=1}.Valid(),"unknown phase rejected");
         var moving=new NativePredictionState{Time=1,CanMove=true,Position=default,Velocity=new V3(0,0,16),Technique=new NativeTechnique{Kind="grapple-line",At=0,Release=.2f,Arm=.5f,Until=2,RecoverUntil=2}};
         var predicted=NativePrediction.Step(moving,new InputFrame{X=1},(old,next)=>next);Check(Math.Abs(predicted.Position.z-16f/60)<.001&&predicted.Position.x==0,"authority travel seed beats ordinary steering");
-        Check(content.abilities.Count(a=>a.slot=="1"&&NativeTechniques.For(a.spec)!=null)==12,"no DEV technique collision");
+        Check(content.abilities.Count(a=>a.slot=="technique"&&NativeTechniques.For(a.spec)!=null)==12,"no DEV technique collision");
         var before=new Snapshot{Events=new[]{new ArenaEvent{Id=4,Kind=EventKind.Teleport,Source=1,Target=2,Detail="shade-swap"}}};
         var after=new Snapshot{Events=new[]{new ArenaEvent{Id=5,Kind=EventKind.Teleport,Source=1,Target=2,Detail="shade-swap"}}};
         Check(NativeTechniqueRules.Placement(before,after,1)&&NativeTechniqueRules.Placement(before,after,2),"both swap peers discard pre-swap prediction");Check(!NativeTechniqueRules.Placement(after,after,2)&&!NativeTechniqueRules.Placement(before,after,3),"no repeated or unrelated teleport reset");

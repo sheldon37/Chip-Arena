@@ -197,7 +197,7 @@
     },
     {
       "spec": "sword",
-      "slot": "1",
+      "slot": "technique",
       "id": "riposte",
       "name": "Riposte",
       "short": "Riposte",
@@ -219,7 +219,7 @@
     },
     {
       "spec": "daggers",
-      "slot": "1",
+      "slot": "technique",
       "id": "smoke-veil",
       "name": "Smoke Veil",
       "short": "Smoke Veil",
@@ -241,7 +241,7 @@
     },
     {
       "spec": "shield",
-      "slot": "1",
+      "slot": "technique",
       "id": "bastion",
       "name": "Bastion",
       "short": "Bastion",
@@ -263,7 +263,7 @@
     },
     {
       "spec": "greatsword",
-      "slot": "1",
+      "slot": "technique",
       "id": "anchor-throw",
       "name": "Anchor Throw",
       "short": "Anchor Throw",
@@ -285,7 +285,7 @@
     },
     {
       "spec": "pistol",
-      "slot": "1",
+      "slot": "technique",
       "id": "ricochet-coin",
       "name": "Ricochet Coin",
       "short": "Ricochet Coin",
@@ -307,7 +307,7 @@
     },
     {
       "spec": "machinegun",
-      "slot": "1",
+      "slot": "technique",
       "id": "sentry-drop",
       "name": "Sentry Drop",
       "short": "Sentry Drop",
@@ -329,7 +329,7 @@
     },
     {
       "spec": "rifle",
-      "slot": "1",
+      "slot": "technique",
       "id": "grapple-line",
       "name": "Grapple Line",
       "short": "Grapple Line",
@@ -351,7 +351,7 @@
     },
     {
       "spec": "bow",
-      "slot": "1",
+      "slot": "technique",
       "id": "gale-arrow",
       "name": "Gale Arrow",
       "short": "Gale Arrow",
@@ -373,7 +373,7 @@
     },
     {
       "spec": "fire",
-      "slot": "1",
+      "slot": "technique",
       "id": "ignition-leap",
       "name": "Ignition Leap",
       "short": "Ignition Leap",
@@ -395,7 +395,7 @@
     },
     {
       "spec": "water",
-      "slot": "1",
+      "slot": "technique",
       "id": "healing-spring",
       "name": "Healing Spring",
       "short": "Healing Spring",
@@ -417,7 +417,7 @@
     },
     {
       "spec": "lightning",
-      "slot": "1",
+      "slot": "technique",
       "id": "static-recall",
       "name": "Static Recall",
       "short": "Static Recall",
@@ -439,7 +439,7 @@
     },
     {
       "spec": "darkness",
-      "slot": "1",
+      "slot": "technique",
       "id": "shade-swap",
       "name": "Shade Swap",
       "short": "Shade Swap",
