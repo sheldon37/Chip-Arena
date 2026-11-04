@@ -6,8 +6,8 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// The Bombadier's own ten chips (owner 2026-11-04: "a set of 10 bombadier chips ... highly likely to show in their chip selection pool; a unique design and an effect when selecting them"; docs/BOMBADIER.md).
-    /// A signature set like the Emperor's: their own tier, tag and odds. The rows, names and looks are here; what the mechanics do is the rules' (NativeBombAuthority): a row with a mechanic the authority has not got
-    /// yet must stay out of the content, or the native draft would offer a chip that does nothing, so <see cref="Apply"/> is called from the content load once they exist, and the Dev Sandbox previews them meanwhile.
+    /// A signature set like the Emperor's: its own tier, tag and odds. NativeBombAuthority implements the mechanics;
+    /// Apply installs the native overlay after movement content, preserving the pinned legacy export.
     /// </summary>
     public static class NativeBombChips
     {
@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         public static ContentChip[] Chips()=>new[]{
             Chip(0,"Short Fuse",2,"Pop Bombs go off .25 s sooner and fly 15% faster. Less time to get out of the way."),
             Chip(1,"Black Powder",3,"+15% damage on every blast.",NativeMovementContent.Effect("damage","mul",1.15)),
-            Chip(2,"Bandolier",3,"A third more sticks on the belt, and restocking takes 20% less time.",NativeMovementContent.Effect("ammoCapacity","mul",1.34),NativeMovementContent.Effect("reloadSpeed","mul",.8)),
+            Chip(2,"Bandolier",3,"A third more sticks on the belt, and restocking takes 20% less time.",NativeMovementContent.Effect("ammoCapacity","mul",4d/3),NativeMovementContent.Effect("reloadSpeed","mul",.8)),
             Chip(3,"Bouncing Betty",2,"+1 mine out at once and +1 charge. Mines throw their victim 25% higher."),
             Chip(4,"Daisy Chain",1,"The chain stays open .4 s longer, and links keep more damage: x1, x.9, x.75, x.6."),
             Chip(5,"Scorched Earth",1,"Your blasts leave fire on the floor for 2 s, burning enemies in it for 6 a second."),
@@ -30,11 +30,16 @@ namespace ChipArena.UnityConversion
             Chip(7,"Cluster Fun",1,"Cluster Lob bursts into 9 firecrackers, not 6, and recharges 20% faster."),
             Chip(8,"Blast Shield",1,"Your own blasts no longer hurt you. They still throw you."),
             Chip(9,"Encore",1,"The Grand Finale's meter fills 25% faster, and 8 more blasts fall with its fireworks, 10 damage each.")};
-        /// <summary>Adds the rows to the content (nothing if they are there). For the content load once the rules exist; the Dev Sandbox's preview calls it on its own copy of the session.</summary>
+        /// <summary>Adds the rows to the content (nothing if they are there). For the live content load; the Dev Sandbox's preview calls it on its own copy of the session.</summary>
         public static void Apply(ConversionContent content)
         {
             if(content.chips.Any(c=>Is(c.id)))return;content.chips=content.chips.Concat(Chips()).ToArray();
-            content.contentRevision=NativeMapRules.Revision(content.contentRevision+"\nbombadier-chips-v1");
+            // Bomb flights do not run the ordinary projectile motion/impact proc pipeline.
+            var blocked=content.chips.Where(c=>c.tags?.Contains("projectile")==true).Select(c=>c.id);
+            var row=content.incompatibilities.FirstOrDefault(x=>x.spec==NativeBombs.Spec);
+            if(row==null){row=new ExclusionData{spec=NativeBombs.Spec,ids=Array.Empty<string>()};content.incompatibilities=content.incompatibilities.Concat(new[]{row}).ToArray();}
+            row.ids=row.ids.Concat(blocked).Distinct().ToArray();
+            content.contentRevision=NativeMapRules.Revision(content.contentRevision+"\nbombadier-chips-rules-v2");
         }
         /// <summary>The line under the card when one goes in.</summary>
         public static string Confirm(string id)
