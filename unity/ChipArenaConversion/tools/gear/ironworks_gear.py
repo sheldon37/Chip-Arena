@@ -350,6 +350,11 @@ def hood(dome=False):
     pc = Piece('hood-led')
     box(pc, (.1, fy + .009, .17), (.012, .004, .012), 'led-cyan')
     out.append(pc.make())
+    # (All of it drawn in: a hood sits close round the head, not a crate on the shoulders; Core NativeZombieLooks.StokerVisor is the slit's place after this.)
+    c = Vector((0, .02, .1))
+    m = Matrix.Translation(c) @ Matrix.Scale(.88, 4) @ Matrix.Translation(-c)
+    for ob in out:
+        ob.matrix_world = m
     return out
 
 
@@ -404,6 +409,17 @@ def rake():
     tube(pc, [p + Vector((0, 0, .0)) for p in tip], .0045, 'ember', segs=5, radii=[.0052, .0048, .0042, .0036, .0026])
     out.append(pc.make())
     return out
+
+
+def bowl_r(z):
+    """The crucible's outer radius at height z (ladle()'s profile)."""
+    prof = ((.17, -.2), (.225, -.16), (.265, -.04), (.28, .11), (.292, .155))
+    if z <= prof[0][1]:
+        return prof[0][0]
+    for (r0, z0), (r1, z1) in zip(prof, prof[1:]):
+        if z <= z1:
+            return r0 + (r1 - r0) * (z - z0) / (z1 - z0)
+    return prof[-1][0]
 
 
 def ladle(full=True):
@@ -500,7 +516,7 @@ def ladle(full=True):
             for i in range(5):
                 t = t0 + (i - 2) * .07 * (1 if k % 2 else -1)
                 z = z0 - i * .032
-                rs = max(.17, .265 + z * .12 if z > -.04 else .25 + (z + .04) * .55) + .006
+                rs = bowl_r(z) + .0035
                 pts.append(Vector((math.sin(t) * rs, b + math.cos(t) * rs, z)))
             tube(pc, pts, .0044, 'ember', segs=4)
         out.append(pc.make())
@@ -1383,16 +1399,16 @@ def _props():
         ('cinder-ribs', 'spine_05', CHEST, lambda: cinder_ribs('cinderling-m')), ('cinder-ribs-f', 'spine_05', CHEST, lambda: cinder_ribs('cinderling-f')),
         ('stoker-cape', 'spine_05', CHEST, lambda: stoker_cape('stoker-m')), ('stoker-cape-f', 'spine_05', CHEST, lambda: stoker_cape('stoker-f')),
         ('stoker-pack', 'spine_05', CHEST, lambda: stoker_pack('stoker-m')), ('stoker-pack-f', 'spine_05', CHEST, lambda: stoker_pack('stoker-f')),
-        ('stoker-gauntlet-l', 'lowerarm_l', fa, lambda: cuff_fit('stoker-m', 'lowerarm_l', 'foil', 'foil-dark')),
-        ('stoker-gauntlet-r', 'lowerarm_r', fa, lambda: cuff_fit('stoker-m', 'lowerarm_r', 'foil', 'foil-dark')),
-        ('ladle-gauntlet-l', 'lowerarm_l', fa, lambda: cuff_fit('ladleman-m', 'lowerarm_l', 'leather', 'leather-dark', .28, .96)),
-        ('ladle-gauntlet-r', 'lowerarm_r', fa, lambda: cuff_fit('ladleman-m', 'lowerarm_r', 'leather', 'leather-dark', .28, .96)),
+        ('stoker-gauntlet-l', 'lowerarm_l', fa, lambda: cuff_fit('stoker-m', 'lowerarm_l', 'foil', 'foil-dark', .3, .95, .003)),
+        ('stoker-gauntlet-r', 'lowerarm_r', fa, lambda: cuff_fit('stoker-m', 'lowerarm_r', 'foil', 'foil-dark', .3, .95, .003)),
+        ('ladle-gauntlet-l', 'lowerarm_l', fa, lambda: cuff_fit('ladleman-m', 'lowerarm_l', 'leather', 'leather-dark', .3, .96, .003)),
+        ('ladle-gauntlet-r', 'lowerarm_r', fa, lambda: cuff_fit('ladleman-m', 'lowerarm_r', 'leather', 'leather-dark', .3, .96, .003)),
         ('rigger-harness', 'spine_05', CHEST, lambda: rigger_harness('rigger-m')), ('rigger-harness-f', 'spine_05', CHEST, lambda: rigger_harness('rigger-f')),
         ('rigger-coil', 'spine_05', CHEST, lambda: rigger_coil('rigger-m')), ('rigger-coil-f', 'spine_05', CHEST, lambda: rigger_coil('rigger-f')),
         ('cinder-rags', 'pelvis', CHEST, cinder_rags),
         ('slag-pelvis', 'pelvis', CHEST, lambda: slag_pelvis(m)),
-        ('ladle-spat-l', 'calf_l', fa, lambda: cuff_fit('ladleman-m', 'calf_l', 'leather', 'leather-dark', .34, .93)),
-        ('ladle-spat-r', 'calf_r', fa, lambda: cuff_fit('ladleman-m', 'calf_r', 'leather', 'leather-dark', .34, .93)),
+        ('ladle-spat-l', 'calf_l', fa, lambda: cuff_fit('ladleman-m', 'calf_l', 'leather', 'leather-dark', .68, .95, .004)),
+        ('ladle-spat-r', 'calf_r', fa, lambda: cuff_fit('ladleman-m', 'calf_r', 'leather', 'leather-dark', .68, .95, .004)),
     ]
     # the crust on the limbs: angle, share along, half angle, half share, thick (each side its own, asymmetric: one shoulder heavy)
     def shoulder(b, h):

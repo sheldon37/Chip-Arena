@@ -231,7 +231,7 @@ void ZombieFoil(float3 n,float3 view,inout float3 albedo,inout float3 emission)
 {
  if(_ZombieFoil<=0.0)return;
  float ndv=saturate(dot(n,view));float3 h=normalize(_WorldSpaceLightPos0.xyz+view);float ndh=saturate(dot(n,h));
- emission+=_ZombieFoil*albedo*(pow(1.0-ndv,3.5)*1.6+pow(ndh,26.0)*1.8+pow(ndh,160.0)*3.0);
+ emission+=_ZombieFoil*albedo*(pow(1.0-ndv,4.0)*0.9+pow(ndh,26.0)*1.2+pow(ndh,160.0)*2.4);
 }
 // A zombie's decay openings (Core NativeZombieDecay; Runtime/NativeZombieModelPresentation.cs), per renderer: _DecayAt xyz an
 // opening's centre on the surface and w its radius, _DecayIn xyz inward and w how deep it reaches, both in the meshes' own rest

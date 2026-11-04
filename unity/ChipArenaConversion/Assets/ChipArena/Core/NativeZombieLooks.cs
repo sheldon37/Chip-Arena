@@ -258,13 +258,13 @@ namespace ChipArena.UnityConversion
                 Body(-10,0,15,0,10,5,5,5,0,90,90),new Build{Arm=.83f,Forearm=.81f,Thigh=.87f,Calf=.85f,Shoulder=.95f,Head=.97f},.9f,.62f,0,false,NativeIronworksKinds.WhiteHot,blood:0),
             // Stoker: the shambler's frame in an aluminised heat suit (Foil: the suit's silver catches every light), its coat to the knees, a square
             // hood with one cyan visor slit (no face under it), heavy gauntlets; a respirator pack on its back.
-            V("stoker-male-a",StokerKind,false,None,"z-work-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0xB9B6AD,0xA9A69E,0x2A2018,0x17130F},0x8B8E86,
+            V("stoker-male-a",StokerKind,false,None,"z-work-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x96948C,0x88867E,0x2A2018,0x17130F},0x8B8E86,
                 Body(55,15,20,5,15,35,0,0,0,50),new Build{Arm=1.04f,Forearm=1.04f,Thigh=1.02f,Calf=1.02f,Hand=1.06f,Shoulder=1.02f},.42f,.12f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
-            V("stoker-male-b",StokerKind,false,None,"z-utility-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0xA9A79F,0x9C9A92,0x2A2018,0x17130F},0x868980,
+            V("stoker-male-b",StokerKind,false,None,"z-utility-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x8A8880,0x7E7C75,0x2A2018,0x17130F},0x868980,
                 Body(60,35,15,25,15,40,0,0,15,55),new Build{Arm=1.05f,Forearm=1.05f,Thigh=1.04f,Calf=1.03f,Hand=1.06f,Shoulder=1.02f},.48f,.14f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
-            V("stoker-female-a",StokerKind,true,None,"z-work-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0xB9B6AD,0xA9A69E,0x2A2018,0x17130F},0x8E9188,
+            V("stoker-female-a",StokerKind,true,None,"z-work-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x96948C,0x88867E,0x2A2018,0x17130F},0x8E9188,
                 Body(-5,15,15,5,25,20,10,10,0,45),new Build{Arm=1.02f,Forearm=1.02f,Thigh=1.02f,Calf=1.02f,Hand=1.04f},.42f,.12f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
-            V("stoker-female-b",StokerKind,true,None,"z-utility-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0xA9A79F,0x9C9A92,0x2A2018,0x17130F},0x898C83,
+            V("stoker-female-b",StokerKind,true,None,"z-utility-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x8A8880,0x7E7C75,0x2A2018,0x17130F},0x898C83,
                 Body(0,30,15,15,25,25,10,15,10,50),new Build{Arm=1.02f,Forearm=1.02f,Thigh=1.03f,Calf=1.02f,Hand=1.04f},.48f,.14f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
             // Slagback: the brute burned black, in the rags of its trousers, under glassy plates of slag grown onto it (its crust's gear: lumpy and
             // uneven, dim cracks between the plates, the bright fissure down its back); Char's cracks dim on the skin the shed bares.
@@ -287,13 +287,13 @@ namespace ChipArena.UnityConversion
                 Body(25,60,80,35,50,75,15,25,25,60),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.14f,Calf=1.11f,Hand=1.14f,Shoulder=1.06f},.62f,.42f,.2f,false,NativeIronworksKinds.Cyan,decay:"upperarm-l",blood:.12f),
             // Rigger: lean and long-armed, dead grey skin, oil-black boiler suit, its webbing harness and chain coil, the cream hard hat with its lamp.
             V("rigger-male-a",RiggerKind,false,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x2B3036,0x2B3036,0x1E1A16,0x1E1712},0x737671,
-                Body(40,0,30,0,10,25,0,0,0,65,70),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.62f,.42f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-l,forearm-r",blood:.15f),
+                Body(40,0,30,0,10,25,0,0,0,65,70),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.62f,.22f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-l,forearm-r",blood:.06f),
             V("rigger-male-b",RiggerKind,false,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3A3A32,0x3A3A32,0x1E1A16,0x1E1712},0x6C706B,
-                Body(45,5,25,0,10,30,0,0,0,75,65),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.66f,.46f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"ribs-r,shin-l",blood:.15f),
+                Body(45,5,25,0,10,30,0,0,0,75,65),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"ribs-r,shin-l",blood:.06f),
             V("rigger-female-a",RiggerKind,true,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x2B3036,0x2B3036,0x1E1A16,0x1E1712},0x767974,
-                Body(-10,0,25,0,20,15,5,5,0,60,70),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.62f,.42f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-r,forearm-l",blood:.15f),
+                Body(-10,0,25,0,20,15,5,5,0,60,70),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.62f,.22f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-r,forearm-l",blood:.06f),
             V("rigger-female-b",RiggerKind,true,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3A3A32,0x3A3A32,0x1E1A16,0x1E1712},0x6F736E,
-                Body(-5,5,20,0,20,20,5,5,0,70,65),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.66f,.46f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"ribs-l,shin-r",blood:.15f),
+                Body(-5,5,20,0,20,20,5,5,0,70,65),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"ribs-l,shin-r",blood:.06f),
         };
 
         // The zone kinds' kit (docs/EXPEDITION-ENEMY-REWORK.md section 2: their signature gear modelled in Blender):
@@ -312,7 +312,7 @@ namespace ChipArena.UnityConversion
             LinesmanVents=new System.Numerics.Vector3(.068f,.2715f,0),LinesmanVentsWoman=new System.Numerics.Vector3(.068f,.2515f,0);
         /// <summary>Where the Ironworks gear's lights are, in their bones' frames (tools/gear/ironworks_gear.py builds them there; the frames as LinesmanLamp's).</summary>
         public static readonly System.Numerics.Vector3 RiggerLamp=new System.Numerics.Vector3(0,.1453f,.1944f),RiggerLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
-            StokerVisor=new System.Numerics.Vector3(0,.118f,.179f),LadleLens=new System.Numerics.Vector3(0,.132f,.178f),CinderCoal=new System.Numerics.Vector3(-.05f,.17f,.05f),SlagFissure=new System.Numerics.Vector3(-.1f,.17f,0);
+            StokerVisor=new System.Numerics.Vector3(0,.116f,.157f),LadleLens=new System.Numerics.Vector3(0,.132f,.178f),CinderCoal=new System.Numerics.Vector3(-.05f,.17f,.05f),SlagFissure=new System.Numerics.Vector3(-.1f,.17f,0);
         /// <summary>The kit given (the table above first: field initializers run in order).</summary>
         public static readonly bool Kitted=Kit();
         private static bool Kit()
@@ -338,7 +338,7 @@ namespace ChipArena.UnityConversion
         {
             string fit=v.Female?"-f":"";
             if(v.Kind==CinderlingKind){v.Char=1;v.Gear=new[]{"cinder-ribs"+fit,b?"cinder-cap":"cinder-skull","cinder-rags"};}
-            else if(v.Kind==StokerKind){v.Foil=1;v.Faceless=true;v.Garments=new[]{TrenchGarment};v.GarmentColours=new[]{b?0xA9A79F:0xB9B6AD};v.Gear=new[]{b?"stoker-hood-dome":"stoker-hood","stoker-cape"+fit,"stoker-pack"+fit,"stoker-gauntlet-l","stoker-gauntlet-r"};}
+            else if(v.Kind==StokerKind){v.Foil=1;v.Faceless=true;v.Upright=.3f;v.Garments=new[]{TrenchGarment};v.GarmentColours=new[]{b?0x8A8880:0x96948C};v.Gear=new[]{b?"stoker-hood-dome":"stoker-hood","stoker-cape"+fit,"stoker-pack"+fit,"stoker-gauntlet-l","stoker-gauntlet-r"};}
             else if(v.Kind==SlagbackKind){v.Char=.4f;v.Crust=true;v.Gear=new[]{"slag-chest"+fit,"slag-back"+fit,"slag-fissure"+fit,"slag-head","slag-pelvis","slag-shoulder-l","slag-shoulder-r","slag-arm-l","slag-arm-r","slag-forearm-l","slag-forearm-r","slag-thigh-l","slag-thigh-r"};}
             else if(v.Kind==LadlemanKind){v.Garments=new[]{ApronGarment};v.GarmentColours=new[]{b?0x4E3220:0x5E3D25};v.Gear=new[]{"ladle-hood","ladle-mask","ladle-gauntlet-l","ladle-gauntlet-r","ladle-spat-l","ladle-spat-r"};}
             else if(v.Kind==RiggerKind){v.Garments=new[]{CoverallsGarment};v.GarmentColours=new[]{-1};v.Gear=new[]{b?"rigger-hat-worn":"rigger-hat","rigger-harness"+fit,"rigger-coil"+fit};}
