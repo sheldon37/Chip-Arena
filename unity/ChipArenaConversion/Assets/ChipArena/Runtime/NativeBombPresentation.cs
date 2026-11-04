@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             NativeBombs.Source=bombPreview;var feet=visualPositions.TryGetValue(me.Id,out var v)?v:Vec(me.Position);bombPreview.Step(me,new NVector(feet.x,feet.y,feet.z),me.Yaw*Mathf.Deg2Rad,time);
         }
         private void ClearBomb(){bombPreview.Clear();if(ReferenceEquals(NativeBombs.Source,bombPreview))NativeBombs.Source=null;}
-        private static readonly Color BombBlack=new Color(.03f,.03f,.035f),BombBrass=new Color(.55f,.38f,.14f),BombRope=new Color(.09f,.075f,.06f),BombSteel=new Color(.16f,.16f,.18f),BombStrap=new Color(.11f,.075f,.05f),BombHazard=new Color(.8f,.6f,.05f),BombCase=new Color(.45f,.13f,.09f);
+        private static readonly Color BombBlack=new Color(.03f,.03f,.035f),BombBrass=new Color(.55f,.38f,.14f),BombRope=new Color(.09f,.075f,.06f),BombSteel=new Color(.16f,.16f,.18f),BombStrap=new Color(.11f,.075f,.05f),BombHazard=new Color(.8f,.6f,.05f),BombCase=new Color(.45f,.13f,.09f),BombLeather=new Color(.3f,.18f,.08f),BombShell=new Color(.09f,.09f,.1f);
         private void BombPiece(WeaponShape shape,Vector3 at,Quaternion q,Vector3 scale,Color c,bool glow=false)=>sourceModels.QueuePiece(shape,glow,Matrix4x4.TRS(at,q,scale),c);
         /// <summary>End of Render: the kit's models and the pilot's gear.</summary>
         private void RenderBomb(Snapshot s,float time)
@@ -74,10 +74,10 @@ namespace ChipArena.UnityConversion
         {
             if(rig?.Bones==null)return;var chest=rig.Bones[CapturedRig.Chest];var pelvis=rig.Bones[CapturedRig.Pelvis];if(chest==null||pelvis==null)return;
             var cq=chest.rotation;Vector3 C(float x,float y,float z)=>chest.position+cq*new Vector3(x,y,z);var strapQ=cq*Quaternion.Euler(0,0,-38);
-            BombPiece(WeaponShape.Cube,C(0,.1f,.135f),strapQ,new Vector3(.05f,.56f,.022f),BombStrap);BombPiece(WeaponShape.Cube,C(0,.08f,-.13f),strapQ,new Vector3(.05f,.56f,.022f),BombStrap);
-            for(int i=0;i<5;i++){float w=(i-2)*.092f;var at=C(-w*.62f,.1f+w*.8f,.165f);BombPiece(WeaponShape.Sphere,at,cq,Vector3.one*.038f,BombBlack);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.038f,0),cq,new Vector3(.024f,.012f,.024f),BombBrass);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.055f,0),cq,new Vector3(.006f,.022f,.006f),BombRope);}
-            var pq=pelvis.rotation;Vector3 P(float x,float y,float z)=>pelvis.position+pq*new Vector3(x,y,z);BombPiece(WeaponShape.Cube,P(.2f,-.08f,.03f),pq,new Vector3(.13f,.16f,.18f),BombStrap);BombPiece(WeaponShape.Cube,P(.2f,.0f,.03f),pq,new Vector3(.14f,.03f,.19f),BombBlack);BombPiece(WeaponShape.Cube,P(.268f,-.08f,.03f),pq,new Vector3(.004f,.05f,.1f),BombHazard);
-            BombPiece(WeaponShape.Cube,P(-.19f,-.04f,.0f),pq,new Vector3(.05f,.2f,.05f),BombCase);BombPiece(WeaponShape.Cube,P(-.19f,-.04f,.0f),pq,new Vector3(.056f,.03f,.056f),BombBlack);
+            BombPiece(WeaponShape.Cube,C(0,.08f,.215f),strapQ,new Vector3(.062f,.62f,.016f),BombLeather);BombPiece(WeaponShape.Cube,C(0,.06f,-.2f),strapQ,new Vector3(.062f,.62f,.016f),BombLeather);
+            for(int i=0;i<5;i++){float w=(i-2)*.1f;var at=C(-w*.62f,.08f+w*.8f,.25f);BombPiece(WeaponShape.Sphere,at,cq,Vector3.one*.036f,BombShell);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.036f,0),cq,new Vector3(.026f,.012f,.026f),BombBrass);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.054f,0),cq,new Vector3(.006f,.024f,.006f),BombHazard);BombPiece(WeaponShape.Cube,at-cq*new Vector3(0,.0f,.03f),strapQ,new Vector3(.07f,.012f,.01f),BombBlack);}
+            var pq=pelvis.rotation;Vector3 P(float x,float y,float z)=>pelvis.position+pq*new Vector3(x,y,z);BombPiece(WeaponShape.Cube,P(.25f,-.1f,.03f),pq,new Vector3(.1f,.17f,.17f),BombLeather);BombPiece(WeaponShape.Cube,P(.25f,-.01f,.03f),pq,new Vector3(.11f,.03f,.18f),BombBlack);BombPiece(WeaponShape.Cube,P(.302f,-.1f,.03f),pq,new Vector3(.004f,.05f,.1f),BombHazard);
+            BombPiece(WeaponShape.Cube,P(-.25f,-.06f,.0f),pq,new Vector3(.05f,.2f,.05f),BombCase);BombPiece(WeaponShape.Cube,P(-.25f,-.06f,.0f),pq,new Vector3(.056f,.03f,.056f),BombBlack);BombPiece(WeaponShape.Cube,P(-.25f,.05f,.0f),pq,new Vector3(.03f,.03f,.03f),BombBrass);
         }
         /// <summary>RenderGlow, after the techniques': the kit's particles.</summary>
         private void BombFx(float now)

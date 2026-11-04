@@ -82,7 +82,7 @@ namespace ChipArena.UnityConversion
             // The cinema bands, as every entrance; everything else goes out with the charges' lights, for the one beat of nothing.
             U.Fade(new Rect(0,0,W,H*.17f),U.A(ink,.867f));U.Fade(new Rect(0,H*.7f,W,H*.3f+1),U.A(ink,.94f),false);
             float shade=M.EaseOut(M.Progress(age,nameAt,.7f)),ry=H*.46f*.92f;U.RadialStops(new Rect(-W*.1f,H-ry,W*1.2f,ry*2),U.A(ink,shade),new[]{0,.46f,.76f},new[]{.96f,.70f,0});
-            bool black=age>=NativeBombadierIntro.BlackAt&&age<NativeBombadierIntro.FirstBlast;if(black)return;
+            bool black=age>=NativeBombadierIntro.BlackAt&&age<NativeBombadierIntro.FirstBlast;if(black){U.Fill(new Rect(0,0,W,H),new Color(0,0,0,Mathf.Clamp01((age-NativeBombadierIntro.BlackAt)/.1f)));return;}
             // The shock passing the lens: one white blink (none with reduced effects).
             if(!reduced){float sw=age-NativeBombadierIntro.ShockAt;if(sw>=0&&sw<.16f)U.Fill(new Rect(0,0,W,H),new Color(1,.96f,.86f,.55f*(1-sw/.16f)));}
             // The topline; the progress bar is a fuse, burning along its rule.
