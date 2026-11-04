@@ -1,4 +1,4 @@
-2026-11-04 Claude (`claude/bombadier`): the Bombadier's presentation and the Last Warning intro reviewed in Unity; the intro plays with DEV access; the kit waits on Astra's rules and row (`docs/BOMBADIER.md`).
+2026-11-04 Claude (`claude/bombadier`): the Bombadier holds TNT now, not a launcher; its presentation and the Last Warning intro reviewed in Unity; the intro plays with DEV access; the kit waits on Astra's rules and row (`docs/BOMBADIER.md`).
 
 2026-11-04 Claude (`claude/more-techniques`, shared `f1e3967b`): the second twelve techniques' effects, poses, sounds and models reviewed in Unity against Astra's rules; the Customize picker is slot tiles over a library that wraps for more abilities; through-walls markers; Grave Walk's veil. Parting Line snaps the pilot back on every cast: rules fix for Astra in docs/WEAPON-TECHNIQUES.md. Guest, replay, crowd and Windows unseen.
 
