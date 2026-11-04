@@ -83,6 +83,8 @@ namespace ChipArena.UnityConversion
             U.Fade(new Rect(0,0,W,H*.17f),U.A(ink,.867f));U.Fade(new Rect(0,H*.7f,W,H*.3f+1),U.A(ink,.94f),false);
             float shade=M.EaseOut(M.Progress(age,nameAt,.7f)),ry=H*.46f*.92f;U.RadialStops(new Rect(-W*.1f,H-ry,W*1.2f,ry*2),U.A(ink,shade),new[]{0,.46f,.76f},new[]{.96f,.70f,0});
             bool black=age>=NativeBombadierIntro.BlackAt&&age<NativeBombadierIntro.FirstBlast;if(black)return;
+            // The shock passing the lens: one white blink (none with reduced effects).
+            if(!reduced){float sw=age-NativeBombadierIntro.ShockAt;if(sw>=0&&sw<.16f)U.Fill(new Rect(0,0,W,H),new Color(1,.96f,.86f,.55f*(1-sw/.16f)));}
             // The topline; the progress bar is a fuse, burning along its rule.
             float top=M.EaseOut(M.Progress(age,0,.45f)),x0=W*.06f,tw=W*.88f,y=88,rule=y+29,fill=Mathf.Clamp01(age/duration),tip=x0+tw*fill,burn=1-M.Progress(age,duration-.35f,.3f);
             U.Text(new Rect(x0,y,tw,15),"MATCH INTRO / "+(index+1).ToString("00")+" — "+total.ToString("00"),12,U.A(U.Hex(0xd7d8de),top),TextAnchor.UpperLeft,mono:true,tracking:.2f);
@@ -100,7 +102,7 @@ namespace ChipArena.UnityConversion
             float cx=W*.05f,cw=W*.9f,F=Mathf.Clamp(W*.065f,30,82),fit=U.Measure(seat.name,F,true,false,.02f).x;if(fit>cw)F*=cw/fit;
             const float strip=9;float ySpan=H*.95f-10,yStrong=ySpan-strip-10-1.15f*F,plateTop=yStrong-6,plateH=1.15f*F+12,yTeam=plateTop-strip-8-18,ySmall=(team?yTeam-6:plateTop-strip-8)-15;
             // The thin strip, behind: stencilled, running on.
-            float yB=ySmall-30,wide=W*1.3f,xB=-W*.15f;
+            float yB=ySmall-34,wide=W*1.3f,xB=-W*.15f;
             U.Push(new Vector2(W/2,yB+10),new Vector2((1-inB)*W*1.3f-leaveEase*W*1.4f,0),1,-3.4f+.5f*shudder);
             U.Fill(new Rect(xB,yB,wide,20),U.A(new Color(.95f,.72f,.06f),fade));U.Fill(new Rect(xB,yB,wide,1.5f),U.A(U.Hex(0x1a1408),.8f*fade));U.Fill(new Rect(xB,yB+18.5f,wide,1.5f),U.A(U.Hex(0x1a1408),.8f*fade));
             U.Text(new Rect(xB-since*34,yB,wide*2,20),BombCaution+BombCaution,12,U.A(U.Hex(0x141008),fade),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);U.Pop();

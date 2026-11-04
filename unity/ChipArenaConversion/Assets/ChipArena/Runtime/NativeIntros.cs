@@ -85,9 +85,11 @@ namespace ChipArena.UnityConversion
             // The pilot, its weapon, its team band; afterimages and the hologram as one-layer see-through silhouettes.
             entranceReveal??=b=>entranceScript.Solid(entranceTime,b);bool solid=script.Solid(t,CapturedRig.Chest)>.5f;
             // On its visual body once built in (the Sheldon intro's hood and face over the model's head).
+            string keepAccent=actor.AccentColor,scriptAccent=script.AccentAt(t);if(scriptAccent!=null)actor.AccentColor=scriptAccent;
             VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
+            actor.AccentColor=keepAccent;if(solid&&style==NativeBombs.Entrance)BombGear(introRig);
             EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
@@ -154,13 +156,14 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>A directed entrance's effects into the shared effects renderer (mirrored into Unity's frame).</summary>
-        private sealed class EntranceFx:INativeEntranceFx
+        private sealed class EntranceFx:INativeEntranceFx,INativeEntranceFire
         {
             private readonly NativeVfxDraw vfx;public EntranceFx(NativeVfxDraw vfx){this.vfx=vfx;}
             private static Vector3 U(System.Numerics.Vector3 v)=>new Vector3(-v.X,v.Y,v.Z);
             public void Glow(System.Numerics.Vector3 at,System.Numerics.Vector3 color,float coverage,float size,int profile,float u,float seed)=>vfx.Glow(U(at),new Color(color.X,color.Y,color.Z,coverage),size,profile,u,seed);
             public void Streak(System.Numerics.Vector3 head,System.Numerics.Vector3 velocity,System.Numerics.Vector3 color,float width,float minLength,float blur,float taper,float u,float seed)=>vfx.Streak(U(head),U(velocity),new Color(color.X,color.Y,color.Z,0),width,minLength,blur,taper,u,seed);
             public void Smoke(System.Numerics.Vector3 at,System.Numerics.Vector3 albedo,float opacity,float size,float u,float seed,float floor)=>vfx.Smoke(U(at),new Color(albedo.X,albedo.Y,albedo.Z,0),opacity,size,u,seed,floor);
+            public void Fire(System.Numerics.Vector3 at,System.Numerics.Vector3 tint,float opacity,float size,float u,float seed,float floor)=>vfx.Fireball(U(at),new Color(tint.X,tint.Y,tint.Z),opacity,size,u,seed,floor);
         }
         // player-intros.ts: the bare intro rig holds only a weapon intro's own weapon (WEAPON_INTROS[style].spec) or the Emperor's
         // gauntlets, with no chip dressing; every other entrance keeps its hands empty, so the L33T Throne's floating staff (a
@@ -176,7 +179,7 @@ namespace ChipArena.UnityConversion
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;
             // The visual body holds its own model of the weapon there.
-            if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
+            if(style==NativeBombs.Entrance||!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }
         // The baked entrance stage (tools/export_cinematics.mjs, the rig excluded) with its lights. ChipBlasts' glow voxels are

@@ -34,6 +34,8 @@ namespace ChipArena.UnityConversion
         public virtual float Length=>Duration;public virtual float SettleAt=>Settle;
         /// <summary>A small shake of the camera at `t` (the script's own, zero by default).</summary>
         public virtual Vector3 CameraJolt(float t)=>Vector3.Zero;
+        /// <summary>The suit's accent colour at `t` when the script lights it itself (null: the pilot's own).</summary>
+        public virtual string AccentAt(float t)=>null;
         protected NativeEntranceScript(string style,float hit,int accent){Style=style;Hit=hit;Accent=NativeEntranceFx.Hex(accent);}
         /// <summary>The presentation clock at match age `age`: the age, slowed through the beat and caught up before the name card.</summary>
         public float Clock(float age){if(!(age>0))return 0;return NativeEntranceMath.Warp(Math.Min(age,Length+1),Hit,SlowRate,SlowHold,SlowRecover,SlowCatchUp);}

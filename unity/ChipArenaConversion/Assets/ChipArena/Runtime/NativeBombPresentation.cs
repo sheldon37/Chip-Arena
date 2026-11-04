@@ -69,9 +69,10 @@ namespace ChipArena.UnityConversion
             for(int s=-1;s<=1;s+=2){BombPiece(WeaponShape.Cube,box+Vector3.up*.235f+q*new Vector3(s*.12f,0,-.08f),q,new Vector3(.03f,.03f,.03f),BombBrass);BombPiece(WeaponShape.Sphere,box+Vector3.up*.2f+q*new Vector3(s*.12f,.02f,.1f),q,Vector3.one*.016f,(time<f.Strike&&Mathf.Sin(time*26+s)>0)?new Color(5,.3f,.2f):new Color(.1f,.01f,.01f),true);}
         }
         // The bandolier: a strap across the chest with little bombs on it, a satchel on the hip. On the rig's chest and pelvis, so it follows every pose.
-        private void BombGear(Actor a)
+        private void BombGear(Actor a){if(rigs.TryGetValue(a.Id,out var rig))BombGear(rig);}
+        private void BombGear(CapturedAnimation.Player rig)
         {
-            if(!rigs.TryGetValue(a.Id,out var rig)||rig.Bones==null)return;var chest=rig.Bones[CapturedRig.Chest];var pelvis=rig.Bones[CapturedRig.Pelvis];if(chest==null||pelvis==null)return;
+            if(rig?.Bones==null)return;var chest=rig.Bones[CapturedRig.Chest];var pelvis=rig.Bones[CapturedRig.Pelvis];if(chest==null||pelvis==null)return;
             var cq=chest.rotation;Vector3 C(float x,float y,float z)=>chest.position+cq*new Vector3(x,y,z);var strapQ=cq*Quaternion.Euler(0,0,-38);
             BombPiece(WeaponShape.Cube,C(0,.1f,.135f),strapQ,new Vector3(.05f,.56f,.022f),BombStrap);BombPiece(WeaponShape.Cube,C(0,.08f,-.13f),strapQ,new Vector3(.05f,.56f,.022f),BombStrap);
             for(int i=0;i<5;i++){float w=(i-2)*.092f;var at=C(-w*.62f,.1f+w*.8f,.165f);BombPiece(WeaponShape.Sphere,at,cq,Vector3.one*.038f,BombBlack);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.038f,0),cq,new Vector3(.024f,.012f,.024f),BombBrass);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.055f,0),cq,new Vector3(.006f,.022f,.006f),BombRope);}
