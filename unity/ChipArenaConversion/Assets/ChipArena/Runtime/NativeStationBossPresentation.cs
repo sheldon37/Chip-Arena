@@ -231,17 +231,18 @@ namespace ChipArena.UnityConversion
                 stationBossMaterial=new Material(shader){name="THE 6:47",enableInstancing=true};stationBossMaterial.SetInt("_Cull",2);stationBossMaterial.SetFloat("_Ink",0);
                 // The station's practical lights reach the boss as they reach the walls round it (NativeSourceLit's actor lights).
                 stationBossMaterial.SetFloat(ActorLitId,1);
+                // (A tier of the concept's sculpt is built when it is first drawn: with the bank's model it never is.)
                 stationBossMeshes=new Mesh[3][];stationBossJoints=new int[3][];
-                for(int tier=0;tier<3;tier++)
-                {
-                    var built=NativeStationBossLook.Build(tier);var meshes=new Mesh[built.Sections.Count];var joints=new int[built.Sections.Count];
-                    for(int i=0;i<built.Sections.Count;i++){var s=built.Sections[i];joints[i]=s.Bone;meshes[i]=StationBossMesh(s,"THE 6:47 / tier "+tier+" / "+NativeStationBossLook.Names[s.Bone]);}
-                    stationBossMeshes[tier]=meshes;stationBossJoints[tier]=joints;
-                }
                 stationBossDraw=new NativeFxDraw();stationBossBlock=new MaterialPropertyBlock();
                 var life=gameObject.GetComponent<NativeStationLifetime>();if(life==null)life=gameObject.AddComponent<NativeStationLifetime>();life.Gone+=DisposeStationBoss;return true;
             }
             catch(Exception e){Debug.LogWarning("THE 6:47 disabled: "+e.Message);DisposeStationBoss();stationBossFailed=true;return false;}
+        }
+        private void StationBossSculpt(int tier)
+        {
+            var built=NativeStationBossLook.Build(tier);var meshes=new Mesh[built.Sections.Count];var joints=new int[built.Sections.Count];
+            for(int i=0;i<built.Sections.Count;i++){var s=built.Sections[i];joints[i]=s.Bone;meshes[i]=StationBossMesh(s,"THE 6:47 / tier "+tier+" / "+NativeStationBossLook.Names[s.Bone]);}
+            stationBossMeshes[tier]=meshes;stationBossJoints[tier]=joints;
         }
         // A joint's geometry as a mesh (Core already in Unity's frame: no mirror, no winding turn), emission in uv1 as the bank's.
         private static Mesh StationBossMesh(WeaponSection s,string name)
@@ -257,10 +258,11 @@ namespace ChipArena.UnityConversion
             StationBossDraws=0;var pose=stationBoss.Shown;var fx=stationBossFx;
             // The tier by distance (full within 30 m, reduced to 60, low beyond; the low graphics tier never draws full).
             float d=eye!=null?Vector3.Distance(eye.transform.position,NativeBossPoseApply.ToUnity(stationBoss.Root)):0;int tier=d<30?0:d<60?1:2;if(LowGraphics)tier=Math.Max(1,tier);StationBossTier=tier;
-            var meshes=stationBossMeshes[tier];var joints=stationBossJoints[tier];var block=stationBossBlock;
+            var block=stationBossBlock;
             float flash=stationBossFlash;stationBossFlash=Mathf.Max(0,stationBossFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;
             // (The bank's model where it is here: Runtime NativeStationBossBody.cs.)
             if(StationBossBodyDraw(pose,fx,tier,code))return;
+            if(stationBossMeshes[tier]==null)StationBossSculpt(tier);var meshes=stationBossMeshes[tier];var joints=stationBossJoints[tier];
             for(int i=0;i<meshes.Length;i++)
             {
                 var mesh=meshes[i];int j=joints[i];if(mesh==null||fx.Hidden[j])continue;
@@ -290,7 +292,7 @@ namespace ChipArena.UnityConversion
         {
             if(stationBossMeshes!=null)foreach(var tier in stationBossMeshes)if(tier!=null)foreach(var m in tier)if(m!=null)CapturedAnimation.Release(m);
             if(stationBossMaterial!=null)CapturedAnimation.Release(stationBossMaterial);stationBossMeshes=null;stationBossJoints=null;stationBossMaterial=null;stationBossDraw?.Dispose();stationBossDraw=null;stationBossVfx?.Dispose();stationBossVfx=null;stationBossVfxFailed=false;
-            stationBossArena=null;stationBossLast=-1;StationBossRiderHide();
+            stationBossArena=null;stationBossLast=-1;StationBossRiderHide();StationBossBodyDispose();
         }
     }
 

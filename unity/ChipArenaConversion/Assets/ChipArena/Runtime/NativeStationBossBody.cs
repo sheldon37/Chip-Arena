@@ -52,7 +52,8 @@ namespace ChipArena.UnityConversion
         {
             if(!StationBossBodyDrawn)return false;StationBossPartsBuild(true);if(stationBossPartsAbsent)return false;
             var mats=ZombieGearMaterials();var block=stationBossBodyBlock??=new MaterialPropertyBlock();var parts=stationBossParts[Mathf.Clamp(tier,0,2)];
-            StationBossRiderPose(pose,flash,fx.Hidden[NativeStationBossModel.SmHead]?0:fx.Glow[NativeStationBossModel.SmHead]);
+            // (In the tunnel every joint is hidden, and he with them.)
+            if(fx.Hidden[NativeStationBossModel.SmHead])StationBossRiderHide();else StationBossRiderPose(pose,flash,fx.Glow[NativeStationBossModel.SmHead]);
             for(int i=0;i<parts.Count;i++)
             {
                 var part=parts[i];int j=part.Joint;if(fx.Hidden[j])continue;
@@ -141,6 +142,8 @@ namespace ChipArena.UnityConversion
                 {var j=B(f+"_0"+k+side);var c=B(f+"_0"+(k+1)+side);if(j==null||c==null)continue;var d=(c.position-j.position).normalized;j.rotation=Quaternion.FromToRotation(d,d*Mathf.Cos(.8f)+palm*Mathf.Sin(.8f))*j.rotation;}
             }
         }
+        /// <summary>DisposeStationBoss: the bank's meshes let go; made again from the bank if the boss returns.</summary>
+        private void StationBossBodyDispose(){foreach(var tier in stationBossParts){foreach(var part in tier)if(part.Mesh!=null)CapturedAnimation.Release(part.Mesh);tier.Clear();}stationBossPartsStep=0;}
         private void StationBossRiderHide(){var root=stationBossRider?.Body?.Root;if(root!=null&&root.activeSelf)root.SetActive(false);stationBossRiderShown=false;}
     }
 }

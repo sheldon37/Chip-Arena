@@ -930,7 +930,7 @@ def limb_bundle(pc, root, tip, r0, r1, t, seed, strands=6, fin_a='flesh', fin_b=
     d = (tip - root) / L
     # The core, its section the limb's taper.
     pts = [root + (tip - root) * (i / n) for i in range(n + 1)]
-    tu(pc, pts, 0, fin_b, t.s(10), radii=[(r0 + (r1 - r0) * (i / n)) * .62 for i in range(n + 1)])
+    tu(pc, pts, 0, fin_b, t.s(10), radii=[(r0 + (r1 - r0) * (i / n)) * (.62 if t.fine else .84) for i in range(n + 1)])
     count = strands if t.fine else max(3, strands - 2) if t.mid else 3
     for k in range(count):
         ph = k * 6.283 / count + rng.random() * .4
@@ -1738,6 +1738,7 @@ def main():
     ap.add_argument('--out', required=False, help='Assets/LocalAssets to write the bank into')
     ap.add_argument('--preview', help='render each joint with its vertex colours')
     ap.add_argument('--sheet', help='render the assembled boss standing')
+    ap.add_argument('--sheet-tier', type=int, default=0, help='the tier the sheet shows')
     ap.add_argument('--only', help='joints, comma separated')
     ap.add_argument('--tiers', default='0,1,2')
     args = ap.parse_args(argv)
@@ -1765,7 +1766,7 @@ def main():
     print('triangles per tier', totals)
     if args.sheet:
         import station_boss_sheet as sheet
-        sheet.render(built, TO_JOINT, args.sheet, rest, JOINTS)
+        sheet.render(built, TO_JOINT, args.sheet, rest, JOINTS, args.sheet_tier)
     if args.out:
         bank.write(args.out, BANK)
 
