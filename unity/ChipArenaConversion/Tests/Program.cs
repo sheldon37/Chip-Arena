@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--level0-spawns"){Level0SpawnChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--technique-rules"){TechniqueRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-sounds"){DeploySoundChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-mutators"){ExpeditionMutatorChecks.Run(ProjectRoot());return 0;}

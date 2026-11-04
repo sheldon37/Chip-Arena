@@ -6,6 +6,19 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         private BackroomsLayout EntityDarkLayout=>GeneratedRun?.Backrooms?.Layout;
+        private float nextLevel0Refresh;
+        private void RefreshLevel0Population()
+        {
+            if(!NativeBackroomsKinds.Level0(MapId)||EntityDarkLayout==null||Time<nextLevel0Refresh)return;nextLevel0Refresh=Time+2;
+            var routes=NativeLevel0Spawns.Routes(EntityDarkLayout,Pilots.Where(ZonePilot).Select(p=>Vec(p.Body.position)));if(routes==null)return;
+            int removed=0;foreach(var m in Minions.ToArray())
+            {
+                var a=m.Pve;if(m.DevMonster||m.Hp<=0||a==null||a.Possessed||!a.Zone.dormant)continue;
+                if(!NativeLevel0Spawns.Retire(a.Zone.dormant,m.Hp<m.MaxHp||a.LastDamage>a.SpawnAt,EntityObserved(m.Body.position),Time-a.ActiveAt,NativeLevel0Spawns.Distance(EntityDarkLayout,routes,Vec(m.Body.position))))continue;
+                // Remove alive, without death/reward/quota credit, then normal spawning replenishes the slot.
+                RemoveMinion(m,false);if(++removed==2)break;
+            }
+        }
         private void WakeEntity(NativeMinion m)
         {
             var z=m.Pve.Zone;if(!z.dormant)return;z.dormant=false;z.wakeAt=Time;
