@@ -1,3 +1,9 @@
+## 2026-11-04 — Astra: longer normal TNT throws
+
+- **Branch/base:** `codex/bombadier-throw-range`, shared `f18848bc`. Owner reports the primary throw is too short.
+- **Tuning:** Pop Bomb launch speed 17 → 28 m/s (+64.7%); authority now reads the weapon content speed. Content range 18 → 25 m matches the approximate 25.2 m straight-line travel ceiling over its .9 s fuse. Gravity and bounce shorten practical horizontal throws; this is not a guaranteed 25 m ground range. Damage, fuse, fire rate, restock, cast/hand timing and ability throws unchanged.
+- **Checks/release:** content validated and pinned Unity semantic compilation run before upload; exact results and merge/builder receipts in the PR. Human range feel and native Windows publication still need confirmation.
+
 ## 2026-11-04 — Astra: Sticky Fuse dodge release and test publication
 
 - **Branch/base:** `codex/bombadier-sticky-release`, shared `1450e5df`. Windows now passes generic combat and all 497 technique checks, then fails Bombadier dodge removal.

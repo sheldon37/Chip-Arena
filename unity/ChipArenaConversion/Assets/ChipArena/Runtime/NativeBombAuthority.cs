@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             var k=p.Bomb;var feet=p.Body.position-Vector3.up*.865f;var hand=p.Body.position+Vector3.up*.4f;float at=k.CastRelease;
             switch(k.CastKind)
             {
-                case NativeBombs.PopBomb:AddBomb(p,NativeBombs.Pop,hand,p.BombAim*17,at,.9f);break;
+                case NativeBombs.PopBomb:AddBomb(p,NativeBombs.Pop,hand,p.BombAim*(float)p.Weapon.speed,at,.9f);break;
                 case NativeBombs.BounceMine:
                     var mines=p.BombFlights.Where(b=>b.Record.Kind==NativeBombs.Mine).OrderBy(b=>b.Record.At).ToArray();if(mines.Length>=3)p.BombFlights.Remove(mines[0]);
                     AddBomb(p,NativeBombs.Mine,hand,(p.BombPoint-hand)/.65f+Vector3.up*(23*.65f/2),at,-1);break;
