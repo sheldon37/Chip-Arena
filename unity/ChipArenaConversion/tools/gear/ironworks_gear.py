@@ -1465,8 +1465,12 @@ def main():
             objs = build()
             if ratio < 1:
                 for ob in objs:
-                    m = ob.modifiers.new('decimate', 'DECIMATE')
-                    m.ratio = ratio
+                    # a small solid (a hub, a bolt ring) collapses into spikes: each object keeps at least its 70 faces
+                    faces = len(ob.data.polygons)
+                    keep = max(ratio, min(1.0, 70 / max(1, faces)))
+                    if keep < 1:
+                        m = ob.modifiers.new('decimate', 'DECIMATE')
+                        m.ratio = keep
             gm = gk.bake(prop, objs, cg.FRAME, seed=j * 1.13 + 7)
             cg.grime(gm, kind)
             gb.add(prop, joint, gm)
