@@ -132,6 +132,9 @@ namespace ChipArena.UnityConversion
                     // Standard melee uses Special and pays stamina at commitment. Its Q/E
                     // dispatcher/release contract is checked by ValidateSpecials, not AbilityCast.
                     if(NativeMeleeRules.Standard(weapon.id))continue;
+                    // Bombadier commits through StepBombInput/StepBombWorld, not AbilityCast.
+                    // ValidateBombadier exercises that dispatcher, costs and release clocks.
+                    if(weapon.id==NativeBombs.Spec)continue;
                     if(weapon.id=="bow"){CheckBowAbilityRelease(ability);continue;}
                     if(weapon.id==CyberLordSpec.Id){CheckCyberAbility(ability);continue;}
                     Setup(weapon.id);CheckAbilityRelease(ability,(float)a.Stats["maxMana"]);

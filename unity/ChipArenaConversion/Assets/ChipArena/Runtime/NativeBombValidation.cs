@@ -24,6 +24,10 @@ namespace ChipArena.UnityConversion
             void Release(){Advance(.3f);StepBombWorld();}
             try
             {
+                var row=Content.Weapon(NativeBombs.Spec);double now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                Check(row!=null&&row.devOnly&&NativeLoadoutText.Name("dev")=="???","DEV picker row");
+                Check(NativeLoadoutText.InClass(row,"dev",true,grant.Allows("weapon:"+row.id,now)),"DEV account can select Bombadier under ???");
+                Check(!NativeLoadoutText.InClass(row,"dev",false,NativeAccess.Guest.Allows("weapon:"+row.id,now)),"guest cannot select Bombadier");
                 Setup();a.Seat.access=NativeAccess.Guest;Cast(shoot:true);Check(a.Bomb.CastKind==null&&a.Ammo==6,"guest cannot fire");a.Seat.access=grant;Cast(shoot:true);Check(a.Ammo==5&&a.Bomb.CastRelease-a.Bomb.CastAt>=.15f,"belt and windup");Check(!TryBlock(a)&&!TryRoll(a),"committed throw cannot block/roll");Advance(.1f);StepBombWorld();Check(a.BombFlights.Count==0,"no projectile before hand release");Release();Check(a.BombFlights.Count==1&&a.BombFlights[0].Record.At==a.Bomb.CastRelease,"projectile clock is release");
                 Setup();BombBlast(a,NativeBombs.Pop,a.Body.position,2.4f,12,5);Check(Math.Abs(a.Hp-87)<.001&&a.Body.linearVelocity.y>=5,"quarter self damage/full launch");
                 Setup();Cast(q:true);Release();Check(a.Hp==90&&a.Body.linearVelocity.y>20&&a.Bomb.Ready[0]>Time,"blast jump nine metre rise and no self damage");
