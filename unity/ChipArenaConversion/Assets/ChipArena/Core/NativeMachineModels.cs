@@ -473,6 +473,11 @@ namespace ChipArena.UnityConversion
                     s.Box(MetalPaint(l,0),V(0,top+.03f,0),V(.18f,.07f,.05f),.01f);s.Into(Lights);
                     foreach(int face in new[]{1,-1}){float z=face*.0255f;Line(s,Light(0xffffff,2f,.5f),new Vector2(-.05f,top+.045f),new Vector2(-.025f,top+.03f),z,.009f,.002f);Line(s,Light(0xffffff,2f,.5f),new Vector2(-.025f,top+.03f),new Vector2(-.05f,top+.015f),z,.009f,.002f);Line(s,Light(0xffffff,2f,.5f),new Vector2(-.01f,top+.015f),new Vector2(.03f,top+.015f),z,.009f,.002f);}
                     break;
+                case NativeChipCartridge.Crest.Fuse:
+                    // Three sticks of TNT on the top edge, taped, a fuse curling off the middle one.
+                    foreach(var (x,ht) in new[]{(-.06f,.11f),(0f,.15f),(.06f,.11f)}){s.Box(WeaponPaint.Solid(0xb3241b,.04f),V(x,top-.01f+ht*.5f,0),V(.05f,ht,.05f),.008f);s.Box(WeaponPaint.Solid(0x17181b,.05f),V(x,top-.01f+ht*.62f,0),V(.055f,.02f,.055f),.002f);}
+                    s.Box(WeaponPaint.Solid(0x2b2118,.01f),V(.032f,top+.155f,0),V(.07f,.009f,.009f),.002f,0,0,-.35f);
+                    break;
                 case NativeChipCartridge.Crest.Flames:
                     foreach(var (x,ht,lean) in new[]{(-.11f,.07f,1),(-.055f,.11f,-1),(0f,.15f,1),(.055f,.12f,-1),(.11f,.075f,1)})
                     {
