@@ -36,6 +36,7 @@ Ward Zero has no unique kinds (it inherits the Siren's horde).
   - the zombie motion stack (the ZOMBIE PRO mocap, the gait, the strike timing) with each kind's procedural overlay
     (`NativeStationMotion`, `NativeIronworksMotion`) carried onto the model;
   - the voxel body stays as the Reduced and Impostor tiers and without the bake, as for the zombies.
+  - **The Central Station's four no longer use those tiers (2026-11-04):** few of them live at once (`NativeZoneCombat.Cap`: at most seven), so they stay on the model at any distance and rank first for its bodies; a frame without a body draws nothing rather than a voxel; each of their variants has a body made ahead on the map. The voxel body is left to a client without the bake and to Settings · Player model Classic.
 - **Their signature gear** is modelled in Blender, run headless from scripts (the same Blender 5.2 the Backrooms add-on uses):
   - detailed hard-surface props: hard hats, battery packs, cable reels, the conductor's lantern and ticket punch, carriage
     doors, the stoker's rake and hood, the ladle, the rigger's hook, chain and harness, slag crust plates;
@@ -66,7 +67,7 @@ Ward Zero has no unique kinds (it inherits the Siren's horde).
 3. Central Station's four kinds on the model. **Built 2026-11-03** and live (`claude/station-models`; docs/ZOMBIE-MODELS.md 4g:
    the gear modelled in Blender, the tape, the fused commuter; reviewed in turnarounds, close-ups and attack strips on the PC).
 4. City Ironworks' five kinds on the model. **Built 2026-11-04** and live (`claude/ironworks-models`; docs/ZOMBIE-MODELS.md 4n: on every tier of the map; their gear in Blender, `tools/gear/ironworks_gear.py`, its own local bank).
-5. The bosses: the Siren on the model; THE 6:47 and THE CONVERTER rebuilt part by part.
+5. The bosses: the Siren on the model; THE 6:47 and THE CONVERTER rebuilt part by part. **THE 6:47 built 2026-11-04** (docs/EXPEDITION-BOSS-CENTRAL-STATION.md section 14).
 
 ## 4. The Backrooms' own entities (rule proposals for Astra)
 

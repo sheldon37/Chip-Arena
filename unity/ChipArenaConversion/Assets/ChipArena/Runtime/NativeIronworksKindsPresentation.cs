@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
             // killcam, which then drew no rake, ladle, hook, crust, lamp or effects.)
             int z=NativeIronworksKinds.Local(s.Kind);ref var f=ref hordeInput[0];if(z<0||f.Id!=m.Id||f.Time!=hordeNow)return;
             bool onModel=IronworksHands(s,m.Id);s.Gait.PlaceProps(f,minionPose);IronworksProps(rig,s.Gait,s.Tier,glow,flash,s.Scale);bool crusted=z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(s.Gait.Iron.shedAt,f.Time);
-            if(onModel&&zombieBodies.TryGetValue(m.Id,out var body))IronworksCrustGear(body,crusted);else if(crusted&&!IronworksWaits(s.Kind))IronworksCrust(rig,s.Look,s.Tier,m.Pve?.Lost??0,glow,flash);
+            if(onModel&&zombieBodies.TryGetValue(m.Id,out var body))IronworksCrustGear(body,crusted);else if(crusted&&!HordeNoVoxel(s.Kind))IronworksCrust(rig,s.Look,s.Tier,m.Pve?.Lost??0,glow,flash);
             // What it carries, for its death: the held prop where it is now, the crust still on.
             var g=s.Gait;ironCarry[m.Id]=new IronCarry{Has=g.PropCount>0,Prop=g.PropCount>0?g.Props[0].Prop:-1,M=g.PropCount>0?IronMatrix(rig,g.Props[0].At,g.Props[0].Turn,g.Props[0].Scale):Matrix4x4.identity,Crusted=crusted,Look=s.Look,Seen=f.Time};
             if(z==NativeIronworksKinds.Rigger&&NativeIronworksKinds.Lamp(s.Gait.Iron.lockAt,f.Time,false)&&!IronworksLampOnModel(m.Id,s.Kind))IronworksLamp(rig);
@@ -144,7 +144,7 @@ namespace ChipArena.UnityConversion
             if(!posed)NativeHordeGait.RiggerHang(minionPose,seed,state,u,now,state==NativeHordeGait.RiggerState.Hang?sway:sway*.4f);
             s.Gait.Reset();NativePoseWriter.Write(rig.Bones,minionPose,"a horde rig");rig.Root.transform.SetPositionAndRotation(root,Quaternion.Euler(0,yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
             var glow=HordeGlowFor(m.Id,s,m,now);float flash=HitFlashCode(m.Id,now);
-            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,onFloor,!onFloor,false,s.Gait,a.Lost,0,flash,glow.x,0)&&!IronworksWaits(kind))HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,0,glow,flash);if(lampOn&&!IronworksLampOnModel(m.Id,kind))IronworksLamp(rig);
+            if(!ZombieModelPose(rig,m.Id,kind,s.Tier,onFloor,!onFloor,false,s.Gait,a.Lost,0,flash,glow.x,0)&&!HordeNoVoxel(kind))HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,0,glow,flash);if(lampOn&&!IronworksLampOnModel(m.Id,kind))IronworksLamp(rig);
             // the chain from the girder through its fists; in the drop on down to the hook over its spot (swaying), the hook
             var fists=(IronworksJoint(rig,m.Id,kind,CapturedRig.LHand)+IronworksJoint(rig,m.Id,kind,CapturedRig.RHand))*.5f;int tier=s.Tier==NativeHordeModels.Full?0:1;
             if(!onFloor&&state!=NativeHordeGait.RiggerState.Fall)IronworksChain(anchor,fists+Vector3.up*.05f,0,tier);

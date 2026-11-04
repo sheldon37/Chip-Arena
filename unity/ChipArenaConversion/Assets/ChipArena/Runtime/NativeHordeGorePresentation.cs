@@ -187,7 +187,7 @@ namespace ChipArena.UnityConversion
                 var chest=GoreU(NativeHordeGore.Origin(r.Bones[CapturedRig.Chest]));float d=hordeEyeKnown?Vector3.Distance(chest,hordeEye):0;if(d>80)continue;
                 // A corpse whose add drew on the player's model: its baked model (NativeZombieModelPresentation.cs).
                 IronworksCorpseProp(r,sink);
-                if(ZombieCorpseDrawn(r,sink,alpha))continue;
+                if(ZombieCorpseDrawn(r,sink,alpha)||HordeNoVoxel(r.Kind))continue;
                 int tier=d<=24?NativeHordeModels.Full:NativeHordeModels.Reduced;string model=NativeHordeModels.Id(r.Kind,r.Look,tier);if(!sourceModels.Has(model))continue;
                 goreDraw=r;goreDrawSink=sink;var root=GoreU(r.Root);root.m13-=sink;var body=new Color(r.Variation.X,r.Variation.Y,r.Variation.Z,alpha);var glow=HordeGlow(r.Id);
                 sourceModels.Queue(model,root,goreCorpseBone,goreCorpseVisible,body:body,glow:glow);

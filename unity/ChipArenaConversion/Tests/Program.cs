@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--projectile-rules"){ProjectileRuleChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==0)ProjectileRuleChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--revive-machine"){ReviveMachineChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--bomb-rules"){BombRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0)BombRulesChecks.Run(ProjectRoot());
@@ -104,7 +106,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--chip-screen"){ChipScreenChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--draft-stage"){foreach(var result in DraftPlantChecks.Run())Console.WriteLine("PASS "+result);foreach(var result in DraftStageChecks.Run(ProjectRoot()))Console.WriteLine("PASS "+result);DraftBackdropChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--dev-abuse"){DevAbuseChecks.Run();return 0;}
-            ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());BackroomsEntityChecks.Run();DevAbuseChecks.Run();ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());DeploySparkChecks.Run(ProjectRoot());PodRunChecks.Run(ProjectRoot());PodDropChecks.Run(ProjectRoot());MutatorFxChecks.Run(ProjectRoot());BackroomsChecks.Run(ProjectRoot());PoolroomsChecks.Run(ProjectRoot());PoolroomsRulesChecks.Run();BackroomsGeneratorChecks.Run(ProjectRoot());DeploySoundChecks.Run(ProjectRoot());DeployPerformanceChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
+            StationBossBodyChecks.Run(ProjectRoot());ZoneBossRulesChecks.Run();ZoneCombatChecks.Run(ProjectRoot());BackroomsEntityChecks.Run();DevAbuseChecks.Run();ExpeditionMutatorChecks.Run(ProjectRoot());ExpeditionDeploymentChecks.Run(ProjectRoot());DeployPresentationChecks.Run();DeployModelChecks.Run(ProjectRoot());DeploySparkChecks.Run(ProjectRoot());PodRunChecks.Run(ProjectRoot());PodDropChecks.Run(ProjectRoot());MutatorFxChecks.Run(ProjectRoot());BackroomsChecks.Run(ProjectRoot());PoolroomsChecks.Run(ProjectRoot());PoolroomsRulesChecks.Run();BackroomsGeneratorChecks.Run(ProjectRoot());DeploySoundChecks.Run(ProjectRoot());DeployPerformanceChecks.Run(ProjectRoot());ExpeditionChecks.Run();ExpeditionSplitChecks.Run();ExpeditionHandoffChecks.Run();ExpeditionAreaRegistryChecks.Run(ProjectRoot());ExpeditionCohortChecks.Run();ExpeditionJoinChecks.Run(ProjectRoot());ExpeditionFreshRunChecks.Run(ProjectRoot());ExpeditionAreaWireChecks.Run();
             if(args.Length==1&&args[0]=="--navigation"){NavSearchChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--wardzero-simulation"){var wardRoot=ProjectRoot();WardSimulationChecks.Run(wardRoot);HulkBreachChecks.Run(wardRoot);WardZeroChecks.Run(wardRoot);StageVentChecks.Run(wardRoot);HordeKindChecks.Run(wardRoot);ZombieMotionChecks.Run(wardRoot);HulkSpitterChecks.Run(wardRoot);HulkBreachFxChecks.Run(wardRoot);HulkMotionChecks.Run(wardRoot);return 0;}
             if(args.Length==1&&args[0]=="--cloudflare-smoke"){CloudflareChecks.Live(ProjectRoot()).GetAwaiter().GetResult();return 0;}
@@ -120,6 +122,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--ironworks-props"){IronworksPropChecks.Run(ProjectRoot());IronworksKindChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-boss"){StationBossModelChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--station-boss-presentation"){StationBossPresentationChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--station-boss-body"){StationBossBodyChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--boss-motion"){BossMotionChecks.Run(ProjectRoot());return 0;}
             HordeHitChecks.Run();
             if(args.Length==1&&args[0]=="--horde-hit")return 0;
