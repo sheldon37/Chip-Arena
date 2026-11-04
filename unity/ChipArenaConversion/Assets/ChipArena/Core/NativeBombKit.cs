@@ -21,13 +21,15 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class NativeBombCircle{public int Id;public V3 Pos;}
     /// <summary>The Grand Finale: cut-in to At+.6, plunger down at Lock, columns at Strike, over at Until.</summary>
     [Serializable] public sealed class NativeBombFinale{public float At=-100,Lock,Strike,Until;public V3 Box,Dir;public NativeBombCircle[] Circles;}
+    /// <summary>A victim the chain has finished with: this Bombadier cannot launch them from At to Until.</summary>
+    [Serializable] public sealed class NativeBombScorch{public int Id;public float At,Until;}
     /// <summary>
     /// The Bombadier's replicated kit (docs/BOMBADIER.md): the contract between the rules (Astra's) and the presentation. Everything the pose, the
     /// effects, the sound and the HUD read. <see cref="NativeBombPreview"/> writes it the way the host would, for the Dev Sandbox and as the worked example.
     /// </summary>
     [Serializable] public sealed class NativeBombKit
     {
-        public NativeBomb[] Bombs;public NativeBlast[] Blasts;public NativeBombLine Line;public NativeBombFinale Finale;
+        public NativeBomb[] Bombs;public NativeBlast[] Blasts;public NativeBombLine Line;public NativeBombFinale Finale;public NativeBombScorch[] Scorched;
         public int Chain,MineCharges;public float ChainUntil,Meter;
         /// <summary>Absolute ready times in NativeBombs.Slot order: Q, E, 1, 2, 3, 4.</summary>
         public float[] Ready;
@@ -42,6 +44,7 @@ namespace ChipArena.UnityConversion
             if(Blasts!=null){if(Blasts.Length>NativeBombs.MaxBlasts)return false;foreach(var b in Blasts)if(b==null||!V(b.Pos)||!V(b.FromPos)||!F(b.At)||!F(b.Radius)||b.Radius<0||b.Radius>64||b.Link<0||b.Link>64||b.Kind!=null&&b.Kind.Length>24)return false;}
             if(Line!=null&&(!F(Line.At)||!F(Line.Speed)||!V(Line.From)||!V(Line.To)))return false;
             if(Finale!=null){if(!F(Finale.At)||!F(Finale.Lock)||!F(Finale.Strike)||!F(Finale.Until)||!V(Finale.Box)||!V(Finale.Dir))return false;if(Finale.Circles!=null){if(Finale.Circles.Length>NativeBombs.MaxCircles)return false;foreach(var c in Finale.Circles)if(c==null||!V(c.Pos))return false;}}
+            if(Scorched!=null){if(Scorched.Length>NativeBombs.MaxCircles)return false;foreach(var c in Scorched)if(c==null||!F(c.At)||!F(c.Until))return false;}
             if(Ready!=null&&Ready.Length>NativeBombs.Slots)return false;if(Ready!=null)foreach(var r in Ready)if(!F(r))return false;
             return CastKind==null||CastKind.Length<=24;
         }
@@ -56,7 +59,7 @@ namespace ChipArena.UnityConversion
         public const string Pop="pop",Mine="mine",Sticky="sticky",Lob="lob",Bomblet="bomblet",Jump="jump",Spark="spark",Column="column";
         public const string PopBomb="pop-bomb",BlastJump="blast-jump",DeadMansSwitch="dead-mans-switch",BounceMine="bounce-mine",StickyFuse="sticky-fuse",ClusterLob="cluster-lob",FirecrackerLine="firecracker-line",GrandFinale="grand-finale";
         public const int MaxBombs=32,MaxBlasts=48,MaxCircles=16,Slots=6;
-        public const float CircleRadius=4,PlungeAt=.6f,MineArm=.5f,MineReach=1.6f,RingReach=5,LineReach=16;
+        public const float ScorchSeconds=2.5f,CircleRadius=4,PlungeAt=.6f,MineArm=.5f,MineReach=1.6f,RingReach=5,LineReach=16;
         /// <summary>The ability cards, in their HUD order, with the key each shows.</summary>
         public static readonly string[] Slot={BlastJump,DeadMansSwitch,BounceMine,StickyFuse,ClusterLob,FirecrackerLine};
         public static readonly string[] SlotKeys={"Q","E","1","2","3","4"};
@@ -91,12 +94,12 @@ namespace ChipArena.UnityConversion
             if(a==null||a.SourceSpec!=NativeBombs.Spec){kits.Clear();started=-100;return;}
             if(time<last-.25f||started<-50)started=(float)Math.Ceiling(time+.3f);last=time;if(time-started>=Loop)started=time;
             if(!kits.TryGetValue(a.Id,out var k)){k=new NativeBombKit();kits[a.Id]=k;}
-            Write(k,feet,yaw,started,time);
+            Write(k,feet,yaw,started,time,a.Id);
         }
         private static V3 V(Vector3 v)=>new V3(v.X,v.Y,v.Z);
         private static Vector3 Lob(Vector3 from,Vector3 to,float u,float arc)=>Vector3.Lerp(from,to,u)+Vector3.UnitY*(arc*4*u*(1-u));
         /// <summary>The record at `time` of a loop that began at `t0` for a pilot at `feet` facing `yaw`. Pure: the same clock writes the same record.</summary>
-        public static void Write(NativeBombKit k,Vector3 feet,float yaw,float t0,float time)
+        public static void Write(NativeBombKit k,Vector3 feet,float yaw,float t0,float time,int scorch=0)
         {
             var f=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));var r=new Vector3(f.Z,0,-f.X);var up=Vector3.UnitY;var hand=feet+up*1.3f+f*.5f;float t=time-t0;
             var bombs=new List<NativeBomb>();var blasts=new List<NativeBlast>();k.CastKind=null;k.CastAt=-100;k.Line=null;k.Finale=null;k.Chain=0;k.ChainUntil=-100;k.MineCharges=2;
@@ -122,6 +125,8 @@ namespace ChipArena.UnityConversion
             // The switch: nearest first, one chasing the next.
             Cast(NativeBombs.DeadMansSwitch,6.7f,6.82f,7.2f);Blast(104,NativeBombs.Mine,7,mine0+up*.2f,2.6f,2,stick);Blast(105,NativeBombs.Mine,7.12f,mine1+up*.2f,2.6f,3,mine0+up*.2f);
             if(t>=5.95f&&t<7.6f){k.Chain=t>=7.12f?3:t>=7?2:1;k.ChainUntil=t0+8.3f;}
+            // The third link ends the chain: its victim (the preview has only the pilot to show it on) smoulders through the window.
+            k.Scorched=scorch>0&&t>=7.12f&&t<7.12f+NativeBombs.ScorchSeconds?new[]{new NativeBombScorch{Id=scorch,At=t0+7.12f,Until=t0+7.12f+NativeBombs.ScorchSeconds}}:null;
             // The cluster.
             var over=feet+f*9.5f;Cast(NativeBombs.ClusterLob,8.2f,8.48f,9);Thrown(6,NativeBombs.Lob,8.48f,9.2f,9.2f,hand,over+up*4.2f,1,up);
             if(t>=9.2f)for(int i=0;i<6;i++){float ang=i*1.0471976f+.3f;var at=over+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*(NativeBombs.RingReach*.72f);float land=9.48f+i*.07f;Thrown(7+i,NativeBombs.Bomblet,9.2f,land,land,over+up*4.2f,at,.2f,up);Blast(106+i,NativeBombs.Bomblet,land,at+up*.1f,1.9f,0,null);}

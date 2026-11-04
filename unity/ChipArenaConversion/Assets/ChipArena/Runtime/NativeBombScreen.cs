@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             foreach(var p in arena.Pilots)
             {
                 if(p==null)continue;var k=NativeBombs.Source.Of(p.Seat.id);if(k==null)continue;
-                if(p==local)BombChain(k,t,width,height);
+                if(p==local)BombChain(k,t,width,height);else if(local!=null)BombScorched(k,local,t,width,height);
                 var f=k.Finale;if(f==null||t<f.At||t>=f.Until)continue;
                 if(p==local)BombCutIn(f,t,width,height);else BombWarning(p,f,t,width,height);
             }
@@ -43,6 +43,16 @@ namespace ChipArena.UnityConversion
             float age=Time.unscaledTime-bombChainAt,punch=prefs.reducedEffects?0:Mathf.Clamp01(1-age/.22f),left=Mathf.Clamp01((k.ChainUntil-t)/1.2f);float x=width/2+74,y=height/2-22,size=22+punch*14;
             Color hot=k.Chain>=3?U.Hex(0xfff0b0):U.Hex(0xffa23a);U.Text(new Rect(x+2,y+2,220,34),"CHAIN ×"+k.Chain,Mathf.RoundToInt(size),C.Void(.7f),TextAnchor.MiddleLeft,bold:true,mono:true);U.Text(new Rect(x,y,220,34),"CHAIN ×"+k.Chain,Mathf.RoundToInt(size),hot,TextAnchor.MiddleLeft,bold:true,mono:true);
             U.Fill(new Rect(x,y+34,110,3),C.Void(.6f));U.Fill(new Rect(x,y+34,110*left,3),hot);
+        }
+        // Under the crosshair, on the one being chained: it is over, and this is your window. The bar is how long.
+        private void BombScorched(NativeBombKit k,NativePilot me,float t,float W,float H)
+        {
+            if(k.Scorched==null)return;foreach(var c in k.Scorched)
+            {
+                if(c==null||c.Id!=me.Seat.id||t<c.At||t>=c.Until)continue;float life=Mathf.Max(.1f,c.Until-c.At),left=Mathf.Clamp01((c.Until-t)/life),punch=prefs.reducedEffects?0:Mathf.Clamp01(1-(t-c.At)/.2f),a=Mathf.Clamp01((c.Until-t)/.2f),x=W/2-120,y=H/2+58;
+                U.Text(new Rect(x+1,y+1,240,22),"SCORCHED // HIT BACK",Mathf.RoundToInt(15+punch*6),C.Void(.75f*a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);U.Text(new Rect(x,y,240,22),"SCORCHED // HIT BACK",Mathf.RoundToInt(15+punch*6),new Color(1,.68f,.28f,a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.08f);
+                U.Fill(new Rect(x+40,y+25,160,2),C.Void(.6f*a));U.Fill(new Rect(x+40+80*(1-left),y+25,160*left,2),new Color(1,.55f,.18f,a));
+            }
         }
         // The caster's splash: hazard bands slam across, the live portrait's place left to the world, GRAND FINALE stamped.
         private void BombCutIn(NativeBombFinale f,float t,float W,float H)

@@ -18,6 +18,7 @@ namespace ChipArena.UnityConversion
                 if(k.Blasts!=null)for(int b=0;b<k.Blasts.Length;b++)Boom(s,k.Blasts[b],time,seed+k.Blasts[b].Id*47L,q,low);
                 if(k.Line!=null)BurningLine(s,k.Line,time,seed+7,q,low);
                 if(k.Finale!=null)Finale(s,scene,k.Finale,time,seed+11,q,low);
+                if(k.Scorched!=null)for(int b=0;b<k.Scorched.Length;b++)Scorch(s,scene,k.Scorched[b],time,seed+13+b*59L,q,low);
             }
         }
         private static Actor BombVictim(IKitFxScene scene,int id){if(id<=0)return null;var l=scene.Actors;for(int i=0;i<l.Count;i++)if(l[i]!=null&&l[i].Id==id)return l[i];return null;}
@@ -25,6 +26,24 @@ namespace ChipArena.UnityConversion
         public static Vector3 ChargeAt(IKitFxScene scene,NativeBomb b)
         {
             if(b.Stuck>0&&scene!=null){var v=BombVictim(scene,b.Stuck);if(v!=null&&scene.Chest(v,out var c))return c+Vector3.UnitY*.1f;}return N(b.Pos);
+        }
+        // ---- Scorched: the chain's end -----------------------------------------------------------------------------------
+        // A flash as it lands, then a body smouldering: heat in the chest, embers lifting off it, smoke off the shoulders, all guttering in the last half second as the window closes.
+        // The local first-person pilot sees none of it on their own body (it would sit in their face): the HUD tells them.
+        private static void Scorch(ITechniqueFxSink s,IKitFxScene scene,NativeBombScorch c,float t,long seed,float q,bool low)
+        {
+            if(c==null||t<c.At||t>=c.Until||scene.Viewer==c.Id)return;var v=BombVictim(scene,c.Id);if(v==null||!scene.Chest(v,out var chest))return;
+            float life=Math.Max(.1f,c.Until-c.At),u=(t-c.At)/life,hit=1-Clamp01((t-c.At)/.25f),left=c.Until-t,gutter=left<.5f?.45f+.55f*(float)Math.Abs(Math.Sin(left*19)):1,heat=(1-.5f*u)*gutter;
+            s.Glow(chest,BombFlame*(.5f*heat+1.5f*hit),0,.75f+.6f*hit,Core,0,seed);s.Glow(chest,BombHot*(.35f*heat+1.2f*hit),0,.32f+.3f*hit,Core,0,seed+1);
+            if(hit>0)Sparks(s,chest,t-c.At,.25f,Count(16,q,low),3.4f,BombHot,seed+2,7,.014f,Vector3.UnitY*.5f);
+            int n=Count(16,q,low);
+            for(int i=0;i<n;i++)
+            {
+                float ph=(t*(.7f+.7f*R(seed,i+10))+R(seed,i+11))%1;var d=RandomDir(seed,i+12);
+                var p=chest+new Vector3(d.X*.27f,-.62f+1.05f*R(seed,i+13),d.Z*.2f)+new Vector3((float)Math.Sin(t*3+i)*.07f*ph,.95f*ph,(float)Math.Cos(t*2.6f+i)*.07f*ph);
+                s.Sprite(false,p,BombHot*(2*heat*(1-ph)),.03f+.02f*R(seed,i+14),Hot);
+            }
+            int m=Count(7,q,low);for(int i=0;i<m;i++){float ph=(t*.55f+i/(float)m)%1;s.Smoke(chest+new Vector3((R(seed,i+30)-.5f)*.42f,.2f+1.15f*ph,(R(seed,i+31)-.5f)*.42f),BombSmoke,.46f*heat*(1-ph),.16f+.42f*ph,.2f+.6f*ph,seed+i,-1000);}
         }
         // ---- the charges ----------------------------------------------------------------------------------------------
         private static void Charge(ITechniqueFxSink s,IKitFxScene scene,NativeBomb b,float t,long seed,float q,bool low)

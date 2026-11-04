@@ -75,7 +75,7 @@ The entrance everyone recognises and dreads. 7.6 s, the name at 6 s. No music fo
 | Piece | File |
 | --- | --- |
 | The record, the names, the sandbox preview | `Core/NativeBombKit.cs` |
-| The effects: charges, blasts by kind, the hand-on between links, the line, the circles, the columns, the fireworks; the Finale's camera | `Core/NativeBombFx.cs` |
+| The effects: charges, blasts by kind, the hand-on between links, the line, the circles, the columns, the fireworks, the Scorched smoulder; the Finale's camera | `Core/NativeBombFx.cs` |
 | The launcher, the Kickdrum, sculpted in code | `Core/NativeWeaponModels.Bomb.cs` |
 | The poses | `Core/NativeVisualMotion.cs` (`BombCast`) |
 | Sound, including the intro's whole timeline | `Core/NativeBombSounds.cs` |
@@ -95,7 +95,8 @@ To see it: Dev Sandbox, Preview Bombadier, with the weapon in hand (once its row
 - **`Finale`**: `At`, `Lock`, `Strike`, `Until` (cut-in ends at `At`+.6), `Box` the detonator's spot on the floor, `Dir` the facing, `Circles` one per enemy with `Id`, `Pos` (current; fixed from `Lock`).
 - **`Chain`** the current link count and **`ChainUntil`** when it lapses; **`Meter`** 0 to 1; **`Ready`** the absolute ready times in `NativeBombs.Slot` order (Q, E, 1, 2, 3, 4), with **`MineCharges`**.
 - **`Cast`** the pilot's current action for the pose: `CastKind` (the ability id), `CastAt`, `CastRelease`, `CastUntil`.
-- A victim's flight is the rules' own: launch them with `Knockback`/velocity and the usual air state. `Scorched` on the actor (`ScorchedUntil`) so its glow and the HUD can read it.
+- **`Scorched`** this Bombadier's finished victims: `Id`, `At`, `Until` (`NativeBombs.ScorchSeconds`, 2.5 s). On the kit rather than the victim, since it is this Bombadier who cannot throw them; the glow and the victim's HUD line read it.
+- A victim's flight is the rules' own: launch them with `Knockback`/velocity and the usual air state.
 
 Input: LMB `Shoot`, Q `AbilityQ`, E `AbilityE`, 1 to 5 `SirenAbility` (extend the key loop in `ConversionGame` to 5 for this spec, as for the Cyber Lord).
 
