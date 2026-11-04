@@ -145,7 +145,7 @@ namespace ChipArena.UnityConversion
                 if(locked){s.Line(false,at+Vector3.UnitY*9,at,BombRed*(.7f+.6f*beat),.03f,true);}
             }
             // The plunger going home: a spark at the box.
-            float since=t-f.Lock;if(since>=0&&since<.5f){var box=N(f.Box)+Vector3.UnitY*.4f;Flash(s,box,since,.2f,BombHot,.9f,seed);Sparks(s,box,since,.45f,Count(18,q,low),4,BombHot,seed+1,8,.018f,Vector3.UnitY*.6f);}
+            float since=t-f.Lock;if(since>=0&&since<.5f){var box=N(f.Box)+Vector3.UnitY*.72f;Flash(s,box,since,.2f,BombHot,.9f,seed);Sparks(s,box,since,.45f,Count(18,q,low),4,BombHot,seed+1,8,.018f,Vector3.UnitY*.6f);}
             // The fireworks over everything, after.
             float after=t-f.Strike;if(after<.25f)return;var centre=N(f.Box)+N(f.Dir)*7;int shells=low?4:7;
             for(int j=0;j<shells;j++)
@@ -158,7 +158,7 @@ namespace ChipArena.UnityConversion
 
     /// <summary>
     /// The Bombadier's arms in first person (docs/BOMBADIER.md): a bundle of TNT low in each corner of the view, its fuse spitting, thrown from there. Pure functions of the kit and the clock on the view rig's
-    /// own joints, in place of the game rig's gun hold. A throw goes up out of sight, comes over and through the middle of the view, and drops below the frame, where the next stick comes from.
+    /// own joints, in place of the game rig's gun hold. A throw dips below the frame, comes up and through toward the middle of the view, and drops out of it again, where the next stick comes from. (Over the shoulder would swing the arm past the lens.)
     /// </summary>
     public static class NativeBombView
     {
@@ -175,11 +175,11 @@ namespace ChipArena.UnityConversion
         }
         private static Arm Pose(int side,NativeBombKit k,float time,float reloadAt,float reloadUntil,float blockUntil)
         {
-            float s=side;var rest=new Arm(-1.02f+(float)Math.Sin(time*1.6f+side)*.02f,0,s*.38f,-.85f,1.02f);var arm=rest;var low=new Arm(-.2f,0,s*.3f,-.5f,.2f);
+            float s=side;var rest=new Arm(-1.02f+(float)Math.Sin(time*1.6f+side)*.02f,s*.22f,s*.38f,-.85f,1.02f);var arm=rest;var low=new Arm(-.2f,0,s*.3f,-.5f,.2f);
             if(side<0&&time>=reloadAt&&time<reloadUntil){float u=(time-reloadAt)/Math.Max(.05f,reloadUntil-reloadAt);arm=Arm.Mix(rest,low,Smooth(u/.2f)*(1-Smooth((u-.72f)/.28f)));}
             if(time<blockUntil)arm=new Arm(-1.55f,-s*.6f,-s*.1f,-1.9f,.25f);
             if(k?.CastKind==null||time<k.CastAt||time>=k.CastUntil)return arm;bool left=side>0;
-            var top=new Arm(-2.75f,0,s*.1f,-1.85f,.1f);var through=new Arm(-1.75f,-s*.35f,-s*.06f,-.25f,-.4f);
+            var top=new Arm(-.5f,s*.3f,s*.38f,-1.25f,.7f);var through=new Arm(-1.75f,-s*.35f,-s*.06f,-.25f,-.4f);
             switch(k.CastKind)
             {
                 case NativeBombs.PopBomb:return NativeBombs.ThrowsLeft(k.CastAt)==left?Over(rest,top,through,low,k,time):arm;
@@ -192,9 +192,12 @@ namespace ChipArena.UnityConversion
             }
             return arm;
         }
+        private static readonly int[] Torso={CapturedRig.Body,CapturedRig.Pelvis,CapturedRig.Spine,CapturedRig.Chest,CapturedRig.LClav,CapturedRig.RClav};
         /// <summary>Both arms onto the view rig's pose.</summary>
         public static void Apply(CapturedRig.Pose p,NativeBombKit k,float time,float reloadAt,float reloadUntil,float blockUntil)
         {
+            // Square to the view: the game rig's own first-person lean is for what it holds, and would carry the arms down with it.
+            foreach(int b in Torso)p.Rotation[b]=Quaternion.Identity;
             for(int side=1;side>=-1;side-=2)
             {
                 var a=Pose(side,k,time,reloadAt,reloadUntil,blockUntil);

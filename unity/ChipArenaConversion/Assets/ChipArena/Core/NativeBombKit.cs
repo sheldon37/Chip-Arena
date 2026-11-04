@@ -100,6 +100,8 @@ namespace ChipArena.UnityConversion
             }
             return share;
         }
+        /// <summary>Where the Grand Finale's crate goes, from the pilot's feet and facing (unit, flat): under both hands' place as it stoops and as it slams, a little to its right, because the pose stands turned.</summary>
+        public static Vector3 BoxSpot(Vector3 feet,Vector3 dir)=>feet+dir*.63f+new Vector3(dir.Z,0,-dir.X)*.1f;
         /// <summary>A thrown stick's attitude at `t`, its axis local y with the fuse up it: end over end through the air, lying on its side once it has stopped.</summary>
         public static Quaternion ChargeTurn(NativeBomb b,float t)
         {
@@ -184,7 +186,7 @@ namespace ChipArena.UnityConversion
             float fa=13;
             if(t>=fa&&t<fa+3.8f)
             {
-                float lk=fa+2.1f,st=fa+2.6f;var box=feet+f*.75f;Vector3 C(int i){float ang=i*2.0943951f+.5f;return feet+f*10+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*5.2f;}
+                float lk=fa+2.1f,st=fa+2.6f;var box=NativeBombs.BoxSpot(feet,f);Vector3 C(int i){float ang=i*2.0943951f+.5f;return feet+f*10+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*5.2f;}
                 var circles=new NativeBombCircle[3];for(int i=0;i<3;i++){float roam=Math.Min(t,lk)-fa;circles[i]=new NativeBombCircle{Id=1000+i,Pos=V(C(i)+r*(float)Math.Sin(roam*1.6f+i)*1.1f)};}
                 k.Finale=new NativeBombFinale{At=t0+fa,Lock=t0+lk,Strike=t0+st,Until=t0+fa+3.6f,Box=V(box),Dir=V(f),Circles=circles};Cast(NativeBombs.GrandFinale,fa,fa+.6f,fa+3.6f);
                 if(t>=st)for(int i=0;i<3;i++)blasts.Add(new NativeBlast{Id=140+i,Kind=NativeBombs.Column,At=t0+st,Pos=circles[i].Pos,Radius=NativeBombs.CircleRadius,FromPos=circles[i].Pos});

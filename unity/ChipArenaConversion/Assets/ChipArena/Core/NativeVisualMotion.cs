@@ -489,8 +489,12 @@ namespace ChipArena.UnityConversion
                 case NativeBombs.GrandFinale:
                 {
                     if(time<rel)return Part(BombLay,at,rel,out pick);float lockAt=k.Finale?.Lock??rel+1.5f;
-                    // Both hands drive the plunger home at the Lock, then the pilot stands and watches.
-                    if(Part(BombSlam,lockAt-.42f,lockAt+.34f,out pick))return true;
+                    // Both hands pull the handle up and drive it home at the Lock, then the pilot stands and watches. The clip's own raise (overhead, a sword's) is cut short: from BombSlamFrom it falls to its low point at BombSlamHit.
+                    if(time>=lockAt-BombSlamIn&&time<lockAt+.34f&&clips.Has(BombSlam))
+                    {
+                        float len=clips.Length(BombSlam),at_=time<lockAt?BombSlamFrom+(BombSlamHit-BombSlamFrom)*Clamp01((time-lockAt+BombSlamIn)/BombSlamIn):BombSlamHit+(Math.Max(BombSlamHit,len)-BombSlamHit)*Clamp01((time-lockAt)/.34f);
+                        pick=new Pick{Clip=BombSlam,Time=at_,Fade=FadeIn};return true;
+                    }
                     if(time<lockAt&&clips.Has(BombStoop)){pick=new Pick{Clip=BombStoop,Time=time-rel,Fade=FadeIn};return true;}return false;
                 }
             }
@@ -498,6 +502,7 @@ namespace ChipArena.UnityConversion
         }
         private const string BombThrowStart="Armed-Cast-R-Attack3_start",BombThrowEnd="Armed-Cast-R-Attack3_end",BombHold="Armed-Idle-Pistol-Dual-Static",BombReload="Armed-Unsheath-R-FromArmed-Hips",BombHeaveStart="Unarmed-Cast-Dual-Attack1_start",BombHeaveEnd="Unarmed-Cast-Dual-Attack1_end",
             BombLay="Armed-Pickup-Right",BombClick="Armed-Activate-Left",BombStoop="2Hand-Sword-Crouch-Idle",BombSlam="2Hand-Sword-Attack11";
+        private const float BombSlamIn=.2f,BombSlamFrom=.46f,BombSlamHit=.9f;
         /// <summary>What the Bombadier throws on the move: the arms only, the legs carrying on. Held fire goes overhand from each fist in turn (the left is the bake's mirror), a sticky fuse is a snap of the right, a mine a flick of the left, and the switch a press of the left thumb.</summary>
         private static bool BombUpper(Set s,Actor a,float time,IClips clips,out Upper up)
         {

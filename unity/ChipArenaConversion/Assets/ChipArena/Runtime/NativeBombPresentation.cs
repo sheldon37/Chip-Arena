@@ -118,20 +118,23 @@ namespace ChipArena.UnityConversion
             BombPiece(WeaponShape.Cylinder,new Vector3(0,0,.1f),up,new Vector3(.018f,.008f,.018f),BombBrass);BombPiece(WeaponShape.Cylinder,new Vector3(0,0,.108f-.006f*press),up,new Vector3(.012f,.01f,.012f),BombLed,true);
             BombPiece(WeaponShape.Cube,new Vector3(.02f,0,.18f),i,new Vector3(.004f,.004f,.16f),BombSteel);BombPiece(WeaponShape.Sphere,new Vector3(.02f,0,.26f),i,Vector3.one*.006f,BombLed,true);
         }
-        // The box and its T-handle: dropped in on the cut-in, the handle up, then home at the Lock. Both hands drive it: while the pilot stoops over the box the handle rides up and down in them, and stays down from the Lock.
+        // The crate and its T-handle: dropped in on the cut-in, the handle up, then home at the Lock. Both hands drive it: while the pilot stoops over the crate the handle rides in them, and stays down from the Lock.
+        private const float CrateHigh=.46f,CrateHome=.3f;
         private void Detonator(NativeBombFinale f,float time,CapturedAnimation.Player rig)
         {
-            var box=new Vector3(f.Box.x,f.Box.y,f.Box.z);var d=new Vector3(f.Dir.x,0,f.Dir.z);d=d.sqrMagnitude>1e-5f?d.normalized:Vector3.forward;var q=Quaternion.LookRotation(d,Vector3.up);float slam=Mathf.Clamp01((time-f.At)/.12f),down=Mathf.Clamp01((time-f.Lock)/.05f),stroke=Mathf.Lerp(.42f,.16f,down);box+=Vector3.up*((1-slam)*.5f);
-            if(rig?.Bones!=null&&time>=f.At+NativeBombs.PlungeAt&&time<f.Lock){var hands=(rig.Bones[CapturedRig.LHand].position+rig.Bones[CapturedRig.RHand].position)*.5f;stroke=Mathf.Clamp(hands.y-box.y-.225f,.16f,.62f);}
-            // The case: wood-red with steel corners, a stencilled hazard panel, and two cables running off across the floor.
-            BombPiece(WeaponShape.Cube,box+Vector3.up*.11f,q,new Vector3(.36f,.22f,.28f),new Color(.32f,.13f,.09f));BombPiece(WeaponShape.Cube,box+Vector3.up*.225f,q,new Vector3(.38f,.02f,.3f),BombBlack);BombPiece(WeaponShape.Cube,box+Vector3.up*.11f+d*.143f,q,new Vector3(.3f,.07f,.006f),BombHazard);
-            for(int i=-2;i<=2;i++)BombPiece(WeaponShape.Cube,box+Vector3.up*.11f+d*.1465f+q*new Vector3(i*.06f,0,0),q*Quaternion.Euler(0,0,35),new Vector3(.018f,.09f,.002f),BombBlack);
-            for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){BombPiece(WeaponShape.Cube,box+Vector3.up*.11f+q*new Vector3(sx*.178f,0,sz*.138f),q,new Vector3(.03f,.23f,.03f),BombSteel);}
-            for(int sx=-1;sx<=1;sx+=2){var side=q*Vector3.right*sx;var cable=box+Vector3.up*.03f+side*.2f;var run=(side*.9f-d*.5f);BombPiece(WeaponShape.Cube,cable+run*.5f,Quaternion.LookRotation(run.normalized,Vector3.up),new Vector3(.018f,.018f,run.magnitude),BombBlack);}
+            var box=new Vector3(f.Box.x,f.Box.y,f.Box.z);var d=new Vector3(f.Dir.x,0,f.Dir.z);d=d.sqrMagnitude>1e-5f?d.normalized:Vector3.forward;var q=Quaternion.LookRotation(d,Vector3.up);float slam=Mathf.Clamp01((time-f.At)/.12f),down=Mathf.Clamp01((time-f.Lock)/.05f),stroke=Mathf.Lerp(.5f,CrateHome,down);box+=Vector3.up*((1-slam)*.5f);
+            if(rig?.Bones!=null&&time>=f.At+NativeBombs.PlungeAt&&time<f.Lock){var hands=(rig.Bones[CapturedRig.LHand].position+rig.Bones[CapturedRig.RHand].position)*.5f;stroke=Mathf.Clamp(hands.y-box.y-CrateHigh-.02f,CrateHome,.62f);}
+            Vector3 Up(float y)=>box+Vector3.up*y;float h=CrateHigh;
+            // The crate: wood-red with steel corners, a stencilled hazard panel, a row of sticks strapped to its front, and two cables running off across the floor.
+            BombPiece(WeaponShape.Cube,Up(h*.5f),q,new Vector3(.46f,h,.36f),new Color(.32f,.13f,.09f));BombPiece(WeaponShape.Cube,Up(h+.01f),q,new Vector3(.48f,.02f,.38f),BombBlack);BombPiece(WeaponShape.Cube,Up(h*.72f)+d*.183f,q,new Vector3(.38f,.1f,.006f),BombHazard);
+            for(int i=-2;i<=2;i++)BombPiece(WeaponShape.Cube,Up(h*.72f)+d*.187f+q*new Vector3(i*.076f,0,0),q*Quaternion.Euler(0,0,35),new Vector3(.022f,.13f,.002f),BombBlack);
+            for(int i=-1;i<=1;i++)BombTnt(NativeTnt.Small,Up(h*.3f)+d*.205f+q*new Vector3(i*.07f,0,0),Quaternion.Euler(0,0,90)*q,.26f);BombPiece(WeaponShape.Cube,Up(h*.3f)+d*.2f,q,new Vector3(.3f,.03f,.05f),BombBlack);
+            for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){BombPiece(WeaponShape.Cube,Up(h*.5f)+q*new Vector3(sx*.228f,0,sz*.178f),q,new Vector3(.03f,h+.01f,.03f),BombSteel);}
+            for(int sx=-1;sx<=1;sx+=2){var side=q*Vector3.right*sx;var cable=Up(.03f)+side*.24f;var run=(side*.9f-d*.5f);BombPiece(WeaponShape.Cube,cable+run*.5f,Quaternion.LookRotation(run.normalized,Vector3.up),new Vector3(.018f,.018f,run.magnitude),BombBlack);}
             // The plunger: a steel shaft with its guide collar, the grips rubber-ended on a brass bar.
-            BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke*.5f),q,new Vector3(.03f,stroke,.03f),BombSteel);BombPiece(WeaponShape.Cube,box+Vector3.up*.25f,q,new Vector3(.07f,.03f,.07f),BombBrass);BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke),q,new Vector3(.34f,.035f,.04f),BombBrass);
-            for(int sx=-1;sx<=1;sx+=2)BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke)+q*new Vector3(sx*.15f,0,0),q,new Vector3(.08f,.05f,.05f),BombBlack);
-            for(int s=-1;s<=1;s+=2){BombPiece(WeaponShape.Cube,box+Vector3.up*.235f+q*new Vector3(s*.12f,0,-.08f),q,new Vector3(.03f,.03f,.03f),BombBrass);BombPiece(WeaponShape.Sphere,box+Vector3.up*.2f+q*new Vector3(s*.12f,.02f,.1f),q,Vector3.one*.016f,(time<f.Strike&&Mathf.Sin(time*26+s)>0)?BombLed:new Color(.1f,.01f,.01f),true);}
+            BombPiece(WeaponShape.Cube,Up(h+.02f+stroke*.5f),q,new Vector3(.03f,stroke,.03f),BombSteel);BombPiece(WeaponShape.Cube,Up(h+.045f),q,new Vector3(.07f,.03f,.07f),BombBrass);BombPiece(WeaponShape.Cube,Up(h+.02f+stroke),q,new Vector3(.34f,.035f,.04f),BombBrass);
+            for(int sx=-1;sx<=1;sx+=2)BombPiece(WeaponShape.Cube,Up(h+.02f+stroke)+q*new Vector3(sx*.15f,0,0),q,new Vector3(.08f,.05f,.05f),BombBlack);
+            for(int s=-1;s<=1;s+=2){BombPiece(WeaponShape.Cube,Up(h+.03f)+q*new Vector3(s*.14f,0,-.1f),q,new Vector3(.03f,.03f,.03f),BombBrass);BombPiece(WeaponShape.Sphere,Up(h-.03f)+q*new Vector3(s*.14f,.02f,.17f),q,Vector3.one*.016f,(time<f.Strike&&Mathf.Sin(time*26+s)>0)?BombLed:new Color(.1f,.01f,.01f),true);}
         }
         // The belt: a strap across the chest with a row of sticks in its loops, a satchel on the hip with more showing out of the top. On the rig's chest and pelvis, so it follows every pose.
         private void BombGear(Actor a){if(rigs.TryGetValue(a.Id,out var rig))BombGear(rig);}
