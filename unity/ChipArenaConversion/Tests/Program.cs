@@ -7,6 +7,7 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--technique-rules"){TechniqueRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-sounds"){DeploySoundChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expedition-mutators"){ExpeditionMutatorChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--deploy-performance"){DeployPerformanceChecks.Run(ProjectRoot());return 0;}
@@ -141,7 +142,7 @@ internal static class Program
             if(args.Length==1&&args[0]=="--move-visuals"){MoveVisualChecks.Run(ProjectRoot());JumpMotionChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--rounds-visuals"){RoundsVisualChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--expeditions-menu"){ExpeditionsMenuChecks.Run(ProjectRoot());return 0;}
-            if(args.Length==1&&args[0]=="--techniques"){TechniqueChecks.Run(ProjectRoot());return 0;}
+            if(args.Length==1&&args[0]=="--techniques"){TechniqueChecks.Run(ProjectRoot());TechniqueRulesChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--weapon-sockets"){var socketRoot=ProjectRoot();var socketData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(socketRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});WeaponSocketChecks.Run(socketRoot,socketData);HitFeelChecks.Run(socketRoot,socketData);return 0;}
             if(args.Length==1&&args[0]=="--muzzle-flash"){var mfRoot=ProjectRoot();var mfData=System.Text.Json.JsonSerializer.Deserialize<ConversionContent>(System.IO.File.ReadAllText(System.IO.Path.Combine(mfRoot,"Assets/Conversion/Resources/GameContent.json")),new System.Text.Json.JsonSerializerOptions{IncludeFields=true});MuzzleFlashChecks.Run(mfRoot);WeaponFxChecks.Run(mfRoot,mfData);GunKitChecks.Run(mfRoot,mfData);ChipModuleChecks.Run(mfRoot,mfData);return 0;}
             if(args.Length==1&&args[0]=="--chips"){MachineModelChecks.Run(ProjectRoot());ChipCartridgeChecks.Run(ProjectRoot());return 0;}
@@ -211,7 +212,7 @@ internal static class Program
             ChooserCameraChecks.Run(root,data);ChipScreenChecks.Run(root);
             StructureFxChecks.Run(root);
             IronworksVisualChecks.Run(root);IronworksBossModelChecks.Run(root);IronworksBossPresentationChecks.Run(root);BossVfxRealismChecks.Run(root);
-            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
+            CyberCityChecks.Run(root);CutExitChecks.Run(root);WardZeroChecks.Run(root);ExpeditionLayoutChecks.Run(root);TechniqueChecks.Run(root);TechniqueRulesChecks.Run(root);ExpeditionDressingChecks.Run(root);GeneratedDistrictChecks.Run(root);ExpeditionHubChecks.Run(root);ExpeditionCityChecks.Run(root);ExpeditionJoinPresentationChecks.Run(root);HazardKitChecks.Run(root);MachineModelChecks.Run(root);MachinePlacementChecks.Run(root);TransitionLoadingChecks.Run(root);ExpeditionsMenuChecks.Run(root);ChipCartridgeChecks.Run(root);WardLightingChecks.Run(root);
             PartyLoadingChecks.Run(root);
             AccountXpChecks.Run(root);AccountXpProgressionChecks.RunChecks(root);
             MoveVisualChecks.Run(root);

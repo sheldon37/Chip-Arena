@@ -125,9 +125,10 @@ namespace ChipArena.UnityConversion
                 Setup("rifle");a.Ammo=0;a.Input.Shoot=true;StepPilot(a);Check(Bullets.Count==0&&a.ReloadEnd>Time,"empty rifle did not reload");a.Input.Shoot=false;Advance(a.ReloadEnd-Time+.001f);StepPilot(a);Check(a.Ammo==Magazine(a)&&a.ReloadEnd==0,"reload completion");
                 var reflected=Shot("pistol");b.BlockEnd=Time+1;b.Stats["reflectSpeed"]=10;b.Stats["reflectDamage"]=10;reflected.Position=b.Body.position;reflected.Velocity=Vector3.forward*240;float life=reflected.Life;StepBullets();Check(Bullets.Contains(reflected)&&reflected.Owner==b.Seat.id&&reflected.Velocity.z<0&&reflected.Damage<=100&&reflected.Velocity.magnitude<=120&&reflected.Life<life,"block reflection/limits");Check(!NetworkFrame().projectileEnds.Any(e=>e.Id==reflected.Id),"reflection must not end the replay shot");
                 ValidateRangedQ(Setup,Advance,a,b,wall);
-                foreach(var ability in Content.abilities.Where(d=>d.live&&d.kind!="ads"&&!NativeRangedRules.Q(d.id)))
+                foreach(var ability in Content.abilities.Where(d=>d.live&&d.kind!="technique"&&d.kind!="ads"&&!NativeRangedRules.Q(d.id)))
                 {
                     var weapon=Content.weapons.FirstOrDefault(w=>Content.Ability(w.id,ability.slot)?.id==ability.id);if(weapon==null)throw new Exception("Unmapped live ability: "+ability.id);
+                    // Techniques have their own authority gate: ValidateTechniques.
                     // Standard melee uses Special and pays stamina at commitment. Its Q/E
                     // dispatcher/release contract is checked by ValidateSpecials, not AbilityCast.
                     if(NativeMeleeRules.Standard(weapon.id))continue;

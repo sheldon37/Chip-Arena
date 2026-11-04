@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private void CancelMelee(NativePilot p){p.Swing=null;p.HitPending=false;p.AttackEnd=0;p.MeleeBufferedUntil=-1;}
         private bool TryBlock(NativePilot p)
         {
-            if(CyberSwitching(p))return false;
+            if(CyberSwitching(p)||TechniqueBusy(p)||TechniqueAway(p))return false;
             if(p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p))return false;
             if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd)return false;
             if(LeetBlock(p))return true;
@@ -21,6 +21,7 @@ namespace ChipArena.UnityConversion
         }
         private bool TryRoll(NativePilot p)
         {
+            if(p.Technique?.Kind=="grapple-line")EndTechnique(p);else if(TechniqueBusy(p))return false;
             if(CyberSwitching(p))return false;
             if(Dev(p,"ansatsuken"))
             {if(Time<p.RollReady||Incapacitated(p)||Time<p.BlockEnd)return false;CancelFighter(p);CancelMelee(p);CancelAbilities(p);p.Roll=new RollValues{duration=.3,distance=6.6,iframeStart=.05,iframeSeconds=.2};p.RollAt=Time;p.RollEnd=Time+.3f;p.RollReady=Time+Math.Max(.5f,2.8f*(float)p.Stats["dashCooldown"]);p.RollDirection=new Vector3(p.Input.X,0,p.Input.Z).normalized;if(p.RollDirection.sqrMagnitude<.01f)p.RollDirection=Vec(V3.Forward(p.Input.Yaw));ChipRoll(p);return true;}
@@ -37,7 +38,7 @@ namespace ChipArena.UnityConversion
         }
         private bool TryMelee(NativePilot p,bool chained=false)
         {
-            if(Frozen(p)||SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
+            if(TechniqueBusy(p)||Frozen(p)||SpecialBusy(p)||!NativeMeleeRules.Standard(p.Seat.spec)||Time<p.RollEnd||Incapacitated(p)||!chained&&(Time<p.AttackEnd||Time<p.Ready)||p.ReloadEnd>Time||p.AbilityCast!=null||p.CastAt>0||Time<p.BlockEnd&&!RiposteOpen(p))return false;
             bool air=NativeAirAttackSimulation.Airborne(p.Grounded,NativeHazards.InLava(MapId,Vec(p.Body.position)));if(air&&(!NativeAirAttackSimulation.Starts(p.Grounded,p.AirborneAt,p.AirAttackUsed,Time,p.Input)||chained))return false;
             bool sprint=NativeSprintAttack.Starts(chained,Time>p.MeleeComboUntil?1:p.Combo+2,p.Grounded,p.Input,p.Pose.Sprinting);
             float cost=NativeSprintAttack.Cost(p.Weapon,p.Stats,sprint)*(air?(NativeAirAttackSimulation.DownPitch(p.Input.Pitch)?1.4f:1.25f):1);if(PilotMutator(p,"adrenaline"))cost=0;if(p.Stamina<cost)return false;
@@ -45,7 +46,8 @@ namespace ChipArena.UnityConversion
             p.Swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Yaw*Mathf.Deg2Rad);
             if(sprint)NativeSprintAttack.Apply(p.Swing,(float)p.Stats["attackRate"]);
             if(air){NativeAirAttackSimulation.Begin(p.Swing,p.Input.Pitch,Vec(p.Body.position));NativeAirAttackSimulation.Carry(p.Swing,Vec(p.MoveVelocity));p.AirAttackUsed=true;}else AimMeleeStep(p,chained);
-            p.Swing.Id=nextAttack++;p.Swing.DamageScale*=scale;p.Swing.Remaining=NativeAirAttackSimulation.Down(p.Swing)?0:(int)p.Stats["extraStrikes"];p.Swing.Until=Math.Max(p.Swing.Until,Time+(float)((p.Weapon.windup+.16+p.Stats["extraStrikes"]*.24+.12)/p.Stats["attackRate"]));
+            if(TechniqueAway(p)){p.Swing.Range=1.4f;p.Swing.Distance=0;p.Swing.DamageScale*=6/Math.Max(1,(float)p.Weapon.damage);p.Swing.Remaining=0;}
+            p.Swing.Id=nextAttack++;p.Swing.DamageScale*=scale;p.Swing.Remaining=TechniqueAway(p)||NativeAirAttackSimulation.Down(p.Swing)?0:(int)p.Stats["extraStrikes"];p.Swing.Until=Math.Max(p.Swing.Until,Time+(float)((p.Weapon.windup+.16+p.Stats["extraStrikes"]*.24+.12)/p.Stats["attackRate"]));
             p.MeleeComboUntil=p.Swing.Until+NativeMeleeFeel.ComboPause;
             p.HitAt=p.Swing.HitAt;p.HitPending=true;p.AttackEnd=p.Ready=p.Swing.Until;p.RegenAt=p.AttackEnd+.45f;
             p.BlockEnd=0;p.MoveVelocity=Vector3.zero;
@@ -94,6 +96,7 @@ namespace ChipArena.UnityConversion
             }
             foreach(var m in Minions.ToArray())
             {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider),p.Grounded))continue;Vector3 point=m.Body.position;float actual=MeleeMinionHit(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"],projectile:swing.Id);MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
+            TechniqueMeleeObjects(p,swing,origin);
             foreach(var prop in Props.ToArray())
             {
                 if(prop==null||prop.Indestructible)continue;Vector3 delta=prop.transform.position-origin;float extra=Math.Min(.8f,prop.Definition.size.Length*.3f);

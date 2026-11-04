@@ -170,7 +170,7 @@ namespace ChipArena.UnityConversion
         {
             string[] specs={"fire","water","lightning","darkness"};var row=new float[64];var channels=new float[13];int samples=0,steadyCross=0,swayCross=0,envelopeCross=0,envelopeSamples=0;
             float[] signs={-1,1};
-            for(int element=1;element<=4;element++)foreach(string action in new[]{"idle","primary","guard"}.Concat(content.abilities.Where(a=>a.spec==specs[element-1]).Select(a=>a.id)))
+            for(int element=1;element<=4;element++)foreach(string action in new[]{"idle","primary","guard"}.Concat(content.abilities.Where(a=>a.spec==specs[element-1]&&(a.slot=="q"||a.slot=="e")).Select(a=>a.id)))
             {
                 var definition=content.abilities.FirstOrDefault(a=>a.id==action);var guard=new NativeGuardMotion();var sway=new NativeViewSway();
                 float interval=(float)content.Weapon(specs[element-1]).interval,release=definition==null?NativeAbilityRules.PrimaryWindup(element,1):NativeAbilityRules.CastTime(definition.windup,new ChipStats(new[]{new NumberValue{name="attackRate",value=1}}));

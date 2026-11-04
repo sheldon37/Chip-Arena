@@ -162,7 +162,8 @@ internal static class LockerChecks
 
         // 7. Ability slots read from content, by spec and slot; several options per slot are kept in content order.
         var options=new List<NativeLocker.AbilityOption>();var inv=CultureInfo.InvariantCulture;
-        foreach(var a in data.abilities)
+        // Slot-1 weapon techniques use their separate technique card; this gate covers existing locker Q/E and DEV options.
+        foreach(var a in data.abilities.Where(a=>a.kind!="technique"))
         {
             var w=data.Weapon(a.spec);int n=NativeLocker.SlotOptions(data,w,a.slot,options);var expected=data.abilities.Where(x=>x.spec==a.spec&&x.slot==a.slot).ToArray();
             Check(n==expected.Length&&options.Select(o=>o.Id).SequenceEqual(expected.Select(x=>x.id)),a.spec+" "+a.slot+" options from content");

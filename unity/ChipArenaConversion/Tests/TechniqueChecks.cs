@@ -98,7 +98,7 @@ namespace ChipArena.UnityConversion
         private static void Wiring(string root)
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
-            var arena=R("Core/ArenaModel.cs");Check(!arena.Contains("NativeTechnique"),"no field on the actor: the rules add it");
+            var arena=R("Core/ArenaModel.cs");Check(arena.Contains("NativeTechnique Technique"),"authority technique record on the actor");
             var hud=R("Runtime/NativeFightHud.cs");Check(hud.Contains("if(NativeTechniques.Source!=null&&NativeTechniques.For(p.Seat.spec) is var td&&td!=null)"),"the HUD's card shows only once something holds the records");
             var box=R("Runtime/NativeSandbox.cs");Check(box.Contains("case \"gallery-techniques\":presentation.TechniquePreviewOn=!presentation.TechniquePreviewOn;return DevRan;"),"the preview is the Dev Sandbox's");
             var pres=R("Runtime/NativeTechniquePresentation.cs");foreach(var bad in new[]{"arena.Sandbox","SendInput","Damage(","QReady","EReady"})Check(!pres.Contains(bad),"the presentation does not reach "+bad);

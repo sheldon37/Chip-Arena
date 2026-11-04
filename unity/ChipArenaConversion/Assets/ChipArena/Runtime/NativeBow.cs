@@ -32,6 +32,7 @@ namespace ChipArena.UnityConversion
         private bool BowBusy(NativePilot p)=>p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Time<p.BlockEnd||Time<p.RollEnd||Time<p.AttackEnd||KernelLocked(p);
         private void StepBow(NativePilot p)
         {
+            if(TechniqueBusy(p)){p.BowDrawAt=-1;return;}
             if(p.Seat.spec!="bow")return;
             if(p.BowRainAt>-90&&p.Hp>0&&p.Seat.connected)
                 while(p.BowRainNext<12&&Time>=p.BowRainAt+.6f+p.BowRainNext*.1f)

@@ -42,6 +42,7 @@ namespace ChipArena.UnityConversion
         private bool AbilityBusy(NativePilot p)=>p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
+            if(TechniqueBusy(p)||TechniqueAway(p))return;
             if(p.Seat.spec=="bow"){StepBowAbilities(p);return;}
             if(p.Seat.spec=="cyberlord"){StepCyberInput(p);return;}
             if(NativeMeleeRules.Standard(p.Seat.spec)){StepMeleeAbilityInput(p);return;}
@@ -178,7 +179,7 @@ namespace ChipArena.UnityConversion
         {if(actual<=0)return;p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+actual*(float)p.Stats["manaSurge"]);p.LeechPending+=actual*(float)p.Stats["abilityLeech"];}
         private List<NativePilot> AbilityBlast(NativePilot owner,Vector3 at,float radius,float damage,float impulse,int element,float propScale=1,Action onMinion=null,string effect="ability")
         {
-            var hits=new List<NativePilot>();
+            TechniqueBlastObjects(owner,at,radius,damage);var hits=new List<NativePilot>();
             foreach(var p in Pilots)
             {
                 Vector3 delta=p.Body.position-at;float fall=NativeAbilityRules.BlastFalloff(delta.magnitude,radius);
@@ -228,6 +229,7 @@ namespace ChipArena.UnityConversion
                     Vector3 delta=Vector3.ClampMagnitude(s.Velocity*dt+Vector3.down*(.5f*s.Gravity*dt*dt),Math.Max(0,s.MaxTravel-s.Travel));s.Velocity.y-=s.Gravity*dt;
                     if(HubInside(s.Position)||HubCross(s.Position,s.Position+delta,s.Radius)){AbilityShots.RemoveAt(i);continue;}
                     if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){AbilityShots.RemoveAt(i);continue;}
+                    if(TechniqueObstacle(s.Owner,s.Position,delta,s.Radius,s.Damage,out _)){AbilityShots.RemoveAt(i);continue;}
                     var hits=ProjectileHits(s.Position,s.Radius,delta);
                     bool contact=false;
                     foreach(var h in hits)
@@ -236,6 +238,7 @@ namespace ChipArena.UnityConversion
                         var minion=h.collider.GetComponent<NativeMinionBody>()?.Minion;if(minion!=null&&(minion.Hp<=0||!CanHit(s.Owner,minion)||s.Hit.Contains(minion.Id)))continue;
                         if(body!=null&&(body.Pilot==s.Owner||body.Pilot.Hp<=0||!CanHit(s.Owner,body.Pilot)||s.Hit.Contains(body.Pilot.Seat.id)||Invulnerable(body.Pilot)))continue;
                         s.Travel+=h.distance;s.Position+=delta.normalized*h.distance;
+                        if(body!=null&&TryTechniqueParry(body.Pilot,s.Velocity,h.point)){if(s.Reflections++>=3){remove=true;contact=true;break;}s.Owner=body.Pilot;s.Velocity=Vec(GunRules.Direction(s.Owner.Input.Yaw,s.Owner.Input.Pitch))*Math.Max(1,s.Velocity.magnitude);s.Position+=s.Velocity.normalized*(s.Radius+.5f);s.Hit.Clear();contact=true;break;}
                         if(body!=null&&AbsorbCharge(body.Pilot,s.Velocity,h.point,s.Id)){remove=true;contact=true;break;}
                         if(body!=null&&Time<body.Pilot.BlockEnd&&d.id!="tidal-wave"&&s.Reflections<3)
                         {BlockProc(body.Pilot,s.Owner,h.point,"deflect");s.Owner=body.Pilot;s.Reflections++;s.Damage=Math.Min(100,s.Damage*(float)s.Owner.Stats["reflectDamage"]);s.Velocity=Vector3.ClampMagnitude(-s.Velocity*(float)s.Owner.Stats["reflectSpeed"],120);s.Position+=s.Velocity.normalized*(s.Radius+.5f);s.Hit.Clear();contact=true;break;}

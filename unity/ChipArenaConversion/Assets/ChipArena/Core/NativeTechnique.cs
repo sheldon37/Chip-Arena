@@ -6,8 +6,7 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// A weapon's technique, the third ability on key 1 (owner 2026-11-03, docs/WEAPON-TECHNIQUES.md). The contract between the rules
-    /// (Astra's) and the presentation: everything the pose, the effects, the sound and the HUD read. Authority-owned once the rules
-    /// exist; until then only <see cref="NativeTechniquePreview"/> writes it, in the Dev Sandbox. Times are on the presentation clock.
+    /// (Astra's) and the presentation: everything the pose, the effects, the sound and the HUD read. Authority-owned in play; <see cref="NativeTechniquePreview"/> supplies optional Dev Sandbox previews. Times are on the presentation clock.
     /// </summary>
     [Serializable] public sealed class NativeTechnique
     {
@@ -23,16 +22,17 @@ namespace ChipArena.UnityConversion
         public bool Hit(float time)=>HitAt>-50&&time>=HitAt;
         public bool Recast(float time)=>RecastAt>-50&&time>=RecastAt;
         public NativeTechnique ViewCopy()=>(NativeTechnique)MemberwiseClone();
+        private static readonly string[] Phases=new[]{"windup","active","guard","counter","recovery","throw","cloud","plant","wall","recall","flight","stuck","leap","return","flick","air","drop","armed","fire","reel","draw","burst","crouch","cast","pool","set","bolt","swap"};
         public bool Valid()
         {
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;bool S(string v)=>v==null||v.Length<=32;
-            return S(Kind)&&S(Phase)&&F(At)&&F(Release)&&F(Until)&&F(RecoverUntil)&&F(HitAt)&&F(RecastAt)&&F(Arm)&&V(From)&&V(Point)&&V(To)&&V(Dir)&&(Kind==null||Release>=At&&Until>=Release);
+            return (Kind==null||NativeTechniques.Find(Kind)!=null)&&(Phase==null||Array.IndexOf(Phases,Phase)>=0)&&Target>=0&&Target<1000000&&S(Kind)&&S(Phase)&&F(At)&&F(Release)&&F(Until)&&F(RecoverUntil)&&F(HitAt)&&F(RecastAt)&&F(Arm)&&V(From)&&V(Point)&&V(To)&&V(Dir)&&(Kind==null||Release>=At&&Until>=Release&&Until-At<=60&&RecoverUntil-At<=60);
         }
     }
     /// <summary>Where the presentation reads an actor's technique: the snapshot's, once the rules replicate it, or the preview's.</summary>
     public interface ITechniqueSource{NativeTechnique Of(int actor);}
 
-    /// <summary>The twelve techniques, a weapon each (docs/WEAPON-TECHNIQUES.md: the numbers are the proposal the rules will own).</summary>
+    /// <summary>The twelve techniques, a weapon each (docs/WEAPON-TECHNIQUES.md: the implemented base numbers).</summary>
     public static class NativeTechniques
     {
         public sealed class Def{public string Id,Spec,Name,Icon;public float Cooldown,Cost;public int Accent;}
@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The weapon's technique (null: a DEV class, or none).</summary>
         public static Def For(string spec){foreach(var d in All)if(d.Spec==spec)return d;return null;}
         public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;return null;}
-        /// <summary>Who holds the records (null: nobody yet, and nothing shows). Set by the preview, later from the snapshot.</summary>
+        /// <summary>Who holds the records (null: no active snapshot). Set from the rendered snapshot; the sandbox preview may override it.</summary>
         public static ITechniqueSource Source;
         public static NativeTechnique Of(Actor a)=>a==null||Source==null?null:Source.Of(a.Id);
         /// <summary>The weapon out of the pilot's hand this frame: the planted shield, the thrown greatsword until it is caught.</summary>
@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         {
             float t=Math.Max(0,time-k.Release);return new Vector3(k.From.x+k.Dir.x*CoinDrift*t,k.From.y+CoinLift*t-.5f*CoinFall*t*t,k.From.z+k.Dir.z*CoinDrift*t);
         }
-        public const float CoinDrift=2.2f,CoinLift=5.4f,CoinFall=9.8f,CoinAir=1.1f;
+        public const float CoinDrift=2.2f,CoinLift=6.1f,CoinFall=9.8f,CoinAir=1.4f;
         /// <summary>The thrown greatsword's place at `time`, and how far through its flight or its return (0..1).</summary>
         public static Vector3 BladeAt(NativeTechnique k,float time,Vector3 catcher,out float flight)
         {
