@@ -50,21 +50,6 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)
             {var k=p.Technique;if(k?.Kind!="sentry-drop"||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0||!CanHit(owner,p))continue;var point=Vec(k.Point)+Vector3.up*.65f;float fall=NativeAbilityRules.BlastFalloff(Vector3.Distance(at,point),radius);if(fall<=0||!MeleeVisible(at,point,owner,null))continue;p.TechniqueHealth-=damage*fall;k.HitAt=Time;if(p.TechniqueHealth<=0)EndTechnique(p);}
         }
-        private bool BotTechnique(NativePilot p,ref InputFrame input,Vector3 target,float distance,bool visible,int level)
-        {
-            var def=NativeTechniques.For(p.Seat.spec);if(def==null||!visible||TechniqueBlocked(p))return false;
-            var k=p.Technique;
-            if(NativeTechniqueRules.Recast(k,Time)&&!TechniqueBusy(p))
-            {bool recast=k.Kind=="anchor-throw"&&distance>3||k.Kind=="static-recall"&&(p.Hp<p.Stats["hp"]*.45||distance<4);if(recast){input.SirenAbility=1;input.AbilityQ=input.AbilityE=input.Attack=input.Shoot=input.Roll=input.Block=false;return true;}}
-            if(k?.Kind=="ricochet-coin"&&NativeTechniqueRules.Live(k,Time)&&k.HitAt<-50)
-            {var coin=NativeTechniques.CoinAt(k,Time+.04f);var aim=new Vector3(coin.X,coin.Y,coin.Z)-p.Body.position-Vector3.up*.3f;input.Yaw=Mathf.Atan2(aim.x,aim.z)*Mathf.Rad2Deg;input.Pitch=Mathf.Atan2(aim.y,new Vector2(aim.x,aim.z).magnitude)*Mathf.Rad2Deg;input.AimTarget=new V3(coin.X,coin.Y,coin.Z);input.Shoot=true;input.AbilityQ=input.AbilityE=false;return true;}
-            if(Time<p.TechniqueReady||NativeTechniqueRules.Live(k,Time)||TechniqueBusy(p)||random.NextDouble()>NativeBotRules.Chance(level)*.15)return false;
-            bool use=def.Id=="riposte"?distance<4||input.Block:def.Id=="healing-spring"?p.Hp<p.Stats["hp"]*.75:def.Id=="smoke-veil"?p.Hp<p.Stats["hp"]*.6:def.Id=="ignition-leap"?distance<6:def.Id=="anchor-throw"?distance>3&&distance<16:def.Id=="shade-swap"?distance>4&&distance<18:distance<18;
-            if(!use)return false;input.SirenAbility=1;input.AbilityQ=input.AbilityE=input.Attack=input.Shoot=input.Roll=input.Block=false;
-            if(def.Id=="healing-spring"||def.Id=="gale-arrow"){input.Pitch=-80;input.AbilityTarget=Vec(p.Body.position-Vector3.up*.865f);}
-            if(def.Id=="grapple-line")input.Pitch=25;
-            return true;
-        }
         private bool BotSentry(NativePilot p,out InputFrame input)
         {
             input=default;var enemy=Pilots.Where(q=>q!=p&&Enemy(p,q)&&q.Technique?.Kind=="sentry-drop"&&NativeTechniqueRules.Live(q.Technique,Time)&&q.TechniqueHealth>0&&Vector3.Distance(p.Body.position,Vec(q.Technique.Point))<24&&MeleeVisible(p.Body.position,Vec(q.Technique.Point)+Vector3.up*.65f,p,null)).OrderBy(q=>(Vec(q.Technique.Point)-p.Body.position).sqrMagnitude).FirstOrDefault();

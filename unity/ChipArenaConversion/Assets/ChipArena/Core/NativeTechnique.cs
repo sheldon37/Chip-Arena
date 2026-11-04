@@ -5,7 +5,7 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// A weapon's technique, the third ability on key 1 (owner 2026-11-03, docs/WEAPON-TECHNIQUES.md). The contract between the rules
+    /// A weapon's technique, an optional Q/E replacement (owner 2026-11-03, docs/WEAPON-TECHNIQUES.md). The contract between the rules
     /// (Astra's) and the presentation: everything the pose, the effects, the sound and the HUD read. Authority-owned in play; <see cref="NativeTechniquePreview"/> supplies optional Dev Sandbox previews. Times are on the presentation clock.
     /// </summary>
     [Serializable] public sealed class NativeTechnique

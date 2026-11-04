@@ -26,7 +26,7 @@ namespace ChipArena.UnityConversion
         public Actor Pose=new Actor();public InputFrame Input;public float Hp,Mana,Stamina,Yaw,Pitch;
         public NativeFanBurst Fan;public float OverdriveAt,OverdriveUntil,VentUntil;
         public int Ammo,Combo=-1,AimShots;public float Ready,RegenAt,ReloadAt,ReloadEnd,BlockEnd,BlockReady,RollAt=-100,RollEnd,RollReady,StunEnd,StaggerImmune,CastAt,SlowEnd,SoakedAt=-100;
-        public float AttackAt=-100,HitAt,AttackEnd,LastAttack=-100,LastShot=-100,AimAt=-100,QReady,EReady,TechniqueReady;
+        public float AttackAt=-100,HitAt,AttackEnd,LastAttack=-100,LastShot=-100,AimAt=-100,QReady,EReady;
         public float AirborneAt=-1;public bool AirAttackUsed;public int AirJumps;public float AirJumpAt=-100;
         public Vector3 Knockback,RollDirection;public RollValues Roll;public bool HitPending,Aiming,SprintExhausted,Grounded;
         public NativeAbilityCast AbilityCast;public string BufferedSlot;public float BufferedAt,HoldAt=-1,SlowFactor=1,SlowImmune;public int ECharges=1;

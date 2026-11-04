@@ -16,9 +16,9 @@ namespace ChipArena.UnityConversion
         {
             data.Validate();Check(data.sourceCommit==fixtures.sourceCommit,"Source receipts differ");
             // The source's inventory, plus the Unity-only Bow (Astra, PR #141: one weapon, its Q and E) and the DEV Cyber Lord
-            // (Astra, PR #142: one DEV-only weapon, its Q, E and 1-4). Standard slot-1 techniques are Unity-only; their twelve rows have separate contract checks.
+            // (Astra, PR #142: one DEV-only weapon, its Q, E and 1-4). Optional standard techniques are Unity-only; their twelve rows have separate contract checks.
             Check(data.weapons.Count(w=>w.id!="bow"&&w.id!="cyberlord")==15&&data.weapons.Length==17&&data.weapons.Count(w=>w.id=="cyberlord"&&w.devOnly)==1&&data.chips.Length==236&&data.maps.Count(m=>!m.unity)==15&&data.maps.Where(m=>!m.unity).Sum(m=>m.blocks.Length)==3451
-                &&data.abilities.Count(a=>a.slot!="1"&&!NativeMeleeRules.Standard(a.spec)&&a.spec!="bow"&&a.spec!="cyberlord")==14&&data.abilities.Count(a=>a.spec=="bow"&&a.slot!="1")==2&&data.abilities.Count(a=>a.spec=="cyberlord")==6,"Content inventory differs from pinned source");
+                &&data.abilities.Count(a=>a.kind!="technique"&&!NativeMeleeRules.Standard(a.spec)&&a.spec!="bow"&&a.spec!="cyberlord")==14&&data.abilities.Count(a=>a.spec=="bow"&&a.kind!="technique")==2&&data.abilities.Count(a=>a.spec=="cyberlord")==6,"Content inventory differs from pinned source");
             int values=0;
             foreach(var c in fixtures.cases)
             {

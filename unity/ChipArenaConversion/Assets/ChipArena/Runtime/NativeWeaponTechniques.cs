@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class NativeArena
     {
+        private string TechniqueSlot(NativePilot p)=>p.Seat.bot?"":NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec);
+        private float TechniqueCooldown(NativePilot p)=>TechniqueSlot(p)=="q"?p.QReady:p.EReady;
         private bool TechniqueBusy(NativePilot p)=>NativeTechniqueRules.Busy(p.Technique,Time);
         private bool TechniqueAway(NativePilot p)=>NativeTechniques.WeaponAway(p.Technique,Time);
         private bool TechniqueBlocked(NativePilot p)=>p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Frozen(p)||Time<p.RollEnd||Time<p.BlockEnd||p.HeldBy!=null||p.Controlling!=null||p.ControlledBy!=null||KernelBusy(p);
@@ -23,12 +25,15 @@ namespace ChipArena.UnityConversion
             var k=p.Technique;
             if(k!=null&&Time<k.End&&(p.Input.CancelAbilities||TechniqueBlocked(p))&&(Time<k.Release||TechniqueBusy(p)||NativeTechniqueRules.Moving(k,Time)))EndTechnique(p);
             if(k?.Kind==NativeTechniques.GrappleLine&&(p.Input.Jump||p.Input.Roll))EndTechnique(p);
-            if(p.Input.SirenAbility==1)TryTechnique(p);
+            string slot=TechniqueSlot(p);bool press=slot=="q"?p.Input.AbilityQ:slot=="e"&&p.Input.AbilityE;
+            if(slot=="q")p.Input.AbilityQ=false;else if(slot=="e"){p.Input.AbilityE=p.Input.AbilityEReleased=false;p.HoldAt=-1;}
+            if(p.BufferedSlot==slot)p.BufferedSlot=null;
+            if(press&&!p.Input.CancelAbilities)TryTechnique(p);
             if(p.Technique!=null&&!p.TechniqueReleased&&Time>=p.Technique.Release&&Time<p.Technique.Until)ReleaseTechnique(p);
         }
         private bool TryTechnique(NativePilot p)
         {
-            if(Replica||TechniqueBlocked(p))return false;
+            string slot=TechniqueSlot(p);if(slot==""||Replica||p.Input.CancelAbilities||TechniqueBlocked(p))return false;
             var old=p.Technique;
             if(NativeTechniqueRules.Recast(old,Time))
             {
@@ -47,7 +52,7 @@ namespace ChipArena.UnityConversion
                     return true;
                 }
             }
-            var d=Content.Ability(p.Seat.spec,"1");if(d==null||!d.live||NativeTechniques.For(p.Seat.spec)?.Id!=d.id||Time<p.TechniqueReady||TechniqueBusy(p)||NativeTechniqueRules.Live(old,Time)||Time<p.Ready||Time<p.AttackEnd||SpecialBusy(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||p.ReloadEnd>Time)return false;
+            var d=Content.Ability(p.Seat.spec,"technique");if(d==null||!d.live||NativeTechniques.For(p.Seat.spec)?.Id!=d.id||Time<TechniqueCooldown(p)||TechniqueBusy(p)||NativeTechniqueRules.Live(old,Time)||Time<p.Ready||Time<p.AttackEnd||SpecialBusy(p)||p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||p.ReloadEnd>Time)return false;
             bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic";float cost=melee&&PilotMutator(p,"adrenaline")?0:NativeAbilityRules.Cost(d,p.Stats);
             if(melee&&p.Stamina<cost||magic&&p.Mana<cost||HubInside(p.Body.position))return false;
             Vector3 direction=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)),feet=p.Body.position-Vector3.up*.865f,point=feet;
@@ -56,7 +61,7 @@ namespace ChipArena.UnityConversion
             if(d.id==NativeTechniques.HealingSpring)
             {point=GroundPoint(AimedAbilityPoint(p,14));if(!root.scene.GetPhysicsScene().Raycast(point+Vector3.up*.1f,Vector3.down,out var floor,.3f,WorldMask,QueryTriggerInteraction.Ignore)||floor.normal.y<.5f)return false;if(Vector3.Distance(point,feet)>14.5f||HubInside(point)||HubCross(p.Body.position,point))return false;}
             if(melee)p.Stamina-=cost;if(magic)p.Mana-=cost;p.RegenAt=Time+.45f;
-            p.TechniqueReady=Time+(p.DevNoCooldowns?0:NativeAbilityRules.Cooldown(d,p.Stats));
+            float ready=Time+(p.DevNoCooldowns?0:NativeAbilityRules.Cooldown(d,p.Stats));if(slot=="q")p.QReady=ready;else{p.EReady=ready;p.ECharges=0;}
             float release=Time+NativeAbilityRules.CastTime(d.windup,p.Stats);
             p.Technique=new NativeTechnique{Kind=d.id,Phase=TechniqueFirstPhase(d.id),At=Time,Release=release,Until=release+(float)d.duration,RecoverUntil=release+NativeAbilityRules.CastTime(d.lockout,p.Stats),From=Vec(p.Body.position+Vector3.up*.3f),Point=Vec(point),Dir=Vec(direction)};
             p.TechniqueReleased=false;p.TechniqueNext=release;p.TechniqueHealth=0;

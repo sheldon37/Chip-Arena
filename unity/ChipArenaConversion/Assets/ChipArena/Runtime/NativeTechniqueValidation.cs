@@ -21,13 +21,13 @@ namespace ChipArena.UnityConversion
                 {
                     p.Seat.spec=p==a?spec:"sword";p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Seat.chips.Clear();p.Seat.bot=false;p.Seat.connected=p.Seat.alive=true;
                     p.Hp=p.Stamina=p.Mana=100;p.Ammo=100;p.Body.isKinematic=false;p.Collider.enabled=true;p.Body.position=new Vector3(1000,100,p==a?1000:1005);p.Body.linearVelocity=p.MoveVelocity=p.Knockback=Vector3.zero;
-                    p.Technique=null;p.TechniqueReady=0;p.TechniqueReleased=false;p.Special=null;p.Swing=null;p.MeleeKit=new NativeMeleeKit();p.Down=null;p.Juggle=null;p.Roll=null;p.HeldBy=p.Controlling=p.ControlledBy=null;
+                    p.Seat.weaponTechniques=NativeTechniqueLoadout.With("",p.Seat.spec,"e");p.QReady=p.EReady=0;p.Technique=null;p.TechniqueReleased=false;p.Special=null;p.Swing=null;p.MeleeKit=new NativeMeleeKit();p.Down=null;p.Juggle=null;p.Roll=null;p.HeldBy=p.Controlling=p.ControlledBy=null;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.ReloadEnd=p.CastAt=p.LaunchUntil=p.StaggerImmune=0;p.SlowFactor=1;p.SlowEnd=0;p.Grounded=true;p.Dots.Clear();CancelAbilities(p);
-                    p.Input=new InputFrame{Yaw=p==a?0:180,SirenAbility=1,Pitch=0,AbilityTarget=new V3(1000,99.135f,1003)};p.Yaw=p.Input.Yaw;
+                    p.Input=new InputFrame{Yaw=p==a?0:180,Pitch=0,AbilityTarget=new V3(1000,99.135f,1003)};p.Yaw=p.Input.Yaw;
                 }
                 Physics.SyncTransforms();
             }
-            void Release(){Advance(a.Technique.Release-Time+.001f);a.Input.SirenAbility=0;StepTechniqueInput(a);Check(a.TechniqueReleased,"release executes");}
+            void Release(){Advance(a.Technique.Release-Time+.001f);a.Input.AbilityQ=a.Input.AbilityE=false;StepTechniqueInput(a);Check(a.TechniqueReleased,"release executes");}
             try
             {
                 foreach(var d in NativeTechniques.All)
@@ -37,11 +37,16 @@ namespace ChipArena.UnityConversion
                     a.RollEnd=Time+1;Check(!TryTechnique(a),"roll refuses "+d.Id);a.RollEnd=0;
                     a.Mana=a.Stamina=0;if(d.Cost>0)Check(!TryTechnique(a),"unfunded "+d.Id);a.Mana=a.Stamina=100;
                     Check(TryTechnique(a),"cast "+d.Id);Check(a.Technique.Kind==d.Id&&a.Technique.Valid(),"record "+d.Id);Check(!TryTechnique(a),"duplicate press "+d.Id);
-                    Check(Math.Abs(a.TechniqueReady-Time-d.Cooldown)<.001,"cooldown "+d.Id);
+                    Check(Math.Abs(a.EReady-Time-d.Cooldown)<.001,"cooldown "+d.Id);
                     Check(Math.Abs((a.Weapon.@class=="melee"?a.Stamina:a.Mana)-(100-d.Cost))<.001,"resource "+d.Id);Release();
                     Check(a.Technique.Valid(),"released record "+d.Id);
-                    var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.snapshot.Actors.First(x=>x.Id==a.Seat.id).Technique?.Kind==d.Id,"Unity codec actor "+d.Id);Check(Math.Abs(frame.pilots.First(x=>x.id==a.Seat.id).techniqueReady-a.TechniqueReady)<.001,"Unity codec deadline "+d.Id);
+                    var frame=NativeFrameCodec.Clone(NetworkFrame());Check(frame.snapshot.Actors.First(x=>x.Id==a.Seat.id).Technique?.Kind==d.Id,"Unity codec actor "+d.Id);Check(Math.Abs(frame.pilots.First(x=>x.id==a.Seat.id).eReady-a.EReady)<.001,"Unity codec deadline "+d.Id);
                 }
+                Setup("sword");a.Seat.weaponTechniques="";a.Input.SirenAbility=1;StepTechniqueInput(a);Check(a.Technique==null,"key one and default loadout do not cast techniques");
+                a.Seat.weaponTechniques="sword:q";a.Input.AbilityQ=true;StepTechniqueInput(a);Check(a.Technique?.Kind=="riposte"&&!a.Input.AbilityQ&&a.QReady>Time&&a.EReady==0,"Q replacement consumes Q and tracks Q cooldown only");
+                Setup("fire");a.EReady=Time+10;a.ECharges=3;a.Input.AbilityE=true;StepTechniqueInput(a);StepAbilities(a);Check(a.Technique==null&&a.AbilityCast==null&&!a.Input.AbilityE&&a.EReady==Time+10,"E cooldown refuses both technique and replaced spell despite charges");
+                Setup("sword");a.Seat.bot=true;Check(!TryTechnique(a),"bots retain defaults");
+                Setup("rifle");a.Seat.weaponTechniques="rifle:q";Check(!TryTechnique(a),"scope cannot be replaced");
                 Setup("sword");TryTechnique(a);Release();float hp=a.Hp;Check(TryTechniqueParry(a,Vector3.back,a.Body.position,b),"frontal parry");Check(a.Hp==hp&&b.Hp==78&&b.StunEnd>Time,"22 counter / .35 stun");Check(!TryTechniqueParry(a,Vector3.back,a.Body.position,b),"only one counter");
                 Setup("sword");TryTechnique(a);Release();var incoming=new NativeBullet{Owner=b.Seat.id,Original=b.Seat.id,Spec="pistol",Velocity=Vector3.back*50,Damage=10,Position=a.Body.position};
                 Check(!BulletImpact(incoming,b,new NativeContact{Collider=a.Collider,Point=a.Body.position,Contact=a.Body.position,Normal=Vector3.forward})&&incoming.Owner==a.Seat.id&&incoming.Velocity.z>0&&a.Hp==100,"projectile parry follows defender aim");
