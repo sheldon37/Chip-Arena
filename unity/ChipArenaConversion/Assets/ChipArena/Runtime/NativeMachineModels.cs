@@ -35,6 +35,8 @@ namespace ChipArena.UnityConversion
             // The directed entrances' stage: the sculpted pylon and dais (NativeIntros' EntranceProps.Model).
             Add(NativeEntranceStageModels.PylonId,NativeEntranceStageModels.Pylon());Add(NativeEntranceStageModels.DaisId,NativeEntranceStageModels.Dais());
             Add(NativeEntranceStageModels.PodId,NativeEntranceStageModels.Pod());Add(NativeEntranceStageModels.PodDoorId,NativeEntranceStageModels.PodDoor());
+            // The hub's REVIVE-O-MATIC (Core/NativeReviveMachineModels.cs).
+            ReviveMachineSkins(Add);
             // The dressing round the machines in the generated instances (Core/NativeInstanceMachineDress.cs).
             foreach(var (id,build,_) in NativeInstanceMachineDress.All)Add(id,build());
             // The Expedition drop pod and its door (Core/NativePodModels.cs; NativePodPresentation.cs tints its parts).

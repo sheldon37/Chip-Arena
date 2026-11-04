@@ -130,6 +130,7 @@ namespace ChipArena.UnityConversion
                 {
                     expeditionReplicaHub=GeneratedRun?.World.Hub??ExpeditionHubLayout.Parse(json,area.id);
                     foreach(var gate in expeditionReplicaHub.Gates){hubDoors.Add(Box(gate.Id,gate.Closure,gate.Closure.y,gate.Closure.sy));hubTops.Add(Box(gate.Id+" no vault",gate.Closure,21.55f,36.9f));}
+                    ReviveMachineCollision();
                 }
             }
             foreach(var closure in view.closures)if(closure.area==area.id&&expeditionClosures.TryGetValue(closure.id,out var box))box.enabled=closure.Blocking;
