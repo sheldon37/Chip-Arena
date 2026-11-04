@@ -89,7 +89,7 @@ namespace ChipArena.UnityConversion
         {U.Text(new Rect(x,y,w,14),label,10,NativeCyberTheme.Muted(),TextAnchor.MiddleLeft,mono:true,tracking:.12f);U.Text(new Rect(x,y,w,14),value,13,tone,TextAnchor.MiddleRight,mono:true);}
         // A card's state (an optional line icon ahead of the name; the ready, active, recast and low flags are what a new ability's states set: the Fan the Hammer and
         // Overdrive cards plug in by filling them; the drawing reads nothing else). Dial: the cooldown done, 0..1, or -1.
-        private struct Card {public string Key,State,Sub,Icon;public bool Ready,Active,Recast,Low;public float Dial;}
+        private struct Card {public string Key,State,Sub,Icon;public bool Ready,Active,Recast,Low,Held;public float Dial,Shake;}
         private readonly NativeMeleeKitHud.Span qSpan=new NativeMeleeKitHud.Span(),eSpan=new NativeMeleeKitHud.Span(),blockSpan=new NativeMeleeKitHud.Span(),rollSpan=new NativeMeleeKitHud.Span();
         // The dial of a cooldown the HUD knows only by its ready time (block, roll): the span it rose to (Span), 1 once ready.
         private static float SpanDial(NativeMeleeKitHud.Span span,float remaining){float total=span.Update(remaining,1);return remaining>0?1-Mathf.Clamp01(remaining/Mathf.Max(.01f,total)):1;}
@@ -103,8 +103,30 @@ namespace ChipArena.UnityConversion
         private Card TechniqueCard(NativePilot p,NativeTechniques.Def td,string slot)
         {
             float t=arena.Time;var d=content.Ability(p.Seat.spec,"technique");bool melee=p.Weapon.@class=="melee",magic=p.Weapon.@class=="magic";float cost=d!=null?(float)NativeAbilityRules.Cost(d,p.Stats):td.Cost;
-            var c=NativeTechniques.Card(NativeTechniques.Source?.Of(p.Seat.id),t,(slot=="q"?p.QReady:p.EReady)-t,d!=null?(float)NativeAbilityRules.Cooldown(d,p.Stats):td.Cooldown,melee?p.Stamina<cost:magic&&p.Mana<cost,melee?"LOW STAMINA":"LOW MANA");
-            return new Card{Key=slot.ToUpperInvariant()+" · "+td.Name.ToUpperInvariant(),State=c.State,Icon=td.Icon,Ready=c.Ready,Active=c.Active,Recast=c.Recast,Low=c.Low,Dial=c.Dial};
+            var c=NativeTechniques.Card(NativeTechniques.Source?.Of(p.Seat.id),t,(slot=="q"?p.QReady:p.EReady)-t,d!=null?(float)NativeAbilityRules.Cooldown(d,p.Stats):td.Cooldown,melee?p.Stamina<cost:magic&&p.Mana<cost,melee?"LOW STAMINA":"LOW MANA",p==arena.Local?techniqueRefused:null);
+            float denied=Time.unscaledTime-techniqueDeniedAt,shake=prefs.reducedEffects||denied>=.3f?0:Mathf.Sin(denied*60)*(1-denied/.3f)*4;
+            return new Card{Key=slot.ToUpperInvariant()+" · "+td.Name.ToUpperInvariant(),State=c.State,Icon=td.Icon,Ready=c.Ready,Active=c.Active,Recast=c.Recast,Low=c.Low,Held=c.Held,Dial=c.Dial,Shake=shake};
+        }
+        // A press the rules would refuse must not feel like a dead key. Once a frame, for my own pilot with a technique swapped in: why a press
+        // would be refused for where it is aimed (the rules' own answer), which the card shows; and when a press lands anyway, the reason under
+        // the crosshair, the card's shake and the error cue. A press still on cooldown says nothing: the card's count already does.
+        private string techniqueRefused,techniqueDeniedWhy;private float techniqueDeniedAt=-9;private bool techniquePressHeld;
+        private void TechniqueAimCheck(NativePilot p)
+        {
+            string slot=p==arena.Local?NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec):"";
+            techniqueRefused=slot==""?null:arena.TechniqueRefusal(p,in pending);
+            bool down=slot=="q"?pending.AbilityQ:slot=="e"&&pending.AbilityE,press=down&&!techniquePressHeld;techniquePressHeld=down;
+            if(!press||techniqueRefused==null)return;float t=arena.Time;
+            if(!NativeTechniqueRules.Recast(p.Technique,t)&&(slot=="q"?p.QReady:p.EReady)>t)return;
+            techniqueDeniedAt=Time.unscaledTime;techniqueDeniedWhy=techniqueRefused;nativeAudio?.UiCue(NativeUiSounds.Error,"ui",.5f);
+        }
+        private void TechniqueDeniedLine()
+        {
+            float age=Time.unscaledTime-techniqueDeniedAt;if(techniqueDeniedWhy==null||age>=1.1f)return;
+            string text=NativeTechniques.RefusalLine(techniqueDeniedWhy);if(text==null)return;float a=age<.75f?1:1-(age-.75f)/.35f,w=U.Measure(text,12,true,true,.12f).x+28,h=24;
+            float kick=prefs.reducedEffects||age>=.22f?0:Mathf.Sin(age*46)*(1-age/.22f)*5;var r=new Rect(U.W/2-w/2+kick,U.H/2+38,w,h);
+            NativeHudChrome.Cut(r,NativeCyberTheme.Navy(.86f*a),NativeHudCyber.CardCut);NativeHudChrome.Outline(r,NativeCyberTheme.Danger(.8f*a),NativeHudCyber.CardCut);
+            U.Text(r,text,12,NativeCyberTheme.Danger(a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.12f);
         }
         private readonly System.Collections.Generic.List<Card> cards=new System.Collections.Generic.List<Card>();
         // .cooldowns: RMB block, SHIFT roll and the Q / E cards, right to left from the corner.
@@ -142,7 +164,7 @@ namespace ChipArena.UnityConversion
                 float left=d==null?Math.Max(0,p.EReady-t):slot=="q"?p.QReady-t:p.ECharges>0?0:p.EReady-t,cd=d!=null&&d.cooldown>0?(float)d.cooldown:1;
                 cards.Add(new Card{Key=name,State=state.Length>0&&char.IsDigit(state[0])?state:state.ToUpperInvariant(),Ready=state=="ready",Active=state=="casting"||state=="active",Low=state=="low mana"||state=="low stamina",Dial=d!=null&&d.kind!="ads"?1-Mathf.Clamp01(left/cd):-1});
             }
-            float x=right;for(int i=cards.Count-1;i>=0;i--){var c=cards[i];float since=hudEvents.Rise(CardSlot+i,t,c.Ready);x=CardAt(c,x,bottom,since)-6;}
+            float x=right;for(int i=cards.Count-1;i>=0;i--){var c=cards[i];float since=hudEvents.Rise(CardSlot+i,t,c.Ready||c.Held);x=CardAt(c,x,bottom,since)-6;}
         }
         // One card ending at `right`: the keycap and name, the state in its tone (bright cyan READY with the magenta tick, dial
         // and edge, cyan active, amber recast, danger low, ink counting), the radial dial and the bottom sweep of the cooldown done, and the ready flare. Returns
@@ -151,7 +173,7 @@ namespace ChipArena.UnityConversion
         {
             int dot=c.Key.IndexOf(" · ",StringComparison.Ordinal);string key=dot>0?c.Key.Substring(0,dot):null,name=dot>0?c.Key.Substring(dot+3):c.Key;
             float kh=14,kw=key!=null?NativeHudChrome.KeyWidth(key,kh):0,ic=c.Icon!=null?kh+4:0,nw=U.Measure(name,10,false,true,.06f).x+ic,vw=U.Measure(c.State,14,true,true,c.Ready?.1f:0).x;
-            bool dial=c.Dial>=0;float w=Mathf.Max(84,Mathf.Max(kw+(kw>0?6:0)+nw,vw)+22+(dial?14:0)),h=8+14+6+16+8;var r=new Rect(right-w,bottom-h,w,h);bool reduced=prefs.reducedEffects;
+            bool dial=c.Dial>=0;float w=Mathf.Max(84,Mathf.Max(kw+(kw>0?6:0)+nw,vw)+22+(dial?14:0)),h=8+14+6+16+8;var r=new Rect(right-w+c.Shake,bottom-h,w,h);bool reduced=prefs.reducedEffects;
             Color tone=c.Recast?NativeCyberTheme.Warn():c.Low?NativeCyberTheme.Danger():c.Active?NativeCyberTheme.Cyan():c.Ready?NativeCyberTheme.Magenta():NativeCyberTheme.Edge();
             if(c.Active&&!c.Recast)U.Glow(r,NativeCyberTheme.Cyan(.16f),10);NativeHudChrome.Flare(r,since,1,reduced,true);
             NativeHudChrome.Cut(r,NativeCyberTheme.Navy(NativeHudCyber.PanelAlpha),NativeHudCyber.CardCut);NativeHudChrome.Scan(r,NativeCyberTheme.Cyan(NativeHudCyber.ScanAlpha),NativeHudCyber.CardCut);
@@ -182,7 +204,7 @@ namespace ChipArena.UnityConversion
             void Px(float x,float y,float w,float h,Color c){var o=GUI.color;GUI.color=c;GUI.DrawTexture(new Rect(x,y,w,h),Texture2D.whiteTexture);GUI.color=o;}
             var shadow=NativeCyberTheme.Void(.8f);var ink=NativeCyberTheme.Ink();float d=Mathf.Round(5*k),arm=12*k,gap=10*k,line=Mathf.Max(1,Mathf.Round(k));
             Px(cx-d/2-1,cy-d/2-1,d+2,d+2,shadow);Px(cx-d/2,cy-d/2,d,d,ink);Px(cx-d/2-gap-arm,cy-line/2,arm,line,ink);Px(cx+d/2+gap,cy-line/2,arm,line,ink);
-            GUI.matrix=old;
+            GUI.matrix=old;TechniqueDeniedLine();
         }
         // ---- Hit marker (client/hitmarker.ts, rules in NativeHitmarker) ----------------------------------------------------
         // In the fight and result phases (main.ts: active, not paused, not the killcam), in physical pixels like the crosshair.

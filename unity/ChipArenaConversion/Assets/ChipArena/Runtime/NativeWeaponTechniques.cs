@@ -31,6 +31,10 @@ namespace ChipArena.UnityConversion
             if(press&&!p.Input.CancelAbilities)TryTechnique(p);
             if(p.Technique!=null&&!p.TechniqueReleased&&Time>=p.Technique.Release&&Time<p.Technique.Until)ReleaseTechnique(p);
         }
+        // Why a press of this pilot's technique would be refused for where it is aimed (NativeTechniques.NoSurface, Blocked, NoFloor), null
+        // when it would go. The HUD asks once a frame for the local pilot, on the host and on a guest; read-only. Astra fills it from
+        // TryTechnique's own checks (docs/WEAPON-TECHNIQUES.md); until then every press says nothing, as before.
+        public string TechniqueRefusal(NativePilot p,in InputFrame aim)=>null;
         private bool TryTechnique(NativePilot p)
         {
             string slot=TechniqueSlot(p);if(slot==""||Replica||p.Input.CancelAbilities||TechniqueBlocked(p))return false;

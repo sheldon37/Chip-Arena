@@ -65,18 +65,26 @@ namespace ChipArena.UnityConversion
             }
         }
         /// <summary>A technique's HUD card in the slot it replaced. The recast comes first: it is the one state that asks for a press.
-        /// `left` is the slot's deadline less the clock, `cooldown` as this pilot's chips scale it.</summary>
-        public struct CardState{public string State;public bool Ready,Active,Recast,Low;public float Dial;}
-        public static CardState Card(NativeTechnique k,float now,float left,float cooldown,bool low,string lowText)
+        /// `left` is the slot's deadline less the clock, `cooldown` as this pilot's chips scale it.
+        /// `refused` is why a press would be refused for where it is aimed (NativeArena.TechniqueRefusal); `Held` marks that state, off
+        /// cooldown but not pressable here, so the card does not flare every time the aim comes back.</summary>
+        public struct CardState{public string State;public bool Ready,Active,Recast,Low,Held;public float Dial;}
+        public static CardState Card(NativeTechnique k,float now,float left,float cooldown,bool low,string lowText,string refused=null)
         {
-            var c=new CardState{Dial=left>0?1-Math.Min(1,left/Math.Max(.01f,cooldown)):1};
-            if(NativeTechniqueRules.Recast(k,now)){c.State="RECAST";c.Recast=true;}
+            var c=new CardState{Dial=left>0?1-Math.Min(1,left/Math.Max(.01f,cooldown)):1};string no=RefusalState(refused);
+            if(NativeTechniqueRules.Recast(k,now)){if(no!=null){c.State=no;c.Low=c.Held=true;}else{c.State="RECAST";c.Recast=true;}}
             else if(k?.Kind!=null&&now>=k.At&&now<k.End){c.State="ACTIVE";c.Active=true;}
             else if(left>0)c.State=left.ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+"s";
             else if(low){c.State=lowText;c.Low=true;}
+            else if(no!=null){c.State=no;c.Low=c.Held=true;}
             else{c.State="READY";c.Ready=true;}
             return c;
         }
+        /// <summary>Why a press would be refused for where it is aimed: what NativeArena.TechniqueRefusal answers, its card state and the line
+        /// under the crosshair when a press is refused.</summary>
+        public const string NoSurface="no-surface",Blocked="blocked",NoFloor="no-floor";
+        public static string RefusalState(string why)=>why==NoSurface?"NO SURFACE":why==Blocked?"BLOCKED":why==NoFloor?"NO FLOOR":null;
+        public static string RefusalLine(string why)=>why==NoSurface?"NO SURFACE IN RANGE":why==Blocked?"THE WAY BACK IS BLOCKED":why==NoFloor?"NO FLOOR THERE":null;
         /// <summary>The weapon's technique (null: a DEV class, or none).</summary>
         public static Def For(string spec){foreach(var d in All)if(d.Spec==spec)return d;return null;}
         public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;return null;}
