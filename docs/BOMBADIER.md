@@ -72,6 +72,27 @@ The entrance everyone recognises and dreads. 7.6 s, the name at 6 s. No music fo
 | 5.4 | The shockwave passes the pilot. Coat of embers, debris sailing by, it does not look back | Slow motion, low and wide |
 | 6.0 | Hazard tape whips across, the pilot's name stamps onto it. The bundle comes up to the shoulder, spitting; a stick is tossed twice end over end and caught. The card's progress bar has been a burning fuse all along, and goes dark for the one beat of nothing | Settling to the hand-off |
 
+## The chips
+
+Owner: "a set of 10 bombadier chips? Make them highly likely to show in their chip selection pool; Give them a unique design and an effect when selecting them." A signature set, like the Emperor's or the Siren's: their own tier (`bombadier`, "LIVE ORDNANCE"), their own tag, and the signature sets' odds (`exclusiveOdds`: two of every pick guaranteed, the rest at 85%, until the set runs out). All in `Core/NativeBombChips.cs`.
+
+| Chip | `id` | What it does | Max | Needs a rule? | When it goes in |
+| --- | --- | --- | --- | --- | --- |
+| Short Fuse | `bomb-short-fuse` | Pop Bombs go off .25 s sooner and fly 15% faster | 2 | Yes | A fuse burns round the whole card in under half a second, and the card goes up |
+| Black Powder | `bomb-black-powder` | +15% blast damage | 3 | No: `damage` | Powder pours down the card and heaps under it, one spark runs along it, a black mushroom |
+| Bandolier | `bomb-bandolier` | +2 sticks on the belt, 20% faster restock | 3 | No: `ammoCapacity`, `reloadSpeed` | Seven sticks slam in under the card one by one, then go off in order |
+| Bouncing Betty | `bomb-bouncing-betty` | +1 mine out and +1 charge; mines throw 25% higher | 2 | Yes | A mine clanks onto the card, blinks three times, the card ducks, it springs and bursts |
+| Daisy Chain | `bomb-daisy-chain` | Chain window +.4 s; links x1, x.9, x.75, x.6 | 1 | Yes | Blasts go round the card, each lighting the next along a burning line |
+| Scorched Earth | `bomb-scorched-earth` | Blasts leave 2 s of floor fire, 6 a second | 1 | Yes | Fire climbs out of the floor and chars the bottom of the card |
+| Nitro Boots | `bomb-nitro-boots` | Blast Jump 30% faster recharge, 20% farther, drops a firecracker | 2 | Yes | The card lights two jets, gets a foot off the ground, runs out, lands in its own smoke |
+| Cluster Fun | `bomb-cluster-fun` | Cluster Lob bursts into 9, recharges 20% faster | 1 | Yes | The big one sails over the card, opens, nine firecrackers rain down in a stutter |
+| Blast Shield | `bomb-blast-shield` | Your own blasts no longer hurt you (they still throw you) | 1 | Yes | The blast hits a dome of light round the card and goes round it |
+| Encore | `bomb-encore` | Finale meter 25% faster; 8 more blasts with its fireworks, 10 each | 1 | Yes | Fireworks and confetti all round the card, its name in lights |
+
+The look: a scorched body, torn hazard tape along the foot, a fuse burning round the card's edge, three sticks for a crest, its own emblem in the core and large behind the text, and a small live scene of its own (`Runtime/NativeBombChipArt.cs`, `Face`). Taking one plays its effect over the "INSTALLED" card with its own line (`Reveal`, `Shake`, `NativeBombChips.Confirm`), and a pop and flourish at the fist or chest as it seats, which everyone can see and which also covers the Expedition and PvE picks (`NativeTechniqueFx.BombChipInstall`). Reduced effects keep the card and one quiet glow.
+
+To see them today: Dev Sandbox, with the Bombadier in hand, Preview Rarities, Bombadier. The rows are not in the content until the rules exist, because a row with a mechanic the authority lacks would fail the build's "every chip implemented" check, and an offered chip must do what it says.
+
 ## Presentation (Claude)
 
 | Piece | File |
@@ -103,6 +124,8 @@ To see it: the intro now: Customize, Entrance, Last Warning, Preview Intro, with
 - A victim's flight is the rules' own: launch them with `Knockback`/velocity and the usual air state.
 
 The hold is keyed on `SourceSpec`, not the weapon row: whatever `WeaponId` the row uses, the fists close on the TNT, nothing is shouldered, first person has no sights (RMB is block anyway), and `NativeWeaponDressing.Gun` keeps the muzzle flash off. A restock shows from `ReloadAt` and `ReloadUntil`.
+
+**The chips** (see "The chips" above): the tier, odds, tag, looks and sounds are in. Yours: implement the eight mechanics in `NativeBombChips.Mechanics` in the authority (the mechanic id is the chip id; `Has(p,id)` as other chips), add them to `NativeArena.SupportedMechanics`, call `NativeBombChips.Apply(content)` from the content load beside `NativeMovementContent.Apply`, gate `bomb-` with `Dev(p,NativeBombs.Spec)` beside the other prefixes in `ChoosePve`, and consider an `incompatibilities` row for the projectile chips that do nothing to bombs. Black Powder and Bandolier need only `damage`, `ammoCapacity` and `reloadSpeed`, which your authority already reads. Tune the numbers if they play badly.
 
 Input: LMB `Shoot`, Q `AbilityQ`, E `AbilityE`, 1 to 5 `SirenAbility` (extend the key loop in `ConversionGame` to 5 for this spec, as for the Cyber Lord).
 

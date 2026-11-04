@@ -28,6 +28,16 @@
 - **Claude handoff:** the weapon uses the existing `bomb` icon until bespoke class art is supplied. Legacy Core chooser fixture excludes Bombadier's new NativeVisualMotion route rather than substituting a sword/gun pose; its live chooser remains a native visual acceptance item. Only row/icon integration and snapshot-source plumbing touched presentation. All visuals otherwise preserved.
 - **Release:** source integration and test-builder queue receipts follow in the task PR; no Site/live-channel release.
 
+## 2026-11-04 — Claude: the Bombadier's ten chips, presentation and pool
+
+- **Branch:** `claude/bombadier-chips`, base shared `856f641e` (Astra's Bombadier rules are in). Owner: "a set of 10 bombadier chips? Make them highly likely to show in their chip selection pool; Give them a unique design and an effect when selecting them. High quality effects, details and animations". Design and contract: `docs/BOMBADIER.md`, "The chips".
+- **Implemented on branch:** a new exclusive tier `bombadier` (cartridge, crest, card art, emblems, a live scene per chip), ten rows in `Core/NativeBombChips.cs`, ten reveals over the spotlight card with their own lines and shake (`Runtime/NativeBombChipArt.cs`), a world and first-person burst as one seats (`NativeTechniqueFx.BombChipInstall`), the install's sound, and in the pool the tag plus an `exclusiveOdds` row (`GameContent.json`, one line in `Eligible`). Reveal time 4.8 s for the set (`RevealSeconds`, `DraftRevealSeconds`), as the longer signature reveals.
+- **Astra, please:** the rows are not in the content, so nothing is offered yet. Implement the eight mechanics, add them to `SupportedMechanics`, call `NativeBombChips.Apply` from the content load, add the `bomb-` gate in `ChoosePve`. Details in `docs/BOMBADIER.md`, "Rules contract".
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking. The draft's reveal hold is longer for this set only; it is presentation pacing held in `NativeMatch`.
+- **Checks:** CHECKS_PLACEHOLDER
+- **Not checked:** CHECKS_NOT_RUN
+- **Note:** `tools/export_source.mjs` regenerates `GameContent.json` from the pinned Electron source, so a re-export would drop the Bombadier's hand edits, as it would the weapon row already there.
+
 ## 2026-11-04 — Claude: the Bombadier holds TNT
 
 - **Branch:** `claude/bombadier`, base shared `db2ce2dd`. Owner: "can we [have] them holding TNTs instead of a grenade launcher? Modify animations however needed with this in mind."
