@@ -1,3 +1,16 @@
+## 2026-11-04 — Claude: THE CONVERTER on a real model
+
+- **Owner request:** the Ironworks' voxel enemies off voxels, with fixes to their animation where needed; this is its boss, shipped after the five kinds.
+- **Branch/base:** `claude/ironworks-models`, on shared at the five's merge `2cf7c9f2` and later. Release line below.
+- **What it is now:** an 8 m Bessemer on four crab legs, modelled joint by joint in Blender (`tools/gear/converter_gear.py`, three tiers, in the local `ChipArenaPackIronworks` bank): rams and bolted plate, a toothed trunnion wheel, a white-hot bath, slag slabs that are closed solids with hot torn backs, and a dead foreman in the Stoker's family. docs/EXPEDITION-BOSS-CITY-IRONWORKS.md section 14.
+- **Affected systems:** the bank and the zip; `tools/gear`. The route in `NativeIronworksBossPresentation` shipped with the five; a build without the bank draws the code sculpt.
+- **Animation impact:** none. Same joints, rig, poses and timing. `NativeIronworksBoss.Actions` kept; hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; `NativeZoneBossAuthority` not touched. The model is at the sculpt's numbers, so it fits the colliders (checked part by part in Blender).
+- **Checks run:** full `CoreTests` in a clean LF worktree (count in the release line); `git diff --check`. In Unity on `expedition-foundry`, on the DEV preview's record: arrival, walk, pour, blow, stomp, grab, crust break, kneel, shed, slam, deslag, call, break, charge, crash, death; all three tiers; a log line shows all 50 meshes from the bank. Cost with the full tier in view, in the Editor: mean 11.1 ms, p95 13.6 ms, worst 59.9 ms.
+- **Fixed after looking:** slabs were open shells (twigs once they fell); glassy facets too bright; the mouth's trickles zigzagged like lightning; far tiers collapsed hubs into black spikes; a boxy foreman. My first two batches of frames showed the old sculpt, because a bank copied after the batch's one refresh is never imported: judged again on the real model.
+- **Not run:** the fight with the real rules (the preview's record stands in), two clients, a Windows build's play.
+- **Risks:** 108,000 triangles at the full tier against the sculpt's 40,000 budget (44,000 and 31,000 against 26,000 and 9,000), measured above with one boss and no crowd. Those budgets are the owner's doc numbers and still bind the sculpt: say if the model should come down to them. The foreman-collider mismatch noted under the five kinds still stands, for Astra.
+- **Next:** the owner plays it; Astra rules on the Foreman collider.
+
 ## 2026-11-04 — Astra: Bombadier chip authority
 
 - **Branch/base:** `codex/bombadier-chips`, shared `2cf7c9f2`, integrated shared `9ba6872a`; newer shared integration and remote receipts in the task PR.
