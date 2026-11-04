@@ -214,14 +214,14 @@ namespace ChipArena.UnityConversion
                     var shape=kind==0?new Vector3(size*1.5f,size*.1f,size*1.1f):kind==1?new Vector3(size*.14f,size*.14f,size*2.2f):new Vector3(size,size*.55f,size*.8f);var metal=new Vector3(.075f,.07f,.075f)*(.7f+.6f*NativeEntranceMath.Rand(seed,9));
                     props.Piece(WeaponShape.Cube,false,c,rot,shape,metal);
                     // Some edges still hot, cooling as they fly.
-                    float cool=1-a/1.7f;if(cool>0&&seed%2==0)props.Piece(WeaponShape.Cube,true,c+Vector3.Transform(new Vector3(0,shape.Y*.5f,0),rot),rot,new Vector3(shape.X*.92f,.006f,shape.Z*.92f),Ember*(2.6f*cool*cool));
+                    float cool=1-a/1.7f;if(cool>0&&seed%2==0)props.Piece(WeaponShape.Cube,true,c+Vector3.Transform(new Vector3(0,shape.Y*.5f,shape.Z*.5f),rot),rot,new Vector3(shape.X*.92f,.008f,.012f),Ember*(2.6f*cool*cool));
                 }
             }
         }
         /// <summary>The bomb: in the palm, or on its way from the palm at the toss to the palm at the catch, a high arc.</summary>
         private Vector3 BallAt(float t)
         {
-            var lift=new Vector3(0,.07f,0);if(t<TossAt||t>=CatchAt)return Hand(t,t)+lift;float u=(t-TossAt)/(CatchAt-TossAt);return Vector3.Lerp(Hand(TossAt,t),Hand(CatchAt,t),u)+lift+new Vector3(0,.86f*4*u*(1-u),0);
+            var lift=new Vector3(0,.07f,0);if(t<TossAt||t>=CatchAt)return Hand(t,t)+lift;float u=(t-TossAt)/(CatchAt-TossAt);return Vector3.Lerp(Hand(TossAt,t),Hand(CatchAt,t),u)+lift+new Vector3(0,.52f*4*u*(1-u),0);
         }
         /// <summary>A round black bomb: the sphere, a hazard band, its brass collar and a stub of fuse.</summary>
         public static void BombModel(INativeEntranceProps props,Vector3 at,Quaternion q,float radius)
@@ -301,7 +301,7 @@ namespace ChipArena.UnityConversion
             if(t>=TossAt-.2f)
             {
                 var h=BallAt(t)+new Vector3(0,.09f,0);
-                float fl=.8f+.2f*(float)Math.Sin(t*51);fx.Glow(h,Hot*(1.8f*fl),0,.08f,1,0,9400);int n=q<.5f?4:10;for(int i=0;i<n;i++){float a=((t*20+i*.41f)%1)*.3f;int k=(int)(t*20)+i*53;var v=new Vector3(NativeEntranceMath.Signed(k,1)*.8f,.7f+.8f*NativeEntranceMath.Rand(k,2),NativeEntranceMath.Signed(k,3)*.8f);fx.Streak(h+v*a,v,Hot*(2*(1-a/.3f)),.006f,.01f,.02f,.6f,a/.3f,k);}
+                float fl=.8f+.2f*(float)Math.Sin(t*51);fx.Glow(h,Hot*(2.4f*fl),0,.13f,1,0,9400);int n=q<.5f?4:10;for(int i=0;i<n;i++){float a=((t*20+i*.41f)%1)*.3f;int k=(int)(t*20)+i*53;var v=new Vector3(NativeEntranceMath.Signed(k,1)*.8f,.7f+.8f*NativeEntranceMath.Rand(k,2),NativeEntranceMath.Signed(k,3)*.8f);fx.Streak(h+v*a,v,Hot*(2*(1-a/.3f)),.006f,.01f,.02f,.6f,a/.3f,k);}
             }
         }
         private float Rank(int pylon){for(int i=0;i<order.Length;i++)if(order[i]==pylon)return i/(order.Length-1f);return 0;}
