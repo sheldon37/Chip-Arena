@@ -90,6 +90,13 @@ namespace ChipArena.UnityConversion
             public string[] Garments=Array.Empty<string>();
             /// <summary>Each garment's own colour (0xRRGGBB; -1 its slot's: the top's for a one-piece or one worn over the rest).</summary>
             public int[] GarmentColours=Array.Empty<int>();
+            /// <summary>Burned to char (0..1, the Cinderling's 1, the Slagback's less): the skin black and ashen, white-hot cracks through it, its colour the
+            /// eyes' (Runtime ZombieChar; the shader's ZombieChar over the rest space).</summary>
+            public float Char;
+            /// <summary>An aluminised suit's foil (0..1, the Stoker's): its clothes catch the light as bright edges (Runtime ZombieChar; the shader's ZombieFoil).</summary>
+            public float Foil;
+            /// <summary>The "slag-" gear is a crust the authority sheds (Runtime NativeIronworksModelPresentation: hidden from its shedAt, its plates flying).</summary>
+            public bool Crust;
             /// <summary>The area it was dressed for (a Theme), or null: the everyday clothes.</summary>
             public string Theme;
             public Variant Clone()=>(Variant)MemberwiseClone();
@@ -104,6 +111,8 @@ namespace ChipArena.UnityConversion
             UndertowKind=NativeStationKinds.Kind(NativeStationKinds.Undertow),PileupKind=NativeStationKinds.Kind(NativeStationKinds.Pileup);
         private static readonly int FacelingKind=NativeHordeKinds.Resolve("faceling"),HoundKind=NativeHordeKinds.Resolve("hound"),
             DrownedKind=NativeHordeKinds.Resolve("drowned"),LifeguardKind=NativeHordeKinds.Resolve("lifeguard");
+        private static readonly int CinderlingKind=NativeIronworksKinds.Kind(NativeIronworksKinds.Cinderling),StokerKind=NativeIronworksKinds.Kind(NativeIronworksKinds.Stoker),
+            SlagbackKind=NativeIronworksKinds.Kind(NativeIronworksKinds.Slagback),LadlemanKind=NativeIronworksKinds.Kind(NativeIronworksKinds.Ladleman),RiggerKind=NativeIronworksKinds.Kind(NativeIronworksKinds.Rigger);
 
         /// <summary>Every variant, by kind then male A, male B, female A, female B (the owner's sheets).</summary>
         public static readonly Variant[] All={
@@ -235,6 +244,56 @@ namespace ChipArena.UnityConversion
                 Body(-20,0,30,0,30,30,10,10,0,45),new Build{Hand=1.12f,Arm=.9f,Forearm=.88f,Thigh=.9f,Calf=.88f},.55f,.42f,.55f,false,0xE8E2D0,decay:"forearm-l,ribs-r",blood:.2f),
             V("lifeguard-female-b",LifeguardKind,true,"fringe-tail","tank","z-dolphin-shorts|cuffed-shorts","bare","z-flip-flops|sneakers",new[]{0xE6D6A0,0xB8443A,0xB03A30,Keep,0x2A2A2A},0xAEA294,
                 Body(-30,0,30,0,30,30,10,10,0,50),new Build{Hand=1.12f,Arm=.9f,Forearm=.88f,Thigh=.9f,Calf=.88f},.55f,.42f,.55f,false,0xE8E2D0,decay:"thigh-l,upperarm-r",blood:.2f),
+            // ---- City Ironworks (docs/EXPEDITION-CITY-IRONWORKS.md section 6; docs/ZOMBIE-MODELS.md 4n): dark shapes against the furnace glow, each with
+            // its non-orange tell; each on its kind's base build at the kind's scale, its gear modelled in Blender (tools/gear/ironworks_gear.py) ----
+            // Cinderling: furnace hands burned down to a thin black frame, the clothes gone to char and rags, white-hot eyes (Char: the skin's
+            // white-hot cracks; the gear's ribcage round the coal).
+            V("cinderling-male-a",CinderlingKind,false,None,"tank","z-joggers|baggy-pants","bare","work-boots",new[]{Keep,0x1B1612,0x15110E,Keep,0x120E0B},0x2A2725,
+                Body(45,0,25,0,5,5,0,0,0,90,95),new Build{Arm=.84f,Forearm=.82f,Thigh=.88f,Calf=.86f,Shoulder=.97f,Head=.97f},.9f,.6f,0,false,NativeIronworksKinds.WhiteHot,blood:0),
+            V("cinderling-male-b",CinderlingKind,false,None,"z-work-shirt|tee","z-cargo-pants|baggy-pants","bare","work-boots",new[]{Keep,0x241C16,0x1A1511,Keep,0x120E0B},0x252220,
+                Body(50,0,20,0,5,5,0,0,0,95,90),new Build{Arm=.85f,Forearm=.83f,Thigh=.88f,Calf=.86f,Shoulder=.97f,Head=.97f},.9f,.62f,0,false,NativeIronworksKinds.WhiteHot,blood:0),
+            V("cinderling-female-a",CinderlingKind,true,None,"tank","z-cargo-pants|baggy-pants","bare","work-boots",new[]{Keep,0x1B1612,0x1A1511,Keep,0x120E0B},0x2C2927,
+                Body(-15,0,20,0,15,5,5,5,0,85,95),new Build{Arm=.82f,Forearm=.8f,Thigh=.87f,Calf=.85f,Shoulder=.95f,Head=.97f},.9f,.6f,0,false,NativeIronworksKinds.WhiteHot,blood:0),
+            V("cinderling-female-b",CinderlingKind,true,None,"z-work-shirt|tee","z-joggers|baggy-pants","bare","work-boots",new[]{Keep,0x241C16,0x15110E,Keep,0x120E0B},0x272422,
+                Body(-10,0,15,0,10,5,5,5,0,90,90),new Build{Arm=.83f,Forearm=.81f,Thigh=.87f,Calf=.85f,Shoulder=.95f,Head=.97f},.9f,.62f,0,false,NativeIronworksKinds.WhiteHot,blood:0),
+            // Stoker: the shambler's frame in an aluminised heat suit (Foil: the suit's silver catches every light), its coat to the knees, a square
+            // hood with one cyan visor slit (no face under it), heavy gauntlets; a respirator pack on its back.
+            V("stoker-male-a",StokerKind,false,None,"z-work-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x96948C,0x88867E,0x2A2018,0x17130F},0x8B8E86,
+                Body(55,15,20,5,15,35,0,0,0,50),new Build{Arm=1.04f,Forearm=1.04f,Thigh=1.02f,Calf=1.02f,Hand=1.06f,Shoulder=1.02f},.42f,.12f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
+            V("stoker-male-b",StokerKind,false,None,"z-utility-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x8A8880,0x7E7C75,0x2A2018,0x17130F},0x868980,
+                Body(60,35,15,25,15,40,0,0,15,55),new Build{Arm=1.05f,Forearm=1.05f,Thigh=1.04f,Calf=1.03f,Hand=1.06f,Shoulder=1.02f},.48f,.14f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
+            V("stoker-female-a",StokerKind,true,None,"z-work-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x96948C,0x88867E,0x2A2018,0x17130F},0x8E9188,
+                Body(-5,15,15,5,25,20,10,10,0,45),new Build{Arm=1.02f,Forearm=1.02f,Thigh=1.02f,Calf=1.02f,Hand=1.04f},.42f,.12f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
+            V("stoker-female-b",StokerKind,true,None,"z-utility-jacket|hard-jacket","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x8A8880,0x7E7C75,0x2A2018,0x17130F},0x898C83,
+                Body(0,30,15,15,25,25,10,15,10,50),new Build{Arm=1.02f,Forearm=1.02f,Thigh=1.03f,Calf=1.02f,Hand=1.04f},.48f,.14f,0,false,NativeIronworksKinds.Cyan,blood:.08f),
+            // Slagback: the brute burned black, in the rags of its trousers, under glassy plates of slag grown onto it (its crust's gear: lumpy and
+            // uneven, dim cracks between the plates, the bright fissure down its back); Char's cracks dim on the skin the shed bares.
+            V("slagback-male-a",SlagbackKind,false,None,None,"z-cargo-pants|baggy-pants","bare","work-boots",new[]{Keep,Keep,0x1F1A16,Keep,0x14100D},0x2B2826,
+                Body(100,45,100,25,40,100,0,0,15,50),new Build{Arm=1.24f,Forearm=1.28f,Thigh=1.14f,Calf=1.12f,Hand=1.2f,Shoulder=1.1f,Head=1.02f},.8f,.58f,0,false,NativeIronworksKinds.Fissure,blood:.05f),
+            V("slagback-male-b",SlagbackKind,false,None,None,"baggy-pants","bare","work-boots",new[]{Keep,Keep,0x1B1714,Keep,0x14100D},0x262321,
+                Body(92,95,60,85,30,100,0,0,35,60),new Build{Arm=1.22f,Forearm=1.26f,Thigh=1.16f,Calf=1.13f,Hand=1.18f,Shoulder=1.08f,Head=1.02f},.8f,.62f,0,false,NativeIronworksKinds.Fissure,blood:.05f),
+            V("slagback-female-a",SlagbackKind,true,None,"tank","z-cargo-pants|baggy-pants","bare","work-boots",new[]{Keep,0x1B1612,0x1F1A16,Keep,0x14100D},0x2D2A28,
+                Body(15,45,90,10,40,70,15,25,10,45),new Build{Arm=1.2f,Forearm=1.24f,Thigh=1.13f,Calf=1.1f,Hand=1.14f,Shoulder=1.06f},.8f,.58f,0,false,NativeIronworksKinds.Fissure,blood:.05f),
+            V("slagback-female-b",SlagbackKind,true,None,"tank","baggy-pants","bare","work-boots",new[]{Keep,0x1B1612,0x1B1714,Keep,0x14100D},0x282523,
+                Body(20,55,80,25,45,70,15,25,15,55),new Build{Arm=1.2f,Forearm=1.24f,Thigh=1.14f,Calf=1.1f,Hand=1.14f,Shoulder=1.06f},.8f,.62f,0,false,NativeIronworksKinds.Fissure,blood:.05f),
+            // Ladleman: a big brute in a singed leather apron and gauntlets, a welder's iron mask over its face with one cyan lens.
+            V("ladleman-male-a",LadlemanKind,false,None,"tank","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3B3631,0x2A2622,0x2E2014,0x1A130D},0x6B5E55,
+                Body(100,35,100,20,40,100,0,0,15,55),new Build{Arm=1.24f,Forearm=1.26f,Thigh=1.14f,Calf=1.13f,Hand=1.18f,Shoulder=1.08f,Head=1.02f},.55f,.22f,.12f,false,NativeIronworksKinds.Cyan,decay:"forearm-l",blood:.04f),
+            V("ladleman-male-b",LadlemanKind,false,None,"z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x4A4034,0x2F2A25,0x2E2014,0x1A130D},0x6A5E55,
+                Body(95,85,65,80,35,100,0,0,35,65),new Build{Arm=1.22f,Forearm=1.24f,Thigh=1.16f,Calf=1.14f,Hand=1.17f,Shoulder=1.07f,Head=1.02f},.55f,.24f,.12f,false,NativeIronworksKinds.Cyan,decay:"upperarm-r",blood:.04f),
+            V("ladleman-female-a",LadlemanKind,true,None,"tank","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3B3631,0x2A2622,0x2E2014,0x1A130D},0x6E6157,
+                Body(20,40,90,15,45,75,10,20,15,50),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.13f,Calf=1.11f,Hand=1.14f,Shoulder=1.06f},.55f,.22f,.12f,false,NativeIronworksKinds.Cyan,decay:"forearm-r",blood:.04f),
+            V("ladleman-female-b",LadlemanKind,true,None,"z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x4A4034,0x2F2A25,0x2E2014,0x1A130D},0x6C5F56,
+                Body(25,60,80,35,50,75,15,25,25,60),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.14f,Calf=1.11f,Hand=1.14f,Shoulder=1.06f},.55f,.24f,.12f,false,NativeIronworksKinds.Cyan,decay:"upperarm-l",blood:.04f),
+            // Rigger: lean and long-armed, dead grey skin, oil-black boiler suit, its webbing harness and chain coil, the cream hard hat with its lamp.
+            V("rigger-male-a",RiggerKind,false,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x2B3036,0x2B3036,0x1E1A16,0x1E1712},0x737671,
+                Body(40,0,30,0,10,25,0,0,0,65,70),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.62f,.22f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-l,forearm-r",blood:.06f),
+            V("rigger-male-b",RiggerKind,false,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3A3A32,0x3A3A32,0x1E1A16,0x1E1712},0x6C706B,
+                Body(45,5,25,0,10,30,0,0,0,75,65),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-l,shin-l",blood:.06f),
+            V("rigger-female-a",RiggerKind,true,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x2B3036,0x2B3036,0x1E1A16,0x1E1712},0x767974,
+                Body(-10,0,25,0,20,15,5,5,0,60,70),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.62f,.22f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-r,forearm-l",blood:.06f),
+            V("rigger-female-b",RiggerKind,true,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3A3A32,0x3A3A32,0x1E1A16,0x1E1712},0x6F736E,
+                Body(-5,5,20,0,20,20,5,5,0,70,65),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-r,shin-r",blood:.06f),
         };
 
         // The zone kinds' kit (docs/EXPEDITION-ENEMY-REWORK.md section 2: their signature gear modelled in Blender):
@@ -251,6 +310,9 @@ namespace ChipArena.UnityConversion
         /// fits). The station's effects (its lamp's halo and beam, the pack's glow) are drawn from them on the model.</summary>
         public static readonly System.Numerics.Vector3 LinesmanLamp=new System.Numerics.Vector3(0,.1453f,.1944f),LinesmanLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
             LinesmanVents=new System.Numerics.Vector3(.068f,.2715f,0),LinesmanVentsWoman=new System.Numerics.Vector3(.068f,.2515f,0);
+        /// <summary>Where the Ironworks gear's lights are, in their bones' frames (tools/gear/ironworks_gear.py builds them there; the frames as LinesmanLamp's).</summary>
+        public static readonly System.Numerics.Vector3 RiggerLamp=new System.Numerics.Vector3(0,.1453f,.1944f),RiggerLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
+            StokerVisor=new System.Numerics.Vector3(0,.116f,.157f),LadleLens=new System.Numerics.Vector3(0,.132f,.178f),CinderCoal=new System.Numerics.Vector3(.085f,-.14f,-.05f),SlagFissure=new System.Numerics.Vector3(.1f,.17f,0);
         /// <summary>The Central Station boss's Stationmaster on the model (its Runtime body file; no add wears him): a black frock coat, white
         /// gloves, grey hair, sunken pale skin, the eyes the windows' amber; his hat, watch and bell are the machine's bank's.</summary>
         public static readonly Variant Stationmaster=V("stationmaster",-1,false,"side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x8E8C86,0x14161C,0x0E1014,0xDCD6C4,0x0B0B0D},0xA2A698,
@@ -270,8 +332,20 @@ namespace ChipArena.UnityConversion
                 else if(v.Kind==DrownedKind){v.Stripes=0xE8E4D8;v.Upright=.35f;v.Gear=new[]{b?"drowned-cap-red":"drowned-cap-white","drowned-goggles"};}
                 else if(v.Kind==LifeguardKind){v.Upright=.75f;v.Gear=new[]{"lifeguard-whistle"};v.Carry="lifeguard-hook";}
                 else if(v.Kind==PileupKind){v.Fused=true;v.Gear=new[]{v.Female?"pileup-handrail-f":"pileup-handrail",v.Female?"pileup-flesh-f":"pileup-flesh"};}
+                else if(v.Kind==CinderlingKind||v.Kind==StokerKind||v.Kind==SlagbackKind||v.Kind==LadlemanKind||v.Kind==RiggerKind)IronworksKit(v,b);
             }
             return true;
+        }
+
+        // The City Ironworks' kit (tools/gear/ironworks_gear.py, its own local bank: NativeIronworksLooks).
+        private static void IronworksKit(Variant v,bool b)
+        {
+            string fit=v.Female?"-f":"";
+            if(v.Kind==CinderlingKind){v.Char=1;v.Gear=new[]{"cinder-ribs"+fit,b?"cinder-cap":"cinder-skull","cinder-rags"};}
+            else if(v.Kind==StokerKind){v.Foil=1;v.Faceless=true;v.Upright=.3f;v.Lift=1.5f;v.Garments=new[]{TrenchGarment};v.GarmentColours=new[]{b?0x8A8880:0x96948C};v.Gear=new[]{b?"stoker-hood-dome":"stoker-hood","stoker-cape"+fit,"stoker-pack"+fit,"stoker-gauntlet-l","stoker-gauntlet-r"};}
+            else if(v.Kind==SlagbackKind){v.Char=.4f;v.Crust=true;v.Gear=new[]{"slag-chest"+fit,"slag-back"+fit,"slag-fissure"+fit,"slag-head","slag-pelvis","slag-shoulder-l","slag-shoulder-r","slag-arm-l","slag-arm-r","slag-forearm-l","slag-forearm-r","slag-thigh-l","slag-thigh-r"};}
+            else if(v.Kind==LadlemanKind){v.Garments=new[]{ApronGarment};v.GarmentColours=new[]{b?0x4E3220:0x5E3D25};v.Gear=new[]{"ladle-hood","ladle-mask","ladle-gauntlet-l","ladle-gauntlet-r","ladle-spat-l","ladle-spat-r"};}
+            else if(v.Kind==RiggerKind){v.Garments=new[]{CoverallsGarment};v.GarmentColours=new[]{-1};v.Gear=new[]{b?"rigger-hat-worn":"rigger-hat","rigger-harness"+fit,"rigger-coil"+fit};}
         }
 
         /// <summary>The kinds drawn on the model in shipped builds (the owner's order: one male and one female shambler end to end first,
@@ -288,7 +362,7 @@ namespace ChipArena.UnityConversion
         /// authority's timings on the PC); the Backrooms' Faceling, Drowned and Lifeguard the same day (their looks and moves on the
         /// PC; the Smiler is its own apparition, not on the model) and the Hound once it ran on all fours as a beast (its gallop,
         /// pounce and head on the PC); drafts draw them all.</summary>
-        public static readonly System.Collections.Generic.HashSet<int> ZoneLive=new System.Collections.Generic.HashSet<int>{LinesmanKind,ConductorKind,UndertowKind,PileupKind,FacelingKind,HoundKind,DrownedKind,LifeguardKind};
+        public static readonly System.Collections.Generic.HashSet<int> ZoneLive=new System.Collections.Generic.HashSet<int>{LinesmanKind,ConductorKind,UndertowKind,PileupKind,FacelingKind,HoundKind,DrownedKind,LifeguardKind,CinderlingKind,StokerKind,SlagbackKind,LadlemanKind,RiggerKind};
         /// <summary>Whether adds of `kind` draw on the model now.</summary>
         public static bool Modelled(int kind)=>kind>=0&&(kind<NativeHordeKinds.Count?Live[kind]||Drafts:NativeHordeZones.Of(kind)!=null&&(ZoneLive.Contains(kind)||Drafts))&&Has(kind);
         /// <summary>The variant an add of `kind` wears, by its id (stable for its life, the same on every peer); null for a kind

@@ -93,6 +93,7 @@ float3 SkinToned(float3 c)
 //  On skin the rot also opens gashes: long strokes of raw red flesh in a dark crusted edge, the bone's ivory at the deepest.
 // Unset (every pilot), nothing changes.
 float4 _ZombieTint;float4 _ZombieWear;float4 _ZombieEye;float4 _ZombieSkin;
+float4 _ZombieChar;float4 _ZombieCharGlow;float _ZombieFoil;
 float ZombieHash(float2 p){return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
 float ZombieNoise(float2 p)
 {
@@ -173,7 +174,8 @@ float3 ZombieLook(float3 c,float2 uv,float band,float stripe)
  {
   float t=ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3,edge=1.0-0.45*_ZombieWear.y;
   float hole=smoothstep(edge,edge+0.012,t),rim=saturate(smoothstep(edge-0.035,edge,t)-hole);
-  float3 under=lerp(_ZombieSkin.rgb*0.5,float3(0.3,0.04,0.04),smoothstep(edge+0.006,edge+0.035,t));
+  // (A burned kind's cloth, _ZombieChar.x under 0: its holes burned black, no raw flesh.)
+  float3 under=_ZombieChar.x<0.0?float3(0.01,0.008,0.007):lerp(_ZombieSkin.rgb*0.5,float3(0.3,0.04,0.04),smoothstep(edge+0.006,edge+0.035,t));
   c=lerp(c,under,hole)*(1.0-0.7*rim);
  }
  if(_ZombieSkin.w>0.0)
@@ -199,6 +201,38 @@ float3 ZombieLook(float3 c,float2 uv,float band){return ZombieLook(c,uv,band,0.0
 float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0,0.0);}
 // The tape's retroreflection: it shines back toward the eye (the surface pass's emission), brightest facing the view.
 float3 ZombieTapeShine(float band,float3 n,float3 view){return band>0.0?float3(0.5,0.53,0.55)*band*pow(saturate(dot(n,view)),3.0):float3(0.0,0.0,0.0);}
+// A body burned to char (Core NativeZombieLooks.Variant.Char: the Ironworks' Cinderling, the Slagback's bared skin), per renderer: _ZombieChar x how far (the skin
+// toward black), y the cracks' glow, z ash in patches, w a seed; _ZombieCharGlow its colour. Over the rest space, so the cracks ride the skin. Unset, nothing.
+float ZombieNoise3(float3 p)
+{
+ float3 i=floor(p),f=frac(p);f=f*f*(3.0-2.0*f);
+ float h000=frac(sin(dot(i,float3(127.1,311.7,74.7)))*43758.5453),h100=frac(sin(dot(i+float3(1,0,0),float3(127.1,311.7,74.7)))*43758.5453),h010=frac(sin(dot(i+float3(0,1,0),float3(127.1,311.7,74.7)))*43758.5453),h110=frac(sin(dot(i+float3(1,1,0),float3(127.1,311.7,74.7)))*43758.5453);
+ float h001=frac(sin(dot(i+float3(0,0,1),float3(127.1,311.7,74.7)))*43758.5453),h101=frac(sin(dot(i+float3(1,0,1),float3(127.1,311.7,74.7)))*43758.5453),h011=frac(sin(dot(i+float3(0,1,1),float3(127.1,311.7,74.7)))*43758.5453),h111=frac(sin(dot(i+float3(1,1,1),float3(127.1,311.7,74.7)))*43758.5453);
+ return lerp(lerp(lerp(h000,h100,f.x),lerp(h010,h110,f.x),f.y),lerp(lerp(h001,h101,f.x),lerp(h011,h111,f.x),f.y),f.z);
+}
+void ZombieChar(float3 rest,inout float3 albedo,inout float3 emission)
+{
+ if(_ZombieChar.x<=0.0)return;
+ float3 p=rest+_ZombieChar.w*float3(0.37,0.71,0.13);
+ float blot=ZombieNoise3(p*9.0)*0.6+ZombieNoise3(p*27.0)*0.4;
+ float3 black=float3(0.011,0.009,0.008)*(0.6+0.8*ZombieNoise3(p*61.0));
+ albedo=lerp(albedo,black,saturate(_ZombieChar.x*1.2));
+ albedo=lerp(albedo,float3(0.13,0.12,0.11),_ZombieChar.z*smoothstep(0.6,0.78,blot));
+ float warp=ZombieNoise3(p*5.3)*0.35;
+ float v1=abs(ZombieNoise3(p*11.0+warp*5.0)-0.5)*2.0,v2=abs(ZombieNoise3(p*29.0+warp*9.0+11.3)-0.5)*2.0;
+ float where=smoothstep(0.34,0.56,ZombieNoise3(p*3.7+7.7));
+ float hot=saturate((1.0-smoothstep(0.0,0.032,v1))*where+(1.0-smoothstep(0.0,0.05,v2))*where*smoothstep(0.5,0.7,ZombieNoise3(p*7.1+3.1))*0.6);
+ float rim=saturate((1.0-smoothstep(0.02,0.12,v1))*where);
+ albedo*=1.0-0.8*rim;
+ emission+=_ZombieCharGlow.rgb*hot*_ZombieChar.y+float3(0.5,0.12,0.03)*rim*(1.0-hot)*0.35*_ZombieChar.y*0.4;
+}
+// An aluminised suit (Variant.Foil: the Stoker's): the cloth takes the light as bright edges: a hard rim, and the key's highlight broken along the folds' normals.
+void ZombieFoil(float3 n,float3 view,inout float3 albedo,inout float3 emission)
+{
+ if(_ZombieFoil<=0.0)return;
+ float ndv=saturate(dot(n,view));float3 h=normalize(_WorldSpaceLightPos0.xyz+view);float ndh=saturate(dot(n,h));
+ emission+=_ZombieFoil*albedo*(pow(1.0-ndv,4.0)*0.9+pow(ndh,26.0)*1.2+pow(ndh,160.0)*2.4);
+}
 // A zombie's decay openings (Core NativeZombieDecay; Runtime/NativeZombieModelPresentation.cs), per renderer: _DecayAt xyz an
 // opening's centre on the surface and w its radius, _DecayIn xyz inward and w how deep it reaches, both in the meshes' own rest
 // space (root space at rest, written to their fourth texture coordinates), so an opening rides the skin as it deforms and cuts

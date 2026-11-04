@@ -39,6 +39,9 @@ namespace ChipArena.UnityConversion
         public readonly IronProp[] Props=new IronProp[3];public int PropCount;public readonly IronChain[] Chains=new IronChain[2];public int ChainCount;
         /// <summary>The Stoker's hook end and the Ladleman's lip (source frame) the effects read.</summary>
         public Vector3 HookTip,Lip;
+        /// <summary>While the add draws on the player's model: how far its hands stand from the gait's (source frame; Runtime ZombieModelShift), read by
+        /// <see cref="PlaceProps"/>, which then carries the props onto those hands (<see cref="PropsOnModel"/>).</summary>
+        public bool ModelHands;public Vector3 ModelShiftL,ModelShiftR;
         // the intended pole of the frame (set by the arms stage), the ladle dropped by a spill (where, when)
         private Vector3 poleDir,ladleLeft;private float poleLength;private bool spillSeen;private float spillFrom;private Vector3 spillAt;private Quaternion spillTurn;
 
@@ -299,6 +302,40 @@ namespace ChipArena.UnityConversion
                     Chains[ChainCount++]=new IronChain{From=fist,To=eye,Sag=.04f+.08f*moving};
                     var lay=Quaternion.Slerp(CapturedRig.Look(Vector3.UnitZ,Vector3.UnitY),CapturedRig.Look(new Vector3(0,-1,0),new Vector3(0,0,1)),moving*.85f);
                     Props[PropCount++]=new IronProp{Prop=NativeHordeModels.PropHook,At=eye,Turn=lay,Scale=1};HookTip=eye+Vector3.Transform(new Vector3(0,-.5f,.1f),lay);break;
+                }
+            }
+            if(ModelHands)PropsOnModel(f,p,ModelShiftL,ModelShiftR);
+        }
+
+        /// <summary>
+        /// The props the last <see cref="PlaceProps"/> placed, carried onto the player's model (the source frame; `shiftL` and `shiftR` how far the model's hands stand from
+        /// the gait's: Runtime ZombieModelShift). The model's own arms put its hands a little off the gait's, so a pole runs through its two real fists (the Stoker's rake
+        /// from the right, the Ladleman's shank from the back one through the front one: never through its wrists' old line), and a chain leaves its real fist. Nothing here
+        /// is read by a rule; the hook's and the lip's places follow for the effects.
+        /// </summary>
+        private void PropsOnModel(in HordeMotionInput f,CapturedRig.Pose p,Vector3 shiftL,Vector3 shiftR)
+        {
+            int z=NativeIronworksKinds.Local(kind);if(z<0)return;p.World();Vector3 l=Fist(p,true)+shiftL,r=Fist(p,false)+shiftR;
+            // The pole's line through both fists, as long as they hold it where the gait meant (not crossed, not on one spot).
+            Vector3 Line(Vector3 from,Vector3 to,Vector3 meant){var d=to-from;float n=d.Length();if(n<.08f)return meant;d/=n;return Vector3.Dot(d,meant)>.35f?d:meant;}
+            switch(z)
+            {
+                case NativeIronworksKinds.Stoker:
+                {
+                    if(PropCount==0||Props[0].Prop!=NativeHordeModels.PropRake)break;var dir=Line(r,l,poleDir);Props[0].At=r;Props[0].Turn=CapturedRig.Look(dir,Vector3.UnitY);var tip=r+dir*NativeHordeModels.RakeTip;
+                    if(ChainCount>0)Chains[0].From=tip;else HookTip=tip;break;
+                }
+                case NativeIronworksKinds.Ladleman:
+                {
+                    if(PropCount==0||Props[0].Prop!=NativeHordeModels.PropLadle)break;var dir=Line(r,l,poleDir);Props[0].At=l;Props[0].Turn=CapturedRig.Look(dir,Vector3.UnitY);
+                    Lip=l+Vector3.Transform(new Vector3(0,.125f,NativeHordeModels.LadleBowl+NativeHordeModels.LadleBowlRadius+.05f),Props[0].Turn);break;
+                }
+                case NativeIronworksKinds.Rigger:
+                {
+                    if(ChainCount==0)break;Chains[0].From=r;
+                    // Carried (not swung): the hook moves with the hand; swung, it keeps its line round the body, the chain from the real fist.
+                    if(float.IsNaN(f.AttackAge)||f.AttackAge<0||f.AttackAge>=f.Recover+.25f){Chains[0].To+=shiftR;if(PropCount>0)Props[0].At+=shiftR;HookTip+=shiftR;}
+                    break;
                 }
             }
         }
