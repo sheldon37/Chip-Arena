@@ -278,13 +278,13 @@ namespace ChipArena.UnityConversion
                 Body(20,55,80,25,45,70,15,25,15,55),new Build{Arm=1.2f,Forearm=1.24f,Thigh=1.14f,Calf=1.1f,Hand=1.14f,Shoulder=1.06f},.8f,.62f,0,false,NativeIronworksKinds.Fissure,blood:.05f),
             // Ladleman: a big brute in a singed leather apron and gauntlets, a welder's iron mask over its face with one cyan lens.
             V("ladleman-male-a",LadlemanKind,false,None,"tank","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3B3631,0x2A2622,0x2E2014,0x1A130D},0x6B5E55,
-                Body(100,35,100,20,40,100,0,0,15,55),new Build{Arm=1.24f,Forearm=1.26f,Thigh=1.14f,Calf=1.13f,Hand=1.18f,Shoulder=1.08f,Head=1.02f},.62f,.4f,.2f,false,NativeIronworksKinds.Cyan,decay:"forearm-l",blood:.12f),
+                Body(100,35,100,20,40,100,0,0,15,55),new Build{Arm=1.24f,Forearm=1.26f,Thigh=1.14f,Calf=1.13f,Hand=1.18f,Shoulder=1.08f,Head=1.02f},.55f,.22f,.12f,false,NativeIronworksKinds.Cyan,decay:"forearm-l",blood:.04f),
             V("ladleman-male-b",LadlemanKind,false,None,"z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x4A4034,0x2F2A25,0x2E2014,0x1A130D},0x6A5E55,
-                Body(95,85,65,80,35,100,0,0,35,65),new Build{Arm=1.22f,Forearm=1.24f,Thigh=1.16f,Calf=1.14f,Hand=1.17f,Shoulder=1.07f,Head=1.02f},.62f,.42f,.2f,false,NativeIronworksKinds.Cyan,decay:"upperarm-r",blood:.12f),
+                Body(95,85,65,80,35,100,0,0,35,65),new Build{Arm=1.22f,Forearm=1.24f,Thigh=1.16f,Calf=1.14f,Hand=1.17f,Shoulder=1.07f,Head=1.02f},.55f,.24f,.12f,false,NativeIronworksKinds.Cyan,decay:"upperarm-r",blood:.04f),
             V("ladleman-female-a",LadlemanKind,true,None,"tank","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3B3631,0x2A2622,0x2E2014,0x1A130D},0x6E6157,
-                Body(20,40,90,15,45,75,10,20,15,50),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.13f,Calf=1.11f,Hand=1.14f,Shoulder=1.06f},.62f,.4f,.2f,false,NativeIronworksKinds.Cyan,decay:"forearm-r",blood:.12f),
+                Body(20,40,90,15,45,75,10,20,15,50),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.13f,Calf=1.11f,Hand=1.14f,Shoulder=1.06f},.55f,.22f,.12f,false,NativeIronworksKinds.Cyan,decay:"forearm-r",blood:.04f),
             V("ladleman-female-b",LadlemanKind,true,None,"z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x4A4034,0x2F2A25,0x2E2014,0x1A130D},0x6C5F56,
-                Body(25,60,80,35,50,75,15,25,25,60),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.14f,Calf=1.11f,Hand=1.14f,Shoulder=1.06f},.62f,.42f,.2f,false,NativeIronworksKinds.Cyan,decay:"upperarm-l",blood:.12f),
+                Body(25,60,80,35,50,75,15,25,25,60),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.14f,Calf=1.11f,Hand=1.14f,Shoulder=1.06f},.55f,.24f,.12f,false,NativeIronworksKinds.Cyan,decay:"upperarm-l",blood:.04f),
             // Rigger: lean and long-armed, dead grey skin, oil-black boiler suit, its webbing harness and chain coil, the cream hard hat with its lamp.
             V("rigger-male-a",RiggerKind,false,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x2B3036,0x2B3036,0x1E1A16,0x1E1712},0x737671,
                 Body(40,0,30,0,10,25,0,0,0,65,70),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.62f,.22f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-l,forearm-r",blood:.06f),
