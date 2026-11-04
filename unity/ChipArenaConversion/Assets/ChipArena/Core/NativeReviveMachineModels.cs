@@ -215,6 +215,8 @@ namespace ChipArena.UnityConversion
                 foreach(float dx in new[]{-.2f,.2f}){s.Push(WeaponSculpt.Ry(Pi/2)*WeaponSculpt.T(x+dx,0,0));s.Torus(SteelDark,V(1.28f,1.0f,0),.178f,.012f,16,5);s.Pop();}
             }
             s.Box(GraphiteLight,V(0,2.25f,-1.1f),V(.72f,.44f,.14f),.02f);s.Box(Hazard,V(0,2.25f,-1.175f),V(.3f,.3f,.006f));s.Box(Ink,V(0,2.25f,-1.18f),V(.06f,.2f,.006f));
+            // Painted on its back, for whoever walks round: the question every delivery truck asks.
+            s.Push(WeaponSculpt.Ry(Pi));s.Box(Cream,V(0,1.58f,1.052f),V(1.5f,.42f,.004f),.001f);s.Box(Red,V(0,1.72f,1.056f),V(1.46f,.12f,.002f));Word(s,Cream,"HOWS MY REVIVING",0,1.72f,1.057f,.075f,.002f);Word(s,Ink,"CALL 1 800 LAZARUS",0,1.53f,1.055f,.09f,.002f);s.Pop();
             // The face: a cream dish, a brass rim, dirty toward the edge.
             s.Cylinder(CreamDirty,BoilerR-.02f,BoilerFront,BoilerFront+.03f,48,.008f,0,BoilerY,1);s.Cylinder(Cream,BoilerR-.08f,BoilerFront+.03f,BoilerFront+.042f,48,.005f,0,BoilerY,1);
             s.Torus(BrassBright,V(0,BoilerY,BoilerFront+.03f),BoilerR-.015f,.024f,48,8);RivetRing(s,Brass,0,BoilerY,BoilerR-.05f,BoilerFront+.043f,32,.012f,.1f);

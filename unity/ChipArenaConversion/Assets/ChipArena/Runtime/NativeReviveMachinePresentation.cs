@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             if(gallery)
             {
                 Actor me=null;if(s?.Actors!=null)foreach(var a in s.Actors)if(a!=null&&a.Id==LocalId){me=a;break;}
-                if(!reviveWasGallery||!ReviveMachinePreview.Placed){var feet=me!=null?(visualPositions.TryGetValue(me.Id,out var v)?v:Vec(me.Position)):Vector3.zero;ReviveMachinePreview.Reset();ReviveMachinePreview.Place(new NVector(feet.x,feet.y,feet.z),me!=null?me.Yaw*Mathf.Deg2Rad:0);}
+                if(!reviveWasGallery||!ReviveMachinePreview.Placed){var feet=me!=null?(visualPositions.TryGetValue(me.Id,out var v)?v:Vec(me.Position)):Vector3.zero;ReviveMachinePreview.Reset();ReviveMachinePreview.Place(new NVector(feet.x,feet.y,feet.z),me!=null?me.Yaw*Mathf.Deg2Rad:0);if(NativeReviveMachine.Spot(arena.MapId,out var real,out float realYaw)){ReviveMachinePreview.At=real;ReviveMachinePreview.Yaw=realYaw;}}
                 NativeReviveMachine.Board=ReviveMachinePreview.Board;if(ReviveMachineAuto)ReviveMachinePreview.Script(time);else{ReviveMachinePreview.WantOpen=false;ReviveMachinePreview.WantPress=-1;}
                 var at=ReviveMachinePreview.At;ReviveMachineAt=new Vector3(at.X,at.Y,at.Z);ReviveMachineYaw=ReviveMachinePreview.Yaw;ReviveMachineStands=true;
                 // The stand-in is an actor of the frame while it flies and stands, so it takes the real pilot's whole path: the pose, the model's clip, the tumble.
