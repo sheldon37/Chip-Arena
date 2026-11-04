@@ -56,13 +56,13 @@ namespace ChipArena.UnityConversion
             k.Key(WalkFrom+.3f,stand).Root(w0.X,w0.Y,w0.Z,Facing).Drop(-.02f).J(C,-.02f,.02f,0).J(Hd,-.03f).J(RA,-.2f,0,-.1f).J(RE,-.55f).J(LA,-.5f,0,.2f).J(LE,-.7f).PassKey();
             k.Key(WalkFrom+.72f,stand).Root(w1.X,w1.Y,w1.Z,Facing).Drop(-.03f).J(C,-.02f,-.05f,0).J(Hd,-.03f).J(RA,-.3f,0,-.1f).J(RE,-.65f).J(LA,.18f,0,.16f).J(LE,-.3f).PassKey();
             k.Key(WalkFrom+1.18f,stand).Root(w2.X,w2.Y,w2.Z,Facing).Drop(-.02f).J(C,-.03f,.05f,0).J(Hd,-.04f).J(RA,-.2f,0,-.1f).J(RE,-.55f).J(LA,-.22f,0,.16f).J(LE,-.36f).PassKey();
-            k.Key(CardAt-.12f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.02f).J(C,-.04f).J(Hd,-.05f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.3f,0,.26f).J(LE,-.9f);
+            k.Key(CardAt-.12f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.02f).J(C,-.04f).J(Hd,-.05f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.26f,0,.6f).J(LE,-.9f);
             // The toss: a flick of the left forearm, watched up and down; caught and spun.
-            k.Key(TossAt-.1f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.02f).J(C,-.05f).J(Hd,-.04f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.46f,0,.3f).J(LE,-1.3f);
-            k.Key(TossAt+.04f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.03f).J(C,-.05f).J(Hd,-.16f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.74f,0,.28f).J(LE,-1.0f);
-            k.Key(CatchAt-.05f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.02f).J(C,-.05f).J(Hd,-.08f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.46f,0,.3f).J(LE,-1.3f);
-            k.Key(CatchAt+.06f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.05f).J(C,-.05f).J(Hd,.02f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.38f,0,.3f).J(LE,-1.2f);
-            k.Key(Total,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.03f).J(C,-.05f).J(Hd,-.02f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.42f,0,.3f).J(LE,-1.26f);Keys=k;
+            k.Key(TossAt-.1f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.02f).J(C,-.05f).J(Hd,-.04f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.3f,0,.62f).J(LE,-1.25f);
+            k.Key(TossAt+.04f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.03f).J(C,-.05f).J(Hd,-.16f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.62f,0,.6f).J(LE,-.95f);
+            k.Key(CatchAt-.05f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.02f).J(C,-.05f).J(Hd,-.08f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.3f,0,.62f).J(LE,-1.25f);
+            k.Key(CatchAt+.06f,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.05f).J(C,-.05f).J(Hd,.02f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.24f,0,.62f).J(LE,-1.16f);
+            k.Key(Total,stand).Root(w3.X,w3.Y,w3.Z,Facing).Drop(-.03f).J(C,-.05f).J(Hd,-.02f).J(RA,-.95f,0,-.28f).J(RE,-1.5f).J(LA,-.28f,0,.62f).J(LE,-1.22f);Keys=k;
             // The pylons blow farthest from the lens first.
             for(int i=0;i<order.Length;i++)order[i]=i;Array.Sort(order,(a,b)=>NativeEntranceStage.Pylon(a).Z.CompareTo(NativeEntranceStage.Pylon(b).Z));
             Shots=new[]
@@ -148,7 +148,7 @@ namespace ChipArena.UnityConversion
             float boot=NativeEntranceMath.Pulse(t,Stomp,.02f,.3f);if(boot>.01f&&t<BlackAt)l.Add(new Vector3(0,.2f,.3f),Hot*(1.5f*boot),3.2f);
             if(t>=RaiseFrom&&t<BlackAt){float c=.7f+1.2f*Tick(t);l.Add(Hand(t,t)+new Vector3(0,.12f,0),Led*(.9f*c),2.4f);}
             // The tossed stick's fuse, lighting it and the visor as it goes by; the bundle's, up at the shoulder.
-            if(t>=CardAt-.1f){l.Add(BallTip(t),Hot*1.7f,2.2f);}
+            if(t>=CardAt-.1f){l.Add(BallTip(t),Hot*1.7f,2.2f);l.Add(BallAt(t)+new Vector3(.1f,.05f,.5f),Hot*1.5f,1.7f);}
             if(t>=FirstBlast&&FuseNow.HasValue)l.Add(FuseNow.Value,Hot*1.3f,1.8f);
             // The wall of fire behind the walk.
             if(t>=FirstBlast){float g=up*(1-.35f*NativeEntranceMath.Ramp(t,CardAt,Total));var at=Anchor(NativeEntranceAnchor.Chest,t);l.Add(at+new Vector3(-.3f,.5f,-2.4f),FlameColor*(16*g),10);l.Add(new Vector3(-5,1.6f,-3),FlameColor*(10*g),14);l.Add(new Vector3(5,1.6f,-3),Ember*(10*g),14);l.Fog=NativeEntranceFx.Hex(0x2a0f07,.4f+.6f*g);l.Background=l.Fog;l.Sky=NativeEntranceFx.Hex(0xb06a3c,.32f+.34f*g);l.Ground=NativeEntranceFx.Hex(0x5a2410,.5f+.4f*g);}
@@ -217,7 +217,7 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
-        private const float BallLength=.3f;
+        private const float BallLength=.26f;
         /// <summary>The stick: upright in the palm, twice end over end on the way up and down.</summary>
         private static Quaternion BallTurn(float t)=>Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.9f,.1f,.3f)),NativeEntranceMath.Clamp01((t-TossAt)/(CatchAt-TossAt))*12.5663706f);
         private Vector3 BallTip(float t)=>BallAt(t)+Vector3.Transform(Vector3.UnitY*(BallLength*NativeTnt.FuseTip),BallTurn(t));
