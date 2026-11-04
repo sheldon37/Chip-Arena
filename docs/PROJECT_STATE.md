@@ -1,3 +1,5 @@
+2026-11-03 Claude: weapon techniques, a third ability on key 1 for the twelve standard weapons: design, simulation contract and presentation (`claude/weapon-techniques`; docs/WEAPON-TECHNIQUES.md). Shows only in the Dev Sandbox's Preview Techniques until Astra's rules exist. Next: Astra's simulation.
+
 2026-11-03 Claude: the zombie run is the pack's own stride, no more lunges: the clean sprints at their own pace, the feet landing under the body on the take's own path, rolling onto the ball (`claude/zombie-run-pace`; docs/ZOMBIE-MODELS.md 4m)
 
 2026-11-03 Astra Expedition instance repair (PR #319): bound reliable loading reports to the loading retry cadence; fix revived players blocking entire party returns by checking current HP/alive status while retaining death animation history. Integrated shared `67d1f769`. Managed regressions and Unity semantic compilation pass; native Windows/multiplayer acceptance and test publication remain pending. Exact push/merge/builder receipts in PR.
