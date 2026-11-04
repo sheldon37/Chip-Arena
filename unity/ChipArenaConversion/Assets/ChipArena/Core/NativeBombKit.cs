@@ -75,6 +75,73 @@ namespace ChipArena.UnityConversion
         /// <summary>Who holds the records (null: nothing to draw). Set from the rendered snapshot; the sandbox preview may override it.</summary>
         public static IBombSource Source;
         public static NativeBombKit Of(Actor a)=>a==null||Source==null?null:Source.Of(a.Id);
+        // ---- the TNT in the fists (owner 2026-11-04: "holding TNTs"): presentation only, read from what the kit already says ----
+        private static float Smooth(float x){x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
+        /// <summary>How often a Pop Bomb can go (1.5 a second), which is what makes the hands take turns under held fire.</summary>
+        public const float PopPeriod=2/3f;
+        /// <summary>Whether the left fist throws this Pop Bomb: they alternate.</summary>
+        public static bool ThrowsLeft(float castAt)=>(long)Math.Floor(castAt/PopPeriod)%2!=0;
+        /// <summary>How much of the TNT a fist shows, 0..1. The stick that goes is gone from the hand until the next is drawn from the belt; a mine or the switch takes the left fist's place, the big bundle both, the plunger both, and a reload sends the right to the satchel.</summary>
+        public static float HeldShare(NativeBombKit k,float time,float reloadAt,float reloadUntil,bool left)
+        {
+            float share=1;
+            if(!left&&time>=reloadAt&&time<reloadUntil){float u=(time-reloadAt)/Math.Max(.05f,reloadUntil-reloadAt);share=Math.Max(1-Smooth((u-.22f)/.1f),Smooth((u-.5f)/.12f));}
+            if(k==null)return share;
+            if(k.Finale!=null&&k.Finale.At>-50&&time>=k.Finale.At)share=Math.Min(share,Smooth((time-k.Finale.Lock-.34f)/.25f));
+            if(k.CastKind==null||time<k.CastAt)return share;
+            float since=time-k.CastRelease,again=since<0?1:Smooth((since-.14f)/.16f);
+            switch(k.CastKind)
+            {
+                case PopBomb:if(ThrowsLeft(k.CastAt)==left)share=Math.Min(share,again);break;
+                case StickyFuse:if(!left)share=Math.Min(share,again);break;
+                case BounceMine:if(left)share=Math.Min(share,since<0?0:again);break;
+                case DeadMansSwitch:if(left)share=Math.Min(share,Smooth((time-k.CastUntil+.22f)/.18f));break;
+                case ClusterLob:share=Math.Min(share,since<0?0:Smooth((since-.2f)/.2f));break;
+            }
+            return share;
+        }
+        /// <summary>Where the Grand Finale's crate goes, from the pilot's feet and facing (unit, flat): under both hands' place as it stoops and as it slams, a little to its right, because the pose stands turned.</summary>
+        public static Vector3 BoxSpot(Vector3 feet,Vector3 dir)=>feet+dir*.63f+new Vector3(dir.Z,0,-dir.X)*.1f;
+        /// <summary>A thrown stick's attitude at `t`, its axis local y with the fuse up it: end over end through the air, lying on its side once it has stopped.</summary>
+        public static Quaternion ChargeTurn(NativeBomb b,float t)
+        {
+            if(b.Vel.Length<.5f)return Quaternion.CreateFromAxisAngle(Vector3.UnitY,b.Id*1.7f)*Quaternion.CreateFromAxisAngle(Vector3.UnitZ,b.Kind==Lob?0:1.45f);
+            return Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.93f,.12f,.35f)),(t-b.At)*(b.Kind==Lob?4:b.Kind==Pop?11:14)+b.Id*.9f);
+        }
+    }
+    /// <summary>One piece of a stick of TNT, a stick of length 1 along y about the origin (linear tints, as the pieces take them).</summary>
+    public struct NativeTntPiece{public WeaponShape Shape;public bool Glow;public Vector3 At,Size,Tint;}
+    /// <summary>The Bombadier's TNT as loose pieces, for what the rig's fists do not hold: what is thrown, the belt, the charges in the intro. The held bundle is the sculpted model (NativeWeaponModels.Bomb.cs), in the same colours.</summary>
+    public static class NativeTnt
+    {
+        public const float Radius=.115f,FuseTip=.7f;
+        /// <summary>Round stock, the shape the sticks are drawn from. Beside the four WeaponShapes rather than among them: those files are the Prototype Series' own and stay byte-identical (ChipModuleChecks). NativeSourceModels.QueueAny draws either.</summary>
+        public const WeaponShape Round=(WeaponShape)4;
+        /// <summary>Its mesh: a capped cylinder of radius 1 and height 1 along y about the origin, the same winding as the source primitives.</summary>
+        public static void RoundPrimitive(List<Vector3> positions,List<Vector3> normals,List<int> indices)
+        {
+            positions.Clear();normals.Clear();indices.Clear();const int Sides=10;
+            for(int y=0;y<=1;y++)for(int x=0;x<=Sides;x++)
+            {
+                double theta=(double)x/Sides*Math.PI*2;float s=(float)Math.Sin(theta),c=(float)Math.Cos(theta);
+                positions.Add(new Vector3(s,.5f-y,c));normals.Add(new Vector3(s,0,c));
+            }
+            for(int x=0;x<Sides;x++){int a=x,b=Sides+1+x,c=Sides+1+x+1,d=x+1;indices.Add(a);indices.Add(b);indices.Add(d);indices.Add(b);indices.Add(c);indices.Add(d);}
+            for(int cap=0;cap<2;cap++)
+            {
+                float h=cap==0?.5f:-.5f,up=cap==0?1:-1;int middle=positions.Count;positions.Add(new Vector3(0,h,0));normals.Add(new Vector3(0,up,0));int rim=positions.Count;
+                for(int x=0;x<=Sides;x++){double theta=(double)x/Sides*Math.PI*2;positions.Add(new Vector3((float)Math.Sin(theta),h,(float)Math.Cos(theta)));normals.Add(new Vector3(0,up,0));}
+                for(int x=0;x<Sides;x++){if(cap==0){indices.Add(rim+x);indices.Add(rim+x+1);indices.Add(middle);}else{indices.Add(rim+x+1);indices.Add(rim+x);indices.Add(middle);}}
+            }
+        }
+        private static readonly Vector3 Paper=new Vector3(.5f,.032f,.022f),Crimp=new Vector3(.17f,.014f,.01f),Tape=new Vector3(.018f,.018f,.02f),Label=new Vector3(.72f,.62f,.36f),Rope=new Vector3(.09f,.075f,.06f),Ember=new Vector3(4,1.5f,.35f);
+        private static NativeTntPiece P(WeaponShape s,float y,float across,float along,Vector3 tint,bool glow=false)=>new NativeTntPiece{Shape=s,Glow=glow,At=new Vector3(0,y,0),Size=new Vector3(across,along,across),Tint=tint};
+        /// <summary>The whole stick: paper, crimped ends, its label and two bands of tape, the fuse and its ember.</summary>
+        public static readonly NativeTntPiece[] Stick={P(Round,0,Radius,1,Paper),P(Round,.5f,Radius*.8f,.03f,Crimp),P(Round,-.5f,Radius*.8f,.03f,Crimp),P(Round,.04f,Radius*1.02f,.3f,Label),P(Round,.28f,Radius*1.05f,.09f,Tape),P(Round,-.25f,Radius*1.05f,.09f,Tape),P(Round,.6f,.016f,.2f,Rope),P(WeaponShape.Sphere,FuseTip,.026f,.026f,Ember,true)};
+        /// <summary>The same with less on it, for what is small on the screen (the belt, the bomblets).</summary>
+        public static readonly NativeTntPiece[] Small={P(Round,0,Radius,1,Paper),P(Round,.1f,Radius*1.05f,.16f,Tape),P(Round,.6f,.022f,.2f,Rope)};
+        /// <summary>The length of a stick of this kind (m). A Cluster Lob's is a whole bundle of them.</summary>
+        public static float Length(string kind)=>kind==NativeBombs.Lob?.6f:kind==NativeBombs.Pop?.42f:kind==NativeBombs.Sticky?.26f:kind==NativeBombs.Bomblet?.2f:.3f;
     }
 
     /// <summary>
@@ -112,8 +179,8 @@ namespace ChipArena.UnityConversion
             }
             // Pop bombs off the hip.
             var pop0=feet+f*7+r*-2.2f;var pop1=feet+f*8.5f+r*1.4f;
-            Cast(NativeBombs.PopBomb,.0f,.12f,.5f);Thrown(1,NativeBombs.Pop,.12f,.72f,1.02f,hand,pop0,1.3f,up);Blast(101,NativeBombs.Pop,1.02f,pop0+up*.2f,2.4f,0,null);
-            Cast(NativeBombs.PopBomb,.66f,.78f,1.16f);Thrown(2,NativeBombs.Pop,.78f,1.38f,1.68f,hand,pop1,1.3f,up);Blast(102,NativeBombs.Pop,1.68f,pop1+up*.2f,2.4f,1,pop0+up*.2f);
+            Cast(NativeBombs.PopBomb,.0f,.16f,.56f);Thrown(1,NativeBombs.Pop,.16f,.76f,1.06f,hand,pop0,1.3f,up);Blast(101,NativeBombs.Pop,1.06f,pop0+up*.2f,2.4f,0,null);
+            Cast(NativeBombs.PopBomb,.67f,.83f,1.23f);Thrown(2,NativeBombs.Pop,.83f,1.43f,1.73f,hand,pop1,1.3f,up);Blast(102,NativeBombs.Pop,1.73f,pop1+up*.2f,2.4f,1,pop0+up*.2f);
             // Two mines on the floor.
             var mine0=feet+f*9+r*3;var mine1=feet+f*11-r*2.5f;
             Cast(NativeBombs.BounceMine,2.2f,2.42f,2.9f);Thrown(3,NativeBombs.Mine,2.42f,2.92f,7,hand,mine0,1.1f,up);
@@ -138,7 +205,7 @@ namespace ChipArena.UnityConversion
             float fa=13;
             if(t>=fa&&t<fa+3.8f)
             {
-                float lk=fa+2.1f,st=fa+2.6f;var box=feet+f*.75f;Vector3 C(int i){float ang=i*2.0943951f+.5f;return feet+f*10+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*5.2f;}
+                float lk=fa+2.1f,st=fa+2.6f;var box=NativeBombs.BoxSpot(feet,f);Vector3 C(int i){float ang=i*2.0943951f+.5f;return feet+f*10+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*5.2f;}
                 var circles=new NativeBombCircle[3];for(int i=0;i<3;i++){float roam=Math.Min(t,lk)-fa;circles[i]=new NativeBombCircle{Id=1000+i,Pos=V(C(i)+r*(float)Math.Sin(roam*1.6f+i)*1.1f)};}
                 k.Finale=new NativeBombFinale{At=t0+fa,Lock=t0+lk,Strike=t0+st,Until=t0+fa+3.6f,Box=V(box),Dir=V(f),Circles=circles};Cast(NativeBombs.GrandFinale,fa,fa+.6f,fa+3.6f);
                 if(t>=st)for(int i=0;i<3;i++)blasts.Add(new NativeBlast{Id=140+i,Kind=NativeBombs.Column,At=t0+st,Pos=circles[i].Pos,Radius=NativeBombs.CircleRadius,FromPos=circles[i].Pos});

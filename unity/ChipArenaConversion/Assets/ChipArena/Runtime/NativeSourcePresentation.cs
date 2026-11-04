@@ -55,6 +55,8 @@ namespace ChipArena.UnityConversion
             bool armed=NativeWeaponDressing.SocketShown(a.SourceSpec)&&!a.WeaponAway&&weapon&&!ChipStowed(a,first)&&!NativeSirenVictimPose.Active(a,time)&&SpawnShows(CapturedRig.RHand);float reach=armed?WeaponReach(rig,a,time):1;Matrix4x4 WeaponBone(int b)=>SourceWeaponBone(rig,a,time,first,b,reach);
             // The bow draws its live parts (Runtime/NativeBowPresentation.cs: the flexed limbs, the string to the nock, the arrows).
             if(armed&&BowHeld(rig,a,time,first,layer,camera,tint,flash))armed=false;
+            // The Bombadier's TNT: what each fist shows moves by the moment (NativeBombPresentation.cs).
+            if(armed&&a.SourceSpec==NativeBombs.Spec){string tnt=HeldWeaponModel(rig,a,first);BombHeld(rig,a,time,tnt,WeaponBone,layer,camera,tint,StandardModel(tnt)?flash:1);WeaponDressing(rig,a,time,first,layer,camera,reach);armed=false;}
             // A visual body draws its own model of the weapon where it has one (NativeVisualWeaponPresentation.cs; the daggers' second
             // blade at the off-hand's frame); the dressing stays.
             if(armed){if(!(visual&&VisualWeaponDrawn(rig,WeaponBone(CapturedRig.RHand),a.SourceSpec=="daggers"?WeaponBone(CapturedRig.LHand):(Matrix4x4?)null))){string held=HeldWeaponModel(rig,a,first);sourceModels.Queue(held,rig.Root.transform.localToWorldMatrix,WeaponBone,b=>!a.MainWeaponAway||a.SourceSpec!="daggers"||b!=CapturedRig.RHand,layer,camera,accent:AccentTint(a.AccentColor),hitFlash:StandardModel(held)?flash:1,partTint:tint,glow:HeldGlow);}WeaponDressing(rig,a,time,first,layer,camera,reach);}

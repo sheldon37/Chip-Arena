@@ -86,14 +86,16 @@ namespace ChipArena.UnityConversion
             entranceReveal??=b=>entranceScript.Solid(entranceTime,b);bool solid=script.Solid(t,CapturedRig.Chest)>.5f;
             // On its visual body once built in (the Sheldon intro's hood and face over the model's head).
             string keepAccent=actor.AccentColor,scriptAccent=script.AccentAt(t);if(scriptAccent!=null)actor.AccentColor=scriptAccent;
+            // The Last Warning holds TNT whatever the pilot carries into the match, so the fists close on that (VisualHold).
+            string keepSpec=actor.SourceSpec;if(script is NativeBombadierIntro)actor.SourceSpec=NativeBombs.Spec;
             VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);
             try{sheldonScripted=sheldon!=null;SourceCharacter(introRig,actor,arena.Time,weapon:false,halo:age,reveal:entranceReveal);}finally{sheldonScripted=false;}if(solid||script.Solid(t,CapturedRig.RHand)>.5f)IntroWeapon(style,age);
             if(solid)TeamBands(introRig,NativeStatusVisuals.PilotBand(arena.Match.Teams,arena.Match.Cooperative,pilot.Seat.AuthorityBoss,pilot.Seat.team,pilot.Seat.id==arena.LocalId));
-            if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);}
+            if(script is NativeBombadierIntro last){if(solid)BombGear(introRig);var palm=introRig.Bones[CapturedRig.LHand];var at=palm.position+palm.rotation*new Vector3(0,-.06f,0);last.PalmNow=new System.Numerics.Vector3(-at.x,at.y,at.z);var fist=introRig.Bones[CapturedRig.RHand];var tip=fist.position+fist.rotation*CapturedAnimation.Vec(CapturedRig.Mirror(NativeWeaponModels.TntFuseTip));last.FuseNow=new System.Numerics.Vector3(-tip.x,tip.y,tip.z);}
             EntranceGhosts(script,style,t);
             entranceProps??=new EntranceProps(sourceModels);script.Props(t,entranceProps,quality);
             if(vfx!=null){vfx.Low=LowGraphics;vfx.Begin();entranceFx??=new EntranceFx(vfx);script.Effects(t,entranceFx,quality);vfx.Blasts(entranceSim);}
-            VisualBodiesShown();actor.AccentColor=keepAccent;
+            VisualBodiesShown();actor.AccentColor=keepAccent;actor.SourceSpec=keepSpec;
             DrawBatches(null,0,false);sourceModels.Stage=true;try{sourceModels.Flush(UsesInstancing);}finally{sourceModels.Stage=false;}
             vfx?.Submit(camera);
         }
@@ -152,7 +154,7 @@ namespace ChipArena.UnityConversion
             public void Piece(WeaponShape shape,bool glow,System.Numerics.Vector3 position,System.Numerics.Quaternion rotation,System.Numerics.Vector3 scale,System.Numerics.Vector3 color)
             {
                 var m=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(position)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),CapturedAnimation.Vec(scale));
-                models.QueuePiece(shape,glow,m,new Color(color.X,color.Y,color.Z,1));
+                models.QueueAny(shape,glow,m,new Color(color.X,color.Y,color.Z,1));
             }
         }
         /// <summary>A directed entrance's effects into the shared effects renderer (mirrored into Unity's frame).</summary>
@@ -182,7 +184,7 @@ namespace ChipArena.UnityConversion
             if(style==NativeBombs.Entrance)
             {
                 bombHand??=b=>{var bone=introRig.Bones[b];return Matrix4x4.TRS(bone.position,bone.rotation,Vector3.one);};
-                string lit=entranceScript?.AccentAt(entranceTime);sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bombHand,accent:lit!=null?AccentTint(lit):introAccent);return;
+                string lit=entranceScript?.AccentAt(entranceTime);sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bombHand,b=>b!=CapturedRig.LHand,accent:lit!=null?AccentTint(lit):introAccent);return;
             }
             if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
