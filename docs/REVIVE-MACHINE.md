@@ -4,7 +4,7 @@ Owner request, 2026-11-04: "Lets add a revive machine in the hub to revive playe
 location of their body, and cause of death. You can select the player to revive and it will be a fixed cost of 250$. It will comically spit them out of the machine when revived with full hp. Machine will be a highly detailed
 design with cool effects (comical design for spitting players out)."
 
-Status: presentation by Claude, reviewed in Unity through the Dev Sandbox preview. **In a real run today the machine stands in the hub and its screen lists who is down, but pressing REVIVE does nothing yet: it says so.** Whether a revive is
+Status: presentation by Claude, reviewed in the Unity Editor through the Dev Sandbox preview (the sound not yet heard). **In a real run today the machine stands in the hub and its screen lists who is down, but pressing REVIVE does nothing yet: it says so.** Whether a revive is
 allowed, the $250, restoring the pilot across hub and instance, replicating it, and recording cause of death and the body's spot are Astra's (AGENTS.md role split): the contract is below.
 
 ## The machine
