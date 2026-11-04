@@ -340,7 +340,7 @@ namespace ChipArena.UnityConversion
             if(v.Kind==CinderlingKind){v.Char=1;v.Gear=new[]{"cinder-ribs"+fit,b?"cinder-cap":"cinder-skull","cinder-rags"};}
             else if(v.Kind==StokerKind){v.Foil=1;v.Faceless=true;v.Garments=new[]{TrenchGarment};v.GarmentColours=new[]{b?0xA9A79F:0xB9B6AD};v.Gear=new[]{b?"stoker-hood-dome":"stoker-hood","stoker-cape"+fit,"stoker-pack"+fit,"stoker-gauntlet-l","stoker-gauntlet-r"};}
             else if(v.Kind==SlagbackKind){v.Char=.4f;v.Crust=true;v.Gear=new[]{"slag-chest"+fit,"slag-back"+fit,"slag-fissure"+fit,"slag-head","slag-pelvis","slag-shoulder-l","slag-shoulder-r","slag-arm-l","slag-arm-r","slag-forearm-l","slag-forearm-r","slag-thigh-l","slag-thigh-r"};}
-            else if(v.Kind==LadlemanKind){v.Garments=new[]{ApronGarment};v.GarmentColours=new[]{b?0x4E3220:0x5E3D25};v.Gear=new[]{"ladle-mask","ladle-gauntlet-l","ladle-gauntlet-r","ladle-spat-l","ladle-spat-r"};}
+            else if(v.Kind==LadlemanKind){v.Garments=new[]{ApronGarment};v.GarmentColours=new[]{b?0x4E3220:0x5E3D25};v.Gear=new[]{"ladle-hood","ladle-mask","ladle-gauntlet-l","ladle-gauntlet-r","ladle-spat-l","ladle-spat-r"};}
             else if(v.Kind==RiggerKind){v.Garments=new[]{CoverallsGarment};v.GarmentColours=new[]{-1};v.Gear=new[]{b?"rigger-hat-worn":"rigger-hat","rigger-harness"+fit,"rigger-coil"+fit};}
         }
 

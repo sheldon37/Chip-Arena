@@ -20,6 +20,7 @@ import bpy
 from mathutils import Matrix, Vector, noise
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import converter_gear as cg  # noqa: E402
 import gearkit as gk  # noqa: E402
 from gearkit import Piece, box, catmull, cyl, decal, finish, ribbon, sphere, torus, tube  # noqa: E402
 
@@ -112,7 +113,7 @@ def finishes():
     # slag
     finish('slag', 0x131010, 'plastic', dirt=.35)
     finish('slag-edge', 0x2A2427, 'plastic', dirt=.3)
-    finish('slag-crack', 0xE0642A, 'glow')
+    finish('slag-crack', 0x8A3014, 'glow')
     finish('fissure', 0xFFD9A0, 'glow')
     finish('fissure-rim', 0xFF9A4A, 'glow')
     finish('raw', 0x2A1812, 'flesh')
@@ -489,6 +490,19 @@ def ladle(full=True):
         for i in range(6):
             a2 = i * 1.05 + .4
             rock(pc, (math.cos(a2) * .2, b + math.sin(a2) * .2, .136), (.036, .022, .005), along((0, 0, 1)) @ Matrix.Rotation(a2, 3, 'Z'), 'molten-skin', i * 1.7, sub=1, lump=.2)
+        # The heat in its iron: the lining's rim lit, metal slopped over the spout and run down the shell, the shell's cracks glowing, seen from every side.
+        torus(pc, (0, b, .15), (0, 0, 1), in_r + .004, .0085, 'molten', segs=28, rsegs=4)
+        spill = [Vector((0, b + in_r - .02, .142)), Vector((0, b + R + .03, .158)), Vector((.008, b + R + .07, .118)), Vector((.012, b + R + .058, .06)), Vector((.02, b + R + .018, .0)), Vector((.012, b + R, -.06)), Vector((.018, b + R - .02, -.11))]
+        path = catmull(spill, 3)
+        tube(pc, path, .02, 'molten', segs=7, radii=[max(.006, .03 * (1 - i / (len(path) - 1)) ** 1.2) for i in range(len(path))])
+        for k, (t0, z0) in enumerate(((.9, .09), (-1.1, .03), (2.3, .07), (-2.6, -.02), (.2, -.09), (3.0, -.1))):
+            pts = []
+            for i in range(5):
+                t = t0 + (i - 2) * .07 * (1 if k % 2 else -1)
+                z = z0 - i * .032
+                rs = max(.17, .265 + z * .12 if z > -.04 else .25 + (z + .04) * .55) + .006
+                pts.append(Vector((math.sin(t) * rs, b + math.cos(t) * rs, z)))
+            tube(pc, pts, .0044, 'ember', segs=4)
         out.append(pc.make())
     else:
         # Spilled: a skin of dark metal in the bottom, a dull glow left in its cracks.
@@ -630,6 +644,60 @@ def ladle_mask():
 
 
 # ===========================================================================================================================
+def ladle_hood():
+    """The welder's leather cowl under the mask: a sewn cap over the skull, flaps over the ears, a curtain down the back of the neck."""
+    out = []
+    pc = Piece('hood')
+    c, rx, ry, rz = Vector((0, .018, .1)), .114, .13, .13
+    n, m = 30, 11
+    rows = []
+    for j in range(m + 1):
+        v = j / m
+        ph = math.radians(-58 + v * 145)
+        row = []
+        for i in range(n):
+            t = 2 * math.pi * i / n
+            cp = math.cos(ph)
+            p = c + Vector((math.sin(t) * rx * cp, math.cos(t) * ry * cp, math.sin(ph) * rz))
+            # stops short of the face's opening in front (the mask covers it): pulled back under the mask's edge
+            front = max(0.0, math.cos(t))
+            p.y -= .03 * front * front
+            row.append(pc.bm.verts.new(p))
+        rows.append(row)
+    faces = []
+    for j in range(m):
+        for i in range(n):
+            faces.append(pc.bm.faces.new((rows[j][i], rows[j][(i + 1) % n], rows[j + 1][(i + 1) % n], rows[j + 1][i])))
+    pc.tag(faces, 'leather')
+    for f in faces:
+        f.normal_update()
+        if f.normal.dot(f.calc_center_median() - c) < 0:
+            f.normal_flip()
+    out.append(pc.solidify(.005, 1.0).make(recalc=False))
+    # The curtain: stiff leather from the cap's back edge to the shoulders, with its burn marks; the seams up the crown.
+    pc = Piece('hood-curtain')
+    a, b = [], []
+    for i in range(15):
+        t = math.radians(100 + i * 160 / 14)
+        a.append(Vector((math.sin(t) * .098, .018 + math.cos(t) * .112, -.002)))
+        b.append(Vector((math.sin(t) * .125, .018 + math.cos(t) * .135, -.105)))
+    va, vb = [pc.bm.verts.new(p) for p in a], [pc.bm.verts.new(p) for p in b]
+    faces = [pc.bm.faces.new((va[i], va[i + 1], vb[i + 1], vb[i])) for i in range(14)]
+    pc.tag(faces, 'leather-dark')
+    for f in faces:
+        f.normal_update()
+        if f.normal.dot(f.calc_center_median() - Vector((0, .018, -.05))) < 0:
+            f.normal_flip()
+    out.append(pc.solidify(.004, 1.0).make(recalc=False))
+    pc = Piece('hood-seams')
+    for x0 in (-.045, .045):
+        k = math.sqrt(1 - (x0 / (rx + .005)) ** 2)
+        seam = [Vector((x0, c.y + (ry + .006) * k * math.cos(p) - .03 * max(0.0, math.cos(p)) ** 2, c.z + (rz + .006) * k * math.sin(p))) for p in [math.radians(a2) for a2 in range(40, 186, 12)]]
+        tube(pc, seam, .0026, 'leather-dark', segs=4)
+    out.append(pc.make())
+    return out
+
+
 def rigger_hat(colour):
     """The hard hat (station_gear.py's shell, its lens dull: the lit lens is a prop drawn while its lamp is on, Runtime IronworksLampOnModel) in dirty cream."""
     import station_gear
@@ -808,7 +876,7 @@ def patch(pc, surf, cu, cv, du, dv, thick, fin, seed, n=6, edge_fin=None, sink=.
     return faces
 
 
-def plates(pc, seams, surf, table, fin='slag', edge='slag-edge', crack='slag-crack', seam_scale=1.14):
+def plates(pc, seams, surf, table, fin='slag', edge='slag-edge', crack='slag-crack', seam_scale=1.06):
     """Crust plates (cu, cv, du, dv, thick) with a glowing seam under each."""
     for i, (cu, cv, du, dv, th) in enumerate(table):
         seed = cu * .013 + cv * 7.1 + i * 1.37
@@ -1117,13 +1185,58 @@ def stoker_pack(key):
     return out
 
 
-def cuff_fit(key, bone, fin, band, x0=.07, x1=.95):
+def cuff_fit(key, bone, fin, band, x0=.07, x1=.95, off=.007):
+    """A gauntlet's cuff or a spat on a limb bone: a shell laid over the limb's fitted surface (its radii smoothed round it), flared at its near end, a rolled edge at each, two straps and buckles, rivets."""
     surf = Limb(key, bone)
-    side = -1 if sorted(FITS[key][bone])[0] < -.05 and abs(sorted(FITS[key][bone])[0]) > abs(sorted(FITS[key][bone])[-1]) else 1
+    xs = sorted(FITS[key][bone])
+    side = -1 if abs(xs[0]) > abs(xs[-1]) else 1
     xa, xb = abs(_along(key, bone, x0)), abs(_along(key, bone, x1))
-    r0 = max(surf.r(a, side * (xa + .03)) for a in range(0, 360, 30)) + .012
-    r1 = max(surf.r(a, side * (xb - .02)) for a in range(0, 360, 30)) + .009
-    return forearm_cuff(side, r0, r1, xa, xb, fin, band)
+    n = 20
+    out = []
+
+    def rad(a, x):
+        return (surf.r(a - 30, x) + 2 * surf.r(a, x) + surf.r(a + 30, x)) / 4
+
+    def ring(x, extra):
+        q = []
+        for i in range(n):
+            a = i * 360 / n
+            r = max(rad(a, side * x), rad(a, side * (x - .03)), rad(a, side * (x + .03))) * .96 + extra
+            t = math.radians(a)
+            q.append(Vector((side * x, math.cos(t) * r, math.sin(t) * r)))
+        return q
+    pc = Piece('cuff')
+    steps = 7
+    rings = []
+    for k in range(steps):
+        f = k / (steps - 1)
+        x = xa + (xb - xa) * f
+        rings.append([pc.bm.verts.new(p) for p in ring(x, off + .012 * (1 - f) ** 3)])
+    faces = []
+    for k in range(steps - 1):
+        for i in range(n):
+            faces.append(pc.bm.faces.new((rings[k][i], rings[k][(i + 1) % n], rings[k + 1][(i + 1) % n], rings[k + 1][i])))
+    pc.tag(faces, fin)
+    for f in faces:
+        f.normal_update()
+        q = f.calc_center_median()
+        if f.normal.dot(Vector((0, q.y, q.z))) < 0:
+            f.normal_flip()
+    out.append(pc.solidify(.004, 1.0).make(recalc=False))
+    pc = Piece('cuff-trim')
+    tube(pc, ring(xa, off + .016), .0045, band, segs=5, closed=True)
+    tube(pc, ring(xb, off + .004), .0045, band, segs=5, closed=True)
+    for f in (.3, .72):
+        x = xa + (xb - xa) * f
+        loop = ring(x, off + .006)
+        tube(pc, loop, .0055, 'strap', segs=4, closed=True)
+        top = loop[5]
+        box(pc, top + Vector((0, 0, .002)), (.02, .03, .007), 'buckle')
+    x = (xa + xb) / 2
+    loop = ring(x, off + .004)
+    rivets(pc, [loop[i] for i in range(1, n, 4)], (0, 0, 1), .0035, .003)
+    out.append(pc.make())
+    return out
 
 
 # ===========================================================================================================================
@@ -1251,6 +1364,7 @@ def _props():
         ('stoker-hood-dome', 'head', HEAD, lambda: hood(True)),
         ('stoker-rake', 'prop', PROP, rake),
         ('ladle-mask', 'head', HEAD, ladle_mask),
+        ('ladle-hood', 'head', HEAD, ladle_hood),
         ('ladle-full', 'prop', PROP, lambda: ladle(True)),
         ('ladle-empty', 'prop', PROP, lambda: ladle(False)),
         ('rigger-hook', 'prop', PROP, hook),
@@ -1307,6 +1421,7 @@ def main():
     ap.add_argument('--out', required=True, help="a checkout's Assets/LocalAssets")
     ap.add_argument('--preview', help='render each prop here (workbench, its vertex colours)')
     ap.add_argument('--only', default='')
+    ap.add_argument('--no-converter', action='store_true', help='the five kinds only (quicker while working on them)')
     a = ap.parse_args(argv)
     gk.clear_scene()
     import station_gear
@@ -1322,6 +1437,33 @@ def main():
         gb.add(prop, bone, gm)
         if a.preview:
             gk.preview(gm, frame, a.preview, prop)
+        for ob in objs:
+            bpy.data.objects.remove(ob, do_unlink=True)
+    # THE CONVERTER, joint by joint, in its three detail tiers (converter_gear.py).
+    cg.finishes()
+    for j, (joint, build, kind) in enumerate(() if a.no_converter else cg.parts()):
+        for tier, ratio in enumerate(cg.TIERS):
+            prop = 'conv-%s-%d' % (joint, tier)
+            if only and prop not in only and joint not in only:
+                continue
+            objs = build()
+            if ratio < 1:
+                for ob in objs:
+                    m = ob.modifiers.new('decimate', 'DECIMATE')
+                    m.ratio = ratio
+            gm = gk.bake(prop, objs, cg.FRAME, seed=j * 1.13 + 7)
+            cg.grime(gm, kind)
+            gb.add(prop, joint, gm)
+            if a.preview and tier == 0:
+                gk.preview(gm, cg.FRAME, a.preview, prop)
+            for ob in objs:
+                bpy.data.objects.remove(ob, do_unlink=True)
+    for j, (prop, build) in enumerate(() if a.no_converter else cg.CHAIN):
+        if only and prop not in only:
+            continue
+        objs = build()
+        gm = gk.bake(prop, objs, cg.FRAME, seed=j * 1.9)
+        gb.add(prop, 'prop', gm)
         for ob in objs:
             bpy.data.objects.remove(ob, do_unlink=True)
     gb.write(a.out, BANK)
