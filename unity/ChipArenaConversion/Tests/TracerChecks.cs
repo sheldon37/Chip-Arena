@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
         {if(!kit.Kit)kit=NativeTracerLook.Of(null,0,spec,0);return NativeTracers.Of(spec,kit,round,speed,baseSpeed,chips,fire,poison,side,q,low);}
         public static void Run(string root)
         {
-            count=0;Paths();Looks();Sides();Fast();Corners();Landings();Ends();Text(root);
+            count=0;Paths();Looks();Sides();Fast();Corners();Landings();Arrows();Ends();Text(root);
             Console.WriteLine("PASS tracers ("+count+" checks: the path a tail lies along, each gun's look, chips only in the sheath, friends and foes, the tiers, corners, the landings along the rebound, what the presentation reads)");
         }
         private static void Paths()
@@ -62,6 +62,9 @@ namespace ChipArena.UnityConversion
             Check(NativeTracers.Tint(new NativeShotModules{Homing=1},true,false,out var flame)&&flame.R>flame.B,"an element first");
             // A slower round is heavier, a faster one finer.
             Check(Gun("pistol",speed:30,baseSpeed:60).Core>pistol.Core&&Gun("pistol",speed:120,baseSpeed:60).Core<pistol.Core,"speed changes the weight");
+            Check(NativeTracers.HeadNear(.4f)==0&&NativeTracers.HeadNear(20)==1&&NativeTracers.HeadNear(80)==0,"the head's glint: not in the face, not a row of far dots");
+            Check(NativeTrailFx.SpacingAt(40)==1&&NativeTrailFx.SpacingAt(120)==2,"a fast bolt sheds its sprites further apart");
+            var own=pistol;NativeTracers.Own(ref own);Check(own.MaxLength>pistol.MaxLength&&own.Fade==NativeTracers.OwnFade,"the first-person round's tail reaches back to the barrel");
             Check(NativeTracers.Modules("machinegun",3)&&!NativeTracers.Modules("machinegun",4)&&NativeTracers.Modules("pistol",4)&&NativeTracers.ModuleShare<.5f,"chip modules small, on a belt's full tracers only");
             Check(NativeTracers.OwnFade>.5f,"the first-person tail stays in the shader's tracer mode");
             // Tiers.
@@ -118,6 +121,30 @@ namespace ChipArena.UnityConversion
             Check(NativeRoundImpacts.Debris("rifle",1)&&NativeRoundImpacts.Debris("pistol",1)&&NativeRoundImpacts.Debris("machinegun",3)&&!NativeRoundImpacts.Debris("machinegun",4),"a machine gun's debris one hit in three");
             Check(NativeRoundImpacts.Puffs(NativeRoundImpact.Rifle,.3f,false)==0&&NativeRoundImpacts.Puffs(NativeRoundImpact.Rifle,1,true)==0&&NativeRoundImpacts.Puffs(NativeRoundImpact.Rifle,1,false)>0,"dust follows the tiers");
             for(int k=0;k<8;k++)for(double age=0;age<.3;age+=.04)if(NativeRoundImpacts.Spark(NativeRoundImpact.Pistol,91,k,age,Vector3.UnitY,-Vector3.UnitY,out var o,out _,out _,out _))Check(o.Y>=0,"floor sparks bounce, never sink");
+        }
+        // An arrow's model points along its velocity at every point of its arc, its head on the replicated place; its trail is the path's, not a straight line.
+        private sealed class ArrowSink:IBowFxSink
+        {
+            public Vector3 Nock,Dir;public int Arrows,Lines;
+            public void Arrow(Vector3 nock,Vector3 dir,float opacity,bool view,bool standard){Nock=nock;Dir=dir;Arrows++;}
+            public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){}
+            public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){}
+            public void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor){}
+            public void Sprite(bool view,Vector3 at,Vector3 color,float size,int profile){}
+            public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){Lines++;}
+            public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){}
+        }
+        private static void Arrows()
+        {
+            var sink=new ArrowSink();float g=30,speed=45;
+            for(float t=0;t<1;t+=.1f)
+            {
+                var v=new Vector3(0,12-g*t,speed);var at=new Vector3(0,2+12*t-.5f*g*t*t,speed*t);
+                NativeBowFx.InFlight(sink,new NativeBowArrowView{Position=at,Velocity=v,Born=0,Draw=1,Kind=NativeBow.Arrow.Full,PathTrail=true},t,1,false);
+                Check(Vector3.Dot(sink.Dir,Vector3.Normalize(v))>.9999f,"an arrow points along its velocity, nose down as it falls");
+                Check(Vector3.Distance(sink.Nock+sink.Dir*NativeBow.ArrowLength,at)<.001f,"its head on the replicated place");
+            }
+            Check(sink.Arrows==10&&sink.Lines==0,"with the path trail on, the old straight line is not drawn");
         }
         private static void Ends()
         {

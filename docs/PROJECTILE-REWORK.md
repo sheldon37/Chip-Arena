@@ -98,6 +98,10 @@ reflection can have both completed ray segments and a live simulated Shot with t
 do not suppress its remaining flight. Hit events keep that id; only instant death camera
 attribution uses zero.
 
+## Presentation (Claude, `claude/ranged-polish`)
+
+Done: Hitscan segments drawn by event id from the drawn muzzle, on authority time; stale ones skipped; rounds that begin and end between frames reconstructed from `NativeShotEnds`. Core `NativeTracers.cs`, Runtime `NativeTracerPresentation.cs`. Still asked of the rules: `Projectile` on gun Shot events or `Owner` on `NativeShotEnd`; `Projectile` and `Normal` on Ricochet; parent `Projectile` on Split; an Impact with `Normal` for world-collider hits; a sample time on `NativeBomb`. See DEV_LOG.
+
 ## Validation and release
 
 Managed projectile checks cover profiles, integrated straight paths, chip fallback/composition,

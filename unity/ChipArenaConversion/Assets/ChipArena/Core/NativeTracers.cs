@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
     {
         public const int PistolCore=0xfff6e0,PistolEdge=0xffc25a,GunCore=0xffe8c0,GunEdge=0xff9a32,RifleCore=0xf2faff,RifleEdge=0x86c8ff,RifleLine=0xbfe4ff,DriveCore=0xfff4e4,DriveEdge=0xff3c0c,DriveHot=0xff6a14,HostileEdge=0xff3a24;
         /// <summary>The fewest pixels wide a core, a sheath and a head are drawn at any distance.</summary>
-        public const float CorePixels=2,SheathPixels=6,HeadPixels=7;
+        public const float CorePixels=2,SheathPixels=6,HeadPixels=5;
         /// <summary>The glare under a scoped view as the rifle fires: its life (s) and colour.</summary>
         public const float ScopeGlareLife=.07f;public const int ScopeGlare=0xffd8a8;
         /// <summary>A gun round's chip modules are drawn at this share of their size (on a needle, not on a fat box).</summary>
@@ -105,8 +105,9 @@ namespace ChipArena.UnityConversion
         public const float OwnFade=.6f;
         /// <summary>A round is on its first heading within this (cos 3.5 degrees): its tail is still one straight line.</summary>
         public const float StraightCos=.998f;
-        /// <summary>The head's glint fades out close to the eye (0 within half a metre, full from 3.5 m): a round passing the camera is not a flash in the face.</summary>
-        public static float HeadNear(float distance)=>Math.Max(0,Math.Min(1,(distance-.5f)/3));
+        /// <summary>The head's glint fades out close to the eye (0 within half a metre, full from 3.5 m: a round passing the camera is not a flash in the face) and far
+        /// off (full to 35 m, gone by 70 m: a far stream is its lines, not a row of bright dots).</summary>
+        public static float HeadNear(float distance)=>Math.Max(0,Math.Min(1,Math.Min((distance-.5f)/3,(70-distance)/35)));
         /// <summary>A drawn line's parts: the hitscan rifle's and a round that came and went between frames: the hot line and its sheath, each its own
         /// life (s); how far ahead of the far end the near end fades (so the line reads as leaving the gun); how long after its authority time a
         /// stale one is skipped (a late join, a long frame).</summary>
