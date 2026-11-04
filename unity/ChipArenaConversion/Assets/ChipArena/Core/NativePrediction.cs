@@ -39,7 +39,13 @@ namespace ChipArena.UnityConversion
         {
             var input=raw.Sanitized();float dt=Rules.Dt;
             state.Time+=dt;
-            if(NativeTechniqueRules.Moving(state.Technique,state.Time)){state.Position=constrain(state.Position,state.Position+state.Velocity*dt);return state;}if(state.Grounded){state.AirJumps=0;state.AirborneAt=-1;state.AirAttackUsed=false;}else if(state.AirborneAt<0)state.AirborneAt=state.Time;
+            if(NativeTechniqueRules.Rooted(state.Technique,state.Time)){state.Velocity.x=state.Velocity.z=0;if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;state.Position=constrain(state.Position,state.Position+state.Velocity*dt);return state;}
+            if(NativeTechniqueRules.Moving(state.Technique,state.Time))
+            {
+                if(state.Technique.Kind=="grave-walk"||state.Technique.Kind=="shield-surf")
+                {var heading=state.Technique.Kind=="grave-walk"?new V3(input.X,0,input.Z):V3.Forward(input.Yaw);if(heading.Length>1)heading=heading.Normalized;float travel=state.Technique.Kind=="grave-walk"?7:11;state.Velocity.x=heading.x*travel;state.Velocity.z=heading.z*travel;if(!state.Grounded)state.Velocity.y-=state.Gravity*dt;}
+                state.Position=constrain(state.Position,state.Position+state.Velocity*dt);return state;
+            }if(state.Grounded){state.AirJumps=0;state.AirborneAt=-1;state.AirAttackUsed=false;}else if(state.AirborneAt<0)state.AirborneAt=state.Time;
             if(state.MeleeWeapon!=null&&input.Attack&&state.Time<state.RollUntil&&state.Time>=state.RollUntil-.2f)state.BufferUntil=state.Time+NativeMeleeFeel.BufferSeconds;
             if(!state.CanMove){state.BowDrawAt=-1;return state;}
             if(state.Bow){if(input.Block||input.Aim||input.Sprint||input.CancelAbilities||input.AbilityQ||input.AbilityE||state.Time<state.RollUntil)state.BowDrawAt=-1;else if(state.BowDrawAt>=0&&!input.Shoot){state.BowDrawAt=-1;state.Ready=state.Time+NativeBowRules.Nock;}else if(state.BowDrawAt<0&&input.Shoot&&state.Time>=state.Ready)state.BowDrawAt=state.Time;}

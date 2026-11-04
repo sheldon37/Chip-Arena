@@ -170,12 +170,20 @@ namespace ChipArena.UnityConversion
             if(e){o.Cooldown=w.secondaryCooldown;o.Cost=w.secondaryCost;}
             o.Meta=Meta(o.Cooldown,o.Cost,w.@class=="melee"?"stamina":"mana",false);into.Add(o);return 1;
         }
-        // The weapon's technique as one more choice for this slot: picking it replaces the slot's own ability.
-        public static bool AddTechnique(ContentWeapon w,string slot,List<AbilityOption> into)
+        // The weapon's techniques as more choices for this slot: picking one replaces the slot's own ability. A technique is offered once the
+        // rules have its content row live; `all` (the Dev Sandbox, a preview) offers every one. However many there are, the page lays them out.
+        public static int AddTechniques(ConversionContent content,ContentWeapon w,string slot,List<AbilityOption> into,bool all=false)
         {
-            if(w==null||!NativeTechniqueLoadout.Allowed(w.id,slot))return false;var d=NativeTechniques.For(w.id);if(d==null)return false;
-            into.Add(new AbilityOption{Id=d.Id,Name=d.Name,Text=NativeTechniques.Text(d.Id),Icon=d.Icon,Cooldown=d.Cooldown,Cost=d.Cost,Meta=Meta(d.Cooldown,d.Cost,CostUnit(w),false),Technique=d});return true;
+            if(w==null||!NativeTechniqueLoadout.Allowed(w.id,slot))return 0;int n=0;
+            foreach(var d in NativeTechniques.Of(w.id))
+            {
+                if(!all&&!Live(content,d))continue;
+                into.Add(new AbilityOption{Id=d.Id,Name=d.Name,Text=NativeTechniques.Text(d.Id),Icon=d.Icon,Cooldown=d.Cooldown,Cost=d.Cost,Meta=Meta(d.Cooldown,d.Cost,CostUnit(w),false),Technique=d});n++;
+            }
+            return n;
         }
+        private static bool Live(ConversionContent content,NativeTechniques.Def d)
+        {if(content?.abilities!=null)foreach(var a in content.abilities)if(a!=null&&a.id==d.Id&&a.spec==d.Spec)return a.live;return false;}
         // Why a slot is empty: melee Q abilities are planned (docs/MELEE-ABILITIES.md); a DEV kit binds its own keys.
         public static string EmptySlot(ContentWeapon w,string slot)
         {

@@ -11,10 +11,21 @@ internal static class TechniqueRulesChecks
         var options=new JsonSerializerOptions{IncludeFields=true,IgnoreReadOnlyProperties=true};var content=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
         var native=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"tools/native-content.json"))).RootElement.GetProperty("abilities");
         Check(NativeTechniqueLoadout.Normalize(null)==""&&NativeTechniqueLoadout.Slot(null,"sword")=="","old saves preserve defaults");
-        Check(NativeTechniqueLoadout.Normalize(" sword : q ,rifle:q,rifle:e,fire:e,siren:q,sword:e")=="rifle:e,fire:e,sword:e","host normalization and duplicate picks");
-        Check(!NativeTechniqueLoadout.Valid("rifle:q")&&!NativeTechniqueLoadout.Valid("siren:e")&&!NativeTechniqueLoadout.Valid(new string('x',257)),"invalid wire choices rejected");
-        Check(NativeTechniqueLoadout.With("sword:q,rifle:e","sword","e")=="rifle:e,sword:e","move replacement between slots");
-        Check(NativeTechniqueLoadout.With("sword:q,rifle:e","sword","")=="rifle:e","restore both defaults");
+        Check(NativeTechniqueLoadout.Normalize(" sword : q ,rifle:q,rifle:e,fire:e,siren:q,sword:e")=="rifle:e=grapple-line,fire:e=ignition-leap,sword:e=riposte","host normalization and duplicate picks");
+        Check(!NativeTechniqueLoadout.Valid("rifle:q")&&!NativeTechniqueLoadout.Valid("siren:e")&&!NativeTechniqueLoadout.Valid(new string('x',NativeTechniqueLoadout.MaxLength+1)),"invalid wire choices rejected");
+        Check(NativeTechniqueLoadout.With("sword:q,rifle:e","sword","e")=="rifle:e=grapple-line,sword:e=riposte","move replacement between slots");
+        Check(NativeTechniqueLoadout.With("sword:q,rifle:e","sword","")=="rifle:e=grapple-line","restore both defaults");
+        string both=NativeTechniqueLoadout.With(NativeTechniqueLoadout.With("","sword","q","riposte"),"sword","e","parting-line");
+        Check(both=="sword:q=riposte,sword:e=parting-line","two independent slots canonical");
+        Check(NativeTechniqueLoadout.In(both,"sword","q")=="riposte"&&NativeTechniques.Equipped(both,"sword","e").Id=="parting-line","presentation reads per-slot id");
+        Check(NativeTechniqueLoadout.With(both,"sword","q","parting-line")=="sword:q=parting-line","moving an id clears its old slot");
+        Check(NativeTechniqueLoadout.With(both,"sword","q","")=="sword:e=parting-line","default clears just selected slot");
+        Check(NativeTechniqueLoadout.Normalize("sword:q=sonar-dart,rifle:q=sonar-dart,sword:e=unknown")=="","foreign/unknown ids rejected");
+        string all="";foreach(var spec in NativeTechniqueLoadout.Weapons)foreach(var slot in new[]{"q","e"})all=NativeTechniqueLoadout.With(all,spec,slot,NativeTechniques.Of(spec)[slot=="q"?0:1].Id);
+        Check(all.Length>256&&NativeTechniqueLoadout.Valid(all),"full multi-slot map fits wire budget");
+        var trail=new NativeTechnique{Kind="wildfire-run",At=0,Release=0,Until=6,Path=new[]{new V3(1,2,3)}};
+        var copy=trail.ViewCopy();trail.Path[0].x=99;Check(copy.Path[0].x==1,"trail copies isolate snapshots/replay");
+        trail.Path=new V3[33];Check(!trail.Valid(),"trail count bounded");trail.Path=new[]{new V3(float.NaN,0,0)};Check(!trail.Valid(),"trail coordinates finite");
         foreach(var spec in NativeTechniqueLoadout.Weapons)
         {
             foreach(string slot in new[]{"q","e"})
@@ -29,7 +40,7 @@ internal static class TechniqueRulesChecks
         }
         foreach(var def in NativeTechniques.All)
         {
-            var rows=content.abilities.Where(a=>a.spec==def.Spec&&a.slot=="technique").ToArray();Check(rows.Length==1,"one slot per weapon "+def.Spec);var row=rows[0];Check(row.id==def.Id&&row.live&&row.kind=="technique"&&row.cost==def.Cost&&row.cooldown==def.Cooldown,"content numbers "+def.Id);
+            var rows=content.abilities.Where(a=>a.spec==def.Spec&&a.slot=="technique"&&a.id==def.Id).ToArray();Check(rows.Length==1,"one row per id "+def.Spec);var row=rows[0];Check(row.id==def.Id&&row.live&&row.kind=="technique"&&row.cost==def.Cost&&row.cooldown==def.Cooldown,"content numbers "+def.Id);
             Check(native.EnumerateArray().Count(a=>a.GetProperty("id").GetString()==def.Id&&a.GetProperty("slot").GetString()=="technique")==1,"export source row "+def.Id);
             var stats=NativeContentRules.Stats(content,def.Spec,new System.Collections.Generic.Dictionary<string,int>());stats["abilityCooldown"]=.5;stats["abilityCost"]=.8;stats["resourceCost"]=.5;
             Check(Math.Abs(NativeAbilityRules.Cooldown(row,stats)-def.Cooldown*.5f)<.001,"cooldown chips "+def.Id);Check(Math.Abs(NativeAbilityRules.Cost(row,stats)-def.Cost*.4f)<.001,"cost chips "+def.Id);
@@ -43,7 +54,12 @@ internal static class TechniqueRulesChecks
         Check(!new NativeTechnique{Kind="riposte",Phase="unknown",At=0,Release=0,Until=1}.Valid(),"unknown phase rejected");
         var moving=new NativePredictionState{Time=1,CanMove=true,Position=default,Velocity=new V3(0,0,16),Technique=new NativeTechnique{Kind="grapple-line",At=0,Release=.2f,Arm=.5f,Until=2,RecoverUntil=2}};
         var predicted=NativePrediction.Step(moving,new InputFrame{X=1},(old,next)=>next);Check(Math.Abs(predicted.Position.z-16f/60)<.001&&predicted.Position.x==0,"authority travel seed beats ordinary steering");
-        Check(content.abilities.Count(a=>a.slot=="technique"&&NativeTechniques.For(a.spec)!=null)==12,"no DEV technique collision");
+        var ghost=new NativeTechnique{Kind="grave-walk",At=0,Release=.2f,Until=1.7f,RecoverUntil=2.04f};
+        Check(NativeTechniqueRules.Recast(ghost,.3f)&&!NativeTechniqueRules.Recast(ghost,1.7f)&&NativeTechniqueRules.Rooted(ghost,1.8f),"grave recast window and rise lock");
+        var walker=new NativePredictionState{Time=.3f,CanMove=true,Technique=ghost,Grounded=true};
+        var walking=NativePrediction.Step(walker,new InputFrame{X=1},(old,next)=>next);Check(Math.Abs(walking.Position.x-7f/60)<.001,"grave guest steering uses pending movement");
+        walker.Time=1.8f;walker.Velocity=new V3(7,0,0);var rising=NativePrediction.Step(walker,new InputFrame{X=1},(old,next)=>next);Check(rising.Position.x==0,"guest rise cannot move");
+        Check(content.abilities.Count(a=>a.slot=="technique"&&NativeTechniques.For(a.spec)!=null)==NativeTechniques.All.Length,"no DEV technique collision");
         var before=new Snapshot{Events=new[]{new ArenaEvent{Id=4,Kind=EventKind.Teleport,Source=1,Target=2,Detail="shade-swap"}}};
         var after=new Snapshot{Events=new[]{new ArenaEvent{Id=5,Kind=EventKind.Teleport,Source=1,Target=2,Detail="shade-swap"}}};
         Check(NativeTechniqueRules.Placement(before,after,1)&&NativeTechniqueRules.Placement(before,after,2),"both swap peers discard pre-swap prediction");Check(!NativeTechniqueRules.Placement(after,after,2)&&!NativeTechniqueRules.Placement(before,after,3),"no repeated or unrelated teleport reset");

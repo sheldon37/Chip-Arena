@@ -45,14 +45,14 @@ namespace ChipArena.UnityConversion
             count=0;var content=System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")));
             var specs=new HashSet<string>();foreach(var w in content.RootElement.GetProperty("weapons").EnumerateArray())specs.Add(w.GetProperty("id").GetString());
             string[] standard={"pistol","rifle","machinegun","bow","fire","water","lightning","darkness","sword","daggers","shield","greatsword"};
-            Check(NativeTechniques.All.Length==12&&NativeTechniques.All.Select(d=>d.Spec).OrderBy(x=>x).SequenceEqual(standard.OrderBy(x=>x)),"a technique for each of the twelve standard weapons, and no DEV class");
-            Check(NativeTechniques.All.Select(d=>d.Id).Distinct().Count()==12&&NativeTechniques.All.Select(d=>d.Name).Distinct().Count()==12,"each its own id and name");
+            Check(NativeTechniques.All.Select(d=>d.Spec).Distinct().Count()==standard.Length&&NativeTechniques.All.Select(d=>d.Spec).Distinct().OrderBy(x=>x).SequenceEqual(standard.OrderBy(x=>x)),"a technique for each of the twelve standard weapons, and no DEV class");
+            Check(NativeTechniques.All.Select(d=>d.Id).Distinct().Count()==NativeTechniques.All.Length&&NativeTechniques.All.Select(d=>d.Name).Distinct().Count()==NativeTechniques.All.Length,"each its own id and name");
             foreach(var d in NativeTechniques.All)
             {
                 Check(specs.Contains(d.Spec),d.Id+": its weapon exists");Check(d.Cooldown>=9&&d.Cooldown<=20,d.Id+": a long cooldown ("+d.Cooldown+" s)");
-                Check(NativeTechniques.For(d.Spec)==d&&NativeTechniques.Find(d.Id)==d,d.Id+": found by weapon and id");
+                Check(NativeTechniques.Of(d.Spec).Contains(d)&&NativeTechniques.Find(d.Id)==d,d.Id+": found by weapon and id");
                 // Dearer than the same weapon's Q: it is no new damage button.
-                foreach(var a in content.RootElement.GetProperty("abilities").EnumerateArray())if(a.GetProperty("spec").GetString()==d.Spec&&a.GetProperty("slot").GetString()=="q"&&a.TryGetProperty("cooldown",out var q)&&q.GetDouble()>0)Check(d.Cooldown>q.GetDouble(),d.Id+": a longer cooldown than the weapon's Q ("+q.GetDouble()+" s)");
+                foreach(var a in content.RootElement.GetProperty("abilities").EnumerateArray())if(a.GetProperty("spec").GetString()==d.Spec&&a.GetProperty("slot").GetString()=="q"&&a.TryGetProperty("cooldown",out var q)&&q.GetDouble()>0)Check(d.Cooldown>=q.GetDouble(),d.Id+": at least the cooldown of the weapon's Q ("+q.GetDouble()+" s)");
             }
             Check(NativeTechniques.For("siren")==null&&NativeTechniques.For("cyberlord")==null&&NativeTechniques.For("leet")==null,"not the DEV classes");
             Effects();Poses();Choices(root);Wiring(root);
@@ -102,14 +102,14 @@ namespace ChipArena.UnityConversion
             foreach(var d in NativeTechniques.All)
             {
                 string text=NativeTechniques.Text(d.Id);Check(text.Length>20&&text.Length<=95,d.Id+": a card sentence that fits three lines");
-                var row=data.Ability(d.Spec,"technique");Check(row!=null&&row.id==d.Id&&row.cooldown==d.Cooldown&&row.cost==d.Cost,d.Id+": the card's numbers are the rules'");
+                var row=data.abilities.Single(a=>a.id==d.Id);Check(row!=null&&row.id==d.Id&&row.cooldown==d.Cooldown&&row.cost==d.Cost,d.Id+": the card's numbers are the rules'");
                 foreach(var slot in new[]{"q","e"})
                 {
-                    options.Clear();bool added=NativeLocker.AddTechnique(data.Weapon(d.Spec),slot,options);Check(added==(d.Spec!="rifle"||slot=="e")&&added==NativeTechniqueLoadout.Allowed(d.Spec,slot),d.Id+" "+slot+": offered where it may go");
-                    if(added){var o=options[0];Check(o.Technique==d&&o.Id==d.Id&&o.Name==d.Name&&o.Icon==d.Icon&&o.Text==text&&!o.FromWeapon&&o.Meta==NativeLocker.Meta(d.Cooldown,d.Cost,NativeLocker.CostUnit(data.Weapon(d.Spec)),false),d.Id+": the card");}
+                    options.Clear();bool added=NativeLocker.AddTechniques(data,data.Weapon(d.Spec),slot,options)>0;Check(added==(d.Spec!="rifle"||slot=="e")&&added==NativeTechniqueLoadout.Allowed(d.Spec,slot),d.Id+" "+slot+": offered where it may go");
+                    if(added){var o=options.Single(x=>x.Id==d.Id);Check(o.Technique==d&&o.Id==d.Id&&o.Name==d.Name&&o.Icon==d.Icon&&o.Text==text&&!o.FromWeapon&&o.Meta==NativeLocker.Meta(d.Cooldown,d.Cost,NativeLocker.CostUnit(data.Weapon(d.Spec)),false),d.Id+": the card");}
                 }
             }
-            foreach(var dev in new[]{"emperor","ansatsuken"})foreach(var slot in new[]{"q","e"})Check(!NativeLocker.AddTechnique(data.Weapon(dev),slot,options),dev+": nothing to swap on a DEV kit");
+            foreach(var dev in new[]{"emperor","ansatsuken"})foreach(var slot in new[]{"q","e"})Check(NativeLocker.AddTechniques(data,data.Weapon(dev),slot,options,true)==0,dev+": nothing to swap on a DEV kit");
             // The HUD's card.
             var live=new NativeTechnique{Kind=NativeTechniques.Bastion,Phase="wall",At=10,Release=10.2f,Until=14,RecoverUntil=10.8f};
             var c=NativeTechniques.Card(live,12,12,14,false,"LOW");Check(c.Recast&&c.State=="RECAST"&&!c.Ready,"a recast asks for the press");
@@ -129,12 +129,12 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
             var arena=R("Core/ArenaModel.cs");Check(arena.Contains("NativeTechnique Technique"),"authority technique record on the actor");
-            var hud=R("Runtime/NativeFightHud.cs");Check(!hud.Contains("\"1 · \"")&&hud.Contains("NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)==slot")&&hud.Contains("(slot==\"q\"?p.QReady:p.EReady)-t"),"no third card: a swapped slot takes the technique's card, on that slot's replicated deadline");
+            var hud=R("Runtime/NativeFightHud.cs");Check(!hud.Contains("\"1 · \"")&&hud.Contains("NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,slot)")&&hud.Contains("(slot==\"q\"?p.QReady:p.EReady)-t"),"no third card: a swapped slot takes the technique's card, on that slot's replicated deadline");
             Check(R("Core/NativeTechniqueFx.cs").Contains("var f=hit?-Flat(at,Vector3.UnitZ):Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);"),"the guard faces where the pilot faces: the rules' Dir is the aim until a parry");
             Check(R("Runtime/NativeWeaponTechniques.cs").Contains("public string TechniqueRefusal(NativePilot p,in InputFrame aim)")&&R("Runtime/ConversionGame.cs").Contains("ConvergeAim(p);TechniqueAimCheck(p);")&&hud.Contains("arena.TechniqueRefusal(p,in pending)")&&hud.Contains("t,c.Ready||c.Held)"),"the HUD asks the rules once a frame on the look a press would send, and an aim coming back does not flare the card");
             var nameplates=R("Runtime/NativeCombatHud.cs");Check(nameplates.Contains("arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position,p.Body.position)"),"smoke hides a name from outside the cloud");
             var locker=R("Runtime/NativeLockerUI.cs");Check(locker.Contains("Techniques=prefs.weaponTechniques")&&locker.Contains("b.Techniques!=prefs.weaponTechniques")&&locker.Contains("prefs.weaponTechniques=b.Techniques"),"a swap is part of Save Pilot and Revert");
-            var game=R("Runtime/ConversionGame.cs");Check(game.Contains("NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)!=\"e\"?content.Ability(p.Seat.spec,\"e\")"),"a swapped E draws no field preview");
+            var game=R("Runtime/ConversionGame.cs");Check(game.Contains("NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,\"e\")==null?content.Ability(p.Seat.spec,\"e\")"),"a swapped E draws no field preview");
             var box=R("Runtime/NativeSandbox.cs");Check(box.Contains("case \"gallery-techniques\":presentation.TechniquePreviewOn=!presentation.TechniquePreviewOn;return DevRan;"),"the preview is the Dev Sandbox's");
             var pres=R("Runtime/NativeTechniquePresentation.cs");foreach(var bad in new[]{"arena.Sandbox","SendInput","Damage(","QReady","EReady"})Check(!pres.Contains(bad),"the presentation does not reach "+bad);
         }

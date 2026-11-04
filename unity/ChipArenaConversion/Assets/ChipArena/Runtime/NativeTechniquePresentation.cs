@@ -12,6 +12,9 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The Dev Sandbox's Preview Techniques: the local pilot's weapon's technique on a loop. Off everywhere else.</summary>
         public bool TechniquePreviewOn;
+        /// <summary>The preview shows only this technique (null: the weapon's in turn).</summary>
+        public string TechniquePreviewOnly;
+        private float TechniqueShiftOf(int id)=>techniqueShift.TryGetValue(id,out float y)?y:0;
         private readonly NativeTechniquePreview techniquePreview=new NativeTechniquePreview();
         private readonly NativeTechniqueFx techniqueFx=new NativeTechniqueFx();
         private TechSink techSink;
@@ -27,7 +30,7 @@ namespace ChipArena.UnityConversion
             else
             {
                 NativeTechniques.Source=techniquePreview;var feet=visualPositions.TryGetValue(me.Id,out var v)?v:Vec(me.Position);
-                techniquePreview.Step(me,new NVector(feet.x,feet.y,feet.z),me.Yaw*Mathf.Deg2Rad,time);
+                techniquePreview.Step(me,new NVector(feet.x,feet.y-TechniqueShiftOf(me.Id),feet.z),me.Yaw*Mathf.Deg2Rad,time,TechniquePreviewOnly);
             }
             if(NativeTechniques.Source==null||s?.Actors==null)return;
             foreach(var a in s.Actors)if(a!=null&&NativeTechniques.WeaponAway(NativeTechniques.Of(a),time))a.WeaponAway=true;
@@ -44,6 +47,11 @@ namespace ChipArena.UnityConversion
                     case NativeTechniques.Bastion:if(time<k.Until)PlantedShield(a,k,time);break;
                     case NativeTechniques.AnchorThrow:if(time<k.Until)ThrownBlade(a,k,time);break;
                     case NativeTechniques.SentryDrop:SentryModel(a,k,time);break;
+                    case NativeTechniques.Tripwire:TripwireModel(k,time);break;
+                    case NativeTechniques.ShieldSurf:if(time<k.Until)SurfShield(a,k,time);break;
+                    case NativeTechniques.IronVow:if(time<k.Until)PlantedBlade(a,k,time);break;
+                    case NativeTechniques.SonarDart:SonarModel(k,time);break;
+                    case NativeTechniques.LightningRod:RodModel(k,time);break;
                 }
             }
         }
@@ -89,6 +97,47 @@ namespace ChipArena.UnityConversion
                 sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(foot+Vector3.up*.012f,Quaternion.LookRotation(d,Vector3.up),new Vector3(.05f,.024f,.09f)),edge);
             }
             sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(head-Vector3.up*.05f,q,new Vector3(.1f,.07f,.14f)),edge);
+        }
+        // The two daggers the wire is strung between.
+        private void TripwireModel(NativeTechnique k,float time)
+        {
+            float fly=Mathf.Max(.05f,(k.Arm-k.Release)*.62f);if(time<k.Release+fly||k.Until-time<0)return;var a0=U(k.From);var a1=U(k.Point);var d=(a1-a0).normalized;if(d==Vector3.zero)return;var steel=new Color(.42f,.45f,.5f);var grip=new Color(.07f,.07f,.09f);
+            void Stake(Vector3 at,Vector3 along){var q=Quaternion.LookRotation(along,Vector3.up);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at,q,new Vector3(.018f,.04f,.26f)),steel);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at-along*.18f,q,new Vector3(.03f,.03f,.13f)),grip);}
+            Stake(a1,d);Stake(a0,-d);
+        }
+        // The pilot's own shield flat under its feet, nose up a little, rocking as it rides.
+        private void SurfShield(Actor a,NativeTechnique k,float time)
+        {
+            if(!visualPositions.TryGetValue(a.Id,out var feet))return;var f=Flat(new V3(k.Dir.x,0,k.Dir.z));float age=time-k.Release,rock=Mathf.Sin(age*9)*2.2f,set=Mathf.Clamp01(age/.1f);
+            var q=Quaternion.AngleAxis(rock,f)*Quaternion.LookRotation((Vector3.up+f*.16f).normalized,f);WeaponAt(a,Matrix4x4.TRS(feet+Vector3.down*.04f+Vector3.up*.02f,q,Vector3.one*Mathf.Lerp(1,1.3f,set)));
+        }
+        // The greatsword standing in the floor before the pilot, ringing as it lands.
+        private void PlantedBlade(Actor a,NativeTechnique k,float time)
+        {
+            float age=time-k.Release,settle=Mathf.Exp(-age*14)*Mathf.Sin(age*46)*.09f;var f=Flat(k.Dir);var side=Vector3.Cross(Vector3.up,f).normalized;var q=Quaternion.LookRotation((-Vector3.up+f*.12f+side*settle).normalized,f);var pos=U(k.Point)-(q*Vector3.forward)*1.28f;WeaponAt(a,Matrix4x4.TRS(pos,q,Vector3.one));
+        }
+        // The dart in the wall: a sliver and two fins.
+        private void SonarModel(NativeTechnique k,float time)
+        {
+            if(time<k.Release+Mathf.Max(.05f,(k.Arm-k.Release)*.5f)||time>k.Until)return;var normal=U(k.Dir);if(normal==Vector3.zero)normal=Vector3.back;normal.Normalize();var q=Quaternion.LookRotation(normal,Mathf.Abs(normal.y)>.9f?Vector3.forward:Vector3.up);var at=U(k.Point)+normal*.09f;var body=new Color(.08f,.1f,.11f);var fin=new Color(.16f,.3f,.24f);
+            sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at,q,new Vector3(.028f,.028f,.2f)),body);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at+normal*.08f,q,new Vector3(.1f,.012f,.05f)),fin);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at+normal*.08f,q,new Vector3(.012f,.1f,.05f)),fin);
+        }
+        // The rod: a pole on a three-footed base with insulator bands, driven down as it lands, falling away as it ends.
+        private void RodModel(NativeTechnique k,float time)
+        {
+            if(time<k.Arm)return;float age=time-k.Arm,drive=1-Mathf.Clamp01(age/.08f),gone=Mathf.Clamp01((time-k.Until)/.25f);if(gone>=1)return;var foot=U(k.Point)+Vector3.up*(drive*.5f-gone*.6f);var pole=new Color(.1f,.1f,.14f);var band=new Color(.3f,.26f,.5f);float h=NativeTechniqueFx.RodHeight;var q=Quaternion.identity;
+            sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(foot+Vector3.up*(h*.5f),q,new Vector3(.05f,h,.05f)),pole);
+            for(int i=0;i<3;i++){float y=h*(.55f+.16f*i),w=.2f-.045f*i;sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(foot+Vector3.up*y,q,new Vector3(w,.024f,w)),band);}
+            for(int i=0;i<3;i++){float ang=i*120*Mathf.Deg2Rad;var d=new Vector3(Mathf.Cos(ang),0,Mathf.Sin(ang));var low=foot+d*.34f+Vector3.up*.012f;var high=foot+Vector3.up*.3f;var along=high-low;sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS((low+high)*.5f,Quaternion.LookRotation(along.normalized,d),new Vector3(.03f,.03f,along.magnitude)),pole);}
+        }
+        // Where the rig stands this frame: Grave Walk's body goes down through the floor, a surfer rides a little high. The shift is kept out of the smoothing.
+        private readonly System.Collections.Generic.Dictionary<int,float> techniqueShift=new System.Collections.Generic.Dictionary<int,float>();
+        private void TechniqueUnshift(int id,ref Vector3 old){if(techniqueShift.TryGetValue(id,out float y)&&y!=0)old.y-=y;}
+        private Vector3 TechniquePlace(Actor a,Vector3 p,float time)
+        {
+            float y=0;var k=NativeTechniques.Source!=null?NativeTechniques.Of(a):null;
+            if(k?.Kind==NativeTechniques.GraveWalk)y=-NativeTechniqueFx.GraveDepth(k,time);else if(k?.Kind==NativeTechniques.ShieldSurf&&time>=k.Release&&time<k.Until&&!k.Recast(time))y=.1f*Mathf.Clamp01((time-k.Release)/.1f);
+            techniqueShift[a.Id]=y;p.y+=y;return p;
         }
         /// <summary>RenderGlow, after the melee kit's: every technique's particles.</summary>
         private void TechniqueFx(float now)

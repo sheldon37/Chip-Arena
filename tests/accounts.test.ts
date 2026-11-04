@@ -168,7 +168,7 @@ test('pod looks normalize, persist across login, and reject malformed or oversiz
   for(const [pod,expected] of [
    ['light:ABCDEF,paint:112233,unknown:fff,trim:010203,paint:ZZZZZZ','paint:112233,trim:010203,light:abcdef'],
    ['paint:ffffff,paint:123456','paint:123456'],['paint:#123456,trim:1234567',''],
-   [' paint:AbCdEf ,light:000000','paint:abcdef,light:000000'],[null,''],[42,''],['x'.repeat(257),''],['','']
+   [' paint:AbCdEf ,light:000000','paint:abcdef,light:000000'],[null,''],[42,''],['x'.repeat(2049),''],['','']
   ] as const){
    const saved:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{pod}}},user.session)).json();
    assert.equal(saved.account.profile.cosmetics.pod,expected);
@@ -215,12 +215,12 @@ test('native weapon techniques persist per weapon and reject scope, DEV and malf
  const f=await fixture();try{
   const first:any=await(await f.request('register',{username:'techniquepilot',password})).json();
   assert.equal(first.account.profile.cosmetics.weaponTechniques,'');let revision=0;
-  const picks='rifle:e,fire:e,sword:q';
+  const picks='rifle:e=grapple-line,fire:e=ignition-leap,sword:q=riposte';
   const saved:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{weaponTechniques:' sword : q ,rifle:q,rifle:e,fire:e,siren:q,unknown:e'}}},first.session)).json();
   assert.equal(saved.account.profile.cosmetics.weaponTechniques,picks);
   const read:any=await(await f.request('me',undefined,first.session)).json();assert.equal(read.account.profile.cosmetics.weaponTechniques,picks);
   const login:any=await(await f.request('login',{username:'techniquepilot',password})).json();assert.equal(login.account.profile.cosmetics.weaponTechniques,picks);
-  for(const [raw,expected] of [['sword:q,sword:e','sword:e'],['sword:e,sword:default',''],['rifle:q',''],['sword:q:extra',''],['x'.repeat(257),''],[null,''],[42,'']]){
+  for(const [raw,expected] of [['sword:q,sword:e','sword:e=riposte'],['sword:q=riposte,sword:e=parting-line','sword:q=riposte,sword:e=parting-line'],['sword:q=riposte,sword:e=riposte','sword:e=riposte'],['sword:q=parting-line,sword:e=riposte,sword:q=','sword:e=riposte'],['sword:q=sonar-dart,rifle:q=sonar-dart,rifle:e=sonar-dart','rifle:e=sonar-dart'],['sword:e,sword:default',''],['rifle:q',''],['sword:q:extra',''],['x'.repeat(2049),''],[null,''],[42,'']]){
    const result:any=await(await f.request('profile',{revision:revision++,profile:{cosmetics:{weaponTechniques:raw}}},first.session)).json();assert.equal(result.account.profile.cosmetics.weaponTechniques,expected);
   }
  }finally{f.db.close();}

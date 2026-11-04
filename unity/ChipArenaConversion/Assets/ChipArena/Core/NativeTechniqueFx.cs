@@ -59,6 +59,18 @@ namespace ChipArena.UnityConversion
                     case NativeTechniques.HealingSpring:Spring(s,scene,a,k,time,seed,q,low);break;
                     case NativeTechniques.StaticRecall:Recall(s,scene,a,k,time,seed,q,low);break;
                     case NativeTechniques.ShadeSwap:Shade(s,scene,a,k,time,seed,q,low);break;
+                    case NativeTechniques.PartingLine:Parting(s,scene,a,k,time,seed,q,low);break;
+                    case NativeTechniques.Tripwire:Tripwire(s,k,time,seed,q,low);break;
+                    case NativeTechniques.ShieldSurf:Surf(s,scene,a,k,time,seed,q,low);break;
+                    case NativeTechniques.IronVow:Vow(s,scene,a,k,time,seed,q,low);break;
+                    case NativeTechniques.BountyRound:Bounty(s,scene,k,time,seed,q,low);break;
+                    case NativeTechniques.RecoilBurst:Recoil(s,scene,a,k,time,seed,q,low);break;
+                    case NativeTechniques.SonarDart:Sonar(s,scene,a,k,time,seed,q,low);break;
+                    case NativeTechniques.SpiritHawk:Hawk(s,k,time,seed,q,low);break;
+                    case NativeTechniques.WildfireRun:Wildfire(s,scene,a,k,time,seed,q,low);break;
+                    case NativeTechniques.Slipstream:Slip(s,k,time,seed,q,low);break;
+                    case NativeTechniques.LightningRod:Rod(s,k,time,seed,q,low);break;
+                    case NativeTechniques.GraveWalk:Grave(s,scene,a,k,time,seed,q,low);break;
                 }
             }
         }
