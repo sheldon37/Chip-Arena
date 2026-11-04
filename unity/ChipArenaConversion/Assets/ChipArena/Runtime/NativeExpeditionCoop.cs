@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
         private ExpeditionLayout expeditionReplicaLayout;private string expeditionReplicaJson,expeditionReplicaIdentity;
         private int expeditionReplicaGeneration=-1;
         private bool ExpeditionGuestBlocked=>arena?.Replica==true&&prefs.expedition&&
-            (ExpeditionView==null||ExpeditionView.loading||ExpeditionView.mine?.alive!=true||ExpeditionView.mine.extracted||ExpeditionView.Member(ExpeditionView.viewer)?.choosing==true||!arena.ExpeditionCollisionReady||expeditionReplicaGeneration!=arena.Generation);
+            (ExpeditionView?.machineRevive?.spit!=null&&ExpeditionView.machineRevive.spit.Account==ExpeditionView.viewer&&arena.Time<ExpeditionView.machineRevive.spit.At+NativeReviveMachine.HoldUntil||ExpeditionView==null||ExpeditionView.loading||ExpeditionView.mine?.alive!=true||ExpeditionView.mine.extracted||ExpeditionView.Member(ExpeditionView.viewer)?.choosing==true||!arena.ExpeditionCollisionReady||expeditionReplicaGeneration!=arena.Generation);
         private void ExpeditionReplicaTick()
         {
             if(!prefs.expedition||arena?.Replica!=true||ExpeditionView==null||arena.Generation!=expeditionReplicaGeneration)return;
@@ -57,14 +57,14 @@ namespace ChipArena.UnityConversion
             foreach(var m in Expedition.Session.Run.Snapshot().members)
             {
                 var p=ExpeditionPilotFor(m.account);
-                if(p!=null&&p.Hp<=0&&!expeditionDown.Contains(m.account)&&m.alive&&m.connected&&!m.extracted&&Expedition.Session.Run.Defeat(m.account))expeditionDown.Add(m.account);
+                if(p!=null&&p.Hp<=0&&!expeditionDown.Contains(m.account)&&m.alive&&m.connected&&!m.extracted&&Expedition.Session.Run.Defeat(m.account)){expeditionDown.Add(m.account);RecordMachineDeath(p,m.account);}
             }
         }
         private void ExpeditionInput(NativePilot p)
         {
             if(Expedition==null||p.Seat.bot)return;
             var member=ExpeditionMemberFor(p);
-            if(p.ExpeditionTransferHeld||member==null||!member.alive||member.extracted||ExpeditionChoosing(p))
+            if(MachineHeld(p)||p.ExpeditionTransferHeld||member==null||!member.alive||member.extracted||ExpeditionChoosing(p))
             {p.Input=new InputFrame{Yaw=p.Yaw,Pitch=p.Pitch};return;}
             if(!p.Input.Interact)return;
             bool used=TryExpeditionInteract(p,out string notice);

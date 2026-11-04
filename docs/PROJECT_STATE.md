@@ -1,3 +1,5 @@
+2026-11-04 Astra (`codex/revive-machine-rules`): REVIVE-O-MATIC authority, $250/free Second Wind payment, timed full-health revival, recovery input hold and replicated death board wired; Foreman collider aligned to rig. Instance-machine generator review passed. Verification/delivery receipts in task PR and DEV_LOG; Windows gameplay acceptance pending.
+
 2026-11-04 Astra (`codex/bombadier-chips`, base `2cf7c9f2`): all ten Bombadier chips enabled with eight authority mechanics, DEV PvE gate, projectile exclusions and four-charge validation. Stack/budget decisions in BOMBADIER.md; checks and delivery receipts in task PR/DEV_LOG. Windows gameplay acceptance pending.
 
 2026-11-04 Claude (`claude/station-enemies`): Central Station's four kinds never draw voxel on the model now; THE 6:47 is a real Blender model on its old joints (local bank `ChipArenaPackBoss647`, rider on the player's model), seen in Unity through its preview, not yet in a real fight. Rules unchanged. Details in DEV_LOG.
