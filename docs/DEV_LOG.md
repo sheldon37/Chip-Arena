@@ -1,3 +1,15 @@
+## 2026-11-04 — Astra: longer normal TNT throws
+
+- **Branch/base:** `codex/bombadier-throw-range`, shared `f18848bc`. Owner reports the primary throw is too short.
+- **Tuning:** Pop Bomb launch speed 17 → 28 m/s (+64.7%); authority now reads the weapon content speed. Content range 18 → 25 m matches the approximate 25.2 m straight-line travel ceiling over its .9 s fuse. Gravity and bounce shorten practical horizontal throws; this is not a guaranteed 25 m ground range. Damage, fuse, fire rate, restock, cast/hand timing and ability throws unchanged.
+- **Checks/release:** content validated and pinned Unity semantic compilation run before upload; exact results and merge/builder receipts in the PR. Human range feel and native Windows publication still need confirmation.
+
+## 2026-11-04 — Astra: Sticky Fuse dodge release and test publication
+
+- **Branch/base:** `codex/bombadier-sticky-release`, shared `1450e5df`. Windows now passes generic combat and all 497 technique checks, then fails Bombadier dodge removal.
+- **Fix:** a detached Sticky Fuse ignores actor collision so it cannot immediately stick back onto the rolling victim. It drops from the victim's current position, collides with the world and keeps its original fuse on landing. Host-only detached state leaves the replicated record unchanged. Native checks cover release, post-roll overlap and landing without extending the fuse.
+- **Verification/release:** pinned Unity semantic compile and managed Bombadier checks run before upload; exact results and source/builder receipts in the PR. The native builder remains the authority on Windows acceptance and test publication. No gate removed or bypassed.
+
 ## 2026-11-04 — Astra: Bombadier DEV picker publication blocker
 
 - **Branch/base:** `codex/bombadier-dev-picker`, shared `2dfdf1cf` (#326). Owner could not select Bombadier under `???`.

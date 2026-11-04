@@ -5,7 +5,7 @@ using UnityEngine;
 namespace ChipArena.UnityConversion
 {
     internal sealed class BombFlight
-    {public NativeBomb Record;public float Hp=15,Expires;public int Bounces;public bool Landed;public Vector3 Offset;public V3 Handoff;public bool Handed;}
+    {public NativeBomb Record;public float Hp=15,Expires;public int Bounces;public bool Landed,Detached;public Vector3 Offset;public V3 Handoff;public bool Handed;}
     public sealed partial class NativePilot
     {
         public NativeBombKit Bomb=new NativeBombKit{MineCharges=2,Ready=new float[6]};
@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             var k=p.Bomb;var feet=p.Body.position-Vector3.up*.865f;var hand=p.Body.position+Vector3.up*.4f;float at=k.CastRelease;
             switch(k.CastKind)
             {
-                case NativeBombs.PopBomb:AddBomb(p,NativeBombs.Pop,hand,p.BombAim*17,at,.9f);break;
+                case NativeBombs.PopBomb:AddBomb(p,NativeBombs.Pop,hand,p.BombAim*(float)p.Weapon.speed,at,.9f);break;
                 case NativeBombs.BounceMine:
                     var mines=p.BombFlights.Where(b=>b.Record.Kind==NativeBombs.Mine).OrderBy(b=>b.Record.At).ToArray();if(mines.Length>=3)p.BombFlights.Remove(mines[0]);
                     AddBomb(p,NativeBombs.Mine,hand,(p.BombPoint-hand)/.65f+Vector3.up*(23*.65f/2),at,-1);break;
@@ -103,17 +103,18 @@ namespace ChipArena.UnityConversion
                         var q=Pilots.Find(q=>q.Seat.id==r.Stuck);var m=Minions.Find(m=>m.Id==r.Stuck);
                         if(q!=null&&q.Hp>0&&Time>=q.RollEnd)r.Pos=Vec(q.Body.position+b.Offset);
                         else if(m!=null&&m.Hp>0)r.Pos=Vec(m.Body.position+b.Offset);
-                        else {r.Stuck=0;b.Landed=false;r.Vel=new V3(0,-1,0);}
+                        else {if(q!=null)r.Pos=Vec(q.Body.position+b.Offset);else if(m!=null)r.Pos=Vec(m.Body.position+b.Offset);r.Stuck=0;b.Landed=false;b.Detached=true;r.Vel=new V3(0,-1,0);}
                     }
                     if(!b.Landed&&r.Stuck==0)
                     {
+                        // A shaken-off fuse remains live, but cannot stick again or restart its clock.
                         var from=Vec(r.Pos);var vel=Vec(r.Vel);vel.y-=23/60f;var delta=vel/60;
                         if(HubInside(from)||HubCross(from,from+delta,.12f)){p.BombFlights.Remove(b);continue;}
-                        var hit=SweepNative(from,delta,.12f,c=>c!=p.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?q.Hp>0&&CanHit(p,q):c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?m.Hp>0&&CanHit(p,m):true));
+                        var hit=SweepNative(from,delta,.12f,c=>c!=p.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?!b.Detached&&q.Hp>0&&CanHit(p,q):c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?!b.Detached&&m.Hp>0&&CanHit(p,m):true));
                         if(hit.HasValue)
                         {
                             var h=hit.Value;r.Pos=Vec(from+delta.normalized*Math.Max(0,h.Distance-.01f));r.Normal=Vec(h.Normal);var q=h.Collider.GetComponent<NativePilotBody>()?.Pilot;var m=h.Collider.GetComponent<NativeMinionBody>()?.Minion;
-                            if(r.Kind==NativeBombs.Sticky){r.Stuck=q?.Seat.id??m?.Id??0;b.Offset=Vec(r.Pos)-(q?.Body.position??m?.Body.position??Vec(r.Pos));b.Landed=true;r.Vel=default;r.BlowAt=Time+1.2f;}
+                            if(r.Kind==NativeBombs.Sticky){r.Stuck=q?.Seat.id??m?.Id??0;b.Offset=Vec(r.Pos)-(q?.Body.position??m?.Body.position??Vec(r.Pos));b.Landed=true;r.Vel=default;if(!b.Detached)r.BlowAt=Time+1.2f;}
                             else if(r.Kind==NativeBombs.Mine){b.Landed=true;r.Vel=default;r.ArmAt=Time+.5f;}
                             else if(r.Kind==NativeBombs.Pop&&q==null&&m==null&&b.Bounces++==0){r.Vel=Vec(Vector3.Reflect(vel,h.Normal)*.55f);r.Pos+=Vec(h.Normal*.03f);}
                             else r.BlowAt=Time;

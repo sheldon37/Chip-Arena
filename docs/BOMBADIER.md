@@ -16,7 +16,7 @@ Every other weapon hits where you aim. Bombadier plays pinball: you lay charges,
 
 | Key | Ability (`id`) | What it does | Damage | Cooldown |
 | --- | --- | --- | --- | --- |
-| LMB | Pop Bomb (`pop-bomb`) | Throw a stick of TNT at 17 m/s with gravity, a hand at a time. It bounces once and goes off after .9 s, or on touching an enemy: 2.4 m blast, launches upward at 5 m/s. 1.5 a second, 6 on the belt, 1.7 s to restock from the satchel | 12 | |
+| LMB | Pop Bomb (`pop-bomb`) | Throw a stick of TNT at 28 m/s with gravity, a hand at a time. It bounces once and goes off after .9 s, or on touching an enemy: 2.4 m blast, launches upward at 5 m/s. 1.5 a second, 6 on the belt, 1.7 s to restock from the satchel | 12 | |
 | RMB, Shift | Block, Dodge | As any gun | | |
 | Q | Blast Jump (`blast-jump`) | A charge at your own feet throws you 9 m up and along your look. No damage to you; 2.5 m blast round where you left | 8 | 8 s |
 | E | Dead Man's Switch (`dead-mans-switch`) | Sets off every charge you have out, nearest you first, .12 s apart, so one explosion chases the next | as each charge | 2 s |
