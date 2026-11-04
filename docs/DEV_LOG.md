@@ -1,3 +1,10 @@
+## 2026-11-04 — Astra: Bombadier DEV picker publication blocker
+
+- **Branch/base:** `codex/bombadier-dev-picker`, shared `2dfdf1cf` (#326). Owner could not select Bombadier under `???`.
+- **Verified cause:** the merged content already offers Bombadier through the shared DEV picker and authenticated DEV access. The Windows builder failed on `Native combat gate: ability did not release blast-jump` at 2026-11-04 15:50 UTC; the test feed still served `cdcb1df5` (the earlier presentation-only build).
+- **Fix:** the generic AbilityCast validation now routes Bombadier to its existing `ValidateBombadier` gate, as it already does for other specialized dispatchers. Added native acceptance assertions for the `???` DEV row, permitted DEV selection and denied guest selection. No menu redesign, access relaxation or gameplay tuning.
+- **Verification:** focused managed loadout/grouping checks and pinned Unity semantic compilation; exact results and merge/builder queue receipt in the task PR. Windows gate execution and publication must be confirmed by the builder; not claimed from Linux.
+
 ## 2026-11-04 — Astra: DEV Bombadier authority and Parting Line recovery
 
 - **Branch/base:** `codex/bombadier-rules`, requested shared `197ef975`, merged shared documentation `c6f86fb5`. Local implementation `0739006`; remote exact-tree/merge/builder receipts belong to the task PR.
