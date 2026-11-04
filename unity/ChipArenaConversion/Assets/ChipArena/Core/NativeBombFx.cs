@@ -46,6 +46,13 @@ namespace ChipArena.UnityConversion
             }
             int m=Count(7,q,low);for(int i=0;i<m;i++){float ph=(t*.55f+i/(float)m)%1;s.Smoke(chest+new Vector3((R(seed,i+30)-.5f)*.42f,.2f+1.15f*ph,(R(seed,i+31)-.5f)*.42f),BombSmoke,.46f*heat*(1-ph),.16f+.42f*ph,.2f+.6f*ph,seed+i,-1000);}
         }
+        // ---- the TNT in the fists ------------------------------------------------------------------------------------
+        /// <summary>The lit fuse on what a fist holds: a small hot flame, spitting a few sparks that fall away. `view`: on the first-person layer.</summary>
+        public void HeldFuse(ITechniqueFxSink s,bool view,Vector3 tip,float t,long seed,float q,bool low)
+        {
+            float fl=.8f+.2f*(float)Math.Sin(t*47+seed);s.Sprite(view,tip,BombHot*(2.4f*fl),.05f,Hot);s.Sprite(view,tip,Vector3.One*(1.3f*fl),.018f,Hot);
+            int n=Count(4,q,low);for(int i=0;i<n;i++){float clock=t*(2.6f+R(seed,i+1))+R(seed,i+2),ph=clock%1;var d=RandomDir(seed+(long)clock*97,i+3);s.Sprite(view,tip+d*(.14f*ph)+Vector3.UnitY*(.1f*ph-.16f*ph*ph),BombHot*(2.6f*(1-ph)),.011f,Hot);}
+        }
         // ---- the charges ----------------------------------------------------------------------------------------------
         private static void Charge(ITechniqueFxSink s,IKitFxScene scene,NativeBomb b,float t,long seed,float q,bool low)
         {
@@ -54,8 +61,9 @@ namespace ChipArena.UnityConversion
             {
                 case NativeBombs.Pop:case NativeBombs.Bomblet:case NativeBombs.Lob:
                 {
-                    float rad=b.Kind==NativeBombs.Lob?.17f:b.Kind==NativeBombs.Pop?.09f:.06f;var fuse=at+Vector3.UnitY*(rad*1.25f);
-                    s.Sprite(false,fuse,BombHot*2.4f,rad*1.3f+.04f,Hot);Sparks(s,fuse,(t*8)%.3f,.3f,low?2:5,1.8f,BombHot,seed+(long)(t*8),5,.012f,Vector3.UnitY*.6f);
+                    // The fuse's end, wherever the stick has turned it (still in the hand for its first moment: NativeBombPresentation brings it from the fist).
+                    float rad=b.Kind==NativeBombs.Lob?.17f:b.Kind==NativeBombs.Pop?.09f:.06f;var fuse=at+Vector3.Transform(Vector3.UnitY*(NativeTnt.Length(b.Kind)*NativeTnt.FuseTip),NativeBombs.ChargeTurn(b,t));
+                    if(t-b.At>=.1f){s.Sprite(false,fuse,BombHot*2.4f,rad*1.3f+.04f,Hot);Sparks(s,fuse,(t*8)%.3f,.3f,low?2:5,1.8f,BombHot,seed+(long)(t*8),5,.012f,Vector3.UnitY*.6f);}
                     if(sp>.5f){var d=v/sp;s.Line(false,at-d*Math.Min(.9f,sp*.05f),at,BombFlame*.7f,rad*.45f,true);if(b.Kind==NativeBombs.Lob&&!low)for(int i=0;i<4;i++){float ph=(t*2.4f+i*.25f)%1;s.Smoke(at-d*(.3f+1.6f*ph)+Vector3.UnitY*(.1f*ph),BombSmoke,.5f*(1-ph),.25f+.4f*ph,.2f+.5f*ph,seed+i,-1000);}}
                     if(left<.45f)s.Glow(at,BombRed*(1.4f*tick),0,rad*4,Core,0,seed+1);break;
                 }
@@ -69,7 +77,7 @@ namespace ChipArena.UnityConversion
                 case NativeBombs.Sticky:
                 {
                     float rate=left<99?Math.Max(0,1.2f-left):0;var up=N(b.Normal);if(up.LengthSquared()<.5f)up=Vector3.UnitY;
-                    Sparks(s,at,(t*11)%.28f,.28f,Count(9,q,low),3.2f+2.4f*rate,BombHot,seed+(long)(t*11),5,.016f,up*.9f);s.Sprite(false,at,BombHot*(2+1.4f*tick),.15f,Hot);s.Glow(at,BombRed*(.5f+1.4f*tick*rate),0,.5f+.5f*rate,Core,0,seed+4);break;
+                    var fuse=at+up*(NativeTnt.Length(b.Kind)*(.42f+NativeTnt.FuseTip));Sparks(s,fuse,(t*11)%.28f,.28f,Count(9,q,low),3.2f+2.4f*rate,BombHot,seed+(long)(t*11),5,.016f,up*.9f);s.Sprite(false,fuse,BombHot*(2+1.4f*tick),.15f,Hot);s.Glow(at,BombRed*(.5f+1.4f*tick*rate),0,.5f+.5f*rate,Core,0,seed+4);break;
                 }
             }
         }
@@ -144,6 +152,53 @@ namespace ChipArena.UnityConversion
             {
                 float born=.25f+j*.12f,a=after-born;if(a<0||a>1)continue;long k=seed+100+j*17;var at=centre+new Vector3((R(k,1)-.5f)*12,6+3.5f*R(k,2),(R(k,3)-.5f)*10);var color=j%3==0?new Vector3(1,.3f,.12f):j%3==1?new Vector3(1,.8f,.25f):new Vector3(.9f,.25f,.5f);
                 Flash(s,at,a,.18f,color,1.8f,k);int n=Count(24,q,low);for(int i=0;i<n;i++){var d=RandomDir(k,i+10);float sp=6*(.75f+.25f*R(k,i+40)),move=sp*(1-(float)Math.Exp(-a*3))/3;var p=at+d*move-Vector3.UnitY*(1.6f*a*a);s.Streak(p,d*(sp*(float)Math.Exp(-a*3))-Vector3.UnitY*(3.2f*a),color*(3.2f*(1-a)),.04f,.08f,.05f,.5f,a,k+i);}
+            }
+        }
+    }
+
+    /// <summary>
+    /// The Bombadier's arms in first person (docs/BOMBADIER.md): a bundle of TNT low in each corner of the view, its fuse spitting, thrown from there. Pure functions of the kit and the clock on the view rig's
+    /// own joints, in place of the game rig's gun hold. A throw goes up out of sight, comes over and through the middle of the view, and drops below the frame, where the next stick comes from.
+    /// </summary>
+    public static class NativeBombView
+    {
+        private struct Arm
+        {
+            public float Ax,Az,Ex,Hx;public Arm(float ax,float az,float ex,float hx){Ax=ax;Az=az;Ex=ex;Hx=hx;}
+            public static Arm Mix(Arm a,Arm b,float u)=>new Arm(a.Ax+(b.Ax-a.Ax)*u,a.Az+(b.Az-a.Az)*u,a.Ex+(b.Ex-a.Ex)*u,a.Hx+(b.Hx-a.Hx)*u);
+        }
+        private static float Smooth(float x){x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
+        private static Arm Over(Arm rest,Arm top,Arm through,Arm low,NativeBombKit k,float time)
+        {
+            float s=time-k.CastRelease;if(s<0)return Arm.Mix(rest,top,Smooth((time-k.CastAt)/Math.Max(.02f,k.CastRelease-k.CastAt)));
+            if(s<.09f)return Arm.Mix(top,through,Smooth(s/.09f));if(s<.27f)return Arm.Mix(through,low,Smooth((s-.09f)/.18f));return Arm.Mix(low,rest,Smooth((s-.27f)/.24f));
+        }
+        private static Arm Pose(int side,NativeBombKit k,float time,float reloadAt,float reloadUntil,float blockUntil)
+        {
+            float s=side;var rest=new Arm(-1.02f+(float)Math.Sin(time*1.6f+side)*.02f,s*.4f,-1.02f,.56f);var arm=rest;var low=new Arm(-.2f,s*.3f,-.5f,.2f);
+            if(side<0&&time>=reloadAt&&time<reloadUntil){float u=(time-reloadAt)/Math.Max(.05f,reloadUntil-reloadAt);arm=Arm.Mix(rest,low,Smooth(u/.2f)*(1-Smooth((u-.72f)/.28f)));}
+            if(time<blockUntil)arm=new Arm(-1.55f,-s*.22f,-1.9f,.25f);
+            if(k?.CastKind==null||time<k.CastAt||time>=k.CastUntil)return arm;bool left=side>0;
+            var top=new Arm(-2.75f,s*.1f,-1.85f,.1f);var through=new Arm(-1.45f,-s*.08f,-.22f,-.4f);
+            switch(k.CastKind)
+            {
+                case NativeBombs.PopBomb:return NativeBombs.ThrowsLeft(k.CastAt)==left?Over(rest,top,through,low,k,time):arm;
+                case NativeBombs.StickyFuse:return left?arm:Over(rest,top,through,low,k,time);
+                case NativeBombs.BounceMine:return left?Over(rest,low,through,low,k,time):arm;
+                case NativeBombs.DeadMansSwitch:{if(!left)return arm;var up=new Arm(-1.32f,s*.02f,-1.5f,.12f);float press=time>=k.CastRelease?1-Smooth((time-k.CastRelease)/.12f):0;up.Ex-=.1f*press;return Arm.Mix(rest,up,Smooth((time-k.CastAt)/.12f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));}
+                case NativeBombs.ClusterLob:return Over(rest,new Arm(-2.45f,-s*.12f,-1.5f,.2f),new Arm(-1.5f,-s*.2f,-.3f,-.2f),low,k,time);
+                case NativeBombs.FirecrackerLine:return Arm.Mix(arm,low,Smooth((time-k.CastAt)/.1f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));
+                case NativeBombs.BlastJump:return Arm.Mix(arm,new Arm(-.5f,s*.7f,-.3f,0),Smooth((time-k.CastAt)/.08f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));
+            }
+            return arm;
+        }
+        /// <summary>Both arms onto the view rig's pose.</summary>
+        public static void Apply(CapturedRig.Pose p,NativeBombKit k,float time,float reloadAt,float reloadUntil,float blockUntil)
+        {
+            for(int side=1;side>=-1;side-=2)
+            {
+                var a=Pose(side,k,time,reloadAt,reloadUntil,blockUntil);
+                p.Rotation[side>0?CapturedRig.LArm:CapturedRig.RArm]=CapturedRig.Euler(a.Ax,0,a.Az);p.Rotation[side>0?CapturedRig.LElbow:CapturedRig.RElbow]=CapturedRig.Euler(a.Ex);p.Rotation[side>0?CapturedRig.LHand:CapturedRig.RHand]=CapturedRig.Euler(a.Hx);
             }
         }
     }

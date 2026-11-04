@@ -59,12 +59,12 @@ namespace ChipArena.UnityConversion
             viewRig.PreviewAirJumpAt=rigs.TryGetValue(LocalId,out var own)?own.PreviewAirJumpAt:-100;// the Dev Sandbox's Cyber Lord boost preview
             viewRig.ViewPitch=source.Pitch;viewRig.ActorPose(shown,Vector3.zero,time,true);
             // Every magic-class pilot (first-person-view.ts cls 'magic': the four schools and the L33t H4x staff) frames the staff view.
-            int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0,bow=NativeBowWire.Is(shown.SourceSpec);
+            int school=MagicPose.School(shown);bool gun=GunRules.Ranged(shown.Weapon),magic=school>0,bow=NativeBowWire.Is(shown.SourceSpec),bomb=shown.SourceSpec==NativeBombs.Spec;
             // first-person-view.ts:69 class bases (NativeViewBase): guns right of centre, the DEV fighters' fists centred and low
             // (their view rig ends on the guard clip, NativeSourceMotion.Pilot), melee raised.
             // The bow (Core/NativeBowPose: its rig is placed so the arrow line runs under and left of the eye).
-            Vector3 offset=bow?NativeBowView(true):gun?CapturedAnimation.Vec(NativeViewBase.Gun):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):CapturedAnimation.Vec(NativeViewBase.IsFighter(shown.SourceSpec)?NativeViewBase.Fighter:NativeViewBase.Melee);
-            float ads=aimMotion.Sample(time,gun&&AimHeld);
+            Vector3 offset=bow?NativeBowView(true):bomb?CapturedAnimation.Vec(NativeViewBase.Bomb):gun?CapturedAnimation.Vec(NativeViewBase.Gun):magic?CapturedAnimation.Vec(NativeFirstPersonPose.MagicViewOffset(viewRig.MagicGuardWeight)):CapturedAnimation.Vec(NativeViewBase.IsFighter(shown.SourceSpec)?NativeViewBase.Fighter:NativeViewBase.Melee);
+            float ads=aimMotion.Sample(time,gun&&AimHeld&&!bomb);
             if(gun)offset+=CapturedAnimation.Vec(NativeAimPresentation.Offset(shown.Weapon))*ads;
             // The visual body's view model holds its weapon higher (NativeFirstPersonPose.ModelLift).
             offset+=VisualViewLift(shown,magic,NativeViewBase.IsFighter(shown.SourceSpec));
@@ -88,6 +88,7 @@ namespace ChipArena.UnityConversion
             // PvE chip selection: the raised wrist and its hologram in view (NativeChipSelectPresentation.cs).
             ChipSelectView(viewRig,source,time);
             if(shown.SourceSpec=="siren")SirenViewArms(shown,time);
+            if(bomb)BombViewArms(viewRig,shown,time);
             // The visual body's forearms and hands in place of the voxel arms (NativeVisualBodyPresentation.cs).
             VisualViewPose(viewRig,shown,time,ScopeActive);
             PlayerState=viewRig.State;

@@ -559,6 +559,8 @@ namespace ChipArena.UnityConversion
         {
             var g=new NativeVisualRig.Grasp();
             if(a.WeaponAway)return g;
+            // The Bombadier's TNT: a fist round the grip of a bundle in each hand, whatever weapon row its rules use.
+            if(a.SourceSpec==NativeBombs.Spec){g.RightGrip=1;g.LeftGrip=1;g.Right=NativeVisualRig.Blade(System.Numerics.Quaternion.Identity);g.Left=NativeVisualRig.Blade(System.Numerics.Quaternion.Identity);return g;}
             var w=a.Weapon;
             if(GunRules.Ranged(w))
             {

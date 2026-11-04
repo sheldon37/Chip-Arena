@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
             public bool LeftShaft;
             /// <summary>A gun (its aim layer without a bow's draw): the hold calibrated from its level aim, its barrel onto the
             /// aim.</summary>
-            public bool Gun=>Aim!=null&&Pull==null;
+            public bool Gun=>Aim!=null&&Pull==null&&Spec!=NativeBombs.Spec;
             /// <summary>The kit moves (Q/E, by MeleeKitMotion's kind) the set plays on the pack's clips, each with its clip: the clip's
             /// Hit on the release, its end on the cast's end (the Whirlwind: the body turned by the game's spin). The rest keep
             /// the game's pose. Null: none.</summary>
@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
         // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry by default; shouldered (its aim grid's
         // middle column by the pitch, a recoil on each shot) while aiming or just after a shot (owner 2026-10-24: "Aiming and
         // firing"), the reload fitted to the reload.
-        private static readonly Set Rifle=Build(new Set{Spec="rifle",TechClips=new[]{TechDrop,TechShootLine,BombStoop},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
+        private static readonly Set Rifle=Build(new Set{Spec="rifle",TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
@@ -109,6 +109,12 @@ namespace ChipArena.UnityConversion
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",
             AbilityIds=new[]{"frag-grenade"},AbilityStarts=new[]{"Armed-Cast-L-Attack2_start"},AbilityEnds=new[]{"Armed-Cast-L-Attack2_end"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+        // The Bombadier: a bundle of TNT in each fist (owner 2026-11-04: "holding TNTs instead of a grenade launcher. Modify animations however needed"), so the pack's one-handed set with nothing
+        // shouldered. Held fire throws overhand, a hand at a time; both fists come up to the chest (BombHold) when it aims or has just thrown; a reload is the right hand going to the satchel on the hip.
+        // Its abilities are in BombUpper (thrown on the move, the arms only) and BombCast (the whole body).
+        private static readonly Set Bomb=Build(new Set{Spec=NativeBombs.Spec,TechClips=new[]{BombThrowStart,BombThrowEnd,BombThrowStart+Mirror,BombThrowEnd+Mirror,TechThrowStart,TechThrowEnd,TechFlickStart,TechFlickEnd,BombHeaveStart,BombHeaveEnd,BombLay,BombClick,BombStoop,BombSlam},
+            Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",Land="Armed-Land",Block="Armed-Block-Dual",BlockHit="Armed-Block-Dual-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
+            AirAttack="Armed-Fall",SprintAttack="Armed-Run-Forward",Attacks=new[]{BombThrowEnd},Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),Aim=new[]{BombHold,BombHold,BombHold},Reload=BombReload,Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
         // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
         // cast likewise, on the upper body. Mirrored reactions swap sides.
@@ -158,7 +164,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
-            spec=="rifle"||spec=="machinegun"||spec==NativeBombs.Spec?Rifle:spec=="pistol"?Pistol:spec=="bow"?Bow:
+            spec=="rifle"||spec=="machinegun"?Rifle:spec==NativeBombs.Spec?Bomb:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
@@ -236,6 +242,7 @@ namespace ChipArena.UnityConversion
             up=default;
             if(SpinUpper(s,a,time,clips,out up))return true;
             if(DashUpper(s,a,time,clips,out up))return true;
+            if(BombUpper(s,a,time,clips,out up))return true;
             if(s.CastStart!=null)return Cast(s,a,time,clips,out up);
             if(s.Aim==null)return false;
             if(s.Reload!=null&&time>=a.ReloadAt&&time<a.ReloadUntil&&clips.Has(s.Reload))
@@ -469,30 +476,41 @@ namespace ChipArena.UnityConversion
             TechDrop="2Hand-Shooting-Pickup",TechShootLine="2Hand-Shooting-Activate",TechBuffStart="2Hand-Staff-Cast-L-Buff1_start"+Mirror,TechBuffEnd="2Hand-Staff-Cast-L-Buff1_end"+Mirror,TechTouch="2Hand-Staff-Activate"+Mirror;
         /// <summary>The pilot's technique on the pack's clips, from its record: each clip fitted to its moment. False: none, or the clip is not in
         /// the bank (the game's pose carries on).</summary>
-        // The Bombadier's casts: the launcher's kick for what it fires; a flick, a heave or a stoop for what is thrown or laid; the Finale's stoop over the box, held.
+        // The Bombadier's casts that take the whole body: a flip off its own blast, a two-handed heave of the big bundle, a stoop to light the line; the Finale's stoop over the box, the hands on its handle.
         private static bool BombCast(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
             pick=default;var k=NativeBombs.Of(a);if(k?.CastKind==null||time<k.CastAt||time>=k.CastUntil)return false;float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);
             bool Part(string clip,float from,float to,out Pick p){p=default;return time>=from&&time<to&&clip!=null&&clips.Has(clip)&&Fit(clip,time,from,to,clips,FadeIn,out p);}
             switch(k.CastKind)
             {
-                case NativeBombs.PopBomb:case NativeBombs.StickyFuse:return Part(set.Fire!=null?set.Fire[0]:null,at,until,out pick);
                 case NativeBombs.BlastJump:return Part(set.Flip,at,until,out pick);
-                case NativeBombs.BounceMine:return Part(TechFlickStart,at,rel,out pick)||Part(TechFlickEnd,rel,until,out pick);
-                case NativeBombs.DeadMansSwitch:return Part(TechFlickEnd,at,until,out pick);
-                case NativeBombs.ClusterLob:return Part(TechThrowStart,at,rel,out pick)||Part(TechThrowEnd,rel,until,out pick);
-                case NativeBombs.FirecrackerLine:return Part(TechDrop,at,until,out pick);
+                case NativeBombs.ClusterLob:return Part(BombHeaveStart,at,rel,out pick)||Part(BombHeaveEnd,rel,until,out pick);
+                case NativeBombs.FirecrackerLine:return Part(BombLay,at,until,out pick);
                 case NativeBombs.GrandFinale:
                 {
-                    if(time<rel)return Part(TechDrop,at,rel,out pick);float lockAt=k.Finale?.Lock??rel+1.5f;
-                    // The launcher comes down on the plunger at the Lock, then the pilot stands and watches.
+                    if(time<rel)return Part(BombLay,at,rel,out pick);float lockAt=k.Finale?.Lock??rel+1.5f;
+                    // Both hands drive the plunger home at the Lock, then the pilot stands and watches.
                     if(Part(BombSlam,lockAt-.42f,lockAt+.34f,out pick))return true;
                     if(time<lockAt&&clips.Has(BombStoop)){pick=new Pick{Clip=BombStoop,Time=time-rel,Fade=FadeIn};return true;}return false;
                 }
             }
             return false;
         }
-        private const string BombStoop="2Hand-Shooting-Crouch-Idle",BombSlam="2Hand-Sword-Attack11";
+        private const string BombThrowStart="Armed-Cast-R-Attack3_start",BombThrowEnd="Armed-Cast-R-Attack3_end",BombHold="Armed-Idle-Pistol-Dual-Static",BombReload="Armed-Unsheath-R-FromArmed-Hips",BombHeaveStart="Unarmed-Cast-Dual-Attack1_start",BombHeaveEnd="Unarmed-Cast-Dual-Attack1_end",
+            BombLay="Armed-Pickup-Right",BombClick="Armed-Activate-Left",BombStoop="2Hand-Sword-Crouch-Idle",BombSlam="2Hand-Sword-Attack11";
+        /// <summary>What the Bombadier throws on the move: the arms only, the legs carrying on. Held fire goes overhand from each fist in turn (the left is the bake's mirror), a sticky fuse is a snap of the right, a mine a flick of the left, and the switch a press of the left thumb.</summary>
+        private static bool BombUpper(Set s,Actor a,float time,IClips clips,out Upper up)
+        {
+            up=default;if(s.Spec!=NativeBombs.Spec)return false;var k=NativeBombs.Of(a);if(k?.CastKind==null||time<k.CastAt||time>=k.CastUntil)return false;float rel=Math.Max(k.CastAt+.03f,k.CastRelease);
+            switch(k.CastKind)
+            {
+                case NativeBombs.PopBomb:{string hand=NativeBombs.ThrowsLeft(k.CastAt)?Mirror:"";return Phase(BombThrowStart+hand,BombThrowEnd+hand,k.CastAt,rel,time,clips,ref up);}
+                case NativeBombs.StickyFuse:return Phase(TechThrowStart,TechThrowEnd,k.CastAt,rel,time,clips,ref up);
+                case NativeBombs.BounceMine:return Phase(TechFlickStart,TechFlickEnd,k.CastAt,rel,time,clips,ref up);
+                case NativeBombs.DeadMansSwitch:if(!clips.Has(BombClick))return false;up=new Upper{A=BombClick,TimeA=clips.Length(BombClick)*Clamp01((time-k.CastAt)/Math.Max(.05f,k.CastUntil-k.CastAt)),Raised=true};return true;
+            }
+            return false;
+        }
         private static bool Technique(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
             pick=default;var k=NativeTechniques.Of(a);if(k?.Kind==null||time<k.At)return false;float back=Math.Max(k.Release+.05f,k.RecoverUntil);
