@@ -263,9 +263,9 @@ namespace ChipArena.UnityConversion
                 ironDropped[death.id]=drop;
             }
             // The corpse keeps the crust and what it dropped (NativeHordeGorePresentation.cs HordeCorpsesDraw), once it has settled.
-            var remains=hordeGore.RemainsOf(death.id);if(remains!=null&&Mathf.Abs(remains.At-death.at)<.05f){remains.Extra=drop.Crusted?drop.Look:-1;remains.Prop=drop.Prop;if(drop.Prop>=0)remains.PropMatrix=GoreN(Matrix4x4.TRS(drop.To,drop.ToRot,Vector3.one));}
+            var remains=hordeGore.RemainsOf(death.id);if(remains!=null&&Mathf.Abs(remains.At-death.at)<.05f){remains.Extra=drop.Crusted&&!IronworksOnModel(kind)?drop.Look:-1;remains.Prop=drop.Prop;if(drop.Prop>=0)remains.PropMatrix=GoreN(Matrix4x4.TRS(drop.To,drop.ToRot,Vector3.one));}
             bool body=!NativeMinionFx.Gone(fx)&&(remains==null||!remains.Posed||remains.Frame>=hordeKindFrame);if(!body)return;
-            if(drop.Crusted&&!ZombieModelDrawn(death.id)){HordeDeathBody(rig,IronworksCrustId(drop.Look,NativeHordeModels.Full),death.id,death.lost,fx,hordeQueueVisible);}
+            if(drop.Crusted&&!IronworksOnModel(kind)&&!ZombieModelDrawn(death.id)){HordeDeathBody(rig,IronworksCrustId(drop.Look,NativeHordeModels.Full),death.id,death.lost,fx,hordeQueueVisible);}
             if(drop.Prop>=0){float u=Mathf.Clamp01(fx/.45f);float bounce=u<1?0:Mathf.Max(0,.06f*Mathf.Sin((fx-.45f)*18)*Mathf.Exp(-(fx-.45f)*6));
                 IronworksPropDraw(drop.Prop,0,Matrix4x4.TRS(Vector3.Lerp(drop.From,drop.To,u*u)+Vector3.up*bounce,Quaternion.Slerp(drop.FromRot,drop.ToRot,Mathf.SmoothStep(0,1,u)),Vector3.one),Vector4.one,1);}
             if(z==NativeIronworksKinds.Rigger&&fx<.5f&&((int)(fx*23)&1)==0&&!IronworksLampOnModel(death.id,kind))IronworksLamp(rig);
