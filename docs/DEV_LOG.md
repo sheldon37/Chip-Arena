@@ -1,12 +1,12 @@
 ## 2026-11-04 — Astra — REVIVE-O-MATIC authority and Foreman hitbox
 
-Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironworks model merge `acbb6831`. Implementation `5bf75835` plus follow-up verification/docs.
+Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironworks model merge `acbb6831` and publication note `eb769ba1`. Implementation pushed as `eafa3824`, integration/guard follow-up `bbf7e01d`; PR #332.
 
 - Authenticated target-selecting Reprint request; host checks living connected payer, real sanctuary/range, dead connected unextracted target, busy state, PERMADEATH and $250 wallet. Second Wind is free. Atomic paid reservation prevents duplicate/competing revives.
 - Replicated hub-clock spit/death record; full-HP revival at 3s, input hold through 5.63s, entry removal at 6.6s. Cross-area corpse recovery uses SplitReprint/ReprintFrom and cancels the corpse. Target disconnect before spit refunds once; payer death does not strand the purchase. The hub continues servicing queued revives even if every pilot is down.
 - Bound request/Fill/LiveSpits from rules code; death details survive area changes; reprint quotes now $250; retired exp-city:machine:0 F channel. No screen, animation, audio or rendering edits.
 - Confirmed Foreman sculpt/rig mismatch: capsule centre now (0,6.98,-3.52), derived from StandHeight/PulpitRest/ForemanFeet, height 2.08 covering boots to hat. Retained 1.5x weak point, including the feet below the old y>6 threshold. Added native side-ray, old-position miss and damage checks.
-- Reviewed instance-machine spots/nav/anchor exclusions; no generator changes needed. 338,967 checks across 24 Backrooms/Poolrooms seeds passed. New managed revive authority suite: 19 checks passed. Unity semantic compile passed for player/runtime/editor; package source structure passed. Full regression and delivery receipts will be recorded in the PR. Native PhysX/JsonUtility checks are compiled here but run on the Windows builder; two-client gameplay acceptance remains outstanding.
+- Reviewed instance-machine spots/nav/anchor exclusions; no generator changes needed. 338,967 checks across 24 Backrooms/Poolrooms seeds passed. New managed revive authority suite: 19 checks passed. Ironworks model suite: 703 checks passed; its old presentation-only guard now allows only StandHeight/PulpitRest/ForemanFeet in authority plus the native rig alignment fixture. Unity semantic compile passed for player/runtime/editor; package source structure passed. Full regression and delivery receipts will be recorded in the PR. Native PhysX/JsonUtility checks are compiled here but run on the Windows builder; two-client gameplay acceptance remains outstanding.
 
 ## 2026-11-04 — Claude: THE CONVERTER on a real model
 
