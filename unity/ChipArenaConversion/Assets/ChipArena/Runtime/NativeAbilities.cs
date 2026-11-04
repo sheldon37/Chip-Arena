@@ -147,10 +147,11 @@ namespace ChipArena.UnityConversion
         // only picks a depth on the authority's own ray, so it cannot pass a wall or the range. Classic's crosshair ray never
         // lies on the eye ray and bots keep AuthorityAim, so both are unchanged. No wire change; guests do not predict it.
         private RaycastHit[] abilityAimHits=new RaycastHit[16];
-        private Vector3 AimedAbilityPoint(NativePilot p,float range)
+        private Vector3 AimedAbilityPoint(NativePilot p,float range)=>AimedAbilityPoint(p,range,in p.Input);
+        private Vector3 AimedAbilityPoint(NativePilot p,float range,in InputFrame aim)
         {
-            Vector3 point=AuthorityAim(p,range);if(p.Seat.bot||p.Input.AbilityTarget.Length<.01f)return point;
-            Vector3 eye=p.Body.position+Vector3.up*.52f,look=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch)).normalized;float world=Vector3.Distance(eye,point);var report=p.Input.AbilityTarget;
+            Vector3 point=AuthorityAim(p,range,in aim);if(p.Seat.bot||aim.AbilityTarget.Length<.01f)return point;
+            Vector3 eye=p.Body.position+Vector3.up*.52f,look=Vec(GunRules.Direction(aim.Yaw,aim.Pitch)).normalized;float world=Vector3.Distance(eye,point);var report=aim.AbilityTarget;
             if(!NativeAimConvergence.OnLook(new System.Numerics.Vector3(eye.x,eye.y,eye.z),new System.Numerics.Vector3(look.x,look.y,look.z),new System.Numerics.Vector3(report.x,report.y,report.z),world,out float along))return point;
             var physics=root.scene.GetPhysicsScene();int count;
             // A full nonalloc query may omit the nearest body; match MeleeVisible's saturation handling.

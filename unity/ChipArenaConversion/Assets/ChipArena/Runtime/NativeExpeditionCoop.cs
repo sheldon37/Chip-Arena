@@ -114,6 +114,7 @@ namespace ChipArena.UnityConversion
         public void ApplyExpeditionCollision(ExpeditionView view,ExpeditionAreaLayout area,string json)
         {
             if(!Replica||MapId!=area.map)return;
+            techniqueReplicaArea=area;
             BoxCollider Box(string id,ExpeditionVolume v,float y,float height)
             {
                 var obj=new GameObject(id);obj.layer=PropLayer;obj.transform.SetParent(root.transform);

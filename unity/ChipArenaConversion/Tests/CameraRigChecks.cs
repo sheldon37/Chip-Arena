@@ -401,7 +401,7 @@ internal static class CameraRigChecks
         // The authority's one addition: gun and magic Q/E stop their own aim ray at a confirmed body (bots excluded); the
         // primary, hit validation, prediction and the wire are untouched; AuthorityAim and its wall check remain.
         string ab=R("Runtime/NativeAbilities.cs"),pv=R("Runtime/NativeParityValidation.cs");
-        Check(ab.Contains("Vector3 point=AimedAbilityPoint(p,(float)d.range);")&&ab.Contains("Vector3 point=AuthorityAim(p,range);if(p.Seat.bot||p.Input.AbilityTarget.Length<.01f)return point;")
+        Check(ab.Contains("Vector3 point=AimedAbilityPoint(p,(float)d.range);")&&ab.Contains("Vector3 point=AuthorityAim(p,range,in aim);if(p.Seat.bot||aim.AbilityTarget.Length<.01f)return point;")
             &&ab.Contains("return NativeAimConvergence.Confirms(along,body,world)?at-look*.03f:point;")&&ab.Contains("if(q==p||!(q!=null&&q.Hp>0||m!=null&&m.Hp>0)"),"the authority ends a gun or magic ability's own ray at a confirmed live body, never the caster; bots keep AuthorityAim");
         Check(pv.Contains("private Vector3 AuthorityAim(NativePilot p,float range)")&&pv.Contains("\"reported target cannot bypass a wall\""),"AuthorityAim and its wall check are unchanged");
         foreach(var f in new[]{"Runtime/NativeArena.cs","Runtime/NativeProjectiles.cs","Runtime/NativeParityValidation.cs","Runtime/NativeMelee.cs","Runtime/NativeMeleeAbilities.cs","Runtime/NativeNetworkFrame.cs","Runtime/NativeReplicaMotion.cs","Core/WireCodec.cs","Core/ArenaModel.cs","Core/NativeMeleePrediction.cs"})
