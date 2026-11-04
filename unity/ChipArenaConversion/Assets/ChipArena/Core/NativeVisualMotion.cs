@@ -109,12 +109,12 @@ namespace ChipArena.UnityConversion
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",
             AbilityIds=new[]{"frag-grenade"},AbilityStarts=new[]{"Armed-Cast-L-Attack2_start"},AbilityEnds=new[]{"Armed-Cast-L-Attack2_end"}},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
-        // The Bombadier: a bundle of TNT in each fist (owner 2026-11-04: "holding TNTs instead of a grenade launcher. Modify animations however needed"), so the pack's one-handed set with nothing
-        // shouldered. Held fire throws overhand, a hand at a time; both fists come up to the chest (BombHold) when it aims or has just thrown; a reload is the right hand going to the satchel on the hip.
+        // The Bombadier: a bundle of TNT in each fist (owner 2026-11-04: "holding TNTs instead of a grenade launcher. Modify animations however needed"), so the pack's bare-handed set (upright, the fists up by the chest, so the TNT
+        // shows from behind), its casts from the one-handed set. Held fire throws overhand, a hand at a time; both fists come up to the chest (BombHold) when it aims or has just thrown; a reload is the right hand going to the satchel on the hip.
         // Its abilities are in BombUpper (thrown on the move, the arms only) and BombCast (the whole body).
         private static readonly Set Bomb=Build(new Set{Spec=NativeBombs.Spec,TechClips=new[]{BombThrowStart,BombThrowEnd,BombThrowStart+Mirror,BombThrowEnd+Mirror,TechThrowStart,TechThrowEnd,TechFlickStart,TechFlickEnd,BombHeaveStart,BombHeaveEnd,BombLay,BombClick,BombStoop,BombSlam},
-            Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",Land="Armed-Land",Block="Armed-Block-Dual",BlockHit="Armed-Block-Dual-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
-            AirAttack="Armed-Fall",SprintAttack="Armed-Run-Forward",Attacks=new[]{BombThrowEnd},Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),Aim=new[]{BombHold,BombHold,BombHold},Reload=BombReload,Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            Idle="Unarmed-Idle",Jump="Unarmed-Jump",Flip="Unarmed-Jump-Flip",Fall="Unarmed-Fall",Land="Unarmed-Land",Block="Unarmed-Block",BlockHit="Unarmed-Block-GetHit1",Stunned="Unarmed-Stunned",Roll="Unarmed-Roll-Forward",
+            AirAttack="Unarmed-Fall",SprintAttack="Unarmed-Sprint",Attacks=new[]{BombThrowEnd},Reactions=Names("Unarmed-GetHit-","F1","B1","L1","R1"),Aim=new[]{BombHold,BombHold,BombHold},Reload=BombReload,Knockdown="Unarmed-Knockdown1",RollBack="Unarmed-Roll-Backward"},"Unarmed-Run-","Unarmed-Strafe-","Unarmed-Sprint");
         // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
         // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
         // cast likewise, on the upper body. Mirrored reactions swap sides.
