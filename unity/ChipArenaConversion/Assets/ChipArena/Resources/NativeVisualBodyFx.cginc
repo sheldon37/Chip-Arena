@@ -93,6 +93,7 @@ float3 SkinToned(float3 c)
 //  On skin the rot also opens gashes: long strokes of raw red flesh in a dark crusted edge, the bone's ivory at the deepest.
 // Unset (every pilot), nothing changes.
 float4 _ZombieTint;float4 _ZombieWear;float4 _ZombieEye;float4 _ZombieSkin;
+float4 _ZombieChar;float4 _ZombieCharGlow;float _ZombieFoil;
 float ZombieHash(float2 p){return frac(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
 float ZombieNoise(float2 p)
 {
@@ -173,7 +174,8 @@ float3 ZombieLook(float3 c,float2 uv,float band,float stripe)
  {
   float t=ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3,edge=1.0-0.45*_ZombieWear.y;
   float hole=smoothstep(edge,edge+0.012,t),rim=saturate(smoothstep(edge-0.035,edge,t)-hole);
-  float3 under=lerp(_ZombieSkin.rgb*0.5,float3(0.3,0.04,0.04),smoothstep(edge+0.006,edge+0.035,t));
+  // (A burned kind's cloth, _ZombieChar.x under 0: its holes burned black, no raw flesh.)
+  float3 under=_ZombieChar.x<0.0?float3(0.01,0.008,0.007):lerp(_ZombieSkin.rgb*0.5,float3(0.3,0.04,0.04),smoothstep(edge+0.006,edge+0.035,t));
   c=lerp(c,under,hole)*(1.0-0.7*rim);
  }
  if(_ZombieSkin.w>0.0)
@@ -201,7 +203,6 @@ float3 ZombieLook(float3 c,float2 uv){return ZombieLook(c,uv,0.0,0.0);}
 float3 ZombieTapeShine(float band,float3 n,float3 view){return band>0.0?float3(0.5,0.53,0.55)*band*pow(saturate(dot(n,view)),3.0):float3(0.0,0.0,0.0);}
 // A body burned to char (Core NativeZombieLooks.Variant.Char: the Ironworks' Cinderling, the Slagback's bared skin), per renderer: _ZombieChar x how far (the skin
 // toward black), y the cracks' glow, z ash in patches, w a seed; _ZombieCharGlow its colour. Over the rest space, so the cracks ride the skin. Unset, nothing.
-float4 _ZombieChar;float4 _ZombieCharGlow;float _ZombieFoil;
 float ZombieNoise3(float3 p)
 {
  float3 i=floor(p),f=frac(p);f=f*f*(3.0-2.0*f);
@@ -220,8 +221,8 @@ void ZombieChar(float3 rest,inout float3 albedo,inout float3 emission)
  float warp=ZombieNoise3(p*5.3)*0.35;
  float v1=abs(ZombieNoise3(p*11.0+warp*5.0)-0.5)*2.0,v2=abs(ZombieNoise3(p*29.0+warp*9.0+11.3)-0.5)*2.0;
  float where=smoothstep(0.34,0.56,ZombieNoise3(p*3.7+7.7));
- float hot=saturate((1.0-smoothstep(0.0,0.05,v1))*where+(1.0-smoothstep(0.0,0.075,v2))*where*smoothstep(0.5,0.7,ZombieNoise3(p*7.1+3.1))*0.7);
- float rim=saturate((1.0-smoothstep(0.03,0.16,v1))*where);
+ float hot=saturate((1.0-smoothstep(0.0,0.032,v1))*where+(1.0-smoothstep(0.0,0.05,v2))*where*smoothstep(0.5,0.7,ZombieNoise3(p*7.1+3.1))*0.6);
+ float rim=saturate((1.0-smoothstep(0.02,0.12,v1))*where);
  albedo*=1.0-0.8*rim;
  emission+=_ZombieCharGlow.rgb*hot*_ZombieChar.y+float3(0.5,0.12,0.03)*rim*(1.0-hot)*0.35*_ZombieChar.y*0.4;
 }

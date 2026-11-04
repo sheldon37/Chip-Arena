@@ -28,11 +28,17 @@ namespace ChipArena.UnityConversion
             sourceModels.Queue(NativeHordeModels.PropId(prop,tier),world,glow:glow,hitFlash:flash);
         }
         // ---- the props in the model's hands ----
-        /// <summary>After PlaceProps: its props carried from the gait's fists to the model's (false while it draws voxel).</summary>
-        private bool IronworksPropsOnModel(in HordeMotionInput f,HordeKindState s,int id)
+        /// <summary>Before PlaceProps: its props go to the model's hands, not the gait's (false while it draws voxel).</summary>
+        private bool IronworksHands(HordeKindState s,int id)
         {
-            if(!ZombieModelShift(id,s.Kind,CapturedRig.LHand,out var l)||!ZombieModelShift(id,s.Kind,CapturedRig.RHand,out var r))return false;
-            s.Gait.PropsOnModel(f,minionPose,l,r);return true;
+            s.Gait.ModelHands=ZombieModelShift(id,s.Kind,CapturedRig.LHand,out var l)&ZombieModelShift(id,s.Kind,CapturedRig.RHand,out var r);
+            s.Gait.ModelShiftL=l;s.Gait.ModelShiftR=r;return s.Gait.ModelHands;
+        }
+        /// <summary>A model corpse's dropped prop, beside it (its voxel corpse draws its own after this).</summary>
+        private void IronworksCorpseProp(NativeHordeGoreState.Remains r,float sink)
+        {
+            if(r.Prop<0||!zombieCorpses.ContainsKey(r)&&!(zombieBodies.TryGetValue(r.Id,out var z)&&z.Dying))return;
+            var kept=GoreU(r.PropMatrix);kept.m13-=sink;IronworksPropDraw(r.Prop,0,kept,Vector4.one,1);
         }
         // ---- the crust (Variant.Crust): the "slag-" gear on until the authority's shedAt; the fissure stays ----
         private void IronworksCrustGear(ZombieBody z,bool on)
@@ -48,9 +54,11 @@ namespace ChipArena.UnityConversion
             if(v.Char>0)ZombieRestWrite(root,all);float seed=NativeHordeKinds.Hash(NativeGoreRules.Fnv(v.Id),7)*9;
             foreach(var r in all)
             {
-                if(r==null)continue;bool skin=VisualSkinPart(r);if(!(v.Char>0&&skin)&&!(v.Foil>0&&!skin&&!ZombieEyePart(r)))continue;
+                if(r==null||ZombieEyePart(r))continue;bool skin=VisualSkinPart(r);if(v.Char<=0&&(v.Foil<=0||skin))continue;
                 r.GetPropertyBlock(zombieBlock);
-                if(v.Char>0&&skin){zombieBlock.SetVector(ZombieCharId,new Vector4(v.Char,v.Char>=1?3.2f:1.4f,v.Char>=1?.55f:.3f,seed));zombieBlock.SetVector(ZombieCharGlowId,new Vector4(c.r,c.g,c.b,1));}
+                // (The char on its skin; its clothes' holes burned black instead of raw: x below 0.)
+                if(v.Char>0&&skin){zombieBlock.SetVector(ZombieCharId,new Vector4(v.Char,v.Char>=1?2.4f:1.1f,v.Char>=1?.55f:.3f,seed));zombieBlock.SetVector(ZombieCharGlowId,new Vector4(c.r,c.g,c.b,1));}
+                else if(v.Char>0)zombieBlock.SetVector(ZombieCharId,new Vector4(-1,0,0,0));
                 if(v.Foil>0&&!skin)zombieBlock.SetFloat(ZombieFoilId,v.Foil);
                 r.SetPropertyBlock(zombieBlock);
             }

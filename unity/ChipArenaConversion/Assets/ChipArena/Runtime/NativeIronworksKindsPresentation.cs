@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
             // HordeKindAdd poses on, hordeNow; matched against arena.Time this skipped every live add on the host, guests and the
             // killcam, which then drew no rake, ladle, hook, crust, lamp or effects.)
             int z=NativeIronworksKinds.Local(s.Kind);ref var f=ref hordeInput[0];if(z<0||f.Id!=m.Id||f.Time!=hordeNow)return;
-            s.Gait.PlaceProps(f,minionPose);bool onModel=IronworksPropsOnModel(f,s,m.Id);IronworksProps(rig,s.Gait,s.Tier,glow,flash,s.Scale);bool crusted=z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(s.Gait.Iron.shedAt,f.Time);
+            bool onModel=IronworksHands(s,m.Id);s.Gait.PlaceProps(f,minionPose);IronworksProps(rig,s.Gait,s.Tier,glow,flash,s.Scale);bool crusted=z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(s.Gait.Iron.shedAt,f.Time);
             if(onModel&&zombieBodies.TryGetValue(m.Id,out var body))IronworksCrustGear(body,crusted);else if(crusted&&!IronworksWaits(s.Kind))IronworksCrust(rig,s.Look,s.Tier,m.Pve?.Lost??0,glow,flash);
             // What it carries, for its death: the held prop where it is now, the crust still on.
             var g=s.Gait;ironCarry[m.Id]=new IronCarry{Has=g.PropCount>0,Prop=g.PropCount>0?g.Props[0].Prop:-1,M=g.PropCount>0?IronMatrix(rig,g.Props[0].At,g.Props[0].Turn,g.Props[0].Scale):Matrix4x4.identity,Crusted=crusted,Look=s.Look,Seen=f.Time};
@@ -323,7 +323,7 @@ namespace ChipArena.UnityConversion
                 s.Gait.Pose(f,minionPose,s.React);NativePoseWriter.Write(rig.Bones,minionPose,"a gallery rig");rig.Root.transform.SetPositionAndRotation(new Vector3(pos.x,rootY,pos.z),Quaternion.Euler(0,s.Gait.Yaw,0));rig.Root.transform.localScale=Vector3.one*sc;
                 float gk=NativeHordeFx.Brighten(fr.AttackAge,strike,recover);var glow=HordeGlow(id);var gl=new Vector4(gk,gk,gk,glow.w);
                 if(!ZombieModelPose(rig,id,kind,NativeHordeModels.Full,true,false,false,s.Gait,0,0,1,gl.x,0))HordeQueue(rig,NativeHordeModels.Id(kind,0,NativeHordeModels.Full),id,0,0,0,gl,1);HordeAdd(rig,id,float.NaN,float.NaN,ground,ground,float.NaN,vel,0,true,kind*8);
-                s.Gait.PlaceProps(f,minionPose);bool galleryModel=IronworksPropsOnModel(f,s,id);IronworksProps(rig,s.Gait,NativeHordeModels.Full,gl,1,sc);
+                bool galleryModel=IronworksHands(s,id);s.Gait.PlaceProps(f,minionPose);IronworksProps(rig,s.Gait,NativeHordeModels.Full,gl,1,sc);
                 if(galleryModel&&zombieBodies.TryGetValue(id,out var galleryBody))IronworksCrustGear(galleryBody,NativeIronworksKinds.Crusted(fr.View.shedAt,now));else if(z==NativeIronworksKinds.Slagback&&NativeIronworksKinds.Crusted(fr.View.shedAt,now))IronworksCrust(rig,0,NativeHordeModels.Full,0,gl,1);
                 if(z==NativeIronworksKinds.Rigger&&!IronworksLampOnModel(id,kind))IronworksLamp(rig);
                 IronworksJob(rig,s,z,f,ground,me.Body.position,true,false,Vector3.zero,slot);

@@ -39,6 +39,9 @@ namespace ChipArena.UnityConversion
         public readonly IronProp[] Props=new IronProp[3];public int PropCount;public readonly IronChain[] Chains=new IronChain[2];public int ChainCount;
         /// <summary>The Stoker's hook end and the Ladleman's lip (source frame) the effects read.</summary>
         public Vector3 HookTip,Lip;
+        /// <summary>While the add draws on the player's model: how far its hands stand from the gait's (source frame; Runtime ZombieModelShift), read by
+        /// <see cref="PlaceProps"/>, which then carries the props onto those hands (<see cref="PropsOnModel"/>).</summary>
+        public bool ModelHands;public Vector3 ModelShiftL,ModelShiftR;
         // the intended pole of the frame (set by the arms stage), the ladle dropped by a spill (where, when)
         private Vector3 poleDir,ladleLeft;private float poleLength;private bool spillSeen;private float spillFrom;private Vector3 spillAt;private Quaternion spillTurn;
 
@@ -301,6 +304,7 @@ namespace ChipArena.UnityConversion
                     Props[PropCount++]=new IronProp{Prop=NativeHordeModels.PropHook,At=eye,Turn=lay,Scale=1};HookTip=eye+Vector3.Transform(new Vector3(0,-.5f,.1f),lay);break;
                 }
             }
+            if(ModelHands)PropsOnModel(f,p,ModelShiftL,ModelShiftR);
         }
 
         /// <summary>
@@ -309,7 +313,7 @@ namespace ChipArena.UnityConversion
         /// from the right, the Ladleman's shank from the back one through the front one: never through its wrists' old line), and a chain leaves its real fist. Nothing here
         /// is read by a rule; the hook's and the lip's places follow for the effects.
         /// </summary>
-        public void PropsOnModel(in HordeMotionInput f,CapturedRig.Pose p,Vector3 shiftL,Vector3 shiftR)
+        private void PropsOnModel(in HordeMotionInput f,CapturedRig.Pose p,Vector3 shiftL,Vector3 shiftR)
         {
             int z=NativeIronworksKinds.Local(kind);if(z<0)return;p.World();Vector3 l=Fist(p,true)+shiftL,r=Fist(p,false)+shiftR;
             // The pole's line through both fists, as long as they hold it where the gait meant (not crossed, not on one spot).

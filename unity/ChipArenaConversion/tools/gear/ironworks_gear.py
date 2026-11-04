@@ -893,6 +893,61 @@ def slag_limb(key, bone, spec):
     return _limb_plates(key, bone, [(a, _along(key, bone, f), da, abs(_along(key, bone, df)), th) for a, f, da, df, th in spec])
 
 
+class Hips:
+    """The pelvis bone's design frame (its axes as spine_05's): an ellipse from the torso's lowest measured slices, a point at angle `a` and height `z`."""
+
+    def __init__(self, key):
+        self.t = Torso(key)
+
+    def r(self, a, z):
+        return self.t.r(a, -.335) * (1 + .1 * max(0.0, -z) / .1)
+
+    def raw(self, a, z, off=0.0):
+        t = math.radians(a)
+        rr = self.r(a, z) + off
+        return Vector((math.sin(t) * rr, math.cos(t) * rr, z))
+
+    def __call__(self, a, z):
+        p = self.raw(a, z)
+        return p, Vector((p.x, p.y, 0)).normalized()
+
+
+def slag_pelvis(key):
+    surf = Hips(key)
+    pc = Piece('slag-hips')
+    seams = Piece('slag-hips-seams')
+    plates(pc, seams, surf, ((-55, .03, 30, .05, .024), (40, .045, 26, .04, .02), (180, .04, 36, .05, .022), (100, .0, 18, .05, .018)))
+    pc.sharp = 26
+    return [pc.make(recalc=False), seams.make(recalc=False)]
+
+
+def cinder_rags(key='cinderling-m'):
+    """What is left of an apron and a tool belt (pelvis): burned strips off a charred belt, short enough to clear the thighs, their ends still smouldering."""
+    surf = Hips(key)
+    out = []
+    pc = Piece('rags')
+    belt = [surf.raw(a, .055, .006) for a in range(0, 360, 20)]
+    ribbon(pc, belt + belt[:1], [Vector((p.x, p.y, 0)) for p in belt + belt[:1]], .034, .005, 'leather-burnt')
+    ends = []
+    for i, (a, w, l) in enumerate(((-16, .07, .2), (14, .06, .16), (-46, .05, .12), (48, .05, .13), (180, .09, .2), (152, .05, .14), (212, .05, .11), (94, .04, .1), (-90, .04, .09))):
+        pts = []
+        for k in range(6):
+            f = k / 5
+            q = surf.raw(a + 3 * math.sin(i + f * 3), .05 - l * f, .009 + .012 * f)
+            pts.append(q + Vector((.004 * math.sin(k * 2.1 + i), 0, 0)))
+        widths = [w * (1 - .25 * f) * (1 + .22 * math.sin(k * 3.3 + i * 1.7)) for k, f in enumerate(k / 5 for k in range(6))]
+        ribbon(pc, pts, [Vector((p.x, p.y, 0)) for p in pts], w, .0028, 'char-rag', widths=widths)
+        ends.append((pts[-1], pts[-1] - pts[-2], w))
+    out.append(pc.make())
+    pc = Piece('rags-embers')
+    for p, d, w in ends:
+        n = Vector((p.x, p.y, 0)).normalized()
+        s = n.cross(Vector((0, 0, 1)))
+        tube(pc, [p + s * (w * .4), p + s * (w * .1) + Vector((0, 0, .004)), p - s * (w * .2) + Vector((0, 0, -.002)), p - s * (w * .42)], .0026, 'ember', segs=4)
+    out.append(pc.make())
+    return out
+
+
 # ===========================================================================================================================
 # The Cinderling's opened chest (spine_05): the burned ribs over a pit of char, the coal in it (its weak point; Core NativeZombieLooks.CinderCoal), flakes of char round the hole
 # ===========================================================================================================================
@@ -1220,16 +1275,29 @@ def _props():
         ('ladle-gauntlet-r', 'lowerarm_r', fa, lambda: cuff_fit('ladleman-m', 'lowerarm_r', 'leather', 'leather-dark', .28, .96)),
         ('rigger-harness', 'spine_05', CHEST, lambda: rigger_harness('rigger-m')), ('rigger-harness-f', 'spine_05', CHEST, lambda: rigger_harness('rigger-f')),
         ('rigger-coil', 'spine_05', CHEST, lambda: rigger_coil('rigger-m')), ('rigger-coil-f', 'spine_05', CHEST, lambda: rigger_coil('rigger-f')),
+        ('cinder-rags', 'pelvis', CHEST, cinder_rags),
+        ('slag-pelvis', 'pelvis', CHEST, lambda: slag_pelvis(m)),
+        ('ladle-spat-l', 'calf_l', fa, lambda: cuff_fit('ladleman-m', 'calf_l', 'leather', 'leather-dark', .34, .93)),
+        ('ladle-spat-r', 'calf_r', fa, lambda: cuff_fit('ladleman-m', 'calf_r', 'leather', 'leather-dark', .34, .93)),
     ]
     # the crust on the limbs: angle, share along, half angle, half share, thick (each side its own, asymmetric: one shoulder heavy)
-    for side, heavy in (('l', 1.0), ('r', .72)):
-        ua, fa_, th = 'upperarm_' + side, 'lowerarm_' + side, 'thigh_' + side
-        props += [
-            ('slag-shoulder-' + side, ua, fa, lambda b=ua, h=heavy: slag_limb(m, b, ((70, .1, 62, .13, .05 * h), (250, .14, 60, .13, .036 * h), (340, .2, 40, .11, .026 * h)))),
-            ('slag-arm-' + side, ua, fa, lambda b=ua, h=heavy: slag_limb(m, b, ((110, .55, 55, .2, .026 * h), (260, .62, 48, .17, .022), (20, .68, 44, .14, .018)))),
-            ('slag-forearm-' + side, fa_, fa, lambda b=fa_, h=heavy: slag_limb(m, b, ((90, .33, 75, .18, .03 * h), (270, .42, 70, .2, .024), (0, .72, 62, .15, .022), (180, .78, 60, .14, .022)))),
-            ('slag-thigh-' + side, th, fa, lambda b=th, h=heavy: slag_limb(m, b, ((0, .3, 62, .14, .026 * h), (70, .56, 40, .13, .02), (-60, .62, 38, .12, .02)))),
-        ]
+    def shoulder(b, h):
+        return lambda: slag_limb(m, b, ((70, .1, 62, .13, .05 * h), (250, .14, 60, .13, .036 * h), (340, .2, 40, .11, .026 * h)))
+
+    def arm(b, h):
+        return lambda: slag_limb(m, b, ((110, .55, 55, .2, .026 * h), (260, .62, 48, .17, .022), (20, .68, 44, .14, .018)))
+
+    def forearm(b, h):
+        return lambda: slag_limb(m, b, ((90, .33, 75, .18, .03 * h), (270, .42, 70, .2, .024), (0, .72, 62, .15, .022), (180, .78, 60, .14, .022)))
+
+    def thigh(b, h):
+        return lambda: slag_limb(m, b, ((0, .3, 62, .14, .026 * h), (70, .56, 40, .13, .02), (-60, .62, 38, .12, .02)))
+    props += [
+        ('slag-shoulder-l', 'upperarm_l', fa, shoulder('upperarm_l', 1.0)), ('slag-shoulder-r', 'upperarm_r', fa, shoulder('upperarm_r', .72)),
+        ('slag-arm-l', 'upperarm_l', fa, arm('upperarm_l', 1.0)), ('slag-arm-r', 'upperarm_r', fa, arm('upperarm_r', .72)),
+        ('slag-forearm-l', 'lowerarm_l', fa, forearm('lowerarm_l', 1.0)), ('slag-forearm-r', 'lowerarm_r', fa, forearm('lowerarm_r', .72)),
+        ('slag-thigh-l', 'thigh_l', fa, thigh('thigh_l', 1.0)), ('slag-thigh-r', 'thigh_r', fa, thigh('thigh_r', .72)),
+    ]
     return props
 
 

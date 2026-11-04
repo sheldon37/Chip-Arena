@@ -18,7 +18,7 @@ internal static class ZombieModelChecks
     private static int Picks(){int sink=0;for(int i=0;i<4000;i++){var v=NativeZombieLooks.Of(Kinds[i%Kinds.Length],10000+i);sink+=v.Female?1:0;}return sink;}
     public static void Run(string root)
     {
-        GearScript=File.ReadAllText(Path.Combine(root,"tools/gear/station_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/backrooms_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/hound_gear.py"));
+        GearScript=File.ReadAllText(Path.Combine(root,"tools/gear/station_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/backrooms_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/hound_gear.py"))+File.ReadAllText(Path.Combine(root,"tools/gear/ironworks_gear.py"));
         Table();Pick();Dressed(root);Shapes();Sac();Decay();Mutation();Sources(root);
         Console.WriteLine("PASS zombie models: "+count+" checks (20 variants over five kinds, two male and two female each; wardrobe fallbacks; silhouettes by build; the pick by id; the shape names; the shader's zombie look; the horde's draw, death, corpses and wounds on the model; presentation only)");
     }
@@ -52,6 +52,16 @@ internal static class ZombieModelChecks
             Check(mine.All(v=>v.Faceless==(name=="faceling")&&(v.Stripes>=0)==(name=="drowned")&&(v.Carry!=null)==(name=="lifeguard")&&(v.Upright>0)==(name!="hound")
                 &&v.Beast==(name=="hound")&&(v.Ribs>0)==(name=="hound")),name+": its kit (the blank face, the stripes, the hook, its stance, the beast's head and ribs)");
         }
+        // The City Ironworks' five on the model on every tier (docs/ZOMBIE-MODELS.md 4n): their variants, their kit from the Blender script.
+        foreach(var name in new[]{"cinderling","stoker","slagback","ladleman","rigger"})
+        {
+            int kind=NativeHordeKinds.Resolve(name);var mine=all.Where(v=>v.Kind==kind).ToArray();
+            Check(NativeHordeZones.Of(kind)?.Id==name&&mine.Length==NativeZombieLooks.Variants&&mine.Count(v=>v.Female)==2&&mine.All(v=>v.Id.StartsWith(name+"-",StringComparison.Ordinal)),name+": four variants, two male and two female");
+            Check(NativeZombieLooks.ZoneLive.Contains(kind)&&NativeZombieLooks.Modelled(kind),name+": on the model in shipped builds after its review");
+            Check(mine.All(v=>v.Gear.Length>0&&v.Gear.All(g=>GearScript.Contains("('"+g+"',"))),name+": its gear is the Blender script's");
+            Check(mine.All(v=>(v.Char>0)==(name=="cinderling"||name=="slagback")&&(v.Foil>0)==(name=="stoker")&&v.Crust==(name=="slagback")),name+": its look (the char and the crust, the foil)");
+        }
+        Check(NativeZombieLooks.All.Where(v=>v.Kind!=NativeHordeKinds.Resolve("cinderling")&&v.Kind!=NativeHordeKinds.Resolve("slagback")).All(v=>v.Char==0)&&NativeZombieLooks.All.Where(v=>v.Kind!=NativeHordeKinds.Resolve("stoker")).All(v=>v.Foil==0),"no other kind is charred or foiled");
         Check(NativeZombieLooks.Of(NativeHordeKinds.Resolve("tiler"),1)==null,"the Tiler keeps its own body (no variants)");
         Check(!NativeZombieLooks.Has(NativeSmilerLook.Kind)&&!NativeZombieLooks.Modelled(NativeSmilerLook.Kind)&&!GearScript.Contains("'smiler-"),"the Smiler is no person: no variants, no gear (its own apparition)");
         Check(NativeZombieLooks.Kitted&&all.Where(v=>v.Kind<NativeHordeKinds.Count).All(v=>v.Gear.Length==0&&!v.Tape&&!v.Fused&&!v.Faceless&&v.Stripes<0&&v.Carry==null&&v.Upright==0&&!v.Beast&&v.Ribs==0),"the base kinds wear no kit");
@@ -112,8 +122,8 @@ internal static class ZombieModelChecks
             {
                 var c=NativeZombieLooks.Candidates(v.Pieces[s]);string last=c.Last();
                 Check(c.Length>0,v.Id+": a candidate in slot "+NativeLook.Slots[s]);
-                // (Bare: the hair, a mutant's torn top, and a beast's every slot but its hands: the Hound is naked, the body's own skin.)
-                Check(last==NativeZombieLooks.None&&(s==0||s==1&&v.Mutant||v.Beast&&s!=3)||NativeLook.Ids[s].Contains(last)&&!NativeLook.DevOnly(last),v.Id+": slot "+NativeLook.Slots[s]+" falls back on one of today's pieces (every bake dresses it): "+last);
+                // (Bare: the hair, a mutant's torn top, a crusted Slagback's chest under its slag, and a beast's every slot but its hands: the Hound is naked, the body's own skin.)
+                Check(last==NativeZombieLooks.None&&(s==0||s==1&&(v.Mutant||v.Crust)||v.Beast&&s!=3)||NativeLook.Ids[s].Contains(last)&&!NativeLook.DevOnly(last),v.Id+": slot "+NativeLook.Slots[s]+" falls back on one of today's pieces (every bake dresses it): "+last);
                 foreach(var id in c.Take(c.Length-1))Check(id.StartsWith(NativeZombieLooks.Own,StringComparison.Ordinal)&&!NativeLook.Ids.Any(ids=>ids.Contains(id)),v.Id+": a preferred piece is the zombies' own, never a Locker id: "+id);
                 Check(v.Colours[s]==-1||v.Colours[s]>=0&&v.Colours[s]<=0xffffff,v.Id+": colour in range");
             }
@@ -185,7 +195,7 @@ internal static class ZombieModelChecks
         string[] garmentIds=NativeZombieLooks.AllGarments;
         Check(garmentIds.All(g=>garmentScript.Contains("'"+g+"': make_")||garmentScript.Contains("'"+g+"': "))&&dressed.All(v=>v.Garments.All(g=>garmentIds.Contains(g))),"every garment one the Blender script makes");
         Check(ward.Where(v=>v.Pieces[1].StartsWith("z-gown")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.GownGarment}))&&ward.Where(v=>v.Pieces[1].StartsWith("z-suit-jacket")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.CoatGarment}))
-            &&ward.Where(v=>v.Pieces[1].StartsWith("z-scrubs-top")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants}))&&NativeZombieLooks.All.All(v=>v.Garments.Length==0)&&dressed.All(v=>v.GarmentColours.Length==v.Garments.Length),
+            &&ward.Where(v=>v.Pieces[1].StartsWith("z-scrubs-top")).All(v=>v.Garments.SequenceEqual(new[]{NativeZombieLooks.ScrubsTop,NativeZombieLooks.ScrubsPants}))&&NativeZombieLooks.All.Where(v=>!NativeIronworksKinds.Is(v.Kind)).All(v=>v.Garments.Length==0)&&dressed.All(v=>v.GarmentColours.Length==v.Garments.Length),
             "Ward Zero's gowns, lab coats and scrubs are the bespoke garments (their pack pieces the fallback); none on the everyday looks");
         Check(dressed.Count(v=>v.Theme==NativeZombieLooks.Station&&v.Garments.Contains(NativeZombieLooks.TrenchGarment))>=3&&dressed.Count(v=>v.Theme==NativeZombieLooks.Foundry&&v.Garments.Contains(NativeZombieLooks.CoverallsGarment))>=5
             &&dressed.Count(v=>v.Theme==NativeZombieLooks.Foundry&&v.Garments.Contains(NativeZombieLooks.ApronGarment)&&v.GarmentColours[0]>=0)>=2&&dressed.Count(v=>v.Theme==NativeZombieLooks.Pool&&v.Garments.Contains(NativeZombieLooks.BathrobeGarment))>=3
@@ -234,12 +244,12 @@ internal static class ZombieModelChecks
             Check(seen.All(n=>n>=800&&n<=1200),NativeHordeKinds.Ids[kind]+": each variant worn by about a quarter ("+string.Join(",",seen)+")");
             Check(women>=1800&&women<=2200,NativeHordeKinds.Ids[kind]+": about half female");
         }
-        Check(NativeZombieLooks.Of(NativeHordeKinds.Crawler,1)==null&&NativeZombieLooks.Of(NativeHordeKinds.Bloater,1)==null&&NativeZombieLooks.Of(NativeHordeKinds.Count,1)==null,"kinds without variants keep their voxel model");
+        Check(NativeZombieLooks.Of(NativeHordeKinds.Crawler,1)==null&&NativeZombieLooks.Of(NativeHordeKinds.Bloater,1)==null&&NativeZombieLooks.Of(NativeHordeKinds.Resolve("tiler"),1)==null,"kinds without variants keep their voxel model");
         bool was=NativeZombieLooks.Drafts;
         NativeZombieLooks.Drafts=false;
         Check(Kinds.All(NativeZombieLooks.Modelled)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Crawler)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Bloater),"shipped: all five kinds on the model after the PC captures (the shambler first, then the reviewed drafts); never the crawler or bloater");
         NativeZombieLooks.Drafts=true;
-        Check(Kinds.All(NativeZombieLooks.Modelled)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Crawler)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Bloater)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Count)&&!NativeZombieLooks.Modelled(-1),"drafts: all five kinds; never the crawler, bloater or a zone kind");
+        Check(Kinds.All(NativeZombieLooks.Modelled)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Crawler)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Bloater)&&!NativeZombieLooks.Modelled(NativeHordeKinds.Resolve("tiler"))&&!NativeZombieLooks.Modelled(-1),"drafts: all five kinds; never the crawler, bloater or a zone kind");
         NativeZombieLooks.Drafts=was;
         Picks();long before=GC.GetAllocatedBytesForCurrentThread();int sink=Picks();long bytes=GC.GetAllocatedBytesForCurrentThread()-before;
         Check(sink>0&&bytes==0,"picking a variant allocates nothing ("+bytes+" B over 4000)");
@@ -356,10 +366,11 @@ internal static class ZombieModelChecks
     {
         foreach(var v in NativeZombieLooks.All)
         {
-            Check(v.Decay!=null&&v.Decay.Length>=2&&v.Decay.Length<=NativeZombieDecay.Max&&v.Decay.All(n=>NativeZombieDecay.Find(n)!=null)&&v.Decay.Distinct().Count()==v.Decay.Length,v.Id+": two to four decay openings, each a known site");
+            // (Burned kinds, the Cinderling and the Slagback, have no raw openings: the char and the crust are their wounds; the Ladleman has one under its leathers.)
+            Check(v.Decay!=null&&v.Decay.Length>=(v.Char>0?0:NativeIronworksKinds.Is(v.Kind)?1:2)&&v.Decay.Length<=NativeZombieDecay.Max&&v.Decay.All(n=>NativeZombieDecay.Find(n)!=null)&&v.Decay.Distinct().Count()==v.Decay.Length,v.Id+": its decay openings, each a known site");
             // (A zone kind keeps the torn-not-shredded limit; its rot and blood follow its story: the drowned rot more and bleed less.)
             bool zone=v.Kind>=NativeHordeKinds.Count;
-            Check(v.Tears>=.35f&&v.Tears<=.62f&&v.Rot>=.35f&&v.Rot<=(zone?.9f:.75f)&&v.Blood>=(zone?.1f:.4f)&&v.Blood<=(zone?.8f:.6f)&&v.Grime>0,v.Id+": torn, rotting and bloodied");
+            Check(v.Char>0||NativeIronworksKinds.Is(v.Kind)&&v.Grime>0||v.Tears>=.35f&&v.Tears<=.62f&&v.Rot>=.35f&&v.Rot<=(zone?.9f:.75f)&&v.Blood>=(zone?.1f:.4f)&&v.Blood<=(zone?.8f:.6f)&&v.Grime>0,v.Id+": torn, rotting and bloodied (burned kinds: their char, not rot)");
         }
         Check(NativeZombieDecay.All.Select(x=>x.Name).Distinct().Count()==NativeZombieDecay.All.Length&&NativeZombieDecay.All.All(x=>x.Radius>.02f&&x.Radius<.08f&&x.Depth>0&&x.Depth<.06f),"every site named once, a few centimetres wide");
         foreach(var x in NativeZombieDecay.All.Where(x=>x.Name.EndsWith("-l",StringComparison.Ordinal)))Check(NativeZombieDecay.Find(x.Name.Substring(0,x.Name.Length-2)+"-r") is NativeZombieDecay.Site r&&r.Radius==x.Radius&&r.Bone==x.Bone.Replace("_l","_r")&&r.Limb==x.Limb,x.Name+": its right twin");
@@ -403,7 +414,8 @@ internal static class ZombieModelChecks
             "the tape: rings in the rest space, silver over the piece's colour under its wear; other callers untaped");
         Check(look.Contains("edge=1.0-0.45*_ZombieWear.y")&&look.Contains("ZombieNoise(uv*30.0+s*1.7)*0.7+ZombieNoise(uv*90.0+s.yx)*0.3"),"torn patches on the part's own texture coordinates (they stay on the cloth), a few at the table's tears");
         // The horde: the model in place of the voxel model on the full tier; the voxel draw kept as the fallback.
-        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell,s.Jaw)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}"),"a living add: its model (its face's jaw the voxel jaw's), else its voxel model and jaw");
+        // (An Ironworks add waits for its model rather than flash the voxel one, IronworksWaits: docs/ZOMBIE-MODELS.md 4n.)
+        Check(kp.Contains("if(!ZombieModelPose(rig,m.Id,kind,s.Tier,planted,airborne,a.Crawl,s.Gait,a.Lost,0,flash,glow.x,swell,s.Jaw)&&!IronworksWaits(kind)){HordeQueue(rig,NativeHordeModels.Id(kind,s.Look,s.Tier),m.Id,a.Lost,0,swell,glow,flash);HordeQueueJaw(rig,kind,s.Look,s.Tier,s.Jaw,glow,flash);}"),"a living add: its model (its face's jaw the voxel jaw's), else its voxel model and jaw");
         Check(kp.Contains("bool planted=(mode==0||mode==4||mode==5)&&!a.Crawl,airborne=mode==1||mode==3;"),"feet planted on the gait, a door's wake and a landing; airborne in a dive and a jump-down's fall");
         Check(kp.Contains("if(burn||!ZombieModelDeath(rig,death.id,d.Kind,death.lost,d.Slice)){HordeDeathBody(rig,model,death.id,death.lost,fx,hordeQueueVisible,burn);"),"a death: its model falls, else the voxel body");
         Check(kp.Contains("ClearHordeGore();ClearZombieModels();"),"cleared with the horde");
