@@ -17,6 +17,7 @@ namespace ChipArena.UnityConversion
                 float level=m.kind=="med"?.8f+.2f*Mathf.Sin(t*1.3f+m.m)+1.2f*act:.75f+.25f*Mathf.Sin(t*2.1f+m.m*1.7f)+1.1f*act;var tint=new Color(level,level*(1-.85f*deny),level*(1-.85f*deny));sourceModels.Queue(sourceModels.MachineModel(NativeMachineModels.BodyId(m.kind),"machine-"+m.kind),root,b=>root,partTint:b=>b==1?tint:Color.white);
                 Vector3 pivot=m.kind=="chip"?new Vector3(0,1.12f,.27f):m.kind=="recruit"?new Vector3(.49f,0,.22f):new Vector3(0,1.55f,.2f);float k=act>0?Mathf.Repeat(t*1.4f,1):0,opacity=m.kind=="med"?act*.9f*(1-k):1;
                 var moving=root*Matrix4x4.TRS(pivot,m.kind=="chip"?Quaternion.Euler(-1.25f*flap*Mathf.Rad2Deg,0,0):m.kind=="recruit"?Quaternion.Euler(0,1.85f*door*Mathf.Rad2Deg,0):Quaternion.identity,Vector3.one*(m.kind=="med"?1+2.2f*k:1));if(opacity>0)sourceModels.Queue(sourceModels.MachineModel(NativeMachineModels.MovingId(m.kind),"machine-moving-"+m.kind),moving,opacity:opacity);
+                string dress=NativeInstanceMachineDress.For(arena.MapId);if(dress!=null){float lamp=NativeInstanceMachineDress.Lamp(arena.MapId,t,m.m);var lit=new Color(lamp,lamp,lamp);sourceModels.Queue(dress,root,partTint:b=>b==NativeInstanceMachineDress.Lights?lit:Color.white);}
             }
             // pickups.ts: the chip, its additive glow sprite (YOURS for the local seat's pickups) and, for epic and above once
             // landed, the translucent pulsing beam (Core/NativePickupFx.cs, NativePickupGlowPresentation.cs).
