@@ -158,42 +158,42 @@ namespace ChipArena.UnityConversion
             // ---- Central Station (owner 2026-11-03: the instance kinds off voxels; docs/EXPEDITION-ENEMY-REWORK.md): each on its kind's
             // base build at the kind's scale, its signature gear riding the bones (Runtime NativeZombieGear) ----
             // Linesman: the brute's body in hi-vis workwear, red insulated gloves, pale skin gone bluish, cold blue eyes.
-            V("linesman-male-a",LinesmanKind,false,None,"z-work-jacket|hard-jacket","belted-pants","gloves","work-boots",new[]{Keep,0xFF6A10,0x2A3247,0xB8341C,0x3B2E24},0x9aa3a6,
-                Body(100,30,90,15,40,100,0,0,10,50),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.12f,Calf=1.12f,Hand=1.16f,Shoulder=1.07f,Head=1.02f},.4f,.38f,.48f,false,NativeStationKinds.LinesmanBlue,decay:"cheek-l,forearm-l",blood:0.22f),
-            V("linesman-male-b",LinesmanKind,false,None,"z-utility-jacket|hard-jacket","khakis","gloves","work-boots",new[]{Keep,0xE8D21A,0x3E4436,0xB8341C,0x2E241C},0x98a0a4,
-                Body(90,70,60,60,30,100,0,0,30,60),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.14f,Calf=1.12f,Hand=1.15f,Shoulder=1.05f,Head=1.02f},.42f,.36f,.45f,false,NativeStationKinds.LinesmanBlue,decay:"ribs-r,shin-l",blood:0.22f),
-            V("linesman-female-a",LinesmanKind,true,None,"z-work-jacket|hard-jacket","belted-pants","gloves","work-boots",new[]{Keep,0xFF6A10,0x2A3247,0xB8341C,0x3B2E24},0x9ca5a8,
-                Body(15,35,80,10,40,70,15,25,10,45),new Build{Arm=1.15f,Forearm=1.18f,Thigh=1.1f,Calf=1.08f,Hand=1.1f,Shoulder=1.04f},.38f,.38f,.46f,false,NativeStationKinds.LinesmanBlue,decay:"forearm-r,thigh-l",blood:0.22f),
-            V("linesman-female-b",LinesmanKind,true,None,"z-utility-jacket|hard-jacket","khakis","gloves","work-boots",new[]{Keep,0xE8D21A,0x3E4436,0xB8341C,0x2E241C},0x9aa2a6,
-                Body(15,45,75,20,45,70,15,25,15,60),new Build{Arm=1.15f,Forearm=1.18f,Thigh=1.1f,Calf=1.08f,Hand=1.1f,Shoulder=1.04f},.4f,.36f,.45f,false,NativeStationKinds.LinesmanBlue,decay:"upperarm-l,ribs-l",blood:0.22f),
+            V("linesman-male-a",LinesmanKind,false,None,"z-work-jacket|hard-jacket","belted-pants","gloves","work-boots",new[]{Keep,0xFF6A10,0x445478,0xB8341C,0x5A4634},0x9aa3a6,
+                Body(100,30,90,15,40,100,0,0,10,50),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.12f,Calf=1.12f,Hand=1.16f,Shoulder=1.07f,Head=1.02f},.3f,.14f,.34f,false,NativeStationKinds.LinesmanBlue,decay:"cheek-l,forearm-l",blood:0.14f),
+            V("linesman-male-b",LinesmanKind,false,None,"z-utility-jacket|hard-jacket","khakis","gloves","work-boots",new[]{Keep,0xE8D21A,0x5C6450,0xB8341C,0x4A3A2C},0x98a0a4,
+                Body(90,70,60,60,30,100,0,0,30,60),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.14f,Calf=1.12f,Hand=1.15f,Shoulder=1.05f,Head=1.02f},.32f,.13f,.32f,false,NativeStationKinds.LinesmanBlue,decay:"ribs-r,shin-l",blood:0.14f),
+            V("linesman-female-a",LinesmanKind,true,None,"z-work-jacket|hard-jacket","belted-pants","gloves","work-boots",new[]{Keep,0xFF6A10,0x445478,0xB8341C,0x5A4634},0x9ca5a8,
+                Body(15,35,80,10,40,70,15,25,10,45),new Build{Arm=1.15f,Forearm=1.18f,Thigh=1.1f,Calf=1.08f,Hand=1.1f,Shoulder=1.04f},.3f,.14f,.34f,false,NativeStationKinds.LinesmanBlue,decay:"forearm-r,thigh-l",blood:0.14f),
+            V("linesman-female-b",LinesmanKind,true,None,"z-utility-jacket|hard-jacket","khakis","gloves","work-boots",new[]{Keep,0xE8D21A,0x5C6450,0xB8341C,0x4A3A2C},0x9aa2a6,
+                Body(15,45,75,20,45,70,15,25,15,60),new Build{Arm=1.15f,Forearm=1.18f,Thigh=1.1f,Calf=1.08f,Hand=1.1f,Shoulder=1.04f},.3f,.13f,.32f,false,NativeStationKinds.LinesmanBlue,decay:"upperarm-l,ribs-l",blood:0.14f),
             // Conductor: tall and thin, old, in the long navy coat to the knees, white gloves, grey hair under the cap, cold white eyes.
-            V("conductor-male-a",ConductorKind,false,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x8a8a88,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xaab0aa,
-                Body(50,0,10,0,10,10,0,0,0,95,70),new Build{Arm=.94f,Forearm=.94f,Thigh=.95f,Calf=.95f,Shoulder=.97f},.5f,.35f,.5f,false,NativeStationKinds.ConductorWhite,decay:"cheek-r,forearm-l",blood:0.3f),
-            V("conductor-male-b",ConductorKind,false,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{Keep,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xa7ada6,
-                Body(55,25,5,20,10,20,0,0,10,100,60),new Build{Arm=.95f,Forearm=.95f,Thigh=.96f,Calf=.96f,Shoulder=.98f},.55f,.35f,.52f,false,NativeStationKinds.ConductorWhite,decay:"ribs-l,shin-r",blood:0.3f),
-            V("conductor-female-a",ConductorKind,true,"z-military-cap|tied-back","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x9a9894,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xacb1ab,
-                Body(-15,0,5,0,20,5,10,10,0,90,65),new Build{Arm=.92f,Forearm=.92f,Thigh=.94f,Calf=.94f,Shoulder=.95f},.5f,.35f,.5f,false,NativeStationKinds.ConductorWhite,decay:"forearm-r,cheek-l",blood:0.3f),
-            V("conductor-female-b",ConductorKind,true,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x6e6c6a,0x1C2230,0x12161F,0xE8E6DE,0x15151A},0xa9aea8,
-                Body(-10,20,5,10,25,10,15,15,10,100,55),new Build{Arm=.93f,Forearm=.93f,Thigh=.95f,Calf=.95f,Shoulder=.96f},.52f,.35f,.52f,false,NativeStationKinds.ConductorWhite,decay:"upperarm-r,ribs-r",blood:0.3f),
+            V("conductor-male-a",ConductorKind,false,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x8a8a88,0x2C3A5C,0x222B44,0xE8E6DE,0x15151A},0xaab0aa,
+                Body(50,0,10,0,10,10,0,0,0,95,70),new Build{Arm=.94f,Forearm=.94f,Thigh=.95f,Calf=.95f,Shoulder=.97f},.28f,.1f,.36f,false,NativeStationKinds.ConductorWhite,decay:"cheek-r,forearm-l",blood:0.14f),
+            V("conductor-male-b",ConductorKind,false,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{Keep,0x2C3A5C,0x222B44,0xE8E6DE,0x15151A},0xa7ada6,
+                Body(55,25,5,20,10,20,0,0,10,100,60),new Build{Arm=.95f,Forearm=.95f,Thigh=.96f,Calf=.96f,Shoulder=.98f},.3f,.1f,.38f,false,NativeStationKinds.ConductorWhite,decay:"ribs-l,shin-r",blood:0.14f),
+            V("conductor-female-a",ConductorKind,true,"z-military-cap|tied-back","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x9a9894,0x2C3A5C,0x222B44,0xE8E6DE,0x15151A},0xacb1ab,
+                Body(-15,0,5,0,20,5,10,10,0,90,65),new Build{Arm=.92f,Forearm=.92f,Thigh=.94f,Calf=.94f,Shoulder=.95f},.28f,.1f,.36f,false,NativeStationKinds.ConductorWhite,decay:"forearm-r,cheek-l",blood:0.14f),
+            V("conductor-female-b",ConductorKind,true,"z-military-cap|side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x6e6c6a,0x2C3A5C,0x222B44,0xE8E6DE,0x15151A},0xa9aea8,
+                Body(-10,20,5,10,25,10,15,15,10,100,55),new Build{Arm=.93f,Forearm=.93f,Thigh=.95f,Calf=.95f,Shoulder=.96f},.3f,.1f,.38f,false,NativeStationKinds.ConductorWhite,decay:"upperarm-r,ribs-r",blood:0.14f),
             // Undertow: the runner's body drowned in the flooded lines, a torn glossy slicker, grey-green waterlogged skin, aqua eyes.
-            V("undertow-male-a",UndertowKind,false,"wild","hard-jacket","skinny-jeans","bare","sneakers",new[]{0x1A1F1C,0x3E5C52,0x23302A,Keep,0x2A2E2A},0x5e6e62,
-                Body(50,0,35,0,10,20,0,0,0,30,60),new Build{Arm=.98f,Forearm=.98f},.72f,.6f,.82f,false,NativeStationKinds.UndertowAqua,decay:"cheek-l,ribs-r,forearm-r",blood:0.15f),
-            V("undertow-male-b",UndertowKind,false,None,"hard-jacket","baggy-pants","bare","work-boots",new[]{Keep,0x4E5C3C,0x2A2E30,Keep,0x24221E},0x596a5f,
-                Body(55,10,30,10,10,25,0,0,0,40,55),new Build{Arm=.98f,Forearm=.98f},.72f,.62f,.85f,false,NativeStationKinds.UndertowAqua,decay:"back,shin-l,upperarm-l",blood:0.15f),
-            V("undertow-female-a",UndertowKind,true,"side-swept","hard-jacket","skinny-jeans","bare","sneakers",new[]{0x1A1F1C,0x3E5C52,0x23302A,Keep,0x2A2E2A},0x5f6f63,
-                Body(-10,0,25,0,30,5,15,20,0,30,60),new Build{Arm=.95f,Forearm=.95f,Shoulder=.97f},.72f,.6f,.82f,false,NativeStationKinds.UndertowAqua,decay:"forearm-l,ribs-l",blood:0.15f),
-            V("undertow-female-b",UndertowKind,true,"tied-back","hard-jacket","baggy-pants","bare","sneakers",new[]{0x14181a,0x4E5C3C,0x2A2E30,Keep,0x2A2E2A},0x5a6a60,
-                Body(-10,10,20,0,30,5,15,20,0,35,55),new Build{Arm=.95f,Forearm=.95f,Shoulder=.97f},.72f,.62f,.85f,false,NativeStationKinds.UndertowAqua,decay:"cheek-r,thigh-r",blood:0.15f),
+            V("undertow-male-a",UndertowKind,false,"wild","hard-jacket","skinny-jeans","bare","sneakers",new[]{0x2A332E,0x4E7A68,0x3E5046,Keep,0x3A403A},0x8A9A8C,
+                Body(50,0,35,0,10,20,0,0,0,30,60),new Build{Arm=.98f,Forearm=.98f},.42f,.26f,.6f,false,NativeStationKinds.UndertowAqua,decay:"cheek-l,ribs-r,forearm-r",blood:0.15f),
+            V("undertow-male-b",UndertowKind,false,None,"hard-jacket","baggy-pants","bare","work-boots",new[]{Keep,0x6A7A4C,0x444A4C,Keep,0x3A362E},0x84968A,
+                Body(55,10,30,10,10,25,0,0,0,40,55),new Build{Arm=.98f,Forearm=.98f},.42f,.26f,.6f,false,NativeStationKinds.UndertowAqua,decay:"back,shin-l,upperarm-l",blood:0.15f),
+            V("undertow-female-a",UndertowKind,true,"side-swept","hard-jacket","skinny-jeans","bare","sneakers",new[]{0x2A332E,0x4E7A68,0x3E5046,Keep,0x3A403A},0x8C9C8E,
+                Body(-10,0,25,0,30,5,15,20,0,30,60),new Build{Arm=.95f,Forearm=.95f,Shoulder=.97f},.42f,.26f,.6f,false,NativeStationKinds.UndertowAqua,decay:"forearm-l,ribs-l",blood:0.15f),
+            V("undertow-female-b",UndertowKind,true,"tied-back","hard-jacket","baggy-pants","bare","sneakers",new[]{0x262E30,0x6A7A4C,0x444A4C,Keep,0x3A403A},0x86988C,
+                Body(-10,10,20,0,30,5,15,20,0,35,55),new Build{Arm=.95f,Forearm=.95f,Shoulder=.97f},.42f,.26f,.6f,false,NativeStationKinds.UndertowAqua,decay:"cheek-r,thigh-r",blood:0.15f),
             // Pileup: the brute's frame drawn wide, three commuters fused (the second head and arm grown out of the right shoulder:
             // NativeZombieGear's fused growth), torn office clothes.
             V("pileup-male-a",PileupKind,false,"wild","z-suit-jacket|hard-jacket","z-dress-pants|khakis","bare","z-loafers|lace-ups",new[]{0x2a2420,0x9C9A92,0x4A4D55,Keep,0x1c1a18},0x9a9488,
-                Body(100,70,70,60,40,100,0,0,30,55),new Build{Arm=1.22f,Forearm=1.24f,Thigh=1.15f,Calf=1.12f,Hand=1.15f,Shoulder=1.12f,Head=1.02f},.7f,.6f,.62f,false,0xe9ece4,decay:"ribs-l,cheek-r,forearm-l",blood:0.7f),
+                Body(100,70,70,60,40,100,0,0,30,55),new Build{Arm=1.22f,Forearm=1.24f,Thigh=1.15f,Calf=1.12f,Hand=1.15f,Shoulder=1.12f,Head=1.02f},.4f,.24f,.5f,false,0xe9ece4,decay:"ribs-l,cheek-r,forearm-l",blood:0.3f),
             V("pileup-male-b",PileupKind,false,"z-ball-cap|wild","z-work-shirt|tee","z-dress-pants|belted-pants","bare","z-loafers|lace-ups",new[]{Keep,0x5A4A3A,0x7B6D58,Keep,0x2a221c},0x968e84,
-                Body(95,90,50,80,35,100,0,0,40,65),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.16f,Calf=1.12f,Hand=1.14f,Shoulder=1.1f,Head=1.02f},.72f,.62f,.6f,false,0xe9ece4,decay:"back,shin-r,upperarm-l",blood:0.7f),
+                Body(95,90,50,80,35,100,0,0,40,65),new Build{Arm=1.2f,Forearm=1.22f,Thigh=1.16f,Calf=1.12f,Hand=1.14f,Shoulder=1.1f,Head=1.02f},.4f,.24f,.5f,false,0xe9ece4,decay:"back,shin-r,upperarm-l",blood:0.3f),
             V("pileup-female-a",PileupKind,true,"side-swept","z-blouse|tee","z-dress-pants|khakis","bare","z-flats|lace-ups",new[]{0x1f1c1a,0xC9C2B0,0x4A4D55,Keep,0x1c1a18},0x9c958a,
-                Body(20,60,70,40,45,80,15,25,25,50),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.1f,Shoulder=1.08f},.7f,.6f,.62f,false,0xe9ece4,decay:"ribs-r,forearm-r",blood:0.7f),
+                Body(20,60,70,40,45,80,15,25,25,50),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.1f,Shoulder=1.08f},.4f,.24f,.5f,false,0xe9ece4,decay:"ribs-r,forearm-r",blood:0.3f),
             V("pileup-female-b",PileupKind,true,"tied-back","z-suit-jacket|sweater","z-dress-pants|belted-pants","bare","z-loafers|lace-ups",new[]{0x4a3a2c,0x3f6a6a,0x7B6D58,Keep,0x2a221c},0x9a9389,
-                Body(20,75,60,55,45,80,15,25,30,60),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.1f,Shoulder=1.08f},.72f,.62f,.6f,false,0xe9ece4,decay:"cheek-l,thigh-l",blood:0.7f),
+                Body(20,75,60,55,45,80,15,25,30,60),new Build{Arm=1.18f,Forearm=1.2f,Thigh=1.12f,Calf=1.1f,Hand=1.1f,Shoulder=1.08f},.4f,.24f,.5f,false,0xe9ece4,decay:"cheek-l,thigh-l",blood:0.3f),
             // ---- the Backrooms (docs/EXPEDITION-ENEMY-REWORK.md section 4) ----
             // Faceling: office workers yellowed by the damp, no face.
             V("faceling-male-a",FacelingKind,false,"side-swept","z-work-shirt|tee","z-dress-pants|khakis","bare","z-loafers|lace-ups",new[]{0x3A3028,0xD9CDA2,0x4E4A42,Keep,0x221C18},0xBEB4A2,
@@ -251,6 +251,10 @@ namespace ChipArena.UnityConversion
         /// fits). The station's effects (its lamp's halo and beam, the pack's glow) are drawn from them on the model.</summary>
         public static readonly System.Numerics.Vector3 LinesmanLamp=new System.Numerics.Vector3(0,.1453f,.1944f),LinesmanLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
             LinesmanVents=new System.Numerics.Vector3(.068f,.2715f,0),LinesmanVentsWoman=new System.Numerics.Vector3(.068f,.2515f,0);
+        /// <summary>The Central Station boss's Stationmaster on the model (its Runtime body file; no add wears him): a black frock coat, white
+        /// gloves, grey hair, sunken pale skin, the eyes the windows' amber; his hat, watch and bell are the machine's bank's.</summary>
+        public static readonly Variant Stationmaster=V("stationmaster",-1,false,"side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x8E8C86,0x14161C,0x0E1014,0xDCD6C4,0x0B0B0D},0xA2A698,
+            Body(70,0,20,10,25,40,0,0,0,100,75),new Build{Arm=1.05f,Forearm=1.05f,Shoulder=1.04f,Hand=1.08f},.15f,.02f,.3f,false,0xFFC070,decay:"cheek-l");
         /// <summary>The kit given (the table above first: field initializers run in order).</summary>
         public static readonly bool Kitted=Kit();
         private static bool Kit()
@@ -259,7 +263,7 @@ namespace ChipArena.UnityConversion
             {
                 bool b=v.Id.EndsWith("-b",StringComparison.Ordinal);
                 if(v.Kind==LinesmanKind){v.Tape=true;v.Gear=new[]{b?"linesman-hardhat-white":"linesman-hardhat-yellow",v.Female?"linesman-pack-f":"linesman-pack","linesman-coil"};}
-                else if(v.Kind==ConductorKind)v.Gear=new[]{"conductor-badge","conductor-whistle"};
+                else if(v.Kind==ConductorKind){v.Upright=.8f;v.Gear=new[]{"conductor-badge","conductor-whistle"};}
                 else if(v.Kind==UndertowKind)v.Gear=new[]{"undertow-weed-back","undertow-weed-arm-l","undertow-weed-arm-r"};
                 else if(v.Kind==FacelingKind){v.Faceless=true;v.Upright=.45f;v.Gear=new[]{"faceling-mask-skin","faceling-lanyard"};}
                 else if(v.Kind==HoundKind){v.Beast=true;v.Ribs=1;v.Gear=new[]{"hound-skull","hound-jaw"};}
