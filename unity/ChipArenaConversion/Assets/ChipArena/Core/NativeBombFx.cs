@@ -164,8 +164,8 @@ namespace ChipArena.UnityConversion
     {
         private struct Arm
         {
-            public float Ax,Az,Ex,Hx;public Arm(float ax,float az,float ex,float hx){Ax=ax;Az=az;Ex=ex;Hx=hx;}
-            public static Arm Mix(Arm a,Arm b,float u)=>new Arm(a.Ax+(b.Ax-a.Ax)*u,a.Az+(b.Az-a.Az)*u,a.Ex+(b.Ex-a.Ex)*u,a.Hx+(b.Hx-a.Hx)*u);
+            public float Ax,Ay,Az,Ex,Hx;public Arm(float ax,float ay,float az,float ex,float hx){Ax=ax;Ay=ay;Az=az;Ex=ex;Hx=hx;}
+            public static Arm Mix(Arm a,Arm b,float u)=>new Arm(a.Ax+(b.Ax-a.Ax)*u,a.Ay+(b.Ay-a.Ay)*u,a.Az+(b.Az-a.Az)*u,a.Ex+(b.Ex-a.Ex)*u,a.Hx+(b.Hx-a.Hx)*u);
         }
         private static float Smooth(float x){x=x<0?0:x>1?1:x;return x*x*(3-2*x);}
         private static Arm Over(Arm rest,Arm top,Arm through,Arm low,NativeBombKit k,float time)
@@ -175,20 +175,20 @@ namespace ChipArena.UnityConversion
         }
         private static Arm Pose(int side,NativeBombKit k,float time,float reloadAt,float reloadUntil,float blockUntil)
         {
-            float s=side;var rest=new Arm(-1.02f+(float)Math.Sin(time*1.6f+side)*.02f,s*.4f,-1.02f,.56f);var arm=rest;var low=new Arm(-.2f,s*.3f,-.5f,.2f);
+            float s=side;var rest=new Arm(-1.02f+(float)Math.Sin(time*1.6f+side)*.02f,0,s*.38f,-.85f,1.02f);var arm=rest;var low=new Arm(-.2f,0,s*.3f,-.5f,.2f);
             if(side<0&&time>=reloadAt&&time<reloadUntil){float u=(time-reloadAt)/Math.Max(.05f,reloadUntil-reloadAt);arm=Arm.Mix(rest,low,Smooth(u/.2f)*(1-Smooth((u-.72f)/.28f)));}
-            if(time<blockUntil)arm=new Arm(-1.55f,-s*.22f,-1.9f,.25f);
+            if(time<blockUntil)arm=new Arm(-1.55f,-s*.6f,-s*.1f,-1.9f,.25f);
             if(k?.CastKind==null||time<k.CastAt||time>=k.CastUntil)return arm;bool left=side>0;
-            var top=new Arm(-2.75f,s*.1f,-1.85f,.1f);var through=new Arm(-1.45f,-s*.08f,-.22f,-.4f);
+            var top=new Arm(-2.75f,0,s*.1f,-1.85f,.1f);var through=new Arm(-1.75f,-s*.35f,-s*.06f,-.25f,-.4f);
             switch(k.CastKind)
             {
                 case NativeBombs.PopBomb:return NativeBombs.ThrowsLeft(k.CastAt)==left?Over(rest,top,through,low,k,time):arm;
                 case NativeBombs.StickyFuse:return left?arm:Over(rest,top,through,low,k,time);
                 case NativeBombs.BounceMine:return left?Over(rest,low,through,low,k,time):arm;
-                case NativeBombs.DeadMansSwitch:{if(!left)return arm;var up=new Arm(-1.32f,s*.02f,-1.5f,.12f);float press=time>=k.CastRelease?1-Smooth((time-k.CastRelease)/.12f):0;up.Ex-=.1f*press;return Arm.Mix(rest,up,Smooth((time-k.CastAt)/.12f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));}
-                case NativeBombs.ClusterLob:return Over(rest,new Arm(-2.45f,-s*.12f,-1.5f,.2f),new Arm(-1.5f,-s*.2f,-.3f,-.2f),low,k,time);
+                case NativeBombs.DeadMansSwitch:{if(!left)return arm;var up=new Arm(-1.32f,-s*.5f,s*.02f,-1.5f,.12f);float press=time>=k.CastRelease?1-Smooth((time-k.CastRelease)/.12f):0;up.Ex-=.1f*press;return Arm.Mix(rest,up,Smooth((time-k.CastAt)/.12f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));}
+                case NativeBombs.ClusterLob:return Over(rest,new Arm(-1.7f,-s*.5f,-s*.05f,-1,.2f),new Arm(-1.75f,-s*.45f,-s*.1f,-.3f,-.2f),low,k,time);
                 case NativeBombs.FirecrackerLine:return Arm.Mix(arm,low,Smooth((time-k.CastAt)/.1f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));
-                case NativeBombs.BlastJump:return Arm.Mix(arm,new Arm(-.5f,s*.7f,-.3f,0),Smooth((time-k.CastAt)/.08f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));
+                case NativeBombs.BlastJump:return Arm.Mix(arm,new Arm(-.5f,0,s*.7f,-.3f,0),Smooth((time-k.CastAt)/.08f)*(1-Smooth((time-k.CastUntil+.14f)/.14f)));
             }
             return arm;
         }
@@ -198,7 +198,7 @@ namespace ChipArena.UnityConversion
             for(int side=1;side>=-1;side-=2)
             {
                 var a=Pose(side,k,time,reloadAt,reloadUntil,blockUntil);
-                p.Rotation[side>0?CapturedRig.LArm:CapturedRig.RArm]=CapturedRig.Euler(a.Ax,0,a.Az);p.Rotation[side>0?CapturedRig.LElbow:CapturedRig.RElbow]=CapturedRig.Euler(a.Ex);p.Rotation[side>0?CapturedRig.LHand:CapturedRig.RHand]=CapturedRig.Euler(a.Hx);
+                p.Rotation[side>0?CapturedRig.LArm:CapturedRig.RArm]=CapturedRig.Euler(a.Ax,a.Ay,a.Az);p.Rotation[side>0?CapturedRig.LElbow:CapturedRig.RElbow]=CapturedRig.Euler(a.Ex);p.Rotation[side>0?CapturedRig.LHand:CapturedRig.RHand]=CapturedRig.Euler(a.Hx);
             }
         }
     }
