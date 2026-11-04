@@ -127,6 +127,15 @@ namespace ChipArena.UnityConversion
         public static NativeTechnique Of(Actor a)=>a==null||Source==null?null:Source.Of(a.Id);
         /// <summary>The weapon out of the pilot's hand this frame: the planted shield, the thrown greatsword until it is caught.</summary>
         public static bool WeaponAway(NativeTechnique k,float time)=>k?.Kind!=null&&time>=k.Release&&time<k.Until&&(k.Kind==Bastion||k.Kind==AnchorThrow||k.Kind==ShieldSurf||k.Kind==IronVow);
+        /// <summary>Grave Walk has this pilot under the floor: no name, no bar.</summary>
+        public static bool Under(NativeTechnique k,float time)=>k?.Kind==GraveWalk&&time>=k.Release&&time<k.Until;
+        /// <summary>The target Bounty Round has marked at `time` (0: none).</summary>
+        public static int Marked(NativeTechnique k,float time)=>k?.Kind==BountyRound&&k.Hit(time)&&time<k.Until?k.Target:0;
+        /// <summary>Seconds since Sonar Dart's latest ping while that ping still shows enemies; negative when it shows none. The dart destroyed shows nothing.</summary>
+        public static float PingAge(NativeTechnique k,float time)
+        {
+            if(k?.Kind!=SonarDart||k.Hit(time)||time<k.Arm||time>=k.Until)return -1;float since=time-k.Arm;int ping=(int)(since/NativeTechniqueFx.SonarEvery);if(ping>2)return -1;return since-ping*NativeTechniqueFx.SonarEvery;
+        }
         /// <summary>The coin in the air at `time`.</summary>
         public static Vector3 CoinAt(NativeTechnique k,float time)
         {
@@ -154,6 +163,8 @@ namespace ChipArena.UnityConversion
     {
         private readonly Dictionary<int,NativeTechnique> records=new Dictionary<int,NativeTechnique>();private float next=-100,clock;private bool odd;private int turn=-1;
         public NativeTechnique Of(int actor)=>records.TryGetValue(actor,out var r)?r:null;
+        /// <summary>Someone to aim the hunting moves at, when there is anyone (Bounty Round's mark, Spirit Hawk's dive).</summary>
+        public int TargetId;public Vector3 TargetAt;
         public void Clear(){records.Clear();next=-100;}
         public bool Any=>records.Count>0;
         /// <summary>Seconds a kind's loop takes, its effect with a breath after.</summary>
@@ -177,7 +188,7 @@ namespace ChipArena.UnityConversion
             if(time<clock-.25f)next=-100;clock=time;
             if(next<-50)next=(float)Math.Ceiling(time+.3f);
             if(!records.TryGetValue(a.Id,out var k)){k=new NativeTechnique();records[a.Id]=k;}
-            if(time>=next){odd=!odd;string id=only;if(id==null){turn=(turn+1)%list.Length;id=list[turn].Id;}Write(k,id,feet,yaw,time,odd);next=time+Period(id);}
+            if(time>=next){odd=!odd;string id=only;if(id==null){turn=(turn+1)%list.Length;id=list[turn].Id;}Write(k,id,feet,yaw,time,odd);if(TargetId>0&&id==NativeTechniques.BountyRound){k.Target=TargetId;k.Point=k.To=V(TargetAt);}else if(TargetId>0&&id==NativeTechniques.SpiritHawk&&k.HitAt>-50){k.Target=TargetId;k.To=V(TargetAt);}next=time+Period(id);}
             k.Phase=Phase(k,time);
         }
         /// <summary>Fills the record as the proposed host would for a cast at `t0`. `first`: the sword's parry lands, the other loop it does not.</summary>
@@ -203,11 +214,11 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.Tripwire:k.Release=t0+.2f;k.From=V(feet+f*1.2f-r*3+up*.9f);k.Point=V(feet+f*5.5f+r*3.4f+up*.9f);k.Arm=k.Release+.32f;k.Until=k.Arm+3.8f;if(first){k.HitAt=k.Arm+2.2f;k.To=V(feet+f*3.3f+up*.9f);k.Until=k.HitAt+.85f;}k.RecoverUntil=k.Release+.18f;break;
                 case NativeTechniques.ShieldSurf:k.Release=t0+.18f;k.Until=k.Release+2.6f;k.RecoverUntil=k.Until;if(first){k.RecastAt=k.Release+2f;k.Until=k.RecoverUntil=k.RecastAt+.25f;}break;
                 case NativeTechniques.IronVow:k.Release=t0+.3f;k.Point=V(feet+f*.62f);k.Until=k.Release+2.4f;k.RecoverUntil=k.Until+.2f;k.HitAt=k.Release+1.1f;k.To=V(feet+up*1.25f+f*.9f+r*.3f);break;
-                case NativeTechniques.BountyRound:k.Release=t0+.14f;k.Point=V(feet+f*11+up*1.2f);k.To=k.Point;k.Target=1000000-1;k.HitAt=k.Release+.1f;k.Until=k.HitAt+3.6f;k.RecoverUntil=k.Release+.2f;break;
+                case NativeTechniques.BountyRound:k.Release=t0+.14f;k.Point=V(feet+f*5.5f+up*1.2f);k.To=k.Point;k.Target=1000000-1;k.HitAt=k.Release+.1f;k.Until=k.HitAt+3.6f;k.RecoverUntil=k.Release+.2f;break;
                 case NativeTechniques.RecoilBurst:k.Release=t0+.12f;k.Dir=V(Vector3.Normalize(f+up*(-.4f)));k.Until=k.Release+.45f;k.RecoverUntil=k.Until+.1f;break;
-                case NativeTechniques.SonarDart:k.Release=t0+.18f;k.Point=V(feet+f*7+up*2.2f);k.Dir=V(-f);k.Arm=k.Release+.5f;k.Until=k.Arm+3.4f;k.RecoverUntil=k.Release+.2f;if(first){k.HitAt=k.Until-.3f;k.Until=k.HitAt;}break;
-                case NativeTechniques.SpiritHawk:k.Release=t0+.3f;k.From=V(feet+up*1.45f+f*.5f);k.Point=V(feet+up*1.9f+f*10);k.Arm=k.Release+.5f;k.RecoverUntil=k.Release+.25f;if(first){k.To=V(feet+f*8+r*3.2f+up*1.1f);k.HitAt=k.Arm+.28f;k.Until=k.HitAt+.3f;}else k.Until=k.Arm+.9f;break;
-                case NativeTechniques.WildfireRun:k.Release=t0+.15f;k.Arm=k.Release+3;k.Until=k.Arm+3;k.RecoverUntil=k.Release+.1f;{var path=new V3[24];for(int i=0;i<path.Length;i++){float u=i/(path.Length-1f);path[i]=V(feet+f*(.6f+u*8)+r*(float)Math.Sin(u*5)*1.8f);}k.Path=path;}break;
+                case NativeTechniques.SonarDart:k.Release=t0+.18f;k.Point=V(feet+f*5+up*2.2f);k.Dir=V(-f);k.Arm=k.Release+.5f;k.Until=k.Arm+3.4f;k.RecoverUntil=k.Release+.2f;if(first){k.HitAt=k.Until-.3f;k.Until=k.HitAt;}break;
+                case NativeTechniques.SpiritHawk:k.Release=t0+.3f;k.From=V(feet+up*1.45f+f*.5f);k.Point=V(feet+up*2.3f+f*6.5f-r*1.5f);k.Arm=k.Release+.5f;k.RecoverUntil=k.Release+.25f;if(first){k.To=V(feet+f*5+r*2.6f+up*1.1f);k.HitAt=k.Arm+.28f;k.Until=k.HitAt+.3f;}else k.Until=k.Arm+.9f;break;
+                case NativeTechniques.WildfireRun:k.Release=t0+.15f;k.Arm=k.Release+3;k.Until=k.Arm+3;k.RecoverUntil=k.Release+.1f;{var path=new V3[24];for(int i=0;i<path.Length;i++){float u=i/(path.Length-1f);path[i]=V(feet+f*(.8f+u*5)+r*(float)Math.Sin(u*6)*1.7f);}k.Path=path;}break;
                 case NativeTechniques.Slipstream:k.Release=t0+.28f;k.From=V(feet+f*.8f);k.To=V(feet+f*14.8f);k.Until=k.Release+5;k.RecoverUntil=k.Release+.25f;break;
                 case NativeTechniques.LightningRod:k.Release=t0+.22f;k.Point=V(feet+f*5.5f+r*1.4f);k.Arm=k.Release+.3f;k.Until=k.Arm+5;k.RecoverUntil=k.Release+.2f;k.HitAt=k.Arm+1.7f;k.To=V(feet+f*3.3f+r*3+up*1.3f);break;
                 case NativeTechniques.GraveWalk:k.Release=t0+.34f;k.From=V(feet);k.Until=k.Release+1.5f;k.RecoverUntil=k.Until+.34f;break;
