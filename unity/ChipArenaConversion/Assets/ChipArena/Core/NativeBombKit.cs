@@ -115,12 +115,31 @@ namespace ChipArena.UnityConversion
     public static class NativeTnt
     {
         public const float Radius=.115f,FuseTip=.7f;
+        /// <summary>Round stock, the shape the sticks are drawn from. Beside the four WeaponShapes rather than among them: those files are the Prototype Series' own and stay byte-identical (ChipModuleChecks). NativeSourceModels.QueueAny draws either.</summary>
+        public const WeaponShape Round=(WeaponShape)4;
+        /// <summary>Its mesh: a capped cylinder of radius 1 and height 1 along y about the origin, the same winding as the source primitives.</summary>
+        public static void RoundPrimitive(List<Vector3> positions,List<Vector3> normals,List<int> indices)
+        {
+            positions.Clear();normals.Clear();indices.Clear();const int Sides=10;
+            for(int y=0;y<=1;y++)for(int x=0;x<=Sides;x++)
+            {
+                double theta=(double)x/Sides*Math.PI*2;float s=(float)Math.Sin(theta),c=(float)Math.Cos(theta);
+                positions.Add(new Vector3(s,.5f-y,c));normals.Add(new Vector3(s,0,c));
+            }
+            for(int x=0;x<Sides;x++){int a=x,b=Sides+1+x,c=Sides+1+x+1,d=x+1;indices.Add(a);indices.Add(b);indices.Add(d);indices.Add(b);indices.Add(c);indices.Add(d);}
+            for(int cap=0;cap<2;cap++)
+            {
+                float h=cap==0?.5f:-.5f,up=cap==0?1:-1;int middle=positions.Count;positions.Add(new Vector3(0,h,0));normals.Add(new Vector3(0,up,0));int rim=positions.Count;
+                for(int x=0;x<=Sides;x++){double theta=(double)x/Sides*Math.PI*2;positions.Add(new Vector3((float)Math.Sin(theta),h,(float)Math.Cos(theta)));normals.Add(new Vector3(0,up,0));}
+                for(int x=0;x<Sides;x++){if(cap==0){indices.Add(rim+x);indices.Add(rim+x+1);indices.Add(middle);}else{indices.Add(rim+x+1);indices.Add(rim+x);indices.Add(middle);}}
+            }
+        }
         private static readonly Vector3 Paper=new Vector3(.5f,.032f,.022f),Crimp=new Vector3(.17f,.014f,.01f),Tape=new Vector3(.018f,.018f,.02f),Label=new Vector3(.72f,.62f,.36f),Rope=new Vector3(.09f,.075f,.06f),Ember=new Vector3(4,1.5f,.35f);
         private static NativeTntPiece P(WeaponShape s,float y,float across,float along,Vector3 tint,bool glow=false)=>new NativeTntPiece{Shape=s,Glow=glow,At=new Vector3(0,y,0),Size=new Vector3(across,along,across),Tint=tint};
         /// <summary>The whole stick: paper, crimped ends, its label and two bands of tape, the fuse and its ember.</summary>
-        public static readonly NativeTntPiece[] Stick={P(WeaponShape.Cylinder,0,Radius,1,Paper),P(WeaponShape.Cylinder,.5f,Radius*.8f,.03f,Crimp),P(WeaponShape.Cylinder,-.5f,Radius*.8f,.03f,Crimp),P(WeaponShape.Cylinder,.04f,Radius*1.02f,.3f,Label),P(WeaponShape.Cylinder,.28f,Radius*1.05f,.09f,Tape),P(WeaponShape.Cylinder,-.25f,Radius*1.05f,.09f,Tape),P(WeaponShape.Cylinder,.6f,.016f,.2f,Rope),P(WeaponShape.Sphere,FuseTip,.026f,.026f,Ember,true)};
+        public static readonly NativeTntPiece[] Stick={P(Round,0,Radius,1,Paper),P(Round,.5f,Radius*.8f,.03f,Crimp),P(Round,-.5f,Radius*.8f,.03f,Crimp),P(Round,.04f,Radius*1.02f,.3f,Label),P(Round,.28f,Radius*1.05f,.09f,Tape),P(Round,-.25f,Radius*1.05f,.09f,Tape),P(Round,.6f,.016f,.2f,Rope),P(WeaponShape.Sphere,FuseTip,.026f,.026f,Ember,true)};
         /// <summary>The same with less on it, for what is small on the screen (the belt, the bomblets).</summary>
-        public static readonly NativeTntPiece[] Small={P(WeaponShape.Cylinder,0,Radius,1,Paper),P(WeaponShape.Cylinder,.1f,Radius*1.05f,.16f,Tape),P(WeaponShape.Cylinder,.6f,.022f,.2f,Rope)};
+        public static readonly NativeTntPiece[] Small={P(Round,0,Radius,1,Paper),P(Round,.1f,Radius*1.05f,.16f,Tape),P(Round,.6f,.022f,.2f,Rope)};
         /// <summary>The length of a stick of this kind (m). A Cluster Lob's is a whole bundle of them.</summary>
         public static float Length(string kind)=>kind==NativeBombs.Lob?.6f:kind==NativeBombs.Pop?.42f:kind==NativeBombs.Sticky?.26f:kind==NativeBombs.Bomblet?.2f:.3f;
     }

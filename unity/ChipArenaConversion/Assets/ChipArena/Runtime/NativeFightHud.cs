@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
             var bar=new Rect(ix,y,iw,8);float trail=DamageTrail(p,hp);
             NativeHudChrome.Bar(bar,hp*maxHp,maxHp,10,tone,NativeCyberTheme.Edge(.55f),trail*maxHp,NativeCyberTheme.Ink(.78f));y+=8+10;
             string label,value;float fill;Color resource;
-            if(ranged){int cap=(int)Math.Ceiling(p.Weapon.ammo*p.Stats["ammoCapacity"]);label=p.ReloadEnd>arena.Time?"RELOADING "+(p.ReloadEnd-arena.Time).ToString("0.0")+"s":"MAGAZINE";value=p.Ammo+" / "+cap;fill=cap>0?p.Ammo/(float)cap:0;resource=NativeCyberTheme.Warn();
+            if(ranged){int cap=(int)Math.Ceiling(p.Weapon.ammo*p.Stats["ammoCapacity"]);bool tnt=p.Seat.spec==NativeBombs.Spec;label=p.ReloadEnd>arena.Time?(tnt?"RESTOCKING ":"RELOADING ")+(p.ReloadEnd-arena.Time).ToString("0.0")+"s":tnt?"ON THE BELT":"MAGAZINE";value=p.Ammo+" / "+cap;fill=cap>0?p.Ammo/(float)cap:0;resource=NativeCyberTheme.Warn();
                 ResourceRow(ix,y,iw,label,value,resource);y+=14+5;
                 if(p.ReloadEnd>arena.Time)NativeHudChrome.Line(new Rect(ix,y,iw,3),NativeHudCyber.Reload(arena.Time,p.ReloadAt,p.ReloadEnd),NativeCyberTheme.CyanSoft(),NativeCyberTheme.Edge(.55f));
                 else NativeHudChrome.Bar(new Rect(ix,y,iw,3),p.Ammo,cap,16,resource,NativeCyberTheme.Edge(.55f),gap:2);y+=3;}

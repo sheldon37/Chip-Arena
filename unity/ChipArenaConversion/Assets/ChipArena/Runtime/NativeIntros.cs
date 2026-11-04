@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
             public void Piece(WeaponShape shape,bool glow,System.Numerics.Vector3 position,System.Numerics.Quaternion rotation,System.Numerics.Vector3 scale,System.Numerics.Vector3 color)
             {
                 var m=Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(position)),CapturedAnimation.Quat(CapturedRig.Mirror(rotation)),CapturedAnimation.Vec(scale));
-                models.QueuePiece(shape,glow,m,new Color(color.X,color.Y,color.Z,1));
+                models.QueueAny(shape,glow,m,new Color(color.X,color.Y,color.Z,1));
             }
         }
         /// <summary>A directed entrance's effects into the shared effects renderer (mirrored into Unity's frame).</summary>

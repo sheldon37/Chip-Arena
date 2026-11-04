@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 namespace ChipArena.UnityConversion
 {
     // The four primitives weapon-visuals.ts:9 builds chip modules, enchants and the muzzle flash from (three r180 BoxGeometry,
-    // SphereGeometry(1,8,6), ConeGeometry(1,1,5), TorusGeometry(1,.055,4,16)), and a capped cylinder for round stock (the Bombadier's TNT), built once at runtime and converted like the
+    // SphereGeometry(1,8,6), ConeGeometry(1,1,5), TorusGeometry(1,.055,4,16)), built once at runtime and converted like the
     // weapon exports (tools/export_models.mjs: x=-x, nx=-nx, swapped winding). They share the source-model batches:
     // NativeSourceLit with a per-instance _SceneTint. GLOW pieces carry vertex colour 0 and emission 1, so they draw exactly
     // the tint, unlit (MeshBasicMaterial); LIT pieces carry colour 1 and no emission (MeshLambertMaterial).
@@ -15,8 +15,8 @@ namespace ChipArena.UnityConversion
         {
             var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");
             var material=new Material(shader){name="Native weapon pieces",enableInstancing=true};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);materials.Add(material);
-            var points=new List<System.Numerics.Vector3>();var normals=new List<System.Numerics.Vector3>();var indices=new List<int>();pieces=new Part[10];
-            for(int shape=0;shape<5;shape++)
+            var points=new List<System.Numerics.Vector3>();var normals=new List<System.Numerics.Vector3>();var indices=new List<int>();pieces=new Part[8];
+            for(int shape=0;shape<4;shape++)
             {
                 NativeWeaponDressing.Primitive((WeaponShape)shape,points,normals,indices);int count=points.Count;
                 var v=new Vector3[count];var n=new Vector3[count];var uv=new Vector2[count];var triangles=new int[indices.Count];

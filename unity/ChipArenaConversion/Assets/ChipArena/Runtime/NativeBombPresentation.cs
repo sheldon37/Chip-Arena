@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         private static readonly Color BombBlack=new Color(.03f,.03f,.035f),BombBrass=new Color(.55f,.38f,.14f),BombSteel=new Color(.16f,.16f,.18f),BombHazard=new Color(.8f,.6f,.05f),BombLeather=new Color(.3f,.18f,.08f),BombOlive=new Color(.085f,.09f,.065f),BombLed=new Color(5,.3f,.2f);
         // Where the next piece goes: the world, or (for what a fist holds this moment) the frame of that fist, on the first-person layer when it is the view rig's.
         private Matrix4x4 bombFrame=Matrix4x4.identity;private int bombLayer;private Camera bombCamera;
-        private void BombPiece(WeaponShape shape,Vector3 at,Quaternion q,Vector3 scale,Color c,bool glow=false)=>sourceModels.QueuePiece(shape,glow,bombFrame*Matrix4x4.TRS(at,q,scale),c,bombLayer,bombCamera);
+        private void BombPiece(WeaponShape shape,Vector3 at,Quaternion q,Vector3 scale,Color c,bool glow=false)=>sourceModels.QueueAny(shape,glow,bombFrame*Matrix4x4.TRS(at,q,scale),c,bombLayer,bombCamera);
         /// <summary>End of Render: the kit's models and the pilot's gear.</summary>
         private void RenderBomb(Snapshot s,float time)
         {
@@ -45,13 +45,13 @@ namespace ChipArena.UnityConversion
         {
             float r=NativeTnt.Radius*length,ring=r*2.02f;BombTnt(NativeTnt.Stick,at,q,length);
             for(int i=0;i<6;i++){float a=i*Mathf.PI/3;BombTnt(NativeTnt.Small,at+q*new Vector3(Mathf.Cos(a)*ring,0,Mathf.Sin(a)*ring),q,length*.92f);}
-            float wrap=ring+r*1.1f;BombPiece(WeaponShape.Cylinder,at+q*new Vector3(0,.17f*length,0),q,new Vector3(wrap,.1f*length,wrap),BombHazard);BombPiece(WeaponShape.Cylinder,at-q*new Vector3(0,.2f*length,0),q,new Vector3(wrap,.07f*length,wrap),BombBlack);
+            float wrap=ring+r*1.1f;BombPiece(NativeTnt.Round,at+q*new Vector3(0,.17f*length,0),q,new Vector3(wrap,.1f*length,wrap),BombHazard);BombPiece(NativeTnt.Round,at-q*new Vector3(0,.2f*length,0),q,new Vector3(wrap,.07f*length,wrap),BombBlack);
         }
         // A mine: a steel plate with two sticks strapped across it, the stud round it standing up as it arms. Its light is an effect (NativeTechniqueFx.Charge).
         private void BombMine(Vector3 at,Vector3 n,float arm)
         {
             var q=Quaternion.LookRotation(Mathf.Abs(n.y)>.9f?Vector3.forward:Vector3.up,n);var across=q*Quaternion.Euler(0,0,90);
-            BombPiece(WeaponShape.Cylinder,at+n*.015f,q,new Vector3(.19f,.03f,.19f),BombSteel);BombPiece(WeaponShape.Cylinder,at+n*.034f,q,new Vector3(.16f,.012f,.16f),BombBlack);
+            BombPiece(NativeTnt.Round,at+n*.015f,q,new Vector3(.19f,.03f,.19f),BombSteel);BombPiece(NativeTnt.Round,at+n*.034f,q,new Vector3(.16f,.012f,.16f),BombBlack);
             for(int s=-1;s<=1;s+=2)BombTnt(NativeTnt.Small,at+n*.066f+q*new Vector3(0,0,s*.036f),across,.27f);
             BombPiece(WeaponShape.Cube,at+n*.068f,q,new Vector3(.045f,.072f,.14f),BombHazard);
             for(int i=0;i<4;i++){float y=i*90*Mathf.Deg2Rad;BombPiece(WeaponShape.Cube,at+q*new Vector3(Mathf.Cos(y)*.165f,.03f+.012f*arm,Mathf.Sin(y)*.165f),q*Quaternion.Euler(0,-i*90,0),new Vector3(.05f,.03f+.03f*arm,.03f),BombBrass);}
@@ -115,7 +115,7 @@ namespace ChipArena.UnityConversion
         {
             var i=Quaternion.identity;var up=Quaternion.Euler(90,0,0);
             BombPiece(WeaponShape.Cube,new Vector3(0,0,.035f),i,new Vector3(.058f,.036f,.125f),BombOlive);BombPiece(WeaponShape.Cube,new Vector3(0,.0185f,.035f),i,new Vector3(.05f,.002f,.042f),BombHazard);
-            BombPiece(WeaponShape.Cylinder,new Vector3(0,0,.1f),up,new Vector3(.018f,.008f,.018f),BombBrass);BombPiece(WeaponShape.Cylinder,new Vector3(0,0,.108f-.006f*press),up,new Vector3(.012f,.01f,.012f),BombLed,true);
+            BombPiece(NativeTnt.Round,new Vector3(0,0,.1f),up,new Vector3(.018f,.008f,.018f),BombBrass);BombPiece(NativeTnt.Round,new Vector3(0,0,.108f-.006f*press),up,new Vector3(.012f,.01f,.012f),BombLed,true);
             BombPiece(WeaponShape.Cube,new Vector3(.02f,0,.18f),i,new Vector3(.004f,.004f,.16f),BombSteel);BombPiece(WeaponShape.Sphere,new Vector3(.02f,0,.26f),i,Vector3.one*.006f,BombLed,true);
         }
         // The crate and its T-handle: dropped in on the cut-in, the handle up, then home at the Lock. Both hands drive it: while the pilot stoops over the crate the handle rides in them, and stays down from the Lock.
@@ -183,6 +183,35 @@ namespace ChipArena.UnityConversion
             if(distance>.05f&&arena.Root!=null){ray/=distance;if(arena.Root.scene.GetPhysicsScene().Raycast(look+ray*.12f,ray,out var hit,Mathf.Max(0,distance-.12f),NativeArena.WorldMask,QueryTriggerInteraction.Ignore))position=look+ray*Mathf.Max(.3f,hit.distance);}
             NativeSirenCutscene.Shake(time,shot.Shake,out float dx,out float dy,out float roll);var forward=look-position;if(forward.sqrMagnitude<1e-8f)forward=view.transform.forward;var rotation=Quaternion.LookRotation(forward,Vector3.up)*Quaternion.AngleAxis(-roll*Mathf.Rad2Deg,Vector3.forward);
             float b=shot.Blend;view.transform.SetPositionAndRotation(Vector3.Lerp(view.transform.position,position+new Vector3(-dx,dy,0),b),Quaternion.Slerp(view.transform.rotation,rotation,b));view.fieldOfView=Mathf.Lerp(view.fieldOfView,shot.Fov,b);FirstPerson=false;AimHeld=false;return true;
+        }
+    }
+    // The TNT's round stock (NativeTnt.Round), built and queued as the weapon pieces are (NativeSourcePrimitives.cs, which stays the Prototype Series' own): NativeSourceLit with a per-instance tint, a lit and a glow copy.
+    public sealed partial class NativeSourceModels
+    {
+        private Part[] rounds;
+        private void BuildRounds()
+        {
+            var shader=Resources.Load<Shader>("NativeSourceLit");if(shader==null)throw new System.InvalidOperationException("Source material shader is missing");
+            var material=new Material(shader){name="Native TNT pieces",enableInstancing=true};material.SetInt("_Cull",2);material.SetFloat("_Ink",0);materials.Add(material);
+            var points=new System.Collections.Generic.List<NVector>();var normals=new System.Collections.Generic.List<NVector>();var indices=new System.Collections.Generic.List<int>();NativeTnt.RoundPrimitive(points,normals,indices);rounds=new Part[2];int count=points.Count;
+            var v=new Vector3[count];var n=new Vector3[count];var uv=new Vector2[count];var triangles=new int[indices.Count];
+            for(int i=0;i<count;i++){v[i]=new Vector3(-points[i].X,points[i].Y,points[i].Z);n[i]=new Vector3(-normals[i].X,normals[i].Y,normals[i].Z);}
+            for(int i=0;i+2<indices.Count;i+=3){triangles[i]=indices[i];triangles[i+1]=indices[i+2];triangles[i+2]=indices[i+1];}
+            for(int glow=0;glow<2;glow++)
+            {
+                var colors=new Color[count];var emission=new System.Collections.Generic.List<Vector4>(count);
+                for(int i=0;i<count;i++){colors[i]=glow==1?new Color(0,0,0,1):Color.white;emission.Add(glow==1?new Vector4(1,1,1,0):Vector4.zero);}
+                var mesh=new Mesh{name="TNT round "+(glow==1?"glow":"lit")};mesh.vertices=v;mesh.normals=n;mesh.colors=colors;mesh.uv=uv;mesh.SetUVs(1,emission);mesh.triangles=triangles;mesh.RecalculateBounds();mesh.UploadMeshData(true);
+                var part=new Part{Name=mesh.name,Bone=-1,Mesh=mesh,Material=material,NoShadow=glow==1};rounds[glow]=part;models.Add("native-tnt-round-"+glow,new[]{part});
+            }
+        }
+        /// <summary>One piece for this frame's batches, of any of the weapon pieces' shapes or the TNT's round stock.</summary>
+        public void QueueAny(WeaponShape shape,bool glow,Matrix4x4 matrix,Color tint,int layer=0,Camera camera=null)
+        {
+            if(shape!=NativeTnt.Round){QueuePiece(shape,glow,matrix,tint,layer,camera);return;}
+            if(rounds==null)BuildRounds();var part=rounds[glow?1:0];var key=(part,layer);
+            if(!draws.TryGetValue(key,out var d)){d=new Draws{Part=part,Layer=layer,Camera=camera};draws.Add(key,d);}
+            d.Matrices.Add(matrix);d.Bodies.Add(Vector4.one);d.Accents.Add(Vector4.one);d.Tints.Add(new Vector4(tint.r,tint.g,tint.b,1));d.Glows.Add(Vector4.one);
         }
     }
 }
