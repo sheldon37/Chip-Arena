@@ -30,9 +30,13 @@ namespace ChipArena.UnityConversion
         public NativeEntranceShot[] Shots;
         /// <summary>The camera settles still from here to the end (a clean hand-off to the match camera).</summary>
         public const float Settle=4.45f,Duration=4.8f,NameAt=3.2f;
+        /// <summary>How long this entrance runs and when its camera settles: the standard ones keep Duration and Settle; a longer cinematic says otherwise (with NativeIntroRules.Duration).</summary>
+        public virtual float Length=>Duration;public virtual float SettleAt=>Settle;
+        /// <summary>A small shake of the camera at `t` (the script's own, zero by default).</summary>
+        public virtual Vector3 CameraJolt(float t)=>Vector3.Zero;
         protected NativeEntranceScript(string style,float hit,int accent){Style=style;Hit=hit;Accent=NativeEntranceFx.Hex(accent);}
         /// <summary>The presentation clock at match age `age`: the age, slowed through the beat and caught up before the name card.</summary>
-        public float Clock(float age){if(!(age>0))return 0;return NativeEntranceMath.Warp(Math.Min(age,Duration+1),Hit,SlowRate,SlowHold,SlowRecover,SlowCatchUp);}
+        public float Clock(float age){if(!(age>0))return 0;return NativeEntranceMath.Warp(Math.Min(age,Length+1),Hit,SlowRate,SlowHold,SlowRecover,SlowCatchUp);}
         /// <summary>Binds the baked clip (weapon signatures; the procedural entrances ignore it).</summary>
         public virtual void Bind(NativeEntranceClip clip){}
         public virtual bool Ready=>true;
@@ -63,7 +67,7 @@ namespace ChipArena.UnityConversion
         private Vector3[] anchors;private readonly CapturedRig.Pose anchorPose=new CapturedRig.Pose();
         private void BuildAnchors()
         {
-            int n=(int)(Duration*AnchorRate)+2,k=(int)NativeEntranceAnchor.Count;var a=new Vector3[n*k];
+            int n=(int)(Length*AnchorRate)+2,k=(int)NativeEntranceAnchor.Count;var a=new Vector3[n*k];
             for(int i=0;i<n;i++)
             {
                 float t=i/(float)AnchorRate;Pose(t,anchorPose,out var root,out var rot);anchorPose.World();int o=i*k;
@@ -120,10 +124,10 @@ namespace ChipArena.UnityConversion
         /// <summary>The camera at match age `age` (shots on the presentation clock), guarded out of the floor, the pilot and the set.</summary>
         public void Camera(float age,out NativeEntranceView view)
         {
-            float t=Clock(Math.Min(age,Settle));subject??=Subject;heading??=Heading;follow??=Smoothed;
-            NativeEntranceCamera.Evaluate(Shots,t,Clock(Settle),subject,heading,out view,follow);
+            float t=Clock(Math.Min(age,SettleAt));subject??=Subject;heading??=Heading;follow??=Smoothed;
+            NativeEntranceCamera.Evaluate(Shots,t,Clock(SettleAt),subject,heading,out view,follow);
             int n=Boxes(t,boxes);
-            view.Eye=NativeEntranceCamera.Guard(view.Eye,NativeEntranceStage.FloorY,Anchor(NativeEntranceAnchor.Head,t),Anchor(NativeEntranceAnchor.Pelvis,t),(Anchor(NativeEntranceAnchor.LeftFoot,t)+Anchor(NativeEntranceAnchor.RightFoot,t))*.5f,new ReadOnlySpan<Vector4>(boxes,0,n));
+            view.Eye=NativeEntranceCamera.Guard(view.Eye,NativeEntranceStage.FloorY,Anchor(NativeEntranceAnchor.Head,t),Anchor(NativeEntranceAnchor.Pelvis,t),(Anchor(NativeEntranceAnchor.LeftFoot,t)+Anchor(NativeEntranceAnchor.RightFoot,t))*.5f,new ReadOnlySpan<Vector4>(boxes,0,n));view.Eye+=CameraJolt(Clock(Math.Min(age,Length)));
         }
 
         // ---- shot helpers (subject frame: +z its front, +x its left, heights above the floor; Track follows the subject) ----
@@ -257,6 +261,8 @@ namespace ChipArena.UnityConversion
             {NativeSheldonIntro.Style,()=>new NativeSheldonIntroScript()},
             // The DEV Cyber Lord's Hardlight Boot (Core/NativeCyberLordIntro.cs; the class's own entrance, not in NativeIntroRules.Entrances).
             {CyberLordSpec.Entrance,()=>new NativeCyberLordIntroScript()},
+            // The DEV Bombadier's Last Warning (Core/NativeBombadierIntro.cs; the class's own entrance).
+            {NativeBombs.Entrance,()=>new NativeBombadierIntro()},
         };
         /// <summary>True for a style the director stages (the twelve weapon signatures, the procedural entrances and the Sheldon Intro).</summary>
         public static bool Directed(string style)=>style!=null&&makers.ContainsKey(style);

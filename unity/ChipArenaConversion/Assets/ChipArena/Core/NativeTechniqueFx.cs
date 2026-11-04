@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
     /// tier halves them. The solid things (the planted shield, the thrown blade, the sentry) are models, drawn by the runtime. Nothing here
     /// reaches the authority, the network frame, hit timing, hitboxes, damage or movement.
     /// </summary>
-    public sealed class NativeTechniqueFx
+    public sealed partial class NativeTechniqueFx
     {
         private const int Mote=0,Core=1,RingGlow=2,Snow=3,Soft=0,Hot=1,RingSprite=2,Sparkle=3;
         /// <summary>How long a record's leavings outlast its end (s).</summary>

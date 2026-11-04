@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
         // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry by default; shouldered (its aim grid's
         // middle column by the pitch, a recoil on each shot) while aiming or just after a shot (owner 2026-10-24: "Aiming and
         // firing"), the reload fitted to the reload.
-        private static readonly Set Rifle=Build(new Set{Spec="rifle",TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
+        private static readonly Set Rifle=Build(new Set{Spec="rifle",TechClips=new[]{TechDrop,TechShootLine,BombStoop},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
@@ -158,7 +158,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
         public static Set For(string spec)=>spec=="greatsword"?Greatsword:spec=="sword"?Sword:spec=="daggers"?Daggers:spec=="shield"?Shield:
-            spec=="rifle"||spec=="machinegun"?Rifle:spec=="pistol"?Pistol:spec=="bow"?Bow:
+            spec=="rifle"||spec=="machinegun"||spec==NativeBombs.Spec?Rifle:spec=="pistol"?Pistol:spec=="bow"?Bow:
             spec=="water"||spec=="lightning"||spec=="fire"||spec=="darkness"||spec=="leet"?Staff:spec=="emperor"||spec=="ansatsuken"?Unarmed:null;
 
         /// <summary>A gun's, bow's or caster's upper-body layer this frame: up to two clips mixed (B by Mix) at their times, and
@@ -375,6 +375,7 @@ namespace ChipArena.UnityConversion
                 }
                 pick=new Pick{Clip=set.Knockdown,Time=Math.Min(len,impact+Math.Max(0,time-a.DownLanded)),Fade=FadeIn};return true;
             }
+            if(BombCast(set,a,time,clips,out pick))return true;
             if(Technique(set,a,time,clips,out pick))return true;
             if(Kit(set,a,time,clips,out pick))return true;
             // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.
@@ -467,6 +468,26 @@ namespace ChipArena.UnityConversion
             TechDrop="2Hand-Shooting-Pickup",TechShootLine="2Hand-Shooting-Activate",TechBuffStart="2Hand-Staff-Cast-L-Buff1_start"+Mirror,TechBuffEnd="2Hand-Staff-Cast-L-Buff1_end"+Mirror,TechTouch="2Hand-Staff-Activate"+Mirror;
         /// <summary>The pilot's technique on the pack's clips, from its record: each clip fitted to its moment. False: none, or the clip is not in
         /// the bank (the game's pose carries on).</summary>
+        // The Bombadier's casts: the launcher's kick for what it fires; a flick, a heave or a stoop for what is thrown or laid; the Finale's stoop over the box, held.
+        private static bool BombCast(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;var k=NativeBombs.Of(a);if(k?.CastKind==null||time<k.CastAt||time>=k.CastUntil)return false;float at=k.CastAt,rel=Math.Max(at+.01f,k.CastRelease),until=Math.Max(rel+.05f,k.CastUntil);
+            bool Part(string clip,float from,float to,out Pick p){p=default;return time>=from&&time<to&&clip!=null&&clips.Has(clip)&&Fit(clip,time,from,to,clips,FadeIn,out p);}
+            switch(k.CastKind)
+            {
+                case NativeBombs.PopBomb:case NativeBombs.StickyFuse:return Part(set.Fire!=null?set.Fire[0]:null,at,until,out pick);
+                case NativeBombs.BlastJump:return Part(set.Flip,at,until,out pick);
+                case NativeBombs.BounceMine:return Part(TechFlickStart,at,rel,out pick)||Part(TechFlickEnd,rel,until,out pick);
+                case NativeBombs.DeadMansSwitch:return Part(TechFlickEnd,at,until,out pick);
+                case NativeBombs.ClusterLob:return Part(TechThrowStart,at,rel,out pick)||Part(TechThrowEnd,rel,until,out pick);
+                case NativeBombs.FirecrackerLine:return Part(TechDrop,at,until,out pick);
+                case NativeBombs.GrandFinale:
+                    if(time<rel)return Part(TechDrop,at,rel,out pick);
+                    if(clips.Has(BombStoop)){pick=new Pick{Clip=BombStoop,Time=time-rel,Fade=FadeIn};return true;}return false;
+            }
+            return false;
+        }
+        private const string BombStoop="2Hand-Shooting-Crouch-Idle";
         private static bool Technique(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
             pick=default;var k=NativeTechniques.Of(a);if(k?.Kind==null||time<k.At)return false;float back=Math.Max(k.Release+.05f,k.RecoverUntil);

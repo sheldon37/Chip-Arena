@@ -42,6 +42,8 @@ namespace ChipArena.UnityConversion
             VictimScreen(arena,presentation,view,me);
             // Kernel Panic's caster and victim (Core/KernelPanicCamera; NativeCyberLordPresentation.cs).
             if(phaseOk&&presentation.KernelPanicDirect(arena,view,presentation.CinematicClock(arena),presentation.CameraShake,presentation.WeaponEffectsQuality<.5f)){Directing=true;return true;}
+            // The Grand Finale, for its caster only (Runtime/NativeBombPresentation.cs); everyone else needs their own camera to get out of the circle.
+            if(phaseOk&&presentation.BombFinaleDirect(arena,view,presentation.CinematicClock(arena),presentation.CameraShake,presentation.WeaponEffectsQuality<.5f)){Directing=true;return true;}
             return Cutscene(arena,presentation,view,me,presentation.CinematicClock(arena),phaseOk);
         }
         private bool ZoneBossArrival(NativeArena arena,ArenaPresentation presentation,Camera view)

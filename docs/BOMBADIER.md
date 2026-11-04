@@ -47,7 +47,7 @@ The meter fills 8 per enemy hit, 6 per chain link, and 1 a second; full at 100. 
 1. **Cut-in, 0 to .6 s.** The pilot slaps a detonator box on the floor. Caster's screen: the live portrait, hazard bands, GRAND FINALE. Everyone else: a banner, and an air-raid siren starts.
 2. **The plunge, .6 to 1.5 s.** The pilot stands rooted and rests both hands on the T-handle. Every enemy within 40 m gets a red circle (4 m radius) on the floor that follows them at 3 m/s.
 3. **The lock, 2.1 s.** The circles stop, and the plunger goes down. Run.
-4. **The strike, 2.6 s.** A column of blasts goes through each circle, 40 damage and a big launch, ignoring cover. Out of the circle takes nothing. 
+4. **The strike, 2.6 s.** A column of blasts goes through each circle, 40 damage and a big launch, ignoring cover. Out of the circle takes nothing.
 5. **The fireworks, to 3.6 s.** Fireworks over the arena; the camera comes home.
 
 Rooted and hittable all the way through; killing the Bombadier does not stop it (it is a dead man's switch). 40 is under half of anyone's health: it sets up a chain rather than ending a fight.
@@ -69,6 +69,21 @@ The entrance everyone recognises and dreads. 7.6 s, the name at 6 s. No music fo
 | 4.5 | The farthest pylon goes. The blasts come toward the camera one after another, each bigger | Pilot walking at the camera, a wall of fire rising behind it |
 | 5.4 | The shockwave passes the pilot. Coat of embers, debris sailing by, it does not look back | Slow motion, low and wide |
 | 6.0 | Hazard tape whips across, name card: BOMBADIER. Bomb tossed up, caught, spun on a finger | Settling to the hand-off |
+
+## Presentation (Claude)
+
+| Piece | File |
+| --- | --- |
+| The record, the names, the sandbox preview | `Core/NativeBombKit.cs` |
+| The effects: charges, blasts by kind, the hand-on between links, the line, the circles, the columns, the fireworks; the Finale's camera | `Core/NativeBombFx.cs` |
+| The launcher, the Kickdrum, sculpted in code | `Core/NativeWeaponModels.Bomb.cs` |
+| The poses | `Core/NativeVisualMotion.cs` (`BombCast`) |
+| Sound, including the intro's whole timeline | `Core/NativeBombSounds.cs` |
+| The intro | `Core/NativeBombadierIntro.cs` |
+| Models and gear, HUD cards, chain counter, cut-in, warning | `Runtime/NativeBombPresentation.cs`, `Runtime/NativeBombScreen.cs` |
+| Checks | `Tests/BombadierChecks.cs` (`CoreTests --bombadier`) |
+
+To see it: Dev Sandbox, Preview Bombadier, with the weapon in hand (once its row exists). The intro: Customize, Entrance, Last Warning, with DEV access.
 
 ## Rules contract (Astra)
 

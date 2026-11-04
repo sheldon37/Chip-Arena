@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
             // A chosen entrance plays only while it is one this client stages; a retired or unknown pick (an older client's
             // neon-drop, vector-slide, ...) falls through to the pilot's weapon signature instead of a fallback stage.
             if(seat.overrideIntro&&Pickable(seat.intro)&&(seat.intro=="sheldon-intro"?access.Developer&&access.Expires>now:!seat.intro.StartsWith("dev-")||access.Allows("intro:"+seat.intro,now)))return seat.intro;
-            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";if(seat.spec==CyberLordSpec.Id)return CyberLordSpec.Entrance;return Signature(seat.spec);
+            if(seat.spec=="emperor")return "dev-emperor";if(seat.spec=="ansatsuken")return "dev-ansatsuken";if(seat.spec=="leet")return "dev-matrix";if(seat.spec==CyberLordSpec.Id)return CyberLordSpec.Entrance;if(seat.spec==NativeBombs.Spec)return NativeBombs.Entrance;return Signature(seat.spec);
         }
         public static double Duration(string style)=>style=="dev-siren"?9.0678:style=="dev-emperor"?7.8:style=="dev-matrix"?8:style=="dev-ansatsuken"?7.2:style==NativeBombs.Entrance?7.6:4.8;
         // Presentation only (the HUD's name card): shared/intros.ts introNameAt, SIREN_INTRO.nameAt 6.4261 for the Siren.
@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The intro preference held when nothing is picked (overrideIntro false), and the entrance of a pilot whose
         /// weapon has no signature (an ungranted DEV weapon, an unknown spec).</summary>
         public const string Default="hero-landing";
-        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||style==CyberLordSpec.Entrance||Array.IndexOf(Entrances,style)>=0);
+        public static bool Pickable(string style)=>style!=null&&(style=="sheldon-intro"||style==CyberLordSpec.Entrance||style==NativeBombs.Entrance||Array.IndexOf(Entrances,style)>=0);
         /// <summary>The weapon signature of `spec` ("weapon-"+spec), or Default for a weapon without one.</summary>
         public static string Signature(string spec){string s="weapon-"+spec;return Array.IndexOf(Entrances,s)>=0?s:Default;}
         /// <summary>A style this client stages; anything else (retired, unknown, null) becomes Default.</summary>
@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
         // Emperor's Oath (buildWeapon(weapon/offWeapon,'emperor'), shown by poseEmperor; weapon-emperor holds both gauntlets).
         // Every other entrance shows empty hands: the poses, the Rain Warrior and the L33T Throne hide r.weapon and the Siren
         // hides it. The L33T Throne's staff is the stage's own prop, grabbed at 4 s.
-        public static string IntroWeapon(string style)=>style=="dev-emperor"?"weapon-emperor":style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
+        public static string IntroWeapon(string style)=>style=="dev-emperor"?"weapon-emperor":style==NativeBombs.Entrance?"weapon-"+NativeBombs.Spec:style!=null&&style.StartsWith("weapon-",StringComparison.Ordinal)&&Array.IndexOf(Entrances,style)>=0?style:null;
         // character-rig.ts: the hand socket on the wrist joint, where an ungripped weapon sits (source frame, +x the rig's left).
         public static readonly System.Numerics.Vector3 HandSocket=new System.Numerics.Vector3(0,-.065f,.055f);
         /// <summary>
@@ -150,7 +150,9 @@ namespace ChipArena.UnityConversion
                 // The DEV Sheldon Intro's music is its LocalAssets key (intro.sheldon-intro, NativeSheldonIntro's beat marks); without it, a built-in sting.
                 case "sheldon-intro":return "audio/intros/signal-spin";
                 // The DEV Cyber Lord's Hardlight Boot: the pulse-wave bed (its punches on the beat grid); no intro.dev- music key.
-                case CyberLordSpec.Entrance:return "audio/intros/pulse-wave";}
+                case CyberLordSpec.Entrance:return "audio/intros/pulse-wave";
+                // The DEV Bombadier's Last Warning opens in silence: its sound is its own cues (NativeBombadierIntro.Cue), no bed.
+                case NativeBombs.Entrance:return null;}
             return "audio/intros/"+style;
         }
         /// <summary>The music an entrance plays from its first frame (song time = intro age), or null: black-siren-protocol for dev-siren.</summary>
@@ -160,7 +162,7 @@ namespace ChipArena.UnityConversion
         {
             switch(style)
             {
-                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";case CyberLordSpec.Entrance:return "DEV · Hardlight Boot";
+                case "dev-siren":return "DEV · Black Siren Protocol";case "dev-emperor":return "DEV · Emperor’s Oath";case "dev-ansatsuken":return "DEV · Rain Warrior";case "dev-matrix":return "DEV · L33T Throne";case "sheldon-intro":return "DEV · Sheldon Intro";case CyberLordSpec.Entrance:return "DEV · Hardlight Boot";case NativeBombs.Entrance:return "DEV · Last Warning";
                 case "weapon-sword":return "Flash Draw";case "weapon-daggers":return "Twin Phantom";case "weapon-greatsword":return "Colossus Oath";case "weapon-shield":return "Bastion Drop";
                 case "weapon-pistol":return "Deadeye";case "weapon-rifle":return "Longwatch";case "weapon-machinegun":return "Belt Rattle";case "weapon-bow":return "Arrowfall";case "weapon-fire":return "Cinder Crown";
                 case "weapon-water":return "Tidal Serpent";case "weapon-lightning":return "Thunderstep";case "weapon-darkness":return "Eventide Gate";
