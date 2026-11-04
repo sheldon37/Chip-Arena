@@ -241,7 +241,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The model id of a tier's dispensed / held chip (the common cartridge for an unknown tier).</summary>
         public static string PickupModel(string tier)=>NativeChipCartridge.Known(tier)&&tier!="common"?PickupId+"-"+tier:PickupId;
         /// <summary>The tiers with a model of their own (PickupModel), the rainbow pick's prism among them.</summary>
-        public static readonly string[] PickupTiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren",NativeChipCartridge.Rainbow};
+        public static readonly string[] PickupTiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier",NativeChipCartridge.Rainbow};
         /// <summary>The section bone of the orbiting ring and its satellites (Epic and up), turned by the draws about PickupAxis.</summary>
         public const int Orbit=2;
         /// <summary>The cartridge's body is .8 wide (NativeDraftPlant.PickupWidth) and .96 tall before the draw's scale.</summary>
