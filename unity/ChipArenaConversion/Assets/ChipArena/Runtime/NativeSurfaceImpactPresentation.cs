@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
                 if(!NativeSurfaceImpacts.Shows(spec,e.Detail))continue;
                 Vector3 at=NativeArena.Vec(e.Position),normal=NativeArena.Vec(e.Normal);normal=normal.sqrMagnitude>.01f?normal.normalized:Vector3.up;
                 int kind=NativeSurfaceImpacts.Surface(SurfaceMaterialOf(arena,e.SurfaceId),arena.MapId,e.SurfaceId,normal.y);
-                if(!LowGraphics&&NativeRoundImpacts.Debris(spec,e.Id))SurfaceEffect(kind,at+normal*NativeSurfaceImpacts.Lift,normal,now);
+                if(NativeRoundImpacts.Debris(spec,e.Id))if(!LowGraphics)SurfaceEffect(kind,at+normal*NativeSurfaceImpacts.Lift,normal,now);
                 SurfaceHole(kind,at+normal*NativeSurfaceImpacts.DecalLift,normal,now,e.Id);
             }
         }

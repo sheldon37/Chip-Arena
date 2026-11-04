@@ -118,6 +118,7 @@ namespace ChipArena.UnityConversion
         private void ClearTraces(){foreach(var trace in traces.Values){trace.Points.Clear();trace.Seen=0;spareTraces.Push(trace);}traces.Clear();}
         public void Clear()
         {ClearTraces();own.Clear();marks.Clear();lastEvent=0;lastTime=-1;world.Clear();view.Clear();DisableLights();spill.Clear();}
+        private static NativePropBody PropById(NativeArena arena,string id){var props=arena.Props;for(int i=0;i<props.Count;i++){var p=props[i];if(p!=null&&p.Definition.id==id)return p;}return null;}
         private void AddShot(in NativeShotView v,float clock,Vector3 camera)
         {
             if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);bool round=v.Kind==NativeShotKind.Bullet&&(NativeTracerFx.Traced(v)||NativeBowWire.Is(v.Spec));
@@ -163,7 +164,7 @@ namespace ChipArena.UnityConversion
             {
                 if(e.Id<=lastEvent)continue;lastEvent=e.Id;
                 if(e.Kind!=EventKind.Impact||string.IsNullOrEmpty(e.SurfaceId)||now-e.Time>=NativeGlowRules.ImpactLife)continue;
-                var prop=arena.Props.Find(p=>p!=null&&p.Definition.id==e.SurfaceId);if(prop==null)continue;
+                var prop=PropById(arena,e.SurfaceId);if(prop==null)continue;
                 Vector3 normal=NativeArena.Vec(e.Normal).normalized;if(normal.sqrMagnitude<.5f)continue;
                 Vector3 point=NativeArena.Vec(e.Position)+normal*.018f;
                 marks.Add(new SurfaceMark{Prop=prop,LocalPosition=prop.transform.InverseTransformPoint(point),LocalRotation=Quaternion.Inverse(prop.transform.rotation)*Quaternion.LookRotation(normal),Born=e.Time,Color=Color.Lerp(Tint(e.Color),Tint(0x95eaff),.25f),Gun=string.IsNullOrEmpty(e.Detail)&&NativeRoundImpacts.Gun(NativeShotViews.Seat(arena,e.Source)?.spec)!=NativeRoundImpact.None});

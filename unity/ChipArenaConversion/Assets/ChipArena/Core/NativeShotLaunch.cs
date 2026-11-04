@@ -22,6 +22,8 @@ namespace ChipArena.UnityConversion
         public const double Converge=4.5;
         /// <summary>How far (m) the round's start may sit off its Shot event's start before the event is not trusted as its own.</summary>
         public const double Agree=.35;
+        /// <summary>The simulation's tick (s): a round has flown one before its age counts any.</summary>
+        public const double Tick=1/60.0;
         /// <summary>Rounds first seen older than this (s) are left on their path: they are long gone from the muzzle.</summary>
         public const double MaxAge=.25;
         /// <summary>The bullets that leave a drawn gun barrel: the pistol, rifle and machine gun's primaries.</summary>

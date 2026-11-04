@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
             public readonly Vector3[] Points=new Vector3[NativeTrailFx.RibbonSamples];public readonly float[] Times=new float[NativeTrailFx.RibbonSamples];public int Count;
             // A gun round's or arrow's tracer (NativeTracerPresentation.cs): its look, its path, where it was last drawn and how it went out.
             public readonly NativeTracerPath Path=new NativeTracerPath();public NativeTracerStyle Style;public NativeRoundImpact Impact;public NativeShotModules Chips;public string Spec;public int Id;public long Key;
-            public Vector3 Head,Dir,EndPoint,StruckNormal;public float Speed,Full,Left,Boost,SpentAt,EndedAt,ArriveAt,ArrivedAt;public bool Round,Bolt,Spent,Arrived,Struck,Scoped,Fire,Poison;
+            public Vector3 Head,Dir,EndPoint,StruckNormal;public float Speed,Full,Left,Boost,SpentAt,EndedAt,ArriveAt,ArrivedAt;public bool Round,Bolt,Spent,Arrived,Struck,Scoped,Fire,Poison,Straight;public Vector3 FirstDir;
             public void Push(Vector3 at,float time){if(Count==Points.Length){Array.Copy(Points,1,Points,0,Count-1);Array.Copy(Times,1,Times,0,Count-1);Count--;}Points[Count]=at;Times[Count]=time;Count++;}
         }
         // Tile: a pack trail sprite's tile of the magic sheet (-1: the soft glow sprite), with its school, roll and spin; its Color
@@ -158,12 +158,12 @@ namespace ChipArena.UnityConversion
             if(kit!=MuzzleKit.Fan&&WeaponEffectsQuality>=.5f&&(first||distance<30)&&NativeGunKitFx.Port(a.SourceSpec,out var port,out float brassLength,out float brassWidth))
             {
                 Vector3 hx=x,hy=y,hz=z,origin=hand.MultiplyPoint3x4(Vector3.zero);
-                for(int i=0;i<n;i++)
+                for(int i=0;i<n&&(!first||i<3);i++)
                 {
                     float brassAge=time-muzzleShots[i];long brassSeed=NativeWeaponFx.Seed(muzzleShots[i],a.Id);if(LowGraphics&&(brassSeed&1)!=0)continue;
                     if(!NativeGunKitFx.Casing(brassSeed,0,brassAge,out var local,out float drop,out var axis,out float alpha))continue;
                     var c=origin+(hx*-(local.X-NativeGunKitFx.CasingFrom.X+port.X)+hy*(local.Y-NativeGunKitFx.CasingFrom.Y+port.Y)+hz*(local.Z-NativeGunKitFx.CasingFrom.Z+port.Z))*scale+Vector3.down*(drop*scale);
-                    var half=(hx*-axis.X+hy*axis.Y+hz*axis.Z)*(brassLength*scale);draw.Axis(first,c-half,c+half,NativeWeaponFxShapes.Lin(NativeGunKitFx.Brass,1.5f*alpha),brassWidth*scale,NativeWeaponFxDraw.StreakMode,.85f);
+                    float view=first?.55f:1;var half=(hx*-axis.X+hy*axis.Y+hz*axis.Z)*(brassLength*scale*view);var brass=NativeWeaponFxShapes.Lin(NativeGunKitFx.Brass,.7f*alpha);brass.a=alpha;draw.Axis(first,c-half,c+half,brass,brassWidth*scale*view,NativeWeaponFxDraw.StreakMode,0);
                 }
             }
             if(NativeMuzzleLight.Look(a.SourceSpec,kit,out var light)){var at=crown+z*(NativeMuzzleLight.Lead*scale);muzzleLights.Offer(a.Id,new NVector3(at.x,at.y,at.z),light,NativeMuzzleLight.Level(light,muzzleShots,n,time,a.Id,KitFlash),first);}
@@ -340,7 +340,7 @@ namespace ChipArena.UnityConversion
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye);}
             // A round gone from the frame's shots stops where the authority stopped it, its tail catching up (NativeTracerPresentation.cs).
             staleEmitters.Clear();foreach(var pair in emitters)if(pair.Value.Frame!=weaponFrame&&!RoundSpent(draw,arena,pair.Value,eye,now,q,low,trails))staleEmitters.Add(pair.Key);
-            if(trails)LingerDraw(draw,eye,now);
+            if(trails)LingerDraw(draw,eye,now);ScopeGlare(draw,camera,arena,now);
             foreach(long key in staleEmitters){spareEmitters.Push(emitters[key]);emitters.Remove(key);}
             // The world-space trail sprites outlive their shot.
             for(int i=0;i<trailSpriteCount;)
@@ -353,7 +353,8 @@ namespace ChipArena.UnityConversion
             GunKitFx();BowFx(arena,now);
             ImpactFx(draw,arena,now,q,low);RoundMarksDraw(draw,now,q,low);MagicPackHits(arena,now,q,low);
             // A school bolt's model gives way to its pack head (drawn in ShotFx) from the next frame.
-            if(shots!=null){shots.PackHeads=PackLooks;shots.TracerRounds=true;}
+            if(shots!=null)shots.PackHeads=PackLooks;
+            if(shots!=null)shots.TracerRounds=true;
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
             // The muzzle lights: the nearest shooters the tier, Combat glow, Reduced effects and Alarm lights allow.
             NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);muzzleLights.Resolve(new NVector3(eye.x,eye.y,eye.z),lights,gain);NativeMuzzleLights.Upload(muzzleLights);
@@ -418,6 +419,10 @@ namespace ChipArena.UnityConversion
                 if(e.Id<=impactEvent)continue;
                 // A gun round into a body: the small star on the hit point (the body's own blood and flash stay).
                 if((e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Projectile>0&&now-e.Time<NativeRoundImpacts.Life){RoundEventMark(e,NativeArena.Vec(e.Position),NativeArena.Vec(e.Normal),NativeMagicFx.Spec(actors,e.Source));continue;}
+                // A round splitting: the green flick at the fork (its fragments' tails start here, NativeTracerPresentation.cs).
+                if(e.Kind==EventKind.Split&&now-e.Time<NativeRoundImpacts.Life){RoundMarkAdd(NativeRoundImpact.Fork,NativeArena.Vec(e.Position),Vector3.up,Vector3.zero,e.Time,e.Id*1000003L+17);continue;}
+                // A guest's interpolated round turns over a few frames, too soft to see a corner in (RoundStep): the event lands its fan.
+                if(e.Kind==EventKind.Ricochet&&arena.Replica&&now-e.Time<NativeRoundImpacts.Life){RoundRicochetEvent(e,NativeArena.Vec(e.Position));continue;}
                 if(e.Kind!=EventKind.Impact||string.IsNullOrEmpty(e.SurfaceId))continue;
                 var normal=NativeArena.Vec(e.Normal);if(normal.sqrMagnitude<.25f||now-e.Time>=NativeImpactFx.Life)continue;
                 string spec=NativeMagicFx.Spec(actors,e.Source);

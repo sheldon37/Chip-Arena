@@ -90,9 +90,23 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeTracers
     {
-        public const int PistolCore=0xfff6e0,PistolEdge=0xffc25a,GunCore=0xffe8c0,GunEdge=0xff9a32,RifleCore=0xf2faff,RifleEdge=0x86c8ff,RifleLine=0xbfe4ff,DriveCore=0xfff4e4,HostileEdge=0xff3a24;
+        public const int PistolCore=0xfff6e0,PistolEdge=0xffc25a,GunCore=0xffe8c0,GunEdge=0xff9a32,RifleCore=0xf2faff,RifleEdge=0x86c8ff,RifleLine=0xbfe4ff,DriveCore=0xfff4e4,DriveEdge=0xff3c0c,DriveHot=0xff6a14,HostileEdge=0xff3a24;
         /// <summary>The fewest pixels wide a core, a sheath and a head are drawn at any distance.</summary>
-        public const float CorePixels=1.6f,SheathPixels=4.5f,HeadPixels=10;
+        public const float CorePixels=2,SheathPixels=6,HeadPixels=7;
+        /// <summary>The glare under a scoped view as the rifle fires: its life (s) and colour.</summary>
+        public const float ScopeGlareLife=.07f;public const int ScopeGlare=0xffd8a8;
+        /// <summary>A gun round's chip modules are drawn at this share of their size (on a needle, not on a fat box).</summary>
+        public const float ModuleShare=.42f;
+        /// <summary>The most rounds a frame that show their chip modules.</summary>
+        public const int ModuleRounds=24;
+        /// <summary>Whether a round shows its chip modules at all: a machine gun's belt, only its full tracers.</summary>
+        public static bool Modules(string spec,int round)=>spec!="machinegun"||round%3==0;
+        /// <summary>The tail's fall-off on the first-person pilot's own rounds (above .5: the shader's tracer mode).</summary>
+        public const float OwnFade=.6f;
+        /// <summary>A round is on its first heading within this (cos 3.5 degrees): its tail is still one straight line.</summary>
+        public const float StraightCos=.998f;
+        /// <summary>The head's glint fades out close to the eye (0 within half a metre, full from 3.5 m): a round passing the camera is not a flash in the face.</summary>
+        public static float HeadNear(float distance)=>Math.Max(0,Math.Min(1,(distance-.5f)/3));
         /// <summary>The tail with the Projectile trails setting off.</summary>
         public const float PlainLength=.4f;
         /// <summary>A turn this sharp in one step (cos 41 degrees) is a corner: a bounce or a reflect, not a homing curve.</summary>
@@ -106,6 +120,10 @@ namespace ChipArena.UnityConversion
         public const float SheathRange=90;
 
         private static FxColor L(int hex)=>NativeWeaponFx.Linear(hex);
+        // Each gun's look, read once (a burst of chip-multiplied rounds fixes hundreds of looks a second).
+        private static readonly NativeTracerStyle GunStyle=new NativeTracerStyle{Core=.02f,Sheath=.065f,CoreGain=3f,SheathGain=.55f,CoreColor=L(GunCore),Edge=L(GunEdge),Tail=.034f,MinLength=.6f,MaxLength=6,Fade=1.1f,HeadSize=.06f,HeadGain=1.4f},
+            RifleStyle=new NativeTracerStyle{Core=.028f,Sheath=.09f,CoreGain=5,SheathGain=.65f,CoreColor=L(RifleCore),Edge=L(RifleEdge),Full=true,Tail=.07f,MinLength=2,MaxLength=20,Fade=1,HeadSize=.1f,HeadGain=2.4f,LingerLife=.32f,LingerWidth=.02f,LingerGain=.7f,LingerColor=L(RifleLine)},
+            PistolStyle=new NativeTracerStyle{Core=.024f,Sheath=.08f,CoreGain=3.6f,SheathGain=.6f,CoreColor=L(PistolCore),Edge=L(PistolEdge),Full=true,Tail=.04f,MinLength=.6f,MaxLength=7,Fade=1.1f,HeadSize=.07f,HeadGain=1.6f};
         /// <summary>The side of a round fired from seat `firer`, seen from seat `viewer`.</summary>
         public static NativeTracerSide Side(NativeSeat viewer,NativeSeat firer,bool teams,bool cooperative)
         {
@@ -125,17 +143,12 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static NativeTracerStyle Of(string spec,in NativeTracerLook kit,int round,float speed,float baseSpeed,in NativeShotModules chips,bool fire,bool poison,NativeTracerSide side,float quality,bool low)
         {
-            NativeTracerStyle s;
-            switch(spec)
-            {
-                case "machinegun":s=new NativeTracerStyle{Core=.015f,Sheath=.05f,CoreGain=2.8f,SheathGain=.5f,CoreColor=L(GunCore),Edge=L(GunEdge),Full=round%3==0,Tail=.024f,MinLength=.4f,MaxLength=4.5f,Fade=1.3f,HeadSize=.07f,HeadGain=1.8f};break;
-                case "rifle":s=new NativeTracerStyle{Core=.02f,Sheath=.075f,CoreGain=4.6f,SheathGain=.6f,CoreColor=L(RifleCore),Edge=L(RifleEdge),Full=true,Tail=.055f,MinLength=1.2f,MaxLength=16,Fade=1.1f,HeadSize=.13f,HeadGain=3.2f,LingerLife=.3f,LingerWidth=.014f,LingerGain=.55f,LingerColor=L(RifleLine)};break;
-                default:s=new NativeTracerStyle{Core=.017f,Sheath=.06f,CoreGain=3.4f,SheathGain=.55f,CoreColor=L(PistolCore),Edge=L(PistolEdge),Full=true,Tail=.03f,MinLength=.45f,MaxLength=5.5f,Fade=1.3f,HeadSize=.09f,HeadGain=2.6f};break;
-            }
+            NativeTracerStyle s=spec=="machinegun"?GunStyle:spec=="rifle"?RifleStyle:PistolStyle;if(spec=="machinegun")s.Full=round%3==0;
             if(kit.Kit)
             {
                 float wide=kit.Width/Math.Max(.001f,NativeTracerFx.Width(spec));s.Core*=wide;s.Sheath*=wide;s.Tail*=kit.Length;s.MaxLength*=kit.Length;s.CoreGain*=kit.Gain/NativeTracerFx.CoreGain;s.SheathGain*=kit.Sheath/.5f;
-                s.Edge=FxColor.Lerp(L(kit.Edge),Hot(kit.Heat),kit.Heat>0?.6f:0);s.Full=true;if(spec=="machinegun"){s.CoreColor=L(DriveCore);s.HeadGain*=1.5f;s.HeadSize*=1.3f;}
+                s.Edge=L(kit.Edge);s.Full=true;
+                if(spec=="machinegun"){s.Edge=FxColor.Lerp(L(DriveEdge),L(DriveHot),kit.Heat);s.CoreColor=L(DriveCore);s.HeadGain*=1.5f;s.HeadSize*=1.3f;s.Sheath*=1.25f;s.SheathGain*=1.35f;s.Tail*=1.2f;s.MaxLength*=1.2f;}
             }
             // A round faster or slower than its gun's is thinner or heavier (its length follows its speed by itself).
             if(baseSpeed>1&&speed>1){float k=(float)Math.Sqrt(baseSpeed/speed),w=Math.Max(.8f,Math.Min(1.3f,k));s.Core*=w;s.Sheath*=w;}
@@ -145,15 +158,14 @@ namespace ChipArena.UnityConversion
             if(side==NativeTracerSide.Ally){s.CoreGain*=.6f;s.SheathGain*=.5f;s.HeadGain*=.5f;s.Sheath*=.75f;}
             else if(side==NativeTracerSide.Enemy){s.Edge=FxColor.Lerp(s.Edge,L(HostileEdge),.5f);s.SheathGain*=1.3f;}
             if(quality<.5f){s.Sheath=0;s.LingerLife=0;s.HeadSize=0;}else if(low){s.LingerLife*=.6f;if(!s.Full){s.Sheath=0;s.HeadSize=0;}}
-            if(!s.Full){s.Sheath=0;s.HeadSize=0;s.CoreGain*=.7f;}
+            if(!s.Full){s.Sheath=0;s.HeadSize=0;s.CoreGain*=.85f;}
             return s;
         }
-        private static FxColor Hot(float heat){var h=NativeGunKitFx.HeatColor(heat,0);float m=Math.Max(.001f,Math.Max(h.X,Math.Max(h.Y,h.Z)));return new FxColor(h.X/m,h.Y/m,h.Z/m);}
         /// <summary>The look of an arrow's trail, from NativeBowFx.TrailLook: the arrow's own colour, draw and length; its shaft is the model.</summary>
         public static NativeTracerStyle Arrow(float draw,NativeBow.Arrow kind,NativeTracerSide side,float quality,bool low)
         {
             NativeBowFx.TrailLook(draw,kind,out float length,out float width,out float gain,out var color);
-            var s=new NativeTracerStyle{Core=Math.Max(.012f,width),Sheath=.04f,CoreGain=gain*1.5f,SheathGain=gain*.2f,CoreColor=FxColor.Lerp(new FxColor(color.X,color.Y,color.Z),L(NativeBowFx.TrailCore),.5f),Edge=new FxColor(color.X,color.Y,color.Z),Full=true,MinLength=length*1.2f,MaxLength=length*1.2f,Skip=NativeBow.ArrowLength*.85f,Fade=1.2f,HeadSize=.09f,HeadGain=1+gain*.5f};
+            var s=new NativeTracerStyle{Core=Math.Max(.018f,width),Sheath=.05f,CoreGain=gain*1.5f,SheathGain=gain*.25f,CoreColor=FxColor.Lerp(new FxColor(color.X,color.Y,color.Z),L(NativeBowFx.TrailCore),.22f),Edge=new FxColor(color.X,color.Y,color.Z),Full=true,MinLength=length*1.2f,MaxLength=length*1.2f,Skip=NativeBow.ArrowLength*.85f,Fade=1.2f,HeadSize=.09f,HeadGain=1+gain*.5f};
             if(side==NativeTracerSide.Ally){s.CoreGain*=.6f;s.SheathGain*=.5f;s.HeadGain*=.5f;}else if(side==NativeTracerSide.Enemy){s.Edge=FxColor.Lerp(s.Edge,L(HostileEdge),.5f);s.SheathGain*=1.3f;}
             if(quality<.5f||low){s.Sheath=0;if(quality<.5f)s.HeadSize=0;}
             return s;

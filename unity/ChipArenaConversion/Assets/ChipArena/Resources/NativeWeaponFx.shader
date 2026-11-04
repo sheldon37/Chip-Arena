@@ -177,7 +177,7 @@ Shader "ChipArena/NativeWeaponFx"
                 float core=exp(-d*d*5.0);
                 float edge=saturate(1.0-d);
                 float along=pow(x,w);
-                return float2((core*0.9+edge*edge*0.35)*along,core*sqrt(along));
+                return float2((core*0.9+edge*edge*0.35)*along,core*core*sqrt(along)*0.7);
             }
             // A crescent through the brush: its streaks run along the arc (the rectangle's width along x, tail to head; its height
             // across, inner to outer), their ragged ends at the tail and the head. The colour band takes the streaks and keeps a

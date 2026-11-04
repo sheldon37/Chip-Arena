@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         private readonly RoundMark[] roundMarks=new RoundMark[RoundMarks];private int roundMarkNext;
         private readonly NVector3[] tracerWalk=new NVector3[NativeTracerPath.Capacity+1];private readonly Vector3[] tracerPoints=new Vector3[NativeTracerPath.Capacity+1];private readonly float[] tracerAlong=new float[NativeTracerPath.Capacity+1];
         private readonly HashSet<int> roundHits=new HashSet<int>();private int roundHitEvent;private NativeArena roundHitArena;private int roundHitGeneration=-1;
-        private int tracerSheaths,tracerHeads,roundRays;private float tracerPixel;
+        private int tracerSheaths,tracerHeads,roundRays;private float tracerPixel;private Vector3 tracerEye;private NativeSeat tracerViewer;
         private const int RoundRaysPerFrame=16;
         /// <summary>How close (m) a scoped pilot's own round is drawn: the scope shows it leaving, not the streak past the eye.</summary>
         private const float ScopedClear=9;
@@ -33,13 +33,18 @@ namespace ChipArena.UnityConversion
         // ---- each frame ----
         private void TracersBegin(NativeArena arena,Camera camera)
         {
-            tracerSheaths=tracerHeads=roundRays=0;tracerPixel=camera!=null&&camera.pixelHeight>0?2*Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad)/camera.pixelHeight:.001f;
+            tracerViewer=ViewSeat(arena);tracerSheaths=tracerHeads=roundRays=0;tracerEye=camera!=null?camera.transform.position:Vector3.zero;tracerPixel=camera!=null&&camera.pixelHeight>0?2*Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad)/camera.pixelHeight:.001f;
             // The rounds an event has already landed (a body's or a prop's): its own effects answer them.
             if(!ReferenceEquals(roundHitArena,arena)||roundHitGeneration!=arena.Generation){roundHits.Clear();roundHitEvent=0;roundHitArena=arena;roundHitGeneration=arena.Generation;}
             int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest<roundHitEvent)roundHitEvent=0;
             if(roundHits.Count>2048)roundHits.Clear();
             foreach(var e in arena.Events)if(e.Id>roundHitEvent&&e.Projectile>0&&(e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Impact))roundHits.Add(e.Projectile);
             roundHitEvent=Math.Max(roundHitEvent,newest);
+        }
+        // The seat the frame is seen from (arena.ViewPilot, without its Find's closures).
+        private static NativeSeat ViewSeat(NativeArena arena)
+        {
+            var pilots=arena.Pilots;for(int i=0;i<pilots.Count;i++){var p=pilots[i];if(p.Seat.id==arena.LocalId)return (p.Controlling??p).Seat;}return null;
         }
         /// <summary>One gun round or arrow this frame (a first sight fixes its look and its path's start), or any other shot (ShotFx).</summary>
         private void RoundFx(NativeWeaponFxDraw draw,NativeArena arena,NativeBullet b,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye)
@@ -49,13 +54,13 @@ namespace ChipArena.UnityConversion
             if(!emitters.TryGetValue(key,out var e)){e=spareEmitters.Count>0?spareEmitters.Pop():new Emitter();RoundBegin(e,arena,b,v,at,velocity,arrow,now,q,low);emitters.Add(key,e);}
             // A guest past its newest frame carries a round on by its velocity (NativeShotTracker.Present): never through a wall.
             if(arena.Replica&&!arena.ReplaySampledShots&&now>arena.Time&&roundRays<RoundRaysPerFrame){var step=at-e.Head;float reach=step.magnitude;if(reach>.01f){roundRays++;if(arena.PhysicsWorld.Raycast(e.Head,step/reach,out var wall,reach,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))at=wall.point;}}
-            e.Frame=weaponFrame;e.Spent=false;RoundStep(e,key,v,at,velocity,now,q,low);RoundDraw(draw,e,eye,now,trails,1,velocity.magnitude);
+            e.Frame=weaponFrame;e.Spent=false;RoundStep(e,key,v,at,velocity,b.Velocity,now,q,low);RoundDraw(draw,e,eye,now,trails,1,velocity.magnitude);
         }
         private void RoundBegin(Emitter e,NativeArena arena,NativeBullet b,in NativeShotView v,Vector3 at,Vector3 velocity,bool arrow,float now,float q,bool low)
         {
             e.Path.Clear();e.Origin=e.Last=e.Head=at;e.LastAt=now;e.Carry=0;e.Emitted=0;e.Count=0;e.Id=v.Id;e.Round=true;e.Bolt=false;e.Spent=false;e.Arrived=false;e.Boost=-10;e.Spec=v.Spec;e.Chips=v.Modules;e.Fire=v.Fire;e.Poison=v.Poison;e.Key=NativeShotScene.Key(v.Kind,v.Id);
-            float speed=velocity.magnitude;e.Dir=speed>.01f?velocity/speed:Vector3.forward;e.Speed=speed;
-            int firer=b.Original!=0?b.Original:b.Owner;var side=NativeTracers.Side(arena.ViewPilot?.Seat,NativeShotViews.Seat(arena,firer),arena.Match.Teams,arena.Match.Cooperative);
+            float speed=velocity.magnitude;e.Dir=speed>.01f?velocity/speed:Vector3.forward;e.Speed=speed;e.FirstDir=b.Velocity.sqrMagnitude>.01f?b.Velocity.normalized:e.Dir;e.Straight=true;
+            int firer=b.Original!=0?b.Original:b.Owner;var side=NativeTracers.Side(tracerViewer,NativeShotViews.Seat(arena,firer),arena.Match.Teams,arena.Match.Cooperative);
             e.Scoped=ScopeActive&&firer==LocalId;
             if(arrow)
             {
@@ -68,13 +73,15 @@ namespace ChipArena.UnityConversion
                 // A split fragment's tail starts where the round split (its Split event), so the fork shows.
                 if(v.Modules.Split>0)foreach(var ev in arena.Events)if(ev.Kind==EventKind.Split&&ev.Source==firer&&Mathf.Abs(ev.Time-now)<.2f&&(NativeArena.Vec(ev.Position)-at).sqrMagnitude<4){e.Path.Push(TN(NativeArena.Vec(ev.Position)));e.Boost=now;break;}
             }
+            // First person: the tail runs from far off back to the eye's own barrel, nearly all its screen length in its last metres, so it falls off slower.
+            if(FirstPerson&&firer==LocalId)e.Style.Fade=NativeTracers.OwnFade;
             // The round leaves the muzzle it was drawn from (a first sight a tick past it still reaches back to it).
             if(v.Launched&&e.Path.Count==0&&shotTracker.Muzzles.TryGetValue(firer,out var m)){var from=new Vector3(m.X,m.Y,m.Z);e.Path.Push(TN(from));e.Head=from;}
         }
         private static NVector3 TN(Vector3 v)=>new NVector3(v.x,v.y,v.z);
         private static Vector3 TU(NVector3 v)=>new Vector3(v.X,v.Y,v.Z);
         // The path follows the drawn round; a corner (a bounce, a reflect) goes in where its old and new lines meet.
-        private void RoundStep(Emitter e,long key,in NativeShotView v,Vector3 at,Vector3 velocity,float now,float q,bool low)
+        private void RoundStep(Emitter e,long key,in NativeShotView v,Vector3 at,Vector3 velocity,Vector3 simulated,float now,float q,bool low)
         {
             float speed=velocity.magnitude;var last=e.Head;
             if(speed>.01f)
@@ -82,13 +89,16 @@ namespace ChipArena.UnityConversion
                 var d=velocity/speed;
                 if(e.Path.Count>0&&Vector3.Dot(d,e.Dir)<NativeTracers.TurnCos)
                 {
-                    var corner=NativeTracers.Corner(TN(e.Head),TN(e.Dir),TN(at),TN(d));e.Path.Push(corner);e.Boost=now;
+                    var corner=NativeTracers.Corner(TN(e.Head),TN(e.Dir),TN(at),TN(d));e.Path.Push(corner);e.Boost=now;e.Straight=false;
                     if(e.Chips.Bounces>0||e.Chips.Pong>0)RoundMarkAdd(NativeRoundImpact.Ricochet,TU(corner),NormalOf(e.Dir,d),e.Dir,now,e.Key*2654435761L+(long)(now*4096));
                     LingerTo(e,key,last,TU(corner),now);last=TU(corner);
                 }
+                // While it holds its first heading a round's tail is one straight line from where it left to where it is: the muzzle's offset never shows as a kink.
+                // (Its simulated heading: the drawn one bends for a moment as the round joins its path from the muzzle.)
+                if(e.Straight&&simulated.sqrMagnitude>.01f&&Vector3.Dot(simulated.normalized,e.FirstDir)<NativeTracers.StraightCos)e.Straight=false;
                 e.Dir=d;e.Speed=speed;
             }
-            if(e.Path.Count>0&&(e.Path.Newest-TN(at)).LengthSquared()<4e-4f)e.Path.MoveNewest(TN(at));else e.Path.Push(TN(at));
+            if(e.Path.Count>0&&(e.Path.Newest-TN(at)).LengthSquared()<4e-4f||e.Straight&&e.Path.Count>1)e.Path.MoveNewest(TN(at));else e.Path.Push(TN(at));
             LingerTo(e,key,last,at,now);e.Head=at;
         }
         // The surface a round bounced off: the turn from its old heading to its new one.
@@ -96,11 +106,11 @@ namespace ChipArena.UnityConversion
         // The line a very fast round leaves: one entry for as long as it flies straight.
         private void LingerTo(Emitter e,long key,Vector3 from,Vector3 to,float now)
         {
-            var s=e.Style;if(!(s.LingerLife>0)||(to-from).sqrMagnitude<1e-4f)return;
+            ref var s=ref e.Style;if(!(s.LingerLife>0)||(to-from).sqrMagnitude<1e-4f)return;if(e.Scoped&&(from-tracerEye).sqrMagnitude<ScopedClear*ScopedClear)return;
             for(int back=1;back<=6;back++)
             {
                 ref var l=ref lingers[(lingerNext+LingerLines-back)%LingerLines];if(l.Key!=key)continue;
-                if(l.B==from&&Vector3.Dot((l.B-l.A).normalized,(to-from).normalized)>NativeTracerPath.Straight){l.B=to;l.BornB=now;return;}break;
+                if(l.B==from&&(e.Straight||Vector3.Dot((l.B-l.A).normalized,(to-from).normalized)>NativeTracerPath.Straight)){l.B=to;l.BornB=now;return;}break;
             }
             lingers[lingerNext]=new LingerLine{Key=key,A=from,B=to,BornA=now,BornB=now,Life=s.LingerLife,Width=s.LingerWidth,Color=new Color(s.LingerColor.R*s.LingerGain,s.LingerColor.G*s.LingerGain,s.LingerColor.B*s.LingerGain,0)};
             lingerNext=(lingerNext+1)%LingerLines;
@@ -116,7 +126,7 @@ namespace ChipArena.UnityConversion
         // The needle along the path, its sheath and the bright head. `gain`: the fade of a spent round's tail.
         private void RoundDraw(NativeWeaponFxDraw draw,Emitter e,Vector3 eye,float now,bool trails,float gain,float speed)
         {
-            var s=e.Style;float length=trails?NativeTracers.Length(s,speed>.01f?speed:e.Speed):NativeTracers.PlainLength;if(e.Spent)length=e.Left;float skip=e.Spent?0:s.Skip;
+            ref var s=ref e.Style;float length=trails?NativeTracers.Length(s,speed>.01f?speed:e.Speed):NativeTracers.PlainLength;if(e.Spent)length=e.Left;float skip=e.Spent?0:s.Skip;
             if(e.Scoped){float clear=Vector3.Distance(eye,TU(e.Path.Newest))-ScopedClear;if(clear<=0)return;length=Mathf.Min(length,clear);}
             int n=e.Path.Walk(skip,length,tracerWalk,tracerAlong);for(int i=0;i<n;i++)tracerPoints[i]=TU(tracerWalk[i]);float boost=gain*(1+.7f*Mathf.Clamp01(1-(now-e.Boost)/.12f));
             if(n>=2)
@@ -126,8 +136,8 @@ namespace ChipArena.UnityConversion
             }
             if(s.HeadSize>0&&!e.Spent&&!e.Scoped&&tracerHeads<NativeTracers.MaxHeads)
             {
-                tracerHeads++;var head=TU(e.Path.Newest);float d=(head-eye).magnitude;
-                draw.Glow(false,head,new Color(s.CoreColor.R*s.HeadGain,s.CoreColor.G*s.HeadGain,s.CoreColor.B*s.HeadGain,0),NativeTracers.Width(s.HeadSize,NativeTracers.HeadPixels,d,tracerPixel),NativeWeaponFxDraw.HotCore);
+                tracerHeads++;var head=TU(e.Path.Newest);float d=(head-eye).magnitude,near=NativeTracers.HeadNear(d);
+                if(near>0)draw.Glow(false,head,new Color(s.CoreColor.R*s.HeadGain*near,s.CoreColor.G*s.HeadGain*near,s.CoreColor.B*s.HeadGain*near,0),NativeTracers.Width(s.HeadSize,NativeTracers.HeadPixels,d,tracerPixel),NativeWeaponFxDraw.HotCore);
             }
         }
         /// <summary>A round no longer in the frame's shots (true while its tail is still catching up to where it stopped).</summary>
@@ -188,6 +198,20 @@ namespace ChipArena.UnityConversion
             if(emitters.TryGetValue(NativeShotScene.Key(NativeShotKind.Bullet,e.Projectile),out var r))flight=r.Dir;
             bool body=e.Kind!=EventKind.Impact;if(flight.sqrMagnitude>.25f&&(body||normal.sqrMagnitude<.25f))normal=-flight.normalized;if(normal.sqrMagnitude<.25f)normal=Vector3.up;
             RoundMarkAdd(body?NativeRoundImpact.Body:kind,at,normal,flight,e.Time,e.Id*1000003L+13);
+        }
+        // A replica's ricochet: the nearest round of its firer gives the flight (the event carries neither its round nor the surface's normal).
+        private void RoundRicochetEvent(in ArenaEvent ev,Vector3 at)
+        {
+            Vector3 flight=Vector3.zero;float best=36;
+            foreach(var pair in emitters){var r=pair.Value;if(!r.Round||r.Impact==NativeRoundImpact.None)continue;float d=(r.Head-at).sqrMagnitude;if(d<best){best=d;flight=r.Dir;}}
+            RoundMarkAdd(NativeRoundImpact.Ricochet,at,flight.sqrMagnitude>.25f?-flight:Vector3.up,flight,ev.Time,ev.Id*1000003L+19);
+        }
+        // A scoped pilot's own round: the eye sees no muzzle down the tube, so a quick glare rises from under the view with the shot.
+        private void ScopeGlare(NativeWeaponFxDraw draw,Camera camera,NativeArena arena,float now)
+        {
+            if(!ScopeActive||camera==null)return;var pilot=arena.Local;if(pilot==null)return;float age=now-pilot.LastShot;if(!(age>=0&&age<NativeTracers.ScopeGlareLife))return;
+            float k=1-age/NativeTracers.ScopeGlareLife;var t=camera.transform;float depth=4,half=depth*Mathf.Tan(camera.fieldOfView*.5f*Mathf.Deg2Rad);
+            draw.Glow(false,t.position+t.forward*depth-t.up*(half*1.15f),NativeWeaponFxShapes.Lin(NativeTracers.ScopeGlare,1.5f*k*k),half*3.2f,NativeWeaponFxDraw.Soft);
         }
         private void ClearTracers()
         {

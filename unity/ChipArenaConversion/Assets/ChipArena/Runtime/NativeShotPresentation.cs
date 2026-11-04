@@ -57,7 +57,9 @@ namespace ChipArena.UnityConversion
             if(found<0)return;var start=events[found].Position;
             double ox=start.x,oy=start.y,oz=start.z,a=Math.Max(0,age);
             double bx=b.Position.x-b.Velocity.x*a-ox,by=b.Position.y-b.Velocity.y*a-oy,bz=b.Position.z-b.Velocity.z*a-oz;
-            if(bx*bx+by*by+bz*bz>NativeShotLaunch.Agree*NativeShotLaunch.Agree)return;
+            // The round's first step happens in the tick it is born, so it may also sit one step further on than its age says.
+            double a1=a+NativeShotLaunch.Tick,cx=b.Position.x-b.Velocity.x*a1-ox,cy=b.Position.y-b.Velocity.y*a1-oy,cz=b.Position.z-b.Velocity.z*a1-oz;
+            if(bx*bx+by*by+bz*bz>NativeShotLaunch.Agree*NativeShotLaunch.Agree&&cx*cx+cy*cy+cz*cz>NativeShotLaunch.Agree*NativeShotLaunch.Agree)return;
             tracker.Launch(v,firer,ox,oy,oz);
         }
         private static void BulletIdentity(NativeArena arena,NativeBullet b,ref NativeShotView v,Dictionary<long,NativeShotModules> cache)
@@ -151,7 +153,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A gun round is its tracer (Core NativeTracers): its source box is skipped, its chip modules stay.</summary>
         public bool TracerRounds;
         // The draws skipped this frame (by index into the scene's draw list), reused.
-        private bool[] packHidden=new bool[64];private int packHiddenCount;
+        private bool[] packHidden=new bool[64];private int packHiddenCount;private int tracerModuleRounds;
         public int Parts=>scene.Draws.Count;public int Sparks=>scene.Bursts.Count;public int Beams=>scene.Bursts.Beams;public int Live=>scene.Live;
         /// <summary>The source BurstPool port (renderer.burst/beam) these visuals draw and step each frame; event effects spawn
         /// into it (NativeBlastPresentation via NativeImpactCues).</summary>
@@ -194,8 +196,8 @@ namespace ChipArena.UnityConversion
             scene.Begin(now,arena.Replica?now:arena.Time,dt,Math.Max(0,quality));
             // Siren shots are the Siren effects' own orbs and flame trails (ArenaPresentation.DevEffects, C12); the Cyber Lord's
             // ranged bolts its own hardlight shots (Core/NativeCyberLordRangedFx.cs; its Data Packets stay here).
-            packHiddenCount=0;
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec)&&CyberLordFeed.ShotSlot(b.Spec,b.Detail)<0){int first=scene.Draws.Count;scene.Shot(v);if(PackHeads&&NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None&&scene.Draws.Count>first)HidePackHead(first);else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first)HidePackHead(first);}}
+            packHiddenCount=0;tracerModuleRounds=0;
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec)&&CyberLordFeed.ShotSlot(b.Spec,b.Detail)<0){int first=scene.Draws.Count;scene.Shot(v);if(PackHeads&&NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None&&scene.Draws.Count>first)HidePackHead(first);else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first){HidePackHead(first);if(!(v.Modules.Pong>0))TracerParts(first+1,v);}}}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,tracker,now,out var v);scene.Shot(v);}
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
             scene.End(dt);Fill(camera);
@@ -212,6 +214,15 @@ namespace ChipArena.UnityConversion
         {
             if(index>=packHidden.Length)Array.Resize(ref packHidden,Math.Max(index+1,packHidden.Length*2));
             for(int i=packHiddenCount;i<index;i++)packHidden[i]=false;packHidden[index]=true;packHiddenCount=index+1;
+        }
+        // The chip modules of a gun round, drawn NativeTracers.ModuleShare of their size about the round, on a machine gun's full tracers and
+        // at most NativeTracers.ModuleRounds rounds a frame: a stream stays a stream under any stack (the sheath carries the chip on the others).
+        private void TracerParts(int from,in NativeShotView v)
+        {
+            var draws=scene.Draws;if(draws.Count<=from)return;
+            if(!NativeTracers.Modules(v.Spec,v.Id)||tracerModuleRounds>=NativeTracers.ModuleRounds){for(int i=from;i<draws.Count;i++)HidePackHead(i);return;}
+            tracerModuleRounds++;float k=NativeTracers.ModuleShare,px=(float)v.X,py=(float)v.Y,pz=(float)v.Z;
+            for(int i=from;i<draws.Count;i++){var d=draws[i];var m=d.M;m.M00*=k;m.M01*=k;m.M02*=k;m.M10*=k;m.M11*=k;m.M12*=k;m.M20*=k;m.M21*=k;m.M22*=k;m.M03=px+(m.M03-px)*k;m.M13=py+(m.M13-py)*k;m.M23=pz+(m.M23-pz)*k;d.M=m;draws[i]=d;}
         }
         private void Fill(Camera camera)
         {

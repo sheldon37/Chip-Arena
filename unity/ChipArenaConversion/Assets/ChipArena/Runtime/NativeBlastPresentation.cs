@@ -203,8 +203,8 @@ namespace ChipArena.UnityConversion
                 if(color==0&&e.Kind==EventKind.Break&&source?.Seat.spec!="siren")color=NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail);
                 else if(color==0&&e.Kind==EventKind.Impact&&!NativeImpactCues.AddEvent(e.Detail)){var w=NativeShotViews.Weapon(arena,source?.Seat.spec);if(w!=null)color=(int)w.color;}
                 var cue=new NativeImpactEvent{Kind=e.Kind,Detail=e.Detail,Position=e.Position,From=e.From,Amount=e.Amount,Radius=e.Radius,Color=color,TargetPilot=target!=null,Trails=Trails,HasTarget=target!=null,Target=target!=null?NativeArena.Vec(target.Body.position):default};
-                bool gunRound=GunRounds&&e.Kind==EventKind.Impact&&string.IsNullOrEmpty(e.Detail)&&!string.IsNullOrEmpty(e.SurfaceId)&&NativeRoundImpacts.Gun(source?.Seat.spec)!=NativeRoundImpact.None;
-                int count=gunRound?0:NativeImpactCues.Plan(cue,plan);Run(count,quality);
+                bool gunRound=GunRounds&&string.IsNullOrEmpty(e.Detail)&&(e.Kind==EventKind.Ricochet||e.Kind==EventKind.Split||e.Kind==EventKind.Impact&&!string.IsNullOrEmpty(e.SurfaceId))&&NativeRoundImpacts.Gun(source?.Seat.spec)!=NativeRoundImpact.None;
+                if(!gunRound){int count=NativeImpactCues.Plan(cue,plan);Run(count,quality);}
                 if(e.Kind!=EventKind.Impact||e.Source<=0||NativeImpactCues.AddEvent(e.Detail))continue;
                 double x=e.Position.x,y=e.Position.y,z=e.Position.z;
                 NativeSeat seat=null;foreach(var s in arena.Match.Seats)if(s.id==e.Source){seat=s;break;}if(seat==null)continue;

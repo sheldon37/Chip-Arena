@@ -62,6 +62,8 @@ namespace ChipArena.UnityConversion
             Check(NativeTracers.Tint(new NativeShotModules{Homing=1},true,false,out var flame)&&flame.R>flame.B,"an element first");
             // A slower round is heavier, a faster one finer.
             Check(Gun("pistol",speed:30,baseSpeed:60).Core>pistol.Core&&Gun("pistol",speed:120,baseSpeed:60).Core<pistol.Core,"speed changes the weight");
+            Check(NativeTracers.Modules("machinegun",3)&&!NativeTracers.Modules("machinegun",4)&&NativeTracers.Modules("pistol",4)&&NativeTracers.ModuleShare<.5f,"chip modules small, on a belt's full tracers only");
+            Check(NativeTracers.OwnFade>.5f,"the first-person tail stays in the shader's tracer mode");
             // Tiers.
             var r=Gun("rifle",speed:150,baseSpeed:150,q:.3f);Check(r.Sheath==0&&r.LingerLife==0&&r.HeadSize==0&&r.Core>0,"Reduced effects: the line alone");
             var l=Gun("machinegun",round:4,low:true);Check(l.Sheath==0&&l.HeadSize==0,"the low tier: no extras on the thin rounds");
@@ -127,7 +129,9 @@ namespace ChipArena.UnityConversion
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
             string run=R("Runtime/NativeTracerPresentation.cs"),wfx=R("Runtime/NativeWeaponFxPresentation.cs"),shots=R("Runtime/NativeShotPresentation.cs"),glow=R("Runtime/NativeCombatGlow.cs"),core=R("Core/NativeTracers.cs"),fx=R("Resources/NativeWeaponFx.shader");
             Check(wfx.Contains("RoundFx(draw,arena,b,v,now,q,low,trails,eye);")&&wfx.Contains("!RoundSpent(draw,arena,pair.Value,eye,now,q,low,trails)")&&wfx.Contains("RoundMarksDraw(draw,now,q,low);"),"WeaponFx draws the rounds, their ends and their landings");
-            Check(shots.Contains("else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first)HidePackHead(first);"),"a gun round's box is skipped; the scene and its chip modules stay");
+            Check(shots.Contains("else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first){HidePackHead(first);"),"a gun round's box is skipped; the scene and its chip modules stay");
+            // The launch's trace back allows the step a round takes in the tick it is born: rounds of any speed leave the drawn muzzle.
+            Check(shots.Contains("a1=a+NativeShotLaunch.Tick")&&Near(NativeShotLaunch.Tick,1/60.0,1e-9),"a round's first step does not cost it its muzzle");
             Check(glow.Contains("NoHalo=round||MagicLooks&&NativeMagicFx.Owns(v)")&&glow.Contains("Traced=!round&&NativeShotRules.HasTrail(v)"),"no halo or ribbon on a gun round or an arrow");
             Check(fx.Contains("shape=w>0.5?FxTracer(uv,w):FxRibbon(uv);")&&fx.IndexOf("float2 FxTracer(",StringComparison.Ordinal)>fx.IndexOf("WEAPON FX SHARED END",StringComparison.Ordinal),"the needle in the ribbon's mode, outside the shared block");
             foreach(string banned in new[]{".Hp=","Damage(","Events.Add(",".Position=",".Velocity=","Bullets.Remove","Bullets.Add"})Check(!run.Contains(banned),"the presentation writes nothing of the match ("+banned+")");

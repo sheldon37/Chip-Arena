@@ -210,7 +210,8 @@ namespace ChipArena.UnityConversion
             {
                 if(!NativeMuzzleFx.Petal(look,seed,k,age,out float roll,out float length,out float width,out float alpha))continue;
                 Vector3 radial=x*Mathf.Cos(roll)+y*Mathf.Sin(roll),tangent=Vector3.Cross(z,radial);Vector3 along=(radial*Mathf.Cos(tilt)+z*Mathf.Sin(tilt)).normalized;
-                Vector3 pivot=crown+z*(.008f*size),tip=pivot+along*(length*size),half=tangent*(width*.5f*size);
+                // First person the star is smaller still: it sits by the crosshair, and the shot must stay visible through it.
+                float petal=first?ViewPetal:1;Vector3 pivot=crown+z*(.008f*size),tip=pivot+along*(length*size*petal),half=tangent*(width*.5f*size*petal);
                 draw.Quad(first,pivot-half,tip-half,tip+half,pivot+half,new Vector2(0,-1),new Vector2(1,-1),new Vector2(1,1),new Vector2(0,1),Lin(NativeMuzzleFx.PetalColor,petalGain*alpha),NativeWeaponFxDraw.Petal,0);
             }
             // The device's open vents (the compensator's top ports, the brake's side and top ports, the hider's slots).
@@ -251,6 +252,7 @@ namespace ChipArena.UnityConversion
                 draw.Wisp(first,crown+(x*local.X+y*local.Y+z*local.Z)*size+Vector3.up*(rise*size),new Color(.62f*cover,.64f*cover,.7f*cover,cover),wispSize*size,(float)NativeWeaponFx.Hash(seed,80+k)*10,(float)NativeWeaponFx.Hash(seed,90+k)*6.28f);
             }
         }
+        private const float ViewPetal=.8f;
         // With the pack flash the procedural fireball is the burst's soft halo.
         private const float SheetFireball=.5f;
         // A point of the source weapon frame (+x the gun's left) relative to the crown at z `crownZ`, in the world.
@@ -301,11 +303,11 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// A tracer needle along a drawn path (points head first, along: each point's metres from the head; NativeTracerPath.Walk): world
         /// quads turned to the eye through the path's bends, width metres wide but no thinner than minPixels (pixel: a pixel's height at
-        /// 1 m), tail: its fall-off along the path (at least 1).
+        /// 1 m), tail: its fall-off along the path.
         /// </summary>
         public static void Needle(NativeWeaponFxDraw draw,Vector3[] p,float[] along,int n,Vector3 eye,float pixel,Color color,float width,float minPixels,float tail)
         {
-            float total=along[n-1];if(!(total>1e-3f)||n>needleSide.Length)return;color.a=0;tail=Math.Max(1,tail);
+            float total=along[n-1];if(!(total>1e-3f)||n>needleSide.Length)return;color.a=0;tail=Math.Max(NativeTracers.OwnFade,tail);
             for(int i=0;i<n;i++)
             {
                 Vector3 t=i==0?p[0]-p[1]:i==n-1?p[n-2]-p[n-1]:p[i-1]-p[i+1],toEye=eye-p[i],s=Vector3.Cross(t,toEye);float m=s.sqrMagnitude;
