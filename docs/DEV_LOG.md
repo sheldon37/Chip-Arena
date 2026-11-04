@@ -43,7 +43,9 @@
   preview. The contract's recoveries (`RecoverUntil`) and the moves that travel are the rules' to implement.
 - **Local bank:** `ChipArenaVisualMotion.bytes` gained the techniques' clips, so the Drive zip needs the new bank for the build to show the
   poses; without it the game's pose carries on.
-- **Checks:** CHECKS_PLACEHOLDER
+- **Checks:** full `CoreTests` in a clean LF worktree on `d0cb2334`: passed (exit 0, 948 groups), with the new `--techniques` (each cast's record, its effects whole,
+  deterministic, gone after, thinned on Reduced). PC (BoZo, Cybercity, slow motion from the game's camera): all twelve, two rounds of fixes. Not run: any of it with the
+  rules, in first person, in a crowd, on a guest, a Windows build's Dev Sandbox.
 - **Next:** Astra: the simulation (contract in the doc). Then the owner plays them; the preview does not move the pilot, so the leap, the grapple's
   pull, the swap and the recall have only been seen as effects.
 
