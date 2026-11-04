@@ -1465,9 +1465,9 @@ def main():
             objs = build()
             if ratio < 1:
                 for ob in objs:
-                    # a small solid (a hub, a bolt ring) collapses into spikes: each object keeps at least its 160 faces
+                    # a small solid (a hub, a bolt ring) collapses into spikes: each object keeps at least its 70 faces
                     faces = len(ob.data.polygons)
-                    keep = max(ratio, min(1.0, 160 / max(1, faces)))
+                    keep = max(ratio, min(1.0, 70 / max(1, faces)))
                     if keep < 1:
                         m = ob.modifiers.new('decimate', 'DECIMATE')
                         m.ratio = keep
