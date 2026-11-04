@@ -1,3 +1,16 @@
+## 2026-11-04 — Claude: chip, recruit and mending machines in the generated instances
+
+- **Owner request:** "lets add machines to new expedition instances (chip machine, recruit machine, mending machine)".
+- **Branch/base:** `claude/instance-machines`, base shared `a395de04`, merged with shared `87a1bd21`. Merged into shared; see the merge commit. Record and review list: `docs/EXPEDITION-INSTANCE-MACHINES.md`.
+- **What it is:** Ward Zero, Central Station and City Ironworks already had machines; the two newest instances, the Backrooms (Level 0) and the Poolrooms, had none. Each now rolls four along the way from the door: chip at about a quarter, recruit at about half, mending at about two thirds, a second chip near the end. Each stands against a real wall, with its own dressing: a damp carpet patch, a flickering tube and a taped note in Level 0; a rubber mat, a clean tube, a wet-floor sign and puddles in the Poolrooms.
+- **Split:** placement and presentation. No rule changed: a machine on an area's `machines` list is built and served as the authored ones are, at the same prices. The generator touches are additive and listed for Astra's review in that doc: the `Machines` picks, the `machines` list on both areas, no spawn anchor in a machine's cell, a Poolrooms machine's cell off the navigation (only where the level's real nav still reaches every other node), and both `Identity` strings.
+- **Affected systems:** `Core/NativeInstanceMachines.cs`, `Core/NativeInstanceMachineDress.cs` (new); `NativeBackroomsGenerator`, `NativePoolroomsGenerator`, `NativeBackroomsExpedition`, `NativePoolroomsExpedition`, `NativeBackroomsKinds`; `Runtime/NativeMachineModels`, `NativeMachinePresentation`. Layout identity changes, so a mismatched build refuses as for any layout change.
+- **Animation impact:** none. Hit timing, hitboxes, damage, cooldowns and movement unchanged. New collision: the machines' existing hidden block, in these two maps.
+- **Checks run:** `CoreTests --instance-machines`, 24 seeds of each level, about 339k checks; the full CoreTests in a clean LF worktree at `d57c3b84`, 956 PASS groups, exit 0; pin scan 0 broken; `git diff --check` clean. Reviewed in the Unity Editor from the game's camera on the merged commit: all three kinds in both levels on seed 5, with the real generated map and content bound.
+- **Not run:** a purchase, a recruit or a heal inside these two levels with a real director and two clients (the path is the authored machines'); native Windows play; a controller. One seed was looked at in Unity; the other seeds have the managed placement checks only.
+- **Risks:** the Poolrooms' nav loses up to four nodes; the checks hold that every remaining node and spawn anchor still reaches the party, but enemy routing round a mat was not watched in a live fight.
+- **Next:** Astra reviews the generator touches.
+
 ## 2026-11-04 — Claude: the City Ironworks' five kinds on real models
 
 - **Owner request:** "for the unique enemies in the expedition maps; Lets rework their models (They still use voxel models) which will probably need fixes on their animations". This is the Ironworks half; Central Station is `claude/station-enemies`. THE CONVERTER follows in its own merge (its route is in this one, but its parts are not in the zip yet, so this build still draws the code sculpt).

@@ -16,7 +16,7 @@ Each stands with its back to a real wall (never an open doorway, a short wall or
 | --- | --- | --- |
 | Cell | 3.2 m | 2 m |
 | Its collider | .9 m deep against the wall, leaving the cell's centre (its nav node) 0.61 m clear | Reaches past the cell's centre, so the cell comes off the navigation |
-| Extra rule | A dead-end-free spot: cells with two links score slightly worse | A deck corner (a wall on a side too), deck in front, and only if every other cell is still reached without it |
+| Extra rule | Prefers a dead end or a room's edge, out of the way of a running fight: a plain two-link corridor scores slightly worse | A deck corner (a wall on a side too), deck in front, and only where the level's real nav still reaches every other node without it |
 
 ## What this changes in the simulation (for Astra to review)
 
@@ -43,4 +43,4 @@ None. Hit timing, hitboxes, damage, cooldowns and movement are unchanged. New co
 
 ## Not verified
 
-The chip's whole purchase, the recruit and the heal running inside these two levels with a real director and two clients: the path is the authored machines', and native and Windows play were not run here. The look was reviewed in Unity with the level's real generated map and content bound, not in a full run.
+A purchase, a recruit and a heal inside these two levels with a real director and two clients: the path is the authored machines', and native Windows play and a controller were not run here. The look was reviewed in the Unity Editor from the game's camera, with the level's real generated map and content bound, for all three kinds in both levels on one seed (seed 5), not in a full run. Other seeds have the managed placement checks only. Enemy routing round a Poolrooms mat was not watched in a live fight.
