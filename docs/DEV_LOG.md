@@ -6,7 +6,7 @@
   shakes the card and plays `ui.error`; Reduced effects drops the shake (`Runtime/NativeFightHud.cs`, `NativeTechniques.Card`, `RefusalState`, `RefusalLine`).
 - **Astra, please:** fill `NativeArena.TechniqueRefusal`, an empty stub in `Runtime/NativeWeaponTechniques.cs`, from `TryTechnique`'s own checks and have `TryTechnique` call it (docs/WEAPON-TECHNIQUES.md, "A refused press"). Nothing shows until then. Please sync the builder with it; this merge did not, since it changes nothing in play.
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
-- **Checks:** CHECKS_PLACEHOLDER
+- **Checks:** full `CoreTests` in a clean LF checkout of `d7dddad3`: exit 0, 950 PASS groups, with `--techniques` covering the card's refused states. PC (BoZo, Cybercity, against a temporary local copy of the check, not committed): Grapple Line at the sky (the card, the line under the crosshair), Static Recall with a counter in the way. Not run: the real check (Astra's), NO FLOOR (Healing Spring was never refused in practice), a real key press (the tool calls the same check when it presses), hearing the cue, a guest, a Windows build.
 
 ## 2026-11-03 — Claude: weapon techniques in Customize and on the HUD (swap Q or E)
 
