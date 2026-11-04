@@ -63,6 +63,8 @@ namespace ChipArena.UnityConversion
             if(spec==null)return Array.Empty<Def>();if(bySpec.TryGetValue(spec,out var list))return list;var l=new List<Def>();foreach(var d in All)if(d.Spec==spec)l.Add(d);foreach(var d in More)if(d.Spec==spec)l.Add(d);list=l.ToArray();bySpec[spec]=list;return list;
         }
         private static readonly Dictionary<string,Def[]> bySpec=new Dictionary<string,Def[]>();
+        /// <summary>The content row of a technique (null: the rules have none yet).</summary>
+        public static ContentAbility Row(ConversionContent content,string id){if(content?.abilities!=null)foreach(var a in content.abilities)if(a!=null&&a.id==id)return a;return null;}
         /// <summary>Wildfire Run's trail: a Path point this often from Release.</summary>
         public const float PathStep=.125f;
         /// <summary>The Locker card's sentence.</summary>
@@ -123,6 +125,8 @@ namespace ChipArena.UnityConversion
         public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;foreach(var d in More)if(d.Id==id)return d;return null;}
         /// <summary>The technique in this weapon's slot (null: the slot keeps its own ability).</summary>
         public static Def Equipped(string map,string spec,string slot){return NativeTechniqueLoadout.Slot(map,spec)==slot?For(spec):null;}
+        /// <summary>The map with technique `id` in this weapon's slot (null: back to the slot's own ability). A technique holds one slot, so this moves it.</summary>
+        public static string Equip(string map,string spec,string slot,string id){return NativeTechniqueLoadout.With(map,spec,id!=null?slot:"");}
         /// <summary>Who holds the records (null: no active snapshot). Set from the rendered snapshot; the sandbox preview may override it.</summary>
         public static ITechniqueSource Source;
         public static NativeTechnique Of(Actor a)=>a==null||Source==null?null:Source.Of(a.Id);

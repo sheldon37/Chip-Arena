@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         {
             var fx=new NativeTechniqueFx();var scene=new Scene();var src=new One();NativeTechniques.Source=src;
             var a=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(2,.5f,-3)};scene.List.Add(a);
-            foreach(var d in NativeTechniques.All)for(int variant=0;variant<2;variant++)
+            foreach(var d in NativeTechniques.All.Concat(NativeTechniques.More))for(int variant=0;variant<2;variant++)
             {
                 var k=new NativeTechnique();NativeTechniquePreview.Write(k,d.Id,new Vector3(2,.5f,-3),.7f,10,variant==0);src.K=k;a.SourceSpec=d.Spec;string n=d.Id+(variant==0?"":" (second)");
                 Check(k.Valid(),n+": a valid record");Check(k.Kind==d.Id&&k.Release>=k.At&&k.Until>=k.Release&&k.End>=k.Until,n+": its times run forward");Check(NativeTechniquePreview.Period(d.Id)>k.End-k.At,n+": the preview's loop outlasts the cast ("+(k.End-k.At).ToString("0.0")+" s)");
@@ -129,12 +129,12 @@ namespace ChipArena.UnityConversion
         {
             string R(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f)).Replace("\r\n","\n");
             var arena=R("Core/ArenaModel.cs");Check(arena.Contains("NativeTechnique Technique"),"authority technique record on the actor");
-            var hud=R("Runtime/NativeFightHud.cs");Check(!hud.Contains("\"1 · \"")&&hud.Contains("NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)==slot")&&hud.Contains("(slot==\"q\"?p.QReady:p.EReady)-t"),"no third card: a swapped slot takes the technique's card, on that slot's replicated deadline");
+            var hud=R("Runtime/NativeFightHud.cs");Check(!hud.Contains("\"1 · \"")&&hud.Contains("NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,slot)")&&hud.Contains("(slot==\"q\"?p.QReady:p.EReady)-t"),"no third card: a swapped slot takes the technique's card, on that slot's replicated deadline");
             Check(R("Core/NativeTechniqueFx.cs").Contains("var f=hit?-Flat(at,Vector3.UnitZ):Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);"),"the guard faces where the pilot faces: the rules' Dir is the aim until a parry");
             Check(R("Runtime/NativeWeaponTechniques.cs").Contains("public string TechniqueRefusal(NativePilot p,in InputFrame aim)")&&R("Runtime/ConversionGame.cs").Contains("ConvergeAim(p);TechniqueAimCheck(p);")&&hud.Contains("arena.TechniqueRefusal(p,in pending)")&&hud.Contains("t,c.Ready||c.Held)"),"the HUD asks the rules once a frame on the look a press would send, and an aim coming back does not flare the card");
             var nameplates=R("Runtime/NativeCombatHud.cs");Check(nameplates.Contains("arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position,p.Body.position)"),"smoke hides a name from outside the cloud");
             var locker=R("Runtime/NativeLockerUI.cs");Check(locker.Contains("Techniques=prefs.weaponTechniques")&&locker.Contains("b.Techniques!=prefs.weaponTechniques")&&locker.Contains("prefs.weaponTechniques=b.Techniques"),"a swap is part of Save Pilot and Revert");
-            var game=R("Runtime/ConversionGame.cs");Check(game.Contains("NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)!=\"e\"?content.Ability(p.Seat.spec,\"e\")"),"a swapped E draws no field preview");
+            var game=R("Runtime/ConversionGame.cs");Check(game.Contains("NativeTechniques.Equipped(p.Seat.weaponTechniques,p.Seat.spec,\"e\")==null?content.Ability(p.Seat.spec,\"e\")"),"a swapped E draws no field preview");
             var box=R("Runtime/NativeSandbox.cs");Check(box.Contains("case \"gallery-techniques\":presentation.TechniquePreviewOn=!presentation.TechniquePreviewOn;return DevRan;"),"the preview is the Dev Sandbox's");
             var pres=R("Runtime/NativeTechniquePresentation.cs");foreach(var bad in new[]{"arena.Sandbox","SendInput","Damage(","QReady","EReady"})Check(!pres.Contains(bad),"the presentation does not reach "+bad);
         }

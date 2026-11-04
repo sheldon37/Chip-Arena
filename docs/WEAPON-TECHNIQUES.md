@@ -63,7 +63,7 @@ weapon cannot already do. The presentation is built and in the Dev Sandbox; **ru
 
 **More than one technique per weapon.** `NativeTechniqueLoadout` holds one per weapon (`sword:q`). It needs the technique's id: canonical `sword:q=riposte,sword:e=parting-line`, in fixed weapon then slot order. An old `sword:q` still reads as the weapon's first
 technique. A slot holds at most one technique, and a technique at most one slot (picking it moves it). Rifle Q stays the scope. Proposed API: `In(map,spec,slot)` returns the id or "" and `With(map,spec,slot,id)` ("" restores the slot's own ability). Please update the account sanitizer the same way.
-`NativeTechniques.Equipped(map,spec,slot)` is the one place the presentation reads this: change its body to your `In`. `Content.Ability(spec,"technique")` becomes a lookup by id.
+`NativeTechniques.Equipped(map,spec,slot)` and `Equip(map,spec,slot,id)` are the one place the presentation reads and writes this: change their bodies to your `In` and `With`. Both slots can now hold techniques, so `TechniqueRefusal` needs to know which: `TechniqueRefusal(p,slot,in aim)`, and `TechniqueAimCheck` in `Runtime/NativeFightHud.cs` should ask per slot (say so in your PR and Claude will follow, or change it). `Content.Ability(spec,"technique")` becomes a lookup by id.
 `NativeTechniques.More` holds the twelve new rows; move them into `All` and drop `For` when your rules are in, or tell me to. The Locker offers a technique once its content row is `live`.
 
 Records, on the same `NativeTechnique` (one new field: `Path`). Everything is in `Core/NativeTechnique.cs`'s preview `Write`, which is the worked example of each. Fill `TechniqueRefusal` for the new ones where a press can be refused (Tripwire and Sonar Dart: no surface).
