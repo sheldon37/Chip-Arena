@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             }
             return (fallback??first)?.id??current;
         }
-        public static string Description(ContentWeapon w)=>Text(w)+(w!=null&&w.gravity>0?" Projectiles fall; aim higher at range.":"");
+        public static string Description(ContentWeapon w)=>Text(w)+(w!=null&&w.gravity*w.gravityMultiplier>0?" Projectiles fall; aim higher at range.":"");
         // The weapon's description as the menus show it: content's, verbatim, except the DEV Cyber Lord's, whose content still
         // names its v1 kit (NativeCyberLordText.Description: Kit v2, the shipped kit).
         public static string Text(ContentWeapon w)=>w==null?"":w.id==CyberLordSpec.Id?NativeCyberLordText.Description:w.description??"";

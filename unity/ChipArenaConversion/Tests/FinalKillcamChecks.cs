@@ -157,7 +157,7 @@ internal static class FinalKillcamChecks
         Check(Body(replay,"private void ObserveReplay()").Contains("if(ExpeditionReplay)")&&Regex.Matches(replay,@"!ExpeditionReplay\|\|").Count==2,"recording and both spectator candidate paths agree on the active mode");
         Check(!NativeFinalKillcam.FlightCamera(17.99f,10)&&!NativeFinalKillcam.FlightCamera(30,1)&&NativeFinalKillcam.FlightCamera(18,2),"flight camera requires distant recorded projectile");
         Check(NativeFinalKillcam.DeathPullback(-1)==0&&NativeFinalKillcam.DeathPullback(1)==1&&Math.Abs(NativeFinalKillcam.DeathPullback(.325f)-.5f)<.001f,"death pullback bounded smooth blend");
-        Check(R("Runtime/NativeProjectiles.cs").Contains("target.Death.projectile=b.Id")&&final.Contains("shot.Id==death.projectile"),"camera uses exact fatal projectile attribution");
+        Check(R("Runtime/NativeProjectiles.cs").Contains("target.Death.projectile=b.Instant?0:b.Id")&&final.Contains("shot.Id==death.projectile"),"camera follows simulated fatal projectiles and uses victim fallback for instant hits");
         Check(final.Contains("finalProjectile>0&&!finalFlew&&killer!=null&&time<replayDeath")&&final.Contains("Quaternion.Euler(-killer.Pitch,killer.Yaw,0)")&&final.Contains("finalProjectile>0&&FinalWall>=.35f&&time<replayDeath&&replayShots.Sample"),"projectile replay opens on recorded killer aim before flight");
         Check(Body(final,"private void FinalCamera(").Contains("finalCameraAim=Vector3.Lerp(finalFlightAim,focus,blend);offset=eye-focus;finalFov*=blend;"),"slow-motion widening eases back in after the bullet view instead of jumping at the hit");
         Check(NativeFinalKillcam.StartDelay==2,"two-second final delay");

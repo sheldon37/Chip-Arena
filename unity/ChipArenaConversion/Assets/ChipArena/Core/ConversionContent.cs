@@ -9,6 +9,9 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ContentWeapon
     {
         public string id,name,@class,description,secondary; public bool devOnly;
+        // Missing fields preserve legacy simulated shots and their 3 s / 160 m budgets.
+        public string projectileMode;public double gravityMultiplier=1,projectileLifetime,projectileRange,projectileImpactSpeed;
+        public int projectileBounces;public double projectileBounceRetention=1;
         public double damage,interval,speed,gravity,range,impulse,ammo,reload,cost,spread,windup,arc,secondaryCooldown,secondaryCost,color,burn,blast,drain,chain,shotRadius,weight;
     }
     [Serializable] public sealed class ChipEffect { public string stat,op;public double value; }
@@ -62,7 +65,8 @@ namespace ChipArena.UnityConversion
             foreach(var w in weapons)
                 if(weights==null||!weights.Any(x=>x!=null&&x.name==w.id&&!double.IsNaN(x.value)&&!double.IsInfinity(x.value)&&x.value>=0))
                     throw new InvalidOperationException("Missing or invalid weapon weight: "+w.id);
-            var stats=new HashSet<string>(baseStats.Select(x=>x.name));
+            foreach(var w in weapons)NativeProjectileRules.ValidateProfile(w);
+            var stats=new HashSet<string>(baseStats.Select(x=>x.name)){"projectileGravityAdd"};
             foreach(var c in chips)foreach(var e in c.effects)if(!stats.Contains(e.stat)||!new[]{"add","mul","set"}.Contains(e.op)||double.IsNaN(e.value)||double.IsInfinity(e.value))throw new InvalidOperationException("Invalid chip effect "+c.id);
             foreach(var map in maps)
             {
@@ -90,12 +94,17 @@ namespace ChipArena.UnityConversion
         private static double Clamp(double x,double low,double high)=>Math.Max(low,Math.Min(high,x));
         public static ChipStats Stats(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held)
         {
-            var s=new ChipStats(data.baseStats);if(spec=="siren")s["hp"]=15000;if(spec==NativeBombs.Spec){s["hp"]=90;s["speed"]*=.95;}
+            var s=new ChipStats(data.baseStats);s["projectileGravityAdd"]=s.Get("projectileGravityAdd");s["projectileGravityEnabled"]=0;if(spec=="siren")s["hp"]=15000;if(spec==NativeBombs.Spec){s["hp"]=90;s["speed"]*=.95;}
             foreach(var chip in data.chips)
             {
                 int count;held.TryGetValue(chip.id,out count);
                 for(int i=0;i<Math.Min(chip.max,Math.Max(0,count));i++)foreach(var e in chip.effects)
+                {
+                    // Lobber/Meteor and other existing gravity penalties opt straight weapons back
+                    // into their original acceleration; reduction/removal chips still compose normally.
+                    if(e.stat=="projectileGravity"&&(e.op=="mul"&&e.value>1||e.op=="add"&&e.value>0||e.op=="set"&&e.value>1))s["projectileGravityEnabled"]=1;
                     s[e.stat]=Clamp(e.op=="add"?s[e.stat]+e.value:e.op=="mul"?s[e.stat]*e.value:e.value,-1000000,1000000);
+                }
             }
             s["playerGravity"]=Clamp(s["playerGravity"],.1,3);s["jumpPower"]=Clamp(s["jumpPower"],.1,2.5);
             s["extraAirJumps"]=Clamp(Math.Floor(s.Get("extraAirJumps")),0,NativeJumpSimulation.MaxAirJumps);
