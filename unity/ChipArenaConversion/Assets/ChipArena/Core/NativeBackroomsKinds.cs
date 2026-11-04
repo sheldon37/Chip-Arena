@@ -39,11 +39,11 @@ namespace ChipArena.UnityConversion
         private static ExpeditionSpawnLayout Spawn(int i,string label,V3 p,float yaw,params string[] kinds)=>new ExpeditionSpawnLayout{allow=kinds,entry=new PveEntry{e=i,id=label+"-"+i,kind="door",yaw=yaw,from=new PvePoint{x=p.x,y=p.y,z=p.z},@exit=new PvePoint{x=p.x,y=p.y,z=p.z},clear=1,allowed=kinds}};
         public static ExpeditionSpawnLayout[] Anchors(BackroomsGenerated g)
         {
-            var l=g.Layout;var list=new List<ExpeditionSpawnLayout>();
+            var l=g.Layout;var list=new List<ExpeditionSpawnLayout>();var machines=NativeInstanceMachines.Cells(g.Machines);
             foreach(int c in g.Enemies)list.Add(Spawn(list.Count,"br-roam",NativeBackroomsGenerator.Position(l,c),0,"runner","brute","hound"));
             var walls=new List<ExpeditionSpawnLayout>();var darks=new List<ExpeditionSpawnLayout>();for(int c=0;c<l.Floor.Length;c++)
             {
-                if(!NativeBackroomsGenerator.Walkable(l,c))continue;var p=NativeBackroomsGenerator.Position(l,c);if(g.Players.Any(a=>(NativeBackroomsGenerator.Position(l,a)-p).Length<12)||(p-g.Exit).Length<4)continue;
+                if(!NativeBackroomsGenerator.Walkable(l,c)||machines.Contains(c))continue;var p=NativeBackroomsGenerator.Position(l,c);if(g.Players.Any(a=>(NativeBackroomsGenerator.Position(l,a)-p).Length<12)||(p-g.Exit).Length<4)continue;
                 if(Dark(l,p))darks.Add(Spawn(0,"br-dark",p,0,"smiler"));
                 int x=c%l.Width,z=c/l.Width;foreach(var d in new[]{(1,0),(-1,0),(0,1),(0,-1)})if(l.Between(x,z,d.Item1,d.Item2)==BackroomsLayout.Wall)
                 {p+=new V3(d.Item1,0,d.Item2)*(BackroomsLayout.Cell/2-.65f);walls.Add(Spawn(0,"br-wall",p,(float)Math.Atan2(d.Item1,d.Item2),"faceling"));break;}
@@ -58,13 +58,13 @@ namespace ChipArena.UnityConversion
         }
         public static ExpeditionSpawnLayout[] Anchors(PoolroomsGenerated g)
         {
-            var l=g.Layout;var list=new List<ExpeditionSpawnLayout>();
+            var l=g.Layout;var list=new List<ExpeditionSpawnLayout>();var machines=NativeInstanceMachines.Cells(g.Machines);
             foreach(int c in g.Enemies)list.Add(Spawn(list.Count,"pool-roam",NativePoolroomsGenerator.Position(l,c),0,"runner","spitter","brute"));
             // Interleave anchor types so the bounded list cannot fill with one terrain class.
             var deep=new List<ExpeditionSpawnLayout>();var tiles=new List<ExpeditionSpawnLayout>();var guards=new List<ExpeditionSpawnLayout>();
             for(int c=0;c<l.Floor.Length;c++)
             {
-                var p=NativePoolroomsGenerator.Position(l,c);if(g.Players.Any(a=>(NativePoolroomsGenerator.Position(l,a)-p).Length<12)||(p-g.Exit).Length<4)continue;
+                var p=NativePoolroomsGenerator.Position(l,c);if(machines.Contains(c)||g.Players.Any(a=>(NativePoolroomsGenerator.Position(l,a)-p).Length<12)||(p-g.Exit).Length<4)continue;
                 int x=c%l.Width,z=c/l.Width;
                 if(l.Floor[c]==PoolroomsLayout.Deep)deep.Add(Spawn(0,"pool-deep",p,0,"drowned"));
                 if(l.Floor[c]!=PoolroomsLayout.Deck)continue;

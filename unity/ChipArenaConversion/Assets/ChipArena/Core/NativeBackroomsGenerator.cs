@@ -12,6 +12,8 @@ namespace ChipArena.UnityConversion
         public ContentMap Map;
         public int[] Players,Enemies;
         public string Identity;
+        /// <summary>The instance's machines (none in the PvP arena): NativeInstanceMachines.</summary>
+        public InstanceMachineSpot[] Machines=Array.Empty<InstanceMachineSpot>();
         public V3 Entry=>NativeBackroomsGenerator.Position(Layout,Layout.Index(Layout.EntryX,Layout.EntryZ));
         public V3 Exit=>NativeBackroomsGenerator.Position(Layout,Layout.Index(Layout.ExitX,Layout.ExitZ));
     }
@@ -72,7 +74,7 @@ namespace ChipArena.UnityConversion
             l.Circuits[l.Circuit[entry]]=BackroomsLayout.On;l.Light[entry]=true;
             var players=expedition?Enumerable.Range(0,8).Select(i=>l.Index(1+i%4,1+i/4)).ToArray():Spread(l,8,entry);
             var enemies=Spread(l,24,exit).Where(c=>players.All(p=>(Position(l,p)-Position(l,c)).Length>=12)&&c!=exit).ToArray();
-            var result=new BackroomsGenerated{Layout=l,Players=players,Enemies=enemies};result.Map=Map(result,expedition);result.Identity=Identity(result);return result;
+            var result=new BackroomsGenerated{Layout=l,Players=players,Enemies=enemies};if(expedition)result.Machines=NativeInstanceMachines.Backrooms(l,players,enemies,entry,exit);result.Map=Map(result,expedition);result.Identity=Identity(result);return result;
         }
         private static int[] Spread(BackroomsLayout l,int count,int first)
         {
@@ -123,7 +125,7 @@ namespace ChipArena.UnityConversion
             foreach(var a in new[]{l.Floor,l.Pillar,l.Circuit,l.WallX,l.WallZ,l.Circuits}){s.Append('|');foreach(byte b in a)s.Append((char)('a'+b));}
             s.Append('|');foreach(bool lit in l.Light)s.Append(lit?'1':'0');
             foreach(var a in new[]{g.Players,g.Enemies}){s.Append('|');foreach(int c in a)s.Append(c.ToString(CultureInfo.InvariantCulture)).Append(',');}
-            s.Append('|').Append(l.ExitX).Append('|').Append(l.ExitZ);return NativeMapRules.Revision(s.ToString());
+            s.Append('|').Append(l.ExitX).Append('|').Append(l.ExitZ);foreach(var m in g.Machines)s.Append('|').Append(m.Kind).Append(m.Cell.ToString(CultureInfo.InvariantCulture)).Append(':').Append(m.Dx.ToString(CultureInfo.InvariantCulture)).Append(':').Append(m.Dz.ToString(CultureInfo.InvariantCulture));return NativeMapRules.Revision(s.ToString());
         }
     }
 }

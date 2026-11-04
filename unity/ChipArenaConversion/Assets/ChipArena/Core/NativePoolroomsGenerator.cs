@@ -8,6 +8,8 @@ namespace ChipArena.UnityConversion
     public sealed class PoolroomsGenerated
     {
         public PoolroomsLayout Layout;public ContentMap Map;public int[] Players,Enemies;public int ExitCell;public string Identity;
+        /// <summary>The instance's machines (none in the PvP arena): NativeInstanceMachines. Each takes its cell off the navigation.</summary>
+        public InstanceMachineSpot[] Machines=Array.Empty<InstanceMachineSpot>();
         public V3 Entry=>NativePoolroomsGenerator.Position(Layout,Players[0]);
         public V3 Exit=>NativePoolroomsGenerator.Position(Layout,ExitCell);
     }
@@ -32,13 +34,14 @@ namespace ChipArena.UnityConversion
             while(players.Count<8){int c=expedition?decks.Where(n=>!players.Contains(n)).OrderBy(n=>reach[n]).ThenBy(n=>n).First():decks.Where(n=>!players.Contains(n)).OrderByDescending(n=>best[n]).ThenBy(n=>n).First();players.Add(c);var d=Distances(l,c);for(int i=0;i<best.Length;i++)best[i]=Math.Min(best[i],d[i]);}
             int exit=decks.OrderByDescending(c=>reach[c]).ThenBy(c=>c).First();
             var enemies=decks.Where(c=>c!=exit&&players.All(p=>(Position(l,p)-Position(l,c)).Length>=12)).OrderByDescending(c=>reach[c]).Where((c,i)=>i%4==0).Take(32).ToArray();
-            var g=new PoolroomsGenerated{Layout=l,Players=players.ToArray(),Enemies=enemies,ExitCell=exit};g.Map=Map(g,expedition);
+            var g=new PoolroomsGenerated{Layout=l,Players=players.ToArray(),Enemies=enemies,ExitCell=exit};g.Map=Map(g,expedition);if(expedition){g.Machines=NativeInstanceMachines.Poolrooms(l,g.Players,enemies,entry,exit,g.Map.nav);g.Map=Map(g,expedition);}
             var s=new StringBuilder(Version).Append('|').Append(seed.ToString(CultureInfo.InvariantCulture)).Append('|').Append(size.ToString(CultureInfo.InvariantCulture));
             foreach(var a in new[]{l.Floor,l.StepDir,l.WallX,l.WallZ}){s.Append('|');foreach(byte b in a)s.Append((char)('a'+b));}
             foreach(float h in l.Ceiling)s.Append('|').Append(h.ToString("R",CultureInfo.InvariantCulture));
             foreach(int room in l.Room)s.Append('|').Append(room.ToString(CultureInfo.InvariantCulture));
             foreach(bool light in l.Light)s.Append(light?'1':'0');
             foreach(int c in g.Players.Concat(g.Enemies).Concat(new[]{exit}))s.Append('|').Append(c.ToString(CultureInfo.InvariantCulture));
+            foreach(var m in g.Machines)s.Append('|').Append(m.Kind).Append(m.Cell.ToString(CultureInfo.InvariantCulture)).Append(':').Append(m.Dx.ToString(CultureInfo.InvariantCulture)).Append(':').Append(m.Dz.ToString(CultureInfo.InvariantCulture));
             g.Identity=NativeMapRules.Revision(s.ToString());return g;
         }
         // Deck-only reachability certifies spawn/exit routes independently of water access.
@@ -89,8 +92,9 @@ namespace ChipArena.UnityConversion
             // concave ramp/floor seam with a flat-floor capsule embedded in the slope.
             V3 Point(int c,int k){var p=Position(l,c);if(l.Floor[c]!=PoolroomsLayout.Steps)return p;byte d=l.StepDir[c];float along=k==3?1.85f:k*.5f+.25f,t=(d==1||d==3)?2-along:along;return new V3(c%l.Width*2+(d<2?t:1),-along*PoolroomsLayout.DeepDepth/2,c/l.Width*2+(d<2?1:t));}
             void Link(int c,int k,int n,int j){var a=Point(c,k);var b=Point(n,j);if(Math.Abs(a.y-b.y)>.401f)return;links.Add(new MapNavLink{id=Key(c,k)+"/"+Key(n,j),a=Key(c,k),b=Key(n,j)});}
-            for(int c=0;c<l.Floor.Length;c++){int count=l.Floor[c]==PoolroomsLayout.Steps?4:1;for(int k=0;k<count;k++){nodes.Add(new MapNavNode{id=Key(c,k),pos=Point(c,k)+new V3(0,.85f,0)});if(k>0)Link(c,k-1,c,k);}
-                foreach(var v in Directions.Take(2)){int x=c%l.Width,z=c/l.Width;if(ReturnEdge(x,z,v.x,v.z)||!l.Passable(x,z,v.x,v.z))continue;int n=l.Index(x+v.x,z+v.z);int nc=l.Floor[n]==PoolroomsLayout.Steps?4:1;for(int k=0;k<count;k++)for(int j=0;j<nc;j++){bool End(int cell,int tread,int dx,int dz){if(l.Floor[cell]!=PoolroomsLayout.Steps)return true;byte dir=l.StepDir[cell];int ax=dir==0?1:dir==1?-1:0,az=dir==2?1:dir==3?-1:0;return (dx==ax&&dz==az&&tread==3)||(dx==-ax&&dz==-az&&tread==0);}if(!End(c,k,v.x,v.z)||!End(n,j,-v.x,-v.z))continue;Link(c,k,n,j);}}
+            var machineCells=NativeInstanceMachines.Cells(g.Machines);
+            for(int c=0;c<l.Floor.Length;c++){if(machineCells.Contains(c))continue;int count=l.Floor[c]==PoolroomsLayout.Steps?4:1;for(int k=0;k<count;k++){nodes.Add(new MapNavNode{id=Key(c,k),pos=Point(c,k)+new V3(0,.85f,0)});if(k>0)Link(c,k-1,c,k);}
+                foreach(var v in Directions.Take(2)){int x=c%l.Width,z=c/l.Width;if(ReturnEdge(x,z,v.x,v.z)||!l.Passable(x,z,v.x,v.z))continue;int n=l.Index(x+v.x,z+v.z);if(machineCells.Contains(n))continue;int nc=l.Floor[n]==PoolroomsLayout.Steps?4:1;for(int k=0;k<count;k++)for(int j=0;j<nc;j++){bool End(int cell,int tread,int dx,int dz){if(l.Floor[cell]!=PoolroomsLayout.Steps)return true;byte dir=l.StepDir[cell];int ax=dir==0?1:dir==1?-1:0,az=dir==2?1:dir==3?-1:0;return (dx==ax&&dz==az&&tread==3)||(dx==-ax&&dz==-az&&tread==0);}if(!End(c,k,v.x,v.z)||!End(n,j,-v.x,-v.z))continue;Link(c,k,n,j);}}
             }
             MapSpawn Spawn(int c)=>new MapSpawn{pos=Position(l,c)+new V3(0,.85f,0)};
             return new ContentMap{id=id,name="Poolrooms",tag="Generated pools",theme="poolrooms",look="training-studio",unity=true,rotation=!expedition,sky=0xc8dddd,floor=0xc8dddd,accent=0x73c8cd,
