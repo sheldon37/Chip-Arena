@@ -289,11 +289,11 @@ namespace ChipArena.UnityConversion
             V("rigger-male-a",RiggerKind,false,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x2B3036,0x2B3036,0x1E1A16,0x1E1712},0x737671,
                 Body(40,0,30,0,10,25,0,0,0,65,70),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.62f,.22f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-l,forearm-r",blood:.06f),
             V("rigger-male-b",RiggerKind,false,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3A3A32,0x3A3A32,0x1E1A16,0x1E1712},0x6C706B,
-                Body(45,5,25,0,10,30,0,0,0,75,65),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"ribs-r,shin-l",blood:.06f),
+                Body(45,5,25,0,10,30,0,0,0,75,65),new Build{Arm=.9f,Forearm=.88f,Thigh=.92f,Calf=.9f,Hand=1.08f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-l,shin-l",blood:.06f),
             V("rigger-female-a",RiggerKind,true,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x2B3036,0x2B3036,0x1E1A16,0x1E1712},0x767974,
                 Body(-10,0,25,0,20,15,5,5,0,60,70),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.62f,.22f,.42f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-r,forearm-l",blood:.06f),
             V("rigger-female-b",RiggerKind,true,None,"z-coveralls|z-work-shirt|tee","z-cargo-pants|baggy-pants","gloves","work-boots",new[]{Keep,0x3A3A32,0x3A3A32,0x1E1A16,0x1E1712},0x6F736E,
-                Body(-5,5,20,0,20,20,5,5,0,70,65),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"ribs-l,shin-r",blood:.06f),
+                Body(-5,5,20,0,20,20,5,5,0,70,65),new Build{Arm=.88f,Forearm=.86f,Thigh=.92f,Calf=.9f,Hand=1.06f},.66f,.26f,.45f,false,NativeIronworksKinds.ColdWhite,decay:"cheek-r,shin-r",blood:.06f),
         };
 
         // The zone kinds' kit (docs/EXPEDITION-ENEMY-REWORK.md section 2: their signature gear modelled in Blender):
@@ -338,7 +338,7 @@ namespace ChipArena.UnityConversion
         {
             string fit=v.Female?"-f":"";
             if(v.Kind==CinderlingKind){v.Char=1;v.Gear=new[]{"cinder-ribs"+fit,b?"cinder-cap":"cinder-skull","cinder-rags"};}
-            else if(v.Kind==StokerKind){v.Foil=1;v.Faceless=true;v.Upright=.3f;v.Garments=new[]{TrenchGarment};v.GarmentColours=new[]{b?0x8A8880:0x96948C};v.Gear=new[]{b?"stoker-hood-dome":"stoker-hood","stoker-cape"+fit,"stoker-pack"+fit,"stoker-gauntlet-l","stoker-gauntlet-r"};}
+            else if(v.Kind==StokerKind){v.Foil=1;v.Faceless=true;v.Upright=.3f;v.Lift=1.5f;v.Garments=new[]{TrenchGarment};v.GarmentColours=new[]{b?0x8A8880:0x96948C};v.Gear=new[]{b?"stoker-hood-dome":"stoker-hood","stoker-cape"+fit,"stoker-pack"+fit,"stoker-gauntlet-l","stoker-gauntlet-r"};}
             else if(v.Kind==SlagbackKind){v.Char=.4f;v.Crust=true;v.Gear=new[]{"slag-chest"+fit,"slag-back"+fit,"slag-fissure"+fit,"slag-head","slag-pelvis","slag-shoulder-l","slag-shoulder-r","slag-arm-l","slag-arm-r","slag-forearm-l","slag-forearm-r","slag-thigh-l","slag-thigh-r"};}
             else if(v.Kind==LadlemanKind){v.Garments=new[]{ApronGarment};v.GarmentColours=new[]{b?0x4E3220:0x5E3D25};v.Gear=new[]{"ladle-hood","ladle-mask","ladle-gauntlet-l","ladle-gauntlet-r","ladle-spat-l","ladle-spat-r"};}
             else if(v.Kind==RiggerKind){v.Garments=new[]{CoverallsGarment};v.GarmentColours=new[]{-1};v.Gear=new[]{b?"rigger-hat-worn":"rigger-hat","rigger-harness"+fit,"rigger-coil"+fit};}

@@ -1053,11 +1053,11 @@ def cinder_ribs(key):
     tube(pc, rim, .009, 'char', segs=5, closed=True, radii=[.008 + .0045 * abs(math.sin(i * 1.7)) for i in range(22)])
     out.append(pc.make())
     pc = Piece('ribs-coal')
-    rock(pc, c + nc * .02, (.044, .05, .03), along(nc), 'coal-white', 3.3, sub=2, lump=.22)
-    for i in range(5):
-        t = i * 1.257 + .4
-        q = surf.raw(CINDER_A + math.cos(t) * 20, CINDER_Z + math.sin(t) * .05, .014)
-        rock(pc, q, (.018, .02, .014), along(nc), 'coal-hot', 4.1 + i, sub=1, lump=.2)
+    rock(pc, c + nc * .024, (.024, .028, .018), along(nc), 'coal-white', 3.3, sub=2, lump=.22)
+    for i in range(7):
+        t = i * .898 + .4
+        q = surf.raw(CINDER_A + math.cos(t) * 13 * (1 + .25 * (i % 2)), CINDER_Z + math.sin(t) * .036 * (1 + .25 * (i % 2)), .014)
+        rock(pc, q, (.019, .021, .014), along(nc), 'ember' if i % 2 else 'coal-hot', 4.1 + i, sub=1, lump=.2)
     out.append(pc.make())
     # the ribs: bone gone black, crossing the pit from the breastbone, their ends snapped and ember-tipped
     pc = Piece('ribs')
@@ -1071,7 +1071,7 @@ def cinder_ribs(key):
             path.append(surf.raw(a0 + (a1 - a0) * f, z0 + (z1 - z0) * f, .018 + .018 * math.sin(math.pi * f)))
         snap = 6 - (i % 2)
         path = path[:snap + 1]
-        tube(pc, catmull(path, 2), .007, 'char-bone', segs=6, radii=None)
+        tube(pc, catmull(path, 2), .0105, 'char-bone', segs=6, radii=None)
         tips.append(path[-1])
     # the breastbone, charred through
     tube(pc, catmull([surf.raw(6, -.015, .012), surf.raw(7, -.08, .019), surf.raw(6, -.14, .018), surf.raw(4, -.19, .012)], 3), .011, 'char-bone', segs=6)
