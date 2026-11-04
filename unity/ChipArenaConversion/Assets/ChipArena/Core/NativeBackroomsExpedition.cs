@@ -15,6 +15,7 @@ namespace ChipArena.UnityConversion
             return new ExpeditionAreaLayout{id=id,role="instance",map=NativeBackroomsGenerator.InstanceMap,
                 anchors=new[]{anchor,cache},doors=new[]{new ExpeditionDoorLayout{anchor=door,approach=Point(entry),interact=new ExpeditionVolume{x=entry.x,y=1,z=entry.z,sx=2,sy=2,sz=2},closure=new ExpeditionVolume{x=entry.x,y=BackroomsLayout.Height/2,z=entry.z-BackroomsLayout.Cell/2,sx=BackroomsLayout.Doorway,sy=BackroomsLayout.Height,sz=BackroomsLayout.Thickness},entries=slots,returns=Array.Empty<ExpeditionPoint>()}},
                 interactions=new[]{new ExpeditionInteractionLayout{anchor=cache.id,x=exit.x,z=exit.z,range=2.5f}},gates=Array.Empty<ExpeditionGateLayout>(),sanctuary=Array.Empty<ExpeditionVolume>(),slots=Array.Empty<ExpeditionPoint>(),bossPoints=new[]{Point(exit)},
+                machines=NativeInstanceMachines.Machines(id,generated.Machines,c=>NativeBackroomsGenerator.Position(l,c),BackroomsLayout.Cell,BackroomsLayout.Thickness),
                 spawns=NativeBackroomsKinds.Anchors(generated)};
         }
         // Physical evidence comes only from the authority's director, never from a guest command.
