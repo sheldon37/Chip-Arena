@@ -17,7 +17,8 @@ namespace ChipArena.UnityConversion
     [Serializable] public sealed class ExpeditionViewMember
     {
         public AccountXpCompletion xpCompletion;
-        public string account, name, weapon, carriedBy, area, pendingArea;public int reprintCost, seat;public bool reprintFree;
+        public string account, name, weapon, carriedBy, area, pendingArea;public NativeReviveDead death;
+        public int reprintCost, seat;public bool reprintFree;
         public bool connected, alive, safe, extracted, choosing, host, exitVote, extractVote, atJoin;
         // The state is required to distinguish an absent Unity JSON float (0) from a real 0% report.
         public float loadProgress=-1;public string loadState;
@@ -67,6 +68,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionView
     {
+        public ExpeditionMachineRevive machineRevive;public bool revivePermadeath,reviveFree;
         public ExpeditionHubView hub;
         public ExpeditionJoinView[] joins=Array.Empty<ExpeditionJoinView>();
         public ExpeditionCohortTicket areaIdentity;
@@ -185,7 +187,8 @@ namespace ChipArena.UnityConversion
                 difficulty=scaling.Evaluate(s.elapsed,party,s.loop,s.phase==ExpeditionPhase.Instance),
                 savedRevision=sources.Saved!=null&&sources.Saved.checkpoint!=null&&sources.Saved.checkpoint.run==s.run?sources.Saved.checkpoint.revision:-1,
             };
-            v.members=s.members.Select(p=>new ExpeditionViewMember{xpCompletion=p.xpCompletion?.Copy(),account=p.account,area=sources.Cohorts?.Member(p.account)?.Area??s.area,pendingArea=sources.Cohorts?.Member(p.account)?.Pending==null?null:sources.Cohorts.Member(p.account).Ticket.area,atJoin=sources.Joins?.AtJoin(p.account)==true,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintFree=!p.alive&&NativeExpeditionMutators.Has(s.mutators,"second-wind"),reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
+            v.machineRevive=s.machineRevive?.Copy();v.revivePermadeath=NativeExpeditionMutators.Has(s.mutators,"permadeath");v.reviveFree=NativeExpeditionMutators.Has(s.mutators,"second-wind");
+            v.members=s.members.Select(p=>new ExpeditionViewMember{death=p.death?.Copy(),xpCompletion=p.xpCompletion?.Copy(),account=p.account,area=sources.Cohorts?.Member(p.account)?.Area??s.area,pendingArea=sources.Cohorts?.Member(p.account)?.Pending==null?null:sources.Cohorts.Member(p.account).Ticket.area,atJoin=sources.Joins?.AtJoin(p.account)==true,seat=Math.Max(0,sources.Seat?.Invoke(p.account)??0),name=DisplayName(sources.DisplayName?.Invoke(p.account),p.account),weapon=p.weapon,carriedBy=p.carriedBy,reprintFree=!p.alive&&NativeExpeditionMutators.Has(s.mutators,"second-wind"),reprintCost=p.alive?0:Math.Max(0,sources.ReprintCost?.Invoke(p.account)??0),connected=p.connected,alive=p.alive,
                 safe=p.safe,extracted=p.extracted,choosing=run.IsChoosing(p.account),host=p.account==s.host,exitVote=s.exitVotes.Contains(p.account),extractVote=s.extractVotes.Contains(p.account)}).ToArray();
             v.instances=s.instances.Select(i=>new ExpeditionViewInstance{id=i.id,target=i.target,progress=i.progress,entered=i.entered,cleared=i.cleared,
                 current=s.phase==ExpeditionPhase.Instance&&i.id==s.area,bosses=(string[])i.bosses.Clone(),defeated=(string[])i.defeated.Clone()}).ToArray();
@@ -242,7 +245,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static ExpeditionView Normalize(ExpeditionView v)
         {
-            if(v==null)return null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
+            if(v==null)return null;if(v.machineRevive?.spit==null||!v.machineRevive.Valid())v.machineRevive=null;static string N(string s)=>string.IsNullOrEmpty(s)?null:s;
             if(string.IsNullOrEmpty(v.areaIdentity?.run))v.areaIdentity=null;
             v.joins??=Array.Empty<ExpeditionJoinView>();foreach(var j in v.joins)if(j!=null)j.deployedAccounts??=Array.Empty<string>();
             v.closures??=Array.Empty<ExpeditionClosureView>();v.bossArrivals??=Array.Empty<ExpeditionBossArrivalView>();v.areaBarrier??=new ExpeditionAreaBarrierView();v.areaBarrier.target=N(v.areaBarrier.target);v.areaBarrier.layout=N(v.areaBarrier.layout);
@@ -251,7 +254,7 @@ namespace ChipArena.UnityConversion
             v.viewer=N(v.viewer);v.mine??=new ExpeditionViewPersonal();v.transfer??=new ExpeditionViewTransfer();v.difficulty??=new ExpeditionDifficulty();
             v.mine.rewards??=Array.Empty<ExpeditionViewReward>();v.mine.chips??=Array.Empty<ChipCount>();v.mine.perks??=Array.Empty<string>();v.mine.carrying??=Array.Empty<string>();
             v.mine.account=N(v.mine.account);v.mine.carriedBy=N(v.mine.carriedBy);
-            foreach(var m in v.members){m.carriedBy=N(m.carriedBy);m.pendingArea=N(m.pendingArea);m.name=N(m.name)??m.account;
+            foreach(var m in v.members){if(string.IsNullOrEmpty(m.death?.Account))m.death=null;m.carriedBy=N(m.carriedBy);m.pendingArea=N(m.pendingArea);m.name=N(m.name)??m.account;
                 m.loadState=N(m.loadState);if(!ExpeditionLoadReportStore.ValidState(m.loadState))m.loadState=null;
                 if(m.loadState==null||float.IsNaN(m.loadProgress)||float.IsInfinity(m.loadProgress)||m.loadProgress<0||m.loadProgress>1)m.loadProgress=-1;}
             foreach(var a in v.anchors)a.building=N(a.building);

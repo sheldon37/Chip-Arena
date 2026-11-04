@@ -44,3 +44,7 @@ None. Hit timing, hitboxes, damage, cooldowns and movement are unchanged. New co
 ## Not verified
 
 A purchase, a recruit and a heal inside these two levels with a real director and two clients: the path is the authored machines', and native Windows play and a controller were not run here. The look was reviewed in the Unity Editor from the game's camera, with the level's real generated map and content bound, for all three kinds in both levels on one seed (seed 5), not in a full run. Other seeds have the managed placement checks only. Enemy routing round a Poolrooms mat was not watched in a live fight.
+
+### Astra review — 2026-11-04
+
+Reviewed the additive generator changes on current shared. Backrooms spots retain their clear centre navigation; Poolrooms picks remove a deck corner only after the graph proves all other previously reachable nodes remain reachable, including earlier picks. The rebuilt Poolrooms graph excludes both nodes and incident links. Both enemy-anchor generators skip machine cells, and machine picks exclude party/enemy/exit cells. Existing service rules and prices are unchanged. The 24-seed InstanceMachineChecks suite passed 338,967 checks. No generator rule changes were needed.

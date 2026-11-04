@@ -216,11 +216,16 @@ namespace ChipArena.UnityConversion
             "NativeIronworksBossPreview.cs","NativeIronworksBossStage.cs","NativeIronworksBossView.cs","NativeZoneBossNames.cs","NativeIronworksBossPresentation.cs","NativeIronworksBossAudio.cs","NativeIronworksBossLifetime.cs"};
         private static void Unreferenced(string root)
         {
+            // Authority may share only the static rest geometry used by the Foreman hitbox.
+            // Native validation also solves the rig to verify those coordinates independently.
+            var authority=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeZoneBossAuthority.cs"));
+            foreach(System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(authority,@"NativeIronworksBossModel\.(\w+)"))
+                Check(new[]{"StandHeight","PulpitRest","ForemanFeet"}.Contains(m.Groups[1].Value),"authority references only static Foreman geometry");
             string self=Path.Combine(root,"Assets/ChipArena/Core/NativeIronworksBossModel.cs");
             var hits=Directory.EnumerateFiles(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories)
-                .Where(p=>Path.GetFileName(p)!="NativeZoneBossRules.cs"&&TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/")&&Path.GetFullPath(p)!=Path.GetFullPath(self)&&!Presentation.Contains(Path.GetFileName(p)))
+                .Where(p=>Path.GetFileName(p)!="NativeZoneBossRules.cs"&&Path.GetFileName(p)!="NativeZoneBossAuthority.cs"&&Path.GetFileName(p)!="NativeZoneBossValidation.cs"&&TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/")&&Path.GetFullPath(p)!=Path.GetFullPath(self)&&!Presentation.Contains(Path.GetFileName(p)))
                 .Where(p=>{var t=File.ReadAllText(p);return Names.Any(n=>t.Contains(n,StringComparison.Ordinal))||t.Contains(NativeIronworksBoss.Archetype,StringComparison.Ordinal);}).ToArray();
-            Check(hits.Length==0,"nothing under Assets/ but the model and its presentation names the concept or its archetype ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
+            Check(hits.Length==0,"only presentation and the checked authority geometry reference the model or its archetype ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
         }
     }
 }

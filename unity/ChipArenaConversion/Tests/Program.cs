@@ -9,6 +9,8 @@ internal static class Program
         {
             if(args.Length==1&&args[0]=="--projectile-rules"){ProjectileRuleChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0)ProjectileRuleChecks.Run(ProjectRoot());
+            if(args.Length==0||args.Length==1&&args[0]=="--revive-rules")ReviveMachineRuleChecks.Run();
+            if(args.Length==1&&args[0]=="--revive-rules")return 0;
             if(args.Length==1&&args[0]=="--revive-machine"){ReviveMachineChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--instance-machines"){InstanceMachineChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--bomb-rules"){BombRulesChecks.Run(ProjectRoot());return 0;}

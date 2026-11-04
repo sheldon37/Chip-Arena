@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             SendServer(new NativeNetMessage{type="expedition-load-progress",loadProgress=progress});
             expeditionLastProgress=progress;expeditionLastProgressAt=now;
         }
-        public ExpeditionView ExpeditionView{get=>expeditionView;private set{expeditionView=value;NativeExpeditionHubLive.Authority=value?.hub;NativeExpeditionHubLive.AuthorityClock=value?.elapsed??0;}}
+        public ExpeditionView ExpeditionView{get=>expeditionView;private set{expeditionView=value;BindReviveMachineRules(value);NativeExpeditionHubLive.Authority=value?.hub;NativeExpeditionHubLive.AuthorityClock=value?.elapsed??0;}}
         public IExpeditionCommands ExpeditionCommands=>server!=null?(IExpeditionCommands)expeditionGuest:
             expeditionLocal;
 

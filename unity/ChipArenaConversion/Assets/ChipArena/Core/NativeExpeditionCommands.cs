@@ -52,6 +52,7 @@ namespace ChipArena.UnityConversion
         public Func<string,string,ExpeditionCommandResult> Purchase;
         /// <summary>(payer, victim) to the machine cost after proximity/permission checks; below 1 refuses. Remote recovery flag out.</summary>
         public Func<string,string,(int cost,bool remote)> Reprint;
+        public Func<string,string,ExpeditionCommandResult> MachineReprint;
         public const string NoOffers="Chip offers need the content catalog adapter (not connected).";
         public const string NoEligibility="Chip selection needs the catalog eligibility adapter (not connected).";
         public const string NoExtraction="Extraction needs the save-then-publish transaction (not connected).";
@@ -78,7 +79,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.Claim:return hooks.Offers==null?ExpeditionIntegrationHooks.NoOffers:null;
                 case ExpeditionIntent.Select:return hooks.Eligible==null?ExpeditionIntegrationHooks.NoEligibility:null;
                 case ExpeditionIntent.Purchase:return hooks.Purchase==null?"Purchases need the scene proximity adapter (not connected).":null;
-                case ExpeditionIntent.Reprint:return hooks.Reprint==null?ExpeditionIntegrationHooks.NoReprint:null;
+                case ExpeditionIntent.Reprint:return hooks.Reprint==null&&hooks.MachineReprint==null?ExpeditionIntegrationHooks.NoReprint:null;
                 case ExpeditionIntent.None:return "Nothing to send.";
                 default:return null;
             }
@@ -103,7 +104,7 @@ namespace ChipArena.UnityConversion
                 case ExpeditionIntent.CloseChoice:ok=run.SetChoosing(Viewer,false);break;
                 case ExpeditionIntent.Select:{var eligible=hooks.Eligible;ok=run.Select(Viewer,c.target,c.chip,chip=>eligible(Viewer,chip));
                     if(ok)hooks.Installed?.Invoke(Viewer,c.chip,run.Snapshot().members.Single(m=>m.account==Viewer).chips.Single(x=>x.id==c.chip).count);break;}
-                case ExpeditionIntent.Reprint:{var (cost,remote)=hooks.Reprint(Viewer,c.target);ok=cost>=1&&run.Reprint(Viewer,c.target,cost,remote);break;}
+                case ExpeditionIntent.Reprint:{if(hooks.MachineReprint!=null)return hooks.MachineReprint(Viewer,c.target);var (cost,remote)=hooks.Reprint(Viewer,c.target);ok=cost>=1&&run.Reprint(Viewer,c.target,cost,remote);break;}
                 default:return ExpeditionCommandResult.Of(ExpeditionCommandState.Unavailable,"Unknown intent.");
             }
             return ok?ExpeditionCommandResult.Sent:ExpeditionCommandResult.Of(ExpeditionCommandState.Refused,Refused);

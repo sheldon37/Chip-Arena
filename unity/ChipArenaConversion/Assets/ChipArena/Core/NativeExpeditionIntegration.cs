@@ -92,9 +92,10 @@ namespace ChipArena.UnityConversion
             return NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,r.id.Contains("drop:rain-")?1:3,
                 c=>r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="unique").ToArray();
         }
+        public Func<string,string,ExpeditionCommandResult> MachineReprint;
         public ExpeditionIntegrationHooks Hooks()=>new ExpeditionIntegrationHooks
         {
-            Offers=Offers,Eligible=Eligible,Extract=Extract,Purchase=Purchase,Installed=(account,chip,count)=>Installed?.Invoke(account,chip,count),
+            MachineReprint=MachineReprint,Offers=Offers,Eligible=Eligible,Extract=Extract,Purchase=Purchase,Installed=(account,chip,count)=>Installed?.Invoke(account,chip,count),
             Reprint=(payer,target)=>{var e=ReprintEvidence?.Invoke(payer,target);return e?.Valid==true?(e.cost,e.remote):(0,false);}
         };
         public ExpeditionCommandResult Execute(string account,ExpeditionCommand command)=>new ExpeditionHostCommands(Run,account,Hooks()).Send(command);
