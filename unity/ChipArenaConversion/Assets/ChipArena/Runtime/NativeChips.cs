@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         }
         private float ChipBlast(NativePilot owner,Vector3 at,float radius,float damage,float impulse,bool props=true,string effect="chip")
         {
-            if(owner==null)return 0;float total=0;Emit(EventKind.Explosion,owner,0,at,damage,effect,radius);Fx(at,radius,owner.Pose.MagicVisual);
+            if(owner==null)return 0;TechniqueBlastObjects(owner,at,radius,damage);float total=0;Emit(EventKind.Explosion,owner,0,at,damage,effect,radius);Fx(at,radius,owner.Pose.MagicVisual);
             foreach(var target in NativeSnapshots.Capture(Pilots))
             {Vector3 delta=target.Body.position-at;float fall=NativeProjectileRules.Falloff(delta.magnitude,radius);if(target.Hp<=0||!CanHit(owner,target)||fall<=0||HubCross(at,target.Body.position)||!MeleeVisible(at+delta.normalized*.1f,target.Body.position,owner,target.Collider))continue;total+=Damage(target,owner,damage*fall,delta.normalized,impulse*fall,false,direct:false,primary:false,damageKind:"blast");}
             foreach(var m in NativeSnapshots.Capture(Minions)){Vector3 d=m.Body.position-at;float f=NativeProjectileRules.Falloff(d.magnitude,radius);if(f>0&&CanHit(owner,m)&&!HubCross(at,m.Body.position)&&MeleeVisible(at,m.Body.position,owner,m.Collider))total+=HitMinion(m,owner,damage,d.normalized,impulse*f,at,"blast",radius,from:at);}

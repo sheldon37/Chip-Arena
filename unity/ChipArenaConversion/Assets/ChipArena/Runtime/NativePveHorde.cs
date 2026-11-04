@@ -138,10 +138,10 @@ namespace ChipArena.UnityConversion
                 Vector3 at=m.Body.position,navAt=Vec(NativeNavSearch.BodyAnchor(Vec(at),m.Collider.height/2));var target=a.Target;
                 bool roaming=HubOn&&hubMobs.ContainsKey(m.Id);
                 if(roaming){if(StepHubMind(m,enemies,out target))continue;}
-                else if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected||!HubCanTarget(target,target))
+                else if(Time>=a.ThinkAt||target==null||target.Hp<=0||!target.Seat.connected||!HubCanTarget(target,target)||TechniqueSmokeHidden(at,target.Body.position))
                 {
                     if(target!=null&&!HubCanTarget(target,target)){a.Struck=true;if(hubMobs.TryGetValue(m.Id,out var hubMob)&&hubMob.LostAt<0)hubMob.LostAt=Time;}
-                    a.ThinkAt=Time+.75f;target=enemies.Where(p=>p.Hp>0&&p.Seat.connected&&HubCanTarget(p,a.Target)&&(!a.Possessed||!p.Seat.bot)).OrderBy(p=>ZoneTargetPriority(m,p)+pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,HordeTargetCount(p.Seat.id)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
+                    a.ThinkAt=Time+.75f;target=enemies.Where(p=>p.Hp>0&&p.Seat.connected&&!TechniqueSmokeHidden(at,p.Body.position)&&HubCanTarget(p,a.Target)&&(!a.Possessed||!p.Seat.bot)).OrderBy(p=>ZoneTargetPriority(m,p)+pveNavigation.Distance(at,p.Body.position,p.Seat.id)+3*Math.Max(0,HordeTargetCount(p.Seat.id)-6)-(a.Target==p?2:0)-(v.Recruits.Any(r=>r.Pilot==p&&r.Role=="tank")&&Vector3.Distance(p.Body.position,at)<8?6:0)).FirstOrDefault();a.Target=target;if(target!=null&&TryVentTravel(m,target))continue;
                 }
                 if(StepZoneEnemy(m,target))continue;
                 if(StepHulkHunt(m,target))continue;
@@ -217,6 +217,7 @@ namespace ChipArena.UnityConversion
                 if(Math.Abs(d.y)>(a.Stats.id=="hulk"?2.5f:1.8f)||!MeleeVisible(at+Vector3.up*(a.Crawl?.1f:.45f),q.Body.position,m.Owner,q.Collider,true)||Invulnerable(q))continue;
                 var push=new Vector3(d.x,0,d.z).normalized;
                 if(a.Stats.id=="hulk"){var away=q.Body.position-(at+dir*NativeHordeKinds.HulkSmashAhead);away.y=0;push=away.normalized;}
+                if(TryTechniqueParry(q,push,q.Body.position)){HitMinion(m,q,22*q.TechniqueScale,-push,0,m.Body.position,"energy");a.StaggerAt=Time+.35f;continue;}
                 if(Time<q.BlockEnd){BlockProc(q,m.Owner,q.Collider.ClosestPoint(m.Body.position),"clash");if(a.Stats.id=="hulk")q.Knockback+=push*(Mutator("bounce-house")?9:3);else{a.StaggerAt=Time+.6f;a.External=-d.normalized*(Mutator("bounce-house")?9:3);}}
                 else if(smash&&a.Stats.id=="brute")
                 {var shove=q.Body.position-(at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Brute));float actual=Damage(q,null,damage,Vec(NativeHordeDropRules.Outward(Vec(shove),Vec(dir))),0,false,primary:false,melee:true);if(actual>0)PveSlamShove(q,shove,dir,impulse,false);}
@@ -288,7 +289,7 @@ namespace ChipArena.UnityConversion
         }
         private InputFrame SirenBot(NativePilot p,InputFrame input)
         {
-            if(Pve.Hidden)return new InputFrame{Yaw=p.Yaw};var q=Members().Where(t=>t.Hp>0&&t.Seat.connected).OrderBy(t=>(t.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(q==null)return new InputFrame{Yaw=p.Yaw};p.Seat.difficulty=NativeBotRules.BossDifficulty(PartySize);
+            if(Pve.Hidden)return new InputFrame{Yaw=p.Yaw};var q=Members().Where(t=>t.Hp>0&&t.Seat.connected&&!TechniqueSmokeHidden(p.Body.position,t.Body.position)).OrderBy(t=>(t.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(q==null)return new InputFrame{Yaw=p.Yaw};p.Seat.difficulty=NativeBotRules.BossDifficulty(PartySize);
             input=BotFocus(p,q.Body.position,PilotVelocity(q),q.Collider,q,force:true);var s=Siren(p);float distance=Vector3.Distance(q.Body.position,p.Body.position);
             Vector3 move=distance>(s.Ranged?12:2)?(Map.unity?StructureNavMove(p,q.Body.position,(q.Body.position-p.Body.position).normalized):pveNavigation.Direction(p.Body.position,q.Body.position,q.Seat.id)):Vector3.zero;if(!SupportedStageMove(p.Body.position,move)){move=Vector3.zero;input.Jump=input.Roll=input.Sprint=false;}input.X=move.x;input.Z=move.z;return input;
         }

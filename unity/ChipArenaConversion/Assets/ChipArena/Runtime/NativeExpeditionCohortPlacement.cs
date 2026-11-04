@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         // RevivePve retains Death for presentation; current life state governs transfers.
-        internal bool CanTransferPilot(NativePilot p)=>p!=null&&Pilots.Contains(p)&&!p.Seat.bot&&!p.Seat.AuthorityBoss&&p.Hp>0&&p.Seat.alive&&
+        internal bool CanTransferPilot(NativePilot p)=>p!=null&&Pilots.Contains(p)&&!p.Seat.bot&&!p.Seat.AuthorityBoss&&p.Hp>0&&p.Seat.alive&&!TechniqueBusy(p)&&!NativeTechniqueRules.Live(p.Technique,Time)&&
             p.HeldBy==null&&p.Controlling==null&&p.ControlledBy==null&&p.Kernel?.Active!=true&&p.Juggle==null&&p.ScareBy==null&&Time>=p.FrozenUntil&&Time>=p.LaunchUntil&&Pve?.Hires.Any(h=>h.owner==p)!=true;
         internal void HoldTransferPilot(NativePilot p,bool hold)
         {
@@ -146,7 +146,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<entries.Length;i++)
             {
                 var e=entries[i];
-                if(!source.Arena.CanTransferPilot(e.Pilot))return "Pilot "+e.Pilot.Seat.id+" cannot transfer (carry/control, crowd control, death or active hire).";
+                if(!source.Arena.CanTransferPilot(e.Pilot))return "Pilot "+e.Pilot.Seat.id+" cannot transfer (carry/control, crowd control, death, active technique or hire).";
                 if(e.Pilot.Body.gameObject.scene!=source.Scene)return "Pilot "+e.Pilot.Seat.id+" is in the wrong source scene.";
                 if(destination.Arena.Match.Seat(e.Pilot.Seat.id)!=null)return "Destination already contains pilot "+e.Pilot.Seat.id+".";
                 if(!destination.Arena.TransferSlotClear(e.Slot))return "Reserved arrival slot is blocked for pilot "+e.Pilot.Seat.id+".";

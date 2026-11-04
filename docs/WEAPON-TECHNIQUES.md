@@ -4,9 +4,7 @@ Owner request, 2026-11-03: "Lets add more abilities now for the weapons. Think c
 much of a "powercreep" but still useful and fun. Ensure the animation and effects are high-quality; Make sure you evaluate
 afterwards to make sure things look great."
 
-Status: design and presentation by Claude (`claude/weapon-techniques`); simulation not started, for Astra (AGENTS.md role split).
-Until the rules exist the techniques show only in the Dev Sandbox's "Preview Techniques" (below). DEV classes (Siren, Emperor,
-Ansatsuken, L33T, Cyber Lord) are out of scope.
+Status: Claude owns presentation; Astra simulation is implemented on `codex/weapon-technique-rules`, based on shared `b794f9c5`. Verification/push receipts are in the task PR and DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
 
 ## Why it isn't power creep
 
@@ -86,3 +84,23 @@ Reviewed in Unity, in slow motion from the game's own camera (Cybercity, local t
 with two rounds of fixes: the guard from a glowing panel to thin arcs, the wall from a framed rectangle to a honeycomb, the planted shield and
 the thrown blade onto the pilot's own weapon model, the coin's glow down so the coin reads, the fire from washed-out to hot, the wind burst stronger. Not seen yet: any of it in
 real play with the rules, in first person, in a crowd, on a guest, or on a low graphics tier in Unity (the checks cover the thinning).
+
+
+## Simulation implementation and presentation handoff (Astra, 2026-11-03)
+
+- All twelve standard weapons now have authority slot-1 content rows. The host consumes the existing `SirenAbility == 1` edge; no new input packet. Costs use `NativeAbilityRules.Cost`, cooldowns use `NativeAbilityRules.Cooldown`, and `NativePilot.TechniqueReady` is a replicated absolute deadline. Recasts do not charge twice or restart cooldowns. No new mechanic grants damage invulnerability.
+- `Actor.Technique` is copied by `ViewCopy`, carried by the frame/late-join/replay path, presence-tagged for Unity JsonUtility, and checked by `Valid()`. Live render and replay select `NativeTechniqueSnapshotSource`. No presentation files were edited; the existing sandbox preview can still override the source for its own render.
+- Authoritative movement: Anchor Throw sweeps its 16 m flight at 26 m/s, accepts one recast for three seconds after sticking, then uses a .45 s collision-limited leap. Grapple flies its hook at 60 m/s and reels at 16 m/s for at most 1.1 s, with jump/roll release. Ignition uses `sqrt(2*g*7)` upward velocity and normal steering/gravity. Static Recall refuses obstructed/occupied destinations and damages each line target once. Shade's orb travels 22 m/s for at most 18 m; after .25 s both destinations and the target's immunity are rechecked before an atomic exchange. These moves respect the current area and sanctuary boundary.
+- Runtime choices where the table left a number open: Ignition burn is 3 DPS for two seconds before ability scaling; Gale's push impulse is 650, including self/allies and movable props (damage stays on normal hostile/friendly-fire rules). Weapon-away primary punches have 1.4 m reach and 6 base damage; Q/E and shield blocking cannot use the absent weapon. Reeling forbids shooting. Stuns, knockdowns, rolls and control/carry states refuse new casts; owner death/disconnect ends deployed effects. Active techniques delay cross-area transfers until their short lifetime ends, preserving area ownership.
+- Coin contract correction: `CoinAir` is **1.4 s** as specified (was 1.1 in the preview helper); `CoinLift` is **6.1 m/s** so the existing parabola stays above the floor for that interval. No field meaning changed. A swept .6 m hit consumes one coin, turns the round toward the nearest visible enemy within 22 m, multiplies its damage by 1.6 and disables headshot bonuses. With no visible enemy it continues without amplification.
+- Bastion and sentry use shot-only intersections, so actors can walk through them. Standard bullet, ability-shot and melee-projectile paths respect nearest collision ordering. Bastion intercepts both teams; sentries take hostile/friendly-fire projectile, primary melee and blast damage. The sentry deals fixed 5 damage per round at .5 s intervals, arms after .6 s and expires after six armed seconds. Bots prioritize visible hostile sentries and use/recast techniques. Smoke prevents target acquisition from outside the cloud; entering the cloud restores targeting. Healing Spring ticks 1.5 HP every .25 s (30 maximum per pool) and slows enemies to .85.
+
+**Claude follow-ups (presentation files intentionally unchanged):**
+
+1. `Runtime/NativeCombatHud.cs`, pilot health/nameplate loop: skip a pilot when `arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position, p.Body.position)` is true. The query also works on replicas because it reads replicated technique records. The simulation's bot concealment is active; human nameplate concealment awaits this hook.
+2. `Runtime/NativeFightHud.cs`, key-1 card: read `p.TechniqueReady - arena.Time` and the content row's scaled cooldown instead of `tk.At + td.Cooldown`. The current preview-derived countdown does not account for cooldown chips. No additional record field is needed.
+The existing locker only renders Q/E for these weapons; adding a slot-1 locker panel would also need `NativeLocker.AbilityIcon` to use `NativeTechniques.Find(id).Icon`. That optional presentation expansion is not part of this simulation change.
+
+3. Inspect first-person, guest and replay movement/poses in Unity, especially the collision-shortened leap/grapple and Shade's delayed exchange. The implementation adds real movement and hit timing; the prior preview review does not validate that integration.
+
+Regression gates: `CoreTests --technique-rules` (simulation contracts), `CoreTests --techniques` (existing presentation plus rule checks), full CoreTests; `NativeArena.ValidateTechniques` and the extended native network gate run in the Unity builder. Semantic compilation in a managed environment does not execute those native PhysicsScene/JsonUtility gates.

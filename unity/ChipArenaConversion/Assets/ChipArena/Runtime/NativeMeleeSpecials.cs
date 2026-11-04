@@ -146,6 +146,8 @@ namespace ChipArena.UnityConversion
         }
         private bool HitMeleeShot(NativeMeleeShot s,MeleeContact hit)
         {
+            var guard=hit.Collider.GetComponent<NativePilotBody>()?.Pilot;
+            if(guard!=null&&TryTechniqueParry(guard,s.Velocity,hit.Point)){if(s.Reflections++>=3)return true;s.Owner=guard;s.Reflected=true;s.Velocity=Vec(GunRules.Direction(guard.Input.Yaw,guard.Input.Pitch))*Math.Max(1,s.Velocity.magnitude);s.Position=hit.Point+s.Velocity.normalized*.1f;return false;}
             if(s.Fx!=null)return HitMeleeKitShot(s,hit);
             var target=hit.Collider.GetComponent<NativePilotBody>()?.Pilot;s.Position=hit.Point;
             if(target!=null&&Time<target.BlockEnd)
@@ -192,7 +194,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     float h=Math.Min(dt,s.Life);var velocity=Vec(s.Velocity);Vector3 delta=Vec(NativeSpecialRules.Ballistic(ref velocity,s.Gravity,h));s.Velocity=Vec(velocity);s.Life-=h;
-                    delta=Vector3.ClampMagnitude(delta,s.Travel);s.Travel-=delta.magnitude;if(HubInside(s.Position)||HubCross(s.Position,s.Position+delta,s.Radius)){MeleeShotFinished(s);MeleeShots.RemoveAt(i);continue;}if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){MeleeShots.RemoveAt(i);continue;}var hit=SweepMeleeShot(s,delta);
+                    delta=Vector3.ClampMagnitude(delta,s.Travel);s.Travel-=delta.magnitude;if(HubInside(s.Position)||HubCross(s.Position,s.Position+delta,s.Radius)){MeleeShotFinished(s);MeleeShots.RemoveAt(i);continue;}if(CyberAbsorb(s.Owner,s.Position,s.Position+delta,s.Radius)){MeleeShots.RemoveAt(i);continue;}if(TechniqueObstacle(s.Owner,s.Position,delta,s.Radius,s.Damage,out _)){MeleeShotFinished(s);MeleeShots.RemoveAt(i);continue;}var hit=SweepMeleeShot(s,delta);
                     bool ceiling=NativeSpecialRules.Ceiling(Vec(s.Position),Vec(delta),s.Radius,out float fraction,out V3 center);
                     if(ceiling&&(!hit.HasValue||delta.magnitude*fraction<=hit.Value.Distance)){s.Position=Vec(center);Emit(EventKind.CeilingHit,s.Owner,0,s.Position,0,"ABSORB",color:0x75ddff);if(s.Shield)s.Returning=true;else remove=true;}
                     else if(hit.HasValue)remove=HitMeleeShot(s,hit.Value);else s.Position+=delta;

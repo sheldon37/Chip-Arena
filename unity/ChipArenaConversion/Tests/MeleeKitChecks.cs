@@ -10,7 +10,7 @@ internal static class MeleeKitChecks
     public static void Run(ConversionContent data)
     {
         KunaiAim();
-        var kits=data.abilities.Where(a=>NativeMeleeRules.Standard(a.spec)).ToArray();
+        var kits=data.abilities.Where(a=>NativeMeleeRules.Standard(a.spec)&&(a.slot=="q"||a.slot=="e")).ToArray();
         Check(kits.Length==8&&kits.Select(a=>a.spec+":"+a.slot).Distinct().Count()==8,"eight unique Q/E entries");
         foreach(var a in kits)
         {

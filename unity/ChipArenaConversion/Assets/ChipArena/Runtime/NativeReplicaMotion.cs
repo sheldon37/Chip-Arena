@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             }
             bool melee=p!=null&&NativeMeleeRules.Standard(p.Seat.spec)&&frame.reloadEnd<=Time&&frame.blockEnd<=Time;
             return new NativePredictionState{Bow=p?.Seat.spec=="bow",BowDrawAt=a?.BowDrawAt??-1,Cyber=p!=null&&CyberAllowed(p)?a.Cyber?.ViewCopy():null,CyberStep=NativeCyberStep.Restore(a?.Cyber,a?.StepAt??0,a?.StepUntil??0,a?.StepDistance??0,Time),CyberMana=frame.mana,CyberUltimateCost=p==null?1:(float)p.Stats["resourceCost"],CyberRate=p==null?1:(float)p.Stats["attackRate"],CyberCost=p==null?1:(float)(p.Stats["abilityCost"]*p.Stats["resourceCost"]),CyberCooldown=p==null?1:(float)p.Stats["abilityCooldown"],AirborneAt=a?.AirborneAt??-1,AirAttackUsed=a?.AirAttackUsed??false,ExtraAirJumps=p?.Stats.Get("extraAirJumps")??0,JumpSpec=p?.Seat.spec,AirJumps=a?.AirJumps??0,AirJumpAt=a?.AirJumpAt??-100,Swimming=NativeHazards.InLava(MapId,Vec(frame.position)),Time=Time,RollUntil=frame.rollEnd,Ready=p?.Seat.spec=="cyberlord"?Math.Max(frame.ready,frame.blockEnd):frame.ready,Stamina=frame.stamina,Combo=a?.Combo??-1,ComboUntil=a?.ComboUntil??0,BufferUntil=a?.MeleeBufferUntil??-1,
-                OverdriveAt=frame.overdriveAt,OverdriveUntil=frame.overdriveUntil,MeleeKit=a?.MeleeKit?.ViewCopy(),MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
+                OverdriveAt=frame.overdriveAt,OverdriveUntil=frame.overdriveUntil,Technique=a?.Technique?.ViewCopy(),MeleeKit=a?.MeleeKit?.ViewCopy(),MeleeWeapon=melee?p.Weapon:null,MeleeStats=melee?p.Stats:null,Swing=swing,Position=Vec(frame.position),Velocity=NativeTechniqueRules.Moving(a?.Technique,Time)?Vec(frame.velocity):new V3(frame.moveVelocity.x,frame.velocity.y,frame.moveVelocity.z),
                 Speed=(p==null?6.8f:(float)(6.8*p.Stats["speed"]))*PoolMove(frame.position)*(p!=null&&p.Input.Aim&&NativeRangedRules.Scope(p.Seat.spec)?(float)Content.Ads(p.Seat.spec).move:1),
                 Gravity=p==null?23:(float)(23*p.Stats["playerGravity"]),JumpSpeed=p==null?8.5f:(float)(8.5*p.Stats["jumpPower"]),
                 Sprinting=p?.Pose.Sprinting??false,Grounded=p?.Pose.Grounded??false,CanMove=unlocked,CanSprint=unlocked&&frame.stamina>0&&frame.reloadEnd<=Time&&frame.blockEnd<=Time};
@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         private bool PredictionGrounded(V3 position)=>NativeGroundMotor.Probe(root.scene.GetPhysicsScene(),Vec(position)).Found;
         private void BufferReplica(NativeGameFrame frame,bool reset)
         {
-            var previousLocal=replicaHistory.LastOrDefault()?.pilots.FirstOrDefault(p=>p.id==LocalId);
+            var previousFrame=replicaHistory.LastOrDefault();var previousLocal=previousFrame?.pilots.FirstOrDefault(p=>p.id==LocalId);
             if(reset){predictionAirJumpAt=-100;predictionPoseAt=-100;replicaHistory.Clear();replicaClock.Reset(frame.time);predictionCorrection=Vector3.zero;}
             replicaHistory.Add(frame);while(replicaHistory.Count>32)replicaHistory.RemoveAt(0);replicaClock.Observe(frame.time);
             var local=frame.pilots.FirstOrDefault(p=>p.id==LocalId);
@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
             var state=PredictionState(local);var before=Local.Body.position;
             // Corpse anchors and revives are authority placements, not locomotion corrections.
             // Even a sub-three-metre placement must discard the old offset and pre-death inputs.
-            bool placed=reset||local.hp<=0||previousLocal!=null&&(previousLocal.hp<=0||previousLocal.revivedAt!=local.revivedAt);
+            bool placed=reset||NativeTechniqueRules.Placement(previousFrame?.snapshot,frame.snapshot,LocalId)||local.hp<=0||previousLocal!=null&&(previousLocal.hp<=0||previousLocal.revivedAt!=local.revivedAt);
             if(placed)predictor.Reset(state,local.inputAck);else predictor.Reconcile(state,local.inputAck,ConstrainPrediction,PredictionGrounded,id=>MeleeLockPoint(Local,id),PredictCyberStepLimit);
             var error=before-Vec(predictor.State.Position);predictionCorrection=placed||error.magnitude>3?Vector3.zero:error;
             SetReplicaPosition(Local.Body,Vec(predictor.State.Position)+predictionCorrection);

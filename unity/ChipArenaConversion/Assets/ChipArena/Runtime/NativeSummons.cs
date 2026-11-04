@@ -78,12 +78,12 @@ namespace ChipArena.UnityConversion
                     if(!goal.HasValue)continue;Vector3 origin=at+Vector3.up*(toy?.25f:0),target=goal.Value+Vector3.up*(toy?.35f:0),aim=target-origin;Collider collider=m.Foe?.Hp>0?m.Foe.Collider:m.Other.Collider;
                     if(toy)Fx(target,.1f,0,origin,m.Owner,"minionShot");if(HubCross(origin,target)||aim.magnitude>(toy?9.5f:2.4f)||!SummonVisible(m,origin+Vector3.up*(toy?0:.3f),target+Vector3.up*(toy?0:.3f),collider))continue;
                     float damage=(toy?8:12)*(float)m.Owner.Stats["damage"],impulse=toy?50:120;Vector3 flat=new Vector3(aim.x,0,aim.z).normalized;
-                    if(m.Foe?.Hp>0){if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,m.Foe.Collider.ClosestPoint(at),"clash");if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false);}
+                    if(m.Foe?.Hp>0){if(!toy&&TryTechniqueParry(m.Foe,flat,m.Foe.Body.position)){HitMinion(m,m.Foe,22*m.Foe.TechniqueScale,-flat,0,m.Body.position,"energy");m.NextAttack=Time+.35f;m.StrikeAt=-1;}else if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,m.Foe.Collider.ClosestPoint(at),"clash");if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false);}
                     else if(m.Other?.Hp>0)HitMinion(m.Other,m.Owner,damage,flat,impulse,from:origin);continue;
                 }
                 if(Time<m.NextAttack&&m.LastAttack>=0&&Time-m.LastAttack<windup+recover){if(Time-m.LastAttack>windup+.12f)m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                 m.Foe=null;m.Other=null;float best=float.PositiveInfinity;
-                foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&Enemy(m.Owner,p)){float d=(p.Body.position-at).sqrMagnitude;if(d<best){best=d;m.Foe=p;}}
+                foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&Enemy(m.Owner,p)&&!TechniqueSmokeHidden(at,p.Body.position)){float d=(p.Body.position-at).sqrMagnitude;if(d<best){best=d;m.Foe=p;}}
                 foreach(var q in Minions)if(q!=m&&q.Hp>0&&Enemy(m.Owner,q)){float d=(q.Body.position-at).sqrMagnitude;if(d<best){best=d;m.Other=q;m.Foe=null;}}
                 if(m.Foe==null&&m.Other==null){m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                 Vector3 destination=m.Foe!=null?m.Foe.Body.position:m.Other.Body.position,diff=destination-at;Collider end=m.Foe!=null?m.Foe.Collider:m.Other.Collider;float distance=new Vector2(diff.x,diff.z).magnitude;

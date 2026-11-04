@@ -1,3 +1,5 @@
+2026-11-03 Astra weapon techniques (`codex/weapon-technique-rules`, base `b794f9c5`): implemented authority rules, key-1 content/cooldowns, movement, bots and snapshot/late-join/replay state for all twelve standard weapons. Verification and remote receipts in the task PR/DEV_LOG. Claude follow-up: smoke nameplate visibility and TechniqueReady HUD countdown; presentation files preserved. Native Windows/multiplayer execution and compiled test publication remain unverified.
+
 2026-11-03 Claude: weapon techniques, a third ability on key 1 for the twelve standard weapons: design, simulation contract and presentation (`claude/weapon-techniques`; docs/WEAPON-TECHNIQUES.md). Shows only in the Dev Sandbox's Preview Techniques until Astra's rules exist. Next: Astra's simulation.
 
 2026-11-03 Claude: the zombie run is the pack's own stride, no more lunges: the clean sprints at their own pace, the feet landing under the body on the take's own path, rolling onto the ball (`claude/zombie-run-pace`; docs/ZOMBIE-MODELS.md 4m)

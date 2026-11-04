@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
             {
                 if(p.DevInfiniteAmmo){p.Ammo=Magazine(p);p.ReloadEnd=0;}
                 if(!p.DevNoCooldowns)continue;
-                p.Ready=p.QReady=p.EReady=p.RollReady=p.BlockReady=p.KernelReady=Time;p.ECharges=NativeAbilityRules.Charges(p.Stats);
+                p.Ready=p.TechniqueReady=p.QReady=p.EReady=p.RollReady=p.BlockReady=p.KernelReady=Time;p.ECharges=NativeAbilityRules.Charges(p.Stats);
                 if(p.Siren!=null)p.Siren.Ready.Clear();
                 p.Cyber.QReady=p.Cyber.EReady=p.Cyber.PacketReady=p.Cyber.LinkReady=p.Cyber.CrashReady=Time;
                 if(p.Cyber.Ranged!=null){p.Cyber.Ranged.ModeReady=Time;for(int i=0;i<p.Cyber.Ranged.Ready.Length;i++)p.Cyber.Ranged.Ready[i]=Time;}

@@ -11,8 +11,9 @@ namespace ChipArena.UnityConversion
         {
             // Select one brain before observing a target. Running the PvP brain first
             // consumes the reaction window on Siren, then PvE reuses that aim for an add.
+            if(!StationaryBots&&p.Seat.difficulty!="dummy"&&BotSentry(p,out var sentryInput))return sentryInput;
             if(Pve!=null)return PveBot(p,new InputFrame{Yaw=p.Yaw});
-            var target=Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
+            var target=Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Enemy(p,q)&&!TechniqueSmokeHidden(p.Body.position,q.Body.position)).OrderBy(q=>(q.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
             if(target==null||(StationaryBots||p.Seat.difficulty=="dummy")&&!force)return new InputFrame{Yaw=p.Yaw};
             var summon=Minions.Where(m=>m.Pve==null&&m.Hp>0&&Enemy(p,m)&&Vector3.Distance(m.Body.position,p.Body.position)<Math.Min(6,Vector3.Distance(target.Body.position,p.Body.position)-1.5f)).OrderBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();
             var decoy=Pilots.Where(q=>q.Hp>0&&Enemy(p,q)&&Time<q.MeleeKit.AfterimageUntil&&Vector3.Distance(q.MeleeKit.Afterimage.Length>0?Vec(q.MeleeKit.Afterimage):q.Body.position,p.Body.position)<30).OrderBy(q=>(Vec(q.MeleeKit.Afterimage)-p.Body.position).sqrMagnitude).FirstOrDefault();
@@ -25,7 +26,7 @@ namespace ChipArena.UnityConversion
         {
             if(!force&&(p.Seat.difficulty=="dummy"||StationaryBots))return new InputFrame{Yaw=p.Yaw};
             int level=NativeBotRules.Level(p.Seat.difficulty);var pos=p.Body.position;var eye=pos+Vector3.up*.5f;var delta=target-pos;float distance=delta.magnitude;
-            Vector3 aimAt=Vec(p.BotBrain.Observe(Time,p.Seat.difficulty,Vec(target),random.NextDouble)),aim=aimAt-eye;bool visible=MeleeVisible(eye,target,p,collider),melee=p.Weapon.@class=="melee";
+            Vector3 aimAt=Vec(p.BotBrain.Observe(Time,p.Seat.difficulty,Vec(target),random.NextDouble)),aim=aimAt-eye;bool visible=!TechniqueSmokeHidden(eye,target)&&MeleeVisible(eye,target,p,collider),melee=p.Weapon.@class=="melee";
             var input=new InputFrame{Yaw=Mathf.Atan2(aim.x,aim.z)*Mathf.Rad2Deg,Pitch=Mathf.Atan2(aim.y,new Vector2(aim.x,aim.z).magnitude)*Mathf.Rad2Deg,AimTarget=Vec(aimAt),AbilityTarget=Vec(aimAt),Aim=visible&&NativeBotRules.Ads(p.Seat.spec,distance)};
             if(!melee&&!input.Aim){float pitch=GunRules.BallisticPitch(new Vector2(aim.x,aim.z).magnitude,aim.y,(float)(p.Weapon.speed*p.Stats["projectileSpeed"]),(float)(p.Weapon.gravity*p.Stats["projectileGravity"]));input.Pitch=Mathf.Lerp(input.Pitch,pitch,level==2?.95f:level==1?.85f:.65f);}
             float desired=NativeWhirlwindRules.Active(p.Special,Time)?1:NativeBotRules.Desired(p.Weapon);var flat=new Vector3(delta.x,0,delta.z).normalized;Vector3 move=distance>desired+1?flat:distance<desired-1?-flat*.8f:Vector3.zero;
@@ -57,6 +58,7 @@ namespace ChipArena.UnityConversion
                 foreach(var shot in Bullets){var owner=Pilots.Find(q=>q.Seat.id==shot.Owner);if(!CanHit(owner,p))continue;Vector3 d=pos-shot.Position;float eta=Vector3.Dot(d,shot.Velocity.normalized)/Math.Max(1,shot.Velocity.magnitude);if(eta>0&&eta<(level==2?.24f:level==1?.3f:.38f)&&(d-shot.Velocity*eta).magnitude<.9f&&!SceneLinecast(shot.Position,pos,WorldMask)){threat=true;break;}}
                 input.Block=threat&&random.NextDouble()<(level==2?.85:level==1?.65:.35);
             }
+            if(BotTechnique(p,ref input,target,distance,visible,level))return input;
             if(input.Block){input.Attack=input.Shoot=input.Roll=input.Sprint=false;if(CyberAllowed(p)&&Time>=p.Cyber.EReady&&p.Mana>=35){input.Block=false;input.AbilityE=true;}return input;}
             if(p.Seat.spec=="siren")return SirenDecision(p,input,target,distance,visible,level);
             BotAbilities(p,ref input,target,targetVelocity,distance,visible,level);
