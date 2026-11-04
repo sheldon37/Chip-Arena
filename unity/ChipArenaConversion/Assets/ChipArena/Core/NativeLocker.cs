@@ -221,6 +221,7 @@ namespace ChipArena.UnityConversion
         }
         public static string AbilityIcon(string id,ContentWeapon w)
         {
+            if(w?.id==NativeBombs.Spec)return NativeBombs.Icon(id);
             switch(id)
             {
                 // The gun Q kit (Core/NativeGunKit.Icon, the HUD cards share it): hammer for Fan the Hammer, gauge for Overdrive.

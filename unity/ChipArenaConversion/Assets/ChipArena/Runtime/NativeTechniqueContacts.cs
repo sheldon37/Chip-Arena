@@ -8,16 +8,18 @@ namespace ChipArena.UnityConversion
         // Virtual shot-only obstacles: players can walk through Bastion and a sentry without a solid capsule collider.
         private bool TechniqueObstacle(NativePilot shooter,Vector3 from,Vector3 delta,float radius,float damage,out Vector3 contact)
         {
-            contact=from+delta;bool any=false;foreach(var p in Pilots)if(p.TechniqueHealth>0&&NativeTechniqueRules.Live(p.Technique,Time)&&(p.Technique.Kind=="bastion"||TechniqueObject(p.Technique))){any=true;break;}if(!any)return false;NativePilot best=null;float nearest=1.001f;
+            contact=from+delta;bool any=false;foreach(var p in Pilots)if(p.TechniqueHealth>0&&NativeTechniqueRules.Live(p.Technique,Time)&&(p.Technique.Kind=="bastion"||TechniqueObject(p.Technique))){any=true;break;}if(!any&&!Pilots.Any(p=>p.BombFlights.Any(b=>b.Record.Kind==NativeBombs.Mine)))return false;NativePilot best=null;BombFlight mine=null;NativePilot mineOwner=null;float nearest=1.001f;
             // Geometry and actors must win when closer; do not let a wall behind a victim consume its shot.
             var solid=SweepNative(from,delta,radius,c=>c!=shooter?.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?q.Hp>0&&CanHit(shooter,q)&&!Invulnerable(q):c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?m.Hp>0&&CanHit(shooter,m):true));
             if(solid.HasValue)nearest=solid.Value.Distance/Math.Max(.00001f,delta.magnitude);
+            foreach(var p in Pilots)foreach(var b in p.BombFlights)if(b.Record.Kind==NativeBombs.Mine&&Time>=b.Record.At&&NativeTechniqueRules.SegmentSphere(Vec(from),Vec(delta),b.Record.Pos,.22f+radius,out float fraction)&&fraction<nearest){nearest=fraction;mine=b;mineOwner=p;}
             foreach(var p in Pilots)
             {
                 var k=p.Technique;if(p.Hp<=0||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0)continue;float f;
                 bool hit=k.Kind=="bastion"?NativeTechniqueRules.Wall(Vec(from),Vec(delta),k,radius,out f):TechniqueObject(k)&&p!=shooter&&CanHit(shooter,p)&&Time>=k.Release&&(k.Kind!="lightning-rod"||Time>=k.Arm)?NativeTechniqueRules.SegmentSphere(Vec(from),Vec(delta),k.Point+new V3(0,TechniqueObjectHeight(k),0),(k.Kind=="lightning-rod"?3:k.Kind=="sentry-drop"?.55f:.25f)+radius,out f):NoTechniqueContact(out f);
-                if(hit&&f<nearest&&(k.Kind!="lightning-rod"||Enemy(shooter,p)&&MeleeVisible(from+delta*f,Vec(k.Point)+Vector3.up*.6f,shooter,null))){nearest=f;best=p;}
+                if(hit&&f<nearest&&(k.Kind!="lightning-rod"||Enemy(shooter,p)&&MeleeVisible(from+delta*f,Vec(k.Point)+Vector3.up*.6f,shooter,null))){nearest=f;best=p;mine=null;}
             }
+            if(mine!=null){contact=from+delta*nearest;mine.Hp-=damage;if(mine.Hp<=0)ExplodeBomb(mineOwner,mine);return true;}
             if(best==null)return false;contact=from+delta*nearest;DamageTechniqueObject(best,damage,contact,true);return true;
         }
         private static bool TechniqueObject(NativeTechnique k)=>k!=null&&(k.Kind=="sentry-drop"||k.Kind=="tripwire"||k.Kind=="sonar-dart"||k.Kind=="lightning-rod");
@@ -57,6 +59,7 @@ namespace ChipArena.UnityConversion
         }
         private void TechniqueBlastObjects(NativePilot owner,Vector3 at,float radius,float damage)
         {
+            BombTouchMines(owner,at,radius);
             foreach(var p in Pilots)
             {var k=p.Technique;if(!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0||!CanHit(owner,p))continue;var point=Vec(k.Point)+Vector3.up*TechniqueObjectHeight(k);float fall=NativeAbilityRules.BlastFalloff(Vector3.Distance(at,point),radius);if(fall<=0||!MeleeVisible(at,point,owner,null))continue;DamageTechniqueObject(p,damage*fall,point);}
         }
