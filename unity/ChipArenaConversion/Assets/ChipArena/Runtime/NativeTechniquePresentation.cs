@@ -142,6 +142,7 @@ namespace ChipArena.UnityConversion
         /// <summary>RenderGlow, after the melee kit's: every technique's particles.</summary>
         private void TechniqueFx(float now)
         {
+            BombFx(now);
             if(NativeTechniques.Source==null||kitScene==null||vfx==null)return;var draw=WeaponFxDraw;if(draw==null)return;
             techSink??=new TechSink();techSink.Bind(vfx,draw,FirstPerson&&!ScopeActive&&ViewCamera!=null);
             techniqueFx.Draw(techSink,kitScene,kitClock,Mathf.Clamp01(WeaponEffectsQuality),LowGraphics);
