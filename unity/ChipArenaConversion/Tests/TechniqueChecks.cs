@@ -105,11 +105,11 @@ namespace ChipArena.UnityConversion
                 var row=data.Ability(d.Spec,"technique");Check(row!=null&&row.id==d.Id&&row.cooldown==d.Cooldown&&row.cost==d.Cost,d.Id+": the card's numbers are the rules'");
                 foreach(var slot in new[]{"q","e"})
                 {
-                    options.Clear();bool added=NativeLocker.AddTechnique(data.Weapon(d.Spec),slot,options);Check(added==(d.Spec!="rifle"||slot=="e")&&added==NativeTechniqueLoadout.Allowed(d.Spec,slot),d.Id+" "+slot+": offered where it may go");
+                    options.Clear();bool added=NativeLocker.AddTechniques(data,data.Weapon(d.Spec),slot,options)>0;Check(added==(d.Spec!="rifle"||slot=="e")&&added==NativeTechniqueLoadout.Allowed(d.Spec,slot),d.Id+" "+slot+": offered where it may go");
                     if(added){var o=options[0];Check(o.Technique==d&&o.Id==d.Id&&o.Name==d.Name&&o.Icon==d.Icon&&o.Text==text&&!o.FromWeapon&&o.Meta==NativeLocker.Meta(d.Cooldown,d.Cost,NativeLocker.CostUnit(data.Weapon(d.Spec)),false),d.Id+": the card");}
                 }
             }
-            foreach(var dev in new[]{"emperor","ansatsuken"})foreach(var slot in new[]{"q","e"})Check(!NativeLocker.AddTechnique(data.Weapon(dev),slot,options),dev+": nothing to swap on a DEV kit");
+            foreach(var dev in new[]{"emperor","ansatsuken"})foreach(var slot in new[]{"q","e"})Check(NativeLocker.AddTechniques(data,data.Weapon(dev),slot,options,true)==0,dev+": nothing to swap on a DEV kit");
             // The HUD's card.
             var live=new NativeTechnique{Kind=NativeTechniques.Bastion,Phase="wall",At=10,Release=10.2f,Until=14,RecoverUntil=10.8f};
             var c=NativeTechniques.Card(live,12,12,14,false,"LOW");Check(c.Recast&&c.State=="RECAST"&&!c.Ready,"a recast asks for the press");

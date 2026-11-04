@@ -83,7 +83,7 @@ namespace ChipArena.UnityConversion
         private void LockerAbilities()
         {
             if(Event.current.type!=EventType.Layout&&lockerAbilitySpec!=null)return;var w=MenuWeapon();string id=w?.id??"";if(id==lockerAbilitySpec)return;lockerAbilitySpec=id;
-            NativeLocker.SlotOptions(content,w,"q",lockerQ);NativeLocker.SlotOptions(content,w,"e",lockerE);NativeLocker.AddTechnique(w,"q",lockerQ);NativeLocker.AddTechnique(w,"e",lockerE);lockerAbilityHint=w==null?null:w.name+" · Q and E";
+            NativeLocker.SlotOptions(content,w,"q",lockerQ);NativeLocker.SlotOptions(content,w,"e",lockerE);NativeLocker.AddTechniques(content,w,"q",lockerQ);NativeLocker.AddTechniques(content,w,"e",lockerE);lockerAbilityHint=w==null?null:w.name+" · Q and E";
         }
         // The option equipped in a weapon slot: its technique when the pilot swapped it in (prefs.weaponTechniques, Core/NativeTechniqueLoadout.cs),
         // else the slot's own ability. A pick is one more part of the look: Save Pilot stores and sends it, Revert restores it.
