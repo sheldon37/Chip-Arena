@@ -232,7 +232,7 @@ namespace ChipArena.UnityConversion.Editor
                             if(ReferenceEquals(shown.Actors[0],pilot.Pose)||Vector3.Distance(NativeArena.Vec(shown.Actors[0].Position),pilot.Body.transform.position-Vector3.up*.865f)>.00001f)
                                 throw new Exception("Render snapshot must copy the interpolated transform");
                             float hp=pilot.Pose.Hp;shown.Actors[0].Hp=0;if(pilot.Pose.Hp!=hp)throw new Exception("Render snapshot changed authority");
-                            CheckNetworkSerialization(arena);CheckCombatParity(data);CheckInteractionFeedback(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();arena.ValidateTechniques();
+                            CheckNetworkSerialization(arena);CheckCombatParity(data);CheckInteractionFeedback(data);CheckPresentation(arena);CheckGlow(arena,match);CheckShots(arena);arena.ValidateMelee();arena.ValidateSpecials();arena.ValidateRangedAndMagic();arena.ValidateTechniques();arena.ValidateBombadier();
                         }
                         if(map.id=="factory"||map.id=="cybercity")arena.ValidateStageHazardRuntime();
                         if(new[]{"breakwater","harbor","skyframe","rig","polar","training"}.Contains(map.id))arena.ValidateM1Runtime();

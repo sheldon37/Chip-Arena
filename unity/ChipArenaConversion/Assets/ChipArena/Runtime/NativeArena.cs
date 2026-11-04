@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
         public static readonly HashSet<string> SupportedMechanics=new HashSet<string>{"rounds-phase","abyssal-core","accelerating-shot","acid-rain","aftershock","arcade-afterimage","arcade-cancel","arcade-counter","arcade-cyclone","arcade-focus","arcade-juggle","arcade-perfect","arcade-red","arcade-rising","arcade-rush","arcade-secondwind","arcade-shinku","artillery","backfire","black-hole","blink-cut","blizzard","bowling-ball","bread-crumbs","bubble-mine","cinder-field","cluster-mine","coin-toss","comet","corkscrew","corpse-party","crossfire","delayed-gratification","demolition-charge","elevator-shot","freezer-block","grappling-shot","graveyard-shift","helix","hot-foot","implosion-bomb","l44t-brain","l44t-copy","l44t-nuke","l44t-scare","l44t-time","l44t-undo","l44t-uprising","l44t-yeet","lightning-rod","mana-leech","med-garden","mirror-mine","mishima-armor","mishima-bloodline","mishima-bound","mishima-counter","mishima-godfist","mishima-magnet","mishima-pressure","mishima-rage","mishima-screw","mishima-trail","mishima-twin","mishima-wall","necronomicon","orbitals","panic-button","pickpocket","poltergeist","proximity-mail","puppet-master","repulsion-pad","revenge-mail","second-chance","sticky-bomb","stop-go","storm-recall","swap-shop","sword-beam","thunderstep","time-warp","trampoline","undertow","uppercut","vampire-dash","wildfire","wormhole"};
         public static bool ImplementedChip(ContentChip c)=>c!=null&&(string.IsNullOrEmpty(c.mechanic)||SupportedMechanics.Contains(c.mechanic))&&c.effects.All(e=>SupportedStats.Contains(e.stat));
         public NativeArena(ConversionContent content,NativeMatch match,string map,int seed=12345,Scene areaScene=default)
-        {authorityScene=areaScene;random=new System.Random(seed);Content=content;Match=match;MapId=map;Match.Training=map=="training";Match.ResetRound=Reset;Match.HoldResolution=SandboxHolds;Match.IsSandbox=()=>Sandbox||Training;Match.RoundDeaths=()=>Pilots.Where(p=>p.Death!=null).Select(p=>new FinalKillCandidate{Victim=p.Seat.id,Killer=p.Death.owner,Seed=p.Death.seed,At=p.Death.at});Match.DraftFilter=ImplementedChip;if(!authorityScene.IsValid())Physics.gravity=new Vector3(0,-23,0);}
+        {authorityScene=areaScene;random=new System.Random(seed);Content=content;Match=match;MapId=map;Match.Training=map=="training";Match.ResetRound=Reset;Match.HoldResolution=()=>SandboxHolds()||BombPending();Match.IsSandbox=()=>Sandbox||Training;Match.RoundDeaths=()=>Pilots.Where(p=>p.Death!=null).Select(p=>new FinalKillCandidate{Victim=p.Seat.id,Killer=p.Death.owner,Seed=p.Death.seed,At=p.Death.at});Match.DraftFilter=ImplementedChip;if(!authorityScene.IsValid())Physics.gravity=new Vector3(0,-23,0);}
         public static Color ColorOf(int value)=>new Color(((value>>16)&255)/255f,((value>>8)&255)/255f,(value&255)/255f);
         public static Vector3 Vec(V3 v)=>new Vector3(v.x,v.y,v.z);
         public static V3 Vec(Vector3 v)=>new V3(v.x,v.y,v.z);
@@ -120,10 +120,10 @@ namespace ChipArena.UnityConversion
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Input.Roll)TryRoll(p);
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Input.Block)TryBlock(p);
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected){AdvanceDots(p);if(p.Hp>0&&!Frozen(p))StepPilot(p);}
-            StepTechniqueWorld();StepMeleeKitWorld();StepCyberWorld();StepBullets();StepAbilityWorld();StepMeleeShots();StepChipFields();StepMinions();StepDevMonsters();StepFighterWorld();StepLeetWorld();StepSirenWorld();RestoreLeetInputs();
+            StepBombWorld();StepTechniqueWorld();StepMeleeKitWorld();StepCyberWorld();StepBullets();StepAbilityWorld();StepMeleeShots();StepChipFields();StepMinions();StepDevMonsters();StepFighterWorld();StepLeetWorld();StepSirenWorld();RestoreLeetInputs();
             foreach(var p in Pilots)if(p.Hp>0&&p.Seat.connected&&p.Body.position.y<(Map.bounds?.killY??-6)){if(Pve!=null&&p==Pve.Boss)PlacePveBoss(BossSpawn);else Damage(p,null,p.Hp+1,Vector3.zero,0,false,true);}
             float overtime=NativeCombatRules.Overtime(Match.Time-Match.FightAt,Content.config.FirstOrDefault(v=>v.name=="maxRoundSeconds")?.value??100,Match.Cooperative,Training||SandboxAllowed);if(overtime>0)foreach(var p in Pilots)if(p.Hp>0)Damage(p,null,overtime,Vector3.zero,0,false,forced:true);
-            StepPve();StepRunMutators();Match.Resolve();if(Match.Phase!=NativePhase.Fight)DevClearMonsters();CancelInvalidKernel();
+            StepPve();StepRunMutators();StepBombMinionMotion();Match.Resolve();if(Match.Phase!=NativePhase.Fight)DevClearMonsters();CancelInvalidKernel();
         }
         // Result movement has no attack, ability, DOT or bot-combat updates: the winner is already fixed.
         private void StepResultMovement(InputFrame localInput)
@@ -154,17 +154,17 @@ namespace ChipArena.UnityConversion
             if(Time>=p.SlowEnd&&p.SlowFactor<1){if(p.SlowFactor<=.6f)p.SlowImmune=Time+1;p.SlowFactor=1;}
             var i=p.Input;float dt=1f/60;bool rolling=Time<p.RollEnd,locked=Time<p.AttackEnd&&!(p.Seat.spec=="cyberlord"&&p.Cyber.Until>Time&&NativeCyberKit2Rules.Move(p.Cyber,Time)>0)||Incapacitated(p),swimming=NativeHazards.InLava(MapId,Vec(p.Body.position));
             if(!rolling&&!locked)p.Yaw=i.Yaw;p.Pitch=i.Pitch;
-            StepTechniqueInput(p);StepAbilities(p);StepFighter(p);StepLeetPilot(p);StepSirenPilot(p);
+            StepBombInput(p);StepTechniqueInput(p);StepAbilities(p);StepFighter(p);StepLeetPilot(p);StepSirenPilot(p);
             if(p.ReloadEnd>0&&Time>=p.ReloadEnd){p.Ammo=Magazine(p);p.ReloadEnd=0;Heal(p,(float)p.Stats["reloadHeal"]);Emit(EventKind.ReloadEnd,p,0,p.Body.position,0);}
             bool aim=NativeRangedRules.Scope(p.Seat.spec)&&i.Aim&&!rolling&&p.ReloadEnd==0&&Time>=p.BlockEnd&&!Incapacitated(p);
             if(aim&&!p.Aiming)p.AimAt=Time;p.Aiming=aim;
-            if(i.Reload&&p.AbilityCast==null&&!TechniqueActionLock(p))Reload(p);
+            if(!BombBusy(p)&&i.Reload&&p.AbilityCast==null&&!TechniqueActionLock(p))Reload(p);
             if(p.CastAt>0&&Time>=p.CastAt){p.CastAt=0;Fire(p);}
             StepFan(p);StepSpecial(p);StepMelee(p);StepBow(p);
             StepMeleeInput(p);
             locked=Time<p.AttackEnd&&!(p.Seat.spec=="cyberlord"&&p.Cyber.Until>Time&&NativeCyberKit2Rules.Move(p.Cyber,Time)>0)||Incapacitated(p);rolling=Time<p.RollEnd;
             bool whirling=!Incapacitated(p)&&NativeWhirlwindRules.Active(p.Special,Time);
-            if(!TechniqueBusy(p)&&p.Seat.spec!="bow"&&p.Weapon.@class!="melee"&&p.Fan==null&&!Venting(p)&&!Incapacitated(p)&&p.AbilityCast==null&&p.CastAt<=0&&!rolling&&!locked&&Time>=p.Ready&&p.ReloadEnd==0&&Time>=p.BlockEnd&&i.Shoot)
+            if(p.Seat.spec!=NativeBombs.Spec&&!TechniqueBusy(p)&&p.Seat.spec!="bow"&&p.Weapon.@class!="melee"&&p.Fan==null&&!Venting(p)&&!Incapacitated(p)&&p.AbilityCast==null&&p.CastAt<=0&&!rolling&&!locked&&Time>=p.Ready&&p.ReloadEnd==0&&Time>=p.BlockEnd&&i.Shoot)
             {
                 if(p.Weapon.@class=="ranged"&&p.Ammo<=0)Reload(p);
                 else if(p.Weapon.@class=="ranged"||p.Mana>=p.Weapon.cost*p.Stats["resourceCost"])
@@ -216,7 +216,7 @@ namespace ChipArena.UnityConversion
             if(NativeAirAttackSimulation.Falling(p.Swing)&&(!NativeAirAttackSimulation.Down(p.Swing)||Time>=p.Swing.PlungeAt)){velocity.y=NativeAirAttackSimulation.Vertical(p.Swing,Time);p.Body.useGravity=false;}
             if(GroundMotion(p,ref velocity,jumped,swimming,external.y))p.Body.useGravity=false;
             if(ZoneMovementHeld(p)){velocity.x=velocity.z=0;p.MoveVelocity=Vector3.zero;}
-            TechniqueMotion(p,ref velocity);p.Body.linearVelocity=velocity;
+            TechniqueMotion(p,ref velocity);BombMotion(p,ref velocity);p.Body.linearVelocity=velocity;
 
             p.Pose.Sprinting=sprint;
         }
@@ -228,13 +228,13 @@ namespace ChipArena.UnityConversion
         private bool CanHit(NativePilot source,NativeMinion target)=>target!=null&&(Expedition?.Session.Run.SplitAreas!=true||(source==null||Pilots.Contains(source))&&Minions.Contains(target))&&!DropHeld(target)&&(target.DevMonster?source?.Seat.connected==true:NativeCombatRules.MinionCanHit(source?.Seat,target.Owner?.Seat,target.Pve!=null||IsZoneBoss(target),Match.Teams,FriendlyFire));
         private bool Enemy(NativePilot source,NativeMinion target)=>target!=null&&(Expedition?.Session.Run.SplitAreas!=true||(source==null||Pilots.Contains(source))&&Minions.Contains(target))&&!DropHeld(target)&&(target.DevMonster?source?.Seat.connected==true:NativeCombatRules.MinionEnemy(source?.Seat,target.Owner?.Seat,target.Pve!=null||IsZoneBoss(target),Match.Teams));
         private bool Invulnerable(NativePilot p)=>TechniqueGhost(p)||p.Roll!=null&&Time>=p.RollAt+p.Roll.iframeStart&&Time<p.RollAt+p.Roll.iframeStart+p.Roll.iframeSeconds;
-        private float Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true,bool primary=true,bool melee=false,bool stage=false,NativeBodyImpact impact=null,Vector3? hitPoint=null,bool rollAvoidable=true,bool weaponHit=false,EventKind eventKind=EventKind.Hit,string damageKind=null,bool sirenCrush=false,string collapseSegment=null,float finalCap=float.PositiveInfinity,int kernelStep=0,string stageHazard=null,bool stageLethal=false,int projectile=0,bool pierced=false)
+        private float Damage(NativePilot target,NativePilot source,float amount,Vector3 direction,float impulse,bool head,bool forced=false,bool direct=true,bool primary=true,bool melee=false,bool stage=false,NativeBodyImpact impact=null,Vector3? hitPoint=null,bool rollAvoidable=true,bool weaponHit=false,EventKind eventKind=EventKind.Hit,string damageKind=null,bool sirenCrush=false,string collapseSegment=null,float finalCap=float.PositiveInfinity,int kernelStep=0,string stageHazard=null,bool stageLethal=false,int projectile=0,bool pierced=false,bool selfDamage=false)
         {
             if(Expedition?.Session.Run.SplitAreas==true&&(!Pilots.Contains(target)||source!=null&&!Pilots.Contains(source)))return 0;
             if(TechniqueGhost(target)||target.DevGod||BossVictoryWalk||Pve?.Stage=="ended")return 0;
             if(!forced&&HubDamageBlocked(source,target.Body.position,projectile:projectile))return 0;
             if(!NativeKernelPanicRules.AllowsDamage(target.Kernel,target.Seat.id,source?.Kernel,source?.Seat.id??0,kernelStep))return 0;
-            if(target.Hp<=0||!target.Seat.connected||source!=null&&!forced&&!(collapseSegment!=null&&source==target)&&!(kernelStep>0?NativeCombatRules.CanHit(source.Seat,target.Seat,Match.Teams,FriendlyFire):CanHit(source,target))||float.IsNaN(amount)||float.IsInfinity(amount)||amount<=0||!forced&&(target.ScareBy!=null||kernelStep==0&&(Time<target.ShieldUntil||!stage&&NativeSpecialRules.Protected(target.Down,Time)||rollAvoidable&&Invulnerable(target))))return 0;
+            if(target.Hp<=0||!target.Seat.connected||source!=null&&!forced&&!(selfDamage&&source==target)&&!(collapseSegment!=null&&source==target)&&!(kernelStep>0?NativeCombatRules.CanHit(source.Seat,target.Seat,Match.Teams,FriendlyFire):CanHit(source,target))||float.IsNaN(amount)||float.IsInfinity(amount)||amount<=0||!forced&&(target.ScareBy!=null||kernelStep==0&&(Time<target.ShieldUntil||!stage&&NativeSpecialRules.Protected(target.Down,Time)||rollAvoidable&&Invulnerable(target))))return 0;
             if(!forced&&direct&&melee&&TryTechniqueParry(target,direction,hitPoint??target.Body.position,source))return 0;
             if(source!=null&&!forced&&direct&&(primary||melee)&&Time<target.BlockEnd){BlockProc(target,source,hitPoint??target.Collider.ClosestPoint(target.Body.position-direction.normalized*2),"clash");if(melee)SuccessfulMeleeBlock(target,source,amount,direction,impulse);return 0;}
             if(!forced){if(PilotMutator(source,"glass-cannon"))amount*=3;if(PilotMutator(target,"glass-cannon"))amount*=3;if(Mutator("friendly-fire")&&source!=null&&source!=target&&!source.Seat.AuthorityBoss&&!target.Seat.AuthorityBoss)amount*=.5f;}
@@ -311,7 +311,7 @@ namespace ChipArena.UnityConversion
             if(Replica&&replicaFrame!=null)return ReplicaSnapshot();
             foreach(var p in Pilots)
             {
-                var a=p.Pose;a.BowDrawAt=p.BowDrawAt;a.BowDraw=p.BowDraw;a.BowReleaseAt=p.BowReleaseAt;a.BowRainAt=p.BowRainAt;a.BowRainTarget=Vec(p.BowRainTarget);a.Cyber=CyberSnapshot(p);a.Kernel=p.Kernel?.ViewCopy();a.Wounds=p.Wounds.ToArray();a.Weapon=p.Seat.spec=="pistol"?WeaponId.Pistol:p.Seat.spec=="rifle"?WeaponId.Rifle:p.Seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;a.VisualSet=p.Seat.spec=="daggers"?1:p.Seat.spec=="greatsword"?2:p.Seat.spec=="shield"?3:0;a.MagicVisual=p.Seat.spec=="fire"?1:p.Seat.spec=="water"?2:p.Seat.spec=="lightning"?3:p.Seat.spec=="darkness"?4:0;a.SourceSpec=p.Seat.spec;a.BodyColor=p.Seat.bodyColor;a.AccentColor=p.Seat.accentColor;a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;a.SourceAction=p.Fighter?.Kind;a.SourceAt=p.Fighter?.At??0;a.SourceUntil=p.Fighter?.Until??0;a.SourceTotal=p.Fighter?.Total??0;a.SourceIndex=p.Fighter?.Index??0;a.RigScale=(p.Siren?.Scale??1)*p.Seat.devScale;
+                var a=p.Pose;a.BowDrawAt=p.BowDrawAt;a.BowDraw=p.BowDraw;a.BowReleaseAt=p.BowReleaseAt;a.BowRainAt=p.BowRainAt;a.BowRainTarget=Vec(p.BowRainTarget);a.Bomb=p.Seat.spec==NativeBombs.Spec?p.Bomb.ViewCopy():null;a.Cyber=CyberSnapshot(p);a.Kernel=p.Kernel?.ViewCopy();a.Wounds=p.Wounds.ToArray();a.Weapon=p.Seat.spec=="pistol"?WeaponId.Pistol:p.Seat.spec=="rifle"?WeaponId.Rifle:p.Seat.spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;a.VisualSet=p.Seat.spec=="daggers"?1:p.Seat.spec=="greatsword"?2:p.Seat.spec=="shield"?3:0;a.MagicVisual=p.Seat.spec=="fire"?1:p.Seat.spec=="water"?2:p.Seat.spec=="lightning"?3:p.Seat.spec=="darkness"?4:0;a.SourceSpec=p.Seat.spec;a.BodyColor=p.Seat.bodyColor;a.AccentColor=p.Seat.accentColor;a.Hat=p.Seat.hat;a.HatColor=p.Seat.hatColor;a.SourceAction=p.Fighter?.Kind;a.SourceAt=p.Fighter?.At??0;a.SourceUntil=p.Fighter?.Until??0;a.SourceTotal=p.Fighter?.Total??0;a.SourceIndex=p.Fighter?.Index??0;a.RigScale=(p.Siren?.Scale??1)*p.Seat.devScale;
                 if(p.Seat.spec=="cyberlord"){a.SourceRanged=p.Cyber.Ranged?.Ranged??false;a.SourceModeAt=p.Cyber.Ranged?.ModeAt??-100;}
                 if(p.Seat.spec=="siren"){var m=p.Siren?.Move;a.SourceAction=NativeSirenRules.GrabPose(m?.Caught!=null,Time,m?.Until??0)?"grab":m?.Rule.Id;a.SourceAt=m?.Caught!=null?m.CaughtAt:m?.At??0;a.SourceUntil=m?.Until??0;a.SourceSide=m?.Side??1;a.SourceRanged=p.Siren?.Ranged??false;a.SourceModeAt=p.Siren?.ModeAt??-100;}
                 var hold=p.HeldBy?.Siren?.Move;bool held=hold?.Caught==p&&p.Hp>0&&p.Seat.connected;

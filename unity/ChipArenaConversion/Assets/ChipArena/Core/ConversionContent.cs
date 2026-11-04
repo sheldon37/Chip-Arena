@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
         private static double Clamp(double x,double low,double high)=>Math.Max(low,Math.Min(high,x));
         public static ChipStats Stats(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held)
         {
-            var s=new ChipStats(data.baseStats);if(spec=="siren")s["hp"]=15000;
+            var s=new ChipStats(data.baseStats);if(spec=="siren")s["hp"]=15000;if(spec==NativeBombs.Spec){s["hp"]=90;s["speed"]*=.95;}
             foreach(var chip in data.chips)
             {
                 int count;held.TryGetValue(chip.id,out count);

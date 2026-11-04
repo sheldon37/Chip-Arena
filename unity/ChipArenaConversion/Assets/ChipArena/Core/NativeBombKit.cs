@@ -35,11 +35,24 @@ namespace ChipArena.UnityConversion
         public float[] Ready;
         /// <summary>What the pilot is doing, for the pose: the ability's id and its times.</summary>
         public string CastKind;public float CastAt=-100,CastRelease,CastUntil;
-        public NativeBombKit ViewCopy()=>(NativeBombKit)MemberwiseClone();
+        public bool HasLine,HasFinale;
+        public void CapturePresence(){HasLine=Line!=null;HasFinale=Finale!=null;}
+        public void RestorePresence(){if(!HasLine)Line=null;if(!HasFinale)Finale=null;if(string.IsNullOrEmpty(CastKind))CastKind=null;}
+        public NativeBombKit ViewCopy()
+        {
+            var c=(NativeBombKit)MemberwiseClone();
+            if(Bombs!=null){c.Bombs=new NativeBomb[Bombs.Length];for(int i=0;i<Bombs.Length;i++){var b=Bombs[i];c.Bombs[i]=b==null?null:new NativeBomb{Id=b.Id,Stuck=b.Stuck,Kind=b.Kind,Pos=b.Pos,Vel=b.Vel,Normal=b.Normal,At=b.At,ArmAt=b.ArmAt,BlowAt=b.BlowAt};}}
+            if(Blasts!=null){c.Blasts=new NativeBlast[Blasts.Length];for(int i=0;i<Blasts.Length;i++){var b=Blasts[i];c.Blasts[i]=b==null?null:new NativeBlast{Id=b.Id,Link=b.Link,Kind=b.Kind,At=b.At,Radius=b.Radius,Pos=b.Pos,FromPos=b.FromPos,Handed=b.Handed};}}
+            if(Scorched!=null){c.Scorched=new NativeBombScorch[Scorched.Length];for(int i=0;i<Scorched.Length;i++){var b=Scorched[i];c.Scorched[i]=b==null?null:new NativeBombScorch{Id=b.Id,At=b.At,Until=b.Until};}}
+            c.Ready=Ready==null?null:(float[])Ready.Clone();
+            if(Line!=null)c.Line=new NativeBombLine{At=Line.At,Speed=Line.Speed,From=Line.From,To=Line.To};
+            if(Finale!=null){c.Finale=new NativeBombFinale{At=Finale.At,Lock=Finale.Lock,Strike=Finale.Strike,Until=Finale.Until,Box=Finale.Box,Dir=Finale.Dir};if(Finale.Circles!=null){c.Finale.Circles=new NativeBombCircle[Finale.Circles.Length];for(int i=0;i<Finale.Circles.Length;i++){var b=Finale.Circles[i];c.Finale.Circles[i]=b==null?null:new NativeBombCircle{Id=b.Id,Pos=b.Pos};}}}
+            return c;
+        }
         public bool Valid()
         {
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;
-            if(!F(Meter)||Meter<0||Meter>1||Chain<0||Chain>64||!F(ChainUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil))return false;
+            if(MineCharges<0||MineCharges>2||!F(Meter)||Meter<0||Meter>1||Chain<0||Chain>64||!F(ChainUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil))return false;
             if(Bombs!=null){if(Bombs.Length>NativeBombs.MaxBombs)return false;foreach(var b in Bombs)if(b==null||!NativeBombs.IsKind(b.Kind)||!V(b.Pos)||!V(b.Vel)||!V(b.Normal)||!F(b.At)||!F(b.ArmAt)||!F(b.BlowAt))return false;}
             if(Blasts!=null){if(Blasts.Length>NativeBombs.MaxBlasts)return false;foreach(var b in Blasts)if(b==null||!V(b.Pos)||!V(b.FromPos)||!F(b.At)||!F(b.Radius)||b.Radius<0||b.Radius>64||b.Link<0||b.Link>64||b.Kind!=null&&b.Kind.Length>24)return false;}
             if(Line!=null&&(!F(Line.At)||!F(Line.Speed)||!V(Line.From)||!V(Line.To)))return false;
