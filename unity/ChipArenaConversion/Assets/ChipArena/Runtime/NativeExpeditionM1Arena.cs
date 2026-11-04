@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
                 go.transform.position=new Vector3(volume.x,volume.y,volume.z);go.transform.rotation=Quaternion.Euler(0,volume.yaw,0);
                 var box=go.AddComponent<BoxCollider>();box.size=new Vector3(volume.sx,volume.sy,volume.sz);box.enabled=c.Blocking;expeditionClosures.Add(c.id,box);
             }
-            BindHub();
+            BindHub();ReviveMachineCollision();
         }
         public void ExpeditionSyncClosures()
         {if(Expedition!=null)foreach(var c in Expedition.Closures)if(expeditionClosures.TryGetValue(c.id,out var box))box.enabled=c.Blocking;}

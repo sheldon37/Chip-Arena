@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
         public Vector3 Position(Actor actor) { Vector3 p; return visualPositions.TryGetValue(actor.Id,out p)?p:Vec(actor.Position); }
         public void Render(Snapshot s, float renderTime, bool smooth)
         {
-            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;SpawnBegin();ObserveHits(s);BeginWeaponFx(s);BeginHatFx(s);BeginCyberLord(s,renderTime);TechniqueBegin(s,renderTime);BombBegin(s,renderTime);shotTracker.Muzzles.Clear();
+            if(s==null) return;sourceModels?.Begin();hazardClock=renderTime;SpawnBegin();ObserveHits(s);BeginWeaponFx(s);BeginHatFx(s);BeginCyberLord(s,renderTime);TechniqueBegin(s,renderTime);BombBegin(s,renderTime);ReviveMachineBegin(s,renderTime);shotTracker.Muzzles.Clear();
             foreach(var list in batches) list.Clear(); DrawnParts=0;
             removedRigs.Clear();
             foreach(int id in rigs.Keys) { bool exists=false; foreach(var a in s.Actors) if(a.Id==id) { exists=true; break; } if(!exists) removedRigs.Add(id); }
@@ -149,7 +149,7 @@ namespace ChipArena.UnityConversion
                 Vector3 p=smooth?Vector3.Lerp(old,target,1-Mathf.Exp(-18*Time.unscaledDeltaTime)):target;
                 // The match-start spawn-in (NativeSpawnInPresentation.cs): the beam holds the feet; the rig is posed on the ground
                 // while it does and in the air for its drop, with the replicated flag restored after posing.
-                p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);p=TechniquePlace(a,p,renderTime);
+                p=SpawnPlace(a,p,renderTime);p=CyberKit2Place(a,p);p=TechniquePlace(a,p,renderTime);p=ReviveMachinePlace(a,p,renderTime);
                 visualPositions[a.Id]=p;
                 bool posed=a.Alive&&(CapturedPlayers||Viewer||GunRules.Ranged(a.Weapon));
                 if(posed){bool ground=a.Grounded;a.Grounded=SpawnContact(a.Id,ground);try{VisualBodyRestore(a.Id);PrepareCapturedPose(a,p,renderTime);VisualBodyPose(a,renderTime);}finally{a.Grounded=ground;}SpawnBones(a);}
@@ -229,7 +229,7 @@ namespace ChipArena.UnityConversion
             if(!rigs.TryGetValue(a.Id,out rig)) { rig=captured.Create(transform,a.Id); rig.Impacts=meleeImpacts; rig.Hits=hitLedger; rigs.Add(a.Id,rig); }
             if(Viewer&&ViewerSet>=4) rig.PreviewGun((WeaponId)(ViewerSet-3),ViewerClip,ViewerTime);
             else if(Viewer) rig.Preview(ViewerSet,PreviewName.Substring(PreviewName.IndexOf('/')+1),ViewerTime,Vector3.zero);
-            else { PoseReach(rig,a,time); rig.ReducedEffects=WeaponEffectsQuality<.5f; CyberBoostPreview(rig,a,time); rig.ActorPose(a,position,CyberPoseTime(a,time)); CyberVictimPose(rig,a,time); ChipSelectPose(rig,a,time); }
+            else { PoseReach(rig,a,time); rig.ReducedEffects=WeaponEffectsQuality<.5f; CyberBoostPreview(rig,a,time); rig.ActorPose(a,position,CyberPoseTime(a,time)); CyberVictimPose(rig,a,time); ChipSelectPose(rig,a,time); ReviveMachineTumble(rig,a); }
         }
         private void CapturedPose(Actor a,Vector3 position,float time,int color)
         {
