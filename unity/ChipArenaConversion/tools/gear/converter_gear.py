@@ -634,7 +634,7 @@ def crust(zone, chunk):
         back = pc.bm.verts.new(p0 + nn2 * (-.06))
         for i in range(corners):
             f = pc.bm.faces.new((rings[0][i], rings[0][(i + 1) % corners], back))
-            f.material_index = pc.slot('c-crack')
+            f.material_index = pc.slot('c-crack' if i % 3 == 0 else 'c-slag-side')
             f.tag = True
             f.normal_update()
             if f.normal.dot(nn2) > 0:
