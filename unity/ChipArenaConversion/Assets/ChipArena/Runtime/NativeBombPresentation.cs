@@ -64,8 +64,14 @@ namespace ChipArena.UnityConversion
         private void Detonator(NativeBombFinale f,float time)
         {
             var box=new Vector3(f.Box.x,f.Box.y,f.Box.z);var d=new Vector3(f.Dir.x,0,f.Dir.z);d=d.sqrMagnitude>1e-5f?d.normalized:Vector3.forward;var q=Quaternion.LookRotation(d,Vector3.up);float slam=Mathf.Clamp01((time-f.At)/.12f),down=Mathf.Clamp01((time-f.Lock)/.05f),stroke=Mathf.Lerp(.42f,.16f,down);box+=Vector3.up*((1-slam)*.5f);
-            BombPiece(WeaponShape.Cube,box+Vector3.up*.11f,q,new Vector3(.36f,.22f,.28f),new Color(.32f,.13f,.09f));BombPiece(WeaponShape.Cube,box+Vector3.up*.225f,q,new Vector3(.38f,.02f,.3f),BombBlack);BombPiece(WeaponShape.Cube,box+Vector3.up*.12f+d*.143f,q,new Vector3(.3f,.05f,.006f),BombHazard);
-            BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke*.5f),q,new Vector3(.03f,stroke,.03f),BombSteel);BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke),q,new Vector3(.34f,.035f,.04f),BombBrass);
+            // The case: wood-red with steel corners, a stencilled hazard panel, and two cables running off across the floor.
+            BombPiece(WeaponShape.Cube,box+Vector3.up*.11f,q,new Vector3(.36f,.22f,.28f),new Color(.32f,.13f,.09f));BombPiece(WeaponShape.Cube,box+Vector3.up*.225f,q,new Vector3(.38f,.02f,.3f),BombBlack);BombPiece(WeaponShape.Cube,box+Vector3.up*.11f+d*.143f,q,new Vector3(.3f,.07f,.006f),BombHazard);
+            for(int i=-2;i<=2;i++)BombPiece(WeaponShape.Cube,box+Vector3.up*.11f+d*.1465f+q*new Vector3(i*.06f,0,0),q*Quaternion.Euler(0,0,35),new Vector3(.018f,.09f,.002f),BombBlack);
+            for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){BombPiece(WeaponShape.Cube,box+Vector3.up*.11f+q*new Vector3(sx*.178f,0,sz*.138f),q,new Vector3(.03f,.23f,.03f),BombSteel);}
+            for(int sx=-1;sx<=1;sx+=2){var side=q*Vector3.right*sx;var cable=box+Vector3.up*.03f+side*.2f;var run=(side*.9f-d*.5f);BombPiece(WeaponShape.Cube,cable+run*.5f,Quaternion.LookRotation(run.normalized,Vector3.up),new Vector3(.018f,.018f,run.magnitude),BombBlack);}
+            // The plunger: a steel shaft with its guide collar, the grips rubber-ended on a brass bar.
+            BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke*.5f),q,new Vector3(.03f,stroke,.03f),BombSteel);BombPiece(WeaponShape.Cube,box+Vector3.up*.25f,q,new Vector3(.07f,.03f,.07f),BombBrass);BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke),q,new Vector3(.34f,.035f,.04f),BombBrass);
+            for(int sx=-1;sx<=1;sx+=2)BombPiece(WeaponShape.Cube,box+Vector3.up*(.225f+stroke)+q*new Vector3(sx*.15f,0,0),q,new Vector3(.08f,.05f,.05f),BombBlack);
             for(int s=-1;s<=1;s+=2){BombPiece(WeaponShape.Cube,box+Vector3.up*.235f+q*new Vector3(s*.12f,0,-.08f),q,new Vector3(.03f,.03f,.03f),BombBrass);BombPiece(WeaponShape.Sphere,box+Vector3.up*.2f+q*new Vector3(s*.12f,.02f,.1f),q,Vector3.one*.016f,(time<f.Strike&&Mathf.Sin(time*26+s)>0)?new Color(5,.3f,.2f):new Color(.1f,.01f,.01f),true);}
         }
         // The bandolier: a strap across the chest with little bombs on it, a satchel on the hip. On the rig's chest and pelvis, so it follows every pose.

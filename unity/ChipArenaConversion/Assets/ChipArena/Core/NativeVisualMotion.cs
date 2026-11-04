@@ -483,12 +483,16 @@ namespace ChipArena.UnityConversion
                 case NativeBombs.ClusterLob:return Part(TechThrowStart,at,rel,out pick)||Part(TechThrowEnd,rel,until,out pick);
                 case NativeBombs.FirecrackerLine:return Part(TechDrop,at,until,out pick);
                 case NativeBombs.GrandFinale:
-                    if(time<rel)return Part(TechDrop,at,rel,out pick);
-                    if(clips.Has(BombStoop)){pick=new Pick{Clip=BombStoop,Time=time-rel,Fade=FadeIn};return true;}return false;
+                {
+                    if(time<rel)return Part(TechDrop,at,rel,out pick);float lockAt=k.Finale?.Lock??rel+1.5f;
+                    // The launcher comes down on the plunger at the Lock, then the pilot stands and watches.
+                    if(Part(BombSlam,lockAt-.42f,lockAt+.34f,out pick))return true;
+                    if(time<lockAt&&clips.Has(BombStoop)){pick=new Pick{Clip=BombStoop,Time=time-rel,Fade=FadeIn};return true;}return false;
+                }
             }
             return false;
         }
-        private const string BombStoop="2Hand-Shooting-Crouch-Idle";
+        private const string BombStoop="2Hand-Shooting-Crouch-Idle",BombSlam="2Hand-Sword-Attack11";
         private static bool Technique(Set set,Actor a,float time,IClips clips,out Pick pick)
         {
             pick=default;var k=NativeTechniques.Of(a);if(k?.Kind==null||time<k.At)return false;float back=Math.Max(k.Release+.05f,k.RecoverUntil);

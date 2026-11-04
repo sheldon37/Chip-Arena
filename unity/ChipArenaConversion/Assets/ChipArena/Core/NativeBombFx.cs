@@ -7,6 +7,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeTechniqueFx
     {
         private static readonly Vector3 BombFlame=new Vector3(1,.42f,.07f),BombHot=new Vector3(1,.78f,.32f),BombRed=new Vector3(1,.06f,.03f),BombPaper=new Vector3(.95f,.14f,.1f),BombSmoke=new Vector3(.1f,.09f,.09f),BombDirt=new Vector3(.27f,.23f,.2f);
+        private static Vector3 BombFire(float u)=>Vector3.Lerp(new Vector3(1,.3f,.045f),new Vector3(.85f,.09f,.008f),u);
         /// <summary>Draws every Bombadier's charges, blasts, line and Finale of the frame at `time`.</summary>
         public void DrawBombs(ITechniqueFxSink s,IKitFxScene scene,float time,float q,bool low)
         {
@@ -85,14 +86,15 @@ namespace ChipArena.UnityConversion
             }
             // The fireball: a hot core, flame rolling out and up, going to smoke.
             float life=.42f+.1f*R0,u=Clamp01(age/life);int n=Count(linked?20:14,q,low);float lift=b.Kind==NativeBombs.Mine?2.6f:.6f;
-            if(age<life)for(int i=0;i<n;i++){var d=RandomDir(seed,i+30);if(b.Kind!=NativeBombs.Lob)d.Y=Math.Abs(d.Y)*.7f;var p=at+d*(R0*.62f*OutCubic(u)*(.5f+.5f*R(seed,i+31)))+Vector3.UnitY*(lift*u*R(seed,i+32));s.Fire(p,BombFlame,(1-u*u)*(.8f+.2f*R(seed,i+33)),R0*(.42f+.5f*u)*(.8f+.4f*R(seed,i+34)),.05f+.75f*u,seed+i,at.Y-1.2f);}
+            if(age<life)for(int i=0;i<n;i++){var d=RandomDir(seed,i+30);if(b.Kind!=NativeBombs.Lob)d.Y=Math.Abs(d.Y)*.7f;var p=at+d*(R0*.62f*OutCubic(u)*(.5f+.5f*R(seed,i+31)))+Vector3.UnitY*(lift*u*R(seed,i+32));s.Fire(p,BombFire(u),(1-u*u)*(.8f+.2f*R(seed,i+33)),R0*(.42f+.5f*u)*(.8f+.4f*R(seed,i+34)),.04f+.34f*u,seed+i,at.Y-1.2f);}
             Flash(s,at+Vector3.UnitY*.2f,age,.2f,BombFlame,R0*1.5f,seed+2);
             if(age<.16f)s.Glow(at+Vector3.UnitY*.2f,Vector3.One*(3*(1-age/.16f)),0,R0*.8f,Core,age/.16f,seed+3);
             // Hard streaks and dark grit thrown out, the shock over the floor.
             Sparks(s,at+Vector3.UnitY*.15f,age,.6f,Count(linked?34:22,q,low),5+2.2f*R0,BombHot,seed+4,9,.022f,Vector3.UnitY*.45f);
             int g2=Count(10,q,low);if(age<.7f)for(int i=0;i<g2;i++){var d=RandomDir(seed,i+60);d.Y=Math.Abs(d.Y)+.3f;float sp=3+3.5f*R(seed,i+61);var v=d*sp;var h=at+v*age-Vector3.UnitY*(4.9f*age*age);if(h.Y<at.Y-.4f)continue;s.Streak(h,v-Vector3.UnitY*(9.8f*age),new Vector3(.03f,.03f,.03f),.05f,.04f,.02f,.3f,age/.7f,seed+i);}
-            if(b.Kind!=NativeBombs.Lob&&age<.32f){float w=age/.32f;Ring(s,at+Vector3.UnitY*.04f,R0*1.25f*OutCubic(w),.22f*(1-w)+.05f,(linked?BombHot:BombFlame)*(1.5f*(1-w)),low?14:30);if(linked)Ring(s,at+Vector3.UnitY*.05f,R0*1.7f*OutCubic(w),.08f,Vector3.One*(1.1f*(1-w)),low?14:30);}
-            if(b.Kind!=NativeBombs.Lob)Dust(s,at,age,.75f,Count(9,q,low),R0*1.15f,BombDirt,.55f,seed+6);
+            bool grounded=b.Kind!=NativeBombs.Lob&&b.Kind!=NativeBombs.Sticky;
+            if(grounded&&age<.32f){float w=age/.32f;Ring(s,at+Vector3.UnitY*.04f,R0*1.25f*OutCubic(w),.22f*(1-w)+.05f,(linked?BombHot:BombFlame)*(1.5f*(1-w)),low?14:30);if(linked)Ring(s,at+Vector3.UnitY*.05f,R0*1.7f*OutCubic(w),.08f,Vector3.One*(1.1f*(1-w)),low?14:30);}
+            if(grounded)Dust(s,at,age,.75f,Count(9,q,low),R0*1.15f,BombDirt,.55f,seed+6);
             // What is left: smoke going up, dark and slow.
             int m=Count(8,q,low);float o0=(1-Smooth((age-.5f)/1))*Smooth((age-.12f)/.2f);if(o0>0)for(int i=0;i<m;i++){var d=RandomDir(seed,i+80);d.Y=Math.Abs(d.Y);s.Smoke(at+d*(R0*.4f)+Vector3.UnitY*(.4f+1.1f*age*(.6f+.5f*R(seed,i+81))),BombSmoke,.6f*o0,R0*(.4f+.55f*age),.15f+.5f*age,seed+i,at.Y-.3f);}
             // Mines: the jet that throws you, straight up.
@@ -106,7 +108,7 @@ namespace ChipArena.UnityConversion
             const float High=11;float life=.75f,u=Clamp01(age/life);
             if(age<.14f){float w=age/.14f;s.Line(false,at+Vector3.UnitY*High,at,(BombHot+Vector3.One)*(3.4f*(1-w*.4f)),.4f+R0*.2f*(1-w),false);}
             Flash(s,at+Vector3.UnitY*1.6f,age,.3f,BombFlame,R0*2.6f,seed);Cracks(s,at,age,1.3f,low?8:16,R0*1.1f,BombFlame,seed+1);
-            int n=Count(30,q,low);if(age<life)for(int i=0;i<n;i++){float y=High*R(seed,i+10),spread=.25f+.9f*OutCubic(u)*(1-y/High*.5f);var a=6.2831853f*R(seed,i+11)+t2(age)*(R(seed,i+12)-.5f);var p=at+new Vector3((float)Math.Cos(a)*R0*.42f*spread,y,(float)Math.Sin(a)*R0*.42f*spread);s.Fire(p,BombFlame,(1-u*u)*(.75f+.25f*R(seed,i+13)),(1.1f+.9f*u)*(.8f+.4f*R(seed,i+14)),.1f+.7f*u,seed+i,at.Y-.3f);}
+            int n=Count(30,q,low);if(age<life)for(int i=0;i<n;i++){float y=High*R(seed,i+10),spread=.25f+.9f*OutCubic(u)*(1-y/High*.5f);var a=6.2831853f*R(seed,i+11)+t2(age)*(R(seed,i+12)-.5f);var p=at+new Vector3((float)Math.Cos(a)*R0*.42f*spread,y,(float)Math.Sin(a)*R0*.42f*spread);s.Fire(p,BombFire(u),(1-u*u)*(.75f+.25f*R(seed,i+13)),(1.1f+.9f*u)*(.8f+.4f*R(seed,i+14)),.06f+.36f*u,seed+i,at.Y-.3f);}
             if(age<.5f){float w=age/.5f;Ring(s,at+Vector3.UnitY*.05f,R0*1.6f*OutCubic(w),.4f*(1-w)+.08f,BombHot*(2*(1-w)),low?18:40);}
             Sparks(s,at+Vector3.UnitY*.3f,age,.9f,Count(40,q,low),10,BombHot,seed+2,10,.03f,Vector3.UnitY*.9f);Dust(s,at,age,1.1f,Count(14,q,low),R0*1.4f,BombDirt,.7f,seed+3);
             int m=Count(12,q,low);float o0=(1-Smooth((age-.5f)/1))*Smooth((age-.2f)/.25f);if(o0>0)for(int i=0;i<m;i++){float y=(2+7*R(seed,i+30))*(.5f+.6f*age);var a=6.2831853f*R(seed,i+31);s.Smoke(at+new Vector3((float)Math.Cos(a)*(.8f+.5f*age),y,(float)Math.Sin(a)*(.8f+.5f*age)),BombSmoke,.6f*o0,1.3f+.9f*age,.15f+.5f*age,seed+i,at.Y-.3f);}
@@ -156,7 +158,7 @@ namespace ChipArena.UnityConversion
         public static KernelPanicCamera.Shot At(NativeBombFinale f,Vector3 feet,float time,bool reduced,bool shake)
         {
             var s=new KernelPanicCamera.Shot();float t=time-f.At;var d=new Vector3(f.Dir.x,0,f.Dir.z);d=d.LengthSquared()>1e-5f?Vector3.Normalize(d):Vector3.UnitZ;var r=new Vector3(d.Z,0,-d.X);var box=new Vector3(f.Box.x,f.Box.y,f.Box.z);float lk=f.Lock-f.At,st=f.Strike-f.At,end=f.Until-f.At;
-            if(t<.6f){float u=Smooth(t/.6f);s.Position=box+d*(1.5f-.3f*u)+r*(.8f-.2f*u)+Vector3.UnitY*(.28f+.08f*u);s.Look=box+Vector3.UnitY*(.32f+.35f*u);s.Fov=44-6*u;s.Index=0;}
+            if(t<.6f){float u=Smooth(t/.6f);s.Position=box+d*(1.7f-.3f*u)+r*(.9f-.2f*u)+Vector3.UnitY*(.42f+.1f*u);s.Look=box+Vector3.UnitY*(.18f+.3f*u);s.Fov=46-6*u;s.Index=0;}
             else if(t<lk-.25f){float u=Smooth((t-.6f)/Math.Max(.1f,lk-.25f-.6f));s.Position=box+d*(1.1f+.3f*u)-r*(.75f+.2f*u)+Vector3.UnitY*(.9f+.3f*u);s.Look=box-d*.2f+Vector3.UnitY*(.72f+.18f*u);s.Fov=34;s.Index=1;}
             else if(t<st){float u=Smooth((t-(lk-.25f))/Math.Max(.1f,st-(lk-.25f)));s.Position=feet-d*(2.8f+2.6f*u)+r*(1.2f*u)+Vector3.UnitY*(1.7f+5.5f*u);s.Look=feet+d*(3+4*u)+Vector3.UnitY*(1-.4f*u);s.Fov=46+10*u;s.Index=2;s.Shake=shake?.02f*u:0;}
             else{float u=Smooth((t-st)/.7f);s.Position=feet-d*5.4f+r*1.2f+Vector3.UnitY*(7.2f-.8f*u);s.Look=feet+d*7+Vector3.UnitY*(.6f+4*u);s.Fov=56+4*u;s.Index=3;s.Shake=shake?.08f*(1-u):0;}
