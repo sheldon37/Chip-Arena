@@ -1,3 +1,5 @@
+2026-11-04 Claude (`claude/revive-machine`): the hub's REVIVE-O-MATIC stands in both hubs: model, E prompt, screen, the whole spit-out show and sound, reviewed in the Unity Editor through the Dev Sandbox preview. Pressing REVIVE does nothing in a real run yet: the charge, the revive and cause of death wait on Astra (`docs/REVIVE-MACHINE.md`).
+
 2026-11-04 Astra (`codex/bombadier-rules`, base `197ef975`, shared docs through `c6f86fb5`): Bombadier authority, DEV access/content, bots, chains/Scorched, Finale, snapshot/late-join/replay and native gates implemented; Parting Line hop recovery fixed. Pilot chain budget and final decisions in BOMBADIER.md. Verification/integration receipts in DEV_LOG/task PR; Windows gameplay acceptance pending.
 
 2026-11-04 Claude (`claude/bombadier`): the Bombadier holds TNT now, not a launcher; its presentation and the Last Warning intro reviewed in Unity; the intro plays with DEV access; the kit waits on Astra's rules and row (`docs/BOMBADIER.md`).
