@@ -215,7 +215,7 @@ namespace ChipArena.UnityConversion
             {
                 // Existing knockdown handles real ground contact; shockwave waits for that contact.
                 p.Knockback.y=-18-p.Body.linearVelocity.y;p.Grounded=false;
-                if(t.pilot!=null&&t.pilot.Hp>0){t.pilot.Knockback.y=-18-t.pilot.Body.linearVelocity.y;t.pilot.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=true,Source=p.Seat.id};}
+                if(t.pilot!=null&&t.pilot.Hp>0&&!TechniqueBrace(t.pilot)){t.pilot.Knockback.y=-18-t.pilot.Body.linearVelocity.y;t.pilot.Down=new NativeRecovery{At=Time,Until=Time+5,PickupUsed=true,Source=p.Seat.id};}
                 if(t.minion!=null&&t.minion.Hp>0&&!t.minion.Body.isKinematic)t.minion.Body.linearVelocity=new Vector3(t.minion.Body.linearVelocity.x,-18,t.minion.Body.linearVelocity.z);
                 a.Phase="fall";a.Until=Time+3;p.AttackEnd=p.Ready=a.Until;
             }

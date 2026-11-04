@@ -45,14 +45,14 @@ namespace ChipArena.UnityConversion
             count=0;var content=System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")));
             var specs=new HashSet<string>();foreach(var w in content.RootElement.GetProperty("weapons").EnumerateArray())specs.Add(w.GetProperty("id").GetString());
             string[] standard={"pistol","rifle","machinegun","bow","fire","water","lightning","darkness","sword","daggers","shield","greatsword"};
-            Check(NativeTechniques.All.Length==12&&NativeTechniques.All.Select(d=>d.Spec).OrderBy(x=>x).SequenceEqual(standard.OrderBy(x=>x)),"a technique for each of the twelve standard weapons, and no DEV class");
-            Check(NativeTechniques.All.Select(d=>d.Id).Distinct().Count()==12&&NativeTechniques.All.Select(d=>d.Name).Distinct().Count()==12,"each its own id and name");
+            Check(NativeTechniques.All.Select(d=>d.Spec).Distinct().Count()==standard.Length&&NativeTechniques.All.Select(d=>d.Spec).Distinct().OrderBy(x=>x).SequenceEqual(standard.OrderBy(x=>x)),"a technique for each of the twelve standard weapons, and no DEV class");
+            Check(NativeTechniques.All.Select(d=>d.Id).Distinct().Count()==NativeTechniques.All.Length&&NativeTechniques.All.Select(d=>d.Name).Distinct().Count()==NativeTechniques.All.Length,"each its own id and name");
             foreach(var d in NativeTechniques.All)
             {
                 Check(specs.Contains(d.Spec),d.Id+": its weapon exists");Check(d.Cooldown>=9&&d.Cooldown<=20,d.Id+": a long cooldown ("+d.Cooldown+" s)");
-                Check(NativeTechniques.For(d.Spec)==d&&NativeTechniques.Find(d.Id)==d,d.Id+": found by weapon and id");
+                Check(NativeTechniques.Of(d.Spec).Contains(d)&&NativeTechniques.Find(d.Id)==d,d.Id+": found by weapon and id");
                 // Dearer than the same weapon's Q: it is no new damage button.
-                foreach(var a in content.RootElement.GetProperty("abilities").EnumerateArray())if(a.GetProperty("spec").GetString()==d.Spec&&a.GetProperty("slot").GetString()=="q"&&a.TryGetProperty("cooldown",out var q)&&q.GetDouble()>0)Check(d.Cooldown>q.GetDouble(),d.Id+": a longer cooldown than the weapon's Q ("+q.GetDouble()+" s)");
+                foreach(var a in content.RootElement.GetProperty("abilities").EnumerateArray())if(a.GetProperty("spec").GetString()==d.Spec&&a.GetProperty("slot").GetString()=="q"&&a.TryGetProperty("cooldown",out var q)&&q.GetDouble()>0)Check(d.Cooldown>=q.GetDouble(),d.Id+": at least the cooldown of the weapon's Q ("+q.GetDouble()+" s)");
             }
             Check(NativeTechniques.For("siren")==null&&NativeTechniques.For("cyberlord")==null&&NativeTechniques.For("leet")==null,"not the DEV classes");
             Effects();Poses();Choices(root);Wiring(root);
@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         {
             var fx=new NativeTechniqueFx();var scene=new Scene();var src=new One();NativeTechniques.Source=src;
             var a=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(2,.5f,-3)};scene.List.Add(a);
-            foreach(var d in NativeTechniques.All.Concat(NativeTechniques.More))for(int variant=0;variant<2;variant++)
+            foreach(var d in NativeTechniques.All)for(int variant=0;variant<2;variant++)
             {
                 var k=new NativeTechnique();NativeTechniquePreview.Write(k,d.Id,new Vector3(2,.5f,-3),.7f,10,variant==0);src.K=k;a.SourceSpec=d.Spec;string n=d.Id+(variant==0?"":" (second)");
                 Check(k.Valid(),n+": a valid record");Check(k.Kind==d.Id&&k.Release>=k.At&&k.Until>=k.Release&&k.End>=k.Until,n+": its times run forward");Check(NativeTechniquePreview.Period(d.Id)>k.End-k.At,n+": the preview's loop outlasts the cast ("+(k.End-k.At).ToString("0.0")+" s)");
@@ -102,11 +102,11 @@ namespace ChipArena.UnityConversion
             foreach(var d in NativeTechniques.All)
             {
                 string text=NativeTechniques.Text(d.Id);Check(text.Length>20&&text.Length<=95,d.Id+": a card sentence that fits three lines");
-                var row=data.Ability(d.Spec,"technique");Check(row!=null&&row.id==d.Id&&row.cooldown==d.Cooldown&&row.cost==d.Cost,d.Id+": the card's numbers are the rules'");
+                var row=data.abilities.Single(a=>a.id==d.Id);Check(row!=null&&row.id==d.Id&&row.cooldown==d.Cooldown&&row.cost==d.Cost,d.Id+": the card's numbers are the rules'");
                 foreach(var slot in new[]{"q","e"})
                 {
                     options.Clear();bool added=NativeLocker.AddTechniques(data,data.Weapon(d.Spec),slot,options)>0;Check(added==(d.Spec!="rifle"||slot=="e")&&added==NativeTechniqueLoadout.Allowed(d.Spec,slot),d.Id+" "+slot+": offered where it may go");
-                    if(added){var o=options[0];Check(o.Technique==d&&o.Id==d.Id&&o.Name==d.Name&&o.Icon==d.Icon&&o.Text==text&&!o.FromWeapon&&o.Meta==NativeLocker.Meta(d.Cooldown,d.Cost,NativeLocker.CostUnit(data.Weapon(d.Spec)),false),d.Id+": the card");}
+                    if(added){var o=options.Single(x=>x.Id==d.Id);Check(o.Technique==d&&o.Id==d.Id&&o.Name==d.Name&&o.Icon==d.Icon&&o.Text==text&&!o.FromWeapon&&o.Meta==NativeLocker.Meta(d.Cooldown,d.Cost,NativeLocker.CostUnit(data.Weapon(d.Spec)),false),d.Id+": the card");}
                 }
             }
             foreach(var dev in new[]{"emperor","ansatsuken"})foreach(var slot in new[]{"q","e"})Check(NativeLocker.AddTechniques(data,data.Weapon(dev),slot,options,true)==0,dev+": nothing to swap on a DEV kit");

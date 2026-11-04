@@ -1,3 +1,5 @@
+2026-11-04 Astra (`codex/more-technique-rules`, shared `6bfd311f`, Claude through `d759e612`): second-set authority rules/content, per-slot technique IDs with legacy saves, account sanitizer, deep-copied Path and native checks. Claude picker adapters wired; per-card refusal/record filtering and live Hawk dive need Claude follow-up (WEAPON-TECHNIQUES.md). Verification and release receipts in task PR.
+
 2026-11-04 Astra (`codex/technique-refusal`, base `ff320e8f`): technique aim-refusal stub implemented from the existing cast checks; TryTechnique and HUD share geometry and resolved destination. Pending aim is explicit, query read-only, and guest sanctuary checks use loaded collision area. Native regression gate added; validation/release receipts in task PR.
 
 2026-11-03 Claude: a refused technique press says why, on the card and under the crosshair (`claude/technique-feedback`; docs/WEAPON-TECHNIQUES.md). Waits on Astra to fill `NativeArena.TechniqueRefusal`, an empty stub; nothing shows until then.

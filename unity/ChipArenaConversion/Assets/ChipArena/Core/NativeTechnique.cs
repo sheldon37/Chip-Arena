@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         public float End=>Math.Max(Until,RecoverUntil);
         public bool Hit(float time)=>HitAt>-50&&time>=HitAt;
         public bool Recast(float time)=>RecastAt>-50&&time>=RecastAt;
-        public NativeTechnique ViewCopy()=>(NativeTechnique)MemberwiseClone();
+        public NativeTechnique ViewCopy(){var copy=(NativeTechnique)MemberwiseClone();copy.Path=Path==null?null:(V3[])Path.Clone();return copy;}
         private static readonly string[] Phases=new[]{"windup","active","guard","counter","recovery","throw","cloud","plant","wall","recall","flight","stuck","leap","return","flick","air","drop","armed","fire","reel","draw","burst","crouch","cast","pool","set","bolt","swap","hop","line","snap","mount","ride","brace","shot","marked","blast","ping","dive","ignite","run","stream","rod","zap","sink","walk","rise"};
         public bool Valid()
         {
@@ -48,11 +48,6 @@ namespace ChipArena.UnityConversion
             D(Riposte,"sword","Riposte","shield-check",12,20,0x8fe8ff,"COUNTER"),D(SmokeVeil,"daggers","Smoke Veil","cloud",16,25,0xb48cff,"STEALTH"),D(Bastion,"shield","Bastion","shield",14,25,0x4fa8ff,"COVER"),D(AnchorThrow,"greatsword","Anchor Throw","anchor",14,30,0xffa23a,"MOBILITY"),
             D(RicochetCoin,"pistol","Ricochet Coin","coins",9,0,0xffcf5a,"TRICK SHOT"),D(SentryDrop,"machinegun","Sentry Drop","crosshair",20,0,0xff5a4a,"TURRET"),D(GrappleLine,"rifle","Grapple Line","spline",12,0,0x4fe6ff,"MOBILITY"),D(GaleArrow,"bow","Gale Arrow","wind",10,0,0xbff5e4,"CONTROL"),
             D(IgnitionLeap,"fire","Ignition Leap","flame",11,22,0xff7a22,"MOBILITY"),D(HealingSpring,"water","Healing Spring","droplets",18,30,0x4ff0c8,"SUPPORT"),D(StaticRecall,"lightning","Static Recall","zap",13,20,0x9ec4ff,"ESCAPE"),D(ShadeSwap,"darkness","Shade Swap","repeat",15,24,0xa050ff,"CONTROL"),
-        };
-        /// <summary>The second set (owner 2026-11-04), in `All`'s weapon order. Apart from `All` until the rules and their content rows catch up: the
-        /// Dev Sandbox previews them, and the Locker offers one as soon as its content row is live.</summary>
-        public static readonly Def[] More=
-        {
             D(PartingLine,"sword","Parting Line","swords",11,18,0xd6f2ff,"TRAP"),D(Tripwire,"daggers","Tripwire","activity",13,20,0xe0ff6a,"TRAP"),D(ShieldSurf,"shield","Shield Surf","move",12,20,0x6ec1ff,"MOBILITY"),D(IronVow,"greatsword","Iron Vow","shield-alert",14,25,0xffb648,"DEFENCE"),
             D(BountyRound,"pistol","Bounty Round","target",14,0,0xffd86a,"RECON"),D(RecoilBurst,"machinegun","Recoil Burst","zap",10,0,0xff8a3c,"MOBILITY"),D(SonarDart,"rifle","Sonar Dart","radio",16,0,0x5cffb0,"RECON"),D(SpiritHawk,"bow","Spirit Hawk","feather",12,0,0xa6fff0,"HUNTER"),
             D(WildfireRun,"fire","Wildfire Run","footprints",13,25,0xff9a2e,"MOBILITY"),D(Slipstream,"water","Slipstream","wind",15,22,0x54d8ff,"TEAM"),D(LightningRod,"lightning","Lightning Rod","radio",16,24,0xc9b6ff,"DEFENCE"),D(GraveWalk,"darkness","Grave Walk","ghost",17,26,0x8a5cff,"ESCAPE"),
@@ -60,7 +55,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A weapon's techniques, in the order the Locker lists them (empty: a DEV class). Allocation free once built.</summary>
         public static Def[] Of(string spec)
         {
-            if(spec==null)return Array.Empty<Def>();if(bySpec.TryGetValue(spec,out var list))return list;var l=new List<Def>();foreach(var d in All)if(d.Spec==spec)l.Add(d);foreach(var d in More)if(d.Spec==spec)l.Add(d);list=l.ToArray();bySpec[spec]=list;return list;
+            if(spec==null)return Array.Empty<Def>();if(bySpec.TryGetValue(spec,out var list))return list;var l=new List<Def>();foreach(var d in All)if(d.Spec==spec)l.Add(d);list=l.ToArray();bySpec[spec]=list;return list;
         }
         private static readonly Dictionary<string,Def[]> bySpec=new Dictionary<string,Def[]>();
         /// <summary>The content row of a technique (null: the rules have none yet).</summary>
@@ -122,11 +117,11 @@ namespace ChipArena.UnityConversion
         public static string RefusalLine(string why)=>why==NoSurface?"NO SURFACE IN RANGE":why==Blocked?"THE WAY BACK IS BLOCKED":why==NoFloor?"NO FLOOR THERE":null;
         /// <summary>The weapon's technique (null: a DEV class, or none).</summary>
         public static Def For(string spec){foreach(var d in All)if(d.Spec==spec)return d;return null;}
-        public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;foreach(var d in More)if(d.Id==id)return d;return null;}
+        public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;return null;}
         /// <summary>The technique in this weapon's slot (null: the slot keeps its own ability).</summary>
-        public static Def Equipped(string map,string spec,string slot){return NativeTechniqueLoadout.Slot(map,spec)==slot?For(spec):null;}
-        /// <summary>The map with technique `id` in this weapon's slot (null: back to the slot's own ability). A technique holds one slot, so this moves it.</summary>
-        public static string Equip(string map,string spec,string slot,string id){return NativeTechniqueLoadout.With(map,spec,id!=null?slot:"");}
+        public static Def Equipped(string map,string spec,string slot){return Find(NativeTechniqueLoadout.In(map,spec,slot));}
+        /// <summary>Set or restore this slot, moving an already-equipped technique to it.</summary>
+        public static string Equip(string map,string spec,string slot,string id){return NativeTechniqueLoadout.With(map,spec,slot,id??"");}
         /// <summary>Who holds the records (null: no active snapshot). Set from the rendered snapshot; the sandbox preview may override it.</summary>
         public static ITechniqueSource Source;
         public static NativeTechnique Of(Actor a)=>a==null||Source==null?null:Source.Of(a.Id);

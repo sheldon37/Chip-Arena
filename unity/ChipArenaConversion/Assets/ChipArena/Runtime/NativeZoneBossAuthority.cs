@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             if(SceneLinecast(center+Vector3.up,p.Body.position,WorldMask))return;
             if(Time<p.BlockEnd){BlockProc(p,Pve.Boss,p.Body.position,"clash");return;}
             float actual=Damage(p,null,amount,p.Body.position-center,0,false,primary:false,rollAvoidable:true);
-            if(actual>0){p.Knockback+=(p.Body.position-center).normalized*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
+            if(actual>0&&!TechniqueBrace(p)){p.Knockback+=(p.Body.position-center).normalized*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
         }
         private Vector3 BossLocal(Vector3 world)=>Quaternion.Euler(0,-zoneBossActor.Yaw,0)*(world-zoneBossActor.Body.position);
         private Vector3 BossWorld(float x,float z)=>zoneBossActor.Body.position+Quaternion.Euler(0,ZoneBoss.actionYaw,0)*new Vector3(x,0,z);
