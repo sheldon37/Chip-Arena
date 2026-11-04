@@ -153,14 +153,14 @@ namespace ChipArena.UnityConversion
         {
             float melee=float.IsNaN(f.MeleeAge)?0:1;p.World();
             // The lantern carried out from the left hip (his left: source +x), the elbow bent, steadier than a free arm.
-            var carry=p.WorldPosition[CapturedRig.LArm]+new Vector3(.1f,-.36f,.2f);
+            var carry=p.WorldPosition[CapturedRig.LArm]+new Vector3(.17f,-.42f,.12f);
             WhistleCurve(f.Special==NativeStationKinds.Special.Whistle?f.SpecialAge:float.NaN,out float inhale,out float blast,out float ww);
             LastCallCurve(f.LastCallAge,out float raise,out float ring,out float lw);
             if(f.LanternBroken)lw=0;
             // The last call: the lantern high over his head, shaken side to side (rung), his face up toward it.
             var high=p.WorldPosition[CapturedRig.LArm]+new Vector3(.05f+.07f*ring,.5f,.12f);var lantern=Vector3.Lerp(carry,high,raise);
             if(lw>0){NativeZombieClips.Sample(reach1,.9f+.3f*raise,row);NativeZombieClips.Pose(row,clip);Upper(p,clip,.25f*lw,true);Bend(p,CapturedRig.Chest,-.12f*raise,.1f*raise,-.06f*ring);Bend(p,CapturedRig.Head,-.35f*raise,.15f*raise,0);}
-            ArmTo(p,true,lantern,new Vector3(.8f,-.5f,-.3f),Math.Max(lw,.62f*(1-melee)));
+            ArmTo(p,true,lantern,new Vector3(.8f,-.5f,-.3f),Math.Max(lw,.94f*(1-melee)));
             // The whistle: the right hand to the mouth, the chest drawn in (shoulders up, head back), then the blast.
             if(ww>0&&!f.LanternBroken)
             {

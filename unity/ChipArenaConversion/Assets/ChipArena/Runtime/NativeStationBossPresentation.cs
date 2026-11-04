@@ -55,6 +55,7 @@ namespace ChipArena.UnityConversion
         {
             var eye=WorldEye;
             if(!NativeExpeditionStation.Active(arena.MapId)){StationBossHide();return;}
+            StationBossPartsBuild(false);
             float now=PresentationClock(arena);
             if(!ReferenceEquals(arena,stationBossArena)||arena.Generation!=stationBossGeneration){stationBossArena=arena;stationBossGeneration=arena.Generation;stationBossLast=-1;stationBossHp=float.NaN;stationBossSongSpawn=float.NaN;stationBossSongLast=-1;}
             // The record: the DEV preview's script while it runs, else the authority's (None until bound).
@@ -126,7 +127,7 @@ namespace ChipArena.UnityConversion
         private void StationBossHide()
         {
             if(stationBossLights){NativeLighting.KitLights(null,null,0,Vector3.zero);stationBossLights=false;}
-            if(NativeStationBossStage.Shown.On)NativeStationBossStage.Shown=StationBossStage.Idle;stationBossLast=-1;StationBossDressing(0,false);
+            if(NativeStationBossStage.Shown.On)NativeStationBossStage.Shown=StationBossStage.Idle;stationBossLast=-1;StationBossDressing(0,false);StationBossRiderHide();
         }
 
         // ================================================================================================================
@@ -258,6 +259,8 @@ namespace ChipArena.UnityConversion
             float d=eye!=null?Vector3.Distance(eye.transform.position,NativeBossPoseApply.ToUnity(stationBoss.Root)):0;int tier=d<30?0:d<60?1:2;if(LowGraphics)tier=Math.Max(1,tier);StationBossTier=tier;
             var meshes=stationBossMeshes[tier];var joints=stationBossJoints[tier];var block=stationBossBlock;
             float flash=stationBossFlash;stationBossFlash=Mathf.Max(0,stationBossFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;
+            // (The bank's model where it is here: Runtime NativeStationBossBody.cs.)
+            if(StationBossBodyDraw(pose,fx,tier,code))return;
             for(int i=0;i<meshes.Length;i++)
             {
                 var mesh=meshes[i];int j=joints[i];if(mesh==null||fx.Hidden[j])continue;
@@ -287,7 +290,7 @@ namespace ChipArena.UnityConversion
         {
             if(stationBossMeshes!=null)foreach(var tier in stationBossMeshes)if(tier!=null)foreach(var m in tier)if(m!=null)CapturedAnimation.Release(m);
             if(stationBossMaterial!=null)CapturedAnimation.Release(stationBossMaterial);stationBossMeshes=null;stationBossJoints=null;stationBossMaterial=null;stationBossDraw?.Dispose();stationBossDraw=null;stationBossVfx?.Dispose();stationBossVfx=null;stationBossVfxFailed=false;
-            stationBossArena=null;stationBossLast=-1;
+            stationBossArena=null;stationBossLast=-1;StationBossRiderHide();
         }
     }
 

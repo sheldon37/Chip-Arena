@@ -290,7 +290,7 @@ namespace ChipArena.UnityConversion
             if(z==null||z.Body.Root==null)
             {
                 if(zombieMakesFrame!=Time.frameCount){zombieMakesFrame=Time.frameCount;zombieMakes=0;}
-                if(zombieMakes>=ZombieMakesPerFrame||zombiePool.Count==0)return null;
+                if(zombieMakes>=ZombieMakesPerFrame&&!NativeStationKinds.Is(kind)||zombiePool.Count==0)return null;
                 zombieMakes++;z=ZombieModelMake(v);if(z==null)return null;
             }
             z.Id=id;z.Kind=kind;z.PosedFrame=-10;z.Dying=false;zombieBodies[id]=z;ZombieReseed(z,id);return z;
@@ -329,7 +329,7 @@ namespace ChipArena.UnityConversion
         }
         // The bake's instances the zombies are made from, made ahead off the main thread (InstantiateAsync, under an inactive holder)
         // while a horde is about, never at once (about 8 ms each); the pilots' corpse pool is left to the pilots.
-        private const int ZombiePoolTarget=8,ZombiePoolBatch=4;
+        private const int ZombiePoolTarget=8,ZombiePoolBatch=4;private static readonly HashSet<NativeZombieLooks.Variant> zombieStationAhead=new HashSet<NativeZombieLooks.Variant>();
         private static readonly Stack<GameObject> zombiePool=new Stack<GameObject>();private static AsyncInstantiateOperation<GameObject> zombieFill;private static GameObject zombieHolder;
         /// <summary>HordeKindsBegin: the pool topped up while the arena has a horde (or adds) and the models are on; in a horde, the
         /// mutants' first bodies made ahead.</summary>
@@ -344,7 +344,10 @@ namespace ChipArena.UnityConversion
             // (In a horde, each mutant variant's first body is made ahead, one a frame, so its growth is built before a Hulk needs it.)
             if(arena!=null&&arena.Pve!=null&&ZombieModelsOn&&zombiePool.Count>0)
                 {bool grew=false;foreach(var looks in ZombieAllLooks){foreach(var v in looks)if(v.Mutant&&(v.Theme==null||v.Theme==zombieTheme)&&NativeZombieLooks.Modelled(v.Kind)&&!zombieGrowths.ContainsKey(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);grew=true;break;}if(grew)break;}}
-            if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
+            // (On the Central Station each of its four kinds' variants has a body made ahead, one a frame, so none waits for one.)
+            if(arena!=null&&NativeExpeditionStation.Active(arena.MapId)&&ZombieModelsOn&&zombiePool.Count>0)
+                foreach(var v in NativeZombieLooks.All)if(NativeStationKinds.Is(v.Kind)&&NativeZombieLooks.Modelled(v.Kind)&&zombieStationAhead.Add(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);break;}
+            if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)&&!NativeExpeditionStation.Active(arena.MapId)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
             if(zombieHolder==null){zombieHolder=new GameObject("Zombie model pool");zombieHolder.SetActive(false);DontDestroyOnLoad(zombieHolder);}
             zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);
         }
