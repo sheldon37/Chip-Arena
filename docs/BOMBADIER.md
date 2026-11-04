@@ -4,7 +4,7 @@ Owner request, 2026-11-04: "I'd like to add a new dev weapon and intro; Bombadie
 another one). Supports an Ultimate ability with a cutscene. Give unique animations, effects, and balance the damage 'somewhat' to give players a chance to fight against it. For the intro, make it cinematic; I want to
 introduce a much higher detail of intros going forward. Very beautiful animations, very high detailed effects. Be creative, and make this like 'Oh shit, they're using the bombadier'."
 
-Status: design and presentation by Claude (`claude/bombadier`); rules are Astra's (AGENTS.md role split). DEV access only, like the Cyber Lord.
+Status: presentation by Claude, reviewed in Unity; the intro plays today with DEV access. The kit has no rules yet: they, the weapon row and access are Astra's (AGENTS.md role split), and the Sandbox preview waits on that row. DEV access only, like the Cyber Lord.
 
 ## The idea
 
@@ -45,8 +45,8 @@ A blast that catches someone within 1.2 s of your last launch on them is a **lin
 The meter fills 8 per enemy hit, 6 per chain link, and 1 a second; full at 100. Key 5 (like the Cyber Lord's fifth key).
 
 1. **Cut-in, 0 to .6 s.** The pilot slaps a detonator box on the floor. Caster's screen: the live portrait, hazard bands, GRAND FINALE. Everyone else: a banner, and an air-raid siren starts.
-2. **The plunge, .6 to 1.5 s.** The pilot stands rooted and rests both hands on the T-handle. Every enemy within 40 m gets a red circle (4 m radius) on the floor that follows them at 3 m/s.
-3. **The lock, 2.1 s.** The circles stop, and the plunger goes down. Run.
+2. **The plunge, .6 to 1.7 s.** The pilot crouches, rooted, over the box. Every enemy within 40 m gets a red circle (4 m radius) on the floor that follows them at 3 m/s.
+3. **The lock, 2.1 s.** The pilot brings the launcher down on the plunger, the circles stop. Run.
 4. **The strike, 2.6 s.** A column of blasts goes through each circle, 40 damage and a big launch, ignoring cover. Out of the circle takes nothing.
 5. **The fireworks, to 3.6 s.** Fireworks over the arena; the camera comes home.
 
@@ -79,11 +79,11 @@ The entrance everyone recognises and dreads. 7.6 s, the name at 6 s. No music fo
 | The launcher, the Kickdrum, sculpted in code | `Core/NativeWeaponModels.Bomb.cs` |
 | The poses | `Core/NativeVisualMotion.cs` (`BombCast`) |
 | Sound, including the intro's whole timeline | `Core/NativeBombSounds.cs` |
-| The intro | `Core/NativeBombadierIntro.cs` |
+| The intro; its hazard-tape name card and fuse-burning progress bar | `Core/NativeBombadierIntro.cs`; `Runtime/NativeBombScreen.cs` (`BombCard`) |
 | Models and gear, HUD cards, chain counter, cut-in, warning | `Runtime/NativeBombPresentation.cs`, `Runtime/NativeBombScreen.cs` |
 | Checks | `Tests/BombadierChecks.cs` (`CoreTests --bombadier`) |
 
-To see it: Dev Sandbox, Preview Bombadier, with the weapon in hand (once its row exists). The intro: Customize, Entrance, Last Warning, with DEV access.
+To see it: the intro now: Customize, Entrance, Last Warning, Preview Intro, with DEV access. The kit: Dev Sandbox, Preview Bombadier, with the weapon in hand (once its row exists).
 
 ## Rules contract (Astra)
 
@@ -100,4 +100,4 @@ To see it: Dev Sandbox, Preview Bombadier, with the weapon in hand (once its row
 
 Input: LMB `Shoot`, Q `AbilityQ`, E `AbilityE`, 1 to 5 `SirenAbility` (extend the key loop in `ConversionGame` to 5 for this spec, as for the Cyber Lord).
 
-Needs from you: the DEV weapon row and access (`bombadier`, as the Cyber Lord), content rows, the authority, bots, the chain and Scorched rules, the numbers above (tune what plays badly and tell me), `NativeIntroRules.Duration`/`NameAt` already carry `dev-bombadier`, and native checks.
+Needs from you: the DEV weapon row and access (`bombadier`, as the Cyber Lord), content rows, the authority, bots, the chain and Scorched rules, the numbers above (tune what plays badly and tell me), `NativeIntroRules.Duration`/`NameAt` already carry `dev-bombadier`, and native checks. Q on the keyboard: `NativeRangedRules.KeyboardQ` needs this spec beside the Cyber Lord's if the row's own Q does not qualify.
