@@ -72,11 +72,12 @@ namespace ChipArena.UnityConversion
         private void BombGear(Actor a){if(rigs.TryGetValue(a.Id,out var rig))BombGear(rig);}
         private void BombGear(CapturedAnimation.Player rig)
         {
-            if(rig?.Bones==null)return;var chest=rig.Bones[CapturedRig.Chest];var pelvis=rig.Bones[CapturedRig.Pelvis];if(chest==null||pelvis==null)return;
-            var cq=chest.rotation;Vector3 C(float x,float y,float z)=>chest.position+cq*new Vector3(x,y,z);var strapQ=cq*Quaternion.Euler(0,0,-38);
-            BombPiece(WeaponShape.Cube,C(0,.08f,.215f),strapQ,new Vector3(.062f,.62f,.016f),BombLeather);BombPiece(WeaponShape.Cube,C(0,.06f,-.2f),strapQ,new Vector3(.062f,.62f,.016f),BombLeather);
-            for(int i=0;i<5;i++){float w=(i-2)*.1f;var at=C(-w*.62f,.08f+w*.8f,.25f);BombPiece(WeaponShape.Sphere,at,cq,Vector3.one*.036f,BombShell);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.036f,0),cq,new Vector3(.026f,.012f,.026f),BombBrass);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.054f,0),cq,new Vector3(.006f,.024f,.006f),BombHazard);BombPiece(WeaponShape.Cube,at-cq*new Vector3(0,.0f,.03f),strapQ,new Vector3(.07f,.012f,.01f),BombBlack);}
-            var pq=pelvis.rotation;Vector3 P(float x,float y,float z)=>pelvis.position+pq*new Vector3(x,y,z);BombPiece(WeaponShape.Cube,P(.25f,-.1f,.03f),pq,new Vector3(.1f,.17f,.17f),BombLeather);BombPiece(WeaponShape.Cube,P(.25f,-.01f,.03f),pq,new Vector3(.11f,.03f,.18f),BombBlack);BombPiece(WeaponShape.Cube,P(.302f,-.1f,.03f),pq,new Vector3(.004f,.05f,.1f),BombHazard);
+            if(rig?.Bones==null||!visualBodies.TryGetValue(rig,out var body))return;
+            var core=VisualCoreFrame(body,rig);var hips=VisualLimbFrame(body,rig,CapturedRig.Pelvis);
+            var cq=Quaternion.LookRotation(core.GetColumn(2),core.GetColumn(1));Vector3 chest=core.GetColumn(3);Vector3 C(float x,float y,float z)=>chest+cq*new Vector3(x,y,z);var strapQ=cq*Quaternion.Euler(0,0,-38);
+            BombPiece(WeaponShape.Cube,C(0,-.01f,.02f),strapQ,new Vector3(.05f,.46f,.014f),BombLeather);
+            for(int i=0;i<5;i++){float w=(i-2)*.082f;var at=C(-w*.62f,-.01f+w*.8f,.048f);BombPiece(WeaponShape.Sphere,at,cq,Vector3.one*.036f,BombShell);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.036f,0),cq,new Vector3(.026f,.012f,.026f),BombBrass);BombPiece(WeaponShape.Cube,at+cq*new Vector3(0,.054f,0),cq,new Vector3(.006f,.024f,.006f),BombHazard);BombPiece(WeaponShape.Cube,at-cq*new Vector3(0,.0f,.03f),strapQ,new Vector3(.07f,.012f,.01f),BombBlack);}
+            var pq=Quaternion.LookRotation(hips.GetColumn(2),hips.GetColumn(1));Vector3 pelvis=hips.GetColumn(3);Vector3 P(float x,float y,float z)=>pelvis+pq*new Vector3(x,y,z);BombPiece(WeaponShape.Cube,P(.25f,-.1f,.03f),pq,new Vector3(.1f,.17f,.17f),BombLeather);BombPiece(WeaponShape.Cube,P(.25f,-.01f,.03f),pq,new Vector3(.11f,.03f,.18f),BombBlack);BombPiece(WeaponShape.Cube,P(.302f,-.1f,.03f),pq,new Vector3(.004f,.05f,.1f),BombHazard);
             BombPiece(WeaponShape.Cube,P(-.25f,-.06f,.0f),pq,new Vector3(.05f,.2f,.05f),BombCase);BombPiece(WeaponShape.Cube,P(-.25f,-.06f,.0f),pq,new Vector3(.056f,.03f,.056f),BombBlack);BombPiece(WeaponShape.Cube,P(-.25f,.05f,.0f),pq,new Vector3(.03f,.03f,.03f),BombBrass);
         }
         /// <summary>RenderGlow, after the techniques': the kit's particles.</summary>

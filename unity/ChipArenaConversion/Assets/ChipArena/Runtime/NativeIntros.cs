@@ -180,6 +180,7 @@ namespace ChipArena.UnityConversion
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;
             // The visual body holds its own model of the weapon there.
+            if(style==NativeBombs.Entrance&&Time.frameCount%90==0){var dbg=introHand(CapturedRig.RHand);Debug.Log("[bombdbg] model="+model+" has="+sourceModels.Has(model)+" at="+(Vector3)dbg.GetColumn(3)+" z="+(Vector3)dbg.GetColumn(2)+" y="+(Vector3)dbg.GetColumn(1));}
             if(style==NativeBombs.Entrance||!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }

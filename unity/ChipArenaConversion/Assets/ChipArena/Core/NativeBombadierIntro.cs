@@ -134,9 +134,9 @@ namespace ChipArena.UnityConversion
         }
         public override void Lights(float t,NativeEntranceLights l)
         {
-            float dark=t<FirstBlast?1:0,up=NativeEntranceMath.Ramp(t,FirstBlast,ShockAt),black=NativeEntranceMath.Ramp(t,BlackAt-.03f,BlackAt)*(1-NativeEntranceMath.Ramp(t,FirstBlast-.01f,FirstBlast));
+            l.DriveProbe=true;float dark=t<FirstBlast?1:0,up=NativeEntranceMath.Ramp(t,FirstBlast,ShockAt),black=NativeEntranceMath.Ramp(t,BlackAt-.03f,BlackAt)*(1-NativeEntranceMath.Ramp(t,FirstBlast-.01f,FirstBlast));
             // Almost nothing before the blasts: what you see, the flame and the lights show you.
-            NativeEntranceStage.Rig(l,dark>0?.012f*(1-black):.25f+.4f*up,FlameColor,dark>0?0:.6f+.8f*up,0,dark>0?.05f*(1-black):.22f+.25f*up);
+            NativeEntranceStage.Rig(l,dark>0?.012f*(1-black):.25f+.4f*up,FlameColor,dark>0?0:.6f+.8f*up,0,dark>0?.05f*(1-black):.22f+.25f*up);l.DriveProbe=true;
             if(t<FuseFrom+.25f){float fl=.8f+.2f*(float)Math.Sin(t*61);l.Add(MatchAt(t)+new Vector3(0,.06f,0),Hot*(1.4f*fl),2.2f);}
             if(t<Stomp&&t>=FuseFrom-.05f){float fl=.85f+.15f*(float)Math.Sin(t*47)+.1f*(float)Math.Sin(t*31);l.Add(FlameAt(t)+new Vector3(0,.2f,0),FlameColor*(2.4f*fl),4.2f);}
             float redAll=0;for(int i=0;i<order.Length;i++)redAll+=LedLevel(i,t);redAll/=order.Length;
@@ -208,6 +208,7 @@ namespace ChipArena.UnityConversion
                 {
                     int seed=i*37+n;var v=outFrom*(5+7*NativeEntranceMath.Rand(seed,1))+new Vector3(NativeEntranceMath.Signed(seed,2)*5,3.5f+6*NativeEntranceMath.Rand(seed,3),NativeEntranceMath.Signed(seed,4)*5);var c=o+v*a+new Vector3(0,-4.9f*a*a,0);
                     if(c.Y<NativeEntranceStage.FloorY+.08f){c.Y=NativeEntranceStage.FloorY+.08f;}
+                    {var body=Anchor(NativeEntranceAnchor.Pelvis,t);if(Math.Abs(c.X-body.X)<.7f&&Math.Abs(c.Z-body.Z)<.7f&&c.Y<2.5f)continue;}
                     float size=.05f+.2f*NativeEntranceMath.Rand(seed,5);var rot=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(NativeEntranceMath.Signed(seed,6),.4f,NativeEntranceMath.Signed(seed,7))),a*(4+9*NativeEntranceMath.Rand(seed,8)));int kind=seed%3;
                     var shape=kind==0?new Vector3(size*1.5f,size*.1f,size*1.1f):kind==1?new Vector3(size*.14f,size*.14f,size*2.2f):new Vector3(size,size*.55f,size*.8f);var metal=new Vector3(.075f,.07f,.075f)*(.7f+.6f*NativeEntranceMath.Rand(seed,9));
                     props.Piece(WeaponShape.Cube,false,c,rot,shape,metal);
@@ -265,7 +266,7 @@ namespace ChipArena.UnityConversion
                 {
                     int k=s+n;float life=.5f+.5f*NativeEntranceMath.Rand(k,1),born=.2f*NativeEntranceMath.Rand(k,2),b=a-born;if(b<0||b>life)continue;float u=b/life,rise=(1-(1-u)*(1-u));
                     var c=o+new Vector3(NativeEntranceMath.Signed(k,3)*(.5f+1.7f*u),.2f+(2.4f+3.8f*NativeEntranceMath.Rand(k,4))*scale*rise,NativeEntranceMath.Signed(k,5)*(.5f+1.7f*u));float size=(.5f+1.3f*u)*scale;
-                    if(flames!=null)flames.Fire(c,new Vector3(1,.34f,.05f),(1-u*u)*(.75f+.25f*NativeEntranceMath.Rand(k,6)),size*1.15f,.04f+.62f*u,k,floor);
+                    if(flames!=null)flames.Fire(c,new Vector3(1,.34f,.05f),(1-u*u)*(.75f+.25f*NativeEntranceMath.Rand(k,6)),size*1.15f,.04f+.32f*u,k,floor);
                     else{var col=u<.25f?Vector3.Lerp(Vector3.One*2.6f,Hot*2.4f,u/.25f):u<.6f?Vector3.Lerp(Hot*2.4f,FlameColor*1.5f,(u-.25f)/.35f):FlameColor*(1.5f*(1-u)/.4f);fx.Glow(c,col,0,size,1,0,k);}
                 }
                 int smoke=q<.5f?6:16;
