@@ -266,7 +266,7 @@ namespace ChipArena.UnityConversion
                 {
                     int k=s+n;float life=.5f+.5f*NativeEntranceMath.Rand(k,1),born=.2f*NativeEntranceMath.Rand(k,2),b=a-born;if(b<0||b>life)continue;float u=b/life,rise=(1-(1-u)*(1-u));
                     var c=o+new Vector3(NativeEntranceMath.Signed(k,3)*(.5f+1.7f*u),.2f+(2.4f+3.8f*NativeEntranceMath.Rand(k,4))*scale*rise,NativeEntranceMath.Signed(k,5)*(.5f+1.7f*u));float size=(.5f+1.3f*u)*scale;
-                    if(flames!=null)flames.Fire(c,new Vector3(1,.34f,.05f),(1-u*u)*(.75f+.25f*NativeEntranceMath.Rand(k,6)),size*1.15f,.04f+.32f*u,k,floor);
+                    if(flames!=null)flames.Fire(c,Vector3.Lerp(new Vector3(1,.3f,.045f),new Vector3(.85f,.09f,.008f),u),(1-u*u)*(.75f+.25f*NativeEntranceMath.Rand(k,6)),size*1.15f,.04f+.32f*u,k,floor);
                     else{var col=u<.25f?Vector3.Lerp(Vector3.One*2.6f,Hot*2.4f,u/.25f):u<.6f?Vector3.Lerp(Hot*2.4f,FlameColor*1.5f,(u-.25f)/.35f):FlameColor*(1.5f*(1-u)/.4f);fx.Glow(c,col,0,size,1,0,k);}
                 }
                 int smoke=q<.5f?6:16;

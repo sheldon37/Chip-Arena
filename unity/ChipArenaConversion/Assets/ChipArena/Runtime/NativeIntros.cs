@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class ArenaPresentation
     {
-        private CapturedAnimation.Player introRig;private int introActor;private string introSkins;private Color introAccent=Color.white;private Func<int,Matrix4x4> introHand;private Matrix4x4 introGrip=Matrix4x4.identity;
+        private CapturedAnimation.Player introRig;private int introActor;private string introSkins;private Color introAccent=Color.white;private Func<int,Matrix4x4> introHand,bombHand;private Matrix4x4 introGrip=Matrix4x4.identity;
         // This frame's baked entrance stage, read by delegates made once (no closure per frame).
         private NativeSceneClip stageClip;private float stageAge;private string stageStyle,stageKey;private bool[] stageGlow;private readonly Dictionary<string,bool[]> stageGlows=new Dictionary<string,bool[]>();
         private Func<int,Matrix4x4> stageBone;private Func<int,bool> stageShown;private Func<int,float> stageOpacity;private Func<int,Color> stageTint;
@@ -180,8 +180,13 @@ namespace ChipArena.UnityConversion
             introGrip=Matrix4x4.Translate(CapturedAnimation.Vec(CapturedRig.Mirror(NativeIntroRules.IntroGrip(style))));
             if(introHand==null)introHand=b=>introRig.Bones[b].localToWorldMatrix*introGrip;
             // The visual body holds its own model of the weapon there.
-            if(style==NativeBombs.Entrance&&Time.frameCount%90==0){var dbg=introHand(CapturedRig.RHand);Debug.Log("[bombdbg] model="+model+" has="+sourceModels.Has(model)+" at="+(Vector3)dbg.GetColumn(3)+" z="+(Vector3)dbg.GetColumn(2)+" y="+(Vector3)dbg.GetColumn(1));}
-            if(style==NativeBombs.Entrance||!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
+            if(style==NativeBombs.Entrance)
+            {
+                bombHand??=b=>{var bone=introRig.Bones[b];return Matrix4x4.TRS(bone.position,bone.rotation,Vector3.one);};
+                if(Time.frameCount%30==0){var l=introRig.Bones[CapturedRig.LHand];var r=introRig.Bones[CapturedRig.RHand];var h=introRig.Bones[CapturedRig.Head];Debug.Log("[bombdbg] age="+age.ToString("0.00")+" L="+l.position+" R="+r.position+" head="+h.position+" Rfwd="+r.forward);}
+                sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,bombHand,accent:introAccent);return;
+            }
+            if(!VisualWeaponDrawn(introRig,introHand(CapturedRig.RHand)))sourceModels.Queue(model,introRig.Root.transform.localToWorldMatrix,introHand,accent:introAccent);
             if(NativeIntroRules.IntroMuzzleFlash(style,age,out var flash))QueuePiece(flash,introHand(CapturedRig.RHand),0,null);
         }
         // The baked entrance stage (tools/export_cinematics.mjs, the rig excluded) with its lights. ChipBlasts' glow voxels are
