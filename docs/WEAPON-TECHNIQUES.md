@@ -96,7 +96,7 @@ the pilot, since it does not know the world's surfaces or move anyone.
 
 Reviewed in Unity, in slow motion from the game's own camera (Cybercity, local tool: `gallery=T,TechniquePreviewOn`, `slowmo=T,.2`, `screen=1`), all twelve,
 with two rounds of fixes: the guard from a glowing panel to thin arcs, the wall from a framed rectangle to a honeycomb, the planted shield and
-the thrown blade onto the pilot's own weapon model, the coin's glow down so the coin reads, the fire from washed-out to hot, the wind burst stronger. 
+the thrown blade onto the pilot's own weapon model, the coin's glow down so the coin reads, the fire from washed-out to hot, the wind burst stronger.
 
 Reviewed again with the rules (2026-11-03, the same tool: `swaps=`, a real Q or E press at an arena time, full speed and slow motion): all twelve fire from the swapped
 key and the old ability stays away, with Anchor Throw's leap and landing, Grapple Line up a wall, Static Recall's bolt back, Shade Swap on a bot and the sentry firing at one; in first
