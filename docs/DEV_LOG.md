@@ -1,3 +1,9 @@
+## 2026-11-04 — Astra: Sticky Fuse dodge release and test publication
+
+- **Branch/base:** `codex/bombadier-sticky-release`, shared `1450e5df`. Windows now passes generic combat and all 497 technique checks, then fails Bombadier dodge removal.
+- **Fix:** a detached Sticky Fuse ignores actor collision so it cannot immediately stick back onto the rolling victim. It drops from the victim's current position, collides with the world and keeps its original fuse on landing. Host-only detached state leaves the replicated record unchanged. Native checks cover release, post-roll overlap and landing without extending the fuse.
+- **Verification/release:** pinned Unity semantic compile and managed Bombadier checks run before upload; exact results and source/builder receipts in the PR. The native builder remains the authority on Windows acceptance and test publication. No gate removed or bypassed.
+
 ## 2026-11-04 — Astra: Bombadier DEV picker publication blocker
 
 - **Branch/base:** `codex/bombadier-dev-picker`, shared `2dfdf1cf` (#326). Owner could not select Bombadier under `???`.
