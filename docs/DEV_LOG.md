@@ -10,6 +10,7 @@
 - **Not run:** the real zone AI playing the specials end to end (DEV monsters run no specials, so they were driven by hand), two clients, a Windows build's gameplay. Sound unchanged.
 - **Risks:** gear is drawn at full detail at every distance; twelve adds were measured, a full map's worst case was not. Corpses keep the props by the old timeline.
 - **For Astra (found, not changed):** `NativeZoneBossAuthority.cs:70` puts the Foreman collider at z -.6, but the foreman stands at z about -3.5 (`PulpitRest` plus `ForemanFeet`, as the old sculpt did): from the side, a shot at the figure misses and a shot past it can hit. Yours to rule on.
+- **Release:** merged into shared and the builder at `2cf7c9f2`; full `CoreTests` on the merged branch `8dbba551`, exit 0, 955 groups; Windows build and package validation passed; test channel publication succeeded (source `2cf7c9f2`). The Drive zip holds the new bank, with the old one at `LocalAssets-before-ironworks.zip`. No live, production or Site release.
 - **Next:** THE CONVERTER's review, fixes and merge.
 
 ## 2026-11-04 — Claude: Central Station's enemies off voxels, THE 6:47 as a real model
