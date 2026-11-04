@@ -132,6 +132,12 @@ namespace ChipArena.UnityConversion
                 float left=d==null?Math.Max(0,p.EReady-t):slot=="q"?p.QReady-t:p.ECharges>0?0:p.EReady-t,cd=d!=null&&d.cooldown>0?(float)d.cooldown:1;
                 cards.Add(new Card{Key=name,State=state.Length>0&&char.IsDigit(state[0])?state:state.ToUpperInvariant(),Ready=state=="ready",Active=state=="casting"||state=="active",Low=state=="low mana"||state=="low stamina",Dial=d!=null&&d.kind!="ads"?1-Mathf.Clamp01(left/cd):-1});
             }
+            // The technique's card on key 1 (docs/WEAPON-TECHNIQUES.md), once something holds the records.
+            if(NativeTechniques.Source!=null&&NativeTechniques.For(p.Seat.spec) is var td&&td!=null)
+            {
+                var tk=NativeTechniques.Source.Of(p.Seat.id);bool busy=tk?.Kind!=null&&t>=tk.At&&t<tk.End;float left=tk?.Kind!=null?tk.At+td.Cooldown-t:0;
+                cards.Add(new Card{Key="1 · "+td.Name.ToUpperInvariant(),State=busy?"ACTIVE":left>0?left.ToString("0.0")+"s":"READY",Icon=td.Icon,Ready=!busy&&left<=0,Active=busy,Dial=left>0?1-Mathf.Clamp01(left/td.Cooldown):1});
+            }
             float x=right;for(int i=cards.Count-1;i>=0;i--){var c=cards[i];float since=hudEvents.Rise(CardSlot+i,t,c.Ready);x=CardAt(c,x,bottom,since)-6;}
         }
         // One card ending at `right`: the keycap and name, the state in its tone (bright cyan READY with the magenta tick, dial

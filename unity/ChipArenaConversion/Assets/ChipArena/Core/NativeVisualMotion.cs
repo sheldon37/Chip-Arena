@@ -56,6 +56,8 @@ namespace ChipArena.UnityConversion
             /// <summary>A knockdown (the pack's blown-back fall: its flight, its landing, lying) and the backward roll a downed
             /// pilot gets up with.</summary>
             public string Knockdown, RollBack;
+            /// <summary>The clips the set's technique plays beyond its own (NativeTechniques; the bake's controller carries them).</summary>
+            public string[] TechClips;
             /// <summary>Every clip the set plays (the bake's controller carries them).</summary>
             public string[] All;
         }
@@ -67,7 +69,7 @@ namespace ChipArena.UnityConversion
             Land="2Hand-Sword-Land",Block="2Hand-Sword-Block",BlockHit="2Hand-Sword-Block-GetHit1",Stunned="2Hand-Sword-Stunned",Roll="2Hand-Sword-Roll-Forward",
             AirAttack="2Hand-Sword-Air-Attack1",SprintAttack="2Hand-Sword-Run-Forward-Attack1",
             Attacks=Names("2Hand-Sword-Attack","1","2","4","3","5","6"),Reactions=Names("2Hand-Sword-GetHit-","F1","B1","L1","R1"),
-            KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
+            TechClips=new[]{TechThrowStart,TechThrowEnd},KitKinds=new[]{"earthsplitter","whirlwind"},KitClips=new[]{"2Hand-Sword-Attack11","2Hand-Sword-Attack2"},KitHits=new[]{float.NaN,WhirlHold},Knockdown="2Hand-Sword-Knockdown1",RollBack="2Hand-Sword-Roll-Backward"},"2Hand-Sword-Run-","2Hand-Sword-Strafe-","2Hand-Sword-Run-Forward");
         // Sword: the pack's armed (one weapon in the right hand) set and its one-handed sword's cuts, in the game's combo of
         // three (a forehand cut right to left, a backhand left to right, the thrust): R1, R3, R4, then R6, R2, R4 (their blade
         // tips' sweeps, measured on the body at the bake).
@@ -75,11 +77,11 @@ namespace ChipArena.UnityConversion
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-R1",SprintAttack="Armed-Run-Attack-R1",
             Attacks=Names("Sword-Attack-R","1","3","4","6","2","4"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
-            KitKinds=new[]{"flash-step","rising-dragon"},KitClips=new[]{"Armed-Dash-Forward","Armed-Boost1"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Air-Attack-R1"},Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
+            TechClips=new[]{TechCounter},KitKinds=new[]{"flash-step","rising-dragon"},KitClips=new[]{"Armed-Dash-Forward","Armed-Boost1"},KitHits=new[]{.2f,float.NaN},KitRecast=new[]{null,"Armed-Air-Attack-R1"},Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward"},"Armed-Run-","Armed-Strafe-","Armed-Run-Forward");
         // Daggers: the armed set's dual block and attacks and the pack's dagger cuts, alternating hands in the game's four
         // (a forehand right to left, then three left to right, the last the finisher): R1, L3, R2, L2 (their blade tips'
         // sweeps on the body); the dual running cut opens both blades as the game's twin sprint sweeps do.
-        private static readonly Set Daggers=Build(new Set{Spec="daggers",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+        private static readonly Set Daggers=Build(new Set{Spec="daggers",TechClips=new[]{TechFlickStart,TechFlickEnd},Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-Dual",BlockHit="Armed-Block-Dual-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Air-Attack-L1",SprintAttack="Armed-Run-Attack-Dual",
             Attacks=Names("Dagger-Attack-","R1","L3","R2","L2"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
@@ -87,7 +89,7 @@ namespace ChipArena.UnityConversion
         // Shield: the game holds its shield in the right hand; the pack's shield set carries it on the left arm, so the set
         // plays mirrored (the bake mirrors a clip named with Mirror: left and right swapped). Its bashes and sweeps, mirrored,
         // sweep left to right as every one of the game's shield cuts does: Attack2, Attack3, Attack1.
-        private static readonly Set Shield=Build(new Set{Spec="shield",Idle=M("Armed-Shield-Idle"),Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+        private static readonly Set Shield=Build(new Set{Spec="shield",TechClips=new[]{TechPlant},Idle=M("Armed-Shield-Idle"),Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block=M("Armed-Shield-Block"),BlockHit=M("Armed-Shield-Block-GetHit1"),Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack=M("Armed-Shield-Attack1"),SprintAttack=M("Armed-Shield-Attack1"),
             Attacks=Array.ConvertAll(Names("Armed-Shield-Attack","2","3","1"),M),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
@@ -95,14 +97,14 @@ namespace ChipArena.UnityConversion
         // Rifle and machine gun: the pack's two-handed shooting set. A low ready carry by default; shouldered (its aim grid's
         // middle column by the pitch, a recoil on each shot) while aiming or just after a shot (owner 2026-10-24: "Aiming and
         // firing"), the reload fitted to the reload.
-        private static readonly Set Rifle=Build(new Set{Spec="rifle",Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
+        private static readonly Set Rifle=Build(new Set{Spec="rifle",TechClips=new[]{TechDrop,TechShootLine},Idle="2Hand-Shooting-Idle",Jump="2Hand-Shooting-Jump",Flip="2Hand-Shooting-Jump-Flip",Fall="2Hand-Shooting-Fall",
             Land="2Hand-Shooting-Land",Block="2Hand-Shooting-Block",BlockHit="2Hand-Shooting-Block-GetHit1",Stunned="2Hand-Shooting-Stunned",Roll="2Hand-Shooting-Roll-Forward",
             AirAttack="2Hand-Shooting-Fall",SprintAttack="2Hand-Shooting-Attack1",Attacks=Names("2Hand-Shooting-Attack","1","2"),Reactions=Names("2Hand-Shooting-GetHit-","F1","B1","L1","R1"),
             Aim=Names("2Hand-Shooting-Aiming-","DM","CM","UM"),Fire=Names("2Hand-Shooting-Aiming-Fire-","DM","CM","UM"),Reload="2Hand-Shooting-Reload-Rifle",Knockdown="2Hand-Shooting-Knockdown1",RollBack="2Hand-Shooting-Roll-Backward",
             AbilityIds=new[]{"overdrive"},AbilityStarts=new[]{"2Hand-Shooting-Boost1"},AbilityEnds=new string[1],AbilityRaise=new[]{"orbital-mark","rocket"}},"2Hand-Shooting-Run-","2Hand-Shooting-Strafe-","2Hand-Shooting-Run-Forward");
         // Pistol: the armed set, held low; raised to the pack's pistol stance (arm out) while aiming or just after a shot (its
         // own firing cut throws the arm overhead: the stance holds, the game's muzzle kick is the recoil), its reload fitted.
-        private static readonly Set Pistol=Build(new Set{Spec="pistol",Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
+        private static readonly Set Pistol=Build(new Set{Spec="pistol",TechClips=new[]{TechCoin},Idle="Armed-Idle",Jump="Armed-Jump",Flip="Armed-Jump-Flip",Fall="Armed-Fall",
             Land="Armed-Land",Block="Armed-Block-R",BlockHit="Armed-Block-R-GetHit1",Stunned="Armed-Stunned",Roll="Armed-Roll-Forward",
             AirAttack="Armed-Fall",SprintAttack="Pistol-Attack-R1",Attacks=Names("Pistol-Attack-R","1"),Reactions=Names("Armed-GetHit-","F1","B1","L1","R1"),
             Aim=new[]{"Armed-Idle-Pistol-R","Armed-Idle-Pistol-R","Armed-Idle-Pistol-R"},Reload="Pistol-Reload-R1",Knockdown="Armed-Knockdown1",RollBack="Armed-Roll-Backward",
@@ -110,7 +112,7 @@ namespace ChipArena.UnityConversion
         // The casters (the four schools and L33t H4x): the pack's staff set, mirrored (the game's staff is in the left fist, the
         // pack's in the right); a cast plays its start to the game's release and its end after it, a Q/E ability the pack's area
         // cast likewise, on the upper body. Mirrored reactions swap sides.
-        private static readonly Set Staff=Build(new Set{Spec="staff",Idle=M("2Hand-Staff-Idle"),Jump=M("2Hand-Staff-Jump"),Flip=M("2Hand-Staff-Jump-Flip"),Fall=M("2Hand-Staff-Fall"),
+        private static readonly Set Staff=Build(new Set{Spec="staff",TechClips=new[]{TechBuffStart,TechBuffEnd,TechTouch},Idle=M("2Hand-Staff-Idle"),Jump=M("2Hand-Staff-Jump"),Flip=M("2Hand-Staff-Jump-Flip"),Fall=M("2Hand-Staff-Fall"),
             Land=M("2Hand-Staff-Land"),Block=M("2Hand-Staff-Block"),BlockHit=M("2Hand-Staff-Block-GetHit1"),Stunned=M("2Hand-Staff-Stunned"),Roll=M("2Hand-Staff-Roll-Forward"),
             AirAttack=M("2Hand-Staff-Air-Attack1"),SprintAttack=M("2Hand-Staff-Run-Forward-Attack1"),Attacks=Array.ConvertAll(Names("2Hand-Staff-Attack","1","2","3"),M),
             Reactions=Array.ConvertAll(Names("2Hand-Staff-GetHit-","F1","B1","R1","L1"),M),
@@ -151,7 +153,7 @@ namespace ChipArena.UnityConversion
             all.AddRange(s.Attacks);all.AddRange(s.Reactions);foreach(var l in s.Locomotion)if(!all.Contains(l))all.Add(l);
             foreach(var l in new[]{s.Aim,s.Fire,s.Pull,s.CastStart,s.CastEnd})if(l!=null)foreach(var c in l)if(!all.Contains(c))all.Add(c);
             foreach(var c in new[]{s.Reload,s.AbilityStart,s.AbilityEnd})if(c!=null&&!all.Contains(c))all.Add(c);
-            foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen,s.AbilityStarts,s.AbilityEnds})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
+            foreach(var l in new[]{s.KitClips,s.KitRecast,s.KitThen,s.AbilityStarts,s.AbilityEnds,s.TechClips})if(l!=null)foreach(var c in l)if(c!=null&&!all.Contains(c))all.Add(c);
             s.All=all.ToArray();return s;
         }
         /// <summary>The set a weapon spec plays on the model, or null (the game's own pose: not moved over yet).</summary>
@@ -373,6 +375,7 @@ namespace ChipArena.UnityConversion
                 }
                 pick=new Pick{Clip=set.Knockdown,Time=Math.Min(len,impact+Math.Max(0,time-a.DownLanded)),Fade=FadeIn};return true;
             }
+            if(Technique(set,a,time,clips,out pick))return true;
             if(Kit(set,a,time,clips,out pick))return true;
             // A mapped kit move's tail (its special still running past the cast) goes on to the idle, not the game's pose.
             bool mapped=set.KitKinds!=null&&a.MeleeKit!=null&&Array.IndexOf(set.KitKinds,a.MeleeKit.Kind)>=0;
@@ -459,6 +462,40 @@ namespace ChipArena.UnityConversion
             pick=new Pick{Clip=set.Idle,Time=time,Fade=FadeOut};return true;
         }
 
+        // The techniques' clips (docs/WEAPON-TECHNIQUES.md): throws and gestures out of the pack's casts, pickups and activations.
+        private const string TechCounter="Sword-Attack-R4",TechFlickStart="Armed-Cast-L-Attack2_start",TechFlickEnd="Armed-Cast-L-Attack2_end",TechThrowStart="Armed-Cast-R-Attack2_start",TechThrowEnd="Armed-Cast-R-Attack2_end",TechPlant="Armed-Shield-Activate",TechCoin="Armed-Activate-Left",
+            TechDrop="2Hand-Shooting-Pickup",TechShootLine="2Hand-Shooting-Activate",TechBuffStart="2Hand-Staff-Cast-L-Buff1_start"+Mirror,TechBuffEnd="2Hand-Staff-Cast-L-Buff1_end"+Mirror,TechTouch="2Hand-Staff-Activate"+Mirror;
+        /// <summary>The pilot's technique on the pack's clips, from its record: each clip fitted to its moment. False: none, or the clip is not in
+        /// the bank (the game's pose carries on).</summary>
+        private static bool Technique(Set set,Actor a,float time,IClips clips,out Pick pick)
+        {
+            pick=default;var k=NativeTechniques.Of(a);if(k?.Kind==null||time<k.At)return false;float back=Math.Max(k.Release+.05f,k.RecoverUntil);
+            bool Part(string clip,float from,float to,out Pick p){p=default;return time>=from&&time<to&&clip!=null&&clips.Has(clip)&&Fit(clip,time,from,to,clips,FadeIn,out p);}
+            switch(k.Kind)
+            {
+                case NativeTechniques.Riposte:
+                    if(k.Hit(time))return Part(TechCounter,k.HitAt,k.HitAt+.42f,out pick);
+                    if(time<k.Until&&set.Block!=null&&clips.Has(set.Block)){pick=new Pick{Clip=set.Block,Time=Math.Min(time-k.At,clips.Length(set.Block)*.4f),Fade=FadeIn};return true;}
+                    return false;
+                case NativeTechniques.SmokeVeil:return Part(TechFlickStart,k.At,k.Release,out pick)||Part(TechFlickEnd,k.Release,back,out pick);
+                case NativeTechniques.Bastion:return Part(TechPlant,k.At,back,out pick);
+                case NativeTechniques.AnchorThrow:
+                    if(k.Recast(time))return Part(set.Flip,k.RecastAt,Math.Max(k.RecastAt+.1f,k.Until),out pick);
+                    return Part(TechThrowStart,k.At,k.Release,out pick)||Part(TechThrowEnd,k.Release,back,out pick);
+                case NativeTechniques.RicochetCoin:return Part(TechCoin,k.At,back,out pick);
+                case NativeTechniques.SentryDrop:return Part(TechDrop,k.At,back,out pick);
+                case NativeTechniques.GrappleLine:
+                    if(time>=k.Arm&&time<k.Until&&set.Fall!=null&&clips.Has(set.Fall)){pick=new Pick{Clip=set.Fall,Time=time-k.Arm,Fade=FadeIn};return true;}
+                    return Part(TechShootLine,k.At,Math.Max(k.Arm,k.At+.05f),out pick);
+                case NativeTechniques.GaleArrow:
+                    return Part(set.Pull!=null?set.Pull[1]:null,k.At,k.Release,out pick)||Part(set.Fire!=null?set.Fire[1]:null,k.Release,back,out pick);
+                case NativeTechniques.IgnitionLeap:return Part(set.AbilityStart,k.At,k.Release,out pick)||Part(set.Flip,k.Release,back,out pick);
+                case NativeTechniques.HealingSpring:return Part(TechBuffStart,k.At,k.Release,out pick)||Part(TechBuffEnd,k.Release,back,out pick);
+                case NativeTechniques.StaticRecall:return Part(TechTouch,k.At,back,out pick);
+                case NativeTechniques.ShadeSwap:return Part(set.CastStart!=null?set.CastStart[2]:null,k.At,k.Release,out pick)||Part(set.CastEnd!=null?set.CastEnd[2]:null,k.Release,k.Release+.38f,out pick);
+            }
+            return false;
+        }
         /// <summary>A kit move the set plays on the pack's clips (KitKinds), from the replicated cast (MeleeKitMotion.Clock): the
         /// clip's Hit on the release and its end on the cast's end. The Whirlwind: the clip into its Hit through the wind-up,
         /// held there (the blade out) through the spin, its end through the stop, the body turned to the game's own spin.</summary>

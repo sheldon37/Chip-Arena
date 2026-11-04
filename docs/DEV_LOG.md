@@ -28,6 +28,27 @@
 - **Animation impact:** none; authored mesh/treads, enemy motion, attack timings, capsules and network IDs retained. Capsule locomotion uses continuous stair collision.
 - **Release state at commit:** tested on task branch; merge/shared and builder sync next. Windows build/PhysX and publication remain unverified until the builder reports success for the resulting commit. The last read Drive status still reports the old failed `f57a34a7` build; it is not a receipt for this fix.
 
+## 2026-11-03 — Claude: weapon techniques, a third ability on key 1 (design, contract and presentation)
+
+- **Branch:** `claude/weapon-techniques`, base shared. Simulation not started: for Astra.
+- **Task:** owner: "Lets add more abilities now for the weapons. Think creatively, integrate more skills that aren't too much of a
+  "powercreep" but still useful and fun. Ensure the animation and effects are high-quality; Make sure you evaluate afterwards".
+- **Changed (docs/WEAPON-TECHNIQUES.md):** one utility technique for each of the twelve standard weapons, with why it is not power creep
+  and how each is countered, and the record the rules will fill (`Core/NativeTechnique`). Presentation built on that record: the effects
+  (`Core/NativeTechniqueFx`, pure functions of it), the pilots' pack clips (`NativeVisualMotion.Technique`; the motion bank rebaked, 307
+  clips), the sound moments on existing cues (`Core/NativeTechniqueSounds`), the HUD's third card, and the models (the planted shield and
+  the thrown greatsword on the pilot's own weapon model, the sentry on a tripod). Until the rules exist it shows only in the Dev Sandbox's
+  Preview Techniques, which writes the records as the proposed host would. Nothing is on the wire, and no content row, cooldown or rule exists.
+- **Animation impact:** none on today's hit timing, hitboxes, damage, cooldowns, movement or networking: no record exists outside the sandbox
+  preview. The contract's recoveries (`RecoverUntil`) and the moves that travel are the rules' to implement.
+- **Local bank:** `ChipArenaVisualMotion.bytes` gained the techniques' clips, so the Drive zip needs the new bank for the build to show the
+  poses; without it the game's pose carries on.
+- **Checks:** full `CoreTests` in a clean LF worktree on `d0cb2334`: passed (exit 0, 948 groups), with the new `--techniques` (each cast's record, its effects whole,
+  deterministic, gone after, thinned on Reduced). PC (BoZo, Cybercity, slow motion from the game's camera): all twelve, two rounds of fixes. Not run: any of it with the
+  rules, in first person, in a crowd, on a guest, a Windows build's Dev Sandbox.
+- **Next:** Astra: the simulation (contract in the doc). Then the owner plays them; the preview does not move the pilot, so the leap, the grapple's
+  pull, the swap and the recall have only been seen as effects.
+
 ## 2026-11-03 — Claude: the zombie run: the pack's own stride, not a lunge
 
 - **Branch:** `claude/zombie-run-pace`, base shared `67d1f769`, merged with shared `7d558955` at `05ea90e4`; implementation `f48accda`.
