@@ -60,15 +60,15 @@ The entrance everyone recognises and dreads. 7.6 s, the name at 6 s. No music fo
 
 | Time | Beat | Camera |
 | --- | --- | --- |
-| 0 | Black. A match strikes: one hand lit by it | Macro on the hand |
-| .5 | The match drops on a fuse. It catches, and the flame runs off along the floor spitting sparks | Low, racing with the flame |
+| 0 | Black. A lit match falls out of it onto the rope, which catches | Macro, on the floor |
+| .2 | The flame runs off along the floor spitting sparks | Low, racing with the flame |
 | 1.3 | The flame passes charges taped to a pylon. One red light blinks on. Another. They come on round the whole arena, ticking faster | Pulls up and back, the arena dark, red lights spreading |
 | 2.6 | The flame runs to a pair of boots and dies under one of them. Silence | Low on the boots, then a slow tilt up: the bandolier, the drum launcher, the visor with red lights in it |
 | 3.7 | The pilot holds up a detonator, tilts its head, and clicks it | Close on the thumb, then the visor |
 | 4.2 | **One beat of nothing. Every red light goes out.** | Hold |
 | 4.5 | The farthest pylon goes. The blasts come toward the camera one after another, each bigger | Pilot walking at the camera, a wall of fire rising behind it |
 | 5.4 | The shockwave passes the pilot. Coat of embers, debris sailing by, it does not look back | Slow motion, low and wide |
-| 6.0 | Hazard tape whips across, name card: BOMBADIER. Bomb tossed up, caught, spun on a finger | Settling to the hand-off |
+| 6.0 | Hazard tape whips across, the pilot's name stamps onto it. Bomb tossed up and caught. The card's progress bar has been a burning fuse all along, and goes dark for the one beat of nothing | Settling to the hand-off |
 
 ## Presentation (Claude)
 

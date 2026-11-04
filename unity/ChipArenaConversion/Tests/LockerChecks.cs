@@ -53,7 +53,7 @@ internal static class LockerChecks
         var hats=Ids(profile,"Hats");var kills=Ids(profile,"Kills");var intros=Ids(profile,"Intros");
         Check(hats.Length==12&&kills.Length==22&&intros.Length==25,"cosmetic id lists parsed ("+hats.Length+"/"+kills.Length+"/"+intros.Length+")");
         // The staged entrances, the DEV Sheldon Intro and the DEV Cyber Lord's Hardlight Boot (staged by the director, listed only with DEV access).
-        var staged=NativeIntroRules.Entrances.Concat(new[]{NativeCosmeticGate.SheldonIntro,CyberLordSpec.Entrance}).ToArray();
+        var staged=NativeIntroRules.Entrances.Concat(new[]{NativeCosmeticGate.SheldonIntro,CyberLordSpec.Entrance,NativeBombs.Entrance}).ToArray();
         Check(intros.SequenceEqual(staged.OrderBy(i=>Array.IndexOf(intros,i)))&&intros.OrderBy(i=>i).SequenceEqual(staged.OrderBy(i=>i))&&NativeIntroRules.Pickable(NativeCosmeticGate.SheldonIntro)&&NativeEntranceDirector.Directed(NativeCosmeticGate.SheldonIntro)&&NativeIntroRules.Pickable(CyberLordSpec.Entrance)&&NativeEntranceDirector.Directed(CyberLordSpec.Entrance),"the Locker offers exactly the staged entrances");
         foreach(var id in NativeIntroRules.Procedural)Check(NativeLocker.IntroIcon(id)!=null&&!NativeLocker.DevItem(id),"the procedural entrance "+id+" has its icon and no DEV badge");
         foreach(var id in NativeIntroRules.Retired)Check(Array.IndexOf(intros,id)<0&&NativeLocker.IntroText(id).Length==0&&NativeLocker.IntroIcon(id)==null,"the retired "+id+" is gone from the Locker");

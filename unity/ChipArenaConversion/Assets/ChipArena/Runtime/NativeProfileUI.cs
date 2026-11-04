@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         // The pickable entrances (NativeIntroRules.Entrances: procedural, weapon signatures, DEV; and the DEV-only Sheldon Intro,
         // which the Locker lists only with live DEV access, NativeCosmeticGate). The retired generic five are
         // gone (owner 2026-10-11); a saved or received one normalizes to no pick (Intro, OverrideIntro).
-        public static readonly string[] Intros={"orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","hero-landing","overclock","weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-bow","weapon-fire","weapon-water","weapon-lightning","weapon-darkness","dev-emperor","dev-ansatsuken","dev-matrix","dev-cyberlord","dev-siren","sheldon-intro"};
+        public static readonly string[] Intros={"orbital-drop","grid-rez","holo-projection","blackout","skyline-zip","hero-landing","overclock","weapon-sword","weapon-daggers","weapon-shield","weapon-greatsword","weapon-pistol","weapon-rifle","weapon-machinegun","weapon-bow","weapon-fire","weapon-water","weapon-lightning","weapon-darkness","dev-emperor","dev-ansatsuken","dev-matrix","dev-cyberlord",NativeBombs.Entrance,"dev-siren","sheldon-intro"};
         // Display names from the source (shared/cosmetics.ts HATS / KILL_STYLES with ragdoll-styles.ts, shared/intros.ts with
         // weapon-intros.ts, shared/access.ts GRANTABLE_CONTENT / ACCOUNT_FLAGS); ids stay the saved and sent values.
         private static readonly System.Collections.Generic.Dictionary<string,string> Labels=new System.Collections.Generic.Dictionary<string,string>

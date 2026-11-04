@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             l.Add(new IntroCue(NativeBombadierIntro.Click,"gun.dryfire","metal",1));
             for(int i=0;i<12;i++)l.Add(new IntroCue(NativeBombadierIntro.FirstBlast+i*NativeBombadierIntro.BlastStep,"blast.fire","explosion",.6f+.4f*i/11f));
             l.Add(new IntroCue(NativeBombadierIntro.FirstBlast,"blast.quake","stone",.8f));l.Add(new IntroCue(NativeBombadierIntro.ShockAt,"blast.quake","stone",1));l.Add(new IntroCue(NativeBombadierIntro.ShockAt,"blast.kinetic","dash",1));
-            l.Add(new IntroCue(NativeBombadierIntro.CardAt,"ui.confirm","ui",.7f));l.Add(new IntroCue(NativeBombadierIntro.CatchAt,"melee.shield.block","parry",.25f));
+            l.Add(new IntroCue(NativeBombadierIntro.CardAt,"melee.daggers.throw","daggers",.7f));l.Add(new IntroCue(NativeBombadierIntro.CardAt+.12f,"impact.metal","metal",.8f));l.Add(new IntroCue(NativeBombadierIntro.CatchAt,"melee.shield.block","parry",.25f));
             l.Sort((a,b)=>a.At.CompareTo(b.At));return l.ToArray();
         }
     }

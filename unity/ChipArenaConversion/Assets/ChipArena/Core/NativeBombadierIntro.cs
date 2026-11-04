@@ -96,6 +96,8 @@ namespace ChipArena.UnityConversion
         /// <summary>How far the flame has burned at `t` (m); slightly accelerating.</summary>
         private float Burned(float t){float u=NativeEntranceMath.Clamp01((t-FuseFrom)/(Stomp-FuseFrom));return fuseLength*(u*.7f+.3f*u*u);}
         public Vector3 FlameAt(float t)=>FuseAt(Burned(t));
+        /// <summary>The lit match, falling out of the dark onto the rope's end as the fuse catches.</summary>
+        private Vector3 MatchAt(float t){float u=NativeEntranceMath.Clamp01(t/FuseFrom);return fuse[0]+new Vector3(.03f*(1-u),.62f*(1-u*u)+.012f,-.02f*(1-u));}
         protected override Vector3 Focus(float t,Vector3 chest)=>t<Stomp?FlameAt(t):chest;
         public float BlastAt(int pylon){for(int i=0;i<order.Length;i++)if(order[i]==pylon)return FirstBlast+i*BlastStep;return FirstBlast;}
         /// <summary>When pylon `i`'s charge's light comes on: the farther round the ring from the fuse's start, the later.</summary>
@@ -125,6 +127,7 @@ namespace ChipArena.UnityConversion
             float dark=t<FirstBlast?1:0,up=NativeEntranceMath.Ramp(t,FirstBlast,ShockAt),black=NativeEntranceMath.Ramp(t,BlackAt-.03f,BlackAt)*(1-NativeEntranceMath.Ramp(t,FirstBlast-.01f,FirstBlast));
             // Almost nothing before the blasts: what you see, the flame and the lights show you.
             NativeEntranceStage.Rig(l,dark>0?.012f*(1-black):.25f+.4f*up,FlameColor,dark>0?0:.6f+.8f*up,0,dark>0?.05f*(1-black):.22f+.25f*up);
+            if(t<FuseFrom+.25f){float fl=.8f+.2f*(float)Math.Sin(t*61);l.Add(MatchAt(t)+new Vector3(0,.06f,0),Hot*(1.4f*fl),2.2f);}
             if(t<Stomp&&t>=FuseFrom-.05f){float fl=.85f+.15f*(float)Math.Sin(t*47)+.1f*(float)Math.Sin(t*31);l.Add(FlameAt(t)+new Vector3(0,.2f,0),FlameColor*(2.4f*fl),4.2f);}
             float redAll=0;for(int i=0;i<order.Length;i++)redAll+=LedLevel(i,t);redAll/=order.Length;
             if(redAll>.001f){l.Add(new Vector3(5,2.4f,-4.5f),Led*(9*redAll),15);l.Add(new Vector3(-5,2.4f,-4.5f),Led*(9*redAll),15);l.Add(new Vector3(0,3,5.5f),Led*(7*redAll),13);}
@@ -139,6 +142,12 @@ namespace ChipArena.UnityConversion
         public override void Props(float t,INativeEntranceProps props,float q)
         {
             Stage(props,t,t<FirstBlast?.02f:.08f);
+            // The match: a sliver of pale wood with a black head, turning as it falls; it lies on the rope afterwards.
+            if(t<Stomp)
+            {
+                float u=NativeEntranceMath.Clamp01(t/FuseFrom);var m=MatchAt(t);var turn=u<1?Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.4f,.2f,.9f)),.5f+6*u):Quaternion.CreateFromAxisAngle(Vector3.UnitZ,1.5f);var along=Vector3.Transform(Vector3.UnitY,turn);
+                props.Piece(WeaponShape.Cube,false,m,turn,new Vector3(.006f,.07f,.006f),new Vector3(.62f,.5f,.3f));props.Piece(WeaponShape.Sphere,false,m+along*.036f,turn,new Vector3(.0075f,.011f,.0075f),new Vector3(.04f,.03f,.03f));
+            }
             // The rope, charred behind the flame.
             float burned=Burned(t);int step=q<.5f?2:1;var rope=new Vector3(.09f,.075f,.06f);var ash=new Vector3(.015f,.015f,.015f);
             for(int i=0;i+step<fuse.Length;i+=step)
@@ -196,6 +205,13 @@ namespace ChipArena.UnityConversion
         public override void Effects(float t,INativeEntranceFx fx,float q)
         {
             float floor=NativeEntranceStage.FloorY;
+            // The match's own flame, and the rope catching from it.
+            if(t<FuseFrom+.08f)
+            {
+                float u=NativeEntranceMath.Clamp01(t/FuseFrom);var turn=Quaternion.CreateFromAxisAngle(Vector3.Normalize(new Vector3(.4f,.2f,.9f)),.5f+6*u);var head=MatchAt(t)+Vector3.Transform(new Vector3(0,.04f,0),turn);float fl=.82f+.18f*(float)Math.Sin(t*67),gone=1-NativeEntranceMath.Ramp(t,FuseFrom,FuseFrom+.08f);
+                fx.Glow(head,Vector3.One*(2.2f*fl*gone),0,.03f,1,0,7990);fx.Glow(head+new Vector3(0,.012f,0),Hot*(2*fl*gone),0,.08f,1,0,7991);fx.Glow(head,FlameColor*(.8f*fl*gone),0,.3f,0,0,7992);
+            }
+            NativeEntranceFx.Sparks(fx,t,FuseFrom,fuse[0],new Vector3(0,.5f,0),1,q<.5f?8:20,2.2f,.45f,6,.6f,Hot*2.6f,FlameColor,.008f,7995,q,floor);
             // The flame on the fuse: spitting sparks, a thread of smoke, light on the floor.
             if(t>=FuseFrom-.08f&&t<Stomp)
             {

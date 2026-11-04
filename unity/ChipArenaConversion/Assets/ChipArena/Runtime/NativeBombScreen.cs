@@ -1,6 +1,8 @@
+using System.Linq;
 using UnityEngine;
 using U=ChipArena.UnityConversion.NativeUi;
 using C=ChipArena.UnityConversion.NativeCyberTheme;
+using M=ChipArena.UnityConversion.NativeUiMotion;
 
 namespace ChipArena.UnityConversion
 {
@@ -49,6 +51,67 @@ namespace ChipArena.UnityConversion
             for(int s=-1;s<=1;s+=2){var band=new Rect(s<0?-slide:slide,H*.5f+s*H*.17f-th/2,W,th);U.Fill(band,C.Void(.82f*a));float x0=band.x-((age*220)%44);for(float x=x0;x<band.xMax+44;x+=44)U.Fill(new Rect(x,band.y,22,8),new Color(.95f,.72f,.06f,a));for(float x=x0+22;x<band.xMax+44;x+=44)U.Fill(new Rect(x,band.yMax-8,22,8),new Color(.95f,.72f,.06f,a));}
             float stamp=reduced?1:Mathf.Clamp01(age/.09f),size=Mathf.Lerp(120,76,stamp);var r=new Rect(0,H*.5f-60,W,120);U.Text(new Rect(r.x+3,r.y+3,r.width,r.height),"GRAND FINALE",Mathf.RoundToInt(size),C.Void(.8f*a),TextAnchor.MiddleCenter,bold:true,mono:true);U.Text(r,"GRAND FINALE",Mathf.RoundToInt(size),new Color(1,.86f,.42f,a),TextAnchor.MiddleCenter,bold:true,mono:true);
             U.Text(new Rect(0,H*.5f+36,W,22),"ULTIMATE // PUSH THE PLUNGER",15,new Color(1,.45f,.2f,a),TextAnchor.MiddleCenter,mono:true,tracking:.18f);
+        }
+        // ---- the Last Warning's card (IntroCard for this entrance) ----
+        private static Texture2D bombTape;
+        // Black and yellow at 45 degrees, scuffed: one period of the tape, tiled along it.
+        private static Texture BombTape()
+        {
+            if(bombTape!=null)return bombTape;const int n=64;var px=new Color32[n*n];
+            for(int y=0;y<n;y++)for(int x=0;x<n;x++)
+            {
+                bool yellow=(x+y)%n<n/2;float scuff=NativeEntranceMath.Rand(x*7+y*131,3);float wear=scuff>.93f?.72f:scuff>.8f?.9f:1;
+                px[y*n+x]=yellow?new Color32((byte)(242*wear),(byte)(184*wear),(byte)(16*wear),255):new Color32((byte)(16/wear),(byte)(15/wear),(byte)(14/wear),255);
+            }
+            bombTape=new Texture2D(n,n,TextureFormat.RGBA32,false){name="Hazard tape",wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Bilinear,hideFlags=HideFlags.HideAndDontSave};bombTape.SetPixels32(px);bombTape.Apply(false,true);return bombTape;
+        }
+        private const string BombCaution="CAUTION  //  LIVE ORDNANCE  //  CAUTION  //  DO NOT STAND HERE  //  CAUTION  //  LIVE ORDNANCE  //  CAUTION  //  DO NOT STAND HERE  //  CAUTION  //  LIVE ORDNANCE  //  CAUTION  //  DO NOT STAND HERE  //  ";
+        private void BombCard(NativePilot pilot,float rawAge,int index,int total,bool team)
+        {
+            string style=NativeBombs.Entrance;float duration=(float)NativeIntroRules.OverlayDuration(style),nameAt=(float)NativeIntroRules.NameAt(style),age=Mathf.Min(rawAge,duration),W=U.W,H=U.H;bool reduced=prefs.reducedEffects;var ink=U.Hex(0x040610);
+            // The cinema bands, as every entrance; everything else goes out with the charges' lights, for the one beat of nothing.
+            U.Fade(new Rect(0,0,W,H*.17f),U.A(ink,.867f));U.Fade(new Rect(0,H*.7f,W,H*.3f+1),U.A(ink,.94f),false);
+            float shade=M.EaseOut(M.Progress(age,nameAt,.7f)),ry=H*.46f*.92f;U.RadialStops(new Rect(-W*.1f,H-ry,W*1.2f,ry*2),U.A(ink,shade),new[]{0,.46f,.76f},new[]{.96f,.70f,0});
+            bool black=age>=NativeBombadierIntro.BlackAt&&age<NativeBombadierIntro.FirstBlast;if(black)return;
+            // The topline; the progress bar is a fuse, burning along its rule.
+            float top=M.EaseOut(M.Progress(age,0,.45f)),x0=W*.06f,tw=W*.88f,y=88,rule=y+29,fill=Mathf.Clamp01(age/duration),tip=x0+tw*fill,burn=1-M.Progress(age,duration-.35f,.3f);
+            U.Text(new Rect(x0,y,tw,15),"MATCH INTRO / "+(index+1).ToString("00")+" — "+total.ToString("00"),12,U.A(U.Hex(0xd7d8de),top),TextAnchor.UpperLeft,mono:true,tracking:.2f);
+            U.Fill(new Rect(x0,rule,tip-x0,1),U.A(U.Hex(0x3a322c),.7f*top));U.Fill(new Rect(tip,rule-.5f,x0+tw-tip,2),U.A(U.Hex(0x8a6a44),.85f*top));
+            if(burn>0)
+            {
+                float fl=.8f+.2f*Mathf.Sin(age*53);U.Glow(new Rect(tip-2,rule-1.5f,4,4),new Color(1,.45f,.12f,.9f*fl*top*burn),12);U.Fill(new Rect(tip-1.5f,rule-1,3,3),new Color(1,.9f,.6f,top*burn));
+                if(!reduced)for(int i=0;i<7;i++){float a=(age*5+i*.143f)%1;int seed=Mathf.FloorToInt(age*5+i*.143f)*31+i*97;float dx=-a*(10+26*NativeEntranceMath.Rand(seed,1)),dy=a*(NativeEntranceMath.Signed(seed,2)*14+a*16);U.Fill(new Rect(tip+dx,rule+dy,1.5f,1.5f),new Color(1,.7f,.25f,(1-a)*top*burn));}
+            }
+            if(age<nameAt)return;
+            // Two strips of tape whip across and shudder as they land; a stamped name on the wider one; they tear off the way they were going.
+            float since=age-nameAt,leave=M.Progress(age,duration-.32f,.3f),leaveEase=leave*leave;float inA=reduced?1:M.EaseOut(M.Progress(age,nameAt,.16f)),inB=reduced?1:M.EaseOut(M.Progress(age,nameAt+.05f,.18f)),fade=reduced?Mathf.Clamp01(since/.2f)*(1-leave):1;
+            float shudder=reduced?0:Mathf.Sin(since*46)*Mathf.Exp(-since*9);
+            var seat=pilot.Seat;string weapon=(content.weapons.FirstOrDefault(w=>w.id==seat.spec)?.name??seat.spec).ToUpperInvariant(),text=(string.IsNullOrWhiteSpace(seat.introText)?"Ready to make an impact":seat.introText).ToUpperInvariant();
+            float cx=W*.05f,cw=W*.9f,F=Mathf.Clamp(W*.065f,30,82),fit=U.Measure(seat.name,F,true,false,.02f).x;if(fit>cw)F*=cw/fit;
+            const float strip=9;float ySpan=H*.95f-10,yStrong=ySpan-strip-10-1.15f*F,plateTop=yStrong-6,plateH=1.15f*F+12,yTeam=plateTop-strip-8-18,ySmall=(team?yTeam-6:plateTop-strip-8)-15;
+            // The thin strip, behind: stencilled, running on.
+            float yB=ySmall-30,wide=W*1.3f,xB=-W*.15f;
+            U.Push(new Vector2(W/2,yB+10),new Vector2((1-inB)*W*1.3f-leaveEase*W*1.4f,0),1,-3.4f+.5f*shudder);
+            U.Fill(new Rect(xB,yB,wide,20),U.A(new Color(.95f,.72f,.06f),fade));U.Fill(new Rect(xB,yB,wide,1.5f),U.A(U.Hex(0x1a1408),.8f*fade));U.Fill(new Rect(xB,yB+18.5f,wide,1.5f),U.A(U.Hex(0x1a1408),.8f*fade));
+            U.Text(new Rect(xB-since*34,yB,wide*2,20),BombCaution+BombCaution,12,U.A(U.Hex(0x141008),fade),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.08f);U.Pop();
+            // The wide one: a dark plate between two lengths of hazard stripe.
+            var band=new Rect(-W*.15f,plateTop,W*1.3f,plateH);var pivot=new Vector2(W/2,plateTop+plateH/2);float tilt=-1.1f+.35f*shudder,slide=(inA-1)*W*1.3f+leaveEase*W*1.4f;
+            U.Push(pivot,new Vector2(slide,0),1,tilt);
+            U.Fill(band,U.A(U.Hex(0x0b0a0c),.96f*fade));var period=new Vector2(strip*2.4f,strip*2.4f);U.Tile(new Rect(band.x,band.y-strip,band.width,strip),BombTape(),U.A(Color.white,fade),period,new Vector2(since*22,0));U.Tile(new Rect(band.x,band.yMax,band.width,strip),BombTape(),U.A(Color.white,fade),period,new Vector2(-since*22,0));
+            // The name lands on the plate a beat after it: hard, with a flash, a size too big for one frame.
+            float hit=M.Progress(age,nameAt+.12f,.09f),stamp=reduced?1:hit*hit,nameA=(reduced?Mathf.Clamp01((since-.05f)/.2f):since>=.12f?1:0)*fade;
+            if(nameA>0)
+            {
+                U.Push(pivot,reduced?Vector2.zero:new Vector2(Mathf.Sin(since*71)*Mathf.Exp(-(since-.12f)*14)*5,Mathf.Sin(since*89)*Mathf.Exp(-(since-.12f)*14)*5),Mathf.Lerp(1.34f,1,stamp));
+                var nameLine=new Rect(cx,yStrong,cw,1.15f*F);U.Text(nameLine,seat.name,F,U.A(U.Hex(0xfff0c8),nameA),TextAnchor.MiddleCenter,bold:true,tracking:.02f,glow:new Color(1,.42f,.1f,.7f*nameA),shadow:new Color(0,0,0,.85f*nameA));U.Pop();
+                float flash=reduced?0:Mathf.Clamp01(1-(since-.12f)/.14f);if(flash>0)U.Fill(band,new Color(1,.92f,.7f,.5f*flash*fade));
+            }
+            U.Pop();
+            // The small lines stay still under it all.
+            float small=(1-leave)*(reduced?1:Line(age,nameAt+.16f,.3f)),line=(1-leave)*(reduced?1:Line(age,nameAt+.3f,.4f));var shadow=new Color(0,0,0,.8f*small);
+            U.Text(new Rect(cx,ySmall,cw,15),weapon,12,U.A(U.Hex(0xffc24a),small),TextAnchor.UpperCenter,bold:true,tracking:.3f,shadow:shadow);
+            if(team)U.Text(new Rect(cx,yTeam,cw,18),NativeMatch.TeamNames[TeamIndex(seat.team)].ToUpperInvariant()+" TEAM",14,U.A(TeamColor(seat.team),small),TextAnchor.UpperCenter,bold:true,tracking:.12f,shadow:shadow);
+            U.Text(new Rect(cx,ySpan,cw,18),text,12,U.A(U.Hex(0xb9bac4),line),TextAnchor.UpperCenter,tracking:.3f);
         }
         // Everyone else: a banner saying whose it is and, when the circle is on you, the one word you need.
         private void BombWarning(NativePilot caster,NativeBombFinale f,float t,float W,float H)
