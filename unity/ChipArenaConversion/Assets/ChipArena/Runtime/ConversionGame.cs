@@ -195,7 +195,7 @@ namespace ChipArena.UnityConversion
                 var ability=content.Ability(p.Seat.spec,pending.AbilityEHeld||pending.AbilityE||pending.AbilityEReleased?"e":"q");
                 pending.AbilityTarget=NativeArena.Vec(AimPoint(ability!=null?(float)ability.range:p.Seat.spec=="shield"?25:p.Seat.spec=="daggers"?48:60,p.Seat.spec=="shield"||p.Seat.spec=="daggers"));
                 // The shoulder cameras send the look that points the pilot at the crosshair point (NativeShoulderCamera.cs).
-                ConvergeAim(p);
+                ConvergeAim(p);TechniqueAimCheck(p);
             }
             // Held choosing a chip in an Expedition, the camera swings round to face my pilot (NativeChooserCameraPresentation.cs): after
             // the aim above, so the look sent and AimTarget are the gameplay camera's, and before the shakes, which shake the camera shown.

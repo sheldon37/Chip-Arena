@@ -117,6 +117,13 @@ namespace ChipArena.UnityConversion
             c=NativeTechniques.Card(live,20,4,14,true,"LOW");Check(c.State=="4.0s"&&!c.Ready&&!c.Low&&Math.Abs(c.Dial-(1-4f/14))<.001f,"the cooldown left, on the cooldown this pilot's chips scale");
             c=NativeTechniques.Card(live,40,-1,14,true,"LOW");Check(c.Low&&c.State=="LOW"&&!c.Ready&&c.Dial==1,"out of stamina or mana");
             c=NativeTechniques.Card(null,40,-1,14,false,"LOW");Check(c.Ready&&c.State=="READY"&&c.Dial==1,"ready, with no record yet");
+            // A press the rules would refuse for where it is aimed: the card says why, and only when that is what is stopping it.
+            c=NativeTechniques.Card(null,40,-1,14,false,"LOW",NativeTechniques.NoSurface);Check(c.State=="NO SURFACE"&&c.Low&&c.Held&&!c.Ready,"off cooldown, nothing to hook");
+            c=NativeTechniques.Card(live,12,12,14,false,"LOW",NativeTechniques.Blocked);Check(c.State=="BLOCKED"&&c.Low&&c.Held&&!c.Recast,"the recast's way is blocked");
+            c=NativeTechniques.Card(live,20,4,14,false,"LOW",NativeTechniques.NoSurface);Check(c.State=="4.0s"&&!c.Low&&!c.Held,"on cooldown the count stays");
+            c=NativeTechniques.Card(live,40,-1,14,true,"LOW",NativeTechniques.NoSurface);Check(c.State=="LOW"&&!c.Held,"out of stamina or mana says that first");
+            foreach(var why in new[]{NativeTechniques.NoSurface,NativeTechniques.Blocked,NativeTechniques.NoFloor})Check(NativeTechniques.RefusalState(why)!=null&&NativeTechniques.RefusalLine(why)!=null,why+": a card state and a line");
+            Check(NativeTechniques.RefusalState(null)==null&&NativeTechniques.RefusalState("unknown")==null&&NativeTechniques.RefusalLine(null)==null,"no reason, nothing said");
         }
         private static void Wiring(string root)
         {
@@ -124,6 +131,7 @@ namespace ChipArena.UnityConversion
             var arena=R("Core/ArenaModel.cs");Check(arena.Contains("NativeTechnique Technique"),"authority technique record on the actor");
             var hud=R("Runtime/NativeFightHud.cs");Check(!hud.Contains("\"1 · \"")&&hud.Contains("NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)==slot")&&hud.Contains("(slot==\"q\"?p.QReady:p.EReady)-t"),"no third card: a swapped slot takes the technique's card, on that slot's replicated deadline");
             Check(R("Core/NativeTechniqueFx.cs").Contains("var f=hit?-Flat(at,Vector3.UnitZ):Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);"),"the guard faces where the pilot faces: the rules' Dir is the aim until a parry");
+            Check(R("Runtime/NativeWeaponTechniques.cs").Contains("public string TechniqueRefusal(NativePilot p,in InputFrame aim)")&&R("Runtime/ConversionGame.cs").Contains("ConvergeAim(p);TechniqueAimCheck(p);")&&hud.Contains("arena.TechniqueRefusal(p,in pending)")&&hud.Contains("t,c.Ready||c.Held)"),"the HUD asks the rules once a frame on the look a press would send, and an aim coming back does not flare the card");
             var nameplates=R("Runtime/NativeCombatHud.cs");Check(nameplates.Contains("arena.TechniqueSmokeHidden(arena.ViewPilot.Body.position,p.Body.position)"),"smoke hides a name from outside the cloud");
             var locker=R("Runtime/NativeLockerUI.cs");Check(locker.Contains("Techniques=prefs.weaponTechniques")&&locker.Contains("b.Techniques!=prefs.weaponTechniques")&&locker.Contains("prefs.weaponTechniques=b.Techniques"),"a swap is part of Save Pilot and Revert");
             var game=R("Runtime/ConversionGame.cs");Check(game.Contains("NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec)!=\"e\"?content.Ability(p.Seat.spec,\"e\")"),"a swapped E draws no field preview");
