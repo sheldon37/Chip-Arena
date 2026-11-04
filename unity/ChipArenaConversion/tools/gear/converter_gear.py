@@ -51,16 +51,16 @@ def finishes():
     finish('c-knob', 0x7A1E18, 'paint', under=0x3A1410)
     finish('c-grate', 0x2A2724, 'metal')
     # slag
-    finish('c-slag', 0x110E0F, 'plastic', dirt=.3)
-    finish('c-slag-glass', 0x2B272E, 'plastic', dirt=.2)
+    finish('c-slag', 0x141112, 'plastic', dirt=.3)
+    finish('c-slag-glass', 0x221F23, 'plastic', dirt=.2)
     finish('c-slag-side', 0x1D191B, 'plastic', dirt=.3)
-    finish('c-glint', 0x3D3A44, 'plastic', dirt=.1, outline=False)
+    finish('c-glint', 0x24222A, 'plastic', dirt=.1, outline=False)
     # the suit
-    finish('c-silver', 0x8C8F93, 'metal', dirt=.7)
-    finish('c-silver-dark', 0x505256, 'metal', dirt=.8)
-    finish('c-quilt', 0x6A6D71, 'cloth', dirt=.6)
+    finish('c-silver', 0x7C7F83, 'metal', dirt=.7)
+    finish('c-silver-dark', 0x44464A, 'metal', dirt=.8)
+    finish('c-quilt', 0x55585C, 'cloth', dirt=.6)
     finish('c-glove', 0x3A2414, 'cloth')
-    finish('c-hat', 0xDCD6C4, 'paint', under=0x8F866E)
+    finish('c-hat', 0xBDB7A6, 'paint', under=0x8F866E)
     finish('c-belt', 0x2A2622, 'cloth')
     finish('c-buckle', 0x8A7A4A, 'metal')
     # glows: the emission's own colours (Core WeaponPaint.Glow): the runtime scales them by the joint's glow
@@ -452,11 +452,11 @@ def vessel_heat():
         for i in range(10):
             u = i / 9
             y = 2.7 - length * u
-            p, x, t, nn = on_shell(phi + .05 * math.sin(i * 1.9 + phi * 5), y, .03)
+            p, x, t, nn = on_shell(phi + .018 * math.sin(i * .55 + phi * 5), y, .03)
             pts.append(p)
             nrm.append(nn)
-            wid.append(w0 * (1 - .6 * u) * S)
-        ribbon(pc, pts, nrm, w0, .03, 'c-molten', widths=wid)
+            wid.append(w0 * (1 - .68 * u) * S)
+        ribbon(pc, pts, nrm, w0, .03, 'c-molten-dim', widths=wid)
         p, x, t, nn = on_shell(phi, 2.7 - length - .05, .05)
         sphere(pc, p, (w0 * .32, w0 * .32, w0 * .36), 'c-molten', u=8, v=5)
     out.append(pc.make(recalc=False))
@@ -611,11 +611,11 @@ def crust(zone, chunk):
             cu = sum(o[0] for o in outline) / corners
             cv = sum(o[1] for o in outline) / corners
             return [pc.bm.verts.new(p0 + xx * (o[0] + (cu - o[0]) * inset) + yy2 * (o[1] + (cv - o[1]) * inset) + nn2 * (z + .016 * noise.noise(Vector((o[0] * 7, o[1] * 7, k * .3))))) for o in outline]
-        rings = [ring(.06, -.02), ring(0, th * .45), ring(0, th * .8), ring(.22, th)]
+        rings = [ring(.06, -.02), ring(0, th * .45), ring(0, th * .8), ring(.22, th), ring(.58, th + .018)]
         # a facetted top: a raised, off-centre point (a conchoidal break)
         apex = pc.bm.verts.new(p0 + xx * (HASH(k, 2, 35) - .5) * w * .5 + yy2 * (HASH(k, 3, 36) - .5) * h * .5 + nn2 * (th + .03 + .03 * HASH(k, 1, 34)))
-        for q in range(3):
-            fin = 'c-slag-side' if q < 2 else 'c-slag-glass'
+        for q in range(4):
+            fin = 'c-slag-side' if q < 2 else 'c-slag-glass' if q < 3 else 'c-slag'
             for i in range(corners):
                 f = pc.bm.faces.new((rings[q][i], rings[q][(i + 1) % corners], rings[q + 1][(i + 1) % corners], rings[q + 1][i]))
                 f.material_index = pc.slot(fin)
@@ -624,11 +624,20 @@ def crust(zone, chunk):
                 if f.normal.dot(nn2 * .3 + (f.calc_center_median() - p0).normalized()) < 0:
                     f.normal_flip()
         for i in range(corners):
-            f = pc.bm.faces.new((rings[3][i], rings[3][(i + 1) % corners], apex))
+            f = pc.bm.faces.new((rings[4][i], rings[4][(i + 1) % corners], apex))
             f.material_index = pc.slot('c-slag' if (i * 3 + k) % 4 else 'c-glint')
             f.tag = True
             f.normal_update()
             if f.normal.dot(nn2) < 0:
+                f.normal_flip()
+        # its back, where it tore off the shell: seen only when it flies or lies on the floor, still hot
+        back = pc.bm.verts.new(p0 + nn2 * (-.06))
+        for i in range(corners):
+            f = pc.bm.faces.new((rings[0][i], rings[0][(i + 1) % corners], back))
+            f.material_index = pc.slot('c-crack')
+            f.tag = True
+            f.normal_update()
+            if f.normal.dot(nn2) > 0:
                 f.normal_flip()
         # the dim seam under its lower edge
         c0 = p0 + yy2 * (-h * .92) + nn2 * (th * .3)
@@ -642,7 +651,7 @@ def crust(zone, chunk):
                 b = a + yy2 * (-ln) + nn2 * (-.01)
                 cyl(pc, a, b, .05, 'c-slag', segs=6, r1=.016)
                 sphere(pc, b, (.024, .024, .03), 'c-slag-glass', u=6, v=4)
-    pc.sharp = 24
+    pc.sharp = 38
     return [pc.make(recalc=False), seams_.make()]
 
 
@@ -734,76 +743,187 @@ def lamp():
 # ===========================================================================================================================
 # The foreman: dead at his levers in an aluminised suit, hooded under a white hard hat
 # ===========================================================================================================================
+def _loft(pc, prof, n, fin, turn=0.0, shape=None):
+    """Closed rings up y: prof (y, rx, rz[, z shift]); shape(i, k) scales ring k's vertex i (pleats). The faces face out; returns them by band."""
+    rings = []
+    for k, row in enumerate(prof):
+        y, rx, rz = row[0], row[1], row[2]
+        dz = row[3] if len(row) > 3 else 0.0
+        vs = []
+        for i in range(n):
+            a = i * 2 * math.pi / n + turn
+            q = shape(i, k) if shape else 1.0
+            vs.append(pc.bm.verts.new(V(math.sin(a) * rx * q, y, math.cos(a) * rz * q + dz)))
+        rings.append(vs)
+    bands = []
+    for k in range(len(prof) - 1):
+        fs = []
+        for i in range(n):
+            f = pc.bm.faces.new((rings[k][i], rings[k][(i + 1) % n], rings[k + 1][(i + 1) % n], rings[k + 1][i]))
+            f.normal_update()
+            c = f.calc_center_median()
+            ax = Vector((0, prof[k][3] if len(prof[k]) > 3 else 0.0, c.z))
+            if f.normal.dot(c - ax) < 0:
+                f.normal_flip()
+            fs.append(f)
+        pc.tag(fs, fin if isinstance(fin, str) else fin[k])
+        bands.append(fs)
+    return bands
+
+
+def _fold(k):
+    """A sleeve's or trouser leg's folds: radii along a limb."""
+    return 1 + .07 * math.sin(k * 2.1 + .6) + .04 * math.sin(k * 4.7)
+
+
+def _boot(pc, x):
+    # the sole and heel, the toe cap, a heat gaiter strapped over the shaft
+    bx(pc, x, .02, .035, .165, .04, .33, 'c-rubber')
+    bx(pc, x, .05, -.09, .15, .03, .09, 'c-rubber')
+    sphere(pc, V(x, .085, .1), (.08, .115, .06), 'c-rubber', u=12, v=8)
+    rod(pc, (x, .05, -.02), (x, .2, -.015), .082, 'c-rubber', 12, r1=.074)
+    rod(pc, (x, .15, -.012), (x, .34, -.004), .086, 'c-silver-dark', 12, r1=.08)
+    for y in (.19, .29):
+        torus(pc, V(x, y, -.008), V(0, 1, 0), .086, .008, 'c-belt', segs=12, rsegs=3)
+        bx(pc, x + (.03 if x > 0 else -.03), y, .074, .03, .026, .012, 'c-buckle')
+
+
 def foreman():
+    """His legs and the coat's skirt (the joint at his feet, the waist at y .92): the heat suit is the Stoker's family, scorched from the hem up."""
     pc = Piece('legs')
     for x in (-.12, .12):
-        bx(pc, x, .08, .05, .16, .16, .32, 'c-rubber')
-        tube(pc, catmull([V(x, .14, 0), V(x, .5, .006), V(x, .86, 0)], 4), .09, 'c-silver', segs=10, radii=[.078, .08, .083, .086, .088, .09, .092, .094, .095])
-        for i in range(3):
-            torus(pc, V(x, .24 + i * .18, 0), V(0, 1, 0), .09, .007, 'c-silver-dark', segs=10, rsegs=3)
-    # the coat's skirt, panelled and quilted
+        _boot(pc, x)
+        pts = catmull([V(x, .3, -.004), V(x * 1.02, .52, .012), V(x * .98, .72, .004), V(x * .95, .94, 0)], 4)
+        tube(pc, pts, .1, 'c-silver', segs=12, radii=[.094 * _fold(k) + .002 * k for k in range(len(pts))])
+        sphere(pc, V(x, .53, .05), (.078, .055, .05), 'c-silver-dark', u=10, v=6)
+    out = [pc.make()]
+    # the coat's skirt: pleated, split up the front and the back, its hem burned ragged
+    pc = Piece('skirt')
+    n, ys = 32, (.42, .5, .62, .76, .92)
+    radii = ((.335, .225), (.325, .22), (.305, .205), (.285, .19), (.268, .178))
     rings = []
-    for y, rx, rz in ((.5, .3, .2), (.68, .28, .19), (.92, .27, .18)):
-        rings.append([pc.bm.verts.new(V(math.sin(i * 2 * math.pi / 20) * rx, y, math.cos(i * 2 * math.pi / 20) * rz)) for i in range(20)])
-    fs = []
-    for k in range(2):
-        for i in range(20):
-            fs.append(pc.bm.faces.new((rings[k][i], rings[k][(i + 1) % 20], rings[k + 1][(i + 1) % 20], rings[k + 1][i])))
-    pc.tag(fs, 'c-silver')
-    for f in fs:
-        f.normal_update()
-        c = f.calc_center_median()
-        if f.normal.dot(Vector((c.x, c.y, 0))) < 0:
-            f.normal_flip()
-    for y in (.56, .68, .8):
-        torus(pc, V(0, y, 0), V(0, 1, 0), .285, .006, 'c-quilt', segs=20, rsegs=3)
-    return [pc.make(recalc=False)]
+    for k, (y, (rx, rz)) in enumerate(zip(ys, radii)):
+        vs = []
+        for i in range(n):
+            a = i * 2 * math.pi / n
+            pl = 1 + .045 * math.cos(i * math.pi / 2) * (1 - k / 5)
+            hem = (HASH(i, 3, 61) - .5) * .08 if k == 0 else (HASH(i, 4, 62) - .5) * .02 if k == 1 else 0
+            vs.append(pc.bm.verts.new(V(math.sin(a) * rx * pl, y + hem, math.cos(a) * rz * pl)))
+        rings.append(vs)
+    for k in range(len(ys) - 1):
+        fs = []
+        for i in range(n):
+            # the split: nothing below the thigh at the front and the back centres
+            if k < 2 and i in (31, 0, 15, 16):
+                continue
+            fs.append(pc.bm.faces.new((rings[k][i], rings[k][(i + 1) % n], rings[k + 1][(i + 1) % n], rings[k + 1][i])))
+        pc.tag(fs, 'c-soot' if k == 0 else 'c-silver-dark' if k == 1 else 'c-silver')
+        for f in fs:
+            f.normal_update()
+            c = f.calc_center_median()
+            if f.normal.dot(Vector((c.x, c.y, 0))) < 0:
+                f.normal_flip()
+    out.append(pc.solidify(.012, -1.0).make(recalc=False))
+    pc = Piece('skirt-trim')
+    # quilt lines, the split's bound edges, a buckled flap
+    for y, rx, rz in ((.64, .3, .203), (.78, .282, .188)):
+        pts = [V(math.sin(i * 2 * math.pi / 32) * rx, y, math.cos(i * 2 * math.pi / 32) * rz) for i in range(32)]
+        tube(pc, pts, .006, 'c-quilt', segs=3, closed=True)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            tube(pc, [V(sx * .03, y, sz * (.2 + (.62 - y) * .08)) for y in (.72, .6, .5, .43)], .007, 'c-silver-dark', segs=3)
+    for y in (.68, .8):
+        bx(pc, 0, y, .19, .05, .03, .012, 'c-buckle')
+    out.append(pc.make())
+    return out
 
 
 def chest():
+    """The coat from the waist up (the joint at the waist, the neck at y .68): the quilted trunk, a heavy mantle over the shoulders, the harness, the shift's brass whistle, an air pack."""
     pc = Piece('chest')
-    # the coat from the waist up (the chest joint at the waist): a rounded trunk, quilted, belt, cape over the shoulders
-    rings = []
-    prof = ((-.02, .27, .18), (.14, .27, .185), (.34, .3, .19), (.46, .33, .2), (.56, .36, .21), (.63, .3, .19), (.68, .14, .13))
-    for y, rx, rz in prof:
-        rings.append([pc.bm.verts.new(V(math.sin(i * 2 * math.pi / 24) * rx, y, math.cos(i * 2 * math.pi / 24) * rz)) for i in range(24)])
-    fs = []
-    for k in range(len(prof) - 1):
-        for i in range(24):
-            fs.append(pc.bm.faces.new((rings[k][i], rings[k][(i + 1) % 24], rings[k + 1][(i + 1) % 24], rings[k + 1][i])))
-    pc.tag(fs, 'c-silver')
-    for f in fs:
-        f.normal_update()
-        c = f.calc_center_median()
-        if f.normal.dot(Vector((c.x, c.y, c.z - .34 * 0))) < 0 and abs(f.normal.z) < .9:
-            f.normal_flip()
-    for y, r in ((.1, .28), (.24, .29), (.38, .31)):
-        torus(pc, V(0, y, 0), V(0, 1, 0), r, .007, 'c-quilt', segs=24, rsegs=3)
-    torus(pc, V(0, 0, 0), V(0, 1, 0), .28, .03, 'c-belt', segs=24, rsegs=4)
-    bx(pc, 0, 0, .185, .1, .07, .03, 'c-buckle')
-    # the respirator canister, its hose to the hood's port
-    rod(pc, (.12, .34, .2), (.12, .5, .2), .06, 'c-iron-dark', 10)
-    tube(pc, catmull([V(.12, .5, .22), V(.1, .6, .23), V(.06, .66, .2)], 3), .02, 'c-rubber', segs=6)
+    prof = ((-.03, .272, .18), (.1, .268, .182), (.24, .285, .188), (.36, .305, .195), (.46, .32, .2), (.54, .31, .195), (.63, .19, .15), (.69, .11, .1))
+    _loft(pc, prof, 28, 'c-silver', shape=lambda i, k: 1 + .012 * math.sin(i * 1.57 + k))
+    for y, r in ((.08, .272), (.2, .28), (.32, .3)):
+        torus(pc, V(0, y, 0), V(0, 1, 0), r, .006, 'c-quilt', segs=28, rsegs=3)
     out = [pc.make(recalc=False)]
+    pc = Piece('mantle')
+    # the mantle: a short cape, its lower edge scalloped into five tabs a side
+    n = 36
+    prof = ((.3, .385, .265), (.4, .375, .262), (.5, .335, .24), (.6, .24, .19), (.68, .135, .125))
+
+    def shape(i, k):
+        if k > 0:
+            return 1.0
+        return 1.0
+    bands = _loft(pc, prof, n, ['c-silver-dark', 'c-silver', 'c-silver', 'c-silver'], shape=shape)
+    bm = pc.bm
+    bm.verts.ensure_lookup_table()
+    for i in range(n):
+        v = bm.verts[i]
+        v.co.z += .03 * abs(math.sin(i * math.pi * 5 / n)) - .012
+    out.append(pc.solidify(.016, -1.0).make(recalc=False))
+    pc = Piece('harness')
+    tube(pc, [V(-.21, .47, .17), V(-.1, .33, .205), V(.04, .17, .205), V(.16, .03, .19)], .022, 'c-belt', segs=4)
+    tube(pc, [V(.21, .47, .17), V(.1, .33, .205), V(-.04, .17, .205), V(-.16, .03, .19)], .022, 'c-belt', segs=4)
+    rod(pc, (0, .245, .2), (0, .245, .225), .04, 'c-buckle', 10)
+    torus(pc, V(0, .01, 0), V(0, 1, 0), .282, .03, 'c-belt', segs=28, rsegs=4)
+    bx(pc, 0, .01, .19, .11, .075, .03, 'c-buckle')
+    # the whistle on its chain, the shift ends on it
+    for i in range(5):
+        torus(pc, V(-.1 + i * .012, .47 - i * .045, .192 + i * .004), V(1 if i % 2 else 0, 0, 0 if i % 2 else 1), .012, .003, 'c-brass', segs=8, rsegs=3)
+    rod(pc, (-.05, .25, .205), (-.05, .19, .205), .022, 'c-brass', 10)
+    bx(pc, -.05, .265, .2, .03, .03, .022, 'c-brass')
+    # the pack on his back, as the Stoker's: two bottles, a regulator, the hose to the mask
+    for sx in (-.085, .085):
+        rod(pc, (sx, .16, -.235), (sx, .46, -.235), .07, 'c-silver-dark', 14)
+        sphere(pc, V(sx, .46, -.235), (.07, .07, .04), 'c-silver-dark', u=12, v=6)
+        sphere(pc, V(sx, .16, -.235), (.07, .07, .03), 'c-iron-dark', u=12, v=6)
+    bx(pc, 0, .3, -.19, .3, .05, .03, 'c-belt')
+    bx(pc, 0, .5, -.21, .08, .05, .06, 'c-brass')
+    tube(pc, catmull([V(.04, .5, -.18), V(.2, .6, -.1), V(.17, .66, .08), V(.06, .68, .14)], 4), .016, 'c-rubber', segs=6)
+    out.append(pc.make())
     pc = Piece('chest-lamp')
-    bx(pc, .12, .46, .262, .035, .02, .01, 'c-gauge')
+    bx(pc, .12, .4, .206, .035, .02, .01, 'c-gauge')
     out.append(pc.make())
     return out
 
 
 def head():
+    """The hood (the joint at the neck; the visor joint at y .18, z .197): a bell of quilted foil falling over the shoulders, the square face plate with its slit, the mask under it, the hard hat over it."""
     pc = Piece('hood')
-    bx(pc, 0, .16, 0, .37, .38, .37, 'c-silver')
-    bx(pc, 0, -.02, -.01, .44, .07, .42, 'c-silver-dark')
-    bx(pc, 0, .18, .186, .3, .13, .016, 'c-glass')
-    out = [pc.bevel(.03, 2, 40).make()]
+    prof = ((-.09, .29, .25, -.01), (-.04, .265, .24, -.01), (.03, .215, .215, -.005), (.13, .2, .205), (.26, .195, .2), (.33, .165, .175), (.385, .09, .1), (.405, .012, .012))
+    _loft(pc, prof, 28, ['c-silver-dark', 'c-silver', 'c-silver', 'c-silver', 'c-silver', 'c-silver', 'c-silver'])
+    for y, r in ((.0, .235), (.07, .208)):
+        torus(pc, V(0, y, -.005), V(0, 1, 0), r, .006, 'c-quilt', segs=28, rsegs=3)
+    out = [pc.make(recalc=False)]
+    pc = Piece('plate')
+    # the face plate round the slit (the visor's own joint sits in it)
+    bx(pc, 0, .255, .182, .31, .1, .026, 'c-silver-dark')
+    bx(pc, 0, .105, .182, .31, .1, .026, 'c-silver-dark')
+    for sx in (-1, 1):
+        bx(pc, sx * .142, .18, .182, .026, .056, .026, 'c-silver-dark')
+    bx(pc, 0, .18, .178, .3, .06, .008, 'c-glass')
+    for sx in (-1, 1):
+        for y in (.29, .07):
+            rod(pc, (sx * .13, y, .19), (sx * .13, y, .2), .009, 'c-bolt', 6)
+    out.append(pc.bevel(.006, 1, 40).make())
+    pc = Piece('mask')
+    # the respirator under the plate, and its hose, torn off the pack's: the dead do not breathe
+    rod(pc, (0, .05, .17), (0, .02, .26), .062, 'c-iron-dark', 12, r1=.045)
+    rod(pc, (0, .02, .26), (0, .012, .285), .062, 'c-steel', 12)
+    for i in range(3):
+        bx(pc, 0, .012 + (i - 1) * .022, .287, .08, .008, .004, 'c-iron-dark')
+    tube(pc, catmull([V(.04, .03, .2), V(.11, -.03, .19), V(.13, -.13, .2), V(.1, -.22, .23)], 4), .017, 'c-rubber', segs=6)
+    rod(pc, (.1, -.22, .23), (.095, -.25, .24), .022, 'c-steel', 8)
+    out.append(pc.make())
     pc = Piece('hat')
-    # the white foreman's hard hat over the hood: a real dome, ribbed, its brim's peak
+    # the white foreman's hard hat, dented, over the hood: a real dome, ribbed, its brim's peak
     r = bmesh.ops.create_uvsphere(pc.bm, u_segments=28, v_segments=14, radius=1.0)
     for v in r['verts']:
         if v.co.z < 0:
             v.co.z *= .1
-        v.co = Vector((v.co.x * .215, v.co.y * .235 + .01, v.co.z * .17 + .36))
+        d = .012 * max(0.0, 1 - ((v.co.x - .5) ** 2 + (v.co.y + .2) ** 2 + (v.co.z - .7) ** 2) / .25)
+        v.co = Vector((v.co.x * .215, v.co.y * .235 + .01, v.co.z * (.17 - d * 2.2) + .36))
     pc.tag(pc.bm.faces, 'c-hat')
     out.append(pc.make())
     pc = Piece('hat-brim')
@@ -820,6 +940,10 @@ def head():
     pc = Piece('hat-rib')
     tube(pc, [Vector((0, .01 + .24 * math.cos(p), .36 + .175 * math.sin(p))) for p in [math.radians(a2) for a2 in range(20, 161, 14)]], .018, 'c-hat', segs=6)
     torus(pc, V(0, .4, .01), V(0, 1, 0), .217, .014, 'c-belt', segs=28, rsegs=4)
+    # its cap lamp, dead, and the lamp's cord
+    rod(pc, (0, .445, .225), (0, .445, .262), .036, 'c-iron-dark', 12)
+    rod(pc, (0, .445, .262), (0, .445, .268), .03, 'c-glass', 12)
+    tube(pc, catmull([V(.03, .44, .22), V(.17, .42, .1), V(.2, .39, -.12)], 3), .006, 'c-rubber', segs=4)
     out.append(pc.make())
     return out
 
@@ -836,19 +960,29 @@ def visor():
 
 
 def arm_upper(side):
+    """The sleeve along +z from the shoulder: the mantle's quilted cap over it, folds at the elbow."""
     pc = Piece('arm-u')
-    rod(pc, (0, 0, -.02), (0, 0, .4), .085, 'c-silver', 12, r1=.08)
-    bx(pc, side * .04, .04, .04, .2, .15, .22, 'c-silver')
-    torus(pc, V(0, 0, .25), V(0, 0, 1), .086, .007, 'c-silver-dark', segs=12, rsegs=3)
-    return [pc.bevel(.008, 1, 40).make()]
+    pts = catmull([V(0, 0, -.03), V(0, -.004, .14), V(0, 0, .28), V(0, 0, .42)], 4)
+    tube(pc, pts, .09, 'c-silver', segs=12, radii=[.09 * _fold(k * .8) - .001 * k for k in range(len(pts))])
+    sphere(pc, V(side * .025, .028, .02), (.122, .11, .135), 'c-silver', u=14, v=8)
+    for z, r in ((.1, .11), (.04, .125)):
+        torus(pc, V(side * .02, .02, z), V(0, 0, 1), r, .006, 'c-quilt', segs=14, rsegs=3)
+    return [pc.make()]
 
 
 def arm_fore():
+    """The forearm along +z, the flared gauntlet, a fist closed on the lever."""
     pc = Piece('arm-f')
-    rod(pc, (0, 0, 0), (0, 0, .3), .077, 'c-silver', 12, r1=.072)
-    rod(pc, (0, 0, .24), (0, 0, .34), .095, 'c-glove', 12, r1=.08)
-    bx(pc, 0, -.01, .38, .11, .1, .12, 'c-glove')
-    return [pc.bevel(.008, 1, 40).make()]
+    pts = catmull([V(0, 0, -.02), V(0, .003, .12), V(0, 0, .24)], 4)
+    tube(pc, pts, .08, 'c-silver', segs=12, radii=[.078 * _fold(k * .9) for k in range(len(pts))])
+    rod(pc, (0, 0, .17), (0, 0, .3), .112, 'c-glove', 14, r1=.08)
+    torus(pc, V(0, 0, .172), V(0, 0, 1), .112, .009, 'c-silver-dark', segs=14, rsegs=3)
+    sphere(pc, V(0, -.008, .35), (.062, .058, .075), 'c-glove', u=12, v=8)
+    for i in range(4):
+        x = -.042 + i * .028
+        tube(pc, catmull([V(x, .03, .36), V(x, -.01, .425), V(x, -.06, .39), V(x, -.05, .345)], 2), .0145, 'c-glove', segs=5)
+    tube(pc, catmull([V(.058, .012, .325), V(.068, -.022, .37), V(.04, -.052, .39)], 2), .017, 'c-glove', segs=5)
+    return [pc.make()]
 
 
 # ===========================================================================================================================
@@ -1125,6 +1259,11 @@ def grime(gm, kind):
             k *= .84 if y < 0 else 1.0
         elif kind == 'foot':
             k *= _lerp(.6, .9, _smooth((y + .6) / .7))
+        elif kind == 'suit':
+            # the heat suit: burnished streaks down the foil, soot rising from its hems and folds
+            streak = .5 + .5 * math.sin(math.atan2(x, z) * 6.3 + y * 2.1 + 1.3)
+            k *= _lerp(.74, 1.08, streak) * (.84 + .3 * (noise.noise(Vector((x * 5, y * 5, z * 5))) + .5))
+            warm = .05 * (1 - streak)
         elif kind == 'jaw':
             k *= _lerp(.7, 1.0, _smooth((y + .9) / .7))
         if k != 1.0 or warm > 0:
@@ -1138,8 +1277,8 @@ def parts():
     """(joint name, its build, its grime kind): the names are Core NativeIronworksBossLook.Names."""
     out = [('yoke', yoke, 'yoke'), ('vessel', vessel, 'vessel'), ('vessel-heat', vessel_heat, None), ('metal', metal, None), ('wind-box', wind_box, None), ('seams', seams, None),
            ('pulpit', pulpit, None), ('lever', lever, None), ('valve', valve, None), ('lamp-l', lamp, None), ('lamp-r', lamp, None),
-           ('foreman', foreman, None), ('foreman-chest', chest, None), ('foreman-head', head, None), ('foreman-visor', visor, None),
-           ('arm-upper-l', lambda: arm_upper(-1), None), ('arm-upper-r', lambda: arm_upper(1), None), ('arm-fore-l', arm_fore, None), ('arm-fore-r', arm_fore, None)]
+           ('foreman', foreman, 'suit'), ('foreman-chest', chest, 'suit'), ('foreman-head', head, 'suit'), ('foreman-visor', visor, None),
+           ('arm-upper-l', lambda: arm_upper(-1), 'suit'), ('arm-upper-r', lambda: arm_upper(1), 'suit'), ('arm-fore-l', arm_fore, 'suit'), ('arm-fore-r', arm_fore, 'suit')]
     for g, name in enumerate(CRUST_NAMES):
         out.append((name, lambda g=g: crust(g, 0), None))
         out.append((name + '-mid', lambda g=g: crust(g, 1), None))
@@ -1153,4 +1292,4 @@ def parts():
 
 CHAIN = (('conv-link', chain_link), ('conv-hook', chain_hook), ('conv-shackle', chain_shackle))
 # the tiers' Decimate ratios
-TIERS = (1.0, .55, .2)
+TIERS = (1.0, .32, .11)
