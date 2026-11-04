@@ -53,9 +53,9 @@ namespace ChipArena.UnityConversion
         private static readonly string[] DummyInputs={"ai","primary","e","q","block","dash","jump","1","2","3","4","mode"};
         private static readonly string[] DebrisMaterials={"wood","stone","metal"},DebrisImpacts={"face","edge","corner"};
         // The presentation galleries (presentation only, sandbox only, as before): the gallery action, and its button when off / on.
-        private static readonly string[] DevGalleries={"gallery-minions","gallery-cyber-jump","gallery-saw","gallery-revive","gallery-chip-select","gallery-hazard-kit","gallery-hazard-music","gallery-cyber-kit2-ranged","gallery-cyber-kit2-melee","gallery-techniques"};
-        private static readonly string[] DevGalleryShow={"Preview Siren Minions","Preview Cyber Double Jump","Preview Saw Split","Preview Revive","Preview Chip Selecting","Preview Hazard Kit","Lock Hazard Kit to music","Preview Cyber Kit v2 ranged","Preview Cyber Kit v2 melee","Preview Techniques"};
-        private static readonly string[] DevGalleryHide={"Hide Siren Minions","Hide Cyber Double Jump","Hide Saw Split","Hide Revive","Hide Chip Selecting","Hide Hazard Kit","Unlock Hazard Kit music","Hide Cyber Kit v2 ranged","Hide Cyber Kit v2 melee","Hide Techniques"};
+        private static readonly string[] DevGalleries={"gallery-minions","gallery-cyber-jump","gallery-saw","gallery-revive","gallery-chip-select","gallery-hazard-kit","gallery-hazard-music","gallery-cyber-kit2-ranged","gallery-cyber-kit2-melee","gallery-techniques","gallery-bombadier"};
+        private static readonly string[] DevGalleryShow={"Preview Siren Minions","Preview Cyber Double Jump","Preview Saw Split","Preview Revive","Preview Chip Selecting","Preview Hazard Kit","Lock Hazard Kit to music","Preview Cyber Kit v2 ranged","Preview Cyber Kit v2 melee","Preview Techniques","Preview Bombadier"};
+        private static readonly string[] DevGalleryHide={"Hide Siren Minions","Hide Cyber Double Jump","Hide Saw Split","Hide Revive","Hide Chip Selecting","Hide Hazard Kit","Unlock Hazard Kit music","Hide Cyber Kit v2 ranged","Hide Cyber Kit v2 melee","Hide Techniques","Hide Bombadier"};
         private bool DevGalleryOn(int i)=>presentation!=null&&(i==0?presentation.MinionGallery:i==1?presentation.CyberBoostPreviewOn:i==2?presentation.SawSplitGallery:i==3?presentation.ReviveGallery:i==4?presentation.ChipSelectPreview:i==5?presentation.HazardKitGallery:i==6?presentation.HazardKitMusic:i==7?presentation.CyberKit2RangedPreviewOn:i==8?presentation.TechniquePreviewOn:presentation.CyberKit2MeleePreviewOn);
         private string DevRun(string id)
         {
@@ -121,6 +121,7 @@ namespace ChipArena.UnityConversion
                 case "gallery-cyber-kit2-melee":presentation.CyberKit2MeleePreviewOn=!presentation.CyberKit2MeleePreviewOn;if(presentation.CyberKit2MeleePreviewOn)presentation.CyberKit2RangedPreviewOn=false;return DevRan;
                 // The weapon in hand's technique on a loop, from preview records (NativeTechniquePresentation.cs, docs/WEAPON-TECHNIQUES.md). Presentation only.
                 case "gallery-techniques":presentation.TechniquePreviewOn=!presentation.TechniquePreviewOn;return DevRan;
+                case "gallery-bombadier":presentation.BombPreviewOn=!presentation.BombPreviewOn;return DevRan;
                 // The reveal moment on my own pilot, locally (no seat is revealed: devRevealed is the host's, docs/DEV-TOOLS.md).
                 case "preview-reveal":DevRevealStart(arena.Local.Seat.id,arena.Local.Seat.name,true);return DevRan;
                 // Hazards: the vent fall's splat delay (sandbox only, 1-30 s).

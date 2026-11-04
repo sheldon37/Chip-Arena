@@ -28,8 +28,10 @@ namespace ChipArena.UnityConversion
         {var p=NativeEntranceMath.RotateY(new Vector3(x,0,z),facing);return new NativeEntrancePose.Step(left,lift,land,p.X+ox,p.Z+oz,yaw+facing,h);}
         public override void Pose(float t,CapturedRig.Pose pose,out Vector3 root,out Quaternion rotation)
         {
-            NativeEntrancePose.Feet(t,Start,Steps,feet);NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,NameAt,RootPath);Arms(t,pose,root,rotation);
+            NativeEntrancePose.Feet(t,Start,Steps,feet);NativeEntrancePose.Keyed(Keys,t,pose,out root,out rotation,feet,HeroAt,RootPath);Arms(t,pose,root,rotation);
         }
+        /// <summary>When the pilot settles into its idle under the name card.</summary>
+        protected virtual float HeroAt=>NameAt;
         /// <summary>Hand IK over the keyed arms (grips, a palm on the floor, a chip to the chest).</summary>
         protected virtual void Arms(float t,CapturedRig.Pose pose,Vector3 root,Quaternion rotation){}
         public override void Lights(float t,NativeEntranceLights l){NativeEntranceStage.Rig(l,1,Accent,1,1);l.Add(Anchor(NativeEntranceAnchor.Chest,t)+new Vector3(0,0,.35f),NativeEntranceFx.Hex(0x70e1d0,.9f),3.2f);}

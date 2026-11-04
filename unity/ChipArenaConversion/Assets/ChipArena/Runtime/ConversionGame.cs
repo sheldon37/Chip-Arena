@@ -168,7 +168,7 @@ namespace ChipArena.UnityConversion
                 pending.Shoot=(Input.GetMouseButton(0)||PadHeld(PadAction.Attack));pending.Attack|=(Input.GetMouseButtonDown(0)||PadDown(PadAction.Attack));pending.LockTarget=lockPoint.HasValue?lockTarget:0;
                 pending.AbilityQ|=NativeRangedRules.KeyboardQ(content,p.Seat.spec,(Input.GetKeyDown(KeyCode.Q)||PadDown(PadAction.Aim)));pending.AbilityE|=(Input.GetKeyDown(KeyCode.E)||PadDown(PadAction.Ability));pending.AbilityEReleased|=(Input.GetKeyUp(KeyCode.E)||PadUp(PadAction.Ability));pending.AbilityEHeld=(Input.GetKey(KeyCode.E)||PadHeld(PadAction.Ability));
                 pending.Hadoken|=(Input.GetKeyDown(KeyCode.Alpha1)||PadDown(PadAction.Slot1));pending.HadokenHeld=(Input.GetKey(KeyCode.Alpha1)||PadHeld(PadAction.Slot1));pending.Uppercut|=(Input.GetKeyDown(KeyCode.Alpha2)||PadDown(PadAction.Slot2));
-                for(int key=0;key<(arena.Local?.Seat.spec=="cyberlord"?5:4);key++)if(Input.GetKeyDown(KeyCode.Alpha1+key)||PadDown(PadAction.Slot1+key))pending.SirenAbility=(byte)(key+1);
+                for(int key=0;key<(arena.Local?.Seat.spec=="cyberlord"||arena.Local?.Seat.spec==NativeBombs.Spec?5:4);key++)if(Input.GetKeyDown(KeyCode.Alpha1+key)||PadDown(PadAction.Slot1+key))pending.SirenAbility=(byte)(key+1);
                 pending.AbilityQ|=p.Seat.spec=="emperor"&&(Input.GetKeyDown(KeyCode.Q)||PadDown(PadAction.Aim))||p.Seat.spec=="siren"&&(Input.GetKeyDown(prefs.sirenMode=="F"?KeyCode.F:prefs.sirenMode=="V"?KeyCode.V:KeyCode.Q)||PadDown(PadAction.Aim));
                 pending.Interact|=Input.GetKeyDown(KeyCode.F)&&!(p.Seat.spec=="siren"&&prefs.sirenMode=="F")||PadDown(PadAction.Interact);pending.Block|=(Input.GetMouseButtonDown(1)||PadDown(PadAction.Block));pending.Reload|=(Input.GetKeyDown(KeyCode.R)||PadDown(PadAction.Reload));pending.Roll|=(Input.GetKeyDown(KeyCode.LeftShift)||PadDown(PadAction.Roll));pending.Jump|=(Input.GetKeyDown(KeyCode.Space)||PadDown(PadAction.Jump));
                 // The Expedition chip tray takes the digit keys (and the mouse buttons while Alt is held): client routing, no lock.
@@ -411,7 +411,7 @@ namespace ChipArena.UnityConversion
                 var p=arena.Local;bool fighting=match.Phase==NativePhase.Fight||match.Phase==NativePhase.Countdown;
                 if(!menu&&(fighting||match.Phase==NativePhase.Result))FightHud(p);
                 if(!menu&&fighting)KernelPanicBanner();
-                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive&&!ChooserFramed)Crosshair();
+                if(!menu&&fighting&&p.Hp>0&&!presentation.ScopeActive&&!ChooserFramed)Crosshair();BombScreen(width,height);
                 if(!menu&&match.Phase==NativePhase.Fight)
                 {
                     if(arena.Downed(p))Prompt(U.H/2+80,"RECOVERING  ·  WASD chooses roll direction",14,NativeCyberTheme.Ink());

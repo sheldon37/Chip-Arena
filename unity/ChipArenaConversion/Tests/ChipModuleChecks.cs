@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root,ConversionContent data)
         {
             count=0;string Code(string f)=>File.ReadAllText(Path.Combine(root,"Assets/ChipArena",f));string Sha(string f){using var sha=SHA256.Create();return string.Concat(sha.ComputeHash(File.ReadAllBytes(Path.Combine(root,"Assets/ChipArena",f))).Select(b=>b.ToString("x2")));}
-            var designed=NativeWeaponModels.Specs.ToArray();var cm=new ChipModule[NativeChipModules.MaxModules*2];var cm64=new ChipModule[NativeChipModules.MaxModules];var pieces=new WeaponPiece[NativeWeaponDressing.MaxPieces];
+            var designed=NativeWeaponModels.Specs.Where(s=>s!=NativeBombs.Spec).ToArray();var cm=new ChipModule[NativeChipModules.MaxModules*2];var cm64=new ChipModule[NativeChipModules.MaxModules];var pieces=new WeaponPiece[NativeWeaponDressing.MaxPieces];
 
             // 1. The Prototype Series is unchanged: its piece source and primitives are the base files, its output digest is pinned,
             // and the Runtime routes a Prototype pick (and every weapon without a Standard design) through the source pieces.

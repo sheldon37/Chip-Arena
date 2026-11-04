@@ -15,6 +15,8 @@ namespace ChipArena.UnityConversion
         /// <summary>A lit, eroding smoke puff (u its normalized age; it fades out below `floor`).</summary>
         void Smoke(Vector3 at,Vector3 albedo,float opacity,float size,float u,float seed,float floor);
     }
+    /// <summary>The weapons' flame puff on an entrance's draw, for a script that wants fire rather than light (the runtime's sink has it; a checker's need not).</summary>
+    public interface INativeEntranceFire{void Fire(Vector3 at,Vector3 tint,float opacity,float size,float u,float seed,float floor);}
     /// <summary>
     /// Presentation only: the directed entrances' effect emitters. Each is closed form: every particle is a pure function of
     /// (seed, index, time), born on a fixed schedule and moved analytically (ballistic with drag), so nothing is stepped or

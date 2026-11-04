@@ -40,11 +40,15 @@ namespace ChipArena.UnityConversion
             }
             Shader.SetGlobalVectorArray(StagePosId,pointPos);Shader.SetGlobalVectorArray(StageColorId,pointColor);
         }
-        public static void EndIntro(ContentMap map,Camera camera){Shader.SetGlobalFloat(VisualStageId,0);if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
+        public static void EndIntro(ContentMap map,Camera camera){ProbeBack();Shader.SetGlobalFloat(VisualStageId,0);if(!introActive)return;introActive=false;foreach(var light in stageLights)if(light!=null)light.enabled=false;if(moon!=null){moon.enabled=true;moon.intensity=.9f;}if(rim!=null){rim.enabled=true;rim.intensity=.24f;}Ambient();WriteFog(stageFog);Apply(map,camera);}
         // An entrance or the draft takes the screen: it keeps the fog it found for EndIntro (all of it, the density included).
         // Each stage frame first turns the Ward light field and actor lighting off (the draft stage stands at the map's origin),
         // and the guns' muzzle lights (no arena flash lights a stage).
         private static void EnterStage(){if(introActive)return;introActive=true;stageFog=ReadFog();}
+        // A script's own ambient on the probe (NativeEntranceLights.DriveProbe); the map's is put back when the next thing lights the stage or the intro ends.
+        private static UnityEngine.Rendering.SphericalHarmonicsL2 probeKept;private static bool probeDriven;
+        private static void ProbeBack(){if(!probeDriven)return;probeDriven=false;RenderSettings.ambientProbe=probeKept;}
+        private static void ProbeDrive(Color sky,Color ground){if(!probeDriven){probeKept=RenderSettings.ambientProbe;probeDriven=true;}var sh=new UnityEngine.Rendering.SphericalHarmonicsL2();sh.AddAmbientLight((sky+ground)*.5f);sh.AddDirectionalLight(Vector3.up,(sky-ground)*.5f,1);RenderSettings.ambientProbe=sh;}
         private static MapFogState ReadFog(){var c=RenderSettings.fogColor;return new MapFogState{On=RenderSettings.fog,Mode=(MapFogMode)(int)RenderSettings.fogMode,WritesDensity=true,Density=RenderSettings.fogDensity,Color=new MapLookColor{r=c.r,g=c.g,b=c.b,a=c.a},Start=RenderSettings.fogStartDistance,End=RenderSettings.fogEndDistance};}
         private static void WriteFog(in MapFogState f){RenderSettings.fog=f.On;RenderSettings.fogMode=(FogMode)(int)f.Mode;if(f.WritesDensity)RenderSettings.fogDensity=f.Density;RenderSettings.fogColor=C(f.Color);RenderSettings.fogStartDistance=f.Start;RenderSettings.fogEndDistance=f.End;}
         // The stages' shadows (NativeMapLooks.StageCascades and StageShadowDistance: every old map's own), written only on a change.
@@ -101,6 +105,7 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static void Entrance(NativeEntranceLights l,Camera camera)
         {
+            if(l.DriveProbe)ProbeDrive(new Color(l.Sky.X,l.Sky.Y,l.Sky.Z),new Color(l.Ground.X,l.Ground.Y,l.Ground.Z));else ProbeBack();
             WardFieldOff();EnterStage();NativeMuzzleLights.Off();StyleOff();Shader.SetGlobalFloat(VisualStageId,1);if(moon!=null)moon.enabled=false;if(rim!=null)rim.enabled=false;camera.clearFlags=CameraClearFlags.SolidColor;
             camera.backgroundColor=new Color(l.Background.X,l.Background.Y,l.Background.Z).gamma;var fog=new Color(l.Fog.X,l.Fog.Y,l.Fog.Z).gamma;
             WriteFog(NativeMapLooks.StageFog(MapLookColor.Of(fog.r,fog.g,fog.b),l.FogNear,l.FogFar));StageShadows();RenderSettings.skybox=null;

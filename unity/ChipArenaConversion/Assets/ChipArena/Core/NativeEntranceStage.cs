@@ -22,11 +22,13 @@ namespace ChipArena.UnityConversion
     {
         public const int MaxDirectional=2;
         public Vector3 Background,Fog;public float FogNear,FogFar;
+        /// <summary>Write Sky and Ground to the ambient probe too, so that the bodies and the smoke (which read the probe, not the render settings) follow them this frame: for a script that goes truly dark.</summary>
+        public bool DriveProbe;
         public Vector3 Sky,Ground;
         public int Directionals,Points;
         public readonly Vector3[] DirectionTo=new Vector3[MaxDirectional],DirectionColor=new Vector3[MaxDirectional];
         public readonly NativeStageLight[] Point=new NativeStageLight[NativeStageLighting.Max];
-        public void Clear(){Directionals=0;Points=0;Background=Fog=Sky=Ground=Vector3.Zero;FogNear=9;FogFar=30;}
+        public void Clear(){Directionals=0;Points=0;Background=Fog=Sky=Ground=Vector3.Zero;FogNear=9;FogFar=30;DriveProbe=false;}
         public void Directional(Vector3 toLight,Vector3 color){if(Directionals>=MaxDirectional||color.X+color.Y+color.Z<=0)return;DirectionTo[Directionals]=Vector3.Normalize(toLight);DirectionColor[Directionals]=color;Directionals++;}
         /// <summary>A point light (decay 2, three's default), kept among the eight that reach the stage centre most.</summary>
         public void Add(Vector3 at,Vector3 color,float distance){Points=NativeStageLighting.Add(Point,Points,new NativeStageLight(at.X,at.Y,at.Z,color.X,color.Y,color.Z,distance,2));}

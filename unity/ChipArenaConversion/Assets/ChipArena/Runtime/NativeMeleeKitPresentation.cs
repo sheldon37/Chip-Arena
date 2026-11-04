@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
         }
         private void ClearMeleeKit()
         {
-            ClearTechnique();meleeKitFx.Clear();kitSnapshot=null;dashLast.Clear();foreach(var g in dashGhosts)if(g!=null)g.Live=false;
+            ClearTechnique();ClearBomb();meleeKitFx.Clear();kitSnapshot=null;dashLast.Clear();foreach(var g in dashGhosts)if(g!=null)g.Live=false;
             foreach(var d in decoys.Values)d.Rig.Dispose();decoys.Clear();
         }
 
