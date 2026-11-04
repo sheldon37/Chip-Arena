@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
         {
             if(id==null)return null;
             for(int i=0;i<Ids.Length;i++)if(Ids[i]==id)return Icons[i];
+            // The Bombadier's set draws its own emblem (Core/NativeBombChips.Glyph, Runtime/NativeIcons.Draw).
+            if(NativeBombChips.Is(id))return id;
             // The ROUNDS adaptation packs' 138 chips (Core/NativeRoundsLooks): one pinned icon each by its main effect.
             return NativeRoundsLooks.Icon(id);
         }

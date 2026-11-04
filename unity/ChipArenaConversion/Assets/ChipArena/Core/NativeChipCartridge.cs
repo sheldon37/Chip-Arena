@@ -17,10 +17,10 @@ namespace ChipArena.UnityConversion
     public static class NativeChipCartridge
     {
         /// <summary>The chip tiers in rank order (NativeChipRanks.RarityRank), then the dispensed-only rainbow tier.</summary>
-        public static readonly string[] Tiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren"};
+        public static readonly string[] Tiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier"};
         public const string Rainbow="rainbow";
         public enum Metal{Steel,Titanium,Gold,BlackChrome,Gunmetal,Lacquer,Phosphor,Void,Prism}
-        public enum Crest{None,Crown,Shards,Bolts,Knot,Terminal,Flames,Prism}
+        public enum Crest{None,Crown,Shards,Bolts,Knot,Terminal,Flames,Prism,Fuse}
         // A tier's look. Hex colours (sRGB): Rarity the scheme's colour (GameContent rarities, exactly); Inlay the lit line and
         // seams; Core / CoreHi / CoreLo the crystal's light, bright and deep facets; Accent the crest, fins' edges and sparks;
         // Body the anodised face; MetalHi / MetalMid / MetalLo the bezel's lit, flat and shadow tones. Rank 1-6 (0 for the
@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
             public int Ornaments=>(Seams?1:0)+(SecondInlay?1:0)+(Holo?1:0)+(Fins?1:0)+(Ring?1:0)+(Crest!=Crest.None?1:0)+(Gems?1:0)+(Fractured?1:0)+(Foil?1:0)+(Embers?1:0);
         }
         /// <summary>The scheme's rarity colour (sRGB hex): GameContent's rarities, as NativeChipCard.Rarity and NativeMachineModels.RarityColors.</summary>
-        public static int Rarity(string tier)=>tier=="mishima"?0xb3b5c2:tier=="ansatsuken"?0xff354e:tier=="l44t"?0x4dff83:tier=="siren"?0xb7a8ff:tier=="uncommon"?0x79e59a:tier=="rare"?0x70b5ff:tier=="epic"?0xce8aff:tier=="legendary"?0xffae55:tier=="mythic"?0xff6475:0xf1f5f9;
+        public static int Rarity(string tier)=>tier=="bombadier"?0xff7a1f:tier=="mishima"?0xb3b5c2:tier=="ansatsuken"?0xff354e:tier=="l44t"?0x4dff83:tier=="siren"?0xb7a8ff:tier=="uncommon"?0x79e59a:tier=="rare"?0x70b5ff:tier=="epic"?0xce8aff:tier=="legendary"?0xffae55:tier=="mythic"?0xff6475:0xf1f5f9;
         public static bool Known(string tier)=>Array.IndexOf(Tiers,tier)>=0||tier==Rainbow;
         public static Look Of(string tier)
         {
@@ -51,6 +51,7 @@ namespace ChipArena.UnityConversion
                 case "ansatsuken":return new Look(tier,0xff354e,0xff8a97,0xff4d63,0xffd6da,0x5e0a18,0xffb2bc,0x170a0e,0xffc4cb,0x8a1d2e,0x2c0910,0,Metal.Lacquer,Crest.Knot,false,false,false,false,false,false,false,false,false,false,2.0f,.55f);
                 case "l44t":return new Look(tier,0x4dff83,0x8affb0,0x45f57d,0xd4ffe2,0x063d1a,0x9effbd,0x050c08,0x9fe6b8,0x223a2c,0x0a140e,0,Metal.Phosphor,Crest.Terminal,false,false,false,false,false,false,false,false,false,false,1.6f,.6f);
                 case "siren":return new Look(tier,0xb7a8ff,0xc9bfff,0x9b87ff,0xf3efff,0x140c2e,0xd9d0ff,0x07060b,0xc9bfff,0x2a2342,0x07060b,0,Metal.Void,Crest.Flames,false,false,false,false,false,false,false,false,false,false,3.0f,.6f);
+                case "bombadier":return new Look(tier,0xff7a1f,0xffc24d,0xff6a14,0xffe6b0,0x5a1404,0xf2b90f,0x100b08,0xd8cdb4,0x57504a,0x14100c,0,Metal.Gunmetal,Crest.Fuse,false,false,false,false,false,false,false,false,true,true,1.7f,.6f);
                 case Rainbow:return new Look(tier,0xffffff,0xffffff,0xffffff,0xffffff,0x303040,0xffffff,0x0c0c12,0xf4f6ff,0x9aa0b4,0x2c3040,6,Metal.Prism,Crest.Prism,true,true,true,true,true,false,false,true,false,false,1.9f,.55f);
                 default:return new Look("common",0xf1f5f9,0xe6edf6,0xc9d3e2,0xffffff,0x2a3242,0xc9d4e6,0x0d1118,0xe8edf4,0x8a93a3,0x2c323d,1,Metal.Steel,Crest.None,false,false,false,false,false,false,false,false,false,true,3.2f,.38f);
             }

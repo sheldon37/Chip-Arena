@@ -237,7 +237,7 @@ namespace ChipArena.UnityConversion
             // A PvE revive's first-person view (NativeReviveHoloPresentation.ReviveView): a gentle rise, none with reduced effects or
             // camera shake off, in a scanline vignette; after the aim above, so the aim and the authority eye never move.
             if(!menu&&Spectator==null&&!cinematic.Directing)presentation.ReviveView(cameraView,arena.ViewPilot.Seat.id,renderTime,prefs.reducedEffects||!prefs.cameraShake);
-            NativeTechniques.Source=new NativeTechniqueSnapshotSource(frame);presentation.Render(frame,renderTime,false);ShoulderSprint(renderTime);
+            NativeTechniques.Source=new NativeTechniqueSnapshotSource(frame);presentation.Render(frame,renderTime,false);ShoulderSprint(renderTime);if(presentation.ReviveMachineStands)nativeAudio?.ReviveMachineFrame(presentation.ReviveMachineSeq,presentation.ReviveMachineAt,cameraView!=null?cameraView.transform:null);
             Vector3? preview=null;bool previewClamped=false;
             // previewOn: E held .2 s and casting, or ready (a charge or no cooldown left) and, for magic, affordable. Casting is
             // read from the pose (PressAbility sets it, CancelWindup clears it), which guests also receive.
@@ -428,7 +428,7 @@ namespace ChipArena.UnityConversion
             }
             // The DEV panel, its view tools and the DEV reveal (NativeDevPanel.cs, NativeDevOverlays.cs).
             if(arena!=null)DevGui(width,height);
-            if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);ExpeditionLiveHud(width,height);return;}
+            if(!menu&&arena!=null){ReplayHud(width,height);PveHud(width,height);ExpeditionLiveHud(width,height);ReviveMachineGui(width,height);return;}
             // The menus (NativeHomeMenu): the home screen and its panels without a match, the pause menu during one.
             if(arena!=null){PauseMenu();TrainingControls();}else HomeMenu();
         }

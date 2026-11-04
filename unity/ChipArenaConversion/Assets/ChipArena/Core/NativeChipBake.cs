@@ -396,6 +396,7 @@ namespace ChipArena.UnityConversion
                 case NativeChipCartridge.Crest.Knot:Knot(cv,l,cx,edge,k);break;
                 case NativeChipCartridge.Crest.Terminal:Terminal(cv,l,cx,edge,k);break;
                 case NativeChipCartridge.Crest.Flames:Flames(cv,l,cx,edge,k);break;
+                case NativeChipCartridge.Crest.Fuse:Fuse(cv,l,cx,edge,k);break;
             }
             return Done(cv);
         }
@@ -483,6 +484,19 @@ namespace ChipArena.UnityConversion
                 d=Math.Min(d,Segment(p,new Vector2(cx-1.5f*k,edge+2*k),new Vector2(cx+4*k,edge+2*k)));
                 float tick=Math.Min((p-new Vector2(cx+7.5f*k,edge-2.5f*k)).Length(),(p-new Vector2(cx+7.5f*k,edge+.8f*k)).Length())-.9f*k;
                 cv.Over(x,y,green,Clamp01(.75f*k+.5f-d));cv.Over(x,y,green,.3f*Clamp01(1-d/(2.4f*k)));cv.Over(x,y,green,Cover(tick)*.85f);
+            }
+        }
+        static void Fuse(Canvas cv,in NativeChipCartridge.Look l,float cx,float edge,float k)
+        {
+            // Three sticks taped to the top of the cartridge, the middle one tallest, a length of fuse curling off it and its spark.
+            var paper=C(0xb3241b);var tape=C(0x17181b);var cord=C(0x2b2118);var hot=C(l.Accent);float[] at={-6.5f,0,6.5f},tall={9,12.5f,9};
+            for(int y=0;y<cv.H;y++)for(int x=0;x<cv.W;x++)
+            {
+                var p=new Vector2(x+.5f,y+.5f);
+                for(int i=0;i<3;i++){float d=Math.Abs(p.X-(cx+at[i]*k))-2.7f*k,top=edge+2.5f*k-tall[i]*k;float cov=Math.Min(Clamp01(.5f-d),Clamp01(p.Y-top+.5f)*Clamp01(edge+3*k-p.Y+.5f));if(cov>0){bool band=p.Y-top>tall[i]*k*.52f&&p.Y-top<tall[i]*k*.72f;cv.Over(x,y,band?tape:paper,cov);}}
+                // The fuse: a thin arc off the middle stick's top.
+                float u=Clamp01((p.X-cx)/(8*k));var on=new Vector2(cx+8*k*u,edge+2.5f*k-12.5f*k-(float)Math.Sin(u*Math.PI)*3.4f*k);float fd=(p-on).Length();if(p.X>=cx-.5f&&p.X<=cx+8.5f*k)cv.Over(x,y,cord,Clamp01(1.1f*k-fd+.5f));
+                var tip=new Vector2(cx+8*k,edge+2.5f*k-12.5f*k);cv.Over(x,y,hot,Clamp01(1.7f*k-(p-tip).Length()+.5f));
             }
         }
         static void Flames(Canvas cv,in NativeChipCartridge.Look l,float cx,float edge,float k)

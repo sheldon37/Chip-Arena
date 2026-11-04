@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
             if(phaseOk&&presentation.KernelPanicDirect(arena,view,presentation.CinematicClock(arena),presentation.CameraShake,presentation.WeaponEffectsQuality<.5f)){Directing=true;return true;}
             // The Grand Finale, for its caster only (Runtime/NativeBombPresentation.cs); everyone else needs their own camera to get out of the circle.
             if(phaseOk&&presentation.BombFinaleDirect(arena,view,presentation.CinematicClock(arena),presentation.CameraShake,presentation.WeaponEffectsQuality<.5f)){Directing=true;return true;}
+            if(phaseOk&&presentation.ReviveMachineDirect(arena,view,presentation.ReviveMachineClock,presentation.CameraShake)){Directing=true;return true;}
             return Cutscene(arena,presentation,view,me,presentation.CinematicClock(arena),phaseOk);
         }
         private bool ZoneBossArrival(NativeArena arena,ArenaPresentation presentation,Camera view)
