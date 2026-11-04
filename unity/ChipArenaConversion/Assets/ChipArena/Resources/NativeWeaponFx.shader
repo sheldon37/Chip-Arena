@@ -17,7 +17,7 @@
 //   TEXCOORD1  billboards: corner x, corner y, size (m), roll; axis cards: the world segment tail to head (xyz) and width (w);
 //              oriented modes: x the crescent's edge gain
 // Modes: 0 petal (a muzzle star's flame petal, x pivot to tip, y across), 1 crescent (x tail to head along the arc, y inner
-// to outer), 2 ribbon (x tail to head, y across), 3 glow sprite (profiles 0 soft, 1 hot core, 2 ring, 3 sparkle), 4 smoke
+// to outer), 2 ribbon (x tail to head, y across; w above 0.5: a tracer needle, w its tail's falloff), 3 glow sprite (profiles 0 soft, 1 hot core, 2 ring, 3 sparkle), 4 smoke
 // wisp, 5 streak (a capsule with a hot core), 6 flame card (the muzzle's side flame along the barrel), 7 shard (a curved
 // triangle pointing at its head); and, from a gun family's own material only (NativeWeaponFxDraw.SheetFlame / SheetBurst, the
 // owner's muzzle-flash pack through the pack bank), 8 the flipbook flame card along the barrel (w: the frame, negative
@@ -165,6 +165,20 @@ Shader "ChipArena/NativeWeaponFx"
                 return float4(rgb * shape.x, color.a * shape.x);
             }
             // ---- WEAPON FX SHARED END ----
+            // A tracer needle (the ribbon's mode with w above 0.5, Runtime NativeWeaponFxShapes.Needle): x 0 at its tail to 1 at its head, y -1..1
+            // across, w how fast the tail falls away. A thin tail swelling to its full width right behind a pointed head; no round cap, no
+            // glow past its own width, so a round stays a line.
+            float2 FxTracer(float2 uv,float w)
+            {
+                float x=saturate(uv.x);
+                float tip=saturate((1.0-x)/0.05);
+                float hw=(0.3+0.7*x*x)*(0.35+0.65*sqrt(tip));
+                float d=abs(uv.y)/max(hw,0.001);
+                float core=exp(-d*d*5.0);
+                float edge=saturate(1.0-d);
+                float along=pow(x,w);
+                return float2((core*0.9+edge*edge*0.35)*along,core*sqrt(along));
+            }
             // A crescent through the brush: its streaks run along the arc (the rectangle's width along x, tail to head; its height
             // across, inner to outer), their ragged ends at the tail and the head. The colour band takes the streaks and keeps a
             // faint body between them; the dark underlay reads them mirrored across, so ink and colour never line up stroke for
@@ -246,7 +260,7 @@ Shader "ChipArena/NativeWeaponFx"
                 float mode=i.uv.z,w=i.uv.w;float2 uv=i.uv.xy;float2 shape;
                 if(mode<0.5)shape=FxPetal(uv);
                 else if(mode<1.5)shape=FxCrescent(uv,w,i.data.y);
-                else if(mode<2.5)shape=FxRibbon(uv);
+                else if(mode<2.5)shape=w>0.5?FxTracer(uv,w):FxRibbon(uv);
                 else if(mode<3.5)shape=FxGlow(uv,w);
                 else if(mode<4.5)shape=float2(FxWisp(uv,w),0.0);
                 else if(mode<5.5)shape=FxStreak(float3(uv,i.data.x),w);

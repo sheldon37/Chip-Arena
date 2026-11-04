@@ -148,6 +148,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The magic bolts' pack look (ArenaPresentation, Core NativeMagicPackFx) draws a school bolt's head: its source
         /// model (the scene's first draw for the shot) is skipped; the chip module parts stay.</summary>
         public bool PackHeads;
+        /// <summary>A gun round is its tracer (Core NativeTracers): its source box is skipped, its chip modules stay.</summary>
+        public bool TracerRounds;
         // The draws skipped this frame (by index into the scene's draw list), reused.
         private bool[] packHidden=new bool[64];private int packHiddenCount;
         public int Parts=>scene.Draws.Count;public int Sparks=>scene.Bursts.Count;public int Beams=>scene.Bursts.Beams;public int Live=>scene.Live;
@@ -193,7 +195,7 @@ namespace ChipArena.UnityConversion
             // Siren shots are the Siren effects' own orbs and flame trails (ArenaPresentation.DevEffects, C12); the Cyber Lord's
             // ranged bolts its own hardlight shots (Core/NativeCyberLordRangedFx.cs; its Data Packets stay here).
             packHiddenCount=0;
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec)&&CyberLordFeed.ShotSlot(b.Spec,b.Detail)<0){int first=scene.Draws.Count;scene.Shot(v);if(PackHeads&&NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None&&scene.Draws.Count>first)HidePackHead(first);}}
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,tracker,now,out var v);if(!v.Siren&&!NativeBowWire.Is(v.Spec)&&CyberLordFeed.ShotSlot(b.Spec,b.Detail)<0){int first=scene.Draws.Count;scene.Shot(v);if(PackHeads&&NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None&&scene.Draws.Count>first)HidePackHead(first);else if(TracerRounds&&NativeTracerFx.Traced(v)&&scene.Draws.Count>first)HidePackHead(first);}}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,tracker,now,out var v);scene.Shot(v);}
             foreach(var s in arena.MeleeShots){NativeShotViews.Melee(arena,s,tracker,now,out var v);scene.Shot(v);}
             scene.End(dt);Fill(camera);

@@ -29,13 +29,6 @@ namespace ChipArena.UnityConversion
             if(actors!=null)for(int i=0;i<actors.Length;i++)if(actors[i]!=null&&actors[i].Id==b.Original){owner=actors[i];break;}
             return NativeTracerLook.Of(owner,b.Born,v.Spec,kitClock);
         }
-        /// <summary>A kit round's tracer: the milestone streak and sheath at the look's width, length, gain and edge colour.</summary>
-        private static void KitTracer(NativeWeaponFxDraw draw,Vector3 at,Vector3 velocity,float travelled,in NativeTracerLook look)
-        {
-            float speed=velocity.magnitude;if(!(speed>.01f))return;float length=Mathf.Max(.08f,Mathf.Min(NativeTracerFx.Length(speed,travelled)*look.Length,travelled));Vector3 dir=velocity/speed;
-            draw.Axis(false,at-dir*length,at,NativeWeaponFxShapes.Lin(look.Edge,look.Gain),look.Width,NativeWeaponFxDraw.StreakMode,.85f);
-            draw.Axis(false,at-dir*(length*.6f),at,NativeWeaponFxShapes.Lin(look.Edge,look.Sheath),look.Width*4,NativeWeaponFxDraw.StreakMode,.95f);
-        }
         /// <summary>
         /// The first-person camera kick of the local pilot's kit (Core/NativeGunKitMotion.CameraKick), after the aim point: the
         /// view is rebuilt from the look angles next frame. ConversionGame calls it only with the camera shake setting on.

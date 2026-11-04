@@ -62,6 +62,9 @@ namespace ChipArena.UnityConversion
         {
             public Vector3 Origin,Last;public float LastAt,Carry;public long Emitted;public int Frame;public Color Halo;public float Radius;public long Seed;
             public readonly Vector3[] Points=new Vector3[NativeTrailFx.RibbonSamples];public readonly float[] Times=new float[NativeTrailFx.RibbonSamples];public int Count;
+            // A gun round's or arrow's tracer (NativeTracerPresentation.cs): its look, its path, where it was last drawn and how it went out.
+            public readonly NativeTracerPath Path=new NativeTracerPath();public NativeTracerStyle Style;public NativeRoundImpact Impact;public NativeShotModules Chips;public string Spec;public int Id;public long Key;
+            public Vector3 Head,Dir,EndPoint,StruckNormal;public float Speed,Full,Left,Boost,SpentAt,EndedAt,ArriveAt,ArrivedAt;public bool Round,Bolt,Spent,Arrived,Struck,Scoped,Fire,Poison;
             public void Push(Vector3 at,float time){if(Count==Points.Length){Array.Copy(Points,1,Points,0,Count-1);Array.Copy(Times,1,Times,0,Count-1);Count--;}Points[Count]=at;Times[Count]=time;Count++;}
         }
         // Tile: a pack trail sprite's tile of the magic sheet (-1: the soft glow sprite), with its school, roll and spin; its Color
@@ -151,6 +154,18 @@ namespace ChipArena.UnityConversion
             Vector3 crown=hand.MultiplyPoint3x4(new Vector3(0,0,look.Crown));
             NativeWeaponFxShapes.Muzzle(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(shot,a.Id),age,WeaponEffectsQuality,LowGraphics,rigFactor,first?ViewCamera:null);
             for(int i=1;i<n&&i<=NativeMuzzleFx.MaxWisps;i++){double older=time-muzzleShots[i];if(older<NativeMuzzleFx.WispLife+.1)NativeWeaponFxShapes.Wisps(draw,first,crown,x,y,z,scale,look,NativeWeaponFx.Seed(muzzleShots[i],a.Id),older,WeaponEffectsQuality,LowGraphics,rigFactor);}
+            // The brass of the rounds still in the air, out of the gun's port: the machine gun's stream under sustained fire. Fan the Hammer throws its own.
+            if(kit!=MuzzleKit.Fan&&WeaponEffectsQuality>=.5f&&(first||distance<30)&&NativeGunKitFx.Port(a.SourceSpec,out var port,out float brassLength,out float brassWidth))
+            {
+                Vector3 hx=x,hy=y,hz=z,origin=hand.MultiplyPoint3x4(Vector3.zero);
+                for(int i=0;i<n;i++)
+                {
+                    float brassAge=time-muzzleShots[i];long brassSeed=NativeWeaponFx.Seed(muzzleShots[i],a.Id);if(LowGraphics&&(brassSeed&1)!=0)continue;
+                    if(!NativeGunKitFx.Casing(brassSeed,0,brassAge,out var local,out float drop,out var axis,out float alpha))continue;
+                    var c=origin+(hx*-(local.X-NativeGunKitFx.CasingFrom.X+port.X)+hy*(local.Y-NativeGunKitFx.CasingFrom.Y+port.Y)+hz*(local.Z-NativeGunKitFx.CasingFrom.Z+port.Z))*scale+Vector3.down*(drop*scale);
+                    var half=(hx*-axis.X+hy*axis.Y+hz*axis.Z)*(brassLength*scale);draw.Axis(first,c-half,c+half,NativeWeaponFxShapes.Lin(NativeGunKitFx.Brass,1.5f*alpha),brassWidth*scale,NativeWeaponFxDraw.StreakMode,.85f);
+                }
+            }
             if(NativeMuzzleLight.Look(a.SourceSpec,kit,out var light)){var at=crown+z*(NativeMuzzleLight.Lead*scale);muzzleLights.Offer(a.Id,new NVector3(at.x,at.y,at.z),light,NativeMuzzleLight.Level(light,muzzleShots,n,time,a.Id,KitFlash),first);}
         }
 
@@ -317,13 +332,15 @@ namespace ChipArena.UnityConversion
         {
             // Rounds that hit a surface: its debris and a bullet hole (NativeSurfaceImpactPresentation.cs).
             SurfaceImpacts(arena,now);
-            var draw=WeaponFxDraw;if(draw==null)return;draw.Low=LowGraphics;
+            var draw=WeaponFxDraw;if(draw==null)return;draw.Low=LowGraphics;if(blasts!=null)blasts.GunRounds=true;
             if(!ReferenceEquals(emitterArena,arena)||emitterGeneration!=arena.Generation||now<emitterClock-.25f){ClearEmitters();emitterArena=arena;emitterGeneration=arena.Generation;}
             emitterClock=Math.Max(emitterClock,now);
-            float q=BlastQuality;bool low=LowGraphics,trails=TrailsEnabled;Vector3 eye=camera!=null?camera.transform.position:Vector3.zero;
-            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);if(!NativeBowWire.Is(v.Spec))ShotFx(draw,v,now,q,low,trails,eye,GunKitTracer(b,v));}
+            float q=BlastQuality;bool low=LowGraphics,trails=TrailsEnabled;Vector3 eye=camera!=null?camera.transform.position:Vector3.zero;TracersBegin(arena,camera);
+            foreach(var b in arena.Bullets){NativeShotViews.Bullet(arena,b,shotTracker,now,out var v);RoundFx(draw,arena,b,v,now,q,low,trails,eye);}
             foreach(var s in arena.AbilityShots){NativeShotViews.Ability(arena,s,shotTracker,now,out var v);ShotFx(draw,v,now,q,low,trails,eye);}
-            staleEmitters.Clear();foreach(var pair in emitters)if(pair.Value.Frame!=weaponFrame)staleEmitters.Add(pair.Key);
+            // A round gone from the frame's shots stops where the authority stopped it, its tail catching up (NativeTracerPresentation.cs).
+            staleEmitters.Clear();foreach(var pair in emitters)if(pair.Value.Frame!=weaponFrame&&!RoundSpent(draw,arena,pair.Value,eye,now,q,low,trails))staleEmitters.Add(pair.Key);
+            if(trails)LingerDraw(draw,eye,now);
             foreach(long key in staleEmitters){spareEmitters.Push(emitters[key]);emitters.Remove(key);}
             // The world-space trail sprites outlive their shot.
             for(int i=0;i<trailSpriteCount;)
@@ -334,28 +351,26 @@ namespace ChipArena.UnityConversion
             }
             // The pistol / machine-gun Q kit (NativeGunKitPresentation.cs) on the pose clock, before the drawer is submitted.
             GunKitFx();BowFx(arena,now);
-            ImpactFx(draw,arena,now,q,low);MagicPackHits(arena,now,q,low);
+            ImpactFx(draw,arena,now,q,low);RoundMarksDraw(draw,now,q,low);MagicPackHits(arena,now,q,low);
             // A school bolt's model gives way to its pack head (drawn in ShotFx) from the next frame.
-            if(shots!=null)shots.PackHeads=PackLooks;
+            if(shots!=null){shots.PackHeads=PackLooks;shots.TracerRounds=true;}
             draw.Submit(camera,FirstPerson&&!ScopeActive?ViewCamera:null);
             // The muzzle lights: the nearest shooters the tier, Combat glow, Reduced effects and Alarm lights allow.
             NativeMuzzleLight.Budget(GlowQuality,WeaponEffectsQuality,LowGraphics,KitFlash,out int lights,out float gain);muzzleLights.Resolve(new NVector3(eye.x,eye.y,eye.z),lights,gain);NativeMuzzleLights.Upload(muzzleLights);
         }
-        private void ShotFx(NativeWeaponFxDraw draw,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye,NativeTracerLook look=default)
+        private void ShotFx(NativeWeaponFxDraw draw,in NativeShotView v,float now,float q,bool low,bool trails,Vector3 eye)
         {
             // The darkness orb draws its own core, tail and lens (NativeMagicFx); its energy trail here is skipped.
             if(MagicLooks&&NativeMagicFx.Owns(v))return;
-            bool tracer=NativeTracerFx.Traced(v),energy=NativeTrailFx.Energy(v);if(!tracer&&!energy)return;
+            bool energy=NativeTrailFx.Energy(v);if(!energy)return;
             long key=NativeShotScene.Key(v.Kind,v.Id);var at=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
             if(!emitters.TryGetValue(key,out var e))
             {
-                e=spareEmitters.Count>0?spareEmitters.Pop():new Emitter();e.Origin=e.Last=at;e.LastAt=now;e.Carry=0;e.Emitted=0;e.Count=0;e.Seed=key*2654435761L+17;
+                e=spareEmitters.Count>0?spareEmitters.Pop():new Emitter();e.Origin=e.Last=at;e.LastAt=now;e.Carry=0;e.Emitted=0;e.Count=0;e.Seed=key*2654435761L+17;e.Round=false;e.Bolt=v.Kind==NativeShotKind.Bullet;e.Id=v.Id;e.Spec=v.Spec;e.Key=key;
                 e.Halo=NativeWeaponFxShapes.Lin(NativeShotRules.HaloColor(v,now));e.Radius=NativeTrailFx.Radius(v.Radius);emitters.Add(key,e);
             }
             e.Frame=weaponFrame;var velocity=new Vector3((float)v.VX,(float)v.VY,(float)v.VZ);
-            // A round drawn from the muzzle (NativeShotLaunch) knows how far past the crown it is, so its streak never reaches
-            // back into the barrel; any other is held to the distance since it was first seen.
-            if(tracer){if(trails){float flown=v.Launched?(float)v.Flown:Vector3.Distance(at,e.Origin)+.25f;if(look.Kit)KitTracer(draw,at,velocity,flown,look);else NativeWeaponFxShapes.Tracer(draw,at,velocity,flown,v.Spec);}e.Last=at;e.LastAt=now;return;}
+            e.Head=at;if(velocity.sqrMagnitude>1e-4f)e.Dir=velocity.normalized;e.Speed=velocity.magnitude;
             // Energy: the core and glow on the model, then the trail sprites every Spacing metres flown and the ribbon. A school's
             // bolt (Core NativeMagicPackFx) draws its pack head instead of the core, and pack trail sprites.
             var school=PackLooks?NativeMagicPackFx.Bolt(v):NativeMagicSchool.None;
@@ -397,10 +412,18 @@ namespace ChipArena.UnityConversion
         {
             if(!ReferenceEquals(impactArena,arena)||impactGeneration!=arena.Generation){impactArena=arena;impactGeneration=arena.Generation;impactEvent=0;for(int i=0;i<impactMarks.Length;i++)impactMarks[i].Born=-100;}
             int newest=0;foreach(var e in arena.Events)newest=Math.Max(newest,e.Id);if(newest<impactEvent)impactEvent=0;
+            var actors=weaponSnapshot?.Actors;
             foreach(var e in arena.Events)
             {
-                if(e.Id<=impactEvent||e.Kind!=EventKind.Impact||string.IsNullOrEmpty(e.SurfaceId))continue;
+                if(e.Id<=impactEvent)continue;
+                // A gun round into a body: the small star on the hit point (the body's own blood and flash stay).
+                if((e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot)&&e.Projectile>0&&now-e.Time<NativeRoundImpacts.Life){RoundEventMark(e,NativeArena.Vec(e.Position),NativeArena.Vec(e.Normal),NativeMagicFx.Spec(actors,e.Source));continue;}
+                if(e.Kind!=EventKind.Impact||string.IsNullOrEmpty(e.SurfaceId))continue;
                 var normal=NativeArena.Vec(e.Normal);if(normal.sqrMagnitude<.25f||now-e.Time>=NativeImpactFx.Life)continue;
+                string spec=NativeMagicFx.Spec(actors,e.Source);
+                // A gun's plain round lands its gun's own impact; a school's bolt only its own burst (MagicPackHits), not a metal round's sparks.
+                if(string.IsNullOrEmpty(e.Detail)&&NativeRoundImpacts.Gun(spec)!=NativeRoundImpact.None){RoundEventMark(e,NativeArena.Vec(e.Position),normal.normalized,spec);continue;}
+                if(PackLooks&&NativeMagicPackFx.School(spec)!=NativeMagicSchool.None)continue;
                 impactMarks[impactNext]=new ImpactMark{At=NativeArena.Vec(e.Position),Normal=normal.normalized,Born=e.Time,Seed=e.Id*1000003L+7,Tint=Color.Lerp(NativeWeaponFxShapes.Lin(e.Color!=0?e.Color:0xffedb8),Color.white,.55f)};
                 impactNext=(impactNext+1)%impactMarks.Length;
             }
@@ -408,7 +431,7 @@ namespace ChipArena.UnityConversion
             int shards=NativeImpactFx.ShardCount(q,low),sparks=NativeImpactFx.SparkCount(q,low);
             for(int i=0;i<impactMarks.Length;i++){var m=impactMarks[i];NativeWeaponFxShapes.Impact(draw,m.At,m.Normal,m.Seed,m.Tint,now-m.Born,shards,sparks);}
         }
-        private void ClearEmitters(){foreach(var e in emitters.Values)spareEmitters.Push(e);emitters.Clear();trailSpriteCount=0;emitterClock=-1;}
+        private void ClearEmitters(){foreach(var e in emitters.Values)spareEmitters.Push(e);emitters.Clear();trailSpriteCount=0;emitterClock=-1;ClearTracers();}
         private void ClearWeaponFx()
         {
             weaponFx?.Begin();weaponSnapshot=null;ClearEmitters();emitterArena=null;emitterGeneration=-1;muzzleLights.Clear();NativeMuzzleLights.Off();

@@ -88,6 +88,20 @@ namespace ChipArena.UnityConversion
             float phi=spin*age+6.28f*H(seed,60+k);axis=new Vector3((float)Math.Cos(phi)*.2f,(float)Math.Sin(phi),(float)Math.Cos(phi));axis=Vector3.Normalize(axis);
             alpha=u<.85f?1:(1-u)/.15f;return true;
         }
+        /// <summary>A gun's ejection port (the gun's source frame) and the casing's length and width (m): every round's brass comes out here (the
+        /// sustained-fire stream on the machine gun); false for weapons with no brass.</summary>
+        public static bool Port(string spec,out Vector3 port,out float length,out float width)
+        {
+            switch(spec)
+            {
+                case "machinegun":port=new Vector3(-.05f,.055f,.3f);length=.026f;width=.018f;return true;
+                case "rifle":port=new Vector3(-.03f,.055f,.3f);length=.034f;width=.019f;return true;
+                case "pistol":port=new Vector3(-.035f,.075f,.12f);length=.018f;width=.017f;return true;
+                default:port=default;length=width=0;return false;
+            }
+        }
+        /// <summary>The offset a Casing's local is measured from (the pistol's port, where it was first made).</summary>
+        public static readonly Vector3 CasingFrom=new Vector3(-.035f,.075f,.12f);
         /// <summary>The smoking barrel's wisp k (born every .055 s from the last round): muzzle offset (barrel frame), world rise,
         /// size and coverage. The barrel smokes for FanSmoke after the volley.</summary>
         public static bool BarrelSmoke(in NativeGunKit.State s,long seed,int k,float time,out Vector3 local,out float rise,out float size,out float cover)
@@ -215,12 +229,12 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public struct NativeTracerLook
     {
-        public float Width,Length,Gain,Sheath;public int Edge;public bool Kit;
+        public float Width,Length,Gain,Sheath,Heat;public int Edge;public bool Kit;
         public static NativeTracerLook Of(Actor owner,float born,string spec,float time)
         {
             var l=new NativeTracerLook{Width=NativeTracerFx.Width(spec),Length=1,Gain=NativeTracerFx.CoreGain,Sheath=.5f,Edge=NativeTracerFx.EdgeColor};if(owner==null)return l;
             var s=NativeGunKit.Of(owner,time);
-            if(spec=="machinegun"&&NativeGunKit.DriveRound(s,born)){l.Width*=1.35f;l.Length=1.3f;l.Gain*=1.5f;l.Sheath=.7f;l.Edge=0xffa64a;l.Kit=true;}
+            if(spec=="machinegun"&&NativeGunKit.DriveRound(s,born)){l.Width*=1.35f;l.Length=1.3f;l.Gain*=1.5f;l.Sheath=.7f;l.Edge=0xffa64a;l.Heat=NativeGunKit.Heat(s,time);l.Kit=true;}
             else if(spec=="pistol"&&NativeGunKit.FanRound(s,born)){l.Width*=1.2f;l.Length=1.25f;l.Gain*=1.25f;l.Sheath=.65f;l.Edge=0xffd38a;l.Kit=true;}
             return l;
         }

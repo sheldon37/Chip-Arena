@@ -17,6 +17,8 @@ namespace ChipArena.UnityConversion
         {int n=0;while(n<ends.Count&&now-ends[n].At>Keep)n++;if(n>0)ends.RemoveRange(0,n);}
         public void Record(int id,float at,V3 position)
         {Prune(at);if(ends.Count==Max)ends.RemoveAt(0);ends.Add(new NativeShotEnd{Id=id,At=at,Position=position});}
+        /// <summary>A projectile's stopping point, if it is still held (the presentation's read; no allocation).</summary>
+        public bool Find(int id,out NativeShotEnd end){for(int i=ends.Count-1;i>=0;i--)if(ends[i].Id==id){end=ends[i];return true;}end=default;return false;}
         public NativeShotEnd[] Snapshot(float now){Prune(now);return ends.ToArray();}
         public void Restore(NativeShotEnd[] records){ends.Clear();if(records!=null)ends.AddRange(records);}
         public static bool Valid(NativeShotEnd[] records,double frameTime)

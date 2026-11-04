@@ -180,6 +180,8 @@ namespace ChipArena.UnityConversion
         // impact streaks, proc impacts, summon landings, pong bounces and rallies (PR #88: Detail 'rally', Target, From = the
         // bounce), stage hazard sparks, L33t bursts and streaks and arc lines. Then the surface impact procs: a water pilot's
         // splash and the kinetic and demolition chips.
+        /// <summary>The gun rounds land their own impacts (Core NativeRoundImpacts, drawn by the weapons drawer).</summary>
+        public bool GunRounds;
         private void Impacts(NativeArena arena,float now,double quality)
         {
             foreach(var e in arena.Events)
@@ -201,7 +203,8 @@ namespace ChipArena.UnityConversion
                 if(color==0&&e.Kind==EventKind.Break&&source?.Seat.spec!="siren")color=NativeImpactCues.MaterialColor(arena.Content?.materials,e.Detail);
                 else if(color==0&&e.Kind==EventKind.Impact&&!NativeImpactCues.AddEvent(e.Detail)){var w=NativeShotViews.Weapon(arena,source?.Seat.spec);if(w!=null)color=(int)w.color;}
                 var cue=new NativeImpactEvent{Kind=e.Kind,Detail=e.Detail,Position=e.Position,From=e.From,Amount=e.Amount,Radius=e.Radius,Color=color,TargetPilot=target!=null,Trails=Trails,HasTarget=target!=null,Target=target!=null?NativeArena.Vec(target.Body.position):default};
-                int count=NativeImpactCues.Plan(cue,plan);Run(count,quality);
+                bool gunRound=GunRounds&&e.Kind==EventKind.Impact&&string.IsNullOrEmpty(e.Detail)&&!string.IsNullOrEmpty(e.SurfaceId)&&NativeRoundImpacts.Gun(source?.Seat.spec)!=NativeRoundImpact.None;
+                int count=gunRound?0:NativeImpactCues.Plan(cue,plan);Run(count,quality);
                 if(e.Kind!=EventKind.Impact||e.Source<=0||NativeImpactCues.AddEvent(e.Detail))continue;
                 double x=e.Position.x,y=e.Position.y,z=e.Position.z;
                 NativeSeat seat=null;foreach(var s in arena.Match.Seats)if(s.id==e.Source){seat=s;break;}if(seat==null)continue;

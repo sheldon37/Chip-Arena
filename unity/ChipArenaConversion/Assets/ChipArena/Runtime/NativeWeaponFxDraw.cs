@@ -297,6 +297,52 @@ namespace ChipArena.UnityConversion
             draw.Axis(false,at-dir*length,at,Lin(NativeTracerFx.EdgeColor,NativeTracerFx.CoreGain),width,NativeWeaponFxDraw.StreakMode,.85f);
             draw.Axis(false,at-dir*(length*.6f),at,Lin(NativeTracerFx.EdgeColor,.5f),width*4,NativeWeaponFxDraw.StreakMode,.95f);
         }
+        private static readonly Vector3[] needleSide=new Vector3[NativeTracerPath.Capacity+1];
+        /// <summary>
+        /// A tracer needle along a drawn path (points head first, along: each point's metres from the head; NativeTracerPath.Walk): world
+        /// quads turned to the eye through the path's bends, width metres wide but no thinner than minPixels (pixel: a pixel's height at
+        /// 1 m), tail: its fall-off along the path (at least 1).
+        /// </summary>
+        public static void Needle(NativeWeaponFxDraw draw,Vector3[] p,float[] along,int n,Vector3 eye,float pixel,Color color,float width,float minPixels,float tail)
+        {
+            float total=along[n-1];if(!(total>1e-3f)||n>needleSide.Length)return;color.a=0;tail=Math.Max(1,tail);
+            for(int i=0;i<n;i++)
+            {
+                Vector3 t=i==0?p[0]-p[1]:i==n-1?p[n-2]-p[n-1]:p[i-1]-p[i+1],toEye=eye-p[i],s=Vector3.Cross(t,toEye);float m=s.sqrMagnitude;
+                if(m<1e-8f)s=Vector3.Cross(t,Vector3.up);m=s.sqrMagnitude;if(m<1e-8f)s=Vector3.right;
+                needleSide[i]=s.normalized*(.5f*NativeTracers.Width(width,minPixels,toEye.magnitude,pixel));
+            }
+            for(int i=n-1;i>0;i--)Span(draw,p[i],p[i-1],needleSide[i],needleSide[i-1],1-along[i]/total,1-along[i-1]/total,color,tail,2);
+        }
+        // A segment of a needle; one whose ends differ a lot in width (it runs toward the eye) is split, so the quad's diagonal does not show.
+        private static void Span(NativeWeaponFxDraw draw,Vector3 a,Vector3 b,Vector3 sa,Vector3 sb,float ta,float tb,Color c,float tail,int split)
+        {
+            if(split>0){float wa=sa.sqrMagnitude,wb=sb.sqrMagnitude;if(wa>wb*3.4f||wb>wa*3.4f){Vector3 m=(a+b)*.5f,sm=(sa+sb)*.5f;float tm=(ta+tb)*.5f;Span(draw,a,m,sa,sm,ta,tm,c,tail,split-1);Span(draw,m,b,sm,sb,tm,tb,c,tail,split-1);return;}}
+            draw.Quad(false,a-sa,b-sb,b+sb,a+sa,new Vector2(ta,-1),new Vector2(tb,-1),new Vector2(tb,1),new Vector2(ta,1),c,NativeWeaponFxDraw.Ribbon,tail);
+        }
+        /// <summary>A round's fading line from A to B (each end's strength 0..1, its life left), thinning as it fades.</summary>
+        public static void Line(NativeWeaponFxDraw draw,Vector3 a,Vector3 b,float ka,float kb,Vector3 eye,float pixel,Color color,float width)
+        {
+            Vector3 mid=(a+b)*.5f,toEye=eye-mid,s=Vector3.Cross(b-a,toEye);if(s.sqrMagnitude<1e-8f)return;s=s.normalized;color.a=0;
+            Vector3 sa=s*(.5f*NativeTracers.Width(width,1.2f,(eye-a).magnitude,pixel)),sb=s*(.5f*NativeTracers.Width(width,1.2f,(eye-b).magnitude,pixel));
+            Span(draw,a,b,sa,sb,Mathf.Clamp(ka,0,1)*.94f,Mathf.Clamp(kb,0,1)*.94f,color,1,2);
+        }
+        /// <summary>A gun round's landing at `age` (Core NativeRoundImpacts): the quick glow, the star, the spike along the rebound, the sparks and the dust.</summary>
+        public static void RoundImpact(NativeWeaponFxDraw draw,NativeRoundImpact kind,Vector3 point,Vector3 normal,Vector3 flight,long seed,double age,float quality,bool low)
+        {
+            var n=new NVector3(normal.x,normal.y,normal.z);var f=new NVector3(flight.x,flight.y,flight.z);Vector3 at=point+normal*.03f;
+            if(NativeRoundImpacts.Flash(kind,age,out float size,out var glow))draw.Glow(false,at,Fx(glow),size,NativeWeaponFxDraw.Soft);
+            if(NativeRoundImpacts.Star(kind,seed,age,out float star,out float roll,out var hot))draw.Glow(false,at,Fx(hot),star,NativeWeaponFxDraw.Sparkle,roll);
+            if(NativeRoundImpacts.Spike(kind,age,out float length,out float width,out var white)){var r=V(NativeRoundImpacts.Rebound(f,n));draw.Axis(false,at,at+r*length,Fx(white),width,NativeWeaponFxDraw.StreakMode,.9f);}
+            int sparks=NativeRoundImpacts.Sparks(kind,seed,quality,low);
+            for(int k=0;k<sparks;k++)
+            {
+                if(!NativeRoundImpacts.Spark(kind,seed,k,age,n,f,out var offset,out var velocity,out var color,out float w))continue;
+                Vector3 head=at+V(offset),vel=V(velocity);float speed=vel.magnitude;draw.Axis(false,head-(speed>1e-3f?vel/speed:normal)*(.015f+speed*.016f),head,Fx(color),w,NativeWeaponFxDraw.StreakMode,.85f);
+            }
+            int puffs=NativeRoundImpacts.Puffs(kind,quality,low);
+            for(int k=0;k<puffs;k++){if(!NativeRoundImpacts.Puff(seed,k,age,n,out var off,out float s,out float cover))continue;draw.Wisp(false,at+V(off),new Color(.5f*cover,.5f*cover,.52f*cover,cover),s,(float)NativeWeaponFx.Hash(seed,95+k)*10,(float)NativeWeaponFx.Hash(seed,97+k)*6.28f);}
+        }
         /// <summary>An energy shot's white-hot core and school glow (pulse: its slow breathing, about 1). The core sits just in
         /// front of the shot's opaque model, toward `eye`, so the model reads as glowing from inside rather than hiding it.</summary>
         public static void EnergyCore(NativeWeaponFxDraw draw,Vector3 at,Vector3 eye,Color halo,float radius,string spec,float pulse)

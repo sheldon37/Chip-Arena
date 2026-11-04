@@ -294,7 +294,7 @@ namespace ChipArena.UnityConversion
             var runtime=R("Assets/ChipArena/Runtime/NativeGunKitPresentation.cs");
             foreach(string banned in new[]{".Fan","QReady","OverdriveAt=","arena.Pilots","Time.timeScale",".Body.position"})Check(!runtime.Contains(banned),"runtime reads replicated data only ("+banned+")");
             Check(R("Assets/ChipArena/Core/RangedAbilityPose.cs").Contains("NativeGunKitMotion.Apply(pose,a,time,firstPerson);"),"both gun rig routes reach the layer through RangedAbilityPose");
-            var wfx=R("Assets/ChipArena/Runtime/NativeWeaponFxPresentation.cs");Check(wfx.Contains("GunKitFx();")&&wfx.Contains("GunKitTracer(b,v)")&&wfx.Contains("if(look.Kit)KitTracer("),"WeaponFx hooks: effects before the submit, the tracer look");
+            var wfx=R("Assets/ChipArena/Runtime/NativeWeaponFxPresentation.cs");var trc=R("Assets/ChipArena/Runtime/NativeTracerPresentation.cs");Check(wfx.Contains("GunKitFx();")&&trc.Contains("GunKitTracer(b,v)"),"WeaponFx hooks: effects before the submit, the tracer look");
             foreach(string file in new[]{"Core/NativeGunKit.cs","Core/NativeGunKitMotion.cs","Core/NativeGunKitFx.cs","Runtime/NativeGunKitPresentation.cs"})
             {
                 string meta=Path.Combine(root,"Assets/ChipArena",file+".meta");Check(File.Exists(meta),"meta: "+file);

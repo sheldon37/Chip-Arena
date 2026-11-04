@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     public sealed class NativeCombatGlow : IDisposable
     {
         private sealed class SurfaceMark
-        {public NativePropBody Prop;public Vector3 LocalPosition;public Quaternion LocalRotation;public float Born;public Color Color;}
+        {public NativePropBody Prop;public Vector3 LocalPosition;public Quaternion LocalRotation;public float Born;public Color Color;public bool Gun;}
         private sealed class Geometry
         {
             public readonly Mesh Mesh=new Mesh{indexFormat=IndexFormat.UInt32};
@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         private readonly Light[] projectileLights=new Light[3],impactLights=new Light[2],armorLights=new Light[2];
         private readonly Dictionary<long,NativeTrace> traces=new Dictionary<long,NativeTrace>();private readonly Stack<NativeTrace> spareTraces=new Stack<NativeTrace>();private readonly List<long> expired=new List<long>();
         // One projectile's halo, spill light and trail this frame (projectile-glow.ts and projectile-trails.ts via NativeShotRules).
-        private struct ShotGlow{public long Key;public Vector3 Position;public float Radius,Intensity,Range,Width;public int Halo,Trail;public bool Traced,NoHalo;}
+        private struct ShotGlow{public long Key;public Vector3 Position;public float Radius,Intensity,Range,Width,HaloShare;public int Halo,Trail;public bool Traced,NoHalo;}
         private readonly List<ShotGlow> glowShots=new List<ShotGlow>();private readonly List<double> glowDistances=new List<double>();private readonly int[] nearest=new int[3];
         private static readonly int[] viewHands={CapturedRig.LHand,CapturedRig.RHand};
         private readonly List<SurfaceMark> marks=new List<SurfaceMark>();private int generation=-1,lastEvent;
@@ -120,9 +120,10 @@ namespace ChipArena.UnityConversion
         {ClearTraces();own.Clear();marks.Clear();lastEvent=0;lastTime=-1;world.Clear();view.Clear();DisableLights();spill.Clear();}
         private void AddShot(in NativeShotView v,float clock,Vector3 camera)
         {
-            if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);
-            glowDistances.Add((position-camera).sqrMagnitude);
-            glowShots.Add(new ShotGlow{Key=NativeShotScene.Key(v.Kind,v.Id),Position=position,Radius=(float)v.Radius,Halo=NativeShotRules.HaloColor(v,clock),Trail=NativeShotRules.TrailColor(v,clock),Width=(float)NativeShotRules.TrailWidth(v),Traced=NativeShotRules.HasTrail(v)&&!(MagicLooks&&NativeMagicFx.Owns(v)),NoHalo=MagicLooks&&NativeMagicFx.Owns(v),Intensity=(float)NativeShotRules.LightIntensity(v),Range=(float)NativeShotRules.LightRange(v)});
+            if(v.Siren)return;var position=new Vector3((float)v.X,(float)v.Y,(float)v.Z);bool round=v.Kind==NativeShotKind.Bullet&&(NativeTracerFx.Traced(v)||NativeBowWire.Is(v.Spec));
+            // A gun round or an arrow draws its own needle (NativeTracerPresentation.cs); the spill lights go to the shots that glow first.
+            glowDistances.Add((position-camera).sqrMagnitude+(round?1e6:0));
+            glowShots.Add(new ShotGlow{Key=NativeShotScene.Key(v.Kind,v.Id),Position=position,Radius=(float)v.Radius,Halo=NativeShotRules.HaloColor(v,clock),Trail=NativeShotRules.TrailColor(v,clock),Width=(float)NativeShotRules.TrailWidth(v),Traced=!round&&NativeShotRules.HasTrail(v)&&!(MagicLooks&&NativeMagicFx.Owns(v)),NoHalo=round||MagicLooks&&NativeMagicFx.Owns(v),Intensity=(float)NativeShotRules.LightIntensity(v)*(round?.4f:1),Range=(float)NativeShotRules.LightRange(v),HaloShare=NativeMagicPackFx.Bolt(v)!=NativeMagicSchool.None?.6f:1});
         }
         public void Render(NativeArena arena,Camera camera,Camera viewCamera,bool first,Dictionary<int,CapturedAnimation.Player> rigs,CapturedAnimation.Player viewRig,Matrix4x4? viewStaff,bool submitDraws=true)
         {
@@ -145,7 +146,7 @@ namespace ChipArena.UnityConversion
             foreach(var shot in arena.MeleeShots){NativeShotViews.Melee(arena,shot,tracker,clock,out var v);AddShot(v,clock,eye);}
             for(int n=0;n<glowShots.Count;n++)
             {
-                var shot=glowShots[n];if(glow&&!shot.NoHalo)world.Halo(shot.Position,right,up,NativeGlowRules.HaloSize(shot.Radius,Quality),ShotTint(shot.Halo),.88f);
+                var shot=glowShots[n];if(glow&&!shot.NoHalo)world.Halo(shot.Position,right,up,NativeGlowRules.HaloSize(shot.Radius,Quality)*shot.HaloShare,ShotTint(shot.Halo),.88f*shot.HaloShare);
                 if(!Trails||!shot.Traced)continue;
                 if(!traces.TryGetValue(shot.Key,out var trace))
                 {
@@ -165,7 +166,7 @@ namespace ChipArena.UnityConversion
                 var prop=arena.Props.Find(p=>p!=null&&p.Definition.id==e.SurfaceId);if(prop==null)continue;
                 Vector3 normal=NativeArena.Vec(e.Normal).normalized;if(normal.sqrMagnitude<.5f)continue;
                 Vector3 point=NativeArena.Vec(e.Position)+normal*.018f;
-                marks.Add(new SurfaceMark{Prop=prop,LocalPosition=prop.transform.InverseTransformPoint(point),LocalRotation=Quaternion.Inverse(prop.transform.rotation)*Quaternion.LookRotation(normal),Born=e.Time,Color=Color.Lerp(Tint(e.Color),Tint(0x95eaff),.25f)});
+                marks.Add(new SurfaceMark{Prop=prop,LocalPosition=prop.transform.InverseTransformPoint(point),LocalRotation=Quaternion.Inverse(prop.transform.rotation)*Quaternion.LookRotation(normal),Born=e.Time,Color=Color.Lerp(Tint(e.Color),Tint(0x95eaff),.25f),Gun=string.IsNullOrEmpty(e.Detail)&&NativeRoundImpacts.Gun(NativeShotViews.Seat(arena,e.Source)?.spec)!=NativeRoundImpact.None});
                 // A bounce event can predate the current render sample after several fixed ticks. A replica's trails run on
                 // the render clock, which is behind the event; its interpolated frames carry the path instead.
                 if(!arena.Replica&&(traces.TryGetValue(NativeShotScene.Key(NativeShotKind.Bullet,e.Projectile),out var trail)||traces.TryGetValue(NativeShotScene.Key(NativeShotKind.Melee,e.Projectile),out trail)||traces.TryGetValue(NativeShotScene.Key(NativeShotKind.Ability,e.Projectile),out trail))&&e.Time>=trail.Seen)trail.Sample(e.Position,e.Time,e.Color,trail.Width);
@@ -185,7 +186,7 @@ namespace ChipArena.UnityConversion
             // bloom catches it, linear for the shared renderer.
             if(vfx!=null)foreach(var mark in marks)
             {
-                float f=Mathf.Clamp01(1-(now-mark.Born)/ContactLife);if(f<=0)continue;
+                float f=Mathf.Clamp01(1-(now-mark.Born)/ContactLife);if(f<=0||mark.Gun)continue;
                 Vector3 point=mark.Prop.transform.TransformPoint(mark.LocalPosition);Quaternion rotation=mark.Prop.transform.rotation*mark.LocalRotation;
                 var color=mark.Color.linear*(ContactGain*f*f);color.a=0;vfx.Glow(point+rotation*Vector3.forward*ContactLift,color,ContactSize,NativeVfxDraw.CoreGlow);
             }
