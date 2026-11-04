@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
         private struct RiderBone{public Transform Bone;public Quaternion Rest;public int Joint,Toward;public float Share;}
         private RiderBone[] stationBossRiderBones;
         /// <summary>His size over the player's (the concept's: swollen, fused into the cab), and the pelvis's drop under the hips joint.</summary>
-        public const float StationBossRiderScale=1.3f,StationBossRiderSink=.04f;
+        public const float StationBossRiderScale=1.8f,StationBossRiderSink=.1f;
         // A prop on his own head or hands, not where the rig's proportions would have them (a loose hat falls on the rig's pose).
         private Vector3 StationBossRiderShift(BossPose pose,int j)
         {
@@ -90,6 +90,7 @@ namespace ChipArena.UnityConversion
         private void StationBossRiderPose(BossPose pose,float flash,float eyes)
         {
             stationBossRiderShown=false;
+            if(stationBossRider!=null&&stationBossRider.Body.Root==null){stationBossRider=null;stationBossRiderTried=false;}
             if(stationBossRider==null&&!stationBossRiderTried)
             {
                 if(zombiePool.Count==0)return;stationBossRiderTried=true;stationBossRider=ZombieModelMake(NativeZombieLooks.Stationmaster);if(stationBossRider==null)return;

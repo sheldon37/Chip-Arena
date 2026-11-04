@@ -251,7 +251,7 @@ namespace ChipArena.UnityConversion
         /// fits). The station's effects (its lamp's halo and beam, the pack's glow) are drawn from them on the model.</summary>
         public static readonly System.Numerics.Vector3 LinesmanLamp=new System.Numerics.Vector3(0,.1453f,.1944f),LinesmanLampAim=new System.Numerics.Vector3(0,-.139f,.990f),
             LinesmanVents=new System.Numerics.Vector3(.068f,.2715f,0),LinesmanVentsWoman=new System.Numerics.Vector3(.068f,.2515f,0);
-        /// <summary>THE 6:47's Stationmaster on the model (Runtime NativeStationBossBody.cs; no add wears him): a black frock coat, white
+        /// <summary>The Central Station boss's Stationmaster on the model (its Runtime body file; no add wears him): a black frock coat, white
         /// gloves, grey hair, sunken pale skin, the eyes the windows' amber; his hat, watch and bell are the machine's bank's.</summary>
         public static readonly Variant Stationmaster=V("stationmaster",-1,false,"side-swept","z-suit-jacket|hard-jacket","z-dress-pants|belted-pants","gloves","z-loafers|lace-ups",new[]{0x8E8C86,0x14161C,0x0E1014,0xDCD6C4,0x0B0B0D},0xA2A698,
             Body(70,0,20,10,25,40,0,0,0,100,75),new Build{Arm=1.05f,Forearm=1.05f,Shoulder=1.04f,Hand=1.08f},.2f,.04f,.3f,false,0xFFC070,decay:"cheek-l",blood:.1f);

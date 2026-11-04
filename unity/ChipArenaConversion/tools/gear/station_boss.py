@@ -174,11 +174,11 @@ class Tier:
 
 def finishes():
     # The livery: paint chipping to grey primer and rust on its edges.
-    finish('green', 0x2C463C, 'paint', under=0x6A5A44)
-    finish('green-dark', 0x1E332B, 'paint', under=0x5A4A36)
+    finish('green', 0x3A5E50, 'paint', under=0x7A6A54)
+    finish('green-dark', 0x28423A, 'paint', under=0x5A4A36)
     finish('cream', 0xB6AA8C, 'paint', under=0x6E6858)
     finish('yellow', 0xD2A41C, 'paint', under=0x5A5448)
-    finish('roof', 0x262C30, 'paint', under=0x3A3836, dirt=1.3)
+    finish('roof', 0x343C42, 'paint', under=0x4A4846, dirt=1.2)
     finish('roof-rib', 0x1C2124, 'plastic', dirt=1.2)
     finish('chevron', 0x0E0F10, 'paint', under=0x5A5448, outline=False)
     finish('line', 0x0A0C0C, 'sticker', outline=False)
@@ -212,9 +212,9 @@ def finishes():
     for i, h in enumerate((0x1E2636, 0x3A2E24, 0x44474E, 0x55503A, 0x4A1E24, 0x26302A)):
         finish('cloth%d' % i, h, 'cloth')
     # The passengers: drowned grey-green flesh with deep creases.
-    finish('flesh', 0x6B7366, 'skin')
-    finish('flesh-dark', 0x4A5148, 'skin')
-    finish('flesh-pale', 0x8C927E, 'skin')
+    finish('flesh', 0x7E8876, 'skin')
+    finish('flesh-dark', 0x565E52, 'skin')
+    finish('flesh-pale', 0xA0A68E, 'skin')
     finish('nail', 0x2A2622, 'sticker', outline=False)
     finish('bone', 0xB8B09A, 'plastic', outline=False)
     finish('tooth', 0xA8A080, 'plastic', outline=False)
@@ -229,11 +229,26 @@ def finishes():
     finish('live', 0x6FD8FF, 'glow')
 
 
+# While a limb bakes: its radius at the root and the tip and its length: a point near its axis lies in the creases between the strands.
+LIMB = None
+
+
 def shade(f, p, n, cav, seed):
     """gearkit's bake with the carriage's weather: the finish's wear, then dirt rising from the underframe, soot along the roof,
     rust running down from the window rails, by the design-space point `p` (the joint's own frame: only large parts read far)."""
     c = _shade(f, p, n, cav, seed)
-    if f.glow or f.kind in ('sticker', 'skin', 'flesh'):
+    if f.glow:
+        return c
+    if LIMB is not None and f.kind == 'skin':
+        r0, r1, length = LIMB
+        u = max(0.0, min(1.0, -p.z / length))
+        r = math.hypot(p.x, p.y) / max(.01, r0 + (r1 - r0) * u)
+        c = c * (.34 + .66 * gk._smooth(.42, .86, r))
+        # Bruises and old blood along the limb, by the strand.
+        bruise = gk._smooth(.12, .5, noise.noise(Vector((p.x * 4.1 + seed, p.y * 4.1, p.z * 1.4))))
+        c = c.lerp(Vector((.27, .16, .19)), .4 * bruise)
+        return Vector((max(0, min(1, c.x)), max(0, min(1, c.y)), max(0, min(1, c.z))))
+    if f.kind in ('sticker', 'skin', 'flesh'):
         return c
     q = Vector(p)
     streak = noise.noise(Vector((q.y * 3.3 + seed, q.x * 3.3, q.z * .35)))
@@ -915,13 +930,13 @@ def limb_bundle(pc, root, tip, r0, r1, t, seed, strands=6, fin_a='flesh', fin_b=
     d = (tip - root) / L
     # The core, its section the limb's taper.
     pts = [root + (tip - root) * (i / n) for i in range(n + 1)]
-    tu(pc, pts, 0, fin_b, t.s(10), radii=[(r0 + (r1 - r0) * (i / n)) * .78 for i in range(n + 1)])
+    tu(pc, pts, 0, fin_b, t.s(10), radii=[(r0 + (r1 - r0) * (i / n)) * .62 for i in range(n + 1)])
     count = strands if t.fine else max(3, strands - 2) if t.mid else 3
     for k in range(count):
         ph = k * 6.283 / count + rng.random() * .4
         tw = (rng.random() - .5) * 2.6
-        far = r0 * .58
-        near = r1 * .55
+        far = r0 * .66
+        near = r1 * .62
 
         def off(s, far=far, near=near):
             return far + (near - far) * s
@@ -932,10 +947,10 @@ def limb_bundle(pc, root, tip, r0, r1, t, seed, strands=6, fin_a='flesh', fin_b=
         def lumps(s, flip=flip, rk=rk):
             q = s if flip else 1 - s
             # A forearm's swell toward the elbow, thin at the wrist.
-            shape = .55 + .75 * math.sin(math.pi * min(1, q * 1.15)) ** 1.3
+            shape = .5 + .9 * math.sin(math.pi * min(1, q * 1.15)) ** 1.3
             return (r0 + (r1 - r0) * s) * rk * shape
         sp_, rad = strand(root, tip, tw, ph, off, lumps, n, seed + k * 3.1)
-        tu(pc, sp_, 0, fin_a if k % 3 else fin_b, t.s(8), radii=rad)
+        tu(pc, sp_, 0, 'flesh-pale' if k % 4 == 0 else fin_a if k % 3 else fin_b, t.s(8), radii=rad)
     return d
 
 
@@ -1449,26 +1464,27 @@ def top_hat(t):
     pc.sharp = 45
     r = RIDER
     segs = t.s(24, 8)
-    prof = ((.0, .0), (.3, .004), (.31, .02), (.3, .036), (.198, .04), (.19, .12), (.195, .28), (.208, .46), (.215, .49), (.2, .5), (0, .5))
+    prof = ((.0, .0), (.25, .004), (.262, .02), (.25, .036), (.168, .04), (.162, .12), (.166, .28), (.18, .46), (.186, .49), (.17, .5), (0, .5))
     rings = []
+    low = -.16
     for rr, y in prof:
-        rings.append([(rr * r * math.cos(6.283 * k / segs), y * r, rr * r * math.sin(6.283 * k / segs)) for k in range(segs)])
+        rings.append([(rr * r * math.cos(6.283 * k / segs), y * r + low, rr * r * math.sin(6.283 * k / segs)) for k in range(segs)])
 
     def push(q):
         # The dent in the crown's side, the brim's curl.
         d = math.hypot(q.x, q.z)
-        if d > .24 * r:
-            q = q + Vector((0, .05 * r * (q.x / d) ** 2 * ((d - .24 * r) / (.08 * r)), 0))
-        a = (q - Vector((.14 * r, .36 * r, .1 * r))).length
+        if d > .2 * r:
+            q = q + Vector((0, .05 * r * (q.x / d) ** 2 * ((d - .2 * r) / (.06 * r)), 0))
+        a = (q - Vector((.12 * r, .36 * r + low, .08 * r))).length
         if a < .1 * r:
             q = q - Vector((.03 * r, 0, .02 * r)) * (1 - a / (.1 * r))
         return q
     loft(pc, rings, lambda p: 'hat', True, None, push)
     d = Piece('hat-band')
     d.sharp = 40
-    cy(d, (0, .05 * r, 0), (0, .11 * r, 0), .2 * r, 'gold', segs)
+    cy(d, (0, .05 * r + low, 0), (0, .11 * r + low, 0), .17 * r, 'gold', segs)
     if t.mid:
-        bx(d, (0, .08 * r, .205 * r), (.07 * r, .05 * r, .012), 'gold')
+        bx(d, (0, .08 * r + low, .175 * r), (.07 * r, .05 * r, .012), 'gold')
     return [pc.make(False), d.make()]
 
 
@@ -1632,8 +1648,16 @@ def parts(t):
 
 # The body's parts are authored in the body's frame, as every joint's in its own.
 def bake_joint(name, fn, tier, seed):
+    global LIMB
     gk.clear_scene()
     obs = fn(tier)
+    LIMB = None
+    for prefix, r0, r1 in (('hip-', .44, .29), ('knee-', .33, .19)):
+        if name.startswith(prefix):
+            n = name[len(prefix):]
+            leg = next(i for i in range(LEGS) if leg_name(i) == n)
+            k = 1.0 if row_of(leg) == 0 else .91
+            LIMB = (r0 * k, r1 * k, thigh(leg) if prefix == 'hip-' else shin(leg))
     if name == 'body':
         obs = obs + cab_dead(tier)
     obs = [o for o in obs if o is not None]

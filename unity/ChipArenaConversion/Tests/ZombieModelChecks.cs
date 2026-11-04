@@ -357,9 +357,10 @@ internal static class ZombieModelChecks
         foreach(var v in NativeZombieLooks.All)
         {
             Check(v.Decay!=null&&v.Decay.Length>=2&&v.Decay.Length<=NativeZombieDecay.Max&&v.Decay.All(n=>NativeZombieDecay.Find(n)!=null)&&v.Decay.Distinct().Count()==v.Decay.Length,v.Id+": two to four decay openings, each a known site");
-            // (A zone kind keeps the torn-not-shredded limit; its rot and blood follow its story: the drowned rot more and bleed less.)
+            // (A zone kind keeps the torn-not-shredded limit; its rot and blood follow its story: the drowned rot more and bleed less. Its clothes
+            // are its read, so it may be hardly torn: on the Central Station's dark coats the holes' raw red read as camouflage, seen in Unity on 2026-11-04.)
             bool zone=v.Kind>=NativeHordeKinds.Count;
-            Check(v.Tears>=.35f&&v.Tears<=.62f&&v.Rot>=.35f&&v.Rot<=(zone?.9f:.75f)&&v.Blood>=(zone?.1f:.4f)&&v.Blood<=(zone?.8f:.6f)&&v.Grime>0,v.Id+": torn, rotting and bloodied");
+            Check(v.Tears>=(zone?.1f:.35f)&&v.Tears<=.62f&&v.Rot>=(zone?.3f:.35f)&&v.Rot<=(zone?.9f:.75f)&&v.Blood>=(zone?.1f:.4f)&&v.Blood<=(zone?.8f:.6f)&&v.Grime>0,v.Id+": torn, rotting and bloodied");
         }
         Check(NativeZombieDecay.All.Select(x=>x.Name).Distinct().Count()==NativeZombieDecay.All.Length&&NativeZombieDecay.All.All(x=>x.Radius>.02f&&x.Radius<.08f&&x.Depth>0&&x.Depth<.06f),"every site named once, a few centimetres wide");
         foreach(var x in NativeZombieDecay.All.Where(x=>x.Name.EndsWith("-l",StringComparison.Ordinal)))Check(NativeZombieDecay.Find(x.Name.Substring(0,x.Name.Length-2)+"-r") is NativeZombieDecay.Site r&&r.Radius==x.Radius&&r.Bone==x.Bone.Replace("_l","_r")&&r.Limb==x.Limb,x.Name+": its right twin");
