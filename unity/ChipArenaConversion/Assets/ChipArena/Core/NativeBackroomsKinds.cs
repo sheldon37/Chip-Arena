@@ -41,12 +41,18 @@ namespace ChipArena.UnityConversion
         {
             var l=g.Layout;var list=new List<ExpeditionSpawnLayout>();
             foreach(int c in g.Enemies)list.Add(Spawn(list.Count,"br-roam",NativeBackroomsGenerator.Position(l,c),0,"runner","brute","hound"));
-            int walls=0,darks=0;for(int c=0;c<l.Floor.Length;c++)
+            var walls=new List<ExpeditionSpawnLayout>();var darks=new List<ExpeditionSpawnLayout>();for(int c=0;c<l.Floor.Length;c++)
             {
                 if(!NativeBackroomsGenerator.Walkable(l,c))continue;var p=NativeBackroomsGenerator.Position(l,c);if(g.Players.Any(a=>(NativeBackroomsGenerator.Position(l,a)-p).Length<12)||(p-g.Exit).Length<4)continue;
-                if(Dark(l,p)&&darks++<64)list.Add(Spawn(list.Count,"br-dark",p,0,"smiler"));
-                int x=c%l.Width,z=c/l.Width;foreach(var d in new[]{(1,0),(-1,0),(0,1),(0,-1)})if(walls<64&&l.Between(x,z,d.Item1,d.Item2)==BackroomsLayout.Wall)
-                {walls++;p+=new V3(d.Item1,0,d.Item2)*(BackroomsLayout.Cell/2-.65f);list.Add(Spawn(list.Count,"br-wall",p,(float)Math.Atan2(d.Item1,d.Item2),"faceling"));break;}
+                if(Dark(l,p))darks.Add(Spawn(0,"br-dark",p,0,"smiler"));
+                int x=c%l.Width,z=c/l.Width;foreach(var d in new[]{(1,0),(-1,0),(0,1),(0,-1)})if(l.Between(x,z,d.Item1,d.Item2)==BackroomsLayout.Wall)
+                {p+=new V3(d.Item1,0,d.Item2)*(BackroomsLayout.Cell/2-.65f);walls.Add(Spawn(0,"br-wall",p,(float)Math.Atan2(d.Item1,d.Item2),"faceling"));break;}
+            }
+            // Sample the complete maze, not its first rows; reserve room in the 256-entry wire table.
+            foreach(var set in new[]{walls,darks})
+            {
+                int take=Math.Min(set.Count,ReferenceEquals(set,walls)?160:64);
+                for(int i=0;i<take;i++){var entry=set[i*set.Count/take];entry.entry.e=list.Count;entry.entry.id+=":"+list.Count;list.Add(entry);}
             }
             return list.ToArray();
         }

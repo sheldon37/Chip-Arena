@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
         {
             if(Replica||NativeMapRules.ArenaSelectable(Content.Map(map)))throw new InvalidOperationException("Expected an isolated Expedition map.");
             if(Pve!=null)foreach(var recruit in Pve.Recruits)Match.Seats.Remove(recruit.Pilot.Seat);
-            ResetZoneCombat();ResetHub();MapId=map;Reset();BossSongAt=-1;BossSongLead=0;expeditionNavClear.Clear();expeditionDeaths.Clear();expeditionClosures.Clear();expeditionBoss=null;expeditionSpawned=0;expeditionZoneWave=0;expeditionSpawnAt=Time;
+            ResetZoneCombat();ResetHub();MapId=map;Reset();BossSongAt=-1;BossSongLead=0;expeditionNavClear.Clear();expeditionDeaths.Clear();expeditionClosures.Clear();expeditionBoss=null;expeditionSpawned=0;expeditionZoneWave=0;nextLevel0Refresh=0;expeditionSpawnAt=Time;
         }
         public bool ExpeditionSupported(V3 floor,float radius,float height)
         {
@@ -234,6 +234,7 @@ namespace ChipArena.UnityConversion
             StepExpeditionReprints();StepHubPopulation();
             if(s.phase==ExpeditionPhase.Instance)
             {
+                RefreshLevel0Population();
                 var instance=s.instances.Single(i=>i.id==s.area);
                 if(NativeZoneCombat.Active(MapId)){Pve.Wave=NativeBackroomsKinds.Wave(MapId,instance.progress,instance.target);Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,16);}
                 if(instance.progress<instance.target&&Time>=expeditionSpawnAt&&Minions.Count(m=>m.Pve!=null&&!m.DevMonster)<Pve.Cap)

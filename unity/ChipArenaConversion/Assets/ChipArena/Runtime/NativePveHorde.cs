@@ -42,6 +42,18 @@ namespace ChipArena.UnityConversion
                 .Select(e=>new{entry=e,weight=NativeEntryRules.Weight(force?float.PositiveInfinity:members.Select(p=>(p.Body.position-Vec(e.@exit.Position(.9f))).magnitude).DefaultIfEmpty(float.PositiveInfinity).Min(),e.kind,v.Stage=="wave",v.Hidden)*
                     (members.Any(p=>Math.Abs(p.Body.position.y-e.@exit.y)<2)?2:1)/
                     (1+Minions.Count(m=>m.Pve!=null&&m.Pve.Entry.level==e.level))}).Where(e=>e.weight>0).ToArray();
+            if(NativeBackroomsKinds.Level0(MapId)&&EntityDarkLayout!=null&&forcedEntry<0)
+            {
+                var routes=NativeLevel0Spawns.Routes(EntityDarkLayout,members.Select(p=>Vec(p.Body.position)));
+                if(routes!=null)
+                {
+                    // Forced Expedition spawning still obeys player proximity in Level 0.
+                    candidates=candidates.Where(e=>members.All(p=>Vector3.Distance(p.Body.position,Vec(e.entry.@exit.Position(.9f)))>=8)&&!float.IsInfinity(NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position()))).ToArray();
+                    var hidden=candidates.Where(e=>!EntityObserved(Vec(e.entry.@exit.Position(.9f)))).ToArray();if(hidden.Length>0)candidates=hidden;
+                    else candidates=candidates.Where(e=>members.All(p=>Vector3.Distance(p.Body.position,Vec(e.entry.@exit.Position(.9f)))>=16)).ToArray();
+                    if(candidates.Length>0){float nearest=candidates.Min(e=>NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position()));candidates=candidates.Where(e=>NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.entry.@exit.Position())<=nearest+BackroomsLayout.Cell*2).ToArray();}
+                }
+            }
             float total=candidates.Sum(e=>e.weight);if(total<=0)return null;
             double roll=v.SpawnRandom.Next()*total;var entry=candidates[candidates.Length-1].entry;
             foreach(var choice in candidates){roll-=choice.weight;if(roll<0){entry=choice.entry;break;}}

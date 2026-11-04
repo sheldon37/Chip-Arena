@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     {
         public static void Run()
         {
-            BackroomsRouteChecks.Run();
+            Level0SpawnChecks.Run();BackroomsRouteChecks.Run();
             int count=0;void Check(bool ok,string why){count++;if(!ok)throw new Exception("Backrooms entities: "+why);}
             foreach(int seed in Enumerable.Range(0,32))
             {

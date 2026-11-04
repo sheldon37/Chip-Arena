@@ -12,6 +12,19 @@ namespace ChipArena.UnityConversion
             foreach(var old in Minions.ToArray())RemoveMinion(old,false);
             Pve.Wave=4;Pve.Cap=40;Pve.Holding=false;Pve.Stage="wave";Pve.Rate=0;
             var p=Pilots.First(x=>!x.Seat.AuthorityBoss);p.Hp=1000;p.Stats["hp"]=1000;p.Stats["damageTaken"]=1;p.Seat.connected=true;p.DevGod=false;p.Roll=null;p.BlockEnd=p.ShieldUntil=p.ScareUntil=0;p.Down=null;p.Death=null;p.Seat.alive=true;p.Body.isKinematic=false;p.Collider.enabled=true;
+            if(NativeBackroomsKinds.Level0(MapId))
+            {
+                Match.SynchronizeExpeditionClock(Math.Max(100,Time+5));
+                var routes=NativeLevel0Spawns.Routes(EntityDarkLayout,Pilots.Where(ZonePilot).Select(x=>Vec(x.Body.position)));
+                var far=Pve.Content.entries.OrderByDescending(e=>NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.@exit.Position())).FirstOrDefault(e=>e.allowed.Contains("faceling")&&NativeLevel0Spawns.Distance(EntityDarkLayout,routes,e.@exit.Position())>60&&!EntityObserved(Vec(e.@exit.Position(.85f)))&&WardLandingClear(e));
+                Check(far!=null,"distant dormant fixture exists");var sleeper=SpawnPveAdd("faceling",true,far.e);Check(sleeper!=null,"distant dormant fixture spawns");
+                sleeper.Pve.ActiveAt=Time-30;int deaths=MinionDeaths.Count;int progress=Expedition.Session.Run.Snapshot().instances.Single(i=>i.id==NativeBackroomsGenerator.AreaId).progress;
+                nextLevel0Refresh=0;RefreshLevel0Population();Check(!Minions.Contains(sleeper),"unseen distant sleeper releases population slot");
+                Check(MinionDeaths.Count==deaths&&Expedition.Session.Run.Snapshot().instances.Single(i=>i.id==NativeBackroomsGenerator.AreaId).progress==progress,"recycling grants no death or quota credit");
+                var local=SpawnPveAdd("faceling",true);Check(local!=null,"normal forced Expedition spawn replenishes near players");
+                float localDistance=NativeLevel0Spawns.Distance(EntityDarkLayout,routes,Vec(local.Body.position));
+                Check(localDistance<NativeLevel0Spawns.Distance(EntityDarkLayout,routes,far.@exit.Position()),"forced spawn prefers nearby corridor over distant dormant anchor");RemoveMinion(local,false);
+            }
             foreach(var kind in NativeBackroomsKinds.For(MapId))
             {
                 Match.SynchronizeExpeditionClock(Math.Max(100,Time+5));

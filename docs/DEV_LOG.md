@@ -12,6 +12,14 @@
 - **Checks:** CHECKS_PLACEHOLDER
 - **For Astra (not changed):** a refused press gives no feedback, so the key seems dead: Grapple Line with no surface in 20 m, Static Recall with anything on the line (`cybercity-lantern-counter`, a low counter, refused three walks in a row). A public "would the recast work" query would let the HUD say BLOCKED.
 
+## 2026-11-03 — Astra: Level 0 encounter proximity, not just a nonzero population
+
+- **Branch/base:** `codex/backroom-spawn-activation`, shared `cc1b53f8`; owner on packaged build `c72f9675f1ce` reports only one zombie encountered. That packaged ID differs from its source commit. Earlier native checks proved 12 spawned entities, not that the party would encounter them.
+- **Confirmed code defects:** wall/dark anchor generation truncated a row-major scan to the first 64 candidates; forced Expedition spawn weighting substituted infinite player distance. Dormant Facelings could occupy the global cap far from the explored route. No claim of a captured live reproduction.
+- **Fix:** sample the full maze (up to 160 wall, 64 dark, 24 roam anchors); choose reachable Level 0 spawn candidates near the party by actual nav-door distance, within two cells of the closest eligible route, preferring unseen locations with 8 m exclusion (16 m when all visible). Multi-source BFS accounts for split players. Every two seconds recycle at most two unseen, undamaged sleepers aged 20 s and more than 48 route metres away. Remove alive with no death/reward/quota credit; existing cap/quota spawning replenishes them. Awake/damaged/possessed/DEV enemies stay. Poolrooms, damage, hitboxes, movement speeds, animations and visuals unchanged. Level 0 identity version bumped to entities2.
+- **Checks:** Release build zero warnings/errors; placement regression 51,431 assertions across 32 seeds; Backrooms entities 17,515,510 assertions; collision routes 20,702 anchors across 52 seeds/both maps; generator 164 checks across 14 seed/mode layouts. Source validation 3,074 files. Final pinned Unity 6000.3.24f1 Player/Runtime/Editor semantic compilation passes. Native builder gate now tests distant sleeper removal without quota/death credit and closer forced replenishment, not only nonzero count.
+- **Release/limits:** source push/merge/builder receipts follow in task PR. Windows/PhysX execution of this revision and actual encounter pacing remain unverified here. Prior published build's passing counts do not establish that this fix is unnecessary.
+
 ## 2026-11-03 — Astra: techniques replace the selected Q or E
 
 - **Branch/base:** `codex/weapon-technique-slots`, current shared `04d7333c` / PR #321. Owner changed the design from a third ability to a per-weapon optional replacement; rifle permits E only. Existing saves and bots retain their original Q/E.
