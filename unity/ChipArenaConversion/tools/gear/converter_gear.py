@@ -273,7 +273,7 @@ GLYPHS = ("101101101101010", "111100110100111", "011100010001110", "011100010001
 def vessel():
     out = []
     pc = Piece('shell')
-    rs, ys = smooth_profile(3)
+    rs, ys = smooth_profile(2)
     n = len(rs)
     # the rim, over the lip and down the lining
     rs += [1.09, 1.10, .95, .80, .76]
@@ -340,7 +340,7 @@ def vessel():
                 ly = (y0 - ym) + (y1 - y0) * (k + .5) / 5
                 for lx in (-.028, .028):
                     q = c + x * lx * S + t * ly * S + nn * .01
-                    cyl(pc, q, q + nn * .014, .011, 'c-bolt', segs=5, r1=.008)
+                    cyl(pc, q, q + nn * .014, .011, "c-bolt", segs=4, r1=.008)
     out.append(pc.bevel(.003, 1, 50).make())
     # the trunnion pins, the bull gear (a real toothed rim, its web and spokes), the blast pipe
     pc = Piece('gear')

@@ -366,8 +366,8 @@ internal static class ZombieModelChecks
     {
         foreach(var v in NativeZombieLooks.All)
         {
-            // (Burned kinds, the Cinderling and the Slagback, have no raw openings: the char and the crust are their wounds; the Ladleman has one under its leathers.)
-            Check(v.Decay!=null&&v.Decay.Length>=(v.Char>0?0:NativeIronworksKinds.Is(v.Kind)?1:2)&&v.Decay.Length<=NativeZombieDecay.Max&&v.Decay.All(n=>NativeZombieDecay.Find(n)!=null)&&v.Decay.Distinct().Count()==v.Decay.Length,v.Id+": its decay openings, each a known site");
+            // (The Ironworks' suits and burned kinds show few or no raw openings: the char, the crust and the leather and foil are what you see.)
+            Check(v.Decay!=null&&v.Decay.Length>=(NativeIronworksKinds.Is(v.Kind)?0:2)&&v.Decay.Length<=NativeZombieDecay.Max&&v.Decay.All(n=>NativeZombieDecay.Find(n)!=null)&&v.Decay.Distinct().Count()==v.Decay.Length,v.Id+": its decay openings, each a known site");
             // (A zone kind keeps the torn-not-shredded limit; its rot and blood follow its story: the drowned rot more and bleed less.)
             bool zone=v.Kind>=NativeHordeKinds.Count;
             Check(v.Char>0||NativeIronworksKinds.Is(v.Kind)&&v.Grime>0||v.Tears>=.35f&&v.Tears<=.62f&&v.Rot>=.35f&&v.Rot<=(zone?.9f:.75f)&&v.Blood>=(zone?.1f:.4f)&&v.Blood<=(zone?.8f:.6f)&&v.Grime>0,v.Id+": torn, rotting and bloodied (burned kinds: their char, not rot)");
