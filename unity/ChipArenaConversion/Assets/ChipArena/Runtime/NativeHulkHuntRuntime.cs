@@ -39,7 +39,7 @@ namespace ChipArena.UnityConversion
         {
             if(Invulnerable(p))return;bool block=Time<p.BlockEnd;
             if(block)BlockProc(p,m.Owner,p.Body.position,"clash");
-            else if(Damage(p,null,damage*m.Pve.DamageScale,heading,0,false,primary:false,melee:true,damageKind:m.DevMonster?"dev-monster":null)<=0)return;
+            else if(Damage(p,null,damage*m.Pve.DamageScale,heading,0,false,primary:false,melee:true,damageKind:m.DevMonster?"dev-monster":null,causeKind:"hulk")<=0)return;
             HulkShove(p,heading,impulse,pop,block);
         }
         private void HulkMoveStrike(NativeMinion m)

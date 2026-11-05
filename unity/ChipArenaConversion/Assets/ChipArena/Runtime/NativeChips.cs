@@ -10,6 +10,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeArena
     {
         public readonly List<NativeChipField> ChipFields=new List<NativeChipField>();
+        private readonly HashSet<(int owner,int victim)> bombFireHits=new HashSet<(int owner,int victim)>();
         private readonly NativeProcLedger procLedger=new NativeProcLedger();
         private readonly Dictionary<string,float> chipCooldowns=new Dictionary<string,float>();
         private static readonly (string id,string kind,float radius,float duration,float damage)[] fieldRules={
@@ -121,12 +122,14 @@ namespace ChipArena.UnityConversion
         private void StepChipFields()
         {
             const float dt=1f/60;
+            bombFireHits.Clear();
             foreach(var f in NativeSnapshots.Capture(ChipFields))
             {
                 if(f.Attached!=null&&f.Attached.Hp>0)f.Position=f.Attached.Body.position;else if(f.Minion?.Hp>0)f.Position=f.Minion.Body.position;else if(f.Prop!=null)f.Position=f.Prop.transform.position;
                 bool mine=f.Kind=="mine",trigger=mine&&Time>=f.Arm&&Pilots.Any(p=>p.Hp>0&&CanHit(f.Owner,p)&&Vector3.Distance(p.Body.position,f.Position)<f.Radius&&MeleeVisible(f.Position,p.Body.position,f.Owner,p.Collider));
                 if(Time>=f.Until||trigger){ChipFields.Remove(f);if(trigger||f.Kind=="bomb"||f.Kind=="implosion")ChipBlast(f.Owner,f.Position+Vector3.up*.15f,f.Radius,f.Damage,f.Kind=="implosion"?0:1100,effect:f.Effect??f.Kind);if(f.Kind=="implosion")Vacuum(f.Owner,f.Position+Vector3.up*.15f,1300);continue;}
                 if(mine||f.Kind=="bomb"||f.Kind=="implosion")continue;
+                if(f.Effect==NativeBombChips.ScorchedEarth){BombFireTick(f,bombFireHits);continue;}
                 foreach(var p in Pilots){Vector3 d=p.Body.position-f.Position;if(p.Hp<=0||d.magnitude>f.Radius)continue;if(f.Kind=="heal"){if(p==f.Owner)Heal(p,f.Damage*dt);continue;}if(!CanHit(f.Owner,p)||!MeleeVisible(f.Position+Vector3.up*.2f,p.Body.position,f.Owner,p.Collider))continue;if(f.Damage>0)Damage(p,f.Owner,f.Damage*dt,Vector3.zero,0,false,direct:false,primary:false,damageKind:"field");if(!SirenArmor(p)&&(f.Kind=="black-hole"||f.Kind=="repulsion"))p.Knockback+=d.normalized*(f.Kind=="black-hole"?-35:65)*dt*(float)p.Stats["knockbackTaken"];}
                 if(f.Damage>0&&f.Kind!="heal")foreach(var m in NativeSnapshots.Capture(Minions))if(CanHit(f.Owner,m)&&Vector3.Distance(m.Body.position,f.Position)<f.Radius)HitMinion(m,f.Owner,f.Damage*dt,Vector3.zero,0,kind:"field");
                 if(f.Kind=="black-hole"||f.Kind=="repulsion"||f.Kind=="fire"||f.Kind=="acid")foreach(var prop in NativeSnapshots.Capture(Props))

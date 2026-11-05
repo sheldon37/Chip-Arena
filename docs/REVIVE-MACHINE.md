@@ -94,3 +94,11 @@ Its states: nobody dead (a bored face), YOU'RE $n SHORT, THEY HAVE TO BE CONNECT
 - **Second Wind** makes reprints free today. Should the machine be free under it too, or always $250 ("fixed cost")? Contract leaves it to the rules; I'd keep it free, since that's what the mutator's card promises.
 - The machine stands in the sanctuary only, so nobody can be revived from inside an instance. I read "in the hub" that way.
 - F opens nothing here: it asks for E, as you said, though every other machine in the game is F. Say if you'd rather it answered to both.
+
+## Authority integration (Astra, 2026-11-04)
+
+The live request uses the authenticated Expedition Reprint command. The host measures the payer against Spot/Frame/UsePoint and the sanctuary, verifies the target, and reserves one paid transaction. This works without a generated-hub machine anchor. The fixed price is $250 for local and remote corpses; Second Wind is $0. PERMADEATH refuses it. The old exp-city:machine:0 F channel is retired; ordinary field body revives remain separate.
+
+The run carries the transaction and death details into the public Expedition view. The spit uses the hub arena clock, restores full HP at 3 seconds, holds authority and guest input through 5.63 seconds, and expires at 6.6 seconds. Remote corpses transfer through SplitReprint/ReprintFrom at acceptance, remaining dead until the spit. A target disconnect before the spit cancels and refunds the payer once; payer death does not cancel a paid revival. Duplicate requests cannot charge twice, and a reserved target cannot be revived through another service. Landing candidates stay on the mat with one pilot width of clearance at acceptance. Death causes come from the lethal hit, with body position and run-clock death time retained across transfers. Presentation files are unchanged.
+
+Validation includes managed payment/timing/mutator/disconnect/cross-area/copy/wire tests and native Unity checks for full HP, input hold, mat placement and JsonUtility replication. Windows multiplayer gameplay acceptance is still required.

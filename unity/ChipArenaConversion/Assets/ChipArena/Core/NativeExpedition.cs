@@ -185,12 +185,14 @@ namespace ChipArena.UnityConversion
         public bool Revive(string payer,string victim,int cost)
         {
             var buyer=Member(payer);var target=Member(victim);
+            if(s.machineRevive?.spit?.Account==victim)return false;
             if(!Mutable||cost<1||!Live(buyer)||target==null||!InArea(target)||target.transferring||target.alive||target.extracted||!target.connected||target.carriedBy!=null||buyer.wallet<cost)return false;
             buyer.wallet-=cost;target.alive=true;target.safe=buyer.safe;Changed();return true;
         }
         /// <summary>Adapter validates proximity, uninterrupted channel and machine/medic permission before calling.</summary>
         public bool Reprint(string payer,string victim,int cost,bool remoteSafeRecovery=false)
         {
+            if(s.machineRevive?.spit?.Account==victim)return false;
             if(cost<1||HasMutator("permadeath"))return false;if(HasMutator("second-wind"))cost=0;
             if(!Mutable||cost<0||cost==0&&!HasMutator("second-wind")||!Live(Member(payer)))return false;var buyer=Member(payer);var target=Member(victim);
             if(target==null||target.alive||target.extracted||!target.connected||buyer.wallet<cost)return false;

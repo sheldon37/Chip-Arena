@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
                 if(!a.Landed)
                 {
                     a.Landed=true;
-                    foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.DirectRadius))Damage(p,null,NativeSpitterRules.Damage*r.damageScale,Vector3.zero,0,false,primary:false,damageKind:r.devMonster?"dev-monster":"acid");
+                    foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.DirectRadius))Damage(p,null,NativeSpitterRules.Damage*r.damageScale,Vector3.zero,0,false,primary:false,damageKind:r.devMonster?"dev-monster":"acid",causeKind:"spitter");
                     if(!r.devMonster)CorrodePve(r,NativeSpitterRules.DirectRadius,NativeSpitterRules.DirectCorrosion);
                 }
                 while(a.PoisonAt<=Time+1e-6&&a.PoisonAt<end)

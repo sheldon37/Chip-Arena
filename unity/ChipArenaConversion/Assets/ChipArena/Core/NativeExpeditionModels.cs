@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
     {
         public string account, weapon, area;
         public AccountXpCompletion xpCompletion;
+        public NativeReviveDead death;
         public bool transferring;
         public bool connected, alive=true, safe=true, extracted, choosing;
         public double vampireAt,vampireUsed;
@@ -22,7 +23,7 @@ namespace ChipArena.UnityConversion
         public ChipCount[] chips=Array.Empty<ChipCount>();
         public ExpeditionMember Copy()
         {
-            var p=(ExpeditionMember)MemberwiseClone();p.carriedBy=string.IsNullOrEmpty(carriedBy)?null:carriedBy;p.area=string.IsNullOrEmpty(area)?null:area;p.xpCompletion=xpCompletion?.Copy();p.perks=(string[])perks.Clone();
+            var p=(ExpeditionMember)MemberwiseClone();p.carriedBy=string.IsNullOrEmpty(carriedBy)?null:carriedBy;p.area=string.IsNullOrEmpty(area)?null:area;p.xpCompletion=xpCompletion?.Copy();p.death=death?.Copy();p.perks=(string[])perks.Clone();
             p.chips=chips.Select(c=>new ChipCount{id=c.id,count=c.count}).ToArray();return p;
         }
     }
@@ -46,6 +47,7 @@ namespace ChipArena.UnityConversion
     }
     [Serializable] public sealed class ExpeditionSnapshot
     {
+        public ExpeditionMachineRevive machineRevive;
         public int schema=1, loop, epoch=1;public long revision;
         public uint seed;public string run, world, host, area;
         public ExpeditionPhase phase=ExpeditionPhase.Town;
@@ -61,7 +63,7 @@ namespace ChipArena.UnityConversion
         public string[] events=Array.Empty<string>(), exitVotes=Array.Empty<string>(), extractVotes=Array.Empty<string>(), continueVotes=Array.Empty<string>();
         public ExpeditionSnapshot Copy()
         {
-            var s=(ExpeditionSnapshot)MemberwiseClone();s.anchors=(anchors??Array.Empty<ExpeditionWorldAnchor>()).Select(a=>a.Copy()).ToArray();s.chests=(chests??Array.Empty<ExpeditionChestOffer>()).Select(c=>c.Copy()).ToArray();s.members=members.Select(p=>p.Copy()).ToArray();
+            var s=(ExpeditionSnapshot)MemberwiseClone();s.machineRevive=machineRevive?.spit?.Id>0?machineRevive.Copy():null;s.anchors=(anchors??Array.Empty<ExpeditionWorldAnchor>()).Select(a=>a.Copy()).ToArray();s.chests=(chests??Array.Empty<ExpeditionChestOffer>()).Select(c=>c.Copy()).ToArray();s.members=members.Select(p=>p.Copy()).ToArray();
             s.instances=instances.Select(i=>i.Copy()).ToArray();s.rewards=rewards.Select(r=>r.Copy()).ToArray();
             s.mutators=(string[])(mutators??Array.Empty<string>()).Clone();s.dice=dice.Select(d=>d.Copy()).ToArray();s.events=(string[])events.Clone();
             s.exitVotes=(string[])exitVotes.Clone();s.extractVotes=(string[])extractVotes.Clone();s.continueVotes=(string[])(continueVotes??Array.Empty<string>()).Clone();return s;
@@ -96,6 +98,7 @@ namespace ChipArena.UnityConversion
         private static bool Ids(string[] a,int max)=>a!=null&&a.Length<=max&&a.All(Id)&&a.Distinct(StringComparer.Ordinal).Count()==a.Length;
         public static bool Valid(ExpeditionSnapshot s)
         {
+            if(s?.machineRevive?.spit?.Id>0&&!s.machineRevive.Valid())return false;
             if(s==null||!NativeExpeditionMutators.Valid(s.mutators??Array.Empty<string>())||s.schema!=1||!Id(s.run)||!Id(s.world)||!Id(s.host)||!Id(s.area)||s.epoch<1||s.revision<0||s.loop<0||s.loop>100000||
                 !Enum.IsDefined(typeof(ExpeditionPhase),s.phase)||!Number(s.elapsed)||s.elapsed<0||s.elapsed>1e10||
                 !Number(s.exitAt)||s.exitAt< -1||!Number(s.extractAt)||s.extractAt< -1)return false;

@@ -67,7 +67,7 @@ namespace ChipArena.UnityConversion
             else
             {
                 Part("Boss hull",new Vector3(0,3.5f,-.6f),new Vector3(2.7f,7,0),false);
-                Part("Foreman",new Vector3(0,7.5f,-.6f),new Vector3(.55f,1.6f,0),false);
+                Part("Foreman",new Vector3(0,NativeIronworksBossModel.StandHeight+NativeIronworksBossModel.PulpitRest.Y+1.04f,NativeIronworksBossModel.PulpitRest.Z+NativeIronworksBossModel.ForemanFeet.Z),new Vector3(.55f,2.08f,0),false);
                 for(int i=0;i<4;i++)Part("Tong "+i,new Vector3(i%2==0?-3.7f:3.7f,1.6f,i<2?2.8f:-2.8f),new Vector3(.45f,3.2f,0),false);
             }
             if(m.Kind==NativeZoneBossRules.Ironworks)foreach(var c in m.Body.GetComponentsInChildren<Collider>())if(c.name.StartsWith("Tong ",StringComparison.Ordinal))foreach(var p in Pilots)Physics.IgnoreCollision(c,p.Collider);
@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
             if(!ZonePilot(p)||Invulnerable(p)||jump&&p.Body.position.y-p.Collider.height*.5f>center.y+.6f||!BossOnce(p.Seat.id,strike))return;
             if(SceneLinecast(center+Vector3.up,p.Body.position,WorldMask))return;
             if(Time<p.BlockEnd){BlockProc(p,Pve.Boss,p.Body.position,"clash");return;}
-            float actual=Damage(p,null,amount,p.Body.position-center,0,false,primary:false,rollAvoidable:true);
+            float actual=Damage(p,null,amount,p.Body.position-center,0,false,primary:false,rollAvoidable:true,causeKind:ZoneBoss?.archetype);
             if(actual>0&&!TechniqueBrace(p)){p.Knockback+=(p.Body.position-center).normalized*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
         }
         private Vector3 BossLocal(Vector3 world)=>Quaternion.Euler(0,-zoneBossActor.Yaw,0)*(world-zoneBossActor.Body.position);
@@ -327,7 +327,7 @@ namespace ChipArena.UnityConversion
             {
                 bool grate=local.y>1&&local.y<3&&local.z< -1.5f&&(z.action=="blow"||z.action=="slam"||Time<z.staggerAt+z.staggerSeconds);
                 if(grate){multiplier=2;crit=true;if(z.action=="blow"&&Time<z.hitAt){bossChokeDamage+=damage;if(bossChokeDamage>=m.MaxHp*.04f)BossStagger("choke",2.5f);}}
-                else if(local.y>6){multiplier=1.5f;crit=true;}else if(Math.Abs(local.x)>3){multiplier=1.25f;crit=true;}
+                else if(local.y>6||local.y>5.9f&&Math.Abs(local.x)<.55f&&Math.Abs(local.z-(NativeIronworksBossModel.PulpitRest.Z+NativeIronworksBossModel.ForemanFeet.Z))<.55f){multiplier=1.5f;crit=true;}else if(Math.Abs(local.x)>3){multiplier=1.25f;crit=true;}
                 else if(z.action=="pour"&&local.z>1.5f&&local.y>4){multiplier=1.5f;crit=true;}
                 else
                 {int part=Math.Abs(local.z)>Math.Abs(local.x)?local.z>0?0:3:local.x<0?1:2;bool intact=(z.parts&(1<<part))!=0;multiplier=intact?.4f:1.15f;if(intact){bossPartDamage[part]+=damage;if(bossPartDamage[part]>=m.MaxHp*.05f){z.parts&=~(1<<part);z.partAt[part]=Time;}}}

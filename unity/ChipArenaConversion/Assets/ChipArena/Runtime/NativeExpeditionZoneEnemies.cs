@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             var d=p.Body.position-m.Body.position;d.y=0;var dir=d.normalized;
             if(d.sqrMagnitude>.001f&&Vector3.Dot(Vec(V3.Forward(m.Yaw)),dir)<Mathf.Cos(cone*.5f*Mathf.Deg2Rad))return 0;
             if(Time<p.BlockEnd){BlockProc(p,m.Owner,p.Body.position,"clash");return 0;}
-            float actual=Damage(p,null,damage*m.Pve.DamageScale,dir,0,false,primary:false,melee:true);
+            float actual=Damage(p,null,damage*m.Pve.DamageScale,dir,0,false,primary:false,melee:true,causeKind:m.Pve.Stats.id);
             if(actual>0&&!TechniqueBrace(p)){p.Knockback+=dir*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}return actual;
         }
         private void ZoneStop(NativeMinion m)

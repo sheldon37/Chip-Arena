@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
                 foreach(var guest in party)if(!run.Join(guest.Seat.access.AccountId,guest.Seat.spec))throw new InvalidOperationException("Party member could not join the run.");
                 var session=CreateExpeditionSession(run);
                 expeditionDirector=new ExpeditionDirector(session,expeditionM1Layout,id=>arena?.Pilots.FirstOrDefault(p=>p.Seat.access?.AccountId==id) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,
-                    (a,b)=>arena.ExpeditionVisible(a,b),100,100,60);
+                    (a,b)=>arena.ExpeditionVisible(a,b),100,NativeReviveMachine.Price,60);
                 // Reprint evidence is measured by the same combat authority for every seat.
                 session.ReprintEvidence=(payer,target)=>arena.ExpeditionReprintEvidence(payer,target);
                 BindExpedition(session);StartSplitAreas(session,seats);if(Hosting)FlushLobby();expeditionLoadedGeneration=-1;
