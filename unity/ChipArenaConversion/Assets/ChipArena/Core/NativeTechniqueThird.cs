@@ -9,6 +9,8 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>Whether a third-set technique has its effect yet. The checks read this, so they cover each as it lands.</summary>
         public static bool ThirdBuilt(string id)=>Array.IndexOf(MeleeBuilt,id)>=0||Array.IndexOf(RangedBuilt,id)>=0||Array.IndexOf(MagicBuilt,id)>=0;
+        /// <summary>When the wind-up ends, for a kind whose `Arm` is that time: the rules write `Arm` only at the release, so until then it reads as `Release`.</summary>
+        public static float ArmAt(NativeTechnique k)=>k.Arm>k.At?k.Arm:k.Release;
         private static void Third(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
             if(!ThirdMelee(s,scene,a,k,t,seed,q,low)&&!ThirdRanged(s,scene,a,k,t,seed,q,low))ThirdMagic(s,scene,a,k,t,seed,q,low);
@@ -26,6 +28,8 @@ namespace ChipArena.UnityConversion
     }
     public static partial class NativeTechniqueSounds
     {
+        // The rules' `Release` for these is the wind-up's end, when the move goes off. Their first cue belongs on the press, and the `Arm` cue on the going off.
+        private static bool ThirdFromPress(string kind)=>kind==NativeTechniques.GunSpin||kind==NativeTechniques.Combust||kind==NativeTechniques.Thunderclap||kind==NativeTechniques.Overload;
         private static int ThirdMoment(string kind,int m,NativeKitSound[] o,ref bool atPoint)
         {
             int n=MomentMelee(kind,m,o,ref atPoint);if(n==0)n=MomentRanged(kind,m,o,ref atPoint);if(n==0)n=MomentMagic(kind,m,o,ref atPoint);return n;

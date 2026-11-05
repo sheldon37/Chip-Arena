@@ -15,8 +15,8 @@ namespace ChipArena.UnityConversion
         {
             switch(m)
             {
-                case Release:return k.Release;
-                case Arm:return k.Kind==NativeTechniques.Bastion||k.Kind==NativeTechniques.WildfireRun||k.Arm<=k.Release?float.NaN:k.Arm;
+                case Release:return ThirdFromPress(k.Kind)?k.At:k.Release;
+                case Arm:if(ThirdFromPress(k.Kind))return k.Arm>k.At?k.Arm:float.NaN;return k.Kind==NativeTechniques.Bastion||k.Kind==NativeTechniques.WildfireRun||k.Arm<=k.Release?float.NaN:k.Arm;
                 case Hit:return k.HitAt>-50?k.HitAt:float.NaN;
                 case Recast:return k.RecastAt>-50?k.RecastAt:float.NaN;
                 default:return k.Until;

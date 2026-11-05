@@ -92,11 +92,11 @@ namespace ChipArena.UnityConversion
         // A snap on the last turn; then, while it fires faster, the barrel glows and hot rings keep sliding off the muzzle, two brass sparks round the gun, a thread of smoke.
         private static void GunSpin(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var feet=scene.Feet(a);var f=Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);var r=RightOf(f);var hand=feet+Up*1.2f+f*.42f+r*.22f;float self=scene.Viewer==a.Id?.4f:1;var white=SpinBrass+Vector3.One;
-            if(t<k.Arm)
+            var feet=scene.Feet(a);var f=Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);var r=RightOf(f);var hand=feet+Up*1.2f+f*.42f+r*.22f;float self=scene.Viewer==a.Id?.4f:1,arm=ArmAt(k);var white=SpinBrass+Vector3.One;
+            if(t<arm)
             {
                 // The wheel's plane is turned part way to the back, so it reads from behind the pilot as well as from the side.
-                float span=Math.Max(.05f,k.Arm-k.At),g=Clamp01((t-k.At)/span),env=Smooth(g/.1f)*self,turn=6.2831853f*3.5f*g*(2-g);var wheel=Vector3.Normalize(f+r*.75f);Vector3 Spoke(float ang)=>wheel*(float)Math.Cos(ang)+Up*(float)Math.Sin(ang);
+                float span=Math.Max(.05f,arm-k.At),g=Clamp01((t-k.At)/span),env=Smooth(g/.1f)*self,turn=6.2831853f*3.5f*g*(2-g);var wheel=Vector3.Normalize(f+r*.75f);Vector3 Spoke(float ang)=>wheel*(float)Math.Cos(ang)+Up*(float)Math.Sin(ang);
                 int n=low?6:12;for(int i=0;i<n;i++){float a0=turn-i*.3f,a1=a0-.3f,b0=1-i/(float)n,b1=1-(i+1)/(float)n;s.Band(false,hand+Spoke(a0)*.05f,hand+Spoke(a1)*.05f,hand+Spoke(a1)*.36f,hand+Spoke(a0)*.36f,b0*env,b1*env,SpinBrass*1.8f);}
                 Hoop(s,hand,RightOf(wheel),.32f,.05f,SpinBrass*(1.7f*env),low?12:22,1);
                 var d=Spoke(turn);var grip=Spoke(turn-1.5707963f);s.Line(false,hand-d*.06f,hand+d*.3f,white*(1.2f*env),.07f,true);s.Line(false,hand,hand+grip*.13f,white*(.9f*env),.06f,true);s.Sprite(false,hand+d*.3f,white*(1.3f*env),.2f,Sparkle);
@@ -104,7 +104,7 @@ namespace ChipArena.UnityConversion
                 float fall=t-k.At;if(fall<.42f){var mag=hand-Up*(.1f+4.9f*fall*fall);var tilt=Vector3.Normalize(Up+r*(float)Math.Sin(fall*14)+f*(float)Math.Cos(fall*11));if(mag.Y>feet.Y)s.Line(false,mag-tilt*.07f,mag+tilt*.07f,CrateSteel*(1.5f*self),.05f,false);}
                 return;
             }
-            float age=t-k.Arm;
+            float age=t-arm;
             if(age<.3f){float b=1-age/.3f;Flash(s,hand,age,.2f,SpinBrass,1.1f*self,seed);Hoop(s,hand,RightOf(Vector3.Normalize(f+r*.75f)),.3f+.42f*OutCubic(age/.2f),.09f*b+.01f,white*(.8f*b*self),low?12:22,1);}
             Sparks(s,hand,age,.4f,Count(14,q,low),4.4f,SpinBrass,seed+5,9,.02f,Up*.4f);
             if(t>=k.Until)return;
@@ -534,7 +534,7 @@ namespace ChipArena.UnityConversion
             switch(id)
             {
                 case NativeTechniques.FlashRound:k.Release=t0+.14f;k.From=V3Of(hand);k.Point=V3Of(first?feet+f*9+up*1.9f:feet+f*10+r*2+up*1.5f);k.Arm=k.Release+(first?.16f:.2f);k.Until=k.Arm+.9f;k.RecoverUntil=k.Release+.18f;return true;
-                case NativeTechniques.GunSpin:k.Release=t0+.02f;k.Arm=t0+.45f;k.Until=k.Arm+(first?4:2.2f);k.RecoverUntil=k.Arm;return true;
+                case NativeTechniques.GunSpin:k.Release=t0+.45f;k.Arm=k.Release;k.Until=k.Release+(first?4:2.2f);k.RecoverUntil=k.Release;return true;
                 case NativeTechniques.SlideShot:{k.Release=t0+.04f;var d=first?f:Vector3.Normalize(f+r*.6f);k.From=V3Of(feet);k.To=V3Of(feet+d*6);k.Dir=V3Of(d);k.Until=k.Release+.55f;k.RecoverUntil=k.Until+.2f;}return true;
                 case NativeTechniques.Bipod:k.Release=t0+.5f;k.Point=V3Of(feet);k.Dir=V3Of(f);if(first)k.Until=k.Release+5;else{k.RecastAt=k.Release+2.2f;k.Until=k.RecastAt+.3f;}k.RecoverUntil=k.Until;return true;
                 case NativeTechniques.AmmoCrate:k.Release=t0+.3f;k.Point=V3Of(feet+f*1.4f+r*1.1f);k.Arm=first?1:.3f;k.Until=k.Release+(first?8:3.4f);k.RecoverUntil=k.Release+.25f;if(first){k.HitAt=k.Release+2.2f;k.To=V3Of(feet+up*1.25f);}return true;
@@ -614,7 +614,7 @@ namespace ChipArena.UnityConversion
             switch(k.Kind)
             {
                 case NativeTechniques.FlashRound:hit=Part(aim,k.At,back);break;
-                case NativeTechniques.GunSpin:hit=Part(set.Reload,k.At,k.Arm);break;
+                case NativeTechniques.GunSpin:hit=Part(set.Reload,k.At,NativeTechniqueFx.ArmAt(k));break;
                 // The deep crouch at the start of the set's landing, held for the slide; the rest of it is the rise.
                 case NativeTechniques.SlideShot:{float len=clips.Has(set.Land)?clips.Length(set.Land):1;hit=Hold(set.Land,k.At,k.RecoverUntil,len*(time<k.Until?.22f*Clamp01((time-k.At)/.08f):.22f+.78f*Clamp01((time-k.Until)/Math.Max(.05f,k.RecoverUntil-k.Until))));}break;
                 case NativeTechniques.Bipod:{bool up=k.RecastAt>-50;float end=up?k.RecastAt:k.Until;hit=Part(TechDrop,k.At,k.Release)||Hold(aim,k.Release,end,time-k.Release)||(up&&Part(TechShootLine,end,k.Until));}break;

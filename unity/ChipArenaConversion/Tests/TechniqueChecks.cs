@@ -63,6 +63,7 @@ namespace ChipArena.UnityConversion
         {
             var fx=new NativeTechniqueFx();var scene=new Scene();var src=new One();NativeTechniques.Source=src;
             var a=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(2,.5f,-3)};scene.List.Add(a);
+            foreach(var d in NativeTechniques.Third)Check(NativeTechniqueFx.ThirdBuilt(d.Id),d.Id+": the third set's row has its presentation");
             foreach(var d in NativeTechniques.All.Concat(NativeTechniques.Third.Where(x=>NativeTechniqueFx.ThirdBuilt(x.Id))))for(int variant=0;variant<2;variant++)
             {
                 var k=new NativeTechnique();NativeTechniquePreview.Write(k,d.Id,new Vector3(2,.5f,-3),.7f,10,variant==0);src.K=k;a.SourceSpec=d.Spec;string n=d.Id+(variant==0?"":" (second)");
@@ -80,6 +81,27 @@ namespace ChipArena.UnityConversion
                 // A record from an older clock (a rewind): no throw, the moments still ordered.
                 for(int m=0;m<NativeTechniqueSounds.Moments;m++){float at=NativeTechniqueSounds.At(k,m);if(!float.IsNaN(at))Check(at>=k.At,n+": sound moment "+m+" within the cast");var o=new NativeKitSound[4];int c=NativeTechniqueSounds.Moment(d.Id,m,o,out _);Check(c>=0&&c<=4,n+": its cues");for(int i=0;i<c;i++)Check(!string.IsNullOrEmpty(o[i].Key),n+": a cue key");}
                 bool any=false;for(int m=0;m<NativeTechniqueSounds.Moments;m++){var o=new NativeKitSound[4];if(NativeTechniqueSounds.Moment(d.Id,m,o,out _)>0)any=true;}Check(any,n+": it sounds");
+            }
+            // The rules write `Arm` only at the release, where the preview writes it ahead: the wind-up looks the same with it unset, and the sound on the going off waits for it.
+            foreach(string id in new[]{NativeTechniques.GunSpin,NativeTechniques.Overload,NativeTechniques.Thunderclap,NativeTechniques.DragonBreath,NativeTechniques.Combust})
+            {
+                var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,id,new Vector3(2,.5f,-3),.7f,10,true);var unset=whole.ViewCopy();unset.Arm=0;a.SourceSpec=NativeTechniques.Find(id).Spec;
+                Check(whole.Arm==whole.Release,id+": the preview's wind-up ends where the rules' does");
+                for(float t=whole.At;t<whole.Release;t+=1/30f)
+                {
+                    src.K=whole;var r0=new Recorder();fx.Draw(r0,scene,t,1,false);src.K=unset;var r1=new Recorder();fx.Draw(r1,scene,t,1,false);
+                    Check(r1.Draws>0&&!r1.Broken&&r0.Draws==r1.Draws&&Math.Abs(r0.Hash-r1.Hash)<1e-4f,id+": the wind-up before the rules write Arm, at "+(t-whole.At).ToString("0.00"));
+                }
+            }
+            foreach(string id in new[]{NativeTechniques.GunSpin,NativeTechniques.Combust,NativeTechniques.Thunderclap,NativeTechniques.Overload})
+            {
+                var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,id,new Vector3(2,.5f,-3),.7f,10,true);var unset=whole.ViewCopy();unset.Arm=0;
+                Check(NativeTechniqueSounds.At(unset,NativeTechniqueSounds.Release)==whole.At,id+": its first sound on the press");Check(float.IsNaN(NativeTechniqueSounds.At(unset,NativeTechniqueSounds.Arm))&&NativeTechniqueSounds.At(whole,NativeTechniqueSounds.Arm)==whole.Release,id+": the going off's sound only once the rules write it");
+            }
+            // Soul Siphon's reach: the rules have neither a target nor an end for it yet.
+            {
+                var reach=new NativeTechnique();NativeTechniquePreview.Write(reach,NativeTechniques.SoulSiphon,new Vector3(2,.5f,-3),.7f,10,true);reach.To=default;reach.Target=0;a.SourceSpec="darkness";src.K=reach;
+                var r=new Recorder();fx.Draw(r,scene,reach.At+.05f,1,false);Check(r.Draws>0&&!r.Broken,"soul-siphon: its reach draws with no target");
             }
             // The solid things' own numbers.
             var b=new NativeTechnique();NativeTechniquePreview.Write(b,NativeTechniques.AnchorThrow,Vector3.Zero,0,10,true);var catcher=new Vector3(0,1.2f,0);
