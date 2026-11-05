@@ -156,9 +156,9 @@ namespace ChipArena.UnityConversion
                 }
                 case "lap":
                 {
-                    // Round the room's edge at the surface, the circle tightening; rolled so the flank lamps show (the rig's roll).
-                    float r0=m.Radius,r1=NativeDeepEndBoss.LapInner,ang=v.yaw*BossMath.Deg;const int n=24;float speed=m.Speed,T=m.Strike+m.Follow;
-                    Vector3 Lap(float u){float rad=r0+(r1-r0)*BossMath.Smooth(u),an=ang+u*T*speed/Math.Max(8,(r0+r1)*.5f);return new Vector3(rad*(float)Math.Cos(an),surface-.25f,rad*(float)Math.Sin(an));}
+                    // Round the room's edge at the surface, tightening; rolled so the flank lamps show (the rig's roll). A rounded square, not a circle: it runs into the corners, so no corner is outside its lap.
+                    const int n=24;float T=m.Strike+m.Follow,ang=v.yaw*BossMath.Deg;
+                    Vector3 Lap(float u){var q=LapAt(u,ang,m,T);q.Y=surface-.25f;return q;}
                     Vector3 Dl(float u){const float e=.004f;return (Lap(u+e)-Lap(u-e))/(2*e*T);}
                     Swim(r,hit-.4f,Lap(0).X*.9f,Lap(0).Z*.9f,surface,Dl(0)*.6f+new Vector3(0,3,0));
                     r.To(hit,Lap(0),Dl(0));for(int i=1;i<=n;i++){float u=i/(float)n;r.To(hit+T*u,Lap(u),Dl(u));}
@@ -167,6 +167,12 @@ namespace ChipArena.UnityConversion
                 }
                 default:break; // The Lull and the Whistle don't move the head.
             }
+        }
+        /// <summary>Last Lap's path at u (0..1 over its `T` s), from the start angle: a rounded square tightening from the table's radius to its inner one, at the table's speed.</summary>
+        public static Vector3 LapAt(float u,float ang,in DeepEndBossMove m,float T)
+        {
+            float rad=m.Radius+(NativeDeepEndBoss.LapInner-m.Radius)*BossMath.Smooth(BossMath.Clamp01(u));float mean=(m.Radius+NativeDeepEndBoss.LapInner)*.5f;float an=ang+u*T*m.Speed/Math.Max(8,mean);
+            float cs=(float)Math.Cos(an),sn=(float)Math.Sin(an);const float k=6;float sq=(float)Math.Pow(Math.Pow(Math.Abs(cs),k)+Math.Pow(Math.Abs(sn),k),-1/k);return new Vector3(rad*sq*cs,0,rad*sq*sn);
         }
         /// <summary>A phase change: the head comes up through the middle of the pit and stands over it for the 3.5 s window, then sinks.</summary>
         public static void PhaseChange(DeepEndRoute r,float at,float surface,int phase)

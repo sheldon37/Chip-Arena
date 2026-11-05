@@ -231,11 +231,11 @@ the fight gets slower on your feet and those tools matter more.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `breach` | Breach | 1 | 1.1 | .25 | .5 | .6 | 5 | 28 + launch | 3.2 m circle at the target's position when it locked, mouth up, then the body arcs over and dives |
 | `jet` | Hydro Jet | 1 | 1.0 | 2.2 | .3 | .8 | 12 | 10 per .25 s | a 2 m beam, swept 110° over 30 m, starting on the farthest pilot |
-| `flop` | Belly Flop | 1 | 1.2 | .2 | .6 | 1 | 14 | 30 | a line 4 m wide and 24 m long where its body falls; its shadow and a line of bubbles or spray mark it |
+| `flop` | Belly Flop | 1 | 1.8 | .2 | .6 | 1 | 14 | 30 | a line 4 m wide and 24 m long where its body falls; its shadow and a line of bubbles or spray mark it |
 | `thrash` | Thrash | 1 | .4 | .3 | .2 | .4 | 6 | 18 | 5 m round the surfaced body, a tail sweep, when someone hugs it |
 | `drain` | The Drain | 1 | 1.4 | 4 | .3 | .8 | 20 | 40 at the mouth | the whole room's water pulls toward the pit at 5 to 9 m/s; it's the mouth open at the centre |
 | `lull` | The Lull | 1 | 1.5 | .3 | 1.5 | 0 | meter | 8 + 8/s | hands of water take a pilot still for 6 s, or above 1.6 m for 2 s |
-| `seiche` | Seiche | 2 | 1.4 | 3.5 | 0 | .5 | 16 | 18 + knockback | a wave .9 m tall crosses the room wall to wall, then reflects back. Jump it or roll through |
+| `seiche` | Seiche | 2 | 1.4 | 7 | 0 | .5 | 16 | 18 + knockback | a wave .9 m tall crosses the room wall to wall, then reflects back. Jump it or roll through |
 | `whistle` | Whistle | 2 | 1 | 2 | 0 | .5 | 25 | 0 | a Lifeguard's whistle from nowhere: Drowned surface round each pilot, Tilers peel off the walls |
 | `lap` | Last Lap | 3 | 1.5 | 6 | .5 | 1 | 24 | 24 + crush | its body circles the room's edge at the surface, tightening from 19 m to 9 m. It exposes every flank lamp: the fight's best damage window |
 

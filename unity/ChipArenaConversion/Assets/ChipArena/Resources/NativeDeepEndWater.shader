@@ -33,7 +33,7 @@ Shader "ChipArena/NativeDeepEndWater"
             v2f vert(float4 vertex:POSITION)
             {
                 v2f o;float4 w=mul(unity_ObjectToWorld,vertex);float2 uv=FieldUv(w.xz);float h=tex2Dlod(_DeepField,float4(uv,0.0,0.0)).r;w.y=_DeepRoomY+h;
-                o.pos=mul(UNITY_MATRIX_VP,w);o.world=w.xyz;o.height=h;o.screen=ComputeScreenPos(o.pos);o.grab=ComputeGrabScreenPos(o.pos);COMPUTE_EYEDEPTH(o.screen.z);UNITY_TRANSFER_FOG(o,o.pos);return o;
+                o.pos=mul(UNITY_MATRIX_VP,w);o.world=w.xyz;o.height=h;o.screen=ComputeScreenPos(o.pos);o.grab=ComputeGrabScreenPos(o.pos);o.screen.z=-mul(UNITY_MATRIX_V,w).z;UNITY_TRANSFER_FOG(o,o.pos);return o;
             }
             float3 Ripple(float2 uv){float3 n=UnpackNormal(tex2D(_DeepNormal,uv));return float3(n.x,n.z,n.y);}
             float Hash(float2 p){float3 p3=frac(float3(p.x,p.y,p.x)*0.1031);p3+=dot(p3,p3.yzx+33.33);return frac((p3.x+p3.y)*p3.z);}
