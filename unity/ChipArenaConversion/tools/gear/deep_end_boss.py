@@ -705,7 +705,7 @@ GLOSS = {'chrome': 2.0, 'chrome-dark': 1.6, 'fibre': .9, 'fibre-edge': 1.0, 'til
 def finishes():
     finish('chrome', 0x8C9AA2, 'metal', dirt=.05)
     finish('chrome-dark', 0x4F5B62, 'metal', dirt=.1)
-    finish('fibre', 0xF2F4EF, 'plastic', dirt=.12)
+    finish('fibre', 0xCDD8D4, 'plastic', dirt=.12)
     finish('fibre-edge', 0x8FD4D2, 'plastic', dirt=.2)
     finish('tile', 0xEFF4F2, 'plastic', dirt=.15, outline=False)
     finish('lens', 0xBFFFFB, 'glow', outline=False)
@@ -949,7 +949,7 @@ def fin(tier, side):
     bands = []
     for i in range(n):
         for j in range(m):
-            band = j >= m - 1 and tier < 2
+            band = tier < 2 and (j >= m - 1 or i % (4 if tier == 0 else 5) == 2)
             f0 = pc.bm.faces.new((up[i, j], up[i + 1, j], up[i + 1, j + 1], up[i, j + 1]))
             f1 = pc.bm.faces.new((dn[i, j + 1], dn[i + 1, j + 1], dn[i + 1, j], dn[i, j]))
             (bands if band else fs).extend((f0, f1))
