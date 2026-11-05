@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: slot-roll freeze follow-up
+
+- Branch `codex/slot-roll-freeze`, shared base `99a882bd` / PR #333. Owner reports the station freezes until results appear. Previous fix was still BUILDING at inspection; installed-client version not established, so this is not a confirmed regression from #333.
+- Found live input still using the three-entry DEV preview catalog. A Backrooms/Poolrooms result invalidates all six strips; the renderer had discarded raster caches and could upload all six textures in one frame. Live input now includes all five eligible destinations before rolling. Unchanged strips are retained, tiles cached for the scene lifetime, cold raster jobs serialized, and uploads limited to one per frame. No artwork, animation timing, outcome, price or authority changes.
+- Verification: Core build and deployment performance (111 checks, including 100 rolls without any reel rebuild), presentation (440902), models (3527) and sparks (12615) pass. Unity semantic assembly compilation and source package validation results recorded in PR. Windows freeze reproduction, frame-time capture and actual two-client rendering remain unverified. Existing glyph/world worker fix retained. Finite raster cache trades roughly 36 MiB retained per scene for avoiding repeated allocations/rasterization.
+- Delivery/build receipts follow in task PR; existing test Update channel only.
+
 ## 2026-11-05 — Astra: Bombadier chip and destination-roll stalls
 
 - Branch `codex/chip-roll-stalls`, base shared `5801c523` (integrates shared documentation through `9d31eeec`). Bomb glyph parsing/rasterization no longer runs in OnGUI: warm on one worker, reuse five bounded size buckets across icon/card faces, and upload at most one texture per frame. Artwork and gameplay unchanged.
