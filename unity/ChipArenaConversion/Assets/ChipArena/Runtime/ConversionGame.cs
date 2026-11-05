@@ -129,7 +129,7 @@ namespace ChipArena.UnityConversion
         {
             ControllerStep();
             SyncDevelopmentConsole();
-            if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();AccountXpTick();
+            if(content==null)return;if(dedicated){DedicatedTick();return;}if(cameraView==null)return;SyncFullscreen();NetworkTick();DeploymentBundleTick();AccountXpTick();
             if(padInputCaptured){pending=new InputFrame{CancelAbilities=true};Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             if(SplitLocalLoading){pending=new InputFrame();Cursor.lockState=CursorLockMode.None;Cursor.visible=true;return;}
             // The main menu is always open without a match (an Escape there steps back instead), so the updater's install gate holds.
@@ -393,7 +393,7 @@ namespace ChipArena.UnityConversion
             // The killcam is a broadcast frame of the past: the live HUD steps aside while it plays (killcam.css).
             if(arena!=null&&!menu&&previewArena==null&&ReplayActive){ReplayHud(width,height);return;}
             // The chip art's layers warm on a worker once a match is on screen (NativeChipArt.Warm), ready before the first draft.
-            if(arena!=null&&Event.current.type==EventType.Repaint)NativeChipArt.Warm();
+            if(arena!=null&&Event.current.type==EventType.Repaint){NativeChipArt.Warm();NativeIcons.WarmBombGlyphs();}
             // Chip selection is a full screen: the PvP draft, and the Siren personal pick (main HUD hidden while it is open).
             if(arena!=null&&!menu&&previewArena==null&&match.Phase==NativePhase.Draft){DraftScreen();return;}
             if(previewArena==null&&PvePickScreen){PveChipScreen();return;}

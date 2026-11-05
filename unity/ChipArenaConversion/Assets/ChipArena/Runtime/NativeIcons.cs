@@ -57,9 +57,49 @@ namespace ChipArena.UnityConversion
         // `maxPx` caps the raster size (soft art drawn large, such as the chip card's flame row, rasterises once at a lower size).
         public static void DrawMarkup(Rect r,string key,string svg,float box,Color c,int maxPx=512)
         {
-            if(c.a<=0||Event.current.type!=EventType.Repaint)return;int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,Mathf.Clamp(maxPx,8,512));var k=(key,true,px);
+            if(c.a<=0||Event.current.type!=EventType.Repaint)return;
+            int face=Array.IndexOf(bombFaceKeys,key);string bombId=face>=0?NativeBombChips.Ids[face]:key;
+            if(NativeBombChips.Index(bombId)>=0){DrawBomb(r,bombId,c,maxPx);return;}
+            int px=Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(r.width,r.height)*NativeUi.S),8,Mathf.Clamp(maxPx,8,512));var k=(key,true,px);
             if(!textures.TryGetValue(k,out var t)){if(textures.Count>256)Clear();t=Texture(NativeIconRaster.Raster(Shapes("svg:"+key,svg,NativeIconRaster.Mode.Markup),px,box),px);textures[k]=t;}
             NativeUi.Image(r,t,c);
+        }
+        // Bomb glyphs are filled vector scenes. Never parse/raster them in OnGUI. A bounded, shared
+        // size ladder prevents every animated/resized pixel size (and face vs core) from rebaking the same art.
+        private static readonly string[] bombFaceKeys=Array.ConvertAll(NativeBombChips.Ids,id=>"bomb-face:"+id);
+        private static readonly Dictionary<(string,int),Texture2D> bombTextures=new Dictionary<(string,int),Texture2D>();
+        private static readonly Queue<(string,int)> bombQueue=new Queue<(string,int)>();
+        private static readonly HashSet<(string,int)> bombAsked=new HashSet<(string,int)>();
+        private static System.Threading.Tasks.Task<float[]> bombJob;private static (string id,int px) bombActive;
+        private static int bombFrame=-1;private static bool bombWarmed;
+        public static void WarmBombGlyphs()
+        {
+            if(!bombWarmed){bombWarmed=true;foreach(string id in NativeBombChips.Ids)AskBomb(id,64);}
+            PumpBomb();
+        }
+        private static void AskBomb(string id,int px){if(bombAsked.Add((id,px)))bombQueue.Enqueue((id,px));}
+        private static void PumpBomb()
+        {
+            if(bombFrame==Time.frameCount)return;bombFrame=Time.frameCount;
+            if(bombJob!=null)
+            {
+                if(!bombJob.IsCompleted)return;
+                if(bombJob.IsFaulted)Debug.LogWarning("Bomb chip glyph failed: "+bombJob.Exception.GetBaseException().Message);
+                else bombTextures[bombActive]=Texture(bombJob.Result,bombActive.px);
+                bombJob=null;
+            }
+            if(bombQueue.Count==0)return;bombActive=bombQueue.Dequeue();var key=bombActive;
+            string svg=NativeBombChips.Glyph(key.id);float box=NativeBombChips.GlyphBox;
+            bombJob=System.Threading.Tasks.Task.Run(()=>NativeIconRaster.Raster(NativeIconRaster.Parse(svg,1,NativeIconRaster.Mode.Markup),key.px,box));
+        }
+        private static void DrawBomb(Rect r,string id,Color color,int maxPx)
+        {
+            int px=NativeIconRaster.CachePixels(Mathf.Min(maxPx,Mathf.Max(r.width,r.height)*NativeUi.S));
+            AskBomb(id,64);AskBomb(id,px);PumpBomb();
+            if(bombTextures.TryGetValue((id,px),out var texture)){NativeUi.Image(r,texture,color);return;}
+            // A ready smaller image keeps the glyph visible while its sharper version is prepared.
+            for(int size=px/2;size>=32;size/=2)if(bombTextures.TryGetValue((id,size),out texture)){NativeUi.Image(r,texture,color);return;}
+            for(int size=px*2;size<=512;size*=2)if(bombTextures.TryGetValue((id,size),out texture)){NativeUi.Image(r,texture,color);return;}
         }
         public static void Clear(){foreach(var t in textures.Values)if(t!=null)UnityEngine.Object.Destroy(t);textures.Clear();}
         private static List<NativeIconRaster.Shape> Shapes(string id,string svg,NativeIconRaster.Mode mode){if(!parsed.TryGetValue(id,out var list))parsed[id]=list=NativeIconRaster.Parse(svg,mode==NativeIconRaster.Mode.Lucide?strokeWidth:1,mode);return list;}

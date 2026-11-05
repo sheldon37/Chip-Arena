@@ -203,8 +203,8 @@ internal static class DeploySparkChecks
         Check(tile.Length==px*px*4&&tile[3]<.01f&&tile[((px/2)*px+px/2)*4+3]>.85f&&tile[((px/2)*px+px/2+px/4)*4+3]<.5f,"the spark is a hot core in a soft halo");
         var scene=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeployScene.cs"));
         Check(scene.Contains("textures[NativeDeployStage.TexSpark]=Texture(NativeDeployArt.SparkTile()"),"the scene uploads the spark");
-        // the dials' thirty cards: each tile rasterised once in parallel and stacked per strip; a strip not ready draws dark, not white
-        Check(scene.Contains("Task.WhenAll(tiles).ContinueWith(all=>NativeDeployArt.Stack(all.Result)")&&scene.Contains("tileJobs.TryGetValue(key,out var job)")&&!scene.Contains("for(int i=0;i<ids.Length;i++)tiles.Add(NativeDeployArt.Tile("),"each card tile rasterised once, in parallel");
+        // the dials' thirty cards: each tile rasterised once on a worker and stacked per strip; a strip not ready draws dark, not white
+        Check(scene.Contains("Task.WhenAll(tiles).ContinueWith(all=>NativeDeployArt.Stack(all.Result)")&&scene.Contains("tileJobs.TryGetValue(key,out var job)")&&!scene.Contains("for(int i=0;i<ids.Length;i++)tiles.Add(NativeDeployArt.Tile("),"each card tile rasterised once, off frame");
         Check(scene.Contains("textures[it.Texture]??(it.Texture>=NativeDeployStage.TexStrip?blank:white)"),"a strip still rasterising draws a dark blank");
         var meta=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Core/NativeDeploySparks.cs.meta"));Check(meta.Contains("guid: ")&&!meta.Contains(" \n"),"the sparks' meta");
     }

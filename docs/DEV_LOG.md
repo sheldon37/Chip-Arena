@@ -13,6 +13,20 @@
 - **Known:** the pack's FBX is not on this PC, so stage 1 is read from the exporter, not measured, and unexported takes, including any turn clips and a closer speed match, could not be tried. chase-2's capture holds the head about 50 degrees above the horizon, kept as captured. A running reversal at full speed still kicks up behind the body for about .7 s. Voxel tiers keep their old stride. The runner's take awaits the owner's pick from A to D.
 - **Next:** owner review. Then merge to shared and the builder.
 
+## 2026-11-05 — Astra: slot-roll freeze follow-up
+
+- Branch `codex/slot-roll-freeze`, shared base `99a882bd` / PR #333. Owner reports the station freezes until results appear. Previous fix was still BUILDING at inspection; installed-client version not established, so this is not a confirmed regression from #333.
+- Found live input still using the three-entry DEV preview catalog. A Backrooms/Poolrooms result invalidates all six strips; the renderer had discarded raster caches and could upload all six textures in one frame. Live input now includes all five eligible destinations before rolling. Unchanged strips are retained, tiles cached for the scene lifetime, cold raster jobs serialized, and uploads limited to one per frame. No artwork, animation timing, outcome, price or authority changes.
+- Verification: Core build and deployment performance (111 checks, including 100 rolls without any reel rebuild), presentation (440902), models (3527) and sparks (12615) pass. Unity semantic assembly compilation and source package validation results recorded in PR. Windows freeze reproduction, frame-time capture and actual two-client rendering remain unverified. Existing glyph/world worker fix retained. Finite raster cache trades roughly 36 MiB retained per scene for avoiding repeated allocations/rasterization.
+- Delivery/build receipts follow in task PR; existing test Update channel only.
+
+## 2026-11-05 — Astra: Bombadier chip and destination-roll stalls
+
+- Branch `codex/chip-roll-stalls`, base shared `5801c523` (integrates shared documentation through `9d31eeec`). Bomb glyph parsing/rasterization no longer runs in OnGUI: warm on one worker, reuse five bounded size buckets across icon/card faces, and upload at most one texture per frame. Artwork and gameplay unchanged.
+- Destination rolls now queue pure managed world generation off the main thread. Resources are captured and results installed on the main thread. One worker coalesces rerolls; leaving invalidates pending results. Deploy waits for the current result; guests retain the newest run packet until their identical bundle is ready, without blocking network ticks.
+- Measured managed CPU work on this runner: ten cold 256px glyphs 815 ms; sample destination selection 9 ms, bundle generation 606 ms. These are CPU microbenchmarks, not Windows frame-time measurements.
+- Focused regression gate covers non-blocking work, stale rerolls/reset/faults, bounded glyph sizes, source immutability and exact generated identity. Core build, focused checks and Unity semantic compilation pass; full suite and delivery receipts follow in the PR. Windows rendering, actual FPS improvement and two-client play acceptance remain pending.
+
 ## 2026-11-04 — Claude: gun tracers, landings and chip visuals on the projectile rework
 
 - **Owner request:** fast, sharp, readable tracers with a distinct look per weapon, no slow energy orbs; rifle near-instant with a clean scope; visible Fan-Hammer and Overdrive; visible arrows and supernatural arcane bolts; readable ricochet, split, homing, explosive, speed and gravity chips; no gameplay change; hold frame rate in the worst case.

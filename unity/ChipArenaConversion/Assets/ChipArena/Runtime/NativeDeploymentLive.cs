@@ -6,6 +6,9 @@ namespace ChipArena.UnityConversion
     public sealed partial class ConversionGame
     {
         // Ids returns a defensive copy; keep one immutable catalog for the station cache.
+        private static readonly ExpeditionInstanceTheme[] LiveDeployInstances={
+            new ExpeditionInstanceTheme{id="exp-ward-zero",theme="quarantine"},new ExpeditionInstanceTheme{id="exp-transit",theme="rail"},new ExpeditionInstanceTheme{id="exp-foundry",theme="industrial"},
+            new ExpeditionInstanceTheme{id=NativeBackroomsGenerator.AreaId,theme="backrooms"},new ExpeditionInstanceTheme{id=NativePoolroomsGenerator.AreaId,theme="poolrooms"}};
         private static readonly string[] LiveDeployMutators=NativeExpeditionMutators.Ids;
         private readonly NativeDeployClock liveDeployClock=new NativeDeployClock();
         private readonly NativeDeployConsole.Party liveDeployParty=new NativeDeployConsole.Party();
@@ -30,7 +33,7 @@ namespace ChipArena.UnityConversion
             }
             viewModelCamera.enabled=false;
             var input=new DeployInput{State=state,SinceInstanceRoll=liveDeployClock.SinceInstanceRoll(now),SinceMutatorRoll=liveDeployClock.SinceMutatorRoll(now),SinceDeploy=liveDeployClock.SinceDeploy(now),Time=now,
-                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=DeployPreviewInstances,Mutators=LiveDeployMutators};
+                Host=server==null&&!PromotionBusy,PartyReady=server==null&&GuestsReady,Reduced=prefs.reducedEffects,Seats=liveDeployParty.Count,Ready=liveDeployParty.Ready,Instances=LiveDeployInstances,Mutators=LiveDeployMutators};
             presentation.RenderDeployStation(cameraView,input,liveDeployPilots,Time.unscaledDeltaTime,prefs.reducedEffects,nativeAudio);
             return true;
         }
