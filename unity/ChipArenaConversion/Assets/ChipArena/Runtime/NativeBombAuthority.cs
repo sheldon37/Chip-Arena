@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
         private BombFlight AddBomb(NativePilot p,string kind,Vector3 pos,Vector3 velocity,float at,float fuse)
         {
             if(p.BombFlights.Count>=NativeBombs.MaxBombs)return null;
-            var flight=new BombFlight{Expires=at+20,Record=new NativeBomb{Id=nextBullet++,Kind=kind,Pos=Vec(pos),Vel=Vec(velocity),At=at,ArmAt=at+(kind==NativeBombs.Mine?.5f:0),BlowAt=fuse<0?-100:at+fuse,Normal=new V3(0,1,0)}};p.BombFlights.Add(flight);return flight;
+            var flight=new BombFlight{Expires=at+20,Record=new NativeBomb{Id=nextBullet++,Kind=kind,Pos=Vec(pos),Vel=Vec(velocity),At=at,SampleAt=at,ArmAt=at+(kind==NativeBombs.Mine?.5f:0),BlowAt=fuse<0?-100:at+fuse,Normal=new V3(0,1,0)}};p.BombFlights.Add(flight);return flight;
         }
         private void BombRelease(NativePilot p)
         {
@@ -137,6 +137,7 @@ namespace ChipArena.UnityConversion
                         }
                         else {r.Pos=Vec(from+delta);r.Vel=Vec(vel);}
                     }
+                    r.SampleAt=Time;
                     if(r.Kind==NativeBombs.Mine&&b.Landed&&Time>=r.ArmAt&&BombTargets(p).Any(t=>Vector3.Distance(t.at,Vec(r.Pos))<=NativeBombs.MineReach))r.BlowAt=Time;
                     if(r.BlowAt>-50&&Time>=r.BlowAt)ExplodeBomb(p,b);
                 }

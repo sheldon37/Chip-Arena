@@ -10,11 +10,14 @@ namespace ChipArena.UnityConversion
         public const int CapacityLimit=512,PerTickEffects=32;
         private float tickTime=-1;private int effects;
         private static bool Transient(EventKind kind)=>kind==EventKind.Hit||kind==EventKind.Headshot||kind==EventKind.Impact||kind==EventKind.Shot||kind==EventKind.BurnTick||kind==EventKind.PoisonTick||kind==EventKind.Arc||kind==EventKind.Heal;
+        // Projectile correlation/contact records bypass the decorative per-tick quota.
+        private static bool ProjectileContact(ArenaEvent e)=>e.Projectile>0&&(e.Kind==EventKind.Shot||e.Kind==EventKind.Hit||e.Kind==EventKind.Headshot||e.Kind==EventKind.Impact||e.Kind==EventKind.Ricochet||e.Kind==EventKind.Split);
+        private static bool Disposable(ArenaEvent e)=>Transient(e.Kind)&&!ProjectileContact(e);
         public new void Add(ArenaEvent value)
         {
             if(value.Time!=tickTime){tickTime=value.Time;effects=0;}
-            if(Transient(value.Kind)&&++effects>PerTickEffects)return;
-            if(Count==CapacityLimit){int at=FindIndex(e=>Transient(e.Kind));RemoveAt(at<0?0:at);}
+            if(Disposable(value)&&++effects>PerTickEffects)return;
+            if(Count==CapacityLimit){int at=FindIndex(Disposable);if(at<0&&Disposable(value))return;RemoveAt(at<0?0:at);}
             base.Add(value);
         }
         public new void AddRange(IEnumerable<ArenaEvent> values){foreach(var value in values)Add(value);}

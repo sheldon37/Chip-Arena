@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     // Optional native-frame data, independent of impact VFX and damage events. A piercing or reflected shot has no end
     // until authority actually removes it. Old hosts omit this array; old guests can ignore it.
-    [Serializable] public struct NativeShotEnd {public int Id;public float At;public V3 Position;}
+    [Serializable] public struct NativeShotEnd {public int Id,Owner;public float At;public V3 Position;}
 
     public sealed class NativeShotEnds
     {
@@ -16,8 +16,8 @@ namespace ChipArena.UnityConversion
         public void Clear()=>ends.Clear();
         private void Prune(float now)
         {int n=0;while(n<ends.Count&&now-ends[n].At>Keep)n++;if(n>0)ends.RemoveRange(0,n);}
-        public void Record(int id,float at,V3 position)
-        {Prune(at);if(ends.Count==Max)ends.RemoveAt(0);ends.Add(new NativeShotEnd{Id=id,At=at,Position=position});}
+        public void Record(int id,float at,V3 position,int owner=0)
+        {Prune(at);if(ends.Count==Max)ends.RemoveAt(0);ends.Add(new NativeShotEnd{Id=id,Owner=owner,At=at,Position=position});}
         /// <summary>A projectile's stopping point, if it is still held (the presentation's read; no allocation).</summary>
         public bool Find(int id,out NativeShotEnd end){for(int i=ends.Count-1;i>=0;i--)if(ends[i].Id==id){end=ends[i];return true;}end=default;return false;}
         public NativeShotEnd[] Snapshot(float now){Prune(now);return ends.ToArray();}
@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             foreach(var e in records)
             {
                 var p=e.Position;
-                if(e.Id<=0||!ids.Add(e.Id)||!MathUtil.Finite(e.At)||e.At<0||e.At<last||e.At>frameTime+.001
+                if(e.Owner<0||e.Id<=0||!ids.Add(e.Id)||!MathUtil.Finite(e.At)||e.At<0||e.At<last||e.At>frameTime+.001
                     ||!MathUtil.Finite(p.x)||!MathUtil.Finite(p.y)||!MathUtil.Finite(p.z)
                     ||Math.Abs(p.x)>=100000||Math.Abs(p.y)>=100000||Math.Abs(p.z)>=100000)return false;
                 last=e.At;

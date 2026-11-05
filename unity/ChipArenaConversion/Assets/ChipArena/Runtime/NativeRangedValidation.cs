@@ -24,8 +24,10 @@ namespace ChipArena.UnityConversion
             Reset("rifle");Fire(a);Check(b.Hp<100&&Bullets.Count==0,"same-call hit and no lingering body");
             float hp=b.Hp;StepBullets();Check(b.Hp==hp,"no duplicate tick damage");
             var frame=NativeFrameCodec.Clone(NetworkFrame());var trace=frame.snapshot.Events.Single(e=>e.Kind==EventKind.Hitscan);
+            Check(frame.snapshot.Events.Single(e=>e.Kind==EventKind.Shot).Projectile==trace.Projectile&&frame.projectileEnds.Single(e=>e.Id==trace.Projectile).Owner==a.Seat.id,"shot and endpoint retain authoritative shooter correlation");
             Check(trace.Projectile>0&&trace.Detail=="rifle"&&trace.Radius>0&&trace.From.z<trace.Position.z&&frame.projectileEnds.Any(e=>e.Id==trace.Projectile),"real JSON segment and endpoint for guest/late join/replay");
             Reset("rifle");wall.SetActive(true);Physics.SyncTransforms();Fire(a);Check(b.Hp==100&&Bullets.Count==0,"cover occlusion");
+            var cover=Events.Single(e=>e.Kind==EventKind.Impact);Check(cover.Projectile>0&&cover.Normal.Length>.9f&&cover.SurfaceId==null,"static collider publishes contact normal and projectile without a prop");
             Reset("rifle");b.Body.position+=Vector3.right*5;Physics.SyncTransforms();Fire(a);Check(b.Hp==100,"old target position does not hit moved target");
             Aim();Fire(a);Check(b.Hp<100,"current authority target position hits");
             Reset("rifle");b.BlockEnd=Time+1;Fire(a);Check(b.Hp==100&&Bullets.Count==1&&Bullets[0].Owner==b.Seat.id&&!Bullets[0].Instant,"block returns simulated shot");
@@ -43,8 +45,10 @@ namespace ChipArena.UnityConversion
             }
             Reset("rifle");a.Stats["extraProjectiles"]=3;Fire(a);Check(Events.Count(e=>e.Kind==EventKind.Hitscan)>=4,"instant multishot");
             Reset("rifle");a.Stats["split"]=2;Fire(a);Check(Bullets.Count==4&&Bullets.All(x=>!x.Direct&&x.EffectsUsed&&!x.Instant),"impact splits keep simulated travel and recursion guard");
+            Check(Events.Single(e=>e.Kind==EventKind.Split).Projectile==Events.Single(e=>e.Kind==EventKind.Shot).Projectile,"split identifies parent round");
             Reset("rifle");a.Stats["bounces"]=1;wall.SetActive(true);Physics.SyncTransforms();Fire(a);
             Check(b.Hp==100&&Events.Count(e=>e.Kind==EventKind.Hitscan)==2,"same-shot reflected cover segment");
+            var bounce=Events.Single(e=>e.Kind==EventKind.Ricochet);Check(bounce.Projectile==Events.Single(e=>e.Kind==EventKind.Shot).Projectile&&bounce.Normal.Length>.9f,"ricochet retains round and world normal");
             Reset("rifle");a.Stats["pierces"]=1;Fire(a);Check(b.Hp<100&&Events.Count(e=>e.Kind==EventKind.Hitscan)==2,"pierce continues without duplicate target hit");
             Reset("rifle");b.Hp=1;Fire(a);Check(b.Death!=null&&b.Death.projectile==0,"instant kill uses victim camera, never nonexistent flight");
             Reset("rifle");bool replica=Replica;try{Replica=true;Fire(a);StepBullets();Check(b.Hp==100&&Bullets.Count==0,"replica cannot deal damage");}finally{Replica=replica;}

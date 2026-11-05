@@ -1,3 +1,9 @@
+## 2026-11-04 — Astra: tracer authority data and event quota
+
+- Branch `codex/projectile-event-data`, shared base `6b3cd894` (includes Claude tracer merge `5801c523`). Adds first-round Projectile to gun Shot, current Owner to NativeShotEnd, round/normal to Ricochet, parent round to Split, and Impact for static world contacts. NativeBomb gains SampleAt, written by authority/preview and copied/validated. No combat rules, balance or presentation rendering changes.
+- Projectile-tagged Shot/Hit/Headshot/Impact/Ricochet/Split bypass the 32-effect quota and displace ordinary transient effects first at capacity. All hard limits retained. Exact ordering, packet trimming and Claude adoption contract in PROJECTILE-REWORK.md; Bomb timestamp semantics in BOMBADIER.md.
+- Added burst saturation, endpoint ownership/legacy/serialization, sample timestamp/deep-copy/rejection checks; expanded Unity native gates for real codec, static contacts, ricochet, split, and first-round identity. Validation and delivery receipts in task PR. Windows/PhysX gameplay acceptance is not established by managed/semantic checks.
+
 ## 2026-11-04 — Claude: zombies on the pack's own motion
 
 - **Owner:** "I want the original Zombie PRO animations to look as close to their intended appearance as realistically possible. If our procedural animation system is responsible for making those animations worse, I would rather simplify that system". Not to be pushed until the comparisons and regression checks were done, then prepared for review; the owner then asked for it on the test channel.

@@ -1,3 +1,5 @@
+2026-11-04 Astra (`codex/projectile-event-data`): requested tracer correlation/contact fields and Bomb SampleAt supplied; projectile-tagged notifications bypass decorative quota, with bounded eviction documented. Rules/balance unchanged; Claude presentation adoption remains. Validation/delivery in task PR.
+
 2026-11-05 Astra (`codex/slot-roll-freeze`): live destination reels now include Backrooms/Poolrooms before rolling, retain unchanged textures and cached cards, serialize cold raster jobs and upload one texture/frame. 100-roll regression causes zero reel rebuilds; runtime freeze/FPS acceptance pending. Delivery receipts in task PR.
 
 2026-11-05 Astra (`codex/chip-roll-stalls`): Bombadier glyph rasterization and destination world generation moved off the UI thread; bounded glyph caching, stale reroll handling and deferred guest/deploy application. Artwork/rules unchanged. Verification and delivery receipts in task PR/DEV_LOG; Windows frame-time acceptance pending.

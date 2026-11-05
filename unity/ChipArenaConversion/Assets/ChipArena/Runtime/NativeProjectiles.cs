@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             bool overdrive=Overdriving(p);double spread=NativeRangedRules.Spread((double?)bow?.Spread??w.spread,fan);var ads=Content.Ads(p.Seat.spec);if(!fan&&!overdrive&&p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
             p.AimShots=overdrive?0:Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(bow==null&&w.@class!="magic")p.Ready=Time+NativeRangedRules.Interval(w.interval,p.Stats["attackRate"],overdrive)*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
             int count=NativeProjectileRules.Volley(p.Stats,pong),attack=nextAttack++;float empowerment=Time<p.EmpowerUntil&&p.EmpowerShots>0?1+(float)p.Stats["qEmpower"]:1;if(empowerment>1)p.EmpowerShots--;
-            var volley=new List<NativeBullet>();
+            int firstProjectile=nextBullet;var volley=new List<NativeBullet>();
             for(int i=0;i<count&&ProjectileCount<100;i++)
             {
                 Vector3 dir=(Vec(GunRules.Direction(yaw+(bow?.Yaw??0)+NativeProjectileRules.Fan(i,count,(float)p.Stats["fanDegrees"]),pitch))+new Vector3((float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5))*(float)spread).normalized;
@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
                 if(obstruction.HasValue&&BulletImpact(shot,p,obstruction.Value))continue;Bullets.Add(shot);volley.Add(shot);if(bow!=null)Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Shot,Source=p.Seat.id,Time=Time,Position=Vec(start),Detail=bow.Detail,Draw=bow.Draw,Projectile=shot.Id});
             }
             SpawnChipShots(p,volley);LeetSpawned(p,volley);if(p.Stats["recoil"]>0)p.Knockback-=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*Math.Min(15,(float)p.Stats["recoil"]);
-            if(bow==null)Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon,fan?"fan":overdrive?"overdrive":null);
+            if(bow==null)Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon,fan?"fan":overdrive?"overdrive":null,projectile:firstProjectile);
             foreach(var shot in volley)
                 if(bow==null&&NativeProjectileRules.Instant(w,p.Stats,NeedsTravel(shot,p)))ResolveInstant(shot);
         }
@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
         private void InstantSegment(NativeBullet b,NativePilot owner,Vector3 from,Vector3 to)
         {Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Hitscan,Source=owner.Seat.id,Time=Time,From=Vec(from),Position=Vec(to),Projectile=b.Id,Detail=b.Spec,Radius=b.Radius,Color=(int)Content.Weapon(b.Spec).color});}
         private void EndBullet(NativeBullet b)
-        {if(Bullets.Remove(b)&&b.Id>0)shotEnds.Record(b.Id,Time,Vec(b.Position));}
+        {if(Bullets.Remove(b)&&b.Id>0)shotEnds.Record(b.Id,Time,Vec(b.Position),b.Owner);}
         // Let already-launched shots finish during the final replay wait. Do not invoke
         // combat handlers: impacts, chip procs, echoes and explosions cannot change the result.
         private bool CoastResultShot(ref Vector3 position,ref Vector3 velocity,float gravity,float radius,ref float life,ref float travel,NativePilot owner)
@@ -251,19 +251,19 @@ namespace ChipArena.UnityConversion
             {
                 DamageProp(prop,b.Damage*b.Demolition,b.Velocity.normalized*b.Impulse*(b.Direct&&b.Reflections==0&&Leet(owner,"yeet")?1000:1),hit.Point,owner,"bullet");
                 if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,prop,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
-                if(prop!=null||b.Detail=="bit-bolt")Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=owner.Seat.id,Time=Time,Position=Vec(hit.Point),Normal=Vec(hit.Normal),Detail=b.Detail,SurfaceId=prop?.Definition.id,Color=(int)Content.Weapon(b.Spec).color,Projectile=b.Id});
+                Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Impact,Source=owner.Seat.id,Time=Time,Position=Vec(hit.Point),Normal=Vec(hit.Normal),Detail=b.Detail,SurfaceId=prop?.Definition.id,Color=(int)Content.Weapon(b.Spec).color,Projectile=b.Id});
             }
             if(b.Detail=="plasma-byte"||b.Detail=="plasma-overflow")Cyber2Splash(owner,b,hit.Point);
             if((b.Direct||b.Reflections>0)&&!b.EffectsUsed)
             {b.EffectsUsed=true;var w=Content.Weapon(b.Spec);if(w.blast>0)ChipBlast(owner,hit.Point,b.Radius>.2f?3:(float)w.blast,b.Damage*.38f,b.Impulse,effect:b.Spec);if(b.Direct&&!b.Pong)SplitBullet(owner,b,hit.Point,target?.Collider.GetInstanceID());}
             if(b.Pong)return true;
             if((target!=null||minion!=null)&&b.Pierces>0){b.Pierces--;b.Hit.Add(hit.Collider.GetInstanceID());b.Position+=b.Velocity.normalized*.08f;return false;}
-            if(target==null&&minion==null&&b.Bounces>0&&hit.Collider.gameObject.layer==PropLayer){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
+            if(target==null&&minion==null&&b.Bounces>0&&hit.Collider.gameObject.layer==PropLayer){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage,projectile:b.Id,normal:hit.Normal);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
             return true;
         }
         private void SplitBullet(NativePilot owner,NativeBullet parent,Vector3 point,int? skip)
         {
-            if(owner.Stats["split"]<=0)return;Emit(EventKind.Split,owner,0,point,parent.Damage);int count=2+(int)owner.Stats["split"];
+            if(owner.Stats["split"]<=0)return;Emit(EventKind.Split,owner,0,point,parent.Damage,projectile:parent.Id);int count=2+(int)owner.Stats["split"];
             for(int i=0;i<count&&ProjectileCount<100;i++)
             {
                 var b=CopyBullet(parent);b.Position=point-parent.Velocity.normalized*.18f;b.Velocity=Vec(GunRules.Direction(owner.Input.Yaw+(i-(count-1)/2f)*.32f*Mathf.Rad2Deg,owner.Input.Pitch))*parent.Velocity.magnitude*.75f;

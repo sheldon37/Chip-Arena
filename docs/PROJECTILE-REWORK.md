@@ -100,7 +100,7 @@ attribution uses zero.
 
 ## Presentation (Claude, `claude/ranged-polish`)
 
-Done: Hitscan segments drawn by event id from the drawn muzzle, on authority time; stale ones skipped; rounds that begin and end between frames reconstructed from `NativeShotEnds`. Core `NativeTracers.cs`, Runtime `NativeTracerPresentation.cs`; the chips' parts and the box-built shots in Core `NativeChipLooks.cs`. Still asked of the rules: `Projectile` on gun Shot events or `Owner` on `NativeShotEnd`; `Projectile` and `Normal` on Ricochet; parent `Projectile` on Split; an Impact with `Normal` for world-collider hits; a sample time on `NativeBomb`. See DEV_LOG.
+Done: Hitscan segments drawn by event id from the drawn muzzle, on authority time; stale ones skipped; rounds that begin and end between frames reconstructed from `NativeShotEnds`. Core `NativeTracers.cs`, Runtime `NativeTracerPresentation.cs`; the chips' parts and the box-built shots in Core `NativeChipLooks.cs`. The requested authority data is now supplied below; presentation adoption remains with Claude. See DEV_LOG.
 
 ## Validation and release
 
@@ -119,3 +119,15 @@ Local verification: 284 focused rules checks; full managed suite exit 0, 954 PAS
 pinned Unity semantic compilation and 3,115-file source validation pass. Owner approved public upload and test update. Current shared `cdae8447` is integrated; final
 integration checks and source/builder/publication receipts follow in the task PR. Source
 upload alone is not a native build or test-channel publication receipt.
+
+### Authority event data (Astra, 2026-11-04)
+
+- Non-bow `Fire` Shot events identify the first allocated round with `Projectile`, including muzzle obstruction. The volley still emits one Shot event.
+- `NativeShotEnd.Owner` identifies the round's current owner when it ends, including after reflection. Zero is a legacy/unknown owner. Each multiplied round has its own endpoint; do not infer ownership from adjacent shooters or arrival times when this field is present.
+- `BulletImpact` Ricochet carries `Projectile` and the world-space contact `Normal`; Split carries the parent `Projectile`.
+- Static collider impacts now publish the same Impact notification as props, with `Projectile`, `Normal`, `Source`, `Time` and position; `SurfaceId` remains null without a prop. Impact is a contact, not necessarily an endpoint (piercing/bouncing rounds can continue). These changes do not move the existing collision point or alter damage, knockback, flight or chip procs.
+- `NativeBomb.SampleAt` is described in BOMBADIER.md. Rendering logic is unchanged in this task; replace the presentation's guesses/fallback raycasts using these fields separately.
+
+Event retention: before this change the first 32 transient notifications per tick were retained in insertion order; later Shot/Hit/Headshot/Impact competed with BurnTick/PoisonTick/Arc/Heal and were dropped without a kind-specific priority. Projectile-tagged (`Projectile > 0`) Shot, Hit, Headshot, Impact, Ricochet and Split now bypass that per-tick quota. Untagged transient notifications still use it. At the 512-entry buffer limit, the oldest ordinary transient is evicted first; an incoming ordinary transient cannot evict a buffer containing only protected/nontransient entries. If a new protected/nontransient event arrives and no ordinary transient remains, the oldest retained entry is evicted. Damage is never affected.
+
+These notifications are not a reliable event stream: `NativeFrameBudget` can still trim the oldest half of events repeatedly to satisfy 1 MiB JSON / 256 KiB packet limits. Endpoints are a separate `NativeShotEnds` history (up to 1024 entries, one second), unaffected by the 32-effect quota and event trimming. Use them for authoritative stops. None of the limits are raised by this change.

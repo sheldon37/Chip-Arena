@@ -7,7 +7,8 @@ namespace ChipArena.UnityConversion
     /// <summary>One live charge (docs/BOMBADIER.md).</summary>
     [Serializable] public sealed class NativeBomb
     {
-        public int Id,Stuck;public string Kind;public V3 Pos,Vel,Normal;public float At,ArmAt,BlowAt=-100;
+        public int Id,Stuck;public string Kind;public V3 Pos,Vel,Normal;public float At,SampleAt,ArmAt,BlowAt=-100;
+        // SampleAt is the arena clock for Pos/Vel (At remains the spawn time); zero is valid for legacy frames.
         public bool Armed(float time)=>time>=ArmAt;
     }
     /// <summary>One blast of the last moments. `Link` is the chain link it made (0: none); `FromPos` the blast that handed on to it.</summary>
@@ -41,7 +42,7 @@ namespace ChipArena.UnityConversion
         public NativeBombKit ViewCopy()
         {
             var c=(NativeBombKit)MemberwiseClone();
-            if(Bombs!=null){c.Bombs=new NativeBomb[Bombs.Length];for(int i=0;i<Bombs.Length;i++){var b=Bombs[i];c.Bombs[i]=b==null?null:new NativeBomb{Id=b.Id,Stuck=b.Stuck,Kind=b.Kind,Pos=b.Pos,Vel=b.Vel,Normal=b.Normal,At=b.At,ArmAt=b.ArmAt,BlowAt=b.BlowAt};}}
+            if(Bombs!=null){c.Bombs=new NativeBomb[Bombs.Length];for(int i=0;i<Bombs.Length;i++){var b=Bombs[i];c.Bombs[i]=b==null?null:new NativeBomb{Id=b.Id,Stuck=b.Stuck,Kind=b.Kind,Pos=b.Pos,Vel=b.Vel,Normal=b.Normal,At=b.At,SampleAt=b.SampleAt,ArmAt=b.ArmAt,BlowAt=b.BlowAt};}}
             if(Blasts!=null){c.Blasts=new NativeBlast[Blasts.Length];for(int i=0;i<Blasts.Length;i++){var b=Blasts[i];c.Blasts[i]=b==null?null:new NativeBlast{Id=b.Id,Link=b.Link,Kind=b.Kind,At=b.At,Radius=b.Radius,Pos=b.Pos,FromPos=b.FromPos,Handed=b.Handed};}}
             if(Scorched!=null){c.Scorched=new NativeBombScorch[Scorched.Length];for(int i=0;i<Scorched.Length;i++){var b=Scorched[i];c.Scorched[i]=b==null?null:new NativeBombScorch{Id=b.Id,At=b.At,Until=b.Until};}}
             c.Ready=Ready==null?null:(float[])Ready.Clone();
@@ -53,7 +54,7 @@ namespace ChipArena.UnityConversion
         {
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;
             if(MineCharges<0||MineCharges>NativeBombChipRules.MaxMineCharges||!F(Meter)||Meter<0||Meter>1||Chain<0||Chain>64||!F(ChainUntil)||!F(CastAt)||!F(CastRelease)||!F(CastUntil))return false;
-            if(Bombs!=null){if(Bombs.Length>NativeBombs.MaxBombs)return false;foreach(var b in Bombs)if(b==null||!NativeBombs.IsKind(b.Kind)||!V(b.Pos)||!V(b.Vel)||!V(b.Normal)||!F(b.At)||!F(b.ArmAt)||!F(b.BlowAt))return false;}
+            if(Bombs!=null){if(Bombs.Length>NativeBombs.MaxBombs)return false;foreach(var b in Bombs)if(b==null||!NativeBombs.IsKind(b.Kind)||!V(b.Pos)||!V(b.Vel)||!V(b.Normal)||!F(b.At)||!F(b.SampleAt)||!F(b.ArmAt)||!F(b.BlowAt))return false;}
             if(Blasts!=null){if(Blasts.Length>NativeBombs.MaxBlasts)return false;foreach(var b in Blasts)if(b==null||!V(b.Pos)||!V(b.FromPos)||!F(b.At)||!F(b.Radius)||b.Radius<0||b.Radius>64||b.Link<0||b.Link>64||b.Kind!=null&&b.Kind.Length>24)return false;}
             if(Line!=null&&(!F(Line.At)||!F(Line.Speed)||!V(Line.From)||!V(Line.To)))return false;
             if(Finale!=null){if(!F(Finale.At)||!F(Finale.Lock)||!F(Finale.Strike)||!F(Finale.Until)||!V(Finale.Box)||!V(Finale.Dir))return false;if(Finale.Circles!=null){if(Finale.Circles.Length>NativeBombs.MaxCircles)return false;foreach(var c in Finale.Circles)if(c==null||!V(c.Pos))return false;}}
@@ -188,7 +189,7 @@ namespace ChipArena.UnityConversion
             void Thrown(int id,string kind,float at,float land,float blow,Vector3 from,Vector3 to,float arc,Vector3 normal)
             {
                 if(t<at||t>=blow)return;float u=Math.Min(1,(t-at)/Math.Max(.05f,land-at));var p=Lob(from,to,u,arc);var v=t<land?(Lob(from,to,Math.Min(1,u+.01f),arc)-p)/Math.Max(.0005f,.01f*(land-at)):Vector3.Zero;
-                bombs.Add(new NativeBomb{Id=id,Kind=kind,At=t0+at,ArmAt=t0+land+(kind==NativeBombs.Mine?NativeBombs.MineArm:0),BlowAt=t0+blow,Pos=V(p),Vel=V(v),Normal=V(normal)});
+                bombs.Add(new NativeBomb{Id=id,Kind=kind,At=t0+at,SampleAt=time,ArmAt=t0+land+(kind==NativeBombs.Mine?NativeBombs.MineArm:0),BlowAt=t0+blow,Pos=V(p),Vel=V(v),Normal=V(normal)});
             }
             // Pop bombs off the hip.
             var pop0=feet+f*7+r*-2.2f;var pop1=feet+f*8.5f+r*1.4f;
