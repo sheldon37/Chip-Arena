@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
         /// then the eyebrow, the title rising letter by letter and the line from the name time, gone just before the fight.</summary>
         private void BackroomsBossCard(BossIntroCard c,float rawAge,bool reduced)
         {
-            float duration=NativeBackroomsBossIntro.Hold,nameAt=NativeBackroomsBossIntro.NameAt,age=Mathf.Min(rawAge,duration),W=U.W,H=U.H;var ink=U.Hex(c.Ink);
+            float duration=NativeBackroomsBossIntro.Hold,nameAt=NativeBackroomsBossIntro.NameTime(c),age=Mathf.Min(rawAge,duration),W=U.W,H=U.H;var ink=U.Hex(c.Ink);
             float shade=Mathf.Lerp(c.Shades,1,M.Progress(age,nameAt-.2f,.6f));U.Fade(new Rect(0,0,W,H*.2f),U.A(ink,.867f*shade));U.Fade(new Rect(0,H*.6f,W,H*.4f+1),U.A(ink,.96f*shade),false);
             float top=M.EaseOut(M.Progress(age,0,.45f)),x0=W*.06f,tw=W*.88f,y=88;
             U.Text(new Rect(x0,y,tw,15),"BOSS",12,U.A(U.Hex(c.TopLine),top),TextAnchor.UpperLeft,mono:true,tracking:.2f);
@@ -64,5 +64,15 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativeAudio
     {
         private void BackroomsBossCues(NativeArena arena,bool menu){HumBossCues(arena,menu);DeepEndBossCues(arena,menu);}
+        /// <summary>A DEV boss preview's song and where it is, on the preview's own clock, so its intro can be judged with its music: the edit and the loop the live fight plays. False with no preview, or its file not installed.</summary>
+        private bool BackroomsBossPreviewSong(out string id,out double clip,out double at)
+        {
+            id=null;clip=0;at=0;double start,shown,loop;
+            if(NativeHumBossPreview.On){id=NativeZoneMusic.Level0Boss;start=NativeHumBossPreview.Start;shown=NativeHumBossPreview.ShownClock;loop=NativeHumBossPreview.Loop;}
+            else if(NativeDeepEndBossPreview.On){id=NativeZoneMusic.PoolroomsBoss;start=NativeDeepEndBossPreview.Start;shown=NativeDeepEndBossPreview.ShownClock;loop=NativeDeepEndBossPreview.Loop;}
+            else return false;
+            if(double.IsNaN(start)||Clip(id)==null)return false;var song=NativeZoneBossSongs.Music?.Song(id);if(song==null)return false;
+            double round=Math.Floor((shown-start)/loop);clip=song.Clip(shown-start-round*loop);at=start+round*loop;return true;
+        }
     }
 }

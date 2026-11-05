@@ -1,0 +1,1177 @@
+{
+  "schema": "chip-arena.sound-requests/1",
+  "purpose": "THE HUM's and THE DEEP END's sounds for the Unity Chip Arena effects bank (owner, 2026-11-05). Contract: docs/audio/SOUND-REQUESTS.md; design: docs/EXPEDITION-BOSS-BACKROOMS.md.",
+  "file": {
+    "pattern": "<key>_<NN>.<ext>",
+    "variant": "NN = 01..count, two digits",
+    "ext": [
+      "mp3",
+      "wav"
+    ]
+  },
+  "generation": {
+    "service": "ElevenLabs Sound Effects",
+    "promptInfluence": 0.65,
+    "outputFormat": "mp3_44100_192",
+    "oneGenerationPerFile": true,
+    "promptIsComplete": true
+  },
+  "edit": {
+    "sampleRate": 44100,
+    "channels": 1,
+    "codec": "vorbis",
+    "trimSilenceDbfs": -50,
+    "fadeOutMs": 20
+  },
+  "sounds": [
+    {
+      "key": "boss.hum.hum.loop.rise",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 9.5,
+      "targetSeconds": {
+        "min": 7,
+        "max": 9.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A single fluorescent light ballast humming alone in an empty office, a steady electrical 60 hertz buzz that very slowly climbs in pitch and strain for the whole clip, thin and harsh, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.hum.silence",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -6,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "An electrical hum sagging and dying away to nothing with one soft relay clunk, ending in dead quiet, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.row.out",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "A row of old fluorescent ceiling fixtures clicking off one after another far away, with a tired downward sag in their buzz, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.hum.scratch",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": -10,
+      "fadeOutMs": 150,
+      "prompt": "Long fingernails slowly dragging across the back of wallpaper from inside a wall, close and dry, papery scraping, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.tear",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.2
+      },
+      "levelDb": -2,
+      "fadeOutMs": 400,
+      "prompt": "Thick wallpaper tearing slowly open with crumbling plaster dust, ending in one wet heavy rip, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.starter",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -14,
+      "fadeOutMs": 40,
+      "prompt": "One small fluorescent tube starter ticking, a single tiny dry electrical click, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.tube.strike",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.8
+      },
+      "levelDb": -8,
+      "fadeOutMs": 40,
+      "prompt": "A single fluorescent tube striking on, a quick flutter and one rising electrical buzz, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.head.catch",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.3
+      },
+      "levelDb": -3,
+      "fadeOutMs": 150,
+      "prompt": "Two large fluorescent tubes catching together, a heavy stuttering flicker that settles into one steady loud electrical bar of buzz, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.jaw",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.3
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "A plastic light diffuser panel splitting open, stiff plastic flexing and cracking with glass grinding against metal, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.ceiling",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.8,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.5
+      },
+      "levelDb": -1,
+      "fadeOutMs": 150,
+      "prompt": "Steel ceiling grid wrenching and bending as acoustic ceiling tiles break and fall, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.slam.on",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": 2,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "One huge deep thunk of many heavy electrical relays slamming on at once, a building-wide power surge impact, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.reach.windup",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -8,
+      "fadeOutMs": 40,
+      "prompt": "A very long heavy limb drawing back and dragging through soaked wet carpet, slow creature movement, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.reach",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.7
+      },
+      "levelDb": 0,
+      "fadeOutMs": 40,
+      "prompt": "A long whip of air followed by a wet heavy slap on carpet, a fast monstrous arm strike, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.stoop.rise",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "A huge weight pressing up against acoustic ceiling tiles, slow creaking and straining of metal grid, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.stoop",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": 2,
+      "fadeOutMs": 40,
+      "prompt": "A heavy double impact of two huge hands slamming into wet carpet, thudding low and hard, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.row.buzz",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.6,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.3
+      },
+      "levelDb": -6,
+      "fadeOutMs": 150,
+      "prompt": "A row of fluorescent lights brightening and buzzing louder and louder over one second, electrical strain building, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.row.burst",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": 2,
+      "fadeOutMs": 150,
+      "prompt": "A row of fluorescent ceiling fixtures exploding one after another in fast order, glass bursts and electrical pops, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.glass",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.2
+      },
+      "levelDb": -6,
+      "fadeOutMs": 150,
+      "prompt": "Thin safety glass fragments raining down onto carpet, soft crunchy patter, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.noclip.sink",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -5,
+      "fadeOutMs": 150,
+      "prompt": "Something very heavy pressing slowly into a plaster wall, crumbling and scratching from inside it, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.noclip.walls",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "Fast frantic scratching running along the inside of hollow drywall, moving quickly past, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.hum.noclip",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": 2,
+      "fadeOutMs": 40,
+      "prompt": "A violent torn rush of air and bursting plaster as a huge body comes through a wall at speed, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.brake",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -3,
+      "fadeOutMs": 40,
+      "prompt": "Huge hands dragging hard across wet carpet in a long heavy skid, carpet fibres ripping, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.carpet",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -5,
+      "fadeOutMs": 150,
+      "prompt": "Carpet backing tearing slowly inward from below, close thick ripping fibres and old glue, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.fall",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.6
+      },
+      "levelDb": -2,
+      "fadeOutMs": 150,
+      "prompt": "A body falling a long way through a hollow space with rushing air, then one heavy drop onto a floor, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.shift",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -5,
+      "fadeOutMs": 40,
+      "prompt": "A quick flicker of a light switch click followed by a heavy wall panel being set down somewhere in the distance, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.hum.charge",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": -3,
+      "fadeOutMs": 150,
+      "prompt": "A humming transformer loading up to a straining pitch, with stiff ribs creaking open under the electricity, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.pulse",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": 2,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "A wide ring of harsh electrical noise sweeping fast past the listener, a full-spectrum hum shockwave from one side to the other, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.hum.cut",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.6
+      },
+      "levelDb": -3,
+      "fadeOutMs": 40,
+      "space": "2d",
+      "prompt": "A heavy main breaker being thrown, every electrical hum in a building cutting off dead at once, then nothing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.strike.dark",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.7
+      },
+      "levelDb": 3,
+      "fadeOutMs": 40,
+      "prompt": "A flash of a tube, a whip of air and one heavy brutal blow from close behind in pitch darkness, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.hand.scratch",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "Fingernails scratching inside a wall right next to the ear, very close, dry and nervous, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.hand",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.7
+      },
+      "levelDb": 0,
+      "fadeOutMs": 40,
+      "prompt": "A long bony arm bursting out through wallpaper and plaster and gripping, sudden crunching rip, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.voices",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 5.0,
+      "targetSeconds": {
+        "min": 2.5,
+        "max": 4.5
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "prompt": "Many muffled indistinct human voices murmuring from behind a wall, unintelligible, almost familiar, uneasy and quiet, no clear words, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.hum.scream",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.2
+      },
+      "levelDb": 2,
+      "fadeOutMs": 400,
+      "prompt": "An electrical hum climbing higher and higher into a mechanical scream, then cutting off dead, not a human voice, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.die.row",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -3,
+      "fadeOutMs": 40,
+      "prompt": "One row of fluorescent lights dying with a heavy ballast thud and a falling electrical whine, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.rear",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.2,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": 2,
+      "fadeOutMs": 150,
+      "prompt": "Something enormous rising up through a ceiling, steel grid bending, plaster crashing and a long groan of metal, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.tile.rain",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.6
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "Acoustic ceiling tiles raining down and breaking on carpet, soft dusty crumbling thuds, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.step",
+      "category": "boss",
+      "priority": 1,
+      "count": 4,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -5,
+      "fadeOutMs": 40,
+      "prompt": "One very heavy wet footfall on soaked carpet, low and squelching, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.knuckle",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -7,
+      "fadeOutMs": 40,
+      "prompt": "A long bony claw planting on wet carpet with a small metal rail rattle, single heavy tap, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.scratch.idle",
+      "category": "boss",
+      "priority": 2,
+      "count": 2,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.9
+      },
+      "levelDb": -14,
+      "fadeOutMs": 40,
+      "prompt": "One fingernail drumming a few times on a wooden baseboard, small and idle, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.hurt",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.6
+      },
+      "levelDb": -3,
+      "fadeOutMs": 40,
+      "prompt": "A wet thud on a large body followed by a fluorescent tube stuttering and buzzing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.tube.break",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "generateSeconds": 0.9,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.7
+      },
+      "levelDb": 0,
+      "fadeOutMs": 40,
+      "prompt": "A fluorescent tube bursting with a sharp glass pop and its bare wires spitting electrical sparks, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.head.break",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": 1,
+      "fadeOutMs": 40,
+      "prompt": "A large plastic and glass light panel cracking hard, one deep structural snap with sparks, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.choke",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.8,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.5
+      },
+      "levelDb": -2,
+      "fadeOutMs": 150,
+      "prompt": "An electrical ballast choking, its buzz collapsing in pitch with a heavy stumbling thud and rattling metal, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.clip",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "Wallpaper stretching tight around something stuck in a wall, with a stuttering glitching electrical buzz, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.death",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.5,
+        "max": 3.6
+      },
+      "levelDb": 0,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A huge electrical hum falling slowly in pitch over several seconds, sagging lower and lower until it stops completely, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.hum.tube.pop",
+      "category": "boss",
+      "priority": 2,
+      "count": 3,
+      "generateSeconds": 0.7,
+      "targetSeconds": {
+        "min": 0.2,
+        "max": 0.5
+      },
+      "levelDb": -6,
+      "fadeOutMs": 40,
+      "prompt": "A single fluorescent tube popping, a small sharp burst of thin glass, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.fold",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.2,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": 0,
+      "fadeOutMs": 150,
+      "prompt": "A huge body collapsing, soaked carpet folding under its weight and long metal rails bending and groaning, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.hum.lamp.back",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.4,
+        "max": 0.9
+      },
+      "levelDb": -12,
+      "fadeOutMs": 40,
+      "prompt": "One ordinary fluorescent ceiling light flickering back on, quiet and calm, a soft tick and a thin steady buzz, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.drip",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.8
+      },
+      "levelDb": -12,
+      "fadeOutMs": 40,
+      "space": "2d",
+      "prompt": "One single water drip falling far away in a huge empty tiled room, small and clear, with its long distant echo, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.ripple",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.2
+      },
+      "levelDb": -18,
+      "fadeOutMs": 150,
+      "prompt": "A single barely audible ripple spreading on perfectly still water, very faint and soft, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.lamp.out",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.7
+      },
+      "levelDb": -10,
+      "fadeOutMs": 40,
+      "prompt": "A pool light under water going out, one soft muffled thunk heard from under the surface, far off, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.pressure",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.2
+      },
+      "levelDb": -6,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A low deep underwater pressure swelling slowly, a heavy muffled rumble rising from far below, felt more than heard, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.break",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.6
+      },
+      "levelDb": 3,
+      "fadeOutMs": 400,
+      "prompt": "Something enormous breaking the surface of deep water, a huge slow rush of water surging upward, heavy and massive, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.pour",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.0,
+        "max": 3.6
+      },
+      "levelDb": -4,
+      "fadeOutMs": 400,
+      "prompt": "Heavy sheets of water falling back off a huge shape onto a pool, a long patter on tile and water that gradually thins out, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.iris",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -3,
+      "fadeOutMs": 150,
+      "prompt": "Heavy steel grates sliding open slowly, wet metal on wet metal, oiled and unhurried, a large mechanical iris, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.roar",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.2
+      },
+      "levelDb": 3,
+      "fadeOutMs": 400,
+      "prompt": "The sound of a giant pool drain opened all the way, a deep hollow sucking roar of rushing water, not an animal and not a voice, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.wave",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.6
+      },
+      "levelDb": 0,
+      "fadeOutMs": 150,
+      "prompt": "A big wave rolling fast directly at the listener and crashing over them, rushing water, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.quiet",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.2,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "levelDb": -14,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "A soft dip in underwater pressure, ears filling, the sound of a room going muffled, very gentle, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.bubbles",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "A ring of large bubbles rising from deep water and breaking on the surface, thick and gurgling, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.breach",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.5,
+        "max": 1.2
+      },
+      "levelDb": 3,
+      "fadeOutMs": 150,
+      "prompt": "A violent burst of water exploding upward with a heavy chrome metal clang, a huge mouth through the surface, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.jet.charge",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.2
+      },
+      "levelDb": -3,
+      "fadeOutMs": 150,
+      "prompt": "Water being drawn into a huge pipe with rising pressure, a suction whine climbing higher and higher, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.jet",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.6
+      },
+      "levelDb": 0,
+      "fadeOutMs": 400,
+      "prompt": "A hard hissing high pressure column of water blasting steadily, with heavy splashing where it lands, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.shadow",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 1.8,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.5
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "prompt": "A long low groan of water moving under the surface as something huge rises above it, deep and slow, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.flop",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.8,
+      "targetSeconds": {
+        "min": 0.7,
+        "max": 1.4
+      },
+      "levelDb": 5,
+      "fadeOutMs": 150,
+      "prompt": "The biggest possible body slam on water, an enormous flat impact and a wall of spray going up, the heaviest splash imaginable, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.thrash",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.0,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.8
+      },
+      "levelDb": 0,
+      "fadeOutMs": 40,
+      "prompt": "A huge tail whipping round through air and slapping water, ceramic tile rattling on a fast heavy swing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.drain.turn",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": -10,
+      "fadeOutMs": 150,
+      "prompt": "Water starting to turn slowly in a giant whirlpool, almost silent except for a thin rising whine, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.drain.roar",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.5,
+        "max": 3.6
+      },
+      "levelDb": 2,
+      "fadeOutMs": 400,
+      "prompt": "A huge volume of water pouring down a giant drain, a sustained hollow rumbling roar, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.lull",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.2
+      },
+      "levelDb": -10,
+      "fadeOutMs": 400,
+      "prompt": "Everything softening into a warm low hum, gentle and sleepy, sound becoming muffled as if sinking under warm water, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.hands",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": -4,
+      "fadeOutMs": 150,
+      "prompt": "Hands made of water closing around someone and pulling them under, a wet grabbing surge with gurgling, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.seiche.draw",
+      "category": "boss",
+      "priority": 2,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": -8,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "Water drawing back across a pool floor, a long sucking retreat of shallow water from a far wall, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.seiche",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.6
+      },
+      "levelDb": 1,
+      "fadeOutMs": 400,
+      "prompt": "A long wave front crossing a large pool with its crest breaking continuously, a rolling rushing wall of water, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.seiche.wall",
+      "category": "boss",
+      "priority": 1,
+      "count": 2,
+      "generateSeconds": 1.5,
+      "targetSeconds": {
+        "min": 0.6,
+        "max": 1.2
+      },
+      "levelDb": 2,
+      "fadeOutMs": 150,
+      "prompt": "A heavy wave slamming into a tiled wall and turning back, a deep boom and a sheet of spray, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.whistle",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.0,
+      "targetSeconds": {
+        "min": 1.0,
+        "max": 1.8
+      },
+      "levelDb": -2,
+      "fadeOutMs": 150,
+      "space": "2d",
+      "prompt": "A lifeguard's pea whistle blown once from very far away in a large tiled pool hall, sharp, echoing once and fading, isolated, no music, no voices"
+    },
+    {
+      "key": "boss.deepend.lap",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.5,
+      "targetSeconds": {
+        "min": 2.0,
+        "max": 3.2
+      },
+      "levelDb": 0,
+      "fadeOutMs": 400,
+      "prompt": "A huge tiled body rushing past through water at speed, a deep ceramic rumble with a big wake hissing behind it, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.lamp.break",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "generateSeconds": 0.9,
+      "targetSeconds": {
+        "min": 0.3,
+        "max": 0.7
+      },
+      "levelDb": 1,
+      "fadeOutMs": 40,
+      "prompt": "A thick glass underwater lamp shattering with a sharp pop of pressure and a burst of bubbles, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.stagger",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 1.8,
+      "targetSeconds": {
+        "min": 0.8,
+        "max": 1.5
+      },
+      "levelDb": -1,
+      "fadeOutMs": 150,
+      "prompt": "A very long heavy body shuddering, ceramic tiles rattling along its whole length and water sloshing, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.tide",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 4.0,
+      "targetSeconds": {
+        "min": 2.5,
+        "max": 3.6
+      },
+      "levelDb": -6,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "Water welling up stone steps and spreading out across a wide tiled floor, a slow steady rising flood, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.lights.die",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 2.5,
+      "targetSeconds": {
+        "min": 1.2,
+        "max": 2.2
+      },
+      "levelDb": -8,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "Large ceiling lights going out one after another, each with one small electrical tick, moving outward through a big hall, isolated, no music, no voices, no background noise"
+    },
+    {
+      "key": "boss.deepend.hurt",
+      "category": "boss",
+      "priority": 1,
+      "count": 3,
+      "generateSeconds": 0.8,
+      "targetSeconds": {
+        "min": 0.25,
+        "max": 0.6
+      },
+      "levelDb": -3,
+      "fadeOutMs": 40,
+      "prompt": "A heavy hit on a thick ceramic tile body under water, a muffled crack with a burst of bubbles, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.death",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 3.0,
+      "targetSeconds": {
+        "min": 1.6,
+        "max": 2.6
+      },
+      "levelDb": -1,
+      "fadeOutMs": 400,
+      "prompt": "A huge round steel grate slowly turning shut with a final heavy locking clunk, wet metal and draining water, isolated, dry close-mic recording, no reverb, no music, no background noise"
+    },
+    {
+      "key": "boss.deepend.drain.away",
+      "category": "boss",
+      "priority": 1,
+      "count": 1,
+      "generateSeconds": 4.5,
+      "targetSeconds": {
+        "min": 2.5,
+        "max": 4.0
+      },
+      "levelDb": -6,
+      "fadeOutMs": 400,
+      "space": "2d",
+      "prompt": "A great volume of water going gently down a deep drain, a calm long gurgle fading away to nothing, isolated, no music, no voices, no background noise"
+    }
+  ]
+}

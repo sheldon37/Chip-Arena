@@ -3,6 +3,20 @@
 Owner request, 2026-10-15: footsteps and zombie sounds, generated with ElevenLabs. Astra builds the Windows batch
 generator. Claude owns this manifest and the importer.
 
+## The Backrooms bosses' sounds (2026-11-05)
+
+`docs/audio/sound-requests-bosses.json` is a second manifest, on the same schema: THE HUM's 48 keys and THE DEEP END's 33, 121 files. The zombie manifest stays as it was, so its batches still resume.
+
+- **Generate:** `generate_sound_requests.py --manifest docs/audio/sound-requests-bosses.json`, with the rest as `SOUND-GENERATOR.md` says. Every key is in the default batch.
+- **Import:** `import_sound_requests.py --manifest docs/audio/sound-requests-bosses.json`, the same way.
+- **What differs from the zombie manifest:**
+  - `category: boss`: one fixed level, so a re-import can't drift, and up to 1 s of quiet inside one sound (a drip's echo, a pour thinning out).
+  - `levelDb`: that sound's trim on the boss level, from a ripple at -18 to the Belly Flop at +5. Loudness matching alone would make them equal.
+  - `fadeOutMs`: its own fade at the cap, so a long pour doesn't stop dead.
+  - `space: 2d`: the keys that play flat. The rest are positional.
+- **The keys:** dotted, not hyphenated, because the generator's pattern is letters, digits and dots. `Tests/BackroomsBossSoundChecks.cs` (`--boss-sounds`) holds them to the bank contract and the cues.
+- **Three keys aren't really sounds in the brief:** `boss.hum.silence`, `boss.hum.cut` and `boss.deepend.quiet` were written as mixer dips. They are requested as a hum dying, a breaker thrown and a soft pressure dip, and the mixer dip itself isn't wired.
+
 ## Contract
 
 - **Manifest:** `docs/audio/sound-requests.json`, schema `chip-arena.sound-requests/1`. The generator reads only this file.

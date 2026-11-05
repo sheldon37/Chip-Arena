@@ -52,6 +52,14 @@ SONGS = [
          sections=[('ignition', 1, 4), ('stoke', 5, 8), ('forge', 9, 34), ('quench', 35, 42), ('press', 43, 66),
                    ('venting', 67, 68), ('meltdown', 69, 76), ('blowdown', 77, 78), ('slam', 79, 82), ('cooling', 83, 84)],
          loop=(9, 82), intro=dict(cutAfter=4, resumeAt=8), chimes=[]),
+    dict(id='level0-boss', title='Failing Light', map='expedition-backrooms-level-0', eighth=.1974, group=2, drop=12.85,
+         sections=[('hum', 1, 4), ('flicker', 5, 8), ('ballast', 9, 24), ('thin', 25, 32), ('surge', 33, 40), ('outage', 41, 44),
+                   ('restrike', 45, 50), ('overload', 51, 64), ('dropout', 65, 66), ('noclip', 67, 78), ('lull', 79, 82), ('lastlight', 83, 88)],
+         loop=(9, 82), intro=dict(cutAfter=1, resumeAt=5), chimes=[]),
+    dict(id='poolrooms-boss', title='Main Theme', map='expedition-backrooms-poolrooms', eighth=.2344, group=2, drop=37.42,
+         sections=[('bells', 1, 3), ('undertow', 4, 20), ('laps', 21, 45), ('lull', 46, 53), ('swell', 54, 60), ('deep', 61, 91),
+                   ('flood', 92, 95), ('sink', 96, 98), ('last', 99, 101)],
+         loop=(21, 98), intro=dict(cutAfter=2, resumeAt=20), chimes=[]),
 ]
 
 
@@ -228,7 +236,7 @@ def analyse(song, plot=None, clicks=None, verbose=True):
     # The intro edit: the opening plays from the top (after a preroll) to the downbeat after bar cutAfter, then resumes at
     # bar resumeAt so the drop lands on the end of the hold; the preroll makes the sum exact.
     ia, ib = song['intro']['cutAfter'], song['intro']['resumeAt']
-    cut, resume, drop = bar(ia + 1), bar(ib), bar(drop_bar)
+    cut, resume, drop = round(bar(ia + 1), 4), round(bar(ib), 4), round(bar(drop_bar), 4)
     preroll = HOLD - cut - (drop - resume)
     intro = dict(hold=HOLD, preroll=round(preroll, 4), cut=round(cut, 4), resume=round(resume, 4), drop=round(drop, 4))
     # Accents.
@@ -262,6 +270,9 @@ def analyse(song, plot=None, clicks=None, verbose=True):
         elif after > before + 12 and last == 'cut':
             add((lo + int(np.argmax(slope[lo:hi]))) / FR, 'drop', (after - before) / 30)
             last = 'drop'
+    # The drop always carries its accent, also when the sub is already up before it (no cut in the bars ahead).
+    if not any(a['kind'] == 'drop' and abs(a['t'] - drop) <= .03 for a in acc):
+        add(drop, 'drop', 1)
     acc.sort(key=lambda a: (a['t'], a['kind']))
     sections = [dict(id=s, fromBar=a, toBar=b) for s, a, b in song['sections']]
     bpm = 60 / np.diff(beats)

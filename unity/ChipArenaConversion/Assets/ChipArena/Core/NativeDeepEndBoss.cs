@@ -66,10 +66,10 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- the intro (doc section 4, the table): in the boss's own frame, the origin the abyss's centre on the deck's level, z the way it faces ----
-        public static readonly BossIntroShot[] Shots=MakeShots();
-        private static BossIntroShot[] MakeShots()
+        public static readonly BossIntroShot[] Shots=ShotsOn(DeepEndBossBeats.Fallback);
+        /// <summary>The intro's shots cut on these beats.</summary>
+        public static BossIntroShot[] ShotsOn(in DeepEndBossBeats b)
         {
-            var b=DeepEndBossBeats.Fallback;
             return new[]{
                 // Wide over perfectly still water, gliding: warm light, the whole room's scale, its round lights in the mirror.
                 new BossIntroShot{From=0,To=b.LowShot,EyeA=new Vector3(-12.6f,2.05f,-13.2f),EyeB=new Vector3(-10.9f,1.15f,-11.6f),LookA=new Vector3(4.2f,-.4f,5f),LookB=new Vector3(5.2f,-.05f,5.6f),FovA=60,FovB=56,Ease=1},
@@ -153,22 +153,37 @@ namespace ChipArena.UnityConversion
         public static readonly DeepEndBossBeats Fallback=new DeepEndBossBeats{Hold=NativeBackroomsBossIntro.Hold,NameAt=NativeBackroomsBossIntro.NameAt,Ripple=.55f,LowShot=2.3f,LightsOut0=2.45f,LightsOut1=4.2f,DownShot=4.3f,BreakShot=5.9f,Break=5.96f,MouthShot=8f,IrisOpen=8.08f,Roar=8.3f,WashShot=8.62f,WaveAt=8.12f};
         /// <summary>Whether the beats are in order (a song's accents that can't place them are refused).</summary>
         public bool Valid=>Ripple<LowShot&&LowShot<LightsOut0&&LightsOut0<LightsOut1&&LightsOut1<=DownShot&&DownShot<BreakShot&&BreakShot<=Break&&Break<MouthShot&&MouthShot<IrisOpen&&IrisOpen<Roar&&Roar<WashShot&&WashShot<Hold;
-        /// <summary>The beats placed on a song's accents, as StationBossBeats.FromSong does: the break on the accent nearest its fixed time. False when the song can't place them.</summary>
+        /// <summary>
+        /// The beats on the boss song's intro edit (docs/ZONE-BOSS-MUSIC.md, Main Theme): the music stays stopped through the ripple; the lights under the water start dying as the bells begin; the shot goes straight down over the abyss
+        /// in time for the low tone that enters under the bells, and it breaks the surface on that tone, the card just after; the song falls away, and the mouth opens on the last swell before the drop. False when the song can't place them.
+        /// </summary>
         public static bool FromSong(NativeZoneBossSong s,out DeepEndBossBeats b)
         {
-            b=Fallback;if(s?.Accents==null||s.Accents.Length==0)return false;double best=double.MaxValue;float at=b.Break;
-            foreach(var a in s.Accents){double d=Math.Abs(a.T-Fallback.Break);if(d<best){best=d;at=(float)a.T;}}
-            if(best>.45f)return false;float shift=at-b.Break;b.Break=at;b.BreakShot+=shift;b.Song=true;return b.Valid;
+            b=Fallback;if(s?.Accents==null||s.Track?.beats==null||!(s.Hold>0)||s.Hold>=30)return false;
+            float hold=(float)s.Hold,first=(float)s.Preroll,splice=(float)(s.Preroll+s.Cut),burst=float.NaN,lift=float.NaN;
+            foreach(var a in s.Accents)
+            {
+                double t=s.FirstBoss(a.T);if(double.IsNaN(t))continue;
+                if(float.IsNaN(burst)&&a.Kind==NativeZoneBossSong.AccentSlam&&t>first&&t<splice)burst=(float)t;
+                if(a.Kind==NativeZoneBossSong.AccentDrop&&t>splice&&t<hold-.2f)lift=(float)t;
+            }
+            if(float.IsNaN(burst)||float.IsNaN(lift))return false;float beat=(float)(s.Downbeat(s.DropBar)-s.Downbeat(s.DropBar-1))/4,down=burst-1.66f;
+            var r=new DeepEndBossBeats{Hold=hold,NameAt=burst+beat/2,Ripple=Fallback.Ripple,LowShot=first-.15f,LightsOut0=first,LightsOut1=down-.1f,DownShot=down,BreakShot=burst-.06f,Break=burst,
+                MouthShot=lift-.08f,IrisOpen=lift,Roar=lift+.22f,WashShot=lift+.54f,WaveAt=lift+.04f,Song=true};
+            if(!r.Valid)return false;b=r;return true;
         }
     }
     public static class NativeDeepEndBossBeats
     {
-        private static DeepEndBossBeats bound;private static bool has;private static NativeZoneBossSong song;
+        private static DeepEndBossBeats bound;private static bool has;private static NativeZoneBossSong song;private static BossIntroShot[] boundShots;
         public static DeepEndBossBeats Current=>has?bound:DeepEndBossBeats.Fallback;
+        /// <summary>The shots the intro plays on now.</summary>
+        public static BossIntroShot[] Shots=>has?boundShots:NativeDeepEndBoss.Shots;
         public static bool UseSong(NativeZoneBossSong s)
         {
             if(s==null){has=false;song=null;return false;}if(ReferenceEquals(s,song))return has;
-            song=s;if(DeepEndBossBeats.FromSong(s,out var b)){bound=b;has=true;return true;}has=false;return false;
+            song=s;if(DeepEndBossBeats.FromSong(s,out var b)){bound=b;boundShots=NativeDeepEndBoss.ShotsOn(b);has=true;return true;}has=false;return false;
         }
+        public static void Clear(){has=false;song=null;}
     }
 }

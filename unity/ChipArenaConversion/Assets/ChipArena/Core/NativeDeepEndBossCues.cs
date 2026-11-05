@@ -12,9 +12,9 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeDeepEndBossCues
     {
-        public static readonly string[] Keys={"boss.deepend.drip","boss.deepend.ripple","boss.deepend.lamp-out","boss.deepend.pressure","boss.deepend.break","boss.deepend.pour","boss.deepend.iris","boss.deepend.roar","boss.deepend.wave",
-            "boss.deepend.quiet","boss.deepend.bubbles","boss.deepend.breach","boss.deepend.jet-charge","boss.deepend.jet","boss.deepend.shadow","boss.deepend.flop","boss.deepend.thrash","boss.deepend.drain-turn","boss.deepend.drain-roar","boss.deepend.lull","boss.deepend.hands",
-            "boss.deepend.seiche-draw","boss.deepend.seiche","boss.deepend.seiche-wall","boss.deepend.whistle","boss.deepend.lap","boss.deepend.lamp-break","boss.deepend.stagger","boss.deepend.tide","boss.deepend.lights-die","boss.deepend.hurt","boss.deepend.death","boss.deepend.drain-away"};
+        public static readonly string[] Keys={"boss.deepend.drip","boss.deepend.ripple","boss.deepend.lamp.out","boss.deepend.pressure","boss.deepend.break","boss.deepend.pour","boss.deepend.iris","boss.deepend.roar","boss.deepend.wave",
+            "boss.deepend.quiet","boss.deepend.bubbles","boss.deepend.breach","boss.deepend.jet.charge","boss.deepend.jet","boss.deepend.shadow","boss.deepend.flop","boss.deepend.thrash","boss.deepend.drain.turn","boss.deepend.drain.roar","boss.deepend.lull","boss.deepend.hands",
+            "boss.deepend.seiche.draw","boss.deepend.seiche","boss.deepend.seiche.wall","boss.deepend.whistle","boss.deepend.lap","boss.deepend.lamp.break","boss.deepend.stagger","boss.deepend.tide","boss.deepend.lights.die","boss.deepend.hurt","boss.deepend.death","boss.deepend.drain.away"};
         public const byte Drip=0,Ripple=1,LampOut=2,Pressure=3,Break=4,Pour=5,Iris=6,Roar=7,Wave=8,Quiet=9,Bubbles=10,Breach=11,JetCharge=12,Jet=13,Shadow=14,Flop=15,Thrash=16,DrainTurn=17,DrainRoar=18,Lull=19,Hands=20,SeicheDraw=21,Seiche=22,SeicheWall=23,Whistle=24,Lap=25,LampBreak=26,Stagger=27,Tide=28,LightsDie=29,Hurt=30,Death=31,DrainAway=32;
         /// <summary>The 2D (room-wide) keys.</summary>
         public static bool Flat(byte key)=>key==Drip||key==Pressure||key==Quiet||key==Whistle||key==LightsDie||key==Tide||key==DrainAway||key==SeicheDraw;

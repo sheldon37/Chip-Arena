@@ -12,10 +12,10 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public static class NativeHumBossCues
     {
-        public static readonly string[] Keys={"boss.hum.hum-loop-rise","boss.hum.silence","boss.hum.row-out","boss.hum.scratch","boss.hum.tear","boss.hum.starter","boss.hum.tube-strike","boss.hum.head-catch","boss.hum.jaw","boss.hum.ceiling","boss.hum.slam-on",
-            "boss.hum.reach-windup","boss.hum.reach","boss.hum.stoop-rise","boss.hum.stoop","boss.hum.row-buzz","boss.hum.row-burst","boss.hum.glass","boss.hum.noclip-sink","boss.hum.noclip-walls","boss.hum.noclip","boss.hum.brake","boss.hum.carpet","boss.hum.fall",
-            "boss.hum.shift","boss.hum.charge","boss.hum.pulse","boss.hum.cut","boss.hum.strike-dark","boss.hum.hand-scratch","boss.hum.hand","boss.hum.voices","boss.hum.scream","boss.hum.die-row","boss.hum.rear","boss.hum.tile-rain","boss.hum.step","boss.hum.knuckle","boss.hum.scratch-idle",
-            "boss.hum.hurt","boss.hum.tube-break","boss.hum.head-break","boss.hum.choke","boss.hum.clip","boss.hum.death","boss.hum.tube-pop","boss.hum.fold","boss.hum.lamp-back"};
+        public static readonly string[] Keys={"boss.hum.hum.loop.rise","boss.hum.silence","boss.hum.row.out","boss.hum.scratch","boss.hum.tear","boss.hum.starter","boss.hum.tube.strike","boss.hum.head.catch","boss.hum.jaw","boss.hum.ceiling","boss.hum.slam.on",
+            "boss.hum.reach.windup","boss.hum.reach","boss.hum.stoop.rise","boss.hum.stoop","boss.hum.row.buzz","boss.hum.row.burst","boss.hum.glass","boss.hum.noclip.sink","boss.hum.noclip.walls","boss.hum.noclip","boss.hum.brake","boss.hum.carpet","boss.hum.fall",
+            "boss.hum.shift","boss.hum.charge","boss.hum.pulse","boss.hum.cut","boss.hum.strike.dark","boss.hum.hand.scratch","boss.hum.hand","boss.hum.voices","boss.hum.scream","boss.hum.die.row","boss.hum.rear","boss.hum.tile.rain","boss.hum.step","boss.hum.knuckle","boss.hum.scratch.idle",
+            "boss.hum.hurt","boss.hum.tube.break","boss.hum.head.break","boss.hum.choke","boss.hum.clip","boss.hum.death","boss.hum.tube.pop","boss.hum.fold","boss.hum.lamp.back"};
         public const byte HumRise=0,Silence=1,RowOut=2,ScratchIn=3,TearKey=4,Starter=5,TubeStrike=6,HeadCatch=7,JawKey=8,CeilingKey=9,SlamOn=10,ReachWindup=11,ReachKey=12,StoopRise=13,StoopKey=14,RowBuzz=15,RowBurst=16,Glass=17,NoclipSink=18,NoclipWalls=19,NoclipKey=20,Brake=21,Carpet=22,Fall=23,
             Shift=24,Charge=25,Pulse=26,Cut=27,StrikeDark=28,HandScratch=29,HandKey=30,VoicesKey=31,Scream=32,DieRow=33,RearKey=34,TileRain=35,Step=36,Knuckle=37,ScratchIdle=38,Hurt=39,TubeBreak=40,HeadBreak=41,ChokeKey=42,ClipKey=43,DeathKey=44,TubePop=45,Fold=46,LampBack=47;
         /// <summary>The one-line brief for each key (doc section 3's table reads from this).</summary>

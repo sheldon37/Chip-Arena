@@ -51,6 +51,7 @@ namespace ChipArena.UnityConversion
             bool preview=NativeDeepEndBossPreview.On;float now=wall;NVector2 target=default;bool hasLook=false;
             if(preview)
             {
+                NativeDeepEndBossBeats.UseSong(NativeZoneBossSongs.Installed(NativeZoneMusic.PoolroomsBoss)?NativeZoneBossSongs.Music?.Song(NativeZoneMusic.PoolroomsBoss):null);
                 if(double.IsNaN(NativeDeepEndBossPreview.Start))NativeDeepEndBossPreview.Start=wall;
                 var localPilot=arena.Local;NativeDeepEndBossPreview.HasLocal=false;if(localPilot?.Body!=null&&poolroomsLayout!=null&&DeepEndBossCentre(out var roomAt)){var lp=localPilot.Body.position;var lr=new NVector2(lp.x-roomAt.X,lp.z-roomAt.Z);if(NativeDeepEndArena.InRoom(lr.X,lr.Y)){NativeDeepEndBossPreview.HasLocal=true;NativeDeepEndBossPreview.Local=lr;}}
                 NativeDeepEndBossPreview.FillLampTimes();
