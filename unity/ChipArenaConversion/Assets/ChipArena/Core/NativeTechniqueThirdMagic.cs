@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
         public const float FreezeRadius=6,ClapReach=5,DreadReach=6;
         private const float MagicTau=6.2831853f,MagicBodyMid=1.1f,MagicBreathReach=7,MagicBreathTan=.268f,MagicBreathHalf=.2618f,MagicDreadHalf=.7854f,MagicJetReach=6;
         private const int MagicShade=0x0a5f7a;
-        private static readonly Vector3 MagicCloakTint=new Vector3(1,.36f,.08f),MagicBlastGold=new Vector3(1,.62f,.2f),MagicBubbleLit=new Vector3(.62f,.94f,1),MagicBubbleDeep=new Vector3(.3f,.72f,1),MagicIce=new Vector3(.58f,.88f,1),MagicFrost=new Vector3(.86f,.97f,1),MagicIceBody=new Vector3(.62f,.84f,.96f),
+        private static readonly Vector3 MagicCloakTint=new Vector3(1,.36f,.08f),MagicCloakDeep=new Vector3(1,.2f,.02f),MagicBlastGold=new Vector3(1,.62f,.2f),MagicBubbleLit=new Vector3(.62f,.94f,1),MagicBubbleDeep=new Vector3(.3f,.72f,1),MagicIce=new Vector3(.58f,.88f,1),MagicFrost=new Vector3(.86f,.97f,1),MagicIceBody=new Vector3(.62f,.84f,.96f),
             MagicMagnetRose=new Vector3(1,.3f,.44f),MagicMagnetBlue=new Vector3(.3f,.62f,1),MagicClapLight=new Vector3(.86f,.82f,1),MagicLive=new Vector3(.46f,.7f,1),MagicLiveHot=new Vector3(1,.42f,.18f),MagicSoul=new Vector3(.7f,1,.84f),MagicDrain=new Vector3(.75f,.36f,1),MagicDread=new Vector3(.54f,.29f,1),MagicPuppet=new Vector3(.63f,.44f,1);
         private static bool ThirdMagic(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
@@ -46,8 +46,8 @@ namespace ChipArena.UnityConversion
         private static void MagicWedge(ITechniqueFxSink s,Vector3 apex,Vector3 f,float half,float reach,Vector3 color,float edge,float fill,int seg)
         {
             var r=RightOf(f);Vector3 At(float ang,float d)=>apex+(f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang))*d;
-            s.Line(false,At(-half,.35f),At(-half,reach),color*edge,.04f,false);s.Line(false,At(half,.35f),At(half,reach),color*edge,.04f,false);
-            for(int i=0;i<seg;i++){float a0=-half+2*half*i/seg,a1=-half+2*half*(i+1)/seg;s.Line(false,At(a0,reach),At(a1,reach),color*edge,.04f,false);if(fill>0)s.Band(false,At(a0,.3f),At(a1,.3f),At(a1,reach),At(a0,reach),fill,fill,color);}
+            Strip(s,At(-half,.35f),At(-half,reach),.11f,color,edge,edge);Strip(s,At(half,.35f),At(half,reach),.11f,color,edge,edge);
+            for(int i=0;i<seg;i++){float a0=-half+2*half*i/seg,a1=-half+2*half*(i+1)/seg;Strip(s,At(a0,reach),At(a1,reach),.11f,color,edge,edge);if(fill>0)s.Band(false,At(a0,.3f),At(a1,.3f),At(a1,reach),At(a0,reach),fill,fill,color);}
         }
         // The share `from` to `to` (0..1) of a flat ring.
         private static void MagicArc(ITechniqueFxSink s,Vector3 c,float radius,float width,float from,float to,Vector3 color,int seg,float b)
@@ -77,14 +77,14 @@ namespace ChipArena.UnityConversion
                 {
                     int strands=low?3:5,seg=low?4:8;
                     Vector3 C(int j,float u){float ang=(j/(strands-1f)-.5f)*2.7f;var d=-f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang);float ripple=(float)Math.Sin(t*7+u*5+j*1.7f)*.08f*u;return feet+Up*(1.52f-1.44f*u)+d*(.18f+.46f*u+ripple);}
-                    for(int j=0;j<strands-1;j++)for(int i=0;i<seg;i++){float u0=i/(float)seg,u1=(i+1)/(float)seg;s.Band(false,C(j,u0),C(j,u1),C(j+1,u1),C(j+1,u0),(1-.4f*u0)*env*.62f,(1-.4f*u1)*env*.62f,Flame);}
-                    int collar=low?2:4;for(int i=0;i<collar;i++){float ph=(t*1.6f+R(seed,i+90))%1,ang=(i/(float)Math.Max(1,collar-1)-.5f)*2.6f;var d=-f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang);s.Fire(feet+Up*(1.46f+.34f*ph)+d*.2f,MagicCloakTint,(1-ph)*.8f*Math.Min(1,env),.42f-.14f*ph,.08f+.5f*ph,seed+i+90,floor);}
+                    for(int j=0;j<strands-1;j++)for(int i=0;i<seg;i++){float u0=i/(float)seg,u1=(i+1)/(float)seg;s.Band(false,C(j,u0),C(j,u1),C(j+1,u1),C(j+1,u0),(1-.5f*u0)*env*.42f,(1-.5f*u1)*env*.42f,MagicCloakDeep);}
+                    for(int e=-1;e<=1;e+=2){float ph=(t*1.6f+(e+1)*.31f)%1;s.Fire(feet+Up*(1.4f+.3f*ph)+r*(e*.32f)-f*.08f,MagicCloakTint,(1-ph)*.7f*Math.Min(1,env),.3f-.1f*ph,.08f+.5f*ph,seed+e+90,floor);}
                 }
-                Ring(s,feet+Up*.05f,.84f+.05f*(float)Math.Sin(t*9),.2f,Flame*(1.15f*env),low?14:26);
+                Ring(s,feet+Up*.05f,.84f+.05f*(float)Math.Sin(t*9),.13f,MagicCloakDeep*(.85f*env),low?14:26);
                 // Tongues off the hem, leaning in up the legs.
-                int n=Count(16,q,low);for(int i=0;i<n;i++){float ang=MagicTau*(i/(float)n+.3f*R(seed,i+1))+t*.7f,rad=.66f+.1f*R(seed,i+2),fl=.72f+.28f*(float)Math.Sin(t*(10+3*R(seed,i+3))+i*2.1f),h=(.6f+.95f*R(seed,i+4))*fl*Math.Min(1,env)*(view?.42f:1);var dd=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));s.Tongue(false,feet+dd*rad+Up*.02f,feet+dd*(rad*.62f)+Up*h,Flame*(1.5f*env*(view?.6f:1)),.2f);}
+                int n=Count(16,q,low);for(int i=0;i<n;i++){float ang=MagicTau*(i/(float)n+.3f*R(seed,i+1))+t*.7f,rad=.66f+.1f*R(seed,i+2),fl=.72f+.28f*(float)Math.Sin(t*(10+3*R(seed,i+3))+i*2.1f),h=(.5f+.9f*R(seed,i+4))*fl*Math.Min(1,env)*(view?.42f:1);var dd=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));s.Tongue(false,feet+dd*rad+Up*.02f,feet+dd*(rad*.62f)+Up*h,MagicCloakDeep*(1.05f*env*(view?.6f:1)),.15f);}
                 // Fire climbing the body.
-                int m=Count(14,q,low);for(int i=0;i<m;i++){float ph=(t*1.25f+R(seed,i+30))%1,ang=MagicTau*R(seed,i+31)+ph*1.4f,rad=.46f-.2f*ph,y=.12f+1.7f*ph;if(view&&y>.75f)continue;s.Fire(feet+new Vector3((float)Math.Cos(ang)*rad,y,(float)Math.Sin(ang)*rad),MagicCloakTint,(1-ph)*.85f*Math.Min(1,env),.62f-.3f*ph,.06f+.55f*ph,seed+i+30,floor);}
+                int m=Count(10,q,low);for(int i=0;i<m;i++){float ph=(t*1.25f+R(seed,i+30))%1,ang=MagicTau*R(seed,i+31)+ph*1.4f,rad=.5f-.2f*ph,y=.12f+1.25f*ph;if(view&&y>.7f)continue;s.Fire(feet+new Vector3((float)Math.Cos(ang)*rad,y,(float)Math.Sin(ang)*rad),MagicCloakTint,(1-ph)*.62f*Math.Min(1,env),.42f-.2f*ph,.06f+.55f*ph,seed+i+30,floor);}
                 if(!view)Spray(s,chest,t,.7f,low?1:3,2.4f,FlameCore,seed+77,-1.5f,.02f,Up*.7f);
             }
             // A melee hit on it: the lash back along the blow.
@@ -116,20 +116,30 @@ namespace ChipArena.UnityConversion
                 if(!view)s.Glow(chest,Flame*(1.1f*u),0,.85f*u+.05f,Core,u,seed);s.Sprite(false,mouth,FlameCore*(2.4f*u),.12f+.24f*u,Hot);Hoop(s,mouth,dir,.6f*(1-u)+.1f,.05f,Flame,low?8:14,1.5f*u);return;
             }
             float stop=k.Recast(t)?k.RecastAt:k.Until,env=Smooth((t-k.Arm)/.1f)*(1-Smooth((t-stop)/.25f));
-            if(env>0)MagicWedge(s,apex,flat,MagicBreathHalf,MagicBreathReach,Flame,.7f*env,.14f*env,low?3:6);
-            // The cone's body.
-            const float Life=.5f;int blobs=Count(60,q,low);
+            if(env>0)MagicWedge(s,apex,flat,MagicBreathHalf,MagicBreathReach,MagicCloakDeep,.9f*env,.1f*env,low?3:6);
+            // The cone's body: small and yellow at the mouth, wide, red and sooty at its end.
+            const float Life=.5f;int blobs=Count(84,q,low);
             for(int i=0;i<blobs;i++)
             {
                 if(!MagicBorn(t,k.Arm,stop,Life,R(seed,i+1),out float age,out long gen))continue;long g=seed+gen*131+i*7;float w=age/Life,d=MagicBreathReach*w*(1.7f-.7f*w),ang=MagicTau*R(g,1),rad=(float)Math.Sqrt(R(g,2));
-                var p=mouth+dir*d+(side*(float)Math.Cos(ang)+lift*(float)Math.Sin(ang))*(d*MagicBreathTan*rad)+Up*(.4f*w*w);float near=view?Smooth((d-1)/2.5f):1;
-                s.Fire(p,new Vector3(1,.38f-.14f*w,.08f),(1-w*w*w)*.92f*near,(.3f+1.3f*w)*(.8f+.4f*R(g,3)),.03f+.62f*w,g,floor);
+                var p=mouth+dir*d+(side*(float)Math.Cos(ang)+lift*(float)Math.Sin(ang))*(d*MagicBreathTan*rad)+Up*(.25f*w*w);float near=view?Smooth((d-1)/2.5f):1;
+                s.Fire(p,new Vector3(1,.56f-.38f*w,.14f-.11f*w),(1-w*w*w)*.82f*near,(.24f+.86f*w)*(.8f+.4f*R(g,3)),.03f+.8f*w,g,floor);
+            }
+            // Licks of flame along the cone, for its direction: hot at the mouth, deep further out.
+            if(t<stop+Life)
+            {
+                int licks=low?4:10;long roll=seed+(long)(t*18);float gone=t>stop?MagicBreathReach*(t-stop)/Life:0,grow=Smooth((t-k.Arm)/.14f);
+                for(int i=0;i<licks;i++)
+                {
+                    float x=R(roll,i+30),d0=Math.Max(gone,MagicBreathReach*.7f*x),len=(1.5f+1.7f*R(roll,i+31))*grow;if(view&&d0<1.2f)continue;float spread=MagicBreathTan*(R(roll,i+32)*2-1),spread2=MagicBreathTan*.7f*(R(roll,i+33)*2-1);var way=Vector3.Normalize(dir+side*spread+lift*spread2);if(d0>=MagicBreathReach-.2f)continue;float d1=Math.Min(MagicBreathReach,d0+len);
+                    s.Tongue(false,mouth+way*d0,mouth+way*d1,Vector3.Lerp(Flame,MagicCloakDeep,x)*(1.05f-.2f*x),.2f+.3f*x);
+                }
             }
             // The hot jet at the mouth.
             if(t<stop)
             {
-                if(!view){int n=low?3:6;long roll=seed+(long)(t*24);for(int i=0;i<n;i++){var d=Vector3.Normalize(dir+side*((R(roll,i)-.5f)*.3f)+lift*((R(roll,i+9)-.5f)*.3f));s.Tongue(false,mouth,mouth+d*((2.4f+1.8f*R(roll,i+20))*Smooth((t-k.Arm)/.08f)),FlameCore*1.5f,.32f);}}
-                s.Sprite(false,mouth,(FlameCore+Vector3.One*.3f)*(view?1.4f:2.6f),view?.3f:.46f,Hot);
+                if(!view){int n=low?2:4;long roll=seed+(long)(t*24);for(int i=0;i<n;i++){var d=Vector3.Normalize(dir+side*((R(roll,i)-.5f)*.22f)+lift*((R(roll,i+9)-.5f)*.22f));s.Tongue(false,mouth,mouth+d*((1.3f+1.1f*R(roll,i+20))*Smooth((t-k.Arm)/.08f)),FlameCore*.9f,.2f);}}
+                s.Sprite(false,mouth,FlameCore*(view?1:1.5f),view?.2f:.3f,Hot);
             }
             // Sparks thrown out past it.
             int sparks=Count(28,q,low);for(int i=0;i<sparks;i++){if(!MagicBorn(t,k.Arm,stop,.42f,R(seed,i+200),out float age,out long gen))continue;long g=seed+gen*97+i*11;float w=age/.42f;var v=Vector3.Normalize(dir+side*((R(g,1)-.5f)*.6f)+lift*((R(g,2)-.5f)*.6f))*(15+7*R(g,3));s.Streak(mouth+v*age+Up*(.6f*age),v,FlameCore*(2*(1-w)),.026f,.08f,.018f,.8f,w,g);}
