@@ -152,7 +152,7 @@ namespace ChipArena.UnityConversion
             if(age<.24f)
             {
                 // An arched glass in its frame, a glint crossing the glass.
-                float open=OutCubic(age/.07f),swing=1.2f*(1-OutCubic(age/.16f)),b=1-Smooth((age-.13f)/.1f),w=.66f*open,spring=Tall-.62f;var across=rt*(float)Math.Cos(swing)+dir*(float)Math.Sin(swing);var ink=MirrorLilac*(1.5f*b);var line=MirrorPale*(1.2f*b);
+                float open=OutCubic(age/.07f),swing=1.2f*(1-OutCubic(age/.16f)),b=1-Smooth((age-.13f)/.1f),w=.66f*open,spring=Tall-.62f;var across=rt*(float)Math.Cos(swing)+dir*(float)Math.Sin(swing);var ink=MirrorLilac*(.9f*b);var line=MirrorPale*(.8f*b);
                 Vector3 Rim(float x)=>pane+across*(w*(float)Math.Cos(x))+Up*(spring+.62f*(float)Math.Sin(x));int arcs=low?5:9;
                 s.Line(false,pane-across*w,pane+across*w,ink,.05f,false);s.Line(false,pane-across*w,Rim(3.14159f),ink,.05f,false);s.Line(false,pane+across*w,Rim(0),ink,.05f,false);s.Line(false,pane-across*w,Rim(3.14159f),line,.014f,false);s.Line(false,pane+across*w,Rim(0),line,.014f,false);
                 for(int i=0;i<arcs;i++){float x0=3.14159f*i/arcs,x1=3.14159f*(i+1)/arcs;s.Line(false,Rim(x0),Rim(x1),ink,.05f,false);s.Line(false,Rim(x0),Rim(x1),line,.014f,false);var f0=new Vector3(Rim(x0).X,pane.Y,Rim(x0).Z);var f1=new Vector3(Rim(x1).X,pane.Y,Rim(x1).Z);s.Band(false,Rim(x0),Rim(x1),f1,f0,.3f*b,.3f*b,MirrorLilac);}
@@ -255,15 +255,15 @@ namespace ChipArena.UnityConversion
             var line=hook-hand;float len=line.Length();if(len<.05f)return;var d=line/len;var x=Vector3.Cross(d,Up);x=x.LengthSquared()>1e-5f?Vector3.Normalize(x):Vector3.UnitX;var y=Vector3.Normalize(Vector3.Cross(x,d));
             Vector3 P(float u){float e=(float)Math.Sin(3.14159f*u);return hand+line*u+(x*(float)Math.Sin(u*9-t*38)+y*(float)Math.Sin(u*6.5f-t*27))*(amp*e)-Up*(sag*e);}
             int n=Math.Max(4,Math.Min(low?14:30,(int)(len/.2f)));
-            for(int i=0;i<n;i++){bool thin=i%2==1;var p0=P(i/(float)n);var p1=P((i+.78f)/n);s.Line(false,p0,p1,tint*((thin?1:1.5f)*b),thin?.028f:.065f,false);if(!thin&&!low)s.Line(false,p0,p1,HookGlint*(1.1f*b),.016f,true);}
+            for(int i=0;i<n;i++){bool thin=i%2==1;var p0=P(i/(float)n);var p1=P((i+.78f)/n);s.Line(false,p0,p1,tint*((thin?.42f:.75f)*b),thin?.024f:.055f,false);if(!thin&&!low)s.Line(false,p0,p1,HookGlint*(.5f*b),.012f,true);}
         }
         // The hook: a shank and two barbed flukes.
         private static void HookClaw(ITechniqueFxSink s,Vector3 at,Vector3 d,float spin,float b)
         {
             var x=Vector3.Cross(d,Up);x=x.LengthSquared()>1e-5f?Vector3.Normalize(x):Vector3.UnitX;var y=Vector3.Normalize(Vector3.Cross(x,d));var w=x*(float)Math.Cos(spin)+y*(float)Math.Sin(spin);
-            void Bar(Vector3 p,Vector3 o){s.Line(false,p,o,HookSteel*(1.1f*b),.1f,false);s.Line(false,p,o,HookGlint*(1.7f*b),.03f,false);}
-            Bar(at-d*.32f,at);for(int sd=-1;sd<=1;sd+=2){var bend=at+d*.1f+w*(sd*.17f);var barb=at-d*.02f+w*(sd*.32f);Bar(at,bend);Bar(bend,barb);Bar(barb,at-d*.22f+w*(sd*.28f));}
-            s.Sprite(false,at,HookGlint*(1.7f*b),.2f,Hot);
+            void Bar(Vector3 p,Vector3 o){s.Line(false,p,o,HookSteel*(.55f*b),.065f,false);s.Line(false,p,o,HookGlint*(.75f*b),.016f,false);}
+            Bar(at-d*.34f,at);for(int sd=-1;sd<=1;sd+=2){var bend=at+d*.08f+w*(sd*.13f);var barb=at-d*.03f+w*(sd*.25f);Bar(at,bend);Bar(bend,barb);Bar(barb,at-d*.2f+w*(sd*.21f));}
+            s.Sprite(false,at,HookGlint*(.9f*b),.13f,Hot);
         }
         private static void ChainHook(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
@@ -271,7 +271,7 @@ namespace ChipArena.UnityConversion
             if(t<k.Release)
             {
                 float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At)),spin=t*24;var fw=Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);var rw=RightOf(fw);Vector3 W(float ang)=>hand+(rw*(float)Math.Cos(ang)+Up*(float)Math.Sin(ang))*.46f;
-                HookChain(s,hand,W(spin),0,0,t,HookSteel,u,true);HookClaw(s,W(spin),rw*(float)Math.Sin(spin)-Up*(float)Math.Cos(spin),0,u);int n=low?4:8;for(int i=0;i<n;i++)s.Line(false,W(spin-.3f*i),W(spin-.3f*(i+1)),HookGlint*(1.1f*u*(1-i/(float)n)),.03f,false);
+                HookChain(s,hand,W(spin),0,0,t,HookSteel,u,true);HookClaw(s,W(spin),rw*(float)Math.Sin(spin)-Up*(float)Math.Cos(spin),0,u);int n=low?4:8;for(int i=0;i<n;i++)s.Line(false,W(spin-.3f*i),W(spin-.3f*(i+1)),HookSteel*(.7f*u*(1-i/(float)n)),.03f,false);
                 return;
             }
             var from=N(k.From);var feet=scene.Feet(a);var hook=HookAt(k,Math.Min(t,k.Until));var aim=N(k.Point)-from;var d=aim.LengthSquared()>1e-4f?Vector3.Normalize(aim):Flat(N(k.Dir),Vector3.UnitZ);
@@ -283,22 +283,22 @@ namespace ChipArena.UnityConversion
             if(!caught)
             {
                 bool slack=k.Arm>k.Release&&t>=k.Arm;float since=slack?t-k.Arm:0;
-                HookChain(s,hand,end,slack?.34f:.14f*(1-Clamp01(age/.3f))+.02f,slack?.7f*(float)Math.Sin(3.14159f*Clamp01(since/.3f)):0,t,HookSteel,1,low);HookClaw(s,end,d,slack?t*7:t*30,1);
-                if(!slack){s.Line(false,end-d*1.3f,end,HookGlint*1.5f,.06f,true);s.Sprite(false,end,HookGlint*1.6f,.42f,Soft);}else{Flash(s,end,since,.16f,HookSteel,.8f,seed);Sparks(s,end,since,.3f,Count(8,q,low),3.5f,HookGlint,seed+1,9,.018f);}
+                HookChain(s,hand,end,slack?.2f:.14f*(1-Clamp01(age/.3f))+.02f,slack?.6f*(float)Math.Sin(3.14159f*Clamp01(since/.3f)):0,t,HookSteel,1,low);HookClaw(s,end,d,slack?t*7:t*30,1);
+                if(!slack){s.Line(false,end-d*1.3f,end,HookSteel*.8f,.05f,true);s.Sprite(false,end,HookSteel*.7f,.34f,Soft);}else{Flash(s,end,since,.16f,HookSteel,.7f,seed);Sparks(s,end,since,.3f,Count(8,q,low),3.5f,HookGlint,seed+1,9,.018f);}
                 return;
             }
-            float got=t-k.HitAt,heat=1-Clamp01((got-.08f)/.3f);var tint=Vector3.Lerp(HookSteel,HookTaut*1.5f,heat);
+            float got=t-k.HitAt,heat=1-Clamp01((got-.08f)/.3f);var tint=Vector3.Lerp(HookSteel,HookTaut*1.25f,heat);
             var scar=from+d*(HookSpeed*(k.HitAt-k.Release));scar.Y=feet.Y+.04f;var over=new Vector3(end.X,feet.Y+.04f,end.Z);
             Strip(s,scar,over,.16f,HookTaut,.25f,.9f);Spray(s,over,t,.2f,Count(8,q,low),4.5f,HookTaut+Vector3.One*.3f,seed+2,9,.024f,Flat(end-hand,Vector3.UnitZ)*.8f+Up*.8f);
             HookChain(s,hand,end,got<.1f?.22f*(1-got/.1f):0,0,t,tint,1.2f,low);HookClaw(s,end,d,0,1);MeleeHookWrap(s,end,t,Smooth(got/.06f),low);
-            Flash(s,end,got,.22f,HookGlint,1.35f,seed+3);Sparks(s,end,got,.4f,Count(18,q,low),5.5f,HookGlint,seed+4,9,.024f,-d*.6f);
-            if(!low){int g=Count(3,q,low);for(int i=0;i<g;i++){float run=(got*4+i/(float)g)%1;s.Sprite(false,Vector3.Lerp(end,hand,run),HookGlint*2,.16f,Sparkle);}}
+            Flash(s,end,got,.22f,HookTaut,1,seed+3);Sparks(s,end,got,.4f,Count(18,q,low),5.5f,HookGlint,seed+4,9,.024f,-d*.6f);
+            if(!low){int g=Count(3,q,low);for(int i=0;i<g;i++){float run=(got*4+i/(float)g)%1;s.Sprite(false,Vector3.Lerp(end,hand,run),HookGlint*1.2f,.14f,Sparkle);}}
         }
-        // Chain wound round whoever it caught.
+        // Chain wound round whoever it caught: the links of a coil, not a scribble of light.
         private static void MeleeHookWrap(ITechniqueFxSink s,Vector3 at,float t,float b,bool low)
         {
-            if(b<=.01f)return;int n=low?10:20;Vector3 last=at;
-            for(int i=0;i<=n;i++){float u=i/(float)n,ang=u*15.7f+t*1.4f;var p=at+new Vector3((float)Math.Cos(ang)*.4f,-.38f+.76f*u,(float)Math.Sin(ang)*.4f);if(i>0)s.Line(false,last,p,HookSteel*(1.7f*b),.035f,false);last=p;}
+            if(b<=.01f)return;int n=low?16:32;Vector3 last=at;
+            for(int i=0;i<=n;i++){float u=i/(float)n,ang=u*15.7f+t*1.4f;var p=at+new Vector3((float)Math.Cos(ang)*.42f,-.36f+.72f*u,(float)Math.Sin(ang)*.42f);if(i>0&&i%2==1){s.Line(false,last,p,HookSteel*(.8f*b),.05f,false);if(!low)s.Line(false,last,p,HookGlint*(.45f*b),.012f,true);}last=p;}
         }
 
         // A fan on the floor, from `c` along `f`: its soft fill and its bright edge.
