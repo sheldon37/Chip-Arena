@@ -30,6 +30,14 @@ Usual verification and a DEV_LOG entry with actual results, separating what you 
 
 - **Checks:** recorded in the receipt that follows this entry, with the build's actual result.
 
+## 2026-11-05 — Astra: deployment card loading and boss-intro stalls
+
+- Traced black modifier cards to `NativeDeployScene`: each new scene rasterized the complete card catalog through a serialized worker queue and displayed a dark placeholder until each strip uploaded. Build preparation now bakes the existing `NativeDeployArt` pixels into Resources byte assets; runtime workers decode those bytes and retain the one-strip-upload-per-frame budget. The existing card back covers pending strips. No card artwork or layout redesign; unbaked editor/unknown content retains the raster fallback.
+- Traced first-use boss work: Station prewarm created empty mesh slots but left sculpt tiers / licensed body parts until the boss draw. Those are now built behind the existing stage loading cover. Boss music audio data and the beat map are also requested there, with loading held while audio reports Loading (failed loads cannot block it).
+- Music has a second concrete vulnerability: the simulation is capped at 0.1 s per stalled frame while DSP continues, and the old drift corrector can seek every 0.25 s. Correction now waits for 0.75 s of stable timing after a hitch, then corrects once; authored jumps and loop wraps still correct. This is a source-derived explanation for the reported glitch, not an on-device capture proving every stutter's cause.
+- Focused verification: 262,213 intro/cache assertions pass (30 synthetic stalls cause zero repeated seeks, one correction after recovery, authored cuts/loops/reset, card byte fidelity and safe keys); cold existing back raster/pack/decode 148 ms here. Existing deployment performance: 111 checks, zero strip rebuilds/allocations across 120 steady frames, 1.30 ms here. Source-package validation: 3,202 files passed. Full managed suite: exit 0, 964 PASS lines and all 35 final groups. Final pinned Unity-reference semantic compile: all four assemblies passed. Whitespace clean.
+- Ordinary dotnet build hit this sandbox's Process.GetStat/StartTime failure; direct Roslyn compile with the installed .NET references succeeded. No Unity Editor execution or Windows gameplay profiling/listening here. Test builder and user playtest must verify delivery and actual intro smoothness; no live/Site release.
+
 ## 2026-11-05 — Astra: third-set repairs built and published (final receipt)
 
 - Code delivery: #340 `c53bb262` fixed both Breacher target Transforms and successfully published the carried third-set effects. Rules #341 `22f0fbaa` followed, then regression-fixture correction #342 `e2c0cef1`. Shared and `codex/unity-cloud-current` were synced to each code merge; final built source is **`e2c0cef109380dfb09e672adca9a4af2b000cffa`**.

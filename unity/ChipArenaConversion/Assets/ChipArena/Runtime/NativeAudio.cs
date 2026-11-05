@@ -20,6 +20,15 @@ namespace ChipArena.UnityConversion
         private readonly NativeMusicSync musicSync=new NativeMusicSync();private bool musicPaused,musicStarting,musicPlayed;private double musicStartedAt,musicEpoch;private object musicClockOwner;
         private double MusicPosition=>music.clip!=null?NativeMusicSync.Position(music.timeSamples,music.clip.frequency):-1;
         private void SeekMusic(double seconds){music.timeSamples=NativeMusicSync.Sample(seconds,music.clip.frequency,music.clip.samples);}
+        private AudioClip stageBossMusic;
+        public void PreloadStageMusic(string map)
+        {
+            string id=NativeZoneMusic.BossTrack(map,key=>Clip(key)!=null);stageBossMusic=Clip(id);
+            if(stageBossMusic!=null&&stageBossMusic.loadState==AudioDataLoadState.Unloaded)stageBossMusic.LoadAudioData();
+            // The beat map must also be ready before the boss's first frame.
+            _=NativeZoneBossSongs.Music;
+        }
+        public bool StageMusicPending=>stageBossMusic!=null&&stageBossMusic.loadState==AudioDataLoadState.Loading;
         public void ResetCursor(){generation=-1;}
         private void Awake(){NativeUi.Sound+=UiHeard;voices=new AudioSource[24];keyedVoices=new bool[voices.Length];for(int i=0;i<voices.Length;i++){voices[i]=gameObject.AddComponent<AudioSource>();voices[i].playOnAwake=false;voices[i].spatialBlend=0;}music=gameObject.AddComponent<AudioSource>();music.playOnAwake=false;music.priority=0;introVoice=gameObject.AddComponent<AudioSource>();introVoice.playOnAwake=false;}
         // A free voice for an unlimited, unpanned play (beeps, death tones); Play counts the limited cue voices itself.
@@ -94,7 +103,7 @@ namespace ChipArena.UnityConversion
                 if(clock.HasValue)SeekMusic(clock.Value);else if(id==resumeTrack)SeekMusic(resumeTime);
                 if(id==resumeTrack)resumeTrack=null;musicSync.Reset();music.Play();musicPlayed=musicStarting=true;musicStartedAt=now;return;
             }
-            if(clock.HasValue&&musicSync.Seek(MusicPosition,clock.Value,now))SeekMusic(clock.Value);
+            if(clock.HasValue&&musicSync.SeekStable(MusicPosition,clock.Value,now))SeekMusic(clock.Value);
         }
         // main.ts intro-preview: neither the menu nor the arena music plays under a previewed intro (setMenuActive(false) and
         // previewIntro's setActive(false)); the next Render resumes the held track.
