@@ -29,7 +29,7 @@ namespace ChipArena.UnityConversion
             C("hand-to-mouth","Hand to Mouth","uncommon","ranged",1,"hand-coins","Hits put rounds back in the magazine.",true,NativeMovementContent.Effect("ammoCapacity","mul",0.8)),
             C("trick-shot","Trick Shot","uncommon","projectile",2,"corner-up-right","Every bounce makes it hit harder.",true,NativeMovementContent.Effect("bounces","add",1)),
             C("snowball","Snowball","uncommon","projectile",2,"expand","Shots grow the farther they fly.",true),
-            C("bullet-hose","Bullet Hose","uncommon","ranged",1,"activity","Spray and pray.",false,NativeMovementContent.Effect("attackRate","mul",2.5),NativeMovementContent.Effect("ammoCapacity","mul",2),NativeMovementContent.Effect("damage","mul",0.4),NativeMovementContent.Effect("fanDegrees","add",12)),
+            C("bullet-hose","Bullet Hose","uncommon","ranged",1,"activity","Spray and pray.",true,NativeMovementContent.Effect("attackRate","mul",2.5),NativeMovementContent.Effect("ammoCapacity","mul",2),NativeMovementContent.Effect("damage","mul",0.4)),
             C("hot-swap","Hot Swap","uncommon","ranged",2,"radiation","Reloading sends out a shock.",true,NativeMovementContent.Effect("reloadSpeed","mul",1.1)),
             C("afterimage","Afterimage","uncommon","all",1,"copy","Your dodge leaves a decoy behind.",true),
             C("mana-tap","Mana Tap","uncommon","magic",3,"droplets","Hits refill your mana.",true),

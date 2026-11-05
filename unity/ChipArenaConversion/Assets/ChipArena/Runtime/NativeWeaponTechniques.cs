@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativePilot
     {
-        public NativeTechnique Technique;
+        public NativeTechnique Technique;public NativeTechniqueMark[] TechniqueMarks=Array.Empty<NativeTechniqueMark>();public NativeChipGauge[] ChipGauges=Array.Empty<NativeChipGauge>();
         internal bool TechniqueReleased;internal float TechniqueNext,TechniqueHealth,TechniqueScale=1;
         internal Vector3 TechniquePosition,TechniqueMoveFrom;
         internal string TechniqueCastSlot;
@@ -44,10 +44,10 @@ namespace ChipArena.UnityConversion
         // The out-point overload lets the cast use the same query result without repeating the rays.
         public string TechniqueRefusal(NativePilot p,in InputFrame aim)=>TechniqueRefusal(p,RefusalSlot(p,in aim),in aim);
         public string TechniqueRefusal(NativePilot p,string slot,in InputFrame aim)=>TechniqueRefusal(p,in aim,out _,slot);
-        private string RefusalSlot(NativePilot p,in InputFrame aim)=>p==null?"":aim.AbilityQ&&TechniqueId(p,"q")!=""?"q":aim.AbilityE&&TechniqueId(p,"e")!=""?"e":p.Technique!=null&&NativeTechniqueRules.Recast(p.Technique,Time)?NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec,p.Technique.Kind):TechniqueSlot(p);
+        private string RefusalSlot(NativePilot p,in InputFrame aim)=>p==null?"":aim.AbilityQ?"q":aim.AbilityE?"e":p.Technique!=null&&NativeTechniqueRules.Recast(p.Technique,Time)?NativeTechniqueLoadout.Slot(p.Seat.weaponTechniques,p.Seat.spec,p.Technique.Kind):TechniqueSlot(p);
         private string TechniqueRefusal(NativePilot p,in InputFrame aim,out Vector3 point,string slot)
         {
-            point=default;if(p==null||TechniqueId(p,slot)=="")return null;
+            point=default;if(p==null)return null;if((slot=="q"||slot=="e")&&AbilitiesDisarmed(p))return NativeTechniques.Disarmed;if(TechniqueId(p,slot)=="")return null;
             var old=p.Technique;Vector3 origin=p.Body.position,feet=origin-Vector3.up*.865f;point=feet;
             if(old?.Kind==TechniqueId(p,slot)&&old.Kind==NativeTechniques.StaticRecall&&NativeTechniqueRules.Recast(old,Time))
             {
@@ -57,6 +57,8 @@ namespace ChipArena.UnityConversion
                 return root.scene.GetPhysicsScene().CapsuleCast(origin+Vector3.up*.43f,origin-Vector3.up*.43f,.42f,line.normalized,out _,line.magnitude,WorldMask,QueryTriggerInteraction.Ignore)?NativeTechniques.Blocked:null;
             }
             var kind=TechniqueId(p,slot);
+            if(old?.Kind==kind&&NativeTechniqueRules.Recast(old,Time)&&(kind=="bipod"||kind=="dragon-breath"||kind=="soul-siphon"))return null;
+            if(kind=="challenge"&&ThirdAimTarget(p,in aim,14,bossAllowed:false)==0||kind=="combust"&&ThirdAimTarget(p,in aim,14,burning:true)==0||kind=="soul-siphon"&&ThirdAimTarget(p,in aim,AbilityChip(p,"ab-soul-feast")?14:10)==0)return NativeTechniques.NoTarget;
             if(kind==NativeTechniques.GrappleLine||kind==NativeTechniques.Tripwire||kind==NativeTechniques.SonarDart)
             {
                 var direction=Vec(GunRules.Direction(aim.Yaw,aim.Pitch));
@@ -73,10 +75,12 @@ namespace ChipArena.UnityConversion
         }
         private bool TryTechnique(NativePilot p,string selectedSlot=null)
         {
-            string slot=selectedSlot??TechniqueSlot(p);string id=TechniqueId(p,slot);if(id==""||Replica||p.Input.CancelAbilities||TechniqueBlocked(p))return false;
+            string slot=selectedSlot??TechniqueSlot(p);string id=TechniqueId(p,slot);if(id==""||AbilitiesDisarmed(p)||Replica||p.Input.CancelAbilities||TechniqueBlocked(p))return false;
             var old=p.Technique;
             if(old?.Kind==id&&NativeTechniqueRules.Recast(old,Time))
             {
+                if(id=="bipod"||id=="dragon-breath"||id=="soul-siphon"){FinishChannelTechnique(p);return true;}
+                if(id=="overload"){old.RecastAt=Time;old.Until=Time;StepThirdTechnique(p);return true;}
                 if(id=="shield-surf"||id=="iron-vow"||id=="grave-walk"){FinishMoreTechnique(p);return true;}
                 if(TechniqueBusy(p)||Time<p.AttackEnd||SpecialBusy(p)||p.AbilityCast!=null||p.CastAt>0||p.ReloadEnd>Time)return false;
                 if(old.Kind==NativeTechniques.Bastion){EndTechnique(p);old.Phase="recall";return true;}
@@ -86,7 +90,7 @@ namespace ChipArena.UnityConversion
                 {
                     Vector3 origin=p.Body.position;
                     if(TechniqueRefusal(p,in p.Input,out var destination,slot)!=null)return false;
-                    if(!MeleeTeleport(p,destination,old.Kind))return false;
+                    if(!MeleeTeleport(p,destination,old.Kind))return false;if(AbilityChip(p,"ab-full-circuit"))Heal(p,20);
                     old.From=Vec(origin-Vector3.up*.865f);old.RecastAt=Time;old.Phase="bolt";old.Until=old.RecoverUntil=Time+.3f;
                     foreach(var t in MeleeTargets(p).ToArray())if(NativeTechniqueRules.LineDistance(Vec(t.at),Vec(origin),Vec(p.Body.position))<=.85f&&MeleeVisible(origin,t.at,p,t.collider))TechniqueHit(p,t.id,12,t.at,(p.Body.position-origin).normalized);
                     return true;
@@ -99,7 +103,7 @@ namespace ChipArena.UnityConversion
             if(TechniqueRefusal(p,in p.Input,out var point,slot)!=null)return false;
             Vector3 direction=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             if(melee)p.Stamina-=cost;if(magic)p.Mana-=cost;p.RegenAt=Time+.45f;
-            float ready=Time+(p.DevNoCooldowns?0:NativeAbilityRules.Cooldown(d,p.Stats));if(slot=="q")p.QReady=ready;else{p.EReady=ready;p.ECharges=0;}
+            float ready=Time+(p.DevNoCooldowns?0:(float)(d.cooldown*p.Stats["abilityCooldown"]));if(slot=="q")p.QReady=ready;else{p.EReady=ready;p.ECharges=0;}
             float release=Time+NativeAbilityRules.CastTime(d.windup,p.Stats);
             p.Technique=new NativeTechnique{Kind=d.id,Phase=TechniqueFirstPhase(d.id),At=Time,Release=release,Until=release+(float)d.duration,RecoverUntil=release+NativeAbilityRules.CastTime(d.lockout,p.Stats),From=Vec(p.Body.position+Vector3.up*.3f),Point=Vec(point),Dir=Vec(direction)};
             p.TechniqueCastSlot=slot;p.TechniqueReleased=false;p.TechniqueNext=release;p.TechniqueHealth=0;
@@ -107,20 +111,20 @@ namespace ChipArena.UnityConversion
             p.Ready=Math.Max(p.Ready,p.Technique.RecoverUntil);return true;
         }
         private static string TechniqueFirstPhase(string id)
-        {switch(id){case "parting-line":return "hop";case "tripwire":case "lightning-rod":return "throw";case "shield-surf":return "mount";case "iron-vow":return "plant";case "bounty-round":return "shot";case "recoil-burst":return "brace";case "sonar-dart":return "fire";case "spirit-hawk":return "draw";case "wildfire-run":return "ignite";case "grave-walk":return "sink";case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
+        {switch(id){case "bipod":return "set";case "envenom":return "coat";case "dragon-breath":return "inhale";case "combust":return "snap";case "soul-siphon":return "reach";case "gun-spin":return "spin";case "overload":return "surge";case "thunderclap":return "raise";case "parting-line":return "hop";case "tripwire":case "lightning-rod":return "throw";case "shield-surf":return "mount";case "iron-vow":return "plant";case "bounty-round":return "shot";case "recoil-burst":return "brace";case "sonar-dart":return "fire";case "spirit-hawk":return "draw";case "wildfire-run":return "ignite";case "grave-walk":return "sink";case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
         private void ReleaseTechnique(NativePilot p)
         {
             p.TechniqueReleased=true;var k=p.Technique;if(TechniqueBlocked(p)){EndTechnique(p);return;}
             Vector3 feet=p.Body.position-Vector3.up*.865f,forward=Vec(V3.Forward(p.Input.Yaw));k.From=Vec(p.Body.position+Vector3.up*.3f);p.TechniquePosition=Vec(k.From);
-            if(ReleaseMoreTechnique(p,feet,forward))return;
+            if(ReleaseThirdTechnique(p)||ReleaseMoreTechnique(p,feet,forward))return;
             switch(k.Kind)
             {
-                case "riposte":k.Until=k.Release+.5f;k.RecoverUntil=k.Until+.45f;k.Phase="guard";break;
+                case "riposte":k.Until=k.Release+(AbilityChip(p,"ab-perfect-form")?.7f:.5f);k.RecoverUntil=k.Until+.45f;k.Phase="guard";break;
                 case "smoke-veil":k.Point=Vec(GroundPoint(feet));k.Phase="cloud";break;
                 case "bastion":k.Point=Vec(GroundPoint(feet+forward*1.3f));k.Dir=Vec(forward);k.Arm=1;k.Phase="wall";p.TechniqueHealth=120;break;
                 case "anchor-throw":k.Point=k.From+k.Dir*16;k.Arm=k.Release+16f/26;k.Until=k.Arm+3+NativeTechniques.BladeReturn;k.Phase="flight";break;
                 case "ricochet-coin":k.Dir=Vec(forward);k.Phase="air";k.Until=k.Release+NativeTechniqueRules.CoinSeconds;break;
-                case "sentry-drop":k.Point=Vec(GroundPoint(feet+forward));k.Dir=Vec(forward);k.To=k.Point+k.Dir*18;k.Arm=k.Release+.6f;k.Until=k.Arm+6;p.TechniqueNext=k.Arm;p.TechniqueHealth=40;break;
+                case "sentry-drop":k.Point=Vec(GroundPoint(feet+forward));k.Dir=Vec(forward);k.To=k.Point+k.Dir*18;k.Arm=k.Release+.6f;k.Until=k.Arm+6;p.TechniqueNext=k.Arm;p.TechniqueHealth=AbilityChip(p,"ab-second-gun")?80:40;break;
                 case "grapple-line":k.Arm=k.Release+Vector3.Distance(Vec(k.From),Vec(k.Point))/60;k.Until=k.Arm+1.1f;k.RecoverUntil=k.Until;break;
                 case "gale-arrow":k.Point=k.From+k.Dir*30;k.Arm=k.Release+1;k.Phase="flight";break;
                 case "ignition-leap":k.Point=Vec(feet);k.Phase="flight";p.Knockback.y=0;var v=p.Body.linearVelocity;v.y=NativeTechniqueRules.LeapSpeed(23*(float)p.Stats["playerGravity"]);p.Body.linearVelocity=v;p.Grounded=false;TechniqueBurst(p,feet,3,14,0,true);break;
@@ -140,7 +144,7 @@ namespace ChipArena.UnityConversion
                 // Sweep the final travel segment even when this fixed tick reaches the expiry clock.
                 if(k.Phase=="flight"&&(k.Kind=="anchor-throw"||k.Kind=="gale-arrow"||k.Kind=="shade-swap"))
                 {TechniqueFlight(p,k.Kind=="anchor-throw"?26:k.Kind=="gale-arrow"?30:22,k.Kind=="anchor-throw"?16:k.Kind=="gale-arrow"?30:18);continue;}
-                if(StepMoreTechnique(p))continue;
+                if(StepThirdTechnique(p)||StepMoreTechnique(p))continue;
                 if(Time>=k.Until)continue;
                 switch(k.Kind)
                 {
@@ -150,9 +154,9 @@ namespace ChipArena.UnityConversion
                     case "gale-arrow":if(k.Phase=="flight")TechniqueFlight(p,30,30);break;
                     case "shade-swap":if(k.Phase=="flight")TechniqueFlight(p,22,18);else if(k.Phase=="swap"&&Time>=k.HitAt+.25f)TechniqueSwap(p);break;
                     case "healing-spring":
-                        if(Time+1e-4f>=p.TechniqueNext){p.TechniqueNext+=.25f;var at=Vec(k.Point);foreach(var q in Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Vector3.Distance(q.Body.position-Vector3.up*.865f,at)<=4&&MeleeVisible(at+Vector3.up*.2f,q.Body.position,p,q.Collider))){if(q==p||!Enemy(p,q))Heal(q,1.5f);else{q.SlowFactor=Math.Min(q.SlowFactor,.85f);q.SlowEnd=Math.Max(q.SlowEnd,Time+.3f);}}foreach(var m in Minions.Where(m=>m.Hp>0&&Enemy(p,m)&&Vector3.Distance(m.Body.position,at)<=4&&MeleeVisible(at+Vector3.up*.2f,m.Body.position,p,m.Collider)))SlowMinion(m,.85f,.3f);}break;
+                        if(Time+1e-4f>=p.TechniqueNext){p.TechniqueNext+=.25f;var at=Vec(k.Point);foreach(var q in Pilots.Where(q=>q.Hp>0&&q.Seat.connected&&Vector3.Distance(q.Body.position-Vector3.up*.865f,at)<=4&&MeleeVisible(at+Vector3.up*.2f,q.Body.position,p,q.Collider))){if(q==p||!Enemy(p,q)){bool sacred=AbilityChip(p,"ab-sacred-spring");Heal(q,sacred?2.25f:1.5f);if(sacred)foreach(var key in q.Dots.Keys.Where(x=>x.EndsWith(":burn",StringComparison.Ordinal)||x.EndsWith(":fire",StringComparison.Ordinal)||x.EndsWith(":poison",StringComparison.Ordinal)).ToArray())q.Dots.Remove(key);}else{q.SlowFactor=Math.Min(q.SlowFactor,.85f);q.SlowEnd=Math.Max(q.SlowEnd,Time+.3f);}}foreach(var m in Minions.Where(m=>m.Hp>0&&Enemy(p,m)&&Vector3.Distance(m.Body.position,at)<=4&&MeleeVisible(at+Vector3.up*.2f,m.Body.position,p,m.Collider)))SlowMinion(m,.85f,.3f);}break;
                     case "sentry-drop":
-                        if(Time>=k.Arm){k.Phase="armed";if(Time>=p.TechniqueNext){p.TechniqueNext=Time+.5f;var target=TechniqueTarget(p,Vec(k.Point)+Vector3.up*.82f,18);if(target.id!=0){k.To=Vec(target.at);k.Dir=Vec((target.at-(Vec(k.Point)+Vector3.up*.82f)).normalized);TechniqueSentryShot(p,target.at);}}}break;
+                        if(Time>=k.Arm){k.Phase="armed";if(Time>=p.TechniqueNext){p.TechniqueNext=Time+(AbilityChip(p,"ab-second-gun")?1f/3:.5f);var target=TechniqueTarget(p,Vec(k.Point)+Vector3.up*.82f,18);if(target.id!=0){k.To=Vec(target.at);k.Dir=Vec((target.at-(Vec(k.Point)+Vector3.up*.82f)).normalized);TechniqueSentryShot(p,target.at);}}}break;
                 }
             }
         }
@@ -203,13 +207,13 @@ namespace ChipArena.UnityConversion
                 // Ignore only the two exchanging capsules; do not place either inside world geometry or another actor.
                 bool destination=RoomFor(p,t.at,t.pilot);bool source=t.pilot!=null?RoomFor(t.pilot,origin,p):RoomFor(p,origin);
                 if(t.minion!=null){bool enabled=t.collider.enabled;t.collider.enabled=false;destination=RoomFor(p,t.at);t.collider.enabled=enabled;}
-                if(destination&&source){p.Body.position=t.at;if(t.pilot!=null){t.pilot.Body.position=origin;t.pilot.Body.linearVelocity=t.pilot.Knockback=t.pilot.MoveVelocity=Vector3.zero;}else{t.minion.Body.position=origin;if(!t.minion.Body.isKinematic)t.minion.Body.linearVelocity=Vector3.zero;}p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;Physics.SyncTransforms();Emit(EventKind.Teleport,p,t.id,t.at,0,k.Kind,from:origin);}
+                if(destination&&source){p.Body.position=t.at;if(t.pilot!=null){t.pilot.Body.position=origin;t.pilot.Body.linearVelocity=t.pilot.Knockback=t.pilot.MoveVelocity=Vector3.zero;}else{t.minion.Body.position=origin;if(!t.minion.Body.isKinematic)t.minion.Body.linearVelocity=Vector3.zero;}p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;Physics.SyncTransforms();Emit(EventKind.Teleport,p,t.id,t.at,0,k.Kind,from:origin);if(AbilityChip(p,"ab-trade-up")){Heal(p,15);if(t.pilot!=null){StunMelee(t.pilot,.6f);CancelAbilities(t.pilot);CancelSpecial(t.pilot);EndTechnique(t.pilot);}else{SlowMinion(t.minion,.4f,.6f);t.minion.NextAttack=Math.Max(t.minion.NextAttack,Time+.6f);t.minion.StrikeAt=-1;if(t.minion.Pve!=null){t.minion.Pve.StaggerAt=Time+.6f;t.minion.Pve.Struck=true;}}}}
             }
             k.Phase="recovery";k.Until=Math.Max(k.Release,Time);
         }
         private void TechniqueMotion(NativePilot p,ref Vector3 velocity)
         {
-            var k=p.Technique;if(MoreTechniqueMotion(p,ref velocity))return;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p))return;
+            var k=p.Technique;if(MoreTechniqueMotion(p,ref velocity))return;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p)||k.Kind!="grapple-line"&&k.Kind!="anchor-throw")return;
             Vector3 destination;
             if(k.Kind=="grapple-line")destination=Vec(k.Point)-(Vec(k.Point)-p.Body.position).normalized*.7f;
             else {float u=Mathf.Clamp01((Time+1f/60-k.RecastAt)/.45f);destination=Vector3.Lerp(p.TechniqueMoveFrom,Vec(k.Point)+Vector3.up*.9f,u)+Vector3.up*(Mathf.Sin(u*Mathf.PI)*2);}
@@ -223,6 +227,7 @@ namespace ChipArena.UnityConversion
         private bool TryTechniqueParry(NativePilot p,Vector3 incoming,Vector3 point,NativePilot attacker=null)
         {
             var k=p.Technique;if(k?.Kind!="riposte"||!NativeTechniqueRules.Live(k,Time)||k.HitAt>-50||TechniqueBlocked(p)||!NativeTechniqueRules.Front(V3.Forward(p.Yaw),Vec(incoming)))return false;
+            if(AbilityChip(p,"ab-perfect-form"))p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+15);
             k.HitAt=Time;k.Point=Vec(point);k.Dir=Vec(incoming);k.Phase="counter";k.Until=Time;k.RecoverUntil=Time+.35f;p.Ready=Math.Min(p.Ready,k.RecoverUntil);
             if(attacker!=null&&attacker!=p){float actual=Damage(attacker,p,22*p.TechniqueScale,-incoming,0,false,primary:false,hitPoint:point,damageKind:"ability");if(actual>0)StunMelee(attacker,.35f);}
             return true;

@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             if(d.id=="fan-hammer")
             {p.Fan=NativeRangedRules.Fan(Time,p.Ammo);StepFan(p);}
             else
-            {p.OverdriveAt=Time;p.OverdriveUntil=Time+NativeRangedRules.OverdriveDuration;p.VentUntil=p.OverdriveUntil+NativeRangedRules.VentDuration;}
+            {p.OverdriveAt=Time;p.OverdriveUntil=Time+NativeRangedRules.OverdriveDuration+(AbilityChip(p,"ab-cooling-jacket")?2:0);p.VentUntil=p.OverdriveUntil+NativeRangedRules.VentDuration;}
             return true;
         }
         private void EmpowerQ(NativePilot p)
@@ -39,8 +39,8 @@ namespace ChipArena.UnityConversion
         }
         private bool FireRound(NativePilot p,bool fan=false)
         {
-            if(p.Ammo<=0||ProjectileCount>=100||Venting(p))return false;
-            if(!PilotMutator(p,"bottomless"))p.Ammo--;Fire(p,fan);return true;
+            if(p.Ammo<=0&&!ChannelLive(p,"bipod")||ProjectileCount>=100||Venting(p))return false;
+            if(!PilotMutator(p,"bottomless")&&!ChannelLive(p,"bipod"))p.Ammo--;Fire(p,fan);return true;
         }
     }
 }

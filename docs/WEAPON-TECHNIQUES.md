@@ -143,6 +143,23 @@ Native builder fixtures cover every new technique, per-slot routing, refusal, re
 | Darkness | Dread (`dread`) | A .35 s wind-up, then a 6 m, 90 degree cone. Enemies hit stumble away from you for .9 s, unable to attack or steer. Bosses are slowed x.6 instead | 0 | 15 s / 26 mana | The wind-up is your warning: roll, or come from the side |
 | Darkness | Shadow Puppet (`shadow-puppet`) | A puppet where you stand, for 4 s, 30 HP. It copies your left-click toward your aim from where it stands at 40% damage, triggering no chips. Bots may target it | 40% of a shot | 16 s / 28 mana | It stands still and dies quickly |
 
+### First rules batch (Astra, 2026-11-05)
+
+`NativeThirdTechniqueContent.Ready` enables **Gun Spin, Thunderclap and Overload** by live content ID. Gun Spin: .45 s locked twirl, full magazine, +25% rate for 4 s. Thunderclap: .3 s windup, 10 damage / 5 m / .5 s stun and channel cancellation (Sonic Boom: 7 m / .7 s). Overload: .1 s ignition, +25% rate / +15% speed for 4 s, 8 nonlethal self damage; recast under one second avoids the shock. These preserve the proposed cooldown/cost. No other third-set technique has a live row yet; `Third` intentionally remains separate from `All` until all 36 work.
+
+`Actor.TechniqueMarks` supplies the requested marks (`NativeTechniqueMark { Kind, By, At, Until }`, max 6, oldest replaced), with deep copies and frame/death/corpse validation. Null is accepted for legacy records. `TechniqueRefusal` supplies Disarmed for Q/E, including defaults; disarm/hush refuse new presses without cancelling primary fire/draw. NoTarget target queries are in place for the still-gated Challenge, Combust and Soul Siphon. The first three live techniques do not create victim marks. Chip state/event names and the rollout list are in CHIP-EXPANSION.md.
+
+### Second rules batch (Astra, 2026-11-05)
+
+Adds **Bipod, Envenom, Dragon Breath, Combust and Soul Siphon**, bringing live third-set rows to 8/36. `Third` stays separate until all handlers exist. The account sanitizer accepts these five IDs; the service itself is not deployed here.
+
+- Bipod uses the proposed .5 s set / 5 s stance / .3 s pack-up. It roots movement, fires at zero ammo without spending rounds, applies x.3 spread / x1.3 rate, and permits a slot recast. Belt Feed extends it to 7 s and heals 3/s. Block/roll/stun interrupt; jumping is refused while planted.
+- Envenom uses .4 s coat / 6 s window / three successful direct hits. Each refreshes 2 poison/s for 4 s and x.85 speed for 2 s on pilots and adds. A lethal hit spends a charge but does not poison a corpse.
+- Dragon Breath uses .25 s inhale / 1.6 s channel / 7 m / 30-degree full cone / 10 damage/s, sampled every .1 s with x.5 walk and a 120-degree/s aim limit. Its unspecified burn is set to 1.5/s for 2 s, refreshed, not stacked. Deep Lungs uses 2.4 s / 40 degrees.
+- Combust refuses with no burning target before payment. After .2 s, burns in sight within 14 m are consumed. A target's remaining burn plus 8 bursts in 2 m, capped at 22 base damage; overlapping detonations use the strongest hit, never multiply that cap. Path carries up to six blast points as contracted; all eligible burns still resolve.
+- Soul Siphon uses .1 s reach / 2 s channel / 8 damage/s in .1 s ticks, healing actual damage only; x.6 walk, 10 m acquisition / 12 m tether, cover/death ends it. Soul Feast uses 14 m acquisition / 16 m tether (preserving 2 m escape slack), and transfers 10/s of the victim's stamina for melee or mana otherwise, bounded by the victim's balance and caster's cap. Adds without these resources provide none.
+- Recasts stop the two spell channels; stun, roll, knockdown or block cancels them. Channel motion cannot fall through to Anchor Throw's teleport. Release state, owning slot, damage scale and next tick are replicated alongside the existing technique record to avoid restarting ticks after authority restoration. Record phases/points follow the staged contract; no presentation changed.
+
 ### Rules contract for the third set (Astra)
 
 Same record and same pattern as the second set: `Core/NativeTechnique.cs`, content rows by id with `slot:"technique"`, the slot's own input and deadline, one active record per actor, recasts through the slot holding it, bots keep their defaults. Move `Third` into `All` when your rules are in, and tell me.

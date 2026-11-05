@@ -1,3 +1,19 @@
+## 2026-11-05 — Astra: channels and the second expansion rules batch
+
+- Branch `codex/expansion-rules-2`, base shared `11a9aff6`. Adds Bipod, Envenom, Dragon Breath, Combust and Soul Siphon; seven ability upgrades and six wild mechanics listed in CHIP-EXPANSION.md. Total 8/36 third techniques and 30/98 expansion chips. Remaining 28/68 stay gated; Third is not moved into All prematurely.
+- Fixed builder failure on the first batch: `NativeBuildChecks` assumed every catalog chip was implemented. Only explicitly staged expansion mechanics are now exempt; missing existing mechanics or broken supported stats still fail. Source report: 2026-11-05 03:37 UTC, `11a9aff6edd6-0de9bea6`, “A source Chip is absent from the native draft”.
+- Uses existing Actor.TechniqueMarks, Actor.ChipGauges and EventKind.ChipProc. Adds hush victim marks, Doomsday gauge, thief/drone/doomsday procs; exact acid interception event contract in CHIP-EXPANSION.md. Channel and proc clocks serialize/validate. Account sanitizer IDs added, no account-service deployment.
+- Rules/animation contract: exact times and tuning in WEAPON-TECHNIQUES.md second batch. Breath burn chosen 1.5/s for 2 s; Soul Feast preserves 2 m tether slack; Combust overlap capped at the strongest 22-base hit per victim. Doomsday uses standard explosion falloff. No presentation or card changes.
+- Regression coverage includes no-target refusal before payment, channels/recasts/cancellation, stationary movement, poison charges, healing/resource transfer, stacked conditional stats, proc cooldowns, exact intercepted round IDs, airborne acid removal, codecs and account persistence. Full managed suite passed (963 PASS groups / 35 final managed-core checks), focused expansion 29/29, accounts 15/15, four Unity assemblies compiled, source package 3173 files. Final native-only fixes are covered by the final semantic compile; Windows execution/publication receipts follow in PR. No live/Site release.
+
+## 2026-11-05 — Astra: third-set rules foundation and first playable batch
+
+- Branch `codex/third-techniques-chips`, base shared `f69dcca5`; first incremental batch, not the completed 134-item expansion. Three live techniques (Gun Spin, Thunderclap, Overload), ten wild and seven ability mechanics; exact rollout list in CHIP-EXPANSION.md. Remaining 33 techniques and 81 chips stay gated by live rows / SupportedMechanics. Both chip Apply calls wired beside BombChips; Third remains separate from All.
+- Q/E eligibility, the four older chips, 35% reserved ability offer, immutable opened offers, unsupported-mechanic filtering for Expedition, and account sanitizer IDs. Marks/gauges copied and validated for network/death/replay; proc event appended without renumbering old events. Disarmed/hushed Q/E refused including Bombadier; primary attacks unchanged. NoTarget geometry provided for still-gated targeted techniques.
+- Claude: read `Actor.TechniqueMarks`, `Actor.ChipGauges` and `EventKind.ChipProc`; record/event field semantics in CHIP-EXPANSION.md. No effects, cards, poses or audio edited. Animation timing: .45 s gun twirl lock, .3 s clap windup, .1 s Overload ignition; other timings retain the proposal.
+- Decisions: Thick Skull reduces whole headshot; direct weapon/ability hits arm/consume Opening Move and resource refunds, not periodic ticks. Bullet Hose +12-degree spread now affects an ordinary shot, requiring a mechanic rather than fan spacing. Cooling Jacket adds 2 s to already-zero-bloom Overdrive. Lucky Coin remains gated (second redirect outstanding). Account service source updated, not deployed.
+- Verification: full managed suite passed (35 final managed-core checks plus the named suites); final focused expansion checks 18/18, account API tests 15/15, source package 3171 files, four Unity assemblies compiled. Shared chip-readability changes through `78c9e1e1` merged without conflicts; final focused/compile checks cover that integration. Native PhysX/editor checks added for the live techniques, chip hits and marks, but cannot execute here; Windows builder and multiplayer playtesting remain required. No live or Site release.
+
 ## 2026-11-04 — Astra: tracer authority data and event quota
 
 - Branch `codex/projectile-event-data`, shared base `6b3cd894` (includes Claude tracer merge `5801c523`). Adds first-round Projectile to gun Shot, current Owner to NativeShotEnd, round/normal to Ricochet, parent round to Split, and Impact for static world contacts. NativeBomb gains SampleAt, written by authority/preview and copied/validated. No combat rules, balance or presentation rendering changes.
@@ -13,6 +29,7 @@
 - **Checks:** full `CoreTests` and the Unity compile before the merge, in the release line below if it landed. Unity Editor, the draft at the game's camera: six and twelve offers, the longest chips and the new sets, read at 1469 by 720.
 - **Not verified:** a Windows build; ultra-wide or very small windows beyond the existing size rules; controllers' focus on the taller rows.
 - **Animation impact:** none.
+- **Release:** merged `80e661cb` into shared and the builder; full `CoreTests` at `ac61294f`: exit 0, 962 PASS groups; `ucomp` 0. BUILD SUCCEEDED and `Publication: succeeded` to the test channel, build `be10b272` (revision 639294454115857076, 226.8 MiB). No live or Site release.
 
 ## 2026-11-05 — Claude: the big update, designed and staged for the rules
 
@@ -24,6 +41,7 @@
 - **Animation impact:** none yet. New techniques' timings are proposals in the table.
 - **Checks:** `CoreTests --techniques` passes with `Third` staged. Full suite and the Unity compile before the merge, in the merge's release note.
 - **Not verified:** nothing here can be played yet.
+- **Release:** merged `f69dcca5` into shared, not the builder: nothing in it changes the game. Full `CoreTests` at `1877c868`: exit 0, 962 PASS groups; `ucomp` 0.
 
 ## 2026-11-05 — Claude: runners mostly on sprint-2, chase-2's head lowered
 
@@ -35,6 +53,7 @@
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 - **Not verified:** a Windows build; crowds; two clients. The pack's `Zombie_27` extract was not found on this PC or by the owner, so turn clips and closer-speed takes remain untried.
 - **Next:** the owner plays it. Raise or lower `HeadLowered` by eye if needed.
+- **Release:** merged `89484834` into shared and the builder; full `CoreTests` at `c71a3680`: exit 0, 962 PASS groups; `ucomp` 0. BUILD SUCCEEDED and `Publication: succeeded` to the test channel, build `ea80acd5` (revision 639294433427562030, 226.8 MiB). No live or Site release.
 
 ## 2026-11-04 — Claude: zombies on the pack's own motion
 

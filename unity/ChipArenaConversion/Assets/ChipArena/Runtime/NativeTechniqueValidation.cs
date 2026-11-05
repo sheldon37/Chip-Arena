@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
                     p.Hp=p.Stamina=p.Mana=100;p.Ammo=100;p.Body.isKinematic=false;p.Collider.enabled=true;p.Body.position=new Vector3(1000,100,p==a?1000:1005);p.Body.linearVelocity=p.MoveVelocity=p.Knockback=Vector3.zero;
                     p.Seat.weaponTechniques=NativeTechniqueLoadout.With("",p.Seat.spec,"e");p.QReady=p.EReady=0;p.Technique=null;p.TechniqueReleased=false;p.Special=null;p.Swing=null;p.MeleeKit=new NativeMeleeKit();p.Down=null;p.Juggle=null;p.Roll=null;p.HeldBy=p.Controlling=p.ControlledBy=null;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.ReloadEnd=p.CastAt=p.LaunchUntil=p.StaggerImmune=0;p.SlowFactor=1;p.SlowEnd=0;p.Grounded=true;p.Dots.Clear();CancelAbilities(p);
+                    p.TechniqueMarks=Array.Empty<NativeTechniqueMark>();p.ChipGauges=Array.Empty<NativeChipGauge>();p.ExpansionThiefAt=p.ExpansionDroneAt=-100;p.ExpansionDoomAt=-1;p.ExpansionStats=null;p.ExpansionStill=-1;p.ExpansionLastHit=-100;
                     p.Input=new InputFrame{Yaw=p==a?0:180,Pitch=0,AbilityTarget=new V3(1000,99.135f,1003)};p.Yaw=p.Input.Yaw;
                 }
                 Physics.SyncTransforms();
@@ -30,6 +31,52 @@ namespace ChipArena.UnityConversion
             void Release(){Advance(a.Technique.Release-Time+.001f);a.Input.AbilityQ=a.Input.AbilityE=false;StepTechniqueInput(a);Check(a.TechniqueReleased,"release executes");}
             try
             {
+                // Third-set foundation: real authority, clocks, Unity codec and replacement slots.
+                foreach(string id in new[]{"gun-spin","overload","thunderclap"})
+                {
+                    var def=NativeTechniques.Find(id);Setup(def.Spec);a.Seat.weaponTechniques=NativeTechniqueLoadout.With("",def.Spec,"e",id);
+                    a.Ammo=0;Check(TryTechnique(a)&&TechniqueBusy(a),"third windup locks: "+id);Release();
+                    Check(a.Technique.Valid(),"third valid release: "+id);
+                    if(id=="gun-spin")
+                    {double rate=a.Stats["attackRate"];StepExpansionPilot(a);Check(a.Ammo==Magazine(a)&&Math.Abs(a.Stats["attackRate"]-rate*1.25)<.001,"gun spin refill/rate");Advance(4.1f);StepExpansionPilot(a);Check(Math.Abs(a.Stats["attackRate"]-rate)<.001,"gun spin rate expires");}
+                    if(id=="overload")
+                    {StepExpansionPilot(a);a.Hp=5;Advance(4.1f);StepTechniqueWorld();Check(a.Hp==1&&a.Technique.Phase=="shock","overload nonlethal shock");StepTechniqueWorld();Check(a.Hp==1,"shock once");}
+                    if(id=="thunderclap")Check(b.Hp<100&&b.StunEnd>Time,"thunderclap damages and stuns");
+                }
+                Setup("lightning");a.Seat.weaponTechniques=NativeTechniqueLoadout.With("","lightning","e","overload");TryTechnique(a);Release();float earlyHp=a.Hp;Advance(.2f);Check(TryTechnique(a)&&a.Hp==earlyHp&&a.Technique.RecastAt==Time,"early overload recast avoids shock");
+                Setup("pistol");a.Seat.weaponTechniques="";MarkTechnique(a,"disarm",b,2.5f);a.Input.AbilityQ=true;
+                Check(TechniqueRefusal(a,in a.Input)==NativeTechniques.Disarmed,"default Q reports disarmed");StepAbilities(a);Check(a.Fan==null&&a.QReady==0,"disarm refuses default Q without charge");
+                var markedFrame=NativeFrameCodec.Clone(NetworkFrame());var markedActor=markedFrame.snapshot.Actors.First(x=>x.Id==a.Seat.id);
+                Check(markedActor.TechniqueMarks.Length==1&&markedActor.TechniqueMarks[0].By==b.Seat.id,"Unity codec victim marks");
+                Setup("pistol");a.Seat.chips["wild-opening-move"]=1;a.Seat.chips["wild-hand-to-mouth"]=1;a.Ammo=0;
+                float hit=Damage(b,a,10,Vector3.forward,0,false,primary:false);
+                Check(Math.Abs(hit-15)<.001&&a.Ammo==1&&Events.Count(e=>e.Kind==EventKind.ChipProc&&e.Detail=="wild-hand-to-mouth")==1,"opening ability hit and ammo proc once");
+                Check(Math.Abs(Damage(b,a,10,Vector3.forward,0,false,primary:false)-10)<.001,"opening charge spent");
+                Advance(4.01f);StepExpansionPilot(a);Check(a.ChipGauges.Single().Value==1,"opening gauge rearms");
+                Setup("pistol");a.Seat.chips["wild-mint-condition"]=1;a.Hp=(float)a.Stats["hp"];Check(Math.Abs(Damage(a,b,10,Vector3.back,0,false,primary:false)-4)<.001,"mint condition uses prehit health");
+                void Third(string spec,string id){Setup(spec);a.Seat.weaponTechniques=NativeTechniqueLoadout.With("",spec,"e",id);}
+                Third("machinegun","bipod");a.Ammo=0;Check(TryTechnique(a),"bipod casts empty");Release();StepExpansionPilot(a);
+                Check(FireRound(a)&&a.Ammo==0,"bipod shoots without ammunition");var rooted=new Vector3(2,1,3);TechniqueMotion(a,ref rooted);Check(rooted.x==0&&rooted.z==0,"bipod roots planar motion");
+                Check(TryTechnique(a)&&a.Technique.Phase=="packup"&&TechniqueBusy(a),"bipod recast packs for .3 s");
+                Third("machinegun","bipod");a.Seat.chips["ab-belt-feed"]=1;a.Hp=50;TryTechnique(a);Release();Advance(1);StepTechniqueWorld();Check(Math.Abs(a.Hp-53)<.001&&Math.Abs(a.Technique.Until-a.Technique.Release-7)<.001,"belt feed duration and 3 HP/s");
+                Third("darkness","soul-siphon");b.Body.position+=Vector3.right*40;Physics.SyncTransforms();Check(TechniqueRefusal(a,"e",in a.Input)==NativeTechniques.NoTarget&&!TryTechnique(a)&&a.Mana==100,"siphon target refusal before payment");
+                b.Body.position=a.Body.position+Vector3.forward*5;Physics.SyncTransforms();a.Hp=50;TryTechnique(a);Release();Advance(.5f);StepTechniqueWorld();Check(b.Hp<100&&Math.Abs(a.Hp-50-(100-b.Hp))<.01,"siphon heals actual damage");
+                var channelMotion=new Vector3(1,0,1);TechniqueMotion(a,ref channelMotion);Check(channelMotion==new Vector3(1,0,1),"siphon never enters anchor teleport path");
+                a.Input.Yaw=180;Check(TechniqueRefusal(a,"e",in a.Input)==null&&TryTechnique(a),"siphon recast does not demand a new aimed target");
+                Third("darkness","soul-siphon");a.Seat.chips["ab-soul-feast"]=1;a.Stamina=0;TryTechnique(a);Release();Advance(.5f);StepTechniqueWorld();Check(Math.Abs(a.Stamina-5)<.01&&Math.Abs(b.Stamina-95)<.01,"soul feast transfers 10 resource/s");
+                Third("fire","dragon-breath");TryTechnique(a);Release();Advance(.1f);StepTechniqueWorld();Check(b.Hp<100&&b.Dots.Any(x=>x.Key.EndsWith(":fire")),"breath cone damage and burn");
+                a.Input.Yaw=180;var prior=a.Technique.Dir;StepTechniqueWorld();Check(Vector3.Angle(Vec(prior),Vec(a.Technique.Dir))<=2.01f,"breath turn capped at 120 degrees/s");a.StunEnd=Time+1;StepTechniqueInput(a);Check(!NativeTechniqueRules.Live(a.Technique,Time),"stun cancels breath");
+                Third("fire","combust");Check(!TryTechnique(a)&&a.Mana==100,"combust empty refusal costs nothing");RefreshDot(b,a,"fire",10,4);TryTechnique(a);Release();Check(b.Dots.Count==0&&b.Hp==78&&a.Technique.Path.Length==1,"combust consumes burn and caps base hit at 22");
+                Third("daggers","envenom");TryTechnique(a);Release();Damage(b,a,1,Vector3.forward,0,false,primary:false);Check(a.Technique.Arm==2&&b.Dots.Any(x=>x.Key.EndsWith(":poison")&&x.Value.Dps==2)&&b.SlowFactor==.85f,"envenom consumes a hit and poisons/slows");
+                Setup("pistol");a.Seat.chips["wild-cornered"]=3;a.Hp=30;double ordinary=a.Stats["attackRate"];StepExpansionPilot(a);Check(Math.Abs(a.Stats["attackRate"]-ordinary*1.75)<.001,"cornered additive stacks");a.Hp=100;StepExpansionPilot(a);Check(Math.Abs(a.Stats["attackRate"]-ordinary)<.001,"cornered restores rate");
+                a.Seat.chips["wild-frenzy-scent"]=1;double walking=a.Stats["speed"];Damage(b,a,1,Vector3.forward,0,false,primary:false);StepExpansionPilot(a);Check(Math.Abs(a.Stats["speed"]-walking*1.2)<.001,"frenzy speed after hit");Advance(2.01f);StepExpansionPilot(a);Check(Math.Abs(a.Stats["speed"]-walking)<.001,"frenzy expires");
+                Setup("pistol");a.Seat.chips["wild-time-thief"]=1;a.QReady=a.EReady=Time+10;b.QReady=b.EReady=Time+5;float thiefAt=Time;Damage(b,a,1,Vector3.forward,0,false,primary:false);Damage(b,a,1,Vector3.forward,0,false,primary:false);
+                Check(a.QReady==thiefAt+9.75f&&b.EReady==thiefAt+5.25f&&Events.Count(e=>e.Kind==EventKind.ChipProc&&e.Detail=="wild-time-thief")==1,"time thief rate limit and both deadlines");
+                Setup("pistol");a.Seat.chips["wild-hush"]=1;a.BlockProcUsed=false;BlockProc(a,b,a.Body.position);Check(NativeCombatMarks.Has(b.TechniqueMarks,"wild-hush",Time),"hush writes victim mark");
+                Setup("pistol");a.Seat.chips["wild-bodyguard-drone"]=1;var intercepted=new NativeBullet{Id=nextBullet++,Owner=b.Seat.id,Original=b.Seat.id,Spec="pistol",Position=a.Body.position+Vector3.forward,Velocity=Vector3.back*20};Bullets.Add(intercepted);StepExpansionPilot(a);Check(!Bullets.Contains(intercepted)&&a.ExpansionDroneAt==Time+3&&Events.Any(e=>e.Kind==EventKind.ChipProc&&e.Projectile==intercepted.Id),"drone intercept records exact projectile");
+                Setup("pistol");a.Seat.chips["wild-bodyguard-drone"]=1;pveAcid.Clear();pveAcid.Add(new PveAcidState{Record=new NativeAcidRecord{id=1,actor=10001,at=Time,flight=1,from=Vec(a.Body.position+Vector3.forward),to=Vec(a.Body.position)}});StepExpansionPilot(a);Check(pveAcid.Count==0,"drone intercepts airborne acid without leaving a pool");
+                Setup("pistol");a.Seat.chips["wild-doomsday-clock"]=1;a.Hp=50;StepExpansionPilot(a);Advance(3.01f);StepExpansionPilot(a);Check(a.Hp==70&&b.Hp<100&&a.ChipGauges.Single().Value==0,"doomsday stationary burst heal and reset");
+                var expansionWire=NativeFrameCodec.Clone(NetworkFrame());Check(expansionWire.pilots.First(x=>x.id==a.Seat.id).expansionDoomAt==a.ExpansionDoomAt,"proc clock Unity serialization");
                 // Pending look must win over stale pilot input, without casting or mutating a replica.
                 Setup("rifle");wall.SetActive(true);Physics.SyncTransforms();
                 var pendingAim=new InputFrame{Yaw=0,Pitch=0};a.Input.Pitch=90;
