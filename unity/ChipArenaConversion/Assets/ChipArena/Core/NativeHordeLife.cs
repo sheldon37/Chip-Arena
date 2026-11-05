@@ -148,10 +148,12 @@ namespace ChipArena.UnityConversion
             // (The crawler's trunk is its own: only the footfall dip.)
             if(quad){var q=p.Position[CapturedRig.Body];q.Y+=Math.Min(0,dip.Value)*.6f;p.Position[CapturedRig.Body]=q;return;}
             // (The Hulk's trunk is its own heavy plod, Core/NativeHordeHeavy: only the chest's lag and the hurt sag ride on it.)
-            float hunch=(heavy?0:lifeHunch)+.16f*hurt*(heavy?.4f:1);
-            float u=Frac(Phase),sway=heavy?0:(float)Math.Sin(2*Math.PI*u)*.035f*moving;
+            // (On the model's own stride the capture carries its own hunch, sway and limp; what is left here is what a hit does to it.)
+            bool source=legsNow>1&&!heavy;
+            float hunch=(heavy||source?0:lifeHunch)+.16f*hurt*(heavy?.4f:1);
+            float u=Frac(Phase),sway=heavy||source?0:(float)Math.Sin(2*Math.PI*u)*.035f*moving;
             // The limp: the bad leg's stance (its foot planted) dips and rolls the hips toward it.
-            float limp=Math.Min(1,lifeLimp+.6f*hurt*(lifeLimp>0?1:.4f)),bad=0;
+            float limp=Math.Min(1,(source?0:lifeLimp)+.6f*hurt*(lifeLimp>0?1:.4f)),bad=0;
             // (Eased on a spring: the weight comes onto the bad leg as it lands, never on the frame.)
             if(limp>0&&!quad){int i=limpSide<0?0:1;if(!feet[i].Swing)bad=moving*limp;}
             bad=lastDt>0?Math.Max(0,limpEase.Step(bad,LimpEase,lastDt)):limpEase.Value;
@@ -193,7 +195,7 @@ namespace ChipArena.UnityConversion
                 // The dead arm hangs: the upper arm turned about its shoulder so the hand drops toward just below and behind it (one
                 // turn, no re-solve: the elbow and wrist keep their bend, nothing flips), and it drags on its slower cord. A blow
                 // takes the arm back (it swings with the rest).
-                float dead=(lifeDead>0&&(lifeDeadSide>0)==left?lifeDead:0)+.25f*hurt;float off=1-Clamp01(attackW);dead=Math.Min(.85f,dead)*off*off;
+                float dead=(lifeDead>0&&(lifeDeadSide>0)==left&&!(legsNow>1&&!heavy)?lifeDead:0)+.25f*hurt;float off=1-Clamp01(attackW);dead=Math.Min(.85f,dead)*off*off;
                 if(dead>0)
                 {
                     var sh0=p.WorldPosition[arm];var from=p.WorldPosition[hand]-sh0;var to=new Vector3(left?.05f:-.05f,-.47f,-.04f);float fl=from.Length();

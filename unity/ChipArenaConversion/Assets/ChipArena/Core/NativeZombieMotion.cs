@@ -41,7 +41,13 @@ namespace ChipArena.UnityConversion
             // on the model's legs, at their own pace and on their own stride: owner 2026-11-03, "they are still doing awkward lunges
             // when running", NativeZombieMotion.Rate, NativeHordeGait.LandAhead and OwnSwing. The walking chases were captured under
             // 1 m/s and only the slow bloater still runs on them, its speed theirs; the Hulk keeps its own heavy stride.)
-            walks=new[]{N("chase-1","chase-2","chase-1-full"),N("sprint-3","sprint-2"),N("walk-6-full","walk-4"),N("chase-1","walk-6-full"),new int[0],N("walk-6-full","walk-4"),N("walk-4","walk-6")};
+            // (The walks nearest the authority's speeds (owner 2026-11-04, "preserve the original animation pack's natural movement"): on the
+            // model's legs the chase-2 and chase-5 takes make .87 to .92 m/s as captured, the chase-1, walk-4 and walk-6 takes .46 to .65, and
+            // the shambler, brute and spitter walk at 1.3 to 1.6: a slow take has to be sped up or stretched twice as far to keep up. Of the walks
+            // chase-2 holds its shape best at those speeds, and walk-6 well enough up to the shambler's 1.5. Seen in Unity on the comparison, chase-5-full's
+            // long stride drops into the lunge the owner reported at this pace; the others have to be stretched past half as far again.
+            // docs/ZOMBIE-LOCOMOTION.md has the stage measurements.)
+            walks=new[]{N("chase-2","walk-6"),N("sprint-3","sprint-2"),N("walk-6","chase-2"),N("chase-2"),new int[0],N("walk-6-full","walk-4"),N("walk-4","walk-6")};
             runs=new[]{N("sprint-2","sprint-3"),N("sprint-3","sprint-2"),N("sprint-2"),N("sprint-2","sprint-3"),new int[0],N("chase-1","chase-2"),N("chase-5")};
             idles=new[]{N("shamble-1","shamble-2","idle-3"),N("shamble-2","idle-3"),N("idle-3","shamble-1"),N("shamble-1","idle-3"),new int[0],N("idle-3"),N("idle-3","shamble-1")};
             // (The slow forward walk-4 is the take that plants cleanly at the wander's .4-1.1 m/s for every kind: the walk-6 and the
@@ -115,7 +121,10 @@ namespace ChipArena.UnityConversion
         public static readonly float[] Tempo={1,1,.9f,.95f,1,.85f,.62f};
         public const float MinRate=.55f,MaxRate=2.8f;
         /// <summary>How far a sprint's playback strays from its captured pace on the model's legs: past these the stride takes the rest.</summary>
-        public const float OwnPaceLow=.75f,OwnPaceHigh=1.3f;
+        public const float OwnPaceLow=.75f;
+        /// <summary>The share of a speed past a take's own its cadence takes (the stride the rest), and the longest a stride stretches
+        /// over the capture's before the cadence takes everything further.</summary>
+        public const float OwnPaceShare=.5f,OwnStretchMost=1.55f;
         /// <summary>
         /// The playback rate of cycle `clip` at ground speed `v` (rig m/s) for `kind`: the body's cadence (NativeHordeGait.StepRate,
         /// two steps a cycle) over the take's own, so each take is time-warped to the kind's step and the stride takes the rest of
@@ -124,18 +133,22 @@ namespace ChipArena.UnityConversion
         /// </summary>
         public static float Rate(int clip,float v,int kind,float legs=1)
         {
-            // A sprint on the model's legs plays at its own captured pace (owner 2026-11-03: "they are still doing awkward lunges when
-            // running ... The animation pack doesn't look like that at all"): the rate that makes its captured ground speed, at the
-            // model's scale, the add's, within OwnPace of it. A run's cadence is the take's, its steps the take's own length. The
-            // body's cadence below (StepRate, by the speed alone) stretched a run to steps of up to 1.5 m at 3 a second where the
-            // pack's sprints take about 1.1 m at 4, the trailing foot three times as far behind the hips. The walking takes
-            // stay on it: they were captured at about a third of the authority's walks, so their own pace cannot keep up.
-            if(OwnStride(clip,legs)){float own=v/(NativeZombieClips.Speed(clip)*legs);return own<OwnPaceLow?OwnPaceLow:own>OwnPaceHigh?OwnPaceHigh:own;}
+            // A take on the model's legs plays at its own captured pace (owner 2026-11-03: "they are still doing awkward lunges when running ... The
+            // animation pack doesn't look like that at all"; 2026-11-04: "preserve the original animation pack's natural movement"): the rate that makes
+            // its captured ground speed, at the model's scale, the add's. The body's cadence below (StepRate, by the speed alone) stretched
+            // strides to up to 2.5 times the capture's. The voxel rig's short legs stay on it: they cannot carry these speeds on a take's own stride.
+            // Past its own speed a take shares what is left between its cadence and its stride (OwnPaceShare), as a person walking faster
+            // does: neither a take played at twice its pace nor one stretched to twice its stride reads as the capture.
+            if(OwnStride(clip,legs))
+            {
+                float own=v/(NativeZombieClips.Speed(clip)*legs);if(own<=1)return own<OwnPaceLow?OwnPaceLow:own;
+                float pace=(float)Math.Pow(own,OwnPaceShare);pace=Math.Max(pace,own/OwnStretchMost);return pace>MaxRate?MaxRate:pace;
+            }
             float r=NativeHordeGait.StepRate(kind,Math.Max(.12f,v),legs)*.5f*Math.Max(.1f,NativeZombieClips.Duration(clip));
             return r<MinRate?MinRate:r>MaxRate?MaxRate:r;
         }
-        /// <summary>Whether a take runs on its own pace and plants on its own stretch on legs `legs` times the rig's: a sprint on the model's.</summary>
-        public static bool OwnStride(int clip,float legs)=>legs>1.001f&&clip>=0&&NativeZombieClips.Speed(clip)>1;
+        /// <summary>Whether a take runs on its own pace, its feet on its own paths, on legs `legs` times the rig's: every loop take with a stride, on the model's.</summary>
+        public static bool OwnStride(int clip,float legs)=>legs>1.001f&&clip>=0&&NativeZombieClips.Clip(clip).Loop&&NativeZombieClips.Speed(clip)>0;
         /// <summary>A cycle's mean row over its loop (the pose it swings about; NativeHordeGait.Calm), null for a one-shot.</summary>
         public static float[] Mean(int clip){Warm();return clip>=0&&clip<means.Length?means[clip]:null;}
         private static float[][] means;
@@ -151,16 +164,48 @@ namespace ChipArena.UnityConversion
             Warm();bool sprint=NativeZombieClips.Speed(clip)>1;
             float d=sprint?stance[clip*2+foot]:foot==0?NativeZombieClips.LeftLift(clip):Frac(NativeZombieClips.RightLift(clip)-NativeZombieClips.RightLand(clip));return Math.Max(sprint?.2f:.5f,Math.Min(sprint?.42f:.7f,d));
         }
-        /// <summary>The share of the cycle a sprint on its own stride keeps a foot down at `stride` rig metres a cycle: the time the
-        /// hips take from where the take lands a foot to where it lifts it, so the body is in the air between the steps as the take's
-        /// is. (OwnDutyLow keeps a long stride from reading as bounds; OwnDutyHigh is the hips' reach.)</summary>
-        public static float OwnDuty(int clip,float stride){Warm();float d=(touch[clip]-liftOff[clip])/Math.Max(.1f,stride);return d<OwnDutyLow?OwnDutyLow:d>OwnDutyHigh?OwnDutyHigh:d;}
-        public const float OwnDutyLow=.3f,OwnDutyHigh=.42f;
-        /// <summary>How far ahead of the hip a sprint lands a foot (rig metres): near under the body, the mean of its two feet's, where
-        /// a stance shared evenly about the hip reaches out in front. The foot then drives back behind the hip as a runner's does.</summary>
-        public static float Touch(int clip){Warm();return touch[clip];}
-        /// <summary>Where behind the hip a sprint's foot leaves the floor (rig metres, negative behind).</summary>
-        public static float LiftOff(int clip){Warm();return liftOff[clip];}
+        /// <summary>The share of the cycle a take on its own stride keeps foot `foot` still in the world: the stretch it stands still in the
+        /// capture (Planted), no longer than the hips take over the ground it covers about the hip. (A body travelling at the take's speed
+        /// outruns the capture's foot late in that stretch: held to the end the trailing foot goes further back than the capture's ever does.)</summary>
+        public static float OwnDuty(int clip,int foot)
+        {
+            Warm();int at=clip*2+foot;float d=Math.Min(Frac(contactOff[at]-contactOn[at]),(touchFoot[at]-liftFoot[at])/Math.Max(.05f,OwnStrideOf(clip)));
+            return d<OwnDutyLow?OwnDutyLow:d>OwnDutyHigh?OwnDutyHigh:d;
+        }
+        public const float OwnDutyLow=.12f,OwnDutyHigh=.8f;
+        /// <summary>The take's own stride a cycle (rig metres).</summary>
+        public static float OwnStrideOf(int clip)=>NativeZombieClips.Speed(clip)*NativeZombieClips.Duration(clip);
+        /// <summary>How far a take's foot paths about the hip are stretched at `stride` rig metres a cycle: the stride over the capture's
+        /// past it; 1 down to OwnPaceLow of it; less below, a body setting off keeping its short steps under it.</summary>
+        public static float OwnSpan(int clip,float stride){float k=stride/Math.Max(.01f,OwnStrideOf(clip));return k>=1?k:Math.Min(1,k/OwnPaceLow);}
+        /// <summary>The take phase (0..1) foot `foot` comes down and leaves the floor, as captured.</summary>
+        public static float ContactOn(int clip,int foot){Warm();return contactOn[clip*2+foot];}
+        public static float ContactOff(int clip,int foot){Warm();return contactOff[clip*2+foot];}
+        /// <summary>How far ahead of the body (rig metres: its hip, with the hips' sway about their own middle) foot `foot` comes down and leaves the floor, as captured.</summary>
+        public static float TouchOf(int clip,int foot){Warm();return touchFoot[clip*2+foot];}
+        public static float LiftOf(int clip,int foot){Warm();return liftFoot[clip*2+foot];}
+        /// <summary>The furthest behind the body the take ever carries foot `foot` (rig metres, negative).</summary>
+        public static float OwnBack(int clip,int foot){Warm();return ownBack[clip*2+foot];}
+        /// <summary>How far outside its hip (rig metres) a take stands foot `foot` through its stance.</summary>
+        public static float StandOut(int clip,int foot){Warm();return standOut[clip*2+foot];}
+        /// <summary>How far (rad) the take's foot has rolled onto its ball as it leaves the floor.</summary>
+        public static float RollOf(int clip,int foot){Warm();return rollFoot[clip*2+foot];}
+        /// <summary>A take's foot at phase `phase` of its cycle, as captured: its height over the take's planted ankle and how far ahead of
+        /// its hip (rig metres). Between its stances the gait follows these phase for phase.</summary>
+        public static float OwnLift(int clip,int foot,float phase)
+        {
+            Warm();float x=Frac(phase)*OwnSteps;int j=Math.Min(OwnSteps-1,(int)x),at=(clip*2+foot)*OwnSteps;
+            return ownLift[at+j]+(ownLift[at+(j+1)%OwnSteps]-ownLift[at+j])*(x-j);
+        }
+        public static float OwnAhead(int clip,int foot,float phase)
+        {
+            Warm();float x=Frac(phase)*OwnSteps;int j=Math.Min(OwnSteps-1,(int)x),at=(clip*2+foot)*OwnSteps;
+            return ownAhead[at+j]+(ownAhead[at+(j+1)%OwnSteps]-ownAhead[at+j])*(x-j);
+        }
+        private const int OwnSteps=60;
+        /// <summary>How far the capture's planted ankle stands from the rig's floor point (rig metres; + the take's ankle stands lower than
+        /// the floor's, so its hips stand this much higher over its floor): what puts the take's feet on the floor at its own hips.</summary>
+        public static float FloorRise(int clip,float floorAnkle){Warm();return floorAnkle-ground[clip];}
         /// <summary>The phase offset of a foot on the gait's cycle: the left strikes at 0, the right half a cycle later on every
         /// take (<see cref="Warp"/> times the take's own strikes to them).</summary>
         public static float Offset(int clip,int foot)=>foot==0?0:.5f;
@@ -172,7 +217,7 @@ namespace ChipArena.UnityConversion
         // strikes its right foot at .49 of the cycle, marked .19), and the limping takes strike it at .7 (walk-4) and .75 (chase-5,
         // chase-5-full). The gait plants the right foot half a cycle after the left, clamped to .4-.6 of the marks, so the trunk,
         // arms and the swing's lift played up to a third of a cycle out of step with the feet.)
-        private static float[] rightAt,warpGain,stance,swingLift,swingAhead,touch,liftOff;
+        private static float[] rightAt,warpGain,stance,swingLift,swingAhead,contactOn,contactOff,touchFoot,liftFoot,standOut,rollFoot,ownLift,ownAhead,ownBack;
         /// <summary>The farthest the warp moves the right foot's strike (cycles): the warped take never plays slower than about a
         /// third of its pace through the cycle.</summary>
         public const float WarpMost=.28f;
@@ -191,6 +236,11 @@ namespace ChipArena.UnityConversion
         /// gait's 0, the right's at its .5, the take's pace eased between them (a symmetric take plays as captured). Continuous
         /// over the cycles.</summary>
         public static float Warp(int clip,float phase)=>clip<0||warpGain==null?phase:phase+warpGain[clip]*ShapeAt(phase);
+        /// <summary>The take's own phase with its right foot's strike at `right` of the gait's cycle instead of the half: a take on its own
+        /// plays as captured (its own strike asked of it: no warp); two takes blending meet between their own.</summary>
+        public static float WarpTo(int clip,float phase,float right){if(clip<0||rightAt==null)return phase;float g=Math.Max(-WarpMost,Math.Min(WarpMost,rightAt[clip]-right))/WarpHalf;return phase+g*ShapeAt(phase);}
+        /// <summary>The take's right-foot strike after its left's (cycles).</summary>
+        public static float RightAt(int clip){Warm();return rightAt[clip];}
         /// <summary>The gait's phase (0..1) the take's own phase `take` plays at (<see cref="Warp"/>'s inverse).</summary>
         public static float Unwarp(int clip,float take)
         {
@@ -221,12 +271,11 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The share of a sprint's own swing path a stride `stride` (metres a cycle) on legs `legs` carries: all of it down to
         /// OwnPaceLow of the take's pace, less below (a body setting off on a sprint keeps its short steps under it).</summary>
-        public static float OwnScale(int clip,float stride,float legs)=>Math.Min(1,stride/Math.Max(.01f,NativeZombieClips.Speed(clip)*NativeZombieClips.Duration(clip)*legs*OwnPaceLow));
-        /// <summary>A sprint's planted foot rolls onto its ball as the take's does (rad, at `q` 0..1 through the stance): flat to OwnRollFrom
+        /// <summary>A planted foot on its take's own stride rolls onto its ball as the take's does (rad, at `q` 0..1 through the stance, to `most`): flat to OwnRollFrom
         /// of the stance, then the heel peeling up to OwnRollMost by the lift. (Measured on the sprints: the ankle stands about .08 over the
         /// toe as it leaves the floor.) So the knee stays bent through the push, where a flat foot straightens the leg behind.</summary>
-        public static float OwnRoll(float q){float x=(q-OwnRollFrom)/(1-OwnRollFrom);x=x<0?0:x>1?1:x;return OwnRollMost*x*x*(3-2*x);}
-        public const float OwnRollFrom=.3f,OwnRollMost=.8f;
+        public static float OwnRoll(float q,float most){float x=(q-OwnRollFrom)/(1-OwnRollFrom);x=x<0?0:x>1?1:x;return most*x*x*(3-2*x);}
+        public const float OwnRollFrom=.3f;
         private static float Smooth(float x){x=Math.Max(0,Math.Min(1,x));return x*x*(3-2*x);}
         /// <summary>The take phase (0..1) of a loop take's foot strike: the left's the cycle's start (the exporter cuts the loops
         /// there), the right's the left's plus the measured time between the feet coming most forward under the hips.</summary>
@@ -237,7 +286,8 @@ namespace ChipArena.UnityConversion
         // cycle as far as WarpMost moves it, and each foot's stance (from its strike to most back) on the gait's cycle.
         private static void Feet()
         {
-            int count=NativeZombieClips.Count;rightAt=new float[count];warpGain=new float[count];stance=new float[count*2];swingLift=new float[count*2*SwingSteps];swingAhead=new float[count*2*SwingSteps];touch=new float[count];liftOff=new float[count];
+            int count=NativeZombieClips.Count;rightAt=new float[count];warpGain=new float[count];stance=new float[count*2];swingLift=new float[count*2*SwingSteps];swingAhead=new float[count*2*SwingSteps];
+            contactOn=new float[count*2];contactOff=new float[count*2];touchFoot=new float[count*2];liftFoot=new float[count*2];standOut=new float[count*2];rollFoot=new float[count*2];ownLift=new float[count*2*OwnSteps];ownAhead=new float[count*2*OwnSteps];ownBack=new float[count*2];
             var row=new float[NativeZombieClips.Channels];var p=new CapturedRig.Pose();var z=new float[2,FootSamples];
             for(int i=0;i<count;i++)
             {
@@ -257,28 +307,56 @@ namespace ChipArena.UnityConversion
                         swingAhead[(i*2+foot)*SwingSteps+k]=p.WorldPosition[foot==0?CapturedRig.LFoot:CapturedRig.RFoot].Z-p.WorldPosition[foot==0?CapturedRig.LHip:CapturedRig.RHip].Z;
                     }
                 }
-                if(NativeZombieClips.Speed(i)>1)Planted(i,row,p);
+                if(NativeZombieClips.Speed(i)>0)Planted(i,row,p);
             }
         }
-        // A sprint's planted stretch about the hip, both feet's mean: from the first sample past its most forward place that the foot
-        // is down (the ankle within ContactAnkle of its lowest, or the toe within ContactToe) to the last before it leaves.
-        private const float ContactAnkle=.05f,ContactToe=.02f,ToeFloor=.03f;
+        // Each loop take's feet in the world as the take moves at its own speed: where each stands still is its contact (its world speed
+        // within ContactSpeed of the take's, its ankle low; a brief lapse, the capture's noise, bridged), the longest such stretch of its
+        // cycle. Past that the capture's foot slides on with the body, on its toe or dragged: the gait follows it there as it does through the
+        // swing. (Read from the ankle's height alone a stance ran on through that slide: held still in the world to the same place, the
+        // trailing foot was left half a leg further behind the hips than the capture's ever is.)
+        private const float ContactSpeed=.6f,ContactLeast=.45f,ContactHigh=.09f,ContactBridge=.08f;
         private static void Planted(int clip,float[] row,CapturedRig.Pose p)
         {
-            var rel=new float[FootSamples];var up=new float[FootSamples];var toe=new float[FootSamples];
+            var rel=new float[FootSamples];var up=new float[FootSamples];var still=new bool[FootSamples];float speed=NativeZombieClips.Speed(clip),time=NativeZombieClips.Duration(clip);
             for(int foot=0;foot<2;foot++)
             {
-                int hip=foot==0?CapturedRig.LHip:CapturedRig.RHip,fore=0;float lo=float.MaxValue;
+                int hip=foot==0?CapturedRig.LHip:CapturedRig.RHip,at=clip*2+foot;float lo=float.MaxValue;
                 for(int k=0;k<FootSamples;k++)
                 {
                     NativeZombieClips.SamplePhase(clip,k/(float)FootSamples,row);NativeZombieClips.Pose(row,p,false);p.World();
-                    rel[k]=p.WorldPosition[hip+2].Z-p.WorldPosition[hip].Z;up[k]=p.WorldPosition[hip+2].Y;toe[k]=p.WorldPosition[hip+3].Y;
-                    lo=Math.Min(lo,Math.Min(up[k],toe[k]+ToeFloor));if(rel[k]>rel[fore])fore=k;
+                    rel[k]=p.WorldPosition[hip+2].Z-p.WorldPosition[hip].Z+row[3]-means[clip][3];up[k]=p.WorldPosition[hip+2].Y;lo=Math.Min(lo,up[k]);
                 }
-                bool Down(int k)=>up[k]<lo+ContactAnkle||toe[k]+ToeFloor<lo+ContactToe;
-                int from=fore;for(int k=0;k<FootSamples;k++){int a=(fore+k)%FootSamples;if(Down(a)){from=a;break;}}
-                int to=from;for(int k=3;k<FootSamples;k++){int a=(from+k)%FootSamples;if(!Down(a)){to=(a+FootSamples-1)%FootSamples;break;}}
-                touch[clip]+=.5f*rel[from];liftOff[clip]+=.5f*rel[to];
+                float most=Math.Max(ContactLeast,ContactSpeed*speed);
+                for(int k=0;k<FootSamples;k++)
+                {
+                    int a=(k+FootSamples-2)%FootSamples,b=(k+2)%FootSamples;float world=(rel[b]-rel[a])/(4*time/FootSamples)+speed;
+                    still[k]=Math.Abs(world)<=most&&up[k]<lo+ContactHigh;
+                }
+                // (Brief lapses bridged, then the longest stretch round the cycle.)
+                int bridge=(int)(ContactBridge*FootSamples);
+                for(int k=0;k<FootSamples;k++)if(still[k]&&!still[(k+1)%FootSamples]){for(int g=2;g<=bridge+1;g++)if(still[(k+g)%FootSamples]){for(int h=1;h<g;h++)still[(k+h)%FootSamples]=true;break;}}
+                int from=0,length=0;
+                for(int k=0;k<FootSamples;k++)
+                {
+                    if(!still[k]||still[(k+FootSamples-1)%FootSamples])continue;
+                    int n=0;while(n<FootSamples&&still[(k+n)%FootSamples])n++;if(n>length){length=n;from=k;}
+                }
+                if(length==0||length>=FootSamples-1){int fore=0;for(int k=1;k<FootSamples;k++)if(rel[k]>rel[fore])fore=k;from=fore;length=(int)(.55f*FootSamples);}
+                int to=(from+length)%FootSamples;
+                contactOn[at]=from/(float)FootSamples;contactOff[at]=to/(float)FootSamples;touchFoot[at]=rel[from];liftFoot[at]=rel[to];
+                // Where it stands out of its hip (the stretch's middle): the capture's stance width.
+                float side=0;for(int k=0;k<4;k++){NativeZombieClips.SamplePhase(clip,(from+k*length/4)/(float)FootSamples,row);NativeZombieClips.Pose(row,p,false);p.World();float dx=p.WorldPosition[hip+2].X-p.WorldPosition[hip].X;side+=.25f*(p.WorldPosition[hip].X>0?dx:-dx);}
+                standOut[at]=side;
+                // Its roll as it leaves: the foot's pitch there over the pitch it stands at through the middle of the stance.
+                float Pitch(int k){NativeZombieClips.SamplePhase(clip,k/(float)FootSamples,row);NativeZombieClips.Pose(row,p,false);p.World();var fw=Vector3.Transform(Vector3.UnitZ,p.WorldRotation[hip+2]);return (float)Math.Atan2(-fw.Y,Math.Sqrt(fw.X*fw.X+fw.Z*fw.Z));}
+                rollFoot[at]=Math.Max(0,Math.Min(1,Pitch(to)-Pitch((from+length/2)%FootSamples)));
+                // The capture's foot about its hip through the cycle.
+                for(int k=0;k<OwnSteps;k++)
+                {
+                    NativeZombieClips.SamplePhase(clip,k/(float)OwnSteps,row);NativeZombieClips.Pose(row,p,false);p.World();
+                    ownLift[at*OwnSteps+k]=Math.Max(0,p.WorldPosition[hip+2].Y-ground[clip]);ownAhead[at*OwnSteps+k]=p.WorldPosition[hip+2].Z-p.WorldPosition[hip].Z+row[3]-means[clip][3];ownBack[at]=Math.Min(ownBack[at],ownAhead[at*OwnSteps+k]);
+                }
             }
         }
         // The phase (0..1) of a sampled foot's most forward (`sign` 1) or most back (-1) place, refined between its samples.

@@ -442,3 +442,124 @@ attention to what happens here". Two things showed in it:
 - **Animation impacts:** the Hulk's arms and trunk during a charge only. The charge's timing, lane, speed, damage and collision
   are unchanged.
 - **Checks:** `--hulk-motion` passes. The station baseline's `kindN.motion` lines are rewritten with this and the squat fix.
+
+## The takes as captured (2026-11-04, `claude/zombie-source-motion`)
+
+Owner: "I want the original Zombie PRO animations to look as close to their intended appearance as realistically possible. If our
+procedural animation system is responsible for making those animations worse, I would rather simplify that system than continue
+compensating for its problems." It was. Presentation only: no speed, position, collision, attack timing, damage, AI, network or
+hitbox change.
+
+### Where the movement left the capture (measured)
+
+`CoreTests --zombie-stages` prints every stage on the measured skeleton (`Tests/ZombieStageChecks.cs`). Lengths are in leg lengths of
+the model (0.853 m); the capture column is the same take on the same legs with no gait. Shared base `cdae8447`:
+
+| Stage | Result |
+| --- | --- |
+| 1. Source FBX to tracks (`tools/export_pack_zombie.mjs`) | Read from the code, not measured: **the pack is not on this PC.** The exporter softens pelvis pitch past .12 rad, spine past .45, neck and head past .9, feet past 1.2 (all written for the voxel blocks), keeps arm targets instead of arm rotations, and drops fingers, toes and twist. |
+| 2. Tracks on the rig | Plays as the capture does. |
+| 3. Rig to the model's legs, no gait | **Not the problem.** Feet about the hips stay within .03 legs of stage 2, the knee within 8 degrees, the trunk within 3. |
+| 4. The gait | **Where it leaves the capture.** Table below. |
+| 5. Live, turning | A second, separate failure: see "Turning". |
+
+### Root causes
+
+1. **The speed gap, answered with the wrong takes.** On the model's legs the pack's exported walks make .46 to .92 m/s and its sprints 2.8
+   to 5.5; the authority walks at 1.3 to 1.6. Nothing exported lies between. The shambler, spitter and brute walked on takes making .46 to
+   .59 m/s: two to three times too slow.
+2. **The legs were not the capture's.** The gait kept the clip's knee pole and swing height and rebuilt the rest: a cadence of its own
+   (`StepRate`), each foot landing half a stance ahead of the hip, swinging on a straight lerp. That turned the speed gap into strides up
+   to 2.5 times the capture's: the "lunges" and the feet too far forward and behind.
+3. **The feet's timing was not the capture's.** Right-foot strikes were warped to the half cycle by up to .28 cycles, flattening limps.
+4. **The hips were not the capture's.** The model's stance cancelled the take's crouch and added 8 cm, so the hips rode the planted leg's
+   reach and dropped when the next foot landed. Their sideways and forward sway were discarded outright.
+5. **The trunk and arms were calmed.** Heading times .62, the kind's "steadiness" times .72 to .9, the playback calm, the blur, the arms
+   folded to a .44 reach, then a per-add hunch, limp, dead arm and hip sway on top. Each answered one complaint; together they were the
+   "arbitrary posture adjustments" over a capture that no longer showed.
+6. **Turning** ran 240 to 370 deg/s while the feet held their yaw. A planted foot was left up to 124 degrees off the facing (shown clamped
+   at 48), the legs crossed by up to 41 cm, and the trunk played a forward stride throughout.
+
+### What changed
+
+On the model's legs (`NativeHordeGait.Legs` past 1), every loop take now runs **on its own stride**:
+
+- **Takes** (`NativeZombieMotion`): the walks nearest the speeds. Shambler chase-2 and walk-6; spitter chase-2; brute walk-6 and chase-2.
+  chase-5-full was tried: accurate to its capture, but at this pace its long stride drops into the owner's lunge in Unity, so it was dropped.
+- **Pace and stride** (`Rate`, `OwnPaceShare` .5, `OwnStretchMost` 1.55): past a take's own speed its cadence and its stride share what is
+  left, the square root each, as a person walking faster does.
+- **The feet follow the capture phase for phase** (`Planted`, `OwnAhead`, `OwnLift`): a foot stands still in the world only for the stretch
+  it stands still in the capture, read from its motion. Between stances it follows the capture's own path about the body, stretched with
+  the stride. Each foot lands where the take lands it, each take's right foot strikes when its own does (no warp except between two blending
+  takes), and it stands as wide as the take stands it.
+- **The hips** stand where the capture's feet reach the floor (`FloorRise`), its crouch kept, its sway restored. They settle onto a landing
+  at `OwnFall` rather than dropping in a pose.
+- **The trunk and arms** are the capture's up to 1.45 times its pace.
+
+**Removed on the model's legs:** `StepRate`, the warp on a lone take, `Steady`, the blur, heading times .62, the .44 arm reach, the Stand's
+crouch cancel and 8 cm lift, the synthetic hip sway, the per-add hunch, limp and dead arm.
+
+**Kept:** planted feet, which are what stops sliding; the reach guards; the balance over the hit capsule (it moves the feet with the hips);
+the spine's share up the back and the arm re-aim in `NativeZombiePosture.Fit`; the head's tracking, tilt and tics; hits, hurt sag and
+staggers; the presented root; the Hulk's own heavy stride.
+
+**The voxel tiers** keep their stride rules, since their short legs cannot carry these speeds on a take's own stride. They get the new takes
+and turn rate only, and still sit lower than their capture.
+
+### Turning
+
+- The body turns no faster than its steps carry it round (`HordeFlow.TurnShare`: 55 percent of the kind's rate standing, all of it from
+  3.5 m/s; a blow's wind-up still turns at once).
+- A foot the body has turned 40 degrees past steps round.
+- A landing foot is placed where the body will be facing as it stands on it.
+- While the body travels off its facing, its steps are quick, short and low (`OwnTurnQuick`, `OwnTravelShort`, `OwnTurnLow`), and a foot catches
+  the body sooner (`OwnCatchUp`). This was found in Unity: the offline numbers passed while a reversal dropped into a kneeling lunge with a
+  foot kicked up behind, because the foot was left beyond the leg's reach. A foot left past the take's own furthest back now steps at once.
+
+No turn clips are exported; the pack may have them, and that could not be checked without it.
+
+### Before and after (`--zombie-stages`)
+
+| | shambler walk 1.5 m/s: capture | before (chase-1) | capture | after (chase-2) | runner run 4.6 m/s: capture | before (sprint-3) | after (sprint-3) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Playback over the take's pace | 1 | 1.49 | 1 | 1.30 | 1 | 1.09 | 1.04 |
+| Stride over the capture's | 1 | **2.12** | 1 | 1.27 | 1 | .95 | .99 |
+| Foot furthest ahead of the hip | .36 | **.62** | .38 | .47 | .51 | .39 | .57 |
+| Foot furthest behind the hip | -.19 | **-.57** | -.29 | -.44 | -.38 | -.25 | -.48 |
+| Hip height | 1.12 | 1.04 | 1.13 | 1.10 | 1.03 | **1.16** | 1.03 |
+| Hip travel per stride | .06 | **.21** | .10 | .16 | .10 | .17 | .13 |
+| Knee's deepest (deg) | 52 | 65 | 68 | 74 | 98 | 91 | 104 |
+| Pelvis yaw swing (deg) | 19 | **7** | 26 | 27 | 25 | **12** | 25 |
+| Shoulder yaw swing (deg) | 21 | 14 | 13 | 13 | 56 | **38** | 56 |
+| Elbow's straightest (deg of bend) | 16 | **77** | 44 | 52 | 38 | **74** | 60 |
+
+Note the walk's takes differ before and after, since the choice of take is part of the fix. Across every modelled kind's takes
+(`--zombie-source`): at most 1.50 times the pace, 1.54 the stride, hips within .04 legs, the knee 18 degrees past, the pelvis's swing within 1
+degree.
+
+Through a turn, before and after: planted twist 124 to 75 degrees at worst; a shambler's standing 180 from .82 to 1.33 s; yaw rate walking 241 to
+179 deg/s. Feet crossing did not improve overall (.41 m to .55 m at worst, on a run's reversal, where it is a foot trailing behind the turned
+body rather than legs crossing under it).
+
+**Cost:** gait 7.0-8.0 to 7.7-8.2 microseconds an add a frame, model bind 7.5-8.2 to 7.4-8.4: no measurable change. `Warm` builds a few more tables
+once, at the first gait.
+
+### The comparison mode
+
+DEV panel, Previews, Zombie animation compare (`Core/NativeZombieCompare.cs`, `Runtime/NativeZombieComparePresentation.cs`): two zombies on
+one route, identical take, speed and turns. Left is the capture with every stage off; right is the game's gait. Choose kind, take, speed,
+route (straight, circle, 45/90/180 turns, zigzag, standing turns) and turn rate; pause and step a frame; switch off foot placement, posture
+and retiming on either side (`NativeHordeGait.StagePlant`, `StagePosture`, `StageRetime`, all on in the game); voxel or model; the floor's
+half-metre grid, root facing, velocity, and feet (green planted, red in the air). It reads only the clip tables, so another pack's cycles
+compare on it the same way.
+
+### Verified, and what is not
+
+**Watched in Unity (the Editor, frame strips and GIFs on the comparison mode):** shambler on chase-2, walk-6 and chase-5-full; runner on all four
+sprints at 4.6 m/s and sprint-3 at 2.6; brute; spitter; the voxel body; 90 and 180 degree turns walking and running, a standing 180, a zigzag. Live
+zombies chasing, shared base beside this branch, shambler and runner.
+
+**Not verified:** a Windows build; a crowd at scale; the real navigation round obstacles and other zombies (the zigzag stands in for it); two
+clients; first-person views of a chase; the Hulk (its stride is untouched); the zone kinds beyond their checks; zombies roaming the town on their
+wander take. **Source comparison:** stage 1 could not be measured without the pack's FBX. chase-2's capture holds its head about 50 degrees above
+the horizon, kept as captured; it needs a look against the pack's own demo.
