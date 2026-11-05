@@ -25,8 +25,8 @@ namespace ChipArena.UnityConversion
     public struct ChipSize
     {
         public float Pad,PinInset,Pin,Die,Icon,Label,Name,NameLine,Desc,DescLine,Stat,Foot,Radius;public int DescLines,NameLines;
-        public static ChipSize Tray(bool large,int descLines)=>new ChipSize{Pad=10,PinInset=16,Pin=9,Die=54,Icon=20,Label=10,Name=large?17:15,NameLine=1.15f,Desc=large?13:12,DescLine=1.38f,Stat=12.5f,Foot=9.5f,Radius=9,DescLines=descLines,NameLines=3};
-        public static ChipSize Spotlight=>new ChipSize{Pad=19,PinInset=24,Pin=12,Die=84,Icon=34,Label=12,Name=30,NameLine=1.08f,Desc=17,DescLine=1.55f,Stat=14,Foot=10,Radius=11,DescLines=8,NameLines=3};
+        public static ChipSize Tray(bool large,int descLines)=>new ChipSize{Pad=10,PinInset=16,Pin=9,Die=54,Icon=20,Label=10,Name=large?17:15,NameLine=1.15f,Desc=large?14:13,DescLine=1.3f,Stat=large?15:14,Foot=9.5f,Radius=9,DescLines=descLines,NameLines=3};
+        public static ChipSize Spotlight=>new ChipSize{Pad=19,PinInset=24,Pin=12,Die=84,Icon=34,Label=12,Name=30,NameLine=1.08f,Desc=19,DescLine=1.4f,Stat=18,Foot=10,Radius=11,DescLines=8,NameLines=3};
     }
     // client/chip-card.ts as an IMGUI drawing, restyled as a neural core cartridge (Core/NativeChipCartridge.cs): the cartridge
     // (the faceted bezel and its inlay, its machined notches and status lamps, the anodised body with the board's circuit
@@ -39,9 +39,9 @@ namespace ChipArena.UnityConversion
         private static ChipTextSet set;private static Dictionary<string,ChipTextEntry> text;
         private static void Ensure(){if(set!=null)return;var asset=Resources.Load<TextAsset>("ChipText");if(asset==null)throw new InvalidOperationException("ChipText.json is missing");set=JsonUtility.FromJson<ChipTextSet>(asset.text);text=set.chips.ToDictionary(c=>c.id);}
         public static ChipTextSet Text{get{Ensure();return set;}}
-        public static string Description(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)?t.description:c.description+(string.IsNullOrWhiteSpace(c.sourceCard)?"":" Adapted from "+c.sourcePack+" / "+c.sourceCard+".");}
+        public static string Description(ContentChip c){Ensure();if(NativeChipCopy.Find(c.id,out var copy))return copy.Short;return text.TryGetValue(c.id,out var t)?t.description:c.description+(string.IsNullOrWhiteSpace(c.sourceCard)?"":" Adapted from "+c.sourcePack+" / "+c.sourceCard+".");}
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ContentChip,ChipStatText[]> dynamicLines=new System.Runtime.CompilerServices.ConditionalWeakTable<ContentChip,ChipStatText[]>();
-        public static ChipStatText[] Lines(ContentChip c){Ensure();return text.TryGetValue(c.id,out var t)&&t.lines!=null?t.lines:dynamicLines.GetValue(c,NativeChipStatText.Lines);}
+        public static ChipStatText[] Lines(ContentChip c){Ensure();if(NativeChipCopy.Find(c.id,out var copy)&&copy.Rows!=null)return copy.Rows;return text.TryGetValue(c.id,out var t)&&t.lines!=null?t.lines:dynamicLines.GetValue(c,NativeChipStatText.Lines);}
         public static Color Rarity(string r)=>U.Hex(Cart.Rarity(r));
         public static string RarityName(string r)=>r=="l44t"?"L44T":string.IsNullOrEmpty(r)?"Common":char.ToUpperInvariant(r[0])+r.Substring(1);
         // The grade's label (constants, so a frame builds no string), its colour, tracking and glow.
@@ -53,6 +53,7 @@ namespace ChipArena.UnityConversion
         private static readonly Dictionary<string,string> tags=new Dictionary<string,string>();
         private static string Tag(ContentChip c)
         {
+            {string need=NativeAbilityChips.RequiresName(c.id);if(need!=null){if(!tags.TryGetValue(c.id,out var only))tags[c.id]=only=need.ToUpperInvariant()+" ONLY";return only;}}
             string t=c.tags!=null&&c.tags.Length>0?c.tags[0]:"all";if(t=="pve-money")return "BOSS FIGHT ONLY";if(t=="projectile")return "GUNS + MAGIC";if(t=="all")return "ALL WEAPONS";
             if(!tags.TryGetValue(t,out var up))tags[t]=up=t.ToUpperInvariant();return up;
         }
@@ -66,9 +67,10 @@ namespace ChipArena.UnityConversion
         // The core's size on a card `w` wide (narrow trays shrink it) and how far it rises over the top edge.
         private static float CoreSize(float w,ChipSize s)=>Mathf.Min(s.Die,Mathf.Max(34,w*.27f));
         private static float CoreRise(ChipSize s)=>s.Radius>=11?7:5;
+        private const float RowGap=2;
         // The layout from the card's top-left corner: the core mounted on the top-left shoulder (its collar's left point 2 px
         // out of the card, its top point CoreRise above it), the title block right of it, the header's divider under both.
-        private struct Layout {public float CoreX,CoreY,Core,TitleX,TitleY,Title,Head,DescTop,StatsTop,FootTop,Height;public List<string> Name,Desc;}
+        private struct Layout {public float CoreX,CoreY,Core,TitleX,TitleY,Title,Head,DescTop,StatsTop,FootTop,Height;public List<string> Name,Desc;public List<string>[] Rows;}
         // Layouts by chip, width, size and UI scale (the wrapped lines are lists): made once, so a frame allocates nothing.
         private static readonly Dictionary<(string,int,int),Layout> layouts=new Dictionary<(string,int,int),Layout>();
         private static int SizeKey(ChipSize s)=>unchecked((int)(s.Name*7919+s.Desc*104729+s.Label*523+s.Stat*1009+s.Pad*31+s.Die*131+s.Radius*7+s.Foot*61)*31+s.DescLines*17+s.NameLines*13+Mathf.RoundToInt(U.S*100)*100003);
@@ -82,9 +84,10 @@ namespace ChipArena.UnityConversion
             var l=new Layout();float core=CoreSize(w,s),R=core*.48f;l.Core=core;l.CoreX=-2-(core/2-.866f*R);l.CoreY=-CoreRise(s)-(core/2-R);l.TitleX=l.CoreX+core/2+.866f*R+(s.Radius>=11?16:11);
             l.Name=U.Wrap(c.name,s.Name,w-l.TitleX-s.Pad,true,s.NameLines);float title=s.Label+7+l.Name.Count*s.Name*s.NameLine;l.Title=title;
             l.Head=Mathf.Max(l.CoreY+core+4,s.Pad+title+5);l.TitleY=s.Pad+Mathf.Max(0,(l.Head-5-s.Pad-title)/2);
-            l.Desc=s.DescLines>0?U.Wrap(Description(c),s.Desc,w-2*s.Pad-6,false,s.DescLines):new List<string>();
+            string said=Description(c);l.Desc=s.DescLines>0&&!string.IsNullOrEmpty(said)?U.Wrap(said,s.Desc,w-2*s.Pad-6,false,s.DescLines):new List<string>();
             float y=l.Head+2;l.DescTop=y+7;if(l.Desc.Count>0)y+=7+l.Desc.Count*s.Desc*s.DescLine+8;else y+=8;
-            var lines=Lines(c);l.StatsTop=y-3;if(lines.Length>0)y+=-3+lines.Length*(s.Stat*1.22f+1)+8;
+            var lines=Lines(c);l.StatsTop=y-3;l.Rows=new List<string>[lines.Length];int rowLines=0;for(int i=0;i<lines.Length;i++){l.Rows[i]=U.Wrap(lines[i].text,s.Stat,w-2*s.Pad-6,true,2);rowLines+=l.Rows[i].Count;}
+            if(lines.Length>0)y+=-3+rowLines*s.Stat*1.22f+lines.Length*RowGap+8;
             l.FootTop=y;l.Height=y+6+1+Mathf.Max(8,s.Foot*1.2f)+s.Pad-2+(NativeMods.Credit(c).Length>0?s.Foot*1.3f+3:0);return l;
         }
         public static float Height(ContentChip c,float w,ChipSize s)=>Measure(c,w,s).Height;
@@ -158,14 +161,15 @@ namespace ChipArena.UnityConversion
             }
             // Description and the stat rows on the body: each row a tick in its tone in the padding and a faint wash of it; a line
             // wider than the card (narrow trays) shrinks to fit, down to 80%. Over Siren's flames the text keeps a shadow.
-            Color desc=siren?U.Hex(0xdcd7ef):U.Hex(0xc6cedb);float tx0=r.x+s.Pad+3,txw=r.width-2*s.Pad-6;Color textShade=A(Color.black,siren?1:.45f);
+            Color desc=siren?U.Hex(0xe8e4f6):U.Hex(0xe2e7f0);float tx0=r.x+s.Pad+3,txw=r.width-2*s.Pad-6;Color textShade=A(Color.black,siren?1:.45f);
             for(int i=0;i<l.Desc.Count;i++)U.Text(new Rect(tx0,r.y+l.DescTop+i*s.Desc*s.DescLine,txw,s.Desc*s.DescLine),l.Desc[i],s.Desc,A(desc),TextAnchor.MiddleLeft,shadow:textShade);
-            var stats=Lines(c);float rh=s.Stat*1.22f;
+            var stats=Lines(c);float rh=s.Stat*1.22f,rowY=r.y+l.StatsTop;
             for(int i=0;i<stats.Length;i++)
             {
-                var stl=stats[i];bool neutral=stl.tone!="good"&&stl.tone!="bad";Color sc=stl.tone=="good"?U.Hex(0x5bea86):stl.tone=="bad"?U.Hex(0xff5c69):U.Hex(0xb9bcc8);var row=new Rect(tx0,r.y+l.StatsTop+i*(rh+1),txw,rh);
-                U.HGradient(new Rect(row.x-5,row.y+1,txw*.72f,rh-1),A(sc,neutral?.05f:.09f),Color.clear);U.Fill(new Rect(row.x-5,row.y+2.5f,2*p1,rh-4),A(sc,neutral?.5f:.9f));
-                float fit=s.Stat*Mathf.Clamp(txw/Mathf.Max(1,U.Measure(stl.text,s.Stat,true).x),.8f,1);U.Text(row,stl.text,fit,A(sc),TextAnchor.MiddleLeft,bold:true,glow:neutral?default:A(sc,.2f),shadow:textShade);
+                var stl=stats[i];bool neutral=stl.tone!="good"&&stl.tone!="bad";Color sc=stl.tone=="good"?U.Hex(0x5bea86):stl.tone=="bad"?U.Hex(0xff5c69):U.Hex(0xb9bcc8);var wrapped=l.Rows[i];float tall=wrapped.Count*rh;var row=new Rect(tx0,rowY,txw,tall);
+                U.HGradient(new Rect(row.x-5,row.y+1,txw*.72f,tall-1),A(sc,neutral?.05f:.09f),Color.clear);U.Fill(new Rect(row.x-5,row.y+2.5f,2*p1,tall-4),A(sc,neutral?.5f:.9f));
+                for(int k=0;k<wrapped.Count;k++)U.Text(new Rect(row.x,row.y+k*rh,txw,rh),wrapped[k],s.Stat,A(sc),TextAnchor.MiddleLeft,bold:true,glow:neutral?default:A(sc,.2f),shadow:textShade);
+                rowY+=tall+RowGap;
             }
             // Footer (margin-top auto: at the bottom of a card taller than its content): the rule with the tier's accent, the tag on
             // the left; INSTALL / ×c → ×c+1 / ×n INSTALLED and the stack slots on the right.
