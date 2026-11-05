@@ -1,3 +1,16 @@
+## 2026-11-05 — Claude: the builder's blocking check traced (diagnosis only, no code changed)
+
+- **Why:** the third-set build stopped on Astra's `breacher penetrates thin wall` (`Runtime/NativeTechniqueValidation.cs:209`). Astra's native cases compile but can't run without Unity, and the builder stops at the first failure, so I ran the whole gate once to list everything at one go.
+- **Method:** `PrototypeBuild.Validate` in the owner's open Editor (6000.3.24f1), twice, on shared `342decbb` plus a throwaway local commit, never pushed and since deleted, in which `ValidateTechniques`' `Check` logs and carries on and `BreacherFire` logs what it sees.
+- **Result: this is the only failure in the gate.** With that one check logged instead of thrown, `Validate` returned `ok` with 351 PASS lines. That is the project checks in the Editor; the Windows build and packaging after them did not run.
+- **Cause: the test, as far as seen, not the rule.** `b.Body.position=...` moves only the Rigidbody and the validation never steps physics, so `b`'s Transform stays at `(16, .85, -9.5)`. `BreacherFire` filters on `t.collider.ClosestPoint(...)`, which there follows that Transform (`closest=(16.29, 1.31, -9.20)`, 1412 m off the line) although `t.at` and `bounds.center` both read `(1000, 100, 1012)`. Every target is skipped and `b.Hp` stays 100. The ray is right: wall entry and exit, `Path.Length==2`, 1.0 of the 1.2 m budget left.
+- **Fix, proven:** the same case with `b.Body.transform.position=b.Body.position;` before `Physics.SyncTransforms()` gives `b.Hp` 78 (22 damage), `Path.Length` 2, `HitAt` set.
+- **Line 210 too:** `breacher respects wall thickness budget` passes today only because no target is ever seen. Give it the same line, so it tests the budget. `limit` is 10.2 against `b` at 12, so it should still pass; that is read from the log, not run.
+- **Not checked:** Breacher Round in a real match. Physics steps there, so the Transform should be current, but nobody has pressed it against a target behind a wall in a live round or a Windows build. The gate ran with the Editor checkout's local chip-screen edits. Two logged `Destroy may not be called from edit mode` errors are the Editor's, and don't stop `Validate`.
+- **Animation impact:** none; nothing changed.
+- **Release:** still NOT built; the test channel stays on `a6a454a4`.
+- **Next (Astra):** add that line at 209 and 210, merge, sync the builder; that build carries the third-set presentation. The other items in the entry below still stand: Ground Slam, Slide Shot, Ammo Crate, `HitAt` on a miss, Shadow Puppet.
+
 ## 2026-11-05 — Claude: the third set's presentation, all 36 on Astra's real records
 
 - **Owner:** three more abilities a weapon, "Balanced, fun, great animation and effects"; "High quality effects, details and animations".
