@@ -154,3 +154,9 @@ means assets were imported, **not** that Unity built or published successfully.
 Confirm the separate builder status and playtest before declaring delivery.
 The Windows GUI, DPAPI and live API path still need first-run verification on the
 owner's PC; automated tests mock the network and credential store.
+
+## Unity-only builder exports
+
+The default queue falls back to `tools/sound_bundle/docs/audio` when root `docs/audio/sound-queue.json` is absent. Keep all three JSON files in that bundle byte-identical to their canonical docs/audio files whenever changing approved jobs or manifests; `package_source.py` checks for drift. Existing job IDs, manifest-relative paths and hashes are preserved. No API calls occur merely to resolve inputs.
+
+Status and completed originals ZIPs are mirrored beside the input LocalAssets ZIP. Use a direct Drive folder listing if newly created files do not appear in search.
