@@ -369,10 +369,11 @@ namespace ChipArena.UnityConversion
             if(zombieHolder==null){zombieHolder=new GameObject("Zombie model pool");zombieHolder.SetActive(false);DontDestroyOnLoad(zombieHolder);}
             zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);
         }
-        // A pilot who can summon zombies (Graveyard Shift, Corpse Party): bodies are made ahead for them too.
+        // A pilot who can summon zombies (Graveyard Shift, Corpse Party, the Necronomicon): bodies are made ahead for them too.
         private static bool ZombieSummoner(NativeArena arena)
         {
-            foreach(var p in arena.Pilots){var chips=p.Seat?.chips;if(chips!=null&&(chips.TryGetValue("graveyard-shift",out int g)&&g>0||chips.TryGetValue("corpse-party",out int c)&&c>0))return true;}
+            // (The Necronomicon raises zombies as well: with no bodies made ahead for it, its first raise stood up as voxel zombies: owner 2026-11-04.)
+            foreach(var p in arena.Pilots){var chips=p.Seat?.chips;if(chips!=null&&(chips.TryGetValue("graveyard-shift",out int g)&&g>0||chips.TryGetValue("corpse-party",out int c)&&c>0||chips.TryGetValue("necronomicon",out int n)&&n>0))return true;}
             return false;
         }
         // A body no add wears any more: back to its variant's spares (hidden, whole), or taken apart past the spares kept.

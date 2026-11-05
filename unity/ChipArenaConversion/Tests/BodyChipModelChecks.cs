@@ -155,7 +155,7 @@ namespace ChipArena.UnityConversion
                 &&status.Contains("FlushStatus(teamBands,0,null);FlushStatus(teamArmbands,0,null);"),"a model pilot's team shows as armbands, not the voxel bands");
             Check(src.Contains("if(add==null&&m.Kind==\"zombie\"&&ZombieModelPose(rig,m.Id,NativeHordeKinds.Shambler,NativeHordeModels.Full,true,false,false,null,0,0,HitFlashCode(m.Id,arena.Time),1,0))continue;")
                 &&summon.Contains("if(summon&&!toy&&ZombieModelDeath(rig,death.id,NativeHordeKinds.Shambler,death.lost,0))return true;")&&summon.Contains("if(!toy&&ZombieModelDrawn(e.Target))GoreInk(")
-                &&zm.Contains("arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)"),"a summoned zombie lives, falls and bleeds on the zombie model; bodies are made ahead for its summoner");
+                &&zm.Contains("arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)")&&zm.Contains("chips.TryGetValue(\"necronomicon\",out int n)&&n>0"),"a summoned zombie lives, falls and bleeds on the zombie model; bodies are made ahead for its summoner");
             Check(src.Contains("sourceModels.Queue(m.Pve==null?SummonModelOf(\"summon-\"+m.Kind):\"horde-\"+variant,")&&summon.Contains("sourceModels.Queue(SummonModelOf(death.model),")
                 &&src.Contains("model==\"summon-toy\"&&!ClassicBodies&&VisualBodiesOn&&sourceModels.Has(NativeToySoldier.Model)?NativeToySoldier.Model:model")&&models.Contains("models[NativeToySoldier.Model]=figure.ToArray();"),
                 "the Toy Soldier draws its figure, alive and falling, once the player's model is on (the Classic look keeps its blocks)");

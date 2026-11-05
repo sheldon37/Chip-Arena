@@ -24,6 +24,17 @@
 - **Risks:** a thin line can read weaker than the old fat orb from directly behind the camera; the owner's call in a build. A round unseen by any frame whose stopping point is on the world is matched to its shooter by time and distance, so two shooters side by side can swap muzzles for a frame (request 1).
 - **Requests for Astra:** (1) `Projectile` on the gun Shot event, or `Owner` on `NativeShotEnd`; (2) `Projectile` and `Normal` on `EventKind.Ricochet`; (3) parent `Projectile` on `EventKind.Split`; (4) an Impact with `Normal` for world-collider hits (today only props and `bit-bolt` raise one); (5) a sample time on `NativeBomb` records so a guest can carry thrown TNT along its arc between frames. All in the handoff's prompt.
 - **Next:** owner judges the look in a build; Astra picks up the requests; the presentation adopts them where it now guesses.
+## 2026-11-04 — Claude: the TNT's orange blocks, and the Necronomicon off voxels
+
+- **Owner:** "Bombadier currently has two orange blocks sticking out of their tnt?", "The orange blocks might be coming from one of the mod options we have", "I think some chips still use voxel implementations too".
+- **Branch/base:** `claude/chips-off-voxel`, base shared `9ba6872a`. Presentation only.
+- **Cause and fix:** the Bombadier was the only weapon still drawing the Prototype Series' chip pieces on the default skin (`NativeChipModules.Designed` is false for it). `NativeWeaponDressing.Modules` draws two glowing orange bars when `stats["impulse"]>1.3`, and the Pinball mod doubles the base impulse, so they showed with no chips; Kinetic and the other knockback chips do the same. `WeaponDressing` now returns before those pieces for the TNT. The Necronomicon wasn't in `ZombieSummoner`, so no model bodies were made ahead for it and its first raise stood up as voxel zombies; it is in the list now.
+- **Animation impact:** none. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
+- **Voxel audit, for the record:** on the default skin the chips' remaining voxel look is on projectiles: `NativeShotVisuals` parts, Bowling Club's cube, Blade Runner's flat box, the enlarged gun rounds. Those went to the ranged polish pass (`claude/ranged-polish`), which is already in those files. The Prototype Series skin and Classic bodies stay voxel by choice (docs/BOZO-INTEGRATION.md).
+- **Checks:** full `CoreTests` in a clean LF checkout of `76adb186`: exit 0, 956 PASS groups, with the new pins (the TNT's skip in `BombadierChecks`, the Necronomicon in `BodyChipModelChecks`); no source pin broken; `git diff --check` clean. In Unity (BoZo, Cybercity): the bars reproduced on shared with Kinetic x2 and gone on this branch in third person; first person clean; the Necronomicon's first raise (fire staff, chip added, E) stood up a `Zombie model`.
+- **Not checked:** the Pinball mod itself on screen (the same check reproduced with Kinetic); a Windows build's play; online.
+- **Astra:** nothing needed.
+
 ## 2026-11-04 — Astra — REVIVE-O-MATIC authority and Foreman hitbox
 
 Branch `codex/revive-machine-rules`, base `08beef17`, integrated shared Ironworks model merge `acbb6831` and publication note `eb769ba1`. Implementation pushed as `eafa3824`, integration/guard follow-up `bbf7e01d`; PR #332.
