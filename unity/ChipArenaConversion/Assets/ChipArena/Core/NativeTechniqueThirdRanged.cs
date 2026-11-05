@@ -128,9 +128,9 @@ namespace ChipArena.UnityConversion
         // dust behind the heels, and the end kicks up a crescent of dirt.
         private static void SlideShot(ITechniqueFxSink s,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var from=N(k.From);var to=N(k.To);var dir=Flat(to-from,Flat(N(k.Dir),Vector3.UnitZ));var r=RightOf(dir);float span=Math.Max(.05f,k.Until-k.Release),u=Clamp01((t-k.Release)/span),marks=Smooth((t-k.At)/.06f)*(1-Smooth((t-k.Until-.1f)/.75f));var fl=Up*.05f;var head=Vector3.Lerp(from,to,u);
-            int chev=low?4:6;for(int i=0;i<chev;i++){float ui=(i+.6f)/chev,b=marks*(ui>u?1.5f:.35f);var p=Vector3.Lerp(from,to,ui)+fl;s.Line(false,p-r*.42f-dir*.34f,p,SlideDust*b,.06f,true);s.Line(false,p+r*.42f-dir*.34f,p,SlideDust*b,.06f,true);}
-            float stop=marks*(t<k.Until?1.1f+.5f*(float)Math.Sin(t*30):.5f);var end=to+fl;s.Line(false,end-r*.8f,end+r*.8f,(SlideDust+Vector3.One*.3f)*(1.6f*stop),.07f,true);s.Line(false,end-r*.8f,end-r*.8f-dir*.32f,SlideDust*(1.4f*stop),.05f,true);s.Line(false,end+r*.8f,end+r*.8f-dir*.32f,SlideDust*(1.4f*stop),.05f,true);
+            var from=N(k.From);var to=N(k.To);var dir=Flat(to-from,Flat(N(k.Dir),Vector3.UnitZ));var r=RightOf(dir);float span=Math.Max(.05f,k.Until-k.Release),u=Clamp01((t-k.Release)/span),marks=Smooth((t-k.At)/.06f)*(1-Smooth((t-k.Until-.1f)/.75f));var fl=Up*.09f;var head=Vector3.Lerp(from,to,u);
+            int chev=low?4:6;for(int i=0;i<chev;i++){float ui=(i+.6f)/chev,b=marks*(ui>u?2.6f:.5f);var p=Vector3.Lerp(from,to,ui)+fl;s.Line(false,p-r*.62f-dir*.46f,p,SlideDust*b,.15f,true);s.Line(false,p+r*.62f-dir*.46f,p,SlideDust*b,.15f,true);}
+            float stop=marks*(t<k.Until?1.3f+.5f*(float)Math.Sin(t*30):.5f);var end=to+fl;s.Line(false,end-r*1.05f,end+r*1.05f,(SlideDust+Vector3.One*.3f)*(1.9f*stop),.16f,false);s.Line(false,end-r*1.05f,end-r*1.05f-dir*.5f,SlideDust*(1.8f*stop),.1f,false);s.Line(false,end+r*1.05f,end+r*1.05f-dir*.5f,SlideDust*(1.8f*stop),.1f,false);
             if(t<k.Release)return;
             var hot=new Vector3(1,.62f,.24f);float scorch=1-Smooth((t-k.Until)/.9f);
             Strip(s,from+fl,head+fl,.46f,SlideDust,.1f*scorch,.6f*scorch);s.Line(false,from-r*.16f+fl,head-r*.16f+fl,hot*(1.9f*scorch),.04f,true);s.Line(false,from+r*.16f+fl,head+r*.16f+fl,hot*(1.9f*scorch),.04f,true);
@@ -617,7 +617,8 @@ namespace ChipArena.UnityConversion
             {
                 case NativeTechniques.FlashRound:hit=Part(aim,k.At,back);break;
                 case NativeTechniques.GunSpin:hit=Part(set.Reload,k.At,k.Arm);break;
-                case NativeTechniques.SlideShot:hit=Hold(TechSurf,k.At,k.Until,time-k.At)||Part(set.Land,k.Until,k.RecoverUntil);break;
+                // The deep crouch at the start of the set's landing, held for the slide; the rest of it is the rise.
+                case NativeTechniques.SlideShot:{float len=clips.Has(set.Land)?clips.Length(set.Land):1;hit=Hold(set.Land,k.At,k.RecoverUntil,len*(time<k.Until?.22f*Clamp01((time-k.At)/.08f):.22f+.78f*Clamp01((time-k.Until)/Math.Max(.05f,k.RecoverUntil-k.Until))));}break;
                 case NativeTechniques.Bipod:{bool up=k.RecastAt>-50;float end=up?k.RecastAt:k.Until;hit=Part(TechDrop,k.At,k.Release)||Hold(aim,k.Release,end,time-k.Release)||(up&&Part(TechShootLine,end,k.Until));}break;
                 case NativeTechniques.AmmoCrate:hit=Part(TechDrop,k.At,back);break;
                 case NativeTechniques.FlakBurst:hit=Part(fire,k.At,back);break;
