@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: confirmed missing queue in Unity-only builder export
+
+- Direct Drive folder listing found Latest-Sound-Status.json (search had missed it). Actual source `70f2f3b3` reports `read queue and manifest: FileNotFoundError` for `Work/70f2f3b324fc-f69f0af2/docs/audio/sound-queue.json`. This failure precedes all API requests. No credential problem established.
+- Branch `codex/sound-queue-unity-bundle`, base `70f2f3b3`: package byte-identical approved queue/manifests inside Unity tools; when the default root queue is absent, resolve against the self-contained bundle. Explicit caller queues still fail normally. Job IDs, manifest paths/hash, request caps and retry guards preserved.
+- Source packaging rejects stale bundled copies when canonical docs are present. Future queue/manifest edits must update corresponding bundle bytes. No runtime network fetch of approval data.
+- Verification: 15 mocked queue tests passed; separate fresh subprocess in a Unity-only tree with no root docs resolved six requests / 11 seconds and validated the pinned hash, without API calls. Windows generation/import and audio delivery await builder. Drive folder must be listed directly if search misses new status/ZIP files. No live/Site release.
+
 ## 2026-11-05 — Astra: identify missing sound-queue file
 
 - Owner supplied error from `68949a1c`: FileNotFoundError during optional asset install. Filename/stage were stripped, so root cause and whether any audio was generated remain unknown.
