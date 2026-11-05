@@ -104,6 +104,7 @@ namespace ChipArena.UnityConversion
             if(HubInside(p.Body.position)||HubCross(p.Body.position,cast.Point))return;
             var d=cast.Definition;int group=++abilityGroup;
             float damage=(float)d.damage*scale,radius=NativeAbilityRules.Radius(d,p.Stats);
+            if(d.id=="orbital-mark"&&AbilityChip(p,"ab-danger-close"))damage*=100f/85;
             if(d.id=="singularity"&&Has(p,"abyssal-core"))radius*=1.25f;
             var groups=AbilityZones.Where(z=>z.Owner==p&&z.Definition.id==d.id).Select(z=>z.Group).Distinct().ToArray();
             int max=Mathf.Clamp((1+(int)p.Stats["abilityCharges"])*(1+(int)p.Stats["spellEcho"]),2,6);
@@ -316,8 +317,8 @@ namespace ChipArena.UnityConversion
             {if(s.Travel>=(float)d.arm)AbilityBlast(s.Owner,at,NativeAbilityRules.Radius(d,s.Owner.Stats),s.Damage,(float)d.impulse,element,2,effect:d.fx??d.id);else {if(target!=null)AbilityHit(target,s.Owner,s.Damage*15/55,s.Velocity.normalized,150,false,true,true);Fx(at,.3f,0);}return true;}
             if(d.id=="orbital-mark")
             {
-                if(target!=null)AbilityHit(target,s.Owner,s.Damage*10/85,s.Velocity.normalized,150,false,true,true);
-                AbilityZones.Add(new NativeAbilityZone{Id=nextEvent++,Born=Time,Owner=s.Owner,Definition=d,Attached=target,LockAt=Time+(float)d.duration,Position=target!=null?target.Body.position:at,Kind="bomb",Radius=NativeAbilityRules.Radius(d,s.Owner.Stats),Damage=s.Damage,Until=Time+(float)d.fuse});return true;
+                if(target!=null)AbilityHit(target,s.Owner,s.Damage*10/(AbilityChip(s.Owner,"ab-danger-close")?100:85),s.Velocity.normalized,150,false,true,true);
+                AbilityZones.Add(new NativeAbilityZone{Id=nextEvent++,Born=Time,Owner=s.Owner,Definition=d,Attached=target,LockAt=Time+(float)d.duration,Position=target!=null?target.Body.position:at,Kind="bomb",Radius=NativeAbilityRules.Radius(d,s.Owner.Stats)*(AbilityChip(s.Owner,"ab-danger-close")?1.3f:1),Damage=s.Damage,Until=Time+(float)d.fuse});return true;
             }
             if(target!=null)
             {
@@ -328,7 +329,7 @@ namespace ChipArena.UnityConversion
                 float actual=AbilityHit(target,s.Owner,s.Damage*(head?1.5f:1),impulse.normalized,impulse.magnitude,head,true,d.id=="flame-lance"||d.id=="shadow-shackles");
                 if(actual>0)
                 {
-                    if(d.burn>0)RefreshDot(target,s.Owner,"fire",d.burn*s.Damage/d.damage,2);
+                    if(d.burn>0)RefreshDot(target,s.Owner,"fire",d.burn*s.Damage/d.damage*(d.id=="flame-lance"&&AbilityChip(s.Owner,"ab-white-heat")?2:1),2);
                     if(d.speedFactor>0)Slow(target,(float)d.speedFactor,(float)d.slowFor);
                     if(d.id=="shadow-shackles"&&s.Owner.Hp>0)s.Owner.Hp=Math.Min((float)s.Owner.Stats["hp"],s.Owner.Hp+actual*.5f);
                 }

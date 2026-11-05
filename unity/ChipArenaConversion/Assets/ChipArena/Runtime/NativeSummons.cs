@@ -40,8 +40,8 @@ namespace ChipArena.UnityConversion
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
         {
-            var at=point??m.Body.position;float actual=HitMinionCore(m,owner,ExpansionDamage(owner,damage,kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"),direction,impulse,point,kind,radius,head,projectile,pierced,from);
-            if(kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy")ExpansionHit(owner,m.Id,at,actual,kind=="melee");return actual;
+            var at=point??m.Body.position;float actual=HitMinionCore(m,owner,ExpansionDamage(owner,damage,kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"||kind=="ability"),direction,impulse,point,kind,radius,head,projectile,pierced,from);
+            if(kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"||kind=="ability")ExpansionHit(owner,m.Id,at,actual,kind=="melee");return actual;
         }
         private float HitMinionCore(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
         {
@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
         }
         private void MinionImpact(NativeMinion m,NativePilot owner,float actual,Vector3? point,string kind,Vector3 direction)
         {
-            if(actual<=0||owner==null||!(kind==null||kind=="direct"||kind=="projectile"||kind=="secondary"||kind=="reflected"||kind=="melee"||kind=="energy"))return;
+            if(actual<=0||owner==null||!(kind==null||kind=="direct"||kind=="projectile"||kind=="secondary"||kind=="reflected"||kind=="melee"||kind=="energy"||kind=="ability"))return;
             Emit(EventKind.Impact,owner,m.Id,point??m.Body.position,actual,kind,normal:-direction.normalized);
         }
         private void MinionWeaponHit(NativeMinion m,NativePilot owner,float actual,float burn,float poison)

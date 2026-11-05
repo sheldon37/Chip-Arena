@@ -13,7 +13,7 @@ internal static class ExpansionFoundationChecks
         var data=JsonSerializer.Deserialize<ConversionContent>(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json")),options);
         NativeWildChips.Apply(data);NativeAbilityChips.Apply(data);NativeThirdTechniqueContent.Apply(data);data.Validate();
         Check(data.chips.Count(c=>NativeWildChips.Is(c.id))==50&&data.chips.Count(c=>NativeAbilityChips.Is(c.id))==48,"complete catalogs staged");
-        Check(NativeTechniques.Third.Count(d=>data.abilities.Any(a=>a.id==d.Id&&a.live))==3,"only completed technique content rows enabled");
+        Check(NativeTechniques.Third.Count(d=>data.abilities.Any(a=>a.id==d.Id&&a.live))==NativeThirdTechniqueContent.Ready.Length,"only completed technique content rows enabled");
         var held=new Dictionary<string,int>();string map=NativeTechniqueLoadout.With("","sword","q","riposte");
         Check(NativeAbilityChipRules.Slotted(data,"sword",map,"ab-perfect-form")&&!NativeAbilityChipRules.Slotted(data,"sword","","ab-perfect-form"),"technique chip follows selected slot");
         Check(NativeAbilityChipRules.Slotted(data,"machinegun","","ab-cooling-jacket"),"bots/default Q accepted");
@@ -28,6 +28,18 @@ internal static class ExpansionFoundationChecks
         string reward=run.Snapshot().rewards.First(r=>r.owner=="host").id;var first=session.Offers("host",reward);
         Check(first.SequenceEqual(new[]{"ab-sacred-spring"}),"Expedition filters mechanics and uses current slot");
         loadout="";first[0]="mutated";Check(session.Offers("host",reward).SequenceEqual(new[]{"ab-sacred-spring"}),"opened offers stay fixed across slot swap and caller mutation");
+        foreach(string id in new[]{"bipod","envenom","dragon-breath","combust","soul-siphon"})
+        {
+            var def=NativeTechniques.Find(id);var row=data.abilities.Single(a=>a.id==id);
+            string slotted=NativeTechniqueLoadout.With("",def.Spec,"e",id);
+            Check(NativeTechniqueLoadout.Ability(data,slotted,def.Spec,"e").id==id&&row.cooldown==def.Cooldown&&row.cost==def.Cost,"third row/loadout/cost: "+id);
+        }
+        foreach(string id in new[]{"bipod","dragon-breath","soul-siphon"})
+        {
+            var k=new NativeTechnique{Kind=id,Phase=id=="bipod"?"planted":id=="dragon-breath"?"breath":"drain",At=10,Release=10.5f,Until=15.5f,RecoverUntil=10.5f};
+            Check(k.Valid()&&NativeTechniqueRules.Recast(k,11)&&NativeTechniqueRules.Moving(k,11),"live channel recast and interruption: "+id);
+            k.RecastAt=11;Check(!NativeTechniqueRules.Recast(k,11),"channel cannot recast twice: "+id);
+        }
         NativeTechniqueMark[] marks=null;for(int i=1;i<=8;i++)marks=NativeCombatMarks.Put(marks,"disarm",i,i,i+10);
         Check(marks.Length==6&&marks[0].By==3&&NativeCombatMarks.Has(marks,"disarm",9),"six-mark bound evicts oldest");
         marks=NativeCombatMarks.Put(marks,"disarm",8,9,20);Check(marks.Length==6&&marks.Last().Until==20,"same effect/source refreshes");

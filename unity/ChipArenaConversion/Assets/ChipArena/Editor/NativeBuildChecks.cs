@@ -135,7 +135,12 @@ namespace ChipArena.UnityConversion.Editor
             foreach(var test in NativeVisualChecks.Run(data))Debug.Log("PASS "+test);
             foreach(var test in NativeDamageScreenChecks.Run())Debug.Log("PASS "+test);
             foreach(var test in NativePresentationChecks.Run(data,presentation))Debug.Log("PASS "+test);
-            if(data.chips.Any(c=>!NativeArena.ImplementedChip(c)))throw new Exception("A source Chip is absent from the native draft");
+            foreach(var chip in data.chips.Where(c=>!NativeArena.ImplementedChip(c)))
+            {
+                bool staged=NativeAbilityChips.Is(chip.id)||NativeWildChips.Is(chip.id);
+                if(!staged||chip.mechanic!=chip.id||NativeArena.SupportedMechanics.Contains(chip.mechanic))throw new Exception("A non-staged Chip is absent from the native draft: "+chip.id);
+            }
+            if(NativeArena.ImplementedChip(data.Chip("wild-spare-body"))||NativeArena.ImplementedChip(data.Chip("ab-twin-meteor")))throw new Exception("Staged expansion mechanics leaked into the draft");
             if(NativeSceneMotion.Count!=31)throw new Exception("Source cinematic scenes are incomplete");
             if(NativeSourceMotion.ClipCount!=165)throw new Exception("Source motion bank is incomplete");
             using(var models=new NativeSourceModels()){foreach(var map in data.maps.Where(m=>!m.unity))if(!models.Has("map-"+map.id))throw new Exception("Missing map model: "+map.id);foreach(var weapon in data.weapons){if(weapon.id==CyberLordSpec.Id)CheckCyberLordModel(models);else if(!models.Has("weapon-"+weapon.id)&&weapon.id!="siren")throw new Exception("Missing weapon model: "+weapon.id);}foreach(var part in new[]{"saw","saw-track","spikes","spikes-cones","spikes-surface","lava","lava-surface","lava-currents","lava-bubble-0","lava-bubble-1"})if(!models.Has("hazard-"+part))throw new Exception("Missing stage hazard model: "+part);

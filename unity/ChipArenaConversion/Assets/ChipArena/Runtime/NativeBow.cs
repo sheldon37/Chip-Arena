@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             if(p.Input.AbilityQ&&Time>=p.QReady)
             {
                 p.BowDrawAt=-1;p.QReady=Time+8*(float)p.Stats["abilityCooldown"];p.Pose.AbilityId="volley";p.Pose.AbilityAt=p.Pose.AbilityRelease=Time;
-                for(int i=0;i<5;i++)Fire(p,bow:new NativeBowShot{Draw=.7f,Damage=22,Speed=90,Gravity=14,Impulse=246,Detail="volley",Yaw=(i-2)*3.5f});p.Ready=Time+NativeBowRules.Nock;
+                int arrows=AbilityChip(p,"ab-wider-volley")?7:5;for(int i=0;i<arrows;i++)Fire(p,bow:new NativeBowShot{Draw=.7f,Damage=22,Speed=90,Gravity=14,Impulse=246,Detail="volley",Yaw=(i-(arrows-1)*.5f)*3.5f});p.Ready=Time+NativeBowRules.Nock;
             }
             else if(p.Input.AbilityE&&Time>=p.EReady)
             {

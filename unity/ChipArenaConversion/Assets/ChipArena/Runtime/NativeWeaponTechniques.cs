@@ -57,6 +57,7 @@ namespace ChipArena.UnityConversion
                 return root.scene.GetPhysicsScene().CapsuleCast(origin+Vector3.up*.43f,origin-Vector3.up*.43f,.42f,line.normalized,out _,line.magnitude,WorldMask,QueryTriggerInteraction.Ignore)?NativeTechniques.Blocked:null;
             }
             var kind=TechniqueId(p,slot);
+            if(old?.Kind==kind&&NativeTechniqueRules.Recast(old,Time)&&(kind=="bipod"||kind=="dragon-breath"||kind=="soul-siphon"))return null;
             if(kind=="challenge"&&ThirdAimTarget(p,in aim,14,bossAllowed:false)==0||kind=="combust"&&ThirdAimTarget(p,in aim,14,burning:true)==0||kind=="soul-siphon"&&ThirdAimTarget(p,in aim,AbilityChip(p,"ab-soul-feast")?14:10)==0)return NativeTechniques.NoTarget;
             if(kind==NativeTechniques.GrappleLine||kind==NativeTechniques.Tripwire||kind==NativeTechniques.SonarDart)
             {
@@ -78,6 +79,7 @@ namespace ChipArena.UnityConversion
             var old=p.Technique;
             if(old?.Kind==id&&NativeTechniqueRules.Recast(old,Time))
             {
+                if(id=="bipod"||id=="dragon-breath"||id=="soul-siphon"){FinishChannelTechnique(p);return true;}
                 if(id=="overload"){old.RecastAt=Time;old.Until=Time;StepThirdTechnique(p);return true;}
                 if(id=="shield-surf"||id=="iron-vow"||id=="grave-walk"){FinishMoreTechnique(p);return true;}
                 if(TechniqueBusy(p)||Time<p.AttackEnd||SpecialBusy(p)||p.AbilityCast!=null||p.CastAt>0||p.ReloadEnd>Time)return false;
@@ -109,7 +111,7 @@ namespace ChipArena.UnityConversion
             p.Ready=Math.Max(p.Ready,p.Technique.RecoverUntil);return true;
         }
         private static string TechniqueFirstPhase(string id)
-        {switch(id){case "gun-spin":return "spin";case "overload":return "surge";case "thunderclap":return "raise";case "parting-line":return "hop";case "tripwire":case "lightning-rod":return "throw";case "shield-surf":return "mount";case "iron-vow":return "plant";case "bounty-round":return "shot";case "recoil-burst":return "brace";case "sonar-dart":return "fire";case "spirit-hawk":return "draw";case "wildfire-run":return "ignite";case "grave-walk":return "sink";case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
+        {switch(id){case "bipod":return "set";case "envenom":return "coat";case "dragon-breath":return "inhale";case "combust":return "snap";case "soul-siphon":return "reach";case "gun-spin":return "spin";case "overload":return "surge";case "thunderclap":return "raise";case "parting-line":return "hop";case "tripwire":case "lightning-rod":return "throw";case "shield-surf":return "mount";case "iron-vow":return "plant";case "bounty-round":return "shot";case "recoil-burst":return "brace";case "sonar-dart":return "fire";case "spirit-hawk":return "draw";case "wildfire-run":return "ignite";case "grave-walk":return "sink";case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
         private void ReleaseTechnique(NativePilot p)
         {
             p.TechniqueReleased=true;var k=p.Technique;if(TechniqueBlocked(p)){EndTechnique(p);return;}
@@ -205,13 +207,13 @@ namespace ChipArena.UnityConversion
                 // Ignore only the two exchanging capsules; do not place either inside world geometry or another actor.
                 bool destination=RoomFor(p,t.at,t.pilot);bool source=t.pilot!=null?RoomFor(t.pilot,origin,p):RoomFor(p,origin);
                 if(t.minion!=null){bool enabled=t.collider.enabled;t.collider.enabled=false;destination=RoomFor(p,t.at);t.collider.enabled=enabled;}
-                if(destination&&source){p.Body.position=t.at;if(t.pilot!=null){t.pilot.Body.position=origin;t.pilot.Body.linearVelocity=t.pilot.Knockback=t.pilot.MoveVelocity=Vector3.zero;}else{t.minion.Body.position=origin;if(!t.minion.Body.isKinematic)t.minion.Body.linearVelocity=Vector3.zero;}p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;Physics.SyncTransforms();Emit(EventKind.Teleport,p,t.id,t.at,0,k.Kind,from:origin);}
+                if(destination&&source){p.Body.position=t.at;if(t.pilot!=null){t.pilot.Body.position=origin;t.pilot.Body.linearVelocity=t.pilot.Knockback=t.pilot.MoveVelocity=Vector3.zero;}else{t.minion.Body.position=origin;if(!t.minion.Body.isKinematic)t.minion.Body.linearVelocity=Vector3.zero;}p.Body.linearVelocity=p.Knockback=p.MoveVelocity=Vector3.zero;Physics.SyncTransforms();Emit(EventKind.Teleport,p,t.id,t.at,0,k.Kind,from:origin);if(AbilityChip(p,"ab-trade-up")){Heal(p,15);if(t.pilot!=null){StunMelee(t.pilot,.6f);CancelAbilities(t.pilot);CancelSpecial(t.pilot);EndTechnique(t.pilot);}else{SlowMinion(t.minion,.4f,.6f);t.minion.NextAttack=Math.Max(t.minion.NextAttack,Time+.6f);t.minion.StrikeAt=-1;if(t.minion.Pve!=null){t.minion.Pve.StaggerAt=Time+.6f;t.minion.Pve.Struck=true;}}}}
             }
             k.Phase="recovery";k.Until=Math.Max(k.Release,Time);
         }
         private void TechniqueMotion(NativePilot p,ref Vector3 velocity)
         {
-            var k=p.Technique;if(MoreTechniqueMotion(p,ref velocity))return;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p))return;
+            var k=p.Technique;if(MoreTechniqueMotion(p,ref velocity))return;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p)||k.Kind!="grapple-line"&&k.Kind!="anchor-throw")return;
             Vector3 destination;
             if(k.Kind=="grapple-line")destination=Vec(k.Point)-(Vec(k.Point)-p.Body.position).normalized*.7f;
             else {float u=Mathf.Clamp01((Time+1f/60-k.RecastAt)/.45f);destination=Vector3.Lerp(p.TechniqueMoveFrom,Vec(k.Point)+Vector3.up*.9f,u)+Vector3.up*(Mathf.Sin(u*Mathf.PI)*2);}

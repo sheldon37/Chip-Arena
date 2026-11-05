@@ -48,7 +48,7 @@ namespace ChipArena.UnityConversion
             if(pong)speed=Mathf.Clamp(speed,30,80);
             float pitch=p.Aiming&&gravity>0?GunRules.BallisticPitch(distance,offset.y,speed,gravity):Mathf.Atan2(offset.y,distance)*Mathf.Rad2Deg;
             bool overdrive=Overdriving(p);double spread=NativeRangedRules.Spread((double?)bow?.Spread??w.spread,fan);var ads=Content.Ads(p.Seat.spec);if(!fan&&!overdrive&&p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
-            if(Has(p,"wild-bullet-hose"))spread+=Math.Tan(12*Math.PI/180);
+            if(Has(p,"wild-bullet-hose"))spread+=Math.Tan(12*Math.PI/180);if(ChannelLive(p,"bipod"))spread*=.3;
             p.AimShots=overdrive?0:Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(bow==null&&w.@class!="magic")p.Ready=Time+NativeRangedRules.Interval(w.interval,p.Stats["attackRate"],overdrive)*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
             int count=NativeProjectileRules.Volley(p.Stats,pong),attack=nextAttack++;float empowerment=Time<p.EmpowerUntil&&p.EmpowerShots>0?1+(float)p.Stats["qEmpower"]:1;if(empowerment>1)p.EmpowerShots--;
             int firstProjectile=nextBullet;var volley=new List<NativeBullet>();

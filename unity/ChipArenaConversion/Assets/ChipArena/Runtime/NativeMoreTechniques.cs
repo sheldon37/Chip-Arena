@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
-        private bool TechniqueActionLock(NativePilot p)=>TechniqueBusy(p)&&(p.Technique.Kind=="shield-surf"||p.Technique.Kind=="iron-vow"||p.Technique.Kind=="grave-walk"||p.Technique.Kind=="recoil-burst"||p.Technique.Kind=="parting-line");
+        private bool TechniqueActionLock(NativePilot p)=>ChannelLive(p,"bipod")||TechniqueBusy(p)&&(p.Technique.Kind=="dragon-breath"||p.Technique.Kind=="soul-siphon"||p.Technique.Kind=="shield-surf"||p.Technique.Kind=="iron-vow"||p.Technique.Kind=="grave-walk"||p.Technique.Kind=="recoil-burst"||p.Technique.Kind=="parting-line");
         private bool TechniqueRunning(NativePilot p)=>p.Technique?.Kind=="wildfire-run"&&Time>=p.Technique.Release&&Time<p.Technique.Arm;
         private bool TechniqueBrace(NativePilot p)=>p.Technique?.Kind=="iron-vow"&&p.Technique.Phase!="release"&&NativeTechniqueRules.Live(p.Technique,Time);
         private bool TechniqueGhost(NativePilot p)=>p.Technique?.Kind=="grave-walk"&&NativeTechniqueRules.Live(p.Technique,Time);
@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
         }
         private float MoreTechniqueSpeed(NativePilot p,Vector3 move)
         {
-            return (TechniqueRunning(p)?1.35f:1)*TechniqueCurrentSpeed(p.Body.position-Vector3.up*.865f,move);
+            return (ChannelLive(p,"dragon-breath")?.5f:ChannelLive(p,"soul-siphon")?.6f:1)*(TechniqueRunning(p)?1.35f:1)*TechniqueCurrentSpeed(p.Body.position-Vector3.up*.865f,move);
         }
         private float TechniqueCurrentSpeed(Vector3 feet,Vector3 move)
         {
@@ -139,6 +139,7 @@ namespace ChipArena.UnityConversion
         private bool MoreTechniqueMotion(NativePilot p,ref Vector3 velocity)
         {
             var k=p.Technique;if(k==null||TechniqueBlocked(p)||Time<k.Release)return false;
+            if(k.Kind=="bipod"&&NativeTechniqueRules.Live(k,Time)){velocity.x=velocity.z=0;p.MoveVelocity=Vector3.zero;return true;}
             if(NativeTechniqueRules.Rooted(k,Time)){velocity.x=velocity.z=0;p.Knockback=p.MoveVelocity=Vector3.zero;return true;}
             if(!NativeTechniqueRules.Live(k,Time))return false;Vector3 travel;
             switch(k.Kind)

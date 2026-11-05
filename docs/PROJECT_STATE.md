@@ -1,3 +1,5 @@
+2026-11-05 Astra (`codex/expansion-rules-2`, base `11a9aff6`): five more third-set techniques and 13 more expansion chips; cumulative 8/36 techniques and 30/98 chips. Fixes the first batch’s editor draft validation failure. Remaining 28 techniques/68 chips stay gated. No presentation, live or Site changes; validation and builder receipts in task PR.
+
 2026-11-05 Astra (`codex/third-techniques-chips`, base `f69dcca5`): first rules batch: Gun Spin/Thunderclap/Overload, 17 expansion chips, slot-gated offers, replicated TechniqueMarks/ChipGauges and ChipProc contract. Remaining 33 techniques/81 chips stay gated. No presentation or live/Site release; checks and delivery in task PR.
 
 2026-11-04 Astra (`codex/projectile-event-data`): requested tracer correlation/contact fields and Bomb SampleAt supplied; projectile-tagged notifications bypass decorative quota, with bounded eviction documented. Rules/balance unchanged; Claude presentation adoption remains. Validation/delivery in task PR.
