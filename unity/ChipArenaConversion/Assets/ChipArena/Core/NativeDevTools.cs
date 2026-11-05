@@ -181,6 +181,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("preview-account-xp",Pr,V,"Account XP preview (MOCK)"),
             new NativeDevAction("preview-expedition-ui",Pr,V,"Expedition quota & ending preview (MOCK)"),
             new NativeDevAction("preview-zombie-gore",Pr,V,"Zombie gore preview"),
+            new NativeDevAction("preview-zombie-compare",Pr,V,"Zombie animation compare"),
             // Camera and overlays (presentation only: live wherever the panel is).
             new NativeDevAction("fly",Ca,V,"Fly camera",key:"F10"),
             new NativeDevAction("fly-snap",Ca,V,"Snap to pilot",key:"Home"),

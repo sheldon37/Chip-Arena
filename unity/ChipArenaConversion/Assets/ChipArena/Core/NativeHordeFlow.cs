@@ -108,8 +108,14 @@ namespace ChipArena.UnityConversion
         public void Observe(double time,Vector3 position,float yawDegrees)=>Follow.Observe(time,time,position,yawDegrees*BossMath.Deg);
         private void Turning(bool fast)
         {
-            if(fast==winding)return;winding=fast;Follow.MaxTurnRate=turnRate*(fast?WindTurn:1);Follow.MaxTurnAccel=turnAccel*(fast?WindAccel:1);Follow.HeadingTau=fast?0:HeadingTau;
+            // (The body turns no faster than its steps can carry it round: a body standing or walking takes a few steps to turn, where at a
+            // run a stride's short stance lets it swing on the fly. A blow's wind-up still faces where the authority aims it at once.)
+            Follow.MaxTurnRate=turnRate*(fast?WindTurn:TurnShare(Speed));
+            if(fast==winding)return;winding=fast;Follow.MaxTurnAccel=turnAccel*(fast?WindAccel:1);Follow.HeadingTau=fast?0:HeadingTau;
         }
+        /// <summary>The share of a kind's turn rate its body takes at `speed` (m/s).</summary>
+        public static float TurnShare(float speed)=>TurnStanding+(1-TurnStanding)*Math.Min(1,Math.Max(0,speed)/TurnFullAt);
+        public const float TurnStanding=.55f,TurnFullAt=3.5f;
         /// <summary>A guest frame: the snapshots at `clock` (the horde clock), `dt` real seconds after the last.</summary>
         public void Replica(double clock,float dt,bool fast){Turning(fast);Follow.StepAt(clock,dt);Out();}
         /// <summary>

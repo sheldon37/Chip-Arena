@@ -45,7 +45,7 @@ namespace ChipArena.UnityConversion
         private float RoamTakeOf(in HordeMotionInput f)=>f.Roam.On&&wanderClip>=0&&!heavy&&!quad?Clamp01(f.Roam.Wander+f.Roam.Idle):0;
         // The walk part of the stride: the kind's walk take blended toward the wander take.
         private float WalkCadence(float v)=>roamTake>0?Lerp(NativeZombieMotion.Cadence(walkClip,v,kind,legsNow),NativeZombieMotion.Cadence(wanderClip,v,kind,legsNow),roamTake):NativeZombieMotion.Cadence(walkClip,v,kind,legsNow);
-        private float WalkDuty(int foot,float stride)=>roamTake>0?Lerp(StanceOf(walkClip,foot,stride),NativeZombieMotion.Duty(wanderClip,foot),roamTake):StanceOf(walkClip,foot,stride);
+        private float WalkDuty(int foot,float stride)=>roamTake>0?Lerp(StanceOf(walkClip,foot,stride),StanceOf(wanderClip,foot,stride),roamTake):StanceOf(walkClip,foot,stride);
         private float WalkSwing(int foot,float s)=>roamTake>0?Lerp(NativeZombieMotion.SwingLift(walkClip,foot,s),NativeZombieMotion.SwingLift(wanderClip,foot,s),roamTake):NativeZombieMotion.SwingLift(walkClip,foot,s);
         private void RoamWalkRow(){if(roamTake>0){SampleCalm(wanderClip,Phase,rowV,RateOf(wanderClip,Math.Max(gaitSpeed,.8f*Speed)));NativeZombieClips.Blend(rowW,rowV,roamTake,rowW);}}
 

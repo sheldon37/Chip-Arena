@@ -183,6 +183,7 @@ namespace ChipArena.UnityConversion
                 case "preview-account-xp":AccountXpPreviewToggle();break;
                 case "preview-expedition-ui":ExpeditionUiPreviewToggle();break;
                 case "preview-zombie-gore":ZombieGorePreviewToggle();break;
+                case "preview-zombie-compare":if(presentation!=null){presentation.ZombieCompareOn=!presentation.ZombieCompareOn;presentation.ZombieCompareRestart();}break;
                 case "overlay-shots":devOverlayShots=!devOverlayShots;break;
                 case "log":devLogOn=!devLogOn;break;
                 case "graph":devGraphOn=!devGraphOn;break;
@@ -657,6 +658,7 @@ namespace ChipArena.UnityConversion
             y=DevHead(x,y,w,"DEV REVEAL");DevAct(new Rect(x,y,w,32),"preview-reveal");y+=40;
             y=DevNote(x,y,w,"Plays the \"a developer is here\" moment on your pilot, locally. In a match it plays for the whole room once the host reveals you (DEV command reveal).",C.Muted());
             y=ZombieGorePreviewPanel(x,y,w);
+            y=ZombieComparePanel(x,y,w);
             y=AccountXpPreviewPanel(x,y,w);
             y=ExpeditionUiPreviewPanel(x,y,w);
             return y;

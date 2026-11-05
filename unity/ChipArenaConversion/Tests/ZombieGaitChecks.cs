@@ -184,7 +184,7 @@ namespace ChipArena.UnityConversion
         private static void OwnStride(out string summary)
         {
             var rig=ModelPoseChecks.Measured();var fit=new CapturedRig.Pose();float leg=rig.LegUpper+rig.LegLower,mostFore=0,leastAft=0,worstBall=0,leastRoll=9,worstBoth=0;int runs=0;
-            Check(!NativeZombieMotion.OwnStride(NativeZombieClips.Need("sprint-1"),1)&&!NativeZombieMotion.OwnStride(NativeZombieClips.Need("chase-1"),rig.LegRatio)&&NativeZombieMotion.OwnStride(NativeZombieClips.Need("sprint-1"),rig.LegRatio),"only a sprint on the model's legs runs on its own stride (the voxel model and the walking takes as they were)");
+            Check(!NativeZombieMotion.OwnStride(NativeZombieClips.Need("sprint-1"),1)&&!NativeZombieMotion.OwnStride(NativeZombieClips.Need("chase-1"),1)&&NativeZombieMotion.OwnStride(NativeZombieClips.Need("chase-1"),rig.LegRatio)&&NativeZombieMotion.OwnStride(NativeZombieClips.Need("sprint-1"),rig.LegRatio),"only a take on the model's legs runs on its own stride (the voxel model and the walking takes as they were)");
             // (The Siren's four that run at a real speed and every zone kind that does, the lumbering Pileup and Ladleman walking theirs,
             // at their speed on their own scale.)
             var running=new List<(int kind,float speed)>{(NativeHordeKinds.Shambler,3.4f),(NativeHordeKinds.Runner,4.6f),(NativeHordeKinds.Spitter,2.9f),(NativeHordeKinds.Brute,2.4f)};
@@ -200,7 +200,7 @@ namespace ChipArena.UnityConversion
                 string name=(kind<NativeHordeKinds.Count?NativeHordeKinds.Ids[kind]:NativeHordeZones.Of(kind).Id)+" at "+speed.ToString("0.0")+" m/s on "+NativeZombieClips.Key(clip);
                 Check(NativeZombieClips.Speed(clip)>1,name+": a kind running at a real speed runs on a sprint take");
                 float own=speed/(NativeZombieClips.Speed(clip)*rig.LegRatio),rate=NativeZombieMotion.Rate(clip,speed,kind,rig.LegRatio);
-                Check(Math.Abs(rate-Math.Max(NativeZombieMotion.OwnPaceLow,Math.Min(NativeZombieMotion.OwnPaceHigh,own)))<1e-4f,name+": plays at its captured pace on the model's legs ("+rate.ToString("0.00")+")");
+                Check(Math.Abs(rate-(own<=1?Math.Max(NativeZombieMotion.OwnPaceLow,own):Math.Max((float)Math.Pow(own,NativeZombieMotion.OwnPaceShare),own/NativeZombieMotion.OwnStretchMost)))<1e-4f,name+": plays at its captured pace on the model's legs ("+rate.ToString("0.00")+")");
                 int id=40000;while(NativeZombieMotion.Run(kind,NativeHordeKinds.Seed(id))!=clip)id++;
                 var g=new NativeHordeGait{Legs=rig.LegRatio};var p=new CapturedRig.Pose();var f=new HordeMotionInput{Kind=kind,Id=id,Seed=NativeHordeKinds.Seed(id),Health=1,AttackAge=float.NaN,Flow=true,Tier=NativeHordeModels.Full};var at=new Vector3(0,.85f,0);
                 var s=new NativeVisualRig.State(rig);float fore=0,aft=0,ball=0,roll=9;int both=0,frames=0;var lastToe=new Vector2[2];var rolled=new bool[2];var heel=new float[2];
@@ -219,9 +219,14 @@ namespace ChipArena.UnityConversion
                 }
                 fore/=leg;aft/=leg;mostFore=Math.Max(mostFore,fore);leastAft=Math.Min(leastAft,aft);worstBall=Math.Max(worstBall,ball);leastRoll=Math.Min(leastRoll,roll);worstBoth=Math.Max(worstBoth,both/(float)frames);runs++;
                 // (The stride this replaces: an ankle up to .77 of a leg ahead of the hip and .74 behind, flat on the floor.)
-                Check(fore<.55f&&aft>-.66f,name+": the feet stay under the body as the take's do ("+fore.ToString("0.00")+" to "+aft.ToString("0.00")+" legs about the hip)");
+                {
+                    // (Measured against the take's own feet on these legs, its stride's stretch on them.)
+                    ZombieStageChecks.OwnReach(rig,clip,out float ownFore,out float ownAft);float stretch=Math.Max(1,speed/g.CycleRate/(NativeZombieMotion.OwnStrideOf(clip)*rig.LegRatio));
+                    Check(fore<=ownFore*stretch+.18f&&aft>=ownAft*stretch-.18f,name+": the feet stay under the body as the take's do ("+fore.ToString("0.00")+" to "+aft.ToString("0.00")+" legs about the hip, the take's "+ownFore.ToString("0.00")+" to "+ownAft.ToString("0.00")+" stretched "+stretch.ToString("0.00")+")");
+                }
                 Check(both==0,name+": never both feet down, a run's and not a lunge's ("+both+" of "+frames+" frames)");
-                Check(roll>.45f*g.RunNow,name+": a foot leaves the floor rolled onto its ball, the knee bent ("+roll.ToString("0.00")+" rad)");
+                // (As far as the take has rolled it by the end of its stance; the swing's foot then turns on with the capture's.)
+                Check(roll>.25f*g.RunNow,name+": a foot leaves the floor rolled onto its ball, the knee bent ("+roll.ToString("0.00")+" rad)");
                 Check(ball<.016f,name+": the rolling foot's ball holds its spot ("+(ball*1000).ToString("0.0")+" mm a frame)");
             }
             summary=runs+" runs of "+running.Count+" kinds on their own stride: ankles "+mostFore.ToString("0.00")+" to "+leastAft.ToString("0.00")+" legs about the hip at worst (was .77 to -.74), never both down, rolled "+leastRoll.ToString("0.00")+" rad at the lift, the ball within "+(worstBall*1000).ToString("0.0")+" mm a frame";

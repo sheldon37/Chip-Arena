@@ -110,6 +110,9 @@ namespace ChipArena.UnityConversion
             s.Across=true;s.Level=crawl;s.Follow=!crawl;s.Ease=kind==NativeHordeKinds.Hulk?HulkCarry:0;s.Stride=crawl||!(stride>1)?1:stride;s.Room=kind==NativeHordeKinds.Hulk?HulkRoom:NativeVisualRig.KneeRoom;
             // (The gait's floor sits Root under the rig root; the model's soles NativeVisualRig.Floor under it.)
             float gap=Math.Max(0,-NativeVisualRig.Floor-NativeHordeKinds.Root[NativeHordeKinds.Index(kind)]);
+            // (On the model's own stride, LegsNow past 1, the hips stand where the capture's feet reach the floor, its own crouch kept:
+            // `crouch` is then that rise, NativeZombieMotion.FloorRise. The rest stand up out of the take's crouch as before: the Hulk.)
+            if(stride>1){s.Stand=crawl?0:Math.Max(0,(Math.Max(0,sunk)+crouch)*s.Rig.LegRatio+gap);return;}
             s.Stand=crawl?0:(NativeZombieClips.HipsBelow+Math.Max(0,sunk)+Math.Max(0,crouch))*s.Rig.LegRatio+gap+Lift*(1-Math.Max(0,Math.Min(1,busy)));
         }
     }

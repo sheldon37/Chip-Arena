@@ -365,7 +365,7 @@ namespace ChipArena.UnityConversion
             // (On the Central Station each of its four kinds' variants has a body made ahead, one a frame, so none waits for one.)
             if(arena!=null&&NativeExpeditionStation.Active(arena.MapId)&&ZombieModelsOn&&zombiePool.Count>0)
                 foreach(var v in NativeZombieLooks.All)if(NativeStationKinds.Is(v.Kind)&&NativeZombieLooks.Modelled(v.Kind)&&zombieStationAhead.Add(v)){var made=ZombieModelMake(v);if(made!=null)ZombieModelSpare(made);break;}
-            if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)&&!NativeExpeditionStation.Active(arena.MapId)||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
+            if(arena==null||arena.Pve==null&&arena.Minions.Count==0&&!ZombieSummoner(arena)&&!NativeExpeditionStation.Active(arena.MapId)&&!ZombieCompareOn||!ZombieModelsOn||zombiePool.Count>=ZombiePoolTarget)return;
             if(zombieHolder==null){zombieHolder=new GameObject("Zombie model pool");zombieHolder.SetActive(false);DontDestroyOnLoad(zombieHolder);}
             zombieFill=InstantiateAsync(visualBodyPrefab,ZombiePoolBatch,zombieHolder.transform);
         }

@@ -628,6 +628,7 @@ namespace ChipArena.UnityConversion
             foreach(int id in hordeDeadStale){if(hordeDead.TryGetValue(id,out var gone)&&gone.Blend!=null)hordeBlendSpare.Push(gone.Blend);hordeDead.Remove(id);}
             HordePartsDraw(now);HordeCorpsesDraw(hordeClock);
             if(ZombieGoreGallery)GoreGallery(arena);else if(goreGalleryRigs[0]!=null)ClearGoreGallery();
+            if(ZombieCompareOn)ZombieCompareTick(arena);else if(zcLeft!=null)ClearZombieCompare();
             if(MinionGallery)HordeGallery(arena);else if(galleryRigs[0]!=null)ClearHordeGallery();
             if(MinionGallery)IronworksGallery(arena);else if(ironGalleryRigs[0]!=null)ClearIronworksGallery();
             HordeBreachFrames(arena);HordeBreachesDraw(now);HordeJoltsDraw(now);HordeTremblesDraw(now);

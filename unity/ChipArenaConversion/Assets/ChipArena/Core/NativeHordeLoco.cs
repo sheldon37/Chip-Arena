@@ -141,15 +141,39 @@ namespace ChipArena.UnityConversion
         /// playback `rate` (neither at or under its own pace) and the kind's steadiness.</summary>
         private void SampleCalm(int clip,float phase,float[] row,float rate)
         {
-            NativeZombieClips.SamplePhase(clip,NativeZombieMotion.Warp(clip,phase),row);
+            // A take on the model's legs plays as captured: its feet's own timing (no warp but where two takes blend), its trunk and arms
+            // as they were taken until it runs past OwnCalmFrom of its pace, and the hips' sway about their own middle (their weight
+            // shifting over the feet). The comparison mode's Retime and Posture switches take these off.
+            bool own=NativeZombieMotion.OwnStride(clip,legsNow);
+            if(!StageRetime)NativeZombieClips.SamplePhase(clip,phase,row);
+            else NativeZombieClips.SamplePhase(clip,own?NativeZombieMotion.WarpTo(clip,phase,rightNow):NativeZombieMotion.Warp(clip,phase),row);
+            if(own){var mean=NativeZombieMotion.Mean(clip);if(mean!=null){row[1]-=mean[1];row[3]-=mean[3];}}
+            if(!StagePosture)return;
+            if(own){Calm(clip,row,Math.Max(1,rate/OwnCalmFrom));return;}
             // (Only the nearest adds' (the Full tier's) are blurred: two more samples a take; the far crowd is calmed alone.)
             float d=lifeTier==NativeHordeModels.Full?BlurMost*Math.Max(0,Math.Min(1,rate-1)):0;
             if(d>1e-4f){NativeZombieClips.SamplePhase(clip,NativeZombieMotion.Warp(clip,phase-d),blurA);NativeZombieClips.SamplePhase(clip,NativeZombieMotion.Warp(clip,phase+d),blurB);
                 for(int s=0;s<CalmFrom.Length;s++)for(int c=CalmFrom[s];c<CalmTo[s];c++)row[c]=.5f*row[c]+.25f*(blurA[c]+blurB[c]);}
             Calm(clip,row,rate,Steady(kind));
         }
+        /// <summary>A take on the model's legs swings its trunk and arms as captured up to this much of its own pace.</summary>
+        public const float OwnCalmFrom=1.45f;
+        // ================================================================================================================
+        // The pipeline's stages (the DEV comparison mode's switches: all on in the game; Runtime/NativeZombieComparePresentation.cs)
+        // ================================================================================================================
+        /// <summary>Plant: the feet stand where they land in the world and step to the body; off, the legs stay the capture's (a moving
+        /// root slides over them where the take's pace is not its speed). Posture: what the gait lays over the capture (the trunk's calm,
+        /// the arms' reach, the balance, the head's tracking, the life layer); off, the capture alone. Retime: the playback follows the
+        /// add's speed; off, the take plays at its own pace.</summary>
+        public bool StagePlant=true,StagePosture=true,StageRetime=true;
+        /// <summary>The comparison mode's take: every cycle of the add on this clip (-1: its own by its seed).</summary>
+        public int ForceTake=-1;
+        /// <summary>The cycles a second this frame.</summary>
+        public float CycleRate{get;private set;}
         /// <summary>The playback rate a cycle runs at this frame (its cadence over its own), for the calm.</summary>
-        private float RateOf(int clip,float v)=>clip<0?1:NativeZombieMotion.Rate(clip,v,kind,legsNow)*cadence;
+        private float RateOf(int clip,float v)=>clip<0||!StageRetime?1:NativeZombieMotion.Rate(clip,v,kind,legsNow)*Cadence;
+        // Each add's own tempo: half its spread on the model's own stride, which plays a take so near the capture's pace already.
+        private float Cadence=>legsNow>1?1+(cadence-1)*.5f:cadence;
 
         // ================================================================================================================
         // The shoulders on the chest
