@@ -131,6 +131,12 @@ namespace ChipArena.UnityConversion
             var me=arena?.ViewPilot;if(me==null||NativeTechniques.Source==null)return;var k=NativeTechniques.Source.Of(me.Seat.id);if(k?.Kind!=NativeTechniques.GraveWalk)return;float a=NativeTechniqueFx.GraveDepth(k,arena.Time)/NativeTechniqueFx.GraveDeep;if(a<=.01f)return;
             float w=U.W,h=U.H,d=Mathf.Max(w,h)*1.45f;U.RadialStops(new Rect(w/2-d/2,h/2-d/2,d,d),new Color(.035f,.012f,.09f,a),UnderAt,UnderA);
         }
+        // Flash Round's mark on whoever is looking through this view: a white screen, clearing over its last part.
+        private void TechniqueWhiteout()
+        {
+            var me=arena?.ViewPilot;if(me==null)return;float a=NativeTechniqueFx.Whiteout(me.TechniqueMarks,arena.Time);if(a<=.01f)return;
+            U.Fill(new Rect(0,0,U.W,U.H),new Color(1,.99f,.93f,a));
+        }
         private void TechniqueDeniedLine()
         {
             float age=Time.unscaledTime-techniqueDeniedAt;if(techniqueDeniedWhy==null||age>=1.1f)return;
@@ -216,7 +222,7 @@ namespace ChipArena.UnityConversion
             void Px(float x,float y,float w,float h,Color c){var o=GUI.color;GUI.color=c;GUI.DrawTexture(new Rect(x,y,w,h),Texture2D.whiteTexture);GUI.color=o;}
             var shadow=NativeCyberTheme.Void(.8f);var ink=NativeCyberTheme.Ink();float d=Mathf.Round(5*k),arm=12*k,gap=10*k,line=Mathf.Max(1,Mathf.Round(k));
             Px(cx-d/2-1,cy-d/2-1,d+2,d+2,shadow);Px(cx-d/2,cy-d/2,d,d,ink);Px(cx-d/2-gap-arm,cy-line/2,arm,line,ink);Px(cx+d/2+gap,cy-line/2,arm,line,ink);
-            GUI.matrix=old;TechniqueUnderVeil();TechniqueDeniedLine();
+            GUI.matrix=old;TechniqueUnderVeil();TechniqueDeniedLine();TechniqueWhiteout();
         }
         // ---- Hit marker (client/hitmarker.ts, rules in NativeHitmarker) ----------------------------------------------------
         // In the fight and result phases (main.ts: active, not paused, not the killcam), in physical pixels like the crosshair.

@@ -8,6 +8,14 @@ Owner revision, 2026-11-03: techniques replace either Q or E, selected per weapo
 
 Status: playable, both sets. Astra's rules and saved choice (PRs #321, #322 and #325), Claude's Customize picker, HUD cards and presentation. Parting Line recovery is fixed on `codex/bombadier-rules`; native acceptance remains pending (see "The second set, reviewed"). Receipts are in DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
 
+## Third-set rules completion (Astra, 2026-11-05)
+
+All **36/36** third-set authority handlers now exist on `codex/expansion-rules-3` / PR #338. `NativeTechniques.All` includes Third (60 total, five per standard weapon); both pinned content catalogs include the rows. Earlier batch/gating notes below are historical. Presentation remains Claude's.
+
+The final ten are Mirror Double, Chain Hook, Flash Round, Slide Shot, Ammo Crate, Flak Burst, Flame Cloak, Magnetize, Dread and Shadow Puppet. Decoys and the puppet use replicated minion IDs. Slide Shot changes the collision capsule to 55% standing height during its .55 s slide, then restores it; it does not add a pose. Chain Hook uses a 40 m/s swept shot, a .35 s collision-limited haul, and pulls the caster against bosses/Hulks. Flash tests facing within 70 degrees and LOS, including the caster/allies. Flak is a **5 m diameter** cloud, 2 damage/s in quarter-second ticks, and intercepts hostile bullets/ability shots/airborne Spitter acid. Ammo Crate has 40 HP, eight seconds of life and one refill/buff per allied pilot. Cloak retaliates against both pilots and minions. Magnetize begins pulling after .5 s at 8 m/s; rolls break the mark and bosses are immune. Dread uses a 90-degree cone and collision-limited forced movement; bosses receive slow. Puppet copies ranged shots at 40%, without secondary procs.
+
+`Actor.TechniqueMarks` remains the other-pilot accessor; `NativeMinion.TechniqueMarks` / `NativeMinionFrame.techniqueMarks` is the add equivalent. Cast records and new world queues are replicated/validated. Source account sanitization accepts every new ID; the separate account service is not deployed by this Unity update.
+
 ## Why it isn't power creep
 
 A technique is a trade, never an extra: a weapon keeps two abilities, and swapping its technique in gives up that slot's ability. Every
@@ -122,7 +130,7 @@ Native builder fixtures cover every new technique, per-slot routing, refusal, re
 | Pistol | Gun Spin (`gun-spin`) | A .45 s twirl with no firing. Then the magazine is full and you fire +25% faster for 4 s | 0 | 12 s / none | You cannot shoot through the twirl: that is your moment |
 | Pistol | Slide Shot (`slide-shot`) | 6 m along your movement (or look) in .55 s at crouch height, firing freely, with spread x.5. .2 s to rise. A wall stops it | 0 | 9 s / none | A straight line with no dodge at its end |
 | Machine gun | Bipod (`bipod`) | A .5 s set. For up to 5 s you cannot move, with spread x.3, +30% fire rate and no rounds used. A recast packs up in .3 s | 0 | 15 s / none | You stand still: flank it, or use anything with splash |
-| Machine gun | Ammo Crate (`ammo-crate`) | A crate at your feet: 8 s, 40 HP. You and each ally may take from it once: an instant reload and +20% attack speed for 5 s | 0 | 20 s / none | Shoot it: enemies can see it through nothing, but it is big and it stays put |
+| Machine gun | Ammo Crate (`ammo-crate`) | A crate 1.4 m ahead on clear floor: 8 s, 40 HP. You and each ally may take from it once: an instant reload and +20% attack speed for 5 s | 0 | 20 s / none | Shoot it: enemies can see it through nothing, but it is big and it stays put |
 | Machine gun | Flak Burst (`flak-burst`) | It bursts at the aimed distance, at most 40 m: a 5 m cloud for 3 s. Enemy shots entering it are destroyed. Enemies in it take 2 a second and move x.9 | 2 a second | 14 s / none | Walk round it; melee ignores it |
 | Rifle | Breacher Round (`breacher-round`) | A 1 s charge at walk x.4, with a laser everyone can see. The round goes through enemies and up to 1.2 m of walls in total, up to 80 m | 22 | 14 s / none | The laser tells you where: step aside |
 | Rifle | Ghillie (`ghillie`) | A .6 s settle. While you stay under .5 m/s, for at most 8 s, you are all but invisible beyond 6 m, nameplate hidden. Firing or taking damage ends it; that first shot deals +20% | 0 | 16 s / none | A shimmer shows up close, and splash finds you |
@@ -159,6 +167,19 @@ Adds **Bipod, Envenom, Dragon Breath, Combust and Soul Siphon**, bringing live t
 - Combust refuses with no burning target before payment. After .2 s, burns in sight within 14 m are consumed. A target's remaining burn plus 8 bursts in 2 m, capped at 22 base damage; overlapping detonations use the strongest hit, never multiply that cap. Path carries up to six blast points as contracted; all eligible burns still resolve.
 - Soul Siphon uses .1 s reach / 2 s channel / 8 damage/s in .1 s ticks, healing actual damage only; x.6 walk, 10 m acquisition / 12 m tether, cover/death ends it. Soul Feast uses 14 m acquisition / 16 m tether (preserving 2 m escape slack), and transfers 10/s of the victim's stamina for melee or mana otherwise, bounded by the victim's balance and caster's cap. Adds without these resources provide none.
 - Recasts stop the two spell channels; stun, roll, knockdown or block cancels them. Channel motion cannot fall through to Anchor Throw's teleport. Release state, owning slot, damage scale and next tick are replicated alongside the existing technique record to avoid restarting ticks after authority restoration. Record phases/points follow the staged contract; no presentation changed.
+
+### Third rules batch (Astra, 2026-11-05; task branch)
+
+`codex/expansion-rules-3`, based on shared `a6a454a4`, adds one technique for each of the six priority weapons: **Disarm, Ground Slam, Reaping Sweep, Bolas Round, Vault Shot, Hydro Jet**. This is **14/36** implemented rows, not the completed set. `Third` remains separate from `All`. Remaining priority techniques: Iaido, Challenge, War Cry, Lodestone, Sunder, Blade Drag, Breacher Round, Ghillie, Bramble Arrow, Tether Arrow, Bubble Trap and Flash Freeze. Finish those before the remaining daggers/pistol/machinegun/darkness/fire/lightning rows.
+
+- Disarm: .01 s start, 2.2 m/.22 s collision-limited lunge, .7 m contact radius, 8 damage to the first valid contact. Pilots receive the existing `Actor.TechniqueMarks` disarm for 2.5 s; primary attacks remain legal. Hit recovery .12 s; miss recovery .5 s. Adds have no Q/E slot to refuse.
+- Ground Slam: .1 s start; .5 s parabolic leap, 3 m apex, up to 5 m horizontal travel. No attacks/block in the leap. Grounded victims in 4 m take 12, a 4.6 m/s upward impulse and .4 s pilot stun. Side/ceiling collision cancels instead of exploding in midair; a floor contact resolves at the actual landing. Aftershock is 6 damage/6 m after .5 s, once, without knock-up.
+- Reaping Sweep: .25 s windup, 300-degree/4 m grounded check, 10 damage and .5 s trip. Pull uses the existing collision-resolved knockback, aimed toward the 1.6 m inner radius and capped at 8 m/s; it does not teleport a victim to an exact radius. Pilot trip marks replicated.
+- Bolas Round: .1 s start, 45 m/s swept orb, 40 m limit, 4 damage, 1.2 s bound. Pilots can aim/fire; Block removes the mark and root. Movement constraints run after summon/PvE movement as well. Bosses use x.6 slow. Bolas/arrow flight resumes from the record's replicated Point rather than a local cached position.
+- Vault Shot: .01 s start, 5 m backward/.45 s parabolic vault, 1.5 m apex. At .225 s it fires a single 14-damage arrow at 45 m/s with 18 m/s² gravity and 40 m forward range. `Path[0]` stores its launch position; `Point` its current/contact point, `To` remains the landing. A collision stops the vault; the launched arrow retains its own clock. This is the one extra record-field use Claude needs for this batch.
+- Hydro Jet: .1 s start, up to 1.5 s at 9 m/s opposite current aim, including upward travel when looking down. No attacks; recast/jump ends it. Its visible 6 m stream pushes susceptible enemies by collision-checked .1 m steps (6 m/s); bosses retain their displacement immunity. Cover and sanctuary boundaries stop movement.
+
+No presentation, poses, effects, cards or sounds changed. Native Unity regression cases are added but require actual Editor execution; semantic compilation does not establish PhysX/playtest acceptance. Account sanitizer source accepts all six; no account-service deployment.
 
 ### Rules contract for the third set (Astra)
 
@@ -256,6 +277,9 @@ rule, hit timing, damage, cooldown or movement.
 | The card sentence and the HUD card's state | `Core/NativeTechnique.cs` (`Text`, `Card`) |
 | HUD card, through-walls markers, drawing, models | `Runtime/NativeFightHud.cs`, `Runtime/NativeCombatHud.cs`, `Runtime/NativeTechniquePresentation.cs` |
 | Checks | `Tests/TechniqueChecks.cs` (`CoreTests --techniques`) |
+| The third set: effects, previews, sounds and poses | `Core/NativeTechniqueThirdMelee.cs` (sword, daggers, shield, greatsword), `Core/NativeTechniqueThirdRanged.cs` (pistol, machine gun, rifle, bow), `Core/NativeTechniqueThirdMagic.cs` (fire, water, lightning, darkness); each with its `*Built` list. All 36 built |
+| The third set: dispatch, marks on other pilots, the whiteout's curve, the unseen body's test | `Core/NativeTechniqueThird.cs` (`ThirdMarks`, `Whiteout`, `Unseen`, `ArmAt`) |
+| The third set in the runtime: Bipod's and the crate's models, the body out of sight, the whiteout, no stand-in rig under the double and the puppet | `Runtime/NativeTechniquePresentation.cs` (`BipodModel`, `CrateModel`, `TechniquePlace`), `Runtime/NativeFightHud.cs` (`TechniqueWhiteout`), `Runtime/NativeSourcePresentation.cs` |
 
 **The picker.** Customize, Loadout, Abilities: two slot tiles, Q and E, each with its key and what the slot holds now. Clicking a tile chooses the slot; under the tiles a library shows everything that slot can hold: its own ability and each of the weapon's techniques.
 The equipped card has the bright edge and the tick (a technique's in its own accent, the colour of its effects). A click swaps with a short pop; a
@@ -298,6 +322,27 @@ Fixes from it: Shield Surf's sparks moved to the board's sides, since behind the
 **Fixed on `codex/bombadier-rules` (2026-11-04), native acceptance pending: Parting Line snapped the pilot back on every cast.** Seen on open floor and with a pillar behind (arena clock, `body` from the log): 5.32 hopping at 3.1 m, 5.50 back at `Point+up*.9`, standing in the burst. The hop's `wall` flag sets `Phase="line"` before `Release+.28` (`NativeMoreTechniques.MoreTechniqueMotion`; most likely the arc's descent meeting the floor, not confirmed). `MoreTechniqueMotion` then returns false, `NativeTechniqueRules.Moving` is still true, and `TechniqueMotion` falls into its anchor-throw branch, whose `RecastAt` of -100 puts the destination at `Point+up*.9` at once. The fix is `k.Kind=="parting-line"&&k.Phase=="hop"&&now<k.Release+.28f` in `Moving`, which guest prediction also reads; and the arc should not count the floor as a wall, or the hop ends short. The effect itself is right; it just needs the pilot to stay out of it.
 
 Not seen: a shot actually drawn into a real rod, a real mark's refund, Wildfire and Slipstream on a moving enemy, a real wire waiting armed (it snapped on the bot at once; seen armed in the preview), a guest or replay, a crowd, a low graphics tier in Unity, a Windows build.
+
+**The third set, built and reviewed on real presses (2026-11-05).** All 36 draw from the rules' own records. Reviewed from the game's camera with `swaps=spec:q=id,spec:e=id`, `apress=T:AbilityQ`, and each frame's record read from the log; `keep=` swallows an `apress` near it, and only one technique can be live at a time, so a second press has to wait for the first to end.
+
+| Weapon | Built | Seen on a real press | Note |
+| --- | --- | --- | --- |
+| Sword | Disarm, Iaido, Challenge | all three | Iaido's line follows the facing, as the draw does |
+| Daggers | Mirror Double, Envenom, Chain Hook | all three | Envenom without a hit |
+| Shield | War Cry, Ground Slam, Lodestone | all three | **Ground Slam's rules never reach the landing, so its blast was seen only in the preview.** Lodestone without a shot caught |
+| Greatsword | Sunder, Reaping Sweep, Blade Drag | all three, Blade Drag standing still | The blade lands 2.2 m ahead of `Point`, the feet. The sweep's gap is behind the pilot |
+| Pistol | Flash Round, Gun Spin, Slide Shot | all three | The whiteout is the viewer's own mark. **Slide Shot's rules stop it after about .2 m** |
+| Machine gun | Bipod, Ammo Crate, Flak Burst | all three | The crate stands at the rules' `Point`, the caster's feet |
+| Rifle | Breacher Round, Ghillie, Bolas Round | all three | The body's fade is under the floor, for others, and not reviewable from its own pilot |
+| Bow | Bramble Arrow, Vault Shot, Tether Arrow | all three | The hedge lies across the arrow's line |
+| Fire | Flame Cloak, Dragon Breath, Combust | all three | Blasts on the floor round the victims' feet |
+| Water | Bubble Trap, Flash Freeze, Hydro Jet | all three | The ice is a 3 m radius |
+| Lightning | Magnetize, Thunderclap, Overload | all three | Magnetize on one target; a clash only in the preview |
+| Darkness | Soul Siphon, Dread, Shadow Puppet | all three | The puppet stands where you stood, so it overlaps a pilot who has not moved |
+
+As the rules write the records (the contract above is the proposal): `Arm` as a time arrives at the release, and at a flight's end for Flash Round and Bramble Arrow; `Point` is the shot itself in flight; `To` is unset until the rules have one; Combust's `Path`, Magnetize's `Path` and `Point`, and a double's `To`, are at body height, .865 above the feet; Sunder's and Reaping Sweep's `Point` are the feet; Slide Shot's `Until` is .2 s past its slide; Vault Shot's landing is `RecoverUntil`; Bramble Arrow's `Dir` is the flight, the hedge across it. `NativeTechniqueFx.ArmAt` reads an unset `Arm` as the release.
+
+Marks drawn on pilots: Sunder, War Cry, Dread, Flash Round (`ThirdMarks`). The other marks are drawn by the caster's own effect from its `Target`. A mark on an add is not drawn: `Actor` lists pilots only.
 
 **A refused press.** A press the rules refuse for where it is aimed must not feel like a dead key (Grapple Line with no surface in 20 m, Static Recall with something on the line: a low
 counter is enough). While that holds the card says NO SURFACE, BLOCKED or NO FLOOR instead of READY or RECAST, without flaring each time the aim comes back; a press then puts the reason under the crosshair
@@ -342,3 +387,18 @@ The HUD passes `pending` (the look about to be sent) once a frame for the local 
 3. Inspect first-person, guest and replay movement/poses in Unity, especially the collision-shortened leap/grapple and Shade's delayed exchange. The implementation adds real movement and hit timing; the prior preview review does not validate that integration. Done for third and first person on the host (see the review above); guest and replay still open.
 
 Regression gates: `CoreTests --technique-rules` (simulation contracts), `CoreTests --techniques` (existing presentation plus rule checks), full CoreTests; `NativeArena.ValidateTechniques` and the extended native network gate run in the Unity builder. Semantic compilation in a managed environment does not execute those native PhysicsScene/JsonUtility gates.
+
+### Batches 4–5 rules checkpoint (2026-11-05, draft PR #338)
+
+Task branch now implements all three third-set rows on sword, shield, greatsword, rifle, bow and water: **26/36 overall**. Adds Iaido, Challenge, War Cry, Sunder, Ghillie, Flash Freeze, Lodestone, Blade Drag, Breacher Round, Bramble Arrow, Tether Arrow and Bubble Trap. Ten other-weapon rows remain gated; Third stays separate from All. DEV_LOG records tuning, collision decisions and unrun native tests. These are source changes, not a released build.
+
+Minion victim marks are `NativeMinion.TechniqueMarks`, wire `NativeMinionFrame.techniqueMarks`; pilot/replay marks remain `Actor.TechniqueMarks`. Both use the bounded mark contract. No presentation implementation is included.
+
+
+### 2026-11-05 authority repairs
+
+Ground Slam classifies the swept capsule contact normal: descending support arms the landing, while a side/ceiling contact cancels. The check no longer asks a separate 1.2 m downward ray to classify a longer swept descent. Slide Shot sweeps its actual crouched capsule horizontally, retains locomotion/gravity vertical velocity, and ignores walkable support normals; side obstacles and sanctuary/map boundaries still stop it. Native regression cases are in ValidateTechniques; real Cybercity/Windows motion remains to be verified.
+
+Ammo Crate refuses before payment if the point 1.4 m ahead lacks clear floor/space or crosses cover/sanctuary. Its virtual shot/melee sphere is centered using the existing CrateAt animation contract, including the .16 s fall, with radius sqrt(.66² + .38² + .42²) = .869 m. Blasts use that same center. The sphere encloses the box; it is intentionally not an exact oriented-box hit test. Taking damage updates Arm only; HitAt remains the last pickup.
+
+Iaido, Sunder, Reaping Sweep and Blade Drag write HitAt only after positive damage. Shadow Puppet writes normalized remaining health to Arm, updates Point/Dir from the minion and current aim, and retains the last copied shot's HitAt/To instead of overwriting To with body position. Mirror Double keeps its one-second invisibility Arm timestamp. Existing replicated technique fields carry these changes; no new wire fields or presentation code.

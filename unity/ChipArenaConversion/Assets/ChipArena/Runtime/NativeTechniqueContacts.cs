@@ -8,27 +8,34 @@ namespace ChipArena.UnityConversion
         // Virtual shot-only obstacles: players can walk through Bastion and a sentry without a solid capsule collider.
         private bool TechniqueObstacle(NativePilot shooter,Vector3 from,Vector3 delta,float radius,float damage,out Vector3 contact)
         {
-            contact=from+delta;bool any=false;foreach(var p in Pilots)if(p.TechniqueHealth>0&&NativeTechniqueRules.Live(p.Technique,Time)&&(p.Technique.Kind=="bastion"||TechniqueObject(p.Technique))){any=true;break;}if(!any&&!Pilots.Any(p=>p.BombFlights.Any(b=>b.Record.Kind==NativeBombs.Mine)))return false;NativePilot best=null;BombFlight mine=null;NativePilot mineOwner=null;float nearest=1.001f;
+            contact=from+delta;if(FinalFlakContact(shooter,from,delta,out contact))return true;bool any=false;foreach(var p in Pilots)if(NativeTechniqueRules.Live(p.Technique,Time)&&(p.Technique.Kind=="lodestone"&&p.Technique.Phase=="draw"&&p.Technique.Arm<8||p.TechniqueHealth>0&&(p.Technique.Kind=="bastion"||TechniqueObject(p.Technique)))){any=true;break;}if(!any&&!Pilots.Any(p=>p.BombFlights.Any(b=>b.Record.Kind==NativeBombs.Mine)))return false;NativePilot best=null;BombFlight mine=null;NativePilot mineOwner=null;float nearest=1.001f;
             // Geometry and actors must win when closer; do not let a wall behind a victim consume its shot.
             var solid=SweepNative(from,delta,radius,c=>c!=shooter?.Collider&&(c.GetComponent<NativePilotBody>()?.Pilot is NativePilot q?q.Hp>0&&CanHit(shooter,q)&&!Invulnerable(q):c.GetComponent<NativeMinionBody>()?.Minion is NativeMinion m?m.Hp>0&&CanHit(shooter,m):true));
             if(solid.HasValue)nearest=solid.Value.Distance/Math.Max(.00001f,delta.magnitude);
             foreach(var p in Pilots)foreach(var b in p.BombFlights)if(b.Record.Kind==NativeBombs.Mine&&Time>=b.Record.At&&NativeTechniqueRules.SegmentSphere(Vec(from),Vec(delta),b.Record.Pos,.22f+radius,out float fraction)&&fraction<nearest){nearest=fraction;mine=b;mineOwner=p;}
             foreach(var p in Pilots)
             {
-                var k=p.Technique;if(p.Hp<=0||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0)continue;float f;
-                bool hit=k.Kind=="bastion"?NativeTechniqueRules.Wall(Vec(from),Vec(delta),k,radius,out f):TechniqueObject(k)&&p!=shooter&&CanHit(shooter,p)&&Time>=k.Release&&(k.Kind!="lightning-rod"||Time>=k.Arm)?NativeTechniqueRules.SegmentSphere(Vec(from),Vec(delta),k.Point+new V3(0,TechniqueObjectHeight(k),0),(k.Kind=="lightning-rod"?3:k.Kind=="sentry-drop"?.55f:.25f)+radius,out f):NoTechniqueContact(out f);
+                var k=p.Technique;if(p.Hp<=0||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0&&k.Kind!="lodestone")continue;float f;
+                if(k.Kind=="lodestone"){if(CanHit(shooter,p)&&LodestoneFraction(p,from,delta,out f)&&f<nearest){nearest=f;best=p;mine=null;}continue;}
+                bool hit=k.Kind=="bastion"?NativeTechniqueRules.Wall(Vec(from),Vec(delta),k,radius,out f):TechniqueObject(k)&&p!=shooter&&CanHit(shooter,p)&&Time>=k.Release&&(k.Kind!="lightning-rod"||Time>=k.Arm)?NativeTechniqueRules.SegmentSphere(Vec(from),Vec(delta),Vec(TechniqueObjectCenter(k)),TechniqueObjectRadius(k)+radius,out f):NoTechniqueContact(out f);
                 if(hit&&f<nearest&&(k.Kind!="lightning-rod"||Enemy(shooter,p)&&MeleeVisible(from+delta*f,Vec(k.Point)+Vector3.up*.6f,shooter,null))){nearest=f;best=p;mine=null;}
             }
             if(mine!=null){contact=from+delta*nearest;mine.Hp-=damage;if(mine.Hp<=0)ExplodeBomb(mineOwner,mine);return true;}
-            if(best==null)return false;contact=from+delta*nearest;DamageTechniqueObject(best,damage,contact,true);return true;
+            if(best==null)return false;contact=from+delta*nearest;if(best.Technique.Kind=="lodestone"){best.Technique.Arm++;best.Technique.To=Vec(contact);best.Technique.HitAt=Time;}else DamageTechniqueObject(best,damage,contact,true);return true;
         }
-        private static bool TechniqueObject(NativeTechnique k)=>k!=null&&(k.Kind=="sentry-drop"||k.Kind=="tripwire"||k.Kind=="sonar-dart"||k.Kind=="lightning-rod");
-        private static float TechniqueObjectHeight(NativeTechnique k)=>k.Kind=="sentry-drop"?.65f:k.Kind=="lightning-rod"?.6f:0;
+        private static bool TechniqueObject(NativeTechnique k)=>k!=null&&(k.Kind=="sentry-drop"||k.Kind=="tripwire"||k.Kind=="sonar-dart"||k.Kind=="lightning-rod"||k.Kind=="ammo-crate");
+        private Vector3 TechniqueObjectCenter(NativeTechnique k)
+        {
+            // Reuse the existing crate geometry/time contract, including its .16 s fall; no presentation changes.
+            if(k.Kind=="ammo-crate"&&NativeTechniqueFx.CrateAt(k,Time,out var center,out _,out _))return new Vector3(center.X,center.Y,center.Z);
+            return Vec(k.Point)+Vector3.up*(k.Kind=="sentry-drop"?.65f:k.Kind=="lightning-rod"?.6f:0);
+        }
+        private static float TechniqueObjectRadius(NativeTechnique k)=>k.Kind=="ammo-crate"?Mathf.Sqrt(NativeTechniqueFx.CrateHalfX*NativeTechniqueFx.CrateHalfX+NativeTechniqueFx.CrateHalfY*NativeTechniqueFx.CrateHalfY+NativeTechniqueFx.CrateHalfZ*NativeTechniqueFx.CrateHalfZ):k.Kind=="lightning-rod"?3:k.Kind=="sentry-drop"?.55f:.25f;
         private void DamageTechniqueObject(NativePilot p,float damage,Vector3 contact,bool shot=false)
         {
             var k=p.Technique;p.TechniqueHealth=Math.Max(0,p.TechniqueHealth-damage);
-            if(k.Kind=="bastion"){k.Arm=p.TechniqueHealth/120;k.To=Vec(contact);k.HitAt=Time;}
-            if(k.Kind=="sentry-drop")k.HitAt=Time;
+            if(k.Kind=="bastion"){k.Arm=p.TechniqueHealth/(AbilityChip(p,"ab-spiked-wall")?180:120);k.To=Vec(contact);k.HitAt=Time;}
+            if(k.Kind=="sentry-drop")k.HitAt=Time;if(k.Kind=="ammo-crate")k.Arm=p.TechniqueHealth/40;
             if(k.Kind=="lightning-rod"&&shot){k.To=Vec(contact);k.HitAt=Time;}
             if(p.TechniqueHealth>0)return;
             if(k.Kind=="tripwire"){k.HitAt=Time;k.To=k.Point;k.Phase="snap";k.Until=Time+.85f;}
@@ -48,6 +55,7 @@ namespace ChipArena.UnityConversion
             if(coin==null)return false;
             point=b.Position+delta*closest;var target=TechniqueTarget(owner,point,22);var record=coin.Technique;record.HitAt=Time;record.Point=Vec(point);record.To=Vec(target.id==0?point:target.at);record.Until=Time;
             b.Position=point;b.TechniqueCoinUsed=true;
+            b.ExpansionCoinNext=target.id!=0&&AbilityChip(coin,"ab-lucky-coin");
             if(target.id!=0){b.Damage*=1.6f;b.TechniqueNoHead=true;b.Homing=0;b.Boomerang=b.Zigzag=false;b.Gravity=0;b.Velocity=(target.at-point).normalized*Math.Max(1,b.Velocity.magnitude);b.BaseVelocity=b.Velocity;b.Hit.Clear();}
             else b.Position+=delta.normalized*.05f;
             return true;
@@ -55,13 +63,21 @@ namespace ChipArena.UnityConversion
         private void TechniqueMeleeObjects(NativePilot p,NativeMeleeSwing swing,Vector3 origin)
         {
             foreach(var q in Pilots)
-            {var k=q.Technique;if(q==p||!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||q.TechniqueHealth<=0||!CanHit(p,q))continue;var at=Vec(k.Point)+Vector3.up*TechniqueObjectHeight(k);var delta=at-origin;if(!swing.Contact("sentry:"+q.Seat.id,Time,Vec(delta),.55f,MeleeVisible(origin,at,p,null),p.Grounded))continue;DamageTechniqueObject(q,TechniqueAway(p)?6:(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),at);}
+            {
+                var wall=q.Technique;if(q==p||wall?.Kind!="bastion"||!NativeTechniqueRules.Live(wall,Time)||q.TechniqueHealth<=0||!CanHit(p,q))continue;
+                var center=Vec(wall.Point)+Vector3.up*.8f;
+                if(!swing.Contact("bastion:"+q.Seat.id,Time,Vec(center-origin),1.3f,MeleeVisible(origin,center,p,null),p.Grounded))continue;
+                bool spikes=AbilityChip(q,"ab-spiked-wall");DamageTechniqueObject(q,TechniqueAway(p)?6:(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),center);
+                if(spikes)Damage(p,q,8,Vector3.zero,0,false,direct:false,primary:false,damageKind:"ability");
+            }
+            foreach(var q in Pilots)
+            {var k=q.Technique;if(q==p||!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||q.TechniqueHealth<=0||!CanHit(p,q))continue;var at=TechniqueObjectCenter(k);var delta=at-origin;if(!swing.Contact("sentry:"+q.Seat.id,Time,Vec(delta),k.Kind=="ammo-crate"?TechniqueObjectRadius(k):.55f,MeleeVisible(origin,at,p,null),p.Grounded))continue;DamageTechniqueObject(q,TechniqueAway(p)?6:(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),at);}
         }
         private void TechniqueBlastObjects(NativePilot owner,Vector3 at,float radius,float damage)
         {
             BombTouchMines(owner,at,radius);
             foreach(var p in Pilots)
-            {var k=p.Technique;if(!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0||!CanHit(owner,p))continue;var point=Vec(k.Point)+Vector3.up*TechniqueObjectHeight(k);float fall=NativeAbilityRules.BlastFalloff(Vector3.Distance(at,point),radius);if(fall<=0||!MeleeVisible(at,point,owner,null))continue;DamageTechniqueObject(p,damage*fall,point);}
+            {var k=p.Technique;if(!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||p.TechniqueHealth<=0||!CanHit(owner,p))continue;var point=TechniqueObjectCenter(k);float fall=NativeAbilityRules.BlastFalloff(Vector3.Distance(at,point),radius);if(fall<=0||!MeleeVisible(at,point,owner,null))continue;DamageTechniqueObject(p,damage*fall,point);}
         }
         private bool BotSentry(NativePilot p,out InputFrame input)
         {

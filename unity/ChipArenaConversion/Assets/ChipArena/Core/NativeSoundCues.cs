@@ -159,7 +159,7 @@ namespace ChipArena.UnityConversion
                 case EventKind.Split:n=X(o,n,"chip.split",.5f);break;
                 case EventKind.Ricochet:n=X(o,n,"gun.ricochet",.55f);break;
                 case EventKind.Pong:n=X(o,n,"chip.pong",.6f);break;
-                case EventKind.Summon:n=X(o,n,"chip.summon",.7f);break;
+                case EventKind.Summon:if(c.Detail!=NativeTechniques.MirrorDouble&&c.Detail!=NativeTechniques.ShadowPuppet)n=X(o,n,"chip.summon",.7f);break;
                 case EventKind.Dodge:n=X(o,n,"hit.dodge",.6f);break;
                 case EventKind.Catch:n=X(o,n,"melee.shield.throw",.5f);break;
                 case EventKind.Leet:n=X(o,n,"dev.leet.glitch",.7f);break;

@@ -722,6 +722,645 @@
         "min": 0,
         "max": 0
       }
+    },
+    {
+      "spec": "pistol",
+      "slot": "technique",
+      "id": "gun-spin",
+      "name": "Gun Spin",
+      "short": "Gun Spin",
+      "text": "Twirl the pistol: instantly reloaded, and firing faster for a few seconds.",
+      "kind": "technique",
+      "fx": "gun-spin",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "windup": 0.44999998807907104,
+      "duration": 4,
+      "live": true
+    },
+    {
+      "spec": "lightning",
+      "slot": "technique",
+      "id": "overload",
+      "name": "Overload",
+      "short": "Overload",
+      "text": "Run hot: faster attacks and faster feet, and a shock at the end that you have to pay for.",
+      "kind": "technique",
+      "fx": "overload",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 14,
+      "cost": 18,
+      "windup": 0.10000000149011612,
+      "duration": 4,
+      "live": true
+    },
+    {
+      "spec": "lightning",
+      "slot": "technique",
+      "id": "thunderclap",
+      "name": "Thunderclap",
+      "short": "Thunderclap",
+      "text": "Clap your hands: a burst of thunder stuns everyone close and cuts off whatever they were doing.",
+      "kind": "technique",
+      "fx": "thunderclap",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "cost": 26,
+      "windup": 0.30000001192092896,
+      "lockout": 0.20000000298023224,
+      "range": 5,
+      "damage": 10,
+      "duration": 0.30000001192092896,
+      "live": true
+    },
+    {
+      "spec": "machinegun",
+      "slot": "technique",
+      "id": "bipod",
+      "name": "Bipod",
+      "short": "Bipod",
+      "text": "Plant the gun: tighter, faster, free fire, but you can't move until you pack up.",
+      "kind": "technique",
+      "fx": "bipod",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 15,
+      "windup": 0.5,
+      "duration": 5,
+      "live": true
+    },
+    {
+      "spec": "daggers",
+      "slot": "technique",
+      "id": "envenom",
+      "name": "Envenom",
+      "short": "Envenom",
+      "text": "Coat your blades. Your next three hits poison and slow.",
+      "kind": "technique",
+      "fx": "envenom",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "cost": 15,
+      "windup": 0.4000000059604645,
+      "duration": 6,
+      "live": true
+    },
+    {
+      "spec": "fire",
+      "slot": "technique",
+      "id": "dragon-breath",
+      "name": "Dragon Breath",
+      "short": "Dragon Breath",
+      "text": "Breathe a cone of fire for as long as it lasts, walking slowly, unable to do anything else.",
+      "kind": "technique",
+      "fx": "dragon-breath",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "cost": 24,
+      "windup": 0.25,
+      "duration": 1.600000023841858,
+      "live": true
+    },
+    {
+      "spec": "fire",
+      "slot": "technique",
+      "id": "combust",
+      "name": "Combust",
+      "short": "Combust",
+      "text": "Snap your fingers: every enemy already burning takes all of it at once, in a blast.",
+      "kind": "technique",
+      "fx": "combust",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 9,
+      "cost": 16,
+      "windup": 0.20000000298023224,
+      "duration": 0.30000001192092896,
+      "live": true
+    },
+    {
+      "spec": "darkness",
+      "slot": "technique",
+      "id": "soul-siphon",
+      "name": "Soul Siphon",
+      "short": "Soul Siphon",
+      "text": "Hold a beam on one enemy, draining their health into yours while you can keep them.",
+      "kind": "technique",
+      "fx": "soul-siphon",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "cost": 22,
+      "windup": 0.10000000149011612,
+      "duration": 2,
+      "live": true
+    },
+    {
+      "spec": "sword",
+      "slot": "technique",
+      "id": "disarm",
+      "name": "Disarm",
+      "short": "Disarm",
+      "text": "A quick flick of the blade. Whoever it catches can't use Q or E for a few seconds.",
+      "kind": "technique",
+      "fx": "disarm",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 11,
+      "cost": 18,
+      "windup": 0.009999999776482582,
+      "duration": 0.7200000286102295,
+      "live": true
+    },
+    {
+      "spec": "shield",
+      "slot": "technique",
+      "id": "ground-slam",
+      "name": "Ground Slam",
+      "short": "Ground Slam",
+      "text": "Leap and bring the shield down: a shockwave throws everyone near the landing.",
+      "kind": "technique",
+      "fx": "ground-slam",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "cost": 22,
+      "windup": 0.10000000149011612,
+      "duration": 1.100000023841858,
+      "live": true
+    },
+    {
+      "spec": "greatsword",
+      "slot": "technique",
+      "id": "reaping-sweep",
+      "name": "Reaping Sweep",
+      "short": "Reaping Sweep",
+      "text": "A low circular sweep that hooks legs: everyone near you is dragged in and tripped.",
+      "kind": "technique",
+      "fx": "reaping-sweep",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "cost": 24,
+      "windup": 0.25,
+      "duration": 0.5,
+      "live": true
+    },
+    {
+      "spec": "rifle",
+      "slot": "technique",
+      "id": "bolas-round",
+      "name": "Bolas Round",
+      "short": "Bolas Round",
+      "text": "A slow spinning round that ties up whoever it hits, rooting them on the spot.",
+      "kind": "technique",
+      "fx": "bolas-round",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "windup": 0.10000000149011612,
+      "duration": 2.200000047683716,
+      "live": true
+    },
+    {
+      "spec": "bow",
+      "slot": "technique",
+      "id": "vault-shot",
+      "name": "Vault Shot",
+      "short": "Vault Shot",
+      "text": "Flip backward and loose a free arrow from the top of the flip.",
+      "kind": "technique",
+      "fx": "vault-shot",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 10,
+      "windup": 0.009999999776482582,
+      "duration": 1.2000000476837158,
+      "live": true
+    },
+    {
+      "spec": "water",
+      "slot": "technique",
+      "id": "hydro-jet",
+      "name": "Hydro Jet",
+      "short": "Hydro Jet",
+      "text": "A jet of water throws you opposite your aim, and shoves whoever's in the stream.",
+      "kind": "technique",
+      "fx": "hydro-jet",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "cost": 20,
+      "windup": 0.10000000149011612,
+      "duration": 1.5,
+      "live": true
+    },
+    {
+      "spec": "sword",
+      "slot": "technique",
+      "id": "iaido",
+      "name": "Iaido",
+      "short": "Iaido",
+      "text": "Sheathe your blade, then press again to draw: you cross a line and cut everyone on it.",
+      "kind": "technique",
+      "fx": "iaido",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "cost": 24,
+      "windup": 0.009999999776482582,
+      "duration": 1.5,
+      "live": true
+    },
+    {
+      "spec": "sword",
+      "slot": "technique",
+      "id": "challenge",
+      "name": "Challenge",
+      "short": "Challenge",
+      "text": "Call out one enemy: you hit each other harder, and you run faster at them.",
+      "kind": "technique",
+      "fx": "challenge",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 16,
+      "cost": 15,
+      "windup": 0.10000000149011612,
+      "duration": 6,
+      "live": true
+    },
+    {
+      "spec": "shield",
+      "slot": "technique",
+      "id": "war-cry",
+      "name": "War Cry",
+      "short": "War Cry",
+      "text": "Bang your shield: nearby enemies hurt anyone but you less, and you shrug off more.",
+      "kind": "technique",
+      "fx": "war-cry",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 15,
+      "cost": 20,
+      "windup": 0.30000001192092896,
+      "duration": 4,
+      "live": true
+    },
+    {
+      "spec": "greatsword",
+      "slot": "technique",
+      "id": "sunder",
+      "name": "Sunder",
+      "short": "Sunder",
+      "text": "A slow overhead that cracks armour. Whoever it hits takes more damage for a while.",
+      "kind": "technique",
+      "fx": "sunder",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "cost": 24,
+      "windup": 0.550000011920929,
+      "duration": 4,
+      "live": true
+    },
+    {
+      "spec": "rifle",
+      "slot": "technique",
+      "id": "ghillie",
+      "name": "Ghillie",
+      "short": "Ghillie",
+      "text": "Settle down and hold still: you all but vanish, and your first shot out hits harder.",
+      "kind": "technique",
+      "fx": "ghillie",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 16,
+      "windup": 0.6000000238418579,
+      "duration": 8,
+      "live": true
+    },
+    {
+      "spec": "water",
+      "slot": "technique",
+      "id": "flash-freeze",
+      "name": "Flash Freeze",
+      "short": "Flash Freeze",
+      "text": "Stamp a sheet of ice under you. Enemies slide on it, and you skate.",
+      "kind": "technique",
+      "fx": "flash-freeze",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 14,
+      "cost": 22,
+      "windup": 0.10000000149011612,
+      "duration": 4,
+      "live": true
+    },
+    {
+      "spec": "shield",
+      "slot": "technique",
+      "id": "lodestone",
+      "name": "Lodestone",
+      "short": "Lodestone",
+      "text": "Your shield pulls shots out of the air and holds them, then throws them all back.",
+      "kind": "technique",
+      "fx": "lodestone",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 14,
+      "cost": 25,
+      "windup": 0.10000000149011612,
+      "duration": 2.5,
+      "live": true
+    },
+    {
+      "spec": "greatsword",
+      "slot": "technique",
+      "id": "blade-drag",
+      "name": "Blade Drag",
+      "short": "Blade Drag",
+      "text": "Run dragging the blade in a trail of sparks, then press again to rip it upward.",
+      "kind": "technique",
+      "fx": "blade-drag",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "cost": 22,
+      "windup": 0.10000000149011612,
+      "duration": 2,
+      "live": true
+    },
+    {
+      "spec": "rifle",
+      "slot": "technique",
+      "id": "breacher-round",
+      "name": "Breacher Round",
+      "short": "Breacher Round",
+      "text": "Charge for a second behind a visible laser, then fire a round that punches through walls.",
+      "kind": "technique",
+      "fx": "breacher-round",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 14,
+      "windup": 1,
+      "duration": 0.30000001192092896,
+      "live": true
+    },
+    {
+      "spec": "bow",
+      "slot": "technique",
+      "id": "bramble-arrow",
+      "name": "Bramble Arrow",
+      "short": "Bramble Arrow",
+      "text": "An arrow that grows a hedge of thorns where it lands. Crossing it hurts and slows.",
+      "kind": "technique",
+      "fx": "bramble-arrow",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "windup": 0.10000000149011612,
+      "duration": 2,
+      "live": true
+    },
+    {
+      "spec": "bow",
+      "slot": "technique",
+      "id": "tether-arrow",
+      "name": "Tether Arrow",
+      "short": "Tether Arrow",
+      "text": "Pin an enemy to the floor with a glowing line. They can't stray far until it snaps.",
+      "kind": "technique",
+      "fx": "tether-arrow",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 14,
+      "windup": 0.10000000149011612,
+      "duration": 2,
+      "live": true
+    },
+    {
+      "spec": "water",
+      "slot": "technique",
+      "id": "bubble-trap",
+      "name": "Bubble Trap",
+      "short": "Bubble Trap",
+      "text": "A slow orb that floats an enemy in a bubble: helpless, but protected until it pops.",
+      "kind": "technique",
+      "fx": "bubble-trap",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 14,
+      "cost": 24,
+      "windup": 0.10000000149011612,
+      "duration": 2,
+      "live": true
+    },
+    {
+      "spec": "daggers",
+      "slot": "technique",
+      "id": "mirror-double",
+      "name": "Mirror Double",
+      "short": "Mirror Double",
+      "text": "Vanish for a second while a double runs ahead of you. One hit pops it.",
+      "kind": "technique",
+      "fx": "mirror-double",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 16,
+      "cost": 25,
+      "windup": 0.10000000149011612,
+      "duration": 2.5,
+      "live": true
+    },
+    {
+      "spec": "daggers",
+      "slot": "technique",
+      "id": "chain-hook",
+      "name": "Chain Hook",
+      "short": "Chain Hook",
+      "text": "Throw a hooked chain and drag the first enemy it catches to you.",
+      "kind": "technique",
+      "fx": "chain-hook",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "cost": 22,
+      "windup": 0.10000000149011612,
+      "duration": 0.4000000059604645,
+      "live": true
+    },
+    {
+      "spec": "pistol",
+      "slot": "technique",
+      "id": "flash-round",
+      "name": "Flash Round",
+      "short": "Flash Round",
+      "text": "A round that bursts into blinding light. Anyone looking at it is dazzled, you included.",
+      "kind": "technique",
+      "fx": "flash-round",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 12,
+      "windup": 0.10000000149011612,
+      "duration": 1,
+      "live": true
+    },
+    {
+      "spec": "pistol",
+      "slot": "technique",
+      "id": "slide-shot",
+      "name": "Slide Shot",
+      "short": "Slide Shot",
+      "text": "Drop into a long slide, still shooting, and rise with a steadier aim.",
+      "kind": "technique",
+      "fx": "slide-shot",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 9,
+      "windup": 0.10000000149011612,
+      "duration": 0.75,
+      "live": true
+    },
+    {
+      "spec": "machinegun",
+      "slot": "technique",
+      "id": "ammo-crate",
+      "name": "Ammo Crate",
+      "short": "Ammo Crate",
+      "text": "Drop a crate. Anyone on your team who touches it reloads and fires faster.",
+      "kind": "technique",
+      "fx": "ammo-crate",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 20,
+      "windup": 0.10000000149011612,
+      "duration": 8,
+      "live": true
+    },
+    {
+      "spec": "machinegun",
+      "slot": "technique",
+      "id": "flak-burst",
+      "name": "Flak Burst",
+      "short": "Flak Burst",
+      "text": "A shell bursts where you aim, into a cloud that shreds enemy shots passing through.",
+      "kind": "technique",
+      "fx": "flak-burst",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 14,
+      "windup": 0.10000000149011612,
+      "duration": 4,
+      "live": true
+    },
+    {
+      "spec": "fire",
+      "slot": "technique",
+      "id": "flame-cloak",
+      "name": "Flame Cloak",
+      "short": "Flame Cloak",
+      "text": "Wrap yourself in fire: shots hurt less, and anyone who hits you up close gets burned.",
+      "kind": "technique",
+      "fx": "flame-cloak",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 16,
+      "cost": 26,
+      "windup": 0.10000000149011612,
+      "duration": 4,
+      "live": true
+    },
+    {
+      "spec": "lightning",
+      "slot": "technique",
+      "id": "magnetize",
+      "name": "Magnetize",
+      "short": "Magnetize",
+      "text": "Mark two enemies and they're dragged into each other. They clash for damage and a stun.",
+      "kind": "technique",
+      "fx": "magnetize",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 13,
+      "cost": 24,
+      "windup": 0.10000000149011612,
+      "duration": 1.5,
+      "live": true
+    },
+    {
+      "spec": "darkness",
+      "slot": "technique",
+      "id": "dread",
+      "name": "Dread",
+      "short": "Dread",
+      "text": "A scream of darkness: everyone in front of you turns and stumbles away for a moment.",
+      "kind": "technique",
+      "fx": "dread",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 15,
+      "cost": 26,
+      "windup": 0.3499999940395355,
+      "duration": 0.8999999761581421,
+      "live": true
+    },
+    {
+      "spec": "darkness",
+      "slot": "technique",
+      "id": "shadow-puppet",
+      "name": "Shadow Puppet",
+      "short": "Shadow Puppet",
+      "text": "Leave your shadow standing where you are. It copies every attack you make.",
+      "kind": "technique",
+      "fx": "shadow-puppet",
+      "bot": {
+        "max": 18
+      },
+      "cooldown": 16,
+      "cost": 28,
+      "windup": 0.10000000149011612,
+      "duration": 4,
+      "live": true
     }
   ],
   "weights": [

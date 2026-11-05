@@ -40,6 +40,7 @@ namespace ChipArena.UnityConversion
             var w=p.Weapon;bool pong=bow?.Detail!="rain"&&p.Stats["pong"]>0&&!w.devOnly&&p.VolleyIndex++%Math.Max(1,(int)Math.Ceiling(.24/w.interval))==0;
             if(pong){var balls=Bullets.Where(b=>b.Pong&&b.Original==p.Seat.id).ToArray();if(balls.Length>=24)Bullets.Remove(balls[0]);}
             if(ProjectileCount>=100)return;
+            float wildAttack=WildAttackMultiplier(p),allIn=Has(p,"wild-all-in")&&w.ammo>0?Math.Max(1,p.Ammo+(Has(p,"wild-blood-magazine")||PilotMutator(p,"bottomless")||ChannelLive(p,"bipod")?0:1)):1;if(allIn>1)p.Ammo=0;float hookShot=p.ExpansionHookUntil>Time?1.5f:1;p.ExpansionHookUntil=0;float priorityShot=ChannelLive(p,"ghillie")?1.2f:1;if(priorityShot>1)EndTechnique(p);
             Vector3 eye=p.Body.position+Vector3.up*.3f,start=eye+Quaternion.Euler(0,p.Yaw,0)*new Vector3(.2f,0,.48f);
             if(bow?.Origin!=null)start=bow.Origin.Value;
             Vector3 offset=p.Input.AimTarget.Length>.01f?Vec(p.Input.AimTarget)-start:Vec(GunRules.Direction(p.Yaw,p.Pitch))*(float)w.range;
@@ -48,7 +49,7 @@ namespace ChipArena.UnityConversion
             if(pong)speed=Mathf.Clamp(speed,30,80);
             float pitch=p.Aiming&&gravity>0?GunRules.BallisticPitch(distance,offset.y,speed,gravity):Mathf.Atan2(offset.y,distance)*Mathf.Rad2Deg;
             bool overdrive=Overdriving(p);double spread=NativeRangedRules.Spread((double?)bow?.Spread??w.spread,fan);var ads=Content.Ads(p.Seat.spec);if(!fan&&!overdrive&&p.Aiming&&ads!=null){spread*=1+(ads.spread-1)*Mathf.Clamp01((Time-p.AimAt)/(float)ads.settle);if(ads.bloom>0&&Time-p.LastShot<=.25f)spread=Math.Min(w.spread,spread+ads.bloom*p.AimShots);}
-            if(Has(p,"wild-bullet-hose"))spread+=Math.Tan(12*Math.PI/180);if(ChannelLive(p,"bipod"))spread*=.3;
+            if(Has(p,"wild-bullet-hose"))spread+=Math.Tan(12*Math.PI/180);if(ChannelLive(p,"bipod"))spread*=.3;if(ChannelLive(p,"slide-shot")&&p.Technique.Phase=="slide")spread*=.5;
             p.AimShots=overdrive?0:Time-p.LastShot>.25f?1:p.AimShots+1;p.LastShot=Time;if(bow==null&&w.@class!="magic")p.Ready=Time+NativeRangedRules.Interval(w.interval,p.Stats["attackRate"],overdrive)*(p.Aiming&&ads!=null&&ads.interval>0?(float)ads.interval:1);p.Pose.ShotsFired++;
             int count=NativeProjectileRules.Volley(p.Stats,pong),attack=nextAttack++;float empowerment=Time<p.EmpowerUntil&&p.EmpowerShots>0?1+(float)p.Stats["qEmpower"]:1;if(empowerment>1)p.EmpowerShots--;
             int firstProjectile=nextBullet;var volley=new List<NativeBullet>();
@@ -56,18 +57,19 @@ namespace ChipArena.UnityConversion
             {
                 Vector3 dir=(Vec(GunRules.Direction(yaw+(bow?.Yaw??0)+NativeProjectileRules.Fan(i,count,(float)p.Stats["fanDegrees"]),pitch))+new Vector3((float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5),(float)(random.NextDouble()-.5))*(float)spread).normalized;
                 if(bow?.Direction!=null)dir=bow.Direction.Value.normalized;
-                var shot=new NativeBullet{ImpactSpeedScale=w.projectileImpactSpeed>0&&w.speed>0?(float)(w.projectileImpactSpeed/w.speed):1,Draw=bow?.Draw??0,Detail=bow?.Detail,Id=nextBullet++,Attack=attack,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=start,Velocity=dir*speed,BaseVelocity=dir*speed,FixedSpeed=speed,Damage=(float)((bow?.Damage??(float)w.damage)*p.Stats["damage"])*(fan?NativeRangedRules.FanDamage*(AbilityChip(p,"ab-six-aces")&&p.Fan!=null&&p.Fan.Shots==p.Fan.Limit-1?2:1):1)*(count>1?.75f:1)*(w.ammo>0&&p.Ammo==0?1+(float)p.Stats["lastRound"]:1)*empowerment,Gravity=gravity,Radius=(float)((w.shotRadius>0?w.shotRadius:w.@class=="magic"?.14:.045)*p.Stats["projectileSize"]),Impulse=(float)((bow?.Impulse??(float)w.impulse)*p.Stats["impulse"]),Bounces=w.projectileBounces+(int)p.Stats["bounces"],Pierces=(int)p.Stats["pierces"],BounceRetention=(float)(w.projectileBounceRetention*p.Stats["bounceRetention"]),Burn=(float)(w.burn+p.Stats["burn"]),Poison=(float)p.Stats["poison"],Demolition=(float)p.Stats["demolition"],Homing=(float)p.Stats["homing"],Life=returning?4:NativeProjectileRules.Lifetime(w),Travel=returning?320:NativeProjectileRules.Range(w),Boomerang=returning,Zigzag=p.Stats["zigzag"]>0,Mods=new Dictionary<string,int>(p.Seat.chips)};
-                if(pong){shot.Pong=true;shot.RallyMark=start;shot.RallyCap=speed*1.6f;shot.RallyBonus=Math.Min(shot.Damage*.15f,8);shot.Bounces=Math.Min(6,(int)Math.Ceiling(3d/Math.Ceiling(.24/w.interval))+(int)p.Stats["bounces"]);shot.Life=3.5f;shot.Travel=200;shot.Homing=0;shot.Pierces=0;shot.Zigzag=false;}
+                var shot=new NativeBullet{ImpactSpeedScale=w.projectileImpactSpeed>0&&w.speed>0?(float)(w.projectileImpactSpeed/w.speed):1,Draw=bow?.Draw??0,Detail=bow?.Detail,Id=nextBullet++,Attack=attack,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Born=Time,Position=start,Velocity=dir*speed,BaseVelocity=dir*speed,FixedSpeed=speed,Damage=(float)((bow?.Damage??(float)w.damage)*p.Stats["damage"])*(fan?NativeRangedRules.FanDamage*(AbilityChip(p,"ab-six-aces")&&p.Fan!=null&&p.Fan.Shots==p.Fan.Limit-1?2:1):1)*(count>1?.75f:1)*(w.ammo>0&&p.Ammo==0?1+(float)p.Stats["lastRound"]:1)*empowerment*priorityShot*hookShot*wildAttack*allIn,Gravity=gravity,Radius=(float)((w.shotRadius>0?w.shotRadius:w.@class=="magic"?.14:.045)*p.Stats["projectileSize"]),Impulse=(float)((bow?.Impulse??(float)w.impulse)*p.Stats["impulse"]),Bounces=w.projectileBounces+(int)p.Stats["bounces"],Pierces=(int)p.Stats["pierces"],BounceRetention=(float)(w.projectileBounceRetention*p.Stats["bounceRetention"]),Burn=(float)(w.burn+p.Stats["burn"]),Poison=(float)p.Stats["poison"],Demolition=(float)p.Stats["demolition"],Homing=(float)p.Stats["homing"],Life=returning?4:NativeProjectileRules.Lifetime(w),Travel=returning?320:NativeProjectileRules.Range(w),Boomerang=returning,Zigzag=p.Stats["zigzag"]>0,Mods=new Dictionary<string,int>(p.Seat.chips)};
+                if(allIn>1)shot.Radius*=Math.Min(4,1+.08f*(allIn-1));if(pong){shot.Pong=true;shot.RallyMark=start;shot.RallyCap=speed*1.6f;shot.RallyBonus=Math.Min(shot.Damage*.15f,8);shot.Bounces=Math.Min(6,(int)Math.Ceiling(3d/Math.Ceiling(.24/w.interval))+(int)p.Stats["bounces"]);shot.Life=3.5f;shot.Travel=200;shot.Homing=0;shot.Pierces=0;shot.Zigzag=false;}
                 var obstruction=bow?.Origin!=null?null:SweepNative(eye,start-eye,shot.Radius,c=>c!=p.Collider&&c.GetComponent<NativePilotBody>()==null);
                 if(obstruction.HasValue&&BulletImpact(shot,p,obstruction.Value))continue;Bullets.Add(shot);volley.Add(shot);if(bow!=null)Events.Add(new ArenaEvent{Id=nextEvent++,Kind=EventKind.Shot,Source=p.Seat.id,Time=Time,Position=Vec(start),Detail=bow.Detail,Draw=bow.Draw,Projectile=shot.Id});
             }
-            SpawnChipShots(p,volley);LeetSpawned(p,volley);if(p.Stats["recoil"]>0)p.Knockback-=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*Math.Min(15,(float)p.Stats["recoil"]);
+            WildVolley(p,volley);if(volley.Count>0)CopyTechniqueShot(p,volley[0]);SpawnChipShots(p,volley);LeetSpawned(p,volley);if(p.Stats["recoil"]>0)p.Knockback-=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))*Math.Min(15,(float)p.Stats["recoil"]);
             if(bow==null)Emit(EventKind.Shot,p,0,start,(int)p.Pose.Weapon,fan?"fan":overdrive?"overdrive":null,projectile:firstProjectile);
             foreach(var shot in volley)
                 if(bow==null&&NativeProjectileRules.Instant(w,p.Stats,NeedsTravel(shot,p)))ResolveInstant(shot);
         }
         private bool NeedsTravel(NativeBullet b,NativePilot owner)
         {
+            if(Has(b,"wild-steering-wheel")||Has(b,"wild-curveball")||Has(b,"wild-snowball"))return true;
             if(b.Gravity!=0||b.Pong||b.Boomerang||b.Zigzag||b.Homing>0||b.LeetKind!=null||Frozen(owner))return true;
             foreach(string mod in TravelMods)if(Has(b,mod))return true;
             // Other players' time/attraction fields also need elapsed simulation time.
@@ -180,9 +182,9 @@ namespace ChipArena.UnityConversion
                 if(b.Zigzag){float angle=.55f*(Mathf.Sin((age+dt)*Mathf.PI*12)-Mathf.Sin(age*Mathf.PI*12));b.Velocity=Quaternion.AngleAxis(angle*Mathf.Rad2Deg,Vector3.up)*b.Velocity;}
                 if(b.Pong)b.Velocity=b.Velocity.normalized*b.FixedSpeed;
                 if(b.Direct&&b.Homing>0&&!turned)
-                    foreach(var target in Pilots)
-                    {Vector3 d=target.Body.position+Vector3.up*.15f-b.Position;if(target.Hp<=0||!Enemy(owner,target)||b.Hit.Contains(target.Collider.GetInstanceID())||d.magnitude>16||Vector3.Dot(b.Velocity.normalized,d.normalized)<Mathf.Cos(50*Mathf.Deg2Rad)||!MeleeVisible(b.Position,target.Body.position,owner,target.Collider))continue;b.Velocity=Vec(NativeProjectileRules.Steer(Vec(b.Velocity),Vec(d),b.Homing*Mathf.Deg2Rad*h));break;}
-                Vector3 before=b.Velocity;var velocity=Vec(before);Vector3 previous=b.Position;Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref velocity,b.Gravity,h)),b.Travel);b.Velocity=Vec(velocity);b.Life-=h;b.Travel-=delta.magnitude;b.Travelled+=delta.magnitude;
+                    foreach(var target in MeleeTargets(owner).OrderBy(t=>t.minion?.Kind=="mirror-double"||t.minion?.Kind=="wild-afterimage"?0:1).ThenBy(t=>(t.at-b.Position).sqrMagnitude))
+                    {Vector3 d=target.at-b.Position;if(b.Hit.Contains(target.collider.GetInstanceID())||d.magnitude>16||Vector3.Dot(b.Velocity.normalized,d.normalized)<Mathf.Cos(50*Mathf.Deg2Rad)||!MeleeVisible(b.Position,target.at,owner,target.collider))continue;b.Velocity=Vec(NativeProjectileRules.Steer(Vec(b.Velocity),Vec(d),b.Homing*Mathf.Deg2Rad*h));break;}
+                WildShotMotion(b,owner,h);Vector3 before=b.Velocity;var velocity=Vec(before);Vector3 previous=b.Position;Vector3 delta=Vector3.ClampMagnitude(Vec(NativeSpecialRules.Ballistic(ref velocity,b.Gravity,h)),b.Travel);b.Velocity=Vec(velocity);b.Life-=h;b.Travel-=delta.magnitude;b.Travelled+=delta.magnitude;
                 if(HubInside(b.Position)||HubCross(b.Position,b.Position+delta,b.Radius)){EndBullet(b);continue;}
                 if(CyberAbsorb(owner,b.Position,b.Position+delta,b.Radius)){EndBullet(b);continue;}
                 if(TechniqueBullet(b,owner,delta))continue;
@@ -230,20 +232,21 @@ namespace ChipArena.UnityConversion
                 b.Instant=false;BlockProc(target,owner,hit.Contact,"deflect");if(b.Reflections>=3)return true;b.Reflections++;b.Owner=target.Seat.id;b.Direct=b.ChipImpact=b.Boomerang=false;b.Homing=0;b.Hit.Clear();b.Attack=nextAttack++;
                 b.Damage=Math.Min(100,b.Damage*(float)target.Stats["reflectDamage"]);b.Velocity=-b.Velocity.normalized*(b.Pong?b.FixedSpeed:Math.Min(120,b.Velocity.magnitude*(float)target.Stats["reflectSpeed"]));b.Position+=b.Velocity.normalized*.025f;if(b.Pong)b.RallyMark=b.Position;return false;
             }
+            if(target==null&&minion==null&&WildWall(b,owner,hit))return false;
             if(b.LeetKind=="brain"){if(target!=null)Possess(owner,target);return true;}LeetImpact(owner,b,hit.Point);
             if(PilotMutator(owner,"high-explosive")&&b.Reflections==0)QueueMutatorBlast(owner,hit.Point,1.5f,b.Damage*.35f,b.Damage*.35f,"mutator-explosive");
             if(b.Pong&&target==null&&minion==null&&b.Bounces>0){b.Contacts[hit.Collider.GetInstanceID()]=Time;return PongBounce(b,owner,hit.Point,Vector3.Reflect(b.Velocity,hit.Normal));}
             if(minion!=null)
             {
-                float actual=HitMinion(minion,owner,b.Damage,b.Velocity.normalized,b.Impulse,b.TechniqueNoHead?minion.Body.position:hit.Point,b.Detail=="plasma-byte"?"plasma-hit":b.Detail=="plasma-overflow"?"plasma-overflow-hit":b.Detail=="bit-bolt"?"bit-bolt":b.Reflections>0?"reflected":b.Direct?"direct":"secondary",projectile:b.Id,pierced:!b.Pong&&b.Pierces>0);if(b.Direct||b.WeaponFx&&b.Reflections==0)MinionWeaponHit(minion,owner,actual,b.Burn,b.Poison);
+                float actual=HitMinion(minion,owner,b.Damage,b.Velocity.normalized,b.Impulse,b.TechniqueNoHead?minion.Body.position:hit.Point,b.Detail=="expansion-copy"?"expansion-copy":b.Detail=="plasma-byte"?"plasma-hit":b.Detail=="plasma-overflow"?"plasma-overflow-hit":b.Detail=="bit-bolt"?"bit-bolt":b.Reflections>0?"reflected":b.Direct?"direct":"secondary",projectile:b.Id,pierced:!b.Pong&&b.Pierces>0);if(actual>0&&b.Detail=="spirit-hawk")SlowMinion(minion,.8f,1.5f);if(b.Direct||b.WeaponFx&&b.Reflections==0)MinionWeaponHit(minion,owner,actual,b.Burn,b.Poison);
                 if((b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,null,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id,minion);
             }
             else if(target!=null)
             {
-                bool head=!b.TechniqueNoHead&&!b.CyberPacket&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null,Mutator("big-heads")?2:1);float actual=Damage(target,owner,b.Damage*(head?1.5f*(b.Spec=="bow"&&b.Draw>=1?1.25f:1):1),b.Velocity.normalized,b.Impulse,head,primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude*b.ImpactSpeedScale,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,projectile:b.Id,pierced:!b.Pong&&b.Pierces>0,damageKind:b.Detail=="plasma-byte"?"plasma-hit":b.Detail=="plasma-overflow"?"plasma-overflow-hit":b.Detail=="bit-bolt"?"bit-bolt":b.CyberPacket?"packet-burst":b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
+                bool head=!b.TechniqueNoHead&&!b.CyberPacket&&NativeCombatRules.Headshot(Vec(target.Body.position),target.Yaw,Vec(hit.Point-b.Velocity.normalized*.1f),Vec(b.Velocity),b.Radius,target.Down!=null||target.Juggle!=null,Mutator("big-heads")?2:1);float actual=Damage(target,owner,b.Damage*(head?1.5f*(b.Spec=="bow"&&b.Draw>=1?1.25f:1):1),b.Velocity.normalized,b.Impulse,head,direct:b.Detail!="expansion-copy",primary:b.Direct,impact:NativeBodyDamage.Projectile(b.Spec,b.Velocity.magnitude*b.ImpactSpeedScale,b.Radius),hitPoint:hit.Point,weaponHit:b.Direct&&b.Reflections==0,projectile:b.Id,pierced:!b.Pong&&b.Pierces>0,damageKind:b.Detail=="expansion-copy"?"expansion-copy":b.Detail=="plasma-byte"?"plasma-hit":b.Detail=="plasma-overflow"?"plasma-overflow-hit":b.Detail=="bit-bolt"?"bit-bolt":b.CyberPacket?"packet-burst":b.Reflections>0?"reflected":b.Direct?"direct":"secondary");
                 if(actual>0&&target.Hp<=0&&target.Death!=null&&Math.Abs(target.Death.at-Time)<.001f)target.Death.projectile=b.Instant?0:b.Id;
                 if(actual>0&&(b.Detail=="bit-bolt"||b.Detail=="plasma-byte"||b.Detail=="plasma-overflow"))owner.Mana=Math.Min((float)owner.Stats["maxMana"],owner.Mana+CyberRangedSpec.BoltMana);
-                if(actual>0&&b.Detail=="rain"){target.SlowFactor=Math.Min(target.SlowFactor,.8f);target.SlowEnd=Math.Max(target.SlowEnd,Time+1.5f);}
+                if(actual>0&&(b.Detail=="rain"||b.Detail=="spirit-hawk")){target.SlowFactor=Math.Min(target.SlowFactor,.8f);target.SlowEnd=Math.Max(target.SlowEnd,Time+1.5f);}
                 FighterProjectileHit(b,owner,target,actual);
                 if(actual>0&&!b.Direct&&(b.Reflections>0||b.WeaponFx)){RefreshDot(target,owner,"fire",b.Burn,2);RefreshDot(target,owner,"poison",b.Poison,4);if(b.WeaponFx&&b.Reflections==0)Heal(owner,actual*(float)(owner.Stats["lifeSteal"]+owner.Weapon.drain));}
                 if(actual>0&&(b.Direct||b.ChipImpact)&&b.Reflections==0)ImpactChips(owner,target,null,hit.Point,b.Velocity.normalized,b.Attack,b.Id);
@@ -257,9 +260,16 @@ namespace ChipArena.UnityConversion
             if(b.Detail=="plasma-byte"||b.Detail=="plasma-overflow")Cyber2Splash(owner,b,hit.Point);
             if((b.Direct||b.Reflections>0)&&!b.EffectsUsed)
             {b.EffectsUsed=true;var w=Content.Weapon(b.Spec);if(w.blast>0)ChipBlast(owner,hit.Point,b.Radius>.2f?3:(float)w.blast,b.Damage*.38f,b.Impulse,effect:b.Spec);if(b.Direct&&!b.Pong)SplitBullet(owner,b,hit.Point,target?.Collider.GetInstanceID());}
+            if(b.ExpansionCoinNext&&(target!=null||minion!=null))
+            {
+                b.ExpansionCoinNext=false;int id=target?.Seat.id??minion.Id;
+                var other=MeleeTargets(owner).Where(t=>t.id!=id&&Vector3.Distance(t.at,hit.Point)<=22&&MeleeVisible(hit.Point,t.at,owner,t.collider)).OrderBy(t=>(t.at-hit.Point).sqrMagnitude).FirstOrDefault();
+                if(other.collider!=null){b.Hit.Add(hit.Collider.GetInstanceID());b.Velocity=(other.at-hit.Point).normalized*Math.Max(1,b.Velocity.magnitude);b.BaseVelocity=b.Velocity;b.Position=hit.Point+b.Velocity.normalized*.08f;return false;}
+            }
             if(b.Pong)return true;
             if((target!=null||minion!=null)&&b.Pierces>0){b.Pierces--;b.Hit.Add(hit.Collider.GetInstanceID());b.Position+=b.Velocity.normalized*.08f;return false;}
-            if(target==null&&minion==null&&b.Bounces>0&&hit.Collider.gameObject.layer==PropLayer){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage,projectile:b.Id,normal:hit.Normal);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);b.Damage=Math.Min(1000,b.Damage*b.BounceRetention);return false;}
+
+            if(target==null&&minion==null&&b.Bounces>0&&hit.Collider.gameObject.layer==PropLayer){Emit(EventKind.Ricochet,owner,0,hit.Point,b.Damage,projectile:b.Id,normal:hit.Normal);b.Bounces--;b.Velocity=Vector3.Reflect(b.Velocity,hit.Normal);b.Position+=b.Velocity.normalized*(b.Radius+.06f);WildBounce(b,owner);return false;}
             return true;
         }
         private void SplitBullet(NativePilot owner,NativeBullet parent,Vector3 point,int? skip)

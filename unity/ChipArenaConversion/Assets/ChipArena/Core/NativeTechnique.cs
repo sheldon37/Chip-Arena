@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
         public const string Riposte="riposte",SmokeVeil="smoke-veil",Bastion="bastion",AnchorThrow="anchor-throw",RicochetCoin="ricochet-coin",SentryDrop="sentry-drop",GrappleLine="grapple-line",GaleArrow="gale-arrow",IgnitionLeap="ignition-leap",HealingSpring="healing-spring",StaticRecall="static-recall",ShadeSwap="shade-swap";
         public const string PartingLine="parting-line",Tripwire="tripwire",ShieldSurf="shield-surf",IronVow="iron-vow",BountyRound="bounty-round",RecoilBurst="recoil-burst",SonarDart="sonar-dart",SpiritHawk="spirit-hawk",WildfireRun="wildfire-run",Slipstream="slipstream",LightningRod="lightning-rod",GraveWalk="grave-walk";
         private static Def D(string id,string spec,string name,string icon,float cooldown,float cost,int accent,string tag)=>new Def{Id=id,Spec=spec,Name=name,Icon=icon,Cooldown=cooldown,Cost=cost,Accent=accent,Tag=tag};
-        public static readonly Def[] All=
+        private static readonly Def[] Previous=
         {
             D(Riposte,"sword","Riposte","shield-check",12,20,0x8fe8ff,"COUNTER"),D(SmokeVeil,"daggers","Smoke Veil","cloud",16,25,0xb48cff,"STEALTH"),D(Bastion,"shield","Bastion","shield",14,25,0x4fa8ff,"COVER"),D(AnchorThrow,"greatsword","Anchor Throw","anchor",14,30,0xffa23a,"MOBILITY"),
             D(RicochetCoin,"pistol","Ricochet Coin","coins",9,0,0xffcf5a,"TRICK SHOT"),D(SentryDrop,"machinegun","Sentry Drop","crosshair",20,0,0xff5a4a,"TURRET"),D(GrappleLine,"rifle","Grapple Line","spline",12,0,0x4fe6ff,"MOBILITY"),D(GaleArrow,"bow","Gale Arrow","wind",10,0,0xbff5e4,"CONTROL"),
@@ -52,10 +52,11 @@ namespace ChipArena.UnityConversion
             D(BountyRound,"pistol","Bounty Round","target",14,0,0xffd86a,"RECON"),D(RecoilBurst,"machinegun","Recoil Burst","zap",10,0,0xff8a3c,"MOBILITY"),D(SonarDart,"rifle","Sonar Dart","radio",16,0,0x5cffb0,"RECON"),D(SpiritHawk,"bow","Spirit Hawk","feather",12,0,0xa6fff0,"HUNTER"),
             D(WildfireRun,"fire","Wildfire Run","footprints",13,25,0xff9a2e,"MOBILITY"),D(Slipstream,"water","Slipstream","wind",15,22,0x54d8ff,"TEAM"),D(LightningRod,"lightning","Lightning Rod","radio",16,24,0xc9b6ff,"DEFENCE"),D(GraveWalk,"darkness","Grave Walk","ghost",17,26,0x8a5cff,"ESCAPE"),
         };
+        private static Def[] all;public static Def[] All { get { if(all==null){all=new Def[Previous.Length+Third.Length];Array.Copy(Previous,all,Previous.Length);Array.Copy(Third,0,all,Previous.Length,Third.Length);}return all;} }
         /// <summary>A weapon's techniques, in the order the Locker lists them (empty: a DEV class). Allocation free once built.</summary>
         public static Def[] Of(string spec)
         {
-            if(spec==null)return Array.Empty<Def>();if(bySpec.TryGetValue(spec,out var list))return list;var l=new List<Def>();foreach(var d in All)if(d.Spec==spec)l.Add(d);foreach(var d in Third)if(d.Spec==spec)l.Add(d);list=l.ToArray();bySpec[spec]=list;return list;
+            if(spec==null)return Array.Empty<Def>();if(bySpec.TryGetValue(spec,out var list))return list;var l=new List<Def>();foreach(var d in All)if(d.Spec==spec)l.Add(d);list=l.ToArray();bySpec[spec]=list;return list;
         }
         private static readonly Dictionary<string,Def[]> bySpec=new Dictionary<string,Def[]>();
         /// <summary>The content row of a technique (null: the rules have none yet).</summary>
@@ -159,7 +160,7 @@ namespace ChipArena.UnityConversion
     /// write the record (docs/WEAPON-TECHNIQUES.md), so the pose, the effects, the sound and the HUD all show it. It reaches nothing else: not
     /// the authority, the actor, the network frame, damage or movement, so a move that travels draws only its effects here.
     /// </summary>
-    public sealed class NativeTechniquePreview:ITechniqueSource
+    public sealed partial class NativeTechniquePreview:ITechniqueSource
     {
         private readonly Dictionary<int,NativeTechnique> records=new Dictionary<int,NativeTechnique>();private float next=-100,clock;private bool odd;private int turn=-1;
         public NativeTechnique Of(int actor)=>records.TryGetValue(actor,out var r)?r:null;
@@ -178,7 +179,7 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.PartingLine:return 3.2f;case NativeTechniques.Tripwire:return 5.6f;case NativeTechniques.ShieldSurf:return 4.2f;case NativeTechniques.IronVow:return 4.4f;
                 case NativeTechniques.BountyRound:return 5.2f;case NativeTechniques.RecoilBurst:return 2.8f;case NativeTechniques.SonarDart:return 6.2f;case NativeTechniques.SpiritHawk:return 3.6f;
                 case NativeTechniques.WildfireRun:return 8f;case NativeTechniques.Slipstream:return 7f;case NativeTechniques.LightningRod:return 7.6f;case NativeTechniques.GraveWalk:return 3.8f;
-                default:return 3.4f;
+                default:return ThirdPeriod(id);
             }
         }
         /// <summary>Advances the loop for the pilot at `feet` facing `yaw` (radians), through the weapon's techniques in turn, or only `only`.</summary>
@@ -188,7 +189,7 @@ namespace ChipArena.UnityConversion
             if(time<clock-.25f)next=-100;clock=time;
             if(next<-50)next=(float)Math.Ceiling(time+.3f);
             if(!records.TryGetValue(a.Id,out var k)){k=new NativeTechnique();records[a.Id]=k;}
-            if(time>=next){odd=!odd;string id=only;if(id==null){turn=(turn+1)%list.Length;id=list[turn].Id;}Write(k,id,feet,yaw,time,odd);if(TargetId>0&&id==NativeTechniques.BountyRound){k.Target=TargetId;k.Point=k.To=V(TargetAt);}else if(TargetId>0&&id==NativeTechniques.SpiritHawk&&k.HitAt>-50){k.Target=TargetId;k.To=V(TargetAt);}next=time+Period(id);}
+            if(time>=next){odd=!odd;string id=only;if(id==null){turn=(turn+1)%list.Length;id=list[turn].Id;}Write(k,id,feet,yaw,time,odd);ThirdAim(k,id);if(TargetId>0&&id==NativeTechniques.BountyRound){k.Target=TargetId;k.Point=k.To=V(TargetAt);}else if(TargetId>0&&id==NativeTechniques.SpiritHawk&&k.HitAt>-50){k.Target=TargetId;k.To=V(TargetAt);}next=time+Period(id);}
             k.Phase=Phase(k,time);
         }
         /// <summary>Fills the record as the proposed host would for a cast at `t0`. `first`: the sword's parry lands, the other loop it does not.</summary>
@@ -222,6 +223,7 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.Slipstream:k.Release=t0+.28f;k.From=V(feet+f*.8f);k.To=V(feet+f*14.8f);k.Until=k.Release+5;k.RecoverUntil=k.Release+.25f;break;
                 case NativeTechniques.LightningRod:k.Release=t0+.22f;k.Point=V(feet+f*5.5f+r*1.4f);k.Arm=k.Release+.3f;k.Until=k.Arm+5;k.RecoverUntil=k.Release+.2f;k.HitAt=k.Arm+1.7f;k.To=V(feet+f*3.3f+r*3+up*1.3f);break;
                 case NativeTechniques.GraveWalk:k.Release=t0+.34f;k.From=V(feet);k.Until=k.Release+1.5f;k.RecoverUntil=k.Until+.34f;break;
+                default:ThirdWrite(k,id,feet,f,r,up,hand,t0,first);break;
             }
         }
         private static V3 V(Vector3 v)=>new V3(v.X,v.Y,v.Z);

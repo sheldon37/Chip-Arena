@@ -44,6 +44,7 @@ namespace ChipArena.UnityConversion
             foreach(var a in s.Actors)
             {
                 var k=NativeTechniques.Of(a);
+                if(k?.Kind==NativeTechniques.Bipod&&time>=k.At&&time<=k.Until+.25f){BipodModel(k,time);continue;}
                 if(k?.Kind==null||time<k.Release||time>k.Until+.25f)continue;
                 switch(k.Kind)
                 {
@@ -55,6 +56,7 @@ namespace ChipArena.UnityConversion
                     case NativeTechniques.IronVow:if(time<k.Until)PlantedBlade(a,k,time);break;
                     case NativeTechniques.SonarDart:SonarModel(k,time);break;
                     case NativeTechniques.LightningRod:RodModel(k,time);break;
+                    case NativeTechniques.AmmoCrate:CrateModel(k,time);break;
                 }
             }
         }
@@ -125,6 +127,34 @@ namespace ChipArena.UnityConversion
             if(time<k.Release+Mathf.Max(.05f,(k.Arm-k.Release)*.5f)||time>k.Until)return;var normal=U(k.Dir);if(normal==Vector3.zero)normal=Vector3.back;normal.Normalize();var q=Quaternion.LookRotation(normal,Mathf.Abs(normal.y)>.9f?Vector3.forward:Vector3.up);var at=U(k.Point)+normal*.09f;var body=new Color(.08f,.1f,.11f);var fin=new Color(.16f,.3f,.24f);
             sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at,q,new Vector3(.028f,.028f,.2f)),body);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at+normal*.08f,q,new Vector3(.1f,.012f,.05f)),fin);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(at+normal*.08f,q,new Vector3(.012f,.1f,.05f)),fin);
         }
+        // Bipod's tripod: three legs in two sections, a collar and a foot plate each, a hub, and the ammunition box at its side.
+        private void BipodModel(NativeTechnique k,float time)
+        {
+            float ext=NativeTechniqueFx.BipodOut(k,time);if(ext<=.002f)return;var f=Flat(k.Dir);var along=Quaternion.LookRotation(f,Vector3.up);var thick=new Color(.2f,.21f,.25f);var thin=new Color(.42f,.44f,.5f);var dark=new Color(.1f,.1f,.12f);var hub=Vector3.zero;
+            for(int i=0;i<3;i++)
+            {
+                NativeTechniqueFx.BipodLeg(k,time,i,out var t0,out var t1);hub=new Vector3(t0.X,t0.Y,t0.Z);var foot=new Vector3(t1.X,t1.Y,t1.Z);var line=foot-hub;float len=line.magnitude;if(len<.02f)continue;var d=line/len;var q=Quaternion.LookRotation(d,Mathf.Abs(d.y)>.98f?f:Vector3.up);
+                sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(hub+d*(len*.28f),q,new Vector3(.06f,.06f,len*.56f)),thick);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(hub+d*(len*.76f),q,new Vector3(.034f,.034f,len*.48f)),thin);
+                sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(hub+d*(len*.55f),q,new Vector3(.085f,.085f,.07f)),dark);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(foot+Vector3.up*.015f,along,new Vector3(.13f,.03f,.17f)*ext),dark);
+            }
+            sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(hub,along,new Vector3(.15f,.13f,.26f)),dark);
+            var b=NativeTechniqueFx.BipodBox(k);var box=new Vector3(b.X,b.Y,b.Z);float h=NativeTechniqueFx.BipodBoxHigh*2;sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(box,along,new Vector3(.26f,h,.4f)*ext),new Color(.13f,.18f,.09f));sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(box+Vector3.up*(h*.1f),along,new Vector3(.27f,h*.2f,.41f)*ext),new Color(.95f,.68f,.12f));
+        }
+        // Ammo Crate: an olive steel box on skids with steel corners and a black-and-yellow band, its lid swinging up on two rows of brass. It darkens as it is shot.
+        private void CrateModel(NativeTechnique k,float time)
+        {
+            if(!NativeTechniqueFx.CrateAt(k,time,out var m,out float size,out float lid))return;var c=new Vector3(m.X,m.Y,m.Z);float ang=NativeTechniqueFx.CrateAngle(k),hp=Mathf.Clamp01(k.Arm),hx=NativeTechniqueFx.CrateHalfX,hy=NativeTechniqueFx.CrateHalfY,hz=NativeTechniqueFx.CrateHalfZ;
+            var q=Quaternion.LookRotation(new Vector3(Mathf.Sin(ang),0,-Mathf.Cos(ang)),Vector3.up);float wear=Mathf.Lerp(.45f,1,hp);var olive=new Color(.13f,.18f,.09f)*wear;var oliveLid=new Color(.17f,.23f,.11f)*wear;var steel=new Color(.42f,.45f,.5f)*wear;var gold=new Color(.95f,.68f,.12f)*wear;var dark=new Color(.05f,.05f,.06f);
+            void Piece(Vector3 at,Vector3 scale,Color tint)=>sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(c+q*(at*size),q,scale*size),tint);
+            Piece(new Vector3(0,-.02f,0),new Vector3(hx*2-.04f,hy*2-.06f,hz*2-.04f),olive);Piece(new Vector3(0,hy-.03f,0),new Vector3(hx*2-.16f,.03f,hz*2-.16f),dark);
+            Piece(new Vector3(0,-.06f,0),new Vector3(hx*2-.015f,.14f,hz*2-.015f),gold);for(int i=-3;i<=3;i++)Piece(new Vector3(i*.18f,-.06f,0),new Vector3(.075f,.145f,hz*2-.005f),dark);
+            for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2)Piece(new Vector3(sx*(hx-.03f),0,sz*(hz-.03f)),new Vector3(.075f,hy*2,.075f),steel);
+            for(int sz=-1;sz<=1;sz+=2)Piece(new Vector3(0,-hy+.03f,sz*(hz-.1f)),new Vector3(hx*2+.04f,.07f,.1f),dark);
+            float rise=Mathf.Clamp01(lid/1.3f);
+            if(rise>.02f)for(int row=-1;row<=1;row+=2)for(int i=-3;i<=3;i++){float h=.2f*rise;var at=new Vector3(i*.16f,hy+h*.5f-.03f,row*.14f);Piece(at,new Vector3(.08f,h,.08f),new Color(.86f,.62f,.2f));Piece(at+Vector3.up*(h*.5f+.025f*rise),new Vector3(.06f,.06f*rise,.06f),new Color(.8f,.34f,.16f));}
+            var hinge=new Vector3(0,hy,-hz);var turn=q*Quaternion.AngleAxis(-lid*Mathf.Rad2Deg,Vector3.right);Vector3 Lid(float along,float up)=>c+q*(hinge*size)+turn*(new Vector3(0,up,along)*size);
+            sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(Lid(hz,.03f),turn,new Vector3(hx*2,.07f,hz*2)*size),oliveLid);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(Lid(hz*2-.09f,.035f),turn,new Vector3(hx*2+.005f,.075f,.12f)*size),gold);
+        }
         // The rod: a pole on a three-footed base with insulator bands, driven down as it lands, falling away as it ends.
         private void RodModel(NativeTechnique k,float time)
         {
@@ -140,6 +170,8 @@ namespace ChipArena.UnityConversion
         {
             float y=0;var k=NativeTechniques.Source!=null?NativeTechniques.Of(a):null;
             if(k?.Kind==NativeTechniques.GraveWalk)y=-NativeTechniqueFx.GraveDepth(k,time);else if(k?.Kind==NativeTechniques.ShieldSurf&&time>=k.Release&&time<k.Until&&!k.Recast(time))y=.1f*Mathf.Clamp01((time-k.Release)/.1f);
+            // Out of sight for everyone else, where Grave Walk's body goes. Its own pilot still sees it.
+            else if(a.Id!=LocalId&&k!=null&&NativeTechniqueFx.Unseen(k,time,visualPositions.TryGetValue(LocalId,out var me)?Vector3.Distance(me,p):99))y=-4;
             techniqueShift[a.Id]=y;p.y+=y;return p;
         }
         /// <summary>RenderGlow, after the melee kit's: every technique's particles.</summary>
