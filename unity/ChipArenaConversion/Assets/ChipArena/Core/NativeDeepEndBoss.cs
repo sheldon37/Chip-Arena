@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
                 // Wide over perfectly still water, gliding: warm light, the whole room's scale, its round lights in the mirror.
                 new BossIntroShot{From=0,To=b.LowShot,EyeA=new Vector3(-12.6f,2.05f,-13.2f),EyeB=new Vector3(-10.9f,1.15f,-11.6f),LookA=new Vector3(4.2f,-.4f,5f),LookB=new Vector3(5.2f,-.05f,5.6f),FovA=60,FovB=56,Ease=1},
                 // Low at the surface, at the top of the steps, toward where they go down into the dark.
-                new BossIntroShot{From=b.LowShot,To=b.DownShot,EyeA=new Vector3(.15f,.9f,-10.7f),EyeB=new Vector3(0,.55f,-9.3f),LookA=new Vector3(0,-1.5f,-3.6f),LookB=new Vector3(0,-1.4f,-1.4f),FovA=62,FovB=58,Ease=1},
+                new BossIntroShot{From=b.LowShot,To=b.DownShot,EyeA=new Vector3(.1f,1.3f,-10.9f),EyeB=new Vector3(0,.8f,-9.6f),LookA=new Vector3(0,-1.5f,-6.9f),LookB=new Vector3(0,-1.4f,-5.2f),FovA=64,FovB=60,Ease=1},
                 // Straight down over the abyss, slowly descending: the spiral of lights rising out of the black.
                 new BossIntroShot{From=b.DownShot,To=b.BreakShot,EyeA=new Vector3(0,6.55f,.06f),EyeB=new Vector3(0,2.7f,-2.6f),LookA=new Vector3(0,-30,0),LookB=new Vector3(0,-30,-3.4f),FovA=46,FovB=54,Ease=1},
                 // Low and wide, looking up: it breaks the surface and goes on rising.
