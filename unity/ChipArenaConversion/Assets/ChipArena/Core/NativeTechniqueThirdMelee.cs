@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             {
                 float hold=Clamp01((t-k.At)/1.5f),env=Smooth((t-k.At)/.15f),pulse=.8f+.2f*(float)Math.Sin(t*14);
                 var feet=scene.Feet(a);var line0=feet+Up*.04f;var line1=line0+dir*(5*Smooth(hold*2.2f));
-                Strip(s,line0,line1,.16f,DrawGold,.3f*env,.6f*env*pulse*(.5f+.5f*hold));s.Line(false,line0,line1,(DrawGold+Vector3.One*.2f)*((1.2f+2.2f*hold)*env),.03f,true);
+                Strip(s,line0,line1,.3f,DrawGold,.35f*env,.7f*env*pulse*(.5f+.5f*hold));s.Line(false,line0,line1,(DrawGold+Vector3.One*.2f)*((1.2f+2.2f*hold)*env),.03f,true);
                 var hilt=feet+Up*.95f+r*.22f;s.Sprite(false,hilt,(DrawGold+Vector3.One)*((.8f+3.2f*hold*hold)*env*pulse),.16f+.34f*hold,Sparkle);
                 if(!low&&hold>.25f){int n=Count(8,q,low);for(int i=0;i<n;i++){float ph=(t*.9f+R(seed,i+3))%1,ang=6.2831853f*R(seed,i+4);var p=hilt+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*(.5f*(1-ph))+Up*(.3f*(R(seed,i+5)-.5f)*(1-ph));s.Glow(p,DrawGold*(1.6f*ph*hold),0,.05f,Core,0,seed+i);}}
                 return;
