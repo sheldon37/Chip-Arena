@@ -96,6 +96,19 @@ class QueueTests(unittest.TestCase):
                 self.run_queue()
         self.assertEqual(json.loads((shared / 'Latest-Sound-Status.json').read_text())['state'], 'blocked')
         self.assertFalse(self.calls)
+    def test_missing_queue_names_file_and_stage_without_requests(self):
+        self.queue.unlink()
+        with self.assertRaisesRegex(ValueError, 'read queue and manifest: FileNotFoundError') as error:
+            self.run_queue()
+        self.assertIn(str(self.queue), str(error.exception))
+        self.assertFalse(self.calls)
+    def test_missing_key_names_file_and_stage_without_requests(self):
+        key = self.root / 'key.dpapi'; key.unlink()
+        with self.assertRaisesRegex(ValueError, 'read saved ElevenLabs credential: FileNotFoundError') as error:
+            self.run_queue()
+        self.assertIn(str(key), str(error.exception))
+        self.assertNotIn('PRIVATE', str(error.exception))
+        self.assertFalse(self.calls)
     def test_bad_limits(self):
         for value in [0, -1, float('nan'), float('inf'), True]:
             with self.assertRaises(ValueError): q.limits(dict(maxRequests=1, maxSeconds=value))

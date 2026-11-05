@@ -142,13 +142,16 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                     write(destination, value)
                 except OSError:
                     print('Sound queue status write unavailable: ' + str(destination), flush=True)
+        stage = 'validate limits'
         try:
             limits(config)
+            stage = 'read queue and manifest'
             plans = plan(queue, repo)
             if not plans:
                 report('idle', message='No approved sound jobs.'); return source
             if not source.is_file() or source.suffix.lower() != '.zip':
                 raise ValueError('Automatic sound import requires a LocalAssets ZIP.')
+            stage = 'validate saved originals and receipts'
             pending_count, pending_seconds, batches = 0, 0, []
             for row, path, manifest, digest, jobs in plans:
                 folder = root / 'originals' / row['id']
@@ -164,12 +167,15 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                 raise ValueError('Pending queue exceeds local request/duration limits; no requests sent.')
             if pending_count and not shutil.which('ffmpeg'):
                 raise ValueError('ffmpeg is required before any audio requests can be sent.')
+            stage = 'check base LocalAssets ZIP'
             command([Path(__file__).with_name('install_local_assets.py'), source, '--check'])
+            stage = 'read saved ElevenLabs credential'
             secret = protect((root / 'key.dpapi').read_bytes(), decrypt=True).decode() if pending_count else ''
             report('running', requests=pending_count, seconds=pending_seconds)
             current = source
             for row, path, digest, jobs, folder, identity, receipt in batches:
                 write(identity, row)
+                stage = 'generate or reuse approved originals'
                 gen.generate(folder, receipt, jobs, secret)
                 # Share only receipted originals and metadata, never the credential store.
                 archive = source.parent / (row['id'] + '.zip')
@@ -183,6 +189,7 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                 except OSError:
                     print('Sound sample ZIP mirror unavailable; originals retained locally.', flush=True)
                 # Base hash avoids dropping newer licensed assets or another job's imported sounds.
+                stage = 'fingerprint import inputs'
                 fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + sha(path) +
                     sha(Path(__file__).with_name('import_sound_requests.py'))).encode()).hexdigest()
                 output = root / ('assets-' + fingerprint + '.zip')
@@ -195,6 +202,7 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                     if output.exists():
                         output.unlink()
                     details = root / (row['id'] + '.import.json')
+                    stage = 'import generated originals'
                     command([Path(__file__).with_name('import_sound_requests.py'), '--manifest', path,
                              '--in', folder, '--base', current, '--out', output, '--report', details])
                     imported = json.loads(details.read_text())
@@ -208,6 +216,9 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
         except Exception as e:
             # Never include arbitrary network exception text/headers or the secret.
             reason = str(e) if isinstance(e, ValueError) else type(e).__name__
-            report('blocked', message=reason)
+            if isinstance(e, FileNotFoundError) and e.filename:
+                reason += ': missing path ' + str(e.filename)
+            reason = stage + ': ' + reason
+            report('blocked', message=reason, stage=stage)
             raise ValueError('Sound queue blocked: ' + reason + '. Status: ' + str(status) +
                              '. No automatic uncertain-request retry.') from None
