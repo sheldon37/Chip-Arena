@@ -29,10 +29,10 @@
       "category": "boss",
       "priority": 1,
       "count": 1,
-      "generateSeconds": 9.5,
+      "generateSeconds": 5.5,
       "targetSeconds": {
-        "min": 7,
-        "max": 9.2
+        "min": 3.5,
+        "max": 5
       },
       "levelDb": -8,
       "fadeOutMs": 400,
