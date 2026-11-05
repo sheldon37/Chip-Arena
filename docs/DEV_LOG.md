@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: builder receipts and explicit landing regression geometry
+
+- Breacher fix #340 / shared-builder `c53bb262`: Windows build + TEST ZIP passed, Unity exit 0; **BUILD SUCCEEDED, Publication: succeeded** at 14:02:33 UTC. Test feed version `16061308`, revision `639294840257033467`. This carries Claude's third-set presentation.
+- Rules #341 merged/synced as `22f0fbaa`. Its builder run **FAILED** at 14:09:25 UTC on the newly added `slam descending floor contact above old 1.2 m ray arms landing`, NativeTechniqueValidation.cs:226. No rules-batch publication occurred. The initial failing test coupled a manually elevated body with the ability's aim-resolved destination; that does not guarantee a swept floor contact by the chosen tick.
+- Follow-up branch `codex/third-repair-receipts`, base `22f0fbaa`: explicitly sets this test's landing endpoint below the isolated floor, directly under the body, to exercise a descending floor collision above the old ray's reach. Failure message now includes phase/Arm/time/velocity. Runtime rules unchanged. This fixture correction must pass the next real builder; no native pass is claimed here.
+- Prior rules verification remains: 963 managed PASS lines, focused 857/200 checks, Python 170 tests OK (one skipped), pinned Unity semantic compile, 3197-file package. Follow-up pinned Unity InputSystem/player/runtime/editor compilation passed; diff whitespace clean. Builder result pending.
+
 ## 2026-11-05 — Astra: third-set movement, object and hit-record repairs
 
 - Branch `codex/third-gameplay-repairs`, base `c53bb262` (Breacher repair #340 merged and builder branch synced). Read Claude's two entries and traced each authority handler before editing. No effects/poses/sounds/cards or other presentation edits.
