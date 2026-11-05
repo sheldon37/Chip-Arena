@@ -18,6 +18,7 @@
 - **Not run:** a Windows build, a crowd at scale, real navigation round obstacles and other zombies, two clients, the town's wander on the model, zone kinds beyond their checks.
 - **Known:** the pack's FBX is not on this PC, so stage 1 is read from the exporter, not measured, and unexported takes, including any turn clips and a closer speed match, could not be tried. chase-2's capture holds the head about 50 degrees above the horizon, kept as captured. A running reversal at full speed still kicks up behind the body for about .7 s. Voxel tiers keep their old stride. The runner's take awaits the owner's pick from A to D.
 - **Next:** the owner plays it. Open with the owner: the runner's take (A to D, the sprint-3 and sprint-2 mix meanwhile), chase-2's raised head, and where the pack's extract is.
+- **Release:** merged `00630eb5` into shared and the builder at the owner's word; full `CoreTests` at `5b952d59` before it: exit 0, 961 PASS groups. The builder reported BUILD SUCCEEDED and `Publication: succeeded` to the test channel, build `127fc01b` (revision 639294401068439739, 226.8 MiB). No live or Site release.
 
 ## 2026-11-05 — Astra: slot-roll freeze follow-up
 
@@ -69,6 +70,7 @@
 - **Checks:** full `CoreTests` in a clean LF checkout of `76adb186`: exit 0, 956 PASS groups, with the new pins (the TNT's skip in `BombadierChecks`, the Necronomicon in `BodyChipModelChecks`); no source pin broken; `git diff --check` clean. In Unity (BoZo, Cybercity): the bars reproduced on shared with Kinetic x2 and gone on this branch in third person; first person clean; the Necronomicon's first raise (fire staff, chip added, E) stood up a `Zombie model`.
 - **Not checked:** the Pinball mod itself on screen (the same check reproduced with Kinetic); a Windows build's play; online.
 - **Astra:** nothing needed.
+- **Release:** merged `1d0c5d52` into shared and the builder; full `CoreTests` at `95864f9b`: exit 0, 957 PASS groups. BUILD SUCCEEDED and `Publication: succeeded` to the test channel. A first attempt failed its final merge on this log and pushed shared's own tip, `bdd5541b`, without the fix; the release script now stops unless the merge holds the work.
 
 ## 2026-11-04 — Astra — REVIVE-O-MATIC authority and Foreman hitbox
 
