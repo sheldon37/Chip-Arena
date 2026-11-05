@@ -23,7 +23,7 @@ position. Each fight has a **lore reason** why no place in the room is safe, and
 | --- | --- | --- |
 | Standing in a corner, a nook or behind a prop | **Fall Through:** the carpet tears under anyone still for 6 s, wherever they stand | **The Lull:** hands take anyone still for 6 s, wherever they stand |
 | Hiding behind walls | Walls don't exist to it. **Noclip** and **Max Hum** go straight through them, and partitions move when nobody is looking (**Peripheral Shift**) | There are no walls to hide behind: the room is one open basin |
-| Hugging a wall | **Wall Hand:** an arm comes through the wall within 2.5 m of you | **Seiche:** the wave is tallest at the walls and reflects back, so a wall takes two hits. **Last Lap** crushes the perimeter |
+| Hugging a wall | **Wall Hand:** an arm comes through the wall within 2.5 m of you | **Seiche:** the wave is tallest at the walls and reflects back, so a wall takes two hits. **Last Lap** runs a rounded square, so the corners are on its lap too |
 | Hugging the boss, standing under it | **Stoop:** a 4.5 m slam at its own feet | **Thrash:** contact damage and a 5 m tail sweep while surfaced |
 | Sniping from far away | **Noclip** closes any gap, and its reach grows with distance | **Breach** comes up under you, and **Hydro Jet** picks the farthest pilot. It is under water, and immune, unless it is near someone |
 | Standing on something high | Nothing is climbable: 4 m ceiling, no pillars or props in the room. Over 1.6 m for 2 s draws **Fall Through** from the ceiling | Nothing is climbable: no chairs or boards with collision. Same 1.6 m rule draws **Breach** |
@@ -197,10 +197,10 @@ above, in dark water, those lamps make a slowly turning spiral of light.
 **Materials.** All from the level. It's the cleanest thing in the game, which is what makes it wrong:
 - **Skin:** real geometry, not a texture: thousands of glazed white 15 cm tiles laid on the body, with teal grout, wet and gleaming. Tiles
   shrink and stretch round its bends. The belly is pale turquoise basin tile.
-- **Depth markers:** black tile lettering laid along its back as at a pool's edge, counting up toward the head: `3 FT`, `5 FT`, `9 FT`,
-  `NO DIVING`, and across the crown `DEEP END`. A black lane line runs down the spine.
-- **Flank lamps:** twelve round pool lights, six a side, with chrome bezels, turquoise-white, lighting the water round them.
-- **Head:** blunt and eyeless, smooth tile, no features but the mouth. The mouth is an iris of concentric chrome drain grates, turning.
+- **Depth markers:** black tile lettering down both upper flanks, mirrored so it reads from either side, counting up toward the head: `3 FT`, `5 FT`, `9 FT`,
+  `NO DIVING`; across the crown in two lines `DEEP` `END`, reading from in front of the mouth, so it says it as it comes at you. A black lane line runs down the spine.
+- **Flank lamps:** twelve round pool lights, six a side, with chrome bezels, turquoise-white, lighting the water round them, set in a pool's bullnose coping running down each flank, with small running lights (about twenty a side, not breakable) between them: from above, they are what makes the spiral.
+- **Head:** blunt and eyeless, smooth tile, no features but the mouth. The mouth is an iris of nine curved chrome grate blades, and behind it a round drain grate turning the other way.
   Behind them, a throat lit blue going back further than the body should allow.
 - **Mandibles:** two chrome pool-ladder rails, curved forward, dripping.
 - **Fins:** two long side fins and a low dorsal crest of white fibreglass with chrome grab-rail edges.
@@ -257,20 +257,20 @@ Sound is the language here too, in the opposite way: **the room goes quiet befor
 ### The arena: the natatorium
 
 Around the exit. **20 x 20 cells (40 m square), ceiling 7.2 m, no pillars, no chairs, no boards.** A central deep pool 10 x 10 cells with
-steps on all four sides; in its middle a 4 x 4 **abyss**, where the floor falls away into black (the visible floor stops; pilots stand on
+steps on all four sides (flights two cells wide); in its middle a 4 x 4 **abyss**, a real shaft of tile going down 38 m into black (`PoolroomsLayout.Abyss`; pilots stand on
 an invisible floor at the deep pool's level under dark water). Deck all round, 5 cells wide. Round lights in the ceiling, and lights under
-the water that stay on when the rest die. Arches flood shut as it arrives; on its death the water drains away down the abyss and the
+the water that stay on when the rest die: in the pool's walls, down the shaft, and low on the room's walls where the tide reaches them. Four arches, two cells wide at each wall's middle, flood shut as it arrives (a curtain of falling water across each); on its death the water drains away down the abyss and the
 exit stairs are there.
 
 ### The intro: "Sublimity"
 
 | Boss time (s) | Shot | What happens | Sound |
 | --- | --- | --- | --- |
-| 0-2.3 | Wide over perfectly still water, gliding | Calm, warm light. One ripple spreads from nothing | The music has stopped. A far drip, the room's quiet, sound fading |
-| 2.3-4.3 | Low at the surface, toward steps going down into the dark | The lights under the water go out one by one, from the far end, down toward the pit. Small white tiles drift | The boss song's opening, muffled, comes in |
-| 4.3-5.9 | Straight down over the abyss, slowly descending | Black water. A slow spiral of round lights turning far below, growing. A pale ring in the middle of it | The song swells, a low pressure |
-| 5.9-8.0 | Low, wide, looking up | It breaks the surface on the song's nearest hit: the head rising and rising, sheets of water falling off perfect tile, in slow motion. **The card rises at 6.43** | The hit, then the song's build, held back |
-| 8.0-9.07 | Close on the mouth, then pulled back on the wave | The grates iris open and turn. A wave rolls at the camera and over it | The water roars, and the song drops at 9.0678, into the fight |
+| 0-2.3 | Wide over perfectly still water from the deck's corner, gliding down toward it | Calm, warm light, the ceiling's lights in the mirror. One ripple spreads from nothing | The music has stopped. A far drip, the room's quiet, sound fading |
+| 2.3-4.3 | Low at the top of the steps, looking down them into the dark | The lights under the water go out one by one, from the far end, down toward the pit, the room falling dark with them. Small white tiles drift | The boss song's opening, muffled, comes in |
+| 4.3-5.9 | Straight down over the abyss, slowly descending | Black water. The body comes up the shaft on a helix, two turns of it: its lamps and running lights a slow spiral turning far below, growing, drawing in to the middle, where the mouth's pale ring rises | The song swells, a low pressure |
+| 5.9-8.0 | Low at the water, wide, looking up | It breaks the surface on the song's nearest hit, at the back of the shaft: the head rising and rising on a true, slow parabola, sheets of water falling off perfect tile. **The card rises at 6.43** | The hit, then the song's build, held back |
+| 8.0-9.07 | Long lens, close on the mouth at the top of its rise, then pulled back on the wave | The grates iris open and turn over the blue throat. A wave rolls at the camera and over it; every light comes up as it clears | The water roars, and the song drops at 9.0678, into the fight |
 
 ### The cue keys
 

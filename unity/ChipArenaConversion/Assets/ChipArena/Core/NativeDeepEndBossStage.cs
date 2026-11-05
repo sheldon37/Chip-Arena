@@ -140,6 +140,7 @@ namespace ChipArena.UnityConversion
         public const int MaxSteps=4;
         /// <summary>The most the simulated waves raise a pool over the deck's level while the decks are dry (they slop at the lip, they don't stand over it).</summary>
         public const float LipCap=.03f;
+        private const int CoarseSize=Size/2;private readonly float[] coarseY=new float[CoarseSize*CoarseSize],coarseF=new float[CoarseSize*CoarseSize];
         public readonly float[] Height=new float[Size*Size],Prev=new float[Size*Size],Next=new float[Size*Size],Foam=new float[Size*Size];
         /// <summary>Per texel: the floor (from the arena) and whether the walls hold it. The texture's data: (surface height from the room's zero, foam) per texel.</summary>
         public readonly float[] Floor=new float[Size*Size];public readonly float[] Rg=new float[Size*Size*2];public readonly bool[] Wet=new bool[Size*Size],Inside=new bool[Size*Size];
@@ -246,9 +247,17 @@ namespace ChipArena.UnityConversion
             // Over the dry deck the sheet stays under the tile (a plain fast path when nothing analytic moves).
             bool simple=s.Whirl<=.002f&&s.SeicheHeight<=.002f&&s.SeicheDraw<=.002f&&s.RingH<=.002f&&!(s.Tide>0&&s.Flood<NativeDeepEndArena.Half);
             float tide=s.Tide;
+            // The analytic parts on a coarser grid (each is wide), read back bilinearly: the frame's cost stays flat through a whirlpool.
+            if(!simple)for(int z=0;z<CoarseSize;z++)for(int x=0;x<CoarseSize;x++){int c=x+CoarseSize*z;coarseY[c]=Analytic(C(x*2),C(z*2),s,out float cf);coarseF[c]=cf;}
             for(int z=0;z<Size;z++)for(int x=0;x<Size;x++)
             {
-                int i=x+Size*z;float y,foam=0;if(simple)y=tide;else y=Analytic(C(x),C(z),s,out foam);
+                int i=x+Size*z;float y,foam=0;
+                if(simple)y=tide;
+                else
+                {
+                    int cx=x>>1,cz=z>>1;float fx=(x&1)*.5f,fz=(z&1)*.5f;int a=cx+CoarseSize*cz,ax=cx+1<CoarseSize?a+1:a,az=cz+1<CoarseSize?a+CoarseSize:a,axz=cz+1<CoarseSize?ax+CoarseSize:ax;
+                    y=(coarseY[a]*(1-fx)+coarseY[ax]*fx)*(1-fz)+(coarseY[az]*(1-fx)+coarseY[axz]*fx)*fz;foam=(coarseF[a]*(1-fx)+coarseF[ax]*fx)*(1-fz)+(coarseF[az]*(1-fx)+coarseF[axz]*fx)*fz;
+                }
                 if(Wet[i]){float by=y;y+=h[i];if(!decksWet&&y>LipCap&&y>by)y=by>LipCap?by:LipCap;}float f=Foam[i];if(foam>f)f=foam;Rg[i*2]=y;Rg[i*2+1]=f;
             }
         }

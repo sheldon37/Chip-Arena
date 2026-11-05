@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
             if(deepEndRoot!=null&&!deepEndRoot.activeSelf)deepEndRoot.SetActive(true);
             // The tier by the nearest of its joints (it's long: the tail can be at your feet with the head across the room).
             var at=eye!=null?eye.transform.position:Vector3.zero;float d2=float.MaxValue;for(int i=0;i<NativeDeepEndBossLook.Spine;i+=3){var q=pose.Position[i];float dx=q.X-at.x,dy=q.Y-at.y,dz=q.Z-at.z;d2=Math.Min(d2,dx*dx+dy*dy+dz*dz);}
-            float d=Mathf.Sqrt(d2);int tier=d<34?0:d<70?1:2;if(LowGraphics)tier=Math.Max(1,tier);DeepEndBossTier=tier;
+            float d=Mathf.Sqrt(d2);int tier=d<26?0:d<70?1:2;if(LowGraphics)tier=Math.Max(1,tier);DeepEndBossTier=tier;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)deepEndBones[i].SetPositionAndRotation(NativeBossPoseApply.ToUnity(pose.Position[i]),NativeBossPoseApply.ToUnity(pose.Rotation[i]));
             var skin=deepEndSkins[tier];if(deepEndTierShown!=tier){for(int t=0;t<3;t++)if(deepEndSkins[t]!=null&&deepEndSkins[t]!=skin)deepEndSkins[t].Go.SetActive(false);deepEndTierShown=tier;}
             float flash=deepEndFlash;deepEndFlash=Mathf.Max(0,deepEndFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;
