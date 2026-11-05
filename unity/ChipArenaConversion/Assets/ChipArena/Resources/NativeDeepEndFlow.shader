@@ -29,7 +29,7 @@ Shader "ChipArena/NativeDeepEndFlow"
                 {
                     // A falling sheet: u -1..1 across, v its fall time. Long streaks running down, thin at the top, tearing into strands as it falls.
                     float across=i.a.x,fall=i.a.y;float edge=smoothstep(1.0,0.5,abs(across));float s1=Noise(float2(across*3.6+seed,fall*0.8-t*2.2));float s2=Noise(float2(across*11.0+seed*2.1,fall*1.8-t*3.6));float tear=smoothstep(0.12+fall*0.34,0.62+fall*0.26,s1*0.62+s2*0.38);
-                    float a=saturate(share*edge*(0.1+0.68*tear)*(0.7+0.3*s2));float nv=abs(dot(n,v));float fres=0.05+0.95*pow(1.0-nv,3.0);float3 rv=reflect(-v,n);float3 c=rgb*Lit()*(0.5+0.5*s2)+DeepRoomColour(i.world,rv)*fres*0.9;
+                    float a=saturate(share*edge*(0.1+0.68*tear)*(0.7+0.3*s2));float nv=abs(dot(n,v));float fres=0.05+0.95*pow(1.0-nv,3.0);float3 rv=reflect(-v,n);float3 c=rgb*(Lit()+0.2)*(0.5+0.5*s2)+DeepRoomColour(i.world,rv)*fres*0.9;
                     o=fixed4(c*a,a*0.84);
                 }
                 else if(kind<1.5)
@@ -48,7 +48,7 @@ Shader "ChipArena/NativeDeepEndFlow"
                 {
                     // A foam collar: lace, thick at the body, breaking up outward.
                     float out_=i.a.y;float s=Noise(float2(i.a.x*48.0+seed,out_*3.0-t*0.5))*0.6+Noise(float2(i.a.x*120.0,out_*7.0+t*0.8))*0.4;float a=saturate(smoothstep(1.0-out_*0.55,0.95-out_*0.55-0.25,1.0-s)*(1.0-out_)*1.4);a=saturate(a+(1.0-smoothstep(0.0,0.3,out_))*0.55);
-                    float3 c=rgb*Lit();o=fixed4(c*a,a);
+                    float3 c=rgb*(Lit()+0.14);o=fixed4(c*a,a);
                 }
                 else if(kind<4.5)
                 {

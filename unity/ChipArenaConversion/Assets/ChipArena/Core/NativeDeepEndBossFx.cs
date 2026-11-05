@@ -180,9 +180,9 @@ namespace ChipArena.UnityConversion
             {
                 float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;
                 // Under the tile, the tile doesn't stop its light: a soft glow on the water over it, passing underneath (Breach's tell, its route between moves).
-                float floorAt=NativeDeepEndArena.Floor(at.X-o.X,at.Z-o.Z);if(at.Y-o.Y<floorAt&&surface>floorAt-.01f&&depth<9){float wy=o.Y+surface+.03f;float gl=g*(1-depth/9f);var flat=new Vector3(at.X,wy,at.Z);Over.Billboard(flat,new Vector3(1.5f,0,0),new Vector3(0,0,1.5f),Vector3.UnitY,DeepEndFlow.Halo,0,new Vector3(.2f,.62f,.62f)*(.8f*gl),0);continue;}bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));var list=over?Over:Under;if(under&&over)at+=(right*(float)Math.Sin(now*2.3f+i*1.7f)+up*(float)Math.Cos(now*1.9f+i))*(.012f*depth);
+                float floorAt=NativeDeepEndArena.Floor(at.X-o.X,at.Z-o.Z);if(at.Y-o.Y<floorAt&&surface>floorAt-.01f&&depth<9){float wy=o.Y+surface+.03f;float gl=g*(1-depth/9f);var flat=new Vector3(at.X,wy,at.Z);Over.Billboard(flat,new Vector3(1.5f,0,0),new Vector3(0,0,1.5f),Vector3.UnitY,DeepEndFlow.Halo,0,new Vector3(.2f,.62f,.62f)*(.8f*gl),0);continue;}bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.012f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));var list=over?Over:Under;if(under&&over)at+=(right*(float)Math.Sin(now*2.3f+i*1.7f)+up*(float)Math.Cos(now*1.9f+i))*(.012f*depth);
                 var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(3.1f+.05f*Math.Max(0,depth))*(.7f+.3f*g);
-                if(over){Vfx.Glow(at+face*.1f,LampTint*(.7f*g*boost),size*2,NativeBossVfx.Mote);Vfx.Glow(at+face*.1f,new Vector3(.5f,1,1)*(1.8f*g*boost),size*.7f,NativeBossVfx.Core);}
+                if(over){Vfx.Glow(at+face*.1f,LampTint*(.55f*g*boost),size*2,NativeBossVfx.Mote);Vfx.Glow(at+face*.1f,new Vector3(.34f,.95f,.95f)*(1.5f*g*boost),size*.8f,NativeBossVfx.Core);}
                 else{list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(.8f*g*boost),0);list.Billboard(at+face*.1f,right*size*.3f,up*size*.3f,n,DeepEndFlow.Halo,0,new Vector3(.5f,1,1)*(2.6f*g*boost),0);}
             }
             if(MarkerGlow<.01f||low)return;
@@ -191,8 +191,8 @@ namespace ChipArena.UnityConversion
             for(int side=1;side>=-1;side-=2)for(float ms=5;ms<29;ms+=1)
             {
                 bool nearLamp=false;foreach(float q in NativeDeepEndBossLook.LampS)if(Math.Abs(ms-q)<.62f)nearLamp=true;if(nearLamp)continue;
-                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));if(under&&over)at+=(right*(float)Math.Sin(now*2.6f+ms*2.1f)+up*(float)Math.Cos(now*2.2f+ms))*(.012f*depth);
-                float size=.34f+.014f*Math.Max(0,depth);if(over)Vfx.Glow(at,new Vector3(.42f,1,1)*(1.2f*mg*boost),size*1.6f,NativeBossVfx.Mote);else Under.Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,new Vector3(.42f,1,1)*(1.8f*mg*boost),0);
+                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.012f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));if(under&&over)at+=(right*(float)Math.Sin(now*2.6f+ms*2.1f)+up*(float)Math.Cos(now*2.2f+ms))*(.012f*depth);
+                float size=.34f+.014f*Math.Max(0,depth);if(over)Vfx.Glow(at,new Vector3(.28f,.9f,.9f)*(1.3f*mg*boost),size*2.1f,NativeBossVfx.Mote);else Under.Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,new Vector3(.42f,1,1)*(1.8f*mg*boost),0);
             }
         }
         // The lights the room takes: the mouth's throat when it's open, the two brightest places along the body out of the water or near it.
@@ -402,7 +402,7 @@ namespace ChipArena.UnityConversion
             if(a>=b.Break&&a<b.Break+3.6f)
             {
                 Spray(now,c,new Vector3(.1f,1,.2f),.5f,8,190,2.4f,at,.3f,100,.05f,floor);Spray(now,c,new Vector3(.1f,1,.2f),.95f,5,190,1.7f,at,.5f,101,.03f,floor);
-                Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,1.8f,0),2.6f,26,3.0f,1.1f,5,.36f,at,.5f,102,floor);
+                Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,1.8f,0),2.6f,22,3.0f,1.1f,5,.22f,at,.5f,102,floor);
             }
             // The head's fall into the water after the hold: the crash.
             float crash=v.spawned+b.Break+2*(5.6f/DeepEndBossPaths.IntroG);if(now>=crash&&now<crash+3)

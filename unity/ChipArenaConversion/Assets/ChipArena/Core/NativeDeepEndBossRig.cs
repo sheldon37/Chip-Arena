@@ -38,6 +38,8 @@ namespace ChipArena.UnityConversion
         /// <summary>How many joints are out of the water; the surface used this frame (room frame).</summary>
         public int OutOfWater{get;private set;}public float Surface{get;private set;}
         public float Time{get;private set;}
+        /// <summary>Until this clock the body keeps up with the head however fast it comes (the arrival up the shaft, in sight from above).</summary>
+        public float FreeUntil=float.NegativeInfinity;
         /// <summary>The flop's lift this frame (m at its highest), the thrash's sweep 0..1 and its side; the roll about the body (rad).</summary>
         public float Lift{get;private set;}
         private float fxRoll;private float undulate;
@@ -76,7 +78,7 @@ namespace ChipArena.UnityConversion
         {
             float t=tick/(float)TickRate,dt=1f/TickRate;Route.At(t,out var h,out var hv);RingAdd(h);
             int li=(int)(ringEnd%RingSize);float head=ringS[li];
-            float limit=h.Y>surface-1.5f?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;undulate+=dt*1.5f*(.55f+.45f*BossMath.Clamp01(hv.Length()/5f));if(undulate>4000)undulate-=BossMath.Tau*600;
+            float limit=h.Y>surface-1.5f||t<FreeUntil?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;undulate+=dt*1.5f*(.55f+.45f*BossMath.Clamp01(hv.Length()/5f));if(undulate>4000)undulate-=BossMath.Tau*600;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
                 float want=head-i*NativeDeepEndBossLook.Seg,s=arc[i];float hide=Hiddenness(raw[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
@@ -98,7 +100,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The frame's pose at `now` (seconds, the presentation clock) for the record: `origin` the room's centre in the world, `surface` the tide (room frame), `look` where the mouth aims when it aims.</summary>
         public void Update(float now,float dt,in DeepEndBossView v,DeepEndRoute route,Vector3 origin,float surface,bool hasLook,Vector3 lookAt)
         {
-            Origin=origin;Surface=surface;Time=now;
+            Origin=origin;Surface=surface;Time=now;FreeUntil=DeepEndBossView.At(v.spawned)?v.spawned+NativeDeepEndBossBeats.Current.Break+.2f:float.NegativeInfinity;
             bool own=route==null;Route=own?Own:route;
             if(own)Observe(v,now,surface);
             long tick=(long)Math.Floor(now*TickRate);

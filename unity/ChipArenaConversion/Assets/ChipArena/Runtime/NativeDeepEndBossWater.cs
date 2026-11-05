@@ -84,8 +84,8 @@ namespace ChipArena.UnityConversion
             {
                 NVector at;float strength;Vector3 tint;
                 if(l<NativeDeepEndBossLook.Lamps){float g=deepEndFx.LampGlow[l];if(g<.02f)continue;deepEndRig.LampFrame(l,out at,out _,out _);at-=o;strength=g*.42f;tint=new Vector3(.34f,.9f,.9f);}else{at=deepEndRig.MouthAt-o;strength=deepEndRig.Iris*.9f;tint=new Vector3(.3f,.66f,.96f);if(strength<.02f)continue;}
-                float dy=Math.Abs(at.Y-surface);if(dy>11)continue;float wx=at.X/tx+GlowSize*.5f-.5f,wz=at.Z/tx+GlowSize*.5f-.5f;int rad=4;int x0=Mathf.Max(0,Mathf.FloorToInt(wx)-rad),x1=Mathf.Min(GlowSize-1,Mathf.CeilToInt(wx)+rad),z0=Mathf.Max(0,Mathf.FloorToInt(wz)-rad),z1=Mathf.Min(GlowSize-1,Mathf.CeilToInt(wz)+rad);
-                for(int z=z0;z<=z1;z++)for(int x=x0;x<=x1;x++){float dx=(x-wx)*tx,dz=(z-wz)*tx;float a=strength/(1+.42f*(dx*dx+dz*dz+dy*dy*.6f));int i=(x+GlowSize*z)*4;deepEndGlow[i]+=a*tint.x;deepEndGlow[i+1]+=a*tint.y;deepEndGlow[i+2]+=a*tint.z;}
+                float dy=Math.Abs(at.Y-surface);if(dy>11)continue;float wx=at.X/tx+GlowSize*.5f-.5f,wz=at.Z/tx+GlowSize*.5f-.5f;const int rad=5;int x0=Mathf.Max(0,Mathf.FloorToInt(wx)-rad),x1=Mathf.Min(GlowSize-1,Mathf.CeilToInt(wx)+rad),z0=Mathf.Max(0,Mathf.FloorToInt(wz)-rad),z1=Mathf.Min(GlowSize-1,Mathf.CeilToInt(wz)+rad);
+                float reach2=(rad*tx)*(rad*tx);for(int z=z0;z<=z1;z++)for(int x=x0;x<=x1;x++){float dx=(x-wx)*tx,dz=(z-wz)*tx;float d2=dx*dx+dz*dz;if(d2>=reach2)continue;float edge=1-d2/reach2;float a=edge*edge*strength/(1+.42f*(d2+dy*dy*.6f));int i=(x+GlowSize*z)*4;deepEndGlow[i]+=a*tint.x;deepEndGlow[i+1]+=a*tint.y;deepEndGlow[i+2]+=a*tint.z;}
             }
             deepEndGlowTex.SetPixelData(deepEndGlow,0);deepEndGlowTex.Apply(false,false);
         }

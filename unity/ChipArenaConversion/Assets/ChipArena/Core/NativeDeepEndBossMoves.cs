@@ -70,7 +70,7 @@ namespace ChipArena.UnityConversion
         {
             float surface=PoolroomsLayout.WaterY;var f=BossMath.Forward(yawRad);var side=BossMath.Right(yawRad);
             const float vy=5.6f,vh=2.9f;float apexT=vy/IntroG;
-            float t0=spawned+2.55f,tb=spawned+b.Break;float T=tb-t0;const float depth=23,R=2.6f,turns=1.05f;
+            float t0=spawned+2.55f,tb=spawned+b.Break;float T=tb-t0;const float depth=42,R=2.6f,turns=1.75f;
             r.Reset(spawned,new Vector3(R,surface-depth-34,0),Vector3.Zero);r.Hold(spawned+.3f);
             // Up from far below, out of sight, straight up the shaft to the helix's start.
             Vector3 H(float u)
