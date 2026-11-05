@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: performance pass delivered, gameplay profiling still required
+
+- Performance PR #346 merged as `c3af0b27e9ff47638e26ad4488d49c5863759e88` and synced to the test builder. Latest completed built source `97cd6dafc6a766f6d12d6881f979c87c6442931b` contains that merge (verified ancestry; later commits carry separate Backrooms presentation/audio work).
+- Actual builder work `97cd6dafc6a7-046b8c61`: **352 PASS lines**, including **758 runtime-performance checks** for all 128 gauge combinations, unchanged values/order, buffer reuse, detached snapshot ownership and cached-prop pruning/retention. Windows TEST ZIP ready; Unity batch mode exited successfully.
+- Builder status **BUILD SUCCEEDED; Publication: succeeded** at **2026-11-05 11:40:37 EST** (16:40:37 UTC). Test feed read back version `3c4b1b17d982a2367266e1b813aa8d6b23af898fb5b7e0b12b0ddfdf94557e01`, revision `639294935049596868`. This docs-only receipt does not resync/rebuild.
+- Local verification for #346 remains the 969-PASS managed suite, 170 Python tests (one skipped), four Unity-reference compiles and 3,283-file source-package check documented below. This performance pass changes no visual quality, gameplay rates or wire format. The successful builder validates code and packaging, **not measured FPS or consistent smoothness**. No Windows gameplay/GPU profiling was available here; collect `PERF_SAMPLE` / `PERF_HITCH` from busy fights, destruction, intros, multiplayer and replay for the next targeted pass. Existing Connection report includes the retained hitch data. Any visual reduction still requires owner approval. No live/Site release.
+
 ## 2026-11-05 — Claude: the Backrooms bosses' songs and their 81 sounds
 
 - **Owner:** gave Failing Light (THE HUM) and Main Theme (THE DEEP END), "you can modify the intro to work with the produced songs"; asked for all the boss sounds to go in the ElevenLabs batch.
