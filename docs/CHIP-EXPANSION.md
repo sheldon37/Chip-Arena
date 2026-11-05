@@ -2,7 +2,7 @@
 
 Owner, 2026-11-04: "Add a good portion of chips that directly effect weapons abilities (provided they have that specific ability slotted). Lets also add a good portion of fun to use chips in the game (Say like... 50ish chips), rounds inspired. Some of the chips ABSOLUTELY can be super strong, but I also want the chips to be easier to read. A lot of them are currently cluttered. So we may need to do some text revisions or improve design again (I do like green/red stat text though)"
 
-**Status:** first rules batch implemented on `codex/third-techniques-chips` from `f69dcca5`. Both catalogs are applied; only the implemented mechanic IDs below pass the live draft filter. Remaining chips are staged, not playable. Presentation remains Claude's.
+**Status:** first rules batch merged as `11a9aff6`; second batch on `codex/expansion-rules-2` from that shared base. Both catalogs are applied; only the implemented mechanic IDs below pass the live draft filter. Remaining chips are staged, not playable. Presentation remains Claude's.
 
 ### Rules batch 1 (Astra, 2026-11-05)
 
@@ -14,6 +14,16 @@ Owner, 2026-11-04: "Add a good portion of chips that directly effect weapons abi
 - Choices: Thick Skull reduces the **whole headshot** by x.6 per stack (the contract's permitted simpler option). Opening Move and hit-resource refunds count direct weapon/ability hits, not periodic damage ticks; misses and blocked hits do not consume readiness. Bullet Hose's speed/ammo/damage remain the proposed stats, but spread is an actual +12-degree firing cone rather than `fanDegrees` (which only spaces multiplied projectiles). It therefore has a supported mechanic ID instead of being stat-only. Cooling Jacket extends Overdrive to 6 s; current Overdrive already has zero spread bloom, so halving it still yields zero. No other number tuning or gameplay balance acceptance is claimed.
 - Account sanitizer source accepts the three live third-set techniques. Deploying the account service remains separate from this Unity-only update; an older deployed service can still strip those IDs from a saved profile.
 
+
+### Rules batch 2 (Astra, 2026-11-05)
+
+Adds **13 mechanics**, for **30/98** expansion chips live:
+
+- Wild: Cornered (+25% attack speed/stack below 35% HP), Frenzy Scent (+20% speed/stack for 2 s after a direct hit), Hush (successful Block, 6 m LOS, 1.5 s Q/E refusal via `wild-hush` victim marks), Time Thief (direct pilot hits shift both deadlines by .25 s, once per .25 s), Bodyguard Drone (one nearest hostile flying projectile within 6 m per 3 s), Doomsday Clock (3 stationary seconds: standard 60-damage/7 m blast with falloff and cover, heal 20, reset; movement resets; no sanctuary charging).
+- Ability: Belt Feed, Deep Lungs, Soul Feast (new channel upgrades); Wider Volley (seven arrows with the existing per-arrow angle); White Heat (Flame Lance burn doubled on pilots and adds); Trade Up (successful Shade Swap heals 15 and stuns the swapped enemy .6 s); Danger Close (Orbital Mark blast 100 / 3.9 m before ordinary ability scaling; the direct tag remains 10).
+- `Actor.ChipGauges` now also writes `wild-doomsday-clock` (0–1). Existing `EventKind.ChipProc` emits Time Thief, Doomsday Clock and drone interception; Hush uses its victim marks. Proc deadlines are replicated/validated. Drone interception covers regular bullets/arrows, ability projectiles and airborne Spitter acid; acid is removed before landing, without a pool. For acid, `Target` is its actor and `Amount` its acid-record ID (`Projectile=0`); other intercepted rounds use `Projectile`. `From` is the drone owner's position and `Position` the intercepted point.
+- The old editor gate incorrectly demanded every staged row be draftable and blocked build `11a9aff6`. It now preserves that check for existing content, allows only explicitly unsupported expansion mechanics, rejects supported mechanics with invalid stats, and checks known staged rows stay out. Unsupported rows remain catalog-only.
+- Remaining: 68 chips are still gated. No new look, model, sound or card. Gameplay/Windows publication receipts are in the task PR; no live or Site release.
 
 ## How a chip reads now
 

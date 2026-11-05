@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class NativePilot
     {
         internal ChipStats ExpansionStats;
-        internal float ExpansionRate=1,ExpansionSpeed=1,ExpansionStill=-1,ExpansionLastHit=-100;
+        internal float ExpansionRate=1,ExpansionSpeed=1,ExpansionStill=-1,ExpansionLastHit=-100,ExpansionThiefAt=-100,ExpansionDroneAt=-100,ExpansionDoomAt=-1;
     }
     public sealed partial class NativeArena
     {
@@ -20,7 +20,8 @@ namespace ChipArena.UnityConversion
         }
         private void ExpansionHit(NativePilot p,int target,Vector3 at,float actual,bool melee)
         {
-            if(p==null||actual<=0)return;p.ExpansionLastHit=Time;
+            if(p==null||actual<=0)return;p.ExpansionLastHit=Time;EnvenomHit(p,target,at);
+            var victim=Pilots.Find(q=>q.Seat.id==target);if(victim!=null&&Has(p,"wild-time-thief")&&Time>=p.ExpansionThiefAt){p.ExpansionThiefAt=Time+.25f;p.QReady=Math.Max(Time,p.QReady-.25f);p.EReady=Math.Max(Time,p.EReady-.25f);victim.QReady=Math.Max(Time,victim.QReady)+.25f;victim.EReady=Math.Max(Time,victim.EReady)+.25f;ChipProc(p,"wild-time-thief",at,target,.25f,from:p.Body.position);}
             int mana=ExpansionStacks(p,"wild-mana-tap"),stamina=melee?ExpansionStacks(p,"wild-follow-through"):0;
             if(mana>0)p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+4*mana);
             if(stamina>0)p.Stamina=Math.Min((float)p.Stats["maxStamina"],p.Stamina+8*stamina);
@@ -43,18 +44,23 @@ namespace ChipArena.UnityConversion
             float rate=1,speed=1;var k=p.Technique;
             if(NativeTechniqueRules.Live(k,Time))
             {if(k.Kind=="gun-spin")rate=1.25f;if(k.Kind=="overload"){rate=1.25f;speed=1.15f;}}
+            if(ChannelLive(p,"bipod"))rate*=1.3f;
+            if(p.Hp<.35f*p.Stats["hp"])rate*=1+.25f*ExpansionStacks(p,"wild-cornered");
+            if(Time-p.ExpansionLastHit<2)speed*=1+.2f*ExpansionStacks(p,"wild-frenzy-scent");
             if(p.ExpansionRate!=rate){p.Stats["attackRate"]=p.Stats["attackRate"]/p.ExpansionRate*rate;p.ExpansionRate=rate;}
             if(p.ExpansionSpeed!=speed){p.Stats["speed"]=p.Stats["speed"]/p.ExpansionSpeed*speed;p.ExpansionSpeed=speed;}
-            bool planted=Has(p,"wild-planted"),opening=Has(p,"wild-opening-move");int count=(planted?1:0)+(opening?1:0),index=0;
+            StepExpansionWorldProcs(p);
+            bool planted=Has(p,"wild-planted"),opening=Has(p,"wild-opening-move"),doom=Has(p,"wild-doomsday-clock");int count=(planted?1:0)+(opening?1:0)+(doom?1:0),index=0;
             if(p.ChipGauges.Length!=count)p.ChipGauges=count==0?Array.Empty<NativeChipGauge>():new NativeChipGauge[count];
             if(planted)p.ChipGauges[index++]=new NativeChipGauge{Kind="wild-planted",Value=p.ExpansionStill<0?0:Mathf.Clamp01(Time-p.ExpansionStill)};
-            if(opening)p.ChipGauges[index]=new NativeChipGauge{Kind="wild-opening-move",Value=Time-p.ExpansionLastHit>=4?1:0};
+            if(opening)p.ChipGauges[index++]=new NativeChipGauge{Kind="wild-opening-move",Value=Time-p.ExpansionLastHit>=4?1:0};
+            if(doom)p.ChipGauges[index]=new NativeChipGauge{Kind="wild-doomsday-clock",Value=p.ExpansionDoomAt<0?0:Mathf.Clamp01((Time-p.ExpansionDoomAt)/3)};
             bool expired=false;foreach(var mark in p.TechniqueMarks)if(mark.Until<=Time){expired=true;break;}
             if(expired)p.TechniqueMarks=p.TechniqueMarks.Where(x=>x.Until>Time).ToArray();
         }
         private bool ReleaseThirdTechnique(NativePilot p)
         {
-            var k=p.Technique;
+            var k=p.Technique;if(ReleaseChannelTechnique(p))return true;
             switch(k.Kind)
             {
                 case "gun-spin":p.Ammo=Magazine(p);p.ReloadEnd=0;k.Arm=Time;k.Phase="hot";return true;
@@ -69,7 +75,7 @@ namespace ChipArena.UnityConversion
         }
         private bool StepThirdTechnique(NativePilot p)
         {
-            var k=p.Technique;if(k.Kind=="gun-spin"||k.Kind=="thunderclap")return true;
+            var k=p.Technique;if(StepChannelTechnique(p))return true;if(k.Kind=="gun-spin"||k.Kind=="thunderclap")return true;
             if(k.Kind!="overload")return false;
             if(Time>=k.Until&&k.Phase!="shock")
             {k.Phase="shock";if(k.Until-k.Release>=1){k.HitAt=Time;Damage(p,p,Math.Min(8,Math.Max(0,p.Hp-1)),Vector3.zero,0,false,forced:true,direct:false,primary:false,selfDamage:true,damageKind:"ability");}}

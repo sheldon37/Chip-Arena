@@ -36,11 +36,11 @@ namespace ChipArena.UnityConversion
             var d=shot.Definition;var owner=shot.Owner;Vector3 at=hit.point+hit.normal*.03f;int element=owner.Pose.MagicVisual;
             if(d.id=="frag-grenade"){AbilityBlast(owner,at,NativeAbilityRules.Radius(d,owner.Stats),shot.Damage,(float)d.impulse,element,effect:d.fx??d.id);return true;}
             if(d.id=="rocket"){if(shot.Travel>=d.arm)AbilityBlast(owner,at,NativeAbilityRules.Radius(d,owner.Stats),shot.Damage,(float)d.impulse,element,2,effect:d.fx??d.id);else AbilityMinionHit(shot,target,shot.Damage*15/55,at,shot.Velocity.normalized,150,true);Fx(at,.3f,element);return true;}
-            if(d.id=="orbital-mark"){Vector3 pos=target.Body.position;AbilityMinionHit(shot,target,shot.Damage*10/85,at,shot.Velocity.normalized,150,true);AbilityZones.Add(new NativeAbilityZone{Id=nextEvent++,Born=Time,Owner=owner,Definition=d,AttachedMinion=target,LockAt=Time+(float)d.duration,Position=pos,Kind="bomb",Radius=NativeAbilityRules.Radius(d,owner.Stats),Damage=shot.Damage,Until=Time+(float)d.fuse});return true;}
+            if(d.id=="orbital-mark"){Vector3 pos=target.Body.position;AbilityMinionHit(shot,target,shot.Damage*10/(AbilityChip(owner,"ab-danger-close")?100:85),at,shot.Velocity.normalized,150,true);AbilityZones.Add(new NativeAbilityZone{Id=nextEvent++,Born=Time,Owner=owner,Definition=d,AttachedMinion=target,LockAt=Time+(float)d.duration,Position=pos,Kind="bomb",Radius=NativeAbilityRules.Radius(d,owner.Stats)*(AbilityChip(owner,"ab-danger-close")?1.3f:1),Damage=shot.Damage,Until=Time+(float)d.fuse});return true;}
             shot.Hit.Add(target.Id);if(d.id=="ball-lightning")return false;
             Vector3 impulse=shot.Velocity.normalized*(d.id=="tidal-wave"&&Has(owner,"undertow")?-700:(float)d.impulse)+(d.id=="tidal-wave"?Vector3.up*200:Vector3.zero);
             float actual=AbilityMinionHit(shot,target,shot.Damage,at,impulse.normalized,impulse.magnitude,d.id=="flame-lance"||d.id=="shadow-shackles");
-            if(actual>0){if(d.burn>0)BurnMinion(target,owner,(float)(d.burn*shot.Damage/d.damage));if(d.speedFactor>0)SlowMinion(target,(float)d.speedFactor,(float)d.slowFor);if(d.id=="shadow-shackles")Heal(owner,actual*.5f);}
+            if(actual>0){if(d.burn>0)BurnMinion(target,owner,(float)(d.burn*shot.Damage/d.damage*(d.id=="flame-lance"&&AbilityChip(owner,"ab-white-heat")?2:1)));if(d.speedFactor>0)SlowMinion(target,(float)d.speedFactor,(float)d.slowFor);if(d.id=="shadow-shackles")Heal(owner,actual*.5f);}
             Fx(at,.6f,element);return d.id!="tidal-wave"&&!(d.id=="flame-lance"&&shot.RemainingPierces-->0);
         }
     }

@@ -39,8 +39,8 @@ namespace ChipArena.UnityConversion
         }
         private bool FireRound(NativePilot p,bool fan=false)
         {
-            if(p.Ammo<=0||ProjectileCount>=100||Venting(p))return false;
-            if(!PilotMutator(p,"bottomless"))p.Ammo--;Fire(p,fan);return true;
+            if(p.Ammo<=0&&!ChannelLive(p,"bipod")||ProjectileCount>=100||Venting(p))return false;
+            if(!PilotMutator(p,"bottomless")&&!ChannelLive(p,"bipod"))p.Ammo--;Fire(p,fan);return true;
         }
     }
 }
