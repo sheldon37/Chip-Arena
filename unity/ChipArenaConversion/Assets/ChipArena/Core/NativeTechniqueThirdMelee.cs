@@ -205,30 +205,34 @@ namespace ChipArena.UnityConversion
                 bool left=side==1,has=view?scene.ViewBlade(left,out var b0,out var b1):scene.Blade(a,left,out b0,out b1);if(!has)continue;
                 if(t<k.Release)
                 {
-                    float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));var head=Vector3.Lerp(b0,b1,u);s.Line(view,b0,head,VenomGreen*1.7f,view?.03f:.09f,false);s.Line(view,b0,head,VenomPale*2,view?.008f:.022f,true);s.Sprite(view,head,VenomPale*2.8f,view?.06f:.2f,Hot);
-                    if(!view){int n=Count(6,q,low);for(int i=0;i<n;i++){float ph=(u+i/(float)n)%1,ang=6.2831853f*R(seed,i+side*20+1);s.Sprite(false,b0+new Vector3((float)Math.Cos(ang),.3f,(float)Math.Sin(ang))*(.45f*(1-ph)),VenomGreen*(1.8f*ph),.08f,Sparkle);}}
+                    float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));var head=Vector3.Lerp(b0,b1,u);s.Line(view,b0,head,VenomGreen*1.5f,view?.03f:.09f,false);s.Line(view,b0,head,VenomPale*1.2f,view?.006f:.016f,true);s.Sprite(view,head,VenomGreen*1.9f,view?.06f:.2f,Hot);
+                    if(!view){int n=Count(6,q,low);for(int i=0;i<n;i++){float ph=(u+i/(float)n)%1,ang=6.2831853f*R(seed,i+side*20+1);s.Sprite(false,b0+new Vector3((float)Math.Cos(ang),.3f,(float)Math.Sin(ang))*(.45f*(1-ph)),VenomGreen*(1.5f*ph),.08f,Sparkle);}}
                     continue;
                 }
                 if(env<=0)continue;float pulse=.8f+.2f*(float)Math.Sin(t*7+side*2.1f);
-                s.Line(view,b0,b1,VenomGreen*(1.25f*env*pulse),view?.03f:.1f,false);s.Line(view,b0,b1,VenomPale*(1.7f*env),view?.008f:.022f,true);s.Sprite(view,b1,VenomGreen*(2.2f*env),view?.06f:.2f,Hot);
-                for(int j=0;j<2;j++){float run=(t*.9f+j*.5f+side*.25f)%1;s.Sprite(view,Vector3.Lerp(b0,b1,run),VenomPale*(2.3f*env),view?.04f:.11f,Hot);}
+                s.Line(view,b0,b1,VenomGreen*(1.2f*env*pulse),view?.03f:.1f,false);s.Line(view,b0,b1,VenomPale*(1.1f*env),view?.006f:.016f,true);s.Sprite(view,b1,VenomGreen*(1.6f*env),view?.06f:.17f,Hot);
+                for(int j=0;j<2;j++){float run=(t*.9f+j*.5f+side*.25f)%1;s.Sprite(view,Vector3.Lerp(b0,b1,run),VenomGreen*(1.8f*env),view?.04f:.1f,Hot);}
                 if(view)continue;
-                // The drip that warns of it: off each point, down to the floor, and a little splash where it lands.
-                int d=Count(5,q,low);for(int i=0;i<d;i++){float f=((t*1.25f+R(seed,i*5+side*3+1))%1)*.62f;var p=b1-Up*(5*f*f);if(p.Y<floor)continue;s.Drop(p,-Up*(10*f*.05f+.03f),VenomGreen*(1.8f*env),.95f,.05f,f/.62f,seed+i+side*9);}
-                int sp=low?1:2;for(int i=0;i<sp;i++){float x=(t*1.25f+R(seed,i*7+side+40))%1;var land=new Vector3(b1.X+.16f*(R(seed,i+side*3+50)-.5f),floor,b1.Z+.16f*(R(seed,i+side*3+51)-.5f));Ring(s,land,.04f+.2f*OutCubic(x),.035f,VenomGreen*(1.5f*(1-x)*env),low?6:10);s.Sprite(false,land,VenomPale*(1.4f*(1-x)*env),.08f,Hot);}
-                if(!low){int w=Count(3,q,low);for(int i=0;i<w;i++){float ph=(t*.7f+R(seed,i+side*5+60))%1;s.Smoke(Vector3.Lerp(b0,b1,R(seed,i+side*5+61))+Up*(.05f+.6f*ph),VenomDark+VenomGreen*.15f,.32f*(1-ph)*env,.24f+.34f*ph,.2f+.5f*ph,seed+i+side,floor);}}
+                // The drip that warns of it: a gob hanging off each point, drops falling from it, a pool lit where they land and a splash in it.
+                var pool=new Vector3(b1.X,floor,b1.Z);if(b1.Y-floor>.2f&&!low)s.Line(false,b1,b1-Up*(.14f+.07f*(float)Math.Sin(t*5+side)),VenomGreen*(1.3f*env),.04f,true);
+                int d=Count(5,q,low);for(int i=0;i<d;i++){float f=((t*1.25f+R(seed,i*5+side*3+1))%1)*.62f;var p=b1-Up*(5*f*f);if(p.Y<floor)continue;s.Line(false,p,p+Up*(.05f+.35f*f),VenomGreen*(1.1f*env),.04f,true);s.Sprite(false,p,VenomGreen*(1.5f*env),.09f,Hot);}
+                s.Glow(pool,VenomGreen*(.7f*env),0,.75f,Core,0,seed+side+11);
+                int sp=low?1:2;for(int i=0;i<sp;i++){float x=(t*1.25f+R(seed,i*7+side+40))%1;var land=pool+new Vector3(.16f*(R(seed,i+side*3+50)-.5f),0,.16f*(R(seed,i+side*3+51)-.5f));Ring(s,land,.05f+.3f*OutCubic(x),.05f,VenomGreen*(1.6f*(1-x)*env),low?8:12);}
+                // Fumes curling off the blade, thin enough not to paint the pilot.
+                if(!low){int w=Count(4,q,low);for(int i=0;i<w;i++){float ph=(t*.8f+R(seed,i+side*5+60))%1;s.Glow(Vector3.Lerp(b0,b1,R(seed,i+side*5+61))+Up*(.05f+.7f*ph)+new Vector3(.1f*(float)Math.Sin(t*3+i),0,.1f*(float)Math.Cos(t*2.6f+i)),VenomGreen*(.9f*(1-ph)*env),0,.1f+.08f*ph,Core,ph,seed+i+side);}}
             }
             if(env>0&&!view)
             {
                 s.Glow(feet+Up*.05f,VenomGreen*(.3f*env),0,1.8f,Core,0,seed+3);
                 var waist=scene.Chest(a,out var c)?c-Up*.3f:feet+Up*1;int left=Math.Max(0,Math.Min(3,(int)Math.Round(k.Arm)));
-                for(int i=0;i<3;i++){float ang=t*2.4f+i*2.0943951f;var p=waist+new Vector3((float)Math.Cos(ang)*.55f,.05f*(float)Math.Sin(t*3+i),(float)Math.Sin(ang)*.55f);if(i<left){s.Sprite(false,p,VenomPale*(2.2f*env),.2f,Hot);s.Line(false,p,p+Up*.14f,VenomGreen*(1.6f*env),.05f,true);}else s.Sprite(false,p,VenomDark*(1.4f*env),.1f,Soft);}
+                for(int i=0;i<3;i++){float ang=t*2.4f+i*2.0943951f;var p=waist+new Vector3((float)Math.Cos(ang)*.55f,.05f*(float)Math.Sin(t*3+i),(float)Math.Sin(ang)*.55f);if(i<left){s.Sprite(false,p,VenomGreen*(1.5f*env),.14f,Hot);s.Line(false,p,p+Up*.13f,VenomGreen*(1.3f*env),.045f,true);}else s.Sprite(false,p,VenomDark*(1.4f*env),.08f,Soft);}
             }
             if(k.Hit(t))
             {
-                float since=t-k.HitAt;var at=N(k.To);Flash(s,at,since,.2f,VenomGreen,1.25f,seed+7);Sparks(s,at,since,.4f,Count(14,q,low),4.5f,VenomGreen,seed+8,9,.024f);
-                if(since<.55f){float u=since/.55f;int n=Count(14,q,low);for(int i=0;i<n;i++){var v=RandomDir(seed,i+80)*(3.6f*(.4f+.6f*R(seed,i+81)))+Up*1.4f;var vel=v-Up*(9*since);s.Drop(at+v*since-Up*(4.5f*since*since),vel*.04f,VenomGreen*(1.9f*(1-u)),.95f,.05f,u,seed+i+30);}}
-                if(since<.32f)Hoop(s,at,Flat(at-feet,Vector3.UnitZ),.15f+.75f*OutCubic(since/.32f),.07f,VenomGreen*(1.5f*(1-since/.32f)),low?10:18,1);
+                // A splat: a burst of thick green streaks and fat falling blobs.
+                float since=t-k.HitAt;var at=N(k.To);Flash(s,at,since,.2f,VenomGreen,1.1f,seed+7);Sparks(s,at,since,.4f,Count(14,q,low),4.5f,VenomGreen,seed+8,9,.03f);
+                if(since<.14f){float g=since/.14f;int n=low?5:9;for(int i=0;i<n;i++){var d=RandomDir(seed,i+90);s.Line(false,at+d*(.1f+.45f*g),at+d*(.35f+.75f*g*R(seed,i+91)+.2f),VenomGreen*(1.8f*(1-g)),.1f,true);}}
+                if(since<.6f){float u=since/.6f;int n=Count(14,q,low);for(int i=0;i<n;i++){var v=RandomDir(seed,i+80)*(3.4f*(.4f+.6f*R(seed,i+81)))+Up*1.6f;var o=at+v*since-Up*(4.5f*since*since);if(o.Y<floor)continue;s.Sprite(false,o,VenomGreen*(1.5f*(1-u*u)),.11f+.05f*R(seed,i+82),Hot);}}
             }
         }
 
