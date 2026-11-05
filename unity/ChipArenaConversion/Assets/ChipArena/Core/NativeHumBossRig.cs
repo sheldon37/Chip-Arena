@@ -268,7 +268,7 @@ namespace ChipArena.UnityConversion
             {
                 var wr=HumBossArrival.HandThrough(a,b,Follow.Position,Follow.Yaw);
                 float w=reach*(1-back);int l=HumCh.Limb(ArmR,0);ch[l]=w;ch[l+1]=wr.X;ch[l+2]=wr.Y;ch[l+3]=wr.Z;var pole=Vector3.Normalize(new Vector3(.9f,.25f,-.4f));ch[l+4]=pole.X;ch[l+5]=pole.Y;ch[l+6]=pole.Z;
-                ch[HumCh.CurlR]+=(-.82f+.2f*(float)Math.Sin(a*2.4f)*.3f-ch[HumCh.CurlR])*w;ch[HumCh.SpreadR]=w*.4f;levelHand=w;
+                ch[HumCh.CurlR]+=(-.58f+.08f*(float)Math.Sin(a*2.4f)-ch[HumCh.CurlR])*w;ch[HumCh.SpreadR]=w*.75f;levelHand=w;
                 ch[HumCh.BW]+=8*w;ch[HumCh.Bend]+=10*w;
             }
             // Walking out it stays low and looks at nothing (its head follows the body) until the head catches: then it locks on the party.

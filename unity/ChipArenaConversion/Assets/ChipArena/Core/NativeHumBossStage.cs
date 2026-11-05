@@ -145,7 +145,7 @@ namespace ChipArena.UnityConversion
                 int row=i/NativeHumArena.FixtureSide,col=i%NativeHumArena.FixtureSide;float die=row>=2?b.Row(5-row):b.WalkOut+(1-row)*.06f;
                 float lvl=a<die-.16f?1:a<die?(reduced?.6f:Stutter(i,a,false)):0;
                 // The last lamp over the wall, failing but holding on, until the fingers are through.
-                if(row==5&&(col==2||col==3)&&a>=die&&a<b.WalkOut)lvl=col==2?(reduced?.8f:.55f+.45f*Stutter(i,a,false)):.04f;
+                if(row==5&&col==3&&a>=die&&a<b.WalkOut)lvl=reduced?1.1f:.8f+.55f*Stutter(i,a,false);
                 Lamp[i]=lvl;
             }
             if(a<b.Hold)

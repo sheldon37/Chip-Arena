@@ -267,10 +267,10 @@ namespace ChipArena.UnityConversion
             float k=DiffuserU;if(k<=.01f)return;var P=rig.Shown;var c=P.Position[NativeHumBossLook.Head];var q=P.Rotation[NativeHumBossLook.Head];var f=BossMath.Rotate(q,Vector3.UnitZ);var r=BossMath.Rotate(q,Vector3.UnitX);var face=c+f*.18f;
             // How much of the panel faces the eye: it blazes face on, edge on it's a line.
             var to=Vector3.Normalize(eye-face);float facing=Math.Max(0,Vector3.Dot(to,f));float air=Math.Max(.35f,1-.5f*st.Air);
-            Vfx.Glow(face,LampWarm*(k*.55f*(.25f+facing)*air),2.6f+1.2f*facing,NativeBossVfx.Mote);
-            Vfx.Glow(face,LampWarm*(k*.45f*air*(.3f+facing)),1.1f,NativeBossVfx.Core);
+            Vfx.Glow(face,LampWarm*(k*.34f*(.25f+facing)*air),2.2f+.8f*facing,NativeBossVfx.Mote);
+            Vfx.Glow(face,LampWarm*(k*.3f*air*(.3f+facing)),.9f,NativeBossVfx.Core);
             // A long soft bar over the panel, and the flare streak beyond it, only when you're in front of it.
-            int segs=8;for(int i=0;i<segs;i++){float s=(i+.5f)/segs*2-1;Vfx.Glow(face+r*(s*.72f),LampWarm*(k*.32f*air*(.3f+facing)),.62f,NativeBossVfx.Mote);}
+            int segs=8;for(int i=0;i<segs;i++){float s=(i+.5f)/segs*2-1;Vfx.Glow(face+r*(s*.72f),LampWarm*(k*.2f*air*(.3f+facing)),.55f,NativeBossVfx.Mote);}
             if(facing>.2f){float e=(facing-.2f)/.8f;Strip(face-r*(2.2f+1.6f*e),face+r*(2.2f+1.6f*e),.018f+.02f*e,LampWarm.X*k*.6f*e,LampWarm.Y*k*.6f*e,LampWarm.Z*k*.5f*e,.6f,1,true);}
             // Dust motes hanging in its light.
             int motes=Budget(26);for(int i=0;i<motes;i++){float along=Frac(H(i,201)+t*.03f*(.5f+H(i,202)))*5.5f+.3f,spread=.55f+along*.42f;var at=face+f*along+r*((H(i,203)-.5f)*2*spread)+new Vector3(0,(H(i,204)-.5f)*2*spread*.6f,0);float lit=k*(float)Math.Pow(1-along/6f,1.2f)*(.4f+.6f*(float)Math.Sin(t*1.6f+i));Vfx.Glow(at,LampWarm*(.42f*Math.Max(0,lit)),.035f+.03f*H(i,206),NativeBossVfx.Mote);}
@@ -315,10 +315,10 @@ namespace ChipArena.UnityConversion
             float scratch=reduced?0:.012f*(float)Math.Sin(a*31)*(1-through);
             // Four finger tips under the paper, spreading, before they're through (across the wall in its own axis: -x here).
             var f0=new Vector3(-.5f,-.05f+.02f*(float)Math.Sin(a*5),.1f*press*(1-through));var f1=new Vector3(-.17f,.05f,.13f*press*(1-through));var f2=new Vector3(.15f,.06f+.01f*(float)Math.Sin(a*7),.12f*press*(1-through));var f3=new Vector3(.47f,-.04f,.09f*press*(1-through));
-            float holeR=.42f*through+.42f*open;float bulge=.1f*press*(1-.6f*open)+scratch;
-            WallPatch(c,0,-1,2.1f,holeR,bulge,.05f*through+.05f*open,9090,t,f0,f1,f2,f3,1.5f,open);Tears++;
-            // Plaster dust out of the tear, falling.
-            if(a>=b.Fingers){var at0=new Vector3(c.X,c.Y,wz-.65f);Vfx.SmokeBurst(t,at0,new Vector3(0,-.15f,-.5f),.28f,.0f,7,2.3f,.05f,.34f,new Vector3(.5f,.48f,.38f),.14f,v.spawned+b.Fingers,1.1f,vseed,800,0,floorY);Vfx.RubbleBurst(t,new Vector3(c.X,c.Y+.25f,wz-.2f),new Vector3(0,-.2f,-1),.8f,1.3f,8,2.2f,v.spawned+b.TearOpen,.022f,new Vector3(.38f,.38f,.2f),vseed,801,0,floorY);}
+            float holeR=.2f*through+.3f*open;float bulge=.1f*press*(1-.6f*open)+scratch;
+            WallPatch(c,0,-1,2.1f,holeR,bulge,.03f*through+.03f*open,9090,t,f0,f1,f2,f3,1.45f,open);Tears++;
+            // Plaster dust out of the tear: flakes, falling.
+            if(a>=b.Fingers)Vfx.RubbleBurst(t,new Vector3(c.X,c.Y+.2f,wz-.2f),new Vector3(0,-.2f,-1),.8f,1.1f,10,2.3f,v.spawned+b.Fingers+.1f,.014f,new Vector3(.36f,.35f,.2f),vseed,801,0,floorY);
             // It walks out through the wall without opening it: the paper reaches for it at each limb crossing the wall. A larger stretch round the torso.
             if(a>=b.WalkOut&&a<b.WalkOut+3.2f)
             {
@@ -445,7 +445,7 @@ namespace ChipArena.UnityConversion
         private void Lights(HumBossRig rig,in HumBossView v,HumBossStage st,float t)
         {
             var P=rig.Shown;float head=DiffuserU;
-            if(head>.02f){var c=P.Position[NativeHumBossLook.Head];var f=BossMath.Rotate(P.Rotation[NativeHumBossLook.Head],Vector3.UnitZ);AddLight(c+f*.7f+new Vector3(0,-.9f,0),8.5f,LampWarm*(.42f*head));}
+            if(head>.02f){var c=P.Position[NativeHumBossLook.Head];var f=BossMath.Rotate(P.Rotation[NativeHumBossLook.Head],Vector3.UnitZ);AddLight(c+f*.7f+new Vector3(0,-1.1f,0),8f,LampWarm*(.3f*head));}
             float low2=0,hi2=0;for(int i=0;i<3;i++)low2+=Tube[i];for(int i=4;i<7;i++)hi2+=Tube[i];low2/=3;hi2/=3;
             if(hi2>.02f)AddLight(P.Position[NativeHumBossLook.Tube(5)]+new Vector3(0,-.1f,-.15f),7.5f,LampWarm*(.42f*hi2));
             if(low2>.02f)AddLight(P.Position[NativeHumBossLook.Tube(1)]+new Vector3(0,-.25f,-.2f),7.5f,LampWarm*(.42f*low2));

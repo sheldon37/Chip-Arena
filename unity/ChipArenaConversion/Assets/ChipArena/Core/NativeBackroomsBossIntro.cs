@@ -17,6 +17,8 @@ namespace ChipArena.UnityConversion
     {
         public string Eyebrow,Title,Line;
         public int Ink=0x020103,TopLine=0xd9d0ff,Rule=0xb7a8ff,BarFrom=0x7d5cff,BarTo=0xf6f3ff,Letters=0xf6f3ff,Glow=0x9b87ff,SplitA=0xff5a5a,SplitB=0x5affff;
+        /// <summary>The top and bottom shades before the name rises, as a share of the Siren's (1: hers; they're always hers from the name on).</summary>
+        public float Shades=1;
     }
     /// <summary>
     /// The intro both Backrooms bosses share: the Siren's method (a directed entrance on the 9.0678 s intro hold, with her style of card,

@@ -18,7 +18,7 @@ public static class HumBossChecks
         count=0;
         Check(NativeHumBoss.Archetype=="level0-hum","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeHumBoss.Archetype)&&NativeBackroomsBossIntro.Shots(NativeHumBoss.Archetype).Length==5,"the intro's five shots");
-        Table(root);None(root);Determinism();Contact(out string contact);Feet(out string feet);Pops(out string pops);Head(out string head);Allocation(out string alloc);Skeleton(root);Room(out string room);Intro();Cues(root);Lanes();
+        Table(root);None(root);Determinism();Contact(out string contact);Feet(out string feet);Pops(out string pops);Head(out string head);Allocation(out string alloc);Skeleton(root);Room(out string room);Intro();Cues(root);Lanes();NoStrobe();
         Console.WriteLine("PASS hum-boss ("+count+" checks: "+contact+"; "+feet+"; "+pops+"; "+head+"; "+alloc+"; "+room+")");
     }
     // ---- the table against the doc's ----
@@ -235,6 +235,17 @@ public static class HumBossChecks
         var rig=new HumBossRig();var cues=new HumBossCue[48];var seen=new bool[NativeHumBossCues.Keys.Length];var v=HumBossView.None;float dt=1/30f;var st=new HumBossStage();
         for(float t=dt;t<NativeHumBossPreview.Loop;t+=dt){NativeHumBossPreview.View(t,0,ref v,out var vel,out var tg);rig.Update(t,dt,v,Ground,vel,false,true,new Vector3(tg.X,1.6f,tg.Y));int n=NativeHumBossCues.Collect(v,rig,NativeHumBossPreview.Room,t-dt,t,cues);for(int i=0;i<n;i++)seen[cues[i].Key]=true;}
         for(int i=0;i<seen.Length;i++)if(i!=NativeHumBossCues.HeadBreak&&i!=NativeHumBossCues.Hurt)Check(seen[i],NativeHumBossCues.Keys[i]+" is queued in the preview");
+    }
+    // Reduced effects: no lamp flashes on and off through the whole preview (at most two rises past half level in any second).
+    private static void NoStrobe()
+    {
+        var st=new HumBossStage();var v=HumBossView.None;var room=NativeHumBossPreview.Room;var was=new bool[NativeHumArena.FixtureCount];var rises=new System.Collections.Generic.List<float>[NativeHumArena.FixtureCount];for(int i=0;i<rises.Length;i++)rises[i]=new System.Collections.Generic.List<float>();
+        for(float t=0;t<NativeHumBossPreview.Loop;t+=1/60f)
+        {
+            NativeHumBossPreview.View(t,0,ref v,out _,out _);st.Evaluate(v,t,HumBossBeats.Fallback,room,true);
+            for(int i=0;i<was.Length;i++){bool on=st.Lamp[i]>=.5f;if(on&&!was[i])rises[i].Add(t);was[i]=on;}
+        }
+        foreach(var r in rises)for(int k=2;k<r.Count;k++)Check(r[k]-r[k-2]>=1,"Reduced effects: a lamp comes on three times in a second, at "+r[k]);
     }
     private static void Lanes()
     {

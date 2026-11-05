@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
     public static class NativeHumBoss
     {
         public const string Archetype="level0-hum",Name="THE HUM",Area=NativeBackroomsGenerator.AreaId,Map=NativeBackroomsGenerator.ArenaId;
-        public static readonly BossIntroCard Card=new BossIntroCard{Eyebrow="BOSS · LEVEL 0",Title="THE HUM",Line="IT HAS HEARD YOU",Ink=0x060502,TopLine=0xfff2c0,Rule=0xffe9a0,BarFrom=0xc8a820,BarTo=0xffffe8,Letters=0xfffef0,Glow=0xffe680,SplitA=0xffd040,SplitB=0xf4fff0};
+        public static readonly BossIntroCard Card=new BossIntroCard{Eyebrow="BOSS · LEVEL 0",Title="THE HUM",Line="IT HAS HEARD YOU",Ink=0x060502,TopLine=0xfff2c0,Rule=0xffe9a0,BarFrom=0xc8a820,BarTo=0xffffe8,Letters=0xfffef0,Glow=0xffe680,SplitA=0xffd040,SplitB=0xf4fff0,Shades=.42f};
         /// <summary>The three phases and the health fraction each starts at.</summary>
         public const int Phases=3;
         public static readonly string[] PhaseNames={"HUM-BUZZ","BLACKOUT","NOCLIP"};
@@ -84,9 +84,9 @@ namespace ChipArena.UnityConversion
             // 0-2.2: wide at the room's edge, eye height, a very slow push down the empty hall: nothing there. The far rows go out, nearer and nearer.
             new BossIntroShot{From=0,To=2.2f,EyeA=new Vector3(-.5f,1.62f,18.2f),EyeB=new Vector3(-.4f,1.60f,16.2f),LookA=new Vector3(-.2f,1.3f,-7),LookB=new Vector3(-.2f,1.28f,-7),FovA=56,FovB=54,Ease=1},
             // 2.2-4.2: close on the wall under the one failing lamp: the paper bulges, four long fingers push through, it tears open onto black.
-            new BossIntroShot{From=2.2f,To=4.2f,EyeA=new Vector3(2.35f,1.28f,-4.0f),EyeB=new Vector3(2.0f,1.34f,-4.6f),LookA=new Vector3(.82f,1.42f,-7),LookB=new Vector3(.86f,1.46f,-7),FovA=44,FovB=38,Ease=1},
+            new BossIntroShot{From=2.2f,To=4.2f,EyeA=new Vector3(2.5f,1.05f,-4.1f),EyeB=new Vector3(2.15f,1.12f,-4.85f),LookA=new Vector3(.8f,1.62f,-6.8f),LookB=new Vector3(.85f,1.64f,-6.7f),FovA=46,FovB=40,Ease=1},
             // 4.2-6.2: long lens, side on, its whole height: it walks out through the wall in the dark; the tubes strike up its spine one at a time.
-            new BossIntroShot{From=4.2f,To=6.2f,EyeA=new Vector3(16.5f,1.55f,-6.0f),EyeB=new Vector3(16.5f,1.55f,-3.5f),LookA=new Vector3(0,1.55f,-6.6f),LookB=new Vector3(0,1.55f,-2.8f),FovA=21,FovB=21,Ease=1},
+            new BossIntroShot{From=4.2f,To=6.2f,EyeA=new Vector3(16.5f,1.55f,-6.0f),EyeB=new Vector3(16.5f,1.55f,-3.5f),LookA=new Vector3(0,1.55f,-6.6f),LookB=new Vector3(0,1.55f,-2.8f),FovA=18,FovB=18,Ease=1},
             // 6.2-8.0: a slow push on the head from below, as it comes on: it flickers and catches, turns to look, the diffuser splits. The card rises at 6.43.
             new BossIntroShot{From=6.2f,To=8f,EyeA=new Vector3(-.75f,1.5f,.9f),EyeB=new Vector3(-.5f,1.72f,3.45f),LookA=new Vector3(0,2.72f,-2.5f),LookB=new Vector3(0,2.86f,1.25f),FovA=46,FovB=36,Ease=1},
             // 8.0-9.07: whip back to the party's view; it straightens, head through the ceiling, then stoops; every light slams on at the drop.

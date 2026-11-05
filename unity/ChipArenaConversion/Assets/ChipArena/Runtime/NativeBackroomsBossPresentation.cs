@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         private void BackroomsBossCard(BossIntroCard c,float rawAge,bool reduced)
         {
             float duration=NativeBackroomsBossIntro.Hold,nameAt=NativeBackroomsBossIntro.NameAt,age=Mathf.Min(rawAge,duration),W=U.W,H=U.H;var ink=U.Hex(c.Ink);
-            U.Fade(new Rect(0,0,W,H*.2f),U.A(ink,.867f));U.Fade(new Rect(0,H*.6f,W,H*.4f+1),U.A(ink,.96f),false);
+            float shade=Mathf.Lerp(c.Shades,1,M.Progress(age,nameAt-.2f,.6f));U.Fade(new Rect(0,0,W,H*.2f),U.A(ink,.867f*shade));U.Fade(new Rect(0,H*.6f,W,H*.4f+1),U.A(ink,.96f*shade),false);
             float top=M.EaseOut(M.Progress(age,0,.45f)),x0=W*.06f,tw=W*.88f,y=88;
             U.Text(new Rect(x0,y,tw,15),"BOSS",12,U.A(U.Hex(c.TopLine),top),TextAnchor.UpperLeft,mono:true,tracking:.2f);
             U.Text(new Rect(x0,y,tw,15),c.Title,12,U.A(U.Hex(c.TopLine),top),TextAnchor.UpperRight,mono:true,tracking:.42f);
