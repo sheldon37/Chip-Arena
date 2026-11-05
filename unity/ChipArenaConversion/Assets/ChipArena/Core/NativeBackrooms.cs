@@ -237,6 +237,8 @@ namespace ChipArena.UnityConversion
         private Vector3 Origin;
         /// <summary>Builds the whole layout.</summary>
         public void Build(BackroomsLayout l,Vector3 origin)=>Build(l,origin,0,0,l.Width,l.Depth);
+        /// <summary>Builds one free-standing wall centred on the origin, along x, `length` long (THE HUM's partitions, drawn where they stand).</summary>
+        public void Partition(float length){Origin=Vector3.Zero;foreach(var p in Parts)p.Clear();Flickers.Clear();float t=BackroomsLayout.Thickness*.5f;Wall(-length*.5f-t,length*.5f+t,0,true);}
         // A box's four sides papered, with a baseboard strip standing off each side at its foot (top and bottom hidden by the
         // ceiling and the floor).
         private void Box(Vector3 lo,Vector3 hi)

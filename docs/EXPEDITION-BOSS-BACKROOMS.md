@@ -73,11 +73,11 @@ and a line of tubes down its spine.
 
 | Measure | Metres |
 | --- | --- |
-| Back of the stoop (the 4 m ceiling scrapes it) | 3.9 |
-| Head fixture, centre | 3.3, forward of the chest |
+| Back of the stoop, tubes included (the 4 m ceiling scrapes it) | 3.95 |
+| Head fixture, centre | 3.3, 1.3 forward of the chest on a long curved neck |
 | Head fixture | 1.6 wide x .4 x .3 |
-| Arm, shoulder to knuckle | 3.4 |
-| Legs | 2.2 |
+| Arm, shoulder to knuckle | 3.4 (1.62 + 1.62 + .16), plus fingers of about a metre |
+| Legs | 2.2 from the hip to the floor, on a raised heel (thigh 1, shin 1.02, a long foot) |
 | Armspan | 7.6 |
 | Upright (only when it rears: head and shoulders go up through the ceiling) | 5.6 |
 
@@ -86,9 +86,9 @@ and a line of tubes down its spine.
 - **Wallpaper:** long peeling strips of the level's pale chevron paper hanging from shoulders and hips like a torn shroud, with the
   plaster-backed reverse showing as they curl.
 - **Ribs:** bent ceiling T-grid, with acoustic ceiling tiles hanging off it, broken and stained.
-- **Fingers:** a metre long, jointed lengths of red-brown baseboard and bent T-rail. They scratch.
-- **Spine:** seven fluorescent tubes through its back in old ballast housings, each with a bare wire tail. They buzz and flicker, and
-  light the room as it walks.
+- **Fingers:** a metre long, jointed lengths of red-brown baseboard and bent T-rail. They scratch. It stands on them: each hand is an arch on four fingertips, the wrist .4 m up, not a knuckle-walk (changed from the first design: the arched hands read far better at game distance and in the dark).
+- **Spine:** seven fluorescent tubes along its back in old ballast housings, set in a herringbone that echoes the wallpaper's chevrons, each with a bare wire tail. They buzz and
+  flicker, and light the room as it walks.
 - **The Ballast:** a transformer the size of a chest in the ribcage, hot amber through the ribs. It's the heart and the sound.
 - **The head:** a real recessed fixture: steel housing, a prismatic diffuser, two tubes behind it. When it attacks, the diffuser
   splits along its length into a jaw, packed with broken tube glass.
@@ -152,8 +152,8 @@ Sound and light are its language, and every tell is learnable:
 
 Around the exit. **12 x 12 cells (38.4 m square), the 4.0 m ceiling, no pillars.** Fixtures every other cell, in the level's own grid,
 on eight circuits it can kill one by one. **Eight free-standing partition segments** (2 cells long, papered both sides, to the ceiling)
-give cover from sight and from Row Burst lanes, never from the boss, and they move. Their positions come from a table in
-`Core NativeHumArena`, chosen so no layout leaves a sealed pocket. Doorways are papered over as it arrives; on its death one door in
+give cover from sight and from Row Burst lanes, never from the boss, and they move. Each has two places in a table in
+`Core NativeHumArena`; in their first places a clear hall runs down the middle of the room (the intro looks down it); the checks flood all 256 mixes and none leaves a sealed pocket. Doorways are papered over as it arrives; on its death one door in
 the wallpaper opens onto the exit cache.
 
 ### The intro: "It has heard you"
@@ -176,6 +176,61 @@ Reduced effects: no strobing; the row-by-row dimming stays.
 The tubes pop one at a time from the top down. The arms give way and it folds forward, slowly, onto its knuckles. The head fixture
 hangs, buzzing, the last light in the room. The hum falls in pitch and stops. **Silence**, for the first time since the level began,
 then one by one every lamp in the room comes back, ordinary and quiet. A door in the wallpaper is open.
+
+### The cue keys
+
+Silent until clips exist: they go through the effects bank (Core `NativeHumBossCues`), queued from the record and the rig the picture drew, at the moments the table below says. 2D keys (the hum, the silence, the slam on, the ring, Lights Out, the death, the walls) play flat; the rest at their place.
+
+| Key | Brief |
+| --- | --- |
+| `boss.hum.hum-loop-rise` | the fluorescent hum-buzz climbing alone in an empty room; loopable, pitched by the stage's Pitch |
+| `boss.hum.silence` | a low shelf cut: the room going quiet; used before Lights Out |
+| `boss.hum.row-out` | a row of fixtures clicking off, far away, with a sag in the hum |
+| `boss.hum.scratch` | fingernails on the back of wallpaper, close and dry |
+| `boss.hum.tear` | wallpaper tearing slowly, plaster dust, then a wet rip |
+| `boss.hum.starter` | a tube starter ticking: small, each one louder |
+| `boss.hum.tube-strike` | a tube striking on, one rising buzz |
+| `boss.hum.head-catch` | the head's two tubes catching: a heavy flicker then a steady bar |
+| `boss.hum.jaw` | the diffuser splitting: plastic flexing, glass grinding |
+| `boss.hum.ceiling` | ceiling grid wrenching and tiles breaking over its shoulders |
+| `boss.hum.slam-on` | every lamp slamming on: one huge thunk of relays on the song's drop |
+| `boss.hum.reach-windup` | a long arm drawing back through wet carpet |
+| `boss.hum.reach` | a long whip of air and a wet heavy slap |
+| `boss.hum.stoop-rise` | the back pressing the ceiling tiles, creaking |
+| `boss.hum.stoop` | a double impact on wet carpet, the room's lamps jumping |
+| `boss.hum.row-buzz` | fixtures brightening and buzzing louder over a second |
+| `boss.hum.row-burst` | a row of fixtures exploding in order down the room |
+| `boss.hum.glass` | safety glass raining onto carpet |
+| `boss.hum.noclip-sink` | something heavy pressing into plaster, scratching inside it |
+| `boss.hum.noclip-walls` | scratching running fast along the inside of the walls |
+| `boss.hum.noclip` | a torn rush of air and plaster: it comes through at speed |
+| `boss.hum.brake` | hands dragging on carpet; a skid |
+| `boss.hum.carpet` | carpet backing tearing inward, slow and close |
+| `boss.hum.fall` | a body falling a long way, then a drop out of the ceiling |
+| `boss.hum.shift` | a flicker's click and, somewhere, a heavy wall set down |
+| `boss.hum.charge` | the hum rising to a strain, ribs creaking open, a transformer loading up |
+| `boss.hum.pulse` | a ring of noise: the hum's whole spectrum sweeping past, wall to wall |
+| `boss.hum.cut` | every sound stopping dead |
+| `boss.hum.strike-dark` | a tube flash, a whip, a heavy blow from behind you in the dark |
+| `boss.hum.hand-scratch` | nails inside the wall right by the ear |
+| `boss.hum.hand` | an arm bursting through wallpaper and gripping |
+| `boss.hum.voices` | many muffled familiar voices inside the walls |
+| `boss.hum.scream` | the hum climbing to a scream, then stopping |
+| `boss.hum.die-row` | one row of fixtures dying with a ballast's thud |
+| `boss.hum.rear` | its back going up through the ceiling: grid, plaster, a groan of steel |
+| `boss.hum.tile-rain` | tiles raining and breaking on carpet |
+| `boss.hum.step` | one heavy wet footfall |
+| `boss.hum.knuckle` | a knuckle of baseboard and rail planting on carpet |
+| `boss.hum.scratch-idle` | a fingernail drumming now and then |
+| `boss.hum.hurt` | a wet thud and the tubes stuttering |
+| `boss.hum.tube-break` | a tube bursting and its wires spitting |
+| `boss.hum.head-break` | the head's panel cracking |
+| `boss.hum.choke` | the Ballast choking: a pitch collapse, a stumble |
+| `boss.hum.clip` | stuck in a wall: paper stretching, a glitching buzz |
+| `boss.hum.death` | the hum falling in pitch and stopping |
+| `boss.hum.tube-pop` | a tube popping, glass |
+| `boss.hum.fold` | its arms giving way: wet carpet folding, rails bending |
+| `boss.hum.lamp-back` | one lamp coming back on, ordinary and quiet |
 
 ## 4. THE DEEP END (the Poolrooms)
 
@@ -301,17 +356,17 @@ Both are on the shared motion library (`docs/BOSS-MOTION.md`): a replicated root
 hard cuts between poses. What's specific to each:
 
 **THE HUM: fluid, wrong and heavy-limbed.**
-- **Gait:** two long legs and two long arms, walking on its knuckles as often as its feet, a four-limb `BossGait` with very long strides,
-  planted hands locked by IK. It takes one step where a pilot takes three.
+- **Gait:** two long legs and two long arms, standing on its arched fingers, a four-limb `BossGait` in a lateral sequence (a 3 m cycle: the arms can't reach further), planted limbs locked by IK; past the arm's reach the shoulder blade
+  slides down toward the hand rather than the hand slipping. It takes one step where a pilot takes three.
 - **The head is stabilised, like a bird's:** whatever the body does, the bar of light stays level and locked on its target, and the body
-  moves around it. That's the single most unsettling thing about it, so spend the most care here.
+  moves around it. It holds its place in the air until the body has left it .62 m behind, then thrusts to catch up. The neck is solved along a curve between them, so the body can turn right round under it. That's the single most unsettling thing about it, so spend the most care here.
 - **Second order everywhere:** the shroud strips and wire tails are `BossChain`s, the arms lag and overshoot, and the tubes whip on the
   spine.
 - **The flicker hitch:** when the lamps stutter, its pose stutters with them for a frame or two, an additive layer on top of fluid motion,
   never a pop in its root. Reduced effects turns it off.
 - **Through surfaces:** where it crosses a wall or ceiling, the surface's paper stretches toward it and tears (Fx), and the part inside
   is clipped.
-- **On the ceiling:** in NOCLIP the same gait runs inverted, with a slow turn over from floor to ceiling through a wall.
+- **On the ceiling:** in NOCLIP the same gait runs inverted: the pose is computed on a floor and turned a half turn about the line the root was on when it began, so planted limbs stay planted upside down. The turn over takes 1.7 s (a slow roll about its own long axis, as it walks).
 
 **THE DEEP END: slow, huge and beautiful.**
 - **The body follows the head:** every joint traces the head's path a fixed arc length behind it, plus a travelling undulation and a slow
@@ -390,3 +445,45 @@ quota, then reaching the sealed room's door starts the arrival; killing the boss
 ## 9. Built
 
 Filled in as the work lands, with what was actually seen and checked.
+
+<!-- THE HUM built -->
+### THE HUM (Claude, 2026-11-05): presentation only, seen in Unity through the DEV preview, not played by a person
+
+Nothing here is a rule. `ArenaPresentation.HumBossViewOf` returns `HumBossView.None` until Astra binds the record, so the live level is exactly as it was.
+
+| Part | Where | What it is |
+| --- | --- | --- |
+| The model | `tools/gear/hum_boss.py`, the local bank `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaPackBossHum.bytes` (not committed; Claude ships it in the Drive zip) | Blender, headless, about 8 s. A smooth skin from ropes of hide joined by a voxel remesh, pile displaced in and tufted, on 131 bones; hardware (fixture, T-grid ribs, broken tiles, baseboard fingers, tube housings, the transformer) skinned rigidly in the same mesh; wallpaper strips and wire tails on their own chain bones; vertex colours with ambient occlusion, cavity, wet patches and the paper's pattern. Lit parts are rigid props with their own light. Three tiers: see the bank's report |
+| The numbers | `Core/NativeHumBoss.cs` | Phases, the moves table Astra reads, the meter, weak points, hit volumes, the shots and the card |
+| The arena | `Core/NativeHumArena.cs` | `Carve`, the partitions' two places, fixtures and circuits, the wall queries the sweep and the effects use |
+| The record | `Core/NativeHumBossView.cs` | `HumBossView` with `None`, and section 8's fields as the view reads them |
+| The motion | `Core/NativeHumBossLook.cs`, `...Moves.cs`, `...Rig.cs` | The joint table (held to the script's by the checks), a phrase with key poses per move, the rig on the shared motion library |
+| The room | `Core/NativeHumBossStage.cs`, `Core/NativeHumSurface.cs`, `Runtime/NativeHumBossRoom.cs` | One table of intro beats (`HumBossBeats`, to bind to the song later), each lamp's level, partitions, the air; real geometry for bulges, tears, holes, slip and the door. Hook in `BackroomsWorld`: one line (`HumBossLayout`), which returns the level's own layout with no boss |
+| The effects | `Core/NativeHumBossFx.cs` | Telegraphs and floor light through `NativeFxDraw`, particles through the shared renderer, each lit part's level, its lights in the practical slots |
+| The sounds | `Core/NativeHumBossCues.cs` | The `boss.hum.*` keys in section 3's table, queued, silent until clips exist |
+| The preview | `Core/NativeHumBossPreview.cs`, `Runtime/NativeHumBossPresentation.cs`, `Runtime/NativeHumBossBody.cs` | The intro, every move, both phase changes, breaks, a choke, a clip, the ceiling and the death on a loop, in the carved room on the real map, with a directed camera that finds a clear view |
+| The checks | `Tests/HumBossChecks.cs` (`--hum-boss`), `Tests/HumBossSweep.cs` (`--backrooms-boss-sweep`) | See below |
+
+**What changed from the first design, and why.**
+- It stands on arched fingers, not its knuckles: far stronger silhouette from the game's camera, in the dark too.
+- The tubes run along its back in a herringbone (they first read as a line of plain bars, and the chevron is the wallpaper's).
+- The walk's cycle is 3 m, not longer: past that the arms can't reach. A hand past its reach pulls the shoulder blade down rather than slipping.
+- Partitions were re-placed so a clear hall runs down the middle of the room (the first table had one across every intro shot). Each has two places; 256 mixes checked.
+- The neck pays out: its three bones stretch along themselves, so the head can really hold its place while the body goes round it.
+- Wall Hand has its own arm on its own bones in the skin (bound where the right arm is), hidden until used, as the boss's own arm can't reach across a room. Its body plunges the right arm into the floor to match.
+- Row Burst's lanes, the lunge's width and the rest are as designed.
+- In the blackout a stray lamp stutters on over a Wall Hand or a Familiar Voice (a lamp near the point the record names), and a light rakes down that stretch of wall, so what's in it can be seen when nothing else is lit. The rule isn't touched; it's light.
+- A Familiar Voice is a face in relief under the paper, a little too large: brow, sockets, nose, cheekbones, chin; its mouth splits the paper as it speaks. The first version was four bumps and a hole, which read as a hole. Surface patches now stop at a partition's end (one hung off the end of a partition in the air), so a voice or a hand should be placed off the end: the preview insets them, and Astra's rule should too (a metre or so).
+- The room's dust takes the room's light, and in a blackout it's nearly gone.
+- A Row Burst's lamps stay dark for 5.5 s, then stutter back on their own, so the room isn't left dark by the rotation; the intro's tear heals 4 to 6.5 s after the hold, since the level doesn't keep what happens to it.
+- NOCLIP's light is wrong but fightable (the first level left whole stretches too dark to read), and the slip of the ceiling and wall grid is gentler than first built, since at full strength it read as a funhouse rather than as a room that's slightly wrong.
+- The intro's wall is lit by one lamp raking down it, added because a flat bulge didn't show at all from the shot: with the rake, four finger ridges and a palm read under the paper before anything's through. The tear is a lobed hole with a few long runs, not a star; its rim and the flaps peeled back off it show the paper's pale reverse, and the hand hooks over the lower lip and pulls, which is what opens it. The walk-out shot sits a little further across the wall so that what's lit on the body can be seen coming up through the paper as it nears.
+- The death ends on the exit: a door, opened in the wall at `NativeHumArena.ExitDoor`, as the first lamp returns. The door is a picture only; the way out is Astra's.
+- The intro's first shots run with the card's shades at .42 of the Siren's (`BossIntroCard.Shades`, the other boss unchanged): the first beat is a flat bright room, and her shades hid it. From the name on they're hers.
+
+**For Astra (section 8 still stands):** `HumBossViewOf` is the one binding point. The record fields are `HumBossView`'s. On binding, the presenter carves a copy of the layout round its exit cell for the room's look (`HumBossLayout`); your generator should call `NativeHumArena.Carve` round the same cell and read the partitions from `HumRoom.Partition`. `Tests/HumBossSweep.cs` plays a stand-in over the table's shapes, not your rules: run the same grid against the real authority.
+
+**The sweep.** A pilot at each cell's centre, hard against each wall and in each corner, still and circling, over 110 s of a stand-in rotation (whatever has been ready longest, near enough to land). A still pilot's limit is the meter plus its wind plus .5 s. A circling pilot's threat counts a shape passing within 1.5 m (it had to be moving to miss it); those limits (16, 20, 20 s) were set just above what the stand-in does, so they hold the design where it is rather than prove it. Removing Fall Through must break the still limit, and does. The stand-in found no hole that needed a design change; it did show the rotation must not be a fixed order, or Max Hum comes round too rarely: Astra's rotation should prefer what has been ready longest.
+
+**Not done or not known.** No person has played it; no rule exists. Performance is not measured in a real match (the skin is about 32k vertices on a `SkinnedMeshRenderer` at tier 0, and the first draw reads the bank, so a real intro should prewarm it during the stage load). The song's accents aren't bound: the beats are fixed numbers. Fall Through's fall and return, Facelings and the pilot's side of every move are Astra's. On the ceiling the preview's chains only approximate gravity through the turn.
+<!-- /THE HUM built -->
