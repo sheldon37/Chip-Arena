@@ -124,14 +124,14 @@ public static class DeepEndBossChecks
         for(int i=0;i<NativeDeepEndBossLook.Spine;i++)Check(Vector3.Distance(a.Shown.Position[i],b.Shown.Position[i])<.08f,"two frame rates, joint "+i+": "+Vector3.Distance(a.Shown.Position[i],b.Shown.Position[i]));
         // The effects are a function of the record and the clock.
         var waves=new DeepEndWaves();waves.Place();var st=NativeDeepEndBossStage.Evaluate(v,end,DeepEndBossBeats.Fallback);waves.Compose(st);var f1=new NativeDeepEndBossFx();var f2=new NativeDeepEndBossFx();var eye=new Vector3(30,5,30);
-        f1.Build(a,v,st,waves,end,eye,Vector3.UnitX,Vector3.UnitY,1,false,false,NativeDeepEndBossPreview.Pilots);f2.Build(a,v,st,waves,end,eye,Vector3.UnitX,Vector3.UnitY,1,false,false,NativeDeepEndBossPreview.Pilots);
+        f1.Build(a,v,st,waves,end,eye,Vector3.UnitX,Vector3.UnitY,1,false,false);f2.Build(a,v,st,waves,end,eye,Vector3.UnitX,Vector3.UnitY,1,false,false);
         Check(f1.Vfx.Count==f2.Vfx.Count&&f1.Over.VertexCount==f2.Over.VertexCount&&f1.Under.VertexCount==f2.Under.VertexCount,"the same clock, the same effects");for(int i=0;i<f1.Vfx.Count;i++)Check(f1.Vfx.Items[i].At==f2.Vfx.Items[i].At,"item "+i);
         var s1=NativeDeepEndBossStage.Evaluate(v,end,DeepEndBossBeats.Fallback);var s2=NativeDeepEndBossStage.Evaluate(v,end,DeepEndBossBeats.Fallback);Check(s1.Tide==s2.Tide&&s1.Ceiling==s2.Ceiling&&s1.Whirl==s2.Whirl,"the stage is pure");
         // Effects thin with the quality.
-        f2.Build(a,v,st,waves,end,eye,Vector3.UnitX,Vector3.UnitY,.3,true,false,NativeDeepEndBossPreview.Pilots);Check(f2.Vfx.Count<=f1.Vfx.Count,"thinned by quality");
+        f2.Build(a,v,st,waves,end,eye,Vector3.UnitX,Vector3.UnitY,.3,true,false);Check(f2.Vfx.Count<=f1.Vfx.Count,"thinned by quality");
         // No allocation per frame, through the moves (after a warm-up, on one fixed rig).
         var rig=new DeepEndBossRig();var fx=new NativeDeepEndBossFx();var w2=new DeepEndWaves();w2.Place();var script=NativeDeepEndBossPreview.Route;var cue=new DeepEndBossCue[32];float t=NativeDeepEndBossPreview.BreachAt-1;const float dt=1/60f;var view=DeepEndBossView.None;
-        void Frame(){float last=t;t+=dt;NativeDeepEndBossPreview.View(t,ref view,out _);var stage=NativeDeepEndBossStage.Evaluate(view,t,DeepEndBossBeats.Fallback);rig.Update(t,dt,view,script,o,stage.Tide,false,default);fx.Couple(rig,view,w2,stage,last,t);w2.Step(dt,stage.Tide>.02f);w2.Compose(stage);fx.Build(rig,view,stage,w2,t,eye,Vector3.UnitX,Vector3.UnitY,1,false,false,NativeDeepEndBossPreview.Pilots);NativeDeepEndBossCues.Collect(view,rig,last,t,cue);}
+        void Frame(){float last=t;t+=dt;NativeDeepEndBossPreview.View(t,ref view,out _);var stage=NativeDeepEndBossStage.Evaluate(view,t,DeepEndBossBeats.Fallback);rig.Update(t,dt,view,script,o,stage.Tide,false,default);fx.Couple(rig,view,w2,stage,last,t);w2.Step(dt,stage.Tide>.02f);w2.Compose(stage);fx.Build(rig,view,stage,w2,t,eye,Vector3.UnitX,Vector3.UnitY,1,false,false);NativeDeepEndBossCues.Collect(view,rig,last,t,cue);}
         for(int k=0;k<120;k++)Frame();long before=GC.GetAllocatedBytesForCurrentThread();for(int k=0;k<60*40;k++)Frame();long used=GC.GetAllocatedBytesForCurrentThread()-before;Check(used==0,"0 bytes per frame: "+used+" allocated");
         Check(fx.Over.Refused==0&&fx.Under.Refused==0,"the water meshes hold what's built");
     }
@@ -143,8 +143,9 @@ public static class DeepEndBossChecks
         int half=NativeDeepEndArena.Cells/2,decks=0,deep=0,steps=0,abyss=0,lights=0,pillars=0;
         for(int z=cz-half;z<cz+half;z++)for(int x=cx-half;x<cx+half;x++){int i=l.Index(x,z);Check(l.Ceiling[i]==NativeDeepEndArena.Ceiling,"the ceiling");if(l.Pillar[i])pillars++;if(l.Light[i])lights++;byte f=l.Floor[i];if(f==PoolroomsLayout.Deck)decks++;else if(f==PoolroomsLayout.Deep)deep++;else if(f==PoolroomsLayout.Steps)steps++;else if(f==PoolroomsLayout.Abyss)abyss++;}
         Check(pillars==0,"no pillars");Check(abyss==16,"a 4 x 4 abyss");Check(steps==8,"steps on all four sides, each flight two cells wide");Check(deep+steps+abyss==100,"a 10 x 10 pool");Check(decks==300,"the deck all round");Check(lights>=36,"round lights in the ceiling: "+lights);
-        // Sealed: nothing inside reaches outside.
-        var q=new int[l.Width*l.Depth];var seen=new bool[l.Width*l.Depth];int top=0;seen[l.Index(cx,cz)]=true;q[top++]=l.Index(cx,cz);int reached=0;while(top>0){int c=q[--top];reached++;int x=c%l.Width,z=c/l.Width;foreach(var (dx,dz) in new[]{(1,0),(-1,0),(0,1),(0,-1)})if(l.Passable(x,z,dx,dz)){int n=l.Index(x+dx,z+dz);if(!seen[n]){seen[n]=true;q[top++]=n;}}}Check(reached==400,"the room seals: "+reached);
+        // Walled all round but for its four arches, two cells wide at each wall's middle.
+        int open=0;for(int k=-half;k<half;k++){if(l.Between(cx-half,cz+k,-1,0)==PoolroomsLayout.Open)open++;if(l.Between(cx+half-1,cz+k,1,0)==PoolroomsLayout.Open)open++;if(l.Between(cx+k,cz-half,0,-1)==PoolroomsLayout.Open)open++;if(l.Between(cx+k,cz+half-1,0,1)==PoolroomsLayout.Open)open++;}Check(open==8,"four arches: "+open);
+        for(int z=cz-half;z<cz+half;z++)for(int x=cx-half;x<cx+half-1;x++)Check(l.Between(x,z,1,0)==PoolroomsLayout.Open,"open inside");
         // The mesh builds, the abyss's walls go down and there's no floor in the pit above its depth.
         var mesh=new PoolroomsMesh();mesh.Build(l,Vector3.Zero);float lowest=0;foreach(var p in mesh.Parts[(int)PoolroomsMesh.Surface.Basin].Positions)lowest=Math.Min(lowest,p.Y);Check(Near(lowest,PoolroomsLayout.AbyssFloor,.01f),"the abyss goes down: "+lowest);
         Check(NativeDeepEndArena.Floor(0,0)==PoolroomsLayout.AbyssFloor&&NativeDeepEndArena.Floor(6,0)==NativeDeepEndArena.PoolFloor&&NativeDeepEndArena.Floor(15,0)==0,"the floor's heights");

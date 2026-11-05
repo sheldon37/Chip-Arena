@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class DeepEndFlow
     {
-        public const float Sheet=0,Jet=1,Hand=2,Collar=3,Halo=4,Shadow=5,Solid=6,Mark=7,Disc=8;
+        public const float Sheet=0,Jet=1,Hand=2,Collar=3,Halo=4,Shadow=5,Solid=6,Mark=7,Disc=8,Curtain=9;
         public readonly DeepEndFlowVertex[] V;public readonly int[] T;public int VertexCount,IndexCount,Refused;
         public DeepEndFlow(int vertices,int indices){V=new DeepEndFlowVertex[vertices];T=new int[indices];}
         public void Clear(){VertexCount=IndexCount=0;Refused=0;}
@@ -57,6 +57,8 @@ namespace ChipArena.UnityConversion
         public const int MaxLights=4;public readonly float[] LightPos=new float[MaxLights*4],LightRgb=new float[MaxLights*3];public int LightCount;
         /// <summary>The ring buoy going round in the whirlpool: shown, where, how turned.</summary>
         public bool FloatOn;public Vector3 FloatAt;public Quaternion FloatTurn;
+        /// <summary>The pilots, in the room's frame (the Whistle's rings): the caller's array, the stand-ins in the preview.</summary>
+        public Vector2[] Pilots=NativeDeepEndBossPreview.Pilots;public int PilotCount=NativeDeepEndBossPreview.Pilots.Length;
         private const uint Seed=0xDEE9E7D;
         private static float H(int i)=>BossMath.Hash(Seed,i);
         private static readonly Vector3 LampTint=new Vector3(.52f,1f,.98f),WaterWhite=new Vector3(.82f,.95f,.97f),Foam=new Vector3(.93f,.97f,.97f);
@@ -105,13 +107,13 @@ namespace ChipArena.UnityConversion
                 if(m.Id=="jet"&&age>=hit&&age<hit+m.Strike&&s.Tide>-.5f){var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,age,hit,m,head,s.Tide);float T=(head.Y-s.Tide)/Math.Max(.05f,-d.Y);var land=head+d*Math.Min(T,m.Reach);w.Disturb(land.X,land.Z,1.5f,-Math.Min(.14f,.13f*(dt*60)),.5f);}
                 if(m.Id=="lull"&&In(at)){w.Disturb(tp.X,tp.Z,2.2f,.25f,.8f);}
                 if(m.Id=="seiche"){var ax=s.SeicheAxis;float half=NativeDeepEndArena.Half;float t0=age-hit,tl=t0-dt;float cross=2*half/m.Speed;if(t0>=cross&&tl<cross){for(int k=-8;k<=8;k++){float side=k*2.5f;w.Disturb(ax.X*(half-1.2f)+ax.Z*side,ax.Z*(half-1.2f)-ax.X*side,2.4f,.32f,.9f);}}}
-                if(m.Id=="whistle"&&In(at))for(int k=0;k<NativeDeepEndBossPreview.Pilots.Length;k++){var pl=NativeDeepEndBossPreview.Pilots[k];w.Disturb(pl.X+1.2f,pl.Y+.8f,1.4f,-.2f,.7f);}
+                if(m.Id=="whistle"&&In(at))for(int k=0;k<PilotCount;k++){var pl=Pilots[k];w.Disturb(pl.X+1.2f,pl.Y+.8f,1.4f,-.2f,.7f);}
             }
             if(DeepEndBossView.At(v.phaseAt)&&In(v.phaseAt+.4f)){w.Disturb(0,0,4,.6f,.6f);}
         }
 
         /// <summary>The frame's effects for the record at `now` on the room's stage. (ex.. the eye's frame, for what faces it.)</summary>
-        public void Build(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,Vector3 eye,Vector3 right,Vector3 up,double effects,bool low,bool reduced,Vector2[] pilots)
+        public void Build(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,Vector3 eye,Vector3 right,Vector3 up,double effects,bool low,bool reduced)
         {
             Vfx.Begin(effects,low);Under.Clear();Over.Clear();LightCount=0;FloatOn=false;var o=rig.Origin;
             float lampLevel=s.Lamps;bool dead=v.Dead(now);float deadAge=dead?now-v.diedAt:0;
@@ -127,6 +129,7 @@ namespace ChipArena.UnityConversion
             Lights(rig,v,s,now);
             if(rig.Iris>.02f){float g=rig.Iris*(dead?1-BossMath.Smooth(deadAge/.8f):1);Vfx.Glow(rig.MouthAt-rig.MouthDir*.7f,new Vector3(.22f,.62f,1.1f)*(2.6f*g),2.1f,NativeBossVfx.Core);}
             RoomLamps(s,o,right,up);
+            Curtains(v,s,o,now);
             BodyLamps(rig,v,s,now,eye,right,up,low);
             Sheets(rig,s,waves,now,low);
             Collars(rig,s,waves,now);
@@ -157,6 +160,17 @@ namespace ChipArena.UnityConversion
                 list.Billboard(at+l.Facing*.012f,x*l.Size,y*l.Size,l.Facing,DeepEndFlow.Disc,1,new Vector3(.62f,1f,1f)*(.08f+5.6f*lv*boost),1);
                 if(lv>.02f){float hs=l.Size*4.2f;list.Billboard(at+l.Facing*.1f,x*hs,y*hs,l.Facing,DeepEndFlow.Halo,0,new Vector3(.3f,.82f,.82f)*(.42f*lv*boost),0);}
             }
+        }
+        // The arches flood shut as it arrives: a curtain of water falling across each, just behind the wall's face; it goes when the room does.
+        private void Curtains(in DeepEndBossView v,in DeepEndBossStage s,Vector3 o,float now)
+        {
+            float k=1;if(DeepEndBossView.At(v.spawned)){var b=NativeDeepEndBossBeats.Current;k=BossMath.Smooth((now-v.spawned-b.Break)/1.6f);}if(v.Dead(now))k*=1-BossMath.Smooth((now-v.diedAt-3.6f)/2.4f);if(k<.01f)return;
+            float half=NativeDeepEndArena.Half+PoolroomsLayout.Thickness*.5f+.12f,w=NativeDeepEndArena.ArchHalf,top=NativeDeepEndArena.ArchTop*k;
+            void One(Vector3 c,Vector3 along,Vector3 face)
+            {
+                if(!Over.Room(4,6))return;var bottom=o+c;var up=new Vector3(0,top,0);int i=Over.Add(bottom-along*w,face,-1,0,DeepEndFlow.Curtain,0,WaterWhite,k);Over.Add(bottom+along*w,face,1,0,DeepEndFlow.Curtain,0,WaterWhite,k);Over.Add(bottom+along*w+up,face,1,top,DeepEndFlow.Curtain,0,WaterWhite,k);Over.Add(bottom-along*w+up,face,-1,top,DeepEndFlow.Curtain,0,WaterWhite,k);Over.Quad(i,i+1,i+2,i+3);
+            }
+            float y=Math.Min(0,s.Tide);One(new Vector3(0,y,half),Vector3.UnitX,-Vector3.UnitZ);One(new Vector3(0,y,-half),Vector3.UnitX,Vector3.UnitZ);One(new Vector3(half,y,0),Vector3.UnitZ,-Vector3.UnitX);One(new Vector3(-half,y,0),Vector3.UnitZ,Vector3.UnitX);
         }
         // The flank lamps' and the running lights' halos, facing the eye: what makes the spiral from above.
         private void BodyLamps(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,float now,Vector3 eye,Vector3 right,Vector3 up,bool low)
@@ -309,7 +323,7 @@ namespace ChipArena.UnityConversion
                     case "jet":Jet(rig,v,s,waves,now,age,hit,m,low);break;
                     case "lull":Hands(rig,v,s,waves,now,age,hit,m,low);break;
                     case "drain":if(age<hit+m.Strike){float k=BossMath.Smooth((age-hit*.6f)/.6f)*(1-BossMath.Smooth((age-hit-m.Strike+.3f)/.3f));if(k>.02f){var hd=rig.MouthAt;Vfx.SmokeFlow(now,new Vector3(hd.X,o.Y+surface+.4f,hd.Z),new Vector3(0,.2f,0),1.4f,.22f,14,1.5f,.5f,2.4f,WaterWhite,.2f*k,v.actionAt,v.actionAt+hit+m.Strike,Seed,41,lit:.6f);}}break;
-                    case "whistle":if(age>=hit*.5f&&age<hit+m.Strike&&pilotsOk){var pl=NativeDeepEndBossPreview.Pilots;for(int k=0;k<pl.Length;k++){float e=age-hit*.5f,y=Math.Max(SurfaceAt(waves,pl[k].X,pl[k].Y),.02f)+.05f;Over.Billboard(o+new Vector3(pl[k].X+1.2f,y,pl[k].Y+.8f),new Vector3(1.4f,0,0),new Vector3(0,0,1.4f),Vector3.UnitY,DeepEndFlow.Shadow,2,new Vector3(.01f,.1f,.12f),.6f*BossMath.Smooth(e/.4f)*(1-BossMath.Smooth((age-hit-m.Strike+.5f)/.5f)));}}break;
+                    case "whistle":if(age>=hit*.5f&&age<hit+m.Strike){var pl=Pilots;for(int k=0;k<PilotCount;k++){float e=age-hit*.5f,y=Math.Max(SurfaceAt(waves,pl[k].X,pl[k].Y),.02f)+.05f;Over.Billboard(o+new Vector3(pl[k].X+1.2f,y,pl[k].Y+.8f),new Vector3(1.4f,0,0),new Vector3(0,0,1.4f),Vector3.UnitY,DeepEndFlow.Shadow,2,new Vector3(.01f,.1f,.12f),.6f*BossMath.Smooth(e/.4f)*(1-BossMath.Smooth((age-hit-m.Strike+.5f)/.5f)));}}break;
                     case "lap":if(age>=hit&&age<hit+m.Strike+1){var c=rig.Shown.Position[1];Vfx.SmokeFlow(now,new Vector3(c.X,o.Y+surface+.4f,c.Z),new Vector3(0,1,0),1.2f,.3f,12,1.1f,.6f,2.2f,WaterWhite,.22f,at,at+m.Strike+1,Seed,43,lit:.6f,trail:rig.Velocity[1]*.8f);}break;
                 }
             }
@@ -321,7 +335,6 @@ namespace ChipArena.UnityConversion
                 Vfx.SmokeFlow(now,at,new Vector3(0,-.15f,0),.25f,.02f,5,2.8f,.4f,1.8f,new Vector3(.03f,.08f,.1f),.5f,t0,now+1,Seed,70+i,floor:NativeBossVfx.NoFloor);
             }
         }
-        private const bool pilotsOk=true;
         // Hydro Jet: a solid-looking beam, a mist sheath, a hard splash where it lands, rainbow in the mist if it reads.
         private void Jet(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,float age,float hit,in DeepEndBossMove m,bool low)
         {

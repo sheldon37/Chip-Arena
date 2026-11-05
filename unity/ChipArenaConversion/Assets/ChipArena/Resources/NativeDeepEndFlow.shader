@@ -75,6 +75,12 @@ Shader "ChipArena/NativeDeepEndFlow"
                     // A thin line on the water: mist tracking the sweep's start.
                     float s=Noise(float2(i.a.x*7.0-t*2.0,seed));float g=saturate(1.0-abs(i.a.y));g=g*g*(0.5+0.5*s);o=fixed4(rgb*g,0.0);
                 }
+                else if(kind>8.5)
+                {
+                    // A curtain of water across an arch: u across, v height. Streaks running down fast, deep teal behind them, bright where they catch the room.
+                    float across=i.a.x,up=i.a.y;float s1=Noise(float2(across*7.0,up*0.8+t*3.1));float s2=Noise(float2(across*19.0+3.0,up*1.5+t*4.6));float streak=s1*0.6+s2*0.4;float nv=abs(dot(n,v));
+                    float a=saturate(share*(0.82+0.2*streak));float3 c=float3(0.05,0.28,0.31)*(_DeepLight.y*0.9+0.1)+rgb*Lit()*pow(streak,2.4)*1.3+tex2D(_DeepGlowTex,float2(0.5,0.5)).rgb*0.08;o=fixed4(c*a,a);
+                }
                 else
                 {
                     // A round light set in a surface: a lens (seed 1: with prism rings), a chrome ring round it, nothing past that.

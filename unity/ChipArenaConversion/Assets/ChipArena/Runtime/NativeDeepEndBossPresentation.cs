@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
 
         private readonly DeepEndBossRig deepEndRig=new DeepEndBossRig();private readonly NativeDeepEndBossFx deepEndFx=new NativeDeepEndBossFx();private DeepEndBossView deepEndView=DeepEndBossView.None;
         private float deepEndLast=float.NaN,deepEndHp=float.NaN,deepEndFlash,deepEndLastBlow=float.NegativeInfinity;private bool deepEndDrawnLast;private NVector deepEndOrigin;private NativeArena deepEndArena;private int deepEndGeneration=-1;
-        private float deepEndSongSpawn=float.NaN;private double deepEndSongLast=-1;private readonly float[] deepEndBlowAt=new float[8],deepEndBlowSize=new float[8];
+        private readonly NVector2[] deepEndPilots=new NVector2[8];private float deepEndSongSpawn=float.NaN;private double deepEndSongLast=-1;private readonly float[] deepEndBlowAt=new float[8],deepEndBlowSize=new float[8];
         /// <summary>The rig the local tool's bosscam frames (public Root and Yaw).</summary>
         public DeepEndBossRig DeepEndBossRigShown=>deepEndRig;
         /// <summary>The boss's draws last frame (budget lines), and its tier.</summary>
@@ -80,13 +80,20 @@ namespace ChipArena.UnityConversion
             if(preview){int n=NativeDeepEndBossPreview.Blows(now,deepEndBlowAt,deepEndBlowSize);for(int i=0;i<n;i++)if(!(deepEndBlowAt[i]<=deepEndLastBlow)){deepEndLastBlow=Math.Max(deepEndLastBlow,deepEndBlowAt[i]);deepEndFlash=deepEndBlowSize[i];}if(now<deepEndLast)deepEndLastBlow=float.NegativeInfinity;}
             else if(!float.IsNaN(deepEndHp)&&deepEndView.hp<deepEndHp-.5f&&deepEndView.maxHp>0)deepEndFlash=Mathf.Clamp((deepEndHp-deepEndView.hp)/deepEndView.maxHp*60,.25f,1.4f);
             deepEndHp=deepEndView.hp;
+            // Live, the pilots in the room's frame (the Whistle's rings), and whom it's after.
+            if(!preview)
+            {
+                int np=0;foreach(var p in arena.Pilots){if(p?.Body==null||p.Hp<=0||np>=deepEndPilots.Length)continue;var q=p.Body.position;deepEndPilots[np++]=new NVector2(q.x-deepEndOrigin.X,q.z-deepEndOrigin.Z);if(p.Seat!=null&&p.Seat.id==deepEndView.actionTarget){target=deepEndPilots[np-1];hasLook=true;}}
+                if(np>0&&!hasLook){target=deepEndPilots[0];hasLook=true;}deepEndFx.Pilots=deepEndPilots;deepEndFx.PilotCount=np;
+            }
+            else{deepEndFx.Pilots=NativeDeepEndBossPreview.Pilots;deepEndFx.PilotCount=NativeDeepEndBossPreview.Pilots.Length;}
             var lookAt=new NVector(target.X,stage.Tide+1.2f,target.Y);
             deepEndRig.Update(now,dt,deepEndView,preview?NativeDeepEndBossPreview.Route:null,deepEndOrigin,stage.Tide,hasLook,lookAt);
             // The water: what the body and the moves did to it, its steps, the composed heights; then the effects read those.
             var waves=deepEndWaves;waves.Place();if(!float.IsNaN(deepEndLast)&&now>deepEndLast)deepEndFx.Couple(deepEndRig,deepEndView,waves,stage,deepEndLast,now);if(now<deepEndLast)waves.Clear();
             waves.Step(dt,stage.Tide>.02f);waves.Compose(stage);
             var t=eye.transform;var ep=t.position;var er=t.right;var eu=t.up;
-            deepEndFx.Build(deepEndRig,deepEndView,stage,waves,now,new NVector(ep.x,ep.y,ep.z),new NVector(er.x,er.y,er.z),new NVector(eu.x,eu.y,eu.z),Mathf.Clamp01(EffectsQuality),LowGraphics,EffectsQuality<.5f,NativeDeepEndBossPreview.Pilots);
+            deepEndFx.Build(deepEndRig,deepEndView,stage,waves,now,new NVector(ep.x,ep.y,ep.z),new NVector(er.x,er.y,er.z),new NVector(eu.x,eu.y,eu.z),Mathf.Clamp01(EffectsQuality),LowGraphics,EffectsQuality<.5f);
             DeepEndWaterDraw(eye,stage,now);DeepEndLightsDraw(eye,stage);
             DeepEndBossDraw(eye,now);DeepEndFxDraw(eye,stage,now);
             if(!float.IsNaN(deepEndLast)&&now>deepEndLast)NativeDeepEndBossCues.Queue(deepEndView,deepEndRig,deepEndLast,now);

@@ -235,6 +235,8 @@ namespace ChipArena.UnityConversion
                 float e=now-v.phaseAt;weight=BossMath.Smooth(e/1.2f)*(1-BossMath.Smooth((e-NativeDeepEndBoss.PhaseChangeSeconds+.6f)/.6f));dir=Vector3.Normalize(new Vector3(0,1,.08f));return;
             }
             if(DeepEndBossView.At(v.diedAt)&&now>=v.diedAt){weight=BossMath.Smooth((now-v.diedAt)/.8f);dir=Vector3.UnitY;return;}
+            // Above the water with nothing else to do it turns its blind face toward whoever it's after, a little.
+            if(hasLook&&head.Y>surface+.8f){var to=lookAt-head;float l=to.Length();if(l>.5f){weight=.38f*BossMath.Clamp01((head.Y-surface-.8f)/1.5f);dir=to/l;}}
         }
         /// <summary>The jet's direction at `age`: toward its first aim, swept by the table's arc toward its last, from where the mouth is; level with the water.</summary>
         public static Vector3 JetDir(in DeepEndBossView v,float age,float hit,in DeepEndBossMove m,Vector3 head,float surface)

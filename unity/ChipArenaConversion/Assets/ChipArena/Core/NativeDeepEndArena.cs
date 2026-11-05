@@ -13,6 +13,8 @@ namespace ChipArena.UnityConversion
     {
         public const int Cells=20,PoolCells=10,AbyssCells=4;public const float Ceiling=7.2f,Half=Cells*PoolroomsLayout.Cell*.5f,PoolHalf=PoolCells*PoolroomsLayout.Cell*.5f,AbyssHalf=AbyssCells*PoolroomsLayout.Cell*.5f;
         public const int RoomId=9000;
+        /// <summary>The arches' half width (m) and their top (m; the level's arch springing at 1.5).</summary>
+        public const float ArchHalf=PoolroomsLayout.Cell,ArchTop=PoolroomsLayout.ArchSpring+2;
         /// <summary>The deep pool's level, the deepest the abyss's walls go (m, from the deck).</summary>
         public const float PoolFloor=-PoolroomsLayout.DeepDepth;
         /// <summary>A copy of `source` with the room carved round cell (cx, cz) (its centre on that cell's corner; clamped so it fits). Walls seal it; the rest of the layout is left as it was.</summary>
@@ -32,6 +34,11 @@ namespace ChipArena.UnityConversion
                 // Open inside, walled round the outside.
                 l.Set(x,z,1,0,x+1<x1?PoolroomsLayout.Open:PoolroomsLayout.Wall);l.Set(x,z,0,1,z+1<z1?PoolroomsLayout.Open:PoolroomsLayout.Wall);
                 if(x==x0)l.Set(x,z,-1,0,PoolroomsLayout.Wall);if(z==z0)l.Set(x,z,0,-1,PoolroomsLayout.Wall);
+            }
+            // The four arches, two cells wide, at each wall's middle: the level's own arch, the way in (they flood shut as it arrives: Core NativeDeepEndBossFx's curtains; Astra's room seal is the rule).
+            if(x0>0&&x1<l.Width&&z0>0&&z1<l.Depth)for(int k=-1;k<=0;k++)
+            {
+                l.Set(x0,cz+k,-1,0,PoolroomsLayout.Open);l.Set(x1-1,cz+k,1,0,PoolroomsLayout.Open);l.Set(cx+k,z0,0,-1,PoolroomsLayout.Open);l.Set(cx+k,z1-1,0,1,PoolroomsLayout.Open);
             }
             // The four flights: two cells wide, down from the deck in the pool's outer row at each side's middle, facing the pit.
             for(int k=-1;k<=0;k++)
