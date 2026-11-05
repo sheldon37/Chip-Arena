@@ -211,6 +211,39 @@ namespace ChipArena.UnityConversion
                 More("bow","bramble-arrow");TryTechnique(a);Release();for(int i=0;i<30&&a.Technique.Phase=="flight";i++){Advance(1f/60);StepTechniqueWorld();}Check(a.Technique.Phase=="thorns"&&a.Technique.Until>Time+4,"bramble grows on first contact");
                 More("bow","tether-arrow");TryTechnique(a);Release();for(int i=0;i<30&&a.Technique.Phase=="flight";i++){Advance(1f/60);StepTechniqueWorld();}Check(a.Technique.Phase=="tether"&&Math.Abs(b.Hp-95)<.01,"tether hits and anchors");b.RollEnd=Time+1;StepPriorityConstraints();Check(Math.Abs(b.Hp-89)<.01&&!NativeTechniqueRules.Live(a.Technique,Time),"roll snaps tether once");
                 More("water","bubble-trap");TryTechnique(a);Release();for(int i=0;i<30&&a.Technique.Phase=="flight";i++){Advance(1f/60);StepTechniqueWorld();}Check(BubbleHeld(b.Seat.id)&&Incapacitated(b),"bubble catches and disables");float damage=Damage(b,a,10,Vector3.zero,0,false,primary:false);Check(Math.Abs(damage-5)<.01&&!BubbleHeld(b.Seat.id)&&a.Technique.Phase=="pop","first hit halved then bubble pops");
+                // Regression paths use explicit Transform synchronization because this gate does not step PhysX.
+                void RepairSetup(string spec,string id)
+                {More(spec,id);a.Body.transform.position=a.Body.position;b.Body.transform.position=b.Body.position;Physics.SyncTransforms();}
+                foreach(var pair in new[]{("sword","iaido"),("greatsword","sunder"),("greatsword","reaping-sweep"),("greatsword","blade-drag")})
+                {
+                    RepairSetup(pair.Item1,pair.Item2);b.Body.position+=Vector3.right*30;b.Body.transform.position=b.Body.position;Physics.SyncTransforms();TryTechnique(a);Release();
+                    if(pair.Item2=="iaido"||pair.Item2=="blade-drag"){Advance(2);FinishPriorityTechnique(a);}
+                    Check(a.Technique.HitAt<-50&&b.Hp==100,pair.Item2+" whiff has no hit cue");
+                }
+                RepairSetup("shield","ground-slam");TryTechnique(a);Release();Advance(.49f);
+                a.Body.position=new Vector3(1000,100.7f,1002.8f);a.Body.transform.position=a.Body.position;Physics.SyncTransforms();
+                var landingVelocity=Vector3.zero;MobilityTechniqueMotion(a,ref landingVelocity);
+                Check(a.Technique.Phase=="leap"&&a.Technique.Arm<=Time,"slam descending floor contact above old 1.2 m ray arms landing");
+                a.Body.position+=landingVelocity/60;a.Body.transform.position=a.Body.position;Physics.SyncTransforms();StepTechniqueWorld();Check(a.Technique.Phase=="slam"&&a.Technique.HitAt==Time,"slam reachable landing resolves");
+                RepairSetup("shield","ground-slam");wall.SetActive(true);a.Body.position=new Vector3(1000,103,1009);a.Body.transform.position=a.Body.position;Physics.SyncTransforms();
+                float stopped=TechniqueBodyStep(a,Vector3.forward*2,false,out bool side,out var sideContact);Check(side&&sideContact.normal.y<.5f&&stopped<1,"slam sweep distinguishes side wall from landing");
+                RepairSetup("pistol","slide-shot");TryTechnique(a);Release();FinalTechniqueConstraints();var slideStart=a.Body.position;
+                // A small height offset used to generate a downward floor sweep on a perfectly clear slide.
+                a.Body.position+=Vector3.up*.08f;a.Body.transform.position=a.Body.position;Physics.SyncTransforms();
+                for(int i=0;i<33;i++){var v=Vector3.zero;FinalTechniqueMotion(a,ref v);a.Body.position+=v/60;a.Body.transform.position=a.Body.position;Physics.SyncTransforms();Advance(1f/60);}
+                Check(a.Body.position.z-slideStart.z>5.9f&&a.Technique.Phase=="slide","slide travels six meters without treating floor as wall");StepFinalTechnique(a);Check(a.Technique.Phase=="rise","slide rises at duration");FinalTechniqueConstraints();
+                RepairSetup("pistol","slide-shot");a.Body.position=new Vector3(1000,100,1008);a.Body.transform.position=a.Body.position;wall.SetActive(true);Physics.SyncTransforms();TryTechnique(a);Release();FinalTechniqueConstraints();
+                for(int i=0;i<33&&a.Technique.Phase=="slide";i++){var v=Vector3.zero;FinalTechniqueMotion(a,ref v);a.Body.position+=v/60;a.Body.transform.position=a.Body.position;Physics.SyncTransforms();Advance(1f/60);}
+                Check(a.Body.position.z<1009.6f,"slide remains in front of wall");FinalTechniqueConstraints();
+                RepairSetup("machinegun","ammo-crate");TryTechnique(a);Release();Check(Math.Abs(a.Technique.Point.z-a.Body.position.z-1.4f)<.01,"crate placed ahead of caster");
+                Advance(.2f);StepTechniqueWorld();float pickupAt=a.Technique.HitAt;var crateCenter=TechniqueObjectCenter(a.Technique);
+                Check(Math.Abs(crateCenter.y-a.Technique.Point.y-NativeTechniqueFx.CrateHalfY)<.001&&TechniqueObjectRadius(a.Technique)>.85f,"crate hit sphere follows drawn center and size");
+                Check(TechniqueObstacle(b,crateCenter+Vector3.right*3,Vector3.left*6,.02f,10,out _)&&a.TechniqueHealth==30,"crate outer hit sphere receives shot");Check(a.Technique.HitAt==pickupAt&&Math.Abs(a.Technique.Arm-.75f)<.001,"crate damage changes health without replaying pickup");
+                RepairSetup("darkness","shadow-puppet");TryTechnique(a);Release();var puppet=Minions.Find(m=>m.Id==a.Technique.Target);puppet.Hp=15;a.Input.Yaw=90;a.Input.Pitch=20;a.Input.AimTarget=default;StepFinalTechnique(a);
+                Check(Math.Abs(a.Technique.Arm-.5f)<.001&&a.Technique.Dir.x>.9f,"puppet health and aim update");CopyTechniqueShot(a,new NativeBullet{Damage=10,Velocity=Vector3.right*100});float shotAt=a.Technique.HitAt;var shotEnd=a.Technique.To;Advance(.1f);StepFinalTechnique(a);
+                Check(shotAt>-50&&a.Technique.HitAt==shotAt&&a.Technique.To.x==shotEnd.x,"puppet preserves last shot endpoint");
+                var puppetCopy=JsonUtility.FromJson<NativeTechnique>(JsonUtility.ToJson(a.Technique));Check(puppetCopy.Valid()&&puppetCopy.Arm==a.Technique.Arm&&puppetCopy.Dir.x==a.Technique.Dir.x&&puppetCopy.HitAt==shotAt,"puppet state survives Unity codec");
+                puppet.Hp=0;StepFinalTechnique(a);Check(a.Technique.Arm==0&&a.Technique.Phase=="pop","dead puppet has zero health fraction");
                 Debug.Log("PASS native weapon technique simulation: "+checks+" checks, including actual Unity codec and isolated collision handlers");
             }
             finally{Map.bounds=oldBounds;CapturedAnimation.Release(floor);CapturedAnimation.Release(wall);a.Technique=b.Technique=null;Bullets.Clear();}

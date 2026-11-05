@@ -81,8 +81,8 @@ namespace ChipArena.UnityConversion
             }
             else if(k.Kind=="blade-drag"&&k.Phase=="drag")
             {
-                k.Arm=Mathf.Clamp01((Time-k.Release)/2);k.Phase="rise";k.RecastAt=k.HitAt=Time;k.Until=Time+(AbilityChip(p,"ab-molten-trail")?3:.3f);k.RecoverUntil=Time+.3f;p.Ready=k.RecoverUntil;
-                foreach(var t in MeleeTargets(p).ToArray())if(Vector3.Distance(t.at,p.Body.position)<=2.6f&&Vector3.Angle(Vec(k.Dir),t.at-p.Body.position)<=45&&MeleeVisible(p.Body.position,t.at,p,t.collider)&&TechniqueHit(p,t.id,8+12*k.Arm,t.at,Vec(k.Dir))>0)TechniqueShove(p,t.id,(Vec(k.Dir)+Vector3.up*.4f).normalized,10);
+                k.Arm=Mathf.Clamp01((Time-k.Release)/2);k.Phase="rise";k.RecastAt=Time;k.Until=Time+(AbilityChip(p,"ab-molten-trail")?3:.3f);k.RecoverUntil=Time+.3f;p.Ready=k.RecoverUntil;
+                foreach(var t in MeleeTargets(p).ToArray())if(Vector3.Distance(t.at,p.Body.position)<=2.6f&&Vector3.Angle(Vec(k.Dir),t.at-p.Body.position)<=45&&MeleeVisible(p.Body.position,t.at,p,t.collider)&&TechniqueHit(p,t.id,8+12*k.Arm,t.at,Vec(k.Dir))>0){k.HitAt=Time;TechniqueShove(p,t.id,(Vec(k.Dir)+Vector3.up*.4f).normalized,10);}
             }
         }
         private void BreacherFire(NativePilot p)
