@@ -145,4 +145,3 @@ Fifty chips in the ordinary rarities and the ordinary draft: 8 common, 13 uncomm
 ## Presentation (Claude)
 
 The card and the copy are done; each chip's icon, its stat rows and its card line are generated. Procs, marks and gauges get their effects once the events exist. The two tiers' mounted weapon modules follow the rarity's generic set until a chip earns its own.
-
