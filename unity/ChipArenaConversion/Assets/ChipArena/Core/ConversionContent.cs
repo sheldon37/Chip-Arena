@@ -49,14 +49,14 @@ namespace ChipArena.UnityConversion
             if(generated==null||maps.Any(m=>m.id==generated.id))throw new ArgumentException("Generated map must have a fresh id.");
             var copy=(ConversionContent)MemberwiseClone();copy.maps=maps.Concat(new[]{generated}).ToArray();return copy;
         }
-        public ContentWeapon Weapon(string id) => Array.Find(weapons,x=>x.id==id)??throw new ArgumentException("Unknown weapon: "+id);
-        public ContentChip Chip(string id) => Array.Find(chips,x=>x.id==id)??throw new ArgumentException("Unknown chip: "+id);
+        public ContentWeapon Weapon(string id) {foreach(var x in weapons)if(x.id==id)return x;throw new ArgumentException("Unknown weapon: "+id);}
+        public ContentChip Chip(string id) {foreach(var x in chips)if(x.id==id)return x;throw new ArgumentException("Unknown chip: "+id);}
         public ContentMap Map(string id) {foreach(var map in maps)if(map.id==id)return map;throw new ArgumentException("Unknown map: "+id);}
-        public ContentMaterial Material(string id) => Array.Find(materials,x=>x.id==id)??throw new ArgumentException("Unknown material: "+id);
+        public ContentMaterial Material(string id) {foreach(var x in materials)if(x.id==id)return x;throw new ArgumentException("Unknown material: "+id);}
         // Older/incomplete content must still allow rolling; shipped entries are checked by Validate.
-        public double Weight(string spec) => (weights==null?null:Array.Find(weights,x=>x!=null&&x.name==spec))?.value??4;
-        public ContentAbility Ability(string spec,string slot) => Array.Find(abilities,x=>x.spec==spec&&x.slot==slot);
-        public ContentAds Ads(string spec) => NativeRangedRules.Scope(spec)?Array.Find(ads,x=>x.spec==spec):null;
+        public double Weight(string spec) {if(weights!=null)foreach(var x in weights)if(x!=null&&x.name==spec)return x.value;return 4;}
+        public ContentAbility Ability(string spec,string slot) {foreach(var x in abilities)if(x.spec==spec&&x.slot==slot)return x;return null;}
+        public ContentAds Ads(string spec) {if(NativeRangedRules.Scope(spec))foreach(var x in ads)if(x.spec==spec)return x;return null;}
         public void Validate()
         {
             if(schema!=1||sourceCommit==null||sourceCommit.Length!=40)throw new InvalidOperationException("Invalid conversion content receipt");

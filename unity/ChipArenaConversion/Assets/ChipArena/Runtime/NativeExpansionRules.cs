@@ -50,13 +50,9 @@ namespace ChipArena.UnityConversion
             if(p.ExpansionRate!=rate){p.Stats["attackRate"]=p.Stats["attackRate"]/p.ExpansionRate*rate;p.ExpansionRate=rate;}
             if(p.ExpansionSpeed!=speed){p.Stats["speed"]=p.Stats["speed"]/p.ExpansionSpeed*speed;p.ExpansionSpeed=speed;}
             StepExpansionWorldProcs(p);
-            bool planted=Has(p,"wild-planted"),opening=Has(p,"wild-opening-move"),doom=Has(p,"wild-doomsday-clock");int count=(planted?1:0)+(opening?1:0)+(doom?1:0),index=0;
-            if(p.ChipGauges.Length!=count)p.ChipGauges=count==0?Array.Empty<NativeChipGauge>():new NativeChipGauge[count];
-            if(planted)p.ChipGauges[index++]=new NativeChipGauge{Kind="wild-planted",Value=p.ExpansionStill<0?0:Mathf.Clamp01(Time-p.ExpansionStill)};
-            if(opening)p.ChipGauges[index++]=new NativeChipGauge{Kind="wild-opening-move",Value=Time-p.ExpansionLastHit>=4?1:0};
-            if(doom)p.ChipGauges[index]=new NativeChipGauge{Kind="wild-doomsday-clock",Value=p.ExpansionDoomAt<0?0:Mathf.Clamp01((Time-p.ExpansionDoomAt)/3)};
+            UpdateChipGauges(p);
             bool expired=false;foreach(var mark in p.TechniqueMarks)if(mark.Until<=Time){expired=true;break;}
-            if(expired)p.TechniqueMarks=p.TechniqueMarks.Where(x=>x.Until>Time).ToArray();WildGauges(p);
+            if(expired)p.TechniqueMarks=p.TechniqueMarks.Where(x=>x.Until>Time).ToArray();
         }
         private bool ReleaseThirdTechnique(NativePilot p)
         {
