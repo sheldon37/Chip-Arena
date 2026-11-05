@@ -231,8 +231,8 @@ HIDE_BONES = ['pelvis', 'spine0', 'spine1', 'chest', 'neck0', 'neck1', 'neck2', 
 # Finishes
 # ===========================================================================================================================
 def make_finishes():
-    finish('hide', 0x2B211A, 'hide')
-    finish('slab', 0x33281F, 'hide')
+    finish('hide', 0x1B1714, 'hide')
+    finish('slab', 0x221C17, 'hide')
     finish('backing', 0x6A5C43, 'cloth')
     finish('paper', 0x8E9246, 'paper', outline=True)
     finish('plaster', 0x8F8A70, 'plaster', outline=True)
