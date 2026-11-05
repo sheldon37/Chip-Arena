@@ -365,18 +365,18 @@ namespace ChipArena.UnityConversion
                 return;
             }
             float age=t-k.HitAt;var ctr=view?chest+Up*.1f:top;
-            if(!view){Flash(s,top,age,.2f,MagicClapLight,4.2f,seed);if(age<.1f)s.Sprite(false,top,Vector3.One*(5*(1-age/.1f)),1.5f,Sparkle);}
+            if(!view){Flash(s,top,age,.16f,MagicClapLight,1.5f,seed);if(age<.08f)s.Sprite(false,top,Vector3.One*(4*(1-age/.08f)),1.1f,Sparkle);}
             // The bolt from the sky.
             if(age<.16f)
             {
-                float b=1-age/.16f;long bs=seed+(long)(age*60);var sky=ctr+Up*11+r*((R(bs,1)-.5f)*3)+f*((R(bs,2)-.5f)*3);Bolt(s,sky,ctr,(MagicClapLight+Vector3.One)*(3.4f*b),.14f*b+.02f,1.6f,low?8:16,bs);Bolt(s,sky,ctr,MagicClapLight*(1.5f*b),.38f*b,1.6f,low?8:16,bs);
+                float b=1-age/.16f;long bs=seed+(long)(age*60);var sky=ctr+Up*11+r*((R(bs,1)-.5f)*3)+f*((R(bs,2)-.5f)*3);Bolt(s,sky,ctr,(MagicClapLight+Vector3.One)*(3.4f*b),.14f*b+.02f,1.6f,low?8:16,bs);Bolt(s,sky,ctr,MagicClapLight*(.9f*b),.3f*b,1.6f,low?8:16,bs);
                 int bn=low?1:3;for(int i=0;i<bn;i++){var o=Vector3.Lerp(sky,ctr,.2f+.5f*R(bs,i+5));var end=o+RandomDir(bs,i+7)*(1.6f+1.6f*R(bs,i+8));Bolt(s,o,end,MagicClapLight*(1.6f*b),.03f*b+.008f,.6f,5,bs+i+20);}
             }
             // The shell going out.
-            float rad0=ClapReach*OutCubic(age/.16f),fd=1-Smooth(age/.34f),middle=view?.0f:1;if(fd>0)
+            float rad0=ClapReach*OutCubic(age/.16f),fd=1-Smooth(age/.3f),middle=view?.0f:1;if(fd>0)
             {
-                s.Sprite(false,chest,MagicClapLight*(2.2f*fd*middle),rad0,RingSprite);s.Sprite(false,chest,MagicClapLight*(.7f*fd*middle),rad0*.92f,RingSprite);
-                int seg=low?24:48;Ring(s,c+Up*.06f,rad0,.8f*fd+.08f,MagicClapLight,seg,2.6f*fd);Ring(s,c+Up*.04f,rad0*.7f,.4f*fd+.05f,MagicClapLight,seg,1.1f*fd);Hoop(s,chest-Up*.3f,Up,rad0*.92f,.12f,MagicClapLight,seg,1.5f*fd);
+                s.Sprite(false,chest,MagicClapLight*(2*fd*middle),rad0,RingSprite);s.Sprite(false,chest,MagicClapLight*(.7f*fd*middle),rad0*.95f,RingSprite);s.Sprite(false,chest,MagicClapLight*(.35f*fd*middle),rad0*.9f,RingSprite);
+                int seg=low?24:48;Ring(s,c+Up*.06f,rad0,.6f*fd+.08f,MagicClapLight,seg,1.7f*fd);Ring(s,c+Up*.04f,rad0*.7f,.3f*fd+.05f,MagicClapLight,seg,.7f*fd);Hoop(s,chest-Up*.3f,Up,rad0*.92f,.12f,MagicClapLight,seg,.9f*fd);
             }
             // Bolts raking the floor out to the ring.
             if(age<.42f){float b=1-age/.42f;int n=low?6:12;for(int i=0;i<n;i++){float ang=MagicTau*(i+R(roll,i+70))/n,reach=rad0*(.8f+.2f*R(roll,i+71));var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));Bolt(s,c+d*.3f+Up*.08f,c+d*reach+Up*.06f,(MagicClapLight+Vector3.One*.2f)*(2.3f*b),.03f,.9f,low?5:9,roll+i+80);}}
@@ -406,7 +406,7 @@ namespace ChipArena.UnityConversion
                 float total=Math.Max(.1f,k.Until-lit),stress=k.RecastAt>-50?live/4:live/total,hot=Smooth((stress-.74f)/.26f),rate=6+18*hot,strobe=hot>0?.62f+.38f*(float)Math.Sin(t*rate*6.28f):1,env=Smooth(live/.12f)*strobe;var color=Vector3.Lerp(MagicLive,MagicLiveHot,hot);
                 if(live<.3f){Flash(s,view?feet+Up*.3f:chest,live,.24f,MagicLive,2,seed+1);Sparks(s,chest,live,.45f,Count(22,q,low),6,MagicLive+Vector3.One*.3f,seed+2,6,.024f);if(!view)Hoop(s,chest,Up,.3f+2.4f*OutCubic(live/.3f),.1f,MagicLive,low?12:22,1.6f*(1-live/.3f));}
                 // Across the joints.
-                int arcs=(low?3:6)+(low?0:(int)(stress*5));for(int i=0;i<arcs;i++){int j0=(int)(R(roll,i*2+1)*joints)%joints,j1=(j0+1+(int)(R(roll,i*2+2)*(joints-1)))%joints;Bolt(s,MagicJoint(feet,r,j0),MagicJoint(feet,r,j1),(color+Vector3.One*.5f)*(2.1f*env),.018f,.32f,low?4:6,roll+i*3);}
+                int arcs=(low?3:6)+(low?0:(int)(stress*5));for(int i=0;i<arcs;i++){int j0=(int)(R(roll,i*2+1)*joints)%joints,j1=(j0+1+(int)(R(roll,i*2+2)*(joints-1)))%joints;var a0=MagicJoint(feet,r,j0);var a1=MagicJoint(feet,r,j1);Bolt(s,a0,a1,(color+Vector3.One*.5f)*(1.9f*env),.024f,.32f,low?4:6,roll+i*3);if(!low)Bolt(s,a0,a1,color*(.75f*env),.075f,.32f,6,roll+i*3);}
                 // Out to the floor.
                 int outs=low?1:3;for(int i=0;i<outs;i++){float ang=MagicTau*R(roll,i+40),rad=.9f+.8f*R(roll,i+41);var e=feet+new Vector3((float)Math.Cos(ang)*rad,.04f,(float)Math.Sin(ang)*rad);Bolt(s,MagicJoint(feet,r,(int)(R(roll,i+42)*joints)%joints),e,color*(1.8f*env),.016f,.45f,low?4:7,roll+i+50);}
                 // The fuse under the feet: what is left of the ring is what is left of it.
