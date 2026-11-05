@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
             Actions.Sample(t);Phases.Sample(t);Staggers.Sample(t);
             Act=Actions.Current;ActMove=Act.Active&&move>=0&&ReferenceEquals(Actions.CurrentDef,HumBossMoves.Defs[move])?move:-1;ActSide=actionSide;
             // ---- the channels: neutral, then each layer in priority ----
-            Array.Copy(HumCh.Neutral,ch,ch.Length);
+            Array.Copy(HumCh.Neutral,ch,ch.Length);levelHand=0;
             Layer(Actions,MoveKeysFn,true);Layer(Phases,PhaseKeysFn,false);Layer(Staggers,StaggerKeysFn,false);
             if(Arriving)ArrivalLayer(age,beats);
             if(HumBossView.At(v.clipAt)&&v.clipSeconds>0&&t>=v.clipAt){float k=t-v.clipAt;Blend(HumBossMoves.Clipped,BossMath.Smooth(k/.12f)*(1-BossMath.Smooth((k-v.clipSeconds+.3f)/.3f)));}
@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
             Legs.ExtraOffset=offset;Legs.ExtraRotation=Quaternion.Normalize(BossMath.AxisAngle(Vector3.UnitY,lead)*lean*BossMath.AxisAngle(Vector3.UnitX,sPitch+fPitch)*BossMath.AxisAngle(Vector3.UnitZ,-(sBank+fBank)));
             for(int i=0;i<4;i++)Legs.Free[i]=ch[HumCh.Limb(i,HumCh.W)]>=.98f;
             var groundShown=ground;
-            if(first||jump){Legs.Reset(Follow.Position,yaw,groundShown);for(int i=0;i<Count;i++)linked[i]=false;anchored=false;}
+            if(first||jump){Legs.Reset(Follow.Position,yaw,groundShown);for(int i=0;i<Count;i++)linked[i]=false;anchored=false;for(int i=0;i<4;i++)bendKnown[i]=false;}
             Legs.Step(Follow.Position,yaw,Follow.YawRate,Follow.Velocity,Follow.Body,dt,groundShown);Landed=Legs.Landed;
             var bodyOrigin=Legs.BodyPosition;var bodyRot=Legs.BodyRotation;
             // ---- FK: the trunk ----
@@ -218,8 +218,9 @@ namespace ChipArena.UnityConversion
                 // In a thrown lunge they stream behind it (their rest shape stays straight down in the room).
                 c.Step(anchor,chainUp,dt,Flip>0?null:ground);Put(c,w,NativeHumBossLook.StripLinks);
             }
+            WallArm(t,v);
             // ---- into the room's world (the half turn on the ceiling), and the pop killer ----
-            if(Flip>0)for(int i=0;i<Count;i++){P.Position[i]=flipPoint+BossMath.Rotate(flipTurn,P.Position[i]-flipPoint);P.Rotation[i]=Quaternion.Normalize(flipTurn*P.Rotation[i]);}
+            if(Flip>0)for(int i=0;i<NativeHumBossLook.WallFore;i++){P.Position[i]=flipPoint+BossMath.Rotate(flipTurn,P.Position[i]-flipPoint);P.Rotation[i]=Quaternion.Normalize(flipTurn*P.Rotation[i]);}
             Root=Flip>0?flipPoint+BossMath.Rotate(flipTurn,Follow.Position-flipPoint):Follow.Position;
             for(int i=0;i<4;i++)LimbAt[i]=Flip>0?flipPoint+BossMath.Rotate(flipTurn,Legs.Foot[i]-flipPoint):Legs.Foot[i];
             HeadPos=P.Position[NativeHumBossLook.Head];HeadDir=BossMath.Rotate(P.Rotation[NativeHumBossLook.Head],Vector3.UnitZ);
@@ -258,6 +259,7 @@ namespace ChipArena.UnityConversion
         }
         private void Blend(HumSnap s,float w){if(w<=0)return;w=Math.Min(1,w);var x=s.V;for(int c=0;c<ch.Length;c++)ch[c]+=(x[c]-ch[c])*w;}
         // ---- the intro's own track: the arm through the wall, the walk out, the look, the jaw, the straightening, the stoop ----
+        private float levelHand;
         private void ArrivalLayer(float a,in HumBossBeats b)
         {
             // The hand: from behind the wall out through the tear. Root-frame targets: the root is still behind the wall here.
@@ -266,7 +268,7 @@ namespace ChipArena.UnityConversion
             {
                 var wr=HumBossArrival.HandThrough(a,b,Follow.Position,Follow.Yaw);
                 float w=reach*(1-back);int l=HumCh.Limb(ArmR,0);ch[l]=w;ch[l+1]=wr.X;ch[l+2]=wr.Y;ch[l+3]=wr.Z;var pole=Vector3.Normalize(new Vector3(.9f,.25f,-.4f));ch[l+4]=pole.X;ch[l+5]=pole.Y;ch[l+6]=pole.Z;
-                ch[HumCh.CurlR]+=(-.82f-ch[HumCh.CurlR])*w;ch[HumCh.SpreadR]=w*.9f;
+                ch[HumCh.CurlR]+=(-.82f+.2f*(float)Math.Sin(a*2.4f)*.3f-ch[HumCh.CurlR])*w;ch[HumCh.SpreadR]=w*.4f;levelHand=w;
                 ch[HumCh.BW]+=8*w;ch[HumCh.Bend]+=10*w;
             }
             // Walking out it stays low and looks at nothing (its head follows the body) until the head catches: then it locks on the party.
@@ -350,7 +352,7 @@ namespace ChipArena.UnityConversion
             P.Set(NativeHumBossLook.Neck0,p0,r0);P.Set(NativeHumBossLook.Neck1,p1,r1);P.Set(NativeHumBossLook.Neck2,p2,r2);
         }
         // ---- a limb: the gait's planted foot or the channels' target, two-bone IK ----
-        private readonly BossSecondOrder3[] armGoal=new BossSecondOrder3[2];private readonly Vector3[] lastHinge=new Vector3[4];private readonly bool[] hingeKnown=new bool[4];
+        private readonly BossSecondOrder3[] armGoal=new BossSecondOrder3[2];private readonly Vector3[] bend=new Vector3[4];private readonly bool[] bendKnown=new bool[4];private readonly Vector3[] lastHinge=new Vector3[4];private readonly bool[] hingeKnown=new bool[4];
         private void SolveLimb(int limb,int upper,int lower,int end,Vector3 root,Quaternion facing,float l1,float l2,float soft,float t,float dt,IBossGround ground)
         {
             int b=HumCh.Limb(limb,0);float w=ch[b];var bodyRot=Legs.BodyRotation;
@@ -362,6 +364,18 @@ namespace ChipArena.UnityConversion
             var target=Vector3.Lerp(gaitFoot,tw,w);
             // A planted hand stays planted: past the arm's reach the shoulder itself comes down toward it (the blade sliding on the ribs).
             if(limb>=2){var toHand=target-root;float over=toHand.Length()-(l1+l2)*.995f;if(over>0)root+=Vector3.Normalize(toHand)*Math.Min(over,.42f);}
+            // The elbow or knee comes round the limb to where it should bend at a limited rate: it can't flip across in a frame when its pole passes along the limb.
+            {
+                var toEnd=target-root;float tl=toEnd.Length();var along=tl>1e-4f?toEnd/tl:-Vector3.UnitY;var side=pole-along*Vector3.Dot(pole,along);float sl=side.Length();
+                if(!bendKnown[limb]){bend[limb]=sl>1e-3f?side/sl:Vector3.UnitX;bendKnown[limb]=true;}
+                var was=bend[limb]-along*Vector3.Dot(bend[limb],along);float wl=was.Length();was=wl>1e-3f?was/wl:(sl>1e-3f?side/sl:bend[limb]);
+                if(sl>1e-3f)
+                {
+                    side/=sl;float angle=(float)Math.Atan2(Vector3.Dot(along,Vector3.Cross(was,side)),Vector3.Dot(was,side));
+                    float turn=BossMath.Clamp(angle*(1-(float)Math.Exp(-dt*16)),-11*dt,11*dt);was=BossMath.Rotate(BossMath.AxisAngle(along,turn),was);
+                }
+                bend[limb]=was;pole=was;
+            }
             var knee=BossIk.TwoBone(root,target,l1,l2,pole,out var e,w>.01f?soft*w:0);
             var hinge=Vector3.Cross(knee-root,e-knee);if(hinge.LengthSquared()<1e-8f)hinge=Vector3.Cross(e-root,pole);
             if(hingeKnown[limb]&&Vector3.Dot(hinge,lastHinge[limb])<0&&hinge.LengthSquared()<1e-4f)hinge=lastHinge[limb];lastHinge[limb]=hinge;hingeKnown[limb]=true;
@@ -372,7 +386,39 @@ namespace ChipArena.UnityConversion
             var gaitEnd=Legs.FootRotation[limb];
             var dir=Vector3.Normalize(e-knee);var alongEnd=Quaternion.Normalize(BossMath.FromTo(BossMath.Rotate(facing,Vector3.UnitZ),dir)*facing);
             var endRot=w>0?BossMath.Slerp(gaitEnd,limb>=2?alongEnd:gaitEnd,BossMath.Smooth(w)):gaitEnd;
+            if(limb==ArmR&&levelHand>0)endRot=BossMath.Slerp(endRot,facing,levelHand);
             P.Set(end,e,Quaternion.Normalize(endRot));
+        }
+        /// <summary>Whether the Wall Hand's arm is out this frame (its joints are hidden otherwise).</summary>
+        public bool WallArmOut;
+        // Wall Hand: an arm out of the surface by the pilot: fingers feeling through first, then the forearm thrust out and gripping, held, dragged back in. In the room's world (the record's point), whatever the body's doing.
+        private void WallArm(float t,in HumBossView v)
+        {
+            var P=Pose;var B=NativeHumBossLook.Bind;WallArmOut=false;
+            if(!HumBossView.At(v.handAt)){for(int j=NativeHumBossLook.WallFore;j<Count;j++)P.Set(j,Follow.Position,Quaternion.Identity);return;}
+            var m=NativeHumBoss.Move("hand");float k=t-v.handAt;float end=HumBossView.At(v.handUntil)?v.handUntil-v.handAt:m.Strike+m.Follow;
+            WallArmOut=k>-.42f&&k<end+.5f;if(!WallArmOut){for(int j=NativeHumBossLook.WallFore;j<Count;j++)P.Set(j,Follow.Position,Quaternion.Identity);return;}
+            var n=new Vector3(v.handNx,0,v.handNz);var side=new Vector3(n.Z,0,-n.X);var at=new Vector3(v.handX,v.handY,v.handZ);
+            float wind=BossMath.Smooth((k+.42f)/.42f),thrust=BossMath.Smoother(k/m.Strike),back=BossMath.Smoother((k-end)/.5f);
+            // The wrist: behind the paper (the fingers just through), then well out over the floor; the forearm trailing from inside the wall.
+            float outBy=(-.75f+.42f*wind+1.05f*thrust)*(1-back)+(-1.2f)*back;
+            var wrist=at+n*outBy+new Vector3(0,.18f*thrust*(float)Math.Sin(k*2.1f)*.3f,0);
+            var fw=n;var elbow=wrist-Vector3.Normalize(n+new Vector3(0,.28f,0))*NativeHumBossLook.ForeArm;
+            var dir0=B[NativeHumBossLook.WallHand]-B[NativeHumBossLook.WallFore];var r=Quaternion.Normalize(BossMath.FromTo(dir0,wrist-elbow));
+            P.Set(NativeHumBossLook.WallFore,elbow,r);
+            var hr=Quaternion.Normalize(BossMath.FromTo(Vector3.UnitZ,Vector3.Normalize(n+new Vector3(0,-.12f,0))));P.Set(NativeHumBossLook.WallHand,wrist,hr);
+            float c=k<0?-.75f:(k<m.Strike?-.75f+.9f*thrust:.15f+.65f*BossMath.Smooth((k-m.Strike)/.3f));
+            for(int f=0;f<NativeHumBossLook.Fingers;f++)
+            {
+                float yawHere=-NativeHumBossLook.FingerYawL[f]*Deg;var hinge=new Vector3((float)Math.Cos(yawHere),0,-(float)Math.Sin(yawHere));
+                var rf=Quaternion.Normalize(hr*BossMath.AxisAngle(Vector3.UnitY,(f-1.5f)*.2f*(1-thrust*.5f)));var pp=wrist;int par=NativeHumBossLook.WallHand;
+                for(int l=0;l<NativeHumBossLook.FingerLinks;l++)
+                {
+                    int j=NativeHumBossLook.WallFinger(f,l);float bp=NativeHumBossLook.FingerPitch[f,l],pv=l>0?NativeHumBossLook.FingerPitch[f,l-1]:0;
+                    float straight=l==0?bp:bp-pv,claw=l==0?46:l==1?24:22;float turn=c>=0?claw*c:straight*-c;float jitter=(float)Math.Sin(t*23+f*2.3f+l)*2.2f*(k<0?1:.3f);
+                    var pos=pp+BossMath.Rotate(l==0?rf:P.Rotation[par],NativeHumBossLook.Rest[j]);rf=Quaternion.Normalize(rf*BossMath.AxisAngle(hinge,(turn+jitter)*Deg));P.Set(j,pos,rf);par=j;pp=pos;
+                }
+            }
         }
         // ---- the hands' fingers: three links each, FK off the hand, curling on second-order springs ----
         private void Hands(float t,float dt)
@@ -439,16 +485,18 @@ namespace ChipArena.UnityConversion
         {
             float start=-(NativeHumArena.IntroWallBehind+BehindWall);var f=BossMath.Forward(endYaw);
             // Two slow stretches: out through the wall, then the last steps to its mark on the song's build.
-            float walk=BossMath.Smoother((a-b.WalkOut)/(b.Stoop-b.WalkOut));
+            float walk=BossMath.Smoother((a-b.WalkOut)/(b.Straighten-b.WalkOut));
             float z=start*(1-walk);p=end+f*z;
         }
-        /// <summary>The hand coming through the tear, in the root's frame at age `a`: pressing up to the wall, fingers through, the wrist following.</summary>
+        /// <summary>The hand coming through the tear, in the root's frame at age `a`: the tips reaching the paper and pressing it out, then through, the wrist following up to the wall.</summary>
         public static Vector3 HandThrough(float a,in HumBossBeats b,Vector3 root,float yaw)
         {
-            float k=BossMath.Smoother((a-b.Bulge)/(b.Fingers-b.Bulge+.2f)),through=BossMath.Smoother((a-b.Fingers)/(b.TearOpen-b.Fingers+.4f));
-            float wallZ=BehindWall;// the wall, in the root's frame while it waits behind it
-            float z=BossMath.Lerp(wallZ-.95f,wallZ-.55f,k)+.62f*through;float x=.86f+.05f*(float)Math.Sin(a*.9f),y=1.86f+.1f*through;
+            float k=BossMath.Smoother((a-b.Bulge)/(b.Fingers-b.Bulge)),through=BossMath.Smoother((a-b.Fingers)/(b.TearOpen-b.Fingers+.35f));
+            float wall=BehindWall;// the wall, in the root's frame while it waits behind it
+            float z=wall-1.42f+.14f*k+1.24f*through;float x=TearX+.03f*(float)Math.Sin(a*.9f),y=TearY-.02f+.05f*through;
             return new Vector3(x,y,z);
         }
+        /// <summary>Where the tear is on the wall (in the end pose's frame, x its right; y up).</summary>
+        public const float TearX=.86f,TearY=1.62f;
     }
 }

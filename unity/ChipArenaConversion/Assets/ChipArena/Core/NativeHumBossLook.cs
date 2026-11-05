@@ -12,11 +12,11 @@ namespace ChipArena.UnityConversion
     {
         public const int Root=0,Pelvis=1,Spine0=2,Spine1=3,Chest=4,Neck0=5,Neck1=6,Neck2=7,Head=8,JawU=9,JawL=10,
             ClavL=11,UpperL=12,ForeL=13,HandL=14,ClavR=15,UpperR=16,ForeR=17,HandR=18,ThighL=19,ShinL=20,FootL=21,ThighR=22,ShinR=23,FootR=24,RibL=25,RibR=26,Ballast=27,
-            FingerFirst=28,TubeFirst=52,WireFirst=59,StripFirst=73,TileFirst=113,Count=117;
+            FingerFirst=28,TubeFirst=52,WireFirst=59,StripFirst=73,TileFirst=113,WallFore=117,WallHand=118,WallFingerFirst=119,Count=131;
         public const int Fingers=4,FingerLinks=3,Tubes=7,WireLinks=2,Strips=10,StripLinks=4,Tiles=4;
         /// <summary>Hand h (0 left, 1 right), finger f (0 the innermost toward the body's middle on the left hand's table order), link k.</summary>
         public static int Finger(int h,int f,int k)=>FingerFirst+(h*Fingers+f)*FingerLinks+k;
-        public static int Tube(int i)=>TubeFirst+i;public static int Wire(int i,int k)=>WireFirst+i*WireLinks+k;public static int Strip(int s,int k)=>StripFirst+s*StripLinks+k;public static int Tile(int i)=>TileFirst+i;
+        public static int WallFinger(int f,int k)=>WallFingerFirst+f*FingerLinks+k;public static int Tube(int i)=>TubeFirst+i;public static int Wire(int i,int k)=>WireFirst+i*WireLinks+k;public static int Strip(int s,int k)=>StripFirst+s*StripLinks+k;public static int Tile(int i)=>TileFirst+i;
         public static readonly int[] Parent=new int[Count];public static readonly Vector3[] Bind=new Vector3[Count],Rest=new Vector3[Count];public static readonly string[] Names=new string[Count];
         /// <summary>The limbs' lengths (m): upper arm, forearm, thigh, shin; each wallpaper strip's length (a link is a quarter of it); a wire tail's link.</summary>
         public const float UpperArm=1.62f,ForeArm=1.62f,Thigh=1f,Shin=1.02f,WireLength=.24f;
@@ -150,6 +150,20 @@ namespace ChipArena.UnityConversion
             J(114,"tile-1",25,-0.4f,3.24f,0.06f);
             J(115,"tile-2",26,0.41f,2.9f,-0.06f);
             J(116,"tile-3",26,0.36f,2.72f,0.1f);
+            J(117,"wall-fore",0,1.2571f,1.913f,0.1493f);
+            J(118,"wall-hand",117,0.92f,0.4f,0.62f);
+            J(119,"wall-finger-0-0",118,0.805f,0.46f,0.7912f);
+            J(120,"wall-finger-0-1",119,0.6281f,0.5157f,1.1457f);
+            J(121,"wall-finger-0-2",120,0.4834f,0.3276f,1.3603f);
+            J(122,"wall-finger-1-0",118,0.88f,0.46f,0.81f);
+            J(123,"wall-finger-1-1",122,0.8084f,0.5536f,1.2443f);
+            J(124,"wall-finger-1-2",123,0.7494f,0.3319f,1.5218f);
+            J(125,"wall-finger-2-0",118,0.96f,0.46f,0.81f);
+            J(126,"wall-finger-2-1",125,1.006f,0.5347f,1.231f);
+            J(127,"wall-finger-2-2",126,1.0433f,0.3097f,1.4965f);
+            J(128,"wall-finger-3-0",118,1.035f,0.46f,0.7912f);
+            J(129,"wall-finger-3-1",128,1.1816f,0.4976f,1.1179f);
+            J(130,"wall-finger-3-2",129,1.3083f,0.344f,1.3287f);
             BindLimb[UpperL]=LimbFrame(Bind[UpperL],Bind[ForeL],Bind[HandL],ArmPoleL);BindLimb[ForeL]=LimbFrame2(Bind[UpperL],Bind[ForeL],Bind[HandL],ArmPoleL);
             var armR=new Vector3(-ArmPoleL.X,ArmPoleL.Y,ArmPoleL.Z);BindLimb[UpperR]=LimbFrame(Bind[UpperR],Bind[ForeR],Bind[HandR],armR);BindLimb[ForeR]=LimbFrame2(Bind[UpperR],Bind[ForeR],Bind[HandR],armR);
             BindLimb[ThighL]=LimbFrame(Bind[ThighL],Bind[ShinL],Bind[FootL],LegPoleL);BindLimb[ShinL]=LimbFrame2(Bind[ThighL],Bind[ShinL],Bind[FootL],LegPoleL);

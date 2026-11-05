@@ -49,9 +49,9 @@ namespace ChipArena.UnityConversion
         /// <summary>The partitions' two places (room cells, along x or z): layout 0 is the first place of each, and a shift moves a segment to its other one. Each is two cells
         /// long, on a cell line, at least two cells from any other's run and from the outer wall, so no mix of places can seal a pocket (the checks flood every mix).</summary>
         private static readonly (float x,float z,bool alongX,float x2,float z2,bool alongX2)[] Table={
-            (3,3,true, 2,5,false),   (9,3,true, 10,5,false),
-            (3,9,true, 2,7,false),   (9,9,true, 10,7,false),
-            (6,4,false, 5,2,true),   (6,8,false, 7,10,true),
+            (3,3,true, 3,5,false),   (9,3,true, 9,5,false),
+            (3,9,true, 3,8,false),   (9,9,true, 9,8,false),
+            (2,6,false, 5,2,true),   (10,6,false, 7,10,true),
             (4,6,true, 5,10,true),   (8,6,true, 7,2,true)};
         public static void Place(int segment,int place,out float cellX,out float cellZ,out bool alongX)
         {

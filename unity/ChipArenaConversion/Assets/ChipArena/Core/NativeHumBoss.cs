@@ -81,16 +81,16 @@ namespace ChipArena.UnityConversion
         /// <summary>The intro's five shots on the boss's own time (doc section 3 "It has heard you"), in the root's frame at its end pose: the far wall
         /// it comes through lies <see cref="NativeHumArena.IntroWallBehind"/> m behind it. Timed on <see cref="HumBossBeats"/>.</summary>
         public static readonly BossIntroShot[] Shots={
-            // 0-2.2: wide at the room's edge, eye height, a very slow push down the empty room: nothing there. The far rows go out, nearer and nearer.
-            new BossIntroShot{From=0,To=2.2f,EyeA=new Vector3(-2.6f,1.62f,17.6f),EyeB=new Vector3(-2.2f,1.60f,16.1f),LookA=new Vector3(-.8f,1.95f,-7),LookB=new Vector3(-.7f,1.95f,-7),FovA=58,FovB=56,Ease=1},
-            // 2.2-4.2: close and low on the wall: the paper bulges, four fingers come through, it tears open onto black.
-            new BossIntroShot{From=2.2f,To=4.2f,EyeA=new Vector3(2.15f,.92f,-3.15f),EyeB=new Vector3(1.75f,1.02f,-3.95f),LookA=new Vector3(.82f,1.86f,-7),LookB=new Vector3(.86f,1.92f,-7),FovA=46,FovB=40,Ease=1},
+            // 0-2.2: wide at the room's edge, eye height, a very slow push down the empty hall: nothing there. The far rows go out, nearer and nearer.
+            new BossIntroShot{From=0,To=2.2f,EyeA=new Vector3(-.5f,1.62f,18.2f),EyeB=new Vector3(-.4f,1.60f,16.2f),LookA=new Vector3(-.2f,1.3f,-7),LookB=new Vector3(-.2f,1.28f,-7),FovA=56,FovB=54,Ease=1},
+            // 2.2-4.2: close on the wall under the one failing lamp: the paper bulges, four long fingers push through, it tears open onto black.
+            new BossIntroShot{From=2.2f,To=4.2f,EyeA=new Vector3(2.35f,1.28f,-4.0f),EyeB=new Vector3(2.0f,1.34f,-4.6f),LookA=new Vector3(.82f,1.42f,-7),LookB=new Vector3(.86f,1.46f,-7),FovA=44,FovB=38,Ease=1},
             // 4.2-6.2: long lens, side on, its whole height: it walks out through the wall in the dark; the tubes strike up its spine one at a time.
-            new BossIntroShot{From=4.2f,To=6.2f,EyeA=new Vector3(16.5f,1.75f,-5.4f),EyeB=new Vector3(16.5f,1.75f,-3.6f),LookA=new Vector3(0,2.05f,-6.0f),LookB=new Vector3(0,2.05f,-2.6f),FovA=20,FovB=20,Ease=1},
-            // 6.2-8.0: a slow push on the head from below: it flickers and catches, turns to look, the diffuser splits. The card rises at 6.43.
-            new BossIntroShot{From=6.2f,To=8f,EyeA=new Vector3(-.7f,1.05f,4.6f),EyeB=new Vector3(-.42f,1.28f,3.3f),LookA=new Vector3(0,3.1f,.15f),LookB=new Vector3(0,3.2f,.95f),FovA=44,FovB=33,Ease=1},
+            new BossIntroShot{From=4.2f,To=6.2f,EyeA=new Vector3(16.5f,1.55f,-6.0f),EyeB=new Vector3(16.5f,1.55f,-3.5f),LookA=new Vector3(0,1.55f,-6.6f),LookB=new Vector3(0,1.55f,-2.8f),FovA=21,FovB=21,Ease=1},
+            // 6.2-8.0: a slow push on the head from below, as it comes on: it flickers and catches, turns to look, the diffuser splits. The card rises at 6.43.
+            new BossIntroShot{From=6.2f,To=8f,EyeA=new Vector3(-.75f,1.5f,.9f),EyeB=new Vector3(-.5f,1.72f,3.45f),LookA=new Vector3(0,2.72f,-2.5f),LookB=new Vector3(0,2.86f,1.25f),FovA=46,FovB=36,Ease=1},
             // 8.0-9.07: whip back to the party's view; it straightens, head through the ceiling, then stoops; every light slams on at the drop.
-            new BossIntroShot{From=8f,To=9.0678f,EyeA=new Vector3(-.42f,1.28f,3.3f),EyeB=new Vector3(1.2f,1.62f,13.5f),LookA=new Vector3(0,3.4f,.95f),LookB=new Vector3(0,2.5f,.3f),FovA=33,FovB=60,Ease=2,Shake=.012f}};
+            new BossIntroShot{From=8f,To=9.0678f,EyeA=new Vector3(-.5f,1.72f,3.45f),EyeB=new Vector3(1.1f,1.66f,10.5f),LookA=new Vector3(0,3.1f,1.25f),LookB=new Vector3(0,1.9f,.3f),FovA=36,FovB=62,Ease=2,Shake=.012f}};
     }
 
     /// <summary>One move's proposed numbers (doc section 3; Astra owns them).</summary>

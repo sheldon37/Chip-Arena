@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
             NVector velocity=NVector.Zero;bool hasTarget=false;NVector target=NVector.Zero;HumRoom room=null;
             if(NativeHumBossPreview.On)
             {
-                if(double.IsNaN(NativeHumBossPreview.Start))NativeHumBossPreview.Start=now;
+                if(double.IsNaN(NativeHumBossPreview.Start))NativeHumBossPreview.Start=now-HumPreviewSkip();
                 double since=now-NativeHumBossPreview.Start,loops=Math.Floor(since/NativeHumBossPreview.Loop);float p=(float)(since-loops*NativeHumBossPreview.Loop),baseAt=(float)(NativeHumBossPreview.Start+loops*NativeHumBossPreview.Loop);
                 NativeHumBossPreview.View(p,baseAt,ref humView,out velocity,out var pt);hasTarget=true;target=NativeHumBossPreview.TargetPoint(pt);
                 NativeHumBossPreview.Shown=humView;NativeHumBossPreview.ShownClock=now;room=NativeHumBossPreview.Room;
@@ -77,6 +77,14 @@ namespace ChipArena.UnityConversion
             HumFxDraw(eye,now);
             if(humLast>=0)NativeHumBossCues.Queue(humView,humBoss,room,humLast,now);
             humLast=now;
+        }
+        // The Editor's capture tool can start the preview part way in (DEV only: a number in Temp/hum-preview-skip.txt).
+        private static float HumPreviewSkip()
+        {
+#if UNITY_EDITOR
+            try{const string f="Temp/hum-preview-skip.txt";if(System.IO.File.Exists(f)&&float.TryParse(System.IO.File.ReadAllText(f).Trim(),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out float v))return v;}catch(System.IO.IOException){}
+#endif
+            return 0;
         }
         private void HumBossHide()
         {

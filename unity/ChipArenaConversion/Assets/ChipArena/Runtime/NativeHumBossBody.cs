@@ -13,7 +13,7 @@ namespace ChipArena.UnityConversion
         public const string HumBossBank="ChipArenaPackBossHum";
         private const int HumGlowParts=NativeHumBossLook.Tubes+4;
         private readonly Mesh[] humBody=new Mesh[3];private readonly Mesh[][] humGlow=new Mesh[3][];private bool humBankRead,humBankAbsent;
-        private GameObject humRoot;private Transform[] humBones;private SkinnedMeshRenderer humSkin;private MaterialPropertyBlock humBodyBlock,humGlowBlock;private int humSkinTier=-1;
+        private GameObject humRoot;private Transform[] humBones;private SkinnedMeshRenderer humSkin;private MaterialPropertyBlock humBodyBlock,humGlowBlock;private int humSkinTier=-1;private bool humWallOut;
         private static readonly int[] HumGlowJoint=MakeHumGlowJoints();
         private static int[] MakeHumGlowJoints()
         {
@@ -65,8 +65,8 @@ namespace ChipArena.UnityConversion
             humRoot=new GameObject("THE HUM"){hideFlags=HideFlags.HideAndDontSave};humBones=new Transform[NativeHumBossLook.Count];
             for(int j=0;j<humBones.Length;j++){var t=new GameObject(NativeHumBossLook.Names[j]).transform;t.SetParent(humRoot.transform,false);humBones[j]=t;}
             var go=new GameObject("THE HUM skin");go.transform.SetParent(humRoot.transform,false);humSkin=go.AddComponent<SkinnedMeshRenderer>();humSkin.bones=humBones;humSkin.rootBone=humBones[0];humSkin.quality=SkinQuality.Bone4;humSkin.updateWhenOffscreen=false;
-            humSkin.localBounds=new Bounds(new Vector3(0,2,0),new Vector3(16,14,16));humSkin.sharedMaterial=ZombieGearMaterials()[0];humSkin.shadowCastingMode=ShadowCastingMode.Off;humSkin.receiveShadows=true;
-            humBodyBlock=new MaterialPropertyBlock();humGlowBlock=new MaterialPropertyBlock();humSkinTier=-1;
+            humSkin.localBounds=new Bounds(new Vector3(0,2,0),new Vector3(90,14,90));humSkin.sharedMaterial=ZombieGearMaterials()[0];humSkin.shadowCastingMode=ShadowCastingMode.Off;humSkin.receiveShadows=true;
+            humBodyBlock=new MaterialPropertyBlock();humGlowBlock=new MaterialPropertyBlock();humSkinTier=-1;humWallOut=true;
             var life=gameObject.GetComponent<NativeStationLifetime>();if(life==null)life=gameObject.AddComponent<NativeStationLifetime>();life.Gone+=DisposeHumBoss;
         }
         // HumBossScenery: the skin on this frame's pose, the lit parts at their own levels.
@@ -75,8 +75,10 @@ namespace ChipArena.UnityConversion
             if(!HumBankEnsure())return;HumBodyEnsure();var pose=humBoss.Shown;var fx=humBossFx;
             float d=eye!=null?Vector3.Distance(eye.transform.position,NativeBossPoseApply.ToUnity(humBoss.Root)):0;int tier=d<24?0:d<50?1:2;if(LowGraphics)tier=Math.Max(1,tier);HumBossTier=tier;
             if(!humRoot.activeSelf)humRoot.SetActive(true);
-            if(tier!=humSkinTier){humSkinTier=tier;humSkin.sharedMesh=humBody[tier];humSkin.localBounds=new Bounds(new Vector3(0,2,0),new Vector3(16,14,16));}
+            if(tier!=humSkinTier){humSkinTier=tier;humSkin.sharedMesh=humBody[tier];humSkin.localBounds=new Bounds(new Vector3(0,2,0),new Vector3(90,14,90));}
             for(int j=0;j<humBones.Length;j++)humBones[j].SetPositionAndRotation(NativeBossPoseApply.ToUnity(pose.Position[j]),NativeBossPoseApply.ToUnity(pose.Rotation[j]));
+            // The Wall Hand's arm collapses to nothing until it's out.
+            if(humBoss.WallArmOut!=humWallOut){humWallOut=humBoss.WallArmOut;var sc=humWallOut?Vector3.one:Vector3.one*1e-4f;for(int j=NativeHumBossLook.WallFore;j<humBones.Length;j++)humBones[j].localScale=sc;}
             float flash=humFlash;humFlash=Mathf.Max(0,humFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;
             var b=humBodyBlock;b.Clear();b.SetFloat(HitFlashId,code);b.SetFloat(ActorLitId,1);humSkin.SetPropertyBlock(b);HumBossDraws++;
             var glow=humGlow[tier];var mat=ZombieGearMaterials()[1];var g=humGlowBlock;

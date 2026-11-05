@@ -182,6 +182,12 @@ def build_joints():
             J('strip-%d-%d' % (s, k), parent if k == 0 else 'strip-%d-%d' % (s, k - 1), x, y - length * k / STRIP_LINKS, z)
     for i, (parent, x, y, z) in enumerate(TILE_DEFS):
         J('tile-%d' % i, parent, x, y, z)
+    # The arm that comes out of the wall (Wall Hand): a second forearm, hand and fingers, bound where the right arm's are; hidden until it's used.
+    J('wall-fore', 'root', *at('fore-r'))
+    J('wall-hand', 'wall-fore', *at('hand-r'))
+    for f in range(4):
+        for k in range(3):
+            J('wall-finger-%d-%d' % (f, k), 'wall-hand' if k == 0 else 'wall-finger-%d-%d' % (f, k - 1), *at('finger-r%d-%d' % (f, k)))
 
 
 build_joints()
@@ -193,6 +199,10 @@ def segment_of(name):
     nexts = {'pelvis': 'spine0', 'spine0': 'spine1', 'spine1': 'chest', 'chest': 'neck0', 'neck0': 'neck1', 'neck1': 'neck2', 'neck2': 'head'}
     if name in nexts:
         return a, at(nexts[name])
+    if name == 'wall-fore':
+        return a, at('wall-hand')
+    if name == 'wall-hand':
+        return a, a + V(0, .06, .22)
     for n in ('l', 'r'):
         if name == 'clav-' + n:
             return a, at('upper-' + n)
@@ -941,11 +951,15 @@ def board_link(pc, p0, p1, width, thick, fin, tip=False, up=None):
 
 def finger_parts(tier):
     out = []
-    for h, (s, n) in enumerate(((-1, 'l'), (1, 'r'))):
+    # (h 2 is the Wall Hand's: the right hand's fingers on its own joints.)
+    for h, (s, n) in enumerate(((-1, 'l'), (1, 'r'), (1, 'r'))):
+        if h == 2 and tier == 2:
+            continue
         for f in range(4):
             for k in range(3):
                 name = 'finger-%s%d-%d' % (n, f, k)
-                pc = Piece(name)
+                bone = name if h < 2 else 'wall-finger-%d-%d' % (f, k)
+                pc = Piece(name + ('-w' if h == 2 else ''))
                 p0 = at(name)
                 p1 = at('finger-%s%d-%d' % (n, f, k + 1)) if k < 2 else None
                 yaw = math.radians(FINGER_YAW[f] * s) + math.radians((k - 1) * FINGER_YAW[f] * s * .22)
@@ -969,8 +983,34 @@ def finger_parts(tier):
                 # The knuckle: a rusted bolt through it.
                 side = d.cross(V(0, 1, 0)).normalized()
                 gk.cyl(pc, U(p0 - side * .032), U(p0 + side * .032), .0095, 'steel', segs=6)
-                out.append(make(pc, rigid=name, ratio=.85 if tier == 1 else (.6 if tier == 2 else 1), minimum=10))
+                out.append(make(pc, rigid=bone, ratio=.85 if tier == 1 else (.6 if tier == 2 else 1), minimum=10))
     return out
+
+
+def wall_arm(tier):
+    """The forearm and hand of the arm that comes out of the wall: ropes of hide, no voxel skin (it's half in the paper)."""
+    pc = Piece('wall-arm')
+    el, wr = at('wall-fore'), at('wall-hand')
+    b = (wr - el).normalized()
+    side = b.cross(V(0, 0, 1)).normalized()
+    out = b.cross(side).normalized()
+    seg = 8 if tier == 0 else 5
+    for k in (0, 1):
+        ph = k * math.pi
+        pts, rad = [], []
+        for i in range(7):
+            t = i / 6
+            ang = ph + t * 3.2
+            off = (side * math.cos(ang) + out * math.sin(ang)) * (.042 - .018 * t)
+            pts.append(U(el + (wr - el) * (.02 + t * .96) + off))
+            rad.append(max(.03, .062 * (1 - .5 * t)))
+        rope(pc, pts, rad, per=3, segs=seg)
+    knob(pc, U(wr), (.052, .042, .06))
+    for f in range(4):
+        k0 = at('wall-finger-%d-0' % f)
+        rope(pc, path(wr + V(0, -.005, 0), wr * .45 + k0 * .55 + V(0, .018, 0), k0 + V(0, .0, .015)), (.034, .03, .036), per=3, segs=seg)
+    knob(pc, U(wr + V(0, .03, .11)), (.11, .03, .10))
+    return [make(pc, bones=['wall-fore', 'wall-hand'], ratio=.8, minimum=120)]
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -1298,7 +1338,7 @@ def build_tier(tier):
     gk.clear_scene()
     hide = build_hide(tier)
     solids = [hide] + pile_clumps(hide, tier)
-    solids += toe_parts(tier) + carpet_parts(tier) + tatters(tier) + strip_parts(tier) + rib_parts(tier) + tile_parts(tier) + ballast_solid(tier) + finger_parts(tier) + head_solid(tier) + wire_parts(tier)
+    solids += (wall_arm(tier) if tier < 2 else []) + toe_parts(tier) + carpet_parts(tier) + tatters(tier) + strip_parts(tier) + rib_parts(tier) + tile_parts(tier) + ballast_solid(tier) + finger_parts(tier) + head_solid(tier) + wire_parts(tier)
     solids += [tube_solid(i, tier) for i in range(TUBES)] + [tube_ends(i, tier) for i in range(TUBES)]
     solids += [diffuser_back(True, tier), diffuser_back(False, tier)]
     glows = {}

@@ -128,7 +128,7 @@ public static class HumBossChecks
                 float t=f/fps;Step(r,t,f==0?0:1/fps);
                 if(has&&!Jumpy(t))
                 {
-                    float mv=0;int jj=-1;for(int j=0;j<HumBossRig.Count;j++){float d=Vector3.Distance(r.Shown.Position[j],last.Position[j]);if(d>mv){mv=d;jj=j;}}
+                    float mv=0;int jj=-1;for(int j=0;j<NativeHumBossLook.WallFore;j++){float d=Vector3.Distance(r.Shown.Position[j],last.Position[j]);if(d>mv){mv=d;jj=j;}}
                     if(mv>worst){worst=mv;at=t;joint=jj;}
                     if(print&&mv>.34f)top.Add((mv,t,jj));
                 }
