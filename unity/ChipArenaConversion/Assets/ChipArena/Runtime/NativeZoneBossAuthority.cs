@@ -337,7 +337,7 @@ namespace ChipArena.UnityConversion
                 {int part=Math.Abs(local.z)>Math.Abs(local.x)?local.z>0?0:3:local.x<0?1:2;bool intact=(z.parts&(1<<part))!=0;multiplier=intact?.4f:1.15f;if(intact){bossPartDamage[part]+=damage;if(bossPartDamage[part]>=m.MaxHp*.05f){z.parts&=~(1<<part);z.partAt[part]=Time;}}}
                 if(crit&&Time>=bossStaggerImmune){if(Time-bossStaggerWindow>10){bossStaggerWindow=Time;bossStaggerDamage=0;}bossStaggerDamage+=damage*multiplier;z.stagger=Math.Min(1,bossStaggerDamage/(m.MaxHp*.08f));if(z.stagger>=1){BossStagger("kneel",3);bossStaggerImmune=Time+12;bossStaggerDamage=z.stagger=0;}}
             }
-            if(z.holdTarget>=0&&point.HasValue&&Math.Abs(local.x)>1.4f)
+            if(z.backrooms==null&&z.holdTarget>=0&&point.HasValue&&Math.Abs(local.x)>1.4f)
             {if(source?.Seat.id==z.holdTarget)bossSelfDamage+=damage;else bossHoldDamage+=damage;if(bossHoldDamage>=(z.archetype==NativeZoneBossRules.Station?120:200)||z.archetype==NativeZoneBossRules.Station&&bossSelfDamage>=40)BossRelease();}
             m.ExpansionOverkill=Math.Max(0,damage*multiplier-m.Hp);float actual=Math.Min(m.Hp,Math.Max(0,damage*multiplier));m.Hp-=actual;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);return actual;
         }

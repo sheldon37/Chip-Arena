@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         }
         private void StepBackroomBoss()
         {
-            var z=ZoneBoss;var m=zoneBossActor;var b=z.backrooms;var pilots=Pilots.Where(ZonePilot).Select(p=>new BackroomsBossPilot{Seat=p.Seat.id,Feet=new NVector(p.Body.position.x,p.Body.position.y-p.Collider.height/2,p.Body.position.z),Yaw=p.Yaw,Noise=Time-p.AttackAt<2?1:0}).Take(8).ToArray();
+            var z=ZoneBoss;var m=zoneBossActor;var b=z.backrooms;if(z.holdTarget>=0&&Time>=z.holdUntil)BossRelease();var pilots=Pilots.Where(ZonePilot).Select(p=>new BackroomsBossPilot{Seat=p.Seat.id,Feet=new NVector(p.Body.position.x,p.Body.position.y-p.Collider.height/2,p.Body.position.z),Yaw=p.Yaw,Noise=Time-p.AttackAt<2?1:0}).Take(8).ToArray();
             NativeBackroomsBossRules.Step(z,m.Hp,m.MaxHp,Time,1f/60,pilots,backroomContacts,deepAuthorityRig);Pve.Phase=z.phase;
             m.Body.position=new Vector3(b.x,z.archetype==NativeDeepEndBoss.Archetype?deepAuthorityRig.Root.Y:0,b.z);m.Yaw=b.yaw;m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);PoseBackroomBody();
             foreach(var hit in backroomContacts)
