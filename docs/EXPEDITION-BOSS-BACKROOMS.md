@@ -445,3 +445,38 @@ quota, then reaching the sealed room's door starts the arrival; killing the boss
 ## 9. Built
 
 Filled in as the work lands, with what was actually seen and checked.
+
+<!-- THE HUM built -->
+### THE HUM (Claude, 2026-11-05): presentation only, seen in Unity through the DEV preview, not played by a person
+
+Nothing here is a rule. `ArenaPresentation.HumBossViewOf` returns `HumBossView.None` until Astra binds the record, so the live level is exactly as it was.
+
+| Part | Where | What it is |
+| --- | --- | --- |
+| The model | `tools/gear/hum_boss.py`, the local bank `Assets/LocalAssets/ChipArenaLocal/Resources/ChipArenaPackBossHum.bytes` (not committed; Claude ships it in the Drive zip) | Blender, headless, about 8 s. A smooth skin from ropes of hide joined by a voxel remesh, pile displaced in and tufted, on 131 bones; hardware (fixture, T-grid ribs, broken tiles, baseboard fingers, tube housings, the transformer) skinned rigidly in the same mesh; wallpaper strips and wire tails on their own chain bones; vertex colours with ambient occlusion, cavity, wet patches and the paper's pattern. Lit parts are rigid props with their own light. Three tiers: see the bank's report |
+| The numbers | `Core/NativeHumBoss.cs` | Phases, the moves table Astra reads, the meter, weak points, hit volumes, the shots and the card |
+| The arena | `Core/NativeHumArena.cs` | `Carve`, the partitions' two places, fixtures and circuits, the wall queries the sweep and the effects use |
+| The record | `Core/NativeHumBossView.cs` | `HumBossView` with `None`, and section 8's fields as the view reads them |
+| The motion | `Core/NativeHumBossLook.cs`, `...Moves.cs`, `...Rig.cs` | The joint table (held to the script's by the checks), a phrase with key poses per move, the rig on the shared motion library |
+| The room | `Core/NativeHumBossStage.cs`, `Core/NativeHumSurface.cs`, `Runtime/NativeHumBossRoom.cs` | One table of intro beats (`HumBossBeats`, to bind to the song later), each lamp's level, partitions, the air; real geometry for bulges, tears, holes, slip and the door. Hook in `BackroomsWorld`: one line (`HumBossLayout`), which returns the level's own layout with no boss |
+| The effects | `Core/NativeHumBossFx.cs` | Telegraphs and floor light through `NativeFxDraw`, particles through the shared renderer, each lit part's level, its lights in the practical slots |
+| The sounds | `Core/NativeHumBossCues.cs` | The `boss.hum.*` keys in section 3's table, queued, silent until clips exist |
+| The preview | `Core/NativeHumBossPreview.cs`, `Runtime/NativeHumBossPresentation.cs`, `Runtime/NativeHumBossBody.cs` | The intro, every move, both phase changes, breaks, a choke, a clip, the ceiling and the death on a loop, in the carved room on the real map, with a directed camera that finds a clear view |
+| The checks | `Tests/HumBossChecks.cs` (`--hum-boss`), `Tests/HumBossSweep.cs` (`--backrooms-boss-sweep`) | See below |
+
+**What changed from the first design, and why.**
+- It stands on arched fingers, not its knuckles: far stronger silhouette from the game's camera, in the dark too.
+- The tubes run along its back in a herringbone (they first read as a line of plain bars, and the chevron is the wallpaper's).
+- The walk's cycle is 3 m, not longer: past that the arms can't reach. A hand past its reach pulls the shoulder blade down rather than slipping.
+- Partitions were re-placed so a clear hall runs down the middle of the room (the first table had one across every intro shot). Each has two places; 256 mixes checked.
+- The neck pays out: its three bones stretch along themselves, so the head can really hold its place while the body goes round it.
+- Wall Hand has its own arm on its own bones in the skin (bound where the right arm is), hidden until used, as the boss's own arm can't reach across a room. Its body plunges the right arm into the floor to match.
+- Row Burst's lanes, the lunge's width and the rest are as designed.
+- The intro's first shots run with the card's shades at .42 of the Siren's (`BossIntroCard.Shades`, the other boss unchanged): the first beat is a flat bright room, and her shades hid it. From the name on they're hers.
+
+**For Astra (section 8 still stands):** `HumBossViewOf` is the one binding point. The record fields are `HumBossView`'s. On binding, the presenter carves a copy of the layout round its exit cell for the room's look (`HumBossLayout`); your generator should call `NativeHumArena.Carve` round the same cell and read the partitions from `HumRoom.Partition`. `Tests/HumBossSweep.cs` plays a stand-in over the table's shapes, not your rules: run the same grid against the real authority.
+
+**The sweep.** A pilot at each cell's centre, hard against each wall and in each corner, still and circling, over 110 s of a stand-in rotation (whatever has been ready longest, near enough to land). A still pilot's limit is the meter plus its wind plus .5 s. A circling pilot's threat counts a shape passing within 1.5 m (it had to be moving to miss it); those limits (16, 20, 20 s) were set just above what the stand-in does, so they hold the design where it is rather than prove it. Removing Fall Through must break the still limit, and does. The stand-in found no hole that needed a design change; it did show the rotation must not be a fixed order, or Max Hum comes round too rarely: Astra's rotation should prefer what has been ready longest.
+
+**Not done or not known.** No person has played it; no rule exists. Performance is not measured in a real match (the skin is about 30k vertices on the CPU). The song's accents aren't bound: the beats are fixed numbers. Fall Through's fall and return, Facelings and the pilot's side of every move are Astra's. On the ceiling the preview's chains only approximate gravity through the turn.
+<!-- /THE HUM built -->

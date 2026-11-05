@@ -52,7 +52,7 @@ namespace ChipArena.UnityConversion
             // Noclip: it backs to the side wall, its hand into the paper; then down a lane across the room, through a partition.
             float laneZ=C.Z-5.3f,lx0=Room.MaxX-3.5f,lx1=lx0-26;
             K(t+.2f,x0+1,z0-10.2f,y0);K(t+3.2f,lx0,laneZ,-90);K(t+3.8f,lx0,laneZ,-90);LungeAt=t+3.8f;
-            F(t+.3f,110,10,1.6f,2.2f,58,4);F(LungeAt-.3f,-45,12,1.4f,2.1f,52,0);
+            F(t+.3f,110,10,1.6f,2.2f,58,4);FP(LungeAt-.2f,-90,11.5f,1.5f,1.75f,70,new Vector2((lx0+lx1)*.5f,laneZ),0);
             var lm=NativeHumBoss.Move("lunge");K(LungeAt+lm.Wind,lx0,laneZ,-90);K(LungeAt+lm.Wind+lm.Strike+lm.Follow,lx1,laneZ,-90,Throw);t=A("lunge",LungeAt,1,lx0,laneZ,lx1,laneZ);
             // Peripheral Shift, then Fall Through under the camper: it stands and looks; the carpet does the rest.
             K(t+.3f,lx1,laneZ,-90);K(t+2.4f,lx1+3,laneZ+1,20);F(t,20,11,1.5f,2.1f,58,3);
