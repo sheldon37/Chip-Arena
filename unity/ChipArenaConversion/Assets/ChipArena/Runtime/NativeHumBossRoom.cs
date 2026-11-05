@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private BackroomsLayout humLayoutFrom,humLayoutCarved;private HumRoom humRoomLive;
-        private Mesh humPartitionPaper,humPartitionTrim;private MaterialPropertyBlock humLampBlock;
+        private Mesh humPartitionPaper,humPartitionTrim;private MaterialPropertyBlock humLampBlock,humVoidBlock;
         private readonly Mesh[] humPatch=new Mesh[3];private Mesh humVoid;private readonly int[] humPatchVerts={-1,-1,-1},humPatchIndex={-1,-1,-1};private int humVoidVerts=-1,humVoidIndex=-1;
         private static readonly VertexAttributeDescriptor[] HumPatchLayout=
         {
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
                 int surf=i==NativeHumSurface.WallS?(int)BackroomsMesh.Surface.Wallpaper:i==NativeHumSurface.FloorS?(int)BackroomsMesh.Surface.Carpet:(int)BackroomsMesh.Surface.Ceiling;
                 Graphics.DrawMesh(humPatch[i],Matrix4x4.identity,backroomsMats[surf],0,null,0,backroomsProps,ShadowCastingMode.Off,true);HumBossDraws++;
             }
-            if(sf.Void.IndexCount>0){var mats=ZombieGearMaterials();if(mats!=null){HumPatchUpload(humVoid,sf.Void,ref humVoidVerts,ref humVoidIndex);Graphics.DrawMesh(humVoid,Matrix4x4.identity,mats[0],0,null,0,null,ShadowCastingMode.Off,false);HumBossDraws++;}}
+            if(sf.Void.IndexCount>0){var mats=ZombieGearMaterials();if(mats!=null){HumPatchUpload(humVoid,sf.Void,ref humVoidVerts,ref humVoidIndex);humVoidBlock??=new MaterialPropertyBlock();humVoidBlock.SetFloat(VertexAlbedoId,1);Graphics.DrawMesh(humVoid,Matrix4x4.identity,mats[0],0,null,0,humVoidBlock,ShadowCastingMode.Off,false);HumBossDraws++;}}
             // The light: the boss's own first, then the near lamps; the air follows the lamps.
             if(eye!=null)
             {

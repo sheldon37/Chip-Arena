@@ -25,12 +25,14 @@ namespace ChipArena.UnityConversion
     public sealed class NativeHumSurface
     {
         public const byte WallS=0,FloorS=1,CeilingS=2;
-        public readonly HumPatchMesh[] Paper={new HumPatchMesh(14000,62000),new HumPatchMesh(5200,22000),new HumPatchMesh(5200,22000)};
-        public readonly HumPatchMesh Void=new HumPatchMesh(9000,26000);
+        public readonly HumPatchMesh[] Paper={new HumPatchMesh(16000,76000),new HumPatchMesh(9000,42000),new HumPatchMesh(9000,42000)};
+        public readonly HumPatchMesh Void=new HumPatchMesh(12000,40000);
+        /// <summary>How much of the room's light is about (0..1): what little the torn paper's pale core gives back on its own.</summary>
+        public float Air=1;
         /// <summary>How many patches this frame (budget lines, checks).</summary>
         public int Patches,Refused;
         public void Begin(){foreach(var m in Paper)m.Clear();Void.Clear();Patches=Refused=0;}
-        private const int Rings=9,Sectors=48;
+        private const int Rings=12,Sectors=72;
         private static float H(int seed,int i){unchecked{uint x=(uint)seed*0x9E3779B9U^(uint)i*0x85EBCA6BU;x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;x^=x>>16;return (x>>8)/16777216f;}}
         /// <summary>The surface's own uv at a point, as Core BackroomsMesh lays each: a wall by its run and height, the floor and ceiling by x and z.</summary>
         private static void SurfaceUv(byte surf,Vector3 q,Vector3 n,out float u,out float v)
@@ -47,7 +49,7 @@ namespace ChipArena.UnityConversion
         public void Tear(byte surf,Vector3 centre,Vector3 n,Vector3 a,Vector3 b,float radius,float open,float bulge,float lift,int seed,Vector3 eye,float minA,float maxA,float minB,float maxB,Vector3 f0=default,Vector3 f1=default,Vector3 f2=default,Vector3 f3=default,float tint=1,float tall=1,float strips=0,float t=0)
         {
             var m=Paper[surf];int gridV=(Rings+1)*(Sectors+1),gridI=Rings*Sectors*6;
-            if(!m.Room(gridV,gridI)||!Void.Room(Sectors*5+3+StripCount*12,Sectors*21+StripCount*24)){Refused++;return;}
+            if(!m.Room(gridV,gridI)||!Void.Room(Sectors*5+3+StripCount*12+FlapCount*(FlapRows+1)*2,Sectors*21+StripCount*30+FlapCount*FlapRows*12)){Refused++;return;}
             Patches++;int v0=m.VertexCount;float off=surf==WallS?.012f:.008f;
             for(int s=0;s<=Sectors;s++)
             {
@@ -78,7 +80,7 @@ namespace ChipArena.UnityConversion
                 int i=v0+s*(Rings+1)+r;
                 var dr=m.Vertices[v0+s*(Rings+1)+Math.Min(Rings,r+1)].P-m.Vertices[v0+s*(Rings+1)+Math.Max(0,r-1)].P;
                 var ds=m.Vertices[v0+Math.Min(Sectors,s+1)*(Rings+1)+r].P-m.Vertices[v0+Math.Max(0,s-1)*(Rings+1)+r].P;
-                var nn=Vector3.Cross(dr,ds);float l=nn.Length();if(l>1e-8f){nn/=l;if(Vector3.Dot(nn,n)<0)nn=-nn;m.Vertices[i].N=Vector3.Normalize(nn+n*1.6f);}
+                var nn=Vector3.Cross(dr,ds);float l=nn.Length();if(l>1e-8f){nn/=l;if(Vector3.Dot(nn,n)<0)nn=-nn;m.Vertices[i].N=Vector3.Normalize(nn+n*(.25f+1.35f*Math.Min(1,open*3)));}
             }
             // (a x b) along n means s, r runs one way; wind so the outside is the front (Unity: clockwise from the front).
             bool flip=Vector3.Dot(Vector3.Cross(a,b),n)<0;
@@ -95,14 +97,14 @@ namespace ChipArena.UnityConversion
             {
                 float ang=s*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);float edge=Edge(open,seed,s);
                 var rim=centre+a*BossMath.Clamp(ca*edge,minA,maxA)+b*BossMath.Clamp(sa*edge*tall,minB,maxB)+off2;
-                float st=H(seed+7,s);float tone=st<.5f?.0f:(st-.5f)*.3f;
+                float st=H(seed+7,s);float tone=st<.5f?.0f:(st-.5f)*.1f;
                 Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=rim,N=n,R=.44f*tone+.006f,G=.42f*tone+.006f,B=.2f*tone+.004f,A=0};
                 var mid=Vector3.Lerp(rim,centre+shift+off2,.42f);
                 Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid,N=n,R=.05f*tone+.002f,G=.048f*tone+.002f,B=.024f*tone+.002f,A=0};
                 // The torn rim: on the paper's edge (where the paper's inner ring stands), a thin pale lip outside the hole.
-                int inner=v0+s*(Rings+1);var pv=m.Vertices[inner].P;float w=.006f+.03f*H(seed+11,s)*H(seed+12,s*2);var outward=Vector3.Normalize(a*ca+b*sa*tall)*w;
-                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+n*.002f,N=n,R=.5f,G=.46f,B=.32f,A=0};
-                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+outward+n*.002f,N=n,R=.36f,G=.33f,B=.22f,A=0};
+                int inner=v0+s*(Rings+1);var pv=m.Vertices[inner].P;float w=.012f+.06f*H(seed+11,s)*H(seed+12,s*2);var outward=Vector3.Normalize(a*ca+b*sa*tall)*w;float rimGlow=.3f*Air;
+                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+n*.002f,N=n,R=.68f,G=.64f,B=.48f,A=rimGlow};
+                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+outward+n*.002f,N=n,R=.52f,G=.48f,B=.34f,A=rimGlow*.6f};
             }
             int vcen=Void.VertexCount;Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=centre+shift+off2,N=n,R=.001f,G=.001f,B=.001f,A=0};
             for(int s=0;s<Sectors;s++)
@@ -133,11 +135,37 @@ namespace ChipArena.UnityConversion
                     int bl0=bv0+r*2,br0=bl0+1,bl1=bl0+2,br1=bl0+3;if(flip){Void.Tri(bl0,bl1,br1);Void.Tri(bl0,br1,br0);}else{Void.Tri(bl0,br1,bl1);Void.Tri(bl0,br0,br1);}
                 }
             }
+            // Flaps peeled back off the edge all round it, curling over onto the wall: what the room sees of them is the paper's reverse, pale. Both sides drawn (they stand up off the wall).
+            if(strips>.01f&&surf==WallS)for(int k=0;k<FlapCount;k++)
+            {
+                int sec=(int)((k+.2f+.6f*H(seed+30,k))/FlapCount*Sectors)%Sectors;float ang=sec*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);float edge=Edge(open,seed,sec);
+                var d0=Vector3.Normalize(a*ca+b*sa*tall);var side=Vector3.Cross(n,d0);var c=centre+a*BossMath.Clamp(ca*edge,minA,maxA)+b*BossMath.Clamp(sa*edge*tall,minB,maxB)+n*(off+.003f);
+                float len=(.14f+.36f*H(seed+31,k))*Math.Min(1,open*2.4f)*Math.Min(1,strips*1.4f),wid=.05f+.12f*H(seed+32,k);if(len<.02f)continue;
+                float flutter=(float)Math.Sin(t*(.9f+H(seed+33,k))+k*1.7f)*.12f,curl=2.3f+.6f*H(seed+34,k);int f0v=Void.VertexCount;
+                for(int r=0;r<=FlapRows;r++)
+                {
+                    float u=(float)r/FlapRows,phi=.3f+(curl+flutter)*u,cp=(float)Math.Cos(phi),sp=(float)Math.Sin(phi);var along=n*cp+d0*sp;var nr=n*sp-d0*cp;
+                    float wr=wid*(float)Math.Pow(1-u,.8f)+.002f;var mid=c+side*((H(seed+36,k*9+r)-.5f)*wid*.5f*u);
+                    float g=(.46f+.3f*u+.1f*H(seed+35,k*7+r));float fg=.3f*Air*(.4f+.6f*u);
+                    Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid-side*wr,N=nr,R=g,G=g*.94f,B=g*.72f,A=fg};Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid+side*wr,N=nr,R=g,G=g*.94f,B=g*.72f,A=fg};
+                    c+=along*(len/FlapRows);
+                }
+                for(int r=0;r<FlapRows;r++){int l0=f0v+r*2,r0=l0+1,l1=l0+2,r1=l0+3;Void.Tri(l0,l1,r1);Void.Tri(l0,r1,r0);Void.Tri(l0,r1,l1);Void.Tri(l0,r0,r1);}
+            }
         }
-        private const int StripCount=9,StripRows=5;
+        private const int StripCount=6,StripRows=5,FlapCount=9,FlapRows=5;
         // The hole's jagged edge at sector s: long tears out between short ones.
-        private static float Edge(float open,int seed,int s){return open*(.5f+.5f*H(seed,s/2)+.42f*H(seed+1,s*3+1)*H(seed+2,s)+.18f*H(seed+9,s/5));}
-        private static float Peak(float pa,float pb,Vector3 f){if(f.Z==0)return 0;float dx=pa-f.X,dy=pb-f.Y,d=(dx*dx+dy*dy)/(.085f*.085f);return f.Z*(float)Math.Exp(-d);}
+        private static float Edge(float open,int seed,int s)
+        {
+            float ang=s*BossMath.Tau/Sectors;float e=.56f+.15f+.15f*(float)Math.Sin(ang*2+H(seed,1)*6.28f)+.06f+.06f*(float)Math.Sin(ang*5+H(seed,2)*6.28f)+.1f*H(seed+3,s/3)+.06f*H(seed+4,s);
+            for(int i=0;i<4;i++){float d=Math.Abs(s-H(seed+5,i)*Sectors);if(d>Sectors*.5f)d=Sectors-d;if(d<3.5f){float q=1-d/3.5f;e+=(.35f+.55f*H(seed+6,i))*q*q;}}
+            return open*e;
+        }
+        private static float Peak(float pa,float pb,Vector3 f)
+        {
+            if(f.Z==0)return 0;float kx=f.X*.42f,ky=f.Y-.26f,ex=f.X-kx,ey=f.Y-ky;float u=BossMath.Clamp01(((pa-kx)*ex+(pb-ky)*ey)/(ex*ex+ey*ey));float dx=pa-(kx+ex*u),dy=pb-(ky+ey*u),d=(dx*dx+dy*dy)/(.064f*.064f);
+            return f.Z*(.6f+.4f*u)*(float)Math.Exp(-d);
+        }
         /// <summary>A door cut in the wallpaper (the death's: the way out): a dark opening `w` by `h` on the surface at `foot` (its bottom middle), its papered leaf swung open by `open` (0..1) on a hinge up its left side, the leaf's reverse pale.</summary>
         public void Door(Vector3 foot,Vector3 n,Vector3 a,float w,float h,float open)
         {

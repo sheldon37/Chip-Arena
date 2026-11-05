@@ -80,7 +80,7 @@ namespace ChipArena.UnityConversion
             for(int k=0;k<3;k++)humBones[NativeHumBossLook.Neck0+k].localScale=new Vector3(1,1,humBoss.NeckStretch[k]);
             // The Wall Hand's arm collapses to nothing until it's out.
             if(humBoss.WallArmOut!=humWallOut){humWallOut=humBoss.WallArmOut;var sc=humWallOut?Vector3.one:Vector3.one*1e-4f;for(int j=NativeHumBossLook.WallFore;j<humBones.Length;j++)humBones[j].localScale=sc;}
-            float flash=humFlash;humFlash=Mathf.Max(0,humFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;
+            float flash=humFlash;humFlash=Mathf.Max(0,humFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+.55f*Mathf.Clamp01(flash):1;
             var b=humBodyBlock;b.Clear();b.SetFloat(HitFlashId,code);b.SetFloat(ActorLitId,1);humSkin.SetPropertyBlock(b);HumBossDraws++;
             var glow=humGlow[tier];var mat=ZombieGearMaterials()[1];var g=humGlowBlock;
             for(int p=0;p<HumGlowParts;p++)

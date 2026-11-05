@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             if(rig==null||!rig.Visible||!v.live)return;
             eye=new Vector3((float)eyeX,(float)eyeY,(float)eyeZ);camR=new Vector3((float)rightX,(float)rightY,(float)rightZ);camU=new Vector3((float)upX,(float)upY,(float)upZ);quality=effects<0?0:effects>1?1:effects;low=lowTier;reduced=reducedEffects;
             vseed=0x4A1u^(uint)(HumBossView.At(v.spawned)?(int)(v.spawned*16):0);floorY=Room!=null?Room.Origin.Y:v.y;
-            DustC=DustFull*(.12f+.88f*Math.Min(1,st.Air));
+            DustC=DustFull*(.12f+.88f*Math.Min(1,st.Air));Surface.Air=.35f+.65f*Math.Min(1,st.Air);
             Levels(rig,v,st,t);
             // Telegraphs first (never thinned), then the rest.
             Rows(v,st,t);Lane(rig,v,t);Stoop(rig,v,t);ReachArc(rig,v,t);CutArc(rig,v,t);FallThrough(rig,v,t);Ring(rig,v,t);
@@ -324,11 +324,18 @@ namespace ChipArena.UnityConversion
             float press=BossMath.Smooth((a-b.Bulge)/(b.Fingers-b.Bulge));float through=BossMath.Smooth((a-b.Fingers)/(b.TearOpen-b.Fingers));float open=BossMath.Smoother((a-b.TearOpen+.08f)/.55f);
             float scratch=reduced?0:.012f*(float)Math.Sin(a*31)*(1-through);
             // Four finger tips under the paper, spreading, before they're through (across the wall in its own axis: -x here).
-            var f0=new Vector3(-.5f,-.05f+.02f*(float)Math.Sin(a*5),.1f*press*(1-through));var f1=new Vector3(-.17f,.05f,.13f*press*(1-through));var f2=new Vector3(.15f,.06f+.01f*(float)Math.Sin(a*7),.12f*press*(1-through));var f3=new Vector3(.47f,-.04f,.09f*press*(1-through));
+            float under=press*(1-through),feel=reduced?0:.018f;
+            var f0=new Vector3(-.46f,.02f+feel*(float)Math.Sin(a*5),.14f*under);var f1=new Vector3(-.17f,.24f+feel*(float)Math.Sin(a*6.3f+1),.19f*under);var f2=new Vector3(.14f,.27f+feel*(float)Math.Sin(a*7+2),.18f*under);var f3=new Vector3(.42f,.08f+feel*(float)Math.Sin(a*4.1f+3),.13f*under);
             // It stays torn a while into the fight, then the paper's whole again, as if it had never been (the level doesn't keep what happens to it).
             float heal=1-BossMath.Smoother((a-b.Hold-4)/2.5f);
-            float holeR=(.2f*through+.3f*open)*heal;float bulge=(.1f*press*(1-.6f*open)+scratch)*heal;
-            WallPatch(c,0,-1,2.1f,holeR,bulge,.03f*through+.03f*open,9090,t,f0,f1,f2,f3,1.45f,open);Tears++;
+            float holeR=(.2f*through+.3f*open)*heal;float bulge=(.15f*press*(1-.6f*open)+scratch)*heal;
+            WallPatch(c,0,-1,1.8f,holeR,bulge,.02f*through+.02f*open,9090,t,f0,f1,f2,f3,1.45f,open*heal);Tears++;
+            // While it's still behind the wall, what's lit on it comes up through the paper: the transformer first, then the tubes, one by one.
+            if(rig.Arriving&&a>=b.WalkOut-.1f)
+            {
+                var P=rig.Shown;WallGlow(P.Position[NativeHumBossLook.Ballast],wz,Amber*Math.Min(1.4f,Ballast),1.25f);
+                for(int i=0;i<7;i++)WallGlow(P.Position[NativeHumBossLook.Tube(i)],wz,LampWarm*(.8f*Tube[i]),.8f);
+            }
             // Plaster dust out of the tear: flakes, falling.
             if(a>=b.Fingers)Vfx.RubbleBurst(t,new Vector3(c.X,c.Y+.2f,wz-.2f),new Vector3(0,-.2f,-1),.8f,1.1f,10,2.3f,v.spawned+b.Fingers+.1f,.014f,new Vector3(.36f,.35f,.2f),vseed,801,0,floorY);
             // It walks out through the wall without opening it: the paper reaches for it at each limb crossing the wall. A larger stretch round the torso.
@@ -342,6 +349,12 @@ namespace ChipArena.UnityConversion
             // Through the ceiling as it straightens: dust and tiles around it.
             float st0=a-b.Straighten-.25f;if(st0>=0&&st0<5){var h=new Vector3(cx,floorY,Room.MaxZ-NativeHumArena.IntroWallBehind);CeilingFall(h,v.spawned+b.Straighten+.25f,t,900,1-BossMath.Smoother((st0-2.5f)/2.5f));}
             if(a>=b.Hold-.25f){}
+        }
+        private void WallGlow(Vector3 p,float wz,Vector3 c,float size)
+        {
+            float behind=p.Z-wz;if(behind<-.05f||behind>1.8f||c.LengthSquared()<1e-4f)return;float near=1-behind/1.8f;near*=near;float k=near*BossMath.Clamp01((behind+.05f)/.2f);if(k<=.01f)return;
+            float hx=size*(1.4f-.55f*near),hy=hx*1.15f,z=wz-BackroomsLayout.Thickness*.5f-.025f;
+            Add(p.X-hx,p.Y-hy,z,p.X+hx,p.Y-hy,z,p.X+hx,p.Y+hy,z,p.X-hx,p.Y+hy,z,c.X*k,c.Y*k,c.Z*k,.8f,1,true);
         }
         // Tiles, dust and rail out of the ceiling grid round a point.
         private void CeilingFall(Vector3 at,float when,float t,int key,float hole=1)
@@ -474,6 +487,12 @@ namespace ChipArena.UnityConversion
         private void Lights(HumBossRig rig,in HumBossView v,HumBossStage st,float t)
         {
             var P=rig.Shown;float head=DiffuserU;
+            // The one lamp left over that stretch of wall, raking down it: what's behind the paper shows in the relief. Gone as the wall gives way.
+            if(Room!=null&&HumBossView.At(v.spawned))
+            {
+                var b=HumBossBeats.Current;float a=t-v.spawned;float k=BossMath.Smooth((a-b.RowOut3-.02f)/.3f)*(1-BossMath.Smooth((a-b.WalkOut+.1f)/.1f));
+                if(k>.01f&&a>=0){float flick=reduced?1:.88f+.12f*(float)Math.Sin(a*43)*(float)Math.Sin(a*17);AddLight(new Vector3(Room.Centre.X-HumBossArrival.TearX+.45f,floorY+BackroomsLayout.Height-.12f,Room.MaxZ-.72f),5.5f,LampWarm*(.8f*k*flick));}
+            }
             if(head>.02f){var c=P.Position[NativeHumBossLook.Head];var f=BossMath.Rotate(P.Rotation[NativeHumBossLook.Head],Vector3.UnitZ);AddLight(c+f*.7f+new Vector3(0,-1.1f,0),8f,LampWarm*(.3f*head));}
             float low2=0,hi2=0;for(int i=0;i<3;i++)low2+=Tube[i];for(int i=4;i<7;i++)hi2+=Tube[i];low2/=3;hi2/=3;
             if(hi2>.02f)AddLight(P.Position[NativeHumBossLook.Tube(5)]+new Vector3(0,-.1f,-.15f),7.5f,LampWarm*(.42f*hi2));
