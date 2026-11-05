@@ -155,7 +155,7 @@ namespace ChipArena.UnityConversion
         private static Vector3 SafeDir(Vector3 d,Vector3 fallback){float l=d.Length();return l>1e-4f?d/l:fallback;}
         private static Vector3 SafeUp(Vector3 tan){var u=Vector3.UnitY-tan*tan.Y;float l=u.Length();return l>.05f?u/l:Vector3.Normalize(Vector3.UnitZ-tan*tan.Z);}
         /// <summary>The death's draw back along the trail (m) `age` s after dying: a settle while the mouth closes, then sinking, slowly gathering.</summary>
-        public static float Retract(float age){float t=age-DeathSettle;if(t<=0)return 0;return Math.Min(70,.5f*2.1f*t*t+1.2f*t);}
+        public static float Retract(float age){float t=age-DeathSettle;if(t<=0)return 0;return Math.Min(70,.5f*1.15f*t*t+.75f*t);}
         public const float DeathSettle=1.4f;
         // A live record's route: appended as its moves start. (The preview's script calls the same code at its start.)
         private void Observe(in DeepEndBossView v,float now,float surface)

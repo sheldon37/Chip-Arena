@@ -148,8 +148,8 @@ namespace ChipArena.UnityConversion
             if(deathK>0)
             {
                 // In front of the mouth and above, looking down the crown as it goes: the lettering is the last thing to see, and it reads.
-                var above=new Vector3(0,Math.Max(0,headRoom.Y),0);var side=crown;side.Y=0;if(side.LengthSquared()<.01f)side=new Vector3(0,0,1);side=Vector3.Normalize(side);var deathEye=new Vector3(headRoom.X,Math.Max(TideAt(p)+3.9f,above.Y+2.4f),headRoom.Z)+side*6.4f;deathEye.Y=Math.Min(deathEye.Y,NativeDeepEndArena.Ceiling-.6f);
-                var deathLook=new Vector3(headRoom.X,Math.Max(headRoom.Y,TideAt(p)-3.5f),headRoom.Z);fov=f.Fov+(46-f.Fov)*deathK;
+                var above=new Vector3(0,Math.Max(0,headRoom.Y),0);var side=crown;side.Y=0;if(side.LengthSquared()<.01f)side=new Vector3(0,0,1);side=Vector3.Normalize(side);var crownAt=new Vector3(headRoom.X,Math.Max(headRoom.Y,TideAt(p)-4.5f),headRoom.Z)-side*2.2f;var deathEye=new Vector3(crownAt.X,NativeDeepEndArena.Ceiling-.7f,crownAt.Z)+side*2.4f;
+                var deathLook=crownAt;fov=f.Fov+(50-f.Fov)*deathK;
                 float h0=Math.Max(f.Height,TideAt(p)+1.2f);var at0=focus+new Vector3((float)Math.Sin(f.Yaw)*f.Dist,0,(float)Math.Cos(f.Yaw)*f.Dist);at0.Y=h0;eye=origin+Vector3.Lerp(at0,deathEye,deathK);look=origin+Vector3.Lerp(focus,deathLook,deathK);return true;
             }
             float tide=TideAt(p);float h=Math.Max(f.Height,tide+1.2f);
