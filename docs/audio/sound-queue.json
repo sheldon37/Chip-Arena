@@ -1,4 +1,24 @@
 {
   "schema": "chip-arena.sound-queue/1",
-  "jobs": []
+  "jobs": [
+    {
+      "id": "boss-sample-20261105",
+      "approved": true,
+      "manifest": "docs/audio/sound-requests-bosses.json",
+      "manifestSha256": "157c97f51c351abdf8e8642c3f3e7257ce6a5210dd682673dc87ef326891af46",
+      "keys": [
+        "boss.hum.tube.strike",
+        "boss.hum.tear",
+        "boss.hum.scratch",
+        "boss.deepend.break",
+        "boss.deepend.drip",
+        "boss.deepend.iris"
+      ],
+      "variants": [
+        1
+      ],
+      "maxRequests": 6,
+      "maxSeconds": 11
+    }
+  ]
 }
