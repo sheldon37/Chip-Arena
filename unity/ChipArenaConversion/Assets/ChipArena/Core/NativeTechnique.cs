@@ -24,7 +24,7 @@ namespace ChipArena.UnityConversion
         public bool Hit(float time)=>HitAt>-50&&time>=HitAt;
         public bool Recast(float time)=>RecastAt>-50&&time>=RecastAt;
         public NativeTechnique ViewCopy(){var copy=(NativeTechnique)MemberwiseClone();copy.Path=Path==null?null:(V3[])Path.Clone();return copy;}
-        private static readonly string[] Phases=new[]{"windup","active","guard","counter","recovery","throw","cloud","plant","wall","recall","flight","stuck","leap","return","flick","air","drop","armed","fire","reel","draw","burst","crouch","cast","pool","set","bolt","swap","hop","line","snap","mount","ride","brace","shot","marked","blast","ping","dive","ignite","run","stream","rod","zap","sink","walk","rise"};
+        private static readonly string[] Phases=new[]{"windup","active","guard","counter","recovery","throw","cloud","plant","wall","recall","flight","stuck","leap","return","flick","air","drop","armed","fire","reel","draw","burst","crouch","cast","pool","set","bolt","swap","hop","line","snap","mount","ride","brace","shot","marked","blast","ping","dive","ignite","run","stream","rod","zap","sink","walk","rise","bang","blow","bound","breath","bubble","charge","clap","clash","cloak","coat","coated","drag","drain","duel","flash","gather","hidden","hot","ice","inhale","jet","live","lunge","open","packup","planted","point","pop","pull","puppet","raise","rally","reach","release","scream","settle","sheathe","shock","slam","slide","smash","spin","stamp","surge","sweep","tether","thorns","vault","wind","yank"};
         public bool Valid()
         {
             bool F(float v)=>MathUtil.Finite(v)&&Math.Abs(v)<10000000;bool V(V3 v)=>F(v.x)&&F(v.y)&&F(v.z)&&v.Length<100000;bool S(string v)=>v==null||v.Length<=32;
@@ -37,7 +37,7 @@ namespace ChipArena.UnityConversion
 
     /// <summary>Every weapon's techniques (docs/WEAPON-TECHNIQUES.md). A new one is a row here, its text, its content row, its effect and its pose:
     /// nothing else counts them, and the Locker lays out however many a weapon has.</summary>
-    public static class NativeTechniques
+    public static partial class NativeTechniques
     {
         public sealed class Def{public string Id,Spec,Name,Icon,Tag;public float Cooldown,Cost;public int Accent;}
         public const string Riposte="riposte",SmokeVeil="smoke-veil",Bastion="bastion",AnchorThrow="anchor-throw",RicochetCoin="ricochet-coin",SentryDrop="sentry-drop",GrappleLine="grapple-line",GaleArrow="gale-arrow",IgnitionLeap="ignition-leap",HealingSpring="healing-spring",StaticRecall="static-recall",ShadeSwap="shade-swap";
@@ -55,7 +55,7 @@ namespace ChipArena.UnityConversion
         /// <summary>A weapon's techniques, in the order the Locker lists them (empty: a DEV class). Allocation free once built.</summary>
         public static Def[] Of(string spec)
         {
-            if(spec==null)return Array.Empty<Def>();if(bySpec.TryGetValue(spec,out var list))return list;var l=new List<Def>();foreach(var d in All)if(d.Spec==spec)l.Add(d);list=l.ToArray();bySpec[spec]=list;return list;
+            if(spec==null)return Array.Empty<Def>();if(bySpec.TryGetValue(spec,out var list))return list;var l=new List<Def>();foreach(var d in All)if(d.Spec==spec)l.Add(d);foreach(var d in Third)if(d.Spec==spec)l.Add(d);list=l.ToArray();bySpec[spec]=list;return list;
         }
         private static readonly Dictionary<string,Def[]> bySpec=new Dictionary<string,Def[]>();
         /// <summary>The content row of a technique (null: the rules have none yet).</summary>
@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
                 case Slipstream:return "A current along the floor: anyone riding it moves faster, enemies too. Against it is slow.";
                 case LightningRod:return "Plant a rod that pulls enemy shots near it down into itself, until it breaks.";
                 case GraveWalk:return "Sink into your shadow: untouchable and moving, but unable to act, with the pool in plain sight.";
-                default:return "";
+                default:return ThirdText(id);
             }
         }
         /// <summary>A technique's HUD card in the slot it replaced. The recast comes first: it is the one state that asks for a press.
@@ -112,12 +112,12 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Why a press would be refused for where it is aimed: what NativeArena.TechniqueRefusal answers, its card state and the line
         /// under the crosshair when a press is refused.</summary>
-        public const string NoSurface="no-surface",Blocked="blocked",NoFloor="no-floor";
-        public static string RefusalState(string why)=>why==NoSurface?"NO SURFACE":why==Blocked?"BLOCKED":why==NoFloor?"NO FLOOR":null;
-        public static string RefusalLine(string why)=>why==NoSurface?"NO SURFACE IN RANGE":why==Blocked?"THE WAY BACK IS BLOCKED":why==NoFloor?"NO FLOOR THERE":null;
+        public const string NoSurface="no-surface",Blocked="blocked",NoFloor="no-floor",NoTarget="no-target",Disarmed="disarmed";
+        public static string RefusalState(string why)=>why==NoSurface?"NO SURFACE":why==Blocked?"BLOCKED":why==NoFloor?"NO FLOOR":why==NoTarget?"NO TARGET":why==Disarmed?"DISARMED":null;
+        public static string RefusalLine(string why)=>why==NoSurface?"NO SURFACE IN RANGE":why==Blocked?"THE WAY BACK IS BLOCKED":why==NoFloor?"NO FLOOR THERE":why==NoTarget?"NO ONE TO USE IT ON":why==Disarmed?"YOU ARE DISARMED":null;
         /// <summary>The weapon's technique (null: a DEV class, or none).</summary>
         public static Def For(string spec){foreach(var d in All)if(d.Spec==spec)return d;return null;}
-        public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;return null;}
+        public static Def Find(string id){foreach(var d in All)if(d.Id==id)return d;foreach(var d in Third)if(d.Id==id)return d;return null;}
         /// <summary>The technique in this weapon's slot (null: the slot keeps its own ability).</summary>
         public static Def Equipped(string map,string spec,string slot){return Find(NativeTechniqueLoadout.In(map,spec,slot));}
         /// <summary>Set or restore this slot, moving an already-equipped technique to it.</summary>

@@ -4,6 +4,17 @@
 - Projectile-tagged Shot/Hit/Headshot/Impact/Ricochet/Split bypass the 32-effect quota and displace ordinary transient effects first at capacity. All hard limits retained. Exact ordering, packet trimming and Claude adoption contract in PROJECTILE-REWORK.md; Bomb timestamp semantics in BOMBADIER.md.
 - Added burst saturation, endpoint ownership/legacy/serialization, sample timestamp/deep-copy/rejection checks; expanded Unity native gates for real codec, static contacts, ricochet, split, and first-round identity. Validation and delivery receipts in task PR. Windows/PhysX gameplay acceptance is not established by managed/semantic checks.
 
+## 2026-11-05 — Claude: the big update, designed and staged for the rules
+
+- **Owner:** three more abilities for each non-dev weapon; chips for a slotted ability; about 50 fun, ROUNDS-inspired chips, some very strong; chips easier to read, keeping the green and red stat text.
+- **Branch/base:** `claude/big-update-design`, base shared `89484834`. Rows, text and contracts only: no rule, wire or behaviour change.
+- **Added:** `NativeTechniques.Third` (36, `Core/NativeTechniquesThird.cs`; `Of` and `Find` read it, `All` does not), `Core/NativeWildChips.cs` (50), `Core/NativeAbilityChips.cs` (48, with `Requires`), phases in `Valid()`, `NoTarget` and `Disarmed` refusals and their lines, chip icons. Designs and rules contracts: `docs/WEAPON-TECHNIQUES.md` "The third set", `docs/CHIP-EXPANSION.md`.
+- **Astra, please:** the rules for all three (the contracts are in those two docs). A new `NativeTechniqueMark` list on the actor, and one event for chip procs. Move `Third` into `All` and call each `Apply` when ready; a mechanic not in `SupportedMechanics` stays out, so it can land in pieces. Numbers are proposals, yours win; note what changed.
+- **Claude next:** chip copy and card (`claude/chip-readability`), then the 36 effects, poses and sounds against the records. Bigger than one pass: each set lands as it is reviewed.
+- **Animation impact:** none yet. New techniques' timings are proposals in the table.
+- **Checks:** `CoreTests --techniques` passes with `Third` staged. Full suite and the Unity compile before the merge, in the merge's release note.
+- **Not verified:** nothing here can be played yet.
+
 ## 2026-11-05 — Claude: runners mostly on sprint-2, chase-2's head lowered
 
 - **Owner:** "Go with your suggestion, B and C. I like B mostly", and "try lower" for chase-2's raised head.
