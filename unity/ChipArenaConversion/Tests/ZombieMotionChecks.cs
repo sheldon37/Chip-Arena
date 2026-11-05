@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
             {
                 Check(NativeZombieMotion.Captured(k)&&NativeZombieMotion.Walks(k).Length>0&&NativeZombieMotion.Runs(k).Length>0&&NativeZombieMotion.Idles(k).Length>0,NativeHordeKinds.Ids[k]+" walks, runs and stands on the capture");
                 var seen=new HashSet<int>();for(int id=10000;id<10400;id++){int w=NativeZombieMotion.Walk(k,NativeHordeKinds.Seed(id));Check(Array.IndexOf(NativeZombieMotion.Walks(k),w)>=0,"the walk is one of the kind's");seen.Add(w);}
-                Check(seen.Count==NativeZombieMotion.Walks(k).Length,NativeHordeKinds.Ids[k]+": every walk take appears in a crowd");
+                Check(seen.Count==new HashSet<int>(NativeZombieMotion.Walks(k)).Count,NativeHordeKinds.Ids[k]+": every walk take appears in a crowd");
                 var st=NativeHordeKinds.ProposedRow(k);
                 foreach(int c in NativeZombieMotion.Walks(k).Concat(NativeZombieMotion.Runs(k)))foreach(float v in new[]{.3f,st.walk,st.run}){float r=NativeZombieMotion.Rate(c,v,k);Check(r>=NativeZombieMotion.MinRate&&r<=NativeZombieMotion.MaxRate,"playback rate in range");}
             }

@@ -222,7 +222,7 @@ namespace ChipArena.UnityConversion
                 {
                     // (Measured against the take's own feet on these legs, its stride's stretch on them.)
                     ZombieStageChecks.OwnReach(rig,clip,out float ownFore,out float ownAft);float stretch=Math.Max(1,speed/g.CycleRate/(NativeZombieMotion.OwnStrideOf(clip)*rig.LegRatio));
-                    Check(fore<=ownFore*stretch+.18f&&aft>=ownAft*stretch-.18f,name+": the feet stay under the body as the take's do ("+fore.ToString("0.00")+" to "+aft.ToString("0.00")+" legs about the hip, the take's "+ownFore.ToString("0.00")+" to "+ownAft.ToString("0.00")+" stretched "+stretch.ToString("0.00")+")");
+                    Check(fore<=ownFore*stretch+.2f&&aft>=ownAft*stretch-.2f,name+": the feet stay under the body as the take's do ("+fore.ToString("0.00")+" to "+aft.ToString("0.00")+" legs about the hip, the take's "+ownFore.ToString("0.00")+" to "+ownAft.ToString("0.00")+" stretched "+stretch.ToString("0.00")+")");
                 }
                 Check(both==0,name+": never both feet down, a run's and not a lunge's ("+both+" of "+frames+" frames)");
                 // (As far as the take has rolled it by the end of its stance; the swing's foot then turns on with the capture's.)

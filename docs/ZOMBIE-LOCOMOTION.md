@@ -561,5 +561,6 @@ zombies chasing, shared base beside this branch, shambler and runner.
 
 **Not verified:** a Windows build; a crowd at scale; the real navigation round obstacles and other zombies (the zigzag stands in for it); two
 clients; first-person views of a chase; the Hulk (its stride is untouched); the zone kinds beyond their checks; zombies roaming the town on their
-wander take. **Source comparison:** stage 1 could not be measured without the pack's FBX. chase-2's capture holds its head about 50 degrees above
-the horizon, kept as captured; it needs a look against the pack's own demo.
+wander take. **Source comparison:** stage 1 could not be measured without the pack's FBX. chase-2's capture holds its head about 45 degrees above
+the horizon on the model. The owner chose to lower it (2026-11-05): `NativeZombieMotion.HeadDown`, the only head the gait changes this way. The runner is
+mostly on sprint-2, some sprint-3 (the owner's pick from the four), and keeps one sprint for its walk and run.
