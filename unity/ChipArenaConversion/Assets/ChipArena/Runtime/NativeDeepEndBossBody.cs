@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private sealed class DeepEndSkin{public GameObject Go;public SkinnedMeshRenderer Renderer;public bool Glows;public MaterialPropertyBlock Solid,Glow;}
-        private readonly DeepEndSkin[] deepEndSkins=new DeepEndSkin[3];private GameObject deepEndRoot;private Transform[] deepEndBones;private Matrix4x4[] deepEndBind;private bool deepEndBuilt,deepEndHasBank;private int deepEndTierShown=-1;
+        private readonly DeepEndSkin[] deepEndSkins=new DeepEndSkin[3];private GameObject deepEndRoot;private Transform[] deepEndBones;private Matrix4x4[] deepEndBind;private bool deepEndBuilt;private int deepEndTierShown=-1;
         private struct DeepEndPart{public Mesh Mesh;public bool Glows;}
         private readonly DeepEndPart[,] deepEndParts=new DeepEndPart[3,DeepEndPartNames.Length];private static readonly string[] DeepEndPartNames={"lamp","lamp-broken","blade","grate","throat","rail-r","rail-l","fin-r","fin-l","float"};
         private const int PartLamp=0,PartLampBroken=1,PartBlade=2,PartGrate=3,PartThroat=4,PartRailR=5,PartRailL=6,PartFinR=7,PartFinL=8,PartFloat=9;
@@ -34,7 +34,7 @@ namespace ChipArena.UnityConversion
             {
                 Mesh mesh=null;bool glows=false;
                 var prop=bank?.Find(NativeDeepEndBossLook.Prop("body",tier));
-                if(prop!=null&&prop.Parts.Length>0&&mats!=null){try{mesh=DeepEndSkinMesh(bank,prop,out glows);deepEndHasBank=true;}catch(Exception e){Debug.LogWarning("THE DEEP END body: "+e.Message);}}
+                if(prop!=null&&prop.Parts.Length>0&&mats!=null){try{mesh=DeepEndSkinMesh(bank,prop,out glows);}catch(Exception e){Debug.LogWarning("THE DEEP END body: "+e.Message);}}
                 if(mesh==null&&tier==0)mesh=DeepEndFallbackMesh();
                 if(mesh!=null)
                 {
