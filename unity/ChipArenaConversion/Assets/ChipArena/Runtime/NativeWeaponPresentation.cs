@@ -59,6 +59,8 @@ namespace ChipArena.UnityConversion
             if(pilot?.Stats==null||pilot.Weapon==null||pilot.Seat.chips==null)return;var chips=pilot.Seat.chips;var stats=pilot.Stats;bool daggers=spec=="daggers";
             // A Standard weapon carries the designed modules and enchant (NativeChipModulePresentation.cs); the Prototype Series keeps the pieces below.
             if(StandardChips(a)){StandardDressing(rig,a,time,first,layer,camera,reach,pilot);return;}
+            // (The TNT carries no Prototype pieces: they were laid out along a gun's barrel, and on the bundle a chip like Kinetic stood two glowing orange blocks out of its top: owner 2026-11-04.)
+            if(spec==NativeBombs.Spec)return;
             if(!first||aimMotion.Weight<=.5f)
             {
                 int count=NativeWeaponDressing.Modules(spec,pilot.Weapon.@class=="ranged",(int)pilot.Weapon.color,chips,stats,weaponPieces);
