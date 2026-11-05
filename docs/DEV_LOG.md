@@ -10,7 +10,7 @@
 - **Not checked:** nobody has heard the splices with the picture, and I can't hear audio at all. The owner has the two edited-intro mixes. No clip from the batch has been generated, so the importer's levels are unheard, and whether positional cues carry across a 40 m room is unknown. The mixer dips aren't wired.
 - **Astra:** the rules prompt in the entry below still stands, and the songs are in, so ignore its line about waiting on them.
 - **Receipt for the entry below (the bosses' release):** full `CoreTests` at `52e73e02` with the expedition patch: exit 0, 967 PASS groups; pins 0 broken; Unity compile PASS; `PrototypeBuild.Validate` in the Editor at `a96823ed`: ok, 351 PASS lines. Merged as `070ca057` and synced to the builder: **BUILD SUCCEEDED, Publication: succeeded**, build `867b2a4f…`, revision 639294879410095044, 231.3 MiB, both banks in its report. Drive zip replaced, old one kept as `LocalAssets-backup-before-backrooms-bosses.zip`.
-- **Checks for this entry:** in the receipt line appended after the build.
+- **Checks for this entry:** full `CoreTests` at `7f824e65` with the expedition patch: exit 0, 970 PASS groups; pins 0 broken; `git diff --check` clean; Unity compile PASS; `PrototypeBuild.Validate` in the Editor at `05e51fc8` (before the 5 s cap and the merge with shared): ok, 352 PASS lines; importer and generator Python tests OK, the batch dry-run 121 files. Merged as `97cd6daf` and synced to the builder: **BUILD SUCCEEDED, Publication: succeeded**, build `3c4b1b17…`, revision 639294935049596868, 237.4 MiB, both songs in its report. No clip generated or imported yet.
 
 ## 2026-11-05 — Astra: performance audit without visual reductions
 
