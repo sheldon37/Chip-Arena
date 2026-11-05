@@ -30,6 +30,15 @@ Usual verification and a DEV_LOG entry with actual results, separating what you 
 
 - **Checks:** recorded in the receipt that follows this entry, with the build's actual result.
 
+## 2026-11-05 — Astra: third-set repairs built and published (final receipt)
+
+- Code delivery: #340 `c53bb262` fixed both Breacher target Transforms and successfully published the carried third-set effects. Rules #341 `22f0fbaa` followed, then regression-fixture correction #342 `e2c0cef1`. Shared and `codex/unity-cloud-current` were synced to each code merge; final built source is **`e2c0cef109380dfb09e672adca9a4af2b000cffa`**.
+- Actual builder proof: work `e2c0cef10938-58cdd289`, Unity 6000.3.24f1, **350 PASS log lines**, including **1,101 native technique checks** (up from 1,074), actual Unity codec and isolated collision cases. Windows player and TEST ZIP packaging completed; Unity exited **0**. Builder status at **2026-11-05 14:24:05 UTC: BUILD SUCCEEDED; Publication: succeeded**.
+- Read back the native test feed: version **`789167b96d5a4b67190f439ae3452e1929f1006706f30486258e6db89327d80f`**, revision **`639294853171447200`**. The failed `22f0fbaa` run and corrected explicit-floor fixture are recorded below; it is superseded by this successful run, not omitted.
+- Local checks: 963 managed PASS lines / 35 final groups; focused 857 technique-rule and 200 expansion checks; Python 170 tests OK (one skipped); pinned Unity four-assembly semantic compile; 3197-file source-package validation; whitespace clean.
+- Verified scope: Breacher checks, Ground Slam contact regression, six-meter crouched slide and wall stopping, melee whiff timestamps, crate placement/contact/health-vs-pickup cue, and Puppet health/aim/shot/codec cases passed the native build gate. This is not human playtesting of the original Cybercity presses, two-client multiplayer/late joins, or visual/feel acceptance. No presentation files changed, no live/Site/account release.
+- This receipt is documentation only. Keep the builder on the successfully built code SHA above; no duplicate Windows build is needed for the receipt.
+
 ## 2026-11-05 — Astra: builder receipts and explicit landing regression geometry
 
 - Breacher fix #340 / shared-builder `c53bb262`: Windows build + TEST ZIP passed, Unity exit 0; **BUILD SUCCEEDED, Publication: succeeded** at 14:02:33 UTC. Test feed version `16061308`, revision `639294840257033467`. This carries Claude's third-set presentation.
