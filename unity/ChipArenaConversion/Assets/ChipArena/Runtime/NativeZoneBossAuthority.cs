@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<string,float> bossReady=new Dictionary<string,float>();
         private readonly HashSet<long> bossHits=new HashSet<long>();
         private readonly List<(Vector3 at,float hit,float end,float radius,float damage,int id,string spawn,string kind)> bossPools=new List<(Vector3,float,float,float,float,int,string,string)>();
-        private readonly float[] bossPartDamage=new float[5];
+        private readonly float[] bossPartDamage=new float[12];
         private float bossGap,bossHoldDamage,bossSelfDamage,bossChokeDamage,bossStaggerDamage,bossStaggerWindow,bossStaggerImmune,bossBehindAt=-100,bossShedAdds=-100;
         private bool bossLadle,bossPileup,bossActionFired;private int bossPoolId=300;
         private readonly NativeStationRoute stationRoute=new NativeStationRoute();
@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
         private bool IsZoneBoss(NativeMinion m)=>m!=null&&NativeZoneBossRules.Known(m.Kind);
         private void ResetZoneBoss()
         {
-            ZoneBoss=null;zoneBossActor=null;bossBoard=null;bossBarriers=false;stationRoute.Clear();stationRouteAt=0;bossReady.Clear();bossHits.Clear();bossPools.Clear();Array.Clear(bossPartDamage,0,5);
+            ResetBackroomBoss();ZoneBoss=null;zoneBossActor=null;bossBoard=null;bossBarriers=false;stationRoute.Clear();stationRouteAt=0;bossReady.Clear();bossHits.Clear();bossPools.Clear();Array.Clear(bossPartDamage,0,bossPartDamage.Length);
             bossGap=bossHoldDamage=bossSelfDamage=bossChokeDamage=bossStaggerDamage=bossStaggerWindow=bossStaggerImmune=0;bossBehindAt=bossShedAdds=-100;bossLadle=bossPileup=false;bossPoolId=300;
         }
         private void SpawnZoneBoss(string kind,Vector3 at,float yaw)
@@ -45,12 +45,14 @@ namespace ChipArena.UnityConversion
             var m=new NativeMinion{Id=nextMinion++,Kind=kind,Owner=Pve.Boss,Body=body,Collider=capsule,Hp=Pve.MaxHp,MaxHp=Pve.MaxHp,Yaw=yaw,Until=float.PositiveInfinity};
             obj.AddComponent<NativeMinionBody>().Minion=m;Minions.Add(m);zoneBossActor=m;
             ZoneBoss=new NativeZoneBossFrame{actor=m.Id,archetype=kind,phaseAt=Time,parts=kind==NativeZoneBossRules.Ironworks?31:0};
+            if(NativeBackroomsBossRules.Is(kind)){var centre=BackroomCentre(kind);ZoneBoss=NativeBackroomsBossRules.Create(kind,m.Id,centre.X,centre.Z,Time);at=new Vector3(ZoneBoss.backrooms.x,0,ZoneBoss.backrooms.z);m.Body.position=at;m.Yaw=180;}
             ConfigureZoneBossBody(m);NativeZoneBossRules.Start(ZoneBoss,"arrive",Time,-1,at.x,at.z,yaw);
             // The reserved Siren seat remains an attribution/intro anchor only, with no pilot collision or AI.
             Pve.Cap=8+2*Math.Max(0,Pilots.Count(p=>!p.Seat.AuthorityBoss&&p.Seat.connected)-1);Pve.Boss.Collider.enabled=false;Pve.Boss.Body.isKinematic=true;Pve.Boss.Seat.connected=false;Pve.Floor=0;
         }
         private void ConfigureZoneBossBody(NativeMinion m)
         {
+            if(NativeBackroomsBossRules.Is(m.Kind)){BackroomBody(m);return;}
             if(m.Body.transform.Find("Boss hull")!=null)return;
             void Part(string name,Vector3 center,Vector3 size,bool box=true)
             {
@@ -110,8 +112,9 @@ namespace ChipArena.UnityConversion
         {
             var z=ZoneBoss;var m=zoneBossActor;if(z==null||m==null||Pve.Holding)return;
             Pve.Boss.Hp=m.Hp;Pve.Boss.Body.position=m.Body.position+Vector3.up*.9f;
-            if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}return;}
+            if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}if(z.backrooms!=null)BackroomGeometry();return;}
             foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
+            if(NativeBackroomsBossRules.Is(z.archetype)){StepBackroomBoss();return;}
             int phase=NativeZoneBossRules.Phase(z.archetype,m.Hp,m.MaxHp);
             if(phase>z.phase)
             {
@@ -314,7 +317,8 @@ namespace ChipArena.UnityConversion
         private float HitZoneBoss(NativeMinion m,NativePilot source,float damage,Vector3? point,string kind)
         {
             if(ZoneBoss==null||m.Hp<=0||Pve.Holding)return 0;if(PilotMutator(source,"glass-cannon"))damage*=3;var z=ZoneBoss;var local=BossLocal(point??m.Body.position);float multiplier=1;bool crit=false;
-            if(z.archetype==NativeZoneBossRules.Station)
+            if(NativeBackroomsBossRules.Is(z.archetype)){multiplier=BackroomHitScale(m,source,damage,point);if(multiplier<=0)return 0;}
+            else if(z.archetype==NativeZoneBossRules.Station)
             {
                 if(local.y>4.4f&&local.z>1){multiplier=z.phase==3?2.5f:2;crit=true;}
                 else if(local.z< -4){multiplier=Time<z.staggerAt+z.staggerSeconds?2:1.5f;crit=true;}
@@ -333,13 +337,13 @@ namespace ChipArena.UnityConversion
                 {int part=Math.Abs(local.z)>Math.Abs(local.x)?local.z>0?0:3:local.x<0?1:2;bool intact=(z.parts&(1<<part))!=0;multiplier=intact?.4f:1.15f;if(intact){bossPartDamage[part]+=damage;if(bossPartDamage[part]>=m.MaxHp*.05f){z.parts&=~(1<<part);z.partAt[part]=Time;}}}
                 if(crit&&Time>=bossStaggerImmune){if(Time-bossStaggerWindow>10){bossStaggerWindow=Time;bossStaggerDamage=0;}bossStaggerDamage+=damage*multiplier;z.stagger=Math.Min(1,bossStaggerDamage/(m.MaxHp*.08f));if(z.stagger>=1){BossStagger("kneel",3);bossStaggerImmune=Time+12;bossStaggerDamage=z.stagger=0;}}
             }
-            if(z.holdTarget>=0&&point.HasValue&&Math.Abs(local.x)>1.4f)
+            if(z.backrooms==null&&z.holdTarget>=0&&point.HasValue&&Math.Abs(local.x)>1.4f)
             {if(source?.Seat.id==z.holdTarget)bossSelfDamage+=damage;else bossHoldDamage+=damage;if(bossHoldDamage>=(z.archetype==NativeZoneBossRules.Station?120:200)||z.archetype==NativeZoneBossRules.Station&&bossSelfDamage>=40)BossRelease();}
             m.ExpansionOverkill=Math.Max(0,damage*multiplier-m.Hp);float actual=Math.Min(m.Hp,Math.Max(0,damage*multiplier));m.Hp-=actual;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);return actual;
         }
         private void SyncZoneBossArena()
         {
-            var z=ZoneBoss;if(z?.archetype!=NativeZoneBossRules.Station)return;
+            var z=ZoneBoss;if(z?.backrooms!=null){PoseBackroomBody();return;}if(z?.archetype!=NativeZoneBossRules.Station)return;
             if(z.barrierDownAt>=0&&!bossBarriers)
             {
                 bossBarriers=true;

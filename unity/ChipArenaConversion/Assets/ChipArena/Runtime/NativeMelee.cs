@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
                 if(p.Swing!=swing)return; // A block or thorns death interrupts remaining contacts.
             }
             foreach(var m in Minions.ToArray())
-            {Vector3 delta=m.Body.position-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,m.Body.position,p,m.Collider),p.Grounded))continue;Vector3 point=m.Body.position;float actual=MeleeMinionHit(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"],projectile:swing.Id);MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
+            {Vector3 point=BackroomContactPoint(m,origin);Vector3 delta=point-origin;if(m.Hp<=0||!CanHit(p,m)||!swing.Contact("minion:"+m.Id,Time,Vec(delta),.3f,MeleeVisible(origin,point,p,m.Collider),p.Grounded))continue;float actual=MeleeMinionHit(m,p,(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),delta.normalized,NativeSprintAttack.Impulse(swing,(float)p.Weapon.impulse)*(float)p.Stats["impulse"],point:point,projectile:swing.Id);MinionWeaponHit(m,p,actual,(float)(p.Weapon.burn+p.Stats["burn"]),(float)p.Stats["poison"]);ImpactChips(p,null,null,point,delta.normalized,swing.Id,swing.Id);}
             TechniqueMeleeObjects(p,swing,origin);
             foreach(var prop in Props.ToArray())
             {

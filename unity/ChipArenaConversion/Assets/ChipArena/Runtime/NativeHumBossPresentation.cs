@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         // The binding (Astra): the boss's replicated record with the actor's root, yaw and health and its arrival's `spawned`, in the Core HumBossView (times on the arena clock, NaN for the wire's -100). One place.
         // Until then every arena has none: nothing draws.
         // ================================================================================================================
-        internal static HumBossView HumBossViewOf(NativeArena arena)=>HumBossView.None;
+        internal static HumBossView HumBossViewOf(NativeArena arena)=>arena?.HumZoneBossView()??HumBossView.None;
 
         private readonly HumBossRig humBoss=new HumBossRig();private readonly NativeHumBossFx humBossFx=new NativeHumBossFx();private readonly HumBossStage humStage=new HumBossStage();
         private HumBossView humView=HumBossView.None;private float humLast=-1,humHp=float.NaN;private NativeArena humArena;private int humGeneration=-1;private NativeFxDraw humDraw;private NativeVfxDraw humVfx;private bool humVfxFailed,humShown;

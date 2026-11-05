@@ -55,7 +55,8 @@ namespace ChipArena.UnityConversion
             var distance=NativeBackroomsGenerator.Distances(l,entry);var no=new HashSet<int>(players);no.UnionWith(enemies);no.Add(exit);var door=NativeBackroomsGenerator.Position(l,entry);var end=NativeBackroomsGenerator.Position(l,exit);
             bool Valid(int c,int dx,int dz)
             {
-                int x=c%l.Width,z=c/l.Width;if(no.Contains(c)||!NativeBackroomsGenerator.Walkable(l,c)||l.Between(x,z,dx,dz)!=BackroomsLayout.Wall)return false;
+                int x=c%l.Width,z=c/l.Width;int rx=Math.Max(0,Math.Min(l.Width-12,l.ExitX-6)),rz=Math.Max(0,Math.Min(l.Depth-12,l.ExitZ-6));if(x>=rx-1&&x<=rx+12&&z>=rz-1&&z<=rz+12)return false;
+                if(no.Contains(c)||!NativeBackroomsGenerator.Walkable(l,c)||l.Between(x,z,dx,dz)!=BackroomsLayout.Wall)return false;
                 // A real wall behind it, an open cell in front of it, room either side.
                 if(!NativeBackroomsGenerator.Link(l,c,-dx,-dz))return false;var at=NativeBackroomsGenerator.Position(l,c);return Distance(at,door)>=FromDoor&&Distance(at,end)>=FromExit;
             }
@@ -76,7 +77,8 @@ namespace ChipArena.UnityConversion
             var graph=new NavGraph(nav);string start=NavGraph.Id(entry);var taken=new HashSet<int>();var whole=new Dictionary<int,bool>();int count=0;
             bool Valid(int c,int dx,int dz)
             {
-                int x=c%l.Width,z=c/l.Width;if(no.Contains(c)||l.Floor[c]!=PoolroomsLayout.Deck||l.Between(x,z,dx,dz)!=PoolroomsLayout.Wall)return false;
+                int x=c%l.Width,z=c/l.Width;for(int oz=-2;oz<=2;oz++)for(int ox=-2;ox<=2;ox++)if(l.Inside(x+ox,z+oz)&&l.Room[l.Index(x+ox,z+oz)]==NativeDeepEndArena.RoomId)return false;
+                if(no.Contains(c)||l.Floor[c]!=PoolroomsLayout.Deck||l.Between(x,z,dx,dz)!=PoolroomsLayout.Wall)return false;
                 if(!l.Passable(x,z,-dx,-dz)||!Deck(x-dx,z-dz))return false;
                 // A corner: a wall on a side too, so that nobody's way along the wall runs through it.
                 bool corner=l.Between(x,z,dz,dx)==PoolroomsLayout.Wall||l.Between(x,z,-dz,-dx)==PoolroomsLayout.Wall;if(!corner)return false;

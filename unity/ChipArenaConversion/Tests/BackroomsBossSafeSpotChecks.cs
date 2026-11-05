@@ -6,7 +6,7 @@ public static class BackroomsBossSafeSpotChecks
     private static void Check(bool ok,string what){if(!ok)throw new Exception(what);count++;}
     public static void Run(string root)
     {
-        count=0;
+        count=0;BackroomsBossRuleChecks.Run();
         count+=HumBossSweep.Run(root)+DeepEndBossSweep.Run(root);
         Console.WriteLine("PASS backrooms-boss-sweep ("+count+" checks)");
     }

@@ -744,6 +744,18 @@
       "bytes": 4498778,
       "gitBlob": "ede187684e6ea81b278902c49c82fcc641965f33",
       "source": "Owner upload 2026-11-02: Steady Groove.mp3"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/level0-boss.mp3",
+      "bytes": 3423131,
+      "gitBlob": "4080063a75242d1db926245fff7620e8dce9d3ca",
+      "source": "Owner-supplied boss song committed on shared Unity branch"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/poolrooms-boss.mp3",
+      "bytes": 4385302,
+      "gitBlob": "07fc6caa0590f548935591b275f15a42c906a29c",
+      "source": "Owner-supplied boss song committed on shared Unity branch"
     }
   ]
 }

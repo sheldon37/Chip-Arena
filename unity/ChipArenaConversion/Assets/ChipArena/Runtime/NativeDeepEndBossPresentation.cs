@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
         // ================================================================================================================
         // The binding (Astra): the boss's replicated record, in the Core DeepEndBossView (times on the arena clock, NaN for the wire's -100). One place. Until then every arena has none.
         // ================================================================================================================
-        internal static DeepEndBossView DeepEndBossViewOf(NativeArena arena)=>DeepEndBossView.None;
+        internal static DeepEndBossView DeepEndBossViewOf(NativeArena arena)=>arena?.DeepEndZoneBossView()??DeepEndBossView.None;
 
         private readonly DeepEndBossRig deepEndRig=new DeepEndBossRig();private readonly NativeDeepEndBossFx deepEndFx=new NativeDeepEndBossFx();private DeepEndBossView deepEndView=DeepEndBossView.None;
         private float deepEndLast=float.NaN,deepEndHp=float.NaN,deepEndFlash,deepEndLastBlow=float.NegativeInfinity;private bool deepEndDrawnLast;private NVector deepEndOrigin;private NativeArena deepEndArena;private int deepEndGeneration=-1;

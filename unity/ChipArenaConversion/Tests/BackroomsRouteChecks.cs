@@ -96,8 +96,8 @@ namespace ChipArena.UnityConversion
                         if(!probe.Supported(p,radius,height)||nearest==null||(nearest.pos-p-new V3(0,.85f,0)).Length>4||!seen.Contains(nearest.id))failures.Add(seed+" "+map.id+" "+spawn.entry.id);
                         if(spawn.allow.Contains("drowned")&&NativePoolroomsWater.Depth(pool.Layout,p)<=.8f)throw new Exception("Drowned moved out of deep water");
                     }
-                    if(failures.Count==before)NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{areas=new[]{area}},new ConversionContent{maps=new[]{map}},null,
-                        (_,p,r,h)=>probe.Supported(p,r,h),(_,a,b,r,h)=>Connected(a,b,r,h));
+                    if(failures.Count==before)try{NativeExpeditionLayout.ValidateGeometry(new ExpeditionLayout{areas=new[]{area}},new ConversionContent{maps=new[]{map}},null,
+                        (_,p,r,h)=>probe.Supported(p,r,h),(_,a,b,r,h)=>Connected(a,b,r,h));}catch(Exception e){throw new Exception("Collision seed "+seed+" "+map.id+": "+e.Message+" machines="+string.Join(";",area.machines.Select(m=>m.id+" at "+m.front.x+","+m.front.z+" near "+probe.Nearest(new V3(m.front.x,m.front.y,m.front.z),.45f,1.8f)?.id+" supported="+probe.Supported(new V3(m.front.x,m.front.y,m.front.z),.45f,1.8f)+" connected="+Connected(area.doors[0].entries[0].Position,new V3(m.front.x,m.front.y,m.front.z),.45f,1.8f))),e);}
                     if(seed==-1&&map.id==NativePoolroomsGenerator.InstanceMap&&map.ramps.Length>0)
                     {
                         // Negative control: restoring the old box-only stairs must disconnect a deep spawn.

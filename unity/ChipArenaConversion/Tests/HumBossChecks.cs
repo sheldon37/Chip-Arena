@@ -57,7 +57,7 @@ public static class HumBossChecks
             Check(!rig.Visible&&fx.Quads.Count==0&&fx.LightCount==0&&fx.Surface.Patches==0&&NativeHumBossCues.Collect(none,rig,NativeHumBossPreview.Room,t-1/60f,t,cues)==0,"None draws no boss, no effect, no light, no surface and no cue");}
         Check(!st.On&&st.Air==1,"the room is as it is");for(int i=0;i<st.Lamp.Length;i++)Check(st.Lamp[i]==1&&!st.Burst[i],"every lamp as the level has it");
         Check(!NativeHumBossPreview.On&&double.IsNaN(NativeHumBossPreview.Start),"the DEV preview is off by default");
-        var rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHumBossPresentation.cs"));Check(rt.Contains("internal static HumBossView HumBossViewOf(NativeArena arena)=>HumBossView.None;"),"the binding returns None until Astra binds it");
+        var rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHumBossPresentation.cs"));Check(rt.Contains("internal static HumBossView HumBossViewOf(NativeArena arena)=>arena?.HumZoneBossView()??HumBossView.None;"),"the presentation reads the authority binding");
         var room=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHumBossRoom.cs"));Check(room.Contains("if(!preview&&!HumBossViewOf(arena).live)return layout;"),"with no boss and no preview the level's own layout draws");
         // A level layout comes out of the presentation copy untouched.
         var l=NativeBackroomsGenerator.Build(NativeBackroomsGenerator.ArenaSeed,false).Layout;var before=l.WallX.Concat(l.WallZ).Concat(l.Floor).Concat(l.Pillar).Concat(l.Circuit).ToArray();var c=NativeHumArena.PresentationCopy(l,8,8,Vector3.Zero,out var r);

@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
     }
     public static class NativeBackroomsGenerator
     {
-        public const string Version="backrooms-level0-4-entities2",ArenaId="backrooms-level-0",InstanceMap="expedition-backrooms-level-0",AreaId="exp-backrooms";
+        public const string Version="backrooms-level0-5-boss",ArenaId="backrooms-level-0",InstanceMap="expedition-backrooms-level-0",AreaId="exp-backrooms";
         public const int ArenaSeed=647031,ExpeditionSize=40,ArenaSize=16;
         private static readonly (int x,int z)[] Directions={(1,0),(0,1),(-1,0),(0,-1)};
         private struct Random
@@ -70,6 +70,11 @@ namespace ChipArena.UnityConversion
                 bool pit=expedition&&rng.Next(12)==0;
                 if(pit)l.Floor[c]=BackroomsLayout.Pit;else l.Pillar[c]=BackroomsLayout.SmallPillar;
                 var reach=Distances(l,entry);if(Enumerable.Range(0,reach.Length).Any(i=>Walkable(l,i)&&reach[i]<0)){l.Floor[c]=BackroomsLayout.Carpet;l.Pillar[c]=BackroomsLayout.NoPillar;}
+            }
+            if(expedition)
+            {
+                NativeHumArena.Carve(l,l.ExitX,l.ExitZ);
+                while(true){var reach=Distances(l,entry);bool opened=false;for(int c=0;c<reach.Length&&!opened;c++)if(reach[c]>=0)foreach(var d in Directions){int x=c%size,z=c/size;if(!l.Inside(x+d.x,z+d.z)||ReturnDoorEdge(x,z,d.x,d.z))continue;int n=l.Index(x+d.x,z+d.z);if(Walkable(l,n)&&reach[n]<0){l.Set(x,z,d.x,d.z,BackroomsLayout.Short);opened=true;break;}}if(!opened)break;}
             }
             l.Circuits[l.Circuit[entry]]=BackroomsLayout.On;l.Light[entry]=true;
             var players=expedition?Enumerable.Range(0,8).Select(i=>l.Index(1+i%4,1+i/4)).ToArray():Spread(l,8,entry);

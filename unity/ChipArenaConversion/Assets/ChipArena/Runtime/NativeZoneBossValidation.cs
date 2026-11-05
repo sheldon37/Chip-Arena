@@ -32,6 +32,7 @@ namespace ChipArena.UnityConversion
         // Runs in real Unity/PhysX on the Windows builder. The runtime feature gate does not bypass this fixture.
         public void ValidateZoneBossAuthority(Action<NativeGameFrame> replicaCheck=null)
         {
+            if(NativeBackroomsBossRules.Is(NativeZoneBossRules.Archetype(MapId))){ValidateBackroomsBossAuthority(replicaCheck);return;}
             if(!(NativeZoneCombat.Station(MapId)||NativeZoneCombat.Ironworks(MapId)))return;
             void Check(bool ok,string why){if(!ok)throw new Exception("Native zone boss "+MapId+": "+why);}
             foreach(var old in Minions.ToArray())RemoveMinion(old,false);ResetZoneBoss();
