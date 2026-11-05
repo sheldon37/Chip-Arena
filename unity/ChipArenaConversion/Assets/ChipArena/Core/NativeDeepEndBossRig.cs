@@ -181,7 +181,7 @@ namespace ChipArena.UnityConversion
             }
             if(lift>0)for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
-                float s=i*seg;float near=LineWeight(pos[i],v);pos[i].Y+=lift*near*BossMath.Smooth((29f-s)/6f);
+                float s=i*seg;float near=LineWeight(pos[i],v);pos[i].Y+=lift*near*BossMath.Smooth((29f-s)/6f);var ld=new Vector3(v.aimX-v.targetX,0,v.aimZ-v.targetZ);float ll=ld.Length();if(ll>.1f){ld/=ll;pos[i]+=new Vector3(ld.Z,0,-ld.X)*(near*BossMath.Smooth(age/(hit*.6f))*1.05f*(float)Math.Sin(s*.26f+.7f));}
                 // On dry deck it lies on the deck (stranded), not in it.
                 float floor=NativeDeepEndArena.Floor(pos[i].X,pos[i].Z);float rest=floor+NativeDeepEndBossLook.Radius(s)*.82f;if(pos[i].Y<rest&&pos[i].Y>rest-1.6f&&floor>=-.01f)pos[i].Y+=(rest-pos[i].Y)*BossMath.Smooth((pos[i].Y-(rest-1.6f))/.8f);
             }

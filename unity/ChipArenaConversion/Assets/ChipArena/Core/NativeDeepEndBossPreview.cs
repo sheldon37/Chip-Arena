@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         public const float SpawnAt=.5f;
         /// <summary>Stand-in pilots (room frame x, z): look-at targets, the Lull's victim, the sense of scale.</summary>
         public static readonly Vector2[] Pilots={new Vector2(-6.5f,-13.5f),new Vector2(14,3),new Vector2(-14,7),new Vector2(6.5f,-7)};
+        /// <summary>The local pilot in the room's frame, when it's in the room: the Lull closes on it, not on a stand-in.</summary>
+        public static bool HasLocal;public static Vector2 Local;
         public struct Act{public string Id;public float At,Hit,Dur;public int Target;public float Tx,Tz,Ax,Az;public int Seed;}
         public static readonly DeepEndRoute Route=new DeepEndRoute(1024);private static readonly Act[] acts;
         public static float ArrivalEnd,BreachAt,JetAt,FlopAt,ThrashAt,DrainAt,LullAt,LampsAt,Phase2At,SeicheAt,Breach2At,WhistleAt,Jet2At,Flop2At,Phase3At,LapAt,Drain2At,Breach3At,DeathAt,Loop;
@@ -84,7 +86,7 @@ namespace ChipArena.UnityConversion
                 v.action=a.Id;v.actionId=a.Seed;v.actionAt=a.At;v.hitAt=a.Hit;v.duration=a.Dur;v.actionTarget=a.Target;v.targetX=a.Tx;v.targetZ=a.Tz;v.aimX=a.Ax;v.aimZ=a.Az;target=new Vector2(a.Tx,a.Tz);v.yaw=a.Seed*67;
                 if(a.Id=="drain"){v.whirlAt=a.At+.2f;v.whirlUntil=a.Hit+NativeDeepEndBoss.Move("drain").Strike;}
                 if(a.Id=="seiche")v.seicheAt=a.Hit;
-                if(a.Id=="lull"){v.lull=Math.Min(1,(p-a.At+1.6f)/2.4f);if(p>a.Hit+NativeDeepEndBoss.Move("lull").Strike+NativeDeepEndBoss.Move("lull").Follow)v.lull=0;}
+                if(a.Id=="lull"){if(HasLocal){v.targetX=Local.X;v.targetZ=Local.Y;target=Local;}v.lull=Math.Min(1,(p-a.At+1.6f)/2.4f);if(p>a.Hit+NativeDeepEndBoss.Move("lull").Strike+NativeDeepEndBoss.Move("lull").Follow)v.lull=0;}
                 break;
             }
             // The Lull's warning builds before its record starts.
@@ -115,7 +117,7 @@ namespace ChipArena.UnityConversion
                 case "flop":{var d=new Vector3(a.Ax-a.Tx,0,a.Az-a.Tz);float y=(float)Math.Atan2(d.X,d.Z);f.Focus=new Vector3((a.Tx+a.Ax)*.5f,1.2f,(a.Tz+a.Az)*.5f);f.Yaw=y+1.57f*side;f.Dist=19;f.Height=4.2f;f.Fov=60;f.Follow=.1f;break;}
                 case "thrash":f.Focus=new Vector3(2,1.4f,8);f.Yaw=2.6f;f.Dist=13;f.Height=3.2f;f.Fov=62;f.Follow=.3f;break;
                 case "drain":f.Focus=new Vector3(0,1.2f,0);f.Yaw=orbit*2.4f+1.2f;f.Dist=16;f.Height=7f;f.Fov=66;f.Follow=.25f;break;
-                case "lull":f.Focus=new Vector3(a.Tx,.9f,a.Tz);f.Yaw=-1.57f+.4f;f.Dist=5.5f;f.Height=2.1f;f.Fov=56;f.Follow=0;break;
+                case "lull":{var q=HasLocal?Local:new Vector2(a.Tx,a.Tz);f.Focus=new Vector3(q.X,.9f,q.Y);f.Yaw=(float)Math.Atan2(-q.X,-q.Y)*.5f+.4f;f.Dist=6f;f.Height=2.3f;f.Fov=58;f.Follow=0;break;}
                 case "seiche":f.Focus=new Vector3(0,1,0);f.Yaw=0;f.Dist=18.5f;f.Height=4.6f;f.Fov=68;f.Follow=.05f;break;
                 case "whistle":f.Focus=new Vector3(0,1.4f,0);f.Yaw=orbit+2;f.Dist=17;f.Height=4.2f;f.Fov=60;f.Follow=0;break;
                 case "lap":f.Focus=new Vector3(0,.8f,0);f.Yaw=orbit*3.8f;f.Dist=4f;f.Height=5.6f;f.Fov=76;f.Follow=.85f;break;

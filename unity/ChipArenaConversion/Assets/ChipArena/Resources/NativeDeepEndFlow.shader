@@ -75,6 +75,12 @@ Shader "ChipArena/NativeDeepEndFlow"
                     // A thin line on the water: mist tracking the sweep's start.
                     float s=Noise(float2(i.a.x*7.0-t*2.0,seed));float g=saturate(1.0-abs(i.a.y));g=g*g*(0.5+0.5*s);o=fixed4(rgb*g,0.0);
                 }
+                else if(kind>9.5)
+                {
+                    // A wall of water thrown up by an impact: u along it (m), v up it. Solid at the foot, tearing into long fingers at the top, streaks running down.
+                    float u=i.a.x,up=i.a.y;float s1=Noise(float2(u*1.6+seed,up*2.2-t*1.8));float s2=Noise(float2(u*5.2+seed*2.0,up*4.5-t*3.0));float s=s1*0.62+s2*0.38;float tear=smoothstep(up*0.92-0.08,up*0.92+0.22,s*1.25);float nv=abs(dot(n,v));float fres=0.08+0.92*pow(1.0-nv,3.0);float3 rv=reflect(-v,n);
+                    float a=saturate(share*tear*(0.9-0.22*up));float3 c=rgb*(Lit()+0.22)*(0.65+0.45*s2)+DeepRoomColour(i.world,rv)*fres*0.7;o=fixed4(c*a,a*0.92);
+                }
                 else if(kind>8.5)
                 {
                     // A curtain of water across an arch: u across, v height. Streaks running down fast, deep teal behind them, bright where they catch the room.

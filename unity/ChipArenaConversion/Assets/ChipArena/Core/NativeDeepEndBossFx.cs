@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class DeepEndFlow
     {
-        public const float Sheet=0,Jet=1,Hand=2,Collar=3,Halo=4,Shadow=5,Solid=6,Mark=7,Disc=8,Curtain=9;
+        public const float Sheet=0,Jet=1,Hand=2,Collar=3,Halo=4,Shadow=5,Solid=6,Mark=7,Disc=8,Curtain=9,Crown=10;
         public readonly DeepEndFlowVertex[] V;public readonly int[] T;public int VertexCount,IndexCount,Refused;
         public DeepEndFlow(int vertices,int indices){V=new DeepEndFlowVertex[vertices];T=new int[indices];}
         public void Clear(){VertexCount=IndexCount=0;Refused=0;}
@@ -227,7 +227,7 @@ namespace ChipArena.UnityConversion
                     {
                         float u=r/(float)rows,tau=fall*u*u*.65f+fall*u*.35f;
                         // Water at fall time tau left the body tau ago: it trails where the body was, and keeps a share of the body's speed.
-                        var pos=leave-vel*(tau*.72f)+new Vector3(0,-.5f*BossMath.Gravity*tau*tau,0);float spread=1+u*.5f;
+                        var trail=vel;if(trail.Y<0)trail.Y*=.2f;var pos=leave-trail*(tau*.72f)+new Vector3(0,-.5f*BossMath.Gravity*tau*tau,0);float spread=1+u*.5f;
                         float a=wet*(1-u*.45f);
                         Over.Add(pos-along*spread,n,-1,tau*2.2f,DeepEndFlow.Sheet,seed,WaterWhite,a);Over.Add(pos+along*spread,n,1,tau*2.2f,DeepEndFlow.Sheet,seed,WaterWhite,a);
                     }
@@ -268,6 +268,34 @@ namespace ChipArena.UnityConversion
                 var v0=NativeBossVfx.Cone(dir,spread,H(k+2),H(k+3),H(k+4))*(speed*(.45f+.7f*H(k+5)));var at=NativeBossVfx.Fly(p,v0,.25f,BossMath.Gravity,age,out var vel);if(at.Y<floor)continue;
                 Vfx.Drop(at,-vel*.028f,WaterWhite,width*(.6f+.7f*H(k+6)),cover*(1-age/lf*.4f),age/lf,i);
             }
+        }
+        // A wall of water thrown up by an impact: rises fast, hangs, collapses, tearing from its top as it goes. Along a line (both sides) or round a ring.
+        private void CrownLine(Vector3 a,Vector3 b,float age,float life,float height,float width,float seed)
+        {
+            if(age<0||age>life)return;var d=b-a;d.Y=0;float len=d.Length();if(len<.01f)return;var dir=d/len;var side=new Vector3(dir.Z,0,-dir.X);float k=age/life,h=height*(float)Math.Pow(Math.Sin(BossMath.Pi*Math.Min(1,k*1.05f)),.6f),spread=width+1.6f*k;
+            for(int f=-1;f<=1;f+=2)
+            {
+                const int segs=26;if(!Over.Room((segs+1)*3,segs*12))return;int first=Over.VertexCount;var n=side*f;
+                for(int i=0;i<=segs;i++)
+                {
+                    float u=i/(float)segs;var c=a+d*u;c.Y=a.Y;float bump=.62f+.38f*(float)Math.Sin(u*19+seed+f)*(float)Math.Sin(u*7.3f+seed*2);float top=h*bump*BossMath.Smooth(u/.06f)*BossMath.Smooth((1-u)/.06f);
+                    var low=c+n*spread;var mid=low+n*(top*.16f)+new Vector3(0,top*.55f,0);var hi=low+n*(top*.42f)+new Vector3(0,top,0);
+                    Over.Add(low,n,u*len,0,DeepEndFlow.Crown,seed+f,WaterWhite,1-k*.4f);Over.Add(mid,n,u*len,.55f,DeepEndFlow.Crown,seed+f,WaterWhite,1-k*.4f);Over.Add(hi,n,u*len,1,DeepEndFlow.Crown,seed+f,WaterWhite,1-k*.4f);
+                }
+                for(int i=0;i<segs;i++){int a0=first+i*3;Over.Quad(a0,a0+3,a0+4,a0+1);Over.Quad(a0+1,a0+4,a0+5,a0+2);}
+            }
+        }
+        private void CrownRing(Vector3 c,float age,float life,float height,float radius,float seed)
+        {
+            if(age<0||age>life)return;float k=age/life,h=height*(float)Math.Pow(Math.Sin(BossMath.Pi*Math.Min(1,k*1.05f)),.6f),rad=radius+2.2f*k;
+            const int segs=36;if(!Over.Room((segs+1)*3,segs*12))return;int first=Over.VertexCount;
+            for(int i=0;i<=segs;i++)
+            {
+                float u=i/(float)segs,an=BossMath.Tau*u;var n=new Vector3((float)Math.Cos(an),0,(float)Math.Sin(an));float bump=.62f+.38f*(float)Math.Sin(an*5+seed)*(float)Math.Sin(an*3+seed*2);float top=h*bump;
+                var low=c+n*rad;var mid=low+n*(top*.2f)+new Vector3(0,top*.55f,0);var hi=low+n*(top*.5f)+new Vector3(0,top,0);float run=u*BossMath.Tau*rad;
+                Over.Add(low,n,run,0,DeepEndFlow.Crown,seed,WaterWhite,1-k*.4f);Over.Add(mid,n,run,.55f,DeepEndFlow.Crown,seed,WaterWhite,1-k*.4f);Over.Add(hi,n,run,1,DeepEndFlow.Crown,seed,WaterWhite,1-k*.4f);
+            }
+            for(int i=0;i<segs;i++){int a0=first+i*3;Over.Quad(a0,a0+3,a0+4,a0+1);Over.Quad(a0+1,a0+4,a0+5,a0+2);}
         }
         private void Mist(float now,Vector3 p,Vector3 vel,float scatter,int count,float life,float s0,float s1,float a,float t0,float span,int key,float floor)=>Vfx.SmokeBurst(now,p,vel,scatter,.35f,count,life,s0,s1,WaterWhite,a,t0,span,Seed,key,lit:.65f,floor:floor);
         // The telegraphs: the water tells you first.
@@ -320,8 +348,8 @@ namespace ChipArena.UnityConversion
                 float at=v.actionAt+hit;var t=new Vector3(v.targetX,0,v.targetZ);float surface=s.Tide;float floor=o.Y+surface-.1f;
                 switch(m.Id)
                 {
-                    case "breach":{var c=o+new Vector3(t.X,surface,t.Z);Spray(now,c,Vector3.UnitY,.65f,9,150,1.5f,at,.12f,1,.05f,floor);Spray(now,c,Vector3.UnitY,1.2f,5,110,1.1f,at,.25f,2,.03f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.8f,0),2.4f,16,1.9f,.9f,3.8f,.34f,at,.3f,3,floor);break;}
-                    case "flop":if(age>=hit){var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=6;k++){var q=Vector3.Lerp(t,e,k/6f);var c=o+new Vector3(q.X,Math.Max(surface,0),q.Z);Spray(now,c,Vector3.UnitY,.75f,10.5f,54,1.5f,at,.14f,10+k,.05f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.6f,0),2.8f,7,1.9f,1.1f,4.4f,.34f,at,.3f,20+k,floor);}}break;
+                    case "breach":{var c=o+new Vector3(t.X,surface,t.Z);Spray(now,c,Vector3.UnitY,.65f,9,150,1.5f,at,.12f,1,.05f,floor);Spray(now,c,Vector3.UnitY,1.2f,5,110,1.1f,at,.25f,2,.03f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.8f,0),2.4f,12,1.9f,.8f,3.2f,.2f,at,.3f,3,floor);CrownRing(c,now-at,1.15f,3.4f,m.Radius*.62f,1);break;}
+                    case "flop":if(age>=hit){var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=6;k++){var q=Vector3.Lerp(t,e,k/6f);var c=o+new Vector3(q.X,Math.Max(surface,0),q.Z);Spray(now,c,Vector3.UnitY,.75f,10.5f,54,1.5f,at,.14f,10+k,.05f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.6f,0),2.8f,4,1.9f,.8f,3.2f,.15f,at,.3f,20+k,floor);}var w0=o+new Vector3(t.X,Math.Max(surface,0),t.Z);var w1=o+new Vector3(e.X,Math.Max(surface,0),e.Z);CrownLine(w0,w1,now-at,1.3f,3.6f,m.Width*.42f,3);}break;
                     case "jet":Jet(rig,v,s,waves,now,age,hit,m,low);break;
                     case "lull":Hands(rig,v,s,waves,now,age,hit,m,low);break;
                     case "drain":if(age<hit+m.Strike){float k=BossMath.Smooth((age-hit*.6f)/.6f)*(1-BossMath.Smooth((age-hit-m.Strike+.3f)/.3f));if(k>.02f){var hd=rig.MouthAt;Vfx.SmokeFlow(now,new Vector3(hd.X,o.Y+surface+.4f,hd.Z),new Vector3(0,.2f,0),1.4f,.22f,14,1.5f,.5f,2.4f,WaterWhite,.2f*k,v.actionAt,v.actionAt+hit+m.Strike,Seed,41,lit:.6f);}}break;
@@ -402,12 +430,12 @@ namespace ChipArena.UnityConversion
             if(a>=b.Break&&a<b.Break+3.6f)
             {
                 Spray(now,c,new Vector3(.1f,1,.2f),.5f,8,190,2.4f,at,.3f,100,.05f,floor);Spray(now,c,new Vector3(.1f,1,.2f),.95f,5,190,1.7f,at,.5f,101,.03f,floor);
-                Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,1.8f,0),2.6f,22,3.0f,1.1f,5,.22f,at,.5f,102,floor);
+                Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,1.8f,0),2.6f,22,3.0f,1.1f,5,.22f,at,.5f,102,floor);CrownRing(c,now-at,2.2f,3.2f,1.7f,5);
             }
             // The head's fall into the water after the hold: the crash.
             float crash=v.spawned+b.Break+2*(5.6f/DeepEndBossPaths.IntroG);if(now>=crash&&now<crash+3)
             {
-                var head=c+fw*(2.9f*(crash-v.spawned-b.Break));Spray(now,head,new Vector3(0,1,.25f),.6f,12,180,2,crash,.2f,110,.06f,floor);Mist(now,head+new Vector3(0,.4f,0),new Vector3(0,3,0),3,22,2.4f,1.2f,5.4f,.4f,crash,.35f,111,floor);
+                var head=c+fw*(2.9f*(crash-v.spawned-b.Break));Spray(now,head,new Vector3(0,1,.25f),.6f,12,180,2,crash,.2f,110,.06f,floor);Mist(now,head+new Vector3(0,.4f,0),new Vector3(0,3,0),3,14,2.4f,1f,4.4f,.24f,crash,.35f,111,floor);CrownRing(head,now-crash,1.5f,4.2f,2f,7);
             }
             // The wave's crest throws a line of spray.
             if(s.RingH>.2f&&a<b.Hold+1.4f)

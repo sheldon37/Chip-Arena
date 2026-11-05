@@ -52,6 +52,7 @@ namespace ChipArena.UnityConversion
             if(preview)
             {
                 if(double.IsNaN(NativeDeepEndBossPreview.Start))NativeDeepEndBossPreview.Start=wall;
+                var localPilot=arena.Local;NativeDeepEndBossPreview.HasLocal=false;if(localPilot?.Body!=null&&poolroomsLayout!=null&&DeepEndBossCentre(out var roomAt)){var lp=localPilot.Body.position;var lr=new NVector2(lp.x-roomAt.X,lp.z-roomAt.Z);if(NativeDeepEndArena.InRoom(lr.X,lr.Y)){NativeDeepEndBossPreview.HasLocal=true;NativeDeepEndBossPreview.Local=lr;}}
                 NativeDeepEndBossPreview.FillLampTimes();
                 now=NativeDeepEndBossPreview.Clock(wall);NativeDeepEndBossPreview.View(now,ref deepEndView,out target);hasLook=true;
                 NativeDeepEndBossPreview.Shown=deepEndView;NativeDeepEndBossPreview.ShownP=now;NativeDeepEndBossPreview.ShownClock=wall;
