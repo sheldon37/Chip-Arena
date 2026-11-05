@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: synchronize Breacher validation targets
+
+- Branch `codex/third-rules-repairs`, fetched shared base `11ff73c4`. Added `b.Body.transform.position=b.Body.position;` before `Physics.SyncTransforms()` in both thin-wall and thickness-budget checks. No combat rule or presentation changes in this first repair.
+- Actual local checks: managed CoreTests project build passed (zero warnings/errors); pinned Unity 6000.3.24f1 InputSystem/player/runtime/editor semantic compilation passed; `git diff --check` clean. These compile the native cases; they do not run PhysX or Windows packaging.
+- Before push, builder status (2026-11-05 11:10 UTC) was FAILED for `e6f4d1b1a783`; detailed log confirms `Native techniques: breacher penetrates thin wall`. New builder result pending. Claude's Editor evidence and its limits remain in the next entry.
+- Next: merge/sync builder, observe actual result, then trace and repair the five reported rules issues. No live/Site release or presentation changes.
+
 ## 2026-11-05 — Claude: the builder's blocking check traced (diagnosis only, no code changed)
 
 - **Why:** the third-set build stopped on Astra's `breacher penetrates thin wall` (`Runtime/NativeTechniqueValidation.cs:209`). Astra's native cases compile but can't run without Unity, and the builder stops at the first failure, so I ran the whole gate once to list everything at one go.
