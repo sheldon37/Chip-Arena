@@ -58,7 +58,7 @@ namespace ChipArena.UnityConversion
                 BackroomsLayout layout;
                 if(arena.MapId==NativeBackroomsGenerator.ArenaId){if(arenaBackrooms==null)arenaBackrooms=NativeBackroomsGenerator.Build(NativeBackroomsGenerator.ArenaSeed,false).Layout;layout=arenaBackrooms;}
                 else layout=arena.GeneratedRun?.Backrooms?.Layout;
-                if(layout==null)return;if(!ReferenceEquals(layout,backroomsLayout)||backroomsOrigin!=p)BackroomsBuild(layout,p);
+                if(layout==null)return;layout=HumBossLayout(layout,p);if(!ReferenceEquals(layout,backroomsLayout)||backroomsOrigin!=p)BackroomsBuild(layout,p);
                 if(!ReferenceEquals(backroomsArena,arena)||backroomsGeneration!=arena.Generation)
                 {
                     backroomsArena=arena;backroomsGeneration=arena.Generation;
