@@ -1,3 +1,17 @@
+## 2026-11-05 — Claude: the Backrooms bosses' songs and their 81 sounds
+
+- **Owner:** gave Failing Light (THE HUM) and Main Theme (THE DEEP END), "you can modify the intro to work with the produced songs"; asked for all the boss sounds to go in the ElevenLabs batch.
+- **Branch/base:** `claude/hum-song` off `claude/backrooms-bosses`, with shared merged in.
+- **Songs:** both MP3s are the owner's bytes, with beat maps, an intro edit whose drop lands on the 9.0678 s hold, and a bar-aligned loop that ends on the song's own quiet stretch. `docs/ZONE-BOSS-MUSIC.md` has the tables. Main Theme drifts from 128 to 136 BPM, so its beats are tracked. Its preroll is 3.04 s of silence on purpose, and `ZoneBossMusicChecks` allows that for this song only. `zone_boss_beatmap.py` now always gives the drop a drop accent, and takes the preroll from the rounded numbers it stores; the two older songs' maps came out unchanged.
+- **Intros:** `HumBossBeats.FromSong` and `DeepEndBossBeats.FromSong` place the beats, and the shots and the card now follow them (`ShotsOn`, `NativeBackroomsBossIntro.NameTime`). Each DEV preview plays its song on its own clock. The old Deep End `FromSong` compared clip time with boss time; it had never run.
+- **Sounds:** `docs/audio/sound-requests-bosses.json`, a second manifest: 81 keys, 121 files, 199 s, about 7,972 credits by the generator's estimate. The zombie manifest is untouched. The keys are in the bank contract, dotted, because the generator's pattern has no hyphens. The importer gained a `boss` category with a fixed level, per-sound `levelDb` and `fadeOutMs`, and flat keys. Silent until the owner's batch is imported. `docs/audio/SOUND-REQUESTS.md` has the details.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking; there are no rules yet. Only presentation follows the songs. The 9.0678 s hold is unchanged.
+- **Seen:** both intros as stills from the DEV previews on the songs (`zcap/song-hum`, `zcap/song-deep`), with the beats landing where the tables say. THE DEEP END's last .25 s before the cut to the surface is its iris filling the frame; that's the same path as before, and it reads as a rush at the camera.
+- **Not checked:** nobody has heard the splices with the picture, and I can't hear audio at all. The owner has the two edited-intro mixes. No clip from the batch has been generated, so the importer's levels are unheard, and whether positional cues carry across a 40 m room is unknown. The mixer dips aren't wired.
+- **Astra:** the rules prompt in the entry below still stands, and the songs are in, so ignore its line about waiting on them.
+- **Receipt for the entry below (the bosses' release):** full `CoreTests` at `52e73e02` with the expedition patch: exit 0, 967 PASS groups; pins 0 broken; Unity compile PASS; `PrototypeBuild.Validate` in the Editor at `a96823ed`: ok, 351 PASS lines. Merged as `070ca057` and synced to the builder: **BUILD SUCCEEDED, Publication: succeeded**, build `867b2a4f…`, revision 639294879410095044, 231.3 MiB, both banks in its report. Drive zip replaced, old one kept as `LocalAssets-backup-before-backrooms-bosses.zip`.
+- **Checks for this entry:** in the receipt line appended after the build.
+
 ## 2026-11-05 — Astra: modifier-card / boss-intro build receipt
 
 - PR #344 merged as `71701e103cd57b29bb4d2a1c8ce3a780b25e15cd` and synced to the test builder. Work `71701e103cd5-340a9f5b` completed Windows build and TEST ZIP packaging; Unity exited successfully, with **351 PASS lines**, including the new deployment card bake.
