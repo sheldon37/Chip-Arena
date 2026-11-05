@@ -124,7 +124,7 @@ namespace ChipArena.UnityConversion
         }
         private static int ActOf(float p){for(int i=acts.Length-1;i>=0;i--){var a=acts[i];if(p>=a.At-1.1f)return p<=a.At+a.Dur+1.2f?i:-1;}return -1;}
         /// <summary>The camera at p: the intro's shots through the arrival, then a slow orbit reframing itself for each move (blended over a second and more, so it never cuts), looking between the move's place and the boss's body.</summary>
-        public static bool Camera(float p,in Vector3 origin,in Vector3 headRoom,in Vector3 midRoom,out Vector3 eye,out Vector3 look,out float fov)
+        public static bool Camera(float p,in Vector3 origin,in Vector3 headRoom,in Vector3 midRoom,in Vector3 crown,out Vector3 eye,out Vector3 look,out float fov)
         {
             eye=look=default;fov=60;
             if(p<ArrivalEnd+.4f)
@@ -137,12 +137,26 @@ namespace ChipArena.UnityConversion
             int act=ActOf(p);var f0=FrameAt(p,act,headRoom,midRoom);var f=f0;
             // Blend from the frame before and toward the frame after near the act's edges.
             if(act>=0){var a=acts[act];float inU=BossMath.Smoother((p-(a.At-1.1f))/1.1f);if(inU<1){f=Mix(FrameAt(p,-1,headRoom,midRoom),f0,inU);}float outU=BossMath.Smoother((p-(a.At+a.Dur))/1.2f);if(outU>0)f=Mix(f,FrameAt(p,-1,headRoom,midRoom),outU);}
+            // The moments that aren't moves: a lamp's break, the phase changes (the flood, the lights dying), the death.
+            f=Mix(f,new Frame{Yaw=orbit0(p)+2.3f,Dist=13,Height=3.6f,Fov=60,Focus=new Vector3(-6,1.5f,8),Follow=.35f},Window(p,LampsAt-.6f,LampsAt+7));
+            f=Mix(f,new Frame{Yaw=orbit0(p)+.9f,Dist=21,Height=6.6f,Fov=66,Focus=new Vector3(0,1.6f,0),Follow=.15f},Window(p,Phase2At-.8f,Phase2At+NativeDeepEndBoss.PhaseChangeSeconds+.6f));
+            f=Mix(f,new Frame{Yaw=orbit0(p)+3.4f,Dist=21,Height=6.4f,Fov=66,Focus=new Vector3(0,1.8f,0),Follow=.15f},Window(p,Phase3At-.8f,Phase3At+NativeDeepEndBoss.PhaseChangeSeconds+.6f));
+            float deathK=BossMath.Smoother((p-DeathAt+1.6f)/1.5f);
             var focus=Vector3.Lerp(f.Focus,headRoom,f.Follow);focus.Y=Math.Max(focus.Y,.6f);
+            if(deathK>0)
+            {
+                // Over the crown, looking down it as it goes: the lettering is the last thing to see.
+                var above=new Vector3(0,Math.Max(0,headRoom.Y),0);var side=crown;side.Y=0;if(side.LengthSquared()<.01f)side=new Vector3(0,0,1);side=Vector3.Normalize(side);var deathEye=new Vector3(0,Math.Max(TideAt(p)+3.6f,above.Y+1.8f),0)+side*7.2f;deathEye.Y=Math.Min(deathEye.Y,NativeDeepEndArena.Ceiling-.6f);
+                var deathLook=new Vector3(headRoom.X,Math.Max(headRoom.Y,TideAt(p)-3.5f),headRoom.Z);fov=f.Fov+(46-f.Fov)*deathK;
+                float h0=Math.Max(f.Height,TideAt(p)+1.2f);var at0=focus+new Vector3((float)Math.Sin(f.Yaw)*f.Dist,0,(float)Math.Cos(f.Yaw)*f.Dist);at0.Y=h0;eye=origin+Vector3.Lerp(at0,deathEye,deathK);look=origin+Vector3.Lerp(focus,deathLook,deathK);return true;
+            }
             float tide=TideAt(p);float h=Math.Max(f.Height,tide+1.2f);
             var at=focus+new Vector3((float)Math.Sin(f.Yaw)*f.Dist,0,(float)Math.Cos(f.Yaw)*f.Dist);at.Y=h;const float wall=NativeDeepEndArena.Half-.9f;at.X=Math.Max(-wall,Math.Min(wall,at.X));at.Z=Math.Max(-wall,Math.Min(wall,at.Z));at.Y=Math.Min(at.Y,NativeDeepEndArena.Ceiling-.5f);
             eye=origin+at;look=origin+focus;fov=f.Fov;return true;
         }
-        private static Frame Mix(in Frame a,in Frame b,float u){return new Frame{Yaw=a.Yaw+BossMath.WrapPi(b.Yaw-a.Yaw)*u,Dist=a.Dist+(b.Dist-a.Dist)*u,Height=a.Height+(b.Height-a.Height)*u,Fov=a.Fov+(b.Fov-a.Fov)*u,Focus=Vector3.Lerp(a.Focus,b.Focus,u),Follow=a.Follow+(b.Follow-a.Follow)*u};}
+        private static float orbit0(float p)=>p*.035f;
+        private static float Window(float p,float from,float to)=>BossMath.Smoother((p-from)/1.1f)*(1-BossMath.Smoother((p-to)/1.1f));
+        private static Frame Mix(in Frame a,in Frame b,float u){if(u<=0)return a;return new Frame{Yaw=a.Yaw+BossMath.WrapPi(b.Yaw-a.Yaw)*u,Dist=a.Dist+(b.Dist-a.Dist)*u,Height=a.Height+(b.Height-a.Height)*u,Fov=a.Fov+(b.Fov-a.Fov)*u,Focus=Vector3.Lerp(a.Focus,b.Focus,u),Follow=a.Follow+(b.Follow-a.Follow)*u};}
         /// <summary>The preview's blows (time, push, size) for the flash: a burst from the pilots after the first Breach.</summary>
         public static int Blows(float p,float[] at,float[] size){int n=0;for(int k=0;k<5&&n<at.Length;k++){float b=BreachAt+1.4f+k*.36f;if(p<b)break;at[n]=b;size[n]=k==3?.6f:.3f;n++;}return n;}
     }

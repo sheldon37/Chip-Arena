@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         public static bool Flat(byte key)=>key==Drip||key==Pressure||key==Quiet||key==Whistle||key==LightsDie||key==Tide||key==DrainAway||key==SeicheDraw;
         public const int QueueSize=32;private static readonly DeepEndBossCue[] queue=new DeepEndBossCue[QueueSize];private static int queued;private static readonly DeepEndBossCue[] scratch=new DeepEndBossCue[QueueSize];
         public static void Queue(in DeepEndBossView v,DeepEndBossRig rig,float fromTime,float toTime){int k=Collect(v,rig,fromTime,toTime,scratch);for(int i=0;i<k&&queued<QueueSize;i++)queue[queued++]=scratch[i];}
+        /// <summary>One cue now, outside the record's moments (a blow on the throat or a lamp: the health's drop).</summary>
+        public static void QueueOne(byte key,float at,Vector3 place,float gain=1){if(queued<QueueSize)queue[queued++]=new DeepEndBossCue{Key=key,At=at,Place=place,Gain=gain};}
         public static int Drain(DeepEndBossCue[] into){int k=Math.Min(queued,into.Length);Array.Copy(queue,into,k);queued=0;return k;}
         private static DeepEndBossCue[] into;private static int n;private static float from,to;
         private static void Add(byte key,float at,Vector3 place,float gain=1){if(!(at>from&&at<=to)||into==null||n>=into.Length)return;into[n++]=new DeepEndBossCue{Key=key,At=at,Place=place,Gain=gain};}

@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
 
         private readonly DeepEndBossRig deepEndRig=new DeepEndBossRig();private readonly NativeDeepEndBossFx deepEndFx=new NativeDeepEndBossFx();private DeepEndBossView deepEndView=DeepEndBossView.None;
         private float deepEndLast=float.NaN,deepEndHp=float.NaN,deepEndFlash,deepEndLastBlow=float.NegativeInfinity;private bool deepEndDrawnLast;private NVector deepEndOrigin;private NativeArena deepEndArena;private int deepEndGeneration=-1;
-        private readonly NVector2[] deepEndPilots=new NVector2[8];private float deepEndSongSpawn=float.NaN;private double deepEndSongLast=-1;private readonly float[] deepEndBlowAt=new float[8],deepEndBlowSize=new float[8];
+        private readonly NVector2[] deepEndPilots=new NVector2[8];private float deepEndHurt=float.NegativeInfinity;private float deepEndSongSpawn=float.NaN;private double deepEndSongLast=-1;private readonly float[] deepEndBlowAt=new float[8],deepEndBlowSize=new float[8];
         /// <summary>The rig the local tool's bosscam frames (public Root and Yaw).</summary>
         public DeepEndBossRig DeepEndBossRigShown=>deepEndRig;
         /// <summary>The boss's draws last frame (budget lines), and its tier.</summary>
@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
             var stage=NativeDeepEndBossStage.Evaluate(deepEndView,now,NativeDeepEndBossBeats.Current);NativeDeepEndBossStage.Shown=stage;NativeDeepEndBossStage.ShownClock=now;
             // The record's blows flash the body.
             if(preview){int n=NativeDeepEndBossPreview.Blows(now,deepEndBlowAt,deepEndBlowSize);for(int i=0;i<n;i++)if(!(deepEndBlowAt[i]<=deepEndLastBlow)){deepEndLastBlow=Math.Max(deepEndLastBlow,deepEndBlowAt[i]);deepEndFlash=deepEndBlowSize[i];}if(now<deepEndLast)deepEndLastBlow=float.NegativeInfinity;}
-            else if(!float.IsNaN(deepEndHp)&&deepEndView.hp<deepEndHp-.5f&&deepEndView.maxHp>0)deepEndFlash=Mathf.Clamp((deepEndHp-deepEndView.hp)/deepEndView.maxHp*60,.25f,1.4f);
+            else if(!float.IsNaN(deepEndHp)&&deepEndView.hp<deepEndHp-.5f&&deepEndView.maxHp>0){deepEndFlash=Mathf.Clamp((deepEndHp-deepEndView.hp)/deepEndView.maxHp*60,.25f,1.4f);if(now-deepEndHurt>1.2f){deepEndHurt=now;NativeDeepEndBossCues.QueueOne(NativeDeepEndBossCues.Hurt,now,deepEndRig.MouthAt);}}
             deepEndHp=deepEndView.hp;
             // Live, the pilots in the room's frame (the Whistle's rings), and whom it's after.
             if(!preview)
@@ -120,7 +120,8 @@ namespace ChipArena.UnityConversion
         {
             eye=look=default;fov=60;if(!NativeDeepEndBossPreview.On||!deepEndDrawnLast)return false;
             var head=deepEndRig.Root-deepEndOrigin;var mid=deepEndRig.Shown.Position[9]-deepEndOrigin;
-            if(!NativeDeepEndBossPreview.Camera(NativeDeepEndBossPreview.ShownP,deepEndOrigin,head,mid,out var e,out var l,out fov))return false;
+            var crown=BossMath.Rotate(deepEndRig.Shown.Rotation[0],new NVector(0,1,0));
+            if(!NativeDeepEndBossPreview.Camera(NativeDeepEndBossPreview.ShownP,deepEndOrigin,head,mid,crown,out var e,out var l,out fov))return false;
             float sh=NativeDeepEndBossStage.Shown.Shake;if(sh>.002f&&EffectsQuality>=.5f){float k=(float)NativeDeepEndBossStage.ShownClock;e+=new NVector(Mathf.Sin(k*37.1f)+.5f*Mathf.Sin(k*71.3f),Mathf.Sin(k*43.7f+.7f),Mathf.Sin(k*53.3f+1.1f))*(.05f*sh);}
             eye=new Vector3(e.X,e.Y,e.Z);look=new Vector3(l.X,l.Y,l.Z);return true;
         }

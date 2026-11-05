@@ -347,12 +347,23 @@ def cell(sk, tier, s0, s1, t0, t1, zone, seedx, seedy):
         return
     if tier == 1:
         n0 = (n + Vector(((jx - .5) * .05, 0, (jy - .5) * .05))).normalized()
-        k = scale3(lerp3(colour, gc, .08), 1)
-        i0 = sk.v(a, n0, k)
-        i1 = sk.v(b, n0, k)
-        i2 = sk.v(c, n0, k)
-        i3 = sk.v(d, n0, k)
+        if zone == 'belly':
+            k = scale3(lerp3(colour, gc, .08), 1)
+            i0 = sk.v(a, n0, k)
+            i1 = sk.v(b, n0, k)
+            i2 = sk.v(c, n0, k)
+            i3 = sk.v(d, n0, k)
+            sk.quad(i0, i1, i2, i3)
+            return
+        # The grid stays: the top as one quad, grout along two of its sides.
+        g = min(.3, .03 / max((a - b).length, .05))
+        b_in, d_in, c_in = b.lerp(a, g), d.lerp(a, g), c.lerp(a, g)
+        i0, i1, i2, i3 = sk.v(a, n0, colour), sk.v(b_in, n0, colour), sk.v(c_in, n0, colour), sk.v(d_in, n0, colour)
         sk.quad(i0, i1, i2, i3)
+        j0, j1, j2, j3 = sk.v(b_in, n, gc, .1), sk.v(b, n, gc, .1), sk.v(c, n, gc, .1), sk.v(c_in, n, gc, .1)
+        sk.quad(j0, j1, j2, j3)
+        k0, k1, k2, k3 = sk.v(d_in, n, gc, .1), sk.v(c_in, n, gc, .1), sk.v(c, n, gc, .1), sk.v(d, n, gc, .1)
+        sk.quad(k0, k1, k2, k3)
         return
     # Level 0: a real tile. An outer ring on the skin in the grout's colour, an inner ring raised and glazed, the top with its own small tilt
     # so the room's lights break tile by tile. The belly's are lean.

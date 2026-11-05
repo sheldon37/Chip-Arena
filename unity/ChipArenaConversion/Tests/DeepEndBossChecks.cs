@@ -208,6 +208,6 @@ public static class DeepEndBossChecks
         // A pure function of the clock.
         var a=DeepEndBossView.None;var b=DeepEndBossView.None;NativeDeepEndBossPreview.View(40,ref a,out _);NativeDeepEndBossPreview.View(40,ref b,out _);Check(a.action==b.action&&a.actionId==b.actionId&&a.hp==b.hp,"the same p, the same record");
         // The camera never leaves the room, through the whole loop.
-        var o=new Vector3(24,0,24);for(float p=0;p<NativeDeepEndBossPreview.Loop;p+=.2f){NativeDeepEndBossPreview.Route.At(p,out var h,out _);Check(NativeDeepEndBossPreview.Camera(p,o,h,h,out var e,out var l,out float fov),"camera at "+p);var q=e-o;Check(NativeDeepEndArena.InRoom(q.X,q.Z)&&q.Y<NativeDeepEndArena.Ceiling,"the camera in the room at "+p+": "+q);}
+        var o=new Vector3(24,0,24);for(float p=0;p<NativeDeepEndBossPreview.Loop;p+=.2f){NativeDeepEndBossPreview.Route.At(p,out var h,out _);Check(NativeDeepEndBossPreview.Camera(p,o,h,h,new Vector3(0,0,1),out var e,out var l,out float fov),"camera at "+p);var q=e-o;Check(NativeDeepEndArena.InRoom(q.X,q.Z)&&q.Y<NativeDeepEndArena.Ceiling,"the camera in the room at "+p+": "+q);}
     }
 }
