@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         /// stands out at the centre (m; negative: pulled in), `lift` how far the torn edge curls off the surface, `fingers` up to four peaks (a, b offsets in xy and height in z) pushing out through it, min/max the surface's limits along a and b (the patch stays on it). `eye` makes the hole's depth
         /// shift with the viewer. `dark`: how far toward black the paper is near the hole (a stain, a burn).
         /// </summary>
-        public void Tear(byte surf,Vector3 centre,Vector3 n,Vector3 a,Vector3 b,float radius,float open,float bulge,float lift,int seed,Vector3 eye,float minA,float maxA,float minB,float maxB,Vector3 f0=default,Vector3 f1=default,Vector3 f2=default,Vector3 f3=default,float tint=1,float tall=1,float strips=0,float t=0)
+        public void Tear(byte surf,Vector3 centre,Vector3 n,Vector3 a,Vector3 b,float radius,float open,float bulge,float lift,int seed,Vector3 eye,float minA,float maxA,float minB,float maxB,Vector3 f0=default,Vector3 f1=default,Vector3 f2=default,Vector3 f3=default,float tint=1,float tall=1,float strips=0,float t=0,float peel=0)
         {
             var m=Paper[surf];int gridV=(Rings+1)*(Sectors+1),gridI=Rings*Sectors*6;
             if(!m.Room(gridV,gridI)||!Void.Room(Sectors*5+3+StripCount*12+FlapCount*(FlapRows+1)*2,Sectors*21+StripCount*30+FlapCount*FlapRows*12)){Refused++;return;}
@@ -102,7 +102,7 @@ namespace ChipArena.UnityConversion
                 var mid=Vector3.Lerp(rim,centre+shift+off2,.42f);
                 Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid,N=n,R=.05f*tone+.002f,G=.048f*tone+.002f,B=.024f*tone+.002f,A=0};
                 // The torn rim: on the paper's edge (where the paper's inner ring stands), a thin pale lip outside the hole.
-                int inner=v0+s*(Rings+1);var pv=m.Vertices[inner].P;float w=.012f+.06f*H(seed+11,s)*H(seed+12,s*2);var outward=Vector3.Normalize(a*ca+b*sa*tall)*w;float rimGlow=.3f*Air;
+                int inner=v0+s*(Rings+1);var pv=m.Vertices[inner].P;float w=.012f+.06f*H(seed+11,s)*H(seed+12,s*2);var outward=Vector3.Normalize(a*ca+b*sa*tall)*w;float rimGlow=.2f*Air;
                 Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+n*.002f,N=n,R=.68f,G=.64f,B=.48f,A=rimGlow};
                 Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+outward+n*.002f,N=n,R=.52f,G=.48f,B=.34f,A=rimGlow*.6f};
             }
@@ -136,17 +136,17 @@ namespace ChipArena.UnityConversion
                 }
             }
             // Flaps peeled back off the edge all round it, curling over onto the wall: what the room sees of them is the paper's reverse, pale. Both sides drawn (they stand up off the wall).
-            if(strips>.01f&&surf==WallS)for(int k=0;k<FlapCount;k++)
+            if(peel>.01f&&surf==WallS)for(int k=0;k<FlapCount;k++)
             {
                 int sec=(int)((k+.2f+.6f*H(seed+30,k))/FlapCount*Sectors)%Sectors;float ang=sec*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);float edge=Edge(open,seed,sec);
                 var d0=Vector3.Normalize(a*ca+b*sa*tall);var side=Vector3.Cross(n,d0);var c=centre+a*BossMath.Clamp(ca*edge,minA,maxA)+b*BossMath.Clamp(sa*edge*tall,minB,maxB)+n*(off+.003f);
-                float len=(.14f+.36f*H(seed+31,k))*Math.Min(1,open*2.4f)*Math.Min(1,strips*1.4f),wid=.05f+.12f*H(seed+32,k);if(len<.02f)continue;
+                float len=(.1f+.28f*H(seed+31,k))*Math.Min(1,open*2.4f)*peel,wid=.045f+.1f*H(seed+32,k);if(len<.02f)continue;
                 float flutter=(float)Math.Sin(t*(.9f+H(seed+33,k))+k*1.7f)*.12f,curl=2.3f+.6f*H(seed+34,k);int f0v=Void.VertexCount;
                 for(int r=0;r<=FlapRows;r++)
                 {
                     float u=(float)r/FlapRows,phi=.3f+(curl+flutter)*u,cp=(float)Math.Cos(phi),sp=(float)Math.Sin(phi);var along=n*cp+d0*sp;var nr=n*sp-d0*cp;
                     float wr=wid*(float)Math.Pow(1-u,.8f)+.002f;var mid=c+side*((H(seed+36,k*9+r)-.5f)*wid*.5f*u);
-                    float g=(.46f+.3f*u+.1f*H(seed+35,k*7+r));float fg=.3f*Air*(.4f+.6f*u);
+                    float g=.34f+.26f*u+.08f*H(seed+35,k*7+r);float fg=.18f*Air*(.4f+.6f*u);
                     Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid-side*wr,N=nr,R=g,G=g*.94f,B=g*.72f,A=fg};Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid+side*wr,N=nr,R=g,G=g*.94f,B=g*.72f,A=fg};
                     c+=along*(len/FlapRows);
                 }

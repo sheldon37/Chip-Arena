@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
             // 2.2-4.2: close on the wall under the one failing lamp: the paper bulges, four long fingers push through, it tears open onto black.
             new BossIntroShot{From=2.2f,To=4.2f,EyeA=new Vector3(2.5f,1.05f,-4.1f),EyeB=new Vector3(2.15f,1.12f,-4.85f),LookA=new Vector3(.8f,1.62f,-6.8f),LookB=new Vector3(.85f,1.64f,-6.7f),FovA=46,FovB=40,Ease=1},
             // 4.2-6.2: long lens, side on, its whole height: it walks out through the wall in the dark; the tubes strike up its spine one at a time.
-            new BossIntroShot{From=4.2f,To=6.2f,EyeA=new Vector3(16.5f,1.55f,-6.0f),EyeB=new Vector3(16.5f,1.55f,-3.5f),LookA=new Vector3(0,1.55f,-6.6f),LookB=new Vector3(0,1.55f,-2.8f),FovA=18,FovB=18,Ease=1},
+            new BossIntroShot{From=4.2f,To=6.2f,EyeA=new Vector3(15.5f,1.55f,-3.75f),EyeB=new Vector3(15.5f,1.55f,-3.35f),LookA=new Vector3(0,1.55f,-6.3f),LookB=new Vector3(0,1.55f,-3.0f),FovA=19,FovB=19,Ease=1},
             // 6.2-8.0: a slow push on the head from below, as it comes on: it flickers and catches, turns to look, the diffuser splits. The card rises at 6.43.
             new BossIntroShot{From=6.2f,To=8f,EyeA=new Vector3(-.75f,1.5f,.9f),EyeB=new Vector3(-.5f,1.72f,3.45f),LookA=new Vector3(0,2.72f,-2.5f),LookB=new Vector3(0,2.86f,1.25f),FovA=46,FovB=36,Ease=1},
             // 8.0-9.07: whip back to the party's view; it straightens, head through the ceiling, then stoops; every light slams on at the drop.

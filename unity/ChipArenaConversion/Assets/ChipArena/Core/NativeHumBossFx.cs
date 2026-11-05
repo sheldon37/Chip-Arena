@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
             if(rig==null||!rig.Visible||!v.live)return;
             eye=new Vector3((float)eyeX,(float)eyeY,(float)eyeZ);camR=new Vector3((float)rightX,(float)rightY,(float)rightZ);camU=new Vector3((float)upX,(float)upY,(float)upZ);quality=effects<0?0:effects>1?1:effects;low=lowTier;reduced=reducedEffects;
             vseed=0x4A1u^(uint)(HumBossView.At(v.spawned)?(int)(v.spawned*16):0);floorY=Room!=null?Room.Origin.Y:v.y;
-            DustC=DustFull*(.12f+.88f*Math.Min(1,st.Air));Surface.Air=.35f+.65f*Math.Min(1,st.Air);
+            DustC=DustFull*(.12f+.88f*Math.Min(1,st.Air));Surface.Air=.1f+.9f*Math.Min(1,st.Air);
             Levels(rig,v,st,t);
             // Telegraphs first (never thinned), then the rest.
             Rows(v,st,t);Lane(rig,v,t);Stoop(rig,v,t);ReachArc(rig,v,t);CutArc(rig,v,t);FallThrough(rig,v,t);Ring(rig,v,t);
@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
             if(dead){head=d<3.05f?(reduced?1:(.45f+.55f*(H(78,(int)Math.Floor(t*9))<.72f?1:.1f))):0;if(d<1.6f)head=Math.Max(head,1.1f);}
             head*=flick;HeadTubes=head*1.15f;DiffuserU=DiffuserL=head;
             float bal=.85f+.55f*Math.Max(0,BossBreath.Sample(t,v.phase>=3?1.4f:1f,vseed^7u))+3.2f*charge;
-            if(a<beats.Tube(0))bal=0;else if(a<beats.Hold)bal=Math.Min(bal,BossMath.Smooth((a-beats.Tube(0))/1.5f)*1.6f);
+            if(a<beats.WalkOut)bal=0;else if(a<beats.Hold)bal=Math.Min(bal,BossMath.Smooth((a-beats.WalkOut)/1.3f)*1.6f);
             if(silent)bal=.05f;if(dead)bal*=1-BossMath.Smooth(d/1.6f);Ballast=bal;
         }
         private static float ChargeOf(HumBossRig rig,in HumBossView v)
@@ -178,7 +178,7 @@ namespace ChipArena.UnityConversion
                 float when=hit+travel*cross/len;float k=t-when;if(k<-.3f||k>3.2f)continue;
                 float nx=alongX?0:1,nz=alongX?1:0;if(nx*dir.X+nz*dir.Z>0){nx=-nx;nz=-nz;}
                 float open=k<0?0:Math.Min(1.5f,1.5f*BossMath.Smooth(k/.1f))*(1-BossMath.Smooth((k-2)/1.2f));float bulge=k<0?.3f*(1+k/.3f):.08f;
-                WallPatch(new Vector3(hitAt.X,floorY+1.95f,hitAt.Z),nx,nz,2.2f,open,bulge,.08f,70+s,t,default,default,default,default,1.3f,1);WallPatch(new Vector3(hitAt.X,floorY+1.95f,hitAt.Z),-nx,-nz,2.2f,open*.85f,bulge*.5f,.08f,90+s,t,default,default,default,default,1.3f,1);
+                WallPatch(new Vector3(hitAt.X,floorY+1.95f,hitAt.Z),nx,nz,2.2f,open,bulge,.08f,70+s,t,default,default,default,default,1.3f,1,1);WallPatch(new Vector3(hitAt.X,floorY+1.95f,hitAt.Z),-nx,-nz,2.2f,open*.85f,bulge*.5f,.08f,90+s,t,default,default,default,default,1.3f,1,1);
                 if(k>=0&&k<.8f)Vfx.SmokeBurst(t,hitAt+new Vector3(0,1.4f,0)+dir*.6f,dir*2.4f,.6f,.05f,8,1.2f,.2f,.8f,DustC,.28f,when,.1f,vseed,540+s,0,floorY);
             }
             // Speed: the air pulled along the lane behind it while it's thrown.
@@ -329,7 +329,7 @@ namespace ChipArena.UnityConversion
             // It stays torn a while into the fight, then the paper's whole again, as if it had never been (the level doesn't keep what happens to it).
             float heal=1-BossMath.Smoother((a-b.Hold-4)/2.5f);
             float holeR=(.2f*through+.3f*open)*heal;float bulge=(.15f*press*(1-.6f*open)+scratch)*heal;
-            WallPatch(c,0,-1,1.8f,holeR,bulge,.02f*through+.02f*open,9090,t,f0,f1,f2,f3,1.45f,open*heal);Tears++;
+            WallPatch(c,0,-1,1.8f,holeR,bulge,.02f*through+.02f*open,9090,t,f0,f1,f2,f3,1.45f,open*heal,heal);Tears++;
             // While it's still behind the wall, what's lit on it comes up through the paper: the transformer first, then the tubes, one by one.
             if(rig.Arriving&&a>=b.WalkOut-.1f)
             {
@@ -371,7 +371,7 @@ namespace ChipArena.UnityConversion
             if(!HumBossView.At(v.handAt)||Room==null)return;var m=NativeHumBoss.Move("hand");float k=t-v.handAt;if(k<-m.Wind||k>m.Strike+m.Follow+m.Recover)return;
             float until=HumBossView.At(v.handUntil)?t-v.handUntil:-1;float grow=k<0?(k+m.Wind)/m.Wind:1;float fade=1-BossMath.Smooth((until-.2f)/.6f);
             var c=new Vector3(v.handX,v.handY,v.handZ);float scratch=k<0&&!reduced?.012f*(float)Math.Sin(t*37):0;
-            WallPatch(c,v.handNx,v.handNz,1.5f,k<0?0:.42f*BossMath.Smooth(k/.15f)*fade,.14f*grow+scratch,.05f*BossMath.Smooth(k/.15f),300,t,default,default,default,default,1.2f,1);Tears++;
+            WallPatch(c,v.handNx,v.handNz,1.5f,k<0?0:.42f*BossMath.Smooth(k/.15f)*fade,.14f*grow+scratch,.05f*BossMath.Smooth(k/.15f),300,t,default,default,default,default,1.2f,1,1);Tears++;
             // Its warning on the carpet, under where it comes out.
             if(k<0){int q0=Quads.Count;RingFlat(new Vector3(v.handX+v.handNx*1.3f,floorY+.02f,v.handZ+v.handNz*1.3f),m.Grab*.7f,.05f,R(WarnHex)*grow,G(WarnHex)*grow,B(WarnHex)*grow,.85f);Telegraph+=Quads.Count-q0;}
             if(k>=0&&k<.8f)Vfx.SmokeBurst(t,c+new Vector3(v.handNx,0,v.handNz)*.5f,new Vector3(v.handNx,0,v.handNz)*.8f,.35f,.0f,6,1.4f,.05f,.32f,new Vector3(.5f,.48f,.38f),.16f,v.handAt,.1f,vseed,820,0,floorY);
@@ -467,7 +467,7 @@ namespace ChipArena.UnityConversion
         {
             if(!HumBossView.At(v.clipAt)||v.clipSeconds<=0||t<v.clipAt||t>v.clipAt+v.clipSeconds+.4f||Room==null)return;float k=t-v.clipAt;
             var c=rig.Shown.Position[NativeHumBossLook.Chest];float d=NativeHumArena.NearestWall(Room,v.shiftMask,c.X,c.Z,out float wx,out float wz,out float nx,out float nz);
-            float open=1.1f*BossMath.Smooth(k/.15f)*(1-BossMath.Smooth((k-v.clipSeconds)/.4f));WallPatch(new Vector3(wx,floorY+2.05f,wz),nx,nz,2.8f,open,.2f,.1f,340,t,default,default,default,default,1.5f,1);Tears++;
+            float open=1.1f*BossMath.Smooth(k/.15f)*(1-BossMath.Smooth((k-v.clipSeconds)/.4f));WallPatch(new Vector3(wx,floorY+2.05f,wz),nx,nz,2.8f,open,.2f,.1f,340,t,default,default,default,default,1.5f,1,1);Tears++;
             if(!reduced&&k<v.clipSeconds){int slot=(int)Math.Floor(t*7);if(H(slot,5)<.5f)Vfx.SparkBurst(t,new Vector3(wx,floorY+1.5f+2*H(slot,6),wz),new Vector3(nx,-.2f,nz),.9f,2.4f,6,.5f,slot/7f,.03f,vseed,960+slot%23,.8f,.012f,.9f,true,floorY);}
         }
         // ---------------- the death: tubes pop from the top down; glass; then only the fixture ----------------
@@ -501,7 +501,7 @@ namespace ChipArena.UnityConversion
         }
         private void AddLight(Vector3 p,float range,Vector3 rgb){if(LightCount>=MaxLights)return;int i=LightCount++;LightPos[i*4]=p.X;LightPos[i*4+1]=p.Y;LightPos[i*4+2]=p.Z;LightPos[i*4+3]=range;LightRgb[i*3]=rgb.X;LightRgb[i*3+1]=rgb.Y;LightRgb[i*3+2]=rgb.Z;}
         // ---------------- the surfaces in the room ----------------
-        private void WallPatch(Vector3 c,float nx,float nz,float radius,float open,float bulge,float lift,int seed,float t,Vector3 f0=default,Vector3 f1=default,Vector3 f2=default,Vector3 f3=default,float tall=1,float strips=0)
+        private void WallPatch(Vector3 c,float nx,float nz,float radius,float open,float bulge,float lift,int seed,float t,Vector3 f0=default,Vector3 f1=default,Vector3 f2=default,Vector3 f3=default,float tall=1,float strips=0,float peel=0)
         {
             var n=new Vector3(nx,0,nz);var a=new Vector3(nz,0,-nx);var at=c+n*(BackroomsLayout.Thickness*.5f);
             float along=Vector3.Dot(c-new Vector3(Room.MinX,0,Room.MinZ),a);
@@ -510,7 +510,7 @@ namespace ChipArena.UnityConversion
             if(Math.Abs(a.X)>.5f){float lo=(Room.MinX-at.X)*Math.Sign(a.X),hi=(Room.MaxX-at.X)*Math.Sign(a.X);minA=Math.Max(minA,Math.Min(lo,hi));maxA=Math.Min(maxA,Math.Max(lo,hi));}
             else{float lo=(Room.MinZ-at.Z)*Math.Sign(a.Z),hi=(Room.MaxZ-at.Z)*Math.Sign(a.Z);minA=Math.Max(minA,Math.Min(lo,hi));maxA=Math.Min(maxA,Math.Max(lo,hi));}
             float minB=floorY+BackroomsMesh.TrimHeight+.02f-c.Y,maxB=floorY+BackroomsLayout.Height-.02f-c.Y;
-            Surface.Tear(NativeHumSurface.WallS,at,n,a,Vector3.UnitY,radius,open,bulge,lift,seed,eye,minA,maxA,minB,maxB,f0,f1,f2,f3,1,tall,strips,t);
+            Surface.Tear(NativeHumSurface.WallS,at,n,a,Vector3.UnitY,radius,open,bulge,lift,seed,eye,minA,maxA,minB,maxB,f0,f1,f2,f3,1,tall,strips,t,peel);
         }
         private void FloorPatch(Vector3 c,float radius,float open,float bulge,float lift,int seed,float t)
         {
