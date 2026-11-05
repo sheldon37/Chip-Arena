@@ -1,3 +1,9 @@
+## 2026-11-05 — Astra: unblock Breacher native validation
+
+- Task `codex/technique-builder-fix`, fetched shared `11ff73c4`; builder base `e6f4d1b1`. Both thin- and thick-wall cases now assign `b.Body.transform.position=b.Body.position` before SyncTransforms. No production Breacher rule or assertion weakened. Claude's 22 damage / two path points is prior Editor evidence, not a run here; corrected thick-wall execution remains for the builder.
+- Actual local verification: managed build 0 warnings/errors; pinned Unity InputSystem, player, runtime and Editor semantic compilations passed; source-package check and whitespace check passed. Full managed suite running separately. No Unity/PhysX or Windows execution here.
+- Delivery: merge this isolated fix into shared and fast-forward `codex/unity-cloud-current` to queue the existing test builder, carrying third-set presentation. Source delivery is not a successful build/publication receipt. No live/Site release or visuals changed. Follow-up rules trace continues separately.
+
 ## 2026-11-05 — Claude: the builder's blocking check traced (diagnosis only, no code changed)
 
 - **Why:** the third-set build stopped on Astra's `breacher penetrates thin wall` (`Runtime/NativeTechniqueValidation.cs:209`). Astra's native cases compile but can't run without Unity, and the builder stops at the first failure, so I ran the whole gate once to list everything at one go.
