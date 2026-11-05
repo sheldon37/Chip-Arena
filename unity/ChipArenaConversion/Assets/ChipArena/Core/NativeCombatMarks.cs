@@ -30,7 +30,7 @@ namespace ChipArena.UnityConversion
         public static bool Slotted(ConversionContent content,string spec,string map,string chip)
         {
             string needed=NativeAbilityChips.Requires(chip);if(needed==null)return true;
-            foreach(string slot in new[]{"q","e"}){var row=NativeTechniqueLoadout.Ability(content,map??"",spec,slot);if(row?.live==true&&row.id==needed)return true;}return false;
+            var q=NativeTechniqueLoadout.Ability(content,map??"",spec,"q");if(q?.live==true&&q.id==needed)return true;var e=NativeTechniqueLoadout.Ability(content,map??"",spec,"e");return e?.live==true&&e.id==needed;
         }
     }
 }

@@ -87,7 +87,7 @@ namespace ChipArena.UnityConversion
                     int count=0;while(count++<120&&connection.TryReceive(out string json))try{var m=NativeNetCodec.Decode(json);if(m==null||m.version!=NativeConnection.Protocol)throw new ArgumentException();HostMessage(peer,m);}catch(Exception e){Debug.LogWarning("Network peer "+peer.Seat?.id+" message failed: "+e);connection.Dispose();networkStatus="A peer sent an invalid message.";break;}
                 }
                 foreach(var peer in peers.Where(p=>p.Connection==null&&(DateTime.UtcNow-p.Disconnected).TotalSeconds>90&&arena==null).ToArray())peers.Remove(peer);
-                if(!ExpeditionSplit&&arena!=null&&Time.unscaledTime>=nextSnapshot){nextSnapshot=Time.unscaledTime+.05f;try{var frame=arena.NetworkFrame();frame.rematchVotes=endFlow.Voters;frame.rematchRequired=endFlow.Required;frame.lobbyReturnSeconds=LobbyReturnSeconds;var packet=NativeFrameBudget.Encode(frame,networkEpoch);if(packet!=null){foreach(var peer in peers)if(peer.Seat!=null&&match.Seat(peer.Seat.id)!=null&&peer.Connection?.Closed==false)peer.Connection.SendEncoded(packet,true);}else networkStatus="Snapshot exceeded its presentation budget.";}catch(Exception){networkStatus="Could not encode the current match snapshot.";}}
+                if(!ExpeditionSplit&&arena!=null&&HasSnapshotRecipient()&&Time.unscaledTime>=nextSnapshot){nextSnapshot=Time.unscaledTime+.05f;try{var frame=arena.NetworkFrame();frame.rematchVotes=endFlow.Voters;frame.rematchRequired=endFlow.Required;frame.lobbyReturnSeconds=LobbyReturnSeconds;var packet=NativeFrameBudget.Encode(frame,networkEpoch);if(packet!=null){foreach(var peer in peers)if(peer.Seat!=null&&match.Seat(peer.Seat.id)!=null&&peer.Connection?.Closed==false)peer.Connection.SendEncoded(packet,true);}else networkStatus="Snapshot exceeded its presentation budget.";}catch(Exception){networkStatus="Could not encode the current match snapshot.";}}
             }
             if(lobbyDirty&&Hosting&&Time.unscaledTime>=nextLobby){lobbyDirty=false;nextLobby=Time.unscaledTime+.2f;FlushLobby();}
             if(server!=null)
@@ -101,6 +101,8 @@ namespace ChipArena.UnityConversion
             ExpeditionNetworkTick();DevNetworkTick();StageNetworkTick();
             if(arena?.Replica==true)arena.InterpolateReplica(Time.unscaledDeltaTime*arena.DevTimeScale);
         }
+        private bool HasSnapshotRecipient()
+        {foreach(var peer in peers)if(peer.Seat!=null&&match.Seat(peer.Seat.id)!=null&&peer.Connection?.Closed==false)return true;return false;}
         private void HostMessage(NativePeer peer,NativeNetMessage message)
         {
             var c=peer.Connection;if(message.type=="ping"){c.Send(NativeNetCodec.Encode(new NativeNetMessage{type="pong",id=message.id}));return;}if(message.type=="pong"){c.Metrics.Pong(message.id,NativeConnectionMetrics.Now);return;}

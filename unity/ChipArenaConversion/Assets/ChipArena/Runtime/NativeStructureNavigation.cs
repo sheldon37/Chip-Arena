@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,CrowdRoute> crowdRoutes=new Dictionary<int,CrowdRoute>();
         private Dictionary<string,MapNavNode> navNodes;
         private Dictionary<string,List<MapNavLink>> navEdges;
-        private string navMap;
+        private string navMap;private NativeNavDependencies navDependencies;private StructureDefinition[] navDependencySegments;
         private NativeNavHazards navHazards;private NativeNavSearch navSearch;private Func<MapNavLink,bool> navActive;private Func<MapNavNode,bool> navUsable;private Vector3 navOrigin;
         private Func<MapNavNode,bool> navPocketUsable,navEscapeUsable;
         public double NavigationNearestMs {get;private set;}public double NavigationLinkMs {get;private set;}public int NavigationLinkChecks {get;private set;}
@@ -135,9 +135,8 @@ namespace ChipArena.UnityConversion
             if(!StageLinkOpen(l))return false;
             foreach(var id in l.requires??Array.Empty<string>())if(Structures.Get(id).state!=0)return false;
             foreach(var id in l.after??Array.Empty<string>())if(Structures.Get(id).state!=3)return false;
-            foreach(var d in Map.segments)
-            {int state=Structures.Get(d.id).state;if(state!=0&&(d.nav?.remove??Array.Empty<string>()).Contains(l.id))return false;if((d.nav?.add??Array.Empty<string>()).Contains(l.id)&&state!=3)return false;}
-            return true;
+            if(navDependencies==null||!ReferenceEquals(navDependencySegments,Map.segments)){navDependencySegments=Map.segments;navDependencies=new NativeNavDependencies(navDependencySegments);}
+            return navDependencies.Enabled(l.id,Structures);
         }
         private bool NavLinkActive(MapNavLink l)
         {
