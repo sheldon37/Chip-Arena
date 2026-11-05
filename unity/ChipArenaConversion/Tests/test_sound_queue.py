@@ -109,6 +109,23 @@ class QueueTests(unittest.TestCase):
         self.assertIn(str(key), str(error.exception))
         self.assertNotIn('PRIVATE', str(error.exception))
         self.assertFalse(self.calls)
+    def test_unity_only_bundle_has_same_six_approved_requests(self):
+        q.check_bundle()
+        with patch.object(Path, 'is_file', return_value=False):
+            queue, repo = q.queue_inputs(q.QUEUE, q.gen.REPO)
+        self.assertEqual(repo, q.BUNDLE)
+        plans = q.plan(queue, repo)
+        jobs = [job for row in plans for job in row[4]]
+        self.assertEqual(len(jobs), 6)
+        self.assertEqual(sum(job['durationSeconds'] for job in jobs), 11)
+        self.assertEqual({job['variant'] for job in jobs}, {1})
+    def test_stale_bundle_fails_packaging_check(self):
+        packaged = self.root / 'bundle/docs/audio'; packaged.mkdir(parents=True)
+        canonical = self.repo / 'docs/audio/sound-queue.json'
+        canonical.write_text('canonical')
+        (packaged / 'sound-queue.json').write_text('stale')
+        with self.assertRaisesRegex(ValueError, 'Refresh tools/sound_bundle'):
+            q.check_bundle(self.repo, self.root / 'bundle')
     def test_bad_limits(self):
         for value in [0, -1, float('nan'), float('inf'), True]:
             with self.assertRaises(ValueError): q.limits(dict(maxRequests=1, maxSeconds=value))
