@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: Bombadier chip and destination-roll stalls
+
+- Branch `codex/chip-roll-stalls`, base shared `5801c523` (integrates shared documentation through `9d31eeec`). Bomb glyph parsing/rasterization no longer runs in OnGUI: warm on one worker, reuse five bounded size buckets across icon/card faces, and upload at most one texture per frame. Artwork and gameplay unchanged.
+- Destination rolls now queue pure managed world generation off the main thread. Resources are captured and results installed on the main thread. One worker coalesces rerolls; leaving invalidates pending results. Deploy waits for the current result; guests retain the newest run packet until their identical bundle is ready, without blocking network ticks.
+- Measured managed CPU work on this runner: ten cold 256px glyphs 815 ms; sample destination selection 9 ms, bundle generation 606 ms. These are CPU microbenchmarks, not Windows frame-time measurements.
+- Focused regression gate covers non-blocking work, stale rerolls/reset/faults, bounded glyph sizes, source immutability and exact generated identity. Core build, focused checks and Unity semantic compilation pass; full suite and delivery receipts follow in the PR. Windows rendering, actual FPS improvement and two-client play acceptance remain pending.
+
 ## 2026-11-04 — Claude: gun tracers, landings and chip visuals on the projectile rework
 
 - **Owner request:** fast, sharp, readable tracers with a distinct look per weapon, no slow energy orbs; rifle near-instant with a clean scope; visible Fan-Hammer and Overdrive; visible arrows and supernatural arcane bolts; readable ricochet, split, homing, explosive, speed and gravity chips; no gameplay change; hold frame rate in the worst case.
