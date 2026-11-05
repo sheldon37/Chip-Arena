@@ -151,9 +151,12 @@ namespace ChipArena.UnityConversion
             // The pane: it swings square as the double reaches it, then bursts.
             if(age<.24f)
             {
-                float open=OutCubic(age/.07f),swing=1.2f*(1-OutCubic(age/.16f)),b=1-Smooth((age-.13f)/.1f),w=.62f*open;var across=rt*(float)Math.Cos(swing)+dir*(float)Math.Sin(swing);var p0=pane-across*w;var p1=pane+across*w;var top=Up*Tall;
-                s.Band(false,p0,p1,p1+top,p0+top,.55f*b,.55f*b,MirrorLilac);Vector3 fr=MirrorPale*(2.4f*b);s.Line(false,p0,p1,fr,.04f,false);s.Line(false,p0+top,p1+top,fr,.04f,false);s.Line(false,p0,p0+top,fr,.04f,false);s.Line(false,p1,p1+top,fr,.04f,false);
-                float g=Clamp01(age/.16f);s.Line(false,Vector3.Lerp(p0,p1,g*.7f),Vector3.Lerp(p0,p1,g*.7f+.3f)+top,MirrorPale*(2.6f*b),.05f,true);
+                // An arched glass in its frame, a glint crossing the glass.
+                float open=OutCubic(age/.07f),swing=1.2f*(1-OutCubic(age/.16f)),b=1-Smooth((age-.13f)/.1f),w=.66f*open,spring=Tall-.62f;var across=rt*(float)Math.Cos(swing)+dir*(float)Math.Sin(swing);var ink=MirrorLilac*(1.5f*b);var line=MirrorPale*(1.2f*b);
+                Vector3 Rim(float x)=>pane+across*(w*(float)Math.Cos(x))+Up*(spring+.62f*(float)Math.Sin(x));int arcs=low?5:9;
+                s.Line(false,pane-across*w,pane+across*w,ink,.05f,false);s.Line(false,pane-across*w,Rim(3.14159f),ink,.05f,false);s.Line(false,pane+across*w,Rim(0),ink,.05f,false);s.Line(false,pane-across*w,Rim(3.14159f),line,.014f,false);s.Line(false,pane+across*w,Rim(0),line,.014f,false);
+                for(int i=0;i<arcs;i++){float x0=3.14159f*i/arcs,x1=3.14159f*(i+1)/arcs;s.Line(false,Rim(x0),Rim(x1),ink,.05f,false);s.Line(false,Rim(x0),Rim(x1),line,.014f,false);var f0=new Vector3(Rim(x0).X,pane.Y,Rim(x0).Z);var f1=new Vector3(Rim(x1).X,pane.Y,Rim(x1).Z);s.Band(false,Rim(x0),Rim(x1),f1,f0,.3f*b,.3f*b,MirrorLilac);}
+                float g=Clamp01(age/.16f);for(int i=0;i<2;i++){float o=g*1.3f-.5f-.28f*i;if(o<-.8f||o>.8f)continue;s.Line(false,pane+across*(w*o)+Up*.15f,pane+across*(w*Math.Min(1,o+.35f))+Up*(spring+.1f),MirrorPale*((i==0?1.1f:.6f)*b),i==0?.06f:.03f,true);}
             }
             Flash(s,pane+Up*1.05f,age-.12f,.2f,MirrorLilac,1.5f,seed);MeleeShards(s,pane+Up*1.05f,age-.12f,.8f,Count(26,q,low),5,MirrorPale,seed+1,6,.13f,dir*.7f);
             // Where you stand, until you reappear.
@@ -163,14 +166,10 @@ namespace ChipArena.UnityConversion
                 if(view){if(scene.ViewBlade(false,out var v0,out var v1))s.Sprite(true,v1,MirrorLilac*(1.5f*env*flick),.08f,Sparkle);}
                 else
                 {
-                    // A column of heat haze the size of a body, not a body: it fits any pose.
-                    var feet=scene.Feet(a);int hairs=low?4:8;
-                    for(int i=0;i<hairs;i++)
-                    {
-                        float ang=i*6.2831853f/hairs+t*.6f;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));Vector3 last=feet+d*.3f+Up*.1f;
-                        for(int j=1;j<=4;j++){float y=j/4f,w=.3f+.06f*(float)Math.Sin(t*19+i*2.1f+j*1.7f);var p=feet+d*(w*(1-.25f*y))+Up*(.1f+1.65f*y);s.Line(false,last,p,MirrorLilac*(.55f*env*flick),.018f,false);last=p;}
-                    }
-                    int n=Count(10,q,low);for(int i=0;i<n;i++){float ph=(t*1.3f+R(seed,i+60))%1,ang=6.2831853f*R(seed,i+61);s.Sprite(false,feet+new Vector3((float)Math.Cos(ang)*.34f,.1f+1.7f*ph,(float)Math.Sin(ang)*.34f),MirrorPale*(1.3f*env*(float)Math.Sin(3.14159f*ph)),.1f,Sparkle);}
+                    // A haze the size of a body, not a body: it fits any pose. Flecks climbing a column of faint light, and two thin rings going up it.
+                    var feet=scene.Feet(a);s.Glow(feet+Up*1,MirrorLilac*(.32f*env*flick),0,1.5f,Core,0,seed+7);
+                    int n=Count(14,q,low);for(int i=0;i<n;i++){float ph=(t*1.1f+R(seed,i+60))%1,ang=6.2831853f*R(seed,i+61)+t*.5f;s.Sprite(false,feet+new Vector3((float)Math.Cos(ang)*.34f,.05f+1.75f*ph,(float)Math.Sin(ang)*.34f),MirrorPale*(1.3f*env*(float)Math.Sin(3.14159f*ph)),.1f,Sparkle);}
+                    for(int i=0;i<2;i++){float ph=(t*.8f+i*.5f)%1;Ring(s,feet+Up*(.1f+1.7f*ph),.36f,.022f,MirrorLilac*(.8f*env*(float)Math.Sin(3.14159f*ph)),low?10:18);}
                 }
             }
             else{float back=t-k.Arm;if(back<.3f&&!view){var feet=scene.Feet(a);Flash(s,feet+Up*1.05f,back,.22f,MirrorLilac,1.1f,seed+2);Ring(s,feet+Up*.04f,1.2f*OutCubic(back/.3f),.08f,MirrorLilac*(1.1f*(1-back/.3f)),low?12:20);}}
@@ -182,7 +181,7 @@ namespace ChipArena.UnityConversion
                 int ghosts=low?1:3;for(int j=ghosts;j>=1;j--){var o=at-dir*(.36f*j);if(Vector3.Dot(o-from,dir)>0)MirrorFigure(s,o,dir,rt,run-.09f*j,1,MirrorLilac,show*.3f/j,true);}
                 MirrorFigure(s,at,dir,rt,run,1,MirrorLilac,show*flick,low);
                 // Slow scan lines climbing it and flecks shed off it: it shimmers, plainly not a person.
-                int lines=low?2:4;for(int i=0;i<lines;i++){float y=((t*.9f+i/(float)lines)%1)*1.8f;var c=at+Up*y+dir*(.1f*Clamp01(y));s.Line(false,c-rt*.26f,c+rt*.26f,MirrorPale*(1.1f*show),.018f,false);}
+                int lines=low?2:4;for(int i=0;i<lines;i++){float y=((t*.9f+i/(float)lines)%1)*1.8f;var c=at+Up*y+dir*(.1f*Clamp01(y));s.Line(false,c-rt*.24f,c+rt*.24f,MirrorLilac*(1.1f*show),.018f,false);}
                 int m=Count(10,q,low);for(int i=0;i<m;i++){float ph=(t*1.8f+R(seed,i+70))%1;var p=at-dir*(1.1f*ph)+rt*((R(seed,i+71)-.5f)*.7f)+Up*(.15f+1.6f*R(seed,i+72));s.Sprite(false,p,MirrorPale*(1.5f*(1-ph)*show),.09f,Sparkle);}
                 s.Glow(at+Up*.04f,MirrorLilac*(.5f*show),0,1.3f,Core,0,seed+3);
             }
