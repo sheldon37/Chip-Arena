@@ -138,7 +138,7 @@ namespace ChipArena.UnityConversion
                 sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(hub+d*(len*.55f),q,new Vector3(.085f,.085f,.07f)),dark);sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(foot+Vector3.up*.015f,along,new Vector3(.13f,.03f,.17f)*ext),dark);
             }
             sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(hub,along,new Vector3(.15f,.13f,.26f)),dark);
-            var b=NativeTechniqueFx.BipodBox(k);var box=new Vector3(b.X,b.Y,b.Z);float h=NativeTechniqueFx.BipodBoxHigh*2;sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(box,along,new Vector3(.26f,h,.4f)*ext),new Color(.2f,.27f,.14f));sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(box+Vector3.up*(h*.1f),along,new Vector3(.27f,h*.2f,.41f)*ext),new Color(.95f,.68f,.12f));
+            var b=NativeTechniqueFx.BipodBox(k);var box=new Vector3(b.X,b.Y,b.Z);float h=NativeTechniqueFx.BipodBoxHigh*2;sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(box,along,new Vector3(.26f,h,.4f)*ext),new Color(.13f,.18f,.09f));sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(box+Vector3.up*(h*.1f),along,new Vector3(.27f,h*.2f,.41f)*ext),new Color(.95f,.68f,.12f));
         }
         // Ammo Crate: an olive steel box on skids with steel corners and a black-and-yellow band, its lid swinging up on two rows of brass. It darkens as it is shot.
         private void CrateModel(NativeTechnique k,float time)

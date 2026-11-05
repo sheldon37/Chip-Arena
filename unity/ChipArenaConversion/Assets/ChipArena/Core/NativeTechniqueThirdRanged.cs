@@ -170,8 +170,9 @@ namespace ChipArena.UnityConversion
             // The stance and the wedge.
             float sl=age<.3f?1-age/.3f:0;if(sl>0)Ring(s,feet+Up*.04f,2.2f*OutCubic(age/.3f),.2f,BipodHeat*(1.2f*sl),low?16:32);
             Ring(s,feet+Up*.04f,.82f,.09f,BipodHeat*.75f,low?16:28,env);
-            var w0=feet+Up*.05f+f*1.5f;var w1=feet+Up*.05f+f*13;Strip(s,w0,w1,.9f,BipodHeat*1.8f,.85f*env,.3f*env);
-            for(int sd=-1;sd<=1;sd+=2)s.Line(false,w0+r*(sd*.2f)+Up*.05f,w1+r*(sd*1.1f)+Up*.05f,BipodHeat*(1.5f*env),.1f,false);
+            var w0=feet+Up*.05f+f*1.5f;var w1=feet+Up*.05f+f*9;Strip(s,w0,w1,.8f,BipodHeat*1.5f,.7f*env,.2f*env);
+            for(int sd=-1;sd<=1;sd+=2)Strip(s,w0+r*(sd*.22f),w1+r*(sd*.85f),.16f,BipodHeat*1.8f,env,.3f*env);
+            int ticks=low?2:4;for(int i=0;i<ticks;i++){float ph=(t*.45f+i/(float)ticks)%1,along=ph*7.5f;var tick=w0+f*along;float half=.22f+(.85f-.22f)*along/7.5f,tb=env*(float)Math.Sin(3.14159f*ph);s.Band(false,tick-r*half,tick+r*half,tick+r*half+f*.24f,tick-r*half+f*.24f,tb,tb,BipodHeat*1.4f);}
             // The belt, from the box up to the gun.
             var top=BipodBox(k)+Up*BipodBoxHigh;int n=low?7:14;var prev=top;
             for(int i=0;i<n;i++)
