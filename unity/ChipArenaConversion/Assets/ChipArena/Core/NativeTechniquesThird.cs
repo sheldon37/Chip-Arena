@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace ChipArena.UnityConversion
 {
     // The third set (owner 2026-11-04, "3 more new abilities" a weapon; docs/WEAPON-TECHNIQUES.md, "The third set"). Generated from one table with the doc's rows.
-    // Staged like the second set was: `Third` is apart from `All` until the rules are in, so nothing is offered before it works. Astra moves them into `All`.
+    // All 36 authority handlers now exist; All includes this table after the original two sets.
     public static partial class NativeTechniques
     {
         public const string Disarm="disarm",Iaido="iaido",Challenge="challenge",MirrorDouble="mirror-double",Envenom="envenom",ChainHook="chain-hook",WarCry="war-cry",GroundSlam="ground-slam",Lodestone="lodestone",Sunder="sunder",ReapingSweep="reaping-sweep",BladeDrag="blade-drag",FlashRound="flash-round",GunSpin="gun-spin",SlideShot="slide-shot",Bipod="bipod",AmmoCrate="ammo-crate",FlakBurst="flak-burst",BreacherRound="breacher-round",Ghillie="ghillie",BolasRound="bolas-round",BrambleArrow="bramble-arrow",VaultShot="vault-shot",TetherArrow="tether-arrow",FlameCloak="flame-cloak",DragonBreath="dragon-breath",Combust="combust",BubbleTrap="bubble-trap",FlashFreeze="flash-freeze",HydroJet="hydro-jet",Magnetize="magnetize",Thunderclap="thunderclap",Overload="overload",SoulSiphon="soul-siphon",Dread="dread",ShadowPuppet="shadow-puppet";

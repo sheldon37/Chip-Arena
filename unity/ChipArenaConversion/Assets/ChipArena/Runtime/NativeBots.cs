@@ -9,6 +9,8 @@ namespace ChipArena.UnityConversion
     {
         private InputFrame Bot(NativePilot p,bool force=false)
         {
+            if(NativeCombatMarks.Has(p.TechniqueMarks,"flash-confused",Time))return new InputFrame{Yaw=p.Yaw};
+            var mirror=Minions.Where(m=>m.Hp>0&&(m.Kind=="mirror-double"||m.Kind=="wild-afterimage")&&Enemy(p,m)&&MeleeVisible(p.Body.position,m.Body.position,p,m.Collider)).OrderBy(m=>(m.Body.position-p.Body.position).sqrMagnitude).FirstOrDefault();if(mirror!=null)return BotFocus(p,mirror.Body.position,MinionVelocity(mirror),mirror.Collider,null,force);
             var taunt=PriorityTaunt(p.TechniqueMarks);if(taunt!=null&&Enemy(p,taunt))return BotFocus(p,taunt.Body.position,PilotVelocity(taunt),taunt.Collider,taunt,force);
             // Select one brain before observing a target. Running the PvP brain first
             // consumes the reaction window on Siren, then PvE reuses that aim for an add.

@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitDevMonster(NativeMinion m,NativePilot source,float amount,Vector3 direction,float impulse,Vector3? point,string kind)
         {
-            if((float.IsNaN(amount)||float.IsInfinity(amount))||amount<=0)return 0;float actual=Math.Min(amount,m.Hp);m.Hp-=actual;m.LastHitAt=Time;
+            if((float.IsNaN(amount)||float.IsInfinity(amount))||amount<=0)return 0;m.ExpansionOverkill=Math.Max(0,amount-m.Hp);float actual=Math.Min(amount,m.Hp);m.Hp-=actual;m.LastHitAt=Time;
             if(m.DevBehaviour=="idle"&&m.DevHunt==0&&source!=null)m.DevHunt=source.Seat.id;
             CancelHulkWind(m,actual);
             if(m.Pve.Stats.id!="hulk"||!m.Pve.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(m.Pve.Stats.id),actual,m.MaxHp,impulse>=400)){m.Pve.StaggerAt=Time+m.Pve.Stats.stagger;m.StrikeAt=-1;m.Pve.Struck=true;}

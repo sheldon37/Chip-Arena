@@ -1,4 +1,4 @@
-2026-11-05 Astra (`codex/expansion-rules-3`, draft PR #338): batches 4–5 complete the six priority weapons; task-branch totals **26/36 techniques, 42/98 chips**, remaining **10/56 gated**. Shared still 8/30 until merge. Third remains separate. No presentation or release changes; exact scope, tuning, verification and next steps in DEV_LOG.
+2026-11-05 Astra (`codex/expansion-rules-3`, PR #338): final rules batches complete **36/36 third techniques and 98/98 expansion chips**. Third is in All (60 techniques). All six priority weapons and the remaining six are covered. New authority/codec checks, account allowlist and DEV_LOG notes added; presentation remains Claude's. Verification and test Update delivery receipts are in DEV_LOG/PR; no live or Site release.
 
 2026-11-05 Astra (`codex/expansion-rules-3`, base `a6a454a4`): partial batch adds one technique per priority weapon and seven ability chips; task-branch totals 14/36 and 37/98, remaining 22/61 gated. Third stays separate. No presentation or release changes. Checks, limitations and next batch in DEV_LOG/task PR.
 

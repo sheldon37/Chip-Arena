@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
-        private bool TechniqueActionLock(NativePilot p)=>PriorityActionLock(p)||MobilityActionLock(p)||ChannelLive(p,"bipod")||TechniqueBusy(p)&&(p.Technique.Kind=="dragon-breath"||p.Technique.Kind=="soul-siphon"||p.Technique.Kind=="shield-surf"||p.Technique.Kind=="iron-vow"||p.Technique.Kind=="grave-walk"||p.Technique.Kind=="recoil-burst"||p.Technique.Kind=="parting-line");
+        private bool TechniqueActionLock(NativePilot p)=>FinalTechniqueLock(p)||PriorityActionLock(p)||MobilityActionLock(p)||ChannelLive(p,"bipod")||TechniqueBusy(p)&&(p.Technique.Kind=="dragon-breath"||p.Technique.Kind=="soul-siphon"||p.Technique.Kind=="shield-surf"||p.Technique.Kind=="iron-vow"||p.Technique.Kind=="grave-walk"||p.Technique.Kind=="recoil-burst"||p.Technique.Kind=="parting-line");
         private bool TechniqueRunning(NativePilot p)=>p.Technique?.Kind=="wildfire-run"&&Time>=p.Technique.Release&&Time<p.Technique.Arm;
         private bool TechniqueBrace(NativePilot p)=>p.Technique?.Kind=="iron-vow"&&p.Technique.Phase!="release"&&NativeTechniqueRules.Live(p.Technique,Time);
         private bool TechniqueGhost(NativePilot p)=>p.Technique?.Kind=="grave-walk"&&NativeTechniqueRules.Live(p.Technique,Time);
@@ -27,8 +27,8 @@ namespace ChipArena.UnityConversion
                 case "sonar-dart":
                     // Resolve the normal from the committed hand-to-surface ray, not a later camera aim.
                     var ray=Vec(k.Point)-Vec(k.From);if(root.scene.GetPhysicsScene().Raycast(Vec(k.From),ray.normalized,out var hit,ray.magnitude+.1f,WorldMask,QueryTriggerInteraction.Ignore))k.Dir=Vec(hit.normal);
-                    k.Arm=k.Release+.5f;k.Until=k.Arm+3*1.2f;p.TechniqueHealth=10;break;
-                case "spirit-hawk":k.Phase="flight";k.Point=k.From+k.Dir*30;k.Arm=k.Release+1.5f;k.Until=k.Arm+.9f;break;
+                    k.Arm=k.Release+.5f;k.Until=k.Arm+(AbilityChip(p,"ab-deep-scan")?5:3)*1.2f;p.TechniqueNext=k.Arm;p.TechniqueHealth=10;break;
+                case "spirit-hawk":if(AbilityChip(p,"ab-twin-hawks"))TwinHawks(p);k.Phase="flight";k.Point=k.From+k.Dir*30;k.Arm=k.Release+1.5f;k.Until=k.Arm+.9f;break;
                 case "wildfire-run":k.Phase="run";k.Arm=k.Release+3;k.Until=k.Arm+3-NativeTechniques.PathStep;k.Path=new[]{Vec(GroundPoint(feet))};p.TechniqueNext=k.Release+.25f;break;
                 case "slipstream":
                     k.Phase="stream";k.From=Vec(GroundPoint(feet));var end=feet+forward*14;
@@ -51,7 +51,7 @@ namespace ChipArena.UnityConversion
                 foreach(var t in MeleeTargets(p).ToArray())if(Vector3.Distance(p.Body.position,t.at)<=3.5f&&MeleeVisible(p.Body.position,t.at,p,t.collider))TechniqueShove(p,t.id,(t.at-p.Body.position).normalized,5);
             }
             else if(k.Kind=="shield-surf"){k.Phase="hop";k.Until=k.RecoverUntil=Time+.25f;var v=p.Body.linearVelocity;v.y=Math.Max(v.y,3);p.Body.linearVelocity=v;p.Grounded=false;}
-            else if(k.Kind=="grave-walk"){k.Phase="rise";k.Until=Time;k.RecoverUntil=Time+.34f;}
+            else if(k.Kind=="grave-walk"){if(AbilityChip(p,"ab-undertaker")){TechniqueBurst(p,p.Body.position,3,14,300);}k.Phase="rise";k.Until=Time;k.RecoverUntil=Time+.34f;}
             p.Ready=k.RecoverUntil;
         }
         private void TechniqueMarkedDeath(int id)
@@ -87,6 +87,7 @@ namespace ChipArena.UnityConversion
                 case "recoil-burst":if(Time>=k.Until&&k.Phase=="blast"){k.Phase="recovery";Reload(p,true);}return true;
                 case "sonar-dart":if(Time>=k.Arm&&Time<k.Until)k.Phase="ping";return true;
                 case "spirit-hawk":
+                    if(AbilityChip(p,"ab-twin-hawks"))return true;
                     if(k.Phase=="flight")MoreTechniqueFlight(p,20,30,true);
                     else if(k.Phase=="dive"&&k.HitAt<-50)
                     {

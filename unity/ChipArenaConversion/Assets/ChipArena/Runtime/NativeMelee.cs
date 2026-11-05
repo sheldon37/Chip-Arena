@@ -12,12 +12,12 @@ namespace ChipArena.UnityConversion
         private void CancelMelee(NativePilot p){p.Swing=null;p.HitPending=false;p.AttackEnd=0;p.MeleeBufferedUntil=-1;}
         private bool TryBlock(NativePilot p)
         {
-            if(PriorityActionLock(p)||ChannelLive(p,"lodestone")||BombBusy(p)||CyberSwitching(p)||TechniqueBusy(p)||TechniqueAway(p))return false;
+            if(FinalTechniqueLock(p)||PriorityActionLock(p)||ChannelLive(p,"lodestone")||BombBusy(p)||CyberSwitching(p)||TechniqueBusy(p)||TechniqueAway(p))return false;
             if(p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p))return false;
             if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd)return false;
             if(LeetBlock(p))return true;
             p.BlockAt=Time;p.BlockEnd=Time+NativeMeleeRules.BlockDuration(p.Stats);p.BlockReady=Time+(Dev(p,"ansatsuken")?0:NativeMeleeRules.BlockCooldown(p.Stats));
-            CancelFighter(p);p.BlockProcUsed=false;p.RiposteAt=-100;CancelMelee(p);CancelSpecial(p);CancelAbilities(p);Emit(EventKind.Block,p,0,p.Body.position+Vec(V3.Forward(p.Yaw))*.55f,0,"guard");return true;
+            WildStartBlock(p);CancelFighter(p);p.BlockProcUsed=false;p.RiposteAt=-100;CancelMelee(p);CancelSpecial(p);CancelAbilities(p);Emit(EventKind.Block,p,0,p.Body.position+Vec(V3.Forward(p.Yaw))*.55f,0,"guard");return true;
         }
         private bool TryRoll(NativePilot p)
         {
@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
             bool sprint=NativeSprintAttack.Starts(chained,Time>p.MeleeComboUntil?1:p.Combo+2,p.Grounded,p.Input,p.Pose.Sprinting);
             float cost=NativeSprintAttack.Cost(p.Weapon,p.Stats,sprint)*(air?(NativeAirAttackSimulation.DownPitch(p.Input.Pitch)?1.4f:1.25f):1);if(PilotMutator(p,"adrenaline"))cost=0;if(p.Stamina<cost)return false;
             float scale=ChipMeleeStart(p);p.Stamina-=cost;if(Time>p.MeleeComboUntil)p.Combo=-1;p.Combo++;p.LastAttack=p.AttackAt=Time;if(!chained)p.Yaw=p.Input.Yaw;
-            p.Swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Yaw*Mathf.Deg2Rad);
+            p.Swing=NativeMeleeFeel.Begin(p.Weapon,p.Stats,Time,p.Combo+1,p.Yaw*Mathf.Deg2Rad);WildMeleeAttack(p);
             if(sprint)NativeSprintAttack.Apply(p.Swing,(float)p.Stats["attackRate"]);
             if(air){NativeAirAttackSimulation.Begin(p.Swing,p.Input.Pitch,Vec(p.Body.position));NativeAirAttackSimulation.Carry(p.Swing,Vec(p.MoveVelocity));p.AirAttackUsed=true;}else AimMeleeStep(p,chained);
             if(TechniqueAway(p)){p.Swing.Range=1.4f;p.Swing.Distance=0;p.Swing.DamageScale*=6/Math.Max(1,(float)p.Weapon.damage);p.Swing.Remaining=0;}

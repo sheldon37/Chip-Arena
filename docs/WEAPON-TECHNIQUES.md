@@ -8,6 +8,14 @@ Owner revision, 2026-11-03: techniques replace either Q or E, selected per weapo
 
 Status: playable, both sets. Astra's rules and saved choice (PRs #321, #322 and #325), Claude's Customize picker, HUD cards and presentation. Parting Line recovery is fixed on `codex/bombadier-rules`; native acceptance remains pending (see "The second set, reviewed"). Receipts are in DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
 
+## Third-set rules completion (Astra, 2026-11-05)
+
+All **36/36** third-set authority handlers now exist on `codex/expansion-rules-3` / PR #338. `NativeTechniques.All` includes Third (60 total, five per standard weapon); both pinned content catalogs include the rows. Earlier batch/gating notes below are historical. Presentation remains Claude's.
+
+The final ten are Mirror Double, Chain Hook, Flash Round, Slide Shot, Ammo Crate, Flak Burst, Flame Cloak, Magnetize, Dread and Shadow Puppet. Decoys and the puppet use replicated minion IDs. Slide Shot changes the collision capsule to 55% standing height during its .55 s slide, then restores it; it does not add a pose. Chain Hook uses a 40 m/s swept shot, a .35 s collision-limited haul, and pulls the caster against bosses/Hulks. Flash tests facing within 70 degrees and LOS, including the caster/allies. Flak is a **5 m diameter** cloud, 2 damage/s in quarter-second ticks, and intercepts hostile bullets/ability shots/airborne Spitter acid. Ammo Crate has 40 HP, eight seconds of life and one refill/buff per allied pilot. Cloak retaliates against both pilots and minions. Magnetize begins pulling after .5 s at 8 m/s; rolls break the mark and bosses are immune. Dread uses a 90-degree cone and collision-limited forced movement; bosses receive slow. Puppet copies ranged shots at 40%, without secondary procs.
+
+`Actor.TechniqueMarks` remains the other-pilot accessor; `NativeMinion.TechniqueMarks` / `NativeMinionFrame.techniqueMarks` is the add equivalent. Cast records and new world queues are replicated/validated. Source account sanitization accepts every new ID; the separate account service is not deployed by this Unity update.
+
 ## Why it isn't power creep
 
 A technique is a trade, never an extra: a weapon keeps two abilities, and swapping its technique in gives up that slot's ability. Every

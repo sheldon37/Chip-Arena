@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
         }
         private float PriorityDamage(NativePilot source,NativeMinion attacker,int target,NativeTechniqueMark[] marks,float amount)
         {
-            int by=attacker?.Id??source?.Seat.id??0;
+            int by=attacker?.Id??source?.Seat.id??0;amount*=WildOutgoing(by);
             if(NativeCombatMarks.Has(marks,"sunder",Time))amount*=1.2f;
             // A challenge remains reciprocal only while its owner is alive and the duel is active.
             if(by!=0&&Pilots.Any(p=>p.Hp>0&&ChannelLive(p,"challenge")&&p.Technique.Phase=="duel"&&((p.Seat.id==by&&p.Technique.Target==target)||(p.Seat.id==target&&p.Technique.Target==by))))amount*=1.2f;
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
         {
             foreach(var m in Minions.Where(m=>m.Hp>0).ToArray())
             {var taunt=PriorityTaunt(m.TechniqueMarks);if(taunt!=null&&CanHit(taunt,m)){m.Foe=taunt;m.Other=null;if(m.Pve!=null){m.Pve.Target=taunt;m.Pve.ThinkAt=Math.Max(m.Pve.ThinkAt,Time+.1f);}}}
-            StepPriorityProjectileConstraints();
+            StepPriorityProjectileConstraints();FinalTechniqueConstraints();
         }
     }
 }

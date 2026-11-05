@@ -42,7 +42,7 @@ namespace ChipArena.UnityConversion
                 {
                     var nf=new System.Numerics.Vector3(r.from.x,r.from.y,r.from.z);var nt=new System.Numerics.Vector3(r.to.x,r.to.y,r.to.z);
                     NativeHordeFx.Glob(nf,nt,r.flight,Math.Max(0,Time-r.at),out var v);NativeHordeFx.Glob(nf,nt,r.flight,Math.Min(r.flight,Time-r.at+1f/60),out var next);
-                    if(TryLodestone(null,new Vector3(v.X,v.Y,v.Z),new Vector3(next.X,next.Y,next.Z),out _))pveAcid.RemoveAt(i);continue;
+                    if(FinalFlakContact(null,new Vector3(v.X,v.Y,v.Z),new Vector3(next.X-v.X,next.Y-v.Y,next.Z-v.Z),out _)||TryLodestone(null,new Vector3(v.X,v.Y,v.Z),new Vector3(next.X,next.Y,next.Z),out _))pveAcid.RemoveAt(i);continue;
                 }
                 if(!a.Landed)
                 {

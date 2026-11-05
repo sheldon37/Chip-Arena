@@ -16,14 +16,14 @@ namespace ChipArena.UnityConversion
             void Advance(float dt){Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=Match.Time+dt,fightAt=0});}
             void Setup(string spec)
             {
-                wall.SetActive(false);Match.Teams=false;Match.Cooperative=false;Bullets.Clear();AbilityShots.Clear();MeleeShots.Clear();Events.Clear();
+                wildAfflictions.Clear();expansionAreas.Clear();expansionEchoes.Clear();foreach(var m in Minions.ToArray())RemoveMinion(m,false);wall.SetActive(false);Match.Teams=false;Match.Cooperative=false;Bullets.Clear();AbilityShots.Clear();MeleeShots.Clear();Events.Clear();
                 foreach(var p in new[]{a,b})
                 {
                     p.Seat.spec=p==a?spec:"sword";p.Weapon=Content.Weapon(p.Seat.spec);p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,new Dictionary<string,int>());p.Seat.chips.Clear();p.Seat.bot=false;p.Seat.connected=p.Seat.alive=true;
                     p.Hp=p.Stamina=p.Mana=100;p.Ammo=100;p.Body.isKinematic=false;p.Collider.enabled=true;p.Body.position=new Vector3(1000,100,p==a?1000:1005);p.Body.linearVelocity=p.MoveVelocity=p.Knockback=Vector3.zero;
                     p.Seat.weaponTechniques=NativeTechniqueLoadout.With("",p.Seat.spec,"e");p.QReady=p.EReady=0;p.Technique=null;p.TechniqueReleased=false;p.Special=null;p.Swing=null;p.MeleeKit=new NativeMeleeKit();p.Down=null;p.Juggle=null;p.Roll=null;p.HeldBy=p.Controlling=p.ControlledBy=null;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.ReloadEnd=p.CastAt=p.LaunchUntil=p.StaggerImmune=0;p.SlowFactor=1;p.SlowEnd=0;p.Grounded=true;p.Dots.Clear();CancelAbilities(p);
-                    p.TechniqueMarks=Array.Empty<NativeTechniqueMark>();p.ChipGauges=Array.Empty<NativeChipGauge>();p.ExpansionThiefAt=p.ExpansionDroneAt=-100;p.ExpansionDoomAt=-1;p.ExpansionStats=null;p.ExpansionStill=-1;p.ExpansionLastHit=-100;
+                    if(p.ExpansionCrouched){p.Collider.height/=.55f;p.Collider.center=Vector3.zero;p.ExpansionCrouched=false;}if(p.Wild.Shrunk){p.Collider.height/=.8f;p.Collider.radius/=.8f;}p.Wild=new NativeWildState{Round=Match.Set*100+Match.Round};p.ExpansionKnifeUntil=p.ExpansionHookUntil=p.ExpansionBlinkUntil=p.ExpansionSkyUntil=0;p.ExpansionDiving=false;p.ExpansionStep=null;p.TechniqueMarks=Array.Empty<NativeTechniqueMark>();p.ChipGauges=Array.Empty<NativeChipGauge>();p.ExpansionThiefAt=p.ExpansionDroneAt=-100;p.ExpansionDoomAt=-1;p.ExpansionStats=null;p.ExpansionStill=-1;p.ExpansionLastHit=-100;
                     p.Input=new InputFrame{Yaw=p==a?0:180,Pitch=0,AbilityTarget=new V3(1000,99.135f,1003)};p.Yaw=p.Input.Yaw;
                 }
                 Physics.SyncTransforms();
@@ -90,6 +90,22 @@ namespace ChipArena.UnityConversion
                 Setup("pistol");a.Seat.chips["wild-bodyguard-drone"]=1;pveAcid.Clear();pveAcid.Add(new PveAcidState{Record=new NativeAcidRecord{id=1,actor=10001,at=Time,flight=1,from=Vec(a.Body.position+Vector3.forward),to=Vec(a.Body.position)}});StepExpansionPilot(a);Check(pveAcid.Count==0,"drone intercepts airborne acid without leaving a pool");
                 Setup("pistol");a.Seat.chips["wild-doomsday-clock"]=1;a.Hp=50;StepExpansionPilot(a);Advance(3.01f);StepExpansionPilot(a);Check(a.Hp==70&&b.Hp<100&&a.ChipGauges.Single().Value==0,"doomsday stationary burst heal and reset");
                 var expansionWire=NativeFrameCodec.Clone(NetworkFrame());Check(expansionWire.pilots.First(x=>x.id==a.Seat.id).expansionDoomAt==a.ExpansionDoomAt,"proc clock Unity serialization");
+                // Final batch: actual authority interactions, bounded delayed work and Unity codec.
+                Third("pistol","slide-shot");Check(TryTechnique(a),"slide cast");Release();float standing=a.Collider.height;FinalTechniqueConstraints();Check(a.Collider.height<standing&&a.ExpansionCrouched,"slide lowers collision capsule");Advance(.76f);FinalTechniqueConstraints();Check(Math.Abs(a.Collider.height-standing)<.001&&!a.ExpansionCrouched,"slide restores capsule");
+                Third("machinegun","ammo-crate");TryTechnique(a);Release();a.Ammo=0;StepTechniqueWorld();Check(a.Ammo==Magazine(a)&&NativeCombatMarks.Has(a.TechniqueMarks,"ammo-crate-speed",Time),"crate refills and buffs");a.Ammo=0;StepTechniqueWorld();Check(a.Ammo==0,"crate only one refill per pilot");
+                Third("daggers","mirror-double");TryTechnique(a);Release();Check(Minions.Any(m=>m.Kind=="mirror-double"&&m.Hp==1)&&TechniqueSmokeHidden(b.Body.position,a.Body.position),"mirror creates one-hit decoy and concealment");
+                Third("darkness","shadow-puppet");TryTechnique(a);Release();CopyTechniqueShot(a,new NativeBullet{Damage=10,Velocity=Vector3.forward*100});Check(Bullets.Count==1&&Bullets[0].Damage==4&&!Bullets[0].Direct,"puppet copy cannot proc primary chips");
+                Third("fire","flame-cloak");TryTechnique(a);Release();Check(Math.Abs(Damage(a,b,20,Vector3.back,0,false,primary:false,projectile:123)-15)<.001,"cloak reduces projectiles by quarter");Damage(a,b,10,Vector3.back,0,false,primary:false,melee:true);Check(b.Hp==94&&b.Dots.Values.Any(d=>d.Dps==5),"cloak retaliates and burns melee attacker");
+                Setup("pistol");a.Seat.chips["wild-haymaker"]=1;Check(Damage(b,a,10,Vector3.forward,0,false,primary:false)==60&&a.Wild.HayAt==Time+12,"haymaker consumes on successful hit");Check(Damage(b,a,10,Vector3.forward,0,false,primary:false)==10,"haymaker cooldown blocks repeat");
+                Setup("pistol");a.Seat.chips["wild-blood-magazine"]=1;a.Ammo=0;Check(FireRound(a)&&a.Hp==98&&a.Ammo==0,"blood magazine fires empty at nonlethal health cost");a.Hp=1;FireRound(a);Check(a.Hp==1,"blood magazine cannot kill owner");
+                Setup("pistol");a.Seat.chips["wild-triple-tap"]=1;FireRound(a);Check(expansionEchoes.Count==2&&expansionEchoes.All(e=>e.Shot.Direct),"triple tap queues exactly two normal extra shots");
+                Setup("pistol");a.Seat.chips["wild-double-tap"]=1;FireRound(a);Check(expansionEchoes.Count==1&&!expansionEchoes[0].Shot.Direct&&expansionEchoes[0].Shot.Mods.Count==0,"double tap echo has no recursive chips");
+                Setup("pistol");a.Seat.chips["wild-charged-reply"]=1;WildSuccessfulBlock(a);Check(WildAttackMultiplier(a)==1.8f&&WildAttackMultiplier(a)==1,"charged reply one attack");
+                Setup("pistol");a.Seat.chips["wild-tapeworm"]=1;for(int i=0;i<7;i++)WildHit(a,b.Seat.id,b.Body.position,1,Vector3.forward,false);Check(Math.Abs(WildOutgoing(b.Seat.id)-.8f)<.001,"tapeworm caps at five stacks");Advance(3.01f);Check(WildOutgoing(b.Seat.id)==1,"tapeworm expires");
+                Setup("pistol");a.Seat.chips["wild-spare-body"]=1;Damage(a,b,200,Vector3.back,0,false,primary:false);Check(a.Hp>0&&a.Wild.SpareUsed&&Invulnerable(a),"spare body prevents premature death");Advance(2.01f);StepExpansionPilot(a);Check(a.Hp==(float)a.Stats["hp"]*.5f&&a.Wild.ImmuneUntil>Time,"spare body stands at half health with immunity");
+                Setup("pistol");a.Seat.chips["wild-slow-bleed"]=1;Damage(a,b,32,Vector3.back,0,false,primary:false);Check(a.Hp==100&&wildAfflictions.Count==1,"slow bleed defers initial damage");Advance(4.01f);StepWildConstraints();Check(Math.Abs(a.Hp-68)<.001&&wildAfflictions.Count==0,"slow bleed conserves damage across sixteen ticks");
+                Setup("pistol");a.ExpansionBlinkUntil=Time+2;a.Wild.SpareUsed=true;ExpansionAreaAdd(a,"spite",a.Body.position,1,0,60,5);ExpansionEchoShot(a,a.Body.position,Vector3.forward,10,.3f,"wild-flanker");var finalWire=NativeFrameCodec.Clone(NetworkFrame());Check(finalWire.pilots.First(p=>p.id==a.Seat.id).wild.SpareUsed&&finalWire.pilots.First(p=>p.id==a.Seat.id).abilityExpansion.blink==a.ExpansionBlinkUntil&&finalWire.expansionAreas.Length==1&&finalWire.expansionEchoes.Length==1,"final batch clocks and delayed queues survive Unity codec");
+                var invalidEcho=finalWire.expansionEchoes[0];invalidEcho.mods=new[]{new ChipCount{id="wild-double-tap",count=1},new ChipCount{id="wild-double-tap",count=1}};Check(!invalidEcho.Valid(Content),"duplicate delayed-shot mods rejected before dictionary conversion");
                 // Pending look must win over stale pilot input, without casting or mutating a replica.
                 Setup("rifle");wall.SetActive(true);Physics.SyncTransforms();
                 var pendingAim=new InputFrame{Yaw=0,Pitch=0};a.Input.Pitch=90;
@@ -131,6 +147,7 @@ namespace ChipArena.UnityConversion
                 foreach(var d in NativeTechniques.All)
                 {
                     Setup(d.Spec);a.Seat.weaponTechniques=NativeTechniqueLoadout.With("",d.Spec,"e",d.Id);if(d.Spec=="rifle"||d.Id=="tripwire"){wall.SetActive(true);Physics.SyncTransforms();}
+                    if(d.Id=="combust")RefreshDot(b,a,"fire",2,20);
                     a.StunEnd=Time+1;Check(!TryTechnique(a),"stun refuses "+d.Id);a.StunEnd=0;
                     a.RollEnd=Time+1;Check(!TryTechnique(a),"roll refuses "+d.Id);a.RollEnd=0;
                     a.Mana=a.Stamina=0;if(d.Cost>0)Check(!TryTechnique(a),"unfunded "+d.Id);a.Mana=a.Stamina=100;

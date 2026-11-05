@@ -14,6 +14,11 @@ internal static class ExpansionFoundationChecks
         NativeWildChips.Apply(data);NativeAbilityChips.Apply(data);NativeThirdTechniqueContent.Apply(data);data.Validate();
         Check(data.chips.Count(c=>NativeWildChips.Is(c.id))==50&&data.chips.Count(c=>NativeAbilityChips.Is(c.id))==48,"complete catalogs staged");
         Check(NativeTechniques.Third.Count(d=>data.abilities.Any(a=>a.id==d.Id&&a.live))==NativeThirdTechniqueContent.Ready.Length,"only completed technique content rows enabled");
+        Check(NativeTechniques.All.Length==60&&NativeTechniques.Third.All(d=>NativeTechniques.All.Contains(d))&&NativeThirdTechniqueContent.Ready.Length==36,"all third handlers promoted without duplicate IDs");
+        foreach(var d in NativeTechniques.Third)foreach(var slot in new[]{"q","e"})
+        {var map3=NativeTechniqueLoadout.With("",d.Spec,slot,d.Id);Check(d.Spec=="rifle"&&slot=="q"?string.IsNullOrEmpty(NativeTechniqueLoadout.In(map3,d.Spec,slot)):NativeTechniqueLoadout.In(map3,d.Spec,slot)==d.Id,"third slot roundtrip: "+d.Id+slot);}
+        foreach(var chip in data.chips.Where(c=>NativeAbilityChips.Is(c.id)))
+        {var required=NativeAbilityChips.Requires(chip.id);var row=data.abilities.First(a=>a.id==required);var map3=row.slot=="technique"?NativeTechniqueLoadout.With("",row.spec,"e",row.id):"";Check(NativeAbilityChipRules.Slotted(data,row.spec,map3,chip.id),"every ability upgrade reachable with its exact ability: "+chip.id);}
         var held=new Dictionary<string,int>();string map=NativeTechniqueLoadout.With("","sword","q","riposte");
         Check(NativeAbilityChipRules.Slotted(data,"sword",map,"ab-perfect-form")&&!NativeAbilityChipRules.Slotted(data,"sword","","ab-perfect-form"),"technique chip follows selected slot");
         Check(NativeAbilityChipRules.Slotted(data,"machinegun","","ab-cooling-jacket"),"bots/default Q accepted");

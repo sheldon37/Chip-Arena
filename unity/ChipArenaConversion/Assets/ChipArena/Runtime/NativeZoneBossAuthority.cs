@@ -335,7 +335,7 @@ namespace ChipArena.UnityConversion
             }
             if(z.holdTarget>=0&&point.HasValue&&Math.Abs(local.x)>1.4f)
             {if(source?.Seat.id==z.holdTarget)bossSelfDamage+=damage;else bossHoldDamage+=damage;if(bossHoldDamage>=(z.archetype==NativeZoneBossRules.Station?120:200)||z.archetype==NativeZoneBossRules.Station&&bossSelfDamage>=40)BossRelease();}
-            float actual=Math.Min(m.Hp,Math.Max(0,damage*multiplier));m.Hp-=actual;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);return actual;
+            m.ExpansionOverkill=Math.Max(0,damage*multiplier-m.Hp);float actual=Math.Min(m.Hp,Math.Max(0,damage*multiplier));m.Hp-=actual;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);return actual;
         }
         private void SyncZoneBossArena()
         {

@@ -72,8 +72,8 @@ namespace ChipArena.UnityConversion
             if(TechniqueId(p,slot)!=""){TryTechnique(p,slot);return;}
             var d=Content.Ability(p.Seat.spec,slot);
             if(NativeRangedRules.Q(d?.id)){TryRangedQ(p,d);return;}
-            float cooldown=slot=="q"?p.QReady-Time:p.ECharges>0?0:p.EReady-Time;
-            var gate=NativeAbilityRules.Decide(d!=null&&d.kind!="ads"&&d.live,p.Hp>0,Time<p.BlockEnd,p.Mana,d==null?0:NativeAbilityRules.Cost(d,p.Stats),cooldown,AbilityBusy(p));
+            bool secondBlink=d?.id=="blink-strike"&&p.ExpansionBlinkUntil>Time&&AbilityChip(p,"ab-double-blink");float cooldown=secondBlink?0:slot=="q"?p.QReady-Time:p.ECharges>0?0:p.EReady-Time;
+            var gate=NativeAbilityRules.Decide(d!=null&&d.kind!="ads"&&d.live,p.Hp>0,Time<p.BlockEnd,p.Mana,secondBlink?0:d==null?0:NativeAbilityRules.Cost(d,p.Stats),cooldown,AbilityBusy(p));
             if(gate==NativeAbilityRules.Press.Refused)
             {if(p.BufferedSlot==slot)p.BufferedSlot=null;return;}
             if(gate==NativeAbilityRules.Press.Buffered)
@@ -83,12 +83,12 @@ namespace ChipArena.UnityConversion
             Vector3 dir=Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch));
             if(d.id=="blink-strike"){dir=new Vector3(p.Input.X,0,p.Input.Z);if(dir.sqrMagnitude<.01f)dir=Quaternion.Euler(0,p.Input.Yaw,0)*Vector3.forward;point=p.Body.position+dir.normalized*(float)d.range;}
             if(HubInside(p.Body.position)||HubCross(p.Body.position,point))return;
-            p.AbilityCast=new NativeAbilityCast{Definition=d,Point=point,Direction=dir,Release=Time+NativeAbilityRules.CastTime(d.windup,p.Stats)};
+            p.ExpansionBlinkSecond=secondBlink;p.AbilityCast=new NativeAbilityCast{Definition=d,Point=point,Direction=dir,Release=Time+NativeAbilityRules.CastTime(d.windup,p.Stats)};
             p.Pose.AbilityId=d.id;p.Pose.AbilityAt=Time;p.Pose.AbilityRelease=p.AbilityCast.Release;p.BufferedSlot=null;
         }
         private void ReleaseAbility(NativePilot p)
         {
-            var cast=p.AbilityCast;p.AbilityCast=null;var d=cast.Definition;float cost=NativeAbilityRules.Cost(d,p.Stats);
+            var cast=p.AbilityCast;p.AbilityCast=null;var d=cast.Definition;float cost=p.ExpansionBlinkSecond&&d.id=="blink-strike"?0:NativeAbilityRules.Cost(d,p.Stats);
             if(p.Hp<=0||p.Mana<cost||Time<p.BlockEnd||Incapacitated(p))return;
             float scale=NativeAbilityRules.Scale(p.Stats,p.Mana>=.75f*p.Stats["maxMana"]);
             p.Mana-=cost;
@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
             p.Ready=Math.Max(p.Ready,Time+NativeAbilityRules.CastTime(d.lockout,p.Stats));
             if(d.slot=="q")EmpowerQ(p);
             if(d.slot=="e"&&p.Stats["spellEcho"]>0)abilityEchoes.Add((Time+.8f,p,cast,scale*.5f));
-            ExecuteAbility(p,cast,scale);
+            ExecuteAbility(p,cast,scale);if(d.id=="blink-strike"&&AbilityChip(p,"ab-double-blink")){p.ExpansionBlinkUntil=p.ExpansionBlinkSecond?0:Time+2;if(!p.ExpansionBlinkSecond)p.QReady=p.ExpansionBlinkUntil+NativeAbilityRules.Cooldown(d,p.Stats);}p.ExpansionBlinkSecond=false;
         }
         private void ExecuteAbility(NativePilot p,NativeAbilityCast cast,float scale)
         {
@@ -119,6 +119,7 @@ namespace ChipArena.UnityConversion
                 {
                     Vector3 at=cast.Point+(count==3?side*(3*i-3):Vector3.zero);
                     if(count==3&&root.scene.GetPhysicsScene().Raycast(at+Vector3.up*2,Vector3.down,out var hit,6,WorldMask))at=hit.point;
+                    if(d.id=="meteor-strike"&&AbilityChip(p,"ab-twin-meteor"))ExpansionAreaAdd(p,"twin-meteor",at,(float)d.fuse+close+.6f,0,damage*.5f,radius*.5f);
                     AbilityZones.Add(new NativeAbilityZone{Id=nextEvent++,Born=Time,Owner=p,Definition=d,Group=group,Position=at,Kind=d.id=="singularity"?"black-hole":"bomb",Damage=damage,Radius=radius,Until=Time+(d.id=="singularity"?(float)d.duration:(float)d.fuse+close+.35f*i),NextTick=Time+.25f});
                 }
                 return;
@@ -135,6 +136,8 @@ namespace ChipArena.UnityConversion
             Vector3 eye=p.Body.position+Vector3.up*.3f;
             if(SceneLinecast(eye,shot.Position,out var wall,WorldMask))
             {shot.Position=wall.point+wall.normal*(shot.Radius+.01f);if(AbilityContact(shot,wall))return;}
+            if(d.id=="ball-lightning"&&AbilityChip(p,"ab-ball-bearing"))shot.Velocity*=1.4f;
+            if(d.id=="rocket"&&AbilityChip(p,"ab-twin-rockets")&&ProjectileCount<99){shot.Damage*=.7f;shot.Velocity=Quaternion.Euler(0,-2.5f,0)*shot.Velocity;AbilityShots.Add(new NativeAbilityShot{Id=nextBullet++,Owner=p,Definition=d,Position=shot.Position,Velocity=Quaternion.Euler(0,5,0)*shot.Velocity,Damage=shot.Damage,Radius=shot.Radius,Gravity=shot.Gravity,Life=shot.Life,MaxTravel=shot.MaxTravel,NextTick=shot.NextTick,RemainingPierces=shot.RemainingPierces});}
             AbilityShots.Add(shot);
         }
         private Vector3 GroundPoint(Vector3 point)
@@ -256,7 +259,7 @@ namespace ChipArena.UnityConversion
                 }
                 bool expired=s.Life<=0||s.Travel>=s.MaxTravel-.0001f||s.Position.y<-15||d.id=="frag-grenade"&&Time>=s.Fuse;
                 if(!remove&&expired)
-                {if(d.id=="frag-grenade"||d.id=="rocket"||d.id=="ball-lightning")AbilityBlast(s.Owner,s.Position,NativeAbilityRules.Radius(d,s.Owner.Stats),s.Damage,d.id=="ball-lightning"?400:(float)d.impulse,s.Owner.Pose.MagicVisual,d.id=="rocket"?2:1,effect:d.fx??d.id);remove=true;}
+                {ExpansionCluster(s);if(d.id=="frag-grenade"||d.id=="rocket"||d.id=="ball-lightning")AbilityBlast(s.Owner,s.Position,NativeAbilityRules.Radius(d,s.Owner.Stats),s.Damage,d.id=="ball-lightning"?400:(float)d.impulse,s.Owner.Pose.MagicVisual,d.id=="rocket"?2:1,effect:d.fx??d.id);remove=true;}
                 if(remove)AbilityShots.RemoveAt(i);
             }
             for(int i=AbilityZones.Count-1;i>=0;i--)
@@ -284,7 +287,7 @@ namespace ChipArena.UnityConversion
                 if(z.Kind=="bomb")
                 {
                     var hit=AbilityBlast(z.Owner,z.Position+Vector3.up*.15f,z.Radius,z.Damage,(float)d.impulse,element,effect:d.fx??d.id);
-                    if(d.id=="geyser-wall"){foreach(var p in hit)Slow(p,(float)d.speedFactor,(float)d.slowFor);foreach(var m in Minions)if(m.Hp>0&&CanHit(z.Owner,m)&&Vector3.Distance(m.Body.position,z.Position)<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider))SlowMinion(m,(float)d.speedFactor,(float)d.slowFor);}
+                    if(d.id=="geyser-wall"){if(AbilityChip(z.Owner,"ab-scalding-steam"))ExpansionAreaAdd(z.Owner,"scalding-steam",z.Position+Vector3.up*.6f,.25f,2.75f,1.25f*z.Damage/(float)d.damage,z.Radius);foreach(var p in hit)Slow(p,(float)d.speedFactor,(float)d.slowFor);foreach(var m in Minions)if(m.Hp>0&&CanHit(z.Owner,m)&&Vector3.Distance(m.Body.position,z.Position)<z.Radius&&MeleeVisible(z.Position+Vector3.up*.15f,m.Body.position,z.Owner,m.Collider))SlowMinion(m,(float)d.speedFactor,(float)d.slowFor);}
                     if(d.id=="meteor-strike")
                     {z.Id=nextEvent++;z.Born=Time;z.Kind="fire";z.Radius=3.2f*z.Radius/(float)d.radius*(Has(z.Owner,"cinder-field")?1.5f:1);z.Damage=12*z.Damage/(float)d.damage;z.Until=Time+(float)d.duration*(Has(z.Owner,"cinder-field")?1.5f:1);z.NextTick=Time+.25f;continue;}
                 }
@@ -304,6 +307,7 @@ namespace ChipArena.UnityConversion
         {
             var d=s.Definition;var body=hit.collider.GetComponent<NativePilotBody>();var target=body?.Pilot;int element=s.Owner.Pose.MagicVisual;
             Vector3 at=hit.point+hit.normal*.03f;var minion=hit.collider.GetComponent<NativeMinionBody>()?.Minion;if(minion!=null)return AbilityMinionContact(s,minion,hit);
+            if(target==null&&minion==null&&d.id=="ball-lightning"&&AbilityChip(s.Owner,"ab-ball-bearing")&&!s.Touched){s.Touched=true;s.Velocity=Vector3.Reflect(s.Velocity,hit.normal);s.Position=at+hit.normal*(s.Radius+.03f);return false;}
             if(target==null)SurfaceImpact(hit,s.Owner,s.Id,(int)s.Owner.Weapon.color);
             if(d.id=="frag-grenade")
             {
@@ -331,7 +335,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(d.burn>0)RefreshDot(target,s.Owner,"fire",d.burn*s.Damage/d.damage*(d.id=="flame-lance"&&AbilityChip(s.Owner,"ab-white-heat")?2:1),2);
                     if(d.speedFactor>0)Slow(target,(float)d.speedFactor,(float)d.slowFor);
-                    if(d.id=="shadow-shackles"&&s.Owner.Hp>0)s.Owner.Hp=Math.Min((float)s.Owner.Stats["hp"],s.Owner.Hp+actual*.5f);
+                    if(d.id=="shadow-shackles")ExpansionHeavyChains(s,target.Seat.id,target.Body.position);if(d.id=="shadow-shackles"&&s.Owner.Hp>0)s.Owner.Hp=Math.Min((float)s.Owner.Stats["hp"],s.Owner.Hp+actual*.5f);
                 }
                 Fx(at,.6f,element);
                 return d.id!="tidal-wave"&&!(d.id=="flame-lance"&&s.RemainingPierces-->0);

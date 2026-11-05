@@ -140,7 +140,7 @@ namespace ChipArena.UnityConversion
             if(a.Fx=="whirlwind"){StepWhirlwind(p,a);CaptureMeleeKit(p);return;}
             if(!a.Released&&Time>=a.Release)
             {
-                a.Released=true;a.Phase="active";
+                a.Released=true;a.Phase="active";ExpansionMeleeRelease(p,a);
                 if(a.Fx=="flash-step"||a.Fx=="bulwark-charge"){a.Until=Time+(a.Fx=="flash-step"?.22f:.45f);p.AttackEnd=p.Ready=a.Until;}
                 switch(a.Fx)
                 {
@@ -234,8 +234,8 @@ namespace ChipArena.UnityConversion
         private float MeleeMinionHit(NativeMinion m,NativePilot p,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind="melee",bool empower=true,int projectile=0)
         {
             bool boosted=empower&&p.Seat.spec=="daggers"&&Time<p.MeleeKit.EmpowerUntil;
-            float actual=HitMinion(m,p,damage*(boosted?1.4f:1),direction,impulse,point,kind,projectile:projectile,from:p.Body.position);
-            if(boosted&&actual>0)p.MeleeKit.EmpowerUntil=0;return actual;
+            bool knife=kind=="melee"&&p.ExpansionKnifeUntil>Time;float actual=HitMinion(m,p,damage*(knife?2:1)*(boosted?1.4f:1),direction,impulse,point,kind,projectile:projectile,from:p.Body.position);
+            if(knife&&actual>0){p.ExpansionKnifeUntil=0;Emit(EventKind.Critical,p,m.Id,m.Body.position,actual);}if(boosted&&actual>0)p.MeleeKit.EmpowerUntil=0;return actual;
         }
         private float MeleeAbilityHit(NativePilot p,int id,float damage,Vector3 direction,float impulse,string fx,Vector3 point,bool wallSlam=false)
         {
@@ -309,7 +309,7 @@ namespace ChipArena.UnityConversion
                     if(s.Shield&&s.Chain.Count==1&&target?.Hp>0)LaunchMelee(target,s.Owner,3.8f);
                     if(!s.Shield&&!s.Reflected&&s.Original.Hp>0)
                     {
-                        var k=s.Original.MeleeKit;ClearMeleeMark(s.Original);k.Target=k.MarkTarget=id;k.MarkUntil=k.RecastUntil=Time+4;k.RecastKind="kunai-mark";
+                        var k=s.Original.MeleeKit;ClearMeleeMark(s.Original);k.Target=k.MarkTarget=id;k.MarkUntil=k.RecastUntil=Time+(AbilityChip(s.Original,"ab-twin-kunai")?6:4);k.RecastKind="kunai-mark";
                         Emit(EventKind.Mark,s.Original,id,hit.Point,1,s.Fx);
                     }
                 }
