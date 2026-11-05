@@ -154,3 +154,16 @@ means assets were imported, **not** that Unity built or published successfully.
 Confirm the separate builder status and playtest before declaring delivery.
 The Windows GUI, DPAPI and live API path still need first-run verification on the
 owner's PC; automated tests mock the network and credential store.
+
+### Unity-only builder inputs
+
+The local builder may export only `unity/ChipArenaConversion`. The queue therefore
+ships with its referenced manifests under `tools/audio-inputs/docs/audio`. A full
+checkout uses canonical `docs/audio`; a Unity-only checkout uses the complete bundled
+input tree. Queue and manifests are never mixed between those trees.
+
+After editing the reviewed queue or a referenced manifest, run
+`python unity/ChipArenaConversion/tools/export_sound_inputs.py` and commit the
+bundled changes together. `package_source.py --check` rejects stale copies; in an
+exported project it validates the bundled plan and pinned manifest hashes.
+The exporter never generates audio or changes approvals, limits or receipts.

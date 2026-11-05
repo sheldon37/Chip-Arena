@@ -35,6 +35,8 @@ def selected():
 
 
 def check():
+    from export_sound_inputs import export
+    export(check=True)
     manifest = json.loads((ROOT / 'Packages/manifest.json').read_text())
     catalog = json.loads((ROOT / 'tools/builtin-packages-6000.3.24f1.json').read_text())
     project_version = (ROOT / 'ProjectSettings/ProjectVersion.txt').read_text()

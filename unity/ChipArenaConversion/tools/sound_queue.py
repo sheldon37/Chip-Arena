@@ -16,6 +16,14 @@ import zipfile
 import generate_sound_requests as gen
 
 QUEUE = gen.REPO / 'docs/audio/sound-queue.json'
+BUNDLED_REPO = Path(__file__).resolve().parent / 'audio-inputs'
+
+
+def inputs():
+    # Native builders may export only unity/ChipArenaConversion. Use one complete
+    # input tree; never combine a canonical queue with stale bundled manifests.
+    repo = gen.REPO if QUEUE.is_file() else BUNDLED_REPO
+    return repo / 'docs/audio/sound-queue.json', repo
 
 
 def home():
@@ -122,7 +130,7 @@ def command(args):
         raise ValueError('Audio import/asset check failed; originals retained. Run the documented importer check for details.')
 
 
-def process(source, root=None, queue=QUEUE, repo=gen.REPO):
+def process(source, root=None, queue=None, repo=None):
     root = root if root is not None else home()
     if root is None or not (root / 'config.json').is_file():
         return source
@@ -146,7 +154,9 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
         try:
             limits(config)
             stage = 'read queue and manifest'
-            plans = plan(queue, repo)
+            if queue is None:
+                queue, repo = inputs()
+            plans = plan(queue, repo if repo is not None else gen.REPO)
             if not plans:
                 report('idle', message='No approved sound jobs.'); return source
             if not source.is_file() or source.suffix.lower() != '.zip':

@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: fix missing sound inputs in Unity-only builder
+
+- Branch `codex/builder-sound-inputs`, shared base `70f2f3b3`. Drive's Latest-Sound-Status.json identifies the exact blocker: `read queue and manifest: FileNotFoundError`, missing `Work/70f2f3b324fc-f69f0af2/docs/audio/sound-queue.json`. This attempt stopped before credentials/generation/Unity; the previous generic error obscured that path.
+- Bundle the approved queue and referenced manifest under the exported Unity tools directory. Full checkouts use canonical docs/audio; Unity-only trees select the complete bundled input tree, never a mixture. No builder reinstall required. `export_sound_inputs.py` refreshes exact bytes; source packaging rejects stale copies and validates pinned manifest hashes in exported trees.
+- Same immutable six-sound sample, six requests / 11 seconds. No new approvals, reset of originals/receipts/pending-request markers, uncertain retries or credential changes. No API requests made by local verification. No gameplay/visual/audio-content edits, live or Site release.
+- Checks: 19 queue/input tests, 19 generator/importer tests, seven effects-audio tests passed; the regression exports tools without root docs and resolves the real six-sound plan. Default process integration generates once with a mocked API and reuses receipts on rebuild. Source packaging passes (3,306 files). Windows generation/import and Unity validation await the test builder. Delivery receipt in task PR.
+
 ## 2026-11-05 — Astra: identify missing sound-queue file
 
 - Owner supplied error from `68949a1c`: FileNotFoundError during optional asset install. Filename/stage were stripped, so root cause and whether any audio was generated remain unknown.

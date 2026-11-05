@@ -47,6 +47,16 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(self.run_queue(), output); self.assertEqual(len(self.calls), 1)
         self.base.write_bytes(b'NEW BASE'); self.assertNotEqual(self.run_queue(), output)
         self.assertEqual(len(self.calls), 1)
+    def test_default_process_uses_complete_bundle_and_reuses_originals(self):
+        # A fresh Unity-only build has no outer docs directory.
+        bundled = self.root / 'bundle'
+        shutil.copytree(self.repo / 'docs', bundled / 'docs')
+        shutil.copy(bundled / 'docs/audio/queue.json', bundled / 'docs/audio/sound-queue.json')
+        with patch.object(q, 'QUEUE', self.root / 'absent/docs/audio/sound-queue.json'), patch.object(q, 'BUNDLED_REPO', bundled):
+            output = q.process(self.base, self.root)
+            self.assertTrue(output.is_file())
+            self.assertEqual(q.process(self.base, self.root), output)
+            self.assertEqual(len(self.calls), 1)
     def test_disabled_and_empty_do_not_generate(self):
         q.write(self.queue, dict(schema='chip-arena.sound-queue/1', jobs=[]))
         self.assertEqual(self.run_queue(), self.base)
