@@ -163,7 +163,8 @@ namespace ChipArena.UnityConversion
         {
             const int NX=10,NY=8;var m=Paper[surf];if(amount<=.001f)return;if(!m.Room((NX+1)*(NY+1),NX*NY*6)){Refused++;return;}
             Patches++;int v0=m.VertexCount;float off=surf==WallS?.009f:.006f;
-            float creepA=(H(seed,1)-.5f)*.5f*t*amount,creepB=(H(seed,2)-.5f)*.4f*t*amount;
+            // (A bounded drift: never a function of the clock's size, or a long fight's patch would race as it ramps in.)
+            float creepA=(H(seed,1)-.5f)*1.4f*(float)Math.Sin(t*.31f+seed)*amount,creepB=(H(seed,2)-.5f)*1.1f*(float)Math.Sin(t*.23f+seed*1.7f)*amount;
             for(int y=0;y<=NY;y++)for(int x=0;x<=NX;x++)
             {
                 float fa=(float)x/NX*2-1,fb=(float)y/NY*2-1;var q=centre+a*(fa*ha)+b*(fb*hb)+n*off;
