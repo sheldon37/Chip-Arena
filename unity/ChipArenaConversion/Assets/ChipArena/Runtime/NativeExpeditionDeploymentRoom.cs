@@ -13,20 +13,50 @@ namespace ChipArena.UnityConversion
         private ConversionContent deploymentBaseContent;
         private bool deploymentLaunch,deploymentLocked;
         private string DeploymentAuthoredJson=>Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
-        private void PrepareDeploymentBundle(ExpeditionDeploymentTicket ticket)
+        private readonly NativeLatestWork<ExpeditionRunBundle> deploymentWork=new NativeLatestWork<ExpeditionRunBundle>();
+        private ExpeditionDeploymentTicket deploymentRequested;
+        private NativeNetMessage deploymentPendingState;
+        private int deploymentPendingDeploy=-1;
+        private string deploymentBuildError;
+        private static bool SameDeploymentTicket(ExpeditionDeploymentTicket a,ExpeditionDeploymentTicket b)=>a!=null&&b!=null&&
+            a.schema==b.schema&&a.station==b.station&&a.originHost==b.originHost&&a.expedition==b.expedition&&a.seed==b.seed&&a.revision==b.revision&&
+            a.instanceRolls==b.instanceRolls&&a.mutatorRolls==b.mutatorRolls&&a.mutatorSkips==b.mutatorSkips&&a.mutatorsSkipped==b.mutatorsSkipped&&
+            a.compatibility==b.compatibility&&a.deployed==b.deployed&&a.generatedCompatibility==b.generatedCompatibility;
+        private bool PrepareDeploymentBundle(ExpeditionDeploymentTicket ticket)
         {
-            if(deploymentBundle?.Matches(ticket)==true){deploymentLocked|=ticket.deployed;return;}
+            if(deploymentBundle?.Matches(ticket)==true){deploymentLocked|=ticket.deployed;return true;}
             if(deploymentLocked)throw new InvalidOperationException("Cannot replace a deployed world.");
-            var original=deploymentBaseContent??content;
-            var bundle=ExpeditionRunBundle.Build(ticket,original,DeploymentAuthoredJson);
-            deploymentBaseContent=original;deploymentBundle=bundle;content=bundle.Content;deploymentLocked=ticket.deployed;
+            if(ticket==null)throw new ArgumentException("Missing deployment ticket.");
+            if(!SameDeploymentTicket(deploymentRequested,ticket))
+            {
+                // Capture Resources and the immutable base on the main thread. The worker builds only managed records.
+                var original=deploymentBaseContent??content;var authored=DeploymentAuthoredJson;var copy=ticket.Copy();
+                deploymentRequested=copy;deploymentBuildError=null;
+                deploymentWork.Request(()=>ExpeditionRunBundle.Build(copy,original,authored));
+            }
+            if(deploymentBuildError!=null)throw new InvalidOperationException(deploymentBuildError);
+            return false;
+        }
+        private void DeploymentBundleTick()
+        {
+            if(deploymentWork.Poll(out var bundle,out var error))
+            {
+                if(error!=null){deploymentBuildError=error.Message;networkStatus="Destination generation failed: "+error.Message;deploymentPendingDeploy=-1;deploymentPendingState=null;}
+                else if(bundle!=null&&bundle.Matches(deploymentRequested))
+                {deploymentBaseContent??=content;deploymentBundle=bundle;content=bundle.Content;deploymentLocked=deploymentRequested.deployed;if(networkStatus=="Preparing destinations…")networkStatus="Destinations ready.";}
+            }
+            if(deploymentBundle==null)return;
+            if(deploymentPendingState!=null&&deploymentBundle.Matches(deploymentPendingState.deployment))
+            {var message=deploymentPendingState;deploymentPendingState=null;try{ClientMessage(message);}catch(Exception e){Debug.LogWarning("Deferred Expedition state failed: "+e);joinError="Invalid or incompatible host state: "+e.Message;server?.Dispose();}}
+            if(deploymentPendingDeploy>=0&&deploymentBundle.Matches(deploymentRoom?.Ticket))
+            {int revision=deploymentPendingDeploy;deploymentPendingDeploy=-1;DeployExpedition(revision);}
         }
         public bool DeployExpedition(int revision)
         {
             if(server!=null||deploymentRoom==null||PromotionBusy||arena!=null||expeditionSession!=null||!GuestsReady||account?.Access==null||account.Access.Expires<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()||deploymentRoom.Snapshot().revision!=revision||deploymentRoom.Deployed)return false;
             try
             {
-                PrepareDeploymentBundle(deploymentRoom.Ticket);
+                if(!PrepareDeploymentBundle(deploymentRoom.Ticket)){deploymentPendingDeploy=revision;networkStatus="Preparing destinations…";return true;}
                 if(!deploymentRoom.Execute(account?.Access?.AccountId,revision,ExpeditionDeploymentIntent.Deploy,true,deploymentBundle.Identity))return false;
                 PrepareDeploymentBundle(deploymentRoom.Ticket);BroadcastDeployment();deploymentLaunch=true;
                 RequestStage(StageLoadKind.Expedition,StartExpeditionM1);return true;
@@ -69,9 +99,10 @@ namespace ChipArena.UnityConversion
             if(server!=null||arena!=null||expeditionSession!=null||PromotionBusy||
                account?.Access==null||account.Access.Expires<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())return false;
             if(deploymentRoom?.Execute(account.Access.AccountId,revision,intent)!=true)return false;
+            deploymentPendingDeploy=-1;
             if(intent==ExpeditionDeploymentIntent.RollInstances&&deploymentBaseContent!=null)
             {content=deploymentBaseContent;deploymentBaseContent=null;deploymentBundle=null;}
-            if(intent==ExpeditionDeploymentIntent.RollInstances)
+            if(deploymentRoom.Snapshot().worldRolled)
             {
                 try{PrepareDeploymentBundle(deploymentRoom.Ticket);}
                 catch(Exception e)when(e is ArgumentException||e is InvalidOperationException||e is FormatException)
@@ -104,6 +135,7 @@ namespace ChipArena.UnityConversion
         }
         private void ResetDeploymentRoom()
         {
+            deploymentWork.Reset();deploymentRequested=null;deploymentPendingState=null;deploymentPendingDeploy=-1;deploymentBuildError=null;
             LeaveLiveDeployment();deploymentRoom=null;deploymentReceiver=null;deploymentLayout=null;deploymentBundle=null;deploymentLaunch=deploymentLocked=false;expeditionLayoutRead=false;expeditionLayout=null;
             if(deploymentBaseContent!=null){content=deploymentBaseContent;deploymentBaseContent=null;if(prefs.map==NativeExpeditionGeneratedWorld.MapId)prefs.map=content.maps.First(NativeMapRules.ArenaSelectable).id;}
         }

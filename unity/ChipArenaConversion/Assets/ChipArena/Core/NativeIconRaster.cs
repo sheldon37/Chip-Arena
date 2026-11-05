@@ -15,6 +15,7 @@ namespace ChipArena.UnityConversion
     // have, instead of only outside it.
     public static class NativeIconRaster
     {
+        public static int CachePixels(float requested){int size=32;while(size<requested&&size<512)size*=2;return size;}
         public enum Mode {Lucide,Markup,Art}
         public struct Pt
         {

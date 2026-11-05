@@ -178,11 +178,11 @@ namespace ChipArena.UnityConversion
             if(PromotionClientMessage(message))return;
             if(message.type=="expedition-state")
             {
-                if(message.epoch<networkEpoch||networkId<1)return;
+                if(message.epoch<networkEpoch||networkId<1||deploymentPendingState!=null&&message.epoch<deploymentPendingState.epoch)return;
                 if(message.deployment!=null)
                 {
                     if(!message.deployment.deployed)throw new ArgumentException("Run ticket is not locked.");
-                    PrepareDeploymentBundle(message.deployment);
+                    if(!PrepareDeploymentBundle(message.deployment)){deploymentPendingState=message;return;}
                     if(message.expeditionPublic?.areaIdentity?.layout!=deploymentBundle.Identity)throw new ArgumentException("Generated run layout mismatch.");
                 }
                 else if(deploymentBundle!=null)throw new ArgumentException("Generated run ticket missing.");
