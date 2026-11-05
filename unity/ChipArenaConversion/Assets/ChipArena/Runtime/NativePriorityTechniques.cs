@@ -48,8 +48,8 @@ namespace ChipArena.UnityConversion
                     k.Phase="rally";k.Point=Vec(feet);k.HitAt=Time;
                     foreach(var t in MeleeTargets(p).ToArray())if(Vector3.Distance(t.at,p.Body.position)<=8&&MeleeVisible(p.Body.position,t.at,p,t.collider))PriorityMark(p,t.id,"war-cry",4);break;
                 case "sunder":
-                    k.Phase="smash";k.Point=Vec(feet);k.Dir=V3.Forward(p.Input.Yaw);k.HitAt=Time;
-                    foreach(var t in MeleeTargets(p).ToArray())if(Vector3.Distance(t.at,p.Body.position)<=3&&Vector3.Angle(Vec(k.Dir),t.at-p.Body.position)<=45&&MeleeVisible(p.Body.position,t.at,p,t.collider)&&TechniqueHit(p,t.id,14,t.at,Vec(k.Dir))>0)PriorityMark(p,t.id,"sunder",4);break;
+                    k.Phase="smash";k.Point=Vec(feet);k.Dir=V3.Forward(p.Input.Yaw);
+                    foreach(var t in MeleeTargets(p).ToArray())if(Vector3.Distance(t.at,p.Body.position)<=3&&Vector3.Angle(Vec(k.Dir),t.at-p.Body.position)<=45&&MeleeVisible(p.Body.position,t.at,p,t.collider)&&TechniqueHit(p,t.id,14,t.at,Vec(k.Dir))>0){k.HitAt=Time;PriorityMark(p,t.id,"sunder",4);}break;
                 case "ghillie":k.Phase="hidden";k.Point=Vec(feet);break;
                 case "flash-freeze":k.Phase="ice";k.Point=Vec(GroundPoint(feet));break;
                 default:return ReleasePriorityProjectile(p);
@@ -81,8 +81,7 @@ namespace ChipArena.UnityConversion
             Vector3 start=p.Body.position,dir=Vec(V3.Forward(p.Input.Yaw));float length=ForwardAbilityStep(start,dir,AbilityChip(p,"ab-moonlit-edge")?8:5,out _);
             if(!TechniqueDestination(p,start+dir*length))length=0;
             k.From=Vec(start-Vector3.up*.865f);k.To=k.From+Vec(dir*length);k.Dir=Vec(dir);k.Arm=charge;k.RecastAt=Time;k.Phase="draw";k.Until=k.RecoverUntil=Time+.3f;p.Ready=k.RecoverUntil;
-            foreach(var t in MeleeTargets(p).ToArray())if(NativeTechniqueRules.LineDistance(Vec(t.at),Vec(start),Vec(start+dir*length))<=.6f&&MeleeVisible(start,t.at,p,t.collider))TechniqueHit(p,t.id,8+14*charge,t.at,dir);
-            k.HitAt=Time;
+            foreach(var t in MeleeTargets(p).ToArray())if(NativeTechniqueRules.LineDistance(Vec(t.at),Vec(start),Vec(start+dir*length))<=.6f&&MeleeVisible(start,t.at,p,t.collider)&&TechniqueHit(p,t.id,8+14*charge,t.at,dir)>0)k.HitAt=Time;
         }
         private bool PriorityTechniqueMotion(NativePilot p,ref Vector3 velocity)
         {

@@ -19,6 +19,16 @@ namespace ChipArena.UnityConversion
             int first=nextMinion;Summon(p,1,kind,at,life,true);var m=Minions.Find(m=>m.Id>=first&&m.Owner==p&&m.Kind==kind);
             if(m!=null){Physics.IgnoreCollision(m.Collider,p.Collider,true);m.Hp=m.MaxHp=hp;m.Body.position=at;m.Speed=0;m.NextAttack=Time+life;m.StrikeAt=-1;}return m;
         }
+        private readonly Collider[] cratePlacementHits=new Collider[8];
+        private bool AmmoCratePoint(NativePilot p,in InputFrame aim,out Vector3 point)
+        {
+            var feet=p.Body.position-Vector3.up*.865f;point=feet+Vec(V3.Forward(aim.Yaw))*1.4f;var scene=root.scene.GetPhysicsScene();
+            if(!scene.Raycast(point+Vector3.up*.5f,Vector3.down,out var floor,2,WorldMask,QueryTriggerInteraction.Ignore)||floor.normal.y<.5f)return false;
+            point=floor.point;if(!TechniqueDestination(p,point+Vector3.up*.865f)||SceneLinecast(p.Body.position,point+Vector3.up*.4f,WorldMask))return false;
+            // The drawn crate rotates randomly. Its horizontal circumradius covers every orientation.
+            float horizontal=Mathf.Sqrt(NativeTechniqueFx.CrateHalfX*NativeTechniqueFx.CrateHalfX+NativeTechniqueFx.CrateHalfZ*NativeTechniqueFx.CrateHalfZ);
+            return scene.OverlapBox(point+Vector3.up*(NativeTechniqueFx.CrateHalfY+.02f),new Vector3(horizontal,NativeTechniqueFx.CrateHalfY-.01f,horizontal),cratePlacementHits,Quaternion.identity,WorldMask,QueryTriggerInteraction.Ignore)==0;
+        }
         private bool ReleaseFinalTechnique(NativePilot p)
         {
             var k=p.Technique;var feet=p.Body.position-Vector3.up*.865f;
@@ -26,13 +36,13 @@ namespace ChipArena.UnityConversion
             {
                 case "mirror-double":case "shadow-puppet":
                     bool mirror=k.Kind=="mirror-double";var m=ExpansionDecoy(p,k.Kind,mirror?1:30,mirror?2.5f:4,p.Body.position);
-                    if(m==null){EndTechnique(p);return true;}k.Target=m.Id;k.From=k.Point=Vec(feet);k.To=Vec(m.Body.position);k.Dir=V3.Forward(p.Input.Yaw);k.Phase=mirror?"run":"puppet";k.Arm=Time+1;return true;
+                    if(m==null){EndTechnique(p);return true;}k.Target=m.Id;k.From=k.Point=Vec(feet);k.To=Vec(m.Body.position);k.Dir=V3.Forward(p.Input.Yaw);k.Phase=mirror?"run":"puppet";k.Arm=mirror?Time+1:1;if(!mirror)k.Dir=GunRules.Direction(p.Input.Yaw,p.Input.Pitch);return true;
                 case "chain-hook":k.Phase="flight";k.Point=k.From;k.Until=Time+(AbilityChip(p,"ab-barbed-chain")?16:12)/40f;k.RecoverUntil=k.Until;return true;
                 case "flash-round":k.Phase="shot";k.Point=k.From;k.Until=Time+1;return true;
                 case "slide-shot":
                     var dir=new Vector3(p.Input.X,0,p.Input.Z);if(dir.sqrMagnitude<.01f)dir=Vec(V3.Forward(p.Input.Yaw));dir.Normalize();
-                    float length=ForwardAbilityStep(p.Body.position,dir,6,out _);k.From=Vec(feet);k.Dir=Vec(dir);k.To=k.From+Vec(dir*length);k.Phase="slide";k.Until=Time+.75f;return true;
-                case "ammo-crate":p.ExpansionCrateUsers.Clear();k.Phase="open";k.Point=Vec(feet);k.Arm=1;p.TechniqueHealth=40;return true;
+                    float length=TechniqueBodyStep(p,dir*6,true,out _,out _);k.From=Vec(feet);k.Dir=Vec(dir);k.To=k.From+Vec(dir*length);k.Phase="slide";k.Until=Time+.75f;return true;
+                case "ammo-crate":if(!AmmoCratePoint(p,in p.Input,out var crate)){EndTechnique(p);return true;}p.ExpansionCrateUsers.Clear();k.Phase="open";k.Point=Vec(crate);k.Arm=1;p.TechniqueHealth=40;return true;
                 case "flak-burst":k.Phase="fire";k.Point=k.From;k.To=Vec(AimedAbilityPoint(p,40));k.Arm=Time+Vector3.Distance(Vec(k.From),Vec(k.To))/50;k.Until=k.Arm+3;p.TechniqueNext=k.Arm;return true;
                 case "flame-cloak":k.Phase="cloak";k.Arm=Time;return true;
                 case "dread":
@@ -56,7 +66,8 @@ namespace ChipArena.UnityConversion
             {
                 case "mirror-double":case "shadow-puppet":
                     if(!NativeTechniqueRules.Live(k,Time))return true;var m=Minions.Find(m=>m.Id==k.Target&&m.Hp>0);
-                    if(m==null){if(k.Phase!="pop"){k.Phase="pop";k.HitAt=Time;k.Until=Time+.3f;}return true;}k.To=Vec(m.Body.position);return true;
+                    if(m==null){if(k.Phase!="pop"){k.Phase="pop";if(k.Kind=="shadow-puppet")k.Arm=0;else k.HitAt=Time;k.Until=Time+.3f;}return true;}
+                    if(k.Kind=="shadow-puppet"){k.Arm=Mathf.Clamp01(m.Hp/Math.Max(1,m.MaxHp));k.Point=Vec(m.Body.position-Vector3.up*.865f);k.Dir=Vec(PuppetAim(p,m,Vec(GunRules.Direction(p.Input.Yaw,p.Input.Pitch))));}else k.To=Vec(m.Body.position);return true;
                 case "chain-hook":case "flash-round":
                     if(k.Phase=="flight"||k.Phase=="shot")FinalTechniqueFlight(p);
                     if(k.Phase=="yank"&&Time<k.Until)
@@ -115,7 +126,11 @@ namespace ChipArena.UnityConversion
             var k=p.Technique;
             if(ChannelLive(p,"chain-hook")){v=Vector3.zero;p.MoveVelocity=p.Knockback=Vector3.zero;return true;}
             if(ChannelLive(p,"slide-shot")&&k.Phase=="slide")
-            {var desired=Vector3.Lerp(Vec(k.From),Vec(k.To),Mathf.Clamp01((Time+1f/60-k.Release)/.55f))+Vector3.up*.865f-p.Body.position;float allowed=ForwardAbilityStep(p.Body.position,desired.normalized,desired.magnitude,out bool wall);v=desired.normalized*allowed*60;p.MoveVelocity=p.Knockback=Vector3.zero;if(wall){k.Phase="rise";k.Until=k.RecoverUntil=Time+.2f;}return true;}return false;
+            {var desired=Vector3.Lerp(Vec(k.From),Vec(k.To),Mathf.Clamp01((Time+1f/60-k.Release)/.55f))-p.Body.position;desired.y=0;
+                float allowed=TechniqueBodyStep(p,desired,true,out bool wall,out _);var step=desired.normalized*allowed;
+                if(!TechniqueDestination(p,p.Body.position+step)){step=Vector3.zero;wall=true;}
+                // GroundMotion/gravity owns height; correcting to the cast's old Y drove the sweep into the floor.
+                v.x=step.x*60;v.z=step.z*60;p.MoveVelocity=p.Knockback=Vector3.zero;if(wall){k.Phase="rise";k.Until=k.RecoverUntil=Time+.2f;}return true;}return false;
         }
         private void FinalTechniqueConstraints()
         {
@@ -134,12 +149,15 @@ namespace ChipArena.UnityConversion
             {var dir=Vec(V3.Forward(m.Yaw));float allowed=ForwardAbilityStep(m.Body.position,dir,6.8f/60,out bool wall);if(wall){RemoveMinion(m,false);return true;}m.Body.position+=dir*allowed;}
             m.Body.linearVelocity=Vector3.zero;return true;
         }
+        private static Vector3 PuppetAim(NativePilot p,NativeMinion m,Vector3 fallback)
+        {var dir=p.Input.AimTarget.Length>.01f?Vec(p.Input.AimTarget)-m.Body.position:fallback;return dir.sqrMagnitude>.0001f?dir.normalized:Vector3.forward;}
         private void CopyTechniqueShot(NativePilot p,NativeBullet shot)
         {
             foreach(var m in Minions.Where(m=>m.Owner==p&&m.Kind=="shadow-puppet"&&m.Hp>0).ToArray())
             {
-                if(ProjectileCount>=100)break;var dir=(p.Input.AimTarget.Length>.01f?Vec(p.Input.AimTarget)-m.Body.position:shot.Velocity).normalized;
+                if(ProjectileCount>=100)break;var dir=PuppetAim(p,m,shot.Velocity);
                 Bullets.Add(new NativeBullet{Id=nextBullet++,Attack=nextAttack++,Owner=p.Seat.id,Original=p.Seat.id,Spec=p.Seat.spec,Detail="expansion-copy",Born=Time,Position=m.Body.position+dir*.4f,Velocity=dir*Math.Max(30,shot.Velocity.magnitude),Damage=shot.Damage*.4f,Radius=shot.Radius,Gravity=shot.Gravity,Life=3,Travel=80,Direct=false,TechniqueNoHead=true});m.LastAttack=Time;
+                var k=p.Technique;if(k?.Kind=="shadow-puppet"&&k.Target==m.Id){k.Dir=Vec(dir);k.HitAt=Time;k.To=Vec(m.Body.position+dir*80);}
             }
         }
     }

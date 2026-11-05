@@ -130,7 +130,7 @@ Native builder fixtures cover every new technique, per-slot routing, refusal, re
 | Pistol | Gun Spin (`gun-spin`) | A .45 s twirl with no firing. Then the magazine is full and you fire +25% faster for 4 s | 0 | 12 s / none | You cannot shoot through the twirl: that is your moment |
 | Pistol | Slide Shot (`slide-shot`) | 6 m along your movement (or look) in .55 s at crouch height, firing freely, with spread x.5. .2 s to rise. A wall stops it | 0 | 9 s / none | A straight line with no dodge at its end |
 | Machine gun | Bipod (`bipod`) | A .5 s set. For up to 5 s you cannot move, with spread x.3, +30% fire rate and no rounds used. A recast packs up in .3 s | 0 | 15 s / none | You stand still: flank it, or use anything with splash |
-| Machine gun | Ammo Crate (`ammo-crate`) | A crate at your feet: 8 s, 40 HP. You and each ally may take from it once: an instant reload and +20% attack speed for 5 s | 0 | 20 s / none | Shoot it: enemies can see it through nothing, but it is big and it stays put |
+| Machine gun | Ammo Crate (`ammo-crate`) | A crate 1.4 m ahead on clear floor: 8 s, 40 HP. You and each ally may take from it once: an instant reload and +20% attack speed for 5 s | 0 | 20 s / none | Shoot it: enemies can see it through nothing, but it is big and it stays put |
 | Machine gun | Flak Burst (`flak-burst`) | It bursts at the aimed distance, at most 40 m: a 5 m cloud for 3 s. Enemy shots entering it are destroyed. Enemies in it take 2 a second and move x.9 | 2 a second | 14 s / none | Walk round it; melee ignores it |
 | Rifle | Breacher Round (`breacher-round`) | A 1 s charge at walk x.4, with a laser everyone can see. The round goes through enemies and up to 1.2 m of walls in total, up to 80 m | 22 | 14 s / none | The laser tells you where: step aside |
 | Rifle | Ghillie (`ghillie`) | A .6 s settle. While you stay under .5 m/s, for at most 8 s, you are all but invisible beyond 6 m, nameplate hidden. Firing or taking damage ends it; that first shot deals +20% | 0 | 16 s / none | A shimmer shows up close, and splash finds you |
@@ -393,3 +393,12 @@ Regression gates: `CoreTests --technique-rules` (simulation contracts), `CoreTes
 Task branch now implements all three third-set rows on sword, shield, greatsword, rifle, bow and water: **26/36 overall**. Adds Iaido, Challenge, War Cry, Sunder, Ghillie, Flash Freeze, Lodestone, Blade Drag, Breacher Round, Bramble Arrow, Tether Arrow and Bubble Trap. Ten other-weapon rows remain gated; Third stays separate from All. DEV_LOG records tuning, collision decisions and unrun native tests. These are source changes, not a released build.
 
 Minion victim marks are `NativeMinion.TechniqueMarks`, wire `NativeMinionFrame.techniqueMarks`; pilot/replay marks remain `Actor.TechniqueMarks`. Both use the bounded mark contract. No presentation implementation is included.
+
+
+### 2026-11-05 authority repairs
+
+Ground Slam classifies the swept capsule contact normal: descending support arms the landing, while a side/ceiling contact cancels. The check no longer asks a separate 1.2 m downward ray to classify a longer swept descent. Slide Shot sweeps its actual crouched capsule horizontally, retains locomotion/gravity vertical velocity, and ignores walkable support normals; side obstacles and sanctuary/map boundaries still stop it. Native regression cases are in ValidateTechniques; real Cybercity/Windows motion remains to be verified.
+
+Ammo Crate refuses before payment if the point 1.4 m ahead lacks clear floor/space or crosses cover/sanctuary. Its virtual shot/melee sphere is centered using the existing CrateAt animation contract, including the .16 s fall, with radius sqrt(.66² + .38² + .42²) = .869 m. Blasts use that same center. The sphere encloses the box; it is intentionally not an exact oriented-box hit test. Taking damage updates Arm only; HitAt remains the last pickup.
+
+Iaido, Sunder, Reaping Sweep and Blade Drag write HitAt only after positive damage. Shadow Puppet writes normalized remaining health to Arm, updates Point/Dir from the minion and current aim, and retains the last copied shot's HitAt/To instead of overwriting To with body position. Mirror Double keeps its one-second invisibility Arm timestamp. Existing replicated technique fields carry these changes; no new wire fields or presentation code.

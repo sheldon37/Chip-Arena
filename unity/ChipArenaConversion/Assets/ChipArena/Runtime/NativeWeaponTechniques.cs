@@ -66,6 +66,7 @@ namespace ChipArena.UnityConversion
                 if(!root.scene.GetPhysicsScene().Raycast(origin+Vector3.up*.3f,direction,out var hit,kind==NativeTechniques.Tripwire?14:kind==NativeTechniques.SonarDart?40:20,WorldMask,QueryTriggerInteraction.Ignore))return NativeTechniques.NoSurface;
                 point=hit.point;return TechniqueHubCross(origin,point)?NativeTechniques.NoSurface:null;
             }
+            if(kind=="ammo-crate")return AmmoCratePoint(p,in aim,out point)?null:NativeTechniques.Blocked;
             if(kind==NativeTechniques.HealingSpring)
             {
                 point=GroundPoint(AimedAbilityPoint(p,14,in aim));
