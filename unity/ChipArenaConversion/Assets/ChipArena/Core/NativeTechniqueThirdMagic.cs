@@ -404,9 +404,9 @@ namespace ChipArena.UnityConversion
             if(left>0)
             {
                 float total=Math.Max(.1f,k.Until-lit),stress=k.RecastAt>-50?live/4:live/total,hot=Smooth((stress-.74f)/.26f),rate=6+18*hot,strobe=hot>0?.62f+.38f*(float)Math.Sin(t*rate*6.28f):1,env=Smooth(live/.12f)*strobe;var color=Vector3.Lerp(MagicLive,MagicLiveHot,hot);
-                if(live<.3f){Flash(s,view?feet+Up*.3f:chest,live,.24f,MagicLive,2,seed+1);Sparks(s,chest,live,.45f,Count(22,q,low),6,MagicLive+Vector3.One*.3f,seed+2,6,.024f);if(!view)Hoop(s,chest,Up,.3f+2.4f*OutCubic(live/.3f),.1f,MagicLive,low?12:22,1.6f*(1-live/.3f));}
+                if(live<.3f){Flash(s,view?feet+Up*.3f:chest,live,.2f,MagicLive,1.2f,seed+1);Sparks(s,chest,live,.45f,Count(22,q,low),6,MagicLive+Vector3.One*.3f,seed+2,6,.024f);if(!view)Hoop(s,chest,Up,.3f+2.4f*OutCubic(live/.3f),.1f,MagicLive,low?12:22,1.6f*(1-live/.3f));}
                 // Across the joints.
-                int arcs=(low?3:6)+(low?0:(int)(stress*5));for(int i=0;i<arcs;i++){int j0=(int)(R(roll,i*2+1)*joints)%joints,j1=(j0+1+(int)(R(roll,i*2+2)*(joints-1)))%joints;var a0=MagicJoint(feet,r,j0);var a1=MagicJoint(feet,r,j1);Bolt(s,a0,a1,(color+Vector3.One*.5f)*(1.9f*env),.024f,.32f,low?4:6,roll+i*3);if(!low)Bolt(s,a0,a1,color*(.75f*env),.075f,.32f,6,roll+i*3);}
+                int arcs=(low?3:6)+(low?0:(int)(stress*5));for(int i=0;i<arcs;i++){int j0=(int)(R(roll,i*2+1)*joints)%joints,j1=(j0+1+(int)(R(roll,i*2+2)*(joints-1)))%joints;var a0=MagicJoint(feet,r,j0);var a1=MagicJoint(feet,r,j1);Bolt(s,a0,a1,(color+Vector3.One*.22f)*(1.5f*env),.024f,.32f,low?4:6,roll+i*3);if(!low)Bolt(s,a0,a1,color*(.85f*env),.08f,.32f,6,roll+i*3);}
                 // Out to the floor.
                 int outs=low?1:3;for(int i=0;i<outs;i++){float ang=MagicTau*R(roll,i+40),rad=.9f+.8f*R(roll,i+41);var e=feet+new Vector3((float)Math.Cos(ang)*rad,.04f,(float)Math.Sin(ang)*rad);Bolt(s,MagicJoint(feet,r,(int)(R(roll,i+42)*joints)%joints),e,color*(1.8f*env),.016f,.45f,low?4:7,roll+i+50);}
                 // The fuse under the feet: what is left of the ring is what is left of it.
