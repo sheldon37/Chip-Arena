@@ -87,9 +87,9 @@ namespace ChipArena.UnityConversion
             Def("reach",1,new BossActionDef("reach",.12f,.3f,P(A,m.Wind-.1f,1,BossEase.InOut),P(S,.1f,2,BossEase.In,2.4f),P(C,m.Strike,3,BossEase.Linear),P(F,m.Follow,4,BossEase.OutBack,1.3f),P(R,m.Recover,5,BossEase.Settle,1.4f)),
                 N(),
                 N().Lean(0,-.12f,-.1f,2,14,-3).Spine(6,18,-5).Reach(ArmR,2.35f,3.05f,-.95f,.5f,1,-.6f).Hands(0,-.7f,0,1).Head(0,-.1f,.05f).Shrug(.1f),
-                N().Lean(0,-.2f,.1f,5,8,1).Spine(10,8,2).Reach(ArmR,3.05f,2.0f,1.75f,.8f,.5f,-.6f).Hands(0,-1,0,1).Head(0,-.16f,.05f),
-                N().Lean(.05f,-.24f,.22f,7,-18,5).Spine(14,-20,5).Reach(ArmR,-1.95f,1.7f,2.85f,.8f,.6f,-.3f).Hands(0,-1,0,.9f).Head(0,-.2f,.1f),
-                N().Lean(.05f,-.2f,.16f,6,-24,5).Spine(12,-26,5).Reach(ArmR,-2.65f,2.1f,1.95f,.8f,.7f,-.2f).Hands(0,-.5f,0,.6f).Head(0,-.15f,.05f),
+                N().Lean(0,-.2f,.1f,5,8,1).Spine(10,8,2).Reach(ArmR,3.05f,2.0f,1.75f,.3f,1,-.5f).Hands(0,-1,0,1).Head(0,-.16f,.05f),
+                N().Lean(.05f,-.24f,.22f,7,-18,5).Spine(14,-20,5).Reach(ArmR,-1.95f,1.7f,2.85f,-.1f,1,-.4f).Hands(0,-1,0,.9f).Head(0,-.2f,.1f),
+                N().Lean(.05f,-.2f,.16f,6,-24,5).Spine(12,-26,5).Reach(ArmR,-2.65f,2.1f,1.95f,-.2f,1,-.4f).Hands(0,-.5f,0,.6f).Head(0,-.15f,.05f),
                 N());
             // ---- Stoop: it gathers itself up (the back presses the ceiling, both arms rising wide, the head dropping low and forward, in reach, the fingers fanned), then folds: both hands and the head down at its own feet.
             // The head comes down to 1.2 m at the hit. The head's weak point is open through the wind-up and the recovery ----
@@ -145,9 +145,9 @@ namespace ChipArena.UnityConversion
             Def("cut",-1,new BossActionDef("cut",.1f,.3f,P(A,m.Wind-.1f,1,BossEase.InOut),P(S,.1f,2,BossEase.In,2.6f),P(C,m.Strike,3,BossEase.Linear),P(F,m.Follow,4,BossEase.OutBack,1.4f),P(R,m.Recover,5,BossEase.Settle,1.4f)),
                 N(),
                 N().Lean(0,-.3f,0,8,-10,-3).Spine(12,-12).Reach(ArmL,-2.6f,2.6f,-.55f,-.6f,1,-.5f).Hands(-.8f,0,1,0).Head(0,-.3f,.1f,4),
-                N().Lean(0,-.3f,.2f,9,-4,1).Spine(14,-4).Reach(ArmL,-3.0f,1.5f,1.7f,-.8f,.5f,-.5f).Hands(-1,0,1,0).Head(0,-.25f,.1f,4).Jaw(.5f),
-                N().Lean(0,-.3f,.24f,9,22,4).Spine(14,22).Reach(ArmL,2.5f,1.3f,2.5f,-.8f,.6f,-.3f).Hands(-1,0,.8f,0).Head(0,-.25f,.1f,4).Jaw(.8f),
-                N().Lean(0,-.2f,.1f,6,26,3).Spine(10,26).Reach(ArmL,3.0f,1.6f,1.2f,-.8f,.7f,-.2f).Hands(-.4f,0,.5f,0).Head(0,-.15f,.05f,2),
+                N().Lean(0,-.3f,.2f,9,-4,1).Spine(14,-4).Reach(ArmL,-3.0f,1.5f,1.7f,-.3f,1,-.5f).Hands(-1,0,1,0).Head(0,-.25f,.1f,4).Jaw(.5f),
+                N().Lean(0,-.3f,.24f,9,22,4).Spine(14,22).Reach(ArmL,2.5f,1.3f,2.5f,.1f,1,-.4f).Hands(-1,0,.8f,0).Head(0,-.25f,.1f,4).Jaw(.8f),
+                N().Lean(0,-.2f,.1f,6,26,3).Spine(10,26).Reach(ArmL,3.0f,1.6f,1.2f,.2f,1,-.4f).Hands(-.4f,0,.5f,0).Head(0,-.15f,.05f,2),
                 N());
             // ---- Wall Hand: its own right arm plunges into the floor beside it (the hand that comes out of the wall is this one, elsewhere): the shoulder sinks, the head stays on the victim, it drags the arm back at the end ----
             m=NativeHumBoss.Move("hand");

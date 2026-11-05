@@ -120,11 +120,29 @@ public static class HumBossChecks
     // ---- nothing pops: the frame-to-frame change halves when the frame rate doubles, across the whole script ----
     private static void Pops(out string summary)
     {
-        float W(float fps){var r=new HumBossRig();var last=new BossPose(HumBossRig.Count);bool has=false;float worst=0,at=0;for(int f=0;f<=(int)(fps*NativeHumBossPreview.Loop);f++){float t=f/fps;Step(r,t,f==0?0:1/fps);if(has&&!Jumpy(t)){r.Shown.Delta(last,out float mv,out _);if(mv>worst){worst=mv;at=t;}}last.CopyFrom(r.Shown);has=true;}worstAt=at;return worst;}
-        float a=W(60),b=W(120);
-        Check(b<a*.78f+.02f,"a frame's largest joint move falls with the frame rate ("+a.ToString("0.000")+" m at 60 fps, "+b.ToString("0.000")+" m at 120 fps, at "+worstAt+"; moments intro "+NativeHumBossPreview.IntroEnd+" reach "+NativeHumBossPreview.ReachAt+" lunge "+NativeHumBossPreview.LungeAt+" p2 "+NativeHumBossPreview.Phase2At+" cut "+NativeHumBossPreview.CutAt+" hand "+NativeHumBossPreview.HandAt+" choke "+NativeHumBossPreview.ChokeAt+" cliplunge "+NativeHumBossPreview.ClipLungeAt+" clip "+NativeHumBossPreview.ClipAt+" p3 "+NativeHumBossPreview.Phase3At+" turn "+NativeHumBossPreview.TurnAt+" row2 "+NativeHumBossPreview.Row2At+" lunge3 "+NativeHumBossPreview.Lunge3At+" floor "+NativeHumBossPreview.FloorAt+" death "+NativeHumBossPreview.DeathAt+" loop "+NativeHumBossPreview.Loop+")");
-        summary="largest joint move "+(a*100).ToString("0.0")+" cm a frame at 60 fps and "+(b*100).ToString("0.0")+" at 120 across the whole preview, Lights Out's and the turn's cuts aside";
+        float W(float fps,bool print)
+        {
+            var r=new HumBossRig();var last=new BossPose(HumBossRig.Count);bool has=false;float worst=0,at=0;int joint=-1;var top=new System.Collections.Generic.List<(float mv,float t,int j)>();
+            for(int f=0;f<=(int)(fps*NativeHumBossPreview.Loop);f++)
+            {
+                float t=f/fps;Step(r,t,f==0?0:1/fps);
+                if(has&&!Jumpy(t))
+                {
+                    float mv=0;int jj=-1;for(int j=0;j<HumBossRig.Count;j++){float d=Vector3.Distance(r.Shown.Position[j],last.Position[j]);if(d>mv){mv=d;jj=j;}}
+                    if(mv>worst){worst=mv;at=t;joint=jj;}
+                    if(print&&mv>.34f)top.Add((mv,t,jj));
+                }
+                last.CopyFrom(r.Shown);has=true;
+            }
+            worstAt=at;worstJoint=joint;
+            if(print){int shown=0;float lastT=-9;foreach(var e in top){if(e.t-lastT>.25f&&shown<30){Console.WriteLine("pop "+e.mv.ToString("0.00")+" m at "+e.t.ToString("0.00")+" "+NativeHumBossLook.Names[e.j]);shown++;}lastT=e.t;}}
+            return worst;
+        }
+        float a=W(60,Environment.GetEnvironmentVariable("HUM_POPS")!=null),b=W(120,false);
+        Check(b<a*.78f+.02f,"a frame's largest joint move falls with the frame rate ("+a.ToString("0.000")+" m at 60 fps, "+b.ToString("0.000")+" m at 120 fps, at "+worstAt+" "+NativeHumBossLook.Names[Math.Max(0,worstJoint)]+")");
+        summary="largest joint move "+(a*100).ToString("0.0")+" cm a frame at 60 fps and "+(b*100).ToString("0.0")+" at 120 (at "+worstAt.ToString("0.00")+", "+NativeHumBossLook.Names[Math.Max(0,worstJoint)]+"), Lights Out and the turn aside";
     }
+    private static int worstJoint;
     private static float worstAt;
     private static bool Jumpy(float t)=>Math.Abs(t-(NativeHumBossPreview.CutAt+.41f))<.6f||Math.Abs(t-NativeHumBossPreview.FloorAt)<.3f;
     // ---- the head: level, and locked on its target while the body moves round it ----
