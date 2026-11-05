@@ -534,7 +534,7 @@ namespace ChipArena.UnityConversion
             var muzzle=feet+up*1.42f+f*.85f+r*.1f;var arrow=feet+up*1.35f+f*.6f;
             switch(id)
             {
-                case NativeTechniques.FlashRound:k.Release=t0+.14f;k.From=V3Of(hand);k.Point=V3Of(first?feet+f*9+up*1.9f:feet+f*16+r*3+up*1.4f);k.Arm=k.Release+(first?.16f:.3f);k.Until=k.Arm+.9f;k.RecoverUntil=k.Release+.18f;return true;
+                case NativeTechniques.FlashRound:k.Release=t0+.14f;k.From=V3Of(hand);k.Point=V3Of(first?feet+f*9+up*1.9f:feet+f*10+r*2+up*1.5f);k.Arm=k.Release+(first?.16f:.2f);k.Until=k.Arm+.9f;k.RecoverUntil=k.Release+.18f;return true;
                 case NativeTechniques.GunSpin:k.Release=t0+.02f;k.Arm=t0+.45f;k.Until=k.Arm+(first?4:2.2f);k.RecoverUntil=k.Arm;return true;
                 case NativeTechniques.SlideShot:{k.Release=t0+.04f;var d=first?f:Vector3.Normalize(f+r*.6f);k.From=V3Of(feet);k.To=V3Of(feet+d*6);k.Dir=V3Of(d);k.Until=k.Release+.55f;k.RecoverUntil=k.Until+.2f;}return true;
                 case NativeTechniques.Bipod:k.Release=t0+.5f;k.Point=V3Of(feet);k.Dir=V3Of(f);if(first)k.Until=k.Release+5;else{k.RecastAt=k.Release+2.2f;k.Until=k.RecastAt+.3f;}k.RecoverUntil=k.Until;return true;
@@ -554,7 +554,7 @@ namespace ChipArena.UnityConversion
             switch(id)
             {
                 case NativeTechniques.FlashRound:return 3.2f;
-                case NativeTechniques.GunSpin:return 5.6f;
+                case NativeTechniques.GunSpin:return 5f;
                 case NativeTechniques.SlideShot:return 2.6f;
                 case NativeTechniques.Bipod:return 6.8f;
                 case NativeTechniques.AmmoCrate:return 9.6f;
