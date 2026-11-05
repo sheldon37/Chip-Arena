@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import zipfile
 
 import generate_sound_requests as gen
 
@@ -133,13 +134,14 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
         status = root / 'Latest-Sound-Status.json'
         def report(state, **fields):
             value = dict(state=state, updated=gen.utc(), **fields)
-            write(status, value)
-            # Configured by the owner, e.g. the existing Drive build-log folder.
+            mirrors = {status, source.parent / status.name}
             if config.get('statusFolder'):
+                mirrors.add(Path(config['statusFolder']) / status.name)
+            for destination in mirrors:
                 try:
-                    write(Path(config['statusFolder']) / status.name, value)
+                    write(destination, value)
                 except OSError:
-                    print('Sound queue status mirror unavailable; local status retained.')
+                    print('Sound queue status write unavailable: ' + str(destination), flush=True)
         try:
             limits(config)
             plans = plan(queue, repo)
@@ -169,6 +171,17 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
             for row, path, digest, jobs, folder, identity, receipt in batches:
                 write(identity, row)
                 gen.generate(folder, receipt, jobs, secret)
+                # Share only receipted originals and metadata, never the credential store.
+                archive = source.parent / (row['id'] + '.zip')
+                temporary = archive.with_suffix('.zip.tmp')
+                try:
+                    with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED) as bundle:
+                        bundle.write(folder / 'receipt.json', 'receipt.json')
+                        for entry in receipt['files']:
+                            bundle.write(folder / entry['file'], entry['file'])
+                    os.replace(temporary, archive)
+                except OSError:
+                    print('Sound sample ZIP mirror unavailable; originals retained locally.', flush=True)
                 # Base hash avoids dropping newer licensed assets or another job's imported sounds.
                 fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + sha(path) +
                     sha(Path(__file__).with_name('import_sound_requests.py'))).encode()).hexdigest()
@@ -194,5 +207,7 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
             return current
         except Exception as e:
             # Never include arbitrary network exception text/headers or the secret.
-            report('blocked', message=str(e) if isinstance(e, ValueError) else type(e).__name__)
-            raise ValueError('Sound queue blocked; inspect Latest-Sound-Status.json. No automatic uncertain-request retry.') from None
+            reason = str(e) if isinstance(e, ValueError) else type(e).__name__
+            report('blocked', message=reason)
+            raise ValueError('Sound queue blocked: ' + reason + '. Status: ' + str(status) +
+                             '. No automatic uncertain-request retry.') from None
