@@ -265,7 +265,7 @@ namespace ChipArena.UnityConversion
         private void ArrivalLayer(float a,in HumBossBeats b)
         {
             // The hand: from behind the wall out through the tear. Root-frame targets: the root is still behind the wall here.
-            float reach=BossMath.Smoother((a-b.Fingers+.5f)/1.0f),back=BossMath.Smoother((a-b.WalkOut)/.8f);
+            float reach=BossMath.Smoother((a-(b.Bulge-.45f))/(b.Fingers-b.Bulge+.25f)),back=BossMath.Smoother((a-b.WalkOut)/.8f);
             if(a<b.WalkOut+.8f)
             {
                 var wr=HumBossArrival.HandThrough(a,b,Follow.Position,Follow.Yaw);
