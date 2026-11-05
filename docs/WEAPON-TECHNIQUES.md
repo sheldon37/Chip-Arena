@@ -327,15 +327,15 @@ Not seen: a shot actually drawn into a real rod, a real mark's refund, Wildfire 
 
 | Weapon | Built | Seen on a real press | Note |
 | --- | --- | --- | --- |
-| Sword | Disarm, Iaido, Challenge | Disarm, Iaido | Iaido's line follows the facing, as the draw does |
+| Sword | Disarm, Iaido, Challenge | all three | Iaido's line follows the facing, as the draw does |
 | Daggers | Mirror Double, Envenom, Chain Hook | all three | Envenom without a hit |
 | Shield | War Cry, Ground Slam, Lodestone | all three | **Ground Slam's rules never reach the landing, so its blast was seen only in the preview.** Lodestone without a shot caught |
-| Greatsword | Sunder, Reaping Sweep, Blade Drag | Sunder, Reaping Sweep | The blade lands 2.2 m ahead of `Point`, the feet. The sweep's gap is behind the pilot |
+| Greatsword | Sunder, Reaping Sweep, Blade Drag | all three, Blade Drag standing still | The blade lands 2.2 m ahead of `Point`, the feet. The sweep's gap is behind the pilot |
 | Pistol | Flash Round, Gun Spin, Slide Shot | all three | The whiteout is the viewer's own mark. **Slide Shot's rules stop it after about .2 m** |
 | Machine gun | Bipod, Ammo Crate, Flak Burst | all three | The crate stands at the rules' `Point`, the caster's feet |
-| Rifle | Breacher Round, Ghillie, Bolas Round | Breacher Round, Bolas Round | The body's fade is under the floor, for others, and not reviewable from its own pilot |
+| Rifle | Breacher Round, Ghillie, Bolas Round | all three | The body's fade is under the floor, for others, and not reviewable from its own pilot |
 | Bow | Bramble Arrow, Vault Shot, Tether Arrow | all three | The hedge lies across the arrow's line |
-| Fire | Flame Cloak, Dragon Breath, Combust | Dragon Breath, Combust | Blasts on the floor round the victims' feet |
+| Fire | Flame Cloak, Dragon Breath, Combust | all three | Blasts on the floor round the victims' feet |
 | Water | Bubble Trap, Flash Freeze, Hydro Jet | all three | The ice is a 3 m radius |
 | Lightning | Magnetize, Thunderclap, Overload | all three | Magnetize on one target; a clash only in the preview |
 | Darkness | Soul Siphon, Dread, Shadow Puppet | all three | The puppet stands where you stood, so it overlaps a pilot who has not moved |
