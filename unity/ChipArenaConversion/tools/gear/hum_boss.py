@@ -1300,7 +1300,8 @@ def bake(parts, name, seed=0.0, ao_scene=None, skinned=True):
                 uvw = [0.0, 0.0, 0.0, 0.0]
                 for i, (w, b) in enumerate(wk[:4]):
                     uvw[i] = INDEX[b] + min(.998, w * .998)
-                key = (round(pu.x, 4), round(pu.y, 4), round(pu.z, 4), round(nu.x, 2), round(nu.y, 2), round(nu.z, 2), rgba)
+                # (The weights belong in the key: the Wall Hand's fingers lie exactly on the right hand's, on other bones.)
+                key = (round(pu.x, 4), round(pu.y, 4), round(pu.z, 4), round(nu.x, 2), round(nu.y, 2), round(nu.z, 2), rgba, tuple(round(u, 3) for u in uvw))
                 k = index.get(key)
                 if k is None:
                     k = index[key] = len(gm.positions)
