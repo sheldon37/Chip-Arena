@@ -114,7 +114,7 @@ To see it: the intro now: Customize, Entrance, Last Warning, Preview Intro, with
 
 `Actor.Bomb` (`NativeBombKit`, `Core/NativeBombKit.cs`), copied in snapshots, late join and the killcam like `Actor.Cyber`, checked with `Valid()`. All times on the presentation clock. The presentation adds nothing to the wire; `NativeBombPreview` in the same file writes the record the way the host would, so it is the worked example.
 
-- **`Bombs`** every live charge: `Id`, `Kind` (`NativeBombs.Pop`, `Mine`, `Sticky`, `Lob`, `Bomblet`), `Pos`/`Vel` each frame, `At` thrown, `ArmAt` armed, `BlowAt` when it will go if known (-100 if not), `Stuck` the id of who it is stuck to (0: none), `Normal` the surface. Removed when it goes.
+- **`Bombs`** every live charge: `Id`, `Kind` (`NativeBombs.Pop`, `Mine`, `Sticky`, `Lob`, `Bomblet`), `Pos`/`Vel` each frame with `SampleAt` on the arena clock, `At` thrown, `ArmAt` armed, `BlowAt` when it will go if known (-100 if not), `Stuck` the id of who it is stuck to (0: none), `Normal` the surface. Removed when it goes.
 - **`Blasts`** every blast of the last 1.5 s: `Id`, `At`, `Pos`, `Radius`, `Kind`, `Link` the chain link it made (0: none), `FromPos` the blast that handed on to it when `Link`>0 or it was set off by another.
 - **`Line`** the Firecracker Line while it burns: `At`, `From`, `To`, `Speed`. Its blasts appear in `Blasts`.
 - **`Finale`**: `At`, `Lock`, `Strike`, `Until` (cut-in ends at `At`+.6), `Box` the crate's spot on the floor (`NativeBombs.BoxSpot(feet,dir)`, so it is under the hands), `Dir` the facing, `Circles` one per enemy with `Id`, `Pos` (current; fixed from `Lock`).
@@ -154,3 +154,7 @@ The native content overlay now installs all ten rows and excludes ordinary proje
 - Blast Shield removes self damage without removing the own-blast launch. Encore multiplies passive, hit and link meter by 1.25, then drops eight visible 10-damage bomblets during the .8 s after the Finale strike. They are spread around the locked circles (the crate if no targets), use ordinary cover/chain rules, survive the caster's death, and keep round resolution pending until finished. At the 32-charge bound they replace oldest charges.
 
 Existing bomb/field snapshots carry the new effects through guests, late join and replay; no new wire fields or presentation assets. Native checks cover casts, stacks, real codec, PvE access, fire overlap/budget and Encore death persistence. Windows gameplay and subjective tuning still require playtesting.
+
+### Sample clock for presentation (Astra, 2026-11-04)
+
+`NativeBomb.SampleAt` timestamps the published `Pos` and `Vel`. It is initialized at release and refreshed on every authority world step, including landed/attached charges; `At` still means release. Preview, deep copies, validation and frame/replay serialization preserve it. For a legacy record whose sample time is absent (zero), use the enclosing snapshot time rather than extrapolating from match start. This only exposes data: Claude owns guest interpolation/extrapolation. Flight still uses gravity 23 m/s² and the existing fixed-step integration; landed/attached charges must not be extrapolated as free flight.

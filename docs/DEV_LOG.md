@@ -1,3 +1,9 @@
+## 2026-11-04 — Astra: tracer authority data and event quota
+
+- Branch `codex/projectile-event-data`, shared base `6b3cd894` (includes Claude tracer merge `5801c523`). Adds first-round Projectile to gun Shot, current Owner to NativeShotEnd, round/normal to Ricochet, parent round to Split, and Impact for static world contacts. NativeBomb gains SampleAt, written by authority/preview and copied/validated. No combat rules, balance or presentation rendering changes.
+- Projectile-tagged Shot/Hit/Headshot/Impact/Ricochet/Split bypass the 32-effect quota and displace ordinary transient effects first at capacity. All hard limits retained. Exact ordering, packet trimming and Claude adoption contract in PROJECTILE-REWORK.md; Bomb timestamp semantics in BOMBADIER.md.
+- Added burst saturation, endpoint ownership/legacy/serialization, sample timestamp/deep-copy/rejection checks; expanded Unity native gates for real codec, static contacts, ricochet, split, and first-round identity. Validation and delivery receipts in task PR. Windows/PhysX gameplay acceptance is not established by managed/semantic checks.
+
 ## 2026-11-05 — Astra: slot-roll freeze follow-up
 
 - Branch `codex/slot-roll-freeze`, shared base `99a882bd` / PR #333. Owner reports the station freezes until results appear. Previous fix was still BUILDING at inspection; installed-client version not established, so this is not a confirmed regression from #333.

@@ -95,11 +95,11 @@ namespace ChipArena.UnityConversion.Editor
                 replica.ApplyFrame(copy,authority.LocalId);
                 Debug.Log("PASS final kill marker: real JsonUtility, guest ApplyFrame, old-host defaults and invalid marker rejection");
                 var endpointFrame=NativeFrameCodec.Clone(copy);
-                endpointFrame.projectileEnds=new[]{new NativeShotEnd{Id=912345,At=(float)endpointFrame.time,Position=new V3(1,2,3)}};
+                endpointFrame.projectileEnds=new[]{new NativeShotEnd{Id=912345,Owner=authority.LocalId,At=(float)endpointFrame.time,Position=new V3(1,2,3)}};
                 endpointFrame=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",frame=endpointFrame})).frame;
                 if(!endpointFrame.Valid(authority.Content))throw new Exception("Projectile endpoint JsonUtility frame invalid");
                 replica.ApplyFrame(endpointFrame,authority.LocalId);var recaptured=replica.NetworkFrame().projectileEnds;
-                if(recaptured.Length!=1||recaptured[0].Id!=912345||recaptured[0].Position.z!=3||recaptured[0].At!=(float)copy.time)throw new Exception("Guest replay lost projectile endpoint");
+                if(recaptured.Length!=1||recaptured[0].Id!=912345||recaptured[0].Owner!=authority.LocalId||recaptured[0].Position.z!=3||recaptured[0].At!=(float)copy.time)throw new Exception("Guest replay lost projectile endpoint");
                 endpointFrame.projectileEnds[0].At=float.NaN;if(endpointFrame.Valid(authority.Content))throw new Exception("NaN projectile endpoint accepted");
                 endpointFrame.projectileEnds=null;replica.ApplyFrame(endpointFrame,authority.LocalId);
                 if(replica.NetworkFrame().projectileEnds.Length!=0)throw new Exception("Old host or rewind retained stale projectile endpoint");

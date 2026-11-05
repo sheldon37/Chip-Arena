@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--projectile-events")ProjectileEventChecks.Run();
+            if(args.Length==1&&args[0]=="--projectile-events")return 0;
             if(args.Length==1&&args[0]=="--tracers"){TracerChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--chip-looks"){ChipLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--first-use-stalls")FirstUseStallChecks.Run(ProjectRoot());
