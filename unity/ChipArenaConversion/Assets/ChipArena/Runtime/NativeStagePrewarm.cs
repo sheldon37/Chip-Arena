@@ -25,7 +25,12 @@ namespace ChipArena.UnityConversion
             if(map!=null&&NativeWardZeroLooks.Active(map)&&EnsureWardZero()){if(!ReferenceEquals(map,wzMap))WardZeroBuild(map);built++;}
             if(map!=null&&NativeExpeditionStation.Active(id)&&EnsureStation()){if(!ReferenceEquals(map,stationMap))StationBuild(map);built++;}
             // THE 6:47's meshes (drawn only once its record is live), so the boss's arrival builds nothing mid-fight.
-            if(map!=null&&NativeExpeditionStation.Active(id)&&EnsureStationBoss())built++;
+            if(map!=null&&NativeExpeditionStation.Active(id)&&EnsureStationBoss())
+            {
+                if(ZombieModelsOn)StationBossPartsBuild(true);
+                if(!StationBossBodyDrawn)for(int tier=0;tier<3;tier++)if(stationBossMeshes[tier]==null)StationBossSculpt(tier);
+                built++;
+            }
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworks()){if(!ReferenceEquals(map,iwMap))IronworksBuild(map);built++;}
             // THE CONVERTER's meshes (drawn only once its record is live), so the boss's arrival builds nothing mid-fight.
             if(map!=null&&NativeIronworksKit.Active(id)&&EnsureIronworksBoss())built++;

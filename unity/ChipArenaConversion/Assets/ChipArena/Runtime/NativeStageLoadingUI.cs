@@ -146,7 +146,7 @@ namespace ChipArena.UnityConversion
                 case StagePreloadStep.Kit:
                 {
                     long at=System.Diagnostics.Stopwatch.GetTimestamp();int kits=0;
-                    try{kits=presentation.PrewarmStage(arena);}catch(Exception e){Debug.LogWarning("Stage prewarm skipped: "+e.Message);}
+                    try{kits=presentation.PrewarmStage(arena);if(arena?.Pve!=null)nativeAudio?.PreloadStageMusic(arena.MapId);}catch(Exception e){Debug.LogWarning("Stage prewarm skipped: "+e.Message);}
                     Debug.LogFormat(LogType.Log,LogOption.NoStacktrace,null,"STAGE_PRELOAD kit map={0} kits={1} ms={2:F1}",arena?.MapId,kits,HitchMs(at));
                     stagePlan.Next();stageFrames=0;return;
                 }
@@ -161,8 +161,8 @@ namespace ChipArena.UnityConversion
                 case StagePreloadStep.Audio:
                 {
                     int left=nativeAudio!=null?nativeAudio.PreloadPending:0;if(stageAudioStart<0)stageAudioStart=left;
-                    if(left<=0){stagePlan.Next();return;}nativeAudio.Preload(24);left=nativeAudio.PreloadPending;
-                    stagePlan.Set(stageAudioStart>0?1-left/(float)stageAudioStart:1);if(left<=0)stagePlan.Next();return;
+                    if(left<=0){if(nativeAudio==null||!nativeAudio.StageMusicPending)stagePlan.Next();return;}nativeAudio.Preload(24);left=nativeAudio.PreloadPending;
+                    stagePlan.Set(stageAudioStart>0?1-left/(float)stageAudioStart:1);if(left<=0&&!nativeAudio.StageMusicPending)stagePlan.Next();return;
                 }
             }
         }
