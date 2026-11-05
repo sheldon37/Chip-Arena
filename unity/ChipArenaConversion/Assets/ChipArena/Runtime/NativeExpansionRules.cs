@@ -12,15 +12,15 @@ namespace ChipArena.UnityConversion
     {
         private float ExpansionDamage(NativePilot p,float damage,bool hit=true)
         {
-            if(p==null)return damage;
+            if(p==null)return damage;if(hit&&Has(p,"wild-haymaker")&&Time>=p.Wild.HayAt)damage*=6;
             if(p.Hp>.9f*p.Stats["hp"])damage*=1+.2f*ExpansionStacks(p,"wild-top-shape");
             if(!p.Grounded)damage*=1+.25f*ExpansionStacks(p,"wild-hangtime");
             if(p.ExpansionStill>=0&&Time-p.ExpansionStill>=1)damage*=1+.25f*ExpansionStacks(p,"wild-planted");
             if(hit&&Time-p.ExpansionLastHit>=4)damage*=1+.5f*ExpansionStacks(p,"wild-opening-move");return damage;
         }
-        private void ExpansionHit(NativePilot p,int target,Vector3 at,float actual,bool melee)
+        private void ExpansionHit(NativePilot p,int target,Vector3 at,float actual,bool melee,Vector3 direction=default,bool projectile=false)
         {
-            if(p==null||actual<=0)return;p.ExpansionLastHit=Time;EnvenomHit(p,target,at);
+            if(p==null||actual<=0)return;WildHit(p,target,at,actual,direction,projectile);p.ExpansionLastHit=Time;EnvenomHit(p,target,at);
             var victim=Pilots.Find(q=>q.Seat.id==target);if(victim!=null&&Has(p,"wild-time-thief")&&Time>=p.ExpansionThiefAt){p.ExpansionThiefAt=Time+.25f;p.QReady=Math.Max(Time,p.QReady-.25f);p.EReady=Math.Max(Time,p.EReady-.25f);victim.QReady=Math.Max(Time,victim.QReady)+.25f;victim.EReady=Math.Max(Time,victim.EReady)+.25f;ChipProc(p,"wild-time-thief",at,target,.25f,from:p.Body.position);}
             int mana=ExpansionStacks(p,"wild-mana-tap"),stamina=melee?ExpansionStacks(p,"wild-follow-through"):0;
             if(mana>0)p.Mana=Math.Min((float)p.Stats["maxMana"],p.Mana+4*mana);
@@ -41,10 +41,10 @@ namespace ChipArena.UnityConversion
         {
             if(p.Body.linearVelocity.magnitude>=.5f)p.ExpansionStill=-1;else if(p.ExpansionStill<0)p.ExpansionStill=Time;
             if(!ReferenceEquals(p.ExpansionStats,p.Stats)){p.ExpansionStats=p.Stats;p.ExpansionRate=p.ExpansionSpeed=1;}
-            float rate=1,speed=1;var k=p.Technique;
+            float rate=1,speed=1;StepWildPilot(p,ref rate,ref speed);var k=p.Technique;
             if(NativeTechniqueRules.Live(k,Time))
-            {if(k.Kind=="gun-spin")rate=1.25f;if(k.Kind=="overload"){rate=1.25f;speed=1.15f;}}
-            if(ChannelLive(p,"bipod"))rate*=1.3f;
+            {if(k.Kind=="gun-spin")rate*=1.25f;if(k.Kind=="overload"){rate*=1.25f;speed*=1.15f;}}
+            if(ChannelLive(p,"bipod"))rate*=1.3f;if(NativeCombatMarks.Has(p.TechniqueMarks,"ammo-crate-speed",Time))rate*=1.2f;
             if(p.Hp<.35f*p.Stats["hp"])rate*=1+.25f*ExpansionStacks(p,"wild-cornered");
             if(Time-p.ExpansionLastHit<2)speed*=1+.2f*ExpansionStacks(p,"wild-frenzy-scent");
             if(p.ExpansionRate!=rate){p.Stats["attackRate"]=p.Stats["attackRate"]/p.ExpansionRate*rate;p.ExpansionRate=rate;}
@@ -56,11 +56,11 @@ namespace ChipArena.UnityConversion
             if(opening)p.ChipGauges[index++]=new NativeChipGauge{Kind="wild-opening-move",Value=Time-p.ExpansionLastHit>=4?1:0};
             if(doom)p.ChipGauges[index]=new NativeChipGauge{Kind="wild-doomsday-clock",Value=p.ExpansionDoomAt<0?0:Mathf.Clamp01((Time-p.ExpansionDoomAt)/3)};
             bool expired=false;foreach(var mark in p.TechniqueMarks)if(mark.Until<=Time){expired=true;break;}
-            if(expired)p.TechniqueMarks=p.TechniqueMarks.Where(x=>x.Until>Time).ToArray();
+            if(expired)p.TechniqueMarks=p.TechniqueMarks.Where(x=>x.Until>Time).ToArray();WildGauges(p);
         }
         private bool ReleaseThirdTechnique(NativePilot p)
         {
-            var k=p.Technique;if(ReleaseChannelTechnique(p))return true;
+            var k=p.Technique;if(ReleaseFinalTechnique(p))return true;if(ReleasePriorityTechnique(p))return true;if(ReleaseMobilityTechnique(p))return true;if(ReleaseChannelTechnique(p))return true;
             switch(k.Kind)
             {
                 case "gun-spin":p.Ammo=Magazine(p);p.ReloadEnd=0;k.Arm=Time;k.Phase="hot";return true;
@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
         }
         private bool StepThirdTechnique(NativePilot p)
         {
-            var k=p.Technique;if(StepChannelTechnique(p))return true;if(k.Kind=="gun-spin"||k.Kind=="thunderclap")return true;
+            var k=p.Technique;if(StepFinalTechnique(p))return true;if(StepPriorityTechnique(p))return true;if(StepMobilityTechnique(p))return true;if(StepChannelTechnique(p))return true;if(k.Kind=="gun-spin"||k.Kind=="thunderclap")return true;
             if(k.Kind!="overload")return false;
             if(Time>=k.Until&&k.Phase!="shock")
             {k.Phase="shock";if(k.Until-k.Release>=1){k.HitAt=Time;Damage(p,p,Math.Min(8,Math.Max(0,p.Hp-1)),Vector3.zero,0,false,forced:true,direct:false,primary:false,selfDamage:true,damageKind:"ability");}}

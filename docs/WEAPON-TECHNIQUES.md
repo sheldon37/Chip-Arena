@@ -8,6 +8,14 @@ Owner revision, 2026-11-03: techniques replace either Q or E, selected per weapo
 
 Status: playable, both sets. Astra's rules and saved choice (PRs #321, #322 and #325), Claude's Customize picker, HUD cards and presentation. Parting Line recovery is fixed on `codex/bombadier-rules`; native acceptance remains pending (see "The second set, reviewed"). Receipts are in DEV_LOG. The sandbox preview remains optional. DEV classes (Siren, Emperor, Ansatsuken, L33T, Cyber Lord) retain their existing key-1 abilities.
 
+## Third-set rules completion (Astra, 2026-11-05)
+
+All **36/36** third-set authority handlers now exist on `codex/expansion-rules-3` / PR #338. `NativeTechniques.All` includes Third (60 total, five per standard weapon); both pinned content catalogs include the rows. Earlier batch/gating notes below are historical. Presentation remains Claude's.
+
+The final ten are Mirror Double, Chain Hook, Flash Round, Slide Shot, Ammo Crate, Flak Burst, Flame Cloak, Magnetize, Dread and Shadow Puppet. Decoys and the puppet use replicated minion IDs. Slide Shot changes the collision capsule to 55% standing height during its .55 s slide, then restores it; it does not add a pose. Chain Hook uses a 40 m/s swept shot, a .35 s collision-limited haul, and pulls the caster against bosses/Hulks. Flash tests facing within 70 degrees and LOS, including the caster/allies. Flak is a **5 m diameter** cloud, 2 damage/s in quarter-second ticks, and intercepts hostile bullets/ability shots/airborne Spitter acid. Ammo Crate has 40 HP, eight seconds of life and one refill/buff per allied pilot. Cloak retaliates against both pilots and minions. Magnetize begins pulling after .5 s at 8 m/s; rolls break the mark and bosses are immune. Dread uses a 90-degree cone and collision-limited forced movement; bosses receive slow. Puppet copies ranged shots at 40%, without secondary procs.
+
+`Actor.TechniqueMarks` remains the other-pilot accessor; `NativeMinion.TechniqueMarks` / `NativeMinionFrame.techniqueMarks` is the add equivalent. Cast records and new world queues are replicated/validated. Source account sanitization accepts every new ID; the separate account service is not deployed by this Unity update.
+
 ## Why it isn't power creep
 
 A technique is a trade, never an extra: a weapon keeps two abilities, and swapping its technique in gives up that slot's ability. Every
@@ -159,6 +167,19 @@ Adds **Bipod, Envenom, Dragon Breath, Combust and Soul Siphon**, bringing live t
 - Combust refuses with no burning target before payment. After .2 s, burns in sight within 14 m are consumed. A target's remaining burn plus 8 bursts in 2 m, capped at 22 base damage; overlapping detonations use the strongest hit, never multiply that cap. Path carries up to six blast points as contracted; all eligible burns still resolve.
 - Soul Siphon uses .1 s reach / 2 s channel / 8 damage/s in .1 s ticks, healing actual damage only; x.6 walk, 10 m acquisition / 12 m tether, cover/death ends it. Soul Feast uses 14 m acquisition / 16 m tether (preserving 2 m escape slack), and transfers 10/s of the victim's stamina for melee or mana otherwise, bounded by the victim's balance and caster's cap. Adds without these resources provide none.
 - Recasts stop the two spell channels; stun, roll, knockdown or block cancels them. Channel motion cannot fall through to Anchor Throw's teleport. Release state, owning slot, damage scale and next tick are replicated alongside the existing technique record to avoid restarting ticks after authority restoration. Record phases/points follow the staged contract; no presentation changed.
+
+### Third rules batch (Astra, 2026-11-05; task branch)
+
+`codex/expansion-rules-3`, based on shared `a6a454a4`, adds one technique for each of the six priority weapons: **Disarm, Ground Slam, Reaping Sweep, Bolas Round, Vault Shot, Hydro Jet**. This is **14/36** implemented rows, not the completed set. `Third` remains separate from `All`. Remaining priority techniques: Iaido, Challenge, War Cry, Lodestone, Sunder, Blade Drag, Breacher Round, Ghillie, Bramble Arrow, Tether Arrow, Bubble Trap and Flash Freeze. Finish those before the remaining daggers/pistol/machinegun/darkness/fire/lightning rows.
+
+- Disarm: .01 s start, 2.2 m/.22 s collision-limited lunge, .7 m contact radius, 8 damage to the first valid contact. Pilots receive the existing `Actor.TechniqueMarks` disarm for 2.5 s; primary attacks remain legal. Hit recovery .12 s; miss recovery .5 s. Adds have no Q/E slot to refuse.
+- Ground Slam: .1 s start; .5 s parabolic leap, 3 m apex, up to 5 m horizontal travel. No attacks/block in the leap. Grounded victims in 4 m take 12, a 4.6 m/s upward impulse and .4 s pilot stun. Side/ceiling collision cancels instead of exploding in midair; a floor contact resolves at the actual landing. Aftershock is 6 damage/6 m after .5 s, once, without knock-up.
+- Reaping Sweep: .25 s windup, 300-degree/4 m grounded check, 10 damage and .5 s trip. Pull uses the existing collision-resolved knockback, aimed toward the 1.6 m inner radius and capped at 8 m/s; it does not teleport a victim to an exact radius. Pilot trip marks replicated.
+- Bolas Round: .1 s start, 45 m/s swept orb, 40 m limit, 4 damage, 1.2 s bound. Pilots can aim/fire; Block removes the mark and root. Movement constraints run after summon/PvE movement as well. Bosses use x.6 slow. Bolas/arrow flight resumes from the record's replicated Point rather than a local cached position.
+- Vault Shot: .01 s start, 5 m backward/.45 s parabolic vault, 1.5 m apex. At .225 s it fires a single 14-damage arrow at 45 m/s with 18 m/s² gravity and 40 m forward range. `Path[0]` stores its launch position; `Point` its current/contact point, `To` remains the landing. A collision stops the vault; the launched arrow retains its own clock. This is the one extra record-field use Claude needs for this batch.
+- Hydro Jet: .1 s start, up to 1.5 s at 9 m/s opposite current aim, including upward travel when looking down. No attacks; recast/jump ends it. Its visible 6 m stream pushes susceptible enemies by collision-checked .1 m steps (6 m/s); bosses retain their displacement immunity. Cover and sanctuary boundaries stop movement.
+
+No presentation, poses, effects, cards or sounds changed. Native Unity regression cases are added but require actual Editor execution; semantic compilation does not establish PhysX/playtest acceptance. Account sanitizer source accepts all six; no account-service deployment.
 
 ### Rules contract for the third set (Astra)
 
@@ -342,3 +363,9 @@ The HUD passes `pending` (the look about to be sent) once a frame for the local 
 3. Inspect first-person, guest and replay movement/poses in Unity, especially the collision-shortened leap/grapple and Shade's delayed exchange. The implementation adds real movement and hit timing; the prior preview review does not validate that integration. Done for third and first person on the host (see the review above); guest and replay still open.
 
 Regression gates: `CoreTests --technique-rules` (simulation contracts), `CoreTests --techniques` (existing presentation plus rule checks), full CoreTests; `NativeArena.ValidateTechniques` and the extended native network gate run in the Unity builder. Semantic compilation in a managed environment does not execute those native PhysicsScene/JsonUtility gates.
+
+### Batches 4–5 rules checkpoint (2026-11-05, draft PR #338)
+
+Task branch now implements all three third-set rows on sword, shield, greatsword, rifle, bow and water: **26/36 overall**. Adds Iaido, Challenge, War Cry, Sunder, Ghillie, Flash Freeze, Lodestone, Blade Drag, Breacher Round, Bramble Arrow, Tether Arrow and Bubble Trap. Ten other-weapon rows remain gated; Third stays separate from All. DEV_LOG records tuning, collision decisions and unrun native tests. These are source changes, not a released build.
+
+Minion victim marks are `NativeMinion.TechniqueMarks`, wire `NativeMinionFrame.techniqueMarks`; pilot/replay marks remain `Actor.TechniqueMarks`. Both use the bounded mark contract. No presentation implementation is included.

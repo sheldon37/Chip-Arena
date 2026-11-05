@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
             shot.Hit.Add(target.Id);if(d.id=="ball-lightning")return false;
             Vector3 impulse=shot.Velocity.normalized*(d.id=="tidal-wave"&&Has(owner,"undertow")?-700:(float)d.impulse)+(d.id=="tidal-wave"?Vector3.up*200:Vector3.zero);
             float actual=AbilityMinionHit(shot,target,shot.Damage,at,impulse.normalized,impulse.magnitude,d.id=="flame-lance"||d.id=="shadow-shackles");
-            if(actual>0){if(d.burn>0)BurnMinion(target,owner,(float)(d.burn*shot.Damage/d.damage*(d.id=="flame-lance"&&AbilityChip(owner,"ab-white-heat")?2:1)));if(d.speedFactor>0)SlowMinion(target,(float)d.speedFactor,(float)d.slowFor);if(d.id=="shadow-shackles")Heal(owner,actual*.5f);}
+            if(actual>0){ExpansionHeavyChains(shot,target.Id,target.Body.position);if(d.burn>0)BurnMinion(target,owner,(float)(d.burn*shot.Damage/d.damage*(d.id=="flame-lance"&&AbilityChip(owner,"ab-white-heat")?2:1)));if(d.speedFactor>0)SlowMinion(target,(float)d.speedFactor,(float)d.slowFor);if(d.id=="shadow-shackles")Heal(owner,actual*.5f);}
             Fx(at,.6f,element);return d.id!="tidal-wave"&&!(d.id=="flame-lance"&&shot.RemainingPierces-->0);
         }
     }

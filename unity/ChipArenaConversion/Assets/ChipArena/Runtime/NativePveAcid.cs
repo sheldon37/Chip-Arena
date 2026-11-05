@@ -38,11 +38,16 @@ namespace ChipArena.UnityConversion
             for(int i=pveAcid.Count-1;i>=0;i--)
             {
                 var a=pveAcid[i];var r=a.Record;double land=(double)r.at+r.flight,end=land+NativeSpitterRules.Duration;
-                if(Time<land)continue;
+                if(Time<land)
+                {
+                    var nf=new System.Numerics.Vector3(r.from.x,r.from.y,r.from.z);var nt=new System.Numerics.Vector3(r.to.x,r.to.y,r.to.z);
+                    NativeHordeFx.Glob(nf,nt,r.flight,Math.Max(0,Time-r.at),out var v);NativeHordeFx.Glob(nf,nt,r.flight,Math.Min(r.flight,Time-r.at+1f/60),out var next);
+                    if(FinalFlakContact(null,new Vector3(v.X,v.Y,v.Z),new Vector3(next.X-v.X,next.Y-v.Y,next.Z-v.Z),out _)||TryLodestone(null,new Vector3(v.X,v.Y,v.Z),new Vector3(next.X,next.Y,next.Z),out _))pveAcid.RemoveAt(i);continue;
+                }
                 if(!a.Landed)
                 {
                     a.Landed=true;
-                    foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.DirectRadius))Damage(p,null,NativeSpitterRules.Damage*r.damageScale,Vector3.zero,0,false,primary:false,damageKind:r.devMonster?"dev-monster":"acid",causeKind:"spitter");
+                    foreach(var p in Pilots)if(AcidTouches(p,r,NativeSpitterRules.DirectRadius))Damage(p,null,NativeSpitterRules.Damage*r.damageScale,Vector3.zero,0,false,primary:false,damageKind:r.devMonster?"dev-monster":"acid",causeKind:"spitter",attackerMinion:Minions.Find(m=>m.Id==r.actor));
                     if(!r.devMonster)CorrodePve(r,NativeSpitterRules.DirectRadius,NativeSpitterRules.DirectCorrosion);
                 }
                 while(a.PoisonAt<=Time+1e-6&&a.PoisonAt<end)

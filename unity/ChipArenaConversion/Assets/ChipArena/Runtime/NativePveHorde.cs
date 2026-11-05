@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
                 if(Math.Abs(d.y)>2||distance>profile.SlamRadius||!MeleeVisible(at,p.Body.position,m.Owner,p.Collider,true))continue;
                 var dir=new Vector3(d.x,0,d.z).normalized;bool block=Time<p.BlockEnd;
                 if(block){BlockProc(p,m.Owner,p.Body.position,"clash");p.Knockback+=dir*(Mutator("bounce-house")?9:3);}
-                else {Damage(p,null,profile.Heavy?Mathf.Lerp(25,10,distance/profile.SlamRadius):Mathf.Lerp(12,5,distance/profile.SlamRadius),dir,profile.Heavy?900:400,false,primary:false,melee:true,causeKind:m.Pve.Stats.id);p.Knockback.y=Math.Max(p.Knockback.y,profile.Heavy?4:2);}
+                else {Damage(p,null,profile.Heavy?Mathf.Lerp(25,10,distance/profile.SlamRadius):Mathf.Lerp(12,5,distance/profile.SlamRadius),dir,profile.Heavy?900:400,false,primary:false,melee:true,causeKind:m.Pve.Stats.id,attackerMinion:m);p.Knockback.y=Math.Max(p.Knockback.y,profile.Heavy?4:2);}
             }
         }
         private readonly List<NativeMinion> hordeAdds=new List<NativeMinion>(192);
@@ -232,8 +232,8 @@ namespace ChipArena.UnityConversion
                 if(TryTechniqueParry(q,push,q.Body.position)){HitMinion(m,q,22*q.TechniqueScale,-push,0,m.Body.position,"energy");a.StaggerAt=Time+.35f;continue;}
                 if(Time<q.BlockEnd){BlockProc(q,m.Owner,q.Collider.ClosestPoint(m.Body.position),"clash");if(a.Stats.id=="hulk")q.Knockback+=push*(Mutator("bounce-house")?9:3);else{a.StaggerAt=Time+.6f;a.External=-d.normalized*(Mutator("bounce-house")?9:3);}}
                 else if(smash&&a.Stats.id=="brute")
-                {var shove=q.Body.position-(at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Brute));float actual=Damage(q,null,damage,Vec(NativeHordeDropRules.Outward(Vec(shove),Vec(dir))),0,false,primary:false,melee:true,causeKind:a.Stats.id);if(actual>0)PveSlamShove(q,shove,dir,impulse,false);}
-                else{Damage(q,null,damage,push,impulse,false,primary:false,melee:true,causeKind:a.Stats.id);if(a.Stats.id=="hulk")q.Knockback.y=Math.Max(q.Knockback.y,4);}
+                {var shove=q.Body.position-(at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Brute));float actual=Damage(q,null,damage,Vec(NativeHordeDropRules.Outward(Vec(shove),Vec(dir))),0,false,primary:false,melee:true,causeKind:a.Stats.id,attackerMinion:m);if(actual>0)PveSlamShove(q,shove,dir,impulse,false);}
+                else{Damage(q,null,damage,push,impulse,false,primary:false,melee:true,causeKind:a.Stats.id,attackerMinion:m);if(a.Stats.id=="hulk")q.Knockback.y=Math.Max(q.Knockback.y,4);}
             }
         }
         private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head,int projectile=0,bool pierced=false,Vector3? from=null)
@@ -247,11 +247,11 @@ namespace ChipArena.UnityConversion
             // The fallback has no limb damage or blast-share rolls. Resolve only deterministic direct-hit anatomy.
             if(Pve==null&&kind!="blast")hitData.Share(NativeHordeDamage.Part(new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,head),amount);
             if(Pve==null&&kind=="blast")hitData.Head=head;
-            if(Pve==null){float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;CancelHulkWind(m,hit);if(!a.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),hit,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;}Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced,hordeHit:hitData);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;amount=ZoneIncoming(m,source,amount,dir,point,head,impulse,kind);if(a.ZoneSelfDamage>0){actual=Math.Min(m.Hp,a.ZoneSelfDamage);m.Hp-=actual;a.ZoneSelfDamage=0;}
+            if(Pve==null){m.ExpansionOverkill=Math.Max(0,amount-m.Hp);float hit=Math.Min(m.Hp,amount);m.Hp-=hit;m.LastHitAt=Time;CancelHulkWind(m,hit);if(!a.Charging&&NativeHordeKinds.Staggers(NativeHordeKinds.Resolve(a.Stats.id),hit,m.MaxHp,impulse>=400)){a.StaggerAt=Time+a.Stats.stagger;a.Struck=true;}Emit(EventKind.Hit,source,m.Id,m.Body.position,hit,kind,from:from,projectile:projectile,pierced:pierced,hordeHit:hitData);if(m.Hp<=0)RemoveMinion(m);return hit;}float actual=0;amount=ZoneIncoming(m,source,amount,dir,point,head,impulse,kind);if(a.ZoneSelfDamage>0){actual=Math.Min(m.Hp,a.ZoneSelfDamage);m.Hp-=actual;a.ZoneSelfDamage=0;}
             foreach(var share in NativeHordeDamage.Shares(amount,new V3(-m.Body.position.x,m.Body.position.y,m.Body.position.z),-m.Yaw,a.Crawl,point.HasValue?(V3?)new V3(-point.Value.x,point.Value.y,point.Value.z):null,kind,radius>0?radius:3,head,Pve.SpawnRandom.Next))
             {
                 hitData.Share(share.part,share.damage);
-                int limb=(a.Lost&share.part)!=0?0:share.part;float applied=share.damage*(limb==1?1.5f:limb==0?1:.9f),taken=Math.Max(0,Math.Min(m.Hp,applied));m.Hp-=taken;actual+=taken;
+                int limb=(a.Lost&share.part)!=0?0:share.part;float applied=share.damage*(limb==1?1.5f:limb==0?1:.9f),taken=Math.Max(0,Math.Min(m.Hp,applied));m.ExpansionOverkill+=Math.Max(0,applied-taken);m.Hp-=taken;actual+=taken;
                 // A severed limb leaves a red stump and a thrown limb (NativeGorePresentation / horde gore, from PveGib). The first port also recorded a fire-school ability effect here, which drew a fireball on
                 // every gun kill of a Siren add (owner playtest 2026-10-10). Presentation feed only; damage and limbs are unchanged.
                 if(limb>0){a.Parts.TryGetValue(limb,out float pool);pool+=taken;a.Parts[limb]=pool;if(pool>=m.MaxHp*(limb==1?a.Stats.headFrac:a.Stats.limbFrac)){a.Lost|=NativeHordeDamage.Descendants(limb);Emit(EventKind.PveGib,source,m.Id,point??m.Body.position,limb);if(limb==1)m.Hp=0;bool l=(a.Lost&(32|128))!=0,r=(a.Lost&(64|256))!=0;a.Crawl=(a.Lost&(32|64))!=0||l&&r;a.Limp=!a.Crawl&&(l||r);if(a.Crawl){m.Collider.height=.88f;m.Collider.radius=.32f;}}}

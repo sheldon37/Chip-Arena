@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     {
         private bool Overdriving(NativePilot p)=>p.Seat.spec=="machinegun"&&NativeRangedRules.Overdrive(Time,p.OverdriveAt,p.OverdriveUntil);
         private bool Venting(NativePilot p)=>p.Seat.spec=="machinegun"&&NativeRangedRules.Vent(Time,p.OverdriveUntil,p.VentUntil);
-        private bool RangedQReady(NativePilot p,ContentAbility d)=>d!=null&&d.live&&NativeRangedRules.Q(d.id)&&p.Hp>0&&p.Seat.connected&&Time>=p.QReady&&p.ReloadEnd==0&&!p.Input.Reload&&!p.Input.CancelAbilities&&Time>=p.BlockEnd&&!AbilityBusy(p)&&!Venting(p)&&(d.id!="fan-hammer"||p.Ammo>0&&ProjectileCount<100);
+        private bool RangedQReady(NativePilot p,ContentAbility d)=>d!=null&&d.live&&NativeRangedRules.Q(d.id)&&p.Hp>0&&p.Seat.connected&&Time>=p.QReady&&p.ReloadEnd==0&&!p.Input.Reload&&!p.Input.CancelAbilities&&Time>=p.BlockEnd&&!AbilityBusy(p)&&!Venting(p)&&(d.id!="fan-hammer"||(p.Ammo>0||Has(p,"wild-blood-magazine"))&&ProjectileCount<100);
         private bool TryRangedQ(NativePilot p,ContentAbility d)
         {
             if(!RangedQReady(p,d))return false;
@@ -16,7 +16,7 @@ namespace ChipArena.UnityConversion
             p.Pose.AbilityId=d.id;p.Pose.AbilityAt=p.Pose.AbilityRelease=Time;
             EmpowerQ(p);Emit(EventKind.AbilityCast,p,0,p.Body.position,0,d.id);
             if(d.id=="fan-hammer")
-            {p.Fan=NativeRangedRules.Fan(Time,p.Ammo);StepFan(p);}
+            {p.Fan=NativeRangedRules.Fan(Time,Has(p,"wild-blood-magazine")?Magazine(p):p.Ammo);StepFan(p);}
             else
             {p.OverdriveAt=Time;p.OverdriveUntil=Time+NativeRangedRules.OverdriveDuration+(AbilityChip(p,"ab-cooling-jacket")?2:0);p.VentUntil=p.OverdriveUntil+NativeRangedRules.VentDuration;}
             return true;
@@ -33,14 +33,14 @@ namespace ChipArena.UnityConversion
             {
                 if(!FireRound(p,true)){p.Fan=null;return;}
                 fan.Shots++;
-                if(p.Ammo<=0){p.Fan=null;Reload(p);return;}
+                if(p.Ammo<=0&&!Has(p,"wild-blood-magazine")){p.Fan=null;Reload(p);return;}
             }
             if(fan.Shots>=fan.Limit)p.Fan=null;
         }
         private bool FireRound(NativePilot p,bool fan=false)
         {
-            if(p.Ammo<=0&&!ChannelLive(p,"bipod")||ProjectileCount>=100||Venting(p))return false;
-            if(!PilotMutator(p,"bottomless")&&!ChannelLive(p,"bipod"))p.Ammo--;Fire(p,fan);return true;
+            if(p.Ammo<=0&&!ChannelLive(p,"bipod")&&!Has(p,"wild-blood-magazine")||ProjectileCount>=100||Venting(p))return false;
+            if(Has(p,"wild-blood-magazine")){p.Hp=Math.Max(1,p.Hp-2);ChipProc(p,"wild-blood-magazine",p.Body.position,p.Seat.id,2);}else if(!PilotMutator(p,"bottomless")&&!ChannelLive(p,"bipod"))p.Ammo--;Fire(p,fan);return true;
         }
     }
 }
