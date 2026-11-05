@@ -71,6 +71,7 @@ namespace ChipArena.UnityConversion
                     case NativeTechniques.Slipstream:Slip(s,k,time,seed,q,low);break;
                     case NativeTechniques.LightningRod:Rod(s,k,time,seed,q,low);break;
                     case NativeTechniques.GraveWalk:Grave(s,scene,a,k,time,seed,q,low);break;
+                    default:Third(s,scene,a,k,time,seed,q,low);break;
                 }
             }
         }

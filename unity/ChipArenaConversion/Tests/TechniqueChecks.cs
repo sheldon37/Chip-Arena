@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
         {
             var fx=new NativeTechniqueFx();var scene=new Scene();var src=new One();NativeTechniques.Source=src;
             var a=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(2,.5f,-3)};scene.List.Add(a);
-            foreach(var d in NativeTechniques.All)for(int variant=0;variant<2;variant++)
+            foreach(var d in NativeTechniques.All.Concat(NativeTechniques.Third.Where(x=>NativeTechniqueFx.ThirdBuilt(x.Id))))for(int variant=0;variant<2;variant++)
             {
                 var k=new NativeTechnique();NativeTechniquePreview.Write(k,d.Id,new Vector3(2,.5f,-3),.7f,10,variant==0);src.K=k;a.SourceSpec=d.Spec;string n=d.Id+(variant==0?"":" (second)");
                 Check(k.Valid(),n+": a valid record");Check(k.Kind==d.Id&&k.Release>=k.At&&k.Until>=k.Release&&k.End>=k.Until,n+": its times run forward");Check(NativeTechniquePreview.Period(d.Id)>k.End-k.At,n+": the preview's loop outlasts the cast ("+(k.End-k.At).ToString("0.0")+" s)");

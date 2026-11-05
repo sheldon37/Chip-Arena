@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
     /// the recast, the end) once, on the bank's existing cues. <see cref="At"/> says which moments a kind has; <see cref="Moment"/> what each plays,
     /// and whether it sounds at the effect's point rather than the pilot.
     /// </summary>
-    public static class NativeTechniqueSounds
+    public static partial class NativeTechniqueSounds
     {
         public const int Moments=5,Release=0,Arm=1,Hit=2,Recast=3,End=4;
         /// <summary>When moment `m` of the record falls (float.NaN: this cast has none).</summary>
@@ -54,6 +54,7 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.LightningRod:if(m==Release)n=S(o,n,"melee.daggers.throw","daggers",.4f);else if(m==Arm){atPoint=true;n=S(o,n,"blast.static","lightning",.8f);n=S(o,n,"impact.metal","metal",.6f);}else if(m==Hit){n=S(o,n,"blast.shock","lightning",.5f);}break;
                 case NativeTechniques.GraveWalk:if(m==Release)n=S(o,n,"magic.darkness.shot","darkness",.6f);else if(m==End)n=S(o,n,"magic.darkness.hit","darkness",.7f);break;
             }
+            if(n==0)n=ThirdMoment(kind,m,o,ref atPoint);
             return n;
         }
     }
