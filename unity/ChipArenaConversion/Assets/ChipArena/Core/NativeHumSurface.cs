@@ -167,7 +167,7 @@ namespace ChipArena.UnityConversion
             for(int y=0;y<=NY;y++)for(int x=0;x<=NX;x++)
             {
                 float fa=(float)x/NX*2-1,fb=(float)y/NY*2-1;var q=centre+a*(fa*ha)+b*(fb*hb)+n*off;
-                float wave=amount*(.16f*(float)Math.Sin(t*1.3f+fb*6+seed)+.1f*(float)Math.Sin(t*2.1f+fa*7+seed*2));float wave2=amount*.12f*(float)Math.Sin(t*.9f+fa*5-fb*3+seed);
+                float wave=amount*(.1f*(float)Math.Sin(t*1.3f+fb*6+seed)+.06f*(float)Math.Sin(t*2.1f+fa*7+seed*2));float wave2=amount*.075f*(float)Math.Sin(t*.9f+fa*5-fb*3+seed);
                 var qu=q+a*(creepA+wave)+b*(creepB+wave2);SurfaceUv(surf,qu,n,out float u,out float v);
                 m.Vertices[m.VertexCount++]=new HumPatchVertex{P=q,N=n,R=tint,G=tint,B=tint,A=1,U=u,V=v};
             }

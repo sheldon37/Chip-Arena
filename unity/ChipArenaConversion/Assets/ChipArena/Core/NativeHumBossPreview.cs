@@ -88,7 +88,7 @@ namespace ChipArena.UnityConversion
             K(t+.3f,C.X+14,lz,90);K(t+2.4f,C.X+10,lz+4,-20);FloorAt=t+2.5f;K(FloorAt,C.X+10,lz+4,-20);var fdir=BossMath.Forward(-20*BossMath.Deg);float dx=C.X+10+fdir.X*4,dz=lz+4+fdir.Z*4;K(FloorAt+NativeHumBossMotion.TurnOver+.3f,dx,dz,-20);t=FloorAt+NativeHumBossMotion.TurnOver+.4f;F(FloorAt,-120,11,1.4f,2.4f,60,4);
             // ---- the death ----
             K(t+1.5f,dx,dz,-20);DeathAt=t+1.7f;F(DeathAt-.5f,38,8.5f,1.15f,1.9f,52,4);
-            F(DeathAt+2.9f,-150,13,1.55f,1.7f,62,1.5f);
+            F(DeathAt+2.2f,70,7.2f,1.0f,1.15f,54,1.5f);NativeHumArena.ExitDoor(Room,out var doorAt,out _,out _);FP(DeathAt+5.6f,34,7.5f,1.45f,1.35f,56,new Vector2(doorAt.X,doorAt.Z),0);
             Loop=DeathAt+8;K(Loop,dx,dz,-20);
             acts=a.ToArray();keys=k.ToArray();fr.Sort((p,q)=>p.At.CompareTo(q.At));frames=fr.ToArray();
             // The fixed tables the record points at: where Fall Through's holes stay, the voices' wall points (round the pilots), when parts broke.
@@ -184,10 +184,15 @@ namespace ChipArena.UnityConversion
             // A frame may look at a place (a tear, a hand in the wall) instead of the boss.
             float wa=a.Focused?1:0,wb=b.Focused?1:0,wf=wa+(wb-wa)*u;var fp=a.Focused?a.Focus:b.Focus;
             look=new Vector3(root.X*.5f+head.X*.5f,ly,root.Z*.5f+head.Z*.5f);look=Vector3.Lerp(look,new Vector3(fp.X,ly,fp.Y),wf);var c=Vector3.Lerp(new Vector3(root.X,0,root.Z),new Vector3(fp.X,0,fp.Y),wf);eye=default;bool found=false;
-            for(int k=0;k<=12&&!found;k++)for(int sign=-1;sign<=1&&!found;sign+=2)
+            // (Near the wanted place first; then a tighter clearance, a little further back or closer.)
+            for(int pass=0;pass<3&&!found;pass++)
             {
-                if(k==0&&sign>0)continue;float ang=(yawDegrees+yawOff+sign*k*15)*BossMath.Deg;var e=c+BossMath.Forward(ang)*dist;e.Y=ey;
-                if(!NativeHumArena.ClearEye(Room,mask,e,look,2.4f))continue;eye=e;found=true;
+                float clear=pass==0?2.4f:pass==1?1.3f:1;float d=pass==2?dist*.72f:dist;
+                for(int k=0;k<=12&&!found;k++)for(int sign=-1;sign<=1&&!found;sign+=2)
+                {
+                    if(k==0&&sign>0)continue;float ang=(yawDegrees+yawOff+sign*k*15)*BossMath.Deg;var e=c+BossMath.Forward(ang)*d;e.Y=ey;
+                    if(!NativeHumArena.ClearEye(Room,mask,e,look,clear))continue;eye=e;found=true;
+                }
             }
             if(!found){float ang=(yawDegrees+yawOff)*BossMath.Deg;eye=c+BossMath.Forward(ang)*dist;eye.Y=ey;if(wf<.5f)NativeHumArena.PushEye(Room,mask,ref eye,look);}
             float inset=.55f;eye.X=BossMath.Clamp(eye.X,Room.MinX+inset,Room.MaxX-inset);eye.Z=BossMath.Clamp(eye.Z,Room.MinZ+inset,Room.MaxZ-inset);

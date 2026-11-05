@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
         private static float NoclipLamp(int i,float t,bool reduced)
         {
             if(reduced)return .75f;float row=i/NativeHumArena.FixtureSide,col=i%NativeHumArena.FixtureSide;float w=(float)Math.Sin(t*1.7f+row*.9f-col*.6f)*.5f+.5f,u=(float)Math.Sin(t*.61f+col*1.3f+row*.21f)*.5f+.5f;
-            int k=(int)Math.Floor(t*7);float dart=BossMath.Hash((uint)i*97u+3u,k);return (.35f+.8f*w*u)*(dart<.1f?.2f:1);
+            int k=(int)Math.Floor(t*7);float dart=BossMath.Hash((uint)i*97u+3u,k);return (.55f+.75f*w*u)*(dart<.1f?.25f:1);
         }
 
         // ---------------- the room's lights for the level's eight practical slots ----------------

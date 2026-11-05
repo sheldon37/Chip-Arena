@@ -138,7 +138,8 @@ namespace ChipArena.UnityConversion
                 room.Partition(s,PlaceOf(s,mask),out var c,out bool alongX);var d=look-eye;float t;
                 if(alongX){if(Math.Abs(d.Z)<1e-4f)continue;t=(c.Z-eye.Z)/d.Z;if(t<0||t>1)continue;float x=eye.X+d.X*t;if(Math.Abs(x-c.X)>half)continue;}
                 else{if(Math.Abs(d.X)<1e-4f)continue;t=(c.X-eye.X)/d.X;if(t<0||t>1)continue;float z=eye.Z+d.Z*t;if(Math.Abs(z-c.Z)>half)continue;}
-                float pushed=Math.Min(.92f,t+.45f/Math.Max(.5f,d.Length()));float y=eye.Y;eye=eye+d*pushed;eye.Y=y;
+                // Forward past it, but never right up on what it looks at.
+                float len=Math.Max(.5f,d.Length());float pushed=Math.Min(Math.Max(0,1-3.6f/len),t+.45f/len);float y=eye.Y;eye=eye+d*pushed;eye.Y=y;
             }
         }
         /// <summary>A lane's fixtures: row r of an axis: axis 0 is a row of fixtures along x at the same z, axis 1 along z at the same x.</summary>

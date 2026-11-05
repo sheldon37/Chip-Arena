@@ -126,6 +126,7 @@ namespace ChipArena.UnityConversion
                 ne=humCamEye.Step(ne,.42f,cdt);nl=humCamLook.Step(nl,.2f,cdt);fov=humCamFov.Step(fov,.4f,cdt);
                 // It never comes through the lens: the eye stands off its body (a lunge can run at the camera).
                 var away=ne-humBoss.Shown.Position[NativeHumBossLook.Spine1];away.Y=0;float gap=away.Length();if(gap<3.4f){away=gap>.01f?away/gap:new NVector(1,0,0);ne+=away*(3.4f-gap);humCamEye.Value=ne;}
+                away=ne-humBoss.HeadPos;away.Y=0;gap=away.Length();if(gap<2.7f){away=gap>.01f?away/gap:new NVector(1,0,0);ne+=away*(2.7f-gap);humCamEye.Value=ne;}
                 NativeHumArena.PushEye(NativeHumBossPreview.Room,humView.shiftMask,ref ne,nl);
             }
             if(age<NativeBackroomsBossIntro.Hold+.25f){humCamLive=false;humCamShot=ne;humCamShotLook=nl;humCamShotFov=fov;}humCamLast=clock;
