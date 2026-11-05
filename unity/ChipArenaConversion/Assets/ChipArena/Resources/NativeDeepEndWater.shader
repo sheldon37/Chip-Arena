@@ -24,7 +24,7 @@ Shader "ChipArena/NativeDeepEndWater"
             #pragma multi_compile_fog
             #include "UnityCG.cginc"
             #include "NativeDeepEndRoom.cginc"
-            sampler2D _DeepNormal;sampler2D _DeepGrab;sampler2D_float _CameraDepthTexture;float _DeepDepthOn;float _DeepRipples;
+            sampler2D _DeepNormal;sampler2D _DeepGrab;sampler2D_float _CameraDepthTexture;float _DeepDepthOn;float _DeepRipples;float _DeepMurk;
             float4 _DeepWhirl; // the whirlpool's centre x, z, its strength, how far it has turned
             float4 _ArenaHaze;float _ArenaHazeTop;
             float4 _ArenaLightPos[8];float4 _ArenaLightColor[8];
@@ -53,15 +53,15 @@ Shader "ChipArena/NativeDeepEndWater"
                 if(_DeepWhirl.z>0.01){pa=Swirl(w,cyc,1.0)*0.5;pb=Swirl(w,frac(cyc+0.5),1.0)*0.5;mixK=abs(cyc*2.0-1.0);}
                 float3 r=Ripple(pa+float2(0.011,0.007)*t)+Ripple(pa*1.37+float2(-0.006,0.013)*t+0.31);
                 if(_DeepWhirl.z>0.01){float3 r2=Ripple(pb+float2(0.011,0.007)*t)+Ripple(pb*1.37+float2(-0.006,0.013)*t+0.31);r=lerp(r2,r,mixK);}
-                float rs=0.03+0.17*_DeepRipples;float3 n=normalize(float3(r.x*rs-slope.x*2.2,1.0,r.z*rs-slope.y*2.2));
+                float rs=0.03+0.17*_DeepRipples;float3 n=normalize(float3(r.x*rs-slope.x*1.25,1.0,r.z*rs-slope.y*1.25));
                 float3 v=normalize(_WorldSpaceCameraPos-i.world);float nv=abs(dot(n,v));float fres=0.022+0.978*pow(1.0-nv,5.0);
                 // ---- through the water ----
-                float2 suv=i.grab.xy/i.grab.w;float eye=i.screen.z;float bend=clamp(0.9/max(eye,1.0),0.0,0.12);float2 off=n.xz*bend;
+                float2 suv=i.grab.xy/i.grab.w;float eye=i.screen.z;float bend=clamp(0.42/max(eye,1.5),0.0,0.05);float2 off=n.xz*bend;
                 float sceneEye=_DeepDepthOn>0.5?LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(float4(i.screen.xy+off*i.screen.w,i.screen.w,i.screen.w)))):eye+1.4;
                 float thick=sceneEye-eye;if(thick<0.0){off=float2(0.0,0.0);sceneEye=_DeepDepthOn>0.5?LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen))):eye+1.4;thick=sceneEye-eye;}
                 thick=max(0.0,thick);float3 seen=tex2D(_DeepGrab,suv+off).rgb;
                 // How much light is left after this much water, and what the water itself gives back.
-                float3 trans=exp(-thick*float3(0.30,0.105,0.092));
+                float3 trans=exp(-thick*float3(0.30,0.105,0.092)*_DeepMurk);
                 float soft=_DeepLight.y;float3 glow=tex2D(_DeepGlowTex,fuv).rgb;
                 float3 scatter=float3(0.075,0.34,0.36)*(soft*0.62+0.012)+glow*0.55;
                 float3 body=seen*trans+scatter*(1.0-trans);

@@ -59,16 +59,16 @@ namespace ChipArena.UnityConversion
             var b=DeepEndBossBeats.Fallback;
             return new[]{
                 // Wide over perfectly still water, gliding: warm light, the whole room's scale, its round lights in the mirror.
-                new BossIntroShot{From=0,To=b.LowShot,EyeA=new Vector3(-16.2f,2.5f,-16.6f),EyeB=new Vector3(-10.4f,1.45f,-12.8f),LookA=new Vector3(2,-.6f,6),LookB=new Vector3(3.2f,-.25f,5),FovA=60,FovB=56,Ease=1},
+                new BossIntroShot{From=0,To=b.LowShot,EyeA=new Vector3(-17.6f,4.3f,-16.8f),EyeB=new Vector3(-13.2f,2.7f,-13.4f),LookA=new Vector3(1.4f,-1.6f,3.6f),LookB=new Vector3(2.4f,-1.1f,3.8f),FovA=62,FovB=58,Ease=1},
                 // Low at the surface, at the top of the steps, toward where they go down into the dark.
                 new BossIntroShot{From=b.LowShot,To=b.DownShot,EyeA=new Vector3(.3f,.12f,-11.6f),EyeB=new Vector3(.1f,-.02f,-9.1f),LookA=new Vector3(0,-1.25f,4),LookB=new Vector3(0,-1.1f,6),FovA=52,FovB=47,Ease=1},
                 // Straight down over the abyss, slowly descending: the spiral of lights rising out of the black.
-                new BossIntroShot{From=b.DownShot,To=b.BreakShot,EyeA=new Vector3(.06f,6.55f,.07f),EyeB=new Vector3(0,2.2f,.03f),LookA=new Vector3(0,-30,0),LookB=new Vector3(0,-30,0),FovA=64,FovB=56,Ease=1},
+                new BossIntroShot{From=b.DownShot,To=b.BreakShot,EyeA=new Vector3(0,6.55f,.06f),EyeB=new Vector3(0,2.5f,.03f),LookA=new Vector3(0,-30,0),LookB=new Vector3(0,-30,0),FovA=70,FovB=60,Ease=1},
                 // Low and wide, looking up: it breaks the surface and goes on rising.
-                new BossIntroShot{From=b.BreakShot,To=b.MouthShot,EyeA=new Vector3(5.3f,.06f,10.4f),EyeB=new Vector3(6.7f,.34f,12.6f),LookA=new Vector3(.2f,1.0f,.4f),LookB=new Vector3(.5f,3.95f,.5f),FovA=62,FovB=68,Ease=0},
+                new BossIntroShot{From=b.BreakShot,To=b.MouthShot,EyeA=new Vector3(4.2f,.05f,8.8f),EyeB=new Vector3(5.3f,.3f,10.8f),LookA=new Vector3(.2f,1.0f,.4f),LookB=new Vector3(.5f,3.95f,2.6f),FovA=64,FovB=72,Ease=0},
                 // Close on the mouth, then pulled back on the wave.
-                new BossIntroShot{From=b.MouthShot,To=b.WashShot,EyeA=new Vector3(.8f,3.1f,8.6f),EyeB=new Vector3(1.2f,1.9f,10.4f),LookA=new Vector3(.2f,4.9f,2.6f),LookB=new Vector3(.1f,4.5f,2.4f),FovA=38,FovB=46,Ease=1},
-                new BossIntroShot{From=b.WashShot,To=b.Hold+.4f,EyeA=new Vector3(1.2f,1.9f,10.4f),EyeB=new Vector3(1.4f,.55f,16.4f),LookA=new Vector3(.1f,4.5f,2.4f),LookB=new Vector3(0,2.4f,0),FovA=46,FovB=60,Ease=2,Shake=.05f}};
+                new BossIntroShot{From=b.MouthShot,To=b.WashShot,EyeA=new Vector3(1.0f,3.4f,11.6f),EyeB=new Vector3(1.3f,2.5f,13.2f),LookA=new Vector3(.1f,5.3f,5.9f),LookB=new Vector3(.1f,5f,6.4f),FovA=36,FovB=42,Ease=1},
+                new BossIntroShot{From=b.WashShot,To=b.Hold+.4f,EyeA=new Vector3(1.3f,2.5f,13.2f),EyeB=new Vector3(1.5f,.7f,18.4f),LookA=new Vector3(.1f,5f,6.4f),LookB=new Vector3(0,2.6f,4),FovA=42,FovB=62,Ease=2,Shake=.05f}};
         }
         public static readonly BossIntroCard Card=new BossIntroCard{Eyebrow="BOSS · THE POOLROOMS",Title="THE DEEP END",Line="THE WATER IS ALWAYS WARM",Ink=0x010608,TopLine=0xc4f4f4,Rule=0x9eeeee,BarFrom=0x1a9ea6,BarTo=0xf0ffff,Letters=0xf4ffff,Glow=0x6fe8e8,SplitA=0x40d8d8,SplitB=0xf8fff8};
     }

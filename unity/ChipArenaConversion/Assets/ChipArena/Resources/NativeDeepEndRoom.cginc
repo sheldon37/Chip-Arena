@@ -50,6 +50,6 @@ float DeepCaustic(float2 p,float t)
         float tt=t*(1.0-3.5/float(n+1));i=q+float2(cos(tt-i.x)+sin(tt+i.y),sin(tt-i.y)+cos(tt+i.x));
         c+=1.0/length(float2(q.x/(sin(i.x+tt)/inten),q.y/(cos(i.y+tt)/inten)));
     }
-    c/=4.0;c=1.17-pow(max(c,0.0001),1.4);return min(pow(abs(c),7.0),5.0);
+    c/=4.0;c=1.17-pow(max(c,0.0001),1.4);float web=pow(abs(c),8.0);return min(max(web-0.1,0.0)*1.1,4.0);
 }
 #endif

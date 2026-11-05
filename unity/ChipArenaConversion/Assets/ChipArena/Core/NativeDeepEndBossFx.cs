@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             {
                 var p=rig.Shown.Position[i]-o;float r=NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),depth=tide-p.Y;if(depth<-r*1.05f||depth>r*2.2f)continue;
                 var vel=rig.Velocity[i];float hs=BossMath.FlatLength(vel),vy=Math.Abs(vel.Y),sp=hs+vy*.6f;if(sp<.25f)continue;
-                float near=1-Math.Min(1,Math.Max(0,depth-r*.4f)/(r*1.8f));float amount=near*Math.Min(.2f,sp*.012f)*(dt*60)*.4f;
+                float near=1-Math.Min(1,Math.Max(0,depth-r*.4f)/(r*1.8f));float amount=near*Math.Min(.2f,sp*.012f)*(dt*60)*.12f;
                 // A hump ahead of the body, a hollow behind it; foam where it cuts.
                 float dx=hs>.3f?vel.X/hs:0,dz=hs>.3f?vel.Z/hs:0;
                 w.Disturb(p.X+dx*r*.9f,p.Z+dz*r*.9f,r*1.05f,amount);w.Disturb(p.X-dx*r*.9f,p.Z-dz*r*.9f,r*1.2f,-amount*.8f);
@@ -90,17 +90,17 @@ namespace ChipArena.UnityConversion
                 float a0=last-v.spawned,a1=now-v.spawned;
                 if(a0<b.Ripple&&a1>=b.Ripple)w.Disturb(5.2f,-2.8f,.6f,-.045f);
                 if(a0<b.Ripple+.9f&&a1>=b.Ripple+.9f)w.Disturb(5.2f,-2.8f,.5f,-.016f);
-                if(a0<b.Break&&a1>=b.Break){w.Disturb(0,0,3.6f,.5f,.8f);w.Disturb(0,0,6,-.22f,.2f);}
+                if(a0<b.Break&&a1>=b.Break){w.Disturb(0,0,3f,.3f,.8f);w.Disturb(0,0,5.5f,-.12f,.2f);}
                 float fall=b.Break+2*(5.6f/DeepEndBossPaths.IntroG);
-                if(a0<fall&&a1>=fall){w.Disturb(rig.MouthAt.X-o.X,rig.MouthAt.Z-o.Z,3.4f,-.9f,1);}
+                if(a0<fall&&a1>=fall){w.Disturb(rig.MouthAt.X-o.X,rig.MouthAt.Z-o.Z,3.4f,-.55f,1);}
             }
             if(v.Moving(now,out var m,out float age,out float hit))
             {
                 float at=v.actionAt+hit;var tp=new Vector3(v.targetX,0,v.targetZ);
-                if(m.Id=="breach"&&In(at)){w.Disturb(tp.X,tp.Z,m.Radius,.72f,1);w.Disturb(tp.X,tp.Z,m.Radius*2,-.3f,.2f);}
+                if(m.Id=="breach"&&In(at)){w.Disturb(tp.X,tp.Z,m.Radius,.42f,1);w.Disturb(tp.X,tp.Z,m.Radius*2,-.16f,.2f);}
                 if(m.Id=="flop"&&In(at))
                 {
-                    var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=12;k++){var q=Vector3.Lerp(tp,e,k/12f);w.Disturb(q.X,q.Z,3.1f,-.8f,1);w.Disturb(q.X,q.Z,6,.14f,.2f);}
+                    var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=12;k++){var q=Vector3.Lerp(tp,e,k/12f);w.Disturb(q.X,q.Z,3.1f,-.34f,1);w.Disturb(q.X,q.Z,6,.06f,.2f);}
                 }
                 if(m.Id=="jet"&&age>=hit&&age<hit+m.Strike&&s.Tide>-.5f){var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,age,hit,m,head,s.Tide);float T=(head.Y-s.Tide)/Math.Max(.05f,-d.Y);var land=head+d*Math.Min(T,m.Reach);w.Disturb(land.X,land.Z,1.5f,-Math.Min(.14f,.13f*(dt*60)),.5f);}
                 if(m.Id=="lull"&&In(at)){w.Disturb(tp.X,tp.Z,2.2f,.25f,.8f);}
@@ -123,8 +123,9 @@ namespace ChipArena.UnityConversion
                 LampGlow[i]=g;
             }
             MarkerGlow=lampLevel*(dead?1-BossMath.Smooth((deadAge-2)/1.6f):1);
-            ThroatGlow=(.25f+2.4f*rig.Iris)*(dead?1-BossMath.Smooth(deadAge/.8f):1);
+            ThroatGlow=(.3f+5.5f*rig.Iris)*(dead?1-BossMath.Smooth(deadAge/.8f):1);
             Lights(rig,v,s,now);
+            if(rig.Iris>.02f){float g=rig.Iris*(dead?1-BossMath.Smooth(deadAge/.8f):1);Vfx.Glow(rig.MouthAt-rig.MouthDir*.7f,new Vector3(.22f,.62f,1.1f)*(2.6f*g),2.1f,NativeBossVfx.Core);}
             RoomLamps(s,o,right,up);
             BodyLamps(rig,v,s,eye,right,up,low);
             Sheets(rig,s,waves,now,low);
@@ -152,7 +153,7 @@ namespace ChipArena.UnityConversion
             {
                 ref var l=ref lamps[i];float lv=s.Water*(1-BossMath.Smooth((s.WaterOut*1.12f-l.Order)/.05f));if(l.Kind==NativeDeepEndArena.RoomWall)lv*=.15f+.85f*BossMath.Smooth((s.Tide-l.At.Y+.3f)/.4f);
                 var at=o+l.At;var x=Vector3.Cross(l.Facing,Vector3.UnitY);if(x.LengthSquared()<.01f)x=Vector3.UnitX;x=Vector3.Normalize(x);var y=Vector3.UnitY;
-                bool under=l.At.Y<s.Tide;var list=under?Under:Over;float deep=Math.Max(0,s.Tide-l.At.Y);float boost=(float)Math.Exp(.09f*deep);
+                bool under=l.At.Y<s.Tide;var list=under?Under:Over;float deep=Math.Max(0,s.Tide-l.At.Y);float boost=(float)Math.Exp(.105f*s.Murk*deep);
                 list.Billboard(at+l.Facing*.012f,x*l.Size,y*l.Size,l.Facing,DeepEndFlow.Disc,1,new Vector3(.62f,1f,1f)*(.08f+5.6f*lv*boost),1);
                 if(lv>.02f){float hs=l.Size*4.2f;list.Billboard(at+l.Facing*.1f,x*hs,y*hs,l.Facing,DeepEndFlow.Halo,0,new Vector3(.3f,.82f,.82f)*(.42f*lv*boost),0);}
             }
@@ -163,7 +164,7 @@ namespace ChipArena.UnityConversion
             var o=rig.Origin;float surface=s.Tide;var n=Vector3.Normalize(Vector3.Cross(up,right));
             for(int i=0;i<NativeDeepEndBossLook.Lamps;i++)
             {
-                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(.1f*depth):1;var list=under?Under:Over;
+                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(.105f*s.Murk*depth):1;var list=under?Under:Over;
                 var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(4.4f+.09f*Math.Max(0,depth))*(.7f+.3f*g);
                 list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(1.6f*g*boost),0);
                 list.Billboard(at+face*.1f,right*size*.26f,up*size*.26f,n,DeepEndFlow.Halo,0,new Vector3(.9f,1,1)*(3.2f*g*boost),0);
@@ -174,7 +175,7 @@ namespace ChipArena.UnityConversion
             for(int side=1;side>=-1;side-=2)for(float ms=5;ms<29;ms+=1)
             {
                 bool nearLamp=false;foreach(float q in NativeDeepEndBossLook.LampS)if(Math.Abs(ms-q)<.62f)nearLamp=true;if(nearLamp)continue;
-                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(.1f*depth):1;
+                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(.105f*s.Murk*depth):1;
                 float size=.42f+.018f*Math.Max(0,depth);(under?Under:Over).Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(1.1f*mg*boost),0);
             }
         }
@@ -185,7 +186,7 @@ namespace ChipArena.UnityConversion
             L(rig.MouthAt+rig.MouthDir*.8f,5+9*rig.Iris,new Vector3(.3f,.72f,1f)*(.12f+.95f*rig.Iris));
             float lamps=s.Lamps*MarkerGlowOr1();
             rig.SpineFrame(8,out var a,out _);rig.SpineFrame(18,out var b,out _);
-            L(a,10,new Vector3(.3f,.86f,.86f)*(.72f*lamps));L(b,10,new Vector3(.3f,.86f,.86f)*(.62f*lamps));
+            float ka=BossMath.Clamp01((a.Y-rig.Origin.Y-s.Tide+2f)/2f),kb=BossMath.Clamp01((b.Y-rig.Origin.Y-s.Tide+2f)/2f);L(a,10,new Vector3(.3f,.86f,.86f)*(.72f*lamps*ka));L(b,10,new Vector3(.3f,.86f,.86f)*(.62f*lamps*kb));
             float MarkerGlowOr1()=>MarkerGlow;
         }
         // The sheets pouring off it for seconds after it rises: a strip off each flank at each joint out of the water, fresh from the skin, falling on true arcs behind the body's motion, breaking up as they fall.

@@ -40,7 +40,7 @@ Shader "ChipArena/NativeDeepEndScreen"
                 {
                     float3 tint=float3(0.06,0.32,0.36);float l=dot(c,float3(0.3,0.5,0.2));c=lerp(c,tint*(0.5+l*1.1),under*0.86);
                     // The white line of the water's edge, and bubbles under it.
-                    float edge=exp(-abs(i.uv.y-line_)*46.0)*saturate(wash*3.0)*smoothstep(0.0,0.1,1.0-wash);c+=float3(0.9,1.0,1.0)*edge*0.9;
+                    float edge=exp(-abs(i.uv.y-line_)*130.0)*saturate(wash*3.0)*smoothstep(0.0,0.1,1.0-wash);c+=float3(0.7,0.9,0.92)*edge*0.3;
                     float bub=smoothstep(0.92,0.98,Noise(i.uv*float2(38.0,22.0)+float2(0.0,-t*4.0)))*under;c+=bub*float3(0.5,0.75,0.8)*0.5;
                 }
                 return fixed4(c,1.0);

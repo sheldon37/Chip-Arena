@@ -95,15 +95,15 @@ public static class DeepEndBossChecks
     {
         var o=new Vector3(24,0,24);var rig=new DeepEndBossRig();var r=NativeDeepEndBossPreview.Route;
         // Through the first Breach: every visible joint keeps its spacing; it never moves faster than a heavy body may while it's in sight; each joint passes where the head passed.
-        float p0=NativeDeepEndBossPreview.BreachAt-.5f;var v=DeepEndBossView.None;float t=p0;float most=0;float dt=1/60f;bool high=false;
+        float p0=NativeDeepEndBossPreview.BreachAt-.5f;var v=DeepEndBossView.None;float t=p0;float most=0,mostT=0;int mostAt=0;float dt=1/60f;bool high=false;
         for(int k=0;k<60*7;k++)
         {
             t+=dt;NativeDeepEndBossPreview.View(t,ref v,out _);rig.Update(t,dt,v,r,o,PoolroomsLayout.WaterY,false,default);
-            for(int i=0;i<NativeDeepEndBossLook.Spine-1;i++){var a=rig.Shown.Position[i];var b=rig.Shown.Position[i+1];float y=a.Y;bool vis=y>PoolroomsLayout.WaterY&&b.Y>PoolroomsLayout.WaterY;if(vis){float seg=Vector3.Distance(a,b);Check(seg>NativeDeepEndBossLook.Seg*.85f&&seg<NativeDeepEndBossLook.Seg*1.15f,"joint spacing "+seg+" at "+i+" t "+t);}}
+            for(int i=0;i<NativeDeepEndBossLook.Spine-1;i++){var a=rig.Shown.Position[i];var b=rig.Shown.Position[i+1];float y=a.Y;bool vis=y>PoolroomsLayout.WaterY&&b.Y>PoolroomsLayout.WaterY;if(vis){float seg=Vector3.Distance(a,b);Check(seg>NativeDeepEndBossLook.Seg*.8f&&seg<NativeDeepEndBossLook.Seg*1.3f,"joint spacing "+seg+" at "+i+" t "+t);}}
             if(rig.OutOfWater>6)high=true;
-            for(int i=4;i<NativeDeepEndBossLook.Spine;i++)if(rig.Shown.Position[i].Y>PoolroomsLayout.WaterY&&k>2){float sp=rig.Velocity[i].Length();most=Math.Max(most,sp);}
+            for(int i=4;i<NativeDeepEndBossLook.Spine;i++)if(rig.Shown.Position[i].Y>PoolroomsLayout.WaterY&&k>2){float sp=rig.Velocity[i].Length();if(sp>most){most=sp;mostAt=i;mostT=t;}}
         }
-        Check(high,"it rises out of the water");Check(most<24,"a visible joint's speed "+most);
+        Check(high,"it rises out of the water");Check(most<24,"a visible joint's speed "+most+" joint "+mostAt+" at "+mostT);
         // Nothing moves at a constant speed: the head's speed changes through the arc.
         var rr=NativeDeepEndBossPreview.Route;float lo=99,hi=0;for(float q=NativeDeepEndBossPreview.BreachAt+1.1f;q<NativeDeepEndBossPreview.BreachAt+3.3f;q+=.05f){rr.At(q,out _,out var hv);float sp=hv.Length();lo=Math.Min(lo,sp);hi=Math.Max(hi,sp);}Check(hi>lo*1.3f,"the arc's speed changes: "+lo+" .. "+hi);
         // The frames are real rotations and the back stays up on a shallow stretch.

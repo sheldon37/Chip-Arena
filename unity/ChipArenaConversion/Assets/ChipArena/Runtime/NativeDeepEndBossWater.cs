@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
     {
         private DeepEndWaves deepEndWaves;private Texture2D deepEndFieldTex,deepEndGlowTex;private Mesh deepEndSheet,deepEndScreenTri;private Material deepEndWaterMat,deepEndCausticsMat,deepEndUnderMat,deepEndOverMat,deepEndScreenMat;private bool deepEndWaterFailed,deepEndOwnsDepth;private Camera deepEndDepthCam;
         private readonly float[] deepEndGlow=new float[GlowSize*GlowSize*4],deepEndGlowStatic=new float[GlowSize*GlowSize*3*3];private bool deepEndGlowBaked;private const int GlowSize=48;
-        private static readonly int DeepFieldId=Shader.PropertyToID("_DeepField"),DeepRectId=Shader.PropertyToID("_DeepRect"),DeepRoomId=Shader.PropertyToID("_DeepRoom"),DeepRoomYId=Shader.PropertyToID("_DeepRoomY"),DeepLightId=Shader.PropertyToID("_DeepLight"),DeepTideId=Shader.PropertyToID("_DeepTide"),DeepClockId=Shader.PropertyToID("_DeepClock"),DeepGlowTexId=Shader.PropertyToID("_DeepGlowTex"),DeepRipplesId=Shader.PropertyToID("_DeepRipples"),DeepWhirlId=Shader.PropertyToID("_DeepWhirl"),DeepCausticsId=Shader.PropertyToID("_DeepCaustics"),DeepDepthOnId=Shader.PropertyToID("_DeepDepthOn"),DeepSoftId=Shader.PropertyToID("_DeepSoftAmount"),DeepWashId=Shader.PropertyToID("_DeepWashAmount"),DeepScreenClockId=Shader.PropertyToID("_DeepScreenClock");
+        private static readonly int DeepFieldId=Shader.PropertyToID("_DeepField"),DeepRectId=Shader.PropertyToID("_DeepRect"),DeepRoomId=Shader.PropertyToID("_DeepRoom"),DeepRoomYId=Shader.PropertyToID("_DeepRoomY"),DeepLightId=Shader.PropertyToID("_DeepLight"),DeepTideId=Shader.PropertyToID("_DeepTide"),DeepClockId=Shader.PropertyToID("_DeepClock"),DeepGlowTexId=Shader.PropertyToID("_DeepGlowTex"),DeepRipplesId=Shader.PropertyToID("_DeepRipples"),DeepWhirlId=Shader.PropertyToID("_DeepWhirl"),DeepCausticsId=Shader.PropertyToID("_DeepCaustics"),DeepDepthOnId=Shader.PropertyToID("_DeepDepthOn"),DeepSoftId=Shader.PropertyToID("_DeepSoftAmount"),DeepWashId=Shader.PropertyToID("_DeepWashAmount"),DeepScreenClockId=Shader.PropertyToID("_DeepScreenClock"),DeepMurkId=Shader.PropertyToID("_DeepMurk");
         private readonly float[] deepEndLightPos=new float[NativeMapLooks.MaxLights*4],deepEndLightRgb=new float[NativeMapLooks.MaxLights*3];
         private NativeDeepEndFlowDraw deepEndUnderDraw,deepEndOverDraw;private NativeVfxDraw deepEndVfx;private bool deepEndVfxFailed;
 
@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
             float side=DeepEndWaves.Extent;var rect=new Vector4(o.X-side*.5f,o.Z-side*.5f,side,DeepEndWaves.Texel);
             Shader.SetGlobalTexture(DeepFieldId,deepEndFieldTex);Shader.SetGlobalVector(DeepRectId,rect);Shader.SetGlobalVector(DeepRoomId,new Vector4(o.X,o.Z,NativeDeepEndArena.Half-PoolroomsLayout.Thickness*.5f,NativeDeepEndArena.Ceiling));Shader.SetGlobalFloat(DeepRoomYId,o.Y);
             Shader.SetGlobalVector(DeepLightId,new Vector4(s.Ceiling,s.Ambient,s.Warm,s.CeilingOut));Shader.SetGlobalFloat(DeepTideId,o.Y+s.Tide);Shader.SetGlobalFloat(DeepClockId,now);Shader.SetGlobalTexture(DeepGlowTexId,deepEndGlowTex);
-            var mat=deepEndWaterMat;mat.SetFloat(DeepRipplesId,s.Ripples);mat.SetVector(DeepWhirlId,new Vector4(o.X,o.Z,s.Whirl,s.WhirlTurn));mat.SetFloat(DeepDepthOnId,depth?1:0);
+            var mat=deepEndWaterMat;mat.SetFloat(DeepMurkId,s.Murk);mat.SetFloat(DeepRipplesId,s.Ripples);mat.SetVector(DeepWhirlId,new Vector4(o.X,o.Z,s.Whirl,s.WhirlTurn));mat.SetFloat(DeepDepthOnId,depth?1:0);
             if(!(deepEndSheetAt==o)){if(deepEndSheet!=null)CapturedAnimation.Release(deepEndSheet);deepEndSheet=DeepEndSheetMesh(o);deepEndSheetAt=o;}
             Graphics.DrawMesh(deepEndSheet,Matrix4x4.identity,mat,0,null,0,null,ShadowCastingMode.Off,false);
             // The caustics: the level's own meshes again.
@@ -92,10 +92,10 @@ namespace ChipArena.UnityConversion
         // The room's soft light by the stage, and the practical lights: the nearest of the ceiling's by their level, the nearest under the water, the boss's own.
         private void DeepEndLightsDraw(Camera eye,in DeepEndBossStage s)
         {
-            var warm=Color.Lerp(PoolroomsAmbient,new Color(.74f,.64f,.46f),s.Warm);var a=warm*s.Ambient;
+            var warm=Color.Lerp(PoolroomsAmbient,new Color(.7f,.66f,.54f),s.Warm);var a=warm*s.Ambient;
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=a;RenderSettings.ambientEquatorColor=a*.95f;RenderSettings.ambientGroundColor=Color.Lerp(a*1.2f,new Color(.2f,.45f,.45f)*(.3f+.6f*s.Ambient),.55f);
             if(RenderSettings.sun!=null){RenderSettings.sun.intensity=0;RenderSettings.sun.shadows=LightShadows.None;}
-            var fogLit=Color.Lerp(PoolroomsHaze,new Color(.7f,.6f,.46f),s.Warm);RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=fogLit*Mathf.Lerp(.03f,1,s.Ambient);RenderSettings.fogStartDistance=16;RenderSettings.fogEndDistance=140;NativePackStage.Glow(1);if(NativeLighting.StyleActive)NativeLighting.StyleOff();
+            var fogLit=Color.Lerp(PoolroomsHaze,new Color(.74f,.7f,.6f),s.Warm);RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=fogLit*Mathf.Lerp(.03f,1,s.Ambient);RenderSettings.fogStartDistance=16;RenderSettings.fogEndDistance=140;NativePackStage.Glow(1);if(NativeLighting.StyleActive)NativeLighting.StyleOff();
             // The nearest four of the ceiling's lights.
             var e=eye.transform.position;float exz=e.x-deepEndOrigin.X,ezz=e.z-deepEndOrigin.Z;int slots=NativeMapLooks.MaxLights;for(int k=0;k<slots;k++){deepEndLightPos[k*4]=0;deepEndLightPos[k*4+1]=-1e4f;deepEndLightPos[k*4+2]=0;deepEndLightPos[k*4+3]=.0001f;deepEndLightRgb[k*3]=deepEndLightRgb[k*3+1]=deepEndLightRgb[k*3+2]=0;}
             int used=0;float c=PoolroomsLayout.Cell;int cells=NativeDeepEndArena.Cells;

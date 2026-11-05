@@ -25,7 +25,7 @@ Shader "ChipArena/NativeDeepEndGlaze"
             fixed4 frag(v2f i):SV_Target
             {
                 float3 n=normalize(i.normal);float3 v=normalize(_WorldSpaceCameraPos-i.world);float nv=saturate(dot(n,v));float g=i.gloss;
-                float metal=saturate(g-1.0);float f0=lerp(0.05,0.72,metal);float fres=f0+(1.0-f0)*pow(1.0-nv,5.0);float glaze=saturate(g*1.15);
+                float metal=saturate(g-1.0);float f0=lerp(0.04,0.72,metal);float fres=f0+(lerp(0.42,1.0,metal)-f0)*pow(1.0-nv,5.0);float glaze=g<0.5?g*g*2.0:saturate(g);
                 float3 r=reflect(-v,n);float3 room=DeepRoomColour(i.world,r);
                 float3 c=room*fres*glaze*(1.0+metal*0.5);
                 for(int k=0;k<8;k++)

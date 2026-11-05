@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
         public float Ambient,Warm;
         /// <summary>The caustics' strength on the walls, ceiling and floors; the whirlpool's strength 0..1 and how far it has turned (rad); the surface's own ripples' strength (0 mirror still, 1 alive).</summary>
         public float Caustics,Whirl,WhirlTurn,Ripples;
+        /// <summary>How much darker the water is than it is (1 as it is; the arrival's black shot more: only what's as bright as a lamp comes through it).</summary>
+        public float Murk;
         /// <summary>The room's shudder, how muffled everything is (the wind-ups), the Lull's softening, the wave over the camera.</summary>
         public float Shake,Muffle,Soft,Wash;
         /// <summary>The seiche: the crest's place along its axis (m from the room's centre), its height, and the far wall's draw-back; its axis.</summary>
@@ -26,7 +28,7 @@ namespace ChipArena.UnityConversion
         public float RingR,RingH;
         /// <summary>The arrival's clock (NaN after it).</summary>
         public float IntroAge;
-        public static readonly DeepEndBossStage Idle=new DeepEndBossStage{On=false,Tide=PoolroomsLayout.WaterY,Ceiling=1,Water=1,Lamps=1,Ambient=1,Warm=0,Ripples=1,IntroAge=float.NaN};
+        public static readonly DeepEndBossStage Idle=new DeepEndBossStage{On=false,Tide=PoolroomsLayout.WaterY,Ceiling=1,Water=1,Lamps=1,Ambient=1,Warm=0,Ripples=1,Murk=1,IntroAge=float.NaN};
     }
 
     public static class NativeDeepEndBossStage
@@ -59,9 +61,9 @@ namespace ChipArena.UnityConversion
             {
                 float a=time-v.spawned;s.IntroAge=a;
                 // Calm, warm, the water a mirror; the lights under the water go out one by one toward the pit, the room falling dark with them; black for the spiral.
-                s.Warm=1-S((a-b.Hold)/.5f);s.Ripples=.05f+.2f*S((a-b.LowShot)/1.2f);s.Caustics=.34f*(1-S((a-b.LightsOut0)/1.6f));
+                s.Warm=1-S((a-b.Hold)/.5f);s.Ripples=.03f+.2f*S((a-b.LowShot)/1.2f);s.Caustics=.34f*(1-S((a-b.LightsOut0)/1.6f));
                 s.WaterOut=S((a-b.LightsOut0)/(b.LightsOut1-b.LightsOut0));
-                float dark=S((a-b.LightsOut0)/(b.DownShot-b.LightsOut0));float lit=1-dark;
+                float dark=S((a-b.LightsOut0)/(b.DownShot-b.LightsOut0));float lit=1-dark;s.Murk=1+3.4f*S((a-b.LightsOut1+.5f)/.6f)*(1-S((a-b.Break+.1f)/.5f));
                 s.Ceiling=.95f*lit+.0f;s.Ambient=.92f*lit+.05f;
                 // It breaks the surface: the room comes back only by what it brings. A rim of the ceiling's lights catching on, low.
                 float back=S((a-b.Break+.1f)/.7f);s.Ceiling=Math.Max(s.Ceiling,.32f*back);s.Ambient=Math.Max(s.Ambient,.22f*back);s.Caustics=Math.Max(s.Caustics,.8f*back);s.Ripples=Math.Max(s.Ripples,back);
@@ -136,6 +138,8 @@ namespace ChipArena.UnityConversion
     {
         public const int Size=172;public const float Texel=.25f,Rate=60,Speed=4.6f,Damping=.9962f,Limit=1.25f,FoamLife=2.6f,Extent=Size*Texel;
         public const int MaxSteps=4;
+        /// <summary>The most the simulated waves raise a pool over the deck's level while the decks are dry (they slop at the lip, they don't stand over it).</summary>
+        public const float LipCap=.03f;
         public readonly float[] Height=new float[Size*Size],Prev=new float[Size*Size],Next=new float[Size*Size],Foam=new float[Size*Size];
         /// <summary>Per texel: the floor (from the arena) and whether the walls hold it. The texture's data: (surface height from the room's zero, foam) per texel.</summary>
         public readonly float[] Floor=new float[Size*Size];public readonly float[] Rg=new float[Size*Size*2];public readonly bool[] Wet=new bool[Size*Size],Inside=new bool[Size*Size];
@@ -242,7 +246,7 @@ namespace ChipArena.UnityConversion
             for(int z=0;z<Size;z++)for(int x=0;x<Size;x++)
             {
                 int i=x+Size*z;float y,foam=0;if(simple)y=tide;else y=Analytic(C(x),C(z),s,out foam);
-                if(Wet[i])y+=h[i];float f=Foam[i];if(foam>f)f=foam;Rg[i*2]=y;Rg[i*2+1]=f;
+                if(Wet[i]){float by=y;y+=h[i];if(!decksWet&&y>LipCap&&y>by)y=by>LipCap?by:LipCap;}float f=Foam[i];if(foam>f)f=foam;Rg[i*2]=y;Rg[i*2+1]=f;
             }
         }
         /// <summary>The field's energy (checks).</summary>
