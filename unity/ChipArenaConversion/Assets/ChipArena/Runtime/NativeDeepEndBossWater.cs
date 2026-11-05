@@ -97,6 +97,7 @@ namespace ChipArena.UnityConversion
             if(RenderSettings.sun!=null){RenderSettings.sun.intensity=0;RenderSettings.sun.shadows=LightShadows.None;}
             var fogLit=Color.Lerp(PoolroomsHaze,new Color(.74f,.7f,.6f),s.Warm);RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=fogLit*Mathf.Lerp(.03f,1,s.Ambient);RenderSettings.fogStartDistance=16;RenderSettings.fogEndDistance=140;NativePackStage.Glow(1);if(NativeLighting.StyleActive)NativeLighting.StyleOff();
             // The nearest four of the ceiling's lights.
+            DeepEndRoomTint(s);
             var e=eye.transform.position;float exz=e.x-deepEndOrigin.X,ezz=e.z-deepEndOrigin.Z;int slots=NativeMapLooks.MaxLights;for(int k=0;k<slots;k++){deepEndLightPos[k*4]=0;deepEndLightPos[k*4+1]=-1e4f;deepEndLightPos[k*4+2]=0;deepEndLightPos[k*4+3]=.0001f;deepEndLightRgb[k*3]=deepEndLightRgb[k*3+1]=deepEndLightRgb[k*3+2]=0;}
             int used=0;float c=PoolroomsLayout.Cell;int cells=NativeDeepEndArena.Cells;
             for(int want=0;want<3;want++)
@@ -119,13 +120,21 @@ namespace ChipArena.UnityConversion
             }
             NativeLighting.PickedLights(deepEndLightPos,deepEndLightRgb);
         }
+        // The room is cleaner than the rest of the level: the walls' and decks' warm tile cooled toward white.
+        private bool deepEndTinted;private readonly Color deepEndCool=new Color(.86f,.97f,1.02f);
+        private void DeepEndRoomTint(in DeepEndBossStage s)
+        {
+            if(poolroomsMats==null)return;bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;deepEndTinted=true;var k=Color.Lerp(deepEndCool,Color.white,s.Warm*.6f);
+            for(int i=0;i<3;i++)if(poolroomsMats[i]!=null)poolroomsMats[i].SetColor(BrColorId,linear?k.linear:k);
+        }
+        private void DeepEndRoomTintOff(){if(!deepEndTinted||poolroomsMats==null)return;deepEndTinted=false;bool linear=QualitySettings.activeColorSpace==ColorSpace.Linear;for(int i=0;i<3;i++)if(poolroomsMats[i]!=null)poolroomsMats[i].SetColor(BrColorId,linear?PoolroomsTint[i].linear:PoolroomsTint[i]);}
         private void DeepEndFxDraw(Camera eye,in DeepEndBossStage s,float now)
         {
             deepEndUnderDraw.Draw(deepEndFx.Under);deepEndOverDraw.Draw(deepEndFx.Over);DeepEndBossDraws+=2;
             if(deepEndVfx==null&&!deepEndVfxFailed){try{deepEndVfx=new NativeVfxDraw();}catch(Exception e){deepEndVfxFailed=true;Debug.LogWarning("THE DEEP END: effects renderer unavailable ("+e.Message+")");}}
             if(deepEndVfx!=null&&deepEndFx.Vfx.Count>0){deepEndVfx.Low=LowGraphics;deepEndVfx.Begin();NativeBossVfxSubmit.Submit(deepEndFx.Vfx,deepEndVfx);deepEndVfx.Submit(eye);DeepEndBossDraws+=2;}
         }
-        private void DeepEndWaterHide(){if(deepEndOwnsDepth&&deepEndDepthCam!=null){deepEndDepthCam.depthTextureMode&=~DepthTextureMode.Depth;}deepEndOwnsDepth=false;deepEndDepthCam=null;}
+        private void DeepEndWaterHide(){DeepEndRoomTintOff();if(deepEndOwnsDepth&&deepEndDepthCam!=null){deepEndDepthCam.depthTextureMode&=~DepthTextureMode.Depth;}deepEndOwnsDepth=false;deepEndDepthCam=null;}
         private void DeepEndWaterDispose()
         {
             DeepEndWaterHide();if(deepEndWaterMat!=null)CapturedAnimation.Release(deepEndWaterMat);deepEndWaterMat=null;if(deepEndCausticsMat!=null)CapturedAnimation.Release(deepEndCausticsMat);deepEndCausticsMat=null;if(deepEndUnderMat!=null)CapturedAnimation.Release(deepEndUnderMat);deepEndUnderMat=null;if(deepEndOverMat!=null)CapturedAnimation.Release(deepEndOverMat);deepEndOverMat=null;if(deepEndScreenMat!=null)CapturedAnimation.Release(deepEndScreenMat);deepEndScreenMat=null;

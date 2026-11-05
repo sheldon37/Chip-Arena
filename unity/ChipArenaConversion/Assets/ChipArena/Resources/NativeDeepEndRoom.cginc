@@ -26,7 +26,7 @@ float3 DeepRoomColour(float3 p,float3 r)
         // The ceiling: plaster, and the round lights on their 6 m grid.
         float2 cell=frac((h.xz-_DeepRoom.xy+float2(half_,half_)-float2(3.0,3.0))/6.0+float2(0.5,0.5))-float2(0.5,0.5);float d=length(cell)*6.0;
         float order=length(h.xz-_DeepRoom.xy)/28.0;float lvl=_DeepLight.x*(1.0-smoothstep(0.0,0.14,_DeepLight.w*1.25-order));
-        c=float3(0.60,0.62,0.60)*(0.05+0.62*soft)+warm*lvl*(smoothstep(0.62,0.40,d)*5.5+0.6*exp(-d*0.8));
+        c=float3(0.60,0.62,0.60)*(0.05+0.62*soft)+warm*lvl*(smoothstep(0.62,0.40,d)*3.0+0.5*exp(-d*0.8));
     }
     else
     {

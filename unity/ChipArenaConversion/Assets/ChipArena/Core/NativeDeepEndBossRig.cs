@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
         public float Time{get;private set;}
         /// <summary>The flop's lift this frame (m at its highest), the thrash's sweep 0..1 and its side; the roll about the body (rad).</summary>
         public float Lift{get;private set;}
-        private float fxRoll;
+        private float fxRoll;private float undulate;
 
         public DeepEndBossRig(){iris.Reset(0);spin.Reset(.5f);fold.Configure(.75f,.42f,0);rail.Configure(1.1f,.34f,0);mouthKick.Configure(1.4f,.5f,0);fold.Reset(.8f);rail.Reset(0);mouthKick.Reset(0);lookWeight.Reset(0);}
         /// <summary>Back to nothing (a new arena).</summary>
@@ -53,7 +53,9 @@ namespace ChipArena.UnityConversion
             var tan=(p-q)/d;var n=ringN[li];
             // A rotation-minimizing frame (the double reflection in one step), righted slowly toward the world's up where the path isn't steep.
             n=Vector3.Normalize(n-tan*Vector3.Dot(n,tan));float steep=Math.Abs(tan.Y);float right=(1-steep)*(1-steep)*Math.Min(1,d*.16f);
-            var up=Vector3.UnitY-tan*tan.Y;float ul=up.Length();if(ul>.05f)n=Vector3.Normalize(Vector3.Lerp(n,up/ul,right));
+            var up=Vector3.UnitY-tan*tan.Y;float ul=up.Length();
+            // (By an angle round the tangent, never a blend of vectors: a blend of a normal and its opposite would flip it all at once and the trail would hold the pop.)
+            if(ul>.05f){up/=ul;float ang=(float)Math.Atan2(Vector3.Dot(Vector3.Cross(n,up),tan),Vector3.Dot(n,up));n=Vector3.Normalize(BossMath.Rotate(BossMath.AxisAngle(tan,ang*right),n));}
             long ne=ringEnd+1;int ni=(int)(ne%RingSize);ringP[ni]=p;ringN[ni]=n;ringS[ni]=ringS[li]+d;ringEnd=ne;if(ringCount<RingSize)ringCount++;
         }
         // The trail's point and normal at arc coordinate `s` (between ring samples; clamped to what it holds).
@@ -73,7 +75,7 @@ namespace ChipArena.UnityConversion
         {
             float t=tick/(float)TickRate,dt=1f/TickRate;Route.At(t,out var h,out var hv);RingAdd(h);
             int li=(int)(ringEnd%RingSize);float head=ringS[li];
-            float limit=h.Y>surface-1.5f?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;
+            float limit=h.Y>surface-1.5f?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;undulate+=dt*1.5f*(.55f+.45f*BossMath.Clamp01(hv.Length()/5f));if(undulate>4000)undulate-=BossMath.Tau*600;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
                 float want=head-i*NativeDeepEndBossLook.Seg,s=arc[i];var at=raw[i];bool vis=Visible(at,NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
@@ -110,8 +112,13 @@ namespace ChipArena.UnityConversion
             float retract=0;if(DeepEndBossView.At(v.diedAt))retract=Retract(now-v.diedAt);
             float sp=hv.Length();Speed=sp;
             var pos=rawScratch;var nrm=rawNScratch;
-            for(int i=0;i<NativeDeepEndBossLook.Spine;i++){float want=ringS[li]-i*NativeDeepEndBossLook.Seg;float s=arc[i]+(arc[i]>=want-1e-3f?extra:0)-retract;Trail(s,hp,headS,out pos[i],out nrm[i]);}
-            Layers(now,v,surface,sp,pos);
+            for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
+            {
+                float want=ringS[li]-i*NativeDeepEndBossLook.Seg;float s=arc[i]+(arc[i]>=want-1e-3f?extra:0)-retract;Trail(s,hp,headS,out pos[i],out nrm[i]);
+                // (A hidden joint chasing a fast head mustn't flick into sight between ticks: it comes up on the tick, at a heavy body's pace.)
+                if(extra*TickRate>SpeedLimit&&hp.Y<surface-1.5f&&Visible(pos[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface))Trail(arc[i]-retract,hp,headS,out pos[i],out nrm[i]);
+            }
+            Layers(now,v,surface,sp,pos,nrm);
             // ---- the neck: the head's last joints bent toward where the mouth aims ----
             var headDir=SafeDir(pos[0]-pos[3],new Vector3(0,0,1));
             float lookW=0;Vector3 lookD=headDir;Aim(v,now,surface,pos[0],hasLook,lookAt,ref lookW,ref lookD);
@@ -162,7 +169,7 @@ namespace ChipArena.UnityConversion
             if(DeepEndBossView.At(v.diedAt)&&!(v.diedAt==seenDied)){seenDied=v.diedAt;DeepEndBossPaths.Death(Own,v.diedAt,surface,DeathSettle);}
         }
         // The offsets on the trail: the Flop's lift, the Thrash's sweep, the travelling undulation, the stagger's shudder.
-        private void Layers(float now,in DeepEndBossView v,float surface,float speed,Vector3[] pos)
+        private void Layers(float now,in DeepEndBossView v,float surface,float speed,Vector3[] pos,Vector3[] nrm)
         {
             float seg=NativeDeepEndBossLook.Seg;Lift=0;
             // The body's axes at each joint come from its own neighbours.
@@ -184,17 +191,17 @@ namespace ChipArena.UnityConversion
                 float a=age-.0f;float sweep=thrashSide*(float)Math.Sin(BossMath.Clamp01((age-m.Anticipation*.3f)/(m.Anticipation*.7f+m.Strike))*BossMath.Pi*.5f+(age>hit?(age-hit)*2.1f:0));
                 for(int i=10;i<NativeDeepEndBossLook.Spine;i++)
                 {
-                    float k=(i-10)/(float)(NativeDeepEndBossLook.Spine-11);var tan=SafeDir(pos[i-1]-pos[i],new Vector3(0,0,1));var side=SafeDir(Vector3.Cross(Vector3.UnitY,tan),new Vector3(1,0,0));
+                    float k=(i-10)/(float)(NativeDeepEndBossLook.Spine-11);var tan=SafeDir(pos[i-1]-pos[i],new Vector3(0,0,1));var side=SafeDir(Vector3.Cross(nrm[i],tan),new Vector3(1,0,0));
                     pos[i]+=side*(thrash*sweep*7.5f*k*k)+new Vector3(0,thrash*1.2f*k,0);
                 }
             }
             // A slow sway that travels from the head to the tail, growing toward it; a low wave in the vertical, slower still.
-            const float wave=.42f,rate=1.5f;
+            const float wave=.42f;
             for(int i=4;i<NativeDeepEndBossLook.Spine;i++)
             {
                 float s=i*seg,k=BossMath.Smooth((s-3.5f)/10f);float grow=.22f+.5f*BossMath.Clamp01(s/30f);
-                var tan=SafeDir(pos[i-1]-pos[Math.Min(NativeDeepEndBossLook.Spine-1,i+1)],new Vector3(0,0,1));var side=Vector3.Cross(Vector3.UnitY,tan);float sl=side.Length();side=sl>.1f?side/sl:new Vector3(1,0,0);
-                float ph=s*wave-now*rate*(.55f+.45f*swim);pos[i]+=side*(k*grow*(.55f+.45f*swim)*(float)Math.Sin(ph))+new Vector3(0,k*.09f*(float)Math.Sin(ph*.61f+1.1f),0);
+                var tan=SafeDir(pos[i-1]-pos[Math.Min(NativeDeepEndBossLook.Spine-1,i+1)],new Vector3(0,0,1));var side=SafeDir(Vector3.Cross(nrm[i],tan),new Vector3(1,0,0));
+                float ph=s*wave-undulate;pos[i]+=side*(k*grow*(.55f+.45f*swim)*(float)Math.Sin(ph))+new Vector3(0,k*.09f*(float)Math.Sin(ph*.61f+1.1f),0);
             }
             // The stagger: a shudder running down the body.
             if(DeepEndBossView.At(v.staggerAt)&&now>=v.staggerAt&&now<v.staggerAt+v.staggerSeconds)

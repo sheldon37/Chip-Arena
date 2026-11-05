@@ -69,7 +69,7 @@ Shader "ChipArena/NativeDeepEndWater"
                 if(_DeepWhirl.z>0.01){pa=Swirl(w,cyc,1.0)*0.5;pb=Swirl(w,frac(cyc+0.5),1.0)*0.5;mixK=abs(cyc*2.0-1.0);}
                 float3 r=Ripple(pa+float2(0.011,0.007)*t)+Ripple(pa*1.37+float2(-0.006,0.013)*t+0.31);
                 if(_DeepWhirl.z>0.01){float3 r2=Ripple(pb+float2(0.011,0.007)*t)+Ripple(pb*1.37+float2(-0.006,0.013)*t+0.31);r=lerp(r2,r,mixK);}
-                float rs=0.03+0.17*_DeepRipples;float3 n=normalize(float3(r.x*rs-slope.x*1.25,1.0,r.z*rs-slope.y*1.25));
+                float rs=0.018+0.1*_DeepRipples;float3 n=normalize(float3(r.x*rs-slope.x*1.25,1.0,r.z*rs-slope.y*1.25));
                 float3 v=normalize(_WorldSpaceCameraPos-i.world);float nv=abs(dot(n,v));float fres=0.022+0.978*pow(1.0-nv,5.0);
                 // ---- through the water ----
                 float2 suv=i.grab.xy/i.grab.w;float eye=i.screen.z;float bend=clamp(0.42/max(eye,1.5),0.0,0.05);float2 off=n.xz*bend;
@@ -90,7 +90,7 @@ Shader "ChipArena/NativeDeepEndWater"
                 for(int k=0;k<8;k++)
                 {
                     float3 d=_ArenaLightPos[k].xyz-i.world;float len=max(length(d),0.0001);float q=len/max(_ArenaLightPos[k].w,0.0001);float fall=saturate(1.0-q*q);if(fall<=0.0)continue;float3 l=d/len;float3 h=normalize(l+v);float ndh=saturate(dot(n,h));
-                    spec+=_ArenaLightColor[k].rgb*fall*fall*(pow(ndh,160.0)*1.1);
+                    spec+=_ArenaLightColor[k].rgb*fall*fall*(pow(ndh,120.0)*0.4);
                 }
                 col+=spec;
                 // ---- foam: the field's, and a line where the water meets anything ----

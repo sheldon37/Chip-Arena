@@ -66,7 +66,7 @@ namespace ChipArena.UnityConversion
                 float dark=S((a-b.LightsOut0)/(b.DownShot-b.LightsOut0));float lit=1-dark;s.Murk=1+3.4f*S((a-b.LightsOut1+.5f)/.6f)*(1-S((a-b.Break+.1f)/.5f));
                 s.Ceiling=.95f*lit+.0f;s.Ambient=.92f*lit+.05f;
                 // It breaks the surface: the room comes back only by what it brings. A rim of the ceiling's lights catching on, low.
-                float back=S((a-b.Break+.1f)/.7f);s.Ceiling=Math.Max(s.Ceiling,.32f*back);s.Ambient=Math.Max(s.Ambient,.22f*back);s.Caustics=Math.Max(s.Caustics,.8f*back);s.Ripples=Math.Max(s.Ripples,back);
+                float back=S((a-b.Break+.1f)/.7f);s.Ceiling=Math.Max(s.Ceiling,.42f*back);s.Ambient=Math.Max(s.Ambient,.3f*back);s.Caustics=Math.Max(s.Caustics,.8f*back);s.Ripples=Math.Max(s.Ripples,back);
                 s.Lamps=S((a-3.4f)/1f);
                 // The drop: every light in the room comes up; the water's lights too.
                 float drop=S((a-b.Hold+.05f)/.35f);s.Ceiling=s.Ceiling+(1-s.Ceiling)*drop;s.Ambient=s.Ambient+(1-s.Ambient)*drop;s.WaterOut=s.WaterOut*(1-drop);s.Caustics=s.Caustics+(.55f-s.Caustics)*drop;

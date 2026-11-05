@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
             Lights(rig,v,s,now);
             if(rig.Iris>.02f){float g=rig.Iris*(dead?1-BossMath.Smooth(deadAge/.8f):1);Vfx.Glow(rig.MouthAt-rig.MouthDir*.7f,new Vector3(.22f,.62f,1.1f)*(2.6f*g),2.1f,NativeBossVfx.Core);}
             RoomLamps(s,o,right,up);
-            BodyLamps(rig,v,s,eye,right,up,low);
+            BodyLamps(rig,v,s,now,eye,right,up,low);
             Sheets(rig,s,waves,now,low);
             Collars(rig,s,waves,now);
             Telegraphs(rig,v,s,waves,now,low);
@@ -159,14 +159,14 @@ namespace ChipArena.UnityConversion
             }
         }
         // The flank lamps' and the running lights' halos, facing the eye: what makes the spiral from above.
-        private void BodyLamps(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,Vector3 eye,Vector3 right,Vector3 up,bool low)
+        private void BodyLamps(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,float now,Vector3 eye,Vector3 right,Vector3 up,bool low)
         {
             var o=rig.Origin;float surface=s.Tide;var n=Vector3.Normalize(Vector3.Cross(up,right));
             for(int i=0;i<NativeDeepEndBossLook.Lamps;i++)
             {
-                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(Math.Min(4.6f,.105f*s.Murk*depth)):1;var list=under?Under:Over;
-                var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(3.1f+.05f*Math.Max(0,depth))*(.7f+.3f*g);float murkDim=1/(1+.6f*(s.Murk-1));
-                list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(.8f*g*boost*murkDim),0);
+                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));var list=over?Over:Under;if(under&&over)at+=(right*(float)Math.Sin(now*2.3f+i*1.7f)+up*(float)Math.Cos(now*1.9f+i))*(.012f*depth);
+                var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(3.1f+.05f*Math.Max(0,depth))*(.7f+.3f*g);
+                list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(.8f*g*boost),0);
                 list.Billboard(at+face*.1f,right*size*.3f,up*size*.3f,n,DeepEndFlow.Halo,0,new Vector3(.9f,1,1)*(3.6f*g*boost),0);
             }
             if(MarkerGlow<.01f||low)return;
@@ -175,8 +175,8 @@ namespace ChipArena.UnityConversion
             for(int side=1;side>=-1;side-=2)for(float ms=5;ms<29;ms+=1)
             {
                 bool nearLamp=false;foreach(float q in NativeDeepEndBossLook.LampS)if(Math.Abs(ms-q)<.62f)nearLamp=true;if(nearLamp)continue;
-                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(Math.Min(4.6f,.105f*s.Murk*depth)):1;
-                float size=.3f+.012f*Math.Max(0,depth);(under?Under:Over).Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,new Vector3(.7f,1,1)*(2.2f*mg*boost),0);
+                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));if(under&&over)at+=(right*(float)Math.Sin(now*2.6f+ms*2.1f)+up*(float)Math.Cos(now*2.2f+ms))*(.012f*depth);
+                float size=.34f+.014f*Math.Max(0,depth);(over?Over:Under).Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,new Vector3(.7f,1,1)*(2.4f*mg*boost),0);
             }
         }
         // The lights the room takes: the mouth's throat when it's open, the two brightest places along the body out of the water or near it.
@@ -199,12 +199,14 @@ namespace ChipArena.UnityConversion
                 float wet=(float)Math.Exp(-(now-rig.EmergedAt[i])/2.4f);if(wet<.05f)continue;float sn=i*NativeDeepEndBossLook.Seg,rad=NativeDeepEndBossLook.Radius(sn);
                 var q=rig.Shown.Rotation[i];var side=BossMath.Rotate(q,new Vector3(1,0,0));var tan=BossMath.Rotate(q,new Vector3(0,0,1));var vel=rig.Velocity[i];
                 float fall=(float)Math.Sqrt(2*Math.Max(.2f,over)/BossMath.Gravity);
-                for(int f=-1;f<=1;f+=2)
+                var up2=BossMath.Rotate(q,new Vector3(0,1,0));
+                for(int f=0;f<4;f++)
                 {
-                    // Each strip leaves the side of the body facing most downward, where water runs off it.
-                    var leave=at+side*(f*rad*.86f)-Vector3.UnitY*(rad*.34f);if(BossMath.Hash(Seed,i*7+f*3)<.08f)continue;float width=NativeDeepEndBossLook.Seg*.58f*(.85f+.5f*BossMath.Hash(Seed,i*3+f));var along=tan*width;
+                    // The strips leave round the lower side of the body, where water runs off it.
+                    float round=f==0?-1:f==1?1:f==2?-.42f:.42f;float height=f<2?-.3f:-.86f;
+                    var leave=at+side*(round*rad*.9f)+up2*(height*rad);if(leave.Y-o.Y-ground<.1f||BossMath.Hash(Seed,i*7+f*3)<.08f)continue;float width=NativeDeepEndBossLook.Seg*.62f*(.85f+.5f*BossMath.Hash(Seed,i*3+f));var along=tan*width;
                     const int rows=7;if(!Over.Room((rows+1)*2,rows*6))return;int first=Over.VertexCount;float seed=BossMath.Hash(Seed,i*11+f*5)*50;
-                    var n=Vector3.Normalize(side*f+Vector3.UnitY*.05f);
+                    var n=Vector3.Normalize(side*round+Vector3.UnitY*.05f);
                     for(int r=0;r<=rows;r++)
                     {
                         float u=r/(float)rows,tau=fall*u*u*.65f+fall*u*.35f;
@@ -408,7 +410,7 @@ namespace ChipArena.UnityConversion
         private void Debris(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,bool low)
         {
             var o=rig.Origin;float intro=!float.IsNaN(s.IntroAge)?BossMath.Smooth((s.IntroAge-.5f)/1f)*(1-BossMath.Smooth((s.IntroAge-6)/1f)):0;float whirl=s.Whirl;float show=Math.Max(intro,whirl);if(show<.01f)return;
-            int n=low?14:34;var white=new Vector3(.88f,.92f,.9f);
+            int n=(whirl>.01f?(low?14:34):(low?6:12));var white=new Vector3(.62f,.68f,.66f);
             for(int i=0;i<n;i++)
             {
                 float a0=H(i*3+2300)*BossMath.Tau,r0=2.8f+6.4f*H(i*3+2301),x,z;float tilt=.2f+.6f*H(i*3+2302);

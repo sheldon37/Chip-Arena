@@ -61,13 +61,13 @@ namespace ChipArena.UnityConversion
             var b=DeepEndBossBeats.Fallback;
             return new[]{
                 // Wide over perfectly still water, gliding: warm light, the whole room's scale, its round lights in the mirror.
-                new BossIntroShot{From=0,To=b.LowShot,EyeA=new Vector3(-17.6f,4.3f,-16.8f),EyeB=new Vector3(-13.2f,2.7f,-13.4f),LookA=new Vector3(1.4f,-1.6f,3.6f),LookB=new Vector3(2.4f,-1.1f,3.8f),FovA=62,FovB=58,Ease=1},
+                new BossIntroShot{From=0,To=b.LowShot,EyeA=new Vector3(-12.6f,2.05f,-13.2f),EyeB=new Vector3(-10.9f,1.15f,-11.6f),LookA=new Vector3(4.2f,-.4f,5f),LookB=new Vector3(5.2f,-.05f,5.6f),FovA=60,FovB=56,Ease=1},
                 // Low at the surface, at the top of the steps, toward where they go down into the dark.
                 new BossIntroShot{From=b.LowShot,To=b.DownShot,EyeA=new Vector3(.25f,.75f,-12.2f),EyeB=new Vector3(.1f,.2f,-10.2f),LookA=new Vector3(0,-1.7f,-4.6f),LookB=new Vector3(0,-1.5f,-1.5f),FovA=54,FovB=50,Ease=1},
                 // Straight down over the abyss, slowly descending: the spiral of lights rising out of the black.
                 new BossIntroShot{From=b.DownShot,To=b.BreakShot,EyeA=new Vector3(0,6.55f,.06f),EyeB=new Vector3(0,2.7f,-2.6f),LookA=new Vector3(0,-30,0),LookB=new Vector3(0,-30,-3.4f),FovA=70,FovB=60,Ease=1},
                 // Low and wide, looking up: it breaks the surface and goes on rising.
-                new BossIntroShot{From=b.BreakShot,To=b.MouthShot,EyeA=new Vector3(3.6f,.02f,4.8f),EyeB=new Vector3(4.8f,.22f,7.2f),LookA=new Vector3(.2f,1.1f,-3f),LookB=new Vector3(.4f,3.9f,-.8f),FovA=66,FovB=74,Ease=0},
+                new BossIntroShot{From=b.BreakShot,To=b.MouthShot,EyeA=new Vector3(3.2f,.02f,3.4f),EyeB=new Vector3(3.9f,.14f,5.2f),LookA=new Vector3(.2f,1.2f,-3f),LookB=new Vector3(.4f,3.6f,-.9f),FovA=64,FovB=66,Ease=0},
                 // Close on the mouth, then pulled back on the wave.
                 new BossIntroShot{From=b.MouthShot,To=b.WashShot,EyeA=new Vector3(1.0f,3.5f,8.2f),EyeB=new Vector3(1.3f,2.6f,9.8f),LookA=new Vector3(.1f,5.3f,2.5f),LookB=new Vector3(.1f,5f,3f),FovA=36,FovB=42,Ease=1},
                 new BossIntroShot{From=b.WashShot,To=b.Hold+.4f,EyeA=new Vector3(1.3f,2.6f,9.8f),EyeB=new Vector3(1.5f,.75f,15.6f),LookA=new Vector3(.1f,5f,3f),LookB=new Vector3(0,2.6f,1),FovA=42,FovB=62,Ease=2,Shake=.05f}};

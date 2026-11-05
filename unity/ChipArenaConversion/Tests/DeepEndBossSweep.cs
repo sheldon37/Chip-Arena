@@ -12,7 +12,7 @@ public static class DeepEndBossSweep
     private const float Dt=.1f,Seconds=210;
     /// <summary>The phase's limit for a still pilot (the meter, then the Lull's wind and strike), and for a moving one (the rotation's reach).</summary>
     public static float StillLimit(int phase){var m=NativeDeepEndBoss.Move("lull");float meter=phase>=3?NativeDeepEndBoss.StillSecondsLast:NativeDeepEndBoss.StillSeconds;return meter+m.Anticipation+m.Strike+Dt*2;}
-    public static float MoveLimit(int phase)=>phase==1?19f:phase==2?17f:15f;
+    public static float MoveLimit(int phase)=>phase==1?14f:phase==2?10f:14f;
     private static readonly string[][] Rotation={new[]{"breach","jet","flop","drain"},new[]{"seiche","breach","jet","whistle","flop","drain"},new[]{"lap","breach","seiche","jet","flop","whistle","drain"}};
     private struct Result{public float Gap;public Vector2 Spot;public string Last;}
 
@@ -46,9 +46,9 @@ public static class DeepEndBossSweep
         }
         return false;
     }
-    private static Result Run(int phase,Vector2 spot,bool circling,bool withLull,bool roomWide=true)
+    private static Result Run(int phase,Vector2 spot,bool circling,bool withLull,bool roomWide=true,bool thin=false)
     {
-        var rot=Rotation[phase-1];if(!roomWide)rot=Array.FindAll(rot,x=>x=="breach"||x=="jet"||x=="flop");var ready=new float[rot.Length];var used=new float[rot.Length];for(int i=0;i<used.Length;i++)used[i]=-99+i;
+        var rot=Rotation[phase-1];if(!roomWide)rot=Array.FindAll(rot,x=>(x=="breach"&&!thin)||x=="jet"||x=="flop");var ready=new float[rot.Length];var used=new float[rot.Length];for(int i=0;i<used.Length;i++)used[i]=-99+i;
         var r=new Result{Spot=spot,Last="start"};float last=0;float meter=0;Vector2 anchor=spot;float lullAt=-1;
         float limit=phase>=3?NativeDeepEndBoss.StillSecondsLast:NativeDeepEndBoss.StillSeconds;var lull=NativeDeepEndBoss.Move("lull");
         // Circling: round a point held inside the room, at the pace pilots wade (half speed in the last phase).
@@ -87,10 +87,10 @@ public static class DeepEndBossSweep
         }
         return r;
     }
-    private static Result Worst(int phase,bool circling,bool withLull,bool roomWide=true)
+    private static Result Worst(int phase,bool circling,bool withLull,bool roomWide=true,bool thin=false)
     {
         var worst=new Result{Gap=-1};int cells=NativeDeepEndArena.Cells;float c=PoolroomsLayout.Cell,half=NativeDeepEndArena.Half;
-        void Try(Vector2 s){var r=Run(phase,s,circling,withLull,roomWide);if(r.Gap>worst.Gap)worst=r;}
+        void Try(Vector2 s){var r=Run(phase,s,circling,withLull,roomWide,thin);if(r.Gap>worst.Gap)worst=r;}
         for(int z=0;z<cells;z++)for(int x=0;x<cells;x++)Try(new Vector2((x-cells*.5f+.5f)*c,(z-cells*.5f+.5f)*c));
         // The corners and against the walls, tighter than a cell's centre.
         float w=half-.45f;foreach(var sx in new[]{-1,1})foreach(var sz in new[]{-1,1})Try(new Vector2(sx*w,sz*w));for(float a=-w;a<=w;a+=4){Try(new Vector2(a,w));Try(new Vector2(a,-w));Try(new Vector2(w,a));Try(new Vector2(-w,a));}
@@ -106,7 +106,9 @@ public static class DeepEndBossSweep
             Check(still.Gap<=StillLimit(phase),$"phase {phase}: a still pilot at ({still.Spot.X},{still.Spot.Y}) goes {still.Gap:F1} s unthreatened");
             Check(moving.Gap<=MoveLimit(phase),$"phase {phase}: a circling pilot at ({moving.Spot.X},{moving.Spot.Y}) goes {moving.Gap:F1} s unthreatened");
             // The sweep has teeth: with the stillness move taken out, a still pilot's gap goes over the limit, somewhere.
-            Check(Math.Max(bare.Gap,targeted.Gap)>StillLimit(phase),$"phase {phase}: with the guarantees taken out the sweep finds nothing past {StillLimit(phase):F1} s (worst {targeted.Gap:F1} s): it proves nothing");
+            // (From the second phase the targeted moves alone keep up with a still pilot in a rotation this tight: take the Breach out too and the corner shows, and the sweep shows it.)
+            var thin=Worst(phase,false,false,false,true);Console.WriteLine($"deepend-sweep phase {phase}: with only the Flop and the Jet: {thin.Gap:F1} s at ({thin.Spot.X:F1},{thin.Spot.Y:F1})");
+            Check(Math.Max(thin.Gap,Math.Max(bare.Gap,targeted.Gap))>StillLimit(phase),$"phase {phase}: with the guarantees taken out the sweep finds nothing past {StillLimit(phase):F1} s (worst {targeted.Gap:F1} s): it proves nothing");
         }
         Console.WriteLine("PASS deepend-sweep ("+count+" checks)");
         return count;
