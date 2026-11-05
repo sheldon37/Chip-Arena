@@ -387,6 +387,11 @@ namespace ChipArena.UnityConversion
         private void Steps(HumBossRig rig,in HumBossView v,float t)
         {
             if(rig.Flip>0){return;}
+            // What it stands on: soft dark contact under each limb and its body (nothing else shadows it in this light), fading as the limb lifts.
+            {
+                var bodyAt=rig.Shown.Position[NativeHumBossLook.Spine0];float up=Math.Max(0,bodyAt.Y-floorY);Scorch(new Vector3(bodyAt.X,floorY+.012f,bodyAt.Z),0,1.0f,1.2f,.3f*(1-BossMath.Smooth((up-3.4f)/1.5f)));
+                for(int i=0;i<4;i++){var l=rig.Limb(i);float h=l.Y-floorY-(i<2?NativeHumBossLook.AnkleHeight:NativeHumBossLook.WristHeight);float a=.42f*(1-BossMath.Smooth(h/.7f));if(a>.01f){var f=BossMath.Forward(rig.Yaw);var at=new Vector3(l.X,floorY+.013f,l.Z)+f*(i<2?.3f:.45f);Scorch(at,0,i<2?.28f:.6f,i<2?.42f:.6f,a);}}
+            }
             if(rig.Landed!=0)for(int i=0;i<4;i++)if((rig.Landed&(1<<i))!=0){printAt[printNext]=rig.LimbAt[i];printT[printNext]=t;printYaw[printNext]=rig.Yaw;printHand[printNext]=i>=2;printNext=(printNext+1)%Prints;
                 var at=rig.LimbAt[i];at.Y=floorY+.05f;Vfx.SmokeBurst(t,at,new Vector3(0,.2f,0),.5f,.02f,3,.8f,.1f,.5f,DustC,.14f,t,.02f,vseed,950+i,0,floorY);}
             for(int i=0;i<Prints;i++)
@@ -442,6 +447,8 @@ namespace ChipArena.UnityConversion
                 float pop=.18f+(Tube.Length-1-i)*.17f;float k=d-pop;if(k<0||k>1.6f)continue;var c=P.Position[NativeHumBossLook.Tube(i)];
                 Vfx.SparkBurst(t,c,new Vector3(0,.5f,-.6f),.9f,3.4f,16,.8f,v.diedAt+pop,.04f,vseed,980+i,1.1f,.014f,.8f,true,floorY);if(k<.1f)Vfx.Glow(c,LampWarm*(3.8f*(1-k/.1f)),1.5f,NativeBossVfx.Core);GlassRain(c,v.diedAt+pop,t,1000+i,i);
             }
+            // A door in the wallpaper, open: the way out.
+            if(Room!=null&&d>=HumBossStage.DeathReturn-.2f){float open=BossMath.Smoother((d-(HumBossStage.DeathReturn-.2f))/1.1f);NativeHumArena.ExitDoor(Room,out var foot,out var dn,out var da);Surface.Door(foot+dn*(BackroomsLayout.Thickness*.5f),dn,da,NativeHumArena.DoorWide,NativeHumArena.DoorTall,open);}
             if(d>1.8f&&d<2.5f){var h=rig.Shown.Position[NativeHumBossLook.HandL];Vfx.SmokeBurst(t,new Vector3(v.x,floorY+.1f,v.z+.4f),Vector3.Zero,2.6f,.12f,14,2,.35f,1.5f,DustC,.34f,v.diedAt+1.9f,.12f,vseed,1020,0,floorY);}
         }
         // ---------------- its lights in the room's slots: the fixture, two along the spine, the Ballast ----------------

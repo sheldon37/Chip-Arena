@@ -87,6 +87,7 @@ namespace ChipArena.UnityConversion
             K(t+.3f,C.X+14,lz,90);K(t+2.4f,C.X+10,lz+4,-20);FloorAt=t+2.5f;K(FloorAt,C.X+10,lz+4,-20);var fdir=BossMath.Forward(-20*BossMath.Deg);float dx=C.X+10+fdir.X*4,dz=lz+4+fdir.Z*4;K(FloorAt+NativeHumBossMotion.TurnOver+.3f,dx,dz,-20);t=FloorAt+NativeHumBossMotion.TurnOver+.4f;F(FloorAt,-120,11,1.4f,2.4f,60,4);
             // ---- the death ----
             K(t+1.5f,dx,dz,-20);DeathAt=t+1.7f;F(DeathAt-.5f,38,8.5f,1.15f,1.9f,52,4);
+            F(DeathAt+2.9f,-150,13,1.55f,1.7f,62,1.5f);
             Loop=DeathAt+8;K(Loop,dx,dz,-20);
             acts=a.ToArray();keys=k.ToArray();fr.Sort((p,q)=>p.At.CompareTo(q.At));frames=fr.ToArray();
             // The fixed tables the record points at: where Fall Through's holes stay, the voices' wall points (round the pilots), when parts broke.

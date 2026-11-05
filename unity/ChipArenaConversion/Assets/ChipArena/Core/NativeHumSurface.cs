@@ -138,6 +138,26 @@ namespace ChipArena.UnityConversion
         // The hole's jagged edge at sector s: long tears out between short ones.
         private static float Edge(float open,int seed,int s){return open*(.5f+.5f*H(seed,s/2)+.42f*H(seed+1,s*3+1)*H(seed+2,s)+.18f*H(seed+9,s/5));}
         private static float Peak(float pa,float pb,Vector3 f){if(f.Z==0)return 0;float dx=pa-f.X,dy=pb-f.Y,d=(dx*dx+dy*dy)/(.085f*.085f);return f.Z*(float)Math.Exp(-d);}
+        /// <summary>A door cut in the wallpaper (the death's: the way out): a dark opening `w` by `h` on the surface at `foot` (its bottom middle), its papered leaf swung open by `open` (0..1) on a hinge up its left side, the leaf's reverse pale.</summary>
+        public void Door(Vector3 foot,Vector3 n,Vector3 a,float w,float h,float open)
+        {
+            var m=Paper[WallS];if(open<=.001f||!m.Room(4,6)||!Void.Room(12,18)){Refused++;return;}
+            Patches++;var up=Vector3.UnitY;var off=n*.01f;bool flip=Vector3.Dot(Vector3.Cross(a,up),n)<0;
+            var p0=foot-a*(w*.5f)+off;var p1=foot+a*(w*.5f)+off;var p2=p1+up*h;var p3=p0+up*h;
+            int v=Void.VertexCount;
+            void VQ(Vector3 q,float r,float g,float b){Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=q,N=n,R=r,G=g,B=b,A=0};}
+            VQ(p0,.006f,.006f,.005f);VQ(p1,.006f,.006f,.005f);VQ(p2,.002f,.002f,.002f);VQ(p3,.002f,.002f,.002f);
+            if(flip){Void.Tri(v,v+2,v+1);Void.Tri(v,v+3,v+2);}else{Void.Tri(v,v+1,v+2);Void.Tri(v,v+2,v+3);}
+            // The leaf, on its hinge at p0-p3.
+            float ang=open*1.25f;var sw=a*(float)Math.Cos(ang)+n*(float)Math.Sin(ang);var q0=p0+n*.003f;var q3=p3+n*.003f;var q1=q0+sw*w;var q2=q3+sw*w;var ln=Vector3.Normalize(n*(float)Math.Cos(ang)-a*(float)Math.Sin(ang));
+            int k=m.VertexCount;
+            void PQ(Vector3 q,Vector3 at){SurfaceUv(WallS,at,n,out float u,out float vv);m.Vertices[m.VertexCount++]=new HumPatchVertex{P=q,N=ln,R=1,G=1,B=1,A=1,U=u,V=vv};}
+            PQ(q0,p0);PQ(q1,p1);PQ(q2,p2);PQ(q3,p3);
+            if(flip){m.Tri(k,k+2,k+1);m.Tri(k,k+3,k+2);}else{m.Tri(k,k+1,k+2);m.Tri(k,k+2,k+3);}
+            int b0=Void.VertexCount;void BQ(Vector3 q){Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=q-ln*.004f,N=-ln,R=.46f,G=.43f,B=.32f,A=0};}
+            BQ(q0);BQ(q1);BQ(q2);BQ(q3);
+            if(flip){Void.Tri(b0,b0+1,b0+2);Void.Tri(b0,b0+2,b0+3);}else{Void.Tri(b0,b0+2,b0+1);Void.Tri(b0,b0+3,b0+2);}
+        }
         /// <summary>A rectangle of a surface whose texture creeps and swims: centre, normal, axes, half sizes, the slip's amount and clock.</summary>
         public void Slip(byte surf,Vector3 centre,Vector3 n,Vector3 a,Vector3 b,float ha,float hb,float amount,float t,int seed,float tint=1)
         {

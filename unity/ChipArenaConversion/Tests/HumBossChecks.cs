@@ -16,6 +16,13 @@ public static class HumBossChecks
     public static void Run(string root)
     {
         count=0;
+        // HUM_DUMP=path: the preview's pose at 30 fps as text (t, then x y z per joint), for reviewing the animation off line.
+        var dump=Environment.GetEnvironmentVariable("HUM_DUMP");
+        if(dump!=null)
+        {
+            using var w=new StreamWriter(dump);var r=new HumBossRig();var inv=System.Globalization.CultureInfo.InvariantCulture;
+            for(int f=0;f<=(int)(NativeHumBossPreview.Loop*120);f++){float t=f/120f;Step(r,t,f==0?0:1/120f);if(f%4!=0)continue;w.Write(t.ToString("0.000",inv));for(int j=0;j<HumBossRig.Count;j++){var p=r.Shown.Position[j];w.Write(' ');w.Write(p.X.ToString("0.000",inv));w.Write(' ');w.Write(p.Y.ToString("0.000",inv));w.Write(' ');w.Write(p.Z.ToString("0.000",inv));}w.WriteLine();}
+        }
         Check(NativeHumBoss.Archetype=="level0-hum","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeHumBoss.Archetype)&&NativeBackroomsBossIntro.Shots(NativeHumBoss.Archetype).Length==5,"the intro's five shots");
         Table(root);None(root);Determinism();Contact(out string contact);Feet(out string feet);Pops(out string pops);Head(out string head);Allocation(out string alloc);Skeleton(root);Room(out string room);Intro();Cues(root);Lanes();NoStrobe();
@@ -51,7 +58,7 @@ public static class HumBossChecks
         Check(!st.On&&st.Air==1,"the room is as it is");for(int i=0;i<st.Lamp.Length;i++)Check(st.Lamp[i]==1&&!st.Burst[i],"every lamp as the level has it");
         Check(!NativeHumBossPreview.On&&double.IsNaN(NativeHumBossPreview.Start),"the DEV preview is off by default");
         var rt=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHumBossPresentation.cs"));Check(rt.Contains("internal static HumBossView HumBossViewOf(NativeArena arena)=>HumBossView.None;"),"the binding returns None until Astra binds it");
-        var room=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHumBossRoom.cs"));Check(room.Contains("if(!NativeHumBossPreview.On)return layout;"),"with no preview the level's own layout draws");
+        var room=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeHumBossRoom.cs"));Check(room.Contains("if(!preview&&!HumBossViewOf(arena).live)return layout;"),"with no boss and no preview the level's own layout draws");
         // A level layout comes out of the presentation copy untouched.
         var l=NativeBackroomsGenerator.Build(NativeBackroomsGenerator.ArenaSeed,false).Layout;var before=l.WallX.Concat(l.WallZ).Concat(l.Floor).Concat(l.Pillar).Concat(l.Circuit).ToArray();var c=NativeHumArena.PresentationCopy(l,8,8,Vector3.Zero,out var r);
         Check(before.SequenceEqual(l.WallX.Concat(l.WallZ).Concat(l.Floor).Concat(l.Pillar).Concat(l.Circuit)),"the level's own layout is untouched by the copy");

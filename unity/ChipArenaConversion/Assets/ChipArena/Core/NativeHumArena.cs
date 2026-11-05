@@ -44,6 +44,9 @@ namespace ChipArena.UnityConversion
         public const float IntroWallBehind=7;
         /// <summary>The boss's place when the fight starts: facing south (the party's side) with the north wall <see cref="IntroWallBehind"/> behind it.</summary>
         public static void Spawn(HumRoom room,out Vector3 root,out float yawDegrees){root=new Vector3((room.MinX+room.MaxX)*.5f,room.Origin.Y,room.MaxZ-IntroWallBehind);yawDegrees=180;}
+        /// <summary>The door that opens in the wallpaper on its death (the south wall, the party's side, toward the exit cache): its foot, the wall's face and its run.</summary>
+        public const float DoorWide=1.4f,DoorTall=2.5f;
+        public static void ExitDoor(HumRoom room,out Vector3 foot,out Vector3 normal,out Vector3 along){foot=new Vector3(room.Centre.X-6.4f,room.Origin.Y+BackroomsMesh.TrimHeight*0,room.MinZ);normal=Vector3.UnitZ;along=Vector3.UnitX;}
         /// <summary>The circuit a fixture is on (blocks of two by two fixtures, the ninth block sharing the eighth's breaker).</summary>
         public static int CircuitOf(int fixture){int col=fixture%FixtureSide,row=fixture/FixtureSide;int b=col/2+row/2*3;return b>=Circuits?Circuits-1:b;}
         /// <summary>The partitions' two places (room cells, along x or z): layout 0 is the first place of each, and a shift moves a segment to its other one. Each is two cells

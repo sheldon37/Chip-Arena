@@ -565,9 +565,9 @@ def slab(pc, pts, widths, thick, seed, segs_u=6):
 
 
 def pile_clumps(hide, tier):
-    """The carpet's pile: flat, blunt, overlapping shingles of matted wet carpet over the skin, hanging down the body: the texture and the
-    fray up close. Each is a low open cap of four triangles rooted in the surface."""
-    count = {0: 1050, 1: 420, 2: 0}[tier]
+    """The carpet's pile: small flat overlapping tufts of matted wet carpet over the skin, hanging down the body: the texture and the
+    fray up close. Each is a low open cap of three triangles rooted in the surface."""
+    count = {0: 1400, 1: 560, 2: 0}[tier]
     if count == 0:
         return []
     deps = bpy.context.evaluated_depsgraph_get()
@@ -594,18 +594,16 @@ def pile_clumps(hide, tier):
             lay = n.orthogonal()
         lay.normalize()
         side = lay.cross(n).normalized()
-        w = rng.uniform(.028, .05)
-        L = rng.uniform(.05, .10)
-        h = rng.uniform(.006, .016)
+        w = rng.uniform(.016, .034)
+        L = rng.uniform(.03, .075)
+        h = rng.uniform(.005, .013)
         root = p - lay * L * .35 - n * .004
-        v0 = pc.bm.verts.new(root + side * w * .8)
-        v1 = pc.bm.verts.new(root - side * w * .8)
-        mid = pc.bm.verts.new(p + n * h)
-        t0 = pc.bm.verts.new(p + lay * L + side * w * rng.uniform(.25, .6) + n * (h * .4))
-        t1 = pc.bm.verts.new(p + lay * L * rng.uniform(.8, 1.1) - side * w * rng.uniform(.25, .6) + n * (h * .4))
-        faces.append(pc.bm.faces.new((v0, t0, mid)))
-        faces.append(pc.bm.faces.new((mid, t0, t1)))
-        faces.append(pc.bm.faces.new((mid, t1, v1)))
+        v0 = pc.bm.verts.new(root + side * w * .9)
+        v1 = pc.bm.verts.new(root - side * w * .9)
+        mid = pc.bm.verts.new(p + n * h + side * w * rng.uniform(-.3, .3))
+        tip = pc.bm.verts.new(p + lay * L + side * w * rng.uniform(-.5, .5) + n * (h * .4))
+        faces.append(pc.bm.faces.new((v0, tip, mid)))
+        faces.append(pc.bm.faces.new((mid, tip, v1)))
         faces.append(pc.bm.faces.new((v1, v0, mid)))
     pc.tag(faces, 'slab')
     ev.to_mesh_clear()
@@ -1452,6 +1450,9 @@ def sheet(baked, out_dir, tier):
     shot('h_hand', (2.4, 1.0, 3.0), (.92, .3, .9), 55)
     shot('i_spine', (-2.6, 3.0, -3.0), (0, 3.0, -.5), 45)
     shot('j_foot', (1.8, .8, 1.2), (.34, .35, -.6), 55)
+    shot('m_headback', (1.5, 3.7, -.5), (0, 3.3, 1.0), 45)
+    shot('n_headside', (3.6, 3.1, 1.25), (0, 3.3, 1.1), 40)
+    shot('o_wrist', (-1.9, 1.3, 2.2), (-.92, .5, .8), 40)
     # The dark: nothing but what's lit.
     for ob in obs:
         if ob.name == 'body':

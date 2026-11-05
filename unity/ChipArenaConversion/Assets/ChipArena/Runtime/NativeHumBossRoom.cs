@@ -22,10 +22,14 @@ namespace ChipArena.UnityConversion
         private static readonly Bounds HumEverywhere=new Bounds(Vector3.zero,Vector3.one*4000);
 
         /// <summary>BackroomsWorld: the layout to draw. With no boss, the level's own, untouched. With the DEV preview on, a carved copy with the room's fixtures left out (the presenter draws them).</summary>
-        private BackroomsLayout HumBossLayout(BackroomsLayout layout,Vector3 origin)
+        private BackroomsLayout HumBossLayout(NativeArena arena,BackroomsLayout layout,Vector3 origin)
         {
-            if(!NativeHumBossPreview.On)return layout;
-            if(!ReferenceEquals(humLayoutFrom,layout)||humLayoutCarved==null){humLayoutFrom=layout;humLayoutCarved=NativeHumArena.PresentationCopy(layout,NativeHumBossPreview.RoomCellX,NativeHumBossPreview.RoomCellZ,new NVector(origin.x,origin.y,origin.z),out _);}
+            bool preview=NativeHumBossPreview.On;if(!preview&&!HumBossViewOf(arena).live)return layout;
+            if(!ReferenceEquals(humLayoutFrom,layout)||humLayoutCarved==null)
+            {
+                humLayoutFrom=layout;int cx=preview?NativeHumBossPreview.RoomCellX:layout.ExitX,cz=preview?NativeHumBossPreview.RoomCellZ:layout.ExitZ;
+                humLayoutCarved=NativeHumArena.PresentationCopy(layout,cx,cz,new NVector(origin.x,origin.y,origin.z),out humRoomLive);
+            }
             return humLayoutCarved;
         }
         private void HumRoomEnsure()
