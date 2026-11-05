@@ -316,7 +316,7 @@ namespace ChipArena.UnityConversion
         // ---------------- the intro: the wall: the bulge, the fingers, the tear; it walks through and the paper stretches to it ----------------
         private void Arrival(HumBossRig rig,in HumBossView v,HumBossStage st,float t)
         {
-            if(!rig.Arriving||Room==null)return;var b=HumBossBeats.Current;float a=rig.ArrivalAge;float wz=Room.MaxZ,cx=v.x;
+            if(Room==null||!HumBossView.At(v.spawned))return;var b=HumBossBeats.Current;float a=t-v.spawned;if(a<0||a>b.Hold+6.5f)return;float wz=Room.MaxZ,cx=Room.Centre.X;
             // Where the hand comes through (its x is the boss's right: world -x here). The wall's face is toward the room: -z.
             var c=new Vector3(cx-HumBossArrival.TearX,floorY+HumBossArrival.TearY,wz);
             if(a<b.Bulge-.1f)return;
@@ -324,12 +324,14 @@ namespace ChipArena.UnityConversion
             float scratch=reduced?0:.012f*(float)Math.Sin(a*31)*(1-through);
             // Four finger tips under the paper, spreading, before they're through (across the wall in its own axis: -x here).
             var f0=new Vector3(-.5f,-.05f+.02f*(float)Math.Sin(a*5),.1f*press*(1-through));var f1=new Vector3(-.17f,.05f,.13f*press*(1-through));var f2=new Vector3(.15f,.06f+.01f*(float)Math.Sin(a*7),.12f*press*(1-through));var f3=new Vector3(.47f,-.04f,.09f*press*(1-through));
-            float holeR=.2f*through+.3f*open;float bulge=.1f*press*(1-.6f*open)+scratch;
+            // It stays torn a while into the fight, then the paper's whole again, as if it had never been (the level doesn't keep what happens to it).
+            float heal=1-BossMath.Smoother((a-b.Hold-4)/2.5f);
+            float holeR=(.2f*through+.3f*open)*heal;float bulge=(.1f*press*(1-.6f*open)+scratch)*heal;
             WallPatch(c,0,-1,2.1f,holeR,bulge,.03f*through+.03f*open,9090,t,f0,f1,f2,f3,1.45f,open);Tears++;
             // Plaster dust out of the tear: flakes, falling.
             if(a>=b.Fingers)Vfx.RubbleBurst(t,new Vector3(c.X,c.Y+.2f,wz-.2f),new Vector3(0,-.2f,-1),.8f,1.1f,10,2.3f,v.spawned+b.Fingers+.1f,.014f,new Vector3(.36f,.35f,.2f),vseed,801,0,floorY);
             // It walks out through the wall without opening it: the paper reaches for it at each limb crossing the wall. A larger stretch round the torso.
-            if(a>=b.WalkOut&&a<b.WalkOut+3.2f)
+            if(rig.Arriving&&a>=b.WalkOut&&a<b.WalkOut+3.2f)
             {
                 var ch=rig.Shown.Position[NativeHumBossLook.Spine1];float k=wz-ch.Z;float near=(float)Math.Exp(-k*k/.6f);
                 if(near>.02f){WallPatch(new Vector3(ch.X,floorY+2.05f,wz),0,-1,2.7f,.5f*near,.26f*near,.04f,9091,t,default,default,default,default,1.9f,near);Tears++;}
@@ -337,17 +339,17 @@ namespace ChipArena.UnityConversion
                 if(near>.2f&&a<b.WalkOut+2.5f)Vfx.SmokeBurst(t,new Vector3(ch.X,floorY+2.4f,wz-.7f),new Vector3(0,-.25f,-.4f),.9f,.02f,8,2.4f,.14f,.7f,DustC,.16f,v.spawned+b.WalkOut+.4f,1.5f,vseed,810,0,floorY);
             }
             // Through the ceiling as it straightens: dust and tiles around it.
-            float st0=a-b.Straighten-.25f;if(st0>=0&&st0<2){var h=rig.Shown.Position[NativeHumBossLook.Chest];CeilingFall(h,v.spawned+b.Straighten+.25f,t,900);}
+            float st0=a-b.Straighten-.25f;if(st0>=0&&st0<5){var h=new Vector3(cx,floorY,Room.MaxZ-NativeHumArena.IntroWallBehind);CeilingFall(h,v.spawned+b.Straighten+.25f,t,900,1-BossMath.Smoother((st0-2.5f)/2.5f));}
             if(a>=b.Hold-.25f){}
         }
         // Tiles, dust and rail out of the ceiling grid round a point.
-        private void CeilingFall(Vector3 at,float when,float t,int key)
+        private void CeilingFall(Vector3 at,float when,float t,int key,float hole=1)
         {
             var top=new Vector3(at.X,floorY+BackroomsLayout.Height-.05f,at.Z);
             Vfx.RubbleBurst(t,top,new Vector3(0,-1,0),1.0f,1.8f,16,2.6f,when,.14f,TileC,vseed,key,0,floorY);
             Vfx.SmokeBurst(t,top,new Vector3(0,-1.2f,0),1.8f,.05f,16,2.4f,.3f,1.5f,DustC,.42f,when,.3f,vseed,key+1,0,floorY);
             Vfx.SparkBurst(t,top,new Vector3(0,-1,0),.9f,3.2f,14,.8f,when,.1f,vseed,key+2,.9f,.012f,.9f,true,floorY);
-            CeilingPatch(top,2.4f,1.25f,0,0,key+3,t);Tears++;
+            CeilingPatch(top,2.4f,1.25f*hole,0,0,key+3,t);Tears++;
         }
         // ---------------- Wall Hand: the tear and the arm in the wall by the pilot ----------------
         private void WallHand(HumBossRig rig,in HumBossView v,float t)
