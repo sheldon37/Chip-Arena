@@ -4,6 +4,17 @@
 - Projectile-tagged Shot/Hit/Headshot/Impact/Ricochet/Split bypass the 32-effect quota and displace ordinary transient effects first at capacity. All hard limits retained. Exact ordering, packet trimming and Claude adoption contract in PROJECTILE-REWORK.md; Bomb timestamp semantics in BOMBADIER.md.
 - Added burst saturation, endpoint ownership/legacy/serialization, sample timestamp/deep-copy/rejection checks; expanded Unity native gates for real codec, static contacts, ricochet, split, and first-round identity. Validation and delivery receipts in task PR. Windows/PhysX gameplay acceptance is not established by managed/semantic checks.
 
+## 2026-11-05 — Claude: runners mostly on sprint-2, chase-2's head lowered
+
+- **Owner:** "Go with your suggestion, B and C. I like B mostly", and "try lower" for chase-2's raised head.
+- **Branch/base:** `claude/zombie-runner-head`, base shared `8459650b`. Presentation only.
+- **Runner:** its walk and run sets are sprint-2, sprint-2, sprint-3: about two in three on B. A kind whose walk and run are one set now keeps one take for both (`NativeZombieMotion.Run`), because a runner walking on one sprint and running on the other swung its arms up to .33 rad in a frame through the blend (`--zombie-loco` caught it on the new picks; the old sets allowed it too).
+- **Head:** `NativeZombieMotion.HeadDown`, .72 rad on chase-2 alone, shared between neck and head, by how much the body is walking on that take and not through a blow. It sits 45 degrees above the horizon on the model as captured, now about 4 like shamble-1. The comparison's left side, and Posture off, still show the capture. Its walkers are the shambler, the brute and the spitter, and the bloater's run.
+- **Checks:** `--zombie-all` passes. Unity Editor, DEV comparison, shambler on chase-2 at 1.5 m/s, side view: the head looks ahead, the capture beside it looks at the sky. The runner's sprints were seen in the earlier A to D comparison; this pick was not re-captured. `Tests/station-enemies-baseline.txt`: kind1 takes and motion, kind3 motion rewritten. "The feet stay under the body" allows .2 legs past the take, was .18: the check's add changed with the set and landed 1 mm over. Full suite before the merge, in the release line below if it landed.
+- **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
+- **Not verified:** a Windows build; crowds; two clients. The pack's `Zombie_27` extract was not found on this PC or by the owner, so turn clips and closer-speed takes remain untried.
+- **Next:** the owner plays it. Raise or lower `HeadLowered` by eye if needed.
+
 ## 2026-11-04 — Claude: zombies on the pack's own motion
 
 - **Owner:** "I want the original Zombie PRO animations to look as close to their intended appearance as realistically possible. If our procedural animation system is responsible for making those animations worse, I would rather simplify that system". Not to be pushed until the comparisons and regression checks were done, then prepared for review; the owner then asked for it on the test channel.
