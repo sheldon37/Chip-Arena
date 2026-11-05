@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: six-sound boss listening sample
+
+- Owner approved six samples first; the full 121-file batch awaits listening acceptance. Branch `codex/boss-sound-sample`, shared base `55b45d9f`.
+- Queued immutable `boss-sample-20261105`: variant 1 of Hum tube strike, tear, scratch and Deep End break, drip, iris. Exact manifest SHA-256 pinned; caps six requests / 11 generated seconds. Existing generator/importer and local builder limits apply; completed takes are cached.
+- Validation: ran the real sound_queue.plan against exact repository manifest bytes; one job, six files, 11 seconds, hash and selection checks passed. No local API calls. Windows credentials, generation, import, listening quality and builder publication remain unverified until the configured builder runs. Originals: `%LOCALAPPDATA%\ChipArena\SoundQueue\originals\boss-sample-20261105`; status: parent folder `Latest-Sound-Status.json`.
+- Queue/docs only; no gameplay, presentation implementation, live or Site changes. Merge and sync to existing test builder authorized. Keep this job after completion; select remaining takes separately after owner acceptance to avoid paying for the six samples again.
+
 ## 2026-11-05 — Astra: THE HUM and THE DEEP END authority binding
 
 - Branch `codex/backrooms-boss-rules`, base `7d966991` on shared. Implements section 8 of `EXPEDITION-BOSS-BACKROOMS.md`; both existing songs retained, including the 9.0678 s hold. No model, motion, effects, lighting, HUD or audio edits. The two presentation edits only replace the None accessors with the real views.
