@@ -38,6 +38,7 @@
 
 2026-11-03 Claude: weapon techniques, a third ability on key 1 for the twelve standard weapons: design, simulation contract and presentation (`claude/weapon-techniques`; docs/WEAPON-TECHNIQUES.md). Shows only in the Dev Sandbox's Preview Techniques until Astra's rules exist. Next: Astra's simulation.
 
+2026-11-05 Claude: the big update designed and staged (`docs/WEAPON-TECHNIQUES.md` third set, `docs/CHIP-EXPANSION.md`): 36 techniques, 48 ability chips, 50 wild chips. Rules next from Astra; nothing can be drafted or slotted until then.
 2026-11-04 Claude: zombies on the pack's own motion (`claude/zombie-source-motion`, merged into shared and the builder; docs/ZOMBIE-LOCOMOTION.md, "The takes as captured"): every loop take on the model's legs plays its own feet, hips, trunk and arms, and DEV panel, Previews, Zombie animation compare shows the take beside the gait.
 
 2026-11-03 Claude: the zombie run is the pack's own stride, no more lunges: the clean sprints at their own pace, the feet landing under the body on the take's own path, rolling onto the ball (`claude/zombie-run-pace`; docs/ZOMBIE-MODELS.md 4m)

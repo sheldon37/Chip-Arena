@@ -98,6 +98,106 @@ Rules on `codex/more-technique-rules`, based on shared `6bfd311f`, with `claude/
 
 Native builder fixtures cover every new technique, per-slot routing, refusal, refund, movement and damage/counters; codec fixtures cover Path and isolated copies. They are compiled here, not executed in Unity/PhysX. Managed/account/source and compilation receipts are recorded in the task PR and DEV_LOG.
 
+## The third set (owner 2026-11-04)
+
+"Lets give essentially each weapon (non-dev) 3 more new abilities. Of course, same concept as we did for others (Balanced, fun, great animation and effects)." Twelve weapons, thirty-six techniques; the DEV kits, the Bombadier included, get none. The rules of the set are the same: a trade for a slot, utility first, a visible counter, at most 22 damage, 9 to 20 s. Each does something its weapon cannot already do, and the rifle's sit on E as its others do.
+
+**Status:** design and rows by Claude (`Core/NativeTechniquesThird.cs`, generated with this table); rules are Astra's, presentation Claude's. `NativeTechniques.Third` is apart from `All` until the rules are in; `Of` and `Find` read both, and the Locker offers one only once its content row is live, so none reaches a player before it works.
+
+| Weapon | Technique (`id`) | What it does | Damage | Cd / cost | The counter |
+| --- | --- | --- | --- | --- | --- |
+| Sword | Disarm (`disarm`) | Lunge 2.2 m in .22 s with a flick. The first enemy in a 1.4 m capsule takes the damage and cannot use Q or E for 2.5 s (a press is refused, as a stun refuses it). A miss leaves .5 s of recovery | 8 | 11 s / 18 st | Short reach, a roll dodges it; a miss leaves you open |
+| Sword | Iaido (`iaido`) | Press to sheathe: up to 1.5 s, walking x.5, no attack or block. Press again (or at 1.5 s) to draw: you cross 5 m in .12 s, and everyone on the 1.2 m wide line takes 8 to 22 by how long you held | 8 to 22 | 13 s / 24 st | The stance and its growing glint are plain to see: step off the line. Cover stops the dash |
+| Sword | Challenge (`challenge`) | Pick the enemy nearest your aim within 14 m in sight. For 6 s you and they deal +20% to each other, and you move x1.15 toward them. Two seconds without sight of them ends it. Bosses cannot be challenged | 0 | 16 s / 15 st | It cuts both ways: hit back, or break line of sight |
+| Daggers | Mirror Double (`mirror-double`) | You are unseen for 1 s (still hittable, nameplate hidden). A double runs along your look at run speed for 2.5 s, or until one hit or a wall pops it. Bots go for it first. It cannot attack | 0 | 16 s / 25 st | It never attacks or turns; you shimmer while unseen, and splash finds you |
+| Daggers | Envenom (`envenom`) | A .4 s coat. The next 3 hits within 6 s each poison for 8 over 4 s (refreshing, not stacking) and slow x.85 for 2 s | 8 poison a hit | 12 s / 15 st | The green drip warns of it: keep away until it runs out |
+| Daggers | Chain Hook (`chain-hook`) | A hook at 40 m/s, up to 12 m. You stand still while it flies. The first enemy takes the damage and is hauled to 2 m in front of you over .35 s. A boss or a Hulk hauls you to it instead. Cover stops it | 6 | 13 s / 22 st | A straight line: a roll dodges it, and a miss leaves you standing |
+| Shield | War Cry (`war-cry`) | A .3 s bang. Enemies within 8 m in sight deal -25% to anyone but you for 4 s, and you take -15% for 4 s. Bots turn on you | 0 | 15 s / 20 st | Shoot the one shouting, which is the point, or get out of the 8 m before it lands |
+| Shield | Ground Slam (`ground-slam`) | A leap 3 m up, at most 5 m along your aim, .5 s in the air, drawing its landing circle. A 4 m ring on landing: damage and .4 s knocked up. No block in the air | 12 | 12 s / 22 st | The circle shows where: roll out, or jump |
+| Shield | Lodestone (`lodestone`) | A 2.5 s stance, walking x.6, no block. Enemy shots within 7 m in front bend to the shield and stick, at most 8. A recast or the end releases them in a 6 m cone: 3 damage each, at most 24 | 3 a stored shot | 14 s / 25 st | Stop shooting, or come round behind it; melee goes straight through |
+| Greatsword | Sunder (`sunder`) | A .55 s overhead, a 3 m cone. Everyone hit takes the damage, and +20% from everyone for 4 s, shown as cracks of light | 14 | 12 s / 24 st | Slow and plain: a roll is enough |
+| Greatsword | Reaping Sweep (`reaping-sweep`) | A .25 s wind-up, then a 300 degree sweep at shin height. Enemies within 4 m on the floor take the damage, are dragged to 1.6 m and tripped for .5 s. Anyone in the air is missed | 10 | 13 s / 24 st | Jump over it |
+| Greatsword | Blade Drag (`blade-drag`) | Up to 2 s at x1.2 speed, turning at most 90 degrees a second, no block. A recast or the end rips up a 2.6 m cone: 8 damage plus 6 a second dragged, at most 20, launching 5 m | 8 to 20 | 13 s / 22 st | Loud and bright, and it turns badly: sidestep |
+| Pistol | Flash Round (`flash-round`) | It bursts on first contact or at 30 m. Within 6 m in sight, anyone facing it (within 70 degrees of their view) is whited out for .9 s; bots and adds lose their target for 1.2 s | 0 | 12 s / none | Look away. It blinds you too |
+| Pistol | Gun Spin (`gun-spin`) | A .45 s twirl with no firing. Then the magazine is full and you fire +25% faster for 4 s | 0 | 12 s / none | You cannot shoot through the twirl: that is your moment |
+| Pistol | Slide Shot (`slide-shot`) | 6 m along your movement (or look) in .55 s at crouch height, firing freely, with spread x.5. .2 s to rise. A wall stops it | 0 | 9 s / none | A straight line with no dodge at its end |
+| Machine gun | Bipod (`bipod`) | A .5 s set. For up to 5 s you cannot move, with spread x.3, +30% fire rate and no rounds used. A recast packs up in .3 s | 0 | 15 s / none | You stand still: flank it, or use anything with splash |
+| Machine gun | Ammo Crate (`ammo-crate`) | A crate at your feet: 8 s, 40 HP. You and each ally may take from it once: an instant reload and +20% attack speed for 5 s | 0 | 20 s / none | Shoot it: enemies can see it through nothing, but it is big and it stays put |
+| Machine gun | Flak Burst (`flak-burst`) | It bursts at the aimed distance, at most 40 m: a 5 m cloud for 3 s. Enemy shots entering it are destroyed. Enemies in it take 2 a second and move x.9 | 2 a second | 14 s / none | Walk round it; melee ignores it |
+| Rifle | Breacher Round (`breacher-round`) | A 1 s charge at walk x.4, with a laser everyone can see. The round goes through enemies and up to 1.2 m of walls in total, up to 80 m | 22 | 14 s / none | The laser tells you where: step aside |
+| Rifle | Ghillie (`ghillie`) | A .6 s settle. While you stay under .5 m/s, for at most 8 s, you are all but invisible beyond 6 m, nameplate hidden. Firing or taking damage ends it; that first shot deals +20% | 0 | 16 s / none | A shimmer shows up close, and splash finds you |
+| Rifle | Bolas Round (`bolas-round`) | 45 m/s, up to 40 m. An enemy hit takes the damage and is rooted for 1.2 s: they can still aim and shoot. Bosses are slowed x.6 instead | 4 | 12 s / none | Slow and spinning: a roll dodges it, and a Block breaks it |
+| Bow | Bramble Arrow (`bramble-arrow`) | On first contact a 5 m wide, 1 m tall hedge grows across the arrow's line for 5 s. Enemies in it move x.6 and take 3 a second | 3 a second | 13 s / none | Go round, or jump it |
+| Bow | Vault Shot (`vault-shot`) | A 5 m back flip in .45 s. At its top, one arrow along your aim, no draw | 14 | 10 s / none | The arc is predictable, and you land where it ends |
+| Bow | Tether Arrow (`tether-arrow`) | An arrow; the enemy hit takes the damage and is tied to where they stood: for 3 s they cannot go past 5 m and are pulled back. A dodge roll snaps it for 6 more. Bosses are immune | 5, then 6 if snapped | 14 s / none | A roll snaps it; the line shows exactly where they can go |
+| Fire | Flame Cloak (`flame-cloak`) | For 4 s, shots on you deal x.75, and a melee attacker takes 6 and burns for 5 a second for 2 s | 6 + burn | 16 s / 26 mana | Keep your distance and wait it out |
+| Fire | Dragon Breath (`dragon-breath`) | A .25 s inhale, then 1.6 s of a 7 m, 30 degree cone: 10 a second and burn, walking x.5 and turning at most 120 degrees a second. A recast stops it | up to 16 + burn | 13 s / 24 mana | Step out and flank it |
+| Fire | Combust (`combust`) | A .2 s snap. Every enemy burning within 14 m in sight loses the burn: its remaining damage at once plus 8 in 2 m, at most 22 each. Refused when no one is burning | up to 22 | 9 s / 16 mana | Water and time put a burn out: no burn, no blast |
+| Water | Bubble Trap (`bubble-trap`) | 18 m/s, up to 20 m. The enemy hit floats 1 m up for 1.4 s, unable to act. Damage on them is halved and pops it. Bosses are slowed x.6 instead | 0 | 14 s / 24 mana | Slow: a roll dodges it. Anyone hitting the bubble frees them |
+| Water | Flash Freeze (`flash-freeze`) | A 6 m sheet for 4 s. Enemies on it move x.85 and slide (a quarter of their grip); you move x1.2 | 0 | 14 s / 22 mana | Jump off it, or stay away: it does not follow you |
+| Water | Hydro Jet (`hydro-jet`) | For up to 1.5 s, 9 m/s opposite your look (look down to rise); a 6 m stream pushes enemies 6 m/s. No damage, no attacks. A recast or a jump lets go | 0 | 12 s / 20 mana | You fly straight and cannot attack |
+| Lightning | Magnetize (`magnetize`) | The two enemies nearest your aim within 16 m in sight. After .5 s they pull together for 1 s; on touching, 10 each and a .4 s stun. One alone is pulled to the point you aimed at. Cover stops the pull; bosses are immune | 10 each | 13 s / 24 mana | Roll out of the pull, or put a wall between you |
+| Lightning | Thunderclap (`thunderclap`) | A .3 s clap. Within 5 m in sight: 10 damage, a .5 s stun, and any channel ends | 10 | 12 s / 26 mana | The raised hands telegraph it: back off |
+| Lightning | Overload (`overload`) | For 4 s, +25% attack speed and +15% speed, crackling for all to see. It ends in 8 damage to you (never lethal). A recast ends it early; under 1 s, no shock | 8 to you | 14 s / 18 mana | Kite it: it runs out and hurts them |
+| Darkness | Soul Siphon (`soul-siphon`) | For up to 2 s on the enemy nearest your aim within 10 m in sight: 8 a second, healing you the same, walking x.6. It breaks at 12 m or out of sight. A recast stops it | up to 16 | 13 s / 22 mana | Run, or get behind cover |
+| Darkness | Dread (`dread`) | A .35 s wind-up, then a 6 m, 90 degree cone. Enemies hit stumble away from you for .9 s, unable to attack or steer. Bosses are slowed x.6 instead | 0 | 15 s / 26 mana | The wind-up is your warning: roll, or come from the side |
+| Darkness | Shadow Puppet (`shadow-puppet`) | A puppet where you stand, for 4 s, 30 HP. It copies your left-click toward your aim from where it stands at 40% damage, triggering no chips. Bots may target it | 40% of a shot | 16 s / 28 mana | It stands still and dies quickly |
+
+### Rules contract for the third set (Astra)
+
+Same record and same pattern as the second set: `Core/NativeTechnique.cs`, content rows by id with `slot:"technique"`, the slot's own input and deadline, one active record per actor, recasts through the slot holding it, bots keep their defaults. Move `Third` into `All` when your rules are in, and tell me.
+
+**Fields.** All times on the presentation clock, as before. Unlisted fields are unused. New phases are already in `Valid()`.
+
+| Kind | Phases | Fields | Triggered moment |
+| --- | --- | --- | --- |
+| `disarm` | lunge, flick, recovery | `From` the start; `Point` the contact; `Dir` the lunge; `Target` who | `HitAt`: it caught someone; `Until` the disarm's end, or `Release` + .5 on a miss |
+| `iaido` | sheathe, draw, recovery | `From` the start; `To` the end; `Dir` the line; `Arm` the charge 0 to 1, set at the draw | `RecastAt`: the draw; `HitAt`: the first cut; `Until` the draw + .3 |
+| `challenge` | point, duel | `Target` who; `Until` the end, moved up if it breaks | `NoTarget` refusal when no one is in reach |
+| `mirror-double` | cast, run, pop | `From` the start; `To` the double now; `Dir` its heading; `Arm` when you reappear | `HitAt`: it popped, `Until` .3 s later |
+| `envenom` | coat, coated | `Arm` the hits left, 3 to 0; `Until` the end | `HitAt`: the last hit; `To` where |
+| `chain-hook` | throw, flight, yank | `From` the hand; `Point` the hook now; `To` where it pulls to; `Target` who; `Arm` when it turned back | `HitAt`: it caught; `Until` the yank's end |
+| `war-cry` | bang, rally | `Point` the centre; `Until` the end | Each enemy carries a mark (below) |
+| `ground-slam` | leap, slam | `From` the start; `Point` the landing; `Arm` the landing's time | `HitAt`: the landing |
+| `lodestone` | raise, draw, release | `Dir` the shield; `Arm` shots held; `To` the last caught | `HitAt`: the last caught; `RecastAt`: the release, `Until` .3 s later |
+| `sunder` | raise, smash | `Point` the blade's landing; `Dir` the facing | `HitAt`: it struck. Each victim carries a mark |
+| `reaping-sweep` | wind, sweep | `Point` the centre on the floor; `Dir` the sweep's start | `HitAt`: it struck |
+| `blade-drag` | drag, rise, recovery | `Path` a floor point every `PathStep` from `At`; `Arm` the charge 0 to 1, set at the rise; `Dir` the heading now | `RecastAt`: the rise; `HitAt`: it struck |
+| `flash-round` | shot, flash | `From` the hand; `Point` the burst; `Arm` the burst's time | Each victim carries a mark |
+| `gun-spin` | spin, hot | `Arm` the twirl's end; `Until` the end |  |
+| `slide-shot` | slide, rise | `From` the start; `To` the end; `Dir` the slide | `Until` the slide's end |
+| `bipod` | set, planted, packup | `Point` the feet; `Dir` the gun's aim, kept current | `RecastAt`: the pack-up, `Until` .3 s later |
+| `ammo-crate` | drop, open | `Point` the crate; `Arm` its health 1 to 0; `To` the last to take from it | `HitAt`: the last pick-up |
+| `flak-burst` | fire, cloud | `From` the hand; `Point` the cloud; `Arm` the burst's time; `To` the last shot shredded | `HitAt`: the last shot shredded |
+| `breacher-round` | charge, fire | `From` the muzzle; `To` the round's end; `Dir` the line; `Path` where it entered and left walls | `HitAt`: the first enemy |
+| `ghillie` | settle, hidden | `Point` where; `Arm` when fully faded; `Until` the end, moved up when broken |  |
+| `bolas-round` | fire, flight, bound | `From` the muzzle; `Point` where it ended; `Target` who | `HitAt`: it hit; `Until` the root's end |
+| `bramble-arrow` | draw, flight, thorns | `From` the arrow; `Point` the hedge's middle on the floor; `Dir` its line; `Arm` when it landed |  |
+| `vault-shot` | vault, shot | `From` the start; `To` the landing; `Arm` the release; `Point` where the arrow ended | `HitAt`: it hit |
+| `tether-arrow` | draw, flight, tether | `From` the arrow; `Point` the anchor; `Target` who | `HitAt`: it hit; `RecastAt`: it snapped; `Until` the end |
+| `flame-cloak` | ignite, cloak | `Arm` the ignition's end; `To` the last contact | `HitAt`: the last contact |
+| `dragon-breath` | inhale, breath | `Dir` the breath, kept current; `Arm` the breath's start | `RecastAt`: stopped early |
+| `combust` | snap, blow | `Path` the blasts, at most 6; `Arm` when they go off | `NoTarget` refusal when no one burns |
+| `bubble-trap` | cast, flight, bubble, pop | `From` the hand; `Point` the orb; `Target` who | `HitAt`: it caught; `RecastAt`: it popped; `Until` the end |
+| `flash-freeze` | stamp, ice | `Point` the centre on the floor |  |
+| `hydro-jet` | charge, jet | `Dir` the stream, kept current | `RecastAt`: let go |
+| `magnetize` | cast, pull, clash | `Point` the meeting place; `Target` the first; `Path` where each one is now; `Arm` when the pull starts | `HitAt`: the clash |
+| `thunderclap` | raise, clap | `Point` the centre; `Arm` the clap's time | `HitAt`: the clap |
+| `overload` | surge, live, shock | `Arm` the surge's end | `RecastAt`: ended early; `HitAt`: the shock |
+| `soul-siphon` | reach, drain | `Target` who; `To` the beam's end now | `RecastAt`: stopped; `NoTarget` refusal |
+| `dread` | gather, scream | `Point` you; `Dir` the cone | `HitAt`: the scream. Each victim carries a mark |
+| `shadow-puppet` | cast, puppet, pop | `Point` where; `Dir` its aim, kept current; `Arm` its health 1 to 0 | `HitAt`: its last shot, `To` the shot's end |
+
+**New: marks on the victim.** Several of these leave something on someone else, sometimes on many at once, and one `Target` cannot say who. Please add a small replicated list on the actor: `NativeTechniqueMark{string Kind;int By;float At,Until;}`, at most 6, the oldest replaced, in snapshots, late join and the killcam, checked by `Valid()`. `Kind` is the technique's or chip's id. Set one for: `disarm`, `challenge` (on both duellists), `war-cry`, `sunder`, `flash-round` (only on those it dazzled), `bolas-round`, `tether-arrow`, `bubble-trap`, `magnetize`, `dread`, `reaping-sweep` (the trip), and the chips listed in docs/CHIP-EXPANSION.md. The presentation draws them and the whiteout from the list and adds no rule. Tell me the accessor's name.
+
+**New refusals.** `TechniqueRefusal` also answers `NativeTechniques.NoTarget` for Challenge, Combust and Soul Siphon, and a pilot under `disarm` or `wild-hush` is refused Q and E as a stun refuses them, answering `NativeTechniques.Disarmed` so the card can say so. The constants and the card lines are in.
+
+**Movement** belongs to the rules, as before: Disarm's lunge, Iaido's dash, Chain Hook's haul, Ground Slam's leap, Blade Drag's run, Slide Shot, Vault Shot, Hydro Jet, Reaping Sweep's drag, Magnetize's pull, Dread's stumble, the bubble's float and Tether's pull. Nothing in the presentation moves a pilot.
+
+**Choices left to you.** Exact capsule sizes and the shove strengths; whether a stun, knockdown or roll cancels each channel (the default is that they do, as with Q and E). If a number here does not work in play, change it and note it: this table is a proposal, your numbers win.
+
+**Doubles and puppets.** Mirror Double, Shadow Puppet and the Evil Twin chip are minions, by the path Toy Soldier uses, so bots can see them. Ammo Crate is a thing with health, as Sentry Drop is.
+
 ## Simulation contract (for Astra)
 
 Presentation reads one authority-owned record per actor, `NativeTechnique` (`Core/NativeTechnique.cs`, already in the tree). Replicate
