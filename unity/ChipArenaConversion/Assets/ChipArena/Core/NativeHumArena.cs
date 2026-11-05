@@ -142,6 +142,17 @@ namespace ChipArena.UnityConversion
                 float len=Math.Max(.5f,d.Length());float pushed=Math.Min(Math.Max(0,1-3.6f/len),t+.45f/len);float y=eye.Y;eye=eye+d*pushed;eye.Y=y;
             }
         }
+        /// <summary>How far a patch at `c` on a partition may run each way along `a` before the partition ends (`minA`, `maxA` narrowed; the room's own walls leave them alone).</summary>
+        public static void WallSpan(HumRoom room,int mask,Vector3 c,Vector3 a,ref float minA,ref float maxA)
+        {
+            float half=PartitionCells*BackroomsLayout.Cell*.5f;
+            for(int s=0;s<Partitions;s++)
+            {
+                room.Partition(s,PlaceOf(s,mask),out var p,out bool alongX);float off=alongX?Math.Abs(c.Z-p.Z):Math.Abs(c.X-p.X),run=alongX?c.X-p.X:c.Z-p.Z,axis=alongX?a.X:a.Z;
+                if(off>BackroomsLayout.Thickness+.1f||Math.Abs(run)>half+.01f||Math.Abs(axis)<.5f)continue;
+                float lo=(-half-run)*Math.Sign(axis),hi=(half-run)*Math.Sign(axis);minA=Math.Max(minA,Math.Min(lo,hi));maxA=Math.Min(maxA,Math.Max(lo,hi));return;
+            }
+        }
         /// <summary>A lane's fixtures: row r of an axis: axis 0 is a row of fixtures along x at the same z, axis 1 along z at the same x.</summary>
         public static int RowOf(int fixture,int axis)=>axis==0?fixture/FixtureSide:fixture%FixtureSide;
         /// <summary>The world line of row `row` on an axis (z for axis 0, x for axis 1).</summary>

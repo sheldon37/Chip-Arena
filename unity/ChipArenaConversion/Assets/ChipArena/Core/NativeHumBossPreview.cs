@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         private struct Act{public string Id;public float At,Hit,Dur;public int Target;public float LaneX0,LaneZ0,LaneX1,LaneZ1;public int RowAxis,RowMask;}
         private struct Key{public float At,X,Z,Yaw;public byte Kind;}
         /// <summary>How the camera frames this stretch: yaw off the boss's facing, distance, eye height, look height, fov, and whether it also pans round slowly.</summary>
-        public struct Frame{public float At,Yaw,Dist,EyeY,LookY,Fov,Orbit;public bool Focused;public Vector2 Focus;}
+        public struct Frame{public float At,Yaw,Dist,EyeY,LookY,Fov,Orbit;public bool Focused,Exact;public Vector2 Focus;}
         private const byte Smooth=0,Throw=1;
         private static readonly Act[] acts;private static readonly Key[] keys;private static readonly Frame[] frames;
         public static float IntroEnd,ReachAt,StoopAt,RowAt,LungeAt,TearAt,ShiftAt,Phase2At,PulseAt,CutAt,HandAt,VoicesAt,ChokeAt,ClipLungeAt,ClipAt,Phase3At,TurnAt,Row2At,Lunge3At,Shift3At,FloorAt,DeathAt,Loop;
@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
         {
             NativeHumArena.Spawn(Room,out Spawn,out SpawnYaw);var C=Room.Centre;
             // The party stands south of it, spread.
-            Pilots[0]=new Vector2(C.X+1.5f,C.Z-9);Pilots[1]=new Vector2(C.X-7,C.Z-6);Pilots[2]=new Vector2(C.X+8,C.Z-3);Pilots[3]=new Vector2(C.X-2,C.Z-13);
+            Pilots[0]=new Vector2(C.X+1.5f,C.Z-9);Pilots[1]=new Vector2(C.X-7,C.Z-6);Pilots[2]=new Vector2(C.X+8,C.Z-3);Pilots[3]=new Vector2(C.X-2,C.Z-9.5f);
             var a=new System.Collections.Generic.List<Act>();var k=new System.Collections.Generic.List<Key>();var fr=new System.Collections.Generic.List<Frame>();
             float t=SpawnAt+HumBossBeats.Fallback.Hold;IntroEnd=t;
             void K(float at,float x,float z,float yaw,byte kind=Smooth)=>k.Add(new Key{At=at,X=x,Z=z,Yaw=yaw,Kind=kind});
@@ -52,12 +52,13 @@ namespace ChipArena.UnityConversion
             // Noclip: it backs to the side wall, its hand into the paper; then down a lane across the room, through a partition.
             float laneZ=C.Z-5.3f,lx0=Room.MaxX-3.5f,lx1=lx0-26;
             K(t+.2f,x0+1,z0-10.2f,y0);K(t+3.2f,lx0,laneZ,-90);K(t+3.8f,lx0,laneZ,-90);LungeAt=t+3.8f;
-            F(t+.3f,110,10,1.6f,2.2f,58,4);FP(LungeAt-.2f,-90,11.5f,1.5f,1.75f,70,new Vector2((lx0+lx1)*.5f,laneZ),0);
-            var lm=NativeHumBoss.Move("lunge");K(LungeAt+lm.Wind,lx0,laneZ,-90);K(LungeAt+lm.Wind+lm.Strike+lm.Follow,lx1,laneZ,-90,Throw);t=A("lunge",LungeAt,1,lx0,laneZ,lx1,laneZ);
+            F(t+.3f,110,10,1.6f,2.2f,58,4);var lm=NativeHumBoss.Move("lunge");var laneFar=new Vector2(lx0-6,laneZ);
+            // Head on, from the far end of its lane: a long lens as it winds up, wider as it arrives.
+            FP(LungeAt-.2f,-3,24,1.1f,1.95f,30,laneFar,0);fr[fr.Count-1]=Ex(fr[fr.Count-1]);FP(LungeAt+lm.Wind+lm.Strike*.6f,-3,24,1.1f,1.95f,56,laneFar,0);fr[fr.Count-1]=Ex(fr[fr.Count-1]);K(LungeAt+lm.Wind,lx0,laneZ,-90);K(LungeAt+lm.Wind+lm.Strike+lm.Follow,lx1,laneZ,-90,Throw);t=A("lunge",LungeAt,1,lx0,laneZ,lx1,laneZ);
             // Peripheral Shift, then Fall Through under the camper: it stands and looks; the carpet does the rest.
             K(t+.3f,lx1,laneZ,-90);K(t+2.4f,lx1+3,laneZ+1,20);F(t,20,11,1.5f,2.1f,58,3);
             ShiftAt=t+1.1f;a.Add(new Act{Id="shift",At=ShiftAt,Hit=ShiftAt,Dur=.45f});
-            TearAt=t+2.6f;FP(TearAt-.2f,128,4.8f,2.2f,.55f,60,Pilots[3]);t=A("tear",TearAt,3);t=TearAt+4;
+            TearAt=t+2.6f;FP(TearAt-.2f,-18,5.4f,2.3f,.35f,58,Pilots[3]);t=A("tear",TearAt,3);F(TearAt+2.9f,30,10.5f,1.5f,2.3f,58,2);t=TearAt+4;
             // ---- the change into BLACKOUT ----
             K(t,lx1+3,laneZ+1,20);K(t+1.8f,C.X,C.Z+3,180);Phase2At=t+2;F(Phase2At-.4f,8,10.5f,1.4f,2.5f,62,2);t=Phase2At+NativeHumBoss.PhaseChangeSeconds;
             K(t,C.X,C.Z+3,180);
@@ -67,9 +68,9 @@ namespace ChipArena.UnityConversion
             K(t+.4f,C.X,C.Z+3,180);CutAt=t+.8f;var cm=NativeHumBoss.Move("cut");F(CutAt-.3f,140,9,1.5f,2.2f,58,0);
             K(CutAt+.4f,C.X,C.Z+3,180);K(CutAt+.42f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);K(CutAt+cm.Wind,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);t=A("cut",CutAt,0);
             // Wall Hand: the arm comes out of the wall by the pilot on the far side.
-            K(t+.3f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);K(t+1.1f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);HandAt=t+1.2f;NativeHumArena.NearestWall(Room,ShiftMask1,Pilots[2].X,Pilots[2].Y,out float hwx,out float hwz,out _,out _);FP(HandAt-.2f,137,5.2f,1.3f,1.5f,58,new Vector2(hwx,hwz));t=A("hand",HandAt,2);
+            K(t+.3f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);K(t+1.1f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);HandAt=t+1.2f;HandPoint(out float hwx,out float hwz,out _,out _);FP(HandAt-.2f,137,5.2f,1.3f,1.5f,58,new Vector2(hwx,hwz));t=A("hand",HandAt,2);
             // Familiar Voices: faces in the walls round each pilot.
-            K(t+.2f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);K(t+1.5f,C.X,C.Z-1,60);VoicesAt=t+1.6f;NativeHumArena.NearestWall(Room,ShiftMask1,Pilots[1].X,Pilots[1].Y,out float vwx,out float vwz,out _,out _);FP(VoicesAt-.2f,30,4.6f,1.5f,1.85f,58,new Vector2(vwx,vwz));t=A("voices",VoicesAt,1);
+            K(t+.2f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);K(t+1.5f,C.X,C.Z-1,60);VoicesAt=t+1.6f;VoicePoint(1,out float vwx,out float vwz,out _,out _);FP(VoicesAt-.2f,30,4.2f,1.6f,2.1f,56,new Vector2(vwx,vwz));t=A("voices",VoicesAt,1);
             // A tube charge choked: three broken in Max Hum: the stagger.
             K(t+.2f,C.X,C.Z-1,60);K(t+1.1f,C.X,C.Z-1,180);ChokeAt=t+1.2f;F(ChokeAt-.4f,160,5.8f,2.3f,3.1f,52,4);t=A("pulse",ChokeAt,0);ChokeBreak0=ChokeAt+.25f;ChokeBreak1=ChokeAt+.62f;ChokeBreak2=ChokeAt+1.05f;t=ChokeAt+3.2f;
             // A lunge baited into the east wall: stuck half inside it, glitching.
@@ -85,7 +86,7 @@ namespace ChipArena.UnityConversion
             K(t,C.X+1,C.Z-9.4f,180);K(t+2.6f,C.X-6,C.Z-11,90);Lunge3At=t+2.7f;F(t+.3f,-30,10,1.3f,2.6f,58,3);var lz=C.Z-11;
             K(Lunge3At+lm.Wind,C.X-6,lz,90);K(Lunge3At+lm.Wind+lm.Strike+lm.Follow,C.X+14,lz,90,Throw);t=A("lunge",Lunge3At,2,C.X-6,lz,C.X+14,lz);
             Shift3At=t+.2f;a.Add(new Act{Id="shift",At=Shift3At,Hit=Shift3At,Dur=.45f});
-            K(t+.3f,C.X+14,lz,90);K(t+2.4f,C.X+10,lz+4,-20);FloorAt=t+2.5f;K(FloorAt,C.X+10,lz+4,-20);var fdir=BossMath.Forward(-20*BossMath.Deg);float dx=C.X+10+fdir.X*4,dz=lz+4+fdir.Z*4;K(FloorAt+NativeHumBossMotion.TurnOver+.3f,dx,dz,-20);t=FloorAt+NativeHumBossMotion.TurnOver+.4f;F(FloorAt,-120,11,1.4f,2.4f,60,4);
+            K(t+.3f,C.X+14,lz,90);K(t+2.4f,C.X+7.2f,lz+4,-20);FloorAt=t+2.5f;K(FloorAt,C.X+7.2f,lz+4,-20);var fdir=BossMath.Forward(-20*BossMath.Deg);float dx=C.X+7.2f+fdir.X*4,dz=lz+4+fdir.Z*4;K(FloorAt+NativeHumBossMotion.TurnOver+.3f,dx,dz,-20);t=FloorAt+NativeHumBossMotion.TurnOver+.4f;F(FloorAt,-120,11,1.4f,2.4f,60,4);
             // ---- the death ----
             K(t+1.5f,dx,dz,-20);DeathAt=t+1.7f;F(DeathAt-.5f,38,8.5f,1.15f,1.9f,52,4);
             F(DeathAt+2.2f,70,7.2f,1.0f,1.15f,54,1.5f);NativeHumArena.ExitDoor(Room,out var doorAt,out _,out _);FP(DeathAt+5.6f,34,7.5f,1.45f,1.35f,56,new Vector2(doorAt.X,doorAt.Z),0);
@@ -93,7 +94,15 @@ namespace ChipArena.UnityConversion
             acts=a.ToArray();keys=k.ToArray();fr.Sort((p,q)=>p.At.CompareTo(q.At));frames=fr.ToArray();
             // The fixed tables the record points at: where Fall Through's holes stay, the voices' wall points (round the pilots), when parts broke.
             tornTable[0]=Pilots[3].X;tornTable[1]=Pilots[3].Y;tornTable[2]=Phase3At+1;tornTable[3]=C.X+7;tornTable[4]=C.Z-4;tornTable[5]=Phase3At+3;tornTable[6]=C.X-8;tornTable[7]=C.Z+6;tornTable[8]=Phase3At+6;
-            for(int i=0;i<3;i++){var p=Pilots[i];NativeHumArena.NearestWall(Room,ShiftMask1,p.X,p.Y,out float vx,out float vz,out float nx,out float nz);int o=i*6;voiceTable[o]=vx;voiceTable[o+1]=2.05f;voiceTable[o+2]=vz;voiceTable[o+3]=nx;voiceTable[o+4]=nz;voiceTable[o+5]=VoicesAt+NativeHumBoss.Move("voices").Wind+i*.2f;}
+            for(int i=0;i<3;i++){VoicePoint(i,out float vx,out float vz,out float nx,out float nz);int o=i*6;voiceTable[o]=vx;voiceTable[o+1]=2.05f;voiceTable[o+2]=vz;voiceTable[o+3]=nx;voiceTable[o+4]=nz;voiceTable[o+5]=VoicesAt+NativeHumBoss.Move("voices").Wind+i*.2f;}
+        }
+        private static Frame Ex(Frame f){f.Exact=true;return f;}
+        private static void VoicePoint(int pilot,out float x,out float z,out float nx,out float nz){var p=Pilots[pilot];NativeHumArena.NearestWall(Room,ShiftMask1,p.X,p.Y,out x,out z,out nx,out nz);Inset(ref x,ref z,nx,nz,1.05f);}
+        private static void HandPoint(out float x,out float z,out float nx,out float nz){var p=Pilots[2];NativeHumArena.NearestWall(Room,ShiftMask1,p.X,p.Y,out x,out z,out nx,out nz);Inset(ref x,ref z,nx,nz,1.3f);}
+        // Off a partition's end, so what happens there has paper round it.
+        private static void Inset(ref float x,ref float z,float nx,float nz,float inset)
+        {
+            var a=new Vector3(nz,0,-nx);float lo=-99,hi=99;NativeHumArena.WallSpan(Room,ShiftMask1,new Vector3(x,0,z),a,ref lo,ref hi);float m=lo>-inset?inset+lo:hi<inset?hi-inset:0;x+=a.X*m;z+=a.Z*m;
         }
         private static float ChokeBreak0,ChokeBreak1,ChokeBreak2,Row2Second;
         /// <summary>The record `p` seconds into the script, its times offset to `baseAt`.</summary>
@@ -133,7 +142,7 @@ namespace ChipArena.UnityConversion
             // Wall Hand: the east side, by pilot 2.
             if(p>=HandAt-.2f&&p<HandAt+4)
             {
-                var pl=Pilots[2];NativeHumArena.NearestWall(Room,ShiftMask1,pl.X,pl.Y,out float wx,out float wz,out float nx,out float nz);
+                HandPoint(out float wx,out float wz,out float nx,out float nz);
                 v.handX=wx;v.handY=1.5f;v.handZ=wz;v.handNx=nx;v.handNz=nz;v.handAt=baseAt+HandAt+NativeHumBoss.Move("hand").Wind;v.handUntil=baseAt+HandAt+NativeHumBoss.Move("hand").Wind+.25f+1.5f;
             }
             if(p>=VoicesAt&&p<VoicesAt+6){v.voices=VoicesAtBase(baseAt);v.voiceCount=3;}
@@ -182,10 +191,11 @@ namespace ChipArena.UnityConversion
             float blendFrom=b.At-1.1f;float u=b.At>a.At?BossMath.Smoother((p-blendFrom)/1.1f):0;
             float orbit=(p-a.At)*a.Orbit;float yawOff=a.Yaw+orbit+BossMath.WrapDeg(b.Yaw-(a.Yaw+orbit))*u;float dist=a.Dist+(b.Dist-a.Dist)*u,ey=a.EyeY+(b.EyeY-a.EyeY)*u,ly=a.LookY+(b.LookY-a.LookY)*u;fov=a.Fov+(b.Fov-a.Fov)*u;
             // A frame may look at a place (a tear, a hand in the wall) instead of the boss.
-            float wa=a.Focused?1:0,wb=b.Focused?1:0,wf=wa+(wb-wa)*u;var fp=a.Focused?a.Focus:b.Focus;
+            float wa=a.Focused?1:0,wb=b.Focused?1:0,wf=wa+(wb-wa)*u;var fp=a.Focused&&b.Focused?Vector2.Lerp(a.Focus,b.Focus,u):a.Focused?a.Focus:b.Focus;
             look=new Vector3(root.X*.5f+head.X*.5f,ly,root.Z*.5f+head.Z*.5f);look=Vector3.Lerp(look,new Vector3(fp.X,ly,fp.Y),wf);var c=Vector3.Lerp(new Vector3(root.X,0,root.Z),new Vector3(fp.X,0,fp.Y),wf);eye=default;bool found=false;
             // (Near the wanted place first; then a tighter clearance, a little further back or closer.)
-            for(int pass=0;pass<3&&!found;pass++)
+            bool exact=wf>.5f&&(u<.5f?a.Exact:b.Exact);
+            for(int pass=0;pass<3&&!found&&!exact;pass++)
             {
                 float clear=pass==0?2.4f:pass==1?1.3f:1;float d=pass==2?dist*.72f:dist;
                 for(int k=0;k<=12&&!found;k++)for(int sign=-1;sign<=1&&!found;sign+=2)

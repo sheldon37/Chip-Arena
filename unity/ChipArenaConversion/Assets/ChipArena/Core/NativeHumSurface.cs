@@ -46,7 +46,7 @@ namespace ChipArena.UnityConversion
         /// stands out at the centre (m; negative: pulled in), `lift` how far the torn edge curls off the surface, `fingers` up to four peaks (a, b offsets in xy and height in z) pushing out through it, min/max the surface's limits along a and b (the patch stays on it). `eye` makes the hole's depth
         /// shift with the viewer. `dark`: how far toward black the paper is near the hole (a stain, a burn).
         /// </summary>
-        public void Tear(byte surf,Vector3 centre,Vector3 n,Vector3 a,Vector3 b,float radius,float open,float bulge,float lift,int seed,Vector3 eye,float minA,float maxA,float minB,float maxB,Vector3 f0=default,Vector3 f1=default,Vector3 f2=default,Vector3 f3=default,float tint=1,float tall=1,float strips=0,float t=0,float peel=0)
+        public void Tear(byte surf,Vector3 centre,Vector3 n,Vector3 a,Vector3 b,float radius,float open,float bulge,float lift,int seed,Vector3 eye,float minA,float maxA,float minB,float maxB,Vector3 f0=default,Vector3 f1=default,Vector3 f2=default,Vector3 f3=default,float tint=1,float tall=1,float strips=0,float t=0,float peel=0,bool ridges=false,float face=0)
         {
             var m=Paper[surf];int gridV=(Rings+1)*(Sectors+1),gridI=Rings*Sectors*6;
             if(!m.Room(gridV,gridI)||!Void.Room(Sectors*5+3+StripCount*12+FlapCount*(FlapRows+1)*2,Sectors*21+StripCount*30+FlapCount*FlapRows*12)){Refused++;return;}
@@ -63,7 +63,8 @@ namespace ChipArena.UnityConversion
                     float clA=BossMath.Clamp(pa,minA,maxA),clB=BossMath.Clamp(pb,minB,maxB);
                     float k=rad/Math.Max(.01f,radius);
                     float h=bulge*(float)Math.Exp(-k*k*5.2f);
-                    h+=Peak(pa,pb,f0)+Peak(pa,pb,f1)+Peak(pa,pb,f2)+Peak(pa,pb,f3);
+                    if(ridges)h+=Ridge(pa,pb,f0)+Ridge(pa,pb,f1)+Ridge(pa,pb,f2)+Ridge(pa,pb,f3);else h+=Peak(pa,pb,f0)+Peak(pa,pb,f1)+Peak(pa,pb,f2)+Peak(pa,pb,f3);
+                    if(face>.001f)h+=face*FaceRelief(pa,pb);
                     // Wrinkles running in toward the hole where it's strained, and the torn edge lifting a little off the wall.
                     if(open>.001f){h+=.004f*(1-rn)*(float)Math.Sin(ks*1.3f+seed)*Math.Min(1,open*2);h+=flap*(1-rn)*(1-rn)*(1-rn);}
                     float rim=1-rn*rn*rn*rn;h*=Math.Max(0,rim);
@@ -158,10 +159,19 @@ namespace ChipArena.UnityConversion
         private static float Edge(float open,int seed,int s)
         {
             float ang=s*BossMath.Tau/Sectors;float e=.56f+.15f+.15f*(float)Math.Sin(ang*2+H(seed,1)*6.28f)+.06f+.06f*(float)Math.Sin(ang*5+H(seed,2)*6.28f)+.1f*H(seed+3,s/3)+.06f*H(seed+4,s);
-            for(int i=0;i<4;i++){float d=Math.Abs(s-H(seed+5,i)*Sectors);if(d>Sectors*.5f)d=Sectors-d;if(d<3.5f){float q=1-d/3.5f;e+=(.35f+.55f*H(seed+6,i))*q*q;}}
+            for(int i=0;i<4;i++){float d=Math.Abs(s-H(seed+5,i)*Sectors);if(d>Sectors*.5f)d=Sectors-d;if(d<3.5f){float q=1-d/3.5f;e+=(.22f+.4f*H(seed+6,i))*q*q;}}
             return open*e;
         }
-        private static float Peak(float pa,float pb,Vector3 f)
+        private static float Peak(float pa,float pb,Vector3 f){if(f.Z==0)return 0;float dx=pa-f.X,dy=pb-f.Y,d=(dx*dx+dy*dy)/(.085f*.085f);return f.Z*(float)Math.Exp(-d);}
+        private static float G(float x,float y,float sx,float sy)=>(float)Math.Exp(-(x*x)/(sx*sx)-(y*y)/(sy*sy));
+        // A face under the paper, its open mouth at the origin (m across and up; height for a face of 1): the head pushing out, the brow, sunken sockets, the nose, cheekbones, the chin, the mouth pulled in.
+        private static float FaceRelief(float x,float y)
+        {
+            float h=.62f*G(x,y-.12f,.2f,.3f)+.22f*G(x,y-.26f,.17f,.035f)-.24f*(G(x-.085f,y-.2f,.042f,.034f)+G(x+.085f,y-.2f,.042f,.034f))+.2f*G(x,y-.115f,.028f,.07f);
+            return h+.1f*(G(x-.12f,y-.06f,.05f,.05f)+G(x+.12f,y-.06f,.05f,.05f))+.16f*G(x,y+.2f,.075f,.05f)-.1f*G(x,y,.075f,.085f);
+        }
+        // A finger under the paper: a ridge from its knuckle (toward the palm) to its tip at (X, Y), standing Z.
+        private static float Ridge(float pa,float pb,Vector3 f)
         {
             if(f.Z==0)return 0;float kx=f.X*.42f,ky=f.Y-.26f,ex=f.X-kx,ey=f.Y-ky;float u=BossMath.Clamp01(((pa-kx)*ex+(pb-ky)*ey)/(ex*ex+ey*ey));float dx=pa-(kx+ex*u),dy=pb-(ky+ey*u),d=(dx*dx+dy*dy)/(.064f*.064f);
             return f.Z*(.6f+.4f*u)*(float)Math.Exp(-d);
