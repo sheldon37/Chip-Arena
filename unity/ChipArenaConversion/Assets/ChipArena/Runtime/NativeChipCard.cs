@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
             NativeChipArt.Body(r,cart,rare,s.Radius,cc,core/2,light,a,look.Plain);NativeChipArt.Traces(r,s.Radius,cc,core/2,rare,(siren?.14f:.1f+.025f*cart.Rank)*a,look.Plain);
             if(Cart.Sweep(t,Cart.Phase(c.id),calm,out float sweepU))NativeChipArt.Packets(r,s.Radius,cc,core/2,Color.Lerp(rare,Color.white,.35f),sweepU,a);
             // The board's circuit under the face: faint under the text, clearer between the content and the footer.
-            float fy=r.y+Mathf.Max(l.FootTop,r.height-(l.Height-l.FootTop));NativeChipArt.Board(r,s.Radius,rare,a,r.y+l.FootTop-4,fy-2);
+            float fy=r.y+Mathf.Max(l.FootTop,r.height-(l.Height-l.FootTop));NativeChipArt.Board(r,s.Radius,rare,a*.6f,r.y+l.FootTop-4,fy-2);
             // Kit sparks drifting off the long edges (2.8 s; Siren 3.4 s) in the kits' colours, and the kits' card art.
             int sparks=calm?0:Particles(tier);float period=siren?3.4f:2.8f;Color spark=tier=="bombadier"?U.Hex(0xffc24d):tier=="mishima"?U.Hex(0xff234a):tier=="ansatsuken"?U.Hex(0xff6071):siren?U.Hex(0xd9d0ff):rare,sparkGlow=tier=="bombadier"?U.Hex(0xff4a10):tier=="mishima"?U.Hex(0xf30035):tier=="ansatsuken"?U.Hex(0xff294f):siren?U.Hex(0x9b87ff):rare;
             for(int n=0;n<sparks;n++){float k=Mathf.Repeat(t/period+n*.31f/period,1),op=k<.2f?k/.2f*.9f:.9f*(1-(k-.2f)/.8f);bool even=n%2==0;float px=r.x+r.width*((n*37+11)%100)/100f+(n-6)*3*k,py=even?r.y+2+3-35*k:r.yMax-3-3+35*k;
@@ -167,7 +167,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<stats.Length;i++)
             {
                 var stl=stats[i];bool neutral=stl.tone!="good"&&stl.tone!="bad";Color sc=stl.tone=="good"?U.Hex(0x5bea86):stl.tone=="bad"?U.Hex(0xff5c69):U.Hex(0xb9bcc8);var wrapped=l.Rows[i];float tall=wrapped.Count*rh;var row=new Rect(tx0,rowY,txw,tall);
-                U.HGradient(new Rect(row.x-5,row.y+1,txw*.72f,tall-1),A(sc,neutral?.05f:.09f),Color.clear);U.Fill(new Rect(row.x-5,row.y+2.5f,2*p1,tall-4),A(sc,neutral?.5f:.9f));
+                U.HGradient(new Rect(row.x-5,row.y+1,txw*.72f,tall-1),A(sc,neutral?.05f:.09f),Color.clear);U.Fill(new Rect(row.x-6,row.y+2.5f,2*p1,tall-4),A(sc,neutral?.5f:.9f));
                 for(int k=0;k<wrapped.Count;k++)U.Text(new Rect(row.x,row.y+k*rh,txw,rh),wrapped[k],s.Stat,A(sc),TextAnchor.MiddleLeft,bold:true,glow:neutral?default:A(sc,.2f),shadow:textShade);
                 rowY+=tall+RowGap;
             }
@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
             U.Fill(new Rect(r.x+bw+1,fy,r.width-2*bw-2,p1),siren?A(U.Hex(0xb7a8ff,.2f)):A(new Color(1,1,1,.09f)));U.Fill(new Rect(r.x+bw+1,fy,Mathf.Min(28,r.width*.12f),p1),A(U.Hex(cart.Accent),.8f));fy+=6;
             var foot=new Rect(tx0,fy,txw,Mathf.Max(8,s.Foot*1.2f)+1);
             int max=Math.Min(12,Math.Max(1,c.max)),have=Math.Min(max,look.Chosen?copies+1:copies);string count=CountText(copies,c.max,look.Chosen);Color footC=siren?U.Hex(0xb9b2d6):U.Hex(0xa3acbd);
-            Color footShade=siren?A(Color.black):default;U.Text(foot,Tag(c),s.Foot,A(footC),TextAnchor.MiddleLeft,mono:true,tracking:.06f,shadow:footShade);U.Text(foot,count,s.Foot,A(footC),TextAnchor.MiddleRight,mono:true,tracking:.06f,shadow:footShade);
+            Color footShade=siren?A(Color.black):default;U.Text(foot,Tag(c),s.Foot,A(footC),TextAnchor.MiddleLeft,mono:true,tracking:.06f,shadow:footShade);if(NativeAbilityChips.Requires(c.id)==null)U.Text(foot,count,s.Foot,A(footC),TextAnchor.MiddleRight,mono:true,tracking:.06f,shadow:footShade);
             if(c.max<=6){float sw=max*7-2,sx=foot.xMax-U.Measure(count,s.Foot,false,true,.06f).x-9-sw,sy=foot.center.y-4;
                 for(int i=0;i<max;i++){var slot=new Rect(sx+i*7,sy,5,8);if(i<have){U.Fill(slot,A(rare));U.Fill(new Rect(slot.x,slot.y,slot.width,p1),A(Color.white,.4f));}else{U.Fill(slot,A(new Color(1,1,1,.1f)));U.Fill(new Rect(slot.x,slot.yMax-p1,slot.width,p1),A(new Color(1,1,1,.14f)));}
                     if(i==have&&look.Enabled&&!look.Chosen){float pulse=.5f-.5f*Mathf.Cos(t*2*Mathf.PI/1.4f);U.Fill(slot,A(rare,.55f*pulse));U.Round(slot,Color.clear,1,A(rare),1);}}}

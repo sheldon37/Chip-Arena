@@ -4,6 +4,16 @@
 - Projectile-tagged Shot/Hit/Headshot/Impact/Ricochet/Split bypass the 32-effect quota and displace ordinary transient effects first at capacity. All hard limits retained. Exact ordering, packet trimming and Claude adoption contract in PROJECTILE-REWORK.md; Bomb timestamp semantics in BOMBADIER.md.
 - Added burst saturation, endpoint ownership/legacy/serialization, sample timestamp/deep-copy/rejection checks; expanded Unity native gates for real codec, static contacts, ricochet, split, and first-round identity. Validation and delivery receipts in task PR. Windows/PhysX gameplay acceptance is not established by managed/semantic checks.
 
+## 2026-11-05 — Claude: chips say one short thing, the rows say the numbers
+
+- **Owner:** "I also want the chips to be easier to read. A lot of them are currently cluttered ... I do like green/red stat text."
+- **Branch/base:** `claude/chip-readability`, base shared `f69dcca5`. Card text and layout only: no chip's rule, stat, rarity or odds changed.
+- **Copy:** `Core/NativeChipCopy.cs` covers all 236 chips in the content, the movement and Bombadier sets, and the two new sets. At most one short line, and none where the rows say it all ("Increases attack speed." over "+15% Attack speed" is gone). Conditions and limits moved into rows. It overrides `ChipText.json` on the card only; that export, `docs/CHIP-CATALOG.md` and the Siren's reveal keep their exact words. The optional ROUNDS adaptation packs read as they did.
+- **Card:** rows 14 px, were 12.5, and they wrap to a second line instead of shrinking; the short line 13 px and brighter; the circuit under the face dimmer. An ability chip's footer says `RIPOSTE ONLY`.
+- **Checks:** full `CoreTests` and the Unity compile before the merge, in the release line below if it landed. Unity Editor, the draft at the game's camera: six and twelve offers, the longest chips and the new sets, read at 1469 by 720.
+- **Not verified:** a Windows build; ultra-wide or very small windows beyond the existing size rules; controllers' focus on the taller rows.
+- **Animation impact:** none.
+
 ## 2026-11-05 — Claude: the big update, designed and staged for the rules
 
 - **Owner:** three more abilities for each non-dev weapon; chips for a slotted ability; about 50 fun, ROUNDS-inspired chips, some very strong; chips easier to read, keeping the green and red stat text.
