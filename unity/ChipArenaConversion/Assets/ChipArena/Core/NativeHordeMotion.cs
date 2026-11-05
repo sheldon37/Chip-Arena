@@ -288,6 +288,8 @@ namespace ChipArena.UnityConversion
             float held=Math.Max(attackW,tailHeld);Busy=Math.Min(1,Math.Max(Math.Max(held,reel),Math.Max(roarW,moveW)));
             float twitch=heavy?.35f*Twitch(t*.75f):Twitch(t);float headPitch=lookPitch*.6f*alert+aHead,headYaw=lookYaw*(.55f+.35f*alert)*(1-held*.5f)+twitch*.5f,headRoll=tilt+twitch*.8f;
             RoamHead(f,moving,ref headPitch,ref headYaw,ref headRoll);
+            // (The take whose head the gait lowers, by how much it is walking on it; a blow's own head stays the blow's.)
+            headPitch+=Lerp(Lerp(NativeZombieMotion.HeadDown(walkClip),NativeZombieMotion.HeadDown(wanderClip),roamTake),NativeZombieMotion.HeadDown(runClip),run)*moving*(1-held);
             if(StagePosture){Bend(p,CapturedRig.Neck,headPitch*.45f,headYaw*.45f,headRoll*.4f);Bend(p,CapturedRig.Head,headPitch*.55f,headYaw*.55f,headRoll*.6f);LifeHead(p,f,alert);}RoamAim(p);
             // ---- reactions over the trunk (hips shove, recoil, head snap) ----
             react?.Trunk(p,f.Time,Forward,Right);

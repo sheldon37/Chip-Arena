@@ -27,7 +27,13 @@ namespace ChipArena.UnityConversion
     {
         private static int[][] walks,runs,idles,wanders;private static int[] swipeR,swipeL,lunge,smash,knock,deathBack,deathFront,deathLeft,deathRight,lands;
         public static int Wake,CrawlStand,StandCrawl,JumpStart,JumpAir,SpitRear,Roar;
-        private static float[] ground;private static bool ready;
+        private static float[] ground;private static bool ready;private static int headLow=-1;
+        /// <summary>How far (rad, forward) the gait lowers a take's head: chase-2 was captured with its head 45 degrees above the horizon on the model's
+        /// shoulders, where shamble-1 and chase-5-full hold about 4 and sprint-2 about 8 (owner 2026-11-05, "try lower"). This brings it to about shamble-1's; the other takes
+        /// stay as taken.</summary>
+        public const float HeadLowered=.72f;
+        /// <summary>The forward bend the gait adds to the head on take `clip` (rad).</summary>
+        public static float HeadDown(int clip)=>clip>=0&&clip==headLow?HeadLowered:0;
         /// <summary>Builds the tables and decodes every clip once (so no frame ever decodes one; the first gait calls it).</summary>
         public static void Warm()
         {
@@ -47,8 +53,9 @@ namespace ChipArena.UnityConversion
             // chase-2 holds its shape best at those speeds, and walk-6 well enough up to the shambler's 1.5. Seen in Unity on the comparison, chase-5-full's
             // long stride drops into the lunge the owner reported at this pace; the others have to be stretched past half as far again.
             // docs/ZOMBIE-LOCOMOTION.md has the stage measurements.)
-            walks=new[]{N("chase-2","walk-6"),N("sprint-3","sprint-2"),N("walk-6","chase-2"),N("chase-2"),new int[0],N("walk-6-full","walk-4"),N("walk-4","walk-6")};
-            runs=new[]{N("sprint-2","sprint-3"),N("sprint-3","sprint-2"),N("sprint-2"),N("sprint-2","sprint-3"),new int[0],N("chase-1","chase-2"),N("chase-5")};
+            // (The runner, owner 2026-11-05: mostly sprint-2, some sprint-3; a set names a take twice to weigh it, Pick hashes evenly over the entries.)
+            walks=new[]{N("chase-2","walk-6"),N("sprint-2","sprint-2","sprint-3"),N("walk-6","chase-2"),N("chase-2"),new int[0],N("walk-6-full","walk-4"),N("walk-4","walk-6")};
+            runs=new[]{N("sprint-2","sprint-3"),N("sprint-2","sprint-2","sprint-3"),N("sprint-2"),N("sprint-2","sprint-3"),new int[0],N("chase-1","chase-2"),N("chase-5")};
             idles=new[]{N("shamble-1","shamble-2","idle-3"),N("shamble-2","idle-3"),N("idle-3","shamble-1"),N("shamble-1","idle-3"),new int[0],N("idle-3"),N("idle-3","shamble-1")};
             // (The slow forward walk-4 is the take that plants cleanly at the wander's .4-1.1 m/s for every kind: the walk-6 and the
             // chases drag a planted ankle up to 5-7 cm there.)
@@ -57,6 +64,7 @@ namespace ChipArena.UnityConversion
             walks=NativeHordeZones.Takes(walks,z=>z.Walks);runs=NativeHordeZones.Takes(runs,z=>z.Runs);idles=NativeHordeZones.Takes(idles,z=>z.Idles);wanders=NativeHordeZones.Takes(wanders,z=>z.Wanders);
             swipeR=N("swipe-r1","swipe-r2");swipeL=N("swipe-l1","swipe-l2");lunge=N("lunge-1","lunge-2");smash=N("smash-1","smash-2");knock=N("knock-1","knock-2","knock-3","knock-4","knock-5");
             deathBack=N("death-back-1","death-back-2","death-back-3");deathFront=N("death-front-1","death-front-2","death-front-3");deathLeft=N("death-left-1");deathRight=N("death-right-1","death-right-2");
+            headLow=NativeZombieClips.Need("chase-2");
             lands=N("jump-land");Wake=NativeZombieClips.Need("wake");CrawlStand=NativeZombieClips.Need("crawl-stand");StandCrawl=NativeZombieClips.Need("stand-crawl");
             JumpStart=NativeZombieClips.Need("jump-start");JumpAir=NativeZombieClips.Need("jump-air");SpitRear=NativeZombieClips.Need("knock-1");Roar=NativeZombieClips.Need("knock-3");
             for(int i=0;i<NativeZombieClips.Count;i++)NativeZombieClips.Clip(i).Decode();
@@ -81,7 +89,9 @@ namespace ChipArena.UnityConversion
         /// <summary>One of a set by a seed's hash (stable for the add's life).</summary>
         public static int Pick(int[] set,uint seed,int salt)=>set.Length==0?-1:set[Math.Min(set.Length-1,(int)(NativeHordeKinds.Hash(seed,salt)*set.Length))];
         public static int Walk(int kind,uint seed){Warm();return Pick(walks[K(kind)],seed,100);}
-        public static int Run(int kind,uint seed){Warm();return Pick(runs[K(kind)],seed,101);}
+        // (A kind whose walk and run are one set keeps one take for both: the runner on two different sprints swung its arms up to .33 rad in a frame through the blend.)
+        public static int Run(int kind,uint seed){Warm();var r=runs[K(kind)];return Pick(r,seed,Same(walks[K(kind)],r)?100:101);}
+        private static bool Same(int[] a,int[] b){if(a.Length!=b.Length)return false;for(int i=0;i<a.Length;i++)if(a[i]!=b[i])return false;return true;}
         public static int Idle(int kind,uint seed){Warm();return Pick(idles[K(kind)],seed,102);}
         /// <summary>The slow walk a town zombie wanders on (-1: none, the crawler).</summary>
         public static int Wander(int kind,uint seed){Warm();return Pick(wanders[K(kind)],seed,109);}
