@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
     {
         private InputFrame Bot(NativePilot p,bool force=false)
         {
+            var taunt=PriorityTaunt(p.TechniqueMarks);if(taunt!=null&&Enemy(p,taunt))return BotFocus(p,taunt.Body.position,PilotVelocity(taunt),taunt.Collider,taunt,force);
             // Select one brain before observing a target. Running the PvP brain first
             // consumes the reaction window on Siren, then PvE reuses that aim for an add.
             if(!StationaryBots&&p.Seat.difficulty!="dummy"&&BotSentry(p,out var sentryInput))return sentryInput;

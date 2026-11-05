@@ -41,7 +41,18 @@ internal static class ExpansionFoundationChecks
             k.RecastAt=11;Check(!NativeTechniqueRules.Recast(k,11),"channel cannot recast twice: "+id);
         }
         foreach(string spec in new[]{"sword","shield","greatsword","rifle","bow","water"})
-            Check(NativeThirdTechniqueContent.Ready.Any(id=>NativeTechniques.Find(id).Spec==spec),"priority weapon has a live technique: "+spec);
+            Check(NativeThirdTechniqueContent.Ready.Count(id=>NativeTechniques.Find(id).Spec==spec)==3,"all three priority techniques enabled: "+spec);
+        foreach(string id in new[]{"iaido","lodestone","blade-drag"})
+        {
+            var k=new NativeTechnique{Kind=id,Phase=id=="iaido"?"sheathe":id=="lodestone"?"draw":"drag",At=0,Release=.1f,Until=2.5f,RecoverUntil=.1f};
+            Check(k.Valid()&&NativeTechniqueRules.Moving(k,1)&&NativeTechniqueRules.Recast(k,1),"charge interruption and recast: "+id);
+            k.RecastAt=1;Check(!NativeTechniqueRules.Recast(k,1),"charged release is one-shot: "+id);
+        }
+        foreach(string id in new[]{"ab-moonlit-edge","ab-molten-trail","ab-hollow-point","ab-short-leash","ab-double-bubble"})
+        {
+            var ability=NativeTechniques.Find(NativeAbilityChips.Requires(id));var slots=NativeTechniqueLoadout.With("",ability.Spec,"e",ability.Id);
+            Check(NativeAbilityChipRules.Slotted(data,ability.Spec,slots,id)&&!NativeAbilityChipRules.Slotted(data,ability.Spec,"",id),"new chip requires its exact equipped technique: "+id);
+        }
         var jet=new NativeTechnique{Kind="hydro-jet",Phase="jet",At=0,Release=.1f,Until=1.6f,RecoverUntil=1.6f};
         Check(jet.Valid()&&NativeTechniqueRules.Busy(jet,1)&&NativeTechniqueRules.Moving(jet,1)&&NativeTechniqueRules.Recast(jet,1),"hydro jet movement, attack lock, recast");
         NativeTechniqueRules.End(jet,1);Check(!NativeTechniqueRules.Live(jet,1)&&!NativeTechniqueRules.Busy(jet,1)&&jet.Valid(),"interrupt releases jet lock");

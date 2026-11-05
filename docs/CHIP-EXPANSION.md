@@ -180,3 +180,7 @@ Fifty chips in the ordinary rarities and the ordinary draft: 8 common, 13 uncomm
 ## Presentation (Claude)
 
 The card and the copy are done; each chip's icon, its stat rows and its card line are generated. Procs, marks and gauges get their effects once the events exist. The two tiers' mounted weapon modules follow the rarity's generic set until a chip earns its own.
+
+### Batches 4–5 rules checkpoint (2026-11-05, draft PR #338)
+
+Adds five slot-gated mechanics: `ab-moonlit-edge`, `ab-molten-trail`, `ab-hollow-point`, `ab-short-leash`, `ab-double-bubble`. Task-branch total **42/98**; **56 remain gated**. No new wild chips in these two batches. Molten Trail and bramble damage are field ticks every .25 s and do not activate primary-hit resource effects. Native runtime checks require the Windows Unity builder; no release was performed.

@@ -74,7 +74,7 @@ namespace ChipArena.UnityConversion
             foreach(var m in Minions.Where(m=>m.DevMonster).ToArray())
             {
                 if(m.Hp<=0||m.Body.position.y<(Map.bounds?.killY??-6)){RemoveMinion(m,false);continue;}
-                foreach(var pair in m.Dots.ToArray()){var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time&&dot.Next<=dot.Until){HitDevMonster(m,Pilots.Find(p=>p.Seat.id==dot.Source),ExpansionDamage(Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),false),Vector3.zero,0,null,"field");dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
+                foreach(var pair in m.Dots.ToArray()){var dot=pair.Value;while(m.Hp>0&&dot.Next<=Time&&dot.Next<=dot.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==dot.Source),(float)(dot.Dps*.25),Vector3.zero,0,kind:"field");dot.Next+=.25;}if(Time>dot.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0)continue;
                 var target=m.DevBehaviour=="frenzy"?Pilots.Where(p=>p.Hp>0&&p.Seat.connected&&!p.Seat.AuthorityBoss).OrderBy(p=>(p.Body.position-m.Body.position).sqrMagnitude).FirstOrDefault():Pilots.Find(p=>p.Seat.id==m.DevHunt&&p.Hp>0&&p.Seat.connected);
                 var at=m.Body.position;var velocity=m.Body.linearVelocity;var stats=m.Pve.Stats;m.Pve.Target=target;
                 if(StepHulkHunt(m,target))continue;
@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
                     if(stats.id=="hulk"){PveAddStrike(m);continue;}
                     if(stats.id=="spitter"){LaunchPveSpit(m);continue;}
                     if(distance<=stats.reach&&Math.Abs(target.Body.position.y-at.y)<2.5f&&SummonVisible(m,at,target.Body.position,target.Collider))
-                    {if(Time<target.BlockEnd)BlockProc(target,null,target.Body.position,"clash");else Damage(target,null,stats.damage,direction,stats.impulse,false,direct:false,primary:false,melee:true,damageKind:"dev-monster");}
+                    {if(Time<target.BlockEnd)BlockProc(target,null,target.Body.position,"clash");else Damage(target,null,stats.damage,direction,stats.impulse,false,direct:false,primary:false,melee:true,damageKind:"dev-monster",attackerMinion:m);}
                     continue;
                 }
                 if(distance<=(stats.id=="hulk"?NativeHulkMoves.PunchReach:stats.startRange)&&Time>=m.NextAttack&&SummonVisible(m,at,target.Body.position,target.Collider)){float hit=stats.id=="hulk"?ChooseHulkMove(m,target,stats.hit):stats.hit;m.LastAttack=Time;m.StrikeAt=Time+Math.Max(.1f,hit);m.Pve.Struck=false;m.Body.linearVelocity=Vector3.up*velocity.y;continue;}

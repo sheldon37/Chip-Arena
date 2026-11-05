@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
                 if(Math.Abs(d.y)>2||distance>profile.SlamRadius||!MeleeVisible(at,p.Body.position,m.Owner,p.Collider,true))continue;
                 var dir=new Vector3(d.x,0,d.z).normalized;bool block=Time<p.BlockEnd;
                 if(block){BlockProc(p,m.Owner,p.Body.position,"clash");p.Knockback+=dir*(Mutator("bounce-house")?9:3);}
-                else {Damage(p,null,profile.Heavy?Mathf.Lerp(25,10,distance/profile.SlamRadius):Mathf.Lerp(12,5,distance/profile.SlamRadius),dir,profile.Heavy?900:400,false,primary:false,melee:true,causeKind:m.Pve.Stats.id);p.Knockback.y=Math.Max(p.Knockback.y,profile.Heavy?4:2);}
+                else {Damage(p,null,profile.Heavy?Mathf.Lerp(25,10,distance/profile.SlamRadius):Mathf.Lerp(12,5,distance/profile.SlamRadius),dir,profile.Heavy?900:400,false,primary:false,melee:true,causeKind:m.Pve.Stats.id,attackerMinion:m);p.Knockback.y=Math.Max(p.Knockback.y,profile.Heavy?4:2);}
             }
         }
         private readonly List<NativeMinion> hordeAdds=new List<NativeMinion>(192);
@@ -232,8 +232,8 @@ namespace ChipArena.UnityConversion
                 if(TryTechniqueParry(q,push,q.Body.position)){HitMinion(m,q,22*q.TechniqueScale,-push,0,m.Body.position,"energy");a.StaggerAt=Time+.35f;continue;}
                 if(Time<q.BlockEnd){BlockProc(q,m.Owner,q.Collider.ClosestPoint(m.Body.position),"clash");if(a.Stats.id=="hulk")q.Knockback+=push*(Mutator("bounce-house")?9:3);else{a.StaggerAt=Time+.6f;a.External=-d.normalized*(Mutator("bounce-house")?9:3);}}
                 else if(smash&&a.Stats.id=="brute")
-                {var shove=q.Body.position-(at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Brute));float actual=Damage(q,null,damage,Vec(NativeHordeDropRules.Outward(Vec(shove),Vec(dir))),0,false,primary:false,melee:true,causeKind:a.Stats.id);if(actual>0)PveSlamShove(q,shove,dir,impulse,false);}
-                else{Damage(q,null,damage,push,impulse,false,primary:false,melee:true,causeKind:a.Stats.id);if(a.Stats.id=="hulk")q.Knockback.y=Math.Max(q.Knockback.y,4);}
+                {var shove=q.Body.position-(at+dir*NativeHordeKinds.SmashAheadOf(NativeHordeKinds.Brute));float actual=Damage(q,null,damage,Vec(NativeHordeDropRules.Outward(Vec(shove),Vec(dir))),0,false,primary:false,melee:true,causeKind:a.Stats.id,attackerMinion:m);if(actual>0)PveSlamShove(q,shove,dir,impulse,false);}
+                else{Damage(q,null,damage,push,impulse,false,primary:false,melee:true,causeKind:a.Stats.id,attackerMinion:m);if(a.Stats.id=="hulk")q.Knockback.y=Math.Max(q.Knockback.y,4);}
             }
         }
         private float HitPveAdd(NativeMinion m,NativePilot source,float amount,Vector3 dir,float impulse,Vector3? point,string kind,float radius,bool head,int projectile=0,bool pierced=false,Vector3? from=null)

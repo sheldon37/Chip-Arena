@@ -33,7 +33,7 @@ namespace ChipArena.UnityConversion
             var d=p.Body.position-m.Body.position;d.y=0;var dir=d.normalized;
             if(d.sqrMagnitude>.001f&&Vector3.Dot(Vec(V3.Forward(m.Yaw)),dir)<Mathf.Cos(cone*.5f*Mathf.Deg2Rad))return 0;
             if(Time<p.BlockEnd){BlockProc(p,m.Owner,p.Body.position,"clash");return 0;}
-            float actual=Damage(p,null,damage*m.Pve.DamageScale,dir,0,false,primary:false,melee:true,causeKind:m.Pve.Stats.id);
+            float actual=Damage(p,null,damage*m.Pve.DamageScale,dir,0,false,primary:false,melee:true,causeKind:m.Pve.Stats.id,attackerMinion:m);
             if(actual>0&&!TechniqueBrace(p)){p.Knockback+=dir*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}return actual;
         }
         private void ZoneStop(NativeMinion m)
@@ -72,7 +72,7 @@ namespace ChipArena.UnityConversion
                 {
                     var p=Pilots.Find(p=>p.Seat.id==z.grabTarget);
                     if(p==null||!ZonePilot(p)||Time>=z.releaseAt||Time<a.StaggerAt||Vector3.Distance(p.Body.position,m.Body.position)>4)ZoneRelease(m);
-                    else{Vector3 direction=new Vector3(0,0,-12.5f-p.Body.position.z);ZoneDrag(p,direction,2.7f);if(ZoneTouch(p.Seat.id,1000+m.Id,.25f))Damage(p,null,1.5f*a.DamageScale,Vector3.zero,0,false,primary:false);ZoneStop(m);return true;}
+                    else{Vector3 direction=new Vector3(0,0,-12.5f-p.Body.position.z);ZoneDrag(p,direction,2.7f);if(ZoneTouch(p.Seat.id,1000+m.Id,.25f))Damage(p,null,1.5f*a.DamageScale,Vector3.zero,0,false,primary:false,attackerMinion:m);ZoneStop(m);return true;}
                 }
             }
             if(kind=="stoker"&&z.pullAt>=0&&z.pullTarget>=0)
@@ -84,7 +84,7 @@ namespace ChipArena.UnityConversion
             }
             if(kind=="ladleman"&&z.pourAt>=0&&Time>=z.pourAt+1&&Time<z.pourAt+5.2f)
             {
-                foreach(var p in Pilots)if(ZonePilot(p)&&Math.Abs(p.Body.position.y-m.Body.position.y)<1.8f&&NativeZoneCombat.PoolContains(new System.Numerics.Vector2(p.Body.position.x-m.Body.position.x,p.Body.position.z-m.Body.position.z),z.pourYaw,z.pourAt,Time)&&ZoneTouch(p.Seat.id,m.Id+2000,.25f))Damage(p,null,2,Vector3.zero,0,false,primary:false);
+                foreach(var p in Pilots)if(ZonePilot(p)&&Math.Abs(p.Body.position.y-m.Body.position.y)<1.8f&&NativeZoneCombat.PoolContains(new System.Numerics.Vector2(p.Body.position.x-m.Body.position.x,p.Body.position.z-m.Body.position.z),z.pourYaw,z.pourAt,Time)&&ZoneTouch(p.Seat.id,m.Id+2000,.25f))Damage(p,null,2,Vector3.zero,0,false,primary:false,attackerMinion:m);
                 ZoneStop(m);return true;
             }
             if(Time<a.StaggerAt){if(a.ZoneStrike>=0){a.ZoneStrike=-100;a.ZoneBusy=Time;z.pullTarget=-1;}ZoneStop(m);return true;}
@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
                     case "linesman":
                         var hits=new List<int>(3);var visited=new HashSet<int>();NativePilot current=target;
                         for(int i=0;i<3&&current!=null;i++)
-                        {if(i==0&&!ZoneVisible(m,current,9))break;visited.Add(current.Seat.id);if(!Invulnerable(current)){Damage(current,null,(i==0?18:10)*a.DamageScale*(z.grounded?1.3f:1),Vector3.zero,0,false,primary:false);if(!TechniqueBrace(current))current.StunEnd=Math.Max(current.StunEnd,Time+.35f);hits.Add(current.Seat.id);}var last=current;current=Pilots.Where(p=>ZonePilot(p)&&!visited.Contains(p.Seat.id)&&p!=last&&Vector3.Distance(p.Body.position,last.Body.position)<=4&&MeleeVisible(last.Body.position,p.Body.position,m.Owner,p.Collider,true)).OrderBy(p=>Vector3.Distance(p.Body.position,last.Body.position)).FirstOrDefault();}
+                        {if(i==0&&!ZoneVisible(m,current,9))break;visited.Add(current.Seat.id);if(!Invulnerable(current)){Damage(current,null,(i==0?18:10)*a.DamageScale*(z.grounded?1.3f:1),Vector3.zero,0,false,primary:false,attackerMinion:m);if(!TechniqueBrace(current))current.StunEnd=Math.Max(current.StunEnd,Time+.35f);hits.Add(current.Seat.id);}var last=current;current=Pilots.Where(p=>ZonePilot(p)&&!visited.Contains(p.Seat.id)&&p!=last&&Vector3.Distance(p.Body.position,last.Body.position)<=4&&MeleeVisible(last.Body.position,p.Body.position,m.Owner,p.Collider,true)).OrderBy(p=>Vector3.Distance(p.Body.position,last.Body.position)).FirstOrDefault();}
                         z.arcAt=Time;z.arcTargets=hits.ToArray();break;
                     case "conductor":
                         if(!z.lanternBroken)

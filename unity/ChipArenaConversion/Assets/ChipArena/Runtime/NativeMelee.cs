@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private void CancelMelee(NativePilot p){p.Swing=null;p.HitPending=false;p.AttackEnd=0;p.MeleeBufferedUntil=-1;}
         private bool TryBlock(NativePilot p)
         {
-            if(BombBusy(p)||CyberSwitching(p)||TechniqueBusy(p)||TechniqueAway(p))return false;
+            if(PriorityActionLock(p)||ChannelLive(p,"lodestone")||BombBusy(p)||CyberSwitching(p)||TechniqueBusy(p)||TechniqueAway(p))return false;
             if(p.Seat.spec=="shield"&&MeleeShots.Any(s=>s.Shield&&s.Original==p))return false;
             if(Time<p.BlockReady||Time<p.BlockEnd||Time<p.RollEnd||Incapacitated(p)||Time<p.AttackEnd)return false;
             if(LeetBlock(p))return true;

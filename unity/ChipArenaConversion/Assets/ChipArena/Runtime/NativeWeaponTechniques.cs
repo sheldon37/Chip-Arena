@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         private bool TechniqueBusy(NativePilot p)=>NativeTechniqueRules.Busy(p.Technique,Time);
         private bool TechniqueAway(NativePilot p)=>NativeTechniques.WeaponAway(p.Technique,Time);
         private bool TechniqueBlocked(NativePilot p)=>p.Hp<=0||!p.Seat.connected||Incapacitated(p)||Frozen(p)||Time<p.RollEnd||Time<p.BlockEnd||p.HeldBy!=null||p.Controlling!=null||p.ControlledBy!=null||KernelBusy(p);
-        public bool TechniqueSmokeHidden(Vector3 observer,Vector3 target)=>Pilots.Any(p=>NativeTechniqueRules.Hidden(Vec(observer),Vec(target),p.Technique,Time));
+        public bool TechniqueSmokeHidden(Vector3 observer,Vector3 target)=>Pilots.Any(p=>NativeTechniqueRules.Hidden(Vec(observer),Vec(target),p.Technique,Time)||p.Technique?.Kind=="ghillie"&&NativeTechniqueRules.Live(p.Technique,Time)&&Vector3.Distance(target,p.Body.position)<.6f&&Vector3.Distance(observer,target)>6);
         private void EndTechnique(NativePilot p)
         {var k=p.Technique;if(k==null)return;if(p.Ready<=k.RecoverUntil+.001f)p.Ready=Math.Min(p.Ready,Time);NativeTechniqueRules.End(k,Time);}
         private void StepTechniqueInput(NativePilot p)
@@ -80,6 +80,7 @@ namespace ChipArena.UnityConversion
             var old=p.Technique;
             if(old?.Kind==id&&NativeTechniqueRules.Recast(old,Time))
             {
+                if(id=="iaido"||id=="blade-drag"||id=="lodestone"){FinishPriorityTechnique(p);return true;}
                 if(id=="hydro-jet"){old.RecastAt=Time;EndTechnique(p);return true;}
                 if(id=="bipod"||id=="dragon-breath"||id=="soul-siphon"){FinishChannelTechnique(p);return true;}
                 if(id=="overload"){old.RecastAt=Time;old.Until=Time;StepThirdTechnique(p);return true;}
@@ -113,7 +114,7 @@ namespace ChipArena.UnityConversion
             p.Ready=Math.Max(p.Ready,p.Technique.RecoverUntil);return true;
         }
         private static string TechniqueFirstPhase(string id)
-        {switch(id){case "disarm":return "lunge";case "ground-slam":return "leap";case "reaping-sweep":return "wind";case "bolas-round":return "fire";case "vault-shot":return "vault";case "hydro-jet":return "charge";case "bipod":return "set";case "envenom":return "coat";case "dragon-breath":return "inhale";case "combust":return "snap";case "soul-siphon":return "reach";case "gun-spin":return "spin";case "overload":return "surge";case "thunderclap":return "raise";case "parting-line":return "hop";case "tripwire":case "lightning-rod":return "throw";case "shield-surf":return "mount";case "iron-vow":return "plant";case "bounty-round":return "shot";case "recoil-burst":return "brace";case "sonar-dart":return "fire";case "spirit-hawk":return "draw";case "wildfire-run":return "ignite";case "grave-walk":return "sink";case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
+        {switch(id){case "iaido":return "sheathe";case "challenge":return "point";case "war-cry":return "bang";case "sunder":return "raise";case "ghillie":return "settle";case "flash-freeze":return "stamp";case "lodestone":return "raise";case "blade-drag":return "drag";case "breacher-round":return "charge";case "bramble-arrow":case "tether-arrow":return "draw";case "bubble-trap":return "cast";case "disarm":return "lunge";case "ground-slam":return "leap";case "reaping-sweep":return "wind";case "bolas-round":return "fire";case "vault-shot":return "vault";case "hydro-jet":return "charge";case "bipod":return "set";case "envenom":return "coat";case "dragon-breath":return "inhale";case "combust":return "snap";case "soul-siphon":return "reach";case "gun-spin":return "spin";case "overload":return "surge";case "thunderclap":return "raise";case "parting-line":return "hop";case "tripwire":case "lightning-rod":return "throw";case "shield-surf":return "mount";case "iron-vow":return "plant";case "bounty-round":return "shot";case "recoil-burst":return "brace";case "sonar-dart":return "fire";case "spirit-hawk":return "draw";case "wildfire-run":return "ignite";case "grave-walk":return "sink";case "riposte":return "guard";case "smoke-veil":case "anchor-throw":return "throw";case "bastion":return "plant";case "ricochet-coin":return "flick";case "sentry-drop":return "drop";case "grapple-line":return "fire";case "gale-arrow":return "draw";case "ignition-leap":return "crouch";case "static-recall":return "set";default:return "cast";}}
         private void ReleaseTechnique(NativePilot p)
         {
             p.TechniqueReleased=true;var k=p.Technique;if(TechniqueBlocked(p)){EndTechnique(p);return;}
@@ -215,7 +216,7 @@ namespace ChipArena.UnityConversion
         }
         private void TechniqueMotion(NativePilot p,ref Vector3 velocity)
         {
-            var k=p.Technique;if(MobilityTechniqueMotion(p,ref velocity))return;if(MoreTechniqueMotion(p,ref velocity))return;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p)||k.Kind!="grapple-line"&&k.Kind!="anchor-throw")return;
+            var k=p.Technique;if(PriorityTechniqueMotion(p,ref velocity))return;if(MobilityTechniqueMotion(p,ref velocity))return;if(MoreTechniqueMotion(p,ref velocity))return;if(!NativeTechniqueRules.Moving(k,Time)||TechniqueBlocked(p)||k.Kind!="grapple-line"&&k.Kind!="anchor-throw")return;
             Vector3 destination;
             if(k.Kind=="grapple-line")destination=Vec(k.Point)-(Vec(k.Point)-p.Body.position).normalized*.7f;
             else {float u=Mathf.Clamp01((Time+1f/60-k.RecastAt)/.45f);destination=Vector3.Lerp(p.TechniqueMoveFrom,Vec(k.Point)+Vector3.up*.9f,u)+Vector3.up*(Mathf.Sin(u*Mathf.PI)*2);}

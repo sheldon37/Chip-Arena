@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
         }
         private bool ReleaseThirdTechnique(NativePilot p)
         {
-            var k=p.Technique;if(ReleaseMobilityTechnique(p))return true;if(ReleaseChannelTechnique(p))return true;
+            var k=p.Technique;if(ReleasePriorityTechnique(p))return true;if(ReleaseMobilityTechnique(p))return true;if(ReleaseChannelTechnique(p))return true;
             switch(k.Kind)
             {
                 case "gun-spin":p.Ammo=Magazine(p);p.ReloadEnd=0;k.Arm=Time;k.Phase="hot";return true;
@@ -75,7 +75,7 @@ namespace ChipArena.UnityConversion
         }
         private bool StepThirdTechnique(NativePilot p)
         {
-            var k=p.Technique;if(StepMobilityTechnique(p))return true;if(StepChannelTechnique(p))return true;if(k.Kind=="gun-spin"||k.Kind=="thunderclap")return true;
+            var k=p.Technique;if(StepPriorityTechnique(p))return true;if(StepMobilityTechnique(p))return true;if(StepChannelTechnique(p))return true;if(k.Kind=="gun-spin"||k.Kind=="thunderclap")return true;
             if(k.Kind!="overload")return false;
             if(Time>=k.Until&&k.Phase!="shock")
             {k.Phase="shock";if(k.Until-k.Release>=1){k.HitAt=Time;Damage(p,p,Math.Min(8,Math.Max(0,p.Hp-1)),Vector3.zero,0,false,forced:true,direct:false,primary:false,selfDamage:true,damageKind:"ability");}}

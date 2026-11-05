@@ -355,3 +355,9 @@ The HUD passes `pending` (the look about to be sent) once a frame for the local 
 3. Inspect first-person, guest and replay movement/poses in Unity, especially the collision-shortened leap/grapple and Shade's delayed exchange. The implementation adds real movement and hit timing; the prior preview review does not validate that integration. Done for third and first person on the host (see the review above); guest and replay still open.
 
 Regression gates: `CoreTests --technique-rules` (simulation contracts), `CoreTests --techniques` (existing presentation plus rule checks), full CoreTests; `NativeArena.ValidateTechniques` and the extended native network gate run in the Unity builder. Semantic compilation in a managed environment does not execute those native PhysicsScene/JsonUtility gates.
+
+### Batches 4–5 rules checkpoint (2026-11-05, draft PR #338)
+
+Task branch now implements all three third-set rows on sword, shield, greatsword, rifle, bow and water: **26/36 overall**. Adds Iaido, Challenge, War Cry, Sunder, Ghillie, Flash Freeze, Lodestone, Blade Drag, Breacher Round, Bramble Arrow, Tether Arrow and Bubble Trap. Ten other-weapon rows remain gated; Third stays separate from All. DEV_LOG records tuning, collision decisions and unrun native tests. These are source changes, not a released build.
+
+Minion victim marks are `NativeMinion.TechniqueMarks`, wire `NativeMinionFrame.techniqueMarks`; pilot/replay marks remain `Actor.TechniqueMarks`. Both use the bounded mark contract. No presentation implementation is included.
