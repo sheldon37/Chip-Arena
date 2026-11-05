@@ -5,8 +5,8 @@ method we use with Siren, so like a player intro but transitions into stage musi
 level. Give them high quality designs, high quality effects, beautiful animations and make them difficult. I want to prevent cheese
 methods like 'safe' spots."
 
-**Status: design by Claude while the owner slept. The owner has not reviewed it; every choice below is a recommendation and easy to
-change.** The split is the usual one. Claude builds the model, motion, effects, intro, music and a DEV preview behind a view that
+**Status: designed by Claude while the owner slept and built behind DEV previews (section 9). The owner has not reviewed it; every choice
+below is a recommendation and easy to change.** The split is the usual one. Claude builds the model, motion, effects, intro, music and a DEV preview behind a view that
 returns None until bound. Astra owns rules, AI, hit volumes, numbers, generator changes, collision and networking (section 8). Every
 number here is a proposal for Astra.
 
@@ -292,7 +292,7 @@ the fight gets slower on your feet and those tools matter more.
 | `lull` | The Lull | 1 | 1.5 | .3 | 1.5 | 0 | meter | 8 + 8/s | hands of water take a pilot still for 6 s, or above 1.6 m for 2 s |
 | `seiche` | Seiche | 2 | 1.4 | 7 | 0 | .5 | 16 | 18 + knockback | a wave .9 m tall crosses the room wall to wall, then reflects back. Jump it or roll through |
 | `whistle` | Whistle | 2 | 1 | 2 | 0 | .5 | 25 | 0 | a Lifeguard's whistle from nowhere: Drowned surface round each pilot, Tilers peel off the walls |
-| `lap` | Last Lap | 3 | 1.5 | 6 | .5 | 1 | 24 | 24 + crush | its body circles the room's edge at the surface, tightening from 19 m to 9 m. It exposes every flank lamp: the fight's best damage window |
+| `lap` | Last Lap | 3 | 1.5 | 6 | .5 | 1 | 24 | 24 + crush | its body runs the room's edge at the surface on a rounded square, tightening from 19 m to 9 m. It exposes every flank lamp: the fight's best damage window |
 
 - **The Lull.** The lore's own trap: the water soothes you. Stand still and the world softens: colour blooms, sound falls away. That is
   the warning, then the hands come. It's the same meter as THE HUM's Fall Through: 6 s, 4 s in the last phase. Moving clears it.
@@ -528,7 +528,7 @@ Nothing here is a rule. `ArenaPresentation.HumBossViewOf` returns `HumBossView.N
 **Not done or not known.** No person has played it; no rule exists. Performance is not measured in a real match (the skin is about 32k vertices on a `SkinnedMeshRenderer` at tier 0, and the first draw reads the bank, so a real intro should prewarm it during the stage load). The song's accents aren't bound: the beats are fixed numbers. Fall Through's fall and return, Facelings and the pilot's side of every move are Astra's. On the ceiling the preview's chains only approximate gravity through the turn.
 <!-- /THE HUM built -->
 
-### THE DEEP END (branch `claude/boss-deepend`)
+### THE DEEP END (Claude, 2026-11-05): presentation only, seen in Unity through the DEV preview, not played by a person
 
 Presentation only; nobody has played it. `DeepEndBossViewOf` returns None until Astra binds it, and with None nothing here draws or costs anything beyond a branch: the live Poolrooms is what it was (its hooks are the layout swap under the preview flag and two surfaces standing aside under the stage flag).
 
