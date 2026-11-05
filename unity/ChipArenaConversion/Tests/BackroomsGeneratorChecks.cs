@@ -56,7 +56,8 @@ namespace ChipArena.UnityConversion
             visible=false;Check(!director.TryBackroomsExit(),"wall blocks exit evidence");visible=true;
             at=generated.Entry;Check(!director.TryBackroomsExit(),"distance required");at=null;Check(!director.TryBackroomsExit(),"absent pilot cannot finish");at=generated.Exit;
             run.SetLoading(true);Check(!director.TryBackroomsExit(),"loading blocks objective");run.SetLoading(false);
-            Check(director.TryBackroomsExit()&&run.Snapshot().instances.Single().cleared,"authority clears exit objective");
+            Check(director.TryBackroomsExit()&&!run.Snapshot().instances.Single().cleared&&run.Snapshot().rewards.Length==0,"arrival cannot pay or clear the exit");
+            Check(director.BossDefeated(NativeBackroomsExpedition.Objective,generated.Exit),"boss death clears exit objective");
             int rewards=run.Snapshot().rewards.Length;Check(rewards>0&&!director.TryBackroomsExit()&&run.Snapshot().rewards.Length==rewards,"completion ledger pays once");
             Console.WriteLine("PASS Backrooms rules: "+checks+" checks (14 seed/mode layouts, collision routes, spawns, identity, objective ledger)");
         }

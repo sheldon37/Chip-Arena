@@ -252,8 +252,8 @@ namespace ChipArena.UnityConversion
                 }
                 if(s.area==NativeBackroomsGenerator.AreaId||s.area==NativePoolroomsGenerator.AreaId)
                 {
-                    if(Expedition.TryBackroomsExit()){KillPveHorde();pveAcid.Clear();Bullets.Clear();Pve.Stage="intermission";}
-                    else if(!instance.cleared&&instance.progress>=instance.target)foreach(var row in Pve.Rows.Values){row.Notice="Quota complete · find the exit cache";row.NoticeUntil=Time+1;}
+                    if(!instance.cleared&&expeditionBoss==null&&Expedition.TryBackroomsExit()){KillPveHorde();pveAcid.Clear();Bullets.Clear();SpawnExpeditionBoss(s.area==NativeBackroomsGenerator.AreaId?NativeBackroomsExpedition.Objective:NativePoolroomsExpedition.Objective);}
+                    else if(!instance.cleared&&instance.progress>=instance.target)foreach(var row in Pve.Rows.Values){row.Notice="Quota complete · reach the boss room";row.NoticeUntil=Time+1;}
                 }
                 else
                 {
@@ -268,7 +268,7 @@ namespace ChipArena.UnityConversion
                 var boss=Pve.Boss;if(ZoneBoss!=null)StepZoneBoss();bool defeated=ZoneBoss!=null?ZoneBoss.deathAt>=0&&Time>=ZoneBoss.deathAt+(ZoneBoss.archetype==NativeZoneBossRules.Station?4:7):StepPveBossPhases();if(Pve.Holding)return;Expedition.UpdateBossHealth(s.area,expeditionBoss,Math.Max(0,boss.Hp),Pve.MaxHp);
                 if(defeated)
                 {
-                    bool accepted=s.phase==ExpeditionPhase.FinalBoss?Expedition.FinalDefeated(Vec(boss.Body.position)):Expedition.BossDefeated(expeditionBoss,Vec(boss.Body.position));
+                    bool accepted=s.phase==ExpeditionPhase.FinalBoss?Expedition.FinalDefeated(Vec(boss.Body.position)):Expedition.BossDefeated(expeditionBoss,ZoneBoss?.backrooms!=null?expeditionArea.bossPoints[0].Position:Vec(boss.Body.position));
                     if(accepted){KillPveHorde();pveAcid.Clear();Bullets.Clear();SetBossHidden(true);Pve.Stage="intermission";Pve.Rate=0;BossSongAt=-1;BossSongLead=0;}
                 }
             }
@@ -279,10 +279,12 @@ namespace ChipArena.UnityConversion
             foreach(var mob in Minions.Where(m=>hubMobs.ContainsKey(m.Id)).ToArray())RemoveMinion(mob,false);hubMobs.Clear();Pve.Cap=NativeExpeditionMutators.Cap(ActiveMutators,8);
             var s=Expedition.Session.Run.Snapshot();var scale=new ExpeditionScaling().Evaluate(s.elapsed,Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)),s.loop,s.phase==ExpeditionPhase.Instance);
             var point=expeditionArea.bossPoints[0];var boss=Pve.Boss;Pve.MaxHp=NativePveRules.BossHp(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.health;
+            if(MapId==NativeBackroomsGenerator.InstanceMap)Pve.MaxHp*=1.1f;else if(MapId==NativePoolroomsGenerator.InstanceMap)Pve.MaxHp*=1.25f;
             boss.Stats["hp"]=Pve.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(Math.Max(1,s.instances.FirstOrDefault(i=>i.id==s.area)?.scalingParty>0?s.instances.First(i=>i.id==s.area).scalingParty:s.members.Count(m=>m.connected&&!m.extracted)))*(float)scale.damage;boss.Hp=Pve.MaxHp;boss.Seat.alive=true;
             SetBossHidden(false);boss.Body.position=Vec(point.Position)+Vector3.up*NativeLocomotionRules.HalfHeight;boss.Yaw=point.yaw;Pve.Stage="boss";Pve.Phase=1;Pve.Floor=Pve.MaxHp*.75f;
             string archetype=NativeZoneBossRules.RuntimeEnabled?NativeZoneBossRules.Archetype(MapId)??"siren":"siren";if(archetype!="siren"){var position=archetype==NativeZoneBossRules.Station?new Vector3(0,0,1.5f):Vec(point.Position);SpawnZoneBoss(archetype,position,archetype==NativeZoneBossRules.Station?0:90);}
             if(!Expedition.RecordBossArrival(id,archetype,kind=>NativeZoneBossRules.Known(kind)||Content.weapons.Any(w=>w.id==kind),ZoneBoss==null?point.Position:Vec(zoneBossActor.Body.position),boss.Hp,Pve.MaxHp))throw new InvalidOperationException("Boss arrival rejected.");
+            if(ZoneBoss?.backrooms!=null){var b=ZoneBoss.backrooms;int seat=0;foreach(var p in Pilots.Where(ZonePilot)){p.Body.position=new Vector3(b.cx+(seat%4-1.5f)*1.8f,.85f,b.cz-14+seat/4*1.8f);p.Body.linearVelocity=Vector3.zero;seat++;}BackroomGeometry();PoseBackroomBody();}
             expeditionBoss=id;BeginPveHold("intro");
         }
         private void ExpeditionKilled(NativeMinion minion,NativePilot source)

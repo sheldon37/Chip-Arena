@@ -7,7 +7,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed class PoolroomsGenerated
     {
-        public PoolroomsLayout Layout;public ContentMap Map;public int[] Players,Enemies;public int ExitCell;public string Identity;
+        public PoolroomsLayout Layout;public ContentMap Map;public int[] Players,Enemies;public int ExitCell;public int BossCell;public string Identity;
         /// <summary>The instance's machines (none in the PvP arena): NativeInstanceMachines. Each takes its cell off the navigation.</summary>
         public InstanceMachineSpot[] Machines=Array.Empty<InstanceMachineSpot>();
         public V3 Entry=>NativePoolroomsGenerator.Position(Layout,Players[0]);
@@ -15,13 +15,13 @@ namespace ChipArena.UnityConversion
     }
     public static class NativePoolroomsGenerator
     {
-        public const string Version="poolrooms-rules-2-entities1",ArenaId="backrooms-poolrooms",InstanceMap="expedition-backrooms-poolrooms",AreaId="exp-poolrooms";
+        public const string Version="poolrooms-rules-3-boss",ArenaId="backrooms-poolrooms",InstanceMap="expedition-backrooms-poolrooms",AreaId="exp-poolrooms";
         public const int ArenaSeed=647032,ArenaSize=24,ExpeditionSize=32;
         private static bool ReturnEdge(int x,int z,int dx,int dz)=>x==1&&dx==0&&(z==1&&dz==-1||z==0&&dz==1);
         private static readonly (int x,int z)[] Directions={(1,0),(0,1),(-1,0),(0,-1)};
         public static string SpawnKind(string map,string kind)=>IsMap(map)&&kind=="hulk"?"brute":kind;
         public static bool IsMap(string id)=>id==ArenaId||id==InstanceMap;
-        public static V3 Position(PoolroomsLayout l,int cell)=>new V3((cell%l.Width+.5f)*2,(l.Floor[cell]==PoolroomsLayout.Steps?-PoolroomsLayout.DeepDepth/2:l.FloorAt(cell,.5f,.5f)),(cell/l.Width+.5f)*2);
+        public static V3 Position(PoolroomsLayout l,int cell)=>new V3((cell%l.Width+.5f)*2,(l.Floor[cell]==PoolroomsLayout.Steps?-PoolroomsLayout.DeepDepth/2:l.Floor[cell]==PoolroomsLayout.Abyss?-PoolroomsLayout.DeepDepth:l.FloorAt(cell,.5f,.5f)),(cell/l.Width+.5f)*2);
         public static PoolroomsGenerated Build(int seed,bool expedition)
         {
             int size=expedition?ExpeditionSize:ArenaSize;var l=NativePoolrooms.Preview(seed,size,size);
@@ -33,8 +33,28 @@ namespace ChipArena.UnityConversion
             var players=new List<int>{entry};var best=(int[])reach.Clone();
             while(players.Count<8){int c=expedition?decks.Where(n=>!players.Contains(n)).OrderBy(n=>reach[n]).ThenBy(n=>n).First():decks.Where(n=>!players.Contains(n)).OrderByDescending(n=>best[n]).ThenBy(n=>n).First();players.Add(c);var d=Distances(l,c);for(int i=0;i<best.Length;i++)best[i]=Math.Min(best[i],d[i]);}
             int exit=decks.OrderByDescending(c=>reach[c]).ThenBy(c=>c).First();
+            int bossCell=exit;
+            if(expedition)
+            {
+                l=NativeDeepEndArena.Carve(l,exit%size,exit/size);
+                // Connect deck components without ever making a deep-water route mandatory.
+                while(true){var d=Distances(l,entry);bool opened=false;for(int c=0;c<d.Length&&!opened;c++)if(d[c]>=0)foreach(var v in Directions){int x=c%size,z=c/size;if(!l.Inside(x+v.x,z+v.z)||ReturnEdge(x,z,v.x,v.z))continue;int n=l.Index(x+v.x,z+v.z);if(l.Floor[n]==PoolroomsLayout.Deck&&d[n]<0){l.Set(x,z,v.x,v.z,PoolroomsLayout.Open);opened=true;break;}}if(!opened)break;}
+                // Carving can cut an old stair off from its landing. Retire only those orphan exterior cells.
+                for(int repair=0;repair<8;repair++)
+                {
+                    var probe=Map(new PoolroomsGenerated{Layout=l,Players=players.ToArray(),Enemies=Array.Empty<int>()},true).nav;
+                    var links=probe.nodes.ToDictionary(n=>n.id,_=>new List<string>());foreach(var edge in probe.links){links[edge.a].Add(edge.b);links[edge.b].Add(edge.a);}
+                    var seen=new HashSet<string>{"pool:"+entry+":0"};var queue=new Queue<string>(seen);while(queue.Count>0)foreach(var node in links[queue.Dequeue()])if(seen.Add(node))queue.Enqueue(node);
+                    if(seen.Count==probe.nodes.Length)break;
+                    var orphan=probe.nodes.Where(n=>!seen.Contains(n.id)).Select(n=>int.Parse(n.id.Split(':')[1],CultureInfo.InvariantCulture)).Distinct().ToArray();
+                    if(orphan.Any(c=>l.Room[c]==NativeDeepEndArena.RoomId))throw new InvalidOperationException("Boss basin has an unreachable landing");
+                    foreach(int c in orphan){l.Floor[c]=PoolroomsLayout.Deck;l.StepDir[c]=0;int x=c%size,z=c/size;foreach(var d in Directions)if(l.Inside(x+d.x,z+d.z)&&!ReturnEdge(x,z,d.x,d.z)&&l.Floor[l.Index(x+d.x,z+d.z)]==PoolroomsLayout.Deck)l.Set(x,z,d.x,d.z,PoolroomsLayout.Open);}
+                }
+                reach=Distances(l,entry);decks=Enumerable.Range(0,reach.Length).Where(c=>l.Floor[c]==PoolroomsLayout.Deck&&reach[c]>=0).ToArray();
+                exit=decks.Where(c=>l.Room[c]==NativeDeepEndArena.RoomId).OrderBy(c=>(Position(l,c)-Position(l,bossCell)).Length).First();
+            }
             var enemies=decks.Where(c=>c!=exit&&players.All(p=>(Position(l,p)-Position(l,c)).Length>=12)).OrderByDescending(c=>reach[c]).Where((c,i)=>i%4==0).Take(32).ToArray();
-            var g=new PoolroomsGenerated{Layout=l,Players=players.ToArray(),Enemies=enemies,ExitCell=exit};g.Map=Map(g,expedition);if(expedition){g.Machines=NativeInstanceMachines.Poolrooms(l,g.Players,enemies,entry,exit,g.Map.nav);g.Map=Map(g,expedition);}
+            var g=new PoolroomsGenerated{Layout=l,Players=players.ToArray(),Enemies=enemies,ExitCell=exit,BossCell=bossCell};g.Map=Map(g,expedition);if(expedition){g.Machines=NativeInstanceMachines.Poolrooms(l,g.Players,enemies,entry,exit,MachineRoutes(g.Map));g.Map=Map(g,expedition);}
             var s=new StringBuilder(Version).Append('|').Append(seed.ToString(CultureInfo.InvariantCulture)).Append('|').Append(size.ToString(CultureInfo.InvariantCulture));
             foreach(var a in new[]{l.Floor,l.StepDir,l.WallX,l.WallZ}){s.Append('|');foreach(byte b in a)s.Append((char)('a'+b));}
             foreach(float h in l.Ceiling)s.Append('|').Append(h.ToString("R",CultureInfo.InvariantCulture));
@@ -43,6 +63,11 @@ namespace ChipArena.UnityConversion
             foreach(int c in g.Players.Concat(g.Enemies).Concat(new[]{exit}))s.Append('|').Append(c.ToString(CultureInfo.InvariantCulture));
             foreach(var m in g.Machines)s.Append('|').Append(m.Kind).Append(m.Cell.ToString(CultureInfo.InvariantCulture)).Append(':').Append(m.Dx.ToString(CultureInfo.InvariantCulture)).Append(':').Append(m.Dz.ToString(CultureInfo.InvariantCulture));
             g.Identity=NativeMapRules.Revision(s.ToString());return g;
+        }
+        // Machine placement must retain capsule-clear deck routes, including the arches introduced at the carved boundary.
+        private static MapNav MachineRoutes(ContentMap map)
+        {
+            var probe=new NativePoolroomsClearance(map);probe.Flood(map.spawns.ffa[0].pos-new V3(0,.85f,0),.45f,1.8f);return probe.Certified;
         }
         // Deck-only reachability certifies spawn/exit routes independently of water access.
         public static int[] Distances(PoolroomsLayout l,int start)
@@ -57,7 +82,7 @@ namespace ChipArena.UnityConversion
             for(int z=0;z<l.Depth;z++)for(int x=0;x<l.Width;x++)
             {
                 int c=l.Index(x,z);float h=l.Ceiling[c];Box("ceiling-"+c,x*2+1,h+.15f,z*2+1,2,.3f,2);
-                if(l.Floor[c]!=PoolroomsLayout.Steps){float y=PoolroomsLayout.FloorY(l.Floor[c]);Box("floor-"+c,x*2+1,(y-1.6f)/2,z*2+1,2,y+1.6f,2);}
+                if(l.Floor[c]!=PoolroomsLayout.Steps){float y=l.Floor[c]==PoolroomsLayout.Abyss?-PoolroomsLayout.DeepDepth:PoolroomsLayout.FloorY(l.Floor[c]);Box("floor-"+c,x*2+1,(y-1.6f)/2,z*2+1,2,y+1.6f,2);}
                 else for(int k=0;k<4;k++){byte dir=l.StepDir[c];bool alongX=dir<2;float t=(dir==PoolroomsLayout.DownNegX||dir==PoolroomsLayout.DownNegZ)?3-k:k;float y=-(k+1)*PoolroomsLayout.DeepDepth/4;Box("step-"+c+"-"+k,x*2+(alongX?t*.5f+.25f:1),(y-1.6f)/2,z*2+(alongX?1:t*.5f+.25f),alongX?.5f:2,y+1.6f,alongX?2:.5f);}
             }
             // Keep the four rendered treads, but use the same closed collision wedges as the other
@@ -104,12 +129,12 @@ namespace ChipArena.UnityConversion
     public static class NativePoolroomsWater
     {
         // Feet-relative immersion; waves remain visual and never change authority or guest prediction.
-        public static float Depth(PoolroomsLayout l,V3 feet)
+        public static float Depth(PoolroomsLayout l,V3 feet,float tide=PoolroomsLayout.WaterY)
         {
-            if(l==null||!NativeMapRules.Finite(feet))return 0;int x=(int)Math.Floor(feet.x/2),z=(int)Math.Floor(feet.z/2);if(!l.Inside(x,z)||!PoolroomsLayout.Pool(l.Floor[l.Index(x,z)])||feet.y < -1.4f)return 0;
-            return Math.Max(0,Math.Min(1.3f,PoolroomsLayout.WaterY-feet.y));
+            if(l==null||!NativeMapRules.Finite(feet))return 0;int x=(int)Math.Floor(feet.x/2),z=(int)Math.Floor(feet.z/2);if(!l.Inside(x,z)||!(PoolroomsLayout.Pool(l.Floor[l.Index(x,z)])||l.Room[l.Index(x,z)]==NativeDeepEndArena.RoomId&&tide>0)||feet.y < -1.4f)return 0;
+            return Math.Max(0,Math.Min(1.3f,(l.Room[l.Index(x,z)]==NativeDeepEndArena.RoomId?tide:PoolroomsLayout.WaterY)-feet.y));
         }
         public static float Speed(float depth)=>depth<=0?1:1-.5f*Math.Min(1,depth/1.15f);
-        public static void Pose(Actor actor,PoolroomsLayout l,V3 feet){actor.WaterDepth=Depth(l,feet);actor.Wading=actor.WaterDepth>0;actor.Swimming=false;actor.Waterline=actor.Wading?PoolroomsLayout.WaterY:0;}
+        public static void Pose(Actor actor,PoolroomsLayout l,V3 feet,float tide=PoolroomsLayout.WaterY){actor.WaterDepth=Depth(l,feet,tide);actor.Wading=actor.WaterDepth>0;actor.Swimming=false;actor.Waterline=actor.Wading?(l!=null&&l.Inside((int)(feet.x/2),(int)(feet.z/2))&&l.Room[l.Index((int)(feet.x/2),(int)(feet.z/2))]==NativeDeepEndArena.RoomId?tide:PoolroomsLayout.WaterY):0;}
     }
 }

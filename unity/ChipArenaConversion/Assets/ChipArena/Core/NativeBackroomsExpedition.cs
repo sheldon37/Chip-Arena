@@ -30,8 +30,8 @@ namespace ChipArena.UnityConversion
             if(!s.members.Any(m=>m.connected&&m.alive&&!m.extracted&&position(m.account) is V3 p&&(pool?NativePoolroomsExpedition.AtExit(s,p,exit,visible(p,exit)):NativeBackroomsExpedition.AtExit(s,p,exit,visible(p,exit)))))return false;
             var instance=s.instances.Single(i=>i.id==s.area);
             if(instance.bosses.Length==0&&!Session.Run.StartBosses(new[]{objective}))return false;
-            // Reuse the existing once-only encounter reward/cleared ledger; no boss entity is spawned for Level 0.
-            return BossDefeated(objective,exit);
+            // Arrival evidence only. The native authority must defeat the recorded boss before this ledger can pay.
+            return !instance.cleared;
         }
     }
 }
