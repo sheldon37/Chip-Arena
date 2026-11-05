@@ -221,9 +221,11 @@ namespace ChipArena.UnityConversion
                     Check(a.Technique.HitAt<-50&&b.Hp==100,pair.Item2+" whiff has no hit cue");
                 }
                 RepairSetup("shield","ground-slam");TryTechnique(a);Release();Advance(.49f);
-                a.Body.position=new Vector3(1000,100.7f,1002.8f);a.Body.transform.position=a.Body.position;Physics.SyncTransforms();
+                a.Body.position=new Vector3(1000,100.7f,1002.8f);a.Body.transform.position=a.Body.position;
+                // Force a descent through the known floor, independent of aim convergence / endpoint clipping.
+                a.Technique.To=new V3(1000,98.9f,1002.8f);Physics.SyncTransforms();
                 var landingVelocity=Vector3.zero;MobilityTechniqueMotion(a,ref landingVelocity);
-                Check(a.Technique.Phase=="leap"&&a.Technique.Arm<=Time,"slam descending floor contact above old 1.2 m ray arms landing");
+                Check(a.Technique.Phase=="leap"&&a.Technique.Arm<=Time,"slam descending floor contact above old 1.2 m ray arms landing (phase="+a.Technique.Phase+", arm="+a.Technique.Arm+", time="+Time+", velocity="+landingVelocity+")");
                 a.Body.position+=landingVelocity/60;a.Body.transform.position=a.Body.position;Physics.SyncTransforms();StepTechniqueWorld();Check(a.Technique.Phase=="slam"&&a.Technique.HitAt==Time,"slam reachable landing resolves");
                 RepairSetup("shield","ground-slam");wall.SetActive(true);a.Body.position=new Vector3(1000,103,1009);a.Body.transform.position=a.Body.position;Physics.SyncTransforms();
                 float stopped=TechniqueBodyStep(a,Vector3.forward*2,false,out bool side,out var sideContact);Check(side&&sideContact.normal.y<.5f&&stopped<1,"slam sweep distinguishes side wall from landing");
