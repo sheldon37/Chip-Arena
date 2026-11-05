@@ -271,28 +271,30 @@ namespace ChipArena.UnityConversion
                 Hoop(s,o,dir,.5f*(1-u)+.12f,.04f,MagicBubbleLit,low?8:14,1.4f*u);return;
             }
             float stop=k.Recast(t)?k.RecastAt:k.Until,since=t-k.Release,past=t-stop,run=OutCubic(since/.18f);const float Life=.3f;
-            float head=MagicJetReach*run,tail=past>0?MagicJetReach*Clamp01(past/Life):0,env=1-Smooth((past-Life*.7f)/.2f);
-            // The core, the length of what is still in the air.
+            float head=run,tail=past>0?Clamp01(past/Life):0,env=1-Smooth((past-Life*.7f)/.2f);
+            // Along the stream (0..1): it sags a little as it goes.
+            Vector3 On(float w)=>o+dir*(MagicJetReach*w)-Up*(.5f*w*w);
+            // The core, the length of what is still in the air: a deep body round a bright thread.
             if(env>0&&head>tail)
             {
-                var c0=o+dir*tail;var c1=o+dir*head;s.Line(false,c0,c1,Current*(1.25f*env),.34f,false);s.Line(false,c0,c1,(MagicBubbleLit+Vector3.One*.25f)*(1.5f*env),.11f,false);
+                int seg=low?3:6;for(int i=0;i<seg;i++){float w0=tail+(head-tail)*i/seg,w1=tail+(head-tail)*(i+1)/seg;if(view&&w1<.2f)continue;s.Line(false,On(w0),On(w1),MagicBubbleDeep*(.75f*env),.46f+.3f*w1,false);s.Line(false,On(w0),On(w1),MagicBubbleLit*(.8f*env),.15f+.08f*w1,false);}
             }
-            int blobs=Count(72,q,low);
+            int blobs=Count(92,q,low);
             for(int i=0;i<blobs;i++)
             {
-                if(!MagicBorn(t,k.Release,stop,Life,R(seed,i+1),out float age,out long gen))continue;long g=seed+gen*131+i*7;float w=age/Life,d=MagicJetReach*w,ang=MagicTau*R(g,1),rad=(.1f+.3f*w*w)*(float)Math.Sqrt(R(g,2));float near=view?Smooth((d-.9f)/1.5f):1;
-                var p=o+dir*d+(side*(float)Math.Cos(ang)+lift*(float)Math.Sin(ang))*rad;s.Water(p,i%3==0?MagicBubbleLit:MagicBubbleDeep,MagicShade,.92f*(1-w*w*w)*near,.28f+.34f*w,dir*.55f,.1f+.4f*w,g,none);
+                if(!MagicBorn(t,k.Release,stop,Life,R(seed,i+1),out float age,out long gen))continue;long g=seed+gen*131+i*7;float w=age/Life,d=MagicJetReach*w,ang=MagicTau*R(g,1),rad=(.14f+.5f*w*w)*(float)Math.Sqrt(R(g,2));float near=view?Smooth((d-.9f)/1.5f):1;
+                var p=On(w)+(side*(float)Math.Cos(ang)+lift*(float)Math.Sin(ang))*rad;s.Water(p,i%3==0?MagicBubbleLit:MagicBubbleDeep,MagicShade,.95f*(1-w*w*w)*near,.36f+.5f*w,dir*.55f,.08f+.42f*w,g,none);
             }
             // Pressure rings along it.
-            int rings=low?2:5;for(int i=0;i<rings;i++){if(!MagicBorn(t,k.Release,stop,Life,(i+.5f)/rings,out float age,out _))continue;float w=age/Life;Hoop(s,o+dir*(MagicJetReach*w),dir,.2f+.34f*w,.05f,MagicBubbleLit,low?8:14,1.1f*(1-w));}
-            // Foam at its head.
-            if(past<Life&&run>0){int n=Count(14,q,low);var h=o+dir*head;long roll=seed+(long)(t*16);for(int i=0;i<n;i++){var d=RandomDir(roll,i);s.Water(h+d*(.2f+.55f*R(roll,i+30)),MagicBubbleLit,MagicShade,.8f*(1-Clamp01(past/Life)),.3f+.3f*R(roll,i+31),d*.2f,.3f+.4f*R(roll,i+32),roll+i,none);}}
+            int rings=low?2:5;for(int i=0;i<rings;i++){if(!MagicBorn(t,k.Release,stop,Life,(i+.5f)/rings,out float age,out _))continue;float w=age/Life;Hoop(s,On(w),dir,.28f+.42f*w,.13f,MagicBubbleLit,low?8:14,.6f*(1-w));}
+            // Foam at its head, spread wide.
+            if(past<Life&&run>0){int n=Count(18,q,low);var h=On(head);long roll=seed+(long)(t*16);for(int i=0;i<n;i++){var d=RandomDir(roll,i);s.Water(h+d*(.25f+.8f*R(roll,i+30)),MagicBubbleLit,MagicShade,.85f*(1-Clamp01(past/Life)),.36f+.42f*R(roll,i+31),d*.2f,.3f+.4f*R(roll,i+32),roll+i,none);}}
             // Drops flung off, falling.
-            int dr=Count(34,q,low);const float DropLife=.62f;for(int i=0;i<dr;i++){if(!MagicBorn(t,k.Release,stop,DropLife,R(seed,i+60),out float age,out long gen))continue;long g=seed+gen*71+i*5;float w=age/DropLife,dd=MagicJetReach*(.15f+.85f*R(g,1));var v=dir*(6*R(g,2))+side*((R(g,3)-.5f)*4)+lift*((R(g,4)-.5f)*2+.6f);var p=o+dir*dd+v*age-Up*(4.9f*age*age);s.Drop(p,(v-Up*(9.8f*age))*.04f,MagicBubbleLit*1.25f,.9f*(1-w),.045f,w,g);}
+            int dr=Count(40,q,low);const float DropLife=.62f;for(int i=0;i<dr;i++){if(!MagicBorn(t,k.Release,stop,DropLife,R(seed,i+60),out float age,out long gen))continue;long g=seed+gen*71+i*5;float w=age/DropLife;var v=dir*(6*R(g,2))+side*((R(g,3)-.5f)*5)+lift*((R(g,4)-.5f)*2.4f+.8f);var p=On(.15f+.85f*R(g,1))+v*age-Up*(4.9f*age*age);s.Drop(p,(v-Up*(9.8f*age))*.04f,MagicBubbleLit*1.25f,.9f*(1-w),.05f,w,g);}
             // The kick at the hands, and spray thrown back round the body.
             if(past<0)
             {
-                s.Sprite(false,o,(MagicBubbleLit+Vector3.One*.3f)*(view?1:2),view?.26f:.42f,Hot);float kick=(t*7)%1;Hoop(s,o,dir,.16f+.42f*kick,.04f,MagicBubbleLit,low?8:14,(view?.6f:1.2f)*(1-kick));
+                s.Sprite(false,o,(MagicBubbleLit+Vector3.One*.3f)*(view?1:2),view?.26f:.42f,Hot);float kick=(t*7)%1;Hoop(s,o,dir,.2f+.5f*kick,.12f,MagicBubbleLit,low?8:14,(view?.3f:.7f)*(1-kick));
                 if(!view){int n=Count(10,q,low);for(int i=0;i<n;i++){if(!MagicBorn(t,k.Release,stop,.34f,R(seed,i+110),out float age,out long gen))continue;long g=seed+gen*43+i;var v=-dir*(4+3*R(g,1))+side*((R(g,2)-.5f)*3.4f)+Up*((R(g,3)-.5f)*2.6f);s.Drop(o+v*age,v*.04f,MagicBubbleLit*1.2f,.85f*(1-age/.34f),.04f,age/.34f,g);}}
             }
             else if(past<.4f)Sparks(s,o,past,.4f,Count(10,q,low),3,MagicBubbleLit,seed+7,9,.02f,dir*.5f);
@@ -320,14 +322,14 @@ namespace ChipArena.UnityConversion
                     {
                         float th=3.14159f*j/(lines-1f);var off=(side*(float)Math.Cos(th)+lift*(float)Math.Sin(th))*(bow*(.72f+.28f*(float)Math.Sin(th)));
                         Vector3 P(float w)=>ca+span*w+off*(4*w*(1-w));
-                        for(int i=0;i<seg;i++){float u0=i/(float)seg,u1=(i+1)/(float)seg,w=(u0+u1)*.5f,run=Math.Abs(w-.5f)*L*1.6f+t*speed,flow=(float)Math.Pow(Math.Abs(Math.Sin(run+j)),8);s.Line(false,P(u0),P(u1),Vector3.Lerp(MagicMagnetRose,colorB,w)*((.8f+1.9f*flow)*env),.026f,false);}
+                        for(int i=0;i<seg;i++){float u0=i/(float)seg,u1=(i+1)/(float)seg,w=(u0+u1)*.5f,run=Math.Abs(w-.5f)*L*1.6f+t*speed,flow=(float)Math.Pow(Math.Abs(Math.Sin(run+j)),8);s.Line(false,P(u0),P(u1),Vector3.Lerp(MagicMagnetRose,colorB,w)*((.62f+1.1f*flow)*env),.055f,false);}
                     }
                 }
                 // The marks on each.
-                void Mark(Vector3 at,Vector3 color,float spin){Ring(s,at+Up*.05f,.82f+.04f*(float)Math.Sin(t*14),.13f,color,low?12:22,1.7f*env);Hoop(s,at+mid,Up,.6f,.05f,color,low?10:18,1.2f*env);BrokenRing(s,at+Up*2.12f,.3f,spin,3,color*(2*env),.03f);s.Line(false,at+Up*.05f,at+Up*2.1f,color*(.7f*env),.03f,false);}
+                void Mark(Vector3 at,Vector3 color,float spin){Ring(s,at+Up*.05f,.82f+.04f*(float)Math.Sin(t*14),.16f,color,low?12:22,1.15f*env);Hoop(s,at+mid,Up,.62f,.13f,color,low?10:18,.85f*env);BrokenRing(s,at+Up*2.12f,.32f,spin,3,color*(1.15f*env),.06f);s.Line(false,at+Up*.05f,at+Up*2.1f,color*(.42f*env),.06f,false);}
                 Mark(A,MagicMagnetRose,t*5);if(two)Mark(B,MagicMagnetBlue,-t*5);
                 // The meeting place.
-                BrokenRing(s,point+Up*.06f,.78f,-t*4,4,MagicClapLight*(2.2f*env),.05f);Ring(s,point+Up*.05f,.3f,.08f,MagicClapLight,low?10:16,1.8f*env);s.Line(false,point+Up*.05f,point+Up*(1.2f+.2f*(float)Math.Sin(t*19)),MagicClapLight*(1.4f*env),.04f,false);
+                BrokenRing(s,point+Up*.06f,.78f,-t*4,4,MagicClapLight*(1.3f*env),.08f);Ring(s,point+Up*.05f,.3f,.1f,MagicClapLight,low?10:16,1.2f*env);s.Line(false,point+Up*.05f,point+Up*(1.2f+.2f*(float)Math.Sin(t*19)),MagicClapLight*(.8f*env),.06f,false);
                 // Chevrons running in along the floor.
                 for(int e=0;e<(two?2:1);e++)
                 {
@@ -577,7 +579,7 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.BubbleTrap:k.Release=t0+.24f;k.RecoverUntil=k.Release+.25f;if(first){k.Point=V(feet+f*7+up*1.1f);k.HitAt=k.Release+.39f;k.Until=k.HitAt+1.4f;}else{k.Point=V(feet+f*14+up*1.3f);k.RecastAt=k.Release+.78f;k.Until=k.RecastAt;}return true;
                 case NativeTechniques.FlashFreeze:k.Release=t0+.18f;k.Point=V(feet);k.Until=k.Release+4;k.RecoverUntil=k.Release+.25f;return true;
                 case NativeTechniques.HydroJet:k.Release=t0+.22f;k.Dir=V(Vector3.Normalize(f-up*.18f));k.Until=k.Release+1.5f;if(!first){k.RecastAt=k.Release+.7f;k.Until=k.RecastAt;}k.RecoverUntil=k.Until;return true;
-                case NativeTechniques.Magnetize:k.Release=t0+.1f;k.Arm=t0+.5f;k.RecoverUntil=k.Release+.2f;if(first){k.Point=V(feet+f*7);k.Path=new[]{V(feet+f*7+r*3.5f),V(feet+f*7-r*3.5f)};k.HitAt=k.Arm+.6f;k.Until=k.HitAt+.35f;}else{k.Point=V(feet+f*5);k.Path=new[]{V(feet+f*9+r*2.5f)};k.Until=k.Arm+1;}return true;
+                case NativeTechniques.Magnetize:k.Release=t0+.1f;k.Arm=t0+.5f;k.RecoverUntil=k.Release+.2f;if(first){k.Point=V(feet+f*6+r*4.5f);k.Path=new[]{V(feet+f*6+r*3.5f),V(feet+f*6+r*5.5f)};k.HitAt=k.Arm+.6f;k.Until=k.HitAt+.35f;}else{k.Point=V(feet+f*5);k.Path=new[]{V(feet+f*9+r*2.5f)};k.Until=k.Arm+1;}return true;
                 case NativeTechniques.Thunderclap:k.Release=t0+.04f;k.Arm=t0+.3f;k.HitAt=k.Arm;k.Point=V(feet);k.Until=k.Arm+.4f;k.RecoverUntil=k.Arm+.3f;return true;
                 case NativeTechniques.Overload:k.Release=t0+.08f;k.Arm=t0+.34f;if(first){k.Until=k.Release+4;k.HitAt=k.Until;}else{k.RecastAt=k.Arm+.7f;k.Until=k.RecastAt;}k.RecoverUntil=k.Arm+.1f;return true;
                 case NativeTechniques.SoulSiphon:k.Release=t0+.22f;k.To=V(feet+f*7+up*1.25f);k.Until=k.Release+2;if(!first){k.RecastAt=k.Release+1;k.Until=k.RecastAt;}k.RecoverUntil=k.Until;return true;
