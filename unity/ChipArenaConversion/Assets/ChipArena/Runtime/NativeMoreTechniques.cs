@@ -6,7 +6,7 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
-        private bool TechniqueActionLock(NativePilot p)=>ChannelLive(p,"bipod")||TechniqueBusy(p)&&(p.Technique.Kind=="dragon-breath"||p.Technique.Kind=="soul-siphon"||p.Technique.Kind=="shield-surf"||p.Technique.Kind=="iron-vow"||p.Technique.Kind=="grave-walk"||p.Technique.Kind=="recoil-burst"||p.Technique.Kind=="parting-line");
+        private bool TechniqueActionLock(NativePilot p)=>MobilityActionLock(p)||ChannelLive(p,"bipod")||TechniqueBusy(p)&&(p.Technique.Kind=="dragon-breath"||p.Technique.Kind=="soul-siphon"||p.Technique.Kind=="shield-surf"||p.Technique.Kind=="iron-vow"||p.Technique.Kind=="grave-walk"||p.Technique.Kind=="recoil-burst"||p.Technique.Kind=="parting-line");
         private bool TechniqueRunning(NativePilot p)=>p.Technique?.Kind=="wildfire-run"&&Time>=p.Technique.Release&&Time<p.Technique.Arm;
         private bool TechniqueBrace(NativePilot p)=>p.Technique?.Kind=="iron-vow"&&p.Technique.Phase!="release"&&NativeTechniqueRules.Live(p.Technique,Time);
         private bool TechniqueGhost(NativePilot p)=>p.Technique?.Kind=="grave-walk"&&NativeTechniqueRules.Live(p.Technique,Time);

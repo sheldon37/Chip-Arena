@@ -28,7 +28,7 @@ internal static class ExpansionFoundationChecks
         string reward=run.Snapshot().rewards.First(r=>r.owner=="host").id;var first=session.Offers("host",reward);
         Check(first.SequenceEqual(new[]{"ab-sacred-spring"}),"Expedition filters mechanics and uses current slot");
         loadout="";first[0]="mutated";Check(session.Offers("host",reward).SequenceEqual(new[]{"ab-sacred-spring"}),"opened offers stay fixed across slot swap and caller mutation");
-        foreach(string id in new[]{"bipod","envenom","dragon-breath","combust","soul-siphon"})
+        foreach(string id in NativeThirdTechniqueContent.Ready)
         {
             var def=NativeTechniques.Find(id);var row=data.abilities.Single(a=>a.id==id);
             string slotted=NativeTechniqueLoadout.With("",def.Spec,"e",id);
@@ -40,6 +40,11 @@ internal static class ExpansionFoundationChecks
             Check(k.Valid()&&NativeTechniqueRules.Recast(k,11)&&NativeTechniqueRules.Moving(k,11),"live channel recast and interruption: "+id);
             k.RecastAt=11;Check(!NativeTechniqueRules.Recast(k,11),"channel cannot recast twice: "+id);
         }
+        foreach(string spec in new[]{"sword","shield","greatsword","rifle","bow","water"})
+            Check(NativeThirdTechniqueContent.Ready.Any(id=>NativeTechniques.Find(id).Spec==spec),"priority weapon has a live technique: "+spec);
+        var jet=new NativeTechnique{Kind="hydro-jet",Phase="jet",At=0,Release=.1f,Until=1.6f,RecoverUntil=1.6f};
+        Check(jet.Valid()&&NativeTechniqueRules.Busy(jet,1)&&NativeTechniqueRules.Moving(jet,1)&&NativeTechniqueRules.Recast(jet,1),"hydro jet movement, attack lock, recast");
+        NativeTechniqueRules.End(jet,1);Check(!NativeTechniqueRules.Live(jet,1)&&!NativeTechniqueRules.Busy(jet,1)&&jet.Valid(),"interrupt releases jet lock");
         NativeTechniqueMark[] marks=null;for(int i=1;i<=8;i++)marks=NativeCombatMarks.Put(marks,"disarm",i,i,i+10);
         Check(marks.Length==6&&marks[0].By==3&&NativeCombatMarks.Has(marks,"disarm",9),"six-mark bound evicts oldest");
         marks=NativeCombatMarks.Put(marks,"disarm",8,9,20);Check(marks.Length==6&&marks.Last().Until==20,"same effect/source refreshes");

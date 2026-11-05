@@ -33,6 +33,20 @@ Adds **13 mechanics**, for **30/98** expansion chips live:
 
 Rules for the text: no "per stack", "additive" or "recursion"; no sentence over about two lines on a tray card; one idea a row; say who it affects when it is not you ("-15% Their speed"). The footer says who can take it. The copy lives in `Core/NativeChipCopy.cs` and overrides the pinned `ChipText.json` export on the card only: the rows of rules text in `docs/CHIP-CATALOG.md` still hold the exact behaviour.
 
+## Third rules batch (Astra, 2026-11-05; task branch)
+
+Adds **7 ability mechanics**, for **37/98** expansion chips on `codex/expansion-rules-3`: `ab-aftershock-slam`, `ab-battering-ram`, `ab-triple-bank`, `ab-spiked-wall`, `ab-fissure`, `ab-eye-of-the-storm`, `ab-big-wave`. Remaining **61** stay gated. This batch includes no new wild chips.
+
+- Aftershock: Ground Slam's second 6 m ring, half damage, .5 s later, no launch; existing technique clock/point, once only.
+- Battering Ram: +12 on the existing Bulwark wall-impact hit (22 base total).
+- Triple Bank: Aegis's three-victim chain grows to five, retaining range, visibility, damage and no-repeat checks.
+- Spiked Wall: 180 Bastion health with normalized replicated Arm; a melee contact damages the wall and retaliates for 8 without triggering direct-hit chips.
+- Fissure: existing two-second crack extended to five seconds (+3); the extra enemy slow also includes minions.
+- Eye of the Storm: during active Whirlwind, visible non-boss enemies within 5 m are pulled at 4 m/s through world collision checks, stopping at 1 m; no extra damage or tick count.
+- Big Wave: Tidal Wave's authoritative collision radius x1.4; damage unchanged. Claude can consume the existing shot radius for the enlarged look.
+
+All seven use existing slot eligibility. No card or presentation edits, and no account service/live/Site deployment. Exact checks and delivery status are in DEV_LOG and the task PR.
+
 ## Ability chips
 
 Forty-eight chips, four a weapon: its Q, its E, and two of its techniques. A chip is drafted only while its ability is in the pilot's Q or E, so every one offered is one you can use. The footer says `RIPOSTE ONLY`. The four chips already tied to one ability (Cinder Field, Undertow, Abyssal Core, Storm Recall) are gated the same way once this is in.

@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
         private void DamageTechniqueObject(NativePilot p,float damage,Vector3 contact,bool shot=false)
         {
             var k=p.Technique;p.TechniqueHealth=Math.Max(0,p.TechniqueHealth-damage);
-            if(k.Kind=="bastion"){k.Arm=p.TechniqueHealth/120;k.To=Vec(contact);k.HitAt=Time;}
+            if(k.Kind=="bastion"){k.Arm=p.TechniqueHealth/(AbilityChip(p,"ab-spiked-wall")?180:120);k.To=Vec(contact);k.HitAt=Time;}
             if(k.Kind=="sentry-drop")k.HitAt=Time;
             if(k.Kind=="lightning-rod"&&shot){k.To=Vec(contact);k.HitAt=Time;}
             if(p.TechniqueHealth>0)return;
@@ -54,6 +54,14 @@ namespace ChipArena.UnityConversion
         }
         private void TechniqueMeleeObjects(NativePilot p,NativeMeleeSwing swing,Vector3 origin)
         {
+            foreach(var q in Pilots)
+            {
+                var wall=q.Technique;if(q==p||wall?.Kind!="bastion"||!NativeTechniqueRules.Live(wall,Time)||q.TechniqueHealth<=0||!CanHit(p,q))continue;
+                var center=Vec(wall.Point)+Vector3.up*.8f;
+                if(!swing.Contact("bastion:"+q.Seat.id,Time,Vec(center-origin),1.3f,MeleeVisible(origin,center,p,null),p.Grounded))continue;
+                bool spikes=AbilityChip(q,"ab-spiked-wall");DamageTechniqueObject(q,TechniqueAway(p)?6:(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),center);
+                if(spikes)Damage(p,q,8,Vector3.zero,0,false,direct:false,primary:false,damageKind:"ability");
+            }
             foreach(var q in Pilots)
             {var k=q.Technique;if(q==p||!TechniqueObject(k)||!NativeTechniqueRules.Live(k,Time)||q.TechniqueHealth<=0||!CanHit(p,q))continue;var at=Vec(k.Point)+Vector3.up*TechniqueObjectHeight(k);var delta=at-origin;if(!swing.Contact("sentry:"+q.Seat.id,Time,Vec(delta),.55f,MeleeVisible(origin,at,p,null),p.Grounded))continue;DamageTechniqueObject(q,TechniqueAway(p)?6:(float)(p.Weapon.damage*p.Stats["damage"]*swing.DamageScale),at);}
         }

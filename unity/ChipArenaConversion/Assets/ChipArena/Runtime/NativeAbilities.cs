@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
             if(d.id=="frag-grenade")
             {Vector3 delta=cast.Point-start;float t=Mathf.Clamp(delta.magnitude/16,.45f,1.1f);shot.Velocity=delta/t+Vector3.up*(float)d.gravity*t*.5f;shot.Fuse=Time+t+(float)d.fuse;}
             if(d.id=="tidal-wave")
-            {dir=new Vector3(cast.Direction.x,0,cast.Direction.z).normalized;shot.Position=p.Body.position+dir*.6f+Vector3.up*.25f;shot.Velocity=dir*(float)d.speed;}
+            {if(AbilityChip(p,"ab-big-wave"))shot.Radius*=1.4f;dir=new Vector3(cast.Direction.x,0,cast.Direction.z).normalized;shot.Position=p.Body.position+dir*.6f+Vector3.up*.25f;shot.Velocity=dir*(float)d.speed;}
             // Cover between the pilot and muzzle must be hit before the new shot can escape it.
             Vector3 eye=p.Body.position+Vector3.up*.3f;
             if(SceneLinecast(eye,shot.Position,out var wall,WorldMask))

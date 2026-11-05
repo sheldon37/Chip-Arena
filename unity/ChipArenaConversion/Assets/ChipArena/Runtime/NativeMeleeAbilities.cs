@@ -157,8 +157,8 @@ namespace ChipArena.UnityConversion
                     case "earthsplitter":
                         Vector3 direction=Vec(a.Direction),start=p.Body.position;float length=10;
                         if(root.scene.GetPhysicsScene().Raycast(start,direction,out var wall,length,WorldMask,QueryTriggerInteraction.Ignore))length=wall.distance;
-                        meleeFissures.Add(new MeleeFissure{Owner=p,Action=a,Start=start,Direction=direction,At=Time,Until=Time+2,Length=length});
-                        p.MeleeKit.FissureStart=Vec(start);p.MeleeKit.FissureDirection=a.Direction;p.MeleeKit.FissureAt=Time;p.MeleeKit.FissureUntil=Time+2;p.MeleeKit.FissureSpeed=25;p.MeleeKit.FissureLength=length;
+                        meleeFissures.Add(new MeleeFissure{Owner=p,Action=a,Start=start,Direction=direction,At=Time,Until=Time+(AbilityChip(p,"ab-fissure")?5:2),Length=length});
+                        p.MeleeKit.FissureStart=Vec(start);p.MeleeKit.FissureDirection=a.Direction;p.MeleeKit.FissureAt=Time;p.MeleeKit.FissureUntil=Time+(AbilityChip(p,"ab-fissure")?5:2);p.MeleeKit.FissureSpeed=25;p.MeleeKit.FissureLength=length;
                         Emit(EventKind.FissureStart,p,0,start,25,a.Fx,.8f,normal:direction);a.Phase="recovery";break;
                 }
             }
@@ -168,7 +168,17 @@ namespace ChipArena.UnityConversion
         private void StepWhirlwind(NativePilot p,NativeMeleeAction a)
         {
             NativeWhirlwindRules.Advance(a,Time);
-            if(a.Phase=="active"){p.Yaw=p.Input.Yaw;a.Yaw=p.Yaw*Mathf.Deg2Rad;}
+            if(a.Phase=="active")
+            {
+                p.Yaw=p.Input.Yaw;a.Yaw=p.Yaw*Mathf.Deg2Rad;
+                if(AbilityChip(p,"ab-eye-of-the-storm"))foreach(var t in MeleeTargets(p).ToArray())
+                {
+                    var toward=p.Body.position-t.at;toward.y=0;
+                    if(toward.magnitude<=1||toward.magnitude>5||!MeleeVisible(p.Body.position,t.at,p,t.collider)||t.pilot!=null&&(Invulnerable(t.pilot)||SirenArmor(t.pilot))||t.minion!=null&&IsZoneBoss(t.minion))continue;
+                    var body=t.pilot?.Body??t.minion.Body;float step=ForwardAbilityStep(body.position,toward.normalized,Math.Min(4f/60,toward.magnitude-1),out _);
+                    if(!HubCross(body.position,body.position+toward.normalized*step))body.position+=toward.normalized*step;
+                }
+            }
             while(p.Special==a&&p.Hp>0&&NativeWhirlwindRules.NextTick(a,Time))
             {
                 a.Hit.Clear();Vector3 origin=p.Body.position;
@@ -303,7 +313,7 @@ namespace ChipArena.UnityConversion
                         Emit(EventKind.Mark,s.Original,id,hit.Point,1,s.Fx);
                     }
                 }
-                if(s.Shield&&s.Chain.Count<3&&s.Original.Hp>0)
+                if(s.Shield&&s.Chain.Count<(AbilityChip(s.Original,"ab-triple-bank")?5:3)&&s.Original.Hp>0)
                 {
                     var next=MeleeTargets(s.Owner).Where(t=>!s.Chain.Contains(t.id)&&Vector3.Distance(t.at,hit.Point)<=7&&MeleeVisible(hit.Point,t.at,s.Owner,t.collider)).OrderBy(t=>(t.at-hit.Point).sqrMagnitude).ThenBy(t=>t.id).FirstOrDefault();
                     if(next.collider!=null)
@@ -330,7 +340,7 @@ namespace ChipArena.UnityConversion
                 bool wall=scene.CapsuleCast(pos+Vector3.up*.43f,pos-Vector3.up*.43f,.42f,c.Direction,out var hit,step+.03f,WorldMask,QueryTriggerInteraction.Ignore);
                 if(wall)step=Math.Max(0,hit.distance-.03f);
                 c.Target.Body.position=ClampMap(pos+c.Direction*step);c.Left-=step;
-                if(wall){float actual=MeleeAbilityHit(c.Owner,c.Target.Seat.id,10,c.Direction,0,"bulwark-charge",hit.point,wallSlam:true);if(actual>0&&c.Target.Hp>0&&!SirenArmor(c.Target)){StunMelee(c.Target,.6f);c.Target.StaggerImmune=NativeMeleeRules.StaggerImmuneThrough(c.Target.StunEnd);}}
+                if(wall){float actual=MeleeAbilityHit(c.Owner,c.Target.Seat.id,10+(AbilityChip(c.Owner,"ab-battering-ram")?12:0),c.Direction,0,"bulwark-charge",hit.point,wallSlam:true);if(actual>0&&c.Target.Hp>0&&!SirenArmor(c.Target)){StunMelee(c.Target,.6f);c.Target.StaggerImmune=NativeMeleeRules.StaggerImmuneThrough(c.Target.StunEnd);}}
                 if(wall||c.Left<=.001f)meleeCarries.Remove(c);
             }
             if(meleeCarries.Count>0)Physics.SyncTransforms();
@@ -345,6 +355,11 @@ namespace ChipArena.UnityConversion
                     float actual=MeleeAbilityHit(f.Owner,t.id,30,f.Direction,0,"earthsplitter",t.collider.ClosestPoint(front));
                     if(actual>0&&t.pilot!=null&&StaggerMelee(t.pilot,.5f)){t.pilot.Knockback.y=5.75f-t.pilot.Body.linearVelocity.y;t.pilot.Grounded=false;}
                     if(Time<f.Owner.StunEnd){f.Stopped=true;break;}
+                }
+                if(AbilityChip(f.Owner,"ab-fissure"))foreach(var t in MeleeTargets(f.Owner).ToArray())
+                {
+                    if(NativeTechniqueRules.LineDistance(Vec(t.at),Vec(f.Start),Vec(front))>.8f||!MeleeVisible(f.Start,t.at,f.Owner,t.collider))continue;
+                    if(t.pilot!=null)Slow(t.pilot,.7f,.06f);else SlowMinion(t.minion,.7f,.06f);
                 }
                 f.Travel=end;
                 foreach(var p in Pilots)
