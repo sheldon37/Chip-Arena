@@ -216,7 +216,7 @@ namespace ChipArena.UnityConversion
         private void CutArc(HumBossRig rig,in HumBossView v,float t)
         {
             if(rig.ActMove<0||NativeHumBoss.Moves[rig.ActMove].Id!="cut")return;var m=NativeHumBoss.Moves[rig.ActMove];var a=rig.Act;float k=a.Age-a.HitAt;if(k<-.25f||k>.5f)return;int q0=Quads.Count;
-            float e=k<0?1+k/.25f:1-k/.5f;ArcFlat(rig.Root,rig.Yaw,m.Reach+1,m.Arc,(k<0?R(WarnHex):R(DangerHex))*.6f*e,(k<0?G(WarnHex):G(DangerHex))*.6f*e,(k<0?B(WarnHex):B(DangerHex))*.6f*e,.9f,.1f);Telegraph+=Quads.Count-q0;
+            float e=k<0?1+k/.25f:1-k/.5f;ArcFlat(rig.Root,rig.Yaw,m.Reach+1,m.Arc,(k<0?R(WarnHex):R(DangerHex))*.15f*e,(k<0?G(WarnHex):G(DangerHex))*.15f*e,(k<0?B(WarnHex):B(DangerHex))*.15f*e,.9f,.07f,4.5f);Telegraph+=Quads.Count-q0;
         }
         // ---------------- Fall Through: the carpet blackens from the middle, tears inward, and the hole shows nothing at all ----------------
         private void FallThrough(HumBossRig rig,in HumBossView v,float t)
