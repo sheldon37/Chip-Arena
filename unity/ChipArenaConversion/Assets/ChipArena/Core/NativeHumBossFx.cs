@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
             Levels(rig,v,st,t);
             // Telegraphs first (never thinned), then the rest.
             Rows(v,st,t);Lane(rig,v,t);Stoop(rig,v,t);ReachArc(rig,v,t);CutArc(rig,v,t);FallThrough(rig,v,t);Ring(rig,v,t);
-            HeadGlow(rig,v,st,t);TubesFx(rig,v,t);BallastFx(rig,v,t);Arrival(rig,v,st,t);WallHand(rig,v,t);Voices(rig,v,t);PhaseFx(rig,v,st,t);Steps(rig,v,t);Drips(rig,v,t);Slip(rig,v,st,t);Clip(rig,v,t);Death(rig,v,t);Lights(rig,v,st,t);
+            HeadGlow(rig,v,st,t);TubesFx(rig,v,t);BallastFx(rig,v,t);Arrival(rig,v,st,t);WallHand(rig,v,t);Voices(rig,v,t);PhaseFx(rig,v,st,t);Steps(rig,v,t);Drips(rig,v,t);GridDust(rig,st,t);Slip(rig,v,st,t);Clip(rig,v,t);Death(rig,v,t);Lights(rig,v,st,t);
             if(StandIns!=null&&!rig.Arriving)for(int i=0;i<StandIns.Length;i++){float on=i==v.actionTarget?.5f:.16f;RingFlat(new Vector3(StandIns[i].X,floorY+.015f,StandIns[i].Y),.42f,.025f,on,on,on*.9f,.8f);}
             Flush();
         }
@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
                     // The lane's light on the carpet: the danger is lit: stand between them.
                     float u=(k+m.Wind)/m.Wind,pulse=reduced?1:.8f+.2f*(float)Math.Sin(t*19);int q0=Quads.Count;
                     StripFlat(a,b,floorY+.02f,half,R(WarnHex)*.32f*u*pulse,G(WarnHex)*.3f*u*pulse,B(WarnHex)*.2f*u*pulse,.85f);
-                    StripFlat(a,b,floorY+.024f,half*.42f,.95f*u*u,.9f*u*u,.6f*u*u,.9f);
+                    StripFlat(a,b,floorY+.024f,half*.42f,.5f*u*u,.46f*u*u,.28f*u*u,.9f);
                     Telegraph+=Quads.Count-q0;
                 }
                 else if(k<.22f)
@@ -205,8 +205,8 @@ namespace ChipArena.UnityConversion
         {
             if(rig.ActMove<0||NativeHumBoss.Moves[rig.ActMove].Id!="reach")return;var m=NativeHumBoss.Moves[rig.ActMove];var a=rig.Act;
             int q0=Quads.Count;float s=a.HitAt>0?a.Age/a.HitAt:1;var f=BossMath.Forward(rig.Yaw);
-            if(s<1){float u=BossMath.Smooth(s*1.3f);ArcFlat(rig.Root,rig.Yaw,m.Reach,m.Arc,R(WarnHex)*.36f*u,G(WarnHex)*.34f*u,B(WarnHex)*.22f*u,.8f,.07f);}
-            else{float k=(a.Age-a.HitAt)/m.Strike;if(k<1.1f)ArcFlat(rig.Root,rig.Yaw,m.Reach,m.Arc*BossMath.Clamp01(k)*rig.ActSide,R(DangerHex)*.45f,G(DangerHex)*.45f,B(DangerHex)*.45f,.8f,.08f);
+            if(s<1){float u=BossMath.Smooth(s*1.3f);ArcFlat(rig.Root,rig.Yaw,m.Reach,m.Arc,R(WarnHex)*.13f*u,G(WarnHex)*.12f*u,B(WarnHex)*.07f*u,.8f,.05f,4.5f);}
+            else{float k=(a.Age-a.HitAt)/m.Strike;if(k<1.1f)ArcFlat(rig.Root,rig.Yaw,m.Reach,m.Arc*BossMath.Clamp01(k)*rig.ActSide,R(DangerHex)*.2f,G(DangerHex)*.2f,B(DangerHex)*.2f,.8f,.06f,3.2f);
                 // Fingers' trail through the sweep.
                 if(k<1.3f){var hand=rig.Shown.Position[rig.ActSide>0?NativeHumBossLook.HandR:NativeHumBossLook.HandL];Vfx.SmokeBurst(t,hand,BossMath.Right(rig.Yaw)*(-rig.ActSide*3f),.3f,.1f,5,.8f,.12f,.45f,DustC,.22f,v.hitAt,m.Strike,vseed,620,0,floorY);}}
             Telegraph+=Quads.Count-q0;
@@ -252,17 +252,23 @@ namespace ChipArena.UnityConversion
             }
             if(!HumBossView.At(v.ringAt)||t<v.ringAt)return;float k=t-v.ringAt,r0=k*m.Speed;float max=Room!=null?Math.Max(Room.MaxX-Room.MinX,Room.MaxZ-Room.MinZ):40;if(r0>max*1.1f)return;
             var c=new Vector3(v.ringX,floorY,v.ringZ);float fade=(1-BossMath.Smooth((k-1.8f)/.8f))*BossMath.Smooth(k/.05f);int q0=Quads.Count;
-            // Three thin coloured rings a hand apart (the chromatic shift), a soft band over them, standing floor to ceiling: jump it or roll through it.
-            Band(c,r0-.16f,.9f,1.5f*fade,.25f*fade,.3f*fade);Band(c,r0,.9f,.3f*fade,1.5f*fade,.4f*fade);Band(c,r0+.16f,.9f,.3f*fade,.35f*fade,1.5f*fade);
-            RingFlat(c+new Vector3(0,.03f,0),r0,.13f,R(DangerHex)*fade,G(DangerHex)*.8f*fade,B(DangerHex)*fade,.95f);
+            // Three thin coloured rings a hand apart (the chromatic shift), standing floor to ceiling but broken up, the air barely coloured: it's a shudder, not a wall. Bright lines where it meets the carpet and the grid: jump it or roll through it.
+            Band(c,r0-.18f,t,1,.32f,.2f,fade,1);Band(c,r0,t,.36f,1,.34f,fade,2);Band(c,r0+.18f,t,.26f,.34f,1,fade,3);
+            RingFlat(c+new Vector3(0,.03f,0),r0,.12f,R(DangerHex)*fade,G(DangerHex)*fade,B(DangerHex)*fade,.95f);RingFlat(c+new Vector3(0,.035f,0),r0-.08f,.05f,1.1f*fade,.95f*fade,.7f*fade,.95f);
+            RingFlat(c+new Vector3(0,BackroomsLayout.Height-.03f,0),r0,.1f,.5f*fade,.42f*fade,.3f*fade,.9f);
             Telegraph+=Quads.Count-q0;
             if(k<.4f){Vfx.Glow(c+new Vector3(0,2,0),Amber*(4*(1-k/.4f)),5,NativeBossVfx.RingGlow);}
         }
-        private void Band(Vector3 c,float r,float height,float cr,float cg,float cb)
+        private void Band(Vector3 c,float r,float t,float cr,float cg,float cb,float fade,int key)
         {
-            if(r<=.05f)return;int n=Math.Max(24,Math.Min(64,(int)(r*3)));float y0=c.Y+.05f,y1=c.Y+BackroomsLayout.Height-.05f;
-            for(int i=0;i<n;i++){float a0=i*BossMath.Tau/n,a1=(i+1)*BossMath.Tau/n;float c0=(float)Math.Cos(a0),s0=(float)Math.Sin(a0),c1=(float)Math.Cos(a1),s1=(float)Math.Sin(a1);
-                Add(c.X+c0*r,y0,c.Z+s0*r,c.X+c1*r,y0,c.Z+s1*r,c.X+c1*r,y1,c.Z+s1*r,c.X+c0*r,y1,c.Z+s0*r,cr*.28f,cg*.28f,cb*.28f,.7f,0,true);}
+            if(r<=.05f)return;int n=Math.Max(28,Math.Min(84,(int)(r*4)));float y0=c.Y+.04f,y1=c.Y+BackroomsLayout.Height-.04f;int slot=reduced?0:(int)Math.Floor(t*24);
+            for(int i=0;i<n;i++)
+            {
+                float a0=i*BossMath.Tau/n,a1=(i+1)*BossMath.Tau/n;float c0=(float)Math.Cos(a0),s0=(float)Math.Sin(a0),c1=(float)Math.Cos(a1),s1=(float)Math.Sin(a1);
+                // Each panel of it flickers on its own; about half are nearly nothing.
+                float h=H(i*7+key,slot);float k=h<.45f?.012f:.03f+.1f*(h-.45f);k*=fade;
+                Add(c.X+c0*r,y0,c.Z+s0*r,c.X+c1*r,y0,c.Z+s1*r,c.X+c1*r,y1,c.Z+s1*r,c.X+c0*r,y1,c.Z+s0*r,cr*k,cg*k,cb*k,.7f,0,true);
+            }
         }
         // ---------------- its fixture: the bar of light, wide and soft, the streak across it ----------------
         private void HeadGlow(HumBossRig rig,in HumBossView v,HumBossStage st,float t)
@@ -413,6 +419,16 @@ namespace ChipArena.UnityConversion
                 var at=from+new Vector3(0,-.5f*NativeBossVfx.Gravity*k*k,0);if(at.Y<floorY+.01f)continue;float sp=NativeBossVfx.Gravity*k;Vfx.Drop(at,new Vector3(0,Math.Min(.12f,.012f*sp+.02f),0),new Vector3(.06f,.055f,.04f),.008f,.8f,k/period,i);
             }
         }
+        // ---------------- the grid shaken: dust sifting down off the ceiling tiles round it when the room shudders ----------------
+        private void GridDust(HumBossRig rig,HumBossStage st,float t)
+        {
+            if(st.Dust<=.03f||Room==null)return;var c=rig.Root;
+            for(int i=0;i<7;i++)
+            {
+                float ang=i*2.244f,r=1.6f+1.1f*i;var at=new Vector3(BossMath.Clamp(c.X+(float)Math.Cos(ang)*r,Room.MinX+.5f,Room.MaxX-.5f),floorY+BackroomsLayout.Height-.06f,BossMath.Clamp(c.Z+(float)Math.Sin(ang)*r,Room.MinZ+.5f,Room.MaxZ-.5f));
+                Vfx.SmokeFlow(t,at,new Vector3(0,-.65f,0),.22f,-.12f,1.6f,2.6f,.14f,.75f,DustC,.2f,0,1e6f,vseed,1040+i,0,floorY,default,default,st.Dust);
+            }
+        }
         // ---------------- NOCLIP: the textures slip: blocks of wall and ceiling creeping and swimming ----------------
         private void Slip(HumBossRig rig,in HumBossView v,HumBossStage st,float t)
         {
@@ -520,7 +536,7 @@ namespace ChipArena.UnityConversion
                 Add(c.X+c0*r0,c.Y,c.Z+s0*r0,c.X+c1*r0,c.Y,c.Z+s1*r0,c.X+c1*r1,c.Y,c.Z+s1*r1,c.X+c0*r1,c.Y,c.Z+s0*r1,r,g,b,a,0,true);}
         }
         // A wedge on the floor (reach m, arc degrees about the yaw, or a swept share when signed), its edge brighter.
-        private void ArcFlat(Vector3 root,float yaw,float reach,float arc,float r,float g,float b,float a,float edge)
+        private void ArcFlat(Vector3 root,float yaw,float reach,float arc,float r,float g,float b,float a,float edge,float edgeGain=2.2f)
         {
             float span=Math.Abs(arc)*BossMath.Deg;if(span<1e-3f)return;float from=arc<0?yaw+span*.5f-span:yaw-span*.5f;int n=Math.Max(6,(int)(span*12));float y=floorY+.02f;
             for(int i=0;i<n;i++)
@@ -528,7 +544,7 @@ namespace ChipArena.UnityConversion
                 float a0=from+span*i/n,a1=from+span*(i+1.02f)/n;var d0=BossMath.Forward(a0);var d1=BossMath.Forward(a1);
                 float r0=1.0f,r1=reach;
                 Add(root.X+d0.X*r0,y,root.Z+d0.Z*r0,root.X+d1.X*r0,y,root.Z+d1.Z*r0,root.X+d1.X*r1,y,root.Z+d1.Z*r1,root.X+d0.X*r1,y,root.Z+d0.Z*r1,r,g,b,a,0,true);
-                Add(root.X+d0.X*(r1-edge),y+.002f,root.Z+d0.Z*(r1-edge),root.X+d1.X*(r1-edge),y+.002f,root.Z+d1.Z*(r1-edge),root.X+d1.X*r1,y+.002f,root.Z+d1.Z*r1,root.X+d0.X*r1,y+.002f,root.Z+d0.Z*r1,r*2.2f,g*2.2f,b*2.2f,a,0,true);
+                Add(root.X+d0.X*(r1-edge),y+.002f,root.Z+d0.Z*(r1-edge),root.X+d1.X*(r1-edge),y+.002f,root.Z+d1.Z*(r1-edge),root.X+d1.X*r1,y+.002f,root.Z+d1.Z*r1,root.X+d0.X*r1,y+.002f,root.Z+d0.Z*r1,r*edgeGain,g*edgeGain,b*edgeGain,a,0,true);
             }
         }
     }

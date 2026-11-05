@@ -123,7 +123,10 @@ namespace ChipArena.UnityConversion
                 // The eye and the look ease toward it (it's choosing among clear places as the boss moves), from wherever the intro left them.
                 float cdt=Mathf.Clamp(clock-humCamLast,0,.1f);
                 if(!humCamLive){humCamEye.Reset(humCamShot);humCamLook.Reset(humCamShotLook);humCamFov.Reset(humCamShotFov);humCamLive=true;}
-                ne=humCamEye.Step(ne,.42f,cdt);nl=humCamLook.Step(nl,.2f,cdt);fov=humCamFov.Step(fov,.4f,cdt);NativeHumArena.PushEye(NativeHumBossPreview.Room,humView.shiftMask,ref ne,nl);
+                ne=humCamEye.Step(ne,.42f,cdt);nl=humCamLook.Step(nl,.2f,cdt);fov=humCamFov.Step(fov,.4f,cdt);
+                // It never comes through the lens: the eye stands off its body (a lunge can run at the camera).
+                var away=ne-humBoss.Shown.Position[NativeHumBossLook.Spine1];away.Y=0;float gap=away.Length();if(gap<3.4f){away=gap>.01f?away/gap:new NVector(1,0,0);ne+=away*(3.4f-gap);humCamEye.Value=ne;}
+                NativeHumArena.PushEye(NativeHumBossPreview.Room,humView.shiftMask,ref ne,nl);
             }
             if(age<NativeBackroomsBossIntro.Hold+.25f){humCamLive=false;humCamShot=ne;humCamShotLook=nl;humCamShotFov=fov;}humCamLast=clock;
             eye=new Vector3(ne.X,ne.Y,ne.Z);look=new Vector3(nl.X,nl.Y,nl.Z);
