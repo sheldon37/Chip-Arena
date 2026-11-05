@@ -13,6 +13,7 @@
 - **Checks:** full `CoreTests` and the Unity compile before the merge, in the release line below if it landed. Unity Editor, the draft at the game's camera: six and twelve offers, the longest chips and the new sets, read at 1469 by 720.
 - **Not verified:** a Windows build; ultra-wide or very small windows beyond the existing size rules; controllers' focus on the taller rows.
 - **Animation impact:** none.
+- **Release:** merged `80e661cb` into shared and the builder; full `CoreTests` at `ac61294f`: exit 0, 962 PASS groups; `ucomp` 0. BUILD SUCCEEDED and `Publication: succeeded` to the test channel, build `be10b272` (revision 639294454115857076, 226.8 MiB). No live or Site release.
 
 ## 2026-11-05 — Claude: the big update, designed and staged for the rules
 
@@ -24,6 +25,7 @@
 - **Animation impact:** none yet. New techniques' timings are proposals in the table.
 - **Checks:** `CoreTests --techniques` passes with `Third` staged. Full suite and the Unity compile before the merge, in the merge's release note.
 - **Not verified:** nothing here can be played yet.
+- **Release:** merged `f69dcca5` into shared, not the builder: nothing in it changes the game. Full `CoreTests` at `1877c868`: exit 0, 962 PASS groups; `ucomp` 0.
 
 ## 2026-11-05 — Claude: runners mostly on sprint-2, chase-2's head lowered
 
@@ -35,6 +37,7 @@
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns, movement or networking.
 - **Not verified:** a Windows build; crowds; two clients. The pack's `Zombie_27` extract was not found on this PC or by the owner, so turn clips and closer-speed takes remain untried.
 - **Next:** the owner plays it. Raise or lower `HeadLowered` by eye if needed.
+- **Release:** merged `89484834` into shared and the builder; full `CoreTests` at `c71a3680`: exit 0, 962 PASS groups; `ucomp` 0. BUILD SUCCEEDED and `Publication: succeeded` to the test channel, build `ea80acd5` (revision 639294433427562030, 226.8 MiB). No live or Site release.
 
 ## 2026-11-04 — Claude: zombies on the pack's own motion
 
