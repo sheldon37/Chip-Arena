@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: modifier-card / boss-intro build receipt
+
+- PR #344 merged as `71701e103cd57b29bb4d2a1c8ce3a780b25e15cd` and synced to the test builder. Work `71701e103cd5-340a9f5b` completed Windows build and TEST ZIP packaging; Unity exited successfully, with **351 PASS lines**, including the new deployment card bake.
+- Builder status reported **BUILD SUCCEEDED - PUBLISHING** at **14:56:34 UTC**. Publication independently confirmed by test-feed commit `e5ff0c10b636ecedea70aa055b6574222cd1d000` at **14:56:53 UTC** and reading `native/windows-x64/latest.json`: version `36e538e916ae90edec4650d7cf64b18dd1f3559f4777b1dafc8c1cad2f839b04`, revision `639294873383185046`.
+- The latest status was replaced by a newer build at 14:57:47 UTC after shared advanced to `070ca057`; do not mistake that BUILDING status for failure of this completed delivery. This receipt changes docs only and does not resync/restart that newer build.
+- Existing art is unchanged; first-roll cache decoding, Station boss prewarm and hitch-resistant music correction are delivered. Local tests and source trace are below. Actual Windows frame-time/listening and multiplayer acceptance remain unverified; no live or Site release.
+
 ## 2026-11-05 — Claude: THE HUM and THE DEEP END, presentation built behind the DEV previews
 
 - **Owner:** Level 0 and Poolrooms bosses: Siren-style intros, lore accurate, "high quality designs, high quality effects, beautiful animations", difficult, and "prevent cheese methods like 'safe' spots"; then "Im gonna give both bosses different music from the stage". Designed while the owner slept; the owner has seen stills but has not reviewed or played them.
