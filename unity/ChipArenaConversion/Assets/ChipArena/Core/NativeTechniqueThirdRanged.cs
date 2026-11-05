@@ -151,30 +151,31 @@ namespace ChipArena.UnityConversion
         {
             var feet=N(k.Point);var aim=RangedNorm(N(k.Dir),Vector3.UnitZ);var f=Flat(aim,Vector3.UnitZ);var r=RightOf(f);
             float set=Smooth((t-k.At)/Math.Max(.05f,k.Release-k.At)),away=k.Recast(t)?Smooth((t-k.RecastAt)/Math.Max(.05f,k.Until-k.RecastAt)):Smooth((t-k.Until)/.25f),ext=set*(1-away),age=t-k.Release;if(ext<=.002f)return;
-            var mount=feet+Up*1.2f+f*.62f+r*.14f;var steel=BipodSteel+Vector3.One*.2f;
+            var mount=feet+Up*1.2f+f*.62f+r*.14f;var steel=BipodSteel*.8f;
             void Leg(float along,float side,int i)
             {
                 var tip=Vector3.Lerp(mount,feet+f*along+r*side+Up*.02f,ext);var mid=Vector3.Lerp(mount,tip,.55f);
-                s.Line(false,mount,tip,BipodSteel*(.7f*ext),.1f,false);s.Line(false,mount,mid,steel*(1.5f*ext),.045f,true);s.Line(false,mid,tip,steel*(1.1f*ext),.03f,true);s.Sprite(false,mid,steel*(1.8f*ext),.12f,Hot);s.Sprite(false,tip,BipodHeat*(2*ext),.14f,Hot);
+                s.Line(false,mount,mid,steel*ext,.07f,false);s.Line(false,mid,tip,steel*(.85f*ext),.045f,false);s.Sprite(false,mid,BipodHeat*(.9f*ext),.09f,Hot);s.Line(false,tip+Up*.14f,tip,BipodHeat*(1.3f*ext),.06f,true);
                 if(age>=0&&age<.9f){Cracks(s,tip,age,.9f,low?3:5,.55f,BipodHeat,seed+i*11);Sparks(s,tip+Up*.04f,age,.3f,Count(6,q,low),3.2f,BipodHeat+new Vector3(0,.3f,.2f),seed+i*13,9,.018f,Up*.5f);Dust(s,tip,age,.6f,Count(4,q,low),.6f,new Vector3(.36f,.33f,.28f),.6f,seed+i*17);}
             }
-            Leg(1.3f,.5f,1);Leg(1.3f,-.22f,2);Leg(.34f,.14f,3);
-            s.Sprite(false,mount,steel*(2.2f*ext),.16f,Hot);Hoop(s,mount,aim,.1f,.035f,steel*(1.7f*ext),low?8:12,1);
+            Leg(1.42f,.58f,1);Leg(1.42f,-.3f,2);Leg(.8f,.14f,3);
+            s.Sprite(false,mount,BipodHeat*(1.2f*ext),.12f,Hot);Hoop(s,mount,aim,.1f,.04f,steel*(1.1f*ext),low?8:12,1);
             if(age<0)return;
             float env=Smooth(age/.2f)*(1-away),heat=Clamp01(age/4);var muzzle=mount+aim*1.05f+Up*.04f;
-            s.Line(false,mount,muzzle,Vector3.Lerp(BipodSteel,BipodHeat,heat)*((1.2f+1.4f*heat)*env),.055f,false);s.Sprite(false,muzzle,BipodHeat*((.6f+2*heat)*env),.12f+.14f*heat,Hot);
+            s.Line(false,mount,muzzle,Vector3.Lerp(BipodSteel*.8f,BipodHeat,heat)*((.9f+.7f*heat)*env),.05f,false);s.Sprite(false,muzzle,BipodHeat*((.4f+1.6f*heat)*env),.1f+.14f*heat,Hot);
             // The stance and the wedge.
             float sl=age<.3f?1-age/.3f:0;if(sl>0)Ring(s,feet+Up*.04f,2.2f*OutCubic(age/.3f),.2f,BipodHeat*(1.2f*sl),low?16:32);
-            Ring(s,feet+Up*.04f,.82f,.09f,BipodHeat,low?16:28,1.1f*env);
-            var w0=feet+Up*.05f+f*1.35f;var w1=feet+Up*.05f+f*13;Strip(s,w0,w1,.62f,BipodHeat,.5f*env,.06f*env);
-            for(int sd=-1;sd<=1;sd+=2)s.Line(false,w0+r*(sd*.14f),w1+r*(sd*.95f),BipodHeat*(1.3f*env),.045f,true);
+            Ring(s,feet+Up*.04f,.82f,.09f,BipodHeat*.75f,low?16:28,env);
+            var w0=feet+Up*.05f+f*1.5f;var w1=feet+Up*.05f+f*13;Strip(s,w0,w1,.9f,BipodHeat*1.8f,.85f*env,.3f*env);
+            for(int sd=-1;sd<=1;sd+=2)s.Line(false,w0+r*(sd*.2f)+Up*.05f,w1+r*(sd*1.1f)+Up*.05f,BipodHeat*(1.5f*env),.1f,false);
             // The box and the belt.
-            float boxIn=Smooth(age/.2f)*(1-away);var box=feet+f*1.02f+r*.82f+Up*.17f;RangedBox(s,box,f*(.24f*boxIn),Up*(.16f*boxIn),r*(.15f*boxIn),CrateSteel*(1.5f*env),.03f);
-            var top=box+Up*.16f;int n=low?7:14;var prev=top;
+            float boxIn=Smooth(age/.2f)*(1-away);var box=feet+f*1.05f+r*.86f+Up*.13f;var bx=f*(.2f*boxIn);var by=Up*(.12f*boxIn);var bz=r*(.13f*boxIn);
+            RangedBox(s,box,bx,by,bz,CrateSteel*(.65f*env),.022f);s.Band(false,box-bz-bx-by,box-bz+bx-by,box-bz+bx+by,box-bz-bx+by,env,env,CrateSteel*.8f);s.Band(false,box+by-bx-bz,box+by+bx-bz,box+by+bx+bz,box+by-bx+bz,env,env,Brass*.7f);
+            var top=box+by;int n=low?7:14;var prev=top;
             for(int i=0;i<n;i++)
             {
                 float v=(i+1f)/n,b=(.75f+.25f*(float)Math.Sin(v*22-t*14))*env;var p=Vector3.Lerp(top,mount,v*boxIn)-Up*(.22f*4*v*(1-v));
-                s.Line(false,prev,p,Brass*(1.5f*b),.04f,true);if(!low)s.Line(false,p-r*.055f,p+r*.055f,Brass*(1.3f*b),.02f,true);prev=p;
+                s.Line(false,prev,p,Brass*(.9f*b),.045f,true);if(!low)s.Line(false,p-r*.06f,p+r*.06f,Brass*(.9f*b),.024f,true);prev=p;
             }
             if(!low&&heat>.1f){int m=Count(5,q,low);for(int i=0;i<m;i++){float ph=(t*.8f+R(seed,i+30))%1;s.Smoke(muzzle+Up*(.9f*ph)+r*(.08f*(float)Math.Sin(t*2.6f+i)),new Vector3(.5f,.49f,.48f),.32f*env*heat*(1-ph),.2f+.5f*ph,.2f+.5f*ph,seed+i,feet.Y);}}
         }
@@ -187,8 +188,8 @@ namespace ChipArena.UnityConversion
             var c0=N(k.Point);float ang=R(seed,1)*6.2831853f,hp=Clamp01(k.Arm);var ex=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var ez=RightOf(ex);const float Hx=.66f,Hy=.38f,Hz=.42f;
             if(t<k.Release)
             {
-                float g=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));Ring(s,c0+Up*.04f,1.2f-.3f*g,.07f,CrateGold,low?16:28,1.3f*g);
-                for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){var co=c0+Up*.05f+ex*(sx*Hx)+ez*(sz*Hz);s.Line(false,co,co-ex*(sx*.2f),CrateGold*(1.8f*g),.04f,true);s.Line(false,co,co-ez*(sz*.2f),CrateGold*(1.8f*g),.04f,true);}
+                float g=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));Ring(s,c0+Up*.04f,1.2f-.3f*g,.1f,CrateGold*1.2f,low?16:28,g);
+                for(int sx=-1;sx<=1;sx+=2)for(int sz=-1;sz<=1;sz+=2){var co=c0+Up*.05f+ex*(sx*Hx)+ez*(sz*Hz);co+=Up*.05f;s.Line(false,co,co-ex*(sx*.28f),CrateGold*(1.5f*g),.09f,false);s.Line(false,co,co-ez*(sz*.28f),CrateGold*(1.5f*g),.09f,false);}
                 return;
             }
             const float Fall=.16f;float land=k.Release+Fall,age=t-land,size=1,gone=t-k.Until;bool broken=hp<.34f;
@@ -204,12 +205,12 @@ namespace ChipArena.UnityConversion
                 size=1-Smooth(gone/.22f);if(size<=0)return;
             }
             float fall=age<0?1-(1+age/Fall)*(1+age/Fall):0;var c=c0+Up*(Hy*size+2.4f*fall);var x=ex*(Hx*size);var y=Up*(Hy*size);var z=ez*(Hz*size);
-            var frame=Vector3.Lerp(new Vector3(1,.2f,.12f),CrateSteel,Smooth(hp/.6f))*1.6f;
+            var frame=Vector3.Lerp(new Vector3(1,.2f,.12f),CrateSteel,Smooth(hp/.6f))*.85f;
             // Mass first: a soft fill on the faces under the frame, then the frame, its straps and the hazard stripes.
-            s.Band(false,c+y-x-z,c+y+x-z,c+y+x+z,c+y-x+z,.5f,.5f,CrateSteel);s.Band(false,c-z-x-y,c-z+x-y,c-z+x+y,c-z-x+y,.45f,.45f,CrateSteel);s.Band(false,c+z-x-y,c+z+x-y,c+z+x+y,c+z-x+y,.45f,.45f,CrateSteel);
+            s.Band(false,c+y-x-z,c+y+x-z,c+y+x+z,c+y-x+z,1,1,CrateSteel*.42f);s.Band(false,c-z-x-y,c-z+x-y,c-z+x+y,c-z-x+y,1,1,CrateSteel*.42f);s.Band(false,c+z-x-y,c+z+x-y,c+z+x+y,c+z-x+y,1,1,CrateSteel*.42f);s.Band(false,c-x-z-y,c-x+z-y,c-x+z+y,c-x-z+y,1,1,CrateSteel*.42f);s.Band(false,c+x-z-y,c+x+z-y,c+x+z+y,c+x-z+y,1,1,CrateSteel*.42f);
             RangedBox(s,c,x,y,z,frame,.05f*Math.Max(.3f,size));
-            int stripes=low?3:5;for(int sd=-1;sd<=1;sd+=2)for(int i=0;i<stripes;i++){float px=((i+.5f)/stripes*2-1)*.82f;var b0=c+z*sd+x*px-y*.86f;s.Line(false,b0,b0+y*1.72f+x*.2f,CrateGold*1.9f,.06f,true);}
-            if(!low)for(int sd=-1;sd<=1;sd+=2)s.Line(false,c+x*(sd*.97f)-z-y*.2f,c+x*(sd*.97f)+z-y*.2f,CrateGold*1.6f,.05f,true);
+            int stripes=low?3:5;for(int sd=-1;sd<=1;sd+=2)for(int i=0;i<stripes;i++){float px=((i+.5f)/stripes*2-1)*.82f;var b0=c+z*sd+x*px-y*.86f;s.Line(false,b0,b0+y*1.72f+x*.2f,CrateGold*1.05f,.07f,false);}
+            if(!low)for(int sd=-1;sd<=1;sd+=2)s.Line(false,c+x*(sd*.97f)-z-y*.2f,c+x*(sd*.97f)+z-y*.2f,CrateGold*.95f,.06f,false);
             if(age<0||gone>=0&&size<=.01f)return;
             if(age<.7f)
             {
@@ -218,16 +219,16 @@ namespace ChipArena.UnityConversion
             }
             // The lid.
             float open=Smooth((age-.2f)/.28f),th=open*1.3f;var hinge=c+y-z;var lz=(ez*(float)Math.Cos(th)+Up*(float)Math.Sin(th))*(2*Hz*size);var top=c+y;
-            s.Line(false,hinge-x+lz,hinge+x+lz,frame,.05f,false);s.Line(false,hinge-x,hinge-x+lz,frame,.04f,false);s.Line(false,hinge+x,hinge+x+lz,frame,.04f,false);s.Line(false,hinge-x+lz*.5f,hinge+x+lz*.5f,CrateGold*1.4f,.03f,true);
+            s.Line(false,hinge-x+lz,hinge+x+lz,frame,.05f,false);s.Line(false,hinge-x,hinge-x+lz,frame,.04f,false);s.Line(false,hinge+x,hinge+x+lz,frame,.04f,false);s.Line(false,hinge-x+lz*.5f,hinge+x+lz*.5f,CrateGold*.95f,.035f,false);
             if(open<=.02f)return;
             float env=open*size,throb=.8f+.2f*(float)Math.Sin(t*5);
-            s.Sprite(false,top,CrateGold*(1.3f*env*throb),1.3f,Soft);s.Glow(top,CrateGold*(.8f*env),0,.9f,Core,0,seed+5);
-            int rows=low?5:9;for(int row=-1;row<=1;row+=2)for(int i=0;i<rows;i++){float px=((i+.5f)/rows*2-1)*.8f;var b=top+x*px+z*(row*.4f)-Up*.04f;s.Line(false,b,b+Up*(.17f*env),Brass*(2*env),.06f,false);s.Sprite(false,b+Up*(.2f*env),(Brass+Vector3.One*.4f)*(1.7f*env),.05f,Hot);}
+            s.Sprite(false,top,CrateGold*(.9f*env*throb),1.2f,Soft);s.Glow(top,CrateGold*(.5f*env),0,.8f,Core,0,seed+5);
+            int rows=low?5:9;for(int row=-1;row<=1;row+=2)for(int i=0;i<rows;i++){float px=((i+.5f)/rows*2-1)*.8f;var b=top+x*px+z*(row*.4f)-Up*.04f;s.Line(false,b,b+Up*(.17f*env),Brass*(1.1f*env),.065f,false);s.Sprite(false,b+Up*(.2f*env),new Vector3(1,.5f,.28f)*(1.3f*env),.05f,Hot);}
             int motes=Count(10,q,low);for(int i=0;i<motes;i++){float ph=(t*.7f+R(seed,i+10))%1;s.Glow(top+x*(R(seed,i+11)-.5f)*1.3f+z*(R(seed,i+12)-.5f)*1.3f+Up*(1.7f*ph),CrateGold*(1.7f*env*(1-ph)),0,.07f,Core,0,seed+i);}
             // The cartridge overhead, the same from every side.
-            var icon=top+Up*(.72f+.07f*(float)Math.Sin(t*3));s.Line(false,icon-Up*.16f,icon+Up*.08f,Brass*(2.4f*env),.2f,false);s.Line(false,icon+Up*.08f,icon+Up*.29f,new Vector3(1,.5f,.28f)*(2.2f*env),.19f,true);s.Glow(icon,CrateGold*(.45f*env),0,.9f,Core,0,seed+6);
+            var icon=top+Up*(.72f+.07f*(float)Math.Sin(t*3));s.Line(false,icon-Up*.16f,icon+Up*.08f,Brass*(1.25f*env),.22f,false);s.Line(false,icon+Up*.08f,icon+Up*.33f,new Vector3(1,.45f,.24f)*(1.3f*env),.24f,true);s.Glow(icon,CrateGold*(.3f*env),0,.9f,Core,0,seed+6);
             // Its health: an arc on the floor that shrinks and reddens.
-            var hc=Vector3.Lerp(new Vector3(1,.14f,.08f),CrateGold,Smooth(hp/.6f));int seg=low?14:28,lit=(int)Math.Ceiling(seg*hp);RangedArc(s,c0+Up*.05f,1.12f,.12f,ang,lit,seg,hc,1.7f*size);
+            var hc=Vector3.Lerp(new Vector3(1,.14f,.08f),CrateGold,Smooth(hp/.6f));int seg=low?14:28,lit=(int)Math.Ceiling(seg*hp);RangedArc(s,c0+Up*.05f,1.12f,.14f,ang,lit,seg,hc*1.2f,size);
             if(hp<.6f&&gone<0)
             {
                 float d=1-hp/.6f;Spray(s,c+x*.8f+y,t,.4f,Count(4,q,low),3,FlakOrange,seed+20,9,.02f,Up*.8f);
