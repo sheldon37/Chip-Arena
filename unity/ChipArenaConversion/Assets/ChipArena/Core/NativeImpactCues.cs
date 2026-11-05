@@ -118,7 +118,7 @@ namespace ChipArena.UnityConversion
                 // Detail 'rally', Target = rally seat, From = bounce point, Position = the ball).
                 case EventKind.Ricochet:n=e.Detail=="rally"?Rally(e,o,n):Impact(o,n,at,RicochetRadius,RicochetColor);break;
                 case EventKind.Pong:n=e.Detail=="rally"?Rally(e,o,n):Impact(o,n,at,PongRadius,PongColor);break;
-                case EventKind.Summon:n=Impact(o,n,at,SummonRadius,SummonColor,true);break;
+                case EventKind.Summon:if(e.Detail!=NativeTechniques.MirrorDouble&&e.Detail!=NativeTechniques.ShadowPuppet)n=Impact(o,n,at,SummonRadius,SummonColor,true);break;
                 case EventKind.HazardHit:
                     if(e.Detail=="saw")
                     {

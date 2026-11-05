@@ -118,7 +118,10 @@ namespace ChipArena.UnityConversion
             {
                 if(m.Hp<=0||m.Kind==NativeZoneBossRules.Station||m.Kind==NativeZoneBossRules.Ironworks)continue;if(m.Kind=="slender"){SlenderModel(arena,m);continue;}
                 // Drone Nest's toys are drawn as combat drones (NativeRoundsFxPresentation), not the vanilla toy soldier.
-                if(RoundsDrone(m))continue;if(!minionRigs.TryGetValue(m.Id,out var rig)){rig=captured.Create(transform,m.Id);minionRigs.Add(m.Id,rig);}Vector3 pos=m.Body.transform.position;int variant=m.Id%6;string kind="idle";float age=arena.Time,duration=0;
+                if(RoundsDrone(m))continue;
+                // Mirror Double's and Shadow Puppet's minions exist for the rules (a hit box, a target for bots); what shows of them is the technique's own effect.
+                if(m.Kind==NativeTechniques.MirrorDouble||m.Kind==NativeTechniques.ShadowPuppet)continue;
+                if(!minionRigs.TryGetValue(m.Id,out var rig)){rig=captured.Create(transform,m.Id);minionRigs.Add(m.Id,rig);}Vector3 pos=m.Body.transform.position;int variant=m.Id%6;string kind="idle";float age=arena.Time,duration=0;
                 var add=m.Pve;
                 // The Siren minion kinds (NativeHordeKindPresentation.cs): each add's kind model, tier, gait, attacks and felt hits.
                 if(add!=null&&HordeKindAdd(arena,m,rig,pos))continue;

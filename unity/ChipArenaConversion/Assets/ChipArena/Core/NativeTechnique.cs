@@ -160,7 +160,7 @@ namespace ChipArena.UnityConversion
     /// write the record (docs/WEAPON-TECHNIQUES.md), so the pose, the effects, the sound and the HUD all show it. It reaches nothing else: not
     /// the authority, the actor, the network frame, damage or movement, so a move that travels draws only its effects here.
     /// </summary>
-    public sealed class NativeTechniquePreview:ITechniqueSource
+    public sealed partial class NativeTechniquePreview:ITechniqueSource
     {
         private readonly Dictionary<int,NativeTechnique> records=new Dictionary<int,NativeTechnique>();private float next=-100,clock;private bool odd;private int turn=-1;
         public NativeTechnique Of(int actor)=>records.TryGetValue(actor,out var r)?r:null;
@@ -179,7 +179,7 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.PartingLine:return 3.2f;case NativeTechniques.Tripwire:return 5.6f;case NativeTechniques.ShieldSurf:return 4.2f;case NativeTechniques.IronVow:return 4.4f;
                 case NativeTechniques.BountyRound:return 5.2f;case NativeTechniques.RecoilBurst:return 2.8f;case NativeTechniques.SonarDart:return 6.2f;case NativeTechniques.SpiritHawk:return 3.6f;
                 case NativeTechniques.WildfireRun:return 8f;case NativeTechniques.Slipstream:return 7f;case NativeTechniques.LightningRod:return 7.6f;case NativeTechniques.GraveWalk:return 3.8f;
-                default:return 3.4f;
+                default:return ThirdPeriod(id);
             }
         }
         /// <summary>Advances the loop for the pilot at `feet` facing `yaw` (radians), through the weapon's techniques in turn, or only `only`.</summary>
@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
             if(time<clock-.25f)next=-100;clock=time;
             if(next<-50)next=(float)Math.Ceiling(time+.3f);
             if(!records.TryGetValue(a.Id,out var k)){k=new NativeTechnique();records[a.Id]=k;}
-            if(time>=next){odd=!odd;string id=only;if(id==null){turn=(turn+1)%list.Length;id=list[turn].Id;}Write(k,id,feet,yaw,time,odd);if(TargetId>0&&id==NativeTechniques.BountyRound){k.Target=TargetId;k.Point=k.To=V(TargetAt);}else if(TargetId>0&&id==NativeTechniques.SpiritHawk&&k.HitAt>-50){k.Target=TargetId;k.To=V(TargetAt);}next=time+Period(id);}
+            if(time>=next){odd=!odd;string id=only;if(id==null){turn=(turn+1)%list.Length;id=list[turn].Id;}Write(k,id,feet,yaw,time,odd);ThirdAim(k,id);if(TargetId>0&&id==NativeTechniques.BountyRound){k.Target=TargetId;k.Point=k.To=V(TargetAt);}else if(TargetId>0&&id==NativeTechniques.SpiritHawk&&k.HitAt>-50){k.Target=TargetId;k.To=V(TargetAt);}next=time+Period(id);}
             k.Phase=Phase(k,time);
         }
         /// <summary>Fills the record as the proposed host would for a cast at `t0`. `first`: the sword's parry lands, the other loop it does not.</summary>
@@ -223,6 +223,7 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.Slipstream:k.Release=t0+.28f;k.From=V(feet+f*.8f);k.To=V(feet+f*14.8f);k.Until=k.Release+5;k.RecoverUntil=k.Release+.25f;break;
                 case NativeTechniques.LightningRod:k.Release=t0+.22f;k.Point=V(feet+f*5.5f+r*1.4f);k.Arm=k.Release+.3f;k.Until=k.Arm+5;k.RecoverUntil=k.Release+.2f;k.HitAt=k.Arm+1.7f;k.To=V(feet+f*3.3f+r*3+up*1.3f);break;
                 case NativeTechniques.GraveWalk:k.Release=t0+.34f;k.From=V(feet);k.Until=k.Release+1.5f;k.RecoverUntil=k.Until+.34f;break;
+                default:ThirdWrite(k,id,feet,f,r,up,hand,t0,first);break;
             }
         }
         private static V3 V(Vector3 v)=>new V3(v.X,v.Y,v.Z);

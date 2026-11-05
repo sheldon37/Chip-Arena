@@ -10,7 +10,7 @@ namespace ChipArena.UnityConversion
     // end; a roll fills the roll; a jump, the air jump's flip, the fall and the landing follow the pilot's air state. A state the
     // set does not cover (a special, a kit move, a knockdown, a juggle) returns false: the game's own pose shows there.
     // Presentation only: when and where a move hits, its reach and every rule are the game's; the clips are timed to them.
-    public static class NativeVisualMotion
+    public static partial class NativeVisualMotion
     {
         public sealed class Set
         {
@@ -563,7 +563,7 @@ namespace ChipArena.UnityConversion
                     if(time<k.RecoverUntil&&clips.Has(TechSink)){pick=new Pick{Clip=TechSink,Time=time-k.At,Fade=FadeIn};return true;}return false;
                 case NativeTechniques.ShadeSwap:return Part(set.CastStart!=null?set.CastStart[2]:null,k.At,k.Release,out pick)||Part(set.CastEnd!=null?set.CastEnd[2]:null,k.Release,k.Release+.38f,out pick);
             }
-            return false;
+            return ThirdPose(set,k,time,back,clips,out pick);
         }
         /// <summary>A kit move the set plays on the pack's clips (KitKinds), from the replicated cast (MeleeKitMotion.Clock): the
         /// clip's Hit on the release and its end on the cast's end. The Whirlwind: the clip into its Hit through the wind-up,

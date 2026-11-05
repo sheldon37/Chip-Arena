@@ -17,8 +17,8 @@ namespace ChipArena.UnityConversion
         private static int count;private static void Check(bool ok,string what){if(!ok)throw new Exception("Techniques: "+what);count++;}
         private sealed class Recorder:ITechniqueFxSink
         {
-            public int Draws;public float Hash;public bool Broken;
-            private void P(Vector3 v,float x=1){if(!(float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z))||v.Length()>1000)Broken=true;Hash=Hash*.99f+(v.X+v.Y*3+v.Z*7)*x*.001f;Draws++;}
+            public int Draws;public float Hash,Far;public bool Broken;public Vector3 Origin;
+            private void P(Vector3 v,float x=1){if(!(float.IsFinite(v.X)&&float.IsFinite(v.Y)&&float.IsFinite(v.Z))||v.Length()>1000)Broken=true;if(x==1)Far=Math.Max(Far,Vector3.Distance(v,Origin));Hash=Hash*.99f+(v.X+v.Y*3+v.Z*7)*x*.001f;Draws++;}
             private void F(float v){if(!float.IsFinite(v))Broken=true;}
             public void Glow(Vector3 at,Vector3 color,float coverage,float size,int profile,float u,float seed){P(at);P(color,.1f);F(size);F(u);F(coverage);}
             public void Streak(Vector3 head,Vector3 velocity,Vector3 color,float width,float minLength,float blur,float taper,float u,float seed){P(head);P(velocity,.1f);F(width);F(u);}
@@ -27,8 +27,8 @@ namespace ChipArena.UnityConversion
             public void Line(bool view,Vector3 tail,Vector3 head,Vector3 color,float width,bool shard){P(tail);P(head);F(width);}
             public void Band(bool view,Vector3 a,Vector3 b,Vector3 c,Vector3 d,float ua,float ub,Vector3 color){P(a);P(b);P(c);P(d);F(ua);F(ub);}
             public void Fire(Vector3 at,Vector3 tint,float opacity,float size,float u,float seed,float floor){P(at);F(opacity);F(size);}
-            public void Water(Vector3 at,Vector3 lit,int shade,float opacity,float size,Vector3 segment,float u,float seed,float floor){P(at);P(segment);F(opacity);}
-            public void Drop(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed){P(head);P(segment);F(width);}
+            public void Water(Vector3 at,Vector3 lit,int shade,float opacity,float size,Vector3 segment,float u,float seed,float floor){P(at);P(segment,.1f);F(opacity);}
+            public void Drop(Vector3 head,Vector3 segment,Vector3 color,float coverage,float width,float u,float seed){P(head);P(segment,.1f);F(width);}
             public void Tongue(bool view,Vector3 tail,Vector3 head,Vector3 color,float width){P(tail);P(head);F(width);}
         }
         private sealed class Scene:IKitFxScene
@@ -63,9 +63,9 @@ namespace ChipArena.UnityConversion
         {
             var fx=new NativeTechniqueFx();var scene=new Scene();var src=new One();NativeTechniques.Source=src;
             var a=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(2,.5f,-3)};scene.List.Add(a);
-            // This fixture exercises the original renderer/preview, which has no third-set implementation.
-            // Keep its 24 existing visual regressions; all 60 rules/content rows are checked separately.
-            foreach(var d in NativeTechniques.All.Where(d=>!NativeTechniques.Third.Contains(d)))for(int variant=0;variant<2;variant++)
+            // All holds the third set too now, so its rows run through the same fixture as the first two sets' (and none may be left without its presentation).
+            foreach(var d in NativeTechniques.Third)Check(NativeTechniqueFx.ThirdBuilt(d.Id),d.Id+": the third set's row has its presentation");
+            foreach(var d in NativeTechniques.All)for(int variant=0;variant<2;variant++)
             {
                 var k=new NativeTechnique();NativeTechniquePreview.Write(k,d.Id,new Vector3(2,.5f,-3),.7f,10,variant==0);src.K=k;a.SourceSpec=d.Spec;string n=d.Id+(variant==0?"":" (second)");
                 Check(k.Valid(),n+": a valid record");Check(k.Kind==d.Id&&k.Release>=k.At&&k.Until>=k.Release&&k.End>=k.Until,n+": its times run forward");Check(NativeTechniquePreview.Period(d.Id)>k.End-k.At,n+": the preview's loop outlasts the cast ("+(k.End-k.At).ToString("0.0")+" s)");
@@ -82,6 +82,53 @@ namespace ChipArena.UnityConversion
                 // A record from an older clock (a rewind): no throw, the moments still ordered.
                 for(int m=0;m<NativeTechniqueSounds.Moments;m++){float at=NativeTechniqueSounds.At(k,m);if(!float.IsNaN(at))Check(at>=k.At,n+": sound moment "+m+" within the cast");var o=new NativeKitSound[4];int c=NativeTechniqueSounds.Moment(d.Id,m,o,out _);Check(c>=0&&c<=4,n+": its cues");for(int i=0;i<c;i++)Check(!string.IsNullOrEmpty(o[i].Key),n+": a cue key");}
                 bool any=false;for(int m=0;m<NativeTechniqueSounds.Moments;m++){var o=new NativeKitSound[4];if(NativeTechniqueSounds.Moment(d.Id,m,o,out _)>0)any=true;}Check(any,n+": it sounds");
+            }
+            // The rules write `Arm` only at the release, where the preview writes it ahead: the wind-up looks the same with it unset, and the sound on the going off waits for it.
+            foreach(string id in new[]{NativeTechniques.GunSpin,NativeTechniques.Overload,NativeTechniques.Thunderclap,NativeTechniques.DragonBreath,NativeTechniques.Combust})
+            {
+                var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,id,new Vector3(2,.5f,-3),.7f,10,true);var unset=whole.ViewCopy();unset.Arm=0;a.SourceSpec=NativeTechniques.Find(id).Spec;
+                Check(whole.Arm==whole.Release,id+": the preview's wind-up ends where the rules' does");
+                for(float t=whole.At;t<whole.Release;t+=1/30f)
+                {
+                    src.K=whole;var r0=new Recorder();fx.Draw(r0,scene,t,1,false);src.K=unset;var r1=new Recorder();fx.Draw(r1,scene,t,1,false);
+                    Check(r1.Draws>0&&!r1.Broken&&r0.Draws==r1.Draws&&Math.Abs(r0.Hash-r1.Hash)<1e-4f,id+": the wind-up before the rules write Arm, at "+(t-whole.At).ToString("0.00"));
+                }
+            }
+            foreach(string id in new[]{NativeTechniques.GunSpin,NativeTechniques.Combust,NativeTechniques.Thunderclap,NativeTechniques.Overload})
+            {
+                var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,id,new Vector3(2,.5f,-3),.7f,10,true);var unset=whole.ViewCopy();unset.Arm=0;
+                Check(NativeTechniqueSounds.At(unset,NativeTechniqueSounds.Release)==whole.At,id+": its first sound on the press");Check(float.IsNaN(NativeTechniqueSounds.At(unset,NativeTechniqueSounds.Arm))&&NativeTechniqueSounds.At(whole,NativeTechniqueSounds.Arm)==whole.Release,id+": the going off's sound only once the rules write it");
+            }
+            // Soul Siphon's reach: the rules have neither a target nor an end for it yet.
+            {
+                var reach=new NativeTechnique();NativeTechniquePreview.Write(reach,NativeTechniques.SoulSiphon,new Vector3(2,.5f,-3),.7f,10,true);reach.To=default;reach.Target=0;a.SourceSpec="darkness";src.K=reach;
+                var r=new Recorder();fx.Draw(r,scene,reach.At+.05f,1,false);Check(r.Draws>0&&!r.Broken,"soul-siphon: its reach draws with no target");
+            }
+            // At the press the rules have written little: no To, no Path, no target, Arm unset. A wind-up stays round the pilot, not off at the world's origin. In flight, Point is the shot itself and Arm is still unset.
+            {
+                var spot=new Vector3(500,.5f,500);var far=new Actor{Id=1,Hp=100,SourceSpec="sword",Position=new V3(500,.5f,500)};var there=new Scene();there.List.Add(far);
+                foreach(var d in NativeTechniques.Third)
+                {
+                    var whole=new NativeTechnique();NativeTechniquePreview.Write(whole,d.Id,spot,.7f,10,true);far.SourceSpec=d.Spec;
+                    var press=whole.ViewCopy();press.To=default;press.Path=null;press.Target=0;press.HitAt=-100;press.RecastAt=-100;press.Arm=0;press.From=new V3(500,1.665f,500);press.Point=new V3(500,.5f,500);src.K=press;
+                    for(float t=whole.At;t<whole.Release;t+=1/30f){var r=new Recorder{Origin=spot};fx.Draw(r,there,t,1,false);Check(!r.Broken&&r.Far<=90,d.Id+": the wind-up stays round the pilot on the press's record ("+r.Far.ToString("0")+" m)");}
+                }
+                foreach(string id in new[]{NativeTechniques.FlashRound,NativeTechniques.BrambleArrow,NativeTechniques.BolasRound,NativeTechniques.TetherArrow,NativeTechniques.ChainHook,NativeTechniques.BubbleTrap})
+                {
+                    var flying=new NativeTechnique();NativeTechniquePreview.Write(flying,id,spot,.7f,10,true);far.SourceSpec=NativeTechniques.Find(id).Spec;flying.Arm=0;flying.HitAt=-100;flying.RecastAt=-100;flying.Target=0;flying.From=new V3(500,1.665f,500);flying.Point=new V3(500,1.665f,503);flying.Until=flying.Release+.9f;flying.RecoverUntil=flying.Until;src.K=flying;
+                    var r=new Recorder{Origin=spot};fx.Draw(r,there,flying.Release+.07f,1,false);Check(r.Draws>0&&!r.Broken&&r.Far<12,id+": in flight, Point is the shot ("+r.Far.ToString("0")+" m)");
+                }
+            }
+            var mirror=new NativeTechnique();NativeTechniquePreview.Write(mirror,NativeTechniques.MirrorDouble,Vector3.Zero,0,10,true);
+            Check(NativeTechniqueFx.Unseen(mirror,mirror.Release+.1f,1)&&!NativeTechniqueFx.Unseen(mirror,mirror.Arm+.01f,1)&&!NativeTechniqueFx.Unseen(mirror,mirror.At,1),"mirror-double: the body goes for its second");
+            var ghillie=new NativeTechnique();NativeTechniquePreview.Write(ghillie,NativeTechniques.Ghillie,Vector3.Zero,0,10,true);
+            Check(NativeTechniqueFx.Unseen(ghillie,ghillie.Release+.5f,8)&&!NativeTechniqueFx.Unseen(ghillie,ghillie.Release+.5f,5)&&!NativeTechniqueFx.Unseen(ghillie,ghillie.At,8)&&!NativeTechniqueFx.Unseen(ghillie,ghillie.Until+.01f,8),"ghillie: the body goes beyond 6 m once settled");
+            var dazzled=new[]{new NativeTechniqueMark{Kind=NativeTechniques.FlashRound,By=2,At=10,Until=10.9f},new NativeTechniqueMark{Kind=NativeTechniques.Sunder,By=2,At=9,Until=13}};
+            Check(NativeTechniqueFx.Whiteout(dazzled,10.1f)==1&&NativeTechniqueFx.Whiteout(dazzled,10.88f)<.1f&&NativeTechniqueFx.Whiteout(dazzled,10.9f)==0&&NativeTechniqueFx.Whiteout(dazzled,9.9f)==0&&NativeTechniqueFx.Whiteout(null,10)==0,"flash-round: the mark whites out and clears");
+            // What a mark leaves on its pilot, for everyone else.
+            {
+                var marked=new Actor{Id=3,Hp=100,SourceSpec="sword",Position=new V3(9,.5f,9),TechniqueMarks=new[]{new NativeTechniqueMark{Kind=NativeTechniques.Sunder,By=1,At=10,Until=14},new NativeTechniqueMark{Kind=NativeTechniques.WarCry,By=1,At=10,Until=14},new NativeTechniqueMark{Kind=NativeTechniques.Dread,By=1,At=10,Until=11}}};var one=new Scene();one.List.Add(marked);src.K=null;
+                var on=new Recorder();fx.Draw(on,one,10.5f,1,false);var gone=new Recorder();fx.Draw(gone,one,14.01f,1,false);var thin=new Recorder();fx.Draw(thin,one,10.5f,.3f,true);Check(on.Draws>0&&!on.Broken&&gone.Draws==0&&thin.Draws<=on.Draws,"a mark draws on its pilot while it lasts");
             }
             // The solid things' own numbers.
             var b=new NativeTechnique();NativeTechniquePreview.Write(b,NativeTechniques.AnchorThrow,Vector3.Zero,0,10,true);var catcher=new Vector3(0,1.2f,0);
