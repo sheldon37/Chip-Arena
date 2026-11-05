@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
                 float a0=last-v.spawned,a1=now-v.spawned;
                 if(a0<b.Ripple&&a1>=b.Ripple)w.Disturb(5.2f,-2.8f,.6f,-.045f);
                 if(a0<b.Ripple+.9f&&a1>=b.Ripple+.9f)w.Disturb(5.2f,-2.8f,.5f,-.016f);
-                if(a0<b.Break&&a1>=b.Break){w.Disturb(0,0,3f,.3f,.8f);w.Disturb(0,0,5.5f,-.12f,.2f);}
+                if(a0<b.Break&&a1>=b.Break){var bk=-BossMath.Forward(v.yaw*BossMath.Deg)*NativeDeepEndBoss.BreakBack;w.Disturb(bk.X,bk.Z,3f,.3f,.8f);w.Disturb(bk.X,bk.Z,5.5f,-.12f,.2f);}
                 float fall=b.Break+2*(5.6f/DeepEndBossPaths.IntroG);
                 if(a0<fall&&a1>=fall){w.Disturb(rig.MouthAt.X-o.X,rig.MouthAt.Z-o.Z,3.4f,-.55f,1);}
             }
@@ -145,15 +145,15 @@ namespace ChipArena.UnityConversion
                 if(x%3!=1||z%3!=1)continue;float wx=(x-NativeDeepEndArena.Cells*.5f+.5f)*c,wz=(z-NativeDeepEndArena.Cells*.5f+.5f)*c;
                 float order=(float)Math.Sqrt(wx*wx+wz*wz)/28f;float lv=s.Ceiling*(1-BossMath.Smooth((s.CeilingOut*1.25f-order)/.14f));
                 var at=o+new Vector3(wx,NativeDeepEndArena.Ceiling-PoolroomsMesh.LightDrop,wz);
-                Over.Billboard(at,new Vector3(PoolroomsMesh.LightRadius,0,0),new Vector3(0,0,PoolroomsMesh.LightRadius),-Vector3.UnitY,DeepEndFlow.Disc,0,warm*(.12f+3.4f*lv),1);
+                Under.Billboard(at,new Vector3(PoolroomsMesh.LightRadius,0,0),new Vector3(0,0,PoolroomsMesh.LightRadius),-Vector3.UnitY,DeepEndFlow.Disc,0,warm*(.12f+3.4f*lv),1);
             }
             // The ones under the water: a chrome ring in the wall, a lens; a halo in the water (under the sheet, so it shimmers with it).
             var lamps=NativeDeepEndArena.Lamps;
             for(int i=0;i<lamps.Length;i++)
             {
-                ref var l=ref lamps[i];float lv=s.Water*(1-BossMath.Smooth((s.WaterOut*1.12f-l.Order)/.05f));if(l.Kind==NativeDeepEndArena.RoomWall)lv*=.15f+.85f*BossMath.Smooth((s.Tide-l.At.Y+.3f)/.4f);
+                ref var l=ref lamps[i];float lv=s.Water*(1-BossMath.Smooth((s.WaterOut*1.12f-l.Order)/.05f));if(l.Kind==NativeDeepEndArena.RoomWall){lv*=BossMath.Smooth((s.Tide-l.At.Y+.3f)/.4f);if(lv<.01f)continue;}
                 var at=o+l.At;var x=Vector3.Cross(l.Facing,Vector3.UnitY);if(x.LengthSquared()<.01f)x=Vector3.UnitX;x=Vector3.Normalize(x);var y=Vector3.UnitY;
-                bool under=l.At.Y<s.Tide;var list=under?Under:Over;float deep=Math.Max(0,s.Tide-l.At.Y);float boost=(float)Math.Exp(.105f*s.Murk*deep);
+                bool under=l.At.Y<s.Tide;var list=under?Under:Over;float deep=Math.Max(0,s.Tide-l.At.Y);float boost=(float)Math.Exp(Math.Min(3.2f,.105f*s.Murk*deep));
                 list.Billboard(at+l.Facing*.012f,x*l.Size,y*l.Size,l.Facing,DeepEndFlow.Disc,1,new Vector3(.62f,1f,1f)*(.08f+5.6f*lv*boost),1);
                 if(lv>.02f){float hs=l.Size*4.2f;list.Billboard(at+l.Facing*.1f,x*hs,y*hs,l.Facing,DeepEndFlow.Halo,0,new Vector3(.3f,.82f,.82f)*(.42f*lv*boost),0);}
             }
@@ -164,10 +164,10 @@ namespace ChipArena.UnityConversion
             var o=rig.Origin;float surface=s.Tide;var n=Vector3.Normalize(Vector3.Cross(up,right));
             for(int i=0;i<NativeDeepEndBossLook.Lamps;i++)
             {
-                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(.105f*s.Murk*depth):1;var list=under?Under:Over;
-                var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(4.4f+.09f*Math.Max(0,depth))*(.7f+.3f*g);
-                list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(1.6f*g*boost),0);
-                list.Billboard(at+face*.1f,right*size*.26f,up*size*.26f,n,DeepEndFlow.Halo,0,new Vector3(.9f,1,1)*(3.2f*g*boost),0);
+                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(Math.Min(4.6f,.105f*s.Murk*depth)):1;var list=under?Under:Over;
+                var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(3.1f+.05f*Math.Max(0,depth))*(.7f+.3f*g);float murkDim=1/(1+.6f*(s.Murk-1));
+                list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(.8f*g*boost*murkDim),0);
+                list.Billboard(at+face*.1f,right*size*.3f,up*size*.3f,n,DeepEndFlow.Halo,0,new Vector3(.9f,1,1)*(3.6f*g*boost),0);
             }
             if(MarkerGlow<.01f||low)return;
             // The running lights along each coping (the small ones; the bank's glow sub-mesh has their lenses).
@@ -175,8 +175,8 @@ namespace ChipArena.UnityConversion
             for(int side=1;side>=-1;side-=2)for(float ms=5;ms<29;ms+=1)
             {
                 bool nearLamp=false;foreach(float q in NativeDeepEndBossLook.LampS)if(Math.Abs(ms-q)<.62f)nearLamp=true;if(nearLamp)continue;
-                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(.105f*s.Murk*depth):1;
-                float size=.42f+.018f*Math.Max(0,depth);(under?Under:Over).Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(1.1f*mg*boost),0);
+                rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;float boost=under?(float)Math.Exp(Math.Min(4.6f,.105f*s.Murk*depth)):1;
+                float size=.3f+.012f*Math.Max(0,depth);(under?Under:Over).Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,new Vector3(.7f,1,1)*(2.2f*mg*boost),0);
             }
         }
         // The lights the room takes: the mouth's throat when it's open, the two brightest places along the body out of the water or near it.
@@ -302,8 +302,8 @@ namespace ChipArena.UnityConversion
                 float at=v.actionAt+hit;var t=new Vector3(v.targetX,0,v.targetZ);float surface=s.Tide;float floor=o.Y+surface-.1f;
                 switch(m.Id)
                 {
-                    case "breach":{var c=o+new Vector3(t.X,surface,t.Z);Spray(now,c,Vector3.UnitY,.65f,9,Math.Min(140,90),1.5f,at,.12f,1,.09f,floor);Spray(now,c,Vector3.UnitY,1.2f,5,70,1.1f,at,.25f,2,.06f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.8f,0),2.4f,16,1.9f,.9f,3.8f,.34f,at,.3f,3,floor);break;}
-                    case "flop":if(age>=hit){var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=6;k++){var q=Vector3.Lerp(t,e,k/6f);var c=o+new Vector3(q.X,Math.Max(surface,0),q.Z);Spray(now,c,Vector3.UnitY,.75f,10.5f,34,1.5f,at,.14f,10+k,.1f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.6f,0),2.8f,7,1.9f,1.1f,4.4f,.34f,at,.3f,20+k,floor);}}break;
+                    case "breach":{var c=o+new Vector3(t.X,surface,t.Z);Spray(now,c,Vector3.UnitY,.65f,9,150,1.5f,at,.12f,1,.05f,floor);Spray(now,c,Vector3.UnitY,1.2f,5,110,1.1f,at,.25f,2,.03f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.8f,0),2.4f,16,1.9f,.9f,3.8f,.34f,at,.3f,3,floor);break;}
+                    case "flop":if(age>=hit){var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=6;k++){var q=Vector3.Lerp(t,e,k/6f);var c=o+new Vector3(q.X,Math.Max(surface,0),q.Z);Spray(now,c,Vector3.UnitY,.75f,10.5f,54,1.5f,at,.14f,10+k,.05f,floor);Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,2.6f,0),2.8f,7,1.9f,1.1f,4.4f,.34f,at,.3f,20+k,floor);}}break;
                     case "jet":Jet(rig,v,s,waves,now,age,hit,m,low);break;
                     case "lull":Hands(rig,v,s,waves,now,age,hit,m,low);break;
                     case "drain":if(age<hit+m.Strike){float k=BossMath.Smooth((age-hit*.6f)/.6f)*(1-BossMath.Smooth((age-hit-m.Strike+.3f)/.3f));if(k>.02f){var hd=rig.MouthAt;Vfx.SmokeFlow(now,new Vector3(hd.X,o.Y+surface+.4f,hd.Z),new Vector3(0,.2f,0),1.4f,.22f,14,1.5f,.5f,2.4f,WaterWhite,.2f*k,v.actionAt,v.actionAt+hit+m.Strike,Seed,41,lit:.6f);}}break;
@@ -381,16 +381,16 @@ namespace ChipArena.UnityConversion
         // The arrival's beats that are effects (the shots and the room's light are the shots' and the stage's).
         private void Arrival(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,bool low)
         {
-            if(float.IsNaN(s.IntroAge)||!DeepEndBossView.At(v.spawned))return;var b=NativeDeepEndBossBeats.Current;float a=s.IntroAge;var o=rig.Origin;float at=v.spawned+b.Break;float surface=s.Tide;float floor=o.Y+surface-.1f;var c=o+new Vector3(0,surface,0);
+            if(float.IsNaN(s.IntroAge)||!DeepEndBossView.At(v.spawned))return;var b=NativeDeepEndBossBeats.Current;float a=s.IntroAge;var o=rig.Origin;float at=v.spawned+b.Break;float surface=s.Tide;float floor=o.Y+surface-.1f;var fw=BossMath.Forward(v.yaw*BossMath.Deg);var c=o+new Vector3(0,surface,0)-fw*NativeDeepEndBoss.BreakBack;
             if(a>=b.Break&&a<b.Break+3.6f)
             {
-                Spray(now,c,new Vector3(.1f,1,.2f),.5f,8,Math.Min(180,120),2.4f,at,.3f,100,.1f,floor);Spray(now,c,new Vector3(.1f,1,.2f),.95f,5,120,1.7f,at,.5f,101,.06f,floor);
+                Spray(now,c,new Vector3(.1f,1,.2f),.5f,8,190,2.4f,at,.3f,100,.05f,floor);Spray(now,c,new Vector3(.1f,1,.2f),.95f,5,190,1.7f,at,.5f,101,.03f,floor);
                 Mist(now,c+new Vector3(0,.3f,0),new Vector3(0,1.8f,0),2.6f,26,3.0f,1.1f,5,.36f,at,.5f,102,floor);
             }
             // The head's fall into the water after the hold: the crash.
             float crash=v.spawned+b.Break+2*(5.6f/DeepEndBossPaths.IntroG);if(now>=crash&&now<crash+3)
             {
-                var head=o+new Vector3(0,surface,0)+new Vector3(0,0,2.9f*(crash-v.spawned-b.Break));Spray(now,head,new Vector3(0,1,.25f),.6f,12,120,2,crash,.2f,110,.12f,floor);Mist(now,head+new Vector3(0,.4f,0),new Vector3(0,3,0),3,22,2.4f,1.2f,5.4f,.4f,crash,.35f,111,floor);
+                var head=c+fw*(2.9f*(crash-v.spawned-b.Break));Spray(now,head,new Vector3(0,1,.25f),.6f,12,180,2,crash,.2f,110,.06f,floor);Mist(now,head+new Vector3(0,.4f,0),new Vector3(0,3,0),3,22,2.4f,1.2f,5.4f,.4f,crash,.35f,111,floor);
             }
             // The wave's crest throws a line of spray.
             if(s.RingH>.2f&&a<b.Hold+1.4f)

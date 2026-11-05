@@ -28,8 +28,8 @@ Shader "ChipArena/NativeDeepEndFlow"
                 if(kind<0.5)
                 {
                     // A falling sheet: u -1..1 across, v its fall time. Long streaks running down, thin at the top, tearing into strands as it falls.
-                    float across=i.a.x,fall=i.a.y;float edge=smoothstep(1.0,0.45,abs(across));float s1=Noise(float2(across*4.3+seed,fall*1.3-t*2.6));float s2=Noise(float2(across*11.0+seed*2.1,fall*2.7-t*4.4));float tear=smoothstep(0.1+fall*0.42,0.52+fall*0.28,s1*0.65+s2*0.35);
-                    float a=saturate(share*edge*tear*(0.72+0.2*s2));float nv=abs(dot(n,v));float fres=0.05+0.95*pow(1.0-nv,3.0);float3 rv=reflect(-v,n);float3 c=rgb*Lit()*(0.5+0.5*s2)+DeepRoomColour(i.world,rv)*fres*0.9;
+                    float across=i.a.x,fall=i.a.y;float edge=smoothstep(1.0,0.55,abs(across));float s1=Noise(float2(across*9.0+seed,fall*1.1-t*2.6));float s2=Noise(float2(across*27.0+seed*2.1,fall*2.2-t*4.4));float tear=smoothstep(0.28+fall*0.3,0.56+fall*0.2,s1*0.6+s2*0.4);
+                    float a=saturate(share*edge*tear*(0.6+0.3*s2));float nv=abs(dot(n,v));float fres=0.05+0.95*pow(1.0-nv,3.0);float3 rv=reflect(-v,n);float3 c=rgb*Lit()*(0.5+0.5*s2)+DeepRoomColour(i.world,rv)*fres*0.9;
                     o=fixed4(c*a,a*0.84);
                 }
                 else if(kind<1.5)

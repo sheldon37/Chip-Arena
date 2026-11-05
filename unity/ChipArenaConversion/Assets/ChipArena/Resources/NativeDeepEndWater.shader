@@ -43,6 +43,22 @@ Shader "ChipArena/NativeDeepEndWater"
             {
                 float2 c=p-_DeepWhirl.xy;float r=length(c);float a=turn*_DeepWhirl.w*2.6/(0.8+r*0.45)*_DeepWhirl.z*phase;float s=sin(a);float k=cos(a);return _DeepWhirl.xy+float2(c.x*k-c.y*s,c.x*s+c.y*k);
             }
+            // What's on screen in the reflection: a few steps along the ray against the scene's depth; what it doesn't find stays the room's box.
+            float3 Marched(float3 p,float3 r,float3 fallback)
+            {
+                float s=0.35;
+                for(int k=0;k<11;k++)
+                {
+                    float3 q=p+r*s;float4 c=mul(UNITY_MATRIX_VP,float4(q,1.0));if(c.w<=0.05)break;float4 sp=ComputeScreenPos(c);float2 uv=sp.xy/sp.w;if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0)break;
+                    float scene=LinearEyeDepth(tex2Dlod(_CameraDepthTexture,float4(uv,0.0,0.0)).r);float diff=c.w-scene;
+                    if(diff>0.0&&diff<0.6+s*0.5)
+                    {
+                        float4 g=ComputeGrabScreenPos(c);float2 guv=g.xy/g.w;float2 e=abs(uv-0.5)*2.0;float fade=saturate((1.0-max(e.x,e.y))*5.0);return lerp(fallback,tex2D(_DeepGrab,guv).rgb,fade);
+                    }
+                    s*=1.42;
+                }
+                return fallback;
+            }
             fixed4 frag(v2f i):SV_Target
             {
                 float t=_DeepClock;float2 w=i.world.xz;float tx=_DeepRect.w/max(_DeepRect.z,0.01);float2 fuv=FieldUv(w);
@@ -61,19 +77,20 @@ Shader "ChipArena/NativeDeepEndWater"
                 float thick=sceneEye-eye;if(thick<0.0){off=float2(0.0,0.0);sceneEye=_DeepDepthOn>0.5?LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen))):eye+1.4;thick=sceneEye-eye;}
                 thick=max(0.0,thick);float3 seen=tex2D(_DeepGrab,suv+off).rgb;
                 // How much light is left after this much water, and what the water itself gives back.
-                float3 trans=exp(-thick*float3(0.30,0.105,0.092)*_DeepMurk);
+                float3 trans=exp(-thick*float3(0.46,0.115,0.10)*_DeepMurk);
                 float soft=_DeepLight.y;float3 glow=tex2D(_DeepGlowTex,fuv).rgb;
-                float3 scatter=float3(0.075,0.34,0.36)*(soft*0.62+0.012)+glow*0.55;
+                float3 scatter=float3(0.022,0.30,0.335)*(soft*0.62+0.012)+glow*0.55;
                 float3 body=seen*trans+scatter*(1.0-trans);
                 // ---- on it ----
                 float3 rv=reflect(-v,n);if(rv.y<0.01)rv.y=0.01;rv=normalize(rv);float3 refl=DeepRoomColour(i.world,rv);
+                if(_DeepDepthOn>0.5)refl=Marched(i.world,rv,refl);
                 float3 col=lerp(body,refl,fres);
                 // Glints of the practical lights on the ripples.
                 float3 spec=float3(0.0,0.0,0.0);
                 for(int k=0;k<8;k++)
                 {
                     float3 d=_ArenaLightPos[k].xyz-i.world;float len=max(length(d),0.0001);float q=len/max(_ArenaLightPos[k].w,0.0001);float fall=saturate(1.0-q*q);if(fall<=0.0)continue;float3 l=d/len;float3 h=normalize(l+v);float ndh=saturate(dot(n,h));
-                    spec+=_ArenaLightColor[k].rgb*fall*fall*(pow(ndh,220.0)*7.0);
+                    spec+=_ArenaLightColor[k].rgb*fall*fall*(pow(ndh,160.0)*1.1);
                 }
                 col+=spec;
                 // ---- foam: the field's, and a line where the water meets anything ----

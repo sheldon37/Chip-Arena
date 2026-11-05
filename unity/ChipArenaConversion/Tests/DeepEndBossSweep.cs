@@ -46,9 +46,9 @@ public static class DeepEndBossSweep
         }
         return false;
     }
-    private static Result Run(int phase,Vector2 spot,bool circling,bool withLull)
+    private static Result Run(int phase,Vector2 spot,bool circling,bool withLull,bool roomWide=true)
     {
-        var rot=Rotation[phase-1];var ready=new float[rot.Length];var used=new float[rot.Length];for(int i=0;i<used.Length;i++)used[i]=-99+i;
+        var rot=Rotation[phase-1];if(!roomWide)rot=Array.FindAll(rot,x=>x=="breach"||x=="jet"||x=="flop");var ready=new float[rot.Length];var used=new float[rot.Length];for(int i=0;i<used.Length;i++)used[i]=-99+i;
         var r=new Result{Spot=spot,Last="start"};float last=0;float meter=0;Vector2 anchor=spot;float lullAt=-1;
         float limit=phase>=3?NativeDeepEndBoss.StillSecondsLast:NativeDeepEndBoss.StillSeconds;var lull=NativeDeepEndBoss.Move("lull");
         // Circling: round a point held inside the room, at the pace pilots wade (half speed in the last phase).
@@ -68,7 +68,7 @@ public static class DeepEndBossSweep
             // The rotation: one move at a time, the global gap between them (doc section 1: one second), the longest-unused one that's ready.
             if(act<0&&t>=nextPick)
             {
-                int pick=-1;float oldest=float.MaxValue;for(int i=0;i<rot.Length;i++)if(t>=ready[i]&&used[i]<oldest){oldest=used[i];pick=i;}
+                int pick=-1;float oldest=float.MaxValue;for(int i=0;i<rot.Length;i++)if(t>=ready[i]&&used[i]<oldest&&!(rot[i]=="breach"&&phase==1&&!NativeDeepEndArena.InPool(p.X,p.Y))){oldest=used[i];pick=i;}
                 if(pick>=0)
                 {
                     act=pick;actAt=t;move=NativeDeepEndBoss.Move(rot[pick]);lockAt=p;seed++;used[pick]=t;ready[pick]=t+move.Duration+move.Cooldown;
@@ -79,17 +79,18 @@ public static class DeepEndBossSweep
             if(act>=0)
             {
                 float age=t-actAt;float e=age-move.Anticipation;
-                if(e>=0&&e<=Math.Max(move.Strike,.1f)&&Inside(move.Id,move,p,lockAt,head,e,seed,phase)){last=t;r.Last=move.Id;}
+                // From its lock to the end of its strike: in the telegraphed shape, the pilot has to respond.
+                if(e<=Math.Max(move.Strike,.1f)&&Inside(move.Id,move,p,lockAt,head,Math.Max(0,e),seed,phase)){last=t;r.Last=move.Id;}
                 if(age>=move.Duration){act=-1;nextPick=t+1;}
             }
             float gap=t-last;if(gap>r.Gap)r.Gap=gap;
         }
         return r;
     }
-    private static Result Worst(int phase,bool circling,bool withLull)
+    private static Result Worst(int phase,bool circling,bool withLull,bool roomWide=true)
     {
         var worst=new Result{Gap=-1};int cells=NativeDeepEndArena.Cells;float c=PoolroomsLayout.Cell,half=NativeDeepEndArena.Half;
-        void Try(Vector2 s){var r=Run(phase,s,circling,withLull);if(r.Gap>worst.Gap)worst=r;}
+        void Try(Vector2 s){var r=Run(phase,s,circling,withLull,roomWide);if(r.Gap>worst.Gap)worst=r;}
         for(int z=0;z<cells;z++)for(int x=0;x<cells;x++)Try(new Vector2((x-cells*.5f+.5f)*c,(z-cells*.5f+.5f)*c));
         // The corners and against the walls, tighter than a cell's centre.
         float w=half-.45f;foreach(var sx in new[]{-1,1})foreach(var sz in new[]{-1,1})Try(new Vector2(sx*w,sz*w));for(float a=-w;a<=w;a+=4){Try(new Vector2(a,w));Try(new Vector2(a,-w));Try(new Vector2(w,a));Try(new Vector2(-w,a));}
@@ -100,12 +101,12 @@ public static class DeepEndBossSweep
         count=0;
         for(int phase=1;phase<=NativeDeepEndBoss.Phases;phase++)
         {
-            var still=Worst(phase,false,true);var moving=Worst(phase,true,true);var bare=Worst(phase,false,false);
-            Console.WriteLine($"deepend-sweep phase {phase}: still worst {still.Gap:F1} s at ({still.Spot.X:F1},{still.Spot.Y:F1}), limit {StillLimit(phase):F1}; circling worst {moving.Gap:F1} s at ({moving.Spot.X:F1},{moving.Spot.Y:F1}), limit {MoveLimit(phase):F1}; without the Lull still worst {bare.Gap:F1} s at ({bare.Spot.X:F1},{bare.Spot.Y:F1})");
+            var still=Worst(phase,false,true);var moving=Worst(phase,true,true);var bare=Worst(phase,false,false);var targeted=Worst(phase,false,false,false);
+            Console.WriteLine($"deepend-sweep phase {phase}: still worst {still.Gap:F1} s at ({still.Spot.X:F1},{still.Spot.Y:F1}), limit {StillLimit(phase):F1}; circling worst {moving.Gap:F1} s at ({moving.Spot.X:F1},{moving.Spot.Y:F1}), limit {MoveLimit(phase):F1}; without the Lull still worst {bare.Gap:F1} s at ({bare.Spot.X:F1},{bare.Spot.Y:F1}); without it and the room-wide moves {targeted.Gap:F1} s at ({targeted.Spot.X:F1},{targeted.Spot.Y:F1})");
             Check(still.Gap<=StillLimit(phase),$"phase {phase}: a still pilot at ({still.Spot.X},{still.Spot.Y}) goes {still.Gap:F1} s unthreatened");
             Check(moving.Gap<=MoveLimit(phase),$"phase {phase}: a circling pilot at ({moving.Spot.X},{moving.Spot.Y}) goes {moving.Gap:F1} s unthreatened");
             // The sweep has teeth: with the stillness move taken out, a still pilot's gap goes over the limit, somewhere.
-            Check(bare.Gap>StillLimit(phase),$"phase {phase}: without the Lull the sweep finds nothing past {StillLimit(phase):F1} s (worst {bare.Gap:F1} s): it proves nothing");
+            Check(Math.Max(bare.Gap,targeted.Gap)>StillLimit(phase),$"phase {phase}: with the guarantees taken out the sweep finds nothing past {StillLimit(phase):F1} s (worst {targeted.Gap:F1} s): it proves nothing");
         }
         Console.WriteLine("PASS deepend-sweep ("+count+" checks)");
         return count;

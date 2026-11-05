@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The seiche: the crest's place along its axis (m from the room's centre), its height, and the far wall's draw-back; its axis.</summary>
         public float SeicheAt,SeicheHeight,SeicheDraw;public Vector3 SeicheAxis;
         /// <summary>The arrival's wave, a ring from the break: radius, height.</summary>
-        public float RingR,RingH;
+        public float RingR,RingH,RingX,RingZ;
         /// <summary>The arrival's clock (NaN after it).</summary>
         public float IntroAge;
         public static readonly DeepEndBossStage Idle=new DeepEndBossStage{On=false,Tide=PoolroomsLayout.WaterY,Ceiling=1,Water=1,Lamps=1,Ambient=1,Warm=0,Ripples=1,Murk=1,IntroAge=float.NaN};
@@ -73,7 +73,7 @@ namespace ChipArena.UnityConversion
                 s.Shake=Math.Max(s.Shake,.7f*Fade(a-b.Break,.8f));s.Shake=Math.Max(s.Shake,.45f*S((a-b.Roar)/.3f)*(1-S((a-b.Hold-.3f)/.5f)));
                 s.Muffle=a<b.Break?1:0;
                 // The arrival's wave: a ring out from the break, tallest as it reaches the camera; over it at the end.
-                float w=a-b.WaveAt;if(w>=0&&w<3.2f){s.RingR=5+w*12.6f;s.RingH=1.15f*S(w/.3f)*(1-S((w-1.8f)/1.2f));}
+                float w=a-b.WaveAt;if(w>=0&&w<3.2f){s.RingR=5+w*12.6f;s.RingH=1.15f*S(w/.3f)*(1-S((w-1.8f)/1.2f));var fw=BossMath.Forward(v.yaw*BossMath.Deg);s.RingX=-fw.X*NativeDeepEndBoss.BreakBack;s.RingZ=-fw.Z*NativeDeepEndBoss.BreakBack;}
                 s.Wash=WashAt(a,b);
             }
             // ---- the move playing ----
@@ -233,7 +233,7 @@ namespace ChipArena.UnityConversion
             // ---- the arrival's ring ----
             if(s.RingH>.002f)
             {
-                float r=(float)Math.Sqrt(x*x+z*z),e=r-s.RingR;y+=s.RingH*((float)Math.Exp(-e*e/3.4f)-.3f*(float)Math.Exp(-(e+3.4f)*(e+3.4f)/8f));foam=Math.Max(foam,Math.Min(1,s.RingH*1.1f)*(float)Math.Exp(-(e-.7f)*(e-.7f)/1.2f));
+                float r=(float)Math.Sqrt((x-s.RingX)*(x-s.RingX)+(z-s.RingZ)*(z-s.RingZ)),e=r-s.RingR;y+=s.RingH*((float)Math.Exp(-e*e/3.4f)-.3f*(float)Math.Exp(-(e+3.4f)*(e+3.4f)/8f));foam=Math.Max(foam,Math.Min(1,s.RingH*1.1f)*(float)Math.Exp(-(e-.7f)*(e-.7f)/1.2f));
             }
             return y;
         }

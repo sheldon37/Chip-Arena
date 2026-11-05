@@ -75,8 +75,8 @@ namespace ChipArena.UnityConversion
             // Up from far below, out of sight, straight up the shaft to the helix's start.
             Vector3 H(float u)
             {
-                float y=surface-(1-u)*vy*T-(depth-vy*T)*(1-u)*(1-u);float a=BossMath.Tau*turns*u+1.2f;float rad=R*(1-BossMath.Smoother((u-.62f)/.38f));
-                return new Vector3(rad*(float)Math.Cos(a),y,rad*(float)Math.Sin(a));
+                float y=surface-(1-u)*vy*T-(depth-vy*T)*(1-u)*(1-u);float a=BossMath.Tau*turns*u+1.2f;float k=BossMath.Smoother((u-.62f)/.38f);float rad=R*(1-k);
+                return new Vector3(rad*(float)Math.Cos(a),y,rad*(float)Math.Sin(a))-f*(NativeDeepEndBoss.BreakBack*k);
             }
             Vector3 D(float u){const float e=.002f;return (H(Math.Min(1,u+e))-H(Math.Max(0,u-e)))/((Math.Min(1,u+e)-Math.Max(0,u-e))*T);}
             r.To(t0,H(0),D(0));

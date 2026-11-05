@@ -92,7 +92,7 @@ namespace ChipArena.UnityConversion
         // The room's soft light by the stage, and the practical lights: the nearest of the ceiling's by their level, the nearest under the water, the boss's own.
         private void DeepEndLightsDraw(Camera eye,in DeepEndBossStage s)
         {
-            var warm=Color.Lerp(PoolroomsAmbient,new Color(.7f,.66f,.54f),s.Warm);var a=warm*s.Ambient;
+            var warm=Color.Lerp(new Color(.5f,.54f,.54f),new Color(.66f,.62f,.5f),s.Warm);var a=warm*s.Ambient;
             RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=a;RenderSettings.ambientEquatorColor=a*.95f;RenderSettings.ambientGroundColor=Color.Lerp(a*1.2f,new Color(.2f,.45f,.45f)*(.3f+.6f*s.Ambient),.55f);
             if(RenderSettings.sun!=null){RenderSettings.sun.intensity=0;RenderSettings.sun.shadows=LightShadows.None;}
             var fogLit=Color.Lerp(PoolroomsHaze,new Color(.74f,.7f,.6f),s.Warm);RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;RenderSettings.fogColor=fogLit*Mathf.Lerp(.03f,1,s.Ambient);RenderSettings.fogStartDistance=16;RenderSettings.fogEndDistance=140;NativePackStage.Glow(1);if(NativeLighting.StyleActive)NativeLighting.StyleOff();
@@ -106,7 +106,7 @@ namespace ChipArena.UnityConversion
                 {
                     float wx=(x-cells*.5f+.5f)*c,wz=(z-cells*.5f+.5f)*c,d=(wx-exz)*(wx-exz)+(wz-ezz)*(wz-ezz);if(d>=best)continue;bool taken=false;for(int q=0;q<used;q++)if(Mathf.Abs(deepEndLightPos[q*4]-(deepEndOrigin.X+wx))<.1f&&Mathf.Abs(deepEndLightPos[q*4+2]-(deepEndOrigin.Z+wz))<.1f)taken=true;if(taken)continue;best=d;bx=wx;bz=wz;found=true;
                 }
-                if(!found)break;float order=Mathf.Sqrt(bx*bx+bz*bz)/28f;float lv=s.Ceiling*(1-BossMath.Smooth((s.CeilingOut*1.25f-order)/.14f));var tint=Color.Lerp(new Color(.46f,.44f,.4f),new Color(.56f,.44f,.28f),s.Warm)*lv;
+                if(!found)break;float order=Mathf.Sqrt(bx*bx+bz*bz)/28f;float lv=s.Ceiling*(1-BossMath.Smooth((s.CeilingOut*1.25f-order)/.14f));var tint=Color.Lerp(new Color(.62f,.62f,.58f),new Color(.66f,.54f,.36f),s.Warm)*lv;
                 deepEndLightPos[used*4]=deepEndOrigin.X+bx;deepEndLightPos[used*4+1]=deepEndOrigin.Y+NativeDeepEndArena.Ceiling-.3f;deepEndLightPos[used*4+2]=deepEndOrigin.Z+bz;deepEndLightPos[used*4+3]=14;deepEndLightRgb[used*3]=tint.r;deepEndLightRgb[used*3+1]=tint.g;deepEndLightRgb[used*3+2]=tint.b;used++;
             }
             // The body's own.

@@ -29,19 +29,19 @@ Shader "ChipArena/NativeDeepEndCaustics"
                 float2 fuv=(clamp(p.xz,_DeepRoom.xy-_DeepRoom.zz+0.3,_DeepRoom.xy+_DeepRoom.zz-0.3)-_DeepRect.xy)/max(_DeepRect.z,0.01);float tx=_DeepRect.w*2.0/max(_DeepRect.z,0.01);
                 float hc=tex2D(_DeepField,fuv).r;float lap=tex2D(_DeepField,fuv+float2(tx,0.0)).r+tex2D(_DeepField,fuv-float2(tx,0.0)).r+tex2D(_DeepField,fuv+float2(0.0,tx)).r+tex2D(_DeepField,fuv-float2(0.0,tx)).r-4.0*hc;
                 float2 warp=float2(tex2D(_DeepField,fuv+float2(tx,0.0)).r-tex2D(_DeepField,fuv-float2(tx,0.0)).r,tex2D(_DeepField,fuv+float2(0.0,tx)).r-tex2D(_DeepField,fuv-float2(0.0,tx)).r);
-                float web=DeepCaustic(q*0.62+warp*2.6,t*0.42)+0.55*DeepCaustic(q*1.21+float2(3.1,1.7)-warp*1.4,t*0.58);
+                float web=DeepCaustic(q*1.05+warp*2.2,t*0.42)+0.5*DeepCaustic(q*2.1+float2(3.1,1.7)-warp*1.4,t*0.58);web*=web*0.6+0.4;
                 float focus=1.0+clamp(-lap*7.0,-0.75,3.0);
                 float3 glow=tex2D(_DeepGlowTex,fuv).rgb;float soft=_DeepLight.y;
                 float above=p.y-_DeepTide;float3 c;
                 if(above<0.0)
                 {
                     // Under the water: the ceiling's light focused (dim by the depth); the lamps' own light moving too.
-                    float deep=saturate(exp(above*0.42));float3 light=float3(0.55,0.72,0.70)*(_DeepLight.x*0.62+soft*0.25)+glow*0.9;c=light*web*focus*deep*1.1;
+                    float deep=saturate(exp(above*0.42));float3 light=float3(0.55,0.72,0.70)*(_DeepLight.x*0.62+soft*0.25)+glow*0.9;c=light*web*focus*deep*0.8;
                 }
                 else
                 {
                     // Over it: thrown up from the water, strongest near it and on the ceiling above the pool's lamps.
-                    float fall=exp(-above*0.18);if(n.y<-0.6)fall=0.72;float3 light=glow*1.25+float3(0.20,0.36,0.36)*(_DeepLight.x*0.55+soft*0.2);c=light*web*focus*fall*0.72;
+                    float fall=exp(-above*0.3);if(n.y<-0.6)fall=0.55;if(n.y>0.5)fall=0.0;float3 light=glow*1.1+float3(0.13,0.26,0.26)*(_DeepLight.x*0.55+soft*0.2);c=light*web*focus*fall*0.6;
                 }
                 c*=_DeepCaustics;
                 fixed4 o=fixed4(c,0.0);UNITY_APPLY_FOG_COLOR(i.fogCoord,o,fixed4(0,0,0,0));return o;

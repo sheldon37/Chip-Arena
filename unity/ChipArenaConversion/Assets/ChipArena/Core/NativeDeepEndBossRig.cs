@@ -73,12 +73,15 @@ namespace ChipArena.UnityConversion
         {
             float t=tick/(float)TickRate,dt=1f/TickRate;Route.At(t,out var h,out var hv);RingAdd(h);
             int li=(int)(ringEnd%RingSize);float head=ringS[li];
-            float limit=Visible(h,1.2f,surface)?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;
+            float limit=h.Y>surface-1.5f?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
                 float want=head-i*NativeDeepEndBossLook.Seg,s=arc[i];var at=raw[i];bool vis=Visible(at,NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
-                float next=Math.Min(want,s+(vis?limit:HiddenSpeed)*dt);if(i>0)next=Math.Min(next,arc[i-1]-NativeDeepEndBossLook.Seg*.985f);if(next<s)next=s;arc[i]=next;
+                float next=Math.Min(want,s+(vis?limit:HiddenSpeed)*dt);if(i>0)next=Math.Min(next,arc[i-1]-NativeDeepEndBossLook.Seg*.985f);if(next<s)next=s;
                 Trail(next,h,head,out raw[i],out rawN[i]);
+                // Coming into sight: at a heavy body's speed from the first moment.
+                if(!vis&&next>s+limit*dt&&Visible(raw[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface)){next=s+limit*dt;Trail(next,h,head,out raw[i],out rawN[i]);}
+                arc[i]=next;
                 if(raw[i].Y<surface-.15f)EmergedAt[i]=t;
             }
         }
@@ -296,7 +299,7 @@ namespace ChipArena.UnityConversion
             for(int side=1;side>=-1;side-=2)
             {
                 var root=NativeDeepEndBossLook.Skin(NativeDeepEndBossLook.FinS,side*NativeDeepEndBossLook.FinTheta);
-                float yaw=side*fold.Value*50f*BossMath.Deg,flap=side*(.13f*(float)Math.Sin(now*.8f+side)+.1f*BossMath.Clamp01(1-fold.Value));
+                float yaw=side*fold.Value*34f*BossMath.Deg,flap=side*(.13f*(float)Math.Sin(now*.8f+side)+.1f*BossMath.Clamp01(1-fold.Value));
                 var q=fq*BossMath.AxisAngle(Vector3.UnitY,yaw)*BossMath.AxisAngle(new Vector3(0,0,1),flap);
                 int j=side>0?NativeDeepEndBossLook.FinR:NativeDeepEndBossLook.FinL;Shown.Position[j]=fc+BossMath.Rotate(fq,root);Shown.Rotation[j]=q;
             }

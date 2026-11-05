@@ -95,7 +95,7 @@ namespace ChipArena.UnityConversion
             if(skin!=null)
             {
                 if(!skin.Go.activeSelf)skin.Go.SetActive(true);var r=skin.Renderer;
-                skin.Solid.Clear();skin.Solid.SetFloat(HitFlashId,code);skin.Solid.SetFloat(ActorLitId,1);skin.Solid.SetFloat(VertexAlbedoId,.04f+.2f*(1-Mathf.Clamp01(NativeDeepEndBossStage.Shown.Ambient)));
+                skin.Solid.Clear();skin.Solid.SetFloat(HitFlashId,code);skin.Solid.SetFloat(ActorLitId,1);skin.Solid.SetFloat(VertexAlbedoId,.03f+.42f*(1-Mathf.Clamp01(NativeDeepEndBossStage.Shown.Ambient)));
                 if(skin.Glows){skin.Glow.Clear();skin.Glow.SetFloat(VertexAlbedoId,ZombieGearGlow*Mathf.Max(0,2.2f*fx.MarkerGlow));skin.Glow.SetFloat(ActorLitId,1);r.SetPropertyBlock(skin.Glow,0);r.SetPropertyBlock(skin.Solid,1);}else r.SetPropertyBlock(skin.Solid,0);
                 DeepEndBossDraws++;
             }
