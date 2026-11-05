@@ -233,7 +233,7 @@ namespace ChipArena.UnityConversion
                     if(NativeBowWire.Arrow(b.Detail,b.Draw,out kind,out draw)){}else if(p.bowShots.TryGetValue(b.Id,out var shot)){draw=shot.draw;kind=shot.kind;}else{draw=NativeBowWire.SpeedDraw(b.BaseVelocity.sqrMagnitude>.01f?b.BaseVelocity.magnitude:vel.magnitude);kind=draw>=.999f?NativeBow.Arrow.Full:NativeBow.Arrow.Quick;}
                     var seat=NativeShotViews.Seat(arena,owner);bool std=seat==null||NativeWeaponSkins.Index(seat.weaponSkins,NativeBowWire.Spec)!=NativeWeaponSkins.PrototypeIndex;
                     p.bowLast[b.Id]=new BowLast{At=new Vector3((float)v.X,(float)v.Y,(float)v.Z),Velocity=vel,Draw=draw,Standard=std,Owner=owner,Frame=p.bowFrame};
-                    arrows.Add(new NativeBowArrowView{Id=b.Id,Owner=owner,Position=new NVector((float)v.X,(float)v.Y,(float)v.Z),Velocity=BowN(vel),Born=b.Born,Draw=draw,Kind=kind,Standard=std});
+                    arrows.Add(new NativeBowArrowView{Id=b.Id,Owner=owner,Position=new NVector((float)v.X,(float)v.Y,(float)v.Z),Velocity=BowN(vel),Born=b.Born,Draw=draw,Kind=kind,Standard=std,PathTrail=true});
                 }
             }
             public IReadOnlyList<Actor> Actors=>actors;

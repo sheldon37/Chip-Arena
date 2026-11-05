@@ -68,9 +68,16 @@ namespace ChipArena.UnityConversion
                 if(!NativeSurfaceImpacts.Shows(spec,e.Detail))continue;
                 Vector3 at=NativeArena.Vec(e.Position),normal=NativeArena.Vec(e.Normal);normal=normal.sqrMagnitude>.01f?normal.normalized:Vector3.up;
                 int kind=NativeSurfaceImpacts.Surface(SurfaceMaterialOf(arena,e.SurfaceId),arena.MapId,e.SurfaceId,normal.y);
-                if(!LowGraphics)SurfaceEffect(kind,at+normal*NativeSurfaceImpacts.Lift,normal,now);
+                if(NativeRoundImpacts.Debris(spec,e.Id))if(!LowGraphics)SurfaceEffect(kind,at+normal*NativeSurfaceImpacts.Lift,normal,now);
                 SurfaceHole(kind,at+normal*NativeSurfaceImpacts.DecalLift,normal,now,e.Id);
             }
+        }
+        /// <summary>A gun round that struck the map's static world (no Impact event: only props raise one): the surface's debris and its
+        /// hole there, as a prop's. withEffect: false leaves only the hole (the machine gun's other hits).</summary>
+        private void SurfaceWorldHit(NativeArena arena,Vector3 at,Vector3 normal,int seed,float now,bool withEffect=true)
+        {
+            if(!SurfaceBank())return;int kind=NativeSurfaceImpacts.Surface(null,arena.MapId,null,normal.y);
+            if(withEffect&&!LowGraphics)SurfaceEffect(kind,at+normal*NativeSurfaceImpacts.Lift,normal,now);SurfaceHole(kind,at+normal*NativeSurfaceImpacts.DecalLift,normal,now,seed);
         }
         private string SurfaceMaterialOf(NativeArena arena,string id)
         {

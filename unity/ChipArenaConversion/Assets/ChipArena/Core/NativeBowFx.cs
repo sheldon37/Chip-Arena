@@ -12,7 +12,9 @@ namespace ChipArena.UnityConversion
     }
     /// <summary>A bow arrow in flight as the presentation sees it (Unity world): the replicated shot's place and velocity, its
     /// owner and birth, its draw fraction and kind (NativeBowWire: from its shot event, else its launch speed).</summary>
-    public struct NativeBowArrowView{public int Id,Owner;public Vector3 Position,Velocity;public float Born,Draw;public NativeBow.Arrow Kind;public bool Standard;}
+    public struct NativeBowArrowView{public int Id,Owner;public Vector3 Position,Velocity;public float Born,Draw;public NativeBow.Arrow Kind;public bool Standard;
+        /// <summary>The presentation draws this arrow's trail along its real path (NativeTracerPresentation.cs); here only the model and the glint.</summary>
+        public bool PathTrail;}
     /// <summary>What the bow effects read of the presented frame.</summary>
     public interface IBowFxScene
     {
@@ -77,9 +79,12 @@ namespace ChipArena.UnityConversion
             // The model: its head at the shot's place (the replicated projectile), the shaft back along the flight.
             sink.Arrow(w.Position-dir*NativeBow.ArrowLength,dir,1,false,w.Standard);
             TrailLook(w.Draw,w.Kind,out float length,out float width,out float gain,out var color);float age=Math.Max(0,time-w.Born);
-            float grow=NativeBow.Clamp01(age*speed/Math.Max(.2f,length));var tail=w.Position-dir*(NativeBow.ArrowLength*.85f);
-            sink.Line(false,tail-dir*(length*grow),tail,color*gain,width,false);
-            if(!low&&quality>.5f)sink.Line(false,tail-dir*(length*.45f*grow),tail,Lin(TrailCore,gain*.6f),width*.35f,false);
+            if(!w.PathTrail)
+            {
+                float grow=NativeBow.Clamp01(age*speed/Math.Max(.2f,length));var tail=w.Position-dir*(NativeBow.ArrowLength*.85f);
+                sink.Line(false,tail-dir*(length*grow),tail,color*gain,width,false);
+                if(!low&&quality>.5f)sink.Line(false,tail-dir*(length*.45f*grow),tail,Lin(TrailCore,gain*.6f),width*.35f,false);
+            }
             // A full-draw shot's glint for its first moments, at the head.
             bool full=w.Kind==NativeBow.Arrow.Full||w.Draw>=.999f;
             if(full&&age<GlintLife){float g=1-age/GlintLife;sink.Sprite(false,w.Position,Lin(Glint,2.2f*g),.16f*g+.05f,low?NativeMeleeKitFx.Soft:NativeMeleeKitFx.Sparkle);}

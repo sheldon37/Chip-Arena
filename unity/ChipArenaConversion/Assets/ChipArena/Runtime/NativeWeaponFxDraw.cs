@@ -20,6 +20,8 @@ namespace ChipArena.UnityConversion
         /// <summary>Shader modes (NativeWeaponFx.shader TEXCOORD0.z) and glow profiles (TEXCOORD0.w).</summary>
         public const float Petal=0,Crescent=1,Ribbon=2,GlowMode=3,WispMode=4,StreakMode=5,FlameMode=6,ShardMode=7;
         public const float Soft=0,HotCore=1,RingProfile=2,Sparkle=3;
+        /// <summary>The petal mode's other oriented cards (TEXCOORD0.w): a chip part's ring (x, y -1..1) and a flying blade's crescent (x tip to tip, y inner to outer).</summary>
+        public const float RingCard=1,BladeCard=2;
         /// <summary>The pack muzzle flash's modes (Core NativeMuzzleFx sheets): the flipbook flame card along the barrel (an axis
         /// card, TEXCOORD0.w the frame, negative mirrored) and the burst sprite (a billboard), drawn only by a family's material.</summary>
         public const float SheetFlameMode=8,SheetBurstMode=9;
@@ -210,7 +212,8 @@ namespace ChipArena.UnityConversion
             {
                 if(!NativeMuzzleFx.Petal(look,seed,k,age,out float roll,out float length,out float width,out float alpha))continue;
                 Vector3 radial=x*Mathf.Cos(roll)+y*Mathf.Sin(roll),tangent=Vector3.Cross(z,radial);Vector3 along=(radial*Mathf.Cos(tilt)+z*Mathf.Sin(tilt)).normalized;
-                Vector3 pivot=crown+z*(.008f*size),tip=pivot+along*(length*size),half=tangent*(width*.5f*size);
+                // First person the star is smaller still: it sits by the crosshair, and the shot must stay visible through it.
+                float petal=first?ViewPetal:1;Vector3 pivot=crown+z*(.008f*size),tip=pivot+along*(length*size*petal),half=tangent*(width*.5f*size*petal);
                 draw.Quad(first,pivot-half,tip-half,tip+half,pivot+half,new Vector2(0,-1),new Vector2(1,-1),new Vector2(1,1),new Vector2(0,1),Lin(NativeMuzzleFx.PetalColor,petalGain*alpha),NativeWeaponFxDraw.Petal,0);
             }
             // The device's open vents (the compensator's top ports, the brake's side and top ports, the hider's slots).
@@ -251,6 +254,7 @@ namespace ChipArena.UnityConversion
                 draw.Wisp(first,crown+(x*local.X+y*local.Y+z*local.Z)*size+Vector3.up*(rise*size),new Color(.62f*cover,.64f*cover,.7f*cover,cover),wispSize*size,(float)NativeWeaponFx.Hash(seed,80+k)*10,(float)NativeWeaponFx.Hash(seed,90+k)*6.28f);
             }
         }
+        private const float ViewPetal=.8f;
         // With the pack flash the procedural fireball is the burst's soft halo.
         private const float SheetFireball=.5f;
         // A point of the source weapon frame (+x the gun's left) relative to the crown at z `crownZ`, in the world.
@@ -296,6 +300,52 @@ namespace ChipArena.UnityConversion
             float speed=velocity.magnitude;if(!(speed>.01f))return;float length=Math.Max(.08f,NativeTracerFx.Length(speed,travelled)),width=NativeTracerFx.Width(spec);Vector3 dir=velocity/speed;
             draw.Axis(false,at-dir*length,at,Lin(NativeTracerFx.EdgeColor,NativeTracerFx.CoreGain),width,NativeWeaponFxDraw.StreakMode,.85f);
             draw.Axis(false,at-dir*(length*.6f),at,Lin(NativeTracerFx.EdgeColor,.5f),width*4,NativeWeaponFxDraw.StreakMode,.95f);
+        }
+        private static readonly Vector3[] needleSide=new Vector3[NativeTracerPath.Capacity+1];
+        /// <summary>
+        /// A tracer needle along a drawn path (points head first, along: each point's metres from the head; NativeTracerPath.Walk): world
+        /// quads turned to the eye through the path's bends, width metres wide but no thinner than minPixels (pixel: a pixel's height at
+        /// 1 m), tail: its fall-off along the path.
+        /// </summary>
+        public static void Needle(NativeWeaponFxDraw draw,Vector3[] p,float[] along,int n,Vector3 eye,float pixel,Color color,float width,float minPixels,float tail)
+        {
+            float total=along[n-1];if(!(total>1e-3f)||n>needleSide.Length)return;color.a=0;tail=Math.Max(NativeTracers.OwnFade,tail);
+            for(int i=0;i<n;i++)
+            {
+                Vector3 t=i==0?p[0]-p[1]:i==n-1?p[n-2]-p[n-1]:p[i-1]-p[i+1],toEye=eye-p[i],s=Vector3.Cross(t,toEye);float m=s.sqrMagnitude;
+                if(m<1e-8f)s=Vector3.Cross(t,Vector3.up);m=s.sqrMagnitude;if(m<1e-8f)s=Vector3.right;
+                needleSide[i]=s.normalized*(.5f*NativeTracers.Width(width,minPixels,toEye.magnitude,pixel));
+            }
+            for(int i=n-1;i>0;i--)Span(draw,p[i],p[i-1],needleSide[i],needleSide[i-1],1-along[i]/total,1-along[i-1]/total,color,tail,2);
+        }
+        // A segment of a needle; one whose ends differ a lot in width (it runs toward the eye) is split, so the quad's diagonal does not show.
+        private static void Span(NativeWeaponFxDraw draw,Vector3 a,Vector3 b,Vector3 sa,Vector3 sb,float ta,float tb,Color c,float tail,int split)
+        {
+            if(split>0){float wa=sa.sqrMagnitude,wb=sb.sqrMagnitude;if(wa>wb*3.4f||wb>wa*3.4f){Vector3 m=(a+b)*.5f,sm=(sa+sb)*.5f;float tm=(ta+tb)*.5f;Span(draw,a,m,sa,sm,ta,tm,c,tail,split-1);Span(draw,m,b,sm,sb,tm,tb,c,tail,split-1);return;}}
+            draw.Quad(false,a-sa,b-sb,b+sb,a+sa,new Vector2(ta,-1),new Vector2(tb,-1),new Vector2(tb,1),new Vector2(ta,1),c,NativeWeaponFxDraw.Ribbon,tail);
+        }
+        /// <summary>A round's fading line from A to B (each end's strength 0..1, its life left), thinning as it fades.</summary>
+        public static void Line(NativeWeaponFxDraw draw,Vector3 a,Vector3 b,float ka,float kb,Vector3 eye,float pixel,Color color,float width,float minPixels=1.2f)
+        {
+            Vector3 mid=(a+b)*.5f,toEye=eye-mid,s=Vector3.Cross(b-a,toEye);if(s.sqrMagnitude<1e-8f)return;s=s.normalized;color.a=0;
+            Vector3 sa=s*(.5f*NativeTracers.Width(width,minPixels,(eye-a).magnitude,pixel)),sb=s*(.5f*NativeTracers.Width(width,minPixels,(eye-b).magnitude,pixel));
+            Span(draw,a,b,sa,sb,Mathf.Clamp(ka,0,1)*.94f,Mathf.Clamp(kb,0,1)*.94f,color,1,2);
+        }
+        /// <summary>A gun round's landing at `age` (Core NativeRoundImpacts): the quick glow, the star, the spike along the rebound, the sparks and the dust.</summary>
+        public static void RoundImpact(NativeWeaponFxDraw draw,NativeRoundImpact kind,Vector3 point,Vector3 normal,Vector3 flight,long seed,double age,float quality,bool low)
+        {
+            var n=new NVector3(normal.x,normal.y,normal.z);var f=new NVector3(flight.x,flight.y,flight.z);Vector3 at=point+normal*.03f;
+            if(NativeRoundImpacts.Flash(kind,age,out float size,out var glow))draw.Glow(false,at,Fx(glow),size,NativeWeaponFxDraw.Soft);
+            if(NativeRoundImpacts.Star(kind,seed,age,out float star,out float roll,out var hot))draw.Glow(false,at,Fx(hot),star,NativeWeaponFxDraw.Sparkle,roll);
+            if(NativeRoundImpacts.Spike(kind,age,out float length,out float width,out var white)){var r=V(NativeRoundImpacts.Rebound(f,n));draw.Axis(false,at,at+r*length,Fx(white),width,NativeWeaponFxDraw.StreakMode,.9f);}
+            int sparks=NativeRoundImpacts.Sparks(kind,seed,quality,low);
+            for(int k=0;k<sparks;k++)
+            {
+                if(!NativeRoundImpacts.Spark(kind,seed,k,age,n,f,out var offset,out var velocity,out var color,out float w))continue;
+                Vector3 head=at+V(offset),vel=V(velocity);float speed=vel.magnitude;draw.Axis(false,head-(speed>1e-3f?vel/speed:normal)*(.015f+speed*.016f),head,Fx(color),w,NativeWeaponFxDraw.StreakMode,.85f);
+            }
+            int puffs=NativeRoundImpacts.Puffs(kind,quality,low);
+            for(int k=0;k<puffs;k++){if(!NativeRoundImpacts.Puff(seed,k,age,n,out var off,out float s,out float cover))continue;draw.Wisp(false,at+V(off),new Color(.5f*cover,.5f*cover,.52f*cover,cover),s,(float)NativeWeaponFx.Hash(seed,95+k)*10,(float)NativeWeaponFx.Hash(seed,97+k)*6.28f);}
         }
         /// <summary>An energy shot's white-hot core and school glow (pulse: its slow breathing, about 1). The core sits just in
         /// front of the shot's opaque model, toward `eye`, so the model reads as glowing from inside rather than hiding it.</summary>

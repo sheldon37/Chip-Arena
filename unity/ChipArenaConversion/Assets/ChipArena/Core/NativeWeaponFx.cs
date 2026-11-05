@@ -136,6 +136,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Metres between trail sprites (Reduced effects: half as many; low graphics: two thirds).</summary>
         public static float Spacing(float quality,bool low)=>quality<.5f?.32f:low?.24f:.16f;
+        /// <summary>The spacing's scale at a bolt's speed: 1 up to 60 m/s, then with the speed.</summary>
+        public static float SpacingAt(float speed)=>Math.Max(1,speed/60);
         /// <summary>The visual radius of the effects (at least .12 m: thin bolts still glow).</summary>
         public static float Radius(double radius)=>(float)Math.Max(.12,Math.Min(.6,radius));
         public static float CoreSize(float r)=>r*2.3f;
