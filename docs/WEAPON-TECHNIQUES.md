@@ -277,6 +277,9 @@ rule, hit timing, damage, cooldown or movement.
 | The card sentence and the HUD card's state | `Core/NativeTechnique.cs` (`Text`, `Card`) |
 | HUD card, through-walls markers, drawing, models | `Runtime/NativeFightHud.cs`, `Runtime/NativeCombatHud.cs`, `Runtime/NativeTechniquePresentation.cs` |
 | Checks | `Tests/TechniqueChecks.cs` (`CoreTests --techniques`) |
+| The third set: effects, previews, sounds and poses | `Core/NativeTechniqueThirdMelee.cs` (sword, daggers, shield, greatsword), `Core/NativeTechniqueThirdRanged.cs` (pistol, machine gun, rifle, bow), `Core/NativeTechniqueThirdMagic.cs` (fire, water, lightning, darkness); each with its `*Built` list. All 36 built |
+| The third set: dispatch, marks on other pilots, the whiteout's curve, the unseen body's test | `Core/NativeTechniqueThird.cs` (`ThirdMarks`, `Whiteout`, `Unseen`, `ArmAt`) |
+| The third set in the runtime: Bipod's and the crate's models, the body out of sight, the whiteout, no stand-in rig under the double and the puppet | `Runtime/NativeTechniquePresentation.cs` (`BipodModel`, `CrateModel`, `TechniquePlace`), `Runtime/NativeFightHud.cs` (`TechniqueWhiteout`), `Runtime/NativeSourcePresentation.cs` |
 
 **The picker.** Customize, Loadout, Abilities: two slot tiles, Q and E, each with its key and what the slot holds now. Clicking a tile chooses the slot; under the tiles a library shows everything that slot can hold: its own ability and each of the weapon's techniques.
 The equipped card has the bright edge and the tick (a technique's in its own accent, the colour of its effects). A click swaps with a short pop; a
@@ -319,6 +322,27 @@ Fixes from it: Shield Surf's sparks moved to the board's sides, since behind the
 **Fixed on `codex/bombadier-rules` (2026-11-04), native acceptance pending: Parting Line snapped the pilot back on every cast.** Seen on open floor and with a pillar behind (arena clock, `body` from the log): 5.32 hopping at 3.1 m, 5.50 back at `Point+up*.9`, standing in the burst. The hop's `wall` flag sets `Phase="line"` before `Release+.28` (`NativeMoreTechniques.MoreTechniqueMotion`; most likely the arc's descent meeting the floor, not confirmed). `MoreTechniqueMotion` then returns false, `NativeTechniqueRules.Moving` is still true, and `TechniqueMotion` falls into its anchor-throw branch, whose `RecastAt` of -100 puts the destination at `Point+up*.9` at once. The fix is `k.Kind=="parting-line"&&k.Phase=="hop"&&now<k.Release+.28f` in `Moving`, which guest prediction also reads; and the arc should not count the floor as a wall, or the hop ends short. The effect itself is right; it just needs the pilot to stay out of it.
 
 Not seen: a shot actually drawn into a real rod, a real mark's refund, Wildfire and Slipstream on a moving enemy, a real wire waiting armed (it snapped on the bot at once; seen armed in the preview), a guest or replay, a crowd, a low graphics tier in Unity, a Windows build.
+
+**The third set, built and reviewed on real presses (2026-11-05).** All 36 draw from the rules' own records. Reviewed from the game's camera with `swaps=spec:q=id,spec:e=id`, `apress=T:AbilityQ`, and each frame's record read from the log; `keep=` swallows an `apress` near it, and only one technique can be live at a time, so a second press has to wait for the first to end.
+
+| Weapon | Built | Seen on a real press | Note |
+| --- | --- | --- | --- |
+| Sword | Disarm, Iaido, Challenge | Disarm, Iaido | Iaido's line follows the facing, as the draw does |
+| Daggers | Mirror Double, Envenom, Chain Hook | all three | Envenom without a hit |
+| Shield | War Cry, Ground Slam, Lodestone | all three | **Ground Slam's rules never reach the landing, so its blast was seen only in the preview.** Lodestone without a shot caught |
+| Greatsword | Sunder, Reaping Sweep, Blade Drag | Sunder, Reaping Sweep | The blade lands 2.2 m ahead of `Point`, the feet. The sweep's gap is behind the pilot |
+| Pistol | Flash Round, Gun Spin, Slide Shot | all three | The whiteout is the viewer's own mark. **Slide Shot's rules stop it after about .2 m** |
+| Machine gun | Bipod, Ammo Crate, Flak Burst | all three | The crate stands at the rules' `Point`, the caster's feet |
+| Rifle | Breacher Round, Ghillie, Bolas Round | Breacher Round, Bolas Round | The body's fade is under the floor, for others, and not reviewable from its own pilot |
+| Bow | Bramble Arrow, Vault Shot, Tether Arrow | all three | The hedge lies across the arrow's line |
+| Fire | Flame Cloak, Dragon Breath, Combust | Dragon Breath, Combust | Blasts on the floor round the victims' feet |
+| Water | Bubble Trap, Flash Freeze, Hydro Jet | all three | The ice is a 3 m radius |
+| Lightning | Magnetize, Thunderclap, Overload | all three | Magnetize on one target; a clash only in the preview |
+| Darkness | Soul Siphon, Dread, Shadow Puppet | all three | The puppet stands where you stood, so it overlaps a pilot who has not moved |
+
+As the rules write the records (the contract above is the proposal): `Arm` as a time arrives at the release, and at a flight's end for Flash Round and Bramble Arrow; `Point` is the shot itself in flight; `To` is unset until the rules have one; Combust's `Path`, Magnetize's `Path` and `Point`, and a double's `To`, are at body height, .865 above the feet; Sunder's and Reaping Sweep's `Point` are the feet; Slide Shot's `Until` is .2 s past its slide; Vault Shot's landing is `RecoverUntil`; Bramble Arrow's `Dir` is the flight, the hedge across it. `NativeTechniqueFx.ArmAt` reads an unset `Arm` as the release.
+
+Marks drawn on pilots: Sunder, War Cry, Dread, Flash Round (`ThirdMarks`). The other marks are drawn by the caster's own effect from its `Target`. A mark on an add is not drawn: `Actor` lists pilots only.
 
 **A refused press.** A press the rules refuse for where it is aimed must not feel like a dead key (Grapple Line with no surface in 20 m, Static Recall with something on the line: a low
 counter is enough). While that holds the card says NO SURFACE, BLOCKED or NO FLOOR instead of READY or RECAST, without flaring each time the aim comes back; a press then puts the reason under the crosshair

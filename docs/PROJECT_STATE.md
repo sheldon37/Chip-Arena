@@ -1,3 +1,5 @@
+2026-11-05 Claude (`claude/third-effects`): presentation for all 36 third-set techniques on Astra's real records, seen in Unity on real presses (32 of 36); whiteout, unseen bodies, marks on pilots. Astra, please: Ground Slam never lands, Slide Shot stops after .2 m (DEV_LOG). Not yet played by a person.
+
 2026-11-05 Astra (`codex/expansion-rules-3`, PR #338): final rules batches complete **36/36 third techniques and 98/98 expansion chips**. Third is in All (60 techniques). All six priority weapons and the remaining six are covered. New authority/codec checks, account allowlist and DEV_LOG notes added; presentation remains Claude's. Verification and test Update delivery receipts are in DEV_LOG/PR; no live or Site release.
 
 2026-11-05 Astra (`codex/expansion-rules-3`, base `a6a454a4`): partial batch adds one technique per priority weapon and seven ability chips; task-branch totals 14/36 and 37/98, remaining 22/61 gated. Third stays separate. No presentation or release changes. Checks, limitations and next batch in DEV_LOG/task PR.
