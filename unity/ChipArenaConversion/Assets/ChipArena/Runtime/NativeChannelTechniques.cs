@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
         }
         private void ExpansionBlock(NativePilot p)
         {
-            if(!Has(p,"wild-hush"))return;
+            WildSuccessfulBlock(p);if(!Has(p,"wild-hush"))return;
             foreach(var q in Pilots)if(q.Hp>0&&CanHit(p,q)&&Vector3.Distance(p.Body.position,q.Body.position)<=6&&MeleeVisible(p.Body.position,q.Body.position,p,q.Collider))MarkTechnique(q,"wild-hush",p,1.5f);
         }
         private void StepExpansionWorldProcs(NativePilot p)

@@ -8,8 +8,9 @@ namespace ChipArena.UnityConversion
     public sealed class NativeMinionBody:MonoBehaviour { public NativeMinion Minion; }
     public sealed class NativeMinion
     {
+        public NativeTechniqueMark[] TechniqueMarks=Array.Empty<NativeTechniqueMark>();
         public Vector3 BombPush;public float BombPushUntil;public bool DevMonster;public string DevBehaviour;public int DevHunt;
-        public float LastHitAt=-100;public Vector3 NetworkVelocity;public NativePveAdd Pve;public int Id;public NativePilot Owner,Foe;public NativeMinion Other;public string Kind;
+        public float ExpansionOverkill;public bool ExpansionShrunk;public float LastHitAt=-100;public Vector3 NetworkVelocity;public NativePveAdd Pve;public int Id;public NativePilot Owner,Foe;public NativeMinion Other;public string Kind;
         public float SlowUntil,SlowFactor=1,SoakAt=-10;public Rigidbody Body;public CapsuleCollider Collider;public float Hp,MaxHp,Speed,Until,Yaw,LastAttack=-10,NextAttack,StrikeAt=-1;
         public readonly Dictionary<string,NativeDot> Dots=new Dictionary<string,NativeDot>();
     }
@@ -35,18 +36,18 @@ namespace ChipArena.UnityConversion
         }
         private void RemoveMinion(NativeMinion m,bool explode=true)
         {
-            if(!Minions.Remove(m))return;if(m.Hp<=0)TechniqueMarkedDeath(m.Id);hubMobs.Remove(m.Id);ClearHulkCollisions(m);navRoutes.Remove(m.Id);crowdRoutes.Remove(-m.Id);RecordMinionDeath(m);Vector3 pos=m.Body.position;m.Hp=0;m.Collider.enabled=false;CapturedAnimation.Release(m.Body.gameObject);
+            if(!Minions.Remove(m))return;if(m.Kind=="wild-evil-twin")m.Owner.Wild.TwinAt=Time+8;if(m.Kind=="wild-afterimage"){ExpansionAreaAdd(m.Owner,"afterimage",m.Body.position,0,0,8,2);ChipProc(m.Owner,"wild-afterimage",m.Body.position,m.Id,8);}if(m.Hp<=0)TechniqueMarkedDeath(m.Id);hubMobs.Remove(m.Id);ClearHulkCollisions(m);navRoutes.Remove(m.Id);crowdRoutes.Remove(-m.Id);RecordMinionDeath(m);Vector3 pos=m.Body.position;m.Hp=0;m.Collider.enabled=false;CapturedAnimation.Release(m.Body.gameObject);
             if(explode&&!m.DevMonster&&m.Kind=="zombie"&&Has(m.Owner,"corpse-party")&&Match.Phase==NativePhase.Fight)ChipBlast(m.Owner,pos,3.5f,30,300,effect:"corpse-party");
         }
-        private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
+        private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null,NativeMinion attackerMinion=null)
         {
-            var at=point??m.Body.position;float actual=HitMinionCore(m,owner,ExpansionDamage(owner,damage,kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"||kind=="ability"),direction,impulse,point,kind,radius,head,projectile,pierced,from);
-            if(kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"||kind=="ability")ExpansionHit(owner,m.Id,at,actual,kind=="melee");return actual;
+            m.ExpansionOverkill=0;var at=point??m.Body.position;float actual=HitMinionCore(m,owner,ExpansionDamage(kind=="expansion-copy"?null:owner,PriorityDamage(owner,attackerMinion,m.Id,m.TechniqueMarks,damage),kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"||kind=="ability"),direction,impulse,point,kind,radius,head,projectile,pierced,from);
+            if(kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"||kind=="ability")ExpansionHit(owner,m.Id,at,actual,kind=="melee",direction,projectile>0);if(actual>0){PopVictimBubble(m.Id);if(kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"||kind=="ability"){if(m.Hp<=0)WildOverkill(owner,m.Id,at,m.ExpansionOverkill);else if(owner!=null&&impulse>0&&Has(owner,"wild-splat")){var splat=WildAfflict(owner,m.Id,"wild-splat",.6f);splat.Stacks=ExpansionStacks(owner,"wild-splat");}}}return actual;
         }
         private float HitMinionCore(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
         {
             if(Expedition?.Session.Run.SplitAreas==true&&(!Minions.Contains(m)||owner!=null&&!Pilots.Contains(owner)))return 0;
-            if(m.Hp<=0||!CanHit(owner,m)||HubDamageBlocked(owner,m.Body.position,from,projectile))return 0;if(IsZoneBoss(m))return HitZoneBoss(m,owner,damage,point,kind);if(m.DevMonster)return HitDevMonster(m,owner,damage,direction,impulse,point,kind);if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head,projectile,pierced,from);if(PilotMutator(owner,"glass-cannon"))damage*=3;if(Mutator("bounce-house"))impulse*=3;float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,from:from,projectile:projectile,pierced:pierced);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
+            if(m.Hp<=0||!CanHit(owner,m)||HubDamageBlocked(owner,m.Body.position,from,projectile))return 0;if(IsZoneBoss(m))return HitZoneBoss(m,owner,damage,point,kind);if(m.DevMonster)return HitDevMonster(m,owner,damage,direction,impulse,point,kind);if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head,projectile,pierced,from);if(PilotMutator(owner,"glass-cannon"))damage*=3;if(Mutator("bounce-house"))impulse*=3;m.ExpansionOverkill=Math.Max(0,damage-m.Hp);float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,from:from,projectile:projectile,pierced:pierced);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
         }
         private void MinionImpact(NativeMinion m,NativePilot owner,float actual,Vector3? point,string kind,Vector3 direction)
         {
@@ -72,6 +73,7 @@ namespace ChipArena.UnityConversion
             {
                 if(!Minions.Contains(m)||m.Pve!=null||IsZoneBoss(m))continue;if(m.Owner.Hp<=0||Time>=m.Until||m.Body.position.y<(Map.bounds?.killY??-6)){RemoveMinion(m);continue;}
                 foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time+1e-8&&d.Next<=d.Until+1e-8){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)(d.Dps*.25),Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}if(m.Hp<=0||m.Kind=="slender")continue;
+                if(StepExpansionMinion(m))continue;
                 bool toy=m.Kind=="toy";float windup=toy?.45f:.42f,recover=toy?.55f:.48f;Vector3 at=m.Body.position,velocity=m.Body.linearVelocity;
                 if(HubInside(at)){m.StrikeAt=-1;continue;}
                 if(m.StrikeAt>=0)
@@ -83,8 +85,8 @@ namespace ChipArena.UnityConversion
                     if(!goal.HasValue)continue;Vector3 origin=at+Vector3.up*(toy?.25f:0),target=goal.Value+Vector3.up*(toy?.35f:0),aim=target-origin;Collider collider=m.Foe?.Hp>0?m.Foe.Collider:m.Other.Collider;
                     if(toy)Fx(target,.1f,0,origin,m.Owner,"minionShot");if(HubCross(origin,target)||aim.magnitude>(toy?9.5f:2.4f)||!SummonVisible(m,origin+Vector3.up*(toy?0:.3f),target+Vector3.up*(toy?0:.3f),collider))continue;
                     float damage=(toy?8:12)*(float)m.Owner.Stats["damage"],impulse=toy?50:120;Vector3 flat=new Vector3(aim.x,0,aim.z).normalized;
-                    if(m.Foe?.Hp>0){if(!toy&&TryTechniqueParry(m.Foe,flat,m.Foe.Body.position)){HitMinion(m,m.Foe,22*m.Foe.TechniqueScale,-flat,0,m.Body.position,"energy");m.NextAttack=Time+.35f;m.StrikeAt=-1;}else if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,m.Foe.Collider.ClosestPoint(at),"clash");if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false);}
-                    else if(m.Other?.Hp>0)HitMinion(m.Other,m.Owner,damage,flat,impulse,from:origin);continue;
+                    if(m.Foe?.Hp>0){if(!toy&&TryTechniqueParry(m.Foe,flat,m.Foe.Body.position)){HitMinion(m,m.Foe,22*m.Foe.TechniqueScale,-flat,0,m.Body.position,"energy");m.NextAttack=Time+.35f;m.StrikeAt=-1;}else if(Time<m.Foe.BlockEnd){BlockProc(m.Foe,m.Owner,m.Foe.Collider.ClosestPoint(at),"clash");if(!toy)m.Body.AddForce((at-m.Foe.Body.position).normalized*400,ForceMode.Impulse);}else Damage(m.Foe,m.Owner,damage,flat,impulse*(float)m.Owner.Stats["impulse"],false,direct:false,primary:false,melee:true,attackerMinion:m);}
+                    else if(m.Other?.Hp>0)HitMinion(m.Other,m.Owner,damage,flat,impulse,from:origin,attackerMinion:m);continue;
                 }
                 if(Time<m.NextAttack&&m.LastAttack>=0&&Time-m.LastAttack<windup+recover){if(Time-m.LastAttack>windup+.12f)m.Body.linearVelocity=new Vector3(0,velocity.y,0);continue;}
                 m.Foe=null;m.Other=null;float best=float.PositiveInfinity;

@@ -79,7 +79,7 @@ namespace ChipArena.UnityConversion
             if(!ZonePilot(p)||Invulnerable(p)||jump&&p.Body.position.y-p.Collider.height*.5f>center.y+.6f||!BossOnce(p.Seat.id,strike))return;
             if(SceneLinecast(center+Vector3.up,p.Body.position,WorldMask))return;
             if(Time<p.BlockEnd){BlockProc(p,Pve.Boss,p.Body.position,"clash");return;}
-            float actual=Damage(p,null,amount,p.Body.position-center,0,false,primary:false,rollAvoidable:true,causeKind:ZoneBoss?.archetype);
+            float actual=Damage(p,null,amount,p.Body.position-center,0,false,primary:false,rollAvoidable:true,causeKind:ZoneBoss?.archetype,attackerMinion:zoneBossActor);
             if(actual>0&&!TechniqueBrace(p)){p.Knockback+=(p.Body.position-center).normalized*knock*(Mutator("bounce-house")?3:1);p.StunEnd=Math.Max(p.StunEnd,Time+stun);}
         }
         private Vector3 BossLocal(Vector3 world)=>Quaternion.Euler(0,-zoneBossActor.Yaw,0)*(world-zoneBossActor.Body.position);
@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
             var z=ZoneBoss;var m=zoneBossActor;if(z==null||m==null||Pve.Holding)return;
             Pve.Boss.Hp=m.Hp;Pve.Boss.Body.position=m.Body.position+Vector3.up*.9f;
             if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}return;}
-            foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitZoneBoss(m,Pilots.Find(p=>p.Seat.id==d.Source),ExpansionDamage(Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,false),null,"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
+            foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
             int phase=NativeZoneBossRules.Phase(z.archetype,m.Hp,m.MaxHp);
             if(phase>z.phase)
             {
@@ -128,7 +128,7 @@ namespace ChipArena.UnityConversion
             {
                 var held=Pilots.Find(p=>p.Seat.id==z.holdTarget);
                 if(held==null||!ZonePilot(held))BossRelease();else if(Time>=z.holdUntil)BossRelease(z.archetype==NativeZoneBossRules.Ironworks);else
-                {ZoneDrag(held,BossWorld(z.holdSide*2.1f,-.35f)-held.Body.position,2.6f);if(ZoneTouch(held.Seat.id,220,.25f))Damage(held,null,z.archetype==NativeZoneBossRules.Station?2:1.5f,Vector3.zero,0,false,primary:false);}
+                {ZoneDrag(held,BossWorld(z.holdSide*2.1f,-.35f)-held.Body.position,2.6f);if(ZoneTouch(held.Seat.id,220,.25f))Damage(held,null,z.archetype==NativeZoneBossRules.Station?2:1.5f,Vector3.zero,0,false,primary:false,attackerMinion:zoneBossActor);}
             }
             if(z.action=="departure"&&z.cancelAt<0&&z.lampBrokenAt<0&&Time<z.actionAt+(z.variant==1?.4f:.9f))
             {var locked=Pilots.Find(p=>p.Seat.id==z.targetSeat);if(locked!=null&&ZonePilot(locked)){var aim=locked.Body.position-m.Body.position;aim.y=0;aim.Normalize();z.targetX=locked.Body.position.x;z.targetZ=locked.Body.position.z;z.actionYaw=Mathf.Atan2(aim.x,aim.z)*Mathf.Rad2Deg;z.laneX1=z.laneX0+aim.x*22;z.laneZ1=z.laneZ0+aim.z*22;}}
@@ -335,7 +335,7 @@ namespace ChipArena.UnityConversion
             }
             if(z.holdTarget>=0&&point.HasValue&&Math.Abs(local.x)>1.4f)
             {if(source?.Seat.id==z.holdTarget)bossSelfDamage+=damage;else bossHoldDamage+=damage;if(bossHoldDamage>=(z.archetype==NativeZoneBossRules.Station?120:200)||z.archetype==NativeZoneBossRules.Station&&bossSelfDamage>=40)BossRelease();}
-            float actual=Math.Min(m.Hp,Math.Max(0,damage*multiplier));m.Hp-=actual;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);return actual;
+            m.ExpansionOverkill=Math.Max(0,damage*multiplier-m.Hp);float actual=Math.Min(m.Hp,Math.Max(0,damage*multiplier));m.Hp-=actual;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);return actual;
         }
         private void SyncZoneBossArena()
         {

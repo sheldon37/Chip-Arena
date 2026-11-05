@@ -2,7 +2,17 @@
 
 Owner, 2026-11-04: "Add a good portion of chips that directly effect weapons abilities (provided they have that specific ability slotted). Lets also add a good portion of fun to use chips in the game (Say like... 50ish chips), rounds inspired. Some of the chips ABSOLUTELY can be super strong, but I also want the chips to be easier to read. A lot of them are currently cluttered. So we may need to do some text revisions or improve design again (I do like green/red stat text though)"
 
-**Status:** first rules batch merged as `11a9aff6`; second batch on `codex/expansion-rules-2` from that shared base. Both catalogs are applied; only the implemented mechanic IDs below pass the live draft filter. Remaining chips are staged, not playable. Presentation remains Claude's.
+**Status (2026-11-05, final rules batch on `codex/expansion-rules-3`, PR #338): all 48 ability chips and 50 wild chips have rules and pass the mechanic allowlist.** The batch notes below are chronological checkpoints, not current gating. Ability chips still require the exact live Q/E ability. Presentation remains Claude's; source integration and test-channel receipts are in DEV_LOG/PR.
+
+### Final rules batches (Astra)
+
+- Completes the remaining 22 ability upgrades and 34 wild mechanics. Delayed echoes, area damage and chip-created secondary attacks do not recursively proc chips; Triple Tap's two additional rounds remain ordinary primary shots. Lucky Coin turns the **same** projectile again after contacting the first target. Blood Magazine works at 1 HP and with an empty Fan Hammer; All In uses the actual remaining magazine.
+- Tuning: Sky Splitter gives the caster a 7.4 × sqrt(1.3) m/s ascent as well as the increased target launch, then checks real ground contact within 2 s. Twin Hawks use two 8-damage, 20 m/s homing projectiles with the original slow. Cluster fragments are three cover-checked 15-base blasts after .3 s. Twin Meteor's second blast uses half damage/radius and no extra fire field. Double Blink's cooldown begins after the second blink or the 2 s recast window. Burning Rain/steam/smoke use .25 s damage ticks.
+- Wild limits: Haymaker caps the final pilot hit at 200; Tapeworm uses the strongest attacker's debuff, at most five hits per attacker (multiple owners do not multiply it). Shrink Ray refreshes one x.8 scale/damage reduction. Anti-Gravity rises at most 3 m; Jet Rounds is 8 m/s for 1 s with a per-victim 2 s cooldown. Wall Hack tests the first collider's exit thickness (≤1.5 m), without impact procs on the passed wall. All In grows shot radius up to x4. Spite, Spare Body and other new radial procs use their stated radius with LOS, without recursive procs.
+- Slow Bleed stores each mitigated hit as 16 quarter-second payments; damage/death attribution occurs when paid. It does not repeat primary-hit resource refunds, crits or on-hit chips on the deferred ticks. Spare Body keeps the pilot alive but incapacitated for 2 s to prevent an early round win, then returns at half maximum HP with 1 s immunity. No ragdoll presentation is added here.
+- Network: `NativePilotFrame.wild` and `.abilityExpansion` carry clocks/once-per-round state. `NativeGameFrame.wildAfflictions`, `.expansionAreas`, `.expansionEchoes` carry bounded pending work (256/128/128); finite-value validation and duplicate mod rejection protect restore. Pilot/minion collision scale survives late join. Existing `Actor.TechniqueMarks`, `Actor.ChipGauges` and `EventKind.ChipProc` remain the presentation hooks.
+- Claude handoff: add presentation for decoy/twin minion kinds `mirror-double`, `shadow-puppet`, `wild-afterimage`, `wild-evil-twin`; flash blindness is the `flash-round` victim mark. Deep Scan writes five 16 m reveal pulses as `sonar-dart` victim marks; the existing three-pulse/12 m presentation still needs adoption. New gauges cover Spin Up, Haymaker, Charged Reply and Spare Body. This task does not implement effects, poses, sounds or cards.
+
 
 ### Rules batch 1 (Astra, 2026-11-05)
 
@@ -32,6 +42,20 @@ Adds **13 mechanics**, for **30/98** expansion chips live:
 3. **Green and red rows.** Every number lives here, green for you and red against you, grey where it is neither. Conditions and limits are rows too.
 
 Rules for the text: no "per stack", "additive" or "recursion"; no sentence over about two lines on a tray card; one idea a row; say who it affects when it is not you ("-15% Their speed"). The footer says who can take it. The copy lives in `Core/NativeChipCopy.cs` and overrides the pinned `ChipText.json` export on the card only: the rows of rules text in `docs/CHIP-CATALOG.md` still hold the exact behaviour.
+
+## Third rules batch (Astra, 2026-11-05; task branch)
+
+Adds **7 ability mechanics**, for **37/98** expansion chips on `codex/expansion-rules-3`: `ab-aftershock-slam`, `ab-battering-ram`, `ab-triple-bank`, `ab-spiked-wall`, `ab-fissure`, `ab-eye-of-the-storm`, `ab-big-wave`. Remaining **61** stay gated. This batch includes no new wild chips.
+
+- Aftershock: Ground Slam's second 6 m ring, half damage, .5 s later, no launch; existing technique clock/point, once only.
+- Battering Ram: +12 on the existing Bulwark wall-impact hit (22 base total).
+- Triple Bank: Aegis's three-victim chain grows to five, retaining range, visibility, damage and no-repeat checks.
+- Spiked Wall: 180 Bastion health with normalized replicated Arm; a melee contact damages the wall and retaliates for 8 without triggering direct-hit chips.
+- Fissure: existing two-second crack extended to five seconds (+3); the extra enemy slow also includes minions.
+- Eye of the Storm: during active Whirlwind, visible non-boss enemies within 5 m are pulled at 4 m/s through world collision checks, stopping at 1 m; no extra damage or tick count.
+- Big Wave: Tidal Wave's authoritative collision radius x1.4; damage unchanged. Claude can consume the existing shot radius for the enlarged look.
+
+All seven use existing slot eligibility. No card or presentation edits, and no account service/live/Site deployment. Exact checks and delivery status are in DEV_LOG and the task PR.
 
 ## Ability chips
 
@@ -166,3 +190,7 @@ Fifty chips in the ordinary rarities and the ordinary draft: 8 common, 13 uncomm
 ## Presentation (Claude)
 
 The card and the copy are done; each chip's icon, its stat rows and its card line are generated. Procs, marks and gauges get their effects once the events exist. The two tiers' mounted weapon modules follow the rarity's generic set until a chip earns its own.
+
+### Batches 4–5 rules checkpoint (2026-11-05, draft PR #338)
+
+Adds five slot-gated mechanics: `ab-moonlit-edge`, `ab-molten-trail`, `ab-hollow-point`, `ab-short-leash`, `ab-double-bubble`. Task-branch total **42/98**; **56 remain gated**. No new wild chips in these two batches. Molten Trail and bramble damage are field ticks every .25 s and do not activate primary-hit resource effects. Native runtime checks require the Windows Unity builder; no release was performed.

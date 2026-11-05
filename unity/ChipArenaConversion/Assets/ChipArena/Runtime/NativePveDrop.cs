@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     float distance=new Vector2(delta.x,delta.z).magnitude;
-                    float actual=Damage(q,null,NativeHordeDropRules.Damage(distance,false),Vec(NativeHordeDropRules.Outward(Vec(delta),Vec(forward))),0,false,primary:false,melee:true,causeKind:"brute");
+                    float actual=Damage(q,null,NativeHordeDropRules.Damage(distance,false),Vec(NativeHordeDropRules.Outward(Vec(delta),Vec(forward))),0,false,primary:false,melee:true,causeKind:"brute",attackerMinion:m);
                     if(actual>0)PveSlamShove(q,delta,forward,NativeHordeDropRules.Impulse,false);
                 }
             }

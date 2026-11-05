@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
         public readonly List<NativeMeleeShot> MeleeShots=new List<NativeMeleeShot>();
         public readonly List<NativeMeleeImpact> MeleeImpacts=new List<NativeMeleeImpact>();
         public bool Downed(NativePilot p)=>p.Down!=null&&Time<p.Down.Until;
-        public bool Incapacitated(NativePilot p)=>KernelBusy(p)||Time<p.StunEnd||Downed(p)||p.Juggle!=null;
+        public bool Incapacitated(NativePilot p)=>p.Wild.DownUntil>Time||BubbleHeld(p.Seat.id)||KernelBusy(p)||Time<p.StunEnd||Downed(p)||p.Juggle!=null;
         private bool SpecialBusy(NativePilot p)=>p.Special!=null&&Time<NativeMeleeKitRules.End(p.Special);
         private int ProjectileCount=>Bullets.Count+AbilityShots.Count+MeleeShots.Count;
         private void CancelSpecial(NativePilot p){if(p.Special!=null){p.Special=null;p.Ready=Math.Min(p.Ready,Time);p.AttackEnd=0;p.MeleeKit.SuperArmour=false;p.MeleeKit.Kind=p.MeleeKit.Phase=null;}}
@@ -86,7 +86,7 @@ namespace ChipArena.UnityConversion
                 if(actual>0&&action.Fx!=null)Emit(EventKind.AbilityHit,p,target.Seat.id,target.Collider.ClosestPoint(origin),actual,action.Fx,normal:-delta.normalized);
                 if(actual>0&&target.Hp>0)
                 {
-                    if(kind=="launch"){if(LaunchMelee(target,p,7.4f)&&action.Target==0)action.Target=target.Seat.id;}
+                    if(kind=="launch"){if(LaunchMelee(target,p,7.4f*(AbilityChip(p,"ab-sky-splitter")?(float)Math.Sqrt(1.3):1))&&action.Target==0)action.Target=target.Seat.id;}
                     else if(LaunchMelee(target,p,kind=="spin-direct"?6.1f:4.4f)){target.Down.Ragdoll=kind=="spin-direct";target.Knockback+=new Vector3(delta.x,0,delta.z).normalized*3;}
                 }
                 if(p.Hp<=0||p.Special!=action)return;
@@ -96,7 +96,7 @@ namespace ChipArena.UnityConversion
                 string key="minion:"+m.Id;Vector3 d=m.Body.position-origin;
                 if(m.Hp<=0||!CanHit(p,m)||action.Hit.Contains(key)||!NativeSpecialRules.Strike(Vec(d),range,.35f,action.Yaw,kind)||!MeleeVisible(origin,m.Body.position,p,m.Collider))continue;
                 action.Hit.Add(key);Vector3 at=m.Body.position;float actual=HitMinion(m,p,(float)(p.Weapon.damage*p.Stats["damage"])*1.12f,(d+Vector3.up*.5f).normalized,impulse*(float)p.Stats["impulse"],at,"melee");
-                if(actual>0&&m.Hp>0&&kind=="launch"){if(action.Target==0)action.Target=m.Id;if(!m.Body.isKinematic)m.Body.linearVelocity=new Vector3(m.Body.linearVelocity.x,7.4f,m.Body.linearVelocity.z);}
+                if(actual>0&&m.Hp>0&&kind=="launch"){if(action.Target==0)action.Target=m.Id;if(!m.Body.isKinematic)m.Body.linearVelocity=new Vector3(m.Body.linearVelocity.x,7.4f*(AbilityChip(p,"ab-sky-splitter")?(float)Math.Sqrt(1.3):1),m.Body.linearVelocity.z);}
                 if(actual>0&&action.Fx!=null)Emit(EventKind.AbilityHit,p,m.Id,at,actual,action.Fx,normal:-d.normalized);MinionWeaponHit(m,p,actual,(float)p.Stats["burn"],(float)p.Stats["poison"]);if(actual>0)ImpactChips(p,null,null,at,d.normalized,(int)(action.At*60)*1000+p.Seat.id,nextAttack++);
             }
             foreach(var prop in Props.ToArray())
@@ -119,7 +119,7 @@ namespace ChipArena.UnityConversion
             var shot=new NativeMeleeShot{Id=nextBullet++,Original=p,Owner=p,Spec=p.Seat.spec,Shield=shield,At=Time,Position=start,Velocity=direction*speed,Damage=(float)(p.Weapon.damage*p.Stats["damage"]),Impulse=(shield?280:95)*(float)p.Stats["impulse"],Radius=shield?.28f:.095f,Life=shield?3:2,Travel=shield?19:32,Gravity=gravity,Burn=(float)p.Stats["burn"],Poison=(float)p.Stats["poison"]};
             shot.Fx=action.Fx;if(shot.Fx!=null)shot.Damage=(shot.Shield?20:18)*(float)p.Stats["damage"];
             if(HubInside(p.Body.position)||HubCross(p.Body.position,start,shot.Radius))return;
-            MeleeShots.Add(shot);action.Shot=shot.Id;p.LastShot=Time;
+            MeleeShots.Add(shot);if(action.Fx=="kunai-mark"&&AbilityChip(p,"ab-twin-kunai")&&ProjectileCount<100){shot.Velocity=Quaternion.Euler(0,-3,0)*shot.Velocity;MeleeShots.Add(new NativeMeleeShot{Id=nextBullet++,Original=p,Owner=p,Spec=p.Seat.spec,Fx=shot.Fx,At=Time,Position=start,Velocity=Quaternion.Euler(0,6,0)*shot.Velocity,Damage=shot.Damage,Impulse=shot.Impulse,Radius=shot.Radius,Life=shot.Life,Travel=shot.Travel,Gravity=shot.Gravity,Burn=shot.Burn,Poison=shot.Poison});}action.Shot=shot.Id;p.LastShot=Time;
         }
         private Collider[] meleeOverlaps=new Collider[16];private RaycastHit[] meleeSweeps=new RaycastHit[32];
         private struct MeleeContact {public Collider Collider;public Vector3 Point,Normal;public float Distance;}
