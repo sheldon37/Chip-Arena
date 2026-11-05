@@ -11,6 +11,8 @@ namespace ChipArena.UnityConversion
     public static class NativeDeepEndBossPreview
     {
         public static bool On;public static double Start=double.NaN,ShownClock;
+        /// <summary>How fast the script runs on the clock (1 as it plays; DEV: slower to study it frame by frame).</summary>
+        public static double Rate=RateDefault;private const double RateDefault=1;
         /// <summary>The record drawn last (the DEV HUD's plate reads it), on the script's clock.</summary>
         public static DeepEndBossView Shown=DeepEndBossView.None;public static float ShownP;
         public const float SpawnAt=.5f;
@@ -63,7 +65,7 @@ namespace ChipArena.UnityConversion
             Route.To(t+.9f,new Vector3(0,-46,0),new Vector3(0,12,0));Route.To(t+3.4f,new Vector3(0,TideP3-1.5f,0),new Vector3(0,4.4f,0));DeathAt=t+2.9f;DeepEndBossPaths.Death(Route,DeathAt,TideP3,DeepEndBossRig.DeathSettle);
             Loop=DeathAt+14;acts=a.ToArray();
         }
-        public static float Clock(double t){if(double.IsNaN(Start))return 0;double since=t-Start;return (float)(since-Math.Floor(since/Loop)*Loop);}
+        public static float Clock(double t){if(double.IsNaN(Start))return 0;double since=(t-Start)*Rate;return (float)(since-Math.Floor(since/Loop)*Loop);}
         /// <summary>The script's record at `p`: its move, its target, the tide, the phase.</summary>
         public static void View(float p,ref DeepEndBossView v,out Vector2 target)
         {

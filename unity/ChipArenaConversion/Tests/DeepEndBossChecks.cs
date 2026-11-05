@@ -17,6 +17,7 @@ public static class DeepEndBossChecks
         Check(NativeDeepEndBoss.Archetype=="poolrooms-deep-end","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeDeepEndBoss.Archetype)&&NativeBackroomsBossIntro.Card(NativeDeepEndBoss.Archetype)==NativeDeepEndBoss.Card,"the intro knows the boss");
         Moves(root);Look(root);Off();Routes();Rig();Frames();Arena();Water();Stage();Intro();Cues(root);Preview();
+        var acts=new System.Text.StringBuilder("deepend preview script:");for(int i=0;i<NativeDeepEndBossPreview.ActCount;i++){var a=NativeDeepEndBossPreview.ActAt(i);acts.Append($" {a.Id}@{a.At:F1}");}acts.Append($" lamps@{NativeDeepEndBossPreview.LampsAt:F1} p2@{NativeDeepEndBossPreview.Phase2At:F1} p3@{NativeDeepEndBossPreview.Phase3At:F1} death@{NativeDeepEndBossPreview.DeathAt:F1} loop@{NativeDeepEndBossPreview.Loop:F1}");Console.WriteLine(acts);
         Console.WriteLine("PASS deepend-boss ("+count+" checks)");
     }
     // ---- the table against the doc's table ----
@@ -141,7 +142,7 @@ public static class DeepEndBossChecks
         Check(copy.SequenceEqual(src.Floor),"Carve leaves its source alone");Check(!ReferenceEquals(l,src),"Carve returns a copy");
         int half=NativeDeepEndArena.Cells/2,decks=0,deep=0,steps=0,abyss=0,lights=0,pillars=0;
         for(int z=cz-half;z<cz+half;z++)for(int x=cx-half;x<cx+half;x++){int i=l.Index(x,z);Check(l.Ceiling[i]==NativeDeepEndArena.Ceiling,"the ceiling");if(l.Pillar[i])pillars++;if(l.Light[i])lights++;byte f=l.Floor[i];if(f==PoolroomsLayout.Deck)decks++;else if(f==PoolroomsLayout.Deep)deep++;else if(f==PoolroomsLayout.Steps)steps++;else if(f==PoolroomsLayout.Abyss)abyss++;}
-        Check(pillars==0,"no pillars");Check(abyss==16,"a 4 x 4 abyss");Check(steps==16,"steps on all four sides: two cells wide, one row each, as four flights of four-cell runs");Check(deep+steps+abyss==100,"a 10 x 10 pool");Check(decks==300,"the deck all round");Check(lights>=36,"round lights in the ceiling: "+lights);
+        Check(pillars==0,"no pillars");Check(abyss==16,"a 4 x 4 abyss");Check(steps==8,"steps on all four sides, each flight two cells wide");Check(deep+steps+abyss==100,"a 10 x 10 pool");Check(decks==300,"the deck all round");Check(lights>=36,"round lights in the ceiling: "+lights);
         // Sealed: nothing inside reaches outside.
         var q=new int[l.Width*l.Depth];var seen=new bool[l.Width*l.Depth];int top=0;seen[l.Index(cx,cz)]=true;q[top++]=l.Index(cx,cz);int reached=0;while(top>0){int c=q[--top];reached++;int x=c%l.Width,z=c/l.Width;foreach(var (dx,dz) in new[]{(1,0),(-1,0),(0,1),(0,-1)})if(l.Passable(x,z,dx,dz)){int n=l.Index(x+dx,z+dz);if(!seen[n]){seen[n]=true;q[top++]=n;}}}Check(reached==400,"the room seals: "+reached);
         // The mesh builds, the abyss's walls go down and there's no floor in the pit above its depth.

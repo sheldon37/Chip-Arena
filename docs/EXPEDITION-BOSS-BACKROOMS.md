@@ -272,6 +272,46 @@ exit stairs are there.
 | 5.9-8.0 | Low, wide, looking up | It breaks the surface on the song's nearest hit: the head rising and rising, sheets of water falling off perfect tile, in slow motion. **The card rises at 6.43** | The hit, then the song's build, held back |
 | 8.0-9.07 | Close on the mouth, then pulled back on the wave | The grates iris open and turn. A wave rolls at the camera and over it | The water roars, and the song drops at 9.0678, into the fight |
 
+### The cue keys
+
+`boss.deepend.*` through the effects bank (Core `NativeDeepEndBossCues`); silent until clips exist. Keys marked 2D play flat.
+
+| Key | The sound |
+| --- | --- |
+| `boss.deepend.drip` | 2D. One far drip in the silence the stage music leaves |
+| `boss.deepend.ripple` | The ripple that spreads from nothing: barely there |
+| `boss.deepend.lamp-out` | A lamp under water going out: a soft thunk, far off, each nearer the pit |
+| `boss.deepend.pressure` | 2D. A low pressure swelling for the shot over the abyss |
+| `boss.deepend.break` | It breaks the surface: a huge, slow rush of water upward |
+| `boss.deepend.pour` | Sheets falling back off it for seconds, a long tiled patter |
+| `boss.deepend.iris` | The mouth's grates sliding open: metal on wet metal, oiled, unhurried |
+| `boss.deepend.roar` | Not a voice: the sound of a pool's drain opened all the way |
+| `boss.deepend.wave` | The wave rolling at the camera |
+| `boss.deepend.quiet` | 2D. The room goes quiet before a move (a dip, for the mixer) |
+| `boss.deepend.bubbles` | Breach's ring of bubbles coming up in the dark patch |
+| `boss.deepend.breach` | The mouth through the surface under a pilot: a burst, a chrome clang |
+| `boss.deepend.jet-charge` | The throat brightening, water drawn in, rising |
+| `boss.deepend.jet` | Hydro Jet: a hard, hissing column; its splash where it lands |
+| `boss.deepend.shadow` | The Flop's shadow darkening: a long low groan of water |
+| `boss.deepend.flop` | The whole body landing: the biggest impact it has |
+| `boss.deepend.thrash` | The tail coming round, tile on air |
+| `boss.deepend.drain-turn` | The surface starting to turn, slowly, silently but for a thin whine |
+| `boss.deepend.drain-roar` | The Drain open: the room's water going down |
+| `boss.deepend.lull` | The warning: everything softens, a warm hum, the song falling away |
+| `boss.deepend.hands` | The hands of water closing on the pilot, pulling under |
+| `boss.deepend.seiche-draw` | 2D. The water drawing back from the far wall |
+| `boss.deepend.seiche` | The wave front crossing the room, its crest breaking |
+| `boss.deepend.seiche-wall` | The wave hitting the wall and turning back |
+| `boss.deepend.whistle` | 2D. A lifeguard's whistle, from nowhere, echoing once |
+| `boss.deepend.lap` | Its body round the room's edge at speed: a tiled rumble and a wake |
+| `boss.deepend.lamp-break` | A flank lamp shot out: thick glass, a pop of pressure |
+| `boss.deepend.stagger` | The break's stagger: its whole length shuddering |
+| `boss.deepend.tide` | 2D. Water welling up the steps and spreading over the deck |
+| `boss.deepend.lights-die` | 2D. The ceiling's lights going out, outward from the middle, each with a tick |
+| `boss.deepend.hurt` | A hit on the throat or a lamp |
+| `boss.deepend.death` | The mouth closing, the last grate turning shut |
+| `boss.deepend.drain-away` | 2D. The tide going down the pit, gently, sound coming back |
+
 ### Death
 
 The mouth closes. It sinks without a splash, the lamps going dark one by one from the tail as it goes. The surface goes still. Then the

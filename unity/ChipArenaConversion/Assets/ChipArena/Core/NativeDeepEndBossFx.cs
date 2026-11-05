@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
             {
                 var p=rig.Shown.Position[i]-o;float r=NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),depth=tide-p.Y;if(depth<-r*1.05f||depth>r*2.2f)continue;
                 var vel=rig.Velocity[i];float hs=BossMath.FlatLength(vel),vy=Math.Abs(vel.Y),sp=hs+vy*.6f;if(sp<.25f)continue;
-                float near=1-Math.Min(1,Math.Max(0,depth-r*.4f)/(r*1.8f));float amount=near*Math.Min(.2f,sp*.012f)*(dt*60)*.12f;
+                float near=1-Math.Min(1,Math.Max(0,depth-r*.4f)/(r*1.8f));float amount=near*Math.Min(.2f,sp*.012f)*(dt*60)*.3f;
                 // A hump ahead of the body, a hollow behind it; foam where it cuts.
                 float dx=hs>.3f?vel.X/hs:0,dz=hs>.3f?vel.Z/hs:0;
                 w.Disturb(p.X+dx*r*.9f,p.Z+dz*r*.9f,r*1.05f,amount);w.Disturb(p.X-dx*r*.9f,p.Z-dz*r*.9f,r*1.2f,-amount*.8f);
@@ -90,17 +90,17 @@ namespace ChipArena.UnityConversion
                 float a0=last-v.spawned,a1=now-v.spawned;
                 if(a0<b.Ripple&&a1>=b.Ripple)w.Disturb(5.2f,-2.8f,.6f,-.045f);
                 if(a0<b.Ripple+.9f&&a1>=b.Ripple+.9f)w.Disturb(5.2f,-2.8f,.5f,-.016f);
-                if(a0<b.Break&&a1>=b.Break){var bk=-BossMath.Forward(v.yaw*BossMath.Deg)*NativeDeepEndBoss.BreakBack;w.Disturb(bk.X,bk.Z,3f,.3f,.8f);w.Disturb(bk.X,bk.Z,5.5f,-.12f,.2f);}
+                if(a0<b.Break&&a1>=b.Break){var bk=-BossMath.Forward(v.yaw*BossMath.Deg)*NativeDeepEndBoss.BreakBack;w.Disturb(bk.X,bk.Z,3f,.55f,.8f);w.Disturb(bk.X,bk.Z,5.5f,-.22f,.2f);}
                 float fall=b.Break+2*(5.6f/DeepEndBossPaths.IntroG);
                 if(a0<fall&&a1>=fall){w.Disturb(rig.MouthAt.X-o.X,rig.MouthAt.Z-o.Z,3.4f,-.55f,1);}
             }
             if(v.Moving(now,out var m,out float age,out float hit))
             {
                 float at=v.actionAt+hit;var tp=new Vector3(v.targetX,0,v.targetZ);
-                if(m.Id=="breach"&&In(at)){w.Disturb(tp.X,tp.Z,m.Radius,.42f,1);w.Disturb(tp.X,tp.Z,m.Radius*2,-.16f,.2f);}
+                if(m.Id=="breach"&&In(at)){w.Disturb(tp.X,tp.Z,m.Radius,.7f,1);w.Disturb(tp.X,tp.Z,m.Radius*2,-.28f,.2f);}
                 if(m.Id=="flop"&&In(at))
                 {
-                    var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=12;k++){var q=Vector3.Lerp(tp,e,k/12f);w.Disturb(q.X,q.Z,3.1f,-.34f,1);w.Disturb(q.X,q.Z,6,.06f,.2f);}
+                    var e=new Vector3(v.aimX,0,v.aimZ);for(int k=0;k<=12;k++){var q=Vector3.Lerp(tp,e,k/12f);w.Disturb(q.X,q.Z,3.1f,-.5f,1);w.Disturb(q.X,q.Z,6,.1f,.2f);}
                 }
                 if(m.Id=="jet"&&age>=hit&&age<hit+m.Strike&&s.Tide>-.5f){var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,age,hit,m,head,s.Tide);float T=(head.Y-s.Tide)/Math.Max(.05f,-d.Y);var land=head+d*Math.Min(T,m.Reach);w.Disturb(land.X,land.Z,1.5f,-Math.Min(.14f,.13f*(dt*60)),.5f);}
                 if(m.Id=="lull"&&In(at)){w.Disturb(tp.X,tp.Z,2.2f,.25f,.8f);}
@@ -167,7 +167,7 @@ namespace ChipArena.UnityConversion
                 float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));var list=over?Over:Under;if(under&&over)at+=(right*(float)Math.Sin(now*2.3f+i*1.7f)+up*(float)Math.Cos(now*1.9f+i))*(.012f*depth);
                 var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(3.1f+.05f*Math.Max(0,depth))*(.7f+.3f*g);
                 list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(.8f*g*boost),0);
-                list.Billboard(at+face*.1f,right*size*.3f,up*size*.3f,n,DeepEndFlow.Halo,0,new Vector3(.9f,1,1)*(3.6f*g*boost),0);
+                list.Billboard(at+face*.1f,right*size*.3f,up*size*.3f,n,DeepEndFlow.Halo,0,new Vector3(.5f,1,1)*(2.6f*g*boost),0);
             }
             if(MarkerGlow<.01f||low)return;
             // The running lights along each coping (the small ones; the bank's glow sub-mesh has their lenses).
@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
             {
                 bool nearLamp=false;foreach(float q in NativeDeepEndBossLook.LampS)if(Math.Abs(ms-q)<.62f)nearLamp=true;if(nearLamp)continue;
                 rig.SpineFrame(ms,out var c,out var r);var local=NativeDeepEndBossLook.Skin(ms,side*NativeDeepEndBossLook.CopingTheta);var at=c+BossMath.Rotate(r,local);float depth=surface-(at.Y-o.Y);bool under=depth>0;bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));if(under&&over)at+=(right*(float)Math.Sin(now*2.6f+ms*2.1f)+up*(float)Math.Cos(now*2.2f+ms))*(.012f*depth);
-                float size=.34f+.014f*Math.Max(0,depth);(over?Over:Under).Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,new Vector3(.7f,1,1)*(2.4f*mg*boost),0);
+                float size=.34f+.014f*Math.Max(0,depth);(over?Over:Under).Billboard(at,right*size,up*size,n,DeepEndFlow.Halo,0,new Vector3(.42f,1,1)*(1.8f*mg*boost),0);
             }
         }
         // The lights the room takes: the mouth's throat when it's open, the two brightest places along the body out of the water or near it.

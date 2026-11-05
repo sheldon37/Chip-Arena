@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
                 // Low at the surface, at the top of the steps, toward where they go down into the dark.
                 new BossIntroShot{From=b.LowShot,To=b.DownShot,EyeA=new Vector3(.25f,.75f,-12.2f),EyeB=new Vector3(.1f,.2f,-10.2f),LookA=new Vector3(0,-1.7f,-4.6f),LookB=new Vector3(0,-1.5f,-1.5f),FovA=54,FovB=50,Ease=1},
                 // Straight down over the abyss, slowly descending: the spiral of lights rising out of the black.
-                new BossIntroShot{From=b.DownShot,To=b.BreakShot,EyeA=new Vector3(0,6.55f,.06f),EyeB=new Vector3(0,2.7f,-2.6f),LookA=new Vector3(0,-30,0),LookB=new Vector3(0,-30,-3.4f),FovA=70,FovB=60,Ease=1},
+                new BossIntroShot{From=b.DownShot,To=b.BreakShot,EyeA=new Vector3(0,6.55f,.06f),EyeB=new Vector3(0,2.7f,-2.6f),LookA=new Vector3(0,-30,0),LookB=new Vector3(0,-30,-3.4f),FovA=42,FovB=50,Ease=1},
                 // Low and wide, looking up: it breaks the surface and goes on rising.
                 new BossIntroShot{From=b.BreakShot,To=b.MouthShot,EyeA=new Vector3(3.2f,.02f,3.4f),EyeB=new Vector3(3.9f,.14f,5.2f),LookA=new Vector3(.2f,1.2f,-3f),LookB=new Vector3(.4f,3.6f,-.9f),FovA=64,FovB=66,Ease=0},
                 // Close on the mouth, then pulled back on the wave.

@@ -168,7 +168,10 @@ namespace ChipArena.UnityConversion
             for(int k=z0;k<=z1;k++)for(int j=x0;j<=x1;j++)
             {
                 int i=j+Size*k;if(!Wet[i])continue;float d=(float)Math.Sqrt((j-gx)*(j-gx)+(k-gz)*(k-gz));if(d>=r)continue;
-                float w=.5f*(1+(float)Math.Cos(Math.PI*d/r));float v=h[i]+amount*w;h[i]=v<-Limit?-Limit:v>Limit?Limit:v;if(foam>0){float f=Foam[i]+foam*w;Foam[i]=f>1?1:f;}
+                float w=.5f*(1+(float)Math.Cos(Math.PI*d/r));float v=h[i]+amount*w;h[i]=v<-Limit?-Limit:v>Limit?Limit:v;
+                // (The last height moves with it: a displacement of the surface, not a kick: a kick would go on raising the whole pool's level.)
+                float q=p[i]+amount*w;p[i]=q<-Limit?-Limit:q>Limit?Limit:q;
+                if(foam>0){float f=Foam[i]+foam*w;Foam[i]=f>1?1:f;}
             }
         }
         public void AddFoam(float x,float z,float radius,float amount)

@@ -29,7 +29,7 @@ Shader "ChipArena/NativeDeepEndScreen"
                 float2 suv=uv+wob;
                 // The soft blur: a ring of taps, wider toward the edges.
                 float3 c=tex2D(_DeepScreenGrab,suv).rgb;float2 fromMid=i.uv-0.5;float vig=dot(fromMid,fromMid);
-                float radius=soft*(0.0025+0.012*vig*4.0)*0.9;
+                float radius=soft*(0.0025+0.012*vig*4.0)*0.9+under*saturate(wash*2.0)*0.012;
                 if(radius>0.00005)
                 {
                     float3 sum=c;for(int k=0;k<8;k++){float a=6.2831853*(float(k)+0.5)/8.0;sum+=tex2D(_DeepScreenGrab,suv+float2(cos(a),sin(a))*radius*float2(_ScreenParams.y/_ScreenParams.x,1.0)).rgb;sum+=tex2D(_DeepScreenGrab,suv+float2(cos(a+0.39),sin(a+0.39))*radius*1.9*float2(_ScreenParams.y/_ScreenParams.x,1.0)).rgb;}c=sum/17.0;

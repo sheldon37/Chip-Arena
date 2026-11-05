@@ -67,9 +67,10 @@ namespace ChipArena.UnityConversion
             while(hi-lo>1){long m=(lo+hi)/2;if(ringS[(int)(m%RingSize)]<=s)lo=m;else hi=m;}
             int a=(int)(lo%RingSize),b=(int)(hi%RingSize);float f=(s-ringS[a])/Math.Max(1e-5f,ringS[b]-ringS[a]);p=Vector3.Lerp(ringP[a],ringP[b],f);n=Vector3.Lerp(ringN[a],ringN[b],f);
         }
-        private static bool Visible(Vector3 p,float radius,float surface)
+        // How hidden a joint is: 0 in sight, 1 two metres and more out of sight under the tile (or deep in the shaft). The speed a hidden joint may catch up at rises with it, so nothing jumps at the line.
+        private static float Hiddenness(Vector3 p,float radius,float surface)
         {
-            float floor=NativeDeepEndArena.Floor(p.X,p.Z);return p.Y+radius>Math.Max(floor,surface-8.5f);
+            float floor=NativeDeepEndArena.Floor(p.X,p.Z);return BossMath.Smooth((Math.Max(floor,surface-8.5f)-(p.Y+radius))/2f);
         }
         private void Tick(long tick,float surface,float cancelBefore)
         {
@@ -78,12 +79,9 @@ namespace ChipArena.UnityConversion
             float limit=h.Y>surface-1.5f?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;undulate+=dt*1.5f*(.55f+.45f*BossMath.Clamp01(hv.Length()/5f));if(undulate>4000)undulate-=BossMath.Tau*600;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
-                float want=head-i*NativeDeepEndBossLook.Seg,s=arc[i];var at=raw[i];bool vis=Visible(at,NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
-                float next=Math.Min(want,s+(vis?limit:HiddenSpeed)*dt);if(i>0)next=Math.Min(next,arc[i-1]-NativeDeepEndBossLook.Seg*.985f);if(next<s)next=s;
+                float want=head-i*NativeDeepEndBossLook.Seg,s=arc[i];float hide=Hiddenness(raw[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
+                float next=Math.Min(want,s+BossMath.Lerp(limit,HiddenSpeed,hide)*dt);if(i>0)next=Math.Min(next,arc[i-1]-NativeDeepEndBossLook.Seg*.985f);if(next<s)next=s;arc[i]=next;
                 Trail(next,h,head,out raw[i],out rawN[i]);
-                // Coming into sight: at a heavy body's speed from the first moment.
-                if(!vis&&next>s+limit*dt&&Visible(raw[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface)){next=s+limit*dt;Trail(next,h,head,out raw[i],out rawN[i]);}
-                arc[i]=next;
                 if(raw[i].Y<surface-.15f)EmergedAt[i]=t;
             }
         }
@@ -114,9 +112,8 @@ namespace ChipArena.UnityConversion
             var pos=rawScratch;var nrm=rawNScratch;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
-                float want=ringS[li]-i*NativeDeepEndBossLook.Seg;float s=arc[i]+(arc[i]>=want-1e-3f?extra:0)-retract;Trail(s,hp,headS,out pos[i],out nrm[i]);
-                // (A hidden joint chasing a fast head mustn't flick into sight between ticks: it comes up on the tick, at a heavy body's pace.)
-                if(extra*TickRate>SpeedLimit&&hp.Y<surface-1.5f&&Visible(pos[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface))Trail(arc[i]-retract,hp,headS,out pos[i],out nrm[i]);
+                // Between ticks a joint on the head's heels moves with it; one lagging holds where its tick put it.
+                float want=ringS[li]-i*NativeDeepEndBossLook.Seg,lag=want-arc[i];float s=arc[i]+extra*BossMath.Clamp01(1-lag/.3f)-retract;Trail(s,hp,headS,out pos[i],out nrm[i]);
             }
             Layers(now,v,surface,sp,pos,nrm);
             // ---- the neck: the head's last joints bent toward where the mouth aims ----
