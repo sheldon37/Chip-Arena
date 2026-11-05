@@ -408,10 +408,11 @@ namespace ChipArena.UnityConversion
             // The wrist: behind the paper (the fingers just through), then well out over the floor; the forearm trailing from inside the wall.
             float outBy=(-.75f+.42f*wind+1.05f*thrust)*(1-back)+(-1.2f)*back;
             var wrist=at+n*outBy+new Vector3(0,.18f*thrust*(float)Math.Sin(k*2.1f)*.3f,0);
-            var fw=n;var elbow=wrist-Vector3.Normalize(n+new Vector3(0,.28f,0))*NativeHumBossLook.ForeArm;
-            var dir0=B[NativeHumBossLook.WallHand]-B[NativeHumBossLook.WallFore];var r=Quaternion.Normalize(BossMath.FromTo(dir0,wrist-elbow));
+            var reach=Vector3.Normalize(n+new Vector3(0,-.32f,0));var elbow=wrist-reach*NativeHumBossLook.ForeArm;
+            var upright=BossMath.AxisAngle(Vector3.UnitY,(float)Math.Atan2(n.X,n.Z));
+            var dir0=BossMath.Rotate(upright,B[NativeHumBossLook.WallHand]-B[NativeHumBossLook.WallFore]);var r=Quaternion.Normalize(BossMath.FromTo(dir0,wrist-elbow)*upright);
             P.Set(NativeHumBossLook.WallFore,elbow,r);
-            var hr=Quaternion.Normalize(BossMath.FromTo(Vector3.UnitZ,Vector3.Normalize(n+new Vector3(0,-.12f,0))));P.Set(NativeHumBossLook.WallHand,wrist,hr);
+            var hr=Quaternion.Normalize(BossMath.FromTo(BossMath.Rotate(upright,Vector3.UnitZ),Vector3.Normalize(n+new Vector3(0,-.2f,0)))*upright);P.Set(NativeHumBossLook.WallHand,wrist,hr);
             float c=k<0?-.75f:(k<m.Strike?-.75f+.9f*thrust:.15f+.65f*BossMath.Smooth((k-m.Strike)/.3f));
             for(int f=0;f<NativeHumBossLook.Fingers;f++)
             {

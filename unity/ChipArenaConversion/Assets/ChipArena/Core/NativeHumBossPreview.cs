@@ -68,9 +68,9 @@ namespace ChipArena.UnityConversion
             K(t+.4f,C.X,C.Z+3,180);CutAt=t+.8f;var cm=NativeHumBoss.Move("cut");F(CutAt-.3f,140,9,1.5f,2.2f,58,0);
             K(CutAt+.4f,C.X,C.Z+3,180);K(CutAt+.42f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);K(CutAt+cm.Wind,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);t=A("cut",CutAt,0);
             // Wall Hand: the arm comes out of the wall by the pilot on the far side.
-            K(t+.3f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);K(t+1.1f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);HandAt=t+1.2f;HandPoint(out float hwx,out float hwz,out _,out _);FP(HandAt-.2f,137,5.2f,1.3f,1.5f,58,new Vector2(hwx,hwz));t=A("hand",HandAt,2);
+            K(t+.3f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,100);K(t+1.1f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);HandAt=t+1.2f;HandPoint(out float hwx,out float hwz,out _,out _);FP(HandAt-.2f,175,4.8f,1.15f,1.35f,56,new Vector2(hwx,hwz));t=A("hand",HandAt,2);
             // Familiar Voices: faces in the walls round each pilot.
-            K(t+.2f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);K(t+1.5f,C.X,C.Z-1,60);VoicesAt=t+1.6f;VoicePoint(1,out float vwx,out float vwz,out _,out _);FP(VoicesAt-.2f,30,4.2f,1.6f,2.1f,56,new Vector2(vwx,vwz));t=A("voices",VoicesAt,1);
+            K(t+.2f,Pilots[0].X-2.8f,Pilots[0].Y+.6f,60);K(t+1.5f,C.X,C.Z-1,60);VoicesAt=t+1.6f;VoicePoint(1,out float vwx,out float vwz,out _,out _);FP(VoicesAt-.2f,30,3.2f,1.75f,2.2f,50,new Vector2(vwx,vwz));t=A("voices",VoicesAt,1);
             // A tube charge choked: three broken in Max Hum: the stagger.
             K(t+.2f,C.X,C.Z-1,60);K(t+1.1f,C.X,C.Z-1,180);ChokeAt=t+1.2f;F(ChokeAt-.4f,160,5.8f,2.3f,3.1f,52,4);t=A("pulse",ChokeAt,0);ChokeBreak0=ChokeAt+.25f;ChokeBreak1=ChokeAt+.62f;ChokeBreak2=ChokeAt+1.05f;t=ChokeAt+3.2f;
             // A lunge baited into the east wall: stuck half inside it, glitching.

@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
             for(int s=0;s<=Sectors;s++)
             {
                 int ks=s%Sectors;float ang=ks*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);
-                float edge=Edge(open,seed,ks);float flap=lift*(.35f+.65f*H(seed+3,ks));
+                float edge=Edge(open,seed,ks,surf);float flap=lift*(.35f+.65f*H(seed+3,ks));
                 for(int r=0;r<=Rings;r++)
                 {
                     float rn=(float)r/Rings;float rad=edge+(radius-edge)*rn*rn;
@@ -96,16 +96,17 @@ namespace ChipArena.UnityConversion
             int vc=Void.VertexCount;var off2=n*(off*.5f);
             for(int s=0;s<Sectors;s++)
             {
-                float ang=s*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);float edge=Edge(open,seed,s);
+                float ang=s*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);float edge=Edge(open,seed,s,surf);
                 var rim=centre+a*BossMath.Clamp(ca*edge,minA,maxA)+b*BossMath.Clamp(sa*edge*tall,minB,maxB)+off2;
-                float st=H(seed+7,s);float tone=st<.5f?.0f:(st-.5f)*.1f;
+                float st=H(seed+7,s);float tone=st<.5f||surf!=WallS?.0f:(st-.5f)*.1f;
                 Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=rim,N=n,R=.44f*tone+.006f,G=.42f*tone+.006f,B=.2f*tone+.004f,A=0};
                 var mid=Vector3.Lerp(rim,centre+shift+off2,.42f);
                 Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid,N=n,R=.05f*tone+.002f,G=.048f*tone+.002f,B=.024f*tone+.002f,A=0};
                 // The torn rim: on the paper's edge (where the paper's inner ring stands), a thin pale lip outside the hole.
                 int inner=v0+s*(Rings+1);var pv=m.Vertices[inner].P;float w=.012f+.06f*H(seed+11,s)*H(seed+12,s*2);var outward=Vector3.Normalize(a*ca+b*sa*tall)*w;float rimGlow=.2f*Air;
-                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+n*.002f,N=n,R=.68f,G=.64f,B=.48f,A=rimGlow};
-                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+outward+n*.002f,N=n,R=.52f,G=.48f,B=.34f,A=rimGlow*.6f};
+                float rimR=surf==FloorS?.46f:.68f,rimG=surf==FloorS?.36f:.64f,rimB=surf==FloorS?.2f:.48f;
+                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+n*.002f,N=n,R=rimR,G=rimG,B=rimB,A=rimGlow};
+                Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=pv+outward+n*.002f,N=n,R=rimR*.76f,G=rimG*.76f,B=rimB*.76f,A=rimGlow*.6f};
             }
             int vcen=Void.VertexCount;Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=centre+shift+off2,N=n,R=.001f,G=.001f,B=.001f,A=0};
             for(int s=0;s<Sectors;s++)
@@ -117,7 +118,7 @@ namespace ChipArena.UnityConversion
             if(strips>.01f&&surf==WallS)for(int k=0;k<StripCount;k++)
             {
                 if(!m.Room(StripRows*2+2,StripRows*6))break;
-                float ang=(.1f+.8f*H(seed+20,k))*BossMath.Pi;float ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);int sec=(int)(ang/BossMath.Tau*Sectors);float edge=Edge(open,seed,sec);
+                float ang=(.1f+.8f*H(seed+20,k))*BossMath.Pi;float ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);int sec=(int)(ang/BossMath.Tau*Sectors);float edge=Edge(open,seed,sec,surf);
                 var root=centre+a*BossMath.Clamp(ca*edge,minA,maxA)+b*BossMath.Clamp(sa*edge*tall,minB,maxB)+n*(off+.002f);
                 float len=(.16f+.42f*H(seed+21,k))*Math.Min(1,open*2.2f)*strips,wid=.035f+.065f*H(seed+22,k);if(len<.02f)continue;
                 float sway=(float)Math.Sin(t*(1.1f+H(seed+23,k))+k*2)*.06f;
@@ -137,18 +138,18 @@ namespace ChipArena.UnityConversion
                 }
             }
             // Flaps peeled back off the edge all round it, curling over onto the wall: what the room sees of them is the paper's reverse, pale. Both sides drawn (they stand up off the wall).
-            if(peel>.01f&&surf==WallS)for(int k=0;k<FlapCount;k++)
+            if(peel>.01f&&surf!=CeilingS)for(int k=0;k<FlapCount;k++)
             {
-                int sec=(int)((k+.2f+.6f*H(seed+30,k))/FlapCount*Sectors)%Sectors;float ang=sec*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);float edge=Edge(open,seed,sec);
+                int sec=(int)((k+.2f+.6f*H(seed+30,k))/FlapCount*Sectors)%Sectors;float ang=sec*BossMath.Tau/Sectors,ca=(float)Math.Cos(ang),sa=(float)Math.Sin(ang);float edge=Edge(open,seed,sec,surf);
                 var d0=Vector3.Normalize(a*ca+b*sa*tall);var side=Vector3.Cross(n,d0);var c=centre+a*BossMath.Clamp(ca*edge,minA,maxA)+b*BossMath.Clamp(sa*edge*tall,minB,maxB)+n*(off+.003f);
-                float len=(.1f+.28f*H(seed+31,k))*Math.Min(1,open*2.4f)*peel,wid=.045f+.1f*H(seed+32,k);if(len<.02f)continue;
+                float sized=surf==FloorS?1.5f:1;float len=(.1f+.28f*H(seed+31,k))*sized*Math.Min(1,open*2.4f)*peel,wid=(.045f+.1f*H(seed+32,k))*sized;if(len<.02f)continue;
                 float flutter=(float)Math.Sin(t*(.9f+H(seed+33,k))+k*1.7f)*.12f,curl=2.3f+.6f*H(seed+34,k);int f0v=Void.VertexCount;
                 for(int r=0;r<=FlapRows;r++)
                 {
                     float u=(float)r/FlapRows,phi=.3f+(curl+flutter)*u,cp=(float)Math.Cos(phi),sp=(float)Math.Sin(phi);var along=n*cp+d0*sp;var nr=n*sp-d0*cp;
                     float wr=wid*(float)Math.Pow(1-u,.8f)+.002f;var mid=c+side*((H(seed+36,k*9+r)-.5f)*wid*.5f*u);
                     float g=.34f+.26f*u+.08f*H(seed+35,k*7+r);float fg=.18f*Air*(.4f+.6f*u);
-                    Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid-side*wr,N=nr,R=g,G=g*.94f,B=g*.72f,A=fg};Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid+side*wr,N=nr,R=g,G=g*.94f,B=g*.72f,A=fg};
+                    float fgG=surf==FloorS?g*.76f:g*.94f,fgB=surf==FloorS?g*.42f:g*.72f;Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid-side*wr,N=nr,R=g,G=fgG,B=fgB,A=fg};Void.Vertices[Void.VertexCount++]=new HumPatchVertex{P=mid+side*wr,N=nr,R=g,G=fgG,B=fgB,A=fg};
                     c+=along*(len/FlapRows);
                 }
                 for(int r=0;r<FlapRows;r++){int l0=f0v+r*2,r0=l0+1,l1=l0+2,r1=l0+3;Void.Tri(l0,l1,r1);Void.Tri(l0,r1,r0);Void.Tri(l0,r1,l1);Void.Tri(l0,r0,r1);}
@@ -156,17 +157,18 @@ namespace ChipArena.UnityConversion
         }
         private const int StripCount=6,StripRows=5,FlapCount=9,FlapRows=5;
         // The hole's jagged edge at sector s: long tears out between short ones.
-        private static float Edge(float open,int seed,int s)
+        private static float Edge(float open,int seed,int s,byte surf)
         {
             float ang=s*BossMath.Tau/Sectors;float e=.56f+.15f+.15f*(float)Math.Sin(ang*2+H(seed,1)*6.28f)+.06f+.06f*(float)Math.Sin(ang*5+H(seed,2)*6.28f)+.1f*H(seed+3,s/3)+.06f*H(seed+4,s);
-            for(int i=0;i<4;i++){float d=Math.Abs(s-H(seed+5,i)*Sectors);if(d>Sectors*.5f)d=Sectors-d;if(d<3.5f){float q=1-d/3.5f;e+=(.22f+.4f*H(seed+6,i))*q*q;}}
+            for(int i=0;i<4;i++){float d=Math.Abs(s-H(seed+5,i)*Sectors);if(d>Sectors*.5f)d=Sectors-d;if(d<3.5f){float q=1-d/3.5f;e+=(.22f+.4f*H(seed+6,i))*q*q*(surf==WallS?1:.3f);}}
             return open*e;
         }
         private static float Peak(float pa,float pb,Vector3 f){if(f.Z==0)return 0;float dx=pa-f.X,dy=pb-f.Y,d=(dx*dx+dy*dy)/(.085f*.085f);return f.Z*(float)Math.Exp(-d);}
         private static float G(float x,float y,float sx,float sy)=>(float)Math.Exp(-(x*x)/(sx*sx)-(y*y)/(sy*sy));
         // A face under the paper, its open mouth at the origin (m across and up; height for a face of 1): the head pushing out, the brow, sunken sockets, the nose, cheekbones, the chin, the mouth pulled in.
-        private static float FaceRelief(float x,float y)
+        private static float FaceRelief(float px,float py)
         {
+            const float Size=1.5f;float x=px/Size,y=py/Size;
             float h=.62f*G(x,y-.12f,.2f,.3f)+.22f*G(x,y-.26f,.17f,.035f)-.24f*(G(x-.085f,y-.2f,.042f,.034f)+G(x+.085f,y-.2f,.042f,.034f))+.2f*G(x,y-.115f,.028f,.07f);
             return h+.1f*(G(x-.12f,y-.06f,.05f,.05f)+G(x+.12f,y-.06f,.05f,.05f))+.16f*G(x,y+.2f,.075f,.05f)-.1f*G(x,y,.075f,.085f);
         }

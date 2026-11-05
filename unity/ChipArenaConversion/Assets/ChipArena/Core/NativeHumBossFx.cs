@@ -233,12 +233,12 @@ namespace ChipArena.UnityConversion
                     Telegraph+=Quads.Count-q0;
                     float open=k<0?(k>-.25f?(k+.25f)/.25f*.22f:0):Math.Min(m.Radius,.22f+m.Radius*BossMath.Smooth(k/.32f));float close=k>3.6f?1-BossMath.Smooth((k-3.6f)/1.6f):1;
                     bool stays=v.phase>=3;if(!stays)open*=close;
-                    FloorPatch(c,m.Radius*2.1f,open,k<0?-.08f*u:-.02f,.14f*BossMath.Smooth(k/.2f),401,t);Tears++;
+                    FloorPatch(c,m.Radius*2.1f,open,k<0?-.08f*u:-.02f,.04f*BossMath.Smooth(k/.2f),401,t,1);Tears++;
                     if(k>=0&&k<.8f){Vfx.SmokeBurst(t,c+new Vector3(0,.05f,0),new Vector3(0,.5f,0),1.8f,.05f,12,1.5f,.25f,1.1f,new Vector3(.08f,.07f,.05f),.5f,v.tearAt,.1f,vseed,630,0,floorY);Vfx.RubbleBurst(t,c,Vector3.UnitY,.9f,2.4f,8,1.2f,v.tearAt,.05f,new Vector3(.2f,.18f,.08f),vseed,631,0,floorY);}
                 }
             }
             // The pit grid: Fall Through's holes stay torn in NOCLIP.
-            if(v.torn!=null)for(int i=0;i<v.tornCount;i++){int o=i*3;if(t<v.torn[o+2])continue;FloorPatch(new Vector3(v.torn[o],floorY,v.torn[o+1]),m.Radius*2.1f,m.Radius*.92f,-.02f,.14f,410+i*3,t);Tears++;}
+            if(v.torn!=null)for(int i=0;i<v.tornCount;i++){int o=i*3;if(t<v.torn[o+2])continue;FloorPatch(new Vector3(v.torn[o],floorY,v.torn[o+1]),m.Radius*2.1f,m.Radius*.92f,-.02f,.04f,410+i*3,t,1);Tears++;}
         }
         // ---------------- Max Hum: a ring through the walls, chromatic, the air shaking ----------------
         private void Ring(HumBossRig rig,in HumBossView v,float t)
@@ -385,8 +385,8 @@ namespace ChipArena.UnityConversion
                 int o=i*6;float at=v.voices[o+5],k=t-at;if(k<-m.Wind||k>m.Wind+m.Strike+1.5f)continue;var c=new Vector3(v.voices[o],v.voices[o+1],v.voices[o+2]);float nx=v.voices[o+3],nz=v.voices[o+4];
                 float rise=BossMath.Smooth((k+m.Wind)/m.Wind);float sink=1-BossMath.Smooth((k-m.Strike)/1f);float open=k<0?0:BossMath.Smooth(k/.5f);
                 // A face coming out under the paper, a little too large; as it speaks, the mouth splits it.
-                float mouth=.075f*open*sink*(reduced?1:.85f+.15f*(float)Math.Sin(t*17+i));
-                WallPatch(c,nx,nz,.85f,mouth,.05f*rise*sink,.008f*sink,320+i*7,t,default,default,default,default,1.3f,0,0,false,.27f*rise*sink);Tears++;
+                float mouth=.11f*open*sink*(reduced?1:.85f+.15f*(float)Math.Sin(t*17+i));
+                WallPatch(c,nx,nz,1.05f,mouth,.06f*rise*sink,.008f*sink,320+i*7,t,default,default,default,default,1.3f,0,0,false,.34f*rise*sink);Tears++;
             }
         }
         // ---------------- the phase changes ----------------
@@ -522,10 +522,10 @@ namespace ChipArena.UnityConversion
             float minB=floorY+BackroomsMesh.TrimHeight+.02f-c.Y,maxB=floorY+BackroomsLayout.Height-.02f-c.Y;
             Surface.Tear(NativeHumSurface.WallS,at,n,a,Vector3.UnitY,radius,open,bulge,lift,seed,eye,minA,maxA,minB,maxB,f0,f1,f2,f3,1,tall,strips,t,peel,ridges,face);
         }
-        private void FloorPatch(Vector3 c,float radius,float open,float bulge,float lift,int seed,float t)
+        private void FloorPatch(Vector3 c,float radius,float open,float bulge,float lift,int seed,float t,float peel=0)
         {
             float minA=Room!=null?Room.MinX-c.X:-radius,maxA=Room!=null?Room.MaxX-c.X:radius,minB=Room!=null?Room.MinZ-c.Z:-radius,maxB=Room!=null?Room.MaxZ-c.Z:radius;
-            Surface.Tear(NativeHumSurface.FloorS,new Vector3(c.X,floorY,c.Z),Vector3.UnitY,Vector3.UnitZ,Vector3.UnitX,radius,open,bulge,lift,seed,eye,minB,maxB,minA,maxA);
+            Surface.Tear(NativeHumSurface.FloorS,new Vector3(c.X,floorY,c.Z),Vector3.UnitY,Vector3.UnitZ,Vector3.UnitX,radius,open,bulge,lift,seed,eye,minB,maxB,minA,maxA,default,default,default,default,1,1,0,t,peel);
         }
         private void CeilingPatch(Vector3 c,float radius,float open,float bulge,float lift,int seed,float t)
         {
