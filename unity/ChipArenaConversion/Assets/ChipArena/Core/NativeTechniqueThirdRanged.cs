@@ -103,16 +103,17 @@ namespace ChipArena.UnityConversion
             var feet=scene.Feet(a);var f=Flat(N(V3.Forward(a.Yaw)),Vector3.UnitZ);var r=RightOf(f);var hand=feet+Up*1.2f+f*.42f+r*.22f;float self=scene.Viewer==a.Id?.4f:1;var white=SpinBrass+Vector3.One;
             if(t<k.Arm)
             {
-                float span=Math.Max(.05f,k.Arm-k.At),g=Clamp01((t-k.At)/span),env=Smooth(g/.1f)*self,turn=6.2831853f*3.5f*g*(2-g);Vector3 Spoke(float ang)=>f*(float)Math.Cos(ang)+Up*(float)Math.Sin(ang);
-                int n=low?6:12;for(int i=0;i<n;i++){float a0=turn-i*.3f,a1=a0-.3f,b0=1-i/(float)n,b1=1-(i+1)/(float)n;s.Band(false,hand+Spoke(a0)*.05f,hand+Spoke(a1)*.05f,hand+Spoke(a1)*.36f,hand+Spoke(a0)*.36f,1.6f*b0*env,1.6f*b1*env,SpinBrass);}
-                Hoop(s,hand,r,.32f,.04f,SpinBrass*(1.5f*env),low?12:22,1);
+                // The wheel's plane is turned part way to the back, so it reads from behind the pilot as well as from the side.
+                float span=Math.Max(.05f,k.Arm-k.At),g=Clamp01((t-k.At)/span),env=Smooth(g/.1f)*self,turn=6.2831853f*3.5f*g*(2-g);var wheel=Vector3.Normalize(f+r*.75f);Vector3 Spoke(float ang)=>wheel*(float)Math.Cos(ang)+Up*(float)Math.Sin(ang);
+                int n=low?6:12;for(int i=0;i<n;i++){float a0=turn-i*.3f,a1=a0-.3f,b0=1-i/(float)n,b1=1-(i+1)/(float)n;s.Band(false,hand+Spoke(a0)*.05f,hand+Spoke(a1)*.05f,hand+Spoke(a1)*.36f,hand+Spoke(a0)*.36f,b0*env,b1*env,SpinBrass*1.8f);}
+                Hoop(s,hand,RightOf(wheel),.32f,.05f,SpinBrass*(1.7f*env),low?12:22,1);
                 var d=Spoke(turn);var grip=Spoke(turn-1.5707963f);s.Line(false,hand-d*.06f,hand+d*.3f,white*(1.2f*env),.07f,true);s.Line(false,hand,hand+grip*.13f,white*(.9f*env),.06f,true);s.Sprite(false,hand+d*.3f,white*(1.3f*env),.2f,Sparkle);
                 Spray(s,hand,t,.2f,Count(3,q,low),2.8f,SpinBrass,seed+4,7,.016f,default);
                 float fall=t-k.At;if(fall<.42f){var mag=hand-Up*(.1f+4.9f*fall*fall);var tilt=Vector3.Normalize(Up+r*(float)Math.Sin(fall*14)+f*(float)Math.Cos(fall*11));if(mag.Y>feet.Y)s.Line(false,mag-tilt*.07f,mag+tilt*.07f,CrateSteel*(1.5f*self),.05f,false);}
                 return;
             }
             float age=t-k.Arm;
-            if(age<.3f){float b=1-age/.3f;Flash(s,hand,age,.2f,SpinBrass,1.1f*self,seed);Hoop(s,hand,r,.3f+.8f*OutCubic(age/.2f),.09f*b+.01f,white*(.9f*b*self),low?12:22,1);}
+            if(age<.3f){float b=1-age/.3f;Flash(s,hand,age,.2f,SpinBrass,1.1f*self,seed);Hoop(s,hand,RightOf(Vector3.Normalize(f+r*.75f)),.3f+.42f*OutCubic(age/.2f),.09f*b+.01f,white*(.8f*b*self),low?12:22,1);}
             Sparks(s,hand,age,.4f,Count(14,q,low),4.4f,SpinBrass,seed+5,9,.02f,Up*.4f);
             if(t>=k.Until)return;
             float env2=Smooth(age/.1f)*(1-Smooth((t-(k.Until-.35f))/.35f))*self;var muzzle=hand+f*.3f+Up*.03f;
