@@ -430,3 +430,44 @@ quota, then reaching the sealed room's door starts the arrival; killing the boss
 ## 9. Built
 
 Filled in as the work lands, with what was actually seen and checked.
+
+### THE DEEP END (branch `claude/boss-deepend`)
+
+Presentation only; nobody has played it. `DeepEndBossViewOf` returns None until Astra binds it, and with None nothing here draws or costs anything beyond a branch: the live Poolrooms is what it was (its hooks are the layout swap under the preview flag and two surfaces standing aside under the stage flag).
+
+**The model.** `tools/gear/deep_end_boss.py` (Blender 5.2, headless; `deep_end_boss_sheet.py` renders a review sheet, straight and on a leaping arc) writes the local bank `Resources/ChipArenaPackBossDeepEnd` (not committed; ships in the Drive zip). As drawn: about 60,500 triangles at tier 0, 29,500 at tier 1, 4,800 at tier 2. The skin is one mesh per tier on the spine's 31 joints: real tile geometry, about 4,000 tiles at tier 0, each with its own bevel, grout channel and a tiny tilt of its own, finer tile on the skull, larger basin tile on the belly; the letters are the grid's own cells going black, with the cells on a letter's edge split into small mosaic pieces. A vertex's uv0 is its place on the spine and its gloss; Runtime makes four cubic B-spline weights from the place, so the skin bends as a curve. Rigid parts: the flank lamps (with a broken variant), the nine iris blades, the drain grate, the throat, the rails, the fins, a ring buoy. It's drawn with the gear's toon (`ZombieGearMaterials`) and a glaze over it (`NativeDeepEndGlaze`). Without the bank, a plain loft on the same bones.
+
+**The motion.** `Core DeepEndBossRig`: the head on a route (`DeepEndRoute`: Hermite legs and true parabolas, a pure function of time; `DeepEndBossPaths` writes each move's so its contact lands on the record's `hitAt`). Every joint traces the route a fixed arc length behind the head, on fixed ticks of the clock, so two frame rates give one pose. A visible joint never goes faster than a heavy body's pace or the head's own; a hidden joint (under the tile, deep in the shaft) catches up fast: when the head has rushed ahead under the floor, the strand still in sight pours in at its own speed. On top: a travelling undulation integrated on the ticks, a slow roll, the neck's look on forward kinematics, the Flop's lift (only what's over its line), the Thrash's sweep, a rotation-minimizing frame that rights itself by an angle, second-order fins and rails, the iris and the grate on springs of their own.
+
+**The room.** `Core NativeDeepEndArena.Carve` (pure), `PoolroomsLayout.Abyss` (a new floor kind; the level's mesh builds its shaft), `Core NativeDeepEndBossStage` (the hook: tide, flood front, lights by group, whirlpool, seiche, the arrival's ring, murk, the screen's two moments), `Core DeepEndWaves` (a 43 m wave field over the whole room, the wave equation stepped on fixed ticks, foam; the level's `PoolWaves` is untouched). Runtime: one displaced grid (`NativeDeepEndWater`: the tide, funnel and waves are real geometry; refraction by a named grab, absorption by the scene's depth, a reflection marched against the depth with the room's box behind it, foam from the field and where the water meets anything), caustics on the level's own meshes drawn again (`NativeDeepEndCaustics`, pushed by the field's curvature, so a wave's ring sweeps the ceiling), the water geometry (`NativeDeepEndFlow`), the screen (`NativeDeepEndScreen`).
+
+**The effects**, functions of record and clock: sheets pouring off it for seconds after it rises (`EmergedAt` per joint), foam collars, spray and mist through the shared effects renderer, the Jet's tube with its mist and splash, hands of water, the long shadow, the dark circle and its bubbles, the lamps' glow on the water over them while they pass under the tile, tile and a ring buoy going round the whirlpool, curtains across the arches.
+
+**What changed from the first design, and why.**
+- **Belly Flop's wind is 1.8 s, not 1.2:** a 32 m body can't be seen to rise out of the water, hang and fall in 1.2 s, and the long shadow needs the time to read.
+- **Seiche's strike is 7 s, not 3.5:** 3.5 s is one crossing at its speed; "a wall takes two hits" needs the crossing back.
+- **Last Lap runs a rounded square, not a circle:** the sweep's first pass showed a circle of 19 m never reaches the corners (28 m out).
+- **A dry-deck target in the first phase never draws Breach** (it only surfaces where there's water): the rotation has to choose the Jet, the Flop or the Drain instead, or the deck's corners go 26 s without a threat for a moving pilot. Astra's rotation should do the same.
+- **The lettering is on both upper flanks, mirrored,** not on the spine alone: from the game's cameras a line down the spine reads upside down half the time. `DEEP END` is two lines on the crown, reading from in front of the mouth.
+- **Running lights** between the twelve lamps: twelve points don't make a spiral.
+- **It breaks the surface at the back of the shaft,** so its fall comes down in the pool, not on the deck.
+- **The mouth is nine iris blades over a turning grate:** concentric rings can't open.
+- **Four arches with curtains of water,** rather than plain walls: the room needs its architecture, and it's what "the arches flood shut" looks like.
+
+**The sweep** (`Tests/DeepEndBossSweep.cs`, in `--backrooms-boss-sweep`), every cell, the corners and along the walls, 210 s a run:
+
+```
+deepend-sweep phase 1: still worst 7.6 s at (-19.0,-19.0), limit 8.0; circling worst 12.5 s at (-15.0,-19.0), limit 14.0; without the Lull still worst 11.8 s at (-19.0,-19.0); without it and the room-wide moves 11.8 s at (-19.0,-19.0)
+deepend-sweep phase 1: with only the Flop and the Jet: 11.8 s at (-19.0,-19.0)
+deepend-sweep phase 2: still worst 4.1 s at (-19.0,-19.0), limit 8.0; circling worst 4.9 s at (-15.0,-19.0), limit 10.0; without the Lull still worst 4.2 s at (-19.0,-19.0); without it and the room-wide moves 5.0 s at (-19.0,-19.0)
+deepend-sweep phase 2: with only the Flop and the Jet: 11.7 s at (-19.0,-19.0)
+deepend-sweep phase 3: still worst 5.6 s at (-19.0,-19.0), limit 6.0; circling worst 12.4 s at (-17.0,-19.0), limit 14.0; without the Lull still worst 12.4 s at (19.0,-19.0); without it and the room-wide moves 5.0 s at (-19.0,-19.0)
+deepend-sweep phase 3: with only the Flop and the Jet: 11.7 s at (-19.0,-19.0)
+PASS deepend-sweep (9 checks)
+```
+
+The Lull is what guarantees the first and last phases' limit for a still pilot; take it out and the corner goes past the limit in the first and last phases. In the second phase the rotation alone keeps up (the room-wide moves come round fast), so its proof of teeth is taking out the Breach too.
+
+**For Astra.** Bind `ArenaPresentation.DeepEndBossViewOf` (Runtime `NativeDeepEndBossPresentation.cs`): the fields are `Core DeepEndBossView`'s. The rig fills its own route from the record as moves start, so a record only needs the move's start, its hit, its places (`targetX/Z`, `aimX/Z`) and `surfaceAt/X/Z` between moves. `NativeDeepEndBoss.Moves` is the table; `NativeDeepEndBoss.Parts` the hit volumes and weak points; `DeepEndBossRig.LampFrame` and `MouthAt` the positions. Collision for `PoolroomsLayout.Abyss` stands at the deep pool's floor. The tide is `tideFrom`, `tideY`, `tideAt`, `tideUntil`: `NativePoolroomsWater.Depth` should read the same.
+
+**Not done.** No audio clips (the keys are silent); no record, rules or hit volumes bound. The mixer's dip for `Muffle` isn't wired (it's on the stage for whoever does the sound). The body doesn't reflect in the water when the reflection's ray leaves the screen (it falls back to the room's box). Reduced effects only has less to reduce here: nothing strobes.
