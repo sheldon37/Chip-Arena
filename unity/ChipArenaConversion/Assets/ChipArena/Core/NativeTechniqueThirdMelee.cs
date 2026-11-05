@@ -304,13 +304,13 @@ namespace ChipArena.UnityConversion
         // A fan on the floor, from `c` along `f`: its soft fill and its bright edge.
         private static void MeleeSector(ITechniqueFxSink s,Vector3 c,Vector3 f,Vector3 r,float radius,float half,Vector3 color,float fill,float edge,int n)
         {
-            if(radius<.05f)return;Vector3 At(float ang,float rad)=>c+(f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang))*rad;
+            if(radius<.05f)return;Vector3 At(float ang,float rad)=>c+(f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang))*rad;float w=.04f+radius*.006f;
             for(int i=0;i<n;i++)
             {
                 float a0=-half+2*half*i/n,a1=-half+2*half*(i+1)/n;if(fill>0)s.Band(false,At(a0,radius*.06f),At(a1,radius*.06f),At(a1,radius),At(a0,radius),fill,fill,color);
-                if(edge>0)s.Line(false,At(a0,radius),At(a1,radius),color*edge,.05f,false);
+                if(edge>0)s.Band(false,At(a0,radius-w),At(a1,radius-w),At(a1,radius+w),At(a0,radius+w),edge,edge,color);
             }
-            if(edge>0){s.Line(false,At(-half,radius*.06f),At(-half,radius),color*edge,.035f,false);s.Line(false,At(half,radius*.06f),At(half,radius),color*edge,.035f,false);}
+            if(edge>0){Strip(s,At(-half,radius*.06f),At(-half,radius),w,color,edge,edge);Strip(s,At(half,radius*.06f),At(half,radius),w,color,edge,edge);}
         }
 
         // ---- Shield: War Cry --------------------------------------------------------------------------------------------
@@ -323,8 +323,8 @@ namespace ChipArena.UnityConversion
             var c=N(k.Point);var fl=c+Up*.04f;var feet=scene.Feet(a);var chest=scene.Chest(a,out var c0)?c0:feet+Up*1.25f;bool view=scene.Viewer==a.Id;int seg=low?28:56;
             if(t<k.Release)
             {
-                float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));Ring(s,fl,CryReach,.08f,CryGold*(1.7f*u),seg);if(!view)s.Sprite(false,chest,CryHot*(1+3*u),.2f+.45f*u,Hot);
-                int n=Count(18,q,low);for(int i=0;i<n;i++){float ang=6.2831853f*R(seed,i+1),ph=(u*1.3f+R(seed,i+2))%1;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var p=c+d*(CryReach*(1-ph))+Up*(.1f+1.1f*R(seed,i+3));s.Line(false,p,p+d*1.3f,CryGold*(1.4f*u*ph),.03f,false);}
+                float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));Ring(s,fl,CryReach,.16f,CryGold*(1.1f*u),seg);if(!view)s.Sprite(false,chest,CryHot*(.6f+1.6f*u),.2f+.4f*u,Hot);
+                int n=Count(14,q,low);for(int i=0;i<n;i++){float ang=6.2831853f*R(seed,i+1),ph=(u*1.3f+R(seed,i+2))%1;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var p=c+d*(CryReach*(1-ph))+Up*(.1f+1.1f*R(seed,i+3));s.Line(false,p,p+d*.7f,CryGold*(.7f*u*ph),.025f,false);}
                 return;
             }
             float age=t-k.Release;
@@ -336,25 +336,25 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<seg;i++)
                 {
                     float a0=6.2831853f*i/seg,a1=6.2831853f*(i+1)/seg;float R0(float ang)=>rad*(1+.03f*(float)Math.Sin(ang*14+t*40));var p0=fl+new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0))*R0(a0);var p1=fl+new Vector3((float)Math.Cos(a1),0,(float)Math.Sin(a1))*R0(a1);
-                    s.Band(false,p0,p1,p1+Up*h,p0+Up*h,.85f*fade,.85f*fade,CryGold*1.5f);
+                    s.Band(false,p0,p1,p1+Up*h,p0+Up*h,.7f*fade,.7f*fade,CryGold);
                 }
-                Ring(s,fl,rad,.14f,CryHot*(1.5f*fade),seg);
+                Ring(s,fl,rad,.16f,CryGold*(1.1f*fade),seg);
             }
             // The line it broke on.
-            float line=1-Smooth((age-.4f)/.6f);if(line>0)Ring(s,fl,CryReach,.1f,CryGold*(1.4f*line),seg);Dust(s,c,age,.6f,Count(12,q,low),2.6f,new Vector3(.36f,.32f,.24f),.5f,seed+1);Sparks(s,chest,age,.4f,Count(16,q,low),6,CryHot,seed+2,8,.024f);
+            float line=1-Smooth((age-.4f)/.6f);if(line>0)Ring(s,fl,CryReach,.16f,CryGold*(1.1f*line),seg);Dust(s,c,age,.6f,Count(12,q,low),2.6f,new Vector3(.36f,.32f,.24f),.5f,seed+1);Sparks(s,chest,age,.4f,Count(16,q,low),6,CryHot,seed+2,8,.024f);
             // The rally.
             if(t>=k.Until)return;float env=Smooth(age/.2f)*(1-Smooth((t-(k.Until-.3f))/.3f)),vb=view?.4f:1;
             int bars=low?10:20;for(int i=0;i<bars;i++)
             {
-                float ang=i*6.2831853f/bars,h=.12f+.6f*(float)Math.Abs(Math.Sin(t*6+i*2.4f+1.3f*Math.Sin(t*2.1f+i)))+1.3f*(1-Clamp01(age/.35f));var p=feet+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*1.02f+Up*.03f;
-                s.Line(false,p,p+Up*h,CryGold*(1.6f*env*vb),.06f,false);if(!low)s.Sprite(false,p+Up*h,CryHot*(1.5f*env*vb),.08f,Hot);
+                float ang=i*6.2831853f/bars,h=.1f+.42f*(float)Math.Abs(Math.Sin(t*6+i*2.4f+1.3f*Math.Sin(t*2.1f+i)))+.7f*(1-Clamp01(age/.35f));var p=feet+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*.82f+Up*.03f;
+                s.Line(false,p,p+Up*h,CryGold*(.7f*env*vb),.05f,false);if(!low)s.Sprite(false,p+Up*h,CryGold*(1.1f*env*vb),.07f,Hot);
             }
-            float beat=age%1;Ring(s,feet+Up*.05f,.95f+2.7f*OutCubic(beat),.07f,CryGold*(1.1f*(1-beat)*env*vb),low?16:32);
+            float beat=age%1;Ring(s,feet+Up*.05f,.8f+2.7f*OutCubic(beat),.08f,CryGold*(.85f*(1-beat)*env*vb),low?16:32);
             if(!view)
             {
-                var top=feet+Up*2.18f;int points=low?5:7;Vector3 last=default;
-                for(int i=0;i<=points;i++){float ang=t*1.1f+i*6.2831853f/points;var p=top+new Vector3((float)Math.Cos(ang)*.25f,0,(float)Math.Sin(ang)*.25f);if(i>0){s.Line(false,last,p,CryGold*(1.8f*env),.035f,false);s.Line(false,p,p+Up*.19f,CryHot*(2.1f*env),.05f,true);}last=p;}
-                s.Sprite(false,top+Up*.06f,CryGold*(.7f*env),.55f,Soft);s.Glow(feet+Up*1,CryGold*(.16f*env),0,2.4f,Core,0,seed+5);
+                var top=feet+Up*2.02f;int points=low?5:7;Vector3 last=default;
+                for(int i=0;i<=points;i++){float ang=t*1.1f+i*6.2831853f/points;var p=top+new Vector3((float)Math.Cos(ang)*.24f,0,(float)Math.Sin(ang)*.24f);if(i>0){s.Line(false,last,p,CryGold*(.9f*env),.035f,false);s.Line(false,p,p+Up*.17f,CryGold*(1.15f*env),.05f,true);}last=p;}
+                s.Sprite(false,top+Up*.06f,CryGold*(.5f*env),.5f,Soft);s.Glow(feet+Up*1,CryGold*(.14f*env),0,2.4f,Core,0,seed+5);
             }
         }
 
@@ -362,7 +362,7 @@ namespace ChipArena.UnityConversion
         // The floor kicks at the take-off. All through the leap its circle burns where it will land: a bright rim, chevrons pointing in, a ring closing to the moment and a thread straight down from the falling pilot.
         // The landing breaks the floor to the rim: a white shock, spears of light going up off it, slabs of floor thrown in the air.
         public const float SlamReach=4;
-        private static readonly Vector3 SlamBlue=new Vector3(.45f,.75f,1),SlamPale=new Vector3(.82f,.93f,1),SlamRock=new Vector3(.17f,.17f,.2f);
+        private static readonly Vector3 SlamBlue=new Vector3(.38f,.68f,1),SlamPale=new Vector3(.82f,.93f,1),SlamRock=new Vector3(.17f,.17f,.2f);
         private static Vector3 SlamAt(NativeTechnique k,float t){float u=Clamp01((t-k.Release)/Math.Max(.05f,k.Arm-k.Release));return Vector3.Lerp(N(k.From),N(k.Point),u)+Up*(12*u*(1-u));}
         private static void GroundSlam(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
@@ -374,19 +374,25 @@ namespace ChipArena.UnityConversion
             {
                 float u=Clamp01(air/Math.Max(.05f,land-k.Release)),env=Smooth(u*5);
                 Ring(s,fl,SlamReach,.13f,SlamBlue*(1.9f*env),seg);Ring(s,fl,SlamReach*.5f,SlamReach,SlamBlue*((.06f+.18f*u)*env),low?16:32);Ring(s,fl,Math.Max(.05f,SlamReach*(1-u*u)),.1f,SlamPale*(2.2f*env),seg);
-                int chev=low?6:12;for(int i=0;i<chev;i++){float ang=i*6.2831853f/chev,x=(t*2.2f+i*.5f)%1;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var side=RightOf(d);var at=fl+d*(SlamReach*(.94f-.3f*x));var tip=at-d*.3f;float b=1.7f*env*(1-x);s.Line(false,at+side*.28f,tip,SlamPale*b,.05f,true);s.Line(false,at-side*.28f,tip,SlamPale*b,.05f,true);}
-                var head=SlamAt(k,t)+Up*.9f;s.Line(false,head,fl,SlamBlue*(.35f+1.1f*u*u),.05f,false);s.Sprite(false,fl,SlamPale*(1+2.4f*u*u),.3f+.5f*u,Hot);
+                int chev=low?6:12;for(int i=0;i<chev;i++){float ang=i*6.2831853f/chev,x=(t*2.2f+i*.5f)%1;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var side=RightOf(d);var at=fl+d*(SlamReach*(.92f-.32f*x));var tip=at-d*.42f;float b=1.4f*env*(float)Math.Sin(3.14159f*x);Strip(s,at+side*.46f,tip,.07f,SlamPale,b,b);Strip(s,at-side*.46f,tip,.07f,SlamPale,b,b);}
+                var head=SlamAt(k,t)+Up*.9f;s.Line(false,head,fl,SlamBlue*(.2f+.7f*u*u),.05f,false);s.Sprite(false,fl,SlamPale*(.6f+1.8f*u*u),.3f+.5f*u,Hot);
                 int n=low?6:12;var prev=head;for(int i=1;i<=n;i++){float tt=t-i*.03f;if(tt<k.Release)break;var o=SlamAt(k,tt)+Up*.9f;float b=1-i/(float)n;s.Line(false,o,prev,SlamBlue*(1.5f*b),.2f*b+.02f,false);prev=o;}
                 if(u>.5f&&!low){float w=(u-.5f)*2;int m=Count(10,q,low);for(int i=0;i<m;i++){float ph=(t*3+R(seed,i+30))%1,ang=6.2831853f*R(seed,i+31);var o=head+new Vector3((float)Math.Cos(ang)*.65f,.8f-1.7f*ph,(float)Math.Sin(ang)*.65f);s.Line(false,o,o+Up*.8f,SlamPale*(1.5f*w*(float)Math.Sin(3.14159f*ph)),.025f,false);}}
                 return;
             }
             float since=t-land;
-            Flash(s,p+Up*.3f,since,.3f,SlamBlue,3.8f,seed+2);Cracks(s,p,since,1.2f,low?9:17,SlamReach*.95f,SlamBlue+new Vector3(.3f,.2f,.1f),seed+3);
-            if(since<.3f){float g=since/.3f;Ring(s,fl,SlamReach*OutCubic(g),.8f*(1-g)+.12f,SlamPale*(2.4f*(1-g)),seg);}
-            if(since<.5f){float g=since/.5f;Ring(s,fl,SlamReach,.24f*(1-g)+.05f,SlamBlue*(2.4f*(1-g)),seg);}
-            if(since<.45f){int n=low?12:24;float g=since/.45f;for(int i=0;i<n;i++){float ang=i*6.2831853f/n+.3f*R(seed,i+40);var b=fl+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*(SlamReach*(.35f+.65f*R(seed,i+41)));float h=(1.3f+1.5f*R(seed,i+42))*OutCubic(g*1.6f);s.Line(false,b+Up*(h*g),b+Up*h,SlamPale*(2.2f*(1-g)),.06f,true);}}
-            if(since<.9f){int n=Count(20,q,low);for(int i=0;i<n;i++){float rr=SlamReach*(float)Math.Sqrt(R(seed,i+50)),ang=6.2831853f*R(seed,i+51),tt=since-rr/26f;if(tt<0)continue;float y=(5+3.5f*R(seed,i+52))*tt-7*tt*tt;if(y<0)continue;var at=p+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*(rr+1.2f*tt)+Up*(y+.05f);float size=.14f+.2f*R(seed,i+53);s.Glow(at,SlamRock,.92f,size,Core,0,seed+i);s.Sprite(false,at+Up*.03f,SlamBlue*.7f,size*.6f,Hot);}}
+            Flash(s,p+Up*.8f,since,.3f,SlamBlue,4.4f,seed+2);if(since<.22f)Ring(s,fl,SlamReach*.5f,SlamReach,SlamPale*(.55f*(1-since/.22f)),low?16:32);
+            MeleeFissures(s,p,Vector3.UnitZ,RightOf(Vector3.UnitZ),3.14159f,SlamReach,since,1.2f,low?6:12,SlamBlue,SlamPale,.8f,seed+3);
+            if(since<.3f){float g=since/.3f;Ring(s,fl,SlamReach*OutCubic(g),.9f*(1-g)+.14f,SlamPale*(1.8f*(1-g)),seg);}
+            if(since<.5f){float g=since/.5f;Ring(s,fl,SlamReach,.28f*(1-g)+.06f,SlamBlue*(1.8f*(1-g)),seg);}
+            if(since<.45f){int n=low?12:24;float g=since/.45f;for(int i=0;i<n;i++){float ang=i*6.2831853f/n+.3f*R(seed,i+40);var b=fl+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*(SlamReach*(.35f+.65f*R(seed,i+41)));float h=(1.3f+1.5f*R(seed,i+42))*OutCubic(g*1.6f);s.Line(false,b+Up*(h*g),b+Up*h,SlamBlue*(1.5f*(1-g)),.2f,true);}}
+            if(since<.9f){int n=Count(20,q,low);for(int i=0;i<n;i++){float rr=SlamReach*(float)Math.Sqrt(R(seed,i+50)),ang=6.2831853f*R(seed,i+51),tt=since-rr/26f;if(tt<0)continue;float y=(5+3.5f*R(seed,i+52))*tt-7*tt*tt;if(y<0)continue;var at=p+new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang))*(rr+1.2f*tt)+Up*(y+.05f);MeleeSlab(s,at,tt,.17f+.17f*R(seed,i+53),SlamBlue*.75f,seed,i);}}
             Sparks(s,p+Up*.15f,since,.6f,Count(30,q,low),8.5f,SlamPale,seed+4,9,.03f,Up*.9f);Dust(s,p,since,1,Count(16,q,low),SlamReach*1.05f,new Vector3(.33f,.33f,.36f),.75f,seed+5);
+        }
+        // A tumbling slab of floor thrown in the air, lit on its face.
+        private static void MeleeSlab(ITechniqueFxSink s,Vector3 at,float age,float size,Vector3 color,long seed,int i)
+        {
+            float w=age*(6+8*R(seed,i+70));var a=RandomDir(seed,i+71);var b=RandomDir(seed,i+72);var x=(a*(float)Math.Cos(w)+b*(float)Math.Sin(w))*size;var y=(b*(float)Math.Cos(w)-a*(float)Math.Sin(w))*(size*.75f);s.Band(false,at-x-y,at+x-y,at+x+y,at-x+y,1.1f,1.1f,color);
         }
 
         // ---- Shield: Lodestone ------------------------------------------------------------------------------------------
@@ -401,16 +407,16 @@ namespace ChipArena.UnityConversion
             var feet=scene.Feet(a);var chest=scene.Chest(a,out var c0)?c0:feet+Up*1.25f;var f=Flat(N(k.Dir),Vector3.UnitZ);var r=RightOf(f);var face=chest+f*.62f;bool view=scene.Viewer==a.Id,released=k.Recast(t);float vb=view?.45f:1,stop=released?k.RecastAt:k.Until,env=Smooth((t-k.At)/Math.Max(.05f,k.Release-k.At))*(1-Smooth((t-stop)/.08f));const float Half=1.05f;
             if(env>0)
             {
-                MeleeSector(s,feet+Up*.04f,f,r,LodeReach,Half,LodeBlue,.08f*env,.8f*env,low?12:24);
+                MeleeSector(s,feet+Up*.04f,f,r,LodeReach,Half,LodeBlue,.1f*env,1.1f*env,low?12:24);
                 int lines=low?5:10;
                 for(int i=0;i<lines;i++)
                 {
                     float x=i/(lines-1f)*2-1,ang=x*Half;var p0=feet+(f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang))*LodeReach+Up*(.2f+1.5f*R(seed,i+1));var p1=chest+f*(LodeReach*.42f)+r*(x*.9f);Vector3 B(float u){float v=1-u;return p0*(v*v)+p1*(2*u*v)+face*(u*u);}
-                    int dashes=low?2:3;for(int j=0;j<dashes;j++){float u=(t*.85f+j/(float)dashes+R(seed,i+20))%1;float b=env*(.35f+1.1f*u*u)*vb;s.Line(false,B(u),B(Math.Min(1,u+.11f)),LodeBlue*(1.3f*b),.045f,false);}
+                    int dashes=low?3:5;for(int j=0;j<dashes;j++){float u=(t*.85f+j/(float)dashes+R(seed,i+20))%1;float b=env*(.3f+.9f*u*u)*vb;s.Line(false,B(u),B(Math.Min(1,u+.045f)),LodeBlue*(.85f*b),.04f,false);}
                 }
-                int hoops=low?2:3;for(int j=0;j<hoops;j++){float ph=(t*1.5f+j/(float)hoops)%1;Hoop(s,face+f*(1.5f*(1-ph)),f,.62f+.7f*(1-ph),.05f,LodeBlue*(1.3f*ph*env*vb),low?12:22,1);}
-                Hoop(s,face,f,.62f,.06f,LodePale*(1.7f*env*(.8f+.2f*(float)Math.Sin(t*11))*vb),low?14:26,1);s.Glow(face,LodeBlue*(.7f*env*vb),0,1.5f,Core,0,seed+2);
-                int held=LodeHeld(k,t);for(int i=0;i<held;i++){float ang=i*.7854f+t*.35f;var rim=face+(r*(float)Math.Cos(ang)+Up*(float)Math.Sin(ang))*(.52f+.02f*(float)Math.Sin(t*60+i));var tip=rim+f*(.24f+.04f*(float)Math.Sin(t*9+i));s.Line(false,rim,tip,LodeShot*(2*env),.07f,false);s.Sprite(false,tip,(LodeShot+Vector3.One*.3f)*(2.3f*env),.22f,Hot);}
+                int hoops=low?2:3;for(int j=0;j<hoops;j++){float ph=(t*1.5f+j/(float)hoops)%1;Hoop(s,face+f*(1.5f*(1-ph)),f,.62f+.7f*(1-ph),.06f,LodeBlue*(.85f*ph*env*vb),low?12:22,1);}
+                Hoop(s,face,f,.62f,.07f,LodeBlue*(1.15f*env*(.8f+.2f*(float)Math.Sin(t*11))*vb),low?14:26,1);s.Glow(face,LodeBlue*(.5f*env*vb),0,1.5f,Core,0,seed+2);
+                int held=LodeHeld(k,t);for(int i=0;i<held;i++){float ang=i*.7854f+t*.35f;var rim=face+(r*(float)Math.Cos(ang)+Up*(float)Math.Sin(ang))*(.55f+.02f*(float)Math.Sin(t*60+i));var tip=rim+f*(.26f+.04f*(float)Math.Sin(t*9+i));s.Line(false,rim,tip,LodeShot*(1.2f*env),.08f,false);s.Sprite(false,tip,LodeShot*(1.7f*env),.17f,Hot);}
             }
             // The catch: the shot bends along a line of force onto the shield.
             if(k.Hit(t)&&(!released||k.HitAt<k.RecastAt))
@@ -421,12 +427,12 @@ namespace ChipArena.UnityConversion
             }
             if(released)
             {
-                float since=t-k.RecastAt;int shots=LodeHeld(k,k.RecastAt);Flash(s,face,since,.26f,LodePale,shots>0?2.4f:1.1f,seed+6);
-                if(since<.35f){float g=since/.35f;Hoop(s,face+f*(.3f+1.7f*OutCubic(g)),f,.6f+1.8f*OutCubic(g),.14f*(1-g)+.02f,LodePale*(2.2f*(1-g)),low?14:26,1);if(shots>0)MeleeSector(s,feet+Up*.05f,f,r,LodeThrow*OutCubic(g*1.6f),.5f,LodeShot,.18f*(1-g),1.3f*(1-g),low?6:12);}
+                float since=t-k.RecastAt;int shots=LodeHeld(k,k.RecastAt);Flash(s,face,since,.2f,LodePale,shots>0?1.3f:.7f,seed+6);
+                if(since<.35f){float g=since/.35f;Hoop(s,face+f*(.3f+1.7f*OutCubic(g)),f,.6f+1.8f*OutCubic(g),.14f*(1-g)+.02f,LodeBlue*(1.4f*(1-g)),low?14:26,1);if(shots>0)MeleeSector(s,feet+Up*.05f,f,r,LodeThrow*OutCubic(g*1.6f),.5f,LodeShot,.2f*(1-g),1.2f*(1-g),low?6:12);}
                 for(int i=0;i<shots;i++)
                 {
                     float x=shots>1?i/(shots-1f)*2-1:0,ang=x*.45f+.08f*(R(seed,i+90)-.5f),start=.012f*i,g=Clamp01((since-start)/.2f),fade=1-Clamp01((since-start-.2f)/.1f);if(since<start||fade<=0)continue;var d=Vector3.Normalize(f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang)+Up*(.18f*(R(seed,i+91)-.5f)));
-                    s.Line(false,face+d*(LodeThrow*OutCubic(Math.Max(0,g-.35f))),face+d*(LodeThrow*OutCubic(g)),(LodeShot+Vector3.One*.25f)*(2.8f*fade),.07f,true);s.Sprite(false,face+d*(LodeThrow*OutCubic(g)),LodeShot*(2.3f*fade),.26f,Hot);
+                    s.Line(false,face+d*(LodeThrow*OutCubic(Math.Max(0,g-.35f))),face+d*(LodeThrow*OutCubic(g)),LodeShot*(2.2f*fade),.13f,true);s.Sprite(false,face+d*(LodeThrow*OutCubic(g)),LodeShot*(2*fade),.24f,Hot);
                 }
                 Sparks(s,face,since,.4f,Count(16,q,low),6,LodePale,seed+7,8,.022f,f);
             }
