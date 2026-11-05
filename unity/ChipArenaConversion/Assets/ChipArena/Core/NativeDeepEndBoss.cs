@@ -14,6 +14,9 @@ namespace ChipArena.UnityConversion
         public float Duration=>Anticipation+Strike+Follow+Recover;
     }
 
+    /// <summary>One hit volume: a sphere on the spine at s m behind the mouth (<see cref="Joint"/> its nearest joint), its damage multiplier, its share of max health to break it (0: not breakable), its lamp index (-1 none).</summary>
+    public struct DeepEndBossPart{public string Id;public int Joint;public float S,Radius,Multiplier,Share;public int Lamp;public bool Weak;}
+
     /// <summary>
     /// THE DEEP END, the Poolrooms' boss (docs/EXPEDITION-BOSS-BACKROOMS.md section 4): the names the rest of the game reads, the moves table Astra's rules read, its weak
     /// points and hit volumes as data, the intro's shots and card. Presentation only until Astra binds the record.
@@ -49,10 +52,18 @@ namespace ChipArena.UnityConversion
         // ---- weak points and breaks ----
         /// <summary>The throat's damage multiplier while the mouth is open; a lamp's share of max health to break it; lamps broken for the stagger, its seconds; a stranding Flop's seconds.</summary>
         public const float ThroatMultiplier=2,LampShare=.02f,StaggerSeconds=3,StrandSeconds=2.5f;public const int StaggerLamps=4;
-        /// <summary>The hit volumes: one sphere per spine joint at <see cref="NativeDeepEndBossLook.Radius"/> (a chain of capsules between them), the throat a sphere of
-        /// <see cref="ThroatRadius"/> at the mouth, each lamp a sphere of its own radius. Colliders follow the authority's root; these are the Core model both read.</summary>
+        /// <summary>The throat's sphere at the mouth (m).</summary>
         public const float ThroatRadius=.95f;
-        public static int HitVolumes=>NativeDeepEndBossLook.Spine;
+        /// <summary>The hit volumes and weak points as data: one sphere per spine joint at <see cref="NativeDeepEndBossLook.Radius"/> (a chain of capsules between them), the throat at the mouth (2x while the mouth is open), the twelve lamps each its own breakable part. Colliders follow the authority's root; the positions come from the same Core model the presentation draws (<see cref="DeepEndBossRig.LampFrame"/>, <see cref="DeepEndBossRig.MouthAt"/>).</summary>
+        public static readonly DeepEndBossPart[] Parts=MakeParts();
+        private static DeepEndBossPart[] MakeParts()
+        {
+            var list=new System.Collections.Generic.List<DeepEndBossPart>();
+            for(int i=0;i<NativeDeepEndBossLook.Spine;i++)list.Add(new DeepEndBossPart{Id="body-"+i,Joint=i,S=i*NativeDeepEndBossLook.Seg,Radius=NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),Multiplier=1,Lamp=-1});
+            list.Add(new DeepEndBossPart{Id="throat",Joint=0,S=0,Radius=ThroatRadius,Multiplier=ThroatMultiplier,Lamp=-1,Weak=true});
+            for(int i=0;i<NativeDeepEndBossLook.Lamps;i++){NativeDeepEndBossLook.Lamp(i,out float s,out _,out float r);list.Add(new DeepEndBossPart{Id="lamp-"+i,Joint=(int)(s/NativeDeepEndBossLook.Seg),S=s,Radius=r,Multiplier=1,Share=LampShare,Lamp=i,Weak=true});}
+            return list.ToArray();
+        }
 
         // ---- the intro (doc section 4, the table): in the boss's own frame, the origin the abyss's centre on the deck's level, z the way it faces ----
         public static readonly BossIntroShot[] Shots=MakeShots();
