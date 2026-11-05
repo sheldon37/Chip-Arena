@@ -46,6 +46,7 @@ namespace ChipArena.UnityConversion.Editor
             PlayerSettings.defaultScreenWidth=1600; PlayerSettings.defaultScreenHeight=900;
             PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
             PlayerSettings.runInBackground=true;
+            NativeDeployCardBuild.Prepare();
             ConfigureIcon();
             ConfigureRendering();
             var settings=new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")[0]);

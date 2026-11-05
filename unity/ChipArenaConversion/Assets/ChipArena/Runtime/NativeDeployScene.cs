@@ -15,8 +15,8 @@ namespace ChipArena.UnityConversion
     /// NativeLighting.Entrance (the source shaders' stage block), the camera on the stage's eased shot, and every item's sections:
     ///  - lit parts on NativeSourceLit with the stage block on (_StageLit), their light bones scaled by the item's tints;
     ///  - glass on NativeSourceTransparent;
-    ///  - screen faces on NativeDeployScreen: the reel and card strips (each tile rasterised once on a worker from NativeDeployArt
-    ///    whenever the strips change, a dark blank until its strip is ready), the holo maps (Core NativeDeployPresentation.Preview, regenerated on a worker when the state's revision
+    ///  - screen faces on NativeDeployScreen: the reel and card strips (tiles decoded from build-baked NativeDeployArt
+    ///    on a worker when strips change, the existing card back until its strip is ready), the holo maps (Core NativeDeployPresentation.Preview, regenerated on a worker when the state's revision
     ///    changes, frozen after Deploy), the stamps, the floor's light pools, the light columns and the slot sparks.
     /// The draw allocates nothing per frame (one reused property block, the stage's fixed item buffer).
     /// </summary>
@@ -60,7 +60,8 @@ namespace ChipArena.UnityConversion
                 meshes[m]=list.ToArray();bones[m]=b.ToArray();
             }
             white=Texture(new[]{1f,1f,1f,1f},1,1,"Deploy white",false);textures[NativeDeployStage.TexWhite]=white;
-            blank=Texture(new[]{.03f,.035f,.05f,1f},1,1,"Deploy blank",false);
+            var back=Resources.Load<TextAsset>(NativeDeployCardCache.Key(NativeDeployArt.Back,true));
+            blank=back!=null?Texture(NativeDeployCardCache.Unpack(back.bytes),NativeDeployArt.TilePixels,NativeDeployArt.TilePixels,"Deploy card back",true):Texture(new[]{.03f,.035f,.05f,1f},1,1,"Deploy blank",false);
             textures[NativeDeployStage.TexGlow]=Texture(NativeDeployArt.GlowTile(),NativeDeployArt.GlowPixels,NativeDeployArt.GlowPixels,"Deploy glow",false);
             textures[NativeDeployStage.TexSpark]=Texture(NativeDeployArt.SparkTile(),NativeDeployArt.SparkPixels,NativeDeployArt.SparkPixels,"Deploy spark",false);
             stampJob=Task.Run(()=>NativeDeployArt.Stack(new[]{NativeDeployArt.StampTile(false),NativeDeployArt.StampTile(true)}));
@@ -90,7 +91,13 @@ namespace ChipArena.UnityConversion
         private static byte B(float v)=>(byte)Mathf.RoundToInt(Mathf.Clamp01(v)*255);
         private Task<float[]> TileJob(string id,bool dials,string theme)
         {
-            string key=(dials?"m|":"i|")+id+"|"+theme;if(!tileJobs.TryGetValue(key,out var job)){job=tileTail.ContinueWith(_=>NativeDeployArt.Tile(id,dials,theme),TaskScheduler.Default);tileTail=job;tileJobs[key]=job;}return job;
+            string key=(dials?"m|":"i|")+id+"|"+theme;if(!tileJobs.TryGetValue(key,out var job))
+            {
+                string bakedKey=NativeDeployCardCache.Key(id,dials,theme);var baked=bakedKey!=null?Resources.Load<TextAsset>(bakedKey):null;
+                // Read Unity's asset on the main thread; decode/copy on the existing bounded worker queue.
+                byte[] pixels=baked?.bytes;
+                job=tileTail.ContinueWith(_=>pixels!=null?NativeDeployCardCache.Unpack(pixels):NativeDeployArt.Tile(id,dials,theme),TaskScheduler.Default);tileTail=job;tileJobs[key]=job;
+            }return job;
         }
         private void Replace(int slot,Texture2D t){var old=textures[slot];textures[slot]=t;if(old!=null&&old!=white)CapturedAnimation.Release(old);}
 
@@ -153,7 +160,7 @@ namespace ChipArena.UnityConversion
                     if(bone==NativeDeployModels.Screen)
                     {
                         mat=it.Blend==NativeDeployStage.Blend.Additive?additive:it.Blend==NativeDeployStage.Blend.Alpha?alpha:strip;
-                        block.SetTexture(MainTexId,textures[it.Texture]??(it.Texture>=NativeDeployStage.TexStrip?blank:white));block.SetVector(TintId,V(it.Screen));block.SetFloat(RepId,it.Rep);block.SetFloat(ScrollId,it.Scroll);block.SetFloat(BlurId,it.Blur);
+                        block.SetTexture(MainTexId,textures[it.Texture]??(it.Texture>=NativeDeployStage.TexStrip?blank:white));block.SetVector(TintId,V(it.Screen));block.SetFloat(RepId,textures[it.Texture]!=null?it.Rep:1);block.SetFloat(ScrollId,textures[it.Texture]!=null?it.Scroll:0);block.SetFloat(BlurId,it.Blur);
                         block.SetFloat(GainId,it.Gain);block.SetFloat(SweepId,it.Sweep);block.SetFloat(ChromaId,it.Chroma);block.SetFloat(HoloId,it.Holo?1:0);block.SetVector(TexelId,new Vector4(1f/NativeDeployStage.MapWidth,1f/NativeDeployStage.MapHeight,0,0));
                     }
                     else if(bone==NativeDeployModels.Glass){mat=glass;block.SetVector(BodyTintId,new Vector4(1,1,1,it.Glass));block.SetVector(SceneTintId,Vector4.one);block.SetVector(AccentTintId,Vector4.one);block.SetVector(GlowTintId,Vector4.one);block.SetFloat(StageLitId,1);}
