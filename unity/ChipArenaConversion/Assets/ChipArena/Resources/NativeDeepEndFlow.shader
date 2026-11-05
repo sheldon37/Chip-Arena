@@ -68,7 +68,7 @@ Shader "ChipArena/NativeDeepEndFlow"
                 else if(kind<6.5)
                 {
                     // A drifting tile: flat, lit from above, a dark edge for its grout.
-                    float e=max(abs(i.a.x),abs(i.a.y));float grout=smoothstep(1.0,0.86,e);float light=0.55+0.45*saturate(n.y);o=fixed4(rgb*(Lit()+0.05)*light*(0.6+0.4*grout),1.0);
+                    float e=max(abs(i.a.x),abs(i.a.y));float grout=smoothstep(1.0,0.86,e);float light=0.55+0.45*saturate(n.y);o=fixed4(rgb*(Lit()+0.05)*light*(0.6+0.4*grout)*share,share);
                 }
                 else if(kind<7.5)
                 {

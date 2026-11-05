@@ -121,7 +121,7 @@ namespace ChipArena.UnityConversion
         {
             eye=look=default;fov=60;if(!NativeDeepEndBossPreview.On||!deepEndDrawnLast)return false;
             var head=deepEndRig.Root-deepEndOrigin;var mid=deepEndRig.Shown.Position[9]-deepEndOrigin;
-            var crown=BossMath.Rotate(deepEndRig.Shown.Rotation[0],new NVector(0,1,0));
+            var crown=deepEndRig.MouthDir;
             if(!NativeDeepEndBossPreview.Camera(NativeDeepEndBossPreview.ShownP,deepEndOrigin,head,mid,crown,out var e,out var l,out fov))return false;
             float sh=NativeDeepEndBossStage.Shown.Shake;if(sh>.002f&&EffectsQuality>=.5f){float k=(float)NativeDeepEndBossStage.ShownClock;e+=new NVector(Mathf.Sin(k*37.1f)+.5f*Mathf.Sin(k*71.3f),Mathf.Sin(k*43.7f+.7f),Mathf.Sin(k*53.3f+1.1f))*(.05f*sh);}
             eye=new Vector3(e.X,e.Y,e.Z);look=new Vector3(l.X,l.Y,l.Z);return true;

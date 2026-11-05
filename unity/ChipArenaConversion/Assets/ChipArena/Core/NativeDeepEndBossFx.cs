@@ -466,7 +466,7 @@ namespace ChipArena.UnityConversion
                 }
                 else{x=(float)Math.Cos(a0)*r0*.75f+(float)Math.Sin(now*.14f+i)*.35f;z=-6.2f+(float)Math.Sin(a0)*3.2f+(float)Math.Cos(now*.11f+i*.7f)*.35f;}
                 if(!NativeDeepEndArena.InPool(x,z)&&s.Tide<0)continue;float y=SurfaceAt(waves,x,z)-.01f+.025f*(float)Math.Sin(now*1.1f+i);float sz=.075f;var q=new Quaternion(0,(float)Math.Sin(a0+now*.2f),0,(float)Math.Cos(a0+now*.2f));
-                var ux=BossMath.Rotate(q,new Vector3(sz,sz*tilt*.25f,0));var uz=BossMath.Rotate(q,new Vector3(0,sz*tilt*.25f,sz));var nrm=Vector3.Normalize(Vector3.Cross(uz,ux));var c=o+new Vector3(x,y,z);Over.Billboard(c,ux,uz,nrm,DeepEndFlow.Solid,1,white*show,1);
+                var ux=BossMath.Rotate(q,new Vector3(sz,sz*tilt*.25f,0));var uz=BossMath.Rotate(q,new Vector3(0,sz*tilt*.25f,sz));var nrm=Vector3.Normalize(Vector3.Cross(uz,ux));var c=o+new Vector3(x,y,z);Over.Billboard(c,ux,uz,nrm,DeepEndFlow.Solid,1,white,show);
             }
             if(whirl>.05f)
             {

@@ -72,7 +72,7 @@ Shader "ChipArena/NativeDeepEndWater"
                 float rs=0.018+0.1*_DeepRipples;float3 n=normalize(float3(r.x*rs-slope.x*1.25,1.0,r.z*rs-slope.y*1.25));
                 float3 v=normalize(_WorldSpaceCameraPos-i.world);float nv=abs(dot(n,v));float fres=0.022+0.978*pow(1.0-nv,5.0);
                 // ---- through the water ----
-                float2 suv=i.grab.xy/i.grab.w;float eye=i.screen.z;float bend=clamp(0.42/max(eye,1.5),0.0,0.05);float2 off=n.xz*bend;
+                float2 suv=i.grab.xy/i.grab.w;float eye=i.screen.z;float bend=clamp(0.42/max(eye,1.5),0.0,0.05);float3 r3=Ripple(pa*0.45+float2(0.006,0.004)*t);float2 off=(r3.xz*(0.03+0.13*_DeepRipples)-slope*0.9)*bend;
                 float sceneEye=_DeepDepthOn>0.5?LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(float4(i.screen.xy+off*i.screen.w,i.screen.w,i.screen.w)))):eye+1.4;
                 float thick=sceneEye-eye;if(thick<0.0){off=float2(0.0,0.0);sceneEye=_DeepDepthOn>0.5?LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture,UNITY_PROJ_COORD(i.screen))):eye+1.4;thick=sceneEye-eye;}
                 thick=max(0.0,thick);float3 seen=tex2D(_DeepGrab,suv+off).rgb;

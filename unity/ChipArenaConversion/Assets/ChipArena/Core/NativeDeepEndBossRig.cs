@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
             Layers(now,v,surface,sp,pos,nrm);
             // ---- the neck: the head's last joints bent toward where the mouth aims ----
             var headDir=SafeDir(pos[0]-pos[3],new Vector3(0,0,1));
-            float lookW=0;Vector3 lookD=headDir;Aim(v,now,surface,pos[0],hasLook,lookAt,ref lookW,ref lookD);
+            float lookW=0;Vector3 lookD=headDir;var backFlat=nrm[2];backFlat.Y=0;Aim(v,now,surface,pos[0],hasLook,lookAt,backFlat,ref lookW,ref lookD);
             float dtl=Math.Max(0,dt);lookWeight.Step(lookW,.32f,dtl);
             if(!lookReady){lookQ.Reset(BossMath.LookRotation(lookD,Vector3.UnitY));lookReady=true;}
             lookQ.Step(BossMath.LookRotation(lookD,Vector3.UnitY),.34f,dtl);var goalDir=BossMath.Rotate(lookQ.Value,new Vector3(0,0,1));
@@ -224,7 +224,7 @@ namespace ChipArena.UnityConversion
             return rest*(1-BossMath.Smooth((age-hit-strike)/Math.Max(.1f,recover)));
         }
         // The mouth's aim, by what plays.
-        private void Aim(in DeepEndBossView v,float now,float surface,Vector3 head,bool hasLook,Vector3 lookAt,ref float weight,ref Vector3 dir)
+        private void Aim(in DeepEndBossView v,float now,float surface,Vector3 head,bool hasLook,Vector3 lookAt,Vector3 backFlat,ref float weight,ref Vector3 dir)
         {
             if(v.Moving(now,out var m,out float age,out float hit))
             {
@@ -241,7 +241,7 @@ namespace ChipArena.UnityConversion
             {
                 float e=now-v.phaseAt;weight=BossMath.Smooth(e/1.2f)*(1-BossMath.Smooth((e-NativeDeepEndBoss.PhaseChangeSeconds+.6f)/.6f));dir=Vector3.Normalize(new Vector3(0,1,.08f));return;
             }
-            if(DeepEndBossView.At(v.diedAt)&&now>=v.diedAt){weight=BossMath.Smooth((now-v.diedAt)/.8f);dir=Vector3.UnitY;return;}
+            if(DeepEndBossView.At(v.diedAt)&&now>=v.diedAt){weight=.86f*BossMath.Smooth((now-v.diedAt)/1.1f);float bl=backFlat.Length();var fwd=bl>.05f?-backFlat/bl:new Vector3(0,0,1);dir=Vector3.Normalize(fwd+new Vector3(0,.18f,0));return;}
             // Above the water with nothing else to do it turns its blind face toward whoever it's after, a little.
             if(hasLook&&head.Y>surface+.8f){var to=lookAt-head;float l=to.Length();if(l>.5f){weight=.38f*BossMath.Clamp01((head.Y-surface-.8f)/1.5f);dir=to/l;}}
         }
