@@ -16,7 +16,7 @@ public static class DeepEndBossChecks
         count=0;
         Check(NativeDeepEndBoss.Archetype=="poolrooms-deep-end","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeDeepEndBoss.Archetype)&&NativeBackroomsBossIntro.Card(NativeDeepEndBoss.Archetype)==NativeDeepEndBoss.Card,"the intro knows the boss");
-        Moves(root);Look(root);Off();Routes();Rig();Frames();Arena();Water();Stage();Intro();Cues(root);Preview();
+        Moves(root);Look(root);Off();Routes();Rig();Frames();Arena();Water();Stage();Intro();Hits();Cues(root);Preview();
         var acts=new System.Text.StringBuilder("deepend preview script:");for(int i=0;i<NativeDeepEndBossPreview.ActCount;i++){var a=NativeDeepEndBossPreview.ActAt(i);acts.Append($" {a.Id}@{a.At:F1}");}acts.Append($" lamps@{NativeDeepEndBossPreview.LampsAt:F1} p2@{NativeDeepEndBossPreview.Phase2At:F1} p3@{NativeDeepEndBossPreview.Phase3At:F1} death@{NativeDeepEndBossPreview.DeathAt:F1} loop@{NativeDeepEndBossPreview.Loop:F1}");Console.WriteLine(acts);
         Console.WriteLine("PASS deepend-boss ("+count+" checks)");
     }
@@ -193,6 +193,23 @@ public static class DeepEndBossChecks
         var down=shots[2];Check(Math.Abs(down.EyeA.X)<1&&Math.Abs(down.EyeA.Z)<1,"over the abyss");Check(Near(down.From,b.DownShot)&&Near(down.To,b.BreakShot),"on its beats");
         var r=NativeDeepEndBossPreview.Route;float sp=NativeDeepEndBossPreview.SpawnAt;r.At(sp+b.Break,out var at,out var vel);Check(Near(at.Y,PoolroomsLayout.WaterY,.02f),"it breaks the surface on the beat");Check(vel.Y>4,"rising");r.At(sp+b.Hold-1.05f,out var top,out var tv);Check(top.Y>4.6f&&top.Y<NativeDeepEndArena.Ceiling-.6f,"it hangs high: "+top.Y);
         for(float t=sp+b.DownShot;t<sp+b.Break;t+=.1f){r.At(t,out var h,out _);Check(NativeDeepEndArena.InAbyss(h.X,h.Z),"in the shaft at "+t);}
+    }
+    // ---- the effects land on the hit ----
+    private static void Hits()
+    {
+        var o=new Vector3(24,0,24);var script=NativeDeepEndBossPreview.Route;var eye=new Vector3(30,5,30);
+        int OverAt(float p,out DeepEndBossView rec)
+        {
+            var rig=new DeepEndBossRig();var fx=new NativeDeepEndBossFx();var w=new DeepEndWaves();w.Place();rec=DeepEndBossView.None;float t=p-.5f;while(t<p){t+=1/30f;NativeDeepEndBossPreview.View(t,ref rec,out _);var st=NativeDeepEndBossStage.Evaluate(rec,t,DeepEndBossBeats.Fallback);rig.Update(t,1/30f,rec,script,o,st.Tide,false,default);w.Step(1/30f,st.Tide>.02f);w.Compose(st);fx.Build(rig,rec,st,w,t,eye,Vector3.UnitX,Vector3.UnitY,1,false,false);}return fx.Over.VertexCount+fx.Vfx.Count;
+        }
+        foreach(var (id,at) in new[]{("jet",NativeDeepEndBossPreview.JetAt),("breach",NativeDeepEndBossPreview.BreachAt),("flop",NativeDeepEndBossPreview.FlopAt)})
+        {
+            float hit=at+NativeDeepEndBoss.Move(id).Anticipation;int before=OverAt(hit-.06f,out var v0),after=OverAt(hit+.12f,out var v1);Check(v1.action==id,id+" plays at its hit");Check(Near(v1.hitAt,hit),id+"'s record carries its hit");Check(after>before,id+"'s effects start on its hit: "+before+" -> "+after);
+        }
+        // Seiche's crest leaves its wall on the hit, and the second crossing comes back.
+        var s=NativeDeepEndBoss.Move("seiche");float sh=NativeDeepEndBossPreview.SeicheAt+s.Anticipation;var se=DeepEndBossView.None;NativeDeepEndBossPreview.View(sh+.6f,ref se,out _);Check(se.action=="seiche"&&Near(se.seicheAt,sh),"the record carries its hit");var st1=NativeDeepEndBossStage.Evaluate(se,sh+.6f,DeepEndBossBeats.Fallback);Check(st1.SeicheHeight>.7f&&Near(st1.SeicheAt,-NativeDeepEndArena.Half+.6f*s.Speed,.01f),"the crest on its way: "+st1.SeicheAt);var st2=NativeDeepEndBossStage.Evaluate(se,sh+5.2f,DeepEndBossBeats.Fallback);Check(st2.SeicheAt<NativeDeepEndArena.Half-1&&st2.SeicheHeight>.5f,"and on its way back: "+st2.SeicheAt);
+        // The Whistle and the Drain's room: the whirlpool turns through the strike and is gone a little after.
+        var dr=DeepEndBossView.None;float dh=NativeDeepEndBossPreview.DrainAt+NativeDeepEndBoss.Move("drain").Anticipation;NativeDeepEndBossPreview.View(dh+1,ref dr,out _);Check(NativeDeepEndBossStage.Evaluate(dr,dh+1,DeepEndBossBeats.Fallback).Whirl>.9f,"the whirlpool turning");
     }
     private static void Cues(string root)
     {
