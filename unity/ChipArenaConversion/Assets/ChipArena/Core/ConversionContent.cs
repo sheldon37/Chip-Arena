@@ -114,7 +114,7 @@ namespace ChipArena.UnityConversion
             s["abilityCooldown"]=Clamp(s["abilityCooldown"],.45,3);s["abilityRadius"]=Clamp(s["abilityRadius"],.5,1.5);s["abilityCost"]=Math.Max(.3,s["abilityCost"]);
             return s;
         }
-        public static List<ContentChip> Eligible(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held)
+        public static List<ContentChip> Eligible(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,string abilityLoadout=null)
         {
             var weapon=data.Weapon(spec);var tags=new HashSet<string>{"all",weapon.@class};if(spec!="ansatsuken")tags.Add("roll");
             if(new[]{"leet","ansatsuken","emperor","siren",NativeBombs.Spec}.Contains(spec))tags.Add(spec);
@@ -124,11 +124,20 @@ namespace ChipArena.UnityConversion
             bool Has(string id)=>held.TryGetValue(id,out int n)&&n>0;
             var blocked=new HashSet<string>(data.chips.Where(c=>Has(c.id)&&c.excludes!=null).SelectMany(c=>c.excludes));
             var excluded=Array.Find(data.incompatibilities,x=>x.spec==spec);
-            return data.chips.Where(c=>c.tags.Any(tags.Contains)&&(!held.TryGetValue(c.id,out int n)||n<c.max)&&!blocked.Contains(c.id)&&!(c.excludes?.Any(Has)??false)&&!(excluded?.ids.Contains(c.id)??false)).ToList();
+            return data.chips.Where(c=>(c.tags.Any(tags.Contains)||NativeAbilityChips.Is(c.id))&&(abilityLoadout==null||NativeAbilityChipRules.Slotted(data,spec,abilityLoadout,c.id))&&(!held.TryGetValue(c.id,out int n)||n<c.max)&&!blocked.Contains(c.id)&&!(c.excludes?.Any(Has)??false)&&!(excluded?.ids.Contains(c.id)??false)).ToList();
         }
-        public static List<string> Offers(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,Func<double> random,int count=6,Func<ContentChip,bool> filter=null,Dictionary<string,double> weights=null,bool exclusives=true)
+        public static List<string> Offers(ConversionContent data,string spec,IReadOnlyDictionary<string,int> held,Func<double> random,int count=6,Func<ContentChip,bool> filter=null,Dictionary<string,double> weights=null,bool exclusives=true,string abilityLoadout=null)
         {
-            var pool=Eligible(data,spec,held);if(filter!=null)pool.RemoveAll(c=>!filter(c));var result=new List<string>();count=Math.Max(1,Math.Min(12,count));
+            var pool=Eligible(data,spec,held,abilityLoadout);if(filter!=null)pool.RemoveAll(c=>!filter(c));var result=new List<string>();count=Math.Max(1,Math.Min(12,count));
+            // Reserve at most one slot, before ordinary picks; no extra RNG draws for legacy callers.
+            var abilityPool=abilityLoadout==null?new List<ContentChip>():pool.Where(c=>NativeAbilityChips.Requires(c.id)!=null&&(weights==null||weights.TryGetValue(c.rarity,out double w)&&w>0)).ToList();
+            if(abilityPool.Count>0&&random()<NativeAbilityChipRules.OfferChance)
+            {
+                var tiers=data.rarities.Where(r=>abilityPool.Any(c=>c.rarity==r.id)).ToArray();
+                double Weight(RarityData r)=>weights!=null?weights[r.id]:r.weight;
+                double roll=Clamp(random(),0,.999999999)*tiers.Sum(Weight);var tier=tiers[tiers.Length-1];foreach(var r in tiers){roll-=Weight(r);if(roll<0){tier=r;break;}}
+                var choices=abilityPool.Where(c=>c.rarity==tier.id).ToArray();var pick=choices[Math.Min(choices.Length-1,(int)(Clamp(random(),0,.999999999)*choices.Length))];result.Add(pick.id);pool.Remove(pick);
+            }
             var odds=exclusives?Array.Find(data.exclusiveOdds,x=>x.spec==spec):null;
             while(pool.Count>0&&result.Count<count)
             {

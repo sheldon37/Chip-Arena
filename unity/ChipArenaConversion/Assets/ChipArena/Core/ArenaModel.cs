@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         // The headwear colour (NativeHatLooks), filled from the seat on host and guests alike: never on the wire per tick.
         [NonSerialized] public string HatColor="";
         // Native authority presentation only; the inherited lab wire codec does not transport these.
-        public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public bool HasTechnique;public NativeTechnique Technique;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
+        public bool HasKernel;public NativeKernelPanic Kernel;public NativeMeleeKit MeleeKit;public NativeTechniqueMark[] TechniqueMarks;public NativeChipGauge[] ChipGauges;public bool HasTechnique;public NativeTechnique Technique;public string SpecialKind;public float SpecialAt=-100,SpecialRelease,SpecialUntil,SpecialLanded=-1;
         public bool SpecialReleased,WeaponAway,DownUsed;public float DownAt=-100,DownUntil,DownLanded=-1,DownPickup,DownRoll=-1,DownRollEnd=-1;public V3 DownDirection;
         public float CastRate=1,AbilityAt=-100,AbilityRelease;public string AbilityId;
         public float BowDrawAt=-1,BowDraw,BowReleaseAt=-100,BowRainAt=-100;public V3 BowRainTarget;public NativeBombKit Bomb;public bool HasBomb;public NativeCyberKit Cyber=new NativeCyberKit();public bool Grounded=true;public int AirJumps;public float AirJumpAt=-100;
@@ -71,7 +71,7 @@ namespace ChipArena.UnityConversion
         public float StunUntil, StaggerImmuneUntil, RegenAt, ShootReady, RespawnAt, FlashUntil;
         internal bool QueuedAttack;
         internal readonly HashSet<int> Hit = new HashSet<int>();
-        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Bomb=Bomb?.ViewCopy();copy.Cyber=Cyber?.ViewCopy();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();copy.Technique=Technique?.ViewCopy();return copy;}
+        public Actor ViewCopy() {var copy=(Actor)MemberwiseClone();copy.Bomb=Bomb?.ViewCopy();copy.Cyber=Cyber?.ViewCopy();copy.Kernel=Kernel?.ViewCopy();copy.MeleeKit=MeleeKit?.ViewCopy();copy.Technique=Technique?.ViewCopy();copy.TechniqueMarks=TechniqueMarks==null?null:(NativeTechniqueMark[])TechniqueMarks.Clone();copy.ChipGauges=ChipGauges==null?null:(NativeChipGauge[])ChipGauges.Clone();return copy;}
         public bool Alive { get { return Hp > 0; } }
         public bool Rolling(float t) { return t >= RollAt && t < RollAt + VisualRollDuration; }
         public bool Invulnerable(float t) { return t >= RollAt + Rules.IframeStart && t < RollAt + Rules.IframeEnd; }
@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
         public WeaponId Weapon;
     }
 
-    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact, Explosion, BlockPulse, Vacuum, Arc, Freeze, Teleport, Critical, Catch, Split, Ricochet, Pong, CeilingHit, HazardHit, BurnTick, PoisonTick, Collapse, Leet, Emperor, Arcade, Siren, PveBuy, PveGib, PvePhase, PveRevive, PveMoney, Install, Field, Summon, Heal, StructureStress, StructureFall, StructureLand, AbilityCast, AbilityHit, Mark, Recast, Absorb, Bounce, Land, FissureStart, Hitscan }
+    public enum EventKind { Hit, Block, Dodge, Shot, Death, Break, ReloadStart, ReloadEnd, Headshot, Impact, Explosion, BlockPulse, Vacuum, Arc, Freeze, Teleport, Critical, Catch, Split, Ricochet, Pong, CeilingHit, HazardHit, BurnTick, PoisonTick, Collapse, Leet, Emperor, Arcade, Siren, PveBuy, PveGib, PvePhase, PveRevive, PveMoney, Install, Field, Summon, Heal, StructureStress, StructureFall, StructureLand, AbilityCast, AbilityHit, Mark, Recast, Absorb, Bounce, Land, FissureStart, Hitscan, ChipProc }
     [Serializable]
     public struct ArenaEvent
     {

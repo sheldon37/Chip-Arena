@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
             var z=ZoneBoss;var m=zoneBossActor;if(z==null||m==null||Pve.Holding)return;
             Pve.Boss.Hp=m.Hp;Pve.Boss.Body.position=m.Body.position+Vector3.up*.9f;
             if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}return;}
-            foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitZoneBoss(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,null,"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
+            foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitZoneBoss(m,Pilots.Find(p=>p.Seat.id==d.Source),ExpansionDamage(Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,false),null,"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
             int phase=NativeZoneBossRules.Phase(z.archetype,m.Hp,m.MaxHp);
             if(phase>z.phase)
             {

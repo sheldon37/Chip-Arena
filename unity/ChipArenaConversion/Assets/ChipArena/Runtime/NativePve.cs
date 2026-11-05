@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private void RollPveOffers(NativePilot p,NativePvePick pick)
         {
             bool rainbow=pick.Tier=="rainbow";var weights=Pve.Content.offerWeights.First(x=>x.id==pick.Tier).weights.ToDictionary(x=>x.name,x=>x.value);if(p.Seat.spec=="leet"&&!rainbow)weights["l44t"]=weights["legendary"];
-            const int count=3;pick.Offers=NativeContentRules.Offers(Content,p.Seat.spec,p.Seat.chips,Pve.EconomyRandom.Next,count,c=>ImplementedChip(c)&&c.rarity!="siren",weights,!rainbow);
+            const int count=3;pick.Offers=NativeContentRules.Offers(Content,p.Seat.spec,p.Seat.chips,Pve.EconomyRandom.Next,count,c=>ImplementedChip(c)&&c.rarity!="siren",weights,!rainbow,p.Seat.bot?"":p.Seat.weaponTechniques??"");
             if(!p.Seat.bot&&!rainbow&&Pve.EconomyRandom.Next()<.3){var available=Pve.Content.moneyChips.Where(c=>!p.Seat.chips.TryGetValue(c.id,out int n)||n<c.max).ToArray();if(available.Length>0){var tiers=Content.rarities.Where(r=>weights.TryGetValue(r.id,out double w)&&w>0&&available.Any(c=>c.rarity==r.id)).Select(r=>new NumberValue{name=r.id,value=weights[r.id]}).ToArray();string tier=tiers.Length>0?NativePveRules.Weighted(tiers,Pve.EconomyRandom.Next):null;var pool=tier!=null?available.Where(c=>c.rarity==tier).ToArray():available;if(pool.Length==0)pool=available;var chosen=pool[Math.Min(pool.Length-1,(int)(Pve.EconomyRandom.Next()*pool.Length))];if(pick.Offers.Count>=count)pick.Offers.RemoveAt(pick.Offers.Count-1);pick.Offers.Add(chosen.id);}}
         }
         public ContentChip PveChip(string id)=>Content.chips.FirstOrDefault(c=>c.id==id)??Pve?.Content.moneyChips.FirstOrDefault(c=>c.id==id);
@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
             Emit(EventKind.Install,p,p.Seat.id,p.Body.position,count+1,chip);p.Seat.chips[chip]=count+1;RefreshLiveStats(p);row.Picks.Remove(row.Open);row.Open=null;if(row.Picks.Count>0)OpenPvePick(p);return true;
         }
         private void RefreshLiveStats(NativePilot p)
-        {float hp=(float)p.Stats["hp"];p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);if(!p.Seat.AuthorityBoss)NativeExpeditionMutators.PilotStats(ActiveMutators,p.Stats,p.Seat.spec);if(p.Hp>0)p.Hp=Math.Min((float)p.Stats["hp"],p.Hp+Math.Max(0,(float)p.Stats["hp"]-hp));p.Mana=Math.Min(p.Mana,(float)p.Stats["maxMana"]);p.Stamina=Math.Min(p.Stamina,(float)p.Stats["maxStamina"]);p.Ammo=Math.Min(p.Ammo,Magazine(p));}
+        {float hp=(float)p.Stats["hp"];p.Stats=NativeContentRules.Stats(Content,p.Seat.spec,p.Seat.chips);p.ExpansionRate=p.ExpansionSpeed=1;if(!p.Seat.AuthorityBoss)NativeExpeditionMutators.PilotStats(ActiveMutators,p.Stats,p.Seat.spec);if(p.Hp>0)p.Hp=Math.Min((float)p.Stats["hp"],p.Hp+Math.Max(0,(float)p.Stats["hp"]-hp));p.Mana=Math.Min(p.Mana,(float)p.Stats["maxMana"]);p.Stamina=Math.Min(p.Stamina,(float)p.Stats["maxStamina"]);p.Ammo=Math.Min(p.Ammo,Magazine(p));}
         private void PveInput(NativePilot p)
         {
             if(Expedition!=null||Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;CollectPvePickups(p);if(p.Input.Interact&&!p.Seat.bot&&p.Hp>0&&row.Open==null)PveInteract(p,row);

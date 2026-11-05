@@ -143,6 +143,12 @@ Native builder fixtures cover every new technique, per-slot routing, refusal, re
 | Darkness | Dread (`dread`) | A .35 s wind-up, then a 6 m, 90 degree cone. Enemies hit stumble away from you for .9 s, unable to attack or steer. Bosses are slowed x.6 instead | 0 | 15 s / 26 mana | The wind-up is your warning: roll, or come from the side |
 | Darkness | Shadow Puppet (`shadow-puppet`) | A puppet where you stand, for 4 s, 30 HP. It copies your left-click toward your aim from where it stands at 40% damage, triggering no chips. Bots may target it | 40% of a shot | 16 s / 28 mana | It stands still and dies quickly |
 
+### First rules batch (Astra, 2026-11-05)
+
+`NativeThirdTechniqueContent.Ready` enables **Gun Spin, Thunderclap and Overload** by live content ID. Gun Spin: .45 s locked twirl, full magazine, +25% rate for 4 s. Thunderclap: .3 s windup, 10 damage / 5 m / .5 s stun and channel cancellation (Sonic Boom: 7 m / .7 s). Overload: .1 s ignition, +25% rate / +15% speed for 4 s, 8 nonlethal self damage; recast under one second avoids the shock. These preserve the proposed cooldown/cost. No other third-set technique has a live row yet; `Third` intentionally remains separate from `All` until all 36 work.
+
+`Actor.TechniqueMarks` supplies the requested marks (`NativeTechniqueMark { Kind, By, At, Until }`, max 6, oldest replaced), with deep copies and frame/death/corpse validation. Null is accepted for legacy records. `TechniqueRefusal` supplies Disarmed for Q/E, including defaults; disarm/hush refuse new presses without cancelling primary fire/draw. NoTarget target queries are in place for the still-gated Challenge, Combust and Soul Siphon. The first three live techniques do not create victim marks. Chip state/event names and the rollout list are in CHIP-EXPANSION.md.
+
 ### Rules contract for the third set (Astra)
 
 Same record and same pattern as the second set: `Core/NativeTechnique.cs`, content rows by id with `slot:"technique"`, the slot's own input and deadline, one active record per actor, recasts through the slot holding it, bots keep their defaults. Move `Third` into `All` when your rules are in, and tell me.
