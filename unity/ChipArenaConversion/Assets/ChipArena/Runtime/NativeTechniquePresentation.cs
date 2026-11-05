@@ -144,7 +144,7 @@ namespace ChipArena.UnityConversion
         private void CrateModel(NativeTechnique k,float time)
         {
             if(!NativeTechniqueFx.CrateAt(k,time,out var m,out float size,out float lid))return;var c=new Vector3(m.X,m.Y,m.Z);float ang=NativeTechniqueFx.CrateAngle(k),hp=Mathf.Clamp01(k.Arm),hx=NativeTechniqueFx.CrateHalfX,hy=NativeTechniqueFx.CrateHalfY,hz=NativeTechniqueFx.CrateHalfZ;
-            var q=Quaternion.LookRotation(new Vector3(Mathf.Sin(ang),0,-Mathf.Cos(ang)),Vector3.up);float wear=Mathf.Lerp(.45f,1,hp);var olive=new Color(.2f,.27f,.14f)*wear;var oliveLid=new Color(.25f,.33f,.17f)*wear;var steel=new Color(.42f,.45f,.5f)*wear;var gold=new Color(.95f,.68f,.12f)*wear;var dark=new Color(.05f,.05f,.06f);
+            var q=Quaternion.LookRotation(new Vector3(Mathf.Sin(ang),0,-Mathf.Cos(ang)),Vector3.up);float wear=Mathf.Lerp(.45f,1,hp);var olive=new Color(.13f,.18f,.09f)*wear;var oliveLid=new Color(.17f,.23f,.11f)*wear;var steel=new Color(.42f,.45f,.5f)*wear;var gold=new Color(.95f,.68f,.12f)*wear;var dark=new Color(.05f,.05f,.06f);
             void Piece(Vector3 at,Vector3 scale,Color tint)=>sourceModels.QueuePiece(WeaponShape.Cube,false,Matrix4x4.TRS(c+q*(at*size),q,scale*size),tint);
             Piece(new Vector3(0,-.02f,0),new Vector3(hx*2-.04f,hy*2-.06f,hz*2-.04f),olive);Piece(new Vector3(0,hy-.03f,0),new Vector3(hx*2-.16f,.03f,hz*2-.16f),dark);
             Piece(new Vector3(0,-.06f,0),new Vector3(hx*2-.015f,.14f,hz*2-.015f),gold);for(int i=-3;i<=3;i++)Piece(new Vector3(i*.18f,-.06f,0),new Vector3(.075f,.145f,hz*2-.005f),dark);
