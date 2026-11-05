@@ -164,13 +164,13 @@ namespace ChipArena.UnityConversion
                     Hoop(s,c,Up,.2f+1.5f*(1-u),.06f,MagicBlastGold,low?10:18,2*u);s.Fire(c,MagicCloakTint,.75f*u,.5f+.7f*u,.05f,sd,floor);continue;
                 }
                 float age=t-blow;if(age>.9f)continue;
-                if(age<.12f){float b=1-age/.12f;s.Line(false,hand,c,MagicBlastGold*(1.8f*b),.05f*b,false);s.Sprite(false,c,Vector3.One*(4.5f*b),2.6f,Hot);}
+                if(age<.12f){float b=1-age/.12f;s.Line(false,hand,c,MagicBlastGold*(1.8f*b),.05f*b,false);s.Sprite(false,c,Vector3.One*(4*b),1.9f,Hot);}
                 Flash(s,c,age,.24f,MagicBlastGold,3.4f,sd);
                 // The ball.
                 int n=Count(14,q,low);float life=.62f,uf=Clamp01(age/life);if(age<life)for(int j=0;j<n;j++){var d=RandomDir(sd,j);var at=c+d*(1.75f*OutCubic(age/.3f)*(.4f+.6f*R(sd,j+40)));if(at.Y<floor+.1f)at.Y=floor+.1f;s.Fire(at,new Vector3(1,.5f-.2f*uf,.1f),(1-uf*uf)*.95f,(.75f+.85f*uf)*(.8f+.5f*R(sd,j+41)),.03f+.8f*uf,sd+j,floor);}
                 // The spikes.
                 if(age<.2f){float b=1-age/.2f;int m=low?4:8;for(int j=0;j<m;j++){var d=RandomDir(sd,j+70);s.Tongue(false,c+d*.3f,c+d*(2.5f*OutCubic(age/.1f)),FlameCore*(2*b),.3f*b+.04f);}}
-                if(age<.42f){float u=age/.42f;Ring(s,p+Up*.05f,2*OutCubic(age/.18f),.36f*(1-u)+.06f,MagicBlastGold*(2.4f*(1-u)),low?14:26);}
+                if(age<.42f){float u=age/.42f;Ring(s,p+Up*.05f,2*OutCubic(age/.18f),.36f*(1-u)+.06f,MagicBlastGold*(1.7f*(1-u)),low?14:26);}
                 Sparks(s,c,age,.75f,Count(30,q,low),9,FlameCore,sd+3,8,.028f,Up*.4f);
                 if(!low&&age>.12f){float u=(age-.12f)/.78f;int m=Count(8,q,low);for(int j=0;j<m;j++){var d=RandomDir(sd,j+90);s.Smoke(c+d*(1.1f+.5f*u)+Up*(.9f*u),new Vector3(.11f,.1f,.09f),.5f*(1-u),.8f+.8f*u,.25f+.6f*u,sd+j+90,floor);}}
             }
@@ -203,11 +203,12 @@ namespace ChipArena.UnityConversion
             {
                 float since=t-k.HitAt,left=popAt-t,g=Smooth(since/.12f)*(1+.16f*(float)Math.Exp(-since*9)*(float)Math.Sin(since*24)),shiver=left<.35f?1+.05f*(float)Math.Sin(t*70)*(1-left/.35f):1,rad=Rad*g*shiver*(1+.025f*(float)Math.Sin(t*6));
                 if(since<.3f){Flash(s,c,since,.2f,MagicBubbleLit,1.2f,seed+2);Sparks(s,c,since,.3f,Count(14,q,low),4,MagicBubbleLit,seed+3,8,.02f);}
-                s.Glow(c,new Vector3(.24f,.62f,.95f)*.34f,.2f,rad*1.2f,Core,0,seed+4);s.Glow(c,MagicBubbleDeep*.2f,0,rad*1.15f,Core,0,seed+5);
-                s.Sprite(false,c,MagicBubbleLit*(1.5f+.5f*(left<.35f?1:0)),rad,RingSprite);s.Sprite(false,c,MagicBubbleLit*.7f,rad*1.02f,RingSprite);
-                int seg=low?12:24;for(int j=0;j<3;j++){float lat=(j-1)*.55f+.1f*(float)Math.Sin(t*2+j);Hoop(s,c+Up*(rad*lat),Up,rad*(float)Math.Sqrt(Math.Max(.02f,1-lat*lat)),.025f,MagicBubbleLit,seg,.42f);}
-                if(!low){float turn=t*.9f;Hoop(s,c,new Vector3((float)Math.Cos(turn),0,(float)Math.Sin(turn)),rad*.98f,.022f,MagicBubbleLit,seg,.3f);}
-                var side2=new Vector3(.71f,0,-.71f);s.Sprite(false,c+Up*(rad*.58f)-side2*(rad*.36f),Vector3.One*2.4f,.17f,Sparkle);s.Sprite(false,c-Up*(rad*.5f)+side2*(rad*.44f),MagicBubbleLit*1.3f,.09f,Hot);
+                // The shell: a soft body with a bright edge, a crisp line on it, and water slopping in the bottom of the bowl.
+                float warn=left<.35f?1:0;s.Glow(c,MagicBubbleDeep*(.85f+.3f*warn),0,rad*2.05f,RingGlow,.12f,seed+4);s.Sprite(false,c,MagicBubbleLit*(1.9f+warn),rad,RingSprite);s.Sprite(false,c,MagicBubbleLit*.9f,rad*.965f,RingSprite);
+                int slop=Count(14,q,low);for(int i=0;i<slop;i++){float ang=MagicTau*i/slop+t*.5f,lat=-.55f-.55f*R(seed,i+150)+.05f*(float)Math.Sin(t*3+i);var n0=new Vector3((float)Math.Cos(ang)*(float)Math.Cos(lat),(float)Math.Sin(lat),(float)Math.Sin(ang)*(float)Math.Cos(lat));s.Water(c+n0*(rad*.93f),MagicBubbleLit,MagicShade,.62f,.5f+.2f*R(seed,i+151),Up*.02f,.12f,seed+i+150,none);}
+                int seg=low?12:24;Hoop(s,c+Up*(rad*.08f*(float)Math.Sin(t*2)),Up,rad*.98f,.16f,MagicBubbleLit,seg,.42f);
+                if(!low){float turn=t*.9f;Hoop(s,c,new Vector3((float)Math.Cos(turn),0,(float)Math.Sin(turn)),rad*.97f,.11f,MagicBubbleLit,seg,.3f);}
+                var side2=new Vector3(.71f,0,-.71f);s.Sprite(false,c+Up*(rad*.58f)-side2*(rad*.36f),Vector3.One*2.4f,.24f,Sparkle);s.Sprite(false,c+Up*(rad*.66f)-side2*(rad*.16f),Vector3.One*1.3f,.09f,Hot);s.Sprite(false,c-Up*(rad*.5f)+side2*(rad*.48f),MagicBubbleLit*1.4f,.11f,Hot);
                 int n=Count(12,q,low);for(int i=0;i<n;i++){float ph=(t*.72f+R(seed,i+30))%1,ang=MagicTau*R(seed,i+31)+ph,rr=rad*.72f*(float)Math.Sqrt(R(seed,i+32));var p=c+new Vector3((float)Math.Cos(ang)*rr,rad*.8f*(ph*2-1),(float)Math.Sin(ang)*rr);s.Sprite(false,p,MagicBubbleLit*(1.3f*(float)Math.Sin(3.14159f*ph)),.05f+.06f*R(seed,i+33),RingSprite);}
                 int d=Count(10,q,low);for(int i=0;i<d;i++){float ph=(t*.55f+R(seed,i+50))%1,ang=MagicTau*R(seed,i+51),lat=1.45f-2.9f*ph;var n0=new Vector3((float)Math.Cos(ang)*(float)Math.Cos(lat),(float)Math.Sin(lat),(float)Math.Sin(ang)*(float)Math.Cos(lat));s.Drop(c+n0*rad,-Up*.1f,MagicBubbleLit*1.3f,.8f*(float)Math.Sin(3.14159f*ph),.035f,ph,seed+i);}
                 return;
@@ -221,34 +222,36 @@ namespace ChipArena.UnityConversion
         }
 
         // ---- Water: Flash Freeze ----------------------------------------------------------------------------------------
-        // A great snowflake etched across the floor in the instant of the stamp: six arms with their barbs running out to the rim, a pale frost between them, a crown of ice standing all round the edge so its
-        // reach is plain, glints and a low cold breath. Near its end it dulls and melts down; the last of it cracks up in flying shards.
+        // A great snowflake etched across the floor in the instant of the stamp: six arms with their barbs running out to the rim, a pale tint and low fog between them, crystals standing on it and a crown of ice
+        // all round the edge so its reach is plain, glints and a cold breath. Near its end it dulls and melts down; the last of it cracks up in flying shards.
         private static void FlashFreeze(ITechniqueFxSink s,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var c=N(k.Point);float floor=c.Y-.05f;
+            var c=N(k.Point);
             if(t<k.Release){float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));Ring(s,c+Up*.05f,1.5f*(1-u)+.2f,.08f,MagicFrost,low?10:18,1.5f*u);int n=low?5:10;for(int i=0;i<n;i++){float ang=MagicTau*i/n+u;var p=c+new Vector3((float)Math.Cos(ang),.04f,(float)Math.Sin(ang))*(1.8f*(1-u));s.Glow(p+Up*.1f,MagicFrost*(1.6f*u),0,.1f,Core,u,seed+i);}return;}
             float age=t-k.Release,life=k.Until-k.Release;
             float front=OutCubic(age/.28f),rim=FreezeRadius*front,melt=1-Smooth((age-(life-.8f))/.8f);
             if(age<life)
             {
-                // The frost between the arms, blended, so the floor pales rather than burns.
-                int blobs=Count(48,q,low);for(int i=0;i<blobs;i++){float ang=MagicTau*R(seed,i+1),rad=FreezeRadius*(float)Math.Sqrt(R(seed,i+2));float g=Clamp01((rim-rad)/.9f);if(g<=0)continue;s.Smoke(c+new Vector3((float)Math.Cos(ang)*rad,.05f,(float)Math.Sin(ang)*rad),MagicIceBody,.4f*g*melt,(1.45f+.7f*R(seed,i+3))*(.7f+.3f*g),.2f,seed+i,floor);}
-                int seg=low?22:44;Ring(s,c+Up*.03f,rim*.5f,rim,MagicIce*(.13f*melt),seg);Ring(s,c+Up*.06f,rim,.22f,MagicIce*(1.2f*melt),seg);
-                // The snowflake: bright as it runs, then settled.
-                float glow=(1+1.6f*(1-Smooth(age/.5f)))*melt,turn=R(seed,9)*1.05f;var lift=Up*.07f;
+                // The sheet: a pale tint in three overlapping rings so it fills evenly, and low cold fog lying on it.
+                int seg=low?22:44;float tint=.2f*melt;Ring(s,c+Up*.03f,rim*.22f,rim*.44f,MagicIce*tint,seg);Ring(s,c+Up*.03f,rim*.56f,rim*.44f,MagicIce*tint,seg);Ring(s,c+Up*.03f,rim*.84f,rim*.4f,MagicIce*tint,seg);Ring(s,c+Up*.06f,rim,.34f,MagicIce*(.6f*melt),seg);
+                int fog=Count(26,q,low);for(int i=0;i<fog;i++){float ang=MagicTau*R(seed,i+1)+t*.06f*(R(seed,i+4)-.5f),rad=FreezeRadius*(float)Math.Sqrt(R(seed,i+2));float g=Clamp01((rim-rad)/.9f);if(g<=0)continue;s.Glow(c+new Vector3((float)Math.Cos(ang)*rad,.14f,(float)Math.Sin(ang)*rad),MagicIceBody*.8f,.2f*g*melt,1.7f+.9f*R(seed,i+3),Mote,0,seed+i);}
+                // The snowflake etched in the floor: bright as it runs, then settled. Soft strips, since a hard line this long goes across the whole screen from a low camera.
+                float glow=(1+1.4f*(1-Smooth(age/.5f)))*melt,turn=R(seed,9)*1.05f;var lift=Up*.07f;
                 for(int j=0;j<6;j++)
                 {
-                    float ang=turn+j*MagicTau/6;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var sd=RightOf(d);s.Line(false,c+lift,c+d*(rim*.97f)+lift,MagicFrost*(1.2f*glow),.075f,true);s.Line(false,c+lift,c+d*(rim*.92f)+lift,MagicIce*(.55f*glow),.2f,false);
-                    int barbs=low?2:4;for(int b=0;b<barbs;b++){float x=.26f+.62f*b/Math.Max(1,barbs-1),at=FreezeRadius*x;if(at>rim)break;float len=FreezeRadius*(.26f-.13f*x)*Clamp01((rim-at)/1.2f);var o=c+d*at+lift;for(int e=-1;e<=1;e+=2)s.Line(false,o,o+(d*.5f+sd*(e*.866f))*len,MagicFrost*(1.05f*glow),.05f,true);}
+                    float ang=turn+j*MagicTau/6;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var sd=RightOf(d);Strip(s,c+lift,c+d*(rim*.97f)+lift,.09f,MagicIce,.85f*glow,.45f*glow);
+                    int barbs=low?2:4;for(int b=0;b<barbs;b++){float x=.26f+.62f*b/Math.Max(1,barbs-1),at=FreezeRadius*x;if(at>rim)break;float len=FreezeRadius*(.26f-.13f*x)*Clamp01((rim-at)/1.2f);var o=c+d*at+lift;for(int e=-1;e<=1;e+=2)Strip(s,o,o+(d*.5f+sd*(e*.866f))*len,.06f,MagicIce,.75f*glow,.3f*glow);}
                 }
-                // The inner hexagon, and hairlines between the arms.
-                float hex=FreezeRadius*.3f;if(rim>hex)for(int j=0;j<6;j++){float a0=turn+j*MagicTau/6,a1=turn+(j+1)*MagicTau/6;s.Line(false,c+new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0))*hex+lift,c+new Vector3((float)Math.Cos(a1),0,(float)Math.Sin(a1))*hex+lift,MagicFrost*(.8f*glow),.04f,false);}
-                if(!low){int n=Count(22,q,low);for(int i=0;i<n;i++){float ang=MagicTau*R(seed,i+100),rad=FreezeRadius*(.25f+.72f*(float)Math.Sqrt(R(seed,i+101)));if(rad>rim)continue;float len=.5f+.9f*R(seed,i+102),turn2=ang+1.6f*(R(seed,i+103)-.5f)+.8f;var o=c+new Vector3((float)Math.Cos(ang)*rad,.065f,(float)Math.Sin(ang)*rad);s.Line(false,o,o+new Vector3((float)Math.Cos(turn2),0,(float)Math.Sin(turn2))*len,MagicIce*(.75f*melt),.026f,true);}}
-                // The crown of ice round the rim, shooting up behind the front and melting at the end.
-                int spikes=Count(46,q,low);for(int i=0;i<spikes;i++){float ang=MagicTau*(i+.6f*R(seed,i+150))/spikes;float grow=OutCubic((age-.22f-.14f*R(seed,i+151))/.12f);if(grow<=0)continue;float h=(.28f+.62f*R(seed,i+152))*grow*melt;var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var b=c+d*(FreezeRadius*(.97f+.05f*R(seed,i+153)));s.Line(false,b,b+Up*h+d*(.08f+.16f*R(seed,i+154)),MagicFrost*(1.5f*melt),.09f+.08f*R(seed,i+155),true);}
-                // Glints, and the cold rising off it.
-                int gl=Count(26,q,low);for(int i=0;i<gl;i++){float ang=MagicTau*R(seed,i+200),rad=FreezeRadius*(float)Math.Sqrt(R(seed,i+201));if(rad>rim)continue;float tw=(float)Math.Pow(Math.Abs(Math.Sin(t*(1.5f+R(seed,i+202))+i)),10);s.Sprite(false,c+new Vector3((float)Math.Cos(ang)*rad,.09f,(float)Math.Sin(ang)*rad),Vector3.One*(2.6f*tw*melt),.2f+.14f*R(seed,i+203),Sparkle);}
-                if(!low){int n=Count(10,q,low);for(int i=0;i<n;i++){float ph=(t*.3f+R(seed,i+240))%1,ang=MagicTau*R(seed,i+241),rad=FreezeRadius*.95f*(float)Math.Sqrt(R(seed,i+242));if(rad>rim)continue;s.Smoke(c+new Vector3((float)Math.Cos(ang)*rad,.15f+.8f*ph,(float)Math.Sin(ang)*rad),MagicFrost,.16f*(float)Math.Sin(3.14159f*ph)*melt,.9f+.6f*ph,.3f+.4f*ph,seed+i+240,floor);}}
+                // The inner hexagon, and fine cracks between the arms.
+                float hex=FreezeRadius*.3f;if(rim>hex)for(int j=0;j<6;j++){float a0=turn+j*MagicTau/6,a1=turn+(j+1)*MagicTau/6;Strip(s,c+new Vector3((float)Math.Cos(a0),0,(float)Math.Sin(a0))*hex+lift,c+new Vector3((float)Math.Cos(a1),0,(float)Math.Sin(a1))*hex+lift,.06f,MagicIce,.7f*glow,.7f*glow);}
+                if(!low){int n=Count(22,q,low);for(int i=0;i<n;i++){float ang=MagicTau*R(seed,i+100),rad=FreezeRadius*(.25f+.72f*(float)Math.Sqrt(R(seed,i+101)));if(rad>rim)continue;float len=.5f+.9f*R(seed,i+102),turn2=ang+1.6f*(R(seed,i+103)-.5f)+.8f;var o=c+new Vector3((float)Math.Cos(ang)*rad,.065f,(float)Math.Sin(ang)*rad);Strip(s,o,o+new Vector3((float)Math.Cos(turn2),0,(float)Math.Sin(turn2))*len,.03f,MagicIce,.6f*melt,.2f*melt);}}
+                // The crown of ice round the rim, shooting up behind the front and melting at the end: what stands up reads from any camera.
+                int spikes=Count(46,q,low);for(int i=0;i<spikes;i++){float ang=MagicTau*(i+.6f*R(seed,i+150))/spikes;float grow=OutCubic((age-.22f-.14f*R(seed,i+151))/.12f);if(grow<=0)continue;float h=(.38f+.95f*R(seed,i+152))*grow*melt,w=.16f+.14f*R(seed,i+155);var d=new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));var b=c+d*(FreezeRadius*(.97f+.05f*R(seed,i+153)));var tip=b+Up*h+d*(.08f+.2f*R(seed,i+154));s.Line(false,b,tip,MagicIce*(.95f*melt),w,true);if(!low&&i%2==0)s.Line(false,b,b+(tip-b)*.74f,MagicFrost*(1.3f*melt),w*.36f,true);}
+                // Smaller crystals standing on the sheet, behind the front.
+                int stubs=Count(26,q,low);for(int i=0;i<stubs;i++){float ang=MagicTau*R(seed,i+170),rad=FreezeRadius*(.16f+.78f*(float)Math.Sqrt(R(seed,i+171)));float g=Clamp01((rim-rad)/.5f);if(g<=0)continue;var b=c+new Vector3((float)Math.Cos(ang)*rad,.03f,(float)Math.Sin(ang)*rad);float h=(.14f+.3f*R(seed,i+172))*g*melt;s.Line(false,b,b+Up*h+new Vector3(R(seed,i+173)-.5f,0,R(seed,i+174)-.5f)*(.3f*h),MagicIce*(.9f*melt),.08f+.07f*R(seed,i+175),true);}
+                // Glints, and the cold lifting off it.
+                int gl=Count(26,q,low);for(int i=0;i<gl;i++){float ang=MagicTau*R(seed,i+200),rad=FreezeRadius*(float)Math.Sqrt(R(seed,i+201));if(rad>rim)continue;float tw=(float)Math.Pow(Math.Abs(Math.Sin(t*(1.5f+R(seed,i+202))+i)),10);s.Sprite(false,c+new Vector3((float)Math.Cos(ang)*rad,.1f,(float)Math.Sin(ang)*rad),Vector3.One*(2.2f*tw*melt),.12f+.1f*R(seed,i+203),Sparkle);}
+                if(!low){int n=Count(12,q,low);for(int i=0;i<n;i++){float ph=(t*.3f+R(seed,i+240))%1,ang=MagicTau*R(seed,i+241),rad=FreezeRadius*.95f*(float)Math.Sqrt(R(seed,i+242));if(rad>rim)continue;s.Glow(c+new Vector3((float)Math.Cos(ang)*rad,.2f+.9f*ph,(float)Math.Sin(ang)*rad),MagicFrost*.7f,.14f*(float)Math.Sin(3.14159f*ph)*melt,.9f+.7f*ph,Mote,ph,seed+i+240);}}
             }
             // The stamp itself: a flash, the front running out white, shards kicked up.
             Flash(s,c+Up*.3f,age,.2f,MagicIce,2.6f,seed+4);if(age<.28f)Ring(s,c+Up*.08f,rim,.4f,MagicFrost,low?22:44,2.4f*(1-age/.28f));Sparks(s,c+Up*.2f,age,.5f,Count(24,q,low),6,MagicFrost,seed+5,9,.024f,Up*.6f);
