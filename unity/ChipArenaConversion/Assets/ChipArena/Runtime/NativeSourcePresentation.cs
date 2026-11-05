@@ -91,6 +91,7 @@ namespace ChipArena.UnityConversion
             // NativePoolroomsPresentation.cs).
             BackroomsWorld(arena);
             PoolroomsWorld(arena);
+            BackroomsBossScenery(arena);
             IronworksScenery(arena);
             IronworksBossScenery(arena);
             NewStageScenery(arena);

@@ -16,6 +16,7 @@ namespace ChipArena.UnityConversion
         private void StationCues(NativeArena arena,bool menu)
         {
             StationBossCues(arena,menu);
+            BackroomsBossCues(arena,menu);
             var v=NativeStationLive.Shown;if(menu||arena==null||!NativeExpeditionStation.Active(arena.MapId)||v==null){stationTime=double.NaN;return;}
             double t=NativeStationLive.ShownClock;
             if(!double.IsNaN(stationTime)&&t>stationTime)

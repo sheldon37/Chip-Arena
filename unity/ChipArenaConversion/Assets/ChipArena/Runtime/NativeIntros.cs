@@ -8,6 +8,7 @@ namespace ChipArena.UnityConversion
         private readonly ExpeditionBossModel zoneArrivalBanner=new ExpeditionBossModel();
         private void ZoneBossArrivalHud(float width,float height)
         {
+            if(presentation!=null&&presentation.BackroomsBossCardNow(arena,out var backroomsCard,out float backroomsAge)){if(backroomsCard!=null)BackroomsBossCard(backroomsCard,backroomsAge,prefs.reducedEffects);return;}
             var kind=arena?.ZoneBoss?.archetype;if(kind==null)return;
             zoneArrivalBanner.Name=NativeZoneBossNames.Name(kind);
             zoneArrivalBanner.Area=kind==NativeZoneBossRules.Station?"BOSS ARRIVAL · CENTRAL STATION":"BOSS ARRIVAL · CITY IRONWORKS";

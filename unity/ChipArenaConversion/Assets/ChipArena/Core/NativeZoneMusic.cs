@@ -11,9 +11,12 @@ namespace ChipArena.UnityConversion
     public static class NativeZoneMusic
     {
         public const string SirenSong="music/black-siren-protocol",StationBoss="music/central-station-boss",IronworksBoss="music/city-ironworks-boss";
+        /// <summary>The Backrooms' bosses each get their own boss song (owner 2026-11-05: "different music from the stage"): the owner's files, at
+        /// these names. Until each is installed its boss plays the Siren's song, as the zone bosses did, whose drop lands on the same hold.</summary>
+        public const string Level0Boss="music/level0-boss",PoolroomsBoss="music/poolrooms-boss";
         /// <summary>The zone boss track named for a map (null: the map has none and the Siren's song plays). City Ironworks
         /// answers to the live id and the design draft's name.</summary>
-        public static string ZoneBoss(string mapId)=>mapId=="expedition-transit"?StationBoss:mapId=="expedition-foundry"||mapId=="expedition-ironworks"?IronworksBoss:null;
+        public static string ZoneBoss(string mapId)=>mapId=="expedition-transit"?StationBoss:mapId=="expedition-foundry"||mapId=="expedition-ironworks"?IronworksBoss:mapId==NativeBackroomsGenerator.InstanceMap?Level0Boss:mapId==NativePoolroomsGenerator.InstanceMap?PoolroomsBoss:null;
         /// <summary>The boss track this map plays: its zone track when `installed` finds the file, else the Siren's song.</summary>
         public static string BossTrack(string mapId,Func<string,bool> installed){var zone=ZoneBoss(mapId);return zone!=null&&installed!=null&&installed(zone)?zone:SirenSong;}
         /// <summary>Where a zone boss track plays at boss-song time `songTime` (s): a plain loop of the clip, so every peer hears the
