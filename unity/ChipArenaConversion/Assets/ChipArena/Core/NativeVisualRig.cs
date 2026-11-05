@@ -794,7 +794,7 @@ namespace ChipArena.UnityConversion
             lift.Y+=s.Raise; return lift;
         }
         // The share of each planted leg's reach the stance's rise leaves it (about 16 degrees of knee), and the rise's ease a pose.
-        public const float KneeRoom=.99f, RaiseStep=.006f;
+        public const float KneeRoom=.99f, RaiseStep=.006f, OwnFall=.75f;
         // State.Stand: the pelvis raised toward Stand while the feet are planted, never past what a planted leg reaches with
         // Room to spare (a foot easing down holds it by its plant weight, so nothing pops); with nothing planted (a dive, a fall, a
         // crawl) it eases back down, and between two planted steps (a run's flight) it holds. It eases up by RaiseStep a pose and
@@ -820,7 +820,9 @@ namespace ChipArena.UnityConversion
                 }
             if(want>0&&!stood&&s.HasLast) want=Math.Min(want,s.Raise);
             float raise=s.HasLast?s.Raise+CapturedClip.Clamp(want-s.Raise,-RaiseStep,RaiseStep):want;
-            if(plantFeet) raise=Math.Min(raise,want);
+            // (A zombie on a take's own stride settles onto a landing foot at OwnFall rather than dropping in a pose as it comes within reach: the foot
+            // follows onto the leg's reach meanwhile, its ball meeting the floor as the hips come down. NativeHordeLoco.Legs.)
+            if(plantFeet) raise=s.Stride>1&&s.HasLast&&raise>want?Math.Max(want,s.Raise-OwnFall*CapturedClip.Clamp(s.Dt,1e-4f,.1f)):Math.Min(raise,want);
             if(raise==s.Raise) return;
             s.Raise=raise; Positions(s,pose);
         }

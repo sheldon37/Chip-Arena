@@ -9,6 +9,14 @@ Owner request: "I think I want to change the zombie animations for their movemen
 
 Details: `docs/ZOMBIE-LOCOMOTION.md`. Checked by `Tests/ZombieLocoChecks.cs` (`--zombie-loco`). The Unity Editor and Windows play were not run.
 
+# Zombies on their takes' own stride — 2026-11-04
+
+On the model's legs every loop take now plays its own feet, foot timing, hips, trunk and arms; past its own speed, its cadence and stride share the difference. The body turns no faster than its steps carry it. DEV panel, Previews, Zombie animation compare shows a take as converted beside the game's gait.
+
+- **Impacts.** Presentation only: no change to hit timing, hitboxes, damage, cooldowns, movement or networking. The heading the body shows turns more slowly unless winding up a blow.
+
+Details: `docs/ZOMBIE-LOCOMOTION.md`, "The takes as captured". Checked by `Tests/ZombieStageChecks.cs` (`--zombie-source`, `--zombie-stages`).
+
 # Hulk zombie and the spitter's spit — 2026-10-13
 
 The Hulk (content-gated) reuses the brute's zombie takes on the shared rig at 1.8x. Its gait runs in rig metres and is scaled back:

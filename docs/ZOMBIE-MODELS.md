@@ -711,6 +711,10 @@ across the four kinds and the Hulk, Ward Zero's staff up close, the garments in 
 the pilots' turnarounds and helmet close-ups. Not seen yet: the areas' own maps and lighting, the garments on a female and a heavy
 body in motion (their shapes are carried, not reviewed), a crowd's cost with cloth on, a Windows build.
 
+## 4o. Every take on its own stride (2026-11-04, `claude/zombie-source-motion`)
+
+4m's sprint rule now covers every loop take on the model's legs: the capture's own feet, timing, hips, trunk and arms, the speed gap shared between cadence and stride. The Stand's crouch cancel and 8 cm lift are gone, so 4b's standing out of the crouch no longer applies to these takes; the Hulk keeps it. Root causes, measurements, what was kept and removed, the turns and the DEV comparison mode: `docs/ZOMBIE-LOCOMOTION.md`, "The takes as captured".
+
 ## 4m. The run: the pack's own stride, not a lunge (2026-11-03, `claude/zombie-run-pace`)
 
 Owner: "they are still doing awkward lunges when running. The animation pack doesn't look like that at all." The takes never

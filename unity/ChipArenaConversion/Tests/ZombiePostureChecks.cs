@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         // ground for their own stance now (Core/NativeZombieMotion.Duty), not the fifth of a cycle the marks gave them. A sprint
         // (from SprintsFrom m/s: the runner's 4.6) on the stride planned for the model's legs (NativeHordeGait.Legs: steps of
         // 1.5 m) loads it deeper still, as a sprinter's does (40 to 50 degrees at mid-stance).
-        private const float RunsFrom=2.2f,RunKnee=42,SprintsFrom=4f,SprintKnee=48;
+        private const float OwnKneeOver=16,OwnSpreadOver=8;
         private static readonly int[] Kinds={NativeHordeKinds.Shambler,NativeHordeKinds.Runner,NativeHordeKinds.Spitter,NativeHordeKinds.Brute,NativeHordeKinds.Hulk};
 
         private sealed class Drive
@@ -56,7 +56,7 @@ namespace ChipArena.UnityConversion
                 var st=NativeHordeKinds.ProposedRow(kind);float sc=NativeHordeKinds.Scale[NativeHordeKinds.Index(kind)];
                 foreach(var (gait,speed) in new[]{("rest",0f),("walk",st.walk/sc),("run",st.run/sc)})
                 {
-                    var before=new Stats();var after=new Stats();
+                    var before=new Stats();var after=new Stats();float ownKnee=0,ownSpread=float.MinValue;
                     for(int look=0;look<2;look++)
                     {
                         // (Before: the rig's gait bound as a pilot's. After: the gait as the runtime runs it for an add drawn on the model,
@@ -75,18 +75,21 @@ namespace ChipArena.UnityConversion
                             if(i==200)foreach(int j in new[]{CapturedRig.Chest,CapturedRig.Neck,CapturedRig.Head})
                                 Check(Angle(Quaternion.Inverse(pm.WorldRotation[j])*fit.WorldRotation[j])<.05f,NativeHordeKinds.Ids[kind]+" "+gait+": the fit keeps "+CapturedRig.Bones[j].Name+"'s world turn");
                         }
+                        if(gait!="rest"&&kind!=NativeHordeKinds.Hulk){int take=dm.G.RunNow>.5f?dm.G.RunClip:dm.G.WalkClip;ownKnee=Math.Max(ownKnee,ZombieStageChecks.OwnPlantedKnee(rig,take));ownSpread=Math.Max(ownSpread,ZombieStageChecks.OwnSpread(rig,take));}
                     }
                     string name=NativeHordeKinds.Ids[kind]+" "+gait;
                     lines.Add($"{name,-14} lumbar share {before.Share:0.00} -> {after.Share:0.00}; knee {Mean(before.Knee),4:0}deg -> {Mean(after.Knee),4:0}deg (planted {Mean(before.Stance),3:0} -> {Mean(after.Stance),3:0}); hips behind the feet {Mean(before.Back):0.000} -> {Mean(after.Back):0.000} m; arm out {Mean(before.Spread),4:0.0}deg -> {Mean(after.Spread),4:0.0}deg; planted ankle off its mark p95 {P95(before.Foot)*100:0.0} -> {P95(after.Foot)*100:0.0} cm; hips' speed p95 {P95(before.Rise):0.00} -> {P95(after.Rise):0.00} m/s; head from the axis max {before.Head.Max():0.00} -> {after.Head.Max():0.00} (gait {before.GameHead.Max():0.00})");Console.WriteLine("  "+lines[lines.Count-1]);
                     float bend=Mean(after.Lumbar)+Mean(after.Upper);
                     if(bend>4){Check(after.Share<=.5f&&after.Share<before.Share,name+": the trunk bends up the back, not at the belt (lumbar share "+after.Share.ToString("0.00")+", was "+before.Share.ToString("0.00")+")");worstShare=Math.Max(worstShare,after.Share);}
-                    if(gait!="rest"){float k=Mean(after.Stance);Check(k<=(kind==NativeHordeKinds.Hulk?45:speed*sc>=SprintsFrom?SprintKnee:speed*sc>=RunsFrom?RunKnee:38)&&k<Mean(before.Stance),name+": strides on its legs, the planted knee straight as a person's (mean "+k.ToString("0")+" deg, was "+Mean(before.Stance).ToString("0")+")");worstStride=Math.Max(worstStride,k);}
+                    // (On the model's own stride the planted knee is the capture's own, measured through its contact stretches, no deeper than OwnKneeOver past it: owner 2026-11-04, "preserve the original animation pack's natural movement". The Hulk keeps its own heavy stride.)
+                    if(gait!="rest"){float k=Mean(after.Stance);float own=kind==NativeHordeKinds.Hulk?45:ownKnee+OwnKneeOver;Check(k<=own&&k<Mean(before.Stance),name+": strides on its legs, the planted knee as the capture's (mean "+k.ToString("0")+" deg, at most "+own.ToString("0")+", was "+Mean(before.Stance).ToString("0")+")");worstStride=Math.Max(worstStride,k);}
                     if(gait=="rest"){Check(Mean(after.Knee)<=(kind==NativeHordeKinds.Hulk?34:24)&&Mean(after.Knee)<Mean(before.Knee),name+": stands on its legs, knees soft (mean "+Mean(after.Knee).ToString("0")+" deg, was "+Mean(before.Knee).ToString("0")+")");worstIdleKnee=Math.Max(worstIdleKnee,Mean(after.Knee));
                         Check(Mean(after.Back)<=.12f,name+": the hips at most 12 cm behind the feet ("+Mean(after.Back).ToString("0.000")+")");worstBack=Math.Max(worstBack,Mean(after.Back));}
                     Check(P95(after.Foot)<=.01f,name+": the planted ankles stay on their marks (p95 "+(P95(after.Foot)*100).ToString("0.0")+" cm)");worstFoot=Math.Max(worstFoot,P95(after.Foot));
                     Check(P95(after.Rise)<=P95(before.Rise)*1.25f+.15f,name+": the hips move no faster than the gait's own (p95 "+P95(after.Rise).ToString("0.00")+" m/s, was "+P95(before.Rise).ToString("0.00")+")");
                     Check(after.Head.Max()<=Math.Max(after.GameHead.Max(),NativeHordeGait.Reach(kind))+.05f,name+": the head stays over the hit capsule ("+after.Head.Max().ToString("0.00")+")");
-                    Check(Mean(after.Spread)<=Mean(before.Spread)+.5f,name+": the arms hang no wider than before ("+Mean(after.Spread).ToString("0.0")+" deg)");
+                    // (On the model's own stride the arms are the capture's: no wider than the take carries them. At rest and on the Hulk, no wider than the rig's.)
+                    Check(Mean(after.Spread)<=Math.Max(Mean(before.Spread)+.5f,ownSpread+OwnSpreadOver),name+": the arms hang no wider than the capture's ("+Mean(after.Spread).ToString("0.0")+" deg, the take's "+ownSpread.ToString("0.0")+", the rig's "+Mean(before.Spread).ToString("0.0")+")");
                 }
             }
             Pilot(rig);Crawl(rig,pelvis);Dying(rig,pelvis);Busy(rig);Flight(rig);Repeat(rig);Carried(rig,pelvis);Wiring(root);

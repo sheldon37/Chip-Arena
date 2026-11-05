@@ -7,6 +7,14 @@ internal static class Program
     {
         try
         {
+            if(args.Length==1&&args[0]=="--zombie-stages"){ZombieStageChecks.Run();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-source"){ZombieStageChecks.Source();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-all"){return ZombieStageChecks.All(ProjectRoot());}
+            if(args.Length==5&&args[0]=="--zombie-sticks"){ZombieStageChecks.Sticks(args[1],args[2],float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture),int.Parse(args[4]));return 0;}
+            if(args.Length==4&&args[0]=="--zombie-turn"){ZombieStageChecks.TurnTrace(int.Parse(args[1]),float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture),float.Parse(args[3],System.Globalization.CultureInfo.InvariantCulture));return 0;}
+            if(args.Length==1&&args[0]=="--zombie-trunk"){ZombieStageChecks.Trunk();return 0;}
+            if(args.Length==1&&args[0]=="--zombie-rebase"){ZombieStageChecks.Rebase(ProjectRoot());return 0;}
+            if(args.Length==3&&args[0]=="--zombie-trace"){ZombieStageChecks.Trace(args[1],float.Parse(args[2],System.Globalization.CultureInfo.InvariantCulture));return 0;}
             if(args.Length==1&&args[0]=="--tracers"){TracerChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--chip-looks"){ChipLookChecks.Run(ProjectRoot());return 0;}
             if(args.Length==1&&args[0]=="--projectile-rules"){ProjectileRuleChecks.Run(ProjectRoot());return 0;}
@@ -211,7 +219,7 @@ internal static class Program
             BuildLabelChecks.Run(root);SocialPanelChecks.Run(root);
             FinalKillcamChecks.Run(root);ReplayShotChecks.Run(data);
             HatLookChecks.Run(root);ModelHatChecks.Run(root);RobotSuitChecks.Run(root);RobotHelmChecks.Run(root);
-            LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
+            LookContractChecks.Run(root);SkinToneChecks.Run(root);ZombieModelChecks.Run(root);TilerLookChecks.Run(root);ZombiePostureChecks.Run(root);ZombieGaitChecks.Run(root);ZombieStageChecks.Source();ZombieKnockChecks.Run(root);RunArmChecks.Run(root);FaceChecks.Run(root);
             MovementModsChecks.Run(root);RoundsCardsChecks.Run(root);NativeSystemsChecks.Run(root,data);WoundCarveChecks.Run(root);WoundSkinChecks.Run(root);BisectChecks.Run(root);MeleeBisectChecks.Run(root);GibChecks.Run(root);ReviveHoloChecks.Run(root);CollapseChecks.Run(root);ExtraPresentationChecks.Run(root);BlastChecks.Run(root);FieldChecks.Run(root);ShotChecks.Run(root,data);
             foreach(var result in FirstPersonSwayChecks.Run(root,data))Console.WriteLine("PASS "+result);
             StatusVisualChecks.Run(root);GoreBeaconChecks.Run(root);GoreHitChecks.Run();KillEffectChecks.Run(root);SirenFxChecks.Run(root);SirenMarkChecks.Run(root);SirenLookChecks.Run(root);DevFxChecks.Run(root);
