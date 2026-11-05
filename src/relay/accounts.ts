@@ -57,7 +57,7 @@ function podLook(raw:unknown){
  return keys.filter(k=>picks.has(k)).map(k=>k+':'+picks.get(k)).join(',');
 }
 const TECHNIQUE_WEAPONS=['pistol','rifle','machinegun','fire','water','lightning','darkness','sword','daggers','shield','greatsword','bow'];
-const TECHNIQUES:Record<string,string[]>={pistol:['ricochet-coin','bounty-round'],rifle:['grapple-line','sonar-dart'],machinegun:['sentry-drop','recoil-burst'],fire:['ignition-leap','wildfire-run'],water:['healing-spring','slipstream'],lightning:['static-recall','lightning-rod'],darkness:['shade-swap','grave-walk'],sword:['riposte','parting-line'],daggers:['smoke-veil','tripwire'],shield:['bastion','shield-surf'],greatsword:['anchor-throw','iron-vow'],bow:['gale-arrow','spirit-hawk']};
+const TECHNIQUES:Record<string,string[]>={pistol:['ricochet-coin','bounty-round','gun-spin'],rifle:['grapple-line','sonar-dart'],machinegun:['sentry-drop','recoil-burst'],fire:['ignition-leap','wildfire-run'],water:['healing-spring','slipstream'],lightning:['static-recall','lightning-rod','thunderclap','overload'],darkness:['shade-swap','grave-walk'],sword:['riposte','parting-line'],daggers:['smoke-veil','tripwire'],shield:['bastion','shield-surf'],greatsword:['anchor-throw','iron-vow'],bow:['gale-arrow','spirit-hawk']};
 function weaponTechniqueMap(raw:unknown){
  if(typeof raw!=='string'||raw.length>2048)return '';const picks=new Map<string,string>();
  for(const entry of raw.split(',')){const pair=entry.split(':');if(pair.length!==2)continue;const spec=pair[0].trim(),choice=pair[1].split('=');if(choice.length>2)continue;const slot=choice[0].trim();

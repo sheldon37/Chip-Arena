@@ -43,6 +43,7 @@ namespace ChipArena.UnityConversion
             if(server!=null)throw new InvalidOperationException("Only the authority binds a run.");
             var id=account?.Access.AccountId;
             if(session==null||string.IsNullOrEmpty(id)||session.Run.Snapshot().host!=id)throw new ArgumentException("Expedition host must be the signed-in account.");
+            session.ChipFilter=NativeArena.ImplementedChip;session.AbilityLoadout=who=>match?.Seats.FirstOrDefault(s=>s.access?.AccountId==who)?.weaponTechniques??peers.FirstOrDefault(p=>p.Seat?.access?.AccountId==who)?.Seat.weaponTechniques??"";
             expeditionSession=session;expeditionRouter=new ExpeditionCommandRouter(session);expeditionStamp=null;expeditionNextSend=0;
             expeditionLocal=new ExpeditionLocalCommands(session,id);
             session.Sources.DisplayName=who=>who==account?.Access.AccountId?NativeCosmeticRules.Name(account.Account?.profile?.name):peers.FirstOrDefault(p=>p.Seat?.access?.AccountId==who)?.Seat.name;

@@ -23,6 +23,7 @@ namespace ChipArena.UnityConversion
                     p.Hp=p.Stamina=p.Mana=100;p.Ammo=100;p.Body.isKinematic=false;p.Collider.enabled=true;p.Body.position=new Vector3(1000,100,p==a?1000:1005);p.Body.linearVelocity=p.MoveVelocity=p.Knockback=Vector3.zero;
                     p.Seat.weaponTechniques=NativeTechniqueLoadout.With("",p.Seat.spec,"e");p.QReady=p.EReady=0;p.Technique=null;p.TechniqueReleased=false;p.Special=null;p.Swing=null;p.MeleeKit=new NativeMeleeKit();p.Down=null;p.Juggle=null;p.Roll=null;p.HeldBy=p.Controlling=p.ControlledBy=null;
                     p.Ready=p.AttackEnd=p.BlockEnd=p.BlockReady=p.RollEnd=p.RollReady=p.StunEnd=p.FrozenUntil=p.ScareUntil=p.ShieldUntil=p.ReloadEnd=p.CastAt=p.LaunchUntil=p.StaggerImmune=0;p.SlowFactor=1;p.SlowEnd=0;p.Grounded=true;p.Dots.Clear();CancelAbilities(p);
+                    p.TechniqueMarks=Array.Empty<NativeTechniqueMark>();p.ChipGauges=Array.Empty<NativeChipGauge>();p.ExpansionStats=null;p.ExpansionStill=-1;p.ExpansionLastHit=-100;
                     p.Input=new InputFrame{Yaw=p==a?0:180,Pitch=0,AbilityTarget=new V3(1000,99.135f,1003)};p.Yaw=p.Input.Yaw;
                 }
                 Physics.SyncTransforms();
@@ -30,6 +31,29 @@ namespace ChipArena.UnityConversion
             void Release(){Advance(a.Technique.Release-Time+.001f);a.Input.AbilityQ=a.Input.AbilityE=false;StepTechniqueInput(a);Check(a.TechniqueReleased,"release executes");}
             try
             {
+                // Third-set foundation: real authority, clocks, Unity codec and replacement slots.
+                foreach(string id in NativeThirdTechniqueContent.Ready)
+                {
+                    var def=NativeTechniques.Find(id);Setup(def.Spec);a.Seat.weaponTechniques=NativeTechniqueLoadout.With("",def.Spec,"e",id);
+                    a.Ammo=0;Check(TryTechnique(a)&&TechniqueBusy(a),"third windup locks: "+id);Release();
+                    Check(a.Technique.Valid(),"third valid release: "+id);
+                    if(id=="gun-spin")
+                    {double rate=a.Stats["attackRate"];StepExpansionPilot(a);Check(a.Ammo==Magazine(a)&&Math.Abs(a.Stats["attackRate"]-rate*1.25)<.001,"gun spin refill/rate");Advance(4.1f);StepExpansionPilot(a);Check(Math.Abs(a.Stats["attackRate"]-rate)<.001,"gun spin rate expires");}
+                    if(id=="overload")
+                    {StepExpansionPilot(a);a.Hp=5;Advance(4.1f);StepTechniqueWorld();Check(a.Hp==1&&a.Technique.Phase=="shock","overload nonlethal shock");StepTechniqueWorld();Check(a.Hp==1,"shock once");}
+                    if(id=="thunderclap")Check(b.Hp<100&&b.StunEnd>Time,"thunderclap damages and stuns");
+                }
+                Setup("lightning");a.Seat.weaponTechniques=NativeTechniqueLoadout.With("","lightning","e","overload");TryTechnique(a);Release();float earlyHp=a.Hp;Advance(.2f);Check(TryTechnique(a)&&a.Hp==earlyHp&&a.Technique.RecastAt==Time,"early overload recast avoids shock");
+                Setup("pistol");a.Seat.weaponTechniques="";MarkTechnique(a,"disarm",b,2.5f);a.Input.AbilityQ=true;
+                Check(TechniqueRefusal(a,in a.Input)==NativeTechniques.Disarmed,"default Q reports disarmed");StepAbilities(a);Check(a.Fan==null&&a.QReady==0,"disarm refuses default Q without charge");
+                var markedFrame=NativeFrameCodec.Clone(NetworkFrame());var markedActor=markedFrame.snapshot.Actors.First(x=>x.Id==a.Seat.id);
+                Check(markedActor.TechniqueMarks.Length==1&&markedActor.TechniqueMarks[0].By==b.Seat.id,"Unity codec victim marks");
+                Setup("pistol");a.Seat.chips["wild-opening-move"]=1;a.Seat.chips["wild-hand-to-mouth"]=1;a.Ammo=0;
+                float hit=Damage(b,a,10,Vector3.forward,0,false,primary:false);
+                Check(Math.Abs(hit-15)<.001&&a.Ammo==1&&Events.Count(e=>e.Kind==EventKind.ChipProc&&e.Detail=="wild-hand-to-mouth")==1,"opening ability hit and ammo proc once");
+                Check(Math.Abs(Damage(b,a,10,Vector3.forward,0,false,primary:false)-10)<.001,"opening charge spent");
+                Advance(4.01f);StepExpansionPilot(a);Check(a.ChipGauges.Single().Value==1,"opening gauge rearms");
+                Setup("pistol");a.Seat.chips["wild-mint-condition"]=1;a.Hp=(float)a.Stats["hp"];Check(Math.Abs(Damage(a,b,10,Vector3.back,0,false,primary:false)-4)<.001,"mint condition uses prehit health");
                 // Pending look must win over stale pilot input, without casting or mutating a replica.
                 Setup("rifle");wall.SetActive(true);Physics.SyncTransforms();
                 var pendingAim=new InputFrame{Yaw=0,Pitch=0};a.Input.Pitch=90;

@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--expansion-foundation")ExpansionFoundationChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--expansion-foundation")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--projectile-events")ProjectileEventChecks.Run();
             if(args.Length==1&&args[0]=="--projectile-events")return 0;
             if(args.Length==1&&args[0]=="--zombie-stages"){ZombieStageChecks.Run();return 0;}

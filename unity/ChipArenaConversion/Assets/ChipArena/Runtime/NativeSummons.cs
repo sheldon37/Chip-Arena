@@ -40,6 +40,11 @@ namespace ChipArena.UnityConversion
         }
         private float HitMinion(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
         {
+            var at=point??m.Body.position;float actual=HitMinionCore(m,owner,ExpansionDamage(owner,damage,kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy"),direction,impulse,point,kind,radius,head,projectile,pierced,from);
+            if(kind==null||kind=="direct"||kind=="projectile"||kind=="melee"||kind=="energy")ExpansionHit(owner,m.Id,at,actual,kind=="melee");return actual;
+        }
+        private float HitMinionCore(NativeMinion m,NativePilot owner,float damage,Vector3 direction,float impulse,Vector3? point=null,string kind=null,float radius=0,bool head=false,int projectile=0,bool pierced=false,Vector3? from=null)
+        {
             if(Expedition?.Session.Run.SplitAreas==true&&(!Minions.Contains(m)||owner!=null&&!Pilots.Contains(owner)))return 0;
             if(m.Hp<=0||!CanHit(owner,m)||HubDamageBlocked(owner,m.Body.position,from,projectile))return 0;if(IsZoneBoss(m))return HitZoneBoss(m,owner,damage,point,kind);if(m.DevMonster)return HitDevMonster(m,owner,damage,direction,impulse,point,kind);if(m.Pve!=null)return HitPveAdd(m,owner,damage,direction,impulse,point,kind,radius,head,projectile,pierced,from);if(PilotMutator(owner,"glass-cannon"))damage*=3;if(Mutator("bounce-house"))impulse*=3;float actual=Math.Max(0,Math.Min(m.Hp,damage));m.Hp-=actual;m.LastHitAt=Time;if(!m.Body.isKinematic)m.Body.AddForce(direction*impulse,ForceMode.Impulse);Emit(EventKind.Hit,owner,m.Id,m.Body.position,actual,kind=="energy"?"ability":kind=="projectile"||kind==null?"direct":kind=="dot"?"field":kind,from:from,projectile:projectile,pierced:pierced);MinionImpact(m,owner,actual,point,kind,direction);if(m.Hp<=0)RemoveMinion(m);return actual;
         }

@@ -2,7 +2,18 @@
 
 Owner, 2026-11-04: "Add a good portion of chips that directly effect weapons abilities (provided they have that specific ability slotted). Lets also add a good portion of fun to use chips in the game (Say like... 50ish chips), rounds inspired. Some of the chips ABSOLUTELY can be super strong, but I also want the chips to be easier to read. A lot of them are currently cluttered. So we may need to do some text revisions or improve design again (I do like green/red stat text though)"
 
-**Status:** design, rows and card by Claude; mechanics are Astra's. `Core/NativeWildChips.cs` and `Core/NativeAbilityChips.cs` are generated with the tables here. Neither is applied to the content yet, so neither set can be drafted, and adding them changes nothing on the wire until the rules are in.
+**Status:** first rules batch implemented on `codex/third-techniques-chips` from `f69dcca5`. Both catalogs are applied; only the implemented mechanic IDs below pass the live draft filter. Remaining chips are staged, not playable. Presentation remains Claude's.
+
+### Rules batch 1 (Astra, 2026-11-05)
+
+- Live wild mechanics: Top Shape, Hangtime, Planted, Opening Move, Thick Skull, Hand to Mouth, Bullet Hose, Mana Tap, Follow Through, Mint Condition.
+- Live ability mechanics: Perfect Form, Six Aces, Cooling Jacket, Second Gun, Sacred Spring, Full Circuit, Sonic Boom. Lucky Coin remains gated until its second redirect exists. All other ability/wild mechanics remain gated.
+- Ability offers check `NativeAbilityChips.Requires` against the current live Q/E rows, including the four older ability chips. The reserved eligible-ability slot uses the proposed 35% probability, with rarity weighting. Regular picks may also be ability chips. Match and PvE offers are stored; Expedition offers are cached on first opening and then stored by the run when claimed. Changing the loadout cannot reroll an open offer. Installed ability chips are checked against the slotted ability before applying upgrades.
+- **Claude accessors:** `Actor.TechniqueMarks` is a bounded array of `NativeTechniqueMark`; `Actor.ChipGauges` is an array of `NativeChipGauge { Kind, Value, Until }`. Null/empty means no state. `Kind` is the chip ID; `Value` is 0–1. Planted fills over one stationary second; Opening Move is 0/1 readiness. `Until` is reserved for a timed return. These are copied in snapshots/death/replay, serialized for late join, and validated. The initial batch writes only those two gauges.
+- **Claude events:** appended `EventKind.ChipProc`, preserving previous event IDs. `Detail` is the chip ID; `Source` is the pilot, `Target` the affected actor, `Position` the proc point, `From` an optional second point, `Normal` an optional direction, `Projectile` an optional round ID. Hand to Mouth emits once when a hit actually returns a round. Future procs use this same kind. It follows the existing bounded decorative-event budget; it is not a gameplay dependency.
+- Choices: Thick Skull reduces the **whole headshot** by x.6 per stack (the contract's permitted simpler option). Opening Move and hit-resource refunds count direct weapon/ability hits, not periodic damage ticks; misses and blocked hits do not consume readiness. Bullet Hose's speed/ammo/damage remain the proposed stats, but spread is an actual +12-degree firing cone rather than `fanDegrees` (which only spaces multiplied projectiles). It therefore has a supported mechanic ID instead of being stat-only. Cooling Jacket extends Overdrive to 6 s; current Overdrive already has zero spread bloom, so halving it still yields zero. No other number tuning or gameplay balance acceptance is claimed.
+- Account sanitizer source accepts the three live third-set techniques. Deploying the account service remains separate from this Unity-only update; an older deployed service can still strip those IDs from a saved profile.
+
 
 ## How a chip reads now
 

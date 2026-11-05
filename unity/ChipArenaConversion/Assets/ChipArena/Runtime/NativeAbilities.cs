@@ -42,6 +42,7 @@ namespace ChipArena.UnityConversion
         private bool AbilityBusy(NativePilot p)=>p.Fan!=null||p.AbilityCast!=null||p.CastAt>0||Time<p.RollEnd||Time<p.AttackEnd||Incapacitated(p);
         private void StepAbilities(NativePilot p)
         {
+            if(AbilitiesDisarmed(p)){p.BufferedSlot=null;p.HoldAt=-1;p.Input.AbilityQ=p.Input.AbilityE=p.Input.AbilityEReleased=false;if(p.AbilityCast!=null&&Time>=p.AbilityCast.Release)ReleaseAbility(p);return;}
             if(TechniqueBusy(p)||TechniqueAway(p)||TechniqueRunning(p))return;
             if(p.Seat.spec=="bow"){StepBowAbilities(p);return;}
             if(p.Seat.spec==NativeBombs.Spec)return;if(p.Seat.spec=="cyberlord"){StepCyberInput(p);return;}
@@ -67,6 +68,7 @@ namespace ChipArena.UnityConversion
         }
         private void PressAbility(NativePilot p,string slot,bool retry=false)
         {
+            if(AbilitiesDisarmed(p))return;
             if(TechniqueId(p,slot)!=""){TryTechnique(p,slot);return;}
             var d=Content.Ability(p.Seat.spec,slot);
             if(NativeRangedRules.Q(d?.id)){TryRangedQ(p,d);return;}

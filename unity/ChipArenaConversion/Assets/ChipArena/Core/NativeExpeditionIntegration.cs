@@ -33,6 +33,8 @@ namespace ChipArena.UnityConversion
         private readonly ConversionContent content;private readonly Action<ExpeditionSavepoint> write;
         public Func<string,string,ExpeditionReprintEvidence> ReprintEvidence;
         public Func<string,string,bool> CanClaim;
+        public Func<ContentChip,bool> ChipFilter;public Func<string,string> AbilityLoadout;
+        private readonly System.Collections.Generic.Dictionary<string,string[]> frozenOffers=new System.Collections.Generic.Dictionary<string,string[]>();
         public Action<string,string,int> Installed;
         public Func<string,string,bool> CanPurchase;
         public ExpeditionCommandResult Purchase(string account,string chest)
@@ -80,7 +82,7 @@ namespace ChipArena.UnityConversion
         public bool Eligible(string account,string chip)
         {
             var p=Run.Snapshot().members.FirstOrDefault(m=>m.account==account);
-            return p!=null&&NativeContentRules.Eligible(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count)).Any(c=>c.id==chip);
+            return p!=null&&(ChipFilter==null||ChipFilter(content.Chip(chip)))&&NativeContentRules.Eligible(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count)).Any(c=>c.id==chip);
         }
         public string[] Offers(string account,string reward)
         {
@@ -88,9 +90,11 @@ namespace ChipArena.UnityConversion
             if(p==null||r==null||r.claimed||r.owner!=null&&r.owner!=account)return null;
             // Ordinary drops require authoritative proximity. Reserved personal rewards can be opened anywhere.
             if(r.owner==null&&(CanClaim==null||!CanClaim(account,reward)))return null;
-            var random=new NativePveRandom(NativePveRandom.Hash(s.seed,s.run,reward+":"+account));
-            return NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,r.id.Contains("drop:rain-")?1:3,
-                c=>r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="unique").ToArray();
+            string key=reward+":"+account;if(frozenOffers.TryGetValue(key,out var frozen))return (string[])frozen.Clone();
+            var random=new NativePveRandom(NativePveRandom.Hash(s.seed,s.run,key));
+            var rolled=NativeContentRules.Offers(content,p.weapon,p.chips.ToDictionary(c=>c.id,c=>c.count),random.Next,r.id.Contains("drop:rain-")?1:3,
+                c=>(ChipFilter==null||ChipFilter(c))&&(r.id.Contains("drop:rain-")?c.rarity=="common":!r.highQuality||c.rarity=="epic"||c.rarity=="legendary"||c.rarity=="unique"),abilityLoadout:AbilityLoadout?.Invoke(account)).ToArray();
+            frozenOffers[key]=rolled;return (string[])rolled.Clone();
         }
         public Func<string,string,ExpeditionCommandResult> MachineReprint;
         public ExpeditionIntegrationHooks Hooks()=>new ExpeditionIntegrationHooks

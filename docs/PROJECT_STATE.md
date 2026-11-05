@@ -1,3 +1,5 @@
+2026-11-05 Astra (`codex/third-techniques-chips`, base `f69dcca5`): first rules batch: Gun Spin/Thunderclap/Overload, 17 expansion chips, slot-gated offers, replicated TechniqueMarks/ChipGauges and ChipProc contract. Remaining 33 techniques/81 chips stay gated. No presentation or live/Site release; checks and delivery in task PR.
+
 2026-11-04 Astra (`codex/projectile-event-data`): requested tracer correlation/contact fields and Bomb SampleAt supplied; projectile-tagged notifications bypass decorative quota, with bounded eviction documented. Rules/balance unchanged; Claude presentation adoption remains. Validation/delivery in task PR.
 
 2026-11-05 Astra (`codex/slot-roll-freeze`): live destination reels now include Backrooms/Poolrooms before rolling, retain unchanged textures and cached cards, serialize cold raster jobs and upload one texture/frame. 100-roll regression causes zero reel rebuilds; runtime freeze/FPS acceptance pending. Delivery receipts in task PR.

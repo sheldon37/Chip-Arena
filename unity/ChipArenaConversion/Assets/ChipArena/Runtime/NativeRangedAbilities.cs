@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             if(d.id=="fan-hammer")
             {p.Fan=NativeRangedRules.Fan(Time,p.Ammo);StepFan(p);}
             else
-            {p.OverdriveAt=Time;p.OverdriveUntil=Time+NativeRangedRules.OverdriveDuration;p.VentUntil=p.OverdriveUntil+NativeRangedRules.VentDuration;}
+            {p.OverdriveAt=Time;p.OverdriveUntil=Time+NativeRangedRules.OverdriveDuration+(AbilityChip(p,"ab-cooling-jacket")?2:0);p.VentUntil=p.OverdriveUntil+NativeRangedRules.VentDuration;}
             return true;
         }
         private void EmpowerQ(NativePilot p)
