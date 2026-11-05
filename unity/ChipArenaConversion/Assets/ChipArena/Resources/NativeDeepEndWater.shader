@@ -96,11 +96,11 @@ Shader "ChipArena/NativeDeepEndWater"
                 // ---- foam: the field's, and a line where the water meets anything ----
                 float fn=Noise(pa*2.2+float2(t*0.05,-t*0.03))*0.6+Noise(pa*6.1-float2(t*0.08,t*0.04))*0.4;
                 float edge=_DeepDepthOn>0.5?saturate(1.0-thick/0.34):0.0;
-                float fine=Noise(pa*17.0+float2(t*0.2,t*0.13));float laced=smoothstep(0.34,0.62,field.g*0.95-(1.0-fn)*0.95+(fine-0.5)*0.5)+edge*smoothstep(0.42,0.7,fn+edge*0.3)*0.65;
+                float fine=Noise(pa*17.0+float2(t*0.2,t*0.13));float laced=smoothstep(0.26,0.72,field.g*0.95-(1.0-fn)*0.95+(fine-0.5)*0.5)+edge*smoothstep(0.42,0.7,fn+edge*0.3)*0.65;
                 float crest=saturate((length(slope)-0.55)*1.3)*smoothstep(0.4,0.75,fn);
                 float foam=saturate(laced+crest);
-                float3 lit=float3(0.82,0.86,0.86)*(soft*0.95+0.05)+glow*0.7+_DeepLight.x*float3(0.12,0.11,0.1);
-                col=lerp(col,lit,foam*0.92);
+                float3 lit=float3(0.82,0.86,0.86)*(soft*0.95+0.05)+glow*0.25+_DeepLight.x*float3(0.12,0.11,0.1);
+                col=lerp(col,lit,foam*0.8);
                 float dist=distance(i.world,_WorldSpaceCameraPos);float haze=saturate((i.world.y-_DeepRoomY)/max(_ArenaHazeTop,0.01));
                 col=lerp(col,_ArenaHaze.rgb,_ArenaHaze.w*(1.0-haze)*(1.0-haze)*smoothstep(4.0,40.0,dist));
                 fixed4 c=fixed4(col,1.0);UNITY_APPLY_FOG(i.fogCoord,c);return c;

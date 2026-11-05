@@ -96,6 +96,8 @@ namespace ChipArena.UnityConversion
                 case "breach":
                 {
                     // Comes up under the locked circle, mouth up, crossing the surface on the hit; arcs over toward the room's middle and dives.
+                    // (It only surfaces where there's water: over dry decks its circle comes in to the pool's edge.)
+                    if(surface<0&&!NativeDeepEndArena.InPool(t.X,t.Z)){float pe=NativeDeepEndArena.PoolHalf-.5f;t.X=Math.Max(-pe,Math.Min(pe,t.X));t.Z=Math.Max(-pe,Math.Min(pe,t.Z));}
                     var dir=Flat(-t);if(t.LengthSquared()<4)dir=new Vector3((float)Math.Sin(v.yaw*BossMath.Deg),0,(float)Math.Cos(v.yaw*BossMath.Deg));
                     var cross=new Vector3(t.X,surface,t.Z);var launch=dir*LeapHorizontal+new Vector3(0,LeapRise,0);
                     Swim(r,hit-.62f,t.X-dir.X*5.2f,t.Z-dir.Z*5.2f,surface,dir*4+new Vector3(0,3.6f,0));
@@ -107,7 +109,7 @@ namespace ChipArena.UnityConversion
                 case "jet":
                 {
                     // Rises where it is, mouth toward the far pilot; holds through the sweep (its neck swings it, the rig's look), then rolls forward and goes down.
-                    var dir=Flat(t-c);var top=new Vector3(c.X,surface+4.4f,c.Z);
+                    var dir=Flat(t-c);var top=new Vector3(c.X,surface+5.6f,c.Z);
                     Swim(r,a+.08f,c.X-dir.X*3,c.Z-dir.Z*3,surface,new Vector3(0,3.4f,0));
                     r.To(hit-.08f,top,dir*.6f+new Vector3(0,.5f,0));
                     r.To(hit+m.Strike+m.Follow,top+new Vector3(0,.5f,0)+dir*.6f,dir*.3f);
@@ -136,7 +138,7 @@ namespace ChipArena.UnityConversion
                 case "drain":
                 {
                     // Up out of the abyss at the room's centre, the mouth open over the pit, turning slowly with the water.
-                    var top=new Vector3(0,surface+3.4f,0);
+                    var top=new Vector3(0,surface+5.2f,0);
                     r.To(a+.3f,new Vector3(0,surface-9,0),new Vector3(0,6.5f,0));
                     r.To(hit-.05f,top,new Vector3(0,.5f,0));
                     r.To(hit+m.Strike+m.Follow,top+new Vector3(0,.4f,0),Vector3.Zero);

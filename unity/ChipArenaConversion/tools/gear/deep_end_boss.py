@@ -873,18 +873,19 @@ def throat(tier):
     prof = []
     depth = 0.0
     r = .98
-    count = (16, 8, 4)[tier]
+    count = (14, 8, 4)[tier]
+    step = 2.3 / (count - 1)
     for i in range(count):
         prof.append((r, -depth, i))
-        depth += (.62 - .022 * i)
-        r *= .875
+        depth += step
+        r *= (.84, .74, .55)[tier]
     rings = [[pc.bm.verts.new((rr * math.cos(2 * math.pi * k / segs), y, rr * math.sin(2 * math.pi * k / segs))) for k in range(segs)] for rr, y, _ in prof]
     for i in range(count - 1):
         fs = []
         for k in range(segs):
             m = (k + 1) % segs
             fs.append(pc.bm.faces.new((rings[i][m], rings[i][k], rings[i + 1][k], rings[i + 1][m])))
-        pc.tag(fs, 'throat' if i % 3 == 2 else 'chrome-dark')
+        pc.tag(fs, 'throat' if i % 3 == 2 or i >= count - 3 else 'chrome-dark')
     # The far end: the light itself.
     tip = pc.bm.verts.new((0, -depth - .2, 0))
     fs = []

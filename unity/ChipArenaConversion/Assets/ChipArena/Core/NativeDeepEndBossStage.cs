@@ -136,7 +136,7 @@ namespace ChipArena.UnityConversion
     /// </summary>
     public sealed class DeepEndWaves
     {
-        public const int Size=172;public const float Texel=.25f,Rate=60,Speed=4.6f,Damping=.9962f,Limit=1.25f,FoamLife=2.6f,Extent=Size*Texel;
+        public const int Size=172;public const float Texel=.25f,Rate=60,Speed=4.6f,Damping=.9962f,Limit=1.25f,FoamLife=1.9f,Extent=Size*Texel;
         public const int MaxSteps=4;
         /// <summary>The most the simulated waves raise a pool over the deck's level while the decks are dry (they slop at the lip, they don't stand over it).</summary>
         public const float LipCap=.03f;

@@ -127,7 +127,7 @@ namespace ChipArena.UnityConversion
             float w=BossMath.Clamp01(lookWeight.Value);
             if(w>.001f)
             {
-                const int K=8;for(int i=K;i>0;i--)
+                const int K=7;for(int i=K;i>0;i--)
                 {
                     var d=SafeDir(pos[i-1]-pos[i],headDir);float share=w*BossMath.Smooth(1-(i-1)/(float)K);var nd=Vector3.Normalize(Vector3.Lerp(d,goalDir,share));pos[i-1]=pos[i]+nd*NativeDeepEndBossLook.Seg;
                 }
