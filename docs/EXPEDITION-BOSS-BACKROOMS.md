@@ -23,7 +23,7 @@ position. Each fight has a **lore reason** why no place in the room is safe, and
 | --- | --- | --- |
 | Standing in a corner, a nook or behind a prop | **Fall Through:** the carpet tears under anyone still for 6 s, wherever they stand | **The Lull:** hands take anyone still for 6 s, wherever they stand |
 | Hiding behind walls | Walls don't exist to it. **Noclip** and **Max Hum** go straight through them, and partitions move when nobody is looking (**Peripheral Shift**) | There are no walls to hide behind: the room is one open basin |
-| Hugging a wall | **Wall Hand:** an arm comes through the wall within 2.5 m of you | **Seiche:** the wave is tallest at the walls and reflects back, so a wall takes two hits. **Last Lap** crushes the perimeter |
+| Hugging a wall | **Wall Hand:** an arm comes through the wall within 2.5 m of you | **Seiche:** the wave is tallest at the walls and reflects back, so a wall takes two hits. **Last Lap** runs a rounded square, so the corners are on its lap too |
 | Hugging the boss, standing under it | **Stoop:** a 4.5 m slam at its own feet | **Thrash:** contact damage and a 5 m tail sweep while surfaced |
 | Sniping from far away | **Noclip** closes any gap, and its reach grows with distance | **Breach** comes up under you, and **Hydro Jet** picks the farthest pilot. It is under water, and immune, unless it is near someone |
 | Standing on something high | Nothing is climbable: 4 m ceiling, no pillars or props in the room. Over 1.6 m for 2 s draws **Fall Through** from the ceiling | Nothing is climbable: no chairs or boards with collision. Same 1.6 m rule draws **Breach** |
@@ -252,10 +252,10 @@ above, in dark water, those lamps make a slowly turning spiral of light.
 **Materials.** All from the level. It's the cleanest thing in the game, which is what makes it wrong:
 - **Skin:** real geometry, not a texture: thousands of glazed white 15 cm tiles laid on the body, with teal grout, wet and gleaming. Tiles
   shrink and stretch round its bends. The belly is pale turquoise basin tile.
-- **Depth markers:** black tile lettering laid along its back as at a pool's edge, counting up toward the head: `3 FT`, `5 FT`, `9 FT`,
-  `NO DIVING`, and across the crown `DEEP END`. A black lane line runs down the spine.
-- **Flank lamps:** twelve round pool lights, six a side, with chrome bezels, turquoise-white, lighting the water round them.
-- **Head:** blunt and eyeless, smooth tile, no features but the mouth. The mouth is an iris of concentric chrome drain grates, turning.
+- **Depth markers:** black tile lettering down both upper flanks, mirrored so it reads from either side, counting up toward the head: `3 FT`, `5 FT`, `9 FT`,
+  `NO DIVING`; across the crown in two lines `DEEP` `END`, reading from in front of the mouth, so it says it as it comes at you. A black lane line runs down the spine.
+- **Flank lamps:** twelve round pool lights, six a side, with chrome bezels, turquoise-white, lighting the water round them, set in a pool's bullnose coping running down each flank, with small running lights (about twenty a side, not breakable) between them: from above, they are what makes the spiral.
+- **Head:** blunt and eyeless, smooth tile, no features but the mouth. The mouth is an iris of nine curved chrome grate blades, and behind it a round drain grate turning the other way.
   Behind them, a throat lit blue going back further than the body should allow.
 - **Mandibles:** two chrome pool-ladder rails, curved forward, dripping.
 - **Fins:** two long side fins and a low dorsal crest of white fibreglass with chrome grab-rail edges.
@@ -286,11 +286,11 @@ the fight gets slower on your feet and those tools matter more.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `breach` | Breach | 1 | 1.1 | .25 | .5 | .6 | 5 | 28 + launch | 3.2 m circle at the target's position when it locked, mouth up, then the body arcs over and dives |
 | `jet` | Hydro Jet | 1 | 1.0 | 2.2 | .3 | .8 | 12 | 10 per .25 s | a 2 m beam, swept 110° over 30 m, starting on the farthest pilot |
-| `flop` | Belly Flop | 1 | 1.2 | .2 | .6 | 1 | 14 | 30 | a line 4 m wide and 24 m long where its body falls; its shadow and a line of bubbles or spray mark it |
+| `flop` | Belly Flop | 1 | 1.8 | .2 | .6 | 1 | 14 | 30 | a line 4 m wide and 24 m long where its body falls; its shadow and a line of bubbles or spray mark it |
 | `thrash` | Thrash | 1 | .4 | .3 | .2 | .4 | 6 | 18 | 5 m round the surfaced body, a tail sweep, when someone hugs it |
 | `drain` | The Drain | 1 | 1.4 | 4 | .3 | .8 | 20 | 40 at the mouth | the whole room's water pulls toward the pit at 5 to 9 m/s; it's the mouth open at the centre |
 | `lull` | The Lull | 1 | 1.5 | .3 | 1.5 | 0 | meter | 8 + 8/s | hands of water take a pilot still for 6 s, or above 1.6 m for 2 s |
-| `seiche` | Seiche | 2 | 1.4 | 3.5 | 0 | .5 | 16 | 18 + knockback | a wave .9 m tall crosses the room wall to wall, then reflects back. Jump it or roll through |
+| `seiche` | Seiche | 2 | 1.4 | 7 | 0 | .5 | 16 | 18 + knockback | a wave .9 m tall crosses the room wall to wall, then reflects back. Jump it or roll through |
 | `whistle` | Whistle | 2 | 1 | 2 | 0 | .5 | 25 | 0 | a Lifeguard's whistle from nowhere: Drowned surface round each pilot, Tilers peel off the walls |
 | `lap` | Last Lap | 3 | 1.5 | 6 | .5 | 1 | 24 | 24 + crush | its body circles the room's edge at the surface, tightening from 19 m to 9 m. It exposes every flank lamp: the fight's best damage window |
 
@@ -312,20 +312,60 @@ Sound is the language here too, in the opposite way: **the room goes quiet befor
 ### The arena: the natatorium
 
 Around the exit. **20 x 20 cells (40 m square), ceiling 7.2 m, no pillars, no chairs, no boards.** A central deep pool 10 x 10 cells with
-steps on all four sides; in its middle a 4 x 4 **abyss**, where the floor falls away into black (the visible floor stops; pilots stand on
+steps on all four sides (flights two cells wide); in its middle a 4 x 4 **abyss**, a real shaft of tile going down 38 m into black (`PoolroomsLayout.Abyss`; pilots stand on
 an invisible floor at the deep pool's level under dark water). Deck all round, 5 cells wide. Round lights in the ceiling, and lights under
-the water that stay on when the rest die. Arches flood shut as it arrives; on its death the water drains away down the abyss and the
+the water that stay on when the rest die: in the pool's walls, down the shaft, and low on the room's walls where the tide reaches them. Four arches, two cells wide at each wall's middle, flood shut as it arrives (a curtain of falling water across each); on its death the water drains away down the abyss and the
 exit stairs are there.
 
 ### The intro: "Sublimity"
 
 | Boss time (s) | Shot | What happens | Sound |
 | --- | --- | --- | --- |
-| 0-2.3 | Wide over perfectly still water, gliding | Calm, warm light. One ripple spreads from nothing | The music has stopped. A far drip, the room's quiet, sound fading |
-| 2.3-4.3 | Low at the surface, toward steps going down into the dark | The lights under the water go out one by one, from the far end, down toward the pit. Small white tiles drift | The boss song's opening, muffled, comes in |
-| 4.3-5.9 | Straight down over the abyss, slowly descending | Black water. A slow spiral of round lights turning far below, growing. A pale ring in the middle of it | The song swells, a low pressure |
-| 5.9-8.0 | Low, wide, looking up | It breaks the surface on the song's nearest hit: the head rising and rising, sheets of water falling off perfect tile, in slow motion. **The card rises at 6.43** | The hit, then the song's build, held back |
-| 8.0-9.07 | Close on the mouth, then pulled back on the wave | The grates iris open and turn. A wave rolls at the camera and over it | The water roars, and the song drops at 9.0678, into the fight |
+| 0-2.3 | Wide over perfectly still water from the deck's corner, gliding down toward it | Calm, warm light, the ceiling's lights in the mirror. One ripple spreads from nothing | The music has stopped. A far drip, the room's quiet, sound fading |
+| 2.3-4.3 | Low at the top of the steps, looking down them into the dark | The lights under the water go out one by one, from the far end, down toward the pit, the room falling dark with them. Small white tiles drift | The boss song's opening, muffled, comes in |
+| 4.3-5.9 | Straight down over the abyss, slowly descending | Black water. The body comes up the shaft on a helix, two turns of it: its lamps and running lights a slow spiral turning far below, growing, drawing in to the middle, where the mouth's pale ring rises | The song swells, a low pressure |
+| 5.9-8.0 | Low at the water, wide, looking up | It breaks the surface on the song's nearest hit, at the back of the shaft: the head rising and rising on a true, slow parabola, sheets of water falling off perfect tile. **The card rises at 6.43** | The hit, then the song's build, held back |
+| 8.0-9.07 | Long lens, close on the mouth at the top of its rise, then pulled back on the wave | The grates iris open and turn over the blue throat. A wave rolls at the camera and over it; every light comes up as it clears | The water roars, and the song drops at 9.0678, into the fight |
+
+### The cue keys
+
+`boss.deepend.*` through the effects bank (Core `NativeDeepEndBossCues`); silent until clips exist. Keys marked 2D play flat.
+
+| Key | The sound |
+| --- | --- |
+| `boss.deepend.drip` | 2D. One far drip in the silence the stage music leaves |
+| `boss.deepend.ripple` | The ripple that spreads from nothing: barely there |
+| `boss.deepend.lamp-out` | A lamp under water going out: a soft thunk, far off, each nearer the pit |
+| `boss.deepend.pressure` | 2D. A low pressure swelling for the shot over the abyss |
+| `boss.deepend.break` | It breaks the surface: a huge, slow rush of water upward |
+| `boss.deepend.pour` | Sheets falling back off it for seconds, a long tiled patter |
+| `boss.deepend.iris` | The mouth's grates sliding open: metal on wet metal, oiled, unhurried |
+| `boss.deepend.roar` | Not a voice: the sound of a pool's drain opened all the way |
+| `boss.deepend.wave` | The wave rolling at the camera |
+| `boss.deepend.quiet` | 2D. The room goes quiet before a move (a dip, for the mixer) |
+| `boss.deepend.bubbles` | Breach's ring of bubbles coming up in the dark patch |
+| `boss.deepend.breach` | The mouth through the surface under a pilot: a burst, a chrome clang |
+| `boss.deepend.jet-charge` | The throat brightening, water drawn in, rising |
+| `boss.deepend.jet` | Hydro Jet: a hard, hissing column; its splash where it lands |
+| `boss.deepend.shadow` | The Flop's shadow darkening: a long low groan of water |
+| `boss.deepend.flop` | The whole body landing: the biggest impact it has |
+| `boss.deepend.thrash` | The tail coming round, tile on air |
+| `boss.deepend.drain-turn` | The surface starting to turn, slowly, silently but for a thin whine |
+| `boss.deepend.drain-roar` | The Drain open: the room's water going down |
+| `boss.deepend.lull` | The warning: everything softens, a warm hum, the song falling away |
+| `boss.deepend.hands` | The hands of water closing on the pilot, pulling under |
+| `boss.deepend.seiche-draw` | 2D. The water drawing back from the far wall |
+| `boss.deepend.seiche` | The wave front crossing the room, its crest breaking |
+| `boss.deepend.seiche-wall` | The wave hitting the wall and turning back |
+| `boss.deepend.whistle` | 2D. A lifeguard's whistle, from nowhere, echoing once |
+| `boss.deepend.lap` | Its body round the room's edge at speed: a tiled rumble and a wake |
+| `boss.deepend.lamp-break` | A flank lamp shot out: thick glass, a pop of pressure |
+| `boss.deepend.stagger` | The break's stagger: its whole length shuddering |
+| `boss.deepend.tide` | 2D. Water welling up the steps and spreading over the deck |
+| `boss.deepend.lights-die` | 2D. The ceiling's lights going out, outward from the middle, each with a tick |
+| `boss.deepend.hurt` | A hit on the throat or a lamp |
+| `boss.deepend.death` | The mouth closing, the last grate turning shut |
+| `boss.deepend.drain-away` | 2D. The tide going down the pit, gently, sound coming back |
 
 ### Death
 
@@ -487,3 +527,44 @@ Nothing here is a rule. `ArenaPresentation.HumBossViewOf` returns `HumBossView.N
 
 **Not done or not known.** No person has played it; no rule exists. Performance is not measured in a real match (the skin is about 32k vertices on a `SkinnedMeshRenderer` at tier 0, and the first draw reads the bank, so a real intro should prewarm it during the stage load). The song's accents aren't bound: the beats are fixed numbers. Fall Through's fall and return, Facelings and the pilot's side of every move are Astra's. On the ceiling the preview's chains only approximate gravity through the turn.
 <!-- /THE HUM built -->
+
+### THE DEEP END (branch `claude/boss-deepend`)
+
+Presentation only; nobody has played it. `DeepEndBossViewOf` returns None until Astra binds it, and with None nothing here draws or costs anything beyond a branch: the live Poolrooms is what it was (its hooks are the layout swap under the preview flag and two surfaces standing aside under the stage flag).
+
+**The model.** `tools/gear/deep_end_boss.py` (Blender 5.2, headless; `deep_end_boss_sheet.py` renders a review sheet, straight and on a leaping arc) writes the local bank `Resources/ChipArenaPackBossDeepEnd` (not committed; ships in the Drive zip). As drawn: about 60,500 triangles at tier 0, 29,500 at tier 1, 4,800 at tier 2. The skin is one mesh per tier on the spine's 31 joints: real tile geometry, about 4,000 tiles at tier 0, each with its own bevel, grout channel and a tiny tilt of its own, finer tile on the skull, larger basin tile on the belly; the letters are the grid's own cells going black, with the cells on a letter's edge split into small mosaic pieces. A vertex's uv0 is its place on the spine and its gloss; Runtime makes four cubic B-spline weights from the place, so the skin bends as a curve. Rigid parts: the flank lamps (with a broken variant), the nine iris blades, the drain grate, the throat, the rails, the fins, a ring buoy. It's drawn with the gear's toon (`ZombieGearMaterials`) and a glaze over it (`NativeDeepEndGlaze`). Without the bank, a plain loft on the same bones.
+
+**The motion.** `Core DeepEndBossRig`: the head on a route (`DeepEndRoute`: Hermite legs and true parabolas, a pure function of time; `DeepEndBossPaths` writes each move's so its contact lands on the record's `hitAt`). Every joint traces the route a fixed arc length behind the head, on fixed ticks of the clock, so two frame rates give one pose. A visible joint never goes faster than a heavy body's pace or the head's own; a hidden joint (under the tile, deep in the shaft) catches up fast: when the head has rushed ahead under the floor, the strand still in sight pours in at its own speed. On top: a travelling undulation integrated on the ticks, a slow roll, the neck's look on forward kinematics, the Flop's lift (only what's over its line), the Thrash's sweep, a rotation-minimizing frame that rights itself by an angle, second-order fins and rails, the iris and the grate on springs of their own.
+
+**The room.** `Core NativeDeepEndArena.Carve` (pure), `PoolroomsLayout.Abyss` (a new floor kind; the level's mesh builds its shaft), `Core NativeDeepEndBossStage` (the hook: tide, flood front, lights by group, whirlpool, seiche, the arrival's ring, murk, the screen's two moments), `Core DeepEndWaves` (a 43 m wave field over the whole room, the wave equation stepped on fixed ticks, foam; the level's `PoolWaves` is untouched). Runtime: one displaced grid (`NativeDeepEndWater`: the tide, funnel and waves are real geometry; refraction by a named grab, absorption by the scene's depth, a reflection marched against the depth with the room's box behind it, foam from the field and where the water meets anything), caustics on the level's own meshes drawn again (`NativeDeepEndCaustics`, pushed by the field's curvature, so a wave's ring sweeps the ceiling), the water geometry (`NativeDeepEndFlow`), the screen (`NativeDeepEndScreen`).
+
+**The effects**, functions of record and clock: sheets pouring off it for seconds after it rises (`EmergedAt` per joint), foam collars, spray and mist through the shared effects renderer, the Jet's tube with its mist and splash, hands of water, the long shadow, the dark circle and its bubbles, the lamps' glow on the water over them while they pass under the tile, tile and a ring buoy going round the whirlpool, curtains across the arches.
+
+**What changed from the first design, and why.**
+- **Belly Flop's wind is 1.8 s, not 1.2:** a 32 m body can't be seen to rise out of the water, hang and fall in 1.2 s, and the long shadow needs the time to read.
+- **Seiche's strike is 7 s, not 3.5:** 3.5 s is one crossing at its speed; "a wall takes two hits" needs the crossing back.
+- **Last Lap runs a rounded square, not a circle:** the sweep's first pass showed a circle of 19 m never reaches the corners (28 m out).
+- **A dry-deck target in the first phase never draws Breach** (it only surfaces where there's water): the rotation has to choose the Jet, the Flop or the Drain instead, or the deck's corners go 26 s without a threat for a moving pilot. Astra's rotation should do the same.
+- **The lettering is on both upper flanks, mirrored,** not on the spine alone: from the game's cameras a line down the spine reads upside down half the time. `DEEP END` is two lines on the crown, reading from in front of the mouth.
+- **Running lights** between the twelve lamps: twelve points don't make a spiral.
+- **It breaks the surface at the back of the shaft,** so its fall comes down in the pool, not on the deck.
+- **The mouth is nine iris blades over a turning grate:** concentric rings can't open.
+- **Four arches with curtains of water,** rather than plain walls: the room needs its architecture, and it's what "the arches flood shut" looks like.
+
+**The sweep** (`Tests/DeepEndBossSweep.cs`, in `--backrooms-boss-sweep`), every cell, the corners and along the walls, 210 s a run:
+
+```
+deepend-sweep phase 1: still worst 7.6 s at (-19.0,-19.0), limit 8.0; circling worst 12.5 s at (-15.0,-19.0), limit 14.0; without the Lull still worst 11.8 s at (-19.0,-19.0); without it and the room-wide moves 11.8 s at (-19.0,-19.0)
+deepend-sweep phase 1: with only the Flop and the Jet: 11.8 s at (-19.0,-19.0)
+deepend-sweep phase 2: still worst 4.1 s at (-19.0,-19.0), limit 8.0; circling worst 4.9 s at (-15.0,-19.0), limit 10.0; without the Lull still worst 4.2 s at (-19.0,-19.0); without it and the room-wide moves 5.0 s at (-19.0,-19.0)
+deepend-sweep phase 2: with only the Flop and the Jet: 11.7 s at (-19.0,-19.0)
+deepend-sweep phase 3: still worst 5.6 s at (-19.0,-19.0), limit 6.0; circling worst 12.4 s at (-17.0,-19.0), limit 14.0; without the Lull still worst 12.4 s at (19.0,-19.0); without it and the room-wide moves 5.0 s at (-19.0,-19.0)
+deepend-sweep phase 3: with only the Flop and the Jet: 11.7 s at (-19.0,-19.0)
+PASS deepend-sweep (9 checks)
+```
+
+The Lull is what guarantees the first and last phases' limit for a still pilot; take it out and the corner goes past the limit in the first and last phases. In the second phase the rotation alone keeps up (the room-wide moves come round fast), so its proof of teeth is taking out the Breach too.
+
+**For Astra.** Bind `ArenaPresentation.DeepEndBossViewOf` (Runtime `NativeDeepEndBossPresentation.cs`): the fields are `Core DeepEndBossView`'s. The rig fills its own route from the record as moves start, so a record only needs the move's start, its hit, its places (`targetX/Z`, `aimX/Z`) and `surfaceAt/X/Z` between moves. `NativeDeepEndBoss.Moves` is the table; `NativeDeepEndBoss.Parts` the hit volumes and weak points; `DeepEndBossRig.LampFrame` and `MouthAt` the positions. Collision for `PoolroomsLayout.Abyss` stands at the deep pool's floor. The tide is `tideFrom`, `tideY`, `tideAt`, `tideUntil`: `NativePoolroomsWater.Depth` should read the same.
+
+**Not done.** No audio clips (the keys are silent); no record, rules or hit volumes bound. The mixer's dip for `Muffle` isn't wired (it's on the stage for whoever does the sound), and the stage's `Shake` moves only the preview's camera: hooking it to the live camera touches shared ConversionGame. The Whistle's Drowned and Tilers are not spawned here (no spawn is presentation): the move shows the dark water round each pilot and the rings, and the flat cue, and waits for the rest. The body doesn't reflect in the water when the reflection's ray leaves the screen (it falls back to the room's box). Reduced effects only has less to reduce here: nothing strobes.

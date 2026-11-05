@@ -17,7 +17,9 @@ namespace ChipArena.UnityConversion
         /// lowest rising 1.2 m a step by room, 0.3 m walls, round 0.7 m pillars, arches springing at 1.5 m; pools 1.3 m deep, wading
         /// pools 0.4 m, the water 0.15 m below the deck.</summary>
         public const float Cell=2f,Height=3.6f,Rise=1.2f,Thickness=.3f,PillarSize=.7f,ArchSpring=1.5f,Freeboard=.15f,DeepDepth=1.3f,ShallowDepth=.4f;
-        public const byte Deck=0,Shallow=1,Deep=2,Steps=3;
+        public const byte Deck=0,Shallow=1,Deep=2,Steps=3,Abyss=4;
+        /// <summary>An abyss cell's floor (THE DEEP END's pit; Core NativeDeepEndArena): the visible floor stops, the tile going down into the dark. Collision stands at the deep pool's floor (the rules').</summary>
+        public const float AbyssFloor=-38f;
         public const byte Open=0,Wall=1;
         /// <summary>Which way a steps cell descends (<see cref="StepDir"/>): toward +x, -x, +z or -z.</summary>
         public const byte DownPosX=0,DownNegX=1,DownPosZ=2,DownNegZ=3;
@@ -52,7 +54,7 @@ namespace ChipArena.UnityConversion
         public bool Passable(int x,int z,int dx,int dz)=>Inside(x+dx,z+dz)&&Between(x,z,dx,dz)!=Wall;
         public static bool Pool(byte floor)=>floor!=Deck;
         /// <summary>A flat floor's height: the deck 0, a wading pool's bottom, a deep pool's.</summary>
-        public static float FloorY(byte floor)=>floor==Deck?0:floor==Shallow?-ShallowDepth:-DeepDepth;
+        public static float FloorY(byte floor)=>floor==Deck?0:floor==Shallow?-ShallowDepth:floor==Abyss?AbyssFloor:-DeepDepth;
         /// <summary>The floor's height at (fx, fz) across cell `i` (0..1 each): a steps cell's tread there (tread k, k = 0 at the
         /// deck's side, at -(k+1) of <see cref="Treads"/> of the deep pool's depth), any other cell its flat floor.</summary>
         public float FloorAt(int i,float fx,float fz)

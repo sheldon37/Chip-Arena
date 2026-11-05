@@ -54,7 +54,7 @@ namespace ChipArena.UnityConversion
             PoolroomsBlocksDrawn=0;bool live=NativePoolroomsGenerator.IsMap(arena?.MapId);if(!live&&!NativePoolroomsPreview.Active)return;var eye=WorldEye;if(eye==null)return;
             if(NativePackBanks.Texture(PoolroomsTextures[0])==null)return;
             var p=live?Vector3.zero:NativePoolroomsPreview.Origin;
-            if(live){var layout=arena.Poolrooms;if(layout==null)return;if(!ReferenceEquals(layout,poolroomsLayout)||poolroomsOrigin!=p)PoolroomsBuild(layout,p);if(!ReferenceEquals(poolroomsArena,arena)||poolroomsGeneration!=arena.Generation){poolroomsArena=arena;poolroomsGeneration=arena.Generation;foreach(var prop in arena.AllBlocks)if(prop!=null&&PoolroomsKitBlock(arena.MapId,prop.Definition?.id))foreach(var renderer in prop.GetComponentsInChildren<Renderer>(true))renderer.forceRenderingOff=true;}}
+            if(live){var layout=DeepEndBossLayout(arena.Poolrooms);if(layout==null)return;if(!ReferenceEquals(layout,poolroomsLayout)||poolroomsOrigin!=p)PoolroomsBuild(layout,p);if(!ReferenceEquals(poolroomsArena,arena)||poolroomsGeneration!=arena.Generation){poolroomsArena=arena;poolroomsGeneration=arena.Generation;foreach(var prop in arena.AllBlocks)if(prop!=null&&PoolroomsKitBlock(arena.MapId,prop.Definition?.id))foreach(var renderer in prop.GetComponentsInChildren<Renderer>(true))renderer.forceRenderingOff=true;}}
             if(!live&&(poolroomsLayout==null||poolroomsLayout.Seed!=NativePoolroomsPreview.Seed||poolroomsLayout.Width!=NativePoolroomsPreview.Width||poolroomsLayout.Depth!=NativePoolroomsPreview.Depth||poolroomsOrigin!=p))
                 PoolroomsBuild(NativePoolrooms.Preview(NativePoolroomsPreview.Seed,NativePoolroomsPreview.Width,NativePoolroomsPreview.Depth),p);
             if(!PoolroomsMaterials())return;
@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
                 var dc=b.Centre-e;dc.y=0;if(dc.sqrMagnitude>r2)continue;PoolroomsBlocksDrawn++;
                 for(int s=0;s<b.Meshes.Length;s++)
                 {
-                    if(b.Meshes[s]==null)continue;bool solid=s!=(int)PoolroomsMesh.Surface.Water&&s!=(int)PoolroomsMesh.Surface.Light;
+                    if(b.Meshes[s]==null)continue;bool solid=s!=(int)PoolroomsMesh.Surface.Water&&s!=(int)PoolroomsMesh.Surface.Light;if(!solid&&DeepEndBossRoomOn)continue;
                     Graphics.DrawMesh(b.Meshes[s],Matrix4x4.identity,poolroomsMats[s],0,null,0,poolroomsProps,solid?ShadowCastingMode.TwoSided:ShadowCastingMode.Off,solid);
                 }
             }
