@@ -27,7 +27,9 @@ namespace ChipArena.UnityConversion
         private readonly Material lit,glass,strip,additive,alpha;private readonly MaterialPropertyBlock block=new MaterialPropertyBlock();
         private readonly Texture2D[] textures=new Texture2D[NativeDeployStage.TextureCount];private readonly Texture2D white,blank;
         private readonly Task<float[]>[] stripJobs=new Task<float[]>[6];private Task<float[]> stampJob;private Task<int[]> mapJob;
-        // Each tile rasterised once and in parallel (the three dials carry the same thirty cards): a strip stacks its tiles' jobs.
+        // Keep the finite station catalog cached for this scene. Serialize CPU raster jobs so cold cards do not saturate the thread pool.
+        private Task tileTail=Task.CompletedTask;
+        private readonly string[] stripKeys=new string[6];
         private readonly Dictionary<string,Task<float[]>> tileJobs=new Dictionary<string,Task<float[]>>(StringComparer.Ordinal);
         private int stripsBuilt=-1,mapAsked=-1,mapShown=-1;
         private static readonly int SceneTintId=Shader.PropertyToID("_SceneTint"),BodyTintId=Shader.PropertyToID("_BodyTint"),AccentTintId=Shader.PropertyToID("_AccentTint"),GlowTintId=Shader.PropertyToID("_GlowTint"),StageLitId=Shader.PropertyToID("_StageLit");
@@ -88,7 +90,7 @@ namespace ChipArena.UnityConversion
         private static byte B(float v)=>(byte)Mathf.RoundToInt(Mathf.Clamp01(v)*255);
         private Task<float[]> TileJob(string id,bool dials,string theme)
         {
-            string key=(dials?"m|":"i|")+id+"|"+theme;if(!tileJobs.TryGetValue(key,out var job)){job=Task.Run(()=>NativeDeployArt.Tile(id,dials,theme));tileJobs[key]=job;}return job;
+            string key=(dials?"m|":"i|")+id+"|"+theme;if(!tileJobs.TryGetValue(key,out var job)){job=tileTail.ContinueWith(_=>NativeDeployArt.Tile(id,dials,theme),TaskScheduler.Default);tileTail=job;tileJobs[key]=job;}return job;
         }
         private void Replace(int slot,Texture2D t){var old=textures[slot];textures[slot]=t;if(old!=null&&old!=white)CapturedAnimation.Release(old);}
 
@@ -100,19 +102,22 @@ namespace ChipArena.UnityConversion
                 stripsBuilt=Stage.StripVersion;
                 for(int m=0;m<2;m++)for(int r=0;r<3;r++)
                 {
-                    var ids=Stage.Strip(m,r);bool dials=m==1;var tiles=new List<Task<float[]>>();
+                    var ids=Stage.Strip(m,r);bool dials=m==1;int slot=m*3+r;
+                    string key=string.Join("\n",Array.ConvertAll(ids,id=>id+"|"+Stage.ThemeOf(id)));
+                    if(stripKeys[slot]==key)continue;stripKeys[slot]=key;
+                    var tiles=new List<Task<float[]>>();
                     foreach(var id in ids)tiles.Add(TileJob(id,dials,Stage.ThemeOf(id)));if(dials)tiles.Add(TileJob(NativeDeployArt.Back,true,null));
                     stripJobs[m*3+r]=Task.WhenAll(tiles).ContinueWith(all=>NativeDeployArt.Stack(all.Result),TaskScheduler.Default);
                 }
             }
-            bool pending=false;
-            for(int k=0;k<6;k++){var job=stripJobs[k];if(job==null)continue;if(!job.IsCompleted){pending=true;continue;}stripJobs[k]=null;
-                if(job.Status==TaskStatus.RanToCompletion)Replace(NativeDeployStage.TexStrip+k,Texture(job.Result,NativeDeployArt.TilePixels,job.Result.Length/4/NativeDeployArt.TilePixels,"Deploy strip "+k,true));else Debug.LogWarning("A Deployment Station strip did not rasterise: "+job.Exception?.GetBaseException().Message);}
-            if(!pending&&tileJobs.Count>0)tileJobs.Clear();
-            if(stampJob!=null&&stampJob.IsCompleted){if(stampJob.Status==TaskStatus.RanToCompletion)Replace(NativeDeployStage.TexStamp,Texture(stampJob.Result,NativeDeployArt.TilePixels,NativeDeployArt.StampRows*2,"Deploy stamps",true));stampJob=null;}
+            bool uploaded=false;
+            for(int k=0;k<6;k++){var job=stripJobs[k];if(job==null||!job.IsCompleted)continue;stripJobs[k]=null;
+                if(job.Status==TaskStatus.RanToCompletion)Replace(NativeDeployStage.TexStrip+k,Texture(job.Result,NativeDeployArt.TilePixels,job.Result.Length/4/NativeDeployArt.TilePixels,"Deploy strip "+k,true));else Debug.LogWarning("A Deployment Station strip did not rasterise: "+job.Exception?.GetBaseException().Message);uploaded=true;break;}
+            // One large texture upload per frame; retain card jobs until the scene is disposed.
+            if(!uploaded&&stampJob!=null&&stampJob.IsCompleted){if(stampJob.Status==TaskStatus.RanToCompletion)Replace(NativeDeployStage.TexStamp,Texture(stampJob.Result,NativeDeployArt.TilePixels,NativeDeployArt.StampRows*2,"Deploy stamps",true));stampJob=null;uploaded=true;}
             // the map: the stage's revision (frozen at Deploy), one job at a time
             if(Stage.MapRevision!=mapAsked&&mapJob==null&&s!=null){mapAsked=Stage.MapRevision;var copy=s.Copy();mapJob=Task.Run(()=>NativeDeployPresentation.Preview(copy,NativeDeployStage.MapWidth,NativeDeployStage.MapHeight));}
-            if(mapJob!=null&&mapJob.IsCompleted)
+            if(!uploaded&&mapJob!=null&&mapJob.IsCompleted)
             {
                 if(mapJob.Status==TaskStatus.RanToCompletion&&mapAsked!=mapShown)
                 {

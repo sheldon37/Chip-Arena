@@ -24,6 +24,16 @@ internal static class DeployPerformanceChecks
         input.State.mutators=new[]{"future-mutator"};stage.Frame(input,1/60f);Check(stage.StripVersion==version+1&&stage.Strip(1,0).Contains("future-mutator"),"result absent from catalog still invalidates strips");
         string live=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeploymentLive.cs"));
         Check(live.Contains("static readonly string[] LiveDeployMutators=NativeExpeditionMutators.Ids;")&&live.Contains("Mutators=LiveDeployMutators}"),"live frame reuses one catalog array");
+        var full=pool.Concat(new[]{new ExpeditionInstanceTheme{id=NativeBackroomsGenerator.AreaId,theme="backrooms"},new ExpeditionInstanceTheme{id=NativePoolroomsGenerator.AreaId,theme="poolrooms"}}).ToArray();
+        var rolls=new NativeExpeditionDeployment("all-destinations","host",42);var reels=new NativeDeployStage();
+        var complete=new DeployInput{State=rolls.Snapshot(),Instances=full,Mutators=NativeExpeditionMutators.Ids,SinceInstanceRoll=float.NaN,SinceMutatorRoll=float.NaN,SinceDeploy=float.NaN};
+        reels.Frame(complete,-1);int initial=reels.StripVersion;var strips=Enumerable.Range(0,6).Select(i=>reels.Strip(i/3,i%3)).ToArray();
+        for(int roll=0;roll<100;roll++){rolls.RollInstances("host",full);complete.State=rolls.Snapshot();complete.SinceInstanceRoll=0;reels.Frame(complete,1/60f);Check(reels.StripVersion==initial&&Enumerable.Range(0,6).All(i=>ReferenceEquals(strips[i],reels.Strip(i/3,i%3))),"all five destinations roll without rebuilding reel textures");}
+        Check(live.Contains("Instances=LiveDeployInstances")&&live.Contains("id=NativeBackroomsGenerator.AreaId")&&live.Contains("id=NativePoolroomsGenerator.AreaId"),"live catalog includes both generated destinations before the first roll");
+        string scene=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativeDeployScene.cs"));
+        Check(scene.Contains("if(stripKeys[slot]==key)continue;")&&!scene.Contains("tileJobs.Clear()"),"unchanged strips and rasterized cards survive rerolls");
+        Check(scene.Contains("uploaded=true;break;")&&scene.Contains("if(!uploaded&&stampJob")&&scene.Contains("if(!uploaded&&mapJob"),"only one texture upload per frame");
+        Check(scene.Contains("tileTail.ContinueWith"),"cold raster jobs use one CPU worker at a time");
         Console.WriteLine("PASS Deployment performance: "+count+" checks");
     }
 }
