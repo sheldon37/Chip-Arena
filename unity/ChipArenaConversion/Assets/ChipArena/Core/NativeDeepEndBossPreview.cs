@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
             if(act<0)return f;var a=acts[act];float side=a.Seed%2==0?1:-1;
             switch(a.Id)
             {
-                case "breach":f.Focus=new Vector3(a.Tx,2.6f,a.Tz);f.Yaw=(float)Math.Atan2(-a.Tx,-a.Tz)+side*1.0f+orbit*.2f;f.Dist=14.5f;f.Height=2.2f;f.Fov=60;f.Follow=.45f;break;
+                case "breach":f.Focus=new Vector3(a.Tx,2.6f,a.Tz);f.Yaw=(float)Math.Atan2(-a.Tx,-a.Tz)+side*.5f+orbit*.2f;f.Dist=14.5f;f.Height=2.2f;f.Fov=60;f.Follow=.45f;break;
                 case "jet":{var d=new Vector3(a.Tx-mouth.X,0,a.Tz-mouth.Z);float y=(float)Math.Atan2(d.X,d.Z);f.Focus=new Vector3((a.Tx+mouth.X)*.5f,2.1f,(a.Tz+mouth.Z)*.5f);f.Yaw=y+side*1.35f;f.Dist=14;f.Height=3.4f;f.Fov=68;f.Follow=.3f;break;}
                 case "flop":{var d=new Vector3(a.Ax-a.Tx,0,a.Az-a.Tz);float y=(float)Math.Atan2(d.X,d.Z);f.Focus=new Vector3((a.Tx+a.Ax)*.5f,1.2f,(a.Tz+a.Az)*.5f);f.Yaw=y+1.57f*side;f.Dist=19;f.Height=4.2f;f.Fov=60;f.Follow=.1f;break;}
                 case "thrash":f.Focus=new Vector3(2,1.4f,8);f.Yaw=2.6f;f.Dist=13;f.Height=3.2f;f.Fov=62;f.Follow=.3f;break;
