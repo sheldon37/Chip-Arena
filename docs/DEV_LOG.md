@@ -1,3 +1,9 @@
+## 2026-11-05 — Astra: identify missing sound-queue file
+
+- Owner supplied error from `68949a1c`: FileNotFoundError during optional asset install. Filename/stage were stripped, so root cause and whether any audio was generated remain unknown.
+- Branch `codex/sound-missing-file-diagnostics`, base `68949a1c`: preserve OS-reported missing filename and annotate queue/manifest, receipts, base validation, credential read, generation and import stages. No credential contents or HTTP response bodies logged. No regeneration, queue, cap, or retry-policy changes.
+- Verification: 13 mocked queue tests pass, including missing queue and missing credential paths with zero generation requests. Windows cause diagnosis awaits next test builder run. No live/Site release.
+
 ## 2026-11-05 — Astra: expose sound queue failures and share listening originals
 
 - Branch `codex/sound-queue-drive-handoff`, base `3fad0f72`. Owner's failed sample build logs only exposed a generic queue error; actual cause remains unknown. No assertion that samples were generated.
