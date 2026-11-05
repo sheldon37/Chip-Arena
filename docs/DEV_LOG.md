@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: opt-in ElevenLabs builder queue, no fal
+
+- Added a one-time Windows setup window (DPAPI-encrypted local key, pending request/duration caps, optional status mirror) and approved Git queue processed by the existing asset installer. The queue is empty: no batch or paid generation is implicitly authorized by setup. No visual/gameplay/audio-content changes.
+- Reuses the existing generator/importer; immutable selections and manifest hashes, cross-process lock, durable uncertain-request markers, completed-request reuse, hashed import cache and unchanged original LocalAssets ZIP. `--check`/`--remove` and unconfigured machines never generate. Keep completed queue jobs to retain their imported sounds.
+- Corrected the existing audio-contract test count from 282 to 363 for the 81 boss keys already in the base; seven audio-contract tests pass. The initial broader run exposed that stale assertion.
+- Verification: 28 audio tests passed, including nine new queue tests (mocked network/credentials/import subprocess); existing generator/importer tests cover real ffmpeg processing. No API requests or credits used. Windows GUI/DPAPI, owner credential permissions, actual builder hook execution and listening acceptance are **not run** here. Requires one-time local setup under the builder's Windows user; see SOUND-GENERATOR.md. Test-channel only; no live/Site release.
+
 ## 2026-11-05 — Astra: performance pass delivered, gameplay profiling still required
 
 - Performance PR #346 merged as `c3af0b27e9ff47638e26ad4488d49c5863759e88` and synced to the test builder. Latest completed built source `97cd6dafc6a766f6d12d6881f979c87c6442931b` contains that merge (verified ancestry; later commits carry separate Backrooms presentation/audio work).

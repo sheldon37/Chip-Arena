@@ -4,8 +4,8 @@ committed or packaged).
 usage: python3 -I tools/install_local_assets.py SOURCE [--project DIR] [--check | --remove]
 
 SOURCE is a checkout of the owner's private licensed-assets repository, or a .zip of its content. Either one holds
-Resources/EffectsAudio/manifest.json at its top level or inside a single top folder. This script only reads and copies
-files. It never runs anything from SOURCE, and a zip is read member by member (no absolute paths, no "..", no links,
+Resources/EffectsAudio/manifest.json at its top level or inside a single top folder. With no local sound-queue opt-in, this script only reads and copies
+files. An enabled local sound queue can generate approved ElevenLabs audio before installation. It never runs anything from SOURCE, and a zip is read member by member (no absolute paths, no "..", no links,
 bounded sizes).
 
 It checks the manifest against the key contract in Assets/ChipArena/Core/NativeSoundBank.cs (the same rules as
@@ -358,6 +358,14 @@ def main(argv=None):
     if not args.source:
         parser.error('SOURCE is required')
     source = Path(args.source).resolve()
+    if not args.check:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import sound_queue
+        try:
+            source = sound_queue.process(source)
+        except (ValueError, OSError) as error:
+            print('Sound queue blocked: ' + (str(error) if isinstance(error, ValueError) else type(error).__name__), file=sys.stderr)
+            return 1
     with tempfile.TemporaryDirectory(prefix='licensed-assets-') as scratch:
         try:
             if source.is_file() and zipfile.is_zipfile(source):

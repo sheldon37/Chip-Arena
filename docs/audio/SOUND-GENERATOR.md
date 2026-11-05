@@ -116,3 +116,41 @@ the repository. No key is needed for import.
 Verification: mocked request/rate-limit/error tests, real ffmpeg decoding of synthetic
 MP3 fixtures, folder + ZIP importer checks, BOM receipts, resume, stale-hash/corrupt
 file refusal. Tests never contact ElevenLabs.
+
+## Automatic builder queue (existing ElevenLabs account)
+
+No fal account is used. On the Windows builder PC, in a complete current checkout,
+open `unity/ChipArenaConversion/Setup-Sound-Queue.cmd` once. Use the same Windows
+user that runs the builder. Enter your ElevenLabs API key, request/duration limits,
+and optionally select the existing Drive build-log folder for status. Python 3
+with Tk and ffmpeg on PATH are required. This setup makes no API calls.
+The key is encrypted with Windows DPAPI under
+`%LOCALAPPDATA%\ChipArena\SoundQueue`; it never goes into GitHub or command arguments.
+You can reopen setup to disable processing or change limits.
+
+The normal `install_local_assets.py` asset-install step processes approved jobs in
+`docs/audio/sound-queue.json`. `--check`, `--remove`, missing setup, disabled setup,
+and the initially empty queue never generate audio. No Windows launcher changes
+are needed **if the builder invokes this repository's installer**. A builder using
+its own copied installer must be pointed at the current repository script first.
+After setup, request a specific batch in chat; the approved queue is committed and
+synced to the test builder. No recurring manual shell commands are needed.
+
+Each job has an immutable unique `id`, `approved: true`, a `manifest` path under
+`docs/audio`, the exact file's `manifestSha256`, explicit `keys` and `variants`
+(e.g. `[1]`), plus `maxRequests` and `maxSeconds`. Both job limits and local limits
+are checked before requests. Local limits cap **pending work per run**, not currency
+or a monthly budget. Keep completed jobs in the queue: the original LocalAssets
+ZIP is not overwritten, so their cached imports must remain in the composed pack.
+Changing a completed job requires a new reviewed ID; do not use a new ID to bypass
+an uncertain paid request. The queue is empty until a batch is selected.
+
+Original MP3s, receipts, cached augmented ZIPs and `Latest-Sound-Status.json` stay
+in that local folder. Each completed request is reused on subsequent builds.
+An interrupted/uncertain paid request blocks instead of retrying automatically;
+inspect `pending-request.json` and ElevenLabs history before resolving it.
+Failed imports retain originals and do not regenerate. A status of `complete`
+means assets were imported, **not** that Unity built or published successfully.
+Confirm the separate builder status and playtest before declaring delivery.
+The Windows GUI, DPAPI and live API path still need first-run verification on the
+owner's PC; automated tests mock the network and credential store.
