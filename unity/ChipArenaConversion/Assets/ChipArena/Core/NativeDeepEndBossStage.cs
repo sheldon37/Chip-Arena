@@ -4,7 +4,7 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// What the room should show for THE DEEP END at one moment (the hook the level's presenter reads, as NativeStationBossStage is the station's): the tide, the lights, the whirlpool, the caustics,
+    /// What the room should show for THE DEEP END at one moment (the hook the level's presenter reads, as the station boss has its own): the tide, the lights, the whirlpool, the caustics,
     /// the wave. A pure function of the record, the clock and the beats (<see cref="NativeDeepEndBossStage.Evaluate"/>). Heights are in the room's frame (the deck at 0).
     /// </summary>
     public struct DeepEndBossStage

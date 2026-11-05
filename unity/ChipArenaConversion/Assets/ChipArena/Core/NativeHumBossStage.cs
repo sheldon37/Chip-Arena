@@ -5,7 +5,7 @@ namespace ChipArena.UnityConversion
 {
     /// <summary>
     /// The intro's beats on the boss clock (seconds from the arrival, 0 the music stopping; doc section 3 "It has heard you"): the one table they're timed on. The owner's song will bind them to its accents, as
-    /// NativeStationBossBeats.UseSong does; until then these are fixed numbers on the fallback (the Siren's song: its name time 6.4261 and its drop 9.0678). Presentation only: no hit, hold or rule reads these.
+    /// the station boss's beats do; until then these are fixed numbers on the fallback (the Siren's song: its name time 6.4261 and its drop 9.0678). Presentation only: no hit, hold or rule reads these.
     /// </summary>
     public struct HumBossBeats
     {
