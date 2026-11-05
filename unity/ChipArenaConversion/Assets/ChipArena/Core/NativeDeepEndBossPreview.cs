@@ -120,7 +120,7 @@ namespace ChipArena.UnityConversion
                 case "lull":{var q=HasLocal?Local:new Vector2(a.Tx,a.Tz);f.Focus=new Vector3(q.X,.9f,q.Y);f.Yaw=(float)Math.Atan2(-q.X,-q.Y)*.5f+.4f;f.Dist=6f;f.Height=2.3f;f.Fov=58;f.Follow=0;break;}
                 case "seiche":f.Focus=new Vector3(0,1,0);f.Yaw=0;f.Dist=18.5f;f.Height=4.6f;f.Fov=68;f.Follow=.05f;break;
                 case "whistle":f.Focus=new Vector3(0,1.4f,0);f.Yaw=orbit+2;f.Dist=17;f.Height=4.2f;f.Fov=60;f.Follow=0;break;
-                case "lap":f.Focus=new Vector3(0,.8f,0);f.Yaw=orbit*3.8f;f.Dist=4f;f.Height=5.6f;f.Fov=76;f.Follow=.85f;break;
+                case "lap":f.Focus=new Vector3(0,.8f,0);f.Yaw=(float)Math.Atan2(-mouth.X,-mouth.Z);f.Dist=14f;f.Height=5.4f;f.Fov=74;f.Follow=.8f;break;
             }
             return f;
         }

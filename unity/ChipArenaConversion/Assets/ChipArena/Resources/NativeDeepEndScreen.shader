@@ -34,7 +34,7 @@ Shader "ChipArena/NativeDeepEndScreen"
                 {
                     float3 sum=c;for(int k=0;k<8;k++){float a=6.2831853*(float(k)+0.5)/8.0;sum+=tex2D(_DeepScreenGrab,suv+float2(cos(a),sin(a))*radius*float2(_ScreenParams.y/_ScreenParams.x,1.0)).rgb;sum+=tex2D(_DeepScreenGrab,suv+float2(cos(a+0.39),sin(a+0.39))*radius*1.9*float2(_ScreenParams.y/_ScreenParams.x,1.0)).rgb;}c=sum/17.0;
                     // Colour blooms; the whole picture drifts toward the warm blue-green of the water.
-                    float l=dot(c,float3(0.3,0.5,0.2));c=lerp(c,float3(l,l,l)*float3(0.84,1.08,1.08)+max(c-0.5,0.0)*0.8,soft*0.65);c=lerp(c,float3(0.48,0.78,0.78),soft*(0.08+vig*0.8));
+                    float l=dot(c,float3(0.3,0.5,0.2));c=lerp(c,float3(l,l,l)*float3(0.84,1.08,1.08)+max(c-0.5,0.0)*0.8,soft*0.35);c=lerp(c,float3(0.42,0.74,0.74),soft*(0.02+vig*0.5));
                 }
                 if(wash>0.0)
                 {

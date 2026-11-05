@@ -234,7 +234,7 @@ namespace ChipArena.UnityConversion
                     weight=BossMath.Smooth(age/(hit*.8f))*(1-BossMath.Smooth((age-(hit+m.Strike+m.Follow))/.5f));
                     dir=JetDir(v,age,hit,m,head,surface);return;
                 }
-                if(m.Id=="drain"){weight=BossMath.Smooth(age/hit)*(1-BossMath.Smooth((age-(hit+m.Strike))/.8f));float a=(now-v.actionAt)*.42f;dir=Vector3.Normalize(new Vector3((float)Math.Sin(a),-.62f,(float)Math.Cos(a)));return;}
+                if(m.Id=="drain"){weight=.72f*BossMath.Smooth(age/hit)*(1-BossMath.Smooth((age-(hit+m.Strike))/.8f));float a=(now-v.actionAt)*.42f;dir=Vector3.Normalize(new Vector3((float)Math.Sin(a),-.24f,(float)Math.Cos(a)));return;}
                 if(m.Id=="breach"&&age<hit+.3f){weight=.7f*BossMath.Smooth((age-(hit-.6f))/.4f);dir=Vector3.Normalize(new Vector3(dir.X*.3f,1,dir.Z*.3f));return;}
             }
             if(DeepEndBossView.At(v.phaseAt)&&now>=v.phaseAt&&now<v.phaseAt+NativeDeepEndBoss.PhaseChangeSeconds)

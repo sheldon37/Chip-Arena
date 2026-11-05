@@ -41,8 +41,8 @@ Shader "ChipArena/NativeDeepEndFlow"
                 else if(kind<2.5)
                 {
                     // A hand of water: clear in the middle, bright at its edges, moving under its skin.
-                    float nv=abs(dot(n,v));float rim=pow(1.0-nv,2.6);float s=Noise(float2(i.a.x*5.0+seed,i.a.y*9.0-t*1.4));float a=saturate(share*(0.34+0.62*rim+0.12*s));float3 rv=reflect(-v,n);
-                    float3 c=rgb*Lit()*(0.5+0.4*s)+DeepRoomColour(i.world,rv)*(0.08+0.92*pow(1.0-nv,4.0));o=fixed4(c*a,a);
+                    float nv=abs(dot(n,v));float rim=pow(1.0-nv,2.6);float s=Noise(float2(i.a.x*5.0+seed,i.a.y*9.0-t*1.4));float a=saturate(share*(0.46+0.54*rim+0.12*s));float3 rv=reflect(-v,n);
+                    float3 c=rgb*(Lit()+0.08)*(0.6+0.4*s)+DeepRoomColour(i.world,rv)*(0.1+0.9*pow(1.0-nv,3.0));o=fixed4(c*a,a);
                 }
                 else if(kind<3.5)
                 {

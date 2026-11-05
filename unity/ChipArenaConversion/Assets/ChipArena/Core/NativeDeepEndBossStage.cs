@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             // ---- the Lull's warning ----
-            s.Soft=Math.Max(0,Math.Min(1,v.lull));s.Soft*=s.Soft;if(s.Soft>0)s.Muffle=Math.Max(s.Muffle,s.Soft);
+            s.Soft=Math.Max(0,Math.Min(1,v.lull));s.Soft*=s.Soft*.8f;if(s.Soft>0)s.Muffle=Math.Max(s.Muffle,s.Soft);
             // ---- the death: the room comes back; the turning slows; sound returns ----
             if(v.Dead(time))
             {
