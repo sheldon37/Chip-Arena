@@ -44,6 +44,6 @@ namespace ChipArena.UnityConversion
         // Old callers select the first technique, or reset the weapon. New picker calls the id overload.
         public static string With(string map,string spec,string slot)=>slot==""?Normalize(Normalize(map)+","+spec+":default"):With(map,spec,slot,First(spec));
         public static ContentAbility Ability(ConversionContent content,string map,string spec,string slot)
-        {string id=In(map,spec,slot);return id==""?content.Ability(spec,slot):content.abilities.FirstOrDefault(a=>a.spec==spec&&a.slot=="technique"&&a.id==id);}
+        {string id=In(map,spec,slot);if(id=="")return content.Ability(spec,slot);foreach(var a in content.abilities)if(a.spec==spec&&a.slot=="technique"&&a.id==id)return a;return null;}
     }
 }

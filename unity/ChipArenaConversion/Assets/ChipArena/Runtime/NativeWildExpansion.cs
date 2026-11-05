@@ -110,9 +110,19 @@ namespace ChipArena.UnityConversion
                 bool shrink=wildAfflictions.Any(a=>a.Kind=="wild-shrink-ray"&&a.Target==p.Seat.id&&a.Until>Time);if(shrink!=w.Shrunk){float scale=shrink?.8f:1.25f;p.Collider.height*=scale;p.Collider.radius*=scale;w.Shrunk=shrink;}
             }
         }
-        private void WildGauges(NativePilot p)
+        private void UpdateChipGauges(NativePilot p)
         {
-            var g=p.ChipGauges.ToList();if(Has(p,"wild-spin-up"))g.Add(new NativeChipGauge{Kind="wild-spin-up",Value=p.Wild.Spin});if(Has(p,"wild-haymaker"))g.Add(new NativeChipGauge{Kind="wild-haymaker",Value=Time>=p.Wild.HayAt?1:0,Until=p.Wild.HayAt});if(Has(p,"wild-charged-reply"))g.Add(new NativeChipGauge{Kind="wild-charged-reply",Value=p.Wild.ReplyUntil>Time?1:0,Until=p.Wild.ReplyUntil});if(Has(p,"wild-spare-body"))g.Add(new NativeChipGauge{Kind="wild-spare-body",Value=p.Wild.DownUntil>Time?0:1,Until=p.Wild.DownUntil});p.ChipGauges=g.Take(8).ToArray();
+            bool planted=Has(p,"wild-planted"),opening=Has(p,"wild-opening-move"),doom=Has(p,"wild-doomsday-clock"),spin=Has(p,"wild-spin-up"),hay=Has(p,"wild-haymaker"),reply=Has(p,"wild-charged-reply"),spare=Has(p,"wild-spare-body");
+            int count=(planted?1:0)+(opening?1:0)+(doom?1:0)+(spin?1:0)+(hay?1:0)+(reply?1:0)+(spare?1:0),i=0;
+            // This is the live pilot buffer. Snapshot() already clones it for rendering/network/replay ownership.
+            if(p.ChipGauges.Length!=count)p.ChipGauges=count==0?Array.Empty<NativeChipGauge>():new NativeChipGauge[count];
+            if(planted)p.ChipGauges[i++]=new NativeChipGauge{Kind="wild-planted",Value=p.ExpansionStill<0?0:Mathf.Clamp01(Time-p.ExpansionStill)};
+            if(opening)p.ChipGauges[i++]=new NativeChipGauge{Kind="wild-opening-move",Value=Time-p.ExpansionLastHit>=4?1:0};
+            if(doom)p.ChipGauges[i++]=new NativeChipGauge{Kind="wild-doomsday-clock",Value=p.ExpansionDoomAt<0?0:Mathf.Clamp01((Time-p.ExpansionDoomAt)/3)};
+            if(spin)p.ChipGauges[i++]=new NativeChipGauge{Kind="wild-spin-up",Value=p.Wild.Spin};
+            if(hay)p.ChipGauges[i++]=new NativeChipGauge{Kind="wild-haymaker",Value=Time>=p.Wild.HayAt?1:0,Until=p.Wild.HayAt};
+            if(reply)p.ChipGauges[i++]=new NativeChipGauge{Kind="wild-charged-reply",Value=p.Wild.ReplyUntil>Time?1:0,Until=p.Wild.ReplyUntil};
+            if(spare)p.ChipGauges[i]=new NativeChipGauge{Kind="wild-spare-body",Value=p.Wild.DownUntil>Time?0:1,Until=p.Wild.DownUntil};
         }
     }
 }

@@ -40,6 +40,6 @@ namespace ChipArena.UnityConversion
     public sealed class NativeTechniqueSnapshotSource:ITechniqueSource
     {
         private readonly Snapshot snapshot;public NativeTechniqueSnapshotSource(Snapshot snapshot){this.snapshot=snapshot;}
-        public NativeTechnique Of(int actor)=>snapshot?.Actors?.FirstOrDefault(a=>a!=null&&a.Id==actor)?.Technique;
+        public NativeTechnique Of(int actor){if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null&&a.Id==actor)return a.Technique;return null;}
     }
 }

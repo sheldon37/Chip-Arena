@@ -5,11 +5,17 @@ namespace ChipArena.UnityConversion
     public sealed class NativeHitchWindow
     {
         public const int Capacity=240;
-        private readonly double[] frames=new double[Capacity];
+        private readonly double[] frames=new double[Capacity],sorted=new double[Capacity];
         private int head,count,reports,slowFrames;private double sum,nextReport;
         public double WorstMs {get;private set;}
         public int Hitches {get;private set;}
         public double AverageMs=>count==0?0:sum/count;
+        // Called only when reporting, using scratch storage so diagnostics do not add GC pressure.
+        public void Percentiles(out double p95,out double p99)
+        {
+            if(count==0){p95=p99=0;return;}Array.Copy(frames,sorted,count);Array.Sort(sorted,0,count);
+            p95=sorted[(int)Math.Ceiling(count*.95)-1];p99=sorted[(int)Math.Ceiling(count*.99)-1];
+        }
         public bool Observe(double now,double milliseconds)
         {
             if(double.IsNaN(milliseconds)||double.IsInfinity(milliseconds)||milliseconds<0)return false;
