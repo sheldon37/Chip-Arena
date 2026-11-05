@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
         // not to stand. The draw is one bright hair along the whole line, then a beat, then the air opens along it: the wider and hotter the longer the charge.
         private static void Iaido(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var from=N(k.From);var to=N(k.To);var dir=Flat(to-from,Flat(N(k.Dir),Vector3.UnitZ));var r=RightOf(dir);bool drawn=k.Recast(t);
+            var from=N(k.From);var to=N(k.To);bool drawn=k.Recast(t);var dir=drawn?Flat(to-from,Flat(N(k.Dir),Vector3.UnitZ)):Flat(N(V3.Forward(a.Yaw)),Flat(N(k.Dir),Vector3.UnitZ));var r=RightOf(dir);
             if(!drawn)
             {
                 float hold=Clamp01((t-k.At)/1.5f),env=Smooth((t-k.At)/.15f),pulse=.8f+.2f*(float)Math.Sin(t*14);
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
         public const float MirrorRun=6.8f;
         private static Vector3 MirrorAt(NativeTechnique k,float t)
         {
-            var from=N(k.From);var line=N(k.To)-from;float len=line.Length();if(len<.01f)return from;return from+line/len*Math.Min(len,MirrorRun*Math.Max(0,(k.Hit(t)?k.HitAt:t)-k.Release));
+            var from=N(k.From);var line=N(k.To)-Up*BodyCentre-from;float len=line.Length();if(len<.01f)return from;return from+line/len*Math.Min(len,MirrorRun*Math.Max(0,(k.Hit(t)?k.HitAt:t)-k.Release));
         }
         // A body of light at `feet`: `run` turns its stride (a whole stride a turn), `stride` 0 stands it still.
         private static void MirrorFigure(ITechniqueFxSink s,Vector3 feet,Vector3 f,Vector3 r,float run,float stride,Vector3 color,float b,bool low)
@@ -141,7 +141,7 @@ namespace ChipArena.UnityConversion
         }
         private static void MirrorDouble(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var from=N(k.From);var dir=Flat(N(k.To)-from,Flat(N(k.Dir),Vector3.UnitZ));var rt=RightOf(dir);var pane=from+dir*.8f;const float Tall=2.1f;bool view=scene.Viewer==a.Id;
+            var from=t<k.Release?scene.Feet(a):N(k.From);var dir=Flat(N(k.Dir),Vector3.UnitZ);var rt=RightOf(dir);var pane=from+dir*.8f;const float Tall=2.1f;bool view=scene.Viewer==a.Id;
             if(t<k.Release)
             {
                 float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Line(false,pane,pane+Up*(Tall*Smooth(u*1.5f)),MirrorPale*(2.4f*u),.03f,false);s.Sprite(false,pane+Up*(Tall*Smooth(u*1.5f)),MirrorPale*(2.4f*u),.22f,Sparkle);
@@ -167,7 +167,7 @@ namespace ChipArena.UnityConversion
                 else
                 {
                     // A haze the size of a body, not a body: it fits any pose. Flecks climbing a column of faint light, and two thin rings going up it.
-                    var feet=scene.Feet(a);s.Glow(feet+Up*1,MirrorLilac*(.32f*env*flick),0,1.5f,Core,0,seed+7);
+                    var feet=scene.Feet(a);feet.Y=from.Y;s.Glow(feet+Up*1,MirrorLilac*(.32f*env*flick),0,1.5f,Core,0,seed+7);
                     int n=Count(14,q,low);for(int i=0;i<n;i++){float ph=(t*1.1f+R(seed,i+60))%1,ang=6.2831853f*R(seed,i+61)+t*.5f;s.Sprite(false,feet+new Vector3((float)Math.Cos(ang)*.34f,.05f+1.75f*ph,(float)Math.Sin(ang)*.34f),MirrorPale*(1.3f*env*(float)Math.Sin(3.14159f*ph)),.1f,Sparkle);}
                     for(int i=0;i<2;i++){float ph=(t*.8f+i*.5f)%1;Ring(s,feet+Up*(.1f+1.7f*ph),.36f,.022f,MirrorLilac*(.8f*env*(float)Math.Sin(3.14159f*ph)),low?10:18);}
                 }
@@ -367,8 +367,8 @@ namespace ChipArena.UnityConversion
         private static void GroundSlam(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
             var p=N(k.Point);var from=N(k.From);var fl=p+Up*.04f;float land=k.HitAt>-50?k.HitAt:k.Arm;int seg=low?28:56;
-            if(t<k.Release){float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Glow(from+Up*.05f,SlamBlue*(1.2f*u),0,1.6f*u,RingGlow,u,seed);return;}
-            float air=t-k.Release;
+            if(t<k.Release){float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Glow(scene.Feet(a)+Up*.05f,SlamBlue*(1.2f*u),0,1.6f*u,RingGlow,u,seed);return;}
+            float air=t-k.Release;if(t>=k.Until&&!k.Hit(t))return;
             if(air<.4f){if(air<.3f)Ring(s,from+Up*.05f,1.5f*OutCubic(air/.3f),.18f,SlamBlue*(1.5f*(1-air/.3f)),low?14:24);Dust(s,from,air,.4f,Count(10,q,low),1.6f,SlamRock*2,.55f,seed+1);}
             if(t<land)
             {
@@ -380,7 +380,7 @@ namespace ChipArena.UnityConversion
                 if(u>.5f&&!low){float w=(u-.5f)*2;int m=Count(10,q,low);for(int i=0;i<m;i++){float ph=(t*3+R(seed,i+30))%1,ang=6.2831853f*R(seed,i+31);var o=head+new Vector3((float)Math.Cos(ang)*.65f,.8f-1.7f*ph,(float)Math.Sin(ang)*.65f);s.Line(false,o,o+Up*.8f,SlamPale*(1.5f*w*(float)Math.Sin(3.14159f*ph)),.025f,false);}}
                 return;
             }
-            float since=t-land;
+            if(!k.Hit(t))return;float since=t-land;
             Flash(s,p+Up*.8f,since,.3f,SlamBlue,4.4f,seed+2);if(since<.22f)Ring(s,fl,SlamReach*.5f,SlamReach,SlamPale*(.55f*(1-since/.22f)),low?16:32);
             MeleeFissures(s,p,Vector3.UnitZ,RightOf(Vector3.UnitZ),3.14159f,SlamReach,since,1.2f,low?6:12,SlamBlue,SlamPale,.8f,seed+3);
             if(since<.3f){float g=since/.3f;Ring(s,fl,SlamReach*OutCubic(g),.9f*(1-g)+.14f,SlamPale*(1.8f*(1-g)),seg);}
@@ -428,7 +428,7 @@ namespace ChipArena.UnityConversion
             if(released)
             {
                 float since=t-k.RecastAt;int shots=LodeHeld(k,k.RecastAt);Flash(s,face,since,.2f,LodePale,shots>0?1.3f:.7f,seed+6);
-                if(since<.35f){float g=since/.35f;Hoop(s,face+f*(.3f+1.7f*OutCubic(g)),f,.6f+1.8f*OutCubic(g),.14f*(1-g)+.02f,LodeBlue*(1.4f*(1-g)),low?14:26,1);if(shots>0)MeleeSector(s,feet+Up*.05f,f,r,LodeThrow*OutCubic(g*1.6f),.5f,LodeShot,.2f*(1-g),1.2f*(1-g),low?6:12);}
+                if(since<.35f){float g=since/.35f;Hoop(s,face+f*(.3f+1.7f*OutCubic(g)),f,.6f+1.8f*OutCubic(g),.14f*(1-g)+.02f,LodeBlue*(1.4f*(1-g)),low?14:26,1);if(shots>0)MeleeSector(s,feet+Up*.05f,f,r,LodeThrow*OutCubic(g*1.6f),.7854f,LodeShot,.2f*(1-g),1.2f*(1-g),low?6:12);}
                 for(int i=0;i<shots;i++)
                 {
                     float x=shots>1?i/(shots-1f)*2-1:0,ang=x*.45f+.08f*(R(seed,i+90)-.5f),start=.012f*i,g=Clamp01((since-start)/.2f),fade=1-Clamp01((since-start-.2f)/.1f);if(since<start||fade<=0)continue;var d=Vector3.Normalize(f*(float)Math.Cos(ang)+r*(float)Math.Sin(ang)+Up*(.18f*(R(seed,i+91)-.5f)));
@@ -465,10 +465,10 @@ namespace ChipArena.UnityConversion
         // If it struck someone a star of plate breaks out at chest height and shards of armour fly. The victims' own cracks of light come with their marks.
         public const float SunderReach=3;
         private static readonly Vector3 SunderHot=new Vector3(1,.46f,.16f),SunderWhite=new Vector3(1,.85f,.6f);
-        private const float SunderHalf=.7f;
+        private const float SunderHalf=.7f,SunderLand=2.2f;
         private static void Sunder(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var p=N(k.Point);var f=Flat(N(k.Dir),Vector3.UnitZ);var r=RightOf(f);var feet=scene.Feet(a);bool view=scene.Viewer==a.Id;
+            var f=Flat(N(k.Dir),Vector3.UnitZ);var r=RightOf(f);var p=N(k.Point)+f*SunderLand;var feet=scene.Feet(a);bool view=scene.Viewer==a.Id;
             if(t<k.Release)
             {
                 float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));bool has=view?scene.ViewBlade(false,out var b0,out var b1):scene.Blade(a,false,out b0,out b1);
@@ -502,7 +502,7 @@ namespace ChipArena.UnityConversion
         private static readonly Vector3 ReapSilver=new Vector3(.74f,.82f,.95f),ReapPale=new Vector3(.93f,.96f,1);
         private static void ReapingSweep(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var c=N(k.Point);var fl=c+Up*.04f;var f=Flat(N(k.Dir),Vector3.UnitZ);float a0=(float)Math.Atan2(f.Z,f.X);const float Shin=.38f,Inner=.7f,Sweep=.24f;int seg=low?24:48;
+            var c=N(k.Point);var fl=c+Up*.04f;var f=Flat(N(k.Dir),Vector3.UnitZ);float a0=(float)Math.Atan2(f.Z,f.X)-ReapArc*.5f;const float Shin=.38f,Inner=.7f,Sweep=.24f;int seg=low?24:48;
             Vector3 D(float ang)=>new Vector3((float)Math.Cos(ang),0,(float)Math.Sin(ang));
             if(t<k.Release)
             {
@@ -577,7 +577,7 @@ namespace ChipArena.UnityConversion
                 return;
             }
             if(!risen)return;
-            float since=t-k.RecastAt,size=.6f+.4f*charge;var at=DragHead(k,k.RecastAt,feet,f)+f*.9f;var fl=at+Up*.04f;
+            float since=t-k.RecastAt,size=.6f+.4f*charge;var at=(path!=null&&path.Length>0?N(path[path.Length-1]):DragHead(k,k.RecastAt,feet,f))+f*.9f;var fl=at+Up*.04f;
             // The crescent, torn up out of the floor ahead.
             if(since<.3f)
             {
@@ -603,13 +603,13 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.Disarm:k.Release=t0+.14f;k.From=V3Of(feet);k.Dir=V3Of(f);k.Point=V3Of(feet+f*2.4f+up*1.2f);if(first){k.HitAt=k.Release+.14f;k.Until=k.HitAt+2.5f;k.RecoverUntil=k.Release+.3f;}else{k.Until=k.Release+.5f;k.RecoverUntil=k.Until;}return true;
                 case NativeTechniques.Iaido:k.Release=t0+.15f;k.From=V3Of(feet);k.To=V3Of(feet+f*5);k.Dir=V3Of(f);k.Arm=first?1:.35f;k.RecastAt=t0+(first?1.5f:.55f);k.Until=k.RecastAt+.3f;k.RecoverUntil=k.Until+.25f;k.HitAt=first?k.RecastAt+.05f:-100;return true;
                 case NativeTechniques.Challenge:k.Release=t0+.22f;k.Point=V3Of(feet+f*5);k.Until=k.Release+(first?6:3);k.RecoverUntil=k.Release+.2f;return true;
-                case NativeTechniques.MirrorDouble:{k.Release=t0+.14f;k.From=V3Of(feet);k.Dir=V3Of(f);k.Arm=k.Release+1;float run=first?1.5f:2.5f;k.To=V3Of(feet+f*(NativeTechniqueFx.MirrorRun*run));if(first){k.HitAt=k.Release+run;k.Until=k.HitAt+.3f;}else k.Until=k.Release+run;k.RecoverUntil=k.Release+.1f;return true;}
+                case NativeTechniques.MirrorDouble:{k.Release=t0+.1f;k.From=V3Of(feet);k.Dir=V3Of(f);k.Arm=k.Release+1;float run=first?1.5f:2.5f;k.To=V3Of(feet+up*NativeTechniqueFx.BodyCentre+f*(NativeTechniqueFx.MirrorRun*run));if(first){k.HitAt=k.Release+run;k.Until=k.HitAt+.3f;}else k.Until=k.Release+run;k.RecoverUntil=k.Release+.1f;return true;}
                 case NativeTechniques.Envenom:k.Release=t0+.4f;k.RecoverUntil=k.Release+.1f;if(first){k.Arm=2;k.HitAt=k.Release+1.25f;k.To=V3Of(feet+f*1.25f+up*1.2f);k.Until=k.Release+3.6f;}else{k.Arm=3;k.Until=k.Release+6;}return true;
                 case NativeTechniques.ChainHook:{k.Release=t0+.2f;k.From=V3Of(hand);k.To=V3Of(feet+f*2+up*1.2f);var end=feet+f*(first?9.5f:12)+up*1.2f;k.Point=V3Of(end);float fly=Vector3.Distance(hand,end)/NativeTechniqueFx.HookSpeed;if(first){k.HitAt=k.Release+fly;k.Until=k.HitAt+.35f;}else{k.Arm=k.Release+fly;k.Until=k.Arm+.3f;}k.RecoverUntil=k.Until;return true;}
                 case NativeTechniques.WarCry:k.Release=t0+.3f;k.Point=V3Of(feet);k.Until=k.Release+4;k.RecoverUntil=k.Release+.25f;return true;
-                case NativeTechniques.GroundSlam:k.Release=t0+.14f;k.From=V3Of(feet);k.Point=V3Of(feet+f*(first?5:2.6f));k.Arm=k.Release+.5f;k.HitAt=k.Arm;k.Until=k.Arm+.25f;k.RecoverUntil=k.Until+.15f;return true;
+                case NativeTechniques.GroundSlam:k.Release=t0+.1f;k.From=V3Of(feet);k.Point=V3Of(feet+f*(first?5:2.6f));k.Arm=k.Release+.5f;k.HitAt=k.Arm;k.Until=k.Arm+.25f;k.RecoverUntil=k.Until+.15f;return true;
                 case NativeTechniques.Lodestone:k.Release=t0+.2f;k.Dir=V3Of(f);k.Arm=first?6:2;k.HitAt=k.Release+(first?.95f:1.3f);k.To=V3Of(first?feet+f*5.5f+r*2+up*1.4f:feet+f*4.5f-r*2.6f+up*1);k.RecastAt=k.Release+(first?1.8f:2.5f);k.Until=k.RecastAt+.3f;k.RecoverUntil=k.Until;return true;
-                case NativeTechniques.Sunder:k.Release=t0+.55f;k.Point=V3Of(feet+f*2.2f);k.Dir=V3Of(f);k.Until=k.Release+.3f;k.RecoverUntil=k.Until+.3f;if(first)k.HitAt=k.Release;return true;
+                case NativeTechniques.Sunder:k.Release=t0+.55f;k.Point=V3Of(feet);k.Dir=V3Of(f);k.Until=k.Release+.3f;k.RecoverUntil=k.Until+.3f;if(first)k.HitAt=k.Release;return true;
                 case NativeTechniques.ReapingSweep:k.Release=t0+.25f;k.Point=V3Of(feet);k.Dir=V3Of(f);k.Until=k.Release+.3f;k.RecoverUntil=k.Until+.25f;if(first)k.HitAt=k.Release+.12f;return true;
                 case NativeTechniques.BladeDrag:
                 {

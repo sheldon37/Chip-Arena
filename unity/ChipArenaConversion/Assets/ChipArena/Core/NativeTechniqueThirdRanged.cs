@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         private static readonly string[] RangedBuilt={NativeTechniques.FlashRound,NativeTechniques.GunSpin,NativeTechniques.SlideShot,NativeTechniques.Bipod,NativeTechniques.AmmoCrate,NativeTechniques.FlakBurst,NativeTechniques.BreacherRound,NativeTechniques.Ghillie,NativeTechniques.BolasRound,NativeTechniques.BrambleArrow,NativeTechniques.VaultShot,NativeTechniques.TetherArrow};
         /// <summary>How far Flash Round dazzles; Flak Burst's cloud; Bramble Arrow's hedge either side of its middle, and its height; how far a Tether Arrow lets you go.</summary>
-        public const float FlashReach=6,FlakReach=5,BrambleHalf=2.5f,BrambleTall=1,TetherReach=5;
+        public const float BolasSpeed=45,ArrowSpeed=45,FlakSpeed=50,FlashReach=6,FlakReach=2.5f,BrambleHalf=2.5f,BrambleTall=1,TetherReach=5;
         private static readonly Vector3 FlashWhite=new Vector3(1,.96f,.75f),SpinBrass=new Vector3(1,.78f,.32f),SlideDust=new Vector3(1,.74f,.46f),BipodHeat=new Vector3(1,.4f,.22f),BipodSteel=new Vector3(.6f,.68f,.82f),CrateGold=new Vector3(1,.78f,.22f),CrateSteel=new Vector3(.55f,.64f,.78f),
             FlakOrange=new Vector3(1,.52f,.18f),BreachLight=new Vector3(.45f,.85f,1),BreachWall=new Vector3(1,.42f,.14f),GhillieGreen=new Vector3(.5f,.78f,.36f),BolasCord=new Vector3(.9f,.74f,.42f),BrambleGreen=new Vector3(.3f,.85f,.2f),BrambleThorn=new Vector3(.95f,1,.5f),VaultMint=new Vector3(.58f,1,.84f),TetherBlue=new Vector3(.5f,.82f,1);
         private static bool ThirdRanged(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
@@ -59,9 +59,10 @@ namespace ChipArena.UnityConversion
             var from=N(k.From);var at=N(k.Point);var d=RangedNorm(at-from,Vector3.UnitZ);var white=FlashWhite+Vector3.One*.6f;
             if(t<k.Release){float g=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Sprite(false,from,white*(.6f+2*g),.14f+.24f*g,Sparkle);return;}
             Flash(s,from,t-k.Release,.12f,FlashWhite,.9f,seed);
-            if(t<k.Arm)
+            bool burst=k.Arm>k.At;
+            if(!burst||t<k.Arm)
             {
-                float u=Clamp01((t-k.Release)/Math.Max(.03f,k.Arm-k.Release)),strobe=.5f+.5f*Pulse(t,70,2);var head=Vector3.Lerp(from,at,u);var tail=Vector3.Lerp(from,at,Math.Max(0,u-.4f));
+                if(t>=k.Until)return;float strobe=.5f+.5f*Pulse(t,70,2);var head=burst?Vector3.Lerp(from,at,Clamp01((t-k.Release)/Math.Max(.03f,k.Arm-k.Release))):at;var tail=head-d*Math.Min(Vector3.Distance(from,head),4);
                 s.Line(false,tail,head,FlashWhite*1.1f,.12f,false);s.Line(false,tail,head,white*2.8f,.035f,true);
                 s.Sprite(false,head,white*(2.6f*strobe),.9f,Sparkle);s.Sprite(false,head,Vector3.One*(3.8f*strobe),.34f,Hot);s.Glow(head,FlashWhite*(1.3f*strobe),0,1.1f,Core,0,seed+1);
                 return;
@@ -120,19 +121,19 @@ namespace ChipArena.UnityConversion
         // dust behind the heels, and the end kicks up a crescent of dirt.
         private static void SlideShot(ITechniqueFxSink s,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var from=N(k.From);var to=N(k.To);var dir=Flat(to-from,Flat(N(k.Dir),Vector3.UnitZ));var r=RightOf(dir);float span=Math.Max(.05f,k.Until-k.Release),u=Clamp01((t-k.Release)/span),marks=Smooth((t-k.At)/.06f)*(1-Smooth((t-k.Until-.1f)/.75f));var fl=Up*.09f;var head=Vector3.Lerp(from,to,u);
+            if(t<k.Release&&k.To.Length<.01f)return;var from=N(k.From);var to=N(k.To);var dir=Flat(to-from,Flat(N(k.Dir),Vector3.UnitZ));var r=RightOf(dir);float over=k.Until-.2f,span=Math.Max(.05f,over-k.Release),u=Clamp01((t-k.Release)/span),marks=Smooth((t-k.At)/.06f)*(1-Smooth((t-over-.1f)/.75f));var fl=Up*.09f;var head=Vector3.Lerp(from,to,u);
             int chev=low?4:6;for(int i=0;i<chev;i++){float ui=(i+.6f)/chev,b=marks*(ui>u?2.6f:.5f);var p=Vector3.Lerp(from,to,ui)+fl;s.Line(false,p-r*.62f-dir*.46f,p,SlideDust*b,.15f,true);s.Line(false,p+r*.62f-dir*.46f,p,SlideDust*b,.15f,true);}
-            float stop=marks*(t<k.Until?1.3f+.5f*(float)Math.Sin(t*30):.5f);var end=to+fl;s.Line(false,end-r*1.05f,end+r*1.05f,(SlideDust+Vector3.One*.3f)*(1.9f*stop),.16f,false);s.Line(false,end-r*1.05f,end-r*1.05f-dir*.5f,SlideDust*(1.8f*stop),.1f,false);s.Line(false,end+r*1.05f,end+r*1.05f-dir*.5f,SlideDust*(1.8f*stop),.1f,false);
+            float stop=marks*(t<over?1.3f+.5f*(float)Math.Sin(t*30):.5f);var end=to+fl;s.Line(false,end-r*1.05f,end+r*1.05f,(SlideDust+Vector3.One*.3f)*(1.9f*stop),.16f,false);s.Line(false,end-r*1.05f,end-r*1.05f-dir*.5f,SlideDust*(1.8f*stop),.1f,false);s.Line(false,end+r*1.05f,end+r*1.05f-dir*.5f,SlideDust*(1.8f*stop),.1f,false);
             if(t<k.Release)return;
-            var hot=new Vector3(1,.62f,.24f);float scorch=1-Smooth((t-k.Until)/.9f);
+            var hot=new Vector3(1,.62f,.24f);float scorch=1-Smooth((t-over)/.9f);
             Strip(s,from+fl,head+fl,.46f,SlideDust,.1f*scorch,.6f*scorch);s.Line(false,from-r*.16f+fl,head-r*.16f+fl,hot*(1.9f*scorch),.04f,true);s.Line(false,from+r*.16f+fl,head+r*.16f+fl,hot*(1.9f*scorch),.04f,true);
             int n=Count(20,q,low);for(int i=0;i<n;i++){float ui=(i+.5f)/n,own=t-(k.Release+ui*span);if(own<0||own>1)continue;float sd=R(seed,i+1)-.5f;var p=Vector3.Lerp(from,to,ui)+Up*(.16f+.65f*own*(.5f+R(seed,i+2)))+r*(sd*(.45f+.9f*own));s.Smoke(p,new Vector3(.46f,.4f,.32f),.7f*(1-own)*(1-own),.42f+1.25f*own,.1f+.5f*own,seed+i,from.Y-.1f);}
-            if(t<k.Until)
+            if(t<over)
             {
                 Spray(s,head+Up*.06f,t,.22f,Count(10,q,low),6.5f,hot,seed+30,10,.024f,-dir*1.3f+Up*.55f);s.Sprite(false,head+Up*.08f,hot*2.4f,.34f,Hot);
                 for(int sd=-1;sd<=1;sd+=2){var o=r*(sd*.42f)+Up*.5f;s.Line(false,head-dir*2+o,head+o,Vector3.One*.9f,.018f,true);}
             }
-            float after=t-k.Until;if(after<0)return;
+            float after=t-over;if(after<0)return;
             Dust(s,to,after,.65f,Count(10,q,low),1.4f,new Vector3(.5f,.43f,.34f),.75f,seed+50);Sparks(s,to+Up*.1f,after,.36f,Count(12,q,low),5.2f,SlideDust,seed+60,10,.022f,dir*1.1f+Up*.35f);
         }
 
@@ -259,12 +260,12 @@ namespace ChipArena.UnityConversion
             Flash(s,from,t-k.Release,.16f,FlakOrange,1.1f,seed);
             if(t<k.Arm)
             {
-                float u=Clamp01((t-k.Release)/Math.Max(.03f,k.Arm-k.Release));var head=Vector3.Lerp(from,c,u);var tail=Vector3.Lerp(from,c,Math.Max(0,u-.3f));
+                float x=Math.Min(Vector3.Distance(from,c),FlakSpeed*(t-k.Release));var head=from+d*x;var tail=from+d*Math.Max(0,x-5);
                 s.Line(false,tail,head,FlakOrange*1.1f,.14f,false);s.Line(false,tail,head,(FlakOrange+Vector3.One*.4f)*2.2f,.05f,true);s.Sprite(false,head,(FlakOrange+Vector3.One*.5f)*2.6f,.42f,Hot);
                 return;
             }
             float age=t-k.Arm;
-            Flash(s,c,age,.34f,FlakOrange,6.5f,seed+1);if(age<.1f)s.Sprite(false,c,(FlakOrange+Vector3.One)*(4*(1-age/.1f)),4,Hot);
+            Flash(s,c,age,.34f,FlakOrange,4,seed+1);if(age<.1f)s.Sprite(false,c,(FlakOrange+Vector3.One)*(4*(1-age/.1f)),2.4f,Hot);
             float shell=Clamp01(age/.32f);if(shell<1){Hoop(s,c,d,FlakReach*OutCubic(age/.2f),.34f*(1-shell)+.03f,(FlakOrange+Vector3.One*.3f)*(1.7f*(1-shell)),low?20:40,1);}
             float life=Math.Max(.05f,k.Until-k.Arm);
             if(age<.42f){int n=Count(30,q,low);for(int i=0;i<n;i++){var dir=RandomDir(seed,i*11+5);float own=Clamp01(age/(.16f+.26f*R(seed,i+70))),rr=FlakReach*(.55f+.5f*R(seed,i+71))*OutCubic(own);if(own<1)s.Line(false,c+dir*(rr*.6f),c+dir*rr,(FlakOrange+Vector3.One*.3f)*(2.4f*(1-own)),.05f,true);}}
@@ -274,7 +275,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<puffs;i++)
             {
                 float own=(i+.5f)/puffs,yy=1-2*own,flat=(float)Math.Sqrt(Math.Max(0,1-yy*yy)),ang=2.39996f*i+t*.1f*(R(seed,i+1)-.5f),lay=.45f+.55f*R(seed,i+2);var p=c+new Vector3((float)Math.Cos(ang)*flat,yy*.62f,(float)Math.Sin(ang)*flat)*(rad*lay*.86f)+Up*(.1f*(float)Math.Sin(t*.8f+i));
-                float tone=.04f+.06f*R(seed,i+3);s.Smoke(p,new Vector3(tone*1.15f,tone,tone*.9f),.72f*env,(2.1f+1.3f*R(seed,i+4))*(.6f+.4f*grow),.16f+.32f*Clamp01(age/life)+.1f*R(seed,i+5),seed+i,floorY-.1f);
+                float tone=.04f+.06f*R(seed,i+3);s.Smoke(p,new Vector3(tone*1.15f,tone,tone*.9f),.72f*env,(1.2f+.8f*R(seed,i+4))*(.6f+.4f*grow),.16f+.32f*Clamp01(age/life)+.1f*R(seed,i+5),seed+i,floorY-.1f);
             }
             // Pops inside it, each at a fresh place.
             int pops=Count(10,q,low);
@@ -297,7 +298,7 @@ namespace ChipArena.UnityConversion
         // heavy beam with a corkscrew round it and rings standing along it; where it went through a wall the hole stays molten, spraying inside and out.
         private static void BreacherRound(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var from=N(k.From);var to=N(k.To);var d=RangedNorm(to-from,RangedNorm(N(k.Dir),Vector3.UnitZ));var side=RangedSide(d);var lift=Vector3.Normalize(Vector3.Cross(side,d));float floorY=scene.Feet(a).Y+.05f,len=Vector3.Distance(from,to);var white=BreachLight+Vector3.One*.6f;var path=k.Path;
+            bool charging=t<k.Release&&k.To.Length<.01f;var aim=RangedNorm(N(k.Dir),Vector3.UnitZ);var from=charging?scene.Feet(a)+Up*(BodyCentre+.3f):N(k.From);var to=charging?from+aim*80:N(k.To);var d=RangedNorm(to-from,aim);var side=RangedSide(d);var lift=Vector3.Normalize(Vector3.Cross(side,d));float floorY=scene.Feet(a).Y+.05f,len=Vector3.Distance(from,to);var white=BreachLight+Vector3.One*.6f;var path=k.Path;
             if(t<k.Release)
             {
                 float g=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At)),env=Smooth(g/.08f),pulse=.72f+.28f*(float)Math.Sin((t-k.At)*(20+70*g));var tip=Vector3.Lerp(from,to,OutCubic(g/.1f));
@@ -335,7 +336,7 @@ namespace ChipArena.UnityConversion
         // climbing a body's height, and a glint or two. When it breaks, the whole cover is thrown off in a burst of leaves.
         private static void Ghillie(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var feet=scene.Feet(a);var c=new Vector3(feet.X,k.Point.y,feet.Z);float span=Math.Max(.05f,k.Arm-k.At),age=t-k.At;var dark=GhillieGreen*.75f;
+            var feet=scene.Feet(a);var c=new Vector3(feet.X,k.Point.y,feet.Z);float arm=ArmAt(k),span=Math.Max(.05f,arm-k.At),age=t-k.At;var dark=GhillieGreen*.75f;
             if(t>=k.Until)
             {
                 float after=t-k.Until;if(after>.85f)return;int n=Count(34,q,low);float f0=1-after/.85f;
@@ -343,7 +344,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++){var v=RandomDir(seed,i*5+3);v.Y=Math.Abs(v.Y)*.8f+.25f;var p=c+Up*(.3f+1.3f*R(seed,i+60))+v*(3.6f*(1-(float)Math.Exp(-after*3.4f)))-Up*(.9f*after*after);RangedLeaf(s,p,R(seed,i+61)*6.28f+after*(4+7*R(seed,i+62)),.1f+.06f*R(seed,i+63),GhillieGreen*(1.35f*f0));}
                 return;
             }
-            float settled=Smooth((t-k.Arm)/.35f);
+            float settled=Smooth((t-arm)/.35f);
             if(settled<1)
             {
                 int n=Count(34,q,low);
@@ -361,7 +362,7 @@ namespace ChipArena.UnityConversion
                 var m1=b+Up*(h*.55f)+lean*.4f;s.Line(false,b,m1,dark*(1.3f*grass),.045f,false);s.Line(false,m1,b+Up*h+lean,GhillieGreen*(1.5f*grass),.03f,true);
             }
             if(age<span)Ring(s,c+Up*.04f,.9f*Smooth(age/.2f),.1f,GhillieGreen,low?14:24,.9f*(1-age/span));
-            float glim=Smooth((t-(k.Arm-.2f))/.3f)*(1-Smooth((t-(k.Until-.08f))/.08f));
+            float glim=Smooth((t-(arm-.2f))/.3f)*(1-Smooth((t-(k.Until-.08f))/.08f));
             if(glim<=0)return;
             int hoops=low?2:3,seg=low?8:14;
             for(int h=0;h<hoops;h++)
@@ -379,11 +380,11 @@ namespace ChipArena.UnityConversion
         {
             var from=N(k.From);var end=N(k.Point);var d=RangedNorm(end-from,Flat(N(k.Dir),Vector3.UnitZ));var side=RangedSide(d);var lift=Vector3.Normalize(Vector3.Cross(side,d));var weight=BolasCord+Vector3.One*.2f;
             if(t<k.Release){float g=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Sprite(false,from,BolasCord*(1+2*g),.24f,Hot);return;}
-            bool hit=k.Hit(t);float arrive=hit?k.HitAt:k.Until,fly=Math.Max(.03f,arrive-k.Release);
+            bool hit=k.Hit(t);float arrive=k.HitAt>-50?k.HitAt:k.Until;
             Flash(s,from,t-k.Release,.14f,BolasCord,1.1f,seed);
             if(t<arrive)
             {
-                float u=Clamp01((t-k.Release)/fly),open=OutCubic((t-k.Release)/.1f),rad=.16f+.46f*open;var c=Vector3.Lerp(from,end,u);Vector3 At(float tt,int i,float rr){float sp=tt*20+i*2.0943951f;return Vector3.Lerp(from,end,Clamp01((tt-k.Release)/fly))+(side*(float)Math.Cos(sp)+lift*(float)Math.Sin(sp))*rr;}
+                float open=OutCubic((t-k.Release)/.1f),rad=.16f+.46f*open,reach=Vector3.Distance(from,end);Vector3 Along(float tt)=>from+d*Math.Min(reach,BolasSpeed*Math.Max(0,tt-k.Release));var c=Along(t);Vector3 At(float tt,int i,float rr){float sp=tt*20+i*2.0943951f;return Along(tt)+(side*(float)Math.Cos(sp)+lift*(float)Math.Sin(sp))*rr;}
                 Hoop(s,c,d,rad,.1f,BolasCord*.7f,low?12:20,1);s.Sprite(false,c,weight*1.3f,.2f,Hot);
                 for(int i=0;i<3;i++){var w=At(t,i,rad);s.Line(false,c,w,BolasCord*1.1f,.035f,false);s.Sprite(false,w,weight*1.9f,.3f,Hot);s.Glow(w,BolasCord*.8f,0,.26f,Core,0,seed+i);}
                 int m=low?6:14;for(int i=0;i<3;i++){var prev=At(t,i,rad);for(int j=1;j<=m;j++){float back=t-j*.016f;if(back<k.Release)break;var p=At(back,i,rad);s.Line(false,prev,p,BolasCord*(1.4f*(1-j/(float)(m+1))),.03f,false);prev=p;}}
@@ -420,11 +421,11 @@ namespace ChipArena.UnityConversion
         // brown, wilt and sink into a fall of leaves. You can see just how wide and how tall it is: go round, or jump.
         private static void BrambleArrow(ITechniqueFxSink s,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var from=N(k.From);var mid=N(k.Point);var along=Flat(N(k.Dir),Vector3.UnitX);var across=RightOf(along);
+            var from=N(k.From);var mid=N(k.Point);var across=Flat(N(k.Dir),Vector3.UnitZ);var along=RightOf(across);bool planted=k.Arm>k.At;
             if(t<k.Release){float g=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Sprite(false,from,BrambleGreen*(.8f+2*g),.24f,Hot);int m=low?4:8;for(int i=0;i<m;i++){float ang=6.2831853f*i/m+t*5,rr=.34f*(1-g)+.08f;RangedLeaf(s,from+new Vector3((float)Math.Cos(ang)*rr,(float)Math.Sin(ang*1.4f)*rr*.5f,(float)Math.Sin(ang)*rr),ang,.05f,BrambleGreen*(1.6f*g));}return;}
-            if(t<k.Arm)
+            if(!planted||t<k.Arm)
             {
-                float u=Clamp01((t-k.Release)/Math.Max(.03f,k.Arm-k.Release));var head=Vector3.Lerp(from,mid,u);RangedArrow(s,head,RangedNorm(mid-from,Vector3.UnitZ),BrambleGreen,1);
+                if(t>=k.Until)return;var fly=RangedNorm(mid-from,Vector3.UnitZ);float reach=Vector3.Distance(from,mid),x=Math.Min(reach,ArrowSpeed*(t-k.Release)),u=reach>.01f?x/reach:1;var head=from+fly*x;RangedArrow(s,head,fly,BrambleGreen,1);
                 int m=low?4:9;for(int i=0;i<m;i++){float ui=(i+.5f)/m,own=u-ui;if(own<0)continue;var p=Vector3.Lerp(from,mid,ui)-Up*(1.2f*own)+new Vector3((float)Math.Sin(i*2.6f)*.25f*own,0,(float)Math.Cos(i*2.6f)*.25f*own);RangedLeaf(s,p,i*1.9f+t*6,.07f,BrambleGreen*(1.8f*(1-own)));}
                 return;
             }
@@ -457,31 +458,31 @@ namespace ChipArena.UnityConversion
 
         // ---- Bow: Vault Shot --------------------------------------------------------------------------------------------
         // From the press a dotted arc and a landing ring show exactly where this ends: that is the counter. The flip draws a ribbon along the arc, shedding feathers; at its top a ring of air and one hard arrow; a puff where the boots come down.
-        private static Vector3 VaultAt(Vector3 from,Vector3 to,float u)=>Vector3.Lerp(from,to,u)+Up*(1+1.9f*4*u*(1-u));
+        private static Vector3 VaultAt(Vector3 from,Vector3 to,float u)=>Vector3.Lerp(from,to,u)+Up*(.9f+1.5f*4*u*(1-u));
         private static void VaultShot(ITechniqueFxSink s,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var from=N(k.From);var to=N(k.To);float span=Math.Max(.05f,k.Until-k.Release),u=Clamp01((t-k.Release)/span),show=Smooth((t-k.At)/.05f)*(1-Smooth((t-k.Until)/.2f));var dir=Flat(to-from,Vector3.UnitZ);var side=RightOf(dir);var white=VaultMint+Vector3.One*.5f;
+            if(t<k.Release&&k.To.Length<.01f)return;var from=N(k.From);var to=N(k.To);float land=k.RecoverUntil>k.Release?k.RecoverUntil:k.Release+.45f,span=Math.Max(.05f,land-k.Release),u=Clamp01((t-k.Release)/span),show=Smooth((t-k.At)/.05f)*(1-Smooth((t-land)/.2f));var dir=Flat(to-from,Vector3.UnitZ);var side=RightOf(dir);var white=VaultMint+Vector3.One*.5f;
             int dots=low?8:14;for(int i=0;i<dots;i++){float ui=(i+.5f)/dots;s.Sprite(false,VaultAt(from,to,ui),VaultMint*((ui>u?1.5f:.5f)*show),.11f,Hot);}
             float pinch=.9f-.25f*u;Ring(s,to+Up*.04f,pinch,.09f,VaultMint,low?16:28,1.5f*show);Ring(s,to+Up*.04f,pinch*.45f,.05f,white,low?12:20,1.1f*show);
             if(t<k.Release)return;
             // The ribbon.
-            if(t<k.Until+.28f)
+            if(t<land+.28f)
             {
-                float fade=1-Smooth((t-k.Until)/.28f);int m=low?10:20;var prev=VaultAt(from,to,u);
+                float fade=1-Smooth((t-land)/.28f);int m=low?10:20;var prev=VaultAt(from,to,u);
                 for(int i=1;i<=m;i++){float ub=u-i*.05f;if(ub<0)break;var p=VaultAt(from,to,ub);float b0=1-(i-1f)/m,b1=1-i/(float)m;s.Band(false,prev-side*(.3f*b0),p-side*(.3f*b1),p+side*(.3f*b1),prev+side*(.3f*b0),1.5f*b0*fade,1.5f*b1*fade,VaultMint);s.Line(false,prev,p,white*(1.6f*b0*fade),.02f,true);prev=p;}
-                if(t<k.Until){var at=VaultAt(from,to,u);float flip=-u*6.2831853f;for(int sd=0;sd<2;sd++){float a0=flip+sd*3.14159f;Vector3 O(float x)=>at+(dir*(float)Math.Cos(x)+Up*(float)Math.Sin(x))*.95f;var last=O(a0);for(int j=1;j<=6;j++){var p=O(a0-j*.26f);s.Line(false,last,p,white*(1.7f*(1-j/7f)),.05f*(1-j/7f)+.01f,true);last=p;}}}
+                if(t<land){var at=VaultAt(from,to,u);float flip=-u*6.2831853f;for(int sd=0;sd<2;sd++){float a0=flip+sd*3.14159f;Vector3 O(float x)=>at+(dir*(float)Math.Cos(x)+Up*(float)Math.Sin(x))*.95f;var last=O(a0);for(int j=1;j<=6;j++){var p=O(a0-j*.26f);s.Line(false,last,p,white*(1.7f*(1-j/7f)),.05f*(1-j/7f)+.01f,true);last=p;}}}
             }
             int fn=Count(12,q,low);for(int i=0;i<fn;i++){float ui=R(seed,i+1),own=t-(k.Release+ui*span);if(own<0||own>.85f)continue;var p=VaultAt(from,to,ui)-Up*(.7f*own)+side*(.26f*(float)Math.Sin(own*6+i))+dir*(.2f*(R(seed,i+2)-.5f));RangedLeaf(s,p,i*2.1f+own*4,.09f,white*(1.5f*(1-own/.85f)));}
             // The shot from the top of the arc.
             float age=t-k.Arm;
-            if(age>=0)
+            if(age>=0&&k.Phase!="vault")
             {
-                var top=VaultAt(from,to,Clamp01((k.Arm-k.Release)/span));var end=N(k.Point);var d=RangedNorm(end-top,Vector3.UnitZ);Flash(s,top,age,.2f,VaultMint,1.6f,seed+2);
+                var top=k.Path!=null&&k.Path.Length>0?N(k.Path[0]):VaultAt(from,to,Clamp01((k.Arm-k.Release)/span));var end=N(k.Point);var d=RangedNorm(end-top,Vector3.UnitZ);Flash(s,top,age,.2f,VaultMint,1.6f,seed+2);
                 float ring=Clamp01(age/.24f);if(ring<1)Hoop(s,top,d,.2f+1.1f*OutCubic(ring),.12f*(1-ring)+.015f,white*(1.5f*(1-ring)),low?12:22,1);
-                float fly=k.HitAt>-50?Math.Max(.03f,k.HitAt-k.Arm):.26f,g=Clamp01(age/fly);if(age<fly+.14f){float b=1-Clamp01((age-fly)/.14f);var head=Vector3.Lerp(top,end,g);RangedArrow(s,head,d,VaultMint,b);s.Line(false,top,head,VaultMint*(1.1f*b),.025f,true);}
+                float reach=Vector3.Distance(top,end),fly=k.HitAt>-50?Math.Max(.03f,k.HitAt-k.Arm):reach/ArrowSpeed;if(age<fly+.14f){float b=1-Clamp01((age-fly)/.14f);var head=top+d*Math.Min(reach,ArrowSpeed*age);RangedArrow(s,head,d,VaultMint,b);s.Line(false,top,head,VaultMint*(1.1f*b),.025f,true);}
                 if(k.Hit(t)){float since=t-k.HitAt;Flash(s,end,since,.24f,VaultMint,1.5f,seed+3);Sparks(s,end,since,.4f,Count(16,q,low),5.5f,VaultMint,seed+4,8,.024f);if(since<.12f)s.Sprite(false,end,white*(3*(1-since/.12f)),.9f,Sparkle);}
             }
-            float after=t-k.Until;if(after>=0){Dust(s,to,after,.6f,Count(10,q,low),1.5f,new Vector3(.5f,.54f,.5f),.6f,seed+9);float g=Clamp01(after/.3f);if(g<1)Ring(s,to+Up*.05f,.5f+1.7f*OutCubic(g),.16f*(1-g)+.02f,VaultMint,low?16:28,1.5f*(1-g));}
+            float after=t-land;if(after>=0){Dust(s,to,after,.6f,Count(10,q,low),1.5f,new Vector3(.5f,.54f,.5f),.6f,seed+9);float g=Clamp01(after/.3f);if(g<1)Ring(s,to+Up*.05f,.5f+1.7f*OutCubic(g),.16f*(1-g)+.02f,VaultMint,low?16:28,1.5f*(1-g));}
         }
 
         // ---- Bow: Tether Arrow ------------------------------------------------------------------------------------------
@@ -491,13 +492,13 @@ namespace ChipArena.UnityConversion
         {
             var from=N(k.From);var anchor=N(k.Point);var at=anchor+Up*1.2f;var white=TetherBlue+Vector3.One*.5f;
             if(t<k.Release){float g=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Sprite(false,from,white*(.8f+1.8f*g),.2f,Hot);return;}
-            bool hit=k.Hit(t);float arrive=hit?k.HitAt:k.Until;
-            if(t<arrive)
+            bool hit=k.Hit(t);
+            if(!hit&&t<k.Until)
             {
-                float u=Clamp01((t-k.Release)/Math.Max(.03f,arrive-k.Release));var head=Vector3.Lerp(from,at,u);RangedArrow(s,head,RangedNorm(at-from,Vector3.UnitZ),TetherBlue,1);s.Line(false,from,head,TetherBlue*1.1f,.018f,true);
+                var head=k.HitAt>-50?Vector3.Lerp(from,at,Clamp01((t-k.Release)/Math.Max(.03f,k.HitAt-k.Release))):anchor;RangedArrow(s,head,RangedNorm(head-from,Vector3.UnitZ),TetherBlue,1);s.Line(false,from,head,TetherBlue*1.1f,.018f,true);
                 return;
             }
-            if(!hit){float after=t-k.Until;Flash(s,at,after,.2f,TetherBlue,.9f,seed);Sparks(s,at,after,.35f,Count(10,q,low),3.4f,TetherBlue,seed+1,9,.02f);return;}
+            if(!hit){float after=t-k.Until;Flash(s,anchor,after,.2f,TetherBlue,.9f,seed);Sparks(s,anchor,after,.35f,Count(10,q,low),3.4f,TetherBlue,seed+1,9,.02f);return;}
             float since=t-k.HitAt;bool snapped=k.Recast(t);float gone=snapped?t-k.RecastAt:t-k.Until;bool over=snapped||t>=k.Until;float fade=over?1-Smooth(gone/(snapped?.26f:.3f)):1;
             var who=ActorOf(scene,k.Target);var chest=who!=null&&scene.Chest(who,out var cc)?cc:at+new Vector3(.8f*(float)Math.Sin(since*1.4f),0,.8f*(float)Math.Cos(since*1.1f));
             var d0=chest-anchor;d0.Y=0;float dist=d0.Length(),strain=Clamp01((dist-TetherReach*.4f)/(TetherReach*.6f));strain*=strain;
@@ -533,18 +534,18 @@ namespace ChipArena.UnityConversion
             var muzzle=feet+up*1.42f+f*.85f+r*.1f;var arrow=feet+up*1.35f+f*.6f;
             switch(id)
             {
-                case NativeTechniques.FlashRound:k.Release=t0+.14f;k.From=V3Of(hand);k.Point=V3Of(first?feet+f*9+up*1.9f:feet+f*10+r*2+up*1.5f);k.Arm=k.Release+(first?.16f:.2f);k.Until=k.Arm+.9f;k.RecoverUntil=k.Release+.18f;return true;
+                case NativeTechniques.FlashRound:k.Release=t0+.1f;k.From=V3Of(hand);k.Point=V3Of(first?feet+f*9+up*1.9f:feet+f*10+r*2+up*1.5f);k.Arm=k.Release+(first?.16f:.2f);k.Until=k.Arm+.3f;k.RecoverUntil=k.Release;return true;
                 case NativeTechniques.GunSpin:k.Release=t0+.45f;k.Arm=k.Release;k.Until=k.Release+(first?4:2.2f);k.RecoverUntil=k.Release;return true;
-                case NativeTechniques.SlideShot:{k.Release=t0+.04f;var d=first?f:Vector3.Normalize(f+r*.6f);k.From=V3Of(feet);k.To=V3Of(feet+d*6);k.Dir=V3Of(d);k.Until=k.Release+.55f;k.RecoverUntil=k.Until+.2f;}return true;
+                case NativeTechniques.SlideShot:{k.Release=t0+.1f;var d=first?f:Vector3.Normalize(f+r*.6f);k.From=V3Of(feet);k.To=V3Of(feet+d*6);k.Dir=V3Of(d);k.Until=k.Release+.75f;k.RecoverUntil=k.Until;}return true;
                 case NativeTechniques.Bipod:k.Release=t0+.5f;k.Point=V3Of(feet);k.Dir=V3Of(f);if(first)k.Until=k.Release+5;else{k.RecastAt=k.Release+2.2f;k.Until=k.RecastAt+.3f;}k.RecoverUntil=k.Until;return true;
-                case NativeTechniques.AmmoCrate:k.Release=t0+.3f;k.Point=V3Of(feet+f*1.4f+r*1.1f);k.Arm=first?1:.3f;k.Until=k.Release+(first?8:3.4f);k.RecoverUntil=k.Release+.25f;if(first){k.HitAt=k.Release+2.2f;k.To=V3Of(feet+up*1.25f);}return true;
-                case NativeTechniques.FlakBurst:k.Release=t0+.12f;k.From=V3Of(muzzle);k.Point=V3Of(first?feet+f*13+up*2:feet+f*9+r*6+up*1.8f);k.Arm=k.Release+.34f;k.Until=k.Arm+3;k.RecoverUntil=k.Release+.2f;if(first){k.HitAt=k.Arm+1.2f;k.To=V3Of(feet+f*9+r*1.5f+up*1.6f);}return true;
+                case NativeTechniques.AmmoCrate:k.Release=t0+.1f;k.Point=V3Of(feet);k.Arm=first?1:.3f;k.Until=k.Release+(first?8:3.4f);k.RecoverUntil=k.Release+.25f;if(first){k.HitAt=k.Release+2.2f;k.To=V3Of(feet+up*1.25f);}return true;
+                case NativeTechniques.FlakBurst:k.Release=t0+.1f;k.From=V3Of(muzzle);k.Point=V3Of(first?feet+f*13+up*2:feet+f*9+r*6+up*1.8f);k.Arm=k.Release+.28f;k.Until=k.Arm+3;k.RecoverUntil=k.Release;if(first){k.HitAt=k.Arm+1.2f;k.To=V3Of(feet+f*12+r*1.5f+up*1.6f);}return true;
                 case NativeTechniques.BreacherRound:k.Release=t0+1;k.From=V3Of(muzzle);k.Dir=V3Of(f);k.To=V3Of(muzzle+f*(first?46:80));if(first){k.Path=new[]{V3Of(muzzle+f*11),V3Of(muzzle+f*12.2f)};k.HitAt=k.Release+.03f;}k.Until=k.Release+.5f;k.RecoverUntil=k.Release+.25f;return true;
-                case NativeTechniques.Ghillie:k.Release=t0+.08f;k.Point=V3Of(feet);k.Arm=t0+.6f;k.Until=k.Arm+(first?5:2.2f);k.RecoverUntil=k.Arm;return true;
-                case NativeTechniques.BolasRound:k.Release=t0+.1f;k.From=V3Of(muzzle);if(first){k.Point=V3Of(feet+f*9+up*1.2f);k.HitAt=k.Release+.3f;k.Until=k.HitAt+1.2f;}else{k.Point=V3Of(feet+f*14+r*4+up*1.5f);k.Until=k.Release+.5f;}k.RecoverUntil=k.Release+.2f;return true;
-                case NativeTechniques.BrambleArrow:k.Release=t0+.34f;k.From=V3Of(arrow);k.Point=V3Of(first?feet+f*8:feet+f*6+r*2);k.Dir=V3Of(first?r:Vector3.Normalize(r+f*.45f));k.Arm=k.Release+.24f;k.Until=k.Arm+(first?5:2.6f);k.RecoverUntil=k.Release+.3f;return true;
-                case NativeTechniques.VaultShot:k.Release=t0+.04f;k.From=V3Of(feet);k.To=V3Of(first?feet-f*5:feet-f*4.8f+r*1.4f);k.Arm=k.Release+.2f;k.Until=k.Release+.45f;k.RecoverUntil=k.Until+.12f;k.Point=V3Of(first?feet+f*14+up*1.2f:feet+f*20+r*2+up*1);if(first)k.HitAt=k.Arm+.18f;return true;
-                case NativeTechniques.TetherArrow:k.Release=t0+.3f;k.From=V3Of(arrow);k.Point=V3Of(feet+f*9);k.HitAt=k.Release+.26f;if(first)k.Until=k.HitAt+3;else{k.RecastAt=k.HitAt+1.4f;k.Until=k.RecastAt+.35f;}k.RecoverUntil=k.Release+.3f;return true;
+                case NativeTechniques.Ghillie:k.Release=t0+.6f;k.Point=V3Of(feet);k.Arm=k.Release;k.Until=k.Release+(first?5:2.2f);k.RecoverUntil=k.Release;return true;
+                case NativeTechniques.BolasRound:k.Release=t0+.1f;k.From=V3Of(muzzle);if(first){k.Point=V3Of(feet+f*9+up*1.2f);k.HitAt=k.Release+.18f;k.Until=k.HitAt+1.2f;}else{k.Point=V3Of(feet+f*14+r*4+up*1.5f);k.Until=k.Release+.33f;}k.RecoverUntil=k.Release;return true;
+                case NativeTechniques.BrambleArrow:k.Release=t0+.1f;k.From=V3Of(arrow);k.Point=V3Of(first?feet+f*8:feet+f*6+r*2);k.Dir=V3Of(first?f:Vector3.Normalize(f+r*.33f));k.Arm=k.Release+.18f;k.Until=k.Arm+(first?5:2.6f);k.RecoverUntil=k.Release;return true;
+                case NativeTechniques.VaultShot:k.Release=t0+.01f;k.From=V3Of(feet);k.To=V3Of(first?feet-f*5:feet-f*4.8f+r*1.4f);k.Arm=k.Release+.225f;k.RecoverUntil=k.Release+.45f;k.Point=V3Of(first?feet+f*14+up*1.2f:feet+f*20+r*2+up*1);if(first)k.HitAt=k.Arm+.38f;k.Until=first?k.HitAt+.15f:k.Release+.8f;return true;
+                case NativeTechniques.TetherArrow:k.Release=t0+.1f;k.From=V3Of(arrow);k.Point=V3Of(feet+f*9);k.HitAt=k.Release+.26f;if(first)k.Until=k.HitAt+3;else{k.RecastAt=k.HitAt+1.4f;k.Until=k.RecastAt+.35f;}k.RecoverUntil=k.Release+.3f;return true;
                 default:return false;
             }
         }
@@ -616,16 +617,16 @@ namespace ChipArena.UnityConversion
                 case NativeTechniques.FlashRound:hit=Part(aim,k.At,back);break;
                 case NativeTechniques.GunSpin:hit=Part(set.Reload,k.At,NativeTechniqueFx.ArmAt(k));break;
                 // The deep crouch at the start of the set's landing, held for the slide; the rest of it is the rise.
-                case NativeTechniques.SlideShot:{float len=clips.Has(set.Land)?clips.Length(set.Land):1;hit=Hold(set.Land,k.At,k.RecoverUntil,len*(time<k.Until?.22f*Clamp01((time-k.At)/.08f):.22f+.78f*Clamp01((time-k.Until)/Math.Max(.05f,k.RecoverUntil-k.Until))));}break;
+                case NativeTechniques.SlideShot:{float len=clips.Has(set.Land)?clips.Length(set.Land):1,stop=k.Until-.2f;hit=Hold(set.Land,k.At,k.Until,len*(time<stop?.22f*Clamp01((time-k.At)/.08f):.22f+.78f*Clamp01((time-stop)/.2f)));}break;
                 case NativeTechniques.Bipod:{bool up=k.RecastAt>-50;float end=up?k.RecastAt:k.Until;hit=Part(TechDrop,k.At,k.Release)||Hold(aim,k.Release,end,time-k.Release)||(up&&Part(TechShootLine,end,k.Until));}break;
                 case NativeTechniques.AmmoCrate:hit=Part(TechDrop,k.At,back);break;
                 case NativeTechniques.FlakBurst:hit=Part(fire,k.At,back);break;
                 case NativeTechniques.BreacherRound:hit=Hold(aim,k.At,k.Release,time-k.At)||Part(fire,k.Release,back);break;
                 // Down into the stoop of the pack's pickup, and held there.
-                case NativeTechniques.Ghillie:hit=clips.Has(TechDrop)&&Hold(TechDrop,k.At,k.Until,clips.Length(TechDrop)*.5f*Clamp01((time-k.At)/Math.Max(.05f,k.Arm-k.At)));break;
+                case NativeTechniques.Ghillie:hit=clips.Has(TechDrop)&&Hold(TechDrop,k.At,k.Until,clips.Length(TechDrop)*.5f*Clamp01((time-k.At)/Math.Max(.05f,NativeTechniqueFx.ArmAt(k)-k.At)));break;
                 case NativeTechniques.BolasRound:hit=Part(fire,k.At,back);break;
                 case NativeTechniques.BrambleArrow:case NativeTechniques.TetherArrow:hit=Part(draw,k.At,k.Release)||Part(fire,k.Release,back);break;
-                case NativeTechniques.VaultShot:hit=Part(set.Flip,k.At,Math.Max(k.Until,k.At+.1f))||Part(fire,k.Until,back);break;
+                case NativeTechniques.VaultShot:{float land=k.RecoverUntil>k.Release?k.RecoverUntil:k.Release+.45f;hit=Part(set.Flip,k.At,Math.Max(land,k.At+.1f))||Part(fire,land,Math.Max(back,land+.2f));}break;
                 default:return false;
             }
             pick=got;return hit;

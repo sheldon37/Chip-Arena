@@ -19,7 +19,7 @@ namespace ChipArena.UnityConversion
                 case Arm:if(ThirdFromPress(k.Kind))return k.Arm>k.At?k.Arm:float.NaN;return k.Kind==NativeTechniques.Bastion||k.Kind==NativeTechniques.WildfireRun||k.Arm<=k.Release?float.NaN:k.Arm;
                 case Hit:return k.HitAt>-50?k.HitAt:float.NaN;
                 case Recast:return k.RecastAt>-50?k.RecastAt:float.NaN;
-                default:return k.Until;
+                default:return ThirdEnd(k);
             }
         }
         private static int S(NativeKitSound[] o,int n,string key,string clip,float gain){if(n<o.Length)o[n]=new NativeKitSound{Key=key,Clip=clip,Gain=gain};return Math.Min(o.Length,n+1);}

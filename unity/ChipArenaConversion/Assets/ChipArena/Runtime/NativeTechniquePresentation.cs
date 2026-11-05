@@ -170,6 +170,8 @@ namespace ChipArena.UnityConversion
         {
             float y=0;var k=NativeTechniques.Source!=null?NativeTechniques.Of(a):null;
             if(k?.Kind==NativeTechniques.GraveWalk)y=-NativeTechniqueFx.GraveDepth(k,time);else if(k?.Kind==NativeTechniques.ShieldSurf&&time>=k.Release&&time<k.Until&&!k.Recast(time))y=.1f*Mathf.Clamp01((time-k.Release)/.1f);
+            // Out of sight for everyone else, where Grave Walk's body goes. Its own pilot still sees it.
+            else if(a.Id!=LocalId&&k!=null&&NativeTechniqueFx.Unseen(k,time,visualPositions.TryGetValue(LocalId,out var me)?Vector3.Distance(me,p):99))y=-4;
             techniqueShift[a.Id]=y;p.y+=y;return p;
         }
         /// <summary>RenderGlow, after the melee kit's: every technique's particles.</summary>

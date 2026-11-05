@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion
     {
         private static readonly string[] MagicBuilt={NativeTechniques.FlameCloak,NativeTechniques.DragonBreath,NativeTechniques.Combust,NativeTechniques.BubbleTrap,NativeTechniques.FlashFreeze,NativeTechniques.HydroJet,NativeTechniques.Magnetize,NativeTechniques.Thunderclap,NativeTechniques.Overload,NativeTechniques.SoulSiphon,NativeTechniques.Dread,NativeTechniques.ShadowPuppet};
         /// <summary>Flash Freeze's sheet, Thunderclap's reach and Dread's cone, as the table has them (a radius, as Healing Spring's "4 m pool" is).</summary>
-        public const float FreezeRadius=6,ClapReach=5,DreadReach=6;
+        public const float FreezeRadius=3,ClapReach=5,DreadReach=6;
         private const float MagicTau=6.2831853f,MagicBodyMid=1.1f,MagicBodyCentre=.865f,MagicBreathReach=7,MagicBreathTan=.268f,MagicBreathHalf=.2618f,MagicDreadHalf=.7854f,MagicJetReach=6;
         private const int MagicShade=0x0a5f7a;
         private static readonly Vector3 MagicCloakTint=new Vector3(1,.36f,.08f),MagicCloakDeep=new Vector3(1,.2f,.02f),MagicBlastGold=new Vector3(1,.62f,.2f),MagicBubbleLit=new Vector3(.62f,.94f,1),MagicBubbleDeep=new Vector3(.3f,.72f,1),MagicIce=new Vector3(.58f,.88f,1),MagicFrost=new Vector3(.86f,.97f,1),MagicIceBody=new Vector3(.62f,.84f,.96f),
@@ -61,7 +61,7 @@ namespace ChipArena.UnityConversion
         // gets a lash of fire back. It gutters and strobes through its last second, so whoever is waiting it out can see when to come in.
         private static void FlameCloak(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var feet=scene.Feet(a);var chest=MagicChest(scene,a);var f=MagicFacing(a);var r=RightOf(f);bool view=scene.Viewer==a.Id;float floor=feet.Y-.05f,lit=Math.Max(k.Arm,k.At+.02f);
+            var feet=scene.Feet(a);var chest=MagicChest(scene,a);var f=MagicFacing(a);var r=RightOf(f);bool view=scene.Viewer==a.Id;float floor=feet.Y-.05f,lit=Math.Max(ArmAt(k),k.At+.02f);
             if(t<lit)
             {
                 float u=Smooth((t-k.At)/Math.Max(.05f,lit-k.At)),h=.05f+1.5f*u;if(view)h=Math.Min(h,.8f);int n=low?6:12;
@@ -182,7 +182,7 @@ namespace ChipArena.UnityConversion
                 s.Sprite(false,from,MagicBubbleLit*(1.4f*u),.14f+.2f*u,RingSprite);return;
             }
             bool caught=k.Hit(t),popped=k.Recast(t);
-            if(!caught&&!popped)
+            if(!caught&&!popped&&t<k.Until)
             {
                 // Only the preview knows a landing ahead of time, and flies the orb there itself; live, Point is the orb now.
                 float arrive=k.HitAt>-50?k.HitAt:k.RecastAt>-50?k.RecastAt:-100;var orb=arrive>t?Vector3.Lerp(from,point,Clamp01((t-k.Release)/Math.Max(.05f,arrive-k.Release))):point;var d=point-from;d=d.LengthSquared()>1e-5f?Vector3.Normalize(d):Vector3.UnitZ;MagicFrame(d,out var side,out var lift);
@@ -296,10 +296,10 @@ namespace ChipArena.UnityConversion
 
         // ---- Lightning: Magnetize ---------------------------------------------------------------------------------------
         // Rose on one, blue on the other: a ring on the floor, a hoop at the waist and a broken crown over the head, with a magnet's field lines bowing from one to the other in a fan and light running
-        // down them to the meeting place, which spins a reticle and throws chevrons along the floor toward itself. The clash is both colours at once. Path and Point hold floor points (the feet, the spot).
+        // down them to the meeting place, which spins a reticle and throws chevrons along the floor toward itself. The clash is both colours at once. Path and Point are at body height, as the rules move them.
         private static void Magnetize(ITechniqueFxSink s,IKitFxScene scene,Actor a,NativeTechnique k,float t,long seed,float q,bool low)
         {
-            var hand=MagicChest(scene,a)+MagicFacing(a)*.42f;var point=N(k.Point);var path=k.Path;int m=path==null?0:path.Length;var A=m>0?N(path[0]):point;var B=m>1?N(path[1]):point;bool two=m>1,hit=k.Hit(t);
+            var hand=MagicChest(scene,a)+MagicFacing(a)*.42f;var point=N(k.Point)-Up*BodyCentre;var path=k.Path;int m=path==null?0:path.Length;var A=m>0?N(path[0])-Up*BodyCentre:point;var B=m>1?N(path[1])-Up*BodyCentre:point;bool two=m>1,hit=k.Hit(t);
             if(t<k.Release){float u=Clamp01((t-k.At)/Math.Max(.05f,k.Release-k.At));s.Sprite(false,hand-Vector3.UnitX*.1f,MagicMagnetRose*(2.2f*u),.16f,Hot);s.Sprite(false,hand+Vector3.UnitX*.1f,MagicMagnetBlue*(2.2f*u),.16f,Hot);Bolt(s,hand-Vector3.UnitX*.1f,hand+Vector3.UnitX*.1f,MagicClapLight*1.4f,.012f,.2f,3,seed+(long)(t*24));return;}
             float age=t-k.Release;var mid=Up*MagicBodyMid;
             // Only the preview knows the clash ahead of time, and it moves nobody: there the marks run in by themselves. Live, Path is where each one is now.
@@ -522,7 +522,7 @@ namespace ChipArena.UnityConversion
             float age=t-k.Release;
             if(t<k.Until)
             {
-                float rise=Smooth(age/.42f),left=k.Until-t,flick=hp<.5f?.65f+.35f*(float)Math.Sin(t*(28-30*hp)):1,env=Smooth(age/.2f)*flick*(left<.4f?.5f+.5f*left/.4f:1),sway=(float)Math.Sin(t*1.7f)*.025f;float shot=k.Hit(t)?t-k.HitAt:9,kick=(float)Math.Exp(-shot*16)*.13f;
+                float rise=Smooth(age/.42f),left=k.Until-t,flick=hp<.5f?.65f+.35f*(float)Math.Sin(t*(28-30*hp)):1,env=Smooth(age/.2f)*flick*(left<.4f?.5f+.5f*left/.4f:1),sway=(float)Math.Sin(t*1.7f)*.025f;float shot=k.Hit(t)&&k.Phase!="pop"?t-k.HitAt:9,kick=(float)Math.Exp(-shot*16)*.13f;
                 Vector3 J(float x,float y,float z)=>at+r*(x+sway*y)+Up*(y*rise)+f*z;
                 var headP=J(0,1.74f,0);var neck=J(0,1.5f,0);var hip=J(0,.96f,0);var shL=J(-.21f,1.44f,0);var shR=J(.21f,1.44f,0);var kneeL=J(-.13f,.52f,.04f);var kneeR=J(.13f,.52f,.04f);var footL=J(-.17f,.04f,0);var footR=J(.17f,.04f,0);
                 var handR=shR+(dir*(.66f*rise)-dir*kick);var elbowR=(shR+handR)*.5f-Up*.05f;float dangle=(float)Math.Sin(t*2.3f)*.05f;var elbowL=J(-.3f,1.14f,.02f+dangle*.5f);var handL=J(-.3f,.84f,.1f+dangle);
@@ -567,18 +567,18 @@ namespace ChipArena.UnityConversion
         {
             switch(id)
             {
-                case NativeTechniques.FlameCloak:k.Release=t0+.12f;k.Arm=t0+.34f;k.Until=k.Arm+4;k.RecoverUntil=k.Arm+.3f;if(first){k.HitAt=k.Arm+1.2f;k.To=V(feet+f*.85f+up*1.25f+r*.1f);}return true;
+                case NativeTechniques.FlameCloak:k.Release=t0+.1f;k.Arm=k.Release;k.Until=k.Release+4;k.RecoverUntil=k.Release;if(first){k.HitAt=k.Arm+1.2f;k.To=V(feet+f*.85f+up*1.25f+r*.1f);}return true;
                 case NativeTechniques.DragonBreath:k.Release=t0+.25f;k.Arm=k.Release;k.Dir=V(Vector3.Normalize(f-up*.06f));k.Until=k.Arm+1.6f;if(!first){k.RecastAt=k.Arm+.8f;k.Until=k.RecastAt;}k.RecoverUntil=k.Until+.12f;return true;
                 case NativeTechniques.Combust:{k.Release=t0+.2f;k.Arm=k.Release;k.Until=k.Release+.3f;k.RecoverUntil=k.Release;var body=feet+up*.865f;k.Path=first?new[]{V(body+f*6+r*3),V(body+f*5.5f-r*3.4f),V(body+f*9.5f)}:new[]{V(body+f*5)};}return true;
-                case NativeTechniques.BubbleTrap:k.Release=t0+.24f;k.RecoverUntil=k.Release+.25f;if(first){k.Point=V(feet+f*7+up*1.1f);k.HitAt=k.Release+.39f;k.Until=k.HitAt+1.4f;}else{k.Point=V(feet+f*14+up*1.3f);k.RecastAt=k.Release+.78f;k.Until=k.RecastAt;}return true;
-                case NativeTechniques.FlashFreeze:k.Release=t0+.18f;k.Point=V(feet);k.Until=k.Release+4;k.RecoverUntil=k.Release+.25f;return true;
-                case NativeTechniques.HydroJet:k.Release=t0+.22f;k.Dir=V(Vector3.Normalize(f-up*.18f));k.Until=k.Release+1.5f;if(!first){k.RecastAt=k.Release+.7f;k.Until=k.RecastAt;}k.RecoverUntil=k.Until;return true;
-                case NativeTechniques.Magnetize:k.Release=t0+.1f;k.Arm=t0+.5f;k.RecoverUntil=k.Release+.2f;if(first){k.Point=V(feet+f*6+r*4.5f);k.Path=new[]{V(feet+f*6+r*3.5f),V(feet+f*6+r*5.5f)};k.HitAt=k.Arm+.6f;k.Until=k.HitAt+.35f;}else{k.Point=V(feet+f*5);k.Path=new[]{V(feet+f*9+r*2.5f)};k.Until=k.Arm+1;}return true;
+                case NativeTechniques.BubbleTrap:k.Release=t0+.1f;k.RecoverUntil=k.Release;if(first){k.Point=V(feet+f*7+up*1.1f);k.HitAt=k.Release+.39f;k.Until=k.HitAt+1.4f;}else{k.Point=V(feet+f*14+up*1.3f);k.RecastAt=k.Release+.78f;k.Until=k.RecastAt;}return true;
+                case NativeTechniques.FlashFreeze:k.Release=t0+.1f;k.Point=V(feet);k.Until=k.Release+4;k.RecoverUntil=k.Release;return true;
+                case NativeTechniques.HydroJet:k.Release=t0+.1f;k.Dir=V(Vector3.Normalize(f-up*.18f));k.Until=k.Release+1.5f;if(!first){k.RecastAt=k.Release+.7f;k.Until=k.RecastAt;}k.RecoverUntil=k.Until;return true;
+                case NativeTechniques.Magnetize:{k.Release=t0+.1f;k.Arm=k.Release+.5f;k.RecoverUntil=k.Release;var body=feet+up*NativeTechniqueFx.BodyCentre;if(first){k.Point=V(body+f*6+r*4.5f);k.Path=new[]{V(body+f*6+r*3.5f),V(body+f*6+r*5.5f)};k.HitAt=k.Arm+.6f;k.Until=k.Release+1.5f;}else{k.Point=V(body+f*5);k.Path=new[]{V(body+f*9+r*2.5f)};k.Until=k.Release+1.5f;}}return true;
                 case NativeTechniques.Thunderclap:k.Release=t0+.3f;k.Arm=k.Release;k.HitAt=k.Release;k.Point=V(feet);k.Until=k.Release+.3f;k.RecoverUntil=k.Release+.2f;return true;
                 case NativeTechniques.Overload:k.Release=t0+.1f;k.Arm=k.Release;if(first){k.Until=k.Release+4;k.HitAt=k.Until;}else{k.RecastAt=k.Release+.7f;k.Until=k.RecastAt;}k.RecoverUntil=k.Release;return true;
                 case NativeTechniques.SoulSiphon:k.Release=t0+.1f;k.To=V(feet+f*7+up*1.25f);k.Until=k.Release+2;if(!first){k.RecastAt=k.Release+1;k.Until=k.RecastAt;}k.RecoverUntil=k.Until;return true;
-                case NativeTechniques.Dread:k.Release=t0+.05f;k.HitAt=t0+.35f;k.Point=V(feet);k.Until=k.HitAt+.6f;k.RecoverUntil=k.HitAt+.3f;return true;
-                case NativeTechniques.ShadowPuppet:k.Release=t0+.28f;k.Point=V(feet+r*1.7f+f*.6f);k.Until=k.Release+4;k.RecoverUntil=k.Release+.3f;k.Arm=first?1:.4f;if(first){k.HitAt=k.Release+1.3f;k.To=V(feet+r*1.7f+f*14+up*1.25f);}return true;
+                case NativeTechniques.Dread:k.Release=t0+.35f;k.HitAt=k.Release;k.Point=V(feet);k.Until=k.Release+.9f;k.RecoverUntil=k.Release;return true;
+                case NativeTechniques.ShadowPuppet:k.Release=t0+.1f;k.Point=V(feet+r*1.7f+f*.6f);k.Until=k.Release+4;k.RecoverUntil=k.Release;k.Arm=first?1:.4f;if(first){k.HitAt=k.Release+1.3f;k.To=V(feet+r*1.7f+f*14+up*1.25f);}return true;
                 default:return false;
             }
         }
@@ -607,7 +607,7 @@ namespace ChipArena.UnityConversion
             {
                 case NativeTechniques.Combust:if(k.Path!=null&&k.Path.Length>0)k.Path[0]=V(at+Vector3.UnitY*.865f);return true;
                 case NativeTechniques.BubbleTrap:if(k.HitAt>-50){k.Target=target;k.Point=V(at+Vector3.UnitY*1.1f);}return true;
-                case NativeTechniques.Magnetize:k.Target=target;if(k.Path!=null&&k.Path.Length>0){k.Path[0]=V(at);if(k.Path.Length>1){var other=new Vector3(k.Path[1].x,k.Path[1].y,k.Path[1].z);k.Point=V((at+other)*.5f);}}return true;
+                case NativeTechniques.Magnetize:k.Target=target;if(k.Path!=null&&k.Path.Length>0){var body=at+Vector3.UnitY*NativeTechniqueFx.BodyCentre;k.Path[0]=V(body);if(k.Path.Length>1){var other=new Vector3(k.Path[1].x,k.Path[1].y,k.Path[1].z);k.Point=V((body+other)*.5f);}}return true;
                 case NativeTechniques.SoulSiphon:k.Target=target;k.To=V(at+Vector3.UnitY*1.25f);return true;
                 default:return false;
             }
@@ -650,13 +650,13 @@ namespace ChipArena.UnityConversion
             bool hit=false;
             switch(k.Kind)
             {
-                case NativeTechniques.FlameCloak:{float lit=Math.Max(k.Arm,k.At+.05f);hit=Part(TechBuffStart,k.At,lit)||Part(TechBuffEnd,lit,Math.Max(lit+.3f,back));}break;
+                case NativeTechniques.FlameCloak:{float lit=Math.Max(NativeTechniqueFx.ArmAt(k),k.At+.05f);hit=Part(TechBuffStart,k.At,lit)||Part(TechBuffEnd,lit,Math.Max(lit+.3f,back));}break;
                 case NativeTechniques.DragonBreath:{float stop=k.RecastAt>-50?k.RecastAt:k.Until,arm=NativeTechniqueFx.ArmAt(k);hit=Part(Cast0(2),k.At,Math.Max(arm,k.At+.05f))||Hold(Cast1(2),.1f,arm,stop)||Part(Cast1(2),stop,Math.Max(stop+.25f,back));}break;
                 case NativeTechniques.Combust:hit=Part(TechTouch,k.At,Math.Max(NativeTechniqueFx.ArmAt(k)+.3f,back));break;
                 case NativeTechniques.BubbleTrap:hit=Part(Cast0(0),k.At,k.Release)||Part(Cast1(0),k.Release,Math.Max(k.Release+.3f,back));break;
                 case NativeTechniques.FlashFreeze:hit=Part(Ab0(2),k.At,k.Release)||Part(Ab1(2),k.Release,Math.Max(k.Release+.35f,back));break;
                 case NativeTechniques.HydroJet:{float stop=k.RecastAt>-50?k.RecastAt:k.Until;if(time>=k.Release&&time<stop&&set.Fall!=null&&clips.Has(set.Fall)){got=new Pick{Clip=set.Fall,Time=time-k.Release,Fade=FadeIn};hit=true;}else hit=Part(Cast0(1),k.At,k.Release);}break;
-                case NativeTechniques.Magnetize:hit=Part(Ab0(5),k.At,Math.Max(k.Arm,k.At+.05f))||Part(Ab1(5),k.Arm,k.Arm+.35f);break;
+                case NativeTechniques.Magnetize:{float pull=k.Arm>k.At?k.Arm:k.At+.6f;hit=Part(Ab0(5),k.At,pull)||Part(Ab1(5),pull,pull+.35f);}break;
                 case NativeTechniques.Thunderclap:{float clap=Math.Max(NativeTechniqueFx.ArmAt(k),k.At+.05f);hit=Part(Ab0(4),k.At,clap)||Part(Ab1(4),clap,Math.Max(clap+.3f,back));}break;
                 case NativeTechniques.Overload:{float lit=Math.Max(NativeTechniqueFx.ArmAt(k),k.At+.05f);hit=Part(TechBuffStart,k.At,lit)||Part(TechBuffEnd,lit,Math.Max(lit+.3f,back));}break;
                 case NativeTechniques.SoulSiphon:{float stop=k.RecastAt>-50?k.RecastAt:k.Until;hit=Part(Cast0(1),k.At,k.Release)||Hold(Cast1(1),.1f,k.Release,stop)||Part(Cast1(1),stop,stop+.25f);}break;

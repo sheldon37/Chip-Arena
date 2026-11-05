@@ -44,7 +44,7 @@ namespace ChipArena.UnityConversion
             if(s==null||scene?.Actors==null||NativeTechniques.Source==null)return;var actors=scene.Actors;
             for(int i=0;i<actors.Count;i++)
             {
-                var a=actors[i];var k=NativeTechniques.Of(a);if(k?.Kind==null||time<k.At||time>k.End+Tail)continue;long seed=a.Id*7919L+(long)Math.Round(k.At*240);
+                var a=actors[i];if(a==null)continue;ThirdMarks(s,scene,a,time,low);var k=NativeTechniques.Of(a);if(k?.Kind==null||time<k.At||time>k.End+Tail)continue;long seed=a.Id*7919L+(long)Math.Round(k.At*240);
                 switch(k.Kind)
                 {
                     case NativeTechniques.Riposte:Riposte(s,scene,a,k,time,seed,q,low);break;
