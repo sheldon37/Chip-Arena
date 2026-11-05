@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         /// <summary>The mouth's opening 0..1, the grate's turn (rad), the fins' fold 0..1, the rails' spread.</summary>
         public float Iris=>iris.Value;public float GrateAngle=>grateAngle;public float FinFold=>fold.Value;public float RailSpread=>rail.Value;
         /// <summary>The head joint, its facing and speed (for the tool's bosscam and the camera).</summary>
-        public Vector3 Root{get;private set;}public float Yaw{get;private set;}public float Speed{get;private set;}
+        public Vector3 Root;public float Yaw,Speed;
         /// <summary>The mouth's centre, the way it faces, its joint's frame (the jet's origin, the card's framing).</summary>
         public Vector3 MouthAt{get;private set;}public Vector3 MouthDir{get;private set;}
         /// <summary>How many joints are out of the water; the surface used this frame (room frame).</summary>
