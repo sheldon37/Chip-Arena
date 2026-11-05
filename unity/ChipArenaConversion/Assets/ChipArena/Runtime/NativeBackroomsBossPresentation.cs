@@ -10,6 +10,14 @@ namespace ChipArena.UnityConversion
     public sealed partial class ArenaPresentation
     {
         private void BackroomsBossScenery(NativeArena arena){HumBossScenery(arena);DeepEndBossScenery(arena);}
+        /// <summary>The boss's bank and body built ahead of the level (PrewarmStage), so its arrival builds nothing mid-fight. Nothing until the rules name this map's boss: a level with no boss reads neither bank.</summary>
+        private bool BackroomsBossPrewarm(NativeArena arena)
+        {
+            string boss=arena==null?null:NativeZoneBossRules.Archetype(arena.MapId);
+            if(boss==NativeHumBoss.Archetype){if(HumBankEnsure()){HumBodyEnsure();HumBodyHide();}return true;}
+            if(boss==NativeDeepEndBoss.Archetype){DeepEndBodyBuild();DeepEndBodyHide();return true;}
+            return false;
+        }
         /// <summary>A DEV preview's camera this frame (NativeCinematicCamera.Direct), when one is running.</summary>
         internal bool BackroomsBossPreviewShot(out Vector3 eye,out Vector3 look,out float fov)=>HumBossPreviewShot(out eye,out look,out fov)||DeepEndBossPreviewShot(out eye,out look,out fov);
         /// <summary>The intro card to draw this frame and its age: a preview's, or a live boss's through the intro hold.</summary>
