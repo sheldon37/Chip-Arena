@@ -9,6 +9,7 @@ namespace ChipArena.UnityConversion
             out Vector3 eye,out Vector3 look,out float fov)
         {
             eye=look=default;fov=65;
+            if(holding&&cinematic=="intro"&&NativeBackroomsBossIntro.Mine(kind))return NativeBackroomsBossIntro.Sample(kind,age,root,yaw,out eye,out look,out fov);
             if(!holding||cinematic!="intro"||!NativeZoneBossRules.Known(kind)||double.IsNaN(age)||double.IsInfinity(age)||age<0)return false;
             if(kind==NativeZoneBossRules.Station)
             {

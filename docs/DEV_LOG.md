@@ -1,3 +1,35 @@
+## 2026-11-05 — Claude: THE HUM and THE DEEP END, presentation built behind the DEV previews
+
+- **Owner:** Level 0 and Poolrooms bosses: Siren-style intros, lore accurate, "high quality designs, high quality effects, beautiful animations", difficult, and "prevent cheese methods like 'safe' spots"; then "Im gonna give both bosses different music from the stage". Designed while the owner slept; the owner has seen stills but has not reviewed or played them.
+- **Branch/base:** `claude/backrooms-bosses` (merging `claude/boss-hum` `69183a81` and `claude/boss-deepend` `b38fe11f`) off shared `a6a454a4`, with shared merged in through `e2c0cef1`. Doc: `docs/EXPEDITION-BOSS-BACKROOMS.md`, with what was built and what differs from the first design in its section 9.
+- **Built:** each boss has a model built in Blender into its own local bank (`ChipArenaPackBossHum` 2.7 MB, 40,040 / 17,322 / 7,892 triangles; `ChipArenaPackBossDeepEnd` 5.9 MB, about 60,400 / 29,500 / 4,800), a rig, every move with its tells and effects, phase changes and a death, an arena carve, a room that reacts, a five-shot intro on the 9.0678 s hold with its card, cue keys, and a DEV preview that loops it all. Song slots `music/level0-boss` and `music/poolrooms-boss` fall back to the Siren's song.
+- **Live game:** nothing changes without a preview or a bound record. `HumBossViewOf` and `DeepEndBossViewOf` return None, `HumBossLayout` and `DeepEndBossLayout` return the level's own layout, and `DeepEndBossRoomOn` is off. That comes from reading those guards and from the water checks, not from a frame-by-frame comparison of the live levels.
+- **Animation impact:** none on live hit timing, hitboxes, damage, cooldowns, movement or networking: there are no rules yet. The move tables are proposals, and two changed in the build: Belly Flop's wind is 1.8 s (was 1.2) and Seiche's strike is 7 s (was 3.5).
+- **Seen:** stills from the DEV previews in Unity, one frame at a time, with motion judged from closely spaced frames and joint dumps. Nobody has watched either at full speed or played it. Weakest by the builders' own reading: THE DEEP END's Thrash, its intro's steps shot and top-down spiral, and shard-like crown water; THE HUM's dark first second of the walk-out, the tear's pale flaps, and the start of Max Hum's ring.
+- **Not done:** no audio clips, so all cue keys are silent. Intro beats are fixed numbers until the songs arrive. Performance isn't measured in a real match. `BackroomsBossPrewarm` builds a boss's bank and body in the stage load, but only once `NativeZoneBossRules.Archetype` names its map, so that path hasn't run yet. Reduced effects and the lowest tier weren't viewed in Unity. THE DEEP END's `Muffle` mixer dip isn't wired, and its `Shake` moves only the preview camera.
+- **Banks:** both go in the Drive zip, not git. Without THE DEEP END's bank that boss falls back to a plain loft.
+- **Astra, please:** bind the rules. The prompt the owner will send:
+
+```
+Bind the rules for the two Backrooms bosses: THE HUM (Level 0) and THE DEEP END (the Poolrooms). Claude has built their models, animation, effects, intros, cue keys and a DEV preview of every move. Nothing is bound: `HumBossViewOf` and `DeepEndBossViewOf` return None, so neither boss exists in a real run. The spec is docs/EXPEDITION-BOSS-BACKROOMS.md on claude/sleepy-ritchie-g8ruhv: section 8 is your contract, section 1 is the no-safe-spot table, and the "For Astra" paragraphs in section 9 record what changed during the build. Every number and flow in it is a proposal you can change; say so in DEV_LOG if a record field changes shape.
+
+The owner asked for difficult fights with no safe spots or other cheese.
+
+1. Flow: after the quota, reaching the sealed room at the exit starts the arrival; killing the boss opens the exit cache, keeping the once-only reward ledger. Archetypes `level0-hum` and `poolrooms-deep-end` in NativeZoneBossRules, with phases at 65% and 30%. Keep the 9.0678 s intro hold.
+2. Bind both views, the banner routing and the NativeZoneBossViews adapters. Call `NativeHumArena.Carve` and `NativeDeepEndArena.Carve` round the exit cell in the generators, bump the generator version and keep routes certified. Add collision for the Poolrooms room's ceiling and the new `Abyss` cell, solid at the deep pool's floor.
+3. Add the record fields in section 8 item 4, with codec and guest application.
+4. Make water depth follow the tide, through `NativePoolroomsWater.Depth`.
+5. Implement every row of section 1: the stillness meter, the height rule, sealing the room, the out-of-volume check, the immunity limits, adds spawning round each pilot, the 6:00 enrage, and no boss navigation. Two findings from the build to keep: a dry-deck target in THE DEEP END's first phase must never draw Breach, and Wall Hand and Familiar Voices need placing about a metre in from a partition's end.
+6. Numbers: the move tables, and health at `NativePveRules.BossHp` x1.1 for THE HUM and x1.25 for THE DEEP END.
+7. Acceptance: run the grid in `Tests/BackroomsBossSafeSpotChecks.cs` against the real rules, and add a native fixture of a pilot in each arena corner, wall, doorway and spawn spot, asserting damage within the limit. The sweep today plays a stand-in rotation, and its circling limits were set just above what that stand-in does, so they hold the design and prove nothing about the real fight. Also cover windup, contact, a single hit per swing, phase change, codec and guest application, as `ValidateZoneBossAuthority` does.
+
+You can't run Unity, so the builder's run is the proof for native cases; report its actual result. The DEV preview shows how each move should look: `preview-hum-boss` and `preview-deepend-boss`. Until the owner's songs arrive, `NativeZoneMusic.BossTrack` falls back to the Siren's song, so don't wait for them.
+
+Usual verification and a DEV_LOG entry with actual results, separating what you ran from what you couldn't. No live or Site release, and no visuals.
+```
+
+- **Checks:** recorded in the receipt that follows this entry, with the build's actual result.
+
 ## 2026-11-05 — Astra: deployment card loading and boss-intro stalls
 
 - Traced black modifier cards to `NativeDeployScene`: each new scene rasterized the complete card catalog through a serialized worker queue and displayed a dark placeholder until each strip uploaded. Build preparation now bakes the existing `NativeDeployArt` pixels into Resources byte assets; runtime workers decode those bytes and retain the one-strip-upload-per-frame budget. The existing card back covers pending strips. No card artwork or layout redesign; unbaked editor/unknown content retains the raster fallback.

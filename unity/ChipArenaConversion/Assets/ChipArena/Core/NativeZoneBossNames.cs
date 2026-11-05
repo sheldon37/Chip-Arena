@@ -12,8 +12,8 @@ namespace ChipArena.UnityConversion
     public static class NativeZoneBossNames
     {
         /// <summary>The plate name of a zone boss archetype, or null (not a zone boss: the caller names it as before).</summary>
-        public static string Name(string archetype)=>archetype==NativeStationBoss.Archetype?NativeStationBoss.Name:archetype==NativeIronworksBoss.Archetype?NativeIronworksBoss.PlateName:null;
+        public static string Name(string archetype)=>archetype==NativeStationBoss.Archetype?NativeStationBoss.Name:archetype==NativeIronworksBoss.Archetype?NativeIronworksBoss.PlateName:archetype==NativeHumBoss.Archetype?NativeHumBoss.Name:archetype==NativeDeepEndBoss.Archetype?NativeDeepEndBoss.Name:null;
         /// <summary>Seconds after the arrival's `spawned` its banner waits for (0 for every archetype but the zone bosses').</summary>
-        public static double BannerDelay(string archetype)=>archetype==NativeStationBoss.Archetype?NativeStationBossBeats.Current.Banner:0;
+        public static double BannerDelay(string archetype)=>archetype==NativeStationBoss.Archetype?NativeStationBossBeats.Current.Banner:NativeBackroomsBossIntro.Mine(archetype)?NativeBackroomsBossIntro.Hold:0;
     }
 }

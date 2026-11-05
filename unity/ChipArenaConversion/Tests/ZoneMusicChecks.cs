@@ -34,6 +34,8 @@ internal static class ZoneMusicChecks
         Func<string,bool> all=id=>true,none=id=>false;
         Check(NativeZoneMusic.ZoneBoss("expedition-transit")=="music/central-station-boss","Central Station names its boss track");
         Check(NativeZoneMusic.ZoneBoss("expedition-foundry")=="music/city-ironworks-boss"&&NativeZoneMusic.ZoneBoss("expedition-ironworks")=="music/city-ironworks-boss","City Ironworks names its boss track under the live id and the draft name");
+        Check(NativeZoneMusic.ZoneBoss("expedition-backrooms-level-0")=="music/level0-boss"&&NativeZoneMusic.ZoneBoss("expedition-backrooms-poolrooms")=="music/poolrooms-boss","the Backrooms' bosses each have their own boss song, not the stage's (owner 2026-11-05)");
+        Check(NativeZoneMusic.BossTrack("expedition-backrooms-level-0",none)==NativeZoneMusic.SirenSong&&NativeZoneMusic.BossTrack("expedition-backrooms-poolrooms",none)==NativeZoneMusic.SirenSong,"until its file is installed, a Backrooms boss plays the Siren's song");
         foreach(var map in new[]{"expedition-ward-zero","expedition-city","siren","factory","cybercity",null,""})
             Check(NativeZoneMusic.ZoneBoss(map)==null&&NativeZoneMusic.BossTrack(map,all)==NativeZoneMusic.SirenSong,"other maps keep the Siren's song: "+(map??"null"));
         Check(NativeZoneMusic.BossTrack("expedition-transit",all)=="music/central-station-boss"&&NativeZoneMusic.BossTrack("expedition-foundry",all)=="music/city-ironworks-boss","an installed zone track plays");
