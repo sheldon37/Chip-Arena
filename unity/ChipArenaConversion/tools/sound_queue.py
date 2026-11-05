@@ -16,6 +16,23 @@ import zipfile
 import generate_sound_requests as gen
 
 QUEUE = gen.REPO / 'docs/audio/sound-queue.json'
+BUNDLE = Path(__file__).resolve().parent / 'sound_bundle'
+
+
+def queue_inputs(queue, repo, bundle=BUNDLE):
+    """Use byte-identical bundled approvals in Unity-only builder exports."""
+    if queue == QUEUE and repo == gen.REPO and not queue.is_file():
+        return bundle / 'docs/audio/sound-queue.json', bundle
+    return queue, repo
+
+
+def check_bundle(repo=gen.REPO, bundle=BUNDLE):
+    for name in ('sound-queue.json', 'sound-requests.json', 'sound-requests-bosses.json'):
+        canonical = repo / 'docs/audio' / name
+        packaged = bundle / 'docs/audio' / name
+        if canonical.is_file() and canonical.read_bytes() != packaged.read_bytes():
+            raise ValueError('Refresh tools/sound_bundle/docs/audio/' + name + ' from docs/audio before packaging.')
+
 
 
 def home():
@@ -146,6 +163,7 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
         try:
             limits(config)
             stage = 'read queue and manifest'
+            queue, repo = queue_inputs(queue, repo)
             plans = plan(queue, repo)
             if not plans:
                 report('idle', message='No approved sound jobs.'); return source
