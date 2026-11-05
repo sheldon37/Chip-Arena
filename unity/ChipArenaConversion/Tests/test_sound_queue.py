@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import sound_queue as q
@@ -70,6 +71,31 @@ class QueueTests(unittest.TestCase):
         self.job['maxRequests'] = 2; self.save_queue()
         with self.assertRaises(ValueError): self.run_queue()
         self.assertEqual(len(self.calls), 1)
+    def test_shared_status_and_zip_exclude_credentials(self):
+        shared = self.root / 'drive'; shared.mkdir()
+        self.base = shared / 'LocalAssets.zip'; self.base.write_bytes(b'BASE')
+        self.run_queue()
+        status = json.loads((shared / 'Latest-Sound-Status.json').read_text())
+        self.assertEqual(status['state'], 'complete')
+        with zipfile.ZipFile(shared / 'sample-one.zip') as bundle:
+            self.assertEqual(set(bundle.namelist()), {'receipt.json', 'pve.zombie.moan_01.mp3'})
+            self.assertNotIn(b'PRIVATE', bundle.read('receipt.json'))
+        self.run_queue()
+        self.assertEqual(len(self.calls), 1)
+    def test_failure_reason_survives_missing_local_status(self):
+        shared = self.root / 'drive'; shared.mkdir()
+        self.base = shared / 'LocalAssets.zip'; self.base.write_bytes(b'BASE')
+        q.write(self.root / 'config.json', dict(enabled=True, maxRequests=1, maxSeconds=.01))
+        original = q.write
+        def fail_local(path, value):
+            if path == self.root / 'Latest-Sound-Status.json':
+                raise PermissionError('not writable')
+            original(path, value)
+        with patch.object(q, 'write', side_effect=fail_local):
+            with self.assertRaisesRegex(ValueError, 'Pending queue exceeds local'):
+                self.run_queue()
+        self.assertEqual(json.loads((shared / 'Latest-Sound-Status.json').read_text())['state'], 'blocked')
+        self.assertFalse(self.calls)
     def test_bad_limits(self):
         for value in [0, -1, float('nan'), float('inf'), True]:
             with self.assertRaises(ValueError): q.limits(dict(maxRequests=1, maxSeconds=value))

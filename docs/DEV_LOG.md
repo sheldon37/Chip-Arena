@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: expose sound queue failures and share listening originals
+
+- Branch `codex/sound-queue-drive-handoff`, base `3fad0f72`. Owner's failed sample build logs only exposed a generic queue error; actual cause remains unknown. No assertion that samples were generated.
+- Queue now mirrors Latest-Sound-Status.json beside the input LocalAssets ZIP (owner's existing Drive folder), independently of the optional configured mirror and local status write. Failure propagates the same sanitized reason and absolute local status path to the builder error report.
+- After successful generation, an atomic `<job-id>.zip` beside LocalAssets contains only receipted MP3s and receipt.json; never the credential/config store. Available even if subsequent import fails. Existing queue IDs, caps, completed-request reuse and uncertain-request guards unchanged; six-sound sample only.
+- Verification: 11 queue tests passed, including shared ZIP contents, status fallback when local status cannot be written, and rebuild without paid regeneration. Mocked API/credentials/import; no real requests. Initial local run lacked importer source required for cache fingerprinting; fetched exact source and rerun passed. Windows/Drive delivery and original blocker require the next builder run. No live/Site release.
+
 ## 2026-11-05 — Astra: six-sound boss listening sample
 
 - Owner approved six samples first; the full 121-file batch awaits listening acceptance. Branch `codex/boss-sound-sample`, shared base `55b45d9f`.
