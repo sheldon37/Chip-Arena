@@ -274,7 +274,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<puffs;i++)
             {
                 float own=(i+.5f)/puffs,yy=1-2*own,flat=(float)Math.Sqrt(Math.Max(0,1-yy*yy)),ang=2.39996f*i+t*.1f*(R(seed,i+1)-.5f),lay=.45f+.55f*R(seed,i+2);var p=c+new Vector3((float)Math.Cos(ang)*flat,yy*.62f,(float)Math.Sin(ang)*flat)*(rad*lay*.86f)+Up*(.1f*(float)Math.Sin(t*.8f+i));
-                float tone=.07f+.09f*R(seed,i+3);s.Smoke(p,new Vector3(tone*1.15f,tone,tone*.9f),.72f*env,(2.1f+1.3f*R(seed,i+4))*(.6f+.4f*grow),.16f+.32f*Clamp01(age/life)+.1f*R(seed,i+5),seed+i,floorY-.1f);
+                float tone=.04f+.06f*R(seed,i+3);s.Smoke(p,new Vector3(tone*1.15f,tone,tone*.9f),.72f*env,(2.1f+1.3f*R(seed,i+4))*(.6f+.4f*grow),.16f+.32f*Clamp01(age/life)+.1f*R(seed,i+5),seed+i,floorY-.1f);
             }
             // Pops inside it, each at a fresh place.
             int pops=Count(10,q,low);
