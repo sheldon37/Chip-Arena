@@ -199,6 +199,8 @@ def segment_of(name):
     nexts = {'pelvis': 'spine0', 'spine0': 'spine1', 'spine1': 'chest', 'chest': 'neck0', 'neck0': 'neck1', 'neck1': 'neck2', 'neck2': 'head'}
     if name in nexts:
         return a, at(nexts[name])
+    if name == 'head':
+        return a + V(0, 0, -.17), a + V(0, 0, -.12)
     if name == 'wall-fore':
         return a, at('wall-hand')
     if name == 'wall-hand':
@@ -221,7 +223,7 @@ def segment_of(name):
     return a, a
 
 
-HIDE_BONES = ['pelvis', 'spine0', 'spine1', 'chest', 'neck0', 'neck1', 'neck2', 'clav-l', 'upper-l', 'fore-l', 'hand-l', 'clav-r', 'upper-r', 'fore-r', 'hand-r',
+HIDE_BONES = ['pelvis', 'spine0', 'spine1', 'chest', 'neck0', 'neck1', 'neck2', 'head', 'clav-l', 'upper-l', 'fore-l', 'hand-l', 'clav-r', 'upper-r', 'fore-r', 'hand-r',
               'thigh-l', 'shin-l', 'foot-l', 'thigh-r', 'shin-r', 'foot-r']
 
 

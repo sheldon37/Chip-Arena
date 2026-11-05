@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
             humBoss.Hitch=humStage.Hitch;humBoss.ReducedEffects=reduced;
             humBoss.Update(now,dt,humView,HumGround,velocity,false,hasTarget,target);
             humShown=true;
-            var fx=humBossFx;fx.Room=room;
+            var fx=humBossFx;fx.Room=room;fx.StandIns=NativeHumBossPreview.On?NativeHumBossPreview.Pilots:null;
             if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(humBoss,humView,humStage,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics,reduced);}
             HumBossDraws=0;
             HumBodyDraw(eye);
@@ -105,6 +105,7 @@ namespace ChipArena.UnityConversion
             if(humVfx!=null&&humBossFx.Vfx.Count>0){humVfx.Low=LowGraphics;humVfx.Begin();NativeBossVfxSubmit.Submit(humBossFx.Vfx,humVfx);humVfx.Submit(camera);HumBossDraws+=2;}
         }
         // ---------------- the DEV preview's camera and card ----------------
+        private BossSpring3 humCamEye,humCamLook;private BossSpring humCamFov;private bool humCamLive;private NVector humCamShot,humCamShotLook;private float humCamShotFov=60,humCamLast;
         internal bool HumBossPreviewShot(out Vector3 eye,out Vector3 look,out float fov)
         {
             eye=look=default;fov=60;if(!NativeHumBossPreview.On||double.IsNaN(NativeHumBossPreview.Start)||!humShown)return false;
@@ -118,9 +119,13 @@ namespace ChipArena.UnityConversion
             else if(age<0){NativeHumArena.Spawn(NativeHumBossPreview.Room,out var root,out float yaw);NativeBackroomsBossIntro.Sample(NativeHumBoss.Shots,0,root,yaw,out ne,out nl,out fov);}
             else
             {
-                NativeHumBossPreview.Camera(p,humBoss.HeadPos,humBoss.Root,humView.yaw,out ne,out nl,out fov);
-                NativeHumArena.PushEye(NativeHumBossPreview.Room,humView.shiftMask,ref ne,nl);
+                NativeHumBossPreview.Camera(p,humBoss.HeadPos,humBoss.Root,humView.yaw,humView.shiftMask,out ne,out nl,out fov);
+                // The eye and the look ease toward it (it's choosing among clear places as the boss moves), from wherever the intro left them.
+                float cdt=Mathf.Clamp(clock-humCamLast,0,.1f);
+                if(!humCamLive){humCamEye.Reset(humCamShot);humCamLook.Reset(humCamShotLook);humCamFov.Reset(humCamShotFov);humCamLive=true;}
+                ne=humCamEye.Step(ne,.42f,cdt);nl=humCamLook.Step(nl,.2f,cdt);fov=humCamFov.Step(fov,.4f,cdt);NativeHumArena.PushEye(NativeHumBossPreview.Room,humView.shiftMask,ref ne,nl);
             }
+            if(age<NativeBackroomsBossIntro.Hold+.25f){humCamLive=false;humCamShot=ne;humCamShotLook=nl;humCamShotFov=fov;}humCamLast=clock;
             eye=new Vector3(ne.X,ne.Y,ne.Z);look=new Vector3(nl.X,nl.Y,nl.Z);
             // The room's shudder on the directed camera.
             float sh=humStage.Shake;if(sh>.002f){eye+=new Vector3(Mathf.Sin(clock*37.1f)+.5f*Mathf.Sin(clock*71.3f+1.3f),Mathf.Sin(clock*43.7f+.7f)+.5f*Mathf.Sin(clock*83.9f+2.9f),Mathf.Sin(clock*29.3f))*(.035f*sh);}

@@ -173,18 +173,20 @@ namespace ChipArena.UnityConversion
             int n=0;for(int k=0;k<6&&n<at.Length;k++){float b=IntroEnd+1.4f+k*.48f;if(p<b)break;at[n]=baseAt+b;push[n]=Vector3.Normalize(new Vector3(k%2==0?.3f:-.4f,0,1));size[n]=k==4?1.2f:.6f;n++;}
             return n;
         }
-        /// <summary>The directed camera after the intro: a slow orbit that reframes for each move, from the frames' table, blended between them, on the record's root. Pure.</summary>
-        public static void Camera(float p,Vector3 head,Vector3 root,float yawDegrees,out Vector3 eye,out Vector3 look,out float fov)
+        /// <summary>The directed camera after the intro: a slow orbit that reframes for each move, from the frames' table, blended between them, on the record's root; of the places near the wanted one, the first with a clear view (nothing right by the eye, no partition across the shot). Pure: the presenter springs its eye toward this.</summary>
+        public static void Camera(float p,Vector3 head,Vector3 root,float yawDegrees,int mask,out Vector3 eye,out Vector3 look,out float fov)
         {
             int i=0;while(i<frames.Length-1&&frames[i+1].At<=p)i++;var a=frames[i];var b=i<frames.Length-1?frames[i+1]:a;
             float blendFrom=b.At-1.1f;float u=b.At>a.At?BossMath.Smoother((p-blendFrom)/1.1f):0;
             float orbit=(p-a.At)*a.Orbit;float yawOff=a.Yaw+orbit+BossMath.WrapDeg(b.Yaw-(a.Yaw+orbit))*u;float dist=a.Dist+(b.Dist-a.Dist)*u,ey=a.EyeY+(b.EyeY-a.EyeY)*u,ly=a.LookY+(b.LookY-a.LookY)*u;fov=a.Fov+(b.Fov-a.Fov)*u;
-            float ang=(yawDegrees+yawOff)*BossMath.Deg;var dir=BossMath.Forward(ang);
-            // On the record's floor plan; the eye stays inside the room.
-            var c=new Vector3(root.X,0,root.Z);eye=c+dir*dist;
-            float inset=.55f;float over=0;
-            if(eye.X<Room.MinX+inset){over=(Room.MinX+inset-eye.X);eye.X=Room.MinX+inset;}if(eye.X>Room.MaxX-inset){eye.X=Room.MaxX-inset;}if(eye.Z<Room.MinZ+inset){eye.Z=Room.MinZ+inset;}if(eye.Z>Room.MaxZ-inset){eye.Z=Room.MaxZ-inset;}
-            eye.Y=ey;look=new Vector3(root.X*.5f+head.X*.5f,ly,root.Z*.5f+head.Z*.5f);
+            look=new Vector3(root.X*.5f+head.X*.5f,ly,root.Z*.5f+head.Z*.5f);var c=new Vector3(root.X,0,root.Z);eye=default;bool found=false;
+            for(int k=0;k<=12&&!found;k++)for(int sign=-1;sign<=1&&!found;sign+=2)
+            {
+                if(k==0&&sign>0)continue;float ang=(yawDegrees+yawOff+sign*k*15)*BossMath.Deg;var e=c+BossMath.Forward(ang)*dist;e.Y=ey;
+                if(!NativeHumArena.ClearEye(Room,mask,e,look,1.5f))continue;eye=e;found=true;
+            }
+            if(!found){float ang=(yawDegrees+yawOff)*BossMath.Deg;eye=c+BossMath.Forward(ang)*dist;eye.Y=ey;NativeHumArena.PushEye(Room,mask,ref eye,look);}
+            float inset=.55f;eye.X=BossMath.Clamp(eye.X,Room.MinX+inset,Room.MaxX-inset);eye.Z=BossMath.Clamp(eye.Z,Room.MinZ+inset,Room.MaxZ-inset);
         }
         /// <summary>Which pilot the record's target is on the floor plan (for the presenter).</summary>
         public static Vector3 TargetPoint(Vector2 t)=>new Vector3(t.X,1.6f,t.Y);

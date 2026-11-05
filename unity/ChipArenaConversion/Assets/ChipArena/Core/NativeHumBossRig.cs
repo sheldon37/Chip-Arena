@@ -52,6 +52,8 @@ namespace ChipArena.UnityConversion
         public float Hitch;public bool Reduced;
         /// <summary>The jaw and the cage as drawn (0..1), the head's world place and its forward.</summary>
         public float JawOpen,RibOpen;public Vector3 HeadPos,HeadDir;public Vector3 Target;public bool HasTarget;
+        /// <summary>How far each of the neck's three bones stretches along itself (the drawn skin scales its bones' local z by these: the neck's bind axis).</summary>
+        public readonly float[] NeckStretch={1,1,1};
         /// <summary>Scratching: the planted fingers' drumming amount.</summary>
         public float Scratch;
         public uint Seed=0x4A1u;
@@ -350,6 +352,8 @@ namespace ChipArena.UnityConversion
             var dir1=NativeHumBossLook.Bind[NativeHumBossLook.Neck2]-NativeHumBossLook.Bind[NativeHumBossLook.Neck1];var r1=Quaternion.Normalize(BossMath.FromTo(BossMath.Rotate(r0,dir1),p2-p1)*r0);
             var dir2=NativeHumBossLook.Bind[NativeHumBossLook.Head]-NativeHumBossLook.Bind[NativeHumBossLook.Neck2];var r2=Quaternion.Normalize(BossMath.FromTo(BossMath.Rotate(r1,dir2),p3-p2)*r1);
             P.Set(NativeHumBossLook.Neck0,p0,r0);P.Set(NativeHumBossLook.Neck1,p1,r1);P.Set(NativeHumBossLook.Neck2,p2,r2);
+            // The neck pays out: each of its bones stretches along itself to span the curve (the wet carpet going thin).
+            NeckStretch[0]=BossMath.Clamp((p1-p0).Length()/dir0.Length(),.4f,5);NeckStretch[1]=BossMath.Clamp((p2-p1).Length()/dir1.Length(),.4f,5);NeckStretch[2]=BossMath.Clamp((p3-p2).Length()/dir2.Length(),.4f,5);
         }
         // ---- a limb: the gait's planted foot or the channels' target, two-bone IK ----
         private readonly BossSecondOrder3[] armGoal=new BossSecondOrder3[2];private readonly Vector3[] bend=new Vector3[4];private readonly bool[] bendKnown=new bool[4];private readonly Vector3[] lastHinge=new Vector3[4];private readonly bool[] hingeKnown=new bool[4];

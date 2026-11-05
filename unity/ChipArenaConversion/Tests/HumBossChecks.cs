@@ -253,7 +253,7 @@ public static class HumBossChecks
         var room=NativeHumBossPreview.Room;for(int r=0;r<6;r++){int f=r*6+2;Check(Math.Abs(NativeHumArena.RowLine(room,0,r)-room.FixtureAt[f].Z)<1e-3f,"a row's line is on its fixtures");f=2*6+r;Check(Math.Abs(NativeHumArena.RowLine(room,1,r)-room.FixtureAt[f].X)<1e-3f,"a column's line is on its fixtures");}
         Check(NativeHumArena.RowOf(35,0)==5&&NativeHumArena.RowOf(35,1)==5,"the far corner's rows");
         // The directed camera never leaves the room.
-        for(float p=NativeHumBossPreview.IntroEnd;p<NativeHumBossPreview.Loop;p+=.25f){NativeHumBossPreview.Root(p,out float x,out float z,out float yaw);NativeHumBossPreview.Camera(p,new Vector3(x,3,z),new Vector3(x,0,z),yaw,out var e,out var l,out float fov);Check(room.Inside(e.X,e.Z)&&e.Y>0&&e.Y<4&&fov>20&&fov<90,"the preview's eye is in the room at "+p);}
+        for(float p=NativeHumBossPreview.IntroEnd;p<NativeHumBossPreview.Loop;p+=.25f){NativeHumBossPreview.Root(p,out float x,out float z,out float yaw);NativeHumBossPreview.Camera(p,new Vector3(x,3,z),new Vector3(x,0,z),yaw,0,out var e,out var l,out float fov);Check(room.Inside(e.X,e.Z)&&e.Y>0&&e.Y<4&&fov>20&&fov<90,"the preview's eye is in the room at "+p);}
     }
 }
 #endif

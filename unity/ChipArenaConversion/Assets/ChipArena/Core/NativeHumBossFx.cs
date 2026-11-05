@@ -21,6 +21,8 @@ namespace ChipArena.UnityConversion
         public readonly float[] LightPos=new float[MaxLights*4],LightRgb=new float[MaxLights*3];public int LightCount;
         /// <summary>The DEV preview's room (null: the record alone; nothing that needs walls draws).</summary>
         public HumRoom Room;
+        /// <summary>The DEV preview's stand-in pilots (x, z): a faint ring on the floor at each, for scale and for who its moves are aimed at; null in play.</summary>
+        public Vector2[] StandIns;
         /// <summary>This frame's counts (budget lines, checks).</summary>
         public int Telegraph,Bursts,Tears;
         private Vector3 eye,camR,camU;private float quality;private bool low,reduced;private uint vseed;private float floorY;
@@ -43,6 +45,7 @@ namespace ChipArena.UnityConversion
             // Telegraphs first (never thinned), then the rest.
             Rows(v,st,t);Lane(rig,v,t);Stoop(rig,v,t);ReachArc(rig,v,t);CutArc(rig,v,t);FallThrough(rig,v,t);Ring(rig,v,t);
             HeadGlow(rig,v,st,t);TubesFx(rig,v,t);BallastFx(rig,v,t);Arrival(rig,v,st,t);WallHand(rig,v,t);Voices(rig,v,t);PhaseFx(rig,v,st,t);Steps(rig,v,t);Drips(rig,v,t);Slip(rig,v,st,t);Clip(rig,v,t);Death(rig,v,t);Lights(rig,v,st,t);
+            if(StandIns!=null&&!rig.Arriving)for(int i=0;i<StandIns.Length;i++){float on=i==v.actionTarget?.5f:.16f;RingFlat(new Vector3(StandIns[i].X,floorY+.015f,StandIns[i].Y),.42f,.025f,on,on,on*.9f,.8f);}
             Flush();
         }
         // ---------------- the lit parts' levels ----------------
@@ -107,7 +110,7 @@ namespace ChipArena.UnityConversion
                 }
                 else if(k<.22f)
                 {
-                    float f=1-k/.22f;StripFlat(a,b,floorY+.03f,half*1.05f,R(DangerHex)*f,G(DangerHex)*.6f*f,B(DangerHex)*f,.95f);StripFlat(a,b,floorY+.033f,half*.5f,1.4f*f,1.3f*f,1.1f*f,.95f);Telegraph+=2;
+                    float f=1-k/.22f;StripFlat(a,b,floorY+.03f,half*1.05f,R(DangerHex)*.7f*f,G(DangerHex)*.5f*f,B(DangerHex)*.7f*f,.95f);StripFlat(a,b,floorY+.033f,half*.5f,.75f*f,.6f*f,.4f*f,.95f);Telegraph+=2;
                 }
                 // The scorch that stays till the lamps come back (a dark lane of burnt carpet under each fixture).
                 if(k>=0&&k<HumBossStage.RowDark){float fade=(1-BossMath.Smooth((k-HumBossStage.RowDark+1.2f)/1.2f))*BossMath.Smooth(k/.05f);
@@ -116,7 +119,7 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<NativeHumArena.FixtureSide;i++)
                 {
                     int fx=axis==0?r*NativeHumArena.FixtureSide+i:i*NativeHumArena.FixtureSide+r;var f=Room.FixtureAt[fx];int seed=fx*7+key*131;
-                    if(k>=-.02f&&k<.2f){float g=1-(k+.02f)/.22f;Vfx.Glow(f-new Vector3(0,.25f,0),LampWarm*(reduced?1.2f:3.4f)*g,3.4f,NativeBossVfx.Core);Bursts++;}
+                    if(k>=-.02f&&k<.2f){float g=1-(k+.02f)/.22f;Vfx.Glow(f-new Vector3(0,.12f,0),LampWarm*(reduced?.8f:2.2f)*g*g,1.5f,NativeBossVfx.Core);Vfx.Glow(f-new Vector3(0,.4f,0),LampWarm*(reduced?.2f:.5f)*g,3.6f,NativeBossVfx.Mote);Bursts++;}
                     if(k>=0&&k<2.4f)
                     {
                         Vfx.SparkBurst(t,f,new Vector3(0,-1,0),.9f,4.2f,14,1.0f,at,.05f,vseed,seed,1.1f,.018f,.7f,true,floorY);

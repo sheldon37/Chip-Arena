@@ -77,6 +77,7 @@ namespace ChipArena.UnityConversion
             if(!humRoot.activeSelf)humRoot.SetActive(true);
             if(tier!=humSkinTier){humSkinTier=tier;humSkin.sharedMesh=humBody[tier];humSkin.localBounds=new Bounds(new Vector3(0,2,0),new Vector3(90,14,90));}
             for(int j=0;j<humBones.Length;j++)humBones[j].SetPositionAndRotation(NativeBossPoseApply.ToUnity(pose.Position[j]),NativeBossPoseApply.ToUnity(pose.Rotation[j]));
+            for(int k=0;k<3;k++)humBones[NativeHumBossLook.Neck0+k].localScale=new Vector3(1,1,humBoss.NeckStretch[k]);
             // The Wall Hand's arm collapses to nothing until it's out.
             if(humBoss.WallArmOut!=humWallOut){humWallOut=humBoss.WallArmOut;var sc=humWallOut?Vector3.one:Vector3.one*1e-4f;for(int j=NativeHumBossLook.WallFore;j<humBones.Length;j++)humBones[j].localScale=sc;}
             float flash=humFlash;humFlash=Mathf.Max(0,humFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;

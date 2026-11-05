@@ -106,6 +106,21 @@ namespace ChipArena.UnityConversion
                 }
             }
         }
+        /// <summary>Whether a directed camera's eye stands clear: in the room, `clear` m from every partition and wall, and no partition across its line to what it looks at.</summary>
+        public static bool ClearEye(HumRoom room,int mask,Vector3 eye,Vector3 look,float clear)
+        {
+            if(eye.X<room.MinX+clear||eye.X>room.MaxX-clear||eye.Z<room.MinZ+clear||eye.Z>room.MaxZ-clear)return false;
+            float half=PartitionCells*BackroomsLayout.Cell*.5f;
+            for(int s=0;s<Partitions;s++)
+            {
+                room.Partition(s,PlaceOf(s,mask),out var c,out bool alongX);
+                float ex=alongX?Math.Abs(eye.X-c.X)-half:Math.Abs(eye.X-c.X),ez=alongX?Math.Abs(eye.Z-c.Z):Math.Abs(eye.Z-c.Z)-half;float gap=(float)Math.Sqrt(Math.Max(0,ex)*Math.Max(0,ex)+Math.Max(0,ez)*Math.Max(0,ez));if(gap<clear)return false;
+                var d=look-eye;float t;
+                if(alongX){if(Math.Abs(d.Z)<1e-4f)continue;t=(c.Z-eye.Z)/d.Z;if(t<0||t>1)continue;if(Math.Abs(eye.X+d.X*t-c.X)<=half+.5f)return false;}
+                else{if(Math.Abs(d.X)<1e-4f)continue;t=(c.X-eye.X)/d.X;if(t<0||t>1)continue;if(Math.Abs(eye.Z+d.Z*t-c.Z)<=half+.5f)return false;}
+            }
+            return true;
+        }
         /// <summary>A directed camera's eye pushed forward past any partition between it and what it looks at.</summary>
         public static void PushEye(HumRoom room,int mask,ref Vector3 eye,Vector3 look)
         {

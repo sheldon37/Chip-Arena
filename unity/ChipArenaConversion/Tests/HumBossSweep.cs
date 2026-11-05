@@ -82,6 +82,7 @@ public static class HumBossSweep
                     return false;
                 }
                 case "pulse":ringAt=t;ringP=Boss;return false;
+                case "voices":return true; // Facelings peel out of the walls round each pilot, wherever it is.
                 case "hand":{float w=NativeHumArena.NearestWall(Room,Mask,pilot.X,pilot.Y,out _,out _,out _,out _);return w<=m.Grab+Near;}
                 default:return false;
             }
@@ -106,7 +107,7 @@ public static class HumBossSweep
     {
         count=0;var room=new HumRoom(2,2,Vector3.Zero);var sb=new System.Text.StringBuilder();
         // The limits (s): still: the meter, its wind and a little; circling: the rotation's own.
-        float[] stillLimit={NativeHumBoss.StillFor(1)+NativeHumBoss.Move("tear").Wind+.5f,NativeHumBoss.StillFor(2)+NativeHumBoss.Move("tear").Wind+.5f,NativeHumBoss.StillFor(3)+NativeHumBoss.Move("tear").Wind+.5f},moveLimit={24,24,20};
+        float[] stillLimit={NativeHumBoss.StillFor(1)+NativeHumBoss.Move("tear").Wind+.5f,NativeHumBoss.StillFor(2)+NativeHumBoss.Move("tear").Wind+.5f,NativeHumBoss.StillFor(3)+NativeHumBoss.Move("tear").Wind+.5f},moveLimit={16,20,20};
         const float span=110;
         for(int phase=1;phase<=3;phase++)
         {
