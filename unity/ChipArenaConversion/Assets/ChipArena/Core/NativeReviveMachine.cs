@@ -12,6 +12,7 @@ namespace ChipArena.UnityConversion
     /// <summary>A dead pilot on the machine's list. Empty text is "not reported": the screen says so rather than inventing a cause.</summary>
     [Serializable] public sealed class NativeReviveDead
     {
+        public NativeReviveDead Copy()=>(NativeReviveDead)MemberwiseClone();
         public string Account,Name,Weapon;
         /// <summary>The seat the pilot is drawn under, for the spit.</summary>
         public int Seat;

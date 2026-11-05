@@ -91,13 +91,13 @@ namespace ChipArena.UnityConversion
             else{if(p.Hp>=p.Stats["hp"]){row.Notice="Health is full";row.NoticeUntil=Time+1.4f;Use("deny");return;}if(Time<row.HealReady){row.Notice="Med station is recharging";row.NoticeUntil=Time+1.4f;Use("deny");return;}row.HealAt=Time;row.HealReady=Time+12;row.HealPulses=0;}
             row.Money-=cost;row.Spent+=cost;Use(m.kind);Emit(EventKind.PveBuy,p,m.m,p.Body.position,cost,m.kind);row.Notice="";row.NoticeUntil=Time+1.4f;
         }
-        private void RevivePve(NativePilot p,Vector3? respawn=null)
+        private void RevivePve(NativePilot p,Vector3? respawn=null,bool fullHealth=false)
         {
             p.RevivedAt=Time;p.Wounds.Clear();p.AirJumps=0;p.AirJumpAt=-100;
             // The source draws no blast for pve-revive (pve/hud.ts REVIVED banner, audio.ts `go` cue). The first port recorded a
             // water-school ability effect here, which drew a frost blast. Presentation feed only.
 
-            CancelSiren(p);CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.Down=null;p.Juggle=null;p.Roll=null;p.RollEnd=p.StunEnd=0;p.ScareBy=null;p.ScareUntil=p.FrozenUntil=0;ReleaseControl(p);p.Dots.Clear();RefreshLiveStats(p);p.Hp=(float)p.Stats["hp"]*.5f;p.ShieldUntil=Time+1.5f;p.Seat.alive=true;p.Collider.enabled=true;p.Body.isKinematic=false;p.Body.position=respawn??p.Body.position;p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Pve.Rows[p.Seat.id].SelfAt=-1;Emit(EventKind.PveRevive,p,p.Seat.id,p.Body.position,p.Hp);
+            CancelSiren(p);CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.Down=null;p.Juggle=null;p.Roll=null;p.RollEnd=p.StunEnd=0;p.ScareBy=null;p.ScareUntil=p.FrozenUntil=0;ReleaseControl(p);p.Dots.Clear();RefreshLiveStats(p);p.Hp=(float)p.Stats["hp"]*(fullHealth?1:.5f);p.ShieldUntil=Time+1.5f;p.Seat.alive=true;p.Collider.enabled=true;p.Body.isKinematic=false;p.Body.position=respawn??p.Body.position;p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Pve.Rows[p.Seat.id].SelfAt=-1;Emit(EventKind.PveRevive,p,p.Seat.id,p.Body.position,p.Hp);
         }
         private void PveDied(NativePilot p)
         {if(Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;row.Deaths++;row.Open=null;if(Pve.Solo&&row.SelfRevives>0&&!p.Seat.bot)row.SelfAt=Time+5;}

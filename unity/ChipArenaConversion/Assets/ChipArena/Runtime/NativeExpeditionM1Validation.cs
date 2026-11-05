@@ -18,7 +18,7 @@ namespace ChipArena.UnityConversion
             Match.ApplyNetwork(new NativeMatchFrame{phase=NativePhase.Fight,time=10,fightAt=10,round=1,set=1,cooperative=true,teams=true});
             var run=NativeExpedition.Create("native-m1-check",layout.world,"native-host","pistol",12345,layout.instances.Select(id=>new ExpeditionInstance{id=id,target=1}).ToArray());
             var session=new ExpeditionSession(run,Content,_=>{});session.Sources.Seat=_=>Local.Seat.id;
-            var director=new ExpeditionDirector(session,layout,_=>Vec(Local.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight),(a,b)=>ExpeditionVisible(a,b),100,100,60);
+            var director=new ExpeditionDirector(session,layout,_=>Vec(Local.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight),(a,b)=>ExpeditionVisible(a,b),100,NativeReviveMachine.Price,60);
             try
             {
                 Check(run.Enter(area.id),"enter fixture instance");director.Step();BindExpeditionCombat(director,area,data);
@@ -174,7 +174,7 @@ namespace ChipArena.UnityConversion
                 var run=NativeExpedition.Create("native-coop",layout.world,"host","pistol",99,layout.instances.Select(id=>new ExpeditionInstance{id=id,target=1}).ToArray());
                 Check(run.Join("guest","pistol"),"guest joins");
                 var session=new ExpeditionSession(run,Content,_=>{});session.Sources.Seat=id=>id=="host"?1:id=="guest"?2:0;
-                var director=new ExpeditionDirector(session,layout,id=>Vec(host.Pilots.Single(p=>p.Seat.id==session.Sources.Seat(id)).Body.position-Vector3.up*NativeLocomotionRules.HalfHeight),(a,b)=>host.ExpeditionVisible(a,b),100,100,60);
+                var director=new ExpeditionDirector(session,layout,id=>Vec(host.Pilots.Single(p=>p.Seat.id==session.Sources.Seat(id)).Body.position-Vector3.up*NativeLocomotionRules.HalfHeight),(a,b)=>host.ExpeditionVisible(a,b),100,NativeReviveMachine.Price,60);
                 session.ReprintEvidence=host.ExpeditionReprintEvidence;
                 var area=layout.Area(layout.world);host.BindExpeditionCombat(director,area,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
                 Check(director.BeginAreaLoad(),"start barrier");
@@ -189,16 +189,20 @@ namespace ChipArena.UnityConversion
                 Check(host.TryExpeditionInteract(guest,out _)&&host.Local.Hp>0&&host.Local.Collider.enabled&&run.Snapshot().members.Single(m=>m.account=="host").alive,"F revives body and durable member");
                 Check(host.Local.Body.position==corpse&&run.Snapshot().members.Single(m=>m.account=="guest").wallet==0,"body revive preserves position and charges run wallet once");
                 host.Local.Hp=0;host.RecordExpeditionDeaths();
-                var machine=area.anchors.First(a=>a.kind=="machine");var interaction=area.interactions.Single(i=>i.anchor==machine.id);
-                guest.Body.position=new Vector3(interaction.x,interaction.y+NativeLocomotionRules.HalfHeight,interaction.z);Physics.SyncTransforms();director.Step();
-                Check(run.Credit("guest","test-reprint",100),"guest funds");
-                Check(host.TryExpeditionInteract(guest,out _)&&host.expeditionChannels.ContainsKey("guest"),"guest F starts measured reprint");
-                // Session.Tick caps a single delta at one second; drive the channel
-                // with ordinary frames instead of asking one call to skip 3.1 seconds.
-                for(int tick=0;tick<29;tick++){session.Tick(.1);host.StepExpeditionReprints();}
-                Check(!run.Snapshot().members.Single(m=>m.account=="host").alive&&host.Local.Hp<=0&&host.expeditionChannels.ContainsKey("guest"),"reprint stays pending before three seconds");
-                for(int tick=0;tick<2;tick++){session.Tick(.1);host.StepExpeditionReprints();}
-                Check(run.Snapshot().members.Single(m=>m.account=="host").alive&&host.Local.Hp>0&&host.Local.Collider.enabled,"guest reprints host into live capsule");
+                Check(NativeReviveMachine.Spot(host.MapId,out var machineAt,out float machineYaw),"hub machine position exists without anchor");
+                var use=System.Numerics.Vector3.Transform(NativeReviveMachine.UsePoint,NativeReviveMachine.Frame(machineAt,machineYaw));
+                guest.Body.position=new Vector3(use.X,use.Y+NativeLocomotionRules.HalfHeight,use.Z);Physics.SyncTransforms();director.Step();
+                Check(run.Credit("guest","test-reprint",250),"guest funds");
+                Check(!host.expeditionChannels.ContainsKey("guest"),"no legacy F channel");
+                Check(session.Execute("guest",new ExpeditionCommand(ExpeditionIntent.Reprint,"host")).state==ExpeditionCommandState.Pending,"guest machine request accepted");
+                Check(session.Execute("guest",new ExpeditionCommand(ExpeditionIntent.Reprint,"host")).state==ExpeditionCommandState.Refused&&run.Snapshot().members.Single(m=>m.account=="guest").wallet==0,"busy duplicate costs nothing");
+                float began=host.Time;
+                fixture.SynchronizeExpeditionClock(began+2.99);host.StepReviveMachine();
+                Check(!run.Snapshot().members.Single(m=>m.account=="host").alive&&host.Local.Hp<=0,"pilot remains dead before spit");
+                fixture.SynchronizeExpeditionClock(began+3);host.StepReviveMachine();
+                Check(host.Local.Hp==(float)host.Local.Stats["hp"]&&host.Local.Collider.enabled&&host.MachineHeld(host.Local),"spit restores full HP and holds input");
+                Check(Vector3.Distance(host.Local.Body.position,Vec(run.MachineRevive.spit.Land)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f))<.001f,"pilot lands on replicated mat position");
+                host.Local.Input=new InputFrame{Interact=true};host.ExpeditionInput(host.Local);Check(!host.Local.Input.Interact,"host suppresses recovery input");
                 using(var replica=new NativeArena(Content,new NativeMatch(Content),MapId){LocalId=2,ReplicaScene=root.scene})
                 {
                     replica.ApplyFrame(NativeFrameCodec.Clone(host.NetworkFrame()),2);
@@ -206,6 +210,7 @@ namespace ChipArena.UnityConversion
                     replica.ApplyExpeditionCollision(view,area,json);
                     Check(replica.hubDoors.Count==host.hubDoors.Count&&replica.hubDoors.Select(b=>b.enabled).SequenceEqual(host.hubDoors.Select(b=>b.enabled)),"replica builds the same closed gates");
                     var wire=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="expedition-public",epoch=7,generation=host.Generation,expeditionPublic=view}));
+                    Check(wire.expeditionPublic.machineRevive?.spit?.Seat==1&&wire.expeditionPublic.machineRevive.completed&&wire.expeditionPublic.Member("host").death.Located,"JsonUtility preserves revive and death records");
                     Check(wire.epoch==7&&wire.generation==host.Generation&&wire.expeditionPublic.hub.Gates.All(g=>g.Blocking),"JsonUtility preserves map generation and gate solidity");
                     var gate=host.hubAuthority.Layout.Gates[0];guest.Body.position=new Vector3(gate.Interact.x,gate.Interact.y,gate.Interact.z);Physics.SyncTransforms();
                     Check(host.TryExpeditionInteract(guest,out _),"guest gate interaction");session.Tick(1);host.StepHubGates();

@@ -97,6 +97,7 @@ namespace ChipArena.UnityConversion
         public void BindExpeditionCombat(ExpeditionDirector director,ExpeditionAreaLayout area,NativePveContent data)
         {
             Expedition=director;expeditionArea=area;boundMutators=director.Session.Run.Mutators;
+            director.Session.MachineReprint=RequestMachineRevive;
             director.Session.Installed=(account,chip,count)=>
             {
                 SyncExpeditionInventory();
@@ -191,7 +192,7 @@ namespace ChipArena.UnityConversion
                 if(machine!=null){notice=BuyExpeditionMachine(pilot,member,machine);SyncExpeditionInventory();return true;}
             }
             var reprint=expeditionArea.anchors.FirstOrDefault(a=>a.kind=="machine"&&Expedition.CanPurchase(member.account,a.id));
-            if(reprint!=null){notice=BeginExpeditionReprint(pilot,member,reprint.id);return true;}
+            if(reprint!=null&&reprint.id!="exp-city:machine:0"){notice=BeginExpeditionReprint(pilot,member,reprint.id);return true;}
             return false;
         }
         private void OpenExpeditionPurchases(string account)
@@ -230,7 +231,7 @@ namespace ChipArena.UnityConversion
         private void StepExpeditionCombat()
         {
             var run=Expedition.Session.Run;var s=run.Snapshot();if(s.loading||s.phase==ExpeditionPhase.Ended)return;
-            RecordExpeditionDeaths();s=run.Snapshot();if(!s.members.Any(m=>m.alive&&m.connected&&!m.extracted))return;
+            RecordExpeditionDeaths();StepReviveMachine();s=run.Snapshot();if(!s.members.Any(m=>m.alive&&m.connected&&!m.extracted))return;
             StepExpeditionReprints();StepHubPopulation();
             if(s.phase==ExpeditionPhase.Instance)
             {

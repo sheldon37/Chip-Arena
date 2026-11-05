@@ -79,6 +79,15 @@ namespace ChipArena.UnityConversion
             }
             if(z.archetype==NativeZoneBossRules.Ironworks)
             {
+                var foreman=m.Body.transform.Find("Foreman").GetComponent<CapsuleCollider>();
+                var joints=new System.Numerics.Matrix4x4[NativeIronworksBossModel.Parent.Length];
+                NativeIronworksBossModel.Solve(NativeIronworksBossModel.Stance(),joints);
+                var centre=System.Numerics.Vector3.Transform(new System.Numerics.Vector3(0,1.04f,0),joints[NativeIronworksBossModel.Foreman]);
+                Check(Vector3.Distance(foreman.transform.localPosition,new Vector3(centre.X,centre.Y,centre.Z))<.001f,"Foreman collider follows rest rig including pulpit offset");
+                Physics.SyncTransforms();var aim=foreman.transform.position;
+                Check(foreman.Raycast(new Ray(aim+Vector3.right*4,Vector3.left),out _,8),"side shot at the figure hits");
+                Check(!foreman.Raycast(new Ray(m.Body.position+new Vector3(4,7.5f,-.6f),Vector3.left),out _,8),"old phantom position misses Foreman");
+                float health=m.Hp;Check(Math.Abs(HitZoneBoss(m,p,10,aim,"direct")-15)<.01f,"Foreman still takes 1.5x weak-point damage");m.Hp=Pve.Boss.Hp=health;
                 // Actual opening and catwalk clearance, with full boss sweep and the boss gate open.
                 var gates=root.GetComponentsInChildren<Collider>().Where(c=>c.name.Contains("gate:converter")&&c.enabled).ToArray();
                 float savedYaw=m.Yaw;

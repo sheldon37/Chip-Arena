@@ -50,7 +50,7 @@ namespace ChipArena.UnityConversion
                 var runtime=splitAreas.Acquire(area.id);var sim=runtime.Arena;sim.GeneratedRun=deploymentBundle;sim.LocalId=1;
                 var session=new ExpeditionSession(splitRun.ForArea(area.id),content);
                 session.Sources.Seat=SplitSeat;session.Sources.DisplayName=id=>seats.FirstOrDefault(p=>p.access?.AccountId==id)?.name;
-                var director=new ExpeditionDirector(session,expeditionM1Layout,id=>sim.Pilots.FirstOrDefault(p=>p.Seat.id==SplitSeat(id)) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,sim.ExpeditionVisible,100,100,60);
+                var director=new ExpeditionDirector(session,expeditionM1Layout,id=>sim.Pilots.FirstOrDefault(p=>p.Seat.id==SplitSeat(id)) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,sim.ExpeditionVisible,100,NativeReviveMachine.Price,60);
                 session.ReprintEvidence=sim.ExpeditionReprintEvidence;session.Run.ReprintPlacement=SplitReprint;
                 runtime.Ready(a=>{a.Match.ApplyNetwork(new NativeMatchFrame{phase=deploymentBundle!=null&&area.id==expeditionM1Layout.world?NativePhase.Lobby:NativePhase.Fight,cooperative=true,teams=true});a.Match.HoldResolution=()=>true;a.BindExpeditionCombat(director,area,expeditionHorde);});
                 runtime.SetOccupants(sim.Pilots.Count(p=>!p.Seat.bot));
@@ -105,7 +105,7 @@ namespace ChipArena.UnityConversion
         private void SplitFixedFrame()
         {
             if(expeditionError!=null||splitRun.Migrating)return;
-            var state=splitRun.PartySnapshot();if(state.phase==ExpeditionPhase.Ended||!state.members.Any(m=>m.alive&&m.connected&&!m.extracted)){ExpeditionView=SplitView(account.Access.AccountId);return;}
+            var state=splitRun.PartySnapshot();if(state.phase==ExpeditionPhase.Ended||!state.members.Any(m=>m.alive&&m.connected&&!m.extracted)&&state.machineRevive==null){ExpeditionView=SplitView(account.Access.AccountId);return;}
             long splitAt=System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
@@ -156,6 +156,7 @@ namespace ChipArena.UnityConversion
                 foreach(var area in expeditionM1Layout.areas)
                 {
                     var runtime=splitAreas.Find(area.id);runtime.Arena.Match.SynchronizeExpeditionClock(clock);
+                    if(area.id==expeditionM1Layout.world)runtime.Arena.StepReviveMachine();
                     var session=splitSessions[area.id];if(area.id!=expeditionM1Layout.world)session.Tick(1d/60);
                     runtime.Arena.ExpeditionSyncClosures();runtime.Arena.SyncExpeditionInventory();
                     var returning=session.Run.DueReturns().Where(a=>splitCohorts.Member(a)?.Pending==null).ToArray();

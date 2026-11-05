@@ -90,7 +90,7 @@ namespace ChipArena.UnityConversion
             try
             {
                 source.DetachTransferPilot(p);AttachTransferPilot(p,row);PlaceTransferredPilot(p,Vec(slot.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f),slot.yaw);
-                expeditionDown.Add(account);source.expeditionDown.Remove(account);Physics.SyncTransforms();return true;
+                p.Death=null;expeditionDown.Add(account);source.expeditionDown.Remove(account);Physics.SyncTransforms();return true;
             }
             catch
             {
