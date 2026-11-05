@@ -132,6 +132,8 @@ namespace ChipArena.UnityConversion
                     Track(boss,Music*.55f,hold||clip<0,Math.Max(0,clip),arena,arena.BossSongAt);
                 }
             }
+            // A DEV boss preview plays its song on the preview's own clock.
+            else if(BackroomsBossPreviewSong(out string previewSong,out double previewClip,out double previewAt))Track(previewSong,Music*.55f,previewClip<0,Math.Max(0,previewClip),arena,previewAt);
             // The DEV hazard kit gallery's music lock (Sandbox only): the boss song from the gallery's own clock, for its beat.
             else if(!double.IsNaN(NativeHazardKitWorld.GallerySongAt(arena)))Track("music/black-siren-protocol",Music*.55f,false,arena.BossTrack.Looped(arena.Time-NativeHazardKitWorld.GallerySongAt(arena)),arena,NativeHazardKitWorld.GallerySongAt(arena));
             else if(NativeExpeditionCityKit.Active(arena.MapId))Track("music/safe-hub-under-siege",Music*.55f);

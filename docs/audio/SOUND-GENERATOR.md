@@ -49,6 +49,20 @@ and pauses on success/failure. A double-click uses the environment inherited by
 Explorer; launch it from the configured PowerShell session if the key is session-only.
 Clear the key afterward with `Remove-Item Env:ELEVENLABS_API_KEY`.
 
+## The Backrooms bosses' batch
+
+The same tool with the second manifest (`docs/audio/SOUND-REQUESTS.md`). `--sample-only` doesn't apply: it names zombie keys. A short listening sample is `--key` repeated:
+
+```powershell
+py -3.14 unity/ChipArenaConversion/tools/generate_sound_requests.py --manifest docs/audio/sound-requests-bosses.json --key boss.hum.tube.strike --key boss.hum.tear --key boss.hum.scratch --key boss.deepend.break --key boss.deepend.drip --key boss.deepend.iris --variant 1 --out "$env:USERPROFILE\Documents\ChipArena\SoundRequests\boss-sample" --check
+```
+
+Then the rest into the same folder; finished takes are skipped:
+
+```powershell
+py -3.14 unity/ChipArenaConversion/tools/generate_sound_requests.py --manifest docs/audio/sound-requests-bosses.json --out "$env:USERPROFILE\Documents\ChipArena\SoundRequests\boss-sample" --check --zip "$env:USERPROFILE\Documents\ChipArena\boss-batch.zip"
+```
+
 ## Resume and uncertain requests
 
 Re-run with exactly the same manifest and `--out`. Completed files are decoded and

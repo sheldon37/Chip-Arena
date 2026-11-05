@@ -131,9 +131,9 @@ namespace ChipArena.UnityConversion
             eye=look=default;fov=60;
             if(p<ArrivalEnd+.4f)
             {
-                if(!NativeBackroomsBossIntro.Sample(NativeDeepEndBoss.Shots,p-SpawnAt<0?0:p-SpawnAt,origin,0,out eye,out look,out fov))return false;
+                if(!NativeBackroomsBossIntro.Sample(NativeDeepEndBossBeats.Shots,p-SpawnAt<0?0:p-SpawnAt,origin,0,out eye,out look,out fov))return false;
                 // The arrival's mouth shot looks at the mouth itself.
-                var b=DeepEndBossBeats.Fallback;float a=p-SpawnAt;if(a>=b.MouthShot)look=Vector3.Lerp(look,origin+headRoom,.65f);else if(a>=b.BreakShot)look=Vector3.Lerp(look,origin+headRoom,.35f);
+                var b=NativeDeepEndBossBeats.Current;float a=p-SpawnAt;if(a>=b.MouthShot)look=Vector3.Lerp(look,origin+headRoom,.65f);else if(a>=b.BreakShot)look=Vector3.Lerp(look,origin+headRoom,.35f);
                 return true;
             }
             int act=ActOf(p);var f0=FrameAt(p,act,headRoom,midRoom);var f=f0;

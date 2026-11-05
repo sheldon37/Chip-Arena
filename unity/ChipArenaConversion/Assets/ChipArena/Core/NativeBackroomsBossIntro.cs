@@ -30,7 +30,9 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>When the card's title rises (the Siren's own name time). The hold is the simulation's.</summary>
         public const float NameAt=6.4261f,Hold=NativeZoneBossRules.IntroSeconds;
-        public static BossIntroShot[] Shots(string kind)=>kind==NativeHumBoss.Archetype?NativeHumBoss.Shots:kind==NativeDeepEndBoss.Archetype?NativeDeepEndBoss.Shots:null;
+        public static BossIntroShot[] Shots(string kind)=>kind==NativeHumBoss.Archetype?HumBossBeats.Shots:kind==NativeDeepEndBoss.Archetype?NativeDeepEndBossBeats.Shots:null;
+        /// <summary>When this card's title rises: on its song's moment once one is bound, else the Siren's name time.</summary>
+        public static float NameTime(BossIntroCard c)=>ReferenceEquals(c,NativeHumBoss.Card)?HumBossBeats.Current.Name:ReferenceEquals(c,NativeDeepEndBoss.Card)?NativeDeepEndBossBeats.Current.NameAt:NameAt;
         public static BossIntroCard Card(string kind)=>kind==NativeHumBoss.Archetype?NativeHumBoss.Card:kind==NativeDeepEndBoss.Archetype?NativeDeepEndBoss.Card:null;
         public static bool Mine(string kind)=>kind==NativeHumBoss.Archetype||kind==NativeDeepEndBoss.Archetype;
         /// <summary>The camera at boss time `age`, from the boss's `root` and `yaw` (degrees): false when there is no shot then.</summary>

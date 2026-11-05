@@ -4,8 +4,8 @@ using System.Numerics;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The intro's beats on the boss clock (seconds from the arrival, 0 the music stopping; doc section 3 "It has heard you"): the one table they're timed on. The owner's song will bind them to its accents, as
-    /// the station boss's beats do; until then these are fixed numbers on the fallback (the Siren's song: its name time 6.4261 and its drop 9.0678). Presentation only: no hit, hold or rule reads these.
+    /// The intro's beats on the boss clock (seconds from the arrival, 0 the music stopping; doc section 3 "It has heard you"): the one table they're timed on. The owner's song binds them to its bars and accents
+    /// (<see cref="FromSong"/>); without it they are fixed numbers on the fallback (the Siren's song: its name time 6.4261 and its drop 9.0678). Presentation only: no hit, hold or rule reads these.
     /// </summary>
     public struct HumBossBeats
     {
@@ -24,12 +24,44 @@ namespace ChipArena.UnityConversion
         public static readonly HumBossBeats Fallback=new HumBossBeats{RowOut0=.5f,RowOut1=.98f,RowOut2=1.42f,RowOut3=1.86f,Bulge=2.35f,Fingers=2.95f,TearOpen=3.3f,WalkOut=4.2f,Tube0=4.5f,TubeStep=.24f,HeadFlicker=6.15f,HeadCatch=6.82f,Look=6.95f,JawSplit=7.35f,Name=NativeBackroomsBossIntro.NameAt,Straighten=8f,Stoop=8.62f,Hold=NativeBackroomsBossIntro.Hold};
         /// <summary>Ordered and inside the hold.</summary>
         public bool Valid=>RowOut0>=0&&RowOut1>RowOut0&&RowOut2>RowOut1&&RowOut3>RowOut2&&Bulge>RowOut3&&Fingers>Bulge&&TearOpen>Fingers&&WalkOut>TearOpen&&Tube0>WalkOut&&Tube(6)<HeadFlicker&&HeadCatch>HeadFlicker&&Look>HeadCatch&&JawSplit>Look&&Straighten>JawSplit&&Stoop>Straighten&&Hold>Stoop;
-        private static HumBossBeats bound;private static bool has;
+        /// <summary>
+        /// The beats on the boss song's intro edit (docs/ZONE-BOSS-MUSIC.md, Failing Light): the far rows go in the preroll's silence and on the song's first notes; the paper tears open on the burst the edit resumes at;
+        /// the last lamps die as that burst ends and it walks out; the tubes climb the next bar in eighths; the head catches on the low drone that opens the bar after, and the card rises with it; the jaw splits two beats on;
+        /// it straightens across the fill and stoops on its last beat. False when the song can't place them (the fallback stays).
+        /// </summary>
+        public static bool FromSong(NativeZoneBossSong s,out HumBossBeats b)
+        {
+            b=Fallback;if(s?.Track?.beats==null||s.Accents==null||!(s.Hold>0)||s.Hold>=30)return false;
+            float hold=(float)s.Hold,first=(float)s.Preroll,burst=(float)(s.Preroll+s.Cut);
+            float bar6=(float)s.FirstBoss(s.Downbeat(s.DropBar-3)),bar7=(float)s.FirstBoss(s.Downbeat(s.DropBar-2)),bar8=(float)s.FirstBoss(s.Downbeat(s.DropBar-1)),beat=(hold-bar8)/4;if(!(beat>0)||!(first>0)||!(bar6>burst))return false;
+            float catches=Accent(s,NativeZoneBossSong.AccentDrop,bar7-.1f,bar7+.25f,bar7);
+            var r=new HumBossBeats{RowOut0=first*.33f,RowOut1=first*.66f,RowOut2=first,RowOut3=first+beat,Bulge=first+1.5f*beat,Fingers=burst-beat,TearOpen=burst,
+                WalkOut=Accent(s,NativeZoneBossSong.AccentCut,burst+.1f,bar6-.1f,burst+2*beat),Tube0=bar6,TubeStep=beat/2,HeadFlicker=bar7-.875f*beat,HeadCatch=catches,Look=catches+.13f,JawSplit=bar7+2*beat,Name=catches,
+                Straighten=bar8+beat,Stoop=bar8+3*beat,Hold=hold};
+            if(!r.Valid)return false;b=r;return true;
+        }
+        // The earliest accent of `kind` on the boss clock in [from, to], else `or`.
+        private static float Accent(NativeZoneBossSong s,byte kind,float from,float to,float or){foreach(var a in s.Accents){if(a.Kind!=kind)continue;double t=s.FirstBoss(a.T);if(t>=from&&t<=to)return (float)t;}return or;}
+        /// <summary>The intro's five shots cut on these beats: to the wall just before it bulges, to the side on the walk out, to the head as it flickers, back as it straightens. On the fallback those are the table's own times.</summary>
+        public static BossIntroShot[] ShotsOn(in HumBossBeats b)
+        {
+            var s=(BossIntroShot[])NativeHumBoss.Shots.Clone();float[] cut={0,b.Bulge-.15f,b.WalkOut,b.HeadFlicker+.05f,b.Straighten,b.Hold};
+            for(int i=0;i<s.Length;i++){s[i].From=cut[i];s[i].To=cut[i+1];}return s;
+        }
+        private static HumBossBeats bound;private static bool has;private static NativeZoneBossSong song;private static BossIntroShot[] boundShots;
         /// <summary>The beats the intro plays on now.</summary>
         public static HumBossBeats Current=>has?bound:Fallback;
-        /// <summary>Binds a set of beats (a song's, later); an out-of-order set is refused.</summary>
-        public static bool Use(in HumBossBeats b){if(!b.Valid)return false;bound=b;has=true;return true;}
-        public static void Clear(){has=false;}
+        /// <summary>The shots the intro plays on now.</summary>
+        public static BossIntroShot[] Shots=>has?boundShots:NativeHumBoss.Shots;
+        /// <summary>Binds a set of beats; an out-of-order set is refused.</summary>
+        public static bool Use(in HumBossBeats b){if(!b.Valid)return false;bound=b;boundShots=ShotsOn(b);has=true;song=null;return true;}
+        /// <summary>Binds the boss song's beats (<see cref="FromSong"/>); the same song again is a no-op, so the presenter may call this every frame. A song that can't place them leaves the fallback. Returns whether bound.</summary>
+        public static bool UseSong(NativeZoneBossSong s)
+        {
+            if(s==null){if(song!=null)Clear();return false;}if(ReferenceEquals(s,song))return has;
+            song=s;if(FromSong(s,out var b)){bound=b;boundShots=ShotsOn(b);has=true;return true;}has=false;return false;
+        }
+        public static void Clear(){has=false;song=null;}
     }
 
     /// <summary>

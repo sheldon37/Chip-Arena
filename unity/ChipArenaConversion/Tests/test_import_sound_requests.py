@@ -1,5 +1,6 @@
 """The sound request importer (tools/import_sound_requests.py, docs/audio/SOUND-REQUESTS.md): check mode, trimming, caps, the
 manifest update and an output zip that passes tools/install_local_assets.py --check. The import half needs ffmpeg."""
+from array import array
 from pathlib import Path
 import hashlib
 import json
@@ -21,6 +22,7 @@ REPO = ROOT.parents[1]
 IMPORTER = ROOT / 'tools/import_sound_requests.py'
 sys.path.insert(0, str(ROOT / 'tools'))
 import install_local_assets as installer  # noqa: E402
+import import_sound_requests as importer  # noqa: E402
 
 FFMPEG = shutil.which('ffmpeg')
 RATE = 44100
@@ -145,6 +147,25 @@ class SoundRequestImport(unittest.TestCase):
         code, out = run(['--manifest', str(self.manifest), '--in', str(archive), '--in', str(old), '--check'])
         self.assertEqual(code, 0, out)
         self.assertIn('pve.zombie.groan_01.wav: several copies; the newest is used (' + str(archive) + '!batch-1/pve.zombie.groan_01.wav)', out)
+
+    def test_boss_manifest_fits_the_bank_contract(self):
+        path = REPO / 'docs/audio/sound-requests-bosses.json'
+        if not path.is_file():
+            self.skipTest('docs/audio is not in this tree')
+        raw, data, sounds, trim, fade = importer.load_manifest(path)
+        problems = []
+        importer.check_contract(sounds, problems)
+        self.assertEqual(problems, [])
+        self.assertEqual(len(sounds), 81)
+        self.assertTrue(all(s['category'] == 'boss' and s['priority'] < 3 for s in sounds.values()))
+        self.assertEqual(sounds['boss.deepend.whistle']['space'], '2d')
+        self.assertLess(sounds['boss.deepend.ripple']['levelDb'], sounds['boss.deepend.flop']['levelDb'])
+
+    def test_boss_fade_is_the_requests_own(self):
+        pcm = array('f', [.5] * (importer.RATE * 2))
+        out, _, _ = importer.edit(pcm, {'targetSeconds': {'min': .5, 'max': 1.0}, 'fadeOutMs': 400}, 'boss', -50, .02)
+        self.assertEqual(len(out), importer.RATE)
+        self.assertLess(abs(out[-importer.RATE // 5]), .49)
 
     def test_the_repository_request_manifest_fits_the_bank_contract(self):
         path = REPO / 'docs/audio/sound-requests.json'

@@ -203,6 +203,50 @@ A boss intro can key its moves to these boss times on the shared clock:
 The boss intro hold must stay 9.0678 s. `Tests/ZoneBossMusicChecks.cs` pins it to `NativePve.cs`. Changing the hold means
 regenerating the map.
 
+## Failing Light (Level 0, THE HUM)
+
+- **Tempo:** a steady 150 BPM. A bar is 1.6 s. 88 bars, first downbeat at 0.
+- **Drop:** bar 9, clip 12.79 s, a hard entry after a fill.
+- **Intro edit:** 1.07 s of silent preroll; clip 0 to 1.59 s (bar 1); then bars 5 to 8, resuming at clip 6.39 s, so the noise burst that opens bar 5 lands on the splice.
+- **Loop:** bars 9 to 82 (12.79 to 131.19 s, 118.4 s). It ends on the song's own lull, so the wrap reads as a lull crashing back into the drop.
+- **The picture on it (boss clock):**
+
+| Time | Song | THE HUM |
+|---|---|---|
+| 0.36, 0.71 | silence | the far rows go out |
+| 1.07, 1.47 | first notes | the nearer rows go out |
+| 1.67-2.27 | the rest of bar 1 | the paper bulges, the fingers come through |
+| 2.67 | the burst, on the splice | it tears open |
+| 3.47 | the burst ends | the last lamps die, it walks out |
+| 4.27-5.47 | bar 6 | the tubes climb its spine in eighths |
+| 5.91 | the low drone at bar 7 | the head catches, and the card rises |
+| 6.67 | bar 7, beat 3 | the jaw splits |
+| 7.87, 8.67 | the fill | it straightens, then stoops |
+| 9.07 | the drop | every lamp slams on |
+
+## Main Theme (the Poolrooms, THE DEEP END)
+
+- **Tempo:** about 131 BPM, and not steady: it drifts from 128 to 136 through the song, so the beats are tracked. A bar is about 1.85 s early on. 101 bars, first downbeat at 0.47 s.
+- **Drop:** bar 21, clip 37.42 s. The opening is long, so the edit keeps very little of it.
+- **Intro edit:** 3.04 s of silent preroll, on purpose (the room's stillness is the first shot); clip 0 to 4.18 s (bars 1 and 2, the bells and the low tone's entry); then bar 20, resuming at clip 35.58 s.
+- **Loop:** bars 21 to 98 (37.42 to 178.57 s, 141.1 s). It too ends on the song's own quiet stretch.
+- **The picture on it (boss clock):**
+
+| Time | Song | THE DEEP END |
+|---|---|---|
+| 0.55 | silence | the ripple from nothing |
+| 3.04 | the bells begin | the lights under the water start dying |
+| 4.92 | the bells | straight down over the abyss, the spiral rising |
+| 6.58 | the low tone enters | it breaks the surface |
+| 6.81 | | the card rises |
+| 7.22 | the splice, the song falling away | it goes on rising |
+| 8.14 | the last swell | the mouth irises open |
+| 9.07 | the drop | the fight |
+
+## Not checked by ear
+
+Nobody has judged these edits while watching them. Each splice is on a downbeat, but a downbeat doesn't promise the two bars agree in key. The review mixes are `--clicks` output (`<id>-boss-intro.mp3`).
+
 ## Regenerating the maps
 
 `python3 tools/zone_boss_beatmap.py` needs ffmpeg, numpy and scipy (matplotlib for `--plot`). CI does not run it. It does

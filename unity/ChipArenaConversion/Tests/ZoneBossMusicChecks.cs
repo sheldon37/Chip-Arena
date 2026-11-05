@@ -21,14 +21,51 @@ internal static class ZoneBossMusicChecks
         // The simulation's boss intro hold (Runtime/NativePve.cs) is the hold every drop lands on.
         string pve=File.ReadAllText(Path.Combine(root,"Assets/ChipArena/Runtime/NativePve.cs"));
         Check(pve.Contains("cinematic==\"intro\"?9.0678f")&&Near(music.Hold,9.0678,1e-6),"the map's hold is the simulation's intro hold (9.0678 s); regenerate the map if it changes");
-        Check(music.Songs.Length==2,"two zone songs");
+        Check(music.Songs.Length==4,"four zone songs");
         var station=music.Song("music/central-station-boss");var iron=music.Song("city-ironworks-boss");
         Check(station!=null&&iron!=null&&station.Map=="expedition-transit"&&iron.Map=="expedition-foundry","Station Chime of Doom on Central Station, Hydraulic Hell on City Ironworks");
         foreach(var song in music.Songs)Map(root,json,song);
         Routing(root,music);
         foreach(var song in music.Songs){Clock(song);Stage(song);}
-        StationStage(station);IronworksStage(iron);
+        StationStage(station);IronworksStage(iron);HumIntro(music.Song("music/level0-boss"));DeepEndIntro(music.Song("music/poolrooms-boss"));
         Console.WriteLine("PASS zone boss music ("+count+" checks: beat maps, intro edit on the hold, bar-aligned loops, routing and fallback, pure stage reactions, hazards untouched, flash caps)");
+    }
+
+    // ---------------- THE HUM's intro on Failing Light ----------------
+    static void HumIntro(NativeZoneBossSong s)
+    {
+        Check(s!=null&&s.Map=="expedition-backrooms-level-0"&&s.Drop>s.Hold,"Failing Light on Level 0, its drop cut onto the hold");
+        Check(HumBossBeats.FromSong(s,out var b)&&b.Valid,"the song places THE HUM's intro beats, in order");
+        double bar=s.Downbeat(2)-s.Downbeat(1),beat=bar/4,burst=s.Preroll+s.Cut;
+        Check(Near(b.TearOpen,burst,1e-3)&&Near(s.FirstBoss(s.Resume),burst,1e-3),"the wall tears open on the burst the edit resumes at");
+        Check(b.RowOut1<s.Preroll&&Near(b.RowOut2,s.Preroll,1e-3)&&Near(b.RowOut3,s.Preroll+beat,1e-3),"the far rows go in the preroll's silence, then on the song's first notes");
+        Check(Near(b.Tube0,s.FirstBoss(s.Downbeat(6)),1e-2)&&Near(b.TubeStep,beat/2,1e-3)&&b.Tube(6)<b.HeadFlicker,"the tubes climb bar 6 in eighths, before the head flickers");
+        Check(Math.Abs(b.HeadCatch-s.FirstBoss(s.Downbeat(7)))<.25&&b.Name==b.HeadCatch,"the head catches on bar 7's drone, and the card rises with it");
+        Check(Near(b.Straighten,s.FirstBoss(s.Downbeat(8))+beat,1e-2)&&Near(b.Stoop,s.FirstBoss(s.Downbeat(8))+3*beat,1e-2)&&Near(b.Hold,s.Hold,1e-3),"it straightens across the fill and stoops on its last beat, the hold ending on the drop");
+        var shots=HumBossBeats.ShotsOn(b);bool joined=shots[0].From==0&&Near(shots[shots.Length-1].To,s.Hold,1e-3);for(int i=1;i<shots.Length;i++)joined&=shots[i].From==shots[i-1].To&&shots[i].To>shots[i].From;
+        Check(joined&&shots.Length==NativeHumBoss.Shots.Length,"the shots run the hold, cut on the beats");
+        var f=HumBossBeats.ShotsOn(HumBossBeats.Fallback);bool own=true;for(int i=0;i<f.Length;i++)own&=Near(f[i].From,NativeHumBoss.Shots[i].From,1e-3)&&Near(f[i].To,NativeHumBoss.Shots[i].To,1e-3);
+        Check(own,"on the fallback the shots keep the table's own times");
+        Check(HumBossBeats.UseSong(s)&&Near(HumBossBeats.Current.TearOpen,burst,1e-3)&&Near(NativeBackroomsBossIntro.NameTime(NativeHumBoss.Card),b.Name,1e-3)&&ReferenceEquals(NativeBackroomsBossIntro.Shots(NativeHumBoss.Archetype),HumBossBeats.Shots),"binding the song moves the beats, the card and the shots");
+        HumBossBeats.Clear();Check(Near(HumBossBeats.Current.TearOpen,HumBossBeats.Fallback.TearOpen,1e-6)&&Near(NativeBackroomsBossIntro.NameTime(NativeHumBoss.Card),NativeBackroomsBossIntro.NameAt,1e-6),"cleared, the fallback's beats return");
+        var music=NativeZoneBossMusic.Parse(File.ReadAllText(Path.Combine(Root,"Assets/ChipArena/Resources/ZoneBossMusic.json")));
+        Check(music.ForMap("expedition-backrooms-level-0",id=>true)?.Id=="level0-boss"&&music.ForMap("expedition-backrooms-poolrooms",id=>true)?.Id=="poolrooms-boss","Level 0's boss plays Failing Light, the Poolrooms' Main Theme");
+    }
+    // ---------------- THE DEEP END's intro on Main Theme ----------------
+    static void DeepEndIntro(NativeZoneBossSong s)
+    {
+        Check(s!=null&&s.Map=="expedition-backrooms-poolrooms"&&s.Drop>s.Hold,"Main Theme on the Poolrooms, its drop cut onto the hold");
+        Check(DeepEndBossBeats.FromSong(s,out var b)&&b.Valid&&b.Song,"the song places THE DEEP END's intro beats, in order");
+        Check(b.Ripple<s.Preroll&&Near(b.LightsOut0,s.Preroll,1e-3),"the ripple in the silence; the lights start dying as the bells begin");
+        double breakClip=b.Break-s.Preroll;bool onSlam=false;foreach(var a in s.Accents)onSlam|=a.Kind==NativeZoneBossSong.AccentSlam&&Near(a.T,breakClip,1e-3);
+        Check(onSlam&&breakClip<s.Cut&&b.NameAt>b.Break&&b.NameAt<b.Break+.5,"it breaks the surface on the low tone's entry, the card just after");
+        Check(b.IrisOpen>s.Preroll+s.Cut&&b.IrisOpen<b.Hold-.5&&b.WashShot<b.Hold&&Near(b.Hold,s.Hold,1e-3),"the mouth opens on the last swell, before the drop ends the hold");
+        var shots=NativeDeepEndBoss.ShotsOn(b);bool joined=shots[0].From==0&&shots[shots.Length-1].To>=s.Hold;for(int i=1;i<shots.Length;i++)joined&=shots[i].From==shots[i-1].To&&shots[i].To>shots[i].From;
+        Check(joined&&shots.Length==NativeDeepEndBoss.Shots.Length,"the shots run the hold, cut on the beats");
+        var f=NativeDeepEndBoss.ShotsOn(DeepEndBossBeats.Fallback);bool own=true;for(int i=0;i<f.Length;i++)own&=f[i].From==NativeDeepEndBoss.Shots[i].From&&f[i].To==NativeDeepEndBoss.Shots[i].To;
+        Check(own,"on the fallback the shots keep the table's own times");
+        Check(NativeDeepEndBossBeats.UseSong(s)&&Near(NativeDeepEndBossBeats.Current.Break,b.Break,1e-3)&&Near(NativeBackroomsBossIntro.NameTime(NativeDeepEndBoss.Card),b.NameAt,1e-3)&&ReferenceEquals(NativeBackroomsBossIntro.Shots(NativeDeepEndBoss.Archetype),NativeDeepEndBossBeats.Shots),"binding the song moves the beats, the card and the shots");
+        NativeDeepEndBossBeats.Clear();Check(Near(NativeDeepEndBossBeats.Current.Break,DeepEndBossBeats.Fallback.Break,1e-6)&&Near(NativeBackroomsBossIntro.NameTime(NativeDeepEndBoss.Card),NativeBackroomsBossIntro.NameAt,1e-6),"cleared, the fallback's beats return");
     }
 
     // ---------------- the maps ----------------
@@ -39,7 +76,7 @@ internal static class ZoneBossMusicChecks
         bool rising=true;double minGap=9,maxGap=0;for(int i=1;i<b.Length;i++){double d=b[i]-b[i-1];rising&=d>0;minGap=Math.Min(minGap,d);maxGap=Math.Max(maxGap,d);}
         Check(rising&&maxGap<minGap*1.25,id+": beats strictly increasing with a steady (drifting, never jumping) period");
         double bpm=60*(b.Length-1)/(b[b.Length-1]-b[0]);
-        Check(id=="central-station-boss"?bpm>170&&bpm<190:bpm>130&&bpm<150,id+": tempo as measured ("+bpm.ToString("F1")+" BPM)");
+        Check(id=="central-station-boss"?bpm>170&&bpm<190:id=="level0-boss"?bpm>148&&bpm<152:id=="poolrooms-boss"?bpm>125&&bpm<140:bpm>130&&bpm<150,id+": tempo as measured ("+bpm.ToString("F1")+" BPM)");
         Check(t.firstDownbeat>=0&&t.firstDownbeat<4,id+": the first downbeat is in the first bar");
         // Sections: contiguous from bar 1, unique, covering the loop.
         var seen=new HashSet<string>();bool contiguous=t.sections[0].fromBar==1;for(int i=0;i<t.sections.Length;i++){contiguous&=t.sections[i].toBar>=t.sections[i].fromBar&&(i==0||t.sections[i].fromBar==t.sections[i-1].toBar+1);seen.Add(t.sections[i].id);}
@@ -51,7 +88,7 @@ internal static class ZoneBossMusicChecks
         Check(t.introEnd<=t.loop.start&&Near(t.introEnd,s.Drop)&&Near(s.Drop,t.loop.start)&&Near(s.Downbeat(s.DropBar),s.Drop),id+": introEnd (the drop, a downbeat) is the loop's start: the intro is outside the loop");
         Check(t.loop.end<t.duration-1,id+": the outro stays outside the loop");
         // The intro edit lands the drop on the hold, splicing on bar lines after a short preroll.
-        Check(Near(s.Preroll+s.Cut+s.Drop-s.Resume,s.Hold,2e-3)&&s.Preroll>=0&&s.Preroll<1.5,id+": preroll + opening + resumed run = the hold");
+        Check(Near(s.Preroll+s.Cut+s.Drop-s.Resume,s.Hold,2e-3)&&s.Preroll>=0&&s.Preroll<(id=="poolrooms-boss"?3.2:1.5),id+": preroll + opening + resumed run = the hold");
         bool cutOnBar=false,resumeOnBar=false;for(int bar=1;bar<60;bar++){if(Near(s.Downbeat(bar),s.Cut,2e-4))cutOnBar=true;if(Near(s.Downbeat(bar),s.Resume,2e-4))resumeOnBar=true;}
         Check(cutOnBar&&resumeOnBar&&s.Cut<s.Resume&&s.Resume<s.Drop,id+": the splice cuts and resumes on downbeats before the drop");
         // Accents.
@@ -115,7 +152,7 @@ internal static class ZoneBossMusicChecks
         foreach(var mode in new[]{NativeKitFlash.Full,NativeKitFlash.Reduced,NativeKitFlash.Calm})
         {
             int cap=mode==NativeKitFlash.Full?3:mode==NativeKitFlash.Reduced?2:0;var f=s.FlashTimes(mode,until);int worst=0;for(int i=0;i<f.Count;i++){int n=0;for(int j=i;j<f.Count&&f[j]<f[i]+1;j++)n++;worst=Math.Max(worst,n);}
-            Check(worst<=cap&&(mode==NativeKitFlash.Calm?f.Count==0:f.Count>until/2),id+": "+mode+" keeps at most "+cap+" flash events a second ("+worst+")");
+            Check(worst<=cap&&(mode==NativeKitFlash.Calm?f.Count==0:f.Count>until/(id=="level0-boss"||id=="poolrooms-boss"?8:2)),id+": "+mode+" keeps at most "+cap+" flash events a second ("+worst+", "+f.Count+" in "+until.ToString("F0")+" s)");
             // A flash onset: the house light 10% (Calm: 12%) above its lowest of the last 100 ms, counted once per rising edge.
             var rises=new List<double>();var lamp=new List<double>();var house=new List<double>();double prevP=0;var window=new Queue<(double t,double v,double h)>();bool rising=false,risingH=false;double jump=mode==NativeKitFlash.Calm?1.12:1.1;
             for(double t=0;t<until;t+=1/240.0)

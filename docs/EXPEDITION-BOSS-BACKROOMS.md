@@ -183,26 +183,26 @@ Silent until clips exist: they go through the effects bank (Core `NativeHumBossC
 
 | Key | Brief |
 | --- | --- |
-| `boss.hum.hum-loop-rise` | the fluorescent hum-buzz climbing alone in an empty room; loopable, pitched by the stage's Pitch |
+| `boss.hum.hum.loop.rise` | the fluorescent hum-buzz climbing alone in an empty room; loopable, pitched by the stage's Pitch |
 | `boss.hum.silence` | a low shelf cut: the room going quiet; used before Lights Out |
-| `boss.hum.row-out` | a row of fixtures clicking off, far away, with a sag in the hum |
+| `boss.hum.row.out` | a row of fixtures clicking off, far away, with a sag in the hum |
 | `boss.hum.scratch` | fingernails on the back of wallpaper, close and dry |
 | `boss.hum.tear` | wallpaper tearing slowly, plaster dust, then a wet rip |
 | `boss.hum.starter` | a tube starter ticking: small, each one louder |
-| `boss.hum.tube-strike` | a tube striking on, one rising buzz |
-| `boss.hum.head-catch` | the head's two tubes catching: a heavy flicker then a steady bar |
+| `boss.hum.tube.strike` | a tube striking on, one rising buzz |
+| `boss.hum.head.catch` | the head's two tubes catching: a heavy flicker then a steady bar |
 | `boss.hum.jaw` | the diffuser splitting: plastic flexing, glass grinding |
 | `boss.hum.ceiling` | ceiling grid wrenching and tiles breaking over its shoulders |
-| `boss.hum.slam-on` | every lamp slamming on: one huge thunk of relays on the song's drop |
-| `boss.hum.reach-windup` | a long arm drawing back through wet carpet |
+| `boss.hum.slam.on` | every lamp slamming on: one huge thunk of relays on the song's drop |
+| `boss.hum.reach.windup` | a long arm drawing back through wet carpet |
 | `boss.hum.reach` | a long whip of air and a wet heavy slap |
-| `boss.hum.stoop-rise` | the back pressing the ceiling tiles, creaking |
+| `boss.hum.stoop.rise` | the back pressing the ceiling tiles, creaking |
 | `boss.hum.stoop` | a double impact on wet carpet, the room's lamps jumping |
-| `boss.hum.row-buzz` | fixtures brightening and buzzing louder over a second |
-| `boss.hum.row-burst` | a row of fixtures exploding in order down the room |
+| `boss.hum.row.buzz` | fixtures brightening and buzzing louder over a second |
+| `boss.hum.row.burst` | a row of fixtures exploding in order down the room |
 | `boss.hum.glass` | safety glass raining onto carpet |
-| `boss.hum.noclip-sink` | something heavy pressing into plaster, scratching inside it |
-| `boss.hum.noclip-walls` | scratching running fast along the inside of the walls |
+| `boss.hum.noclip.sink` | something heavy pressing into plaster, scratching inside it |
+| `boss.hum.noclip.walls` | scratching running fast along the inside of the walls |
 | `boss.hum.noclip` | a torn rush of air and plaster: it comes through at speed |
 | `boss.hum.brake` | hands dragging on carpet; a skid |
 | `boss.hum.carpet` | carpet backing tearing inward, slow and close |
@@ -211,26 +211,26 @@ Silent until clips exist: they go through the effects bank (Core `NativeHumBossC
 | `boss.hum.charge` | the hum rising to a strain, ribs creaking open, a transformer loading up |
 | `boss.hum.pulse` | a ring of noise: the hum's whole spectrum sweeping past, wall to wall |
 | `boss.hum.cut` | every sound stopping dead |
-| `boss.hum.strike-dark` | a tube flash, a whip, a heavy blow from behind you in the dark |
-| `boss.hum.hand-scratch` | nails inside the wall right by the ear |
+| `boss.hum.strike.dark` | a tube flash, a whip, a heavy blow from behind you in the dark |
+| `boss.hum.hand.scratch` | nails inside the wall right by the ear |
 | `boss.hum.hand` | an arm bursting through wallpaper and gripping |
 | `boss.hum.voices` | many muffled familiar voices inside the walls |
 | `boss.hum.scream` | the hum climbing to a scream, then stopping |
-| `boss.hum.die-row` | one row of fixtures dying with a ballast's thud |
+| `boss.hum.die.row` | one row of fixtures dying with a ballast's thud |
 | `boss.hum.rear` | its back going up through the ceiling: grid, plaster, a groan of steel |
-| `boss.hum.tile-rain` | tiles raining and breaking on carpet |
+| `boss.hum.tile.rain` | tiles raining and breaking on carpet |
 | `boss.hum.step` | one heavy wet footfall |
 | `boss.hum.knuckle` | a knuckle of baseboard and rail planting on carpet |
-| `boss.hum.scratch-idle` | a fingernail drumming now and then |
+| `boss.hum.scratch.idle` | a fingernail drumming now and then |
 | `boss.hum.hurt` | a wet thud and the tubes stuttering |
-| `boss.hum.tube-break` | a tube bursting and its wires spitting |
-| `boss.hum.head-break` | the head's panel cracking |
+| `boss.hum.tube.break` | a tube bursting and its wires spitting |
+| `boss.hum.head.break` | the head's panel cracking |
 | `boss.hum.choke` | the Ballast choking: a pitch collapse, a stumble |
 | `boss.hum.clip` | stuck in a wall: paper stretching, a glitching buzz |
 | `boss.hum.death` | the hum falling in pitch and stopping |
-| `boss.hum.tube-pop` | a tube popping, glass |
+| `boss.hum.tube.pop` | a tube popping, glass |
 | `boss.hum.fold` | its arms giving way: wet carpet folding, rails bending |
-| `boss.hum.lamp-back` | one lamp coming back on, ordinary and quiet |
+| `boss.hum.lamp.back` | one lamp coming back on, ordinary and quiet |
 
 ## 4. THE DEEP END (the Poolrooms)
 
@@ -335,7 +335,7 @@ exit stairs are there.
 | --- | --- |
 | `boss.deepend.drip` | 2D. One far drip in the silence the stage music leaves |
 | `boss.deepend.ripple` | The ripple that spreads from nothing: barely there |
-| `boss.deepend.lamp-out` | A lamp under water going out: a soft thunk, far off, each nearer the pit |
+| `boss.deepend.lamp.out` | A lamp under water going out: a soft thunk, far off, each nearer the pit |
 | `boss.deepend.pressure` | 2D. A low pressure swelling for the shot over the abyss |
 | `boss.deepend.break` | It breaks the surface: a huge, slow rush of water upward |
 | `boss.deepend.pour` | Sheets falling back off it for seconds, a long tiled patter |
@@ -345,27 +345,27 @@ exit stairs are there.
 | `boss.deepend.quiet` | 2D. The room goes quiet before a move (a dip, for the mixer) |
 | `boss.deepend.bubbles` | Breach's ring of bubbles coming up in the dark patch |
 | `boss.deepend.breach` | The mouth through the surface under a pilot: a burst, a chrome clang |
-| `boss.deepend.jet-charge` | The throat brightening, water drawn in, rising |
+| `boss.deepend.jet.charge` | The throat brightening, water drawn in, rising |
 | `boss.deepend.jet` | Hydro Jet: a hard, hissing column; its splash where it lands |
 | `boss.deepend.shadow` | The Flop's shadow darkening: a long low groan of water |
 | `boss.deepend.flop` | The whole body landing: the biggest impact it has |
 | `boss.deepend.thrash` | The tail coming round, tile on air |
-| `boss.deepend.drain-turn` | The surface starting to turn, slowly, silently but for a thin whine |
-| `boss.deepend.drain-roar` | The Drain open: the room's water going down |
+| `boss.deepend.drain.turn` | The surface starting to turn, slowly, silently but for a thin whine |
+| `boss.deepend.drain.roar` | The Drain open: the room's water going down |
 | `boss.deepend.lull` | The warning: everything softens, a warm hum, the song falling away |
 | `boss.deepend.hands` | The hands of water closing on the pilot, pulling under |
-| `boss.deepend.seiche-draw` | 2D. The water drawing back from the far wall |
+| `boss.deepend.seiche.draw` | 2D. The water drawing back from the far wall |
 | `boss.deepend.seiche` | The wave front crossing the room, its crest breaking |
-| `boss.deepend.seiche-wall` | The wave hitting the wall and turning back |
+| `boss.deepend.seiche.wall` | The wave hitting the wall and turning back |
 | `boss.deepend.whistle` | 2D. A lifeguard's whistle, from nowhere, echoing once |
 | `boss.deepend.lap` | Its body round the room's edge at speed: a tiled rumble and a wake |
-| `boss.deepend.lamp-break` | A flank lamp shot out: thick glass, a pop of pressure |
+| `boss.deepend.lamp.break` | A flank lamp shot out: thick glass, a pop of pressure |
 | `boss.deepend.stagger` | The break's stagger: its whole length shuddering |
 | `boss.deepend.tide` | 2D. Water welling up the steps and spreading over the deck |
-| `boss.deepend.lights-die` | 2D. The ceiling's lights going out, outward from the middle, each with a tick |
+| `boss.deepend.lights.die` | 2D. The ceiling's lights going out, outward from the middle, each with a tick |
 | `boss.deepend.hurt` | A hit on the throat or a lamp |
 | `boss.deepend.death` | The mouth closing, the last grate turning shut |
-| `boss.deepend.drain-away` | 2D. The tide going down the pit, gently, sound coming back |
+| `boss.deepend.drain.away` | 2D. The tide going down the pit, gently, sound coming back |
 
 ### Death
 
@@ -378,17 +378,10 @@ is the last thing visible, sliding down into the black: `DEEP END`.
 Owner, 2026-11-05: "Im gonna give both bosses different music from the stage. They will get boss music". This replaces the first request's
 "transitions into stage music": the intro runs into the boss's own song, the way the Siren's does.
 
-- **The files (owner's):** `Assets/ChipArena/Resources/Audio/music/level0-boss.mp3` and `poolrooms-boss.mp3` (`NativeZoneMusic.Level0Boss`,
-  `PoolroomsBoss`).
-- **Until they arrive:** the boss plays the Siren's song, as the zone bosses did before theirs. Its drop lands on the same hold, so the
-  intro's last beat still works.
-- **When a file arrives:** add it to `tools/zone_boss_beatmap.py`, as `docs/ZONE-BOSS-MUSIC.md` describes. That gives it an intro edit whose
-  drop lands exactly at 9.0678 s, a bar-aligned loop and its accents. Then bind the shots' timings to the accents, as
-  `NativeStationBossBeats.UseSong` does. Each song needs a clear drop; the edit handles where it falls in the file.
-- **The stage's own music** (`backrooms-fluorescent-loop`, `poolrooms-untitled`) plays until the arrival, and stops dead when the boss
-  arrives. That silence is the intro's first beat.
-
-The intro tables above are written against the fallback beats, the only fixed ones being the name card at 6.43 and the drop at 9.0678.
+- **The files (owner's, 2026-11-05):** `Resources/Audio/music/level0-boss.mp3`, *Failing Light*, and `poolrooms-boss.mp3`, *Main Theme*. `docs/ZONE-BOSS-MUSIC.md` has their maps and edits.
+- **The stage's own music** (`backrooms-fluorescent-loop`, `poolrooms-untitled`) plays until the arrival, and stops dead when the boss arrives. That silence is the intro's first beat.
+- **The intro's beats come from the song** (`HumBossBeats.FromSong`, `DeepEndBossBeats.FromSong`), and the shots and the card follow them. The tables in sections 3 and 4 give the fallback's times, which only play if a song's file is missing.
+- **In a preview:** each DEV preview plays its boss's song on its own clock, so an intro can be judged with its music.
 
 ## 6. Animation direction
 

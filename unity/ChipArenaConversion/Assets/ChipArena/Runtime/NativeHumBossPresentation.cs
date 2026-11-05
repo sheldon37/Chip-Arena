@@ -40,6 +40,7 @@ namespace ChipArena.UnityConversion
             float now=PresentationClock(arena);
             if(!ReferenceEquals(arena,humArena)||arena.Generation!=humGeneration){humArena=arena;humGeneration=arena.Generation;humLast=-1;humHp=float.NaN;humBossFx.ClearPrints();}
             NVector velocity=NVector.Zero;bool hasTarget=false;NVector target=NVector.Zero;HumRoom room=null;
+            if(NativeHumBossPreview.On||HumBossViewOf(arena).live)HumBossBeats.UseSong(NativeZoneBossSongs.Installed(NativeZoneMusic.Level0Boss)?NativeZoneBossSongs.Music?.Song(NativeZoneMusic.Level0Boss):null);
             if(NativeHumBossPreview.On)
             {
                 if(double.IsNaN(NativeHumBossPreview.Start))NativeHumBossPreview.Start=now-HumPreviewSkip();
@@ -114,9 +115,9 @@ namespace ChipArena.UnityConversion
             if(age>=0&&age<NativeBackroomsBossIntro.Hold+.25f)
             {
                 NativeHumArena.Spawn(NativeHumBossPreview.Room,out var root,out float yaw);
-                if(!NativeBackroomsBossIntro.Sample(NativeHumBoss.Shots,age,root,yaw,out ne,out nl,out fov))return false;
+                if(!NativeBackroomsBossIntro.Sample(HumBossBeats.Shots,age,root,yaw,out ne,out nl,out fov))return false;
             }
-            else if(age<0){NativeHumArena.Spawn(NativeHumBossPreview.Room,out var root,out float yaw);NativeBackroomsBossIntro.Sample(NativeHumBoss.Shots,0,root,yaw,out ne,out nl,out fov);}
+            else if(age<0){NativeHumArena.Spawn(NativeHumBossPreview.Room,out var root,out float yaw);NativeBackroomsBossIntro.Sample(HumBossBeats.Shots,0,root,yaw,out ne,out nl,out fov);}
             else
             {
                 NativeHumBossPreview.Camera(p,humBoss.HeadPos,humBoss.Root,humView.yaw,humView.shiftMask,out ne,out nl,out fov);

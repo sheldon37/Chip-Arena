@@ -92,6 +92,19 @@ namespace ChipArena.UnityConversion
             K("pve.ironworks.ladleman.carry",O,4f,L),K("pve.ironworks.ladleman.pour.windup",P,1.5f,N),K("pve.ironworks.ladleman.pour",P,2f,N),K("pve.ironworks.ladleman.swing",P,1f,N),K("pve.ironworks.ladleman.spill",P,2f,N),K("pve.ironworks.ladleman.groan",P,2f,L),
             K("pve.ironworks.rigger.rattle",P,2.5f,H),K("pve.ironworks.rigger.hang",O,4f,L),K("pve.ironworks.rigger.lamp",P,.6f,N),K("pve.ironworks.rigger.lower",P,1.5f,N),K("pve.ironworks.rigger.slide",P,1f,N),K("pve.ironworks.rigger.land",P,1.2f,N),
             K("pve.ironworks.rigger.swing.windup",P,1f,N),K("pve.ironworks.rigger.swing",P,1f,N),K("pve.ironworks.rigger.throw",P,1f,N),K("pve.ironworks.rigger.climb",O,3f,L),K("pve.ironworks.rigger.snap",P,1f,N),K("pve.ironworks.rigger.groan",P,2f,L),K("pve.ironworks.rigger.shriek",P,1.2f,N),
+            // THE HUM's sounds (docs/audio/sound-requests-bosses.json): silent until the owner's batch is imported.
+            K("boss.hum.hum.loop.rise",F,5f,N),K("boss.hum.silence",F,1f,N),K("boss.hum.row.out",P,1.2f,N),K("boss.hum.scratch",P,1.8f,N),K("boss.hum.tear",P,2.2f,H),K("boss.hum.starter",P,0.5f,L),K("boss.hum.tube.strike",P,0.8f,N),K("boss.hum.head.catch",P,1.3f,H),
+            K("boss.hum.jaw",P,1.3f,N),K("boss.hum.ceiling",P,1.5f,N),K("boss.hum.slam.on",F,1f,H),K("boss.hum.reach.windup",P,0.9f,N),K("boss.hum.reach",P,0.7f,H),K("boss.hum.stoop.rise",P,1.2f,N),K("boss.hum.stoop",P,0.9f,H),K("boss.hum.row.buzz",P,1.3f,N),
+            K("boss.hum.row.burst",P,1.2f,H),K("boss.hum.glass",P,1.2f,L),K("boss.hum.noclip.sink",P,1.2f,N),K("boss.hum.noclip.walls",F,1.6f,N),K("boss.hum.noclip",P,0.9f,H),K("boss.hum.brake",P,0.9f,N),K("boss.hum.carpet",P,1.2f,N),K("boss.hum.fall",P,1.6f,H),
+            K("boss.hum.shift",P,0.9f,N),K("boss.hum.charge",P,1.8f,N),K("boss.hum.pulse",F,1.2f,H),K("boss.hum.cut",F,0.6f,N),K("boss.hum.strike.dark",P,0.7f,H),K("boss.hum.hand.scratch",P,1.2f,N),K("boss.hum.hand",P,0.7f,H),K("boss.hum.voices",P,4.5f,N),
+            K("boss.hum.scream",P,2.2f,H),K("boss.hum.die.row",P,0.9f,N),K("boss.hum.rear",P,1.8f,H),K("boss.hum.tile.rain",P,1.6f,N),K("boss.hum.step",P,0.5f,L),K("boss.hum.knuckle",P,0.5f,L),K("boss.hum.scratch.idle",P,0.9f,L),K("boss.hum.hurt",P,0.6f,N),
+            K("boss.hum.tube.break",P,0.7f,N),K("boss.hum.head.break",P,0.9f,N),K("boss.hum.choke",P,1.5f,N),K("boss.hum.clip",P,1.2f,N),K("boss.hum.death",F,3.6f,H),K("boss.hum.tube.pop",P,0.5f,L),K("boss.hum.fold",P,1.8f,N),K("boss.hum.lamp.back",P,0.9f,N),
+            // THE DEEP END's sounds, the same way.
+            K("boss.deepend.drip",F,0.8f,N),K("boss.deepend.ripple",P,1.2f,L),K("boss.deepend.lamp.out",P,0.7f,N),K("boss.deepend.pressure",F,2.2f,N),K("boss.deepend.break",P,2.6f,H),K("boss.deepend.pour",P,3.6f,N),K("boss.deepend.iris",P,1.2f,N),K("boss.deepend.roar",P,2.2f,H),
+            K("boss.deepend.wave",P,1.6f,N),K("boss.deepend.quiet",F,1f,L),K("boss.deepend.bubbles",P,1.2f,L),K("boss.deepend.breach",P,1.2f,H),K("boss.deepend.jet.charge",P,1.2f,N),K("boss.deepend.jet",P,2.6f,H),K("boss.deepend.shadow",P,1.5f,N),K("boss.deepend.flop",P,1.4f,H),
+            K("boss.deepend.thrash",P,0.8f,H),K("boss.deepend.drain.turn",P,1.8f,N),K("boss.deepend.drain.roar",P,3.6f,H),K("boss.deepend.lull",P,2.2f,N),K("boss.deepend.hands",P,1.2f,H),K("boss.deepend.seiche.draw",F,1.8f,N),K("boss.deepend.seiche",P,2.6f,H),K("boss.deepend.seiche.wall",P,1.2f,N),
+            K("boss.deepend.whistle",F,1.8f,H),K("boss.deepend.lap",P,3.2f,H),K("boss.deepend.lamp.break",P,0.7f,N),K("boss.deepend.stagger",P,1.5f,N),K("boss.deepend.tide",F,3.6f,N),K("boss.deepend.lights.die",F,2.2f,N),K("boss.deepend.hurt",P,0.6f,N),K("boss.deepend.death",P,2.6f,H),
+            K("boss.deepend.drain.away",F,4f,N)
         };
         private static Dictionary<string,int> index;
         public static bool Find(string key,out Def def)

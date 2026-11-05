@@ -50,9 +50,10 @@ IGNORED = {'receipt.json', 'thumbs.db', '.ds_store', 'desktop.ini'}
 RATE = 44100
 CEILING_DB = -1.5
 LIMITER_HEADROOM_DB = 6.0
-FALLBACK_TARGET = {'step': -24.0, 'voice': -18.0}
+FALLBACK_TARGET = {'step': -24.0, 'voice': -18.0, 'boss': -14.0}
 # The first sound event ends after this much silence (s): a footfall's next footfall, a voice's next breath.
-EVENT_GAP = {'step': .12, 'voice': .3}
+# A boss sound has one level and its own trim (levelDb), and may breathe: a drip's echo, a pour thinning out.
+EVENT_GAP = {'step': .12, 'voice': .3, 'boss': 1.0}
 NEAR_SILENT_DBFS = -40.0
 MAX_INPUT_BYTES = 64 * 1024 * 1024
 
@@ -76,7 +77,7 @@ def load_manifest(path):
         if key in sounds:
             raise Hard(f'manifest: {key} listed twice')
         if s.get('category') not in FALLBACK_TARGET:
-            raise Hard(f'manifest: {key} category must be step or voice')
+            raise Hard(f'manifest: {key} category must be step, voice or boss')
         t = s['targetSeconds']
         if not (0 < float(t['min']) < float(t['max'])) or not (1 <= int(s['count']) <= 99):
             raise Hard(f'manifest: {key} targetSeconds or count out of range')
@@ -93,8 +94,9 @@ def check_contract(sounds, problems):
             problems.append(f'{key}: not a key of the bank contract (Core/NativeSoundBank.cs)')
             continue
         space, cap = keys[key]
-        if space != '3d' or cap + 1e-6 < float(s['targetSeconds']['max']):
-            problems.append(f'{key}: the contract has {space} with a {cap} s cap; the request needs 3d up to {s["targetSeconds"]["max"]} s')
+        want = s.get('space', '3d')
+        if space != want or cap + 1e-6 < float(s['targetSeconds']['max']):
+            problems.append(f'{key}: the contract has {space} with a {cap} s cap; the request needs {want} up to {s["targetSeconds"]["max"]} s')
         if int(s['count']) > max_clips:
             problems.append(f'{key}: count {s["count"]} over the bank limit of {max_clips} clips')
     return max_clips
@@ -283,6 +285,7 @@ def windows(pcm, size):
 def edit(pcm, request, category, trim_db, fade):
     """Trim, keep the first event, cap and fade. Returns (samples, notes, trimmed) or raises ValueError (rejected)."""
     lo, hi = float(request['targetSeconds']['min']), float(request['targetSeconds']['max'])
+    fade = float(request.get('fadeOutMs', fade * 1000)) / 1000
     seconds_in = len(pcm) / RATE
     thr = 10 ** (trim_db / 20)
     w = int(.005 * RATE)
@@ -396,11 +399,14 @@ def guid_of(meta):
 def category_targets(exe, bank, sounds, manifest_events):
     """The loudness per category: the median momentary maximum of the base's clips of the requested keys of that category and
     their kin (the pilot steps; the old add-death grunt), else the bank's family default."""
-    kin = {'step': [k for k in manifest_events if k.startswith('move.step.')], 'voice': ['pve.add.death']}
+    kin = {'step': [k for k in manifest_events if k.startswith('move.step.')], 'voice': ['pve.add.death'], 'boss': []}
     for key, s in sounds.items():
         kin[s['category']].append(key)
     targets, measured = {}, {}
     for cat, keys in kin.items():
+        if cat == 'boss':  # A fixed level: a re-import must not drift with what the bank already holds.
+            targets[cat], measured[cat] = FALLBACK_TARGET[cat], 0
+            continue
         values = []
         for key in sorted(set(keys)):
             for name in manifest_events.get(key, {}).get('clips', []):
@@ -469,7 +475,7 @@ def import_batch(args, plan, report):
                     pcm = decode(exe, it.read(), Path(it.name).suffix)
                     cut, notes, trimmed = edit(pcm, s, cat, trim_db, fade)
                     tmp = staging / f'{key}_{nn:02d}.ogg'
-                    stats = encode(exe, cut, targets[cat], tmp)
+                    stats = encode(exe, cut, targets[cat] + float(s.get('levelDb', 0)), tmp)
                     row.update(status='trimmed' if trimmed else 'accepted', notes=notes, **stats)
                     encoded.append((row, tmp, stats))
                 except ValueError as error:
