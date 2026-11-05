@@ -178,7 +178,9 @@ namespace ChipArena.UnityConversion
             var o=rig.Origin;float surface=s.Tide;var n=Vector3.Normalize(Vector3.Cross(up,right));
             for(int i=0;i<NativeDeepEndBossLook.Lamps;i++)
             {
-                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));var list=over?Over:Under;if(under&&over)at+=(right*(float)Math.Sin(now*2.3f+i*1.7f)+up*(float)Math.Cos(now*1.9f+i))*(.012f*depth);
+                float g=LampGlow[i];if(g<.01f)continue;rig.LampFrame(i,out var at,out var q,out float scale);float depth=surface-(at.Y-o.Y);bool under=depth>0;
+                // Under the tile, the tile doesn't stop its light: a soft glow on the water over it, passing underneath (Breach's tell, its route between moves).
+                float floorAt=NativeDeepEndArena.Floor(at.X-o.X,at.Z-o.Z);if(at.Y-o.Y<floorAt&&surface>floorAt-.01f&&depth<9){float wy=o.Y+surface+.03f;float gl=g*(1-depth/9f);var flat=new Vector3(at.X,wy,at.Z);Over.Billboard(flat,new Vector3(1.5f,0,0),new Vector3(0,0,1.5f),Vector3.UnitY,DeepEndFlow.Halo,0,new Vector3(.2f,.62f,.62f)*(.8f*gl),0);continue;}bool over=!under||s.Murk>1.05f;float boost=over?(under?(float)Math.Exp(-.024f*depth):1):(float)Math.Exp(Math.Min(4.6f,.105f*depth));var list=over?Over:Under;if(under&&over)at+=(right*(float)Math.Sin(now*2.3f+i*1.7f)+up*(float)Math.Cos(now*1.9f+i))*(.012f*depth);
                 var face=BossMath.Rotate(q,new Vector3(0,0,1));float size=scale*(3.1f+.05f*Math.Max(0,depth))*(.7f+.3f*g);
                 list.Billboard(at+face*.1f,right*size,up*size,n,DeepEndFlow.Halo,0,LampTint*(.8f*g*boost),0);
                 list.Billboard(at+face*.1f,right*size*.3f,up*size*.3f,n,DeepEndFlow.Halo,0,new Vector3(.5f,1,1)*(2.6f*g*boost),0);

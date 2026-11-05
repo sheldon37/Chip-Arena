@@ -47,11 +47,11 @@ namespace ChipArena.UnityConversion
             if(s.Tide>0)
             {
                 float crossed=DeepEndBossView.At(v.tideAt)&&v.tideUntil>v.tideAt?v.tideAt+(v.tideUntil-v.tideAt)*CrossAt(v.tideFrom,v.tideY):time-99;
-                float run=time-crossed;s.Flood=run<0?0:Math.Min(NativeDeepEndArena.Half,run*5.2f);
+                float run=time-crossed;s.Flood=v.tideFrom>0?NativeDeepEndArena.Half:run<0?0:Math.Min(NativeDeepEndArena.Half,run*5.2f);
             }
             int phase=Math.Max(1,Math.Min(NativeDeepEndBoss.Phases,v.phase));
             // ---- the phases' light ----
-            s.Ceiling=phase==1?1:phase==2?.8f:1;s.Ambient=phase==1?1:phase==2?.74f:.3f;s.Caustics=phase==1?.55f:phase==2?.8f:1;s.Water=1;s.Lamps=1;s.Ripples=phase==1?.55f:phase==2?.85f:1;
+            s.Ceiling=phase==1?1:phase==2?.8f:1;s.Ambient=phase==1?.84f:phase==2?.66f:.28f;s.Caustics=phase==1?.55f:phase==2?.8f:1;s.Water=1;s.Lamps=1;s.Ripples=phase==1?.55f:phase==2?.85f:1;
             if(phase>=3&&DeepEndBossView.At(v.phaseAt)){float k=time-v.phaseAt;s.CeilingOut=S(k/2.4f);if(k<0)s.CeilingOut=0;}
             if(phase==2&&DeepEndBossView.At(v.phaseAt)){float k=time-v.phaseAt;s.Shake=Math.Max(s.Shake,.5f*Fade(k-.2f,3.2f));}
             if(phase==3&&DeepEndBossView.At(v.phaseAt)){float k=time-v.phaseAt;s.Shake=Math.Max(s.Shake,.4f*Fade(k-.4f,3f));}
@@ -69,7 +69,7 @@ namespace ChipArena.UnityConversion
                 float back=S((a-b.Break+.1f)/.7f);s.Ceiling=Math.Max(s.Ceiling,.42f*back);s.Ambient=Math.Max(s.Ambient,.3f*back);s.Caustics=Math.Max(s.Caustics,.8f*back);s.Ripples=Math.Max(s.Ripples,back);
                 s.Lamps=S((a-3.4f)/1f);
                 // The drop: every light in the room comes up; the water's lights too.
-                float drop=S((a-b.Hold+.05f)/.35f);s.Ceiling=s.Ceiling+(1-s.Ceiling)*drop;s.Ambient=s.Ambient+(1-s.Ambient)*drop;s.WaterOut=s.WaterOut*(1-drop);s.Caustics=s.Caustics+(.55f-s.Caustics)*drop;
+                float drop=S((a-b.Hold+.05f)/.35f);s.Ceiling=s.Ceiling+(1-s.Ceiling)*drop;s.Ambient=s.Ambient+(.84f-s.Ambient)*drop;s.WaterOut=s.WaterOut*(1-drop);s.Caustics=s.Caustics+(.55f-s.Caustics)*drop;
                 s.Shake=Math.Max(s.Shake,.7f*Fade(a-b.Break,.8f));s.Shake=Math.Max(s.Shake,.45f*S((a-b.Roar)/.3f)*(1-S((a-b.Hold-.3f)/.5f)));
                 s.Muffle=a<b.Break?1:0;
                 // The arrival's wave: a ring out from the break, tallest as it reaches the camera; over it at the end.

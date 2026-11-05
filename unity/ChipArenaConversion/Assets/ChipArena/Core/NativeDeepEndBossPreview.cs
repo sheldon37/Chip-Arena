@@ -13,6 +13,8 @@ namespace ChipArena.UnityConversion
         public static bool On;public static double Start=double.NaN,ShownClock;
         /// <summary>How fast the script runs on the clock (1 as it plays; DEV: slower to study it frame by frame).</summary>
         public static double Rate=RateDefault;private const double RateDefault=1;
+        /// <summary>DEV: where in the script it starts.</summary>
+        public static float Skip=SkipDefault;private const float SkipDefault=0;
         /// <summary>The record drawn last (the DEV HUD's plate reads it), on the script's clock.</summary>
         public static DeepEndBossView Shown=DeepEndBossView.None;public static float ShownP;
         public const float SpawnAt=.5f;
@@ -65,7 +67,7 @@ namespace ChipArena.UnityConversion
             Route.To(t+.9f,new Vector3(0,-46,0),new Vector3(0,12,0));Route.To(t+3.4f,new Vector3(0,TideP3-1.5f,0),new Vector3(0,4.4f,0));DeathAt=t+2.9f;DeepEndBossPaths.Death(Route,DeathAt,TideP3,DeepEndBossRig.DeathSettle);
             Loop=DeathAt+14;acts=a.ToArray();
         }
-        public static float Clock(double t){if(double.IsNaN(Start))return 0;double since=(t-Start)*Rate;return (float)(since-Math.Floor(since/Loop)*Loop);}
+        public static float Clock(double t){if(double.IsNaN(Start))return 0;double since=(t-Start)*Rate+Skip;return (float)(since-Math.Floor(since/Loop)*Loop);}
         /// <summary>The script's record at `p`: its move, its target, the tide, the phase.</summary>
         public static void View(float p,ref DeepEndBossView v,out Vector2 target)
         {
@@ -109,7 +111,7 @@ namespace ChipArena.UnityConversion
             switch(a.Id)
             {
                 case "breach":f.Focus=new Vector3(a.Tx,2.6f,a.Tz);f.Yaw=(float)Math.Atan2(-a.Tx,-a.Tz)+side*1.0f+orbit*.2f;f.Dist=14.5f;f.Height=2.2f;f.Fov=60;f.Follow=.45f;break;
-                case "jet":f.Focus=new Vector3(0,2.6f,0);f.Yaw=side*.8f+orbit;f.Dist=18;f.Height=6.2f;f.Fov=60;f.Follow=.6f;break;
+                case "jet":{var d=new Vector3(a.Tx-mouth.X,0,a.Tz-mouth.Z);float y=(float)Math.Atan2(d.X,d.Z);f.Focus=new Vector3((a.Tx+mouth.X)*.5f,2.1f,(a.Tz+mouth.Z)*.5f);f.Yaw=y+side*1.45f;f.Dist=17;f.Height=4.4f;f.Fov=66;f.Follow=.12f;break;}
                 case "flop":{var d=new Vector3(a.Ax-a.Tx,0,a.Az-a.Tz);float y=(float)Math.Atan2(d.X,d.Z);f.Focus=new Vector3((a.Tx+a.Ax)*.5f,1.2f,(a.Tz+a.Az)*.5f);f.Yaw=y+1.57f*side;f.Dist=19;f.Height=4.2f;f.Fov=60;f.Follow=.1f;break;}
                 case "thrash":f.Focus=new Vector3(2,1.4f,8);f.Yaw=2.6f;f.Dist=13;f.Height=3.2f;f.Fov=62;f.Follow=.3f;break;
                 case "drain":f.Focus=new Vector3(0,1.2f,0);f.Yaw=orbit*2.4f+1.2f;f.Dist=16;f.Height=7f;f.Fov=66;f.Follow=.25f;break;
@@ -142,6 +144,6 @@ namespace ChipArena.UnityConversion
         }
         private static Frame Mix(in Frame a,in Frame b,float u){return new Frame{Yaw=a.Yaw+BossMath.WrapPi(b.Yaw-a.Yaw)*u,Dist=a.Dist+(b.Dist-a.Dist)*u,Height=a.Height+(b.Height-a.Height)*u,Fov=a.Fov+(b.Fov-a.Fov)*u,Focus=Vector3.Lerp(a.Focus,b.Focus,u),Follow=a.Follow+(b.Follow-a.Follow)*u};}
         /// <summary>The preview's blows (time, push, size) for the flash: a burst from the pilots after the first Breach.</summary>
-        public static int Blows(float p,float[] at,float[] size){int n=0;for(int k=0;k<5&&n<at.Length;k++){float b=BreachAt+1.4f+k*.36f;if(p<b)break;at[n]=b;size[n]=k==3?1.2f:.6f;n++;}return n;}
+        public static int Blows(float p,float[] at,float[] size){int n=0;for(int k=0;k<5&&n<at.Length;k++){float b=BreachAt+1.4f+k*.36f;if(p<b)break;at[n]=b;size[n]=k==3?.6f:.3f;n++;}return n;}
     }
 }

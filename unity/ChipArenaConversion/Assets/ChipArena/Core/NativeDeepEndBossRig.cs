@@ -179,7 +179,7 @@ namespace ChipArena.UnityConversion
             }
             if(lift>0)for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
-                float s=i*seg;pos[i].Y+=lift*BossMath.Smooth((29f-s)/6f);
+                float s=i*seg;float near=LineWeight(pos[i],v);pos[i].Y+=lift*near*BossMath.Smooth((29f-s)/6f);
                 // On dry deck it lies on the deck (stranded), not in it.
                 float floor=NativeDeepEndArena.Floor(pos[i].X,pos[i].Z);float rest=floor+NativeDeepEndBossLook.Radius(s)*.82f;if(pos[i].Y<rest&&pos[i].Y>rest-1.6f&&floor>=-.01f)pos[i].Y+=(rest-pos[i].Y)*BossMath.Smooth((pos[i].Y-(rest-1.6f))/.8f);
             }
@@ -207,6 +207,11 @@ namespace ChipArena.UnityConversion
                 for(int i=2;i<NativeDeepEndBossLook.Spine;i++)pos[i].Y+=g*.55f*(float)Math.Sin(i*.9f-e*14f)*BossMath.Clamp01(i/8f);
             }
             // The arrival's hang: while it is held at the top a slight breath.
+        }
+        // How far a joint is under the Flop's line: all of it within the lane, nothing a body's width past it.
+        private static float LineWeight(Vector3 p,in DeepEndBossView v)
+        {
+            var a=new Vector2(v.targetX,v.targetZ);var b=new Vector2(v.aimX,v.aimZ);var d=b-a;float l=d.Length();if(l<.01f)return 1;d/=l;var q=new Vector2(p.X,p.Z)-a;float along=Vector2.Dot(q,d),across=Math.Abs(q.X*d.Y-q.Y*d.X);return BossMath.Smooth((3.5f-across)/1.5f)*BossMath.Smooth((along+11)/3f)*BossMath.Smooth((l+5-along)/3f);
         }
         /// <summary>The Flop's lift (m) at `age` of its record, from the depth it runs at: the whole body rising through the telegraph, a hang at its height over the water, falling onto the surface on the hit; lying there through its recovery; sinking away.</summary>
         public static float FlopLift(float age,float hit,float depth,float strike,float recover)

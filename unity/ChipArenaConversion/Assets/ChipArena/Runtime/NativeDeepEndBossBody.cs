@@ -91,7 +91,7 @@ namespace ChipArena.UnityConversion
             float d=Mathf.Sqrt(d2);int tier=d<26?0:d<70?1:2;if(LowGraphics)tier=Math.Max(1,tier);DeepEndBossTier=tier;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)deepEndBones[i].SetPositionAndRotation(NativeBossPoseApply.ToUnity(pose.Position[i]),NativeBossPoseApply.ToUnity(pose.Rotation[i]));
             var skin=deepEndSkins[tier];if(deepEndTierShown!=tier){for(int t=0;t<3;t++)if(deepEndSkins[t]!=null&&deepEndSkins[t]!=skin)deepEndSkins[t].Go.SetActive(false);deepEndTierShown=tier;}
-            float flash=deepEndFlash;deepEndFlash=Mathf.Max(0,deepEndFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+Mathf.Clamp01(flash):1;
+            float flash=deepEndFlash;deepEndFlash=Mathf.Max(0,deepEndFlash-Time.unscaledDeltaTime/.14f);float code=flash>0?1+.5f*Mathf.Clamp01(flash):1;
             if(skin!=null)
             {
                 if(!skin.Go.activeSelf)skin.Go.SetActive(true);var r=skin.Renderer;

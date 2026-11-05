@@ -42,6 +42,8 @@ Shader "ChipArena/NativeDeepEndCaustics"
                 {
                     // Over it: thrown up from the water, strongest near it and on the ceiling above the pool's lamps.
                     float fall=exp(-above*0.3);if(n.y<-0.6)fall=0.55;if(n.y>0.5)fall=0.0;float3 light=glow*1.1+float3(0.13,0.26,0.26)*(_DeepLight.x*0.55+soft*0.2);c=light*web*focus*fall*0.6;
+                    // And the plain light off the water itself, up the walls.
+                    if(abs(n.y)<0.5)c+=(glow*0.5+float3(0.05,0.15,0.16)*(soft+_DeepLight.x*0.4))*exp(-above*0.42);
                 }
                 c*=_DeepCaustics;
                 fixed4 o=fixed4(c,0.0);UNITY_APPLY_FOG_COLOR(i.fogCoord,o,fixed4(0,0,0,0));return o;

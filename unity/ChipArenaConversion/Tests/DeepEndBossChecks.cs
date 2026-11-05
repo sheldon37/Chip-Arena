@@ -178,7 +178,7 @@ public static class DeepEndBossChecks
         // The last phase's ceiling goes out, and the water's lights stay.
         var p3=DeepEndBossView.None;p3.live=true;p3.phase=3;p3.phaseAt=20;p3.tideY=1.1f;var s=NativeDeepEndBossStage.Evaluate(p3,26,b);Check(s.CeilingOut>.99f&&s.Water==1&&s.Ambient<.5f,"the ceiling dies, the water's lights stay");
         // The arrival: dark for the spiral, the room up on the drop.
-        var ar=DeepEndBossView.None;ar.live=true;ar.spawned=0;var a=NativeDeepEndBossStage.Evaluate(ar,b.DownShot+.4f,b);Check(a.Ceiling<.1f&&a.Ambient<.1f,"black for the spiral");var d=NativeDeepEndBossStage.Evaluate(ar,b.Hold+.5f,b);Check(d.Ceiling>.95f&&d.WaterOut<.01f,"the lights slam on at the drop");Check(NativeDeepEndBossStage.Evaluate(ar,1,b).Warm>.9f,"warm at first");Check(NativeDeepEndBossStage.WashAt(b.Hold-.1f,b)>.5f&&NativeDeepEndBossStage.WashAt(b.Hold+1,b)==0,"the wave over the camera, and gone");
+        var ar=DeepEndBossView.None;ar.live=true;ar.spawned=0;var a=NativeDeepEndBossStage.Evaluate(ar,b.DownShot+.4f,b);Check(a.Ceiling<.1f&&a.Ambient<.1f,"black for the spiral");var d=NativeDeepEndBossStage.Evaluate(ar,b.Hold+.5f,b);Check(d.Ceiling>.95f&&d.WaterOut<.01f&&d.Ambient>.8f,"the lights slam on at the drop");Check(NativeDeepEndBossStage.Evaluate(ar,1,b).Warm>.9f,"warm at first");Check(NativeDeepEndBossStage.WashAt(b.Hold-.1f,b)>.5f&&NativeDeepEndBossStage.WashAt(b.Hold+1,b)==0,"the wave over the camera, and gone");
     }
     // ---- the intro ----
     private static void Intro()
