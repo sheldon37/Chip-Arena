@@ -119,7 +119,7 @@ namespace ChipArena.UnityConversion
             {
                 room.Partition(s,PlaceOf(s,mask),out var c,out bool alongX);
                 float ex=alongX?Math.Abs(eye.X-c.X)-half:Math.Abs(eye.X-c.X),ez=alongX?Math.Abs(eye.Z-c.Z):Math.Abs(eye.Z-c.Z)-half;float gap=(float)Math.Sqrt(Math.Max(0,ex)*Math.Max(0,ex)+Math.Max(0,ez)*Math.Max(0,ez));if(gap<clear)return false;
-                if(Crosses(eye,d,c,alongX,half+.6f,1)||Crosses(eye,left,c,alongX,half,.6f)||Crosses(eye,right,c,alongX,half,.6f))return false;
+                if(Crosses(eye,d,c,alongX,half+.6f,.9f)||Crosses(eye,left,c,alongX,half,.6f)||Crosses(eye,right,c,alongX,half,.6f))return false;
             }
             return true;
         }

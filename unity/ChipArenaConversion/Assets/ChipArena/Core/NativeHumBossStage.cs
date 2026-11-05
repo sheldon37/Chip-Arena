@@ -106,6 +106,9 @@ namespace ChipArena.UnityConversion
                 float speed=NativeHumBoss.Move("pulse").Speed;float r=(t-v.ringAt)*speed;
                 for(int i=0;i<Lamp.Length;i++){var f=room.FixtureAt[i];float d=(float)Math.Sqrt((f.X-v.ringX)*(f.X-v.ringX)+(f.Z-v.ringZ)*(f.Z-v.ringZ));float k=(r-d)/speed;if(k>-.05f&&k<.32f)Lamp[i]=Math.Max(Lamp[i],(reduced?1.2f:2.6f)*(1-Math.Abs(k-.05f)/.3f));}
             }
+            // ---- Wall Hand and Familiar Voices: the nearest lamp stutters on over what's happening in the wall, so even in the blackout it's seen ----
+            if(HumBossView.At(v.handAt)&&t>v.handAt-1&&t<v.handAt+3.2f)Near(room,v.handX,v.handZ,t,reduced);
+            if(v.voices!=null)for(int i=0;i<v.voiceCount;i++){float at=v.voices[i*6+5];if(t>at-1.2f&&t<at+2.6f)Near(room,v.voices[i*6],v.voices[i*6+2],t,reduced);}
             // ---- Lights Out: everything it holds up goes out, and everything is silent ----
             if(v.action=="cut"&&HumBossView.At(v.actionAt)){float k=t-v.actionAt,hit=HumBossView.At(v.hitAt)?v.hitAt-v.actionAt:1.2f;if(k>=0&&k<hit){Silent=1;for(int i=0;i<Lamp.Length;i++)Lamp[i]=0;}}
             // ---- the Peripheral Shift: every lamp dips as the partitions change ----
@@ -134,6 +137,11 @@ namespace ChipArena.UnityConversion
             if(HumBossView.At(v.rowAt)){float k=t-v.rowAt;if(k>=0&&k<.9f){Shake=Math.Max(Shake,.5f*Impact(k,.6f));Dust=Math.Max(Dust,.5f*Fade(k,.9f));}}
             if(HumBossView.At(v.staggerAt)&&t>=v.staggerAt)Shake=Math.Max(Shake,(v.staggerCause=="choke"?.8f:.5f)*Impact(t-v.staggerAt,.7f));
             if(v.Dead(t)&&t-v.diedAt<2.4f)Shake=Math.Max(Shake,.4f*Impact(t-v.diedAt-1.9f,.5f));
+        }
+        private void Near(HumRoom room,float x,float z,float t,bool reduced)
+        {
+            int best=-1;float bd=float.MaxValue;for(int i=0;i<Lamp.Length;i++){var f=room.FixtureAt[i];float d=(f.X-x)*(f.X-x)+(f.Z-z)*(f.Z-z);if(d<bd){bd=d;best=i;}}
+            if(best>=0&&!Burst[best])Lamp[best]=Math.Max(Lamp[best],reduced?.8f:.55f+.6f*Stutter(best,t,false));
         }
         /// <summary>When the first lamp returns after the death (s); inside the 4 s hold the room is just lighting up.</summary>
         public const float DeathReturn=3.15f;

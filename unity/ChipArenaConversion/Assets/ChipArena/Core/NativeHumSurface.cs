@@ -63,7 +63,7 @@ namespace ChipArena.UnityConversion
                     float h=bulge*(float)Math.Exp(-k*k*5.2f);
                     h+=Peak(pa,pb,f0)+Peak(pa,pb,f1)+Peak(pa,pb,f2)+Peak(pa,pb,f3);
                     // Wrinkles running in toward the hole where it's strained, and the torn edge lifting a little off the wall.
-                    if(open>.001f){h+=.012f*(1-rn)*(float)Math.Sin(ks*1.9f+seed)*Math.Min(1,open*2);h+=flap*(1-rn)*(1-rn)*(1-rn);}
+                    if(open>.001f){h+=.004f*(1-rn)*(float)Math.Sin(ks*1.3f+seed)*Math.Min(1,open*2);h+=flap*(1-rn)*(1-rn)*(1-rn);}
                     float rim=1-rn*rn*rn*rn;h*=Math.Max(0,rim);
                     var q=centre+a*clA+b*clB+n*(off+h);
                     // The uv: the paper as it was, drawn out toward the hole's edge.
@@ -78,7 +78,7 @@ namespace ChipArena.UnityConversion
                 int i=v0+s*(Rings+1)+r;
                 var dr=m.Vertices[v0+s*(Rings+1)+Math.Min(Rings,r+1)].P-m.Vertices[v0+s*(Rings+1)+Math.Max(0,r-1)].P;
                 var ds=m.Vertices[v0+Math.Min(Sectors,s+1)*(Rings+1)+r].P-m.Vertices[v0+Math.Max(0,s-1)*(Rings+1)+r].P;
-                var nn=Vector3.Cross(dr,ds);float l=nn.Length();if(l>1e-8f){nn/=l;if(Vector3.Dot(nn,n)<0)nn=-nn;m.Vertices[i].N=Vector3.Normalize(nn+n*.5f);}
+                var nn=Vector3.Cross(dr,ds);float l=nn.Length();if(l>1e-8f){nn/=l;if(Vector3.Dot(nn,n)<0)nn=-nn;m.Vertices[i].N=Vector3.Normalize(nn+n*1.6f);}
             }
             // (a x b) along n means s, r runs one way; wind so the outside is the front (Unity: clockwise from the front).
             bool flip=Vector3.Dot(Vector3.Cross(a,b),n)<0;

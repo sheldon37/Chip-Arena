@@ -189,7 +189,7 @@ namespace ChipArena.UnityConversion
                 if(k==0&&sign>0)continue;float ang=(yawDegrees+yawOff+sign*k*15)*BossMath.Deg;var e=c+BossMath.Forward(ang)*dist;e.Y=ey;
                 if(!NativeHumArena.ClearEye(Room,mask,e,look,2.4f))continue;eye=e;found=true;
             }
-            if(!found){float ang=(yawDegrees+yawOff)*BossMath.Deg;eye=c+BossMath.Forward(ang)*dist;eye.Y=ey;NativeHumArena.PushEye(Room,mask,ref eye,look);}
+            if(!found){float ang=(yawDegrees+yawOff)*BossMath.Deg;eye=c+BossMath.Forward(ang)*dist;eye.Y=ey;if(wf<.5f)NativeHumArena.PushEye(Room,mask,ref eye,look);}
             float inset=.55f;eye.X=BossMath.Clamp(eye.X,Room.MinX+inset,Room.MaxX-inset);eye.Z=BossMath.Clamp(eye.Z,Room.MinZ+inset,Room.MaxZ-inset);
         }
         /// <summary>Which pilot the record's target is on the floor plan (for the presenter).</summary>

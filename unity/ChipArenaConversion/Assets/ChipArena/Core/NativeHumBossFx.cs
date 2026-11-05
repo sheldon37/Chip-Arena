@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         private static float R(int hex)=>((hex>>16)&255)/255f;private static float G(int hex)=>((hex>>8)&255)/255f;private static float B(int hex)=>(hex&255)/255f;
         private static float H(int a,int b){unchecked{uint x=(uint)a*0x9E3779B9U^(uint)b*0x85EBCA6BU;x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;x^=x>>16;return (x>>8)/16777216f;}}
         private static float Frac(float x)=>x-(float)Math.Floor(x);
-        private static readonly Vector3 LampWarm=new Vector3(1.0f,.95f,.72f),GlassC=new Vector3(.72f,.86f,.86f),TileC=new Vector3(.36f,.34f,.28f),DustC=new Vector3(.32f,.3f,.2f),Amber=new Vector3(1f,.55f,.14f),Soot=new Vector3(.02f,.018f,.015f);
+        private Vector3 DustC=new Vector3(.32f,.3f,.2f);private static readonly Vector3 DustFull=new Vector3(.32f,.3f,.2f),LampWarm=new Vector3(1.0f,.95f,.72f),GlassC=new Vector3(.72f,.86f,.86f),TileC=new Vector3(.36f,.34f,.28f),Amber=new Vector3(1f,.55f,.14f),Soot=new Vector3(.02f,.018f,.015f);
 
         public void Build(HumBossRig rig,in HumBossView v,HumBossStage st,float t,double eyeX,double eyeY,double eyeZ,double rightX,double rightY,double rightZ,double upX,double upY,double upZ,float effects,bool lowTier,bool reducedEffects)
         {
@@ -41,6 +41,7 @@ namespace ChipArena.UnityConversion
             if(rig==null||!rig.Visible||!v.live)return;
             eye=new Vector3((float)eyeX,(float)eyeY,(float)eyeZ);camR=new Vector3((float)rightX,(float)rightY,(float)rightZ);camU=new Vector3((float)upX,(float)upY,(float)upZ);quality=effects<0?0:effects>1?1:effects;low=lowTier;reduced=reducedEffects;
             vseed=0x4A1u^(uint)(HumBossView.At(v.spawned)?(int)(v.spawned*16):0);floorY=Room!=null?Room.Origin.Y:v.y;
+            DustC=DustFull*(.12f+.88f*Math.Min(1,st.Air));
             Levels(rig,v,st,t);
             // Telegraphs first (never thinned), then the rest.
             Rows(v,st,t);Lane(rig,v,t);Stoop(rig,v,t);ReachArc(rig,v,t);CutArc(rig,v,t);FallThrough(rig,v,t);Ring(rig,v,t);
@@ -178,7 +179,7 @@ namespace ChipArena.UnityConversion
                 float nx=alongX?0:1,nz=alongX?1:0;if(nx*dir.X+nz*dir.Z>0){nx=-nx;nz=-nz;}
                 float open=k<0?0:Math.Min(1.5f,1.5f*BossMath.Smooth(k/.1f))*(1-BossMath.Smooth((k-2)/1.2f));float bulge=k<0?.3f*(1+k/.3f):.08f;
                 WallPatch(new Vector3(hitAt.X,floorY+1.95f,hitAt.Z),nx,nz,2.2f,open,bulge,.08f,70+s,t,default,default,default,default,1.3f,1);WallPatch(new Vector3(hitAt.X,floorY+1.95f,hitAt.Z),-nx,-nz,2.2f,open*.85f,bulge*.5f,.08f,90+s,t,default,default,default,default,1.3f,1);
-                if(k>=0&&k<.8f)Vfx.SmokeBurst(t,hitAt+new Vector3(0,1.4f,0),dir*2.4f,.8f,.05f,8,1.2f,.25f,1.1f,DustC,.5f,when,.1f,vseed,540+s,0,floorY);
+                if(k>=0&&k<.8f)Vfx.SmokeBurst(t,hitAt+new Vector3(0,1.4f,0)+dir*.6f,dir*2.4f,.6f,.05f,8,1.2f,.2f,.8f,DustC,.28f,when,.1f,vseed,540+s,0,floorY);
             }
             // Speed: the air pulled along the lane behind it while it's thrown.
             if(a>=wind&&a<wind+m.Strike&&quality>.2f)
