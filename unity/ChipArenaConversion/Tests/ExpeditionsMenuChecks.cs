@@ -77,14 +77,14 @@ namespace ChipArena.UnityConversion
             Check(b[2].Moves.SequenceEqual(new[]{"Pour","Blow","Stomp","Grab","Slam","Deslag","Call","Charge"})&&b[2].Name==NativeIronworksBoss.PlateName,"THE CONVERTER's attacks, not its scripted moments");
             Check(b[3].Moves.SequenceEqual(NativeHumBoss.Moves.Select(m=>m.Title))&&b[3].Line==NativeHumBoss.Card.Line&&b[3].Destination==NativeBackroomsGenerator.AreaId,"THE HUM from its table and card");
             Check(b[4].Moves.SequenceEqual(NativeDeepEndBoss.Moves.Select(m=>m.Title))&&b[4].Line==NativeDeepEndBoss.Card.Line&&b[4].Destination==NativePoolroomsGenerator.AreaId,"THE DEEP END from its table and card");
-            Check(b[5].Moves.SequenceEqual(NativeFallenBoss.Moves.Select(m=>m.Title))&&b[5].Name==NativeFallenBoss.Name&&b[5].Fight==K.BossFight.Preview,"NOCTIEL from its table, in development");
+            Check(b[5].Moves.SequenceEqual(NativeFallenBoss.Moves.Select(m=>m.Title))&&b[5].Name==NativeFallenBoss.Name&&b[5].Fight==K.BossFight.Direct,"NOCTIEL direct fight from its table");
             // Four zone bosses are direct; legacy rooms still default to the Siren.
-            Check(b.Count(x=>x.Fight==K.BossFight.Direct)==5&&b[K.DefaultBoss].Name=="THE SIREN"&&K.DefaultBoss==0,"five direct fights, Siren is the legacy default");
+            Check(b.Count(x=>x.Fight==K.BossFight.Direct)==6&&b[K.DefaultBoss].Name=="THE SIREN"&&K.DefaultBoss==0,"six direct fights, Siren is the legacy default");
             Check(K.WrapBoss(-1)==b.Length-1&&K.WrapBoss(b.Length)==0&&ReferenceEquals(K.BossAt(-1),b[b.Length-1]),"the roster wraps both ways");
             Check(K.FightLabel(K.BossFight.Direct)=="FIGHT NOW"&&K.FightShort(K.BossFight.InRun)=="IN RUNS"&&K.FightLabel(K.BossFight.Preview)=="IN DEVELOPMENT","fight labels");
             Check(ReferenceEquals(K.BossOf("exp-ward-zero"),b[0])&&K.BossOf("nowhere")==null,"Ward Zero's boss is the Siren");
             // Bots (Astra 2026-11-06): the Siren's match takes them; the zone bosses' direct starts are 1-4 pilots; nothing else starts.
-            Check(K.BotsAllowed(b[0])&&b.Skip(1).Take(4).All(x=>x.Fight==K.BossFight.Direct&&!K.BotsAllowed(x)&&NativeBossBattle.Zone(x.Id))&&!K.BotsAllowed(b[5])&&!K.BotsAllowed(null),"bots for the Siren only");
+            Check(K.BotsAllowed(b[0])&&b.Skip(1).All(x=>x.Fight==K.BossFight.Direct&&!K.BotsAllowed(x)&&NativeBossBattle.Zone(x.Id))&&!K.BotsAllowed(null),"bots for the Siren only; every other boss is a direct, pilots-only fight");
         }
 
         // Every emblem parses and draws a silhouette (white body, near-black cut-outs) inside its box.
@@ -114,8 +114,7 @@ namespace ChipArena.UnityConversion
                 a=R(X.Mode.Boss,siren,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.BossFight&&a.Label=="FIGHT THE SIREN"&&a.Detail=="STRAIGHT TO THE BOSS · BOTS FILL SEATS",seat+": the Siren's fight starts straight away, with bots");
                 Check(!R(X.Mode.Boss,siren,seat,busy:true).Enabled,seat+": the boss fight waits while a connection is open (StartMatch refuses then)");
                 foreach(var b in K.Bosses.Where(b=>b.Fight!=K.BossFight.Direct)){a=R(X.Mode.Boss,b,seat);Check(!a.Enabled&&a.Kind==X.LaunchKind.None&&a.Reason==K.FightReason(b)&&a.Label=="FIGHT "+b.Name,seat+": "+b.Name+" cannot start here and says why");}
-                foreach(var z in K.Bosses.Skip(1).Take(4)){a=R(X.Mode.Boss,z,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.BossFight&&a.Label=="FIGHT "+z.Name&&a.Detail=="STRAIGHT TO THE BOSS · 1–4 PILOTS",seat+": "+z.Name+" starts straight away, pilots only");}
-                Check(R(X.Mode.Boss,noctiel,seat).Detail=="IN DEVELOPMENT",seat+": the details say where");
+                foreach(var z in K.Bosses.Skip(1)){a=R(X.Mode.Boss,z,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.BossFight&&a.Label=="FIGHT "+z.Name&&a.Detail=="STRAIGHT TO THE BOSS · 1–4 PILOTS",seat+": "+z.Name+" starts straight away, pilots only");}
             }
             Check(!R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Enabled&&R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Reason==X.GuestsWaiting&&R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Kind==X.LaunchKind.BossFight,"the host's boss fight waits for every guest to ready up");
             Check(!R(X.Mode.Expedition,siren,X.Seat.Host,ready:false).Enabled&&R(X.Mode.Expedition,siren,X.Seat.Host,ready:false).Reason==X.GuestsWaiting,"the host's run waits for every guest");

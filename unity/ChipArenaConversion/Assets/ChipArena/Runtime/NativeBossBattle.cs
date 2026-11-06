@@ -58,10 +58,11 @@ namespace ChipArena.UnityConversion
             else
             {int i=0;foreach(var p in Members()){var slots=area.doors[0].entries;var at=slots[i++%slots.Length];p.Body.position=Vec(at.Position)+Vector3.up*(NativeLocomotionRules.HalfHeight+.04f);p.Yaw=at.yaw;p.Body.linearVelocity=Vector3.zero;}}
             foreach(var p in Pilots)p.Body.transform.position=p.Body.position;
-            Physics.SyncTransforms();BeginPveHold("intro");
+            Physics.SyncTransforms();BeginPveHold("intro");if(id=="noctiel")ConfigureFallenBattle();
         }
         private void StepBossBattle()
         {
+            if(ZoneBoss?.fallen!=null){StepFallenBattle();return;}
             StepZoneBoss();
             if(ZoneBoss.deathAt>=0)
             {Pve.Rate=0;if(Time>=ZoneBoss.deathAt+(ZoneBoss.archetype==NativeZoneBossRules.Station?4:7)){Pve.Outcome="victory";Pve.Stage="ended";KillPveHorde();Match.FinishCooperative(true);}return;}

@@ -80,7 +80,7 @@ content, toward the right for Boss Battle and the left for the run (Reduced effe
        panel over a long pale face, THE DEEP END's drain, NOCTIEL's wings about a falling sword. The Siren uses the lobby's
        face.
    - **MODE** (TAB switches): the two tiles, then THE FIGHT: what this boss is and who can fight it (the Siren with bots;
-     the zone bosses 1–4 pilots, no hub, quota or roll; NOCTIEL in development). The LOADOUT row reads NO BOTS · 1–4 PILOTS
+     the zone bosses and NOCTIEL 1–4 pilots, no hub, quota or roll, NOCTIEL with its five lives). The LOADOUT row reads NO BOTS · 1–4 PILOTS
      for a zone boss.
 4. **MODE tiles** (both modes): **START EXPEDITION** (1–4 PLAYERS) and **BOSS BATTLE** (SOLO OR CO-OP). The picked tile has
    a slow sheen.
@@ -116,7 +116,7 @@ Controls:
 | THE CONVERTER | Direct (FIGHT NOW) | `StartBossBattle("converter")`, as above. |
 | THE HUM | Direct (FIGHT NOW) | `StartBossBattle("hum")`, as above. |
 | THE DEEP END | Direct (FIGHT NOW) | `StartBossBattle("deepend")`, as above. |
-| NOCTIEL | Preview | Disabled. Presentation only behind DEV panel · Camera · Final boss preview until its rules are bound. |
+| NOCTIEL | Direct (FIGHT NOW) | Astra's `StartBossBattle("noctiel")` on the Still Water arena: five lives each, four phases with drafts. 1–4 pilots, no bots. |
 
 ## Boss Battle direct starts (handoff to Astra)
 

@@ -122,6 +122,7 @@ namespace ChipArena.UnityConversion
                 case "converter":StartBossBattle("converter");break;
                 case "hum":StartBossBattle("hum");break;
                 case "deepend":StartBossBattle("deepend");break;
+                case "noctiel":StartBossBattle("noctiel");break;
                 default:Notice(K.FightReason(b)??"This boss has no direct start yet.");break;
             }
         }
@@ -654,7 +655,7 @@ namespace ChipArena.UnityConversion
                     if(!compact)ExpNote(ref y,d,"route-dot","Offline, Restart Match in the pause menu fights her again.",C.Muted(),a,lh);break;
                 case K.BossFight.Direct:
                     ExpNote(ref y,d,"route-dot","Straight into its arena: no hub, no quota, no roll.",C.Ink(.9f),a,lh);
-                    ExpNote(ref y,d,"route-dot","1–4 pilots, no bots. Friends join with the room code.",C.Muted(),a,lh);
+                    ExpNote(ref y,d,"route-dot",boss.Id=="noctiel"?"Five lives each. Out of lives? A teammate holds F beside you to give one.":"1–4 pilots, no bots. Friends join with the room code.",C.Muted(),a,lh);
                     if(!compact)ExpNote(ref y,d,"route-dot","Win or wipe, you come back here. Offline, Restart fights it again.",C.Muted(),a,lh);break;
                 case K.BossFight.InRun:
                     ExpNote(ref y,d,"route-dot","Waits at the end of "+boss.Area+", once its kill quota is met.",C.Ink(.9f),a,lh);

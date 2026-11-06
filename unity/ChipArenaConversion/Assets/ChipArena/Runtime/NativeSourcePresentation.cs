@@ -117,7 +117,7 @@ namespace ChipArena.UnityConversion
             BeginHordeFx(arena);HordeKindsBegin(arena);
             foreach(var m in arena.Minions)
             {
-                if(m.Hp<=0||m.Kind==NativeZoneBossRules.Station||m.Kind==NativeZoneBossRules.Ironworks)continue;if(m.Kind=="slender"){SlenderModel(arena,m);continue;}
+                if(m.Hp<=0||m.Kind==NativeFallenBoss.Archetype||m.Kind.StartsWith("fallen-",StringComparison.Ordinal)||m.Kind==NativeZoneBossRules.Station||m.Kind==NativeZoneBossRules.Ironworks)continue;if(m.Kind=="slender"){SlenderModel(arena,m);continue;}
                 // Drone Nest's toys are drawn as combat drones (NativeRoundsFxPresentation), not the vanilla toy soldier.
                 if(RoundsDrone(m))continue;
                 // Mirror Double's and Shadow Puppet's minions exist for the rules (a hit box, a target for bots); what shows of them is the technique's own effect.

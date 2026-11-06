@@ -76,12 +76,12 @@ namespace ChipArena.UnityConversion
         }
         private void FallenBossHide()
         {
-            if(fbLast<0&&!fbStageOn)return;fbLast=-1;fbShotReady=false;FallenStageLeave();FallenBodyHide();FallenPilotsHide();if(fbSlash!=null&&fbSlash.enabled)fbSlash.enabled=false;fbTrailCount=0;
+            if(fbLast<0&&!fbStageOn)return;fbLast=-1;fbShotReady=false;fbFrame.Live=null;FallenStageLeave();FallenBodyHide();FallenPilotsHide();if(fbSlash!=null&&fbSlash.enabled)fbSlash.enabled=false;fbTrailCount=0;
         }
         // ---- the frame ----
         private void FallenBossScenery(NativeArena arena)
         {
-            if(!NativeFallenBossPreview.On){FallenBossHide();return;}
+            bool live=arena?.ZoneBoss?.fallen!=null;if(!NativeFallenBossPreview.On&&!live){FallenBossHide();return;}
             var eye=WorldEye;if(arena==null||eye==null||!FallenBodyBuild()||!FallenStageBuild()){FallenBossHide();return;}
             FallenSongRead();FallenBodyShow();float now=PresentationClock(arena);
             if(double.IsNaN(NativeFallenBossPreview.Start)){NativeFallenBossPreview.Start=now-FallenPreviewSkip();FbStepsClear();}
@@ -90,20 +90,20 @@ namespace ChipArena.UnityConversion
 #endif
             double since=(now-NativeFallenBossPreview.Start-FallenPreviewSkip())*NativeFallenBossPreview.Rate+FallenPreviewSkip(),loops=Math.Floor(since/NativeFallenBossPreview.Loop);float p=(float)(since-loops*NativeFallenBossPreview.Loop);
             float dt=fbLast<0?0:Mathf.Clamp(now-fbLast,0,.1f);fbLast=now;NativeFallenBossPreview.ShownClock=NativeFallenBossPreview.Start+since;NativeFallenBossPreview.ShownP=p;
-            var f=fbFrame;NativeFallenBossPreview.Eval(p,VisualMotionBank,f);NativeFallenBossPreview.Shown.P=p;NativeFallenBossPreview.Shown.Section=f.Section;NativeFallenBossPreview.Shown.SongClip=f.SongClip;NativeFallenBossPreview.Shown.Phase=f.Phase;NativeFallenBossPreview.Shown.ChipAge=f.ChipAge;NativeFallenBossPreview.Shown.ChipPhase=f.ChipPhase;NativeFallenBossPreview.Shown.Black=f.Black;NativeFallenBossPreview.Shown.SlashAge=f.SlashAge;NativeFallenBossPreview.Shown.CardAge=f.CardAge;NativeFallenBossPreview.Shown.Kind=f.Kind;
+            var f=fbFrame;if(live)FallenBossViewOf(arena,f);else{f.Live=null;f.Actions=null;f.LiveAdds=null;NativeFallenBossPreview.Eval(p,VisualMotionBank,f);}NativeFallenBossPreview.Shown.P=p;NativeFallenBossPreview.Shown.Section=f.Section;NativeFallenBossPreview.Shown.SongClip=f.SongClip;NativeFallenBossPreview.Shown.Phase=f.Phase;NativeFallenBossPreview.Shown.ChipAge=f.ChipAge;NativeFallenBossPreview.Shown.ChipPhase=f.ChipPhase;NativeFallenBossPreview.Shown.Black=f.Black;NativeFallenBossPreview.Shown.SlashAge=f.SlashAge;NativeFallenBossPreview.Shown.CardAge=f.CardAge;NativeFallenBossPreview.Shown.Kind=f.Kind;
             // The eye: on the black stage, nothing of the level reaches it.
             FallenStageEnter(eye);eye.clearFlags=CameraClearFlags.SolidColor;eye.backgroundColor=Color.black;eye.farClipPlane=460;RenderSettings.fog=false;RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.62f,.62f,.66f);RenderSettings.ambientEquatorColor=new Color(.5f,.5f,.54f);RenderSettings.ambientGroundColor=new Color(.34f,.34f,.38f);
-            var origin=FallenOrigin;var eyeAt=eye.transform.position;
+            var origin=live?new Vector3(0,.02f,0):FallenOrigin;var eyeAt=eye.transform.position;
             FallenPose(f,now,dt,origin,eyeAt);
             // The shot, read by the camera next (BackroomsBossPreviewShot).
-            FallenShot(f,origin,now);
+            if(!live||f.Kind==NativeFallenBossPreview.KindCutscene||f.Kind==NativeFallenBossPreview.KindDeath)FallenShot(f,origin,now);else fbShotReady=false;
             // The song on the floor.
             float clip=f.SongClip,level=fbSong.LevelAt(clip),bass=fbSong.BassAt(clip);
             // The trail and the steps come from the posed body.
             var t=eye.transform;var nr=t.right;var nu=t.up;fbFx.Build(f,ToNV(eyeAt-origin),ToNV(nr),ToNV(nu),fbSong,WeaponEffectsQuality<.5f);
             bool shown=f.BossShown&&f.Kind!=NativeFallenBossPreview.KindChips;
             if(shown){FallenFeet(f,now,dt,origin);FallenTrail(f,now,origin);}FbStepsInto(fbFx,now);
-            FallenPilots(f,now,origin);
+            if(live)FallenPilotsHide();else FallenPilots(f,now,origin);
             // The light on the plate: the shot's, driven by the song, the fight's moves.
             var keyDir=(Quaternion.AngleAxis(f.Yaw+24,Vector3.up)*new Vector3(.45f,.72f,.6f)).normalized;float key=Mathf.Max(.02f,f.Key+fbFx.KeyBoost)*(1+.1f*bass*bass);if(f.Phase==4)key*=.62f;Shader.SetGlobalVector(FbKeyId,new Vector4(keyDir.x,keyDir.y,keyDir.z,key));
             float inner=f.Inner*(1.5f+.75f*bass*bass);float flash=fbFx.White*2.4f;
@@ -131,10 +131,10 @@ namespace ChipArena.UnityConversion
             float sh=fbFx.Shake;if(sh>.002f)e+=new Vector3(Mathf.Sin(now*37.1f)+.5f*Mathf.Sin(now*71.3f+1.3f),Mathf.Sin(now*43.7f+.7f)+.5f*Mathf.Sin(now*83.9f+2.9f),Mathf.Sin(now*29.3f))*(.14f*sh);
             fbEye=e;fbLook=l;fbFov=f.Fov;fbShotReady=true;
         }
-        internal bool FallenBossPreviewShot(out Vector3 eye,out Vector3 look,out float fov){eye=fbEye;look=fbLook;fov=fbFov;return NativeFallenBossPreview.On&&fbShotReady;}
+        internal bool FallenBossPreviewShot(out Vector3 eye,out Vector3 look,out float fov){eye=fbEye;look=fbLook;fov=fbFov;return (NativeFallenBossPreview.On||fbFrame.Live!=null)&&fbShotReady;}
         internal bool FallenBossPreviewCard(out BossIntroCard card,out float age)
         {
-            card=null;age=-1;if(!NativeFallenBossPreview.On||!fbShotReady||fbFrame.CardAge<0||fbFrame.CardAge>NativeBackroomsBossIntro.Hold-NativeBackroomsBossIntro.NameAt)return false;
+            card=null;age=-1;if((!NativeFallenBossPreview.On&&fbFrame.Live==null)||!fbShotReady||fbFrame.CardAge<0||fbFrame.CardAge>NativeBackroomsBossIntro.Hold-NativeBackroomsBossIntro.NameAt)return false;
             card=NativeFallenBoss.Card;age=NativeBackroomsBossIntro.NameAt-.05f+fbFrame.CardAge;return true;
         }
         // ---- the water and the air ----
@@ -274,7 +274,7 @@ namespace ChipArena.UnityConversion
             int first=(phase-2)*3;
             for(int i=0;i<3;i++)
             {
-                var chip=NativeFallenBoss.Chips[(first+i)%NativeFallenBoss.Chips.Length];float at=1.2f+i*2*B;float t=M.Progress(age,at,.42f);float flip=Mathf.Cos(t*Mathf.PI);bool face=t>=.5f;
+                var liveChips=arena?.ZoneBoss?.fallen?.chipOffer;var chip=liveChips?.Length==3?Array.Find(NativeFallenBoss.Chips,c=>c.Id==liveChips[i]):NativeFallenBoss.Chips[(first+i)%NativeFallenBoss.Chips.Length];float at=1.2f+i*2*B;float t=M.Progress(age,at,.42f);float flip=Mathf.Cos(t*Mathf.PI);bool face=t>=.5f;
                 float appear=M.EaseOut(M.Progress(age,.5f+i*.09f,.5f));var r=new Rect(x0+i*(cw+gap),y1+18*(1-appear),cw,ch);U.Push(r.center,Vector2.zero,Mathf.Abs(flip),0,1);
                 U.Fill(r,new Color(.015f,.015f,.015f,appear*a));H.Outline(r,new Color(1,1,1,(face?.95f:.3f)*appear*a),0,H.Corners.None);
                 if(!face)U.Text(r,"?",ch*.42f,new Color(1,1,1,.25f*appear*a),TextAnchor.MiddleCenter,bold:true);

@@ -32,6 +32,8 @@ namespace ChipArena.UnityConversion
             chosen=string.IsNullOrEmpty(chosen)?null:chosen;introStyle=string.IsNullOrEmpty(introStyle)?null:introStyle;
             if(!hasPve)pve=null;
             if(pve!=null){if(!pve.hasZone)pve.zone=null;if(!pve.hasZoneBoss)pve.zoneBoss=null;else if(pve.zoneBoss!=null){if(string.IsNullOrEmpty(pve.zoneBoss.action))pve.zoneBoss.action=null;if(string.IsNullOrEmpty(pve.zoneBoss.staggerCause))pve.zoneBoss.staggerCause=null;}}
+            if(pve?.zoneBoss!=null&&pve.zoneBoss.archetype!=NativeFallenBoss.Archetype)pve.zoneBoss.fallen=null;
+            if(pve?.zoneBoss!=null&&!NativeBackroomsBossRules.Is(pve.zoneBoss.archetype))pve.zoneBoss.backrooms=null;
             if(pve?.zone!=null&&pve.zoneBoss==null){pve.zone.converterAt=pve.zone.overflowAt=-100;pve.zone.converterMask=0;}
             if(minions!=null)foreach(var m in minions)if(m!=null){m.addKind=string.IsNullOrEmpty(m.addKind)?null:m.addKind;if(!m.hasZone)m.zone=null;else if(m.zone!=null)m.zone.attack=string.IsNullOrEmpty(m.zone.attack)?null:m.zone.attack;}
             if(snapshot?.Actors!=null)foreach(var a in snapshot.Actors)if(a!=null){if(!a.HasBomb)a.Bomb=null;a.Bomb?.RestorePresence();if(!a.HasKernel)a.Kernel=null;if(!a.HasTechnique)a.Technique=null;a.Cyber?.RestorePresence();}

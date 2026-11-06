@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
         // Presentation only: the concept is referenced by nothing but its own file, these checks and THE 6:47's presentation (the
         // runtime model, rig, effects, cues, preview, stage hook, the HUD's zone boss names and the runtime presenter): no rule,
         // authority, network or content file names it.
-        private static readonly string[] Presentation={"NativeExpeditionCatalogue.cs","NativeStationBossLook.cs","NativeStationBossMoves.cs","NativeStationBossRig.cs","NativeStationBossFx.cs","NativeStationBossCues.cs",
+        private static readonly string[] Presentation={"NativeExpeditionCatalogue.cs","NativePveUI.cs","NativeStationBossLook.cs","NativeStationBossMoves.cs","NativeStationBossRig.cs","NativeStationBossFx.cs","NativeStationBossCues.cs",
             "NativeStationBossPreview.cs","NativeStationBossStage.cs","NativeStationBossView.cs","NativeZoneBossNames.cs","NativeStationBossPresentation.cs","NativeStationBossBody.cs","NativeZoneBossIntroCamera.cs"};
         private static void Inert(string root)
         {

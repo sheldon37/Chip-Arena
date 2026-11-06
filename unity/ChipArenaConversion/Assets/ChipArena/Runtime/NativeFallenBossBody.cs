@@ -97,7 +97,7 @@ namespace ChipArena.UnityConversion
             // The head on the pilot it's after, a little behind them.
             if(f.Track>0&&f.LookAtEye<=0)
             {
-                var want=origin+NativeBossPoseApply.ToUnity(NativeFallenPilots.At(f.TrackPilot,f.P))+Vector3.up*1.4f;fbHeadLook=fbPoseClock<0||(fbHeadLook-want).sqrMagnitude>10000?want:Vector3.Lerp(fbHeadLook,want,1-Mathf.Exp(-dt*5));
+                var want=origin+NativeBossPoseApply.ToUnity((f.Live!=null?f.Target:NativeFallenPilots.At(f.TrackPilot,f.P)))+Vector3.up*1.4f;fbHeadLook=fbPoseClock<0||(fbHeadLook-want).sqrMagnitude>10000?want:Vector3.Lerp(fbHeadLook,want,1-Mathf.Exp(-dt*5));
                 var d=(fbHeadLook-fbHead.position).normalized;var forward=root.forward;if(Vector3.Dot(d,forward)<-.1f)d=Vector3.Slerp(forward,d,.4f);
                 var turn=Quaternion.FromToRotation(fbHead.forward,d);if(fbNeck!=null)fbNeck.rotation=Quaternion.Slerp(Quaternion.identity,turn,.28f*f.Track)*fbNeck.rotation;
                 turn=Quaternion.FromToRotation(fbHead.forward,d);fbHead.rotation=Quaternion.Slerp(Quaternion.identity,turn,.7f*f.Track)*fbHead.rotation;

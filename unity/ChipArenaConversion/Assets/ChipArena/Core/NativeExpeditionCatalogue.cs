@@ -162,8 +162,8 @@ namespace ChipArena.UnityConversion
                 Blurb="Something under the tiles that pulls the water, and you with it, toward the drain.",
                 Destination=NativeDeepEndBoss.Area,Phases=3,Moves=Titles(NativeDeepEndBoss.Moves,m=>m.Title),Fight=BossFight.Direct,Accent=0x6fe8e8},
             new Boss{Id="noctiel",Emblem=EmblemNoctiel,Name=NativeFallenBoss.Name,Subtitle="THE FALLEN ANGEL",Eyebrow=NativeFallenBoss.Card.Eyebrow,Line=NativeFallenBoss.Card.Line,Area="FINAL BOSS",
-                Blurb="A possible last fight: five lives, four phases and a blade that cuts the screen. Built, not yet bound to rules.",
-                Phases=4,Moves=Titles(NativeFallenBoss.Moves,m=>m.Title),Fight=BossFight.Preview,Accent=0xe4e4f0},
+                Blurb="The last of a fallen choir. Five lives each, four phases with a draft between them, and a blade that cuts the screen.",
+                Phases=4,Moves=Titles(NativeFallenBoss.Moves,m=>m.Title),Fight=BossFight.Direct,Accent=0xe4e4f0},
         });
         private static Boss[] Keyed(Boss[] all){foreach(var b in all)b.EmblemKey="exp-boss-"+b.Id;return all;}
         public static int BossCount=>Bosses.Length;
