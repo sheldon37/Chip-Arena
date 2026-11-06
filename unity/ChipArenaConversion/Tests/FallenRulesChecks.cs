@@ -24,6 +24,14 @@ internal static class FallenRulesChecks
         var options=new JsonSerializerOptions{IncludeFields=true};var wire=JsonSerializer.Deserialize<NativeFallenRecord>(JsonSerializer.Serialize(f,options),options);Check(wire.Valid()&&wire.hush[0].lives==5,"record roundtrip");
         Check(new InputFrame{InteractHeld=true,Interact=true}.HeldOnly().InteractHeld&&!new InputFrame{Interact=true}.HeldOnly().Interact,"hold survives tap consumption");
         var map=NativeFallenRules.Arena();Check(map.blocks.All(b=>b.pos.y+b.size.y/2<=0)&&map.spawns.ffa.Length==8,"flat arena and party landings");
+        // Off-centre targets must still warn the opposite edge: authority lines span the entire disc.
+        foreach(string move in new[]{"verdict","last","rain"})
+        {
+            var fx=new NativeFallenBossFx();var frame=new FallenBossFrame{Live=new NativeFallenRecord(),Phase=2,P=2.3f,Actions=new[]{new NativeFallenBossPreview.Act{Id=move,At=0,Hit=2.4f,End=3,From=new Vector3(0,0,79),To=new Vector3(0,0,79),Aim=0,Seed=0}}};
+            fx.Build(frame,new Vector3(0,20,0),Vector3.UnitX,Vector3.UnitY,null,false);
+            float minZ=float.MaxValue,maxZ=float.MinValue;for(int i=0;i<fx.Quads.Count*12;i+=3){minZ=Math.Min(minZ,fx.Quads.Corners[i+2]);maxZ=Math.Max(maxZ,fx.Quads.Corners[i+2]);}
+            Check(minZ<=-80&&maxZ>=80,"full-disc live warning "+move);
+        }
         Console.WriteLine("PASS NOCTIEL rules: "+n+" checks");
     }
 }

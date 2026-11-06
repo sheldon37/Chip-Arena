@@ -265,7 +265,7 @@ namespace ChipArena.UnityConversion
         {
             for(int lane=0;lane<8;lane++)
             {
-                float ang=a.Seed*37+lane*45+(lane%2)*19,off=(lane-3.5f)*7;var d=YawDir(ang);var n=new Vector3(d.Z,0,-d.X);var c=a.From*.5f+n*off;var s=c-d*60;var e=c+d*60;
+                float ang=a.Seed*37+lane*45+(lane%2)*19,off=(lane-3.5f)*7;var d=YawDir(ang);var n=new Vector3(d.Z,0,-d.X);var c=a.From*.5f+n*off;float half=live?168:60;var s=c-d*half;var e=c+d*half;
                 float lineK=hit<0?up01:1-C((hit-2.4f)/.6f);FloorLine(s,e,.06f+.09f*lineK,lineK*.8f,1.7f);
                 if(hit<0)continue;
                 // Blades falling along the lane, one after another.
@@ -280,7 +280,7 @@ namespace ChipArena.UnityConversion
         // A crack of white through the whole disc, brightening, then the map splits along it. `which` keeps each line's own jag.
         private void Crack(NativeFallenBossPreview.Act a,float p,float hit,float up01,float yaw,int which)
         {
-            var through=a.To;var d=YawDir(yaw);var n=new Vector3(d.Z,0,-d.X);const int segs=44;const float half=84;
+            var through=a.To;var d=YawDir(yaw);var n=new Vector3(d.Z,0,-d.X);const int segs=44;float half=live?168:84;
             float show=hit<0?C(up01*1.2f):1;float grow=hit<0?EaseOut(up01*1.6f):1;float w=hit<0?.1f+1.0f*up01*up01*up01:(1.5f*(1-C(hit/.5f))+.14f*(1-C(hit/1.9f)));float k=hit<0?(.45f+.55f*up01*up01):1-C((hit-1)/1);
             if(k<=0)return;
             Vector3 Point(int i){float u=i/(float)segs*2-1;float j=(Hash(i*1.7f+a.Seed*3+which*11)-.5f)*(live||i==0||i==segs?0:3.2f);return through+d*(u*half)+n*j;}

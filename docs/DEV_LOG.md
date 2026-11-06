@@ -10,6 +10,11 @@
 - **Not checked:** the real Unity 6000.3.24f1 compile (download.unity3d.com blocked here). The Unity 2021.3 reference compile reports nothing in a changed file; its total, 267, is the 265 Unity 6-only API uses in untouched files plus two of Astra's `linearVelocity` uses in `Runtime/NativeBossBattle.cs`. Not seen in the Unity Editor, on Windows or by a guest; the portraits' framing at the tall aspect is unseen.
 - **Release:** task commits `351438f` (asset lock) and `aa88869` (screen), merged into shared and synced to the builder (`codex/unity-cloud-current`) for the test channel. The build and publication receipt follows from the builder. No live or Site release.
 
+## 2026-11-06 — Astra: NOCTIEL native gate and full-disc warnings
+
+- Follow-up to PR #367 on `codex/noctiel-warning-coverage`, base shared/builder `8f5f8ef3`. The first Windows attempt stopped at the new NOCTIEL phase-threshold assertion; it did not publish. Assign clamped health directly instead of subtracting a rounded damage delta, preserving exact 70/40/15% boundaries. Keep the strict native assertion and include values in its failure message.
+- Live Verdict/Last Word and Rain warning lines now span the entire 160 m disc even when aimed at an edge. Scripted preview lengths are unchanged. Added three geometry regressions; NOCTIEL managed rules pass 290207 checks. Pinned Unity 6000.3.24f1 semantic compile passes all four assemblies; runtime recompiled after threshold change. Prior full CoreTests (975 PASS groups), menu (1855), source-package validation and integrated HUD checks passed for PR #367. Native rerun and publication pending this follow-up; no rendered/human co-op playtest claimed.
+
 ## 2026-11-06 — Astra: playable NOCTIEL Boss Battle
 
 - Branch `codex/noctiel-playable`, shared base `f9bbe091`, integrated HUD update `71f66232`. Owner requested making NOCTIEL playable after direct zone-boss starts. This entry is a **standalone Boss Battle**, not yet an Expedition finale choice. NOCTIEL becomes Direct; host selection/readiness, deterministic guest arena, return to Expeditions and offline Restart use the preceding direct-start implementation. Human-only, 1–4 players; no party bots. Siren, rolled runs and `black-siren` catalogue/Deployment compatibility are unchanged.
