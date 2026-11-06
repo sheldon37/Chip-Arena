@@ -104,7 +104,7 @@ public static class FallenBossChecks
     {
         var lib=new NativeVisualMotionClips.Library();
         void C(string name,float length,float hit,bool loop,float speed=0){if(Array.IndexOf(missing,name)<0)lib.Clips[name]=new NativeVisualMotionClips.Clip{Name=name,Length=length,Hit=hit,Rate=30,SpeedZ=speed,Loop=loop,Frames=2,Stride=1,Data=new float[2]};}
-        C("Unarmed-Idle",3,1.5f,true);C("Armed-Dash-Forward",.8f,.4f,true,6);C("Armed-Run-Forward",.7f,.35f,true,5.2f);C("Armed-Walk",1.1f,.5f,true,1.4f);C("Armed-Idle",3,1.5f,true);
+        C("Unarmed-Idle",3,1.5f,true);C("Armed-Dash-Forward",.8f,.4f,true,6);C("Armed-Run-Forward",.7f,.35f,true,5.2f);C("Armed-Walk",1.1f,.5f,true,1.4f);C("Armed-Walk-Slow",1.6f,.8f,true,.9f);C("Armed-Idle",3,1.5f,true);
         foreach(var n in new[]{"Sword-Attack-R1","Sword-Attack-R2","Sword-Attack-R3","Sword-Attack-R4","Sword-Attack-R6","Armed-Run-Attack-R1","2Hand-Sword-Attack1","2Hand-Sword-Attack3","2Hand-Sword-Attack11","2Hand-Sword-Activate","Armed-Activate-Left"})C(n,1.3f,.5f,false);
         C("2Hand-Sword-Jump",.9f,.3f,false);C("2Hand-Sword-Air-Attack1",1.1f,.55f,false);C("2Hand-Sword-Land",.8f,.1f,false);
         return lib;
@@ -165,6 +165,20 @@ public static class FallenBossChecks
                 Check(Vector3.Distance(f.Boss,at)<2.5f,"the body keeps up with the actor at "+now);
             }
         }
+        // The walk (owner's reference video, 2026-11-06: about a step a second, the sword trailing at its side): at a walking pace
+        // the slow walk at that cadence, the stride matched to the travel, the sword carried, feet on the water; brisker, the walk.
+        foreach(var (pace,clip,steps) in new[]{(1.4f,"Armed-Walk-Slow",1f),(2.6f,"Armed-Walk",2.6f/(1.4f*NativeFallenBoss.Scale)*2/1.1f)})
+        {
+            var d=new NativeFallenLiveMotion();var at=Vector3.Zero;var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=0,Target=new Vector3(0,0,80)};float step=0,lastTime=0,advance=0,len=bank.Length(clip);string lastTo=null;
+            for(float now=0;now<5;now+=1/144f)
+            {
+                while(step<=now){at+=new Vector3(0,0,pace/60);step+=1/60f;}x.Now=now;x.At=at;d.Step(f,x,bank);
+                if(now>1.5f&&f.ClipTo==clip&&lastTo==clip){float dt2=f.TimeTo-lastTime;if(dt2<0)dt2+=len;advance+=dt2;}
+                if(now>1.5f)Check(!d.Gliding&&f.ClipTo==clip&&f.Mix>=1&&f.Air<.05f&&f.Carry>.9f&&Angle(f.Yaw,0)<2,"at "+pace+" m/s it walks ("+f.ClipTo+"), sword carried, feet down, at "+now);
+                lastTime=f.TimeTo;lastTo=f.ClipTo;
+            }
+            float cadence=2*advance/len/3.5f;Check(Math.Abs(cadence-steps)<.06f*steps,"at "+pace+" m/s, "+cadence.ToString("0.00")+" steps a second (want "+steps.ToString("0.00")+")");
+        }
         // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
         {
             var d=new NativeFallenLiveMotion();var x=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};float lastYaw=0;
@@ -178,9 +192,11 @@ public static class FallenBossChecks
         var scenery=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");var body=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var live=R("Assets/ChipArena/Runtime/NativeFallenLiveBody.cs");
         Check(scenery.Contains("if(live){FallenBossViewOf(arena,f);FallenLiveMotion(arena,f,now);}else{fbLive.Reset();fbLiveNow=false;")&&scenery.Contains("FallenPose(f,now,dt,origin,eyeAt);FallenShown(f);"),"the live director runs after the binding, the preview keeps its script");
         Check(live.Contains("fbLive.Step(f,facts,VisualMotionBank,")&&live.Contains("!(a.Pve.Holding&&a.Pve.Cinematic==\"intro\")&&z.deathAt<0"),"the intro and the death keep the cutscene's pose");
-        Check(body.Contains("FallenFeetPlant(f,now,hover);")&&body.IndexOf("FallenFeetPlant(f,now,hover);")<body.IndexOf("FallenGrip(f,origin);")&&body.IndexOf("FallenGrip(f,origin);")<body.IndexOf("FallenBladeClear(f,yawRot,now);")&&body.IndexOf("FallenBladeClear(f,yawRot,now);")<body.IndexOf("FallenChains(f,now,dt,yawRot,local);"),"feet, then the grip, then the blade cleared, then the chains");
+        Check(body.Contains("FallenFeetPlant(f,now,hover);")&&body.IndexOf("FallenFeetPlant(f,now,hover);")<body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover);")&&body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover);")<body.IndexOf("FallenBladeClear(f,yawRot,now);")&&body.IndexOf("FallenBladeClear(f,yawRot,now);")<body.IndexOf("FallenChains(f,now,dt,yawRot,local);"),"feet, then the grip, then the blade cleared, then the chains");
         Check(!body.Contains("if(f.Plant>0)FallenPlant(f,origin);else if(f.Carry>0)FallenCarry(f);")&&body.Contains("FallenSwordTo(Vector3.Lerp(cg,pg,plant),Quaternion.Slerp(cr,pr,plant),Mathf.Clamp01(plant+carry),"),"the sword drawn from the water goes straight to the carry");
         Check(body.Contains("Quaternion.FromToRotation(Vector3.down,FallenRobeWay(c.Pivot.X,c.Pivot.Z-.03f,c.Segment,yawRot))*yawRot"),"the robe drapes over the legs");
+        Check(body.Contains("FbDragWay=new Vector3(.85f,0,-.53f)")&&body.Contains("var wrist=shoulder+yawRot*new Vector3(.07f*s,0,.09f*s)+Vector3.down*(reach*.93f-breath);")&&body.Contains("float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);"),"the sword carried as the reference walk carries it: from a hanging arm, trailing out and back, its point just off the water");
+        Check(scenery.Contains("if(tip.y<floor+.25f&&f.Plant<.5f&&now-fbWakeLast>.07f&&moved>=.6f)"),"the dragged point's wake is a ring every 0.6 m, none at rest");
         var audio=R("Assets/ChipArena/Runtime/NativeAudio.cs");var loading=R("Assets/ChipArena/Runtime/NativeStageLoadingUI.cs");var game=R("Assets/ChipArena/Runtime/ConversionGame.cs");
         Check(audio.Contains("map==NativeFallenRules.Map?NativeFallenSong.Id:")&&audio.Contains("Track(NativeFallenSong.Id,Music*.55f,StageCovered,")&&game.Contains("nativeAudio.StageCovered=stageLoad.Visible&&stageLoad.Phase!=StageLoadPhase.Reveal;"),"its song loads behind the cover and waits for the screen to open");
         Check(loading.Contains("bool intro=arena!=null&&(IntroActive||arena.Pve?.Holding==true&&arena.Pve.Cinematic==\"intro\");"),"a boss's intro hold keeps the intro's loading budget");

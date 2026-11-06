@@ -27,7 +27,10 @@ namespace ChipArena.UnityConversion
             public float Now;public Vector3 At;public float Yaw;public Vector3 Target;
             public string Action;public float ActionAt,HitAt,Duration,ActionYaw;public Vector3 From,To;public bool SecondWing;
         }
-        public const string Stance="Unarmed-Idle",Glide="Armed-Dash-Forward",Walk="Armed-Walk";
+        public const string Stance="Unarmed-Idle",Glide="Armed-Dash-Forward",Walk="Armed-Walk",SlowWalk="Armed-Walk-Slow";
+        /// <summary>The owner's reference walk (2026-11-06): about one step a second, heavy and measured. The slow walk plays up to this
+        /// rate before the brisker walk takes over; at NOCTIEL's size its 1.6 s cycle at 0.8 is that step a second.</summary>
+        public const float SlowWalkMost=1.35f;
         /// <summary>Travel (m/s) that starts a glide, and below which it lands; the walk's floor; the glide's height.</summary>
         public const float GlideFrom=3.2f,GlideUntil=1.8f,WalkFrom=.6f,GlideAir=.5f;
         /// <summary>A standing turn starts past this many degrees off its quarry.</summary>
@@ -83,8 +86,8 @@ namespace ChipArena.UnityConversion
             Shot want;
             if(inPlan){int i=0;for(int j=0;j<planCount;j++)if(now>=plan[j].T0)i=j;want=plan[i];}
             else if(gliding)want=new Shot{Clip=Pick(Glide,clips),Mode=Looped,Rate=1.6f,Fade=.16f,Key=1};
-            else if(speed>WalkFrom&&clips!=null&&clips.Clips.TryGetValue(Walk,out var w)&&w.SpeedZ>.1f)
-            {walkPhase+=dt*Clamp(speed/(w.SpeedZ*NativeFallenBoss.Scale),.5f,1.6f);want=new Shot{Clip=Walk,Mode=Paced,Fade=.22f,Key=2};}
+            else if(speed>WalkFrom&&WalkOf(clips,speed,out var w,out float rate))
+            {walkPhase=(walkPhase+dt*rate/Math.Max(.1f,w.Length))%1f;want=new Shot{Clip=w.Name,Mode=Paced,Fade=.22f,Key=w.Name==SlowWalk?3:2};}
             else want=new Shot{Clip=Stance,Mode=Looped,Rate=1,Fade=.26f,Key=0};
             if(!curSet){cur=want;curSet=true;switchAt=now-10;}
             else if(want.Key!=cur.Key||want.T0!=cur.T0){prev=cur;cur=want;switchAt=now;}
@@ -170,6 +173,17 @@ namespace ChipArena.UnityConversion
             if(planCount>=MaxShots)return;float wind=Math.Max(.04f,hit-t0-strike*.25f);
             plan[planCount]=new Shot{Clip=Pick(clip,clips),Mode=Strike,T0=t0,Wind=wind,Hit=strike,T1=Math.Max(t1,t0+wind+strike+.05f),Fade=fade,Flare=flare,Key=100+planCount};planCount++;
         }
+        // The walk for this speed and its rate, the stride matched to the travel (the clip's own travel times its size): the slow,
+        // heavy walk while it can keep up, the brisker one past it. The cycle runs on as a fraction, so a change keeps the feet's phase.
+        private static bool WalkOf(NativeVisualMotionClips.Library clips,float speed,out NativeVisualMotionClips.Clip walk,out float rate)
+        {
+            walk=null;rate=1;if(clips==null)return false;
+            bool slow=clips.Clips.TryGetValue(SlowWalk,out var s)&&s.SpeedZ>.1f,brisk=clips.Clips.TryGetValue(Walk,out var b)&&b.SpeedZ>.1f;
+            float rs=slow?speed/(s.SpeedZ*NativeFallenBoss.Scale):0;
+            if(slow&&(rs<=SlowWalkMost||!brisk)){walk=s;rate=Clamp(rs,.5f,brisk?SlowWalkMost:1.6f);return true;}
+            if(brisk){walk=b;rate=Clamp(speed/(b.SpeedZ*NativeFallenBoss.Scale),.5f,1.6f);return true;}
+            return false;
+        }
         /// <summary>The clip, else the nearest the bank has (a cut for a cut, a raised hand for a summon), else the stance.</summary>
         public static string Pick(string clip,NativeVisualMotionClips.Library clips)
         {
@@ -185,7 +199,7 @@ namespace ChipArena.UnityConversion
             {
                 case Hold:return s.From;
                 case Looped:return s.From+now*s.Rate;
-                case Paced:return walkPhase;
+                case Paced:return walkPhase*(clips!=null&&clips.Has(s.Clip)?clips.Length(s.Clip):1);
                 default:return NativeFallenBossPreview.ClipTime(new NativeFallenBossPreview.Seg{T0=s.T0,T1=s.T1,Wind=s.Wind,Hit=s.Hit,Clip=s.Clip,Mode=Strike,Rate=1},now,clips);
             }
         }
