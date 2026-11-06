@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/noctiel-sound-import`): all 92 NOCTIEL sounds were generated on the builder (Astra, PR #370). The three takes that stopped the import (short after trimming) are reviewed and accepted, for those takes only, so the builder's next run can import the batch. Cues not wired yet.
+
 2026-11-06 Claude (`claude/noctiel-walk`): NOCTIEL carries its sword like the owner's reference walk (hanging at its side, the blade trailing, point just off the water) and walks at about a step a second when it moves slowly. In play it still glides at the authority's 9 m/s; a walking approach is a proposal for Astra (DEV_LOG). Not seen in Unity.
 
 2026-11-06 Claude (`claude/noctiel-sounds`): NOCTIEL's sound request is ready for ElevenLabs: `docs/audio/sound-requests-noctiel.json`, 57 cues, 92 takes, about 5,944 credits, keys in the bank contract. Queued on the builder by Astra (PR #370: four approved jobs, 92 requests, 148.6 s); cues wired after import.
