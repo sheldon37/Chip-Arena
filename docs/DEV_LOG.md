@@ -1,3 +1,9 @@
+## 2026-11-06 — Astra: Boss Battle encounter HUD bindings
+
+- Branch `codex/boss-spawn-announcement`, base `f9bbe091`. Standalone zone fights inherited the Siren-only PVE HUD: name, four-phase counter, quarter-health ticks, spawn/defeat text and possession notices. Bind names to the existing boss definitions, phase to replicated `ZoneBoss.phase`, and health to its actor. Three-phase ticks follow existing authority thresholds: Converter 70/35%, Station/Hum/Deep End 65/30%. Siren keeps four phases and her original messages.
+- Spawn and outcome text now identify the active boss; "The Siren smiles" and possession hints are Siren-only. Existing HUD artwork/layout retained; no combat, timing, network schema or balance changes. Claude may polish wording/style independently.
+- Verification: final pinned Unity 6000.3.24f1 semantic compilation and whitespace review recorded in PR. Native Editor rendering, Windows and live guest playtest remain unrun here. Shared merge/builder sync receipts follow in PR; no live or Site release.
+
 ## 2026-11-06 — Astra: direct zone-boss starts in Boss Battle
 
 - Branch `codex/boss-battle-direct-start`, shared base `a84df116`. THE 6:47 (`station`), THE CONVERTER (`converter`), THE HUM (`hum`) and THE DEEP END (`deepend`) are now `BossFight.Direct`. FIGHT builds the selected arena, creates its normal zone-boss authority, and starts its existing arrival/song/phase records. No hub, quotas, station roll, mutators or opening chip draft. NOCTIEL remains Preview; the Siren keeps her existing boss-test start.
