@@ -64,7 +64,7 @@ namespace ChipArena.UnityConversion
     }
     public sealed partial class NativeAudio
     {
-        private void BackroomsBossCues(NativeArena arena,bool menu){HumBossCues(arena,menu);DeepEndBossCues(arena,menu);}
+        private void BackroomsBossCues(NativeArena arena,bool menu){HumBossCues(arena,menu);DeepEndBossCues(arena,menu);FallenBossCues(arena,menu);}
         /// <summary>A DEV boss preview's song and where it is, on the preview's own clock, so its intro can be judged with its music: the edit and the loop the live fight plays. False with no preview, or its file not installed.</summary>
         private bool BackroomsBossPreviewSong(NativeArena arena,out string id,out double clip,out double at)
         {

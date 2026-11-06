@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/noctiel-cues`): NOCTIEL's 57 sounds are wired: the cutscene's beats, every move's tell and strike on the authority's times, the Slash and chips, adds, lives and revives, the Hush, the death. They play once the builder imports the batch. Not heard yet.
+
 2026-11-06 Claude (`claude/noctiel-sound-import`): all 92 NOCTIEL sounds were generated on the builder (Astra, PR #370). The three takes that stopped the import (short after trimming) are reviewed and accepted, for those takes only, so the builder's next run can import the batch. Cues not wired yet.
 
 2026-11-06 Claude (`claude/noctiel-walk`): NOCTIEL carries its sword like the owner's reference walk (hanging at its side, the blade trailing, point just off the water) and walks at about a step a second when it moves slowly. In play it still glides at the authority's 9 m/s; a walking approach is a proposal for Astra (DEV_LOG). Not seen in Unity.

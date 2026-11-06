@@ -67,8 +67,8 @@ public static class FallenBossChecks
         foreach(Match m in Regex.Matches(script,@"finish\('[a-z-]+', 0x([0-9A-Fa-f]{6})")){int v=Convert.ToInt32(m.Groups[1].Value,16);int r=(v>>16)&255,g=(v>>8)&255,bl=v&255;Check(Math.Abs(r-g)<=12&&Math.Abs(g-bl)<=12,"finish "+m.Value+" is grey");}
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs")){if(Path.GetFileName(f).StartsWith("NativeFallen"))continue;Check(!File.ReadAllText(f).Contains("NativeFallenBossPreview"),Path.GetFileName(f)+" doesn't read the preview");}
         var presentation=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");Check(presentation.Contains("if(!NativeFallenBossPreview.On&&!live){FallenBossHide();return;}"),"without a preview or real encounter nothing runs");
-        Live(R);int sounds=Sounds(root);
-        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+"; live motion: every move's contact on its hit, glide and land, no pops; "+sounds+" sounds requested, each in the bank contract)");
+        Live(R);int sounds=Sounds(root);int cues=Cues(R);
+        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+"; live motion: every move's contact on its hit, glide and land, no pops; "+sounds+" sounds requested, each in the bank contract; "+cues+" cue moments on the authority's times)");
     }
     // ---- The sounds (docs/audio/sound-requests-noctiel.json; owner 2026-11-06: "write a sound cue list for elevenlabs") ----
     // Every NOCTIEL key is in the bank contract and the request, flat or positional as it plays, inside its cap, at the boss level,
@@ -98,6 +98,88 @@ public static class FallenBossChecks
         var bundled=Path.Combine(root,"tools/sound_bundle/docs/audio/sound-requests-noctiel.json");Check(File.Exists(bundled)&&File.ReadAllText(bundled).Replace("\r\n","\n")==File.ReadAllText(path).Replace("\r\n","\n"),"the builder bundle's copy matches");
         Check(!Directory.EnumerateFiles(Path.Combine(root,"../../docs/audio")).Any(f=>f.EndsWith(".mp3")||f.EndsWith(".wav")||f.EndsWith(".ogg")),"no audio in the repo");
         return sounds.Count;
+    }
+    // ---- The cues (Core NativeFallenBossCues, Runtime NativeFallenBossAudio.cs) ----
+    // Every key has its constant and is fired from somewhere; the cutscene's and the fight's moments land on their clocks' times
+    // (each move's tell and strike on the authority's), any window split gives the same cues once, the OHK tells last their windups.
+    private static string Dotted(string name)=>"boss.noctiel."+Regex.Replace(name,"(?<=[a-z])([A-Z])",".$1").ToLowerInvariant();
+    private static int Cues(Func<string,string> R)
+    {
+        var keys=NativeFallenBossCues.Keys;var consts=typeof(NativeFallenBossCues).GetFields().Where(x=>x.IsLiteral&&x.FieldType==typeof(byte)).ToArray();
+        Check(consts.Length==keys.Length&&consts.Select(x=>(byte)x.GetValue(null)).Distinct().Count()==keys.Length,"a constant for each of the 57 keys");
+        foreach(var c in consts)Check(keys[(byte)c.GetValue(null)]==Dotted(c.Name),c.Name+" is "+Dotted(c.Name));
+        var core=R("Assets/ChipArena/Core/NativeFallenBossCues.cs");var audio=R("Assets/ChipArena/Runtime/NativeFallenBossAudio.cs");
+        foreach(var c in consts)Check(core.Contains("Add("+c.Name+",")||audio.Contains("NativeFallenBossCues."+c.Name+",")||audio.Contains("NativeFallenBossCues."+c.Name+":"),c.Name+" is fired from somewhere");
+        var buf=new FallenBossCue[NativeFallenBossCues.QueueSize];int moments=0;
+        // The cutscene: in order, every cue flat, the same in any windows.
+        var all=new System.Collections.Generic.List<FallenBossCue>();int n=NativeFallenBossCues.Cutscene(-1,60,buf);all.AddRange(buf.Take(n));
+        Check(n==17&&all.All(c=>c.Flat)&&all.Select(c=>c.At).SequenceEqual(all.Select(c=>c.At).OrderBy(x=>x)),"the cutscene's 17 cues, in order, all flat ("+n+")");
+        Check(all[0].Key==NativeFallenBossCues.Feather&&Math.Abs(all[0].At-NativeFallenBossPreview.FeatherLand)<1e-4f&&all[n-1].Key==NativeFallenBossCues.SlashPart&&Math.Abs(all[n-1].At-NativeFallenPilots.CutsceneEnd)<1e-4f,"from the feather's touch to the opening Slash on the drop");
+        var split=new System.Collections.Generic.List<FallenBossCue>();for(int i=0;i<4400;i++){int k=NativeFallenBossCues.Cutscene(-1+i*.0137f,-1+(i+1)*.0137f,buf);split.AddRange(buf.Take(k));}
+        Check(split.Select(c=>(c.Key,c.At)).SequenceEqual(all.Select(c=>(c.Key,c.At))),"the cutscene the same in small windows: each cue once");moments+=n;
+        // Each move: its tell at the action's start and its strike on the hit, as the authority strikes.
+        var me=new Vector3(0,0,14);
+        foreach(var m in NativeFallenBoss.Moves)
+        {
+            float A=10,wind=m.Id=="thrones"?1.2f:Math.Max(m.Kills?2.4f:0,m.Wind),H=A+wind;
+            var v=new FallenCueFight{Boss=Vector3.Zero,From=Vector3.Zero,To=new Vector3(0,0,12),Listener=me,HasListener=true,Action=m.Id,ActionAt=A,HitAt=H,ActionYaw=0,SecondWing=true,Seed=4242,
+                Pools=new[]{new V3(3,0,10),new V3(-20,0,4)},PhaseChangeAt=-100,PhaseSeenAt=-100,DraftAt=-100,DeathAt=-100,Started=-1,HushAt=-100};
+            var whole=new System.Collections.Generic.List<FallenBossCue>();n=NativeFallenBossCues.Fight(v,A-1,H+8,buf);whole.AddRange(buf.Take(n));
+            var parts=new System.Collections.Generic.List<FallenBossCue>();int steps=(int)((wind+9)*60);for(int i=0;i<steps;i++){int k=NativeFallenBossCues.Fight(v,A-1+i/60f,i+1==steps?H+8:A-1+(i+1)/60f,buf);parts.AddRange(buf.Take(k));}
+            Check(n>0&&parts.Select(c=>(c.Key,c.At)).OrderBy(c=>c.At).ThenBy(c=>c.Key).SequenceEqual(whole.Select(c=>(c.Key,c.At)).OrderBy(c=>c.At).ThenBy(c=>c.Key)),m.Id+": the same cues in frame-sized windows");
+            bool At(byte key,float at)=>whole.Any(c=>c.Key==key&&Math.Abs(c.At-at)<1e-3f);
+            foreach(var c in whole)Check(float.IsFinite(c.At3.X+c.At3.Y+c.At3.Z)&&c.Gain>0&&c.Flat==NativeFallenBossCues.Flat(c.Key),m.Id+": a finite cue, flat as its key plays");
+            switch(m.Id)
+            {
+                case "cleave":Check(At(NativeFallenBossCues.Cleave,H)&&At(NativeFallenBossCues.Cleave,H+.3f)&&At(NativeFallenBossCues.Cleave,H+.6f),"cleave: a cut on each of the authority's three strikes");break;
+                case "vow":Check(At(NativeFallenBossCues.VowDraw,A)&&At(NativeFallenBossCues.Vow,H),"vow: the water parts, then the thrust on the hit");break;
+                case "severance":Check(At(NativeFallenBossCues.SeveranceWind,A)&&At(NativeFallenBossCues.Severance,H)&&At(NativeFallenBossCues.Severance,H+.6f)&&At(NativeFallenBossCues.Wave,H+(14-3)/34f)&&At(NativeFallenBossCues.Wave,H+.6f+(14-3)/34f),"severance: the swing, the second wing, each wave as it reaches a pilot 14 m ahead (34 m/s)");break;
+                case "descent":Check(At(NativeFallenBossCues.DescentMark,A)&&At(NativeFallenBossCues.Leap,NativeFallenLiveMotion.Takeoff(A,H))&&At(NativeFallenBossCues.Land,H)&&whole.First(c=>c.Key==NativeFallenBossCues.Land).At3==v.To,"descent: the ring, the leap as the body leaves, the landing on the hit where it lands");break;
+                case "rain":Check(At(NativeFallenBossCues.RainLines,A)&&whole.Count(c=>c.Key==NativeFallenBossCues.Rain)==6&&whole.Where(c=>c.Key==NativeFallenBossCues.Rain).All(c=>c.At>=H&&c.At<H+2.4f),"rain: the lines, then blades through the strike");break;
+                case "verdict":case "last":Check(At(NativeFallenBossCues.VerdictCrack,A)&&At(NativeFallenBossCues.VerdictSplit,H),m.Id+": the crack through the tell, the split on the hit");break;
+                case "eclipse":Check(At(NativeFallenBossCues.Eclipse,A)&&whole.Count(c=>c.Key==NativeFallenBossCues.EclipsePool)==2,"eclipse: the dark through the tell, a chime at each pool");break;
+                case "fall":Check(whole.Count(c=>c.Key==NativeFallenBossCues.FallMark)==4&&whole.Count(c=>c.Key==NativeFallenBossCues.Fall&&c.At>=H&&c.At<H+.2f)==4,"fall: four marks and four columns on the volley");break;
+                case "sweep":Check(At(NativeFallenBossCues.SweepShake,A)&&At(NativeFallenBossCues.Sweep,H),"sweep: the shake, then the sweep on the hit");break;
+                case "choir":case "thrones":Check(At(NativeFallenBossCues.Choir,A),m.Id+": the choir with the summons");break;
+                case "penance":Check(At(NativeFallenBossCues.Penance,A),"penance: the pour");break;
+            }
+            moments+=n;
+        }
+        // The one-hit kills' tells: the shortest take still runs to within a beat of the hit, the longest ends by it.
+        using(var doc=JsonDocument.Parse(R("../../docs/audio/sound-requests-noctiel.json")))
+        {
+            var target=doc.RootElement.GetProperty("sounds").EnumerateArray().ToDictionary(s=>s.GetProperty("key").GetString(),s=>(min:s.GetProperty("targetSeconds").GetProperty("min").GetSingle(),max:s.GetProperty("targetSeconds").GetProperty("max").GetSingle()));
+            foreach(var (tell,wind) in new[]{("boss.noctiel.verdict.crack",2.4f),("boss.noctiel.eclipse",3.2f)})Check(target[tell].min>=wind-NativeFallenSong.Beat&&target[tell].max<=wind+.35f,tell+" lasts its windup");
+        }
+        // The phase change (seen late here: the Slash at once, the halves part on the cut), the chips, the death, the enrage and the Hush.
+        {
+            var v=new FallenCueFight{Boss=Vector3.Zero,Listener=me,HasListener=true,PhaseChangeAt=50,PhaseSeenAt=48.5f,DraftAt=60,DeathAt=100,Started=0,HushAt=30,HushSeconds=6,HushPlace=me};
+            n=NativeFallenBossCues.Fight(v,0,800,buf);var c=buf.Take(n).ToList();bool At(byte key,float at)=>c.Any(x=>x.Key==key&&Math.Abs(x.At-at)<1e-3f);
+            Check(At(NativeFallenBossCues.Slash,48.5f)&&At(NativeFallenBossCues.Slowdown,48.5f)&&At(NativeFallenBossCues.SlashPart,50-1.2f),"a phase change: the Slash when it is seen, the halves part on the cut");
+            Check(c.Count(x=>x.Key==NativeFallenBossCues.Chip)==3&&At(NativeFallenBossCues.Chip,60+1.2f)&&At(NativeFallenBossCues.Chip,60+1.2f+4*NativeFallenSong.Beat),"the three chips turn over with the chip screen's");
+            Check(At(NativeFallenBossCues.Death,100.2f)&&At(NativeFallenBossCues.Shatter,100+NativeFallenBossPreview.DeathHit)&&At(NativeFallenBossCues.Enrage,720)&&At(NativeFallenBossCues.Hush,34.5f),"the death, the shell's shatter on the song's hit, the enrage at 12:00, the Hush warning 1.5 s before the water opens");
+            moments+=n;
+        }
+        // Fall of Light's columns are the authority's, nearest first; Feather Rain's blades fall on its lanes.
+        {
+            var v=new FallenCueFight{Listener=new Vector3(5,0,-9),HasListener=true,Seed=777,From=new Vector3(2,0,3)};float last=-1;var seen=new System.Collections.Generic.HashSet<Vector3>();
+            for(int k=0;k<4;k++)
+            {
+                var c=NativeFallenBossCues.ColumnNear(v,k);int x=(int)Math.Floor(c.X/8),z=(int)Math.Floor(c.Z/8);float d=Vector2.Distance(new Vector2(c.X,c.Z),new Vector2(5,-9));
+                Check(NativeFallenRules.Column(x,z,777)&&Math.Abs(c.X-(x*8+4))<1e-3f&&Math.Abs(c.Z-(z*8+4))<1e-3f&&d>=last-1e-3f&&seen.Add(c),"column "+k+" is a falling column, the next nearest");last=d;
+            }
+            for(int lane=0;lane<8;lane++)
+            {
+                var c=NativeFallenBossCues.RainAt(v,lane);float angle=777*37+lane*45+(lane%2)*19;var dd=NativeFallenRules.Dir(angle);var o=new Vector2(1,1.5f)+new Vector2(dd.Y,-dd.X)*(lane-3.5f)*7;var w=new Vector2(c.X,c.Z)-o;
+                Check(Math.Abs(w.X*dd.Y-w.Y*dd.X)<1e-3f,"a rain blade on lane "+lane);
+            }
+        }
+        // The wiring.
+        var scenery=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");var chain=R("Assets/ChipArena/Runtime/NativeBackroomsBossPresentation.cs");
+        Check(scenery.Contains("FallenShown(f);FallenCues(arena,f,now,live,p);")&&scenery.Contains("fbLast=-1;FallenCueReset();")&&scenery.Contains("FallenStepCue(fbFootL.position,now);")&&scenery.Contains("FallenStepCue(fbFootR.position,now);"),"the cues after the pose, reset with the stage, a footfall each time a sole touches");
+        Check(chain.Contains("DeepEndBossCues(arena,menu);FallenBossCues(arena,menu);")&&audio.Contains("Cue(NativeFallenBossCues.Keys[c.Key],null,place,c.Gain);"),"NativeAudio plays them through the bank, no stand-in");
+        Check(audio.Contains("if(a.Pve.Holding&&a.Pve.Cinematic==\"intro\")")&&audio.Contains("float p=a.Pve.HoldDuration-a.Pve.HoldLeft;"),"the cutscene's cues on the intro hold's clock");
+        return moments;
     }
     // ---- Live motion (Core NativeFallenLiveMotion; owner 2026-11-06: "a lot of feet sliding ... needs better attack animations") ----
     private static NativeVisualMotionClips.Library Bank(params string[] missing)
