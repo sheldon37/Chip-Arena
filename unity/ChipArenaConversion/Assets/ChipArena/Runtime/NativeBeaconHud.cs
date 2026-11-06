@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using U=ChipArena.UnityConversion.NativeUi;
@@ -26,10 +28,10 @@ namespace ChipArena.UnityConversion
                     float k=half/(s.z*tan)/U.S,text=NativeBeaconRules.LabelText*k;if(text<3)continue;
                     Vector3 delta=centre-eye;if(physics.Raycast(eye,delta.normalized,out _,delta.magnitude-.08f,NativeArena.WorldMask,QueryTriggerInteraction.Ignore))continue;
                     float w=NativeBeaconRules.LabelWidth*k,h=NativeBeaconRules.LabelHeight*k,x=s.x/U.S-w*.5f,y=(Screen.height-s.y)/U.S-h*.5f;if(x>U.W||x+w<0||y>U.H||y+h<0)continue;
-                    bool self=NativeBeaconView.Self(row);
+                    bool self=NativeBeaconView.Self(row);var feather=arena.ZoneBoss?.fallen?.hush.FirstOrDefault(h=>h.id==p.Seat.id);if(feather!=null)self=feather.lives>0;
                     // The kit's glow (eight halo copies) stacks at the glyph edge where the canvas blur (.12 h) spreads thin, so it runs at half the source alpha.
                     Color glow=U.Hex(self?NativeBeaconRules.SelfGlow:NativeBeaconRules.DownGlow,NativeBeaconRules.GlowAlpha*.5f);
-                    string sub=self?BeaconSub(-1-NativeBeaconRules.ClockSeconds(row.SelfAt-t)):BeaconSub(NativePveRules.RevivePrice(row.Revived));float subSize=NativeBeaconRules.LabelSub*k;
+                    string sub=self?BeaconSub(-1-NativeBeaconRules.ClockSeconds(row.SelfAt-t)):BeaconSub(NativePveRules.RevivePrice(row.Revived));if(feather!=null)sub=self?Math.Max(0,(int)Math.Ceiling(feather.respawnAt-t))+"s":feather.reviver>=0?"HOLD · 1 LIFE · "+Math.Max(0,(int)Math.Ceiling((NativeFallenRules.Chip(arena.ZoneBoss.fallen,"unforgiven")?6:4)-(t-feather.reviveAt)))+"s":"HOLD · COSTS 1 LIFE";float subSize=NativeBeaconRules.LabelSub*k;
                     U.Text(new Rect(x-w,y+h*.36f-text,w*3,text*2),self?NativeBeaconRules.SelfLabel:NativeBeaconRules.DownLabel,text,U.Hex(self?NativeBeaconRules.SelfText:NativeBeaconRules.DownText),TextAnchor.MiddleCenter,bold:true,glow:glow);
                     U.Text(new Rect(x-w,y+h*.76f-subSize,w*3,subSize*2),sub,subSize,U.Hex(self?NativeBeaconRules.SelfSub:NativeBeaconRules.DownSub),TextAnchor.MiddleCenter,bold:true,glow:glow);
                     continue;

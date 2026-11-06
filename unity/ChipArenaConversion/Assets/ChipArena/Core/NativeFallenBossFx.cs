@@ -32,7 +32,7 @@ namespace ChipArena.UnityConversion
         public readonly float[] Rings=new float[MaxRings*4],Waves=new float[MaxWaves*4],Pools=new float[MaxPools*4];public int RingCount,WaveCount,PoolCount;
         public float Dim,Strike,Shake,White,KeyBoost;public int Motes;
         public readonly FallenFxQuads Quads=new FallenFxQuads(6000);public readonly FallenFxProp[] Props=new FallenFxProp[MaxProps];public int PropCount;
-        private Vector3 eye,right,up;
+        private Vector3 eye,right,up;private bool live;
         private static float C(float x)=>x<0?0:x>1?1:x;
         private static float Smooth(float x){x=C(x);return x*x*(3-2*x);}
         private static float EaseOut(float x){x=C(x);return 1-(1-x)*(1-x)*(1-x);}
@@ -98,11 +98,11 @@ namespace ChipArena.UnityConversion
         // ---- the build ----
         public void Build(FallenBossFrame f,Vector3 eyePos,Vector3 eyeRight,Vector3 eyeUp,NativeFallenSong song,bool reduced)
         {
-            eye=eyePos;right=eyeRight;up=eyeUp;RingCount=WaveCount=PoolCount=PropCount=0;Quads.Clear();Dim=1;Strike=0;Shake=0;White=0;KeyBoost=0;float p=f.P;
+            live=f.Live!=null;eye=eyePos;right=eyeRight;up=eyeUp;RingCount=WaveCount=PoolCount=PropCount=0;Quads.Clear();Dim=1;Strike=0;Shake=0;White=0;KeyBoost=0;float p=f.P;
             Motes=f.Phase==1?260:f.Phase==2?420:f.Phase==3?620:900;if(f.Kind==NativeFallenBossPreview.KindCutscene)Motes=p<NativeFallenBossPreview.RiseAt?60:180;
             if(f.Kind==NativeFallenBossPreview.KindChips)return;
             // The pilots' steps (stand-ins for now: the rules' pilots step the same way).
-            for(int i=0;i<NativeFallenPilots.Count;i++)
+            for(int i=0;i<(f.Live==null?NativeFallenPilots.Count:0);i++)
             {
                 if(!NativeFallenPilots.Shown(i,p))continue;bool walk=NativeFallenPilots.Walking(p);float every=walk?NativeFallenPilots.WalkStep:NativeFallenPilots.StepEvery;float now=(float)Math.Floor(p/every)*every;
                 for(int k=0;k<5;k++){float t=now-k*every;if(!NativeFallenPilots.Shown(i,t)||walk!=NativeFallenPilots.Walking(t))break;var q=NativeFallenPilots.At(i,t);float side=(k+(int)(now/every))%2==0?.22f:-.22f;Step(q.X+side,q.Z,p-t,walk?.5f:.26f,1.9f);}
@@ -111,9 +111,8 @@ namespace ChipArena.UnityConversion
             if(song!=null){float slam=song.LastSlam(f.SongClip);if(!float.IsNaN(slam))Cross(f.Boss,f.SongClip-slam,44,.85f,2.6f);}
             if(f.Kind==NativeFallenBossPreview.KindCutscene)Cutscene(f);
             if(f.Kind==NativeFallenBossPreview.KindDeath)Death(f);
-            foreach(var a in NativeFallenBossPreview.Acts){if(p<a.At-.2f||p>a.End+3)continue;Move(a,f,p);}
-            GlideWake(p);
-            AddsOf(f,p);
+            foreach(var a in f.Actions??NativeFallenBossPreview.Acts){if(p<a.At-.2f||p>a.End+3)continue;Move(a,f,p);}
+            if(f.Live==null){GlideWake(p);AddsOf(f,p);}else{if(NativeFallenRules.Chip(f.Live,"black-water"))Dim*=.75f;foreach(var h in f.Live.hush){float k=C((p-h.hushAt)/NativeFallenRules.HushSeconds(f.Live,f.Phase,(float)Math.Sqrt(h.x*h.x+h.z*h.z)));Circle(new Vector3(h.x,0,h.z),3,.08f,k*k,2);}if(f.LiveAdds!=null)foreach(var a in f.LiveAdds)Prop(a.Id,a.At,a.Turn,a.Scale,a.Glow);}
         }
         private void GlideWake(float p)
         {
@@ -163,14 +162,15 @@ namespace ChipArena.UnityConversion
         }
         private void Move(NativeFallenBossPreview.Act a,FallenBossFrame f,float p)
         {
-            float wind=p-a.At,hit=p-a.Hit,span=Math.Max(.01f,a.Hit-a.At);float up01=C(wind/span);var from=a.From;var dir=YawDir(a.Aim);
+            float reach=NativeFallenRules.Chip(f.Live,"long-reach")?1.2f:1;float wind=p-a.At,hit=p-a.Hit,span=Math.Max(.01f,a.Hit-a.At);float up01=C(wind/span);var from=a.From;var dir=YawDir(a.Aim);
             switch(a.Id)
             {
+                case "cantor-beam":case "throne-beam":Beam(a.From,a.To,a.Id=="cantor-beam"?.07f:.16f,.65f,2.2f);break;
                 case "cleave":
                     if(hit>=0)
                     {
                         // The swing's fan on the water, and water thrown along it.
-                        float k=1-C(hit/.42f);var c=new Vector3(f.Boss.X,0,f.Boss.Z);FloorArc(c,7.2f+hit*5,a.Aim,140,.26f,k,2.2f,28);
+                        float k=1-C(hit/.42f);var c=new Vector3(f.Boss.X,0,f.Boss.Z);FloorArc(c,7.2f*reach+hit*5,a.Aim,140,.26f,k,2.2f,28);
                         Step(c.X+dir.X*6,c.Z+dir.Z*6,hit,1.2f);if(hit<1)for(int i=0;i<5;i++){float y=a.Aim+(i-2)*26;Burst(c+YawDir(y)*7,hit-i*.02f,a.Seed+i*7,reducedCount(12),4,5.5f,.035f,2.4f);}
                     }
                     break;
@@ -199,7 +199,7 @@ namespace ChipArena.UnityConversion
                     }
                     else
                     {
-                        float r=34*hit+3;if(r<90)Crescent(from,r,a.Aim,hit,a.Seed);
+                        float r=34*hit+3;if(r<(live?165:90))Crescent(from,r,a.Aim,hit,a.Seed);
                     }
                     break;
                 case "descent":
@@ -221,7 +221,7 @@ namespace ChipArena.UnityConversion
                 case "verdict":Crack(a,p,hit,up01,a.Aim,1);break;
                 case "last":Crack(a,p,hit,up01,a.Aim,1);Crack(a,p,hit,up01,a.Aim+60,2);Crack(a,p,hit,up01,a.Aim-60,3);break;
                 case "sweep":
-                    if(hit<0){FloorArc(from,28,a.Aim,360*up01,.12f,up01,1.8f,64);}
+                    if(hit<0){FloorArc(from,28*reach,a.Aim,360*up01,.12f,up01,1.8f,64);}
                     else if(hit<1.4f)
                     {
                         // Both bare wings round the full circle: a blade of air with a fading wedge behind each.
@@ -229,14 +229,14 @@ namespace ChipArena.UnityConversion
                         for(int side=0;side<2;side++)for(int w=0;w<14;w++)
                         {
                             float y0=a.Aim+side*180+turn-w*7,y1=y0-7,alpha=k*(1-w/14f)*.5f;var a0=YawDir(y0);var a1=YawDir(y1);var lift=new Vector3(0,2.6f,0);
-                            Quads.Add(from+a0*1.2f+lift,from+a1*1.2f+lift,from+a1*28+lift,from+a0*28+lift,alpha,1,FallenFxQuads.Wake);if(w==0){Beam(from+a0*1.2f+lift,from+a0*28+lift,.3f,k,2.8f);FloorLine(from+a0*1.2f,from+a0*28,.5f,k,1.6f);}
+                            Quads.Add(from+a0*1.2f+lift,from+a1*1.2f+lift,from+a1*(28*reach)+lift,from+a0*(28*reach)+lift,alpha,1,FallenFxQuads.Wake);if(w==0){Beam(from+a0*1.2f+lift,from+a0*(28*reach)+lift,.3f,k,2.8f);FloorLine(from+a0*1.2f,from+a0*(28*reach),.5f,k,1.6f);}
                         }
-                        Cross(from,hit-.2f,30,.9f,2);if(hit>.3f)Circle(from,28,.3f*k,k,2.2f,64);
+                        Cross(from,hit-.2f,30,.9f,2);if(hit>.3f)Circle(from,28*reach,.3f*k,k,2.2f,64);
                         Burst(from+YawDir(a.Aim+turn)*26,hit,a.Seed,reducedCount(30),5,5,.04f,2);
                     }
                     break;
                 case "eclipse":Eclipse(a,f,p,hit,up01);break;
-                case "fall":FallOfLight(a,p,hit,up01);break;
+                case "fall":if(f.Live==null)FallOfLight(a,p,hit,up01);else LiveFall(a,p,hit,up01);break;
                 case "choir":case "penance":case "thrones":
                     if(hit<0&&a.Id!="thrones"){Circle(from,3+up01*2,.1f,up01,2);}
                     if(hit>=0&&hit<1){Cross(from,hit,20,.9f,1.6f);}
@@ -283,7 +283,7 @@ namespace ChipArena.UnityConversion
             var through=a.To;var d=YawDir(yaw);var n=new Vector3(d.Z,0,-d.X);const int segs=44;const float half=84;
             float show=hit<0?C(up01*1.2f):1;float grow=hit<0?EaseOut(up01*1.6f):1;float w=hit<0?.1f+1.0f*up01*up01*up01:(1.5f*(1-C(hit/.5f))+.14f*(1-C(hit/1.9f)));float k=hit<0?(.45f+.55f*up01*up01):1-C((hit-1)/1);
             if(k<=0)return;
-            Vector3 Point(int i){float u=i/(float)segs*2-1;float j=(Hash(i*1.7f+a.Seed*3+which*11)-.5f)*(i==0||i==segs?0:3.2f);return through+d*(u*half)+n*j;}
+            Vector3 Point(int i){float u=i/(float)segs*2-1;float j=(Hash(i*1.7f+a.Seed*3+which*11)-.5f)*(live||i==0||i==segs?0:3.2f);return through+d*(u*half)+n*j;}
             for(int i=0;i<segs;i++)
             {
                 float u0=Math.Abs(i/(float)segs*2-1),u1=Math.Abs((i+1f)/segs*2-1);if(Math.Min(u0,u1)>grow)continue;var q0=Point(i);var q1=Point(i+1);
@@ -296,13 +296,23 @@ namespace ChipArena.UnityConversion
         private void Eclipse(NativeFallenBossPreview.Act a,FallenBossFrame f,float p,float hit,float up01)
         {
             float dark=hit<0?up01:1-C((hit-.9f)/.9f);Dim=Math.Min(Dim,1-.96f*dark);KeyBoost=-dark*.86f;
-            for(int i=0;i<NativeFallenPilots.Count;i++)
+            if(f.Live!=null){foreach(var pool in f.Live.pools)Pool(pool.x,pool.z,6,dark);}
+            for(int i=0;i<(f.Live==null?NativeFallenPilots.Count:0);i++)
             {
                 var at=NativeFallenPilots.At(i,a.Hit);float o=Hash(a.Seed+i)*6.28f;Pool(at.X+(float)Math.Cos(o)*5,at.Z+(float)Math.Sin(o)*5,6,dark);
             }
             if(hit>=0&&hit<.9f){Strike=Math.Max(Strike,.6f*(1-C(hit/.7f)));Shake=Math.Max(Shake,1-C(hit/.5f));Cross(a.From,hit,40,1.6f,1.6f);}
         }
         // Columns of white falling on the song's bars, a square lit on the water a bar ahead, a route left free.
+        private void LiveFall(NativeFallenBossPreview.Act a,float p,float hit,float up01)
+        {
+            for(int x=-10;x<=10;x++)for(int z=-10;z<=10;z++)
+            {
+                if(!NativeFallenRules.Column(x,z,a.Seed))continue;var c=new Vector3(x*8+4,0,z*8+4);var u=new Vector3(3.68f,.03f,0);var v=new Vector3(0,.03f,3.68f);
+                if(hit<0){Quads.Add(c-u-v,c+u-v,c+u+v,c-u+v,up01*.6f,.7f,FallenFxQuads.Soft);FloorLine(c-u-v,c+u-v,.06f,up01,1.3f);FloorLine(c+u-v,c+u+v,.06f,up01,1.3f);FloorLine(c+u+v,c-u+v,.06f,up01,1.3f);FloorLine(c-u+v,c-u-v,.06f,up01,1.3f);}
+                else if(hit<1){float k=1-C(hit);Sheet(c-u-v,c+u-v,0,60,k,.9f,FallenFxQuads.Column);Sheet(c-u+v,c+u+v,0,60,k,.9f,FallenFxQuads.Column);}
+            }
+        }
         private void FallOfLight(NativeFallenBossPreview.Act a,float p,float hit,float up01)
         {
             float bar=NativeFallenSong.Bar;int now=(int)Math.Floor(hit/bar);const float cell=8;

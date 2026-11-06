@@ -117,6 +117,7 @@ namespace ChipArena.UnityConversion
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
             if(menu)Track("music/menu-afterglow",Menu*MenuTrackGain);
+            else if(arena.ZoneBoss?.fallen!=null){var fs=arena.FallenSongClock();Track(NativeFallenSong.Id,Music*.55f,false,fs.clip,arena,fs.epoch);}
             else if(arena.BossSongTime>=0)
             {
                 // The zone's own boss track when its file is installed (Core/NativeZoneMusic), else the Siren's song on its intro/loop map.
@@ -133,7 +134,7 @@ namespace ChipArena.UnityConversion
                 }
             }
             // A DEV boss preview plays its song on the preview's own clock.
-            else if(BackroomsBossPreviewSong(out string previewSong,out double previewClip,out double previewAt))Track(previewSong,Music*.55f,previewClip<0,Math.Max(0,previewClip),arena,previewAt);
+            else if(BackroomsBossPreviewSong(arena,out string previewSong,out double previewClip,out double previewAt))Track(previewSong,Music*.55f,previewClip<0,Math.Max(0,previewClip),arena,previewAt);
             // The DEV hazard kit gallery's music lock (Sandbox only): the boss song from the gallery's own clock, for its beat.
             else if(!double.IsNaN(NativeHazardKitWorld.GallerySongAt(arena)))Track("music/black-siren-protocol",Music*.55f,false,arena.BossTrack.Looped(arena.Time-NativeHazardKitWorld.GallerySongAt(arena)),arena,NativeHazardKitWorld.GallerySongAt(arena));
             else if(NativeExpeditionCityKit.Active(arena.MapId))Track("music/safe-hub-under-siege",Music*.55f);

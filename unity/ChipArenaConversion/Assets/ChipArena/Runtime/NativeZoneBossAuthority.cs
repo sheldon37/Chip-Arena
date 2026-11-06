@@ -52,6 +52,7 @@ namespace ChipArena.UnityConversion
         }
         private void ConfigureZoneBossBody(NativeMinion m)
         {
+            if(m.Kind==NativeFallenBoss.Archetype){m.Collider.center=new Vector3(0,1.75f,0);m.Collider.radius=.65f;m.Collider.height=3.5f;m.Collider.enabled=true;return;}
             if(NativeBackroomsBossRules.Is(m.Kind)){BackroomBody(m);return;}
             if(m.Body.transform.Find("Boss hull")!=null)return;
             void Part(string name,Vector3 center,Vector3 size,bool box=true)
@@ -316,6 +317,7 @@ namespace ChipArena.UnityConversion
         }
         private float HitZoneBoss(NativeMinion m,NativePilot source,float damage,Vector3? point,string kind)
         {
+            if(ZoneBoss?.fallen!=null)return HitFallenBoss(m,source,damage,point,kind);
             if(ZoneBoss==null||m.Hp<=0||Pve.Holding)return 0;if(PilotMutator(source,"glass-cannon"))damage*=3;var z=ZoneBoss;var local=BossLocal(point??m.Body.position);float multiplier=1;bool crit=false;
             if(NativeBackroomsBossRules.Is(z.archetype)){multiplier=BackroomHitScale(m,source,damage,point);if(multiplier<=0)return 0;}
             else if(z.archetype==NativeZoneBossRules.Station)

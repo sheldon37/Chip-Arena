@@ -40,6 +40,7 @@ namespace ChipArena.UnityConversion
             ExpeditionAreaLayout area=null;
             if(boss=="hum"){Backrooms=NativeBackroomsGenerator.Build(NativeBossBattle.Seed,true);Content=content.WithGeneratedMap(Backrooms.Map);area=NativeBackroomsExpedition.Area(Backrooms);}
             if(boss=="deepend"){Poolrooms=NativePoolroomsGenerator.Build(NativeBossBattle.Seed,true);Content=content.WithGeneratedMap(Poolrooms.Map);area=NativePoolroomsExpedition.Area(Poolrooms);}
+            if(boss=="noctiel"){Content=content.WithGeneratedMap(NativeFallenRules.Arena());area=NativeFallenRules.Layout();}
             if(area!=null)Layout.areas=System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Concat(System.Linq.Enumerable.Where(Layout.areas,a=>a.id!=area.id),new[]{area}));
         }
         public static ExpeditionRunBundle BossBattle(string boss,ConversionContent content,string authored)=>new ExpeditionRunBundle(boss,content,authored);

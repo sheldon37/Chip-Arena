@@ -199,3 +199,11 @@ Impact on rules: none until bound. All hit timing comes from the move table, and
 - Real pilots' reflections in the water: the stand-ins have them through a mirrored second body, which is too dear for every real pilot without a look at the cost.
 - Sounds: the song plays; the Slash, the moves and the adds have no sound of their own.
 - The owner's ear check of the section timings in section 6.
+
+## 15. Playable standalone encounter (Astra, 2026-11-06)
+
+NOCTIEL's Boss Battle entry now runs the real encounter in Still Water for 1–4 humans (no bots). See the newest DEV_LOG entry and task PR for verification/publication status. Section 14 remains the historical preview receipt. The original preview is retained.
+
+Authority: `Runtime/NativeFallenAuthority.cs`; deterministic geometry/modifiers and replicated record: `Core/NativeFallenRules.cs`; presentation adapter: `ArenaPresentation.FallenBossViewOf` in `Runtime/NativeFallenBinding.cs`. Phase drafts are real PvE picks; lives use a held interact input. Fall of Light uses one seeded volley per cast with a minimum 2.4-second warning.
+
+Remaining design integration: Expedition end-of-run destination choice and finale ledger; intro seen/skip votes; rendered human co-op acceptance and Claude's polish/sounds/reflections. This standalone fight does not change rolled Expedition runs or their compatibility digest.

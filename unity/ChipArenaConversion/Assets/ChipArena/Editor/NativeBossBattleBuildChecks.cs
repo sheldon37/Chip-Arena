@@ -8,7 +8,7 @@ namespace ChipArena.UnityConversion.Editor
         private static void CheckBossBattle(ConversionContent content)
         {
             string json=Resources.Load<TextAsset>(NativeExpeditionLayout.ResourceName).text;
-            foreach(string id in new[]{"station","converter","hum","deepend"})
+            foreach(string id in new[]{"station","converter","hum","deepend","noctiel"})
             {
                 var bundle=ExpeditionRunBundle.BossBattle(id,content,json);
                 foreach(int party in new[]{1,4})foreach(bool wipe in new[]{false,true})
@@ -21,6 +21,7 @@ namespace ChipArena.UnityConversion.Editor
                     {
                         if(!match.Start())throw new Exception("Direct boss start refused");
                         arena.ConfigureBossBattle(id,bundle,JsonUtility.FromJson<NativePveContent>(Resources.Load<TextAsset>("PveContent").text));
+                        if(id=="noctiel"){arena.ValidateFallenBattle(frame=>{using(var guest=new NativeArena(bundle.Content,new NativeMatch(bundle.Content),frame.map){Replica=true,LocalId=party,GeneratedRun=bundle}){guest.ApplyFrame(frame,party);if(guest.ZoneBoss?.fallen?.hush.Length!=party)throw new Exception("NOCTIEL guest lives missing");}},wipe);continue;}
                         if(wipe){arena.ValidateBossBattleWipe();continue;}
                         arena.ValidateBossBattle(frame=>
                         {

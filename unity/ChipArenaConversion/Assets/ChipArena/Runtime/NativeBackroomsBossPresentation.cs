@@ -14,6 +14,7 @@ namespace ChipArena.UnityConversion
         private bool BackroomsBossPrewarm(NativeArena arena)
         {
             string boss=arena==null?null:NativeZoneBossRules.Archetype(arena.MapId);
+            if(boss==NativeFallenBoss.Archetype){FallenBodyBuild();FallenStageBuild();FallenSongRead();FallenBodyHide();return true;}
             if(boss==NativeHumBoss.Archetype){if(HumBankEnsure()){HumBodyEnsure();HumBodyHide();}return true;}
             if(boss==NativeDeepEndBoss.Archetype){DeepEndBodyBuild();DeepEndBodyHide();return true;}
             return false;
@@ -65,9 +66,10 @@ namespace ChipArena.UnityConversion
     {
         private void BackroomsBossCues(NativeArena arena,bool menu){HumBossCues(arena,menu);DeepEndBossCues(arena,menu);}
         /// <summary>A DEV boss preview's song and where it is, on the preview's own clock, so its intro can be judged with its music: the edit and the loop the live fight plays. False with no preview, or its file not installed.</summary>
-        private bool BackroomsBossPreviewSong(out string id,out double clip,out double at)
+        private bool BackroomsBossPreviewSong(NativeArena arena,out string id,out double clip,out double at)
         {
             id=null;clip=0;at=0;double start,shown,loop;
+            if(arena?.ZoneBoss?.fallen!=null){var fallenSong=arena.FallenSongClock();id=NativeFallenSong.Id;clip=fallenSong.clip;at=fallenSong.epoch;return Clip(id)!=null;}
             if(NativeFallenBossPreview.On){if(double.IsNaN(NativeFallenBossPreview.Start)||Clip(NativeFallenSong.Id)==null)return false;var sf=NativeFallenBossPreview.Shown;id=NativeFallenSong.Id;clip=sf.SongClip;at=NativeFallenBossPreview.Start+sf.Section+Math.Floor((NativeFallenBossPreview.ShownClock-NativeFallenBossPreview.Start)/NativeFallenBossPreview.Loop)*1000;return true;}
             if(NativeHumBossPreview.On){id=NativeZoneMusic.Level0Boss;start=NativeHumBossPreview.Start;shown=NativeHumBossPreview.ShownClock;loop=NativeHumBossPreview.Loop;}
             else if(NativeDeepEndBossPreview.On){id=NativeZoneMusic.PoolroomsBoss;start=NativeDeepEndBossPreview.Start;shown=NativeDeepEndBossPreview.ShownClock;loop=NativeDeepEndBossPreview.Loop;}
