@@ -196,6 +196,7 @@ namespace ChipArena.UnityConversion.Editor
             CheckExpeditionCohortPlacement(data);
             CheckDeploymentShader();
             CheckExpeditionActivation(data);
+            CheckBossBattle(data);
             CheckLocomotion(data);
             var active=SceneManager.GetActiveScene();Vector3 gravity=Physics.gravity;int pads=0;
             try

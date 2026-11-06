@@ -100,7 +100,7 @@ namespace ChipArena.UnityConversion
             SendServer(new NativeNetMessage{type="expedition-area-ready",expeditionAreaReady=expeditionLoadedTicket});
         }
         private void ResetExpeditionNetwork()
-        {expeditionLoading.Reset();expeditionLoadReports.Clear();expeditionProgressTicket=null;expeditionLastProgress=-1;expeditionLastProgressAt=-1000;expeditionNextLoadBroadcast=0;DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
+        {ResetBossBattleContent();expeditionLoading.Reset();expeditionLoadReports.Clear();expeditionProgressTicket=null;expeditionLastProgress=-1;expeditionLastProgressAt=-1000;expeditionNextLoadBroadcast=0;DisposeSplitAreas();expeditionReplicaGeneration=-1;expeditionReplicaLayout=null;expeditionDirector=null;expeditionLoadedTicket=null;expeditionNextReady=0;expeditionSession=null;expeditionLocal=null;expeditionRouter=null;expeditionReceiver=null;expeditionGuest=null;ExpeditionView=null;expeditionStamp=null;}
         private void ExpeditionNetworkTick()
         {
             try{ExpeditionNetworkStep();}

@@ -109,6 +109,9 @@ Controls:
 
 ## Boss Battle direct starts (handoff to Astra)
 
+**Implemented 2026-11-06 (Astra):** `station`, `converter`, `hum`, `deepend` are Direct. The runtime creates the selected instance arena without a run/station, uses run-start party scaling and normal arrival/phase authority, and returns to this screen on victory/wipe. Offline Restart repeats the selected fight. These four support 1–4 humans and **no party bots**; Siren retains bots. `NativeRoomOptions.boss` carries the host pick with missing/empty = `siren`; guests already read it. Claude: update bot chips/controls and general copy. See DEV_LOG/task PR for verification and delivery status. The original handoff below is historical.
+
+
 The four zone bosses' rules are live, but they only spawn inside a run: `NativeExpeditionM1Arena.SpawnExpeditionBoss`, after
 the area's quota (or the Backrooms exit), in an expedition session's area. Starting one from this screen needs a
 simulation entry, which is Astra's side of the role split. The screen is ready for it:

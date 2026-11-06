@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     // Boss Battle in place of Wave Defense; Core NativeExpeditionCatalogue and NativeExpeditionsMenu, Runtime
     // NativeExpeditionsMenu): the run's entry still feeds the station; the roster reads every boss from its own table and says
     // honestly what can start; the launch gates; the sample spin; every action still reachable through the same calls; the
-    // layout fits from 1280x720 at a 1.5 interface scale to 3440x1440 and 4K; a guest is read-only; no room field or message.
+    // layout fits from 1280x720 at a 1.5 interface scale to 3440x1440 and 4K; a guest is read-only; a backward-compatible boss pick.
     internal static class ExpeditionsMenuChecks
     {
         private static int count;
@@ -22,7 +22,7 @@ namespace ChipArena.UnityConversion
         public static void Run(string root)
         {
             count=0;Catalogue(root);Roster();Emblems();Gates();Spin();Fit();Sources(root);
-            Console.WriteLine("PASS Expeditions menu: "+count+" checks (the run's entry, boss roster and emblems, launch gates, sample spin, fit 720p@1.5-3440x1440-4K, old actions reachable, guest read-only, no room fields)");
+            Console.WriteLine("PASS Expeditions menu: "+count+" checks (the run's entry, boss roster and emblems, launch gates, sample spin, fit 720p@1.5-3440x1440-4K, old actions reachable, guest read-only, replicated boss pick)");
         }
 
         private static void Catalogue(string root)
@@ -65,10 +65,10 @@ namespace ChipArena.UnityConversion
                 Check(!string.IsNullOrWhiteSpace(x.Blurb)&&x.Blurb.Length<=130,n+": a blurb that fits two lines");
                 Check(x.Moves!=null&&x.Moves.Length>=4&&x.Moves.All(m=>!string.IsNullOrWhiteSpace(m))&&x.Phases>=3&&x.Phases<=4,n+": its moves and phases");
                 Check((x.Fight==K.BossFight.Direct)==(K.FightReason(x)==null),n+": a reason exactly when it cannot start here");
-                if(x.Fight==K.BossFight.InRun)
+                if(x.Destination!=null)
                 {
                     bool known=false;for(int i=0;i<D.DestinationCount;i++)if(D.DestinationAt(i).Id==x.Destination)known=true;
-                    Check(known&&ReferenceEquals(K.BossOf(x.Destination),x)&&K.FightReason(x).Contains(K.DestinationName(x.Destination)),n+": fought in runs at a destination the Instance Machine rolls ("+x.Destination+")");
+                    Check(known&&ReferenceEquals(K.BossOf(x.Destination),x)&&(x.Fight==K.BossFight.Direct||K.FightReason(x).Contains(K.DestinationName(x.Destination))),n+": fought in runs at a destination the Instance Machine rolls ("+x.Destination+")");
                 }
                 else Check(x.Destination==null,n+": not an area's boss");
             }
@@ -78,8 +78,8 @@ namespace ChipArena.UnityConversion
             Check(b[3].Moves.SequenceEqual(NativeHumBoss.Moves.Select(m=>m.Title))&&b[3].Line==NativeHumBoss.Card.Line&&b[3].Destination==NativeBackroomsGenerator.AreaId,"THE HUM from its table and card");
             Check(b[4].Moves.SequenceEqual(NativeDeepEndBoss.Moves.Select(m=>m.Title))&&b[4].Line==NativeDeepEndBoss.Card.Line&&b[4].Destination==NativePoolroomsGenerator.AreaId,"THE DEEP END from its table and card");
             Check(b[5].Moves.SequenceEqual(NativeFallenBoss.Moves.Select(m=>m.Title))&&b[5].Name==NativeFallenBoss.Name&&b[5].Fight==K.BossFight.Preview,"NOCTIEL from its table, in development");
-            // Only the Siren starts from here today; the room's boss (a guest's view) is her.
-            Check(b.Count(x=>x.Fight==K.BossFight.Direct)==1&&b[K.DefaultBoss].Name=="THE SIREN"&&K.DefaultBoss==0,"the Siren is the one direct fight and the room's");
+            // Four zone bosses are direct; legacy rooms still default to the Siren.
+            Check(b.Count(x=>x.Fight==K.BossFight.Direct)==5&&b[K.DefaultBoss].Name=="THE SIREN"&&K.DefaultBoss==0,"five direct fights, Siren is the legacy default");
             Check(K.WrapBoss(-1)==b.Length-1&&K.WrapBoss(b.Length)==0&&ReferenceEquals(K.BossAt(-1),b[b.Length-1]),"the roster wraps both ways");
             Check(K.FightLabel(K.BossFight.Direct)=="FIGHT NOW"&&K.FightShort(K.BossFight.InRun)=="IN RUNS"&&K.FightLabel(K.BossFight.Preview)=="IN DEVELOPMENT","fight labels");
             Check(ReferenceEquals(K.BossOf("exp-ward-zero"),b[0])&&K.BossOf("nowhere")==null,"Ward Zero's boss is the Siren");
@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
                 a=R(X.Mode.Boss,siren,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.BossFight&&a.Label=="FIGHT THE SIREN"&&a.Detail=="STRAIGHT TO THE BOSS · UP TO 4",seat+": the Siren's fight starts straight away");
                 Check(!R(X.Mode.Boss,siren,seat,busy:true).Enabled,seat+": the boss fight waits while a connection is open (StartMatch refuses then)");
                 foreach(var b in K.Bosses.Where(b=>b.Fight!=K.BossFight.Direct)){a=R(X.Mode.Boss,b,seat);Check(!a.Enabled&&a.Kind==X.LaunchKind.None&&a.Reason==K.FightReason(b)&&a.Label=="FIGHT "+b.Name,seat+": "+b.Name+" cannot start here and says why");}
-                Check(R(X.Mode.Boss,station,seat).Detail=="FOUGHT IN RUNS"&&R(X.Mode.Boss,noctiel,seat).Detail=="IN DEVELOPMENT",seat+": the details say where");
+                Check(R(X.Mode.Boss,station,seat).Enabled&&R(X.Mode.Boss,noctiel,seat).Detail=="IN DEVELOPMENT",seat+": the details say where");
             }
             Check(!R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Enabled&&R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Reason==X.GuestsWaiting&&R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Kind==X.LaunchKind.BossFight,"the host's boss fight waits for every guest to ready up");
             Check(!R(X.Mode.Expedition,siren,X.Seat.Host,ready:false).Enabled&&R(X.Mode.Expedition,siren,X.Seat.Host,ready:false).Reason==X.GuestsWaiting,"the host's run waits for every guest");
@@ -225,17 +225,17 @@ namespace ChipArena.UnityConversion
                 ["Go(MenuScreen.Home)"]="close",
             };
             foreach(var kv in calls)Check(exp.Contains(kv.Key),"reachable: "+kv.Value+" ("+kv.Key+")");
-            Check(exp.Contains("case X.LaunchKind.BossFight:ExpStartBoss(K.BossAt(expBoss));break;")&&Regex.IsMatch(exp,@"case ""siren"":ApplyRule\(RoomOpt\.SkipWaves,1,0\);prefs\.skipWaves=true;prefs\.expedition=false;prefs\.pve=true;sandboxWanted=false;RequestStage\(StageLoadKind\.Boss,StartMatch\);"),"the Siren's fight starts as Start Boss Fight did, at the boss");
+            Check(exp.Contains("case X.LaunchKind.BossFight:ExpStartBoss(K.BossAt(expBoss));break;")&&Regex.IsMatch(exp,@"case ""siren"":SelectBossBattle\(""siren""\);ApplyRule\(RoomOpt\.SkipWaves,1,0\);prefs\.skipWaves=true;prefs\.expedition=false;prefs\.pve=true;sandboxWanted=false;RequestStage\(StageLoadKind\.Boss,StartMatch\);"),"the Siren's fight starts as Start Boss Fight did, at the boss");
             {int s=exp.IndexOf("private void ExpStartBoss(",StringComparison.Ordinal),e=s<0?-1:exp.IndexOf("\n        }",s,StringComparison.Ordinal);string body=s>=0&&e>s?exp.Substring(s,e-s):"";
              foreach(var b in K.Bosses.Where(b=>b.Fight==K.BossFight.Direct))Check(body.Contains("case \""+b.Id+"\":"),b.Name+": a direct boss has its own start");Check(body.Contains("default:Notice("),"a boss without a start says so instead of starting another");}
             Check(exp.Contains("ApplyRule(RoomOpt.Versus,m==X.Mode.Expedition?2:1,0);if(m==X.Mode.Boss)ApplyRule(RoomOpt.SkipWaves,1,0);"),"a mode is the room's Versus option; Boss Battle carries the skip");
             Check(home.Contains("if(expDrawer&&(at==MenuScreen.Boss||at==MenuScreen.Lobby)){ExpToggleDrawer();return;}"),"Escape closes the loadout drawer first");
             // A guest is read-only: the shown mode and boss are the room's; turns, modes and bots need Editable.
-            Check(exp.Contains("if(seat==X.Seat.Guest){expMode=X.ModeOf(receivedOptions?.expedition==true);expBoss=K.DefaultBoss;}"),"a guest sees the room's mode and the boss a room fights");
+            Check(exp.Contains("if(seat==X.Seat.Guest){expMode=X.ModeOf(receivedOptions?.expedition==true);expBoss=NativeBossBattle.Index(receivedOptions?.boss);}"),"a guest sees the room's mode and the boss a room fights");
             Check(Regex.Matches(exp,@"if\(edit&&expMode==X\.Mode\.Boss\)ExpPickBoss").Count==2&&Regex.Matches(exp,@"if\(edit&&expMode==X\.Mode\.Boss&&Input\.GetKeyDown").Count==2&&exp.Contains("if(edit)ExpPickBoss(i,")&&exp.Contains("bool live=ExpLive(a)&&edit;float h=U.HoverAmount(9500+index")&&exp.Contains("ExpPartyCard(slot,party[i],i,ce,now,seat,edit&&i==newest,bots)")&&exp.Contains("bool canAdd=edit&&")&&exp.Contains("int n=K.BossCount;bool live=ExpLive(a)&&edit;"),"a guest's keys, mode tiles, roster and bot buttons do nothing");
             Check(exp.Contains("BeginRules(false,width);var o=rules;"),"the drawer's party rows go through BeginRules (read-only on a guest connection)");
             var fields=typeof(NativeRoomOptions).GetFields().Select(f=>f.Name).OrderBy(s=>s,StringComparer.Ordinal).ToArray();
-            Check(string.Join(",",fields)=="botDifficulty,botOptions,bothDraft,bots,choices,cooperative,expedition,friendlyFire,hostTeam,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams,training","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
+            Check(string.Join(",",fields)=="boss,botDifficulty,botOptions,bothDraft,bots,choices,cooperative,expedition,friendlyFire,hostTeam,map,mirrorWeapons,randomizeMap,rounds,selectionSeconds,sets,skipBotDrafts,skipPlayerIntros,skipWaves,stationary,teams,training","NativeRoomOptions keeps its fields ("+string.Join(",",fields)+")");
             Check(!exp.Contains("type=\"expedition")&&!Regex.IsMatch(exp,@"new NativeNetMessage\{type=""(?!profile"")"),"the screen sends no new message");
             // The roster's state and the sample are presentation: no randomness, no authority read.
             Check(!exp.Contains("Random")&&!exp.Contains("Expedition.Session")&&!exp.Contains("deploymentRoom"),"the screen rolls nothing and reads no run");

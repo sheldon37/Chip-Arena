@@ -20,6 +20,7 @@ namespace ChipArena.UnityConversion
         public void ReturnMainMenu()=>LeaveRoom();
         private void EndFlowTick()
         {
+            BossBattleEndTick();
             if(arena==null||arena.Replica&&!ExpeditionSplit)return;
             if(endFlow.Due(Time.unscaledTime)){endFlow.Reset();ReturnToLobby();return;}
             if(match.Phase!=NativePhase.Match)return;
