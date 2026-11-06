@@ -10,6 +10,8 @@ namespace ChipArena.UnityConversion
         private readonly List<BackroomsBossContact> backroomContacts=new List<BackroomsBossContact>();
         private readonly DeepEndBossRig deepAuthorityRig=new DeepEndBossRig();
         private readonly HumBossRig humAuthorityRig=new HumBossRig();
+        // Match the flat floor used by Hum presentation; its gait requires ground on first pose.
+        private static readonly BossFlatGround HumAuthorityGround=new BossFlatGround(0);
         private readonly List<Collider> backroomSeals=new List<Collider>();
         private readonly List<Collider> humPartitions=new List<Collider>();
         private readonly List<SphereCollider> backroomParts=new List<SphereCollider>();
@@ -53,7 +55,7 @@ namespace ChipArena.UnityConversion
             var z=ZoneBoss;var m=zoneBossActor;if(z?.backrooms==null||m==null)return;var b=z.backrooms;BackroomGeometry();bool hum=z.archetype==NativeHumBoss.Archetype;float dt=backroomTick<0?0:Mathf.Clamp(Time-backroomTick,0,.1f);backroomTick=Time;
             if(hum)
             {
-                var view=HumZoneBossView();humAuthorityRig.Update(Time,dt,view,null,NVector.Zero,false,false,NVector.Zero);
+                var view=HumZoneBossView();humAuthorityRig.Update(Time,dt,view,HumAuthorityGround,NVector.Zero,false,false,NVector.Zero);
                 for(int i=0;i<backroomParts.Count;i++){int joint=i<9?NativeHumBoss.WeakPoints[i].Joint:i==9?NativeHumBossLook.Chest:NativeHumBossLook.Pelvis;var p=humAuthorityRig.ToWorld(humAuthorityRig.Shown.Position[joint]);backroomParts[i].transform.position=new Vector3(p.X,p.Y,p.Z);backroomParts[i].enabled=m.Hp>0;}
             }
             else

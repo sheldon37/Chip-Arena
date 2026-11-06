@@ -1,3 +1,9 @@
+## 2026-11-05 — Astra: supply THE HUM authority rig ground
+
+- Branch `codex/hum-authority-ground-20261105`, base `9bf3cd5a`. Drive confirms the six approved sound samples generated/imported; build then failed at 01:09:56 UTC in `BossGait.Reset` line 120, called by `PoseBackroomBody` during native Backrooms boss validation.
+- Authority passed null to HumBossRig.Update, whose first pose dereferences the ground to plant its feet. Supply a cached BossFlatGround(0), matching the existing Hum presentation floor. No visual changes or null-tolerant fallback hiding a missing dependency; Deep End's separate route parameter is unchanged.
+- All four pinned-Unity assembly compiles and source packaging pass; whitespace clean. Existing native `ValidateBackroomsBossAuthority` exercises the failing first-pose path, but cannot execute without Unity here. Managed Hum checks and builder publication status recorded in the PR. No API calls, additional sound generation approval, live or Site release.
+
 ## 2026-11-05 — Astra: preserve approved sound manifest identity on Windows
 
 - Branch `codex/sound-manifest-line-endings`, shared base `df6ad2ae`. Latest Drive build fails before Unity in the sound queue with "Manifest changed after approval". Canonical and bundled Git bytes both match the pinned hash. Converting the same manifest to Windows CRLF reproduces the rejection; actual builder bytes are unavailable, so this is a reproduced cause, not confirmation of its local bytes.
