@@ -1,3 +1,5 @@
+2026-11-06 Astra (`codex/noctiel-approach-speed`): NOCTIEL approach now walks at 1.4 m/s within 30 m, glides at 9 m/s farther or after three active chase seconds without closing, and stops at 5 m. Authority checks and pinned Unity reference compilation pass; Windows gameplay acceptance pending. Delivery/check receipts in DEV_LOG.
+
 2026-11-06 Claude (`claude/noctiel-walk`): NOCTIEL carries its sword like the owner's reference walk (hanging at its side, the blade trailing, point just off the water) and walks at about a step a second when it moves slowly. In play it still glides at the authority's 9 m/s; a walking approach is a proposal for Astra (DEV_LOG). Not seen in Unity.
 
 2026-11-06 Claude (`claude/noctiel-sounds`): NOCTIEL's sound request is ready for ElevenLabs: `docs/audio/sound-requests-noctiel.json`, 57 cues, 92 takes, about 5,944 credits, keys in the bank contract. Queued on the builder by Astra (PR #370: four approved jobs, 92 requests, 148.6 s); cues wired after import.

@@ -8,6 +8,19 @@ internal static class FallenRulesChecks
     public static void Run(string root)
     {
         int n=0;void Check(bool ok,string why){n++;if(!ok)throw new Exception("NOCTIEL rules: "+why);}
+        var approach=new NativeFallenApproach();const float dt=1f/60;
+        Check(Math.Abs(approach.Step(1,30,dt)-1.4f*dt)<1e-6f,"walk at 30 m");
+        Check(Math.Abs(approach.Step(1,31,dt)-9f*dt)<1e-6f,"far glide");
+        Check(approach.Step(1,5,dt)==0&&approach.Step(1,4,dt)==0,"stop inside 5 m");
+        Check(Math.Abs(approach.Step(1,5.01f,dt)-.01f)<1e-5f,"no stop overshoot");
+        approach.Reset();float step=0;
+        for(int i=0;i<182;i++){step=approach.Step(1,20,dt);if(i%30==0)approach.Pause();}
+        Check(Math.Abs(step-9*dt)<1e-6f,"stalled chase glides across attack pauses");
+        for(int i=0;i<61;i++)step=approach.Step(1,20-i*.1f,dt);
+        Check(Math.Abs(step-1.4f*dt)<1e-6f,"catch-up returns to walk");
+        approach.Reset();for(int i=0;i<600;i++)Check(Math.Abs(approach.Step(1,29-i*1.4f*dt,dt)-1.4f*dt)<1e-6f,"closing walk never stalls");
+        approach.Reset();for(int i=0;i<182;i++)approach.Step(1,20,dt);
+        Check(Math.Abs(approach.Step(2,20,dt)-1.4f*dt)<1e-6f,"target change resets catch-up");
         var f=new NativeFallenRecord{seed=47,hush=new[]{new NativeFallenSeat{id=1}}};Check(f.Valid(),"initial valid");
         for(int phase=2;phase<=4;phase++){f.chipOffer=NativeFallenRules.Chips(47,phase);Check(f.chipOffer.Length==3&&f.chipOffer.Distinct().Count()==3&&f.chipOffer.SequenceEqual(NativeFallenRules.Chips(47,phase)),"seeded unique modifiers");}
         f.chipOffer=new[]{"haste"};foreach(var m in NativeFallenBoss.Moves.Where(m=>m.Kills))Check(NativeFallenRules.Wind(m,f)>=2.4f,"OHK wind floor "+m.Id);

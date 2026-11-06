@@ -1,3 +1,10 @@
+## 2026-11-06 — Astra: NOCTIEL walking approach and catch-up
+
+- Owner approved Claude's approach proposal. Branch `codex/noctiel-approach-speed`, based on `claude/noctiel-walk` (`ac25c330`), integrated current shared `27f2a75c` and Claude's verification receipt.
+- Host approach walks at **1.4 m/s within 30 m**, glides at **9 m/s farther away**, and clamps travel to stop at **5 m**. Three seconds of active pursuit without reducing distance by 0.1 m triggers one second of active glide catch-up, then walking resumes. Attack/draft time does not count as pursuit or falsely count as progress. Target changes, no target and new encounters reset memory. Existing attacks, damage, cooldowns and replicated position contract unchanged; Claude's presentation consumes actual travel as before.
+- Regression cases cover near/far speed, stop and overshoot, sustained closing, stall across attack pauses, catch-up recovery and target switching. Managed `--fallen-rules`: 290,814 checks PASS. Pinned Unity reference semantic compilation: InputSystem, Player, Runtime and Editor PASS; source packaging: 3,361 files PASS. Presentation `--fallen-boss`: 2,751,211 NOCTIEL checks PASS (plus its prerequisite checks). Full managed suite running; final receipt will be recorded on the PR.
+- Native Windows/PhysX gameplay and multiplayer appearance unrun here. No live or Site release; intended delivery is shared plus existing test builder.
+
 ## 2026-11-06 — Claude: NOCTIEL walks and carries its sword like the owner's reference video
 
 - Owner: "can you use this reference video to adjust the bosses walk? (If theres a better way of doing this, just let me know)". The video: 8 s, 24 fps, a mannequin walking toward the camera, about one step a second with long double support. A long sword hangs from its right hand, the blade trailing out to its side and down, the point near the floor, and the free arm swings. Branch `claude/noctiel-walk` off shared `103452a`.
