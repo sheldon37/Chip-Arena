@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
         private const int PortraitLayer=NativePortraitRenderer.Layer;
         private sealed class ModelPortraitSlot
         {
-            public int Key=int.MinValue,W,H,Frame=-10,Body=-1,Accent=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public string Outfit="",Skins,BodyHex,AccentHex;
+            public int Key=int.MinValue,W,H,Frame=-10,Body=-1,Accent=-1,LastPose=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public string Outfit="",Skins,BodyHex,AccentHex;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public readonly Actor Actor=new Actor();
             public CapturedAnimation.Player Player;public VisualBody Model;public RenderTexture Texture;public bool Ready;
             // The lobby pose's held weapons this frame, whether the model drew them itself, and the game's model's frames where not.
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
         }
         private void ModelPortraitClear(ModelPortraitSlot s)
         {
-            if(s.Texture!=null)RenderTexture.ReleaseTemporary(s.Texture);s.Texture=null;s.Ready=false;s.Key=int.MinValue;s.Frame=-10;
+            if(s.Texture!=null)RenderTexture.ReleaseTemporary(s.Texture);s.Texture=null;s.Ready=false;s.Key=int.MinValue;s.Frame=-10;s.LastPose=-1;
             if(s.Model!=null){VisualStrideRelease(s.Model);VisualMotionRelease(s.Model);s.Model=null;}
             if(s.Player!=null){s.Player.Dispose();s.Player=null;}
         }
@@ -130,7 +130,9 @@ namespace ChipArena.UnityConversion
                 foreach(var t in s.Model.Root.GetComponentsInChildren<Transform>(true))t.gameObject.layer=PortraitLayer;
                 foreach(var r in s.Model.All)r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
             }
-            var body=s.Model;body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
+            // A selection is a cut: do not carry the previous pose's elbow, wrist or stance history into it.
+            var body=s.Model;if(s.LastPose!=pose){body.Binding.State.Forget();s.LastPose=pose;}
+            body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
             // Bound while it draws (VisualJointFrame and the gear find it), then out of the arena's bodies again.
             visualBodies[s.Player]=body;
             try

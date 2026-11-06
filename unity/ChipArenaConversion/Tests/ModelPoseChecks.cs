@@ -309,6 +309,7 @@ namespace ChipArena.UnityConversion
             }
             Check(ReadyStyles()==readyBefore,"the entrance scripts are left as found (a clip bound for these checks is unbound again)");
             Cards(root,clips);
+            Switches(clips);
             Repeats(clips);
             Wiring(root);
         }
@@ -347,6 +348,29 @@ namespace ChipArena.UnityConversion
             Console.WriteLine("PASS model poses: the cards on the measured skeleton: seated hands on the lap palms down and alike, folded arms folded against the chest, the daggers' fists out of the hips, every weapon card's fist seated on its own handle ("+count+" checks)");
         }
 
+        // Every ordered selection change must solve like a newly opened card, including its next animated frames.
+        private static void Switches(Dictionary<string,Clip> clips)
+        {
+            foreach(var rig in new[]{Measured(),VisualRigChecks.Synthetic(out _)})
+            foreach(string spec in Specs)
+            for(int from=0;from<=NativeLobbyPoses.SheldonIdle;from++)
+            for(int to=0;to<=NativeLobbyPoses.SheldonIdle;to++)
+            {
+                if(from==to)continue;
+                var reused=new NativeVisualRig.State(rig);
+                foreach(var fr in Lobby(clips,spec,from,.2f,1/30f))NativeVisualRig.Pose(reused,fr.Pose,fr.Grasp,false,false);
+                reused.Forget();
+                var fresh=new NativeVisualRig.State(rig);
+                foreach(var fr in Lobby(clips,spec,to,.1f,1/30f))
+                {
+                    NativeVisualRig.Pose(reused,fr.Pose,fr.Grasp,false,false);
+                    NativeVisualRig.Pose(fresh,fr.Pose,fr.Grasp,false,false);
+                    for(int v=0;v<rig.Count;v++)Check(reused.Local[v]==fresh.Local[v]&&reused.LocalPosition[v]==fresh.LocalPosition[v],spec+" switch "+from+" to "+to+": no previous pose rotation or position survives");
+                }
+            }
+            Console.WriteLine("PASS model poses: every ordered lobby pose switch matches a fresh card on both skeletons ("+count+" checks)");
+        }
+
         // Bit for bit on a fresh state, nothing allocated per frame, and Relax off leaves the adapter as it was.
         private static void Repeats(Dictionary<string,Clip> clips)
         {
@@ -380,6 +404,8 @@ namespace ChipArena.UnityConversion
             Check(intros.Contains("VisualIntroPose(introRig,actor,arena.Time,NativeSourceMotion.IntroPose,null,NativeIntroRules.IntroWeapon(style)!=null);")&&intros.Contains("VisualIntroPose(introRig,actor,arena.Time,entrancePose,entranceReveal,NativeIntroRules.IntroWeapon(style)!=null||style==NativeBowEntrance.Id);"),"an entrance is armed only where it draws a weapon (the procedural ones closed the fists on the pilot's unseen weapon)");
             Check(portrait.Contains("var held=VisualBodyBind(body,s.Player,a,time,s.Pose,false,false,VisualArms.Still);")&&portrait.Contains("a.WeaponAway=!weapon.Visible;a.Grounded=true;VisualArmedAs(a,spec);")
                 &&portrait.Contains("a.Weapon=spec==\"pistol\"?WeaponId.Pistol:spec==\"rifle\"?WeaponId.Rifle:spec==\"machinegun\"?WeaponId.MachineGun:WeaponId.Sword;")&&portrait.Contains("a.VisualSet=spec==\"daggers\"?1:spec==\"greatsword\"?2:spec==\"shield\"?3:0;"),"a portrait stands Still, its actor carrying the pilot's weapon as the arena's do");
+            int reset=portrait.IndexOf("if(s.LastPose!=pose){body.Binding.State.Forget();s.LastPose=pose;}",StringComparison.Ordinal);
+            Check(reset>=0&&reset<portrait.IndexOf("var held=VisualBodyBind(body,s.Player",StringComparison.Ordinal),"selection changes discard pose history before binding; unchanged selections retain animation continuity");
             Check(roof.Contains("a.WeaponAway=!s.Weapon.Visible;a.Grounded=true;VisualArmedAs(a,look.Spec);")&&roof.Contains("look.Script==NativeRooftopActors.Seated||look.Script==NativeRooftopActors.Watcher?VisualArms.Still:VisualArms.Live"),"the rooftop's seated pilot and watcher stand Still, its runner, blade and gunner Live");
             Check(body.Contains("if(Viewer||sourceModels==null||ClassicBodies||a.SourceSpec==\"siren\"||FirstPerson&&a.Id==LocalId||!rigs.TryGetValue(a.Id,out var rig)||!VisualBodiesOn)return;")&&body.Contains("if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec==\"siren\"||!VisualBodiesOn)return;")
                 &&body.Contains("private bool VisualDraftModel(NativeSeat seat)=>!Viewer&&sourceModels!=null&&!ClassicBodies&&seat!=null&&seat.spec!=\"siren\"&&VisualBodiesOn;")&&body.Contains("if(rig==null||pose==null||!VisualDraftModel(seat))return false;")&&portrait.Contains("public bool ModelPortraitFor(in PortraitLook look)=>!modelPortraitFailed&&!ClassicBodies&&VisualBodiesOn")&&roof.Contains("if(Viewer||ClassicBodies||!VisualBodiesOn)return false;"),
