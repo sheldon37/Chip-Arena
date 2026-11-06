@@ -188,7 +188,7 @@
       "maxSeconds": 1
     },
     {
-      "id": "noctiel-20261106-v1",
+      "id": "noctiel-full-20261106-v1",
       "approved": true,
       "manifest": "docs/audio/sound-requests-noctiel.json",
       "manifestSha256": "4ad409e429a349910d1eac937ef08a9747ef6aebdc43e9e1fa93f93b6b7a5bd7",
@@ -255,10 +255,10 @@
         1
       ],
       "maxRequests": 57,
-      "maxSeconds": 104
+      "maxSeconds": 103.5
     },
     {
-      "id": "noctiel-20261106-v2",
+      "id": "noctiel-full-20261106-v2",
       "approved": true,
       "manifest": "docs/audio/sound-requests-noctiel.json",
       "manifestSha256": "4ad409e429a349910d1eac937ef08a9747ef6aebdc43e9e1fa93f93b6b7a5bd7",
@@ -291,10 +291,10 @@
         2
       ],
       "maxRequests": 23,
-      "maxSeconds": 33
+      "maxSeconds": 32.5
     },
     {
-      "id": "noctiel-20261106-v3",
+      "id": "noctiel-full-20261106-v3",
       "approved": true,
       "manifest": "docs/audio/sound-requests-noctiel.json",
       "manifestSha256": "4ad409e429a349910d1eac937ef08a9747ef6aebdc43e9e1fa93f93b6b7a5bd7",
@@ -311,10 +311,10 @@
         3
       ],
       "maxRequests": 7,
-      "maxSeconds": 8
+      "maxSeconds": 7.3
     },
     {
-      "id": "noctiel-20261106-v4",
+      "id": "noctiel-full-20261106-v4",
       "approved": true,
       "manifest": "docs/audio/sound-requests-noctiel.json",
       "manifestSha256": "4ad409e429a349910d1eac937ef08a9747ef6aebdc43e9e1fa93f93b6b7a5bd7",
@@ -329,7 +329,7 @@
         4
       ],
       "maxRequests": 5,
-      "maxSeconds": 6
+      "maxSeconds": 5.3
     }
   ]
 }

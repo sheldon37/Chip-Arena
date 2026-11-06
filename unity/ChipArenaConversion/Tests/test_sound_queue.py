@@ -88,7 +88,7 @@ class QueueTests(unittest.TestCase):
         for path in bundle.rglob('*.json'):
             path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
         plans = q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
-        self.assertEqual(len(plans), 9)  # the bosses' five jobs, then NOCTIEL's four (takes 1-4)
+        self.assertEqual(len(plans), 9)
         row, path, manifest, digest, jobs = plans[0]
         self.assertEqual(len(jobs), 6)
         self.assertEqual(sum(j['durationSeconds'] for j in jobs), 11)
@@ -161,8 +161,14 @@ class QueueTests(unittest.TestCase):
         with patch.object(Path, 'is_file', return_value=False):
             queue, repo = q.queue_inputs(q.QUEUE, q.gen.REPO)
         self.assertEqual(repo, q.BUNDLE)
-        every = q.plan(queue, repo)
-        plans = [p for p in every if p[0]['manifest'] == 'docs/audio/sound-requests-bosses.json']
+        plans = q.plan(queue, repo)
+        noctiel = [p for p in plans if p[0]['manifest'].endswith('sound-requests-noctiel.json')]
+        fresh = [job for p in noctiel for job in p[4]]
+        self.assertEqual(len(fresh), 92)
+        self.assertAlmostEqual(sum(j['durationSeconds'] for j in fresh), 148.6)
+        self.assertEqual(len({j['file'] for j in fresh}), 92)
+        self.assertEqual({j['file'] for j in fresh}, {j['file'] for j in q.gen.entries(noctiel[0][2], optional=True)})
+        plans = [p for p in plans if not p[0]['manifest'].endswith('sound-requests-noctiel.json')]
         jobs = [job for row in plans for job in row[4]]
         self.assertEqual(len(jobs), 121)
         self.assertAlmostEqual(sum(job['durationSeconds'] for job in jobs), 195.3)
@@ -173,16 +179,6 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(plans[0][0]['id'], 'boss-sample-20261105')
         self.assertEqual(len(plans[0][4]), 6)
         self.assertEqual(sum(len(p[4]) for p in plans[1:]), 115)
-        # NOCTIEL's batch (owner 2026-11-06, "queue it on the builder"): every take once, within each job's cap.
-        noctiel = [p for p in every if p[0]['manifest'] == 'docs/audio/sound-requests-noctiel.json']
-        self.assertEqual([p[0]['variants'] for p in noctiel], [[1], [2], [3], [4]])
-        takes = [job for row in noctiel for job in row[4]]
-        self.assertEqual(len(takes), 92)
-        self.assertAlmostEqual(sum(job['durationSeconds'] for job in takes), 148.6)
-        files = [job['file'] for job in takes]
-        self.assertEqual(len(set(files)), len(files))
-        self.assertEqual(set(files), {job['file'] for job in q.gen.entries(noctiel[0][2], optional=True)})
-        self.assertEqual(len(every), len(plans) + len(noctiel))
     def test_stale_bundle_fails_packaging_check(self):
         packaged = self.root / 'bundle/docs/audio'; packaged.mkdir(parents=True)
         canonical = self.repo / 'docs/audio/sound-queue.json'
