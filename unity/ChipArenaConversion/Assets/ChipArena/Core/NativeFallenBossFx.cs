@@ -31,7 +31,10 @@ namespace ChipArena.UnityConversion
         public const int MaxRings=48,MaxWaves=10,MaxPools=6,MaxProps=24;
         public readonly float[] Rings=new float[MaxRings*4],Waves=new float[MaxWaves*4],Pools=new float[MaxPools*4];public int RingCount,WaveCount,PoolCount;
         public float Dim,Strike,Shake,White,KeyBoost;public int Motes;
-        public readonly FallenFxQuads Quads=new FallenFxQuads(6000);public readonly FallenFxProp[] Props=new FallenFxProp[MaxProps];public int PropCount;
+        public readonly FallenFxQuads Quads=new FallenFxQuads(6000);
+        /// <summary>This frame's attack warnings (Core NativeTelegraph, drawn by Runtime NativeTelegraphPresentation.cs): each move's
+        /// own hit geometry on the authority's times, in the stage's frame.</summary>
+        public readonly NativeTelegraphList Telegraphs=new NativeTelegraphList(512);public readonly FallenFxProp[] Props=new FallenFxProp[MaxProps];public int PropCount;
         private Vector3 eye,right,up;private bool live;
         private static float C(float x)=>x<0?0:x>1?1:x;
         private static float Smooth(float x){x=C(x);return x*x*(3-2*x);}
@@ -98,7 +101,7 @@ namespace ChipArena.UnityConversion
         // ---- the build ----
         public void Build(FallenBossFrame f,Vector3 eyePos,Vector3 eyeRight,Vector3 eyeUp,NativeFallenSong song,bool reduced)
         {
-            live=f.Live!=null;eye=eyePos;right=eyeRight;up=eyeUp;RingCount=WaveCount=PoolCount=PropCount=0;Quads.Clear();Dim=1;Strike=0;Shake=0;White=0;KeyBoost=0;float p=f.P;
+            live=f.Live!=null;eye=eyePos;right=eyeRight;up=eyeUp;RingCount=WaveCount=PoolCount=PropCount=0;Quads.Clear();Telegraphs.Clear();Dim=1;Strike=0;Shake=0;White=0;KeyBoost=0;float p=f.P;
             Motes=f.Phase==1?260:f.Phase==2?420:f.Phase==3?620:900;if(f.Kind==NativeFallenBossPreview.KindCutscene)Motes=p<NativeFallenBossPreview.RiseAt?60:180;
             if(f.Kind==NativeFallenBossPreview.KindChips)return;
             // The pilots' steps (stand-ins for now: the rules' pilots step the same way).
@@ -111,8 +114,8 @@ namespace ChipArena.UnityConversion
             if(song!=null){float slam=song.LastSlam(f.SongClip);if(!float.IsNaN(slam))Cross(f.Boss,f.SongClip-slam,44,.85f,2.6f);}
             if(f.Kind==NativeFallenBossPreview.KindCutscene)Cutscene(f);
             if(f.Kind==NativeFallenBossPreview.KindDeath)Death(f);
-            foreach(var a in f.Actions??NativeFallenBossPreview.Acts){if(p<a.At-.2f||p>a.End+3)continue;Move(a,f,p);}
-            if(f.Live==null){GlideWake(p);AddsOf(f,p);}else{if(NativeFallenRules.Chip(f.Live,"black-water"))Dim*=.75f;foreach(var h in f.Live.hush){float k=C((p-h.hushAt)/NativeFallenRules.HushSeconds(f.Live,f.Phase,(float)Math.Sqrt(h.x*h.x+h.z*h.z)));Circle(new Vector3(h.x,0,h.z),3,.08f,k*k,2);}if(f.LiveAdds!=null)foreach(var a in f.LiveAdds)Prop(a.Id,a.At,a.Turn,a.Scale,a.Glow);}
+            foreach(var a in f.Actions??NativeFallenBossPreview.Acts){if(p<a.At-.2f||p>a.End+3)continue;Move(a,f,p);Warn(a,f,p);}
+            if(f.Live==null){GlideWake(p);AddsOf(f,p);}else{if(NativeFallenRules.Chip(f.Live,"black-water"))Dim*=.75f;foreach(var h in f.Live.hush){float k=C((p-h.hushAt)/NativeFallenRules.HushSeconds(f.Live,f.Phase,(float)Math.Sqrt(h.x*h.x+h.z*h.z)));if(k>=.4f&&k<1){var s=new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Style=NativeTelegraph.Fallen,Fill=NativeTelegraph.FromEdge,At=new Vector3(h.x,0,h.z),A=3,Fill01=(k-.4f)/.6f,After=-1,Strength=C((k-.4f)/.1f),Seed=h.id};s.Lock=k>.9f?(k-.9f)/.1f:0;Telegraphs.Add(s);}}if(f.LiveAdds!=null)foreach(var a in f.LiveAdds)Prop(a.Id,a.At,a.Turn,a.Scale,a.Glow);}
         }
         private void GlideWake(float p)
         {
@@ -179,9 +182,8 @@ namespace ChipArena.UnityConversion
                     var end=a.To;var lane=end-from;float len=lane.Length();
                     if(hit<0)
                     {
-                        // The water ahead parts in a line: the seam, then its two edges opening.
-                        var tip=from+lane*EaseOut(up01*1.4f);FloorLine(from,tip,.1f+.15f*up01,up01,2.6f);var side=new Vector3(lane.Z,0,-lane.X)/Math.Max(.01f,len)*(1.5f*up01);
-                        FloorLine(from+side,tip+side,.05f,up01*.6f,1.4f);FloorLine(from-side,tip-side,.05f,up01*.6f,1.4f);
+                        // The lane's warning is a telegraph (Warn); the water only starts to part ahead.
+                        var tip=from+lane*EaseOut(up01*1.4f);FloorLine(from,tip,.06f,up01*.5f,1.4f);
                     }
                     else if(hit<1.1f)
                     {
@@ -194,8 +196,8 @@ namespace ChipArena.UnityConversion
                 case "severance":
                     if(hit<0)
                     {
-                        // The ring at its feet flattens out to the aim.
-                        FloorArc(from,3+up01*2,a.Aim,120*up01,.3f,up01,2.2f);
+                        // The ring at its feet flattens out to the aim (the fan's warning is a telegraph: Warn).
+                        FloorArc(from,3+up01*2,a.Aim,120*up01,.16f,up01*.6f,1.6f);
                     }
                     else
                     {
@@ -208,7 +210,8 @@ namespace ChipArena.UnityConversion
                     if(hit<0)
                     {
                         // A white ring closing on them, and the line of its fall.
-                        float k=C(1-toGo/span);Circle(c,14-k*5,.22f,k,2.4f);Circle(c,9,.05f,k*.8f,1.3f);if(toGo<.3f)Beam(c,c+new Vector3(0,60,0),.09f+.12f*(1-toGo/.3f),1-toGo/.3f,3);
+                        // The ring's warning is a telegraph (Warn); the line of its fall comes down at the end.
+                        if(toGo<.3f)Beam(c,c+new Vector3(0,60,0),.09f+.12f*(1-toGo/.3f),1-toGo/.3f,3);
                     }
                     else if(hit<2.2f)
                     {
@@ -221,8 +224,7 @@ namespace ChipArena.UnityConversion
                 case "verdict":Crack(a,p,hit,up01,a.Aim,1);break;
                 case "last":Crack(a,p,hit,up01,a.Aim,1);Crack(a,p,hit,up01,a.Aim+60,2);Crack(a,p,hit,up01,a.Aim-60,3);break;
                 case "sweep":
-                    if(hit<0){FloorArc(from,28*reach,a.Aim,360*up01,.12f,up01,1.8f,64);}
-                    else if(hit<1.4f)
+                    if(hit>=0&&hit<1.4f)
                     {
                         // Both bare wings round the full circle: a blade of air with a fading wedge behind each.
                         float turn=EaseOut(hit/.42f)*360,k=1-C((hit-.3f)/.9f);
@@ -261,12 +263,60 @@ namespace ChipArena.UnityConversion
             FloorArc(c,r,yaw,span,.4f,fade,2.4f,n);
             Step(c.X+YawDir(yaw).X*r,c.Z+YawDir(yaw).Z*r,.02f,1.6f);
         }
+        // ---- the warnings: each move's own hit geometry (NativeFallenAuthority.FallenAttack) on its times ----
+        /// <summary>Cleave's fan within 8 m (wider with Long Reach) in front by a 0.25 dot.</summary>
+        public static readonly float CleaveHalf=(float)(Math.Acos(.25)*180/Math.PI);
+        private static float YawOf(Vector3 d)=>d.X*d.X+d.Z*d.Z<1e-8f?0:(float)(Math.Atan2(d.X,d.Z)*180/Math.PI);
+        private void Warn(NativeFallenBossPreview.Act a,FallenBossFrame f,float p)
+        {
+            float reach=NativeFallenRules.Chip(f.Live,"long-reach")?1.2f:1,half=live?168:84;
+            NativeTelegraph.Spec W(byte shape,byte style,byte fill,Vector3 at,float yaw,float A,float B=0,float C=0,int seed=0)=>new NativeTelegraph.Spec{Shape=shape,Style=style,Fill=fill,At=at,Yaw=yaw,A=A,B=B,C=C,Seed=a.Seed+seed};
+            void Add(NativeTelegraph.Spec s,float start,float hit,float liveFor=0){if(NativeTelegraph.Timed(ref s,start,hit,p,liveFor))Telegraphs.Add(s);}
+            switch(a.Id)
+            {
+                case "cleave":Add(W(NativeTelegraph.Cone,NativeTelegraph.Fallen,NativeTelegraph.Along,a.From,a.Aim,8*reach,CleaveHalf),a.At,a.Hit,.8f);break;
+                // Vow hurts within 3 m of the body as it dashes: the lane runs 3 m past either end.
+                case "vow":{var d=a.To-a.From;d.Y=0;Add(W(NativeTelegraph.Lane,NativeTelegraph.Fallen,NativeTelegraph.Along,a.From,YawOf(d),d.Length()+3,3,3),a.At,a.Hit,.5f);break;}
+                case "severance":
+                {
+                    // The fan the waves cross (a 0.5 dot), then each wave's front as it travels (34 m/s from 3 m, 1.2 m either side).
+                    Add(W(NativeTelegraph.Cone,NativeTelegraph.Fallen,NativeTelegraph.Along,a.From,a.Aim,live?165:90,60),a.At,a.Hit);
+                    for(int i=0;i<(NativeFallenRules.Chip(f.Live,"second-wing")?2:1);i++)
+                    {
+                        float age=p-a.Hit-i*.6f;if(age<0||34*age+3>(live?165:90))continue;
+                        var s=W(NativeTelegraph.Wave,NativeTelegraph.Fallen,NativeTelegraph.Along,a.From,a.Aim,34*age+3,1.2f,60,i);s.Fill01=1;s.Live=1;s.After=-1;s.Strength=1;Telegraphs.Add(s);
+                    }
+                    break;
+                }
+                case "descent":Add(W(NativeTelegraph.Circle,NativeTelegraph.Fallen,NativeTelegraph.FromEdge,a.To,a.Aim,9),a.At,a.Hit);break;
+                case "rain":
+                    for(int lane=0;lane<8;lane++)
+                    {
+                        float ang=a.Seed*37+lane*45+(lane%2)*19;var d=YawDir(ang);var n=new Vector3(d.Z,0,-d.X);
+                        Add(W(NativeTelegraph.Lane,NativeTelegraph.Fallen,NativeTelegraph.FromEdge,a.From*.5f+n*((lane-3.5f)*7),ang,live?168:60,1.25f,live?168:60,lane),a.At,a.Hit,2.4f);
+                    }
+                    break;
+                case "verdict":Add(W(NativeTelegraph.Lane,NativeTelegraph.FallenKill,NativeTelegraph.FromEdge,a.To,a.Aim,half,1.5f,half),a.At,a.Hit);break;
+                case "last":for(int i=0;i<3;i++)Add(W(NativeTelegraph.Lane,NativeTelegraph.FallenKill,NativeTelegraph.FromEdge,a.To,a.Aim+(i==1?60:i==2?-60:0),half,1.5f,half,i),a.At,a.Hit);break;
+                case "sweep":Add(W(NativeTelegraph.Circle,NativeTelegraph.Fallen,NativeTelegraph.FromCentre,a.From,a.Aim,28*reach),a.At,a.Hit,.5f);break;
+                case "eclipse":
+                    // Outside the pools it kills: the pools are what the warning shows, the dark rolls in on the rest.
+                    if(f.Live!=null){int i=0;foreach(var pool in f.Live.pools)Add(W(NativeTelegraph.Circle,NativeTelegraph.Safe,NativeTelegraph.FromEdge,new Vector3(pool.x,0,pool.z),0,6,0,0,i++),a.At,a.Hit);}
+                    else for(int i=0;i<NativeFallenPilots.Count;i++){var at=NativeFallenPilots.At(i,a.Hit);float o=Hash(a.Seed+i)*6.28f;Add(W(NativeTelegraph.Circle,NativeTelegraph.Safe,NativeTelegraph.FromEdge,new Vector3(at.X+(float)Math.Cos(o)*5,0,at.Z+(float)Math.Sin(o)*5),0,6,0,0,i),a.At,a.Hit);}
+                    break;
+                case "fall":
+                    if(f.Live!=null)
+                        for(int x=-10;x<=10;x++)for(int z=-10;z<=10;z++)
+                            if(NativeFallenRules.Column(x,z,a.Seed))Add(W(NativeTelegraph.Square,NativeTelegraph.FallenKill,NativeTelegraph.FromEdge,new Vector3(x*8+4,0,z*8+4),0,3.68f,0,0,x*31+z),a.At,a.Hit);
+                    break;
+            }
+        }
         private void Rain(NativeFallenBossPreview.Act a,float p,float hit,float up01)
         {
             for(int lane=0;lane<8;lane++)
             {
                 float ang=a.Seed*37+lane*45+(lane%2)*19,off=(lane-3.5f)*7;var d=YawDir(ang);var n=new Vector3(d.Z,0,-d.X);var c=a.From*.5f+n*off;float half=live?168:60;var s=c-d*half;var e=c+d*half;
-                float lineK=hit<0?up01:1-C((hit-2.4f)/.6f);FloorLine(s,e,.06f+.09f*lineK,lineK*.8f,1.7f);
+                // The lanes' warnings are telegraphs (Warn), live while the blades fall.
                 if(hit<0)continue;
                 // Blades falling along the lane, one after another.
                 for(int k=0;k<14;k++)
@@ -309,8 +359,7 @@ namespace ChipArena.UnityConversion
             for(int x=-10;x<=10;x++)for(int z=-10;z<=10;z++)
             {
                 if(!NativeFallenRules.Column(x,z,a.Seed))continue;var c=new Vector3(x*8+4,0,z*8+4);var u=new Vector3(3.68f,.03f,0);var v=new Vector3(0,.03f,3.68f);
-                if(hit<0){Quads.Add(c-u-v,c+u-v,c+u+v,c-u+v,up01*.6f,.7f,FallenFxQuads.Soft);FloorLine(c-u-v,c+u-v,.06f,up01,1.3f);FloorLine(c+u-v,c+u+v,.06f,up01,1.3f);FloorLine(c+u+v,c-u+v,.06f,up01,1.3f);FloorLine(c-u+v,c-u-v,.06f,up01,1.3f);}
-                else if(hit<1){float k=1-C(hit);Sheet(c-u-v,c+u-v,0,60,k,.9f,FallenFxQuads.Column);Sheet(c-u+v,c+u+v,0,60,k,.9f,FallenFxQuads.Column);}
+                if(hit>=0&&hit<1){float k=1-C(hit);Sheet(c-u-v,c+u-v,0,60,k,.9f,FallenFxQuads.Column);Sheet(c-u+v,c+u+v,0,60,k,.9f,FallenFxQuads.Column);}
             }
         }
         private void FallOfLight(NativeFallenBossPreview.Act a,float p,float hit,float up01)
@@ -324,7 +373,7 @@ namespace ChipArena.UnityConversion
                 {
                     if(cx*cx+cz*cz>26)continue;if(cx==route-4||(cz==((route*3)%7)-3&&cx>0))continue;if(Hash(cx*13.1f+cz*7.3f+b*3.7f+a.Seed)<.58f)continue;
                     var c=new Vector3(cx*cell+cell/2,0,cz*cell+cell/2);var s=new Vector3(cell*.46f,.03f,0);var q=new Vector3(0,.03f,cell*.46f);
-                    if(t<0&&t>-bar){float k=1+t/bar;k*=k;Quads.Add(c-s-q,c+s-q,c+s+q,c-s+q,k*.6f,.7f,FallenFxQuads.Soft);FloorLine(c-s-q,c+s-q,.05f,k,1.3f);FloorLine(c+s-q,c+s+q,.05f,k,1.3f);FloorLine(c+s+q,c-s+q,.05f,k,1.3f);FloorLine(c-s+q,c-s-q,.05f,k,1.3f);}
+                    if(t<0&&t>-bar){var w=new NativeTelegraph.Spec{Shape=NativeTelegraph.Square,Style=NativeTelegraph.FallenKill,Fill=NativeTelegraph.FromEdge,At=c,A=cell*.46f,Seed=cx*31+cz};if(NativeTelegraph.Timed(ref w,fall-bar,fall,p))Telegraphs.Add(w);}
                     else if(t>=0&&t<1.1f)
                     {
                         float k=1-C((t-.2f)/.9f);float top=Math.Min(70,t/.14f*70);float bottom=Math.Max(0,70-t/.14f*70);bottom=t<.14f?bottom:0;

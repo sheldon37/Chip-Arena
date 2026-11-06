@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/telegraphs`): a shared attack-warning renderer (fill to the hit, animated edge and pattern, lock-on strobe, impact flash; one look per boss family). NOCTIEL is on it, each warning matching its rule's hit area; the other bosses and the enemies are next (docs/TELEGRAPHS.md). Not seen in Unity.
+
 2026-11-06 Claude (`claude/noctiel-intro-motion`): NOCTIEL's intro is re-animated from the owner's four reference clips (option A): a falling-leaf feather, a weighted rise over the planted front foot, the draw with a salute and side extension, a cocked windup and a 0.20 s downswing into a lunge on the drop. Cues, shots and music unchanged. Not seen in Unity.
 
 2026-11-06 Claude (`claude/noctiel-cues`): NOCTIEL's 57 sounds are wired: the cutscene's beats, every move's tell and strike on the authority's times, the Slash and chips, adds, lives and revives, the Hush, the death. They play once the builder imports the batch. Not heard yet.
