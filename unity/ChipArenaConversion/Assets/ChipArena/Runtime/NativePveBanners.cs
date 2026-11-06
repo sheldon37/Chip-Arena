@@ -24,15 +24,15 @@ namespace ChipArena.UnityConversion
             float t=arena.Time;var list=new List<PveBannerSpec>();
             if(v.Holding&&(v.Cinematic=="victory"||v.Cinematic=="defeat"))
             {   // The outro holds the simulation clock, so it runs on the hold's own clock and stays .5 s past the hold.
-                bool defeat=v.Cinematic=="defeat";return new PveBannerSpec{Key="outro",Title=defeat?"PARTY WIPED":"THE SIREN IS SILENCED",Sub=defeat?"The Siren smiles":"Victory",Tone=defeat?"defeat":"victory",At=t-(v.HoldDuration-v.HoldLeft),Duration=v.HoldDuration+.5f};
+                bool defeat=v.Cinematic=="defeat";return new PveBannerSpec{Key="outro",Title=defeat?"PARTY WIPED":arena.ZoneBoss==null?"THE SIREN IS SILENCED":PveBossName+" DEFEATED",Sub=defeat?(arena.ZoneBoss==null?"The Siren smiles":PveBossName+" remains undefeated"):"Victory",Tone=defeat?"defeat":"victory",At=t-(v.HoldDuration-v.HoldLeft),Duration=v.HoldDuration+.5f};
             }
             if(!v.Holding)
             {
                 int waves=v.Content?.waves?.Length??3;
                 if(v.Stage=="wave")list.Add(new PveBannerSpec{Key="wave-"+v.Wave,Title="WAVE "+v.Wave,Sub=v.Wave>=waves?"Final wave before the Siren":v.WaveTotal>0?v.WaveTotal+" minions incoming":"Minions incoming",Tone="wave",At=Seen("wave-"+v.Wave,v.StageAt),Duration=2.6f});
                 if(v.Stage=="intermission"&&v.Wave>0)list.Add(new PveBannerSpec{Key="clear-"+v.Wave,Title="WAVE CLEARED",Sub="+$"+(100+50*v.Wave)+" · fallen pilots respawn",Tone="clear",At=Seen("clear-"+v.Wave,v.StageAt),Duration=3});
-                if(v.Stage=="boss"&&v.Phase==1)list.Add(new PveBannerSpec{Key="spawned",Title="Siren has Spawned",Tone="boss",At=Seen("spawned",v.StageAt),Duration=3.2f});
-                if(v.Stage=="boss"&&v.Phase==2&&v.Hidden)
+                if(v.Stage=="boss"&&(arena.ZoneBoss?.phase??v.Phase)==1)list.Add(new PveBannerSpec{Key="spawned",Title=arena.ZoneBoss==null?"Siren has Spawned":PveBossName+" has Spawned",Tone="boss",At=Seen("spawned",v.StageAt),Duration=3.2f});
+                if(arena.ZoneBoss==null&&v.Stage=="boss"&&v.Phase==2&&v.Hidden)
                 {
                     float at=Seen("possess",v.PossessionAt);list.Add(new PveBannerSpec{Key="possess",Title="FIND ME...",Sub="The Siren hides inside a minion",Tone="phase",At=at,Duration=3.2f});
                     // Strong hint pings (PVE_SIREN.possession.hints: strong 35 s, every 8 s for 1.2 s).
