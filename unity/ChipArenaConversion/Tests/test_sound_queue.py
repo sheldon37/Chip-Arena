@@ -67,7 +67,7 @@ class QueueTests(unittest.TestCase):
         for path in bundle.rglob('*.json'):
             path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
         plans = q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
-        self.assertEqual(len(plans), 1)
+        self.assertEqual(len(plans), 5)
         row, path, manifest, digest, jobs = plans[0]
         self.assertEqual(len(jobs), 6)
         self.assertEqual(sum(j['durationSeconds'] for j in jobs), 11)
@@ -135,16 +135,22 @@ class QueueTests(unittest.TestCase):
         self.assertIn(str(key), str(error.exception))
         self.assertNotIn('PRIVATE', str(error.exception))
         self.assertFalse(self.calls)
-    def test_unity_only_bundle_has_same_six_approved_requests(self):
+    def test_unity_only_bundle_covers_all_boss_clips_without_sample_duplicates(self):
         q.check_bundle()
         with patch.object(Path, 'is_file', return_value=False):
             queue, repo = q.queue_inputs(q.QUEUE, q.gen.REPO)
         self.assertEqual(repo, q.BUNDLE)
         plans = q.plan(queue, repo)
         jobs = [job for row in plans for job in row[4]]
-        self.assertEqual(len(jobs), 6)
-        self.assertEqual(sum(job['durationSeconds'] for job in jobs), 11)
-        self.assertEqual({job['variant'] for job in jobs}, {1})
+        self.assertEqual(len(jobs), 121)
+        self.assertAlmostEqual(sum(job['durationSeconds'] for job in jobs), 195.3)
+        names = [job['file'] for job in jobs]
+        self.assertEqual(len(set(names)), len(names))
+        expected = q.gen.entries(plans[0][2], optional=True)
+        self.assertEqual(set(names), {job['file'] for job in expected})
+        self.assertEqual(plans[0][0]['id'], 'boss-sample-20261105')
+        self.assertEqual(len(plans[0][4]), 6)
+        self.assertEqual(sum(len(p[4]) for p in plans[1:]), 115)
     def test_stale_bundle_fails_packaging_check(self):
         packaged = self.root / 'bundle/docs/audio'; packaged.mkdir(parents=True)
         canonical = self.repo / 'docs/audio/sound-queue.json'

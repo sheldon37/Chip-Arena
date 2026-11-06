@@ -1,3 +1,9 @@
+## 2026-11-05 — Astra: approve remaining boss sound batch
+
+- Owner listened to the six-sound sample and instructed completion of the batch. Base `8f7ed575`, branch `codex/boss-audio-remainder-20261105`.
+- Keep `boss-sample-20261105` unchanged. Add four immutable jobs grouped by variant for the remaining 115 clips / 184.3 generated seconds. All 121 manifest filenames covered exactly once; no overlap with completed samples. Original manifest hash/prompts unchanged. Local request/duration limits and uncertain-request protection remain enforced.
+- Canonical and Unity-only bundled queues updated together. 17 mocked queue tests pass, including CRLF approval identity and exact complete coverage without duplicates; source packaging and whitespace checks pass. Actual paid generation/import depends on the configured builder; status and originals mirror to Drive. No gameplay, visuals, live or Site changes. Test builder sync/publication recorded in PR.
+
 ## 2026-11-05 — Astra: supply THE HUM authority rig ground
 
 - Branch `codex/hum-authority-ground-20261105`, base `9bf3cd5a`. Drive confirms the six approved sound samples generated/imported; build then failed at 01:09:56 UTC in `BossGait.Reset` line 120, called by `PoseBackroomBody` during native Backrooms boss validation.
