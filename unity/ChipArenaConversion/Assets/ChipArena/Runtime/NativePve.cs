@@ -65,7 +65,7 @@ namespace ChipArena.UnityConversion
         private void PveInput(NativePilot p)
         {
             if(Expedition!=null||Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;CollectPvePickups(p);if(p.Input.Interact&&!p.Seat.bot&&p.Hp>0&&row.Open==null)PveInteract(p,row);
-            if(row.Open!=null){if(p.Seat.bot&&Time>=row.ThinkAt){var best=row.Open.Offers.Where(id=>PveChip(id)?.mechanic!="pve-money").OrderByDescending(id=>NativeChipRanks.BotRank(PveChip(id)?.rarity)).FirstOrDefault();if(best!=null)ChoosePve(p,row.Open.Id,best);}if(row.Open!=null)p.Input=new InputFrame{Yaw=p.Input.Yaw,Pitch=p.Input.Pitch};}
+            if(row.Open!=null){if(p.Seat.bot&&Time>=row.ThinkAt){var best=row.Open.Offers.Where(id=>PveChip(id)?.mechanic!="pve-money").OrderByDescending(id=>NativeChipRanks.BotRank(PveChip(id)?.rarity)).FirstOrDefault();if(best!=null)ChoosePve(p,row.Open.Id,best);}if(row.Open!=null)p.Input=new InputFrame{Yaw=p.Input.Yaw,Pitch=p.Input.Pitch};}if(FallenPaused)p.Input=new InputFrame{Yaw=p.Input.Yaw,Pitch=p.Input.Pitch};
         }
         private void CollectPvePickups(NativePilot p)
         {
@@ -81,6 +81,7 @@ namespace ChipArena.UnityConversion
         }
         private void PveInteract(NativePilot p,NativePveRow row)
         {
+            if(ZoneBoss?.fallen!=null)return;
             float Flat(Vector3 q)=>Math.Abs(q.y-p.Body.position.y)>1.7f?float.PositiveInfinity:new Vector2(q.x-p.Body.position.x,q.z-p.Body.position.z).magnitude;
             var dead=Members().Where(q=>q.Hp<=0&&q.Seat.connected&&!InShaft(q)&&Flat(q.Body.position)<=2.2f).OrderBy(q=>Flat(q.Body.position)).FirstOrDefault();if(dead!=null){var target=Pve.Rows[dead.Seat.id];int price=NativePveRules.RevivePrice(target.Revived);if(row.Money<price){row.Notice="Not enough money to revive";row.NoticeUntil=Time+1.4f;return;}row.Money-=price;row.Spent+=price;row.Revives++;target.Revived++;RevivePve(dead);return;}
             var m=Pve.Content.machines.Where(x=>Flat(Vec(x.front.Position()))<=2.2f).OrderBy(x=>Flat(Vec(x.front.Position()))).FirstOrDefault();if(m==null)return;void Use(string result){Pve.Machines.RemoveAll(u=>Time-u.at>4);while(Pve.Machines.Count>=32)Pve.Machines.RemoveAt(0);Pve.Machines.Add(new NativeMachineUse{machine=m.m,owner=p.Seat.id,result=result,at=Time});}int cost=m.kind=="chip"?NativePveRules.ChipPrice(row.Bought):m.kind=="recruit"?300:75;
@@ -100,7 +101,7 @@ namespace ChipArena.UnityConversion
             CancelSiren(p);CancelFighter(p);CancelMelee(p);CancelSpecial(p);CancelAbilities(p);p.Down=null;p.Juggle=null;p.Roll=null;p.RollEnd=p.StunEnd=0;p.ScareBy=null;p.ScareUntil=p.FrozenUntil=0;ReleaseControl(p);p.Dots.Clear();RefreshLiveStats(p);p.Hp=(float)p.Stats["hp"]*(fullHealth?1:.5f);p.ShieldUntil=Time+1.5f;p.Seat.alive=true;p.Collider.enabled=true;p.Body.isKinematic=false;p.Body.position=respawn??p.Body.position;p.Knockback=p.MoveVelocity=p.Body.linearVelocity=Vector3.zero;Pve.Rows[p.Seat.id].SelfAt=-1;Emit(EventKind.PveRevive,p,p.Seat.id,p.Body.position,p.Hp);
         }
         private void PveDied(NativePilot p)
-        {if(Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;row.Deaths++;row.Open=null;if(Pve.Solo&&row.SelfRevives>0&&!p.Seat.bot)row.SelfAt=Time+5;}
+        {if(Pve==null||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;FallenDied(p);row.Deaths++;row.Open=null;if(Pve.Solo&&row.SelfRevives>0&&!p.Seat.bot)row.SelfAt=Time+5;}
         public bool BossVictoryWalk=>Pve!=null&&Pve.Stage=="victory"&&Match.Phase==NativePhase.Fight;
         private void BeginBossVictory()
         {
@@ -134,7 +135,7 @@ namespace ChipArena.UnityConversion
             if(Pve==null||!Pve.Holding)return false;var v=Pve;v.HoldLeft-=dt;if(v.HoldLeft>0)return true;string cinematic=v.Cinematic;v.Holding=false;
             if(cinematic=="victory"||cinematic=="defeat"){KillPveHorde();v.Outcome=cinematic;v.Stage="ended";Match.FinishCooperative(cinematic=="victory");return true;}
             if(cinematic=="reveal"&&v.Reveal==1){var boss=v.Boss;v.MaxHp=NativePveRules.BossHp(PartySize);boss.Stats["hp"]=v.MaxHp;boss.Hp=v.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(PartySize);SetBossHidden(false);PlacePveBoss(BossSpawn);boss.Yaw=v.Content.boss.yaw;boss.Input=new InputFrame{Yaw=boss.Yaw};v.Floor=v.MaxHp*.75f;BeginPveHold("intro");return true;}
-            if(cinematic=="intro"){if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}BossSongLead=NativeBossSongClock.ReleaseLead(Time,BossSongAt,v.HoldDuration);v.Stage="boss";v.StageAt=Time;v.Phase=1;}
+            if(cinematic=="intro"){if(ZoneBoss?.fallen!=null)ZoneBoss.fallen.phaseStarted=Time;if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}BossSongLead=NativeBossSongClock.ReleaseLead(Time,BossSongAt,v.HoldDuration);v.Stage="boss";v.StageAt=Time;v.Phase=1;}
             else if(cinematic=="reveal")
             {
                 v.Phase=v.Reveal;v.Floor=v.Phase==2?v.MaxHp*.5f:v.Phase==3?v.MaxHp*.25f:0;
@@ -153,7 +154,7 @@ namespace ChipArena.UnityConversion
         private void FoundPveBoss(Vector3 at)
         {var v=Pve;if(!v.Hidden||v.Phase!=2)return;SetBossHidden(false);v.Boss.Hp=v.MaxHp*.5f;v.Boss.Body.position=GroundPoint(at)+Vector3.up*.9f;v.Possessed=0;BeginPveHold("reveal",3);}
         private float PveDamageRoom(NativePilot p,float amount,NativePilot source)
-        {if(Pve==null)return amount;if(Pve.Holding||Pve.Stage=="victory"||Pve.Stage=="ended"||p==Pve.Boss&&Pve.Hidden)return 0;if(p==Pve.Boss)amount=Math.Min(amount,Math.Max(0,p.Hp-Pve.Floor));return amount;}
+        {if(Pve==null)return amount;if(FallenPaused||Pve.Holding||Pve.Stage=="victory"||Pve.Stage=="ended"||p==Pve.Boss&&Pve.Hidden)return 0;if(p==Pve.Boss)amount=Math.Min(amount,Math.Max(0,p.Hp-Pve.Floor));return amount;}
         private void PveDamaged(NativePilot p,NativePilot source,float actual)
         {
             if(Pve==null||actual<=0)return;if(Expedition!=null){if(p==Pve.Boss&&expeditionBoss!=null)Expedition.UpdateBossHealth(Expedition.Session.Run.Snapshot().area,expeditionBoss,p.Hp,Pve.MaxHp);}if(Pve.Rows.TryGetValue(p.Seat.id,out var row)&&p.Seat.bot&&row.Open!=null)row.ThinkAt=Time;

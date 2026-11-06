@@ -14,11 +14,12 @@ namespace ChipArena.UnityConversion
             NativeZoneBossRules.Ironworks=>NativeIronworksBoss.PlateName,
             NativeHumBoss.Archetype=>NativeHumBoss.Name,
             NativeDeepEndBoss.Archetype=>NativeDeepEndBoss.Name,
+            NativeFallenBoss.Archetype=>NativeFallenBoss.Name,
             _=>"THE SIREN"
         };
         private void PveHud(float width,float height)
         {
-            var v=arena.Pve;if(v==null||prefs.expedition||ExpeditionView!=null||ExpeditionM1)return;var p=arena.Local;PveBanner();
+            var v=arena.Pve;if(v==null||prefs.expedition||ExpeditionView!=null||ExpeditionM1)return;var p=arena.Local;if(arena.ZoneBoss?.fallen!=null){FallenBattleHud(width,height);return;}PveBanner();
             float W=NativeUi.W,H=NativeUi.H;var zone=arena.ZoneBoss;int phases=zone==null?4:3,phase=zone?.phase??v.Phase;
             float[] edges=zone==null?SirenHealthEdges:zone.archetype==NativeZoneBossRules.Ironworks?ConverterHealthEdges:ZoneHealthEdges;
             // Standalone fights bind their heading and thresholds to the replicated encounter.

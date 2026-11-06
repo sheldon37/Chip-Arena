@@ -14,7 +14,7 @@ internal static class BossBattleChecks
         string json=File.ReadAllText(Path.Combine(res,"ExpeditionLayout.json"));
         var legacy=JsonSerializer.Deserialize<NativeRoomOptions>("{\"cooperative\":true,\"skipWaves\":true,\"bots\":3}",codec);legacy.Normalize(content);
         Check(legacy.boss=="siren"&&legacy.bots==3,"old room retains Siren and bots");
-        Check(NativeBossBattle.Index(null)==0&&!NativeBossBattle.Zone("noctiel")&&!NativeBossBattle.Zone("bogus"),"legacy fallback and unknown/final exclusions");
+        Check(NativeBossBattle.Index(null)==0&&NativeBossBattle.Zone("noctiel")&&!NativeBossBattle.Zone("bogus"),"legacy fallback and unknown/final exclusions");
         foreach(string id in new[]{"station","converter","hum","deepend"})
         {
             var o=new NativeRoomOptions{cooperative=true,boss=id,bots=3};o.Normalize(content);

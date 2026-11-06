@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--fallen-rules")FallenRulesChecks.Run(ProjectRoot());
+            if(args.Length==1&&args[0]=="--fallen-rules")return 0;
             if(args.Length==0||args.Length==1&&args[0]=="--boss-battle")BossBattleChecks.Run(ProjectRoot());
             if(args.Length==1&&args[0]=="--boss-battle")return 0;
             if(args.Length==1&&args[0]=="--backrooms-collision"){BackroomsRouteChecks.Run();return 0;}

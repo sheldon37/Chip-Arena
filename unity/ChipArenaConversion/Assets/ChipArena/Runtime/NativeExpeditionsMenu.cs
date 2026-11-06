@@ -119,6 +119,7 @@ namespace ChipArena.UnityConversion
                 case "converter":StartBossBattle("converter");break;
                 case "hum":StartBossBattle("hum");break;
                 case "deepend":StartBossBattle("deepend");break;
+                case "noctiel":StartBossBattle("noctiel");break;
                 default:Notice(K.FightReason(b)??"This boss has no direct start yet.");break;
             }
         }
