@@ -46,6 +46,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The plan for the action now running (empty between moves), for the checks and the DEV readout.</summary>
         public ReadOnlySpan<Shot> Plan=>new ReadOnlySpan<Shot>(plan,0,planCount);
         public bool Gliding=>gliding;public float Speed=>speed;
+        /// <summary>A standing turn to its quarry is under way (the plate's creak starts with one).</summary>
+        public bool Turning=>turning;
         /// <summary>It has stepped since the last Reset (the next Step continues rather than starting over).</summary>
         public bool Active=>started;
         /// <summary>Forget everything: the next Step starts from the facts (a new fight, after the intro or a death).</summary>
@@ -154,7 +156,7 @@ namespace ChipArena.UnityConversion
                 case "descent":
                 {
                     // Crouched through the windup, it leaves the water and comes down on the hit, where the authority puts it.
-                    float flight=Clamp(H-A-.4f,.55f,1f);takeoff=Math.Max(A+.12f,H-flight);float reach=Vector3.Distance(new Vector3(x.From.X,0,x.From.Z),new Vector3(x.To.X,0,x.To.Z));leapHeight=Clamp(reach*.32f,3.5f,11);
+                    takeoff=Takeoff(A,H);float reach=Vector3.Distance(new Vector3(x.From.X,0,x.From.Z),new Vector3(x.To.X,0,x.To.Z));leapHeight=Clamp(reach*.32f,3.5f,11);
                     Add("2Hand-Sword-Jump",A,takeoff-.06f,.06f,takeoff+.02f,.12f,.5f,clips);Add("2Hand-Sword-Air-Attack1",takeoff,H,.1f,H+.04f,.08f,.7f,clips);Add("2Hand-Sword-Land",H+.04f,H+.06f,.05f,H+.8f,.06f,.8f,clips);break;
                 }
                 case "rain":Add("Armed-Activate-Left",A,H,.3f,H+.8f,.2f,1,clips);break;
@@ -184,6 +186,8 @@ namespace ChipArena.UnityConversion
             if(brisk){walk=b;rate=Clamp(speed/(b.SpeedZ*NativeFallenBoss.Scale),.5f,1.6f);return true;}
             return false;
         }
+        /// <summary>When Descent leaves the water for its hit at H (its flight up to 1 s, the windup's start A): the sounds use it too.</summary>
+        public static float Takeoff(float A,float H)=>Math.Max(A+.12f,H-Clamp(H-A-.4f,.55f,1f));
         /// <summary>The clip, else the nearest the bank has (a cut for a cut, a raised hand for a summon), else the stance.</summary>
         public static string Pick(string clip,NativeVisualMotionClips.Library clips)
         {

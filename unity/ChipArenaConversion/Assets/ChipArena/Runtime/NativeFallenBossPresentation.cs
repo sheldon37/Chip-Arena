@@ -76,7 +76,7 @@ namespace ChipArena.UnityConversion
         }
         private void FallenBossHide()
         {
-            if(fbLast<0&&!fbStageOn)return;fbLast=-1;fbShotReady=false;fbFrame.Live=null;FallenStageLeave();FallenBodyHide();FallenPilotsHide();if(fbSlash!=null&&fbSlash.enabled)fbSlash.enabled=false;fbTrailCount=0;
+            if(fbLast<0&&!fbStageOn)return;fbLast=-1;FallenCueReset();fbShotReady=false;fbFrame.Live=null;FallenStageLeave();FallenBodyHide();FallenPilotsHide();if(fbSlash!=null&&fbSlash.enabled)fbSlash.enabled=false;fbTrailCount=0;
         }
         // ---- the frame ----
         private void FallenBossScenery(NativeArena arena)
@@ -94,7 +94,7 @@ namespace ChipArena.UnityConversion
             // The eye: on the black stage, nothing of the level reaches it.
             FallenStageEnter(eye);eye.clearFlags=CameraClearFlags.SolidColor;eye.backgroundColor=Color.black;eye.farClipPlane=460;RenderSettings.fog=false;RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.62f,.62f,.66f);RenderSettings.ambientEquatorColor=new Color(.5f,.5f,.54f);RenderSettings.ambientGroundColor=new Color(.34f,.34f,.38f);
             var origin=live?new Vector3(0,.02f,0):FallenOrigin;var eyeAt=eye.transform.position;
-            FallenPose(f,now,dt,origin,eyeAt);FallenShown(f);
+            FallenPose(f,now,dt,origin,eyeAt);FallenShown(f);FallenCues(arena,f,now,live,p);
             // The shot, read by the camera next (BackroomsBossPreviewShot).
             if(!live||f.Kind==NativeFallenBossPreview.KindCutscene||f.Kind==NativeFallenBossPreview.KindDeath)FallenShot(f,origin,now);else fbShotReady=false;
             // The song on the floor.
@@ -171,7 +171,7 @@ namespace ChipArena.UnityConversion
         private void FallenFeet(FallenBossFrame f,float now,float dt,Vector3 origin)
         {
             float s=NativeFallenBoss.Scale,floor=origin.y;bool downL=fbFootL.position.y-.11f*s<floor+.06f,downR=fbFootR.position.y-.11f*s<floor+.06f;
-            if(downL&&!fbFootDownL)FbStepAdd(fbFootL.position,origin,now,.75f);if(downR&&!fbFootDownR)FbStepAdd(fbFootR.position,origin,now,.75f);fbFootDownL=downL;fbFootDownR=downR;
+            if(downL&&!fbFootDownL){FbStepAdd(fbFootL.position,origin,now,.75f);FallenStepCue(fbFootL.position,now);}if(downR&&!fbFootDownR){FbStepAdd(fbFootR.position,origin,now,.75f);FallenStepCue(fbFootR.position,now);}fbFootDownL=downL;fbFootDownR=downR;
             // The point in the water lays a wake: a ring each 0.6 m it travels (a drag at a walk, a swing through the water), none while
             // it rests; a fast swing's rings are the brighter.
             var tip=FallenHandPoint(FbTipLocal);float moved=(tip-fbWakeAt).magnitude;

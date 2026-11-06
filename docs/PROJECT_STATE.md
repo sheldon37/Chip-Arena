@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/noctiel-cues`): NOCTIEL's 57 sounds are wired: the cutscene's beats, every move's tell and strike on the authority's times, the Slash and chips, adds, lives and revives, the Hush, the death. They play once the builder imports the batch. Not heard yet.
+
 2026-11-06 Astra (`codex/noctiel-approach-speed`): NOCTIEL approach now walks at 1.4 m/s within 30 m, glides at 9 m/s farther or after three active chase seconds without closing, and stops at 5 m. Authority checks and pinned Unity reference compilation pass; Windows gameplay acceptance pending. Delivery/check receipts in DEV_LOG.
 
 2026-11-06 Claude (`claude/noctiel-sound-import`): all 92 NOCTIEL sounds were generated on the builder (Astra, PR #370). The three takes that stopped the import (short after trimming) are reviewed and accepted, for those takes only, so the builder's next run can import the batch. Cues not wired yet.
