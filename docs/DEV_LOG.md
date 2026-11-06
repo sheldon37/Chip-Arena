@@ -1,3 +1,8 @@
+## 2026-11-06 — Astra: NOCTIEL native precision assertion and integrated HUD checks
+
+- Follow-up branch `codex/noctiel-native-gate`, base shared/builder `f535d815`. Windows diagnostics show correct phase-2 HP (13125), a future bar deadline (6.157895 > 6.01), and active invulnerability. The strict equality failed because of Unity/Mono intermediate float precision, not an incorrect phase transition. Use `Mathf.Approximately` for health only; bar ordering and invulnerability remain strict. This corrects the prior entry's diagnosis; direct health clamping remains useful, but did not cause the observed build failure.
+- Full managed rerun after integrating PR #366 exposed its HUD name references against legacy concept-isolation checks. Permit only `NativeStationBoss.Name` and `NativeIronworksBoss.PlateName` in `NativePveUI.cs`; all model/rig references remain forbidden. Runtime semantic compile passes; editor compile and managed/native reruns recorded on the PR as they complete. No test publication occurred from the two failed native attempts.
+
 ## 2026-11-06 — Astra: NOCTIEL native gate and full-disc warnings
 
 - Follow-up to PR #367 on `codex/noctiel-warning-coverage`, base shared/builder `8f5f8ef3`. The first Windows attempt stopped at the new NOCTIEL phase-threshold assertion; it did not publish. Assign clamped health directly instead of subtracting a rounded damage delta, preserving exact 70/40/15% boundaries. Keep the strict native assertion and include values in its failure message.
