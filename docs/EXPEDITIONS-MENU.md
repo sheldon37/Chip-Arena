@@ -6,17 +6,21 @@ Owner requests:
   expedition screen UI, it shows the outdated method. The run is now randomized based on the slot machines (So black siren
   is not applicable) ... the map here will not be accurate. and no point in selecting different expeditions as its a
   all-in-one thing. Clean this up, make the UI beautiful with great effects and transitions."
+- 2026-11-06, second pass: "we don't roll the machine until we start the expedition (Currently its like we roll twice
+  now). Maybe design something to fill that space or make player lobby portraits bigger? Still; make the screen very
+  appealing."
 
-Status (2026-11-06, `claude/expeditions-boss-battle`): presentation only. Checked with managed checks and a type-check
-against Unity reference assemblies (see DEV_LOG). Not yet seen in the Unity Editor or on Windows.
+Status (2026-11-06, second pass on `claude/expedition-squad`): presentation only. Checked with managed checks and a
+type-check against Unity reference assemblies (see DEV_LOG). Not yet seen in the Unity Editor or on Windows.
 
 ## Where it lives
 
 | Piece | File |
 | --- | --- |
-| Catalogue: the run's entry, its briefing, the boss roster and emblems. Rename things here. | `Core/NativeExpeditionCatalogue.cs` |
-| Rules (modes, launch gates), layout and the sample spin's picks | `Core/NativeExpeditionsMenu.cs` |
+| Catalogue: the run's entry, its briefing, the boss roster, emblems and who may fill seats. Rename things here. | `Core/NativeExpeditionCatalogue.cs` |
+| Rules (modes, launch gates) and layout (both modes' regions, the squad card, the briefing's fit) | `Core/NativeExpeditionsMenu.cs` |
 | Drawing, input and actions | `Runtime/NativeExpeditionsMenu.cs` |
+| Direct zone-boss starts (Astra) | `Core/NativeBossBattle.cs`, `Runtime/NativeBossBattle.cs` |
 | Entry points | `NativeHomeMenu.cs` `BossScreen` (Start Expedition, home key 1); `NativeLobbyUI.cs` `LobbyScreen` (a PvE room) |
 | Checks | `Tests/ExpeditionsMenuChecks.cs` (`CoreTests --expeditions-menu`, also in the full run) |
 
@@ -27,32 +31,38 @@ of the run's compatibility digest. Renaming it changes every run's digest, so le
 ## Layout
 
 The screen is a full-canvas cyber layout over the panel screens' shade, with a void veil, a pool of colour behind the
-browser and a slow scan band. In Boss Battle the pool eases toward the picked boss's colour. From top to bottom:
+content and a slow scan band. In Boss Battle the pool eases toward the picked boss's colour. Each mode lays the screen out
+its own way. Switching mode brings the new layout in, section by section, under a cyan line that sweeps across the
+content, toward the right for Boss Battle and the left for the run (Reduced effects: no sweep or entrance).
 
-1. **Header.**
+1. **Header** (both modes).
    - PVE · EXPEDITIONS or PVE · BOSS BATTLE, and the title, which rises in when the mode changes.
    - A seat chip: SOLO, HOSTING · ROOM code, or GUEST · ROOM code.
    - At the right: Customize and Settings (both return here), Report in a room, and the close hexagon when not in a room.
-2. **Party strip**, PARTY n / 4. There is one card per member: the live 3D portrait, the seat number, the role (HOST with a
-   crown, YOU, BOT, PILOT), the name, and the weapon and class. A room shows each member's ready pill and the READY meter.
-   The newest bot has × for whoever sets the party. Open seats offer ADD BOT (Boss Battle only) and HOST ROOM, or the invite
-   in a room.
-3. **The browser follows the mode.** Switching mode slides the new body in under a cyan line that sweeps across the browser
-   (Reduced effects: no slide or sweep).
-   - **START EXPEDITION: THE RUN**, tagged ONE RUN · NEW EVERY TIME. One card, no carousel and no map:
-     - **Key art: the Deployment Station's two machines in miniature, spinning a sample** every 8.4 s, labelled SAMPLE SPIN.
-       - The INSTANCE MACHINE's three reels (EAST, WEST, SOUTH) carry the station's own destinations, colours and
-         emblems (`NativeDeployPresentation`, `NativeDeployArt.EmblemMarkup`). They move with the station's reel motion
-         (`NativeDeployPresentation.Reel`): spin-up, cruise, staggered stops with overshoot and settle, and a flash in the
-         destination's colour as each lands. The lever drops as the roll starts.
-       - Then the MUTATOR MACHINE (OPTIONAL, dashed) flips its three cards through the catalogue and lands, each card bordered
-         in its polarity (BOON, BANE, CHAOS).
-       - The picks are made up (`NativeExpeditionsMenu.SpinPicks`, seeded by the spin's number). Nothing is read or decided:
-         the station rolls the real run. Reduced effects shows one landed sample, still.
-     - **Details:** PVE · CO-OP RUN and ALL-IN-ONE, the title EXPEDITION, the tag line, the party, length and NEW CITY EVERY
-       RUN, then HOW A RUN GOES: 01 Deployment Station, 02 The City, 03 Three Areas, 04 The Last Fight. Step 01 lights while
-       the sample spins.
-   - **BOSS BATTLE**, with the counter, ‹ › and the Q/E keys:
+2. **START EXPEDITION: THE SQUAD and THE RUN.** Nothing on this screen rolls or samples a run; the machines roll at the
+   Deployment Station when you deploy.
+   - **THE SQUAD** takes the party strip's and the browser's place, from the party's top to the bar: THE SQUAD n / 4,
+     "1–4 SIGNED-IN PILOTS · NO BOTS IN A RUN", the ready meter in a room, then a tall card per seat. At 1080p a card is
+     217×584 and its portrait 215×475, four times the strip's.
+     - **A pilot:** its live 3D portrait standing in a shaft of its own light, the accent pooled at its feet with a ring,
+       motes rising. The seat number and role (HOST with a crown, YOU, PILOT) sit at the top. At the foot the plate rises out
+       of the dark: the name, the weapon and class with the class line, then the ready pill (a room) or LOADOUT (offline).
+       Your card is bracketed and lifts on hover; a click opens the loadout.
+     - **An open seat:** an empty pad, a ring pulsing outward on the floor under a faint shaft. The first offers COPY INVITE
+       or COPY CODE in a room, or HOST ROOM offline.
+     - The cards rise in one after another. A portrait keeps one size while it shows (the renderer keeps one texture per
+       pilot), so the squad fades in rather than growing out of the strip.
+   - **The side panel** takes the mode panel's place at the squad's full height: MODE and its tiles, then THE RUN, tagged
+     ROLLED WHEN YOU DEPLOY. Below that: PVE · CO-OP RUN, the title EXPEDITION, the tag line, the party, length and NEW
+     CITY EVERY RUN, and HOW A RUN GOES: 01 Deployment Station, 02 The City, 03 Three Areas, 04 The Last Fight. A light runs
+     down the steps' spine, resting at each step. A short canvas uses the tight briefing (`BriefFor`). The LOADOUT row
+     reads NO BOTS IN A RUN.
+3. **BOSS BATTLE: the party strip, the roster and the fight.**
+   - **Party strip**, PARTY n / 4. There is one card per member: the live 3D portrait, the seat number, the role, the name,
+     and the weapon and class. A room shows each member's ready pill and the READY meter. Bots are for the Siren only
+     (`NativeExpeditionCatalogue.BotsAllowed`): her open seats offer ADD BOT and the newest bot has ×. A zone boss's strip
+     reads "1–4 PILOTS · NO BOTS FOR THIS BOSS" and its open seat offers only the invite or HOST ROOM.
+   - **The roster**, with the counter, ‹ › and the Q/E keys:
      - **The card:** the picked boss's art and its details. When the pick changes, the old card slides out and the new one
        arrives (Reduced effects: a cross-fade).
        - **Art:** the boss's emblem on a stage: an aura in its colour, a receding floor, a fine ring with ticks turning one
@@ -69,23 +79,24 @@ browser and a slow scan band. In Boss Battle the pool eases toward the picked bo
        each: THE 6:47's carriage nose under a clock stopped at 6:47, Vessel C on its trunnions pouring, THE HUM's ceiling
        panel over a long pale face, THE DEEP END's drain, NOCTIEL's wings about a falling sword. The Siren uses the lobby's
        face.
-4. **MODE** (TAB switches). Two tiles: **START EXPEDITION** and **BOSS BATTLE**. The picked tile has a slow sheen.
-   - Under START EXPEDITION: IN THE INSTANCE MACHINE, the destinations, each with the boss at its end. The ones the sample
-     spin just landed on light up.
-   - Under BOSS BATTLE: THE FIGHT, what this boss is today and how to reach it, then the honest reason when it cannot start.
-   - The LOADOUT row shows the weapon and class, and the party bots (NO BOTS IN A RUN for the run). EDIT or L opens the
-     drawer.
+   - **MODE** (TAB switches): the two tiles, then THE FIGHT: what this boss is and who can fight it (the Siren with bots;
+     the zone bosses and NOCTIEL 1–4 pilots, no hub, quota or roll, NOCTIEL with its five lives). The LOADOUT row reads NO BOTS · 1–4 PILOTS
+     for a zone boss.
+4. **MODE tiles** (both modes): **START EXPEDITION** (1–4 PLAYERS) and **BOSS BATTLE** (SOLO OR CO-OP). The picked tile has
+   a slow sheen.
 5. **Action bar.**
    - Not in a room: a SOLO | HOST ROOM | JOIN ROOM segment.
    - In a room: the room code, the LAN line, CODE, INVITE (LAN host) and LEAVE ROOM.
    - Then a status line: an error, the launch's reason, or who the room is waiting for.
-   - Then the launch button: START EXPEDITION, or FIGHT THE SIREN (FIGHT and the boss's name), with its detail line and
-     ENTER. A guest gets READY (or CANCEL READY) and SEND LOADOUT instead.
-6. **LOADOUT drawer.** As before: party bots (0–3), "Party bots use my weapon", and the class and weapon pickers.
+   - Then the launch button: START EXPEDITION, or FIGHT and the boss's name, with its detail line (BOTS FILL SEATS for the
+     Siren, 1–4 PILOTS for a zone boss) and ENTER. A guest gets READY (or CANCEL READY) and SEND LOADOUT instead.
+6. **LOADOUT drawer.** Party bots (0–3) and "Party bots use my weapon" for the Siren; for a zone boss or the run, a line
+   saying they take no bots. Then the class and weapon pickers.
 
 Fit: the layout is laid out in a design space at least 1240×720 and scales the canvas down below that. At ultrawide the
-content is capped at 1760 units and centred. Short canvases use a compact card, machine, rail, mode panel and bar. The
-checks hold every part inside its region from 1280×720 at 1.5 to 3440×1440 and 4K.
+content is capped at 1760 units and centred. Short canvases use a compact card, squad plate, briefing, rail, mode panel and
+bar. The checks hold every part inside its region from 1280×720 at 1.5 to 3440×1440 and 4K, and every squad portrait at
+least twice the strip's.
 
 Controls:
 - Tab, W/S or ↑/↓: switch the mode.
@@ -100,16 +111,16 @@ Controls:
 
 | Boss | State | What the launch does |
 | --- | --- | --- |
-| THE SIREN | Direct (FIGHT NOW) | The boss-test match started at her: `ApplyRule(SkipWaves,1)`, `prefs.pve=true`, `RequestStage(StageLoadKind.Boss,StartMatch)`. No waves. Solo with bots, or co-op through a room. |
-| THE 6:47 | InRun | Disabled. "Fought inside a run for now: roll CENTRAL STATION at the Instance Machine. A direct start is next." |
-| THE CONVERTER | InRun | Disabled, as above (CITY IRONWORKS). |
-| THE HUM | InRun | Disabled, as above (LEVEL 0). |
-| THE DEEP END | InRun | Disabled, as above (POOLROOMS). |
-| NOCTIEL | Preview | Disabled. Presentation only behind DEV panel · Camera · Final boss preview until its rules are bound. |
+| THE SIREN | Direct (FIGHT NOW) | The boss-test match started at her: `SelectBossBattle("siren")`, `ApplyRule(SkipWaves,1)`, `prefs.pve=true`, `RequestStage(StageLoadKind.Boss,StartMatch)`. No waves. Solo with bots, or co-op through a room. |
+| THE 6:47 | Direct (FIGHT NOW) | Astra's `StartBossBattle("station")`: its arena, its arrival, phases and song. 1–4 pilots, no bots. |
+| THE CONVERTER | Direct (FIGHT NOW) | `StartBossBattle("converter")`, as above. |
+| THE HUM | Direct (FIGHT NOW) | `StartBossBattle("hum")`, as above. |
+| THE DEEP END | Direct (FIGHT NOW) | `StartBossBattle("deepend")`, as above. |
+| NOCTIEL | Direct (FIGHT NOW) | Astra's `StartBossBattle("noctiel")` on the Still Water arena: five lives each, four phases with drafts. 1–4 pilots, no bots. |
 
 ## Boss Battle direct starts (handoff to Astra)
 
-**Implemented 2026-11-06 (Astra):** `station`, `converter`, `hum`, `deepend` are Direct. The runtime creates the selected instance arena without a run/station, uses run-start party scaling and normal arrival/phase authority, and returns to this screen on victory/wipe. Offline Restart repeats the selected fight. These four support 1–4 humans and **no party bots**; Siren retains bots. `NativeRoomOptions.boss` carries the host pick with missing/empty = `siren`; guests already read it. Claude: update bot chips/controls and general copy. See DEV_LOG/task PR for verification and delivery status. The original handoff below is historical.
+**Implemented 2026-11-06 (Astra):** `station`, `converter`, `hum`, `deepend` are Direct. The runtime creates the selected instance arena without a run/station, uses run-start party scaling and normal arrival/phase authority, and returns to this screen on victory/wipe. Offline Restart repeats the selected fight. These four support 1–4 humans and **no party bots**; Siren retains bots. `NativeRoomOptions.boss` carries the host pick with missing/empty = `siren`; guests already read it. Claude: update bot chips/controls and general copy (done 2026-11-06, `claude/expedition-squad`). See DEV_LOG/task PR for verification and delivery status. The original handoff below is historical.
 
 
 The four zone bosses' rules are live, but they only spawn inside a run: `NativeExpeditionM1Arena.SpawnExpeditionBoss`, after

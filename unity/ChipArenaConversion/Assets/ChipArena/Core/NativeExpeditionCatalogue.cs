@@ -82,12 +82,8 @@ namespace ChipArena.UnityConversion
         public static string StateLabel(AreaState s)=>s==AreaState.Live?LiveLabel:s==AreaState.InDevelopment?InDevelopment:"LOCKED";
 
         // ---- The run's briefing -----------------------------------------------------------------------------------------------
-        /// <summary>A run has no fixed map to show: the machines roll it at the Deployment Station.</summary>
-        public const string Generated="ROLLED AT THE DEPLOYMENT STATION";
-        public const string SampleSpin="SAMPLE SPIN · YOUR ROLL HAPPENS AT THE STATION";
-        public const string InstanceMachine="INSTANCE MACHINE",MutatorMachine="MUTATOR MACHINE",MutatorOptional="OPTIONAL";
-        /// <summary>The Instance Machine's reels, left to right, as the station labels them (Core NativeDeployPresentation).</summary>
-        public static readonly string[] Entrances={"EAST","WEST","SOUTH"};
+        /// <summary>A run has no fixed map to show, and nothing is rolled on this screen: the machines roll when you deploy.</summary>
+        public const string Generated="ROLLED WHEN YOU DEPLOY";
         public sealed class Step{public string Num,Name,Line,Short;}
         /// <summary>How a run goes, in order (the screen's numbered steps).</summary>
         public static readonly Step[] Steps=
@@ -166,14 +162,17 @@ namespace ChipArena.UnityConversion
                 Blurb="Something under the tiles that pulls the water, and you with it, toward the drain.",
                 Destination=NativeDeepEndBoss.Area,Phases=3,Moves=Titles(NativeDeepEndBoss.Moves,m=>m.Title),Fight=BossFight.Direct,Accent=0x6fe8e8},
             new Boss{Id="noctiel",Emblem=EmblemNoctiel,Name=NativeFallenBoss.Name,Subtitle="THE FALLEN ANGEL",Eyebrow=NativeFallenBoss.Card.Eyebrow,Line=NativeFallenBoss.Card.Line,Area="FINAL BOSS",
-                Blurb="A possible last fight: five lives, four phases and a blade that cuts the screen. Built, not yet bound to rules.",
+                Blurb="The last of a fallen choir. Five lives each, four phases with a draft between them, and a blade that cuts the screen.",
                 Phases=4,Moves=Titles(NativeFallenBoss.Moves,m=>m.Title),Fight=BossFight.Direct,Accent=0xe4e4f0},
         });
         private static Boss[] Keyed(Boss[] all){foreach(var b in all)b.EmblemKey="exp-boss-"+b.Id;return all;}
         public static int BossCount=>Bosses.Length;
         public static int WrapBoss(int index){int n=Bosses.Length;return ((index%n)+n)%n;}
         public static Boss BossAt(int index)=>Bosses[WrapBoss(index)];
-        /// <summary>The boss a room fights (no room field carries a pick, so a guest sees this one): the first Direct.</summary>
+        /// <summary>Whether party bots may fill seats for this boss: the Siren's match takes them; Astra's zone-boss starts are
+        /// 1–4 pilots, no bots (NativeBossBattle; NativeRoomOptions.Normalize clears a room's bots for them).</summary>
+        public static bool BotsAllowed(Boss b)=>b!=null&&b.Fight==BossFight.Direct&&!NativeBossBattle.Zone(b.Id);
+        /// <summary>The boss a room defaults to (an old room without the boss field): the first Direct, the Siren.</summary>
         public static int DefaultBoss{get{for(int i=0;i<Bosses.Length;i++)if(Bosses[i].Fight==BossFight.Direct)return i;return 0;}}
         /// <summary>The roster's state chip and a short one for a small tile.</summary>
         public static string FightLabel(BossFight f)=>f==BossFight.Direct?"FIGHT NOW":f==BossFight.InRun?"IN RUNS":"IN DEVELOPMENT";

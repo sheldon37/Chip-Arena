@@ -9,12 +9,14 @@ namespace ChipArena.UnityConversion
     /// the game already made.
     /// <list type="bullet">
     /// <item>START EXPEDITION (owner 2026-11-06: "The run is now randomized based on the slot machines ... no point in selecting
-    /// different expeditions as its a all-in-one thing"): the one run for 1–4 signed-in players, entered through the Deployment
-    /// Station. No carousel, no map: the screen shows how a run goes and a sample spin of the station's machines.</item>
+    /// different expeditions as its a all-in-one thing"; then "we don't roll the machine until we start the expedition ... make
+    /// player lobby portraits bigger"): the one run for 1–4 signed-in players, entered through the Deployment Station. Nothing
+    /// is rolled or sampled here: the party strip and the browser become THE SQUAD, tall cards with large portraits, and the
+    /// run's briefing fills a full-height side panel (<see cref="Layout.Squad"/>, <see cref="Layout.Side"/>).</item>
     /// <item>BOSS BATTLE (owner 2026-11-06: "remove the Wave Defense option, and add boss battle option ... to test bosses"):
     /// a roster of every boss. A Direct boss starts its fight at once: the Siren is the boss-test match started at her
-    /// (<c>skipWaves</c>), solo with bots or in a co-op room. The rest say honestly where they are fought today
-    /// (<see cref="K.FightReason"/>).</item>
+    /// (<c>skipWaves</c>), solo with bots or in a co-op room; the zone bosses are Astra's direct starts (NativeBossBattle), 1–4
+    /// pilots and no bots. Anything else says honestly why it cannot start (<see cref="K.FightReason"/>).</item>
     /// </list>
     /// Lengths are design units: the canvas (NativeUiMotion.Measure) divided by <see cref="Layout.Scale"/>, which only drops
     /// under 1 below <see cref="MinWidth"/> x <see cref="MinHeight"/> (a large interface scale on a small window).
@@ -38,7 +40,7 @@ namespace ChipArena.UnityConversion
         public const string ExpeditionLabel="START EXPEDITION",BossLabel="BOSS BATTLE";
         /// <summary>What each mode's tile says.</summary>
         public const string ExpeditionLine="A new city every run · three areas, their bosses, the last fight",ExpeditionLineShort="A new city every run",
-            BossLine="Straight to a boss · solo with bots, or co-op",BossLineShort="Straight to a boss";
+            BossLine="Straight to a boss · solo or co-op, no run",BossLineShort="Straight to a boss";
         public const string Locked="This expedition cannot start in this build.";
         public const string GuestsWaiting="Waiting for every pilot to ready up.";
         public const string HostStarts="The host picks the fight and starts it. Ready up when your loadout is set.";
@@ -60,7 +62,7 @@ namespace ChipArena.UnityConversion
                 l.Kind=LaunchKind.ExpeditionM1;l.Enabled=!busy;return l;
             }
             if(boss==null){l.Reason=K.FightReason(K.BossAt(K.DefaultBoss));return l;}
-            l.Detail=boss.Fight==K.BossFight.Direct?"STRAIGHT TO THE BOSS · UP TO 4":boss.Fight==K.BossFight.InRun?"FOUGHT IN RUNS":"IN DEVELOPMENT";
+            l.Detail=boss.Fight==K.BossFight.Direct?(K.BotsAllowed(boss)?"STRAIGHT TO THE BOSS · BOTS FILL SEATS":"STRAIGHT TO THE BOSS · 1–4 PILOTS"):boss.Fight==K.BossFight.InRun?"FOUGHT IN RUNS":"IN DEVELOPMENT";
             if(boss.Fight!=K.BossFight.Direct){l.Reason=K.FightReason(boss);return l;}
             l.Kind=LaunchKind.BossFight;
             if(seat==Seat.Host&&!guestsReady){l.Reason=GuestsWaiting;return l;}
@@ -89,7 +91,13 @@ namespace ChipArena.UnityConversion
             /// <summary>Short design canvases tighten the card, the mode panel and the bar.</summary>
             public bool Compact;
             public Box Content,Header,Party,Browser,Mode,Bar;
+            /// <summary>START EXPEDITION's regions: THE SQUAD where the party strip and the browser are, and the side panel where the
+            /// mode panel is, both from the party's top down to the bar.</summary>
+            public Box Squad,Side;
             public int Slots;public float SlotGap;
+            /// <summary>A tall squad card under the squad's label row.</summary>
+            public Box SquadSlot(int i){float w=(Squad.W-SlotGap*(Slots-1))/Slots;return new Box(Squad.X+i*(w+SlotGap),Squad.Y+SquadLabel,w,Squad.H-SquadLabel);}
+            public float SquadLabel=>Compact?24:30;
             public Box Slot(int i){float w=(Party.W-SlotGap*(Slots-1))/Slots;return new Box(Party.X+i*(w+SlotGap),Party.Y+PartyLabel,w,Party.H-PartyLabel);}
             /// <summary>The party strip's label row above the cards.</summary>
             public float PartyLabel=>Compact?20:24;
@@ -107,6 +115,7 @@ namespace ChipArena.UnityConversion
             l.Compact=barBottom-main0<420;float barH=l.Compact?56:64;l.Bar=new Box(x0,barBottom-barH,cw,barH);
             float mainH=l.Bar.Y-BarGap-main0;float modeW=Math.Max(400,Math.Min(540,cw*.36f)),gap=20;
             l.Browser=new Box(x0,main0,cw-modeW-gap,mainH);l.Mode=new Box(l.Browser.Right+gap,main0,modeW,mainH);
+            float sy=l.Party.Y,sh=l.Bar.Y-BarGap-sy;l.Squad=new Box(x0,sy,l.Browser.W,sh);l.Side=new Box(l.Mode.X,sy,modeW,sh);
             l.Content=new Box(x0,Top,cw,l.Bar.Bottom-Top);return l;
         }
 
@@ -114,11 +123,6 @@ namespace ChipArena.UnityConversion
         public struct Browser{public Box Label,Card,Rail;}
         public const float BrowserLabel=30;
         public static float RailHeight(bool compact)=>compact?44:62;
-        /// <summary>The run's briefing: the label row and one card across the whole browser.</summary>
-        public static Browser Run(Box b,bool compact)
-        {
-            float label=compact?26:BrowserLabel;return new Browser{Label=new Box(b.X,b.Y,b.W,label),Card=new Box(b.X,b.Y+label,b.W,b.H-label)};
-        }
         /// <summary>Boss Battle: the label row, the boss's card and the roster rail at the foot.</summary>
         public static Browser Roster(Box b,bool compact)
         {
@@ -137,26 +141,8 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The head of a card's details: kicker, title, tag line, then the fact chips.</summary>
         public static float InfoHead(Card k,bool compact)=>(compact?14:18)+k.Title*1.2f+k.TaglineLines*k.Tagline*1.4f+(compact?4:8)+(compact?22:26)+(compact?6:12);
-        /// <summary>The run's details: the head, the steps label (not compact) and one row per step.</summary>
-        public static float RunInfoHeight(Card k,bool compact)=>InfoHead(k,compact)+(compact?0:18)+K.Steps.Length*k.Row;
         /// <summary>A boss's details: the head (its subtitle in place of the kicker's second line), then the moves label and two lines.</summary>
         public static float BossInfoHeight(Card k,bool compact)=>InfoHead(k,compact)+(compact?16:20)+(compact?1:2)*(compact?15:18);
-
-        // The run's art: the Instance Machine's head, three reels with their entrance labels and the lever, the Mutator Machine's
-        // head and its three cards, and the foot.
-        public struct Machine{public Box Head,Reels,Lever,MutHead,Muts,Foot;public float Label;}
-        public static Machine MachineParts(Box art,bool compact)
-        {
-            float pad=compact?10:14,head=compact?18:22,label=compact?12:14,foot=compact?16:20,mutHead=compact?16:20;
-            float inner=art.H-2*pad-head-foot-mutHead-(compact?4:8)*3;float muts=Math.Max(28,Math.Min(compact?40:62,inner*.38f)),reels=Math.Max(54,inner-muts);
-            var m=new Machine{Label=label};float y=art.Y+pad;m.Head=new Box(art.X+pad,y,art.W-2*pad,head);y+=head+(compact?4:8);
-            float lever=compact?14:18;m.Reels=new Box(art.X+pad,y,art.W-2*pad-lever-8,reels);m.Lever=new Box(m.Reels.Right+8,y+label,lever,reels-label);y+=reels+(compact?4:8);
-            m.MutHead=new Box(art.X+pad,y,art.W-2*pad,mutHead);y+=mutHead;m.Muts=new Box(art.X+pad,y,art.W-2*pad,muts);y+=muts+(compact?4:8);
-            m.Foot=new Box(art.X+pad,y,art.W-2*pad,foot);return m;
-        }
-        /// <summary>Reel <paramref name="i"/>'s window (under its entrance label).</summary>
-        public static Box ReelWindow(Machine m,int i){const float gap=8;float w=(m.Reels.W-gap*2)/3;return new Box(m.Reels.X+i*(w+gap),m.Reels.Y+m.Label,w,m.Reels.H-m.Label);}
-        public static Box MutCard(Machine m,int i){const float gap=8;float w=(m.Muts.W-gap*2)/3;return new Box(m.Muts.X+i*(w+gap),m.Muts.Y,w,m.Muts.H);}
 
         // The mode panel: its label, the two mode tiles, the area under them (the machine pool or the fight's notes) and the
         // loadout row.
@@ -167,41 +153,32 @@ namespace ChipArena.UnityConversion
             float y=m.Y+label+(compact?2:6);p.Expedition=new Box(m.X,y,m.W,tile);y+=tile+gap;p.Boss=new Box(m.X,y,m.W,tile);y+=tile+gap+(compact?2:6);
             p.Loadout=new Box(m.X,m.Bottom-load,m.W,load);p.Detail=new Box(m.X,y,m.W,Math.Max(0,p.Loadout.Y-(compact?6:10)-y));return p;
         }
-        /// <summary>The detail area's least height: its label and the first rows of the machine's pool.</summary>
+        /// <summary>The Boss Battle notes' least height: their label and the first notes.</summary>
         public static float DetailMin(bool compact)=>compact?16+2*16:20+3*20;
+        // A squad card: the portrait stage filling the top, the name plate at the foot.
+        public struct SquadCard{public Box Stage,Plate;}
+        public static float PlateHeight(bool compact)=>compact?86:108;
+        public static SquadCard SquadParts(Box slot,bool compact)
+        {
+            float plate=PlateHeight(compact);return new SquadCard{Stage=new Box(slot.X+1,slot.Y+1,slot.W-2,slot.H-plate-1),Plate=new Box(slot.X+12,slot.Bottom-plate,slot.W-24,plate-12)};
+        }
+        /// <summary>The plate's stack: the name, the weapon row and its underline, and the foot's pill (24).</summary>
+        public static float PlateStack(bool compact)=>compact?2+17*1.3f+2+18+4+24:4+21*1.3f+4+18+8+24;
+        // The run's briefing in the side panel's detail area: its label row, kicker, title, tag line, facts, then how a run goes.
+        // It takes the full sizes where they fit and the compact ones otherwise.
+        public struct Brief{public bool Tight;public float Title,Tagline,Row;public int TaglineLines;}
+        public static Brief BriefFor(Box detail,bool compact)
+        {
+            var full=new Brief{Title=30,Tagline=13,TaglineLines=2,Row=30};
+            return !compact&&BriefHeight(full)<=detail.H?full:new Brief{Tight=true,Title=24,Tagline=12,TaglineLines=2,Row=20};
+        }
+        public static float BriefHeight(Brief b)=>(b.Tight?18:22)+(b.Tight?14:18)+b.Title*1.2f+b.TaglineLines*b.Tagline*1.4f+(b.Tight?4:8)+(b.Tight?22:26)+(b.Tight?8:14)+(b.Tight?0:18)+K.Steps.Length*b.Row;
         // A party card: the portrait stage at the left, the details beside it.
         public struct PartyCard{public Box Stage,Info;}
         public static PartyCard Party(Box slot)
         {
             float sw=Math.Max(64,Math.Min(slot.H*.9f,slot.W*.44f));var p=new PartyCard{Stage=new Box(slot.X+1,slot.Y+1,sw,slot.H-2)};
             float ix=p.Stage.Right+10;p.Info=new Box(ix,slot.Y+10,Math.Max(10,slot.Right-12-ix),slot.H-20);return p;
-        }
-
-        // ---- The sample spin ------------------------------------------------------------------------------------------------
-        /// <summary>
-        /// The run card's sample spin: every <see cref="SpinPeriod"/> s the Instance Machine's three reels roll (the station's own
-        /// reel motion, NativeDeployPresentation.Reel) onto three distinct destinations, then the Mutator Machine's three cards.
-        /// A made-up sample: it reads no state and decides nothing (the station rolls the real run).
-        /// </summary>
-        public const float SpinPeriod=8.4f,MutatorsAt=2.9f,HoldTail=1.2f;
-        public static long SpinAt(double now)=>(long)Math.Floor(Math.Max(0,now)/SpinPeriod);
-        /// <summary>Seconds into spin <paramref name="index"/>'s cycle.</summary>
-        public static float SpinAge(double now)=>(float)(Math.Max(0,now)-SpinAt(now)*(double)SpinPeriod);
-        /// <summary>Spin <paramref name="index"/>'s three distinct destinations (indices into the station's table of
-        /// <paramref name="destinations"/>) and three distinct mutators (of <paramref name="mutators"/>), from its own seed.</summary>
-        public static void SpinPicks(long index,int destinations,int mutators,int[] dest,int[] mut)
-        {
-            uint s=(uint)(index*2654435761L)^0x9e3779b9u;uint Next(){s^=s<<13;s^=s>>17;s^=s<<5;return s;}
-            Draw(dest,destinations,Next);Draw(mut,mutators,Next);
-            static void Draw(int[] into,int n,Func<uint> next)
-            {
-                for(int i=0;i<into.Length;i++)
-                {
-                    int pick=n>0?(int)(next()%(uint)n):0;
-                    for(int tries=0;tries<n&&Array.IndexOf(into,pick,0,i)>=0;tries++)pick=(pick+1)%n;
-                    into[i]=pick;
-                }
-            }
         }
     }
 }
