@@ -134,7 +134,7 @@ namespace ChipArena.UnityConversion
             if(Pve==null||!Pve.Holding)return false;var v=Pve;v.HoldLeft-=dt;if(v.HoldLeft>0)return true;string cinematic=v.Cinematic;v.Holding=false;
             if(cinematic=="victory"||cinematic=="defeat"){KillPveHorde();v.Outcome=cinematic;v.Stage="ended";Match.FinishCooperative(cinematic=="victory");return true;}
             if(cinematic=="reveal"&&v.Reveal==1){var boss=v.Boss;v.MaxHp=NativePveRules.BossHp(PartySize);boss.Stats["hp"]=v.MaxHp;boss.Hp=v.MaxHp;boss.Stats["damage"]=NativePveRules.BossDamage(PartySize);SetBossHidden(false);PlacePveBoss(BossSpawn);boss.Yaw=v.Content.boss.yaw;boss.Input=new InputFrame{Yaw=boss.Yaw};v.Floor=v.MaxHp*.75f;BeginPveHold("intro");return true;}
-            if(cinematic=="intro"){if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}BossSongLead+=v.HoldDuration;v.Stage="boss";v.StageAt=Time;v.Phase=1;}
+            if(cinematic=="intro"){if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}BossSongLead=NativeBossSongClock.ReleaseLead(Time,BossSongAt,v.HoldDuration);v.Stage="boss";v.StageAt=Time;v.Phase=1;}
             else if(cinematic=="reveal")
             {
                 v.Phase=v.Reveal;v.Floor=v.Phase==2?v.MaxHp*.5f:v.Phase==3?v.MaxHp*.25f:0;

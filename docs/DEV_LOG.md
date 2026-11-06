@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: stop Expedition boss intro music advancing twice
+
+- Branch `codex/expedition-boss-song-clock`, shared base `6e7276e`. Owner reproduced speed-up at THE HUM. SplitFixedFrame synchronizes every arena to the running party clock during a held intro; BossSongTime also added the hold countdown's elapsed time. Two seconds therefore produced four seconds of song age, provoking forward audio seeks even without a rendering hitch. The prior stall suppressor cannot fix that clock error.
+- Held intros now use only hold elapsed time. On release, the song lead compensates for match time already advanced, preserving the 9.0678-second endpoint for both frozen standalone PvE and running split Expedition. Host, guest and replay use the same existing replicated fields; no wire format or authored song/visual changes.
+- Added running/frozen-clock numerical regressions, zero-seek steady playback and continuous combat handoff checks; extended the native PvE host/guest codec gate to cover a running match clock. Focused intro/cache suite passes 264,384 assertions; all four pinned Unity reference assemblies compile; source package validates 3,307 files. Full managed suite passed: exit 0, 972 PASS lines including existing Siren music/intro and real LAN checks.
+- Native Unity execution, Windows listening and real multiplayer remain unrun here. This fixes the confirmed double-clock defect; separate spawn-time GPU/CPU hitches are not proven resolved. No live or Site release. Merge, builder synchronization and publication receipts belong to the task PR.
+
 ## 2026-11-05 — Astra: filter Expedition ability chips by the recipient's equipped slots
 
 - Branch `codex/ability-chip-eligibility`, base `c2205fdc`. Per-area Expedition sessions omitted both ChipFilter and AbilityLoadout, passing null into legacy eligibility and admitting all ab-* weapon chips. Bind every area session to implemented mechanics and the requesting pilot's current seat/loadout, with the party seat as transfer fallback.
