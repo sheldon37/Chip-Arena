@@ -192,7 +192,6 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
             stage = 'read saved ElevenLabs credential'
             secret = protect((root / 'key.dpapi').read_bytes(), decrypt=True).decode() if pending_count else ''
             report('running', requests=pending_count, seconds=pending_seconds)
-            current = source
             for row, path, digest, jobs, folder, identity, receipt in batches:
                 write(identity, row)
                 stage = 'generate or reuse approved originals'
@@ -208,6 +207,12 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                     os.replace(temporary, archive)
                 except OSError:
                     print('Sound sample ZIP mirror unavailable; originals retained locally.', flush=True)
+            # Finish the approved listening originals before a game's import rejection
+            # can block later jobs. Receipts still prevent paid regeneration on retry.
+            report('importing', jobs=[r[0]['id'] for r in batches], generatedRequests=pending_count,
+                   message='All approved originals ready; validating game imports.')
+            current = source
+            for row, path, digest, jobs, folder, identity, receipt in batches:
                 # Base hash avoids dropping newer licensed assets or another job's imported sounds.
                 stage = 'fingerprint import inputs'
                 fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + digest +
@@ -226,6 +231,11 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                     command([Path(__file__).with_name('import_sound_requests.py'), '--manifest', path,
                              '--in', folder, '--base', current, '--out', output, '--report', details])
                     imported = json.loads(details.read_text())
+                    # Mirror only the structured import report, never credentials/config.
+                    try:
+                        write(source.parent / details.name, imported)
+                    except OSError:
+                        print('Sound import report mirror unavailable; retained locally.', flush=True)
                     if imported.get('problems') or sum(k['accepted'] for k in imported['keys'].values()) != len(jobs):
                         raise ValueError('Importer rejected some sounds; inspect the local import report. No regeneration attempted.')
                     write(proof, dict(sha256=sha(output)))
