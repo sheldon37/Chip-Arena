@@ -176,7 +176,7 @@ namespace ChipArena.UnityConversion
         }
         private void StepPve()
         {
-            var v=Pve;if(v==null||Match.Phase!=NativePhase.Fight||v.Holding)return;if(Expedition!=null){StepExpeditionCombat();return;}if(!v.Started)StartPve();
+            var v=Pve;if(v==null||Match.Phase!=NativePhase.Fight||v.Holding)return;if(Expedition!=null){StepExpeditionCombat();return;}if(ZoneBoss!=null){StepBossBattle();return;}if(!v.Started)StartPve();
             StepPveServices();
             if(v.Stage=="opening"||v.Stage=="wave"||v.Stage=="intermission")
             {

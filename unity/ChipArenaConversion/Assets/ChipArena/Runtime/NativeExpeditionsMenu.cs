@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
             // (By frames, not seconds: a hitch while it stays open must not reopen it and lose the mode.)
             if(Time.frameCount-expSeenFrame>2)ExpOpen(seat);expSeenFrame=Time.frameCount;
             // Guests read the host's replicated mode. No room field carries a boss, so a guest sees the one a room fights.
-            if(seat==X.Seat.Guest){expMode=X.ModeOf(receivedOptions?.expedition==true);expBoss=K.DefaultBoss;}
+            if(seat==X.Seat.Guest){expMode=X.ModeOf(receivedOptions?.expedition==true);expBoss=NativeBossBattle.Index(receivedOptions?.boss);}
             if(expMode!=expModeShown){expModeShown=expMode;expModeAt=now;expStep=-1;}
             var L=X.Measure(U.W,U.H);float e=In(age,0,.26f);var boss=K.BossAt(expBoss);var party=room?LobbyRoster():ExpSoloParty();
             bool busy=seat==X.Seat.Guest?server==null:server!=null;
@@ -93,7 +93,7 @@ namespace ChipArena.UnityConversion
         private void ExpPickBoss(int index,int dir)
         {
             int next=K.WrapBoss(index);if(expMode!=X.Mode.Boss)ExpSetMode(X.Mode.Boss);if(next==expBoss)return;
-            expBossFrom=expBoss;expBoss=next;expBossDir=dir<0?-1:1;expBossAt=Time.unscaledTime;Click();
+            expBossFrom=expBoss;expBoss=next;expBossDir=dir<0?-1:1;expBossAt=Time.unscaledTime;SelectBossBattle(K.BossAt(next).Id);Click();
         }
         private void ExpToggleDrawer(){expDrawer=!expDrawer;expDrawerAt=Time.unscaledTime;if(expDrawer){expDrawerScroll=Vector2.zero;expDrawerContent=400;}Click();}
         // The launch: the calls the boss-test screen and the room lobby made.
@@ -114,7 +114,11 @@ namespace ChipArena.UnityConversion
         {
             switch(b?.Id)
             {
-                case "siren":ApplyRule(RoomOpt.SkipWaves,1,0);prefs.skipWaves=true;prefs.expedition=false;prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);break;
+                case "siren":SelectBossBattle("siren");ApplyRule(RoomOpt.SkipWaves,1,0);prefs.skipWaves=true;prefs.expedition=false;prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);break;
+                case "station":StartBossBattle("station");break;
+                case "converter":StartBossBattle("converter");break;
+                case "hum":StartBossBattle("hum");break;
+                case "deepend":StartBossBattle("deepend");break;
                 default:Notice(K.FightReason(b)??"This boss has no direct start yet.");break;
             }
         }
