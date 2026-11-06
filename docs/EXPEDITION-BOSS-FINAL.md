@@ -160,7 +160,8 @@ The pack's sword clips carry it, retimed to the move table: a long, slow windup 
 - **The knee:** a true one-knee kneel set on the muscles (no clip has one), used for the cutscene, each threshold and the death. The fist closes on the planted sword by IK.
 - **Gliding:** a dash leaves the water, feet off it, with a wake laid behind.
 - **Wings:** rooted on the chest but square to the body so the pair stays a pair, opening and flaring on an underdamped spring, thrown past their mark and shivering back, each pair behind the one above; they lag turns and blow back with speed.
-- **Robe, halo, ring of blades:** the strips hang by their own weight and swing with its speed; the halo tilts by phase; the blades turn.
+- **Robe, halo, ring of blades:** the strips drape from the waist over the legs (the front strips along the thigh and shin, the back ones only a little, a slight skirt flare) and swing with its speed, so parted legs never show a straight column of strips between them; the halo tilts by phase; the blades turn.
+- **The blade clears the body:** after the arm's pose the hand turns about the wrist until the blade (guard to point) is out of capsules round the torso, head, legs and free arm, leaving on the side it was last pushed to (Runtime `FallenBladeClear`). A planted sword is left alone. Drawn from the water, the fist goes straight from the planted grip to the carry (`FallenGrip`), never back through the clip's open hand.
 - **The sword** trails a thin bright edge on every fast swing and drags a wake when its point meets the water.
 
 Impact on rules: none until bound. All hit timing comes from the move table, and each preview move lands on a song beat.
@@ -207,3 +208,13 @@ NOCTIEL's Boss Battle entry now runs the real encounter in Still Water for 1–4
 Authority: `Runtime/NativeFallenAuthority.cs`; deterministic geometry/modifiers and replicated record: `Core/NativeFallenRules.cs`; presentation adapter: `ArenaPresentation.FallenBossViewOf` in `Runtime/NativeFallenBinding.cs`. Phase drafts are real PvE picks; lives use a held interact input. Fall of Light uses one seeded volley per cast with a minimum 2.4-second warning.
 
 Remaining design integration: Expedition end-of-run destination choice and finale ledger; intro seen/skip votes; rendered human co-op acceptance and Claude's polish/sounds/reflections. This standalone fight does not change rolled Expedition runs or their compatibility digest.
+
+## 16. Live motion (Claude, 2026-11-06)
+
+Owner: "Their intro still starts while we're loading in ... a black pillar in them ... when they turn their weapon in intro, it goes through their body ... a lot of feet sliding, and it also needs better attack animations."
+
+- **Loading:** the stage preload loads NOCTIEL's own song for `expedition-lux-cecidit` (it loaded the Siren's), the boss songs wait while the loading screen covers the view (`NativeAudio.StageCovered`), and a boss's intro hold keeps the entrance intro's loading budget instead of the fight's none. The authority's load gate already holds the clock until clients are ready (its 12 s deadline is Astra's).
+- **The fight's motion** is Core `NativeFallenLiveMotion`, run after the binding (`ArenaPresentation.FallenLiveMotion`, Runtime `NativeFallenLiveBody.cs`). It plays the preview's choreography on the authority's clock: each clip's contact lands on the move's hit (Cleave's three cuts at +0, +0.3, +0.6 s; Severance's second wing at +0.6 s), short windups draw the wings in, long charges spread them, the trail shows on the strike only. Descent leaps from where it stood and lands where and when the authority puts it; Vow flies its lane on the authority's own lerp; Feather Rain and Fall of Light lift it off the water. Chasing at the authority's 9 m/s it glides half a metre up with its wings open; standing, it turns to its quarry in steps. Clips crossfade, position and facing follow springs.
+- **Feet:** live, a sole the clip puts on the water stays where it came down (two-bone leg IK), stepping in a short lifted arc when the body has moved or turned past it, one foot at a time.
+- **Impact on rules:** none. No hit time, hitbox, damage, cooldown, movement or wire value changes; the body only shows the authority's facts (Descent's arc leads the authority's teleport, which happens on the hit as before).
+- **Checks:** `Tests/FallenBossChecks.cs` (`--fallen-boss`): every move's contact within 35 ms of its authority hit, the chase glides and lands, standing turns and every clip change crossfade, missing clips fall back.

@@ -126,7 +126,9 @@ namespace ChipArena.UnityConversion
             s.Failed=stageFailed||error.Length>0||expeditionError!=null&&(k==StageLoadKind.Expedition||k==StageLoadKind.Area);
             if(stageActed)s.Failed|=back?arena!=null:arena==null||ReferenceEquals(arena,stageFrom);
             s.Waiting=!back&&(StageGate.Waiting||LiveExpedition?.areaBarrier?.active==true);
-            bool intro=arena!=null&&IntroActive;
+            // A boss's intro hold (a zone boss's or NOCTIEL's cinematic, which IntroActive leaves to the boss's own presenter) is an
+            // intro too: the screen keeps the entrance intro's budget for it rather than the fight's none.
+            bool intro=arena!=null&&(IntroActive||arena.Pve?.Holding==true&&arena.Pve.Cinematic=="intro");
             s.Live=!back&&arena!=null&&match!=null&&match.Phase==NativePhase.Fight&&!intro&&arena.Pve?.Holding!=true;
             s.Budget=NativeStageLoading.Budget(back||arena==null||match==null?(NativePhase?)null:intro?NativePhase.Intro:match.Phase);
             return s;

@@ -90,11 +90,11 @@ namespace ChipArena.UnityConversion
 #endif
             double since=(now-NativeFallenBossPreview.Start-FallenPreviewSkip())*NativeFallenBossPreview.Rate+FallenPreviewSkip(),loops=Math.Floor(since/NativeFallenBossPreview.Loop);float p=(float)(since-loops*NativeFallenBossPreview.Loop);
             float dt=fbLast<0?0:Mathf.Clamp(now-fbLast,0,.1f);fbLast=now;NativeFallenBossPreview.ShownClock=NativeFallenBossPreview.Start+since;NativeFallenBossPreview.ShownP=p;
-            var f=fbFrame;if(live)FallenBossViewOf(arena,f);else{f.Live=null;f.Actions=null;f.LiveAdds=null;NativeFallenBossPreview.Eval(p,VisualMotionBank,f);}NativeFallenBossPreview.Shown.P=p;NativeFallenBossPreview.Shown.Section=f.Section;NativeFallenBossPreview.Shown.SongClip=f.SongClip;NativeFallenBossPreview.Shown.Phase=f.Phase;NativeFallenBossPreview.Shown.ChipAge=f.ChipAge;NativeFallenBossPreview.Shown.ChipPhase=f.ChipPhase;NativeFallenBossPreview.Shown.Black=f.Black;NativeFallenBossPreview.Shown.SlashAge=f.SlashAge;NativeFallenBossPreview.Shown.CardAge=f.CardAge;NativeFallenBossPreview.Shown.Kind=f.Kind;
+            var f=fbFrame;if(live){FallenBossViewOf(arena,f);FallenLiveMotion(arena,f,now);}else{fbLive.Reset();fbLiveNow=false;f.Live=null;f.Actions=null;f.LiveAdds=null;NativeFallenBossPreview.Eval(p,VisualMotionBank,f);}NativeFallenBossPreview.Shown.P=p;NativeFallenBossPreview.Shown.Section=f.Section;NativeFallenBossPreview.Shown.SongClip=f.SongClip;NativeFallenBossPreview.Shown.Phase=f.Phase;NativeFallenBossPreview.Shown.ChipAge=f.ChipAge;NativeFallenBossPreview.Shown.ChipPhase=f.ChipPhase;NativeFallenBossPreview.Shown.Black=f.Black;NativeFallenBossPreview.Shown.SlashAge=f.SlashAge;NativeFallenBossPreview.Shown.CardAge=f.CardAge;NativeFallenBossPreview.Shown.Kind=f.Kind;
             // The eye: on the black stage, nothing of the level reaches it.
             FallenStageEnter(eye);eye.clearFlags=CameraClearFlags.SolidColor;eye.backgroundColor=Color.black;eye.farClipPlane=460;RenderSettings.fog=false;RenderSettings.ambientMode=AmbientMode.Trilight;RenderSettings.ambientSkyColor=new Color(.62f,.62f,.66f);RenderSettings.ambientEquatorColor=new Color(.5f,.5f,.54f);RenderSettings.ambientGroundColor=new Color(.34f,.34f,.38f);
             var origin=live?new Vector3(0,.02f,0):FallenOrigin;var eyeAt=eye.transform.position;
-            FallenPose(f,now,dt,origin,eyeAt);
+            FallenPose(f,now,dt,origin,eyeAt);FallenShown(f);
             // The shot, read by the camera next (BackroomsBossPreviewShot).
             if(!live||f.Kind==NativeFallenBossPreview.KindCutscene||f.Kind==NativeFallenBossPreview.KindDeath)FallenShot(f,origin,now);else fbShotReady=false;
             // The song on the floor.

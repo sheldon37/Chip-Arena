@@ -66,7 +66,95 @@ public static class FallenBossChecks
         foreach(Match m in Regex.Matches(script,@"finish\('[a-z-]+', 0x([0-9A-Fa-f]{6})")){int v=Convert.ToInt32(m.Groups[1].Value,16);int r=(v>>16)&255,g=(v>>8)&255,bl=v&255;Check(Math.Abs(r-g)<=12&&Math.Abs(g-bl)<=12,"finish "+m.Value+" is grey");}
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs")){if(Path.GetFileName(f).StartsWith("NativeFallen"))continue;Check(!File.ReadAllText(f).Contains("NativeFallenBossPreview"),Path.GetFileName(f)+" doesn't read the preview");}
         var presentation=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");Check(presentation.Contains("if(!NativeFallenBossPreview.On&&!live){FallenBossHide();return;}"),"without a preview or real encounter nothing runs");
-        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+")");
+        Live(R);
+        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+"; live motion: every move's contact on its hit, glide and land, no pops)");
+    }
+    // ---- Live motion (Core NativeFallenLiveMotion; owner 2026-11-06: "a lot of feet sliding ... needs better attack animations") ----
+    private static NativeVisualMotionClips.Library Bank(params string[] missing)
+    {
+        var lib=new NativeVisualMotionClips.Library();
+        void C(string name,float length,float hit,bool loop,float speed=0){if(Array.IndexOf(missing,name)<0)lib.Clips[name]=new NativeVisualMotionClips.Clip{Name=name,Length=length,Hit=hit,Rate=30,SpeedZ=speed,Loop=loop,Frames=2,Stride=1,Data=new float[2]};}
+        C("Unarmed-Idle",3,1.5f,true);C("Armed-Dash-Forward",.8f,.4f,true,6);C("Armed-Run-Forward",.7f,.35f,true,5.2f);C("Armed-Walk",1.1f,.5f,true,1.4f);C("Armed-Idle",3,1.5f,true);
+        foreach(var n in new[]{"Sword-Attack-R1","Sword-Attack-R2","Sword-Attack-R3","Sword-Attack-R4","Sword-Attack-R6","Armed-Run-Attack-R1","2Hand-Sword-Attack1","2Hand-Sword-Attack3","2Hand-Sword-Attack11","2Hand-Sword-Activate","Armed-Activate-Left"})C(n,1.3f,.5f,false);
+        C("2Hand-Sword-Jump",.9f,.3f,false);C("2Hand-Sword-Air-Attack1",1.1f,.55f,false);C("2Hand-Sword-Land",.8f,.1f,false);
+        return lib;
+    }
+    private static float Angle(float a,float b){float d=(b-a)%360;if(d>180)d-=360;if(d<-180)d+=360;return Math.Abs(d);}
+    private static void Live(Func<string,string> R)
+    {
+        var bank=Bank();var f=new FallenBossFrame();
+        // Every move: the clip's contact lands on the authority's strike (each Cleave cut, the second wing on its wave).
+        foreach(var m in NativeFallenBoss.Moves)
+        {
+            var d=new NativeFallenLiveMotion();var from=new Vector3(0,0,0);var to=new Vector3(0,0,12);float A=10,wind=m.Id=="thrones"?1.2f:Math.Max(m.Kills?2.4f:0,m.Wind),H=A+wind;
+            float duration=wind+(m.Id=="severance"?5.5f:m.Id=="fall"?3.2f:m.Id=="thrones"?1.2f:m.Strike+m.Follow+m.Recover);
+            var x=new NativeFallenLiveMotion.Facts{At=from,Yaw=0,Target=to,Action=m.Id,ActionAt=A,HitAt=H,Duration=duration,ActionYaw=0,From=from,To=to,SecondWing=true};
+            string lastTo=null;float maxAir=0,lastYaw=0;bool first=true;var shots=new System.Collections.Generic.List<NativeFallenLiveMotion.Shot>();
+            for(float now=A-1;now<A+duration+1;now+=1/120f)
+            {
+                x.Now=now;x.At=m.Id=="vow"&&now>=H?Vector3.Lerp(from,to,Math.Clamp((now-H)/.5f,0,1)):m.Id=="descent"&&now>=H?to:from;
+                if(now<A){x.Action=null;}else x.Action=m.Id;
+                for(int w=0;w<3;w++)f.WingOpen[w]=.3f;f.Kneel=0;
+                d.Step(f,x,bank,first?"2Hand-Sword-Attack1":null,1);
+                Check(float.IsFinite(f.Boss.X+f.Boss.Y+f.Boss.Z+f.Yaw+f.Air+f.TimeTo+f.TimeFrom)&&f.Mix>=0&&f.Mix<=1&&f.Carry>=0&&f.Carry<=1,m.Id+": a finite pose at "+now);
+                // No pops: a new clip always comes in under a crossfade from the one before.
+                if(!first&&f.ClipTo!=lastTo)Check(f.ClipFrom==lastTo&&f.Mix<.5f,m.Id+": "+lastTo+" crossfades to "+f.ClipTo+" at "+now);
+                if(!first)Check(Angle(lastYaw,f.Yaw)<12,m.Id+": it turns, never snaps, at "+now);
+                lastTo=f.ClipTo;lastYaw=f.Yaw;first=false;maxAir=Math.Max(maxAir,f.Air);
+                foreach(var s in d.Plan.ToArray())if(!shots.Exists(q=>q.Key==s.Key&&q.T0==s.T0))shots.Add(s);
+                if(Math.Abs(now-H)<.004f)Check(Angle(f.Yaw,0)<3,m.Id+": it faces its aim on the hit");
+                if(now<A-.1f)Check(f.Trail==0,m.Id+": no trail before the move");
+            }
+            float[] hits=m.Id=="cleave"?new[]{H,H+.3f,H+.6f}:m.Id=="severance"?new[]{H,H+.6f}:m.Id=="vow"?new[]{H+.12f}:new[]{H};
+            foreach(float hit in hits)Check(shots.Exists(s=>Math.Abs(NativeFallenLiveMotion.ContactOf(s,bank)-hit)<.035f),m.Id+": a clip's contact at "+(hit-A).ToString("0.00")+" s");
+            if(m.Id=="descent")Check(maxAir>3,"descent leaps ("+maxAir.ToString("0.0")+" m)");
+            if(m.Id=="rain"||m.Id=="fall")Check(maxAir>.8f,m.Id+" lifts it off the water");
+            if(m.Id=="cleave"||m.Id=="sweep"||m.Id=="verdict")Check(maxAir<.01f,m.Id+" keeps its feet on the water");
+        }
+        // Descent's path: where it stood until it leaves, on the arc, down where the authority puts it on the hit.
+        {
+            var d=new NativeFallenLiveMotion();var from=new Vector3(0,0,0);var to=new Vector3(18,0,6);var mv=NativeFallenBoss.Move("descent");float A=5,H=A+mv.Wind;
+            var x=new NativeFallenLiveMotion.Facts{At=from,Target=to,Action="descent",ActionAt=A,HitAt=H,Duration=mv.Wind+mv.Strike+mv.Follow+mv.Recover,ActionYaw=71.6f,From=from,To=to};
+            for(float now=A;now<H+.5f;now+=1/120f){x.Now=now;x.At=now>=H?to:from;d.Step(f,x,bank);
+                if(now<A+.1f)Check(Vector3.Distance(f.Boss,from)<.05f,"descent: it stands until it leaves");
+                if(now>=H)Check(Vector3.Distance(f.Boss,to)<.3f&&f.Air<.05f,"descent: it lands where the hit is, on the hit ("+Vector3.Distance(f.Boss,to).ToString("0.00")+", air "+f.Air.ToString("0.00")+")");}
+        }
+        // The chase: the authority's 9 m/s, stepped at 60 Hz and drawn at 144: it glides (off the water, the glide's clip, facing
+        // its way), then stops, lands and stands with the sword carried.
+        {
+            var d=new NativeFallenLiveMotion();var at=new Vector3(0,0,0);var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=180,Target=new Vector3(40,0,40)};
+            float lastYaw=0,step=0;bool first=true;string lastTo=null;
+            for(float now=0;now<4;now+=1/144f)
+            {
+                while(step<=now&&now<2){at+=Vector3.Normalize(new Vector3(1,0,1))*(9f/60);step+=1/60f;}if(now>=2)step=now;
+                x.Now=now;x.At=at;d.Step(f,x,bank,first?"Unarmed-Idle":null,0);
+                if(!first){Check(Angle(lastYaw,f.Yaw)<8,"the chase turns smoothly at "+now);if(f.ClipTo!=lastTo)Check(f.ClipFrom==lastTo&&f.Mix<.5f,"the chase crossfades at "+now);}
+                first=false;lastYaw=f.Yaw;lastTo=f.ClipTo;
+                if(now>.8f&&now<2)Check(d.Gliding&&f.Gliding&&f.Air>.3f&&f.ClipTo=="Armed-Dash-Forward"&&Angle(f.Yaw,45)<10&&f.Carry<.05f,"chasing it glides off the water, facing its way, at "+now+" (air "+f.Air.ToString("0.00")+", yaw "+f.Yaw.ToString("0")+")");
+                if(now>3.2f)Check(!d.Gliding&&f.Air<.05f&&f.ClipTo=="Unarmed-Idle"&&f.Carry>.9f,"stopped, it lands and stands with the sword carried at "+now);
+                Check(Vector3.Distance(f.Boss,at)<2.5f,"the body keeps up with the actor at "+now);
+            }
+        }
+        // A standing turn: past 18 degrees off its quarry it turns to it, smoothly.
+        {
+            var d=new NativeFallenLiveMotion();var x=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};float lastYaw=0;
+            for(float now=0;now<3;now+=1/144f){x.Now=now;if(now>1)x.Target=new Vector3(20,0,0);d.Step(f,x,bank);if(now>0)Check(Angle(lastYaw,f.Yaw)<6,"a standing turn is smooth at "+now);lastYaw=f.Yaw;
+                if(now<1)Check(Angle(f.Yaw,0)<1,"it holds still facing its quarry");if(now>2.4f)Check(Angle(f.Yaw,90)<5,"it has turned to its quarry ("+f.Yaw.ToString("0")+")");}
+        }
+        // A bank without a clip falls back to the nearest it has.
+        var thin=Bank("Sword-Attack-R1","Armed-Dash-Forward","2Hand-Sword-Jump");
+        Check(NativeFallenLiveMotion.Pick("Sword-Attack-R1",thin)=="2Hand-Sword-Attack1"&&NativeFallenLiveMotion.Pick("Armed-Dash-Forward",thin)=="Armed-Run-Forward"&&NativeFallenLiveMotion.Pick("2Hand-Sword-Jump",thin)=="Armed-Activate-Left"&&NativeFallenLiveMotion.Pick("Sword-Attack-R2",thin)=="Sword-Attack-R2"&&NativeFallenLiveMotion.Pick("x",null)=="x","missing clips fall back");
+        // The wiring: the director after the binding, the feet planted, the blade cleared, the robe draped, the song held under the cover.
+        var scenery=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");var body=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var live=R("Assets/ChipArena/Runtime/NativeFallenLiveBody.cs");
+        Check(scenery.Contains("if(live){FallenBossViewOf(arena,f);FallenLiveMotion(arena,f,now);}else{fbLive.Reset();fbLiveNow=false;")&&scenery.Contains("FallenPose(f,now,dt,origin,eyeAt);FallenShown(f);"),"the live director runs after the binding, the preview keeps its script");
+        Check(live.Contains("fbLive.Step(f,facts,VisualMotionBank,")&&live.Contains("!(a.Pve.Holding&&a.Pve.Cinematic==\"intro\")&&z.deathAt<0"),"the intro and the death keep the cutscene's pose");
+        Check(body.Contains("FallenFeetPlant(f,now,hover);")&&body.IndexOf("FallenFeetPlant(f,now,hover);")<body.IndexOf("FallenGrip(f,origin);")&&body.IndexOf("FallenGrip(f,origin);")<body.IndexOf("FallenBladeClear(f,yawRot,now);")&&body.IndexOf("FallenBladeClear(f,yawRot,now);")<body.IndexOf("FallenChains(f,now,dt,yawRot,local);"),"feet, then the grip, then the blade cleared, then the chains");
+        Check(!body.Contains("if(f.Plant>0)FallenPlant(f,origin);else if(f.Carry>0)FallenCarry(f);")&&body.Contains("FallenSwordTo(Vector3.Lerp(cg,pg,plant),Quaternion.Slerp(cr,pr,plant),Mathf.Clamp01(plant+carry),"),"the sword drawn from the water goes straight to the carry");
+        Check(body.Contains("Quaternion.FromToRotation(Vector3.down,FallenRobeWay(c.Pivot.X,c.Pivot.Z-.03f,c.Segment,yawRot))*yawRot"),"the robe drapes over the legs");
+        var audio=R("Assets/ChipArena/Runtime/NativeAudio.cs");var loading=R("Assets/ChipArena/Runtime/NativeStageLoadingUI.cs");var game=R("Assets/ChipArena/Runtime/ConversionGame.cs");
+        Check(audio.Contains("map==NativeFallenRules.Map?NativeFallenSong.Id:")&&audio.Contains("Track(NativeFallenSong.Id,Music*.55f,StageCovered,")&&game.Contains("nativeAudio.StageCovered=stageLoad.Visible&&stageLoad.Phase!=StageLoadPhase.Reveal;"),"its song loads behind the cover and waits for the screen to open");
+        Check(loading.Contains("bool intro=arena!=null&&(IntroActive||arena.Pve?.Holding==true&&arena.Pve.Cinematic==\"intro\");"),"a boss's intro hold keeps the intro's loading budget");
+        Check(!R("Assets/ChipArena/Core/NativeFallenLiveMotion.cs").Contains("NativeArena"),"the director reads facts, not the arena");
     }
 }
 #endif
