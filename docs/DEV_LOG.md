@@ -1,3 +1,9 @@
+## 2026-11-06 — Astra: approved full NOCTIEL sound generation
+
+- Owner explicitly approved: "Generate all 92" after reviewing the six-sample/full-batch estimates. Branch `codex/noctiel-audio-queue`, based on Claude's `f3104819` sound manifest over shared `ceedd4fb`. Adds four immutable approved jobs `noctiel-full-20261106-v1` through `v4`; exactly 92 distinct takes, 148.6 seconds, estimated 5,944 credits at the generator's documented rate. Manifest SHA256 `4ad409e429a349910d1eac937ef08a9747ef6aebdc43e9e1fa93f93b6b7a5bd7`. Prompts and settings unchanged; old jobs retained for cached import composition.
+- Canonical/bundled queues match. Coverage tests assert complete NOCTIEL coverage without duplicates and preserve the previous 121-take batch. Queue tests 18 PASS, source package 3,361 files PASS, generator dry-run 92/148.6. No API requests from this environment; generation uses the owner's configured Windows builder, its existing limits and uncertain-request protection. Compile and generation/import receipts follow on the PR.
+- This task generates and imports audio only. Claude's cue contract is included; live playback remains to be wired after import. No claim of heard takes or in-game playback. No credentials or audio bytes committed.
+
 ## 2026-11-06 — Claude: NOCTIEL's sound request for ElevenLabs (57 cues)
 
 - Owner: "Also did we need sound queues for this boss fight as well? I can send to elevenlabs again", then "yes write a sound cue list for elevenlabs again". NOCTIEL had only its song. Branch `claude/noctiel-sounds` off shared `ceedd4f`. Docs: `docs/audio/SOUND-REQUESTS.md` (NOCTIEL's sounds), `docs/audio/SOUND-GENERATOR.md` (NOCTIEL's batch), `docs/EXPEDITION-BOSS-FINAL.md` section 17 (every cue and when it plays).
