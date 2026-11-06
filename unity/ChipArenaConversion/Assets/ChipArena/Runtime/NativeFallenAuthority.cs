@@ -6,10 +6,12 @@ namespace ChipArena.UnityConversion
 {
     public sealed partial class NativeArena
     {
+        private readonly NativeFallenApproach fallenApproach=new NativeFallenApproach();
         public bool FallenPaused=>ZoneBoss?.fallen!=null&&(ZoneBoss.fallen.phaseChangeAt>=0||ZoneBoss.fallen.draftAt>=0||ZoneBoss.deathAt>=0);
         private static N2 Flat(Vector3 v)=>new N2(v.x,v.z);
         private void ConfigureFallenBattle()
         {
+            fallenApproach.Reset();
             var z=ZoneBoss;z.fallen=new NativeFallenRecord{seed=NativeBossBattle.Seed,started=Time,phaseStarted=Time,hush=Members().Select(p=>new NativeFallenSeat{id=p.Seat.id,x=p.Body.position.x,z=p.Body.position.z,hushAt=Time}).ToArray()};
             z.action="arrive";z.duration=NativeFallenPilots.CutsceneEnd;z.hitAt=z.actionAt+z.duration;Pve.HoldDuration=Pve.HoldLeft=z.duration;Pve.Rate=0;Pve.SpawnBudget=0;bossGap=Time+1;
         }
@@ -110,7 +112,7 @@ namespace ChipArena.UnityConversion
             if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;z.action=null;z.actionAt=z.hitAt=-100;z.duration=0;foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;foreach(var add in Minions.Where(a=>a.Kind.StartsWith("fallen-",StringComparison.Ordinal)).ToArray())RemoveMinion(add,false);Bullets.Clear();}if(Time-z.deathAt>=NativeFallenRules.DeathSeconds){Pve.Outcome="victory";Pve.Stage="ended";Match.FinishCooperative(true);}return;}
             foreach(var d in m.Dots.Values.ToArray())while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}
             FallenLives();if(!Members().Any(p=>p.Seat.connected&&f.hush.Any(s=>s.id==p.Seat.id&&s.lives>0))){BeginPveHold("defeat");return;}
-            FallenPhase();if(FallenPaused)return;
+            FallenPhase();if(FallenPaused){fallenApproach.Pause();return;}
             if(Time-f.started>=720){bossHits.Clear();foreach(var p in Members()){p.ShieldUntil=0;FallenHurt(p,0,true);var s=f.hush.First(x=>x.id==p.Seat.id);s.lives=0;s.respawnAt=-100;}BeginPveHold("defeat");return;}
             foreach(var s in f.hush)
             {
@@ -121,7 +123,13 @@ namespace ChipArena.UnityConversion
                 if(Time-s.hushAt>=NativeFallenRules.HushSeconds(f,z.phase,radius)){Damage(p,null,40,Vector3.zero,0,false,primary:false,causeKind:NativeFallenBoss.Archetype);s.hushAt=Time;}
             }
             FallenAttack();FallenAdds();
-            if(z.action==null||Time>z.actionAt+z.duration){var near=Members().Where(p=>p.Hp>0&&p.Seat.connected).OrderBy(p=>(p.Body.position-m.Body.position).sqrMagnitude).FirstOrDefault();if(near!=null){var toward=near.Body.position-m.Body.position;toward.y=0;if(toward.magnitude>5)m.Body.position+=toward.normalized*(9f/60);}}
+            if(z.action==null||Time>z.actionAt+z.duration)
+            {
+                var near=Members().Where(p=>p.Hp>0&&p.Seat.connected).OrderBy(p=>(p.Body.position-m.Body.position).sqrMagnitude).FirstOrDefault();
+                if(near!=null){var toward=near.Body.position-m.Body.position;toward.y=0;m.Body.position+=toward.normalized*fallenApproach.Step(near.Seat.id,toward.magnitude,1f/60);}
+                else fallenApproach.Reset();
+            }
+            else fallenApproach.Pause();
             if(Time<bossGap)return;
             var target=Members().Where(p=>p.Hp>0&&p.Seat.connected).OrderByDescending(p=>(p.Body.position-m.Body.position).sqrMagnitude).FirstOrDefault();if(target==null)return;
             var choices=NativeFallenBoss.Moves.Where(a=>a.Phase<=z.phase&&BossAvailable(a.Id)&&(!a.Kills||Time-f.lastOhk>=14)).ToArray();

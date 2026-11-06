@@ -1,3 +1,11 @@
+## 2026-11-06 — Astra: NOCTIEL walking approach and catch-up
+
+- Owner approved Claude's approach proposal. Branch `codex/noctiel-approach-speed`, based on `claude/noctiel-walk` (`ac25c330`), integrated current shared `27f2a75c` and Claude's verification receipt.
+- Host approach walks at **1.4 m/s within 30 m**, glides at **9 m/s farther away**, and clamps travel to stop at **5 m**. Three seconds of active pursuit without reducing distance by 0.1 m triggers one second of active glide catch-up, then walking resumes. Attack/draft time does not count as pursuit or falsely count as progress. Target changes, no target and new encounters reset memory. Existing attacks, damage, cooldowns and replicated position contract unchanged; Claude's presentation consumes actual travel as before.
+- Regression cases cover near/far speed, stop and overshoot, sustained closing, stall across attack pauses, catch-up recovery and target switching. Managed `--fallen-rules`: 290,814 checks PASS. Pinned Unity reference semantic compilation: InputSystem, Player, Runtime and Editor PASS; source packaging: 3,361 files PASS. Presentation `--fallen-boss`: 2,751,211 NOCTIEL checks PASS (plus its prerequisite checks). Full managed suite running; final receipt will be recorded on the PR.
+- Native Windows/PhysX gameplay and multiplayer appearance unrun here. No live or Site release; intended delivery is shared plus existing test builder.
+
+
 ## 2026-11-06 — Claude: NOCTIEL's three short takes reviewed; the import can finish
 
 - Astra on PR #370: all 92 NOCTIEL originals were generated on the builder and mirrored to Drive (hashes and the manifest checked). The automatic import stopped on three takes shorter than their minimum after trimming, and Astra asked for a review rather than a looser importer. The owner: "Astra generated the sounds I believe". Branch `claude/noctiel-sound-import` off shared `27f2a75`.

@@ -20,6 +20,27 @@ namespace ChipArena.UnityConversion
             pools!=null&&pools.Length<=8&&pools.All(p=>NativeZoneCombat.Finite(p.x)&&NativeZoneCombat.Finite(p.z)&&Math.Abs(p.x)<=80&&Math.Abs(p.z)<=80)&&
             verdicts!=null&&verdicts.Length<=3&&verdicts.All(NativeZoneCombat.Finite)&&hush!=null&&hush.Length<=8&&hush.All(s=>s!=null&&s.id>=0&&s.lives>=0&&s.lives<=5&&s.reviver>=-1&&new[]{s.respawnAt,s.reviveAt,s.hushAt,s.x,s.z}.All(NativeZoneCombat.Finite))&&hush.Select(s=>s.id).Distinct().Count()==hush.Length;
     }
+    // Host-only approach memory. Position already replicates through the boss actor.
+    public sealed class NativeFallenApproach
+    {
+        public const float WalkSpeed=1.4f,GlideSpeed=9f,WalkRange=30f,StopRange=5f,StallSeconds=3f;
+        private int target=-1;
+        private float best=-1,stalled,catchupLeft;
+        public void Reset(){target=-1;best=-1;stalled=catchupLeft=0;}
+        // Ignore attack movement and target travel during holds, without losing accumulated chase time.
+        public void Pause(){best=-1;}
+        public float Step(int seat,float distance,float dt)
+        {
+            if(target!=seat){Reset();target=seat;}
+            if(distance<=StopRange){Reset();return 0;}
+            if(best<0)best=distance;
+            if(distance<best-.1f){best=distance;stalled=0;}else stalled+=dt;
+            if(stalled>=StallSeconds){catchupLeft=1;stalled=0;}
+            bool glide=distance>WalkRange||catchupLeft>0;
+            catchupLeft=Math.Max(0,catchupLeft-dt);
+            return Math.Min(distance-StopRange,(glide?GlideSpeed:WalkSpeed)*dt);
+        }
+    }
     public static class NativeFallenRules
     {
         public const string Map="expedition-lux-cecidit",Area="exp-lux-cecidit";
