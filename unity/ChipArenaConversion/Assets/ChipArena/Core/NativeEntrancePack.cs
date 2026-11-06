@@ -52,7 +52,8 @@ namespace ChipArena.UnityConversion
             // A still hero hold breathes from the name card (heroIdle, as the procedural entrances; the arms ride the chest).
             if(Breathe)NativeEntrancePose.Idle(p,t,NativeEntranceScript.NameAt);
             // The arms as CapturedRig.Sample poses them: the weapon hand on the captured grip, the weapon along the captured blade.
-            Vector3 blade=CapturedRig.Unit(Row(f,MeleeCapture.Blade),Vector3.UnitZ),edge=Row(f,MeleeCapture.Edge);edge=CapturedRig.Unit(edge-blade*Vector3.Dot(blade,edge),Vector3.UnitX);var grip=Row(f,MeleeCapture.Grip)+fixRight;
+            Vector3 blade=CapturedRig.Unit(Row(f,MeleeCapture.Blade),Vector3.UnitZ),edge=Row(f,MeleeCapture.Edge);edge=CapturedRig.Unit(edge-blade*Vector3.Dot(blade,edge),Vector3.UnitX);var grip=Row(f,MeleeCapture.Grip)+fixRight+HoldClear(Style,t);
+            float holdTurn=HoldTurn(Style,t);if(holdTurn!=0){var q=Quaternion.CreateFromAxisAngle(Vector3.UnitY,holdTurn);blade=Vector3.Transform(blade,q);edge=Vector3.Transform(edge,q);p.Rotation[CapturedRig.Head]=Quaternion.Normalize(p.Rotation[CapturedRig.Head]*Quaternion.CreateFromAxisAngle(Vector3.UnitY,ShieldHead*holdTurn/ShieldTurn));}
             // The blade and hilt kept out of the voxel head, pauldrons and torso exactly as in play (MeleeCapture.Apply's clearance).
             var set=Melee;if(set!=null&&set.Fit.Clear!=MeleeClear.None){melee.ReadPose(p);MeleeClearance.Shared.Clear(melee,ref grip,ref blade,ref edge,-set.Fit.Pommel,set.BladeEnd,true,set.Fit.HalfWidth,false);}
             var right=CapturedRig.Basis(edge,Vector3.Cross(blade,edge),blade);
@@ -91,6 +92,17 @@ namespace ChipArena.UnityConversion
         public static float Rest(string style,float t)=>FreeHandRests(style)?NativeEntranceMath.Ramp(t,FreeHandFrom,FreeHandTo):0;
         // The loose arm: shoulder, elbow and wrist turns of the keyed hero hold (NativeEntranceKeys.Hero's right arm).
         private static readonly Quaternion[] RestArm={CapturedRig.Euler(-.12f,0,-.18f),CapturedRig.Euler(NativeEntranceKeys.HeroElbow,0,0),Quaternion.Identity};
+        /// <summary>
+        /// The shield's hold (owner 2026-11-05: the entrance ended with the rim across the helmet): the capture raises the fist to the
+        /// chin, a guard a human's small head clears and the helmet does not. Once the slam has settled the fist eases this far (chest
+        /// space, m: +x the rig's left, so out to the shield's side, and down) by ShieldClearTo, before the name card.
+        /// </summary>
+        public static readonly Vector3 ShieldClear=new Vector3(-.25f,-.27f,.05f);
+        public const float ShieldClearFrom=2.45f,ShieldClearTo=3.05f,ShieldTurn=.8f,ShieldHead=.6f;
+        /// <summary>The shield turned about the chest's up by this (rad) as it comes down: its face to the front, not edge on across the head.
+        /// The head turns off the rim with it (ShieldHead, rad, to the rig's left), so the visor shows under the name card.</summary>
+        public static float HoldTurn(string style,float t)=>style=="weapon-shield"?ShieldTurn*NativeEntranceMath.Ramp(t,ShieldClearFrom,ShieldClearTo):0;
+        public static Vector3 HoldClear(string style,float t)=>style=="weapon-shield"?ShieldClear*NativeEntranceMath.Ramp(t,ShieldClearFrom,ShieldClearTo):Vector3.Zero;
         /// <summary>The gameplay melee set of the weapon (its blade, pommel and clearance), or null.</summary>
         public MeleeSet Melee{get{if(!meleeKnown){meleeSet=MeleeSet.For(Style.StartsWith("weapon-",StringComparison.Ordinal)?Style.Substring(7):"");meleeKnown=true;}return meleeSet;}}
         private MeleeSet meleeSet;private bool meleeKnown;private readonly MeleeRig melee=new MeleeRig();
