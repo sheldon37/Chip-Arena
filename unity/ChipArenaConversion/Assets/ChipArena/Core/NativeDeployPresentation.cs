@@ -39,6 +39,9 @@ namespace ChipArena.UnityConversion
             {"industrial",("Foundry floor","anvil",0xff8a2a)},{"catacombs",("Catacombs","crypt",0xb08cff)},
         };
         public const int NeutralColor=0x3a4150,UnknownColor=0x9aa3b2,BossColor=0xff3048;
+        /// <summary>The known destinations in table order (the Expeditions screen's sample reels spin through them).</summary>
+        public static int DestinationCount=>KnownDestinations.Length;
+        public static Destination DestinationAt(int i)=>KnownDestinations[i];
         public static Destination DestinationOf(string id,string theme)
         {
             foreach(var d in KnownDestinations)if(d.Id==id)return d;

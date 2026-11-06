@@ -347,9 +347,8 @@ namespace ChipArena.UnityConversion
                 // book.
                 ["mods"]=("M7 7H17V17H7Z M10 3V7M14 3V7M10 17V21M14 17V21M3 10H7M3 14H7M17 10H21M17 14H21 M10 10H14V14H10Z",new float[]{10,3,14,3,10,21,14,21,3,10,3,14,21,10,21,14,12,12}),
                 ["quit"]=("M10 4H4V20H10M9 12H20M16 8L20 12L16 16",new float[]{4,4,4,20,20,12,16,8,16,16}),
-                // The Expeditions screen's modes (NativeExpeditionsMenu.cs): the full run's route and Wave Defense's waves.
+                // The Expeditions screen's run mode (NativeExpeditionsMenu.cs); its Boss Battle mode uses "boss" above.
                 ["route"]=("M4 19L9 12L14 15L20 5M14 15V20",new float[]{4,19,9,12,14,15,20,5,14,20}),
-                ["waves"]=("M3 9Q7.5 5 12 9T21 9M3 15Q7.5 11 12 15T21 15M12 3V21",new float[]{3,9,21,9,3,15,21,15,12,3,12,21}),
             };
             var map=new Dictionary<string,(string,string)>();
             foreach(var kv in src)

@@ -83,6 +83,9 @@ namespace ChipArena.UnityConversion
             var lines=Lines(name);float longest=1;foreach(var l in lines)longest=Math.Max(longest,TextWidth(l));float h=Math.Min(maxHeight,width/longest*GlyphHeight);
             for(int i=0;i<lines.Length;i++)Text(sb,lines[i],cx,cy+(i-(lines.Length-1)*.5f)*h*1.45f,h,color);
         }
+        /// <summary>A destination's emblem in white on a 100-unit box (centred at 50, 40), for small menu art drawn with
+        /// NativeIcons.DrawMarkup: its knockouts draw black there, which reads as the same cut-outs on a dark band.</summary>
+        public static string EmblemMarkup(string emblem)=>Emblem(emblem,0xffffff);
         // An emblem (NativeDeployPresentation.Destination.Emblem) centred at (50, 40) about 44 units across.
         private static string Emblem(string emblem,int c)
         {
