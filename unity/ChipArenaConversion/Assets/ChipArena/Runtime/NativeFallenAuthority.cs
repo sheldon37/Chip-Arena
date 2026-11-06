@@ -43,7 +43,7 @@ namespace ChipArena.UnityConversion
         {
             if(m.Hp<=0||Pve.Holding||FallenPaused)return 0;
             float floor=ZoneBoss.phase<4?m.MaxHp*NativeFallenBoss.PhaseFrom[ZoneBoss.phase]:0;
-            float actual=Math.Min(Math.Max(0,m.Hp-floor),Math.Max(0,damage));m.Hp-=actual;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);
+            float next=Math.Max(floor,m.Hp-Math.Max(0,damage)),actual=m.Hp-next;m.Hp=next;m.LastHitAt=Time;Pve.Boss.Hp=m.Hp;PveDamaged(Pve.Boss,source,actual);Emit(EventKind.Hit,source,m.Id,point??m.Body.position,actual,kind);
             if(ZoneBoss.phase<4&&m.Hp<=floor+.001f)ZoneBoss.fallen.phaseChangeAt=NativeFallenRules.NextBar(Time,ZoneBoss.fallen.phaseStarted);
             return actual;
         }
