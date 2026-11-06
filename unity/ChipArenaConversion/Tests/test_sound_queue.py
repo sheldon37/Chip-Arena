@@ -189,6 +189,10 @@ class QueueTests(unittest.TestCase):
     def test_bad_limits(self):
         for value in [0, -1, float('nan'), float('inf'), True]:
             with self.assertRaises(ValueError): q.limits(dict(maxRequests=1, maxSeconds=value))
+    def test_duration_cap_allows_only_binary_roundoff(self):
+        self.assertFalse(q.exceeds_seconds(7.300000000000001, 7.3))
+        self.assertTrue(q.exceeds_seconds(7.300001, 7.3))
+        self.assertTrue(q.exceeds_seconds(7.4, 7.3))
     def test_lock_excludes_second_worker(self):
         with q.lock(self.root):
             with self.assertRaises(ValueError):
