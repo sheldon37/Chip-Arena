@@ -67,8 +67,8 @@ public static class FallenBossChecks
         foreach(Match m in Regex.Matches(script,@"finish\('[a-z-]+', 0x([0-9A-Fa-f]{6})")){int v=Convert.ToInt32(m.Groups[1].Value,16);int r=(v>>16)&255,g=(v>>8)&255,bl=v&255;Check(Math.Abs(r-g)<=12&&Math.Abs(g-bl)<=12,"finish "+m.Value+" is grey");}
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs")){if(Path.GetFileName(f).StartsWith("NativeFallen"))continue;Check(!File.ReadAllText(f).Contains("NativeFallenBossPreview"),Path.GetFileName(f)+" doesn't read the preview");}
         var presentation=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");Check(presentation.Contains("if(!NativeFallenBossPreview.On&&!live){FallenBossHide();return;}"),"without a preview or real encounter nothing runs");
-        Live(R);int sounds=Sounds(root);int cues=Cues(R);
-        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+"; live motion: every move's contact on its hit, glide and land, no pops; "+sounds+" sounds requested, each in the bank contract; "+cues+" cue moments on the authority's times)");
+        Live(R);int sounds=Sounds(root);int cues=Cues(R);int intro=Intro(R);
+        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+"; live motion: every move's contact on its hit, glide and land, no pops; "+sounds+" sounds requested, each in the bank contract; "+cues+" cue moments on the authority's times; intro choreography "+intro+" checks)");
     }
     // ---- The sounds (docs/audio/sound-requests-noctiel.json; owner 2026-11-06: "write a sound cue list for elevenlabs") ----
     // Every NOCTIEL key is in the bank contract and the request, flat or positional as it plays, inside its cap, at the boss level,
@@ -98,6 +98,76 @@ public static class FallenBossChecks
         var bundled=Path.Combine(root,"tools/sound_bundle/docs/audio/sound-requests-noctiel.json");Check(File.Exists(bundled)&&File.ReadAllText(bundled).Replace("\r\n","\n")==File.ReadAllText(path).Replace("\r\n","\n"),"the builder bundle's copy matches");
         Check(!Directory.EnumerateFiles(Path.Combine(root,"../../docs/audio")).Any(f=>f.EndsWith(".mp3")||f.EndsWith(".wav")||f.EndsWith(".ogg")),"no audio in the repo");
         return sounds.Count;
+    }
+    // ---- The intro's choreography (Core NativeFallenIntroMotion; owner's four reference clips, option A) ----
+    // On only in the cutscene; the cut lands on the drop after a 0.18 s load and a 0.20 s downswing; nothing jumps between frames;
+    // the pull hands the fist from the plant to the key; the front foot never lets go and the back foot lifts only to step; the
+    // keyed fist stays in reach of the shoulder and its blade off the torso; the point meets the water on the impact; the feather
+    // falls like a leaf and lands on its cue. The cutscene's shots, cues and Slash are untouched.
+    private static int Intro(Func<string,string> R)
+    {
+        int n0=count;var M=typeof(NativeFallenIntroMotion);
+        Check(!NativeFallenIntroMotion.At(-.01f).On&&!NativeFallenIntroMotion.At(NativeFallenPilots.CutsceneEnd+.01f).On&&NativeFallenIntroMotion.At(20).On,"the layer is on only through the cutscene");
+        var f=new FallenBossFrame();NativeFallenBossPreview.Eval(70,null,f);Check(!f.Intro.On,"a fight section has no intro layer");
+        float impact=NativeFallenIntroMotion.ImpactAt;
+        Check(Math.Abs(impact-NativeFallenIntroMotion.TopAt-NativeFallenIntroMotion.Downswing)<1e-4f&&Math.Abs(NativeFallenIntroMotion.Downswing-.2f)<1e-4f&&Math.Abs(NativeFallenIntroMotion.TopAt-NativeFallenIntroMotion.LoadAt-.18f)<1e-4f,"the load 0.18 s, the downswing 0.20 s, the impact on the drop");
+        var hit=NativeFallenIntroMotion.At(impact);var tip=hit.Grip+hit.Blade*((.15f+1.5f)*NativeFallenBoss.Scale);
+        Check(tip.Y>-.3f&&tip.Y<.25f&&tip.Z>3,"on the impact the point meets the water ahead, toward the lens ("+tip+")");
+        Check(hit.Trail>.99f&&NativeFallenIntroMotion.At(50.5f).Trail==0,"the trail on the downswing only");
+        // Continuity, sampled at 240 Hz through the whole cutscene.
+        var last=NativeFallenIntroMotion.At(0);float maxGrip=0,maxBlade=0,maxRoot=0,maxLean=0,calmGrip=0,calmBlade=0,calmLean=0,calmBladeAt=0;
+        for(int i=1;i<=(int)(impact*240);i++)
+        {
+            float p=i/240f;var o=NativeFallenIntroMotion.At(p);
+            Check(float.IsFinite(o.Root.X+o.Root.Y+o.Root.Z+o.Lean+o.Twist+o.Head+o.Grip.X+o.Grip.Y+o.Grip.Z+o.Blade.X+o.Blade.Y+o.Blade.Z+o.Flat.X+o.Flat.Y+o.Flat.Z+o.LeftLift),"a finite pose at "+p);
+            Check(Math.Abs(o.Blade.Length()-1)<1e-3f&&Math.Abs(Vector3.Dot(o.Blade,Vector3.Normalize(o.Flat)))<.995f,"a unit blade with a usable flat at "+p);
+            float g=Vector3.Distance(o.Grip,last.Grip),b=(float)(Math.Acos(Math.Clamp(Vector3.Dot(o.Blade,last.Blade),-1,1))*180/Math.PI),r=Vector3.Distance(o.Root,last.Root),l=Math.Abs(o.Lean-last.Lean)+Math.Abs(o.Twist-last.Twist);
+            if(o.Sword>0&&last.Sword>0){maxGrip=Math.Max(maxGrip,g);maxBlade=Math.Max(maxBlade,b);}maxRoot=Math.Max(maxRoot,r);maxLean=Math.Max(maxLean,l);
+            if(p<NativeFallenIntroMotion.LoadAt){if(o.Sword>0&&last.Sword>0){calmGrip=Math.Max(calmGrip,g);if(b>calmBlade){calmBlade=b;calmBladeAt=p;}}calmLean=Math.Max(calmLean,l);}
+            Check(Math.Abs(o.KneelLegs-last.KneelLegs)<.02f&&Math.Abs(o.KneelUpper-last.KneelUpper)<.02f&&Math.Abs(o.Sword-last.Sword)<.06f&&Math.Abs(o.LeftBlend-last.LeftBlend)<.02f&&Math.Abs(o.SwordLift-last.SwordLift)<.02f,"no weight jumps at "+p);
+            // The front foot holds from the rise on; the back foot lifts only in its two steps.
+            Check((o.FootR>0)==(p>=NativeFallenIntroMotion.RiseAt)&&(o.FootL>0)==(p>=NativeFallenIntroMotion.RiseAt),"the feet are held from the rise on at "+p);
+            bool stepping=p>NativeFallenIntroMotion.StepFrom&&p<NativeFallenIntroMotion.StepTo||p>NativeFallenIntroMotion.LungeFrom&&p<NativeFallenIntroMotion.LungeTo;
+            Check(stepping?o.LeftLift>=-1e-4f:Math.Abs(o.LeftLift)<1e-4f,"the back foot lifts only to step, at "+p);
+            if(o.Sword>.5f)
+            {
+                // A shoulder from the hips' travel and the lean (the rig's own proportions at 1.95 scale): the fist within reach of it,
+                // the blade off the torso.
+                float lean=o.Lean*(float)Math.PI/180,tw=o.Twist*(float)Math.PI/180;var hips=o.Root+new Vector3(0,1.85f,0);
+                var up=new Vector3((float)Math.Sin(tw)*0,(float)Math.Cos(lean),(float)Math.Sin(lean));var side=new Vector3((float)Math.Cos(tw),0,-(float)Math.Sin(tw));
+                var shoulder=hips+up*.98f+side*.37f;float reach=Vector3.Distance(shoulder,o.Grip);
+                Check(reach<=1.3f&&reach>=.3f,"the fist in reach of the shoulder at "+p+" ("+reach.ToString("0.00")+" m)");
+                var neck=hips+up*1.25f;float clear=float.MaxValue;
+                for(int k=0;k<=20;k++){var q=o.Grip+o.Blade*(.5f+k*.13f);float t=Math.Clamp(Vector3.Dot(q-hips,neck-hips)/Vector3.DistanceSquared(neck,hips),0,1);clear=Math.Min(clear,Vector3.Distance(q,hips+(neck-hips)*t));}
+                Check(clear>=.36f,"the blade clear of the torso at "+p+" ("+clear.ToString("0.00")+" m)");
+            }
+            last=o;
+        }
+        Check(maxGrip<.08f&&maxBlade<4.5f&&maxRoot<.03f&&maxLean<2.5f,"nothing jumps between frames, the cut included (fist "+maxGrip.ToString("0.000")+" m, blade "+maxBlade.ToString("0.0")+", hips "+maxRoot.ToString("0.000")+" m, back "+maxLean.ToString("0.0")+" per 1/240 s)");
+        Check(calmGrip<.03f&&calmBlade<1.6f&&calmLean<.5f,"before the load everything moves at a walk's pace (fist "+calmGrip.ToString("0.000")+" m, blade "+calmBlade.ToString("0.00")+" at "+calmBladeAt.ToString("0.00")+", back "+calmLean.ToString("0.00")+" per 1/240 s)");
+        // The pull and the hand-over, the kneel letting go, the stance and the lunge.
+        Check(NativeFallenIntroMotion.At(NativeFallenIntroMotion.PullFrom-.01f).SwordLift==0&&NativeFallenIntroMotion.At(NativeFallenIntroMotion.PullTo).SwordLift>=.5f&&NativeFallenIntroMotion.At(NativeFallenIntroMotion.KeyFrom-.01f).Sword==0&&NativeFallenIntroMotion.At(NativeFallenIntroMotion.KeyTo).Sword>=.999f,"the pull, then the keyed fist takes the sword");
+        Check(NativeFallenIntroMotion.At(35.5f).KneelLegs==1&&NativeFallenIntroMotion.At(37.1f).KneelLegs==0&&NativeFallenIntroMotion.At(33.4f).KneelUpper==1&&NativeFallenIntroMotion.At(36.3f).KneelUpper==0,"the head lifts before the legs let go; standing by the step's end");
+        var stand=NativeFallenIntroMotion.At(44);var lunge=NativeFallenIntroMotion.At(impact);
+        Check(stand.LeftBlend>=.999f&&stand.LeftSpot==NativeFallenIntroMotion.LeftStand&&lunge.LeftSpot==NativeFallenIntroMotion.LeftLunge&&lunge.Root.Z>stand.Root.Z+.3f&&lunge.Root.Y<-.2f&&lunge.Lean>15,"standing square, then the lunge: the left foot forward, the hips forward and down, the back over");
+        // The script: the fist on the plant until the key, no carry, the stance under the keyed cut; the feather's leaf fall.
+        NativeFallenBossPreview.Eval(40,null,f);Check(f.Intro.On&&f.Plant==1&&f.Carry==0,"standing, the fist on the planted sword");
+        NativeFallenBossPreview.Eval(50.5f,null,f);Check(f.Plant==0&&f.Carry==0&&f.ClipTo=="Unarmed-Idle","the cut keyed over the stance, not a pack clip");
+        int turns=0;float lastX=.25f,lastDx=0,early=0,late=0;
+        for(float p=1.5f;p<11;p+=1/120f)
+        {
+            NativeFallenIntroMotion.Feather(p,out var at,out _,out float pitch,out float roll,out bool shown);float dx=at.X-lastX;if(dx*lastDx<0)turns++;if(Math.Abs(dx)>1e-6f)lastDx=dx;lastX=at.X;
+            if(p<NativeFallenBossPreview.FeatherLand)Check(at.Y>0,"the feather is in the air before it lands ("+p+")");else Check(at.Y<.01f&&Math.Abs(roll)<1e-3f&&Math.Abs(pitch)<1e-3f,"the feather lies flat on the water after it lands ("+p+")");
+            Check(shown==(p<11),"the feather floats until the shot cuts");
+            float off=Math.Abs(at.X-.25f);if(p<3.5f)early=Math.Max(early,off);if(p>8&&p<NativeFallenBossPreview.FeatherLand)late=Math.Max(late,off);
+        }
+        Check(turns>=8&&late<early*.6f,"a falling leaf: it swings back and forth ("+turns+" turns), smaller near the water");
+        // The rig's application.
+        var body=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var rig=R("Assets/ChipArena/Runtime/NativeFallenIntroBody.cs");var scenery=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
+        Check(body.Contains("bool intro=FallenIntroNow(f,now,out var ip,out float iw,out float iage);if(intro)FallenIntroBody(ip,iw,yawRot);")&&body.IndexOf("FallenIntroBody(ip,iw,yawRot);")<body.IndexOf("FallenIntroFeet(ip,iw,iage,at,yawRot);")&&body.IndexOf("FallenIntroFeet(ip,iw,iage,at,yawRot);")<body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);"),"the hips and back, then the feet, then the fist");
+        Check(body.Contains("float k=f.Intro.On?(i<8?f.Intro.KneelLegs:f.Intro.KneelUpper):f.Kneel;")&&rig.Contains("FallenLegTo(fbThighR,fbCalfR,fbFootR,goalR,turnR);FallenLegTo(fbThighL,fbCalfL,fbFootL,goalL,turnL);")&&rig.Contains("FbIntroHold=.25f,FbIntroRelease=.7f"),"the kneel lets go limb by limb, the feet are solved to their spots, the cut is held then released");
+        Check(scenery.Contains("CreateFromYawPitchRoll(f.FeatherTurn*Mathf.Deg2Rad,f.FeatherPitch*Mathf.Deg2Rad,f.FeatherRoll*Mathf.Deg2Rad)"),"the feather drawn as it falls");
+        return count-n0;
     }
     // ---- The cues (Core NativeFallenBossCues, Runtime NativeFallenBossAudio.cs) ----
     // Every key has its constant and is fired from somewhere; the cutscene's and the fight's moments land on their clocks' times
@@ -274,8 +344,8 @@ public static class FallenBossChecks
         var scenery=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");var body=R("Assets/ChipArena/Runtime/NativeFallenBossBody.cs");var live=R("Assets/ChipArena/Runtime/NativeFallenLiveBody.cs");
         Check(scenery.Contains("if(live){FallenBossViewOf(arena,f);FallenLiveMotion(arena,f,now);}else{fbLive.Reset();fbLiveNow=false;")&&scenery.Contains("FallenPose(f,now,dt,origin,eyeAt);FallenShown(f);"),"the live director runs after the binding, the preview keeps its script");
         Check(live.Contains("fbLive.Step(f,facts,VisualMotionBank,")&&live.Contains("!(a.Pve.Holding&&a.Pve.Cinematic==\"intro\")&&z.deathAt<0"),"the intro and the death keep the cutscene's pose");
-        Check(body.Contains("FallenFeetPlant(f,now,hover);")&&body.IndexOf("FallenFeetPlant(f,now,hover);")<body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover);")&&body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover);")<body.IndexOf("FallenBladeClear(f,yawRot,now);")&&body.IndexOf("FallenBladeClear(f,yawRot,now);")<body.IndexOf("FallenChains(f,now,dt,yawRot,local);"),"feet, then the grip, then the blade cleared, then the chains");
-        Check(!body.Contains("if(f.Plant>0)FallenPlant(f,origin);else if(f.Carry>0)FallenCarry(f);")&&body.Contains("FallenSwordTo(Vector3.Lerp(cg,pg,plant),Quaternion.Slerp(cr,pr,plant),Mathf.Clamp01(plant+carry),"),"the sword drawn from the water goes straight to the carry");
+        Check(body.Contains("FallenFeetPlant(f,now,hover);")&&body.IndexOf("FallenFeetPlant(f,now,hover);")<body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);")&&body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);")<body.IndexOf("FallenBladeClear(f,yawRot,now);")&&body.IndexOf("FallenBladeClear(f,yawRot,now);")<body.IndexOf("FallenChains(f,now,dt,yawRot,local);"),"feet, then the grip, then the blade cleared, then the chains");
+        Check(!body.Contains("if(f.Plant>0)FallenPlant(f,origin);else if(f.Carry>0)FallenCarry(f);")&&body.Contains("g=Vector3.Lerp(cg,pg,plant);r=Quaternion.Slerp(cr,pr,plant);o=Vector3.Lerp(co,po,plant);w=Mathf.Clamp01(plant+carry);"),"a sword passing from the plant to the carry goes straight from one to the other");
         Check(body.Contains("Quaternion.FromToRotation(Vector3.down,FallenRobeWay(c.Pivot.X,c.Pivot.Z-.03f,c.Segment,yawRot))*yawRot"),"the robe drapes over the legs");
         Check(body.Contains("FbDragWay=new Vector3(.85f,0,-.53f)")&&body.Contains("var wrist=shoulder+yawRot*new Vector3(.07f*s,0,.09f*s)+Vector3.down*(reach*.93f-breath);")&&body.Contains("float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);"),"the sword carried as the reference walk carries it: from a hanging arm, trailing out and back, its point just off the water");
         Check(scenery.Contains("if(tip.y<floor+.25f&&f.Plant<.5f&&now-fbWakeLast>.07f&&moved>=.6f)"),"the dragged point's wake is a ring every 0.6 m, none at rest");

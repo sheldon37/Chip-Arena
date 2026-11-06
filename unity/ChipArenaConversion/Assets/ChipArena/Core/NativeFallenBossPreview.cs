@@ -35,7 +35,9 @@ namespace ChipArena.UnityConversion
         public float ChipAge=-1;public int ChipPhase;
         public float CardAge=-1;
         /// <summary>The cutscene's one feather (Hidden: below the water).</summary>
-        public Vector3 Feather;public float FeatherTurn;public bool FeatherShown;
+        public Vector3 Feather;public float FeatherTurn,FeatherPitch,FeatherRoll;public bool FeatherShown;
+        /// <summary>The intro's key poses on top of the clip (Core NativeFallenIntroMotion; off outside the cutscene).</summary>
+        public FallenIntroPose Intro;
         public float Black;
         public const int MarkNone=0,MarkHead=1,MarkHand=2,MarkChest=3,MarkTip=4,MarkFeather=5;
     }
@@ -148,7 +150,7 @@ namespace ChipArena.UnityConversion
             f.Flare=0;if(s.Mode==Strike){float w=s.T0+s.Wind;f.Flare=s.Flare*(p<w?.25f*Smooth((p-s.T0)/Math.Max(.01f,s.Wind)):1-Clamp01((p-w-s.Hit)/.5f));}
             f.Gliding=s.Clip==Dash;if(f.Gliding){float gu=Clamp01((p-s.T0)/Math.Max(.01f,s.T1-s.T0));f.Air=Math.Max(f.Air,.5f*(float)Math.Sin(gu*Math.PI));}
             f.Track=sec.Kind==KindFight?(s.Clip==Stance&&s.Kneel==0?Smooth((p-s.T0)/.4f):0):0;f.TrackPilot=si%NativeFallenPilots.Count;
-            f.BossShown=true;f.Plant=0;f.SwordLift=0;f.LookAtEye=0;f.Inner=1;f.Key=1;f.Reveal=1;f.SlashAge=-1;f.ChipAge=-1;f.CardAge=-1;f.FeatherShown=false;f.Black=0;f.EyeMark=f.LookMark=0;
+            f.BossShown=true;f.Plant=0;f.SwordLift=0;f.LookAtEye=0;f.Intro=default;f.FeatherPitch=f.FeatherRoll=0;f.Inner=1;f.Key=1;f.Reveal=1;f.SlashAge=-1;f.ChipAge=-1;f.CardAge=-1;f.FeatherShown=false;f.Black=0;f.EyeMark=f.LookMark=0;
             for(int w=0;w<3;w++)f.WingOpen[w]=sec.Phase==1?.1f:sec.Phase==2?.3f:sec.Phase==3?.75f:1;
             if(sec.Kind==KindCutscene)Cutscene(p,f);
             else if(sec.Kind==KindChips){f.ChipAge=p-sec.From;f.ChipPhase=sec.Phase;f.Black=1;}
@@ -173,15 +175,21 @@ namespace ChipArena.UnityConversion
         private static void Shot(FallenBossFrame f,Vector3 eyeA,Vector3 eyeB,Vector3 lookA,Vector3 lookB,float fovA,float fovB,float u){f.Eye=Vector3.Lerp(eyeA,eyeB,u);f.Look=Vector3.Lerp(lookA,lookB,u);f.Fov=Lerp(fovA,fovB,u);}
         private static void Cutscene(float p,FallenBossFrame f)
         {
-            // It kneels with the sword in the water, wings close; the kneel ends as it rises.
-            f.BossShown=p>=11;f.Plant=p<PullAt?1:1-Smooth((p-PullAt-1.4f)/.7f);f.Carry=p<PullAt+1.4f?0:f.Carry*Smooth((p-PullAt-1.4f)/.7f);f.SwordLift=p<PullAt?0:Smooth((p-PullAt)/1.6f);f.Key=p<RiseAt?.75f:1;
+            // It kneels with the sword in the water, wings close; it rises, draws, and cuts at the lens on the drop. The body's key poses
+            // are NativeFallenIntroMotion's (the owner's four reference clips): the fist stays on the planted sword until the keyed
+            // path takes the blade out of the water, and holds it from there to the cut.
+            var ip=NativeFallenIntroMotion.At(p);f.Intro=ip;
+            f.BossShown=p>=11;f.Plant=1-ip.Sword;f.Carry=0;f.SwordLift=ip.SwordLift;f.Key=p<RiseAt?.75f:1;f.Kneel=Math.Max(ip.KneelLegs,ip.KneelUpper);f.Trail=ip.Trail;f.Flare=ip.Flare;
             for(int w=0;w<3;w++)f.WingOpen[w]=Smooth((p-WingAt[w])/2.1f);
             if(p>MaskAt+.2f)for(int w=0;w<3;w++)f.WingOpen[w]=Lerp(f.WingOpen[w],.72f,Smooth((p-PullAt)/2));
+            f.WingOpen[0]=Math.Min(1.12f,f.WingOpen[0]+ip.WingTop);
             f.LookAtEye=p<MaskAt?0:Smooth((p-MaskAt)/1.1f);
             f.Reveal=p<GauntletAt?.04f:Smooth((p-GauntletAt-.5f)/8f)*.12f+.04f;
             if(p<11)
             {
-                float u=Clamp01((p-1.4f)/(FeatherLand-1.4f));float y=3.7f*(1-u);f.Feather=new Vector3(.25f+.22f*(float)Math.Sin(p*.9f),y,-50);f.FeatherTurn=p*42;f.FeatherShown=p<FeatherLand+.3f;
+                // The feather falls like a leaf (NativeFallenIntroMotion.Feather); the shot follows its old line down, as before.
+                float u=Clamp01((p-1.4f)/(FeatherLand-1.4f));float y=3.7f*(1-u);
+                NativeFallenIntroMotion.Feather(p,out f.Feather,out f.FeatherTurn,out f.FeatherPitch,out f.FeatherRoll,out f.FeatherShown);
                 Shot(f,new Vector3(0,.95f,-55.5f),new Vector3(0,.72f,-55.2f),new Vector3(.2f,y*.92f+.1f,-50),new Vector3(.2f,y*.92f+.1f,-50),30,27,Clamp01(p/11));f.Black=1-Smooth((p-.6f)/1.2f);
             }
             else if(p<GauntletAt)
@@ -361,7 +369,8 @@ namespace ChipArena.UnityConversion
                 Push(RiseAt,Stance,Looped,.4f,0,pos,yawFront,PathStill,fade:.01f,kneel:1);
                 Push(PullAt,Stance,Looped,.4f,0,pos,yawFront,PathStill,fade:3.1f);
                 Push(CutAt,Stance,Looped,.5f,0,pos,yawFront,PathStill,fade:.5f);
-                Push(secs[0].To+.45f,"2Hand-Sword-Attack1",Strike,1,0,pos,yawFront,PathStill,secs[0].To-CutAt-.14f,.14f,0,.2f,1);
+                // The cut itself is keyed (NativeFallenIntroMotion: load, a 0.20 s downswing, the lunge on the drop) over the stance.
+                Push(secs[0].To+.45f,Stance,Looped,.5f,0,pos,yawFront,PathStill,fade:.2f);
                 // ---- GRACE ----
                 pos=new Vector3(0,0,0);Severance(Beat(1,2),1,0);Cleave(Beat(1,5),1,0);Vow(Beat(1,8),1,1);Descent(Beat(1,10),1,1);Cleave(Beat(1,13),1,2);
                 Threshold(secs[1].To);
