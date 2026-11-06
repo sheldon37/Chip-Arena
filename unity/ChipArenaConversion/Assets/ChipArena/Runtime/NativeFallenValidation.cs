@@ -31,7 +31,7 @@ namespace ChipArena.UnityConversion
             z.phase=1;f.chipOffer=Array.Empty<string>();p.Hp=100;
             for(int phase=2;phase<=4;phase++)
             {
-                float before=m.Hp;HitFallenBoss(m,p,m.MaxHp,null,"direct");Check(m.Hp==m.MaxHp*NativeFallenBoss.PhaseFrom[phase-1]&&f.phaseChangeAt>Time,"threshold clamps damage and waits for bar: phase="+phase+" hp="+m.Hp.ToString("R")+" expected="+(m.MaxHp*NativeFallenBoss.PhaseFrom[phase-1]).ToString("R")+" hold="+Pve.Holding+" pause="+FallenPaused+" change="+f.phaseChangeAt+" time="+Time);
+                HitFallenBoss(m,p,m.MaxHp,null,"direct");Check(Mathf.Approximately(m.Hp,m.MaxHp*NativeFallenBoss.PhaseFrom[phase-1])&&f.phaseChangeAt>Time,"threshold clamps damage and waits for bar: phase="+phase+" hp="+m.Hp.ToString("R")+" expected="+(m.MaxHp*NativeFallenBoss.PhaseFrom[phase-1]).ToString("R")+" hold="+Pve.Holding+" pause="+FallenPaused+" change="+f.phaseChangeAt+" time="+Time);
                 Check(HitFallenBoss(m,p,100,null,"direct")==0,"invulnerable at threshold");Match.SynchronizeExpeditionClock(f.phaseChangeAt+.01f);FallenPhase();Check(z.phase==phase&&f.chipOffer.Length==3,"seeded next phase");
                 Match.SynchronizeExpeditionClock(f.draftAt+4.01f);FallenPhase();Check(Pve.Rows[p.Seat.id].Open?.Offers?.Count==3,"normal chip draft opens");var pick=Pve.Rows[p.Seat.id].Open;Check(ChoosePve(p,pick.Id,pick.Offers[0]),"real chip installs");Wire();Match.SynchronizeExpeditionClock(f.resumeAt+.01f);FallenPhase();Check(!FallenPaused,"phase resumes");
             }

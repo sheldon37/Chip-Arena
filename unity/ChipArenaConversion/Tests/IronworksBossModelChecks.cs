@@ -212,7 +212,7 @@ namespace ChipArena.UnityConversion
         // Presentation only: besides the model, THE CONVERTER's presentation (docs "Presentation build": the runtime model, rig,
         // moves, effects, cues, preview, stage hook, view, the HUD's zone boss names, the runtime presenter and its audio) names it;
         // no rule, authority, network or content file does.
-        private static readonly string[] Presentation={"NativeExpeditionCatalogue.cs","NativePveUI.cs","NativeIronworksBossLook.cs","NativeIronworksBossMoves.cs","NativeIronworksBossRig.cs","NativeIronworksBossFx.cs","NativeIronworksBossCues.cs",
+        private static readonly string[] Presentation={"NativeExpeditionCatalogue.cs","NativeIronworksBossLook.cs","NativeIronworksBossMoves.cs","NativeIronworksBossRig.cs","NativeIronworksBossFx.cs","NativeIronworksBossCues.cs",
             "NativeIronworksBossPreview.cs","NativeIronworksBossStage.cs","NativeIronworksBossView.cs","NativeZoneBossNames.cs","NativeIronworksBossPresentation.cs","NativeIronworksBossAudio.cs","NativeIronworksBossLifetime.cs"};
         private static void Unreferenced(string root)
         {
@@ -224,7 +224,7 @@ namespace ChipArena.UnityConversion
             string self=Path.Combine(root,"Assets/ChipArena/Core/NativeIronworksBossModel.cs");
             var hits=Directory.EnumerateFiles(Path.Combine(root,"Assets"),"*",SearchOption.AllDirectories)
                 .Where(p=>Path.GetFileName(p)!="NativeZoneBossRules.cs"&&Path.GetFileName(p)!="NativeZoneBossAuthority.cs"&&Path.GetFileName(p)!="NativeZoneBossValidation.cs"&&TextKinds.Contains(Path.GetExtension(p))&&!p.Replace('\\','/').Contains("/LocalAssets/")&&Path.GetFullPath(p)!=Path.GetFullPath(self)&&!Presentation.Contains(Path.GetFileName(p)))
-                .Where(p=>{var t=File.ReadAllText(p);return Names.Any(n=>t.Contains(n,StringComparison.Ordinal))||t.Contains(NativeIronworksBoss.Archetype,StringComparison.Ordinal);}).ToArray();
+                .Where(p=>{var t=File.ReadAllText(p);if(Path.GetFileName(p)=="NativePveUI.cs")t=t.Replace("NativeIronworksBoss.PlateName","");return Names.Any(n=>t.Contains(n,StringComparison.Ordinal))||t.Contains(NativeIronworksBoss.Archetype,StringComparison.Ordinal);}).ToArray();
             Check(hits.Length==0,"only presentation and the checked authority geometry reference the model or its archetype ("+string.Join(", ",hits.Select(Path.GetFileName))+")");
         }
     }

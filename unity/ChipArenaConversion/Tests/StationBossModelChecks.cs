@@ -154,7 +154,7 @@ namespace ChipArena.UnityConversion
         // Presentation only: the concept is referenced by nothing but its own file, these checks and THE 6:47's presentation (the
         // runtime model, rig, effects, cues, preview, stage hook, the HUD's zone boss names and the runtime presenter): no rule,
         // authority, network or content file names it.
-        private static readonly string[] Presentation={"NativeExpeditionCatalogue.cs","NativePveUI.cs","NativeStationBossLook.cs","NativeStationBossMoves.cs","NativeStationBossRig.cs","NativeStationBossFx.cs","NativeStationBossCues.cs",
+        private static readonly string[] Presentation={"NativeExpeditionCatalogue.cs","NativeStationBossLook.cs","NativeStationBossMoves.cs","NativeStationBossRig.cs","NativeStationBossFx.cs","NativeStationBossCues.cs",
             "NativeStationBossPreview.cs","NativeStationBossStage.cs","NativeStationBossView.cs","NativeZoneBossNames.cs","NativeStationBossPresentation.cs","NativeStationBossBody.cs","NativeZoneBossIntroCamera.cs"};
         private static void Inert(string root)
         {
@@ -163,7 +163,7 @@ namespace ChipArena.UnityConversion
             foreach(var dir in new[]{"Assets/ChipArena","Assets/Conversion"})foreach(var f in Directory.EnumerateFiles(Path.Combine(root,dir),"*",SearchOption.AllDirectories))
             {
                 if(Path.GetFileName(f)=="NativeZoneBossAuthority.cs"||Path.GetFileName(f)=="NativeZoneBossRules.cs"||f.EndsWith(".meta",StringComparison.Ordinal)||Path.GetFullPath(f)==self||Presentation.Contains(Path.GetFileName(f)))continue;string ext=Path.GetExtension(f);if(ext!=".cs"&&ext!=".json"&&ext!=".asset"&&ext!=".prefab")continue;
-                string text=File.ReadAllText(f);var hit=names.FirstOrDefault(n=>text.Contains(n));files++;
+                string text=File.ReadAllText(f);if(Path.GetFileName(f)=="NativePveUI.cs")text=text.Replace("NativeStationBoss.Name","");var hit=names.FirstOrDefault(n=>text.Contains(n));files++;
                 if(hit!=null||text.Contains("\""+NativeStationBoss.Archetype+"\""))Check(false,Path.GetFileName(f)+" references the concept ("+(hit??NativeStationBoss.Archetype)+")");
             }
             Check(files>500,"the scan read the project's sources ("+files+" files)");
