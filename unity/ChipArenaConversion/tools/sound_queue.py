@@ -27,7 +27,7 @@ def queue_inputs(queue, repo, bundle=BUNDLE):
 
 
 def check_bundle(repo=gen.REPO, bundle=BUNDLE):
-    for name in ('sound-queue.json', 'sound-requests.json', 'sound-requests-bosses.json'):
+    for name in ('sound-queue.json', 'sound-requests.json', 'sound-requests-bosses.json', 'sound-requests-noctiel.json'):
         canonical = repo / 'docs/audio' / name
         packaged = bundle / 'docs/audio' / name
         if canonical.is_file() and canonical.read_bytes().replace(b'\r\n', b'\n') != packaged.read_bytes().replace(b'\r\n', b'\n'):

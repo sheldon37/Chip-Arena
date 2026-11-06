@@ -104,7 +104,17 @@ namespace ChipArena.UnityConversion
             K("boss.deepend.wave",P,1.6f,N),K("boss.deepend.quiet",F,1f,L),K("boss.deepend.bubbles",P,1.2f,L),K("boss.deepend.breach",P,1.2f,H),K("boss.deepend.jet.charge",P,1.2f,N),K("boss.deepend.jet",P,2.6f,H),K("boss.deepend.shadow",P,1.5f,N),K("boss.deepend.flop",P,1.4f,H),
             K("boss.deepend.thrash",P,0.8f,H),K("boss.deepend.drain.turn",P,1.8f,N),K("boss.deepend.drain.roar",P,3.6f,H),K("boss.deepend.lull",P,2.2f,N),K("boss.deepend.hands",P,1.2f,H),K("boss.deepend.seiche.draw",F,1.8f,N),K("boss.deepend.seiche",P,2.6f,H),K("boss.deepend.seiche.wall",P,1.2f,N),
             K("boss.deepend.whistle",F,1.8f,H),K("boss.deepend.lap",P,3.2f,H),K("boss.deepend.lamp.break",P,0.7f,N),K("boss.deepend.stagger",P,1.5f,N),K("boss.deepend.tide",F,3.6f,N),K("boss.deepend.lights.die",F,2.2f,N),K("boss.deepend.hurt",P,0.6f,N),K("boss.deepend.death",P,2.6f,H),
-            K("boss.deepend.drain.away",F,4f,N)
+            K("boss.deepend.drain.away",F,4f,N),
+            // NOCTIEL's sounds (docs/audio/sound-requests-noctiel.json; Core NativeFallenBossCues): silent until the owner's batch is
+            // imported. Each cap is its request's longest edited length.
+            K("boss.noctiel.step",P,0.6f,L),K("boss.noctiel.glide",P,1.6f,N),K("boss.noctiel.wings.open",P,1.6f,N),K("boss.noctiel.wings.beat",P,0.9f,N),K("boss.noctiel.plate",P,0.5f,L),K("boss.noctiel.hurt",P,0.6f,N),K("boss.noctiel.feather",F,2f,N),K("boss.noctiel.ripple",F,2.4f,L),
+            K("boss.noctiel.gauntlet",F,1.1f,N),K("boss.noctiel.veins",F,2.4f,N),K("boss.noctiel.halo.crack",F,1.2f,N),K("boss.noctiel.rise",F,3f,N),K("boss.noctiel.mask",F,1f,N),K("boss.noctiel.sword.pull",F,2.2f,H),K("boss.noctiel.slash",F,1.2f,H),K("boss.noctiel.slash.part",F,1.2f,N),
+            K("boss.noctiel.slowdown",F,1.2f,N),K("boss.noctiel.kneel",P,1.1f,N),K("boss.noctiel.chip",F,0.6f,N),K("boss.noctiel.cleave",P,0.8f,N),K("boss.noctiel.vow.draw",P,1.2f,N),K("boss.noctiel.vow",P,1f,H),K("boss.noctiel.severance.wind",P,1f,N),K("boss.noctiel.severance",P,1.2f,H),
+            K("boss.noctiel.wave",P,0.9f,N),K("boss.noctiel.leap",P,1f,N),K("boss.noctiel.descent.mark",P,1.4f,N),K("boss.noctiel.land",P,1.6f,H),K("boss.noctiel.rain.lines",F,1.2f,N),K("boss.noctiel.rain",P,0.7f,N),K("boss.noctiel.verdict.plant",P,1.1f,H),K("boss.noctiel.verdict.crack",F,2.7f,H),
+            K("boss.noctiel.verdict.split",F,2f,H),K("boss.noctiel.choir",P,2f,N),K("boss.noctiel.cantor",P,2f,L),K("boss.noctiel.cantor.death",P,1f,N),K("boss.noctiel.sweep.shake",P,1f,N),K("boss.noctiel.sweep",P,1.3f,H),K("boss.noctiel.eclipse",F,3.5f,H),K("boss.noctiel.eclipse.pool",P,1.2f,L),
+            K("boss.noctiel.penance",P,1.6f,N),K("boss.noctiel.penitent",P,1.2f,N),K("boss.noctiel.penitent.latch",P,0.6f,N),K("boss.noctiel.fall.mark",P,0.8f,N),K("boss.noctiel.fall",P,1.2f,H),K("boss.noctiel.throne",P,2f,L),K("boss.noctiel.throne.fire",P,0.8f,N),K("boss.noctiel.throne.break",P,1.5f,N),
+            K("boss.noctiel.hush",F,1.5f,H),K("boss.noctiel.hush.open",P,1f,N),K("boss.noctiel.life.lost",F,1.1f,N),K("boss.noctiel.return",P,1.1f,N),K("boss.noctiel.revive",F,2f,L),K("boss.noctiel.revive.done",F,1.1f,N),K("boss.noctiel.death",F,3.5f,H),K("boss.noctiel.shatter",F,2.4f,H),
+            K("boss.noctiel.enrage",F,3.5f,H)
         };
         private static Dictionary<string,int> index;
         public static bool Find(string key,out Def def)
