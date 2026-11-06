@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
         private readonly List<FbPart> fbParts=new List<FbPart>();private readonly Dictionary<string,FbPart> fbFree=new Dictionary<string,FbPart>();
         private Material fbBody;private MaterialPropertyBlock fbBlock;
         private Transform fbHead,fbNeck,fbHandR,fbUpperR,fbLowerR,fbSpine,fbFootL,fbFootR,fbBallL,fbBallR;
+        // What the robe drapes over and the blade keeps clear of (any may be missing: then that part is skipped).
+        private Transform fbPelvis,fbThighL,fbThighR,fbCalfL,fbCalfR,fbUpperL,fbLowerL,fbHandL;
         public int FallenBossDraws{get;private set;}
         // The sword in hand_r (tools/gear/fallen_boss.py to_sword): the fist's centre, the blade's way, the flat's way. Metres on the skeleton before its scale.
         private static readonly Vector3 FbGrip=new Vector3(.096f,-.018f,-.015f),FbBladeWay=new Vector3(.144f,.468f,.872f).normalized;private static Vector3 FbFlatWay=new Vector3(.349f,-.848f,.398f);
@@ -38,6 +40,7 @@ namespace ChipArena.UnityConversion
             if(most==null){Debug.LogWarning("NOCTIEL: no bound mesh");return false;}
             var bones=most.bones;var binds=most.sharedMesh.bindposes;for(int i=0;i<bones.Length&&i<binds.Length;i++)if(bones[i]!=null)fbBind[bones[i].name]=binds[i];
             Transform B(string n)=>fbBone.TryGetValue(n,out var t)?t:null;fbHead=B("head");fbNeck=B("neck_01");fbHandR=B("hand_r");fbUpperR=B("upperarm_r");fbLowerR=B("lowerarm_r");fbSpine=B("spine_05");fbFootL=B("foot_l");fbFootR=B("foot_r");fbBallL=B("ball_l");fbBallR=B("ball_r");
+            fbPelvis=B("pelvis");fbThighL=B("thigh_l");fbThighR=B("thigh_r");fbCalfL=B("calf_l");fbCalfR=B("calf_r");fbUpperL=B("upperarm_l");fbLowerL=B("lowerarm_l");fbHandL=B("hand_l");
             if(fbHead==null||fbHandR==null||fbUpperR==null||fbLowerR==null||fbSpine==null||fbFootL==null||fbFootR==null){Debug.LogWarning("NOCTIEL: bones missing");return false;}
             fbHandler=new HumanPoseHandler(animator.avatar,skeleton);int muscles=VisualMotionBank.Muscles;fbPose.muscles=new float[muscles];fbMix=new float[NativeVisualMotionClips.Head+muscles];fbRest=new float[fbMix.Length];
             var free=new List<int>();var names=HumanTrait.MuscleName;for(int i=0;i<names.Length&&i<muscles;i++){var n=names[i];if(n.StartsWith("Left Arm",StringComparison.Ordinal)||n.StartsWith("Left Forearm",StringComparison.Ordinal)||n.StartsWith("Left Hand",StringComparison.Ordinal)||n.StartsWith("Left Shoulder",StringComparison.Ordinal)||n.StartsWith("LeftHand.",StringComparison.Ordinal))free.Add(i);}fbFreeArm=free.ToArray();FbKneelAt=new int[FbKneelNames.Length];for(int i=0;i<FbKneelAt.Length;i++)FbKneelAt[i]=Array.IndexOf(names,FbKneelNames[i]);
@@ -92,8 +95,11 @@ namespace ChipArena.UnityConversion
             // The soles on the water, or as high as the move has them.
             float s=NativeFallenBoss.Scale;float low=Mathf.Min(fbFootL.position.y-.11f*s,fbFootR.position.y-.11f*s);if(fbBallL!=null)low=Mathf.Min(low,fbBallL.position.y-.013f*s);if(fbBallR!=null)low=Mathf.Min(low,fbBallR.position.y-.013f*s);
             float hover=f.Phase==4&&f.Kind==NativeFallenBossPreview.KindFight?.3f+.05f*Mathf.Sin(now*1.3f):0;root.position+=Vector3.up*(origin.y+f.Air+hover-low);
-            // The fist on the planted sword.
-            if(f.Plant>0)FallenPlant(f,origin);else if(f.Carry>0)FallenCarry(f);
+            // Live, a sole the clip has on the water stays where it came down (Runtime NativeFallenLiveBody.cs).
+            FallenFeetPlant(f,now,hover);
+            // The fist on the planted sword, on the carried one, or passing from one to the other. Drawn out of the water it goes
+            // straight to the carry: never back through the clip's own open hand, whose blade swept through the body.
+            FallenGrip(f,origin);
             // The head on the pilot it's after, a little behind them.
             if(f.Track>0&&f.LookAtEye<=0)
             {
@@ -108,6 +114,8 @@ namespace ChipArena.UnityConversion
                 var d=(eye-fbHead.position).normalized;var turn=Quaternion.FromToRotation(fbHead.forward,d);if(fbNeck!=null)fbNeck.rotation=Quaternion.Slerp(Quaternion.identity,turn,.3f*f.LookAtEye)*fbNeck.rotation;
                 turn=Quaternion.FromToRotation(fbHead.forward,(eye-fbHead.position).normalized);fbHead.rotation=Quaternion.Slerp(Quaternion.identity,turn,.85f*f.LookAtEye)*fbHead.rotation;
             }
+            // Last on the arm: the blade turns out of the body wherever the clip or a blend would pass it through.
+            FallenBladeClear(f,yawRot,now);
             FallenChains(f,now,dt,yawRot,local);
             fbLastAt=at;fbLastYaw=f.Yaw;fbPoseClock=now;
         }
@@ -115,11 +123,71 @@ namespace ChipArena.UnityConversion
         // Where the sword stands in the water beside it (its right hand's side), the fist on the grip.
         internal static Vector3 FallenPlantPoint(FallenBossFrame f,float lift)=>NativeBossPoseApply.ToUnity(NativeFallenSongPlant.At(f.Boss,f.Yaw))+Vector3.up*(NativeFallenSongPlant.GripY+lift*NativeFallenSongPlant.LiftBy);
         // The fist closes where the sword should be: upright point-down in the water (planted), or held low and forward as it stands.
-        private void FallenPlant(FallenBossFrame f,Vector3 origin){var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);FallenSwordTo(origin+FallenPlantPoint(f,f.SwordLift),Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward),f.Plant,yawRot*new Vector3(.9f,-.5f,-.6f));}
-        private void FallenCarry(FallenBossFrame f)
+        private void FallenPlantGoal(FallenBossFrame f,Vector3 origin,out Vector3 grip,out Quaternion world,out Vector3 pole)
+        {var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);grip=origin+FallenPlantPoint(f,f.SwordLift);world=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward);pole=yawRot*new Vector3(.9f,-.5f,-.6f);}
+        private void FallenCarryGoal(FallenBossFrame f,out Vector3 grip,out Quaternion world,out Vector3 pole)
         {
-            var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);var root=fbRoot.transform.position;float breath=.02f*Mathf.Sin(fbPoseClock*.8f);var grip=root+yawRot*new Vector3(.86f,1.62f+breath,.42f);
-            var blade=yawRot*new Vector3(.52f,-.44f,.73f);FallenSwordTo(grip,Quaternion.LookRotation(blade.normalized,yawRot*new Vector3(.82f,.3f,-.42f)),f.Carry,yawRot*new Vector3(1f,-.4f,-.5f));
+            var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);var root=fbRoot.transform.position;float breath=.02f*Mathf.Sin(fbPoseClock*.8f);grip=root+yawRot*new Vector3(.86f,1.62f+breath,.42f);
+            var blade=yawRot*new Vector3(.52f,-.44f,.73f);world=Quaternion.LookRotation(blade.normalized,yawRot*new Vector3(.82f,.3f,-.42f));pole=yawRot*new Vector3(1f,-.4f,-.5f);
+        }
+        // Planted (Plant), carried (Carry), or one handing over to the other: the planted share is Plant, and while both hold the
+        // fist is wholly on the sword (their weights sum), so the pull from the water turns the blade straight to the carry.
+        private void FallenGrip(FallenBossFrame f,Vector3 origin)
+        {
+            float plant=Mathf.Clamp01(f.Plant),carry=Mathf.Clamp01(f.Carry);if(plant<=0&&carry<=0)return;
+            if(carry<=0){FallenPlantGoal(f,origin,out var g,out var r,out var o);FallenSwordTo(g,r,plant,o);return;}
+            if(plant<=0){FallenCarryGoal(f,out var g,out var r,out var o);FallenSwordTo(g,r,carry,o);return;}
+            FallenPlantGoal(f,origin,out var pg,out var pr,out var po);FallenCarryGoal(f,out var cg,out var cr,out var co);
+            FallenSwordTo(Vector3.Lerp(cg,pg,plant),Quaternion.Slerp(cr,pr,plant),Mathf.Clamp01(plant+carry),Vector3.Lerp(co,po,plant));
+        }
+        // ---- the blade clears the body ----
+        // Capsules round the torso, head, legs and the free arm. After the arm's pose the hand turns about the wrist until the
+        // blade (guard to point) is out of all of them. A blade deep in a capsule leaves on the side it was last pushed to, so a
+        // swing that would pass through the body brushes round it instead of flipping across. A planted sword is left alone.
+        private const int FbCapsules=10;
+        private readonly Vector3[] fbCapA=new Vector3[FbCapsules],fbCapB=new Vector3[FbCapsules];private readonly float[] fbCapR=new float[FbCapsules];
+        private Vector3 fbBladeSide;private float fbBladeSideAt=-1;
+        /// <summary>Times the blade was turned out of the body this frame (0 when it was clear), for the DEV readout.</summary>
+        internal int FallenBladePushes{get;private set;}
+        private void FallenBladeClear(FallenBossFrame f,Quaternion yawRot,float now)
+        {
+            FallenBladePushes=0;float weight=1-Mathf.Clamp01(f.Plant);if(weight<=0)return;
+            float s=NativeFallenBoss.Scale;int n=0;
+            void Cap(Vector3 a,Vector3 b,float r){if(n<FbCapsules){fbCapA[n]=a;fbCapB[n]=b;fbCapR[n]=r*s;n++;}}
+            if(fbPelvis!=null)Cap(fbPelvis.position,fbSpine.position,.17f);if(fbNeck!=null){Cap(fbSpine.position,fbNeck.position,.19f);Cap(fbHead.position,fbHead.position+(fbHead.position-fbNeck.position).normalized*.17f*s,.13f);}
+            if(fbThighL!=null&&fbCalfL!=null){Cap(fbThighL.position,fbCalfL.position,.1f);Cap(fbCalfL.position,fbFootL.position,.075f);}
+            if(fbThighR!=null&&fbCalfR!=null){Cap(fbThighR.position,fbCalfR.position,.1f);Cap(fbCalfR.position,fbFootR.position,.075f);}
+            if(fbUpperL!=null&&fbLowerL!=null){Cap(fbUpperL.position,fbLowerL.position,.075f);if(fbHandL!=null)Cap(fbLowerL.position,fbHandL.position,.065f);}
+            var start=fbHandR.rotation;var wrist=fbHandR.position;float margin=.03f*s;Vector3 firstPush=default;
+            for(int it=0;it<4;it++)
+            {
+                var from=fbHandR.TransformPoint(FbHiltLocal);var tip=fbHandR.TransformPoint(FbTipLocal);float worst=0;Vector3 at=default,push=default;
+                for(int i=0;i<n;i++)
+                {
+                    FbClosest(from,tip,fbCapA[i],fbCapB[i],out var onBlade,out var onBone);var d=onBlade-onBone;float dist=d.magnitude,r=fbCapR[i]+margin;if(dist>=r)continue;
+                    Vector3 way;if(dist>1e-4f)way=d/dist;else{var b=(tip-from).normalized;way=Vector3.ProjectOnPlane(yawRot*Vector3.forward,b);if(way.sqrMagnitude<1e-6f)way=Vector3.ProjectOnPlane(yawRot*Vector3.right,b);way.Normalize();}
+                    float pen=r-dist;if(fbBladeSideAt>=0&&dist<fbCapR[i]*.6f&&Vector3.Dot(way,fbBladeSide)<0){way=-way;pen=r+dist;}
+                    if(pen>worst){worst=pen;at=onBlade;push=way;}
+                }
+                if(worst<=0)break;var lever=at-wrist;if(lever.sqrMagnitude<1e-6f)break;
+                if(FallenBladePushes==0)firstPush=push;FallenBladePushes++;fbHandR.rotation=Quaternion.FromToRotation(lever,lever+push*(worst*1.05f))*fbHandR.rotation;
+            }
+            if(FallenBladePushes>0){fbBladeSide=firstPush;fbBladeSideAt=now;}else if(fbBladeSideAt>=0&&now-fbBladeSideAt>.3f)fbBladeSideAt=-1;
+            if(weight<1)fbHandR.rotation=Quaternion.Slerp(start,fbHandR.rotation,weight);
+        }
+        // The closest points of two segments (Ericson, Real-Time Collision Detection 5.1.9).
+        private static void FbClosest(Vector3 p1,Vector3 q1,Vector3 p2,Vector3 q2,out Vector3 c1,out Vector3 c2)
+        {
+            var d1=q1-p1;var d2=q2-p2;var r=p1-p2;float a=Vector3.Dot(d1,d1),e=Vector3.Dot(d2,d2),f=Vector3.Dot(d2,r),s,t;
+            if(a<=1e-8f&&e<=1e-8f){s=t=0;}
+            else if(a<=1e-8f){s=0;t=Mathf.Clamp01(f/e);}
+            else
+            {
+                float c=Vector3.Dot(d1,r);
+                if(e<=1e-8f){t=0;s=Mathf.Clamp01(-c/a);}
+                else{float b=Vector3.Dot(d1,d2),den=a*e-b*b;s=den>1e-12f?Mathf.Clamp01((b*f-c*e)/den):0;t=(b*s+f)/e;if(t<0){t=0;s=Mathf.Clamp01(-c/a);}else if(t>1){t=1;s=Mathf.Clamp01((b-c)/a);}}
+            }
+            c1=p1+d1*s;c2=p2+d2*t;
         }
         private void FallenSwordTo(Vector3 grip,Quaternion world,float w,Vector3 poleWay)
         {
@@ -148,6 +216,7 @@ namespace ChipArena.UnityConversion
                 float stiff=58-w*10,damp=7.5f-w*.6f;fbWingV[w]+=(goal-fbWingX[w])*stiff*dt;fbWingV[w]*=Mathf.Exp(-damp*dt);fbWingX[w]+=fbWingV[w]*dt;
             }
             var chains=NativeFallenBossLook.Chains;float s=NativeFallenBoss.Scale;var rootScale=Vector3.one*s;Vector3 rel0;
+            FallenLegWays(yawRot);
             for(int k=0;k<chains.Length;k++)
             {
                 var c=chains[k];var parent=fbWorld[fbChainParent[k]];var pivot=new Vector3(c.Pivot.X,c.Pivot.Y,c.Pivot.Z);
@@ -167,10 +236,11 @@ namespace ChipArena.UnityConversion
                 }
                 else if(c.Kind==NativeFallenBossLook.KindRobe)
                 {
-                    // The strips hang from the waist whatever it does, swing with its speed and are pushed by its thighs.
+                    // The strips drape from the waist over the legs (front strips along the thigh and shin, the back ones only a
+                    // little), flare a touch like a skirt and swing with its speed: never a straight column between parted legs.
                     var hang=c.Segment==0?fbRobeAngle[c.Index]:fbRobeAngle[c.Index]*(1+c.Segment*.35f);
                     Vector3 place;if(c.Segment==0)place=(parent*fbBind[c.Parent]).MultiplyPoint3x4(pivot);else place=parent.MultiplyPoint3x4(pivot-new Vector3(chains[k-1].Pivot.X,chains[k-1].Pivot.Y,chains[k-1].Pivot.Z));
-                    var turn=yawRot*Quaternion.AngleAxis(hang.x,Vector3.right)*Quaternion.AngleAxis(hang.z,Vector3.forward);
+                    var turn=Quaternion.FromToRotation(Vector3.down,FallenRobeWay(c.Pivot.X,c.Pivot.Z-.03f,c.Segment,yawRot))*yawRot*Quaternion.AngleAxis(hang.x,Vector3.right)*Quaternion.AngleAxis(hang.z,Vector3.forward);
                     fbWorld[fbChainGroup[k]]=Matrix4x4.TRS(place,turn,rootScale);
                 }
                 else if(c.Kind==NativeFallenBossLook.KindHalo)
@@ -188,6 +258,36 @@ namespace ChipArena.UnityConversion
                 float noise=2.2f*Mathf.Sin(now*1.1f+i*1.7f)+1.4f*Mathf.Sin(now*2.3f+i*.9f);var goal=new Vector3(Mathf.Clamp(localVelocity.z*3.2f,-30,62)+noise,0,Mathf.Clamp(-localVelocity.x*2.4f,-26,26)+noise*.6f);
                 var d=goal-fbRobeAngle[i];fbRobeSpeed[i]+=(d*38-fbRobeSpeed[i]*7.5f)*dt;fbRobeAngle[i]+=fbRobeSpeed[i]*dt;
             }
+        }
+        // The legs' ways this frame (world, unit, down the bone): thigh and shin each side. A shin that points back or up (a kneel)
+        // counts as straight down for the robe, which falls from the knee instead of folding under it.
+        private Vector3 fbThighWayL,fbThighWayR,fbShinWayL,fbShinWayR;private bool fbLegs;private float fbBackLeg;
+        private void FallenLegWays(Quaternion yawRot)
+        {
+            fbLegs=fbThighL!=null&&fbThighR!=null&&fbCalfL!=null&&fbCalfR!=null;if(!fbLegs)return;
+            Vector3 Way(Vector3 a,Vector3 b){var d=b-a;return d.sqrMagnitude>1e-8f?d.normalized:Vector3.down;}
+            Vector3 Shin(Vector3 w){float g=Mathf.Clamp01((-w.y-.15f)/.35f);return Vector3.Lerp(Vector3.down,w,g).normalized;}
+            fbThighWayL=Way(fbThighL.position,fbCalfL.position);fbThighWayR=Way(fbThighR.position,fbCalfR.position);
+            fbShinWayL=Shin(Way(fbCalfL.position,fbFootL.position));fbShinWayR=Shin(Way(fbCalfR.position,fbFootR.position));
+            // Which knee is further back (the centre-back strip follows that one): +1 the right, -1 the left.
+            var back=Quaternion.Inverse(yawRot);fbBackLeg=Mathf.Clamp((back*(fbCalfL.position-fbCalfR.position)).z*4,-1,1);
+        }
+        // A strip's segment's way down: its own leg's (the left strips the left leg's), as much as it sits in front of it. x and
+        // z are where the strip hangs round the waist (its pivot in the mesh's axes, the ring's centre at z 0).
+        private Vector3 FallenRobeWay(float x,float z,int segment,Quaternion yawRot)
+        {
+            float len=Mathf.Sqrt(x*x+z*z);
+            float side=len>1e-5f?x/len:0,front=len>1e-5f?z/len:1;
+            var outward=yawRot*new Vector3(side,0,front);var rest=(Vector3.down+outward*(front<0?.16f:.1f)*(1+segment*.5f)).normalized;
+            if(!fbLegs)return rest;
+            Vector3 thigh,shin;
+            if(side>.05f){thigh=fbThighWayR;shin=fbShinWayR;}else if(side<-.05f){thigh=fbThighWayL;shin=fbShinWayL;}
+            else{float r=Mathf.Clamp01(.5f-fbBackLeg*.5f);thigh=Vector3.Lerp(fbThighWayL,fbThighWayR,r).normalized;shin=Vector3.Lerp(fbShinWayL,fbShinWayR,r).normalized;}
+            if(thigh.y>-.1f)thigh=Vector3.Lerp(thigh,Vector3.ProjectOnPlane(thigh,Vector3.up).normalized+Vector3.down*.1f,Mathf.Clamp01((thigh.y+.1f)*4)).normalized;
+            var leg=segment==0?thigh:segment==1?(thigh+shin).normalized:shin;
+            // A strip behind the hips never follows a leg forward (a kneel's raised thigh would sweep it in under the body).
+            if(front<0){var ahead=yawRot*Vector3.forward;float go=Vector3.Dot(leg,ahead);if(go>0){leg-=ahead*go;leg=leg.sqrMagnitude>1e-4f?leg.normalized:Vector3.down;}}
+            float follow=Mathf.Lerp(.3f,.9f,(front+1)*.5f);return Vector3.Lerp(rest,leg,follow).normalized;
         }
         // ---------------- the draw ----------------
         private void FbDraw(Mesh mesh,bool glows,in Matrix4x4 m,float glow,float flash,float mirror,Vector4? cut,float scaleGlow=1)

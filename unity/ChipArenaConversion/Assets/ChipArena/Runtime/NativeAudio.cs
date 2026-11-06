@@ -21,9 +21,13 @@ namespace ChipArena.UnityConversion
         private double MusicPosition=>music.clip!=null?NativeMusicSync.Position(music.timeSamples,music.clip.frequency):-1;
         private void SeekMusic(double seconds){music.timeSamples=NativeMusicSync.Sample(seconds,music.clip.frequency,music.clip.samples);}
         private AudioClip stageBossMusic;
+        /// <summary>The stage loading screen covers the view (ConversionGame sets it each frame from NativeStageLoading): a boss
+        /// song waits under it, so an intro's song starts with the picture when the shutters open, never while loading.</summary>
+        public bool StageCovered;
         public void PreloadStageMusic(string map)
         {
-            string id=NativeZoneMusic.BossTrack(map,key=>Clip(key)!=null);stageBossMusic=Clip(id);
+            // NOCTIEL's arena plays its own song (NativeFallenSong), not a zone track or the Siren's: load that one behind the cover.
+            string id=map==NativeFallenRules.Map?NativeFallenSong.Id:NativeZoneMusic.BossTrack(map,key=>Clip(key)!=null);stageBossMusic=Clip(id);
             if(stageBossMusic!=null&&stageBossMusic.loadState==AudioDataLoadState.Unloaded)stageBossMusic.LoadAudioData();
             // The beat map must also be ready before the boss's first frame.
             _=NativeZoneBossSongs.Music;
@@ -117,11 +121,11 @@ namespace ChipArena.UnityConversion
             var me=arena.Local;var match=arena.Match;float t=arena.Time;SceneCues(arena,menu);if(!menu)MarkBeeps(arena);
             CyberCityCues(arena,menu);
             if(menu)Track("music/menu-afterglow",Menu*MenuTrackGain);
-            else if(arena.ZoneBoss?.fallen!=null){var fs=arena.FallenSongClock();Track(NativeFallenSong.Id,Music*.55f,false,fs.clip,arena,fs.epoch);}
+            else if(arena.ZoneBoss?.fallen!=null){var fs=arena.FallenSongClock();Track(NativeFallenSong.Id,Music*.55f,StageCovered,fs.clip,arena,fs.epoch);}
             else if(arena.BossSongTime>=0)
             {
                 // The zone's own boss track when its file is installed (Core/NativeZoneMusic), else the Siren's song on its intro/loop map.
-                string boss=NativeZoneMusic.BossTrack(arena.MapId,id=>Clip(id)!=null);bool hold=arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro";
+                string boss=NativeZoneMusic.BossTrack(arena.MapId,id=>Clip(id)!=null);bool hold=arena.Pve?.Holding==true&&arena.Pve.Cinematic!="intro"||StageCovered;
                 if(boss==NativeZoneMusic.SirenSong)Track(boss,Music*.55f,hold,arena.BossTrack.Looped(arena.BossSongTime),arena,arena.BossSongAt);
                 else
                 {
