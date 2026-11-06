@@ -63,6 +63,22 @@ Then the rest into the same folder; finished takes are skipped:
 py -3.14 unity/ChipArenaConversion/tools/generate_sound_requests.py --manifest docs/audio/sound-requests-bosses.json --out "$env:USERPROFILE\Documents\ChipArena\SoundRequests\boss-sample" --check --zip "$env:USERPROFILE\Documents\ChipArena\boss-batch.zip"
 ```
 
+## NOCTIEL's batch
+
+The third manifest, `docs/audio/sound-requests-noctiel.json` (`docs/audio/SOUND-REQUESTS.md`): 57 keys, 92 files, 148.6 s, about 5,944 credits by the estimate below. A six-take listening sample (the Slash, the Verdict's crack, a Cleave cut, Descent's landing, a Cantor's voice, the cutscene's feather):
+
+```powershell
+py -3.14 unity/ChipArenaConversion/tools/generate_sound_requests.py --manifest docs/audio/sound-requests-noctiel.json --key boss.noctiel.slash --key boss.noctiel.verdict.crack --key boss.noctiel.cleave --key boss.noctiel.land --key boss.noctiel.cantor --key boss.noctiel.feather --variant 1 --out "$env:USERPROFILE\Documents\ChipArena\SoundRequests\noctiel-sample" --check
+```
+
+Then the rest into the same folder; finished takes are skipped:
+
+```powershell
+py -3.14 unity/ChipArenaConversion/tools/generate_sound_requests.py --manifest docs/audio/sound-requests-noctiel.json --out "$env:USERPROFILE\Documents\ChipArena\SoundRequests\noctiel-sample" --check --zip "$env:USERPROFILE\Documents\ChipArena\noctiel-batch.zip"
+```
+
+Through the builder queue instead, an approved job names this manifest and its SHA-256; the bundled copy in `tools/sound_bundle/docs/audio/` is kept byte-identical (`sound_queue.check_bundle`).
+
 ## Resume and uncertain requests
 
 Re-run with exactly the same manifest and `--out`. Completed files are decoded and

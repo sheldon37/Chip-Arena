@@ -17,6 +17,16 @@ generator. Claude owns this manifest and the importer.
 - **The keys:** dotted, not hyphenated, because the generator's pattern is letters, digits and dots. `Tests/BackroomsBossSoundChecks.cs` (`--boss-sounds`) holds them to the bank contract and the cues.
 - **Three keys aren't really sounds in the brief:** `boss.hum.silence`, `boss.hum.cut` and `boss.deepend.quiet` were written as mixer dips. They are requested as a hum dying, a breaker thrown and a soft pressure dip, and the mixer dip itself isn't wired.
 
+## NOCTIEL's sounds (2026-11-06)
+
+`docs/audio/sound-requests-noctiel.json` is a third manifest on the same schema: NOCTIEL's 57 keys (`boss.noctiel.*`), 92 files, 148.6 s of generation. It works like the Backrooms bosses' manifest (`category: boss`, per-sound `levelDb` and `fadeOutMs`, `space: 2d` for the flat keys); the other manifests are untouched.
+
+- **Generate:** `generate_sound_requests.py --manifest docs/audio/sound-requests-noctiel.json`; every key is in the default batch (50 keys at priority 1, 7 at priority 2). Commands: `SOUND-GENERATOR.md`, "NOCTIEL's batch".
+- **Import:** `import_sound_requests.py --manifest docs/audio/sound-requests-noctiel.json`, the same way.
+- **The keys** are in the bank contract (`Core/NativeSoundBank.cs`), each cap its request's longest edited length; Core `NativeFallenBossCues` lists them with when each plays (the table in `docs/EXPEDITION-BOSS-FINAL.md` section 17). `Tests/FallenBossChecks.cs` (`--fallen-boss`) holds them to the contract and the request.
+- **The sound:** porcelain plate, glass, steel, still water, wordless voices and light, to sit under the owner's song. The one-hit kills' tells (the Verdict's crack, the Eclipse, Fall of Light's marks, Descent's ring, the Hush) are priority 1 and last as long as their warnings. 23 keys play flat: the cutscene, the Slash and chip screen, the map-wide tells, a pilot's own lives, the end.
+- **Silent until imported.** The cues that fire them are wired once the batch is in.
+
 ## Contract
 
 - **Manifest:** `docs/audio/sound-requests.json`, schema `chip-arena.sound-requests/1`. The generator reads only this file.

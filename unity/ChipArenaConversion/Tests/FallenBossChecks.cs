@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ChipArena.UnityConversion;
 
@@ -66,8 +67,37 @@ public static class FallenBossChecks
         foreach(Match m in Regex.Matches(script,@"finish\('[a-z-]+', 0x([0-9A-Fa-f]{6})")){int v=Convert.ToInt32(m.Groups[1].Value,16);int r=(v>>16)&255,g=(v>>8)&255,bl=v&255;Check(Math.Abs(r-g)<=12&&Math.Abs(g-bl)<=12,"finish "+m.Value+" is grey");}
         foreach(var f in Directory.GetFiles(Path.Combine(root,"Assets/ChipArena/Core"),"*.cs")){if(Path.GetFileName(f).StartsWith("NativeFallen"))continue;Check(!File.ReadAllText(f).Contains("NativeFallenBossPreview"),Path.GetFileName(f)+" doesn't read the preview");}
         var presentation=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");Check(presentation.Contains("if(!NativeFallenBossPreview.On&&!live){FallenBossHide();return;}"),"without a preview or real encounter nothing runs");
-        Live(R);
-        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+"; live motion: every move's contact on its hit, glide and land, no pops)");
+        Live(R);int sounds=Sounds(root);
+        Console.WriteLine("PASS NOCTIEL ("+count+" checks; the most effect quads in a frame: "+maxQuads+"; live motion: every move's contact on its hit, glide and land, no pops; "+sounds+" sounds requested, each in the bank contract)");
+    }
+    // ---- The sounds (docs/audio/sound-requests-noctiel.json; owner 2026-11-06: "write a sound cue list for elevenlabs") ----
+    // Every NOCTIEL key is in the bank contract and the request, flat or positional as it plays, inside its cap, at the boss level,
+    // in a default batch; the OHK tells are first in line and as long as their warnings; the bundled copy matches; no audio in git.
+    private static int Sounds(string root)
+    {
+        var path=Path.Combine(root,"../../docs/audio/sound-requests-noctiel.json");if(!File.Exists(path))return 0;
+        using var doc=JsonDocument.Parse(File.ReadAllText(path));var sounds=doc.RootElement.GetProperty("sounds").EnumerateArray().ToDictionary(s=>s.GetProperty("key").GetString());
+        var contract=NativeSoundKeys.All.ToDictionary(k=>k.Key);var keys=NativeFallenBossCues.Keys;
+        Check(keys.Length==57&&NativeFallenBossCues.Briefs.Length==keys.Length&&sounds.Count==keys.Length&&keys.Distinct().Count()==keys.Length,"57 sounds, one request and one brief for each key");
+        for(int i=0;i<keys.Length;i++)
+        {
+            string key=keys[i];bool flat=NativeFallenBossCues.Flat(i);
+            Check(Regex.IsMatch(key,"^boss[.]noctiel([.][a-z0-9]+)+$"),key+" fits the generator's key pattern");
+            Check(contract.ContainsKey(key)&&sounds.ContainsKey(key),key+" is in the bank contract and requested");
+            var d=contract[key];var s=sounds[key];float lo=s.GetProperty("targetSeconds").GetProperty("min").GetSingle(),hi=s.GetProperty("targetSeconds").GetProperty("max").GetSingle(),gen=s.GetProperty("generateSeconds").GetSingle();
+            Check(d.Cap+1e-4f>=hi&&lo>0&&lo<hi&&gen>=hi&&gen<=22,key+" fits its cap and can be generated");
+            Check(d.Space==(flat?NativeSoundSpace.Flat:NativeSoundSpace.Positional)&&(s.TryGetProperty("space",out var sp)&&sp.GetString()=="2d")==flat,key+" plays "+(flat?"flat":"at its place")+", and its request says so");
+            Check(s.GetProperty("category").GetString()=="boss"&&s.GetProperty("priority").GetInt32()<3&&s.GetProperty("count").GetInt32()>=1&&s.GetProperty("count").GetInt32()<=NativeSoundKeys.MaxClips,key+": the boss level, a default batch, takes within the bank");
+            float level=s.GetProperty("levelDb").GetSingle();Check(level>=-18&&level<=6&&s.GetProperty("fadeOutMs").GetInt32()>0,key+" has a level and a fade");
+            var prompt=s.GetProperty("prompt").GetString();Check(prompt.Contains("isolated")&&prompt.Contains("no music")&&prompt.Length<400,key+"'s prompt asks for the sound alone");
+        }
+        // The one-hit kills' tells come first and last as long as their warnings (Verdict 2.4 s, Eclipse 3.2 s).
+        foreach(var tell in new[]{"verdict.crack","eclipse","fall.mark","descent.mark","hush"})Check(sounds["boss.noctiel."+tell].GetProperty("priority").GetInt32()==1&&contract["boss.noctiel."+tell].Priority!=NativeSoundPriority.Low,tell+" is a priority-1 tell, never dropped for a busier voice");
+        Check(sounds["boss.noctiel.verdict.crack"].GetProperty("targetSeconds").GetProperty("min").GetSingle()>=2.2f&&sounds["boss.noctiel.eclipse"].GetProperty("targetSeconds").GetProperty("min").GetSingle()>=3,"the OHK tells last their warnings");
+        float loudest=sounds.Values.Max(s=>s.GetProperty("levelDb").GetSingle());Check(sounds["boss.noctiel.verdict.split"].GetProperty("levelDb").GetSingle()==loudest&&sounds["boss.noctiel.feather"].GetProperty("levelDb").GetSingle()<=-14,"the Verdict's split is the loudest thing and the feather one of the quietest");
+        var bundled=Path.Combine(root,"tools/sound_bundle/docs/audio/sound-requests-noctiel.json");Check(File.Exists(bundled)&&File.ReadAllText(bundled).Replace("\r\n","\n")==File.ReadAllText(path).Replace("\r\n","\n"),"the builder bundle's copy matches");
+        Check(!Directory.EnumerateFiles(Path.Combine(root,"../../docs/audio")).Any(f=>f.EndsWith(".mp3")||f.EndsWith(".wav")||f.EndsWith(".ogg")),"no audio in the repo");
+        return sounds.Count;
     }
     // ---- Live motion (Core NativeFallenLiveMotion; owner 2026-11-06: "a lot of feet sliding ... needs better attack animations") ----
     private static NativeVisualMotionClips.Library Bank(params string[] missing)

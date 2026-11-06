@@ -198,7 +198,7 @@ Impact on rules: none until bound. All hit timing comes from the move table, and
 - Astra's rules (section 13). The preview's pilots are stand-ins, its damage is nothing, and the chip screen's draft is a placeholder for the real draft.
 - Binding the presentation to Astra's record: the script is replaced by the record in one place, as THE HUM's `HumBossViewOf` does.
 - Real pilots' reflections in the water: the stand-ins have them through a mirrored second body, which is too dear for every real pilot without a look at the cost.
-- Sounds: the song plays; the Slash, the moves and the adds have no sound of their own.
+- Sounds: the song plays; the Slash, the moves and the adds have no sound of their own yet. Their request is section 17.
 - The owner's ear check of the section timings in section 6.
 
 ## 15. Playable standalone encounter (Astra, 2026-11-06)
@@ -218,3 +218,67 @@ Owner: "Their intro still starts while we're loading in ... a black pillar in th
 - **Feet:** live, a sole the clip puts on the water stays where it came down (two-bone leg IK), stepping in a short lifted arc when the body has moved or turned past it, one foot at a time.
 - **Impact on rules:** none. No hit time, hitbox, damage, cooldown, movement or wire value changes; the body only shows the authority's facts (Descent's arc leads the authority's teleport, which happens on the hit as before).
 - **Checks:** `Tests/FallenBossChecks.cs` (`--fallen-boss`): every move's contact within 35 ms of its authority hit, the chase glides and lands, standing turns and every clip change crossfade, missing clips fall back.
+
+## 17. Sounds (Claude, 2026-11-06)
+
+Owner: "write a sound cue list for elevenlabs". The request is `docs/audio/sound-requests-noctiel.json` (`docs/audio/SOUND-REQUESTS.md`, NOCTIEL's sounds): 57 keys, 92 takes, 148.6 s of generation, about 5,944 credits at the generator's documented rate. The song stays the bed; these are sparse and monochrome like the picture (porcelain plate, glass, steel, still water, wordless voices, light). Every one-hit kill has an audible tell as long as its warning. 2D keys play flat; the rest play at the boss, an add or a pilot. Silent until the batch is imported, then the cues are wired to these moments.
+
+| Key | Plays when | Space | Takes | Length (s) | Level (dB) | Priority |
+| --- | --- | --- | ---: | --- | ---: | ---: |
+| `boss.noctiel.step` | a footfall on the water (the feet the live motion plants) | at its place | 4 | 0.25–0.6 | -10 | 1 |
+| `boss.noctiel.glide` | it takes off into a glide to chase | at its place | 2 | 1–1.6 | -8 | 1 |
+| `boss.noctiel.wings.open` | its wings spread (the cutscene, a long charge, Feather Rain, Fall of Light) | at its place | 2 | 1–1.6 | -6 | 1 |
+| `boss.noctiel.wings.beat` | the wings thrown out on a strike | at its place | 3 | 0.4–0.9 | -6 | 1 |
+| `boss.noctiel.plate` | standing turns and small moves: its plate shifting | at its place | 3 | 0.2–0.5 | -14 | 2 |
+| `boss.noctiel.hurt` | a pilot's hit lands on it | at its place | 4 | 0.2–0.6 | -6 | 1 |
+| `boss.noctiel.feather` | the cutscene's one feather touches the water (0:04-0:15) | 2D | 1 | 1.2–2 | -14 | 1 |
+| `boss.noctiel.ripple` | a slow ring across the whole water (the feather, each pair of wings opening) | 2D | 2 | 1.5–2.4 | -12 | 1 |
+| `boss.noctiel.gauntlet` | the close-up: the gauntlet on the hilt (0:28) | 2D | 1 | 0.6–1.1 | -8 | 1 |
+| `boss.noctiel.veins` | black veins crawl up the blade | 2D | 1 | 1.6–2.4 | -8 | 1 |
+| `boss.noctiel.halo.crack` | the crack runs through the halo | 2D | 1 | 0.6–1.2 | -6 | 1 |
+| `boss.noctiel.rise` | it rises from its knee (0:39) | 2D | 1 | 2–3 | -6 | 1 |
+| `boss.noctiel.mask` | the blank mask lifts toward the lens (0:48) | 2D | 1 | 0.5–1 | -8 | 2 |
+| `boss.noctiel.sword.pull` | it pulls the sword out of the water | 2D | 1 | 1.4–2.2 | -4 | 1 |
+| `boss.noctiel.slash` | the Slash cuts the screen (the opening on the drop, every phase change) | 2D | 2 | 0.6–1.2 | +0 | 1 |
+| `boss.noctiel.slash.part` | the two halves of the frame slide apart | 2D | 1 | 0.6–1.2 | -4 | 1 |
+| `boss.noctiel.slowdown` | time slows hard as it swings at the camera | 2D | 1 | 0.7–1.2 | -6 | 2 |
+| `boss.noctiel.kneel` | it drops to one knee at a threshold | at its place | 1 | 0.6–1.1 | -2 | 1 |
+| `boss.noctiel.chip` | each of its three modifier chips turns over on the beat | 2D | 2 | 0.3–0.6 | -8 | 1 |
+| `boss.noctiel.cleave` | each of Cleave's three cuts | at its place | 4 | 0.35–0.8 | -2 | 1 |
+| `boss.noctiel.vow.draw` | Vow's tell: the water ahead parts in a line | at its place | 1 | 0.7–1.2 | -6 | 1 |
+| `boss.noctiel.vow` | Vow's thrust crosses its lane in a blink | at its place | 2 | 0.5–1 | +1 | 1 |
+| `boss.noctiel.severance.wind` | Severance's tell: the blade held wide | at its place | 1 | 0.6–1 | -6 | 1 |
+| `boss.noctiel.severance` | the flat swing throws the crescent across the map (and the second wing) | at its place | 2 | 0.7–1.2 | +2 | 1 |
+| `boss.noctiel.wave` | the crescent passing close to a pilot | at its place | 2 | 0.4–0.9 | -4 | 2 |
+| `boss.noctiel.leap` | Descent: it leaps into the dark | at its place | 1 | 0.5–1 | -4 | 1 |
+| `boss.noctiel.descent.mark` | Descent's tell: the white ring closing on its pilot | at its place | 1 | 0.9–1.4 | -6 | 1 |
+| `boss.noctiel.land` | Descent lands on the hit | at its place | 2 | 1–1.6 | +4 | 1 |
+| `boss.noctiel.rain.lines` | Feather Rain's tell: thin lines of light on the water | 2D | 1 | 0.8–1.2 | -10 | 1 |
+| `boss.noctiel.rain` | a steel feather falls into its lane | at its place | 4 | 0.3–0.7 | -6 | 1 |
+| `boss.noctiel.verdict.plant` | Verdict / Last Verdict: it plants the sword | at its place | 1 | 0.6–1.1 | +1 | 1 |
+| `boss.noctiel.verdict.crack` | the OHK tell: the crack brightens across the whole map (2.4 s; 2.8 s for Last Verdict) | 2D | 1 | 2.2–2.7 | -2 | 1 |
+| `boss.noctiel.verdict.split` | the map splits along the crack | 2D | 1 | 1.2–2 | +5 | 1 |
+| `boss.noctiel.choir` | Choir: it lifts its off hand and the Cantors come | at its place | 1 | 1.4–2 | -4 | 1 |
+| `boss.noctiel.cantor` | a Cantor sings its beam at a pilot | at its place | 2 | 1.4–2 | -10 | 1 |
+| `boss.noctiel.cantor.death` | a Cantor is killed | at its place | 1 | 0.5–1 | -8 | 1 |
+| `boss.noctiel.sweep.shake` | Wing Sweep's tell: the blade wings spread and shake | at its place | 1 | 0.6–1 | -6 | 1 |
+| `boss.noctiel.sweep` | the full-circle Wing Sweep | at its place | 2 | 0.8–1.3 | +2 | 1 |
+| `boss.noctiel.eclipse` | the OHK tell: the dark rolls in from the edge (3.2 s) | 2D | 1 | 3–3.5 | +0 | 1 |
+| `boss.noctiel.eclipse.pool` | a pool of light opens on the water | at its place | 2 | 0.7–1.2 | -10 | 1 |
+| `boss.noctiel.penance` | Penance: it pours from the blade | at its place | 1 | 1–1.6 | -6 | 1 |
+| `boss.noctiel.penitent` | a Penitent rises from the water by a pilot | at its place | 2 | 0.6–1.2 | -8 | 1 |
+| `boss.noctiel.penitent.latch` | a Penitent latches on | at its place | 2 | 0.2–0.6 | -8 | 2 |
+| `boss.noctiel.fall.mark` | Fall of Light's tell: a bright square on the water, one bar ahead | at its place | 2 | 0.4–0.8 | -10 | 1 |
+| `boss.noctiel.fall` | a column of light falls | at its place | 4 | 0.6–1.2 | +2 | 1 |
+| `boss.noctiel.throne` | a Throne hangs and turns | at its place | 1 | 1.4–2 | -12 | 2 |
+| `boss.noctiel.throne.fire` | a Throne shoots down at a pilot | at its place | 2 | 0.3–0.8 | -6 | 1 |
+| `boss.noctiel.throne.break` | a Throne is brought down | at its place | 1 | 1–1.5 | -2 | 1 |
+| `boss.noctiel.hush` | the Hush warning: the water stills and brightens under a pilot who stands still | 2D | 1 | 1–1.5 | -8 | 1 |
+| `boss.noctiel.hush.open` | the water opens under a pilot who stayed still | at its place | 1 | 0.5–1 | -2 | 1 |
+| `boss.noctiel.life.lost` | a pilot loses a feather (a life) | 2D | 1 | 0.6–1.1 | -6 | 1 |
+| `boss.noctiel.return` | a pilot falls back in from the dark | at its place | 1 | 0.6–1.1 | -8 | 1 |
+| `boss.noctiel.revive` | a teammate starts giving a feather (the revive hold) | 2D | 1 | 1.5–2 | -10 | 1 |
+| `boss.noctiel.revive.done` | the feather is given and the pilot stands | 2D | 1 | 0.6–1.1 | -6 | 1 |
+| `boss.noctiel.death` | NOCTIEL falls: its plate cracks and the light goes out | 2D | 1 | 2.6–3.5 | +3 | 1 |
+| `boss.noctiel.shatter` | the hollow shell shatters into the water (the song's hit at 4:08) | 2D | 1 | 1.6–2.4 | +0 | 1 |
+| `boss.noctiel.enrage` | The Light Goes Out (the 12:00 enrage): white, then black | 2D | 1 | 2.6–3.5 | +4 | 2 |

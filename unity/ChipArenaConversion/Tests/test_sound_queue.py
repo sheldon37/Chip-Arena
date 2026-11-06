@@ -88,7 +88,7 @@ class QueueTests(unittest.TestCase):
         for path in bundle.rglob('*.json'):
             path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
         plans = q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
-        self.assertEqual(len(plans), 5)
+        self.assertEqual(len(plans), 9)
         row, path, manifest, digest, jobs = plans[0]
         self.assertEqual(len(jobs), 6)
         self.assertEqual(sum(j['durationSeconds'] for j in jobs), 11)
@@ -162,6 +162,13 @@ class QueueTests(unittest.TestCase):
             queue, repo = q.queue_inputs(q.QUEUE, q.gen.REPO)
         self.assertEqual(repo, q.BUNDLE)
         plans = q.plan(queue, repo)
+        noctiel = [p for p in plans if p[0]['manifest'].endswith('sound-requests-noctiel.json')]
+        fresh = [job for p in noctiel for job in p[4]]
+        self.assertEqual(len(fresh), 92)
+        self.assertAlmostEqual(sum(j['durationSeconds'] for j in fresh), 148.6)
+        self.assertEqual(len({j['file'] for j in fresh}), 92)
+        self.assertEqual({j['file'] for j in fresh}, {j['file'] for j in q.gen.entries(noctiel[0][2], optional=True)})
+        plans = [p for p in plans if not p[0]['manifest'].endswith('sound-requests-noctiel.json')]
         jobs = [job for row in plans for job in row[4]]
         self.assertEqual(len(jobs), 121)
         self.assertAlmostEqual(sum(job['durationSeconds'] for job in jobs), 195.3)

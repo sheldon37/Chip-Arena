@@ -178,6 +178,21 @@ class SoundRequestImport(unittest.TestCase):
         self.assertEqual(sounds['boss.deepend.whistle']['space'], '2d')
         self.assertLess(sounds['boss.deepend.ripple']['levelDb'], sounds['boss.deepend.flop']['levelDb'])
 
+    def test_noctiel_manifest_fits_the_bank_contract(self):
+        path = REPO / 'docs/audio/sound-requests-noctiel.json'
+        if not path.is_file():
+            self.skipTest('docs/audio is not in this tree')
+        raw, data, sounds, trim, fade = importer.load_manifest(path)
+        problems = []
+        importer.check_contract(sounds, problems)
+        self.assertEqual(problems, [])
+        self.assertEqual(len(sounds), 57)
+        self.assertEqual(sum(s['count'] for s in sounds.values()), 92)
+        self.assertTrue(all(k.startswith('boss.noctiel.') and s['category'] == 'boss' and s['priority'] < 3 for k, s in sounds.items()))
+        self.assertEqual(sounds['boss.noctiel.verdict.crack']['space'], '2d')
+        self.assertNotIn('space', sounds['boss.noctiel.cleave'])
+        self.assertEqual(max(s['levelDb'] for s in sounds.values()), sounds['boss.noctiel.verdict.split']['levelDb'])
+
     def test_boss_fade_is_the_requests_own(self):
         pcm = array('f', [.5] * (importer.RATE * 2))
         out, _, _ = importer.edit(pcm, {'targetSeconds': {'min': .5, 'max': 1.0}, 'fadeOutMs': 400}, 'boss', -50, .02)
