@@ -1,0 +1,71 @@
+# Attack warnings (telegraphs)
+
+Owner, 2026-11-06: "We need better visual indicators of his attacks [the circle/lines that appear where an attack is coming]. Honestly all bosses and enemies need better visual indicators. I want something that players can see and it's not a basic design."
+
+One shared renderer draws every boss's and enemy's ground warnings. It is presentation only: each warning is the attack's own geometry and timing from the rules (Astra's), drawn better. Nothing here is read by a rule.
+
+| Part | Where |
+| --- | --- |
+| Shapes, looks, timing, extents, the frame's list | Core `NativeTelegraph.cs` |
+| The renderer (one quad per warning, one mesh per frame) | Runtime `NativeTelegraphPresentation.cs` |
+| The look, per pixel | `Resources/NativeTelegraph.shader` |
+| Checks | `Tests/TelegraphChecks.cs` (`--telegraphs`) |
+
+## What a warning shows
+
+- **Where:** the shape on the floor, with a crisp edge never thinner than about a pixel and a half at any distance, a glow outside it, and a dark film under it, so a bright warning reads on a bright floor.
+- **When:** the fill closes in toward the hit and is full on it, with a bright front line where it is. The edge's pulse quickens as the hit nears. In the last 0.28 s (`LockSeconds`) it strobes: the lock-on.
+- **The hit:** a white flash over the shape and a shock ring running out from its edge for 0.35 s (`FlashSeconds`). A hazard that keeps hurting after its hit (Feather Rain's lanes) stays **live**: a steady burn, then it fades.
+- **Whose:** a look per boss family, so a player knows what is coming before reading the shape.
+
+## Shapes
+
+All in the warning's own frame: x its right, y its front (the game's yaw: 0 faces +z, 90 faces +x).
+
+| Shape | A | B | C |
+| --- | --- | --- | --- |
+| `Circle` | radius | | |
+| `Ring` | outer radius | inner radius | |
+| `Cone` | radius | half angle (degrees) | inner radius |
+| `Lane` | length forward | half width | length behind |
+| `Square` | half size | | |
+| `Wave` (a travelling front) | radius now | half thickness | half angle (degrees) |
+
+The fill comes `FromEdge` (closing in), `FromCentre` (a blast spreading) or `Along` the attack (a swing or a dash).
+
+## Looks
+
+| Look | For | Pattern |
+| --- | --- | --- |
+| `Danger` | the default, enemies | hot red-orange, chevrons running toward the hit |
+| `Fallen` | NOCTIEL | white on black, engraved rings drifting in, a dial of ticks |
+| `FallenKill` | NOCTIEL's one-hit kills | a deeper black film, white spokes, a harder pulse |
+| `Safe` | a safe place (the Eclipse's pools) | soft, breathing, no film |
+| `Industrial` | the Station, the Ironworks | amber hazard stripes |
+| `Molten` | heat attacks | molten shimmer |
+| `Fluorescent` | THE HUM | a fluorescent buzz that flickers, a ceiling-tile grid |
+| `Water` | THE DEEP END | water light, caustics |
+| `Siren` | the Siren | magenta chevrons |
+
+## Adopting it
+
+A presenter fills a `NativeTelegraph.Spec` with the attack's shape (its rule's own numbers), calls `NativeTelegraph.Timed(ref spec, start, hit, now, liveSeconds)` and, when it returns true, `Telegraph(spec)` (or `Telegraph(spec, stageOrigin)` for a stage drawn away from the level). It then removes its old warning lines and keeps its attack effects. The list is cleared before the world draws and drawn after its effects (`RenderAbilities`).
+
+Checks make each adopter honest: sample the floor, and every point the rule would hit must be inside a warning, which may be slightly larger (a lane's square ends) but never smaller.
+
+## Adopted
+
+- **NOCTIEL** (2026-11-06), each warning against `NativeFallenAuthority.FallenAttack`:
+  - Cleave's 151 degree fan (8 m, its 0.25 dot), live through the three cuts.
+  - Vow's lane, 3 m either side of the dash and 3 m past each end.
+  - Severance's fan (a 0.5 dot), then each wave's front as it travels.
+  - Descent's 9 m circle where it lands.
+  - Feather Rain's eight lanes, live while the blades fall.
+  - The Verdicts' 3 m lines through the target (three for Last Verdict).
+  - Wing Sweep's 28 m circle.
+  - The Eclipse's safe pools.
+  - Fall of Light's falling column cells.
+  - A 3 m Hush circle filling under any pilot standing still.
+
+  The old warning lines and squares are gone. The crack, the dark, the blades, the columns and the impacts stay as the attacks' own effects.
+- **Next:** the other bosses (the Station, the Ironworks, THE HUM, THE DEEP END, the Siren), then the enemies.

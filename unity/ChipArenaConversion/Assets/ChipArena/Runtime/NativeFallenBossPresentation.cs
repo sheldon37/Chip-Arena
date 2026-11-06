@@ -101,6 +101,8 @@ namespace ChipArena.UnityConversion
             float clip=f.SongClip,level=fbSong.LevelAt(clip),bass=fbSong.BassAt(clip);
             // The trail and the steps come from the posed body.
             var t=eye.transform;var nr=t.right;var nu=t.up;fbFx.Build(f,ToNV(eyeAt-origin),ToNV(nr),ToNV(nu),fbSong,WeaponEffectsQuality<.5f);
+            // Its attack warnings go to the shared renderer (NativeTelegraphPresentation.cs), on its stage.
+            for(int i=0;i<fbFx.Telegraphs.Count;i++)Telegraph(fbFx.Telegraphs.Items[i],origin);
             bool shown=f.BossShown&&f.Kind!=NativeFallenBossPreview.KindChips;
             if(shown){FallenFeet(f,now,dt,origin);FallenTrail(f,now,origin);}FbStepsInto(fbFx,now);
             if(live)FallenPilotsHide();else FallenPilots(f,now,origin);

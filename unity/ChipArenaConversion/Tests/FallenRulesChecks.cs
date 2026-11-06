@@ -43,6 +43,8 @@ internal static class FallenRulesChecks
             var fx=new NativeFallenBossFx();var frame=new FallenBossFrame{Live=new NativeFallenRecord(),Phase=2,P=2.3f,Actions=new[]{new NativeFallenBossPreview.Act{Id=move,At=0,Hit=2.4f,End=3,From=new Vector3(0,0,79),To=new Vector3(0,0,79),Aim=0,Seed=0}}};
             fx.Build(frame,new Vector3(0,20,0),Vector3.UnitX,Vector3.UnitY,null,false);
             float minZ=float.MaxValue,maxZ=float.MinValue;for(int i=0;i<fx.Quads.Count*12;i+=3){minZ=Math.Min(minZ,fx.Quads.Corners[i+2]);maxZ=Math.Max(maxZ,fx.Quads.Corners[i+2]);}
+            // The warnings themselves (Core NativeTelegraph, Claude 2026-11-06): their quads count as what the disc shows.
+            for(int i=0;i<fx.Telegraphs.Count;i++){NativeTelegraph.Corners(fx.Telegraphs.Items[i],out var ca,out var cb,out var cc,out var cd,out _,out _,out _,out _);foreach(var c in new[]{ca,cb,cc,cd}){minZ=Math.Min(minZ,c.Z);maxZ=Math.Max(maxZ,c.Z);}}
             Check(minZ<=-80&&maxZ>=80,"full-disc live warning "+move);
         }
         Console.WriteLine("PASS NOCTIEL rules: "+n+" checks");

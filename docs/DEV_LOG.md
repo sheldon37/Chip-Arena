@@ -1,3 +1,31 @@
+## 2026-11-06 — Claude: shared attack warnings (telegraphs), NOCTIEL first
+
+- Owner: "We need better visual indicators of his attacks ... Honestly all bosses and enemies need better visual indicators. I want something that players can see and it's not a basic design." Then "Go ahead and do that". Branch `claude/telegraphs` off shared `3f89709`. Doc: `docs/TELEGRAPHS.md`.
+- **The system:** Core `NativeTelegraph` holds six shapes (circle, ring, cone, lane, square, travelling wave front), nine looks, the timing (fill, lock-on, flash, live window), the extents and an allocation-free frame list. Runtime `NativeTelegraphPresentation.cs` gives one quad per warning in one mesh per frame, cleared before `SourceWorld` and drawn after `WorldEffects` in `RenderAbilities`. `Resources/NativeTelegraph.shader` draws each warning per pixel:
+  - a contrast film, and the fill closing in with its bright front;
+  - the look's animated pattern;
+  - a crisp edge (at least 1.6 px), and a glow whose pulse quickens toward the hit;
+  - the lock-on strobe for the last 0.28 s, then an impact flash and a shock ring;
+  - a live burn for hazards that keep hurting.
+- **NOCTIEL adopted it:** `NativeFallenBossFx.Warn` draws each move's own hit geometry from `NativeFallenAuthority.FallenAttack`:
+  - Cleave's 151 degree fan, live through the three cuts;
+  - Vow's lane (3 m either side and 3 m past each end);
+  - Severance's fan, then each wave's front as it travels;
+  - Descent's circle;
+  - Feather Rain's eight lanes, live 2.4 s;
+  - the Verdicts' 3 m lines (three for Last Verdict);
+  - Wing Sweep's circle;
+  - the Eclipse's safe pools;
+  - Fall of Light's column cells (live and preview);
+  - a Hush circle filling under any pilot standing still.
+
+  The old pre-hit lines, arcs, rings and squares are gone. The crack, the dark, the blades, the columns and the impacts stay.
+- **Animation and rule impact:** none. Presentation only; the warnings show the rules' geometry and times.
+- **Checks for this entry:** `CoreTests --telegraphs` 34,003 checks PASS (new group, also in the full run). Each shape's distance agrees with its extent and the quad covers it with its glow; the frame maps both ways; the fill only grows and is full on the hit; the lock-on runs only in its last moments; a warning shows from its start through its flash or its live window. For every NOCTIEL move, every point its rule hits (sampled over the disc, three times in the windup) is inside a warning, full and locked on the hit and gone after the move; the waves' fronts show where they hurt; the Hush fills a 3 m circle under a pilot standing still. The shader's styles and shapes match Core's, no HLSL type name is used as a name, and the wiring is checked. `--fallen-boss` 2,410,593 PASS. `tools/package_source.py --check` PASS (3,374 files). `git diff --check` clean. Full managed suite at `a452bc2`: exit 0, 976 groups PASS, none failed (about 25 min).
+- **Not checked:** nothing seen in Unity. The look, readability at distance and on the black water, and the per-frame cost need a build. The real Unity 6000.3.24f1 compile (shader included) wasn't run (download.unity3d.com blocked); the Unity 2021.3 reference compile is at its 271 baseline with nothing in a changed file.
+- **Next:** the other bosses (the Station, the Ironworks, THE HUM, THE DEEP END, the Siren), then the enemies; then the water ripples and the summons' animations (the owner will provide attack reference clips).
+- **Release:** merged into shared `claude/sleepy-ritchie-g8ruhv` and synced to the builder `codex/unity-cloud-current` after the full suite. Not seen in Unity or on Windows yet: the look of the warnings needs the owner's playtest.
+
 ## 2026-11-06 — Astra: isolate lobby pose selections
 
 - Branch `codex/lobby-pose-reset`, base shared `3f89709f`. Owner reported twisted arms and incorrect stance when switching lobby idle poses.
