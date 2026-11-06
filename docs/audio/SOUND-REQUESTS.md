@@ -28,6 +28,16 @@ generator. Claude owns this manifest and the importer.
 - **Queued:** builder jobs `noctiel-full-20261106-v1`..`v4` in `docs/audio/sound-queue.json` (Astra, PR #370; one per take number; 92 requests, 148.6 s).
 - **Silent until imported.** The cues that fire them are wired once the batch is in.
 
+## Reviewed short takes
+
+The importer rejects a take shorter than its request's `targetSeconds.min` after trimming. A take reviewed and accepted shorter goes in `ACCEPTED_SHORT` in `tools/import_sound_requests.py`, keyed by the manifest's SHA-256 and the take's name, with the shortest edited length accepted for that take. Nothing else is relaxed; a take from another manifest version keeps its minimum. The list is in the importer itself, so the builder queue's import fingerprint changes whenever the list does, and the queue re-imports the cached originals without regenerating anything.
+
+- NOCTIEL's builder batch (PR #370) stopped on three takes, accepted 2026-11-06 by Claude on design review, not by ear:
+  - `boss.noctiel.gauntlet_01`: 0.454 s against 0.6 s, floor 0.45 s. The gauntlet closing on the hilt in the 0:28 close-up: half a second of leather and chain reads as the grip.
+  - `boss.noctiel.sword.pull_01`: 1.232 s against 1.4 s, floor 1.2 s. The sword rises out of the water over about 1.4 s.
+  - `boss.noctiel.wave_02`: 0.294 s against 0.4 s, floor 0.28 s. A crescent at 34 m/s passes a pilot in a fraction of a second; it is one of two takes.
+- A take that sounds wrong when heard is regenerated alone (one request) under a new reviewed queue job; the rest of the batch stays.
+
 ## Contract
 
 - **Manifest:** `docs/audio/sound-requests.json`, schema `chip-arena.sound-requests/1`. The generator reads only this file.

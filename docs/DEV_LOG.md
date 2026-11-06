@@ -5,6 +5,20 @@
 - Regression cases cover near/far speed, stop and overshoot, sustained closing, stall across attack pauses, catch-up recovery and target switching. Managed `--fallen-rules`: 290,814 checks PASS. Pinned Unity reference semantic compilation: InputSystem, Player, Runtime and Editor PASS; source packaging: 3,361 files PASS. Presentation `--fallen-boss`: 2,751,211 NOCTIEL checks PASS (plus its prerequisite checks). Full managed suite running; final receipt will be recorded on the PR.
 - Native Windows/PhysX gameplay and multiplayer appearance unrun here. No live or Site release; intended delivery is shared plus existing test builder.
 
+
+## 2026-11-06 — Claude: NOCTIEL's three short takes reviewed; the import can finish
+
+- Astra on PR #370: all 92 NOCTIEL originals were generated on the builder and mirrored to Drive (hashes and the manifest checked). The automatic import stopped on three takes shorter than their minimum after trimming, and Astra asked for a review rather than a looser importer. The owner: "Astra generated the sounds I believe". Branch `claude/noctiel-sound-import` off shared `27f2a75`.
+- **Decision:** accept all three as they are. No new paid takes. The request's minimums were mine, and these lengths fit their moments:
+  - `boss.noctiel.gauntlet_01`, 0.454 s against 0.6 s: the gauntlet closing on the hilt in the 0:28 close-up.
+  - `boss.noctiel.sword.pull_01`, 1.232 s against 1.4 s: the sword's draw out of the water, about 1.4 s.
+  - `boss.noctiel.wave_02`, 0.294 s against 0.4 s: a crescent at 34 m/s passing a pilot, one of two takes.
+  I reviewed the design, not the sound: I have not heard them. A take that sounds wrong is regenerated alone.
+- **How:** `ACCEPTED_SHORT` in `tools/import_sound_requests.py` (the importer is Claude's) holds a floor for exactly those three takes, keyed by the NOCTIEL manifest's SHA-256 `4ad409e4…7a5bd7` and the take name. Every other take, key and manifest version keeps its request's minimum, and the report notes each acceptance. The manifest is untouched, so the approved jobs and the receipts still match. The queue's import fingerprint includes the importer's hash, so the builder's next run re-imports the cached originals without regenerating.
+- **Checks for this entry:** importer tests 13 OK (new: the three takes pass at their floors; the same take under another manifest version, another take of the key and another key still fail at 0.6 s; the list holds only those three, each under its request's minimum and within its key's takes). Queue tests 18 OK, generator tests 9 OK. `tools/package_source.py --check` PASS. `git diff --check` clean. The real import (ffmpeg on the 92 originals) runs on the builder; I don't have the Drive zips here.
+- **Next:** the builder imports the batch. Then the cues get wired to the live fight and the cutscene (Claude), and the owner listens.
+- **Release:** task branch `claude/noctiel-sound-import` merged into shared `claude/sleepy-ritchie-g8ruhv` and synced to the builder (`codex/unity-cloud-current`), whose next run should finish the import. Its sound status, not this entry, says whether it did. Not a live release.
+
 ## 2026-11-06 — Claude: NOCTIEL walks and carries its sword like the owner's reference video
 
 - Owner: "can you use this reference video to adjust the bosses walk? (If theres a better way of doing this, just let me know)". The video: 8 s, 24 fps, a mannequin walking toward the camera, about one step a second with long double support. A long sword hangs from its right hand, the blade trailing out to its side and down, the point near the floor, and the free arm swings. Branch `claude/noctiel-walk` off shared `103452a`.
