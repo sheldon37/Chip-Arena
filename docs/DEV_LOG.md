@@ -1,4 +1,5 @@
 ## 2026-11-06 — Astra: unblock NOCTIEL audio import and test Update
+- **Delivery receipt:** Windows builder completed imports at 19:52:41 UTC with zero generated requests; Windows build succeeded at 20:00:04 UTC and **publication succeeded at 20:02:27 UTC**, source `be77cb00`. NOCTIEL walk and 57 sound cues included. Follow-up: CI found HazardKitChecks still pinned to 16 MB; updated to the approved 18 MB contract, with focused HazardKitChecks and EffectsAudioChecks PASS. This follow-up changes only tests/documentation; shipped runtime unchanged.
 
 - Branch `codex/noctiel-import-fix`, base shared/builder `34bd345f` (includes NOCTIEL walk and all 57 live sound cues). Owner requested repair of the failed asset install and test Update delivery.
 - Evidence: builder `edb21808` and `34bd345f` fail during sound import. Last successful Backrooms import reports 15.19 MB; original LocalAssets plus all 121 Backrooms and 92 NOCTIEL takes reproduce **16,648,910 bytes**, rejected by the old 16,000,000-byte whole-bank limit. All 92 NOCTIEL takes separately import with zero rejections; the three reviewed short-take exceptions work.
