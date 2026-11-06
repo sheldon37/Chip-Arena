@@ -124,7 +124,7 @@ namespace ChipArena.UnityConversion
             for(float t=0;t<=seconds+1e-4f;t+=dt)
             {
                 if(NativeLobbyPoses.UsesIdle(spec,poseIndex)){p.Reset();if(clips.TryGetValue(spec+"-idle",out var idle)){Sample(idle,t,p);r.ReadPose(p);}else r.Reset();}
-                NativeLobbyPoses.Sample(r,spec,poseIndex,t,"none",false,7,out var weapon,out _,out _);r.WritePose(p);p.World();
+                NativeLobbyPoses.Sample(r,spec,poseIndex,t,"none",false,7,out var weapon,out _,out _);NativeLobbyPoses.FitModel(r,spec,poseIndex,t);r.WritePose(p);p.World();
                 yield return new Frame{Time=t,Pose=p,Grasp=Grasp(spec,!weapon.Visible,p,Arms.Still),Fresh=fresh};fresh=false;
             }
         }

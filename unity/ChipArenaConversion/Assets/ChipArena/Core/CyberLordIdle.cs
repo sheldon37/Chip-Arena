@@ -236,6 +236,13 @@ namespace ChipArena.UnityConversion
         public const float ShiftRoll=1.2f,ShiftCounter=.7f;
         /// <summary>The lobby stance's turn (rad, toward the card camera).</summary>
         public const float LobbyYaw=-.18f;
+        /// <summary>The lobby stance raised out of the sword capture's squat (m, the rig's scale: on the model its legs nearly double it).</summary>
+        public const float LobbyRise=.08f;
+        /// <summary>The lobby stance's body on the model (owner 2026-11-05: "fix sheldon Idle"): the hunch eased so the head clears the
+        /// shoulders (rad, each joint's pitch), and the feet set wider, off the knock knees a narrower body gets from the fighter
+        /// stance's (m, rig frame). The twitches and the "psycho" read are unchanged.</summary>
+        public const float LobbySpine=.1f,LobbyChest=.06f,LobbyNeck=.1f,LobbyHead=.12f;
+        public const float LobbyLeadX=.2f,LobbyLeadZ=.13f,LobbyRearX=-.2f,LobbyRearZ=-.16f;
         /// <summary>
         /// The match layer over a posed fighter rig at weight `w` (group space; the legs stay the gait's planted feet): the
         /// twitches, then the glitch's tear and jolt. `pitch` is the view's pitch (rad, + up).
@@ -259,10 +266,12 @@ namespace ChipArena.UnityConversion
             r.Reset();r.WeaponReach=1;Base(time,standRow);standRow[MeleeCapture.Yaw]=0;CyberLordMotion.Posture(standRow);
             r.SetE(CapturedRig.Body,0,LobbyYaw,0);
             MeleeCapture.Apply(r,CyberLordMotion.Unarmed,standRow,CaptureOptions.Of(1,CyberLordMotion.Unarmed.Fit,MeleeClear.None,legs:0,root:1));CyberLordMotion.FaceForward(r,CyberLordMotion.FaceWeight);
+            var raised=r.P[CapturedRig.Body];r.P[CapturedRig.Body]=new Vector3(raised.X,raised.Y+LobbyRise,raised.Z);
+            r.Multiply(CapturedRig.Spine,E(-LobbySpine,0,0));r.Multiply(CapturedRig.Chest,E(-LobbyChest,0,0));r.Multiply(CapturedRig.Neck,E(-LobbyNeck,0,0));r.Multiply(CapturedRig.Head,E(-LobbyHead,0,0));
             bool live=time>0;var tw=live?Twitch(seed,time,reduced):default;var g=live&&glitch?Glitch(seed,time,1,reduced):default;
             Twitches(r,1,tw,0,g);g.LClench=tw.LClench;g.RClench=tw.RClench;twitch=tw;
             var st=CyberLordStance.Stance;
-            r.Foot(true,new Vector3(st.LeadX,MeleeRig.FLOOR,st.LeadZ),st.LeadToe,0,1,null,NativeLobbyPoses.StandingReach);r.Foot(false,new Vector3(st.RearX,MeleeRig.FLOOR,st.RearZ),-st.RearToe,0,1,null,NativeLobbyPoses.StandingReach);
+            r.Foot(true,new Vector3(LobbyLeadX,MeleeRig.FLOOR,LobbyLeadZ),st.LeadToe,0,1,null,NativeLobbyPoses.StandingReach);r.Foot(false,new Vector3(LobbyRearX,MeleeRig.FLOOR,LobbyRearZ),-st.RearToe,0,1,null,NativeLobbyPoses.StandingReach);
             return g;
         }
         /// <summary>The fists' clench for the hardlight look (NativeCyberLordLook.Flare's left and right, at ClenchFlare of a hit's
