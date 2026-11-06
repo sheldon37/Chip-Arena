@@ -18,9 +18,9 @@ namespace ChipArena.UnityConversion
         private int backroomMask=-1;private float backroomTick=-1;
         public float BossTide=>NativeBackroomsBossRules.Tide(ZoneBoss,Time);
         public HumBossView HumZoneBossView()
-        {var z=ZoneBoss;var m=Minions.FirstOrDefault(a=>a.Id==z?.actor);if(m==null)return HumBossView.None;var p=m.Body.position;return NativeZoneBossViews.Hum(z,p.x,p.y,p.z,m.Yaw,m.Hp,m.MaxHp,BossSongTime>=0?Time-(float)BossSongTime:Time-100,Local?.Seat.id??-1);}
+        {var z=ZoneBoss;var m=Minions.FirstOrDefault(a=>a.Id==z?.actor);if(m==null)return HumBossView.None;var p=m.Body.position;return NativeZoneBossViews.Hum(z,p.x,p.y,p.z,m.Yaw,m.Hp,m.MaxHp,BossSongTime>=0?Time-(float)BossSongTime:NativeZoneBossViews.BackroomsArrival(z),Local?.Seat.id??-1);}
         public DeepEndBossView DeepEndZoneBossView()
-        {var z=ZoneBoss;var m=Minions.FirstOrDefault(a=>a.Id==z?.actor);if(m==null)return DeepEndBossView.None;var p=m.Body.position;return NativeZoneBossViews.DeepEnd(z,p.x,p.y,p.z,m.Yaw,m.Hp,m.MaxHp,BossSongTime>=0?Time-(float)BossSongTime:Time-100,Local?.Seat.id??-1);}
+        {var z=ZoneBoss;var m=Minions.FirstOrDefault(a=>a.Id==z?.actor);if(m==null)return DeepEndBossView.None;var p=m.Body.position;return NativeZoneBossViews.DeepEnd(z,p.x,p.y,p.z,m.Yaw,m.Hp,m.MaxHp,BossSongTime>=0?Time-(float)BossSongTime:NativeZoneBossViews.BackroomsArrival(z),Local?.Seat.id??-1);}
         private NVector BackroomCentre(string kind)
         {
             if(kind==NativeHumBoss.Archetype){var l=GeneratedRun.Backrooms.Layout;int x=Math.Max(0,Math.Min(l.Width-12,l.ExitX-6)),z=Math.Max(0,Math.Min(l.Depth-12,l.ExitZ-6));return new HumRoom(x,z,NVector.Zero).Centre;}
@@ -60,7 +60,7 @@ namespace ChipArena.UnityConversion
             }
             else
             {
-                var view=DeepEndZoneBossView();deepAuthorityRig.Update(Time,dt,view,null,new NVector(b.cx,0,b.cz),BossTide,false,NVector.Zero);
+                var view=DeepEndZoneBossView();view.spawned=NativeZoneBossViews.BackroomsArrival(z);deepAuthorityRig.Update(Time,dt,view,null,new NVector(b.cx,0,b.cz),BossTide,false,NVector.Zero);
                 for(int i=0;i<backroomParts.Count;i++){var part=NativeDeepEndBoss.Parts[i];NVector p;if(part.Lamp>=0)deepAuthorityRig.LampFrame(part.Lamp,out p,out _,out _);else p=part.Id=="throat"?deepAuthorityRig.MouthAt:deepAuthorityRig.Shown.Position[part.Joint];backroomParts[i].transform.position=new Vector3(p.X,p.Y,p.Z);backroomParts[i].enabled=m.Hp>0;}
             }
             m.Collider.enabled=false;
