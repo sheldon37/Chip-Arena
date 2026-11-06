@@ -49,6 +49,9 @@ namespace ChipArena.UnityConversion
             {
                 var runtime=splitAreas.Acquire(area.id);var sim=runtime.Arena;sim.GeneratedRun=deploymentBundle;sim.LocalId=1;
                 var session=new ExpeditionSession(splitRun.ForArea(area.id),content);
+                // Each area owns its reward session; resolve the requesting pilot, never the host's loadout.
+                session.ChipFilter=NativeArena.ImplementedChip;
+                session.AbilityLoadout=who=>sim.Match.Seats.FirstOrDefault(s=>s.access?.AccountId==who)?.weaponTechniques??splitSeats.FirstOrDefault(s=>s.access?.AccountId==who)?.weaponTechniques??"";
                 session.Sources.Seat=SplitSeat;session.Sources.DisplayName=id=>seats.FirstOrDefault(p=>p.access?.AccountId==id)?.name;
                 var director=new ExpeditionDirector(session,expeditionM1Layout,id=>sim.Pilots.FirstOrDefault(p=>p.Seat.id==SplitSeat(id)) is NativePilot p?NativeArena.Vec(p.Body.position-Vector3.up*NativeLocomotionRules.HalfHeight):(V3?)null,sim.ExpeditionVisible,100,NativeReviveMachine.Price,60);
                 session.ReprintEvidence=sim.ExpeditionReprintEvidence;session.Run.ReprintPlacement=SplitReprint;

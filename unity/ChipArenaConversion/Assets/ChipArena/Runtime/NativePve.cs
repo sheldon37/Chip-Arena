@@ -57,7 +57,7 @@ namespace ChipArena.UnityConversion
         {
             if(Pve==null||Pve.Holding||!Pve.Rows.TryGetValue(p.Seat.id,out var row)||row.Open?.Id!=pickId||row.Open.Offers==null||!row.Open.Offers.Contains(chip))return false;var definition=PveChip(chip);if(definition==null||definition.rarity=="siren")return false;
             if(chip.StartsWith("mishima-")&&!Dev(p,"emperor")||chip.StartsWith("arcade-")&&!Dev(p,"ansatsuken")||chip.StartsWith("l44t-")&&!Dev(p,"leet")||chip.StartsWith("bomb-")&&!Dev(p,NativeBombs.Spec))return false;
-            bool money=definition.mechanic=="pve-money";p.Seat.chips.TryGetValue(chip,out int count);if(count>=definition.max||!money&&!NativeContentRules.Eligible(Content,p.Seat.spec,p.Seat.chips).Any(c=>c.id==chip)){RollPveOffers(p,row.Open);return false;}
+            bool money=definition.mechanic=="pve-money";p.Seat.chips.TryGetValue(chip,out int count);if(count>=definition.max||!money&&!NativeContentRules.Eligible(Content,p.Seat.spec,p.Seat.chips,p.Seat.bot?"":p.Seat.weaponTechniques??"").Any(c=>c.id==chip)){RollPveOffers(p,row.Open);return false;}
             Emit(EventKind.Install,p,p.Seat.id,p.Body.position,count+1,chip);p.Seat.chips[chip]=count+1;RefreshLiveStats(p);row.Picks.Remove(row.Open);row.Open=null;if(row.Picks.Count>0)OpenPvePick(p);return true;
         }
         private void RefreshLiveStats(NativePilot p)
