@@ -1,3 +1,10 @@
+## 2026-11-06 — Astra: isolate lobby pose selections
+
+- Branch `codex/lobby-pose-reset`, base shared `3f89709f`. Owner reported twisted arms and incorrect stance when switching lobby idle poses.
+- The reused model portrait retained NativeVisualRig's elbow, wrist, support and stance history across selection changes. Track the last effective pose per portrait slot and call the existing State.Forget before binding a different pose; reset the selection marker when clearing the slot. Same-pose animation retains its continuity. Authored poses, combat timing, hitboxes, damage, cooldowns, movement and networking are unchanged.
+- ModelPoseChecks PASS: 498,380 checks, including 148,480 new comparisons covering every ordered distinct lobby pose pair for every tested weapon on measured and synthetic skeletons. A switched card matches a fresh card exactly for bone rotations/positions over its first animated frames. Negative control without Forget fails the new test. Unity 6000.3.24f1 reference compilation PASS (InputSystem, Player, Assembly-CSharp, Editor); package source check PASS (3,367 files); diff check clean.
+- Native Windows visual acceptance not run here; verify rapid switching among crossed arms, chair, sleep and weapon holds in the test client. Delivery: task ready for shared merge and existing test Update builder sync; publication receipt belongs in PR. No live or Site release.
+
 ## 2026-11-06 — Claude: NOCTIEL's intro choreography from the owner's four reference clips (option A)
 
 - Owner: four generated reference clips for the intro. Use them to improve the body mechanics, weight, posing, timing and weapon handling, keep the sequence, music, cues and effects, make the swing faster, and change no combat rules. Then "A" (the salute and side extension kept, a short held windup). Branch `claude/noctiel-intro-motion` off shared `34bd345`. Doc: `docs/EXPEDITION-BOSS-FINAL.md` section 18 (the beat table).
