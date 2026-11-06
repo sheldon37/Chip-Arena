@@ -1,3 +1,8 @@
+## 2026-11-05 — Astra: retry approved boss audio after local limit update
+
+- Owner reports updating the local sound queue limits to 115 requests / 185 seconds. Latest mirrored status still shows the earlier limits refusal at 01:31:26 UTC on `2074a0f3`, before any remaining-batch requests.
+- Documentation-only retry to let the builder process the unchanged approved 115-clip remainder. No queue, manifest, job identity, receipt, cache, credential or uncertain-request marker changes. Completed six samples must be reused. Prior queue tests/packaging remain applicable; generation and import require status confirmation. Existing native boss-validation failure is a separate publication gate. No live/Site release.
+
 ## 2026-11-05 — Astra: approve remaining boss sound batch
 
 - Owner listened to the six-sound sample and instructed completion of the batch. Base `8f7ed575`, branch `codex/boss-audio-remainder-20261105`.
