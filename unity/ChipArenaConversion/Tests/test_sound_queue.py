@@ -5,6 +5,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import sound_queue as q
@@ -51,6 +52,32 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(self.run_queue(), self.base)
         q.write(self.root / 'config.json', dict(enabled=False)); self.save_queue()
         self.assertEqual(self.run_queue(), self.base); self.assertFalse(self.calls)
+    def test_windows_line_endings_preserve_approval_and_cached_originals(self):
+        first = self.run_queue()
+        self.manifest.write_bytes(self.manifest.read_bytes().replace(b'\n', b'\r\n'))
+        self.assertEqual(q.gen.load_manifest(self.manifest)[1], self.job['manifestSha256'])
+        self.assertEqual(self.run_queue(), first)
+        self.assertEqual(len(self.calls), 1)
+
+    def test_crlf_bundled_boss_sample_and_importer_use_same_hash(self):
+        import hashlib
+        import import_sound_requests as importer
+        bundle = self.root / 'bundle'
+        shutil.copytree(q.BUNDLE, bundle)
+        for path in bundle.rglob('*.json'):
+            path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
+        plans = q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
+        self.assertEqual(len(plans), 1)
+        row, path, manifest, digest, jobs = plans[0]
+        self.assertEqual(len(jobs), 6)
+        self.assertEqual(sum(j['durationSeconds'] for j in jobs), 11)
+        self.assertEqual(hashlib.sha256(importer.load_manifest(path)[0]).hexdigest(), digest)
+        # A real content change remains blocked even with Windows line endings.
+        path.write_bytes(path.read_bytes().replace(b'fluorescent', b'altered fluorescent', 1))
+        with self.assertRaisesRegex(ValueError, 'Manifest changed'):
+            q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
+        self.assertFalse(self.calls)
+
     def test_manifest_mutation_blocks(self):
         self.manifest.write_text(self.manifest.read_text() + '\n')
         with self.assertRaises(ValueError): self.run_queue()
@@ -70,6 +97,61 @@ class QueueTests(unittest.TestCase):
         self.job['maxRequests'] = 2; self.save_queue()
         with self.assertRaises(ValueError): self.run_queue()
         self.assertEqual(len(self.calls), 1)
+    def test_shared_status_and_zip_exclude_credentials(self):
+        shared = self.root / 'drive'; shared.mkdir()
+        self.base = shared / 'LocalAssets.zip'; self.base.write_bytes(b'BASE')
+        self.run_queue()
+        status = json.loads((shared / 'Latest-Sound-Status.json').read_text())
+        self.assertEqual(status['state'], 'complete')
+        with zipfile.ZipFile(shared / 'sample-one.zip') as bundle:
+            self.assertEqual(set(bundle.namelist()), {'receipt.json', 'pve.zombie.moan_01.mp3'})
+            self.assertNotIn(b'PRIVATE', bundle.read('receipt.json'))
+        self.run_queue()
+        self.assertEqual(len(self.calls), 1)
+    def test_failure_reason_survives_missing_local_status(self):
+        shared = self.root / 'drive'; shared.mkdir()
+        self.base = shared / 'LocalAssets.zip'; self.base.write_bytes(b'BASE')
+        q.write(self.root / 'config.json', dict(enabled=True, maxRequests=1, maxSeconds=.01))
+        original = q.write
+        def fail_local(path, value):
+            if path == self.root / 'Latest-Sound-Status.json':
+                raise PermissionError('not writable')
+            original(path, value)
+        with patch.object(q, 'write', side_effect=fail_local):
+            with self.assertRaisesRegex(ValueError, 'Pending queue exceeds local'):
+                self.run_queue()
+        self.assertEqual(json.loads((shared / 'Latest-Sound-Status.json').read_text())['state'], 'blocked')
+        self.assertFalse(self.calls)
+    def test_missing_queue_names_file_and_stage_without_requests(self):
+        self.queue.unlink()
+        with self.assertRaisesRegex(ValueError, 'read queue and manifest: FileNotFoundError') as error:
+            self.run_queue()
+        self.assertIn(str(self.queue), str(error.exception))
+        self.assertFalse(self.calls)
+    def test_missing_key_names_file_and_stage_without_requests(self):
+        key = self.root / 'key.dpapi'; key.unlink()
+        with self.assertRaisesRegex(ValueError, 'read saved ElevenLabs credential: FileNotFoundError') as error:
+            self.run_queue()
+        self.assertIn(str(key), str(error.exception))
+        self.assertNotIn('PRIVATE', str(error.exception))
+        self.assertFalse(self.calls)
+    def test_unity_only_bundle_has_same_six_approved_requests(self):
+        q.check_bundle()
+        with patch.object(Path, 'is_file', return_value=False):
+            queue, repo = q.queue_inputs(q.QUEUE, q.gen.REPO)
+        self.assertEqual(repo, q.BUNDLE)
+        plans = q.plan(queue, repo)
+        jobs = [job for row in plans for job in row[4]]
+        self.assertEqual(len(jobs), 6)
+        self.assertEqual(sum(job['durationSeconds'] for job in jobs), 11)
+        self.assertEqual({job['variant'] for job in jobs}, {1})
+    def test_stale_bundle_fails_packaging_check(self):
+        packaged = self.root / 'bundle/docs/audio'; packaged.mkdir(parents=True)
+        canonical = self.repo / 'docs/audio/sound-queue.json'
+        canonical.write_text('canonical')
+        (packaged / 'sound-queue.json').write_text('stale')
+        with self.assertRaisesRegex(ValueError, 'Refresh tools/sound_bundle'):
+            q.check_bundle(self.repo, self.root / 'bundle')
     def test_bad_limits(self):
         for value in [0, -1, float('nan'), float('inf'), True]:
             with self.assertRaises(ValueError): q.limits(dict(maxRequests=1, maxSeconds=value))

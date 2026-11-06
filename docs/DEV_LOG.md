@@ -11,6 +11,33 @@
 - Animation impact: portraits, menus and entrances only. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; the match's poses and idles are untouched.
 - **Checks for this entry:** in the receipt line appended after the build.
 
+## 2026-11-05 — Astra: preserve approved sound manifest identity on Windows
+
+- Branch `codex/sound-manifest-line-endings`, shared base `df6ad2ae`. Latest Drive build fails before Unity in the sound queue with "Manifest changed after approval". Canonical and bundled Git bytes both match the pinned hash. Converting the same manifest to Windows CRLF reproduces the rejection; actual builder bytes are unavailable, so this is a reproduced cause, not confirmation of its local bytes.
+- Normalize only CRLF to LF for generator/importer manifest hashing, bundle comparison and import-cache identity; add LF Git attributes for audio JSON. Preserve approved IDs, hashes, six-file/11-second caps, originals, receipts and uncertain-request guards. Real content edits still fail; diagnostic now includes manifest path plus expected/actual hashes. No API requests made here.
+- Regression first failed on the original code; after repair all 36 sound tests pass, including bundled six-sound CRLF planning, generator/importer hash parity, real content mutation rejection and cached-original reuse without another paid request. Source package validation passes (3,305 files); whitespace clean. Windows execution and test publication await builder. No visuals, live or Site release.
+- Boss rules #349 already merged; earlier performance pass #346 has a successful test-publication receipt in #347. This fixes their current asset-install gate, not a new gameplay/performance claim. Overlapping open #354 addresses the already merged missing-input problem; left untouched.
+
+## 2026-11-05 — Astra: confirmed missing queue in Unity-only builder export
+
+- Direct Drive folder listing found Latest-Sound-Status.json (search had missed it). Actual source `70f2f3b3` reports `read queue and manifest: FileNotFoundError` for `Work/70f2f3b324fc-f69f0af2/docs/audio/sound-queue.json`. This failure precedes all API requests. No credential problem established.
+- Branch `codex/sound-queue-unity-bundle`, base `70f2f3b3`: package byte-identical approved queue/manifests inside Unity tools; when the default root queue is absent, resolve against the self-contained bundle. Explicit caller queues still fail normally. Job IDs, manifest paths/hash, request caps and retry guards preserved.
+- Source packaging rejects stale bundled copies when canonical docs are present. Future queue/manifest edits must update corresponding bundle bytes. No runtime network fetch of approval data.
+- Verification: 15 mocked queue tests passed; separate fresh subprocess in a Unity-only tree with no root docs resolved six requests / 11 seconds and validated the pinned hash, without API calls. Windows generation/import and audio delivery await builder. Drive folder must be listed directly if search misses new status/ZIP files. No live/Site release.
+
+## 2026-11-05 — Astra: identify missing sound-queue file
+
+- Owner supplied error from `68949a1c`: FileNotFoundError during optional asset install. Filename/stage were stripped, so root cause and whether any audio was generated remain unknown.
+- Branch `codex/sound-missing-file-diagnostics`, base `68949a1c`: preserve OS-reported missing filename and annotate queue/manifest, receipts, base validation, credential read, generation and import stages. No credential contents or HTTP response bodies logged. No regeneration, queue, cap, or retry-policy changes.
+- Verification: 13 mocked queue tests pass, including missing queue and missing credential paths with zero generation requests. Windows cause diagnosis awaits next test builder run. No live/Site release.
+
+## 2026-11-05 — Astra: expose sound queue failures and share listening originals
+
+- Branch `codex/sound-queue-drive-handoff`, base `3fad0f72`. Owner's failed sample build logs only exposed a generic queue error; actual cause remains unknown. No assertion that samples were generated.
+- Queue now mirrors Latest-Sound-Status.json beside the input LocalAssets ZIP (owner's existing Drive folder), independently of the optional configured mirror and local status write. Failure propagates the same sanitized reason and absolute local status path to the builder error report.
+- After successful generation, an atomic `<job-id>.zip` beside LocalAssets contains only receipted MP3s and receipt.json; never the credential/config store. Available even if subsequent import fails. Existing queue IDs, caps, completed-request reuse and uncertain-request guards unchanged; six-sound sample only.
+- Verification: 11 queue tests passed, including shared ZIP contents, status fallback when local status cannot be written, and rebuild without paid regeneration. Mocked API/credentials/import; no real requests. Initial local run lacked importer source required for cache fingerprinting; fetched exact source and rerun passed. Windows/Drive delivery and original blocker require the next builder run. No live/Site release.
+
 ## 2026-11-05 — Astra: six-sound boss listening sample
 
 - Owner approved six samples first; the full 121-file batch awaits listening acceptance. Branch `codex/boss-sound-sample`, shared base `55b45d9f`.

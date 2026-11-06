@@ -11,10 +11,28 @@ import re
 import shutil
 import subprocess
 import sys
+import zipfile
 
 import generate_sound_requests as gen
 
 QUEUE = gen.REPO / 'docs/audio/sound-queue.json'
+BUNDLE = Path(__file__).resolve().parent / 'sound_bundle'
+
+
+def queue_inputs(queue, repo, bundle=BUNDLE):
+    """Use byte-identical bundled approvals in Unity-only builder exports."""
+    if queue == QUEUE and repo == gen.REPO and not queue.is_file():
+        return bundle / 'docs/audio/sound-queue.json', bundle
+    return queue, repo
+
+
+def check_bundle(repo=gen.REPO, bundle=BUNDLE):
+    for name in ('sound-queue.json', 'sound-requests.json', 'sound-requests-bosses.json'):
+        canonical = repo / 'docs/audio' / name
+        packaged = bundle / 'docs/audio' / name
+        if canonical.is_file() and canonical.read_bytes().replace(b'\r\n', b'\n') != packaged.read_bytes().replace(b'\r\n', b'\n'):
+            raise ValueError('Refresh tools/sound_bundle/docs/audio/' + name + ' from docs/audio before packaging.')
+
 
 
 def home():
@@ -103,7 +121,9 @@ def plan(queue, repo):
             raise ValueError('Manifest must be under docs/audio.')
         manifest, digest = gen.load_manifest(path)
         if digest != row['manifestSha256']:
-            raise ValueError('Manifest changed after approval; create a newly reviewed job.')
+            raise ValueError('Manifest changed after approval; create a newly reviewed job. '
+                             + 'Path: ' + str(path) + '; expected SHA256: ' + str(row['manifestSha256'])
+                             + '; actual LF-normalized SHA256: ' + digest)
         if not row.get('keys') or not row.get('variants'):
             raise ValueError('Queue jobs require explicit keys and variants.')
         jobs = gen.entries(manifest, keys=row['keys'], variants=row['variants'], optional=True)
@@ -133,20 +153,25 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
         status = root / 'Latest-Sound-Status.json'
         def report(state, **fields):
             value = dict(state=state, updated=gen.utc(), **fields)
-            write(status, value)
-            # Configured by the owner, e.g. the existing Drive build-log folder.
+            mirrors = {status, source.parent / status.name}
             if config.get('statusFolder'):
+                mirrors.add(Path(config['statusFolder']) / status.name)
+            for destination in mirrors:
                 try:
-                    write(Path(config['statusFolder']) / status.name, value)
+                    write(destination, value)
                 except OSError:
-                    print('Sound queue status mirror unavailable; local status retained.')
+                    print('Sound queue status write unavailable: ' + str(destination), flush=True)
+        stage = 'validate limits'
         try:
             limits(config)
+            stage = 'read queue and manifest'
+            queue, repo = queue_inputs(queue, repo)
             plans = plan(queue, repo)
             if not plans:
                 report('idle', message='No approved sound jobs.'); return source
             if not source.is_file() or source.suffix.lower() != '.zip':
                 raise ValueError('Automatic sound import requires a LocalAssets ZIP.')
+            stage = 'validate saved originals and receipts'
             pending_count, pending_seconds, batches = 0, 0, []
             for row, path, manifest, digest, jobs in plans:
                 folder = root / 'originals' / row['id']
@@ -162,15 +187,30 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                 raise ValueError('Pending queue exceeds local request/duration limits; no requests sent.')
             if pending_count and not shutil.which('ffmpeg'):
                 raise ValueError('ffmpeg is required before any audio requests can be sent.')
+            stage = 'check base LocalAssets ZIP'
             command([Path(__file__).with_name('install_local_assets.py'), source, '--check'])
+            stage = 'read saved ElevenLabs credential'
             secret = protect((root / 'key.dpapi').read_bytes(), decrypt=True).decode() if pending_count else ''
             report('running', requests=pending_count, seconds=pending_seconds)
             current = source
             for row, path, digest, jobs, folder, identity, receipt in batches:
                 write(identity, row)
+                stage = 'generate or reuse approved originals'
                 gen.generate(folder, receipt, jobs, secret)
+                # Share only receipted originals and metadata, never the credential store.
+                archive = source.parent / (row['id'] + '.zip')
+                temporary = archive.with_suffix('.zip.tmp')
+                try:
+                    with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED) as bundle:
+                        bundle.write(folder / 'receipt.json', 'receipt.json')
+                        for entry in receipt['files']:
+                            bundle.write(folder / entry['file'], entry['file'])
+                    os.replace(temporary, archive)
+                except OSError:
+                    print('Sound sample ZIP mirror unavailable; originals retained locally.', flush=True)
                 # Base hash avoids dropping newer licensed assets or another job's imported sounds.
-                fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + sha(path) +
+                stage = 'fingerprint import inputs'
+                fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + digest +
                     sha(Path(__file__).with_name('import_sound_requests.py'))).encode()).hexdigest()
                 output = root / ('assets-' + fingerprint + '.zip')
                 proof = output.with_suffix('.receipt.json')
@@ -182,6 +222,7 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                     if output.exists():
                         output.unlink()
                     details = root / (row['id'] + '.import.json')
+                    stage = 'import generated originals'
                     command([Path(__file__).with_name('import_sound_requests.py'), '--manifest', path,
                              '--in', folder, '--base', current, '--out', output, '--report', details])
                     imported = json.loads(details.read_text())
@@ -194,5 +235,10 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
             return current
         except Exception as e:
             # Never include arbitrary network exception text/headers or the secret.
-            report('blocked', message=str(e) if isinstance(e, ValueError) else type(e).__name__)
-            raise ValueError('Sound queue blocked; inspect Latest-Sound-Status.json. No automatic uncertain-request retry.') from None
+            reason = str(e) if isinstance(e, ValueError) else type(e).__name__
+            if isinstance(e, FileNotFoundError) and e.filename:
+                reason += ': missing path ' + str(e.filename)
+            reason = stage + ': ' + reason
+            report('blocked', message=reason, stage=stage)
+            raise ValueError('Sound queue blocked: ' + reason + '. Status: ' + str(status) +
+                             '. No automatic uncertain-request retry.') from None
