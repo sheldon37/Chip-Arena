@@ -7,6 +7,15 @@
 - Animation impact: none on anything live. Nothing here reads into hit timing, hitboxes, damage, cooldowns, movement or networking until bound. The script's timing proposes the design's numbers for Astra.
 - **Checks for this entry:** in the receipt line appended after the build.
 
+## 2026-11-05 — Claude: Sheldon Idle holds and calmer twitching; staffs and bows in the fist
+
+- Owner: "Sheldon idle still broken with a lot of weapons; I noticed a lot of twitch. Bow/Staff also is held by their wrist? Please review and fix; Make this look a lot better." Branch `claude/sheldon-better`, base `c2205fdc`. Implemented on the branch, merge and build status in the checks line below.
+- **Staffs and the bow rode the bare wrist** (`LeftCarries`: the fist never closed on them). A third-person body's left fist now seats on the staff's main grip or the bow's riser (`VisualLeftSeat`, `NativeVisualRig.StaffShaft`, `BowRiser`), in matches, entrances and portraits. First person keeps the game's hands, and the chip look's tap lets go.
+- **Sheldon Idle holds** (`NativeLobbyPoses.Grip`): rewritten per weapon, lower than my earlier global lift (which wound staffs up to the shoulder with the elbow winged out); `ElbowTuck` keeps a seated hold's elbow down and back; long guns at low ready across the body, the pistol over the chest plate; the Bombadier's second bundle (`OffHand`, `Grips`). Standing staff and Bombadier holds in `FitModel`.
+- **Twitching** (`CyberLordIdlePose.Stand`, `Calmed`): the lobby uses the reduced schedule for everyone, about half as many jerks at under half the size with softer attacks; reduced effects take it down again. The weapon no longer snaps with each twitch (`GripHitch`, `GripFlinch`, `GripClench`). The Cyber Lord's match idle keeps its own twitching.
+- Animation impact: portraits and menus; a staff or bow's drawn position in the fist in matches and entrances. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; the match's body poses are untouched.
+- **Checks for this entry:** full `CoreTests` at `dffa5fcc` with the expedition patch: exit 0, 972 groups; pins 0 broken; `git diff --check` clean; Unity compile PASS. Editor captures on the branch: Locker portraits of all 15 pilots standing and in Sheldon Idle, before and after. Not captured: the rooftop cast, and nothing checked in the owner's real build. Merged as `91503180` and synced to the builder: **BUILD SUCCEEDED, Publication: succeeded**, build `ebe891a6…`, revision 639295350658975842, 238.6 MiB.
+
 ## 2026-11-05 — Astra: stop Expedition boss intro music advancing twice
 
 - Branch `codex/expedition-boss-song-clock`, shared base `6e7276e`. Owner reproduced speed-up at THE HUM. SplitFixedFrame synchronizes every arena to the running party clock during a held intro; BossSongTime also added the hold countdown's elapsed time. Two seconds therefore produced four seconds of song age, provoking forward audio seeks even without a rendering hitch. The prior stall suppressor cannot fix that clock error.

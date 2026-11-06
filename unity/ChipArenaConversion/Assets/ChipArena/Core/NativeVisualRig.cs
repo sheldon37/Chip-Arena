@@ -320,6 +320,9 @@ namespace ChipArena.UnityConversion
         // with the hands, while a long blade's outer part sweeps past the head within a frame or two of a cut, and clearing it
         // jerked the hands 13 cm in a frame.
         public const float BladeRoot=.2f;
+        // A caster's staff and the bow in the left fist: the staff's main grip on the shaft at the wrist frame's origin (+z the head), the
+        // bow's palm swell on its riser (+y up the riser, the arrow line just over the fist). Without a seat both rode the bare wrist.
+        public static readonly Hold StaffShaft=Blade(Quaternion.Identity),BowRiser=new Hold(new Vector3(0,-.045f,NativeBow.RiserZ),CapturedRig.Y);
         public static Hold Melee(string spec,Quaternion held)
         {
             Vector3 At(float x,float y,float z)=>Vector3.Transform(new Vector3(x,y,z),held);

@@ -229,6 +229,7 @@ namespace ChipArena.UnityConversion
             body.Helm=!body.Hood&&WearsHelm(a.Id);
             // Its own weapon in hand, if the bake carries one: the grasp on its handguard and stock.
             var held=body.Held=VisualWeaponFor(body,a);var grasp=VisualGrasp(a,pose,time,ChipLookOf(a.Id));if(held!=null)VisualWeaponGrasp(ref grasp,held);
+            VisualLeftSeat(ref grasp,a,ChipLookOf(a.Id));
             VisualArmsOf(ref grasp,a,arms,ChipLookOf(a.Id));
             // The draft's plant on the device (`support`): the left hand keeps the stage's offset from the right wrist on the
             // model's (the stage's palm is on the bay), so the model's palm meets its own bay whatever its arms' proportions.
@@ -250,9 +251,17 @@ namespace ChipArena.UnityConversion
             if(body.JointFrom==null)VisualJointsOf(body,rig);
             return held;
         }
+        // A third-person body's left fist closes on a staff's shaft or the bow's riser (owner 2026-11-05: "Bow/Staff also is held by their
+        // wrist?"); not while the chip-select look has that hand, and not the first-person view body, which keeps the game's hands.
+        private static void VisualLeftSeat(ref NativeVisualRig.Grasp g,Actor a,float chip)
+        {
+            if(a.WeaponAway||chip>0)return;
+            if(NativeLobbyPoses.Magic(a.SourceSpec)){g.LeftGrip=1;g.Left=NativeVisualRig.StaffShaft;g.Support=0;}
+            else if(NativeBowWire.Is(a.SourceSpec)){g.LeftGrip=1;g.Left=NativeVisualRig.BowRiser;g.Support=0;}
+        }
         // The arms' mode on the grasp: the free arms relaxed (and the held ones for a Still stance), except while the chip-select
         // look is up (the left hand taps the right wrist's device) and in Reach; Unarmed lets go of the unseen weapon (the
-        // fighters keep their fists). A caster's staff and the bow ride the left hand unseated: it carries them.
+        // fighters keep their fists). A caster's staff and the bow ride the left hand: VisualLeftSeat closes it on them, and in first person it carries them unseated.
         private static void VisualArmsOf(ref NativeVisualRig.Grasp g,Actor a,VisualArms arms,float chip)
         {
             if(arms==VisualArms.Unarmed){bool fists=NativeLobbyPoses.Fighter(a.SourceSpec);g=new NativeVisualRig.Grasp{RightGrip=fists?g.RightGrip:0,LeftGrip=fists?g.LeftGrip:0};}
