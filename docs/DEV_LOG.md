@@ -5,7 +5,7 @@
 - **Sheldon Idle holds** (`NativeLobbyPoses.Grip`): rewritten per weapon, lower than my earlier global lift (which wound staffs up to the shoulder with the elbow winged out); `ElbowTuck` keeps a seated hold's elbow down and back; long guns at low ready across the body, the pistol over the chest plate; the Bombadier's second bundle (`OffHand`, `Grips`). Standing staff and Bombadier holds in `FitModel`.
 - **Twitching** (`CyberLordIdlePose.Stand`, `Calmed`): the lobby uses the reduced schedule for everyone, about half as many jerks at under half the size with softer attacks; reduced effects take it down again. The weapon no longer snaps with each twitch (`GripHitch`, `GripFlinch`, `GripClench`). The Cyber Lord's match idle keeps its own twitching.
 - Animation impact: portraits and menus; a staff or bow's drawn position in the fist in matches and entrances. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; the match's body poses are untouched.
-- **Checks for this entry:** in the receipt line appended after the build.
+- **Checks for this entry:** full `CoreTests` at `dffa5fcc` with the expedition patch: exit 0, 972 groups; pins 0 broken; `git diff --check` clean; Unity compile PASS. Editor captures on the branch: Locker portraits of all 15 pilots standing and in Sheldon Idle, before and after. Not captured: the rooftop cast, and nothing checked in the owner's real build. Merged as `91503180` and synced to the builder: **BUILD SUCCEEDED, Publication: succeeded**, build `ebe891a6…`, revision 639295350658975842, 238.6 MiB.
 
 ## 2026-11-05 — Astra: stop Expedition boss intro music advancing twice
 
