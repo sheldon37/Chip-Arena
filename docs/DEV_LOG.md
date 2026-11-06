@@ -1,3 +1,10 @@
+## 2026-11-05 — Astra: preserve approved sound manifest identity on Windows
+
+- Branch `codex/sound-manifest-line-endings`, shared base `df6ad2ae`. Latest Drive build fails before Unity in the sound queue with "Manifest changed after approval". Canonical and bundled Git bytes both match the pinned hash. Converting the same manifest to Windows CRLF reproduces the rejection; actual builder bytes are unavailable, so this is a reproduced cause, not confirmation of its local bytes.
+- Normalize only CRLF to LF for generator/importer manifest hashing, bundle comparison and import-cache identity; add LF Git attributes for audio JSON. Preserve approved IDs, hashes, six-file/11-second caps, originals, receipts and uncertain-request guards. Real content edits still fail; diagnostic now includes manifest path plus expected/actual hashes. No API requests made here.
+- Regression first failed on the original code; after repair all 36 sound tests pass, including bundled six-sound CRLF planning, generator/importer hash parity, real content mutation rejection and cached-original reuse without another paid request. Source package validation passes (3,305 files); whitespace clean. Windows execution and test publication await builder. No visuals, live or Site release.
+- Boss rules #349 already merged; earlier performance pass #346 has a successful test-publication receipt in #347. This fixes their current asset-install gate, not a new gameplay/performance claim. Overlapping open #354 addresses the already merged missing-input problem; left untouched.
+
 ## 2026-11-05 — Astra: confirmed missing queue in Unity-only builder export
 
 - Direct Drive folder listing found Latest-Sound-Status.json (search had missed it). Actual source `70f2f3b3` reports `read queue and manifest: FileNotFoundError` for `Work/70f2f3b324fc-f69f0af2/docs/audio/sound-queue.json`. This failure precedes all API requests. No credential problem established.

@@ -66,7 +66,7 @@ py -3.14 unity/ChipArenaConversion/tools/generate_sound_requests.py --manifest d
 ## Resume and uncertain requests
 
 Re-run with exactly the same manifest and `--out`. Completed files are decoded and
-SHA-256 checked before being skipped. Changed manifest bytes/settings, corrupt audio,
+SHA-256 checked before being skipped. Changed manifest bytes/settings (except CRLF versus LF line endings), corrupt audio,
 unknown files or incompatible receipts stop rather than silently spending credits.
 Do not run two generators against the same folder.
 
@@ -137,7 +137,7 @@ After setup, request a specific batch in chat; the approved queue is committed a
 synced to the test builder. No recurring manual shell commands are needed.
 
 Each job has an immutable unique `id`, `approved: true`, a `manifest` path under
-`docs/audio`, the exact file's `manifestSha256`, explicit `keys` and `variants`
+`docs/audio`, the file's `manifestSha256` after CRLF-to-LF normalization, explicit `keys` and `variants`
 (e.g. `[1]`), plus `maxRequests` and `maxSeconds`. Both job limits and local limits
 are checked before requests. Local limits cap **pending work per run**, not currency
 or a monthly budget. Keep completed jobs in the queue: the original LocalAssets
@@ -160,3 +160,5 @@ owner's PC; automated tests mock the network and credential store.
 The default queue falls back to `tools/sound_bundle/docs/audio` when root `docs/audio/sound-queue.json` is absent. Keep all three JSON files in that bundle byte-identical to their canonical docs/audio files whenever changing approved jobs or manifests; `package_source.py` checks for drift. Existing job IDs, manifest-relative paths and hashes are preserved. No API calls occur merely to resolve inputs.
 
 Status and completed originals ZIPs are mirrored beside the input LocalAssets ZIP. Use a direct Drive folder listing if newly created files do not appear in search.
+
+Manifest identity normalizes only CRLF line endings to LF in both generation and import. All other bytes (including a BOM, spaces, prompts, settings and final newlines) remain hash-sensitive. Existing LF approval hashes and receipts are unchanged; receipts are never discarded or silently regenerated. Git attributes also keep tracked audio JSON on LF.

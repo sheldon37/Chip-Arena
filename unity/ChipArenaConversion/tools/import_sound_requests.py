@@ -7,7 +7,7 @@ Run from the repository root with Python 3.11+ (ffmpeg on PATH for an import; a 
       --base "<current LocalAssets zip>" --out "<new LocalAssets zip>" --report import-report.json
 
 The contract is docs/audio/SOUND-REQUESTS.md. Files are named <key>_<NN>.<mp3|wav> (NN 01..count); a batch may hold
-receipt.json (schema chip-arena.sound-receipt/1, manifestSha256 = the sha256 of the manifest's bytes). Across several --in,
+receipt.json (schema chip-arena.sound-receipt/1, manifestSha256 = SHA-256 of manifest bytes with CRLF normalized to LF). Across several --in,
 the newest file wins per name (modification time; a tie goes to the later --in).
 
 --check validates the names, keys, variants and the receipt, and writes nothing. An import also, per file: decodes it, makes it
@@ -64,9 +64,10 @@ class Hard(Exception):
 
 # ---------------------------------------------------------------- the request manifest and the batch
 def load_manifest(path):
-    raw = Path(path).read_bytes()
+    # Match the generator's manifest identity across Windows Git checkouts.
+    raw = Path(path).read_bytes().replace(b'\r\n', b'\n')
     try:
-        data = json.loads(raw.decode('utf-8-sig'))  # (a Windows editor's byte order mark is allowed; the hash is of the raw bytes)
+        data = json.loads(raw.decode('utf-8-sig'))  # (a Windows editor's byte order mark is allowed; the BOM remains part of the hash)
     except ValueError as error:
         raise Hard(f'manifest {path}: {error}')
     if data.get('schema') != REQUEST_SCHEMA:
