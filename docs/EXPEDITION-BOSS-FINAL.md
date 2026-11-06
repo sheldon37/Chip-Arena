@@ -283,3 +283,24 @@ Owner: "write a sound cue list for elevenlabs". The request is `docs/audio/sound
 | `boss.noctiel.death` | NOCTIEL falls: its plate cracks and the light goes out | 2D | 1 | 2.6–3.5 | +3 | 1 |
 | `boss.noctiel.shatter` | the hollow shell shatters into the water (the song's hit at 4:08) | 2D | 1 | 1.6–2.4 | +0 | 1 |
 | `boss.noctiel.enrage` | The Light Goes Out (the 12:00 enrage): white, then black | 2D | 1 | 2.6–3.5 | +4 | 2 |
+
+## 18. The intro's choreography (Claude, 2026-11-06)
+
+The owner's four reference clips (`01` the feather, `02` kneel and rise, `03` the draw, `04` the windup and cut) are one sequence; option A keeps all four in order. Core `NativeFallenIntroMotion` keys the body on the cutscene's existing beats; the music, cues, shots, Slash and effects keep their times. Runtime `NativeFallenIntroBody.cs` applies it to the rig: the hips' travel, the back's lean and twist and breath, the head, both feet by two-bone IK, the claymore's keyed path through the existing arm IK (always in the right hand), and the free arm.
+
+| Intro (s) | Shot | Motion |
+| --- | --- | --- |
+| 1.4–10.2 | Feather | A falling leaf: swings about 1.55 s apart, higher at each turn and tilting into it, smaller near the water; flat on the water on the 10.2 cue, floating until the cut |
+| 11–33.5 | Far, gauntlet, blade | Kneeling, breathing slowly |
+| 33.5–35.6 | Halo, long lens | The head lifts before the body moves |
+| 35.2–37.6 | Long lens | The rise over the planted front foot: the hips forward 0.72 m, the back knee off the water, the back foot steps up beside it; the hand stays on the planted sword |
+| 47.0–47.75 | Low three-quarter | A dip, the pull straight up (the point out of the water), the keyed fist takes the sword |
+| 47.75–48.7 | | The blade wheeled up on its right side (not across the body) to a salute, point up |
+| 48.7–49.2 | | Out and down to horizontal at its side |
+| 49.2–49.9 | | Up the side, the wrist rolling the edge forward, to a cocked windup behind the right shoulder, above the halo; the top wings open wider |
+| 49.9–50.43 | Lens from 50.1 | The held windup, weight back |
+| 50.43–50.61 | | The load: the blade rolls to vertical overhead |
+| 50.61–50.81 | | The downswing in 0.20 s (the reference's took about 0.34): the left foot steps into the lunge, the back pitches and twists, the free arm thrown back; the point meets the water toward the lens on the drop |
+| 50.81 + 0.95 | Slash, fight | The impact held 0.25 s, then a 0.7 s release: the left foot then the right step home to the fight's pose, the fist back to the carry |
+
+Not taken from the references: clip 03's roll of the blade across the front of the body (it would cut through NOCTIEL at 3.4 m), the pause in the low guard between 03 and 04 (no time before the drop), clip 04's two-handed end (NOCTIEL is one-handed), and the foot pops and slides. The fist stays closed on the grip (no finger animation), and the robe, wings and halo follow their own springs.

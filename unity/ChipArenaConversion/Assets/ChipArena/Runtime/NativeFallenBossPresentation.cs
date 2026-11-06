@@ -109,7 +109,7 @@ namespace ChipArena.UnityConversion
             float inner=f.Inner*(1.5f+.75f*bass*bass);float flash=fbFx.White*2.4f;
             var mirror=Matrix4x4.Translate(new Vector3(0,origin.y*2,0))*Matrix4x4.Scale(new Vector3(1,-1,1));FallenBossDraws=0;
             if(shown)FallenBodyDraw(f,origin,eyeAt,inner,flash,mirror);else if(f.Kind==NativeFallenBossPreview.KindDeath)FallenSwordAlone(f,origin,2.4f,mirror);
-            if(f.FeatherShown)FallenPropDraw(new FallenFxProp{Id="feather-one",At=f.Feather,Turn=System.Numerics.Quaternion.CreateFromYawPitchRoll(f.FeatherTurn*Mathf.Deg2Rad,.5f*Mathf.Sin(p*1.1f),.35f*Mathf.Sin(p*.8f)),Scale=1.6f,Glow=1.5f},origin,mirror,1);
+            if(f.FeatherShown)FallenPropDraw(new FallenFxProp{Id="feather-one",At=f.Feather,Turn=System.Numerics.Quaternion.CreateFromYawPitchRoll(f.FeatherTurn*Mathf.Deg2Rad,f.FeatherPitch*Mathf.Deg2Rad,f.FeatherRoll*Mathf.Deg2Rad),Scale=1.6f,Glow=1.5f},origin,mirror,1);
             for(int i=0;i<fbFx.PropCount;i++)FallenPropDraw(fbFx.Props[i],origin,mirror,1);
             FallenWaterDraw(f,origin,clip,level,bass,now);
             FallenFxDraw(origin,mirror,now);

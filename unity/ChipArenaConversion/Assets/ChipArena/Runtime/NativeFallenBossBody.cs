@@ -40,7 +40,7 @@ namespace ChipArena.UnityConversion
             if(most==null){Debug.LogWarning("NOCTIEL: no bound mesh");return false;}
             var bones=most.bones;var binds=most.sharedMesh.bindposes;for(int i=0;i<bones.Length&&i<binds.Length;i++)if(bones[i]!=null)fbBind[bones[i].name]=binds[i];
             Transform B(string n)=>fbBone.TryGetValue(n,out var t)?t:null;fbHead=B("head");fbNeck=B("neck_01");fbHandR=B("hand_r");fbUpperR=B("upperarm_r");fbLowerR=B("lowerarm_r");fbSpine=B("spine_05");fbFootL=B("foot_l");fbFootR=B("foot_r");fbBallL=B("ball_l");fbBallR=B("ball_r");
-            fbPelvis=B("pelvis");fbThighL=B("thigh_l");fbThighR=B("thigh_r");fbCalfL=B("calf_l");fbCalfR=B("calf_r");fbUpperL=B("upperarm_l");fbLowerL=B("lowerarm_l");fbHandL=B("hand_l");
+            fbPelvis=B("pelvis");fbSpine1=B("spine_01");fbSpine3=B("spine_03");fbThighL=B("thigh_l");fbThighR=B("thigh_r");fbCalfL=B("calf_l");fbCalfR=B("calf_r");fbUpperL=B("upperarm_l");fbLowerL=B("lowerarm_l");fbHandL=B("hand_l");
             if(fbHead==null||fbHandR==null||fbUpperR==null||fbLowerR==null||fbSpine==null||fbFootL==null||fbFootR==null){Debug.LogWarning("NOCTIEL: bones missing");return false;}
             fbHandler=new HumanPoseHandler(animator.avatar,skeleton);int muscles=VisualMotionBank.Muscles;fbPose.muscles=new float[muscles];fbMix=new float[NativeVisualMotionClips.Head+muscles];fbRest=new float[fbMix.Length];
             var free=new List<int>();var names=HumanTrait.MuscleName;for(int i=0;i<names.Length&&i<muscles;i++){var n=names[i];if(n.StartsWith("Left Arm",StringComparison.Ordinal)||n.StartsWith("Left Forearm",StringComparison.Ordinal)||n.StartsWith("Left Hand",StringComparison.Ordinal)||n.StartsWith("Left Shoulder",StringComparison.Ordinal)||n.StartsWith("LeftHand.",StringComparison.Ordinal))free.Add(i);}fbFreeArm=free.ToArray();FbKneelAt=new int[FbKneelNames.Length];for(int i=0;i<FbKneelAt.Length;i++)FbKneelAt[i]=Array.IndexOf(names,FbKneelNames[i]);
@@ -85,7 +85,8 @@ namespace ChipArena.UnityConversion
                 Array.Clear(fbRest,0,fbRest.Length);NativeVisualMotionClips.Add(ir,now*.4f,1,fbRest);NativeVisualMotionClips.Finish(fbRest,1);int head=NativeVisualMotionClips.Head;
                 foreach(int m in fbFreeArm)fbMix[head+m]=Mathf.Lerp(fbMix[head+m],fbRest[head+m],off);
             }
-            if(f.Kneel>0){int head=NativeVisualMotionClips.Head;for(int i=0;i<FbKneelAt.Length;i++)if(FbKneelAt[i]>=0)fbMix[head+FbKneelAt[i]]=Mathf.Lerp(fbMix[head+FbKneelAt[i]],FbKneelTo[i],f.Kneel);}
+            // The kneel preset; in the intro its legs and its bowed back and head let go on their own schedules (the rise).
+            if(f.Kneel>0){int head=NativeVisualMotionClips.Head;for(int i=0;i<FbKneelAt.Length;i++){float k=f.Intro.On?(i<8?f.Intro.KneelLegs:f.Intro.KneelUpper):f.Kneel;if(FbKneelAt[i]>=0&&k>0)fbMix[head+FbKneelAt[i]]=Mathf.Lerp(fbMix[head+FbKneelAt[i]],FbKneelTo[i],k);}}
             fbPose.bodyPosition=new Vector3(fbMix[0],fbMix[1],fbMix[2]);fbPose.bodyRotation=new Quaternion(fbMix[3],fbMix[4],fbMix[5],fbMix[6]);Array.Copy(fbMix,NativeVisualMotionClips.Head,fbPose.muscles,0,fbPose.muscles.Length);
             // Leaning into what it does: its weight lags its speed.
             var velocity=dt>0&&fbPoseClock>=0?(at-fbLastAt)/dt:Vector3.zero;if(velocity.sqrMagnitude>3600)velocity=Vector3.zero;var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);var local=Quaternion.Inverse(yawRot)*velocity;
@@ -95,11 +96,13 @@ namespace ChipArena.UnityConversion
             // The soles on the water, or as high as the move has them.
             float s=NativeFallenBoss.Scale;float low=Mathf.Min(fbFootL.position.y-.11f*s,fbFootR.position.y-.11f*s);if(fbBallL!=null)low=Mathf.Min(low,fbBallL.position.y-.013f*s);if(fbBallR!=null)low=Mathf.Min(low,fbBallR.position.y-.013f*s);
             float hover=f.Phase==4&&f.Kind==NativeFallenBossPreview.KindFight?.3f+.05f*Mathf.Sin(now*1.3f):0;root.position+=Vector3.up*(origin.y+f.Air+hover-low);
+            // The intro's key poses (Runtime NativeFallenIntroBody.cs): the hips, back and head first; the feet and arms are solved after.
+            bool intro=FallenIntroNow(f,now,out var ip,out float iw,out float iage);if(intro)FallenIntroBody(ip,iw,yawRot);
             // Live, a sole the clip has on the water stays where it came down (Runtime NativeFallenLiveBody.cs).
-            FallenFeetPlant(f,now,hover);
+            FallenFeetPlant(f,now,hover);if(intro)FallenIntroFeet(ip,iw,iage,at,yawRot);
             // The fist on the planted sword, on the carried one, or passing from one to the other. Drawn out of the water it goes
             // straight to the carry: never back through the clip's own open hand, whose blade swept through the body.
-            FallenGrip(f,origin,origin.y+f.Air+hover);
+            FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);if(intro)FallenIntroLeftHand(ip,iw,at,yawRot);
             // The head on the pilot it's after, a little behind them.
             if(f.Track>0&&f.LookAtEye<=0)
             {
@@ -146,13 +149,21 @@ namespace ChipArena.UnityConversion
         }
         // Planted (Plant), carried (Carry), or one handing over to the other: the planted share is Plant, and while both hold the
         // fist is wholly on the sword (their weights sum), so the pull from the water turns the blade straight to the carry.
-        private void FallenGrip(FallenBossFrame f,Vector3 origin,float floor)
+        private void FallenGrip(FallenBossFrame f,Vector3 origin,float floor,bool intro,in FallenIntroPose ip,float iw,Vector3 at,Quaternion yawRot)
         {
-            float plant=Mathf.Clamp01(f.Plant),carry=Mathf.Clamp01(f.Carry);if(plant<=0&&carry<=0)return;
-            if(carry<=0){FallenPlantGoal(f,origin,out var g,out var r,out var o);FallenSwordTo(g,r,plant,o);return;}
-            if(plant<=0){FallenCarryGoal(f,floor,out var g,out var r,out var o);FallenSwordTo(g,r,carry,o);return;}
+            bool has=FallenGripBase(f,origin,floor,out var g,out var r,out var o,out float w);
+            // The intro's keyed fist takes the sword from the plant (or, after the cutscene, hands it back to the carry) by its weight.
+            if(intro&&FallenIntroSword(ip,iw,at,yawRot,out var kg,out var kr,out var ko,out float kw))
+            {if(has){g=Vector3.Lerp(g,kg,kw);r=Quaternion.Slerp(r,kr,kw);o=Vector3.Lerp(o,ko,kw);w=Mathf.Max(w,kw);}else{g=kg;r=kr;o=ko;w=kw;}has=true;}
+            if(has)FallenSwordTo(g,r,w,o);
+        }
+        private bool FallenGripBase(FallenBossFrame f,Vector3 origin,float floor,out Vector3 g,out Quaternion r,out Vector3 o,out float w)
+        {
+            float plant=Mathf.Clamp01(f.Plant),carry=Mathf.Clamp01(f.Carry);g=default;r=Quaternion.identity;o=default;w=0;if(plant<=0&&carry<=0)return false;
+            if(carry<=0){FallenPlantGoal(f,origin,out g,out r,out o);w=plant;return true;}
+            if(plant<=0){FallenCarryGoal(f,floor,out g,out r,out o);w=carry;return true;}
             FallenPlantGoal(f,origin,out var pg,out var pr,out var po);FallenCarryGoal(f,floor,out var cg,out var cr,out var co);
-            FallenSwordTo(Vector3.Lerp(cg,pg,plant),Quaternion.Slerp(cr,pr,plant),Mathf.Clamp01(plant+carry),Vector3.Lerp(co,po,plant));
+            g=Vector3.Lerp(cg,pg,plant);r=Quaternion.Slerp(cr,pr,plant);o=Vector3.Lerp(co,po,plant);w=Mathf.Clamp01(plant+carry);return true;
         }
         // ---- the blade clears the body ----
         // Capsules round the torso, head, legs and the free arm. After the arm's pose the hand turns about the wrist until the

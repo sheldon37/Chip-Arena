@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/noctiel-intro-motion`): NOCTIEL's intro is re-animated from the owner's four reference clips (option A): a falling-leaf feather, a weighted rise over the planted front foot, the draw with a salute and side extension, a cocked windup and a 0.20 s downswing into a lunge on the drop. Cues, shots and music unchanged. Not seen in Unity.
+
 2026-11-06 Claude (`claude/noctiel-cues`): NOCTIEL's 57 sounds are wired: the cutscene's beats, every move's tell and strike on the authority's times, the Slash and chips, adds, lives and revives, the Hush, the death. They play once the builder imports the batch. Not heard yet.
 
 2026-11-06 Astra (`codex/noctiel-approach-speed`): NOCTIEL approach now walks at 1.4 m/s within 30 m, glides at 9 m/s farther or after three active chase seconds without closing, and stops at 5 m. Authority checks and pinned Unity reference compilation pass; Windows gameplay acceptance pending. Delivery/check receipts in DEV_LOG.
