@@ -1,3 +1,8 @@
+## 2026-11-06 — Astra: sound queue duration rounding at approved cap
+
+- The approved NOCTIEL batch reached Windows but stopped in queue planning (19:01 UTC), before credential loading or paid requests: duration cap comparison. Follow-up `codex/noctiel-audio-cap` over shared `5933afa2` uses `math.fsum` and a 1 ns absolute comparison tolerance for binary rounding, including the local aggregate duration cap. Request counts and meaningful duration overages remain strict. Manifest, job IDs, approved caps and prompts are unchanged; no uncertain-request marker is bypassed.
+- Queue integration tests 19 PASS, including one-ULP acceptance and microsecond/0.1-second overage rejection. Generation/import receipts follow on PR #370 and this fix PR. No API call made here.
+
 ## 2026-11-06 — Astra: approved full NOCTIEL sound generation
 
 - Owner explicitly approved: "Generate all 92" after reviewing the six-sample/full-batch estimates. Branch `codex/noctiel-audio-queue`, based on Claude's `f3104819` sound manifest over shared `ceedd4fb`. Adds four immutable approved jobs `noctiel-full-20261106-v1` through `v4`; exactly 92 distinct takes, 148.6 seconds, estimated 5,944 credits at the generator's documented rate. Manifest SHA256 `4ad409e429a349910d1eac937ef08a9747ef6aebdc43e9e1fa93f93b6b7a5bd7`. Prompts and settings unchanged; old jobs retained for cached import composition.
