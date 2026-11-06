@@ -141,9 +141,19 @@ def plan(queue, repo):
 def command(args):
     # The API key is never an argument or logged subprocess environment.
     env = {k: v for k, v in os.environ.items() if k != 'ELEVENLABS_API_KEY'}
-    r = subprocess.run([sys.executable, '-I', *map(str, args)], capture_output=True, env=env)
+    args = list(map(str, args))
+    r = subprocess.run([sys.executable, '-I', *args], capture_output=True, env=env)
     if r.returncode:
-        raise ValueError('Audio import/asset check failed; originals retained. Run the documented importer check for details.')
+        detail = ''
+        # Only structured local importer diagnostics, never raw subprocess/network output.
+        if '--report' in args:
+            report = Path(args[args.index('--report') + 1])
+            try:
+                problems = json.loads(report.read_text(encoding='utf-8')).get('problems', [])
+                detail = ': ' + '; '.join(str(p) for p in problems[:3])[:2000] if problems else ''
+            except (OSError, ValueError):
+                pass
+        raise ValueError('Audio import/asset check failed; originals retained' + detail + '. Inspect the mirrored import report for details.')
 
 
 def process(source, root=None, queue=QUEUE, repo=gen.REPO):
@@ -233,14 +243,19 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                         output.unlink()
                     details = root / (row['id'] + '.import.json')
                     stage = 'import generated originals'
-                    command([Path(__file__).with_name('import_sound_requests.py'), '--manifest', path,
-                             '--in', folder, '--base', current, '--out', output, '--report', details])
-                    imported = json.loads(details.read_text())
-                    # Mirror only the structured import report, never credentials/config.
+                    # Do not mistake an earlier attempt's report for this attempt's failure.
+                    details.unlink(missing_ok=True)
                     try:
-                        write(source.parent / details.name, imported)
-                    except OSError:
-                        print('Sound import report mirror unavailable; retained locally.', flush=True)
+                        command([Path(__file__).with_name('import_sound_requests.py'), '--manifest', path,
+                                 '--in', folder, '--base', current, '--out', output, '--report', details])
+                    finally:
+                        # A failed installer check still writes the useful report; mirror it too.
+                        if details.is_file():
+                            try:
+                                write(source.parent / details.name, json.loads(details.read_text(encoding='utf-8')))
+                            except (OSError, ValueError):
+                                print('Sound import report mirror unavailable; retained locally.', flush=True)
+                    imported = json.loads(details.read_text(encoding='utf-8'))
                     if imported.get('problems') or sum(k['accepted'] for k in imported['keys'].values()) != len(jobs):
                         raise ValueError('Importer rejected some sounds; inspect the local import report. No regeneration attempted.')
                     write(proof, dict(sha256=sha(output)))
