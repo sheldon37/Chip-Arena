@@ -25,6 +25,7 @@ generator. Claude owns this manifest and the importer.
 - **Import:** `import_sound_requests.py --manifest docs/audio/sound-requests-noctiel.json`, the same way.
 - **The keys** are in the bank contract (`Core/NativeSoundBank.cs`), each cap its request's longest edited length; Core `NativeFallenBossCues` lists them with when each plays (the table in `docs/EXPEDITION-BOSS-FINAL.md` section 17). `Tests/FallenBossChecks.cs` (`--fallen-boss`) holds them to the contract and the request.
 - **The sound:** porcelain plate, glass, steel, still water, wordless voices and light, to sit under the owner's song. The one-hit kills' tells (the Verdict's crack, the Eclipse, Fall of Light's marks, Descent's ring, the Hush) are priority 1 and last as long as their warnings. 23 keys play flat: the cutscene, the Slash and chip screen, the map-wide tells, a pilot's own lives, the end.
+- **Queued:** builder jobs `noctiel-20261106-v1`..`v4` in `docs/audio/sound-queue.json` (one per take number; 92 requests, 148.6 s).
 - **Silent until imported.** The cues that fire them are wired once the batch is in.
 
 ## Contract
