@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using C=ChipArena.UnityConversion.NativeCyberTheme;
+using D=ChipArena.UnityConversion.NativeDeployPresentation;
 using H=ChipArena.UnityConversion.NativeHudChrome;
 using K=ChipArena.UnityConversion.NativeExpeditionCatalogue;
 using M=ChipArena.UnityConversion.NativeUiMotion;
@@ -10,46 +11,49 @@ using X=ChipArena.UnityConversion.NativeExpeditionsMenu;
 namespace ChipArena.UnityConversion
 {
     /// <summary>
-    /// The Expeditions screen (owner 2026-10-15: "Redesign the "Start Expedition" Screen ... much more modernized ... Multiplayer
-    /// capable ... a "Play Wave Defense" button for individual waves ... players / bots in the lobby all in the lobby, in the top
-    /// ... a "Select Expedition" screen"). Start Expedition opens it, and it is the co-op room's lobby as well (LobbyScreen hands a
-    /// PvE room here), so the host and guests meet on the same screen. Full-canvas cyber layout (Core/NativeExpeditionsMenu
-    /// Measure): the header; the party strip across the top (live 3D portraits, host crown, ready pills, bots the host adds and
-    /// removes, open seats that invite); SELECT EXPEDITION, a carousel of catalogue cards (Core/NativeExpeditionCatalogue: key art
-    /// from the areas' stage scans, the route of three areas and the final boss, live or in development; placeholders locked
-    /// behind silhouettes) that turns on Q/E, A/D, the arrows or a click; the MODE panel (START EXPEDITION, the full run; PLAY
-    /// WAVE DEFENSE with its start row: Wave 1, Wave 2, Wave 3, the Siren) with the loadout row; and the action bar (Solo, Host
-    /// Room, Join Room or the room's code and invite; the launch, or a guest's Ready and Send Loadout). The LOADOUT drawer holds
-    /// the party bots, mirror weapons and the class and weapon pickers. Presentation only: every action is a call the old
-    /// boss-test screen or room lobby made (RequestStage(Boss, StartMatch), BeginDeploymentStation (then Deploy uses RequestStage),
-    /// Go(Create), Go(Join), ApplyRule, GuestReady, the profile message, LeaveRoom); no room field or message is added, so a
-    /// guest sees the default pick and Wave Defense, and Waves 2-3 stay locked (Astra contract in DEV_LOG).
+    /// The Expeditions screen. Start Expedition opens it, and it is the co-op room's lobby as well (LobbyScreen hands a PvE room
+    /// here), so the host and guests meet on the same screen. Full-canvas cyber layout (Core/NativeExpeditionsMenu Measure): the
+    /// header; the party strip across the top (live 3D portraits, host crown, ready pills, bots the host adds and removes, open
+    /// seats that invite); the browser, which follows the mode; the MODE panel with the loadout row; and the action bar (Solo,
+    /// Host Room, Join Room or the room's code and invite; the launch, or a guest's Ready and Send Loadout). The LOADOUT drawer
+    /// holds the party bots, mirror weapons and the class and weapon pickers.
+    /// <list type="bullet">
+    /// <item>START EXPEDITION (owner 2026-11-06: the run is rolled by the slot machines, one all-in-one expedition): THE RUN, a
+    /// briefing card. Its art is a sample spin of the Deployment Station's two machines (the station's own reel motion and
+    /// destination and mutator tables), labelled a sample; its details are how a run goes. No map, no carousel.</item>
+    /// <item>BOSS BATTLE (owner 2026-11-06: "add boss battle option ... to test bosses"): the roster of every boss along a
+    /// rail, the picked boss's card (its emblem on a turning ring, its intro card's lines, its moves from its own table) and
+    /// what can start: the Siren straight away, the rest where they are fought today.</item>
+    /// </list>
+    /// Presentation only: every action is a call the game already made (BeginDeploymentStation, RequestStage(Boss, StartMatch)
+    /// with skipWaves, Go(Create), Go(Join), ApplyRule, GuestReady, the profile message, LeaveRoom); no room field or message is
+    /// added, so a guest sees the room's mode and the boss a room fights.
     /// </summary>
     public sealed partial class ConversionGame
     {
-        private int expPick=-1,expTurnFrom,expTurnDir=1,expArea=-1,expPadFrame=-1,expSeenFrame=-10;private float expTurnAt=-10,expDrawerAt=-10,expDrawerContent=400,expAge;
-        private X.Mode expMode,expModeShown;private bool expDrawer;private Vector2 expDrawerScroll;private int[] expWaveCounts;private string[] expWaveLines;private float expModeAt=-10;
-        private NativeRunPreview expRoll;private long expRollIndex=-1;
+        private int expBoss=-1,expBossFrom,expBossDir=1,expPadFrame=-1,expSeenFrame=-10,expStep=-1,expSpinLit;private float expBossAt=-10,expDrawerAt=-10,expDrawerContent=400,expAge,expModeAt=-10,expTintAt=-1;
+        private X.Mode expMode,expModeShown;private bool expDrawer;private Vector2 expDrawerScroll;private Color expTint=new Color(.227f,.129f,.4f,1);
+        private long expSpinIndex=-1;private readonly int[] expSpinDest=new int[3],expSpinMut=new int[3],expSpinFrom=new int[3],expSpinMutFrom=new int[3];
         private readonly List<LobbyPilot> expParty=new List<LobbyPilot>(K.PartyCap);
-        private const float ExpTurn=.38f,ExpTurnCalm=.16f;
+        private const float ExpTurn=.42f,ExpTurnCalm=.16f,ExpModeTurn=.46f,ExpMutStop=.9f,ExpMutStagger=.35f;
         private static Rect ExpRect(X.Box b)=>new Rect(b.X,b.Y,b.W,b.H);
+        private static X.Box ExpBox(Rect r)=>new X.Box(r.x,r.y,r.width,r.height);
         private X.Seat ExpSeat=>!InRoom?X.Seat.Solo:Hosting?X.Seat.Host:X.Seat.Guest;
         // Live controls: the screen is in and nothing covers it (the update card, the Connection report, the open drawer).
         private bool ExpLive(float a)=>a>.5f&&!MenuBlocked();
+        private static float ExpHash(float x){float s=Mathf.Sin(x*12.9898f)*43758.5453f;return s-Mathf.Floor(s);}
 
         private void ExpeditionsScreen(float age)
         {
             float now=Time.unscaledTime;var seat=ExpSeat;bool room=seat!=X.Seat.Solo;if(room)roomGuest=seat==X.Seat.Guest;expAge=age;
             // (By frames, not seconds: a hitch while it stays open must not reopen it and lose the mode.)
             if(Time.frameCount-expSeenFrame>2)ExpOpen(seat);expSeenFrame=Time.frameCount;
-            // Guests read the host's replicated mode. Only the implemented catalogue entry can launch.
-            if(seat==X.Seat.Guest){expPick=K.Default;expMode=receivedOptions?.expedition==true?X.Mode.Expedition:X.Mode.Waves;}
-            // (Wave Defense plays its one arena whichever expedition the carousel stood on.)
-            if(expMode!=expModeShown){expModeShown=expMode;expModeAt=now;expArea=-1;}
-            var L=X.Measure(U.W,U.H);float e=In(age,0,.26f);var pick=expMode==X.Mode.Waves?K.At(K.Default):K.At(expPick);var party=room?LobbyRoster():ExpSoloParty();
-            var o=RulesNow();int start=X.StartOf(o?.skipWaves??prefs.skipWaves),guests=0;foreach(var p in party)if(!p.bot&&!p.you&&p.connected)guests++;
+            // Guests read the host's replicated mode. No room field carries a boss, so a guest sees the one a room fights.
+            if(seat==X.Seat.Guest){expMode=X.ModeOf(receivedOptions?.expedition==true);expBoss=K.DefaultBoss;}
+            if(expMode!=expModeShown){expModeShown=expMode;expModeAt=now;expStep=-1;}
+            var L=X.Measure(U.W,U.H);float e=In(age,0,.26f);var boss=K.BossAt(expBoss);var party=room?LobbyRoster():ExpSoloParty();
             bool busy=seat==X.Seat.Guest?server==null:server!=null;
-            var go=X.Resolve(pick,expMode,start,seat,account.Developer,busy,GuestsReady,guests);
+            var go=X.Resolve(expMode,boss,seat,busy,GuestsReady);
             ExpKeys(seat,go,ExpLive(e));
             // The open drawer takes the pointer from everything under it.
             bool held=menuBlockedNow;if(expDrawer)menuBlockedNow=true;
@@ -58,18 +62,18 @@ namespace ChipArena.UnityConversion
             {
                 ExpHeader(L,seat,e*In(age,0,.3f),now);
                 ExpPartyStrip(L,party,seat,e,now);
-                ExpBrowser(L,seat,e*In(age,.08f,.34f),now);
-                ExpModePanel(L,seat,pick,start,go,e*In(age,.12f,.34f),now);
+                ExpBrowser(L,seat,boss,e*In(age,.08f,.34f),now);
+                ExpModePanel(L,seat,boss,go,e*In(age,.12f,.34f),now);
                 ExpBar(L,seat,party,go,e*In(age,.16f,.34f),now);
             }
             finally{U.Pop();menuBlockedNow=held;}
             ExpDrawer(L,seat,e,now);
         }
-        // Reopening the screen preserves the selected room mode.
+        // Reopening the screen keeps the room's mode and the last boss picked.
         private void ExpOpen(X.Seat seat)
         {
-            if(expPick<0)expPick=K.Default;expDrawer=false;expDrawerAt=-10;expTurnAt=-10;expArea=-1;
-            expMode=prefs.expedition?X.Mode.Expedition:X.Mode.Waves;
+            if(expBoss<0)expBoss=K.DefaultBoss;expDrawer=false;expDrawerAt=-10;expBossAt=-10;expStep=-1;
+            expMode=X.ModeOf(prefs.expedition);expModeShown=expMode;expModeAt=-10;
         }
         // Offline, the party is the pilot and the party bots the match will seat (LobbyBots: the same names, weapons and colours).
         private List<LobbyPilot> ExpSoloParty()
@@ -81,15 +85,15 @@ namespace ChipArena.UnityConversion
         }
         private static int ExpBots(List<LobbyPilot> party){int n=0;foreach(var p in party)if(p.bot)n++;return n;}
         private void ExpSetBots(int n){if(expMode!=X.Mode.Expedition)ApplyRule(RoomOpt.Bots,Mathf.Clamp(n,0,K.PartyCap-1),0);}
-        private void ExpSetMode(X.Mode m){if(server!=null)return;expMode=m;ApplyRule(RoomOpt.Versus,m==X.Mode.Expedition?2:1,0);Click();}
-        private void ExpTurnTo(int index,int dir)
+        // A mode is the room's Versus option (2: the run, 1: the co-op boss match); Boss Battle always starts at the boss.
+        private void ExpSetMode(X.Mode m)
         {
-            int next=K.Wrap(index);if(next==expPick)return;expTurnFrom=expPick;expPick=next;expTurnDir=dir<0?-1:1;expTurnAt=Time.unscaledTime;expArea=-1;Click();
+            if(server!=null||m==expMode)return;expMode=m;ApplyRule(RoomOpt.Versus,m==X.Mode.Expedition?2:1,0);if(m==X.Mode.Boss)ApplyRule(RoomOpt.SkipWaves,1,0);Click();
         }
-        private void ExpPickWave(int start,bool edit)
+        private void ExpPickBoss(int index,int dir)
         {
-            if(!edit)return;if(!X.WaveSupported(start)){Notice(X.WaveLocked);return;}
-            ApplyRule(RoomOpt.SkipWaves,X.SkipWaves(start)?1:0,0);if(expMode!=X.Mode.Waves)ExpSetMode(X.Mode.Waves);
+            int next=K.WrapBoss(index);if(expMode!=X.Mode.Boss)ExpSetMode(X.Mode.Boss);if(next==expBoss)return;
+            expBossFrom=expBoss;expBoss=next;expBossDir=dir<0?-1:1;expBossAt=Time.unscaledTime;Click();
         }
         private void ExpToggleDrawer(){expDrawer=!expDrawer;expDrawerAt=Time.unscaledTime;if(expDrawer){expDrawerScroll=Vector2.zero;expDrawerContent=400;}Click();}
         // The launch: the calls the boss-test screen and the room lobby made.
@@ -98,15 +102,26 @@ namespace ChipArena.UnityConversion
             if(!go.Enabled)return;
             switch(go.Kind)
             {
-                case X.LaunchKind.ExpeditionM1:BeginDeploymentStation(K.At(expPick).Id);break;
-                case X.LaunchKind.WaveMatch:prefs.expedition=false;prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);break;
+                case X.LaunchKind.ExpeditionM1:BeginDeploymentStation(K.Run.Id);break;
+                case X.LaunchKind.BossFight:ExpStartBoss(K.BossAt(expBoss));break;
                 case X.LaunchKind.Ready:GuestReady(!networkReady);break;
+            }
+        }
+        // The boss fights that start from here. The Siren's is the boss-test match started at her (the old Wave Defense at the
+        // Siren): no waves, solo with bots or the room. A boss whose catalogue entry becomes Direct needs its start added here
+        // (docs/EXPEDITIONS-MENU.md, "Boss Battle direct starts"); until then it says so instead of starting someone else's.
+        private void ExpStartBoss(K.Boss b)
+        {
+            switch(b?.Id)
+            {
+                case "siren":ApplyRule(RoomOpt.SkipWaves,1,0);prefs.skipWaves=true;prefs.expedition=false;prefs.pve=true;sandboxWanted=false;RequestStage(StageLoadKind.Boss,StartMatch);break;
+                default:Notice(K.FightReason(b)??"This boss has no direct start yet.");break;
             }
         }
 
         // ---- Keys and controller ---------------------------------------------------------------------------------------
-        // Q / E, A / D or the arrows turn the carousel; Tab, W / S or up / down switch the mode; 1-4 pick the wave start; L opens
-        // the loadout; Enter or Space launches (a guest's Ready). A controller: LB / RB turn, Y switches, X opens the loadout, A
+        // Q / E, A / D or the arrows turn the boss roster; Tab, W / S or up / down switch the mode; 1-6 pick a boss; L opens the
+        // loadout; Enter or Space launches (a guest's Ready). A controller: LB / RB turn, Y switches, X opens the loadout, A
         // launches, B closes the drawer or goes back. Nothing while a text field has focus or the update card is open.
         private void ExpKeys(X.Seat seat,X.Launch go,bool live)
         {
@@ -116,11 +131,11 @@ namespace ChipArena.UnityConversion
             var k=ev.keyCode;
             if(k==KeyCode.L){ev.Use();ExpToggleDrawer();return;}
             if(expDrawer)return;
-            if(k==KeyCode.Q||k==KeyCode.A||k==KeyCode.LeftArrow){ev.Use();if(edit&&expMode==X.Mode.Expedition)ExpTurnTo(expPick-1,-1);}
-            else if(k==KeyCode.E||k==KeyCode.D||k==KeyCode.RightArrow){ev.Use();if(edit&&expMode==X.Mode.Expedition)ExpTurnTo(expPick+1,1);}
-            else if(k==KeyCode.Tab||k==KeyCode.W||k==KeyCode.S||k==KeyCode.UpArrow||k==KeyCode.DownArrow){ev.Use();if(edit)ExpSetMode(expMode==X.Mode.Waves?X.Mode.Expedition:X.Mode.Waves);}
-            else if(k>=KeyCode.Alpha1&&k<=KeyCode.Alpha4){ev.Use();ExpPickWave(k-KeyCode.Alpha1,edit);}
-            else if(k>=KeyCode.Keypad1&&k<=KeyCode.Keypad4){ev.Use();ExpPickWave(k-KeyCode.Keypad1,edit);}
+            if(k==KeyCode.Q||k==KeyCode.A||k==KeyCode.LeftArrow){ev.Use();if(edit&&expMode==X.Mode.Boss)ExpPickBoss(expBoss-1,-1);}
+            else if(k==KeyCode.E||k==KeyCode.D||k==KeyCode.RightArrow){ev.Use();if(edit&&expMode==X.Mode.Boss)ExpPickBoss(expBoss+1,1);}
+            else if(k==KeyCode.Tab||k==KeyCode.W||k==KeyCode.S||k==KeyCode.UpArrow||k==KeyCode.DownArrow){ev.Use();if(edit)ExpSetMode(expMode==X.Mode.Boss?X.Mode.Expedition:X.Mode.Boss);}
+            else if(k>=KeyCode.Alpha1&&k<=KeyCode.Alpha9&&k-KeyCode.Alpha1<K.BossCount){ev.Use();int i=k-KeyCode.Alpha1;if(edit)ExpPickBoss(i,i>=expBoss?1:-1);}
+            else if(k>=KeyCode.Keypad1&&k<=KeyCode.Keypad9&&k-KeyCode.Keypad1<K.BossCount){ev.Use();int i=k-KeyCode.Keypad1;if(edit)ExpPickBoss(i,i>=expBoss?1:-1);}
             else if(k==KeyCode.Return||k==KeyCode.KeypadEnter||k==KeyCode.Space){ev.Use();ExpLaunch(go);}
         }
         // Once per frame (the old input's joystick buttons never reach IMGUI events).
@@ -129,22 +144,25 @@ namespace ChipArena.UnityConversion
             if(Input.GetKeyDown(KeyCode.JoystickButton2)){ExpToggleDrawer();return;}
             if(Input.GetKeyDown(KeyCode.JoystickButton1)){if(expDrawer)ExpToggleDrawer();else if(seat==X.Seat.Solo)Go(MenuScreen.Home);return;}
             if(expDrawer)return;
-            if(edit&&expMode==X.Mode.Expedition&&Input.GetKeyDown(KeyCode.JoystickButton4))ExpTurnTo(expPick-1,-1);
-            if(edit&&expMode==X.Mode.Expedition&&Input.GetKeyDown(KeyCode.JoystickButton5))ExpTurnTo(expPick+1,1);
-            if(edit&&Input.GetKeyDown(KeyCode.JoystickButton3))ExpSetMode(expMode==X.Mode.Waves?X.Mode.Expedition:X.Mode.Waves);
+            if(edit&&expMode==X.Mode.Boss&&Input.GetKeyDown(KeyCode.JoystickButton4))ExpPickBoss(expBoss-1,-1);
+            if(edit&&expMode==X.Mode.Boss&&Input.GetKeyDown(KeyCode.JoystickButton5))ExpPickBoss(expBoss+1,1);
+            if(edit&&Input.GetKeyDown(KeyCode.JoystickButton3))ExpSetMode(expMode==X.Mode.Boss?X.Mode.Expedition:X.Mode.Boss);
             if(Input.GetKeyDown(KeyCode.JoystickButton0))ExpLaunch(go);
         }
 
         // ---- Backdrop and header -----------------------------------------------------------------------------------------
-        // Over the panel screens' shade: the map recedes under a void veil, a violet pool behind the carousel and a cyan one
-        // at the top right, and a faint scan band drifting down (still with Reduced effects).
+        // Over the panel screens' shade: the map recedes under a void veil, a pool behind the browser that takes the picked boss's
+        // colour in Boss Battle (easing toward it), a cyan one at the top right, and a faint scan band drifting down.
         private static readonly float[] ExpPoolAt={0f,.5f,1f},ExpPoolA={1f,.35f,0f};
         // Drawn by HomeMenu under the top bar and the footer (ExpScreenShown).
         private bool ExpScreenShown=>menuScreen==MenuScreen.Boss||menuScreen==MenuScreen.Lobby&&prefs.pve&&InRoom;
+        private Color ExpTintTarget=>expMode==X.Mode.Boss?U.Mix(U.Hex(K.BossAt(expBoss<0?K.DefaultBoss:expBoss).Accent),U.Hex(0x3a2166),.5f):U.Hex(0x3a2166);
         private void ExpBackdrop(float e,float now)
         {
-            float W=U.W,Hh=U.H;U.Fill(new Rect(0,0,W,Hh),C.Night(.5f*e));U.Fade(new Rect(0,0,W,Hh*.4f),C.Night(.45f*e));U.Fade(new Rect(0,Hh*.62f,W,Hh*.38f),C.Night(.5f*e),false);
-            float r=Mathf.Max(W,Hh)*.62f;U.RadialStops(new Rect(W*.36f-r,Hh*.66f-r,2*r,2*r),U.Hex(0x3a2166,.34f*e),ExpPoolAt,ExpPoolA);
+            float W=U.W,Hh=U.H;
+            if(Event.current.type==EventType.Repaint){float dt=expTintAt<0?1:Mathf.Clamp(now-expTintAt,0,.1f);expTintAt=now;expTint=prefs.reducedEffects?ExpTintTarget:Color.Lerp(expTint,ExpTintTarget,1-Mathf.Exp(-dt*3.5f));}
+            U.Fill(new Rect(0,0,W,Hh),C.Night(.5f*e));U.Fade(new Rect(0,0,W,Hh*.4f),C.Night(.45f*e));U.Fade(new Rect(0,Hh*.62f,W,Hh*.38f),C.Night(.5f*e),false);
+            float r=Mathf.Max(W,Hh)*.62f;U.RadialStops(new Rect(W*.36f-r,Hh*.66f-r,2*r,2*r),U.A(expTint,.36f*e),ExpPoolAt,ExpPoolA);
             float c=r*.7f;U.RadialStops(new Rect(W*.86f-c,Hh*.18f-c,2*c,2*c),C.Cyan(.06f*e),ExpPoolAt,ExpPoolA);
             if(!prefs.reducedEffects){float y=Mathf.Repeat(now*34,Hh+240)-120;U.Fade(new Rect(0,y-70,W,70),C.Cyan(.022f*e),false);U.Fill(new Rect(0,y,W,1),C.Cyan(.05f*e));}
         }
@@ -152,8 +170,10 @@ namespace ChipArena.UnityConversion
         {
             if(a<=.01f)return;var h=ExpRect(L.Header);bool compact=L.Compact,room=seat!=X.Seat.Solo;float y=h.y,rise=8*(1-a);y+=rise;
             U.Fill(new Rect(h.x,y+5,H.Snap(6),H.Snap(6)),C.Cyan(a));U.Fill(new Rect(h.x+10,y+7,18,H.Snap(2)),C.Magenta(.85f*a));
-            bool waves=expMode==X.Mode.Waves;U.Text(new Rect(h.x+36,y,420,16),waves?"PVE · WAVE DEFENSE":"PVE · EXPEDITIONS",12,C.CyanSoft(.95f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);
-            float ts=compact?28:32,ty=y+18;string title=waves?"Wave Defense":"Expeditions";U.Text(new Rect(h.x,ty,520,ts*1.25f),title,ts,C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:C.Void(.6f*a));
+            // The title follows the mode, rising in as it changes.
+            bool boss=expMode==X.Mode.Boss;float mk=prefs.reducedEffects?1:M.Bezier(.2f,.8f,.2f,1,Mathf.Clamp01((now-expModeAt)/.35f));
+            U.Text(new Rect(h.x+36,y,420,16),boss?"PVE · BOSS BATTLE":"PVE · EXPEDITIONS",12,C.CyanSoft(.95f*a*Mathf.Lerp(.4f,1,mk)),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);
+            float ts=compact?28:32,ty=y+18;string title=boss?"Boss Battle":"Expeditions";U.Text(new Rect(h.x,ty+6*(1-mk),520,ts*1.25f),title,ts,C.Ink(a*mk),TextAnchor.MiddleLeft,bold:true,tracking:-.02f,shadow:C.Void(.6f*a*mk));
             // Who this viewer is in the room, after the title.
             float tw=U.Measure(title,ts,true,false,-.02f).x;string code=room?ShownRoomCode():null;
             string chip=seat==X.Seat.Solo?"SOLO":(seat==X.Seat.Host?"HOSTING":"GUEST")+(string.IsNullOrEmpty(code)?"":" · ROOM "+code);
@@ -186,6 +206,19 @@ namespace ChipArena.UnityConversion
             if(icon!=null)NativeIcons.Draw(new Rect(x,r.center.y-8,16,16),icon,U.A(primary?C.Void():U.Mix(C.CyanSoft(),C.Cyan(),h),a*k));
             U.Text(new Rect(x+iw+(icon!=null?8:0),r.y,tw+4,r.height),label,size,U.A(ink,a*k),TextAnchor.MiddleLeft,bold:true,tracking:.16f);
             bool hit=on&&U.Button(r);if(hit)Click();return hit;
+        }
+        // A label row's title (returns where the row's rule may start) and a tag at its right (returns the tag's left edge).
+        private static float ExpLabel(Rect lr,string label,float a){float lh=lr.height-8;U.Text(new Rect(lr.x,lr.y,320,lh),label,11,C.CyanSoft(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);return lr.x+U.Measure(label,11,true,true,.26f).x+12;}
+        private static float ExpLabelTag(Rect lr,float right,string text,Color tone,float a)
+        {
+            float lh=lr.height-8,w=U.Measure(text,9.5f,true,true,.16f).x+26;var t=new Rect(right-w,lr.y-2,w,lh+4);H.Tag(t,tone,a);
+            U.Text(new Rect(t.x+12,t.y,w-14,t.height),text,9.5f,U.A(U.Mix(tone,Color.white,.35f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);return t.x;
+        }
+        // A fact chip (an icon and a tracked line); false when it no longer fits before `right`.
+        private static bool ExpFact(ref float x,float y,float right,float h,string icon,string text,float a)
+        {
+            float w=U.Measure(text,9.5f,true,true,.14f).x+34;if(x+w>right)return false;var f=new Rect(x,y,w,h);H.Cut(f,C.Indigo(.75f*a),5,H.Corners.All);H.Outline(f,C.Edge(.9f*a),5,H.Corners.All);
+            NativeIcons.Draw(new Rect(f.x+9,f.center.y-6.5f,13,13),icon,C.CyanSoft(.9f*a));U.Text(new Rect(f.x+27,f.y,w-28,h),text,9.5f,C.Ink(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);x+=w+6;return true;
         }
 
         // ---- Party strip -------------------------------------------------------------------------------------------------
@@ -265,7 +298,7 @@ namespace ChipArena.UnityConversion
             NativeIcons.DrawMarkup(hex,"hex-fill",HexFill,48,new Color(1,1,1,.8f*al));NativeIcons.DrawMarkup(hex,"hex-edge",HexEdge,48,C.CyanSoft(.55f*al));NativeIcons.Draw(new Rect(r.center.x-9,cy-9,18,18),room?"users":"bot",C.CyanSoft(.9f*al));
             string title=room?"INVITE":"OPEN SEAT";U.Text(new Rect(r.x,cy+hr+6,r.width,18),title,12,C.Ink(.92f*al),TextAnchor.MiddleCenter,bold:true,tracking:.22f);
             if(!first)return;
-            string code=room?ShownRoomCode():null;string line=seat==X.Seat.Guest?"The host adds bots":room?(string.IsNullOrEmpty(code)?"Share the room code":"Code "+code):"Add a bot or host a room";
+            string code=room?ShownRoomCode():null;string line=seat==X.Seat.Guest?"The host adds bots":room?(string.IsNullOrEmpty(code)?"Share the room code":"Code "+code):expMode==X.Mode.Expedition?"Host a room to bring friends":"Add a bot or host a room";
             U.Text(new Rect(r.x+8,cy+hr+24,r.width-16,16),Fit(line,11,r.width-16,false,0),11,C.Muted(.95f*al),TextAnchor.MiddleCenter);
             if(seat==X.Seat.Guest)return;
             float by=r.yMax-34,bw=(r.width-30)/2;bool invite=room&&!string.IsNullOrEmpty(code);
@@ -276,21 +309,187 @@ namespace ChipArena.UnityConversion
         // The bots the party shows now (a friend who joins takes the newest bot's seat), so add and remove step from what is seen.
         private int ExpBotsShown(){int n=0;if(InRoom){foreach(var s in RoomSeats)if(s!=null&&s.bot)n++;return n;}return Mathf.Min(Mathf.Clamp(prefs.bots,0,K.PartyCap-1),K.PartyCap-1);}
 
-        // ---- SELECT EXPEDITION ---------------------------------------------------------------------------------------------
-        private void ExpBrowser(X.Layout L,X.Seat seat,float a,float now)
+        // ---- The browser ---------------------------------------------------------------------------------------------------
+        private void ExpBrowser(X.Layout L,X.Seat seat,K.Boss boss,float a,float now)
         {
-            if(a<=.01f)return;
-            // Switching mode brings the other card up (the two share nothing: a run's map is generated, the waves' arena is fixed).
-            {float k0=prefs.reducedEffects?1:M.Bezier(.2f,.8f,.2f,1,Mathf.Clamp01((now-expModeAt)/.3f));a*=Mathf.Lerp(.15f,1,k0);if(k0<1){U.Push(Vector2.zero,new Vector2(0,10*(1-k0)),1);try{ExpBrowserBody(L,seat,a,now);}finally{U.Pop();}return;}}
+            if(a<=.01f)return;var b=ExpRect(L.Browser);
+            float k=prefs.reducedEffects?1:Mathf.Clamp01((now-expModeAt)/ExpModeTurn),q=M.Bezier(.2f,.8f,.2f,1,k);
+            if(q<1)
+            {
+                // The other mode scans in: its body slides from the side it was switched toward under a bright line sweeping the browser.
+                float dir=expMode==X.Mode.Boss?1:-1;U.Push(Vector2.zero,new Vector2(dir*24*(1-q),0),1);
+                try{ExpBrowserBody(L,seat,a*Mathf.Lerp(.08f,1,q),now);}finally{U.Pop();}
+                float f=1-q,sx=dir>0?b.x+b.width*q:b.xMax-b.width*q,trail=Mathf.Min(120,b.width*q);
+                U.HGradient(dir>0?new Rect(sx-trail,b.y,trail,b.height):new Rect(sx,b.y,trail,b.height),dir>0?Color.clear:C.Cyan(.09f*f*a),dir>0?C.Cyan(.09f*f*a):Color.clear);
+                U.Glow(new Rect(sx-1,b.y,2,b.height),C.Cyan(.45f*f*a),12);U.Fill(new Rect(sx-H.Px,b.y,H.Snap(2),b.height),C.CyanSoft(.9f*f*a));
+                return;
+            }
             ExpBrowserBody(L,seat,a,now);
         }
-        private void ExpBrowserBody(X.Layout L,X.Seat seat,float a,float now)
+        private void ExpBrowserBody(X.Layout L,X.Seat seat,float a,float now){if(expMode==X.Mode.Boss)ExpBossBrowser(L,seat,a,now);else ExpRunBrowser(L,a,now);}
+
+        // ---- THE RUN: the briefing -------------------------------------------------------------------------------------------
+        // One expedition, rolled at the station: the machines' sample spin at the left, how a run goes at the right.
+        private void ExpRunBrowser(X.Layout L,float a,float now)
         {
-            if(expMode==X.Mode.Waves){ExpWaveBrowser(L,seat,a,now);return;}
-            var b=X.Carousel(L.Browser,L.Compact);bool edit=X.Editable(seat),calm=prefs.reducedEffects,live=ExpLive(a)&&edit;var lr=ExpRect(b.Label);float lh=lr.height-8;
-            U.Text(new Rect(lr.x,lr.y,300,lh),"SELECT EXPEDITION",11,C.CyanSoft(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);float lx=lr.x+U.Measure("SELECT EXPEDITION",11,true,true,.26f).x+12;
-            string counter=(expPick+1).ToString("00")+" / "+K.Count.ToString("00");U.Text(new Rect(lx,lr.y,80,lh),counter,11,C.Ink(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);lx+=U.Measure(counter,11,true,true,.1f).x+14;
-            // the arrows with their keys at the right (a guest's view is the host's pick: no arrows, the note instead)
+            var b=X.Run(L.Browser,L.Compact);var lr=ExpRect(b.Label);float lh=lr.height-8;var x=K.Run;Color acc=U.Hex(x.Accent);
+            float lx=ExpLabel(lr,"THE RUN",a),tx=ExpLabelTag(lr,lr.xMax,"ONE RUN · NEW EVERY TIME",C.Cyan(),a);U.Fill(new Rect(lx,lr.y+lh/2,Mathf.Max(0,tx-12-lx),H.Px),C.Edge(.7f*a));
+            var r=ExpRect(b.Card);var k=X.CardParts(ExpBox(r),L.Compact);
+            U.Glow(new Rect(r.x,r.y+26,r.width,r.height),new Color(0,0,0,.5f*a),50);H.Panel(r,a,acc,16,H.Corners.Diagonal,true,.93f);
+            U.RadialStops(new Rect(r.xMax-r.width*.55f,r.y,r.width*.55f,r.height*.9f),U.A(acc,.07f*a),ExpPoolAt,ExpPoolA);
+            float t=ExpMachine(ExpRect(k.Art),a,now,L.Compact);ExpRunInfo(ExpRect(k.Info),k,a,now,L.Compact,t);
+        }
+        // The station's two machines in miniature, spinning a sample every few seconds (Core X.SpinPicks; the reels move as the
+        // station's do, NativeDeployPresentation.Reel). Reduced effects: the first sample, landed and still. Returns the spin's age.
+        private float ExpMachine(Rect r,float a,float now,bool compact)
+        {
+            bool calm=prefs.reducedEffects;Color acc=C.Cyan();var m=X.MachineParts(ExpBox(r),compact);
+            H.Cut(r,C.Night(.92f*a),10,H.Corners.TL);U.RadialStops(r,U.A(U.Mix(acc,U.Hex(0x3a2166),.6f),.34f*a),ExpPoolAt,ExpPoolA);
+            long index=calm?0:X.SpinAt(now);float t=calm?99:X.SpinAge(now);int nd=D.DestinationCount,nm=D.MutatorCount;
+            if(index!=expSpinIndex)
+            {
+                // Each spin runs on from where the last one landed, as the station's reels do (the cards keep the last result).
+                bool first=expSpinIndex<0;if(!first)for(int i=0;i<3;i++){expSpinFrom[i]=expSpinDest[i];expSpinMutFrom[i]=expSpinMut[i];}
+                X.SpinPicks(index,nd,nm,expSpinDest,expSpinMut);if(first)for(int i=0;i<3;i++){expSpinFrom[i]=0;expSpinMutFrom[i]=expSpinMut[i];}
+                expSpinIndex=index;
+            }
+            // the head: the machine's name and what it draws from
+            var head=ExpRect(m.Head);NativeIcons.Draw(new Rect(head.x,head.center.y-7,14,14),"dices",C.CyanSoft(.95f*a));
+            U.Text(new Rect(head.x+20,head.y,head.width,head.height),K.InstanceMachine,compact?9.5f:10.5f,C.Ink(.92f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
+            string pool="3 OF "+nd+" DESTINATIONS";U.Text(new Rect(head.x,head.y,head.width,head.height),pool,8.5f,C.Muted(.85f*a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.14f);
+            // the reels, under their entrance labels; the lever beside them
+            int lit=0;
+            for(int i=0;i<3;i++)
+            {
+                var w=ExpRect(X.ReelWindow(m,i));U.Text(new Rect(w.x,w.y-m.Label,w.width,m.Label),K.Entrances[i],8.5f,C.CyanSoft(.7f*a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.3f);
+                var pose=D.Reel(i,t,expSpinFrom[i],expSpinDest[i],nd);if(pose.Landed)lit|=1<<expSpinDest[i];
+                ExpReel(w,pose,t-D.StopTime(i),a,calm,compact);
+            }
+            expSpinLit=lit;
+            ExpLever(ExpRect(m.Lever),calm?0:D.Lever(t),a);
+            // the mutator machine: optional, its three cards flip after the destinations land
+            var mh=ExpRect(m.MutHead);float mx=mh.x;NativeIcons.Draw(new Rect(mx,mh.center.y-6,12,12),"sparkles",U.A(U.Hex(D.PolarityColor(D.Polarity.Chaos)),.9f*a));mx+=18;
+            U.Text(new Rect(mx,mh.y,mh.width,mh.height),K.MutatorMachine,compact?9:9.5f,C.Ink(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.18f);mx+=U.Measure(K.MutatorMachine,compact?9:9.5f,true,true,.18f).x+10;
+            float ow=U.Measure(K.MutatorOptional,8,true,true,.16f).x+16;var opt=new Rect(mx,mh.center.y-8,ow,16);U.Dashed(new Rect(opt.x,opt.y,opt.width,H.Px),C.Muted(.7f*a));U.Dashed(new Rect(opt.x,opt.yMax-H.Px,opt.width,H.Px),C.Muted(.7f*a));
+            U.Text(opt,K.MutatorOptional,8,C.Muted(.9f*a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.16f);
+            float ms=t-X.MutatorsAt;for(int i=0;i<3;i++)ExpMutCard(ExpRect(X.MutCard(m,i)),i,ms,a,calm,compact);
+            // the foot: what is rolling, else that this is a sample
+            var foot=ExpRect(m.Foot);bool rolling=!calm&&t<D.RollDuration,mrolling=!calm&&ms>=0&&ms<ExpMutStop+2*ExpMutStagger+D.Settle;
+            string f=rolling?"ROLLING · "+K.InstanceMachine:mrolling?"ROLLING · "+K.MutatorMachine:K.SampleSpin;
+            U.Text(foot,Fit(f,8.5f,foot.width,true,.16f),8.5f,rolling||mrolling?C.CyanSoft(.95f*a):C.Muted(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
+            H.Outline(r,U.A(acc,.3f*a),10,H.Corners.TL);H.Brackets(r,U.A(acc,.55f*a),12,H.Corners.TL);
+            return t;
+        }
+        // A destination emblem's markup (the station's own) and its texture cache key, built once per emblem.
+        private static readonly Dictionary<string,(string key,string svg)> ExpEmblems=new Dictionary<string,(string,string)>(StringComparer.Ordinal);
+        private static (string key,string svg) ExpEmblemOf(string emblem){emblem??="";if(!ExpEmblems.TryGetValue(emblem,out var e))ExpEmblems[emblem]=e=("exp-reel-"+emblem,NativeDeployArt.EmblemMarkup(emblem));return e;}
+        // A reel window: the strip of destinations moving through it (blurred while it runs), the glass and payline over it, and
+        // a flash in the destination's colour as it lands. `landedFor` is the time since this reel's stop (negative while it runs).
+        private void ExpReel(Rect w,D.ReelPose pose,float landedFor,float a,bool calm,bool compact)
+        {
+            int nd=D.DestinationCount;float symH=w.height*.78f,cy=w.center.y;int baseIdx=Mathf.FloorToInt(pose.Offset);float frac=pose.Offset-baseIdx,blur=Mathf.Clamp01(pose.Speed/16f);
+            var land=D.DestinationAt(((Mathf.RoundToInt(pose.Offset)%nd)+nd)%nd);Color lc=U.Hex(land.Color);
+            H.Cut(w,C.Void(.92f*a),6,H.Corners.All);
+            U.BeginBand(w);
+            for(int j=-1;j<=2;j++)
+            {
+                int idx=((baseIdx+j)%nd+nd)%nd;float y=cy+(j-frac)*symH;var s=new Rect(w.x+4,y-symH/2+3,w.width-8,symH-6);if(s.yMax<w.y||s.y>w.yMax)continue;
+                ExpReelSymbol(s,D.DestinationAt(idx),a*(1-.5f*blur),blur,compact);
+            }
+            U.EndBand();
+            U.Fade(new Rect(w.x,w.y,w.width,w.height*.26f),C.Void(.9f*a));U.Fade(new Rect(w.x,w.yMax-w.height*.26f,w.width,w.height*.26f),C.Void(.9f*a),false);
+            U.Fill(new Rect(w.x+2,w.y+3,w.width-4,H.Px),new Color(1,1,1,.08f*a));
+            // the payline's ticks either side
+            float tk=compact?4:6;U.Fill(new Rect(w.x,cy-H.Px,tk,H.Snap(2)),U.A(pose.Landed?lc:C.CyanSoft(),.9f*a));U.Fill(new Rect(w.xMax-tk,cy-H.Px,tk,H.Snap(2)),U.A(pose.Landed?lc:C.CyanSoft(),.9f*a));
+            float flash=!calm&&landedFor>=0&&landedFor<.55f?1-landedFor/.55f:0;
+            if(flash>0){U.Glow(w,U.A(lc,.5f*flash*a),14);U.Fill(new Rect(w.x,w.y,w.width,w.height),U.A(lc,.12f*flash*a));}
+            H.Outline(w,U.A(pose.Landed?U.Mix(lc,C.Edge(),.35f-.35f*flash):C.Edge(),(.75f+.25f*flash)*a),6,H.Corners.All);
+        }
+        // A destination on the reel: the station's enamel band in its colour, its emblem (the station's own markup) and its name.
+        private static void ExpReelSymbol(Rect s,D.Destination d,float a,float blur,bool compact)
+        {
+            Color c=U.Hex(d.Color);H.Cut(s,U.A(U.Mix(C.Night(),c,.12f),.96f*a),4,H.Corners.All);U.Fill(new Rect(s.x,s.y+3,H.Snap(3),s.height-6),U.A(c,a));
+            float name=compact?8.5f:9.5f,es=Mathf.Round(Mathf.Min(s.height-name*1.6f-4,s.width*.6f));
+            if(es>=12){var er=new Rect(Mathf.Round(s.center.x-es/2),s.y+2,es,es);var e=ExpEmblemOf(d.Emblem);NativeIcons.DrawMarkup(er,e.key,e.svg,100,U.A(c,a));}
+            U.Text(new Rect(s.x+4,s.yMax-name*1.6f,s.width-8,name*1.4f),Fit(d.Name,name,s.width-8,true,.06f),name,U.A(U.Mix(c,Color.white,.55f),a),TextAnchor.MiddleCenter,bold:true,tracking:.06f);
+            if(blur>.05f)U.Fade(new Rect(s.x,s.y,s.width,s.height),U.A(c,.16f*blur*a),false);
+        }
+        // The lever: a slot down its housing and the red ball that drops as a roll starts.
+        private static void ExpLever(Rect r,float pull,float a)
+        {
+            var slot=new Rect(r.center.x-2,r.y+4,4,r.height-8);H.Cut(slot,C.Void(.9f*a),2,H.Corners.All);H.Outline(slot,C.Edge(.8f*a),2,H.Corners.All);
+            float y=Mathf.Lerp(r.y+8,r.yMax-8,pull),d=Mathf.Min(r.width,14);var ball=new Rect(r.center.x-d/2,y-d/2,d,d);
+            U.Fill(new Rect(r.center.x-H.Px,r.y+4,H.Snap(2),y-r.y-4),C.Muted(.6f*a));U.Glow(ball,C.Danger(.4f*a),6);U.Disc(ball,C.Danger(a));U.Disc(new Rect(ball.x+d*.22f,ball.y+d*.18f,d*.3f,d*.3f),new Color(1,1,1,.55f*a));
+        }
+        // A mutator card: its wild-card back until the machine rolls, then it flips through the catalogue (squashing on each
+        // turn) and lands on its pick, bordered in the pick's polarity. `since`: time since the mutator roll began.
+        private void ExpMutCard(Rect r,int i,float since,float a,bool calm,bool compact)
+        {
+            int nm=D.MutatorCount;float stop=ExpMutStop+i*ExpMutStagger;bool landed=calm||since>=stop;
+            if(!calm&&since<0)
+            {
+                // Before the roll: the last spin's card, dimmed, as the station keeps a result until the next pull.
+                ExpMutFace(r,D.MutatorAt(expSpinMutFrom[i]),a*.55f,0,compact);return;
+            }
+            if(landed){float fl=!calm&&since-stop<.5f?1-(since-stop)/.5f:0;ExpMutFace(r,D.MutatorAt(expSpinMut[i]),a,fl,compact);return;}
+            float turns=since*13f+i*.37f;int k=Mathf.FloorToInt(turns)+i*7;float squash=Mathf.Abs(Mathf.Cos((turns-Mathf.Floor(turns))*Mathf.PI));
+            U.Push(r.center,Vector2.zero,1,0,Mathf.Max(.06f,squash));try{ExpMutFace(r,D.MutatorAt(((k%nm)+nm)%nm),a*.85f,0,compact);}finally{U.Pop();}
+        }
+        private static void ExpMutFace(Rect r,D.Mutator mu,float a,float flash,bool compact)
+        {
+            Color c=U.Hex(mu.Color);if(flash>0)U.Glow(r,U.A(c,.45f*flash*a),10);
+            H.Cut(r,U.A(U.Mix(C.Night(),c,.14f+.12f*flash),.95f*a),5,H.Corners.All);H.Outline(r,U.A(c,(.7f+.3f*flash)*a),5,H.Corners.All);U.Fill(new Rect(r.x+5,r.y+H.Snap(2),r.width-10,H.Snap(2)),U.A(c,.8f*a));
+            bool two=r.height>=34;float ns=compact?8.5f:9.5f;
+            if(two)U.Text(new Rect(r.x+4,r.y+r.height*.5f-ns*1.35f,r.width-8,ns*1.2f),D.PolarityLabel(mu.Polarity),7.5f,U.A(c,.95f*a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.2f);
+            U.Text(new Rect(r.x+3,two?r.y+r.height*.5f-1:r.y,r.width-6,two?ns*1.5f:r.height),Fit(mu.Name,ns,r.width-6,true,.04f),ns,U.A(U.Mix(c,Color.white,.6f),a),TextAnchor.MiddleCenter,bold:true,tracking:.04f);
+        }
+        // The run's details: the kicker, the title, the tag line, the facts, then how a run goes (step 01 lights while the
+        // sample spins; hover lights a step).
+        private void ExpRunInfo(Rect r,X.Card k,float a,float now,bool compact,float spin)
+        {
+            var x=K.Run;Color acc=U.Hex(x.Accent),lifted=U.Mix(acc,Color.white,.4f);float y=r.y;
+            U.Text(new Rect(r.x,y-2,r.width,18),x.Kicker,11,U.A(lifted,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
+            {float tw=U.Measure("ALL-IN-ONE",9,true,true,.16f).x+22;var tag=new Rect(r.xMax-tw,y-2,tw,18);H.Tag(tag,C.Violet(),a,false);U.Text(new Rect(tag.x+10,tag.y,tw-12,18),"ALL-IN-ONE",9,U.A(U.Mix(C.Violet(),Color.white,.45f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);}
+            y+=compact?14:18;
+            U.Text(new Rect(r.x-1,y,r.width+2,k.Title*1.2f),x.Title,k.Title,C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:.05f,glow:U.A(acc,.45f*a),shadow:C.Void(.6f*a));y+=k.Title*1.2f;
+            var lines=U.Wrap(x.Tagline,k.Tagline,r.width,false,k.TaglineLines);foreach(var line in lines){U.Text(new Rect(r.x,y,r.width,k.Tagline*1.4f),line,k.Tagline,C.Muted(.95f*a),TextAnchor.MiddleLeft);y+=k.Tagline*1.4f;}
+            y+=(k.TaglineLines-lines.Count)*k.Tagline*1.4f+(compact?4:8);
+            {float fx=r.x,fh=compact?22:26;if(ExpFact(ref fx,y,r.xMax,fh,"users",x.Party,a)&&ExpFact(ref fx,y,r.xMax,fh,"hourglass",x.Duration,a))ExpFact(ref fx,y,r.xMax,fh,"shuffle","NEW CITY EVERY RUN",a);}
+            // how a run goes, pinned to the foot
+            int rows=K.Steps.Length;float rh=k.Row,ry=r.yMax-rows*rh;
+            if(!compact){float hy=ry-18;U.Text(new Rect(r.x,hy,160,14),"HOW A RUN GOES",9.5f,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);float lw=U.Measure("HOW A RUN GOES",9.5f,true,true,.26f).x;U.Fill(new Rect(r.x+lw+12,hy+7,Mathf.Max(0,r.width-lw-12),H.Px),C.Edge(.6f*a));}
+            float nx=r.x+9;U.Fill(new Rect(nx-H.Px/2,ry+rh/2,H.Px,(rows-1)*rh),U.A(acc,.35f*a));
+            bool spinning=!prefs.reducedEffects&&spin<X.MutatorsAt+ExpMutStop+2*ExpMutStagger+D.Settle;bool live=ExpLive(a);
+            for(int i=0;i<rows;i++)ExpStepRow(new Rect(r.x,ry+i*rh,r.width,rh),i,K.Steps[i],acc,a,now,compact,live,i==0&&spinning);
+        }
+        private void ExpStepRow(Rect r,int i,K.Step s,Color acc,float a,float now,bool compact,bool live,bool lit)
+        {
+            float h=U.HoverAmount(9620+i,r,live);if(live&&U.Hover(r)&&Event.current.type==EventType.Repaint)expStep=i;bool on=lit||expStep==i&&h>0;
+            if(h>0||lit)U.HGradient(new Rect(r.x,r.y+1,r.width*.75f,r.height-2),C.Cyan(.09f*Mathf.Max(h,lit?.8f:0)*a),Color.clear);
+            float cy=r.center.y,nx=r.x+9,d=compact?14:18;var node=new Rect(nx-d/2,cy-d/2,d,d);bool last=i==K.Steps.Length-1,calm=prefs.reducedEffects;
+            if(on&&!calm){float p=Mathf.Repeat(now*.9f,1);U.RadialStops(new Rect(nx-d/2-8*p,cy-d/2-8*p,d+16*p,d+16*p),C.Cyan(.45f*(1-p)*a),RingStopsAt,RingStopsA);}
+            if(last)Skull(new Rect(nx-8,cy-8,16,16),a,on?1:0);
+            else{U.Disc(node,C.Void(a));U.RadialStops(node,U.A(on?C.Cyan():acc,.9f*a),RingStopsAt2,RingStopsA2);U.Text(node,s.Num,compact?7:8,U.A(on?C.Cyan():U.Mix(acc,Color.white,.4f),a),TextAnchor.MiddleCenter,bold:true,mono:true);}
+            float tx=r.x+26,size=compact?11.5f:12.5f;Color ink=U.Mix(C.Ink(.95f),Color.white,h);
+            if(compact||r.height<26)
+            {
+                float nw=U.Measure(s.Name,size,true,false,.06f).x;U.Text(new Rect(tx,r.y,nw+4,r.height),s.Name,size,U.A(ink,a),TextAnchor.MiddleLeft,bold:true,tracking:.06f);
+                float px=tx+nw+10,pr=r.xMax-px;if(pr>40)U.Text(new Rect(px,r.y,pr,r.height),Fit(s.Short,size-1.5f,pr,false,0),size-1.5f,C.Muted(.85f*a),TextAnchor.MiddleLeft);
+            }
+            else
+            {
+                U.Text(new Rect(tx,r.y+1,r.width-26,size*1.2f),s.Name,size,U.A(ink,a),TextAnchor.MiddleLeft,bold:true,tracking:.06f);
+                U.Text(new Rect(tx,r.y+size*1.2f+1,r.width-26,r.height-size*1.2f-2),Fit(s.Line,11,r.width-26,false,0),11,C.Muted(.88f*a),TextAnchor.MiddleLeft);
+            }
+        }
+        private static readonly float[] RingStopsAt={0f,.7f,.85f,1f},RingStopsA={0f,0f,1f,0f},RingStopsAt2={0f,.62f,.72f,.9f,1f},RingStopsA2={0f,0f,1f,1f,0f};
+
+        // ---- BOSS BATTLE: the roster ---------------------------------------------------------------------------------------
+        private void ExpBossBrowser(X.Layout L,X.Seat seat,float a,float now)
+        {
+            var b=X.Roster(L.Browser,L.Compact);bool edit=X.Editable(seat),calm=prefs.reducedEffects,live=ExpLive(a)&&edit;var lr=ExpRect(b.Label);float lh=lr.height-8;
+            float lx=ExpLabel(lr,"BOSS BATTLE",a);string counter=(expBoss+1).ToString("00")+" / "+K.BossCount.ToString("00");U.Text(new Rect(lx,lr.y,80,lh),counter,11,C.Ink(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);lx+=U.Measure(counter,11,true,true,.1f).x+14;
+            // the arrows with their keys at the right (a guest's view is the room's fight: no arrows, the note instead)
             float rx=lr.xMax;
             if(edit)
             {
@@ -298,290 +497,144 @@ namespace ChipArena.UnityConversion
                 {
                     var bt=new Rect(rx-34,lr.y-3,34,lh+6);float h=U.HoverAmount(9460+i,bt,live);H.Cut(bt,U.A(U.Mix(C.Indigo(.9f),U.Hex(0x1b2552),h),a),5,H.Corners.All);H.Outline(bt,U.A(U.Mix(C.Edge(),C.Cyan(),h),a),5,H.Corners.All);
                     NativeIcons.DrawMarkup(new Rect(bt.center.x-8,bt.center.y-8,16,16),i==0?"chevron-left":"chevron-right",i==0?ChevronLeft:ChevronRight,24,U.A(U.Mix(C.CyanSoft(),Color.white,h),a));
-                    if(live&&U.Button(bt)){if(i==0)ExpTurnTo(expPick-1,-1);else ExpTurnTo(expPick+1,1);}
+                    if(live&&U.Button(bt)){if(i==0)ExpPickBoss(expBoss-1,-1);else ExpPickBoss(expBoss+1,1);}
                     rx-=40;
                 }
                 rx-=4;foreach(var key in new[]{"E","Q"}){float kw=H.KeyWidth(key,18);rx-=kw;H.Key(new Rect(rx,lr.y+(lh-18)/2,kw,18),key,.9f*a);rx-=4;}
                 rx-=8;
             }
-            else{const string host="THE ROOM'S RUN";float hw=U.Measure(host,9.5f,true,true,.16f).x+26;var t=new Rect(rx-hw,lr.y-2,hw,lh+4);H.Tag(t,C.Violet(),a);U.Text(new Rect(t.x+12,t.y,hw-14,t.height),host,9.5f,U.A(U.Mix(C.Violet(),Color.white,.45f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);rx=t.x-12;}
+            else rx=ExpLabelTag(lr,rx,"THE ROOM'S FIGHT",C.Violet(),a)-12;
             U.Fill(new Rect(lx,lr.y+lh/2,Mathf.Max(0,rx-lx),H.Px),C.Edge(.7f*a));
-            // the neighbours' spines, then the card (turning while the pick changes)
-            var card=ExpRect(b.Card);float k=Mathf.Clamp01((now-expTurnAt)/(calm?ExpTurnCalm:ExpTurn));
-            if(k<1){float q=M.Bezier(.2f,.8f,.2f,1,k);ExpTurnCard(card,expTurnFrom,q,true,a,now,calm,L.Compact);ExpTurnCard(card,expPick,q,false,a,now,calm,L.Compact);}
-            else ExpCard(card,K.At(expPick),a,now,L.Compact,live);
-            // the neighbours' spines over the card's edges (a turning card slides under them)
-            float sa=a*(edit?1:.6f);ExpSpine(ExpRect(b.Prev),K.Wrap(expPick-1),-1,sa,now,live);ExpSpine(ExpRect(b.Next),K.Wrap(expPick+1),1,sa,now,live);
-            // the dots: one bar per expedition, the pick long and lit, placeholders dim
-            var d=ExpRect(b.Dots);float dw=0;for(int i=0;i<K.Count;i++)dw+=(i==expPick?34:12)+6;float dx=d.center.x-dw/2+3,dy=d.center.y;
-            for(int i=0;i<K.Count;i++){float w=i==expPick?34:12;var bar=new Rect(dx,dy-1.5f,w,3);var x=K.At(i);if(i==expPick){U.Glow(bar,C.Cyan(.35f*a),5);U.Fill(bar,C.Cyan(a));}else U.Fill(bar,x.Locked?C.Edge(.9f*a):C.CyanSoft(.5f*a));
-                if(live&&i!=expPick&&U.Button(new Rect(dx-3,dy-8,w+6,16)))ExpTurnTo(i,i>expPick?1:-1);dx+=w+6;}
+            // the card, turning while the pick changes: the old one slides out toward the side it was turned from as the new one
+            // arrives from the other (Reduced effects: a cross-fade in place)
+            var card=ExpRect(b.Card);float since=now-expBossAt,k=Mathf.Clamp01(since/(calm?ExpTurnCalm:ExpTurn));
+            if(k<1&&expBossFrom!=expBoss){float q=M.Bezier(.2f,.8f,.2f,1,k);ExpBossTurn(card,expBossFrom,q,true,a,now,calm,L.Compact,since);ExpBossTurn(card,expBoss,q,false,a,now,calm,L.Compact,since);}
+            else ExpBossCard(card,K.BossAt(expBoss),a,now,L.Compact,since);
+            ExpBossRail(ExpRect(b.Rail),edit,a,now,L.Compact);
         }
-        // A card mid-turn: the old one leaves toward the side it was turned from as it narrows and fades, the new one arrives
-        // from the other side widening in (Reduced effects: a cross-fade in place).
-        private void ExpTurnCard(Rect card,int index,float q,bool leaving,float a,float now,bool calm,bool compact)
+        private void ExpBossTurn(Rect card,int index,float q,bool leaving,float a,float now,bool calm,bool compact,float since)
         {
-            float off=card.width*.3f,x=leaving?-expTurnDir*off*q:expTurnDir*off*(1-q),sx=leaving?1-.42f*q:.58f+.42f*q,al=leaving?1-q:q;if(calm){x=0;sx=1;}
-            if(al<=.01f)return;U.Push(card.center,new Vector2(x,0),sx,0,1);ExpCard(card,K.At(index),a*al,now,compact,false);U.Pop();
+            float off=card.width*.16f,x=leaving?-expBossDir*off*q:expBossDir*off*(1-q),s=leaving?1-.05f*q:.95f+.05f*q,al=leaving?1-q:q;if(calm){x=0;s=1;}
+            if(al<=.01f)return;U.Push(card.center,new Vector2(x,0),s);try{ExpBossCard(card,K.BossAt(index),a*al,now,compact,leaving?99:since);}finally{U.Pop();}
         }
-        // A neighbour's spine: its number, accent, title running up the spine, live or locked; a click turns to it.
-        private void ExpSpine(Rect r,int index,int dir,float a,float now,bool live)
+        // The picked boss: its art at the left (the emblem on its ring, the intro card's line), the eyebrow, name, blurb, facts
+        // and moves at the right, in its accent. `fresh`: seconds since it was picked (the arrival's pop, burst and glitch).
+        private void ExpBossCard(Rect r,K.Boss x,float a,float now,bool compact,float fresh)
         {
-            var x=K.At(index);Color acc=U.Hex(x.Accent);float h=U.HoverAmount(9450+(dir>0?1:0),r,live);float al=a*(.62f+.38f*h);
-            H.Cut(r,C.Navy(.72f*al),10,dir<0?H.Corners.TL:H.Corners.TR);U.HGradient(r,dir<0?Color.clear:U.A(acc,.1f*al),dir<0?U.A(acc,.1f*al):Color.clear);
-            H.Outline(r,U.A(U.Mix(C.Edge(),acc,.35f+.4f*h),al),10,dir<0?H.Corners.TL:H.Corners.TR);U.Fill(new Rect(dir<0?r.xMax-H.Snap(2):r.x,r.y+12,H.Snap(2),r.height-24),U.A(acc,(.5f+.4f*h)*al));
-            U.Text(new Rect(r.x,r.y+10,r.width,16),(index+1).ToString("00"),11,U.A(U.Mix(acc,Color.white,.3f),al),TextAnchor.MiddleCenter,bold:true,mono:true);
-            if(x.Locked)ExpLock(new Rect(r.center.x-7,r.yMax-26,14,14),C.Muted(al));else{var dot=new Rect(r.center.x-4,r.yMax-22,8,8);U.Glow(dot,C.Good(.4f*al),4);U.Disc(dot,C.Good(al));}
-            float len=r.height-64,ts=U.Measure(x.Title,11,true,false,.3f).x<=len?11:10,tk=ts<11?.18f:.3f;U.Push(r.center,Vector2.zero,1,dir<0?-90:90);U.Text(new Rect(r.center.x-len/2,r.center.y-9,len,18),Fit(x.Title,ts,len,true,tk),ts,C.Ink(.85f*al),TextAnchor.MiddleCenter,bold:true,tracking:tk);U.Pop();
-            if(live&&U.Button(r))ExpTurnTo(index,dir);
+            if(a<=.01f)return;Color acc=U.Hex(x.Accent);var k=X.CardParts(ExpBox(r),compact);
+            U.Glow(new Rect(r.x,r.y+26,r.width,r.height),new Color(0,0,0,.5f*a),50);H.Panel(r,a,acc,16,H.Corners.Diagonal,true,.93f);
+            U.RadialStops(new Rect(r.xMax-r.width*.6f,r.y,r.width*.6f,r.height),U.A(acc,.09f*a),ExpPoolAt,ExpPoolA);
+            ExpBossArt(ExpRect(k.Art),x,a,now,compact,fresh);ExpBossInfo(ExpRect(k.Info),x,k,a,now,compact,fresh);
         }
-        // The selected expedition: the key art at the left, the kicker and threats, the title, the tag line, the facts and the
-        // route at the right, in the entry's accent.
-        private void ExpCard(Rect r,K.Expedition x,float a,float now,bool compact,bool live)
+        private static readonly float[] ExpAuraAt={0f,.42f,1f},ExpAuraA={1f,.4f,0f};
+        private void ExpBossArt(Rect r,K.Boss x,float a,float now,bool compact,float fresh)
         {
-            if(a<=.01f)return;Color acc=U.Hex(x.Accent);var k=X.CardParts(new X.Box(r.x,r.y,r.width,r.height),compact);
-            U.Glow(new Rect(r.x,r.y+26,r.width,r.height),new Color(0,0,0,.5f*a),50);
-            H.Panel(r,a,x.Locked?U.Mix(acc,C.Muted(),.35f):acc,16,H.Corners.Diagonal,true,.93f);
-            U.RadialStops(new Rect(r.xMax-r.width*.55f,r.y,r.width*.55f,r.height*.9f),U.A(acc,.07f*a),ExpPoolAt,ExpPoolA);
-            ExpArt(ExpRect(k.Art),x,a,now,compact);ExpInfo(ExpRect(k.Info),x,k,a,now,compact,live);
-        }
-
-        // ---- Key art -------------------------------------------------------------------------------------------------------
-        private ContentMap ExpMapOf(string id){if(id==null||content?.maps==null)return null;foreach(var m in content.maps)if(m.id==id)return m;return null;}
-        // The Siren's face in the band above a plan of this aspect, where there is room (else faint behind it); returns the plan's rect under it.
-        private Rect ExpFaceBand(Rect plan,float aspect,K.Expedition x,float a,float now,bool calm,bool compact)
-        {
-            float band=x.WaveDefense?(compact?40:66):0,ph=Mathf.Min(plan.height,plan.width/Mathf.Max(.2f,aspect));
-            if(band>0&&plan.height-ph<band&&plan.height-band>=plan.height*.6f)ph=plan.height-band;float free=plan.height-ph,pw=Mathf.Min(plan.width,ph*Mathf.Max(.2f,aspect));
-            if(x.WaveDefense)
-            {
-                bool above=free>=(compact?36:60);float fs=above?Mathf.Min(free*1.45f,plan.width*.5f):Mathf.Min(plan.width,plan.height)*.7f,br=calm?.5f:.5f+.5f*Mathf.Sin(now*1.7f);
-                var fc=above?new Vector2(plan.center.x,plan.y+free*.5f):plan.center;U.Radial(new Rect(fc.x-fs*.8f,fc.y-fs*.42f,fs*1.6f,fs*.84f),U.A(U.Hex(x.Accent),(above?.18f+.07f*br:.1f)*a));
-                NativeIcons.DrawMarkup(new Rect(fc.x-fs/2,fc.y-fs*.31f,fs,fs),"siren-face",SirenFace,200,new Color(1,1,1,(above?.85f:.12f)*a));
-            }
-            return new Rect(plan.center.x-pw/2,plan.yMax-ph,pw,ph);
-        }
-        // The full run's art: no map, because the run has none until it is rolled (owner 2026-11-03: "the map showing is inaccurate as
-        // expedition is procedurally generated"). A sample plan (Core/NativeRunPreview) builds out from the hub, its route lighting the
-        // areas in turn, holds, fades and rolls again, labelled a sample. A hovered route row lights its node.
-        private void ExpArt(Rect r,K.Expedition x,float a,float now,bool compact)
-        {
-            Color acc=U.Hex(x.Accent);bool calm=prefs.reducedEffects;
-            H.Cut(r,C.Night(.92f*a),10,H.Corners.TL);U.RadialStops(r,U.A(U.Mix(acc,U.Hex(0x3a2166),.5f),.42f*a),ExpPoolAt,ExpPoolA);
-            if(x.Locked){ExpSilhouette(r,x,a,now,calm,compact);H.Outline(r,U.A(acc,.3f*a),10,H.Corners.TL);H.Brackets(r,U.A(acc,.55f*a),12,H.Corners.TL);return;}
-            float top=compact?24:30,bottom=compact?22:28;var plan=new Rect(r.x+12,r.y+top,r.width-24,r.height-top-bottom);
-            var inner=ExpFaceBand(plan,1.7f,x,a,now,calm,compact);
-            float build=1,fade=1;long index=0;if(!calm){index=NativeRunPreview.RollAt(now);NativeRunPreview.Cycle(now,out build,out fade);}
-            if(expRoll==null||expRollIndex!=index){expRollIndex=index;expRoll=NativeRunPreview.Roll(NativeRunPreview.SeedOf(index));}
-            ExpRunPlan(inner,expRoll,build,fade,x,acc,a,now,calm,compact);
-            NativeIcons.Draw(new Rect(r.x+10,r.y+6,14,14),"shuffle",U.A(acc,a));U.Text(new Rect(r.x+28,r.y+5,r.width-44,16),Fit(K.Generated,10,r.width-44,true,.2f),10,U.A(U.Mix(acc,Color.white,.55f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
-            string foot=build<1?"ROLLING SEED "+expRoll.Label:"SAMPLE · YOUR CITY ROLLS AT DEPLOYMENT";U.Text(new Rect(r.x+12,r.yMax-bottom+4,r.width-24,16),Fit(foot,9.5f,r.width-24,true,.16f),9.5f,build<1?C.CyanSoft(.95f*a):C.Muted(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
-            H.Outline(r,U.A(acc,.32f*a),10,H.Corners.TL);H.Brackets(r,U.A(acc,.6f*a),12,H.Corners.TL);
-        }
-        // A roll of the sample plan: the same hologram as a stage scan, so it reads as the game's, but built live: blocks rise outward from the
-        // hub, the route runs ahead of them with a head of light, each node catches as it reaches it.
-        private void ExpRunPlan(Rect inner,NativeRunPreview p,float build,float fade,K.Expedition x,Color acc,float a,float now,bool calm,bool compact)
-        {
-            float px=H.Px,pa=a*fade;if(pa<=.01f)return;var plan=inner;
-            for(int i=0;i<=NativeRunPreview.Columns;i+=2){float gx=plan.x+plan.width*i/NativeRunPreview.Columns,gy=plan.y+plan.height*i/NativeRunPreview.Rows,ga=i%4==0?.16f:.08f;U.Fill(new Rect(gx,plan.y,px,plan.height),C.Edge(ga*pa));U.Fill(new Rect(plan.x,gy,plan.width,px),C.Edge(ga*pa));}
-            Color deep=C.CyanDeep(),soft=C.CyanSoft();float edgeMin=7*px;var box=p.Box;var lv=p.Level;var kind=p.Kind;var at=p.Arrive;
-            for(int i=0;i<p.Count;i++)
-            {
-                float t=(build-at[i]*.72f)/.28f;t=t<0?0:t>1?1:t;if(t<=0)continue;float k=t*t*(3-2*t),flash=t<1?(1-t)*t*4:0,gs=.55f+.45f*k;
-                float bw=box[i*4+2]*plan.width,bh=box[i*4+3]*plan.height,cx=plan.x+(box[i*4]+box[i*4+2]*.5f)*plan.width,cy=plan.y+(box[i*4+1]+box[i*4+3]*.5f)*plan.height;
-                var q=new Rect(cx-bw*gs*.5f,cy-bh*gs*.5f,Mathf.Max(px,bw*gs),Mathf.Max(px,bh*gs));byte kd=kind[i];float level=lv[i];
-                if(kd==NativeRunPreview.Plaza){U.Fill(q,C.Indigo(.5f*k*pa));continue;}
-                Color c=kd==NativeRunPreview.Landmark?acc:Color.Lerp(deep,soft,level);U.Fill(q,U.A(U.Mix(c,Color.white,.5f*flash),((kd==NativeRunPreview.Landmark?.34f:.13f+.3f*level)+.35f*flash)*k*pa));
-                if(q.width>=edgeMin&&q.height>=edgeMin)H.Outline(q,U.A(U.Mix(c,Color.white,.45f*flash),(.32f+.42f*level)*k*pa),0,H.Corners.None);
-            }
-            // the route: its legs up to the head, under a soft glow, then a small light travelling the finished line
-            float head=calm?1:Mathf.Clamp01(build/.9f);var path=p.Path;var pathAt=p.PathAt;float w=H.Snap(2);Color line=U.Mix(acc,Color.white,.35f);
-            for(int i=1;i<pathAt.Length;i++)
-            {
-                if(pathAt[i-1]>=head)break;float t=Mathf.Clamp01((head-pathAt[i-1])/Mathf.Max(1e-5f,pathAt[i]-pathAt[i-1]));
-                float ax=plan.x+path[i*2-2]*plan.width,ay=plan.y+path[i*2-1]*plan.height,bx=plan.x+path[i*2]*plan.width,by=plan.y+path[i*2+1]*plan.height;bx=ax+(bx-ax)*t;by=ay+(by-ay)*t;
-                var seg=new Rect(Mathf.Min(ax,bx)-w/2,Mathf.Min(ay,by)-w/2,Mathf.Abs(bx-ax)+w,Mathf.Abs(by-ay)+w);U.Glow(seg,U.A(acc,.28f*pa),6);U.Fill(seg,U.A(line,.92f*pa));
-            }
-            if(!calm){float travel=head<1?head:Mathf.Repeat(now*.22f,1);p.Along(travel,out float hu,out float hv);var dot=new Rect(plan.x+hu*plan.width-3,plan.y+hv*plan.height-3,6,6);U.Glow(dot,U.A(Color.white,.45f*pa),8);U.Disc(dot,new Color(1,1,1,.95f*pa));}
-            // the nodes: the hub a square, the areas numbered, the final the skull; a hovered route row lights its own
-            int hot=expArea==-2?0:expArea>=0&&expArea<NativeRunPreview.Nodes-1?expArea+1:-1;float small=compact?4:5;
-            for(int i=0;i<NativeRunPreview.Nodes;i++)
-            {
-                float reached=Mathf.Clamp01((head-p.NodeAt[i]+.04f)/.04f);if(reached<=0&&i!=hot)continue;reached=i==hot?1:reached;float cx=plan.x+p.Node[i*2]*plan.width,cy=plan.y+p.Node[i*2+1]*plan.height,ring=i==hot?1:0;
-                if(i==hot){float s=(calm?.5f:.5f+.5f*Mathf.Sin(now*5))*5+small+7;U.RadialStops(new Rect(cx-s,cy-s,2*s,2*s),U.A(acc,.8f*pa),RingStopsAt,RingStopsA);}
-                if(i==NativeRunPreview.Nodes-1){Skull(new Rect(cx-9,cy-9,18,18),pa*reached,ring);continue;}
-                var d=new Rect(cx-small,cy-small,2*small,2*small);U.Glow(d,U.A(acc,.5f*reached*pa),6);if(i==0){U.Fill(d,U.A(line,reached*pa));}else{U.Disc(d,C.Void(reached*pa));U.RadialStops(d,U.A(line,reached*pa),RingStopsAt2,RingStopsA2);U.Disc(new Rect(cx-small*.45f,cy-small*.45f,small*.9f,small*.9f),U.A(line,reached*pa));}
-                if(!compact||i==hot){string tag=i==0?"HUB":i.ToString("00");float tw=U.Measure(tag,8.5f,true,true,.1f).x+8;var lab=new Rect(cx+small+3,cy-7,tw,14);if(lab.xMax>plan.xMax)lab.x=cx-small-3-tw;U.Fill(lab,C.Void(.72f*reached*pa));U.Text(lab,tag,8.5f,U.A(U.Mix(acc,Color.white,.6f),reached*pa),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.1f);}
-            }
-            H.Brackets(new Rect(plan.x-5,plan.y-5,plan.width+10,plan.height+10),U.A(acc,.5f*a),10,H.Corners.None);
-        }
-        // The stage scan as a hologram (the loading screen's NativeStageSchematic, drawn smaller): the grid, the slabs as the
-        // plate, decks as panes, volumes by height with lit edges, cover in the accent, the spawns; a sweep runs across it every
-        // few seconds (still with Reduced effects).
-        private static void ExpScan(Rect inner,NativeStageSchematic s,Color accent,float a,float now,bool calm)
-        {
-            float aspect=Mathf.Max(.2f,s.Aspect),pw=inner.width,ph=pw/aspect;if(ph>inner.height){ph=inner.height;pw=ph*aspect;}var plan=new Rect(inner.center.x-pw/2,inner.center.y-ph/2,pw,ph);float px=H.Px;
-            for(int i=0;i<=10;i++){float gx=plan.x+plan.width*i/10,gy=plan.y+plan.height*i/10,ga=i%5==0?.2f:.09f;U.Fill(new Rect(gx,plan.y,px,plan.height),C.Edge(ga*a));U.Fill(new Rect(plan.x,gy,plan.width,px),C.Edge(ga*a));}
-            float sweep=calm?2:Mathf.Repeat(now/4.2f,1.35f)-.1f;var box=s.Box;var lv=s.Level;var kind=s.Kind;Color deep=C.CyanDeep(),soft=C.CyanSoft();float edgeMin=7*px;
-            for(int i=0;i<s.Count;i++)
-            {
-                float u=box[i*4],v=box[i*4+1],bw=box[i*4+2],bh=box[i*4+3];byte kd=kind[i];var q=new Rect(plan.x+u*plan.width,plan.y+v*plan.height,Mathf.Max(px,bw*plan.width),Mathf.Max(px,bh*plan.height));
-                if(kd==NativeStageSchematic.Plate){U.Fill(q,C.Indigo(.55f*a));continue;}
-                float lit=Mathf.Clamp01(1-Mathf.Abs(u+bw*.5f-sweep)*6);float level=lv[i];bool edge=q.width>=edgeMin&&q.height>=edgeMin;
-                if(kd==NativeStageSchematic.Deck){U.Fill(q,C.Cyan((.05f+.08f*lit)*a));if(edge)H.Outline(q,C.CyanSoft((.22f+.3f*lit)*a),0,H.Corners.None);continue;}
-                Color c=kd==NativeStageSchematic.Cover?accent:Color.Lerp(deep,soft,level);U.Fill(q,U.A(c,((kd==NativeStageSchematic.Cover?.36f:.14f+.3f*level)+.25f*lit)*a));
-                if(edge)H.Outline(q,U.A(U.Mix(c,Color.white,.4f*lit),(.4f+.4f*level+.2f*lit)*a),0,H.Corners.None);
-            }
-            var sp=s.Spawns;for(int i=0;i+1<sp.Length;i+=2){const float d=4;var c=new Rect(plan.x+sp[i]*plan.width-d/2,plan.y+sp[i+1]*plan.height-d/2,d,d);U.Fill(c,C.Cyan(.9f*a));}
-            if(!calm&&sweep>0&&sweep<1){float sx=plan.x+plan.width*sweep,trail=Mathf.Min(60,sx-plan.x);if(trail>0)U.HGradient(new Rect(sx-trail,plan.y,trail,plan.height),Color.clear,C.Cyan(.1f*a));U.Glow(new Rect(sx-1,plan.y,2,plan.height),C.Cyan(.35f*a),8);U.Fill(new Rect(sx-px,plan.y,H.Snap(2),plan.height),C.CyanSoft(.8f*a));}
-            H.Brackets(new Rect(plan.x-5,plan.y-5,plan.width+10,plan.height+10),U.A(accent,.55f*a),10,H.Corners.None);
-        }
-        // A placeholder's art: its skyline as a silhouette rimmed in the accent under a dusk wash, interference lines, the lock in
-        // a hexagon, SIGNAL LOST and the COMING SOON band.
-        private const string ChoirSkyline="<path d=\"M0 100V72H6V64L9 56L12 64V72H18V60L24 44L30 60V68H35V50L41 30L47 50V60H53V50L59 30L65 50V68H70V60L76 44L82 60V72H88V64L91 56L94 64V72H100V100Z\" fill=\"#fff\"/>";
-        private const string ParishSkyline="<path d=\"M0 100V80L8 72L16 80V74L27 63L38 74V84H42V70L50 62L58 70V80L66 74L74 80V66H77V80L84 76V70L92 64L100 70V100Z\" fill=\"#fff\"/><path d=\"M47 62L49 52L51 62Z\" fill=\"#fff\"/>";
-        private const string MarrowSkyline="<path d=\"M0 100V62C8 58 14 58 20 62C26 54 34 54 40 62C46 50 54 50 60 62C66 54 74 54 80 62C86 58 92 58 100 62V100Z\" fill=\"#fff\"/>";
-        private const string MarrowArches="<path d=\"M8 100V84A6 6 0 0 1 20 84V100ZM28 100V80A8 8 0 0 1 44 80V100ZM56 100V80A8 8 0 0 1 72 80V100ZM80 100V84A6 6 0 0 1 92 84V100Z\" fill=\"#fff\"/>";
-        private void ExpSilhouette(Rect r,K.Expedition x,float a,float now,bool calm,bool compact)
-        {
-            Color acc=U.Hex(x.Accent);U.Fade(new Rect(r.x,r.y+r.height*.35f,r.width,r.height*.65f),U.A(acc,.16f*a),false);
-            string id=x.Id,mark=id=="hollow-choir"?ChoirSkyline:id=="ashen-parish"?ParishSkyline:MarrowSkyline;float s=r.width;var sq=new Rect(r.x,r.yMax-s,s,s);
+            Color acc=U.Hex(x.Accent);bool calm=prefs.reducedEffects,dim=x.Fight==K.BossFight.Preview;float br=calm?.5f:.5f+.5f*Mathf.Sin(now*1.6f);
+            H.Cut(r,C.Night(.95f*a),10,H.Corners.TL);
+            float foot=compact?26:40;var stage=new Rect(r.x,r.y,r.width,r.height-foot);var cen=new Vector2(stage.center.x,stage.y+stage.height*.52f);float R=Mathf.Round(Mathf.Min(stage.width,stage.height)*.36f);
             U.BeginBand(r);
-            float horizon=sq.y+s*.62f,gw=r.width*.75f;U.RadialStops(new Rect(r.center.x-gw,horizon-gw*.45f,2*gw,gw*.9f),U.A(acc,.28f*a),ExpPoolAt,ExpPoolA);
-            NativeIcons.DrawMarkup(new Rect(sq.x,sq.y-2,sq.width,sq.height),"exp-sil-"+id,mark,100,U.A(acc,.7f*a));NativeIcons.DrawMarkup(sq,"exp-sil-"+id,mark,100,U.A(U.Mix(C.Void(),acc,.14f),.97f*a));U.Fade(new Rect(r.x,horizon+s*.08f,r.width,r.yMax-horizon-s*.08f),C.Void(.55f*a),false);
-            if(id=="night-marrow")NativeIcons.DrawMarkup(sq,"exp-arch",MarrowArches,100,U.A(acc,.16f*a));
-            // interference: thin lines drifting down through the art (still with Reduced effects)
-            for(int i=0;i<7;i++){float y=r.y+Mathf.Repeat(i*.143f+(calm?0:now*.09f),1)*r.height;U.Fill(new Rect(r.x,y,r.width,H.Px),U.A(acc,(.05f+.04f*(i%3))*a));}
+            U.RadialStops(new Rect(cen.x-R*2.4f,cen.y-R*2f,R*4.8f,R*4f),U.A(U.Mix(acc,U.Hex(0x3a2166),.4f),(.42f+.12f*br)*a),ExpAuraAt,ExpAuraA);
+            // the floor: lines receding toward the horizon under the emblem
+            float hz=cen.y+R*.9f;for(int i=0;i<7;i++){float t=i/6f,y=hz+(r.yMax-hz)*t*t;U.Fill(new Rect(r.x,y,r.width,H.Px),U.A(acc,(.05f+.12f*t)*a));}
+            for(int i=-4;i<=4;i++){float bx=cen.x+i*R*.55f;U.Fill(new Rect(bx-H.Px/2,hz,H.Px,r.yMax-hz),U.A(acc,.05f*a));}
+            // the rings: a fine ring, ticks turning slowly round it (majors every sixth) and a dotted arc turning the other way
+            U.RadialStops(new Rect(cen.x-R*1.18f,cen.y-R*1.18f,R*2.36f,R*2.36f),U.A(acc,(.35f+.15f*br)*a),RingStopsAt,RingStopsA);
+            float spin=calm?0:now*7f;
+            for(int i=0;i<48;i++){bool major=i%6==0;float len=major?R*.14f:R*.06f;U.Push(cen,Vector2.zero,1,i*7.5f+spin);U.Fill(new Rect(cen.x-(major?1:.5f),cen.y-R*1.32f-len,major?2:1,len),U.A(acc,(major?.7f:.35f)*a));U.Pop();}
+            float back=calm?0:-now*16f;for(int i=0;i<30;i++){if(i%10>6)continue;float ang=(i*12f+back)*Mathf.Deg2Rad;var d=new Rect(cen.x+Mathf.Sin(ang)*R*1.02f-1.5f,cen.y-Mathf.Cos(ang)*R*1.02f-1.5f,3,3);U.Disc(d,U.A(U.Mix(acc,Color.white,.3f),.55f*a));}
+            // the arrival: a ring bursting outward and the emblem settling from a little larger
+            if(!calm&&fresh>=0&&fresh<.9f){float f=fresh/.9f,rr=R*(.7f+1.3f*f);U.RadialStops(new Rect(cen.x-rr,cen.y-rr,2*rr,2*rr),U.A(Color.Lerp(acc,Color.white,.4f),.75f*(1-f)*a),RingStopsAt,RingStopsA);}
+            float pop=calm||fresh<0?1:M.Bezier(.2f,.8f,.2f,1,Mathf.Clamp01(fresh/.55f));
+            U.Radial(new Rect(cen.x-R*1.3f,cen.y-R,R*2.6f,R*2f),U.A(acc,(.22f+.1f*br)*a*pop));
+            float es=Mathf.Round(R*1.6f);var er=new Rect(cen.x-es/2,cen.y-es/2,es,es);
+            U.Push(cen,new Vector2(0,calm?0:Mathf.Sin(now*1.1f)*2),1.14f-.14f*pop);try{ExpEmblem(er,x,U.A(dim?U.Mix(acc,C.Muted(),.35f):acc,a*Mathf.Lerp(.2f,1,pop)));}finally{U.Pop();}
+            // motes rising through the light, and a scan line
+            if(!calm)
+            {
+                for(int i=0;i<16;i++){float life=Mathf.Repeat(now*(.07f+.06f*ExpHash(i*3.1f+.4f))+ExpHash(i*1.7f),1),mx=r.x+r.width*(.06f+.88f*ExpHash(i*5.3f)),my=stage.yMax-life*stage.height*.95f,ma=Mathf.Sin(life*Mathf.PI)*.8f,ds=i%3==0?3:2;
+                    var d=new Rect(mx-ds/2,my-ds/2,ds,ds);U.Glow(d,U.A(acc,.3f*ma*a),3);U.Disc(d,U.A(U.Mix(acc,Color.white,.5f),ma*a));}
+                float sy=r.y+Mathf.Repeat(now*.3f,1.3f)*r.height;U.Fade(new Rect(r.x,sy-44,r.width,44),U.A(acc,.05f*a),false);U.Fill(new Rect(r.x,sy,r.width,H.Px),U.A(acc,.16f*a));
+            }
             U.EndBand();
-            // the lock sits in the dark ground under the skyline, over the COMING SOON band
-            float hr=compact?14:22,cy=r.y+r.height*(compact?.58f:.62f);var hex=new Rect(r.center.x-hr*48/22f/2,cy-hr*48/22f/2,hr*48/22f,hr*48/22f);
-            U.Glow(new Rect(r.center.x-hr,cy-hr,2*hr,2*hr),U.A(acc,.18f*a),16);NativeIcons.DrawMarkup(hex,"hex-fill",HexFill,48,new Color(1,1,1,.92f*a));NativeIcons.DrawMarkup(hex,"hex-edge",HexEdge,48,U.A(acc,.8f*a));ExpLock(new Rect(r.center.x-hr*.5f,cy-hr*.5f,hr,hr),U.A(U.Mix(acc,Color.white,.4f),a));
-            U.Text(new Rect(r.x,cy+hr+8,r.width,16),"SIGNAL LOST",10,U.A(U.Mix(acc,Color.white,.4f),.9f*a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.32f);
-            var band=new Rect(r.x,r.yMax-(compact?30:38),r.width,compact?20:24);U.Fill(band,C.Night(.82f*a));U.Fill(new Rect(band.x,band.y,band.width,H.Px),U.A(acc,.6f*a));U.Fill(new Rect(band.x,band.yMax-H.Px,band.width,H.Px),U.A(acc,.6f*a));
-            U.Text(band,K.ComingSoon,compact?10:11,U.A(U.Mix(acc,Color.white,.55f),a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.4f);
+            // the intro card's line at the foot between two rules
+            var ft=new Rect(r.x+14,r.yMax-foot,r.width-28,foot-(compact?6:10));float ls=compact?8.5f:10;string line=x.Line??"";float lw=Mathf.Min(U.Measure(line,ls,true,true,.3f).x,ft.width-40);
+            U.Fill(new Rect(ft.x,ft.center.y,Mathf.Max(0,ft.width/2-lw/2-12),H.Px),U.A(acc,.5f*a));U.Fill(new Rect(ft.center.x+lw/2+12,ft.center.y,Mathf.Max(0,ft.width/2-lw/2-12),H.Px),U.A(acc,.5f*a));
+            U.Text(ft,line,ls,U.A(U.Mix(acc,Color.white,.55f),a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.3f,glow:U.A(acc,.3f*a));
+            // the state stamp at the top left
+            ExpFightStamp(new Vector2(r.x+12,r.y+12),x.Fight,a,now,compact);
+            H.Outline(r,U.A(acc,.34f*a),10,H.Corners.TL);H.Brackets(r,U.A(acc,.62f*a),12,H.Corners.TL);
         }
-
-        // ---- Details and route ---------------------------------------------------------------------------------------------
-        private void ExpInfo(Rect r,K.Expedition x,X.Card k,float a,float now,bool compact,bool live)
+        private static Color ExpFightTone(K.BossFight f)=>f==K.BossFight.Direct?C.Good():f==K.BossFight.InRun?C.Warn():C.Muted();
+        // FIGHT NOW pulses; IN RUNS and IN DEVELOPMENT sit still.
+        private void ExpFightStamp(Vector2 at,K.BossFight f,float a,float now,bool compact)
+        {
+            string s=K.FightLabel(f);Color tone=ExpFightTone(f);float fs=compact?8:9,w=U.Measure(s,fs,true,true,.16f).x+(f==K.BossFight.Direct?26:18),h=compact?16:18;var t=new Rect(at.x,at.y,w,h);
+            H.Tag(t,tone,a,false);float dx=t.x+8;
+            if(f==K.BossFight.Direct){float p=prefs.reducedEffects?0:Mathf.Repeat(now*.8f,1);var dot=new Rect(t.x+7,t.center.y-2.5f,5,5);if(p>0)U.RadialStops(new Rect(dot.x-6*p,dot.y-6*p,5+12*p,5+12*p),U.A(tone,.5f*(1-p)*a),RingStopsAt,RingStopsA);U.Disc(dot,U.A(tone,a));dx+=10;}
+            U.Text(new Rect(dx,t.y,w,h),s,fs,U.A(U.Mix(tone,Color.white,.25f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
+        }
+        // Each boss's emblem (Core catalogue: white on a 100-unit box, near-black parts reading as cut-outs; the Siren's face is
+        // the lobby's, on 200), tinted by the draw. Drawn at a fixed size per layout (scale goes through U.Push), so each is
+        // rasterised once per size.
+        private static void ExpEmblem(Rect r,K.Boss x,Color c)
+        {
+            if(x.Emblem==null)NativeIcons.DrawMarkup(new Rect(r.x,r.y+r.height*.14f,r.width,r.height),"siren-face",SirenFace,200,c);
+            else NativeIcons.DrawMarkup(r,x.EmblemKey,x.Emblem,100,c);
+        }
+        private static readonly Dictionary<string,string> ExpMoveLines=new Dictionary<string,string>(StringComparer.Ordinal);
+        private static string ExpMovesOf(K.Boss x){if(!ExpMoveLines.TryGetValue(x.Id,out var s))ExpMoveLines[x.Id]=s=string.Join("  ·  ",x.Moves??Array.Empty<string>());return s;}
+        private void ExpBossInfo(Rect r,K.Boss x,X.Card k,float a,float now,bool compact,float fresh)
         {
             Color acc=U.Hex(x.Accent),lifted=U.Mix(acc,Color.white,.4f);float y=r.y;
-            // the kicker (and the working title while it fits), the threats at the right
-            float tx=r.xMax;for(int i=x.Threats.Length-1;i>=0;i--){string t=x.Threats[i];float w=U.Measure(t,9,true,true,.16f).x+(compact?22:30);if(tx-w<r.x+120)break;tx-=w;var tag=new Rect(tx,y-2,w,18);H.Tag(tag,acc,a*(x.Locked?.6f:1),false);
-                if(!compact)NativeIcons.Draw(new Rect(tag.x+6,tag.y+3,12,12),t=="SPIRITS"||t=="WRAITHS"?"ghost":t=="BURNERS"?"flame":"skull",U.A(lifted,a));U.Text(new Rect(tag.x+(compact?10:22),tag.y,w-(compact?12:24),18),t,9,U.A(lifted,a*(x.Locked?.7f:1)),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);tx-=6;}
-            U.Text(new Rect(r.x,y-2,tx-r.x,18),x.Kicker,11,U.A(lifted,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
-            float kw=U.Measure(x.Kicker,11,true,true,.24f).x;string sub=x.Locked?K.ComingSoon:K.WorkingTitle;float sw=U.Measure("·  "+sub,9.5f,true,true,.2f).x;
-            if(r.x+kw+12+sw<tx-8)U.Text(new Rect(r.x+kw+10,y-2,sw+4,18),"·  "+sub,9.5f,x.Locked?C.Warn(.8f*a):C.Muted(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
+            // the eyebrow and the subtitle; the state at the right
+            Color tone=ExpFightTone(x.Fight);string st=K.FightLabel(x.Fight);float sw=U.Measure(st,9,true,true,.16f).x+20;var chip=new Rect(r.xMax-sw,y-2,sw,18);H.Tag(chip,tone,a,false);U.Text(new Rect(chip.x+10,chip.y,sw-12,18),st,9,U.A(U.Mix(tone,Color.white,.25f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
+            float ew=U.Measure(x.Eyebrow,11,true,true,.24f).x;U.Text(new Rect(r.x,y-2,chip.x-r.x-8,18),x.Eyebrow,11,U.A(lifted,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
+            string sub="·  "+x.Subtitle;float subw=U.Measure(sub,9.5f,true,true,.2f).x;if(r.x+ew+12+subw<chip.x-8)U.Text(new Rect(r.x+ew+10,y-2,subw+4,18),sub,9.5f,C.Muted(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
             y+=compact?14:18;
-            // the title, glowing in the accent; the tag line
-            U.Text(new Rect(r.x-1,y,r.width+2,k.Title*1.2f),x.Title,k.Title,C.Ink(x.Locked?.7f*a:a),TextAnchor.MiddleLeft,bold:true,tracking:.05f,glow:U.A(acc,(x.Locked?.25f:.45f)*a),shadow:C.Void(.6f*a));y+=k.Title*1.2f;
-            var lines=U.Wrap(x.Tagline,k.Tagline,r.width,false,k.TaglineLines);foreach(var line in lines){U.Text(new Rect(r.x,y,r.width,k.Tagline*1.4f),line,k.Tagline,C.Muted(.95f*a),TextAnchor.MiddleLeft);y+=k.Tagline*1.4f;}
+            // the name, glowing in the accent, with a glitch as it arrives
+            var tr=new Rect(r.x-1,y,r.width+2,k.Title*1.2f);H.Glitch(tr,x.Name,k.Title,fresh-ExpTurn*.55f,a,TextAnchor.MiddleLeft,prefs.reducedEffects,true,false,.05f);
+            U.Text(tr,x.Name,k.Title,C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:.05f,glow:U.A(acc,.5f*a),shadow:C.Void(.6f*a));y+=k.Title*1.2f;
+            var lines=U.Wrap(x.Blurb,k.Tagline,r.width,false,k.TaglineLines);foreach(var line in lines){U.Text(new Rect(r.x,y,r.width,k.Tagline*1.4f),line,k.Tagline,C.Muted(.95f*a),TextAnchor.MiddleLeft);y+=k.Tagline*1.4f;}
             y+=(k.TaglineLines-lines.Count)*k.Tagline*1.4f+(compact?4:8);
-            // the facts: the hub, the party and the length
-            float fx=r.x,fh=compact?22:26;
-            foreach(var (icon,text) in new[]{("house",x.Hub.ToUpperInvariant()),("users",x.Party),("hourglass",x.Duration)})
-            {float w=U.Measure(text,9.5f,true,true,.14f).x+34;if(fx+w>r.xMax)break;var f=new Rect(fx,y,w,fh);H.Cut(f,C.Indigo(.75f*a),5,H.Corners.All);H.Outline(f,C.Edge(.9f*a),5,H.Corners.All);
-             NativeIcons.Draw(new Rect(f.x+9,f.center.y-6.5f,13,13),icon,C.CyanSoft(.9f*a));U.Text(new Rect(f.x+27,f.y,w-28,fh),text,9.5f,C.Ink(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);fx+=w+6;}
-            // the route, pinned to the foot: the hub (when there is room), the three areas and the final boss
-            int rows=x.Areas.Length+(compact?0:1);float rh=k.RouteRow,ry=r.yMax-rows*rh;
-            if(!compact)
+            {float fx=r.x,fh=compact?22:26;if(ExpFact(ref fx,y,r.xMax,fh,"target",x.Area,a)&&ExpFact(ref fx,y,r.xMax,fh,"layers",x.Phases+" PHASES",a))ExpFact(ref fx,y,r.xMax,fh,"swords",x.Moves.Length+" MOVES",a);}
+            // its moves, pinned to the foot
+            int ml=compact?1:2;float lh=compact?15:18,my=r.yMax-ml*lh;
+            float hy=my-(compact?16:20);U.Text(new Rect(r.x,hy,200,14),"SIGNATURE MOVES",9.5f,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);float hw=U.Measure("SIGNATURE MOVES",9.5f,true,true,.26f).x;U.Fill(new Rect(r.x+hw+12,hy+7,Mathf.Max(0,r.width-hw-12),H.Px),U.A(acc,.3f*a));
+            float ms=compact?11:12;var moves=U.Wrap(ExpMovesOf(x),ms,r.width,true,ml);for(int i=0;i<moves.Count;i++)U.Text(new Rect(r.x,my+i*lh,r.width,lh),moves[i],ms,U.A(U.Mix(C.Ink(.9f),acc,.15f),a),TextAnchor.MiddleLeft,bold:true);
+        }
+        // The rail: every boss as a tile, the pick lit in its accent with brackets and its bar; hover lifts a tile, a click picks it.
+        private void ExpBossRail(Rect rail,bool edit,float a,float now,bool compact)
+        {
+            int n=K.BossCount;bool live=ExpLive(a)&&edit;
+            for(int i=0;i<n;i++)
             {
-                float hy=ry-18;U.Text(new Rect(r.x,hy,120,14),"ROUTE",9.5f,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);
-                string live2=x.Locked?"UNCHARTED":x.LiveAreas+" / "+x.Areas.Length+" LIVE";float lw=U.Measure(live2,9,true,true,.16f).x;U.Text(new Rect(r.xMax-lw-2,hy,lw+4,14),live2,9,x.Locked?C.Muted(.8f*a):C.Good(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
-                U.Fill(new Rect(r.x+56,hy+7,Mathf.Max(0,r.xMax-lw-14-r.x-56),H.Px),C.Edge(.6f*a));
+                var x=K.BossAt(i);var t=ExpRect(X.RailTile(ExpBox(rail),i,n));float te=a*In(expAge,.14f+i*.035f,.3f);if(te<=.01f)continue;bool on=i==expBoss;
+                float h=U.HoverAmount(9600+i,t,live&&!on);t.y-=3*h+6*(1-te/Mathf.Max(.01f,a));Color acc=U.Hex(x.Accent),tone=ExpFightTone(x.Fight);
+                if(on)U.Glow(t,U.A(acc,.22f*te),12);
+                H.Cut(t,U.A(on?U.Mix(C.Navy(.95f),acc,.18f):U.Mix(C.Indigo(.78f),U.Hex(0x18244e,.9f),h),te),8);H.Scan(t,U.A(acc,.03f*te),8);
+                H.Outline(t,U.A(on?acc:U.Mix(C.Edge(),acc,.2f+.5f*h),te*(on?1:.85f)),8);
+                if(on){U.Fill(new Rect(t.x+10,t.yMax-H.Snap(2)-2,t.width-20,H.Snap(2)),U.A(acc,te));H.Brackets(new Rect(t.x-3,t.y-3,t.width+6,t.height+6),U.A(U.Mix(acc,Color.white,.3f),.85f*te),8);}
+                float tx=t.x+10;bool art=t.width>=124;
+                if(art){float es=Mathf.Round(Mathf.Min(t.height-14,compact?26:36));var er=new Rect(t.x+8,t.center.y-es/2,es,es);ExpEmblem(er,x,U.A(on?acc:U.Mix(acc,C.Muted(),.35f+.35f*(1-h)),te));tx=er.xMax+8;}
+                float ns=compact?10:11.5f,room=t.xMax-8-tx;
+                U.Text(new Rect(tx,t.center.y-(compact?14:17),room,ns*1.3f),Fit(x.Name,ns,room,true,.04f),ns,U.A(U.Mix(C.Ink(on?1:.85f),Color.white,h),te),TextAnchor.MiddleLeft,bold:true,tracking:.04f);
+                var dot=new Rect(tx,t.center.y+(compact?5:7),5,5);U.Disc(dot,U.A(tone,te));
+                U.Text(new Rect(tx+9,t.center.y+(compact?1:2),room-9,14),K.FightShort(x.Fight),compact?7.5f:8.5f,U.A(tone,.9f*te),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);
+                if(!compact)U.Text(new Rect(t.xMax-26,t.y+4,20,12),(i+1).ToString(),8.5f,C.Muted(.7f*te),TextAnchor.MiddleRight,bold:true,mono:true);
+                if(live&&!on&&U.Button(t))ExpPickBoss(i,i>expBoss?1:-1);
             }
-            // the spine through the nodes
-            float nx=r.x+8;U.Fill(new Rect(nx-H.Px/2,ry+rh/2,H.Px,(rows-1)*rh),U.A(acc,.35f*a));
-            int row=0;if(!compact){ExpRouteRow(new Rect(r.x,ry,r.width,rh),-2,"HUB",x.Hub.ToUpperInvariant(),x.Locked?"Signal lost":"The sanctuary and the area doors",x.Locked?K.AreaState.Uncharted:K.AreaState.Live,false,acc,a,now,live&&!x.Locked,x.HubMap!=null);row++;}
-            for(int i=0;i<x.Areas.Length;i++){var ar=x.Areas[i];ExpRouteRow(new Rect(r.x,ry+row*rh,r.width,rh),i,ar.Boss?"FINAL":(i+1).ToString("00"),ar.Name,ar.Place,ar.State,ar.Boss,acc,a,now,live&&!x.Locked,ar.Map!=null||ar.State==K.AreaState.InDevelopment);row++;}
-        }
-        // A route row: its node on the spine, the number, the name and place, and the state at the right. Hover (or a click)
-        // lights the row's node on the sample plan in the key art.
-        private void ExpRouteRow(Rect r,int area,string num,string name,string place,K.AreaState state,bool boss,Color acc,float a,float now,bool live,bool preview)
-        {
-            bool on=area==expArea&&area!=-1;float h=U.HoverAmount(9482+area,r,live&&preview);if(live&&preview&&U.Hover(r)&&Event.current.type==EventType.Repaint)expArea=area;
-            if(h>0||on){U.HGradient(new Rect(r.x,r.y+1,r.width*.7f,r.height-2),C.Cyan(.10f*Mathf.Max(h,on?.6f:0)*a),Color.clear);}
-            float cy=r.center.y,nx=r.x+8;bool calm=prefs.reducedEffects;
-            if(boss){Skull(new Rect(nx-8,cy-8,16,16),a*(state==K.AreaState.Live?1:.75f),0);}
-            else if(state==K.AreaState.Live){float p=calm?0:Mathf.Repeat(now*.8f+area*.3f,1);var d=new Rect(nx-4,cy-4,8,8);if(p>0)U.RadialStops(new Rect(nx-4-8*p,cy-4-8*p,8+16*p,8+16*p),C.Good(.45f*(1-p)*a),RingStopsAt,RingStopsA);U.Glow(d,C.Good(.5f*a),5);U.Disc(d,C.Good(a));}
-            else if(state==K.AreaState.InDevelopment){var d=new Rect(nx-5,cy-5,10,10);U.Disc(d,C.Void(a));U.RadialStops(d,U.A(acc,.8f*a),RingStopsAt2,RingStopsA2);}
-            else ExpLock(new Rect(nx-6,cy-6,12,12),C.Muted(.8f*a));
-            bool small=r.height<22;float tx=r.x+24,size=small?11.5f:13;U.Text(new Rect(tx,r.y,44,r.height),num,9.5f,U.A(boss?U.Mix(acc,Color.white,.3f):C.CyanSoft(),.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);tx+=small?40:44;
-            string chip=small?K.ShortLabel(state):K.StateLabel(state);float cw=U.Measure(chip,8.5f,true,true,.16f).x+(state==K.AreaState.Live?24:16);var c=new Rect(r.xMax-cw,cy-9,cw,18);
-            Color tone=state==K.AreaState.Live?C.Good():state==K.AreaState.InDevelopment?C.Warn():C.Muted();H.Tag(c,tone,a*(state==K.AreaState.Live?1:.8f),false);
-            if(state==K.AreaState.Live){U.Disc(new Rect(c.x+8,cy-2.5f,5,5),C.Good(a));}U.Text(new Rect(c.x+(state==K.AreaState.Live?16:8),c.y,cw-10,18),chip,8.5f,U.A(tone,a*(state==K.AreaState.Live?1:.85f)),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
-            float room=c.x-10-tx,nw=Mathf.Min(U.Measure(name,size,true,false,.06f).x,room);U.Text(new Rect(tx,r.y,nw+2,r.height),Fit(name,size,room,true,.06f),size,U.A(U.Mix(C.Ink(state==K.AreaState.Uncharted?.6f:.95f),Color.white,h),a),TextAnchor.MiddleLeft,bold:true,tracking:.06f);
-            float px=tx+nw+10,pr=c.x-10-px;if(!string.IsNullOrEmpty(place)&&U.Measure(place,size-1.5f).x<=pr)U.Text(new Rect(px,r.y,pr,r.height),place,size-1.5f,C.Muted(.85f*a),TextAnchor.MiddleLeft);
-            if(live&&preview&&U.SilentButton(r)){expArea=area;}
-        }
-        private static readonly float[] RingStopsAt={0f,.7f,.85f,1f},RingStopsA={0f,0f,1f,0f},RingStopsAt2={0f,.62f,.72f,.9f,1f},RingStopsA2={0f,0f,1f,1f,0f};
-
-        // ---- WAVE DEFENSE: its one arena -----------------------------------------------------------------------------------
-        // Not an expedition: one map that never changes, so its scan is the truth, and what it asks of you is the waves. No carousel.
-        private void ExpWaveBrowser(X.Layout L,X.Seat seat,float a,float now)
-        {
-            var b=X.Single(L.Browser,L.Compact);var lr=ExpRect(b.Label);float lh=lr.height-8;var x=K.At(K.Default);
-            U.Text(new Rect(lr.x,lr.y,300,lh),"THE ARENA",11,C.CyanSoft(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);float lx=lr.x+U.Measure("THE ARENA",11,true,true,.26f).x+12;
-            const string fix="ALWAYS THIS MAP";float fw=U.Measure(fix,9.5f,true,true,.16f).x+26;var t=new Rect(lr.xMax-fw,lr.y-2,fw,lh+4);H.Tag(t,C.Good(),a);U.Text(new Rect(t.x+12,t.y,fw-14,t.height),fix,9.5f,U.A(C.Good(),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
-            U.Fill(new Rect(lx,lr.y+lh/2,Mathf.Max(0,t.x-12-lx),H.Px),C.Edge(.7f*a));
-            var r=ExpRect(b.Card);Color acc=U.Hex(x.Accent);var k=X.CardParts(new X.Box(r.x,r.y,r.width,r.height),L.Compact);
-            U.Glow(new Rect(r.x,r.y+26,r.width,r.height),new Color(0,0,0,.5f*a),50);H.Panel(r,a,acc,16,H.Corners.Diagonal,true,.93f);U.RadialStops(new Rect(r.xMax-r.width*.55f,r.y,r.width*.55f,r.height*.9f),U.A(acc,.07f*a),ExpPoolAt,ExpPoolA);
-            ExpWaveArt(ExpRect(k.Art),x,a,now,L.Compact);ExpWaveInfo(ExpRect(k.Info),x,k,a,now,L.Compact);
-        }
-        private void ExpWaveArt(Rect r,K.Expedition x,float a,float now,bool compact)
-        {
-            Color acc=U.Hex(x.Accent);bool calm=prefs.reducedEffects;H.Cut(r,C.Night(.92f*a),10,H.Corners.TL);U.RadialStops(r,U.A(U.Mix(acc,U.Hex(0x3a2166),.5f),.42f*a),ExpPoolAt,ExpPoolA);
-            var map=ExpMapOf(X.WaveMap);var scan=map!=null?NativeStageSchematic.For(map):null;float top=compact?24:30,bottom=compact?22:28;var plan=new Rect(r.x+12,r.y+top,r.width-24,r.height-top-bottom);
-            var inner=ExpFaceBand(plan,scan!=null?scan.Aspect:1,x,a,now,calm,compact);if(scan!=null)ExpScan(inner,scan,acc,a,now,calm);
-            string head=(map?.name??"Ward Zero").ToUpperInvariant();U.Fill(new Rect(r.x+12,r.y+12,H.Snap(5),H.Snap(5)),U.A(acc,a));U.Text(new Rect(r.x+22,r.y+6,r.width-40,16),Fit(head,10,r.width-40,true,.2f),10,U.A(U.Mix(acc,Color.white,.55f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
-            if(scan!=null)U.Text(new Rect(r.x+12,r.yMax-bottom+4,r.width-24,16),"STAGE SCAN · "+scan.Label,9.5f,C.Muted(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);
-            H.Outline(r,U.A(acc,.32f*a),10,H.Corners.TL);H.Brackets(r,U.A(acc,.6f*a),12,H.Corners.TL);
-        }
-        // The arena's name and line, then the fight in order: the three waves (their size and who is in them) and the Siren. The start
-        // chosen in the mode panel lights its row, and what it skips is dimmed.
-        private void ExpWaveInfo(Rect r,K.Expedition x,X.Card k,float a,float now,bool compact)
-        {
-            Color acc=U.Hex(x.Accent);float y=r.y;var map=ExpMapOf(X.WaveMap);var o=RulesNow();int start=X.StartOf(o?.skipWaves??prefs.skipWaves);
-            U.Text(new Rect(r.x,y-2,r.width,18),"WAVE DEFENSE",11,U.A(U.Mix(acc,Color.white,.4f),a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);y+=compact?14:18;
-            U.Text(new Rect(r.x-1,y,r.width+2,k.Title*1.2f),(map?.name??"Ward Zero").ToUpperInvariant(),k.Title,C.Ink(a),TextAnchor.MiddleLeft,bold:true,tracking:.05f,glow:U.A(acc,.45f*a),shadow:C.Void(.6f*a));y+=k.Title*1.2f;
-            var lines=U.Wrap(K.WaveTagline,k.Tagline,r.width,false,k.TaglineLines);foreach(var line in lines){U.Text(new Rect(r.x,y,r.width,k.Tagline*1.4f),line,k.Tagline,C.Muted(.95f*a),TextAnchor.MiddleLeft);y+=k.Tagline*1.4f;}
-            y+=(k.TaglineLines-lines.Count)*k.Tagline*1.4f+(compact?4:8);{float fx=r.x,fh=compact?22:26;foreach(var (icon,text) in new[]{("users",K.WaveParty),("bot",K.WaveBots),("waves2",K.WaveStartsLine)}){float w=U.Measure(text,9.5f,true,true,.14f).x+34;if(fx+w>r.xMax)break;var f=new Rect(fx,y,w,fh);H.Cut(f,C.Indigo(.75f*a),5,H.Corners.All);H.Outline(f,C.Edge(.9f*a),5,H.Corners.All);
-                if(icon=="waves2")Constellation(new Rect(f.x+9,f.center.y-6.5f,13,13),"waves",C.CyanSoft(.9f),a);else NativeIcons.Draw(new Rect(f.x+9,f.center.y-6.5f,13,13),icon,C.CyanSoft(.9f*a));U.Text(new Rect(f.x+27,f.y,w-28,fh),text,9.5f,C.Ink(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);fx+=w+6;}y+=fh;}
-            int rows=X.WaveStarts;float rh=compact?k.RouteRow:Mathf.Max(k.RouteRow,Mathf.Min(38,(r.yMax-y-26)/rows)),ry=r.yMax-rows*rh;
-            if(!compact){float hy=ry-18;U.Text(new Rect(r.x,hy,120,14),"THE FIGHT",9.5f,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);U.Fill(new Rect(r.x+84,hy+7,Mathf.Max(0,r.width-84),H.Px),C.Edge(.6f*a));}
-            float nx=r.x+8;U.Fill(new Rect(nx-H.Px/2,ry+rh/2,H.Px,(rows-1)*rh),U.A(acc,.35f*a));
-            var counts=ExpWaveCounts();var who=expWaveLines;
-            for(int i=0;i<rows;i++)
-            {
-                bool siren=i==X.Siren,on=i==start,skipped=i<start;string num=siren?"BOSS":(i+1).ToString("00"),name=siren?K.At(K.Default).Areas[3].Name:X.WaveLabels[i];
-                string place=siren?"And her four chips":counts!=null&&i<counts.Length?counts[i]+" hostiles"+(who!=null&&i<who.Length&&who[i].Length>0?" · "+who[i]:""):"";
-                ExpFightRow(new Rect(r.x,ry+i*rh,r.width,rh),num,name,place,siren,on,skipped,acc,a,now);
-            }
-        }
-        private void ExpFightRow(Rect r,string num,string name,string place,bool boss,bool on,bool skipped,Color acc,float a,float now)
-        {
-            float cy=r.center.y,nx=r.x+8,ar=a*(skipped?.42f:1);bool calm=prefs.reducedEffects;if(on)U.HGradient(new Rect(r.x,r.y+1,r.width*.7f,r.height-2),C.Cyan(.09f*a),Color.clear);
-            if(boss)Skull(new Rect(nx-8,cy-8,16,16),ar,on?1:0);
-            else if(on){float p=calm?0:Mathf.Repeat(now*.8f,1);var d=new Rect(nx-4,cy-4,8,8);if(p>0)U.RadialStops(new Rect(nx-4-8*p,cy-4-8*p,8+16*p,8+16*p),C.Cyan(.45f*(1-p)*a),RingStopsAt,RingStopsA);U.Glow(d,C.Cyan(.5f*a),5);U.Disc(d,C.Cyan(a));}
-            else{var d=new Rect(nx-4,cy-4,8,8);U.Disc(d,C.Void(ar));U.RadialStops(d,U.A(acc,.8f*ar),RingStopsAt2,RingStopsA2);}
-            bool small=r.height<22;float tx=r.x+24,size=small?11.5f:13;U.Text(new Rect(tx,r.y,44,r.height),num,9.5f,U.A(boss?U.Mix(acc,Color.white,.3f):C.CyanSoft(),.9f*ar),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.1f);tx+=small?40:44;
-            string chip=skipped?"SKIPPED":on?"START HERE":null;float cw=chip!=null?U.Measure(chip,8.5f,true,true,.16f).x+16:0;if(chip!=null){var c=new Rect(r.xMax-cw,cy-9,cw,18);Color tone=on?C.Cyan():C.Muted();H.Tag(c,tone,a*(on?1:.7f),false);U.Text(new Rect(c.x+8,c.y,cw-10,18),chip,8.5f,U.A(tone,a*(on?1:.75f)),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.16f);}
-            float end=chip!=null?r.xMax-cw-10:r.xMax,room=end-tx,nw=Mathf.Min(U.Measure(name,size,true,false,.06f).x,room);U.Text(new Rect(tx,r.y,nw+2,r.height),Fit(name,size,room,true,.06f),size,U.A(C.Ink(.95f),ar),TextAnchor.MiddleLeft,bold:true,tracking:.06f);
-            float px=tx+nw+10,pr=end-px;if(!string.IsNullOrEmpty(place)&&pr>30)U.Text(new Rect(px,r.y,pr,r.height),Fit(place,size-1.5f,pr,false,0),size-1.5f,C.Muted(.85f*ar),TextAnchor.MiddleLeft);
         }
 
         // ---- MODE ----------------------------------------------------------------------------------------------------------
-        private void ExpModePanel(X.Layout L,X.Seat seat,K.Expedition pick,int start,X.Launch go,float a,float now)
+        private void ExpModePanel(X.Layout L,X.Seat seat,K.Boss boss,X.Launch go,float a,float now)
         {
             if(a<=.01f)return;var m=X.Panel(L.Mode,L.Compact);bool edit=X.Editable(seat),compact=L.Compact,live=ExpLive(a);var lr=ExpRect(m.Label);float lh=lr.height-8;
             U.Text(new Rect(lr.x,lr.y,200,lh),"MODE",11,C.CyanSoft(.9f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.26f);float lx=lr.x+U.Measure("MODE",11,true,true,.26f).x+12,rx=lr.xMax;
             if(edit){U.Text(new Rect(rx-60,lr.y,60,lh),"SWITCH",9.5f,C.Muted(.85f*a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);rx-=U.Measure("SWITCH",9.5f,true,true,.16f).x+8;float kw=H.KeyWidth("TAB",18);rx-=kw;H.Key(new Rect(rx,lr.y+(lh-18)/2,kw,18),"TAB",.9f*a);rx-=12;}
             U.Fill(new Rect(lx,lr.y+lh/2,Mathf.Max(0,rx-lx),H.Px),C.Edge(.7f*a));
-            string runChip=pick.Locked?K.ComingSoon:"1–4 PLAYERS";Color runTone=pick.Locked?C.Muted():C.Violet();
-            // (Wave Defense plays its own arena, whichever expedition the carousel stands on.)
-            const string waveChip="CO-OP · UP TO 4";Color waveTone=C.Good();
-            if(ExpModeTile(ExpRect(m.Expedition),0,"route",X.ExpeditionLabel,compact?X.ExpeditionLineShort:X.ExpeditionLine,runChip,runTone,expMode==X.Mode.Expedition,edit,a,now,compact))ExpSetMode(X.Mode.Expedition);
-            if(ExpModeTile(ExpRect(m.Waves),1,"waves",X.WavesLabel,compact?X.WavesLineShort:X.WavesLine,waveChip,waveTone,expMode==X.Mode.Waves,edit,a,now,compact))ExpSetMode(X.Mode.Waves);
-            var d=ExpRect(m.Detail);if(expMode==X.Mode.Waves)ExpWaveRow(d,pick,start,edit,a,now,compact);else ExpRunNotes(d,pick,go,a,compact);
+            if(ExpModeTile(ExpRect(m.Expedition),0,"route",X.ExpeditionLabel,compact?X.ExpeditionLineShort:X.ExpeditionLine,"1–4 PLAYERS",C.Violet(),expMode==X.Mode.Expedition,edit,a,now,compact))ExpSetMode(X.Mode.Expedition);
+            if(ExpModeTile(ExpRect(m.Boss),1,"boss",X.BossLabel,compact?X.BossLineShort:X.BossLine,"BOTS · UP TO 4",C.Good(),expMode==X.Mode.Boss,edit,a,now,compact))ExpSetMode(X.Mode.Boss);
+            var d=ExpRect(m.Detail);if(expMode==X.Mode.Boss)ExpFightNotes(d,boss,go,edit,a,compact);else ExpMachinePool(d,go,a,now,compact);
             ExpLoadoutRow(ExpRect(m.Loadout),seat,a,now,live,compact);
         }
         // A mode: its constellation glyph in a hexagon, the title and line, the availability chip at the top right, a radio at
@@ -590,7 +643,7 @@ namespace ChipArena.UnityConversion
         {
             bool live=ExpLive(a)&&edit;float h=U.HoverAmount(9500+index,r,live),s=on?1:0;
             if(on)U.Glow(r,C.Cyan(.14f*a),14);H.Cut(r,U.A(U.Mix(U.Mix(C.Indigo(.78f),U.Hex(0x18244e,.9f),h),U.Hex(0x0b3049,.92f),s),a),10);H.Scan(r,C.Cyan(.03f*a),10);
-            H.Outline(r,U.A(on?C.Cyan():U.Mix(C.Edge(),C.CyanSoft(),h*.7f),a),10);if(on){U.Fill(new Rect(r.x+1,r.y+10,H.Snap(3),r.height-20),C.Cyan(a));H.Brackets(new Rect(r.x-3,r.y-3,r.width+6,r.height+6),C.CyanSoft(.8f*a),10);}
+            H.Outline(r,U.A(on?C.Cyan():U.Mix(C.Edge(),C.CyanSoft(),h*.7f),a),10);if(on){U.Fill(new Rect(r.x+1,r.y+10,H.Snap(3),r.height-20),C.Cyan(a));H.Brackets(new Rect(r.x-3,r.y-3,r.width+6,r.height+6),C.CyanSoft(.8f*a),10);if(!prefs.reducedEffects)Sheen(r,.35f*a);}
             float hr=compact?14:19,cx=r.x+(compact?26:34),cy=r.center.y;var hex=new Rect(cx-hr*48/22f/2,cy-hr*48/22f/2,hr*48/22f,hr*48/22f);
             NativeIcons.DrawMarkup(hex,"hex-fill",HexFill,48,new Color(1,1,1,.9f*a));NativeIcons.DrawMarkup(hex,"hex-edge",HexEdge,48,U.A(on?C.Cyan():C.CyanSoft(.5f),a));
             Constellation(new Rect(cx-hr*.62f,cy-hr*.62f,hr*1.24f,hr*1.24f),glyph,on?C.Cyan():U.Mix(C.CyanSoft(.8f),C.Cyan(),h),a);
@@ -603,52 +656,47 @@ namespace ChipArena.UnityConversion
             var rr=new Rect(r.xMax-(compact?28:32),cy-8,16,16);U.RadialStops(rr,U.A(on?C.Cyan():C.Edge(),a),RingStopsAt2,RingStopsA2);if(on){var dot=new Rect(rr.x+4.5f,rr.y+4.5f,7,7);U.Glow(dot,C.Cyan(.5f*a),4);U.Disc(dot,C.Cyan(a));}
             return live&&U.Button(r);
         }
-        // START AT: Wave 1, Wave 2, Wave 3 and the Siren; the room carries only skipWaves, so waves 2 and 3 stay locked.
-        private void ExpWaveRow(Rect d,K.Expedition pick,int start,bool edit,float a,float now,bool compact)
+        // Under the run's tile: what the Instance Machine draws from, each destination with the boss at its end. The ones the
+        // sample spin just landed on light up; then why the run cannot start, when it cannot.
+        private void ExpMachinePool(Rect d,X.Launch go,float a,float now,bool compact)
         {
-            bool live=ExpLive(a)&&edit&&!pick.Locked&&pick.WaveDefense;float lh=compact?16:18;
-            U.Text(new Rect(d.x,d.y,200,lh),"START AT",9.5f,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
-            string keys=edit?"1 – 4":"SET BY THE HOST";U.Text(new Rect(d.x,d.y,d.width,lh),keys,9.5f,C.Muted(.8f*a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.16f);
-            var counts=ExpWaveCounts();float gap=8,th=compact?42:58,tw=(d.width-gap*3)/X.WaveStarts,ty=d.y+lh+(compact?4:6);
-            for(int i=0;i<X.WaveStarts;i++)
+            float lh=compact?16:20,head=compact?16:20;int n=D.DestinationCount;
+            U.Text(new Rect(d.x,d.y,d.width,head-4),"IN THE INSTANCE MACHINE",9.5f,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
+            U.Text(new Rect(d.x,d.y,d.width,head-4),n+" DESTINATIONS · 3 A RUN",8.5f,C.Muted(.8f*a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.14f);
+            bool note=!go.Enabled&&go.Kind!=X.LaunchKind.Ready&&!string.IsNullOrEmpty(go.Reason);float room=d.height-head-(note?lh+4:0);
+            int perCol=Mathf.Max(1,Mathf.FloorToInt(room/lh)),cols=perCol>=n?1:2;perCol=Mathf.CeilToInt(n/(float)cols);float cw=(d.width-(cols-1)*14)/cols;
+            for(int i=0;i<n;i++)
             {
-                var t=new Rect(d.x+i*(tw+gap),ty,tw,th);bool ok=X.WaveSupported(i)&&!pick.Locked&&pick.WaveDefense,on=i==start&&ok,siren=i==X.Siren;float h=U.HoverAmount(9520+i,t,live&&ok);
-                if(on)U.Glow(t,siren?C.Violet(.25f*a):C.Cyan(.2f*a),10);
-                H.Cut(t,U.A(on?U.Hex(siren?0x2a1650:0x0b3049,.95f):U.Mix(C.Indigo(ok?.8f:.45f),U.Hex(0x18244e,.9f),h),a),7);
-                H.Outline(t,U.A(on?(siren?U.Mix(C.Violet(),Color.white,.3f):C.Cyan()):ok?U.Mix(C.Edge(),C.CyanSoft(),h*.7f):C.Edge(.55f),a),7);
-                if(on)H.Brackets(new Rect(t.x-2,t.y-2,t.width+4,t.height+4),siren?C.Violet(.9f*a):C.CyanSoft(.85f*a),7);
-                string label=X.WaveLabels[i];float ls=compact?12:14;Color ink=ok?U.Mix(C.Ink(on?1:.85f),Color.white,h):C.Muted(.6f);
-                if(siren&&!compact)Skull(new Rect(t.center.x-9,t.y+6,18,18),a*(ok?1:.5f),on?1:0);
-                U.Text(new Rect(t.x,siren&&!compact?t.y+22:t.y+(compact?5:10),t.width,ls*1.3f),label,ls,U.A(ink,a),TextAnchor.MiddleCenter,bold:true,tracking:.1f);
-                string sub=!ok?"LOCKED":siren?"BOSS":(counts!=null&&i<counts.Length?counts[i]+" HOSTILES":"WAVE");
-                if(!ok){float sw=U.Measure(sub,8.5f,true,true,.14f).x;ExpLock(new Rect(t.center.x-sw/2-14,t.yMax-(compact?15:18),10,10),C.Muted(.75f*a));U.Text(new Rect(t.center.x-sw/2,t.yMax-(compact?18:21),sw+4,14),sub,8.5f,C.Muted(.75f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f);}
-                else if(!(siren&&compact))U.Text(new Rect(t.x,t.yMax-(compact?18:21),t.width,14),sub,8.5f,U.A(siren?U.Mix(C.Violet(),Color.white,.4f):C.CyanSoft(),.85f*a),TextAnchor.MiddleCenter,bold:true,mono:true,tracking:.14f);
-                if(live&&ok&&U.Button(t)&&!on)ExpPickWave(i,edit);
-                else if(ExpLive(a)&&edit&&!ok&&U.Hover(t)&&Event.current.type==EventType.MouseDown){Event.current.Use();Notice(X.WaveLocked);}
+                int col=i/perCol,row=i%perCol;var r=new Rect(d.x+col*(cw+14),d.y+head+row*lh,cw,lh);if(r.yMax>d.yMax+1)break;
+                var dest=D.DestinationAt(i);Color c=U.Hex(dest.Color);bool lit=(expSpinLit&(1<<i))!=0;var boss=K.BossOf(dest.Id);
+                if(lit)U.HGradient(new Rect(r.x,r.y+1,r.width*.8f,r.height-2),U.A(c,.12f*a),Color.clear);
+                var dot=new Rect(r.x+3,r.center.y-3,6,6);if(lit)U.Glow(dot,U.A(c,.55f*a),5);U.Disc(dot,U.A(c,(lit?1:.65f)*a));
+                float ns=compact?10.5f:11.5f,nw=U.Measure(dest.Name,ns,true,false,.06f).x;U.Text(new Rect(r.x+16,r.y,nw+4,r.height),dest.Name,ns,U.A(U.Mix(C.Ink(lit?1:.85f),c,lit?.25f:0),a),TextAnchor.MiddleLeft,bold:true,tracking:.06f);
+                if(boss!=null){string b="→ "+boss.Name;float bx=r.x+16+nw+10,br=r.xMax-bx;if(br>40)U.Text(new Rect(bx,r.y,br,r.height),Fit(b,ns-1.5f,br,false,0),ns-1.5f,C.Muted(.85f*a),TextAnchor.MiddleRight);}
             }
-            float ny=ty+th+(compact?4:8);if(ny+16<=d.yMax)
+            if(note){float y=d.yMax-lh;ExpNote(ref y,d,"circle-alert",go.Reason,C.Warn(),a,lh);}
+        }
+        // Under Boss Battle's tile: what this fight is today and how to reach it.
+        private void ExpFightNotes(Rect d,K.Boss boss,X.Launch go,bool edit,float a,bool compact)
+        {
+            float lh=compact?16:19,head=compact?16:20,y=d.y+head;
+            U.Text(new Rect(d.x,d.y,d.width,head-4),"THE FIGHT",9.5f,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.24f);
+            U.Text(new Rect(d.x,d.y,d.width,head-4),edit?"1 – "+K.BossCount+" PICK":"SET BY THE HOST",8.5f,C.Muted(.8f*a),TextAnchor.MiddleRight,bold:true,mono:true,tracking:.14f);
+            if(boss==null)return;
+            switch(boss.Fight)
             {
-                string note=pick.Locked||!pick.WaveDefense?X.Placeholder:start==X.Siren?"Starts at the Siren: no waves, straight to the boss.":"Three waves of minions, then the Siren and her four chips.";
-                U.Text(new Rect(d.x,ny,d.width,16),Fit(note,11.5f,d.width,false,0),11.5f,C.Muted(.95f*a),TextAnchor.MiddleLeft);
-                if(ny+34<=d.yMax)U.Text(new Rect(d.x,ny+18,d.width,16),Fit(X.WaveLocked,11,d.width,false,0),11,C.Dim(a),TextAnchor.MiddleLeft);
+                case K.BossFight.Direct:
+                    ExpNote(ref y,d,"route-dot","Straight into her arena: no waves, no quota.",C.Ink(.9f),a,lh);
+                    ExpNote(ref y,d,"route-dot","Bots fill the empty seats; friends join with the room code.",C.Muted(),a,lh);
+                    if(!compact)ExpNote(ref y,d,"route-dot","Offline, Restart Match in the pause menu fights her again.",C.Muted(),a,lh);break;
+                case K.BossFight.InRun:
+                    ExpNote(ref y,d,"route-dot","Waits at the end of "+boss.Area+", once its kill quota is met.",C.Ink(.9f),a,lh);
+                    ExpNote(ref y,d,"route-dot","To meet it: Start Expedition and roll "+K.DestinationName(boss.Destination)+".",C.Muted(),a,lh);break;
+                default:
+                    ExpNote(ref y,d,"route-dot","Its model, moves, cutscene and song are built.",C.Ink(.9f),a,lh);
+                    ExpNote(ref y,d,"route-dot","DEV accounts can watch it: DEV panel · Camera · Final boss preview.",C.Muted(),a,lh);break;
             }
-        }
-        private int[] ExpWaveCounts()
-        {
-            if(expWaveCounts!=null)return expWaveCounts;expWaveCounts=Array.Empty<int>();
-            try{var t=Resources.Load<TextAsset>("PveContent");var pve=t!=null?JsonUtility.FromJson<NativePveContent>(t.text):null;if(pve?.waves!=null){var c=new int[pve.waves.Length];var w=new string[pve.waves.Length];for(int i=0;i<c.Length;i++){c[i]=pve.waves[i]?.count??0;w[i]=K.WaveMix(pve.waves[i]?.mix);}expWaveCounts=c;expWaveLines=w;}}
-            catch(Exception e){Debug.LogException(e);}
-            return expWaveCounts;
-        }
-        // The full run's notes: what M1 plays today, the controls, and why it cannot start here (the honest reason).
-        private void ExpRunNotes(Rect d,K.Expedition pick,X.Launch go,float a,bool compact)
-        {
-            float y=d.y;float lh=compact?16:19;
-            if(pick.Locked){ExpNote(ref y,d,"circle-help",X.Placeholder,C.Muted(),a,lh);return;}
-            ExpNote(ref y,d,"route-dot","Roll your city at the Deployment Station, then deploy.",C.Ink(.9f),a,lh);
-            if(!compact)ExpNote(ref y,d,"route-dot","Three areas from the hub, then the Siren at its checkpoint.",C.Ink(.9f),a,lh);
-            ExpNote(ref y,d,"route-dot","Stand in a circle to deploy · F at machines · J for the run board.",C.Muted(),a,lh);
-            if(!go.Enabled&&go.Kind!=X.LaunchKind.Ready&&!string.IsNullOrEmpty(go.Reason)&&y+lh<=d.yMax+1){y+=compact?2:6;ExpNote(ref y,d,"circle-alert",go.Reason,C.Warn(),a,lh);}
+            if(!go.Enabled&&go.Kind!=X.LaunchKind.Ready&&!string.IsNullOrEmpty(go.Reason)&&y+lh<=d.yMax+1){y+=compact?2:4;ExpNote(ref y,d,"circle-alert",boss.Fight==K.BossFight.Direct?go.Reason:boss.Fight==K.BossFight.InRun?"No direct start yet: that is the next step.":"Not fightable until its rules are bound.",C.Warn(),a,lh);}
         }
         private void ExpNote(ref float y,Rect d,string icon,string text,Color tone,float a,float lh)
         {
@@ -662,7 +710,7 @@ namespace ChipArena.UnityConversion
             H.Cut(r,U.A(U.Mix(C.Navy(.85f),U.Hex(0x131c40,.92f),h),a),8);H.Outline(r,U.A(U.Mix(C.Edge(),C.Cyan(),h*.8f),a),8);U.Fill(new Rect(r.x+1,r.y+8,H.Snap(2),r.height-16),U.A(tone,.8f*a));
             float ic=compact?24:30;NativeIcons.Draw(new Rect(r.x+14,r.center.y-ic/2,ic,ic),w!=null?NativeIcons.Spec(w.id):"shuffle",U.A(tone,a));float tx=r.x+14+ic+12;
             string wn=(w!=null?w.name:prefs.weapon).ToUpperInvariant()+(w!=null?"  ·  "+ClassName(w.@class).ToUpperInvariant():"");
-            var o=RulesNow();int bots=ExpBotsShown();string party=bots==0?"NO BOTS":bots+(bots==1?" BOT":" BOTS")+((o?.mirrorWeapons??prefs.mirrorWeapons)?" · MIRROR":" · OWN LOADOUTS");
+            var o=RulesNow();int bots=ExpBotsShown();string party=expMode==X.Mode.Expedition?"NO BOTS IN A RUN":bots==0?"NO BOTS":bots+(bots==1?" BOT":" BOTS")+((o?.mirrorWeapons??prefs.mirrorWeapons)?" · MIRROR":" · OWN LOADOUTS");
             var btn=new Rect(r.xMax-(compact?118:134),r.y+(r.height-(compact?28:32))/2,compact?108:124,compact?28:32);
             U.Text(new Rect(tx,compact?r.y+4:r.y+8,btn.x-tx-8,16),Fit("LOADOUT  ·  "+party,9,btn.x-tx-8,true,.2f),9,C.CyanSoft(.85f*a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.2f);
             U.Text(new Rect(tx,compact?r.y+18:r.y+24,btn.x-tx-8,20),Fit(wn,compact?12:13,btn.x-tx-8,true,.08f),compact?12:13,U.A(U.Mix(tone,Color.white,.5f),a),TextAnchor.MiddleLeft,bold:true,tracking:.08f);
@@ -742,11 +790,11 @@ namespace ChipArena.UnityConversion
             if(seat==X.Seat.Solo&&!string.IsNullOrEmpty(expeditionError)){lead="Expedition could not start.";rest=expeditionError;tone=C.Danger();}
             else if(!string.IsNullOrEmpty(networkStatus)&&NetworkError){lead=networkStatus;rest="";tone=C.Danger();}
             else if(mine!=null&&mine.spec!=prefs.weapon){lead="Send Loadout";rest="so the host gives you "+(LobbyWeapon(prefs.weapon)?.name??prefs.weapon)+".";tone=C.CyanSoft();}
-            else if(seat==X.Seat.Guest){lead=networkReady?"You are ready.":"Ready up";rest=networkReady?"Waiting for the host to start.":"when your loadout is set. The host picks the run.";tone=networkReady?C.Good():C.CyanSoft();}
+            else if(seat==X.Seat.Guest){lead=networkReady?"You are ready.":"Ready up";rest=networkReady?"Waiting for the host to start.":"when your loadout is set. The host picks the fight.";tone=networkReady?C.Good():C.CyanSoft();}
             else if(!go.Enabled&&!string.IsNullOrEmpty(go.Reason)){lead=go.Reason;rest="";tone=C.Warn();}
             else if(seat==X.Seat.Host&&waiting>0){lead="Waiting for "+waiting+" pilot"+(waiting==1?"":"s");rest="· start when every pilot is ready.";tone=C.CyanSoft();}
             else if(seat==X.Seat.Host){lead="Everyone is ready.";rest=n>1?"Launch when you are.":"Share the code, add a bot, or launch.";tone=C.Good();}
-            else{int bots=ExpBots(party);lead="Party of "+n;rest=bots>0?"· "+bots+(bots==1?" bot fills":" bots fill")+" the empty seats.":"· host a room to bring friends.";tone=C.CyanSoft();}
+            else{int bots=ExpBots(party);lead="Party of "+n;rest=bots>0?"· "+bots+(bots==1?" bot fills":" bots fill")+" the empty seats.":expMode==X.Mode.Expedition?"· host a room to bring friends.":"· add a bot or host a room.";tone=C.CyanSoft();}
             var lines=U.Wrap(lead+(rest.Length>0?" "+rest:""),12.5f,r.width,false,2);float lh=17,y=r.center.y-lines.Count*lh/2;
             for(int i=0;i<lines.Count;i++){string line=lines[i];bool first=i==0;if(first&&line.StartsWith(lead,StringComparison.Ordinal))
                 {float hw=U.Measure(lead,12.5f,true).x;U.Text(new Rect(r.x,y,hw+4,lh),lead,12.5f,U.A(tone,a),TextAnchor.MiddleLeft,bold:true);if(line.Length>lead.Length)U.Text(new Rect(r.x+hw+4,y,r.width-hw-4,lh),line.Substring(lead.Length).TrimStart(),12.5f,C.Muted(a),TextAnchor.MiddleLeft);}
@@ -774,7 +822,7 @@ namespace ChipArena.UnityConversion
         private void ExpDrawerBody(X.Seat seat,float width)
         {
             BeginRules(false,width);var o=rules;
-            if(expMode==X.Mode.Expedition)Fine("Expedition supports 1–4 signed-in players. Bots are available in Wave Defense.");
+            if(expMode==X.Mode.Expedition)Fine("Expedition supports 1–4 signed-in players. Bots are available in Boss Battle.");
             else if(o==null)Fine("The host sets the party bots. Ready up when your loadout is set.");
             else
             {
@@ -783,7 +831,7 @@ namespace ChipArena.UnityConversion
                 RuleCheck(7586,RoomOpt.Mirror,rulesLocked?"Party bots use the host's weapon":"Party bots use my weapon (otherwise mixed loadouts)",o.mirrorWeapons);
             }
             ClassRow("Your class",ClassCardStyle.Stacked);WeaponCards("Your weapon");
-            Fine(seat==X.Seat.Guest?"After a change, Send Loadout so the host gives you this weapon.":"Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
+            Fine(seat==X.Seat.Guest?"After a change, Send Loadout so the host gives you this weapon.":expMode==X.Mode.Boss?"Boss Battle drops the party straight into the fight. Intros play as normal.":"Intros play as normal. Earn money from minions to buy chips, heals, revives and recruits. F interacts · C opens your chips; chips you take wait there until you choose.");
         }
     }
 }

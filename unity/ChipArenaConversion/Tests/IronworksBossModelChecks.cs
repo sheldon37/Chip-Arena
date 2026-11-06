@@ -212,7 +212,7 @@ namespace ChipArena.UnityConversion
         // Presentation only: besides the model, THE CONVERTER's presentation (docs "Presentation build": the runtime model, rig,
         // moves, effects, cues, preview, stage hook, view, the HUD's zone boss names, the runtime presenter and its audio) names it;
         // no rule, authority, network or content file does.
-        private static readonly string[] Presentation={"NativeIronworksBossLook.cs","NativeIronworksBossMoves.cs","NativeIronworksBossRig.cs","NativeIronworksBossFx.cs","NativeIronworksBossCues.cs",
+        private static readonly string[] Presentation={"NativeExpeditionCatalogue.cs","NativeIronworksBossLook.cs","NativeIronworksBossMoves.cs","NativeIronworksBossRig.cs","NativeIronworksBossFx.cs","NativeIronworksBossCues.cs",
             "NativeIronworksBossPreview.cs","NativeIronworksBossStage.cs","NativeIronworksBossView.cs","NativeZoneBossNames.cs","NativeIronworksBossPresentation.cs","NativeIronworksBossAudio.cs","NativeIronworksBossLifetime.cs"};
         private static void Unreferenced(string root)
         {

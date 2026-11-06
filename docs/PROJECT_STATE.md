@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/expeditions-boss-battle`): the Expeditions screen shows one rolled run (a sample spin of the station's machines; no map, no expedition picker) and Boss Battle replaces Wave Defense: six bosses with emblems. The Siren fights now; the four zone bosses need Astra's direct start (docs/EXPEDITIONS-MENU.md). Not seen in Unity yet.
+
 2026-11-06 Claude (`claude/fallen-angel`): NOCTIEL, a final boss, built as a DEV preview (`preview-fallen-boss`, any map): model, black water that plays the song, cutscene, the Slash, chip screen, all moves and adds, the death. Not playable until Astra binds the rules (docs/EXPEDITION-BOSS-FINAL.md section 13). Needs the Drive zip's ChipArenaPackBossFallen bank.
 
 2026-11-05 Claude (`claude/sheldon-better`): Sheldon Idle holds rewritten per weapon and its twitching calmed; staffs and bows seated in the fist on third-person bodies. See DEV_LOG.
