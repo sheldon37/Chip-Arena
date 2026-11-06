@@ -103,6 +103,11 @@ def limits(value):
         raise ValueError('Request and duration limits must be positive finite numbers.')
 
 
+def exceeds_seconds(seconds, cap):
+    # Decimal durations can sum one binary ULP above the cap on another Python version.
+    return seconds > cap and not math.isclose(seconds, cap, rel_tol=0, abs_tol=1e-9)
+
+
 def plan(queue, repo):
     value = json.loads(queue.read_text(encoding='utf-8'))
     if value.get('schema') != 'chip-arena.sound-queue/1' or not isinstance(value.get('jobs'), list):
@@ -127,7 +132,7 @@ def plan(queue, repo):
         if not row.get('keys') or not row.get('variants'):
             raise ValueError('Queue jobs require explicit keys and variants.')
         jobs = gen.entries(manifest, keys=row['keys'], variants=row['variants'], optional=True)
-        if len(jobs) > row['maxRequests'] or sum(j['durationSeconds'] for j in jobs) > row['maxSeconds']:
+        if len(jobs) > row['maxRequests'] or exceeds_seconds(math.fsum(j['durationSeconds'] for j in jobs), row['maxSeconds']):
             raise ValueError('Job exceeds its approved request/duration cap.')
         result.append((row, path, manifest, digest, jobs))
     return result
@@ -183,7 +188,7 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                 pending = [j for j in jobs if j['file'] not in done]
                 pending_count += len(pending); pending_seconds += sum(j['durationSeconds'] for j in pending)
                 batches.append((row, path, digest, jobs, folder, identity, receipt))
-            if pending_count > config['maxRequests'] or pending_seconds > config['maxSeconds']:
+            if pending_count > config['maxRequests'] or exceeds_seconds(pending_seconds, config['maxSeconds']):
                 raise ValueError('Pending queue exceeds local request/duration limits; no requests sent.')
             if pending_count and not shutil.which('ffmpeg'):
                 raise ValueError('ffmpeg is required before any audio requests can be sent.')
