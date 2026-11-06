@@ -164,7 +164,7 @@ namespace ChipArena.UnityConversion
         public bool Choose(int seat,string id)
         {
             var p=Seat(seat);if(Phase!=NativePhase.Draft||p==null||!p.connected||DraftSeat!=seat||Chosen!=null||Time<ReadyAt||!p.offers.Contains(id))return false;
-            if(!NativeContentRules.Eligible(data,p.spec,p.chips).Any(c=>c.id==id))return false;
+            if(!NativeContentRules.Eligible(data,p.spec,p.chips,p.bot?"":p.weaponTechniques??"").Any(c=>c.id==id))return false;
             p.chips.TryGetValue(id,out int n);p.chips[id]=n+1;Chosen=id;chosenAt=Time;return true;
         }
     }

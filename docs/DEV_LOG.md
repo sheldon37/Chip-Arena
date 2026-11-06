@@ -1,3 +1,9 @@
+## 2026-11-05 — Astra: filter Expedition ability chips by the recipient's equipped slots
+
+- Branch `codex/ability-chip-eligibility`, base `c2205fdc`. Per-area Expedition sessions omitted both ChipFilter and AbilityLoadout, passing null into legacy eligibility and admitting all ab-* weapon chips. Bind every area session to implemented mechanics and the requesting pilot's current seat/loadout, with the party seat as transfer fallback.
+- Expedition missing resolver now means default Q/E, never unrestricted eligibility. Selection rechecks exact equipped abilities in Expedition, PvP and PvE. Cached Expedition offers retain their roll but filter chips that became ineligible; no replacement reroll. Existing inventories unchanged; no presentation edits.
+- Verification: 242 expansion checks including default/missing resolver, removed techniques, all weapon pools and distinct host/guest ability rewards; 91 Expedition integration assertions; 31 split-area checks (plus shared network/controller prechecks); four Unity assembly semantic compiles; package_source --check and whitespace passed. Windows gameplay and test publication await the builder; no live/Site release.
+
 ## 2026-11-05 — Claude: the shield entrance's rim off the helmet
 
 - Owner, shown the final frames: "Yes, fix it" (the entrance ended with the shield's rim across the helmet, edge on to the camera). Branch `claude/shield-entrance`, base `2074a0f3`. Implemented on the branch, merge and build status in the checks line below.

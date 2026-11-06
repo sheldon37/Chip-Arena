@@ -32,7 +32,29 @@ internal static class ExpansionFoundationChecks
         session.AbilityLoadout=_=>loadout;session.ChipFilter=c=>c.id=="ab-sacred-spring";
         string reward=run.Snapshot().rewards.First(r=>r.owner=="host").id;var first=session.Offers("host",reward);
         Check(first.SequenceEqual(new[]{"ab-sacred-spring"}),"Expedition filters mechanics and uses current slot");
-        loadout="";first[0]="mutated";Check(session.Offers("host",reward).SequenceEqual(new[]{"ab-sacred-spring"}),"opened offers stay fixed across slot swap and caller mutation");
+        first[0]="mutated";Check(session.Offers("host",reward).SequenceEqual(new[]{"ab-sacred-spring"}),"caller cannot mutate frozen offers");
+        Check(session.Eligible("host","ab-sacred-spring"),"equipped technique upgrade selectable");
+        loadout="";Check(!session.Eligible("host","ab-sacred-spring")&&session.Offers("host",reward).Length==0,"removed ability cannot remain offered or selectable; no reroll");
+        var unbound=new ExpeditionSession(run,data);unbound.ChipFilter=c=>NativeAbilityChips.Is(c.id);
+        Check(unbound.Offers("host",reward).All(c=>NativeAbilityChipRules.Slotted(data,"water","",c)),"area without resolver uses default abilities, never all weapons");
+        Check(!unbound.Eligible("host","ab-perfect-form")&&!unbound.Eligible("host","ab-sacred-spring"),"missing resolver cannot authorize foreign or unequipped techniques");
+        foreach(var weapon in data.weapons)
+        {
+            foreach(string slots in new[]{"",NativeTechniqueLoadout.With("", "sword", "q", "riposte")})
+            {
+                var eligible=NativeContentRules.Eligible(data,weapon.id,held,slots);
+                Check(eligible.Where(c=>NativeAbilityChips.Requires(c.id)!=null).All(c=>NativeAbilityChipRules.Slotted(data,weapon.id,slots,c.id)),"all weapons reject other weapons and unslotted abilities: "+weapon.id);
+            }
+        }
+        var party=NativeExpedition.Create("ability-party","city","host","water",43,new[]{new ExpeditionInstance{id="ward",target=1}});
+        party.Join("guest","sword");party.Enter("ward");party.Progress("quota",1);party.StartBosses(new[]{"boss"});party.DefeatBoss("boss");
+        var partySession=new ExpeditionSession(party,data){AbilityLoadout=who=>who=="host"?NativeTechniqueLoadout.With("","water","e","healing-spring"):NativeTechniqueLoadout.With("","sword","q","iaido"),ChipFilter=c=>c.id=="ab-sacred-spring"||c.id=="ab-moonlit-edge"};
+        foreach(var who in new[]{"host","guest"})
+        {
+            string expected=who=="host"?"ab-sacred-spring":"ab-moonlit-edge",other=who=="host"?"ab-moonlit-edge":"ab-sacred-spring";
+            var prize=party.Snapshot().rewards.First(r=>r.owner==who).id;
+            Check(partySession.Offers(who,prize).SequenceEqual(new[]{expected})&&partySession.Eligible(who,expected)&&!partySession.Eligible(who,other),"party rewards and selection use each pilot's own weapon and slots: "+who);
+        }
         foreach(string id in NativeThirdTechniqueContent.Ready)
         {
             var def=NativeTechniques.Find(id);var row=data.abilities.Single(a=>a.id==id);
