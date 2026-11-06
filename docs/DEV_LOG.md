@@ -1,3 +1,9 @@
+## 2026-11-05 — Astra: supply THE HUM authority rig ground
+
+- Branch `codex/hum-authority-ground-20261105`, base `9bf3cd5a`. Drive confirms the six approved sound samples generated/imported; build then failed at 01:09:56 UTC in `BossGait.Reset` line 120, called by `PoseBackroomBody` during native Backrooms boss validation.
+- Authority passed null to HumBossRig.Update, whose first pose dereferences the ground to plant its feet. Supply a cached BossFlatGround(0), matching the existing Hum presentation floor. No visual changes or null-tolerant fallback hiding a missing dependency; Deep End's separate route parameter is unchanged.
+- All four pinned-Unity assembly compiles and source packaging pass; whitespace clean. Existing native `ValidateBackroomsBossAuthority` exercises the failing first-pose path, but cannot execute without Unity here. Managed Hum checks and builder publication status recorded in the PR. No API calls, additional sound generation approval, live or Site release.
+
 ## 2026-11-05 — Claude: lobby poses, portrait weapons, guns back in their entrances
 
 - Owner: "review the intros and idles; the weapon placement and limbs still get funky (also fix sheldon Idle)", then "I meant initially to fix to lobby poses (like sitting in chair, crossing arms, Sheldon pose)" and "weapon poses in portraits as well". Branch `claude/intros-idles`, base `3fad0f72`. Implemented on the branch, merge and build status in the checks line below.
