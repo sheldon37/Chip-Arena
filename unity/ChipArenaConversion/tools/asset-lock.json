@@ -756,6 +756,12 @@
       "bytes": 4385302,
       "gitBlob": "07fc6caa0590f548935591b275f15a42c906a29c",
       "source": "Owner-supplied boss song committed on shared Unity branch"
+    },
+    {
+      "path": "Assets/ChipArena/Resources/Audio/music/lux-cecidit.mp3",
+      "bytes": 6289441,
+      "gitBlob": "28dff9de57e9f2aed016792b26d38783d9f6281e",
+      "source": "Owner-supplied NOCTIEL boss song committed on shared Unity branch (2026-11-06, docs/EXPEDITION-BOSS-FINAL.md section 6)"
     }
   ]
 }
