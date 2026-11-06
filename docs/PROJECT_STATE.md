@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/expedition-squad`): START EXPEDITION is now THE SQUAD (tall cards, live portraits about four times larger, empty pads for open seats) beside the run's briefing; nothing on the screen rolls or samples a run. Boss Battle offers bots for the Siren only, per Astra's direct zone-boss starts. NOCTIEL's song has its asset-lock receipt, so the package check passes again. Not seen in Unity yet.
+
 2026-11-06 Claude (`claude/expeditions-boss-battle`): the Expeditions screen shows one rolled run (a sample spin of the station's machines; no map, no expedition picker) and Boss Battle replaces Wave Defense: six bosses with emblems. The Siren fights now; the four zone bosses need Astra's direct start (docs/EXPEDITIONS-MENU.md). Not seen in Unity yet.
 
 2026-11-06 Claude (`claude/fallen-angel`): NOCTIEL, a final boss, built as a DEV preview (`preview-fallen-boss`, any map): model, black water that plays the song, cutscene, the Slash, chip screen, all moves and adds, the death. Not playable until Astra binds the rules (docs/EXPEDITION-BOSS-FINAL.md section 13). Needs the Drive zip's ChipArenaPackBossFallen bank.

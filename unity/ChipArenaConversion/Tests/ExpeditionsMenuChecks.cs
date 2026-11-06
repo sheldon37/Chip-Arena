@@ -13,16 +13,17 @@ namespace ChipArena.UnityConversion
     // The Expeditions screen (owner 2026-10-15, revised 2026-11-06: one all-in-one run rolled at the Deployment Station, and
     // Boss Battle in place of Wave Defense; Core NativeExpeditionCatalogue and NativeExpeditionsMenu, Runtime
     // NativeExpeditionsMenu): the run's entry still feeds the station; the roster reads every boss from its own table and says
-    // honestly what can start; the launch gates; the sample spin; every action still reachable through the same calls; the
-    // layout fits from 1280x720 at a 1.5 interface scale to 3440x1440 and 4K; a guest is read-only; a backward-compatible boss pick.
+    // honestly what can start and who may fill seats; the launch gates; START EXPEDITION's squad lineup (nothing rolled or
+    // sampled before the station); every action still reachable through the same calls; the layout fits from 1280x720 at a
+    // 1.5 interface scale to 3440x1440 and 4K; a guest is read-only; a backward-compatible boss pick.
     internal static class ExpeditionsMenuChecks
     {
         private static int count;
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Expeditions menu: "+what);count++;}
         public static void Run(string root)
         {
-            count=0;Catalogue(root);Roster();Emblems();Gates();Spin();Fit();Sources(root);
-            Console.WriteLine("PASS Expeditions menu: "+count+" checks (the run's entry, boss roster and emblems, launch gates, sample spin, fit 720p@1.5-3440x1440-4K, old actions reachable, guest read-only, replicated boss pick)");
+            count=0;Catalogue(root);Roster();Emblems();Gates();Fit();Sources(root);
+            Console.WriteLine("PASS Expeditions menu: "+count+" checks (the run's entry, boss roster, bots and emblems, launch gates, the squad lineup, fit 720p@1.5-3440x1440-4K, old actions reachable, nothing rolled before the station, guest read-only, replicated boss pick)");
         }
 
         private static void Catalogue(string root)
@@ -46,7 +47,6 @@ namespace ChipArena.UnityConversion
             Check(x.Areas.Take(3).Select(a=>a.LayoutArea).SequenceEqual(new[]{"exp-ward-zero","exp-transit","exp-foundry"}),"the station's authored pool: Ward Zero, Central Station, City Ironworks");
             Check(!string.IsNullOrWhiteSpace(x.Title)&&x.Title==x.Title.ToUpperInvariant()&&!string.IsNullOrWhiteSpace(x.Kicker)&&x.Tagline.Length<=130&&!x.Title.Contains("SIREN"),"the run's title (caps, no expedition name) and a tag line that fits two lines");
             Check(K.Steps.Length==4&&K.Steps.Select(s=>s.Num).SequenceEqual(new[]{"01","02","03","04"})&&K.Steps.All(s=>s.Name==s.Name.ToUpperInvariant()&&s.Line.Length<=80&&s.Short.Length<=28),"four steps, numbered, in caps, with a line and a short line");
-            Check(K.Entrances.SequenceEqual(new[]{"EAST","WEST","SOUTH"})&&K.Entrances.Length==D.Reels,"the reels' entrance labels as the station's");
             Check(K.StateLabel(K.AreaState.Live)=="LIVE"&&K.StateLabel(K.AreaState.InDevelopment)=="IN DEVELOPMENT","state labels");
             // Every destination the Instance Machine draws from has its boss in the roster.
             Check(D.DestinationCount>=5,"the station's destinations ("+D.DestinationCount+")");
@@ -83,6 +83,8 @@ namespace ChipArena.UnityConversion
             Check(K.WrapBoss(-1)==b.Length-1&&K.WrapBoss(b.Length)==0&&ReferenceEquals(K.BossAt(-1),b[b.Length-1]),"the roster wraps both ways");
             Check(K.FightLabel(K.BossFight.Direct)=="FIGHT NOW"&&K.FightShort(K.BossFight.InRun)=="IN RUNS"&&K.FightLabel(K.BossFight.Preview)=="IN DEVELOPMENT","fight labels");
             Check(ReferenceEquals(K.BossOf("exp-ward-zero"),b[0])&&K.BossOf("nowhere")==null,"Ward Zero's boss is the Siren");
+            // Bots (Astra 2026-11-06): the Siren's match takes them; the zone bosses' direct starts are 1-4 pilots; nothing else starts.
+            Check(K.BotsAllowed(b[0])&&b.Skip(1).Take(4).All(x=>x.Fight==K.BossFight.Direct&&!K.BotsAllowed(x)&&NativeBossBattle.Zone(x.Id))&&!K.BotsAllowed(b[5])&&!K.BotsAllowed(null),"bots for the Siren only");
         }
 
         // Every emblem parses and draws a silhouette (white body, near-black cut-outs) inside its box.
@@ -109,10 +111,11 @@ namespace ChipArena.UnityConversion
             {
                 var a=R(X.Mode.Expedition,siren,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.ExpeditionM1&&a.Label==X.ExpeditionLabel,seat+": Start Expedition enters the Deployment Station");
                 Check(!R(X.Mode.Expedition,station,seat,busy:true).Enabled,seat+": not while a connection is open");
-                a=R(X.Mode.Boss,siren,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.BossFight&&a.Label=="FIGHT THE SIREN"&&a.Detail=="STRAIGHT TO THE BOSS · UP TO 4",seat+": the Siren's fight starts straight away");
+                a=R(X.Mode.Boss,siren,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.BossFight&&a.Label=="FIGHT THE SIREN"&&a.Detail=="STRAIGHT TO THE BOSS · BOTS FILL SEATS",seat+": the Siren's fight starts straight away, with bots");
                 Check(!R(X.Mode.Boss,siren,seat,busy:true).Enabled,seat+": the boss fight waits while a connection is open (StartMatch refuses then)");
                 foreach(var b in K.Bosses.Where(b=>b.Fight!=K.BossFight.Direct)){a=R(X.Mode.Boss,b,seat);Check(!a.Enabled&&a.Kind==X.LaunchKind.None&&a.Reason==K.FightReason(b)&&a.Label=="FIGHT "+b.Name,seat+": "+b.Name+" cannot start here and says why");}
-                Check(R(X.Mode.Boss,station,seat).Enabled&&R(X.Mode.Boss,noctiel,seat).Detail=="IN DEVELOPMENT",seat+": the details say where");
+                foreach(var z in K.Bosses.Skip(1).Take(4)){a=R(X.Mode.Boss,z,seat);Check(a.Enabled&&a.Kind==X.LaunchKind.BossFight&&a.Label=="FIGHT "+z.Name&&a.Detail=="STRAIGHT TO THE BOSS · 1–4 PILOTS",seat+": "+z.Name+" starts straight away, pilots only");}
+                Check(R(X.Mode.Boss,noctiel,seat).Detail=="IN DEVELOPMENT",seat+": the details say where");
             }
             Check(!R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Enabled&&R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Reason==X.GuestsWaiting&&R(X.Mode.Boss,siren,X.Seat.Host,ready:false).Kind==X.LaunchKind.BossFight,"the host's boss fight waits for every guest to ready up");
             Check(!R(X.Mode.Expedition,siren,X.Seat.Host,ready:false).Enabled&&R(X.Mode.Expedition,siren,X.Seat.Host,ready:false).Reason==X.GuestsWaiting,"the host's run waits for every guest");
@@ -123,22 +126,6 @@ namespace ChipArena.UnityConversion
             Check(!R(X.Mode.Boss,siren,X.Seat.Guest,busy:true).Enabled,"a guest without a connection cannot ready");
             Check(X.ModeOf(true)==X.Mode.Expedition&&X.ModeOf(false)==X.Mode.Boss,"a room's options show the run or Boss Battle");
             Check(!Enum.GetNames(typeof(X.Mode)).Any(n=>n.Contains("Wave"))&&!Enum.GetNames(typeof(X.LaunchKind)).Any(n=>n.Contains("Wave")),"no Wave Defense mode is left");
-        }
-
-        // The run card's sample spin: three distinct destinations and mutators, the same for the same spin, a new one each spin.
-        private static void Spin()
-        {
-            int nd=D.DestinationCount,nm=D.MutatorCount;var dest=new int[3];var mut=new int[3];var d2=new int[3];var m2=new int[3];var seen=new HashSet<string>();
-            for(long i=0;i<400;i++)
-            {
-                X.SpinPicks(i,nd,nm,dest,mut);X.SpinPicks(i,nd,nm,d2,m2);
-                Check(dest.SequenceEqual(d2)&&mut.SequenceEqual(m2),"spin "+i+": the same picks every time");
-                Check(dest.All(v=>v>=0&&v<nd)&&dest.Distinct().Count()==3&&mut.All(v=>v>=0&&v<nm)&&mut.Distinct().Count()==3,"spin "+i+": three distinct destinations and mutators");
-                seen.Add(string.Join(",",dest));
-            }
-            Check(seen.Count>=8,"spins vary ("+seen.Count+" destination sets in 400)");
-            Check(X.SpinAt(0)==0&&X.SpinAt(X.SpinPeriod*2.5)==2&&Math.Abs(X.SpinAge(X.SpinPeriod*2.5)-X.SpinPeriod*.5f)<1e-3f&&X.SpinAt(-5)==0,"the spin clock");
-            Check(D.RollDuration<X.MutatorsAt&&X.MutatorsAt+.9f+.7f+D.Settle+X.HoldTail<X.SpinPeriod,"the reels land, then the mutators, then a hold before the next pull");
         }
 
         private static void Fit()
@@ -161,19 +148,22 @@ namespace ChipArena.UnityConversion
                     if(i>0)Check(!L.Slot(i-1).Overlaps(s),n+": party slots do not overlap");
                     var pc=X.Party(s);Check(s.Contains(pc.Stage)&&s.Contains(pc.Info)&&!pc.Stage.Overlaps(pc.Info)&&pc.Info.W>=100&&pc.Stage.W>=64&&pc.Info.H>=4+19*1.3f+22+24+4,n+": a party card's portrait and details");
                 }
-                // The run's card: the machines at the left, how a run goes at the right.
-                var run=X.Run(L.Browser,cp);Check(L.Browser.Contains(run.Label)&&L.Browser.Contains(run.Card)&&!run.Card.Overlaps(run.Label)&&run.Card.W==L.Browser.W,n+": the run's card takes the whole browser");
-                var k=X.CardParts(run.Card,cp);Check(run.Card.Contains(k.Art)&&run.Card.Contains(k.Info)&&!k.Art.Overlaps(k.Info)&&k.Info.W>=280&&k.Art.W>=200,n+": the run's art and details ("+k.Art.W.ToString("0")+", "+k.Info.W.ToString("0")+")");
-                Check(X.RunInfoHeight(k,cp)<=k.Info.H+.01f,n+": how a run goes fits ("+X.RunInfoHeight(k,cp).ToString("0")+" of "+k.Info.H.ToString("0")+")");
-                var m=X.MachineParts(k.Art,cp);var parts=new[]{m.Head,m.Reels,m.Lever,m.MutHead,m.Muts,m.Foot};
-                foreach(var p in parts)Check(k.Art.Contains(p)&&p.W>0&&p.H>0,n+": a machine part inside the art");
-                for(int i=0;i<parts.Length;i++)for(int j=i+1;j<parts.Length;j++)Check(!parts[i].Overlaps(parts[j]),n+": machine parts "+i+" and "+j+" apart");
-                for(int i=0;i<3;i++)
+                // START EXPEDITION: the squad where the strip and the browser are, the side panel where the mode panel is.
+                Check(Math.Abs(L.Squad.X-L.Browser.X)<.01f&&Math.Abs(L.Squad.W-L.Browser.W)<.01f&&Math.Abs(L.Squad.Y-L.Party.Y)<.01f&&Math.Abs(L.Squad.Bottom-L.Browser.Bottom)<.01f,n+": the squad spans the strip and the browser");
+                Check(Math.Abs(L.Side.X-L.Mode.X)<.01f&&Math.Abs(L.Side.W-L.Mode.W)<.01f&&Math.Abs(L.Side.Y-L.Party.Y)<.01f&&Math.Abs(L.Side.Bottom-L.Mode.Bottom)<.01f,n+": the side panel runs the same height");
+                Check(canvas.Contains(L.Squad)&&canvas.Contains(L.Side)&&!L.Squad.Overlaps(L.Side)&&!L.Squad.Overlaps(L.Header)&&!L.Squad.Overlaps(L.Bar)&&!L.Side.Overlaps(L.Bar),n+": the squad and side panel inside the canvas, clear of the header and bar");
+                float strip=0;{var sp=X.Party(L.Slot(0));strip=sp.Stage.W*sp.Stage.H;}
+                for(int i=0;i<L.Slots;i++)
                 {
-                    var rw=X.ReelWindow(m,i);Check(m.Reels.Contains(rw)&&rw.H>=(cp?36:56)&&rw.W>=50,n+": reel "+i+"'s window ("+rw.W.ToString("0")+"x"+rw.H.ToString("0")+")");
-                    var mc=X.MutCard(m,i);Check(m.Muts.Contains(mc)&&mc.H>=(cp?22:34)&&mc.W>=50,n+": mutator card "+i+" ("+mc.W.ToString("0")+"x"+mc.H.ToString("0")+")");
-                    if(i>0)Check(!X.ReelWindow(m,i-1).Overlaps(rw)&&!X.MutCard(m,i-1).Overlaps(mc),n+": reels and cards side by side");
+                    var s=L.SquadSlot(i);var sq=X.SquadParts(s,cp);Check(L.Squad.Contains(s)&&s.W>=150&&s.H>=(cp?300:380),n+": squad card "+i+" ("+s.W.ToString("0")+"x"+s.H.ToString("0")+")");
+                    if(i>0)Check(!L.SquadSlot(i-1).Overlaps(s),n+": squad cards side by side");
+                    Check(s.Contains(sq.Stage)&&s.Contains(sq.Plate)&&!sq.Stage.Overlaps(sq.Plate)&&sq.Plate.H>=X.PlateStack(cp)-.01f&&sq.Plate.W>=120,n+": a squad card's portrait and plate (plate "+sq.Plate.H.ToString("0")+" for "+X.PlateStack(cp).ToString("0")+")");
+                    Check(sq.Stage.H>=(cp?210:270)&&sq.Stage.W*sq.Stage.H>=2*strip,n+": the portrait at least twice the strip's ("+(sq.Stage.W*sq.Stage.H/Math.Max(1,strip)).ToString("0.0")+"x)");
                 }
+                var sd=X.Panel(L.Side,cp);foreach(var b in new[]{sd.Label,sd.Expedition,sd.Boss,sd.Detail,sd.Loadout})Check(L.Side.Contains(b),n+": a side panel part inside it");
+                Check(!sd.Boss.Overlaps(sd.Detail)&&!sd.Detail.Overlaps(sd.Loadout),n+": the side panel's tiles, briefing and loadout apart");
+                var bf=X.BriefFor(sd.Detail,cp);Check(X.BriefHeight(bf)<=sd.Detail.H+.01f,n+": the run's briefing fits ("+X.BriefHeight(bf).ToString("0")+" of "+sd.Detail.H.ToString("0")+(bf.Tight?", tight":"")+")");
+                Check(cp||!bf.Tight||w<1700,n+": the full briefing on a full-size screen");
                 // Boss Battle: the card above the roster rail.
                 var ro=X.Roster(L.Browser,cp);foreach(var b in new[]{ro.Label,ro.Card,ro.Rail})Check(L.Browser.Contains(b),n+": a roster part inside the browser");
                 Check(!ro.Card.Overlaps(ro.Label)&&!ro.Card.Overlaps(ro.Rail)&&ro.Rail.H==X.RailHeight(cp),n+": the boss card above the rail");
@@ -182,9 +172,9 @@ namespace ChipArena.UnityConversion
                 Check(X.BossInfoHeight(bk,cp)<=bk.Info.H+.01f,n+": the boss's details and moves fit ("+X.BossInfoHeight(bk,cp).ToString("0")+" of "+bk.Info.H.ToString("0")+")");
                 var p2=X.Panel(L.Mode,cp);foreach(var b in new[]{p2.Label,p2.Expedition,p2.Boss,p2.Detail,p2.Loadout})Check(L.Mode.Contains(b),n+": a mode panel part inside it");
                 Check(!p2.Expedition.Overlaps(p2.Boss)&&!p2.Boss.Overlaps(p2.Detail)&&!p2.Detail.Overlaps(p2.Loadout)&&p2.Detail.H>=X.DetailMin(cp),n+": the mode tiles, the notes ("+p2.Detail.H.ToString("0")+" for "+X.DetailMin(cp)+") and the loadout");
-                // The design scale shrinks the canvas text at most to 80%; the smallest label (7.5 units, a mutator's polarity) keeps
-                // 6 physical px at the canvas floor and 7 at the owner's 720p 1.5 case.
-                float px=7.5f*L.Scale*c.Scale;Check(L.Scale>=.8f&&px>=6f&&(ui<1.5f||px>=7),n+": the smallest label is "+px.ToString("0.0")+" physical px (design scale "+L.Scale.ToString("0.00")+")");
+                // The design scale shrinks the canvas text at most to 80%; the smallest label (8.5 units) keeps 6.5 physical px at
+                // the canvas floor (1280x720 at 1.0, every menu at 0.8) and 8 at the owner's 720p 1.5 case.
+                float px=8.5f*L.Scale*c.Scale;Check(L.Scale>=.8f&&px>=6.5f&&(ui<1.5f||px>=8),n+": the smallest label is "+px.ToString("0.0")+" physical px (design scale "+L.Scale.ToString("0.00")+")");
             }
             Check(X.Measure(1600,900).Compact==false&&X.Measure(NativeUiMotion.Measure(1280,720,1.5f).Width,NativeUiMotion.Measure(1280,720,1.5f).Height).Compact,"the short design (720p at 1.5) is the compact one, 1080p is not");
         }
@@ -200,6 +190,13 @@ namespace ChipArena.UnityConversion
             Check(!exp.Contains("NativeStageSchematic")&&!exp.Contains("NativeRunPreview")&&!exp.Contains("ExpMapOf")&&!File.Exists(Path.Combine(root,"Assets/ChipArena/Core/NativeRunPreview.cs")),"a rolled run shows no map");
             Check(!exp.Contains("ExpTurnTo")&&!exp.Contains("ExpSpine")&&!exp.Contains("SELECT EXPEDITION"),"no expedition to select");
             Check(!exp.Contains("WAVE DEFENSE")&&!exp.Contains("ExpWave")&&!exp.Contains("WaveLabels"),"Wave Defense is removed");
+            // Nothing rolls or samples a run before the station (owner 2026-11-06: "we don't roll the machine until we start the expedition").
+            Check(!exp.Contains("SpinPicks")&&!exp.Contains("ExpReel")&&!exp.Contains(".Reel(")&&!exp.Contains("MutatorAt")&&!exp.Contains("ExpMachine")&&!exp.Contains("SAMPLE")&&!R("Core/NativeExpeditionsMenu.cs").Contains("SpinPicks"),"nothing on the screen rolls or samples a run");
+            Check(exp.Contains("if(expMode==X.Mode.Expedition){ExpSquad(L,party,seat,e,now);ExpSidePanel(")&&exp.Contains("else{ExpPartyStrip(L,party,seat,boss,e,now);ExpBrowser("),"START EXPEDITION is the squad and the side panel; Boss Battle the strip, roster and panel");
+            Check(exp.Contains("if(expMode!=X.Mode.Expedition)foreach(var b in LobbyBots(1))")&&exp.Contains("\"1–4 SIGNED-IN PILOTS · NO BOTS IN A RUN\""),"a run's squad shows no bots");
+            Check(exp.Contains("botsOk=K.BotsAllowed(boss)")&&exp.Contains("bool canAdd=edit&&botsOk&&")&&exp.Contains("if(botsOk&&ExpChipButton(")&&exp.Contains("case K.BossFight.Direct when K.BotsAllowed(boss):")&&exp.Contains("!K.BotsAllowed(boss)?\"NO BOTS · 1–4 PILOTS\""),"bots only where the boss takes them");
+            Check(exp.Contains("expBoss=seat!=X.Seat.Guest?NativeBossBattle.Index(bossBattlePick):"),"the screen opens on the room's boss");
+            Check(Regex.Matches(exp,@"LobbyPortrait\(").Count==2,"one portrait per member per layout (the strip's or the squad's), never both");
             // Every action of the old screen and the lobby, through the same calls.
             var calls=new Dictionary<string,string>
             {
@@ -244,7 +241,7 @@ namespace ChipArena.UnityConversion
             Check(Regex.Match(mt,"MenuTitles=\\{([^}]*)\\}").Groups[1].Value.Split(',')[5].Trim()=="\"EXPEDITIONS\""&&Regex.Match(mt,"MenuEyebrows=\\{([^}]*)\\}").Groups[1].Value.Split(',')[5].Trim()=="\"PVE\"","the transition titles EXPEDITIONS / PVE");
             Check(mt.Contains("if(dest==MenuScreen.Boss||dest==MenuScreen.Lobby&&prefs.pve){eyebrow=MenuEyebrows[(int)MenuScreen.Boss];title=MenuTitles[(int)MenuScreen.Boss];}"),"a PvE room's transition reads EXPEDITIONS too");
             // Reduced effects: every motion of the screen has a calm branch.
-            foreach(var calm in new[]{"if(!prefs.reducedEffects){float y=Mathf.Repeat(now*34","long index=calm?0:X.SpinAt(now);float t=calm?99:X.SpinAge(now);","if(calm){x=0;s=1;}","if(lit&&!prefs.reducedEffects)Sheen(d,a);","float spin=calm?0:now*7f;","float k=prefs.reducedEffects?1:Mathf.Clamp01((now-expModeAt)/ExpModeTurn)","expTint=prefs.reducedEffects?ExpTintTarget:","float pop=calm||fresh<0?1:","float p=prefs.reducedEffects?0:Mathf.Repeat(now*.8f,1);"})
+            foreach(var calm in new[]{"if(!prefs.reducedEffects){float y=Mathf.Repeat(now*34","if(calm){x=0;s=1;}","if(lit&&!prefs.reducedEffects)Sheen(d,a);","float spin=calm?0:now*7f;","private float ExpSwitch(float delay)=>prefs.reducedEffects?1:","if(prefs.reducedEffects||e<=.01f)return;float k=Mathf.Clamp01((now-expModeAt)/ExpModeTurn)","expTint=prefs.reducedEffects?ExpTintTarget:","float pop=calm||fresh<0?1:","float p=prefs.reducedEffects?0:Mathf.Repeat(now*.8f,1);","float br=calm?.5f:.5f+.5f*Mathf.Sin(now*1.3f+index*1.1f)","if(!calm)for(int i=0;i<6;i++)","float pulse=calm?.5f:","int lit=-1;\n            if(!prefs.reducedEffects)"})
                 Check(exp.Contains(calm),"Reduced effects: "+calm);
             // Keyboard and controller.
             foreach(var key in new[]{"KeyCode.Q","KeyCode.E","KeyCode.A","KeyCode.D","KeyCode.LeftArrow","KeyCode.RightArrow","KeyCode.Tab","KeyCode.L","KeyCode.Return","KeyCode.Alpha1","KeyCode.Keypad1","KeyCode.JoystickButton0","KeyCode.JoystickButton1","KeyCode.JoystickButton3","KeyCode.JoystickButton4","KeyCode.JoystickButton5"})Check(exp.Contains(key),"navigable: "+key);
