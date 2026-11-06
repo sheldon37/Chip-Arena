@@ -99,7 +99,7 @@ namespace ChipArena.UnityConversion
             FallenFeetPlant(f,now,hover);
             // The fist on the planted sword, on the carried one, or passing from one to the other. Drawn out of the water it goes
             // straight to the carry: never back through the clip's own open hand, whose blade swept through the body.
-            FallenGrip(f,origin);
+            FallenGrip(f,origin,origin.y+f.Air+hover);
             // The head on the pilot it's after, a little behind them.
             if(f.Track>0&&f.LookAtEye<=0)
             {
@@ -125,19 +125,33 @@ namespace ChipArena.UnityConversion
         // The fist closes where the sword should be: upright point-down in the water (planted), or held low and forward as it stands.
         private void FallenPlantGoal(FallenBossFrame f,Vector3 origin,out Vector3 grip,out Quaternion world,out Vector3 pole)
         {var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);grip=origin+FallenPlantPoint(f,f.SwordLift);world=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward);pole=yawRot*new Vector3(.9f,-.5f,-.6f);}
-        private void FallenCarryGoal(FallenBossFrame f,out Vector3 grip,out Quaternion world,out Vector3 pole)
+        // The carry, as the owner's reference walk has it (2026-11-06): the claymore hangs from the right hand at its side, the arm
+        // nearly straight and a touch forward, the blade trailing out and back with its broad side to the front and its point just
+        // off the water. The wrist hangs from the clip's own shoulder, so the hand rides the walk's sway and bob; the blade's pitch
+        // is solved each frame from the grip's height, so the point stays over the water whatever the stride does.
+        private const float FbDragTip=.1f;private static readonly Vector3 FbDragWay=new Vector3(.85f,0,-.53f).normalized;
+        private void FallenCarryGoal(FallenBossFrame f,float floor,out Vector3 grip,out Quaternion world,out Vector3 pole)
         {
-            var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);var root=fbRoot.transform.position;float breath=.02f*Mathf.Sin(fbPoseClock*.8f);grip=root+yawRot*new Vector3(.86f,1.62f+breath,.42f);
-            var blade=yawRot*new Vector3(.52f,-.44f,.73f);world=Quaternion.LookRotation(blade.normalized,yawRot*new Vector3(.82f,.3f,-.42f));pole=yawRot*new Vector3(1f,-.4f,-.5f);
+            var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);float s=NativeFallenBoss.Scale,breath=.02f*Mathf.Sin(fbPoseClock*.8f);
+            var shoulder=fbUpperR.position;float reach=(fbLowerR.position-shoulder).magnitude+(fbHandR.position-fbLowerR.position).magnitude;
+            var wrist=shoulder+yawRot*new Vector3(.07f*s,0,.09f*s)+Vector3.down*(reach*.93f-breath);
+            var flat=FbFlatWay;var way=FbBladeWayCopy;Vector3.OrthoNormalize(ref way,ref flat);var inHand=Quaternion.LookRotation(way,flat);
+            float along=(FbBladeFrom+FbBladeLength)*s;var outward=yawRot*FbDragWay;var front=yawRot*Vector3.forward;grip=wrist;world=yawRot;
+            for(int i=0;i<2;i++)
+            {
+                float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);var blade=(outward*Mathf.Sqrt(1-drop*drop)+Vector3.down*drop).normalized;
+                world=Quaternion.LookRotation(blade,Vector3.ProjectOnPlane(front,blade));grip=wrist+world*Quaternion.Inverse(inHand)*(FbGrip*s);
+            }
+            pole=yawRot*new Vector3(.35f,-.1f,-1f);
         }
         // Planted (Plant), carried (Carry), or one handing over to the other: the planted share is Plant, and while both hold the
         // fist is wholly on the sword (their weights sum), so the pull from the water turns the blade straight to the carry.
-        private void FallenGrip(FallenBossFrame f,Vector3 origin)
+        private void FallenGrip(FallenBossFrame f,Vector3 origin,float floor)
         {
             float plant=Mathf.Clamp01(f.Plant),carry=Mathf.Clamp01(f.Carry);if(plant<=0&&carry<=0)return;
             if(carry<=0){FallenPlantGoal(f,origin,out var g,out var r,out var o);FallenSwordTo(g,r,plant,o);return;}
-            if(plant<=0){FallenCarryGoal(f,out var g,out var r,out var o);FallenSwordTo(g,r,carry,o);return;}
-            FallenPlantGoal(f,origin,out var pg,out var pr,out var po);FallenCarryGoal(f,out var cg,out var cr,out var co);
+            if(plant<=0){FallenCarryGoal(f,floor,out var g,out var r,out var o);FallenSwordTo(g,r,carry,o);return;}
+            FallenPlantGoal(f,origin,out var pg,out var pr,out var po);FallenCarryGoal(f,floor,out var cg,out var cr,out var co);
             FallenSwordTo(Vector3.Lerp(cg,pg,plant),Quaternion.Slerp(cr,pr,plant),Mathf.Clamp01(plant+carry),Vector3.Lerp(co,po,plant));
         }
         // ---- the blade clears the body ----

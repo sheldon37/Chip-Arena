@@ -164,7 +164,7 @@ namespace ChipArena.UnityConversion
         }
         // ---- what the posed body does to the water: each footfall a ring, the sword's point a wake, and the sword's trail ----
         private struct FbStep{public float X,Z,At,Strength;}
-        private readonly FbStep[] fbSteps=new FbStep[16];private int fbStepAt;private bool fbFootDownL,fbFootDownR;private float fbWakeLast;
+        private readonly FbStep[] fbSteps=new FbStep[16];private int fbStepAt;private bool fbFootDownL,fbFootDownR;private float fbWakeLast;private Vector3 fbWakeAt;
         private void FbStepsClear(){Array.Clear(fbSteps,0,fbSteps.Length);fbStepAt=0;}
         private void FbStepAdd(Vector3 at,Vector3 origin,float now,float strength){fbSteps[fbStepAt]=new FbStep{X=at.x-origin.x,Z=at.z-origin.z,At=now,Strength=strength};fbStepAt=(fbStepAt+1)%fbSteps.Length;}
         private void FbStepsInto(NativeFallenBossFx fx,float now){for(int i=0;i<fbSteps.Length;i++){var s=fbSteps[i];if(s.Strength>0&&now-s.At<2.6f)fx.Step(s.X,s.Z,now-s.At,s.Strength);}}
@@ -172,7 +172,10 @@ namespace ChipArena.UnityConversion
         {
             float s=NativeFallenBoss.Scale,floor=origin.y;bool downL=fbFootL.position.y-.11f*s<floor+.06f,downR=fbFootR.position.y-.11f*s<floor+.06f;
             if(downL&&!fbFootDownL)FbStepAdd(fbFootL.position,origin,now,.75f);if(downR&&!fbFootDownR)FbStepAdd(fbFootR.position,origin,now,.75f);fbFootDownL=downL;fbFootDownR=downR;
-            var tip=FallenHandPoint(FbTipLocal);if(tip.y<floor+.25f&&now-fbWakeLast>.07f&&f.Plant<.5f){FbStepAdd(tip,origin,now,.9f);fbWakeLast=now;}
+            // The point in the water lays a wake: a ring each 0.6 m it travels (a drag at a walk, a swing through the water), none while
+            // it rests; a fast swing's rings are the brighter.
+            var tip=FallenHandPoint(FbTipLocal);float moved=(tip-fbWakeAt).magnitude;
+            if(tip.y<floor+.25f&&f.Plant<.5f&&now-fbWakeLast>.07f&&moved>=.6f){float fast=moved/Mathf.Max(.016f,now-fbWakeLast);FbStepAdd(tip,origin,now,fast>4?.9f:.5f);fbWakeLast=now;fbWakeAt=tip;}
         }
         private const int FbTrailLength=26;private const float FbTrailLife=.34f;
         private readonly Vector3[] fbTrailTip=new Vector3[FbTrailLength],fbTrailHilt=new Vector3[FbTrailLength];private readonly float[] fbTrailAt=new float[FbTrailLength];private int fbTrailHead,fbTrailCount;
