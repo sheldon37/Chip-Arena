@@ -5,6 +5,12 @@
 - Animation impact: this entrance's closing hold only. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
 - **Checks for this entry:** in the receipt line appended after the build.
 
+## 2026-11-06 — Boss audio import and stable collision clock
+
+Fixed the Hum head-break rejection by retaining at most 60 ms of existing quiet tail for short boss impacts; no synthetic padding, second event, receipt change, or regeneration. The actual five ZIPs imported all 121/121 clips with zero rejections and passed the asset install check. Added bounded-tail rejection coverage.
+
+Fixed the no-song Backrooms arrival fallback and made Deep End authoritative collision sampling use the same fixed arrival as rules. The old moving timestamp reproduced the native south-wall deadline failure by resetting the rig each frame. Added sequential corner/wall/door/spawn coverage with collision sampling. Validation: 38 Python audio tests; 2,519 Backrooms assertions plus 13,148 Poolrooms checks; all four Unity assemblies compiled against Unity references; package_source --check passed. Native Editor build/publication remains to be verified by the test updater. Existing generated receipts are reused; no new paid generation requested.
+
 ## 2026-11-05 — Astra: finish approved originals before importing batches
 
 - Owner asked to try the remaining sounds. Latest sound status reports import rejection after the 75-clip v1 ZIP was shared. Existing sample and v1 receipts must remain intact; remaining v2/v3/v4 total 40 clips.

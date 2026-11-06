@@ -40,6 +40,28 @@ public static class BackroomsBossRuleChecks
             z=NativeBackroomsBossRules.Create(id,10001,40,40,0);z.action=null;rig.Clear();p.Feet=new Vector3(200,0,200);NativeBackroomsBossRules.Step(z,1000,1000,1,1f/60,new[]{p},output,rig);Check(output.Any(h=>h.Return),"outside returned");
             if(!hum){z.phase=2;z.backrooms.tideY=.5f;z.backrooms.tideAt=1;z.backrooms.tideUntil=4.5f;Check(Math.Abs(NativeBackroomsBossRules.Tide(z,4.5f)-.5f)<.001f,"tide finishes");}
         }
+        // Match the native fixture: retain one boss/rig across successive locations,
+        // and sample collision pose after every rule tick with no song clock.
+        foreach(string id in new[]{NativeHumBoss.Archetype,NativeDeepEndBoss.Archetype})
+        {
+            bool hum=id==NativeHumBoss.Archetype;float now=300,half=hum?NativeHumArena.Size/2:20;
+            var z=NativeBackroomsBossRules.Create(id,10001,40,40,now);var b=z.backrooms;var rig=new DeepEndBossRig();z.action=null;
+            float arrival=NativeZoneBossViews.BackroomsArrival(z);
+            var spots=new[]{new Vector3(-half+1,0,-half+1),new Vector3(half-1,0,-half+1),new Vector3(-half+1,0,half-1),new Vector3(half-1,0,half-1),new Vector3(0,0,-half+1),new Vector3(half-1,0,0),new Vector3(0,0,half-1),new Vector3(-half+1,0,0),new Vector3(0,0,-14)};
+            foreach(var spot in spots)
+            {
+                var p=new BackroomsBossPilot{Seat=1,Feet=new Vector3(40,0,40)+spot};float began=now;
+                b.next=now;b.meters=Array.Empty<NativeBossMeter>();b.hits=Array.Empty<int>();z.action=null;z.cancelAt=-100;bool hit=false;
+                for(int tick=1;tick<=510&&!hit;tick++)
+                {
+                    now=began+tick/60f;NativeBackroomsBossRules.Step(z,6000,6000,now,1f/60,new[]{p},output,rig);
+                    if(!hum){var view=NativeZoneBossViews.DeepEnd(z,b.x,rig.Root.Y,b.z,b.yaw,6000,6000,NativeZoneBossViews.BackroomsArrival(z));rig.Update(now,1f/60,view,null,new Vector3(b.cx,0,b.cz),NativeBackroomsBossRules.Tide(z,now),false,Vector3.Zero);}
+                    hit=output.Any(h=>h.Seat==p.Seat&&h.Damage>0);
+                }
+                Check(NativeZoneBossViews.BackroomsArrival(z)==arrival,"arrival remains fixed across collision samples");
+                Check(hit,id+" sequential native collision-pose deadline "+spot);
+            }
+        }
         PoolroomsRulesChecks.Run();
         Console.WriteLine("PASS Backrooms boss production rules: "+n+" assertions");
     }

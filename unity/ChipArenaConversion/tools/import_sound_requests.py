@@ -317,6 +317,15 @@ def edit(pcm, request, category, trim_db, fade):
         end = start + int(hi * RATE)
         notes.append(f'cut to {hi} s')
         trimmed = True
+    # A short boss impact can lose the final few milliseconds solely to silence
+    # trimming. Retain at most 60 ms of its existing quiet tail, never synthesize
+    # padding or include a second event, to meet the requested container length.
+    minimum_end = start + math.ceil(lo * RATE)
+    if (category == 'boss' and end < minimum_end <= len(pcm)
+            and minimum_end - end <= int(.06 * RATE)
+            and all(abs(v) < thr for v in pcm[end:minimum_end])):
+        end = minimum_end
+        notes.append('retained original quiet tail to minimum duration (at most 60 ms)')
     out = array('f', pcm[start:end])
     n = len(out)
     if n / RATE < lo:

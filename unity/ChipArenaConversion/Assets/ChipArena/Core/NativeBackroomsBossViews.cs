@@ -4,6 +4,7 @@ namespace ChipArena.UnityConversion
 {
  public static partial class NativeZoneBossViews
  {
+ public static float BackroomsArrival(NativeZoneBossFrame f)=>f.backrooms.started-NativeZoneBossRules.IntroSeconds;
  public static HumBossView Hum(NativeZoneBossFrame f,float x,float y,float z,float yaw,float hp,float maxHp,float spawned,int localSeat=-1)
  {
  if(f?.archetype!=NativeHumBoss.Archetype||f.backrooms==null)return HumBossView.None;
