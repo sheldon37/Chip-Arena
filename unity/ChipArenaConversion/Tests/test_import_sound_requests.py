@@ -67,6 +67,23 @@ REQUESTS = {
 
 
 class SoundRequestImport(unittest.TestCase):
+    def test_boss_transient_retains_only_a_bounded_original_quiet_tail(self):
+        request = {'targetSeconds': {'min': .4, 'max': .8}}
+        pcm = array('f', [.2] * int(.32 * RATE) + [0] * int(.3 * RATE))
+        out, notes, _ = importer.edit(pcm, request, 'boss', -50, .02)
+        self.assertEqual(len(out), math.ceil(.4 * RATE))
+        self.assertTrue(any('retained original quiet tail' in n for n in notes))
+        for bad in (array('f', [.2] * int(.2 * RATE) + [0] * RATE),
+                    array('f', [.2] * int(.32 * RATE)), array('f', [0] * RATE)):
+            with self.assertRaises(ValueError):
+                importer.edit(bad, request, 'boss', -50, .02)
+        # Do not bridge to a distinct second event inside the proposed extension.
+        second = array('f', [.2] * int(.32 * RATE) + [0] * int(.05 * RATE) + [.2] * RATE)
+        # Force a first-event boundary for this narrowly scoped trimming fixture.
+        from unittest.mock import patch
+        with patch.dict(importer.EVENT_GAP, {'boss': .04}):
+            with self.assertRaises(ValueError):
+                importer.edit(second, request, 'boss', -50, .02)
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix='sound-import-test-'))
         self.manifest = self.tmp / 'sound-requests.json'
