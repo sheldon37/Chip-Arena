@@ -52,6 +52,27 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(self.run_queue(), self.base)
         q.write(self.root / 'config.json', dict(enabled=False)); self.save_queue()
         self.assertEqual(self.run_queue(), self.base); self.assertFalse(self.calls)
+    def test_import_rejection_does_not_block_later_originals_or_regenerate(self):
+        later = dict(self.job, id='sample-two', variants=[2])
+        q.write(self.queue, dict(schema='chip-arena.sound-queue/1', jobs=[self.job, later]))
+        original = self.command
+        def reject(args):
+            original(args)
+            args = list(map(str, args))
+            if '--out' in args:
+                # Both jobs must already be receipted and shared before importing.
+                self.assertEqual(len(self.calls), 2)
+                self.assertTrue((self.root / 'sample-two.zip').is_file())
+                q.write(Path(args[args.index('--report') + 1]),
+                        dict(problems=[], keys={'selected': dict(accepted=0)},
+                             files=[dict(file='pve.zombie.moan_01.mp3', status='rejected', reason='test rejection')]))
+        with patch.object(q, 'command', side_effect=reject):
+            for _ in range(2):
+                with self.assertRaisesRegex(ValueError, 'Importer rejected'):
+                    self.run_queue()
+                self.assertEqual(len(self.calls), 2)
+        report = json.loads((self.root / 'sample-one.import.json').read_text())
+        self.assertEqual(report['files'][0]['reason'], 'test rejection')
     def test_windows_line_endings_preserve_approval_and_cached_originals(self):
         first = self.run_queue()
         self.manifest.write_bytes(self.manifest.read_bytes().replace(b'\n', b'\r\n'))
