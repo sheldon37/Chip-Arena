@@ -30,7 +30,7 @@ def check_bundle(repo=gen.REPO, bundle=BUNDLE):
     for name in ('sound-queue.json', 'sound-requests.json', 'sound-requests-bosses.json'):
         canonical = repo / 'docs/audio' / name
         packaged = bundle / 'docs/audio' / name
-        if canonical.is_file() and canonical.read_bytes() != packaged.read_bytes():
+        if canonical.is_file() and canonical.read_bytes().replace(b'\r\n', b'\n') != packaged.read_bytes().replace(b'\r\n', b'\n'):
             raise ValueError('Refresh tools/sound_bundle/docs/audio/' + name + ' from docs/audio before packaging.')
 
 
@@ -121,7 +121,9 @@ def plan(queue, repo):
             raise ValueError('Manifest must be under docs/audio.')
         manifest, digest = gen.load_manifest(path)
         if digest != row['manifestSha256']:
-            raise ValueError('Manifest changed after approval; create a newly reviewed job.')
+            raise ValueError('Manifest changed after approval; create a newly reviewed job. '
+                             + 'Path: ' + str(path) + '; expected SHA256: ' + str(row['manifestSha256'])
+                             + '; actual LF-normalized SHA256: ' + digest)
         if not row.get('keys') or not row.get('variants'):
             raise ValueError('Queue jobs require explicit keys and variants.')
         jobs = gen.entries(manifest, keys=row['keys'], variants=row['variants'], optional=True)
@@ -208,7 +210,7 @@ def process(source, root=None, queue=QUEUE, repo=gen.REPO):
                     print('Sound sample ZIP mirror unavailable; originals retained locally.', flush=True)
                 # Base hash avoids dropping newer licensed assets or another job's imported sounds.
                 stage = 'fingerprint import inputs'
-                fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + sha(path) +
+                fingerprint = hashlib.sha256((sha(current) + sha(folder / 'receipt.json') + digest +
                     sha(Path(__file__).with_name('import_sound_requests.py'))).encode()).hexdigest()
                 output = root / ('assets-' + fingerprint + '.zip')
                 proof = output.with_suffix('.receipt.json')

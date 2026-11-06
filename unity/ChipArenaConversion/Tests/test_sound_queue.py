@@ -52,6 +52,32 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(self.run_queue(), self.base)
         q.write(self.root / 'config.json', dict(enabled=False)); self.save_queue()
         self.assertEqual(self.run_queue(), self.base); self.assertFalse(self.calls)
+    def test_windows_line_endings_preserve_approval_and_cached_originals(self):
+        first = self.run_queue()
+        self.manifest.write_bytes(self.manifest.read_bytes().replace(b'\n', b'\r\n'))
+        self.assertEqual(q.gen.load_manifest(self.manifest)[1], self.job['manifestSha256'])
+        self.assertEqual(self.run_queue(), first)
+        self.assertEqual(len(self.calls), 1)
+
+    def test_crlf_bundled_boss_sample_and_importer_use_same_hash(self):
+        import hashlib
+        import import_sound_requests as importer
+        bundle = self.root / 'bundle'
+        shutil.copytree(q.BUNDLE, bundle)
+        for path in bundle.rglob('*.json'):
+            path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
+        plans = q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
+        self.assertEqual(len(plans), 1)
+        row, path, manifest, digest, jobs = plans[0]
+        self.assertEqual(len(jobs), 6)
+        self.assertEqual(sum(j['durationSeconds'] for j in jobs), 11)
+        self.assertEqual(hashlib.sha256(importer.load_manifest(path)[0]).hexdigest(), digest)
+        # A real content change remains blocked even with Windows line endings.
+        path.write_bytes(path.read_bytes().replace(b'fluorescent', b'altered fluorescent', 1))
+        with self.assertRaisesRegex(ValueError, 'Manifest changed'):
+            q.plan(bundle / 'docs/audio/sound-queue.json', bundle)
+        self.assertFalse(self.calls)
+
     def test_manifest_mutation_blocks(self):
         self.manifest.write_text(self.manifest.read_text() + '\n')
         with self.assertRaises(ValueError): self.run_queue()

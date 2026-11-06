@@ -56,7 +56,8 @@ def outside_repo(path):
 
 
 def load_manifest(path):
-    raw = path.read_bytes()
+    # Git on Windows may expand LF to CRLF. Preserve every other byte.
+    raw = path.read_bytes().replace(b'\r\n', b'\n')
     m = json.loads(raw.decode('utf-8-sig'))
     if m.get('schema') != 'chip-arena.sound-requests/1':
         raise ValueError('Unsupported manifest schema.')
