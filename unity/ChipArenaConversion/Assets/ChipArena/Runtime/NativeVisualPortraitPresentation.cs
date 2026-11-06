@@ -26,6 +26,8 @@ namespace ChipArena.UnityConversion
             public int Key=int.MinValue,W,H,Frame=-10,Body=-1,Accent=-1;public float Seen=-10,Aspect=1,Top,Yaw;public PortraitLook Look;public string Outfit="",Skins,BodyHex,AccentHex;
             public readonly MeleeRig Rig=new MeleeRig();public readonly CapturedRig.Pose Pose=new CapturedRig.Pose();public readonly Actor Actor=new Actor();
             public CapturedAnimation.Player Player;public VisualBody Model;public RenderTexture Texture;public bool Ready;
+            // The lobby pose's held weapons this frame, whether the model drew them itself, and the game's model's frames where not.
+            public LobbyHeld Weapon,Offhand;public bool OwnWeapon;public Func<int,Matrix4x4> HeldBone;public Func<int,bool> HeldShown;
         }
         private readonly ModelPortraitSlot[] modelPortraits=new ModelPortraitSlot[ModelPortraitSlots];
         private Transform modelPortraitHolder;private Camera modelPortraitView;private Material modelPortraitResolve;private float modelPortraitClock;private bool modelPortraitFailed;
@@ -109,7 +111,7 @@ namespace ChipArena.UnityConversion
             int pose=NativeLobbyPoses.Effective(spec,look.Pose),id=ModelPortraitIdTop-index;float time=ModelPortraitReduced?0:modelPortraitClock;var view=modelPortraitView;
             // The pose, as the voxel portrait samples it.
             if(NativeLobbyPoses.UsesIdle(spec,pose)){s.Pose.Reset();if(NativeSourceMotion.Sample(spec+"-idle",time,0,s.Pose))s.Rig.ReadPose(s.Pose);else s.Rig.Reset();}
-            NativeLobbyPoses.Sample(s.Rig,spec,pose,time,hat,ModelPortraitReduced,s.Key,out var weapon,out _,out _);s.Rig.WritePose(s.Pose);s.Pose.World();
+            NativeLobbyPoses.Sample(s.Rig,spec,pose,time,hat,ModelPortraitReduced,s.Key,out var weapon,out var offhand,out _);NativeLobbyPoses.FitModel(s.Rig,spec,pose,time);s.Rig.WritePose(s.Pose);s.Pose.World();s.Weapon=weapon;s.Offhand=offhand;
             // Its stage far from the arena and the other slots; the turntable turns the pilot about the podium's axis.
             var origin=new Vector3(3000+index*60,-500,0);var spin=Quaternion.Euler(0,s.Yaw,0);
             s.Player??=captured.Create(modelPortraitHolder,id);
@@ -139,9 +141,12 @@ namespace ChipArena.UnityConversion
                     int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
                     if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=s.Player.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++)s.Player.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand].position+=shift;}
                 }
-                var right=s.Player.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
-                // The held weapon where the lobby pose holds it (on the hand, now on the model's wrist), else none.
-                if(weapon.Visible)VisualWeaponDrawn(s.Player,s.Player.Bones[weapon.Bone].localToWorldMatrix*Matrix4x4.TRS(CapturedAnimation.Vec(CapturedRig.Mirror(weapon.Position)),CapturedAnimation.Quat(CapturedRig.Mirror(weapon.Rotation)),Vector3.one));
+                if(pose==NativeLobbyPoses.Sleep)ModelPortraitLaidDown(body,s.Player);
+                VisualHandFit(body,s.Player,held);
+                // The held weapons where the lobby pose holds them (on the hands, now on the model's wrists): the model's own (the
+                // daggers' second blade on the off hand); what it has none of (the shield, the staffs, the bow, the fighters' gloves) draws
+                // the game's below, in the pilot's skin as in a match.
+                s.OwnWeapon=weapon.Visible&&VisualWeaponDrawn(s.Player,s.Player.Bones[weapon.Bone].localToWorldMatrix*RooftopCast.Offset(weapon),offhand.Visible&&spec=="daggers"?s.Player.Bones[offhand.Bone].localToWorldMatrix*RooftopCast.Offset(offhand):(Matrix4x4?)null);
                 if(body.Shown!=null&&body.ShownFrame!=Time.frameCount){if(body.Shown.Model!=null)body.Shown.Model.SetActive(false);body.Shown=null;}
                 // The scene: the podium, the chair when seated, the hat, the gear (core, device, face gear, emblem).
                 sourceModels.Begin();gearLayer=PortraitLayer;gearCamera=view;
@@ -159,6 +164,14 @@ namespace ChipArena.UnityConversion
                 }
                 else if(hat==NativeSheldonHead.Hat)SheldonHoodStill(body,hat,look.HatColor,s.Player.Root.transform.localToWorldMatrix,VisualHatBone(s.Player,hat),time,id,ModelPortraitReduced,PortraitLayer,view);
                 VisualGear(body,a,time,null,null,1,false);
+                string heldModel=!s.OwnWeapon&&(weapon.Visible||offhand.Visible)?NativeWeaponSkins.Model(NativeWeaponSkins.PrototypeHeld(spec),WeaponSkin(a)):null;
+                if(heldModel!=null&&!sourceModels.Has(heldModel))heldModel=NativeWeaponSkins.PrototypeHeld(spec);
+                if(heldModel!=null&&sourceModels.Has(heldModel))
+                {
+                    s.HeldBone??=b=>{var m=s.Player.Bones[b].localToWorldMatrix;return s.Weapon.Visible&&b==s.Weapon.Bone?m*RooftopCast.Offset(s.Weapon):s.Offhand.Visible&&b==s.Offhand.Bone?m*RooftopCast.Offset(s.Offhand):m;};
+                    s.HeldShown??=b=>s.Weapon.Visible&&b==s.Weapon.Bone||s.Offhand.Visible&&b==s.Offhand.Bone;
+                    sourceModels.Queue(heldModel,s.Player.Root.transform.localToWorldMatrix,s.HeldBone,s.HeldShown,PortraitLayer,view,accent:AccentTint(a.AccentColor),glow:HeldGlow);
+                }
                 sourceModels.Flush(UsesInstancing);
                 // The framing: the voxel portrait's, to the model's crown (its hair, and a hat over it).
                 var head=VisualHeadOf(body);float crown=head!=null?head.position.y-origin.y+(hat!="none"?.38f:.26f):1.72f;
@@ -182,6 +195,23 @@ namespace ChipArena.UnityConversion
         // A stand-in actor's weapon as the arena's pilots carry theirs (NativeArena: the guns' ids, the blades' visual sets), so the
         // model's fists close on the right handles: the slot's actor had kept the sword's, and the daggers, greatsword, shield
         // and guns were held as a sword or not at all.
+        // The sleeper on the model (taller than the voxel body the pose was authored on: it hung in the air with its feet out of frame):
+        // lying on the podium's top, centred on it along the body, its hands (what the rig's weapon frames read) with it.
+        private const float SleepClear=.07f;
+        private static readonly int[] SleepJoints={CapturedRig.Head,CapturedRig.Pelvis,CapturedRig.Chest,CapturedRig.LKnee,CapturedRig.RKnee,CapturedRig.LFoot,CapturedRig.RFoot,CapturedRig.LHand,CapturedRig.RHand};
+        private static void ModelPortraitLaidDown(VisualBody body,CapturedAnimation.Player rig)
+        {
+            var at=rig.Root.transform;float low=float.MaxValue,min=float.MaxValue,max=float.MinValue;var of=body.Binding.Rig.Of;
+            foreach(int j in SleepJoints)
+            {
+                int v=j<of.Length?of[j]:-1;if(v<0||v>=body.Binding.Bones.Length||body.Binding.Bones[v]==null)continue;
+                var p=at.InverseTransformPoint(body.Binding.Bones[v].position);low=Mathf.Min(low,p.y);min=Mathf.Min(min,p.x);max=Mathf.Max(max,p.x);
+            }
+            if(low==float.MaxValue)return;
+            float top=NativePortraitRules.PodiumY+NativePortraitRules.PodiumHeight/2-NativePortraitRules.GroupY;
+            var shift=at.rotation*new Vector3(-(min+max)/2,top+SleepClear-low,0);body.Root.transform.position+=shift;
+            for(int side=0;side<2;side++)rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand].position+=shift;
+        }
         private static void VisualArmedAs(Actor a,string spec)
         {
             a.Weapon=spec=="pistol"?WeaponId.Pistol:spec=="rifle"?WeaponId.Rifle:spec=="machinegun"?WeaponId.MachineGun:WeaponId.Sword;

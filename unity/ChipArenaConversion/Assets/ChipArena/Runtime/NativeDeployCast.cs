@@ -112,7 +112,7 @@ namespace ChipArena.UnityConversion
             var body=VisualBodyOf(rig,id,VisualHooded(a));if(body==null)return false;
             body.Root.transform.localPosition=new Vector3(0,NativeVisualRig.Floor,0);
             var held=VisualBodyBind(body,rig,a,time,s.Pose,false,false,VisualArms.Still);
-            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            VisualHandFit(body,rig,held);
             body.Moved=true;body.Seen=true;
             VisualHatHair(body,look.Hat);
             if(look.Hat!="none"&&look.Hat!=NativeSheldonHead.Hat)

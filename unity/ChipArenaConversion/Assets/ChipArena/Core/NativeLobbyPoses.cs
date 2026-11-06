@@ -136,8 +136,9 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The Sheldon Idle's grip: how far a weapon hand rises per radian of its shoulder's hitch (m), its jerk up and back
         /// on a full flinch (m), the grip's tightening on a full clench (rad, the wrist curling the held blade or gun), and the
-        /// share of the crouch's drop (the stance's chest below the hero stance's) the weapon hands rise back by.</summary>
-        public const float GripHitch=.12f,GripFlinch=.03f,GripClench=.12f,GripRaise=1f;
+        /// share of the crouch's drop (the stance's chest below the hero stance's) the weapon hands rise back by; GripLift, m more (the
+        /// raised lobby stance's arms reach their holds).</summary>
+        public const float GripHitch=.12f,GripFlinch=.03f,GripClench=.12f,GripRaise=1f,GripLift=.1f;
         // The hero stance's chest against the Sheldon stance's at rest (both from rest, no breath or twitch; measured once):
         // the turn that takes a hero-chest-space hold onto the hunched, turned chest, and the chest's drop (m).
         private static bool gripReady;private static Quaternion gripTurn=Quaternion.Identity;private static float gripDrop;
@@ -154,7 +155,7 @@ namespace ChipArena.UnityConversion
         // upright staffs and the Bow stay upright). The free hand keeps the stance's fist.
         private static void Grip(MeleeRig r,string spec,in CyberTwitch t)
         {
-            GripFrame();var raise=Vector3.Transform(new Vector3(0,gripDrop*GripRaise,0),MeleeMath.Inverse(r.ChainQuat(Chest,-1)));
+            GripFrame();var raise=Vector3.Transform(new Vector3(0,gripDrop*GripRaise+GripLift,0),MeleeMath.Inverse(r.ChainQuat(Chest,-1)));
             float shrug=CyberLordIdlePose.BreathShoulder*t.Breath+CyberLordIdlePose.FlinchShoulder*t.Flinch,jerk=GripFlinch*t.Flinch;
             var lift=raise+new Vector3(0,GripHitch*(shrug+t.LShoulder)+jerk,-jerk*.5f);var rift=raise+new Vector3(0,GripHitch*(shrug+t.RShoulder)+jerk,-jerk*.5f);
             Quaternion lc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.LClench),rc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.RClench),k=gripTurn;
@@ -167,6 +168,26 @@ namespace ChipArena.UnityConversion
             else if(Gun(spec)){r.BraceWeapon(T(-.06f,-.04f,.21f)+rift,k*Aim(.4f,-.5f,.76f)*rc,1,null,false);SupportHand(r,GunSupportGrip,1);}
             else if(Magic(spec))r.Hand(true,T(.3f,-.2f,.15f)+lift,k*Aim(.05f,1,.08f),1);
             else if(NativeBowWire.Is(spec))r.Hand(true,Vector3.Transform(BowGrip,k)+lift,k*BowHold,1,Vector3.Transform(BowElbow,k));
+        }
+        /// <summary>Crossed arms on the model (owner 2026-11-05: "fix the lobby poses"): each hand's height and reach (rig group space).
+        /// The source's targets rise from low elbows, a V of bracers under the chin on the armoured body; these lay the forearms level
+        /// at the lower chest, the right over the left. The voxel portraits keep the source's (LobbyPoseChecks pins them).</summary>
+        public const float ModelCrossLeftY=-.03f,ModelCrossLeftZ=.215f,ModelCrossRightY=.03f,ModelCrossRightZ=.26f;
+        /// <summary>Standing with a gun on the model: the source's holds aim at the card's camera (a long gun foreshortened to a stub at
+        /// the chest, a dark pistol lost against the trousers). A long gun carried at port across the chest, muzzle up to the pilot's
+        /// left; a pistol held up across the white chest plate, its black outline against it.</summary>
+        public static readonly Vector3 ModelPortAt=new Vector3(-.1f,-.12f,.2f),ModelPortAim=new Vector3(.62f,.45f,.62f),ModelPistolAt=new Vector3(-.2f,-.04f,.24f),ModelPistolAim=new Vector3(.55f,.55f,.62f);
+        public const float ModelPistolRoll=-.5f;
+        /// <summary>A pose's fit on the model, after Sample (the model portraits only).</summary>
+        public static void FitModel(MeleeRig r,string spec,int pose,float time)
+        {
+            float lift=(float)Math.Sin(time*1.65)*.004f;
+            if(pose==Weapon&&spec=="pistol"){r.Hand(false,ModelPistolAt+new Vector3(0,lift,0),Aim(ModelPistolAim.X,ModelPistolAim.Y,ModelPistolAim.Z,ModelPistolRoll),1);return;}
+            if(pose==Weapon&&Gun(spec)){r.BraceWeapon(ModelPortAt+new Vector3(0,lift,0),Aim(ModelPortAim.X,ModelPortAim.Y,ModelPortAim.Z),1,null,false);SupportHand(r,GunSupportGrip,1);return;}
+            if(pose!=Crossed)return;lift*=.75f;
+            PlaceHand(r,true,new Vector3(-.235f,ModelCrossLeftY+lift,ModelCrossLeftZ),new Vector3(.45f,-1,.2f));
+            PlaceHand(r,false,new Vector3(.235f,ModelCrossRightY+lift,ModelCrossRightZ),new Vector3(-.45f,-1,.25f));
+            r.SetE(LHand,.1f,0,-.25f);r.SetE(RHand,-.08f,0,.25f);
         }
         // three's `node.rotation.x = v` (the Euler's other angles kept).
         private static void X(MeleeRig r,int i,float x)=>r.SetE(i,x,r.E[i].Y,r.E[i].Z);

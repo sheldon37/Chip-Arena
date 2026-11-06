@@ -1,3 +1,16 @@
+## 2026-11-05 — Claude: lobby poses, portrait weapons, guns back in their entrances
+
+- Owner: "review the intros and idles; the weapon placement and limbs still get funky (also fix sheldon Idle)", then "I meant initially to fix to lobby poses (like sitting in chair, crossing arms, Sheldon pose)" and "weapon poses in portraits as well". Branch `claude/intros-idles`, base `3fad0f72`. Implemented on the branch, merge and build status in the checks line below.
+- **Guns vanished from every non-arena rig** (`VisualHandFit`, `Runtime/NativeVisualWeaponPresentation.cs`): the fit multiplied the right hand bone's scale each frame and only the arena's rigs put it back (`VisualBodyRestore`), so a weapon fitted under 1 shrank to nothing within a second or two. No gun in the pistol, rifle and machine gun entrances, the portraits or the rooftop cast. Every bind now fits from the unfitted scale, kept on the rig so a body made again (a changed outfit) does not shrink the gun to a tenth each time. This explains the old "the game rig's hand bones can have zero scale during an entrance" note.
+- **Portraits on the model drew no weapon the bake has no model of** (the shield, staffs, bow, fighters' gloves: nothing queued the game's). They now draw it in the pilot's skin, and the daggers' second blade on the off hand (`NativeVisualPortraitPresentation.cs`).
+- **Lobby poses on the model** (`NativeLobbyPoses.FitModel`, model portraits only; `LobbyPoseChecks`' source pins and the voxel portraits keep the source's): crossed arms' forearms level at the lower chest; standing with a gun at port across the chest instead of aimed into the lens, a pistol held up across the white chest plate. The sleeper lies on the podium, centred, in frame (`ModelPortraitLaidDown`). Chair unchanged: it read fine.
+- **Sheldon Idle** (`CyberLordIdlePose.Stand`, lobby only): raised out of the capture's squat, the hunch and head eased, feet wider; `GripLift` keeps the weapon hands within reach. The twitches are unchanged; the DEV Cyber Lord's standing portrait is this stance too.
+- **Stale revive bodies** (`VisualRevivesUnseen`, `VisualRevivesClear`): a revive body not drawn hides on every path and goes with a reset; a round ending mid-revive could leave one standing through the next entrance. A `PrototypeBuild.Validate` in an open Editor left 32 of them at the world origin in the scene, a capture artifact, not in builds: the local tool now removes them.
+- **Tried and reverted at the owner's word** ("I think I might prefer the before idle poses. They were fine"): raised match idles, lowered greatsword hands, upright staff, blades clear of the thighs, a raised Cyber Lord match idle. Match idles are exactly as before; don't redo this without asking.
+- **Seen, not changed:** the shield entrance ends with its rim across the helmet; the reverse-grip daggers' idle blades pass through the thighs.
+- Animation impact: portraits, menus and entrances only. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged; the match's poses and idles are untouched.
+- **Checks for this entry:** in the receipt line appended after the build.
+
 ## 2026-11-05 — Astra: six-sound boss listening sample
 
 - Owner approved six samples first; the full 121-file batch awaits listening acceptance. Branch `codex/boss-sound-sample`, shared base `55b45d9f`.

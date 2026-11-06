@@ -21,7 +21,7 @@ namespace ChipArena.UnityConversion
         private readonly Dictionary<int,Revival> revivals=new Dictionary<int,Revival>();private readonly List<int> oldRevivals=new List<int>();
         private NativeArena reviveArena;private int reviveGeneration=-1;private float reviveClock;
         private static readonly Color RepairCyan=new Color(95/255f,232/255f,1).linear,RepairWhite=new Color(216/255f,251/255f,1).linear;
-        private void ClearRevives(){revivals.Clear();oldRevivals.Clear();reviveArena=null;reviveGeneration=-1;ClearReviveGallery();ReleaseReviveScreen();}
+        private void ClearRevives(){VisualRevivesClear();revivals.Clear();oldRevivals.Clear();reviveArena=null;reviveGeneration=-1;ClearReviveGallery();ReleaseReviveScreen();}
         private bool IsReviving(NativePilot p,float time)=>p!=null&&NativeReviveMachine.SpitOf(NativeReviveMachine.Board,p.Seat.id,time)==null&&p.Hp>0&&p.Seat.connected&&WeaponLoadout?.Pve!=null&&WeaponLoadout.Pve.Rows.ContainsKey(p.Seat.id)&&NativeReviveRules.Active(time,p.RevivedAt)&&!NativeSirenVictimPose.Active(p.Pose,time);
         private bool ReviveVisible(int id,float time)=>sourceModels==null||!IsReviving(LoadoutPilot(id),time)||time-LoadoutPilot(id).RevivedAt>=NativeReviveRules.Scan;
         private void PrepareInteractions(Snapshot snapshot,float time)
