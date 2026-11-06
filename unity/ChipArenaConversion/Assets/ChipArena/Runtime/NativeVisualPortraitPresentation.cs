@@ -111,7 +111,7 @@ namespace ChipArena.UnityConversion
             int pose=NativeLobbyPoses.Effective(spec,look.Pose),id=ModelPortraitIdTop-index;float time=ModelPortraitReduced?0:modelPortraitClock;var view=modelPortraitView;
             // The pose, as the voxel portrait samples it.
             if(NativeLobbyPoses.UsesIdle(spec,pose)){s.Pose.Reset();if(NativeSourceMotion.Sample(spec+"-idle",time,0,s.Pose))s.Rig.ReadPose(s.Pose);else s.Rig.Reset();}
-            NativeLobbyPoses.Sample(s.Rig,spec,pose,time,hat,ModelPortraitReduced,s.Key,out var weapon,out var offhand,out _);NativeLobbyPoses.FitModel(s.Rig,spec,pose,time);s.Rig.WritePose(s.Pose);s.Pose.World();s.Weapon=weapon;s.Offhand=offhand;
+            NativeLobbyPoses.Sample(s.Rig,spec,pose,time,hat,ModelPortraitReduced,s.Key,out var weapon,out var offhand,out _);NativeLobbyPoses.FitModel(s.Rig,spec,pose,time);s.Rig.WritePose(s.Pose);s.Pose.World();NativeLobbyPoses.SeatOnModel(spec,ref weapon);s.Weapon=weapon;s.Offhand=offhand;
             // Its stage far from the arena and the other slots; the turntable turns the pilot about the podium's axis.
             var origin=new Vector3(3000+index*60,-500,0);var spin=Quaternion.Euler(0,s.Yaw,0);
             s.Player??=captured.Create(modelPortraitHolder,id);

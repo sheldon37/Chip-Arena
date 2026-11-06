@@ -47,7 +47,7 @@ namespace ChipArena.UnityConversion
         // menu-portraits.ts render(): the Siren always stands.
         public static int Effective(string spec,string pose)=>spec=="siren"?Weapon:Index(pose);
         public static bool Fighter(string spec)=>spec=="emperor"||spec=="ansatsuken";
-        public static bool OffHand(string spec)=>spec=="daggers"||spec=="emperor"||spec=="ansatsuken";
+        public static bool OffHand(string spec)=>spec=="daggers"||spec=="emperor"||spec=="ansatsuken"||spec==NativeBombs.Spec;
         public static bool Magic(string spec)=>spec=="fire"||spec=="water"||spec=="lightning"||spec=="darkness"||spec=="leet";
         public static bool Gun(string spec)=>spec=="pistol"||spec=="rifle"||spec=="machinegun";
         /// <summary>The joint a spec's weapon hangs from in the lobby: the staffs and the Bow ride the left hand (their models are
@@ -122,7 +122,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>Whether a spec holds its weapon in the Sheldon Idle (the hero stance's grips: the blades, the shield, the guns,
         /// the staffs and the Bow); the fighters, the Cyber Lord and any other spec keep the stance's fists.</summary>
-        public static bool Grips(string spec)=>spec=="greatsword"||spec=="sword"||spec=="daggers"||spec=="shield"||spec=="pistol"||Gun(spec)||Magic(spec)||NativeBowWire.Is(spec);
+        public static bool Grips(string spec)=>spec=="greatsword"||spec=="sword"||spec=="daggers"||spec=="shield"||spec=="pistol"||Gun(spec)||Magic(spec)||NativeBowWire.Is(spec)||spec==NativeBombs.Spec;
         // The Sheldon Idle from rest: the Cyber Lord's stance (its body, twitches and planted feet; the glitch for the Cyber Lord
         // only), then an armed pilot's grip. The weapon shows as standing (the fighters' gloves and the daggers' off hand too).
         private static CyberIdleGlitch Sheldon(MeleeRig r,string spec,float time,int seed,bool reduced,out LobbyHeld weapon,out LobbyHeld offhand)
@@ -136,9 +136,9 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>The Sheldon Idle's grip: how far a weapon hand rises per radian of its shoulder's hitch (m), its jerk up and back
         /// on a full flinch (m), the grip's tightening on a full clench (rad, the wrist curling the held blade or gun), and the
-        /// share of the crouch's drop (the stance's chest below the hero stance's) the weapon hands rise back by; GripLift, m more (the
-        /// raised lobby stance's arms reach their holds).</summary>
-        public const float GripHitch=.12f,GripFlinch=.03f,GripClench=.12f,GripRaise=1f,GripLift=.1f;
+        /// share of the crouch's drop (the stance's chest below the hero stance's) the weapon hands rise back by. Small on purpose: the
+        /// hand follows the stance, and a weapon that snaps with each twitch reads as a glitch.</summary>
+        public const float GripHitch=.06f,GripFlinch=.012f,GripClench=.04f,GripRaise=1f;
         // The hero stance's chest against the Sheldon stance's at rest (both from rest, no breath or twitch; measured once):
         // the turn that takes a hero-chest-space hold onto the hunched, turned chest, and the chest's drop (m).
         private static bool gripReady;private static Quaternion gripTurn=Quaternion.Identity;private static float gripDrop;
@@ -155,19 +155,21 @@ namespace ChipArena.UnityConversion
         // upright staffs and the Bow stay upright). The free hand keeps the stance's fist.
         private static void Grip(MeleeRig r,string spec,in CyberTwitch t)
         {
-            GripFrame();var raise=Vector3.Transform(new Vector3(0,gripDrop*GripRaise+GripLift,0),MeleeMath.Inverse(r.ChainQuat(Chest,-1)));
+            GripFrame();var raise=Vector3.Transform(new Vector3(0,gripDrop*GripRaise,0),MeleeMath.Inverse(r.ChainQuat(Chest,-1)));
             float shrug=CyberLordIdlePose.BreathShoulder*t.Breath+CyberLordIdlePose.FlinchShoulder*t.Flinch,jerk=GripFlinch*t.Flinch;
             var lift=raise+new Vector3(0,GripHitch*(shrug+t.LShoulder)+jerk,-jerk*.5f);var rift=raise+new Vector3(0,GripHitch*(shrug+t.RShoulder)+jerk,-jerk*.5f);
             Quaternion lc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.LClench),rc=MeleeMath.AxisAngle(MeleeMath.X,GripClench*t.RClench),k=gripTurn;
             Vector3 T(float x,float y,float z)=>Vector3.Transform(new Vector3(x,y,z),k);
-            if(spec=="greatsword")r.BraceWeapon(T(-.27f,-.04f,.30f)+rift,k*Aim(-.2f,.62f,-.76f,2.1f)*rc,1);
-            else if(spec=="sword")r.BraceWeapon(T(-.31f,-.34f,.19f)+rift,k*Aim(-.38f,-.2f,.9f,-.25f)*rc,1,null,false);
-            else if(spec=="daggers"){r.Hand(false,T(-.27f,-.33f,.13f)+rift,k*Aim(-.3f,-.42f,.85f,-.4f)*rc,1);r.Hand(true,T(.27f,-.33f,.13f)+lift,k*Aim(.3f,-.42f,.85f,.4f)*lc,1);}
-            else if(spec=="shield")r.Hand(false,T(-.3f,-.33f,.12f)+rift,k*Aim(-.3f,-.12f,.95f)*rc,1);
-            else if(spec=="pistol")r.Hand(false,T(-.3f,-.36f,.09f)+rift,k*Aim(-.32f,-.8f,.5f,-.5f)*rc,1);
-            else if(Gun(spec)){r.BraceWeapon(T(-.06f,-.04f,.21f)+rift,k*Aim(.4f,-.5f,.76f)*rc,1,null,false);SupportHand(r,GunSupportGrip,1);}
-            else if(Magic(spec))r.Hand(true,T(.3f,-.2f,.15f)+lift,k*Aim(.05f,1,.08f),1);
+            Vector3 lp=Vector3.Transform(ElbowTuck,k),rp=Vector3.Transform(new Vector3(-ElbowTuck.X,ElbowTuck.Y,ElbowTuck.Z),k);
+            if(spec=="greatsword")r.BraceWeapon(T(-.27f,-.03f,.29f)+rift,k*Aim(-.2f,.62f,-.76f,2.1f)*rc,1);
+            else if(spec=="sword")r.BraceWeapon(T(-.31f,-.24f,.2f)+rift,k*Aim(-.38f,-.2f,.9f,-.25f)*rc,1,null,false);
+            else if(spec=="daggers"){r.Hand(false,T(-.34f,-.26f,.16f)+rift,k*Aim(-.3f,-.42f,.85f,-.4f)*rc,1,rp);r.Hand(true,T(.34f,-.26f,.16f)+lift,k*Aim(.3f,-.42f,.85f,.4f)*lc,1,lp);}
+            else if(spec=="shield")r.Hand(false,T(-.3f,-.24f,.15f)+rift,k*Aim(-.3f,-.12f,.95f)*rc,1);
+            else if(spec=="pistol")r.Hand(false,T(-.2f,-.06f,.24f)+rift,k*Aim(ModelPistolAim.X,ModelPistolAim.Y,ModelPistolAim.Z,ModelPistolRoll)*rc,1,rp);
+            else if(Gun(spec)){r.BraceWeapon(T(-.14f,-.16f,.22f)+rift,k*Aim(.62f,.28f,.72f)*rc,1,null,false);SupportHand(r,GunSupportGrip,1);}
+            else if(Magic(spec))r.Hand(true,T(.33f,-.28f,.16f)+lift,k*Aim(.05f,1,.08f),1,lp);
             else if(NativeBowWire.Is(spec))r.Hand(true,Vector3.Transform(BowGrip,k)+lift,k*BowHold,1,Vector3.Transform(BowElbow,k));
+            else if(spec==NativeBombs.Spec){r.Hand(false,T(-.29f,-.24f,.17f)+rift,k*Aim(-.2f,.5f,.8f)*rc,1,rp);r.Hand(true,T(.29f,-.24f,.17f)+lift,k*Aim(.2f,.5f,.8f)*lc,1,lp);}
         }
         /// <summary>Crossed arms on the model (owner 2026-11-05: "fix the lobby poses"): each hand's height and reach (rig group space).
         /// The source's targets rise from low elbows, a V of bracers under the chin on the armoured body; these lay the forearms level
@@ -178,11 +180,18 @@ namespace ChipArena.UnityConversion
         /// left; a pistol held up across the white chest plate, its black outline against it.</summary>
         public static readonly Vector3 ModelPortAt=new Vector3(-.1f,-.12f,.2f),ModelPortAim=new Vector3(.62f,.45f,.62f),ModelPistolAt=new Vector3(-.2f,-.04f,.24f),ModelPistolAim=new Vector3(.55f,.55f,.62f);
         public const float ModelPistolRoll=-.5f;
+        /// <summary>Where a seated hold's elbow goes (chest space, the left arm's; mirrored for the right): down, a little out and back. Without
+        /// it an arm with a fist near the hip winged out to the side on the model.</summary>
+        public static readonly Vector3 ElbowTuck=new Vector3(.35f,-.8f,-.5f);
+        /// <summary>A staff on the model sits on its fist's seat, so without the voxel hand's socket offset.</summary>
+        public static void SeatOnModel(string spec,ref LobbyHeld weapon){if(Magic(spec))weapon.Position=Vector3.Zero;}
         /// <summary>A pose's fit on the model, after Sample (the model portraits only).</summary>
         public static void FitModel(MeleeRig r,string spec,int pose,float time)
         {
             float lift=(float)Math.Sin(time*1.65)*.004f;
             if(pose==Weapon&&spec=="pistol"){r.Hand(false,ModelPistolAt+new Vector3(0,lift,0),Aim(ModelPistolAim.X,ModelPistolAim.Y,ModelPistolAim.Z,ModelPistolRoll),1);return;}
+            if(pose==Weapon&&spec==NativeBombs.Spec){r.Hand(false,new Vector3(-.28f,-.24f+lift,.19f),Aim(-.2f,.5f,.8f),1,new Vector3(-ElbowTuck.X,ElbowTuck.Y,ElbowTuck.Z));r.Hand(true,new Vector3(.28f,-.24f+lift,.19f),Aim(.2f,.5f,.8f),1,ElbowTuck);return;}
+            if(pose==Weapon&&Magic(spec)){r.Hand(true,new Vector3(.31f,-.3f+lift,.15f),Aim(.05f,1,.08f),1,ElbowTuck);return;}
             if(pose==Weapon&&Gun(spec)){r.BraceWeapon(ModelPortAt+new Vector3(0,lift,0),Aim(ModelPortAim.X,ModelPortAim.Y,ModelPortAim.Z),1,null,false);SupportHand(r,GunSupportGrip,1);return;}
             if(pose!=Crossed)return;lift*=.75f;
             PlaceHand(r,true,new Vector3(-.235f,ModelCrossLeftY+lift,ModelCrossLeftZ),new Vector3(.45f,-1,.2f));

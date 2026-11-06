@@ -1,3 +1,5 @@
+2026-11-05 Claude (`claude/sheldon-better`): Sheldon Idle holds rewritten per weapon and its twitching calmed; staffs and bows seated in the fist on third-person bodies. See DEV_LOG.
+
 2026-11-05 Claude (`claude/intros-idles`): lobby poses on the model (crossed arms, sleeping, Sheldon Idle, standing with a gun), portraits hold their weapons, guns no longer shrink out of entrances, portraits and the rooftop cast. Match idles unchanged at the owner's word. See DEV_LOG.
 
 2026-11-05 Astra (`codex/backrooms-boss-rules`): THE HUM / THE DEEP END rules bound to the existing presentation and songs; arrival, combat, phases, compound contacts, tide, replicated state and death reward flow implemented. Focused managed, collision-route, Unity compilation and packaging checks pass. Native Windows/PhysX and multiplayer gameplay acceptance pending; see newest DEV_LOG for limits and publication status. No live or Site release.
