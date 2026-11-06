@@ -4,9 +4,9 @@ namespace ChipArena.UnityConversion
 {
     [Serializable] public sealed class NativeZoneBossHazardFrame
     {
-        public int id;public string kind;public float x,y,z,radius,hitAt,until;
+        public int id;public int targetSeat=-1;public string kind;public float x,y,z,radius,hitAt,until;
         public NativeZoneBossHazardFrame Copy()=>(NativeZoneBossHazardFrame)MemberwiseClone();
-        public bool Valid()=>id>=0&&(kind=="blow"||kind=="deslag"||kind=="pour"||kind=="charge"||kind=="ring"||kind=="row"||kind=="tear"||kind=="breach"||kind=="flop"||kind=="jet"||kind=="seiche"||kind=="whirl"||kind=="lull")&&new[]{x,y,z,radius,hitAt,until}.All(NativeZoneCombat.Finite)&&radius>0&&radius<=(kind=="ring"?60:4)&&hitAt>=0&&until>=hitAt&&until-hitAt<=7;
+        public bool Valid()=>id>=0&&targetSeat>=-1&&targetSeat<=10000&&(!NativeCityBossPressure.Kind(kind)||targetSeat>=0)&&(NativeCityBossPressure.Kind(kind)||kind=="blow"||kind=="deslag"||kind=="pour"||kind=="charge"||kind=="ring"||kind=="row"||kind=="tear"||kind=="breach"||kind=="flop"||kind=="jet"||kind=="seiche"||kind=="whirl"||kind=="lull")&&new[]{x,y,z,radius,hitAt,until}.All(NativeZoneCombat.Finite)&&radius>0&&radius<=(kind=="ring"?60:4)&&hitAt>=0&&until>=hitAt&&until-hitAt<=7;
     }
     // Authority clocks only. Optional times are -100 on the wire; no pose data is replicated.
     [Serializable] public sealed class NativeZoneBossFrame

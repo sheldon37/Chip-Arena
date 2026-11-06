@@ -112,6 +112,7 @@ namespace ChipArena.UnityConversion
             z.holdTarget=p.Seat.id;z.holdUntil=Time+1;BossStagger("part",.8f);Check(z.holdTarget<0&&z.holdUntil==Time&&z.cancelAt==Time,"stagger cancels move and releases victim");
             m.Hp=0;StepZoneBoss();Check(z.deathAt==Time&&m.Body.GetComponentsInChildren<Collider>().All(c=>!c.enabled),"death releases collision and has authority time");
             RemoveMinion(m,false);ResetZoneBoss();
+            ValidateCityBossCoverage(replicaCheck);
             Debug.Log("PASS native zone boss "+MapId+": separate actor, intro guard, windup/contact/single-hit, damage route, phase transition, wire/guest and death. Automated fixture.");
         }
     }

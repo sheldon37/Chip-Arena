@@ -27,13 +27,14 @@ namespace ChipArena.UnityConversion
         private float bossGap,bossHoldDamage,bossSelfDamage,bossChokeDamage,bossStaggerDamage,bossStaggerWindow,bossStaggerImmune,bossBehindAt=-100,bossShedAdds=-100;
         private bool bossLadle,bossPileup,bossActionFired;private int bossPoolId=300;
         private readonly NativeStationRoute stationRoute=new NativeStationRoute();
-        private float stationRouteAt;
+        private float stationRouteAt,converterRouteAt;
+        private readonly NativeConverterRoute.Path converterRoute=new NativeConverterRoute.Path();
         private readonly Collider[] stationOverlap=new Collider[1];
         private BoxCollider bossBoard;private bool bossBarriers;
         private bool IsZoneBoss(NativeMinion m)=>m!=null&&NativeZoneBossRules.Known(m.Kind);
         private void ResetZoneBoss()
         {
-            ResetBackroomBoss();ZoneBoss=null;zoneBossActor=null;bossBoard=null;bossBarriers=false;stationRoute.Clear();stationRouteAt=0;bossReady.Clear();bossHits.Clear();bossPools.Clear();Array.Clear(bossPartDamage,0,bossPartDamage.Length);
+            ResetBackroomBoss();ResetCityBossPressure();ZoneBoss=null;zoneBossActor=null;bossBoard=null;bossBarriers=false;stationRoute.Clear();stationRouteAt=0;converterRoute.Clear();converterRouteAt=0;bossReady.Clear();bossHits.Clear();bossPools.Clear();Array.Clear(bossPartDamage,0,bossPartDamage.Length);
             bossGap=bossHoldDamage=bossSelfDamage=bossChokeDamage=bossStaggerDamage=bossStaggerWindow=bossStaggerImmune=0;bossBehindAt=bossShedAdds=-100;bossLadle=bossPileup=false;bossPoolId=300;
         }
         private void SpawnZoneBoss(string kind,Vector3 at,float yaw)
@@ -112,7 +113,7 @@ namespace ChipArena.UnityConversion
         {
             var z=ZoneBoss;var m=zoneBossActor;if(z==null||m==null||Pve.Holding)return;
             Pve.Boss.Hp=m.Hp;Pve.Boss.Body.position=m.Body.position+Vector3.up*.9f;
-            if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}if(z.backrooms!=null)BackroomGeometry();return;}
+            if(m.Hp<=0){if(z.deathAt<0){z.deathAt=Time;BossRelease();z.cancelAt=Time;bossPools.Clear();ResetCityBossPressure();z.hazards=Array.Empty<NativeZoneBossHazardFrame>();foreach(var c in m.Body.GetComponentsInChildren<Collider>())c.enabled=false;}if(z.backrooms!=null)BackroomGeometry();return;}
             foreach(var pair in m.Dots.ToArray()){var d=pair.Value;while(m.Hp>0&&d.Next<=Time&&d.Next<=d.Until){HitMinion(m,Pilots.Find(p=>p.Seat.id==d.Source),(float)d.Dps*.25f,Vector3.zero,0,kind:"field");d.Next+=.25;}if(Time>d.Until)m.Dots.Remove(pair.Key);}
             if(NativeBackroomsBossRules.Is(z.archetype)){StepBackroomBoss();return;}
             int phase=NativeZoneBossRules.Phase(z.archetype,m.Hp,m.MaxHp);
@@ -125,7 +126,7 @@ namespace ChipArena.UnityConversion
                 else if(z.phase==2){for(int i=0;i<4;i++)if((z.parts&(1<<i))!=0){z.partAt[i]=Time;z.parts&=~(1<<i);}bossShedAdds=Time+6;}
                 else{z.parts&=15;z.partAt[4]=Time;if(ZoneHazards!=null)ZoneHazards.overflowAt=ZoneHazards.clock;}
             }
-            SyncZoneBossArena();StepBossPools();
+            SyncZoneBossArena();StepBossPools();StepCityBossPressure();
             if(bossShedAdds>=0&&Time>=bossShedAdds){bossShedAdds=-100;SpawnPveAddAt("slagback",BossWorld(-4,-2));SpawnPveAddAt("slagback",BossWorld(4,-2));}
             if(z.holdTarget>=0)
             {
@@ -166,20 +167,32 @@ namespace ChipArena.UnityConversion
         }
         private void BossWalk(NativePilot target,bool station)
         {
-            var m=zoneBossActor;Vector3 at=m.Body.position,delta=target.Body.position-at;delta.y=0;
             if(station){StationBossWalk(target);return;}
-            if(delta.magnitude<4)m.Yaw=Mathf.MoveTowardsAngle(m.Yaw,Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,(ZoneBoss.phase==3?65:35)/60f);
-            m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);if(delta.magnitude<4)return;
-            if(!station)
+            var m=zoneBossActor;var at=m.Body.position;
+            // The 11 m shutter admits the long axis east/west. Never rotate the full body into its jambs.
+            float wanted=at.x<-12?90:Mathf.Atan2(target.Body.position.x-at.x,target.Body.position.z-at.z)*Mathf.Rad2Deg;
+            float yaw=Mathf.MoveTowardsAngle(m.Yaw,wanted,(ZoneBoss.phase==3?65:35)/60f);
+            if(ConverterTurnClear(at,m.Yaw,yaw)){m.Yaw=yaw;m.Body.rotation=Quaternion.Euler(0,yaw,0);}
+            if(new Vector2(target.Body.position.x-at.x,target.Body.position.z-at.z).magnitude<4){converterRoute.Clear();return;}
+            if(Time>=converterRouteAt)
             {
-                var goal=NativeConverterRoute.Goal(new System.Numerics.Vector3(at.x,at.y,at.z),new System.Numerics.Vector3(target.Body.position.x,target.Body.position.y,target.Body.position.z));
-                delta=new Vector3(goal.X,goal.Y,goal.Z)-at;
-                m.Yaw=Mathf.MoveTowardsAngle(m.Yaw,Mathf.Atan2(delta.x,delta.z)*Mathf.Rad2Deg,(ZoneBoss.phase==3?65:35)/60f);
-                m.Body.rotation=Quaternion.Euler(0,m.Yaw,0);
+                converterRouteAt=Time+1;
+                converterRoute.Plan(new System.Numerics.Vector3(at.x,at.y,at.z),new System.Numerics.Vector3(target.Body.position.x,at.y,target.Body.position.z),
+                    (a,b)=>!BossPathBlocked(new Vector3(a.X,a.Y,a.Z),new Vector3(b.X,b.Y,b.Z),false));
             }
-            Vector3 next=at+delta.normalized*Math.Min(delta.magnitude,(station?2.6f:1.6f)/60);
-            if(station){next.x=Mathf.Clamp(next.x,-20,20);next.z=Mathf.Clamp(next.z,ZoneBoss.phase>=2?-6.5f:1.5f,5);}else if(!NativeConverterRoute.Contains(next.x,next.z))return;
-            if(!BossPathBlocked(at,next,station))m.Body.position=next;
+            if(!converterRoute.Next(new System.Numerics.Vector3(at.x,at.y,at.z),out var goal))return;
+            var delta=new Vector3(goal.X,goal.Y,goal.Z)-at;
+            var next=at+delta.normalized*Math.Min(delta.magnitude,1.6f/60);
+            if(BossPathBlocked(at,next,false)){converterRoute.Clear();converterRouteAt=Time+1;return;}
+            m.Body.position=next;
+        }
+        private bool ConverterPoseClear(Vector3 at,float yaw)=>PhysicsWorld.OverlapBox(at+Vector3.up*4.2f,new Vector3(4.2f,4.1f,3.3f),stationOverlap,
+            Quaternion.Euler(0,yaw,0),WorldMask,QueryTriggerInteraction.Ignore)==0;
+        private bool ConverterTurnClear(Vector3 at,float from,float to)
+        {
+            float angle=Mathf.DeltaAngle(from,to);int steps=Math.Max(1,Mathf.CeilToInt(Math.Abs(angle)/2));
+            for(int i=1;i<=steps;i++)if(!ConverterPoseClear(at,from+angle*i/steps))return false;
+            return true;
         }
         private bool StationPoseClear(Vector3 at,float yaw)
         {
@@ -218,7 +231,7 @@ namespace ChipArena.UnityConversion
         }
         private bool BossPathBlocked(Vector3 from,Vector3 to,bool station)
         {
-            if(station&&!StationPoseClear(to,zoneBossActor.Yaw))return true;
+            if(station?!StationPoseClear(to,zoneBossActor.Yaw):!ConverterPoseClear(to,zoneBossActor.Yaw))return true;
             var delta=to-from;if(delta.sqrMagnitude<.000001f)return false;
             var half=station?new Vector3(1.5f,1.4f,5.05f):new Vector3(4.2f,4.1f,3.3f);
             return PhysicsWorld.BoxCast(from+Vector3.up*(station?2.9f:4.2f),half,delta.normalized,out _,Quaternion.Euler(0,zoneBossActor.Yaw,0),delta.magnitude,WorldMask,QueryTriggerInteraction.Ignore);
@@ -254,7 +267,7 @@ namespace ChipArena.UnityConversion
                 bool station=z.archetype==NativeZoneBossRules.Station;
                 bool outside=station?Math.Abs(next.x)>24||next.z>6||next.z<(z.phase>=2?-7:0):!NativeConverterRoute.Contains(next.x,next.z);
                 float chargeYaw=z.actionYaw+(second?180:0);
-                if(station&&!StationTurnClear(at,m.Yaw,chargeYaw)){BossStagger("crash",2.2f);stationRouteAt=0;return;}
+                if(station?!StationTurnClear(at,m.Yaw,chargeYaw):!ConverterTurnClear(at,m.Yaw,chargeYaw)){BossStagger("crash",2.2f);stationRouteAt=0;return;}
                 float previousYaw=m.Yaw;m.Yaw=chargeYaw;
                 if(outside||BossPathBlocked(at,next,station)){m.Yaw=previousYaw;BossStagger("crash",2.2f);stationRouteAt=0;return;}
                 stationRoute.Clear();stationRouteAt=0;
@@ -292,7 +305,7 @@ namespace ChipArena.UnityConversion
         }
         private void PublishBossPools()
         {
-            ZoneBoss.hazards=bossPools.Where(b=>Time<=b.end).Take(64).Select(b=>new NativeZoneBossHazardFrame{id=b.id,kind=b.kind,x=b.at.x,y=b.at.y,z=b.at.z,radius=b.radius,hitAt=b.hit,until=b.end}).ToArray();
+            ZoneBoss.hazards=bossPools.Where(b=>Time<=b.end).Take(64-cityPressureHazards.Count).Select(b=>new NativeZoneBossHazardFrame{id=b.id,kind=b.kind,x=b.at.x,y=b.at.y,z=b.at.z,radius=b.radius,hitAt=b.hit,until=b.end}).Concat(cityPressureHazards).Take(64).ToArray();
         }
         private void StepBossPools()
         {

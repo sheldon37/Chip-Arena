@@ -1,3 +1,5 @@
+2026-11-05 Astra (`codex/city-boss-coverage`, base `f1211456`): city-boss no-safe-spot rules, Converter footprint detours and native 8 s sweep implemented on task branch. **Unmerged/unpublished pending Claude’s floor-aware pressure tells** and native validation. Contract and handoff: newest DEV_LOG and both city boss specs.
+
 2026-11-05 Claude (`claude/intros-idles`): lobby poses on the model (crossed arms, sleeping, Sheldon Idle, standing with a gun), portraits hold their weapons, guns no longer shrink out of entrances, portraits and the rooftop cast. Match idles unchanged at the owner's word. See DEV_LOG.
 
 2026-11-05 Astra (`codex/backrooms-boss-rules`): THE HUM / THE DEEP END rules bound to the existing presentation and songs; arrival, combat, phases, compound contacts, tide, replicated state and death reward flow implemented. Focused managed, collision-route, Unity compilation and packaging checks pass. Native Windows/PhysX and multiplayer gameplay acceptance pending; see newest DEV_LOG for limits and publication status. No live or Site release.

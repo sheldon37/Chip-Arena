@@ -7,6 +7,8 @@ internal static class Program
     {
         try
         {
+            if(args.Length==0||args.Length==1&&args[0]=="--city-boss-pressure")CityBossPressureChecks.Run();
+            if(args.Length==1&&args[0]=="--city-boss-pressure")return 0;
             if(args.Length==1&&args[0]=="--backrooms-collision"){BackroomsRouteChecks.Run();return 0;}
             if(args.Length==1&&args[0]=="--backrooms-boss-rules"){BackroomsBossRuleChecks.Run();return 0;}
             if(args.Length==0||args.Length==1&&args[0]=="--runtime-performance")RuntimePerformanceChecks.Run(ProjectRoot());
