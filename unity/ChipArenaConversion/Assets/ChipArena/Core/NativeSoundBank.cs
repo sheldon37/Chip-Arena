@@ -26,8 +26,9 @@ namespace ChipArena.UnityConversion
         public const int Schema=1,MaxClips=16;
         /// <summary>Repository/build budget for the whole EffectsAudio folder (clips, metas and manifest), in bytes: 12 MB until
         /// the hazard kit's 46 clips (0.72 MB, docs/HAZARD-KIT.md), 13 MB until the zombies' voices and footfalls (12 keys and
-        /// their requested variants, docs/audio/SOUND-REQUESTS.md), 16 MB since.</summary>
-        public const long BudgetBytes=16000000;
+        /// their requested variants, docs/audio/SOUND-REQUESTS.md), then 16 MB. The approved Backrooms and NOCTIEL
+        /// batches require 18 MB (2026-11-06); per-clip and playback budgets are unchanged.</summary>
+        public const long BudgetBytes=18000000;
         private const NativeSoundSpace P=NativeSoundSpace.Positional,F=NativeSoundSpace.Flat,O=NativeSoundSpace.Loop;
         private const NativeSoundPriority H=NativeSoundPriority.High,N=NativeSoundPriority.Normal,L=NativeSoundPriority.Low;
         private static Def K(string key,NativeSoundSpace space,float cap,NativeSoundPriority priority)=>new Def{Key=key,Space=space,Cap=cap,Priority=priority};

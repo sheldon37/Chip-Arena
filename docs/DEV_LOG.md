@@ -1,3 +1,11 @@
+## 2026-11-06 — Astra: unblock NOCTIEL audio import and test Update
+
+- Branch `codex/noctiel-import-fix`, base shared/builder `34bd345f` (includes NOCTIEL walk and all 57 live sound cues). Owner requested repair of the failed asset install and test Update delivery.
+- Evidence: builder `edb21808` and `34bd345f` fail during sound import. Last successful Backrooms import reports 15.19 MB; original LocalAssets plus all 121 Backrooms and 92 NOCTIEL takes reproduce **16,648,910 bytes**, rejected by the old 16,000,000-byte whole-bank limit. All 92 NOCTIEL takes separately import with zero rejections; the three reviewed short-take exceptions work.
+- Raise only the EffectsAudio file budget to **18,000,000 bytes**, with corresponding installer/test documentation. Per-key durations, formats, quality, clip count, voice playback limits, visuals and gameplay unchanged. No additional generation or paid requests. Tests pin the actual 420-key contract (the previous Python assertion still said 363).
+- Failed import subprocesses now report structured importer problems and mirror the report even on nonzero exit; raw subprocess/network output is not exposed. Original receipts/caches retained; rejection retry tests prove no regeneration.
+- Verification: real original imports 121/121 Backrooms and 92/92 NOCTIEL, zero rejections; combined bank reproduces old-budget failure and passes the new budget (364 populated keys, 806 clips). Python importer/installer/queue tests and source package checks recorded on the PR. Builder Windows validation/publication remains the final gate. No Site/live release.
+
 ## 2026-11-06 — Claude: NOCTIEL's sounds wired to the cutscene and the fight
 
 - Follows the batch (Astra, PR #370) and the reviewed short takes (`claude/noctiel-sound-import`). The owner: "Astra generated the sounds I believe". Branch `claude/noctiel-cues` off shared `5e0caba`. Doc: `docs/EXPEDITION-BOSS-FINAL.md` section 17.

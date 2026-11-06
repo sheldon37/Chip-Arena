@@ -14,7 +14,7 @@ namespace ChipArena.UnityConversion
     // scenario and a sweep of kinds and flags; the seeded non-repeating variation bag; every key the code names exists; the
     // voice pool's caps (8 gated, 4 reserved, high steals low, 3 loops); text scans that every hook point goes through the
     // bank and that no bank audio sits under a tracked folder. With LocalAssets present: its manifest validates, names only
-    // known keys, covers every key the code names, and every clip exists with a .meta, fits its cap and the 16 MB budget.
+    // known keys, covers every key the code names, and every clip exists with a .meta, fits its cap and the 18 MB budget.
     internal static class EffectsAudioChecks
     {
         private static void Check(bool ok,string what){if(!ok)throw new Exception("Effects audio: "+what);}
@@ -243,7 +243,7 @@ namespace ChipArena.UnityConversion
                     string folder=Path.GetDirectoryName(local);var installed=NativeSoundBank.Parse(File.ReadAllText(local));
                     Check(installed.Errors.Count==0,"LocalAssets manifest: "+string.Join("; ",installed.Errors.Take(5)));
                     var missing=named.Where(k=>installed.Entry(k)==null).ToList();Check(missing.Count==0,"LocalAssets manifest lacks keys the code names: "+string.Join(", ",missing));
-                    long bytes=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Sum(f=>new FileInfo(f).Length);Check(bytes<NativeSoundKeys.BudgetBytes,"EffectsAudio "+bytes+" bytes over the 16 MB budget");
+                    long bytes=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories).Sum(f=>new FileInfo(f).Length);Check(bytes<NativeSoundKeys.BudgetBytes,"EffectsAudio "+bytes+" bytes over the 18 MB budget");
                     int clips=0;double seconds=0;var listed=new HashSet<string>(StringComparer.Ordinal);
                     foreach(var e in installed.Entries)for(int i=0;i<e.Count;i++)
                     {
@@ -255,7 +255,7 @@ namespace ChipArena.UnityConversion
                     }
                     var extra=Directory.EnumerateFiles(folder,"*.ogg",SearchOption.AllDirectories).Select(Path.GetFullPath).Where(f=>!listed.Contains(f)).ToList();Check(extra.Count==0,"unlisted clips: "+string.Join(", ",extra.Take(3)));
                     foreach(var dir in Directory.EnumerateDirectories(folder,"*",SearchOption.AllDirectories))Check(File.Exists(dir+".meta"),"folder meta "+dir);
-                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 16 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; covers all "+named.Count+" named keys");
+                    passed.Add("effects audio: LocalAssets present: "+installed.Count+" keys, "+clips+" clips, "+seconds.ToString("0")+" s, "+(bytes/1e6).ToString("0.00")+" MB < 18 MB; every clip has a .meta, fits its cap, 44.1 kHz, mono when positional; covers all "+named.Count+" named keys");
                 }
             }
             return passed;

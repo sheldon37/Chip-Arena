@@ -11,7 +11,7 @@ bounded sizes).
 It checks the manifest against the key contract in Assets/ChipArena/Core/NativeSoundBank.cs (the same rules as
 NativeSoundBank.Parse), effect keys and the intro.<style> entrance-music keys alike (2D, so stereo, up to 4.8 s). Every listed clip must exist as Ogg Vorbis with a .meta, at 44.1 kHz, mono when positional and
 within its hard length cap. Every folder needs its .meta, no unlisted file is allowed, and EffectsAudio must stay under
-the 16 MB budget. It then replaces Assets/LocalAssets/Resources/EffectsAudio with the source's copy. Unity merges every
+the 18 MB budget. It then replaces Assets/LocalAssets/Resources/EffectsAudio with the source's copy. Unity merges every
 Resources folder, so the game loads it as Resources "EffectsAudio/...". Without it the game plays today's sounds.
 
 The visual body (docs/BOZO-INTEGRATION.md) is optional: visual-body.json at the content root (never installed itself) lists

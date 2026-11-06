@@ -9,6 +9,7 @@ import zipfile
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import sound_queue as q
+REAL_COMMAND = q.command
 
 class QueueTests(unittest.TestCase):
     def setUp(self):
@@ -73,6 +74,33 @@ class QueueTests(unittest.TestCase):
                 self.assertEqual(len(self.calls), 2)
         report = json.loads((self.root / 'sample-one.import.json').read_text())
         self.assertEqual(report['files'][0]['reason'], 'test rejection')
+    def test_command_reports_structured_failure_without_raw_output(self):
+        from types import SimpleNamespace
+        report = self.root / 'failed.import.json'
+        q.write(report, dict(problems=['EffectsAudio exceeds budget']))
+        result = SimpleNamespace(returncode=1, stdout=b'PRIVATE RAW OUTPUT', stderr=b'PRIVATE RAW OUTPUT')
+        with patch.object(q.subprocess, 'run', return_value=result):
+            with self.assertRaises(ValueError) as error:
+                REAL_COMMAND(['import_sound_requests.py', '--report', report])
+        self.assertIn('EffectsAudio exceeds budget', str(error.exception))
+        self.assertNotIn('PRIVATE RAW OUTPUT', str(error.exception))
+
+    def test_nonzero_import_mirrors_failure_and_reuses_paid_originals(self):
+        self.base = self.root / "shared" / "base.zip"
+        self.base.parent.mkdir()
+        self.base.write_bytes(b"BASE")
+        def fail(args):
+            args = list(map(str, args))
+            if '--report' in args:
+                q.write(Path(args[args.index('--report') + 1]), dict(problems=['EffectsAudio exceeds budget']))
+                raise ValueError('Audio import/asset check failed')
+        with patch.object(q, 'command', side_effect=fail):
+            for _ in range(2):
+                with self.assertRaisesRegex(ValueError, 'Audio import/asset check failed'):
+                    self.run_queue()
+                self.assertEqual(len(self.calls), 1)
+                self.assertEqual(json.loads((self.base.parent / 'sample-one.import.json').read_text())['problems'], ['EffectsAudio exceeds budget'])
+
     def test_windows_line_endings_preserve_approval_and_cached_originals(self):
         first = self.run_queue()
         self.manifest.write_bytes(self.manifest.read_bytes().replace(b'\n', b'\r\n'))
