@@ -240,6 +240,8 @@ namespace ChipArena.UnityConversion
             private readonly NativePoseHistory baseHistory=new NativePoseHistory();
             private readonly Quaternion[] blendQ=new Quaternion[CapturedRig.Bones.Length];
             private readonly CapturedRig.Pose pose=new CapturedRig.Pose();
+            /// <summary>The right hand bone's scale before a visual weapon's fit, while it wears one (ArenaPresentation.VisualHandFit).</summary>
+            public Vector3 HandFrom=Vector3.one;public bool HandFitted;
             /// <summary>The game pose this rig last wrote (read by the visual body, NativeVisualBodyPresentation.cs).</summary>
             public CapturedRig.Pose Pose=>pose;
             private float lastTime=-100,phase,lastStun=-100,stunAt,gunAimWeight=1;

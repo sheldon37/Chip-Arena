@@ -77,6 +77,19 @@ namespace ChipArena.UnityConversion
             hand.position+=hand.TransformVector((1-w.Scale)*w.Centre);hand.localScale*=w.Scale;
         }
 
+        // The right hand bone onto the model's fitted frame, from its unfitted scale. Only the arena's rigs get their hands put back
+        // between frames (VisualBodyRestore): on an entrance's, a menu's or a cast's rig the fit multiplied up frame on frame, and a
+        // weapon fitted smaller than 1 (the guns) shrank to nothing within a second or two, its frame degenerate and the game's
+        // model with it (no gun in the gun entrances, the portraits or the rooftop cast). The unfitted scale stays on the rig: a body
+        // made again on it (a changed outfit) would otherwise take the fitted scale for the hand's own, a gun a tenth the size each time.
+        private static void VisualHandFit(VisualBody body,CapturedAnimation.Player rig,VisualWeapon held)
+        {
+            var right=rig.Bones[CapturedRig.RHand];
+            if(rig.HandFitted)right.localScale=rig.HandFrom;
+            rig.HandFrom=right.localScale;rig.HandFitted=true;body.RightScale=rig.HandFrom;
+            VisualWeaponFit(right,held);body.Moved=true;
+        }
+
         // SourceCharacter, for a pilot drawn with its visual body: its weapon model at `frame` (where the Standard model would
         // draw: the fitted hand, or the held melee hand with the reach stretch; a staff's StaffMatrix), shown this frame, and a
         // pack weapon's off-hand copy at `left` (the daggers' second blade; none: the game's model draws). False: the game's

@@ -183,7 +183,7 @@ namespace ChipArena.UnityConversion
         {
             if(!rigs.TryGetValue(id,out var rig)||!visualBodies.TryGetValue(rig,out var body)||!body.Moved)return;
             for(int side=0;side<2;side++){var bone=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];bone.localPosition=body.HandPosition[side];bone.localRotation=body.HandRotation[side];}
-            rig.Bones[CapturedRig.RHand].localScale=body.RightScale;body.Moved=false;
+            rig.Bones[CapturedRig.RHand].localScale=body.RightScale;body.Moved=false;rig.HandFitted=false;
         }
 
         // After a living arena pilot's rig is posed: pose its visual body from the same game pose, with its weapon's grasp.
@@ -197,7 +197,7 @@ namespace ChipArena.UnityConversion
             var held=VisualBodyBind(body,rig,a,time,pose,a.Grounded&&!roll&&!juggle,roll||juggle,body.Motion!=null&&body.Motion.Weight>=1?VisualArms.Reach:VisualArms.Live);
             VisualStridePose(body,rig,a,time,roll,juggle);
             VisualMotionPose(body,rig,a,time);
-            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            VisualHandFit(body,rig,held);
             VisualBigHead(body);
             body.Moved=true;
         }
@@ -418,7 +418,7 @@ namespace ChipArena.UnityConversion
             if(Viewer||sourceModels==null||ClassicBodies||rig==null||a==null||pose==null||a.SourceSpec=="siren"||!VisualBodiesOn)return;
             var body=VisualBodyOf(rig,a.Id,VisualHooded(a));if(body==null)return;
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,armed?VisualArms.Live:VisualArms.Unarmed);
-            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            VisualHandFit(body,rig,held);
             body.Moved=true;
         }
         // A directed entrance's per-bone reveal on the model (NativeVisualBodyFx.cginc RevealClip): each game bone of `rig` as its
@@ -467,7 +467,7 @@ namespace ChipArena.UnityConversion
             pose.World();var held=VisualBodyBind(body,rig,a,time,pose,false,false,VisualArms.Reach,support);
             int hips=CapturedRig.Pelvis<body.Binding.Rig.Of.Length?body.Binding.Rig.Of[CapturedRig.Pelvis]:-1;
             if(hips>=0&&body.Binding.Bones[hips]!=null){var shift=rig.Bones[CapturedRig.Pelvis].position-body.Binding.Bones[hips].position;body.Root.transform.position+=shift;for(int side=0;side<2;side++){var hand=rig.Bones[side==0?CapturedRig.LHand:CapturedRig.RHand];hand.position+=shift;}}
-            var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            VisualHandFit(body,rig,held);
             body.Moved=true;body.Seen=true;
             VisualHatHair(body,seat.hat);
             if(!string.IsNullOrEmpty(seat.hat)&&seat.hat!="none"&&seat.hat!=NativeSheldonHead.Hat)
@@ -1439,6 +1439,19 @@ namespace ChipArena.UnityConversion
             }
             foreach(long key in visualRevivesGone){var root=visualRevives[key].Root;if(root!=null)Destroy(root);visualRevives.Remove(key);}
         }
+        // VisualBodiesShown: a revive body the last frame did not draw hides on every path, not only the arena's (a round that
+        // ends mid-revive would leave it standing through the next entrance or menu, which never reach RenderRevives).
+        private void VisualRevivesUnseen()
+        {
+            if(visualRevives.Count==0)return;
+            foreach(var s in visualRevives.Values)if(s.Root!=null&&s.Frame<Time.frameCount-1&&s.Root.activeSelf)s.Root.SetActive(false);
+        }
+        // Every revive body gone at once (they have no parent to go with): a reset and the presentation's end.
+        private void VisualRevivesClear()
+        {
+            foreach(var s in visualRevives.Values)if(s.Root!=null)CapturedAnimation.Release(s.Root);
+            visualRevives.Clear();
+        }
         // The revived pilot standing up from its kept body (NativeInteractionPresentation StandFromBody writes the rig's bones
         // after the visual body bound the live pose): the visual body bound again from those bones. `make`: a stand-in rig the
         // arena does not pose (the revive gallery) gets its body here, shown this frame. False without one.
@@ -1452,7 +1465,7 @@ namespace ChipArena.UnityConversion
             int n=Mathf.Min(rig.Bones.Length,standPose.Position.Length);
             for(int i=0;i<n;i++){var t=rig.Bones[i];var lp=t.localPosition;var lq=t.localRotation;standPose.Position[i]=CapturedRig.Mirror(new System.Numerics.Vector3(lp.x,lp.y,lp.z));standPose.Rotation[i]=CapturedRig.Mirror(new System.Numerics.Quaternion(lq.x,lq.y,lq.z,lq.w));}
             standPose.World();body.Binding.State.Forget();
-            var held=VisualBodyBind(body,rig,a,time,standPose,false,false);var right=rig.Bones[CapturedRig.RHand];body.RightScale=right.localScale;VisualWeaponFit(right,held);
+            var held=VisualBodyBind(body,rig,a,time,standPose,false,false);VisualHandFit(body,rig,held);
             body.Moved=true;if(make)body.Seen=true;return true;
         }
         // The revive gallery's stand-in wears its hat on the model's head as the arena's pilots do (no arena pass draws it): the
@@ -1645,7 +1658,7 @@ namespace ChipArena.UnityConversion
                 VisualWeaponShown(body);body.Seen=false;
             }
             foreach(var rig in visualBodiesGone)visualBodies.Remove(rig);
-            VisualLiveGhostsShown();
+            VisualLiveGhostsShown();VisualRevivesUnseen();
         }
         // A snapshot of the model `rig` draws this frame into `echo` (made on first use, its meshes reused); false when the rig
         // draws voxel (the caller snapshots the voxel ghost instead).
