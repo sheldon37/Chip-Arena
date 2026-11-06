@@ -179,7 +179,7 @@ namespace ChipArena.UnityConversion
             Debug.Log("PASS native PvE opening/personal picks, machine purchases and denial, pickup ownership, healing cooldown, pending recruit caps and revival state");
             ValidatePveBotCombat();
             // The held PvE entrance advances its song while match time is frozen, then transfers the full intro duration
-            // to BossSongLead. Exercise the real start/tick path and the guest's actual frame application.
+            // to BossSongLead. Also cover the running Expedition clock below, using real frame application.
             var guest=new NativeArena(Content,new NativeMatch(Content),MapId){Replica=true,ReplicaScene=root.scene};
             try
             {
@@ -199,6 +199,14 @@ namespace ChipArena.UnityConversion
                 PveHoldTick(Pve.HoldLeft+.001f);Check(!IntroStartsBossSong&&Math.Abs(BossSongTime-Pve.HoldDuration)<.0001,"song continues after intro");
                 Deliver();
                 Check(!guest.IntroStartsBossSong&&Math.Abs(guest.BossSongTime-BossSongTime)<.0001,"guest song continues after intro");
+                // Split Expedition also advances match time after each held tick. The host/replica song must not count it twice.
+                BeginPveHold("intro");started=Time;
+                for(int tick=1;tick<=120;tick++){PveHoldTick(1f/60);Match.Tick(1d/60);}
+                Deliver();Check(Math.Abs(BossSongTime-2)<.001&&Math.Abs(guest.BossSongTime-2)<.001,"running Expedition intro clock advances once on host and guest");
+                float remaining=Pve.HoldLeft;
+                for(int tick=0;tick<(int)(remaining*60);tick++){PveHoldTick(1f/60);Match.Tick(1d/60);}
+                PveHoldTick(Pve.HoldLeft+.001f);Deliver();
+                Check(Math.Abs(BossSongTime-Pve.HoldDuration)<.001&&Math.Abs(guest.BossSongTime-BossSongTime)<.001,"running intro release stays continuous on host and guest");
                 // Personal chip UI is driven by the requesting seat's open pick and all its offers, never another row.
                 GrantPvePick(Local,"common",true);Deliver();var open=Pve.Rows[LocalId].Open;var remote=guest.Pve.Rows[LocalId].Open;
                 Check(remote!=null&&remote.Id==open.Id&&remote.Offers.SequenceEqual(open.Offers)&&remote.Offers.All(id=>guest.PveChip(id)!=null),"complete guest personal chip screen");
