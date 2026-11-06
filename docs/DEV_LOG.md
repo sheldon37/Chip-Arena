@@ -1,3 +1,10 @@
+## 2026-11-05 — Claude: the shield entrance's rim off the helmet
+
+- Owner, shown the final frames: "Yes, fix it" (the entrance ended with the shield's rim across the helmet, edge on to the camera). Branch `claude/shield-entrance`, base `2074a0f3`. Implemented on the branch, merge and build status in the checks line below.
+- `NativePackIntro.HoldClear` and `HoldTurn` (`Core/NativeEntrancePack.cs`, `weapon-shield` only): from 2.45 to 3.05 s, after the slam has settled and before the name card, the fist eases down and out, the shield turns its face to the front and the head turns off the rim so the visor shows. The slam itself is untouched. It is on the entrance's game rig, so the voxel body gets it too.
+- Animation impact: this entrance's closing hold only. Hit timing, hitboxes, damage, cooldowns, movement and networking unchanged.
+- **Checks for this entry:** in the receipt line appended after the build.
+
 ## 2026-11-05 — Astra: approve remaining boss sound batch
 
 - Owner listened to the six-sound sample and instructed completion of the batch. Base `8f7ed575`, branch `codex/boss-audio-remainder-20261105`.
