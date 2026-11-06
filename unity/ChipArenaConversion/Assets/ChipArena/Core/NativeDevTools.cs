@@ -197,6 +197,7 @@ namespace ChipArena.UnityConversion
             new NativeDevAction("preview-ironworks-boss",Ca,V,"Ironworks boss preview"),
             new NativeDevAction("preview-hum-boss",Ca,V,"Level 0 boss preview"),
             new NativeDevAction("preview-deepend-boss",Ca,V,"Poolrooms boss preview"),
+            new NativeDevAction("preview-fallen-boss",Ca,V,"Final boss preview"),
             new NativeDevAction("preview-door-lock",Ca,V,"Instance exit door preview"),
             new NativeDevAction("preview-rounds-fx",Ca,V,"ROUNDS pack effects preview"),
             new NativeDevAction("overlay-shots",Ca,V,"Shot paths"),

@@ -9,7 +9,7 @@ namespace ChipArena.UnityConversion
     // intro's card. Each boss's own presenter is Runtime NativeHumBossPresentation.cs / NativeDeepEndBossPresentation.cs.
     public sealed partial class ArenaPresentation
     {
-        private void BackroomsBossScenery(NativeArena arena){HumBossScenery(arena);DeepEndBossScenery(arena);}
+        private void BackroomsBossScenery(NativeArena arena){HumBossScenery(arena);DeepEndBossScenery(arena);FallenBossScenery(arena);}
         /// <summary>The boss's bank and body built ahead of the level (PrewarmStage), so its arrival builds nothing mid-fight. Nothing until the rules name this map's boss: a level with no boss reads neither bank.</summary>
         private bool BackroomsBossPrewarm(NativeArena arena)
         {
@@ -19,11 +19,11 @@ namespace ChipArena.UnityConversion
             return false;
         }
         /// <summary>A DEV preview's camera this frame (NativeCinematicCamera.Direct), when one is running.</summary>
-        internal bool BackroomsBossPreviewShot(out Vector3 eye,out Vector3 look,out float fov)=>HumBossPreviewShot(out eye,out look,out fov)||DeepEndBossPreviewShot(out eye,out look,out fov);
+        internal bool BackroomsBossPreviewShot(out Vector3 eye,out Vector3 look,out float fov)=>FallenBossPreviewShot(out eye,out look,out fov)||HumBossPreviewShot(out eye,out look,out fov)||DeepEndBossPreviewShot(out eye,out look,out fov);
         /// <summary>The intro card to draw this frame and its age: a preview's, or a live boss's through the intro hold.</summary>
         internal bool BackroomsBossCardNow(NativeArena arena,out BossIntroCard card,out float age)
         {
-            if(HumBossPreviewCard(out card,out age)||DeepEndBossPreviewCard(out card,out age))return true;
+            if(FallenBossPreviewCard(out card,out age)||HumBossPreviewCard(out card,out age)||DeepEndBossPreviewCard(out card,out age))return true;
             var kind=arena?.ZoneBoss?.archetype;card=NativeBackroomsBossIntro.Card(kind);age=(float)(arena?.BossSongTime??-1);
             return card!=null&&arena.Pve?.Holding==true&&arena.Pve.Cinematic=="intro"&&age>=0;
         }
@@ -68,6 +68,7 @@ namespace ChipArena.UnityConversion
         private bool BackroomsBossPreviewSong(out string id,out double clip,out double at)
         {
             id=null;clip=0;at=0;double start,shown,loop;
+            if(NativeFallenBossPreview.On){if(double.IsNaN(NativeFallenBossPreview.Start)||Clip(NativeFallenSong.Id)==null)return false;var sf=NativeFallenBossPreview.Shown;id=NativeFallenSong.Id;clip=sf.SongClip;at=NativeFallenBossPreview.Start+sf.Section+Math.Floor((NativeFallenBossPreview.ShownClock-NativeFallenBossPreview.Start)/NativeFallenBossPreview.Loop)*1000;return true;}
             if(NativeHumBossPreview.On){id=NativeZoneMusic.Level0Boss;start=NativeHumBossPreview.Start;shown=NativeHumBossPreview.ShownClock;loop=NativeHumBossPreview.Loop;}
             else if(NativeDeepEndBossPreview.On){id=NativeZoneMusic.PoolroomsBoss;start=NativeDeepEndBossPreview.Start;shown=NativeDeepEndBossPreview.ShownClock;loop=NativeDeepEndBossPreview.Loop;}
             else return false;

@@ -180,6 +180,7 @@ namespace ChipArena.UnityConversion
                 case "preview-ironworks-boss":IronworksBossPreviewToggle();break;
                 case "preview-hum-boss":HumBossPreviewToggle();break;
                 case "preview-deepend-boss":DeepEndBossPreviewToggle();break;
+                case "preview-fallen-boss":FallenBossPreviewToggle();break;
                 case "preview-rounds-fx":RoundsPreviewToggle();break;
                 case "preview-door-lock":NativeLaserDoorPreview.On=!NativeLaserDoorPreview.On;DevSay(NativeLaserDoorPreview.On?"Instance exit door preview · on (presentation only; the laser door cycles lock, sealed, unlock and open; the exit's collider is unchanged)":"Instance exit door preview · off",false);break;
                 case "preview-account-xp":AccountXpPreviewToggle();break;
@@ -683,6 +684,7 @@ namespace ChipArena.UnityConversion
             y=IronworksBossPreviewPanel(x,y,w);
             y=HumBossPreviewPanel(x,y,w);
             y=DeepEndBossPreviewPanel(x,y,w);
+            y=FallenBossPreviewPanel(x,y,w);
             y=RoundsPreviewPanel(x,y,w);
             y=DevHead(x,y,w,"INSTANCE EXIT DOOR (DEV PREVIEW)");DevToggleAct(new Rect(x,y,w,32),"preview-door-lock",NativeLaserDoorPreview.On);y+=38;
             y=DevNote(x,y,w,"In an instance (or an instance map in the sandbox): the exit's laser door locks, holds sealed, unlocks and stands open on a 7 s cycle. Presentation only: the closure and its collider stay the director's.",C.Muted());
