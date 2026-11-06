@@ -193,6 +193,32 @@ class SoundRequestImport(unittest.TestCase):
         self.assertNotIn('space', sounds['boss.noctiel.cleave'])
         self.assertEqual(max(s['levelDb'] for s in sounds.values()), sounds['boss.noctiel.verdict.split']['levelDb'])
 
+    def test_reviewed_short_takes_are_only_those_takes(self):
+        request = {'targetSeconds': {'min': .6, 'max': 1.1}, 'fadeOutMs': 150}
+        pcm = array('f', [0.0] * 2000 + [.5] * int(importer.RATE * .454) + [0.0] * 4000)
+        sha = importer.NOCTIEL_2026_11_06
+        asked, floor = importer.request_for(sha, 'boss.noctiel.gauntlet', 1, request)
+        self.assertEqual(floor, .45)
+        out, notes, _ = importer.edit(pcm, asked, 'boss', -50, .02)
+        self.assertGreaterEqual(len(out) / importer.RATE, .45)
+        # Another take of the key, another key, or another manifest version keeps the request's own minimum.
+        for args in ((sha, 'boss.noctiel.gauntlet', 2), (sha, 'boss.noctiel.glide', 1), ('0' * 64, 'boss.noctiel.gauntlet', 1)):
+            asked, floor = importer.request_for(*args, request)
+            self.assertIsNone(floor)
+            with self.assertRaisesRegex(ValueError, 'shorter than its 0.6 s minimum'):
+                importer.edit(pcm, asked, 'boss', -50, .02)
+        # The list holds only NOCTIEL's three reviewed takes, each under its request's minimum.
+        path = REPO / 'docs/audio/sound-requests-noctiel.json'
+        if path.is_file():
+            raw, data, sounds, trim, fade = importer.load_manifest(path)
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), sha)
+            self.assertEqual(len(importer.ACCEPTED_SHORT), 3)
+            for (digest, take), floor in importer.ACCEPTED_SHORT.items():
+                key, nn = take.rsplit('_', 1)
+                self.assertEqual(digest, sha)
+                self.assertLess(floor, sounds[key]['targetSeconds']['min'])
+                self.assertLessEqual(int(nn), sounds[key]['count'])
+
     def test_boss_fade_is_the_requests_own(self):
         pcm = array('f', [.5] * (importer.RATE * 2))
         out, _, _ = importer.edit(pcm, {'targetSeconds': {'min': .5, 'max': 1.0}, 'fadeOutMs': 400}, 'boss', -50, .02)

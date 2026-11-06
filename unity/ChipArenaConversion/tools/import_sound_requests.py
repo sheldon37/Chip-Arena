@@ -283,6 +283,27 @@ def windows(pcm, size):
     return out
 
 
+# Takes reviewed and accepted shorter than their request's targetSeconds.min: keyed by the manifest's SHA-256 (CRLF as LF) and
+# the take (<key>_<NN>), each the shortest edited length accepted for that one take. Nothing else is relaxed, and a take from
+# any other manifest version keeps its request's minimum. The list lives in this file, so the builder queue's import fingerprint
+# (this file's hash) changes whenever it does. docs/audio/SOUND-REQUESTS.md, "Reviewed short takes".
+NOCTIEL_2026_11_06 = '4ad409e429a349910d1eac937ef08a9747ef6aebdc43e9e1fa93f93b6b7a5bd7'
+ACCEPTED_SHORT = {
+    # NOCTIEL's builder batch (PR #370): the import stopped on these three; Claude reviewed each against its moment.
+    (NOCTIEL_2026_11_06, 'boss.noctiel.gauntlet_01'): .45,    # 0.454 s: the gauntlet closing on the hilt in the 0:28 close-up
+    (NOCTIEL_2026_11_06, 'boss.noctiel.sword.pull_01'): 1.2,  # 1.232 s: the sword drawn up out of the water over about 1.4 s
+    (NOCTIEL_2026_11_06, 'boss.noctiel.wave_02'): .28,        # 0.294 s: a crescent at 34 m/s passing a pilot; one of two takes
+}
+
+
+def request_for(digest, key, variant, request):
+    """The request a take is edited against: its own, or with a reviewed shorter minimum (ACCEPTED_SHORT) for that one take."""
+    floor = ACCEPTED_SHORT.get((digest, f'{key}_{variant:02d}'))
+    if floor is None or not 0 < floor < float(request['targetSeconds']['min']):
+        return request, None
+    return dict(request, targetSeconds=dict(request['targetSeconds'], min=floor)), floor
+
+
 def edit(pcm, request, category, trim_db, fade):
     """Trim, keep the first event, cap and fade. Returns (samples, notes, trimmed) or raises ValueError (rejected)."""
     lo, hi = float(request['targetSeconds']['min']), float(request['targetSeconds']['max'])
@@ -458,6 +479,7 @@ def outside_repo(path):
 
 def import_batch(args, plan, report):
     raw, manifest, sounds, trim_db, fade, max_clips, by_key, warnings, problems = plan
+    digest = hashlib.sha256(raw).hexdigest()
     exe = ffmpeg()
     outside_repo(args.out)
     with tempfile.TemporaryDirectory(prefix='sound-import-base-') as scratch, tempfile.TemporaryDirectory(prefix='sound-import-clips-') as staging:
@@ -483,7 +505,10 @@ def import_batch(args, plan, report):
                 files.append(row)
                 try:
                     pcm = decode(exe, it.read(), Path(it.name).suffix)
-                    cut, notes, trimmed = edit(pcm, s, cat, trim_db, fade)
+                    asked, floor = request_for(digest, key, nn, s)
+                    cut, notes, trimmed = edit(pcm, asked, cat, trim_db, fade)
+                    if floor is not None and len(cut) / RATE < float(s['targetSeconds']['min']):
+                        notes.append(f'{len(cut) / RATE:.3f} s, under its {s["targetSeconds"]["min"]} s minimum: accepted by review (ACCEPTED_SHORT)')
                     tmp = staging / f'{key}_{nn:02d}.ogg'
                     stats = encode(exe, cut, targets[cat] + float(s.get('levelDb', 0)), tmp)
                     row.update(status='trimmed' if trimmed else 'accepted', notes=notes, **stats)
