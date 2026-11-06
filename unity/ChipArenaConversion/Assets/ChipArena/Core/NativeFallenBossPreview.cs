@@ -179,11 +179,11 @@ namespace ChipArena.UnityConversion
             // are NativeFallenIntroMotion's (the owner's four reference clips): the fist stays on the planted sword until the keyed
             // path takes the blade out of the water, and holds it from there to the cut.
             var ip=NativeFallenIntroMotion.At(p);f.Intro=ip;
-            f.BossShown=p>=11;f.Plant=1-ip.Sword;f.Carry=0;f.SwordLift=ip.SwordLift;f.Key=p<RiseAt?.75f:1;f.Kneel=Math.Max(ip.KneelLegs,ip.KneelUpper);f.Trail=ip.Trail;f.Flare=ip.Flare;
+            f.BossShown=p>=11;f.Plant=ip.Mocap?ip.Plant:1-ip.Sword;f.Carry=0;f.SwordLift=ip.SwordLift;f.Key=p<RiseAt?.75f:1;f.Kneel=Math.Max(ip.KneelLegs,ip.KneelUpper);f.Trail=ip.Trail;f.Flare=ip.Flare;
             for(int w=0;w<3;w++)f.WingOpen[w]=Smooth((p-WingAt[w])/2.1f);
             if(p>MaskAt+.2f)for(int w=0;w<3;w++)f.WingOpen[w]=Lerp(f.WingOpen[w],.72f,Smooth((p-PullAt)/2));
             f.WingOpen[0]=Math.Min(1.12f,f.WingOpen[0]+ip.WingTop);
-            f.LookAtEye=p<MaskAt?0:Smooth((p-MaskAt)/1.1f);
+            f.LookAtEye=p<MaskAt?0:Smooth((p-MaskAt)/1.1f)*(ip.Mocap?1-Smooth((p-PullAt)/.6f):1);// the extracted motion's own head after the mask's close-up
             f.Reveal=p<GauntletAt?.04f:Smooth((p-GauntletAt-.5f)/8f)*.12f+.04f;
             if(p<11)
             {

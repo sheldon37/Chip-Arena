@@ -304,3 +304,27 @@ The owner's four reference clips (`01` the feather, `02` kneel and rise, `03` th
 | 50.81 + 0.95 | Slash, fight | The impact held 0.25 s, then a 0.7 s release: the left foot then the right step home to the fight's pose, the fist back to the carry |
 
 Not taken from the references: clip 03's roll of the blade across the front of the body (it would cut through NOCTIEL at 3.4 m), the pause in the low guard between 03 and 04 (no time before the drop), clip 04's two-handed end (NOCTIEL is one-handed), and the foot pops and slides. The fist stays closed on the grip (no finger animation), and the robe, wings and halo follow their own springs.
+
+## 19. The intro from the reference clips themselves (Claude, 2026-11-06; staged)
+
+Owner: "Reproduce the reference videos as accurately as technically possible in Unity ... Treat the video as the authoritative motion reference ... Prefer extracting and retargeting actual skeletal motion." Section 18's keyed choreography was hand-placed keys over a pack clip and IK, an approximation of the clips; this replaces it with motion extracted from them. Branch `claude/noctiel-mocap`, staged for checking in Unity before it goes to shared (the owner: things better judged in the local session are staged).
+
+- **How:** MediaPipe's pose landmarks on every frame of clips 02, 03 and 04 (24 a second); the claymore tracked in the picture; both solved onto NOCTIEL's own rest skeleton (each limb aimed along the reference's, the elbow's and the knee's hinge from the bend, so no limb flips or twists), the feet held on the water where the reference holds them still. The whole pipeline is `tools/motion` (README there); the baked file is `Resources/FallenIntroMocap.json`, sampled by Core `NativeFallenIntroMocap`, applied by Runtime `NativeFallenIntroMocapBody.cs`. Clip 01 (the feather) stays as section 18 has it.
+- **On the rig:** every bone under the pelvis is set from its bind pose each frame, parents first (a bone the clips don't carry turns with the nearest one above it; the fingers keep the fist), so no turn is left over from the clip pose or a blend. The fist stays on the planted sword by the existing plant IK until the reference's pull; the left hand takes the grip in the lunge (two-handed, as clip 04 ends: section 18 left it out). The planted sword stands where the reference's fist rests on it.
+- **Timing:** the reference's own speed throughout, except the chop (top to contact 0.25 s in the clip, 0.20 s as the owner asked); the contact is on the impact (50.81, the drop). Played back to back the clips fill the cutscene: the rise begins at 35.36 (the beat is 35.20), the pull at 40.61 (its sound moves with it from 47.0), the windup's top at 50.61. The kneel is clip 02's frame 60, held from 11 s with the keyed breath until 33.78. `NativeFallenIntroMocap.Speed` scales everything together and `Map` each stretch, without touching the frames; the contact stays on the impact.
+- **The head:** the reference's own, except the mask's close-up (44.46–47.0), which still turns it to the lens, fading back by 47.6.
+- **Checked (`CoreTests --fallen-mocap`):** the blade on the tracked reference, mean 0.3 degrees, worst 4, where it was readable; no bone faster than 6.6 degrees in 1/240 s; elbows to 78, knees to 131, forearm roll to 65, wrist to 80 degrees, no backward bend; 99% of the time a sole, toe or knee within 1.1 cm (rest) of the water; held feet slide under 0.21 m/s outside two windows.
+
+| Clip | Reference | In the game |
+| --- | --- | --- |
+| 02 kneel, rise | frames 0–47 have no body MediaPipe could read (held from 48); the blade planted | extracted, retargeted; the kneel held, then 60–168 at speed |
+| 03 pull, salute | all frames read; blade filled at 65–71 (the pull, foreshortened) | extracted, retargeted, at speed |
+| 04 raise, cut | blade filled at 127–139 (motion blur), with the top (128) and the contact (134) read by eye | extracted, retargeted; the chop at 1.25× |
+
+Known differences, to judge and tune in Unity:
+
+- The rise (clip 02, frames 60–150): a kneeling body is where one camera's depth is weakest. The back toe drags as NOCTIEL comes up (up to about 1.5 m/s rest for a moment) and the kneel's legs are the least certain part of the motion.
+- The step into the lunge during the chop (clip 04, frames 126–137): a foot slides briefly as it lands.
+- Clip 03's pull and clip 02's planted hold: the reference rests its fist on the pommel; NOCTIEL's fist grips the handle (the sword is fixed in its hand), so the wrist there is the plant IK's, not the reference's.
+- The joins between clips (separate takes, the stance 10–20 cm different) blend over 1 s; the second is in the mask's close-up.
+- Not seen here: the actual mesh. The comparison sheets (`docs/motion/`) are NOCTIEL's skeleton and sword from the reference's camera, not the game's renderer; armour, wings and robe can still collide where the bones don't.

@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/noctiel-mocap`, staged, not merged): NOCTIEL's intro body from the owner's clips 02–04 themselves (MediaPipe extraction solved onto the rig, `tools/motion`; Core `NativeFallenIntroMocap`, Runtime `NativeFallenIntroMocapBody.cs`), and the cloth no longer a black column. Next: look at it in Unity (local session), tune, then merge. NOCTIEL's walk needs a rules change for time between moves (Astra; DEV_LOG).
+
 2026-11-06 Claude (`claude/telegraphs`): a shared attack-warning renderer (fill to the hit, animated edge and pattern, lock-on strobe, impact flash; one look per boss family). NOCTIEL is on it, each warning matching its rule's hit area; the other bosses and the enemies are next (docs/TELEGRAPHS.md). Not seen in Unity.
 
 2026-11-06 Claude (`claude/noctiel-intro-motion`): NOCTIEL's intro is re-animated from the owner's four reference clips (option A): a falling-leaf feather, a weighted rise over the planted front foot, the draw with a salute and side extension, a cocked windup and a 0.20 s downswing into a lunge on the drop. Cues, shots and music unchanged. Not seen in Unity.

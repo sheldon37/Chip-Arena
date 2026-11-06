@@ -81,7 +81,7 @@ namespace ChipArena.UnityConversion
             Add(Feather,NativeFallenBossPreview.FeatherLand,o);Add(Ripple,NativeFallenBossPreview.FeatherLand+.05f,o,.8f);
             Add(Gauntlet,NativeFallenBossPreview.GauntletAt,o);Add(Veins,NativeFallenBossPreview.BladeAt,o);Add(HaloCrack,NativeFallenBossPreview.HaloAt,o);Add(Rise,NativeFallenBossPreview.RiseAt,o);
             for(int w=0;w<3;w++){Add(WingsOpen,NativeFallenBossPreview.WingAt[w],o,.8f+.1f*w);Add(Ripple,NativeFallenBossPreview.WingAt[w]+.4f,o,.6f);}
-            Add(Mask,NativeFallenBossPreview.MaskAt,o);Add(SwordPull,NativeFallenBossPreview.PullAt,o);Add(Slowdown,NativeFallenBossPreview.CutAt,o);
+            Add(Mask,NativeFallenBossPreview.MaskAt,o);Add(SwordPull,NativeFallenIntroMotion.PullTime,o);Add(Slowdown,NativeFallenBossPreview.CutAt,o);
             float end=NativeFallenPilots.CutsceneEnd;Add(Slash,end-.5f,o);Add(SlashPart,end,o);
             return n;
         }
