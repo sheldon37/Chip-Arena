@@ -36,7 +36,7 @@ namespace ChipArena.UnityConversion
             int frame=Time.frameCount;bool continuous=lastFrame==frame-1;lastFrame=frame;
             if(arena==null||presentation==null||view==null){siren.Stop();return false;}
             if(!continuous||arena.Generation!=generation){generation=arena.Generation;siren.Stop();}
-            if(phaseOk&&presentation.BackroomsBossPreviewShot(out var previewEye,out var previewLook,out float previewFov)){arrivalCamera=view;arrivalFov=view.fieldOfView;view.fieldOfView=previewFov;view.transform.SetPositionAndRotation(previewEye,Quaternion.LookRotation(previewLook-previewEye));presentation.FirstPerson=false;presentation.AimHeld=false;ZoneArrival=Directing=true;siren.Stop();return true;}
+            if((phaseOk||NativeFallenBossPreview.On)&&presentation.BackroomsBossPreviewShot(out var previewEye,out var previewLook,out float previewFov)){arrivalCamera=view;arrivalFov=view.fieldOfView;view.fieldOfView=previewFov;view.transform.SetPositionAndRotation(previewEye,Quaternion.LookRotation(previewLook-previewEye));presentation.FirstPerson=false;presentation.AimHeld=false;ZoneArrival=Directing=true;siren.Stop();return true;}
             if(phaseOk&&ZoneBossArrival(arena,presentation,view)){siren.Stop();return true;}
             // arena.ViewPilot without its per-call lambda: the local pilot, or the one it controls (renderer.ts viewId).
             var local=Find(arena.Pilots,arena.LocalId);var me=local?.Controlling??local;if(me?.Seat==null){siren.Stop();return false;}

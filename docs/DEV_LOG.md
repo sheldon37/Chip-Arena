@@ -1,3 +1,12 @@
+## 2026-11-06 — Claude: NOCTIEL, the final boss, as a DEV preview
+
+- Owner's brief and answers: `docs/EXPEDITION-BOSS-FINAL.md` section 1 (a fallen angel, one possible final boss, 5 lives, 4 phases with a screen-cutting slash and chip screen, pitch-black water that reacts to steps and the song, monochrome). Then: "lets make sure the bosses animations and effects are beautiful". Branch `claude/fallen-angel`.
+- **Built:** the model in Blender in four phases plus adds (`tools/gear/fallen_boss.py`, local bank `ChipArenaPackBossFallen`, Drive zip only); the Still Water with the song's own bass running out across it; the 51 s cutscene; the Slash with its frozen frame; the chip screen; every move in the design on the song's beats; the death. Owner's song in `Resources/Audio/music/lux-cecidit.mp3`. All of it plays under **DEV panel · Camera · Final boss preview**, on a stage of its own 2 km under any map, restoring the level when it stops.
+- **Not built:** Astra's rules (section 13 is the contract): lives, revives, damage, the real draft; then binding this presentation to Astra's record, as THE HUM's was. Real pilots' reflections. Boss sounds. Section 14 lists it.
+- **Touches shared code only as hooks:** `BackroomsBossScenery`, `BackroomsBossPreviewShot`, `BackroomsBossCardNow`, `BackroomsBossPreviewSong`, `ZoneBossArrivalHud`, the DEV panel, `NativeCinematicCamera.Direct` (a running preview is shot in any phase).
+- Animation impact: none on anything live. Nothing here reads into hit timing, hitboxes, damage, cooldowns, movement or networking until bound. The script's timing proposes the design's numbers for Astra.
+- **Checks for this entry:** in the receipt line appended after the build.
+
 ## 2026-11-05 — Claude: Sheldon Idle holds and calmer twitching; staffs and bows in the fist
 
 - Owner: "Sheldon idle still broken with a lot of weapons; I noticed a lot of twitch. Bow/Staff also is held by their wrist? Please review and fix; Make this look a lot better." Branch `claude/sheldon-better`, base `c2205fdc`. Implemented on the branch, merge and build status in the checks line below.
