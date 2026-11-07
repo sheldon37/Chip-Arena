@@ -31,6 +31,11 @@ Shader "ChipArena/NativeFallenBody"
                 float h=saturate(dot(n,normalize(_FbKey.xyz+v)));float spec=pow(h,110)*2.6+pow(h,18)*.16;
                 float rim=pow(1-saturate(dot(n,v)),3.4);float bounce=saturate(.5-n.y*.5);bounce*=bounce;
                 float3 o=c*(_FbKey.w*(band+spec)+.035+.11*bounce)+rim*(.34*_FbKey.w+.04)*c;
+                // The cloth (the robe and the undersuit, tools/gear/fallen_boss.py 'cloth' 0x17171B): dark, but fabric, never a hole in
+                // the black stage (owner 2026-11-06: the dark column beside the planted sword). A charcoal floor in the shade and a
+                // velvet sheen toward its edges, grey only; the black of the eyes and the veins is darker and left as it was.
+                float lum=dot(c,float3(.2126,.7152,.0722));float cloth=smoothstep(.04,.06,lum)*(1-smoothstep(.13,.17,lum));
+                float fv=1-saturate(dot(n,v));o+=cloth*(c*(.28+.2*bounce)+float3(.78,.8,.86)*fv*fv*(.05+.08*_FbKey.w));
                 o+=_FbFlash;
                 return float4(o,1);
             }

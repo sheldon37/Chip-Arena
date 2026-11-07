@@ -31,6 +31,9 @@ namespace ChipArena.UnityConversion
         public float LeftHand;public Vector3 LeftHandAt;
         /// <summary>The top wing pair opened further (the windup), the wings thrown (the impact), the blade's trail.</summary>
         public float WingTop,Flare,Trail;
+        /// <summary>The body is the owner's reference clips (Core NativeFallenIntroMocap), sampled at MocapAt (the cutscene's seconds),
+        /// and the keys above stand down; Plant is the fist's weight on the planted sword (until the reference's pull).</summary>
+        public bool Mocap;public float MocapAt,Plant;
     }
 
     /// <summary>
@@ -92,8 +95,18 @@ namespace ChipArena.UnityConversion
             o.Grip=Key(KeyT,GripV,p);o.Blade=Normal(Key(KeyT,BladeV,p),Vector3.UnitY);o.Flat=Normal(Key(KeyT,FlatV,p),Vector3.UnitZ);
             o.LeftHand=Key(LeftHandT,LeftHandV,p);o.LeftHandAt=LeftHandFromHips;
             o.WingTop=Key(WingTopT,WingTopV,p);o.Flare=Smooth((p-50.72f)/.09f);o.Trail=Smooth((p-50.56f)/.05f);
+            var m=NativeFallenIntroMocap.Active;
+            if(m!=null)
+            {
+                // The extracted motion carries the body, the feet, both arms and the sword's path: the keyed layer stands down. While the
+                // kneel is held for the cutscene's length the chest keeps the keyed breath (a held frame would look frozen); after, none.
+                o.Mocap=true;o.MocapAt=p;o.KneelLegs=o.KneelUpper=0;o.Root=Vector3.Zero;o.Lean=o.Twist=o.Head=0;o.FootR=o.FootL=0;o.LeftBlend=o.LeftLift=0;o.LeftSpot=Vector3.Zero;
+                o.SwordLift=0;o.Sword=0;o.LeftHand=0;o.Breath=p<m.HoldEnd?o.Breath*(1-Smooth((p-m.HoldEnd+.6f)/.6f)):0;o.Plant=m.PlantAt(p);
+            }
             return o;
         }
+        /// <summary>When the fist takes the sword from the water: the reference's pull when the extracted motion plays, else the cut's beat.</summary>
+        public static float PullTime=>NativeFallenIntroMocap.Active?.PullAt??NativeFallenBossPreview.PullAt;
 
         // ---- the feather (clip 01): a falling leaf ----
         /// <summary>The cutscene's one feather at p: it rocks side to side like a falling leaf, each swing slowing at its turn and

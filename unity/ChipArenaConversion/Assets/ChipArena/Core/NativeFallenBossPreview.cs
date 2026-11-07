@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         private static readonly float[] R={21,27,16},W={.33f,-.26f,.42f},Ph={.2f,2.4f,4.3f};
         public static Vector3 At(int i,float p)
         {
-            if(p<CutsceneEnd){float x=i==0?-3.2f:i==1?4.4f:-7.8f,start=i==0?13.5f:i==1?15:16.6f;float z=-49+Math.Max(0,p-start)*1.5f;return new Vector3(x,0,z);}
+            if(p<CutsceneEnd){float x=i==0?-3.2f:i==1?6.4f:-7.8f,start=i==0?13.5f:i==1?15:16.6f;float z=-49+Math.Max(0,p-start)*1.5f;return new Vector3(x,0,z);}
             float a=W[i]*p+Ph[i],r=R[i]+3.5f*(float)Math.Sin(.31f*p+i*1.7f);return new Vector3(r*(float)Math.Cos(a),0,r*(float)Math.Sin(a));
         }
         public static float Yaw(int i,float p)
@@ -179,11 +179,11 @@ namespace ChipArena.UnityConversion
             // are NativeFallenIntroMotion's (the owner's four reference clips): the fist stays on the planted sword until the keyed
             // path takes the blade out of the water, and holds it from there to the cut.
             var ip=NativeFallenIntroMotion.At(p);f.Intro=ip;
-            f.BossShown=p>=11;f.Plant=1-ip.Sword;f.Carry=0;f.SwordLift=ip.SwordLift;f.Key=p<RiseAt?.75f:1;f.Kneel=Math.Max(ip.KneelLegs,ip.KneelUpper);f.Trail=ip.Trail;f.Flare=ip.Flare;
+            f.BossShown=p>=11;f.Plant=ip.Mocap?ip.Plant:1-ip.Sword;f.Carry=0;f.SwordLift=ip.SwordLift;f.Key=p<RiseAt?.75f:1;f.Kneel=Math.Max(ip.KneelLegs,ip.KneelUpper);f.Trail=ip.Trail;f.Flare=ip.Flare;
             for(int w=0;w<3;w++)f.WingOpen[w]=Smooth((p-WingAt[w])/2.1f);
             if(p>MaskAt+.2f)for(int w=0;w<3;w++)f.WingOpen[w]=Lerp(f.WingOpen[w],.72f,Smooth((p-PullAt)/2));
             f.WingOpen[0]=Math.Min(1.12f,f.WingOpen[0]+ip.WingTop);
-            f.LookAtEye=p<MaskAt?0:Smooth((p-MaskAt)/1.1f);
+            f.LookAtEye=p<MaskAt?0:Smooth((p-MaskAt)/1.1f)*(ip.Mocap?1-Smooth((p-PullAt)/.6f):1);// the extracted motion's own head after the mask's close-up
             f.Reveal=p<GauntletAt?.04f:Smooth((p-GauntletAt-.5f)/8f)*.12f+.04f;
             if(p<11)
             {
@@ -198,7 +198,7 @@ namespace ChipArena.UnityConversion
             else if(p<HaloAt)
             {
                 float u=Clamp01((p-BladeAt)/(HaloAt-BladeAt));u=u*u*(3-2*u);
-                {var at=NativeFallenSongPlant.At(Vector3.Zero,180);Shot(f,at+new Vector3(-1.5f,.3f,-3.9f),at+new Vector3(-1.2f,1.5f,-3.7f),at+new Vector3(0,.3f,0),at+new Vector3(0,1.75f,0),15,17,u);}
+                {var at=NativeFallenSongPlant.At(Vector3.Zero,180);var m=NativeFallenIntroMocap.Active;if(m!=null&&ip.Mocap){var g=m.PlantGrip*NativeFallenBoss.Scale;at=new Vector3(-g.X,0,-g.Z);}Shot(f,at+new Vector3(-1.5f,.3f,-3.9f),at+new Vector3(-1.2f,1.5f,-3.7f),at+new Vector3(0,.3f,0),at+new Vector3(0,1.75f,0),15,17,u);}
             }
             else if(p<RiseAt){Shot(f,new Vector3(-.95f,.32f,-1.55f),new Vector3(.25f,.38f,-1.85f),new Vector3(0,.28f,-.1f),new Vector3(0,.3f,-.1f),30,27,Clamp01((p-HaloAt)/3.7f));f.EyeMark=f.LookMark=FallenBossFrame.MarkHead;}
             else if(p<MaskAt)Shot(f,new Vector3(0,.82f,-26),new Vector3(0,.7f,-22),new Vector3(0,2.5f,0),new Vector3(0,2.75f,0),20,19,Clamp01((p-RiseAt)/9.3f));

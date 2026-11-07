@@ -1,3 +1,5 @@
+2026-11-06 Claude (`claude/noctiel-mocap`, merged into shared): NOCTIEL's intro body from the owner's clips 02–04 (extracted, then corrected in Unity beside the reference: EXPEDITION-BOSS-FINAL section 19), and the cloth no longer a black column. Next: the owner plays it beside the clips themselves (not on the PC it was checked on). NOCTIEL's walk needs a rules change for time between moves (Astra; DEV_LOG).
+
 2026-11-07 Claude (`claude/telegraphs-bosses`): every boss's attack warnings on the shared renderer: THE HUM, THE DEEP END, THE 6:47, THE CONVERTER and the Siren's kit join NOCTIEL. Each is drawn to its rule's shape and time and checked against it, including moves that had no warning before. Next: the enemies.
 
 2026-11-06 Claude (`claude/telegraphs`): a shared attack-warning renderer (fill to the hit, animated edge and pattern, lock-on strobe, impact flash; one look per boss family). NOCTIEL is on it, each warning matching its rule's hit area; the other bosses and the enemies are next (docs/TELEGRAPHS.md). Not seen in Unity.

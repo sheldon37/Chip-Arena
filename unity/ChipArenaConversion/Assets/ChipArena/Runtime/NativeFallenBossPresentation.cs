@@ -119,6 +119,9 @@ namespace ChipArena.UnityConversion
             FallenSlashStep(f,eye);
         }
         private static NV ToNV(Vector3 v)=>new NV(v.x,v.y,v.z);
+#if UNITY_EDITOR
+        private double fbCamFileRead=double.NaN;private float[] fbCamFile;
+#endif
         private void FallenShot(FallenBossFrame f,Vector3 origin,float now)
         {
             Vector3 Mark(int m,Vector3 v)
@@ -132,6 +135,11 @@ namespace ChipArena.UnityConversion
             var e=Mark(f.EyeMark,NativeBossPoseApply.ToUnity(f.Eye));var l=Mark(f.LookMark,NativeBossPoseApply.ToUnity(f.Look));
             float sh=fbFx.Shake;if(sh>.002f)e+=new Vector3(Mathf.Sin(now*37.1f)+.5f*Mathf.Sin(now*71.3f+1.3f),Mathf.Sin(now*43.7f+.7f)+.5f*Mathf.Sin(now*83.9f+2.9f),Mathf.Sin(now*29.3f))*(.14f*sh);
             fbEye=e;fbLook=l;fbFov=f.Fov;fbShotReady=true;
+#if UNITY_EDITOR
+            // DEV, comparing the intro with its reference clips: a locked camera. Temp/fallen-preview-cam.txt holds "yaw distance height lookHeight fov" (yaw 0 is on its front, 90 on its left).
+            if(fbCamFileRead!=NativeFallenBossPreview.Start){fbCamFileRead=NativeFallenBossPreview.Start;fbCamFile=null;try{const string cf="Temp/fallen-preview-cam.txt";if(System.IO.File.Exists(cf)){var parts=System.IO.File.ReadAllText(cf).Trim().Split(' ');var vals=new float[5];for(int i=0;i<5;i++)vals[i]=float.Parse(parts[i],System.Globalization.CultureInfo.InvariantCulture);fbCamFile=vals;}}catch(Exception){fbCamFile=null;}}
+            if(fbCamFile!=null){var around=Quaternion.AngleAxis(f.Yaw+fbCamFile[0],Vector3.up)*Vector3.forward;var foot=origin+NativeBossPoseApply.ToUnity(f.Boss);fbEye=foot+around*fbCamFile[1]+Vector3.up*fbCamFile[2];fbLook=foot+Vector3.up*fbCamFile[3];fbFov=fbCamFile[4];f.SlashAge=-1;f.CardAge=-1;NativeFallenBossPreview.Shown.SlashAge=-1;NativeFallenBossPreview.Shown.CardAge=-1;}
+#endif
         }
         internal bool FallenBossPreviewShot(out Vector3 eye,out Vector3 look,out float fov){eye=fbEye;look=fbLook;fov=fbFov;return (NativeFallenBossPreview.On||fbFrame.Live!=null)&&fbShotReady;}
         internal bool FallenBossPreviewCard(out BossIntroCard card,out float age)

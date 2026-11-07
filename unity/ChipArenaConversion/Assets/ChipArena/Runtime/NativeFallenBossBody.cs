@@ -65,6 +65,8 @@ namespace ChipArena.UnityConversion
             foreach(var lp in NativeFallenBossLook.Parts){var part=Part(lp.Name);if(part==null)continue;part.Group=fbGroupIndex[lp.Group];part.Phases=lp.Phases;fbParts.Add(part);}
             foreach(var n in new[]{"feather-one","cantor","penitent","throne-ring","throne-eye"}){var part=Part(n);if(part!=null)fbFree[n]=part;}
             var life=gameObject.GetComponent<NativeStationLifetime>();if(life==null)life=gameObject.AddComponent<NativeStationLifetime>();life.Gone+=DisposeFallenBoss;
+            // The owner's reference clips for the intro, when their file is there (Runtime NativeFallenIntroMocapBody.cs).
+            FallenMocapRig(most,skeleton);
             fbFailed=false;return true;
         }
         // ---------------- the pose ----------------
@@ -97,12 +99,13 @@ namespace ChipArena.UnityConversion
             float s=NativeFallenBoss.Scale;float low=Mathf.Min(fbFootL.position.y-.11f*s,fbFootR.position.y-.11f*s);if(fbBallL!=null)low=Mathf.Min(low,fbBallL.position.y-.013f*s);if(fbBallR!=null)low=Mathf.Min(low,fbBallR.position.y-.013f*s);
             float hover=f.Phase==4&&f.Kind==NativeFallenBossPreview.KindFight?.3f+.05f*Mathf.Sin(now*1.3f):0;root.position+=Vector3.up*(origin.y+f.Air+hover-low);
             // The intro's key poses (Runtime NativeFallenIntroBody.cs): the hips, back and head first; the feet and arms are solved after.
-            bool intro=FallenIntroNow(f,now,out var ip,out float iw,out float iage);if(intro)FallenIntroBody(ip,iw,yawRot);
+            // Or, when the intro is the owner's reference clips (Runtime NativeFallenIntroMocapBody.cs), the whole body from them and none of the keys.
+            bool intro=FallenIntroNow(f,now,out var ip,out float iw,out float iage);FallenMocapBones=0;bool mocap=intro&&FallenMocapApply(ip,iw,iage,at,origin.y+f.Air+hover,yawRot);if(intro&&!mocap)FallenIntroBody(ip,iw,yawRot);
             // Live, a sole the clip has on the water stays where it came down (Runtime NativeFallenLiveBody.cs).
-            FallenFeetPlant(f,now,hover);if(intro)FallenIntroFeet(ip,iw,iage,at,yawRot);
+            FallenFeetPlant(f,now,hover);if(intro&&!mocap)FallenIntroFeet(ip,iw,iage,at,yawRot);
             // The fist on the planted sword, on the carried one, or passing from one to the other. Drawn out of the water it goes
             // straight to the carry: never back through the clip's own open hand, whose blade swept through the body.
-            FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);if(intro)FallenIntroLeftHand(ip,iw,at,yawRot);
+            FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);if(intro&&!mocap)FallenIntroLeftHand(ip,iw,at,yawRot);if(mocap)FallenMocapLeftHand(iw);
             // The head on the pilot it's after, a little behind them.
             if(f.Track>0&&f.LookAtEye<=0)
             {
@@ -124,10 +127,10 @@ namespace ChipArena.UnityConversion
         }
         private static void BossSpringStep(ref float x,ref float v,float target,float dt,float smooth){float w=2f/Mathf.Max(.001f,smooth),k=1f/(1f+w*dt+.48f*w*w*dt*dt+.235f*w*w*w*dt*dt*dt),c=x-target,t=(v+w*c)*dt;v=(v-w*t)*k;x=target+(c+t)*k;}
         // Where the sword stands in the water beside it (its right hand's side), the fist on the grip.
-        internal static Vector3 FallenPlantPoint(FallenBossFrame f,float lift)=>NativeBossPoseApply.ToUnity(NativeFallenSongPlant.At(f.Boss,f.Yaw))+Vector3.up*(NativeFallenSongPlant.GripY+lift*NativeFallenSongPlant.LiftBy);
+        internal static Vector3 FallenPlantPoint(FallenBossFrame f,float lift)=>FallenMocapPlant(f,out var point)?point:NativeBossPoseApply.ToUnity(NativeFallenSongPlant.At(f.Boss,f.Yaw))+Vector3.up*(NativeFallenSongPlant.GripY+lift*NativeFallenSongPlant.LiftBy);
         // The fist closes where the sword should be: upright point-down in the water (planted), or held low and forward as it stands.
         private void FallenPlantGoal(FallenBossFrame f,Vector3 origin,out Vector3 grip,out Quaternion world,out Vector3 pole)
-        {var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);grip=origin+FallenPlantPoint(f,f.SwordLift);world=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward);pole=yawRot*new Vector3(.9f,-.5f,-.6f);}
+        {var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);grip=origin+FallenPlantPoint(f,f.SwordLift);world=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward);pole=f.Intro.Mocap?yawRot*new Vector3(1f,.12f,-.35f):yawRot*new Vector3(.9f,-.5f,-.6f);}
         // The carry, as the owner's reference walk has it (2026-11-06): the claymore hangs from the right hand at its side, the arm
         // nearly straight and a touch forward, the blade trailing out and back with its broad side to the front and its point just
         // off the water. The wrist hangs from the clip's own shoulder, so the hand rides the walk's sway and bob; the blade's pitch
@@ -152,6 +155,7 @@ namespace ChipArena.UnityConversion
         private void FallenGrip(FallenBossFrame f,Vector3 origin,float floor,bool intro,in FallenIntroPose ip,float iw,Vector3 at,Quaternion yawRot)
         {
             bool has=FallenGripBase(f,origin,floor,out var g,out var r,out var o,out float w);
+            if(has&&intro&&ip.Mocap&&f.Plant<=0)w*=1-iw;
             // The intro's keyed fist takes the sword from the plant (or, after the cutscene, hands it back to the carry) by its weight.
             if(intro&&FallenIntroSword(ip,iw,at,yawRot,out var kg,out var kr,out var ko,out float kw))
             {if(has){g=Vector3.Lerp(g,kg,kw);r=Quaternion.Slerp(r,kr,kw);o=Vector3.Lerp(o,ko,kw);w=Mathf.Max(w,kw);}else{g=kg;r=kr;o=ko;w=kw;}has=true;}
