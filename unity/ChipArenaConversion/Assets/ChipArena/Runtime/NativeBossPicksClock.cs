@@ -49,7 +49,7 @@ namespace ChipArena.UnityConversion
         }
         /// <summary>
         /// In the fight, chips the countdown left (the owner: "players can select rest when pressing C in boss fight"): for its first six seconds a
-        /// prompt under the boss's bar, magenta like the pending-chips tag; NativeBossPicks.Leftover with the C key, pulsing in. The tag itself stays
+        /// prompt under the boss's bar (y 154: below THE HUM's bar and NOCTIEL's plate, above the arrival banner), magenta like the pending-chips tag; NativeBossPicks.Leftover with the C key, pulsing in. The tag itself stays
         /// (PveChipsTag) until they're chosen. Not while the pick screen is open, a hold plays, or the opening still runs.
         /// </summary>
         private void BossLeftoverHud(float W,float H)
@@ -59,7 +59,7 @@ namespace ChipArena.UnityConversion
             if(n==0){bossLeftoverSince=-1;return;}
             if(bossLeftoverSince<0)bossLeftoverSince=Time.unscaledTime;float age=Time.unscaledTime-bossLeftoverSince;if(age>=6)return;
             float a=Mathf.Clamp01(age/.25f)*Mathf.Clamp01((6-age)/.6f),pop=prefs.reducedEffects?1:1+.08f*Mathf.Exp(-age*6);
-            string text=NativeBossPicks.Leftover(n);float tw=U.Measure(text,14,true,true,.14f).x,w=tw+28+26+70,h=40;var r=new Rect(Mathf.Round(W/2-w/2),Mathf.Round(H*.2f),w,h);
+            string text=NativeBossPicks.Leftover(n);float tw=U.Measure(text,14,true,true,.14f).x,w=tw+28+26+70,h=40;var r=new Rect(Mathf.Round(W/2-w/2),154,w,h);
             var tone=NativeCyberTheme.Magenta();U.Push(r.center,Vector2.zero,pop);
             U.Glow(r,new Color(tone.r,tone.g,tone.b,.3f*a),22);NativeHudChrome.Tag(r,tone,a);
             U.Text(new Rect(r.x+18,r.y,tw+4,h),text,14,new Color(tone.r,tone.g,tone.b,a),TextAnchor.MiddleLeft,bold:true,mono:true,tracking:.14f,glow:new Color(tone.r,tone.g,tone.b,.6f*a));
