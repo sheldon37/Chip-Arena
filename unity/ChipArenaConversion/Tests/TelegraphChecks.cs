@@ -16,7 +16,7 @@ public static class TelegraphChecks
     public static void Run(string root)
     {
         count=0;string R(string p)=>File.ReadAllText(Path.Combine(root,p));
-        Shapes();Timing();Noctiel();Hum();
+        Shapes();Timing();Noctiel();Hum();DeepEnd();
         // The shader and the renderer.
         var shader=R("Assets/ChipArena/Resources/NativeTelegraph.shader");
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeTelegraph.shader.meta"))&&shader.Contains("Shader \"ChipArena/NativeTelegraph\"")&&shader.Contains("Blend One OneMinusSrcAlpha")&&shader.Contains("float _TgClock;"),"the shader, premultiplied, on its clock");
@@ -27,7 +27,7 @@ public static class TelegraphChecks
         var draw=R("Assets/ChipArena/Runtime/NativeTelegraphPresentation.cs");var frame=R("Assets/ChipArena/Runtime/NativeAbilityPresentation.cs");var fallen=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
         Check(frame.Contains("TelegraphsBegin();SourceWorld(arena);")&&frame.Contains("WorldEffects(arena);TelegraphsDraw(hazardClock);"),"cleared before the world, drawn after its effects");
         Check(draw.Contains("NativeTelegraph.Corners(s,")&&draw.Contains("mesh.SetUVs(3,tgK);")&&fallen.Contains("for(int i=0;i<fbFx.Telegraphs.Count;i++)Telegraph(fbFx.Telegraphs.Items[i],origin);"),"one quad a warning; NOCTIEL's on its stage");
-        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL and HUM warning covers what its rule hits)");
+        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL, HUM and DEEP END warning covers what its rule hits)");
     }
     private static void Shapes()
     {
@@ -164,6 +164,46 @@ public static class TelegraphChecks
         for(float t=0;t<NativeHumBossPreview.DeathAt;t+=.25f){NativeHumBossPreview.View(t,0,ref pv,out _,out _);rig.Update(t,.25f,pv,ground,Vector3.Zero,false,false,default);st.Evaluate(pv,t,HumBossBeats.Fallback,room,false);fx.Build(rig,pv,st,t,centre.X,1.7,centre.Z-15,1,0,0,0,1,0,1,false,false);
             for(int i=0;i<fx.Telegraphs.Count;i++){var w=fx.Telegraphs.Items[i];Check(float.IsFinite(w.At.X)&&float.IsFinite(w.At.Z)&&float.IsFinite(w.Yaw)&&float.IsFinite(w.A),"the preview's warnings are at real places ("+t+")");shown++;}}
         Check(shown>50,"the preview shows its warnings ("+shown+")");
+    }
+    // THE DEEP END, through its whole scripted fight (the DEV preview: every move, the real rig on its route): wherever the rules
+    // (NativeBackroomsBossRules.Contacts) would hit, in pool coordinates, a warning drawn at that moment covers it; each move with a
+    // hit shows its warning through its anticipation.
+    private static void DeepEnd()
+    {
+        var o=new Vector3(24,0,24);var rig=new DeepEndBossRig();var r=NativeDeepEndBossPreview.Route;var fx=new NativeDeepEndBossFx();var waves=new DeepEndWaves();waves.Place();var v=DeepEndBossView.None;var rnd=new Random(23);
+        float dt=1/30f;var seen=new System.Collections.Generic.Dictionary<string,int>();var windup=new System.Collections.Generic.HashSet<string>();
+        float half=NativeDeepEndArena.Half;
+        bool Warned(Vector3 local){var w=fx.Telegraphs;var p=o+local;for(int k=0;k<w.Count;k++)if(NativeTelegraph.Distance(w.Items[k],NativeTelegraph.Local(w.Items[k],p))<=.05f)return true;return false;}
+        int frames=(int)(NativeDeepEndBossPreview.DeathAt*30);
+        for(int n=0;n<frames;n++)
+        {
+            float t=n*dt;NativeDeepEndBossPreview.View(t,ref v,out _);rig.Update(t,dt,v,r,o,PoolroomsLayout.WaterY,false,default);
+            if(!v.Moving(t,out var m,out float age,out float hit))continue;bool sampled=n%2==0;
+            var st=NativeDeepEndBossStage.Evaluate(v,t,DeepEndBossBeats.Fallback);waves.Compose(st);fx.Build(rig,v,st,waves,t,o+new Vector3(0,6,-30),Vector3.UnitX,Vector3.UnitY,1,false,false);
+            for(int i=0;i<fx.Telegraphs.Count;i++)Check(fx.Telegraphs.Items[i].Style==NativeTelegraph.Water&&float.IsFinite(fx.Telegraphs.Items[i].At.X),m.Id+": the water look, at a real place");
+            if(m.Id!="whistle"&&age<hit-.05f&&age>.05f){Check(fx.Telegraphs.Count>0||m.Id=="lap",m.Id+": a warning through its anticipation");windup.Add(m.Id);}
+            float tr=age-hit;if(tr<0||!sampled)continue;
+            var tp=new Vector3(v.targetX,0,v.targetZ);var org=new Vector3(v.x,0,v.z);var aim=new Vector3(v.aimX,0,v.aimZ);float water=o.Y+st.Tide;
+            for(int i=0;i<500;i++)
+            {
+                var q=new Vector3((float)(rnd.NextDouble()*2-1)*half,0,(float)(rnd.NextDouble()*2-1)*half);bool hitHere=false;
+                switch(m.Id)
+                {
+                    case "breach":hitHere=tr<=.25f&&Vector3.Distance(q,tp)<=3.2f;break;
+                    case "flop":hitHere=tr<=.2f&&NativeBackroomsBossRules.Line(q,tp,aim,4);break;
+                    case "thrash":hitHere=tr<=.3f&&Vector3.Distance(q,org)<=5;break;
+                    case "lull":hitHere=tr<=1.8f&&Vector3.Distance(q,tp)<=1.8f;break;
+                    case "drain":hitHere=tr<=4&&q.Length()<=2.6f;break;
+                    case "seiche":{if(tr>7||aim.LengthSquared()<1e-4f)break;var d=Vector3.Normalize(aim);float travel=tr*11.4f;bool back=travel>40;float wave=back?60-travel:travel-20;hitHere=Math.Abs(Vector3.Dot(q,d)-wave)<=1.3f;break;}
+                    case "jet":{if(tr>2.2f)break;var head=rig.MouthAt;var d=DeepEndBossRig.JetDir(v,age,hit,m,head-o,st.Tide);var hl=head-o;hitHere=NativeBackroomsBossRules.Line(q,hl,hl+d*30,2);break;}
+                    case "lap":{if(tr>6)break;var feet=new Vector3(q.X,water-o.Y,q.Z);for(int j=1;j<NativeDeepEndBossLook.Spine&&!hitHere;j++){var a=rig.Shown.Position[j-1]-o;var b=rig.Shown.Position[j]-o;if(Math.Max(a.Y,b.Y)+NativeDeepEndBossLook.Radius(j*NativeDeepEndBossLook.Seg)>=feet.Y&&NativeBackroomsBossRules.Line(feet,a,b,3.2f))hitHere=true;}break;}
+                }
+                if(!hitHere)continue;seen[m.Id]=seen.TryGetValue(m.Id,out int c)?c+1:1;
+                Check(Warned(q),m.Id+": the rule hits "+q+" "+tr.ToString("0.00")+" s in and a warning shows it");
+            }
+        }
+        foreach(var id in new[]{"breach","flop","thrash","lull","drain","seiche","jet","lap"})Check(seen.ContainsKey(id),id+": the preview's samples found its area");
+        foreach(var id in new[]{"breach","flop","thrash","lull","drain","seiche","jet"})Check(windup.Contains(id),id+": warned through its anticipation");
     }
     // The authority's hit tests (NativeFallenAuthority.FallenAttack), on the floor. sure: the point is clearly in (not on an edge).
     private static bool RuleHits(string id,Vector2 q,NativeFallenBossPreview.Act a,NativeFallenRecord f,out bool sure)
