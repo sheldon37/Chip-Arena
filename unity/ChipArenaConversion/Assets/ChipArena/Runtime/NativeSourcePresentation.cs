@@ -92,6 +92,8 @@ namespace ChipArena.UnityConversion
             BackroomsWorld(arena);
             PoolroomsWorld(arena);
             BackroomsBossScenery(arena);
+            // The Siren kit's warnings (Runtime NativeTelegraphPresentation.cs).
+            SirenWarnings(arena);
             IronworksScenery(arena);
             IronworksBossScenery(arena);
             NewStageScenery(arena);

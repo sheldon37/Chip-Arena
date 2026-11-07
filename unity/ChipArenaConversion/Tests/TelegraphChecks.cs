@@ -16,7 +16,7 @@ public static class TelegraphChecks
     public static void Run(string root)
     {
         count=0;string R(string p)=>File.ReadAllText(Path.Combine(root,p));
-        Shapes();Timing();Noctiel();Hum();DeepEnd();Station();Converter();
+        Shapes();Timing();Noctiel();Hum();DeepEnd();Station();Converter();Siren(R);
         // The shader and the renderer.
         var shader=R("Assets/ChipArena/Resources/NativeTelegraph.shader");
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeTelegraph.shader.meta"))&&shader.Contains("Shader \"ChipArena/NativeTelegraph\"")&&shader.Contains("Blend One OneMinusSrcAlpha")&&shader.Contains("float _TgClock;"),"the shader, premultiplied, on its clock");
@@ -27,7 +27,7 @@ public static class TelegraphChecks
         var draw=R("Assets/ChipArena/Runtime/NativeTelegraphPresentation.cs");var frame=R("Assets/ChipArena/Runtime/NativeAbilityPresentation.cs");var fallen=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
         Check(frame.Contains("TelegraphsBegin();SourceWorld(arena);")&&frame.Contains("WorldEffects(arena);TelegraphsDraw(hazardClock);"),"cleared before the world, drawn after its effects");
         Check(draw.Contains("NativeTelegraph.Corners(s,")&&draw.Contains("mesh.SetUVs(3,tgK);")&&fallen.Contains("for(int i=0;i<fbFx.Telegraphs.Count;i++)Telegraph(fbFx.Telegraphs.Items[i],origin);"),"one quad a warning; NOCTIEL's on its stage");
-        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL, HUM, DEEP END, 6:47 and CONVERTER warning covers what its rule hits)");
+        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL, HUM, DEEP END, 6:47, CONVERTER and Siren warning covers what its rule hits)");
     }
     private static void Shapes()
     {
@@ -292,6 +292,22 @@ public static class TelegraphChecks
             }
             Check(pools>500,"the pools were sampled ("+pools+")");
         }
+    }
+    // The Siren's kit (a pilot's or the horde Siren's): Runtime NativeSiren's eruption bursts over its radius at At + 1, Black Rain
+    // drops anywhere in its radius until it ends, a fire patch burns 0.3 m past its radius while it lasts; each warning covers that.
+    private static void Siren(Func<string,string> R)
+    {
+        var at=new Vector3(4,0,-7);
+        Check(NativeTelegraph.SirenField("eruption",at,4.4f,10,11.5f,10.5f,out var e)&&e.Style==NativeTelegraph.Siren&&e.Shape==NativeTelegraph.Circle&&e.A>=4.4f&&e.Fill01>0&&e.Fill01<1&&e.After<0,"an eruption warns its whole radius, filling to the burst");
+        Check(NativeTelegraph.SirenField("eruption",at,4.4f,10,11.5f,10.999f,out e)&&e.Fill01>.99f,"full on the burst");
+        Check(!NativeTelegraph.SirenField("eruption",at,4.4f,10,11.5f,11.5f,out _),"gone after its flash");
+        Check(NativeTelegraph.SirenField("rain",at,6,20,26,24,out var r)&&r.A>=6&&r.Live>.99f,"Black Rain: its radius, live while the drops fall");Check(!NativeTelegraph.SirenField("rain",at,6,20,26,26.5f,out _),"and gone after");
+        Check(NativeTelegraph.SirenField("hellfire",at,1.5f,0,4,2,out var h)&&h.A>=1.8f&&h.Live>.99f&&h.Strength<1,"a fire patch: 0.3 m past its radius while it burns, softer");
+        Check(NativeTelegraph.SirenField("trail",at,.9f,0,2,1,out var tr)&&tr.A>=1.2f,"the Rush's trail likewise");Check(!NativeTelegraph.SirenField("scorch",at,1,0,4,2,out _)&&!NativeTelegraph.SirenField("drop",at,1,0,4,2,out _),"nothing else");
+        var siren=R("Assets/ChipArena/Runtime/NativeSiren.cs");Check(siren.Contains("Kind=\"eruption\",Position=m.Aim,Radius=2.2f*s.Reach,At=Time,Next=Time+1,Until=Time+1.5f")&&siren.Contains("if(f.Kind==\"eruption\"&&!f.Fired&&Time>=f.Next){f.Fired=true;SirenArea(f.Owner,f.Position,f.Radius,28,10);}"),"the eruption's rule is still its radius at At + 1");
+        Check(siren.Contains("new Vector2(d.x,d.z).magnitude>f.Radius+.3f"),"the patches' burn still reaches 0.3 m past their radius");
+        var src=R("Assets/ChipArena/Runtime/NativeSourcePresentation.cs");var draw=R("Assets/ChipArena/Runtime/NativeTelegraphPresentation.cs");var field=R("Assets/ChipArena/Runtime/NativeFieldPresentation.cs");
+        Check(src.Contains("SirenWarnings(arena);")&&draw.Contains("NativeTelegraph.SirenField(f.Kind,")&&!field.Contains("NativeFieldRules.EruptionWarn("),"the warnings come from the replicated fields in the frame's window; the old ring and fill are gone");
     }
     // The authority's hit tests (NativeFallenAuthority.FallenAttack), on the floor. sure: the point is clearly in (not on an edge).
     private static bool RuleHits(string id,Vector2 q,NativeFallenBossPreview.Act a,NativeFallenRecord f,out bool sure)
