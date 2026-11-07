@@ -48,6 +48,20 @@ a new solve of the clips means reading its corrections off the frames again.
 `render.py` puts the reference frame beside NOCTIEL's rig from the same camera and from the side (bones and sword, not the
 game's renderer). The managed checks (`CoreTests --fallen-mocap`) then hold the baked file to its contract.
 
+## Checking the bake against the video
+
+These need only numpy, scipy, opencv and ffmpeg, not MediaPipe. `CLIPDIR` is the folder with `02-intro-reference.mp4` and so on (the clips stay out of git).
+
+```bash
+python vidcheck.py ../../Assets/ChipArena/Resources/FallenIntroMocap.json out
+python vidblade.py ../../Assets/ChipArena/Resources/FallenIntroMocap.json out 4:124,125,126,127,128
+CAMDIR=out python grid.py 4 128,129,130 grid.jpg
+```
+
+`vidcheck.py` cuts the figure's silhouette from the plain backdrop on every frame, fits one camera per clip and reports how far each limb's bones stand outside it, with sheets of the rig over the video.
+`vidblade.py` reports the blade's angle in the picture against the rig's on every frame it can read (not over the body, off the top of the picture or in motion blur) and draws strips of the given frames.
+`grid.py` shows the video's frames with a ruler in the rig's metres, for reading a value off by eye. Its use and the differences found: `docs/EXPEDITION-BOSS-FINAL.md` section 19.
+
 To compare in the game itself, the DEV preview takes a locked camera in the Editor: `Temp/fallen-preview-cam.txt` holds
 "yaw distance height lookHeight fov". The Editor's slowed preview reads `Temp/fallen-preview-rate.txt`.
 

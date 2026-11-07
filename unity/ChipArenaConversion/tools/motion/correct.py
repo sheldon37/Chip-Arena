@@ -292,7 +292,9 @@ for f in range(K.n):
     take = float(smooth((f - 134) / 15))
     foot = foot * (1 - take) + STANCE['r'] * take
     turn = slerpm(TOES_DOWN, FLAT['r'], float(smooth((f - 124) / 24)))
-    foot[1] = max(foot[1], .012 - (turn @ (RP['ball_r'] - RP['foot_r']))[1], .11)  # the toe and the heel on the water, not through it
+    to_ball = RP['ball_r'] - RP['foot_r']
+    lowest = min((turn @ v)[1] for v in (to_ball + (0, -.012, 0), to_ball + (0, -.01, .075), np.array((0, -.1, -.06))))  # the ball, the toe, the heel
+    foot[1] = max(foot[1], .002 - lowest)  # on the water, not through it
     hip = K.pos(f, 'thigh_r')
     k = float(smooth((f - 144) / 8))
     pole = nrm(knee - hip) * (1 - k) + nrm(np.array(POLE_STAND['r'], float)) * k
