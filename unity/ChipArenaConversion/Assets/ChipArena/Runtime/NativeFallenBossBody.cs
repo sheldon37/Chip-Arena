@@ -130,7 +130,7 @@ namespace ChipArena.UnityConversion
         internal static Vector3 FallenPlantPoint(FallenBossFrame f,float lift)=>FallenMocapPlant(f,out var point)?point:NativeBossPoseApply.ToUnity(NativeFallenSongPlant.At(f.Boss,f.Yaw))+Vector3.up*(NativeFallenSongPlant.GripY+lift*NativeFallenSongPlant.LiftBy);
         // The fist closes where the sword should be: upright point-down in the water (planted), or held low and forward as it stands.
         private void FallenPlantGoal(FallenBossFrame f,Vector3 origin,out Vector3 grip,out Quaternion world,out Vector3 pole)
-        {var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);grip=origin+FallenPlantPoint(f,f.SwordLift);world=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward);pole=yawRot*new Vector3(.9f,-.5f,-.6f);}
+        {var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);grip=origin+FallenPlantPoint(f,f.SwordLift);world=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward);pole=f.Intro.Mocap?yawRot*new Vector3(1f,.12f,-.35f):yawRot*new Vector3(.9f,-.5f,-.6f);}
         // The carry, as the owner's reference walk has it (2026-11-06): the claymore hangs from the right hand at its side, the arm
         // nearly straight and a touch forward, the blade trailing out and back with its broad side to the front and its point just
         // off the water. The wrist hangs from the clip's own shoulder, so the hand rides the walk's sway and bob; the blade's pitch
@@ -155,6 +155,7 @@ namespace ChipArena.UnityConversion
         private void FallenGrip(FallenBossFrame f,Vector3 origin,float floor,bool intro,in FallenIntroPose ip,float iw,Vector3 at,Quaternion yawRot)
         {
             bool has=FallenGripBase(f,origin,floor,out var g,out var r,out var o,out float w);
+            if(has&&intro&&ip.Mocap&&f.Plant<=0)w*=1-iw;
             // The intro's keyed fist takes the sword from the plant (or, after the cutscene, hands it back to the carry) by its weight.
             if(intro&&FallenIntroSword(ip,iw,at,yawRot,out var kg,out var kr,out var ko,out float kw))
             {if(has){g=Vector3.Lerp(g,kg,kw);r=Quaternion.Slerp(r,kr,kw);o=Vector3.Lerp(o,ko,kw);w=Mathf.Max(w,kw);}else{g=kg;r=kr;o=ko;w=kw;}has=true;}

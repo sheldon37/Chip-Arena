@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
     // Presentation only.
     public sealed partial class ArenaPresentation
     {
-        [Serializable] private sealed class FbMocapFile{public string source;public float fps;public string[] bones,restBones;public int[] restParent;public float[] restPos,restRot,bladeInHand,gripInHand;public FbMocapClip[] clips;}
+        [Serializable] private sealed class FbMocapFile{public string source;public float fps;public string[] bones,restBones;public int[] restParent;public float[] restPos,restRot,bladeInHand,gripInHand,plantGrip;public FbMocapClip[] clips;}
         [Serializable] private sealed class FbMocapClip{public string name,video;public int frames;public float[] q,root,grip,left,plant,two,blade,bladeErr;public int[] bodyHeld,swordFilled;}
         private static bool fbMocapRead;private static Quaternion fbMocapMesh=Quaternion.identity;
         private Transform[] fbMocapBone;private int[] fbMocapTurn;private Quaternion[] fbMocapRest;private int fbMocapPelvis=-1;private NativeFallenIntroMocap.Pose fbMocapPose;
@@ -27,7 +27,7 @@ namespace ChipArena.UnityConversion
             {
                 var d=JsonUtility.FromJson<FbMocapFile>(a.text);var clips=new NativeFallenIntroMocap.Clip[d?.clips?.Length??0];
                 for(int i=0;i<clips.Length;i++){var c=d.clips[i];clips[i]=new NativeFallenIntroMocap.Clip{Name=c.name,Video=c.video,Frames=c.frames,Q=c.q,Root=c.root,Grip=c.grip,Left=c.left,Plant=c.plant,Two=c.two,Blade=c.blade,BladeErr=c.bladeErr,BodyHeld=c.bodyHeld,SwordFilled=c.swordFilled};}
-                var m=new NativeFallenIntroMocap(d?.bones,d?.fps??0,clips,d?.restBones,d?.restParent,d?.restPos,d?.restRot,d?.bladeInHand,d?.gripInHand);
+                var m=new NativeFallenIntroMocap(d?.bones,d?.fps??0,clips,d?.restBones,d?.restParent,d?.restPos,d?.restRot,d?.bladeInHand,d?.gripInHand,d?.plantGrip);
                 if(!m.Valid){Debug.LogWarning("NOCTIEL: the extracted intro is incomplete; the keyed intro plays");return;}
                 NativeFallenIntroMocap.Current=m;
             }

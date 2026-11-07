@@ -198,7 +198,7 @@ namespace ChipArena.UnityConversion
             else if(p<HaloAt)
             {
                 float u=Clamp01((p-BladeAt)/(HaloAt-BladeAt));u=u*u*(3-2*u);
-                {var at=NativeFallenSongPlant.At(Vector3.Zero,180);Shot(f,at+new Vector3(-1.5f,.3f,-3.9f),at+new Vector3(-1.2f,1.5f,-3.7f),at+new Vector3(0,.3f,0),at+new Vector3(0,1.75f,0),15,17,u);}
+                {var at=NativeFallenSongPlant.At(Vector3.Zero,180);var m=NativeFallenIntroMocap.Active;if(m!=null&&ip.Mocap){var g=m.PlantGrip*NativeFallenBoss.Scale;at=new Vector3(-g.X,0,-g.Z);}Shot(f,at+new Vector3(-1.5f,.3f,-3.9f),at+new Vector3(-1.2f,1.5f,-3.7f),at+new Vector3(0,.3f,0),at+new Vector3(0,1.75f,0),15,17,u);}
             }
             else if(p<RiseAt){Shot(f,new Vector3(-.95f,.32f,-1.55f),new Vector3(.25f,.38f,-1.85f),new Vector3(0,.28f,-.1f),new Vector3(0,.3f,-.1f),30,27,Clamp01((p-HaloAt)/3.7f));f.EyeMark=f.LookMark=FallenBossFrame.MarkHead;}
             else if(p<MaskAt)Shot(f,new Vector3(0,.82f,-26),new Vector3(0,.7f,-22),new Vector3(0,2.5f,0),new Vector3(0,2.75f,0),20,19,Clamp01((p-RiseAt)/9.3f));

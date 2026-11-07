@@ -30,12 +30,12 @@ namespace ChipArena.UnityConversion
         public readonly string[] RestBones;public readonly int[] RestParent;public readonly float[] RestPos,RestRot;
         /// <summary>The claymore in hand_r's own axes (Runtime NativeFallenBossBody FbBladeWay, FbGrip).</summary>
         public readonly Vector3 BladeInHand,GripInHand;
-        private readonly int[] restOfBone,turnOfRest;private readonly Vector3[] clipOffset;
+        private readonly int[] restOfBone,turnOfRest;private readonly Vector3[] clipOffset;private readonly Vector3? plantAt;
 
-        public NativeFallenIntroMocap(string[] bones,float fps,Clip[] clips,string[] restBones,int[] restParent,float[] restPos,float[] restRot,float[] bladeInHand,float[] gripInHand)
+        public NativeFallenIntroMocap(string[] bones,float fps,Clip[] clips,string[] restBones,int[] restParent,float[] restPos,float[] restRot,float[] bladeInHand,float[] gripInHand,float[] plantGrip=null)
         {
             Bones=bones??Array.Empty<string>();Fps=fps;Clips=clips??Array.Empty<Clip>();RestBones=restBones??Array.Empty<string>();RestParent=restParent??Array.Empty<int>();RestPos=restPos??Array.Empty<float>();RestRot=restRot??Array.Empty<float>();
-            BladeInHand=bladeInHand!=null&&bladeInHand.Length==3?new Vector3(bladeInHand[0],bladeInHand[1],bladeInHand[2]):Vector3.UnitZ;GripInHand=gripInHand!=null&&gripInHand.Length==3?new Vector3(gripInHand[0],gripInHand[1],gripInHand[2]):Vector3.Zero;
+            plantAt=plantGrip!=null&&plantGrip.Length==3?new Vector3(plantGrip[0],plantGrip[1],plantGrip[2]):(Vector3?)null;BladeInHand=bladeInHand!=null&&bladeInHand.Length==3?new Vector3(bladeInHand[0],bladeInHand[1],bladeInHand[2]):Vector3.UnitZ;GripInHand=gripInHand!=null&&gripInHand.Length==3?new Vector3(gripInHand[0],gripInHand[1],gripInHand[2]):Vector3.Zero;
             restOfBone=new int[Bones.Length];for(int i=0;i<Bones.Length;i++)restOfBone[i]=Array.IndexOf(RestBones,Bones[i]);
             turnOfRest=new int[RestBones.Length];for(int r=0;r<RestBones.Length;r++){int k=-1;for(int a=r;a>=0&&k<0;a=RestParent[a])k=Array.IndexOf(Bones,RestBones[a]);turnOfRest[r]=k;}
             Valid=Check();
@@ -164,9 +164,9 @@ namespace ChipArena.UnityConversion
             into.Plant=c.Plant[i0]+(c.Plant[i1]-c.Plant[i0])*u;into.Two=c.Two[i0]+(c.Two[i1]-c.Two[i0])*u;
         }
         private Vector3 RootOf(int clip,float frame){var c=Clips[clip];int i=(int)Math.Max(0,Math.Min(c.Frames-1,Math.Round(frame)));return new Vector3(c.Root[i*3],c.Root[i*3+1],c.Root[i*3+2]);}
-        /// <summary>Where the planted sword's grip stands (the boss's frame, rest metres): where the reference's fist rests on it in the
-        /// kneel. The plant's fist is held there until the pull.</summary>
-        public Vector3 PlantGrip{get{var c=Clips[Kneel];int i=(int)HoldFrame;return new Vector3(c.Grip[i*3],c.Grip[i*3+1],c.Grip[i*3+2])+clipOffset[Kneel];}}
+        /// <summary>Where the planted sword's grip stands (the boss's frame, rest metres): one fixed place the fist holds until the pull,
+        /// the file's (tools/motion/correct.py: within the arm's reach from the kneel to the stand), else the kneel's own grip.</summary>
+        public Vector3 PlantGrip{get{if(plantAt.HasValue)return plantAt.Value;var c=Clips[Kneel];int i=(int)HoldFrame;return new Vector3(c.Grip[i*3],c.Grip[i*3+1],c.Grip[i*3+2])+clipOffset[Kneel];}}
 
         // ---------------- the rig, for the checks ----------------
         /// <summary>The rest skeleton posed by a sample (forward kinematics, rest metres, the boss's frame): each joint's origin.</summary>
