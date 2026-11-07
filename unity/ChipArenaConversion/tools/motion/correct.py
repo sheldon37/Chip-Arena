@@ -8,15 +8,21 @@ the spine, the head, the arms' paths after the pull and the blade's tracked way,
 
   Kneel and rise (clip 02): the reference has the rear knee on the floor under the hip, the rear shin running straight back, the front shin vertical, the hips at
     0.46 m, the left hand on the left knee. The solve had both thighs forward and the hips 0.13 m high, then jumped the whole body back 0.58 m at frames 120-132
-    (the toe drag). Now: the hips, the rear leg and its one step forward are keyed from the frames at 60, 100, 125 and 150; the front foot never moves.
+    (the toe drag). Now: the hips are keyed from the frames at 60, 100, 125 and 150, and the rear leg read off the video every few frames from 100 to 148: the foot stays low and behind,
+    turned in under the knee, while the knee comes up over it, then one step forward landing at 148. The front foot never moves.
   One stance (clips 02-04): every held foot is locked to one place through all three clips, so no foot slides, in a take or across a join.
   The planted sword: one fixed point the arm reaches through the whole kneel and rise (the fist's offset from the shoulder as the reference has it at 60 and 168).
     It was the kneel's solved grip, out of the arm's reach for 70% of the rise, so the arm locked straight and the sword slid through the water.
   The pull (clip 03): the fist leaves the plant onto the extracted path over a second, without a jump.
-  The wheel across the body (clip 03): the blade at frame 84 read off the picture (the solve's depth had it pointing at the lens).
+  The wheel across the body (clip 03): the blade at frames 68-104 read off the video's own frames: its angle in the picture, how foreshortened it is, its tip toward the lens
+    (the solve had it trailing 20-30 degrees low at 85-89, nearly at the lens by 89).
   Out to the side (clip 03): the blade's depth at frames 100-156 turned forward (the solve had it back into the wings; the reference's tip is nearer the camera).
   The lunge (clip 04): the reference lands the right foot out to the side at the contact, flat, 0.68 m from the left, with the hips at 0.89 m sinking to 0.78 m. The
     solve had the foot forward and 0.1 m off the floor and the hips 0.15 m high. Now: the step and the hips are keyed from the frames at 126, 134 and 160.
+  The raise (clip 04): the blade at 52-76 read off the video (the track jumped about 60 degrees back and forth at 64-70, where the blade leaves the picture); 8 degrees up through the
+    long hold, 76-118, measured on the video by tools/motion/vidblade.py. Stretches within 5 degrees of the video are left as extracted.
+  The chop (clip 04, 120-135): one overhand swing of about 300 degrees, read frame by frame: the tip low behind the head, straight back, up to the picture's left, across the chest toward
+    the lens and out low to the picture's right. The fill it replaces went round the other way (up and over the picture's right), between the two frames read when only the sheets were on hand.
 """
 import json
 import math
@@ -171,6 +177,48 @@ def keys(table):
     return PchipInterpolator(f, np.array(vals, float), axis=0, extrapolate=True)
 
 
+def read_way(theta, r, toward):
+    """The blade's way from the video: `theta` its angle in the picture (0 the picture's right, 90 up), `r` how much of its length shows, `toward` 1 the tip nearer the lens, -1 away."""
+    a = math.radians(theta)
+    return nrm(np.array((-r * math.cos(a), r * math.sin(a), toward * math.sqrt(max(0, 1 - r * r)))))
+
+
+def blade_read(clip, ci, table, leave, filled):
+    """The hand carries the blade along `table` (frame: way), each frame the least turn from the last, so no roll is left over from the track it replaces, then rejoins its own over `leave` frames."""
+    fr = sorted(table)
+    a, b = fr[0], fr[-1]
+    old = {f: clip.m['hand_r'][f].copy() for f in range(a, min(clip.n, b + leave + 1))}
+    for f in range(a, b + 1):
+        n = next(x for x in fr if x >= f)
+        p = max(x for x in fr if x <= f)
+        want = table[f] if f in table else nrm(table[p] * (n - f) + table[n] * (f - p))
+        cur = old[a] if f == a else clip.m['hand_r'][f - 1]
+        clip.m['hand_r'][f] = min_rot(cur @ RR['hand_r'] @ BLADE_L, want) @ cur
+        clip.blade[f] = clip.hand_world(f) @ BLADE_L
+        clip.fixed[f] |= BLADE
+        if filled:
+            CLIPS[ci]['swordFilled'][f] = 1
+    for f in range(b + 1, min(clip.n, b + leave + 1)):
+        cur = clip.m['hand_r'][f - 1]
+        carried = min_rot(cur @ RR['hand_r'] @ BLADE_L, old[f] @ RR['hand_r'] @ BLADE_L) @ cur
+        clip.m['hand_r'][f] = slerpm(carried, old[f], float(smooth((f - b) / (leave + 1))))
+        clip.blade[f] = clip.hand_world(f) @ BLADE_L
+        clip.fixed[f] |= BLADE
+
+
+def blade_angle(clip, table, a, b):
+    """The blade turned in the picture by what the video measures (degrees, `table`), its depth kept."""
+    d = keys(table)
+    for f in range(a, b + 1):
+        t = math.radians(float(d(f)))
+        w = clip.hand_world(f) @ BLADE_L
+        xi = -w[0]
+        want = np.array((-(xi * math.cos(t) - w[1] * math.sin(t)), xi * math.sin(t) + w[1] * math.cos(t), w[2]))
+        clip.m['hand_r'][f] = min_rot(w, want) @ clip.m['hand_r'][f]
+        clip.blade[f] = clip.hand_world(f) @ BLADE_L
+        clip.fixed[f] |= BLADE
+
+
 # ---------------- the one stance ----------------
 STANCE = {'l': np.array((-.22, .11, -.08)), 'r': np.array((.15, .11, -.06))}
 # Soles flat (the rest pose's are), turned out as the extracted feet are.
@@ -217,19 +265,38 @@ for f in range(K.n):
         K.m[b][f] = R @ K.m[b][f]
     if lean > 0:
         K.fixed[f] |= CHEST
-KNEE_REAR = np.array((.26, .06, -.52))
-FOOT_REAR = np.array((.27, .205, -.93))
 TOES_DOWN = Rot.from_euler('x', 52, degrees=True).as_matrix() @ FLAT['r']
-STEP_FROM, STEP_TO = 104, 146
+# The rear leg off the video's own frames (rest metres in the picture, less the floor's rise and the narrowing with depth): the picture gives each joint's x and y, the bones' lengths its depth.
+KNEE_READ = keys([(100, (.26, .063)), (108, (.23, .09)), (112, (.21, .141)), (116, (.174, .172)), (120, (.16, .219)), (124, (.147, .279)), (128, (.123, .324)),
+                  (132, (.09, .375)), (136, (.10, .417)), (140, (.098, .462)), (144, (.107, .487)), (148, (.115, .502))])
+FOOT_READ = keys([(100, (.135, .205)), (112, (.13, .19)), (120, (.11, .17)), (128, (.10, .17)), (132, (.09, .18)), (136, (.09, .19)), (140, (.10, .19)), (144, (.125, .15)), (148, (.15, .115)), (150, (.15, .11))])
+REAR_LEG = []
+L1, L2 = LEN['r']
 for f in range(K.n):
-    u = (f - STEP_FROM) / (STEP_TO - STEP_FROM)
-    su = float(smooth(u))
-    foot = FOOT_REAR + (STANCE['r'] - FOOT_REAR) * su
-    foot[1] += .17 * math.sin(math.pi * min(1, max(0, u)))
     hip = K.pos(f, 'thigh_r')
-    rear = KNEE_REAR - (np.array((.093, .44, -.46)))  # the way from the hip to the knee on the floor
-    pole = nrm(rear) * (1 - float(smooth((f - 100) / 22))) + nrm(np.array(POLE_STAND['r'], float)) * float(smooth((f - 100) / 22))
-    leg_to(K, f, 'r', foot, pole, slerpm(TOES_DOWN, FLAT['r'], float(smooth((f - 106) / 38))))
+    kx, ky = KNEE_READ(min(max(f, 100), 148))
+    h = math.hypot(kx - hip[0], ky - hip[1])
+    if h > L1 * .995:  # the hips' height keeps the knee in the thigh's reach
+        kx, ky = hip[0] + (kx - hip[0]) * L1 * .995 / h, hip[1] + (ky - hip[1]) * L1 * .995 / h
+        h = L1 * .995
+    side = -1 + 2 * float(smooth((f - 128) / 18))  # behind the hip until it steps, then ahead of it
+    knee = np.array((kx, ky, hip[2] + side * math.sqrt(max(L1 * L1 - h * h, 0))))
+    fx, fy = FOOT_READ(min(max(f, 100), 150))
+    back = math.sqrt(max((L2 * .995) ** 2 - (fx - kx) ** 2 - (fy - ky) ** 2, 0))
+    REAR_LEG.append((knee, np.array((fx, fy, knee[2] - back))))
+from scipy.signal import savgol_filter
+REAR_FOOT = savgol_filter(np.array([r[1] for r in REAR_LEG]), 9, 2, axis=0)
+for f in range(K.n):
+    knee = REAR_LEG[f][0]
+    foot = REAR_FOOT[f].copy()
+    take = float(smooth((f - 134) / 15))
+    foot = foot * (1 - take) + STANCE['r'] * take
+    turn = slerpm(TOES_DOWN, FLAT['r'], float(smooth((f - 124) / 24)))
+    foot[1] = max(foot[1], .012 - (turn @ (RP['ball_r'] - RP['foot_r']))[1], .11)  # the toe and the heel on the water, not through it
+    hip = K.pos(f, 'thigh_r')
+    k = float(smooth((f - 144) / 8))
+    pole = nrm(knee - hip) * (1 - k) + nrm(np.array(POLE_STAND['r'], float)) * k
+    leg_to(K, f, 'r', foot, pole, turn)
     kp = float(smooth((f - 104) / 30))
     pole = nrm(np.array((-.3, .62, .72))) * (1 - kp) + nrm(np.array(POLE_STAND['l'], float)) * kp
     leg_to(K, f, 'l', STANCE['l'], pole, FLAT['l'])
@@ -243,18 +310,6 @@ for f in range(K.n):
     arm_to(K, f, 'r', PLANT - K.hand_world(f) @ GRIP_L)
 
 # ---------------- clip 03: the pull, the wheel, out to the side, lowered: feet locked; the fist leaves the plant smoothly ----------------
-# The blade across the body at frame 84: down and across in the picture (in-plane 0.75 of its length), the rest of it forward.
-READ_84 = nrm(np.array((-.66, -.48, .58)))
-now_84 = P.hand_world(84) @ BLADE_L
-TURN_84 = Rot.from_matrix(min_rot(now_84, READ_84)).as_rotvec()
-for f in range(70, 99):
-    w = float(np.cos((f - 84) / 14 * math.pi / 2) ** 2) if abs(f - 84) < 14 else 0
-    if w <= 0:
-        continue
-    P.m['hand_r'][f] = Rot.from_rotvec(TURN_84 * w).as_matrix() @ P.m['hand_r'][f]
-    P.blade[f] = P.hand_world(f) @ BLADE_L
-    P.fixed[f] |= BLADE
-    CLIPS[1]['swordFilled'][f] = 1
 # Out to the side (frames 100-156): the solve took the blade's depth the wrong way, back into the wings. The reference's tip is nearer the camera than its hilt
 # (it is wider there at 119): the same way in the picture, its depth turned forward, back to the solve's as it lowers.
 for f in range(100, 157):
@@ -265,6 +320,12 @@ for f in range(100, 157):
     P.blade[f] = P.hand_world(f) @ BLADE_L
     P.fixed[f] |= BLADE
     CLIPS[1]['swordFilled'][f] = 1
+# The wheel across the body off the video's frames: the tip toward the lens and across, in front of the chest, about two thirds of the blade showing at its flattest.
+WHEEL = {68: (-88, .99), 72: (-79, .95), 76: (-71, .93), 78: (-63, .91), 80: (-50, .89), 82: (-40, .86), 84: (-31, .75), 85: (-21, .68), 86: (-11, .65), 87: (-3, .66), 88: (4, .65), 89: (17, .65),
+         90: (25, .66), 91: (31, .68), 92: (40, .72), 94: (54, .76), 96: (63, .8), 98: (72, .84), 100: (88, .88), 102: (96, .9), 104: (104, .92)}
+blade_read(P, 1, {f: read_way(a, r, 1) for f, (a, r) in WHEEL.items()}, 5, True)
+# Going out to the side the video's blade still leads by up to 10 degrees, closing by 116 (tools/motion/vidblade.py); from there on it is within 5.
+blade_angle(P, [(105, 7), (108, 8), (110, 3), (116, 0)], 105, 116)
 hips_fit(P, 0, P.n)
 from_grip = P.grip(56)
 for f in range(P.n):
@@ -302,6 +363,21 @@ for f in range(C.n):
     # The rear foot stays where it is and pivots as the body turns over it.
     pole = np.array(POLE_STAND['l'], float) * (1 - k) + np.array((-.78, 0, .55)) * k
     leg_to(C, f, 'l', STANCE['l'], pole, slerpm(FLAT['l'], Ry(-62) @ FLAT['l'], float(smooth((f - 124) / 14))))
+
+# The raise off the video: the track jumps where the blade leaves the top of the picture (64-70); here it is the video's, read every two frames, at the depth around it.
+RAISE = {52: (102, .96), 54: (93, .93), 56: (80, .9), 58: (68, .88), 60: (61, .88), 62: (51, .88), 64: (42, .88), 66: (35, .88), 68: (29, .88), 70: (22, .88), 72: (15, .88), 74: (10, .87), 76: (5, .84)}
+blade_read(C, 2, {f: read_way(a, r, -1) for f, (a, r) in RAISE.items()}, 4, False)
+# The long hold: the video's blade 8 degrees above the track, measured on every frame (tools/motion/vidblade.py).
+blade_angle(C, [(77, 4), (80, 8), (96, 8), (104, 5), (112, 4), (119, 6)], 77, 119)
+# The chop off the video, frame by frame: (its angle in the picture, how much of it shows, the tip toward the lens or away).
+CHOP = {120: (-22, .85, -1), 122: (-26, .82, -1), 124: (-36, .78, -1), 125: (-41, .62, -1), 126: (-41, .35, -1), 127: (113, .3, -1), 128: (127, .6, -1), 129: (129, .8, -1), 130: (134, .93, -1),
+        131: (130, .97, 1), 132: (124, .45, 1), 133: (-24, .39, 1), 134: (-22, .92, 1), 135: (-27, .99, 1)}
+blade_read(C, 2, {f: read_way(*v) for f, v in CHOP.items()}, 4, True)
+# The fists through the chop: the video's drop to the lunge's low place by 132-134; the track, smoothed through the blur, got there at 139. Moved by what the picture shows (its right, up), their depth kept.
+FIST_SHIFT = keys([(131, (0, 0)), (132, (0, -.2)), (133, (0, -.16)), (134, (.05, -.18)), (135, (.08, -.18)), (136, (.06, -.18)), (138, (.03, -.08)), (140, (0, 0))])
+for f in range(132, 140):
+    dx, dy = FIST_SHIFT(f)
+    arm_to(C, f, 'r', C.pos(f, 'hand_r') + np.array((-dx, dy, 0)))
 
 # ---------------- the wrist: the hand no further off its forearm than a human's, the forearm taking what's over ----------------
 RH = RP['hand_r'] - RP['lowerarm_r']
