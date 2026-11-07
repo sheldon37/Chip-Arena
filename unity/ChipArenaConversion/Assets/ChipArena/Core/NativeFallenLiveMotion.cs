@@ -39,8 +39,11 @@ namespace ChipArena.UnityConversion
         /// <summary>
         /// Its idle (the owner, 2026-11-07, with a still from the reference walk: "Id like his idle pose to be the same as this (With both feet down)"): the slow walk held where both its feet are
         /// down, upright, the claymore trailing low from its right hand as it walks. The clip time Runtime finds in the bank (<see cref="BothFeetDown"/>); NaN keeps the old stance.
+        /// Held, it eases into the stance of the owner's reference (2026-11-07, a recording of the idle and the reference clips' opening): FallenBossFrame.Stand, which Runtime lays over
+        /// the stride (feet planted apart, the left a little ahead, square), over <see cref="StandIn"/> s; walking off it lets go in <see cref="StandOut"/> s.
         /// </summary>
         public float StandAt=float.NaN;
+        public const float StandIn=.45f,StandOut=.22f;
         /// <summary>The slow walk's time with both feet down: where its knees are bent alike (the first harmonic's zero crossing of a walk is its double support), from the Lower Leg Stretch muscles.</summary>
         public static float BothFeetDown(NativeVisualMotionClips.Library clips,int leftKnee,int rightKnee)
         {
@@ -57,7 +60,7 @@ namespace ChipArena.UnityConversion
         public const int MaxShots=4;
         private readonly Shot[] plan=new Shot[MaxShots];private int planCount;private string planAction;private float planAt=float.NaN,planEnd=-1,takeoff,leapHeight;
         private Shot cur,prev;private bool curSet;private float switchAt;
-        private bool started,gliding,turning,walking;private float last,yaw,yawV,yawGoal,air,airV,speed,carry,kneel,kneelV,track,walkPhase,walkSince;
+        private bool started,gliding,turning,walking;private float last,yaw,yawV,yawGoal,air,airV,speed,carry,stand,kneel,kneelV,track,walkPhase,walkSince;
         private Vector3 at,atV,lastFact,heading;
         /// <summary>The plan for the action now running (empty between moves), for the checks and the DEV readout.</summary>
         public ReadOnlySpan<Shot> Plan=>new ReadOnlySpan<Shot>(plan,0,planCount);
@@ -71,7 +74,7 @@ namespace ChipArena.UnityConversion
 
         /// <summary>
         /// Writes f's pose for this frame. The binding has filled the rest of f (phase, kind, the Slash, the wings' phase opening,
-        /// the target and Kneel for a phase change); this replaces Boss, Yaw, the clips and their mix, Air, Gliding, Carry, Kneel
+        /// the target and Kneel for a phase change); this replaces Boss, Yaw, the clips and their mix, Air, Gliding, Carry, Stand, Kneel
         /// (eased), Track, Trail, Flare and the wings. seedClip/seedTime: the pose shown before the first Step (it crossfades out).
         /// </summary>
         public void Step(FallenBossFrame f,in Facts x,NativeVisualMotionClips.Library clips,string seedClip=null,float seedTime=0)
@@ -79,7 +82,7 @@ namespace ChipArena.UnityConversion
             float now=x.Now,dt=started?Clamp(now-last,0,.1f):0;
             if(!started)
             {
-                started=true;at=x.At;atV=Vector3.Zero;lastFact=x.At;yaw=yawGoal=x.Yaw;yawV=0;air=airV=0;speed=0;gliding=turning=walking=false;walkSince=now;carry=1;kneel=f.Kneel;kneelV=0;track=0;walkPhase=0;heading=Vector3.Zero;
+                started=true;at=x.At;atV=Vector3.Zero;lastFact=x.At;yaw=yawGoal=x.Yaw;yawV=0;air=airV=0;speed=0;gliding=turning=walking=false;walkSince=now;carry=1;stand=0;kneel=f.Kneel;kneelV=0;track=0;walkPhase=0;heading=Vector3.Zero;
                 curSet=false;planAction=null;planAt=float.NaN;planCount=0;planEnd=-1;
                 if(seedClip!=null){cur=new Shot{Clip=seedClip,Mode=Hold,From=seedTime,Key=-1};curSet=true;switchAt=now-10;}
             }
@@ -103,12 +106,12 @@ namespace ChipArena.UnityConversion
             // Walking holds once begun (no dropping into the stance mid-stride).
             if(!walking&&speed>WalkFrom){walking=true;walkSince=now;}else if(walking&&speed<WalkStop&&now-walkSince>=WalkHold){walking=false;walkSince=now;}
             // What plays now.
-            Shot want;
+            Shot want;bool resting=false;
             if(inPlan){int i=0;for(int j=0;j<planCount;j++)if(now>=plan[j].T0)i=j;want=plan[i];}
             else if(gliding)want=new Shot{Clip=Pick(Glide,clips),Mode=Looped,Rate=1.6f,Fade=.16f,Key=1};
             else if(walking&&WalkOf(clips,Math.Max(speed,WalkFrom),out var w,out float rate))
             {walkPhase=(walkPhase+dt*rate/Math.Max(.1f,w.Length))%1f;want=new Shot{Clip=w.Name,Mode=Paced,Fade=.22f,Key=w.Name==SlowWalk?3:2};}
-            else if(!float.IsNaN(StandAt)&&clips!=null&&clips.Has(SlowWalk))want=new Shot{Clip=SlowWalk,Mode=Hold,From=StandAt,Fade=.35f,Key=0};
+            else if(!float.IsNaN(StandAt)&&clips!=null&&clips.Has(SlowWalk)){want=new Shot{Clip=SlowWalk,Mode=Hold,From=StandAt,Fade=.35f,Key=0};resting=true;}
             else want=new Shot{Clip=Stance,Mode=Looped,Rate=1,Fade=.26f,Key=0};
             if(!curSet){cur=want;curSet=true;switchAt=now-10;}
             else if(want.Key!=cur.Key||want.T0!=cur.T0){prev=cur;cur=want;switchAt=now;}
@@ -147,6 +150,7 @@ namespace ChipArena.UnityConversion
             f.Air=Math.Max(0,air)+arc+flight;f.Gliding=gliding||f.Air>.2f;
             // The sword carried while it stands; the clip's hand through a move or a glide (Runtime turns the blade out of the body).
             float carryGoal=inPlan||gliding?0:1;carry=MoveTo(carry,carryGoal,dt/Math.Max(.1f,cur.Fade));f.Carry=Smooth(carry);
+            stand=MoveTo(stand,resting?1:0,dt/(resting?StandIn:StandOut));f.Stand=Smooth(stand);
             if(dt<=0)kneel=f.Kneel;else Spring(ref kneel,ref kneelV,f.Kneel,dt,.16f);f.Kneel=Clamp01(kneel);
             float trackGoal=inPlan?(now<x.HitAt?.5f:0):gliding?.5f:1;track=MoveTo(track,trackGoal,dt*3);f.Track=track;
             // The strike: the trail and the wings' throw from the shot now playing.

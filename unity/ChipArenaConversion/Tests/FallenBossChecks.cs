@@ -333,16 +333,22 @@ public static class FallenBossChecks
         }
         // The owner, 2026-11-07: walking never drops into the stance mid-stride, and it stands as the reference walk does, both feet down (the slow walk held).
         {
-            var d=new NativeFallenLiveMotion{StandAt=.4f};var at=Vector3.Zero;var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=0,Target=new Vector3(0,0,80)};float step=0;int drops=0;string lastTo=null;
+            var d=new NativeFallenLiveMotion{StandAt=.4f};var at=Vector3.Zero;var x=new NativeFallenLiveMotion.Facts{At=at,Yaw=0,Target=new Vector3(0,0,80)};float step=0;int drops=0;string lastTo=null;float standJump=0,lastStand=0;
             for(float now=0;now<6;now+=1/144f)
             {
                 while(step<=now){float pace=now<3.5f?.62f+.3f*(float)Math.Sin(now*9):0;at+=new Vector3(0,0,pace/60);step+=1/60f;}x.Now=now;x.At=at;d.Step(f,x,bank);
                 if(now>.8f&&now<3.4f&&f.ClipTo!="Armed-Walk-Slow")drops++;
                 if(now>5)Check(f.ClipTo=="Armed-Walk-Slow"&&Math.Abs(f.TimeTo-.4f)<1e-4f&&f.Carry>.9f&&f.Air<.05f,"it stands as the reference does: the slow walk held with both feet down, the sword carried, at "+now);
+                // The owner, 2026-11-07 (a recording of the idle): held, it settles into the reference's stance; walking, none of it.
+                if(now>1&&now<3.4f)Check(f.Stand<1e-4f,"walking it takes none of the standing stance (Stand "+f.Stand+" at "+now+")");
+                if(now>5)Check(f.Stand>.999f,"at rest it stands in the reference's stance (Stand "+f.Stand+" at "+now+")");
+                if(now>0)standJump=Math.Max(standJump,Math.Abs(f.Stand-lastStand));lastStand=f.Stand;
                 lastTo=f.ClipTo;
             }
             Check(drops==0,"a pace hovering at the walk's floor never drops it into the stance ("+drops+" frames)");
+            Check(standJump<.06f,"the stance eases in and out (largest step "+standJump.ToString("0.000")+" a frame at 144 fps)");
             Check(float.IsNaN(new NativeFallenLiveMotion().StandAt),"without the bank's frame it keeps the old stance");
+            {var old=new NativeFallenLiveMotion();var g=new FallenBossFrame();var y=new NativeFallenLiveMotion.Facts{At=Vector3.Zero,Yaw=0,Target=new Vector3(0,0,20)};for(float now=0;now<2;now+=1/60f){y.Now=now;old.Step(g,y,bank);}Check(g.Stand==0,"the old stance takes no standing stance");}
             var lib=new NativeVisualMotionClips.Library{Muscles=4};int stride=NativeVisualMotionClips.Head+4;var c=new NativeVisualMotionClips.Clip{Name="Armed-Walk-Slow",Length=1,Rate=10,Loop=true,Frames=11,Stride=stride,Data=new float[11*stride]};
             for(int k=0;k<11;k++){float ph=k/10f*6.2832f;c.Data[k*stride+NativeVisualMotionClips.Head+1]=(float)Math.Sin(ph+.6f);c.Data[k*stride+NativeVisualMotionClips.Head+2]=-(float)Math.Sin(ph+.6f);}lib.Clips[c.Name]=c;
             float feet=NativeFallenLiveMotion.BothFeetDown(lib,1,2);Check(Math.Abs(feet-.4f)<.051f||Math.Abs(feet-.9f)<.051f,"both feet down where the knees bend alike ("+feet+")");
@@ -364,7 +370,8 @@ public static class FallenBossChecks
         Check(body.Contains("FallenFeetPlant(f,now,hover);")&&body.IndexOf("FallenFeetPlant(f,now,hover);")<body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);")&&body.IndexOf("FallenGrip(f,origin,origin.y+f.Air+hover,intro,ip,iw,at,yawRot);")<body.IndexOf("FallenBladeClear(f,yawRot,now);")&&body.IndexOf("FallenBladeClear(f,yawRot,now);")<body.IndexOf("FallenChains(f,now,dt,yawRot,local);"),"feet, then the grip, then the blade cleared, then the chains");
         Check(!body.Contains("if(f.Plant>0)FallenPlant(f,origin);else if(f.Carry>0)FallenCarry(f);")&&body.Contains("g=Vector3.Lerp(cg,pg,plant);r=Quaternion.Slerp(cr,pr,plant);o=Vector3.Lerp(co,po,plant);w=Mathf.Clamp01(plant+carry);"),"a sword passing from the plant to the carry goes straight from one to the other");
         Check(body.Contains("Quaternion.FromToRotation(Vector3.down,FallenRobeWay(c.Pivot.X,c.Pivot.Z-.03f,c.Segment,yawRot))*yawRot"),"the robe drapes over the legs");
-        Check(body.Contains("FbDragWay=new Vector3(.85f,0,-.53f)")&&body.Contains("var wrist=shoulder+yawRot*new Vector3(.07f*s,0,.09f*s)+Vector3.down*(reach*.93f-breath);")&&body.Contains("float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);"),"the sword carried as the reference walk carries it: from a hanging arm, trailing out and back, its point just off the water");
+        Check(body.Contains("FbDragTip=.02f;private static readonly Vector3 FbDragWay=new Vector3(.99f,0,.1f)")&&body.Contains("var wrist=shoulder+yawRot*new Vector3(.07f*s,0,.09f*s)+Vector3.down*(reach*.93f-breath);")&&body.Contains("float drop=Mathf.Clamp((grip.y-floor-FbDragTip*s)/along,.08f,.95f);"),"the sword carried as the reference carries it: from a hanging arm, laid out to its right side and down, its point on the water");
+        Check(body.Contains("if(fbLiveNow&&f.Stand>0)")&&body.IndexOf("if(fbLiveNow&&f.Stand>0)")<body.IndexOf("fbHandler.SetHumanPose(ref fbPose);")&&body.Contains("FbStandTo={.02f,.15f,0,.88f,0,0,.4f,.15f,0,.88f,0,0,0}"),"at rest the reference's stance is laid over the held stride before the pose is set");
         Check(scenery.Contains("if(tip.y<floor+.25f&&f.Plant<.5f&&now-fbWakeLast>.07f&&moved>=.6f)"),"the dragged point's wake is a ring every 0.6 m, none at rest");
         var audio=R("Assets/ChipArena/Runtime/NativeAudio.cs");var loading=R("Assets/ChipArena/Runtime/NativeStageLoadingUI.cs");var game=R("Assets/ChipArena/Runtime/ConversionGame.cs");
         Check(audio.Contains("map==NativeFallenRules.Map?NativeFallenSong.Id:")&&audio.Contains("Track(NativeFallenSong.Id,Music*.55f,StageCovered,")&&game.Contains("nativeAudio.StageCovered=stageLoad.Visible&&stageLoad.Phase!=StageLoadPhase.Reveal;"),"its song loads behind the cover and waits for the screen to open");

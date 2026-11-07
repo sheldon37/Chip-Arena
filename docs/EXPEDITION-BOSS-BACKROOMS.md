@@ -678,3 +678,11 @@ before .3 of TurnOver) and is over by .76. Its colliders follow the drawn body a
 realistic, it currently has a unrealistic curve to it"): the jet leaves the mouth dead straight along the rule's aim, its head reaching where it
 lands in a tenth of a second, drops peeling off it; a crown of water is thrown up again and again where it lands; beyond, spray skips on along
 the line to its end (no sheet of water). The rule's line is unchanged.
+
+**The swipe as a slap (the owner, 2026-11-07: "we need to turn their hand to, think like they're smacking someone"):** the hand used to carry
+on along the forearm palm-down, so it came in edge-first. Two hand channels now: `HumCh.PalmL/R` (0..1) turns a hand on a channel about its
+forearm until its palm faces where it's going (its own travel, smoothed over 30 ms, full past 8 m/s, none under 2), and `CockL/R` (degrees)
+bends it back at the wrist. Reach lays the wrist back 40 degrees as it winds, turns the palm into the stroke as it starts (fingers drawn
+together), is flat at the hit and flicks the fingers through after it; mirrored for the left hand. At the hit the palm faces the hand's travel
+within 16 degrees and stays on it through the sweep (CoreTests `--hum-boss`, both hands). A fixed roll angle couldn't do it: the forearm
+swings so far through the stroke that "palm to the left" in its frame came out palm-down at the hit.

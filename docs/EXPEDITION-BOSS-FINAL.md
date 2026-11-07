@@ -156,7 +156,7 @@ The same bar as `docs/EXPEDITION-BOSS-BACKROOMS.md` section 1.
 
 The pack's sword clips carry it, retimed to the move table: a long, slow windup to just before the clip's hit, the hit itself almost at once, then a slow settle (Core `NativeFallenBossPreview.ClipTime`). Two-handed clips keep its left arm free: the claymore is never held in both hands. On top of the clips:
 
-- **Standing and walking:** upright, the head turning after the pilot it's hunting; it holds very still, then moves all at once. The sword is carried as in the owner's reference walk (2026-11-06): it hangs from the right hand at its side, the arm nearly straight, the blade trailing out and back with its broad side to the front and its point just off the water, where it lays a ring every 0.6 m it travels. The walk is the pack's slow walk at about one heavy step a second, its stride matched to the ground speed.
+- **Standing and walking:** upright, the head turning after the pilot it's hunting; it holds very still, then moves all at once. The sword is carried as in the owner's reference walk (2026-11-06; the angle corrected 2026-11-07 from the reference clips' standing frames): it hangs from the right hand at its side, the arm nearly straight, the blade laid out to its right side (a few degrees ahead of square, never back) and down about thirty degrees, its broad side to the front and its point resting on the water, where it lays a ring every 0.6 m it travels. At rest it stands as the reference does (below, "Live walk and idle"). The walk is the pack's slow walk at about one heavy step a second, its stride matched to the ground speed.
 - **The knee:** a true one-knee kneel set on the muscles (no clip has one), used for the cutscene, each threshold and the death. The fist closes on the planted sword by IK.
 - **Gliding:** a dash leaves the water, feet off it, with a wake laid behind.
 - **Wings:** rooted on the chest but square to the body so the pair stays a pair, opening and flaring on an underdamped spring, thrown past their mark and shivering back, each pair behind the one above; they lag turns and blow back with speed.
@@ -360,3 +360,12 @@ players' weapon sets' clips), so it slid along in its stance; both are in the ba
 travel is under `WalkStop` (0.25 m/s) and it has walked `WalkHold` (0.4 s). Its idle is no longer the unarmed stance: the slow walk held where
 both feet are down (`StandAt`, the frame where the knees bend alike, found once in the bank by `BothFeetDown`), upright, the claymore trailing
 low from the right hand as the carry has it.
+
+The owner's next look (a recording of the idle, "May need more idle adjustments to noctiel; please reference"): held, the walk's frame still
+read as a stride (the feet in line, the right leg trailing with its toes up, the spine twisted 17 degrees) and the blade pointed out and back,
+short of the water, so from in front it looked held out. The reference clips' standing frames (and the owner's still) stand square with the
+feet planted apart, the left a little ahead, the blade out to the right side with its point on the floor. Now, at rest, `FallenBossFrame.Stand`
+(Core: eases in over `StandIn` 0.45 s once it stands, out over `StandOut` 0.22 s as it walks) lays a stance over the held frame in Runtime
+(`FbStandNames`/`FbStandTo`, muscle targets: the soles level within 3 cm, the left foot 26 cm ahead, the feet half a metre apart, the knees
+nearly straight, no twist; found by rendering the frame on the body and measuring), and the carry lays the blade out to its right side
+(`FbDragWay` 0.99, 0, 0.1) with its point 2 cm over the water (`FbDragTip`). The walk keeps its own legs (Stand is 0 while walking).

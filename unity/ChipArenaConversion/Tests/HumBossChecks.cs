@@ -25,8 +25,8 @@ public static class HumBossChecks
         }
         Check(NativeHumBoss.Archetype=="level0-hum","the archetype Astra binds");
         Check(NativeBackroomsBossIntro.Mine(NativeHumBoss.Archetype)&&NativeBackroomsBossIntro.Shots(NativeHumBoss.Archetype).Length==5,"the intro's five shots");
-        Table(root);None(root);Determinism();Contact(out string contact);Feet(out string feet);Pops(out string pops);Head(out string head);Allocation(out string alloc);Skeleton(root);Room(out string room);Intro();Cues(root);Lanes();NoStrobe();
-        Console.WriteLine("PASS hum-boss ("+count+" checks: "+contact+"; "+feet+"; "+pops+"; "+head+"; "+alloc+"; "+room+")");
+        Table(root);None(root);Determinism();Contact(out string contact);Slap(out string slap);Feet(out string feet);Pops(out string pops);Head(out string head);Allocation(out string alloc);Skeleton(root);Room(out string room);Intro();Cues(root);Lanes();NoStrobe();
+        Console.WriteLine("PASS hum-boss ("+count+" checks: "+contact+"; "+slap+"; "+feet+"; "+pops+"; "+head+"; "+alloc+"; "+room+")");
     }
     // ---- the table against the doc's ----
     private static void Table(string root)
@@ -104,6 +104,26 @@ public static class HumBossChecks
             Check(!float.IsNaN(struck),m.Id+" reaches its contact");float err=struck-v.hitAt;worst=Math.Max(worst,Math.Abs(err));Check(err>=-1e-4f&&err<=1/fps+1e-4f,m.Id+"'s contact lands on the record's hit within one frame ("+err.ToString("0.0000")+" s at "+fps+" fps, x"+stretch+")");
         }
         summary="every move's contact lands on the record's hit within one frame (worst "+(worst*1000).ToString("0.0")+" ms)";
+    }
+    // ---- the swipe is a slap: at its contact the hand leads with its palm (the owner, 2026-11-07: "we need to turn their hand to, think like they're smacking someone"), swung with either hand ----
+    private static void Slap(out string summary)
+    {
+        float least=1;var m=NativeHumBoss.Move("reach");
+        foreach(int side in new[]{1,-1})
+        {
+            // Standing at (26, 26) facing yaw 180: its right is -x. The target ahead on that side (the right hand swings) or the other (the move mirrored, the left hand).
+            var v=Standing();v.action="reach";v.actionId=7;v.actionAt=2;v.hitAt=2+m.Wind;v.duration=m.Duration;var target=new Vector3(26-side*3,1.6f,19);
+            var rig=new HumBossRig();int hand=side>0?NativeHumBossLook.HandR:NativeHumBossLook.HandL;var last=Vector3.Zero;float dot=float.NaN;const float fps=120;string name=side>0?"right":"left";
+            for(int f=0;f<=(int)(fps*(2+v.duration));f++)
+            {
+                float t=f/fps;rig.Update(t,f==0?0:1/fps,v,Ground,Vector3.Zero,false,true,target);var at=rig.Pose.Position[hand];
+                if(float.IsNaN(dot)&&f>0&&rig.Act.Active&&rig.Act.Struck){var moved=at-last;if(moved.LengthSquared()>1e-8f)dot=Vector3.Dot(Vector3.Normalize(BossMath.Rotate(rig.Pose.Rotation[hand],-Vector3.UnitY)),Vector3.Normalize(moved));}
+                last=at;
+            }
+            Check(!float.IsNaN(dot),"the swipe reaches its contact ("+name+" hand)");
+            Check(dot>.5f,"the swipe leads with its palm at contact ("+name+" hand: "+dot.ToString("0.00")+")");least=Math.Min(least,float.IsNaN(dot)?-1:dot);
+        }
+        summary="the swipe leads with its palm (cos "+least.ToString("0.00")+" at worst)";
     }
     // ---- planted limbs don't slip ----
     private static void Feet(out string summary)
