@@ -33,9 +33,10 @@ namespace ChipArena.UnityConversion
             if(weapon&&!Content.weapons.Any(w=>w.id==a[0]))return "Unknown weapon.";
             if(c.action=="chip-add"||c.action=="chip-remove")
             {
+                if(target.Seat.AuthorityBoss)return "Cannot modify the boss anchor.";
                 var chip=Content.chips.FirstOrDefault(x=>x.id==a[0]);if(chip==null)return "Unknown chip.";
                 target.Seat.chips.TryGetValue(a[0],out int count);
-                if(c.action=="chip-add"&&(count+I(1)>chip.max||!NativeContentRules.Eligible(Content,target.Seat.spec,target.Seat.chips).Any(x=>x.id==a[0])))return "Chip is ineligible or exceeds its stack limit.";
+                if(c.action=="chip-add"&&(count+I(1)>chip.max||!NativeContentRules.Eligible(Content,target.Seat.spec,target.Seat.chips,target.Seat.bot?"":target.Seat.weaponTechniques??"").Any(x=>x.id==a[0])))return "Chip is ineligible or exceeds its stack limit.";
                 if(c.action=="chip-remove"&&count<I(1))return "Target does not have that many chips.";
             }
             int spawn=c.action=="spawn-dummy"?1:c.action=="spawn-dummies-around"?I(0):0;
