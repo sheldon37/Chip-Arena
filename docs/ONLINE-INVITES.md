@@ -23,3 +23,19 @@ Claude presentation handoff: the functional panel uses existing IMGUI controls. 
 Presentation done 2026-11-03 (owner: "can we fix the online players button? (Used for inviting) Style it a lot better and apply animations"; `Runtime/NativeSocialPanelUI.cs`, `NativeAccountSocial.cs` now logic only). The old button sat at a fixed physical-pixel spot under the home screen's hexagons, clipped by their labels. Now kit-drawn on the virtual canvas in the cyber palette: an **ONLINE** chip under the hexagon row at home, left of the connection pill in a room's lobby, else in the top-right corner (the panel screens and the pause menu); a breathing presence light with a sonar ring, the count, a magenta invitations badge that beats while any wait (a burst when one arrives), a chevron turning as the panel opens; hover lift and light, press. The panel drops open under it (glass, a caret to the chip): the service's status line, invitation cards (initials, a countdown draining to the two-minute expiry, Accept / Decline; a new card slides in with a flash), the online players as staggered rows (initials with a live light, Invite turning to SENT with a pop), the "host an online room" hint, a busy spinner, wheel scrolling. Escape, its close button or a click outside close it; the menu under it takes no hover or click while the pointer is on it. Actions, who may invite and who may accept are unchanged. Controller: the kit's buttons take the controller pointer's click as before; a focus order for the panel is not added.
 
 Invitation pop-up, 2026-11-07 (owner: "Can we make another button on the screen? This will show a notification when players get invited", then "Pop-up with Accept"; `Runtime/NativeSocialPanelUI.cs`): a card appears under the chip's corner when an invitation waits, with who, the two-minute countdown, Accept and Decline and a chime. It shows on the menus (the pause menu too) and at a match's or an Expedition's end, never mid-fight; an invitation sent during a fight pops up at the next of those while it lasts. Accept and Decline are the panel's own actions. Accept stays available only outside a room or match, so inside one the card says "Leave your room or match to accept". Its close button only puts it away: the invitation stays on the chip's badge. Invitations are polled every 20 seconds, so one can take that long to appear. No service or rule changed.
+
+## Unity invitation directory fix (2026-11-07)
+
+Unity registers a visible room such as `7KMR4P` under the directory key `UN7KMR4P`.
+Invitation sends now use that registered key. Accept strips exactly the `UN` namespace
+before handing the six-character code to JoinRoom; unrelated eight-character rooms
+are rejected. The former raw-code send was rejected as unavailable by the service.
+SENT now appears only after the service confirms `ok:true`, and action errors survive
+background refreshes long enough to read. Temporary request failures keep the cached
+inbox instead of silently erasing it. Both players need this client fix. No worker or
+migration change is required; the current API already accepts the directory key.
+
+Regression: `node --test tests/invite-directory.test.mjs` runs the shipped social
+handler against SQLite with the invite migration, reproducing the old rejection and
+checking send, private inbox, accept and one-use consumption with the real namespace.
+CloudflareChecks covers decoding accepted keys, including visible codes beginning UN.

@@ -24,6 +24,13 @@ namespace ChipArena.UnityConversion
             if(code.Length!=6)throw new NativeOnlineRoomException("This online room needs its six-character Unity code. Ask the host to update and create a new room.");
             return "UN"+code;
         }
+        // Account invitations carry the directory key; joining takes the visible six-character code.
+        public static bool TryInvitationCode(string key,out string code)
+        {
+            code=null;
+            if(key==null||key.Length!=8||!key.StartsWith("UN",StringComparison.Ordinal)||!NativeRoomCodes.Valid(key))return false;
+            code=key.Substring(2);return true;
+        }
         public static string TunnelOrigin(string value)
         {
             if(value==null||value.Length>200||!Uri.TryCreate(value,UriKind.Absolute,out var uri)||
