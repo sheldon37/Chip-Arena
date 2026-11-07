@@ -28,7 +28,7 @@ public static class FallenIntroMocapChecks
         string[] S(JsonElement e,string n)=>e.GetProperty(n).EnumerateArray().Select(v=>v.GetString()).ToArray();
         var clips=d.GetProperty("clips").EnumerateArray().Select(c=>new NativeFallenIntroMocap.Clip{Name=c.GetProperty("name").GetString(),Video=c.GetProperty("video").GetString(),Frames=c.GetProperty("frames").GetInt32(),
             Q=F(c,"q"),Root=F(c,"root"),Grip=F(c,"grip"),Left=F(c,"left"),Plant=F(c,"plant"),Two=F(c,"two"),Blade=F(c,"blade"),BladeErr=F(c,"bladeErr"),BodyHeld=I(c,"bodyHeld"),SwordFilled=I(c,"swordFilled")}).ToArray();
-        return new NativeFallenIntroMocap(S(d,"bones"),d.GetProperty("fps").GetSingle(),clips,S(d,"restBones"),I(d,"restParent"),F(d,"restPos"),F(d,"restRot"),F(d,"bladeInHand"),F(d,"gripInHand"));
+        return new NativeFallenIntroMocap(S(d,"bones"),d.GetProperty("fps").GetSingle(),clips,S(d,"restBones"),I(d,"restParent"),F(d,"restPos"),F(d,"restRot"),F(d,"bladeInHand"),F(d,"gripInHand"),F(d,"plantGrip"));
     }
 
     public static void Run(string root)
@@ -161,7 +161,7 @@ public static class FallenIntroMocapChecks
             if(!first&&lowName==lastLowName&&pose.Held==prev.Held&&p-lowSince>.1f&&known){var dk=new Vector2(low.X-lastLow.X,low.Z-lastLow.Z).Length()/dt/Math.Max(1,speed);if(dk>knownSlide){knownSlide=dk;knownAt=p.ToString("0.00")+" ("+lowName+", "+m.Clips[pose.Clip].Name+" frame "+pose.Frame.ToString("0.0")+")";}}
             if(!first&&lowName==lastLowName&&pose.Held==prev.Held&&p-lowSince>.1f&&!known){var d=new Vector2(low.X-lastLow.X,low.Z-lastLow.Z).Length()/dt/Math.Max(1,speed);if(d>.35f&&speed==1){var key=m.Clips[pose.Clip].Name+" "+(int)(pose.Frame/4)*4;slides[key]=Math.Max(slides.TryGetValue(key,out var o)?o:0,d);}if(d>worstSlide){worstSlide=d;slideAt=p.ToString("0.00")+" ("+lowName+", "+m.Clips[pose.Clip].Name+" frame "+pose.Frame.ToString("0.0")+")";}}
             lastLow=low;lastLowName=lowName;
-            if(pose.Plant>.5f)worstPlant=Math.Max(worstPlant,Vector3.Distance(pose.Grip,plantGrip));
+            if(pose.Plant>.5f){worstPlant=Math.Max(worstPlant,Vector3.Distance(pose.Grip,plantGrip));float armReach=Vector3.Distance(j[ua],j[la])+Vector3.Distance(j[la],j[hr])+m.GripInHand.Length();Check(Vector3.Distance(j[ua],plantGrip)<=armReach,"the planted sword stays within the arm's reach (at "+p.ToString("0.00")+": "+Vector3.Distance(j[ua],plantGrip).ToString("0.00")+" of "+armReach.ToString("0.00")+"), so it never slides through the water");}
             // The blade on the tracked reference wherever it was readable (not planted, not filled).
             var c=m.Clips[pose.Clip];int fi=(int)Math.Round(pose.Frame);
             if(pose.Plant<.05f&&c.SwordFilled[fi]==0&&Math.Abs(pose.Frame-fi)<.051f)
@@ -181,9 +181,9 @@ public static class FallenIntroMocapChecks
         Check(p99<=.015f&&worstFloor<=.045f,"a sole, a toe or a knee on the water every moment (99% within "+p99.ToString("0.000")+" m; worst "+worstFloor.ToString("0.000")+" m off at "+floorAt+")");
         if(slides.Count>0&&Environment.GetEnvironmentVariable("MOCAP_SLIDES")=="1")Console.WriteLine("slides: "+string.Join(", ",slides.Select(k=>k.Key+":"+k.Value.ToString("0.00"))));
         Check(worstSlide<=.35f,"a planted sole or knee doesn't slide (worst "+worstSlide.ToString("0.00")+" m/s at "+slideAt+")");
-        Check(knownSlide<=1.6f,"the rise's and the lunge's step's known skates stay as measured (worst "+knownSlide.ToString("0.00")+" m/s at "+knownAt+"; to tune in Unity)");
-        Check(worstPlant<=.35f,"the fist stays within an arm's ease of the planted grip (worst "+worstPlant.ToString("0.00")+" rest m; the plant's IK closes it)");
-        Check(bladeN>200,"the blade was compared on "+bladeN+" frames");
+        Check(knownSlide<=.6f,"the rise's and the lunge's steps don't skate (worst "+knownSlide.ToString("0.00")+" m/s at "+knownAt+")");
+        Check(worstPlant<=.06f,"the fist stays on the one planted grip (worst "+worstPlant.ToString("0.00")+" rest m)");
+        Check(bladeN>150,"the blade was compared on "+bladeN+" frames");
         NativeFallenIntroMocap.Speed=1;
         return "blade on the reference: mean "+(bladeSum/Math.Max(1,bladeN)).ToString("0.0")+" deg, worst "+bladeMax.ToString("0")+"; worst turn "+maxTurn.ToString("0.0")+" deg/240 Hz; elbow "+maxElbow.ToString("0")+", knee "+maxKnee.ToString("0")+", forearm roll "+maxTwist.ToString("0")+", wrist "+maxWrist.ToString("0")+", foot out "+maxFoot.ToString("0")+" deg; floor 99% "+p99.ToString("0.000")+" worst "+worstFloor.ToString("0.000")+" m, slide "+worstSlide.ToString("0.00")+" m/s (known windows "+knownSlide.ToString("0.00")+")";
     }

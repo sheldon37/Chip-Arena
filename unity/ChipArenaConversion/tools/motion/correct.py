@@ -2,9 +2,9 @@
 
 usage: python correct.py solved/FallenIntroMocap.solved.json ../../Assets/ChipArena/Resources/FallenIntroMocap.json
 
-Single-camera depth is what the extraction gets wrong, and these are depth errors the picture itself settles. Nothing here is extraction: every frame this
-changes is flagged in the file's per-clip `corrected` track, and the upper body's turns, the arms' paths after the pull and the blade's tracked way stay the
-extracted ones unless named below. All positions are rest metres on the boss's frame (x its right, y up, z its front).
+Single-camera depth is what the extraction gets wrong, and these are depth errors the picture itself settles. Nothing here is extraction: what it changes on each frame is flagged in
+the file's per-clip `corrected` track (a mask: 1 legs and hips, 2 right arm, 4 left arm, 8 blade, 16 chest), and everything not flagged stays the extracted motion:
+the spine, the head, the arms' paths after the pull and the blade's tracked way, unless named below. All positions are rest metres on the boss's frame (x its right, y up, z its front).
 
   Kneel and rise (clip 02): the reference has the rear knee on the floor under the hip, the rear shin running straight back, the front shin vertical, the hips at
     0.46 m, the left hand on the left knee. The solve had both thighs forward and the hips 0.13 m high, then jumped the whole body back 0.58 m at frames 120-132
@@ -73,6 +73,9 @@ def slerpm(a, b, t):
     return (ra * Rot.from_rotvec((ra.inv() * Rot.from_matrix(b)).as_rotvec() * t)).as_matrix()
 
 
+LEGS, ARM_R, ARM_L, BLADE, CHEST = 1, 2, 4, 8, 16
+
+
 class Clip:
     def __init__(self, c):
         self.c = c
@@ -81,7 +84,7 @@ class Clip:
         self.m = {b: Rot.from_quat(self.q[:, k]).as_matrix() for k, b in enumerate(BONES)}
         self.root = np.array(c['root'], float).reshape(self.n, 3)
         self.blade = np.array(c['blade'], float).reshape(self.n, 3)
-        self.fixed = np.zeros(self.n, int)
+        self.fixed = np.zeros(self.n, int)  # per frame: LEGS the legs and hips, ARM_R, ARM_L, BLADE the blade's way, CHEST the chest's lean
 
     def turn(self, f, b):
         while b not in self.m:
@@ -139,7 +142,7 @@ def leg_to(clip, f, s, foot, pole, foot_turn=None):
     clip.m['calf_' + s][f] = frame(hip + dn * dist - knee, hinge) @ frame(UNIT[s]['v0'], HL[s]).T
     if foot_turn is not None:
         clip.m['foot_' + s][f] = foot_turn
-    clip.fixed[f] = 1
+    clip.fixed[f] |= LEGS
 
 
 def arm_to(clip, f, s, wrist):
@@ -160,7 +163,7 @@ def arm_to(clip, f, s, wrist):
     el = sh + dn * a + p * h
     clip.m[upper][f] = min_rot(ub, el - sh) @ clip.m[upper][f]
     clip.m[lower][f] = min_rot(vb, sh + dn * dist - el) @ clip.m[lower][f]
-    clip.fixed[f] = 1
+    clip.fixed[f] |= ARM_R if s == 'r' else ARM_L
 
 
 def keys(table):
@@ -212,6 +215,8 @@ for f in range(K.n):
     R = Rot.from_euler('x', lean, degrees=True).as_matrix()
     for b in UPPER:
         K.m[b][f] = R @ K.m[b][f]
+    if lean > 0:
+        K.fixed[f] |= CHEST
 KNEE_REAR = np.array((.26, .06, -.52))
 FOOT_REAR = np.array((.27, .205, -.93))
 TOES_DOWN = Rot.from_euler('x', 52, degrees=True).as_matrix() @ FLAT['r']
@@ -236,7 +241,6 @@ for f in range(K.n):
     if k > 0:
         arm_to(K, f, 'l', K.pos(f, 'hand_l') * (1 - k) + wrist_on_knee * k)
     arm_to(K, f, 'r', PLANT - K.hand_world(f) @ GRIP_L)
-K.fixed[:] = 1
 
 # ---------------- clip 03: the pull, the wheel, out to the side, lowered: feet locked; the fist leaves the plant smoothly ----------------
 # The blade across the body at frame 84: down and across in the picture (in-plane 0.75 of its length), the rest of it forward.
@@ -249,7 +253,7 @@ for f in range(70, 99):
         continue
     P.m['hand_r'][f] = Rot.from_rotvec(TURN_84 * w).as_matrix() @ P.m['hand_r'][f]
     P.blade[f] = P.hand_world(f) @ BLADE_L
-    P.fixed[f] = 1
+    P.fixed[f] |= BLADE
     CLIPS[1]['swordFilled'][f] = 1
 # Out to the side (frames 100-156): the solve took the blade's depth the wrong way, back into the wings. The reference's tip is nearer the camera than its hilt
 # (it is wider there at 119): the same way in the picture, its depth turned forward, back to the solve's as it lowers.
@@ -259,7 +263,7 @@ for f in range(100, 157):
     want = nrm(np.array((b[0], b[1], b[2] * (1 - 2 * w))))
     P.m['hand_r'][f] = min_rot(b, want) @ P.m['hand_r'][f]
     P.blade[f] = P.hand_world(f) @ BLADE_L
-    P.fixed[f] = 1
+    P.fixed[f] |= BLADE
     CLIPS[1]['swordFilled'][f] = 1
 hips_fit(P, 0, P.n)
 from_grip = P.grip(56)
@@ -298,7 +302,6 @@ for f in range(C.n):
     # The rear foot stays where it is and pivots as the body turns over it.
     pole = np.array(POLE_STAND['l'], float) * (1 - k) + np.array((-.78, 0, .55)) * k
     leg_to(C, f, 'l', STANCE['l'], pole, slerpm(FLAT['l'], Ry(-62) @ FLAT['l'], float(smooth((f - 124) / 14))))
-C.fixed[:] = 1
 
 # ---------------- the wrist: the hand no further off its forearm than a human's, the forearm taking what's over ----------------
 RH = RP['hand_r'] - RP['lowerarm_r']
@@ -341,4 +344,6 @@ d['plantGrip'] = np.round(PLANT, 4).tolist()
 d['source'] = str(d.get('source', '')).split(' + hand corrections')[0] + ' + hand corrections from the reference frames (tools/motion/correct.py, flagged per frame in corrected)'
 with open(out, 'w', encoding='utf-8', newline='\n') as fh:
     json.dump(d, fh, separators=(',', ':'))
-print('corrected:', {c['name']: int(sum(c['corrected'])) for c in CLIPS}, 'of', {c['name']: c['frames'] for c in CLIPS})
+NAMES = (('legs', LEGS), ('right arm', ARM_R), ('left arm', ARM_L), ('blade', BLADE), ('chest', CHEST))
+for c in CLIPS:
+    print(c['name'], c['frames'], 'frames; corrected:', {n: sum(1 for v in c['corrected'] if v & m) for n, m in NAMES})
