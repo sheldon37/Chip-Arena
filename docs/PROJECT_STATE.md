@@ -1,3 +1,5 @@
+2026-11-07 Claude (`claude/boss-picks-clock`): the Boss Battle opening's countdown big and glowing at the top centre, urgent in its last 10 s; chips not chosen in time wait and C opens them in the fight.
+
 2026-11-07 Claude (`claude/noctiel-idle`): NOCTIEL stands at rest as the reference does (feet apart, the claymore out to its side, point on the water); THE HUM's swipe is a slap, its palm leading.
 
 2026-11-07 Claude (`claude/boss-anim-pass`): THE DEEP END's jet straight from the mouth with a splash; THE HUM's faster swipe and a real flip up and down; NOCTIEL walks without its stance mixing in and stands as the reference walk does.

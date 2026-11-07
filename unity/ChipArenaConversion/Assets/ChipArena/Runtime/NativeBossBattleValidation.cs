@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
             void Check(bool ok,string why){if(!ok)throw new Exception("Boss opening: "+why);}
             Check(BossOpening&&!Pve.Holding&&BossSongAt<0,"selection before music/intro");
             float clock=Time;var members=Members().ToArray();
-            foreach(var p in members)Check(Pve.Rows[p.Seat.id].Picks.Count==5&&Pve.Rows[p.Seat.id].Picks.All(pick=>pick.Tier=="common"),"five normal-rarity choices per pilot");
+            foreach(var p in members)Check(Pve.Rows[p.Seat.id].Picks.Count==5&&Pve.Rows[p.Seat.id].Picks.All(pick=>pick.Tier=="common"&&pick.Source==NativeBossPicks.Source),"five normal-rarity choices per pilot, marked as the opening's");
             for(int i=0;i<120;i++)BossOpeningTick();
             Check(Time==clock&&BossOpening&&!Pve.Holding,"combat and clock frozen while choosing");
             Check(Math.Abs(Pve.PickLeft-(NativeBossPicks.Seconds-120/60f))<.05f,"the shared countdown runs while they choose");

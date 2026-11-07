@@ -181,7 +181,19 @@ add/remove commands for the selected target through the existing verified DEV au
 The owner: "Everyone gets their own selection screen. There is a 30 second countdown for all players to get their 5 chips. If a player
 finishes selecting, it will bring them to a 'Waiting for x/x players to select their chips' / 'Still selecting: (NAME)'". Every pilot picks
 on their own screen at once (as before); one shared countdown of `NativeBossPicks.Seconds` (30 s) runs on the authority's ticks while the
-arena's clock stands still (`Pve.PickLeft`, replicated as `pickLeft`); the pick screen's corner shows it; when it runs out, any pick still
-open is made for its pilot (its first offer, as a bot picks) and the fight starts. A pilot with five in sees the waiting screen
+arena's clock stands still (`Pve.PickLeft`, replicated as `pickLeft`). A pilot with five in sees the waiting screen
 (`Runtime/NativeBossPicksScreen.cs`): the line, who is still selecting, a pip per player, the countdown draining in the boss's colours.
 Astra's normal-rarity picks and the silent selection are unchanged.
+
+**The clock, and chips left (the owner, 2026-11-07):** "make the text a lot more visible and well designed with glow. Like top center of
+screen, and show urgency when down to last 10 seconds. If all chips aren't selected, players can select rest when pressing C in boss fight
+(Using same logic as expedition chip select)". The countdown is a dark plate at the top centre over both screens
+(`Runtime/NativeBossPicksClock.cs`): "CHOOSE YOUR CHIPS", the clock in 62 px figures glowing in the boss's light, a bar draining under it
+with the last ten seconds marked. In the last `NativeBossPicks.Urgent` (10) s it turns red: the figures beat on each new second and the
+match countdown's tick sounds, a ring flies off the plate, the screen's edge breathes red; the last three burn brighter ("LAST SECONDS").
+Reduced effects keep the colours without the motion. When it runs out nothing is chosen for anyone: the opening's picks (source
+`NativeBossPicks.Source`, "opening") stay with their pilot, their offers rolled then under the opening's rules (normal rarity, no money
+chips), the screen closed for the intro. In the fight they're the PvE pending picks: the "CHIPS n" tag with C, a prompt for the fight's first
+six seconds ("2 CHIPS LEFT TO CHOOSE · C OPEN"), and C opens the pick screen ("BOSS BATTLE · CHIP 4 / 5", vulnerable while choosing, Choose
+later with C or Esc), as Expedition picks wait for C. NOCTIEL's own draft is still made for whoever doesn't choose when its pause ends; a
+leftover opened after it closes instead.

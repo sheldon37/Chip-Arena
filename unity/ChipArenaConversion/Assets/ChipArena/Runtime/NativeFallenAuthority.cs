@@ -68,7 +68,8 @@ namespace ChipArena.UnityConversion
             if(f.draftAt<0)return;
             if(!f.draftGranted&&Time>=f.draftAt+NativeFallenRules.RevealSeconds){f.draftGranted=true;foreach(var p in Members().Where(p=>p.Hp>0&&p.Seat.connected))GrantPvePick(p,"rare",true,"boss");}
             if(Time<f.resumeAt)return;
-            foreach(var row in Pve.Rows.Values)if(row.Open?.Offers?.Count>0)ChoosePve(row.Pilot,row.Open.Id,row.Open.Offers[0]);
+            // Its own draft is made for whoever hasn't chosen; any other pick open (a Boss Battle's leftover, opened after it) closes, to be chosen later with C.
+            foreach(var row in Pve.Rows.Values){if(row.Open?.Source=="boss"&&row.Open.Offers?.Count>0)ChoosePve(row.Pilot,row.Open.Id,row.Open.Offers[0]);if(row.Open!=null&&row.Open.Source!="boss")row.Open=null;}
             f.draftAt=f.resumeAt=-100;f.phaseStarted=Time;bossGap=Time+1;bossReady.Clear();bossHits.Clear();foreach(var s in f.hush){s.hushAt=Time;var p=Pilots.Find(p=>p.Seat.id==s.id);if(p!=null){s.x=p.Body.position.x;s.z=p.Body.position.z;}}
         }
         private void FallenStart(string id,NativePilot target)
