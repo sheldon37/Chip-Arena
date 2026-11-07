@@ -6,6 +6,7 @@
 - **Animation impact:** none on hit timing, hitboxes, damage, cooldowns or movement. Networking: no new field (the picks and their source already replicate); a pilot choosing in the fight is frozen as in any PvE pick.
 - **Checks:** `--boss-picks` 18 (urgency window, beat, tick second, the prompt's words; pins: the opening's source, no auto-pick at 0 and offers rolled, no money chip, NOCTIEL's resume guard, the clock over both screens, the tag and prompt in every boss's HUD); Unity compile PASS; the Unity gate also checks the opening's picks carry the source. Seen in a real HUM Boss Battle in the Editor (the local tool's new `bleave`, `bpick`, `bopen`): three picked and two left, the clock calm at 0:26, red and beating at 0:10 and 0:09 (the ring), "LAST SECONDS" at 0:03; the fight started with the prompt and the CHIPS 2 tag; C's pick opened mid-fight as "BOSS BATTLE · CHIP 4 / 5".
 - **Not run:** the waiting screen with the clock (needs two players), NOCTIEL's fight with leftovers, no person or two-client run; the leftover path is not in the Unity gate (Editor capture only).
+- **Released:** full suite at `0336bb16` (shared merged in): 981 groups, exit 0; Unity compile PASS; pins: 2 flagged, both false (the check that the old auto-pick loop is gone, and a comment line the pattern matched across two strings). Merged `95deea4c`; builder succeeded and published to the test channel: revision 639296901098477034, 245.8 MiB.
 
 ## 2026-11-07 — Claude: NOCTIEL's stance at rest and THE HUM's slap (owner requests)
 
