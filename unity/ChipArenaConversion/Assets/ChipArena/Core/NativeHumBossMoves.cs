@@ -8,11 +8,12 @@ namespace ChipArena.UnityConversion
     /// metres, angles in degrees (a pitch + nods forward). Limb 0 and 1 are the left and right legs, 2 and 3 the left and right arms; each has an override weight (0: the gait plants it, 1: the channel's target),
     /// its target and its elbow's or knee's pole. The spine takes a bend (shared down its joints), a twist and a roll, and `Rear` straightens it (0 the stoop, 1 upright, through the ceiling). The head goes where the stabiliser
     /// wants plus an offset; `Lock` is how hard it holds on its target (1) or follows the body (0); `Jaw` splits the diffuser, `Ribs` opens the cage; `CurlL/R` closes the hands (1 a claw, 0 the arch it stands on, -1 fingers
-    /// straight), `SpreadL/R` fans them.
+    /// straight), `SpreadL/R` fans them. `PalmL/R` turns a hand on a channel about its forearm until its palm faces where the hand is going (0..1, at speed: a slap leads with the
+    /// palm) and `CockL/R` bends it back at the wrist (degrees: + the fingers trail behind the palm, - they flick through ahead of it).
     /// </summary>
     public static class HumCh
     {
-        public const int BX=0,BY=1,BZ=2,BP=3,BW=4,BR=5,Bend=6,Twist=7,Roll=8,Rear=9,HX=10,HY=11,HZ=12,HP=13,Lock=14,Jaw=15,Ribs=16,CurlL=17,CurlR=18,SpreadL=19,SpreadR=20,Shrug=21,LimbBase=22,LimbStride=7;
+        public const int BX=0,BY=1,BZ=2,BP=3,BW=4,BR=5,Bend=6,Twist=7,Roll=8,Rear=9,HX=10,HY=11,HZ=12,HP=13,Lock=14,Jaw=15,Ribs=16,CurlL=17,CurlR=18,SpreadL=19,SpreadR=20,Shrug=21,PalmL=22,PalmR=23,CockL=24,CockR=25,LimbBase=26,LimbStride=7;
         public const int W=0,X=1,Y=2,Z=3,PX=4,PY=5,PZ=6;
         public const int Count=LimbBase+4*LimbStride;
         public static int Limb(int limb,int field)=>LimbBase+limb*LimbStride+field;
@@ -23,6 +24,7 @@ namespace ChipArena.UnityConversion
             for(int c=0;c<Count;c++)MirrorOf[c]=c;
             for(int l=0;l<4;l++){int o=l^1;for(int f=0;f<LimbStride;f++){MirrorOf[Limb(l,f)]=Limb(o,f);MirrorFlip[Limb(l,f)]=f==X||f==PX;}}
             MirrorOf[CurlL]=CurlR;MirrorOf[CurlR]=CurlL;MirrorOf[SpreadL]=SpreadR;MirrorOf[SpreadR]=SpreadL;
+            MirrorOf[PalmL]=PalmR;MirrorOf[PalmR]=PalmL;MirrorOf[CockL]=CockR;MirrorOf[CockR]=CockL;
             foreach(int c in new[]{BX,BW,BR,Twist,Roll,HX})MirrorFlip[c]=true;
         }
         private static float[] MakeNeutral()
@@ -59,6 +61,8 @@ namespace ChipArena.UnityConversion
         public HumSnap Ribs(float open){V[HumCh.Ribs]=open;return this;}
         public HumSnap Rear(float up){V[HumCh.Rear]=up;return this;}
         public HumSnap Shrug(float up){V[HumCh.Shrug]=up;return this;}
+        /// <summary>An arm's hand turned to lead its travel with the palm (0..1) and bent back at the wrist (degrees; see <see cref="HumCh"/>).</summary>
+        public HumSnap Wrist(int arm,float palm,float cock=0){bool left=arm==2;V[left?HumCh.PalmL:HumCh.PalmR]=palm;V[left?HumCh.CockL:HumCh.CockR]=cock;return this;}
     }
 
     /// <summary>
@@ -107,14 +111,16 @@ namespace ChipArena.UnityConversion
             // Faster, and at them (the owner, again: "turn their arm and actually swipe at them, make it a little faster"): the arm is cocked high behind it with the elbow up, then turns over as it comes
             // (the elbow rolling from up and back to down and through, the palm turning to face the stroke) and the hand is driven out through the space in front of it where the target stands, the body
             // lunging after it, before the swing carries it across and down.
+            // A slap (the owner: "we need to turn their hand to, think like they're smacking someone"): the wrist lays back as the arm winds; as the stroke starts the hand turns over
+            // so it leads with its palm wherever it goes, the fingers drawn together, flat at the hit, and they flick through after it as the swing carries across.
             var m=NativeHumBoss.Move("reach");
             Def("reach",1,new BossActionDef("reach",.12f,.34f,P(A,.14f,1,BossEase.InOut),P(A,m.Wind-.24f,2,BossEase.InOut),P(S,.1f,3,BossEase.In,2.8f),P(C,m.Strike,4,BossEase.InOut),P(F,m.Follow,5,BossEase.OutBack,1.6f),P(R,m.Recover,6,BossEase.Settle,1.3f)),
                 N(),
                 N().Lean(.08f,.05f,-.12f,-2,10,-2).Spine(-2,12,-2).Reach(ArmR,1.9f,2.45f,-.2f,.6f,1,-.6f).Hands(0,-.4f,0,.6f).Head(0,0,0).Shrug(.08f),
-                N().Lean(.4f,-.42f,-.5f,-5,34,-8).Spine(5,40,-10).Reach(ArmR,2.35f,3.05f,-1.95f,.45f,1,-.85f).Hands(0,-.9f,0,1).Head(0,-.12f,0).Jaw(.35f).Shrug(.18f),
-                N().Lean(.1f,-.4f,.35f,7,4,-1).Spine(11,18,-4).Reach(ArmR,2.75f,2.0f,2.55f,.75f,.35f,.35f).Hands(0,-1,0,1).Head(0,-.16f,.08f).Jaw(.6f).Shrug(.1f),
-                N().Lean(-.22f,-.42f,.95f,14,-22,9).Spine(18,-28,8).Reach(ArmR,-1.6f,1.4f,3.9f,-.25f,-.85f,.45f).Hands(0,-1,0,1).Head(0,-.22f,.18f).Jaw(.9f),
-                N().Lean(-.38f,-.48f,.72f,14,-34,11).Spine(20,-40,11).Reach(ArmR,-3.0f,.95f,1.1f,-.55f,-.75f,.1f).Hands(0,-.5f,0,.6f).Head(0,-.2f,.1f,0,.85f).Jaw(.4f),
+                N().Lean(.4f,-.42f,-.5f,-5,34,-8).Spine(5,40,-10).Reach(ArmR,2.35f,3.05f,-1.95f,.45f,1,-.85f).Hands(0,-.9f,0,.6f).Wrist(ArmR,0,40).Head(0,-.12f,0).Jaw(.35f).Shrug(.18f),
+                N().Lean(.1f,-.4f,.35f,7,4,-1).Spine(11,18,-4).Reach(ArmR,2.75f,2.0f,2.55f,.75f,.35f,.35f).Hands(0,-1,0,.3f).Wrist(ArmR,1,6).Head(0,-.16f,.08f).Jaw(.6f).Shrug(.1f),
+                N().Lean(-.22f,-.42f,.95f,14,-22,9).Spine(18,-28,8).Reach(ArmR,-1.6f,1.4f,3.9f,-.25f,-.85f,.45f).Hands(0,-1,0,.3f).Wrist(ArmR,1,-16).Head(0,-.22f,.18f).Jaw(.9f),
+                N().Lean(-.38f,-.48f,.72f,14,-34,11).Spine(20,-40,11).Reach(ArmR,-3.0f,.95f,1.1f,-.55f,-.75f,.1f).Hands(0,-.5f,0,.6f).Wrist(ArmR,.8f,-30).Head(0,-.2f,.1f,0,.85f).Jaw(.4f),
                 N());
             // ---- Stoop: it gathers itself up (the back presses the ceiling, both arms rising wide, the head dropping low and forward, in reach, the fingers fanned), then folds: both hands and the head down at its own feet.
             // The head comes down to 1.2 m at the hit. The head's weak point is open through the wind-up and the recovery ----

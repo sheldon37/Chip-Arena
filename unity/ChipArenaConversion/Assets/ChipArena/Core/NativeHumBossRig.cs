@@ -276,6 +276,8 @@ namespace ChipArena.UnityConversion
         private void Blend(HumSnap s,float w){if(w<=0)return;w=Math.Min(1,w);var x=s.V;for(int c=0;c<ch.Length;c++)ch[c]+=(x[c]-ch[c])*w;}
         // ---- the intro's own track: the arm through the wall, the walk out, the look, the jaw, the straightening, the stoop ----
         private float levelHand;
+        // Each arm's hand: where it was, and the way it's been going (smoothed over PalmLag s), for a palm that leads.
+        private readonly Vector3[] palmLast=new Vector3[2],palmWay=new Vector3[2];private readonly bool[] palmKnown=new bool[2];private const float PalmLag=.03f;
         private void ArrivalLayer(float a,in HumBossBeats b)
         {
             // The hand: from behind the wall out through the tear. Root-frame targets: the root is still behind the wall here.
@@ -405,6 +407,20 @@ namespace ChipArena.UnityConversion
             var gaitEnd=Legs.FootRotation[limb];
             var dir=Vector3.Normalize(e-knee);var alongEnd=Quaternion.Normalize(BossMath.FromTo(BossMath.Rotate(facing,Vector3.UnitZ),dir)*facing);
             var endRot=w>0?BossMath.Slerp(gaitEnd,limb>=2?alongEnd:gaitEnd,BossMath.Smooth(w)):gaitEnd;
+            // A hand on a channel turns about its forearm until its palm faces where it's going, and bends at the wrist, as the move keys it (the swipe is a slap: HumCh.PalmL/R, CockL/R).
+            // Its palm is -y, its fingers +z. Where it's going is its own travel, smoothed, and only at speed: a hand that's barely moving keeps the forearm's turn.
+            if(limb>=2)
+            {
+                int a=limb-2;float k=w>0?BossMath.Smooth(w):0,lead=ch[a==0?HumCh.PalmL:HumCh.PalmR]*k,cock=ch[a==0?HumCh.CockL:HumCh.CockR]*k;
+                if(palmKnown[a]&&dt>1e-4f){var go=(e-palmLast[a])/dt;float speed=go.Length();if(speed>.5f&&speed<80)palmWay[a]=Vector3.Lerp(palmWay[a],go/speed,1-(float)Math.Exp(-dt/PalmLag));lead*=BossMath.Smooth((speed-2)/6);}else lead=0;
+                palmLast[a]=e;palmKnown[a]=true;
+                if(lead>1e-3f)
+                {
+                    var along=BossMath.Rotate(endRot,Vector3.UnitZ);var palm=BossMath.Rotate(endRot,-Vector3.UnitY);var want=palmWay[a]-along*Vector3.Dot(palmWay[a],along);
+                    if(want.LengthSquared()>1e-4f){want=Vector3.Normalize(want);float turn=(float)Math.Atan2(Vector3.Dot(along,Vector3.Cross(palm,want)),Vector3.Dot(palm,want));endRot=Quaternion.Normalize(BossMath.AxisAngle(along,turn*Math.Min(1,lead))*endRot);}
+                }
+                if(cock*cock>1e-4f)endRot=Quaternion.Normalize(endRot*BossMath.AxisAngle(Vector3.UnitX,-cock*Deg));
+            }
             if(limb==ArmR&&levelHand>0)endRot=BossMath.Slerp(endRot,facing,levelHand);
             P.Set(end,e,Quaternion.Normalize(endRot));
         }

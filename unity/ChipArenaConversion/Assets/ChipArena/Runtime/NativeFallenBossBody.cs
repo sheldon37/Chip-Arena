@@ -12,7 +12,11 @@ namespace ChipArena.UnityConversion
     {
         private const string FallenBank="ChipArenaPackBossFallen";
         private sealed class FbPart{public readonly Mesh[] Mesh=new Mesh[2];public readonly bool[] Glows=new bool[2];public int Group;public byte Phases;public float GlowScale=1;public string Name;public bool Trim;}
-        private GameObject fbRoot;private HumanPoseHandler fbHandler;private HumanPose fbPose;private float[] fbMix,fbRest;private int[] fbFreeArm,FbKneelAt;private static readonly string[] FbKneelNames={"Left Upper Leg Front-Back","Left Upper Leg In-Out","Left Lower Leg Stretch","Left Foot Up-Down","Right Upper Leg Front-Back","Right Upper Leg In-Out","Right Lower Leg Stretch","Right Foot Up-Down","Spine Front-Back","Chest Front-Back","UpperChest Front-Back","Neck Nod Down-Up","Head Nod Down-Up","Left Arm Down-Up","Left Forearm Stretch"};private static readonly float[] FbKneelTo={.36f,.52f,-1f,.52f,-1.28f,.42f,-.84f,-.62f,-.2f,-.72f,-.5f,.62f,.86f,-.34f,.7f};private bool fbBuilt,fbFailed;
+        private GameObject fbRoot;private HumanPoseHandler fbHandler;private HumanPose fbPose;private float[] fbMix,fbRest;private int[] fbFreeArm,FbKneelAt,FbStandAt;private static readonly string[] FbKneelNames={"Left Upper Leg Front-Back","Left Upper Leg In-Out","Left Lower Leg Stretch","Left Foot Up-Down","Right Upper Leg Front-Back","Right Upper Leg In-Out","Right Lower Leg Stretch","Right Foot Up-Down","Spine Front-Back","Chest Front-Back","UpperChest Front-Back","Neck Nod Down-Up","Head Nod Down-Up","Left Arm Down-Up","Left Forearm Stretch"};private static readonly float[] FbKneelTo={.36f,.52f,-1f,.52f,-1.28f,.42f,-.84f,-.62f,-.2f,-.72f,-.5f,.62f,.86f,-.34f,.7f};// At rest, the owner's reference stance over the held stride (Core NativeFallenLiveMotion.StandAt, FallenBossFrame.Stand), rendered on the body and measured: the soles level within 3 cm, the left
+        // foot 26 cm ahead of the right, the feet half a metre apart, knees nearly straight, the stride's 17 degree twist out of the spine. Muscle targets, not offsets.
+        private static readonly string[] FbStandNames={"Left Upper Leg Front-Back","Left Upper Leg In-Out","Left Upper Leg Twist In-Out","Left Lower Leg Stretch","Left Foot Up-Down","Left Toes Up-Down","Right Upper Leg Front-Back","Right Upper Leg In-Out","Right Upper Leg Twist In-Out","Right Lower Leg Stretch","Right Foot Up-Down","Right Toes Up-Down","Spine Twist Left-Right"};
+        private static readonly float[] FbStandTo={.02f,.15f,0,.88f,0,0,.4f,.15f,0,.88f,0,0,0};
+        private bool fbBuilt,fbFailed;
         private readonly Dictionary<string,Transform> fbBone=new Dictionary<string,Transform>();private readonly Dictionary<string,Matrix4x4> fbBind=new Dictionary<string,Matrix4x4>();
         private readonly Dictionary<string,int> fbGroupIndex=new Dictionary<string,int>();private Matrix4x4[] fbWorld;private int[] fbChainGroup,fbChainParent;private Transform[] fbGroupBone;
         private readonly List<FbPart> fbParts=new List<FbPart>();private readonly Dictionary<string,FbPart> fbFree=new Dictionary<string,FbPart>();
@@ -43,7 +47,7 @@ namespace ChipArena.UnityConversion
             fbPelvis=B("pelvis");fbSpine1=B("spine_01");fbSpine3=B("spine_03");fbThighL=B("thigh_l");fbThighR=B("thigh_r");fbCalfL=B("calf_l");fbCalfR=B("calf_r");fbUpperL=B("upperarm_l");fbLowerL=B("lowerarm_l");fbHandL=B("hand_l");
             if(fbHead==null||fbHandR==null||fbUpperR==null||fbLowerR==null||fbSpine==null||fbFootL==null||fbFootR==null){Debug.LogWarning("NOCTIEL: bones missing");return false;}
             fbHandler=new HumanPoseHandler(animator.avatar,skeleton);int muscles=VisualMotionBank.Muscles;fbPose.muscles=new float[muscles];fbMix=new float[NativeVisualMotionClips.Head+muscles];fbRest=new float[fbMix.Length];
-            var free=new List<int>();var names=HumanTrait.MuscleName;for(int i=0;i<names.Length&&i<muscles;i++){var n=names[i];if(n.StartsWith("Left Arm",StringComparison.Ordinal)||n.StartsWith("Left Forearm",StringComparison.Ordinal)||n.StartsWith("Left Hand",StringComparison.Ordinal)||n.StartsWith("Left Shoulder",StringComparison.Ordinal)||n.StartsWith("LeftHand.",StringComparison.Ordinal))free.Add(i);}fbFreeArm=free.ToArray();FbKneelAt=new int[FbKneelNames.Length];for(int i=0;i<FbKneelAt.Length;i++)FbKneelAt[i]=Array.IndexOf(names,FbKneelNames[i]);
+            var free=new List<int>();var names=HumanTrait.MuscleName;for(int i=0;i<names.Length&&i<muscles;i++){var n=names[i];if(n.StartsWith("Left Arm",StringComparison.Ordinal)||n.StartsWith("Left Forearm",StringComparison.Ordinal)||n.StartsWith("Left Hand",StringComparison.Ordinal)||n.StartsWith("Left Shoulder",StringComparison.Ordinal)||n.StartsWith("LeftHand.",StringComparison.Ordinal))free.Add(i);}fbFreeArm=free.ToArray();FbKneelAt=new int[FbKneelNames.Length];for(int i=0;i<FbKneelAt.Length;i++)FbKneelAt[i]=Array.IndexOf(names,FbKneelNames[i]);FbStandAt=new int[FbStandNames.Length];for(int i=0;i<FbStandAt.Length;i++)FbStandAt[i]=Array.IndexOf(names,FbStandNames[i]);
             // Groups: every bone a part rides, then each chain in order (a chain's parent comes first).
             int Group(string name){if(fbGroupIndex.TryGetValue(name,out int g))return g;g=fbGroupIndex.Count;fbGroupIndex[name]=g;return g;}
             foreach(var part in NativeFallenBossLook.Parts){bool chain=false;foreach(var c in NativeFallenBossLook.Chains)if(c.Name==part.Group){chain=true;break;}if(!chain)Group(part.Group);}
@@ -89,6 +93,8 @@ namespace ChipArena.UnityConversion
             }
             // The kneel preset; in the intro its legs and its bowed back and head let go on their own schedules (the rise).
             if(f.Kneel>0){int head=NativeVisualMotionClips.Head;for(int i=0;i<FbKneelAt.Length;i++){float k=f.Intro.On?(i<8?f.Intro.KneelLegs:f.Intro.KneelUpper):f.Kneel;if(FbKneelAt[i]>=0&&k>0)fbMix[head+FbKneelAt[i]]=Mathf.Lerp(fbMix[head+FbKneelAt[i]],FbKneelTo[i],k);}}
+            // At rest it stands as the owner's reference does; down on a knee the kneel has it.
+            if(fbLiveNow&&f.Stand>0){int head=NativeVisualMotionClips.Head;float k=f.Stand*(1-Mathf.Clamp01(f.Kneel));for(int i=0;i<FbStandAt.Length;i++)if(FbStandAt[i]>=0&&k>0)fbMix[head+FbStandAt[i]]=Mathf.Lerp(fbMix[head+FbStandAt[i]],FbStandTo[i],k);}
             fbPose.bodyPosition=new Vector3(fbMix[0],fbMix[1],fbMix[2]);fbPose.bodyRotation=new Quaternion(fbMix[3],fbMix[4],fbMix[5],fbMix[6]);Array.Copy(fbMix,NativeVisualMotionClips.Head,fbPose.muscles,0,fbPose.muscles.Length);
             // Leaning into what it does: its weight lags its speed.
             var velocity=dt>0&&fbPoseClock>=0?(at-fbLastAt)/dt:Vector3.zero;if(velocity.sqrMagnitude>3600)velocity=Vector3.zero;var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);var local=Quaternion.Inverse(yawRot)*velocity;
@@ -131,11 +137,12 @@ namespace ChipArena.UnityConversion
         // The fist closes where the sword should be: upright point-down in the water (planted), or held low and forward as it stands.
         private void FallenPlantGoal(FallenBossFrame f,Vector3 origin,out Vector3 grip,out Quaternion world,out Vector3 pole)
         {var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);grip=origin+FallenPlantPoint(f,f.SwordLift);world=Quaternion.LookRotation(Vector3.down,yawRot*Vector3.forward);pole=f.Intro.Mocap?yawRot*new Vector3(1f,.12f,-.35f):yawRot*new Vector3(.9f,-.5f,-.6f);}
-        // The carry, as the owner's reference walk has it (2026-11-06): the claymore hangs from the right hand at its side, the arm
-        // nearly straight and a touch forward, the blade trailing out and back with its broad side to the front and its point just
-        // off the water. The wrist hangs from the clip's own shoulder, so the hand rides the walk's sway and bob; the blade's pitch
-        // is solved each frame from the grip's height, so the point stays over the water whatever the stride does.
-        private const float FbDragTip=.1f;private static readonly Vector3 FbDragWay=new Vector3(.85f,0,-.53f).normalized;
+        // The carry, as the owner's reference walk has it (2026-11-06; the angle from the reference clips' standing frames and the owner's
+        // still, 2026-11-07): the claymore hangs from the right hand at its side, the arm nearly straight and a touch forward, the blade
+        // laid out to its right (a few degrees ahead of square, never back) and down about thirty degrees, its broad side to the front,
+        // its point resting on the water. The wrist hangs from the clip's own shoulder, so the hand rides the walk's sway and bob; the
+        // blade's pitch is solved each frame from the grip's height, so the point stays on the water whatever the stride does.
+        private const float FbDragTip=.02f;private static readonly Vector3 FbDragWay=new Vector3(.99f,0,.1f).normalized;
         private void FallenCarryGoal(FallenBossFrame f,float floor,out Vector3 grip,out Quaternion world,out Vector3 pole)
         {
             var yawRot=Quaternion.AngleAxis(f.Yaw,Vector3.up);float s=NativeFallenBoss.Scale,breath=.02f*Mathf.Sin(fbPoseClock*.8f);

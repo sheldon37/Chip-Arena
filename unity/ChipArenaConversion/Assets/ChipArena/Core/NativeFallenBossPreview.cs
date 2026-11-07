@@ -15,8 +15,10 @@ namespace ChipArena.UnityConversion
         public string ClipFrom,ClipTo;public float TimeFrom,TimeTo,Mix;
         /// <summary>Above the water by the move itself (a leap); feet on the water at 0.</summary>
         public float Air;
-        /// <summary>Down on one knee (0..1), and the sword held low and forward as it stands (0..1).</summary>
+        /// <summary>Down on one knee (0..1), and the sword carried at its side, its point on the water, as it stands or walks (0..1).</summary>
         public float Kneel,Carry;
+        /// <summary>At rest (0..1): Runtime squares the held stride into the owner's reference stance (feet planted apart, the left a little ahead, knees nearly straight, hips and chest square).</summary>
+        public float Stand;
         /// <summary>The head follows this pilot while it stands (0..1 how hard); gliding: it runs on nothing, its feet off the water.</summary>
         public float Track;public int TrackPilot;public bool Gliding;
         /// <summary>The sword draws its trail (the strike itself, not every move of the arm).</summary>
