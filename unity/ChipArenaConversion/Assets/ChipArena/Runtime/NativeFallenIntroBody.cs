@@ -12,7 +12,7 @@ namespace ChipArena.UnityConversion
         private Transform fbSpine1,fbSpine3;
         private struct FbIntroFoot{public bool Held;public Vector3 Local;public Quaternion Turn;}
         private FbIntroFoot fbIntroL,fbIntroR;private FallenIntroPose fbIntroLast;private float fbIntroEnd=-1;
-        private const float FbIntroHold=.25f,FbIntroRelease=.7f;
+        private const float FbIntroHold=.25f,FbIntroRelease=.7f,FbMocapHold=.6f,FbMocapRelease=.65f;// the reference's lunge is held through the Slash
 
         /// <summary>The layer this frame and its weight: the cutscene's own, or the last one held then let go after it ends.</summary>
         private bool FallenIntroNow(FallenBossFrame f,float now,out FallenIntroPose pose,out float weight,out float age)
@@ -21,8 +21,9 @@ namespace ChipArena.UnityConversion
             if(f.Intro.On){if(fbIntroEnd>=0||!fbIntroLast.On){fbIntroL=default;fbIntroR=default;}pose=f.Intro;weight=1;fbIntroLast=f.Intro;fbIntroEnd=-1;return true;}
             pose=fbIntroLast;weight=0;if(!fbIntroLast.On)return false;
             if(fbIntroEnd<0)fbIntroEnd=now;age=now-fbIntroEnd;
-            if(age<0||age>FbIntroHold+FbIntroRelease){fbIntroLast.On=false;fbIntroL=default;fbIntroR=default;fbPlantL=fbPlantR=default;fbPlantL.StepAt=fbPlantR.StepAt=-1;return false;}
-            float k=Mathf.Clamp01((age-FbIntroHold)/FbIntroRelease);weight=1-k*k*(3-2*k);return true;
+            float hold=fbIntroLast.Mocap?FbMocapHold:FbIntroHold,release=fbIntroLast.Mocap?FbMocapRelease:FbIntroRelease;
+            if(age<0||age>hold+release){fbIntroLast.On=false;fbIntroL=default;fbIntroR=default;fbPlantL=fbPlantR=default;fbPlantL.StepAt=fbPlantR.StepAt=-1;return false;}
+            float k=Mathf.Clamp01((age-hold)/release);weight=1-k*k*(3-2*k);return true;
         }
         private Vector3 FbBossLocal(Vector3 world,Vector3 at,Quaternion yawRot)=>Quaternion.Inverse(yawRot)*(world-at);
 

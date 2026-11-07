@@ -14,6 +14,7 @@ extracted ones unless named below. All positions are rest metres on the boss's f
     It was the kneel's solved grip, out of the arm's reach for 70% of the rise, so the arm locked straight and the sword slid through the water.
   The pull (clip 03): the fist leaves the plant onto the extracted path over a second, without a jump.
   The wheel across the body (clip 03): the blade at frame 84 read off the picture (the solve's depth had it pointing at the lens).
+  Out to the side (clip 03): the blade's depth at frames 100-156 turned forward (the solve had it back into the wings; the reference's tip is nearer the camera).
   The lunge (clip 04): the reference lands the right foot out to the side at the contact, flat, 0.68 m from the left, with the hips at 0.89 m sinking to 0.78 m. The
     solve had the foot forward and 0.1 m off the floor and the hips 0.15 m high. Now: the step and the hips are keyed from the frames at 126, 134 and 160.
 """
