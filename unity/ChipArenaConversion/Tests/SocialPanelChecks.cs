@@ -27,6 +27,12 @@ internal static class SocialPanelChecks
         int esc=game.IndexOf("if(escape&&SocialEscape())return;",StringComparison.Ordinal),back=esc<0?-1:game.IndexOf("if(escape){if(arena==null)MenuBack();",esc,StringComparison.Ordinal);
         Check(esc>=0&&back>esc,"Escape closes the open panel before the menu's Back");
         Check(home.Contains("private bool MenuBlocked()=>menuBlockedNow||SocialCovers();"),"the menu under the chip and panel is blocked while the pointer is on them");
+        // The pop-up (owner 2026-11-07: "a notification when players get invited", "Pop-up with Accept").
+        Check(ui.Contains("(menu||arena!=null&&(match.Phase==NativePhase.Match&&arena.Pve==null||ExpeditionEndingShowing))"),"the pop-up shows on the menus and at a match's end, never in a fight");
+        Check(ui.Contains("private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(")&&ui.Contains("\"ACCEPT\",\"check\",0,canAccept&&!busy&&usable,a,9705)){socialToastJoining=inv.id;SocialAccept(inv);}")&&ui.Contains("canAccept&&!busy&&usable,a,hid*3+1))SocialAccept(inv);"),"the pop-up's Accept and the panel's are one path, under the one rule");
+        Check(ui.Contains("if(usable&&!joining&&U.Button(x))socialToastGone.Add(inv.id);")&&!ui.Contains("U.Button(x)){account.AnswerInvite"),"closing the pop-up answers nothing: the invitation stays on the badge");
+        Check(ui.Contains("if(socialOpen)socialToastGone.Add(i.id);")&&ui.Contains("U.Hover(socialToastRect)")&&ui.Contains("couldn't be accepted"),"what the panel has shown doesn't pop up again, the menu under the card is blocked, and a failed Accept says so");
+        Check(logic.Contains("private void TickSocial(){if(Account!=null&&session.Length>0&&!SocialBusy&&Time.unscaledTime>=socialNext)SocialRequest(\"social\",\"{}\");}"),"the account service's polling is unchanged");
         Console.WriteLine("PASS social panel ("+count+" checks)");
     }
 }

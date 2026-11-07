@@ -22,6 +22,11 @@ namespace ChipArena.UnityConversion
     //   to); scrolled by the wheel inside its clip, with a thin thumb.
     // It opens and closes from the chip, its close button, a click outside it or Escape (SocialEscape, before the menu's own
     // Back). While it is open or hovered the menu under it is blocked (MenuBlocked). Actions are the existing ones.
+    //
+    // The invitation pop-up (owner 2026-11-07: "This will show a notification when players get invited", then "Pop-up with Accept"; docs/ONLINE-INVITES.md):
+    // a card under the chip's corner when an invitation waits, on the menus and the end-of-match screens, never in a fight. Who, the countdown, Accept and
+    // Decline, the same actions and the same rule as the panel's card (outside a room or match Accept joins; inside one it says so and waits); its close
+    // only puts it away, and the invitation stays on the chip's badge. One at a time, the count of the others opening the panel.
     public sealed partial class ConversionGame
     {
         private bool socialOpen;
@@ -32,19 +37,22 @@ namespace ChipArena.UnityConversion
         private bool SocialCanInvite=>relayHost!=null&&!relayHost.Closed&&!UseManagedRelay&&arena==null&&!deploymentLocked;
         private const string SocialMail="<path d=\"M3.5 6.5H20.5V17.5H3.5Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M4 7.5L12 13L20 7.5\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/>";
         private const string SocialSend="<path d=\"M21 3L10.5 13.5M21 3L14.5 21L10.5 13.5L3 9.5Z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/>";
-        private const float SocialWidth=372,SocialChipH=30,SocialHeadH=54,SocialRowH=44,SocialCardH=80;
+        private const float SocialWidth=372,SocialChipH=30,SocialHeadH=54,SocialRowH=44,SocialCardH=80,SocialToastH=94;
+        private NativePlayerInvite socialToast;private float socialToastAt=-99,socialToastOutAt=-1,socialToastSeen=-99;private Rect socialToastRect;private string socialToastJoining;
+        private readonly HashSet<string> socialToastGone=new HashSet<string>();
 
         /// <summary>Update (before the menu's Back): Escape closes the open panel instead.</summary>
         private bool SocialEscape(){if(!socialOpen||!menu)return false;SocialClose();return true;}
         private void SocialClose(){if(!socialOpen)return;socialOpen=false;socialCloseAt=Time.unscaledTime;}
         private void SocialToggle(){float now=Time.unscaledTime;socialOpen=!socialOpen;if(socialOpen){socialOpenAt=now;socialScroll=0;}else socialCloseAt=now;}
         /// <summary>MenuBlocked: the pointer is over the chip or the shown panel (the menu under them takes no hover or click).</summary>
-        private bool SocialCovers()=>Time.unscaledTime-socialSeenAt<.2f&&(U.Hover(socialChipRect)||socialPanelShown&&U.Hover(socialPanelRect));
+        private bool SocialCovers()=>Time.unscaledTime-socialSeenAt<.2f&&(U.Hover(socialChipRect)||socialPanelShown&&U.Hover(socialPanelRect))||Time.unscaledTime-socialToastSeen<.2f&&U.Hover(socialToastRect);
         // How open the panel is (0..1): the panel ease in, a quicker fold out.
         private float SocialOpenAmount(float now)=>socialOpen?U.PanelIn(now-socialOpenAt):1-M.Bezier(.4f,0,1,1,M.Clamp01((now-socialCloseAt)/.16f));
 
         private void SocialGui()
         {
+            SocialToastGui();
             if(account?.Account==null||dedicated||prefs==null||!menu||StageInputHeld||reportOpen){socialPanelShown=false;return;}
             var saved=GUI.matrix;
             try
@@ -221,9 +229,81 @@ namespace ChipArena.UnityConversion
             }
             bool busy=account.SocialBusy;float by=d.yMax-34,bw=92;
             bool usable=e>.9f&&d.y>=view.y&&d.yMax<=view.yMax;
-            if(SocialButton(new Rect(d.xMax-10-bw,by,bw,24),"ACCEPT","check",0,canAccept&&!busy&&usable,a,hid*3+1))
-                account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;SocialClose();JoinRoom();});
+            if(SocialButton(new Rect(d.xMax-10-bw,by,bw,24),"ACCEPT","check",0,canAccept&&!busy&&usable,a,hid*3+1))SocialAccept(inv);
             if(SocialButton(new Rect(d.xMax-10-bw*2-8,by,bw,24),"DECLINE","x",1,!busy&&usable,a,hid*3+2))account.AnswerInvite(inv.id,false,null);
+        }
+        // Accepting, from the panel's card or the pop-up: the one path.
+        private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;socialToastJoining=null;socialToastGone.Add(inv.id);SocialClose();JoinRoom();});
+
+        // ---- the pop-up ----
+        // Where it may show: a menu (the pause menu too) or a match's end, never mid-fight; the invitation waits on the service meanwhile (two minutes).
+        private bool SocialToastSurface=>account?.Account!=null&&!dedicated&&prefs!=null&&!StageInputHeld&&!reportOpen&&(menu||arena!=null&&(match.Phase==NativePhase.Match&&arena.Pve==null||ExpeditionEndingShowing));
+        private void SocialToastGui()
+        {
+            if(!SocialToastSurface){socialToast=null;socialToastOutAt=-1;socialToastJoining=null;return;}
+            float now=Time.unscaledTime;
+            // The answer came back without a join: say so (the panel's status line isn't showing).
+            if(socialToastJoining!=null&&!account.SocialBusy){socialToastGone.Add(socialToastJoining);socialToastJoining=null;Notice("That invitation couldn't be accepted. It may have expired.");}
+            // The open panel shows them all: what it has shown doesn't pop up again.
+            int waiting=0;NativePlayerInvite next=null;bool still=false;
+            foreach(var i in account.Invitations)
+            {
+                if(i==null||string.IsNullOrEmpty(i.id))continue;if(socialOpen)socialToastGone.Add(i.id);
+                if(socialToast!=null&&i.id==socialToast.id)still=true;if(socialToastGone.Contains(i.id))continue;waiting++;if(next==null)next=i;
+            }
+            if(Time.frameCount%120==0)socialToastGone.RemoveWhere(id=>Array.FindIndex(account.Invitations,i=>i!=null&&i.id==id)<0);
+            if(socialToast!=null&&socialToastOutAt<0&&(!still||socialToastGone.Contains(socialToast.id)))socialToastOutAt=now;
+            if(socialToast!=null&&socialToastOutAt>=0&&now-socialToastOutAt>.18f){socialToast=null;socialToastOutAt=-1;}
+            if(socialToast==null&&next!=null){socialToast=next;socialToastAt=now;socialToastOutAt=-1;nativeAudio?.Cue("ui.notice",null,null,.5f,mine:true);}
+            if(socialToast==null){socialToastRect=default;return;}
+            var saved=GUI.matrix;
+            try{SocialToastCard(socialToast,Mathf.Max(0,waiting-1),now);}
+            finally{GUI.matrix=saved;}
+        }
+        private void SocialToastCard(NativePlayerInvite inv,int others,float now)
+        {
+            float enter=M.Bezier(.2f,.8f,.2f,1,M.Clamp01((now-socialToastAt)/.34f)),leave=socialToastOutAt>=0?M.Clamp01((now-socialToastOutAt)/.18f):0,a=enter*(1-leave);
+            var anchor=SocialAnchor();var r=new Rect(anchor.x-SocialWidth+36*(1-enter)+24*leave,anchor.y+SocialChipH+12,SocialWidth,SocialToastH);socialToastRect=r;socialToastSeen=now;
+            float h=U.HoverAmount(9703,r,a>.5f),fresh=Mathf.Exp(-(now-socialToastAt)*2.2f),beat=Mathf.Repeat(now-socialToastAt,1.8f),kick=Mathf.Exp(-beat*7);bool usable=enter>.7f&&leave<=0,joining=socialToastJoining==inv.id,canAccept=CanAcceptInvite;
+            // Glass over any screen, its edge lit on the arrival and on each beat while it waits.
+            U.Glow(new Rect(r.x+6,r.y+12,r.width-12,r.height-6),new Color(0,0,0,.6f*a),18);U.Glow(r,C.Magenta((.14f+.5f*fresh+.12f*kick)*a),16);
+            U.RoundGradient(r,U.A(U.Mix(U.Hex(0x2a1640,.97f),U.Hex(0x341a4e,.98f),h),a),U.A(C.Navy(.97f),a),10,C.Magenta((.5f+.45f*Mathf.Max(fresh,Mathf.Max(h,kick)))*a),1,true);
+            if(fresh>.03f){float g=14*(1-fresh);U.Round(new Rect(r.x-g,r.y-g,r.width+2*g,r.height+2*g),Color.clear,10+g,C.Magenta(.7f*fresh*a));}
+            U.Fill(new Rect(r.x,r.y+10,3,r.height-20),C.Magenta(.95f*a));
+            // Who, with the envelope on their initials; what it is, or why it can't be taken yet.
+            var c=new Vector2(r.x+32,r.y+30);SocialAvatar(c,16,inv.username,false,a,now);
+            var mail=new Rect(c.x+7,c.y+7,15,15);U.Disc(new Rect(mail.x-1,mail.y-1,mail.width+2,mail.height+2),C.Panel(a));U.Disc(mail,C.Magenta(a));NativeIcons.DrawMarkup(new Rect(mail.x+2.5f,mail.y+2.5f,10,10),"social-mail",SocialMail,24,new Color(1,1,1,a));
+            U.Text(new Rect(r.x+58,r.y+10,r.width-150,19),inv.username,13,C.Ink(a),TextAnchor.MiddleLeft,bold:true);
+            if(canAccept||joining)U.Text(new Rect(r.x+58,r.y+29,r.width-98,15),"invited you to their room",10.5f,C.Ink(.8f*a),TextAnchor.MiddleLeft);
+            else U.Text(new Rect(r.x+58,r.y+29,r.width-74,15),"Leave your room or match to accept",10.5f,C.Warn(.95f*a),TextAnchor.MiddleLeft);
+            // Two minutes to answer (the service's milliseconds; hidden when this clock disagrees).
+            double left=(inv.expires-DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())/1000.0;
+            if(left>0&&left<=125)
+            {
+                float f=Mathf.Clamp01((float)(left/120));int s=Mathf.CeilToInt((float)left);Color t=left<20?C.Warn():C.Magenta();
+                U.Text(new Rect(r.xMax-74,r.y+11,36,16),(s/60)+":"+(s%60).ToString("00"),10,U.A(U.Mix(t,Color.white,.4f),a),TextAnchor.MiddleRight,mono:true,bold:true);
+                U.Fill(new Rect(r.x+10,r.yMax-4,r.width-20,2),C.Edge(.35f*a));U.HGradient(new Rect(r.x+10,r.yMax-4,(r.width-20)*f,2),U.A(t,.35f*a),U.A(t,.95f*a));
+            }
+            // Put away: the invitation stays on the chip's badge until it is answered or runs out.
+            var x=new Rect(r.xMax-32,r.y+8,24,24);float xh=U.HoverAmount(9704,x,usable&&!joining);U.Round(x,U.A(U.Mix(C.Indigo(0),C.Indigo(.95f),xh),a),12,U.A(C.Edge(),xh*a));
+            U.Push(x.center,Vector2.zero,1,90*xh);NativeIcons.Draw(new Rect(x.center.x-6,x.center.y-6,12,12),"x",U.A(U.Mix(C.Muted(),Color.white,xh),a));U.Pop();
+            if(usable&&!joining&&U.Button(x))socialToastGone.Add(inv.id);
+            float by=r.yMax-34,bw=92;
+            if(joining)
+            {
+                var sc=new Vector2(r.xMax-96,by+12);U.Push(sc,Vector2.zero,1,now*300);NativeIcons.Draw(new Rect(sc.x-7,sc.y-7,14,14),"circle-dashed",C.CyanSoft(a));U.Pop();
+                U.Text(new Rect(sc.x+13,by,80,24),"JOINING",9.5f,C.CyanSoft(a),TextAnchor.MiddleLeft,bold:true,tracking:.18f);return;
+            }
+            bool busy=account.SocialBusy;
+            if(SocialButton(new Rect(r.xMax-12-bw,by,bw,24),"ACCEPT","check",0,canAccept&&!busy&&usable,a,9705)){socialToastJoining=inv.id;SocialAccept(inv);}
+            if(SocialButton(new Rect(r.xMax-12-bw*2-8,by,bw,24),"DECLINE","x",1,!busy&&usable,a,9706)){account.AnswerInvite(inv.id,false,null);socialToastGone.Add(inv.id);}
+            // The others wait in the panel.
+            if(others>0)
+            {
+                string more="+"+others+" MORE";float mw=U.Measure(more,9.5f,true,false,.12f).x+16;var m=new Rect(r.x+14,by+1,mw,22);float mh=U.HoverAmount(9707,m,usable);
+                U.Pill(m,C.Magenta((.14f+.3f*mh)*a),C.Magenta((.5f+.4f*mh)*a));U.Text(m,more,9.5f,U.A(U.Mix(C.Ink(.9f),Color.white,mh),a),TextAnchor.MiddleCenter,bold:true,tracking:.12f);
+                if(usable&&U.Button(m))SocialToggle();
+            }
         }
         // An online player: initials with a live light, the name, Invite (SENT once sent, with a pop).
         private void SocialPlayer(Rect r,Rect view,NativeOnlinePlayer p,bool canInvite,float open,float now,int i)

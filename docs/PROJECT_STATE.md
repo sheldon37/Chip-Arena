@@ -1,3 +1,5 @@
+2026-11-07 Claude (`claude/invite-popup`): an invitation pop-up with Accept and Decline on the menus and end screens, never in a fight (docs/ONLINE-INVITES.md). A real two-account invitation hasn't been played through.
+
 2026-11-07 Claude (`claude/noctiel-video-check`): NOCTIEL's intro checked on every frame of the owner's real videos: the chop, the wheel, the raise and the rear leg corrected from them (EXPEDITION-BOSS-FINAL section 19).
 
 2026-11-06 Claude (`claude/noctiel-mocap`, merged into shared): NOCTIEL's intro body from the owner's clips 02–04 (extracted, then corrected in Unity beside the reference: EXPEDITION-BOSS-FINAL section 19), and the cloth no longer a black column. Next: the owner plays it beside the clips themselves (not on the PC it was checked on). NOCTIEL's walk needs a rules change for time between moves (Astra; DEV_LOG).
