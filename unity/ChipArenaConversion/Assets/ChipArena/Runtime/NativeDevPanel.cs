@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
     {
         /// <summary>The panel's end of Astra's DEV commands: Sender is SendDevCommand, Receive takes DevReplyReceived.</summary>
         internal readonly NativeDevLink devLink=new NativeDevLink();private bool devReplyHooked;
-        private bool devOpen,devCursorFree,devHideHud,devLogOn,devGraphOn,devTyping,devLogMine,devChipSelf=true,devBodyHot,devSearchFocus;
+        private bool devOpen,devCursorFree,devHideHud,devLogOn,devGraphOn,devTyping,devLogMine,devBodyHot,devSearchFocus;
         private bool devOverlayHit,devOverlayMelee,devOverlayHazards,devOverlayNav,devOverlayAnchors,devOverlayShots;
         private NativeDevTab devTab=NativeDevTab.Pilot;private readonly float[] devScroll=new float[NativeDevLayout.Tabs],devContent=new float[NativeDevLayout.Tabs];
         private readonly NativeDevFly devFly=new NativeDevFly();private readonly NativeDevLog devLog=new NativeDevLog();private NativeDevLogFilter devLogFilter=NativeDevLogFilter.All&~NativeDevLogFilter.World;
@@ -41,7 +41,7 @@ namespace ChipArena.UnityConversion
         private Vector3 devPilotCamPos;private Quaternion devPilotCamRot;private bool devPilotCamValid;
         private string[] devWeaponIds,devWeaponNames,devMapIds,devMapNames;private readonly Dictionary<string,Color> devRarityColor=new Dictionary<string,Color>();
         private readonly Dictionary<string,string> devRarityName=new Dictionary<string,string>(),devChipFit=new Dictionary<string,string>();private float devChipFitWidth;
-        private static readonly string[] DevDifficulties={"dummy","easy","normal","hard"},DevSelfDummy={"SELF","DUMMY"},DevOnOff={"ON","OFF"};
+        private static readonly string[] DevDifficulties={"dummy","easy","normal","hard"},DevOnOff={"ON","OFF"};
         private static GUIStyle devSearchStyle;
 
         // ---- Context ----------------------------------------------------------------------------------------------------
@@ -103,7 +103,7 @@ namespace ChipArena.UnityConversion
         }
         private void DevResetArena()
         {
-            devArena=arena;devLog.Clear();devReveal.Reset();devFly.On=false;devPilotCamValid=false;devFrameGraph.Clear();devStepGraph.Clear();devRttGraph.Clear();devTarget=0;devWeaponIds=null;devHazard=0;
+            devArena=arena;devChipTargets.Clear();devChipRoster=0;devChipSeat=arena?.LocalId??0;devLog.Clear();devReveal.Reset();devFly.On=false;devPilotCamValid=false;devFrameGraph.Clear();devStepGraph.Clear();devRttGraph.Clear();devTarget=0;devWeaponIds=null;devHazard=0;
             if(arena==null){devOpen=devCursorFree=devHideHud=devTyping=false;return;}
             devRespawn=arena.DummyRespawn;devRepeat=arena.SandboxRepeat;devSplat=arena.SandboxSplatDelay;devSpeed=sandboxSpeed;devMap=arena.MapId;
         }
@@ -463,7 +463,7 @@ namespace ChipArena.UnityConversion
             {var a=NativeDevActions.Find("me-weapon");var state=NativeDevActions.Resolve(a,devCtx,out string reason);int k=DevChoice(x,ref y,w,devWeaponNames,DevIndex(devWeaponIds,devWeapon),NativeDevState.Live,reason,4);devWeapon=devWeaponIds.Length>0?devWeaponIds[k]:devWeapon;}
             DevAct(new Rect(x,y,w,32),"me-weapon",devMode==NativeDevMode.Sandbox?"Swap my weapon (resets the arena)":null);y+=40;
             y=DevHead(x,y,w,"CHIPS");
-            if(DevButton(new Rect(x,y,w,32),"Open my chips",NativeDevState.Live,"The Chips tab, targeting you")){devChipSelf=true;devTab=NativeDevTab.Chips;}y+=40;
+            if(DevButton(new Rect(x,y,w,32),"Open my chips",NativeDevState.Live,"The Chips tab, targeting you")){devChipSeat=arena.LocalId;devTab=NativeDevTab.Chips;}y+=40;
             return y;
         }
         private static readonly string[] DevPersonalToggles={"me-god","me-ammo","me-cooldowns"};
@@ -524,12 +524,29 @@ namespace ChipArena.UnityConversion
             return y;
         }
         // The Chips tab's fixed toolbar: target, search, sort, filter; returns the grid's top.
+        private readonly List<NativePilot> devChipTargets=new List<NativePilot>();
+        private string[] devChipTargetNames=Array.Empty<string>();private int devChipRoster;
         private float DevChipsToolbar(Rect body)
         {
             DevLists();float x=body.x+16,w=body.width-32,y=body.y+12;devBodyHot=devCursorFree&&body.Contains(devMouse);devBody=body;
-            var target=devChipSelf?DevLocal():DevDummy();devChipSeat=target?.Seat.id??0;
-            int side=DevChoice(x,ref y,w*.5f-4,DevSelfDummy,devChipSelf?0:1,NativeDevState.Live,"The chips' target",2,"Target");y-=32;devChipSelf=side==0;
-            DevAct(new Rect(x+w*.5f+4,y,w*.5f-4,26),"chip-cycle");y+=32;
+            int roster=arena.LocalId;
+            foreach(var p in arena.Pilots)if(p.Seat.connected&&!p.Seat.AuthorityBoss)unchecked{roster=roster*31+p.Seat.id;roster=roster*31+(p.Seat.name??"").GetHashCode();}
+            if(devChipRoster!=roster||devChipTargets.Count==0)
+            {
+                devChipRoster=roster;devChipTargets.Clear();
+                foreach(var p in arena.Pilots)if(p.Seat.connected&&!p.Seat.AuthorityBoss)devChipTargets.Add(p);
+                devChipTargetNames=new string[devChipTargets.Count];
+                for(int i=0;i<devChipTargets.Count;i++){var p=devChipTargets[i];devChipTargetNames[i]=(p.Seat.id==arena.LocalId?"SELF · ":p.Seat.devDummy?"DUMMY · ":"")+p.Seat.name+" #"+p.Seat.id;}
+            }
+            int selected=0;
+            for(int i=0;i<devChipTargets.Count;i++)if(devChipTargets[i].Seat.id==devChipSeat)selected=i;
+            if(devChipTargets.Count>0)
+            {
+                selected=DevChoice(x,ref y,w,devChipTargetNames,selected,NativeDevState.Live,"The player receiving chips",2,"Target");
+                devChipSeat=devChipTargets[selected].Seat.id;
+            }
+            else devChipSeat=-1;
+            DevAct(new Rect(x,y,w,26),"chip-cycle");y+=32;
             // Search: a text field in the canvas space (GUI.matrix is the canvas scale here), the kit frame around it.
             devSearchRect=new Rect(x,y,w*.5f-4,26);H.Cut(devSearchRect,C.Void(.8f),4,H.Corners.Diagonal);H.Outline(devSearchRect,devSearchFocus?C.Cyan(.8f):C.Edge(),4);
             if(devSearchStyle==null){devSearchStyle=new GUIStyle(GUI.skin.textField){fontSize=12,alignment=TextAnchor.MiddleLeft,font=U.MonoFont,clipping=TextClipping.Clip,wordWrap=false};devSearchStyle.normal.background=devSearchStyle.focused.background=devSearchStyle.hover.background=devSearchStyle.active.background=null;devSearchStyle.normal.textColor=devSearchStyle.focused.textColor=devSearchStyle.hover.textColor=C.Ink();devSearchStyle.padding=new RectOffset(26,8,4,4);}
@@ -547,7 +564,7 @@ namespace ChipArena.UnityConversion
         }
         private float DevChipsGrid(float x,float y,float w)
         {
-            var target=DevPilot(devChipSeat);if(target==null)return DevNote(x,y,w,devChipSelf?"No pilot to install chips on.":"No dummy in this match.",C.Muted());
+            var target=DevPilot(devChipSeat);if(target==null)return DevNote(x,y,w,"No connected player to install chips on.",C.Muted());
             int signature=target.Seat.id*7919;foreach(var kv in target.Seat.chips)signature=signature*31+kv.Value+kv.Key.Length;
             devChipTarget=target;devChips.Update(content.chips,devInstalledOf??=DevInstalled,signature);
             int columns=Mathf.Max(1,Mathf.FloorToInt((w+8)/220));float gap=8,cw=(w-gap*(columns-1))/columns,ch=72;if(Mathf.Abs(cw-devChipFitWidth)>.5f){devChipFit.Clear();devChipFitWidth=cw;}

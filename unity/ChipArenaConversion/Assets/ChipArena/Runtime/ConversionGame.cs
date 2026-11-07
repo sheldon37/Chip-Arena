@@ -153,7 +153,7 @@ namespace ChipArena.UnityConversion
             // C in an Expedition opens its chip screen instead (ExpeditionLiveKeys, NativeExpeditionChipScreen.cs).
             if((Input.GetKeyDown(KeyCode.C)||PadDown(PadAction.Chips))&&arena?.Pve!=null&&LiveExpedition==null){if(PvePickOpen)PveOpen(false);else PveOpen(true);}
             if(Input.GetKeyDown(KeyCode.F9))presentation.ForceCompatibilityRendering=!presentation.ForceCompatibilityRendering;
-            bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
+            bool play=arena!=null&&!menu&&!BoardOpen&&!ExpeditionScreenOpen&&(match.Phase==NativePhase.Fight||match.ResultMovement&&!ReplayActive)&&arena.Local.Hp>0&&!PvePickOpen&&!arena.BossOpening&&arena.Pve?.Holding!=true&&!DevHoldsPilot;
             // The Expedition chip pick frees the cursor to click a card for the whole hold, no Alt (NativeExpeditionChipScreen.cs).
             bool look=!BoardOpen&&!ExpeditionScreenOpen&&DevLook(play||arena?.Local?.Hp<=0&&!menu&&!ReplayActive&&match.Phase==NativePhase.Fight)&&!ExpeditionPickPointer;Cursor.lockState=look?CursorLockMode.Locked:CursorLockMode.None;Cursor.visible=!look;
             if(arena==null)return;
@@ -191,7 +191,7 @@ namespace ChipArena.UnityConversion
             // pilot (previews, replays, the draft and the intros return before the arena renders).
             NativeUiBlur.Frame();presentation.GeneratedRun=deploymentBundle;presentation.LocalPodLook=prefs.pod;ExpeditionWorldFrame();if(cameraView==null)return;if(SplitLocalLoading){viewModelCamera.enabled=false;return;}cinematic.BeginFrame();presentation.ClassicBodies=prefs.playerModel=="Classic";presentation.LocalLook=LookShown();presentation.VisualEye=cameraView;if(PreviewFrame())return;long replayAt=System.Diagnostics.Stopwatch.GetTimestamp();ObserveReplay();hitchReplay+=HitchMs(replayAt);if(arena!=null&&RenderReplay())return;nativeAudio.Muted=!prefs.sound;nativeAudio.Entrance(arena!=null&&!menu&&IntroActive?arena.Generation+":"+IntroPilot?.Seat.id+":"+IntroStyle:null,arena!=null&&IntroActive?IntroStyle:null,arena!=null&&IntroActive?IntroAge:0);PveFollowAudio();ExpeditionPlantAudio();nativeAudio.StageCovered=stageLoad.Visible&&stageLoad.Phase!=StageLoadPhase.Reveal;nativeAudio.HulkWarning=presentation.HulkWarning;nativeAudio.Render(arena,menu,cameraView);SlenderFrame();if(arena==null){MenuBackdrop();return;}RooftopLeave();backdropMap=null;
             if(DraftFrame())return;if(!menu&&IntroActive){arena.Root.SetActive(false);viewModelCamera.enabled=false;presentation.WeaponLoadout=arena;presentation.WeaponEffectsQuality=prefs.reducedEffects?.3f:1;presentation.RenderIntro(arena,IntroPilot,IntroStyle,IntroClockAge(),cameraView);return;}introClock.Reset();NativeLighting.EndIntro(content.Map(arena.MapId),cameraView);arena.Root.SetActive(true);
-            var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&arena.Pve?.Holding!=true;
+            var p=arena.ViewPilot;bool play=!menu&&match.Phase==NativePhase.Fight&&p.Hp>0&&!PvePickOpen&&!arena.BossOpening&&arena.Pve?.Holding!=true;
             UpdateCamera();
             if(play)
             {
@@ -303,7 +303,7 @@ namespace ChipArena.UnityConversion
             double navBefore=arena.NavigationMs,deathBefore=arena.DeathRecordMs,hordeBefore=arena.HordeMs,spawnBefore=arena.HordeSpawnMs;int searchesBefore=arena.NavigationSearches;
             long stepAt=System.Diagnostics.Stopwatch.GetTimestamp();
             try{arena.Step(pending);}finally{hitchArenaStep+=HitchMs(stepAt);hitchNavigation+=arena.NavigationMs-navBefore;hitchNavNearest+=arena.NavigationNearestMs-nearestBefore;hitchNavLinks+=arena.NavigationLinkMs-linksBefore;hitchNavLinkChecks+=arena.NavigationLinkChecks-linkChecksBefore;hitchNavSearches+=arena.NavigationSearches-searchesBefore;hitchDeathRecord+=arena.DeathRecordMs-deathBefore;hitchHorde+=arena.HordeMs-hordeBefore;hitchHordeSpawn+=arena.HordeSpawnMs-spawnBefore;}
-            if(!held&&arena.Pve?.Holding!=true){long physicsAt=System.Diagnostics.Stopwatch.GetTimestamp();try{arena.BeforePhysics();arena.PhysicsWorld.Simulate(1f/60);arena.AfterPhysics();}finally{hitchPhysics+=HitchMs(physicsAt);}}
+            if(!held&&!arena.BossOpening&&arena.Pve?.Holding!=true){long physicsAt=System.Diagnostics.Stopwatch.GetTimestamp();try{arena.BeforePhysics();arena.PhysicsWorld.Simulate(1f/60);arena.AfterPhysics();}finally{hitchPhysics+=HitchMs(physicsAt);}}
             ExpeditionM1AfterStep();timer.Stop();stepMs=timer.Elapsed.TotalMilliseconds;
             pending=pending.HeldOnly();
         }

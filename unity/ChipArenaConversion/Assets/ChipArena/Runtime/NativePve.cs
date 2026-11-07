@@ -34,7 +34,8 @@ namespace ChipArena.UnityConversion
         private void StartPve()
         {
             var v=Pve;v.Started=true;v.Schedule=new NativeWaveSchedule(Time,v.Skip);v.StageAt=Time;v.StageUntil=Time+10;v.Solo=Members().Count()==1;
-            foreach(var p in Members()){var row=new NativePveRow{Pilot=p,Money=p.Seat.bot?0:150,Earned=p.Seat.bot?0:150,SelfRevives=!p.Seat.bot&&v.Solo?1:0};v.Rows[p.Seat.id]=row;GrantPvePick(p,"common",true);}
+            foreach(var p in Members()){var row=new NativePveRow{Pilot=p,Money=p.Seat.bot?0:150,Earned=p.Seat.bot?0:150,SelfRevives=!p.Seat.bot&&v.Solo?1:0};v.Rows[p.Seat.id]=row;if(!v.Skip||Expedition!=null)GrantPvePick(p,"common",true);}
+            if(v.Skip&&Expedition==null)BeginBossOpening();
         }
         private void GrantPveMoney(NativePilot p,float amount,string reason)
         {if(p==null||p.Seat.bot||!Pve.Rows.TryGetValue(p.Seat.id,out var row))return;int n=NativePveRules.Money(p.Seat.chips,reason,amount*(float)NativeExpeditionMutators.Payout(ActiveMutators));if(Expedition!=null){var member=ExpeditionMemberFor(p);if(member==null||n<=0||!Expedition.Session.Run.Credit(member.account,"pve:"+Generation+":"+(++expeditionEconomySerial),n))return;row.Money=ExpeditionMemberFor(p).wallet;}else row.Money=Math.Max(0,row.Money+n);if(n>0){row.Earned+=n;Emit(EventKind.PveMoney,p,p.Seat.id,p.Body.position,n,reason);}}

@@ -162,3 +162,14 @@ A mode is the room's Versus option: 2 for the run, 1 for the co-op boss match, w
 the host's mode and ready up. Expedition has no lobby bots and requires distinct signed-in accounts plus a compatible
 client; runtime validates these again at launch. See EXPEDITION-HUB.md, "Expedition co-op hosting," for the load barrier,
 reconnect policy and unrun Windows checks.
+
+## Boss Battle opening chips (2026-11-07)
+
+All six Boss Battle encounters start with five personal selections using the existing
+three-card PvE picker and rainbow offer weights (no money chips). Offers respect the
+pilot's weapon, equipped techniques and stack limits. The host freezes simulation and
+holds the boss intro/music until every connected human has installed all five. Closing
+the picker does not skip them; C reopens it. Siren party bots pick automatically.
+Disconnected seats do not block the start. The normal Expedition opening is unchanged.
+DEV > Chips now lists connected pilots and dummies by name/seat, and sends chip
+add/remove commands for the selected target through the existing verified DEV authority.

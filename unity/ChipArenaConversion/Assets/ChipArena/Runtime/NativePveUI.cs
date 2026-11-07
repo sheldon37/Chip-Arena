@@ -23,7 +23,7 @@ namespace ChipArena.UnityConversion
             float W=NativeUi.W,H=NativeUi.H;var zone=arena.ZoneBoss;int phases=zone==null?4:3,phase=zone?.phase??v.Phase;
             float[] edges=zone==null?SirenHealthEdges:zone.archetype==NativeZoneBossRules.Ironworks?ConverterHealthEdges:ZoneHealthEdges;
             // Standalone fights bind their heading and thresholds to the replicated encounter.
-            string status=v.Stage=="boss"?PveBossName+"  ·  PHASE "+phase+" / "+phases:v.Stage=="wave"?"WAVE "+v.Wave+" / "+(v.Content?.waves?.Length??3):v.Stage=="intermission"?"INTERMISSION  ·  WAVE "+v.Wave+" CLEARED":v.Stage=="opening"?"WARD ZERO  ·  GET READY":v.Stage.ToUpperInvariant();
+            string status=v.Stage=="boss"?PveBossName+"  ·  PHASE "+phase+" / "+phases:v.Stage=="wave"?"WAVE "+v.Wave+" / "+(v.Content?.waves?.Length??3):v.Stage=="intermission"?"INTERMISSION  ·  WAVE "+v.Wave+" CLEARED":arena.BossOpening?"BOSS BATTLE · SELECT 5 CHIPS · WAITING FOR PLAYERS":v.Stage=="opening"?"WARD ZERO  ·  GET READY":v.Stage.ToUpperInvariant();
             if(v.Stage!="ended")SetTag(status,v.Stage=="boss"?NativeCyberTheme.Violet():NativeCyberTheme.Cyan(),W);
             if(v.Stage=="boss"&&!v.Hidden&&v.Boss!=null)
             {
