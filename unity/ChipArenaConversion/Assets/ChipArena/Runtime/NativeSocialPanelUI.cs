@@ -233,7 +233,7 @@ namespace ChipArena.UnityConversion
             if(SocialButton(new Rect(d.xMax-10-bw*2-8,by,bw,24),"DECLINE","x",1,!busy&&usable,a,hid*3+2))account.AnswerInvite(inv.id,false,null);
         }
         // Accepting, from the panel's card or the pop-up: the one path.
-        private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(inv.id,true,code=>{socialToastJoining=null;if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;SocialClose();JoinRoom();});
+        private void SocialAccept(NativePlayerInvite inv)=>account.AnswerInvite(inv.id,true,code=>{if(!CanAcceptInvite)return;internetRooms=true;relayOverride="";joinCode=code;socialToastJoining=null;socialToastGone.Add(inv.id);SocialClose();JoinRoom();});
 
         // ---- the pop-up ----
         // Where it may show: a menu (the pause menu too) or a match's end, never mid-fight; the invitation waits on the service meanwhile (two minutes).
