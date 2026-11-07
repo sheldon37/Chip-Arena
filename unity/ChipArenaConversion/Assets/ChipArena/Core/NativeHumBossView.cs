@@ -28,6 +28,8 @@ namespace ChipArena.UnityConversion
         public float spawned;
         public int phase;public float phaseAt;
         public string action;public int actionId;public float actionAt,hitAt,duration,cancelAt;public int actionTarget;
+        /// <summary>Where the move is aimed (the authority's actionYaw: Reach's arc), not where the body happens to face.</summary>
+        public float actionYaw;
         public float laneX0,laneZ0,laneX1,laneZ1;
         public int rowAxis,rowMask,row2Axis,row2Mask;public float rowAt,row2At;
         public float tearX,tearZ,tearAt;public int tornCount;public float[] torn;

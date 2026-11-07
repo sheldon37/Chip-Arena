@@ -16,7 +16,7 @@ public static class TelegraphChecks
     public static void Run(string root)
     {
         count=0;string R(string p)=>File.ReadAllText(Path.Combine(root,p));
-        Shapes();Timing();Noctiel();
+        Shapes();Timing();Noctiel();Hum();
         // The shader and the renderer.
         var shader=R("Assets/ChipArena/Resources/NativeTelegraph.shader");
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeTelegraph.shader.meta"))&&shader.Contains("Shader \"ChipArena/NativeTelegraph\"")&&shader.Contains("Blend One OneMinusSrcAlpha")&&shader.Contains("float _TgClock;"),"the shader, premultiplied, on its clock");
@@ -27,7 +27,7 @@ public static class TelegraphChecks
         var draw=R("Assets/ChipArena/Runtime/NativeTelegraphPresentation.cs");var frame=R("Assets/ChipArena/Runtime/NativeAbilityPresentation.cs");var fallen=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
         Check(frame.Contains("TelegraphsBegin();SourceWorld(arena);")&&frame.Contains("WorldEffects(arena);TelegraphsDraw(hazardClock);"),"cleared before the world, drawn after its effects");
         Check(draw.Contains("NativeTelegraph.Corners(s,")&&draw.Contains("mesh.SetUVs(3,tgK);")&&fallen.Contains("for(int i=0;i<fbFx.Telegraphs.Count;i++)Telegraph(fbFx.Telegraphs.Items[i],origin);"),"one quad a warning; NOCTIEL's on its stage");
-        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL warning covers what its rule hits)");
+        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL and HUM warning covers what its rule hits)");
     }
     private static void Shapes()
     {
@@ -112,6 +112,58 @@ public static class TelegraphChecks
             float secs=NativeFallenRules.HushSeconds(r2,1,(float)Math.Sqrt(20*20+10*10));f.P=secs*.2f;fx.Build(f,new Vector3(0,3,-20),Vector3.UnitX,Vector3.UnitY,null,false);Check(fx.Telegraphs.Count==0,"the Hush quiet at first");
             f.P=secs*.8f;fx.Build(f,new Vector3(0,3,-20),Vector3.UnitX,Vector3.UnitY,null,false);Check(fx.Telegraphs.Count==1&&fx.Telegraphs.Items[0].A==3&&Vector3.Distance(fx.Telegraphs.Items[0].At,new Vector3(20,0,-10))<1e-4f&&fx.Telegraphs.Items[0].Fill01>.5f,"the Hush fills a 3 m circle under the pilot");
         }
+    }
+    // THE HUM: every point NativeBackroomsBossRules.Contacts would hit (its own Arc, Line and distances) is inside a warning drawn
+    // at that moment, through each move's live window; each warning fills to its hit; a called-off move's warning goes.
+    private static void Hum()
+    {
+        var room=NativeHumBossPreview.Room;var fx=new NativeHumBossFx{Room=room};var rig=new HumBossRig();var st=new HumBossStage();var ground=new BossFlatGround(room.Origin.Y);var rnd=new Random(17);
+        var centre=new Vector3(room.Centre.X,0,room.Centre.Z);float floor=room.Origin.Y;
+        HumBossView V(string id,float at,float hit,int phase=1){var v=HumBossView.None;v.live=true;v.spawned=-200;v.maxHp=v.hp=8000;v.phase=phase;v.x=centre.X+2;v.z=centre.Z-3;v.yaw=35;v.action=id;v.actionAt=at;v.hitAt=hit;v.duration=6;
+            v.laneX0=centre.X+2;v.laneZ0=centre.Z-3;v.actionYaw=50;v.cancelAt=-100;return v;}
+        void Frame(in HumBossView v,float t){rig.Update(t,1/30f,v,ground,Vector3.Zero,false,false,default);st.Evaluate(v,t,HumBossBeats.Fallback,room,false);fx.Build(rig,v,st,t,centre.X,1.7,centre.Z-15,1,0,0,0,1,0,1,false,false);}
+        bool Warned(Vector3 p){var w=fx.Telegraphs;for(int k=0;k<w.Count;k++)if(NativeTelegraph.Distance(w.Items[k],NativeTelegraph.Local(w.Items[k],new Vector3(p.X,floor,p.Z)))<=.05f)return true;return false;}
+        Vector3 Sample(){return new Vector3(room.MinX+(float)rnd.NextDouble()*(room.MaxX-room.MinX),0,room.MinZ+(float)rnd.NextDouble()*(room.MaxZ-room.MinZ));}
+        void Move(string id,HumBossView v,float live,Func<Vector3,float,bool> rule,int phase=1)
+        {
+            float A=v.actionAt,H=v.hitAt;rig=new HumBossRig();
+            for(float t=A-.2f;t<A;t+=1/30f)Frame(V(null,-100,-100),t);
+            float shownFrom=id=="cut"?H-.25f:A;
+            foreach(float t in new[]{shownFrom+.02f,(shownFrom+H)*.5f,H-.03f}){Frame(v,t);Check(fx.Telegraphs.Count>0,id+": a warning in the windup at "+(t-A).ToString("0.00"));for(int i=0;i<fx.Telegraphs.Count;i++)Check(fx.Telegraphs.Items[i].Style==NativeTelegraph.Fluorescent,id+": THE HUM's look");}
+            Frame(v,H-.001f);for(int i=0;i<fx.Telegraphs.Count;i++)if(fx.Telegraphs.Items[i].Shape!=NativeTelegraph.Wave)Check(fx.Telegraphs.Items[i].Fill01>.99f,id+": full on the hit");
+            int hits=0;
+            for(float dt=0;dt<=live;dt+=Math.Max(.03f,live/12))
+            {
+                float t=H+dt;Frame(v,t);
+                for(int i=0;i<1500;i++){var p=Sample();if(!rule(p,dt))continue;hits++;Check(Warned(p),id+": the rule hits "+p+" "+dt.ToString("0.00")+" s in and a warning shows it");}
+            }
+            Check(hits>0,id+": the samples found its area");
+            Frame(v,H+live+3);Check(fx.Telegraphs.Count==0||id=="row","");
+        }
+        var o=new Vector3(centre.X+2,0,centre.Z-3);
+        var reach=NativeHumBoss.Move("reach");Move("reach",V("reach",10,10+reach.Wind),reach.Strike,(p,dt)=>NativeBackroomsBossRules.Arc(p,o,50,6,130));
+        var stoop=NativeHumBoss.Move("stoop");Move("stoop",V("stoop",10,10+stoop.Wind),stoop.Strike,(p,dt)=>Vector3.Distance(new Vector3(p.X,0,p.Z),o)<=4.5f);
+        var cut=NativeHumBoss.Move("cut");{var v=V("cut",10,10+cut.Wind,2);Move("cut",v,cut.Strike,(p,dt)=>NativeBackroomsBossRules.Arc(p,new Vector3(v.x,0,v.z),v.yaw,3.5f,180),2);}
+        var hand=NativeHumBoss.Move("hand");{var v=V("hand",10,10+hand.Wind,2);v.handX=room.MaxX-.4f;v.handZ=centre.Z+4;v.handY=1.5f;v.handNx=-1;v.handNz=0;v.handAt=10;v.handUntil=v.hitAt+1.5f;var c=new Vector3(v.handX,0,v.handZ);Move("hand",v,1.5f,(p,dt)=>Vector3.Distance(new Vector3(p.X,0,p.Z),c)<=2.5f,2);}
+        var tear=NativeHumBoss.Move("tear");{var v=V("tear",10,10+tear.Wind);v.tearX=centre.X-6;v.tearZ=centre.Z+5;v.tearAt=v.hitAt;var c=new Vector3(v.tearX,0,v.tearZ);Move("tear",v,.2f,(p,dt)=>Vector3.Distance(new Vector3(p.X,0,p.Z),c)<=2.4f);}
+        var pulse=NativeHumBoss.Move("pulse");{var v=V("pulse",10,10+pulse.Wind,2);v.ringX=o.X;v.ringZ=o.Z;v.ringAt=v.hitAt;Move("pulse",v,2.6f,(p,dt)=>Math.Abs(Vector3.Distance(new Vector3(p.X,0,p.Z),o)-dt*14)<=.9f,2);}
+        var row=NativeHumBoss.Move("row");
+        foreach(int axis in new[]{0,1}){var v=V("row",10,10+row.Wind);v.rowAxis=axis;v.rowMask=21;v.rowAt=v.hitAt;
+            Move("row",v,.1f,(p,dt)=>{for(int r=0;r<6;r++)if((21&(1<<r))!=0&&Math.Abs((axis==0?p.Z:p.X)-NativeHumArena.RowLine(room,axis,r))<=.7f)return true;return false;});}
+        var lunge=NativeHumBoss.Move("lunge");
+        foreach(int phase in new[]{1,3})
+        {
+            var v=V("lunge",10,10+lunge.Wind,phase);var a=o;var b=o+new Vector3(14,0,9);v.laneX1=b.X;v.laneZ1=b.Z;
+            Move("lunge",v,phase==3?3.6f:1.2f,(p,dt)=>{bool second=phase==3&&dt>=2.4f;float age=second?dt-2.4f:dt;if(age<0||age>1.2f)return false;var s0=second?b:a;var s1=second?a:b;
+                var q=Vector3.Lerp(s0,s1,Math.Clamp(age/1.2f,0,1));var prev=Vector3.Lerp(s0,s1,Math.Clamp((age-1/30f)/1.2f,0,1));return NativeBackroomsBossRules.Line(p,prev,q,3);},phase);
+        }
+        // Called off (a stagger before the hit): no warning after it.
+        {var v=V("reach",10,10+reach.Wind);v.cancelAt=10.3f;Frame(v,10.4f);Check(fx.Telegraphs.Count==0,"reach: called off, its warning goes");}
+        // The DEV preview's scripted fight draws its warnings at real places (its moves' origins and aims filled as the authority's).
+        int shown=0;var pv=HumBossView.None;
+        for(float t=0;t<NativeHumBossPreview.DeathAt;t+=.25f){NativeHumBossPreview.View(t,0,ref pv,out _,out _);rig.Update(t,.25f,pv,ground,Vector3.Zero,false,false,default);st.Evaluate(pv,t,HumBossBeats.Fallback,room,false);fx.Build(rig,pv,st,t,centre.X,1.7,centre.Z-15,1,0,0,0,1,0,1,false,false);
+            for(int i=0;i<fx.Telegraphs.Count;i++){var w=fx.Telegraphs.Items[i];Check(float.IsFinite(w.At.X)&&float.IsFinite(w.At.Z)&&float.IsFinite(w.Yaw)&&float.IsFinite(w.A),"the preview's warnings are at real places ("+t+")");shown++;}}
+        Check(shown>50,"the preview shows its warnings ("+shown+")");
     }
     // The authority's hit tests (NativeFallenAuthority.FallenAttack), on the floor. sure: the point is clearly in (not on an edge).
     private static bool RuleHits(string id,Vector2 q,NativeFallenBossPreview.Act a,NativeFallenRecord f,out bool sure)
