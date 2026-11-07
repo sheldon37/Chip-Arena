@@ -30,6 +30,8 @@ namespace ChipArena.UnityConversion
         /// <summary>The arrival's record time (bossArrivals[].spawned, arena clock).</summary>
         public float spawned;
         public string action;public float actionAt,actionYaw,targetX,targetZ;public int targetSeat,variant;
+        /// <summary>The move's hit (arena clock) and where it was begun from (the authority's laneX0/laneZ0: its moves' origin).</summary>
+        public float hitAt,laneX0,laneZ0;
         public int phase;public float phaseAt;
         public int parts;public float partAt0,partAt1,partAt2,partAt3,partAt4;
         public float stagger,deathAt;
@@ -38,7 +40,7 @@ namespace ChipArena.UnityConversion
 
         public const int PartFront=0,PartLeft=1,PartRight=2,PartBack=3,PartPulpit=4,Parts=5,AllParts=31;
         /// <summary>Every arena's view until the rules replicate the record: no boss.</summary>
-        public static readonly IronworksBossView None=new IronworksBossView{live=false,x=0,y=0,z=0,yaw=0,hp=0,maxHp=0,spawned=float.NaN,action=null,actionAt=float.NaN,actionYaw=float.NaN,
+        public static readonly IronworksBossView None=new IronworksBossView{live=false,x=0,y=0,z=0,yaw=0,hp=0,maxHp=0,spawned=float.NaN,action=null,actionAt=float.NaN,actionYaw=float.NaN,hitAt=float.NaN,laneX0=float.NaN,laneZ0=float.NaN,
             targetX=float.NaN,targetZ=float.NaN,targetSeat=-1,variant=0,phase=1,phaseAt=float.NaN,parts=AllParts,partAt0=float.NaN,partAt1=float.NaN,partAt2=float.NaN,partAt3=float.NaN,partAt4=float.NaN,
             stagger=0,deathAt=float.NaN};
 

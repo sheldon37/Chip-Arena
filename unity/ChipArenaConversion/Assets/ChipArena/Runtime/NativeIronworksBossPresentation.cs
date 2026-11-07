@@ -107,7 +107,9 @@ namespace ChipArena.UnityConversion
             // The stage hook (read by the Ironworks presentation next frame), the effects, the lights, the draws.
             var stage=NativeIronworksBossStage.Evaluate(iwbView,now,rig.DeathAge,rig);NativeIronworksBossStage.Shown=stage;
             var fx=ironworksBossFx;
-            if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(rig,iwbView,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);}
+            if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(rig,iwbView,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics);
+                // Its attack warnings through the shared renderer (Runtime NativeTelegraphPresentation; docs/TELEGRAPHS.md).
+                for(int i=0;i<fx.Warnings.Count;i++)Telegraph(fx.Warnings.Items[i]);}
             IronworksBossLightsMerge(eye);
             DrawIronworksBoss(eye);DrawIronworksBossLinks();DrawIronworksBossMolten();DrawIronworksBossFx(eye,now);DrawIronworksBossHaze(eye);
             // Sound (NativeAudio plays it next frame): the cues falling this frame (the presentation clock, the song clock, the death's

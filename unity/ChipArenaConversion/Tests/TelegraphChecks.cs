@@ -16,7 +16,7 @@ public static class TelegraphChecks
     public static void Run(string root)
     {
         count=0;string R(string p)=>File.ReadAllText(Path.Combine(root,p));
-        Shapes();Timing();Noctiel();Hum();DeepEnd();Station();
+        Shapes();Timing();Noctiel();Hum();DeepEnd();Station();Converter();
         // The shader and the renderer.
         var shader=R("Assets/ChipArena/Resources/NativeTelegraph.shader");
         Check(File.Exists(Path.Combine(root,"Assets/ChipArena/Resources/NativeTelegraph.shader.meta"))&&shader.Contains("Shader \"ChipArena/NativeTelegraph\"")&&shader.Contains("Blend One OneMinusSrcAlpha")&&shader.Contains("float _TgClock;"),"the shader, premultiplied, on its clock");
@@ -27,7 +27,7 @@ public static class TelegraphChecks
         var draw=R("Assets/ChipArena/Runtime/NativeTelegraphPresentation.cs");var frame=R("Assets/ChipArena/Runtime/NativeAbilityPresentation.cs");var fallen=R("Assets/ChipArena/Runtime/NativeFallenBossPresentation.cs");
         Check(frame.Contains("TelegraphsBegin();SourceWorld(arena);")&&frame.Contains("WorldEffects(arena);TelegraphsDraw(hazardClock);"),"cleared before the world, drawn after its effects");
         Check(draw.Contains("NativeTelegraph.Corners(s,")&&draw.Contains("mesh.SetUVs(3,tgK);")&&fallen.Contains("for(int i=0;i<fbFx.Telegraphs.Count;i++)Telegraph(fbFx.Telegraphs.Items[i],origin);"),"one quad a warning; NOCTIEL's on its stage");
-        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL, HUM, DEEP END and 6:47 warning covers what its rule hits)");
+        Console.WriteLine("PASS telegraphs ("+count+" checks: six shapes, the fill and the lock-on, every NOCTIEL, HUM, DEEP END, 6:47 and CONVERTER warning covers what its rule hits)");
     }
     private static void Shapes()
     {
@@ -239,6 +239,59 @@ public static class TelegraphChecks
             }
         }
         foreach(var id in new[]{"buffer","shunt","departure","doors","alteration","live-rail","terminus"}){Check(seen.Contains(id),id+": the preview's samples found its area");Check(windup.Contains(id),id+": warned through its windup");}
+    }
+    // THE CONVERTER (the Ironworks): its moves through its scripted fight, and the authority's hazard pools through a scenario like
+    // the realism checks': wherever the zone boss authority's converter rules would hit (or a pool burn), a warning covers it then.
+    private static void Converter()
+    {
+        var rnd=new Random(31);float dt=1/30f;var seen=new System.Collections.Generic.HashSet<string>();var windup=new System.Collections.Generic.HashSet<string>();
+        NativeIronworksBossFx fx=null;bool Warned(Vector3 p){var w=fx.Warnings;for(int k=0;k<w.Count;k++)if(NativeTelegraph.Distance(w.Items[k],NativeTelegraph.Local(w.Items[k],new Vector3(p.X,w.Items[k].At.Y,p.Z)))<=.05f)return true;return false;}
+        {
+            var rig=new IronworksBossRig();fx=new NativeIronworksBossFx();var v=IronworksBossView.None;int frames=(int)(NativeIronworksBossPreview.Loop*30);
+            for(int n=0;n<frames;n++)
+            {
+                float t=n*dt;NativeIronworksBossPreview.View(t,0,ref v,out var vel,out var tg,out var arr,out var death);rig.Update(t,dt,v,IronworksBossGround.Hall,vel,false,true,new Vector3(tg.X,1.6f,tg.Y),arr,death);
+                fx.Build(rig,v,t,-26,3,-6,1,0,0,0,1,0,1,false);
+                for(int i=0;i<fx.Warnings.Count;i++)Check(fx.Warnings.Items[i].Style==NativeTelegraph.Molten&&float.IsFinite(fx.Warnings.Items[i].At.X),"the Converter: the molten look, at a real place");
+                if(v.action==null||!IronworksBossView.At(v.hitAt))continue;string id=v.action;float tr=t-v.hitAt;var act=NativeIronworksBoss.Find(id);
+                bool damaging=id=="pour"||id=="slam"||id=="charge"||((id=="stomp"||id=="grab")&&IronworksBossView.At(v.targetX));
+                if(damaging&&tr<-.05f&&t>v.actionAt+.05f){Check(fx.Warnings.Count>0,id+": a warning through its windup");windup.Add(id);}
+                if(!damaging||tr<0||n%2!=0)continue;
+                var o=IronworksBossView.At(v.laneX0)?new Vector3(v.laneX0,0,v.laneZ0):new Vector3(v.x,0,v.z);float aim=(IronworksBossView.At(v.actionYaw)?v.actionYaw:v.yaw)*BossMath.Deg;var fwd=BossMath.Forward(aim);var right=BossMath.Right(aim);var target=new Vector3(v.targetX,0,v.targetZ);
+                for(int i=0;i<600;i++)
+                {
+                    var p=o+new Vector3((float)(rnd.NextDouble()*2-1)*16,0,(float)(rnd.NextDouble()*2-1)*16);var d=p-o;float lx=Vector3.Dot(d,right),lz=Vector3.Dot(d,fwd),dist=d.Length();bool hit=false;
+                    switch(id)
+                    {
+                        case "pour":hit=tr<=act.Strike&&dist>=1.2f&&dist<=8&&Math.Abs(Math.Atan2(lx,lz)*180/Math.PI)<=26;break;
+                        case "stomp":hit=tr<=act.Strike&&Vector3.Distance(p,target)<=1.9f;break;
+                        case "grab":hit=tr<=act.Strike&&Vector3.Distance(p,target)<=1.2f;break;
+                        case "slam":hit=(tr<.6f&&Math.Abs(dist-Math.Min(9,tr*15))<.65f)||(tr>=.6f&&tr<1.2f&&lz>0&&lz<6&&Math.Abs(lx)<3);break;
+                        case "charge":{if(tr>act.Strike)break;var at=o+fwd*(14*Math.Clamp(tr/act.Strike,0,1));hit=Vector3.Distance(p,at)<3.2f;break;}
+                    }
+                    if(!hit)continue;seen.Add(id);Check(Warned(p),id+": the rule hits "+p+" "+tr.ToString("0.00")+" s in and a warning shows it");
+                }
+            }
+            foreach(var id in new[]{"pour","slam","charge"}){Check(seen.Contains(id),id+": the preview's samples found its area");Check(windup.Contains(id),id+": warned through its windup");}
+        }
+        // The authority's pools: each burns from its hit to its end within its radius.
+        {
+            var rig=new IronworksBossRig();fx=new NativeIronworksBossFx();var v=IronworksBossView.None;v.live=true;v.x=-35;v.z=0;v.yaw=90;v.phase=1;v.maxHp=v.hp=6000;v.spawned=-100;v.action="pour";v.actionAt=1;v.hitAt=2.2f;v.laneX0=-35;v.laneZ0=0;v.actionYaw=90;v.targetX=-29;v.targetZ=0;
+            var hz=new[]{new NativeZoneBossHazardFrame{id=1,kind="pour",x=-29,y=0,z=0,radius=3,hitAt=3.8f,until=7.8f},new NativeZoneBossHazardFrame{id=2,kind="blow",x=-31,y=0,z=4,radius=1,hitAt=3.0f,until=4.0f},
+                new NativeZoneBossHazardFrame{id=6,kind="deslag",x=-43,y=0,z=-2.5f,radius=1.4f,hitAt=5.0f,until=11.0f},new NativeZoneBossHazardFrame{id=9,kind="charge",x=-36,y=0,z=5,radius=1.8f,hitAt=1.0f,until=4.0f}};
+            v.hazards=hz;int pools=0;
+            for(int n=0;n<=12*30;n++)
+            {
+                float t=n*dt;rig.Update(t,dt,v,IronworksBossGround.Hall,Vector3.Zero,false,true,new Vector3(-29,1.6f,0),double.NaN,double.NaN);fx.Build(rig,v,t,-26,3,-6,1,0,0,0,1,0,1,false);
+                foreach(var h in hz)
+                {
+                    if(t>h.hitAt-.3f&&t<h.hitAt)Check(fx.Warnings.Count>0,h.kind+" pool: warned before it lands");
+                    if(t<h.hitAt||t>h.until-.05f)continue;
+                    for(int i=0;i<60;i++){var p=new Vector3(h.x+(float)(rnd.NextDouble()*2-1)*h.radius,0,h.z+(float)(rnd.NextDouble()*2-1)*h.radius);if(Vector2.Distance(new Vector2(p.X,p.Z),new Vector2(h.x,h.z))>h.radius)continue;pools++;Check(Warned(p),h.kind+" pool: it burns at "+p+" ("+(t-h.hitAt).ToString("0.00")+" s in) and a warning shows it");}
+                }
+            }
+            Check(pools>500,"the pools were sampled ("+pools+")");
+        }
     }
     // The authority's hit tests (NativeFallenAuthority.FallenAttack), on the floor. sure: the point is clearly in (not on an edge).
     private static bool RuleHits(string id,Vector2 q,NativeFallenBossPreview.Act a,NativeFallenRecord f,out bool sure)
