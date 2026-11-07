@@ -62,6 +62,23 @@ public static class BackroomsBossRuleChecks
                 Check(hit,id+" sequential native collision-pose deadline "+spot);
             }
         }
+        // The owner's pass, 2026-11-07: Noclip faster, aimed through its wind and then held; NOCLIP's room taller; THE DEEP END's 12 m room; the Drain a current a run beats.
+        {
+            var lunge=NativeHumBoss.Move("lunge");Check(lunge.Wind<=.75f&&lunge.Strike<=.8f&&Math.Abs(lunge.Speed-lunge.Reach/lunge.Strike)<.6f,"Noclip faster, its speed its reach over its strike");
+            var z=NativeBackroomsBossRules.Create(NativeHumBoss.Archetype,10001,40,40,0);z.action=null;var p=new BackroomsBossPilot{Seat=3,Feet=new Vector3(40,0,30)};
+            NativeBackroomsBossRules.Start(z,"lunge",p,10);float x1=z.laneX1,z1=z.laneZ1;Check(Math.Abs(z.hitAt-10-lunge.Wind)<.001f,"its wind from the table");
+            p.Feet=new Vector3(48,0,32);NativeBackroomsBossRules.Step(z,1000,1000,10.2f,1f/60,new[]{p},output);
+            var dir=Vector3.Normalize(new Vector3(z.laneX1-z.laneX0,0,z.laneZ1-z.laneZ0));var want=Vector3.Normalize(new Vector3(p.Feet.X-z.laneX0,0,p.Feet.Z-z.laneZ0));
+            Check(Vector3.Dot(dir,want)>.999f&&(z.laneX1!=x1||z.laneZ1!=z1)&&z.targetX==48,"Noclip follows its target through the wind");
+            float lx=z.laneX1,lz=z.laneZ1;p.Feet=new Vector3(30,0,34);NativeBackroomsBossRules.Step(z,1000,1000,z.hitAt-NativeHumBoss.LungeLock+.05f,1f/60,new[]{p},output);Check(z.laneX1==lx&&z.laneZ1==lz,"and holds its line before it goes");
+            Check(NativeBackroomsBossRules.Ceiling(z)==BackroomsLayout.Height&&!NativeBackroomsBossRules.Inside(z,new Vector3(40,5,40)),"the level's ceiling until NOCLIP");
+            z.phase=3;Check(NativeBackroomsBossRules.Ceiling(z)==NativeHumBoss.HighCeiling&&NativeBackroomsBossRules.Inside(z,new Vector3(40,5,40)),"NOCLIP's room is taller");
+            var d=NativeBackroomsBossRules.Create(NativeDeepEndBoss.Archetype,10001,40,40,0);Check(NativeBackroomsBossRules.Ceiling(d)==NativeDeepEndArena.Ceiling&&NativeBackroomsBossRules.Inside(d,new Vector3(40,10,40)),"THE DEEP END's 12 m room");
+            d.phase=3;d.action=null;var rig=new DeepEndBossRig();var q=new BackroomsBossPilot{Seat=4,Feet=new Vector3(40,0,52)};NativeBackroomsBossRules.Start(d,"drain",q,10);
+            NativeBackroomsBossRules.Step(d,200,1000,d.hitAt+.1f,1f/60,new[]{q},output,rig);float pull=output.Where(h=>h.Seat==4&&h.Pull>0).Select(h=>h.Pull).DefaultIfEmpty(0).Max();
+            Check(pull>=NativeDeepEndBoss.DrainPullMin&&pull<=NativeDeepEndBoss.DrainPullMax&&NativeDeepEndBoss.DrainPullMax<6.8f,"the Drain is a current a run beats ("+pull+")");
+            Check(NativeDeepEndBoss.DrainThroatShare>0&&NativeDeepEndBoss.DrainThroatShare<=.05f&&NativeDeepEndBoss.DrainStagger>0,"the throat shuts it");
+        }
         PoolroomsRulesChecks.Run();
         Console.WriteLine("PASS Backrooms boss production rules: "+n+" assertions");
     }

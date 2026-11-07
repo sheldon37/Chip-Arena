@@ -37,7 +37,10 @@ namespace ChipArena.UnityConversion
             z.laneX0=z.backrooms.x;z.laneZ0=z.backrooms.z;NativeZoneBossRules.Start(z,"arrive",now,-1,cx,cz,180);return z;
         }
         public static HumRoom Room(NativeBackroomsBossFrame b)=>new HumRoom(0,0,new Vector3(b.cx-NativeHumArena.Size/2,0,b.cz-NativeHumArena.Size/2));
-        public static bool Inside(NativeZoneBossFrame z,Vector3 p,float margin=0){var b=z.backrooms;float h=z.archetype==NativeHumBoss.Archetype?NativeHumArena.Size/2:20;return Math.Abs(p.X-b.cx)<h-margin&&Math.Abs(p.Z-b.cz)<h-margin&&p.Y>=-1.5f&&p.Y<(z.archetype==NativeHumBoss.Archetype?4:7.2f);}
+        public static bool Inside(NativeZoneBossFrame z,Vector3 p,float margin=0){var b=z.backrooms;float h=z.archetype==NativeHumBoss.Archetype?NativeHumArena.Size/2:20;return Math.Abs(p.X-b.cx)<h-margin&&Math.Abs(p.Z-b.cz)<h-margin&&p.Y>=-1.5f&&p.Y<Ceiling(z);}
+        /// <summary>The boss room's ceiling over its floor (m): THE HUM's is the level's 4 m until NOCLIP, which pushes it to <see cref="NativeHumBoss.HighCeiling"/> (the presentation raises it through the change's rear;
+        /// the room's collision goes up as the change starts, so nothing is ever caught under it); THE DEEP END's is <see cref="NativeDeepEndArena.Ceiling"/>. The authority's seals and lid use it.</summary>
+        public static float Ceiling(NativeZoneBossFrame z)=>z?.archetype==NativeHumBoss.Archetype?(z.phase>=3?NativeHumBoss.HighCeiling:BackroomsLayout.Height):NativeDeepEndArena.Ceiling;
         private static float Clamp(float x)=>Math.Max(0,Math.Min(1,x));
         private static Vector3 Flat(Vector3 p)=>new Vector3(p.X,0,p.Z);
         private static float Dist(float x,float z,float a,float b)=>new Vector2(x-a,z-b).Length();
@@ -60,12 +63,19 @@ namespace ChipArena.UnityConversion
             if(id=="pulse"){b.ringX=b.x;b.ringZ=b.z;b.ringAt=z.hitAt;z.duration=m.Wind+2.6f+m.Follow+m.Recover;b.next=now+z.duration+1;}
             if(id=="hand"){NativeHumArena.NearestWall(Room(b),b.shiftMask,p.Feet.X,p.Feet.Z,out b.handX,out b.handZ,out b.handNx,out b.handNz);InsetWall(b);b.handAt=now;b.handUntil=z.hitAt+1.5f;}
             if(id=="cut"){var behind=Flat(p.Feet)-Dir(p.Yaw)*2;b.x=behind.X;b.z=behind.Z;b.yaw=p.Yaw;z.actionYaw=p.Yaw;}
-            if(id=="lunge"&&z.phase==3){z.duration+=2.4f;b.next+=2.4f;}
+            if(id=="lunge"&&z.phase==3){float again=2*m.Strike;z.duration+=again;b.next+=again;}
             if(!hum){b.aimX=end.X-b.cx;b.aimZ=end.Z-b.cz;b.surfaceAt=now;b.surfaceX=b.x-b.cx;b.surfaceZ=b.z-b.cz;
                 if(id=="breach"){b.surfaceX=p.Feet.X-b.cx;b.surfaceZ=p.Feet.Z-b.cz;}
                 if(id=="jet"){b.aimX=p.Feet.X-b.cx;b.aimZ=p.Feet.Z-b.cz;}
                 if(id=="seiche"){b.aimX=Dir(z.actionYaw).X;b.aimZ=Dir(z.actionYaw).Z;b.seicheAt=z.hitAt;}
                 if(id=="drain"){b.whirlAt=z.hitAt;b.whirlUntil=z.hitAt+m.Strike;}}
+        }
+        /// <summary>Noclip's lane follows its target while it winds (its warning, its pose and its facing read the lane), and holds from <see cref="NativeHumBoss.LungeLock"/> s before the hit.</summary>
+        private static void AimLunge(NativeZoneBossFrame z,BackroomsBossPilot[] pilots)
+        {
+            int i=Array.FindIndex(pilots,p=>p.Seat==z.targetSeat);if(i<0)return;var b=z.backrooms;var p=pilots[i];var from=new Vector3(z.laneX0,0,z.laneZ0);var d=Flat(p.Feet)-from;if(d.LengthSquared()<.04f)return;
+            float yaw=Angle(d),half=NativeHumArena.Size/2;var end=from+Dir(yaw)*NativeHumBoss.Move("lunge").Reach;end.X=Math.Max(b.cx-half+.4f,Math.Min(b.cx+half-.4f,end.X));end.Z=Math.Max(b.cz-half+.4f,Math.Min(b.cz+half-.4f,end.Z));
+            z.laneX1=end.X;z.laneZ1=end.Z;z.actionYaw=yaw;b.yaw=yaw;z.targetX=p.Feet.X;z.targetZ=p.Feet.Z;
         }
         private static void InsetWall(NativeBackroomsBossFrame b)
         {
@@ -78,6 +88,7 @@ namespace ChipArena.UnityConversion
             int phase=NativeZoneBossRules.Phase(z.archetype,hp,maxHp);
             if(phase>z.phase){z.phase++;z.phaseAt=now;z.holdTarget=-1;NativeZoneBossRules.Start(z,"phase",now,-1,b.x,b.z,b.yaw);b.next=now+3.5f;b.hits=Array.Empty<int>();b.tideFrom=Tide(z,now);b.tideY=z.phase==2?.5f:1.1f;b.tideAt=now;b.tideUntil=now+3.5f;if(hum){b.circuitMask=255;b.circuitAt=now;}return;}
             if(z.action=="phase"&&now<z.actionAt+3.5f)return;
+            if(hum&&z.action=="lunge"&&z.cancelAt<0&&now<z.hitAt-NativeHumBoss.LungeLock)AimLunge(z,pilots);
             if(now>=b.checkedAt){b.checkedAt=now+1;if(hum&&z.phase==3)foreach(var p in pilots)for(int i=0;i<b.torn.Length;i+=3)if(Dist(p.Feet.X,p.Feet.Z,b.torn[i],b.torn[i+1])<=2.4f&&now>b.torn[i+2]+.5f){output.Add(new BackroomsBossContact{Seat=p.Seat,Damage=12,Return=true,Stun=.6f,Point=new Vector3(b.x,2,b.z)});break;}foreach(var p in pilots)if(!Inside(z,p.Feet,.3f))output.Add(new BackroomsBossContact{Seat=p.Seat,Damage=12,Return=true,Stun=.6f,Point=new Vector3(b.cx,hum?2:0,b.cz+(hum?0:14))});}
             b.meters=b.meters.Where(m=>pilots.Any(p=>p.Seat==m.seat)).ToArray();
             foreach(var p in pilots){var meter=b.meters.FirstOrDefault(m=>m.seat==p.Seat);if(meter==null){meter=new NativeBossMeter{seat=p.Seat,x=p.Feet.X,z=p.Feet.Z,since=now};b.meters=b.meters.Concat(new[]{meter}).Take(8).ToArray();}
@@ -123,9 +134,9 @@ namespace ChipArena.UnityConversion
                     output.Add(new BackroomsBossContact{Seat=p.Seat,Add=hum?"faceling":"drowned",Point=spot});if(!hum)output.Add(new BackroomsBossContact{Seat=p.Seat,Add="tiler",Point=new Vector3(b.cx+Math.Sign(p.Feet.X-b.cx)*18,0,p.Feet.Z)});
                 }b.voices=voices.ToArray();}
                 if(id=="tear"&&z.phase==3)b.torn=b.torn.Concat(new[]{b.tearX,b.tearZ,now}).Skip(Math.Max(0,b.torn.Length+3-96)).ToArray();}
-            if(id=="lunge"){bool second=z.phase==3&&t>=2.4f;float age=second?t-2.4f:t;if(second){var swap=origin;origin=end;end=swap;}
-                if(age>=0&&age<=1.2f){var q=Vector3.Lerp(origin,end,Clamp(age/1.2f));var previous=new Vector3(b.x,0,b.z);b.x=q.X;b.z=q.Z;foreach(var p in pilots)if(Line(p.Feet,previous,q,3))Hit(z,output,p,34,q,second?1:0);}
-                if(t>=(z.phase==3?3.6f:1.2f)&&b.clipAt<z.actionAt&&NativeHumArena.NearestWall(Room(b),b.shiftMask,b.x,b.z,out _,out _,out _,out _)<=1){b.clipAt=now;z.staggerAt=now;z.staggerSeconds=2.2f;z.staggerCause="clip";z.cancelAt=now;b.next=now+2.2f;}return;}
+            if(id=="lunge"){float strike=m.Strike;bool second=z.phase==3&&t>=2*strike;float age=second?t-2*strike:t;if(second){var swap=origin;origin=end;end=swap;}
+                if(age>=0&&age<=strike){var q=Vector3.Lerp(origin,end,Clamp(age/strike));var previous=new Vector3(b.x,0,b.z);b.x=q.X;b.z=q.Z;foreach(var p in pilots)if(Line(p.Feet,previous,q,3))Hit(z,output,p,34,q,second?1:0);}
+                if(t>=(z.phase==3?3*strike:strike)&&b.clipAt<z.actionAt&&NativeHumArena.NearestWall(Room(b),b.shiftMask,b.x,b.z,out _,out _,out _,out _)<=1){b.clipAt=now;z.staggerAt=now;z.staggerSeconds=2.2f;z.staggerCause="clip";z.cancelAt=now;b.next=now+2.2f;}return;}
             foreach(var p in pilots){if(hum){
                 if(id=="reach"&&t<=m.Strike&&Arc(p.Feet,origin,z.actionYaw,6,130))Hit(z,output,p,22,origin);
                 if(id=="stoop"&&t<=m.Strike&&Vector3.Distance(Flat(p.Feet),origin)<=4.5f)Hit(z,output,p,30,origin);
@@ -140,7 +151,7 @@ namespace ChipArena.UnityConversion
                 if(id=="thrash"&&t<=.3f&&Vector3.Distance(Flat(p.Feet),origin)<=5)Hit(z,output,p,18,origin);
                 if(id=="jet"&&t<=2.2f){var view=NativeZoneBossViews.DeepEnd(z,b.x,0,b.z,b.yaw,1,1,NativeZoneBossViews.BackroomsArrival(z));var head=rig.MouthAt;var dir=DeepEndBossRig.JetDir(view,now-z.actionAt,z.hitAt-z.actionAt,NativeDeepEndBoss.Move("jet"),head-centre,Tide(z,now));if(Line(p.Feet,head,head+dir*30,2))Hit(z,output,p,10,head,(int)(t/.25f));}
                 if(id=="lull"&&t<=1.8f&&Vector3.Distance(Flat(p.Feet),target)<=1.8f)Hit(z,output,p,t<.3f?8:2,target,t<.3f?0:1+(int)((t-.3f)/.25f),false,.3f);
-                if(id=="drain"&&t<=4){output.Add(new BackroomsBossContact{Seat=p.Seat,Point=centre,Pull=5+4*(1-Clamp(Vector3.Distance(Flat(p.Feet),centre)/28))});if(Vector3.Distance(Flat(p.Feet),centre)<=2.6f)Hit(z,output,p,40,centre);}
+                if(id=="drain"&&t<=4){output.Add(new BackroomsBossContact{Seat=p.Seat,Point=centre,Pull=NativeDeepEndBoss.DrainPullMin+(NativeDeepEndBoss.DrainPullMax-NativeDeepEndBoss.DrainPullMin)*(1-Clamp(Vector3.Distance(Flat(p.Feet),centre)/28))});if(Vector3.Distance(Flat(p.Feet),centre)<=2.6f)Hit(z,output,p,40,centre);}
                 if(id=="seiche"&&t<=7){float travel=t*11.4f,along=Vector3.Dot(Flat(p.Feet)-centre,Dir(z.actionYaw));bool back=travel>40;float wave=back?60-travel:travel-20;if(Math.Abs(along-wave)<=1.3f)Hit(z,output,p,18,centre,back?1:0,true);}
                 if(id=="lap"&&t<=6)for(int j=1;j<NativeDeepEndBossLook.Spine;j++){var a=rig.Shown.Position[j-1];var q=rig.Shown.Position[j];if(Math.Max(a.Y,q.Y)+NativeDeepEndBossLook.Radius(j*NativeDeepEndBossLook.Seg)>=p.Feet.Y&&Line(p.Feet,a,q,3.2f))Hit(z,output,p,24,q);}
             }}
