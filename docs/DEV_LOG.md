@@ -6,6 +6,7 @@
 - **NOCTIEL:** the cause: the motion bank never had `Armed-Walk-Slow` or `Armed-Walk` (the bake only takes the players' weapon sets' clips), so its walk found nothing and it slid along in its stance. The two pack walks are now baked (the local tool's new `bozo-motionextra.request`: named clips into a bank of their own) and appended to the live bank unchanged otherwise (319 clips + 2), in the local checkout and in the Drive `LocalAssets.zip` (visual-body.json's sha256 updated; installer check passes; old zip kept in the scratchpad). Walking also holds once begun (stops under 0.25 m/s after 0.4 s); its idle is the slow walk held with both feet down at 1.07 s (both knees alike), the sword trailing as carried (the owner's still).
 - **Animation impact:** Reach's warning and contact move to its new, shorter timings (the telegraph reads the table; contacts stay on `hitAt`). THE HUM's colliders follow its flip as drawn (a crouch before it turns, a faster turn). Nothing else on hit timing, hitboxes, damage, cooldowns or networking.
 - **Checks:** `--hum-boss` (timings from the doc's table, no allocation, contacts on the hit), `--telegraphs`, `--backrooms-boss-sweep`, `--backrooms-boss-rules`, `--fallen-boss` (a pace hovering at the walk's floor never drops it, the idle held, the stand frame), Unity compile PASS.
+- **Released:** full suite at `82103b04` (shared merged in): 981 groups, exit 0; pins 0 broken; Unity compile PASS. Merged `7ebee094`; builder succeeded and published to the test channel: revision 639296730388566437, 245.8 MiB, with the Drive LocalAssets.zip carrying the two walks. Seen in real Boss Battles in the Editor: the straight jet and its splash, THE HUM's swipe at its target and both flips; NOCTIEL standing with both feet down (its idle with the sword trailing not caught: in a Boss Battle it attacks back to back).
 
 ## 2026-11-07 — Claude: the way to the boss room, the Boss Battle's shared countdown, the Drain's falloff (owner requests)
 
@@ -16,6 +17,7 @@
 - **Animation impact:** none on hit timing or hitboxes; the Drain moves pilots less far from the pit.
 - **Checks:** `--boss-guide` 380 (trigger, real routes on 4 Backrooms and 3 Poolrooms seeds never through a wall, trail fixed to the floor, running light, low tier), `--boss-picks`, `--backrooms-boss-rules` (falloff, a carried pilot is Lulled), `--deepend-boss`, `--backrooms-boss-sweep`, `--quota-marks`; Unity compile PASS. The opening's native gate checks the countdown runs and replicates.
 - **Not run:** the guide and the waiting screen not yet seen in the Editor or played; no multi-client run of the countdown; the Unity no-safe-spot gate only on the builder.
+- **Released:** full suite at `4fac7103`: 981 groups, exit 0; pins 0 broken; Unity compile PASS. Merged `72cf354e`; builder succeeded and published to the test channel: revision 639296710512508638, 245.8 MiB (with the rules half and Astra's #377).
 
 ## 2026-11-07 — Astra: Boss Battle random opening rarity and silent selection
 
@@ -33,6 +35,7 @@
 - **Animation impact:** Noclip's sink and run are shorter (the phrase reads the table) and it turns with its lane through the wind; contacts stay on `hitAt`. Express Service changes move speed (+25%) through the stat; Feather Fall caps the fall at 3.2 m/s (not in air attacks or launches); Undertow, Lullaby and Express Service move targets (never zone bosses). Relic counters, rails and Noclip's passes are the authority's (not in the handoff frame).
 - **Checks:** `--backrooms-boss-rules` (Noclip's table, aim and hold; the ceilings; the Drain's current), `--boss-chips` 5,697 (live, never an ordinary offer, ordinary rolls unchanged, the drop's rate and eligibility, a reward's boss, every relic's effect finite and thinner when reduced), `--telegraphs`, `--hum-boss`, `--deepend-boss` pass; Unity compile PASS.
 - **Not run:** no person has played it; no two-client check; the relic effects and Noclip's reveal not yet seen in the Editor; each relic's rule is checked by compile and review, not by a scripted fight.
+- **Released:** full suite at `38b52833`: 979 groups, exit 0; merged `a8e68115`. Its build FAILED the Unity no-safe-spot gate (`NativeBackroomsBossValidation`: a still pilot in THE DEEP END's corner no longer reached in 8.5 s once the Drain stopped dragging), as did #377's on top of it; fixed in `claude/boss-room-guide` (a pilot the current carries still counts as still), published with it.
 
 ## 2026-11-07 — Claude: THE HUM and THE DEEP END fixed up, no pilots in boss intros, boss relics
 
