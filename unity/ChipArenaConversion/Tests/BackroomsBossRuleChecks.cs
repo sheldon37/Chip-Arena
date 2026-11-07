@@ -78,6 +78,18 @@ public static class BackroomsBossRuleChecks
             NativeBackroomsBossRules.Step(d,200,1000,d.hitAt+.1f,1f/60,new[]{q},output,rig);float pull=output.Where(h=>h.Seat==4&&h.Pull>0).Select(h=>h.Pull).DefaultIfEmpty(0).Max();
             Check(pull>=NativeDeepEndBoss.DrainPullMin&&pull<=NativeDeepEndBoss.DrainPullMax&&NativeDeepEndBoss.DrainPullMax<6.8f,"the Drain is a current a run beats ("+pull+")");
             Check(NativeDeepEndBoss.DrainThroatShare>0&&NativeDeepEndBoss.DrainThroatShare<=.05f&&NativeDeepEndBoss.DrainStagger>0,"the throat shuts it");
+            Check(NativeDeepEndBoss.DrainPull(2.6f)>3.5f&&NativeDeepEndBoss.DrainPull(10)>NativeDeepEndBoss.DrainPull(20)*1.8f&&NativeDeepEndBoss.DrainPull(27)==NativeDeepEndBoss.DrainPullMin&&NativeDeepEndBoss.DrainPull(0)==NativeDeepEndBoss.DrainPullMax,"weaker the further away (the owner)");
+            // Carried by the current toward the pit without fighting it is still standing still: the Lull still finds them inside the build's deadline (8.5 s).
+            {
+                var e=NativeBackroomsBossRules.Create(NativeDeepEndBoss.Archetype,10001,40,40,0);e.phase=1;e.action=null;var er=new DeepEndBossRig();var c=new BackroomsBossPilot{Seat=5,Feet=new Vector3(21,0,59)};
+                NativeBackroomsBossRules.Start(e,"drain",c,1);bool lulled=false;
+                for(float t=1;t<=9.5f&&!lulled;t+=1f/60)
+                {
+                    NativeBackroomsBossRules.Step(e,6000,6000,t,1f/60,new[]{c},output,er);lulled|=e.action=="lull";
+                    float carry=output.Where(h=>h.Seat==5&&h.Pull>0).Select(h=>h.Pull).DefaultIfEmpty(0).Max();c.Feet+=Vector3.Normalize(new Vector3(40,0,40)-c.Feet)*carry/60;
+                }
+                Check(lulled,"a pilot the Drain carries still gets the Lull");
+            }
         }
         PoolroomsRulesChecks.Run();
         Console.WriteLine("PASS Backrooms boss production rules: "+n+" assertions");

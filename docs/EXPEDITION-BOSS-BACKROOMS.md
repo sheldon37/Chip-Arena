@@ -660,3 +660,10 @@ The owner asked Claude to make section 10's "For Astra" list itself. What change
 **Animation impact:** Noclip's phrase reads the table, so its sink and its run are shorter (.6 s gather and a .15 s set, .8 s run); its
 facing turns with the lane through the wind (the rig's fast turn for the lunge). Contacts stay on `hitAt`. The Drain's stagger poses as
 any other. Networking: the lane's re-aim is in the replicated frame (laneX1/Z1, actionYaw, target), as before.
+
+**Later the same day (the owner, after playing): the Drain's pull.** "Deep end's drain counter still pulls while player is airborne, which is fine...
+however, make the pull weaker if players are further away." The current holds airborne pilots again (not rolling ones), and falls off steeply:
+`NativeDeepEndBoss.DrainPull(d)` = 4.5 m/s x (1 - d/28)^1.5, never under a 0.6 m/s drift (4 m/s at the pit's edge, 2.3 at 10 m, 0.6 at the
+room's corners). A pilot the current carries toward the pit without fighting it still counts as standing still (the stillness meter follows
+them), so the Lull still finds a camper: the build's no-safe-spot gate (a still pilot in every corner hit within 8.5 s) failed without it
+once the pull weakened, as the old drag had carried corner pilots into the pit.
