@@ -1,3 +1,12 @@
+## 2026-11-07 — Claude: NOCTIEL's intro against the real videos
+
+- Owner supplied the real reference clips 01–04 and asked for the check to be done in the main conversation. Branch `claude/noctiel-video-check`, base shared `b9b21553`. The clips stay out of git.
+- **Found on every frame, hidden by the 17 sheet frames used before:** the chop's fill went round the wrong way (up to 116 degrees off at 129–132); the wheel trailed 20–30 degrees at 85–89; the raise jumped about 60 degrees at 64–70 and held 8 degrees low; the rear foot lifted about 0.2 m through the rise; the fists reached the lunge's low place at 139 against the video's 134–135.
+- **Changed:** `tools/motion/correct.py` reads those stretches off the video; `Resources/FallenIntroMocap.json` rebaked. New `tools/motion/vidcheck.py`, `vidblade.py`, `grid.py` measure a bake against the video without MediaPipe.
+- **Animation impact:** presentation only, the cutscene's body. No rule, hit timing, hitbox, damage, cooldown, movement or network change; the contact stays on the impact and the chop stays 0.20 s top to contact.
+- **Checks:** `--fallen-mocap` PASS 120,180. Measured on 447 video frames: rear leg outside the figure, median 17 to 6 px, worst 36 to 16 px; blade angle median 3.3 to 2.7 degrees (clip 03), 3.8 to 1.6 (clip 04). Seen in the Editor (6000.3.24f1, DEV preview, locked camera) beside the video, front and side, 79 shots a view: the rise 96-160, the wheel 68-116, the raise and hold 48-116, the chop 120-144 at a tenth of speed. Those shots are of `bff28b20`; the last bake only raises the rear foot up to 3 cm so its toe clears the water, checked by `--fallen-mocap`, not re-shot. Full suite, Unity compile and publication: see the merge.
+- **Not run or limited:** depth is inferred from one camera; the measure can't read the blade over the body, off the top of the picture or in blur (read by eye there); clip 01 not compared; the live fight's hand-back not seen. The known differences are in EXPEDITION-BOSS-FINAL section 19.
+
 ## 2026-11-06 — Claude: NOCTIEL's intro checked and corrected in Unity beside the reference, merged
 
 - Owner's brief: validate and finish the staged intro in Unity, then merge. Branch `claude/noctiel-mocap`, base shared `f94fa377` (merged in). The entry below is the staged work this finishes.
