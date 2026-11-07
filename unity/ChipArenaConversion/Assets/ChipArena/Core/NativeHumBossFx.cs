@@ -53,7 +53,7 @@ namespace ChipArena.UnityConversion
             for(int i=0;i<Tube.Length;i++)Tube[i]=1;HeadTubes=DiffuserU=DiffuserL=Ballast=1;
             if(rig==null||!rig.Visible||!v.live)return;
             eye=new Vector3((float)eyeX,(float)eyeY,(float)eyeZ);camR=new Vector3((float)rightX,(float)rightY,(float)rightZ);camU=new Vector3((float)upX,(float)upY,(float)upZ);quality=effects<0?0:effects>1?1:effects;low=lowTier;reduced=reducedEffects;
-            vseed=0x4A1u^(uint)(HumBossView.At(v.spawned)?(int)(v.spawned*16):0);floorY=Room!=null?Room.Origin.Y:v.y;
+            vseed=0x4A1u^(uint)(HumBossView.At(v.spawned)?(int)(v.spawned*16):0);floorY=Room!=null?Room.Origin.Y:v.y;ceilH=st!=null?st.CeilingH:BackroomsLayout.Height;
             patchMask=v.shiftMask;DustC=DustFull*(.12f+.88f*Math.Min(1,st.Air));Surface.Air=.1f+.9f*Math.Min(1,st.Air);
             Levels(rig,v,st,t);
             // Telegraphs first (never thinned), then the rest.
@@ -200,14 +200,35 @@ namespace ChipArena.UnityConversion
             if(s>=1){
                 float hit=a.Age-a.HitAt;Vfx.SmokeBurst(t,new Vector3(c.X,floorY+.1f,c.Z),Vector3.Zero,3.2f,.25f,14,1.4f,.35f,1.5f,DustC,.42f,v.hitAt,.08f,vseed,600,0,floorY);if(hit<.9f)for(int i=0;i<2;i++){var h=rig.Shown.Position[i==0?NativeHumBossLook.HandL:NativeHumBossLook.HandR];Vfx.RubbleBurst(t,new Vector3(h.X,floorY+.05f,h.Z),Vector3.UnitY,.7f,3.2f,5,1.4f,v.hitAt,.05f,new Vector3(.06f,.05f,.04f),vseed,610+i,0,floorY);}}
         }
-        // ---------------- Reach: the arc swept ahead of it; a wind trail off the fingers ----------------
+        // ---------------- Reach: the weight of it. A trail of torn air and dust where the hand has just been (a band from the knuckles to the fingertips through the last moments of the sweep, a bright edge on the tips), the dust
+        // on the carpet blown outward under the arc as the hand passes over it, and a ring of it thrown off at the end. Reach's hit is the rule's arc at the record's hitAt: this only shows the arm that's doing it ----------------
+        private readonly Vector3[] swipeTip=new Vector3[32],swipeKnuckle=new Vector3[32];private readonly float[] swipeAt=new float[32];private int swipeCount,swipeAction=-1;
         private void ReachArc(HumBossRig rig,in HumBossView v,float t)
         {
-            if(rig.ActMove<0||NativeHumBoss.Moves[rig.ActMove].Id!="reach")return;var m=NativeHumBoss.Moves[rig.ActMove];var a=rig.Act;
-            float s=a.HitAt>0?a.Age/a.HitAt:1;
-            if(s>=1){float k=(a.Age-a.HitAt)/m.Strike;
-                // Fingers' trail through the sweep.
-                if(k<1.3f){var hand=rig.Shown.Position[rig.ActSide>0?NativeHumBossLook.HandR:NativeHumBossLook.HandL];Vfx.SmokeBurst(t,hand,BossMath.Right(rig.Yaw)*(-rig.ActSide*3f),.3f,.1f,5,.8f,.12f,.45f,DustC,.22f,v.hitAt,m.Strike,vseed,620,0,floorY);}}
+            if(rig.ActMove<0||NativeHumBoss.Moves[rig.ActMove].Id!="reach"){swipeCount=0;return;}var m=NativeHumBoss.Moves[rig.ActMove];var a=rig.Act;float since=a.Age-a.HitAt;
+            if(v.actionId!=swipeAction){swipeAction=v.actionId;swipeCount=0;}
+            int h=rig.ActSide>0?1:0;var tip=rig.Shown.Position[NativeHumBossLook.Finger(h,1,NativeHumBossLook.FingerLinks-1)];var knuckle=rig.Shown.Position[h==1?NativeHumBossLook.HandR:NativeHumBossLook.HandL];
+            if(since>-.14f&&since<m.Strike+m.Follow*.8f&&(swipeCount==0||t>swipeAt[swipeCount-1]+.004f))
+            {
+                if(swipeCount==swipeTip.Length){Array.Copy(swipeTip,1,swipeTip,0,swipeCount-1);Array.Copy(swipeKnuckle,1,swipeKnuckle,0,swipeCount-1);Array.Copy(swipeAt,1,swipeAt,0,swipeCount-1);swipeCount--;}
+                swipeTip[swipeCount]=tip;swipeKnuckle[swipeCount]=knuckle+(tip-knuckle)*.25f;swipeAt[swipeCount]=t;swipeCount++;
+            }
+            const float life=.3f;
+            for(int i=1;i<swipeCount;i++)
+            {
+                float age=t-swipeAt[i];if(age>life||age<0)continue;float fade=1-age/life;fade*=fade;var p0=swipeKnuckle[i-1];var p1=swipeTip[i-1];var p2=swipeTip[i];var p3=swipeKnuckle[i];
+                Add(p0.X,p0.Y,p0.Z,p1.X,p1.Y,p1.Z,p2.X,p2.Y,p2.Z,p3.X,p3.Y,p3.Z,.3f*fade,.27f*fade,.19f*fade,.26f*fade,0,true);
+                Strip(swipeTip[i-1],swipeTip[i],.02f+.025f*fade,.95f*fade,.88f*fade,.66f*fade,fade,0,true);
+            }
+            if(since<-.15f||since>m.Strike+m.Follow+.6f)return;
+            var o=HumBossView.At(v.laneX0)?new Vector3(v.laneX0,floorY,v.laneZ0):new Vector3(v.x,floorY,v.z);float side=rig.ActSide>0?1:-1;
+            for(int i=0;i<8;i++)
+            {
+                float u=(i+.5f)/8;float yaw=(v.actionYaw+side*(m.Arc*.5f-m.Arc*u))*BossMath.Deg;var dir=BossMath.Forward(yaw);float when=v.hitAt+m.Strike*u;
+                var at=o+dir*(m.Reach*.68f);at.Y=floorY+.06f;var swept=BossMath.Right(yaw)*(-side);
+                Vfx.SmokeBurst(t,at,dir*2.6f+swept*2.2f+new Vector3(0,.6f,0),.55f,.12f,6,.9f,.22f,.8f,DustC,.17f,when,.06f,vseed,640+i,0,floorY);
+            }
+            float end=v.hitAt+m.Strike;if(t>=end&&t<end+.6f){float k=(t-end)/.6f;RingFlat(new Vector3(o.X,floorY+.03f,o.Z),m.Reach*(.55f+.45f*BossMath.Smooth(k)),.32f*(1-k),.5f*(1-k),.46f*(1-k),.33f*(1-k),.6f*(1-k));}
         }
         // ---------------- the warnings of the moves the authority aims (from the view: its times, its origin, its aim) ----------------
         private void AimedWarnings(in HumBossView v,float t)
@@ -272,12 +293,12 @@ namespace ChipArena.UnityConversion
             Band(c,r0-.18f,t,1,.32f,.2f,fade,1);Band(c,r0,t,.36f,1,.34f,fade,2);Band(c,r0+.18f,t,.26f,.34f,1,fade,3);
             // On the carpet: the rule's front (0.9 m either side of the ring, 14 m/s, 2.6 s) as a travelling wave; on the grid its line.
             Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Wave,At=new Vector3(c.X,floorY,c.Z),A=r0,B=.9f,C=180,Seed=26},v.ringAt,v.ringAt,2.6f);
-            RingFlat(c+new Vector3(0,BackroomsLayout.Height-.03f,0),r0,.1f,.5f*fade,.42f*fade,.3f*fade,.9f);
+            RingFlat(c+new Vector3(0,ceilH-.03f,0),r0,.1f,.5f*fade,.42f*fade,.3f*fade,.9f);
             if(k<.4f){Vfx.Glow(c+new Vector3(0,2,0),Amber*(4*(1-k/.4f)),5,NativeBossVfx.RingGlow);}
         }
         private void Band(Vector3 c,float r,float t,float cr,float cg,float cb,float fade,int key)
         {
-            if(r<=.05f)return;int n=Math.Max(28,Math.Min(84,(int)(r*4)));float y0=c.Y+.04f,y1=c.Y+BackroomsLayout.Height-.04f;int slot=reduced?0:(int)Math.Floor(t*24);
+            if(r<=.05f)return;int n=Math.Max(28,Math.Min(84,(int)(r*4)));float y0=c.Y+.04f,y1=c.Y+ceilH-.04f;int slot=reduced?0:(int)Math.Floor(t*24);
             for(int i=0;i<n;i++)
             {
                 float a0=i*BossMath.Tau/n,a1=(i+1)*BossMath.Tau/n;float c0=(float)Math.Cos(a0),s0=(float)Math.Sin(a0),c1=(float)Math.Cos(a1),s1=(float)Math.Sin(a1);
@@ -374,7 +395,7 @@ namespace ChipArena.UnityConversion
         // Tiles, dust and rail out of the ceiling grid round a point.
         private void CeilingFall(Vector3 at,float when,float t,int key,float hole=1)
         {
-            var top=new Vector3(at.X,floorY+BackroomsLayout.Height-.05f,at.Z);
+            var top=new Vector3(at.X,floorY+ceilH-.05f,at.Z);
             Vfx.RubbleBurst(t,top,new Vector3(0,-1,0),1.0f,1.8f,16,2.6f,when,.14f,TileC,vseed,key,0,floorY);
             Vfx.SmokeBurst(t,top,new Vector3(0,-1.2f,0),1.8f,.05f,16,2.4f,.3f,1.5f,DustC,.42f,when,.3f,vseed,key+1,0,floorY);
             Vfx.SparkBurst(t,top,new Vector3(0,-1,0),.9f,3.2f,14,.8f,when,.1f,vseed,key+2,.9f,.012f,.9f,true,floorY);
@@ -416,7 +437,7 @@ namespace ChipArena.UnityConversion
             else
             {
                 // It rears through the ceiling: the tiles rain.
-                var ch=rig.Shown.Position[NativeHumBossLook.Chest];if(k>=1.2f&&k<4){float when=v.phaseAt+1.3f;var top=new Vector3(v.x,floorY+BackroomsLayout.Height-.05f,v.z+BossMath.Forward(v.yaw*BossMath.Deg).Z*.2f);CeilingFall(top,when,t,880);for(int i=0;i<5;i++){float ang=i*1.256f,r=2.2f+.5f*i;var at=top+new Vector3((float)Math.Cos(ang)*r,0,(float)Math.Sin(ang)*r);Vfx.RubbleBurst(t,at,new Vector3(0,-1,0),.6f,1.2f,5,2.4f,when+.1f+i*.08f,.16f,TileC,vseed,890+i,0,floorY);CeilingPatch(at,1.4f,.55f,0,0,895+i,t);Tears++;}}
+                var ch=rig.Shown.Position[NativeHumBossLook.Chest];if(k>=1.2f&&k<4){float when=v.phaseAt+1.3f;var top=new Vector3(v.x,floorY+ceilH-.05f,v.z+BossMath.Forward(v.yaw*BossMath.Deg).Z*.2f);CeilingFall(top,when,t,880);for(int i=0;i<5;i++){float ang=i*1.256f,r=2.2f+.5f*i;var at=top+new Vector3((float)Math.Cos(ang)*r,0,(float)Math.Sin(ang)*r);Vfx.RubbleBurst(t,at,new Vector3(0,-1,0),.6f,1.2f,5,2.4f,when+.1f+i*.08f,.16f,TileC,vseed,890+i,0,floorY);CeilingPatch(at,1.4f,.55f,0,0,895+i,t);Tears++;}}
             }
         }
         // ---------------- wet footprints: darkened carpet fading; a hand's arch prints its fingertips ----------------
@@ -455,7 +476,7 @@ namespace ChipArena.UnityConversion
             if(st.Dust<=.03f||Room==null)return;var c=rig.Root;
             for(int i=0;i<7;i++)
             {
-                float ang=i*2.244f,r=1.6f+1.1f*i;var at=new Vector3(BossMath.Clamp(c.X+(float)Math.Cos(ang)*r,Room.MinX+.5f,Room.MaxX-.5f),floorY+BackroomsLayout.Height-.06f,BossMath.Clamp(c.Z+(float)Math.Sin(ang)*r,Room.MinZ+.5f,Room.MaxZ-.5f));
+                float ang=i*2.244f,r=1.6f+1.1f*i;var at=new Vector3(BossMath.Clamp(c.X+(float)Math.Cos(ang)*r,Room.MinX+.5f,Room.MaxX-.5f),floorY+ceilH-.06f,BossMath.Clamp(c.Z+(float)Math.Sin(ang)*r,Room.MinZ+.5f,Room.MaxZ-.5f));
                 Vfx.SmokeFlow(t,at,new Vector3(0,-.65f,0),.22f,-.12f,1.6f,2.6f,.14f,.75f,DustC,.2f,0,1e6f,vseed,1040+i,0,floorY,default,default,st.Dust);
             }
         }
@@ -465,11 +486,11 @@ namespace ChipArena.UnityConversion
             if(st.Slip<=.01f||Room==null||reduced)return;float amt=st.Slip;float c=BackroomsLayout.Cell;
             for(int i=0;i<10;i++)
             {
-                float x=Room.MinX+(1+H(i,1)*10)*c,z=Room.MinZ+(1+H(i,2)*10)*c;Surface.Slip(NativeHumSurface.CeilingS,new Vector3(x,floorY+BackroomsLayout.Height-.004f,z),-Vector3.UnitY,Vector3.UnitX,Vector3.UnitZ,c*(.8f+.6f*H(i,3)),c*(.8f+.8f*H(i,4)),amt*(.6f+.8f*H(i,5)),t,50+i);
+                float x=Room.MinX+(1+H(i,1)*10)*c,z=Room.MinZ+(1+H(i,2)*10)*c;Surface.Slip(NativeHumSurface.CeilingS,new Vector3(x,floorY+ceilH-.004f,z),-Vector3.UnitY,Vector3.UnitX,Vector3.UnitZ,c*(.8f+.6f*H(i,3)),c*(.8f+.8f*H(i,4)),amt*(.6f+.8f*H(i,5)),t,50+i);
             }
             for(int i=0;i<14;i++)
             {
-                int w=i%4;float u=.1f+.8f*H(i,11),half=1.2f+1.6f*H(i,12);float y=floorY+BackroomsMesh.TrimHeight+.05f+half*.6f+H(i,13)*(BackroomsLayout.Height-1.6f-half*1.2f);
+                int w=i%4;float u=.1f+.8f*H(i,11),half=1.2f+1.6f*H(i,12);float y=floorY+BackroomsMesh.TrimHeight+.05f+half*.6f+H(i,13)*(ceilH-1.6f-half*1.2f);
                 Vector3 p,n,ax;float span=Room.MaxX-Room.MinX,inset=BackroomsLayout.Thickness*.5f;
                 if(w==0){p=new Vector3(Room.MinX+u*span,y,Room.MinZ+inset);n=Vector3.UnitZ;ax=Vector3.UnitX;}else if(w==1){p=new Vector3(Room.MinX+u*span,y,Room.MaxZ-inset);n=-Vector3.UnitZ;ax=Vector3.UnitX;}
                 else if(w==2){p=new Vector3(Room.MinX+inset,y,Room.MinZ+u*span);n=Vector3.UnitX;ax=Vector3.UnitZ;}else{p=new Vector3(Room.MaxX-inset,y,Room.MinZ+u*span);n=-Vector3.UnitX;ax=Vector3.UnitZ;}
@@ -505,7 +526,7 @@ namespace ChipArena.UnityConversion
             if(Room!=null&&HumBossView.At(v.spawned))
             {
                 var b=HumBossBeats.Current;float a=t-v.spawned;float k=BossMath.Smooth((a-b.RowOut3-.02f)/.3f)*(1-BossMath.Smooth((a-b.WalkOut+.1f)/.1f));
-                if(k>.01f&&a>=0){float flick=reduced?1:.88f+.12f*(float)Math.Sin(a*43)*(float)Math.Sin(a*17);AddLight(new Vector3(Room.Centre.X-HumBossArrival.TearX+.45f,floorY+BackroomsLayout.Height-.12f,Room.MaxZ-.72f),5.5f,LampWarm*(.8f*k*flick));}
+                if(k>.01f&&a>=0){float flick=reduced?1:.88f+.12f*(float)Math.Sin(a*43)*(float)Math.Sin(a*17);AddLight(new Vector3(Room.Centre.X-HumBossArrival.TearX+.45f,floorY+ceilH-.12f,Room.MaxZ-.72f),5.5f,LampWarm*(.8f*k*flick));}
             }
             // Over a Wall Hand or a Familiar Voice, in the blackout too: the same rake, so that what's in the wall is seen.
             if(HumBossView.At(v.handAt)){float k=t-v.handAt;if(k>-1&&k<3.2f)Rake(v.handX,v.handZ,v.handNx,v.handNz,BossMath.Smooth((k+1)/.3f)*(1-BossMath.Smooth((k-2.6f)/.6f)),t);}
@@ -519,7 +540,7 @@ namespace ChipArena.UnityConversion
         private void Rake(float x,float z,float nx,float nz,float k,float t)
         {
             if(k<=.01f)return;float flick=reduced?1:.84f+.16f*(float)Math.Sin(t*41)*(float)Math.Sin(t*13);
-            AddLight(new Vector3(x+nx*.72f,floorY+BackroomsLayout.Height-.12f,z+nz*.72f),5.2f,LampWarm*(.72f*k*flick));
+            AddLight(new Vector3(x+nx*.72f,floorY+ceilH-.12f,z+nz*.72f),5.2f,LampWarm*(.72f*k*flick));
         }
         private void AddLight(Vector3 p,float range,Vector3 rgb){if(LightCount>=MaxLights)return;int i=LightCount++;LightPos[i*4]=p.X;LightPos[i*4+1]=p.Y;LightPos[i*4+2]=p.Z;LightPos[i*4+3]=range;LightRgb[i*3]=rgb.X;LightRgb[i*3+1]=rgb.Y;LightRgb[i*3+2]=rgb.Z;}
         // ---------------- the surfaces in the room ----------------
@@ -533,7 +554,7 @@ namespace ChipArena.UnityConversion
             if(Math.Abs(a.X)>.5f){float lo=(Room.MinX-at.X)*Math.Sign(a.X),hi=(Room.MaxX-at.X)*Math.Sign(a.X);minA=Math.Max(minA,Math.Min(lo,hi));maxA=Math.Min(maxA,Math.Max(lo,hi));}
             else{float lo=(Room.MinZ-at.Z)*Math.Sign(a.Z),hi=(Room.MaxZ-at.Z)*Math.Sign(a.Z);minA=Math.Max(minA,Math.Min(lo,hi));maxA=Math.Min(maxA,Math.Max(lo,hi));}
             NativeHumArena.WallSpan(Room,patchMask,c,a,ref minA,ref maxA);
-            float minB=floorY+BackroomsMesh.TrimHeight+.02f-c.Y,maxB=floorY+BackroomsLayout.Height-.02f-c.Y;
+            float minB=floorY+BackroomsMesh.TrimHeight+.02f-c.Y,maxB=floorY+ceilH-.02f-c.Y;
             Surface.Tear(NativeHumSurface.WallS,at,n,a,Vector3.UnitY,radius,open,bulge,lift,seed,eye,minA,maxA,minB,maxB,f0,f1,f2,f3,1,tall,strips,t,peel,ridges,face);
         }
         private void FloorPatch(Vector3 c,float radius,float open,float bulge,float lift,int seed,float t,float peel=0)
@@ -544,7 +565,7 @@ namespace ChipArena.UnityConversion
         private void CeilingPatch(Vector3 c,float radius,float open,float bulge,float lift,int seed,float t)
         {
             float minA=Room!=null?Room.MinX-c.X:-radius,maxA=Room!=null?Room.MaxX-c.X:radius,minB=Room!=null?Room.MinZ-c.Z:-radius,maxB=Room!=null?Room.MaxZ-c.Z:radius;
-            Surface.Tear(NativeHumSurface.CeilingS,new Vector3(c.X,floorY+BackroomsLayout.Height,c.Z),-Vector3.UnitY,Vector3.UnitX,Vector3.UnitZ,radius,open,bulge,lift,seed,eye,minA,maxA,minB,maxB);
+            Surface.Tear(NativeHumSurface.CeilingS,new Vector3(c.X,floorY+ceilH,c.Z),-Vector3.UnitY,Vector3.UnitX,Vector3.UnitZ,radius,open,bulge,lift,seed,eye,minA,maxA,minB,maxB);
         }
         // ---------------- primitives (the 6:47's: premultiplied pieces sorted far to near, additive straight in) ----------------
         private int Budget(int full)=>Math.Max(0,(int)Math.Round(full*(low?.5f:1f)*(.35f+.65f*quality)));
@@ -565,6 +586,8 @@ namespace ChipArena.UnityConversion
         {
             if(a<=.005f)return;Add(c.X-hx,c.Y,c.Z-hz,c.X+hx,c.Y,c.Z-hz,c.X+hx,c.Y,c.Z+hz,c.X-hx,c.Y,c.Z+hz,Soot.X*a,Soot.Y*a,Soot.Z*a,a,1,false);
         }
+        // The room's ceiling over its floor this frame (raised in NOCLIP).
+        private float ceilH=BackroomsLayout.Height;
         private void Strip(Vector3 a,Vector3 b,float w,float r,float g,float bl,float alpha,int mode,bool additive)
         {
             var mid=(a+b)*.5f;var along=b-a;var toEye=eye-mid;var side=Vector3.Cross(along,toEye);float l=side.Length();if(l<1e-6f)return;side*=w/l;

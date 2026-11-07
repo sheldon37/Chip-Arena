@@ -561,3 +561,77 @@ The Lull is what guarantees the first and last phases' limit for a still pilot; 
 **For Astra.** Bind `ArenaPresentation.DeepEndBossViewOf` (Runtime `NativeDeepEndBossPresentation.cs`): the fields are `Core DeepEndBossView`'s. The rig fills its own route from the record as moves start, so a record only needs the move's start, its hit, its places (`targetX/Z`, `aimX/Z`) and `surfaceAt/X/Z` between moves. `NativeDeepEndBoss.Moves` is the table; `NativeDeepEndBoss.Parts` the hit volumes and weak points; `DeepEndBossRig.LampFrame` and `MouthAt` the positions. Collision for `PoolroomsLayout.Abyss` stands at the deep pool's floor. The tide is `tideFrom`, `tideY`, `tideAt`, `tideUntil`: `NativePoolroomsWater.Depth` should read the same.
 
 **Not done.** No audio clips (the keys are silent); no record, rules or hit volumes bound. The mixer's dip for `Muffle` isn't wired (it's on the stage for whoever does the sound), and the stage's `Shake` moves only the preview's camera: hooking it to the live camera touches shared ConversionGame. The Whistle's Drowned and Tilers are not spawned here (no spawn is presentation): the move shows the dark water round each pilot and the rings, and the flat cue, and waits for the rest. The body doesn't reflect in the water when the reflection's ray leaves the screen (it falls back to the room's box). Reduced effects only has less to reduce here: nothing strobes.
+
+## 10. The owner's pass, 2026-11-07 (Claude: presentation; the rules' half is Astra's, below)
+
+The owner, after playing both: THE HUM's charge is easily dodged; its swipe should look like it really has force; its intro doesn't
+show it properly; upside down its hit box doesn't work and it's hard to tell it's upside down (raise the room in that phase). THE DEEP
+END: weird twists in its body and glitches; swimming where there's no water, coming out of dry tile; no counter to the pull; raise its
+room; the water beam doesn't look as if it hits. And: no pilots in the bosses' intros.
+
+What was wrong, measured, and what changed:
+
+- **THE HUM's intro in a real fight** stood frozen. The arena's clock waits through the intro's hold while the song runs; THE 6:47 and
+  THE DEEP END already run their presenters on a clock that trails the arena's by what's left of the hold, THE HUM's didn't, so its rig
+  got no time and no arrival. It now does the same (Runtime `NativeHumBossPresentation`). Seen in a real Boss Battle: the walk out, the
+  tubes, the head catching, the straighten and stoop all play.
+- **Its hit box upside down:** the authority placed the colliders with `HumBossRig.ToWorld(Shown...)`, but `Shown` already carries the
+  half turn, so the colliders went back to the floor while the body hung from the ceiling. `ToWorld` is now the identity on `Shown`
+  (a one-line fix in the rig, so Astra's file is untouched).
+- **NOCLIP's room is taller:** as it rears up into the phase it pushes the ceiling from 4 m to 6.4 m (`NativeHumBoss.HighCeiling`, over
+  1.3 s from 1.25 s into the change); its walls are carried up in a papered band; its fixtures go up with it. On the ceiling it hangs
+  with clear air under it, and whatever it strikes with reaches the rest of the way down (the arms a move drives, the head as a move
+  comes in). The rig turns over about half the new height. **Collision is Astra's:** the level's one ceiling block at 4.15 m still
+  stops shots above 4 m in that room until it is lifted (below).
+- **The swipe (Reach)** is thrown with the whole body: a gather, then a coil (weight back and low, shoulders wound round 66 degrees, the
+  arm cocked behind it); the hips unwind first while the chest still faces back, then the chest, then the arm whips across; the arm's
+  weight carries the body on round and down after it and it settles back off that. A trail of torn air and dust follows the fingertips,
+  dust blows outward on the carpet under the arc, and a ring of it is thrown off at the end. The rule's arc and timing are unchanged.
+- **THE DEEP END's body:** the real rules start a move while the last one's path still runs on (its fall, its dive), and the route
+  overwrote its own end, so a new move began from where the old plan *would* have ended: the head jumped and the body folded on itself.
+  Measured with `--deepend-motion` over the real rules in all three phases: neighbouring joints twisted up to 180 degrees and joints in
+  sight moved at over 1,000 m/s. Now a new move (or a phase change, or the death) cuts the plan where its record began and carries on from
+  the head as it is (`DeepEndRoute.CutAt`); every way down is a forward arc (`DeepEndBossPaths.Dive`; a body can't go back down itself);
+  hidden travel has a top speed; the skull stays on the route so contacts keep their clock; and each joint's back is carried through
+  time and leans to the sky where the body lies level (no candy-wrapper twist). After: twist between neighbours mostly under 20 degrees.
+  Some single-frame outliers remain in rare overlaps (noted in the measure).
+- **Never out of dry tile:** with the decks dry, everything it does stays in or over the water: Breach arcs toward the pool's far
+  corner and comes down in it, the Jet and the Thrash rise well inside the pool. **The Flop is a real leap:** it runs up under the water,
+  comes out at the line's start, flies the length of the line and comes down along it on the hit (the arc it leaves in the air is laid
+  flat, so the whole body lands); on dry deck it lies stranded on the tile, then hauls itself back over the edge into the pool, on top of
+  the tile. A cut while it's stranded crawls it back the same way.
+- **The beam** is drawn on the rule's own line (JetDir and its flat 2 m by the table's reach), not the mouth's lagging axis: a column to
+  where it lands, then the same water tearing along the surface to the line's end (climbing a wall it reaches), and a burst on anyone in
+  the line. The neck holds the rule's line tightly through the sweep. JetDir now aims the column at up to 26 m (was 16), so it lands on
+  the pilot it was aimed at.
+- **The Drain** shows its pull over the whole room: sheets of water racing in over the surface and over the dry deck, spiralling as they
+  near the pit, spray dragged along, the throat bright. Its counterplay is a rule (below); the iris closes and the pull's look stops on
+  `cancelAt`.
+- **Its room is 12 m high** (was 7.2: its rises came up against it). `NativeDeepEndArena.Ceiling`; the generator's ceiling blocks follow
+  it; the lights' reach grows with it.
+- **No pilots in a boss's intro:** through a zone boss's intro hold (`NativeIntroRules.PilotsOffStage`) no pilot is posed or drawn, no
+  spawn beam, no footfall; they come in with the fight (the spawn-in finishes as it starts). Seen in real Boss Battles for THE HUM, THE
+  DEEP END and NOCTIEL. A faint ring still shows where NOCTIEL's pilot stands in its intro; not yet traced.
+
+**Animation impact:** THE HUM: presentation only. Its colliders now sit on its drawn body on the ceiling (they were on the floor), so
+upside down it can be hit where it is. THE DEEP END: its route is shared by the authority (its root, the Jet's mouth and Last Lap's body
+are read by the rules), so the place the Jet fires from, where it surfaces and the Lap's body follow the new paths; every contact stays
+on the record's `hitAt`; nothing else changes (`--backrooms-boss-rules` passes).
+
+### For Astra (the rules' half of the owner's list)
+
+1. **THE HUM's charge (Noclip) faster** (the owner: easily dodged). Proposal: wind 1.2 to .75 s, strike 1.2 to .8 s at 32.5 m/s
+   (`NativeHumBoss.Moves` `lunge`); `Contacts` and `BackroomHitScale` read the table's strike instead of the literal `1.2f` (and NOCLIP's
+   second pass `2.4f` from it); the lane re-aims at the target until .3 s before the hit (rewrite `laneX1/Z1` in `Step` during the wind) so a
+   sidestep at the start no longer beats it. Its warning and pose already follow the record.
+2. **NOCLIP's raised room:** in phase 3, lift the room's ceiling collision to `HumBossView.Ceiling` (the map has one `ceiling` block at
+   4.15 m over the whole level: switch it off over the room or add a room-sized one at 6.55 m), the seals to 6.4 m and `Inside` to 6.4 m.
+   Until then shots stop at 4 m in that room.
+3. **THE DEEP END's Drain, a counter** (the owner: there's none). Today `ZoneDrag` zeroes the pilot's own movement, so nobody can resist
+   for 4 s. Proposal: an added current (the pilot keeps control), 3 to 5 m/s (under a sprint), none while airborne or rolling; and the
+   throat closes it: damage to the throat during the Drain of 3% max health cancels it (`cancelAt`, `whirlUntil` now, a 2 s stagger). The
+   presentation already closes the mouth and stops the pull's look on `cancelAt`.
+4. **The Deep End room is 12 m high now:** `NativeBackroomsBossRules.Inside` and `BackroomGeometry`'s seal height still say 7.2; read
+   `NativeDeepEndArena.Ceiling` (the 6:00 flood can rise to it or stay at 7.2).
+5. **Boss relics:** docs/BOSS-CHIPS.md.
+6. **For a check:** the HUM's colliders follow `Shown` on the ceiling (Core `HumBossRig.ToWorld` is the identity now).

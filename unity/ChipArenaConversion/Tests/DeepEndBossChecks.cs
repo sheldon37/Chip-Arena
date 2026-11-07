@@ -79,17 +79,23 @@ public static class DeepEndBossChecks
         }
         foreach(var (id,tx,tz,ax,az) in new[]{("jet",-10f,4f,8f,8f),("flop",-12f,-7f,12f,-7f),("thrash",3f,4f,float.NaN,float.NaN),("drain",0f,0f,float.NaN,float.NaN),("seiche",0f,0f,1f,0f),("lap",0f,0f,float.NaN,float.NaN)})
         {
-            var r=new DeepEndRoute();r.Reset(0,new Vector3(6,-5,-6),new Vector3(1,0,0));var v=Rec(id,1,tx,tz,ax,az);DeepEndBossPaths.Append(r,v,s);AssertContinuous(r,.5f,v.actionAt+v.duration+1,id);
+            var r=new DeepEndRoute();r.Reset(0,new Vector3(6,-5,-6),new Vector3(1,0,0));var v=Rec(id,1,tx,tz,ax,az);DeepEndBossPaths.Append(r,v,s);AssertContinuous(r,.5f,v.actionAt+v.duration+1,id,id=="flop"?v.hitAt:float.NaN);
         }
         // The Flop's lift lands on its hit: it reaches the surface exactly then, lying there after, from high above it just before.
-        float depth=4.4f;var fm=NativeDeepEndBoss.Move("flop");float hit=fm.Anticipation;Check(Near(DeepEndBossRig.FlopLift(hit,hit,depth,fm.Strike,fm.Recover),depth,.01f),"the Flop lands on the hit");Check(DeepEndBossRig.FlopLift(hit-.3f,hit,depth,fm.Strike,fm.Recover)>depth+1,"from high");Check(DeepEndBossRig.FlopLift(0,hit,depth,fm.Strike,fm.Recover)==0,"hidden at its start");
+        // The Flop is a real leap: out of the water at the line's start, the length of the line in the air, landing on its hit at the line's end: on the tile where the deck is dry, never in it.
+        {var fm=NativeDeepEndBoss.Move("flop");var r=new DeepEndRoute();r.Reset(0,new Vector3(4,-4,-6),new Vector3(0,0,1));var v=Rec("flop",1,-6,-7,16,-7);DeepEndBossPaths.Append(r,v,s);float hit=v.hitAt;r.At(hit,out var land,out _);Check(Near(land.X,16,.15f)&&Near(land.Z,-7,.15f),"it lands at the line's end "+land);Check(Near(land.Y,DeepEndBossPaths.DeckRide,.05f),"on the dry tile "+land.Y);
+         float top=-9;bool outOfPool=false;for(float t=.5f;t<hit;t+=.01f){r.At(t,out var q,out _);top=Math.Max(top,q.Y);if(!NativeDeepEndArena.InPool(q.X,q.Z)&&q.Y<.5f)outOfPool=true;}Check(top>4&&top<8,"the leap's height "+top);Check(!outOfPool,"never under or in the dry deck on the way");
+         float lowest=9;for(float t=hit;t<hit+fm.Strike+NativeDeepEndBoss.StrandSeconds;t+=.02f){r.At(t,out var q,out _);if(!NativeDeepEndArena.InPool(q.X,q.Z))lowest=Math.Min(lowest,q.Y);}Check(lowest>.6f,"it lies on the tile while stranded "+lowest);r.At(hit+8,out var after,out _);Check(NativeDeepEndArena.InPool(after.X,after.Z)&&after.Y<PoolroomsLayout.WaterY,"then it's back in the pool "+after);}
+        // A new move starts from where the head really is: cutting a plan short keeps position and speed.
+        {var r=new DeepEndRoute();r.Reset(0,new Vector3(2,-4,2),Vector3.Zero);var v=Rec("breach",1,5,-3);DeepEndBossPaths.Append(r,v,s);float cut=v.hitAt+.7f;r.At(cut-.002f,out var a,out var va);r.CutAt(cut);var nv=Rec("jet",2,-6,6,6,6);nv.actionAt=cut;nv.hitAt=cut+1;nv.x=a.X;nv.z=a.Z;DeepEndBossPaths.Append(r,nv,s);r.At(cut+.002f,out var b,out var vb);Check(Vector3.Distance(a,b)<.12f,"no jump at a cut "+a+" "+b);Check(Vector3.Distance(va,vb)<3.2f,"no kick at a cut "+va+" "+vb);}
         // Last Lap's path is a rounded square reaching the corners, and tightens.
         var lm=NativeDeepEndBoss.Move("lap");var q0=DeepEndBossPaths.LapAt(0,BossMath.Pi*.25f,lm,lm.Strike+lm.Follow);Check(new Vector2(q0.X,q0.Z).Length()>23,"it runs into the corners");var q1=DeepEndBossPaths.LapAt(1,BossMath.Pi*.25f,lm,lm.Strike+lm.Follow);Check(new Vector2(q1.X,q1.Z).Length()<new Vector2(q0.X,q0.Z).Length()-5,"it tightens");
         foreach(float u in new[]{0f,.2f,.5f,.8f,1f}){var q=DeepEndBossPaths.LapAt(u,1.1f,lm,lm.Strike+lm.Follow);Check(Math.Abs(q.X)<NativeDeepEndArena.Half&&Math.Abs(q.Z)<NativeDeepEndArena.Half,"Lap stays in the room");}
     }
-    private static void AssertContinuous(DeepEndRoute r,float from,float to,string what)
+    // `impact`: the one moment the velocity may cut (the Flop's body hitting the water or the tile).
+    private static void AssertContinuous(DeepEndRoute r,float from,float to,string what,float impact=float.NaN)
     {
-        r.At(from,out var a,out var va);float most=0;const float h=1/240f;for(float t=from+h;t<to;t+=h){r.At(t,out var b,out var vb);float jump=Vector3.Distance(b,a);most=Math.Max(most,jump/h);Check(Vector3.Distance(vb,va)<3.2f,what+" velocity cuts at "+t+": "+va+" -> "+vb);a=b;va=vb;}
+        r.At(from,out var a,out var va);float most=0;const float h=1/240f;for(float t=from+h;t<to;t+=h){r.At(t,out var b,out var vb);float jump=Vector3.Distance(b,a);most=Math.Max(most,jump/h);Check(Math.Abs(t-impact)<.02f||Vector3.Distance(vb,va)<3.2f,what+" velocity cuts at "+t+": "+va+" -> "+vb);a=b;va=vb;}
         Check(most<72,what+" speed "+most);
     }
     // ---- the body on the trail ----

@@ -108,7 +108,7 @@ namespace ChipArena.UnityConversion
                     float wx=(x-cells*.5f+.5f)*c,wz=(z-cells*.5f+.5f)*c,d=(wx-exz)*(wx-exz)+(wz-ezz)*(wz-ezz);if(d>=best)continue;bool taken=false;for(int q=0;q<used;q++)if(Mathf.Abs(deepEndLightPos[q*4]-(deepEndOrigin.X+wx))<.1f&&Mathf.Abs(deepEndLightPos[q*4+2]-(deepEndOrigin.Z+wz))<.1f)taken=true;if(taken)continue;best=d;bx=wx;bz=wz;found=true;
                 }
                 if(!found)break;float order=Mathf.Sqrt(bx*bx+bz*bz)/28f;float lv=s.Ceiling*(1-BossMath.Smooth((s.CeilingOut*1.25f-order)/.14f));var tint=Color.Lerp(new Color(.62f,.62f,.58f),new Color(.66f,.54f,.36f),s.Warm)*lv;
-                deepEndLightPos[used*4]=deepEndOrigin.X+bx;deepEndLightPos[used*4+1]=deepEndOrigin.Y+NativeDeepEndArena.Ceiling-.3f;deepEndLightPos[used*4+2]=deepEndOrigin.Z+bz;deepEndLightPos[used*4+3]=14;deepEndLightRgb[used*3]=tint.r;deepEndLightRgb[used*3+1]=tint.g;deepEndLightRgb[used*3+2]=tint.b;used++;
+                deepEndLightPos[used*4]=deepEndOrigin.X+bx;deepEndLightPos[used*4+1]=deepEndOrigin.Y+NativeDeepEndArena.Ceiling-.3f;deepEndLightPos[used*4+2]=deepEndOrigin.Z+bz;deepEndLightPos[used*4+3]=NativeDeepEndArena.Ceiling+11;deepEndLightRgb[used*3]=tint.r;deepEndLightRgb[used*3+1]=tint.g;deepEndLightRgb[used*3+2]=tint.b;used++;
             }
             // The body's own.
             for(int k=0;k<deepEndFx.LightCount&&used<slots-1;k++){for(int q=0;q<4;q++)deepEndLightPos[used*4+q]=deepEndFx.LightPos[k*4+q];for(int q=0;q<3;q++)deepEndLightRgb[used*3+q]=deepEndFx.LightRgb[k*3+q];used++;}

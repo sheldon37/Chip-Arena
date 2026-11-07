@@ -25,7 +25,7 @@ namespace ChipArena.UnityConversion
         internal static HumBossView HumBossViewOf(NativeArena arena)=>arena?.HumZoneBossView()??HumBossView.None;
 
         private readonly HumBossRig humBoss=new HumBossRig();private readonly NativeHumBossFx humBossFx=new NativeHumBossFx();private readonly HumBossStage humStage=new HumBossStage();
-        private HumBossView humView=HumBossView.None;private float humLast=-1,humHp=float.NaN;private NativeArena humArena;private int humGeneration=-1;private NativeFxDraw humDraw;private NativeVfxDraw humVfx;private bool humVfxFailed,humShown;
+        private HumBossView humView=HumBossView.None;private float humLast=-1,humHp=float.NaN,humSongSpawn=float.NaN;private double humSongLast=-1;private NativeArena humArena;private int humGeneration=-1;private NativeFxDraw humDraw;private NativeVfxDraw humVfx;private bool humVfxFailed,humShown;
         private NVector humPrev;private float humLastBlow=float.NegativeInfinity,humFlash;private readonly float[] humBlowAt=new float[8],humBlowSize=new float[8];private readonly NVector[] humBlowPush=new NVector[8];
         private readonly float[] humLightPos=new float[NativeMapLooks.MaxLights*4],humLightRgb=new float[NativeMapLooks.MaxLights*3];
         /// <summary>The boss's draws last frame (budget lines), its tier.</summary>
@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             bool map=arena!=null&&NativeBackroomsGenerator.IsMap(arena.MapId);var eye=WorldEye;
             if(!map){HumBossHide();return;}
             float now=PresentationClock(arena);
-            if(!ReferenceEquals(arena,humArena)||arena.Generation!=humGeneration){humArena=arena;humGeneration=arena.Generation;humLast=-1;humHp=float.NaN;humBossFx.ClearPrints();}
+            if(!ReferenceEquals(arena,humArena)||arena.Generation!=humGeneration){humArena=arena;humGeneration=arena.Generation;humLast=-1;humHp=float.NaN;humSongSpawn=float.NaN;humSongLast=-1;humBossFx.ClearPrints();}
             NVector velocity=NVector.Zero;bool hasTarget=false;NVector target=NVector.Zero;HumRoom room=null;
             if(NativeHumBossPreview.On||HumBossViewOf(arena).live)HumBossBeats.UseSong(NativeZoneBossSongs.Installed(NativeZoneMusic.Level0Boss)?NativeZoneBossSongs.Music?.Song(NativeZoneMusic.Level0Boss):null);
             if(NativeHumBossPreview.On)
@@ -54,6 +54,16 @@ namespace ChipArena.UnityConversion
                 humView=HumBossViewOf(arena);
                 if(humView.live)
                 {
+                    // The arena's clock waits through the intro's hold while the song runs: the boss's own clock trails the arena's by what is left of the hold and meets it at the hold's end, and the arrival starts at song time 0 on it
+                    // (as THE 6:47's and THE DEEP END's). Without this the rig stands frozen on the waiting clock through the whole intro. Every later time stays on the arena's clock.
+                    double song=arena.BossSongTime;
+                    if(song>=0&&song<1e6)
+                    {
+                        float lag=Math.Max(0f,HumBossBeats.Current.Hold-(float)song);now-=lag;
+                        if(float.IsNaN(humSongSpawn)||song<humSongLast)humSongSpawn=now-(float)song;
+                        humSongLast=song;humView.spawned=humSongSpawn;
+                    }
+                    else{humSongSpawn=float.NaN;humSongLast=-1;}
                     var pilot=TargetPilot(arena,humView.actionTarget);if(pilot!=null){hasTarget=true;var q=pilot.Body.position;target=new NVector(q.x,q.y+1.2f,q.z);}
                     room=humRoomLive;
                     if(!float.IsNaN(humHp)&&humView.hp<humHp-.5f&&humView.maxHp>0){var from=arena.Local?.Body!=null?arena.Local.Body.position:new Vector3(humView.x,0,humView.z-1);humBoss.Hit(now,new NVector(humView.x-from.x,0,humView.z-from.z),Mathf.Clamp((humHp-humView.hp)/humView.maxHp*60,.25f,1.4f));humFlash=1;}

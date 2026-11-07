@@ -25,10 +25,14 @@ namespace ChipArena.UnityConversion
         public Vector3 Origin;
         /// <summary>The route the head is on: the preview's script, or the rig's own (filled as the record's moves start).</summary>
         public readonly DeepEndRoute Own=new DeepEndRoute(512);public DeepEndRoute Route;
-        private long lastTick=long.MinValue;private float lastNow=float.NaN;private int seenAction=-1,seenPhase=1;private float seenDied=float.NaN,seenSpawned=float.NaN,seenSurface=float.NaN;
+        private long lastTick=long.MinValue;private float lastNow=float.NaN;private int seenAction=-1,seenPhase=1;private float seenDied=float.NaN,seenSpawned=float.NaN;
         // Springs and second order.
         private BossSpring iris,spin;private BossSecondOrder fold,rail,mouthKick;private float grateAngle;
-        private BossSpringQ lookQ;private bool lookReady;private BossSpring lookWeight;
+        private BossSpringQ lookQ;private bool lookReady;private BossSpring lookWeight;private float lookHalf=.34f;
+        // The back at the head (carried by the frames below it), and the Flop's line while its arc comes down.
+        private float slamAt=float.NaN;private Vector2 slamA,slamB;
+        // Each joint's back and tangent as they were last frame: a joint's back goes with it through time, so a turn at the head can't roll the tail.
+        private readonly Vector3[] backNow=new Vector3[NativeDeepEndBossLook.Spine],tanNow=new Vector3[NativeDeepEndBossLook.Spine];private bool backsReady;
         /// <summary>The mouth's opening 0..1, the grate's turn (rad), the fins' fold 0..1, the rails' spread.</summary>
         public float Iris=>iris.Value;public float GrateAngle=>grateAngle;public float FinFold=>fold.Value;public float RailSpread=>rail.Value;
         /// <summary>The head joint, its facing and speed (for the tool's bosscam and the camera).</summary>
@@ -46,7 +50,7 @@ namespace ChipArena.UnityConversion
 
         public DeepEndBossRig(){iris.Reset(0);spin.Reset(.5f);fold.Configure(.75f,.42f,0);rail.Configure(1.1f,.34f,0);mouthKick.Configure(1.4f,.5f,0);fold.Reset(.8f);rail.Reset(0);mouthKick.Reset(0);lookWeight.Reset(0);}
         /// <summary>Back to nothing (a new arena).</summary>
-        public void Clear(){lastTick=long.MinValue;lastNow=float.NaN;seenAction=-1;seenPhase=1;seenDied=float.NaN;seenSpawned=float.NaN;seenSurface=float.NaN;ringCount=0;Route=null;}
+        public void Clear(){lastTick=long.MinValue;lastNow=float.NaN;seenAction=-1;seenPhase=1;seenDied=float.NaN;seenSpawned=float.NaN;ringCount=0;Route=null;slamAt=float.NaN;backsReady=false;}
 
         private void RingAdd(Vector3 p)
         {
@@ -76,15 +80,37 @@ namespace ChipArena.UnityConversion
         }
         private void Tick(long tick,float surface,float cancelBefore)
         {
-            float t=tick/(float)TickRate,dt=1f/TickRate;Route.At(t,out var h,out var hv);RingAdd(h);
+            float t=tick/(float)TickRate,dt=1f/TickRate;Route.At(t,out var h,out var hv);h=OnTile(h,1.4f,surface);RingAdd(h);if(!float.IsNaN(slamAt)&&t>=slamAt-.14f&&t<=slamAt+.34f)Slam(surface);
             int li=(int)(ringEnd%RingSize);float head=ringS[li];
             float limit=h.Y>surface-1.5f||t<FreeUntil?Math.Max(SpeedLimit,hv.Length()):SpeedLimit;undulate+=dt*1.5f*(.55f+.45f*BossMath.Clamp01(hv.Length()/5f));if(undulate>4000)undulate-=BossMath.Tau*600;
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
                 float want=head-i*NativeDeepEndBossLook.Seg,s=arc[i];float hide=Hiddenness(raw[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
-                float next=Math.Min(want,s+BossMath.Lerp(limit,HiddenSpeed,hide)*dt);if(i>0)next=Math.Min(next,arc[i-1]-NativeDeepEndBossLook.Seg*.985f);if(next<s)next=s;arc[i]=next;
+                // The skull stays on the route (the move's contact is on its clock); the rest of the body is what pours along after it.
+                float next=i<4?want:Math.Min(want,s+BossMath.Lerp(limit,HiddenSpeed,hide)*dt);if(i>0)next=Math.Min(next,arc[i-1]-NativeDeepEndBossLook.Seg*.985f);if(next<s)next=s;arc[i]=next;
                 Trail(next,h,head,out raw[i],out rawN[i]);
                 if(raw[i].Y<surface-.15f)EmergedAt[i]=t;
+            }
+        }
+        /// <summary>A place on the body held up on dry tile: where there's no water over the deck it lies on the deck, never in it (it may be well under, out of sight, in the fight's first moments).</summary>
+        private static Vector3 OnTile(Vector3 p,float radius,float surface)
+        {
+            if(DeepEndBossPaths.Wet(p.X,p.Z,surface)||!NativeDeepEndArena.InRoom(p.X,p.Z))return p;float rest=NativeDeepEndArena.Floor(p.X,p.Z)+radius*.82f;if(p.Y<rest&&p.Y>rest-2.4f)p.Y=rest;return p;
+        }
+        // A joint on dry tile at its own radius: what the Slam laid at the head's height comes down to the tile as the body tapers; anything higher is in the air.
+        private static Vector3 Lying(Vector3 p,float radius,float surface)
+        {
+            p=OnTile(p,radius,surface);if(DeepEndBossPaths.Wet(p.X,p.Z,surface)||!NativeDeepEndArena.InRoom(p.X,p.Z))return p;
+            float rest=NativeDeepEndArena.Floor(p.X,p.Z)+radius*.82f;if(p.Y>rest&&p.Y<DeepEndBossPaths.DeckRide+.6f){float k=BossMath.Smooth((p.Y-DeepEndBossPaths.DeckRide)/.6f);p.Y=rest+(p.Y-rest)*k;}return p;
+        }
+        // The Flop's landing: the arc the leap left in the air comes down along its line (the trail itself, so it stays down): the whole body lands, not just the head.
+        private void Slam(float surface)
+        {
+            var d=slamB-slamA;float l=d.Length();if(l<.1f)return;d/=l;const float k=.3f;int li=(int)(ringEnd%RingSize);float from=ringS[li];
+            for(int n=0;n<Math.Min(ringCount,1000);n++)
+            {
+                int i=(int)((ringEnd-n)%RingSize);if(from-ringS[i]>NativeDeepEndBossLook.Length+4)break;var p=ringP[i];var q=new Vector2(p.X,p.Z)-slamA;float along=Vector2.Dot(q,d),across=Math.Abs(q.X*d.Y-q.Y*d.X);if(across>4.5f||along<-9||along>l+8)continue;
+                float rest=DeepEndBossPaths.RestY(p.X,p.Z,surface);if(p.Y>rest){p.Y+=(rest-p.Y)*k;ringP[i]=p;}
             }
         }
         // A fresh start at the clock: the trail laid from the route's last dozen seconds (a jump, a new arena, a late join).
@@ -103,11 +129,12 @@ namespace ChipArena.UnityConversion
             Origin=origin;Surface=surface;Time=now;FreeUntil=DeepEndBossView.At(v.spawned)?v.spawned+NativeDeepEndBossBeats.Current.Break+.2f:float.NegativeInfinity;
             bool own=route==null;Route=own?Own:route;
             if(own)Observe(v,now,surface);
+            if(v.Moving(now,out var slamMove,out _,out float slamHit)&&slamMove.Id=="flop"){slamAt=v.actionAt+slamHit;slamA=new Vector2(v.targetX,v.targetZ);slamB=new Vector2(v.aimX,v.aimZ);}
             long tick=(long)Math.Floor(now*TickRate);
             if(lastTick==long.MinValue||tick<lastTick||tick-lastTick>TickRate*2||ringCount==0)Rebuild(tick,surface);
             else for(long k=lastTick+1;k<=tick;k++)Tick(k,surface,float.NegativeInfinity);
             lastTick=tick;
-            int li=(int)(ringEnd%RingSize);Route.At(now,out var hp,out var hv);float headS=ringS[li]+Vector3.Distance(hp,ringP[li]);float extra=headS-ringS[li];
+            int li=(int)(ringEnd%RingSize);Route.At(now,out var hp,out var hv);hp=OnTile(hp,1.4f,surface);float headS=ringS[li]+Vector3.Distance(hp,ringP[li]);float extra=headS-ringS[li];
             // The death draws the whole body back along its trail.
             float retract=0;if(DeepEndBossView.At(v.diedAt))retract=Retract(now-v.diedAt);
             float sp=hv.Length();Speed=sp;
@@ -121,22 +148,25 @@ namespace ChipArena.UnityConversion
             // ---- the neck: the head's last joints bent toward where the mouth aims ----
             var headDir=SafeDir(pos[0]-pos[3],new Vector3(0,0,1));
             float lookW=0;Vector3 lookD=headDir;var backFlat=nrm[2];backFlat.Y=0;Aim(v,now,surface,pos[0],hasLook,lookAt,backFlat,ref lookW,ref lookD);
-            float dtl=Math.Max(0,dt);lookWeight.Step(lookW,.32f,dtl);
+            float dtl=Math.Max(0,dt);lookWeight.Step(lookW,lookHalf<.2f?.14f:.32f,dtl);
             if(!lookReady){lookQ.Reset(BossMath.LookRotation(lookD,Vector3.UnitY));lookReady=true;}
-            lookQ.Step(BossMath.LookRotation(lookD,Vector3.UnitY),.34f,dtl);var goalDir=BossMath.Rotate(lookQ.Value,new Vector3(0,0,1));
+            lookQ.Step(BossMath.LookRotation(lookD,Vector3.UnitY),lookHalf,dtl);var goalDir=BossMath.Rotate(lookQ.Value,new Vector3(0,0,1));
             float w=BossMath.Clamp01(lookWeight.Value);
             if(w>.001f)
             {
                 const int K=7;for(int i=K;i>0;i--)
                 {
-                    var d=SafeDir(pos[i-1]-pos[i],headDir);float share=w*BossMath.Smooth(1-(i-1)/(float)K);var nd=Vector3.Normalize(Vector3.Lerp(d,goalDir,share));pos[i-1]=pos[i]+nd*NativeDeepEndBossLook.Seg;
+                    // By an angle, never a blend of vectors: a look back along the body would pass through nothing and flip.
+                    var d=SafeDir(pos[i-1]-pos[i],headDir);float share=w*BossMath.Smooth(1-(i-1)/(float)K);var nd=Toward(d,goalDir,share,NeckBend);pos[i-1]=pos[i]+nd*NativeDeepEndBossLook.Seg;
                 }
             }
             // ---- the skull is rigid: its joints on one line ----
             var skull=SafeDir(pos[0]-pos[3],headDir);pos[1]=pos[3]+skull*(NativeDeepEndBossLook.Seg*2);pos[2]=pos[3]+skull*NativeDeepEndBossLook.Seg;pos[0]=pos[3]+skull*(NativeDeepEndBossLook.Seg*3);
+            for(int i=0;i<4;i++)pos[i]=OnTile(pos[i],NativeDeepEndBossLook.Radius(i*NativeDeepEndBossLook.Seg),surface);
             // ---- the frames ----
             float rollBase=RollOf(v,now,sp);
             int above=0;
+            Backs(pos,nrm,skull,Math.Max(0,dt));
             for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
             {
                 var a=pos[Math.Max(0,i-1)];var b=pos[Math.Min(NativeDeepEndBossLook.Spine-1,i+1)];var tan=SafeDir(a-b,skull);
@@ -152,7 +182,43 @@ namespace ChipArena.UnityConversion
             lastNow=now;
         }
         private readonly Vector3[] rawScratch=new Vector3[NativeDeepEndBossLook.Spine],rawNScratch=new Vector3[NativeDeepEndBossLook.Spine];
+        /// <summary>How far the neck's look bends one joint at most (rad).</summary>
+        public const float NeckBend=.5f;
+        private static Vector3 Toward(Vector3 d,Vector3 goal,float share,float most)
+        {
+            var axis=Vector3.Cross(d,goal);float al=axis.Length(),dot=Vector3.Dot(d,goal);if(al<1e-3f){if(dot>0)return d;axis=Vector3.Cross(d,Math.Abs(d.Y)<.9f?Vector3.UnitY:Vector3.UnitX);al=axis.Length();}
+            float ang=(float)Math.Atan2(al,dot)*share;if(ang>most)ang=most;return Vector3.Normalize(BossMath.Rotate(BossMath.AxisAngle(axis/al,ang),d));
+        }
+        // Which way is each joint's back. Its own back from last frame goes with it through its turn; where the body lies level it rights itself toward the sky, in time, and pointing straight up or down it holds; then a pass down and back up the
+        // spine pulls neighbours together. So neighbours can't differ by much (no candy-wrapper twists), nothing depends on the path's history, and a turn at the head can't roll the tail.
+        private static void Carried(Vector3 from,Vector3 tanFrom,Vector3 tanTo,out Vector3 back)
+        {
+            back=from;var axis=Vector3.Cross(tanFrom,tanTo);float al=axis.Length();if(al>1e-5f)back=BossMath.Rotate(BossMath.AxisAngle(axis/al,(float)Math.Atan2(al,Vector3.Dot(tanFrom,tanTo))),back);
+        }
+        private static Vector3 TurnedToward(Vector3 back,Vector3 want,Vector3 tan,float share)
+        {
+            float ang=(float)Math.Atan2(Vector3.Dot(Vector3.Cross(back,want),tan),Vector3.Dot(back,want));return BossMath.Rotate(BossMath.AxisAngle(tan,ang*share),back);
+        }
+        private void Backs(Vector3[] pos,Vector3[] nrm,Vector3 skull,float dt)
+        {
+            int n=NativeDeepEndBossLook.Spine;
+            for(int i=0;i<n;i++)
+            {
+                var tan=SafeDir(pos[Math.Max(0,i-1)]-pos[Math.Min(n-1,i+1)],skull);var sky=Vector3.UnitY-tan*tan.Y;float ul=sky.Length();Vector3 back;
+                if(backsReady){Carried(backNow[i],tanNow[i],tan,out back);back-=tan*Vector3.Dot(back,tan);float bl=back.Length();back=bl>.05f?back/bl:SafeUp(tan);}else back=ul>.05f?sky/ul:SafeUp(tan);
+                if(ul>.12f){sky/=ul;float k=1-(float)Math.Exp(-dt*(i<6?4.2f:2.2f)*BossMath.Smooth((ul-.12f)/.5f));back=TurnedToward(back,sky,tan,k);}
+                tanNow[i]=tan;backNow[i]=back;
+            }
+            for(int pass=0;pass<2;pass++)
+            {
+                for(int i=1;i<n;i++){Carried(backNow[i-1],tanNow[i-1],tanNow[i],out var want);want-=tanNow[i]*Vector3.Dot(want,tanNow[i]);float l=want.Length();if(l>.05f)backNow[i]=Vector3.Normalize(TurnedToward(backNow[i],want/l,tanNow[i],.34f));}
+                for(int i=n-2;i>=0;i--){Carried(backNow[i+1],tanNow[i+1],tanNow[i],out var want);want-=tanNow[i]*Vector3.Dot(want,tanNow[i]);float l=want.Length();if(l>.05f)backNow[i]=Vector3.Normalize(TurnedToward(backNow[i],want/l,tanNow[i],.34f));}
+            }
+            for(int i=0;i<n;i++)nrm[i]=backNow[i];backsReady=true;
+        }
         private static Vector3 SafeDir(Vector3 d,Vector3 fallback){float l=d.Length();return l>1e-4f?d/l:fallback;}
+        // The level side of the body at a tangent (a sway is sideways in the room, whatever the body's roll), and how level the body lies there: a sway fades out as the body stands up, so it never swaps sides at the vertical.
+        private static Vector3 Level(Vector3 tan,out float level){var side=Vector3.Cross(Vector3.UnitY,tan);float l=side.Length();level=BossMath.Smooth((l-.12f)/.4f);return l>1e-4f?side/l:new Vector3(1,0,0);}
         private static Vector3 SafeUp(Vector3 tan){var u=Vector3.UnitY-tan*tan.Y;float l=u.Length();return l>.05f?u/l:Vector3.Normalize(Vector3.UnitZ-tan*tan.Z);}
         /// <summary>The death's draw back along the trail (m) `age` s after dying: a settle while the mouth closes, then sinking, slowly gathering.</summary>
         public static float Retract(float age){float t=age-DeathSettle;if(t<=0)return 0;return Math.Min(70,.5f*1.15f*t*t+.75f*t);}
@@ -162,10 +228,10 @@ namespace ChipArena.UnityConversion
         {
             if(!v.live)return;
             if(DeepEndBossView.At(v.spawned)&&!(v.spawned==seenSpawned)){seenSpawned=v.spawned;DeepEndBossPaths.Arrival(Own,v.spawned,NativeDeepEndBossBeats.Current,v.yaw*BossMath.Deg);lastTick=long.MinValue;}
-            if(v.phase!=seenPhase&&DeepEndBossView.At(v.phaseAt)){seenPhase=v.phase;DeepEndBossPaths.PhaseChange(Own,v.phaseAt,surface,v.phase);}
-            if(DeepEndBossView.At(v.surfaceAt)&&!(v.surfaceAt==seenSurface)){seenSurface=v.surfaceAt;DeepEndBossPaths.Cruise(Own,v.surfaceAt,new Vector3(v.surfaceX,surface-DeepEndBossPaths.SwimDepth,v.surfaceZ),(uint)v.pathSeed);}
-            if(v.actionId!=seenAction&&v.Move>=0){seenAction=v.actionId;DeepEndBossPaths.Append(Own,v,surface);}
-            if(DeepEndBossView.At(v.diedAt)&&!(v.diedAt==seenDied)){seenDied=v.diedAt;DeepEndBossPaths.Death(Own,v.diedAt,surface,DeathSettle);}
+            // A move's legs run past its record's end and the rules start the next on their own clock: each new thing cuts the plan where the record says it began and carries on from the head as it is then.
+            if(v.phase!=seenPhase&&DeepEndBossView.At(v.phaseAt)){seenPhase=v.phase;Own.CutAt(v.phaseAt);DeepEndBossPaths.PhaseChange(Own,v.phaseAt,surface,v.phase);}
+            if(v.actionId!=seenAction&&v.Move>=0){seenAction=v.actionId;var m=NativeDeepEndBoss.Moves[v.Move];if(m.Id!="lull"&&m.Id!="whistle"){Own.CutAt(v.actionAt);DeepEndBossPaths.Append(Own,v,surface);}}
+            if(DeepEndBossView.At(v.diedAt)&&!(v.diedAt==seenDied)){seenDied=v.diedAt;Own.CutAt(v.diedAt);DeepEndBossPaths.Death(Own,v.diedAt,surface,DeathSettle);}
         }
         // The offsets on the trail: the Flop's lift, the Thrash's sweep, the travelling undulation, the stagger's shudder.
         private void Layers(float now,in DeepEndBossView v,float surface,float speed,Vector3[] pos,Vector3[] nrm)
@@ -173,25 +239,26 @@ namespace ChipArena.UnityConversion
             float seg=NativeDeepEndBossLook.Seg;Lift=0;
             // The body's axes at each joint come from its own neighbours.
             float swim=BossMath.Clamp01(speed/5f);
-            float lift=0,thrash=0;int thrashSide=1;
+            float thrash=0;int thrashSide=1;
             if(v.Moving(now,out var m,out float age,out float hit))
             {
-                if(m.Id=="flop"){float depth=-Math.Min(surface-DeepEndBossPaths.FlopDepth,-3f)+surface;lift=FlopLift(age,hit,depth,m.Strike,m.Follow+m.Recover);Lift=lift;}
                 if(m.Id=="thrash"){thrash=BossMath.Smooth(age/hit)*(1-BossMath.Smooth((age-hit-m.Strike-m.Follow)/m.Recover));thrashSide=v.actionId%2==0?1:-1;}
             }
-            if(lift>0)for(int i=0;i<NativeDeepEndBossLook.Spine;i++)
+            // On dry deck it lies on the deck, not in it; stranded there it fights to get off it.
+            for(int i=0;i<NativeDeepEndBossLook.Spine;i++)pos[i]=Lying(pos[i],NativeDeepEndBossLook.Radius(i*seg),surface);
+            if(DeepEndBossView.At(v.staggerAt)&&now>=v.staggerAt&&now<v.staggerAt+v.staggerSeconds+.5f&&v.staggerCause=="stranded")
             {
-                float s=i*seg;float near=LineWeight(pos[i],v);pos[i].Y+=lift*near*BossMath.Smooth((29f-s)/6f);var ld=new Vector3(v.aimX-v.targetX,0,v.aimZ-v.targetZ);float ll=ld.Length();if(ll>.1f){ld/=ll;pos[i]+=new Vector3(ld.Z,0,-ld.X)*(near*BossMath.Smooth(age/(hit*.6f))*1.05f*(float)Math.Sin(s*.26f+.7f));}
-                // On dry deck it lies on the deck (stranded), not in it.
-                float floor=NativeDeepEndArena.Floor(pos[i].X,pos[i].Z);float rest=floor+NativeDeepEndBossLook.Radius(s)*.82f;if(pos[i].Y<rest&&pos[i].Y>rest-1.6f&&floor>=-.01f)pos[i].Y+=(rest-pos[i].Y)*BossMath.Smooth((pos[i].Y-(rest-1.6f))/.8f);
+                float e=now-v.staggerAt,g=BossMath.Smooth(e/.25f)*(1-BossMath.Smooth((e-v.staggerSeconds)/.5f));
+                for(int i=2;i<NativeDeepEndBossLook.Spine;i++){var tan=SafeDir(pos[i-1]-pos[Math.Min(NativeDeepEndBossLook.Spine-1,i+1)],new Vector3(0,0,1));var side=Level(tan,out _);float k=BossMath.Clamp01(i/9f);pos[i]+=side*(g*.8f*k*(float)Math.Sin(i*.42f-e*7.5f));pos[i].Y+=g*.14f*k*Math.Abs((float)Math.Sin(i*.55f-e*6f));}
             }
             if(thrash>0)
             {
                 float a=age-.0f;float sweep=thrashSide*(float)Math.Sin(BossMath.Clamp01((age-m.Anticipation*.3f)/(m.Anticipation*.7f+m.Strike))*BossMath.Pi*.5f+(age>hit?(age-hit)*2.1f:0));
+                // The side at the root of the sweep, once: a side read from joints already moved would feed on itself down the tail.
+                var rootTan=SafeDir(pos[8]-pos[12],new Vector3(0,0,1));var rootSide=Level(rootTan,out _);
                 for(int i=10;i<NativeDeepEndBossLook.Spine;i++)
                 {
-                    float k=(i-10)/(float)(NativeDeepEndBossLook.Spine-11);var tan=SafeDir(pos[i-1]-pos[i],new Vector3(0,0,1));var side=SafeDir(Vector3.Cross(nrm[i],tan),new Vector3(1,0,0));
-                    pos[i]+=side*(thrash*sweep*7.5f*k*k)+new Vector3(0,thrash*1.2f*k,0);
+                    float k=(i-10)/(float)(NativeDeepEndBossLook.Spine-11);pos[i]+=rootSide*(thrash*sweep*7.5f*k*k)+new Vector3(0,thrash*1.2f*k,0);
                 }
             }
             // A slow sway that travels from the head to the tail, growing toward it; a low wave in the vertical, slower still.
@@ -199,8 +266,8 @@ namespace ChipArena.UnityConversion
             for(int i=4;i<NativeDeepEndBossLook.Spine;i++)
             {
                 float s=i*seg,k=BossMath.Smooth((s-3.5f)/10f);float grow=.22f+.5f*BossMath.Clamp01(s/30f);
-                var tan=SafeDir(pos[i-1]-pos[Math.Min(NativeDeepEndBossLook.Spine-1,i+1)],new Vector3(0,0,1));var side=SafeDir(Vector3.Cross(nrm[i],tan),new Vector3(1,0,0));
-                float ph=s*wave-undulate;pos[i]+=side*(k*grow*(.55f+.45f*swim)*(float)Math.Sin(ph))+new Vector3(0,k*.09f*(float)Math.Sin(ph*.61f+1.1f),0);
+                var tan=SafeDir(pos[i-1]-pos[Math.Min(NativeDeepEndBossLook.Spine-1,i+1)],new Vector3(0,0,1));var side=Level(tan,out float level);
+                float ph=s*wave-undulate;pos[i]+=side*(level*k*grow*(.55f+.45f*swim)*(float)Math.Sin(ph))+new Vector3(0,k*.09f*(float)Math.Sin(ph*.61f+1.1f),0);
             }
             // The stagger: a shudder running down the body.
             if(DeepEndBossView.At(v.staggerAt)&&now>=v.staggerAt&&now<v.staggerAt+v.staggerSeconds)
@@ -210,31 +277,21 @@ namespace ChipArena.UnityConversion
             }
             // The arrival's hang: while it is held at the top a slight breath.
         }
-        // How far a joint is under the Flop's line: all of it within the lane, nothing a body's width past it.
-        private static float LineWeight(Vector3 p,in DeepEndBossView v)
-        {
-            var a=new Vector2(v.targetX,v.targetZ);var b=new Vector2(v.aimX,v.aimZ);var d=b-a;float l=d.Length();if(l<.01f)return 1;d/=l;var q=new Vector2(p.X,p.Z)-a;float along=Vector2.Dot(q,d),across=Math.Abs(q.X*d.Y-q.Y*d.X);return BossMath.Smooth((3.5f-across)/1.5f)*BossMath.Smooth((along+11)/3f)*BossMath.Smooth((l+5-along)/3f);
-        }
-        /// <summary>The Flop's lift (m) at `age` of its record, from the depth it runs at: the whole body rising through the telegraph, a hang at its height over the water, falling onto the surface on the hit; lying there through its recovery; sinking away.</summary>
-        public static float FlopLift(float age,float hit,float depth,float strike,float recover)
-        {
-            const float height=4.7f;float up0=hit*.28f,top=hit*.74f;float rest=depth;
-            if(age<=up0)return 0;if(age<top){float u=(age-up0)/(top-up0);return (rest+height)*BossMath.Smoother(u);}
-            if(age<hit){float u=(age-top)/(hit-top);return rest+height*(1-u*u);}
-            return rest*(1-BossMath.Smooth((age-hit-strike)/Math.Max(.1f,recover)));
-        }
         // The mouth's aim, by what plays.
         private void Aim(in DeepEndBossView v,float now,float surface,Vector3 head,bool hasLook,Vector3 lookAt,Vector3 backFlat,ref float weight,ref Vector3 dir)
         {
+            lookHalf=.34f;
             if(v.Moving(now,out var m,out float age,out float hit))
             {
                 float end=v.duration>0?v.duration:m.Duration;
                 if(m.Id=="jet")
                 {
+                    // The sweep is the hit: the neck holds on the rule's own line, not behind it.
+                    lookHalf=.05f;
                     weight=BossMath.Smooth(age/(hit*.8f))*(1-BossMath.Smooth((age-(hit+m.Strike+m.Follow))/.5f));
                     dir=JetDir(v,age,hit,m,head,surface);return;
                 }
-                if(m.Id=="drain"){weight=.72f*BossMath.Smooth(age/hit)*(1-BossMath.Smooth((age-(hit+m.Strike))/.8f));float a=(now-v.actionAt)*.42f;dir=Vector3.Normalize(new Vector3((float)Math.Sin(a),-.24f,(float)Math.Cos(a)));return;}
+                if(m.Id=="drain"){weight=.72f*BossMath.Smooth(age/hit)*(1-BossMath.Smooth((age-(hit+m.Strike))/.8f));float a=(now-v.actionAt)*.78f+v.actionId;dir=Vector3.Normalize(new Vector3((float)Math.Sin(a),-.3f,(float)Math.Cos(a)));return;}
                 if(m.Id=="breach"&&age<hit+.3f){weight=.7f*BossMath.Smooth((age-(hit-.6f))/.4f);dir=Vector3.Normalize(new Vector3(dir.X*.3f,1,dir.Z*.3f));return;}
             }
             if(DeepEndBossView.At(v.phaseAt)&&now>=v.phaseAt&&now<v.phaseAt+NativeDeepEndBoss.PhaseChangeSeconds)
@@ -251,7 +308,7 @@ namespace ChipArena.UnityConversion
             float u=BossMath.Clamp01((age-hit)/Math.Max(.01f,m.Strike));float eased=BossMath.Smooth(u);
             var a=new Vector3(v.targetX-head.X,0,v.targetZ-head.Z);float ya=(float)Math.Atan2(a.X,a.Z);float sweep=m.Arc*BossMath.Deg*(float)(v.actionId%2==0?1:-1);
             float yaw=ya-sweep*.5f+sweep*eased;var flat=new Vector3((float)Math.Sin(yaw),0,(float)Math.Cos(yaw));
-            float drop=Math.Max(.5f,head.Y-surface)/Math.Max(8,Math.Min(16,a.Length()));
+            float drop=Math.Max(.5f,head.Y-surface)/Math.Max(8,Math.Min(26,a.Length()));
             return Vector3.Normalize(flat+new Vector3(0,-drop,0));
         }
         // The slow extra roll by what plays: rolled to show its flank on Last Lap, on its side when it is stranded or falling.
@@ -324,7 +381,7 @@ namespace ChipArena.UnityConversion
             if(v.Moving(now,out var m,out float age,out float hit))
             {
                 if(m.Id=="jet")return age<hit+m.Strike+m.Follow?BossMath.Smooth(age/(hit*.7f)):0;
-                if(m.Id=="drain")return age<hit+m.Strike?BossMath.Smooth(age/(hit*.8f)):0;
+                if(m.Id=="drain")return age<hit+m.Strike&&!(DeepEndBossView.At(v.cancelAt)&&now>=v.cancelAt)?BossMath.Smooth(age/(hit*.8f)):0;
                 if(m.Id=="breach")return age>=hit-.5f&&age<hit+.55f?1:0;
                 if(m.Id=="thrash")return .25f;
             }

@@ -18,6 +18,8 @@ namespace ChipArena.UnityConversion
         {
             if(id==null)return null;
             for(int i=0;i<Ids.Length;i++)if(Ids[i]==id)return Icons[i];
+            // The boss relics (Core NativeBossChips) name theirs.
+            {string relic=NativeBossChips.Icon(id);if(relic!=null)return relic;}
             // The Bombadier's set draws its own emblem (Core/NativeBombChips.Glyph, Runtime/NativeIcons.Draw).
             if(NativeBombChips.Is(id))return id;
             // The wild and ability chips name theirs in their rows.

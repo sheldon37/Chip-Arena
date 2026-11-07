@@ -81,15 +81,17 @@ namespace ChipArena.UnityConversion
         private static void Def(string id,int side,BossActionDef def,params HumSnap[] keys){int i=NativeHumBoss.MoveIndex(id);Defs[i]=def;Keys[i]=keys;Side[i]=side;}
         static HumBossMoves()
         {
-            // ---- Reach: the right arm folds back and up past its ear (the elbow high behind it, the fingers fanned), the body turning away from the side it will sweep to; then the long arm whips across 130
-            // degrees at chest height, fingers straight, dragging the shoulders round after it; the left hand stays planted. The head never leaves the target ----
+            // ---- Reach, thrown with the whole body (the owner, 2026-11-07: "make it look like they're actually using their body for momentum"). A small gather, then it coils: weight back over its right side and low, the shoulders
+            // wound far round to the right, the arm cocked behind it. The throw goes up the chain: the hips unwind first while the chest still faces back, then the chest, then the arm, which whips across 130 degrees at chest
+            // height, fingers straight; the arm's weight drags the whole body on round after it, lunging forward and down to the left, and it has to settle back off that. The head never leaves the target ----
             var m=NativeHumBoss.Move("reach");
-            Def("reach",1,new BossActionDef("reach",.12f,.3f,P(A,m.Wind-.1f,1,BossEase.InOut),P(S,.1f,2,BossEase.In,2.4f),P(C,m.Strike,3,BossEase.Linear),P(F,m.Follow,4,BossEase.OutBack,1.3f),P(R,m.Recover,5,BossEase.Settle,1.4f)),
+            Def("reach",1,new BossActionDef("reach",.12f,.34f,P(A,.2f,1,BossEase.InOut),P(A,m.Wind-.3f,2,BossEase.InOut),P(S,.1f,3,BossEase.In,2.6f),P(C,m.Strike,4,BossEase.InOut),P(F,m.Follow,5,BossEase.OutBack,1.5f),P(R,m.Recover,6,BossEase.Settle,1.3f)),
                 N(),
-                N().Lean(0,-.12f,-.1f,2,14,-3).Spine(6,18,-5).Reach(ArmR,2.35f,3.05f,-.95f,.5f,1,-.6f).Hands(0,-.7f,0,1).Head(0,-.1f,.05f).Shrug(.1f),
-                N().Lean(0,-.2f,.1f,5,8,1).Spine(10,8,2).Reach(ArmR,3.05f,2.0f,1.75f,.3f,1,-.5f).Hands(0,-1,0,1).Head(0,-.16f,.05f),
-                N().Lean(.05f,-.24f,.22f,7,-18,5).Spine(14,-20,5).Reach(ArmR,-1.95f,1.7f,2.85f,-.1f,1,-.4f).Hands(0,-1,0,.9f).Head(0,-.2f,.1f),
-                N().Lean(.05f,-.2f,.16f,6,-24,5).Spine(12,-26,5).Reach(ArmR,-2.65f,2.1f,1.95f,-.2f,1,-.4f).Hands(0,-.5f,0,.6f).Head(0,-.15f,.05f),
+                N().Lean(.08f,.05f,-.1f,-2,8,-2).Spine(-2,10,-2).Reach(ArmR,1.95f,2.3f,.15f,.5f,1,-.5f).Hands(0,-.4f,0,.6f).Head(0,0,0).Shrug(.06f),
+                N().Lean(.38f,-.4f,-.45f,-5,30,-7).Spine(5,36,-9).Reach(ArmR,2.55f,2.85f,-1.75f,.5f,1,-.7f).Hands(0,-.85f,0,1).Head(0,-.12f,0).Jaw(.35f).Shrug(.16f),
+                N().Lean(.12f,-.46f,.12f,6,6,-1).Spine(10,24,-4).Reach(ArmR,3.15f,1.75f,.9f,.3f,1,-.5f).Hands(0,-1,0,1).Head(0,-.16f,.05f).Jaw(.6f).Shrug(.08f),
+                N().Lean(-.28f,-.36f,.58f,11,-24,8).Spine(16,-30,8).Reach(ArmR,-2.2f,1.45f,2.6f,-.1f,1,-.4f).Hands(0,-1,0,.9f).Head(0,-.2f,.12f).Jaw(.85f),
+                N().Lean(-.36f,-.44f,.64f,13,-32,10).Spine(19,-38,10).Reach(ArmR,-2.95f,1.05f,.85f,-.3f,1,-.2f).Hands(0,-.5f,0,.6f).Head(0,-.18f,.08f,0,.85f).Jaw(.4f),
                 N());
             // ---- Stoop: it gathers itself up (the back presses the ceiling, both arms rising wide, the head dropping low and forward, in reach, the fingers fanned), then folds: both hands and the head down at its own feet.
             // The head comes down to 1.2 m at the hit. The head's weak point is open through the wind-up and the recovery ----
