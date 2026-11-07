@@ -321,7 +321,7 @@ namespace ChipArena.UnityConversion
                 U.Pill(b,C.Good(.16f*a),C.Good(.7f*a));NativeIcons.Draw(new Rect(b.x+14,b.center.y-6,12,12),"check",C.Good(a));
                 U.Text(new Rect(b.x+30,b.y,b.width-34,b.height),"SENT",9.5f,U.A(U.Mix(C.Good(),Color.white,.4f),a),TextAnchor.MiddleLeft,bold:true,tracking:.18f);U.Pop();
             }
-            else if(SocialButton(b,"INVITE",null,2,canInvite&&!account.SocialBusy&&usable,a,hid*3)&&NativeRoomCodes.Valid(roomCode)){account.InvitePlayer(p.id,roomCode);socialSent[p.id]=now;}
+            else if(SocialButton(b,"INVITE",null,2,canInvite&&!account.SocialBusy&&usable,a,hid*3)&&NativeRoomCodes.Valid(roomCode)){account.InvitePlayer(p.id,roomCode,()=>socialSent[p.id]=Time.unscaledTime);}
         }
         // A button: 0 accept (cyan, void ink), 1 ghost, 2 invite (a cyan outline filling on hover, the paper plane).
         private bool SocialButton(Rect r,string label,string icon,int style,bool enabled,float alpha,int id)

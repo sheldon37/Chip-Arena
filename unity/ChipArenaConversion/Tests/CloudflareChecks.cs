@@ -21,6 +21,10 @@ internal static class CloudflareChecks
     {
         Check(NativeRoomDirectory.Key("7km-r4p")=="UN7KMR4P","short codes map into the existing directory contract");
         Check(NativeRoomDirectory.Key("CAABCD")=="UNCAABCD","CA prefix remains part of a six-character code");
+        foreach(string room in new[]{"7KMR4P","CAABCD","UNABCD"})
+            Check(NativeRoomDirectory.TryInvitationCode(NativeRoomDirectory.Key(room),out var visible)&&visible==room,"accepted invitation removes exactly the directory namespace");
+        foreach(string invalid in new[]{null,"7KMR4P","AB7KMR4P","UNABC!23","UN7KMR4Pextra","https://evil.example"})
+            Check(!NativeRoomDirectory.TryInvitationCode(invalid,out _),"incompatible invitation cannot join a Unity room");
         foreach(string bad in new[]{"http://room.trycloudflare.com","https://room.trycloudflare.com.evil.test","https://evil.test/room.trycloudflare.com","https://user@room.trycloudflare.com","https://room.trycloudflare.com:1234","https://room.trycloudflare.com/path","https://room.trycloudflare.com?x=1","https://room.trycloudflare.com#x","https://127.0.0.1","https://trycloudflare.com","https://nested.room.trycloudflare.com"})
         {bool refused=false;try{NativeRoomDirectory.TunnelOrigin(bad);}catch(NativeOnlineRoomException){refused=true;}Check(refused,"untrusted directory origin rejected: "+bad);}
         var handler=new DirectoryHandler();using(var http=new HttpClient(handler))

@@ -7,6 +7,15 @@
 - **Checks:** `--hum-boss` (new: at the contact the palm faces the hand's travel, both hands, cos 0.96 at worst; contacts on the hit, no allocation), `--fallen-boss` (new: no stance while walking, full at rest, eased; the old stance takes none; the carry's and the stance's source pins). Seen in real Boss Battles in the Editor (the local tool's `bhold=1` now holds NOCTIEL too, `bossrig=fbRoot` frames it): NOCTIEL at rest from the front, side and three-quarter, the claymore out to its right and down with its point on the water, a leg set back in the stance; THE HUM's swipe cocked high just before the hit and landing open-handed, flat on the pilot after it.
 - **Not run:** no person has played it; no two-client run (presentation only).
 
+## 2026-11-07 — Astra: Unity invitation delivery and confirmed SENT
+
+- Branch `codex/invite-delivery-confirmation`, base shared `6510c449`. Owner sees SENT but recipients receive no invitation.
+- Confirmed cause: NativeRoomDirectory registers six-character rooms under `UN` + code, but InvitePlayer sent the raw code. The service checks the exact directory key and rejects it with 409. The UI marked SENT before that response.
+- Send now uses NativeRoomDirectory.Key; accepted keys are strictly decoded back to six characters before JoinRoom. Both sender and recipient must update. No account worker or database change needed. SENT runs only after a successful response with ok:true; action status survives background polling and transient failures retain the cached inbox.
+- No visual redesign, gameplay/animation timing, hitboxes, saves or protocol changes. Existing UI callback wiring only.
+- Verification: standalone Node 24 SQLite regression PASS (old raw-code rejection, registered-key send, private inbox, accept, one-use); managed Cloudflare directory checks PASS (includes namespace round trips and invalid keys); SocialPanelChecks 13 PASS; pinned Unity 6000.3.24f1 Input System, Player, Runtime and Editor reference compilation PASS; git diff --check PASS. SDK CLI cannot inspect process start times here, so managed checks used its installed Roslyn compiler directly with .NET 8 reference assemblies. Updated the existing accounts integration fixture to use realistic UN keys; full accounts/full managed suites not run locally.
+- Windows two-player end-to-end acceptance and actual update publication remain unverified. No Site/live release. Shared merge and existing builder sync follow; PR carries delivery receipts.
+
 ## 2026-11-07 — Claude: the bosses' animation pass (owner requests): a straight Hydro Jet, THE HUM's swipe and flip, NOCTIEL's walk and idle
 
 - Branch `claude/boss-anim-pass`, base `claude/boss-room-guide` (`4fac7103`).
