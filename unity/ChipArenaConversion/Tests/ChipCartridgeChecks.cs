@@ -38,7 +38,7 @@ namespace ChipArena.UnityConversion
             // The scheme: GameContent's rarities exactly, and the machines' lamps.
             using(var doc=JsonDocument.Parse(File.ReadAllText(Path.Combine(root,"Assets/Conversion/Resources/GameContent.json"))))
             {
-                var rarities=doc.RootElement.GetProperty("rarities").EnumerateArray().ToList();Check(rarities.Count==tiers.Length,"one look per rarity ("+rarities.Count+")");
+                var rarities=doc.RootElement.GetProperty("rarities").EnumerateArray().ToList();Check(rarities.Count==tiers.Count(t=>!NativeBossChips.IsTier(t)),"one look per rarity ("+rarities.Count+"; the boss relics' tiers join the content with their rows, docs/BOSS-CHIPS.md)");
                 foreach(var r in rarities){string id=r.GetProperty("id").GetString();int hex=Convert.ToInt32(r.GetProperty("color").GetString().TrimStart('#'),16);Check(tiers.Contains(id),id+" has a look");Check(NativeChipCartridge.Rarity(id)==hex,id+" is #"+hex.ToString("x6"));Check(NativeChipCartridge.Of(id).Rarity==hex,id+"'s look carries its colour");}
             }
             for(int i=0;i<6;i++)Check(NativeMachineModels.RarityColors[i]==NativeChipCartridge.Rarity(tiers[i]),tiers[i]+" lamp matches");
