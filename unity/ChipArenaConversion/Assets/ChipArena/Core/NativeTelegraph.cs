@@ -142,6 +142,24 @@ namespace ChipArena.UnityConversion
             return new Vector2(cs*d.X-sn*d.Z,sn*d.X+cs*d.Z);
         }
         private static float Clamp01(float x)=>x<0?0:x>1?1:x;
+
+        // ---- the Siren's kit (a pilot's, or the horde Siren's through her possessed add; Runtime NativeSiren.cs) ----
+        /// <summary>A Siren field's warning at now: an eruption filling to its burst (its whole radius, SirenArea at At + 1 s); Black
+        /// Rain's radius while drops can land in it; a fire patch's radius and the 0.3 m the burn reaches past it, while it burns
+        /// (softer: there can be many). False when the field has no warning now.</summary>
+        public static bool SirenField(string kind,Vector3 at,float radius,float bornAt,float until,float now,out Spec s)
+        {
+            s=new Spec{Shape=Circle,Style=Siren,Fill=FromEdge,At=at,A=radius,Seed=(int)(bornAt*16)};
+            switch(kind)
+            {
+                case "eruption":return Timed(ref s,bornAt,bornAt+EruptionBurst,now,.1f);
+                case "rain":s.Strength=.75f;return Timed(ref s,bornAt,bornAt,now,until-bornAt);
+                case "hellfire":case "trail":s.A=radius+.3f;s.Strength=.5f;return Timed(ref s,bornAt,bornAt,now,until-bornAt);
+                default:return false;
+            }
+        }
+        /// <summary>An eruption's cast to its burst (Runtime NativeSiren: Next = At + 1).</summary>
+        public const float EruptionBurst=1;
     }
 
     /// <summary>A frame's warnings, gathered by any presenter and drawn once (allocation free once sized).</summary>

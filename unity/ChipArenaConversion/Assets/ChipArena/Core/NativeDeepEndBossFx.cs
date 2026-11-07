@@ -133,7 +133,7 @@ namespace ChipArena.UnityConversion
             BodyLamps(rig,v,s,now,eye,right,up,low);
             Sheets(rig,s,waves,now,low);
             Collars(rig,s,waves,now);
-            Telegraphs(rig,v,s,waves,now,low);
+            Marks(rig,v,s,waves,now,low);Warnings(rig,v,s,waves,now);
             Moves(rig,v,s,waves,now,low,reduced);
             Arrival(rig,v,s,waves,now,low);
             Debris(rig,v,s,waves,now,low);
@@ -299,7 +299,48 @@ namespace ChipArena.UnityConversion
         }
         private void Mist(float now,Vector3 p,Vector3 vel,float scatter,int count,float life,float s0,float s1,float a,float t0,float span,int key,float floor)=>Vfx.SmokeBurst(now,p,vel,scatter,.35f,count,life,s0,s1,WaterWhite,a,t0,span,Seed,key,lit:.65f,floor:floor);
         // The telegraphs: the water tells you first.
-        private void Telegraphs(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,bool low)
+        // ---------------- the attack warnings on the shared renderer (Core NativeTelegraph; docs/TELEGRAPHS.md) ----------------
+        /// <summary>This frame's warnings, each its rule's own geometry and time (NativeBackroomsBossRules.Contacts), in the water look;
+        /// the presenter hands them to the shared renderer.</summary>
+        public readonly NativeTelegraphList Telegraphs=new NativeTelegraphList(96);
+        /// <summary>The warnings this frame (the old water marks are the moves' own tells and stay).</summary>
+        public int Telegraph;
+        private void Warnings(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now)
+        {
+            Telegraphs.Clear();Telegraph=0;if(!v.Moving(now,out var m,out float age,out float hit))return;
+            if(DeepEndBossView.At(v.cancelAt)&&v.cancelAt>=v.actionAt-1e-3f&&now>=v.cancelAt)return;
+            var o=rig.Origin;float start=v.actionAt,at=v.actionAt+hit;var tp=new Vector3(v.targetX,0,v.targetZ);
+            float tide=s.Tide;Vector3 On(float x,float z)=>o+new Vector3(x,Math.Max(SurfaceAt(waves,x,z),tide)+.08f,z);
+            void W(NativeTelegraph.Spec sp,float from,float to,float live){sp.Style=NativeTelegraph.Water;sp.Strength=1;if(NativeTelegraph.Timed(ref sp,from,to,now,live)&&Telegraphs.Add(sp))Telegraph++;}
+            float Yaw(float dx,float dz)=>(float)(Math.Atan2(dx,dz)*180/Math.PI);
+            switch(m.Id)
+            {
+                // Breach: the rule's 3.2 m round the locked spot, its 0.25 s.
+                case "breach":W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=On(tp.X,tp.Z),A=m.Radius,Seed=31},start,at,m.Strike);break;
+                // Belly Flop: its body's length from where it was to where it lands, 2 m either side and past each end.
+                case "flop":{var e=new Vector3(v.aimX,0,v.aimZ);var d=e-tp;float len=d.Length();if(len<.1f)break;float hw=m.Width*.5f;
+                    W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=On(tp.X,tp.Z),Yaw=Yaw(d.X,d.Z),A=len+hw,B=hw,C=hw,Seed=32},start,at,m.Strike);break;}
+                // Thrash: 5 m round it.
+                case "thrash":W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromCentre,At=On(v.x,v.z),A=m.Radius,Seed=33},start,at,m.Strike);break;
+                // The Lull: 1.8 m where the hands rise, live while they hold (1.8 s).
+                case "lull":W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=On(tp.X,tp.Z),A=m.Radius,Seed=34},start,at,1.8f);break;
+                // The Drain: 2.6 m round the drain itself, live its 4 s (the pull toward it is no hit).
+                case "drain":W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=On(0,0),A=m.Radius,Seed=35},start,at,4);break;
+                // Seiche: the front across the whole pool on its aim, 1.3 m either side, crossing and coming back (11.4 m/s, 7 s).
+                case "seiche":{var dir=new Vector3(v.aimX,0,v.aimZ);if(dir.LengthSquared()<1e-4f)break;dir=Vector3.Normalize(dir);float t=Math.Max(0,now-at),travel=t*11.4f,wave=travel>40?60-travel:travel-20;var c=dir*wave;
+                    W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.FromEdge,At=On(c.X,c.Z),Yaw=Yaw(dir.Z,-dir.X),A=NativeDeepEndArena.Half+2,B=1.3f,C=NativeDeepEndArena.Half+2,Seed=36},start,at,7);break;}
+                // Hydro Jet: from the mouth along the sweep, 1 m either side, 30 m (the rule's own line, recomputed as it sweeps).
+                case "jet":{var head=rig.MouthAt-o;var d=DeepEndBossRig.JetDir(v,Math.Max(age,hit),hit,m,head,s.Tide);var flat=new Vector3(d.X,0,d.Z);float l=flat.Length();if(l<1e-3f)break;
+                    W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=On(head.X,head.Z),Yaw=Yaw(flat.X,flat.Z),A=m.Reach*l+1,B=m.Width*.5f,C=1,Seed=37},start,at,2.2f);break;}
+                // Last Lap: the body itself, where it breaks the surface, 1.6 m either side of each joint, while it laps (6 s).
+                case "lap":{float water=o.Y+s.Tide;
+                    for(int j=1;j<NativeDeepEndBossLook.Spine;j++){var a=rig.Shown.Position[j-1];var q=rig.Shown.Position[j];if(Math.Max(a.Y,q.Y)+NativeDeepEndBossLook.Radius(j*NativeDeepEndBossLook.Seg)<water-.6f)continue;
+                        var d=new Vector3(q.X-a.X,0,q.Z-a.Z);float len=d.Length();float hw=m.Width*.5f;
+                        W(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.FromEdge,At=On(a.X-o.X,a.Z-o.Z),Yaw=len>1e-3f?Yaw(d.X,d.Z):0,A=len+hw,B=hw,C=hw,Seed=40+j},start,at,6);}
+                    break;}
+            }
+        }
+        private void Marks(DeepEndBossRig rig,in DeepEndBossView v,in DeepEndBossStage s,DeepEndWaves waves,float now,bool low)
         {
             if(!v.Moving(now,out var m,out float age,out float hit))return;var o=rig.Origin;var t=new Vector3(v.targetX,0,v.targetZ);
             switch(m.Id)

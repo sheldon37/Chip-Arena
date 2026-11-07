@@ -33,6 +33,8 @@ namespace ChipArena.UnityConversion
         public float spawned;
         public int phase;public float phaseAt;
         public string action;public int actionId;public float actionAt,hitAt,duration,cancelAt;public int actionTarget;
+        /// <summary>Where the move is aimed (the authority's actionYaw: the swipes' arcs), in degrees.</summary>
+        public float actionYaw;
         public float laneX0,laneZ0,laneX1,laneZ1;
         public int holdTarget,holdSide;public float holdUntil;
         public float staggerAt,staggerSeconds,staggerPushX,staggerPushZ;public string staggerCause;

@@ -109,7 +109,7 @@ namespace ChipArena.UnityConversion
             for(int i=acts.Length-1;i>=0;i--)
             {
                 var a=acts[i];if(p<a.At)continue;if(p>a.At+a.Dur+1.5f)break;
-                v.action=a.Id;v.actionId=1000+i+(int)Math.Round(baseAt*4)%997*100;v.actionAt=baseAt+a.At;v.hitAt=baseAt+a.Hit;v.duration=a.Dur;v.actionTarget=a.Target;target=Pilots[a.Target];
+                v.action=a.Id;v.actionId=1000+i+(int)Math.Round(baseAt*4)%997*100;v.actionAt=baseAt+a.At;v.hitAt=baseAt+a.Hit;v.duration=a.Dur;v.actionTarget=a.Target;target=Pilots[a.Target];v.actionYaw=yaw;
                 if(!float.IsNaN(a.LaneX0)){v.laneX0=a.LaneX0;v.laneZ0=a.LaneZ0;v.laneX1=a.LaneX1;v.laneZ1=a.LaneZ1;}
                 if(a.Id=="doors"){v.holdTarget=a.Target;v.holdSide=a.HoldSide;v.holdUntil=baseAt+a.Hit+.25f+1.5f;}
                 if(a.Id=="live-rail"){v.liveAt=baseAt+a.Hit;v.liveUntil=baseAt+a.Hit+NativeStationBoss.Move("live-rail").Strike;}

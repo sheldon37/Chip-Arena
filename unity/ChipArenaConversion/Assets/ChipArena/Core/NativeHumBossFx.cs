@@ -25,6 +25,19 @@ namespace ChipArena.UnityConversion
         public Vector2[] StandIns;
         /// <summary>This frame's counts (budget lines, checks).</summary>
         public int Telegraph,Bursts,Tears;
+        /// <summary>This frame's attack warnings (Core NativeTelegraph; docs/TELEGRAPHS.md), each its rule's own geometry and time
+        /// (NativeBackroomsBossRules.Contacts), in THE HUM's fluorescent look; the presenter hands them to the shared renderer.
+        /// Telegraph counts them.</summary>
+        public readonly NativeTelegraphList Telegraphs=new NativeTelegraphList(64);
+        private float tNow;
+        private void Warn(NativeTelegraph.Spec s,float start,float hit,float live=0)
+        {
+            s.Style=NativeTelegraph.Fluorescent;if(s.Strength<=0)s.Strength=1;
+            if(NativeTelegraph.Timed(ref s,start,hit,tNow,live)&&Telegraphs.Add(s))Telegraph++;
+        }
+        private static float YawOf(float dx,float dz)=>(float)(Math.Atan2(dx,dz)*180/Math.PI);
+        // A move the authority called off (a stagger) hits nothing: its warning goes with it.
+        private static bool Called(in HumBossView v,float t)=>HumBossView.At(v.cancelAt)&&v.cancelAt>=v.actionAt-1e-3f&&t>=v.cancelAt;
         private Vector3 eye,camR,camU;private float quality;private bool low,reduced;private uint vseed;private float floorY;
         private readonly double[] pc=new double[SortMax*12],pk=new double[SortMax];private readonly float[] pcol=new float[SortMax*4];private readonly int[] pidx=new int[SortMax];private readonly byte[] pmode=new byte[SortMax];private int pn;
         // Footprints: where it stepped, ring buffer filled from the rig's landings.
@@ -36,7 +49,7 @@ namespace ChipArena.UnityConversion
 
         public void Build(HumBossRig rig,in HumBossView v,HumBossStage st,float t,double eyeX,double eyeY,double eyeZ,double rightX,double rightY,double rightZ,double upX,double upY,double upZ,float effects,bool lowTier,bool reducedEffects)
         {
-            Quads.Clear();pn=0;LightCount=0;Telegraph=Bursts=Tears=0;Vfx.Begin(effects,lowTier);Surface.Begin();
+            Quads.Clear();Telegraphs.Clear();tNow=t;pn=0;LightCount=0;Telegraph=Bursts=Tears=0;Vfx.Begin(effects,lowTier);Surface.Begin();
             for(int i=0;i<Tube.Length;i++)Tube[i]=1;HeadTubes=DiffuserU=DiffuserL=Ballast=1;
             if(rig==null||!rig.Visible||!v.live)return;
             eye=new Vector3((float)eyeX,(float)eyeY,(float)eyeZ);camR=new Vector3((float)rightX,(float)rightY,(float)rightZ);camU=new Vector3((float)upX,(float)upY,(float)upZ);quality=effects<0?0:effects>1?1:effects;low=lowTier;reduced=reducedEffects;
@@ -44,7 +57,7 @@ namespace ChipArena.UnityConversion
             patchMask=v.shiftMask;DustC=DustFull*(.12f+.88f*Math.Min(1,st.Air));Surface.Air=.1f+.9f*Math.Min(1,st.Air);
             Levels(rig,v,st,t);
             // Telegraphs first (never thinned), then the rest.
-            Rows(v,st,t);Lane(rig,v,t);Stoop(rig,v,t);ReachArc(rig,v,t);CutArc(rig,v,t);FallThrough(rig,v,t);Ring(rig,v,t);
+            Rows(v,st,t);Lane(rig,v,t);AimedWarnings(v,t);Stoop(rig,v,t);ReachArc(rig,v,t);CutArc(rig,v,t);FallThrough(rig,v,t);Ring(rig,v,t);
             HeadGlow(rig,v,st,t);TubesFx(rig,v,t);BallastFx(rig,v,t);Arrival(rig,v,st,t);WallHand(rig,v,t);Voices(rig,v,t);PhaseFx(rig,v,st,t);Steps(rig,v,t);Drips(rig,v,t);GridDust(rig,st,t);Slip(rig,v,st,t);Clip(rig,v,t);Death(rig,v,t);Lights(rig,v,st,t);
             if(StandIns!=null&&!rig.Arriving)for(int i=0;i<StandIns.Length;i++){float on=i==v.actionTarget?.5f:.16f;RingFlat(new Vector3(StandIns[i].X,floorY+.015f,StandIns[i].Y),.42f,.025f,on,on,on*.9f,.8f);}
             Flush();
@@ -101,17 +114,11 @@ namespace ChipArena.UnityConversion
             {
                 if((mask>>r&1)==0)continue;float line=NativeHumArena.RowLine(Room,axis,r);
                 var a=axis==0?new Vector3(Room.MinX+.3f,floorY,line):new Vector3(line,floorY,Room.MinZ+.3f);var b=axis==0?new Vector3(Room.MaxX-.3f,floorY,line):new Vector3(line,floorY,Room.MaxZ-.3f);
-                if(k<0)
+                // The row's lane, the rule's own 0.7 m either side of the fixtures' line the length of the room, filling in to it as the
+                // lamps load; live for the burst's 0.1 s (NativeBackroomsBossRules: |row - line| <= 0.7 from rowAt).
                 {
-                    // The lane's light on the carpet: the danger is lit: stand between them.
-                    float u=(k+m.Wind)/m.Wind,pulse=reduced?1:.8f+.2f*(float)Math.Sin(t*19);int q0=Quads.Count;
-                    StripFlat(a,b,floorY+.02f,half,R(WarnHex)*.32f*u*pulse,G(WarnHex)*.3f*u*pulse,B(WarnHex)*.2f*u*pulse,.85f);
-                    StripFlat(a,b,floorY+.024f,half*.42f,.5f*u*u,.46f*u*u,.28f*u*u,.9f);
-                    Telegraph+=Quads.Count-q0;
-                }
-                else if(k<.22f)
-                {
-                    float f=1-k/.22f;StripFlat(a,b,floorY+.03f,half*1.05f,R(DangerHex)*.7f*f,G(DangerHex)*.5f*f,B(DangerHex)*.7f*f,.95f);StripFlat(a,b,floorY+.033f,half*.5f,.75f*f,.6f*f,.4f*f,.95f);Telegraph+=2;
+                    var mid=(a+b)*.5f;float halfLen=(b-a).Length()*.5f+.3f;
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.FromEdge,At=new Vector3(mid.X,floorY,mid.Z),Yaw=axis==0?90:0,A=halfLen,B=half,C=halfLen,Seed=key*7+r},at-m.Wind,at,.1f);
                 }
                 // The scorch that stays till the lamps come back (a dark lane of burnt carpet under each fixture).
                 if(k>=0&&k<HumBossStage.RowDark){float fade=(1-BossMath.Smooth((k-HumBossStage.RowDark+1.2f)/1.2f))*BossMath.Smooth(k/.05f);
@@ -152,15 +159,13 @@ namespace ChipArena.UnityConversion
             float hit=HumBossView.At(v.hitAt)?v.hitAt:v.actionAt+m.Wind;float a=t-v.actionAt,wind=hit-v.actionAt;
             var p0=new Vector3(v.laneX0,floorY,v.laneZ0);var p1=new Vector3(v.laneX1,floorY,v.laneZ1);var d=p1-p0;float len=d.Length();if(len<.1f)return;var dir=d/len;var side=new Vector3(dir.Z,0,-dir.X);
             float life=a<wind?BossMath.Smooth(a/.2f):1-BossMath.Smooth((a-wind-m.Strike*.6f)/.3f);
-            if(life>0)
+            // Its lane: the rule's capsule round the dash (half its 3 m width either side, and past each end), filling along the way it
+            // goes, live while it travels (1.2 s); in phase 3 it comes back down the same lane from 2.4 s.
+            if(!Called(v,t))
             {
-                // Its width: amber edges filling toward the far end as it comes; red on the strike.
-                float u=BossMath.Clamp01(a/wind);int q0=Quads.Count;float c=a<wind?1:.0f;
-                float rr=a<wind?R(WarnHex):R(DangerHex),gg=a<wind?G(WarnHex):G(DangerHex),bb=a<wind?B(WarnHex):B(DangerHex);
-                StripFlat(p0+side*(m.Width*.5f),p1+side*(m.Width*.5f),floorY+.02f,.05f,rr*life,gg*life,bb*life,.95f);StripFlat(p0-side*(m.Width*.5f),p1-side*(m.Width*.5f),floorY+.02f,.05f,rr*life,gg*life,bb*life,.95f);
-                StripFlat(p0,p0+dir*(len*u),floorY+.018f,m.Width*.5f,rr*.16f*life,gg*.16f*life,bb*.1f*life,.85f);
-                for(int i=0;i<7;i++){float s=(i+.5f)/7;if(s>u)break;var c0=p0+dir*(len*s);Chevron(c0,dir,side,m.Width*.32f,rr*.5f*life,gg*.5f*life,bb*.5f*life);}
-                Telegraph+=Quads.Count-q0;
+                float hw=m.Width*.5f;
+                Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=p0,Yaw=YawOf(dir.X,dir.Z),A=len+hw,B=hw,C=hw,Seed=11},v.actionAt,hit,1.2f);
+                if(v.phase==3)Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Lane,Fill=NativeTelegraph.Along,At=p1,Yaw=YawOf(-dir.X,-dir.Z),A=len+hw,B=hw,C=hw,Seed=12},hit+1.2f,hit+2.4f,1.2f);
             }
             // The grid's dust falls ahead of it, down the lane, in sequence.
             for(int i=0;i<6;i++){float s=(i+.5f)/6;var at=p0+dir*(len*s)+new Vector3(0,3.9f,0);float when=v.actionAt+wind*s*.95f;Vfx.SmokeBurst(t,at,new Vector3(0,-.4f,0),.8f,.0f,4,2.2f,.2f,1.0f,DustC,.26f,when,.3f,vseed,500+i,0,floorY);}
@@ -187,36 +192,43 @@ namespace ChipArena.UnityConversion
                 var r=rig.Root;for(int i=0;i<Budget(12);i++){float k=H(i,3);var c=r+dir*(-1.5f-5*k)+side*((H(i,4)-.5f)*2.8f)+new Vector3(0,.5f+3f*H(i,5),0);Vfx.Spark(c,dir*24,LampWarm*(.25f+.2f*H(i,6)),.008f,.3f,.06f,.2f,0,i);}
             }
         }
-        private void Chevron(Vector3 c,Vector3 dir,Vector3 side,float w,float r,float g,float b)
-        {
-            var tip=c+dir*.3f;StripFlat(c-side*w,tip,floorY+.022f,.05f,r,g,b,.9f);StripFlat(c+side*w,tip,floorY+.022f,.05f,r,g,b,.9f);
-        }
         // ---------------- Stoop: a circle at its own feet ----------------
         private void Stoop(HumBossRig rig,in HumBossView v,float t)
         {
             if(rig.ActMove<0||NativeHumBoss.Moves[rig.ActMove].Id!="stoop")return;var m=NativeHumBoss.Moves[rig.ActMove];var a=rig.Act;var c=rig.Root;c.Y=floorY+.02f;
-            int q0=Quads.Count;float s=a.HitAt>0?a.Age/a.HitAt:1;
-            if(s<1){float pulse=.6f+.4f*(reduced?1:(float)Math.Sin(a.Age*17));RingFlat(c,m.Radius,.09f,R(WarnHex)*pulse,G(WarnHex)*pulse,B(WarnHex)*pulse,.9f);RingFlat(c,Math.Max(.1f,m.Radius*s),.05f,R(WarnHex)*.8f,G(WarnHex)*.8f,B(WarnHex)*.6f,.9f);}
-            else{float k=(a.Age-a.HitAt)/.3f;if(k<1){RingFlat(c,m.Radius*(.7f+.32f*k),.2f,R(DangerHex)*(1-k),G(DangerHex)*(1-k),B(DangerHex)*(1-k),.95f);}
+            float s=a.HitAt>0?a.Age/a.HitAt:1;
+            if(s>=1){
                 float hit=a.Age-a.HitAt;Vfx.SmokeBurst(t,new Vector3(c.X,floorY+.1f,c.Z),Vector3.Zero,3.2f,.25f,14,1.4f,.35f,1.5f,DustC,.42f,v.hitAt,.08f,vseed,600,0,floorY);if(hit<.9f)for(int i=0;i<2;i++){var h=rig.Shown.Position[i==0?NativeHumBossLook.HandL:NativeHumBossLook.HandR];Vfx.RubbleBurst(t,new Vector3(h.X,floorY+.05f,h.Z),Vector3.UnitY,.7f,3.2f,5,1.4f,v.hitAt,.05f,new Vector3(.06f,.05f,.04f),vseed,610+i,0,floorY);}}
-            Telegraph+=Quads.Count-q0;
         }
         // ---------------- Reach: the arc swept ahead of it; a wind trail off the fingers ----------------
         private void ReachArc(HumBossRig rig,in HumBossView v,float t)
         {
             if(rig.ActMove<0||NativeHumBoss.Moves[rig.ActMove].Id!="reach")return;var m=NativeHumBoss.Moves[rig.ActMove];var a=rig.Act;
-            int q0=Quads.Count;float s=a.HitAt>0?a.Age/a.HitAt:1;var f=BossMath.Forward(rig.Yaw);
-            if(s<1){float u=BossMath.Smooth(s*1.3f);ArcFlat(rig.Root,rig.Yaw,m.Reach,m.Arc,R(WarnHex)*.13f*u,G(WarnHex)*.12f*u,B(WarnHex)*.07f*u,.8f,.05f,4.5f);}
-            else{float k=(a.Age-a.HitAt)/m.Strike;if(k<1.1f)ArcFlat(rig.Root,rig.Yaw,m.Reach,m.Arc*BossMath.Clamp01(k)*rig.ActSide,R(DangerHex)*.2f,G(DangerHex)*.2f,B(DangerHex)*.2f,.8f,.06f,3.2f);
+            float s=a.HitAt>0?a.Age/a.HitAt:1;
+            if(s>=1){float k=(a.Age-a.HitAt)/m.Strike;
                 // Fingers' trail through the sweep.
                 if(k<1.3f){var hand=rig.Shown.Position[rig.ActSide>0?NativeHumBossLook.HandR:NativeHumBossLook.HandL];Vfx.SmokeBurst(t,hand,BossMath.Right(rig.Yaw)*(-rig.ActSide*3f),.3f,.1f,5,.8f,.12f,.45f,DustC,.22f,v.hitAt,m.Strike,vseed,620,0,floorY);}}
-            Telegraph+=Quads.Count-q0;
+        }
+        // ---------------- the warnings of the moves the authority aims (from the view: its times, its origin, its aim) ----------------
+        private void AimedWarnings(in HumBossView v,float t)
+        {
+            if(v.action==null||!HumBossView.At(v.actionAt)||!HumBossView.At(v.hitAt)||Called(v,t))return;var o=HumBossView.At(v.laneX0)?new Vector3(v.laneX0,floorY,v.laneZ0):new Vector3(v.x,floorY,v.z);
+            switch(v.action)
+            {
+                // Reach: the rule's 6 m, 130 degree arc from where it stood, on its aim; live through the strike.
+                case "reach":{var m=NativeHumBoss.Move("reach");Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Cone,Fill=NativeTelegraph.FromCentre,At=o,Yaw=v.actionYaw,A=m.Reach,B=m.Arc*.5f,Seed=21},v.actionAt,v.hitAt,m.Strike);break;}
+                // Stoop: the rule's 4.5 m round its feet.
+                case "stoop":{var m=NativeHumBoss.Move("stoop");Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromCentre,At=o,A=m.Radius,Seed=22},v.actionAt,v.hitAt,m.Strike);break;}
+                // Lights Out: its 3.5 m half circle where it stands when the tubes come back, shown only in their last 0.25 s.
+                case "cut":{var m=NativeHumBoss.Move("cut");Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Cone,Fill=NativeTelegraph.FromCentre,At=new Vector3(v.x,floorY,v.z),Yaw=v.yaw,A=m.Reach,B=m.Arc*.5f,Seed=23},v.hitAt-.25f,v.hitAt,m.Strike);break;}
+                // Wall Hand: the rule's 2.5 m round where the arm comes out of the wall, live while it holds (1.5 s).
+                case "hand":{var m=NativeHumBoss.Move("hand");if(HumBossView.At(v.handX))Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(v.handX,floorY,v.handZ),A=m.Grab,Seed=24},v.actionAt,v.hitAt,1.5f);break;}
+            }
         }
         // ---------------- Lights Out: its 3.5 m arc behind the target, seen only as the tubes return ----------------
         private void CutArc(HumBossRig rig,in HumBossView v,float t)
         {
-            if(rig.ActMove<0||NativeHumBoss.Moves[rig.ActMove].Id!="cut")return;var m=NativeHumBoss.Moves[rig.ActMove];var a=rig.Act;float k=a.Age-a.HitAt;if(k<-.25f||k>.5f)return;int q0=Quads.Count;
-            float e=k<0?1+k/.25f:1-k/.5f;ArcFlat(rig.Root,rig.Yaw,m.Reach+1,m.Arc,(k<0?R(WarnHex):R(DangerHex))*.15f*e,(k<0?G(WarnHex):G(DangerHex))*.15f*e,(k<0?B(WarnHex):B(DangerHex))*.15f*e,.9f,.07f,4.5f);Telegraph+=Quads.Count-q0;
+            // Its warning is AimedWarnings' (the rule's half circle where it stands, in the tubes' last 0.25 s).
         }
         // ---------------- Fall Through: the carpet blackens from the middle, tears inward, and the hole shows nothing at all ----------------
         private void FallThrough(HumBossRig rig,in HumBossView v,float t)
@@ -228,9 +240,10 @@ namespace ChipArena.UnityConversion
                 float k=t-v.tearAt;var c=new Vector3(v.tearX,floorY,v.tearZ);
                 if(k>-m.Wind&&k<6)
                 {
-                    int q0=Quads.Count;float u=BossMath.Clamp01((k+m.Wind)/m.Wind);
-                    if(k<0){float pulse=.7f+.3f*(reduced?1:(float)Math.Sin(t*11));RingFlat(c+new Vector3(0,.02f,0),m.Radius,.06f,R(WarnHex)*pulse,G(WarnHex)*pulse,B(WarnHex)*pulse,.9f);Scorch(c+new Vector3(0,.016f,0),0,m.Radius*u,m.Radius*u,.7f*u);}
-                    Telegraph+=Quads.Count-q0;
+                    float u=BossMath.Clamp01((k+m.Wind)/m.Wind);
+                    // The rule's 2.4 m round the pilot, live its 0.2 s; the carpet blackening under it is the move's own.
+                    Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromEdge,At=new Vector3(c.X,floorY,c.Z),A=m.Radius,Seed=25},v.tearAt-m.Wind,v.tearAt,.2f);
+                    if(k<0)Scorch(c+new Vector3(0,.016f,0),0,m.Radius*u,m.Radius*u,.7f*u);
                     float open=k<0?(k>-.25f?(k+.25f)/.25f*.22f:0):Math.Min(m.Radius,.22f+m.Radius*BossMath.Smooth(k/.32f));float close=k>3.6f?1-BossMath.Smooth((k-3.6f)/1.6f):1;
                     bool stays=v.phase>=3;if(!stays)open*=close;
                     FloorPatch(c,m.Radius*2.1f,open,k<0?-.08f*u:-.02f,.04f*BossMath.Smooth(k/.2f),401,t,1);Tears++;
@@ -251,13 +264,15 @@ namespace ChipArena.UnityConversion
                 for(int i=0;i<n;i++){float ph=Frac(H(i,31)+t*.7f);float ang=H(i,32)*BossMath.Tau;float r=(1-ph)*6.5f;var at=ch+new Vector3((float)Math.Cos(ang)*r,(H(i,33)-.5f)*3*(1-ph),(float)Math.Sin(ang)*r);Vfx.Glow(at,Amber*(.6f*u*ph),.09f,NativeBossVfx.Mote);}
                 Vfx.Glow(ch,Amber*(1.2f*u),2.2f+2.8f*u,NativeBossVfx.Mote);
             }
+            // Where the ring will start, filling through the charge (the rule's front is on it at the hit: 0.9 m round its feet).
+            if(HumBossView.At(v.ringAt)&&t<v.ringAt&&HumBossView.At(v.ringX))Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Circle,Fill=NativeTelegraph.FromCentre,At=new Vector3(v.ringX,floorY,v.ringZ),A=1.6f,Seed=27},v.ringAt-m.Wind,v.ringAt);
             if(!HumBossView.At(v.ringAt)||t<v.ringAt)return;float k=t-v.ringAt,r0=k*m.Speed;float max=Room!=null?Math.Max(Room.MaxX-Room.MinX,Room.MaxZ-Room.MinZ):40;if(r0>max*1.1f)return;
-            var c=new Vector3(v.ringX,floorY,v.ringZ);float fade=(1-BossMath.Smooth((k-1.8f)/.8f))*BossMath.Smooth(k/.05f);int q0=Quads.Count;
+            var c=new Vector3(v.ringX,floorY,v.ringZ);float fade=(1-BossMath.Smooth((k-1.8f)/.8f))*BossMath.Smooth(k/.05f);
             // Three thin coloured rings a hand apart (the chromatic shift), standing floor to ceiling but broken up, the air barely coloured: it's a shudder, not a wall. Bright lines where it meets the carpet and the grid: jump it or roll through it.
             Band(c,r0-.18f,t,1,.32f,.2f,fade,1);Band(c,r0,t,.36f,1,.34f,fade,2);Band(c,r0+.18f,t,.26f,.34f,1,fade,3);
-            RingFlat(c+new Vector3(0,.03f,0),r0,.12f,R(DangerHex)*fade,G(DangerHex)*fade,B(DangerHex)*fade,.95f);RingFlat(c+new Vector3(0,.035f,0),r0-.08f,.05f,1.1f*fade,.95f*fade,.7f*fade,.95f);
+            // On the carpet: the rule's front (0.9 m either side of the ring, 14 m/s, 2.6 s) as a travelling wave; on the grid its line.
+            Warn(new NativeTelegraph.Spec{Shape=NativeTelegraph.Wave,At=new Vector3(c.X,floorY,c.Z),A=r0,B=.9f,C=180,Seed=26},v.ringAt,v.ringAt,2.6f);
             RingFlat(c+new Vector3(0,BackroomsLayout.Height-.03f,0),r0,.1f,.5f*fade,.42f*fade,.3f*fade,.9f);
-            Telegraph+=Quads.Count-q0;
             if(k<.4f){Vfx.Glow(c+new Vector3(0,2,0),Amber*(4*(1-k/.4f)),5,NativeBossVfx.RingGlow);}
         }
         private void Band(Vector3 c,float r,float t,float cr,float cg,float cb,float fade,int key)
@@ -372,8 +387,7 @@ namespace ChipArena.UnityConversion
             float until=HumBossView.At(v.handUntil)?t-v.handUntil:-1;float grow=k<0?(k+m.Wind)/m.Wind:1;float fade=1-BossMath.Smooth((until-.2f)/.6f);
             var c=new Vector3(v.handX,v.handY,v.handZ);float scratch=k<0&&!reduced?.012f*(float)Math.Sin(t*37):0;
             WallPatch(c,v.handNx,v.handNz,1.5f,k<0?0:.42f*BossMath.Smooth(k/.15f)*fade,.14f*grow+scratch,.05f*BossMath.Smooth(k/.15f),300,t,default,default,default,default,1.2f,1,1);Tears++;
-            // Its warning on the carpet, under where it comes out.
-            if(k<0){int q0=Quads.Count;RingFlat(new Vector3(v.handX+v.handNx*1.3f,floorY+.02f,v.handZ+v.handNz*1.3f),m.Grab*.7f,.05f,R(WarnHex)*grow,G(WarnHex)*grow,B(WarnHex)*grow,.85f);Telegraph+=Quads.Count-q0;}
+            // Its warning on the carpet is AimedWarnings' (the rule's 2.5 m round where it comes out).
             if(k>=0&&k<.8f)Vfx.SmokeBurst(t,c+new Vector3(v.handNx,0,v.handNz)*.5f,new Vector3(v.handNx,0,v.handNz)*.8f,.35f,.0f,6,1.4f,.05f,.32f,new Vector3(.5f,.48f,.38f),.16f,v.handAt,.1f,vseed,820,0,floorY);
         }
         // ---------------- Familiar Voices: faces pressing out of the paper round each pilot ----------------

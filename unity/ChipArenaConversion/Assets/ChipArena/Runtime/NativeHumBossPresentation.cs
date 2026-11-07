@@ -71,7 +71,9 @@ namespace ChipArena.UnityConversion
             humBoss.Update(now,dt,humView,HumGround,velocity,false,hasTarget,target);
             humShown=true;
             var fx=humBossFx;fx.Room=room;fx.StandIns=NativeHumBossPreview.On?NativeHumBossPreview.Pilots:null;
-            if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(humBoss,humView,humStage,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics,reduced);}
+            if(eye!=null){var t=eye.transform;Vector3 e=t.position,r=t.right,u=t.up;fx.Build(humBoss,humView,humStage,now,e.x,e.y,e.z,r.x,r.y,r.z,u.x,u.y,u.z,Mathf.Clamp01(EffectsQuality),LowGraphics,reduced);
+                // Its attack warnings through the shared renderer (Runtime NativeTelegraphPresentation; docs/TELEGRAPHS.md).
+                for(int i=0;i<fx.Telegraphs.Count;i++)Telegraph(fx.Telegraphs.Items[i]);}
             HumBossDraws=0;
             HumBodyDraw(eye);
             if(room!=null)HumRoomDraw(room,eye);

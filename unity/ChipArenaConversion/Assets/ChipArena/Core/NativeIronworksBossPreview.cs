@@ -115,6 +115,8 @@ namespace ChipArena.UnityConversion
                 var a=acts[i];if(p<a.At)continue;var m=NativeIronworksBoss.Find(a.Id);if(p>a.At+m.Total+.5f)break;
                 // A choked blow ends at its choke; the death takes over everything.
                 v.action=a.Id;v.actionAt=baseAt+a.At;v.targetX=a.Tx;v.targetZ=a.Tz;v.variant=a.Variant;v.actionYaw=float.IsNaN(a.Yaw)?float.NaN:a.Yaw;
+                // As the authority's: the hit after the windup, the origin where it stood when the move began.
+                v.hitAt=baseAt+a.At+m.Windup;Root(a.At,out float ox,out float oz,out _);v.laneX0=ox;v.laneZ0=oz;
                 if(a.Target>=0)target=Pilots[a.Target];if(a.Id=="grab")v.targetSeat=float.IsNaN(a.FreedAt)||p<a.FreedAt?a.Target:-1;
                 break;
             }

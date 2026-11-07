@@ -96,6 +96,8 @@ namespace ChipArena.UnityConversion
             waves.Step(dt,stage.Tide>.02f);waves.Compose(stage);
             var t=eye.transform;var ep=t.position;var er=t.right;var eu=t.up;
             deepEndFx.Build(deepEndRig,deepEndView,stage,waves,now,new NVector(ep.x,ep.y,ep.z),new NVector(er.x,er.y,er.z),new NVector(eu.x,eu.y,eu.z),Mathf.Clamp01(EffectsQuality),LowGraphics,EffectsQuality<.5f);
+            // Its attack warnings through the shared renderer (Runtime NativeTelegraphPresentation; docs/TELEGRAPHS.md).
+            for(int i=0;i<deepEndFx.Telegraphs.Count;i++)Telegraph(deepEndFx.Telegraphs.Items[i]);
             DeepEndWaterDraw(eye,stage,now);DeepEndLightsDraw(eye,stage);
             DeepEndBossDraw(eye,now);DeepEndFxDraw(eye,stage,now);
             if(!float.IsNaN(deepEndLast)&&now>deepEndLast)NativeDeepEndBossCues.Queue(deepEndView,deepEndRig,deepEndLast,now);

@@ -68,4 +68,34 @@ Checks make each adopter honest: sample the floor, and every point the rule woul
   - A 3 m Hush circle filling under any pilot standing still.
 
   The old warning lines and squares are gone. The crack, the dark, the blades, the columns and the impacts stay as the attacks' own effects.
-- **Next:** the other bosses (the Station, the Ironworks, THE HUM, THE DEEP END, the Siren), then the enemies.
+- **THE HUM** (2026-11-07, `Fluorescent`), each against `NativeBackroomsBossRules.Contacts`:
+  - The rows' 0.7 m lanes, live for the burst's 0.1 s.
+  - Noclip's capsule (1.5 m round the dash) and phase 3's return.
+  - Reach's 6 m, 130 degree arc on its aim (the view now carries the replicated `actionYaw`).
+  - Stoop's 4.5 m; Lights Out's 3.5 m half circle, shown only in the tubes' last 0.25 s.
+  - Fall Through's 2.4 m; Max Hum's charge, then its travelling front.
+  - Wall Hand's 2.5 m round the wall point (the old ring was 1.3 m off it and smaller).
+- **THE DEEP END** (2026-11-07, `Water`, on the pool's surface):
+  - Breach's 3.2 m; Belly Flop's lane (2 m either side); Thrash's 5 m; the Lull's 1.8 m; the Drain's 2.6 m.
+  - The Seiche's front, crossing the pool and back.
+  - The Hydro Jet's lane from the mouth, following the sweep.
+  - Last Lap's body where it breaks the surface.
+- **THE 6:47** (the Station, 2026-11-07, `Industrial`), each against the zone boss authority:
+  - Buffer Swipe's and Shunt's arcs (new: they had none).
+  - Departure's run, 2.1 m round the body (the old lane was 1.6 m), and phase 3's return.
+  - All Aboard's box by the held door; the panes' 1.4 m.
+  - Live Rail's 2.2 m round every puddle while live.
+  - Terminus's slam, the ground it rolls over, and its front.
+- **THE CONVERTER** (the Ironworks, 2026-11-07, `Molten`):
+  - Pour's fan, 1.2 to 8 m.
+  - Stomp's 1.9 m and Grab's 1.2 m.
+  - Slam's ground and front, then the box ahead.
+  - Charge's 3.2 m down the run.
+  - Every hazard pool (pour, blow drops, deslag patches, the charge's trail), filling to its hit and live while it burns.
+- **The Siren's kit** (a pilot's, or the horde Siren's through her possessed add; 2026-11-07, `Siren`):
+  - The eruption, filling to its burst.
+  - Black Rain's radius while the drops fall.
+  - Each fire patch's burn (softer: there can be many).
+
+  Each boss's old rings, strips, wedges and dashes are gone. The attacks' own effects stay (the scorch, bursts and tears, the water's darkening, the Converter's shock wall, the horns' rings). A move the authority calls off takes its warning with it. `BossVfxRealismChecks`' telegraph baselines for the 6:47 and the Converter were re-recorded on purpose; their cues are unchanged.
+- **Next:** the enemies (the horde's kinds, the Hulk's charge and jump-down, the Ironworks' and the Station's kinds), and the stages' own hazard warnings.
