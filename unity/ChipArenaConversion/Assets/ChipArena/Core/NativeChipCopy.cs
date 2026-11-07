@@ -13,6 +13,7 @@ namespace ChipArena.UnityConversion
         private static Dictionary<string,Entry> all;
         public static bool Find(string id,out Entry entry)
         {
+            if(NativeBossChips.Copy(id,out var relicShort,out var relicRows)){entry=new Entry(relicShort,relicRows);return true;}
             if(all==null)all=new Dictionary<string,Entry>(System.StringComparer.Ordinal){
                 {"arcane-lens",E("",null)},
                 {"block-recharge",E("",null)},

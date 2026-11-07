@@ -45,11 +45,12 @@ namespace ChipArena.UnityConversion
         public static Color Rarity(string r)=>U.Hex(Cart.Rarity(r));
         public static string RarityName(string r)=>r=="l44t"?"L44T":string.IsNullOrEmpty(r)?"Common":char.ToUpperInvariant(r[0])+r.Substring(1);
         // The grade's label (constants, so a frame builds no string), its colour, tracking and glow.
-        private static string Grade(string r)=>r=="uncommon"?"UNCOMMON":r=="rare"?"RARE":r=="epic"?"EPIC":r=="legendary"?"LEGENDARY":r=="mythic"?"MYTHIC":r=="mishima"?"MISHIMA":r=="ansatsuken"?"ANSATSUKEN":r=="l44t"?"L44T":r=="siren"?"SIREN":r=="bombadier"?"LIVE ORDNANCE":"COMMON";
-        private static Color LabelOf(string r,Color rare)=>r=="bombadier"?U.Hex(0xf2b90f):r=="mishima"?U.Hex(0xd6d7df):r=="ansatsuken"?U.Hex(0xff8a97):r=="l44t"?U.Hex(0xa0ffc0):r=="siren"?U.Hex(0xc9bfff):U.Mix(Color.white,rare,.82f);
-        private static float Tracking(string r)=>r=="bombadier"?.18f:r=="l44t"?.22f:r=="siren"?.18f:r=="mishima"?.14f:.12f;
-        private static int Particles(string r)=>r=="bombadier"?22:r=="mishima"?18:r=="ansatsuken"?20:r=="l44t"?24:r=="siren"?16:0;
-        public static bool Exclusive(string r)=>r=="bombadier"||r=="mishima"||r=="ansatsuken"||r=="l44t"||r=="siren";
+        private static string Grade(string r)=>NativeBossChips.IsTier(r)?BossGrade[NativeBossChips.SetOf(r)]:r=="uncommon"?"UNCOMMON":r=="rare"?"RARE":r=="epic"?"EPIC":r=="legendary"?"LEGENDARY":r=="mythic"?"MYTHIC":r=="mishima"?"MISHIMA":r=="ansatsuken"?"ANSATSUKEN":r=="l44t"?"L44T":r=="siren"?"SIREN":r=="bombadier"?"LIVE ORDNANCE":"COMMON";
+        private static readonly string[] BossGrade={"BOSS RELIC · THE SIREN","BOSS RELIC · THE 6:47","BOSS RELIC · THE CONVERTER","BOSS RELIC · THE HUM","BOSS RELIC · THE DEEP END","BOSS RELIC · NOCTIEL"};
+        private static Color LabelOf(string r,Color rare)=>NativeBossChips.IsTier(r)?U.Hex(NativeBossChips.Sets[NativeBossChips.SetOf(r)].Label):r=="bombadier"?U.Hex(0xf2b90f):r=="mishima"?U.Hex(0xd6d7df):r=="ansatsuken"?U.Hex(0xff8a97):r=="l44t"?U.Hex(0xa0ffc0):r=="siren"?U.Hex(0xc9bfff):U.Mix(Color.white,rare,.82f);
+        private static float Tracking(string r)=>NativeBossChips.IsTier(r)?.14f:r=="bombadier"?.18f:r=="l44t"?.22f:r=="siren"?.18f:r=="mishima"?.14f:.12f;
+        private static int Particles(string r)=>NativeBossChips.IsTier(r)?16:r=="bombadier"?22:r=="mishima"?18:r=="ansatsuken"?20:r=="l44t"?24:r=="siren"?16:0;
+        public static bool Exclusive(string r)=>NativeBossChips.IsTier(r)||r=="bombadier"||r=="mishima"||r=="ansatsuken"||r=="l44t"||r=="siren";
         private static readonly Dictionary<string,string> tags=new Dictionary<string,string>();
         private static string Tag(ContentChip c)
         {
@@ -125,7 +126,7 @@ namespace ChipArena.UnityConversion
             int sparks=calm?0:Particles(tier);float period=siren?3.4f:2.8f;Color spark=tier=="bombadier"?U.Hex(0xffc24d):tier=="mishima"?U.Hex(0xff234a):tier=="ansatsuken"?U.Hex(0xff6071):siren?U.Hex(0xd9d0ff):rare,sparkGlow=tier=="bombadier"?U.Hex(0xff4a10):tier=="mishima"?U.Hex(0xf30035):tier=="ansatsuken"?U.Hex(0xff294f):siren?U.Hex(0x9b87ff):rare;
             for(int n=0;n<sparks;n++){float k=Mathf.Repeat(t/period+n*.31f/period,1),op=k<.2f?k/.2f*.9f:.9f*(1-(k-.2f)/.8f);bool even=n%2==0;float px=r.x+r.width*((n*37+11)%100)/100f+(n-6)*3*k,py=even?r.y+2+3-35*k:r.yMax-3-3+35*k;
                 float sw=3*(1-.6f*k),sh=(siren?5:3)*(1-.6f*k);var sp=new Rect(px,py,sw,sh);bool dark=siren&&n%3==2;U.Glow(sp,A(dark?U.Hex(0xb7a8ff):sparkGlow,.5f*op),3);U.Fill(sp,A(dark?U.Hex(0x050409):spark,op));}
-            NativeChipArt.Aura(r,s.Radius,tier,t,a,look.Plain);if(tier==NativeBombChips.Tier)NativeBombChipArt.Face(r,s.Radius,c.id,t,a,look.Plain,calm);
+            NativeChipArt.Aura(r,s.Radius,tier,t,a,look.Plain);if(tier==NativeBombChips.Tier)NativeBombChipArt.Face(r,s.Radius,c.id,t,a,look.Plain,calm);else if(NativeBossChips.IsTier(tier))NativeBossChipArt.Face(r,s.Radius,c.id,t,a,look.Plain,calm);
             // The footer's well (a darker band inside the bezel) and the etched divider under the header, its glint in the tier.
             float p1=NativeHudChrome.Px;NativeHudChrome.Cut(Rect.MinMaxRect(r.x+bw,fy,r.xMax-bw,r.yMax-bw),A(new Color(0,0,0,siren?.3f:.26f)),NativeChipArt.BottomCut(s.Radius)*.55f,NativeHudChrome.Corners.BL|NativeHudChrome.Corners.BR);
             float dy=r.y+l.Head;U.Fill(new Rect(r.x+bw+2,dy,r.width-2*bw-4,p1),A(new Color(0,0,0,.55f)));U.Fill(new Rect(r.x+bw+2,dy+p1,r.width-2*bw-4,p1),A(new Color(1,1,1,.06f)));
@@ -226,7 +227,7 @@ namespace ChipArena.UnityConversion
         // tray and the Siren reveal; CSS 3D turns are drawn as their cos() squash). Build 0..1 is the cartridge's assembly over
         // the same duration (ChipLook.Unbuilt = 1 - Build: the bezel snapping in, the core igniting, the connector lighting).
         public struct Reveal {public float Alpha,Dx,Dy,Scale,ScaleX,ScaleY,Degrees,Bright,Build;}
-        public static float RevealSeconds(string tier)=>tier=="epic"?.9f:tier=="legendary"||tier=="mythic"?1:tier=="mishima"?1.2f:tier=="ansatsuken"?1.4f:tier=="l44t"?1.5f:tier=="siren"?1.25f:.62f;
+        public static float RevealSeconds(string tier)=>NativeBossChips.IsTier(tier)?1.3f:tier=="epic"?.9f:tier=="legendary"||tier=="mythic"?1:tier=="mishima"?1.2f:tier=="ansatsuken"?1.4f:tier=="l44t"?1.5f:tier=="siren"?1.25f:.62f;
         public static Reveal Entrance(string tier,float t)
         {
             float duration=RevealSeconds(tier);
@@ -243,6 +244,7 @@ namespace ChipArena.UnityConversion
                 case "ansatsuken":{v.Dy=40*(1-e);float ang=-30*(1-e);v.ScaleX=Mathf.Abs(Mathf.Cos(ang*Mathf.Deg2Rad));v.Bright*=1+(1-e);v.Alpha=M.Clamp01(e*2.5f);break;}
                 case "l44t":v.Dy=M.Keys(e,At3d,LeetRise);v.Scale=M.Keys(e,At3d,LeetScale);v.Bright*=1+2*(1-M.Clamp01(e/.35f));v.Alpha=M.Clamp01(e*3);break;
                 case "siren":v.ScaleY=Mathf.Lerp(.02f,1,M.Clamp01(e/.4f));v.ScaleX=Mathf.Lerp(1.12f,1,M.Clamp01(e/.4f));v.Dx=e<.75f&&e>.4f?(Mathf.Repeat(e*40,2)<1?7:-7)*(1-e):0;v.Alpha=M.Clamp01(e*3);break;
+                case "boss-siren":case "boss-647":case "boss-converter":case "boss-hum":case "boss-deepend":case "boss-noctiel":NativeBossChipArt.Entrance(e,ref v);break;
                 default:v.Dy=34*(1-e);v.Scale=.94f+.06f*e;v.ScaleY=Mathf.Cos(18*(1-e)*Mathf.Deg2Rad);v.Alpha=e;break;
             }
             return v;

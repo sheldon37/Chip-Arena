@@ -17,7 +17,7 @@ namespace ChipArena.UnityConversion
     public static class NativeChipCartridge
     {
         /// <summary>The chip tiers in rank order (NativeChipRanks.RarityRank), then the dispensed-only rainbow tier.</summary>
-        public static readonly string[] Tiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier"};
+        public static readonly string[] Tiers={"common","uncommon","rare","epic","legendary","mythic","mishima","ansatsuken","l44t","siren","bombadier","boss-siren","boss-647","boss-converter","boss-hum","boss-deepend","boss-noctiel"};
         public const string Rainbow="rainbow";
         public enum Metal{Steel,Titanium,Gold,BlackChrome,Gunmetal,Lacquer,Phosphor,Void,Prism}
         public enum Crest{None,Crown,Shards,Bolts,Knot,Terminal,Flames,Prism,Fuse}
@@ -35,7 +35,7 @@ namespace ChipArena.UnityConversion
             public int Ornaments=>(Seams?1:0)+(SecondInlay?1:0)+(Holo?1:0)+(Fins?1:0)+(Ring?1:0)+(Crest!=Crest.None?1:0)+(Gems?1:0)+(Fractured?1:0)+(Foil?1:0)+(Embers?1:0);
         }
         /// <summary>The scheme's rarity colour (sRGB hex): GameContent's rarities, as NativeChipCard.Rarity and NativeMachineModels.RarityColors.</summary>
-        public static int Rarity(string tier)=>tier=="bombadier"?0xff7a1f:tier=="mishima"?0xb3b5c2:tier=="ansatsuken"?0xff354e:tier=="l44t"?0x4dff83:tier=="siren"?0xb7a8ff:tier=="uncommon"?0x79e59a:tier=="rare"?0x70b5ff:tier=="epic"?0xce8aff:tier=="legendary"?0xffae55:tier=="mythic"?0xff6475:0xf1f5f9;
+        public static int Rarity(string tier)=>NativeBossChips.IsTier(tier)?NativeBossChips.Sets[NativeBossChips.SetOf(tier)].Rarity:tier=="bombadier"?0xff7a1f:tier=="mishima"?0xb3b5c2:tier=="ansatsuken"?0xff354e:tier=="l44t"?0x4dff83:tier=="siren"?0xb7a8ff:tier=="uncommon"?0x79e59a:tier=="rare"?0x70b5ff:tier=="epic"?0xce8aff:tier=="legendary"?0xffae55:tier=="mythic"?0xff6475:0xf1f5f9;
         public static bool Known(string tier)=>Array.IndexOf(Tiers,tier)>=0||tier==Rainbow;
         public static Look Of(string tier)
         {
@@ -52,6 +52,13 @@ namespace ChipArena.UnityConversion
                 case "l44t":return new Look(tier,0x4dff83,0x8affb0,0x45f57d,0xd4ffe2,0x063d1a,0x9effbd,0x050c08,0x9fe6b8,0x223a2c,0x0a140e,0,Metal.Phosphor,Crest.Terminal,false,false,false,false,false,false,false,false,false,false,1.6f,.6f);
                 case "siren":return new Look(tier,0xb7a8ff,0xc9bfff,0x9b87ff,0xf3efff,0x140c2e,0xd9d0ff,0x07060b,0xc9bfff,0x2a2342,0x07060b,0,Metal.Void,Crest.Flames,false,false,false,false,false,false,false,false,false,false,3.0f,.6f);
                 case "bombadier":return new Look(tier,0xff7a1f,0xffc24d,0xff6a14,0xffe6b0,0x5a1404,0xf2b90f,0x100b08,0xd8cdb4,0x57504a,0x14100c,0,Metal.Gunmetal,Crest.Fuse,false,false,false,false,false,false,false,false,true,true,1.7f,.6f);
+                // The boss relics (Core NativeBossChips): each boss's own colours, metal and crest.
+                case "boss-siren":return new Look(tier,0xa98bff,0xc7b4ff,0x8f6bff,0xf1eaff,0x1b0f3a,0xe0d4ff,0x08060e,0xd6ccff,0x3a2f5c,0x0a0814,0,Metal.Void,Crest.Flames,false,false,true,false,true,false,false,false,false,false,2.6f,.6f);
+                case "boss-647":return new Look(tier,0xffb02e,0xffd27a,0xff9a10,0xfff0c4,0x4a2600,0xffc24d,0x0e0c0a,0xd9d2c4,0x5e574c,0x16130f,0,Metal.Gunmetal,Crest.Bolts,true,false,false,false,true,false,false,false,false,true,2.2f,.55f);
+                case "boss-converter":return new Look(tier,0xff5a1c,0xff9a4a,0xff4a0a,0xffd2a0,0x4a0e00,0xffb070,0x120a07,0xcdb8a8,0x5a4236,0x170d08,0,Metal.BlackChrome,Crest.Shards,true,false,false,false,true,false,true,false,true,false,1.9f,.6f);
+                case "boss-hum":return new Look(tier,0xf2e49a,0xfff4c4,0xffeea0,0xfffff0,0x3a3410,0xfffbe0,0x12110a,0xe9e2c0,0x7a7350,0x22200f,0,Metal.Titanium,Crest.Terminal,true,false,false,false,true,false,false,false,false,true,2.8f,.5f);
+                case "boss-deepend":return new Look(tier,0x5fe8e0,0xa8fff6,0x3fd8d0,0xe6fffd,0x063a38,0xbdfcf6,0x061214,0xe8fbfa,0x6aa8a6,0x0f2a2c,0,Metal.Titanium,Crest.Knot,true,true,true,false,true,false,false,false,false,false,3.0f,.55f);
+                case "boss-noctiel":return new Look(tier,0xeeeaff,0xffffff,0xe8e6ff,0xffffff,0x14121c,0xffffff,0x050508,0xf0f0f6,0x7a7a88,0x111116,0,Metal.BlackChrome,Crest.Crown,true,true,true,true,true,true,false,true,false,false,2.4f,.6f);
                 case Rainbow:return new Look(tier,0xffffff,0xffffff,0xffffff,0xffffff,0x303040,0xffffff,0x0c0c12,0xf4f6ff,0x9aa0b4,0x2c3040,6,Metal.Prism,Crest.Prism,true,true,true,true,true,false,false,true,false,false,1.9f,.55f);
                 default:return new Look("common",0xf1f5f9,0xe6edf6,0xc9d3e2,0xffffff,0x2a3242,0xc9d4e6,0x0d1118,0xe8edf4,0x8a93a3,0x2c323d,1,Metal.Steel,Crest.None,false,false,false,false,false,false,false,false,false,true,3.2f,.38f);
             }
