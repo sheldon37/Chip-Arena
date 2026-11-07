@@ -68,7 +68,7 @@ namespace ChipArena.UnityConversion
             if(ZoneBoss!=null){ZoneBoss.action=null;ZoneBoss.actionAt=ZoneBoss.hitAt=-100;ZoneBoss.duration=0;}
             foreach(var p in Members())
             {
-                for(int i=0;i<5;i++)GrantPvePick(p,"rainbow",false);
+                for(int i=0;i<5;i++)GrantPvePick(p,"common",false);
                 OpenPvePick(p);
             }
         }

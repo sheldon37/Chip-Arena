@@ -166,7 +166,9 @@ reconnect policy and unrun Windows checks.
 ## Boss Battle opening chips (2026-11-07)
 
 All six Boss Battle encounters start with five personal selections using the existing
-three-card PvE picker and rainbow offer weights (no money chips). Offers respect the
+three-card PvE picker and normal starting weights (Common 42, Uncommon 28, Rare 17,
+Epic 8, Legendary 4, Mythic 1; no money chips). The opening selection is silent; audio
+returns when the boss intro begins. Offers respect the
 pilot's weapon, equipped techniques and stack limits. The host freezes simulation and
 holds the boss intro/music until every connected human has installed all five. Closing
 the picker does not skip them; C reopens it. Siren party bots pick automatically.

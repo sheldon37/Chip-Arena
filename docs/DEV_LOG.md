@@ -1,3 +1,10 @@
+## 2026-11-07 — Astra: Boss Battle random opening rarity and silent selection
+
+- Branch `codex/boss-draft-quality-audio`, base shared `f61671ae`. Owner reports constant harsh audio and all max-quality opening chips.
+- Replaced the five rainbow (Mythic-only) grants with existing normal starting weights. Kept combat-only offers during BossOpening; no money chips. Weapon/technique eligibility, stack caps and five-pick barrier unchanged.
+- Opening selection temporarily mutes all NativeAudio sources, including already-playing loops and music, and restores them at intro without changing saved sound preferences. This intentionally silences chip UI cues too. Exact offending sound was not identified or heard here; the entire requested opening phase is now silent.
+- Extended the native opening fixture to require five normal-tier reward records. Local source/package checks and remote CI results recorded in PR. Unity/Windows listening and multiplayer acceptance remain unrun.
+- No assets, visuals, attack timings or hitboxes changed. No live/Site release.
 ## 2026-11-07 — Claude: the Backrooms bosses' rules half and the boss relics live (owner: "make the changes yourself")
 
 - The owner asked Claude to make the rules half itself instead of handing it to Astra (role split set aside for this task by the owner). Branch `claude/backrooms-boss-rules`, base shared `f61671ae`.

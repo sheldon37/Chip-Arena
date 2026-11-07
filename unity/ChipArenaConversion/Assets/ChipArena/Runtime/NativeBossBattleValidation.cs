@@ -11,7 +11,7 @@ namespace ChipArena.UnityConversion
             void Check(bool ok,string why){if(!ok)throw new Exception("Boss opening: "+why);}
             Check(BossOpening&&!Pve.Holding&&BossSongAt<0,"selection before music/intro");
             float clock=Time;var members=Members().ToArray();
-            foreach(var p in members)Check(Pve.Rows[p.Seat.id].Picks.Count==5,"five choices per pilot");
+            foreach(var p in members)Check(Pve.Rows[p.Seat.id].Picks.Count==5&&Pve.Rows[p.Seat.id].Picks.All(pick=>pick.Tier=="common"),"five normal-rarity choices per pilot");
             for(int i=0;i<120;i++)BossOpeningTick();
             Check(Time==clock&&BossOpening&&!Pve.Holding,"combat and clock frozen while choosing");
             var packet=NativeNetCodec.Decode(NativeNetCodec.Encode(new NativeNetMessage{type="frame",epoch=7,frame=NetworkFrame()})).frame;
